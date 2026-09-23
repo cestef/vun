@@ -6,7 +6,9 @@ use std::borrow::Cow;
 use overt_diag::Edit;
 use overt_syntax::literal::{Decl, Literal, Unwritable};
 
-use super::{DEFAULT_PRELUDE, DEP_KINDS, Dep, DepKind, Manifest, PACKAGE, Source, field};
+use overt_span::Span;
+
+use super::{DEFAULT_PRELUDE, DEP_KINDS, Dep, DepKind, Manifest, PACKAGE, Replacement, Source, field};
 
 impl Manifest {
     /// Its `package` literal: the fields the reader takes back, without defaults.
@@ -26,6 +28,10 @@ impl Manifest {
             let deps = self.deps.iter().map(|d| at(&d.name, d.literal())).collect();
             fields.push(at(field::DEPS, Literal::Record(deps)));
         }
+        if !self.replace.is_empty() {
+            let replace = self.replace.iter().map(|r| at(&r.name, r.literal())).collect();
+            fields.push(at(field::REPLACE, Literal::Record(replace)));
+        }
         if !self.members.is_empty() {
             fields.push(at(field::MEMBERS, Literal::strings(self.members.iter().map(String::as_str))));
         }
@@ -44,15 +50,14 @@ impl Manifest {
     }
 }
 
-impl Dep {
-    /// Its entry in `.deps`: the fields the reader takes back, without defaults.
-    #[must_use]
-    pub fn literal(&self) -> Literal<'_> {
-        let at = |name, value| Decl { name, doc: Vec::new(), value, span: self.span };
+impl Source {
+    /// Its fields in a `.deps` or `.replace` entry.
+    fn fields(&self, span: Span) -> Vec<Decl<'_>> {
+        let at = |name, value| Decl { name, doc: Vec::new(), value, span };
         let text = |s: String| Literal::String(Cow::Owned(s));
-        let mut fields = match &self.source {
-            Source::Path(path) => vec![at(field::PATH, Literal::String(Cow::Borrowed(path)))],
-            Source::Archive { version, hash, urls } => {
+        match self {
+            Self::Path(path) => vec![at(field::PATH, Literal::String(Cow::Borrowed(path)))],
+            Self::Archive { version, hash, urls } => {
                 let mut fields = vec![
                     at(field::VERSION, text(version.to_string())),
                     at(field::HASH, text(hash.to_string())),
@@ -62,8 +67,31 @@ impl Dep {
                 }
                 fields
             }
-        };
+        }
+    }
+}
+
+impl Replacement {
+    /// Its entry in `.replace`.
+    #[must_use]
+    pub fn literal(&self) -> Literal<'_> {
+        let at = |name, value| Decl { name, doc: Vec::new(), value, span: self.span };
+        let mut fields = vec![
+            at(field::ID, Literal::Int(self.identity.id.into())),
+            at(field::MAJOR, Literal::Int(self.identity.major.into())),
+        ];
+        fields.extend(self.source.fields(self.span));
+        Literal::Record(fields)
+    }
+}
+
+impl Dep {
+    /// Its entry in `.deps`: the fields the reader takes back, without defaults.
+    #[must_use]
+    pub fn literal(&self) -> Literal<'_> {
+        let mut fields = self.source.fields(self.span);
         let kind = DEP_KINDS.iter().find(|&&(_, k)| k == self.kind && k != DepKind::Overt);
+        let at = |name, value| Decl { name, doc: Vec::new(), value, span: self.span };
         fields.extend(kind.map(|&(name, _)| at(field::KIND, Literal::Name(name))));
         Literal::Record(fields)
     }

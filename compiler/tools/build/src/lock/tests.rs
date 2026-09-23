@@ -40,3 +40,21 @@ fn malformed_locks_name_the_line() {
     assert_eq!(Identity::parse("c0ffee01/2"), None, "ids are written in full");
     assert_eq!(Identity::parse("00000000c0ffee01/02"), None);
 }
+
+#[test]
+fn replacements_round_trip() {
+    use super::{Replaced, Replacing};
+    let hal = Identity { id: 0xc0ff_ee01, major: 2 };
+    let lock = Lock::new(vec![entry("hal", "2.1.4", Some(hal), None)]).replacing(vec![
+        Replaced { name: "hal".into(), identity: hal, with: Replacing::Path("../hal fork".into()) },
+        Replaced {
+            name: "sdk".into(),
+            identity: Identity { id: 9, major: 0 },
+            with: Replacing::Stored(Hash::of(b"sdk")),
+        },
+    ]);
+    let text = lock.to_string();
+    assert!(text.contains("replace hal 00000000c0ffee01/2 path ../hal fork\n"), "{text}");
+    assert_eq!(Lock::parse(&text), Ok(lock.clone()));
+    assert_eq!(lock.replacement(hal).map(|r| &r.with), Some(&Replacing::Path("../hal fork".into())));
+}

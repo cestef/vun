@@ -79,6 +79,9 @@ impl Session {
         let dep = self.packages.list[&package].deps[index].clone();
         let declared = self.dep_package(&dep)?;
         let Some((identity, _)) = self.packages.list[&declared].release else { return Some(declared) };
+        if let Some(replace) = self.replacement(identity) {
+            return self.dep_package(&replace.dep);
+        }
         match self.selected(identity) {
             Some(locked) if PackageKey::Content(locked.hash) != declared => {
                 let source =

@@ -11,10 +11,28 @@ use crate::manifest::{Identity, Version};
 /// The lockfile's name, next to the manifest.
 pub const FILE: &str = "overt.lock";
 
-/// A lockfile: the required packages, sorted by name, version and identity.
+/// A lockfile: the required packages, sorted by name, version and identity, and the identities
+/// the root replaces.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Lock {
     entries: Vec<Locked>,
+    replaced: Vec<Replaced>,
+}
+
+/// An identity the root manifest replaces, and what with.
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub struct Replaced {
+    pub name: String,
+    pub identity: Identity,
+    pub with: Replacing,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum Replacing {
+    /// A stored package, by tree hash.
+    Stored(Hash),
+    /// A directory, by path from the root.
+    Path(String),
 }
 
 /// One required package.
@@ -57,6 +75,10 @@ const DEP: &str = "dep";
 const FOREIGN: &str = "foreign";
 /// Introduces the dependent that requires an entry.
 const VIA: &str = "via";
+/// Starts a replacement line.
+const REPLACE: &str = "replace";
+/// Introduces a replacement by path, which runs to the end of the line.
+const PATH: &str = "path";
 
 impl Lock {
     /// The lock of `entries`, in their canonical order.
@@ -64,7 +86,22 @@ impl Lock {
     pub fn new(mut entries: Vec<Locked>) -> Self {
         entries.sort();
         entries.dedup();
-        Self { entries }
+        Self { entries, replaced: Vec::new() }
+    }
+
+    /// This lock with `replaced` recorded, in their canonical order.
+    #[must_use]
+    pub fn replacing(mut self, mut replaced: Vec<Replaced>) -> Self {
+        replaced.sort();
+        replaced.dedup();
+        self.replaced = replaced;
+        self
+    }
+
+    /// What replaces `identity`, if the root replaces it.
+    #[must_use]
+    pub fn replacement(&self, identity: Identity) -> Option<&Replaced> {
+        self.replaced.iter().find(|r| r.identity == identity)
     }
 
     #[must_use]
@@ -87,12 +124,16 @@ impl Lock {
         if lines.next() != Some(HEADER) {
             return Err(Malformed::Header);
         }
-        let entries = lines
-            .enumerate()
-            .filter(|(_, line)| !line.trim().is_empty())
-            .map(|(i, line)| Locked::parse(line).ok_or(Malformed::Line(i + 2)))
-            .collect::<Result<_, _>>()?;
-        Ok(Self::new(entries))
+        let (mut entries, mut replaced) = (Vec::new(), Vec::new());
+        for (i, line) in lines.enumerate().filter(|(_, line)| !line.trim().is_empty()) {
+            let malformed = Malformed::Line(i + 2);
+            if line.starts_with(REPLACE) {
+                replaced.push(Replaced::parse(line).ok_or(malformed)?);
+            } else {
+                entries.push(Locked::parse(line).ok_or(malformed)?);
+            }
+        }
+        Ok(Self::new(entries).replacing(replaced))
     }
 }
 
@@ -116,10 +157,34 @@ impl Locked {
     }
 }
 
+impl Replaced {
+    fn parse(line: &str) -> Option<Self> {
+        let rest = line.strip_prefix(REPLACE)?.strip_prefix(' ')?;
+        let (name, rest) = rest.split_once(' ')?;
+        let (identity, with) = rest.split_once(' ')?;
+        let with = match with.strip_prefix(PATH) {
+            Some(path) => Replacing::Path(path.strip_prefix(' ')?.to_owned()),
+            None => Replacing::Stored(Hash::parse(with)?),
+        };
+        Some(Self { name: name.to_owned(), identity: Identity::parse(identity)?, with })
+    }
+}
+
+impl fmt::Display for Replaced {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{REPLACE} {} {} ", self.name, self.identity)?;
+        match &self.with {
+            Replacing::Stored(hash) => write!(f, "{hash}"),
+            Replacing::Path(path) => write!(f, "{PATH} {path}"),
+        }
+    }
+}
+
 impl fmt::Display for Lock {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(f, "{HEADER}")?;
-        self.entries.iter().try_for_each(|e| writeln!(f, "{e}"))
+        self.entries.iter().try_for_each(|e| writeln!(f, "{e}"))?;
+        self.replaced.iter().try_for_each(|r| writeln!(f, "{r}"))
     }
 }
 

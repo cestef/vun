@@ -5,7 +5,7 @@ use overt_span::{EXTENSION, FileId, SourceFiles};
 use overt_syntax::literal::{Decl, declarations};
 use overt_syntax::{lexer, parser};
 
-use super::{DepKind, Manifest, Source, Version, declared, read};
+use super::{DepKind, Identity, Manifest, Source, Version, declared, read};
 use crate::layout::MANIFEST;
 
 fn parsed<R>(text: &str, f: impl FnOnce(&[Decl<'_>], FileId, &mut DiagCx<'_>) -> R) -> (R, Vec<DiagId>) {
@@ -62,6 +62,7 @@ fn reads_every_field() {
             .cmsis = .{ .version = "5.9.0", .hash = "blake3:m7qdaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", .kind = .foreign },
             .util = .{ .path = "../util" },
         },
+        .replace = .{ .hal = .{ .id = 0xc0ffee01, .major = 1, .path = "../hal-fork" } },
     };"#;
     let (Some(m), ids) = manifest(text) else { panic!("unread") };
     assert!(ids.is_empty(), "{ids:?}");
@@ -72,6 +73,18 @@ fn reads_every_field() {
     let deps: Vec<_> = m.deps.iter().map(|d| (d.name.as_str(), d.kind)).collect();
     assert_eq!(deps, [("hal", DepKind::Overt), ("cmsis", DepKind::Foreign), ("util", DepKind::Overt)]);
     assert_eq!(m.deps[2].source, Source::Path("../util".into()));
+    let [hal] = m.replace.as_slice() else { panic!("{:?}", m.replace) };
+    assert_eq!(
+        (hal.identity, &hal.source),
+        (Identity { id: 0xc0ff_ee01, major: 1 }, &Source::Path("../hal-fork".into()))
+    );
+    let written = m.source().unwrap();
+    let again = manifest(&written).0.unwrap();
+    assert_eq!(
+        (again.replace[0].identity, &again.replace[0].source),
+        (hal.identity, &hal.source),
+        "{written}"
+    );
 }
 
 #[test]

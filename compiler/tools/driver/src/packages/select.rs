@@ -12,7 +12,7 @@ use overt_build::manifest::{DepKind, Identity, Version};
 use overt_diag::{ChildKind, Diagnostic, Msg, errors};
 use overt_fs::Edit;
 
-use super::{DepSource, PackageKey};
+use super::{DepSource, PackageKey, Replace};
 use crate::Session;
 use crate::commands::{FETCH_PATH, PROGRAM};
 
@@ -32,7 +32,14 @@ impl Session {
             let via = via.map(|name| name.as_str().to_owned());
             for dep in self.packages.list[&package].deps.clone() {
                 let loaded = (dep.kind == DepKind::Overt).then(|| self.found(&dep).ok()).flatten();
-                pending.extend(loaded);
+                // A replaced identity's graph is the replacement's.
+                let identity = loaded.and_then(|k| self.packages.list[&k].release).map(|(i, _)| i);
+                let replaced = identity.and_then(|i| self.replacement_in(project, i));
+                let walked = match replaced {
+                    Some(replace) => self.found(&replace.dep).ok(),
+                    None => loaded,
+                };
+                pending.extend(walked);
                 let DepSource::Stored { hash, version, .. } = dep.source else { continue };
                 let identity = loaded.and_then(|k| self.packages.list[&k].release).map(|(i, _)| i);
                 let name = dep.name.as_str().to_owned();
@@ -51,7 +58,17 @@ impl Session {
                 }
             }
         }
-        Lock::new(entries)
+        let replaced = self.packages.list[&project].replace.iter().map(|r| r.recorded.clone()).collect();
+        Lock::new(entries).replacing(replaced)
+    }
+
+    /// What the project replaces `identity` with.
+    pub(super) fn replacement(&self, identity: Identity) -> Option<Replace> {
+        self.replacement_in(self.packages.root?, identity)
+    }
+
+    fn replacement_in(&self, project: PackageKey, identity: Identity) -> Option<Replace> {
+        self.packages.list[&project].replace.iter().find(|r| r.identity == identity).cloned()
     }
 
     /// What selection chose for `identity` in the project's graph, which is selected once and

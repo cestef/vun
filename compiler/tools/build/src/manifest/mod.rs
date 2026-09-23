@@ -3,6 +3,7 @@
 //! Every field is checked: missing required fields, unknown fields (with the closest known name)
 //! and values of the wrong shape are diagnostics at the offending source.
 
+mod deps;
 mod identity;
 mod record;
 #[cfg(test)]
@@ -12,11 +13,12 @@ mod write;
 
 use overt_diag::{DiagCx, Diagnostic, Msg, errors};
 use overt_span::{FileId, Span};
-use overt_syntax::literal::{Decl, Literal};
+use overt_syntax::literal::Decl;
 
+use deps::{deps, replacements};
 pub use identity::Identity;
 use overt_hash::Hash;
-use record::{Fields, choice, hash, int, string, strings};
+use record::{Fields, int, string, strings};
 pub use version::Version;
 
 /// The declaration `std.build.Package` requires to hold the manifest.
@@ -34,6 +36,8 @@ pub struct Manifest {
     /// What the content hash covers.
     pub include: Vec<String>,
     pub deps: Vec<Dep>,
+    /// Identities whose packages come from elsewhere, anywhere in the graph; read from the root.
+    pub replace: Vec<Replacement>,
     /// Workspace members, by path.
     pub members: Vec<String>,
     /// Namespaces whose public names every file sees unqualified (spec 01, section 8).
@@ -57,6 +61,16 @@ pub struct Dep {
     pub name: String,
     pub source: Source,
     pub kind: DepKind,
+    pub span: Span,
+}
+
+/// `.replace` entry: the identity whose every version comes from `source` instead (spec 12,
+/// section 3), named for people.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Replacement {
+    pub name: String,
+    pub identity: Identity,
+    pub source: Source,
     pub span: Span,
 }
 
@@ -92,10 +106,13 @@ mod field {
     pub(super) const URLS: &str = "urls";
     pub(super) const PATH: &str = "path";
     pub(super) const KIND: &str = "kind";
+    pub(super) const REPLACE: &str = "replace";
+    pub(super) const MAJOR: &str = "major";
 
     pub(super) const PACKAGE: &[&str] =
-        &[NAME, ID, VERSION, EDITION, TOOLCHAIN, INCLUDE, DEPS, MEMBERS, PRELUDE];
+        &[NAME, ID, VERSION, EDITION, TOOLCHAIN, INCLUDE, DEPS, REPLACE, MEMBERS, PRELUDE];
     pub(super) const DEP: &[&str] = &[VERSION, HASH, URLS, PATH, KIND];
+    pub(super) const REPLACEMENT: &[&str] = &[ID, MAJOR, VERSION, HASH, URLS, PATH];
 }
 
 /// Whether a `build.ov` holds a manifest: it declares `package`. One that does not is an ordinary
@@ -124,6 +141,7 @@ pub fn read(decls: &[Decl<'_>], file: FileId, cx: &mut DiagCx<'_>) -> Option<Man
     let toolchain = fields.get(field::TOOLCHAIN).map_or(Some(None), |d| Version::read(d, cx).map(Some));
     let include = fields.require(field::INCLUDE).and_then(|d| strings(d, cx));
     let deps = fields.get(field::DEPS).map_or(Some(Vec::new()), |d| deps(d, cx));
+    let replace = fields.get(field::REPLACE).map_or(Some(Vec::new()), |d| replacements(d, cx));
     let members = fields.get(field::MEMBERS).map_or(Some(Vec::new()), |d| strings(d, cx));
     let prelude_decl = fields.get(field::PRELUDE);
     let prelude = prelude_decl.map_or(Some(vec![DEFAULT_PRELUDE.to_owned()]), |d| strings(d, cx));
@@ -137,42 +155,9 @@ pub fn read(decls: &[Decl<'_>], file: FileId, cx: &mut DiagCx<'_>) -> Option<Man
         toolchain: toolchain?,
         include: include?,
         deps: deps?,
+        replace: replace?,
         members: members?,
         prelude: prelude?,
         prelude_span,
     })
-}
-
-fn deps(decl: &Decl<'_>, cx: &mut DiagCx<'_>) -> Option<Vec<Dep>> {
-    let Literal::Record(entries) = &decl.value else {
-        return Fields::new(decl, &[], cx).map(|_| Vec::new());
-    };
-    let deps: Vec<_> = entries.iter().map(|entry| dep(entry, cx)).collect();
-    deps.into_iter().collect()
-}
-
-fn dep(decl: &Decl<'_>, cx: &mut DiagCx<'_>) -> Option<Dep> {
-    let mut fields = Fields::new(decl, field::DEP, cx)?;
-    let kind = fields.get(field::KIND).map_or(Some(DepKind::Overt), |d| choice(d, DEP_KINDS, cx));
-    let source = match (fields.get(field::PATH), fields.get(field::VERSION)) {
-        (Some(path), None) => string(path, cx).map(Source::Path),
-        (None, Some(version)) => {
-            let version = Version::read(version, cx);
-            let hash = fields.require(field::HASH).and_then(|d| hash(d, cx));
-            let urls = fields.get(field::URLS).map_or(Some(Vec::new()), |d| strings(d, cx));
-            match (version, hash, urls) {
-                (Some(version), Some(hash), Some(urls)) => Some(Source::Archive { version, hash, urls }),
-                _ => None,
-            }
-        }
-        _ => {
-            let msg = Msg::new().text("dependency ").code(decl.name).text(" needs exactly one of ");
-            let msg =
-                msg.code(format!(".{}", field::PATH)).text(" and ").code(format!(".{}", field::VERSION));
-            cx.error_at(decl.span, Diagnostic::error(errors::MANIFEST_INVALID_FIELD, msg));
-            None
-        }
-    };
-    fields.finish(cx);
-    Some(Dep { name: decl.name.to_owned(), source: source?, kind: kind?, span: decl.span })
 }

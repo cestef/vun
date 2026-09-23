@@ -66,6 +66,10 @@ impl Session {
     /// what happened to each, by name and hash, in the order they were reached.
     pub fn fetch(&mut self, project: PackageKey) -> Vec<(Symbol, Hash, Fetched)> {
         let mut done: Vec<(Symbol, Hash, Fetched)> = Vec::new();
+        // Replacements first: the graph is walked through them.
+        for replace in self.packages.list[&project].replace.clone() {
+            self.obtain(&replace.dep, &mut done);
+        }
         let mut seen = HashSet::new();
         let mut pending = vec![project];
         while let Some(package) = pending.pop() {
@@ -74,20 +78,7 @@ impl Session {
             }
             let deps = self.packages.list[&package].deps.clone();
             for (index, dep) in deps.iter().enumerate() {
-                let outcome = match &dep.source {
-                    DepSource::Stored { hash, .. } if done.iter().any(|(_, h, _)| h == hash) => continue,
-                    DepSource::Stored { hash, version, urls } => {
-                        let outcome = if self.present(*hash) {
-                            Fetched::Present
-                        } else {
-                            self.download(dep, *hash, *version, urls)
-                        };
-                        done.push((dep.name, *hash, outcome.clone()));
-                        outcome
-                    }
-                    DepSource::Dir(_) => Fetched::Present,
-                };
-                if outcome != Fetched::Failed
+                if self.obtain(dep, &mut done) != Some(Fetched::Failed)
                     && dep.kind == DepKind::Overt
                     && let Some(next) = self.dep(package, index)
                 {
@@ -96,6 +87,19 @@ impl Session {
             }
         }
         done
+    }
+
+    /// Stores `dep` if it is stored and the store lacks it, once per hash, recording what
+    /// happened in `done`; `None` for a directory or a hash already handled.
+    fn obtain(&mut self, dep: &Dep, done: &mut Vec<(Symbol, Hash, Fetched)>) -> Option<Fetched> {
+        let DepSource::Stored { hash, version, urls } = &dep.source else { return None };
+        if done.iter().any(|(_, h, _)| h == hash) {
+            return None;
+        }
+        let outcome =
+            if self.present(*hash) { Fetched::Present } else { self.download(dep, *hash, *version, urls) };
+        done.push((dep.name, *hash, outcome.clone()));
+        Some(outcome)
     }
 
     /// Whether the store holds `hash` as it was verified.

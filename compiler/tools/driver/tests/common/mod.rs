@@ -6,7 +6,9 @@
 use std::path::{Path, PathBuf};
 
 use overt_build::layout::MANIFEST;
-use overt_build::manifest::{DEFAULT_PRELUDE, Dep, DepKind, EDITION, Manifest, Source, Version};
+use overt_build::manifest::{
+    DEFAULT_PRELUDE, Dep, DepKind, EDITION, Identity, Manifest, Replacement, Source, Version,
+};
 use overt_build::store::Store;
 use overt_diag::DiagId;
 use overt_driver::Session;
@@ -40,6 +42,7 @@ impl Fixture {
             toolchain: None,
             include: vec![MANIFEST.into(), Path::new(name).with_extension(EXTENSION).display().to_string()],
             deps: Vec::new(),
+            replace: Vec::new(),
             members: Vec::new(),
             prelude: vec![DEFAULT_PRELUDE.into()],
             prelude_span: Self::unread(),
@@ -51,6 +54,11 @@ impl Fixture {
         let version = Version::parse(version).unwrap();
         let source = Source::Archive { version, hash, urls: vec![url.to_owned()] };
         Dep { name: name.into(), source, kind: DepKind::Overt, span: Self::unread() }
+    }
+
+    /// Replaces `identity` everywhere with the package in the directory `path`.
+    pub(crate) fn replace(name: &str, identity: Identity, path: &str) -> Replacement {
+        Replacement { name: name.into(), identity, source: Source::Path(path.into()), span: Self::unread() }
     }
 
     /// A dependency on the package in the directory `path`.

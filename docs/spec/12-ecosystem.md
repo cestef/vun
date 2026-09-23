@@ -164,6 +164,12 @@ build := (b: &mut std.build.Build) {
   selected version is the largest minimum anywhere in the graph. Different majors are different
   packages and coexist. There are no version ranges and no solver, so resolution is a pure function
   of the manifests.
+- **Replacement.** The root manifest may replace an identity anywhere in the graph, for a fork or
+  a vendor fix: `.replace = .{ .hal = .{ .id = 0xc0ffee01, .major = 2, .path = "../hal" } }`, or
+  `.version`, `.hash` and `.urls` for a stored package. Every dependency on that identity resolves
+  to the replacement, its own dependencies are walked instead of the replaced ones, and the
+  lockfile records it on a `replace` line. Only the project's replacements apply, so a
+  dependency's cannot change another's build.
 - **Parameters, not features.** `b.dep(.x, params)` instantiates a dependency with compile-time
   parameters. Each distinct parameter set is a distinct instantiation. Nothing unifies behind a
   dependent's back; two instantiations that each claim `Peripherals` is a visible type error.
@@ -190,7 +196,8 @@ when that is not the project. `overt pkg fetch` and `overt pkg add` rewrite it w
 changes. Every dependency of every package resolves to the version selected for its identity, so a
 dependent declaring `1.0.0` sees `1.2.0` when another requires it; a lockfile that does not record
 the selection is `package.stale_lock`, and one version required with two hashes is
-`package.version_conflict`. A pinned toolchain will add a `toolchain` line (section 6).
+`package.version_conflict`. Replacements are `replace name id/major hash`, or
+`replace name id/major path <path>`. A pinned toolchain will add a `toolchain` line (section 6).
 
 ## 5. Workspaces
 
