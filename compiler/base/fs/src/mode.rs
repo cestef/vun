@@ -11,6 +11,23 @@ pub enum Mode {
     Executable,
 }
 
+impl Mode {
+    /// The permission bits archives record for it: `rw-r--r--`, or `rwxr-xr-x`.
+    #[must_use]
+    pub const fn bits(self) -> u32 {
+        match self {
+            Self::Regular => 0o644,
+            Self::Executable => 0o755,
+        }
+    }
+
+    /// The mode of permission bits: executable when anyone may execute.
+    #[must_use]
+    pub const fn of_bits(bits: u32) -> Self {
+        if bits & EXECUTE == 0 { Self::Regular } else { Self::Executable }
+    }
+}
+
 /// File modes on paths.
 pub trait Modes {
     /// The mode of this file; a file that cannot be read is regular.
@@ -46,7 +63,6 @@ impl Modes for Path {
 }
 
 /// The execute bits of user, group and others.
-#[cfg(unix)]
 const EXECUTE: u32 = 0o111;
 /// The read bits of user, group and others.
 #[cfg(unix)]

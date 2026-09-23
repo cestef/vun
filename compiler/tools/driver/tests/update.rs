@@ -18,7 +18,7 @@ const HAL: Identity = Identity { id: 7, major: 1 };
 fn release(fx: &Fixture, index: &str, version: &str, source: &str, listed: Option<Hash>) -> Hash {
     let hal = Fixture::manifest("hal", HAL.id, version);
     let dir = fx.write(&format!("hal-{version}"), &hal, source);
-    let (bytes, snapshot) = Archive::pack(&dir, &hal.include).unwrap();
+    let (bytes, snapshot) = Archive::FORMAT.pack(&dir, &hal.include, &hal.release()).unwrap();
     let base = Scheme::file_url(&fx.root.join(index));
     let archive = Index { base: &base }.archive(HAL, hal.version);
     fx.root.write(archive.strip_prefix(Scheme::FILE.prefix).unwrap(), bytes);

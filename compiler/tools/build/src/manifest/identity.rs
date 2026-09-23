@@ -40,4 +40,11 @@ impl Manifest {
     pub fn identity(&self) -> Identity {
         Identity { id: self.id, major: self.version.major }
     }
+
+    /// The name of its release, `hal-1.0.0`: the stem of its archives and the directory foreign
+    /// formats hold its files in.
+    #[must_use]
+    pub fn release(&self) -> String {
+        format!("{}-{}", self.name, self.version)
+    }
 }

@@ -157,8 +157,12 @@ build := (b: &mut std.build.Build) {
   single top-level directory, as forges produce, is dropped. A tar archive may name paths through
   ustar, GNU long-name or PAX `path` records; it holds files and directories only, since a
   package tree has no links, and a link is refused. Schemes (`https`, `http`, `file`) and
-  formats are tables, so another is one entry. `overt pkg pack` writes the project's
-  `<name>-<version>.ovpkg` and prints its hash.
+  formats are tables, so another is one entry, and every format both reads and writes. `overt pkg
+  pack` writes the project's `<name>-<version>.ovpkg` and prints its hash; `--out` ending in
+  another format's suffix writes that format instead, with the files under one
+  `<name>-<version>/` directory as forges publish them, and with fixed metadata (no timestamps or
+  owners, only the executable bit), so every format is reproducible and unpacks to the same tree
+  hash.
 - **Updating.** `overt pkg update` raises each stored dependency to the newest release of its major
   that the root manifest's indexes list (`.index = .{ "https://index.example" }`, tried in order).
   An index speaks a protocol in the style of Go's module proxy: `<index>/<id>/<major>/list` holds

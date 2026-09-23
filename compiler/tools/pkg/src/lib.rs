@@ -2,18 +2,22 @@
 //! format, both looked up in tables, so that another scheme or format is one entry.
 
 mod archive;
+mod contents;
 mod format;
 mod mirror;
 mod tar;
+mod zip;
 mod zstd;
 
 use std::error::Error;
 use std::{fmt, io};
 
 pub use archive::{Archive, Malformed};
+pub use contents::{Contents, Packed};
 pub use format::{FORMATS, Format};
 pub use mirror::{Mirror, SCHEMES, Scheme};
 pub use tar::Tar;
+pub use zip::Zip;
 pub use zstd::Zstd;
 
 /// Why a mirror could not provide an archive; the underlying error is its [`Error::source`].

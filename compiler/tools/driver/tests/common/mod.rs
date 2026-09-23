@@ -89,7 +89,8 @@ impl Fixture {
     /// Publishes the package of `manifest` written in `dir` as an archive served from a `file://`
     /// URL, returning the URL and the tree hash.
     pub(crate) fn publish(&self, dir: &str, manifest: &Manifest) -> (String, Hash) {
-        let (bytes, snapshot) = Archive::pack(&self.root.join(dir), &manifest.include).unwrap();
+        let (bytes, snapshot) =
+            Archive::FORMAT.pack(&self.root.join(dir), &manifest.include, &manifest.release()).unwrap();
         let path = self.root.write(format!("{dir}{}", Archive::SUFFIX), bytes);
         (Scheme::file_url(&path), snapshot.root())
     }

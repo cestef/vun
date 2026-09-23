@@ -19,5 +19,4 @@ lzma-rs.workspace = true
 overt-hash.workspace = true
 
 [dev-dependencies]
-flate2.workspace = true
 overt-hash.workspace = true

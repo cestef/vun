@@ -8,7 +8,7 @@ use overt_build::manifest::{Source, Version};
 use overt_command::{Action, Args, Command, Outcome, Param, ParamKind};
 use overt_diag::{ChildKind, Diagnostic, Msg, errors};
 use overt_fs::Edit;
-use overt_pkg::Archive;
+use overt_pkg::{Archive, FORMATS, Format};
 
 use crate::Session;
 use crate::packages::{Addition, Fetched, Unstated};
@@ -43,8 +43,12 @@ pub(super) const VERSION: Param = Param {
     about: "its version, when the package states none",
     kind: ParamKind::Option,
 };
-pub(super) const OUT: Param =
-    Param { name: "out", short: Some('o'), about: "where to write the archive", kind: ParamKind::Option };
+pub(super) const OUT: Param = Param {
+    name: "out",
+    short: Some('o'),
+    about: "where to write the archive; its suffix picks the format",
+    kind: ParamKind::Option,
+};
 
 /// `overt pkg fetch`: downloads the stored dependencies of the project into its store.
 fn fetch(session: &mut Session, _: &Args, out: &mut dyn Write) -> io::Result<Outcome> {
@@ -123,11 +127,22 @@ pub(super) fn update(session: &mut Session, _: &Args, out: &mut dyn Write) -> io
     Ok(session.outcome())
 }
 
-/// `overt pkg pack`: writes the project's `.ovpkg` archive, named after its name and version.
+/// `overt pkg pack`: writes the project's archive, named after its release, in `.ovpkg` unless
+/// `--out` names another format by its suffix.
 pub(super) fn pack(session: &mut Session, args: &Args, out: &mut dyn Write) -> io::Result<Outcome> {
     let Some((dir, _)) = session.project()? else { return Ok(Outcome::Failure) };
     let Some(manifest) = session.manifest_at(&dir.join(MANIFEST)) else { return Ok(Outcome::Failure) };
-    let (bytes, snapshot) = match Archive::pack(&dir, &manifest.include) {
+    let release = manifest.release();
+    let path = args
+        .value(&OUT)
+        .map_or_else(|| dir.join([release.as_str(), Archive::SUFFIX].concat()), PathBuf::from);
+    let Some(format) = Format::of(&path.to_string_lossy()) else {
+        let suffixes = FORMATS.iter().flat_map(|f| f.suffixes.iter().copied());
+        let msg = Msg::new().code(path.display().to_string()).text(" names no archive format; end it in ");
+        session.diag.error(Diagnostic::error(errors::CLI_INVALID_VALUE, msg.code_list(suffixes)));
+        return Ok(Outcome::Usage);
+    };
+    let (bytes, snapshot) = match format.pack(&dir, &manifest.include, &release) {
         Ok(packed) => packed,
         Err(e) => {
             let msg = Msg::new().text("cannot pack ").code(&manifest.name);
@@ -135,8 +150,6 @@ pub(super) fn pack(session: &mut Session, args: &Args, out: &mut dyn Write) -> i
             return Ok(Outcome::Failure);
         }
     };
-    let file = format!("{}-{}{}", manifest.name, manifest.version, Archive::SUFFIX);
-    let path = args.value(&OUT).map_or_else(|| dir.join(file), PathBuf::from);
     if let Err(e) = path.put(&bytes) {
         let msg = Msg::new().text("cannot write ").code(path.display().to_string());
         session.diag.error(Diagnostic::error(errors::IO_UNWRITABLE_FILE, msg).caused_by(&e));

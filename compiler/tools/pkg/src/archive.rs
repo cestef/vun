@@ -4,14 +4,13 @@
 //! other modes, so identical trees give identical archives, and unpacking checks every file against
 //! the snapshot as it is written.
 
-use std::fs;
 use std::io::{self, Read, Write};
 use std::path::{Path, PathBuf};
 
 use overt_fs::{Edit, Modes};
 use overt_hash::{Hash, Snapshot};
 
-use crate::Zstd;
+use crate::{Contents, Format, Zstd};
 
 pub struct Archive;
 
@@ -51,21 +50,27 @@ impl Archive {
     const MAX_INDEX: u64 = 64 << 20;
     const MAX_FILE: u64 = 1 << 30;
 
-    /// The archive of the files under `dir` named by `include`, and their snapshot.
+    /// Its row of [`crate::FORMATS`].
+    pub const FORMAT: Format = Format {
+        suffixes: &[Self::SUFFIX],
+        unpack: |bytes, dir| Self::unpack(bytes, dir).map(drop),
+        pack: Self::pack,
+        strip: false,
+    };
+
+    /// The archive of `contents`, whose paths are in its snapshot.
     ///
     /// # Errors
     /// Returns an error if a file cannot be read.
-    pub fn pack(dir: &Path, include: &[String]) -> io::Result<(Vec<u8>, Snapshot)> {
-        let snapshot = Snapshot::of(dir, include);
+    pub fn pack(contents: &Contents<'_>) -> io::Result<Vec<u8>> {
         let mut out = Vec::new();
-        let index = snapshot.to_string();
         out.write_all(Self::MAGIC)?;
         out.write_all(&Self::VERSION.to_le_bytes())?;
-        Self::write_part(&mut out, index.as_bytes())?;
-        for (path, _) in snapshot.files() {
-            Self::write_part(&mut out, &fs::read(Self::join(dir, path))?)?;
+        Self::write_part(&mut out, contents.snapshot.to_string().as_bytes())?;
+        for file in contents.files() {
+            Self::write_part(&mut out, &file?.bytes)?;
         }
-        Ok((Zstd::compress(&out), snapshot))
+        Ok(Zstd::compress(&out))
     }
 
     /// Unpacks `bytes` into `dir`, returning the snapshot every file was checked against.
