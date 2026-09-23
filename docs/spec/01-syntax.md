@@ -89,11 +89,14 @@ mut buf: [4096]u8;             // uninitialized: must be written before it is re
 - Declarations at file and struct level are order-independent and resolved lazily. Self-reference
   and mutual recursion need no forward declarations.
 - Declarations inside a block are sequential.
-- **No shadowing within a file.** A binding may not reuse a name visible where it is declared in
-  its file: an enclosing local or parameter, or a member of an enclosing namespace (the file, a
-  `struct`). Names that come from the prelude or a dependency may be reused, so adding a name to
-  a library never breaks its users. Inside a function literal, the run-time locals around it are
-  not visible (functions do not capture), so they are not shadowed either.
+- **No shadowing within a file.** A local binding (in a block, a parameter, a pattern) may not
+  reuse a name visible where it is declared in its file: an enclosing local or parameter, or a
+  member of an enclosing namespace (the file, a `struct`). Members of a namespace only need names
+  distinct within it, since they are reached through it (`Uart.new` beside a top-level `new`).
+  Parameter names in a function type (`(symbol: &[u8]) -> Attribute`) only label positions: later
+  parameter types may use them, and they shadow nothing. Names from the prelude or a dependency
+  may be reused, so adding a name to a library never breaks its users. Inside a function literal, the run-time locals around it are not visible (functions do
+  not capture), so they are not shadowed either.
 - **Provided from outside.** `name: T = _;` declares a binding whose value is not in the source:
   - inside `lang`, the compiler provides it (primitives);
   - with a `link` attribute, the linker provides it (C imports, typed link symbols, spec 08);

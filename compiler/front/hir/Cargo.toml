@@ -17,3 +17,6 @@ overt-intern.workspace = true
 overt-syntax.workspace = true
 overt-index.workspace = true
 overt-grammar.workspace = true
+
+[dev-dependencies]
+overt-harness.workspace = true

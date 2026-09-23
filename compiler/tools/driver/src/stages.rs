@@ -13,8 +13,14 @@ pub struct Stage {
     pub reports: &'static [DiagId],
 }
 
-pub const STAGES: &[Stage] =
-    &[Stage { name: "load", reports: &[errors::IO] }, Stage { name: "syntax", reports: &[errors::SYNTAX] }];
+pub const STAGES: &[Stage] = &[
+    Stage { name: "load", reports: &[errors::IO] },
+    Stage { name: "syntax", reports: &[errors::SYNTAX] },
+    Stage {
+        name: "names",
+        reports: &[errors::NAMES_DUPLICATE, errors::NAMES_SHADOWED, errors::BINDING_IRREFUTABLE_TEST],
+    },
+];
 
 /// Whether some stage that exists reports `id`.
 #[must_use]
@@ -26,6 +32,7 @@ impl Session {
     /// Runs every stage that exists on `file`.
     pub fn check(&mut self, file: FileId) {
         let tokens = self.lex(file);
-        self.parse(&tokens);
+        let cst = self.parse(&tokens);
+        self.lower(&tokens, &cst);
     }
 }

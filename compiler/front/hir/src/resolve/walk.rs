@@ -1,0 +1,240 @@
+//! The resolving walk: scopes follow the tree, and each binder is checked as it is declared.
+
+use overt_diag::{ChildKind, DiagCx, Diagnostic, Msg, errors};
+use overt_index::IndexVec;
+use overt_intern::Interner;
+
+use super::Res;
+use super::declare::each_entry;
+use super::scope::{Kind, Scopes};
+use crate::tree::{
+    BinderId, BlockId, Cond, DeclId, ExprId, ExprKind, ForHead, Hir, List, Member, NsId, Param, PatId,
+    PatKind, Staged,
+};
+use crate::visit::{self, Visitor};
+
+pub(super) struct Resolver<'i, 'c, 'd> {
+    pub(super) scopes: Scopes,
+    pub(super) names: IndexVec<ExprId, Option<Res>>,
+    /// Whether visiting a pattern declares its binders; namespace members are declared up front.
+    pub(super) declaring: bool,
+    pub(super) interner: &'i Interner,
+    pub(super) cx: &'c mut DiagCx<'d>,
+}
+
+impl Resolver<'_, '_, '_> {
+    fn with_scope(&mut self, kind: Kind, body: impl FnOnce(&mut Self)) {
+        self.scopes.push(kind);
+        body(self);
+        self.scopes.pop();
+    }
+
+    /// A test `p = e` binds `p` in the scope of what follows it; an irrefutable `p` is an error.
+    fn cond(&mut self, hir: &Hir, cond: &Cond) {
+        match cond {
+            Cond::Expr(e) => self.expr(hir, *e),
+            Cond::Test { pat, value } => {
+                self.expr(hir, *value);
+                if hir.pats[*pat].kind.irrefutable(&hir.pats) {
+                    let msg = Msg::new().text("this pattern always matches, so the test is always true");
+                    let help = Msg::new().text("bind it instead: ").code("p := e;");
+                    let d = Diagnostic::error(errors::BINDING_IRREFUTABLE_TEST, msg)
+                        .at(hir.pats[*pat].origin, None);
+                    self.cx.diag.error(d.child(ChildKind::Help, help));
+                }
+                self.bind_pattern(hir, *pat);
+            }
+        }
+    }
+
+    /// A function literal: parameters declared in order in a scope that hides enclosing run-time
+    /// locals; `captures` are the binders a closure lists, visible inside it.
+    fn function(
+        &mut self,
+        hir: &Hir,
+        params: &List<Param>,
+        returns: Option<ExprId>,
+        body: Option<BlockId>,
+        captures: &[BinderId],
+    ) {
+        let kind = if body.is_some() { Kind::Function } else { Kind::Signature };
+        self.with_scope(kind, |this| {
+            for &c in captures {
+                this.scopes.bind(hir.binders[c].name, c);
+            }
+            visit::walk_list(this, hir, params, &mut |this, p| {
+                for &a in &p.attrs {
+                    this.expr(hir, a);
+                }
+                if let Some(ty) = p.ty {
+                    this.expr(hir, ty);
+                }
+                if let Some(pat) = p.pat {
+                    this.bind_pattern(hir, pat);
+                }
+            });
+            if let Some(r) = returns {
+                this.expr(hir, r);
+            }
+            if let Some(b) = body {
+                this.block(hir, b);
+            }
+        });
+    }
+}
+
+impl Visitor for Resolver<'_, '_, '_> {
+    fn namespace(&mut self, hir: &Hir, ns: NsId) {
+        self.with_scope(Kind::Namespace, |this| {
+            let mut members = Vec::new();
+            each_entry(&hir.namespaces[ns].members, &mut |m| {
+                if let Member::Decl(d) = m {
+                    Self::binders(hir, hir.decls[*d].pat, &mut members);
+                }
+            });
+            for binder in members {
+                this.declare(hir, binder);
+            }
+            let declaring = std::mem::replace(&mut this.declaring, false);
+            visit::walk_namespace(this, hir, ns);
+            this.declaring = declaring;
+        });
+    }
+
+    fn decl(&mut self, hir: &Hir, decl: DeclId) {
+        let d = &hir.decls[decl];
+        for &a in &d.attrs {
+            self.expr(hir, a);
+        }
+        if let Some(ty) = d.ty {
+            self.expr(hir, ty);
+        }
+        if let Some(value) = d.value {
+            self.expr(hir, value);
+        }
+        // In a block the binding is visible after its value; namespace members already are.
+        if self.scopes.innermost() == Some(Kind::Namespace) {
+            self.pat(hir, d.pat);
+        } else {
+            self.bind_pattern(hir, d.pat);
+        }
+    }
+
+    fn block(&mut self, hir: &Hir, block: BlockId) {
+        let declaring = std::mem::replace(&mut self.declaring, false);
+        self.with_scope(Kind::Local, |this| visit::walk_block(this, hir, block));
+        self.declaring = declaring;
+    }
+
+    fn pat(&mut self, hir: &Hir, pat: PatId) {
+        if self.declaring {
+            match &hir.pats[pat].kind {
+                PatKind::Bind(b) | PatKind::Rest(Some(b)) | PatKind::At { binder: b, .. } => {
+                    self.declare(hir, *b);
+                }
+                PatKind::Or(alternatives) => {
+                    // The first alternative declares; the others bind the same names.
+                    let mut rest = alternatives.iter();
+                    if let Some(&first) = rest.next() {
+                        self.pat(hir, first);
+                    }
+                    let declaring = std::mem::replace(&mut self.declaring, false);
+                    rest.for_each(|&p| self.pat(hir, p));
+                    self.declaring = declaring;
+                    return;
+                }
+                _ => {}
+            }
+        }
+        visit::walk_pat(self, hir, pat);
+    }
+
+    fn staged<T>(&mut self, hir: &Hir, staged: &Staged<T>, entry: &mut dyn FnMut(&mut Self, &T)) {
+        match staged {
+            Staged::For { pat, iter, body, .. } => {
+                self.expr(hir, *iter);
+                self.with_scope(Kind::Local, |this| {
+                    this.bind_pattern(hir, *pat);
+                    let declaring = std::mem::replace(&mut this.declaring, false);
+                    visit::walk_list(this, hir, body, entry);
+                    this.declaring = declaring;
+                });
+            }
+            Staged::If { .. } => visit::walk_staged(self, hir, staged, entry),
+        }
+    }
+
+    fn expr(&mut self, hir: &Hir, expr: ExprId) {
+        let declaring = std::mem::replace(&mut self.declaring, false);
+        match &hir.exprs[expr].kind {
+            ExprKind::Name(name) => {
+                let res = self.scopes.lookup(hir, *name).map_or(Res::Outer(*name), Res::Binder);
+                self.names[expr] = Some(res);
+            }
+            ExprKind::If { cond, then, otherwise } => {
+                self.with_scope(Kind::Local, |this| {
+                    this.cond(hir, cond);
+                    this.block(hir, *then);
+                });
+                if let Some(o) = otherwise {
+                    self.expr(hir, *o);
+                }
+            }
+            ExprKind::For { head, body } => self.with_scope(Kind::Local, |this| {
+                match head {
+                    ForHead::Forever => {}
+                    ForHead::While(cond) => this.cond(hir, cond),
+                    ForHead::In { pat, iter } => {
+                        this.expr(hir, *iter);
+                        this.bind_pattern(hir, *pat);
+                    }
+                }
+                this.block(hir, *body);
+            }),
+            ExprKind::Match { scrutinee, arms } => {
+                self.expr(hir, *scrutinee);
+                visit::walk_list(self, hir, arms, &mut |this, arm| {
+                    this.with_scope(Kind::Local, |this| {
+                        this.bind_pattern(hir, arm.pat);
+                        if let Some(g) = arm.guard {
+                            this.expr(hir, g);
+                        }
+                        if let Some(v) = arm.value {
+                            this.expr(hir, v);
+                        }
+                    });
+                });
+            }
+            ExprKind::Fn { params, returns, body } => self.function(hir, params, *returns, Some(*body), &[]),
+            ExprKind::FnType { params, returns } => self.function(hir, params, *returns, None, &[]),
+            ExprKind::Closure { captures, func } => {
+                let mut captured = Vec::new();
+                visit::walk_list(self, hir, captures, &mut |this, &c| {
+                    this.expr(hir, c);
+                    if let Some(Res::Binder(b)) = this.captured(hir, c) {
+                        captured.push(b);
+                    }
+                });
+                match &hir.exprs[*func].kind {
+                    ExprKind::Fn { params, returns, body } => {
+                        self.function(hir, params, *returns, Some(*body), &captured);
+                    }
+                    _ => self.expr(hir, *func),
+                }
+            }
+            _ => visit::walk_expr(self, hir, expr),
+        }
+        self.declaring = declaring;
+    }
+}
+
+impl Resolver<'_, '_, '_> {
+    /// The binder a capture refers to: `x`, `&x` or `&mut x`.
+    fn captured(&self, hir: &Hir, capture: ExprId) -> Option<Res> {
+        match &hir.exprs[capture].kind {
+            ExprKind::Name(_) => self.names[capture],
+            ExprKind::Prefix { operand, .. } => self.captured(hir, *operand),
+            _ => None,
+        }
+    }
+}

@@ -3,8 +3,8 @@
 #show: paper.with(
   title: "Overt",
   subtitle: "A systems language with nothing behind the scenes",
-  authors: ((name: "The Overt authors"),),
-  date: "Draft, September 2026",
+  authors: ((name: "cstef"),),
+  date: "September 2026",
   abstract: [
     Overt is a systems programming language for code that runs under constraints: firmware,
     kernels, runtimes, and servers that care about memory and latency. Its design follows a single

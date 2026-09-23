@@ -17,13 +17,17 @@ workspace, a lexer, a postorder CST whose verifier also checks named children (n
 error-recovering parser with machine-applicable fixes, a reader of literal declarations (with
 tagged values), generated grammar and diagnostic tables, a declarative CLI, three diagnostic
 renderers (`terminal` over annotate-snippets, `ariadne`, `short`) and a `build.ov` manifest
-reader. Every file in `lib/` and `corpus/accept` parses cleanly and verifies. Nothing is
-name-resolved or type-checked yet.
+reader, and HIR: lowering through node fields, a verifier (the HIR is a tree with origins), a
+visitor, and name resolution within a file with the checks that need no types (`names.duplicate`,
+`names.shadowed`, `binding.irrefutable_test`). `overt check <file>` runs every stage;
+`overt dump hir` prints the resolved HIR with origins. Every file in `lib/` and `corpus/accept`
+parses, lowers, verifies and resolves cleanly. Nothing is type-checked yet.
 
 History (jj, newest last): scaffold; lexer; parser, CST, tables, CLI and corpus; bitwise compound
 assignments; corpus grown to 40 accept and 50 reject; modules split and the 300-line limit;
 tagged literals and node fields; terminal renderer, `--format` and parser fixes; manifests;
-ariadne renderer. The user asked for commits per batch: commit each finished batch with `jj`.
+ariadne renderer; handoff; settled open questions (decisions 28 to 44); HIR; name resolution.
+The user asked for commits per batch: commit each finished batch with `jj`.
 
 ## 2. How the user works (non-negotiable)
 
@@ -95,7 +99,8 @@ tested (the rest are stubs):
 | `overt-origin` | `OriginId`, `Origin`, `Via`, `OriginTable`. |
 | `overt-diag` | `DiagId`, `Severity`, `Msg` (typed parts, `append`), `Label`, `Fix`, `ChildKind` (Display), `Diagnostic`, `DiagCtxt`, `DiagCx::error_at`, `DiagSink`; `suggest::closest` (did-you-mean by edit distance); `errors` (generated). |
 | `overt-grammar` | `generated.rs`: `NodeField`, `NodeSlot`, `Count`, `NodeKind::slots` (children per kind, from tagged entries), `TokenKind` (+ `TRIVIA`, `ATOMS`, `KEYWORDS`, `PUNCTUATION`, `END`, `text()`), `NodeKind` (`LEAVES`, `BRANCHES`), `Context`, `Assoc`, tables `CONTEXTUAL`, `DELIMITERS`, `INFIX`, `PREFIX`, `POSTFIX`, `ASSIGN`, `OPERANDS`, `ELEMENT_TYPES`, `LITERAL_TYPES`. `lib.rs` derives lookups: `punctuation`, `keyword`, `is_trivia`, `infix` (`Prec`, `Infix`), `closer`/`opens`/`closes`, `is_leaf`, `contextual`. |
-| `overt-syntax` | `tokens` (SoA tokens + trivia side table, `verify`); `lexer` (`lex`, recovery, `literal(kind, text)` for string values, backslash escapes); `cst` (postorder `(kind, Anchor, size)`, `Anchor::{Token, Missing}`, `children`, `span`, `dump`, `verify` -> `Malformed`); `parser` (`parse`); `literal` (`declarations` -> `Decl { name, doc, value: Literal, span }`, `Literal::Tagged`); `Cst::fields(n)` -> `Fields` (`get`, `one`, `field_of`), matched against the kind's slots. |
+| `overt-syntax` | `tokens` (SoA tokens + trivia side table, `verify`); `lexer` (`lex`, recovery, `literal(kind, text)` for string values, backslash escapes); `cst` (postorder `(kind, Anchor, size)`, `Anchor::{Token, Missing}`, `children`, `span`, `dump`, `verify` -> `Malformed`); `parser` (`parse`); `literal` (`declarations` -> `Decl { name, doc, value: Literal, span }`, `Literal::Tagged`); `Cst::fields(n)` -> `Fields` (`get`, `one`, `assigned`), matched against the kind's slots; `children_rev` walks without allocating. |
+| `overt-hir` | `tree` (arenas: namespaces, decls, blocks, exprs, pats, binders; `List`/`Entry::Staged` for `$for`/`$if`), `lower` (one `Cst::fields` per node), `visit` (`Visitor` + `walk_*`), `verify` (tree property, origins), `resolve` (scopes: namespace, local, function, signature; `Res::{Binder, Outer}`; the checks), `dump`. |
 | `overt-command` | Options of a group apply to every command below it; `Program.configure` applies them before a run. Declarative command trees: `Program`, `Command`, `Action::{Run, Group, Planned}`, `Param`/`ParamKind::{Positional, Flag, Option}`, `Args`, `parse` -> `Request`, `Selected`, generated `help`, `run` -> `Outcome`/`Refusal`, `Outcome` -> `ExitCode` (usage = 64). Usage errors are diagnostics with suggestions. |
 | `overt-driver` | `stages::STAGES` (implemented stages and the diagnostic groups they report), `Session::check` (runs them), `commands::PROGRAM` (the whole `overt` tree of spec 12.7, most commands `Planned`; `dump tokens|cst|manifest`, `components` run), `formats::FORMATS` (renderer registry behind `--format`), `Registry`, `Session` (`load`, `text`, `lex`, `parse`, `emit`, `failed`). |
 | `overt-cli` | `main` runs `PROGRAM` through `overt-command` and renders diagnostics once at the end. |
@@ -157,31 +162,24 @@ typst compile whitepaper/main.typ whitepaper/overt.pdf
 
 In order:
 
-1. **HIR and name resolution** (in progress, see below): lowering the CST through `Cst::fields`,
-   scopes, and the syntactic checks of the `names` and `binding` groups (`duplicate`, `shadowed`,
-   `irrefutable_test`). `names.unresolved` needs an environment (packages, prelude); see open
-   question "corpus environment" in section 9.
-2. Package loading: namespaces from `<name>.ov` + `<name>/`, dependencies from manifests, the
-   prelude.
-3. Desugaring into `lang` items with `Via::Desugar` origins (appendix B), queries, sema, MIR,
-   interpreter.
+1. **Package loading and `names.unresolved`**: namespaces from `<name>.ov` + `<name>/`,
+   dependencies from manifests (`lang`, `std` by default), the prelude from `.prelude`
+   (decision 33), then resolve `Res::Outer` names and report `names.unresolved` (with
+   `overt_diag::suggest`). The corpus needs `corpus/support` (stubs for `uart`, `serde`, `Point`,
+   ...) and a corpus manifest whose prelude lists it (user's choice).
+2. `names.private` (needs member types: sema), `binding.hole_value` (needs attribute resolution).
+3. Desugaring into `lang` items with `Via::Desugar` origins (appendix B), queries, sema (with
+   narrowing, decision 35, exhaustive match, decision 29), MIR, interpreter.
 4. Explanation pages `errors/<group>/<id>.md` for every diagnostic, and `overt explain`.
-5. Fuzz the parser longer (the verifier now checks node fields; 150 s runs are clean).
+5. Fuzz the parser longer (the verifier checks node fields; 150 s runs are clean).
 
-The corpus has 40 accept and 50 reject programs (59 pass, 31 pending on later stages).
+The corpus has 40 accept and 50 reject programs (62 pass, 28 pending on later stages).
 
 ## 9. Open questions and known gaps
 
-- `decisions.md` open questions 1 to 24. 14 was resolved by decision 27 (tagged values and node
-  fields, accepted). 17 to 24 came from the question "is Overt good for writing compilers":
-  nominal identity of type literals, exhaustive `match`, pattern forms, matching through
-  borrows, arena-tied trees, typed handles, collected registrations, text. They await the user.
-- **Corpus environment** (undecided): accept programs use names they do not declare (`uart`,
-  `serde`, `Point`). Before `names.unresolved` can run on them, either they become
-  self-contained, or the corpus gets a support package and a prelude that re-exports it (the
-  spec lets a build choose its prelude, but the build is not a literal; a manifest field
-  `.prelude` would be a language change).
-- Decisions 23 (CST shape) and 25 (`static` contextual) are proposals awaiting the user.
+- `decisions.md` has no open question: the user settled all of them in the third session
+  (decisions 27 to 44), and every earlier proposal is accepted. New questions go there as
+  "proposed" until the user decides.
 - `lang/errors.ov` now declares planned ids for later stages (`names`, `binding`, `safety`,
   `place`, `borrow`, `panic` groups, `int.width_cap`), one per spec rule the reject corpus
   exercises. Their names are proposals; rename freely, then `cargo xtask generate`.
@@ -214,3 +212,5 @@ The corpus has 40 accept and 50 reject programs (59 pass, 31 pending on later st
   bootstrap with a temporary existing id, generate, then restore.
 - A `?` inside a match arm returns from the whole function: in readers that must report every
   problem, combine results with a `match` on the tuple instead.
+- Performance: one walk per purpose. Lowering fetches `Cst::fields` once per node; resolution
+  and the syntactic checks share one walk; verifiers and dumps run only in tests and on demand.

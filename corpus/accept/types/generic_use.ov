@@ -14,9 +14,9 @@ SquareShape := struct {
 };
 
 total := ($S: Shape, shapes: &[S]) -> u64 {
-    mut sum: u64 = 0;
-    for s in shapes { sum += s.area(); }
-    sum
+    mut acc: u64 = 0;
+    for s in shapes { acc += s.area(); }
+    acc
 };
 
 largest := (shapes: &[std.Dyn(Shape)]) -> ?&std.Dyn(Shape) {

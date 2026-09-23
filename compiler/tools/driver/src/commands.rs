@@ -18,7 +18,12 @@ pub const PROGRAM: Program<Session> = Program {
             planned("new", "create a package"),
             planned("build", "build the package"),
             planned("run", "build and run a program"),
-            planned("check", "analyze without generating code"),
+            Command {
+                name: "check",
+                about: "analyze without generating code",
+                params: &[FILE],
+                action: Action::Run(check),
+            },
             planned("test", "run tests, properties and simulations"),
             planned("bench", "run benchmarks"),
             planned("fuzz", "fuzz a test with coverage guidance"),
@@ -101,7 +106,12 @@ const DUMPS: &[Command<Session>] = &[
         params: &[FILE],
         action: Action::Run(|s, args, out| dump(s, args, out, Stage::Manifest)),
     },
-    planned("hir", "the high-level representation"),
+    Command {
+        name: "hir",
+        about: "the high-level representation, names resolved, with origins",
+        params: &[FILE],
+        action: Action::Run(|s, args, out| dump(s, args, out, Stage::Hir)),
+    },
     planned("mir", "the mid-level representation"),
     planned("lir", "the low-level representation"),
     planned("link", "the link plan"),
@@ -124,6 +134,7 @@ const fn group(
 enum Stage {
     Tokens,
     Cst,
+    Hir,
     Manifest,
 }
 
@@ -143,7 +154,28 @@ fn dump(session: &mut Session, args: &Args, out: &mut dyn Write, stage: Stage) -
             let cst = session.parse(&tokens);
             write!(out, "{}", cst.dump(&tokens, session.text(file)))?;
         }
+        Stage::Hir => {
+            let cst = session.parse(&tokens);
+            let (hir, resolution) = session.lower(&tokens, &cst);
+            let text = overt_hir::dump::dump(
+                &hir,
+                &resolution,
+                &session.interner,
+                &session.origins,
+                &session.sources,
+            );
+            write!(out, "{text}")?;
+        }
         Stage::Manifest => unreachable!("read above"),
+    }
+    Ok(if session.failed() { Outcome::Failure } else { Outcome::Success })
+}
+
+#[expect(clippy::unnecessary_wraps, reason = "every command has the `Run` signature")]
+fn check(session: &mut Session, args: &Args, _: &mut dyn Write) -> io::Result<Outcome> {
+    let path = args.value(&FILE).expect("positional parameters are present when a command runs");
+    if let Some(file) = session.load(Path::new(path)) {
+        session.check(file);
     }
     Ok(if session.failed() { Outcome::Failure } else { Outcome::Success })
 }

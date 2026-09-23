@@ -4,6 +4,10 @@ use std::path::Path;
 
 use overt_build::manifest::{self, Manifest};
 use overt_diag::{DiagCtxt, DiagCx, DiagSink, Diagnostic, Msg, errors};
+use overt_hir::lower;
+use overt_hir::resolve::{self, Resolution};
+use overt_hir::tree::Hir;
+use overt_intern::Interner;
 use overt_origin::OriginTable;
 use overt_span::{FileId, SourceFiles, SourceMap};
 use overt_syntax::cst::Cst;
@@ -14,6 +18,7 @@ use crate::formats::{self, Format};
 
 pub struct Session {
     pub sources: SourceFiles,
+    pub interner: Interner,
     pub origins: OriginTable,
     pub diag: DiagCtxt,
     /// How diagnostics are shown.
@@ -24,6 +29,7 @@ impl Default for Session {
     fn default() -> Self {
         Self {
             sources: SourceFiles::default(),
+            interner: Interner::default(),
             origins: OriginTable::default(),
             diag: DiagCtxt::default(),
             format: formats::default(),
@@ -66,6 +72,19 @@ impl Session {
     pub fn parse(&mut self, tokens: &Tokens) -> Cst {
         let text = &self.sources.file(tokens.file()).text;
         parser::parse(tokens, text, &mut DiagCx { diag: &mut self.diag, origins: &mut self.origins })
+    }
+
+    /// Lowers a parsed file to HIR and resolves its names, reporting what needs no types.
+    pub fn lower(&mut self, tokens: &Tokens, cst: &Cst) -> (Hir, Resolution) {
+        let text = &self.sources.file(tokens.file()).text;
+        let source = lower::Source { cst, tokens, text };
+        let hir = lower::lower(source, &mut self.interner, &mut self.origins);
+        let resolution = resolve::resolve(
+            &hir,
+            &self.interner,
+            &mut DiagCx { diag: &mut self.diag, origins: &mut self.origins },
+        );
+        (hir, resolution)
     }
 
     /// Reads the manifest of the `build.ov` loaded as `file` (spec 12, section 2).

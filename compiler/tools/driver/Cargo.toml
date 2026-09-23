@@ -34,6 +34,7 @@ overt-target.workspace = true
 overt-tool.workspace = true
 overt-syntax.workspace = true
 overt-hir.workspace = true
+overt-intern.workspace = true
 overt-sema.workspace = true
 overt-mir.workspace = true
 overt-mir-passes.workspace = true
