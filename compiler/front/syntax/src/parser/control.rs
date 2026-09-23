@@ -1,6 +1,6 @@
 //! Functions, brackets, block-like expressions and jumps: the forms chosen after their children.
 
-use overt_diag::{Msg, errors};
+use overt_diag::{ChildKind, Diagnostic, Msg, errors};
 use overt_grammar::{Context, ELEMENT_TYPES, NodeKind, TokenKind};
 
 use super::{Brace, Form, Item, List, MAX_NESTING, Operand, Parser};
@@ -186,7 +186,10 @@ impl Parser<'_, '_, '_> {
     pub(super) fn nested(&mut self, body: impl FnOnce(&mut Self)) {
         if self.depth >= MAX_NESTING {
             let msg = Msg::new().text("nesting is deeper than ").num(MAX_NESTING).text(" levels");
-            self.report_here(errors::SYNTAX_NESTING_TOO_DEEP, msg);
+            let note = Msg::new().text("each operand and each block is one level");
+            let span = self.tokens.span(self.current());
+            let d = Diagnostic::error(errors::SYNTAX_NESTING_TOO_DEEP, msg).child(ChildKind::Note, note);
+            self.report(span, d);
             self.skip_group();
             return;
         }

@@ -80,7 +80,7 @@ that is the definition of safe.
 ## D. Grammar sketch
 
 Informal; the normative grammar is `lang/syntax/grammar.ov` plus the parse rules of spec 01,
-section 5. Patterns are parsed as expressions (`pattern = expr` below).
+section 6. Patterns are parsed as expressions (`pattern = expr` below).
 
 ```
 file        = members
