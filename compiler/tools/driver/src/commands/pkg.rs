@@ -103,6 +103,24 @@ pub(super) fn add(session: &mut Session, args: &Args, out: &mut dyn Write) -> io
     Ok(session.outcome())
 }
 
+/// `overt pkg update`: raises the stored dependencies of the project within their majors, then
+/// rewrites the lockfile.
+pub(super) fn update(session: &mut Session, _: &Args, out: &mut dyn Write) -> io::Result<Outcome> {
+    let Some((dir, _)) = session.project()? else { return Ok(Outcome::Failure) };
+    let updated = session.update(&dir);
+    for u in &updated {
+        writeln!(out, "updated {} {} to {} {}", u.name, u.from, u.to, u.hash)?;
+    }
+    if updated.is_empty() && !session.failed() {
+        writeln!(out, "every dependency is at the newest release its indexes list")?;
+    }
+    if let Some(project) = session.package_at(&dir) {
+        session.fetch(project);
+        session.write_lock(&dir, project);
+    }
+    Ok(session.outcome())
+}
+
 /// `overt pkg pack`: writes the project's `.ovpkg` archive, named after its name and version.
 pub(super) fn pack(session: &mut Session, args: &Args, out: &mut dyn Write) -> io::Result<Outcome> {
     let Some((dir, _)) = session.project()? else { return Ok(Outcome::Failure) };

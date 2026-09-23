@@ -108,3 +108,12 @@ fn typed_literals_and_path_calls_read_and_write_back() {
     assert_eq!((path, args), (&["meta", "embed"][..], &[Literal::String("errors/a.md".into())][..]));
     assert_eq!(value.source().unwrap(), "diag.Diag{ .explanation = meta.embed(\"errors/a.md\") }");
 }
+
+#[test]
+fn values_are_set_in_place() {
+    let before = "p := .{\n    .hal = .{ .version = \"1.0.0\" },\n};";
+    let hal = read(before)[0].value.decls().unwrap()[0].clone();
+    let newer = read("v := .{ .version = \"1.2.0\" };")[0].value.clone();
+    let after = overt_diag::Edit::apply(&[hal.set(before, &newer).unwrap()], before);
+    assert_eq!(after, "p := .{\n    .hal = .{ .version = \"1.2.0\" },\n};");
+}

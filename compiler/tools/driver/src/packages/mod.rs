@@ -13,9 +13,11 @@ mod add;
 mod fetch;
 mod locate;
 mod namespace;
+mod rewrite;
 mod scope;
 mod select;
 mod spread;
+mod update;
 
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
@@ -34,6 +36,7 @@ pub use fetch::Fetched;
 pub use namespace::{Namespace, Unfound};
 pub use scope::{Outer, Scope};
 pub use spread::{FileScope, Spreads};
+pub use update::Updated;
 
 use crate::Session;
 

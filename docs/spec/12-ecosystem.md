@@ -157,6 +157,12 @@ build := (b: &mut std.build.Build) {
   single top-level directory, as forges produce, is dropped. Schemes (`https`, `http`, `file`) and
   formats are tables, so another is one entry. `overt pkg pack` writes the project's
   `<name>-<version>.ovpkg` and prints its hash.
+- **Updating.** `overt pkg update` raises each stored dependency to the newest release of its major
+  that the root manifest's indexes list (`.index = .{ "https://index.example" }`, tried in order).
+  An index speaks a protocol in the style of Go's module proxy: `<index>/<id>/<major>/list` holds
+  one `version hash` line per release and `<index>/<id>/<major>/<version>.ovpkg` the archive, the
+  identity written as in the lockfile. The release is verified against the listed hash before it
+  is stored, its `.deps` entry is rewritten through the literal writer, and the lockfile follows.
 - **Sources.** URLs are a mirror list. Any mirror, the local store, or a vendor directory serving the
   right bytes is equally valid. An optional community index (a cache and a transparency log in the
   style of Go's proxy and checksum database) may exist; it is never an authority.

@@ -10,6 +10,7 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
+overt-pkg.workspace = true
 etcetera.workspace = true
 overt-hash.workspace = true
 overt-fs.workspace = true

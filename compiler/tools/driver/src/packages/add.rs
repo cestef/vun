@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 use overt_build::layout::MANIFEST;
 use overt_build::manifest::{self, DepKind, Manifest, Source, Version};
 use overt_build::store::Label;
-use overt_diag::{Diagnostic, Edit as TextEdit, Msg, errors};
+use overt_diag::{Diagnostic, Msg, errors};
 use overt_fs::{Edit, Relative};
 use overt_hash::{Hash, Snapshot};
 use overt_span::Span;
@@ -101,21 +101,9 @@ impl Session {
                 return Ok(None);
             }
         }
-        let text = self.text(file).to_owned();
-        match self.declarations(file, |decls, _| dep.declare(decls, &text)) {
-            Ok(edit) => {
-                if let Err(e) = path.put(TextEdit::apply(&[edit], &text)) {
-                    let msg = Msg::new().text("cannot write ").code(path.display().to_string());
-                    self.diag.error(Diagnostic::error(errors::IO_UNWRITABLE_FILE, msg).caused_by(&e));
-                    return Ok(None);
-                }
-            }
-            Err(e) => {
-                let msg = Msg::new().text("cannot declare ").code(&dep.name).text(" in this manifest");
-                let d = Diagnostic::error(errors::MANIFEST_UNEDITABLE, msg).caused_by(&e);
-                self.report(Some(project.prelude_span), d);
-                return Ok(None);
-            }
+        let what = Msg::new().text("declare ").code(&dep.name);
+        if !self.rewrite_manifest(file, &path, what, |decls, text| Ok(vec![dep.declare(decls, text)?])) {
+            return Ok(None);
         }
         Ok(Some(dep))
     }

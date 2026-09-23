@@ -38,6 +38,8 @@ pub struct Manifest {
     pub deps: Vec<Dep>,
     /// Identities whose packages come from elsewhere, anywhere in the graph; read from the root.
     pub replace: Vec<Replacement>,
+    /// Indexes that list newer versions, tried in order; read from the root (spec 12, section 3).
+    pub index: Vec<String>,
     /// Workspace members, by path.
     pub members: Vec<String>,
     /// Namespaces whose public names every file sees unqualified (spec 01, section 8).
@@ -108,9 +110,10 @@ mod field {
     pub(super) const KIND: &str = "kind";
     pub(super) const REPLACE: &str = "replace";
     pub(super) const MAJOR: &str = "major";
+    pub(super) const INDEX: &str = "index";
 
     pub(super) const PACKAGE: &[&str] =
-        &[NAME, ID, VERSION, EDITION, TOOLCHAIN, INCLUDE, DEPS, REPLACE, MEMBERS, PRELUDE];
+        &[NAME, ID, VERSION, EDITION, TOOLCHAIN, INCLUDE, DEPS, REPLACE, INDEX, MEMBERS, PRELUDE];
     pub(super) const DEP: &[&str] = &[VERSION, HASH, URLS, PATH, KIND];
     pub(super) const REPLACEMENT: &[&str] = &[ID, MAJOR, VERSION, HASH, URLS, PATH];
 }
@@ -142,6 +145,7 @@ pub fn read(decls: &[Decl<'_>], file: FileId, cx: &mut DiagCx<'_>) -> Option<Man
     let include = fields.require(field::INCLUDE).and_then(|d| strings(d, cx));
     let deps = fields.get(field::DEPS).map_or(Some(Vec::new()), |d| deps(d, cx));
     let replace = fields.get(field::REPLACE).map_or(Some(Vec::new()), |d| replacements(d, cx));
+    let index = fields.get(field::INDEX).map_or(Some(Vec::new()), |d| strings(d, cx));
     let members = fields.get(field::MEMBERS).map_or(Some(Vec::new()), |d| strings(d, cx));
     let prelude_decl = fields.get(field::PRELUDE);
     let prelude = prelude_decl.map_or(Some(vec![DEFAULT_PRELUDE.to_owned()]), |d| strings(d, cx));
@@ -156,6 +160,7 @@ pub fn read(decls: &[Decl<'_>], file: FileId, cx: &mut DiagCx<'_>) -> Option<Man
         include: include?,
         deps: deps?,
         replace: replace?,
+        index: index?,
         members: members?,
         prelude: prelude?,
         prelude_span,

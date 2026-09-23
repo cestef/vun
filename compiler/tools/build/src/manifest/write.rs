@@ -32,6 +32,9 @@ impl Manifest {
             let replace = self.replace.iter().map(|r| at(&r.name, r.literal())).collect();
             fields.push(at(field::REPLACE, Literal::Record(replace)));
         }
+        if !self.index.is_empty() {
+            fields.push(at(field::INDEX, Literal::strings(self.index.iter().map(String::as_str))));
+        }
         if !self.members.is_empty() {
             fields.push(at(field::MEMBERS, Literal::strings(self.members.iter().map(String::as_str))));
         }
@@ -94,6 +97,18 @@ impl Dep {
         let at = |name, value| Decl { name, doc: Vec::new(), value, span: self.span };
         fields.extend(kind.map(|&(name, _)| at(field::KIND, Literal::Name(name))));
         Literal::Record(fields)
+    }
+
+    /// The edit that rewrites its existing entry in `.deps`, found by name, in the manifest whose
+    /// declarations `decls` were read from `source`.
+    ///
+    /// # Errors
+    /// Returns why the entry cannot be written, or that there is none.
+    pub fn redeclare(&self, decls: &[Decl<'_>], source: &str) -> Result<Edit, Unwritable> {
+        let package = decls.iter().find(|d| d.name == PACKAGE).ok_or(Unwritable::NotRecord)?;
+        let deps = package.value.decls().and_then(|fields| fields.iter().find(|d| d.name == field::DEPS));
+        let entry = deps.and_then(|d| d.value.decls()?.iter().find(|e| e.name == self.name));
+        entry.ok_or(Unwritable::NotRecord)?.set(source, &self.literal())
     }
 
     /// The edit that declares it in the manifest whose declarations `decls` were read from

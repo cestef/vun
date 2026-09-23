@@ -42,7 +42,12 @@ pub const PROGRAM: Program<Session> = Program {
                         params: &[pkg::SOURCE, pkg::NAME, pkg::VERSION],
                         action: Action::Run(pkg::add),
                     },
-                    planned("update", "raise dependency versions"),
+                    Command {
+                        name: "update",
+                        about: "raise dependencies to the newest release their indexes list",
+                        params: &[],
+                        action: Action::Run(pkg::update),
+                    },
                     pkg::FETCH,
                     planned("vendor", "copy dependencies into vendor/"),
                     Command {

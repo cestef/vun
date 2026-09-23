@@ -141,7 +141,7 @@ impl Session {
     }
 
     /// Downloads `url` under `staging`, verifies it against `hash` and moves it into the store.
-    fn stage(
+    pub(super) fn stage(
         &mut self,
         kind: DepKind,
         store: &Store,

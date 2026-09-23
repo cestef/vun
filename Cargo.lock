@@ -443,6 +443,7 @@ dependencies = [
  "overt-harness",
  "overt-hash",
  "overt-origin",
+ "overt-pkg",
  "overt-query",
  "overt-span",
  "overt-suggest",

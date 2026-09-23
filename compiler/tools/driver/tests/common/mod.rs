@@ -43,6 +43,7 @@ impl Fixture {
             include: vec![MANIFEST.into(), Path::new(name).with_extension(EXTENSION).display().to_string()],
             deps: Vec::new(),
             replace: Vec::new(),
+            index: Vec::new(),
             members: Vec::new(),
             prelude: vec![DEFAULT_PRELUDE.into()],
             prelude_span: Self::unread(),

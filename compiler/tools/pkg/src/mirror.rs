@@ -26,6 +26,20 @@ impl Scheme {
         read: |_, path| fs::read(path).map_err(|e| Failure::Download(Box::new(e))),
     };
 
+    /// The bytes at `url`, through the scheme that reads it.
+    ///
+    /// # Errors
+    /// Returns that no scheme reads the URL, or why reading failed.
+    pub fn get(url: &str) -> Result<Vec<u8>, Failure> {
+        let scheme = Self::of(url)?;
+        (scheme.read)(url, &url[scheme.prefix.len()..])
+    }
+
+    /// The scheme that reads `url`.
+    fn of(url: &str) -> Result<&'static Self, Failure> {
+        SCHEMES.iter().find(|s| url.starts_with(s.prefix)).ok_or(Failure::Scheme)
+    }
+
     /// The URL of the local file `path`.
     #[must_use]
     pub fn file_url(path: &Path) -> String {
@@ -42,7 +56,6 @@ fn http(url: &str, _: &str) -> Result<Vec<u8>, Failure> {
 /// A URL whose scheme and archive format are known.
 pub struct Mirror<'u> {
     url: &'u str,
-    scheme: &'static Scheme,
     format: &'static Format,
 }
 
@@ -50,10 +63,10 @@ impl<'u> Mirror<'u> {
     /// # Errors
     /// Returns which part of the URL no table knows.
     pub fn parse(url: &'u str) -> Result<Self, Failure> {
-        let scheme = SCHEMES.iter().find(|s| url.starts_with(s.prefix)).ok_or(Failure::Scheme)?;
+        Scheme::of(url)?;
         let path = url.split(['?', '#']).next().unwrap_or(url);
         let format = Format::of(path).ok_or(Failure::Format)?;
-        Ok(Self { url, scheme, format })
+        Ok(Self { url, format })
     }
 
     /// Downloads the archive and unpacks it into `dir`, which must not exist; see
@@ -62,7 +75,7 @@ impl<'u> Mirror<'u> {
     /// # Errors
     /// Returns why reading or unpacking failed.
     pub fn fetch(&self, dir: &Path) -> Result<(), Failure> {
-        let bytes = (self.scheme.read)(self.url, &self.url[self.scheme.prefix.len()..])?;
+        let bytes = Scheme::get(self.url)?;
         let raw = dir.with_extension("unpacking");
         let unpack = Failure::Unpack;
         raw.remove().map_err(unpack)?;

@@ -63,6 +63,18 @@ impl Decl<'_> {
         Ok(self.edit(lo, hi, w.out))
     }
 
+    /// The edit that gives this declaration, read from `source`, the value `value`, laid out
+    /// from where its value starts.
+    ///
+    /// # Errors
+    /// Returns why the value cannot be written.
+    pub fn set(&self, source: &str, value: &Literal<'_>) -> Result<Edit, Unwritable> {
+        let text = Text(source);
+        let (lo, hi) = (self.span.range.lo as usize, self.span.range.hi as usize);
+        let line = text.line_start(lo);
+        Ok(self.edit(lo, hi, value.laid_out(text.indentation(line), lo - line)?))
+    }
+
     /// An edit replacing the bytes `lo..hi` of this declaration's file with `text`.
     fn edit(&self, lo: usize, hi: usize, text: String) -> Edit {
         let offset = |at: usize| u32::try_from(at).expect("source offsets fit in u32");
