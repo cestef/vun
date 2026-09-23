@@ -89,8 +89,17 @@ TokenKind := .{
         .{ .name = .star_eq, .text = "*=" },
         .{ .name = .slash_eq, .text = "/=" },
         .{ .name = .percent_eq, .text = "%=" },
+        .{ .name = .amp_eq, .text = "&=" },
+        .{ .name = .pipe_eq, .text = "|=" },
+        .{ .name = .caret_eq, .text = "^=" },
+        .{ .name = .shl_eq, .text = "<<=" },
+        .{ .name = .shr_eq, .text = ">>=" },
         .{ .name = .plus_percent_eq, .text = "+%=" },
+        .{ .name = .minus_percent_eq, .text = "-%=" },
+        .{ .name = .star_percent_eq, .text = "*%=" },
         .{ .name = .plus_pipe_eq, .text = "+|=" },
+        .{ .name = .minus_pipe_eq, .text = "-|=" },
+        .{ .name = .star_pipe_eq, .text = "*|=" },
         .{ .name = .underscore, .text = "_" },
     ],
     .end = [.eof],
@@ -166,7 +175,11 @@ prefix := [.minus, .bang, .tilde, .amp, .star, .question, .dot_dot, .dollar, .\u
 postfix := [.dot_star, .question];
 
 /// Operators of assignment statements.
-assign := [.eq, .plus_eq, .minus_eq, .star_eq, .slash_eq, .percent_eq, .plus_percent_eq, .plus_pipe_eq];
+assign := [
+    .eq, .plus_eq, .minus_eq, .star_eq, .slash_eq, .percent_eq, .amp_eq, .pipe_eq, .caret_eq,
+    .shl_eq, .shr_eq, .plus_percent_eq, .minus_percent_eq, .star_percent_eq, .plus_pipe_eq,
+    .minus_pipe_eq, .star_pipe_eq,
+];
 
 /// Tokens that can start an operand, besides prefix operators.
 operands := [
