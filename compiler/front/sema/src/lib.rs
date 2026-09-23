@@ -5,5 +5,6 @@
 
 pub mod check;
 pub mod eval;
+pub mod int;
 pub mod layout;
 pub mod ty;

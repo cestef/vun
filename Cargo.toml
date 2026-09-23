@@ -84,6 +84,7 @@ zip = { version = "8", default-features = false, features = ["deflate-flate2"] }
 zstd = { version = "0.13", default-features = false }
 lzma-rs = "0.3"
 facet = "0.46"
+num-bigint = "0.5"
 facet-postcard = "0.46"
 
 [workspace.lints.rust]
