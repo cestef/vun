@@ -50,7 +50,7 @@ pub(super) const OUT: Param =
 fn fetch(session: &mut Session, _: &Args, out: &mut dyn Write) -> io::Result<Outcome> {
     let Some((dir, project)) = session.project()? else { return Ok(Outcome::Failure) };
     for (name, hash, fetched) in session.fetch(project) {
-        let name = session.interner.resolve(name);
+        let name = name.as_str();
         match fetched {
             Fetched::Present => writeln!(out, "present {name} {hash}")?,
             Fetched::Stored { url } => writeln!(out, "stored  {name} {hash} from {url}")?,

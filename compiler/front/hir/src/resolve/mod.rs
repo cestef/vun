@@ -17,7 +17,7 @@ mod walk;
 
 use overt_diag::DiagCx;
 use overt_index::IndexVec;
-use overt_intern::{Interner, Symbol};
+use overt_intern::Symbol;
 
 use crate::tree::{BinderId, ExprId, Hir, NsId};
 pub use outer::Outside;
@@ -43,7 +43,7 @@ pub struct Resolution {
 }
 
 /// Resolves the names of `hir` and reports duplicates, shadowing and irrefutable tests.
-pub fn resolve(hir: &Hir, interner: &Interner, cx: &mut DiagCx<'_>) -> Resolution {
+pub fn resolve(hir: &Hir, cx: &mut DiagCx<'_>) -> Resolution {
     let mut resolver = walk::Resolver {
         scopes: Scopes::default(),
         names: IndexVec::filled(None, hir.exprs.len()),
@@ -51,7 +51,6 @@ pub fn resolve(hir: &Hir, interner: &Interner, cx: &mut DiagCx<'_>) -> Resolutio
         namespaces: Vec::new(),
         declaring: false,
         members: false,
-        interner,
         cx,
     };
     if let Some(root) = hir.root {

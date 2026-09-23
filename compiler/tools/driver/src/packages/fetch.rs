@@ -113,7 +113,7 @@ impl Session {
     fn download(&mut self, dep: &Dep, hash: Hash, version: Version, urls: &[String]) -> Fetched {
         let store = self.store.clone();
         let staging = store.staging(hash);
-        let name = self.interner.resolve(dep.name).to_owned();
+        let name = dep.name.as_str().to_owned();
         let label = Label { name: &name, version };
         let mut rejected = Vec::new();
         for url in urls {
@@ -123,7 +123,7 @@ impl Session {
             }
         }
         let _ = staging.remove();
-        let name = self.interner.resolve(dep.name);
+        let name = dep.name.as_str();
         let msg = Msg::new().text("cannot fetch ").code(name).text(" (").code(hash.to_string()).text(")");
         let mut d = Diagnostic::error(errors::PACKAGE_FETCH_FAILED, msg);
         if urls.is_empty() {

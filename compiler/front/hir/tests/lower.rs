@@ -4,7 +4,6 @@ use overt_diag::{DiagCtxt, DiagCx};
 use overt_harness::{discover, repo_root};
 use overt_hir::lower::{Source, lower};
 use overt_hir::{resolve, verify};
-use overt_intern::Interner;
 use overt_origin::OriginTable;
 use overt_span::{EXTENSION, SourceFiles};
 use overt_syntax::{lexer, parser};
@@ -17,16 +16,15 @@ fn repository_sources_lower_and_verify() {
         for path in discover(&root.join(dir), EXTENSION).unwrap() {
             let text = std::fs::read_to_string(&path).unwrap();
             let file = SourceFiles::new().add(path.display().to_string(), text.as_str());
-            let (mut diag, mut origins, mut interner) =
-                (DiagCtxt::new(), OriginTable::new(), Interner::new());
+            let (mut diag, mut origins) = (DiagCtxt::new(), OriginTable::new());
             let mut cx = DiagCx { diag: &mut diag, origins: &mut origins };
             let tokens = lexer::lex(file, &text, &mut cx);
             let cst = parser::parse(&tokens, &text, &mut cx);
-            let hir = lower(Source { cst: &cst, tokens: &tokens, text: &text }, &mut interner, cx.origins);
+            let hir = lower(Source { cst: &cst, tokens: &tokens, text: &text }, cx.origins);
             if let Err(malformed) = verify::verify(&hir, cx.origins) {
                 failures.push(format!("{}: {malformed:?}", path.display()));
             }
-            resolve::resolve(&hir, &interner, &mut cx);
+            resolve::resolve(&hir, &mut cx);
             if diag.error_count() > 0 {
                 failures.push(format!(
                     "{}: {:?}",

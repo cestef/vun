@@ -10,7 +10,7 @@ mod members;
 mod pats;
 
 use overt_grammar::{NodeField, NodeKind, TokenKind};
-use overt_intern::{Interner, Symbol};
+use overt_intern::Symbol;
 use overt_origin::{OriginId, OriginTable};
 use overt_syntax::cst::{Anchor, Cst, Fields, NodeId};
 use overt_syntax::tokens::Tokens;
@@ -27,8 +27,8 @@ pub struct Source<'a> {
 }
 
 /// Lowers the file `source` into HIR.
-pub fn lower(source: Source<'_>, interner: &mut Interner, origins: &mut OriginTable) -> Hir {
-    let mut lower = Lower { source, interner, origins, hir: Hir::default() };
+pub fn lower(source: Source<'_>, origins: &mut OriginTable) -> Hir {
+    let mut lower = Lower { source, origins, hir: Hir::default() };
     let root = source.cst.root();
     let members = lower.members(source.cst.children(root));
     let origin = lower.origin(root);
@@ -38,7 +38,6 @@ pub fn lower(source: Source<'_>, interner: &mut Interner, origins: &mut OriginTa
 
 struct Lower<'a, 'i> {
     source: Source<'a>,
-    interner: &'i mut Interner,
     origins: &'i mut OriginTable,
     hir: Hir,
 }
@@ -77,19 +76,15 @@ impl<'a> Lower<'a, '_> {
         self.source.cst.fields(n).unwrap_or_default()
     }
 
-    fn intern(&mut self, text: &str) -> Symbol {
-        self.interner.intern(text)
-    }
-
     /// The symbol of a name leaf, without the escape of `\name`.
     fn symbol(&mut self, n: NodeId) -> Symbol {
         let text = self.text(n);
-        self.intern(text.strip_prefix(ESCAPE).unwrap_or(text))
+        Symbol::intern(text.strip_prefix(ESCAPE).unwrap_or(text))
     }
 
     fn label(&mut self, n: NodeId) -> Symbol {
         let text = self.text(n);
-        self.intern(text.strip_prefix(LABEL).unwrap_or(text))
+        Symbol::intern(text.strip_prefix(LABEL).unwrap_or(text))
     }
 
     /// A name in a name position: plain, `$(e)`, a tuple index, or `_`.

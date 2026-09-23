@@ -8,7 +8,6 @@ use overt_diag::{DiagCtxt, DiagCx, DiagSink, Diagnostic, Msg, errors};
 use overt_hir::lower;
 use overt_hir::resolve::{self, Resolution};
 use overt_hir::tree::Hir;
-use overt_intern::Interner;
 use overt_origin::OriginTable;
 use overt_span::{FileId, SourceFiles, SourceMap};
 use overt_syntax::cst::Cst;
@@ -21,7 +20,6 @@ use crate::packages::{FileScope, LIBRARY, Packages};
 
 pub struct Session {
     pub sources: SourceFiles,
-    pub interner: Interner,
     pub origins: OriginTable,
     pub diag: DiagCtxt,
     /// How diagnostics are shown.
@@ -37,7 +35,6 @@ impl Default for Session {
     fn default() -> Self {
         Self {
             sources: SourceFiles::default(),
-            interner: Interner::default(),
             origins: OriginTable::default(),
             diag: DiagCtxt::default(),
             format: formats::default(),
@@ -87,21 +84,21 @@ impl Session {
 
     pub fn lower(&mut self, tokens: &Tokens, cst: &Cst) -> Hir {
         let text = &self.sources.file(tokens.file()).text;
-        lower::lower(lower::Source { cst, tokens, text }, &mut self.interner, &mut self.origins)
+        lower::lower(lower::Source { cst, tokens, text }, &mut self.origins)
     }
 
     /// Resolves the names of `file` within it and against its package, reporting what needs no
     /// types.
     pub fn resolve(&mut self, file: FileId, hir: &Hir) -> Resolution {
         let mut cx = DiagCx { diag: &mut self.diag, origins: &mut self.origins };
-        let resolution = resolve::resolve(hir, &self.interner, &mut cx);
+        let resolution = resolve::resolve(hir, &mut cx);
         let package = self.package_of(file);
         self.scope(package);
         let spreads = self.spreads(package, hir, &resolution);
         self.check_children(file, hir);
         let outside = FileScope { package: &self.packages.scopes[&package], spreads: &spreads };
         let mut cx = DiagCx { diag: &mut self.diag, origins: &mut self.origins };
-        resolution.check_outer(hir, &outside, &self.interner, &mut cx);
+        resolution.check_outer(hir, &outside, &mut cx);
         resolution
     }
 

@@ -76,7 +76,7 @@ impl Session {
             self.diag.error(Diagnostic::error(errors::PACKAGE_MISSING_NAMESPACE, msg).at(origin, None));
             return None;
         };
-        let text: Vec<&str> = names.iter().map(|&n| self.interner.resolve(n)).collect();
+        let text: Vec<&str> = names.iter().map(|&n| n.as_str()).collect();
         let text = text.join(SEPARATOR);
         let local = matches!(resolution.names[root], Some(Res::Binder(_)));
         let known = self.packages.scopes[&package].names.contains_key(&names[0]);
@@ -110,7 +110,7 @@ impl Session {
         let Some(select) = &s.select else {
             let declared: Vec<_> = hir.members(ns);
             for name in self.exports(target) {
-                let text = self.interner.resolve(name).to_owned();
+                let text = name.as_str().to_owned();
                 let msg = Msg::new().code(&text).text(" is spread from ").code(path);
                 let earlier = declared.iter().find(|&&b| hir.binders[b].name == name);
                 if let Some(&b) = earlier {
@@ -130,7 +130,7 @@ impl Session {
         let members = self.members(target);
         for &b in select {
             let name = hir.binders[b].name;
-            let text = self.interner.resolve(name);
+            let text = name.as_str();
             let visibility = Visibility::of(text);
             let exists = members.contains(&name);
             if exists && visibility == Visibility::Public {
@@ -142,7 +142,7 @@ impl Session {
             } else {
                 let msg = Msg::new().code(path).text(" has no member ").code(text);
                 let d = Diagnostic::error(errors::NAMES_UNRESOLVED, msg);
-                let public = members.iter().map(|&m| self.interner.resolve(m));
+                let public = members.iter().map(|&m| m.as_str());
                 match closest(text, public.filter(|m| Visibility::of(m) == Visibility::Public)) {
                     Some(near) => d.child(ChildKind::Help, Msg::did_you_mean(near)),
                     None => d,

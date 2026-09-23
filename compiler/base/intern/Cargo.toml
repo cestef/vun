@@ -1,6 +1,6 @@
 [package]
 name = "overt-intern"
-description = "Interned symbols."
+description = "Interned symbols, one concurrent pool per process."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -10,4 +10,4 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
-overt-index.workspace = true
+blake3.workspace = true

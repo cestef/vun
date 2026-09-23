@@ -7,7 +7,7 @@ use super::walk::Resolver;
 use crate::tree::{BinderId, Hir, PatId};
 use crate::visit::Visitor;
 
-impl Resolver<'_, '_, '_> {
+impl Resolver<'_, '_> {
     /// Declares a binder in the innermost scope. A second member of the same name in one namespace
     /// is a duplicate; a local reusing any name visible in the file shadows it. Members of nested
     /// namespaces may reuse outer names: they are reached through their namespace.
@@ -28,7 +28,7 @@ impl Resolver<'_, '_, '_> {
                 None => return,
             },
         };
-        let msg = Msg::new().code(self.interner.resolve(name)).text(what);
+        let msg = Msg::new().code(name.as_str()).text(what);
         let mut d = Diagnostic::error(id, msg).at(hir.binders[binder].origin, None);
         d.labels.push(Label { origin: hir.binders[earlier].origin, msg: Some("first bound here".into()) });
         let help = Msg::new().text("choose another name");

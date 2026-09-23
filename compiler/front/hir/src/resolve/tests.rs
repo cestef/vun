@@ -1,5 +1,4 @@
 use overt_diag::{DiagCtxt, DiagCx, DiagId, errors};
-use overt_intern::Interner;
 use overt_origin::OriginTable;
 use overt_span::SourceFiles;
 use overt_syntax::{lexer, parser};
@@ -11,14 +10,14 @@ use crate::tree::ExprKind;
 /// The diagnostics of resolving `text`, and how many names resolved inside the file.
 fn check(text: &str) -> (Vec<DiagId>, usize) {
     let file = SourceFiles::new().add("t.ov", text);
-    let (mut diag, mut origins, mut interner) = (DiagCtxt::new(), OriginTable::new(), Interner::new());
+    let (mut diag, mut origins) = (DiagCtxt::new(), OriginTable::new());
     let mut cx = DiagCx { diag: &mut diag, origins: &mut origins };
     let tokens = lexer::lex(file, text, &mut cx);
     let cst = parser::parse(&tokens, text, &mut cx);
     assert_eq!(cx.diag.error_count(), 0, "{text:?} does not parse");
-    let hir = lower(Source { cst: &cst, tokens: &tokens, text }, &mut interner, cx.origins);
+    let hir = lower(Source { cst: &cst, tokens: &tokens, text }, cx.origins);
     assert_eq!(crate::verify::verify(&hir, cx.origins), Ok(()));
-    let resolution = resolve(&hir, &interner, &mut cx);
+    let resolution = resolve(&hir, &mut cx);
     let inside = hir
         .exprs
         .iter()

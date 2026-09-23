@@ -45,7 +45,9 @@ years (rustc's parallel front end). So both are designed in from phase 1.
   subtree covers a contiguous run of tokens.
 - HIR, MIR and LIR are struct-of-arrays arenas addressed by `u32` handles. Zig measured 20% to 40%
   wall-time gains from this layout alone.
-- Types, compile-time values and names live in one sharded intern pool.
+- Types, compile-time values and names live in one sharded intern pool. A symbol is equal by
+  pointer, hashes by the content hash of its text and orders by its text, so query traces and
+  output built from symbols do not depend on the process or the schedule.
 
 **Queries.**
 - The unit of incremental work is a declaration or a function body, never an expression.

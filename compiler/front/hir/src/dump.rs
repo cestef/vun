@@ -1,25 +1,18 @@
 //! The text form of a HIR for `overt dump hir`: one node per line, indented by depth, with the
 //! source position of its origin and, for names, what they resolve to.
 
-use overt_intern::Interner;
 use overt_origin::{OriginId, OriginTable};
 use overt_outline::{Outline, Outlined};
 use overt_span::SourceMap;
 
 use crate::resolve::{Res, Resolution};
-use crate::tree::{BlockId, DeclId, ExprId, ExprKind, Hir, Lit, Name, NsId, PatId, PatKind, Spread};
+use crate::tree::{BlockId, DeclId, ExprId, ExprKind, Hir, Lit, NsId, PatId, PatKind, Spread};
 use crate::visit::{self, Visitor};
 
 /// Renders `hir` as text.
 #[must_use]
-pub fn dump(
-    hir: &Hir,
-    resolution: &Resolution,
-    interner: &Interner,
-    origins: &OriginTable,
-    sources: &dyn SourceMap,
-) -> String {
-    let mut printer = Printer { out: Outline::new(), resolution, interner, origins, sources };
+pub fn dump(hir: &Hir, resolution: &Resolution, origins: &OriginTable, sources: &dyn SourceMap) -> String {
+    let mut printer = Printer { out: Outline::new(), resolution, origins, sources };
     if let Some(root) = hir.root {
         printer.namespace(hir, root);
     }
@@ -29,7 +22,6 @@ pub fn dump(
 struct Printer<'a> {
     out: Outline,
     resolution: &'a Resolution,
-    interner: &'a Interner,
     origins: &'a OriginTable,
     sources: &'a dyn SourceMap,
 }
@@ -47,19 +39,10 @@ impl Printer<'_> {
         self.node(format_args!("{label} @{}:{}", at.line, at.col), children);
     }
 
-    fn name(&self, name: Name) -> String {
-        match name {
-            Name::Plain(s) => self.interner.resolve(s).to_owned(),
-            Name::Computed(_) => "$(...)".to_owned(),
-            Name::Index(i) => i.to_string(),
-            Name::Hole => "_".to_owned(),
-        }
-    }
-
     fn expr_label(&self, hir: &Hir, expr: ExprId) -> String {
         match &hir.exprs[expr].kind {
             ExprKind::Name(s) => {
-                let text = self.interner.resolve(*s);
+                let text = s.as_str();
                 match self.resolution.names[expr] {
                     Some(Res::Binder(b)) => format!("Name {text} -> binder {}", overt_index::Idx::index(b)),
                     _ => format!("Name {text} -> outer"),
@@ -69,12 +52,12 @@ impl Printer<'_> {
             ExprKind::Lit(Lit::Float(f)) => format!("Float {f}"),
             ExprKind::Lit(Lit::Char(c)) => format!("Char {c:?}"),
             ExprKind::Lit(Lit::String(s)) => format!("String {s:?}"),
-            ExprKind::DotName(n) => format!("DotName .{}", self.name(*n)),
-            ExprKind::Member { name, .. } => format!("Member .{}", self.name(*name)),
+            ExprKind::DotName(n) => format!("DotName .{n}"),
+            ExprKind::Member { name, .. } => format!("Member .{name}"),
             ExprKind::Prefix { op, .. } | ExprKind::Postfix { op, .. } | ExprKind::Infix { op, .. } => {
                 format!("{} {}", variant(&hir.exprs[expr].kind), op.text().unwrap_or_default())
             }
-            ExprKind::Labeled { label, .. } => format!("Labeled '{}", self.interner.resolve(*label)),
+            ExprKind::Labeled { label, .. } => format!("Labeled '{}", label.as_str()),
             kind => variant(kind).to_owned(),
         }
     }
@@ -129,10 +112,8 @@ impl Visitor for Printer<'_> {
     }
 
     fn spread(&mut self, hir: &Hir, spread: &Spread) {
-        let names: Option<Vec<&str>> = spread
-            .select
-            .as_ref()
-            .map(|s| s.iter().map(|&b| self.interner.resolve(hir.binders[b].name)).collect());
+        let names: Option<Vec<&str>> =
+            spread.select.as_ref().map(|s| s.iter().map(|&b| hir.binders[b].name.as_str()).collect());
         let label = names.map_or_else(|| "Spread".to_owned(), |n| format!("Spread {{ {} }}", n.join(", ")));
         self.line(spread.origin, &label, |p| p.expr(hir, spread.path));
     }
@@ -155,20 +136,16 @@ impl Visitor for Printer<'_> {
                     if binder.mutable { "mut " } else { "" },
                     if binder.comptime { "$" } else { "" }
                 );
-                format!(
-                    "Bind {marks}{} = binder {}",
-                    self.interner.resolve(binder.name),
-                    overt_index::Idx::index(*b)
-                )
+                format!("Bind {marks}{} = binder {}", binder.name.as_str(), overt_index::Idx::index(*b))
             }
             PatKind::Hole => "Hole".to_owned(),
             PatKind::Tuple(_) => "Tuple".to_owned(),
-            PatKind::Variant { name, .. } => format!("Variant .{}", self.name(*name)),
+            PatKind::Variant { name, .. } => format!("Variant .{name}"),
             PatKind::Struct { .. } => "Struct".to_owned(),
             PatKind::Or(_) => "Or".to_owned(),
             PatKind::Range { inclusive, .. } => if *inclusive { "Range ..=" } else { "Range .." }.to_owned(),
             PatKind::Rest(_) => "Rest".to_owned(),
-            PatKind::At { binder, .. } => format!("At {}", self.interner.resolve(hir.binders[*binder].name)),
+            PatKind::At { binder, .. } => format!("At {}", hir.binders[*binder].name.as_str()),
             PatKind::Value(_) => "Value".to_owned(),
             PatKind::Error => "Error".to_owned(),
         };

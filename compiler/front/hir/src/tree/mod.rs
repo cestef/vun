@@ -51,6 +51,18 @@ pub enum Name {
     Hole,
 }
 
+/// As written, with a computed name as `$(...)`.
+impl std::fmt::Display for Name {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Plain(s) => s.fmt(f),
+            Self::Computed(_) => f.write_str("$(...)"),
+            Self::Index(i) => i.fmt(f),
+            Self::Hole => f.write_str("_"),
+        }
+    }
+}
+
 /// Declarations whose order does not matter: a file or a `struct` body.
 pub struct Namespace {
     pub members: List<Member>,

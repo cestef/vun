@@ -2,7 +2,7 @@
 //! dependencies and its prelude.
 
 use overt_diag::{ChildKind, DiagCx, Diagnostic, Msg, errors};
-use overt_intern::{Interner, Symbol};
+use overt_intern::Symbol;
 use overt_suggest::closest;
 
 use super::{Res, Resolution};
@@ -25,7 +25,7 @@ impl Resolution {
 
     /// Reports every [`Res::Outer`] name that `outside` does not provide, suggesting the closest
     /// name visible there or declared at the file's top level.
-    pub fn check_outer(&self, hir: &Hir, outside: &dyn Outside, interner: &Interner, cx: &mut DiagCx<'_>) {
+    pub fn check_outer(&self, hir: &Hir, outside: &dyn Outside, cx: &mut DiagCx<'_>) {
         for (expr, res) in self.names.iter() {
             let Some(Res::Outer { name, ns }) = *res else { continue };
             if self.enclosing(ns).any(|n| outside.contains(name, n)) {
@@ -33,11 +33,9 @@ impl Resolution {
             }
             let top = hir.root.map(|root| hir.members(root)).unwrap_or_default();
             let visible = self.enclosing(ns).flat_map(|n| outside.names(n));
-            let candidates: Vec<&str> = visible
-                .chain(top.iter().map(|&b| hir.binders[b].name))
-                .map(|s| interner.resolve(s))
-                .collect();
-            let text = interner.resolve(name);
+            let candidates: Vec<&str> =
+                visible.chain(top.iter().map(|&b| hir.binders[b].name)).map(Symbol::as_str).collect();
+            let text = name.as_str();
             let msg = Msg::new().text("cannot find ").code(text).text(" in scope");
             let mut d = Diagnostic::error(errors::NAMES_UNRESOLVED, msg).at(hir.exprs[expr].origin, None);
             if let Some(near) = closest(text, candidates.iter().copied()) {

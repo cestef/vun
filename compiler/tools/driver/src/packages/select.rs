@@ -29,13 +29,13 @@ impl Session {
                 continue;
             }
             let via = (package != project).then(|| self.packages.list[&package].name).flatten();
-            let via = via.map(|name| self.interner.resolve(name).to_owned());
+            let via = via.map(|name| name.as_str().to_owned());
             for dep in self.packages.list[&package].deps.clone() {
                 let loaded = (dep.kind == DepKind::Overt).then(|| self.found(&dep).ok()).flatten();
                 pending.extend(loaded);
                 let DepSource::Stored { hash, version, .. } = dep.source else { continue };
                 let identity = loaded.and_then(|k| self.packages.list[&k].release).map(|(i, _)| i);
-                let name = self.interner.resolve(dep.name).to_owned();
+                let name = dep.name.as_str().to_owned();
                 let required = Locked { name, version, identity, hash, via: via.clone() };
                 match identity {
                     None if dep.kind == DepKind::Foreign => entries.push(required),

@@ -104,6 +104,7 @@ tested (the rest are stubs):
 | Crate | Contents |
 |-------|----------|
 | `overt-index` | `Idx`, `index!`, `IndexVec` (push, get, last, iter). Every arena. |
+| `overt-intern` | `Symbol::intern`, `Symbol::as_str`: one sharded, append-only pool per process; equal by pointer, hashed by text (BLAKE3), ordered by text. No interner handle is passed around. |
 | `overt-span` | `FileId`, `ByteRange`, `Span`, `SourceFile` (`line_col`), `SourceMap`, `SourceFiles`. |
 | `overt-origin` | `OriginId`, `Origin`, `Via`, `OriginTable`. |
 | `overt-diag` | `DiagId`, `Severity`, `Msg` (typed parts, `append`), `Label`, `Fix`, `ChildKind` (Display), `Diagnostic`, `DiagCtxt`, `DiagCx::error_at`, `DiagSink`; `Msg::did_you_mean`; `errors` (generated). |

@@ -169,13 +169,7 @@ fn dump(session: &mut Session, args: &Args, out: &mut dyn Write, stage: Stage) -
             let cst = session.parse(&tokens);
             let hir = session.lower(&tokens, &cst);
             let resolution = session.resolve(file, &hir);
-            let text = overt_hir::dump::dump(
-                &hir,
-                &resolution,
-                &session.interner,
-                &session.origins,
-                &session.sources,
-            );
+            let text = overt_hir::dump::dump(&hir, &resolution, &session.origins, &session.sources);
             write!(out, "{text}")?;
         }
         Stage::Manifest => unreachable!("read above"),

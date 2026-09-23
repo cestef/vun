@@ -26,7 +26,7 @@ use overt_build::manifest::{
 };
 use overt_diag::{Diagnostic, Msg, errors};
 use overt_hash::{Hash, Snapshot};
-use overt_intern::{Interner, Symbol};
+use overt_intern::Symbol;
 use overt_span::{FileId, SourceMap, Span};
 
 pub use add::{Addition, Unstated};
@@ -102,9 +102,9 @@ pub struct Packages {
 
 impl Package {
     /// Adds the default dependencies the package neither declares nor is, from `library`.
-    fn with_defaults(mut self, library: &Path, interner: &mut Interner) -> Self {
+    fn with_defaults(mut self, library: &Path) -> Self {
         for &default in DEFAULT_DEPS {
-            let name = interner.intern(default);
+            let name = Symbol::intern(default);
             if self.name != Some(name) && self.deps.iter().all(|d| d.name != name) {
                 let source = DepSource::Dir(library.join(default));
                 self.deps.push(Dep { name, source, kind: DepKind::Overt, span: None });
@@ -114,8 +114,8 @@ impl Package {
     }
 
     /// Where its root namespace lives.
-    fn root(&self, interner: &Interner) -> Option<Location> {
-        self.name.map(|name| Location::root(&self.dir, interner.resolve(name)))
+    fn root(&self) -> Option<Location> {
+        self.name.map(|name| Location::root(&self.dir, name.as_str()))
     }
 }
 
@@ -164,9 +164,9 @@ impl Session {
         let snapshot = Snapshot::of(dir, &manifest.include);
         let key = PackageKey::Content(snapshot.root());
         if !self.packages.list.contains_key(&key) {
-            let name = Some(self.interner.intern(&manifest.name));
+            let name = Some(Symbol::intern(&manifest.name));
             let deps = manifest.deps.iter().map(|d| Dep {
-                name: self.interner.intern(&d.name),
+                name: Symbol::intern(&d.name),
                 source: match &d.source {
                     Source::Path(path) => DepSource::Dir(dir.join(path)),
                     Source::Archive { hash, version, urls } => {
@@ -186,7 +186,7 @@ impl Session {
                 snapshot,
                 release,
             };
-            let package = package.with_defaults(&self.library, &mut self.interner);
+            let package = package.with_defaults(&self.library);
             self.packages.list.insert(key, package);
         }
         Some(key)
@@ -233,7 +233,7 @@ impl Session {
                 snapshot: Snapshot::default(),
                 release: None,
             };
-            let package = package.with_defaults(&self.library, &mut self.interner);
+            let package = package.with_defaults(&self.library);
             self.packages.list.insert(PackageKey::Loose, package);
         }
         PackageKey::Loose

@@ -72,7 +72,7 @@ impl Session {
     /// The public names of `ns`, which other namespaces see.
     pub fn exports(&mut self, ns: &Namespace) -> Vec<Symbol> {
         let mut names = self.members(ns);
-        names.retain(|&n| Visibility::of(self.interner.resolve(n)) == Visibility::Public);
+        names.retain(|&n| Visibility::of(n.as_str()) == Visibility::Public);
         names
     }
 
@@ -91,7 +91,7 @@ impl Session {
                 names.extend(self.exports(&target));
             }
         }
-        names.extend(location.children().iter().map(|c| self.interner.intern(c)));
+        names.extend(location.children().iter().map(|c| Symbol::intern(c)));
         self.packages.expanding.remove(&location);
         names
     }
@@ -103,7 +103,7 @@ impl Session {
         let location = Location::of(Path::new(&self.sources.file(file).path));
         let children = location.children();
         for b in hir.members(root) {
-            let name = self.interner.resolve(hir.binders[b].name);
+            let name = hir.binders[b].name.as_str();
             if children.iter().any(|c| c == name) {
                 let dir = location.dir().display().to_string();
                 let msg = Msg::new().code(name).text(" is declared here and also held in ").code(dir);
@@ -114,8 +114,8 @@ impl Session {
     }
 
     fn location(&self, ns: &Namespace) -> Option<Location> {
-        let root = self.packages.list[&ns.package].root(&self.interner)?;
-        Some(ns.path.iter().fold(root, |l, &s| l.member(self.interner.resolve(s))))
+        let root = self.packages.list[&ns.package].root()?;
+        Some(ns.path.iter().fold(root, |l, &s| l.member(s.as_str())))
     }
 
     /// What the file at `path` declares at its top level, read once per content.

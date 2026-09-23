@@ -2,7 +2,6 @@
 
 use overt_diag::{ChildKind, DiagCx, Diagnostic, Msg, errors};
 use overt_index::IndexVec;
-use overt_intern::Interner;
 
 use super::Res;
 use super::scope::{Kind, Scopes};
@@ -12,7 +11,7 @@ use crate::tree::{
 };
 use crate::visit::{self, Visitor};
 
-pub(super) struct Resolver<'i, 'c, 'd> {
+pub(super) struct Resolver<'c, 'd> {
     pub(super) scopes: Scopes,
     pub(super) names: IndexVec<ExprId, Option<Res>>,
     pub(super) parents: IndexVec<NsId, Option<NsId>>,
@@ -23,11 +22,10 @@ pub(super) struct Resolver<'i, 'c, 'd> {
     /// Whether the declarations visited are namespace members, declared up front, rather than
     /// block statements; `$for` bodies keep the value of their list.
     pub(super) members: bool,
-    pub(super) interner: &'i Interner,
     pub(super) cx: &'c mut DiagCx<'d>,
 }
 
-impl Resolver<'_, '_, '_> {
+impl Resolver<'_, '_> {
     fn with_scope(&mut self, kind: Kind, body: impl FnOnce(&mut Self)) {
         self.scopes.push(kind);
         body(self);
@@ -88,7 +86,7 @@ impl Resolver<'_, '_, '_> {
     }
 }
 
-impl Visitor for Resolver<'_, '_, '_> {
+impl Visitor for Resolver<'_, '_> {
     fn namespace(&mut self, hir: &Hir, ns: NsId) {
         self.parents[ns] = self.namespaces.last().copied();
         self.namespaces.push(ns);
@@ -243,7 +241,7 @@ impl Visitor for Resolver<'_, '_, '_> {
     }
 }
 
-impl Resolver<'_, '_, '_> {
+impl Resolver<'_, '_> {
     /// The binder a capture refers to: `x`, `&x` or `&mut x`.
     fn captured(&self, hir: &Hir, capture: ExprId) -> Option<Res> {
         match &hir.exprs[capture].kind {

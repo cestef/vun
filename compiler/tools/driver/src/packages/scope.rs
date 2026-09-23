@@ -123,7 +123,7 @@ impl Session {
     fn bind_prelude(&mut self, package: PackageKey, names: &mut HashMap<Symbol, Outer>) {
         let span = self.packages.list[&package].prelude_span;
         for entry in self.packages.list[&package].prelude.clone() {
-            let path: Vec<Symbol> = entry.split(SEPARATOR).map(|s| self.interner.intern(s)).collect();
+            let path: Vec<Symbol> = entry.split(SEPARATOR).map(Symbol::intern).collect();
             match self.namespace_at(package, &path) {
                 Ok(ns) => {
                     for name in self.exports(&ns) {
@@ -140,7 +140,7 @@ impl Session {
     }
 
     fn missing_dep(&mut self, dep: &Dep) {
-        let msg = Msg::new().text("cannot find dependency ").code(self.interner.resolve(dep.name));
+        let msg = Msg::new().text("cannot find dependency ").code(dep.name.as_str());
         let dir = self.dep_dir(&dep.source).display().to_string();
         let d = Diagnostic::error(errors::PACKAGE_MISSING_DEP, msg.text(" at ").code(dir));
         let d = match dep.source {
@@ -157,7 +157,7 @@ impl Session {
     /// That the stored package of `dep` hashes to `actual`, naming the files changed since the
     /// snapshot recorded when it was fetched.
     fn mismatch(&self, dep: &Dep, expected: Hash, actual: Hash, current: &Snapshot) -> Diagnostic {
-        let name = self.interner.resolve(dep.name);
+        let name = dep.name.as_str();
         let msg = Msg::new().text("the stored contents of ").code(name).text(" do not match its hash");
         let note =
             Msg::new().text("expected ").code(expected.to_string()).text(", found ").code(actual.to_string());

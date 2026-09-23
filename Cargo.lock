@@ -574,7 +574,7 @@ version = "0.0.0"
 name = "overt-intern"
 version = "0.0.0"
 dependencies = [
- "overt-index",
+ "blake3",
 ]
 
 [[package]]
