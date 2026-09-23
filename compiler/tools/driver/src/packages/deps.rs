@@ -1,15 +1,12 @@
-//! The names a package's files see from outside themselves.
+//! Loading dependencies: the package of each, checked against its hash, as selection chose it;
+//! why one cannot be loaded is a diagnostic, reported where the dependency is needed.
 
-use std::collections::HashMap;
-
-use overt_build::layout::SEPARATOR;
 use overt_diag::{ChildKind, Diagnostic, ErrorGuaranteed, Msg, errors};
-use overt_intern::Symbol;
 use overt_span::Span;
 
 use overt_hash::{Change, Hash, Snapshot};
 
-use super::{Dep, DepSource, Namespace, PackageKey, Unfound};
+use super::{Dep, DepSource, PackageKey};
 use crate::Session;
 use crate::commands::{FETCH_PATH, PROGRAM};
 
@@ -45,44 +42,7 @@ pub(super) enum Unfetched {
     Reported(ErrorGuaranteed),
 }
 
-/// What a name from outside a file refers to.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum Outer {
-    /// The package itself.
-    Package(PackageKey),
-    /// A dependency of the package, by its index in [`super::Package::deps`], loaded when needed.
-    Dep(usize),
-    /// A public member of this prelude namespace.
-    Prelude(Namespace),
-}
-
-/// The package and its dependencies, then the prelude's names, the first listed prelude first; a
-/// file's own names come before all of them.
-pub struct Scope {
-    pub names: HashMap<Symbol, Outer>,
-    /// Set when a prelude namespace could not be read, which is reported: a name found nowhere
-    /// may be one it provides.
-    pub poisoned: Option<ErrorGuaranteed>,
-}
-
 impl Session {
-    /// The scope of the files of `package`, built once.
-    pub fn scope(&mut self, package: PackageKey) -> &Scope {
-        if !self.packages.scopes.contains_key(&package) {
-            let mut names = HashMap::new();
-            self.bind_deps(package, &mut names);
-            let poisoned = self.bind_prelude(package, &mut names);
-            self.packages.scopes.insert(package, Scope { names, poisoned });
-        }
-        &self.packages.scopes[&package]
-    }
-
-    fn bind_deps(&mut self, package: PackageKey, names: &mut HashMap<Symbol, Outer>) {
-        let p = &self.packages.list[&package];
-        names.extend(p.deps.iter().enumerate().map(|(i, d)| (d.name, Outer::Dep(i))));
-        names.extend(p.name.map(|name| (name, Outer::Package(package))));
-    }
-
     /// The package of the dependency `index` of `package`: the version selection chose for its
     /// identity (spec 12, section 3), or the declared one. A missing package, or a stored one whose
     /// contents do not match its hash, is reported once.
@@ -159,31 +119,6 @@ impl Session {
     }
 
     /// Binds the exports of the prelude's namespaces, returning whether one could not be read.
-    fn bind_prelude(
-        &mut self,
-        package: PackageKey,
-        names: &mut HashMap<Symbol, Outer>,
-    ) -> Option<ErrorGuaranteed> {
-        let mut poisoned = None;
-        let span = self.packages.list[&package].prelude_span;
-        for entry in self.packages.list[&package].prelude.clone() {
-            let path: Vec<Symbol> = entry.split(SEPARATOR).map(Symbol::intern).collect();
-            match self.namespace_at(package, &path) {
-                Ok(ns) => {
-                    for name in self.exports(&ns) {
-                        names.entry(name).or_insert_with(|| Outer::Prelude(ns.clone()));
-                    }
-                }
-                Err(Unfound::Dep(reported)) => poisoned = Some(reported),
-                Err(Unfound::Root | Unfound::Absent) => {
-                    let d = Self::not_namespace(&entry);
-                    poisoned = Some(self.report(span, d));
-                }
-            }
-        }
-        poisoned
-    }
-
     fn missing_dep(&self, dep: &Dep) -> Diagnostic {
         let msg = Msg::new().text("cannot find dependency ").code(dep.name.as_str());
         let dir = self.dep_dir(&dep.source).display().to_string();
@@ -218,12 +153,6 @@ impl Session {
             d = d.child(ChildKind::Note, Msg::new().code(path).text(what).text(" since it was fetched"));
         }
         d
-    }
-
-    /// That `path` names no namespace.
-    pub(super) fn not_namespace(path: &str) -> Diagnostic {
-        let msg = Msg::new().code(path).text(" is not a namespace of this package or a dependency");
-        Diagnostic::error(errors::PACKAGE_MISSING_NAMESPACE, msg)
     }
 
     pub(super) fn report(&mut self, span: Option<Span>, d: Diagnostic) -> ErrorGuaranteed {

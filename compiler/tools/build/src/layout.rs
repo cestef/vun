@@ -5,14 +5,13 @@
 use std::path::{Path, PathBuf};
 
 use overt_fs::Tree;
-use overt_grammar::TokenKind;
 use overt_span::EXTENSION;
 
 /// The file holding a package's manifest (spec 12, section 2).
 pub const MANIFEST: &str = "build.ov";
 
 /// Separates the members of a namespace path: `std.prelude`.
-pub const SEPARATOR: &str = TokenKind::Dot.text().unwrap();
+pub const SEPARATOR: &str = overt_grammar::PATH_SEPARATOR;
 
 /// A namespace on disk, by the path its file and directory share.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]

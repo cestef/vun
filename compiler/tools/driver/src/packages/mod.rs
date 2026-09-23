@@ -1,31 +1,28 @@
-//! Packages on disk: manifests, dependencies, namespaces and preludes (spec 01, section 8, and
-//! spec 12, sections 1 to 3).
+//! Packages on disk: manifests, dependencies, the store and the lockfile (spec 12, sections 1 to
+//! 4). Once a graph is loaded, it is published as query inputs (`overt_hir::db`), where
+//! namespaces, scopes and name checks are computed.
 //!
 //! A file belongs to the package of the nearest enclosing `build.ov` that declares `package`; a
-//! `build.ov` without it is an ordinary module, such as `std.build`. Every file of a package sees
-//! the package under its own name, each dependency under its declared name, and the public names
-//! of the prelude's namespaces.
+//! `build.ov` without it is an ordinary module, such as `std.build`.
 //!
-//! Everything is keyed by content: a package by the hash of its `include` tree, a manifest and a
-//! file's declarations by the hash of their text, a scope by its package.
+//! Everything is keyed by content: a package by the hash of its `include` tree, a manifest by the
+//! hash of its text.
 
 mod add;
+mod deps;
 mod fetch;
 mod graph;
 mod inputs;
 mod locate;
 mod lockfile;
-mod namespace;
 mod rewrite;
-mod scope;
 mod select;
-mod spread;
 mod update;
 
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
-use overt_build::layout::{Location, MANIFEST};
+use overt_build::layout::MANIFEST;
 use overt_build::lock::{Lock, Replaced, Replacing};
 use overt_build::manifest::{
     self, DEFAULT_DEPS, DEFAULT_PRELUDE, DepKind, Identity, Manifest, Source, Version,
@@ -37,10 +34,7 @@ use overt_span::{FileId, Span};
 
 pub use add::{Addition, Unstated};
 pub use fetch::Fetched;
-pub use namespace::{Namespace, Unfound};
-pub use scope::{Outer, Scope};
 pub use select::Selection;
-pub use spread::{FileScope, Spreads};
 pub use update::Updated;
 
 use crate::Session;
@@ -120,11 +114,6 @@ pub struct Packages {
     pub list: HashMap<PackageKey, Package>,
     /// Manifests by the hash of their text; `None` for a `build.ov` that declares no `package`.
     manifests: HashMap<Hash, Option<Manifest>>,
-    /// What files declare, by the hash of their text.
-    declared: HashMap<Hash, namespace::Declared>,
-    /// Namespaces whose exports are being read, against spreads that loop.
-    expanding: HashSet<Location>,
-    pub(crate) scopes: HashMap<PackageKey, Scope>,
     /// The project: the package whose graph version selection runs over.
     pub root: Option<PackageKey>,
     /// Dependency directories whose package is not there as declared, with why.
@@ -146,11 +135,6 @@ impl Package {
             }
         }
         self
-    }
-
-    /// Where its root namespace lives.
-    fn root(&self) -> Option<Location> {
-        self.name.map(|name| Location::root(&self.dir, name.as_str()))
     }
 }
 

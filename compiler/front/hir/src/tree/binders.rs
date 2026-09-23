@@ -1,6 +1,6 @@
 //! The names a pattern or a namespace introduces.
 
-use super::{BinderId, Entry, Hir, List, Member, NsId, PatId, PatKind, Staged};
+use super::{BinderId, Entry, Hir, List, Member, NsId, PatId, PatKind, Spread, Staged};
 
 impl Hir {
     /// Binders introduced by a pattern, without visiting the expressions inside it.
@@ -27,6 +27,18 @@ impl Hir {
             | PatKind::Value(_)
             | PatKind::Error => {}
         }
+    }
+
+    /// The spreads among the members of `ns`.
+    #[must_use]
+    pub fn spreads(&self, ns: NsId) -> Vec<&Spread> {
+        let mut out = Vec::new();
+        each_entry(&self.namespaces[ns].members, &mut |m| {
+            if let Member::Spread(s) = m {
+                out.push(s);
+            }
+        });
+        out
     }
 
     /// The binders declared by the members of a namespace, including staged ones.

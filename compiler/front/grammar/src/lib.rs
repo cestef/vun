@@ -10,6 +10,9 @@ mod generated;
 
 pub use generated::*;
 
+/// Separates the members of a path, as written: `std.prelude`.
+pub const PATH_SEPARATOR: &str = TokenKind::Dot.text().unwrap();
+
 /// Punctuation, longest spelling first, so the first prefix match is the longest one.
 static PUNCTUATION_BY_LENGTH: LazyLock<Vec<TokenKind>> = LazyLock::new(|| {
     let mut kinds = TokenKind::PUNCTUATION.to_vec();

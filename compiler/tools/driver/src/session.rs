@@ -6,7 +6,7 @@ use std::sync::Arc;
 use overt_build::manifest::{self, Manifest};
 use overt_build::store::Store;
 use overt_diag::{DiagCtxt, DiagCx, DiagSink, Diagnostic, Msg, errors};
-use overt_hir::db::{FileRef, FileText, Parsed, ParsedFile};
+use overt_hir::db::{FileNames, FileRef, FileText, Parsed, ParsedFile};
 use overt_hir::lower;
 use overt_hir::tree::Hir;
 use overt_origin::OriginTable;
@@ -18,7 +18,7 @@ use overt_syntax::tokens::Tokens;
 use overt_syntax::{lexer, literal, parser};
 
 use crate::formats::{self, Format};
-use crate::packages::{FileScope, LIBRARY, Packages};
+use crate::packages::{LIBRARY, Packages};
 
 pub struct Session {
     /// The queries of the compilation, whose shared tables `sources` and `origins` are.
@@ -100,28 +100,29 @@ impl Session {
     /// # Panics
     /// Never: the file's text is set just before.
     pub fn parsed(&mut self, file: FileId) -> Arc<ParsedFile> {
+        let key = self.file_ref(file);
+        let parsed = self.db.get::<Parsed>(&key).expect("its text is set");
+        self.diag.absorb(&parsed.diag);
+        parsed
+    }
+
+    /// How the queries name `file`, with the inputs of its package graph and its text set.
+    fn file_ref(&mut self, file: FileId) -> FileRef {
         let path = PathBuf::from(&self.sources.file(file).path);
         let package = self.package_of(file);
         let id = self.publish(package);
         let key = FileRef { package: id, path: self.packages.list[&package].relative(&path) };
         // The file as loaded, which its package's files do not include when it is loose.
         self.db.set::<FileText>(key.clone(), Some(Arc::from(self.text(file))));
-        let parsed = self.db.get::<Parsed>(&key).expect("its text is set");
-        self.diag.absorb(&parsed.diag);
-        parsed
+        key
     }
 
-    /// Resolves the names of `parsed`, the file `file`, against its package, reporting what
-    /// needs no types.
-    pub fn check_names(&mut self, file: FileId, parsed: &ParsedFile) {
-        let (hir, resolution) = (&parsed.hir, &parsed.resolution);
-        let package = self.package_of(file);
-        self.scope(package);
-        let spreads = self.spreads(package, hir, resolution);
-        self.check_children(file, hir);
-        let outside = FileScope { package: &self.packages.scopes[&package], spreads: &spreads };
-        let mut cx = DiagCx { diag: &mut self.diag, origins: &self.origins };
-        resolution.check_outer(hir, &outside, &mut cx);
+    /// Resolves the names of `file` against its package, reporting what needs no types.
+    pub fn check_names(&mut self, file: FileId) {
+        let key = self.file_ref(file);
+        if let Some(checked) = self.db.get::<FileNames>(&key) {
+            self.diag.absorb(&checked.diag);
+        }
     }
 
     /// Reads the manifest of the `build.ov` loaded as `file` (spec 12, section 2).

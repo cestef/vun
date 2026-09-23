@@ -11,8 +11,8 @@ use overt_hir::db::{DepData, FileRef, FileText, Package as PackageInput, Package
 use overt_intern::Symbol;
 use overt_span::EXTENSION;
 
+use super::deps::Unfetched;
 use super::locate::VERSION_MARK;
-use super::scope::Unfetched;
 use super::{Package, PackageKey};
 use crate::Session;
 
