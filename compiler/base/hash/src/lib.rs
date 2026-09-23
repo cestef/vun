@@ -10,7 +10,8 @@ pub use tree::{Change, Entry, Snapshot};
 
 /// The hash functions a [`Hash`] can come from; the text form names it, so that another can
 /// follow without ambiguity.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, facet::Facet)]
+#[repr(u8)]
 pub enum Algorithm {
     Blake3,
 }
@@ -27,7 +28,7 @@ impl Algorithm {
 }
 
 /// A digest and the algorithm that produced it; written `blake3:<base32 digest>`.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, facet::Facet)]
 pub struct Hash {
     algorithm: Algorithm,
     digest: [u8; 32],

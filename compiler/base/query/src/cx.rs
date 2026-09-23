@@ -1,6 +1,6 @@
 //! Computing queries: the stack of queries being computed, what each reads, and cycles.
 
-use std::any::TypeId;
+use std::any::{Any, TypeId};
 use std::cell::RefCell;
 use std::fmt;
 use std::sync::Arc;
@@ -14,16 +14,31 @@ use super::db::{Db, Memo};
 pub(crate) trait Edge: Send + Sync {
     /// Whether the dependency, brought up to date, still has the recorded interface.
     fn unchanged(&self, cx: &Cx<'_>) -> bool;
+    fn query(&self) -> TypeId;
+    fn key(&self) -> &dyn Any;
+    fn hash(&self) -> Hash;
 }
 
-struct Read<Q: Query> {
-    key: Q::Key,
-    hash: Hash,
+pub(crate) struct Read<Q: Query> {
+    pub(crate) key: Q::Key,
+    pub(crate) hash: Hash,
 }
 
 impl<Q: Query> Edge for Read<Q> {
     fn unchanged(&self, cx: &Cx<'_>) -> bool {
         cx.fetch::<Q>(&self.key).1 == self.hash
+    }
+
+    fn query(&self) -> TypeId {
+        TypeId::of::<Q>()
+    }
+
+    fn key(&self) -> &dyn Any {
+        &self.key
+    }
+
+    fn hash(&self) -> Hash {
+        self.hash
     }
 }
 
@@ -87,7 +102,7 @@ impl<'db> Cx<'db> {
     fn fetch<Q: Query>(&self, key: &Q::Key) -> (Q::Value, Hash) {
         let revision = self.db.revision();
         if let Some(memo) = self.db.memo::<Q>(key) {
-            if memo.input || memo.verified == revision {
+            if memo.input || memo.verified == Some(revision) {
                 return (memo.value, memo.hash);
             }
             if memo.deps.iter().all(|d| d.unchanged(self)) {
@@ -113,7 +128,7 @@ impl<'db> Cx<'db> {
             value: value.clone(),
             hash,
             deps: frame.reads.into(),
-            verified: revision,
+            verified: Some(revision),
             input: false,
         };
         self.db.store(key.clone(), memo);

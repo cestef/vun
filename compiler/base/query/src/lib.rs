@@ -12,6 +12,7 @@
 
 mod cx;
 mod db;
+mod persist;
 #[cfg(test)]
 mod tests;
 
@@ -21,6 +22,7 @@ use overt_hash::Hash;
 
 pub use cx::{Cx, Cycle};
 pub use db::Db;
+pub use persist::{Persist, Unloaded, Unsaved};
 
 /// A point in the history of inputs.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]

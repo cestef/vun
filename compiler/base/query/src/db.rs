@@ -8,15 +8,16 @@ use std::sync::{Arc, RwLock};
 use overt_hash::Hash;
 
 use super::cx::{Cx, Edge};
+use super::persist::Codec;
 use super::{Query, Revision};
 
 /// A memoized result: the value, its interface hash, the trace of what computing it read, and
-/// the revision it was last known current in.
+/// the revision it was last known current in, if any: a loaded memo has none until verified.
 pub(crate) struct Memo<Q: Query> {
     pub(crate) value: Q::Value,
     pub(crate) hash: Hash,
     pub(crate) deps: Arc<[Arc<dyn Edge>]>,
-    pub(crate) verified: Revision,
+    pub(crate) verified: Option<Revision>,
     /// Set with [`Db::set`] rather than computed.
     pub(crate) input: bool,
 }
@@ -40,6 +41,8 @@ type Table<Q> = HashMap<<Q as Query>::Key, Memo<Q>>;
 pub struct Db {
     revision: AtomicU64,
     tables: RwLock<HashMap<TypeId, Box<dyn Any + Send + Sync>>>,
+    /// The persisted queries.
+    pub(crate) codecs: RwLock<HashMap<TypeId, Codec>>,
 }
 
 impl Db {
@@ -64,7 +67,7 @@ impl Db {
             return;
         }
         let revision = Revision(self.revision.fetch_add(1, Ordering::AcqRel) + 1);
-        let memo = Memo::<Q> { value, hash, deps: Arc::new([]), verified: revision, input: true };
+        let memo = Memo::<Q> { value, hash, deps: Arc::new([]), verified: Some(revision), input: true };
         self.store(key, memo);
     }
 
@@ -79,6 +82,13 @@ impl Db {
         table.get(key).cloned()
     }
 
+    /// Every memo of `Q`.
+    pub(crate) fn memos<Q: Query>(&self) -> Vec<(Q::Key, Memo<Q>)> {
+        let tables = self.tables.read().expect("query tables");
+        let table = tables.get(&TypeId::of::<Q>()).and_then(|t| t.downcast_ref::<Table<Q>>());
+        table.map(|t| t.iter().map(|(k, m)| (k.clone(), m.clone())).collect()).unwrap_or_default()
+    }
+
     pub(crate) fn store<Q: Query>(&self, key: Q::Key, memo: Memo<Q>) {
         let mut tables = self.tables.write().expect("query tables");
         let table = tables.entry(TypeId::of::<Q>()).or_insert_with(|| Box::new(Table::<Q>::new()));
@@ -89,7 +99,7 @@ impl Db {
         let mut tables = self.tables.write().expect("query tables");
         let table = tables.get_mut(&TypeId::of::<Q>()).and_then(|t| t.downcast_mut::<Table<Q>>());
         if let Some(memo) = table.and_then(|t| t.get_mut(key)) {
-            memo.verified = revision;
+            memo.verified = Some(revision);
         }
     }
 }

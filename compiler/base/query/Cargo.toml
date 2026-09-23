@@ -11,3 +11,5 @@ workspace = true
 
 [dependencies]
 overt-hash.workspace = true
+facet.workspace = true
+facet-postcard.workspace = true
