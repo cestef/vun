@@ -3,7 +3,7 @@
 use std::collections::HashMap;
 
 use overt_build::layout::SEPARATOR;
-use overt_diag::{ChildKind, DiagCx, Diagnostic, Msg, errors};
+use overt_diag::{ChildKind, DiagCx, Diagnostic, ErrorGuaranteed, Msg, errors};
 use overt_intern::Symbol;
 use overt_span::Span;
 
@@ -52,6 +52,9 @@ pub enum Outer {
 /// file's own names come before all of them.
 pub struct Scope {
     pub names: HashMap<Symbol, Outer>,
+    /// Set when a prelude namespace could not be read, which is reported: a name found nowhere
+    /// may be one it provides.
+    pub poisoned: Option<ErrorGuaranteed>,
 }
 
 impl Session {
@@ -60,8 +63,8 @@ impl Session {
         if !self.packages.scopes.contains_key(&package) {
             let mut names = HashMap::new();
             self.bind_deps(package, &mut names);
-            self.bind_prelude(package, &mut names);
-            self.packages.scopes.insert(package, Scope { names });
+            let poisoned = self.bind_prelude(package, &mut names);
+            self.packages.scopes.insert(package, Scope { names, poisoned });
         }
         &self.packages.scopes[&package]
     }
@@ -74,40 +77,45 @@ impl Session {
 
     /// The package of the dependency `index` of `package`: the version selection chose for its
     /// identity (spec 12, section 3), or the declared one. A missing package, or a stored one whose
-    /// contents do not match its hash, is reported each time it is needed.
-    pub fn dep(&mut self, package: PackageKey, index: usize) -> Option<PackageKey> {
+    /// contents do not match its hash, is reported once.
+    ///
+    /// # Errors
+    /// Returns the proof that why it cannot be loaded is reported.
+    pub fn dep(&mut self, package: PackageKey, index: usize) -> Result<PackageKey, ErrorGuaranteed> {
         let dep = self.packages.list[&package].deps[index].clone();
         let declared = self.dep_package(&dep)?;
-        let Some((identity, _)) = self.packages.list[&declared].release else { return Some(declared) };
+        let Some((identity, _)) = self.packages.list[&declared].release else { return Ok(declared) };
         if let Some(replace) = self.replacement(identity) {
             return self.dep_package(&replace.dep);
         }
-        match self.selected(identity) {
+        match self.selected(identity)? {
             Some(locked) if PackageKey::Content(locked.hash) != declared => {
                 let source =
                     DepSource::Stored { hash: locked.hash, version: locked.version, urls: Vec::new() };
                 self.dep_package(&Dep { source, ..dep })
             }
-            _ => Some(declared),
+            _ => Ok(declared),
         }
     }
 
     /// The package `dep` declares, checked against its hash when it is stored; why not is
-    /// reported.
-    pub(super) fn dep_package(&mut self, dep: &Dep) -> Option<PackageKey> {
-        match self.found(dep) {
-            Ok(found) => Some(found),
-            Err(Absent::Missing) => {
-                self.missing_dep(dep);
-                None
-            }
+    /// reported once per package, however many dependents declare it.
+    pub(super) fn dep_package(&mut self, dep: &Dep) -> Result<PackageKey, ErrorGuaranteed> {
+        let dir = self.dep_dir(&dep.source);
+        if let Some(&reported) = self.packages.absent.get(&dir) {
+            return Err(reported);
+        }
+        let reported = match self.found(dep) {
+            Ok(found) => return Ok(found),
+            Err(Absent::Missing) => self.missing_dep(dep),
             Err(Absent::Mismatch { expected, actual }) => {
                 let snapshot = &self.packages.list[&PackageKey::Content(actual)].snapshot;
                 let d = self.mismatch(dep, expected, actual, snapshot);
-                self.report(dep.span, d);
-                None
+                self.report(dep.span, d)
             }
-        }
+        };
+        self.packages.absent.insert(dir, reported);
+        Err(reported)
     }
 
     /// The package `dep` declares, if it is there as declared.
@@ -123,7 +131,13 @@ impl Session {
         }
     }
 
-    fn bind_prelude(&mut self, package: PackageKey, names: &mut HashMap<Symbol, Outer>) {
+    /// Binds the exports of the prelude's namespaces, returning whether one could not be read.
+    fn bind_prelude(
+        &mut self,
+        package: PackageKey,
+        names: &mut HashMap<Symbol, Outer>,
+    ) -> Option<ErrorGuaranteed> {
+        let mut poisoned = None;
         let span = self.packages.list[&package].prelude_span;
         for entry in self.packages.list[&package].prelude.clone() {
             let path: Vec<Symbol> = entry.split(SEPARATOR).map(Symbol::intern).collect();
@@ -133,16 +147,17 @@ impl Session {
                         names.entry(name).or_insert_with(|| Outer::Prelude(ns.clone()));
                     }
                 }
-                Err(Unfound::Dep) => {}
+                Err(Unfound::Dep(reported)) => poisoned = Some(reported),
                 Err(Unfound::Root | Unfound::Absent) => {
                     let d = Self::not_namespace(&entry);
-                    self.report(span, d);
+                    poisoned = Some(self.report(span, d));
                 }
             }
         }
+        poisoned
     }
 
-    fn missing_dep(&mut self, dep: &Dep) {
+    fn missing_dep(&mut self, dep: &Dep) -> ErrorGuaranteed {
         let msg = Msg::new().text("cannot find dependency ").code(dep.name.as_str());
         let dir = self.dep_dir(&dep.source).display().to_string();
         let d = Diagnostic::error(errors::PACKAGE_MISSING_DEP, msg.text(" at ").code(dir));
@@ -154,7 +169,7 @@ impl Session {
                 d.child(ChildKind::Help, help)
             }
         };
-        self.report(dep.span, d);
+        self.report(dep.span, d)
     }
 
     /// That the stored package of `dep` hashes to `actual`, naming the files changed since the
@@ -185,14 +200,10 @@ impl Session {
         Diagnostic::error(errors::PACKAGE_MISSING_NAMESPACE, msg)
     }
 
-    pub(super) fn report(&mut self, span: Option<Span>, d: Diagnostic) {
+    pub(super) fn report(&mut self, span: Option<Span>, d: Diagnostic) -> ErrorGuaranteed {
         match span {
-            Some(span) => {
-                DiagCx { diag: &mut self.diag, origins: &self.origins }.error_at(span, d);
-            }
-            None => {
-                self.diag.error(d);
-            }
+            Some(span) => DiagCx { diag: &mut self.diag, origins: &self.origins }.error_at(span, d),
+            None => self.diag.error(d),
         }
     }
 }

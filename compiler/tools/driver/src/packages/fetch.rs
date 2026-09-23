@@ -2,7 +2,6 @@
 //! downloaded from its mirrors in order, unpacked under staging, verified against its hash, and
 //! moved into its entry with the snapshot it was verified with.
 
-use std::collections::HashSet;
 use std::error::Error;
 use std::path::{Path, PathBuf};
 use std::{fmt, fs, io};
@@ -70,22 +69,13 @@ impl Session {
         for replace in self.packages.list[&project].replace.clone() {
             self.obtain(&replace.dep, &mut done);
         }
-        let mut seen = HashSet::new();
-        let mut pending = vec![project];
-        while let Some(package) = pending.pop() {
-            if !seen.insert(package) {
-                continue;
-            }
-            let deps = self.packages.list[&package].deps.clone();
-            for (index, dep) in deps.iter().enumerate() {
-                if self.obtain(dep, &mut done) != Some(Fetched::Failed)
-                    && dep.kind == DepKind::Overt
-                    && let Some(next) = self.dep(package, index)
-                {
-                    pending.push(next);
-                }
-            }
-        }
+        // The declared graph, not the selected one: selection reads the lockfile this fills.
+        self.walk(project, |s, _, dep| {
+            let fetched = s.obtain(dep, &mut done);
+            (fetched != Some(Fetched::Failed) && dep.kind == DepKind::Overt)
+                .then(|| s.dep_package(dep).ok())
+                .flatten()
+        });
         done
     }
 

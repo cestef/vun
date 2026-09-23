@@ -91,6 +91,13 @@ impl Diagnostic {
         self
     }
 
+    /// Adds a secondary label.
+    #[must_use]
+    pub fn label(mut self, origin: OriginId, msg: Option<Msg>) -> Self {
+        self.labels.push(Label { origin, msg });
+        self
+    }
+
     #[must_use]
     pub fn fix(mut self, fix: Fix) -> Self {
         self.fixes.push(fix);

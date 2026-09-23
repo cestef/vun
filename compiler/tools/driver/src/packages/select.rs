@@ -4,62 +4,78 @@
 //! keeps what checking the project reads. There is no solver: selection is a function of the
 //! manifests.
 
-use std::collections::{HashMap, HashSet};
-use std::path::Path;
+use std::collections::HashMap;
 
-use overt_build::lock::{self, Lock, Locked};
+use overt_build::lock::{Lock, Locked};
 use overt_build::manifest::{DepKind, Identity, Version};
-use overt_diag::{ChildKind, Diagnostic, Msg, errors};
-use overt_fs::Edit;
+use overt_diag::{ChildKind, Diagnostic, ErrorGuaranteed, Msg, errors};
+use overt_span::Span;
 
-use super::{DepSource, PackageKey, Replace};
+use super::{Dep, DepSource, PackageKey, Replace};
 use crate::Session;
-use crate::commands::{FETCH_PATH, PROGRAM};
+
+/// What selection chose over the packages present.
+#[derive(Clone)]
+pub struct Selection {
+    pub lock: Lock,
+    /// Dependencies of the graph whose packages are not there as declared: what they require is
+    /// unknown, so the lock is partial.
+    pub absent: Vec<Dep>,
+}
+
+/// A required version and the dependency that requires it.
+struct Requirement {
+    locked: Locked,
+    span: Option<Span>,
+}
 
 impl Session {
-    /// The versions the graph of `project` requires, over the packages present as declared; the
-    /// others are reported where their names are used, or by fetching.
-    pub fn select(&mut self, project: PackageKey) -> Lock {
-        let mut required_by: HashMap<(Identity, Version), Locked> = HashMap::new();
+    /// The versions the graph of `project` requires, over the packages present; the absent ones
+    /// are reported where they are needed.
+    ///
+    /// # Errors
+    /// Returns the proof that a conflict is reported.
+    pub fn select(&mut self, project: PackageKey) -> Result<Selection, ErrorGuaranteed> {
+        let mut required_by: HashMap<(Identity, Version), Requirement> = HashMap::new();
         let mut entries = Vec::new();
-        let mut seen = HashSet::new();
-        let mut pending = vec![project];
-        while let Some(package) = pending.pop() {
-            if !seen.insert(package) {
-                continue;
+        let mut absent = Vec::new();
+        let mut failed = None;
+        self.walk(project, |s, package, dep| {
+            let loaded = match dep.kind {
+                DepKind::Overt => s.found(dep).map_err(|_| absent.push(dep.clone())).ok(),
+                DepKind::Foreign => None,
+            };
+            let identity = loaded.and_then(|k| s.packages.list[&k].release).map(|(i, _)| i);
+            if let Some(replace) = identity.and_then(|i| s.replacement_in(project, i))
+                && s.found(&replace.dep).is_err()
+            {
+                absent.push(replace.dep);
             }
-            let via = (package != project).then(|| self.packages.list[&package].name).flatten();
+            let DepSource::Stored { hash, version, .. } = dep.source else { return loaded };
+            let via = (package != project).then(|| s.packages.list[&package].name).flatten();
             let via = via.map(|name| name.as_str().to_owned());
-            for dep in self.packages.list[&package].deps.clone() {
-                let loaded = (dep.kind == DepKind::Overt).then(|| self.found(&dep).ok()).flatten();
-                // A replaced identity's graph is the replacement's.
-                let identity = loaded.and_then(|k| self.packages.list[&k].release).map(|(i, _)| i);
-                let replaced = identity.and_then(|i| self.replacement_in(project, i));
-                let walked = match replaced {
-                    Some(replace) => self.found(&replace.dep).ok(),
-                    None => loaded,
-                };
-                pending.extend(walked);
-                let DepSource::Stored { hash, version, .. } = dep.source else { continue };
-                let identity = loaded.and_then(|k| self.packages.list[&k].release).map(|(i, _)| i);
-                let name = dep.name.as_str().to_owned();
-                let required = Locked { name, version, identity, hash, via: via.clone() };
-                match identity {
-                    None if dep.kind == DepKind::Foreign => entries.push(required),
-                    None => {}
-                    Some(identity) => match required_by.get(&(identity, version)) {
-                        Some(held) if held.hash != hash => self.conflict(&held.clone(), &required),
-                        Some(_) => {}
-                        None => {
-                            required_by.insert((identity, version), required.clone());
-                            entries.push(required);
-                        }
-                    },
-                }
+            let name = dep.name.as_str().to_owned();
+            let required =
+                Requirement { locked: Locked { name, version, identity, hash, via }, span: dep.span };
+            match identity {
+                None if dep.kind == DepKind::Foreign => entries.push(required.locked),
+                None => {}
+                Some(identity) => match required_by.get(&(identity, version)) {
+                    Some(held) if held.locked.hash != hash => failed = Some(s.conflict(held, &required)),
+                    Some(_) => {}
+                    None => {
+                        entries.push(required.locked.clone());
+                        required_by.insert((identity, version), required);
+                    }
+                },
             }
+            loaded
+        });
+        if let Some(reported) = failed {
+            return Err(reported);
         }
         let replaced = self.packages.list[&project].replace.iter().map(|r| r.recorded.clone()).collect();
-        Lock::new(entries).replacing(replaced)
+        Ok(Selection { lock: Lock::new(entries).replacing(replaced), absent })
     }
 
     /// What the project replaces `identity` with.
@@ -67,65 +83,49 @@ impl Session {
         self.replacement_in(self.packages.root?, identity)
     }
 
-    fn replacement_in(&self, project: PackageKey, identity: Identity) -> Option<Replace> {
+    pub(super) fn replacement_in(&self, project: PackageKey, identity: Identity) -> Option<Replace> {
         self.packages.list[&project].replace.iter().find(|r| r.identity == identity).cloned()
     }
 
-    /// What selection chose for `identity` in the project's graph, which is selected once and
-    /// checked against the project's lockfile.
-    pub(super) fn selected(&mut self, identity: Identity) -> Option<Locked> {
+    /// What selection chose for `identity` in the project's graph, selected once; nothing outside
+    /// a project. A complete selection is checked against the project's lockfile. A partial one
+    /// yields to the lockfile, which recorded the whole graph, so that an absent package is
+    /// reported where it is needed instead of another version being used in its place.
+    pub(super) fn selected(&mut self, identity: Identity) -> Result<Option<Locked>, ErrorGuaranteed> {
         if self.packages.selection.is_none() {
-            let root = self.packages.root?;
-            let selection = self.select(root);
-            self.check_lock(root, &selection);
+            let Some(root) = self.packages.root else { return Ok(None) };
+            let selection = self.select(root).map(|Selection { lock, absent }| {
+                if absent.is_empty() {
+                    self.check_lock(root, &lock);
+                    lock
+                } else {
+                    self.recorded_lock(root).unwrap_or(lock)
+                }
+            });
             self.packages.selection = Some(selection);
         }
-        self.packages.selection.as_ref()?.selected(identity).cloned()
+        let selection = self.packages.selection.as_ref().expect("selected above");
+        Ok(selection.as_ref().map_err(|&reported| reported)?.selected(identity).cloned())
     }
 
-    /// Writes the lockfile of the project in `dir` when its selection differs from it, registers
-    /// the project as a root of the store, and returns the selection.
-    pub fn write_lock(&mut self, dir: &Path, project: PackageKey) -> Lock {
-        let selection = self.select(project);
-        let path = dir.join(lock::FILE);
-        let text = selection.to_string();
-        let unchanged = std::fs::read_to_string(&path).ok().as_deref() == Some(text.as_str());
-        // The lockfile is what keeps the project's entries in the shared store.
-        let written = if unchanged { Ok(()) } else { path.put(&text) };
-        if let Err(e) = written.and_then(|()| self.store.register(dir)) {
-            let msg = Msg::new().text("cannot write ").code(path.display().to_string());
-            self.diag.error(Diagnostic::error(errors::IO_UNWRITABLE_FILE, msg).caused_by(&e));
-        }
-        selection
-    }
-
-    /// Reports a lockfile of `root` that does not record `selection`.
-    fn check_lock(&mut self, root: PackageKey, selection: &Lock) {
-        let path = self.packages.list[&root].dir.join(lock::FILE);
-        let Ok(text) = std::fs::read_to_string(&path) else { return };
-        let recorded = Lock::parse(&text);
-        if recorded.as_ref().is_ok_and(|r| r == selection) {
-            return;
-        }
-        let msg = Msg::new().code(path.display().to_string()).text(" does not record the selected versions");
-        let fetch = PROGRAM.invocation(&FETCH_PATH).expect("fetch is a command");
-        let help = Msg::new().text("rewrite it with ").code(fetch);
-        let mut d = Diagnostic::error(errors::PACKAGE_STALE_LOCK, msg).child(ChildKind::Help, help);
-        if let Err(e) = &recorded {
-            d = d.caused_by(e);
-        }
-        self.diag.error(d);
-    }
-
-    /// Two packages require one version of an identity with different contents.
-    fn conflict(&mut self, held: &Locked, required: &Locked) {
-        let msg = Msg::new().code(&required.name).text(" ").code(required.version.to_string());
-        let msg = msg.text(" is required with two hashes");
+    /// Two dependencies require one version of an identity with different contents: reported at
+    /// the later one, labeling the earlier.
+    fn conflict(&mut self, held: &Requirement, required: &Requirement) -> ErrorGuaranteed {
+        let r = &required.locked;
+        let msg = Msg::new().code(&r.name).text(" ").code(r.version.to_string());
         let note = |l: &Locked| {
-            let by = l.via.as_deref().unwrap_or("the project");
-            Msg::new().code(l.hash.to_string()).text(" required by ").code(by)
+            let by = match &l.via {
+                Some(via) => Msg::new().code(via),
+                None => Msg::new().text("the project"),
+            };
+            Msg::new().code(l.hash.to_string()).text(" required by ").append(by)
         };
-        let d = Diagnostic::error(errors::PACKAGE_VERSION_CONFLICT, msg);
-        self.diag.error(d.child(ChildKind::Note, note(held)).child(ChildKind::Note, note(required)));
+        let d = Diagnostic::error(errors::PACKAGE_VERSION_CONFLICT, msg.text(" is required with two hashes"));
+        let mut d = d.child(ChildKind::Note, note(&held.locked)).child(ChildKind::Note, note(r));
+        if let Some(span) = held.span {
+            let label = Msg::new().text("also required with ").code(held.locked.hash.to_string());
+            d = d.label(self.origins.source(span), Some(label));
+        }
+        self.report(required.span, d)
     }
 }

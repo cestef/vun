@@ -116,7 +116,9 @@ pub(super) fn update(session: &mut Session, _: &Args, out: &mut dyn Write) -> io
     }
     if let Some(project) = session.package_at(&dir) {
         session.fetch(project);
-        session.write_lock(&dir, project);
+        if !session.failed() {
+            session.write_lock(&dir, project);
+        }
     }
     Ok(session.outcome())
 }

@@ -68,6 +68,7 @@
 | 62 | Explanation pages stay explicit data: each `Diag` embeds its page, as user lint packages will | accepted | 10 |
 | 63 | Binary caches are declared in the root manifest (`.caches` with their ed25519 keys); a cached output is used only when signed by a declared key over (step key, output hash), and built locally otherwise | accepted | 12 |
 | 64 | `.replace` in the root manifest substitutes a path or a hash for an identity (`id/major`) anywhere in the graph, and the lockfile records it as a `replace` line | accepted | 12 |
+| 65 | A partial graph (absent packages) resolves through the lockfile and neither checks nor writes it; fetching walks the declared graph; an absent package is reported once, and names it could provide are not reported (`ErrorGuaranteed` poisons the scope) | proposed | 10, 12 |
 
 ## Questions, with how they were settled
 

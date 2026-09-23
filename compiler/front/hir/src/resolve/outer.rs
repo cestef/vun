@@ -1,7 +1,7 @@
 //! Names not declared in the file: spread into one of its namespaces, the package itself, its
 //! dependencies and its prelude.
 
-use overt_diag::{ChildKind, DiagCx, Diagnostic, Msg, errors};
+use overt_diag::{ChildKind, DiagCx, Diagnostic, ErrorGuaranteed, Msg, errors};
 use overt_intern::Symbol;
 use overt_suggest::closest;
 
@@ -15,6 +15,9 @@ pub trait Outside {
     fn contains(&self, name: Symbol, ns: Option<NsId>) -> bool;
     /// The names [`Self::contains`] accepts, for suggestions.
     fn names(&self, ns: Option<NsId>) -> Vec<Symbol>;
+    /// Whether some names meant for `ns` (or, for `None`, for the package) could not be read,
+    /// which is reported; a name found nowhere may be one of them.
+    fn poisoned(&self, ns: Option<NsId>) -> Option<ErrorGuaranteed>;
 }
 
 impl Resolution {
@@ -24,11 +27,12 @@ impl Resolution {
     }
 
     /// Reports every [`Res::Outer`] name that `outside` does not provide, suggesting the closest
-    /// name visible there or declared at the file's top level.
+    /// name visible there or declared at the file's top level. Where `outside` is poisoned,
+    /// nothing is reported.
     pub fn check_outer(&self, hir: &Hir, outside: &dyn Outside, cx: &mut DiagCx<'_>) {
         for (expr, res) in self.names.iter() {
             let Some(Res::Outer { name, ns }) = *res else { continue };
-            if self.enclosing(ns).any(|n| outside.contains(name, n)) {
+            if self.enclosing(ns).any(|n| outside.contains(name, n) || outside.poisoned(n).is_some()) {
                 continue;
             }
             let top = hir.root.map(|root| hir.members(root)).unwrap_or_default();

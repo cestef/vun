@@ -24,7 +24,7 @@ fn replacements_apply_everywhere_and_are_locked() {
     let mut session = fx.session();
     let project = session.package_at(&dir).unwrap();
     session.fetch(project);
-    let lock = session.write_lock(&dir, project);
+    let lock = session.write_lock(&dir, project).unwrap();
     assert!(!session.failed(), "{:?}", session.diag.sorted());
     assert!(lock.to_string().contains("replace hal 0000000000000007/1 path ../hal-fork\n"), "{lock}");
     // `b` exists only in the fork.

@@ -68,7 +68,7 @@ impl Session {
                 kind: dep.kind,
                 span: Some(dep.span),
             };
-            let Some(key) = self.dep_package(&declared) else { continue };
+            let Ok(key) = self.dep_package(&declared) else { continue };
             let Some((identity, _)) = self.packages.list[&key].release else { continue };
             for base in &project.index {
                 let index = Index { base };

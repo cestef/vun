@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use std::collections::hash_map::Entry;
 
 use overt_build::layout::SEPARATOR;
-use overt_diag::{ChildKind, Diagnostic, Label, Msg, errors};
+use overt_diag::{ChildKind, Diagnostic, ErrorGuaranteed, Label, Msg, errors};
 use overt_hir::resolve::{Outside, Res, Resolution};
 use overt_hir::tree::{Hir, Member, NsId, Spread, each_entry};
 use overt_intern::Symbol;
@@ -15,8 +15,15 @@ use overt_syntax::visibility::Visibility;
 use super::{Namespace, PackageKey, Scope, Unfound};
 use crate::Session;
 
-/// Names brought by whole spreads, by the namespace they are spread into.
-pub type Spreads = HashMap<NsId, HashMap<Symbol, Namespace>>;
+/// What spreads bring, by the namespace they are spread into.
+#[derive(Default)]
+pub struct Spreads {
+    /// The names whole spreads bring.
+    pub brought: HashMap<NsId, HashMap<Symbol, Namespace>>,
+    /// Namespaces with a spread whose target could not be read, which is reported.
+    #[expect(clippy::zero_sized_map_values, reason = "each value is the proof of a report")]
+    pub poisoned: HashMap<NsId, ErrorGuaranteed>,
+}
 
 /// What a file sees from outside itself: names spread into its namespaces, then its package's.
 pub struct FileScope<'s> {
@@ -27,7 +34,7 @@ pub struct FileScope<'s> {
 impl Outside for FileScope<'_> {
     fn contains(&self, name: Symbol, ns: Option<NsId>) -> bool {
         match ns {
-            Some(ns) => self.spreads.get(&ns).is_some_and(|names| names.contains_key(&name)),
+            Some(ns) => self.spreads.brought.get(&ns).is_some_and(|names| names.contains_key(&name)),
             None => self.package.names.contains_key(&name),
         }
     }
@@ -35,9 +42,17 @@ impl Outside for FileScope<'_> {
     fn names(&self, ns: Option<NsId>) -> Vec<Symbol> {
         match ns {
             Some(ns) => {
-                self.spreads.get(&ns).map(|names| names.keys().copied().collect()).unwrap_or_default()
+                let brought = self.spreads.brought.get(&ns);
+                brought.map(|names| names.keys().copied().collect()).unwrap_or_default()
             }
             None => self.package.names.keys().copied().collect(),
+        }
+    }
+
+    fn poisoned(&self, ns: Option<NsId>) -> Option<ErrorGuaranteed> {
+        match ns {
+            Some(ns) => self.spreads.poisoned.get(&ns).copied(),
+            None => self.package.poisoned,
         }
     }
 }
@@ -45,7 +60,7 @@ impl Outside for FileScope<'_> {
 impl Session {
     /// Checks every spread of `hir` and collects what the whole ones bring.
     pub fn spreads(&mut self, package: PackageKey, hir: &Hir, resolution: &Resolution) -> Spreads {
-        let mut spreads = Spreads::new();
+        let mut spreads = Spreads::default();
         for (ns, namespace) in hir.namespaces.iter() {
             let mut found = Vec::new();
             each_entry(&namespace.members, &mut |m| {
@@ -54,45 +69,52 @@ impl Session {
                 }
             });
             for s in found {
-                if let Some((path, target)) = self.spread_target(package, hir, resolution, s) {
-                    self.spread(hir, ns, s, &path, &target, spreads.entry(ns).or_default());
+                match self.spread_target(package, hir, resolution, s) {
+                    Ok((path, target)) => {
+                        self.spread(hir, ns, s, &path, &target, spreads.brought.entry(ns).or_default());
+                    }
+                    Err(Some(reported)) => {
+                        spreads.poisoned.insert(ns, reported);
+                    }
+                    Err(None) => {}
                 }
             }
         }
         spreads
     }
 
-    /// The namespace `s` spreads, and its path as written.
+    /// The namespace `s` spreads, and its path as written; or the proof that why not is reported,
+    /// unless its first name is found nowhere, which resolution reports.
     fn spread_target(
         &mut self,
         package: PackageKey,
         hir: &Hir,
         resolution: &Resolution,
         s: &Spread,
-    ) -> Option<(String, Namespace)> {
+    ) -> Result<(String, Namespace), Option<ErrorGuaranteed>> {
         let origin = hir.exprs[s.path].origin;
         let Some((root, names)) = hir.path(s.path) else {
             let msg = Msg::new().text("a spread takes a namespace path, such as ").code("..std.mem");
-            self.diag.error(Diagnostic::error(errors::PACKAGE_MISSING_NAMESPACE, msg).at(origin, None));
-            return None;
+            return Err(Some(
+                self.diag.error(Diagnostic::error(errors::PACKAGE_MISSING_NAMESPACE, msg).at(origin, None)),
+            ));
         };
         let text: Vec<&str> = names.iter().map(|&n| n.as_str()).collect();
         let text = text.join(SEPARATOR);
         let local = matches!(resolution.names[root], Some(Res::Binder(_)));
         let known = self.packages.scopes[&package].names.contains_key(&names[0]);
         match self.namespace_at(package, &names) {
-            Ok(target) if !local => Some((text, target)),
-            Err(Unfound::Dep) => None,
+            Ok(target) if !local => Ok((text, target)),
+            Err(Unfound::Dep(reported)) => Err(Some(reported)),
             // A first name found nowhere is reported as unresolved.
-            Err(Unfound::Root) if !known && !local => None,
+            Err(Unfound::Root) if !known && !local => Err(None),
             found => {
                 let mut d = Self::not_namespace(&text).at(origin, None);
                 if local || found.is_err_and(|e| e == Unfound::Root) {
                     let help = Msg::new().text("a spread path starts at the package or a dependency");
                     d = d.child(ChildKind::Help, help);
                 }
-                self.diag.error(d);
-                None
+                Err(Some(self.diag.error(d)))
             }
         }
     }

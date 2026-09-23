@@ -201,8 +201,16 @@ hex digits and the major version, or `foreign`), the tree hash, and the dependen
 when that is not the project. `overt pkg fetch` and `overt pkg add` rewrite it when the selection
 changes. Every dependency of every package resolves to the version selected for its identity, so a
 dependent declaring `1.0.0` sees `1.2.0` when another requires it; a lockfile that does not record
-the selection is `package.stale_lock`, and one version required with two hashes is
-`package.version_conflict`. Replacements are `replace name id/major hash`, or
+the selection is `package.stale_lock`, reported at each line it should not hold, and one version
+required with two hashes is `package.version_conflict`, reported at both dependents; a conflict
+writes no lockfile.
+
+Selection runs over the packages present. While some are absent (not fetched, or changed in the
+store), the lockfile is neither judged nor written, and dependencies resolve through it, since it
+recorded the whole graph: an absent package is then reported where it is needed, once, and never
+silently replaced by another version. Without a lockfile, the present packages decide. `overt pkg
+fetch` walks the graph as declared rather than as selected, so it fills the store and rewrites a
+stale lockfile without consulting it. Replacements are `replace name id/major hash`, or
 `replace name id/major path <path>`. A pinned toolchain will add a `toolchain` line (section 6).
 
 ## 5. Workspaces

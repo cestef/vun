@@ -9,6 +9,16 @@ fn line_col_counts_from_one() {
 }
 
 #[test]
+fn lines_exclude_their_breaks() {
+    let file = SourceFile::new("a".into(), "ab\r\n\ncd".into());
+    let lines: Vec<_> = file.lines().collect();
+    assert_eq!(
+        lines,
+        [("ab", ByteRange::new(0, 2)), ("", ByteRange::new(4, 4)), ("cd", ByteRange::new(5, 7))]
+    );
+}
+
+#[test]
 fn cover_joins_ranges() {
     let mut files = SourceFiles::new();
     let f = files.add("a.ov", "");

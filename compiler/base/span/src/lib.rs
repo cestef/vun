@@ -126,6 +126,21 @@ impl SourceFile {
             col: offset - self.line_starts[line] + 1,
         }
     }
+
+    /// Each line's text and range, without its line break.
+    ///
+    /// # Panics
+    /// Panics if the text is 4 GiB or larger, which [`SourceFile::new`] rejects.
+    pub fn lines(&self) -> impl Iterator<Item = (&str, ByteRange)> {
+        let ends = self.line_starts.iter().skip(1).copied();
+        let len = u32::try_from(self.text.len()).expect("source files are smaller than 4 GiB");
+        let ranges = self.line_starts.iter().zip(ends.chain([len])).map(|(&lo, hi)| ByteRange::new(lo, hi));
+        ranges.filter(|r| !r.is_empty()).map(|r| {
+            let line = r.of(&self.text).trim_end_matches(['\n', '\r']);
+            let hi = r.lo + u32::try_from(line.len()).expect("lines are shorter than their file");
+            (line, ByteRange::new(r.lo, hi))
+        })
+    }
 }
 
 /// Read access to source files.

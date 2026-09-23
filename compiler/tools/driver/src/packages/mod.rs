@@ -11,7 +11,9 @@
 
 mod add;
 mod fetch;
+mod graph;
 mod locate;
+mod lockfile;
 mod namespace;
 mod rewrite;
 mod scope;
@@ -27,6 +29,7 @@ use overt_build::lock::{Lock, Replaced, Replacing};
 use overt_build::manifest::{
     self, DEFAULT_DEPS, DEFAULT_PRELUDE, DepKind, Identity, Manifest, Source, Version,
 };
+use overt_diag::ErrorGuaranteed;
 use overt_hash::{Hash, Snapshot};
 use overt_intern::Symbol;
 use overt_span::{FileId, Span};
@@ -35,6 +38,7 @@ pub use add::{Addition, Unstated};
 pub use fetch::Fetched;
 pub use namespace::{Namespace, Unfound};
 pub use scope::{Outer, Scope};
+pub use select::Selection;
 pub use spread::{FileScope, Spreads};
 pub use update::Updated;
 
@@ -122,8 +126,11 @@ pub struct Packages {
     pub(crate) scopes: HashMap<PackageKey, Scope>,
     /// The project: the package whose graph version selection runs over.
     pub root: Option<PackageKey>,
+    /// Dependency directories whose package is not there as declared, reported once.
+    #[expect(clippy::zero_sized_map_values, reason = "each value is the proof of a report")]
+    absent: HashMap<PathBuf, ErrorGuaranteed>,
     /// What selection chose for the project's graph, computed once.
-    selection: Option<Lock>,
+    selection: Option<Result<Lock, ErrorGuaranteed>>,
 }
 
 impl Package {

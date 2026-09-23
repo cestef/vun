@@ -4,7 +4,7 @@
 use std::path::Path;
 
 use overt_build::layout::Location;
-use overt_diag::{Diagnostic, Msg, errors};
+use overt_diag::{Diagnostic, ErrorGuaranteed, Msg, errors};
 use overt_hir::tree::{Hir, Member, each_entry};
 use overt_intern::Symbol;
 use overt_span::{FileId, SourceMap};
@@ -25,8 +25,8 @@ pub struct Namespace {
 pub enum Unfound {
     /// Its first name is not the package or a dependency.
     Root,
-    /// The dependency it starts at cannot be loaded; that is already reported.
-    Dep,
+    /// The dependency it starts at cannot be loaded, which is reported.
+    Dep(ErrorGuaranteed),
     /// Nothing on disk at the path.
     Absent,
 }
@@ -35,7 +35,7 @@ impl std::fmt::Display for Unfound {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(match self {
             Self::Root => "the path does not start at the package or a dependency",
-            Self::Dep => "the dependency it starts at cannot be loaded",
+            Self::Dep(_) => "the dependency it starts at cannot be loaded",
             Self::Absent => "nothing is on disk at the path",
         })
     }
@@ -63,7 +63,7 @@ impl Session {
             package
         } else {
             let index = p.deps.iter().position(|d| d.name == first).ok_or(Unfound::Root)?;
-            self.dep(package, index).ok_or(Unfound::Dep)?
+            self.dep(package, index).map_err(Unfound::Dep)?
         };
         let ns = Namespace { package: root, path: rest.to_vec() };
         self.location(&ns).filter(Location::exists).map(|_| ns).ok_or(Unfound::Absent)
