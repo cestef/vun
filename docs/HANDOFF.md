@@ -105,8 +105,8 @@ tested (the rest are stubs):
 |-------|----------|
 | `overt-index` | `Idx`, `index!`, `IndexVec` (push, get, last, iter). Every arena. |
 | `overt-intern` | `Symbol::intern`, `Symbol::as_str`: one sharded, append-only pool per process; equal by pointer, hashed by text (BLAKE3), ordered by text. No interner handle is passed around. |
-| `overt-origin` | `OriginTable` over `boxcar` (append-only, `&self`), `Origin`, `Via`, `Chain`. |
-| `overt-span` | `FileId`, `ByteRange`, `Span`, `SourceFile` (`line_col`), `SourceMap`, `SourceFiles`. |
+| `overt-origin` | `OriginTable` over `boxcar` (append-only, `&self`: `source`, `declaration`, `inside`, `derive`, `contains`), `Origin` with `Anchor::{File, Declaration, Within}`, `Via`, `Chain`. `OriginId` hashes by its anchored identity (decision 59); lowering anchors origins to declarations (`Lower::declaring`). |
+| `overt-span` | `FileId` (hashes by its key: `SourceFiles::add_as`; the driver keys files `<package>@<version>/<path>` through `Session::file_key`), `ByteRange`, `Span`, `SourceFile` (`line_col`), `SourceMap`, `SourceFiles`, `EXTENSION`. |
 | `overt-origin` | `OriginId`, `Origin`, `Via`, `OriginTable`. |
 | `overt-diag` | `DiagId`, `Severity`, `Msg` (typed parts, `append`), `Label`, `Fix`, `ChildKind` (Display), `Diagnostic`, `DiagCtxt`, `DiagCx::error_at`, `DiagSink`; `Msg::did_you_mean`; `errors` (generated). |
 | `overt-suggest` | `closest` (did-you-mean by edit distance), `Lookup` on slices (find by name or the closest name). Generic, no diag types. |
@@ -196,7 +196,7 @@ In order:
    `overt pkg pack`. Open: `overt pkg update` needs a source of newer versions (an index).
 3. `names.private` (needs member types: sema), `binding.hole_value` (needs attribute resolution).
 4. Sema on `overt-query` (the engine exists; persistence to disk and parallel single-flight are
-   open; persisting needs stable file and origin identities, question 25 in `decisions.md`), then
+   open; stable file and origin identities exist, decision 59), then
    desugaring into `lang` items with `Via::Desugar` origins (appendix B), queries, sema (with
    narrowing, decision 35, exhaustive match, decision 29), MIR, interpreter.
 5. Explanation pages `errors/<group>/<id>.md` for every diagnostic, and `overt explain`.

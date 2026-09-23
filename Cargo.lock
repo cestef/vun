@@ -563,6 +563,7 @@ dependencies = [
  "overt-diag",
  "overt-grammar",
  "overt-harness",
+ "overt-hash",
  "overt-index",
  "overt-intern",
  "overt-origin",
@@ -580,7 +581,7 @@ version = "0.0.0"
 name = "overt-intern"
 version = "0.0.0"
 dependencies = [
- "blake3",
+ "overt-hash",
 ]
 
 [[package]]
@@ -708,7 +709,8 @@ name = "overt-origin"
 version = "0.0.0"
 dependencies = [
  "boxcar",
- "overt-index",
+ "overt-hash",
+ "overt-intern",
  "overt-span",
 ]
 
@@ -817,7 +819,7 @@ dependencies = [
 name = "overt-span"
 version = "0.0.0"
 dependencies = [
- "overt-index",
+ "overt-hash",
 ]
 
 [[package]]

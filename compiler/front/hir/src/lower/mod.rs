@@ -28,7 +28,7 @@ pub struct Source<'a> {
 
 /// Lowers the file `source` into HIR.
 pub fn lower(source: Source<'_>, origins: &OriginTable) -> Hir {
-    let mut lower = Lower { source, origins, hir: Hir::default() };
+    let mut lower = Lower { source, origins, hir: Hir::default(), declaration: None };
     let root = source.cst.root();
     let members = lower.members(source.cst.children(root));
     let origin = lower.origin(root);
@@ -40,6 +40,8 @@ struct Lower<'a, 'i> {
     source: Source<'a>,
     origins: &'i OriginTable,
     hir: Hir,
+    /// The origin of the declaration being lowered, which the origins inside it are anchored to.
+    declaration: Option<OriginId>,
 }
 
 /// Escape that makes a keyword a name: `\unsafe`.
@@ -48,8 +50,35 @@ const ESCAPE: char = '\\';
 const LABEL: char = '\'';
 
 impl<'a> Lower<'a, '_> {
+    /// The origin of `n`: inside the declaration being lowered, or in the file.
     fn origin(&mut self, n: NodeId) -> OriginId {
-        self.origins.source(self.source.cst.span(n, self.source.tokens))
+        let span = self.source.cst.span(n, self.source.tokens);
+        match self.declaration {
+            Some(declaration) => self.origins.inside(declaration, span),
+            None => self.origins.source(span),
+        }
+    }
+
+    /// Lowers the declaration `n` with `lower`, anchoring the origins inside it to the returned
+    /// origin: the declaration's name when `name` is a plain name, else its place.
+    fn declaring<T>(
+        &mut self,
+        n: NodeId,
+        name: Option<NodeId>,
+        lower: impl FnOnce(&mut Self) -> T,
+    ) -> (T, OriginId) {
+        let name = name.filter(|&p| self.kind(p) == NodeKind::Name).map(|p| self.symbol(p));
+        let origin = match name {
+            Some(name) => {
+                let span = self.source.cst.span(n, self.source.tokens);
+                self.origins.declaration(span, self.declaration, name)
+            }
+            None => self.origin(n),
+        };
+        let outer = self.declaration.replace(origin);
+        let lowered = lower(self);
+        self.declaration = outer;
+        (lowered, origin)
     }
 
     fn kind(&self, n: NodeId) -> NodeKind {

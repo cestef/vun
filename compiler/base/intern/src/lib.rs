@@ -35,8 +35,7 @@ impl Symbol {
     /// Panics if a thread panicked while interning.
     #[must_use]
     pub fn intern(text: &str) -> Self {
-        let digest = blake3::hash(text.as_bytes());
-        let hash = u64::from_le_bytes(digest.as_bytes()[..8].try_into().expect("8 bytes"));
+        let hash = overt_hash::Hash::of(text.as_bytes()).short();
         let shard = &POOL[usize::try_from(hash % SHARDS as u64).expect("fits")];
         if let Some(&symbol) = shard.read().expect("interner").get(text) {
             return symbol;

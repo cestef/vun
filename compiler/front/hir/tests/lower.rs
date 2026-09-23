@@ -36,3 +36,23 @@ fn repository_sources_lower_and_verify() {
     }
     assert!(failures.is_empty(), "{failures:#?}");
 }
+
+/// The origins of every declaration and expression of `text`, lowered in a fresh table.
+fn origins(text: &str) -> overt_hash::Hash {
+    let file = SourceFiles::new().add_as("pkg@1.0.0/pkg.ov", "pkg.ov", text);
+    let (mut diag, origins) = (DiagCtxt::new(), OriginTable::new());
+    let mut cx = DiagCx { diag: &mut diag, origins: &origins };
+    let tokens = lexer::lex(file, text, &mut cx);
+    let cst = parser::parse(&tokens, text, &mut cx);
+    let hir = lower(Source { cst: &cst, tokens: &tokens, text }, cx.origins);
+    let decls: Vec<_> = hir.decls.iter().map(|(_, d)| d.origin).collect();
+    let exprs: Vec<_> = hir.exprs.iter().map(|(_, e)| e.origin).collect();
+    overt_hash::Hash::of_value(&(decls, exprs))
+}
+
+#[test]
+fn origins_survive_edits_before_their_declaration() {
+    let decl = "limit := (a: u32) -> u32 { a + 1 };\n";
+    assert_eq!(origins(decl), origins(&format!("// a comment added above\n\n{decl}")));
+    assert_ne!(origins(decl), origins("limit := (a: u32) -> u32 { a  + 1 };\n"), "an edit inside is seen");
+}

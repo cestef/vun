@@ -3,14 +3,24 @@
 //! A [`Span`] is a half-open byte range inside one source file. Spans never cross files; anything
 //! that relates several locations does so through origin chains (`overt-origin`).
 
-use overt_index::{IndexVec, index};
+use std::hash::{Hash, Hasher};
 
 /// The extension of Overt source files.
 pub const EXTENSION: &str = "ov";
 
-index! {
-    /// A source file within one compilation session.
-    pub struct FileId;
+/// A source file within one compilation session. It hashes by its key, which names the file the
+/// same way in every process (its package and its path inside it), so that hashes of spans and of
+/// anything holding them do not depend on the order files were read in.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub struct FileId {
+    index: u32,
+    key: u64,
+}
+
+impl Hash for FileId {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        state.write_u64(self.key);
+    }
 }
 
 /// A half-open byte range `lo..hi`, relative to some text.
@@ -145,7 +155,7 @@ impl std::fmt::Display for Location<'_> {
 /// An in-memory set of source files.
 #[derive(Default)]
 pub struct SourceFiles {
-    files: IndexVec<FileId, SourceFile>,
+    files: Vec<SourceFile>,
 }
 
 impl SourceFiles {
@@ -154,14 +164,28 @@ impl SourceFiles {
         Self::default()
     }
 
+    /// Adds a file keyed by its path.
     pub fn add(&mut self, path: impl Into<String>, text: impl Into<String>) -> FileId {
-        self.files.push(SourceFile::new(path.into(), text.into()))
+        let path = path.into();
+        let key = path.clone();
+        self.add_as(&key, path, text)
+    }
+
+    /// Adds a file under `key`, which names it the same way in every process, shown as `path`.
+    ///
+    /// # Panics
+    /// Panics past `u32::MAX` files.
+    pub fn add_as(&mut self, key: &str, path: impl Into<String>, text: impl Into<String>) -> FileId {
+        let key = overt_hash::Hash::of(key.as_bytes()).short();
+        let index = u32::try_from(self.files.len()).expect("fewer than 2^32 files");
+        self.files.push(SourceFile::new(path.into(), text.into()));
+        FileId { index, key }
     }
 }
 
 impl SourceMap for SourceFiles {
     fn file(&self, id: FileId) -> &SourceFile {
-        &self.files[id]
+        &self.files[id.index as usize]
     }
 }
 

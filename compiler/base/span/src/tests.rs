@@ -14,3 +14,17 @@ fn cover_joins_ranges() {
     let f = files.add("a.ov", "");
     assert_eq!(Span::new(f, 4, 6).cover(Span::new(f, 1, 5)), Span::new(f, 1, 6));
 }
+
+#[test]
+fn file_ids_hash_by_key_not_by_order() {
+    use std::hash::{BuildHasher, BuildHasherDefault};
+    let hash =
+        |id: FileId| BuildHasherDefault::<std::collections::hash_map::DefaultHasher>::default().hash_one(id);
+    let mut first = SourceFiles::new();
+    let a = first.add_as("hal@1.0.0/hal.ov", "/home/a/hal/hal.ov", "");
+    let mut second = SourceFiles::new();
+    let _ = second.add("other.ov", "");
+    let b = second.add_as("hal@1.0.0/hal.ov", "/home/b/hal/hal.ov", "");
+    assert_eq!(hash(a), hash(b));
+    assert_eq!(second.file(b).path, "/home/b/hal/hal.ov");
+}

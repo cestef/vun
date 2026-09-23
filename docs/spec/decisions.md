@@ -62,6 +62,7 @@
 | 56 | One store per user in the XDG cache directory (`OVERT_STORE` overrides), entries labeled for people; lockfiles are GC roots registered under `<store>/roots/`; `overt cache list\|gc` | accepted (the user's Nix review) | 12 |
 | 57 | The query engine memoizes with verifying traces of interface hashes (BLAKE3 of the value's `Hash`), verified once per revision; cycles recover through a per-query rule | proposed | 13 |
 | 58 | Symbols come from one process-wide, sharded, append-only pool: equal by pointer, hashed by the BLAKE3 of their text, ordered by text, so hashes and orders built from them are stable across processes and schedules | proposed | 13 |
+| 59 | Stable identities: `FileId` hashes by `<package>@<version>/<path>` (a loose file by its path), `OriginId` by its via and anchor (a declaration by name within its declaration, a node by its span relative to its declaration) | accepted | 10, 13 |
 
 ## Questions, with how they were settled
 
@@ -131,9 +132,6 @@ None is open. Each keeps its reasoning; decisions 27 to 44 record the outcomes.
     `std.fmt`), with a `Str` type that is a UTF-8-checked `&[u8]`; self-host the literal reader as
     the benchmark of that library.
 25. **Stable identities for persisted queries.** Query traces hold content hashes and symbols hash
-    by text, but `FileId` and `OriginId` are indices into per-process tables, so a persisted HIR
-    or diagnostic would point at the wrong entries in the next process. Options: keep ids
-    per process and persist results in an id-free form re-interned on load (rust-analyzer does not
-    persist at all); or make them stable, a file by its package and path and an origin relative
-    to its declaration (rustc's `DefPathHash` and item-relative spans). Lean: the second, with
-    declarations as the unit that queries already are.
+    by text, but `FileId` and `OriginId` were indices into per-process tables. Settled (decision
+    59): stable identities, a file by its package, version and path, an origin anchored to its
+    declaration (by name) or relative to it.

@@ -54,7 +54,8 @@ impl Session {
     /// Reads a source file; a read failure becomes a diagnostic.
     pub fn load(&mut self, path: &Path) -> Option<FileId> {
         let text = self.read(path)?;
-        Some(self.sources.add(path.display().to_string(), text))
+        let key = self.file_key(path);
+        Some(self.sources.add_as(&key, path.display().to_string(), text))
     }
 
     /// Reads a file's text; a read failure becomes a diagnostic.

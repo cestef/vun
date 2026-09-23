@@ -10,6 +10,7 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
+overt-hash.workspace = true
+overt-intern.workspace = true
 boxcar.workspace = true
-overt-index.workspace = true
 overt-span.workspace = true

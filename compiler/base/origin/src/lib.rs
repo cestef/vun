@@ -7,13 +7,41 @@
 //!
 //! The table is append-only and shared: threads record origins through `&self` without waiting on
 //! each other.
+//!
+//! An origin is anchored so that it is identified the same way in every process and across edits
+//! elsewhere in its file: a declaration by its name inside the declaration around it, a node inside
+//! a declaration by its span relative to the declaration, and what precedes declarations (tokens,
+//! syntax errors) by its span in the file. [`OriginId`] hashes by that identity, computed once
+//! when the origin is recorded, so hashes of anything holding origins survive both.
 
-use overt_index::{Idx, index};
+use std::hash::{Hash, Hasher};
+
+use overt_intern::Symbol;
 use overt_span::Span;
 
-index! {
-    /// Index of an [`Origin`] in an [`OriginTable`].
-    pub struct OriginId;
+/// An [`Origin`] in an [`OriginTable`]: equal by position in the table, hashed by the origin's
+/// anchored identity.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub struct OriginId {
+    index: u32,
+    identity: u64,
+}
+
+impl Hash for OriginId {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        state.write_u64(self.identity);
+    }
+}
+
+/// What an origin's span is identified relative to.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum Anchor {
+    /// The file: tokens and syntax, before declarations exist.
+    File,
+    /// A declaration, by its name inside the declaration around it, if any.
+    Declaration { within: Option<OriginId>, name: Symbol },
+    /// Inside this declaration, by the span relative to the declaration's start.
+    Within(OriginId),
 }
 
 /// Identifies one rewrite of the desugaring table (spec appendix B).
@@ -24,7 +52,7 @@ pub struct DesugarRule(pub u16);
 pub struct PassId(pub u16);
 
 /// How an entity came to exist.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Via {
     Source,
     /// Produced by a desugaring rewrite.
@@ -50,6 +78,7 @@ pub struct Origin {
     pub span: Span,
     pub via: Via,
     pub parent: Option<OriginId>,
+    pub anchor: Anchor,
 }
 
 #[derive(Default)]
@@ -63,18 +92,59 @@ impl OriginTable {
         Self::default()
     }
 
-    /// Records an origin for user-written source.
+    /// Records an origin for user-written source identified by its place in the file.
     pub fn source(&self, span: Span) -> OriginId {
-        self.push(Origin { span, via: Via::Source, parent: None })
+        self.push(Origin { span, via: Via::Source, parent: None, anchor: Anchor::File })
     }
 
-    /// Records an origin derived from `parent`.
+    /// Records the origin of the declaration `name`, inside the declaration `within` if any.
+    pub fn declaration(&self, span: Span, within: Option<OriginId>, name: Symbol) -> OriginId {
+        self.push(Origin {
+            span,
+            via: Via::Source,
+            parent: None,
+            anchor: Anchor::Declaration { within, name },
+        })
+    }
+
+    /// Records the origin of user-written source inside the declaration `declaration`.
+    pub fn inside(&self, declaration: OriginId, span: Span) -> OriginId {
+        self.push(Origin { span, via: Via::Source, parent: None, anchor: Anchor::Within(declaration) })
+    }
+
+    /// Records an origin derived from `parent`, anchored where `parent` is.
     pub fn derive(&self, parent: OriginId, span: Span, via: Via) -> OriginId {
-        self.push(Origin { span, via, parent: Some(parent) })
+        let anchor = match self.get(parent).anchor {
+            Anchor::Declaration { .. } => Anchor::Within(parent),
+            anchor => anchor,
+        };
+        self.push(Origin { span, via, parent: Some(parent), anchor })
     }
 
+    /// # Panics
+    /// Panics past `u32::MAX` origins.
     pub fn push(&self, origin: Origin) -> OriginId {
-        OriginId::new(self.origins.push(origin))
+        let identity = self.identity(&origin);
+        let index = u32::try_from(self.origins.push(origin)).expect("fewer than 2^32 origins");
+        OriginId { index, identity }
+    }
+
+    /// The hash identifying `origin` in every process: how it came to exist, and its span relative
+    /// to its anchor.
+    fn identity(&self, origin: &Origin) -> u64 {
+        let mut hasher = overt_hash::Hasher::default();
+        origin.via.hash(&mut hasher);
+        origin.parent.hash(&mut hasher);
+        origin.anchor.hash(&mut hasher);
+        match origin.anchor {
+            Anchor::File => origin.span.hash(&mut hasher),
+            Anchor::Declaration { .. } => origin.span.file.hash(&mut hasher),
+            Anchor::Within(declaration) => {
+                let start = self.get(declaration).span.range.lo;
+                (origin.span.range.lo - start, origin.span.range.len()).hash(&mut hasher);
+            }
+        }
+        hasher.finish_hash().short()
     }
 
     #[must_use]
@@ -87,11 +157,17 @@ impl OriginTable {
         self.origins.is_empty()
     }
 
+    /// Whether `id` was recorded in this table.
+    #[must_use]
+    pub fn contains(&self, id: OriginId) -> bool {
+        self.origins.get(id.index as usize).is_some()
+    }
+
     /// # Panics
     /// Panics if `id` was not recorded in this table.
     #[must_use]
     pub fn get(&self, id: OriginId) -> &Origin {
-        &self.origins[id.index()]
+        &self.origins[id.index as usize]
     }
 
     /// Walks from `id` towards user code, starting with `id` itself.

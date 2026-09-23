@@ -21,4 +21,5 @@ overt-index.workspace = true
 overt-grammar.workspace = true
 
 [dev-dependencies]
+overt-hash.workspace = true
 overt-harness.workspace = true

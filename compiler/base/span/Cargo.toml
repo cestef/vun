@@ -10,4 +10,4 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
-overt-index.workspace = true
+overt-hash.workspace = true

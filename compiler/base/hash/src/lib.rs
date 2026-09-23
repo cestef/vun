@@ -62,6 +62,13 @@ impl Hash {
         self.algorithm
     }
 
+    /// The first 8 bytes of the digest, for in-memory hashing (`std::hash::Hash` impls).
+    #[must_use]
+    pub fn short(self) -> u64 {
+        let (short, _) = self.digest.split_first_chunk::<8>().unwrap_or((&[0; 8], &[]));
+        u64::from_le_bytes(*short)
+    }
+
     /// The digest in its text encoding, without the algorithm.
     #[must_use]
     pub fn digest(self) -> String {
@@ -82,8 +89,7 @@ impl std::hash::Hasher for Hasher {
 
     /// The first 8 bytes of the digest; [`Hasher::finish_hash`] gives the whole.
     fn finish(&self) -> u64 {
-        let digest = self.0.finalize();
-        u64::from_le_bytes(digest.as_bytes()[..8].try_into().expect("8 bytes"))
+        self.finish_hash().short()
     }
 }
 

@@ -149,7 +149,7 @@ pub fn verify(hir: &Hir, origins: &OriginTable) -> Result<(), Malformed> {
                 1 => {}
                 _ => return Err(Malformed::Shared { arena, index }),
             }
-            if origin.index() >= origins.len() {
+            if !origins.contains(origin) {
                 return Err(Malformed::NoOrigin { arena, index });
             }
         }

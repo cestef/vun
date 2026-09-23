@@ -36,10 +36,11 @@ impl Lower<'_, '_> {
     pub(super) fn decl(&mut self, n: NodeId, doc: Vec<String>, attrs: Vec<ExprId>) -> DeclId {
         let f = self.fields(n);
         let mutable = f.one(NodeField::Mut).is_some();
-        let pat = self.pat_at(&f, n, NodeField::Pattern, Mode { mutable, ..Mode::PLAIN });
-        let ty = f.one(NodeField::Type).map(|t| self.expr(t));
-        let value = f.one(NodeField::Value).map(|v| self.expr(v));
-        let origin = self.origin(n);
+        let ((pat, ty, value), origin) = self.declaring(n, f.one(NodeField::Pattern), |this| {
+            let pat = this.pat_at(&f, n, NodeField::Pattern, Mode { mutable, ..Mode::PLAIN });
+            let ty = f.one(NodeField::Type).map(|t| this.expr(t));
+            (pat, ty, f.one(NodeField::Value).map(|v| this.expr(v)))
+        });
         self.hir.decls.push(Decl { pat, ty, value, attrs, doc, origin })
     }
 
@@ -58,9 +59,9 @@ impl Lower<'_, '_> {
         let f = self.fields(n);
         let mutable = f.one(NodeField::Mut).is_some();
         let name = f.one(NodeField::Pattern).map_or(Name::Hole, |p| self.name(p));
-        let ty = self.operand(&f, n, NodeField::Type);
-        let default = f.one(NodeField::Value).map(|v| self.expr(v));
-        let origin = self.origin(n);
+        let ((ty, default), origin) = self.declaring(n, f.one(NodeField::Pattern), |this| {
+            (this.operand(&f, n, NodeField::Type), f.one(NodeField::Value).map(|v| this.expr(v)))
+        });
         FieldDef { name, mutable, ty, default, attrs, doc, origin }
     }
 

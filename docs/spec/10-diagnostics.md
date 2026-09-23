@@ -9,7 +9,12 @@ Guarantee 5: every entity in every stage carries an origin chain to the source t
 
 ```rust
 pub struct Span   { pub file: FileId, pub lo: u32, pub hi: u32 }
-pub struct Origin { pub span: Span, pub via: Via, pub parent: Option<OriginId> }
+pub struct Origin { pub span: Span, pub via: Via, pub parent: Option<OriginId>, pub anchor: Anchor }
+pub enum Anchor {
+    File,                                             // tokens and syntax, before declarations exist
+    Declaration { within: Option<OriginId>, name: Symbol }, // a declaration, by its name
+    Within(OriginId),                                 // inside a declaration, relative to its start
+}
 pub enum Via {
     Source,                                   // written by the user
     Desugar(DesugarRule),                     // an appendix B rewrite, e.g. `for` or `?`
@@ -22,8 +27,15 @@ pub enum Via {
 
 - Tokens and CST nodes are the source: they hold byte ranges into their file directly. Every entity
   derived from them (HIR, MIR statements, LIR instructions, backend output, link-plan entries)
-  holds an `OriginId`, created from those ranges. Origins are interned in a table; chains are shared, so the cost is one
-  `u32` per entity.
+  holds an `OriginId`, created from those ranges. Origins are interned in a table; chains are
+  shared, so the cost is one id per entity.
+- **Stable identity.** A file is keyed by its package, version and path inside the package
+  (`hal@1.4.0/hal/gpio.ov`), a loose file by its path. An origin is identified by how it came to
+  exist and its anchor: a declaration by its name inside the declaration around it, anything
+  inside a declaration by its span relative to the declaration's start. `FileId` and `OriginId`
+  hash by these identities, computed once, so a hash of anything holding them (query interfaces,
+  persisted results) is the same in every process and survives edits elsewhere in the file, as
+  rustc's `DefPathHash` and item-relative spans do.
 - A generated construct points at the code that generated it, and that code at its caller, up to
   user code. Diagnostics show this as a trace; go-to-definition follows it.
 - The C backend emits `#line` directives from origins; native backends emit DWARF line tables from
