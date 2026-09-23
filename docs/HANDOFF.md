@@ -1,6 +1,6 @@
 # Handoff
 
-State of Overt as of 2026-09-24 (fourth session), written for the next agent. Read this, then
+State of Overt as of 2026-09-24 (fifth session), written for the next agent. Read this, then
 `CLAUDE.md` (the user's rules and the agent working procedure; it exists on disk but is excluded
 by the user's global gitignore, so it is not in version control), then
 `docs/spec/00-principles.md`.
@@ -41,7 +41,9 @@ duplicates, `overt_fs::Edit` and `Scratch`; `overt pkg add` and `pack`, literals
 tree hashes and `.ovpkg` 2; nextest; MVS and `overt.lock`; the shared user store, labels and
 `cache gc`; `overt-query`; the global symbol pool; the shared origin table; typed literals and path
 calls in the literal reader; stable file and origin identities; `overt explain` and the explanation
-pages; `.replace`; `overt pkg update` through indexes.
+pages; `.replace`; `overt pkg update` through indexes. Fifth session: lockfile fixes without
+cascades (decision 65), `nesting_too_deep` wording, persisted query memos, exact integers and
+intervals in `overt-sema`, primitives generated from `lang` (decision 66).
 The user asked for commits per batch: commit each finished batch with `jj`.
 
 ## 2. How the user works (non-negotiable)
@@ -116,11 +118,12 @@ tested (the rest are stubs):
 | `overt-origin` | `OriginTable` over `boxcar` (append-only, `&self`: `source`, `declaration`, `inside`, `derive`, `contains`), `Origin` with `Anchor::{File, Declaration, Within}`, `Via`, `Chain`. `OriginId` hashes by its anchored identity (decision 59); lowering anchors origins to declarations (`Lower::declaring`). |
 | `overt-span` | `FileId` (hashes by its key: `SourceFiles::add_as`; the driver keys files `<package>@<version>/<path>` through `Session::file_key`), `ByteRange`, `Span`, `SourceFile` (`line_col`), `SourceMap`, `SourceFiles`, `EXTENSION`. |
 | `overt-origin` | `OriginId`, `Origin`, `Via`, `OriginTable`. |
-| `overt-diag` | `DiagId`, `Severity`, `Msg` (typed parts, `append`), `Label`, `Fix`, `ChildKind` (Display), `Diagnostic`, `DiagCtxt`, `DiagCx::error_at`, `DiagSink`; `Msg::did_you_mean`; `errors` (generated). |
+| `overt-diag` | `DiagId`, `Severity`, `Msg` (typed parts, `append`), `Label`, `Fix`, `ChildKind` (Display), `Diagnostic` (`label` adds a secondary label), `DiagCtxt`, `DiagCx::error_at`, `DiagSink`, `ErrorGuaranteed`; `Msg::did_you_mean`; `errors` (generated). |
 | `overt-suggest` | `closest` (did-you-mean by edit distance), `Lookup` on slices (find by name or the closest name). Generic, no diag types. |
 | `overt-hash` | BLAKE3 only. `Algorithm` (typed, `name`), `Hash` (`blake3:<base32>`, `parse`, `digest`, `of(bytes)`, `tree(dir, include)`), `Snapshot` (per-file `Entry { hash, mode }` by path, `root` = Merkle tree over path components with directory nodes in a derived key, `changes`, text form, portable plain-component paths), `Change`. Package identity, manifest `.hash`, every cache key. |
 | `overt-pkg` | `Mirror` (`parse`, `fetch`), `SCHEMES` (https, http, file), `FORMATS` (`.ovpkg`, `.tar.zst`, `.tar.xz`, `.tar.gz`, `.tar`, `.zip`; `strip` of a forge's top directory), `Archive` (`.ovpkg`: `pack`, `unpack` verifying each file), `Failure`/`Malformed` with sources. |
-| `overt-query` | `Query` (`NAME`, `Key`, `Value`, `compute`, `interface`, `cycle`), `Db` (`set`, `get`, `revision`), `Cx` (`get` records reads), `Cycle`. Verifying traces of interface hashes, early cutoff, one verification per revision. Not persisted yet, single-flight per thread only. |
+| `overt-query` | `Query` (`NAME`, `Key`, `Value`, `compute`, `interface`, `cycle`), `Db` (`set`, `get`, `revision`, `persist::<Q>`, `save`, `load`), `Cx` (`get` records reads), `Cycle`, `Persist` (opt-in, keys and values `Facet`), `Unsaved`, `Unloaded`. Verifying traces of interface hashes, early cutoff, one verification per revision; loaded memos are unverified (`verified: None`). Single-flight per thread only. The driver does not save or load yet: that comes with the first persisted sema queries (`.overt/queries/<toolchain hash>`). |
+| `overt-sema` | `int`: `Integer` (num-bigint), `Interval` (`add`, `sub`, `mul`, `neg`, `div`/`rem` -> `Divided { range, divisor: Divisor }`, `contains`, `hull`, `bits`, `storage` -> `Storage` or `None` past the width cap), tested exhaustively against small ranges. `primitives` (generated): one module and enum per `lang` namespace (`primitives::mem::Mem`), `Primitive` over them (`ALL`, `namespace`, `name`). Stubs: `check`, `eval` (`Evaluator` trait), `layout`, `ty`. |
 | `overt-graph` | `Requirements<K>` (`add`, `order`, `OrderError`): the pass manager's ordering. |
 | `overt-fs` | `Tree` on `Path`: `files` (recursive, sorted), `entries`. `Modes` on `Path` (`mode`, `set_mode`: `Mode::{Regular, Executable}`); `Relative` (`relative_to`). `Edit` on `Path`: `put` (creates parents), `remove` (absent is removed), `fresh` (empty directory), `replace_with` (move a directory in whole). `Scratch`: a test directory removed on drop. Every filesystem write in the compiler and its tests goes through them. |
 | `overt-outline` | `Outline` + `Outlined::node`: indented tree text for the CST and HIR dumps. |
@@ -188,36 +191,28 @@ typst compile whitepaper/main.typ whitepaper/overt.pdf
 
 In order:
 
-1. Done in the fourth session: package loading, spreads, `names.unresolved`. Still open there:
-   spread paths through aliases (`..uart;` after `uart := a.b;`) and through declarations that are
-   not files (`..lang.int.X` where `X` is a `struct`); member paths (`a.b.c` checked against
-   namespaces) belong with sema. A name declared in `x.ov` and held in `x/` is `names.duplicate`
-   (`Session::check_children`).
-2. Packaging, from the user's Nix review. Done: executable bit, shared user store with lockfile
-   roots (`overt cache list|gc`), labeled entries, MVS and `overt.lock` (every required version),
-   `pkg add|fetch|update|pack`, indexes (decision 60), `.replace` (decision 64). Open:
-   - Bugs found while writing the explanation pages: `pkg fetch` cannot rewrite a stale lockfile
-     (fetch walks `dep()`, which selects and reports `package.stale_lock`; fetch should walk the
-     declared versions and leave the lock check to `check`); a hash mismatch also reports a stale
-     lock (a cascade); the `version_conflict` note shows "the project" as code;
-     `package.stale_lock` and `package.version_conflict` carry no span (point them at the lock
-     entry and at a requiring dependency). Update `package/stale_lock.md` when fixed.
-   - Query persistence with facet and postcard under `.overt/queries/` (decision 61).
-   - Signed binary caches (decision 63) and planned builds wait for the compile-time evaluator,
-     since both need `build.ov`'s `build` function evaluated. Later: early cutoff of build steps,
-     sandboxed steps, `--verify-reproducible`, `overt pkg why`.
-3. `names.private` (needs member types: sema), `binding.hole_value` (needs attribute resolution).
-4. Sema on `overt-query` (the engine exists; persistence to disk and parallel single-flight are
-   open; stable file and origin identities exist, decision 59), then
-   desugaring into `lang` items with `Via::Desugar` origins (appendix B), queries, sema (with
-   narrowing, decision 35, exhaustive match, decision 29), MIR, interpreter.
-5. Done: explanation pages `lib/lang/lang/errors/<group>/<id>.md` for every diagnostic, read from
-   each `Diag`'s `meta.embed` (generated `errors::EXPLANATIONS`), checked with the corpus
-   (`xtask/src/explanations.rs`: `## Example` reports exactly its annotations, `## Fix` nothing;
-   `console` sections are shown), printed by `overt explain <id>`. A new diagnostic needs its page.
-6. Fuzz the parser longer (the verifier checks node fields; 150 s runs are clean). The syntax pages
-   found `syntax.nesting_too_deep` fires at 256 levels while its message says "deeper than 256"
-   (off by one), and appendix D cites the parse rules as spec 01 section 5; they are section 6.
+1. Sema, on `overt-query`, in steps (each committed):
+   - Done: exact integers and intervals; primitives from `lang` (decision 66).
+   - Type and value model: interned types (`Int(Interval)`, floats, nominal struct and enum
+     literals identified by origin plus compile-time arguments, decision 28, tuples, arrays,
+     references, pointers, functions), compile-time values (`Integer`, types, enum and struct
+     values, functions), stable declaration identity (package, namespace path, name).
+   - Inputs set by the driver (file text, namespace layout, package scopes), so queries stay pure;
+     diagnostics are part of query values. Persist those queries and wire `.overt/queries/`.
+   - Appendix B as a table in a `.ov` source (operators to `lang.ops` items), generated, so no
+     `lang` path is written in Rust.
+   - Checker, MIR, then the MIR interpreter behind `Evaluator`: compile-time evaluation is the
+     interpreter (spec 13, section 6), never a second evaluator over HIR. First targets:
+     `corpus/reject/types/mismatch.ov` (`flag: bool = 3`), then `integers/does_not_fit.ov`
+     (needs `u32 := unsigned(32)`, a compile-time call).
+   - `HIR Lit::Int` holds `i128`; literals past it need `Integer`.
+2. Packaging, still open: signed binary caches (decision 63) and planned builds wait for the
+   evaluator; later `--verify-reproducible`, `overt pkg why`. Paths in diagnostics mix relative
+   and absolute forms depending on how a directory was found.
+3. `names.private` (needs member types), `binding.hole_value` (needs attribute resolution).
+   Spreads through aliases are forbidden by spec 01, section 8 (paths start at a package or a
+   dependency); spreading a `struct` declaration's members needs sema.
+4. Fuzz the parser longer (120 s runs are clean).
 
 The corpus has 40 accept and 54 reject programs plus 63 explanation pages (`cargo xtask corpus`:
 132 passed, 48 pending on later stages, 20 shown as transcripts, 0 failed), plus
@@ -226,7 +221,8 @@ programs take from drivers, other libraries and unwritten parts of `std`.
 
 ## 9. Open questions and known gaps
 
-- Decisions 45 to 64 are all accepted; no decision is open. 61 (query persistence) and 63 (signed
+- Decisions 65 (partial graphs resolve through the lockfile) and 66 (primitives from `lang`) are
+  proposed. Decisions 45 to 64 are accepted. 61 (query persistence) and 63 (signed
   caches) are accepted but not built. Earlier: decisions 45 to 52 are accepted (50: BLAKE3 Merkle hashes, base32, nested store; 51: `.ovpkg`; 52: error chains) (fourth session): `lang.int`, spreads, compile-time block
   bindings visible in their own value, manifest detection and content-hash caches, `targets` as a
   default dependency. Corpus type functions write `$Ring`, `$Regs`, `$Block`.
