@@ -170,6 +170,16 @@ impl OriginTable {
         &self.origins[id.index as usize]
     }
 
+    /// The name of the declaration `id` declares, or of the one it is written inside.
+    #[must_use]
+    pub fn declaration_name(&self, id: OriginId) -> Option<Symbol> {
+        match self.get(id).anchor {
+            Anchor::Declaration { name, .. } => Some(name),
+            Anchor::Within(declaration) => self.declaration_name(declaration),
+            Anchor::File => None,
+        }
+    }
+
     /// Walks from `id` towards user code, starting with `id` itself.
     #[must_use]
     pub fn chain(&self, id: OriginId) -> Chain<'_> {

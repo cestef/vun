@@ -1,13 +1,17 @@
-//! Type checking (spec 02 and 04): so far, a declaration's value against its annotated type,
-//! wherever both are known without evaluating function bodies.
+//! Type checking a file (spec 02 and 04): each namespace member's value against its annotation,
+//! and each function body, wherever the types are known.
 
 use std::sync::Arc;
 
-use overt_diag::{ChildKind, DiagCtxt, Diagnostic, Msg, errors};
+use overt_diag::DiagCtxt;
 use overt_hir::db::FileRef;
+use overt_hir::tree::{ExprId, ExprKind, Hir, Member, NsId, each_entry};
+use overt_hir::visit::{self, Visitor};
 use overt_query::{Cx, Query};
 
 use crate::env::Env;
+use crate::eval::FnRef;
+use crate::typeck::{Stage, Typed, Typer};
 
 /// What checking a file reports; `None` for a file the driver did not read.
 pub struct Checked;
@@ -19,32 +23,39 @@ impl Query for Checked {
 
     fn compute(cx: &Cx<'_>, key: &FileRef) -> Self::Value {
         let env = Env::of(cx, key)?;
-        let hir = &env.parsed.hir;
-        let mut diag = DiagCtxt::new();
-        for (_, decl) in hir.decls.iter() {
-            let (Some(annotation), Some(value)) = (decl.ty, decl.value) else { continue };
-            let Some(expected) = env.eval(annotation).ok().and_then(|v| v.as_type()) else { continue };
-            let Some(found) = env.type_of(value) else { continue };
-            if expected.accepts(&found) {
-                continue;
-            }
-            let written = env.source(annotation);
-            // Integers that do not fit are their own diagnostic (spec 04, rule 2).
-            let d = if expected.interval().is_some() && found.interval().is_some() {
-                let msg = Msg::new().text("value does not fit the type ").code(&written);
-                let note = Msg::new().text("the value is ").code(found.to_string()).text(", and ");
-                let note = note.code(&written).text(" is ").code(expected.to_string());
-                Diagnostic::error(errors::INT_DOES_NOT_FIT, msg).child(ChildKind::Note, note)
-            } else {
-                let msg =
-                    Msg::new().text("expected ").code(&written).text(", found ").code(found.to_string());
-                Diagnostic::error(errors::TYPES_MISMATCH, msg)
-            };
-            let expected_here = Msg::new().text("expected because of this type");
-            let d =
-                d.at(hir.exprs[value].origin, None).label(hir.exprs[annotation].origin, Some(expected_here));
-            diag.error(d);
+        let mut checker = Checker { env: &env, diag: DiagCtxt::new() };
+        if let Some(root) = env.parsed.hir.root {
+            checker.namespace(&env.parsed.hir, root);
         }
-        Some(Arc::new(diag))
+        Some(Arc::new(checker.diag))
+    }
+}
+
+/// Walks a whole file, checking what is typed apart: namespace members and function bodies.
+struct Checker<'e, 'a, 'db> {
+    env: &'e Env<'a, 'db>,
+    diag: DiagCtxt,
+}
+
+impl Visitor for Checker<'_, '_, '_> {
+    fn namespace(&mut self, hir: &Hir, ns: NsId) {
+        each_entry(&hir.namespaces[ns].members, &mut |m| {
+            if let Member::Decl(d) = m {
+                let mut typer = Typer::new(self.env, Stage::Compile);
+                typer.decl(hir, *d);
+                self.diag.absorb(&typer.diag);
+            }
+        });
+        visit::walk_namespace(self, hir, ns);
+    }
+
+    fn expr(&mut self, hir: &Hir, expr: ExprId) {
+        if let ExprKind::Fn { .. } = hir.exprs[expr].kind {
+            let f = FnRef { file: self.env.file.clone(), expr };
+            if let Some(typed) = self.env.cx.get::<Typed>(&f) {
+                self.diag.absorb(&typed.diag);
+            }
+        }
+        visit::walk_expr(self, hir, expr);
     }
 }

@@ -26,7 +26,7 @@ pub const STAGES: &[Stage] = &[
             errors::PACKAGE,
         ],
     },
-    Stage { name: "types", reports: &[errors::TYPES_MISMATCH] },
+    Stage { name: "types", reports: &[errors::TYPES_MISMATCH, errors::INT_WIDTH_CAP] },
 ];
 
 /// Whether some stage that exists reports `id`.

@@ -38,6 +38,8 @@ pub enum Storage {
 
 impl Storage {
     pub const ALL: [Self; 5] = [Self::B8, Self::B16, Self::B32, Self::B64, Self::B128];
+    /// The widest storage: an integer needing more bits exists at compile time only (rule 5).
+    pub const CAP: Self = Self::B128;
 
     #[must_use]
     pub const fn bits(self) -> u64 {

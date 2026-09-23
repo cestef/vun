@@ -12,7 +12,7 @@ fn primitives_are_the_top_level_holes_of_lang_by_namespace() {
 
 /// A database holding a `lang` with an integer primitive and an app seeing it through its
 /// prelude, the app's root file holding `app`.
-fn packages(app: &str) -> (overt_query::Db, overt_hir::db::FileRef) {
+pub(crate) fn packages(app: &str) -> (overt_query::Db, overt_hir::db::FileRef) {
     use std::sync::Arc;
 
     use overt_hash::Hash;
@@ -21,7 +21,7 @@ fn packages(app: &str) -> (overt_query::Db, overt_hir::db::FileRef) {
 
     let db = overt_query::Db::new();
     let (lang, user) = (PackageId(Hash::of(b"lang")), PackageId(Hash::of(b"app")));
-    let text = "Int: ($r: Range) -> type = _;\nRange: type = _;\nbool := enum { false, true };\nu8 := Int(0..=255);\n";
+    let text = "type: type = _;\nInt: ($r: Range) -> type = _;\nRange: type = _;\nbool := enum { false, true };\nu8 := Int(0..=255);\n";
     let files = |name: &str| vec![format!("{name}.ov")];
     let data = |name: &str, deps, prelude| PackageData {
         name: Some(Symbol::intern(name)),

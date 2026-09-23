@@ -3,7 +3,7 @@
 
 use std::fmt;
 
-use super::{NominalKind, TyKind, Value};
+use super::{Nominal, NominalKind, TyKind, Value};
 use crate::int::Extended;
 
 impl fmt::Display for TyKind {
@@ -13,6 +13,9 @@ impl fmt::Display for TyKind {
                 Extended::PosInf => write!(f, "Int({}..)", Bound(range.lo())),
                 hi => write!(f, "Int({}..={})", Bound(range.lo()), Bound(hi)),
             };
+        }
+        if let Some(sig) = self.signature() {
+            return write!(f, "{} -> {}", Self::Tuple(sig.params), sig.result);
         }
         match self {
             Self::Primitive(p, args) if args.is_empty() => f.write_str(p.name()),
@@ -30,6 +33,7 @@ impl fmt::Display for TyKind {
                 }
                 f.write_str(")")
             }
+            Self::Nominal(Nominal { name: Some(name), .. }) => f.write_str(name.as_str()),
             Self::Nominal(n) => f.write_str(match n.kind {
                 NominalKind::Struct => "struct { .. }",
                 NominalKind::Enum => "enum { .. }",

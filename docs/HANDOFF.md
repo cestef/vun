@@ -1,6 +1,6 @@
 # Handoff
 
-State of Overt as of 2026-09-24 (fifth session), written for the next agent. Read this, then
+State of Overt as of 2026-09-24 (sixth session), written for the next agent. Read this, then
 `CLAUDE.md` (the user's rules and the agent working procedure; it exists on disk but is excluded
 by the user's global gitignore, so it is not in version control), then
 `docs/spec/00-principles.md`.
@@ -29,8 +29,8 @@ symbol pool, a shared origin table, and stable file and origin identities. Every
 checked explanation page (`overt explain`). `overt check <file>` runs every stage;
 `overt dump hir` prints the resolved HIR with origins. Every file in `lib/` and `corpus/accept`
 parses, lowers, verifies and resolves cleanly. Type checking has begun: annotated declarations
-are checked against their types (`types.mismatch`, `int.does_not_fit`), with compile-time calls
-run by the interpreter.
+and function bodies are typed (`types.mismatch`, `int.does_not_fit`, `int.width_cap`), with
+compile-time calls run by the interpreter.
 
 History (jj, newest last): scaffold; lexer; parser, CST, tables, CLI and corpus; bitwise compound
 assignments; corpus grown to 40 accept and 50 reject; modules split and the 300-line limit;
@@ -45,7 +45,8 @@ tree hashes and `.ovpkg` 2; nextest; MVS and `overt.lock`; the shared user store
 calls in the literal reader; stable file and origin identities; `overt explain` and the explanation
 pages; `.replace`; `overt pkg update` through indexes. Fifth session: lockfile fixes without
 cascades (decision 65), `nesting_too_deep` wording, persisted query memos, exact integers and
-intervals in `overt-sema`, primitives generated from `lang` (decision 66).
+intervals in `overt-sema`, primitives generated from `lang` (decision 66), MIR and the
+interpreter, body typing with `lang.Fn` (decision 68).
 The user asked for commits per batch: commit each finished batch with `jj`.
 
 ## 2. How the user works (non-negotiable)
@@ -126,7 +127,7 @@ tested (the rest are stubs):
 | `overt-hash` | BLAKE3 only. `Algorithm` (typed, `name`), `Hash` (`blake3:<base32>`, `parse`, `digest`, `of(bytes)`, `tree(dir, include)`), `Snapshot` (per-file `Entry { hash, mode }` by path, `root` = Merkle tree over path components with directory nodes in a derived key, `changes`, text form, portable plain-component paths), `Change`. Package identity, manifest `.hash`, every cache key. |
 | `overt-pkg` | `Mirror` (`parse`, `fetch`), `SCHEMES` (https, http, file), `FORMATS` (`.ovpkg`, `.tar.zst`, `.tar.xz`, `.tar.gz`, `.tar`, `.zip`; `strip` of a forge's top directory), `Archive` (`.ovpkg`: `pack`, `unpack` verifying each file), `Format` rows both read and write (`Format::pack(dir, include, top)`, `Archive::FORMAT` is the `.ovpkg` row), `Contents` (a snapshot's files read from disk under a top directory), `Tar` (`Header` shared by reader and writer: ustar, GNU long names, PAX paths; links refused; paths through `Snapshot::components`), `Zip`, `Zstd` (ruzstd), `Failure`/`Malformed` with sources. `lzma-rs` writes valid but uncompressed xz, so `.tar.xz` packs are larger than `.tar`. |
 | `overt-query` | `Query` (`NAME`, `Key`, `Value`, `compute`, `interface`, `cycle`), `Db` (`set`, `get`, `revision`, `persist::<Q>`, `save`, `load`), `Cx` (`get` records reads), `Cycle`, `Persist` (opt-in, keys and values `overt_codec::{Encode, Decode}`), `Unloaded`, `Db::resource::<T>()` (shared append-only tables: `SourceFiles`, `OriginTable`). Verifying traces of interface hashes, early cutoff, one verification per revision; loaded memos are unverified (`verified: None`). Single-flight per thread only. The driver does not save or load yet: that comes with the first persisted sema queries (`.overt/queries/<toolchain hash>`). |
-| `overt-sema` | `int`: `Integer` (num-bigint), `Interval` (`add`, `sub`, `mul`, `neg`, `div`/`rem` -> `Divided { range, divisor: Divisor }`, `contains`, `hull`, `bits`, `storage` -> `Storage` or `None` past the width cap), tested exhaustively against small ranges. `primitives` (generated): one module and enum per `lang` namespace (`primitives::mem::Mem`), `Primitive` over them (`ALL`, `namespace`, `name`). `ty`: `Ty = Interned<TyKind>` (`Primitive(p, args)`, `Nominal { literal, args, kind }`, `Tuple`, `Array`; `TyKind::int`, `interval`, `accepts`, Display), `Value` (`Int`, `Range(Option<Interval>)`, `Type`, `Tuple`, `Variant`, `Struct`, `Primitive`, `Namespace`; `as_type`). Queries: `item::Declared((Namespace, Symbol)) -> Option<Site>` (through spreads and directories), `decl::DeclValue(DeclRef)` (a `lang` hole is its primitive), `check::Checked(FileRef)` (annotated values against their types: `types.mismatch`). `env::Env` resolves names to sites and evaluates constant forms; anything else is `Unevaluated` and never reported. Stubs: `eval` (`Evaluator` trait), `layout`. |
+| `overt-sema` | `int`: `Integer` (num-bigint), `Interval` (`add`, `sub`, `mul`, `neg`, `div`/`rem` -> `Divided { range, divisor: Divisor }`, `contains`, `hull`, `bits`, `storage` -> `Storage` or `None` past the width cap), tested exhaustively against small ranges. `primitives` (generated): one module and enum per `lang` namespace (`primitives::mem::Mem`), `Primitive` over them (`ALL`, `namespace`, `name`). `ty`: `Ty = Interned<TyKind>` (`Primitive(p, args)`, `Nominal { literal, args, kind }`, `Tuple`, `Array`; `TyKind::int`, `interval`, `accepts`, `signature` -> `Signature` (`lang.Fn((A, B), R)`), `unit`, Display; a `Nominal` shows the declaration its literal is written in), `Value` (`Int`, `Range(Option<Interval>)`, `Type`, `Tuple`, `Variant`, `Struct`, `Primitive`, `Namespace`; `as_type`). Queries: `item::Declared((Namespace, Symbol)) -> Option<Site>` (through spreads and directories), `decl::DeclValue(DeclRef)` (a `lang` hole is its primitive), `decl::DeclType(DeclRef) -> Known` (annotation or value type, `Stage::Compile` unless `mut`), `typeck::Typed(FnRef) -> TypedBody` (types per expression and reports), `check::Checked(FileRef)` (a `Visitor` over the file: members through `Typer::decl`, bodies through `Typed`). `typeck::Typer` is a HIR `Visitor`: literals, names (locals by annotation or value, others by `DeclType`), namespace members, blocks, `-`, arithmetic by `Interval::binary` with `int.width_cap` on `Stage::Run` intermediates, calls against `Fn` signatures, `$e`; other forms have their parts typed and no type. `Env::{ty, result, signature}` evaluate annotations. `env::Env` resolves names to sites and evaluates constant forms; anything else is `Unevaluated` and never reported. Stubs: `eval` (`Evaluator` trait), `layout`. |
 | `overt-graph` | `Requirements<K>` (`add`, `order`, `OrderError`): the pass manager's ordering. |
 | `overt-fs` | `Tree` on `Path`: `files` (recursive, sorted), `entries`. `Modes` on `Path` (`mode`, `set_mode`: `Mode::{Regular, Executable}`); `Relative` (`relative_to`). `Edit` on `Path`: `put` (creates parents), `remove` (absent is removed), `fresh` (empty directory), `replace_with` (move a directory in whole). `Scratch`: a test directory removed on drop. Every filesystem write in the compiler and its tests goes through them. |
 | `overt-outline` | `Outline` + `Outlined::node`: indented tree text for the CST and HIR dumps. |
@@ -160,7 +161,7 @@ bodies, so `$for`/`$if` work in every list context; node kinds are chosen after 
 (postorder). One report per position; missing things are reported at the end of the previous
 token; nesting capped at 256; the keyword hint suggests `\keyword`.
 
-Tests: 139, including unit tests per crate, `tests/lexer.rs`, `tests/parser.rs` (all of `lib/` and
+Tests: 144, including unit tests per crate, `tests/lexer.rs`, `tests/parser.rs` (all of `lib/` and
 `corpus/accept` parse clean and verify, CST and token snapshots mirroring the corpus tree), CLI parsing tests, the
 generated-files-current test and the corpus test (no failing corpus file). Fuzz: `parse` ran 600k inputs in 4 minutes
 without a failure. clippy pedantic is clean.
@@ -202,12 +203,14 @@ In order:
    types and values, `Declared`, `DeclValue`, `Call` (memoized compile-time calls through the
    installed `Evaluator`), `Checked`; MIR v0 (`overt_mir::Mir`) and the interpreter v0
    (`overt_interp::Interpreter`) evaluate compile-time calls, so `u8 := unsigned(8)` is computed
-   from `lang.int`. Checked so far: an annotated declaration's value against its type, typed by
-   interval arithmetic over integer literals (`types.mismatch`, `int.does_not_fit`). Next:
-   - Body typing: parameter and local types from annotations, names of constants by their
-     declared type (a `DeclType` query), so `(x * x * x).to(u64)` reports `int.width_cap` (an
-     intermediate past 128 bits with finite bounds; compile-time-only ranges have no cap) and the
-     result of a function is checked against its return type.
+   from `lang.int`. Typed: namespace members against their annotations, function bodies
+   (parameters, locals, names by `DeclType`, arithmetic, calls against `lang.Fn` signatures, the
+   result against the declared one), `int.width_cap` on run-time intermediates. Next:
+   - Nominal types built inside a function (`Pair(u16)`) carry no arguments yet: `Env::nominal`
+     always uses `args: Vec::new()`, so every instantiation is one type. The interpreter must pass
+     its call's compile-time arguments (`Via::Instantiate`).
+   - A call's argument diagnostic names the parameter type by its value (`Int(0..=255)`); label
+     the parameter's declaration when the callee is a known function literal.
    - `lang.bool` and comparisons: comparisons desugar to `lang.ops.Eq`/`Ord`, whose results name
      `bool` in `lang`; find it by data, never by name. Then `if`, `and`, `or` in MIR (branches).
    - Appendix B as a `.ov` table (operators to `lang.ops` items), generated; MIR's operators are
@@ -227,14 +230,14 @@ In order:
 4. Fuzz the parser longer (120 s runs are clean).
 
 The corpus has 40 accept and 55 reject programs plus 63 explanation pages (`cargo xtask corpus`:
-134 passed, 47 pending on later stages, 20 shown as transcripts, 0 failed), plus
+137 passed, 44 pending on later stages, 20 shown as transcripts, 0 failed), plus
 `corpus/build.ov` (prelude `std.prelude` then `support`) and `corpus/support`, stand-ins for what
 programs take from drivers, other libraries and unwritten parts of `std`.
 
 ## 9. Open questions and known gaps
 
-- Decisions 65 (partial graphs resolve through the lockfile) and 66 (primitives from `lang`) are
-  proposed; 67 (pure-Rust dependencies) is accepted. Decisions 45 to 64 are accepted. 61 (query persistence) and 63 (signed
+- Decisions 65 (partial graphs resolve through the lockfile), 66 (primitives from `lang`) and 68
+  (`lang.Fn`, what is compile-time-only, nominal type names) are proposed; 67 (pure-Rust dependencies) is accepted. Decisions 45 to 64 are accepted. 61 (query persistence) and 63 (signed
   caches) are accepted but not built. Earlier: decisions 45 to 52 are accepted (50: BLAKE3 Merkle hashes, base32, nested store; 51: `.ovpkg`; 52: error chains) (fourth session): `lang.int`, spreads, compile-time block
   bindings visible in their own value, manifest detection and content-hash caches, `targets` as a
   default dependency. Corpus type functions write `$Ring`, `$Regs`, `$Block`.
@@ -275,6 +278,9 @@ programs take from drivers, other libraries and unwritten parts of `std`.
 - Query values must hash by content: `HashMap` is not `Hash` (use `BTreeMap`), and `Arc<Hir>`-like
   values hash by the text they come from. Reports are data (`DiagCtxt` in a value, deduplicated by
   `absorb`); a query never emits.
+- `DiagId::within` counts an id as within itself, so a stage may list a single id
+  (`errors::INT_WIDTH_CAP`) as well as a group. Listing `int.does_not_fit` would fail
+  `corpus/reject/integers/does_not_fit.ov` until methods (`.abs()`) are typed.
 - Checks report only what they know: an `Unevaluated` value or an unknown type is silence, never a
   guess. A stage lists exactly the ids it implements in `stages::STAGES`, or corpus files it cannot
   handle yet fail instead of staying pending.

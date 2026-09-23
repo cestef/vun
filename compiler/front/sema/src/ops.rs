@@ -1,6 +1,6 @@
-//! What operators compute on compile-time values (spec 04): integer arithmetic is exact, and a
-//! division by zero is a trap. Sema's constant forms and the interpreter both compute through
-//! here.
+//! What operators compute (spec 04): on compile-time values, where integer arithmetic is exact and
+//! a division by zero is a trap, and on integer types, by interval arithmetic. Sema and the
+//! interpreter both compute through here.
 
 use overt_grammar::TokenKind;
 
@@ -53,5 +53,21 @@ impl Value {
             (Some(_), _) => return Err(Unevaluated::Unsupported),
         };
         Ok(Self::Range(range))
+    }
+}
+
+impl Interval {
+    /// The range of `self op other` over integers of these ranges (rule 1); `None` for an
+    /// operator not typed yet, or a division by a divisor that is always zero.
+    #[must_use]
+    pub fn binary(&self, op: TokenKind, other: &Self) -> Option<Self> {
+        match op {
+            TokenKind::Plus => Some(self.add(other)),
+            TokenKind::Minus => Some(self.sub(other)),
+            TokenKind::Star => Some(self.mul(other)),
+            TokenKind::Slash => self.div(other).range,
+            TokenKind::Percent => self.rem(other).range,
+            _ => None,
+        }
     }
 }

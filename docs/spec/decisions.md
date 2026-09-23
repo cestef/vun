@@ -71,6 +71,7 @@
 | 65 | A partial graph (absent packages) resolves through the lockfile and neither checks nor writes it; fetching walks the declared graph; an absent package is reported once, and names it could provide are not reported (`ErrorGuaranteed` poisons the scope) | proposed | 10, 12 |
 | 66 | The compiler's primitives are the top-level `= _` declarations of `lang`, generated as one enum per namespace (`primitives::mem::Mem`) under `Primitive`; holes inside interface requirement structs are requirements | proposed | 00, 13 |
 | 67 | Dependencies are pure Rust wherever a production-grade crate exists or the format is small enough to read ourselves: own tar reader and trace subscriber, `ruzstd` (`.ovpkg` at its fastest level), BLAKE3's `pure` build (measured 20 to 35% slower here, still far above lexing); TLS keeps `rustls` with `ring`, the one native dependency | accepted | 12, 13 |
+| 68 | `lang.Fn(params, result)` is the primitive function type, `(A, B) -> R` being `Fn((A, B), R)`; compile-time-only integers (no width cap) are literals, immutable namespace members, `$` parameters and bindings, operands of `$e`, and operations on those alone; a nominal type is shown by the declaration its literal is written in | proposed | 02, 04, appendix A |
 
 ## Questions, with how they were settled
 

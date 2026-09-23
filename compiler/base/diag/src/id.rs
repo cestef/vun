@@ -19,10 +19,12 @@ impl DiagId {
         Self(Cow::Borrowed(path))
     }
 
-    /// Whether this id lies in the namespace `group`, such as `lang.errors.syntax`.
+    /// Whether this id is `group` or lies in its namespace, such as `lang.errors.syntax`.
     #[must_use]
     pub fn within(&self, group: &Self) -> bool {
-        self.0.strip_prefix(&*group.0).is_some_and(|rest| rest.starts_with(Self::SEPARATOR))
+        self.0
+            .strip_prefix(&*group.0)
+            .is_some_and(|rest| rest.is_empty() || rest.starts_with(Self::SEPARATOR))
     }
 }
 

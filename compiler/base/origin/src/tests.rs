@@ -55,3 +55,15 @@ fn identities_survive_shifts_and_new_tables() {
     let moved = t.inside(t.declaration(Span::new(f, 10, 20), None, name), Span::new(f, 13, 15));
     assert_ne!(Hash::of_value(&moved), Hash::of_value(&a[1]));
 }
+
+#[test]
+fn nodes_know_the_declaration_they_are_written_in() {
+    let f = SourceFiles::new().add("a.ov", "");
+    let t = OriginTable::new();
+    let name = overt_intern::Symbol::intern("Point");
+    let decl = t.declaration(Span::new(f, 0, 30), None, name);
+    let literal = t.inside(decl, Span::new(f, 9, 30));
+    let lowered = t.derive(literal, Span::new(f, 9, 30), Via::Lower(PassId(1)));
+    assert_eq!([decl, literal, lowered].map(|o| t.declaration_name(o)), [Some(name); 3]);
+    assert_eq!(t.declaration_name(t.source(Span::new(f, 0, 1))), None);
+}

@@ -1,9 +1,9 @@
-//! The value of a namespace member's declaration at compile time. A declaration whose value is
-//! `_` in `lang` is its primitive (decision 66); elsewhere `_` is provided by the linker or an impl.
+//! The value and the type of a namespace member's declaration. A declaration whose value is `_`
+//! in `lang` is its primitive (decision 66); elsewhere `_` is provided by the linker or an impl.
 
 use overt_grammar::PATH_SEPARATOR;
 use overt_hir::db::Package;
-use overt_hir::tree::ExprKind;
+use overt_hir::tree::{ExprKind, PatKind};
 use overt_intern::Symbol;
 use overt_query::{Cx, Cycle, Query};
 
@@ -11,6 +11,7 @@ use crate::Primitive;
 use crate::env::{Env, Unevaluated};
 use crate::item::DeclRef;
 use crate::ty::Value;
+use crate::typeck::{Known, Stage, Typer};
 
 pub struct DeclValue;
 
@@ -37,6 +38,36 @@ impl Query for DeclValue {
         let primitive =
             Primitive::ALL.iter().find(|p| p.namespace() == namespace && p.name() == name.as_str());
         primitive.map(|&p| Value::Primitive(p)).ok_or(Unevaluated::Provided)
+    }
+
+    fn cycle(_: &Cx<'_>, _: &DeclRef, _: &Cycle) -> Self::Value {
+        Err(Unevaluated::Cycle)
+    }
+}
+
+/// The type of a namespace member's declaration: its annotation, or the type of its value. A
+/// `mut` member is a static read at run time; any other is known at compile time.
+pub struct DeclType;
+
+impl Query for DeclType {
+    const NAME: &'static str = "decl_type";
+    type Key = DeclRef;
+    type Value = Result<Known, Unevaluated>;
+
+    fn compute(cx: &Cx<'_>, key: &DeclRef) -> Self::Value {
+        let env = Env::of(cx, &key.file).ok_or(Unevaluated::Absent)?;
+        let hir = &env.parsed.hir;
+        let decl = &hir.decls[key.decl];
+        let PatKind::Bind(binder) = hir.pats[decl.pat].kind else { return Err(Unevaluated::Unsupported) };
+        let stage = if hir.binders[binder].mutable { Stage::Run } else { Stage::Compile };
+        let ty = match (decl.ty, decl.value) {
+            (Some(annotation), _) => env.ty(annotation)?,
+            (None, Some(value)) => {
+                Typer::new(&env, Stage::Compile).typed(value).ok_or(Unevaluated::Unsupported)?.ty
+            }
+            (None, None) => return Err(Unevaluated::Unsupported),
+        };
+        Ok(Known { ty, stage })
     }
 
     fn cycle(_: &Cx<'_>, _: &DeclRef, _: &Cycle) -> Self::Value {

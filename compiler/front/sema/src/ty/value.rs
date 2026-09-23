@@ -38,13 +38,16 @@ pub enum Value {
 }
 
 impl Value {
-    /// The type this value denotes where a type is expected: a type, or a primitive that takes no
-    /// arguments, such as `lang.f32`.
+    /// The type this value denotes where a type is expected: a type, a primitive that takes no
+    /// arguments, such as `lang.f32`, or a tuple of types, such as `(u8, bool)` or `()`.
     #[must_use]
     pub fn as_type(&self) -> Option<Ty> {
         match self {
             Self::Type(ty) => Some(*ty),
             Self::Primitive(p) => Some(TyKind::primitive(*p)),
+            Self::Tuple(items) => {
+                Some(TyKind::Tuple(items.iter().map(Self::as_type).collect::<Option<_>>()?).intern())
+            }
             _ => None,
         }
     }

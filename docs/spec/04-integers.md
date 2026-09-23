@@ -40,7 +40,8 @@ no separate compile-time integer type.
    it. Narrowing is part of type checking, defined on the syntax of conditions, and never depends
    on the optimizer.
 5. **Width cap.** An intermediate range that needs more than 128 bits is a compile error; narrow an
-   intermediate. Compile-time-only values have no cap.
+   intermediate. Compile-time-only values have no cap: literals, immutable namespace members,
+   `$` parameters and bindings, operands of `$e`, and operations on those alone.
 6. **Division and remainder** by a divisor whose range contains 0 is a trap site; by one whose range
    excludes 0 (`Int(1..)`, a literal, a compile-time value) it is not.
 7. **Storage** is the smallest of 8, 16, 32, 64 or 128 bits that holds the range directly, with no

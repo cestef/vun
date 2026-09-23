@@ -434,6 +434,9 @@ pub mod lang {
         /// The integer type whose values are exactly those of the range `r` (spec 04).
         Int,
         Range,
+        /// The type of functions from a tuple of `params` to `result`: `(A, B) -> R` is
+        /// `Fn((A, B), R)` (appendix B).
+        Fn,
         f16,
         f32,
         f64,
@@ -452,6 +455,7 @@ pub mod lang {
             Self::r#type,
             Self::Int,
             Self::Range,
+            Self::Fn,
             Self::f16,
             Self::f32,
             Self::f64,
@@ -467,6 +471,7 @@ pub mod lang {
                 Self::r#type => "type",
                 Self::Int => "Int",
                 Self::Range => "Range",
+                Self::Fn => "Fn",
                 Self::f16 => "f16",
                 Self::f32 => "f32",
                 Self::f64 => "f64",
@@ -574,6 +579,7 @@ impl Primitive {
         Self::Lang(lang::Lang::r#type),
         Self::Lang(lang::Lang::Int),
         Self::Lang(lang::Lang::Range),
+        Self::Lang(lang::Lang::Fn),
         Self::Lang(lang::Lang::f16),
         Self::Lang(lang::Lang::f32),
         Self::Lang(lang::Lang::f64),

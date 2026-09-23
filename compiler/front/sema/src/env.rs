@@ -10,16 +10,16 @@ use std::sync::Arc;
 use overt_grammar::TokenKind;
 use overt_hir::db::{CheckedNames, FileNames, FileRef, Namespace, Outer, Package, Parsed, ParsedFile, Scope};
 use overt_hir::resolve::Res;
-use overt_hir::tree::{Arg, Entry, ExprId, ExprKind, Lit, Name};
+use overt_hir::tree::{Arg, Entry, ExprId, ExprKind, List, Lit, Name, Param};
 use overt_origin::{OriginId, OriginTable};
 use overt_query::Cx;
 use overt_span::{SourceFiles, SourceMap};
 
 use crate::decl::DeclValue;
 use crate::eval::{Call, FnRef};
-use crate::int::{Integer, Interval};
+use crate::int::Integer;
 use crate::item::{DeclRef, Declared, Site};
-use crate::ty::{Nominal, NominalKind, Ty, TyKind, Value};
+use crate::ty::{Nominal, NominalKind, Signature, Ty, TyKind, Value};
 
 /// Why an expression has no value at compile time here.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -122,8 +122,8 @@ impl<'a, 'db> Env<'a, 'db> {
                 }
                 _ => Err(Unevaluated::Unsupported),
             },
-            ExprKind::Enum(_) => Ok(Self::nominal(e.origin, NominalKind::Enum)),
-            ExprKind::Struct(_) => Ok(Self::nominal(e.origin, NominalKind::Struct)),
+            ExprKind::Enum(_) => Ok(self.nominal(e.origin, NominalKind::Enum)),
+            ExprKind::Struct(_) => Ok(self.nominal(e.origin, NominalKind::Struct)),
             ExprKind::Prefix { op, operand, .. } => Value::unary(*op, &self.eval(*operand)?),
             ExprKind::Infix { op: op @ (TokenKind::DotDot | TokenKind::DotDotEq), left, right } => {
                 let hi = right.map(|r| self.eval(r)).transpose()?;
@@ -134,6 +134,15 @@ impl<'a, 'db> Env<'a, 'db> {
             }
             ExprKind::Call { callee, args } => self.call(*callee, args),
             ExprKind::Fn { .. } => Ok(Value::Fn(FnRef { file: self.file.clone(), expr })),
+            ExprKind::FnType { params, returns } => Ok(Value::Type(self.signature(params, *returns)?.ty())),
+            ExprKind::Tuple(items) => items
+                .iter()
+                .map(|item| match item {
+                    Entry::One(item) => self.eval(*item),
+                    Entry::Staged(_) => Err(Unevaluated::Unsupported),
+                })
+                .collect::<Result<_, _>>()
+                .map(Value::Tuple),
             _ => Err(Unevaluated::Unsupported),
         }
     }
@@ -155,34 +164,44 @@ impl<'a, 'db> Env<'a, 'db> {
         }
     }
 
-    /// The type a `struct` or `enum` literal written at `literal` evaluates to, outside any
-    /// function, so with no compile-time arguments (decision 28).
-    fn nominal(literal: OriginId, kind: NominalKind) -> Value {
-        Value::Type(TyKind::Nominal(Nominal { literal, args: Vec::new(), kind }).intern())
+    /// The type `expr` denotes, evaluated where a type is expected.
+    ///
+    /// # Errors
+    /// Returns why it has no value here, or [`Unevaluated::Unsupported`] for a value that is not
+    /// a type.
+    pub fn ty(&self, expr: ExprId) -> Result<Ty, Unevaluated> {
+        self.eval(expr)?.as_type().ok_or(Unevaluated::Unsupported)
     }
 
-    /// The type of `expr`, when it is known without inference: integer literals, and integer
-    /// arithmetic over those by interval arithmetic (spec 04, rule 1).
-    #[must_use]
-    pub fn type_of(&self, expr: ExprId) -> Option<Ty> {
-        let range = |e| self.type_of(e)?.interval();
-        let interval = match &self.parsed.hir.exprs[expr].kind {
-            ExprKind::Lit(Lit::Int(n)) => Interval::singleton(Integer::from(*n)),
-            ExprKind::Prefix { op: TokenKind::Minus, operand, .. } => range(*operand)?.neg(),
-            ExprKind::Infix { op, left, right: Some(right) } => {
-                let (a, b) = (range(*left)?, range(*right)?);
-                match op {
-                    TokenKind::Plus => a.add(&b),
-                    TokenKind::Minus => a.sub(&b),
-                    TokenKind::Star => a.mul(&b),
-                    TokenKind::Slash => a.div(&b).range?,
-                    TokenKind::Percent => a.rem(&b).range?,
-                    _ => return None,
-                }
-            }
-            _ => return None,
-        };
-        Some(TyKind::int(&interval))
+    /// The result type a function declares: `()` when it declares none.
+    ///
+    /// # Errors
+    /// As [`Self::ty`].
+    pub fn result(&self, returns: Option<ExprId>) -> Result<Ty, Unevaluated> {
+        returns.map_or_else(|| Ok(TyKind::unit()), |r| self.ty(r))
+    }
+
+    /// The signature `params -> returns` declares.
+    ///
+    /// # Errors
+    /// Returns why a parameter or result type has no value here, such as a type naming a `$`
+    /// parameter, known only per instantiation.
+    pub fn signature(&self, params: &List<Param>, returns: Option<ExprId>) -> Result<Signature, Unevaluated> {
+        let params = params
+            .iter()
+            .map(|param| match param {
+                Entry::One(Param { ty: Some(t), .. }) => self.ty(*t),
+                _ => Err(Unevaluated::Unsupported),
+            })
+            .collect::<Result<_, _>>()?;
+        Ok(Signature { params, result: self.result(returns)? })
+    }
+
+    /// The type a `struct` or `enum` literal written at `literal` evaluates to, outside any
+    /// function, so with no compile-time arguments (decision 28).
+    fn nominal(&self, literal: OriginId, kind: NominalKind) -> Value {
+        let name = self.cx.db().resource::<OriginTable>().declaration_name(literal);
+        Value::Type(TyKind::Nominal(Nominal { literal, args: Vec::new(), kind, name }).intern())
     }
 
     /// The source text of `expr`, as written.

@@ -51,7 +51,8 @@ each argument on the relevant domain, so its extremes over a box are attained at
 
 #rule[width cap][
   An intermediate whose range needs more than 128 bits of storage is a compile-time error.
-  Compile-time-only values have no cap.
+  Compile-time-only values (literals, immutable namespace members, `$` parameters and bindings,
+  and operations on those alone) have no cap.
 ]
 
 The cap makes the cost of exactness bounded and visible: a chain of multiplications that would

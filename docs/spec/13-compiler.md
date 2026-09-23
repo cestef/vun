@@ -145,10 +145,13 @@ Evaluation strategy (research notes, section 1):
 4. the evaluator runs on its own stack with a deterministic step budget;
 5. a Cranelift JIT may later sit behind `Evaluator`, differential-tested against the interpreter.
 
-Until the interpreter exists, sema computes the values that need no function body: literals,
-names and members of namespaces, `struct` and `enum` literals (nominal, decision 28), ranges, and
-primitive type constructors applied to constants (`Int(0..=255)`). A value that needs a call is
-unknown, and checks that would need it stay silent rather than guess.
+Sema computes the values that need no function body itself: literals, names and members of
+namespaces, `struct` and `enum` literals (nominal, decision 28), ranges, tuples, function types, and
+primitive type constructors applied to constants (`Int(0..=255)`); a call goes to the evaluator.
+Types come from the same values: a parameter or local has its annotation's type, a namespace
+member its annotation or its value's type, and each function body is typed on its own query. A
+value or type that is not known yet is unknown, and checks that would need it stay silent rather
+than guess.
 
 Every backend is checked against the interpreter by differential testing, on the corpus and on
 randomly generated programs in the style of Csmith. That is what keeps guarantees 3 and 4 true.

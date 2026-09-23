@@ -9,6 +9,10 @@ type: type = _;
 Int: ($r: Range) -> type = _;
 Range: type = _;
 
+/// The type of functions from a tuple of `params` to `result`: `(A, B) -> R` is
+/// `Fn((A, B), R)` (appendix B).
+Fn: ($params: type, $result: type) -> type = _;
+
 f16: type = _;
 f32: type = _;
 f64: type = _;

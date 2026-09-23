@@ -7,7 +7,7 @@ declaration whose value is `_`.
 
 | Module | Contents |
 |--------|----------|
-| `lang` | `type`, `Int`, `f16`, `f32`, `f64`, `bool`, `never`, `Range`, `Option`, `Result`, `Step`, `Coroutine`, `Interface`, `interface` |
+| `lang` | `type`, `Int`, `Fn`, `f16`, `f32`, `f64`, `bool`, `never`, `Range`, `Option`, `Result`, `Step`, `Coroutine`, `Interface`, `interface` |
 | `lang.ops` | `Add`, `Sub`, `Mul`, `Div`, `Rem`, `Neg`, `BitAnd`, `BitOr`, `BitXor`, `Not`, `Shl`, `Shr`, `Concat`, `Eq`, `Ord`, `Index`, `Call`, `Try`, `Iterate` |
 | `lang.mem` | `Ref`, `RefMut`, `RefOut`, `RefTake`, `Ptr`, `Cell`, `volatile_load`, `volatile_store`, `atomic_*`, `copy`, `fill`, `prefetch` |
 | `lang.meta` | `Code`, `Name`, `quote` primitives, type and declaration info, witnesses, attributes, origins, spans, `embed`, `heap`, `TypeOf` |

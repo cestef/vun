@@ -4,7 +4,7 @@
 use crate::Primitive;
 use crate::env::Unevaluated;
 use crate::primitives::lang::Lang;
-use crate::ty::{TyKind, Value};
+use crate::ty::{Signature, TyKind, Value};
 
 impl Primitive {
     /// The value of `self(args)` at compile time.
@@ -16,6 +16,14 @@ impl Primitive {
         match (self, args) {
             // `lang.Int(range)`: the integers of the range (spec 04, section 1).
             (Self::Lang(Lang::Int), [Value::Range(Some(range))]) => Ok(Value::Type(TyKind::int(range))),
+            // `lang.Fn(params, result)`: a function type (appendix B).
+            (Self::Lang(Lang::Fn), [params, result]) => {
+                let (Some(params), Some(result)) = (params.as_type(), result.as_type()) else {
+                    return Err(Unevaluated::Unsupported);
+                };
+                let TyKind::Tuple(params) = &*params else { return Err(Unevaluated::Unsupported) };
+                Ok(Value::Type(Signature { params: params.clone(), result }.ty()))
+            }
             _ => Err(Unevaluated::Unsupported),
         }
     }

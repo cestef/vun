@@ -7,17 +7,19 @@
 //! `lang.Option(T)` evaluates to.
 
 mod display;
+mod signature;
 #[cfg(test)]
 mod tests;
 mod value;
 
-use overt_intern::{Interned, Pool};
+use overt_intern::{Interned, Pool, Symbol};
 use overt_origin::OriginId;
 
 use crate::Primitive;
 use crate::int::{Integer, Interval};
 use crate::primitives::lang::Lang;
 
+pub use signature::Signature;
 pub use value::Value;
 
 /// A type.
@@ -47,6 +49,8 @@ pub struct Nominal {
     pub literal: OriginId,
     pub args: Vec<Value>,
     pub kind: NominalKind,
+    /// The declaration the literal is written in, which diagnostics name the type by.
+    pub name: Option<Symbol>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]

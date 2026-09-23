@@ -15,6 +15,7 @@ mod ops;
 #[rustfmt::skip]
 pub mod primitives;
 pub mod ty;
+pub mod typeck;
 
 pub use primitives::Primitive;
 
