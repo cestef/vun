@@ -35,6 +35,7 @@ the transition they perform on the place they borrow.
     [`&mut x`], [$I$], [$I$], [exclusive read and write],
     [`&out x`], [$U$], [$I$], [exclusive write; the callee must initialize],
     [`&take x`], [$I$], [$U$], [exclusive; the callee must consume in place],
+    [`&temp` parameter], [$I$], [$I$], [lent for the call; the result is not tied to it],
     [move of a linear value], [$I$], [$U$], [ownership leaves the place],
     [copy], [$I$], [$I$], [a duplicate is made],
     table.hline(),

@@ -4,7 +4,7 @@ use overt_diag::{Msg, errors};
 use overt_grammar::{Context, ELEMENT_TYPES, NodeKind, TokenKind};
 
 use super::{Brace, Form, Item, List, MAX_NESTING, Operand, Parser};
-use crate::cst::Anchor;
+use crate::cst::{Anchor, Mark};
 
 impl Parser<'_, '_, '_> {
     /// `(...)`: a tuple or a parenthesized expression; a function type when a parameter is typed or
@@ -113,6 +113,7 @@ impl Parser<'_, '_, '_> {
     pub(super) fn head(&mut self, keyword: TokenKind) {
         let mark = self.out.mark();
         self.expr(Brace::Ends);
+        self.whole_binding(mark);
         let kind = if self.at(TokenKind::Eq) {
             NodeKind::Test
         } else if keyword == TokenKind::For && self.at_word(Context::ForPattern) {
@@ -123,6 +124,16 @@ impl Parser<'_, '_, '_> {
         let token = self.bump();
         self.expr(Brace::Ends);
         self.out.node(kind, Anchor::Token(token), mark);
+    }
+
+    /// `n := p` in a pattern position: the pattern since `mark` becomes the name of a binding
+    /// whose value is the pattern after `:=`.
+    pub(super) fn whole_binding(&mut self, mark: Mark) {
+        if self.at(TokenKind::ColonEq) {
+            let op = self.bump();
+            self.expr(Brace::Ends);
+            self.out.node(NodeKind::Binding, Anchor::Token(op), mark);
+        }
     }
 
     /// A block-like expression, possibly under `$` or `unsafe`.

@@ -137,6 +137,7 @@ impl Parser<'_, '_, '_> {
                 }
             }
             Item::Arm => {
+                self.whole_binding(mark);
                 if self.at(TokenKind::If) {
                     let guard = self.out.mark();
                     let token = self.bump();

@@ -1,1 +1,2 @@
-//! Memory: allocators, owning pointers, copying.
+//! Memory: allocators, owning pointers, copying, and `Arena`, which hands out `&mut T` tied to
+//! the arena borrow so that trees are ordinary scoped values (decision 40, spec 05, section 4).

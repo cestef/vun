@@ -71,10 +71,12 @@ yields an optional. Compound assignment is sugar over the first: `x += y` means
   whose amount may exceed the width, and indexing whose index range is not contained in the bounds.
 ]
 
-Typing is deliberately not flow-sensitive: a comparison `i < n` does not change the type of `i`. An
-optimizer may use such facts to delete checks, but the type checker never does, so the type of an
-expression never depends on the optimizer. Obtaining a narrower type is explicit, for instance
-through `Index.try_to(i)`.
+Comparisons narrow. Where a comparison of an immutable binding is known to hold (the branch of an
+`if`, the body of a `for`, the arm of a guard, the code after an `if` whose branch cannot fall
+through) the binding has the narrowed range, so `if i < n { buf[i] }` needs no conversion.
+Narrowing is defined on the syntax of conditions and applies only to bindings that cannot change,
+so the type of an expression still never depends on the optimizer. Mutable places are not narrowed;
+for them a narrower type is explicit, for instance through `Index.try_to(i)`.
 
 == Consequences
 

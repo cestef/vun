@@ -9,8 +9,8 @@ appears.
 == Keywords
 
 Overt reserves fifteen words: `mut`, `if`, `else`, `match`, `for`, `break`, `continue`, `return`,
-`yield`, `defer`, `and`, `or`, `struct`, `enum` and `unsafe`; and four contextual ones: `in` after
-a `for` pattern, and `out`, `take` and `static` after `&`. For comparison, Lua reserves 22 words,
+`yield`, `defer`, `and`, `or`, `struct`, `enum` and `unsafe`; and five contextual ones: `in` after
+a `for` pattern, and `out`, `take`, `static` and `temp` after `&`. For comparison, Lua reserves 22 words,
 Go 25, Rust 39 and C 44. A backslash takes what follows literally, so `\unsafe` is an ordinary
 name, `\"C:\dir"` a string without escapes, and a run of lines starting with `\\` a multi-line
 string; no reserved word is ever unavailable as a name. The words other languages spend elsewhere

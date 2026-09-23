@@ -290,6 +290,7 @@ pub enum NodeKind {
     String,
     RawStringLine,
     Label,
+    Rest,
     Error,
     File,
     Doc,
@@ -351,6 +352,7 @@ impl NodeKind {
         Self::String,
         Self::RawStringLine,
         Self::Label,
+        Self::Rest,
     ];
     pub const BRANCHES: &[Self] = &[
         Self::Error,
@@ -408,6 +410,8 @@ pub enum Context {
     ForPattern,
     /// Directly after `&`.
     AfterAmp,
+    /// Directly after `&`, before a borrow mode: `&temp mut`.
+    BorrowQualifier,
 }
 /// How an infix operator groups with its own level.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -886,7 +890,7 @@ impl NodeKind {
                 &[
                     NodeSlot {
                         field: NodeField::Mode,
-                        count: Count::Optional,
+                        count: Count::Many,
                         kind: Some(NodeKind::Mode),
                     },
                     NodeSlot {
@@ -1114,6 +1118,7 @@ pub const CONTEXTUAL: &[(&str, Context)] = &[
     ("out", Context::AfterAmp),
     ("take", Context::AfterAmp),
     ("static", Context::AfterAmp),
+    ("temp", Context::BorrowQualifier),
 ];
 /// Opening delimiters and the tokens that close them.
 pub const DELIMITERS: &[(TokenKind, TokenKind)] = &[
@@ -1148,7 +1153,8 @@ pub const INFIX: &[(Assoc, &[TokenKind])] = &[
     (Assoc::Left, &[TokenKind::Plus, TokenKind::Minus]),
     (Assoc::Left, &[TokenKind::Star, TokenKind::Slash, TokenKind::Percent]),
 ];
-/// Operators written before their operand. `&` may be followed by a borrow mode.
+/// Operators written before their operand. `&` may be followed by borrow modes (`&temp mut`);
+/// `..` without an operand is a rest pattern.
 pub const PREFIX: &[TokenKind] = &[
     TokenKind::Minus,
     TokenKind::Bang,

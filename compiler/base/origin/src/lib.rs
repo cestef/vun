@@ -75,6 +75,16 @@ impl OriginTable {
     }
 
     #[must_use]
+    pub fn len(&self) -> usize {
+        self.origins.len()
+    }
+
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.origins.is_empty()
+    }
+
+    #[must_use]
     pub fn get(&self, id: OriginId) -> &Origin {
         &self.origins[id]
     }

@@ -65,6 +65,7 @@ package := .{
     .edition = 2027,
     .toolchain = "0.4.2",                 // exact; the launcher fetches it (section 6)
     .include = .{ "build.ov", "blinky.ov", "blinky", "LICENSE" },   // what the hash covers
+    .prelude = .{ "std.prelude" },        // the default; `.{}` for none (spec 01, section 8)
     .deps = .{
         .stm32f4 = .{ .version = "1.3.0", .hash = "sha256-9f2c...",
                       .urls = .{ "https://git.example.org/stm32f4/1.3.0.tar.gz" } },
@@ -91,6 +92,8 @@ build := (b: &mut Build) {
 };
 ```
 
+- `.prelude` lists the namespaces whose public names every file of the package sees
+  unqualified, so that tools resolve names from the manifest alone.
 - `package` must be a **literal**: strings, integers, enum literals, and nested anonymous structs
   and tuples. Tools and indexes read it with the ordinary parser, without evaluating anything.
 - `build` is ordinary compile-time code with a `&mut Build` capability. It runs in the sandboxed

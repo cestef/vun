@@ -159,6 +159,11 @@ std.meta.origin(Point)        // the origin chain (spec 10)
 Reflection is read-only. Types are created by writing type literals (with L0 and L1), never by
 assembling descriptor structs.
 
+**Collection.** `std.meta.collect(package, attr)` returns every declaration of `package` that
+carries the attribute `attr`, with its value: the way a pass manager, a lint set or a command table
+gathers registrations. It is an ordinary call, evaluated only when something calls it, so name
+resolution and evaluation stay lazy everywhere else, and what it depends on is explicit.
+
 **Freeze rule.** A type's member set is fixed when the expression defining it finishes evaluating.
 Reflecting on a type that is still being defined is an error naming the cycle. This rules out
 generators that observe their own output, which is what makes impls and memoization sound.

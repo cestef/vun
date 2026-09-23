@@ -26,8 +26,14 @@ no separate compile-time integer type.
    - `x.wrap(T)`: modular reduction, for power-of-two ranges;
    - `x.sat(T)`: clamps to the bounds;
    - `x.try_to(T)`: returns `?T`.
-4. **Typing is not flow-sensitive.** `if i < n` does not change the type of `i`. The optimizer may use
-   the fact; the type checker never does, so types never depend on the optimizer.
+4. **Comparisons narrow.** Where a comparison of an immutable binding is known to hold, the
+   binding has the narrowed range: in `if i < n { a } else { b }`, `i` is `Int(lo..n.max)` in `a`
+   and `Int(n.min..=hi)` in `b`. The same holds for `==` and `!=` at a bound, for conditions joined
+   with `and` (in the branch) and `or` (in the other branch), for `for` conditions in the body,
+   for match guards in their arm, and after an `if` whose branch cannot fall through
+   (`if i >= n { return .none; }`). Mutable places are never narrowed, since any write would undo
+   it. Narrowing is part of type checking, defined on the syntax of conditions, and never depends
+   on the optimizer.
 5. **Width cap.** An intermediate range that needs more than 128 bits is a compile error; narrow an
    intermediate. Compile-time-only values have no cap.
 6. **Division and remainder** by a divisor whose range contains 0 is a trap site; by one whose range

@@ -34,11 +34,19 @@ impl Parser<'_, '_, '_> {
             let k = p.peek();
             if k == TokenKind::HashLBracket {
                 p.annotated(|p| p.prefix(brace));
+            } else if k == TokenKind::DotDot && !p.starts_expr_at(1) {
+                // `..` alone: the rest of a tuple, array or struct in a pattern.
+                p.leaf(NodeKind::Rest);
             } else if PREFIX.contains(&k) {
                 let mark = p.out.mark();
                 let token = p.bump();
-                if k == TokenKind::Amp && (p.at(TokenKind::Mut) || p.at_word(Context::AfterAmp)) {
-                    p.leaf(NodeKind::Mode);
+                if k == TokenKind::Amp {
+                    if p.at_word(Context::BorrowQualifier) {
+                        p.leaf(NodeKind::Mode);
+                    }
+                    if p.at(TokenKind::Mut) || p.at_word(Context::AfterAmp) {
+                        p.leaf(NodeKind::Mode);
+                    }
                 }
                 p.prefix(brace);
                 p.out.node(NodeKind::Prefix, Anchor::Token(token), mark);

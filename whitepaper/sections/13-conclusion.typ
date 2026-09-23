@@ -7,10 +7,9 @@ concepts, each with one rule, cover integer arithmetic without overflow, resourc
 destructors, borrowing without lifetime annotations, asynchronous code without pinning or allocation,
 code generation without a macro language, and program start-up without compiler-known names.
 
-Several questions remain open and will be settled with evidence from the example corpus that precedes
-the compiler: whether the conservative scoping rule for returned borrows needs a per-parameter
-refinement; whether flow-sensitive narrowing of integer ranges is worth making types depend on control
-flow; whether laziness of code parameters, visible in signatures but not at call sites, causes
-confusion in practice; how scalable vector extensions fit a type indexed by a fixed lane count; and
-whether reference counting restricted to atomic counts is an acceptable cost of eliminating
-thread-safety traits.
+The design questions raised while writing the corpus are settled: returned borrows stay tied to every
+borrowed argument unless a parameter is marked `&temp`; integer comparisons narrow the ranges of
+immutable bindings; type literals are nominal; `match` is exhaustive; and reference counting is
+restricted to atomic counts. What remains to be measured is whether these choices hold up at scale:
+whether laziness of code parameters, visible in signatures but not at call sites, causes confusion
+in practice, and how scalable vector extensions fit a type indexed by a fixed lane count.

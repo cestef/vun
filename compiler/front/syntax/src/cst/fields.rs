@@ -10,7 +10,8 @@ use overt_grammar::{Count, NodeField, NodeKind, NodeSlot};
 
 use super::{Cst, NodeId};
 
-/// The children of one node, by field. See [`Cst::fields`].
+/// The children of one node, by field. See [`Cst::fields`]. The default has no fields.
+#[derive(Default)]
 pub struct Fields {
     slots: &'static [NodeSlot],
     nodes: Vec<NodeId>,
@@ -28,12 +29,12 @@ impl Fields {
             .map_or(&[], |i| &self.nodes[self.bounds[i].0..self.bounds[i].1])
     }
 
-    /// The field holding `n`, if `n` is one of these children.
-    #[must_use]
-    pub fn field_of(&self, n: NodeId) -> Option<NodeField> {
-        let i = self.nodes.iter().position(|&c| c == n)?;
-        let slot = self.bounds.iter().position(|&(lo, hi)| (lo..hi).contains(&i))?;
-        Some(self.slots[slot].field)
+    /// Every child with its field, in source order.
+    pub fn assigned(&self) -> impl Iterator<Item = (NodeId, NodeField)> + '_ {
+        self.slots
+            .iter()
+            .zip(&self.bounds)
+            .flat_map(|(slot, &(lo, hi))| self.nodes[lo..hi].iter().map(|&n| (n, slot.field)))
     }
 
     /// The node of a `one` or `optional` field, if present.

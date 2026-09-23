@@ -120,7 +120,7 @@ Count := enum {
 NodeKind := .{
     .leaves = [
         .punct, .module_doc, .\mut, .mode, .name, .hole, .int, .float, .char, .string,
-        .raw_string_line, .label,
+        .raw_string_line, .label, .rest,
     ],
     .branches = [
         .error(.many(.skipped)),
@@ -151,7 +151,7 @@ NodeKind := .{
         .member(.one(.object), .one(.property)),
         .call(.one(.callee), .many(.args)),
         .index(.one(.object), .one(.subscript)),
-        .prefix(.optional(.mode), .one(.operand)),
+        .prefix(.many(.mode), .one(.operand)),
         .postfix(.one(.operand)),
         .infix(.one(.left), .optional(.right)),
         .assign(.one(.place), .one(.value)),
@@ -178,6 +178,8 @@ Context := enum {
     for_pattern,
     /// Directly after `&`.
     after_amp,
+    /// Directly after `&`, before a borrow mode: `&temp mut`.
+    borrow_qualifier,
 };
 
 /// How an infix operator groups with its own level.
@@ -193,6 +195,7 @@ contextual := [
     .{ .text = "out", .context = .after_amp },
     .{ .text = "take", .context = .after_amp },
     .{ .text = "static", .context = .after_amp },
+    .{ .text = "temp", .context = .borrow_qualifier },
 ];
 
 /// Opening delimiters and the tokens that close them.
@@ -220,7 +223,8 @@ infix := [
     .{ .assoc = .left, .tokens = [.star, .slash, .percent] },
 ];
 
-/// Operators written before their operand. `&` may be followed by a borrow mode.
+/// Operators written before their operand. `&` may be followed by borrow modes (`&temp mut`);
+/// `..` without an operand is a rest pattern.
 prefix := [.minus, .bang, .tilde, .amp, .star, .question, .dot_dot, .dollar, .\unsafe];
 
 /// Operators written after their operand, besides member access, calls, indexing and literals.

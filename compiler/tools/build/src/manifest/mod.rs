@@ -32,7 +32,12 @@ pub struct Manifest {
     pub deps: Vec<Dep>,
     /// Workspace members, by path.
     pub members: Vec<String>,
+    /// Namespaces whose public names every file sees unqualified (spec 01, section 8).
+    pub prelude: Vec<String>,
 }
+
+/// The prelude of a manifest that does not name one.
+pub const DEFAULT_PRELUDE: &str = "std.prelude";
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Dep {
@@ -68,12 +73,14 @@ mod field {
     pub(super) const INCLUDE: &str = "include";
     pub(super) const DEPS: &str = "deps";
     pub(super) const MEMBERS: &str = "members";
+    pub(super) const PRELUDE: &str = "prelude";
     pub(super) const HASH: &str = "hash";
     pub(super) const URLS: &str = "urls";
     pub(super) const PATH: &str = "path";
     pub(super) const KIND: &str = "kind";
 
-    pub(super) const PACKAGE: &[&str] = &[NAME, ID, VERSION, EDITION, TOOLCHAIN, INCLUDE, DEPS, MEMBERS];
+    pub(super) const PACKAGE: &[&str] =
+        &[NAME, ID, VERSION, EDITION, TOOLCHAIN, INCLUDE, DEPS, MEMBERS, PRELUDE];
     pub(super) const DEP: &[&str] = &[VERSION, HASH, URLS, PATH, KIND];
 }
 
@@ -97,6 +104,8 @@ pub fn read(decls: &[Decl<'_>], file: FileId, cx: &mut DiagCx<'_>) -> Option<Man
     let include = fields.require(field::INCLUDE).and_then(|d| strings(d, cx));
     let deps = fields.get(field::DEPS).map_or(Some(Vec::new()), |d| deps(d, cx));
     let members = fields.get(field::MEMBERS).map_or(Some(Vec::new()), |d| strings(d, cx));
+    let prelude =
+        fields.get(field::PRELUDE).map_or(Some(vec![DEFAULT_PRELUDE.to_owned()]), |d| strings(d, cx));
     fields.finish(cx);
     Some(Manifest {
         name: name?,
@@ -107,6 +116,7 @@ pub fn read(decls: &[Decl<'_>], file: FileId, cx: &mut DiagCx<'_>) -> Option<Man
         include: include?,
         deps: deps?,
         members: members?,
+        prelude: prelude?,
     })
 }
 

@@ -44,6 +44,13 @@ compilation is therefore an ordinary `$if`, never a file-name convention or a pr
 | `(A) -> R` | function type |
 | `?T` | `lang.Option(T)` |
 
+**Identity.** Every `struct` and `enum` literal is a new, nominal type, identified by where it is
+written and by the compile-time arguments of the evaluation that produced it. Two identical
+literals in different declarations are different types, so `NodeId := struct { raw: u32 }` and
+`TypeId := struct { raw: u32 }` never mix. A function returning a literal gives one type per set of
+arguments (`Pair(u16)` is one type, memoized, spec 03). Aliases are not literals and stay
+structural: `u8 := Int(0..=255)` is `Int(0..=255)`.
+
 `bool`, `never` (the empty enum), `Option`, `Result`, `Step` and `Ordering` are ordinary enums
 declared in `lang`. Variant constructors are functions: `Result(u8, E).err` has type
 `(E) -> Result(u8, E)`.

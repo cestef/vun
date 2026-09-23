@@ -241,7 +241,9 @@ const RADIXES: [(&str, u32); 3] = [("0x", 16), ("0o", 8), ("0b", 2)];
 /// Digit separator in integer literals.
 const SEPARATOR: char = '_';
 
-fn integer(text: &str) -> Option<i128> {
+/// The value of an integer literal: decimal, or `0x`, `0o`, `0b`, with `_` separators.
+#[must_use]
+pub fn integer(text: &str) -> Option<i128> {
     let (digits, radix) = RADIXES
         .iter()
         .find_map(|&(prefix, radix)| Some((text.strip_prefix(prefix)?, radix)))

@@ -11,8 +11,8 @@ struct enum                            type literals
 unsafe                                 the audit boundary
 ```
 
-**15 reserved words**, plus **4 contextual** ones: `in` (only after `for <pattern>`), `out`, `take`
-and `static` (only after `&`). Lua has 22, Go 25, Rust 39, C 44, Zig 49.
+**15 reserved words**, plus **5 contextual** ones: `in` (only after `for <pattern>`), `out`,
+`take`, `static` and `temp` (only after `&`). Lua has 22, Go 25, Rust 39, C 44, Zig 49.
 
 A reserved word becomes an ordinary name when escaped with a backslash: `\unsafe` is the name
 `unsafe`. The escape is how a declaration mirrors a foreign or domain name that collides with a
@@ -61,7 +61,7 @@ Type syntax mirrors value syntax. Patterns mirror constructors. Each symbol mean
 | `.{ }` | anonymous struct value `.{ .x = 1 }` |
 | `.name` | `name` looked up in the expected type: `.some(x)`, `.output`, `.ms(500)`, `.{ }` |
 | `.*` | dereference (postfix) |
-| `&` | borrow: `&x` is a value and `&T` its type; likewise `&mut`, `&out`, `&take` |
+| `&` | borrow: `&x` is a value and `&T` its type; likewise `&mut`, `&out`, `&take`, `&temp` |
 | `?` | optional: `?T` is the type; postfix `e?` propagates an absent or failed value |
 | `..` | infix: range `0..n`; prefix: spread, `[..a, ..b]`, `yield ..e` |
 | `$` | one stage earlier: compile time in ordinary code, generation time inside a quote |
@@ -88,7 +88,12 @@ mut buf: [4096]u8;             // uninitialized: must be written before it is re
   to it is `unsafe` (safe shared state goes through spec 07).
 - Declarations at file and struct level are order-independent and resolved lazily. Self-reference
   and mutual recursion need no forward declarations.
-- Declarations inside a block are sequential. No shadowing, anywhere.
+- Declarations inside a block are sequential.
+- **No shadowing within a file.** A binding may not reuse a name visible where it is declared in
+  its file: an enclosing local or parameter, or a member of an enclosing namespace (the file, a
+  `struct`). Names that come from the prelude or a dependency may be reused, so adding a name to
+  a library never breaks its users. Inside a function literal, the run-time locals around it are
+  not visible (functions do not capture), so they are not shadowed either.
 - **Provided from outside.** `name: T = _;` declares a binding whose value is not in the source:
   - inside `lang`, the compiler provides it (primitives);
   - with a `link` attribute, the linker provides it (C imports, typed link symbols, spec 08);
@@ -136,7 +141,7 @@ A closure is sugar for an anonymous struct of its captures plus an `impl` of `la
 
 > **`.` operates on places; arguments are values.** `a.f(b)` is `T.f(<a>, b)` where `T` is the
 > type of `a`, and `<a>` passes the place `a` in whatever mode the first parameter of `f` asks for:
-> by value, `&`, `&mut`, `&out` or `&take`.
+> by value, `&`, `&mut`, `&out`, `&take` or `&temp`.
 
 Arguments inside `( )` are ordinary expressions, so borrowing them is written out: `f(&mut x)`.
 Lookup is `T`'s namespace, then `T`'s impls. If `a: &mut T`, lookup continues to `T`, because a
@@ -207,10 +212,33 @@ config := load(path)?;                             // propagate .err / .none to 
 - `e?` on `Result(T, E)` returns `.err(x)` from the enclosing function; on `?T` it returns `.none`.
   It never converts error types; `e.map_err(f)?` converts explicitly.
 - `and`, `or` short-circuit; `!` negates.
-- `if p = e` with an irrefutable `p` is an error: use a binding.
+- `if p = e` and `for p = e` with an irrefutable `p` are errors: use a binding.
+- `match` is exhaustive: its arms cover every value of the scrutinee's type (enums by variant,
+  integers by range), or the match is an error naming what is missing. `_ =>` covers the rest
+  explicitly.
 - Evaluation order is left to right, always: operands, arguments, literal fields, captures.
 - Every statement ends with `;`, except a block-like expression (`if`, `match`, `for`, `{ }`) used
   as a statement.
+
+### Patterns
+
+Patterns mirror constructors and reuse the operators of expressions; in pattern position each
+means the one thing below.
+
+| Pattern | Matches |
+|---------|---------|
+| `x`, `$x`, `_` | anything, binding it to `x` (known at compile time for `$x`), or discarding it |
+| `(p, q)`, `.{ .x = p }`, `T{ .x = p }` | a tuple or struct whose parts match |
+| `.name`, `.name(p, q)` | an enum variant and its payload |
+| `1`, `'a'`, `"text"`, `lo..hi`, `lo..=hi` | an equal value, or one in the range |
+| `p \| q` | a value matching either; both sides bind the same names with the same types |
+| `..`, `..rest` | the remaining items of a tuple, array or slice, or the other fields of a struct; `..rest` binds them |
+| `n := p` | a value matching `p`, bound whole to `n` as well |
+| any other expression | a value equal to it: a constant, `Color.red`, `$f(x)` |
+
+Matching through a borrow binds with the borrow's mode: when the scrutinee is `&E` or `&mut E`,
+bindings to parts of the `E` are `&` or `&mut` borrows of those parts, the same way `.` operates on
+places (section 4). Otherwise bindings copy or move the parts.
 
 Operator precedence, high to low: postfix (`.`, `()`, `[]`, `.*`, `?`), prefix (`-`, `!`, `&`,
 `$`), `* / %`, `+ -`, `++`, `<< >>`, `&`, `^`, `|`, `..`, comparisons (non-associative),
@@ -269,8 +297,10 @@ use site (`regs._raw`), and can be read without looking up the declaration.
 - The build declares a package's dependencies, and **each dependency is a binding in scope under
   its declared name**. `lang` and `std` are dependencies like any other, present by default and
   replaceable.
-- The names every file sees without qualification come from a prelude, `std.prelude` by default.
-  A build can choose another prelude or none.
+- The names every file sees without qualification come from the prelude: the public names of the
+  namespaces listed in the manifest's `.prelude` (spec 12), `.{ "std.prelude" }` by default, and
+  none for `.{}`. It is part of the literal manifest so that tools resolve names without evaluating
+  the build.
 
 ```ov
 uart := mydrivers.serial.uart;    // a module is a value; binding it is importing it

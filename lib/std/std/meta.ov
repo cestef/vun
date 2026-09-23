@@ -1,1 +1,2 @@
-//! Reflection and code generation helpers over `lang.meta` (spec 03).
+//! Reflection and code generation helpers over `lang.meta` (spec 03), including
+//! `collect(package, attr)`, which gathers declarations carrying an attribute (decision 42).

@@ -89,17 +89,25 @@ impl Cst {
         (0..self.len()).map(NodeId::new)
     }
 
-    /// The children of `n`, in source order.
-    pub fn children(&self, n: NodeId) -> impl Iterator<Item = NodeId> {
+    /// The children of `n`, last first. Postorder yields them in this order without allocating.
+    pub fn children_rev(&self, n: NodeId) -> impl Iterator<Item = NodeId> + '_ {
         let first = n.index() + 1 - self.size(n);
-        let mut children = Vec::new();
-        let mut child = n.index();
-        while child > first {
-            let c = NodeId::new(child - 1);
-            children.push(c);
-            child -= self.size(c);
-        }
-        children.into_iter().rev()
+        let mut end = n.index();
+        std::iter::from_fn(move || {
+            (end > first).then(|| {
+                let child = NodeId::new(end - 1);
+                end -= self.size(child);
+                child
+            })
+        })
+    }
+
+    /// The children of `n`, in source order.
+    #[must_use]
+    pub fn children(&self, n: NodeId) -> impl DoubleEndedIterator<Item = NodeId> {
+        let mut children: Vec<_> = self.children_rev(n).collect();
+        children.reverse();
+        children.into_iter()
     }
 
     /// The source covered by the subtree of `n`; empty at the anchor when it holds no token.

@@ -259,6 +259,8 @@ name = "overt-hir"
 version = "0.0.0"
 dependencies = [
  "overt-diag",
+ "overt-grammar",
+ "overt-index",
  "overt-intern",
  "overt-origin",
  "overt-span",

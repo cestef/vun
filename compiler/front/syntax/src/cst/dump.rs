@@ -40,9 +40,11 @@ impl Dump<'_> {
             }
             Anchor::Missing(t) => writeln!(f, "missing at {}", self.tokens.range(t).lo)?,
         }
-        let fields = self.cst.fields(n);
+        let fields = self.cst.fields(n).unwrap_or_default();
+        let mut assigned = fields.assigned().peekable();
         self.cst.children(n).try_for_each(|c| {
-            let field = fields.as_ref().and_then(|fields| fields.field_of(c));
+            // Children and assignments are both in source order; punctuation has no field.
+            let field = assigned.next_if(|&(node, _)| node == c).map(|(_, field)| field);
             self.node(f, c, depth + 1, field)
         })
     }

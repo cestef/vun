@@ -233,3 +233,19 @@ fn fields_name_the_children() {
     assert_eq!(function.one(F::Block).map(|n| cst.kind(n)), Some(K::Block));
     assert!(function.get(F::Statements).is_empty());
 }
+
+#[test]
+fn borrow_modes_and_pattern_forms() {
+    assert_eq!(
+        first("f := (a: &temp mut T) { g(&mut out); };"),
+        "(Binding':= f (Fn'( (Param': a (Prefix'& temp mut T)) ) (Block'{ (Call'( g (Prefix'& mut out) )) ; })))"
+    );
+    assert_eq!(
+        first("f := () { match e { n := .add(l, ..) => n, .a | .b => 0, 'a'..='z' => 1, _ => 2 } };"),
+        "(Binding':= f (Fn'( ) (Block'{ (Match'match e { (Arm'=> (Binding':= n (Call'( (DotName'. add) l , .. ))) n) , (Arm'=> (Infix'| (DotName'. a) (DotName'. b)) 0) , (Arm'=> (Infix'..= 'a' 'z') 1) , (Arm'=> _ 2) }) })))"
+    );
+    assert_eq!(
+        first("f := () { if n := .some(x) = e { } };"),
+        "(Binding':= f (Fn'( ) (Block'{ (If'if (Test'= (Binding':= n (Call'( (DotName'. some) x ))) e) (Block'{ })) })))"
+    );
+}

@@ -38,7 +38,12 @@ impl Parser<'_, '_, '_> {
     }
 
     pub(super) fn starts_expr(&self) -> bool {
-        let k = self.peek();
+        self.starts_expr_at(0)
+    }
+
+    /// Whether the token `ahead` of the current one can start an expression.
+    pub(super) fn starts_expr_at(&self, ahead: usize) -> bool {
+        let k = self.nth(ahead);
         PREFIX.contains(&k) || OPERANDS.contains(&k)
     }
 

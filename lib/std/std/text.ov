@@ -1,0 +1,3 @@
+//! Text (decision 43): `Str`, a borrowed UTF-8-checked `&[u8]`; growable buffers; an interner;
+//! conversion from literals checked at compile time. Formatting is `std.fmt`, maps are
+//! `std.collections`.

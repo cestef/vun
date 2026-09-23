@@ -213,7 +213,8 @@ compiler/
   tools/   build  fmt  bind  probe  harness  driver  lsp  cli  xtask
 lib/
   lang/     primitives (declarations with `= _`), syntax/grammar.ov
-  std/      prelude, iter, task, mem, sync, fmt, meta, diag, lints, log, hw, os, simd, testing, build, collections
+  std/      prelude, iter, task, mem, sync, fmt, text, meta, diag, lints, log, hw, os, simd, testing, build,
+            collections
   targets/  one namespace per architecture: targets.<arch>.<system>
   boards/   example runtimes: stm32f4, rp2040, esp32c3
 ```

@@ -209,6 +209,9 @@ Case is decided by what a binding is, which compile-time evaluation knows exactl
 | a type, an interface, or a function returning `type` | `PascalCase` | `RingBuffer`, `Writer`, `Pair` |
 | everything else: values, functions, fields, variants, modules, files, directories, packages | `snake_case` | `ring`, `write_all`, `.some`, `drivers/uart.ov` |
 
+- Primitive and prelude type names keep their conventional lowercase (`u8`, `i32`, `usize`,
+  `f64`, `bool`, `never`, `type`): they are the one exemption list of `naming.case`, declared next
+  to the lint in `std.lints.naming`, and extending it is a lint configuration like any other.
 - Acronyms are words: `Uart`, `HttpClient`, `usb_hid`.
 - No type-name suffixes that restate the namespace: `mem.alloc.Arena`, not `mem.alloc.ArenaAllocator`
   (`naming.stutter`).

@@ -41,7 +41,7 @@ fn every_build_file_reads() {
 fn reads_every_field() {
     let text = r#"package := .{
         .name = "blinky", .id = 0x6a80, .version = "0.3.1", .edition = 2027, .toolchain = "0.4.2",
-        .include = .{ "build.ov", "blinky" },
+        .include = .{ "build.ov", "blinky" }, .prelude = .{ "std.prelude", "support" },
         .deps = .{
             .hal = .{ .version = "1.3.0", .hash = "sha256-9f2c", .urls = .{ "https://x" } },
             .cmsis = .{ .version = "5.9.0", .hash = "sha256-11ab", .kind = .foreign },
@@ -53,6 +53,7 @@ fn reads_every_field() {
     assert_eq!((m.name.as_str(), m.id, m.edition), ("blinky", 0x6a80, 2027));
     assert_eq!(m.toolchain, Version::parse("0.4.2"));
     assert_eq!(m.include, ["build.ov", "blinky"]);
+    assert_eq!(m.prelude, ["std.prelude", "support"]);
     let deps: Vec<_> = m.deps.iter().map(|d| (d.name.as_str(), d.kind)).collect();
     assert_eq!(deps, [("hal", DepKind::Overt), ("cmsis", DepKind::Foreign), ("util", DepKind::Overt)]);
     assert_eq!(m.deps[2].source, Source::Path("../util".into()));

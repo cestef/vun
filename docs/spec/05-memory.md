@@ -36,6 +36,9 @@ on the place they borrow:
 
 Passing by value moves. A linear value leaves its place `uninit`; a copy value leaves it `init`.
 
+A parameter type may add `temp` to a borrow (`&temp T`, `&temp mut T`): the borrow is lent for the
+call only (section 4). It changes no place state, so arguments are written as ordinary borrows.
+
 Rules, all checked on the control-flow graph:
 
 - Reading requires `init`. `mut buf: [4096]u8;` costs nothing, and reading it before writing it is a
@@ -78,8 +81,20 @@ Parser := struct { input: &[u8], pos: usize };           // scoped
 parser := (input: &[u8]) -> Parser { .{ .input = input, .pos = 0 } };
 ```
 
+**Temporary borrows.** A parameter whose type is `&temp T` or `&temp mut T` is lent for the call
+only: the result is not tied to it, and the function may not return it or put it into anything it
+returns. So `find := (hay: &[u8], needle: &temp [u8]) -> &[u8]` returns a borrow tied to `hay`
+alone, and a caller may pass a short-lived `needle`.
+
 A borrow cannot be stored in a free value: a top-level binding, an `Own`, a heap node. Long-lived
 structures use ownership, indices into pools and arenas, or raw pointers in `unsafe` code.
+
+**Trees in arenas.** Because scoped values may live in fields of other scoped types, a tree can be
+built from borrows of an arena: `std.mem.Arena` hands out `&mut T` tied to the arena's borrow, and
+`Expr := enum { lit(i64), add(&Expr, &Expr) }` is an ordinary scoped type. The tree lives as long
+as the arena borrow; a tree that must outlive its scope uses `Own` nodes and an allocator. For
+graphs with cycles, `std.collections.Handle(T)` gives typed indices into a pool, over nominal
+structs (spec 02), with checked indexing whose checks range analysis removes when it can.
 
 **Static region.** Borrows of immutable top-level bindings have type `&static T`, which is free and
 copy and is accepted wherever `&T` is expected. It is the only subtyping rule. String literals are
