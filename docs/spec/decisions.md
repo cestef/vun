@@ -53,6 +53,7 @@
 | 47 | A compile-time block binding is visible in its own value; `$for` binders are compile-time | accepted | 01 |
 | 48 | A directory holds a package when its `build.ov` declares `package`; caches are keyed by content hash | accepted | 12 |
 | 49 | `targets` is a default dependency, like `lang` and `std` | accepted | 01, 12 |
+| 50 | BLAKE3 everywhere; package hashes are Merkle trees of directory entries, written `blake3:<base32>`; the store nests by algorithm and digest prefix | accepted | 12 |
 
 ## Questions, with how they were settled
 
@@ -80,8 +81,11 @@ None is open. Each keeps its reasoning; decisions 27 to 44 record the outcomes.
 10. **Integer width cap.** Settled (decision 38): 128 bits on every target, so code stays portable.
 11. **Choice-stream API size** for generators. Zig's equivalent churned between releases. Settled (decision 44):
     start minimal (bytes, integers in a range, choose, length).
-12. **Hash algorithm** for package identity: SHA-256 now (ubiquitous, hardware-accelerated), with the
-    prefix allowing BLAKE3 later.
+12. **Hash algorithm** for package identity. First leaned SHA-256 (ubiquitous, hardware-accelerated).
+    Settled (decision 50): BLAKE3 everywhere, measured 2x faster than SHA-256 with SHA-NI on one
+    core and 9x on 14, over a Merkle tree of directory entries, written `blake3:<base32>`. XXH3 was
+    considered for caches and rejected: hashing is far below lexing in cost, and a second algorithm
+    would not be safe for caches shared between machines.
 13. **Vendoring by default** for firmware projects, per gingerBill's argument. Settled (decision 44): offer
     `overt pkg vendor`, do not default.
 14. **Node fields in the grammar.** Resolved by decision 27.

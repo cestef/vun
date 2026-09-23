@@ -18,6 +18,7 @@ use std::path::{Path, PathBuf};
 
 use overt_build::layout::{Location, MANIFEST};
 use overt_build::manifest::{self, DEFAULT_DEPS, DEFAULT_PRELUDE, Manifest, Source};
+use overt_build::store::Store;
 use overt_hash::Hash;
 use overt_intern::{Interner, Symbol};
 use overt_span::{FileId, SourceMap, Span};
@@ -52,14 +53,21 @@ pub struct Package {
     pub prelude_span: Option<Span>,
 }
 
-/// A dependency: the name it is bound to, its directory, and where it is declared.
+/// A dependency: the name it is bound to, where it comes from, and where it is declared.
 #[derive(Clone)]
 pub struct Dep {
     pub name: Symbol,
-    /// `None` for an archive the local store does not hold yet.
-    pub dir: Option<PathBuf>,
+    pub source: DepSource,
     /// `None` for a default dependency.
     pub span: Option<Span>,
+}
+
+#[derive(Clone)]
+pub enum DepSource {
+    /// A directory on disk.
+    Dir(PathBuf),
+    /// A package in the store, by its tree hash.
+    Stored(Hash),
 }
 
 #[derive(Default)]
@@ -80,7 +88,7 @@ impl Package {
         for &default in DEFAULT_DEPS {
             let name = interner.intern(default);
             if self.name != Some(name) && self.deps.iter().all(|d| d.name != name) {
-                self.deps.push(Dep { name, dir: Some(library.join(default)), span: None });
+                self.deps.push(Dep { name, source: DepSource::Dir(library.join(default)), span: None });
             }
         }
         self
@@ -93,11 +101,29 @@ impl Package {
 }
 
 impl Session {
-    /// The package `file` belongs to.
+    /// The package `file` belongs to. The first one found is the project, whose store holds
+    /// fetched dependencies.
     pub fn package_of(&mut self, file: FileId) -> PackageKey {
         let path = PathBuf::from(&self.sources.file(file).path);
         let found = path.ancestors().skip(1).find_map(|dir| self.package_at(dir));
-        found.unwrap_or_else(|| self.loose())
+        let key = found.unwrap_or_else(|| self.loose());
+        if self.store.is_none() {
+            let dir = path.parent().map(Path::to_path_buf).unwrap_or_default();
+            let project = self.packages.list.get(&key).map_or(dir, |p| p.dir.clone());
+            self.store = Some(Store::in_project(&project));
+        }
+        key
+    }
+
+    /// Where a dependency is on disk; a stored one in the project's store.
+    fn dep_dir(&self, source: &DepSource) -> PathBuf {
+        match source {
+            DepSource::Dir(dir) => dir.clone(),
+            DepSource::Stored(hash) => {
+                let store = self.store.clone().unwrap_or_else(|| Store::in_project(Path::new(".")));
+                store.path(*hash)
+            }
+        }
     }
 
     /// The package whose manifest is in `dir`, if there is one.
@@ -109,9 +135,9 @@ impl Session {
             let name = Some(self.interner.intern(&manifest.name));
             let deps = manifest.deps.iter().map(|d| Dep {
                 name: self.interner.intern(&d.name),
-                dir: match &d.source {
-                    Source::Path(path) => Some(dir.join(path)),
-                    Source::Archive { .. } => None,
+                source: match &d.source {
+                    Source::Path(path) => DepSource::Dir(dir.join(path)),
+                    Source::Archive { hash, .. } => DepSource::Stored(*hash),
                 },
                 span: Some(d.span),
             });

@@ -11,4 +11,4 @@ workspace = true
 
 [dependencies]
 overt-fs.workspace = true
-sha2.workspace = true
+blake3.workspace = true

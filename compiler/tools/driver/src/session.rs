@@ -3,6 +3,7 @@
 use std::path::{Path, PathBuf};
 
 use overt_build::manifest::{self, Manifest};
+use overt_build::store::Store;
 use overt_diag::{DiagCtxt, DiagCx, DiagSink, Diagnostic, Msg, errors};
 use overt_hir::lower;
 use overt_hir::resolve::{self, Resolution};
@@ -28,6 +29,8 @@ pub struct Session {
     pub packages: Packages,
     /// Where default dependencies are found.
     pub library: PathBuf,
+    /// The project's store of fetched dependencies, set by the first package found.
+    pub store: Option<Store>,
 }
 
 impl Default for Session {
@@ -40,6 +43,7 @@ impl Default for Session {
             format: formats::default(),
             packages: Packages::default(),
             library: PathBuf::from(LIBRARY),
+            store: None,
         }
     }
 }

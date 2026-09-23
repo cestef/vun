@@ -3,11 +3,11 @@
 use std::collections::HashMap;
 
 use overt_build::layout::SEPARATOR;
-use overt_diag::{DiagCx, Diagnostic, Msg, errors};
+use overt_diag::{ChildKind, DiagCx, Diagnostic, Msg, errors};
 use overt_intern::Symbol;
 use overt_span::Span;
 
-use super::{Dep, Namespace, PackageKey, Unfound};
+use super::{Dep, DepSource, Namespace, PackageKey, Unfound};
 use crate::Session;
 
 /// What a name from outside a file refers to.
@@ -45,15 +45,27 @@ impl Session {
         names.extend(p.name.map(|name| (name, Outer::Package(package))));
     }
 
-    /// The package of the dependency `index` of `package`, loaded once; a missing one is
-    /// reported each time it is needed.
+    /// The package of the dependency `index` of `package`, loaded once; a missing one, or a
+    /// stored one whose contents do not match its hash, is reported each time it is needed.
     pub fn dep(&mut self, package: PackageKey, index: usize) -> Option<PackageKey> {
         let dep = self.packages.list[&package].deps[index].clone();
-        let found = dep.dir.as_deref().and_then(|dir| self.package_at(dir));
-        if found.is_none() {
+        let Some(found) = self.package_at(&self.dep_dir(&dep.source)) else {
             self.missing_dep(&dep);
+            return None;
+        };
+        match (dep.source, found) {
+            (DepSource::Stored(expected), PackageKey::Content(actual)) if expected != actual => {
+                let name = self.interner.resolve(dep.name);
+                let msg =
+                    Msg::new().text("the stored contents of ").code(name).text(" do not match its hash");
+                let note = Msg::new().text("expected ").code(expected.to_string()).text(", found ");
+                let d = Diagnostic::error(errors::PACKAGE_HASH_MISMATCH, msg)
+                    .child(ChildKind::Note, note.code(actual.to_string()));
+                self.report(dep.span, d);
+                None
+            }
+            _ => Some(found),
         }
-        found
     }
 
     fn bind_prelude(&mut self, package: PackageKey, names: &mut HashMap<Symbol, Outer>) {
@@ -77,11 +89,16 @@ impl Session {
 
     fn missing_dep(&mut self, dep: &Dep) {
         let msg = Msg::new().text("cannot find dependency ").code(self.interner.resolve(dep.name));
-        let msg = match &dep.dir {
-            Some(dir) => msg.text(" at ").code(dir.display().to_string()),
-            None => msg.text(" in the local store"),
+        let dir = self.dep_dir(&dep.source).display().to_string();
+        let d = Diagnostic::error(errors::PACKAGE_MISSING_DEP, msg.text(" at ").code(dir));
+        let d = match dep.source {
+            DepSource::Dir(_) => d,
+            DepSource::Stored(hash) => {
+                let help = Msg::new().code(hash.to_string()).text(" is fetched by ").code("overt pkg fetch");
+                d.child(ChildKind::Help, help)
+            }
         };
-        self.report(dep.span, Diagnostic::error(errors::PACKAGE_MISSING_DEP, msg));
+        self.report(dep.span, d);
     }
 
     /// That `path` names no namespace.

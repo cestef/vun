@@ -73,7 +73,7 @@ syn = { version = "2", default-features = false, features = ["full", "parsing", 
 prettyplease = "0.2"
 annotate-snippets = "0.12"
 ariadne = "0.6"
-sha2 = "0.10"
+blake3 = { version = "1", default-features = false, features = ["std"] }
 
 [workspace.lints.rust]
 unsafe_code = "deny"

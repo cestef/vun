@@ -113,6 +113,7 @@ manifest := struct {
 package := struct {
     missing_dep := diag.Diag{ .explanation = meta.embed("errors/package/missing_dep.md") };
     missing_namespace := diag.Diag{ .explanation = meta.embed("errors/package/missing_namespace.md") };
+    hash_mismatch := diag.Diag{ .explanation = meta.embed("errors/package/hash_mismatch.md") };
 };
 
 /// Reading and writing files.

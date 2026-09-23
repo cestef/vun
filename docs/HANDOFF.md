@@ -102,7 +102,7 @@ tested (the rest are stubs):
 | `overt-origin` | `OriginId`, `Origin`, `Via`, `OriginTable`. |
 | `overt-diag` | `DiagId`, `Severity`, `Msg` (typed parts, `append`), `Label`, `Fix`, `ChildKind` (Display), `Diagnostic`, `DiagCtxt`, `DiagCx::error_at`, `DiagSink`; `Msg::did_you_mean`; `errors` (generated). |
 | `overt-suggest` | `closest` (did-you-mean by edit distance), `Lookup` on slices (find by name or the closest name). Generic, no diag types. |
-| `overt-hash` | `Algorithm` (typed, `name`), `Hash` (`algorithm:digest`, `parse`, `of(bytes)`, `tree(dir, include)`). Package identity, manifest `.hash`, every cache key. |
+| `overt-hash` | BLAKE3 only. `Algorithm` (typed, `name`), `Hash` (`blake3:<base32>`, `parse`, `digest`, `of(bytes)`, `tree(dir, include)`: Merkle tree over path components, directory nodes in a derived key). Package identity, manifest `.hash`, every cache key. |
 | `overt-graph` | `Requirements<K>` (`add`, `order`, `OrderError`): the pass manager's ordering. |
 | `overt-fs` | `Tree` on `Path`: `files` (recursive, sorted), `entries`. Behind `Hash::tree`, `Location::children`, harness `discover`. |
 | `overt-outline` | `Outline` + `Outlined::node`: indented tree text for the CST and HIR dumps. |
@@ -115,7 +115,7 @@ tested (the rest are stubs):
 | `overt-render-short` | `file:line:col: severity[id]: message`, then `  = help: ...` lines (fixes too). |
 | `overt-render-annotate` | default `terminal` format: labels by file, notes, fixes as patches, traces. |
 | `overt-render-ariadne` | `--format ariadne`: one color per label role; fixes as help lines. |
-| `overt-build` | `manifest::read` -> `Manifest` (`Version`, `Dep` with span, `Source`, `DepKind`, `prelude_span`), `manifest::declared` (a `build.ov` is a manifest iff it declares `package`), `DEFAULT_DEPS`, `DEFAULT_PRELUDE`; generic record reader reporting missing, unknown (did-you-mean) and ill-typed fields. `layout`: `MANIFEST`, `SEPARATOR` (from the grammar's `.`), `Location` (namespace on disk: `root`, `member`, `file`, `exists`, `children`, `path_of`). |
+| `overt-build` | `manifest::read` -> `Manifest` (`Version`, `Dep` with span, `Source`, `DepKind`, `prelude_span`), `manifest::declared` (a `build.ov` is a manifest iff it declares `package`), `DEFAULT_DEPS`, `DEFAULT_PRELUDE`; generic record reader reporting missing, unknown (did-you-mean) and ill-typed fields. `store::Store` (`.overt/store/<algorithm>/<2 chars>/<rest>`). `layout`: `MANIFEST`, `SEPARATOR` (from the grammar's `.`), `Location` (namespace on disk: `root`, `member`, `file`, `exists`, `children`, `path_of`). |
 | `overt-harness` | `repo_root`, `expectations` (`//~ id [@col] ["fragment"]...` -> `Expected`, or `Malformed`), `Reported`, `compare` -> `Mismatch { missing, unexpected, differing }`, `discover`, `snapshot`, `snapshot_tree` (mirrors a source tree, `OVERT_BLESS`). |
 | `overt-xtask` | `cargo xtask generate [--check]`: pluggable `generate::Generator { source, output, emit }` table (`grammar`, `errors`); shared read/parse/emit/format (quote + prettyplease). `cargo xtask corpus`: runs `corpus/accept` (must be clean) and `corpus/reject` (exact `//~` set) through `Session::check`; a file whose missing ids all belong to stages that do not exist yet is pending (`overt_driver::stages::STAGES`, groups from `errors.ov` namespaces via `DiagId::within`). |
 | backends, linkers, target, pass, trace, tool | as in the first session (stubs with `const INFO`). |
@@ -187,7 +187,7 @@ programs take from drivers, other libraries and unwritten parts of `std`.
 
 ## 9. Open questions and known gaps
 
-- Decisions 45 to 49 are accepted (fourth session): `lang.int`, spreads, compile-time block
+- Decisions 45 to 50 are accepted (50: BLAKE3 Merkle hashes, base32, nested store) (fourth session): `lang.int`, spreads, compile-time block
   bindings visible in their own value, manifest detection and content-hash caches, `targets` as a
   default dependency. Corpus type functions write `$Ring`, `$Regs`, `$Block`.
 - Build files name `std.build.Build` explicitly (no build-only prelude). New questions go there as

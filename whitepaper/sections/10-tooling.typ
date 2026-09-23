@@ -45,7 +45,10 @@ the reference interpreter, which detects every detectable item of the undefined-
 The manifest is the build file, written in Overt. Its package description must be a literal, so tools
 read it without evaluation; its build function is sandboxed compile-time code. Packages are identified
 by a stable identifier and a major version, and versions by the content hash of their sources, with
-URLs serving only as mirrors. Resolution is minimal version selection @go-mvs: declared versions are
+URLs serving only as mirrors. The hash is a BLAKE3 Merkle tree over directory entries named by path
+component, so it is the same on every platform, a mismatch names the file that differs, and each
+file's hash is the key the compiler's caches already use; fetched packages are stored under a path
+derived from the hash alone. Resolution is minimal version selection @go-mvs: declared versions are
 minimums, the largest minimum is selected, and different major versions are different packages.
 Dependencies are instantiated with compile-time parameters rather than globally unified features, so no
 dependent can change another's build.
