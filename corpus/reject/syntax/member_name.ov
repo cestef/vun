@@ -1,0 +1,3 @@
+//! A `.` is followed by a member name, a tuple index or `$(name)`.
+
+x := point.; //~ syntax.expected_name

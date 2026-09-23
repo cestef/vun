@@ -1,7 +1,7 @@
 //! Diagnostics as values (spec 10).
 
 Severity := enum { hint, info, warning, error };
-Safety := enum { safe, unsafe, placeholder, display_only };
+Safety := enum { safe, \unsafe, placeholder, display_only };
 
 Diag := struct {
     explanation: &static [_]u8,

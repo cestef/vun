@@ -1,0 +1,31 @@
+//! The stages of the front end the driver runs so far, and the diagnostic groups each reports.
+//!
+//! Harnesses read this table to tell a missing diagnostic from one that belongs to a stage that
+//! does not exist yet.
+
+use overt_diag::{DiagId, errors};
+use overt_span::FileId;
+
+use crate::Session;
+
+pub struct Stage {
+    pub name: &'static str,
+    pub reports: &'static [DiagId],
+}
+
+pub const STAGES: &[Stage] =
+    &[Stage { name: "load", reports: &[errors::IO] }, Stage { name: "syntax", reports: &[errors::SYNTAX] }];
+
+/// Whether some stage that exists reports `id`.
+#[must_use]
+pub fn implemented(id: &DiagId) -> bool {
+    STAGES.iter().flat_map(|s| s.reports).any(|group| id.within(group))
+}
+
+impl Session {
+    /// Runs every stage that exists on `file`.
+    pub fn check(&mut self, file: FileId) {
+        let tokens = self.lex(file);
+        self.parse(&tokens);
+    }
+}

@@ -1,0 +1,16 @@
+//! Async tasks yield wait requests to the executor (spec 06, section 3).
+
+blink := (led: &mut Led, timer: &Timer) -> Async(never) {
+    for {
+        led.toggle();
+        yield ..timer.after(.ms(500));
+    }
+};
+
+echo := (s: &mut Serial) -> Async(never) {
+    mut buf: [64]u8;
+    for {
+        n := yield ..s.read(&out buf);
+        yield ..s.write(buf[0..n]);
+    }
+};

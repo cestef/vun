@@ -1,0 +1,5 @@
+//! Every name resolves to a binding in scope (spec 01, section 8).
+
+area := (w: u32, h: u32) -> u64 {
+    w * hieght //~ names.unresolved
+};

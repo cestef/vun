@@ -1,0 +1,23 @@
+//! Every form of `if`, `match` and `for` (spec 01, section 6).
+
+Cmd := enum { read(u8), write(u8), reset };
+
+run := (cmd: Cmd, cache: &Cache, key: u32, rows: &[[4]u8], queue: &mut Queue) -> Result((), Error) {
+    if .some(v) = cache.get(key) { use(v); }
+    match cmd {
+        .read(r) => handle_read(r),
+        .write(w) if w > 0 => handle_write(w),
+        .write(_) => {},
+        .reset => reset(),
+    }
+    mut n: u32 = 0;
+    for n < 10 { n += 1; }
+    for x in rows[0] { n += x; }
+    for .some(job) = queue.pop() { job.run(); }
+    'outer: for row in rows {
+        for x in row { if x == 0 { break 'outer; } }
+    }
+    config := load(key)?;
+    for { if config.done() { break; } poll(); }
+    .ok(())
+};

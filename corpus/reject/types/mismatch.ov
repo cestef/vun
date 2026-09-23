@@ -1,0 +1,3 @@
+//! Types must match where a value is used (spec 02).
+
+flag: bool = 3; //~ types.mismatch

@@ -1,0 +1,13 @@
+//! SIMD is a type, not a mode (spec 04, section 3).
+
+V := lang.simd.Vector(8, f32);
+
+saxpy := ($N: usize, a: f32, x: &[N]f32, y: &mut [N]f32) {
+    $for i in lang.simd.chunks(N, 8) {
+        v := V.load(x[i..i + 8]) * V.splat(a) + V.load(y[i..i + 8]);
+        v.store(&mut y[i..i + 8]);
+    }
+};
+
+#[target.require(.{ .avx2 })]
+fast := (v: V) -> V { v.shuffle([3, 2, 1, 0, 7, 6, 5, 4]) };

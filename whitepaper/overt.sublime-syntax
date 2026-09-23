@@ -12,6 +12,12 @@ contexts:
       scope: comment.line.documentation.overt
     - match: '//.*$'
       scope: comment.line.overt
+    - match: '\\\\.*$'
+      scope: string.unquoted.raw.overt
+    - match: '\\"[^"\n]*"?'
+      scope: string.quoted.raw.overt
+    - match: '\\[A-Za-z_][A-Za-z0-9_]*'
+      scope: variable.other.escaped.overt
     - match: '"'
       push: string
     - match: "'(\\\\.|[^'\\\\])'"
@@ -20,7 +26,7 @@ contexts:
       scope: entity.name.label.overt
     - match: '\b(mut|if|else|match|for|break|continue|return|yield|defer|and|or|struct|enum|unsafe)\b'
       scope: keyword.control.overt
-    - match: '(?<=&)(out|take)\b|\bin\b'
+    - match: '(?<=&)(out|take|static)\b|\bin\b'
       scope: keyword.other.overt
     - match: '#\[|#\{'
       scope: punctuation.definition.annotation.overt

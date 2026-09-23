@@ -2,7 +2,9 @@
 //!
 //! Diagnostics are data; rendering is a separate concern behind [`DiagSink`].
 
+#[rustfmt::skip]
 pub mod errors;
+pub mod suggest;
 
 use std::borrow::Cow;
 use std::fmt;
@@ -17,11 +19,19 @@ pub struct DiagId(pub Cow<'static, str>);
 impl DiagId {
     /// Prefix under which compiler errors live; they are displayed relative to it.
     pub const COMPILER: &'static str = "lang.errors.";
+    /// Separates the names of a binding path.
+    pub const SEPARATOR: char = '.';
 
     /// An id known at compile time.
     #[must_use]
     pub const fn new(path: &'static str) -> Self {
         Self(Cow::Borrowed(path))
+    }
+
+    /// Whether this id lies in the namespace `group`, such as `lang.errors.syntax`.
+    #[must_use]
+    pub fn within(&self, group: &Self) -> bool {
+        self.0.strip_prefix(&*group.0).is_some_and(|rest| rest.starts_with(Self::SEPARATOR))
     }
 }
 
@@ -110,6 +120,13 @@ impl Msg {
         self
     }
 
+    /// The parts of `other`, after these.
+    #[must_use]
+    pub fn append(mut self, other: Self) -> Self {
+        self.0.extend(other.0);
+        self
+    }
+
     fn part(mut self, part: MsgPart) -> Self {
         self.0.push(part);
         self
@@ -186,6 +203,15 @@ pub enum ChildKind {
     Note,
     /// A suggestion.
     Help,
+}
+
+impl fmt::Display for ChildKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(match self {
+            Self::Note => "note",
+            Self::Help => "help",
+        })
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -314,5 +340,16 @@ impl DiagCtxt {
             origin(a).cmp(&origin(b)).then_with(|| a.id.cmp(&b.id))
         });
         all
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::errors::ALL;
+    use std::collections::HashSet;
+
+    #[test]
+    fn ids_are_unique() {
+        assert_eq!(ALL.iter().collect::<HashSet<_>>().len(), ALL.len());
     }
 }

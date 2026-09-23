@@ -1,0 +1,5 @@
+//! Comparisons do not chain; `a < b < c` would compare a bool with `c`.
+
+inside := (a: u8, b: u8, c: u8) -> bool {
+    a < b < c //~ syntax.chained_operator @11 "join comparisons with `and`"
+};

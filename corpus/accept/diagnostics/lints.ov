@@ -1,0 +1,16 @@
+//! Lints are compile-time values (spec 10, section 4).
+
+#[lint.define]
+raw_mmio := lang.lint.Lint{
+    .group = .suspicious,
+    .default = .warn,
+    .doc = std.meta.embed("raw_mmio.md"),
+    .check = (cx: &mut lint.Cx, call: lint.Call) {
+        if call.callee == lang.mem.volatile_store and !cx.inside(std.hw) {
+            cx.report(call.origin, "raw volatile store outside a register abstraction", .{});
+        }
+    },
+};
+
+#[lint.allow(std.lints.naming.case, .reason = "mirrors the vendor register names")]
+HAL_UART_Init := 0;

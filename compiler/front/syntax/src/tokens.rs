@@ -30,6 +30,8 @@ pub struct Tokens {
     /// The first trivia before each token; a token's trivia ends where the next token's begins.
     leading: IndexVec<TokenId, TriviaId>,
     trivia: IndexVec<TriviaId, Lexeme>,
+    /// Tokens the lexer reported as malformed, in order. Later stages stay quiet about them.
+    diagnosed: Vec<TokenId>,
 }
 
 impl Tokens {
@@ -66,6 +68,12 @@ impl Tokens {
 
     pub fn ids(&self) -> impl Iterator<Item = TokenId> {
         (0..self.len()).map(TokenId::new)
+    }
+
+    /// Whether the lexer reported `t` as malformed.
+    #[must_use]
+    pub fn diagnosed(&self, t: TokenId) -> bool {
+        self.diagnosed.binary_search(&t).is_ok()
     }
 
     /// The trivia immediately before `t`.
@@ -119,8 +127,8 @@ impl Tokens {
         if end as usize != source.len() {
             return Err(Uncovered::Short { end, source_len: source.len() });
         }
-        match self.kinds.iter().last() {
-            Some((_, TokenKind::Eof)) => Ok(()),
+        match self.kinds.last() {
+            Some(TokenKind::Eof) => Ok(()),
             _ => Err(Uncovered::MissingEof),
         }
     }
@@ -156,6 +164,7 @@ impl Builder {
             ranges: IndexVec::with_capacity(capacity),
             leading: IndexVec::with_capacity(capacity),
             trivia: IndexVec::new(),
+            diagnosed: Vec::new(),
         };
         Self { tokens, unclaimed: TriviaId::new(0) }
     }
@@ -170,6 +179,12 @@ impl Builder {
         t.ranges.push(lexeme.range);
         t.leading.push(self.unclaimed);
         self.unclaimed = TriviaId::new(t.trivia.len());
+    }
+
+    /// Records that the last token pushed was reported as malformed.
+    pub(crate) fn diagnosed(&mut self) {
+        let last = TokenId::new(self.tokens.kinds.len() - 1);
+        self.tokens.diagnosed.push(last);
     }
 
     /// Ends the stream with `Eof` at `end`, which claims the trailing trivia.

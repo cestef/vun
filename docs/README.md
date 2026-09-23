@@ -26,6 +26,7 @@ Draft 2 of the design. Each file in `spec/` covers one area and can be read on i
 | [spec/decisions.md](spec/decisions.md) | decision log and open questions |
 | [research/2026-09-survey.md](research/2026-09-survey.md) | the survey behind draft 2, with sources |
 | [archive/draft-1.md](archive/draft-1.md) | previous draft, kept for reference |
+| [HANDOFF.md](HANDOFF.md) | state of the project for the next agent |
 
 Conventions in these docs: "must" is a rule the compiler enforces; "lean" marks a tentative
 choice listed in `decisions.md`; every code sample is meant to compile under this draft.

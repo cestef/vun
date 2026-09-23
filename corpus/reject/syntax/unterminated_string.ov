@@ -1,0 +1,3 @@
+//! Strings end on the line they start; multi-line text uses `\\` lines.
+
+greeting := "hello; //~ syntax.unterminated_string

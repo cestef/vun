@@ -1,0 +1,7 @@
+//! Every access to a top-level `mut` binding is `unsafe` (spec 01, section 3).
+
+mut hits: u32 = 0;
+
+record := () {
+    hits += 1; //~ safety.requires_unsafe
+};

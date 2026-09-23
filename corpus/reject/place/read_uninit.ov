@@ -1,0 +1,6 @@
+//! Reading requires `init`; an uninitialized declaration is free but unreadable (spec 05, section 2).
+
+first := () -> u8 {
+    mut buf: [16]u8;
+    buf[0] //~ place.read_uninit
+};

@@ -37,8 +37,12 @@ years (rustc's parallel front end). So both are designed in from phase 1.
 
 **Data layout.**
 - Tokens are one array with a side table for trivia. The CST is a postorder array of
-  `(kind, token, subtree_size)` in the style of Carbon; lossless tree views are built lazily for the
-  formatter and the LSP only.
+  `(kind, anchor, subtree_size)` in the style of Carbon; lossless tree views are built lazily for
+  the formatter and the LSP only. Every token anchors exactly one node, so the tree plus the trivia
+  table is the source; a node whose token is absent (a missing `;`, a missing operand) is anchored
+  where it was expected and was reported by the parser. The verifier checks that subtree sizes
+  nest, leaves have no children, the root is `File`, every token has exactly one owner, and every
+  subtree covers a contiguous run of tokens.
 - HIR, MIR and LIR are struct-of-arrays arenas addressed by `u32` handles. Zig measured 20% to 40%
   wall-time gains from this layout alone.
 - Types, compile-time values and names live in one sharded intern pool.
@@ -92,6 +96,12 @@ data. From it are generated: the Rust kind enums and typed accessors used by the
 compiler crate; `lang.syntax`, which compile-time code uses to read code values (spec 03); the
 formatter's node table; and the tree-sitter grammar for editors. Tokens and nodes are therefore
 defined in exactly one place and cannot drift.
+
+`cargo xtask generate` reads the grammar with the compiler's own parser as literal data (the
+reader of `build.ov` manifests, spec 12) and translates each declaration by the shape of its
+value: a `PascalCase` record of lists is a kind, an `enum` an enum, any other list a table whose
+element type is inferred. The same task generates the diagnostic ids of `overt-diag` from
+`lang/errors.ov`. A test fails when a generated file is stale.
 
 ## 6. Compile-time evaluation
 
@@ -213,3 +223,7 @@ Rules:
 - Logging goes through `overt-trace` (`OVERT_LOG`, `OVERT_LOG_FORMAT`, `OVERT_TIMINGS`); corpus
   and snapshot tests go through `overt-harness` (`OVERT_BLESS`).
 - There is one frontend: the LSP runs on the same query engine as the compiler.
+- Command lines are declared, never matched by hand: `overt-command` holds command trees (names,
+  typed parameters, subcommands, actions) as data, and parses, renders help and reports usage
+  errors as diagnostics, with suggestions, from them. `overt-driver` declares the `overt` tree;
+  `xtask` declares its own with the same crate.

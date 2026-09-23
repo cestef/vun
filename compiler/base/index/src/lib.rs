@@ -80,6 +80,11 @@ impl<I: Idx, T> IndexVec<I, T> {
         self.raw.get(i.index())
     }
 
+    #[must_use]
+    pub fn last(&self) -> Option<&T> {
+        self.raw.last()
+    }
+
     pub fn iter(&self) -> impl Iterator<Item = (I, &T)> {
         self.raw.iter().enumerate().map(|(i, v)| (I::new(i), v))
     }

@@ -246,7 +246,10 @@ edits); a "suppress with reason" action inserts `#[lint.allow(...)]`.
 ## 7. Testing diagnostics
 
 - **Must-fail corpus.** Files annotated `//~ int.does_not_fit` (this line) or `//~^ ...` (the line
-  above). The harness checks the exact set of (line, id) pairs, so a cascade fails the test.
+  above). The harness checks the exact set of (line, id) pairs, so a cascade fails the test. An
+  annotation may pin the column (`//~ id @12`) and require fragments of the rendered message,
+  notes and help (`//~ id "escape it"`). An id must be declared in `lang.errors`; a file waiting
+  only on stages that do not exist yet is reported as pending.
 - **Snapshots** of the terminal rendering at fixed width without color, and of the JSON.
 - **Fix tests.** For every `Safe` fix in the corpus: the fixed file compiles, the diagnostic is gone,
   and applying fixes again changes nothing.

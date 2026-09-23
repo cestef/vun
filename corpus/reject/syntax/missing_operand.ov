@@ -1,0 +1,5 @@
+//! A missing operand is reported where it was expected, once.
+
+sum := (a: u8) -> u16 {
+    a + //~ syntax.expected_expression
+};

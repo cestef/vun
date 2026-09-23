@@ -1,0 +1,5 @@
+//! An intermediate needing more than 128 bits is an error; narrow it (spec 04, rule 5).
+
+cube := (x: u64) -> u64 {
+    (x * x * x).to(u64) //~ int.width_cap
+};

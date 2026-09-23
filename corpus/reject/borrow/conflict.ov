@@ -1,0 +1,7 @@
+//! `&mut` is exclusive: no other access while it lives (spec 05, section 8).
+
+bump := (xs: &mut [4]u8) {
+    first := &mut xs[0];
+    xs[1] = 2; //~ borrow.conflict
+    first.* = 1;
+};

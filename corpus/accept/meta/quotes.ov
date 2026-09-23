@@ -1,0 +1,11 @@
+//! Quotes are code values; `$` splices them (spec 03, section 4).
+
+square := ($x: Code(f32)) -> Code(f32) { #{ $x * $x } };
+
+assert := ($cond: Code(bool)) {
+    if !$cond { std.panic.fail(.assertion(std.meta.source(cond), std.meta.span(cond))); }
+};
+
+check := (len: usize) { assert(len <= 64); };
+
+is_ident := re.compile("[a-z_][a-z0-9_]*");

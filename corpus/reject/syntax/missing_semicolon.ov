@@ -1,0 +1,4 @@
+//! A binding needs `;`, even when the next line starts a new one.
+
+limit := 64 //~ syntax.expected_token @12 "expected `;`, found `count`"
+count := 0;

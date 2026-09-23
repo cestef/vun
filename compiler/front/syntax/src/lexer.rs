@@ -4,8 +4,13 @@
 //! and a token that keeps the parser going: an unterminated string is still a `String`, a run of
 //! unknown characters is one `Error` token.
 //!
+//! A backslash before a token takes it literally: `\unsafe` is a name although `unsafe` is a
+//! keyword, `\"C:\dir"` is a string without escapes, and `\\` starts a raw line.
+//!
 //! One rule depends on context: a number directly after `.` is lexed without a fraction, so that
 //! `t.0.1` indexes twice instead of reading `0.1`.
+
+use std::borrow::Cow;
 
 use overt_diag::{ChildKind, DiagCx, DiagId, Diagnostic, Msg, errors};
 use overt_grammar::TokenKind;
@@ -14,8 +19,9 @@ use overt_trace::tracing;
 
 use crate::tokens::{Builder, Lexeme, Tokens};
 
-/// Escapes written as a backslash and one character.
-const SIMPLE_ESCAPES: [char; 7] = ['n', 't', 'r', '0', '\\', '"', '\''];
+/// Escapes written as a backslash and one character, with the character each denotes.
+const SIMPLE_ESCAPES: [(char, char); 7] =
+    [('n', '\n'), ('t', '\t'), ('r', '\r'), ('0', '\0'), ('\\', '\\'), ('"', '"'), ('\'', '\'')];
 /// Hex digits in a byte escape `\xHH`.
 const BYTE_ESCAPE_DIGITS: usize = 2;
 /// Maximum hex digits in a Unicode escape `\u{HHHHHH}`.
@@ -27,6 +33,8 @@ const COMMENT: &str = "//";
 const DOC_COMMENT: &str = "///";
 const MODULE_DOC_COMMENT: &str = "//!";
 const RAW_STRING_LINE: &str = "\\\\";
+/// Takes the next word or string literally.
+const ESCAPE: char = '\\';
 
 /// Lexes one file. Diagnostics go to `cx`; the result is always a complete token stream.
 ///
@@ -38,16 +46,61 @@ pub fn lex(file: FileId, text: &str, cx: &mut DiagCx<'_>) -> Tokens {
     let mut lexer = Lexer { file, text, pos: 0, after_dot: false, cx };
     let mut out = Builder::new(file, text.len() / 4);
     while lexer.pos < text.len() {
-        let lo = lexer.pos;
+        let (lo, reported) = (lexer.pos, lexer.cx.diag.error_count());
         let kind = lexer.lexeme();
         if !kind.is_trivia() {
             lexer.after_dot = kind == TokenKind::Dot;
         }
         out.push(Lexeme { kind, range: lexer.range_from(lo) });
+        if lexer.cx.diag.error_count() > reported {
+            out.diagnosed();
+        }
     }
     let tokens = out.finish(offset(text.len()));
     tracing::debug!(tokens = tokens.len(), "lexed");
     tokens
+}
+
+/// The text a string, raw string, raw line or character token denotes; `None` for other tokens
+/// and for malformed literals, which the lexer reported.
+#[must_use]
+pub fn literal(kind: TokenKind, text: &str) -> Option<Cow<'_, str>> {
+    let quoted = |open: &str, close: char| text.strip_prefix(open)?.strip_suffix(close);
+    match kind {
+        TokenKind::String => unescape(quoted("\"", '"')?),
+        TokenKind::Char => unescape(quoted("'", '\'')?),
+        TokenKind::RawString => Some(Cow::Borrowed(quoted("\\\"", '"')?)),
+        TokenKind::RawStringLine => Some(Cow::Borrowed(text.strip_prefix(RAW_STRING_LINE)?)),
+        _ => None,
+    }
+}
+
+fn unescape(body: &str) -> Option<Cow<'_, str>> {
+    if !body.contains(ESCAPE) {
+        return Some(Cow::Borrowed(body));
+    }
+    let mut out = String::with_capacity(body.len());
+    let mut chars = body.chars();
+    while let Some(c) = chars.next() {
+        if c != ESCAPE {
+            out.push(c);
+            continue;
+        }
+        let value = match chars.next()? {
+            'x' => {
+                let hex: String = chars.by_ref().take(BYTE_ESCAPE_DIGITS).collect();
+                char::from(u8::from_str_radix(&hex, 16).ok()?)
+            }
+            'u' => {
+                let (hex, after) = chars.as_str().strip_prefix('{')?.split_once('}')?;
+                chars = after.chars();
+                char::from_u32(u32::from_str_radix(hex, 16).ok()?)?
+            }
+            e => SIMPLE_ESCAPES.iter().find(|&&(c, _)| c == e)?.1,
+        };
+        out.push(value);
+    }
+    Some(Cow::Owned(out))
 }
 
 fn offset(pos: usize) -> u32 {
@@ -82,6 +135,7 @@ impl Lexer<'_, '_, '_> {
                 self.eat_line();
                 TokenKind::RawStringLine
             }
+            ESCAPE => self.escaped(),
             '"' => self.string(),
             '\'' => self.quote(),
             c if c.is_ascii_digit() => self.number(),
@@ -122,6 +176,38 @@ impl Lexer<'_, '_, '_> {
         TokenKind::String
     }
 
+    /// `\word` or `\"raw string"`.
+    fn escaped(&mut self) -> TokenKind {
+        let lo = self.pos;
+        self.bump();
+        match self.peek() {
+            Some('"') => {
+                self.bump();
+                self.eat_while(|c| c != '"' && c != '\n');
+                if !self.eat('"') {
+                    self.unterminated(lo, errors::SYNTAX_UNTERMINATED_STRING, "raw string", '"');
+                }
+                TokenKind::RawString
+            }
+            Some(c) if is_ident_start(c) => {
+                self.eat_while(is_ident_continue);
+                TokenKind::RawIdent
+            }
+            _ => {
+                let msg = Msg::new().code(ESCAPE).text(" must be followed by a word or a string");
+                let help = Msg::new()
+                    .text("a backslash takes the next word or string literally: ")
+                    .code_list([r"\unsafe", r#"\"C:\dir""#, r"\\ raw line"]);
+                let span = self.span_from(lo);
+                self.cx.error_at(
+                    span,
+                    Diagnostic::error(errors::SYNTAX_STRAY_ESCAPE, msg).child(ChildKind::Help, help),
+                );
+                TokenKind::Error
+            }
+        }
+    }
+
     /// A character literal `'a'` or a label `'outer`.
     fn quote(&mut self) -> TokenKind {
         let lo = self.pos;
@@ -160,7 +246,7 @@ impl Lexer<'_, '_, '_> {
         let lo = self.pos;
         self.bump();
         let valid = match self.peek() {
-            Some(c) if SIMPLE_ESCAPES.contains(&c) => {
+            Some(c) if SIMPLE_ESCAPES.iter().any(|&(e, _)| e == c) => {
                 self.bump();
                 true
             }
@@ -274,9 +360,11 @@ impl Lexer<'_, '_, '_> {
 
     fn starts_token(&self) -> bool {
         self.peek().is_some_and(|c| {
-            c.is_ascii_whitespace() || is_ident_start(c) || c.is_ascii_digit() || c == '"' || c == '\''
-        }) || self.at(RAW_STRING_LINE)
-            || TokenKind::punctuation(self.rest()).is_some()
+            c.is_ascii_whitespace()
+                || is_ident_start(c)
+                || c.is_ascii_digit()
+                || matches!(c, '"' | '\'' | ESCAPE)
+        }) || TokenKind::punctuation(self.rest()).is_some()
     }
 
     fn unterminated(&mut self, lo: usize, id: DiagId, what: &'static str, close: char) {
@@ -288,7 +376,7 @@ impl Lexer<'_, '_, '_> {
 
     fn invalid_escape(&mut self, lo: usize) {
         let msg = Msg::new().text("invalid escape sequence ").code(&self.text[lo..self.pos]);
-        let simple = SIMPLE_ESCAPES.iter().map(|&c| ['\\', c].iter().collect::<String>());
+        let simple = SIMPLE_ESCAPES.iter().map(|&(c, _)| ['\\', c].iter().collect::<String>());
         let valid = simple.chain(["\\xHH".to_owned(), "\\u{H..HHHHHH}".to_owned()]);
         let note = Msg::new().text("valid escapes are ").code_list(valid);
         let span = self.span_from(lo);
@@ -417,6 +505,16 @@ mod tests {
             [String, Char, Char, Char, Label, Colon, Eof]
         );
         assert_eq!(kinds("\\\\ raw line\nx"), [RawStringLine, Ident, Eof]);
+        assert_eq!(kinds(r#"\"C:\dir" \unsafe \x"#), [RawString, RawIdent, RawIdent, Eof]);
+    }
+
+    #[test]
+    fn literal_values() {
+        assert_eq!(literal(String, r#""a\n\x41\u{e9}\"""#).as_deref(), Some("a\nA\u{e9}\""));
+        assert_eq!(literal(RawString, r#"\"C:\dir""#).as_deref(), Some(r"C:\dir"));
+        assert_eq!(literal(RawStringLine, r"\\ line").as_deref(), Some(" line"));
+        assert_eq!(literal(Char, r"'\''").as_deref(), Some("'"));
+        assert_eq!(literal(Ident, "x"), None);
     }
 
     #[test]
@@ -461,6 +559,8 @@ mod tests {
             ("0b102 x", errors::SYNTAX_MALFORMED_NUMBER, vec![Int, Ident, Eof]),
             ("0x", errors::SYNTAX_MALFORMED_NUMBER, vec![Int, Eof]),
             ("@@ x", errors::SYNTAX_UNKNOWN_CHARACTER, vec![Error, Ident, Eof]),
+            (r#"\"open"#, errors::SYNTAX_UNTERMINATED_STRING, vec![RawString, Eof]),
+            ("\\ x", errors::SYNTAX_STRAY_ESCAPE, vec![Error, Ident, Eof]),
         ];
         for (text, id, expected) in cases {
             let (tokens, ids) = lex_text(text);

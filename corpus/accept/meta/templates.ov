@@ -1,0 +1,7 @@
+//! A function body with compile-time parameters is a typed template (spec 03, section 1).
+
+dot := ($N: usize, a: &[N]f32, b: &[N]f32) -> f32 {
+    mut acc: f32 = 0;
+    $for i in 0..N { acc += a[i] * b[i]; }
+    acc
+};

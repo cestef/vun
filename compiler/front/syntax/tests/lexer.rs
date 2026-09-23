@@ -3,7 +3,7 @@
 use std::path::{Path, PathBuf};
 
 use overt_diag::{DiagCtxt, DiagCx};
-use overt_harness::{Snapshot, discover, repo_root, snapshot};
+use overt_harness::{discover, repo_root, snapshot_tree};
 use overt_origin::OriginTable;
 use overt_span::SourceFiles;
 use overt_syntax::lexer::lex;
@@ -18,7 +18,10 @@ fn lex_text(text: &str) -> (Tokens, DiagCtxt) {
 
 fn sources() -> Vec<PathBuf> {
     let root = repo_root();
-    ["corpus", "lib"].iter().flat_map(|dir| discover(&root.join(dir), "ov").expect("readable tree")).collect()
+    ["corpus/accept", "lib"]
+        .iter()
+        .flat_map(|dir| discover(&root.join(dir), "ov").expect("readable tree"))
+        .collect()
 }
 
 #[test]
@@ -36,15 +39,12 @@ fn repository_sources_lex_cleanly_and_losslessly() {
 #[test]
 fn corpus_token_dumps_match_snapshots() {
     let snapshots = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/snapshots/tokens");
-    for path in discover(&repo_root().join("corpus/accept"), "ov").expect("readable corpus") {
-        let text = std::fs::read_to_string(&path).expect("readable source");
-        let dump = lex_text(&text).0.dump(&text).to_string();
-        let target = snapshots.join(path.file_name().expect("file name")).with_extension("tokens");
-        if let Snapshot::Differs { expected, actual } = snapshot(&target, &dump).expect("snapshot io") {
-            panic!(
-                "token dump of {} changed; rerun with OVERT_BLESS=1 to accept\n--- expected\n{expected}\n--- actual\n{actual}",
-                path.display()
-            );
-        }
+    let corpus = repo_root().join("corpus/accept");
+    let changed =
+        snapshot_tree(&corpus, "ov", &snapshots, "tokens", |text| lex_text(text).0.dump(text).to_string())
+            .expect("snapshot io");
+    for c in &changed {
+        eprintln!("--- {}: expected\n{}\n--- actual\n{}", c.source.display(), c.expected, c.actual);
     }
+    assert!(changed.is_empty(), "tokens dumps changed; rerun with OVERT_BLESS=1 to accept");
 }

@@ -26,6 +26,10 @@
 | 20 | Manifest is `build.ov` with a literal `package`; MVS; content-hash identity; parameters not features | proposed (draft 2) | 12 |
 | 21 | Tests are `#[test]` bindings; parameters select the kind | proposed (draft 2) | 11 |
 | 22 | Package namespace is `<name>.ov` plus `<name>/`, merged | proposed (draft 2) | 01, 12 |
+| 23 | CST is a postorder array anchored one token per node; patterns parse as expressions | proposed | 01, 13 |
+| 24 | A backslash takes what follows literally: `\name` escapes a keyword, `\"..."` is a raw string, `\\` a raw line | accepted | 01 |
+| 25 | `static` is contextual after `&`, like `out` and `take` | proposed | 01, 05 |
+| 26 | Command lines are declared as data (`overt-command`), for the CLI and repository tasks | accepted | 13 |
 
 ## Open questions
 
@@ -40,8 +44,9 @@
    corpus shows confusion.
 5. **Privacy by `_`.** Everything is public by default, so an API can leak by omission. Mitigated by
    `layout.private_leak` and `overt pkg api diff`. Lean: accept.
-6. **Function literal parse rule.** `(ident:` never starts an ordinary expression, but a reader has
-   to learn it. Lean: accept; the formatter keeps top-level functions at `name := (`.
+6. **Function literal parse rule.** A group with a typed parameter, or followed by `->`, is a
+   function; a tuple or parenthesized expression never has that shape, but a reader has to learn
+   it. Lean: accept; the formatter keeps top-level functions at `name := (`.
 7. **`e?` and `?T` share a symbol.** Related meanings ("maybe absent"). Lean: accept.
 8. **Scalable vectors** (SVE, RVV) have no fixed `N`. Lean: a `lang.simd.Scalable(T)` type later.
 9. **Large implicit copies.** Lean: the `perf.large_copy` lint with a byte threshold.
@@ -52,3 +57,11 @@
     prefix allowing BLAKE3 later.
 13. **Vendoring by default** for firmware projects, per gingerBill's argument. Lean: offer
     `overt pkg vendor`, do not default.
+14. **Node fields in the grammar.** Spec 13 wants typed accessors generated from node fields;
+    `grammar.ov` lists node kinds only. Lean: add named children per kind when HIR lowering needs
+    them, and generate accessors with `cargo xtask grammar`.
+15. **Typed literal after other operands.** `T{ }` is recognized after a name, a member access or a
+    call. An alternative with no position rule is `T.{ }`, reusing `.{`. Lean: keep `T{ }` unless
+    the rule proves confusing.
+16. **Lowercase primitive type names** (`u8`, `bool`, `type`) versus the `PascalCase` rule for
+    types. Lean: an exemption list in `naming.case` for `lang` and the prelude.

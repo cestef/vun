@@ -1,0 +1,3 @@
+//! A character literal holds one character between quotes.
+
+newline := '\n; //~ syntax.unterminated_char

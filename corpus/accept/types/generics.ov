@@ -1,0 +1,10 @@
+//! Types are compile-time values; `$` marks what is known at compile time (spec 02, section 1).
+
+Pair := ($T: type) -> type { struct { a: T, b: T } };
+P := Pair(u16);
+
+max := ($T: type, a: T, b: T) -> T { if a > b { a } else { b } };
+
+scratch := () -> u32 {
+    $if target.arch == .thumbv7em { cortex_m.cycles() } else { 0 }
+};

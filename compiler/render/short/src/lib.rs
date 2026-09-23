@@ -1,4 +1,5 @@
-//! One-line diagnostics: `file:line:col: severity[id]: message`.
+//! One-line diagnostics, `file:line:col: severity[id]: message`, each note and help on a line
+//! of its own below.
 
 use std::io::Write;
 
@@ -26,6 +27,9 @@ impl<W: Write> DiagSink for ShortRenderer<W> {
         }
         // Best-effort output: a closed stream must not abort compilation.
         let _ = writeln!(self.out, "{}[{}]: {}", d.severity, d.id, d.message);
+        for child in &d.children {
+            let _ = writeln!(self.out, "  = {}: {}", child.kind, child.msg);
+        }
     }
 }
 

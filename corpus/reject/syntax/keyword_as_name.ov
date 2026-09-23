@@ -1,0 +1,3 @@
+//! Keywords are never names, not even as enum variants.
+
+Mode := enum { safe, unsafe, off }; //~ syntax.expected_expression @28 "escape it: `\unsafe`"

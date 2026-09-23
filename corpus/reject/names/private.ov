@@ -1,0 +1,10 @@
+//! A name starting with `_` is visible only inside its namespace (spec 01, section 7).
+
+Uart := struct {
+    _raw: u32,
+    new := () -> Uart { .{ ._raw = 0 } };
+};
+
+peek := (u: &Uart) -> u32 {
+    u._raw //~ names.private
+};

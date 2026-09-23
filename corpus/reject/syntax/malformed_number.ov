@@ -1,0 +1,3 @@
+//! Digits must belong to the literal's radix.
+
+mask := 0b1021; //~ syntax.malformed_number

@@ -1,0 +1,5 @@
+//! An argument list left open ends at the statement's `;`.
+
+main := () {
+    run(a, b; //~ syntax.unclosed_delimiter @8 "unclosed `(`" "expected `)`, found `;`"
+};

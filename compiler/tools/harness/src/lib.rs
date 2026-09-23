@@ -10,6 +10,9 @@
 //!
 //! `//~ id` expects `id` on its own line; each `^` moves the expectation one line up. A run passes
 //! when the reported `(line, id)` pairs equal the expected ones exactly, so cascades fail tests.
+//! An annotation may also pin the column, `//~ id @12`, and require fragments of the rendered
+//! diagnostic (its message, notes and help), `//~ id "escape it"`; a diagnostic that exists but
+//! fails these checks is reported as differing.
 
 use std::collections::BTreeSet;
 use std::fs;
@@ -44,19 +47,84 @@ pub struct At {
     pub id: String,
 }
 
-/// Expectations written in `text`.
-#[must_use]
-pub fn expectations(text: &str) -> BTreeSet<At> {
-    text.lines()
-        .zip(1u32..)
-        .filter_map(|(line, number)| {
-            let rest = &line[line.find(MARKER)? + MARKER.len()..];
-            let up = rest.chars().take_while(|&c| c == '^').count();
-            let id = rest[up..].trim();
-            let up = u32::try_from(up).ok()?;
-            Some(At { line: number.checked_sub(up)?, id: id.to_owned() })
-        })
-        .collect()
+/// Marks the column of an annotation: `@12`.
+pub const COLUMN: char = '@';
+/// Delimits a required fragment of the rendered diagnostic: `"escape it"`.
+pub const FRAGMENT: char = '"';
+
+/// An annotation: where and what, and optionally the column and fragments of the text.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Expected {
+    pub at: At,
+    pub col: Option<u32>,
+    pub fragments: Vec<String>,
+}
+
+/// A diagnostic as a run reported it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Reported {
+    pub at: At,
+    pub col: u32,
+    /// The message with its notes and help, as rendered.
+    pub text: String,
+}
+
+impl Expected {
+    fn matches(&self, reported: &Reported) -> bool {
+        reported.at == self.at
+            && self.col.is_none_or(|col| col == reported.col)
+            && self.fragments.iter().all(|f| reported.text.contains(f.as_str()))
+    }
+}
+
+/// Why an annotation cannot be read.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Malformed {
+    /// The `^` marks point above the first line.
+    AboveFile { line: u32 },
+    /// A `@` not followed by a column number.
+    Column { line: u32 },
+    /// A fragment without its closing quote.
+    Fragment { line: u32 },
+}
+
+/// The annotations written in `text`.
+///
+/// # Errors
+/// Returns the first annotation that cannot be read.
+pub fn expectations(text: &str) -> Result<Vec<Expected>, Malformed> {
+    let mut found = Vec::new();
+    for (line, number) in text.lines().zip(1u32..) {
+        let Some(start) = line.find(MARKER) else { continue };
+        let rest = &line[start + MARKER.len()..];
+        let up = rest.chars().take_while(|&c| c == '^').count();
+        let target = u32::try_from(up)
+            .ok()
+            .and_then(|up| number.checked_sub(up))
+            .filter(|&l| l > 0)
+            .ok_or(Malformed::AboveFile { line: number })?;
+        let rest = rest.trim_start_matches('^').trim_start();
+        let (id, mut rest) = rest.split_once(char::is_whitespace).unwrap_or((rest, ""));
+        let mut expected =
+            Expected { at: At { line: target, id: id.to_owned() }, col: None, fragments: Vec::new() };
+        loop {
+            rest = rest.trim_start();
+            if let Some(after) = rest.strip_prefix(COLUMN) {
+                let digits = after.find(|c: char| !c.is_ascii_digit()).unwrap_or(after.len());
+                expected.col = Some(after[..digits].parse().map_err(|_| Malformed::Column { line: number })?);
+                rest = &after[digits..];
+            } else if let Some(after) = rest.strip_prefix(FRAGMENT) {
+                let (fragment, after) =
+                    after.split_once(FRAGMENT).ok_or(Malformed::Fragment { line: number })?;
+                expected.fragments.push(fragment.to_owned());
+                rest = after;
+            } else {
+                break;
+            }
+        }
+        found.push(expected);
+    }
+    Ok(found)
 }
 
 /// The difference between expected and reported diagnostics.
@@ -64,20 +132,30 @@ pub fn expectations(text: &str) -> BTreeSet<At> {
 pub struct Mismatch {
     pub missing: BTreeSet<At>,
     pub unexpected: BTreeSet<At>,
+    /// Annotations whose diagnostic was reported, but at another column or without a fragment.
+    pub differing: Vec<(Expected, Vec<Reported>)>,
 }
 
 impl Mismatch {
     #[must_use]
     pub fn is_empty(&self) -> bool {
-        self.missing.is_empty() && self.unexpected.is_empty()
+        self.missing.is_empty() && self.unexpected.is_empty() && self.differing.is_empty()
     }
 }
 
 #[must_use]
-pub fn compare(expected: &BTreeSet<At>, reported: &BTreeSet<At>) -> Mismatch {
+pub fn compare(expected: &[Expected], reported: &[Reported]) -> Mismatch {
+    let expected_at: BTreeSet<At> = expected.iter().map(|e| e.at.clone()).collect();
+    let reported_at: BTreeSet<At> = reported.iter().map(|r| r.at.clone()).collect();
+    let differing = expected
+        .iter()
+        .filter(|e| reported_at.contains(&e.at) && !reported.iter().any(|r| e.matches(r)))
+        .map(|e| (e.clone(), reported.iter().filter(|r| r.at == e.at).cloned().collect()))
+        .collect();
     Mismatch {
-        missing: expected.difference(reported).cloned().collect(),
-        unexpected: reported.difference(expected).cloned().collect(),
+        missing: expected_at.difference(&reported_at).cloned().collect(),
+        unexpected: reported_at.difference(&expected_at).cloned().collect(),
+        differing,
     }
 }
 
@@ -129,6 +207,38 @@ pub fn snapshot(path: &Path, actual: &str) -> io::Result<Snapshot> {
     }
 }
 
+/// A snapshot that no longer matches.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Changed {
+    pub source: PathBuf,
+    pub expected: String,
+    pub actual: String,
+}
+
+/// Snapshots `render(text)` of every file under `dir` with extension `ext`, at the same relative
+/// path under `snapshots` with the extension `kind`.
+///
+/// # Errors
+/// Returns an error if a source or snapshot cannot be read or written.
+pub fn snapshot_tree(
+    dir: &Path,
+    ext: &str,
+    snapshots: &Path,
+    kind: &str,
+    render: impl Fn(&str) -> String,
+) -> io::Result<Vec<Changed>> {
+    let mut changed = Vec::new();
+    for source in discover(dir, ext)? {
+        let actual = render(&fs::read_to_string(&source)?);
+        let relative = source.strip_prefix(dir).unwrap_or(&source);
+        let target = snapshots.join(relative).with_extension(kind);
+        if let Snapshot::Differs { expected, actual } = snapshot(&target, &actual)? {
+            changed.push(Changed { source, expected, actual });
+        }
+    }
+    Ok(changed)
+}
+
 fn write(path: &Path, contents: &str) -> io::Result<Snapshot> {
     if let Some(dir) = path.parent() {
         fs::create_dir_all(dir)?;
@@ -145,19 +255,35 @@ mod tests {
         At { line, id: id.to_owned() }
     }
 
-    #[test]
-    fn parses_same_line_and_upward_markers() {
-        let text = "x: u8 = 300; //~ int.does_not_fit\ny := x + ;\n//~^ syntax.expected_expression\n";
-        let expected = expectations(text);
-        assert_eq!(expected, [at(1, "int.does_not_fit"), at(2, "syntax.expected_expression")].into());
+    fn reported(line: u32, id: &str, col: u32, text: &str) -> Reported {
+        Reported { at: at(line, id), col, text: text.to_owned() }
     }
 
     #[test]
-    fn compare_reports_both_directions() {
-        let expected = [at(1, "a"), at(2, "b")].into();
-        let reported = [at(2, "b"), at(3, "c")].into();
-        let m = compare(&expected, &reported);
-        assert_eq!(m.missing, [at(1, "a")].into());
-        assert_eq!(m.unexpected, [at(3, "c")].into());
+    fn reads_markers_columns_and_fragments() {
+        let text = "x: u8 = 300; //~ int.does_not_fit\ny := x + ;\n//~^ syntax.expected_expression @9 \"found `;`\"\n";
+        let expected = expectations(text).unwrap();
+        assert_eq!(expected[0], Expected { at: at(1, "int.does_not_fit"), col: None, fragments: vec![] });
+        assert_eq!(
+            expected[1],
+            Expected {
+                at: at(2, "syntax.expected_expression"),
+                col: Some(9),
+                fragments: vec!["found `;`".into()]
+            }
+        );
+        assert_eq!(expectations("//~^ a"), Err(Malformed::AboveFile { line: 1 }));
+        assert_eq!(expectations("x //~ a \"open"), Err(Malformed::Fragment { line: 1 }));
+    }
+
+    #[test]
+    fn compare_reports_missing_unexpected_and_differing() {
+        let expected = expectations("a //~ x\nb //~ y @3 \"needle\"\n").unwrap();
+        let runs = [reported(2, "y", 3, "no match here"), reported(3, "z", 1, "")];
+        let m = compare(&expected, &runs);
+        assert_eq!(m.missing, [at(1, "x")].into());
+        assert_eq!(m.unexpected, [at(3, "z")].into());
+        assert_eq!(m.differing.len(), 1);
+        assert!(compare(&expected[1..], &[reported(2, "y", 3, "a needle")]).is_empty());
     }
 }

@@ -1,0 +1,8 @@
+//! A borrow cannot be stored in a free value: a top-level binding, an `Own`, a heap node
+//! (spec 05, section 4).
+
+Parser := struct { input: &[u8] };
+
+boxed := (a: &mut Alloc, input: &[u8]) -> Result(Own(Parser), Alloc.Error) {
+    a.create(Parser{ .input = input }) //~ borrow.in_free_value
+};

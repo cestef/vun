@@ -1,0 +1,8 @@
+//! Calling an `unsafe` function requires an `unsafe` block (spec 07, section 5).
+
+#[link.symbol("puts"), abi.c]
+puts: unsafe (s: *u8) -> i32 = _;
+
+greet := (s: *u8) -> i32 {
+    puts(s) //~ safety.requires_unsafe
+};

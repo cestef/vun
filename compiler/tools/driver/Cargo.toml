@@ -24,6 +24,7 @@ link-msvc = ["dep:overt-link-msvc"]
 link-process = ["dep:overt-link-process"]
 
 [dependencies]
+overt-command.workspace = true
 overt-trace.workspace = true
 overt-span.workspace = true
 overt-origin.workspace = true

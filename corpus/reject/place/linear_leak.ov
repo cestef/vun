@@ -1,0 +1,7 @@
+//! At every scope exit, linear places must be `uninit`: nothing is closed implicitly
+//! (spec 05, section 2).
+
+size := (fs: &mut Fs, path: &[u8]) -> Result(u64, Error) {
+    f := fs.open(path)?;
+    .ok(f.size()) //~ place.linear_leak
+};

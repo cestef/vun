@@ -1,85 +1,186 @@
 //! The grammar of Overt, defined once. Generates the Rust `overt-grammar` crate, `lang.syntax`,
-//! the formatter's tables and the editor grammar (spec 13, section 5). Keyword token names are
-//! derived from their spelling; punctuation names are given.
+//! the formatter's tables and the editor grammar (spec 13, section 5).
+//!
+//! `cargo xtask grammar` reads this file as literal data, by shape and never by name:
+//! - a `PascalCase` record of lists defines a kind: its entries are the kind's variants, and each
+//!   list is also a table of its own. An entry is `.name`, a spelling `"text"` (named after
+//!   itself), or `.{ .name = .x, .text = "..." }`;
+//! - an `enum` declaration defines an enum;
+//! - any other list is a table; `.name` items resolve to the one kind or enum that has them all.
 
-Context := enum { for_pattern, after_amp };
+/// Kinds of tokens.
+TokenKind := .{
+    .trivia = [.whitespace, .comment],
+    .atoms = [
+        .doc_comment,
+        .module_doc_comment,
+        .ident,
+        .raw_ident,
+        .int,
+        .float,
+        .char,
+        .string,
+        .raw_string,
+        .raw_string_line,
+        .label,
+        .error,
+    ],
+    .keywords = [
+        "mut",
+        "if",
+        "else",
+        "match",
+        "for",
+        "break",
+        "continue",
+        "return",
+        "yield",
+        "defer",
+        "and",
+        "or",
+        "struct",
+        "enum",
+        "unsafe",
+    ],
+    .punctuation = [
+        .{ .name = .colon_eq, .text = ":=" },
+        .{ .name = .colon, .text = ":" },
+        .{ .name = .eq, .text = "=" },
+        .{ .name = .eq_eq, .text = "==" },
+        .{ .name = .bang_eq, .text = "!=" },
+        .{ .name = .lt, .text = "<" },
+        .{ .name = .le, .text = "<=" },
+        .{ .name = .gt, .text = ">" },
+        .{ .name = .ge, .text = ">=" },
+        .{ .name = .arrow, .text = "->" },
+        .{ .name = .fat_arrow, .text = "=>" },
+        .{ .name = .dot, .text = "." },
+        .{ .name = .dot_star, .text = ".*" },
+        .{ .name = .dot_dot, .text = ".." },
+        .{ .name = .dot_dot_eq, .text = "..=" },
+        .{ .name = .dot_l_brace, .text = ".{" },
+        .{ .name = .comma, .text = "," },
+        .{ .name = .semi, .text = ";" },
+        .{ .name = .l_paren, .text = "(" },
+        .{ .name = .r_paren, .text = ")" },
+        .{ .name = .l_bracket, .text = "[" },
+        .{ .name = .r_bracket, .text = "]" },
+        .{ .name = .l_brace, .text = "{" },
+        .{ .name = .r_brace, .text = "}" },
+        .{ .name = .hash_l_bracket, .text = "#[" },
+        .{ .name = .hash_l_brace, .text = "#{" },
+        .{ .name = .dollar, .text = "$" },
+        .{ .name = .question, .text = "?" },
+        .{ .name = .amp, .text = "&" },
+        .{ .name = .pipe, .text = "|" },
+        .{ .name = .caret, .text = "^" },
+        .{ .name = .tilde, .text = "~" },
+        .{ .name = .bang, .text = "!" },
+        .{ .name = .plus, .text = "+" },
+        .{ .name = .minus, .text = "-" },
+        .{ .name = .star, .text = "*" },
+        .{ .name = .slash, .text = "/" },
+        .{ .name = .percent, .text = "%" },
+        .{ .name = .plus_plus, .text = "++" },
+        .{ .name = .shl, .text = "<<" },
+        .{ .name = .shr, .text = ">>" },
+        .{ .name = .plus_eq, .text = "+=" },
+        .{ .name = .minus_eq, .text = "-=" },
+        .{ .name = .star_eq, .text = "*=" },
+        .{ .name = .slash_eq, .text = "/=" },
+        .{ .name = .percent_eq, .text = "%=" },
+        .{ .name = .plus_percent_eq, .text = "+%=" },
+        .{ .name = .plus_pipe_eq, .text = "+|=" },
+        .{ .name = .underscore, .text = "_" },
+    ],
+    .end = [.eof],
+};
 
-trivia := [.whitespace, .comment];
+/// Kinds of syntax tree nodes (spec 13, section 2). A leaf never has children.
+NodeKind := .{
+    .leaves = [
+        .punct, .error, .module_doc, .\mut, .mode, .name, .hole, .int, .float, .char, .string,
+        .raw_string_line, .label,
+    ],
+    .branches = [
+        .file, .doc, .attr, .binding, .field, .param, .returns, .fn, .fn_type, .closure, .block,
+        .quote, .\struct, .\enum, .paren, .tuple, .array, .array_repeat, .array_type, .struct_lit,
+        .field_init, .dot_name, .member, .call, .index, .prefix, .postfix, .infix, .assign, .\if,
+        .test, .\for, .in, .\match, .arm, .guard, .labeled, .\return, .\break, .\continue,
+        .\yield, .\defer, .multiline_string,
+    ],
+};
 
-atoms := [.doc_comment, .module_doc_comment, .ident, .int, .float, .char, .string, .raw_string_line, .label, .error];
+/// Where a contextual keyword is recognized; elsewhere it is a name.
+Context := enum {
+    /// After the pattern of a `for`.
+    for_pattern,
+    /// Directly after `&`.
+    after_amp,
+};
 
-keywords := [
-    "mut",
-    "if",
-    "else",
-    "match",
-    "for",
-    "break",
-    "continue",
-    "return",
-    "yield",
-    "defer",
-    "and",
-    "or",
-    "struct",
-    "enum",
-    "unsafe",
-];
+/// How an infix operator groups with its own level.
+Assoc := enum {
+    left,
+    /// Chaining is an error: `a < b < c`.
+    none,
+};
 
-punctuation := [
-    .{ .name = .colon_eq, .text = ":=" },
-    .{ .name = .colon, .text = ":" },
-    .{ .name = .eq, .text = "=" },
-    .{ .name = .eq_eq, .text = "==" },
-    .{ .name = .bang_eq, .text = "!=" },
-    .{ .name = .lt, .text = "<" },
-    .{ .name = .le, .text = "<=" },
-    .{ .name = .gt, .text = ">" },
-    .{ .name = .ge, .text = ">=" },
-    .{ .name = .arrow, .text = "->" },
-    .{ .name = .fat_arrow, .text = "=>" },
-    .{ .name = .dot, .text = "." },
-    .{ .name = .dot_star, .text = ".*" },
-    .{ .name = .dot_dot, .text = ".." },
-    .{ .name = .dot_dot_eq, .text = "..=" },
-    .{ .name = .dot_l_brace, .text = ".{" },
-    .{ .name = .comma, .text = "," },
-    .{ .name = .semi, .text = ";" },
-    .{ .name = .l_paren, .text = "(" },
-    .{ .name = .r_paren, .text = ")" },
-    .{ .name = .l_bracket, .text = "[" },
-    .{ .name = .r_bracket, .text = "]" },
-    .{ .name = .l_brace, .text = "{" },
-    .{ .name = .r_brace, .text = "}" },
-    .{ .name = .hash_l_bracket, .text = "#[" },
-    .{ .name = .hash_l_brace, .text = "#{" },
-    .{ .name = .dollar, .text = "$" },
-    .{ .name = .question, .text = "?" },
-    .{ .name = .amp, .text = "&" },
-    .{ .name = .pipe, .text = "|" },
-    .{ .name = .caret, .text = "^" },
-    .{ .name = .tilde, .text = "~" },
-    .{ .name = .bang, .text = "!" },
-    .{ .name = .plus, .text = "+" },
-    .{ .name = .minus, .text = "-" },
-    .{ .name = .star, .text = "*" },
-    .{ .name = .slash, .text = "/" },
-    .{ .name = .percent, .text = "%" },
-    .{ .name = .plus_plus, .text = "++" },
-    .{ .name = .shl, .text = "<<" },
-    .{ .name = .shr, .text = ">>" },
-    .{ .name = .plus_eq, .text = "+=" },
-    .{ .name = .minus_eq, .text = "-=" },
-    .{ .name = .star_eq, .text = "*=" },
-    .{ .name = .slash_eq, .text = "/=" },
-    .{ .name = .percent_eq, .text = "%=" },
-    .{ .name = .plus_percent_eq, .text = "+%=" },
-    .{ .name = .plus_pipe_eq, .text = "+|=" },
-    .{ .name = .underscore, .text = "_" },
-];
-
+/// Words that are keywords only in one context.
 contextual := [
     .{ .text = "in", .context = .for_pattern },
     .{ .text = "out", .context = .after_amp },
     .{ .text = "take", .context = .after_amp },
+    .{ .text = "static", .context = .after_amp },
 ];
+
+/// Opening delimiters and the tokens that close them.
+delimiters := [
+    .{ .open = .l_paren, .close = .r_paren },
+    .{ .open = .l_bracket, .close = .r_bracket },
+    .{ .open = .hash_l_bracket, .close = .r_bracket },
+    .{ .open = .l_brace, .close = .r_brace },
+    .{ .open = .hash_l_brace, .close = .r_brace },
+    .{ .open = .dot_l_brace, .close = .r_brace },
+];
+
+/// Infix operator levels, loosest first (spec 01, section 6).
+infix := [
+    .{ .assoc = .left, .tokens = [.\or] },
+    .{ .assoc = .left, .tokens = [.\and] },
+    .{ .assoc = .none, .tokens = [.eq_eq, .bang_eq, .lt, .le, .gt, .ge] },
+    .{ .assoc = .none, .tokens = [.dot_dot, .dot_dot_eq] },
+    .{ .assoc = .left, .tokens = [.pipe] },
+    .{ .assoc = .left, .tokens = [.caret] },
+    .{ .assoc = .left, .tokens = [.amp] },
+    .{ .assoc = .left, .tokens = [.shl, .shr] },
+    .{ .assoc = .left, .tokens = [.plus_plus] },
+    .{ .assoc = .left, .tokens = [.plus, .minus] },
+    .{ .assoc = .left, .tokens = [.star, .slash, .percent] },
+];
+
+/// Operators written before their operand. `&` may be followed by a borrow mode.
+prefix := [.minus, .bang, .tilde, .amp, .star, .question, .dot_dot, .dollar, .\unsafe];
+
+/// Operators written after their operand, besides member access, calls, indexing and literals.
+postfix := [.dot_star, .question];
+
+/// Operators of assignment statements.
+assign := [.eq, .plus_eq, .minus_eq, .star_eq, .slash_eq, .percent_eq, .plus_percent_eq, .plus_pipe_eq];
+
+/// Tokens that can start an operand, besides prefix operators.
+operands := [
+    .ident, .raw_ident, .underscore, .int, .float, .char, .string, .raw_string, .raw_string_line,
+    .dot, .dot_l_brace, .l_paren, .l_bracket, .l_brace, .hash_l_brace, .hash_l_bracket, .\if,
+    .\for, .\match, .label, .\struct, .\enum, .\return, .\break, .\continue, .\yield, .\defer,
+    .error,
+];
+
+/// Tokens after `[n]` that make it the array type `[n]T` rather than a one-element array.
+element_types := [
+    .ident, .raw_ident, .underscore, .l_bracket, .star, .question, .amp, .dollar, .\struct,
+    .\enum, .hash_l_bracket, .\unsafe,
+];
+
+/// Nodes after which `{` opens a typed struct literal: `Point{ }`, `lang.target.Spec{ }`.
+literal_types := [.name, .member, .call];

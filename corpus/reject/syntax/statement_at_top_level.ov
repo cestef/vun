@@ -1,0 +1,4 @@
+//! Files hold declarations; a call at file level has no binding.
+
+run(); //~ syntax.expected_token
+ok := 1;

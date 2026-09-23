@@ -1,0 +1,13 @@
+//! A backslash takes what follows literally (spec 01, sections 1 and 5).
+
+Safety := enum { safe, \unsafe, placeholder };
+
+path := \"C:\dir\new";
+escaped := "tab\there\n";
+banner :=
+    \\  _____
+    \\ | "ov" |
+    \\  -----
+;
+
+pick := (s: Safety) -> bool { s == .\unsafe };

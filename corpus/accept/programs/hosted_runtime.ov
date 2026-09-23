@@ -1,0 +1,16 @@
+//! A hosted runtime is plain library code (spec 08, section 2).
+
+start := ($main: (&mut System) -> Exit) -> type { struct {
+    #[link.export("_start"), abi.naked]
+    entry := () -> never {
+        unsafe { lang.arch.asm("mov rdi, rsp; and rsp, -16; call {boot}", .{ .boot = _boot }) }
+    };
+
+    _boot := (sp: *usize) -> never {
+        mut sys := unsafe { System.from_stack(sp) };
+        exit(main(&mut sys))
+    };
+
+    #[link.export(lang.panic.trap_symbol)]
+    trap := (t: &lang.panic.Trap) -> never { report(t); exit(.code(101)) };
+}};

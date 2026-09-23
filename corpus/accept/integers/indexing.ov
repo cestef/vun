@@ -1,0 +1,13 @@
+//! Range-typed indices need no bounds checks (spec 04, section 1).
+
+N := 64;
+Index := Int(0..N);
+
+advance := (buf: &mut [N]u8, head: &mut Index, byte: u8) {
+    head.* = (head.* + 1) % N;
+    buf[head.*] = byte;
+};
+
+narrow := (x: u32) -> (u8, u8, u8, ?u8) { (x.to(u8), x.wrap(u8), x.sat(u8), x.try_to(u8)) };
+
+limits := () -> Int(1..) { 1 };

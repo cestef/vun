@@ -1,0 +1,16 @@
+//! A name position may hold `$(e)`; `$for` works in every list context (spec 03, section 2).
+
+Peripheral := ($p: svd.Peripheral) -> type {
+    Block := struct {
+        $for r in p.registers {
+            #[layout.offset(r.offset)]
+            $(r.name): Reg(svd.bits(r)),
+        }
+        $for r in p.registers {
+            $("reset_" ++ r.name) := (self: &mut Block) { self.$(r.name).write(r.reset); };
+        }
+    };
+    Block
+};
+
+Gpioa := Peripheral($svd.parse(std.meta.embed("stm32f4.svd")).peripheral("GPIOA"));

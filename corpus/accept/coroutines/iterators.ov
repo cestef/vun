@@ -1,0 +1,11 @@
+//! Iterators are coroutines that yield values (spec 06, section 3).
+
+evens := (limit: u32) -> Iter(u32) {
+    for i in 0..limit { if i % 2 == 0 { yield i; } }
+};
+
+sum := (limit: u32) -> u64 {
+    mut total: u64 = 0;
+    for e in evens(limit) { total += e; }
+    total
+};

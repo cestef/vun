@@ -1,0 +1,10 @@
+//! Closures list their captures, spelled as the values would be passed (spec 01, section 4).
+
+counter := () -> u32 {
+    mut n: u32 = 0;
+    inc := [&mut n] (by: u8) { n += by; };
+    inc(1);
+    x: u32 = 21;
+    dbl := [x] () -> u32 { x * 2 };
+    n + dbl()
+};

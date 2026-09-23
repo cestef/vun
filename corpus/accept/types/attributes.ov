@@ -1,0 +1,12 @@
+//! Attributes are compile-time values attached to the next declaration (spec 02, section 5).
+
+#[layout.bits(u32)]
+Ctrl := struct { enable: bool, mode: u2, _: u29 };
+
+#[link.symbol("puts"), abi.c]
+puts: unsafe (s: *u8) -> i32 = _;
+
+Id := struct {
+    #[serde.rename("id")]
+    value: u64,
+};

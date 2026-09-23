@@ -1,0 +1,13 @@
+[package]
+name = "overt-command"
+description = "Declarative command trees: argument parsing, generated help, usage diagnostics."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+overt-diag.workspace = true

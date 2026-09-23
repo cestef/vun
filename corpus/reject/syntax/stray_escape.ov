@@ -1,0 +1,3 @@
+//! A backslash takes the next word or string literally; alone, it means nothing.
+
+x := \ 1; //~ syntax.stray_escape

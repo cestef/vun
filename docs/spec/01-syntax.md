@@ -11,8 +11,13 @@ struct enum                            type literals
 unsafe                                 the audit boundary
 ```
 
-**15 reserved words**, plus **3 contextual** ones: `in` (only after `for <pattern>`), `out` and
-`take` (only after `&`). Lua has 22, Go 25, Rust 39, C 44, Zig 49.
+**15 reserved words**, plus **4 contextual** ones: `in` (only after `for <pattern>`), `out`, `take`
+and `static` (only after `&`). Lua has 22, Go 25, Rust 39, C 44, Zig 49.
+
+A reserved word becomes an ordinary name when escaped with a backslash: `\unsafe` is the name
+`unsafe`. The escape is how a declaration mirrors a foreign or domain name that collides with a
+keyword (`Safety := enum { safe, \unsafe }`), and it is the same backslash that takes a string
+literally (section 5).
 
 Each remaining keyword earns its place: it changes control flow, changes what may be mutated, opens
 a type literal, or marks the safety boundary. Nothing that a library, a symbol or an attribute can
@@ -66,6 +71,7 @@ Type syntax mirrors value syntax. Patterns mirror constructors. Each symbol mean
 | `_` | discard in patterns; "provided from outside" as a declaration's whole value |
 | `->` | "results in": function types and literals |
 | `=>` | "then": match arms |
+| `\` | take what follows literally: `\unsafe` is a name, `\"C:\dir"` a string without escapes, `\\` a raw line |
 
 ## 3. Bindings
 
@@ -105,8 +111,9 @@ Pair := ($T: type) -> type { struct { a: T, b: T } }; // $: known at compile tim
 - The body is a block. Its value is its last expression without a trailing `;`.
 - `return e` leaves the function early. It is the only way to leave a function other than reaching
   the end of its body, trapping, or `yield`.
-- Parse rule: `(` followed by `)` or by `ident :` or `$ident :` and eventually by `->` or `{` starts
-  a function literal. A parenthesized expression never has that shape.
+- Parse rule: a parenthesized group is a function type when one of its parameters is typed
+  (`name: T`) or when `->` follows it, and a function literal when a body follows either; `() { }`
+  is a function literal too. A parenthesized expression or a tuple never has that shape.
 - `unsafe (p: *u32) -> u32 { ... }` marks a function whose callers must be inside `unsafe`. Its body
   is not implicitly unsafe; unsafe operations inside it still need their own `unsafe { }`.
 
@@ -160,7 +167,12 @@ Literals:
 - Integers `1_000`, `0xff`, `0o17`, `0b1010`. A literal `n` has type `Int(n..=n)` (spec 04).
 - Characters `'a'` are integer literals of their Unicode scalar value.
 - Floats `1.5`, `1e-3`, typed by context or `f64` by default.
-- Strings `"text\n"` have type `&static [N]u8`. Multi-line raw strings are lines starting with `\\`.
+- Strings `"text\n"` have type `&static [N]u8`. Escapes are `\n \t \r \0 \\ \" \'`, `\xHH` and
+  `\u{H..HHHHHH}`.
+- A backslash before a string takes it literally: `\"C:\dir\new"` has no escapes and ends at the
+  next `"`. A multi-line string is a run of lines each starting with `\\`, also taken literally, so
+  it may contain quotes. So there are two string forms: escaped (`"..."`) and literal (`\"..."`,
+  `\\` lines).
 - There are no block comments. `//` comments, `///` documents the next declaration, `//!`
   documents the enclosing namespace.
 
@@ -203,6 +215,30 @@ config := load(path)?;                             // propagate .err / .none to 
 Operator precedence, high to low: postfix (`.`, `()`, `[]`, `.*`, `?`), prefix (`-`, `!`, `&`,
 `$`), `* / %`, `+ -`, `++`, `<< >>`, `&`, `^`, `|`, `..`, comparisons (non-associative),
 `and`, `or`.
+
+### Parse rules
+
+The grammar is the table in `lang/syntax/grammar.ov` (spec 13, section 5) plus these rules, which
+settle every place where a token could continue two constructs:
+
+- **Patterns are expressions in the syntax tree.** Patterns mirror constructors, so `(a, b)`,
+  `.some(x)` and `.{ .x = p }` parse the same way in both roles; the role comes from the position
+  (left of `:=`, in a parameter, in an `if`/`for` head, in a match arm).
+- **A `{` in a head opens the body.** In the head of `if`, `for` and `match`, and after `->`, an
+  operand never continues into `{`: `if a == b { }` compares with `b`. Parenthesize to use a
+  typed literal there: `if p == (Point{ .x = 0 }) { }`.
+- **Typed literals** `T{ ... }` follow a name, a member access or a call: `Point{ }`,
+  `lang.target.Spec{ }`, `Pair(u8){ }`. Any other `{` after an operand is a block.
+- **Array types.** `[e]` directly followed by a token that can start a type (a name, `[`, `(`,
+  `*`, `?`, `&`, `$`, `struct`, `enum`, `#[`, `unsafe`) is the array type `[e]T`; so `[N]u8`,
+  `[2][3]u8` and `[_]u8`. `[caps]` followed by a function literal is a closure.
+- **Block-like statements end at their closing brace.** A statement that starts with `if`, `match`,
+  `for`, a block, a label, or `$`/`unsafe` before one of those, ends after it; the next token starts
+  a new statement. Such a statement needs no `;`.
+- **Ranges and comparisons do not chain**: `a < b < c` and `a..b..c` are errors. `a..` has no upper
+  bound.
+- **Lists** (arguments, parameters, items, fields, arms, attributes) are comma-separated and
+  accept a trailing comma. In `.{ }`, `T{ }` and argument lists an item may be `name = value`.
 
 ## 7. Visibility
 

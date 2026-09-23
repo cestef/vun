@@ -79,29 +79,34 @@ that is the definition of safe.
 
 ## D. Grammar sketch
 
-Informal; the normative grammar is `lang/syntax/grammar.ov`.
+Informal; the normative grammar is `lang/syntax/grammar.ov` plus the parse rules of spec 01,
+section 5. Patterns are parsed as expressions (`pattern = expr` below).
 
 ```
-file        = { attr } { decl }
-decl        = { attr } [ "mut" ] pattern [ ":" type ] ( ":=" expr | "=" expr | ) ";"
-attr        = "#[" expr { "," expr } "]"
-pattern     = ident | "_" | "$" ident | literal | "(" [ pattern { "," pattern } ] ")"
-            | "." ident [ "(" pattern { "," pattern } ")" ] | ".{" field_pat { "," field_pat } "}"
-expr        = literal | path | fn_lit | closure | block | if | match | for
-            | struct_lit | enum_lit | tuple | array | quote | prefix expr | expr postfix
-            | expr binop expr | "break" [ label ] [ expr ] | "continue" [ label ]
-            | "return" [ expr ] | "yield" [ ".." ] expr | "defer" expr | "unsafe" block
-fn_lit      = [ "unsafe" ] "(" [ param { "," param } ] ")" [ "->" type ] block
-closure     = "[" [ expr { "," expr } ] "]" fn_lit
-param       = { attr } [ "$" ] pattern ":" type
-if          = [ "$" ] "if" ( expr | pattern "=" expr ) block [ "else" ( if | block ) ]
-for         = [ label ":" ] [ "$" ] "for" [ expr | pattern "=" expr | pattern "in" expr ] block
+file        = members
+members     = { module_doc | annotated(member) | "$" block_like }
+member      = [ "mut" ] expr ( ":=" expr ";" | ":" type [ "=" expr ] ( ";" | "," ) )
+statements  = { annotated(statement) } [ expr ]
+statement   = member | expr ( assign_op expr )? ";" | block_like [ ";" ] | ";"
+annotated(x)= { doc_comment | "#[" items "]" } x
+items       = [ item { "," item } [ "," ] ]
+item        = annotated(expr [ "=" expr | ":" type ]) | "$" block_like
+expr        = prefix { binop prefix }                       (precedence: spec 01, section 6)
+prefix      = { "-" | "!" | "~" | "&" [ "mut" | "out" | "take" | "static" ] | "*" | "?" | ".."
+              | "$" | "unsafe" | "#[" items "]" } postfix
+postfix     = primary { "." ( name | int | "$" primary ) | ".*" | "?" | "(" items ")"
+              | "[" expr "]" | "{" items "}" }              ("{" only after a name, member or call)
+primary     = name | "_" | literal | "." name | ".{" items "}" | group | bracket | block_like
+            | "struct" "{" members "}" | "enum" "{" items "}" | "#{" statements "}"
+            | ( "return" | "break" [ label ] ) [ expr ] | "continue" [ label ]
+            | ( "yield" | "defer" ) expr
+group       = "(" items ")" [ "->" type ] [ block ]         (a function when typed, "->" or a body)
+bracket     = "[" items [ ";" expr ] "]" [ type | group ]   (array, repeat, array type, closure)
+block_like  = { "$" | "unsafe" } ( block | if | for | match | label ":" ( for | block ) )
+if          = "if" head block [ "else" ( if | block ) ]
+for         = "for" [ head | pattern "in" expr ] block
+head        = expr [ "=" expr ]                             (no "{" continues an operand here)
 match       = "match" expr "{" { pattern [ "if" expr ] "=>" expr "," } "}"
-struct_lit  = "struct" "{" { field | decl | "$for" ... | "$if" ... } "}"
-field       = { attr } ( ident | "$(" expr ")" ) ":" type [ "=" expr ] ","
-enum_lit    = "enum" "{" { ident [ "(" type { "," type } ")" ] "," } "}"
-quote       = "#{" ( expr | { decl } ) "}"
-prefix      = "-" | "!" | "&" [ "mut" | "out" | "take" ] | "$" | ".."
-postfix     = "." ( ident | "$(" expr ")" | "*" ) | "(" args ")" | "[" expr "]" | "?"
-type        = expr                                   (types are compile-time expressions)
+name        = ident | "\" word
+type        = expr
 ```

@@ -24,7 +24,8 @@ corpus/        programs that must compile, and programs that must be rejected
 cargo build                 # the toolchain
 cargo test                  # unit tests
 cargo run -p overt-cli      # the `overt` command
-cargo xtask                 # repository tasks
+cargo xtask generate        # regenerate Rust tables from grammar.ov and errors.ov
+cargo run -q -p overt-cli -- dump cst corpus/accept/ring_buffer.ov
 OVERT_LOG=overt_sema=debug OVERT_TIMINGS=1 cargo run -p overt-cli -- build
 ```
 

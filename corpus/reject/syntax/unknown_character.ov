@@ -1,0 +1,3 @@
+//! Only the characters of the grammar form tokens.
+
+total := a @ b; //~ syntax.unknown_character

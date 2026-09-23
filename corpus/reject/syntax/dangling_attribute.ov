@@ -1,0 +1,4 @@
+//! An attribute attaches to the declaration after it.
+
+x := 1;
+#[test] //~ syntax.expected_declaration

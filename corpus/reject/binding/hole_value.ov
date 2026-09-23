@@ -1,0 +1,4 @@
+//! `_` as a whole value means "provided from outside" only in `lang`, with a `link` attribute, or
+//! inside an interface (spec 01, section 3).
+
+answer: u32 = _; //~ binding.hole_value

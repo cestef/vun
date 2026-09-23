@@ -1,0 +1,6 @@
+//! `#[panic.never]` functions contain no undischarged trap site (spec 07, section 3).
+
+#[panic.never]
+average := (a: u32, b: u32, n: u32) -> u32 {
+    ((a + b) / n).to(u32) //~ panic.never_violated
+};

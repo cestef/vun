@@ -1,0 +1,8 @@
+//! Safe shared state goes through synchronized capabilities (spec 07, section 2).
+
+ticks: sync.Shared(u32) = .init(0);
+
+#[panic.never]
+on_systick := () {
+    sync.critical([] (cs: &Critical) { ticks.get(cs).* +%= 1; });
+};

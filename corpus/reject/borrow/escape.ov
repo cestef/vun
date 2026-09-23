@@ -1,0 +1,6 @@
+//! A borrow may be returned only from a function taking a borrow (spec 05, section 4).
+
+dangling := () -> &u8 {
+    x: u8 = 1;
+    &x //~ borrow.escape
+};

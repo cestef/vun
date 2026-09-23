@@ -1,0 +1,8 @@
+//! A place that is `init` on one path and `uninit` on another cannot be used after the join
+//! (spec 05, section 2).
+
+pick := (flag: bool) -> u8 {
+    mut x: u8;
+    if flag { x = 1; }
+    x //~ place.ambiguous_join
+};

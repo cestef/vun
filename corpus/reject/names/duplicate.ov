@@ -1,0 +1,4 @@
+//! A namespace declares each name once (spec 01, section 8).
+
+limit := 64;
+limit := 128; //~ names.duplicate

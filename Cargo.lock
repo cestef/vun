@@ -148,10 +148,17 @@ dependencies = [
 name = "overt-cli"
 version = "0.0.0"
 dependencies = [
- "overt-diag",
+ "overt-command",
  "overt-driver",
  "overt-render-short",
  "overt-trace",
+]
+
+[[package]]
+name = "overt-command"
+version = "0.0.0"
+dependencies = [
+ "overt-diag",
 ]
 
 [[package]]
@@ -173,6 +180,7 @@ dependencies = [
  "overt-backend-process",
  "overt-backend-qbe",
  "overt-build",
+ "overt-command",
  "overt-diag",
  "overt-hir",
  "overt-interp",
@@ -479,12 +487,37 @@ dependencies = [
 [[package]]
 name = "overt-xtask"
 version = "0.0.0"
+dependencies = [
+ "overt-command",
+ "overt-diag",
+ "overt-driver",
+ "overt-grammar",
+ "overt-harness",
+ "overt-origin",
+ "overt-render-short",
+ "overt-span",
+ "overt-syntax",
+ "prettyplease",
+ "proc-macro2",
+ "quote",
+ "syn",
+]
 
 [[package]]
 name = "pin-project-lite"
 version = "0.2.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a89322df9ebe1c1578d689c92318e070967d1042b512afbe49518723f4e6d5cd"
+
+[[package]]
+name = "prettyplease"
+version = "0.2.37"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "479ca8adacdd7ce8f1fb39ce9ecccbfe93a3f1344b3d0d97f20bc0196208f62b"
+dependencies = [
+ "proc-macro2",
+ "syn",
+]
 
 [[package]]
 name = "proc-macro2"

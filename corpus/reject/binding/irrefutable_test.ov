@@ -1,0 +1,5 @@
+//! `if p = e` with an irrefutable `p` is an error: use a binding (spec 01, section 6).
+
+first := (pair: (u8, u8)) -> u8 {
+    if (a, b) = pair { a } else { 0 } //~ binding.irrefutable_test
+};

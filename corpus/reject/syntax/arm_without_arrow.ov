@@ -1,0 +1,8 @@
+//! Every match arm needs `=>`.
+
+pick := (x: ?u8) -> u8 {
+    match x {
+        .some(v) v, //~ syntax.expected_token
+        .none => 0,
+    }
+};

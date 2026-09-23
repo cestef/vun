@@ -12,3 +12,18 @@ path = "src/main.rs"
 
 [lints]
 workspace = true
+
+[dependencies]
+overt-command.workspace = true
+overt-diag.workspace = true
+overt-origin.workspace = true
+overt-render-short.workspace = true
+overt-span.workspace = true
+overt-syntax.workspace = true
+overt-harness.workspace = true
+overt-grammar.workspace = true
+proc-macro2.workspace = true
+quote.workspace = true
+syn.workspace = true
+prettyplease.workspace = true
+overt-driver.workspace = true

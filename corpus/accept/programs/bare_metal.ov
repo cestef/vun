@@ -1,0 +1,16 @@
+//! A firmware program chooses its runtime by calling it (spec 08, section 2).
+
+start := stm32f4.start(.{
+    .main = main,
+    .trap = stm32f4.halt,
+    .interrupts = .{ .systick = on_systick, .tim2 = stm32f4.time.on_tim2 },
+});
+
+main := (p: stm32f4.Peripherals) -> never {
+    mut led := p.gpioa.pin(5).output();
+    mut timer := stm32f4.time.Timer.init(p.tim2);
+    mut a := blink(&mut led, &timer);
+    std.task.run(.{ &mut a })
+};
+
+on_systick := () {};

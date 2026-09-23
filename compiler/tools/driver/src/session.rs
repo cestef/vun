@@ -5,8 +5,9 @@ use std::path::Path;
 use overt_diag::{DiagCtxt, DiagCx, DiagSink, Diagnostic, Msg, errors};
 use overt_origin::OriginTable;
 use overt_span::{FileId, SourceFiles, SourceMap};
-use overt_syntax::lexer;
+use overt_syntax::cst::Cst;
 use overt_syntax::tokens::Tokens;
+use overt_syntax::{lexer, parser};
 
 #[derive(Default)]
 pub struct Session {
@@ -45,6 +46,11 @@ impl Session {
     pub fn lex(&mut self, file: FileId) -> Tokens {
         let text = &self.sources.file(file).text;
         lexer::lex(file, text, &mut DiagCx { diag: &mut self.diag, origins: &mut self.origins })
+    }
+
+    pub fn parse(&mut self, tokens: &Tokens) -> Cst {
+        let text = &self.sources.file(tokens.file()).text;
+        parser::parse(tokens, text, &mut DiagCx { diag: &mut self.diag, origins: &mut self.origins })
     }
 
     /// Emits every diagnostic in deterministic order.

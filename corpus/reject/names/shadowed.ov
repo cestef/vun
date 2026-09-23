@@ -1,0 +1,9 @@
+//! No shadowing, anywhere (spec 01, section 3).
+
+total := (xs: &[u32]) -> u64 {
+    sum: u64 = 0;
+    for x in xs {
+        sum := x; //~ names.shadowed
+    }
+    sum
+};
