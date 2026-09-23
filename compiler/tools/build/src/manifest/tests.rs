@@ -106,3 +106,37 @@ fn versions_are_canonical_triples() {
     }
     assert_eq!(Version::parse("0.4.2").unwrap().to_string(), "0.4.2");
 }
+
+#[test]
+fn declared_deps_read_back() {
+    let hash = overt_hash::Hash::of(b"hal");
+    let archive = Source::Archive {
+        version: Version::parse("1.2.0").unwrap(),
+        hash,
+        urls: vec!["https://example.org/hal-1.2.0.ovpkg".into()],
+    };
+    let wanted =
+        [("util", Source::Path("../util".into()), DepKind::Overt), ("hal", archive, DepKind::Foreign)];
+    let mut text =
+        "package := .{\n    .name = \"app\", .id = 1, .version = \"0.1.0\", .edition = 2027,\n    \
+                    .include = .{ \"build.ov\" },\n};\n"
+            .to_owned();
+    for (name, source, kind) in &wanted {
+        let edit = parsed(&text, |decls, file, _| {
+            let dep = super::Dep {
+                name: (*name).into(),
+                source: source.clone(),
+                kind: *kind,
+                span: overt_span::Span::new(file, 0, 0),
+            };
+            dep.declare(decls, &text).unwrap()
+        })
+        .0;
+        text = overt_diag::Edit::apply(&[edit], &text);
+    }
+    let (manifest, ids) = manifest(&text);
+    assert!(ids.is_empty(), "{ids:?}\n{text}");
+    let deps: Vec<_> = manifest.unwrap().deps.into_iter().map(|d| (d.name, d.source, d.kind)).collect();
+    let wanted: Vec<_> = wanted.into_iter().map(|(n, s, k)| (n.to_owned(), s, k)).collect();
+    assert_eq!(deps, wanted, "{text}");
+}

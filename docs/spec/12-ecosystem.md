@@ -131,6 +131,13 @@ build := (b: &mut std.build.Build) {
   `.overt/store/staging/`, verified against the declared hash, and moved into its entry only then,
   so the store never holds unverified contents. When every mirror fails, `package.fetch_failed`
   lists each mirror with the chain of causes (spec 10).
+- **Adding.** `overt pkg add <source>` declares a dependency in `build.ov`. A directory is declared
+  by its path from the project. An archive URL is fetched once and trusted on first use: its tree
+  hash is computed, the package is stored, and the entry records that hash and the URL as its first
+  mirror, so every later fetch is checked against it. The name and version come from the package's
+  manifest; an archive without one is foreign and takes them from `--name` and `--version`. The
+  entry is written as a literal (the reader's inverse), into `.deps` or a new `.deps`, keeping the
+  manifest's layout.
 - **Archives.** Overt packages are published as `.ovpkg`: one zstd stream (level 19, 128 MiB
   window) holding a header, the snapshot, then each file's bytes in snapshot order. It carries no
   timestamps, owners or modes, so identical trees give identical archives, and unpacking checks
@@ -138,7 +145,8 @@ build := (b: &mut std.build.Build) {
   no separators, no characters special on some platform), so an archive cannot write outside its
   tree. Foreign archives are read as `.tar.zst`, `.tar.xz`, `.tar.gz`, `.tar` and `.zip`; their
   single top-level directory, as forges produce, is dropped. Schemes (`https`, `http`, `file`) and
-  formats are tables, so another is one entry.
+  formats are tables, so another is one entry. `overt pkg pack` writes the project's
+  `<name>-<version>.ovpkg` and prints its hash.
 - **Sources.** URLs are a mirror list. Any mirror, the local store, or a vendor directory serving the
   right bytes is equally valid. An optional community index (a cache and a transparency log in the
   style of Go's proxy and checksum database) may exist; it is never an authority.
@@ -193,7 +201,7 @@ One binary, subcommands grouped by what they act on. The CLI is a thin shell ove
 | `overt doc` | HTML and JSON API docs; doc code blocks run as tests |
 | `overt explain <diagnostic>` | offline explanation pages |
 | `overt dump cst\|hir\|mir\|lir\|link <decl>` | IR with origins (spec 10) |
-| `overt pkg add\|update\|fetch\|vendor\|why\|tag` | dependencies and releases |
+| `overt pkg add\|update\|fetch\|pack\|vendor\|why\|tag` | dependencies and releases |
 | `overt pkg api [diff <old>]` | public API and the version bump it requires |
 | `overt tool bind <header>`, `overt tool header`, `overt tool svd <file>` | C bindings, C headers, register packages |
 | `overt target flash\|attach\|debug` | flash, stream logs, GDB server (section 9) |

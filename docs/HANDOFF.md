@@ -31,7 +31,8 @@ tagged literals and node fields; terminal renderer, `--format` and parser fixes;
 ariadne renderer; handoff; settled open questions (decisions 28 to 44); HIR; name resolution; integer widths in `lang.int`; package loading, spreads and
 `names.unresolved`; `overt-suggest` and `overt-hash`; graph, fs and outline crates; BLAKE3 Merkle
 hashes and the nested store; `overt pkg fetch`, `.ovpkg` and error chains; file and directory
-duplicates, `overt_fs::Edit` and `Scratch`.
+duplicates, `overt_fs::Edit` and `Scratch`; `overt pkg add` and `pack`, literals written back
+(`Literal::source`, `laid_out`, `Decl::insert`, `Edit::apply`).
 The user asked for commits per batch: commit each finished batch with `jj`.
 
 ## 2. How the user works (non-negotiable)
@@ -110,7 +111,7 @@ tested (the rest are stubs):
 | `overt-fs` | `Tree` on `Path`: `files` (recursive, sorted), `entries`. `Edit` on `Path`: `put` (creates parents), `remove` (absent is removed), `fresh` (empty directory), `replace_with` (move a directory in whole). `Scratch`: a test directory removed on drop. Every filesystem write in the compiler and its tests goes through them. |
 | `overt-outline` | `Outline` + `Outlined::node`: indented tree text for the CST and HIR dumps. |
 | `overt-grammar` | `generated.rs`: `NodeField`, `NodeSlot`, `Count`, `NodeKind::slots` (children per kind, from tagged entries), `TokenKind` (+ `TRIVIA`, `ATOMS`, `KEYWORDS`, `PUNCTUATION`, `END`, `text()`), `NodeKind` (`LEAVES`, `BRANCHES`), `Context`, `Assoc`, tables `CONTEXTUAL`, `DELIMITERS`, `INFIX`, `PREFIX`, `POSTFIX`, `ASSIGN`, `OPERANDS`, `ELEMENT_TYPES`, `LITERAL_TYPES`. `lib.rs` derives lookups: `punctuation`, `keyword`, `is_trivia`, `infix` (`Prec`, `Infix`), `closer`/`opens`/`closes`, `is_leaf`, `contextual`. |
-| `overt-syntax` | `tokens` (SoA tokens + trivia side table, `verify`); `lexer` (`lex`, recovery, `literal(kind, text)` for string values, backslash escapes); `cst` (postorder `(kind, Anchor, size)`, `Anchor::{Token, Missing}`, `children`, `span`, `dump`, `verify` -> `Malformed`); `parser` (`parse`); `literal` (`declarations` -> `Decl { name, doc, value: Literal, span }`, `Literal::Tagged`); `Cst::fields(n)` -> `Fields` (`get`, `one`, `assigned`), matched against the kind's slots; `children_rev` walks without allocating. |
+| `overt-syntax` | `tokens` (SoA tokens + trivia side table, `verify`); `lexer` (`lex`, recovery, `literal(kind, text)` for string values, backslash escapes); `cst` (postorder `(kind, Anchor, size)`, `Anchor::{Token, Missing}`, `children`, `span`, `dump`, `verify` -> `Malformed`); `parser` (`parse`); `literal` (`declarations` -> `Decl { name, doc, value: Literal, span }`, `Literal::Tagged`); `literal::{print, insert}` write values back (`Literal::source`, `Literal::laid_out` within `WIDTH`, `Decl::insert` -> `overt_diag::Edit`); `Cst::fields(n)` -> `Fields` (`get`, `one`, `assigned`), matched against the kind's slots; `children_rev` walks without allocating. |
 | `overt-hir` | `tree` (arenas: namespaces, decls, blocks, exprs, pats, binders; `List`/`Entry::Staged` for `$for`/`$if`), `lower` (one `Cst::fields` per node), `visit` (`Visitor` + `walk_*`), `verify` (tree property, origins), `resolve` (scopes: namespace, local, function, signature; `Res::{Binder, Outer { name, ns }}`, `Resolution::parents`; the checks; `Resolution::check_outer` over the `Outside` trait reports `names.unresolved`), `dump`. `Member::Spread` (`..path`, `..path.{ a, b }`; selected names are binders). `Hir::members`, `Hir::binders`, `Hir::path`, `tree::each_entry`. |
 | `overt-command` | Options of a group apply to every command below it; `Program.configure` applies them before a run. Declarative command trees: `Program`, `Command`, `Action::{Run, Group, Planned}`, `Param`/`ParamKind::{Positional, Flag, Option}`, `Args`, `parse` -> `Request`, `Selected`, generated `help`, `run` -> `Outcome`/`Refusal`, `Outcome` -> `ExitCode` (usage = 64). Usage errors are diagnostics with suggestions. |
 | `overt-driver` | `stages::STAGES` (implemented stages and the diagnostic groups they report), `Session::check` (runs them), `commands::PROGRAM` (the whole `overt` tree of spec 12.7, most commands `Planned`; `dump tokens|cst|manifest`, `components` run), `formats::FORMATS` (renderer registry behind `--format`), `Registry`, `Session` (`load`, `read`, `text`, `lex`, `parse`, `lower`, `resolve`, `declarations`, `manifest`, `emit`, `failed`). `packages`: `PackageKey::{Content(Hash), Loose}`, `Package` (deps, prelude), `Session::{package_of, package_at, dep, namespace_at, members, exports, scope, spreads}`, `Scope`/`Outer`, `FileScope` (implements `Outside`), `Session::fetch` -> `Fetched` (graph walk, mirrors in order, staging, verify, commit) behind `overt pkg fetch`, `LIBRARY` (the toolchain library, today the repo's `lib/`). Caches keyed by content hash: manifests and file declarations by text hash, packages by include-tree hash. |
@@ -178,9 +179,9 @@ In order:
    not files (`..lang.int.X` where `X` is a `struct`); member paths (`a.b.c` checked against
    namespaces) belong with sema. A name declared in `x.ov` and held in `x/` is `names.duplicate`
    (`Session::check_children`).
-2. Packages: `overt pkg add <url>` (fetch, compute the hash, write `.deps` with it),
-   `overt pkg pack` (write a `.ovpkg` with `Archive::pack`), minimal version selection and the
-   lockfile (spec 12, sections 3 and 4). Fetching and verification exist (`overt pkg fetch`).
+2. Packages: minimal version selection and the lockfile (spec 12, sections 3 and 4). Fetching,
+   verification, `overt pkg add` (trust on first use, the entry written through
+   `Dep::declare` and `Decl::insert`) and `overt pkg pack` exist.
 3. `names.private` (needs member types: sema), `binding.hole_value` (needs attribute resolution).
 4. Desugaring into `lang` items with `Via::Desugar` origins (appendix B), queries, sema (with
    narrowing, decision 35, exhaustive match, decision 29), MIR, interpreter.

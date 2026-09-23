@@ -1,28 +1,62 @@
-//! `overt pkg`: the project's dependencies (spec 12, sections 3 and 7).
+//! `overt pkg`: the project's dependencies and releases (spec 12, sections 3 and 7).
 
 use std::io::{self, Write};
+use std::path::PathBuf;
 
+use overt_build::layout::MANIFEST;
+use overt_build::manifest::{PACKAGE, Source, Version};
 use overt_build::store::Store;
-use overt_command::{Args, Outcome};
-use overt_diag::{Diagnostic, Msg, errors};
+use overt_command::{Args, Outcome, Param, ParamKind};
+use overt_diag::{ChildKind, Diagnostic, Msg, errors};
+use overt_fs::Edit;
+use overt_pkg::Archive;
 
 use crate::Session;
-use crate::packages::Fetched;
+use crate::packages::{Addition, Fetched, PackageKey, Unstated};
 
-/// `overt pkg fetch`: downloads the stored dependencies of the project around the current
-/// directory into its store.
-pub(super) fn fetch(session: &mut Session, _: &Args, out: &mut dyn Write) -> io::Result<Outcome> {
+pub(super) const SOURCE: Param = Param {
+    name: "source",
+    short: None,
+    about: "a package directory, or the URL of an archive",
+    kind: ParamKind::Positional,
+};
+pub(super) const NAME: Param = Param {
+    name: "name",
+    short: None,
+    about: "the name to declare it under, when the package states none",
+    kind: ParamKind::Option,
+};
+pub(super) const VERSION: Param = Param {
+    name: "version",
+    short: None,
+    about: "its version, when the package states none",
+    kind: ParamKind::Option,
+};
+pub(super) const OUT: Param =
+    Param { name: "out", short: Some('o'), about: "where to write the archive", kind: ParamKind::Option };
+
+fn outcome(session: &Session) -> Outcome {
+    if session.failed() { Outcome::Failure } else { Outcome::Success }
+}
+
+/// The project around the current directory, whose store then holds fetched packages; its
+/// absence is reported.
+fn project(session: &mut Session) -> io::Result<Option<(PathBuf, PackageKey)>> {
     let here = std::env::current_dir()?;
-    let Some((dir, project)) =
-        here.ancestors().find_map(|d| session.package_at(d).map(|p| (d.to_path_buf(), p)))
-    else {
-        let msg =
-            Msg::new().text("no ").code(overt_build::layout::MANIFEST).text(" declaring ").code("package");
+    let found = here.ancestors().find_map(|d| session.package_at(d).map(|p| (d.to_path_buf(), p)));
+    if let Some((dir, _)) = &found {
+        session.store = Some(Store::in_project(dir));
+    } else {
+        let msg = Msg::new().text("no ").code(MANIFEST).text(" declaring ").code(PACKAGE);
         let msg = msg.text(" in this directory or above");
         session.diag.error(Diagnostic::error(errors::PACKAGE_NO_PROJECT, msg));
-        return Ok(Outcome::Failure);
-    };
-    session.store = Some(Store::in_project(&dir));
+    }
+    Ok(found)
+}
+
+/// `overt pkg fetch`: downloads the stored dependencies of the project into its store.
+pub(super) fn fetch(session: &mut Session, _: &Args, out: &mut dyn Write) -> io::Result<Outcome> {
+    let Some((_, project)) = project(session)? else { return Ok(Outcome::Failure) };
     for (name, hash, fetched) in session.fetch(project) {
         let name = session.interner.resolve(name);
         match fetched {
@@ -31,5 +65,61 @@ pub(super) fn fetch(session: &mut Session, _: &Args, out: &mut dyn Write) -> io:
             Fetched::Failed => {}
         }
     }
-    Ok(if session.failed() { Outcome::Failure } else { Outcome::Success })
+    Ok(outcome(session))
+}
+
+/// `overt pkg add <source>`: declares a dependency, fetching an archive once to learn its hash.
+pub(super) fn add(session: &mut Session, args: &Args, out: &mut dyn Write) -> io::Result<Outcome> {
+    let Some((dir, _)) = project(session)? else { return Ok(Outcome::Failure) };
+    let version = match args.value(&VERSION).map(|v| (v, Version::parse(v))) {
+        Some((text, None)) => {
+            let msg = Msg::new().code(text).text(" is not a version ").code("major.minor.patch");
+            session.diag.error(Diagnostic::error(errors::CLI_INVALID_VALUE, msg));
+            return Ok(Outcome::Usage);
+        }
+        parsed => parsed.and_then(|(_, v)| v),
+    };
+    let source = args.value(&SOURCE).expect("positional parameters are present when a command runs");
+    let addition = Addition { source, name: args.value(&NAME), version };
+    match session.add(&dir, &addition) {
+        Ok(Some(dep)) => match &dep.source {
+            Source::Path(path) => writeln!(out, "added {} at {path}", dep.name)?,
+            Source::Archive { version, hash, .. } => writeln!(out, "added {} {version} {hash}", dep.name)?,
+        },
+        Ok(None) => {}
+        Err(unstated) => {
+            let param = match unstated {
+                Unstated::Name => &NAME,
+                Unstated::Version => &VERSION,
+            };
+            let msg = Msg::new().code(source).text(" has no ").code(MANIFEST).text(" stating ");
+            let help = Msg::new().text("give it with ").code(param.long());
+            let d = Diagnostic::error(errors::PACKAGE_UNNAMED, msg.text(unstated.to_string()));
+            session.diag.error(d.child(ChildKind::Help, help));
+        }
+    }
+    Ok(outcome(session))
+}
+
+/// `overt pkg pack`: writes the project's `.ovpkg` archive, named after its name and version.
+pub(super) fn pack(session: &mut Session, args: &Args, out: &mut dyn Write) -> io::Result<Outcome> {
+    let Some((dir, _)) = project(session)? else { return Ok(Outcome::Failure) };
+    let Some(manifest) = session.manifest_at(&dir.join(MANIFEST)) else { return Ok(Outcome::Failure) };
+    let (bytes, snapshot) = match Archive::pack(&dir, &manifest.include) {
+        Ok(packed) => packed,
+        Err(e) => {
+            let msg = Msg::new().text("cannot pack ").code(&manifest.name);
+            session.diag.error(Diagnostic::error(errors::IO_UNREADABLE_FILE, msg).caused_by(&e));
+            return Ok(Outcome::Failure);
+        }
+    };
+    let file = format!("{}-{}.{}", manifest.name, manifest.version, Archive::EXTENSION);
+    let path = args.value(&OUT).map_or_else(|| dir.join(file), PathBuf::from);
+    if let Err(e) = path.put(&bytes) {
+        let msg = Msg::new().text("cannot write ").code(path.display().to_string());
+        session.diag.error(Diagnostic::error(errors::IO_UNWRITABLE_FILE, msg).caused_by(&e));
+        return Ok(Outcome::Failure);
+    }
+    writeln!(out, "packed {} {} {} {}", manifest.name, manifest.version, snapshot.root(), path.display())?;
+    Ok(outcome(session))
 }

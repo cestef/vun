@@ -36,7 +36,12 @@ pub const PROGRAM: Program<Session> = Program {
                 "pkg",
                 "dependencies, releases and API diffs",
                 &[
-                    planned("add", "add a dependency"),
+                    Command {
+                        name: "add",
+                        about: "declare a dependency, fetching an archive to learn its hash",
+                        params: &[pkg::SOURCE, pkg::NAME, pkg::VERSION],
+                        action: Action::Run(pkg::add),
+                    },
                     planned("update", "raise dependency versions"),
                     Command {
                         name: "fetch",
@@ -45,6 +50,12 @@ pub const PROGRAM: Program<Session> = Program {
                         action: Action::Run(pkg::fetch),
                     },
                     planned("vendor", "copy dependencies into vendor/"),
+                    Command {
+                        name: "pack",
+                        about: "write the package's .ovpkg archive",
+                        params: &[pkg::OUT],
+                        action: Action::Run(pkg::pack),
+                    },
                     planned("why", "explain why a package is in the graph"),
                     planned("tag", "release workspace members"),
                     planned("api", "print the public API, or diff it against a release"),

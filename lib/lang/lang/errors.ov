@@ -107,6 +107,7 @@ manifest := struct {
     missing_field := diag.Diag{ .explanation = meta.embed("errors/manifest/missing_field.md") };
     unknown_field := diag.Diag{ .explanation = meta.embed("errors/manifest/unknown_field.md") };
     invalid_field := diag.Diag{ .explanation = meta.embed("errors/manifest/invalid_field.md") };
+    uneditable := diag.Diag{ .explanation = meta.embed("errors/manifest/uneditable.md") };
 };
 
 /// Packages and their namespaces on disk (spec 01, section 8, and spec 12, section 3).
@@ -116,11 +117,14 @@ package := struct {
     hash_mismatch := diag.Diag{ .explanation = meta.embed("errors/package/hash_mismatch.md") };
     fetch_failed := diag.Diag{ .explanation = meta.embed("errors/package/fetch_failed.md") };
     no_project := diag.Diag{ .explanation = meta.embed("errors/package/no_project.md") };
+    duplicate_dep := diag.Diag{ .explanation = meta.embed("errors/package/duplicate_dep.md") };
+    unnamed := diag.Diag{ .explanation = meta.embed("errors/package/unnamed.md") };
 };
 
 /// Reading and writing files.
 io := struct {
     unreadable_file := diag.Diag{ .explanation = meta.embed("errors/io/unreadable_file.md") };
+    unwritable_file := diag.Diag{ .explanation = meta.embed("errors/io/unwritable_file.md") };
 };
 
 /// The command line (spec 12, section 7).

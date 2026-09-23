@@ -51,3 +51,49 @@ fn reads_tagged_values() {
     );
     assert_eq!(decls[0].value.as_list().unwrap()[0].as_tagged(), Some(("one", &[Literal::Name("a")][..])));
 }
+
+#[test]
+fn written_literals_read_back() {
+    let text = "v := .{ .name = \"a \\\"q\\\"\\n\", .n = -3, .xs = .{ .a, .\\if, .t(1, .{}) }, .e = .{} };";
+    let value = &read(text)[0].value;
+    let written = format!("v := {};", value.source().unwrap());
+    assert_eq!(&read(&written)[0].value, value);
+    assert_eq!(Literal::Opaque.source(), Err(Unwritable::Opaque));
+    assert_eq!(Literal::Name("not a name").source(), Err(Unwritable::Name));
+}
+
+#[test]
+fn fields_are_inserted_after_the_last_one() {
+    let dep = read("d := .{ .path = \"../hal\" };")[0].value.clone();
+    let cases = [
+        ("p := .{};", "p := .{ .hal = .{ .path = \"../hal\" } };"),
+        ("p := .{ .a = 1 };", "p := .{ .a = 1, .hal = .{ .path = \"../hal\" } };"),
+        ("p := .{ .a = 1, };", "p := .{ .a = 1, .hal = .{ .path = \"../hal\" }, };"),
+        ("p := .{\n    .a = 1,\n};", "p := .{\n    .a = 1,\n    .hal = .{ .path = \"../hal\" },\n};"),
+        ("p := .{\n  .a = 1\n};", "p := .{\n  .a = 1,\n  .hal = .{ .path = \"../hal\" }\n};"),
+    ];
+    for (before, after) in cases {
+        let edit = read(before)[0].insert(before, "hal", &dep).unwrap();
+        assert_eq!(overt_diag::Edit::apply(&[edit], before), after);
+    }
+    assert_eq!(read("p := 1;")[0].insert("p := 1;", "a", &dep), Err(Unwritable::NotRecord));
+}
+
+#[test]
+fn long_insertions_are_laid_out_one_field_per_line() {
+    let long = "x".repeat(WIDTH);
+    let entry = format!("d := .{{ .version = \"1.0.0\", .urls = .{{ \"{long}\" }} }};");
+    let dep = read(&entry)[0].value.clone();
+    let before =
+        "package := .{\n    .name = \"app\",\n    .deps = .{ .util = .{ .path = \"../util\" } },\n};";
+    let deps = read(before)[0].value.decls().unwrap()[1].clone();
+    let after = overt_diag::Edit::apply(&[deps.insert(before, "hal", &dep).unwrap()], before);
+    let expected = format!(
+        "package := .{{\n    .name = \"app\",\n    .deps = .{{\n        .util = .{{ .path = \"../util\" }},\n        \
+         .hal = .{{\n            .version = \"1.0.0\",\n            .urls = .{{\n                \"{long}\",\n            \
+         }},\n        }},\n    }},\n}};"
+    );
+    assert_eq!(after, expected);
+    let read_back = read(&after)[0].value.decls().unwrap()[1].value.get("hal").unwrap().source();
+    assert_eq!(read_back, dep.source());
+}

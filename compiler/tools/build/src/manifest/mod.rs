@@ -7,6 +7,7 @@ mod record;
 #[cfg(test)]
 mod tests;
 mod version;
+mod write;
 
 use overt_diag::{DiagCx, Diagnostic, Msg, errors};
 use overt_span::{FileId, Span};

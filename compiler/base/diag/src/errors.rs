@@ -114,6 +114,7 @@ pub const MANIFEST_UNKNOWN_FIELD: DiagId = DiagId::new(
 pub const MANIFEST_INVALID_FIELD: DiagId = DiagId::new(
     "lang.errors.manifest.invalid_field",
 );
+pub const MANIFEST_UNEDITABLE: DiagId = DiagId::new("lang.errors.manifest.uneditable");
 /// Packages and their namespaces on disk (spec 01, section 8, and spec 12, section 3).
 pub const PACKAGE: DiagId = DiagId::new("lang.errors.package");
 pub const PACKAGE_MISSING_DEP: DiagId = DiagId::new("lang.errors.package.missing_dep");
@@ -125,9 +126,14 @@ pub const PACKAGE_HASH_MISMATCH: DiagId = DiagId::new(
 );
 pub const PACKAGE_FETCH_FAILED: DiagId = DiagId::new("lang.errors.package.fetch_failed");
 pub const PACKAGE_NO_PROJECT: DiagId = DiagId::new("lang.errors.package.no_project");
+pub const PACKAGE_DUPLICATE_DEP: DiagId = DiagId::new(
+    "lang.errors.package.duplicate_dep",
+);
+pub const PACKAGE_UNNAMED: DiagId = DiagId::new("lang.errors.package.unnamed");
 /// Reading and writing files.
 pub const IO: DiagId = DiagId::new("lang.errors.io");
 pub const IO_UNREADABLE_FILE: DiagId = DiagId::new("lang.errors.io.unreadable_file");
+pub const IO_UNWRITABLE_FILE: DiagId = DiagId::new("lang.errors.io.unwritable_file");
 /// The command line (spec 12, section 7).
 pub const CLI: DiagId = DiagId::new("lang.errors.cli");
 pub const CLI_UNKNOWN_COMMAND: DiagId = DiagId::new("lang.errors.cli.unknown_command");
@@ -187,12 +193,16 @@ pub const ALL: &[DiagId] = &[
     MANIFEST_MISSING_FIELD,
     MANIFEST_UNKNOWN_FIELD,
     MANIFEST_INVALID_FIELD,
+    MANIFEST_UNEDITABLE,
     PACKAGE_MISSING_DEP,
     PACKAGE_MISSING_NAMESPACE,
     PACKAGE_HASH_MISMATCH,
     PACKAGE_FETCH_FAILED,
     PACKAGE_NO_PROJECT,
+    PACKAGE_DUPLICATE_DEP,
+    PACKAGE_UNNAMED,
     IO_UNREADABLE_FILE,
+    IO_UNWRITABLE_FILE,
     CLI_UNKNOWN_COMMAND,
     CLI_MISSING_ARGUMENT,
     CLI_UNEXPECTED_ARGUMENT,

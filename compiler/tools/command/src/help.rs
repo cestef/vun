@@ -2,7 +2,7 @@
 
 use std::fmt::Write;
 
-use crate::parse::positionals;
+use crate::parse::{LONG, positionals};
 use crate::{Action, HELP_COMMAND, Param, ParamKind, Program, Selected};
 
 /// Marks commands that are declared but not implemented.
@@ -51,8 +51,16 @@ pub(crate) fn usage<Cx>(selected: &Selected<'_, Cx>) -> String {
 
 fn spelling(p: &Param) -> String {
     let short = p.short.map(|c| format!("-{c}, ")).unwrap_or_default();
-    let value = if p.kind == ParamKind::Option { format!(" <{}>", p.name) } else { String::new() };
-    format!("{short}--{}{value}", p.name)
+    format!("{short}{}", p.long())
+}
+
+impl Param {
+    /// How it is written in full: `--name`, and `--name <name>` when it takes a value.
+    #[must_use]
+    pub fn long(&self) -> String {
+        let value = if self.kind == ParamKind::Option { format!(" <{}>", self.name) } else { String::new() };
+        format!("{LONG}{}{value}", self.name)
+    }
 }
 
 /// A titled two-column table, omitted when empty.

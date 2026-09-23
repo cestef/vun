@@ -4,7 +4,7 @@
 
 use std::collections::HashSet;
 use std::error::Error;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::{fmt, fs, io};
 
 use overt_build::layout::MANIFEST;
@@ -32,7 +32,7 @@ pub enum Fetched {
 
 /// Why the archive of one mirror was not stored.
 #[derive(Debug)]
-enum Rejected {
+pub(super) enum Rejected {
     Mirror(Failure),
     /// The unpacked tree hashes to another package.
     Hash {
@@ -143,24 +143,35 @@ impl Session {
         staging: &Path,
         url: &str,
     ) -> Result<(), Rejected> {
-        staging.fresh().map_err(Rejected::Store)?;
-        let unpacked = staging.join(Store::PACKAGE);
-        Mirror::parse(url).and_then(|m| m.fetch(&unpacked)).map_err(Rejected::Mirror)?;
-        let include = self.include(kind, &unpacked);
-        let snapshot = Snapshot::of(&unpacked, &include);
+        let unpacked = Self::unpack(staging, url)?;
+        let snapshot = Snapshot::of(&unpacked, &self.include(kind, &unpacked));
         if snapshot.root() != hash {
             return Err(Rejected::Hash { found: snapshot.root() });
         }
+        Self::commit(store, staging, &snapshot)
+    }
+
+    /// Downloads and unpacks `url` into a fresh `staging` entry, returning where the package is.
+    pub(super) fn unpack(staging: &Path, url: &str) -> Result<PathBuf, Rejected> {
+        staging.fresh().map_err(Rejected::Store)?;
+        let unpacked = staging.join(Store::PACKAGE);
+        Mirror::parse(url).and_then(|m| m.fetch(&unpacked)).map_err(Rejected::Mirror)?;
+        Ok(unpacked)
+    }
+
+    /// Moves the verified `staging` entry into the store under the root of `snapshot`, recording
+    /// the snapshot it was verified with.
+    pub(super) fn commit(store: &Store, staging: &Path, snapshot: &Snapshot) -> Result<(), Rejected> {
         let commit = || -> io::Result<()> {
             staging.join(Store::SNAPSHOT).put(snapshot.to_string())?;
-            store.entry(hash).replace_with(staging)
+            store.entry(snapshot.root()).replace_with(staging)
         };
         commit().map_err(Rejected::Store)
     }
 
     /// What the hash of an unpacked package covers: its manifest's `include`, or everything in
     /// it for a foreign package.
-    fn include(&mut self, kind: DepKind, dir: &Path) -> Vec<String> {
+    pub(super) fn include(&mut self, kind: DepKind, dir: &Path) -> Vec<String> {
         let manifest = (kind == DepKind::Overt).then(|| self.manifest_at(&dir.join(MANIFEST))).flatten();
         manifest.map_or_else(
             || {

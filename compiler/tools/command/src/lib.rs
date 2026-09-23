@@ -61,6 +61,7 @@ impl<Cx> Command<Cx> {
     }
 }
 
+#[derive(Debug, PartialEq, Eq)]
 pub struct Param {
     pub name: &'static str,
     pub short: Option<char>,

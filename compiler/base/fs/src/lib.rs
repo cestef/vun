@@ -3,10 +3,12 @@
 //! create what they need, and directories replaced whole.
 
 mod edit;
+mod relative;
 mod scratch;
 mod walk;
 
 pub use edit::Edit;
+pub use relative::Relative;
 pub use scratch::Scratch;
 pub use walk::Tree;
 

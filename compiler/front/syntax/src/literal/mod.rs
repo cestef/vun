@@ -1,0 +1,115 @@
+//! Reading literal declarations as data, without evaluating anything (spec 12, section 2).
+//!
+//! Tools read `build.ov` manifests and `lang/syntax/grammar.ov` this way. A declaration
+//! `name := value;` whose value is made of strings, integers, `.name` literals, tagged values
+//! `.name(a, b)`, lists `[a, b]`,
+//! anonymous structs `.{ .field = value }` and type literals `enum { ... }` and
+//! `struct { name := value; }` reads as the corresponding [`Literal`]. Any other expression reads
+//! as [`Literal::Opaque`], so a caller can walk a file whose other values it does not need.
+
+mod insert;
+mod print;
+mod read;
+#[cfg(test)]
+mod tests;
+
+use std::borrow::Cow;
+
+use overt_span::Span;
+
+use crate::cst::Cst;
+use crate::tokens::Tokens;
+pub use print::{Unwritable, WIDTH};
+use read::Reader;
+pub use read::integer;
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Literal<'s> {
+    /// `.name`
+    Name(&'s str),
+    /// `.name(a, b)`: a name with a payload.
+    Tagged(&'s str, Vec<Literal<'s>>),
+    String(Cow<'s, str>),
+    Int(i128),
+    /// `[a, b]`, or `.{ a, b }` with positional items.
+    List(Vec<Literal<'s>>),
+    /// `.{ .name = value }`
+    Record(Vec<Decl<'s>>),
+    /// `enum { a, b(T) }`; the payloads read as `Opaque`.
+    Enum(Vec<Decl<'s>>),
+    /// `struct { name := value; }`; fields are skipped.
+    Namespace(Vec<Decl<'s>>),
+    Opaque,
+}
+
+/// A named value with its doc comment lines.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Decl<'s> {
+    pub name: &'s str,
+    pub doc: Vec<&'s str>,
+    pub value: Literal<'s>,
+    /// The source of the value, or of the whole declaration when it has none.
+    pub span: Span,
+}
+
+impl<'s> Literal<'s> {
+    /// The value of the field `name` of a record or namespace.
+    #[must_use]
+    pub fn get(&self, name: &str) -> Option<&Self> {
+        match self {
+            Self::Record(decls) | Self::Namespace(decls) | Self::Enum(decls) => {
+                decls.iter().find(|d| d.name == name).map(|d| &d.value)
+            }
+            _ => None,
+        }
+    }
+
+    #[must_use]
+    pub fn as_list(&self) -> Option<&[Self]> {
+        match self {
+            Self::List(items) => Some(items),
+            _ => None,
+        }
+    }
+
+    #[must_use]
+    pub fn as_name(&self) -> Option<&'s str> {
+        match *self {
+            Self::Name(name) => Some(name),
+            _ => None,
+        }
+    }
+
+    /// The tag and payload of a tagged value.
+    #[must_use]
+    pub fn as_tagged(&self) -> Option<(&'s str, &[Self])> {
+        match self {
+            Self::Tagged(tag, payload) => Some((tag, payload)),
+            _ => None,
+        }
+    }
+
+    #[must_use]
+    pub fn as_str(&self) -> Option<&str> {
+        match self {
+            Self::String(text) => Some(text),
+            _ => None,
+        }
+    }
+
+    /// The declarations of a record, enum or namespace.
+    #[must_use]
+    pub fn decls(&self) -> Option<&[Decl<'s>]> {
+        match self {
+            Self::Record(decls) | Self::Enum(decls) | Self::Namespace(decls) => Some(decls),
+            _ => None,
+        }
+    }
+}
+
+/// The top-level `name := value;` and `name: T = value;` declarations of a parsed file.
+#[must_use]
+pub fn declarations<'s>(cst: &Cst, tokens: &Tokens, source: &'s str) -> Vec<Decl<'s>> {
+    let reader = Reader { cst, tokens, source };
+    reader.decls(cst.children(cst.root()))
+}

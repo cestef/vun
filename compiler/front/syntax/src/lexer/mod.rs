@@ -29,7 +29,7 @@ mod words;
 pub use value::literal;
 
 /// Escapes written as a backslash and one character, with the character each denotes.
-const SIMPLE_ESCAPES: [(char, char); 7] =
+pub(crate) const SIMPLE_ESCAPES: [(char, char); 7] =
     [('n', '\n'), ('t', '\t'), ('r', '\r'), ('0', '\0'), ('\\', '\\'), ('"', '"'), ('\'', '\'')];
 /// Hex digits in a byte escape `\xHH`.
 const BYTE_ESCAPE_DIGITS: usize = 2;
@@ -76,12 +76,18 @@ fn offset(pos: usize) -> u32 {
     u32::try_from(pos).expect("offsets fit u32, checked in lex")
 }
 
-fn is_ident_start(c: char) -> bool {
+pub(crate) fn is_ident_start(c: char) -> bool {
     c.is_ascii_alphabetic() || c == '_'
 }
 
-fn is_ident_continue(c: char) -> bool {
+pub(crate) fn is_ident_continue(c: char) -> bool {
     c.is_ascii_alphanumeric() || c == '_'
+}
+
+/// Whether `word` lexes as one name.
+pub(crate) fn is_ident(word: &str) -> bool {
+    let mut chars = word.chars();
+    chars.next().is_some_and(is_ident_start) && chars.all(is_ident_continue)
 }
 
 struct Lexer<'s, 'c, 'd> {

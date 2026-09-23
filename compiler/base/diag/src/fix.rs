@@ -53,6 +53,25 @@ pub struct Edit {
     pub holes: Vec<Hole>,
 }
 
+impl Edit {
+    /// `text` with `edits` applied; they must not overlap. Insertions at one offset keep their
+    /// order.
+    #[must_use]
+    pub fn apply(edits: &[Self], text: &str) -> String {
+        let mut sorted: Vec<&Self> = edits.iter().collect();
+        sorted.sort_by_key(|e| (e.span.range.lo, e.span.range.hi));
+        let mut out = String::with_capacity(text.len());
+        let mut at = 0;
+        for e in sorted {
+            out.push_str(&text[at..e.span.range.lo as usize]);
+            out.push_str(&e.text);
+            at = e.span.range.hi as usize;
+        }
+        out.push_str(&text[at..]);
+        out
+    }
+}
+
 /// A proposed change; its edits never overlap.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Fix {

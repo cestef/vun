@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use super::{Edit, Scratch, Tree};
+use super::{Edit, Relative, Scratch, Tree};
 
 fn names(paths: &[PathBuf], root: &std::path::Path) -> Vec<String> {
     paths.iter().map(|p| p.strip_prefix(root).unwrap().to_string_lossy().into_owned()).collect()
@@ -37,4 +37,15 @@ fn edits_create_parents_and_replace_whole_directories() {
 fn scratch_directories_are_removed_when_dropped() {
     let path = Scratch::new("drop").path().to_path_buf();
     assert!(!path.exists());
+}
+
+#[test]
+fn relative_paths_climb_to_the_common_directory() {
+    let dir = Scratch::new("relative");
+    dir.write("app/build.ov", "");
+    dir.write("libs/util/build.ov", "");
+    let relative = dir.join("libs/util").relative_to(&dir.join("app")).unwrap();
+    assert_eq!(relative, std::path::Path::new("../libs/util"));
+    assert_eq!(dir.join("app").relative_to(&dir.join("app")).unwrap(), std::path::Path::new("."));
+    assert!(dir.join("absent").relative_to(dir.path()).is_none());
 }

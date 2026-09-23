@@ -6,7 +6,7 @@ use overt_suggest::closest;
 use crate::{Args, Command, HELP, HELP_COMMAND, Param, ParamKind, Program, VERSION};
 
 /// Prefix of long options.
-const LONG: &str = "--";
+pub(crate) const LONG: &str = "--";
 /// Prefix of short options.
 const SHORT: char = '-';
 /// Separates a long option from its value in one argument.
@@ -76,8 +76,8 @@ pub fn parse<'p, Cx>(program: &'p Program<Cx>, words: &[String]) -> Result<Reque
         if let Some(option) = option(word) {
             let param = find_option(&selected, &option).ok_or_else(|| unknown_option(&selected, &option))?;
             match (param.kind, option) {
-                _ if param.name == HELP.name => help = true,
-                _ if param.name == VERSION.name => return Ok(Request::Version),
+                _ if *param == HELP => help = true,
+                _ if *param == VERSION => return Ok(Request::Version),
                 (ParamKind::Flag, _) => args.flags.push(param.name),
                 (ParamKind::Option, Given::Long(_, Some(value))) => {
                     args.values.push((param.name, value.to_owned()));

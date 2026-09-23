@@ -9,6 +9,7 @@
 //! Everything is keyed by content: a package by the hash of its `include` tree, a manifest and a
 //! file's declarations by the hash of their text, a scope by its package.
 
+mod add;
 mod fetch;
 mod namespace;
 mod scope;
@@ -24,6 +25,7 @@ use overt_hash::{Hash, Snapshot};
 use overt_intern::{Interner, Symbol};
 use overt_span::{FileId, SourceMap, Span};
 
+pub use add::{Addition, Unstated};
 pub use fetch::Fetched;
 pub use namespace::{Namespace, Unfound};
 pub use scope::{Outer, Scope};
@@ -169,7 +171,7 @@ impl Session {
     }
 
     /// The manifest in the `build.ov` at `path`, read once per content.
-    pub(super) fn manifest_at(&mut self, path: &Path) -> Option<Manifest> {
+    pub fn manifest_at(&mut self, path: &Path) -> Option<Manifest> {
         let read = |s: &mut Self, file| {
             s.declarations(file, |decls, cx| {
                 manifest::declared(decls).then(|| manifest::read(decls, file, cx)).flatten()
