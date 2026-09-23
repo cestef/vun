@@ -48,6 +48,7 @@
 | 42 | Registrations are collected explicitly: `std.meta.collect(package, attr)`, evaluated only when called | accepted | 03 |
 | 43 | Text is a library: `Str` is a UTF-8-checked `&[u8]`; buffers, interner, maps and formatting in `std` | accepted | 12 |
 | 44 | The leans of questions 4 to 9 and 11 to 13 are accepted as stated below | accepted | various |
+| 45 | Integer types by width are `std.int.unsigned(bits)` and `std.int.signed(bits)`; the prelude uses them instead of spelling bounds | accepted | 04 |
 
 ## Questions, with how they were settled
 

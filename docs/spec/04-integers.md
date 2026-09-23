@@ -7,10 +7,15 @@ prelude bindings:
 
 ```ov
 u8    := Int(0..=255);
-i32   := Int(-2147483648..=2147483647);
 u3    := Int(0..=7);                        // arbitrary widths are not special
 usize := Int(0..=target.usize_max);
 ```
+
+Types by width come from `std.int`, so large bounds are computed rather than spelled out:
+`unsigned(bits)` is `Int(0..1 << bits)` and `signed(bits)` is
+`Int(-(1 << (bits - 1))..1 << (bits - 1))`. The prelude declares `u8` to `i64` as
+`std.int.unsigned(8)` to `std.int.signed(64)`. Compile-time arithmetic is exact, so `1 << 64` needs
+no wider type.
 
 A literal `5` has type `Int(5..=5)`, and a character literal `'a'` has type `Int(97..=97)`. There is
 no separate compile-time integer type.

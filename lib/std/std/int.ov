@@ -1,0 +1,7 @@
+//! Integer types by width (spec 04, section 1): the prelude's `u8` to `i64` are written with these.
+
+/// The unsigned integers of `bits` bits: `Int(0..2^bits)`.
+unsigned := ($bits: lang.Int(1..)) -> type { lang.Int(0..1 << bits) };
+
+/// The two's-complement integers of `bits` bits: `Int(-2^(bits-1)..2^(bits-1))`.
+signed := ($bits: lang.Int(1..)) -> type { lang.Int(-(1 << (bits - 1))..1 << (bits - 1)) };
