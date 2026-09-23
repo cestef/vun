@@ -26,6 +26,7 @@ pub const STAGES: &[Stage] = &[
             errors::PACKAGE,
         ],
     },
+    Stage { name: "types", reports: &[errors::TYPES_MISMATCH] },
 ];
 
 /// Whether some stage that exists reports `id`.
@@ -39,5 +40,6 @@ impl Session {
     pub fn check(&mut self, file: FileId) {
         self.parsed(file);
         self.check_names(file);
+        self.check_types(file);
     }
 }

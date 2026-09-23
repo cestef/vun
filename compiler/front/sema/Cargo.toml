@@ -17,4 +17,6 @@ overt-intern.workspace = true
 overt-query.workspace = true
 overt-target.workspace = true
 overt-hir.workspace = true
+overt-span.workspace = true
+overt-grammar.workspace = true
 num-bigint.workspace = true

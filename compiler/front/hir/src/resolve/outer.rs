@@ -22,7 +22,7 @@ pub trait Outside {
 
 impl Resolution {
     /// The namespaces from `ns` outwards, then `None` for the package.
-    fn enclosing(&self, ns: NsId) -> impl Iterator<Item = Option<NsId>> + '_ {
+    pub fn enclosing(&self, ns: NsId) -> impl Iterator<Item = Option<NsId>> + '_ {
         std::iter::successors(Some(Some(ns)), |&n| n.map(|n| self.parents[n])).chain([None])
     }
 

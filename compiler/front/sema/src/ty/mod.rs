@@ -6,6 +6,7 @@
 //! names a type desugars into these (appendix B): `&T` is `lang.mem.Ref(T)`, `?T` is the enum
 //! `lang.Option(T)` evaluates to.
 
+mod display;
 #[cfg(test)]
 mod tests;
 mod value;
@@ -70,6 +71,16 @@ impl TyKind {
     #[must_use]
     pub fn int(range: &Interval) -> Ty {
         Self::Primitive(Primitive::Lang(Lang::Int), vec![Value::Range(Some(range.clone()))]).intern()
+    }
+
+    /// Whether a value of type `found` is accepted where this type is expected: integers whose
+    /// range lies within (spec 04, rule 2), or the type itself.
+    #[must_use]
+    pub fn accepts(&self, found: &Self) -> bool {
+        match (self.interval(), found.interval()) {
+            (Some(expected), Some(found)) => expected.contains(&found),
+            _ => self == found,
+        }
     }
 
     /// The range of an integer type.

@@ -11,6 +11,7 @@ use overt_hir::lower;
 use overt_hir::tree::Hir;
 use overt_origin::OriginTable;
 use overt_query::Db;
+use overt_sema::check::Checked;
 use overt_span::{FileId, SourceFiles, SourceMap};
 use overt_syntax::cst::Cst;
 use overt_syntax::literal::Decl;
@@ -115,6 +116,14 @@ impl Session {
         // The file as loaded, which its package's files do not include when it is loose.
         self.db.set::<FileText>(key.clone(), Some(Arc::from(self.text(file))));
         key
+    }
+
+    /// Checks the types of `file`, as far as sema does yet.
+    pub fn check_types(&mut self, file: FileId) {
+        let key = self.file_ref(file);
+        if let Some(reports) = self.db.get::<Checked>(&key) {
+            self.diag.absorb(&reports);
+        }
     }
 
     /// Resolves the names of `file` against its package, reporting what needs no types.

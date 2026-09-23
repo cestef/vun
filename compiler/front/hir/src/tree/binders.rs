@@ -1,6 +1,8 @@
 //! The names a pattern or a namespace introduces.
 
-use super::{BinderId, Entry, Hir, List, Member, NsId, PatId, PatKind, Spread, Staged};
+use overt_intern::Symbol;
+
+use super::{BinderId, DeclId, Entry, Hir, List, Member, NsId, PatId, PatKind, Spread, Staged};
 
 impl Hir {
     /// Binders introduced by a pattern, without visiting the expressions inside it.
@@ -39,6 +41,37 @@ impl Hir {
             }
         });
         out
+    }
+
+    /// The declaration among the members of `ns` that binds `name`.
+    #[must_use]
+    pub fn declaring(&self, ns: NsId, name: Symbol) -> Option<DeclId> {
+        self.member_decls(ns).into_iter().find(|&d| self.binds(d, |b| self.binders[b].name == name))
+    }
+
+    /// The member declaration of some namespace that binds `binder`; `None` for a local.
+    #[must_use]
+    pub fn member_decl(&self, binder: BinderId) -> Option<DeclId> {
+        let decls = self.namespaces.iter().flat_map(|(ns, _)| self.member_decls(ns));
+        decls.into_iter().find(|&d| self.binds(d, |b| b == binder))
+    }
+
+    /// The declarations among the members of `ns`, including staged ones.
+    fn member_decls(&self, ns: NsId) -> Vec<DeclId> {
+        let mut out = Vec::new();
+        each_entry(&self.namespaces[ns].members, &mut |m| {
+            if let Member::Decl(d) = m {
+                out.push(*d);
+            }
+        });
+        out
+    }
+
+    /// Whether the pattern of `decl` binds a binder satisfying `test`.
+    fn binds(&self, decl: DeclId, test: impl Fn(BinderId) -> bool) -> bool {
+        let mut binders = Vec::new();
+        self.binders(self.decls[decl].pat, &mut binders);
+        binders.into_iter().any(test)
     }
 
     /// The binders declared by the members of a namespace, including staged ones.
