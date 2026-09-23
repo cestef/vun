@@ -35,7 +35,7 @@ macro_rules! index {
 }
 
 /// A vector indexed by `I` instead of `usize`.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct IndexVec<I: Idx, T> {
     raw: Vec<T>,
     _index: PhantomData<fn(&I)>,

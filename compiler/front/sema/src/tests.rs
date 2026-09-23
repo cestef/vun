@@ -48,7 +48,7 @@ fn values_are_checked_against_their_types_through_the_prelude() {
     let messages: Vec<String> = reports.sorted().iter().map(|d| d.message.to_string()).collect();
     assert_eq!(
         messages,
-        ["expected `bool`, found `Int(3..=3)`", "expected `u8`, found `Int(300..=300)`"],
+        ["expected `bool`, found `Int(3..=3)`", "value does not fit the type `u8`"],
         "{reports:?}"
     );
 }

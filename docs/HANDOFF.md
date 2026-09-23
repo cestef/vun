@@ -28,7 +28,9 @@ selection and `overt.lock`, `.replace`, indexes, and `overt pkg add|fetch|update
 symbol pool, a shared origin table, and stable file and origin identities. Every diagnostic has a
 checked explanation page (`overt explain`). `overt check <file>` runs every stage;
 `overt dump hir` prints the resolved HIR with origins. Every file in `lib/` and `corpus/accept`
-parses, lowers, verifies and resolves cleanly. Nothing is type-checked yet.
+parses, lowers, verifies and resolves cleanly. Type checking has begun: annotated declarations
+are checked against their types (`types.mismatch`, `int.does_not_fit`), with compile-time calls
+run by the interpreter.
 
 History (jj, newest last): scaffold; lexer; parser, CST, tables, CLI and corpus; bitwise compound
 assignments; corpus grown to 40 accept and 50 reject; modules split and the 300-line limit;
@@ -141,7 +143,10 @@ tested (the rest are stubs):
 | `overt-build` | `index` (`Index::{listing, archive}`, `Listing`), `lock` (`Lock`, `Locked`, `Replaced`/`Replacing`, `FILE`, text form), `Manifest::{replace, index}`, `Replacement`, `Dep::{declare, redeclare}`, `Manifest::{literal, source, identity}`, `Identity`, `EDITION`; `manifest::read` -> `Manifest` (`Version`, `Dep` with span, `Source`, `DepKind`, `prelude_span`), `manifest::declared` (a `build.ov` is a manifest iff it declares `package`), `DEFAULT_DEPS`, `DEFAULT_PRELUDE`; generic record reader reporting missing, unknown (did-you-mean) and ill-typed fields. `store::Store` (`Store::user()` in the XDG cache via `etcetera`, or `Store::at`; `<algorithm>/<2 chars>/<rest>/{package/,snapshot,label}`, `staging/`, `roots/`; `register`, `list`, `collect`, `Label`). `layout`: `MANIFEST`, `SEPARATOR` (from the grammar's `.`), `Location` (namespace on disk: `root`, `member`, `file`, `exists`, `children`, `path_of`). |
 | `overt-harness` | `repo_root`, `expectations` (`//~ id [@col] ["fragment"]...` -> `Expected`, or `Malformed`), `Reported`, `compare` -> `Mismatch { missing, unexpected, differing }`, `discover`, `snapshot`, `snapshot_tree` (mirrors a source tree, `OVERT_BLESS`), `Page::parse` (Markdown sections by `##`, `Block { lang, file, text }`) for the explanation checks. |
 | `overt-xtask` | `cargo xtask generate [--check]`: pluggable `generate::Generator { source, output, emit }` table (`grammar`, `errors`); shared read/parse/emit/format (quote + prettyplease). `cargo xtask corpus`: runs `corpus/accept` (must be clean) and `corpus/reject` (exact `//~` set) through `Session::check`; a file whose missing ids all belong to stages that do not exist yet is pending (`overt_driver::stages::STAGES`, groups from `errors.ov` namespaces via `DiagId::within`). |
-| backends, linkers, target, pass, trace, tool | as in the first session (stubs with `const INFO`). |
+| `overt-mir` | `Body` (locals, params, `ret`, blocks of `Stmt { place, value: Rvalue, origin }`, `Terminator`), `Rvalue::{Use, Binary, Unary, Range, Call}` (operators as grammar `TokenKind`s), `Operand::{Place, Const(Value)}`, `Place { local }`; `Mir(FnRef)` query lowering a function literal through sema's `Env` (`Unbuilt { at }` for forms not lowered yet: comparisons, `if`, `and`/`or`, assignments); text format (`Display`). |
+| `overt-interp` | `Interpreter` implements `sema::eval::Evaluator`: `Frame` runs a body on compile-time values; calls go through sema's `Call` query; operators through `Value::{binary, unary, range}`, primitives through `Primitive::apply`. Installed by `Session::default` in the `Evaluators` resource. |
+| `overt-trace` | Own subscriber: `Filter` (`OVERT_LOG` directives, most specific target wins), compact and tree output, span timings. |
+| backends, linkers, target, pass, tool | as in the first session (stubs with `const INFO`). |
 
 **CST design.** One node per token (Carbon style), children before parents. A bracketed node is
 anchored at its opening token with the closer as a `Punct` leaf; separators and terminators are
@@ -155,7 +160,7 @@ bodies, so `$for`/`$if` work in every list context; node kinds are chosen after 
 (postorder). One report per position; missing things are reported at the end of the previous
 token; nesting capped at 256; the keyword hint suggests `\keyword`.
 
-Tests: 46, including unit tests per crate, `tests/lexer.rs`, `tests/parser.rs` (all of `lib/` and
+Tests: 139, including unit tests per crate, `tests/lexer.rs`, `tests/parser.rs` (all of `lib/` and
 `corpus/accept` parse clean and verify, CST and token snapshots mirroring the corpus tree), CLI parsing tests, the
 generated-files-current test and the corpus test (no failing corpus file). Fuzz: `parse` ran 600k inputs in 4 minutes
 without a failure. clippy pedantic is clean.
@@ -193,33 +198,36 @@ typst compile whitepaper/main.typ whitepaper/overt.pdf
 
 In order:
 
-1. Sema, on `overt-query`, in steps (each committed):
-   - Done: exact integers and intervals; primitives from `lang` (decision 66); types and values;
-     the front end as queries; `types.mismatch` for annotated declarations whose value's type is
-     known without inference (so far integer literals), with types from constant forms.
-   - Type and value model: interned types (`Int(Interval)`, floats, nominal struct and enum
-     literals identified by origin plus compile-time arguments, decision 28, tuples, arrays,
-     references, pointers, functions), compile-time values (`Integer`, types, enum and struct
-     values, functions), stable declaration identity (package, namespace path, name).
-   - Inputs set by the driver (file text, namespace layout, package scopes), so queries stay pure;
-     diagnostics are part of query values. Persist those queries and wire `.overt/queries/`.
-   - Appendix B as a table in a `.ov` source (operators to `lang.ops` items), generated, so no
-     `lang` path is written in Rust.
-   - Checker, MIR, then the MIR interpreter behind `Evaluator`: compile-time evaluation is the
-     interpreter (spec 13, section 6), never a second evaluator over HIR. First targets:
-     `corpus/reject/types/mismatch.ov` (`flag: bool = 3`), then `integers/does_not_fit.ov`
-     (needs `u32 := unsigned(32)`, a compile-time call).
-   - `HIR Lit::Int` holds `i128`; literals past it need `Integer`.
+1. Sema, continued. State: the front end runs as queries (`overt_hir::db`); `overt_sema` has
+   types and values, `Declared`, `DeclValue`, `Call` (memoized compile-time calls through the
+   installed `Evaluator`), `Checked`; MIR v0 (`overt_mir::Mir`) and the interpreter v0
+   (`overt_interp::Interpreter`) evaluate compile-time calls, so `u8 := unsigned(8)` is computed
+   from `lang.int`. Checked so far: an annotated declaration's value against its type, typed by
+   interval arithmetic over integer literals (`types.mismatch`, `int.does_not_fit`). Next:
+   - Body typing: parameter and local types from annotations, names of constants by their
+     declared type (a `DeclType` query), so `(x * x * x).to(u64)` reports `int.width_cap` (an
+     intermediate past 128 bits with finite bounds; compile-time-only ranges have no cap) and the
+     result of a function is checked against its return type.
+   - `lang.bool` and comparisons: comparisons desugar to `lang.ops.Eq`/`Ord`, whose results name
+     `bool` in `lang`; find it by data, never by name. Then `if`, `and`, `or` in MIR (branches).
+   - Appendix B as a `.ov` table (operators to `lang.ops` items), generated; MIR's operators are
+     grammar `TokenKind`s until then.
+   - Method calls (`a.f(x)`), struct fields and literals, then `int.does_not_fit` in
+     `corpus/reject/integers/does_not_fit.ov` (`p.x.abs() + p.y.abs()`).
+   - Compile-time traps (`Unevaluated::Trapped`) become diagnostics with a "while evaluating"
+     trace; a step budget (`lang.comptime.fuel`).
+   - Persist the front-end queries (`Persist` needs `Encode`/`Decode` for their keys and values;
+     `Symbol` and `OriginId` persist by content) and wire `.overt/queries/<toolchain hash>`.
 2. Packaging, still open: signed binary caches (decision 63) and planned builds wait for the
-   evaluator; later `--verify-reproducible`, `overt pkg why`. Paths in diagnostics mix relative
-   and absolute forms depending on how a directory was found.
+   evaluator; later `--verify-reproducible`, `overt pkg why`. `lzma-rs` writes uncompressed xz.
+   Paths in diagnostics mix relative and absolute forms depending on how a directory was found.
 3. `names.private` (needs member types), `binding.hole_value` (needs attribute resolution).
-   Spreads through aliases are forbidden by spec 01, section 8 (paths start at a package or a
-   dependency); spreading a `struct` declaration's members needs sema.
+   Spreads through aliases are forbidden by spec 01, section 8; spreading a `struct`
+   declaration's members needs sema.
 4. Fuzz the parser longer (120 s runs are clean).
 
-The corpus has 40 accept and 54 reject programs plus 63 explanation pages (`cargo xtask corpus`:
-132 passed, 48 pending on later stages, 20 shown as transcripts, 0 failed), plus
+The corpus has 40 accept and 55 reject programs plus 63 explanation pages (`cargo xtask corpus`:
+134 passed, 47 pending on later stages, 20 shown as transcripts, 0 failed), plus
 `corpus/build.ov` (prelude `std.prelude` then `support`) and `corpus/support`, stand-ins for what
 programs take from drivers, other libraries and unwritten parts of `std`.
 
@@ -238,7 +246,7 @@ programs take from drivers, other libraries and unwritten parts of `std`.
 - Diagnostics have no explanation pages (`errors/*.md`) yet; `lang/errors.ov` references them.
 - Whitepaper bibliography partly from memory; research notes' **[unverified]** claims stay
   unverified.
-- `overt-tool`, `overt-query`, `sema`, `mir`, `lir` are stubs.
+- `overt-tool`, `lir` and the MIR passes are stubs; `sema`, `mir` and `interp` are at v0.
 
 ## 10. Pitfalls met
 
@@ -264,9 +272,16 @@ programs take from drivers, other libraries and unwritten parts of `std`.
   bootstrap with a temporary existing id, generate, then restore.
 - A `?` inside a match arm returns from the whole function: in readers that must report every
   problem, combine results with a `match` on the tuple instead.
+- Query values must hash by content: `HashMap` is not `Hash` (use `BTreeMap`), and `Arc<Hir>`-like
+  values hash by the text they come from. Reports are data (`DiagCtxt` in a value, deduplicated by
+  `absorb`); a query never emits.
+- Checks report only what they know: an `Unevaluated` value or an unknown type is silence, never a
+  guess. A stage lists exactly the ids it implements in `stages::STAGES`, or corpus files it cannot
+  handle yet fail instead of staying pending.
 - Performance: one walk per purpose. Lowering fetches `Cst::fields` once per node; resolution
   and the syntactic checks share one walk; verifiers and dumps run only in tests and on demand.
-- `OVERT_BLESS` blesses when the variable is present, whatever its value: `OVERT_BLESS=0` blesses.
+- `OVERT_BLESS` blesses when the variable is present, whatever its value: `OVERT_BLESS=0` blesses,
+  and so does an empty `OVERT_BLESS=` prefix. Never write it on a command unless blessing.
 - Lib files are resolved too: a name used in `lang` must exist in `lang` (its prelude is
   `.{ "lang", "lang.int" }`, no `std`), so integer widths live in `lang.int`, not `std`.
 - Every diagnostic helper phrase has one home: `Msg::did_you_mean`; the `.ov` extension is

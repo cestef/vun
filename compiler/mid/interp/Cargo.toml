@@ -12,5 +12,6 @@ workspace = true
 [dependencies]
 overt-mir.workspace = true
 overt-sema.workspace = true
-overt-target.workspace = true
+overt-index.workspace = true
+overt-query.workspace = true
 overt-diag.workspace = true

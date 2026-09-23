@@ -15,11 +15,10 @@ use overt_origin::{OriginId, OriginTable};
 use overt_query::Cx;
 use overt_span::{SourceFiles, SourceMap};
 
-use crate::Primitive;
 use crate::decl::DeclValue;
+use crate::eval::{Call, FnRef};
 use crate::int::{Integer, Interval};
 use crate::item::{DeclRef, Declared, Site};
-use crate::primitives::lang::Lang;
 use crate::ty::{Nominal, NominalKind, Ty, TyKind, Value};
 
 /// Why an expression has no value at compile time here.
@@ -35,6 +34,8 @@ pub enum Unevaluated {
     Absent,
     /// A declaration provided from outside that is not a primitive: by the linker or an impl.
     Provided,
+    /// A trap fired: a division by zero, or a shift past any width.
+    Trapped,
     /// A form not evaluated yet.
     Unsupported,
 }
@@ -123,35 +124,33 @@ impl<'a, 'db> Env<'a, 'db> {
             },
             ExprKind::Enum(_) => Ok(Self::nominal(e.origin, NominalKind::Enum)),
             ExprKind::Struct(_) => Ok(Self::nominal(e.origin, NominalKind::Struct)),
-            ExprKind::Prefix { op: TokenKind::Minus, operand, .. } => match self.eval(*operand)? {
-                Value::Int(n) => Ok(Value::Int(-&n)),
-                _ => Err(Unevaluated::Unsupported),
-            },
+            ExprKind::Prefix { op, operand, .. } => Value::unary(*op, &self.eval(*operand)?),
             ExprKind::Infix { op: op @ (TokenKind::DotDot | TokenKind::DotDotEq), left, right } => {
-                let Value::Int(lo) = self.eval(*left)? else { return Err(Unevaluated::Unsupported) };
-                let range = match (right.map(|r| self.eval(r)).transpose()?, op) {
-                    (None, _) => Some(Interval::at_least(lo)),
-                    (Some(Value::Int(hi)), TokenKind::DotDotEq) => Interval::closed(lo, hi),
-                    (Some(Value::Int(hi)), _) => Interval::half_open(lo, &hi),
-                    _ => return Err(Unevaluated::Unsupported),
-                };
-                Ok(Value::Range(range))
+                let hi = right.map(|r| self.eval(r)).transpose()?;
+                Value::range(*op, &self.eval(*left)?, hi.as_ref())
+            }
+            ExprKind::Infix { op, left, right: Some(right) } => {
+                Value::binary(*op, &self.eval(*left)?, &self.eval(*right)?)
             }
             ExprKind::Call { callee, args } => self.call(*callee, args),
+            ExprKind::Fn { .. } => Ok(Value::Fn(FnRef { file: self.file.clone(), expr })),
             _ => Err(Unevaluated::Unsupported),
         }
     }
 
-    /// A call: a primitive type constructor applied to constants, or a call for the interpreter.
+    /// A call of a function value, which the evaluator runs, or of a primitive.
     fn call(&self, callee: ExprId, args: &[Entry<Arg>]) -> Result<Value, Unevaluated> {
-        let Value::Primitive(Primitive::Lang(Lang::Int)) = self.eval(callee)? else {
-            return Err(Unevaluated::Interpreter);
-        };
-        match args {
-            [Entry::One(Arg { name: None, value })] => match self.eval(*value)? {
-                Value::Range(Some(range)) => Ok(Value::Type(TyKind::int(&range))),
+        let callee = self.eval(callee)?;
+        let args = args
+            .iter()
+            .map(|arg| match arg {
+                Entry::One(Arg { name: None, value }) => self.eval(*value),
                 _ => Err(Unevaluated::Unsupported),
-            },
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        match callee {
+            Value::Fn(f) => self.cx.get::<Call>(&(f, args)),
+            Value::Primitive(p) => p.apply(&args),
             _ => Err(Unevaluated::Unsupported),
         }
     }
@@ -162,13 +161,28 @@ impl<'a, 'db> Env<'a, 'db> {
         Value::Type(TyKind::Nominal(Nominal { literal, args: Vec::new(), kind }).intern())
     }
 
-    /// The type of `expr`, when it is known without inference: so far, integer literals.
+    /// The type of `expr`, when it is known without inference: integer literals, and integer
+    /// arithmetic over those by interval arithmetic (spec 04, rule 1).
     #[must_use]
     pub fn type_of(&self, expr: ExprId) -> Option<Ty> {
-        match &self.parsed.hir.exprs[expr].kind {
-            ExprKind::Lit(Lit::Int(n)) => Some(TyKind::int(&Interval::singleton(Integer::from(*n)))),
-            _ => None,
-        }
+        let range = |e| self.type_of(e)?.interval();
+        let interval = match &self.parsed.hir.exprs[expr].kind {
+            ExprKind::Lit(Lit::Int(n)) => Interval::singleton(Integer::from(*n)),
+            ExprKind::Prefix { op: TokenKind::Minus, operand, .. } => range(*operand)?.neg(),
+            ExprKind::Infix { op, left, right: Some(right) } => {
+                let (a, b) = (range(*left)?, range(*right)?);
+                match op {
+                    TokenKind::Plus => a.add(&b),
+                    TokenKind::Minus => a.sub(&b),
+                    TokenKind::Star => a.mul(&b),
+                    TokenKind::Slash => a.div(&b).range?,
+                    TokenKind::Percent => a.rem(&b).range?,
+                    _ => return None,
+                }
+            }
+            _ => return None,
+        };
+        Some(TyKind::int(&interval))
     }
 
     /// The source text of `expr`, as written.

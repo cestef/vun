@@ -9,9 +9,11 @@ use overt_diag::{DiagCtxt, DiagCx, DiagSink, Diagnostic, Msg, errors};
 use overt_hir::db::{FileNames, FileRef, FileText, Parsed, ParsedFile};
 use overt_hir::lower;
 use overt_hir::tree::Hir;
+use overt_interp::Interpreter;
 use overt_origin::OriginTable;
 use overt_query::Db;
 use overt_sema::check::Checked;
+use overt_sema::eval::Evaluators;
 use overt_span::{FileId, SourceFiles, SourceMap};
 use overt_syntax::cst::Cst;
 use overt_syntax::literal::Decl;
@@ -39,6 +41,7 @@ pub struct Session {
 impl Default for Session {
     fn default() -> Self {
         let db = Db::new();
+        db.resource::<Evaluators>().install(Arc::new(Interpreter));
         Self {
             sources: db.resource(),
             origins: db.resource(),

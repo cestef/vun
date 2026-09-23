@@ -57,6 +57,14 @@ impl Integer {
         (!divisor.is_zero()).then(|| Self(&self.0 % &divisor.0))
     }
 
+    /// `self * 2^amount`, or `self / 2^amount` rounded toward negative infinity for a negative
+    /// amount, as `<<` and `>>` compute at compile time; `None` for an amount past `u32`.
+    #[must_use]
+    pub fn shifted(&self, amount: &Self) -> Option<Self> {
+        let by = u32::try_from(&amount.abs().0).ok()?;
+        Some(Self(if amount.is_negative() { &self.0 >> by } else { &self.0 << by }))
+    }
+
     /// How many bits the magnitude needs: 0 for zero.
     #[must_use]
     pub fn magnitude_bits(&self) -> u64 {

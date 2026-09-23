@@ -86,3 +86,11 @@ fn unbounded_ranges_have_no_storage_and_stay_sound() {
     assert_eq!(remainder, int(-5, 5));
     assert!(from_one.contains(&int(1, 1_000_000)));
 }
+
+#[test]
+fn shifts_are_exact() {
+    let one = Integer::from(1);
+    assert_eq!(one.shifted(&64.into()), Some(Integer::power_of_two(64)));
+    assert_eq!(Integer::from(-5).shifted(&(-1).into()), Some(Integer::from(-3)), "rounds down");
+    assert_eq!(one.shifted(&Integer::power_of_two(40)), None);
+}

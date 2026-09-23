@@ -1,0 +1,8 @@
+//! A value outside the range of its type does not fit it: widening is implicit, narrowing is
+//! explicit (spec 04, rule 2). `u8` and `i8` are computed at compile time from `lang.int`.
+
+small: u8 = 255;
+large: u8 = 256; //~ int.does_not_fit "is `Int(0..=255)`"
+low: i8 = -129; //~ int.does_not_fit
+sum: u8 = 200 + 55;
+over: u8 = 200 + 56; //~ int.does_not_fit

@@ -542,9 +542,10 @@ name = "overt-interp"
 version = "0.0.0"
 dependencies = [
  "overt-diag",
+ "overt-index",
  "overt-mir",
+ "overt-query",
  "overt-sema",
- "overt-target",
 ]
 
 [[package]]
@@ -642,9 +643,14 @@ name = "overt-mir"
 version = "0.0.0"
 dependencies = [
  "overt-diag",
+ "overt-grammar",
+ "overt-hir",
+ "overt-index",
  "overt-intern",
  "overt-origin",
+ "overt-query",
  "overt-sema",
+ "overt-span",
 ]
 
 [[package]]
