@@ -31,3 +31,6 @@ pub const ALL: &[Command] = &[
 pub fn find(name: &str) -> Option<&'static Command> {
     ALL.iter().find(|c| c.name == name)
 }
+
+/// What `overt dump` can print.
+pub const DUMPS: &[Command] = &[Command { name: "tokens", about: "tokens and trivia with byte ranges" }];

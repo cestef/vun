@@ -1,0 +1,25 @@
+[package]
+name = "overt-fuzz"
+description = "Fuzz targets, run with cargo-fuzz: `cargo fuzz run <target>`."
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[package.metadata]
+cargo-fuzz = true
+
+[workspace]
+
+[dependencies]
+libfuzzer-sys = "0.4"
+overt-diag = { path = "../compiler/base/diag" }
+overt-origin = { path = "../compiler/base/origin" }
+overt-span = { path = "../compiler/base/span" }
+overt-syntax = { path = "../compiler/front/syntax" }
+
+[[bin]]
+name = "lex"
+path = "fuzz_targets/lex.rs"
+test = false
+doc = false
+bench = false

@@ -10,8 +10,12 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
+overt-index.workspace = true
 overt-span.workspace = true
 overt-origin.workspace = true
 overt-diag.workspace = true
-overt-intern.workspace = true
 overt-grammar.workspace = true
+overt-trace.workspace = true
+
+[dev-dependencies]
+overt-harness.workspace = true

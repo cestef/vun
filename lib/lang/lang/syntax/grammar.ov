@@ -6,7 +6,7 @@ Context := enum { for_pattern, after_amp };
 
 trivia := [.whitespace, .comment];
 
-atoms := [.doc_comment, .module_doc_comment, .ident, .int, .float, .char, .string, .raw_string_line, .label];
+atoms := [.doc_comment, .module_doc_comment, .ident, .int, .float, .char, .string, .raw_string_line, .label, .error];
 
 keywords := [
     "mut",

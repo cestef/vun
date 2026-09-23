@@ -10,21 +10,20 @@ index! {
     pub struct FileId;
 }
 
-/// A half-open byte range `lo..hi` in one file.
+/// A half-open byte range `lo..hi`, relative to some text.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct Span {
-    pub file: FileId,
+pub struct ByteRange {
     pub lo: u32,
     pub hi: u32,
 }
 
-impl Span {
+impl ByteRange {
     /// # Panics
     /// Panics if `lo > hi`.
     #[must_use]
-    pub const fn new(file: FileId, lo: u32, hi: u32) -> Self {
-        assert!(lo <= hi, "span starts after it ends");
-        Self { file, lo, hi }
+    pub const fn new(lo: u32, hi: u32) -> Self {
+        assert!(lo <= hi, "range starts after it ends");
+        Self { lo, hi }
     }
 
     #[must_use]
@@ -37,6 +36,34 @@ impl Span {
         self.lo == self.hi
     }
 
+    /// The smallest range covering both.
+    #[must_use]
+    pub fn cover(self, other: Self) -> Self {
+        Self { lo: self.lo.min(other.lo), hi: self.hi.max(other.hi) }
+    }
+
+    /// The text this range selects.
+    #[must_use]
+    pub fn of(self, text: &str) -> &str {
+        &text[self.lo as usize..self.hi as usize]
+    }
+}
+
+/// A byte range in one file.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct Span {
+    pub file: FileId,
+    pub range: ByteRange,
+}
+
+impl Span {
+    /// # Panics
+    /// Panics if `lo > hi`.
+    #[must_use]
+    pub const fn new(file: FileId, lo: u32, hi: u32) -> Self {
+        Self { file, range: ByteRange::new(lo, hi) }
+    }
+
     /// The smallest span covering both.
     ///
     /// # Panics
@@ -44,7 +71,7 @@ impl Span {
     #[must_use]
     pub fn cover(self, other: Self) -> Self {
         assert_eq!(self.file, other.file, "cannot cover spans from different files");
-        Self { file: self.file, lo: self.lo.min(other.lo), hi: self.hi.max(other.hi) }
+        Self { file: self.file, range: self.range.cover(other.range) }
     }
 }
 

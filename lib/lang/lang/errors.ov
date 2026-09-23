@@ -1,9 +1,36 @@
-//! Every compiler diagnostic. `overt-diag` mirrors this list and CI checks they agree.
+//! Every compiler diagnostic, grouped by area. `overt-diag` mirrors this list (`errors::ALL`) and
+//! CI checks that the two agree. Each entry's explanation page lives next to it under `errors/`.
+
+syntax := struct {
+    unknown_character := diag.Diag{ .explanation = meta.embed("errors/syntax/unknown_character.md") };
+    unterminated_string := diag.Diag{ .explanation = meta.embed("errors/syntax/unterminated_string.md") };
+    unterminated_char := diag.Diag{ .explanation = meta.embed("errors/syntax/unterminated_char.md") };
+    invalid_escape := diag.Diag{ .explanation = meta.embed("errors/syntax/invalid_escape.md") };
+    malformed_number := diag.Diag{ .explanation = meta.embed("errors/syntax/malformed_number.md") };
+};
 
 int := struct {
-    does_not_fit := diag.Diag{ .summary = "value does not fit the type", .explanation = meta.embed("errors/int/does_not_fit.md") };
+    does_not_fit := diag.Diag{ .explanation = meta.embed("errors/int/does_not_fit.md") };
 };
 
 types := struct {
-    mismatch := diag.Diag{ .summary = "mismatched types", .explanation = meta.embed("errors/types/mismatch.md") };
+    mismatch := diag.Diag{ .explanation = meta.embed("errors/types/mismatch.md") };
+};
+
+backend := struct {
+    unavailable := diag.Diag{ .explanation = meta.embed("errors/backend/unavailable.md") };
+};
+
+link := struct {
+    unavailable := diag.Diag{ .explanation = meta.embed("errors/link/unavailable.md") };
+};
+
+io := struct {
+    unreadable_file := diag.Diag{ .explanation = meta.embed("errors/io/unreadable_file.md") };
+};
+
+cli := struct {
+    unknown_command := diag.Diag{ .explanation = meta.embed("errors/cli/unknown_command.md") };
+    missing_argument := diag.Diag{ .explanation = meta.embed("errors/cli/missing_argument.md") };
+    unavailable_command := diag.Diag{ .explanation = meta.embed("errors/cli/unavailable_command.md") };
 };

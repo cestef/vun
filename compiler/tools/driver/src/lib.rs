@@ -6,7 +6,9 @@
 
 pub mod commands;
 mod registry;
+mod session;
 
 pub use registry::Registry;
+pub use session::Session;
 
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");

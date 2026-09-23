@@ -16,6 +16,22 @@ use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 
+/// The repository root, located from this crate's own place in the workspace.
+///
+/// # Panics
+/// Panics if the crate was moved out of `compiler/tools`.
+#[must_use]
+pub fn repo_root() -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR"))
+        .ancestors()
+        .nth(REPO_DEPTH)
+        .expect("harness lives in the repository")
+        .to_path_buf()
+}
+
+/// Depth of this crate below the repository root: `compiler/tools/harness`.
+const REPO_DEPTH: usize = 3;
+
 /// Marker that starts an expectation inside a line comment.
 pub const MARKER: &str = "//~";
 /// Environment variable that makes snapshot checks overwrite instead of compare.

@@ -15,11 +15,18 @@ macro_rules! errors {
 }
 
 errors! {
+    SYNTAX_UNKNOWN_CHARACTER = "syntax.unknown_character";
+    SYNTAX_UNTERMINATED_STRING = "syntax.unterminated_string";
+    SYNTAX_UNTERMINATED_CHAR = "syntax.unterminated_char";
+    SYNTAX_INVALID_ESCAPE = "syntax.invalid_escape";
+    SYNTAX_MALFORMED_NUMBER = "syntax.malformed_number";
     INT_DOES_NOT_FIT = "int.does_not_fit";
     TYPES_MISMATCH = "types.mismatch";
     BACKEND_UNAVAILABLE = "backend.unavailable";
     LINK_UNAVAILABLE = "link.unavailable";
+    IO_UNREADABLE_FILE = "io.unreadable_file";
     CLI_UNKNOWN_COMMAND = "cli.unknown_command";
+    CLI_MISSING_ARGUMENT = "cli.missing_argument";
     CLI_UNAVAILABLE_COMMAND = "cli.unavailable_command";
 }
 

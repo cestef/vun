@@ -3,6 +3,8 @@
 //! The grammar is defined once, as Overt data (spec 13, section 5). Until `cargo xtask grammar`
 //! generates this crate, the table below is maintained by hand and must match `grammar.ov`.
 
+use std::sync::LazyLock;
+
 macro_rules! tokens {
     (
         trivia { $($trivia:ident),* $(,)? }
@@ -39,7 +41,7 @@ macro_rules! tokens {
 
 tokens! {
     trivia { Whitespace, Comment }
-    atoms { DocComment, ModuleDocComment, Ident, Int, Float, Char, String, RawStringLine, Label }
+    atoms { DocComment, ModuleDocComment, Ident, Int, Float, Char, String, RawStringLine, Label, Error }
     keywords {
         Mut = "mut", If = "if", Else = "else", Match = "match", For = "for", Break = "break",
         Continue = "continue", Return = "return", Yield = "yield", Defer = "defer", And = "and",
@@ -57,7 +59,20 @@ tokens! {
     }
 }
 
+/// Punctuation, longest spelling first, so the first prefix match is the longest one.
+static PUNCTUATION_BY_LENGTH: LazyLock<Vec<TokenKind>> = LazyLock::new(|| {
+    let mut kinds = TokenKind::PUNCTUATION.to_vec();
+    kinds.sort_by_key(|k| std::cmp::Reverse(k.text().map_or(0, str::len)));
+    kinds
+});
+
 impl TokenKind {
+    /// The punctuation spelled by the longest prefix of `rest`.
+    #[must_use]
+    pub fn punctuation(rest: &str) -> Option<Self> {
+        PUNCTUATION_BY_LENGTH.iter().copied().find(|k| k.text().is_some_and(|t| rest.starts_with(t)))
+    }
+
     /// The keyword spelled `word`, if `word` is reserved.
     #[must_use]
     pub fn keyword(word: &str) -> Option<Self> {
@@ -100,5 +115,13 @@ mod tests {
             assert_eq!(TokenKind::keyword(kw.text().unwrap()), Some(kw));
         }
         assert_eq!(TokenKind::keyword("fn"), None);
+    }
+
+    #[test]
+    fn punctuation_takes_the_longest_match() {
+        assert_eq!(TokenKind::punctuation("+%= 1"), Some(TokenKind::PlusPercentEq));
+        assert_eq!(TokenKind::punctuation("..= b"), Some(TokenKind::DotDotEq));
+        assert_eq!(TokenKind::punctuation(".. b"), Some(TokenKind::DotDot));
+        assert_eq!(TokenKind::punctuation("@"), None);
     }
 }

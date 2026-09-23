@@ -17,6 +17,4 @@ workspace = true
 overt-driver.workspace = true
 overt-trace.workspace = true
 overt-diag.workspace = true
-overt-origin.workspace = true
-overt-span.workspace = true
 overt-render-short.workspace = true

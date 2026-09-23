@@ -98,6 +98,18 @@ impl Msg {
         self.part(MsgPart::Num(n.into()))
     }
 
+    /// Items rendered as code, separated by commas.
+    #[must_use]
+    pub fn code_list<S: Into<String>>(mut self, items: impl IntoIterator<Item = S>) -> Self {
+        for (i, item) in items.into_iter().enumerate() {
+            if i > 0 {
+                self = self.text(", ");
+            }
+            self = self.code(item);
+        }
+        self
+    }
+
     fn part(mut self, part: MsgPart) -> Self {
         self.0.push(part);
         self
@@ -248,6 +260,20 @@ pub struct ErrorGuaranteed(());
 /// Output for diagnostics: terminal, short, JSON, SARIF, LSP.
 pub trait DiagSink {
     fn emit(&mut self, d: &Diagnostic, origins: &OriginTable, sources: &dyn SourceMap);
+}
+
+/// Where a stage reports: the diagnostics, and the origins their labels point to.
+pub struct DiagCx<'a> {
+    pub diag: &'a mut DiagCtxt,
+    pub origins: &'a mut OriginTable,
+}
+
+impl DiagCx<'_> {
+    /// Reports an error whose primary label is user-written source.
+    pub fn error_at(&mut self, span: Span, d: Diagnostic) -> ErrorGuaranteed {
+        let origin = self.origins.source(span);
+        self.diag.error(d.at(origin, None))
+    }
 }
 
 /// Collects diagnostics for one compilation.

@@ -20,8 +20,9 @@ pub enum Via {
 }
 ```
 
-- Tokens, CST nodes, HIR, MIR statements, LIR instructions, backend output and link-plan entries
-  all hold an `OriginId`. Origins are interned in a table; chains are shared, so the cost is one
+- Tokens and CST nodes are the source: they hold byte ranges into their file directly. Every entity
+  derived from them (HIR, MIR statements, LIR instructions, backend output, link-plan entries)
+  holds an `OriginId`, created from those ranges. Origins are interned in a table; chains are shared, so the cost is one
   `u32` per entity.
 - A generated construct points at the code that generated it, and that code at its caller, up to
   user code. Diagnostics show this as a trace; go-to-definition follows it.

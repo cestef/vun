@@ -150,9 +150,7 @@ version = "0.0.0"
 dependencies = [
  "overt-diag",
  "overt-driver",
- "overt-origin",
  "overt-render-short",
- "overt-span",
  "overt-trace",
 ]
 
@@ -455,9 +453,11 @@ version = "0.0.0"
 dependencies = [
  "overt-diag",
  "overt-grammar",
- "overt-intern",
+ "overt-harness",
+ "overt-index",
  "overt-origin",
  "overt-span",
+ "overt-trace",
 ]
 
 [[package]]

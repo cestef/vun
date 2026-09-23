@@ -53,6 +53,11 @@ impl<I: Idx, T> IndexVec<I, T> {
         Self::default()
     }
 
+    #[must_use]
+    pub fn with_capacity(capacity: usize) -> Self {
+        Self { raw: Vec::with_capacity(capacity), _index: PhantomData }
+    }
+
     /// Appends `value` and returns its index.
     pub fn push(&mut self, value: T) -> I {
         let i = I::new(self.raw.len());
@@ -68,6 +73,11 @@ impl<I: Idx, T> IndexVec<I, T> {
     #[must_use]
     pub fn is_empty(&self) -> bool {
         self.raw.is_empty()
+    }
+
+    #[must_use]
+    pub fn get(&self, i: I) -> Option<&T> {
+        self.raw.get(i.index())
     }
 
     pub fn iter(&self) -> impl Iterator<Item = (I, &T)> {

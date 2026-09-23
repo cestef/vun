@@ -5,8 +5,7 @@
 
 use std::collections::HashMap;
 
-use overt_diag::DiagCtxt;
-use overt_origin::OriginTable;
+use overt_diag::DiagCx;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PassResult {
@@ -15,9 +14,8 @@ pub enum PassResult {
 }
 
 pub struct PassCx<'a> {
-    pub diag: &'a mut DiagCtxt,
     /// New entities record their origins here, with `Via::Lower`.
-    pub origins: &'a mut OriginTable,
+    pub report: DiagCx<'a>,
 }
 
 /// A check or transform over an IR of type `Ir`.
@@ -130,6 +128,8 @@ impl<Ir: ?Sized> PassManager<Ir> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use overt_diag::DiagCtxt;
+    use overt_origin::OriginTable;
 
     struct Named(&'static str, &'static [&'static str]);
 
@@ -153,7 +153,8 @@ mod tests {
         pm.register(Box::new(Named("places", &[])));
         let (mut diag, mut origins) = (DiagCtxt::new(), OriginTable::new());
         let mut log = Vec::new();
-        pm.run(&mut log, &mut PassCx { diag: &mut diag, origins: &mut origins }).unwrap();
+        let report = DiagCx { diag: &mut diag, origins: &mut origins };
+        pm.run(&mut log, &mut PassCx { report }).unwrap();
         assert_eq!(log, ["places", "borrows"]);
     }
 

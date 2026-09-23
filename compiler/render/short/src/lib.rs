@@ -21,7 +21,7 @@ impl<W: Write> DiagSink for ShortRenderer<W> {
         if let Some(label) = &d.primary {
             let span = origins.source_span(label.origin);
             let file = sources.file(span.file);
-            let at = file.line_col(span.lo);
+            let at = file.line_col(span.range.lo);
             let _ = write!(self.out, "{}:{}:{}: ", file.path, at.line, at.col);
         }
         // Best-effort output: a closed stream must not abort compilation.
