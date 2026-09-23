@@ -33,7 +33,7 @@ pub const PROGRAM: Program<Session> = Program {
             planned("explain", "explain a diagnostic"),
             group("dump", "print an intermediate representation with origins", DUMPS),
             group(
-                "pkg",
+                pkg::GROUP,
                 "dependencies, releases and API diffs",
                 &[
                     Command {
@@ -43,12 +43,7 @@ pub const PROGRAM: Program<Session> = Program {
                         action: Action::Run(pkg::add),
                     },
                     planned("update", "raise dependency versions"),
-                    Command {
-                        name: "fetch",
-                        about: "download dependencies into the local store",
-                        params: &[],
-                        action: Action::Run(pkg::fetch),
-                    },
+                    pkg::FETCH,
                     planned("vendor", "copy dependencies into vendor/"),
                     Command {
                         name: "pack",
@@ -207,6 +202,8 @@ fn components(_: &mut Session, _: &Args, out: &mut dyn Write) -> io::Result<Outc
 }
 
 mod pkg;
+
+pub(crate) use pkg::FETCH_PATH;
 #[cfg(test)]
 mod tests;
 

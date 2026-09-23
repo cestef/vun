@@ -5,13 +5,25 @@ use std::path::PathBuf;
 
 use overt_build::layout::MANIFEST;
 use overt_build::manifest::{Source, Version};
-use overt_command::{Args, Outcome, Param, ParamKind};
+use overt_command::{Action, Args, Command, Outcome, Param, ParamKind};
 use overt_diag::{ChildKind, Diagnostic, Msg, errors};
 use overt_fs::Edit;
 use overt_pkg::Archive;
 
 use crate::Session;
 use crate::packages::{Addition, Fetched, Unstated};
+
+/// The group of these commands.
+pub(super) const GROUP: &str = "pkg";
+
+pub(super) const FETCH: Command<Session> = Command {
+    name: "fetch",
+    about: "download dependencies into the local store and write the lockfile",
+    params: &[],
+    action: Action::Run(fetch),
+};
+/// Where `overt pkg fetch` is below the root, for messages that suggest it.
+pub(crate) const FETCH_PATH: [&str; 2] = [GROUP, FETCH.name];
 
 pub(super) const SOURCE: Param = Param {
     name: "source",
@@ -35,8 +47,8 @@ pub(super) const OUT: Param =
     Param { name: "out", short: Some('o'), about: "where to write the archive", kind: ParamKind::Option };
 
 /// `overt pkg fetch`: downloads the stored dependencies of the project into its store.
-pub(super) fn fetch(session: &mut Session, _: &Args, out: &mut dyn Write) -> io::Result<Outcome> {
-    let Some((_, project)) = session.project()? else { return Ok(Outcome::Failure) };
+fn fetch(session: &mut Session, _: &Args, out: &mut dyn Write) -> io::Result<Outcome> {
+    let Some((dir, project)) = session.project()? else { return Ok(Outcome::Failure) };
     for (name, hash, fetched) in session.fetch(project) {
         let name = session.interner.resolve(name);
         match fetched {
@@ -44,6 +56,9 @@ pub(super) fn fetch(session: &mut Session, _: &Args, out: &mut dyn Write) -> io:
             Fetched::Stored { url } => writeln!(out, "stored  {name} {hash} from {url}")?,
             Fetched::Failed => {}
         }
+    }
+    if !session.failed() {
+        session.write_lock(&dir, project);
     }
     Ok(session.outcome())
 }
@@ -62,10 +77,17 @@ pub(super) fn add(session: &mut Session, args: &Args, out: &mut dyn Write) -> io
     let source = args.value(&SOURCE).expect("positional parameters are present when a command runs");
     let addition = Addition { source, name: args.value(&NAME), version };
     match session.add(&dir, &addition) {
-        Ok(Some(dep)) => match &dep.source {
-            Source::Path(path) => writeln!(out, "added {} at {path}", dep.name)?,
-            Source::Archive { version, hash, .. } => writeln!(out, "added {} {version} {hash}", dep.name)?,
-        },
+        Ok(Some(dep)) => {
+            match &dep.source {
+                Source::Path(path) => writeln!(out, "added {} at {path}", dep.name)?,
+                Source::Archive { version, hash, .. } => {
+                    writeln!(out, "added {} {version} {hash}", dep.name)?;
+                }
+            }
+            if let Some(project) = session.package_at(&dir) {
+                session.write_lock(&dir, project);
+            }
+        }
         Ok(None) => {}
         Err(unstated) => {
             let param = match unstated {

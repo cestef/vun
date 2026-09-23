@@ -3,6 +3,7 @@
 //! Every field is checked: missing required fields, unknown fields (with the closest known name)
 //! and values of the wrong shape are diagnostics at the offending source.
 
+mod identity;
 mod record;
 #[cfg(test)]
 mod tests;
@@ -13,6 +14,7 @@ use overt_diag::{DiagCx, Diagnostic, Msg, errors};
 use overt_span::{FileId, Span};
 use overt_syntax::literal::{Decl, Literal};
 
+pub use identity::Identity;
 use overt_hash::Hash;
 use record::{Fields, choice, hash, int, string, strings};
 pub use version::Version;
@@ -39,6 +41,9 @@ pub struct Manifest {
     /// The `.prelude` field, or the `package` declaration when the prelude is the default.
     pub prelude_span: Span,
 }
+
+/// The edition new packages are written in.
+pub const EDITION: u16 = 2026;
 
 /// The prelude of a manifest that does not name one.
 pub const DEFAULT_PRELUDE: &str = "std.prelude";

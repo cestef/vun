@@ -119,6 +119,8 @@ package := struct {
     no_project := diag.Diag{ .explanation = meta.embed("errors/package/no_project.md") };
     duplicate_dep := diag.Diag{ .explanation = meta.embed("errors/package/duplicate_dep.md") };
     unnamed := diag.Diag{ .explanation = meta.embed("errors/package/unnamed.md") };
+    version_conflict := diag.Diag{ .explanation = meta.embed("errors/package/version_conflict.md") };
+    stale_lock := diag.Diag{ .explanation = meta.embed("errors/package/stale_lock.md") };
 };
 
 /// Reading and writing files.

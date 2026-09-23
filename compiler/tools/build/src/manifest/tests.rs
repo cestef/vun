@@ -34,8 +34,17 @@ fn every_manifest_reads() {
         for path in discover(&root.join(dir), EXTENSION).unwrap() {
             let text = std::fs::read_to_string(&path).unwrap();
             if path.file_name().is_some_and(|n| n == MANIFEST) && declares(&text) {
-                let (manifest, ids) = manifest(&text);
-                assert!(manifest.is_some() && ids.is_empty(), "{}: {ids:?}", path.display());
+                let (read_once, ids) = manifest(&text);
+                assert!(read_once.is_some() && ids.is_empty(), "{}: {ids:?}", path.display());
+                // What the writer writes reads back as the same manifest.
+                let written = read_once.unwrap().source().unwrap();
+                let (again, ids) = manifest(&written);
+                assert_eq!(
+                    (again.unwrap().source().unwrap(), ids),
+                    (written, Vec::new()),
+                    "{}",
+                    path.display()
+                );
                 read += 1;
             }
         }
@@ -46,7 +55,7 @@ fn every_manifest_reads() {
 #[test]
 fn reads_every_field() {
     let text = r#"package := .{
-        .name = "blinky", .id = 0x6a80, .version = "0.3.1", .edition = 2027, .toolchain = "0.4.2",
+        .name = "blinky", .id = 0x6a80, .version = "0.3.1", .edition = 2026, .toolchain = "0.4.2",
         .include = .{ "build.ov", "blinky" }, .prelude = .{ "std.prelude", "support" },
         .deps = .{
             .hal = .{ .version = "1.3.0", .hash = "blake3:k3f2aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", .urls = .{ "https://x" } },
@@ -56,7 +65,7 @@ fn reads_every_field() {
     };"#;
     let (Some(m), ids) = manifest(text) else { panic!("unread") };
     assert!(ids.is_empty(), "{ids:?}");
-    assert_eq!((m.name.as_str(), m.id, m.edition), ("blinky", 0x6a80, 2027));
+    assert_eq!((m.name.as_str(), m.id, m.edition), ("blinky", 0x6a80, 2026));
     assert_eq!(m.toolchain, Version::parse("0.4.2"));
     assert_eq!(m.include, ["build.ov", "blinky"]);
     assert_eq!(m.prelude, ["std.prelude", "support"]);
@@ -118,7 +127,7 @@ fn declared_deps_read_back() {
     let wanted =
         [("util", Source::Path("../util".into()), DepKind::Overt), ("hal", archive, DepKind::Foreign)];
     let mut text =
-        "package := .{\n    .name = \"app\", .id = 1, .version = \"0.1.0\", .edition = 2027,\n    \
+        "package := .{\n    .name = \"app\", .id = 1, .version = \"0.1.0\", .edition = 2026,\n    \
                     .include = .{ \"build.ov\" },\n};\n"
             .to_owned();
     for (name, source, kind) in &wanted {

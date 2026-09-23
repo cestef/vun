@@ -61,6 +61,22 @@ impl<Cx> Command<Cx> {
     }
 }
 
+impl<Cx> Program<Cx> {
+    /// The command line selecting the command at `path` below the root, such as `overt pkg
+    /// fetch`, for messages that suggest it; `None` if no command is there.
+    #[must_use]
+    pub fn invocation(&self, path: &[&str]) -> Option<String> {
+        let mut command = &self.root;
+        let mut line = command.name.to_owned();
+        for name in path {
+            command = command.children().iter().find(|c| c.name == *name)?;
+            line.push(' ');
+            line.push_str(command.name);
+        }
+        Some(line)
+    }
+}
+
 #[derive(Debug, PartialEq, Eq)]
 pub struct Param {
     pub name: &'static str,

@@ -122,7 +122,7 @@ tested (the rest are stubs):
 | `overt-render-short` | `file:line:col: severity[id]: message`, then `  = help: ...` lines (fixes too). |
 | `overt-render-annotate` | default `terminal` format: labels by file, notes, fixes as patches, traces. |
 | `overt-render-ariadne` | `--format ariadne`: one color per label role; fixes as help lines. |
-| `overt-build` | `manifest::read` -> `Manifest` (`Version`, `Dep` with span, `Source`, `DepKind`, `prelude_span`), `manifest::declared` (a `build.ov` is a manifest iff it declares `package`), `DEFAULT_DEPS`, `DEFAULT_PRELUDE`; generic record reader reporting missing, unknown (did-you-mean) and ill-typed fields. `store::Store` (`.overt/store/<algorithm>/<2 chars>/<rest>/{package/,snapshot}`, `staging/`). `layout`: `MANIFEST`, `SEPARATOR` (from the grammar's `.`), `Location` (namespace on disk: `root`, `member`, `file`, `exists`, `children`, `path_of`). |
+| `overt-build` | `lock` (`Lock`, `Locked`, `FILE`, text form), `Manifest::{literal, source, identity}`, `Identity`, `EDITION`; `manifest::read` -> `Manifest` (`Version`, `Dep` with span, `Source`, `DepKind`, `prelude_span`), `manifest::declared` (a `build.ov` is a manifest iff it declares `package`), `DEFAULT_DEPS`, `DEFAULT_PRELUDE`; generic record reader reporting missing, unknown (did-you-mean) and ill-typed fields. `store::Store` (`.overt/store/<algorithm>/<2 chars>/<rest>/{package/,snapshot}`, `staging/`). `layout`: `MANIFEST`, `SEPARATOR` (from the grammar's `.`), `Location` (namespace on disk: `root`, `member`, `file`, `exists`, `children`, `path_of`). |
 | `overt-harness` | `repo_root`, `expectations` (`//~ id [@col] ["fragment"]...` -> `Expected`, or `Malformed`), `Reported`, `compare` -> `Mismatch { missing, unexpected, differing }`, `discover`, `snapshot`, `snapshot_tree` (mirrors a source tree, `OVERT_BLESS`). |
 | `overt-xtask` | `cargo xtask generate [--check]`: pluggable `generate::Generator { source, output, emit }` table (`grammar`, `errors`); shared read/parse/emit/format (quote + prettyplease). `cargo xtask corpus`: runs `corpus/accept` (must be clean) and `corpus/reject` (exact `//~` set) through `Session::check`; a file whose missing ids all belong to stages that do not exist yet is pending (`overt_driver::stages::STAGES`, groups from `errors.ov` namespaces via `DiagId::within`). |
 | backends, linkers, target, pass, trace, tool | as in the first session (stubs with `const INFO`). |
@@ -187,9 +187,10 @@ In order:
    entries (the hash stays the key); planned builds (typed step records, `overt build --dry-run`,
    steps keyed by inputs); signed binary caches (`.caches`, ed25519 trusted keys). Later: early
    cutoff, sandboxed steps, `--verify-reproducible`, `overt pkg why`, a `.replace` override.
-   Packages: minimal version selection and the lockfile (spec 12, sections 3 and 4). Fetching,
-   verification, `overt pkg add` (trust on first use, the entry written through
-   `Dep::declare` and `Decl::insert`) and `overt pkg pack` exist.
+   Done: minimal version selection (`Session::select`, `dep()` binds the selected version) and
+   `overt.lock` (`overt_build::lock`), written by `pkg fetch` and `pkg add`; fetching, verification,
+   `overt pkg add` (trust on first use, entries written through `Dep::declare`/`Decl::insert`) and
+   `overt pkg pack`. Open: `overt pkg update` needs a source of newer versions (an index).
 3. `names.private` (needs member types: sema), `binding.hole_value` (needs attribute resolution).
 4. Desugaring into `lang` items with `Via::Desugar` origins (appendix B), queries, sema (with
    narrowing, decision 35, exhaustive match, decision 29), MIR, interpreter.

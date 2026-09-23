@@ -76,7 +76,7 @@ impl Session {
             for (index, dep) in deps.iter().enumerate() {
                 let outcome = match &dep.source {
                     DepSource::Stored { hash, .. } if done.iter().any(|(_, h, _)| h == hash) => continue,
-                    DepSource::Stored { hash, urls } => {
+                    DepSource::Stored { hash, urls, .. } => {
                         let outcome = if self.present(*hash) {
                             Fetched::Present
                         } else {

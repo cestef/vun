@@ -5,7 +5,7 @@ use std::fmt::{self, Write as _};
 
 use overt_grammar::TokenKind;
 
-use super::Literal;
+use super::{Decl, Literal};
 use crate::lexer::{ESCAPE, SIMPLE_ESCAPES, is_ident};
 
 /// Why a value has no literal source.
@@ -60,6 +60,20 @@ impl Literal<'_> {
     }
 }
 
+impl Decl<'_> {
+    /// The declaration `name := value;`, its value laid out within [`WIDTH`].
+    ///
+    /// # Errors
+    /// Returns why the value or the name has no source.
+    pub fn source(&self) -> Result<String, Unwritable> {
+        let mut w = Writer::default();
+        w.binder(self.name)?.text(" ").token(TokenKind::ColonEq).text(" ");
+        let value = self.value.laid_out("", w.out.len())?;
+        w.text(&value).token(TokenKind::Semi).text("\n");
+        Ok(w.out)
+    }
+}
+
 /// Overt source being written.
 #[derive(Default)]
 pub(super) struct Writer {
@@ -88,16 +102,20 @@ impl Writer {
         self.text(indent)
     }
 
-    /// `.name`, escaped when the name is a keyword.
-    fn name(&mut self, name: &str) -> Result<&mut Self, Unwritable> {
+    /// `name`, escaped when it is a keyword.
+    fn binder(&mut self, name: &str) -> Result<&mut Self, Unwritable> {
         if !is_ident(name) {
             return Err(Unwritable::Name);
         }
-        self.token(TokenKind::Dot);
         if TokenKind::keyword(name).is_some() {
             self.out.push(ESCAPE);
         }
         Ok(self.text(name))
+    }
+
+    /// `.name`
+    fn name(&mut self, name: &str) -> Result<&mut Self, Unwritable> {
+        self.token(TokenKind::Dot).binder(name)
     }
 
     /// `.name = `, before a field's value.

@@ -53,6 +53,11 @@ pub struct Decl<'s> {
 }
 
 impl<'s> Literal<'s> {
+    /// A list of strings.
+    pub fn strings(items: impl IntoIterator<Item = &'s str>) -> Self {
+        Self::List(items.into_iter().map(|s| Self::String(Cow::Borrowed(s))).collect())
+    }
+
     /// The value of the field `name` of a record or namespace.
     #[must_use]
     pub fn get(&self, name: &str) -> Option<&Self> {

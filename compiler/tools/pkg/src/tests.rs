@@ -6,7 +6,7 @@ use flate2::write::GzEncoder;
 use overt_fs::{Mode, Modes, Scratch};
 use overt_hash::Snapshot;
 
-use super::{Archive, Failure, Mirror};
+use super::{Archive, Failure, Mirror, Scheme};
 
 /// A `.tar.gz` holding `files` under one top-level directory, as forges produce.
 fn archive(files: &[(&str, &str, Mode)]) -> Vec<u8> {
@@ -31,7 +31,7 @@ fn file_mirrors_unpack_without_the_top_level_directory() {
         "pkg.tar.gz",
         archive(&[("a.ov", "a := 1;", Mode::Regular), ("sub/b.ov", "b := 2;", Mode::Regular)]),
     );
-    let url = format!("file://{}", path.display());
+    let url = Scheme::file_url(&path);
     Mirror::parse(&url).unwrap().fetch(&dir.join("out")).unwrap();
     assert_eq!(fs::read_to_string(dir.join("out/sub/b.ov")).unwrap(), "b := 2;");
     assert!(!dir.join("out.unpacking").exists());
@@ -54,7 +54,7 @@ fn package_archives_are_reproducible_and_verified() {
     let (bytes, snapshot) = Archive::pack(&src, &include).unwrap();
     assert_eq!(Archive::pack(&src, &include).unwrap().0, bytes, "identical trees, identical archives");
     let path = dir.write("demo.ovpkg", &bytes);
-    Mirror::parse(&format!("file://{}", path.display())).unwrap().fetch(&dir.join("out")).unwrap();
+    Mirror::parse(&Scheme::file_url(&path)).unwrap().fetch(&dir.join("out")).unwrap();
     assert_eq!(Snapshot::of(&dir.join("out"), &include), snapshot);
     // A file whose bytes differ from the index is refused.
     let mut raw = zstd::decode_all(bytes.as_slice()).unwrap();
@@ -80,6 +80,6 @@ fn executable_files_stay_executable() {
     assert_eq!(Snapshot::of(&dir.join("out"), &include).root(), snapshot.root());
 
     let path = dir.write("sdk.tar.gz", archive(&[("configure", "#!/bin/sh\n", Mode::Executable)]));
-    Mirror::parse(&format!("file://{}", path.display())).unwrap().fetch(&dir.join("sdk")).unwrap();
+    Mirror::parse(&Scheme::file_url(&path)).unwrap().fetch(&dir.join("sdk")).unwrap();
     assert_eq!(dir.join("sdk/configure").mode(), Mode::Executable);
 }

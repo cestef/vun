@@ -11,6 +11,31 @@ use overt_hash::{Change, Hash, Snapshot};
 
 use super::{Dep, DepSource, Namespace, PackageKey, Unfound};
 use crate::Session;
+use crate::commands::{FETCH_PATH, PROGRAM};
+
+/// Why the package of a dependency is not there as declared.
+#[derive(Clone, Copy, Debug)]
+pub(super) enum Absent {
+    Missing,
+    /// Stored, but its contents hash to `actual`.
+    Mismatch {
+        expected: Hash,
+        actual: Hash,
+    },
+}
+
+impl std::fmt::Display for Absent {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Missing => f.write_str("the package is not on disk"),
+            Self::Mismatch { expected, actual } => {
+                write!(f, "`{actual}` is stored where `{expected}` is declared")
+            }
+        }
+    }
+}
+
+impl std::error::Error for Absent {}
 
 /// What a name from outside a file refers to.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -47,23 +72,51 @@ impl Session {
         names.extend(p.name.map(|name| (name, Outer::Package(package))));
     }
 
-    /// The package of the dependency `index` of `package`, loaded once; a missing one, or a
-    /// stored one whose contents do not match its hash, is reported each time it is needed.
+    /// The package of the dependency `index` of `package`: the version selection chose for its
+    /// identity (spec 12, section 3), or the declared one. A missing package, or a stored one whose
+    /// contents do not match its hash, is reported each time it is needed.
     pub fn dep(&mut self, package: PackageKey, index: usize) -> Option<PackageKey> {
         let dep = self.packages.list[&package].deps[index].clone();
-        let Some(found) = self.package_at(&self.dep_dir(&dep.source)) else {
-            self.missing_dep(&dep);
-            return None;
-        };
+        let declared = self.dep_package(&dep)?;
+        let Some((identity, _)) = self.packages.list[&declared].release else { return Some(declared) };
+        match self.selected(identity) {
+            Some(locked) if PackageKey::Content(locked.hash) != declared => {
+                let source =
+                    DepSource::Stored { hash: locked.hash, version: locked.version, urls: Vec::new() };
+                self.dep_package(&Dep { source, ..dep })
+            }
+            _ => Some(declared),
+        }
+    }
+
+    /// The package `dep` declares, checked against its hash when it is stored; why not is
+    /// reported.
+    pub(super) fn dep_package(&mut self, dep: &Dep) -> Option<PackageKey> {
+        match self.found(dep) {
+            Ok(found) => Some(found),
+            Err(Absent::Missing) => {
+                self.missing_dep(dep);
+                None
+            }
+            Err(Absent::Mismatch { expected, actual }) => {
+                let snapshot = &self.packages.list[&PackageKey::Content(actual)].snapshot;
+                let d = self.mismatch(dep, expected, actual, snapshot);
+                self.report(dep.span, d);
+                None
+            }
+        }
+    }
+
+    /// The package `dep` declares, if it is there as declared.
+    pub(super) fn found(&mut self, dep: &Dep) -> Result<PackageKey, Absent> {
+        let found = self.package_at(&self.dep_dir(&dep.source)).ok_or(Absent::Missing)?;
         match (&dep.source, found) {
             (&DepSource::Stored { hash: expected, .. }, PackageKey::Content(actual))
                 if expected != actual =>
             {
-                let d = self.mismatch(&dep, expected, actual, &self.packages.list[&found].snapshot);
-                self.report(dep.span, d);
-                None
+                Err(Absent::Mismatch { expected, actual })
             }
-            _ => Some(found),
+            _ => Ok(found),
         }
     }
 
@@ -93,7 +146,8 @@ impl Session {
         let d = match dep.source {
             DepSource::Dir(_) => d,
             DepSource::Stored { hash, .. } => {
-                let help = Msg::new().code(hash.to_string()).text(" is fetched by ").code("overt pkg fetch");
+                let fetch = PROGRAM.invocation(&FETCH_PATH).expect("fetch is a command");
+                let help = Msg::new().code(hash.to_string()).text(" is fetched by ").code(fetch);
                 d.child(ChildKind::Help, help)
             }
         };

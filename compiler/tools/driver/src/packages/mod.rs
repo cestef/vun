@@ -13,13 +13,17 @@ mod add;
 mod fetch;
 mod namespace;
 mod scope;
+mod select;
 mod spread;
 
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
 use overt_build::layout::{Location, MANIFEST};
-use overt_build::manifest::{self, DEFAULT_DEPS, DEFAULT_PRELUDE, DepKind, Manifest, Source};
+use overt_build::lock::Lock;
+use overt_build::manifest::{
+    self, DEFAULT_DEPS, DEFAULT_PRELUDE, DepKind, Identity, Manifest, Source, Version,
+};
 use overt_build::store::Store;
 use overt_diag::{Diagnostic, Msg, errors};
 use overt_hash::{Hash, Snapshot};
@@ -58,6 +62,8 @@ pub struct Package {
     pub prelude_span: Option<Span>,
     /// The hashes of its files, from which its key is computed; empty for [`PackageKey::Loose`].
     pub snapshot: Snapshot,
+    /// Its identity across versions and its version; `None` for [`PackageKey::Loose`].
+    pub release: Option<(Identity, Version)>,
 }
 
 /// A dependency: the name it is bound to, where it comes from, and where it is declared.
@@ -74,8 +80,9 @@ pub struct Dep {
 pub enum DepSource {
     /// A directory on disk.
     Dir(PathBuf),
-    /// A package in the store, by its tree hash, and the mirrors that serve it.
-    Stored { hash: Hash, urls: Vec<String> },
+    /// A package in the store, by its tree hash, with its declared version and the mirrors that
+    /// serve it.
+    Stored { hash: Hash, version: Version, urls: Vec<String> },
 }
 
 #[derive(Default)]
@@ -88,6 +95,10 @@ pub struct Packages {
     /// Namespaces whose exports are being read, against spreads that loop.
     expanding: HashSet<Location>,
     pub(crate) scopes: HashMap<PackageKey, Scope>,
+    /// The project: the package whose graph version selection runs over.
+    pub root: Option<PackageKey>,
+    /// What selection chose for the project's graph, computed once.
+    selection: Option<Lock>,
 }
 
 impl Package {
@@ -116,6 +127,9 @@ impl Session {
         let path = PathBuf::from(&self.sources.file(file).path);
         let found = path.ancestors().skip(1).find_map(|dir| self.package_at(dir));
         let key = found.unwrap_or_else(|| self.loose());
+        if self.packages.root.is_none() {
+            self.packages.root = found;
+        }
         if self.store.is_none() {
             let dir = path.parent().map(Path::to_path_buf).unwrap_or_default();
             let project = self.packages.list.get(&key).map_or(dir, |p| p.dir.clone());
@@ -132,8 +146,9 @@ impl Session {
     pub fn project(&mut self) -> std::io::Result<Option<(PathBuf, PackageKey)>> {
         let here = std::env::current_dir()?;
         let found = here.ancestors().find_map(|d| self.package_at(d).map(|p| (d.to_path_buf(), p)));
-        if let Some((dir, _)) = &found {
+        if let Some((dir, key)) = &found {
             self.store = Some(Store::in_project(dir));
+            self.packages.root = Some(*key);
         } else {
             let msg = Msg::new().text("no ").code(MANIFEST).text(" declaring ").code(manifest::PACKAGE);
             let msg = msg.text(" in this directory or above");
@@ -168,13 +183,14 @@ impl Session {
                 name: self.interner.intern(&d.name),
                 source: match &d.source {
                     Source::Path(path) => DepSource::Dir(dir.join(path)),
-                    Source::Archive { hash, urls, .. } => {
-                        DepSource::Stored { hash: *hash, urls: urls.clone() }
+                    Source::Archive { hash, version, urls } => {
+                        DepSource::Stored { hash: *hash, version: *version, urls: urls.clone() }
                     }
                 },
                 kind: d.kind,
                 span: Some(d.span),
             });
+            let release = Some((manifest.identity(), manifest.version));
             let package = Package {
                 name,
                 dir: dir.to_path_buf(),
@@ -182,6 +198,7 @@ impl Session {
                 prelude: manifest.prelude,
                 prelude_span: Some(manifest.prelude_span),
                 snapshot,
+                release,
             };
             let package = package.with_defaults(&self.library, &mut self.interner);
             self.packages.list.insert(key, package);
@@ -228,6 +245,7 @@ impl Session {
                 prelude,
                 prelude_span: None,
                 snapshot: Snapshot::default(),
+                release: None,
             };
             let package = package.with_defaults(&self.library, &mut self.interner);
             self.packages.list.insert(PackageKey::Loose, package);

@@ -130,6 +130,10 @@ pub const PACKAGE_DUPLICATE_DEP: DiagId = DiagId::new(
     "lang.errors.package.duplicate_dep",
 );
 pub const PACKAGE_UNNAMED: DiagId = DiagId::new("lang.errors.package.unnamed");
+pub const PACKAGE_VERSION_CONFLICT: DiagId = DiagId::new(
+    "lang.errors.package.version_conflict",
+);
+pub const PACKAGE_STALE_LOCK: DiagId = DiagId::new("lang.errors.package.stale_lock");
 /// Reading and writing files.
 pub const IO: DiagId = DiagId::new("lang.errors.io");
 pub const IO_UNREADABLE_FILE: DiagId = DiagId::new("lang.errors.io.unreadable_file");
@@ -201,6 +205,8 @@ pub const ALL: &[DiagId] = &[
     PACKAGE_NO_PROJECT,
     PACKAGE_DUPLICATE_DEP,
     PACKAGE_UNNAMED,
+    PACKAGE_VERSION_CONFLICT,
+    PACKAGE_STALE_LOCK,
     IO_UNREADABLE_FILE,
     IO_UNWRITABLE_FILE,
     CLI_UNKNOWN_COMMAND,
