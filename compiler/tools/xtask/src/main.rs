@@ -4,6 +4,9 @@ mod corpus;
 mod errors;
 mod generate;
 mod grammar;
+mod lines;
+#[cfg(test)]
+mod tests;
 
 use std::io::{self, Write};
 use std::process::ExitCode;
@@ -21,6 +24,7 @@ struct Cx {
     diag: DiagCtxt,
 }
 
+const OVERSIZED: DiagId = DiagId::new("xtask.lines.oversized");
 const STALE: DiagId = DiagId::new("xtask.generate.stale");
 
 const CHECK: Param = Param {
@@ -48,6 +52,12 @@ const PROGRAM: Program<Cx> = Program {
                 about: "run corpus/accept and corpus/reject through the stages that exist",
                 params: &[],
                 action: Action::Run(run_corpus),
+            },
+            Command {
+                name: "lines",
+                about: "fail on source files too long to stay one concern",
+                params: &[],
+                action: Action::Run(check_lines),
             },
         ]),
     },
@@ -133,6 +143,24 @@ fn run_corpus(_: &mut Cx, _: &Args, out: &mut dyn Write) -> io::Result<Outcome> 
     Ok(if failed == 0 { Outcome::Success } else { Outcome::Failure })
 }
 
+fn check_lines(cx: &mut Cx, _: &Args, out: &mut dyn Write) -> io::Result<Outcome> {
+    let oversized = lines::oversized(&repo_root())?;
+    for o in &oversized {
+        let msg = Msg::new()
+            .code(o.path.display().to_string())
+            .text(" has ")
+            .num(o.lines)
+            .text(" lines, more than ")
+            .num(lines::MAX_LINES);
+        let help = Msg::new().text("split it into a directory module, one concern per file");
+        cx.diag.error(Diagnostic::error(OVERSIZED, msg).child(ChildKind::Help, help));
+    }
+    if oversized.is_empty() {
+        writeln!(out, "every source file has at most {} lines", lines::MAX_LINES)?;
+    }
+    Ok(if oversized.is_empty() { Outcome::Success } else { Outcome::Failure })
+}
+
 fn main() -> ExitCode {
     let argv: Vec<String> = std::env::args().skip(1).collect();
     let mut cx = Cx::default();
@@ -147,31 +175,4 @@ fn main() -> ExitCode {
         renderer.emit(d, &origins, &sources);
     }
     outcome.into()
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn corpus_has_no_failures() {
-        let outcomes = corpus::run(&repo_root()).expect("readable corpus");
-        let failed: Vec<_> = outcomes
-            .iter()
-            .filter(|o| matches!(o.verdict, corpus::Verdict::Fail(_)))
-            .map(|o| &o.path)
-            .collect();
-        assert!(failed.is_empty(), "failing corpus files: {failed:?}; run `cargo xtask corpus`");
-    }
-
-    #[test]
-    fn generated_sources_are_current() {
-        let root = repo_root();
-        for generator in generate::ALL {
-            let generated = generator.generate(&root).unwrap_or_else(|d| panic!("{d:#?}"));
-            let current =
-                std::fs::read_to_string(root.join(generator.output)).expect("generated file exists");
-            assert!(current == generated, "{} is stale; run `cargo xtask generate`", generator.output);
-        }
-    }
 }

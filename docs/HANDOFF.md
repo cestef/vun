@@ -120,7 +120,7 @@ without a failure. clippy pedantic is clean.
 ## 6. Commands
 
 ```sh
-cargo fmt && cargo clippy --all-targets && cargo test && cargo xtask generate --check
+cargo fmt && cargo clippy --all-targets && cargo test && cargo xtask generate --check && cargo xtask lines
 cargo run -q -p overt-cli -- dump cst corpus/accept/ring_buffer.ov
 cargo run -q -p overt-cli -- help dump
 cargo xtask generate                       # after editing grammar.ov or errors.ov
@@ -140,6 +140,9 @@ typst compile whitepaper/main.typ whitepaper/overt.pdf
 - New command: add a `Command` to `overt-driver::commands::PROGRAM` (or to `xtask`), with typed
   `Param`s; never parse arguments by hand.
 - New generator: a module in `xtask` with a `const GENERATOR`, listed in `generate::ALL`.
+- Files stay at most 300 lines, one concern each (`cargo xtask lines`, also a test). Split a
+  growing file into a directory module; unit tests live in a sibling `tests.rs`
+  (`foo.rs` + `foo/tests.rs`, or `src/tests.rs` for a crate root).
 - Arenas: `index!` + `IndexVec`. Crates: `compiler/<stage>/<name>`, workspace fields, lints,
   workspace dependency entry.
 
