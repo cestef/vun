@@ -88,7 +88,9 @@ mut buf: [4096]u8;             // uninitialized: must be written before it is re
   to it is `unsafe` (safe shared state goes through spec 07).
 - Declarations at file and struct level are order-independent and resolved lazily. Self-reference
   and mutual recursion need no forward declarations.
-- Declarations inside a block are sequential.
+- Declarations inside a block are sequential. A compile-time binding (`$R := struct { ... }`) is
+  also visible in its own value, so that a type built in a function can name itself, and in nested
+  functions, like every compile-time binder; so are the binders of `$for`.
 - **No shadowing within a file.** A local binding (in a block, a parameter, a pattern) may not
   reuse a name visible where it is declared in its file: an enclosing local or parameter, or a
   member of an enclosing namespace (the file, a `struct`). Members of a namespace only need names
@@ -298,14 +300,33 @@ use site (`regs._raw`), and can be read without looking up the declaration.
 - A package is a namespace too. By default its root is `<name>.ov` plus `<name>/` in the package
   directory (spec 12).
 - The build declares a package's dependencies, and **each dependency is a binding in scope under
-  its declared name**. `lang` and `std` are dependencies like any other, present by default and
-  replaceable.
+  its declared name**; the package itself is one under its own name. `lang`, `std` and `targets`
+  are dependencies like any other, present by default and replaceable.
 - The names every file sees without qualification come from the prelude: the public names of the
   namespaces listed in the manifest's `.prelude` (spec 12), `.{ "std.prelude" }` by default, and
   none for `.{}`. It is part of the literal manifest so that tools resolve names without evaluating
   the build.
+- A name is looked up in the file (its scopes, then the names spread into its enclosing
+  namespaces, innermost first), then among the package and its dependencies, then in the prelude,
+  the first listed namespace first.
 
 ```ov
 uart := mydrivers.serial.uart;    // a module is a value; binding it is importing it
-Baud := uart.Baud;                // re-exporting is binding
+Baud := uart.Baud;                // re-exporting one name is binding it
 ```
+
+**Spreads.** A member `..path;` of a namespace (a file or a `struct` body) makes every public
+member of the namespace at `path` a member here, and `..path.{ a, b };` makes the listed ones
+members. It is the prefix `..` of spreading, applied to a namespace, and it re-exports what it
+brings: an umbrella namespace is a list of spreads.
+
+```ov
+..lang.int;                        // u8 to i128, usize, isize
+..std.mem.{ Arena, copy };         // two names
+```
+
+- `path` is a namespace path starting at the package or a dependency, so tools resolve spreads
+  from the manifest and the files alone, without evaluation.
+- A selected name is a member like a declared one. A name spread whole may not also be declared in
+  the same namespace or spread there twice (`names.duplicate`), as with a file and a directory.
+- Only public names are spread; selecting a private one is `names.private`.

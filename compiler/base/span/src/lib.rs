@@ -5,6 +5,9 @@
 
 use overt_index::{IndexVec, index};
 
+/// The extension of Overt source files.
+pub const EXTENSION: &str = "ov";
+
 index! {
     /// A source file within one compilation session.
     pub struct FileId;

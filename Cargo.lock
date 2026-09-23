@@ -39,16 +39,70 @@ dependencies = [
 ]
 
 [[package]]
+name = "block-buffer"
+version = "0.10.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3078c7629b62d3f0439517fa394996acacc5cbc91c5a20d8c658e77abd503a71"
+dependencies = [
+ "generic-array",
+]
+
+[[package]]
 name = "cfg-if"
 version = "1.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4e7648175b45a9a48536d676f68d918270699102aa8dab5496df06904c914600"
 
 [[package]]
+name = "cpufeatures"
+version = "0.2.17"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "59ed5838eebb26a2bb2e58f6d5b5316989ae9d08bab10e0e6d103e656d1b0280"
+dependencies = [
+ "libc",
+]
+
+[[package]]
+name = "crypto-common"
+version = "0.1.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "78c8292055d1c1df0cce5d180393dc8cce0abec0a7102adb6c7b1eef6016d60a"
+dependencies = [
+ "generic-array",
+ "typenum",
+]
+
+[[package]]
+name = "digest"
+version = "0.10.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9ed9a281f7bc9b7576e61468ba615a66a5c8cfdff42420a70aa82701a3b1e292"
+dependencies = [
+ "block-buffer",
+ "crypto-common",
+]
+
+[[package]]
+name = "generic-array"
+version = "0.14.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "85649ca51fd72272d7821adaf274ad91c288277713d9c18820d8499a7ff69e9a"
+dependencies = [
+ "typenum",
+ "version_check",
+]
+
+[[package]]
 name = "lazy_static"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bbd2bcb4c963f2ddae06a2efc7e9f3591312473c50c6685e1f298068316e66fe"
+
+[[package]]
+name = "libc"
+version = "0.2.189"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3eaf3ede3fee6db1a4c2ee091bf8a8b4dccdc6d17f656fb07896ee72867612f2"
 
 [[package]]
 name = "log"
@@ -166,10 +220,12 @@ name = "overt-build"
 version = "0.0.0"
 dependencies = [
  "overt-diag",
+ "overt-grammar",
  "overt-harness",
  "overt-origin",
  "overt-query",
  "overt-span",
+ "overt-suggest",
  "overt-syntax",
  "overt-target",
  "overt-tool",
@@ -190,6 +246,7 @@ name = "overt-command"
 version = "0.0.0"
 dependencies = [
  "overt-diag",
+ "overt-suggest",
 ]
 
 [[package]]
@@ -213,7 +270,9 @@ dependencies = [
  "overt-build",
  "overt-command",
  "overt-diag",
+ "overt-hash",
  "overt-hir",
+ "overt-index",
  "overt-intern",
  "overt-interp",
  "overt-link",
@@ -234,6 +293,7 @@ dependencies = [
  "overt-render-short",
  "overt-sema",
  "overt-span",
+ "overt-suggest",
  "overt-syntax",
  "overt-target",
  "overt-tool",
@@ -256,6 +316,13 @@ name = "overt-harness"
 version = "0.0.0"
 
 [[package]]
+name = "overt-hash"
+version = "0.0.0"
+dependencies = [
+ "sha2",
+]
+
+[[package]]
 name = "overt-hir"
 version = "0.0.0"
 dependencies = [
@@ -266,6 +333,7 @@ dependencies = [
  "overt-intern",
  "overt-origin",
  "overt-span",
+ "overt-suggest",
  "overt-syntax",
 ]
 
@@ -495,6 +563,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "overt-suggest"
+version = "0.0.0"
+
+[[package]]
 name = "overt-syntax"
 version = "0.0.0"
 dependencies = [
@@ -527,6 +599,7 @@ dependencies = [
 name = "overt-xtask"
 version = "0.0.0"
 dependencies = [
+ "overt-build",
  "overt-command",
  "overt-diag",
  "overt-driver",
@@ -592,6 +665,17 @@ name = "regex-syntax"
 version = "0.8.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d6f6ff9a378485b298a5286656da665ba74413d36db0979633275d2e708145d4"
+
+[[package]]
+name = "sha2"
+version = "0.10.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a7507d819769d01a365ab707794a4084392c824f54a7a6a7862f8c3d0892b283"
+dependencies = [
+ "cfg-if",
+ "cpufeatures",
+ "digest",
+]
 
 [[package]]
 name = "sharded-slab"
@@ -690,6 +774,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "typenum"
+version = "1.20.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b6f5e870be6c3b371b77fe0ee0bafb859fa4964b4404c27de1d380043c4dda20"
+
+[[package]]
 name = "unicode-ident"
 version = "1.0.26"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -706,6 +796,12 @@ name = "valuable"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ba73ea9cf16a25df0c8caa16c51acb937d5712a8429db78a3ee29d5dcacd3a65"
+
+[[package]]
+name = "version_check"
+version = "0.9.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
 
 [[package]]
 name = "windows-link"

@@ -1,0 +1,3 @@
+//! A spread names a namespace of the package or of a dependency (spec 01, section 8).
+
+..lang.nope; //~ package.missing_namespace

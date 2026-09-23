@@ -43,6 +43,12 @@ impl Msg {
         self.part(MsgPart::Num(n.into()))
     }
 
+    /// The help offering `near` for a misspelled name.
+    #[must_use]
+    pub fn did_you_mean(near: impl Into<String>) -> Self {
+        Self::new().text("did you mean ").code(near).text("?")
+    }
+
     /// Items rendered as code, separated by commas.
     #[must_use]
     pub fn code_list<S: Into<String>>(mut self, items: impl IntoIterator<Item = S>) -> Self {

@@ -9,7 +9,6 @@ mod diagnostic;
 mod fix;
 mod id;
 mod msg;
-pub mod suggest;
 #[cfg(test)]
 mod tests;
 

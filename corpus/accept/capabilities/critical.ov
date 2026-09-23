@@ -1,5 +1,7 @@
 //! Safe shared state goes through synchronized capabilities (spec 07, section 2).
 
+..std.{ sync };
+
 ticks: sync.Shared(u32) = .init(0);
 
 #[panic.never]

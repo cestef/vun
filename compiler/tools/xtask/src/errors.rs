@@ -4,6 +4,9 @@
 //! path, derived from where the file sits in its package (spec 01, section 8). Each namespace also
 //! becomes an id, the group that stages declare they report (`DiagId::within`).
 
+use std::path::Path;
+
+use overt_build::layout::{Location, SEPARATOR};
 use overt_syntax::literal::{Decl, Literal};
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::quote;
@@ -18,9 +21,7 @@ pub(crate) const GENERATOR: Generator =
 const EMPTY: DiagId = DiagId::new("xtask.errors.empty");
 
 /// Where packages live, relative to the repository root.
-const PACKAGES: &str = "lib/";
-const EXTENSION: &str = ".ov";
-const PATH_SEPARATOR: char = '.';
+const PACKAGES: &str = "lib";
 
 fn emit(source: &Source<'_>) -> Read<TokenStream> {
     let namespace = namespace(source.path);
@@ -37,7 +38,7 @@ fn emit(source: &Source<'_>) -> Read<TokenStream> {
     let consts = ids.iter().map(|id| {
         let (name, doc) = (id.constant(), &id.doc);
         let path = [namespace.as_str()].into_iter().chain(id.within.iter().copied()).collect::<Vec<_>>();
-        let path = path.join(&PATH_SEPARATOR.to_string());
+        let path = path.join(&DiagId::SEPARATOR.to_string());
         quote! { #(#[doc = #doc])* pub const #name: DiagId = DiagId::new(#path); }
     });
     let names = ids.iter().filter(|id| id.entry == Entry::Diagnostic).map(Id::constant);
@@ -84,10 +85,11 @@ fn collect<'s>(within: &mut Vec<&'s str>, decls: &[Decl<'s>], ids: &mut Vec<Id<'
     }
 }
 
-/// The binding path of a source file: `lib/lang/lang/errors.ov` is `lang.errors`, since a
-/// package directory holds `<name>.ov` and `<name>/`.
+/// The binding path of a source file of a package in [`PACKAGES`]: `lib/lang/lang/errors.ov` is
+/// `lang.errors`.
 fn namespace(source: &str) -> String {
-    let in_package =
-        source.strip_prefix(PACKAGES).and_then(|p| p.split_once('/')).map_or(source, |(_, rest)| rest);
-    in_package.strip_suffix(EXTENSION).unwrap_or(in_package).replace('/', &PATH_SEPARATOR.to_string())
+    let path = Path::new(source);
+    let package = path.strip_prefix(PACKAGES).ok().and_then(|p| p.iter().next());
+    let names = package.and_then(|name| Location::path_of(&Path::new(PACKAGES).join(name), path));
+    names.unwrap_or_default().join(SEPARATOR)
 }

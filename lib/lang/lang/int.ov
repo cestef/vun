@@ -1,0 +1,23 @@
+//! Integer types by width (spec 04, section 1). `lang` declares them, since its own declarations
+//! need them; `std.prelude` re-exports them.
+
+/// The unsigned integers of `bits` bits: `Int(0..2^bits)`.
+unsigned := ($bits: Int(1..)) -> type { Int(0..1 << bits) };
+
+/// The two's-complement integers of `bits` bits: `Int(-2^(bits-1)..2^(bits-1))`.
+signed := ($bits: Int(1..)) -> type { Int(-(1 << (bits - 1))..1 << (bits - 1)) };
+
+u8 := unsigned(8);
+u16 := unsigned(16);
+u32 := unsigned(32);
+u64 := unsigned(64);
+u128 := unsigned(128);
+i8 := signed(8);
+i16 := signed(16);
+i32 := signed(32);
+i64 := signed(64);
+i128 := signed(128);
+
+/// Sizes and indices: as wide as an address on the target.
+usize := Int(0..=target.usize_max);
+isize := Int(-(target.usize_max + 1) / 2..(target.usize_max + 1) / 2);

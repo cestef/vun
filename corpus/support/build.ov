@@ -1,0 +1,12 @@
+//! Build file of `support`.
+
+package := .{
+    .name = "support",
+    .id = 0x0000_0000_0000_0021,
+    .version = "0.0.0",
+    .edition = 2027,
+    .include = .{ "build.ov", "support.ov", "support" },
+    .deps = .{},
+};
+
+build := (b: &mut std.build.Build) {};

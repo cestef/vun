@@ -13,13 +13,11 @@ use overt_diag::{ChildKind, DiagId, Diagnostic, errors};
 use overt_driver::Session;
 use overt_driver::stages::implemented;
 use overt_harness::{self as harness, At, Mismatch, Reported, compare, discover, expectations};
-use overt_span::SourceMap;
+use overt_span::{EXTENSION, SourceMap};
 
 /// Where the corpus lives, relative to the repository root, and what its files expect.
 pub(crate) const SUITES: &[(&str, Expect)] =
     &[("corpus/accept", Expect::Clean), ("corpus/reject", Expect::Annotated)];
-
-const EXTENSION: &str = "ov";
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Expect {

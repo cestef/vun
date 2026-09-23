@@ -2,7 +2,7 @@
 
 RingBuffer := ($T: type, $N: Int(1..=65536)) -> type {
     Index := Int(0..N);
-    Ring := struct {
+    $Ring := struct {
         buf: [N]T,
         head: Index = 0,
         len: Int(0..=N) = 0,

@@ -109,6 +109,12 @@ manifest := struct {
     invalid_field := diag.Diag{ .explanation = meta.embed("errors/manifest/invalid_field.md") };
 };
 
+/// Packages and their namespaces on disk (spec 01, section 8, and spec 12, section 3).
+package := struct {
+    missing_dep := diag.Diag{ .explanation = meta.embed("errors/package/missing_dep.md") };
+    missing_namespace := diag.Diag{ .explanation = meta.embed("errors/package/missing_namespace.md") };
+};
+
 /// Reading and writing files.
 io := struct {
     unreadable_file := diag.Diag{ .explanation = meta.embed("errors/io/unreadable_file.md") };

@@ -58,6 +58,15 @@ impl<I: Idx, T> IndexVec<I, T> {
         Self { raw: Vec::with_capacity(capacity), _index: PhantomData }
     }
 
+    /// `len` copies of `value`.
+    #[must_use]
+    pub fn filled(value: T, len: usize) -> Self
+    where
+        T: Clone,
+    {
+        Self { raw: vec![value; len], _index: PhantomData }
+    }
+
     /// Appends `value` and returns its index.
     pub fn push(&mut self, value: T) -> I {
         let i = I::new(self.raw.len());

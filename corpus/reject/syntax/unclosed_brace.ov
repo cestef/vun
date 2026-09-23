@@ -1,4 +1,6 @@
 //! A body left open at the end of the file is reported at its opener.
 
+run := () {};
+
 main := () { //~ syntax.unclosed_delimiter @12 "unclosed `{`"
     run();

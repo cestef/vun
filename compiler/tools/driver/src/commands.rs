@@ -156,7 +156,8 @@ fn dump(session: &mut Session, args: &Args, out: &mut dyn Write, stage: Stage) -
         }
         Stage::Hir => {
             let cst = session.parse(&tokens);
-            let (hir, resolution) = session.lower(&tokens, &cst);
+            let hir = session.lower(&tokens, &cst);
+            let resolution = session.resolve(file, &hir);
             let text = overt_hir::dump::dump(
                 &hir,
                 &resolution,

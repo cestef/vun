@@ -6,6 +6,20 @@ Config := struct {
     interrupts: Interrupts,
 };
 
+/// The device's peripherals, claimed once at reset.
+Peripherals := struct {
+    claim := unsafe () -> Peripherals { .{} };
+};
+
+/// Interrupt handlers by vector.
+Interrupts := struct {};
+
+vector_table := ($interrupts: Interrupts) -> [_]usize { [] };
+
+/// Copies `.data` and zeroes `.bss`; provided by the startup object.
+#[link.symbol("__init_memory")]
+init_memory: unsafe () = _;
+
 start := ($config: Config) -> type { struct {
     #[link.section(".vectors"), link.export("__vectors")]
     vectors := vector_table(config.interrupts);

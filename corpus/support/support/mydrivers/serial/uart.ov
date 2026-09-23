@@ -1,0 +1,3 @@
+//! A UART driver.
+
+Baud := enum { b9600, b115200 };

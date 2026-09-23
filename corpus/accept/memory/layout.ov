@@ -1,5 +1,9 @@
 //! Layout is defined, never left to the implementation (spec 05, section 6).
 
+u2 := unsigned(2);
+u5 := unsigned(5);
+u24 := unsigned(24);
+
 #[layout.bits(u32)]
 Ctrl := struct { enable: bool, mode: u2, prescale: u5, _: u24 };
 

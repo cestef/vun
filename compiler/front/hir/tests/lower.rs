@@ -6,7 +6,7 @@ use overt_hir::lower::{Source, lower};
 use overt_hir::{resolve, verify};
 use overt_intern::Interner;
 use overt_origin::OriginTable;
-use overt_span::SourceFiles;
+use overt_span::{EXTENSION, SourceFiles};
 use overt_syntax::{lexer, parser};
 
 #[test]
@@ -14,7 +14,7 @@ fn repository_sources_lower_and_verify() {
     let root = repo_root();
     let mut failures = Vec::new();
     for dir in ["lib", "corpus/accept"] {
-        for path in discover(&root.join(dir), "ov").unwrap() {
+        for path in discover(&root.join(dir), EXTENSION).unwrap() {
             let text = std::fs::read_to_string(&path).unwrap();
             let file = SourceFiles::new().add(path.display().to_string(), text.as_str());
             let (mut diag, mut origins, mut interner) =

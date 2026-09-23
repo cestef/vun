@@ -1,1 +1,0 @@
-//! The `#[impl(I(T))]` attribute: checks and registers a witness (spec 02, section 3).

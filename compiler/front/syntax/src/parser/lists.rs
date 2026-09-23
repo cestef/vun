@@ -118,9 +118,20 @@ impl Parser<'_, '_, '_> {
     }
 
     pub(super) fn item_body(&mut self, item: Item, shape: &mut Shape) {
+        if item == Item::Name {
+            if self.at(TokenKind::Ident) || self.at(TokenKind::RawIdent) {
+                self.leaf(NodeKind::Name);
+            } else {
+                let msg = self.found(Msg::new().text("expected a name, found "));
+                self.report_missing(errors::SYNTAX_EXPECTED_NAME, msg);
+                self.missing(NodeKind::Error);
+            }
+            return;
+        }
         let mark = self.out.mark();
         self.expr(Brace::Continues);
         match item {
+            Item::Name => unreachable!("read above"),
             Item::Value | Item::Element => {
                 if self.at(TokenKind::Eq) {
                     let op = self.bump();

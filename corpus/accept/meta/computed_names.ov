@@ -1,7 +1,7 @@
 //! A name position may hold `$(e)`; `$for` works in every list context (spec 03, section 2).
 
 Peripheral := ($p: svd.Peripheral) -> type {
-    Block := struct {
+    $Block := struct {
         $for r in p.registers {
             #[layout.offset(r.offset)]
             $(r.name): Reg(svd.bits(r)),

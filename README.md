@@ -27,7 +27,7 @@ cargo run -p overt-cli      # the `overt` command
 cargo xtask generate        # regenerate Rust tables from grammar.ov and errors.ov
 cargo xtask corpus          # corpus verdicts: pass, pending, fail
 cargo xtask lines           # no source file past 300 lines
-cargo run -q -p overt-cli -- dump cst corpus/accept/ring_buffer.ov
+cargo run -q -p overt-cli -- dump cst corpus/accept/integers/ring_buffer.ov
 OVERT_LOG=overt_sema=debug OVERT_TIMINGS=1 cargo run -p overt-cli -- build
 ```
 

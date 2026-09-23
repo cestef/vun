@@ -4,16 +4,19 @@
 //! declarations name their binders, and `$for`/`$if` in a list are [`Entry::Staged`]. Every node
 //! carries the origin of the source that produced it (spec 10, section 1).
 
+mod binders;
 mod expr;
 mod items;
 mod pat;
+mod path;
 
 use overt_index::{IndexVec, index};
 use overt_intern::Symbol;
 use overt_origin::OriginId;
 
+pub use binders::each_entry;
 pub use expr::{Arg, Cond, Expr, ExprKind, ForHead, Lit};
-pub use items::{Arm, Entry, FieldDef, List, Member, Param, Staged, Stmt, Variant};
+pub use items::{Arm, Entry, FieldDef, List, Member, Param, Spread, Staged, Stmt, Variant};
 pub use pat::{Pat, PatKind};
 
 index! {

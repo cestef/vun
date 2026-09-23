@@ -1,0 +1,17 @@
+//! The corpus: programs written before the compiler (roadmap phase 0). Every file sees the
+//! standard prelude and the stand-ins of `support`.
+
+package := .{
+    .name = "corpus",
+    .id = 0x0000_0000_0000_0020,
+    .version = "0.0.0",
+    .edition = 2027,
+    .include = .{ "build.ov", "accept", "reject", "support" },
+    .deps = .{
+        .support = .{ .path = "support" },
+        .stm32f4 = .{ .path = "../lib/boards/stm32f4" },
+    },
+    .prelude = .{ "std.prelude", "support" },
+};
+
+build := (b: &mut std.build.Build) {};

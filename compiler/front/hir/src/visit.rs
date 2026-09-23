@@ -3,7 +3,7 @@
 
 use crate::tree::{
     Arg, BlockId, Cond, DeclId, Entry, ExprId, ExprKind, ForHead, Hir, List, Member, NsId, PatId, PatKind,
-    Staged, Stmt,
+    Spread, Staged, Stmt,
 };
 
 pub trait Visitor {
@@ -21,6 +21,9 @@ pub trait Visitor {
     }
     fn pat(&mut self, hir: &Hir, pat: PatId) {
         walk_pat(self, hir, pat);
+    }
+    fn spread(&mut self, hir: &Hir, spread: &Spread) {
+        self.expr(hir, spread.path);
     }
     /// A `$for` or `$if` in a list; `entry` visits one entry of its body.
     fn staged<T>(&mut self, hir: &Hir, staged: &Staged<T>, entry: &mut dyn FnMut(&mut Self, &T)) {
@@ -72,6 +75,7 @@ pub fn walk_staged<V: Visitor + ?Sized, T>(
 pub fn walk_namespace<V: Visitor + ?Sized>(v: &mut V, hir: &Hir, ns: NsId) {
     walk_list(v, hir, &hir.namespaces[ns].members, &mut |v, m| match m {
         Member::Decl(d) => v.decl(hir, *d),
+        Member::Spread(s) => v.spread(hir, s),
         Member::Field(f) => {
             each(v, hir, &f.attrs);
             if let crate::tree::Name::Computed(e) = f.name {

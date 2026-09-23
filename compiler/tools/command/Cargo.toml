@@ -10,4 +10,5 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
+overt-suggest.workspace = true
 overt-diag.workspace = true

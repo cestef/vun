@@ -3,6 +3,7 @@
 use overt_grammar::{NodeField, NodeKind};
 use overt_syntax::cst::{Fields, NodeId};
 
+use super::pats::Mode;
 use super::{Lower, is_filler};
 use crate::tree::{Arm, Cond, ExprKind, ForHead, List, Param};
 
@@ -23,7 +24,7 @@ impl Lower<'_, '_> {
                     None => ForHead::Forever,
                     Some(h) if self.kind(h) == NodeKind::In => {
                         let hf = self.fields(h);
-                        let pat = self.pat_at(&hf, h, NodeField::Pattern, false);
+                        let pat = self.pat_at(&hf, h, NodeField::Pattern, Mode::PLAIN);
                         let iter = self.operand(&hf, h, NodeField::Value);
                         ForHead::In { pat, iter }
                     }
@@ -71,7 +72,7 @@ impl Lower<'_, '_> {
             return Cond::Expr(self.expr(n));
         }
         let f = self.fields(n);
-        let pat = self.pat_at(&f, n, NodeField::Pattern, false);
+        let pat = self.pat_at(&f, n, NodeField::Pattern, Mode::PLAIN);
         let value = self.operand(&f, n, NodeField::Value);
         Cond::Test { pat, value }
     }
@@ -91,11 +92,11 @@ impl Lower<'_, '_> {
             let origin = this.origin(inner);
             Some(if this.kind(inner) == NodeKind::Param {
                 let f = this.fields(inner);
-                let pat = f.one(NodeField::Pattern).map(|p| this.pattern(p, false));
+                let pat = f.one(NodeField::Pattern).map(|p| this.pattern(p, Mode::PLAIN));
                 let ty = f.one(NodeField::Type).map(|t| this.expr(t));
                 Param { pat, ty, attrs, origin }
             } else if literal {
-                Param { pat: Some(this.pattern(inner, false)), ty: None, attrs, origin }
+                Param { pat: Some(this.pattern(inner, Mode::PLAIN)), ty: None, attrs, origin }
             } else {
                 Param { pat: None, ty: Some(this.expr(inner)), attrs, origin }
             })
@@ -108,7 +109,7 @@ impl Lower<'_, '_> {
                 return None;
             }
             let f = this.fields(n);
-            let pat = this.pat_at(&f, n, NodeField::Pattern, false);
+            let pat = this.pat_at(&f, n, NodeField::Pattern, Mode::PLAIN);
             let guard = f
                 .one(NodeField::Guard)
                 .and_then(|g| this.fields(g).one(NodeField::Condition))

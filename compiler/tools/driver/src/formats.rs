@@ -4,11 +4,11 @@
 use std::io::Write;
 
 use overt_command::{Args, Param, ParamKind};
-use overt_diag::suggest::closest;
 use overt_diag::{ChildKind, Color, DiagSink, Diagnostic, Msg, errors};
 use overt_render_annotate::AnnotateRenderer;
 use overt_render_ariadne::AriadneRenderer;
 use overt_render_short::ShortRenderer;
+use overt_suggest::closest;
 
 use crate::Session;
 
@@ -58,10 +58,8 @@ pub fn configure(session: &mut Session, args: &Args) -> Result<(), Box<Diagnosti
     session.format = FORMATS.iter().find(|f| f.name == name).ok_or_else(|| {
         let names = FORMATS.iter().map(|f| f.name);
         let msg = Msg::new().text("unknown format ").code(name);
-        let help = match closest(name, names.clone()) {
-            Some(near) => Msg::new().text("did you mean ").code(near).text("?"),
-            None => Msg::new().text("formats: ").code_list(names),
-        };
+        let help = closest(name, names.clone())
+            .map_or_else(|| Msg::new().text("formats: ").code_list(names), Msg::did_you_mean);
         Box::new(Diagnostic::error(errors::CLI_INVALID_VALUE, msg).child(ChildKind::Help, help))
     })?;
     Ok(())

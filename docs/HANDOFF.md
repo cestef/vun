@@ -1,6 +1,6 @@
 # Handoff
 
-State of Overt as of 2026-09-23 (third session), written for the next agent. Read this, then
+State of Overt as of 2026-09-23 (fourth session), written for the next agent. Read this, then
 `CLAUDE.md` (the user's rules and the agent working procedure; it exists on disk but is excluded
 by the user's global gitignore, so it is not in version control), then
 `docs/spec/00-principles.md`.
@@ -19,14 +19,17 @@ tagged values), generated grammar and diagnostic tables, a declarative CLI, thre
 renderers (`terminal` over annotate-snippets, `ariadne`, `short`) and a `build.ov` manifest
 reader, and HIR: lowering through node fields, a verifier (the HIR is a tree with origins), a
 visitor, and name resolution within a file with the checks that need no types (`names.duplicate`,
-`names.shadowed`, `binding.irrefutable_test`). `overt check <file>` runs every stage;
+`names.shadowed`, `binding.irrefutable_test`), and package loading: manifests, dependencies,
+preludes and spreads (`..ns;`, `..ns.{ a, b };`), so names not declared in a file resolve against
+its package and report `names.unresolved`. `overt check <file>` runs every stage;
 `overt dump hir` prints the resolved HIR with origins. Every file in `lib/` and `corpus/accept`
 parses, lowers, verifies and resolves cleanly. Nothing is type-checked yet.
 
 History (jj, newest last): scaffold; lexer; parser, CST, tables, CLI and corpus; bitwise compound
 assignments; corpus grown to 40 accept and 50 reject; modules split and the 300-line limit;
 tagged literals and node fields; terminal renderer, `--format` and parser fixes; manifests;
-ariadne renderer; handoff; settled open questions (decisions 28 to 44); HIR; name resolution.
+ariadne renderer; handoff; settled open questions (decisions 28 to 44); HIR; name resolution; integer widths in `lang.int`; package loading, spreads and
+`names.unresolved`; `overt-suggest` and `overt-hash`.
 The user asked for commits per batch: commit each finished batch with `jj`.
 
 ## 2. How the user works (non-negotiable)
@@ -97,17 +100,19 @@ tested (the rest are stubs):
 | `overt-index` | `Idx`, `index!`, `IndexVec` (push, get, last, iter). Every arena. |
 | `overt-span` | `FileId`, `ByteRange`, `Span`, `SourceFile` (`line_col`), `SourceMap`, `SourceFiles`. |
 | `overt-origin` | `OriginId`, `Origin`, `Via`, `OriginTable`. |
-| `overt-diag` | `DiagId`, `Severity`, `Msg` (typed parts, `append`), `Label`, `Fix`, `ChildKind` (Display), `Diagnostic`, `DiagCtxt`, `DiagCx::error_at`, `DiagSink`; `suggest::closest` (did-you-mean by edit distance); `errors` (generated). |
+| `overt-diag` | `DiagId`, `Severity`, `Msg` (typed parts, `append`), `Label`, `Fix`, `ChildKind` (Display), `Diagnostic`, `DiagCtxt`, `DiagCx::error_at`, `DiagSink`; `Msg::did_you_mean`; `errors` (generated). |
+| `overt-suggest` | `closest` (did-you-mean by edit distance), `distance`. Generic, no diag types. |
+| `overt-hash` | `Hash` (SHA-256, `sha256-` Display): `of(bytes)`, `tree(dir, include)`. Package identity and every cache key. |
 | `overt-grammar` | `generated.rs`: `NodeField`, `NodeSlot`, `Count`, `NodeKind::slots` (children per kind, from tagged entries), `TokenKind` (+ `TRIVIA`, `ATOMS`, `KEYWORDS`, `PUNCTUATION`, `END`, `text()`), `NodeKind` (`LEAVES`, `BRANCHES`), `Context`, `Assoc`, tables `CONTEXTUAL`, `DELIMITERS`, `INFIX`, `PREFIX`, `POSTFIX`, `ASSIGN`, `OPERANDS`, `ELEMENT_TYPES`, `LITERAL_TYPES`. `lib.rs` derives lookups: `punctuation`, `keyword`, `is_trivia`, `infix` (`Prec`, `Infix`), `closer`/`opens`/`closes`, `is_leaf`, `contextual`. |
 | `overt-syntax` | `tokens` (SoA tokens + trivia side table, `verify`); `lexer` (`lex`, recovery, `literal(kind, text)` for string values, backslash escapes); `cst` (postorder `(kind, Anchor, size)`, `Anchor::{Token, Missing}`, `children`, `span`, `dump`, `verify` -> `Malformed`); `parser` (`parse`); `literal` (`declarations` -> `Decl { name, doc, value: Literal, span }`, `Literal::Tagged`); `Cst::fields(n)` -> `Fields` (`get`, `one`, `assigned`), matched against the kind's slots; `children_rev` walks without allocating. |
-| `overt-hir` | `tree` (arenas: namespaces, decls, blocks, exprs, pats, binders; `List`/`Entry::Staged` for `$for`/`$if`), `lower` (one `Cst::fields` per node), `visit` (`Visitor` + `walk_*`), `verify` (tree property, origins), `resolve` (scopes: namespace, local, function, signature; `Res::{Binder, Outer}`; the checks), `dump`. |
+| `overt-hir` | `tree` (arenas: namespaces, decls, blocks, exprs, pats, binders; `List`/`Entry::Staged` for `$for`/`$if`), `lower` (one `Cst::fields` per node), `visit` (`Visitor` + `walk_*`), `verify` (tree property, origins), `resolve` (scopes: namespace, local, function, signature; `Res::{Binder, Outer { name, ns }}`, `Resolution::parents`; the checks; `Resolution::check_outer` over the `Outside` trait reports `names.unresolved`), `dump`. `Member::Spread` (`..path`, `..path.{ a, b }`; selected names are binders). `Hir::members`, `Hir::binders`, `Hir::path`, `tree::each_entry`. |
 | `overt-command` | Options of a group apply to every command below it; `Program.configure` applies them before a run. Declarative command trees: `Program`, `Command`, `Action::{Run, Group, Planned}`, `Param`/`ParamKind::{Positional, Flag, Option}`, `Args`, `parse` -> `Request`, `Selected`, generated `help`, `run` -> `Outcome`/`Refusal`, `Outcome` -> `ExitCode` (usage = 64). Usage errors are diagnostics with suggestions. |
-| `overt-driver` | `stages::STAGES` (implemented stages and the diagnostic groups they report), `Session::check` (runs them), `commands::PROGRAM` (the whole `overt` tree of spec 12.7, most commands `Planned`; `dump tokens|cst|manifest`, `components` run), `formats::FORMATS` (renderer registry behind `--format`), `Registry`, `Session` (`load`, `text`, `lex`, `parse`, `emit`, `failed`). |
+| `overt-driver` | `stages::STAGES` (implemented stages and the diagnostic groups they report), `Session::check` (runs them), `commands::PROGRAM` (the whole `overt` tree of spec 12.7, most commands `Planned`; `dump tokens|cst|manifest`, `components` run), `formats::FORMATS` (renderer registry behind `--format`), `Registry`, `Session` (`load`, `read`, `text`, `lex`, `parse`, `lower`, `resolve`, `declarations`, `manifest`, `emit`, `failed`). `packages`: `PackageKey::{Content(Hash), Loose}`, `Package` (deps, prelude), `Session::{package_of, package_at, dep, namespace_at, members, exports, scope, spreads}`, `Scope`/`Outer`, `FileScope` (implements `Outside`), `LIBRARY` (the toolchain library, today the repo's `lib/`). Caches keyed by content hash: manifests and file declarations by text hash, packages by include-tree hash. |
 | `overt-cli` | `main` runs `PROGRAM` through `overt-command` and renders diagnostics once at the end. |
 | `overt-render-short` | `file:line:col: severity[id]: message`, then `  = help: ...` lines (fixes too). |
 | `overt-render-annotate` | default `terminal` format: labels by file, notes, fixes as patches, traces. |
 | `overt-render-ariadne` | `--format ariadne`: one color per label role; fixes as help lines. |
-| `overt-build` | `manifest::read` -> `Manifest` (`Version`, `Dep`, `Source`, `DepKind`); generic record reader reporting missing, unknown (did-you-mean) and ill-typed fields. |
+| `overt-build` | `manifest::read` -> `Manifest` (`Version`, `Dep` with span, `Source`, `DepKind`, `prelude_span`), `manifest::declared` (a `build.ov` is a manifest iff it declares `package`), `DEFAULT_DEPS`, `DEFAULT_PRELUDE`; generic record reader reporting missing, unknown (did-you-mean) and ill-typed fields. `layout`: `MANIFEST`, `SEPARATOR` (from the grammar's `.`), `Location` (namespace on disk: `root`, `member`, `file`, `exists`, `children`, `path_of`). |
 | `overt-harness` | `repo_root`, `expectations` (`//~ id [@col] ["fragment"]...` -> `Expected`, or `Malformed`), `Reported`, `compare` -> `Mismatch { missing, unexpected, differing }`, `discover`, `snapshot`, `snapshot_tree` (mirrors a source tree, `OVERT_BLESS`). |
 | `overt-xtask` | `cargo xtask generate [--check]`: pluggable `generate::Generator { source, output, emit }` table (`grammar`, `errors`); shared read/parse/emit/format (quote + prettyplease). `cargo xtask corpus`: runs `corpus/accept` (must be clean) and `corpus/reject` (exact `//~` set) through `Session::check`; a file whose missing ids all belong to stages that do not exist yet is pending (`overt_driver::stages::STAGES`, groups from `errors.ov` namespaces via `DiagId::within`). |
 | backends, linkers, target, pass, trace, tool | as in the first session (stubs with `const INFO`). |
@@ -133,7 +138,7 @@ without a failure. clippy pedantic is clean.
 
 ```sh
 cargo fmt && cargo clippy --all-targets && cargo test && cargo xtask generate --check && cargo xtask lines
-cargo run -q -p overt-cli -- dump cst corpus/accept/ring_buffer.ov
+cargo run -q -p overt-cli -- dump cst corpus/accept/integers/ring_buffer.ov
 cargo run -q -p overt-cli -- help dump
 cargo xtask generate                       # after editing grammar.ov or errors.ov
 cargo xtask corpus                         # corpus verdicts: pass, pending, fail
@@ -162,23 +167,28 @@ typst compile whitepaper/main.typ whitepaper/overt.pdf
 
 In order:
 
-1. **Package loading and `names.unresolved`**: namespaces from `<name>.ov` + `<name>/`,
-   dependencies from manifests (`lang`, `std` by default), the prelude from `.prelude`
-   (decision 33), then resolve `Res::Outer` names and report `names.unresolved` (with
-   `overt_diag::suggest`). The corpus needs `corpus/support` (stubs for `uart`, `serde`, `Point`,
-   ...) and a corpus manifest whose prelude lists it (user's choice).
+1. Done in the fourth session: package loading, spreads, `names.unresolved`. Still open there:
+   spread paths through aliases (`..uart;` after `uart := a.b;`) and through declarations that are
+   not files (`..lang.int.X` where `X` is a `struct`); member paths (`a.b.c` checked against
+   namespaces) belong with sema. `names.duplicate` for a name in both `x.ov` and `x/` is not
+   reported yet.
 2. `names.private` (needs member types: sema), `binding.hole_value` (needs attribute resolution).
 3. Desugaring into `lang` items with `Via::Desugar` origins (appendix B), queries, sema (with
    narrowing, decision 35, exhaustive match, decision 29), MIR, interpreter.
 4. Explanation pages `errors/<group>/<id>.md` for every diagnostic, and `overt explain`.
 5. Fuzz the parser longer (the verifier checks node fields; 150 s runs are clean).
 
-The corpus has 40 accept and 50 reject programs (62 pass, 28 pending on later stages).
+The corpus has 40 accept and 54 reject programs (67 pass, 27 pending on later stages), plus
+`corpus/build.ov` (prelude `std.prelude` then `support`) and `corpus/support`, stand-ins for what
+programs take from drivers, other libraries and unwritten parts of `std`.
 
 ## 9. Open questions and known gaps
 
-- `decisions.md` has no open question: the user settled all of them in the third session
-  (decisions 27 to 44), and every earlier proposal is accepted. New questions go there as
+- Proposed, awaiting the user: decision 47 (a compile-time block binding is visible in its own
+  value, so `$Ring := struct { push := (self: &mut Ring) ... }` works; `$for` binders are
+  compile-time) and decision 48 (a directory holds a package when its `build.ov` declares
+  `package`; content-hash cache keys). Corpus type functions now write `$Ring`, `$Regs`, `$Block`.
+- Build files name `std.build.Build` explicitly (no build-only prelude). New questions go there as
   "proposed" until the user decides.
 - `lang/errors.ov` now declares planned ids for later stages (`names`, `binding`, `safety`,
   `place`, `borrow`, `panic` groups, `int.width_cap`), one per spec rule the reject corpus
@@ -214,3 +224,8 @@ The corpus has 40 accept and 50 reject programs (62 pass, 28 pending on later st
   problem, combine results with a `match` on the tuple instead.
 - Performance: one walk per purpose. Lowering fetches `Cst::fields` once per node; resolution
   and the syntactic checks share one walk; verifiers and dumps run only in tests and on demand.
+- `OVERT_BLESS` blesses when the variable is present, whatever its value: `OVERT_BLESS=0` blesses.
+- Lib files are resolved too: a name used in `lang` must exist in `lang` (its prelude is
+  `.{ "lang", "lang.int" }`, no `std`), so integer widths live in `lang.int`, not `std`.
+- Every diagnostic helper phrase has one home: `Msg::did_you_mean`; the `.ov` extension is
+  `overt_span::EXTENSION`; namespace paths on disk go through `overt_build::layout::Location`.

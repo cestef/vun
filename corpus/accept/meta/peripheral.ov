@@ -3,7 +3,7 @@
 Register := struct { name: &static [_]u8, offset: usize, reset: u32 };
 
 Block := ($registers: &[Register]) -> type {
-    Regs := struct {
+    $Regs := struct {
         $for r in registers {
             #[layout.offset(r.offset)]
             $(r.name): std.hw.Reg(u32),

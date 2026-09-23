@@ -18,7 +18,13 @@ pub const STAGES: &[Stage] = &[
     Stage { name: "syntax", reports: &[errors::SYNTAX] },
     Stage {
         name: "names",
-        reports: &[errors::NAMES_DUPLICATE, errors::NAMES_SHADOWED, errors::BINDING_IRREFUTABLE_TEST],
+        reports: &[
+            errors::NAMES_DUPLICATE,
+            errors::NAMES_SHADOWED,
+            errors::NAMES_UNRESOLVED,
+            errors::BINDING_IRREFUTABLE_TEST,
+            errors::PACKAGE,
+        ],
     },
 ];
 
@@ -33,6 +39,7 @@ impl Session {
     pub fn check(&mut self, file: FileId) {
         let tokens = self.lex(file);
         let cst = self.parse(&tokens);
-        self.lower(&tokens, &cst);
+        let hir = self.lower(&tokens, &cst);
+        self.resolve(file, &hir);
     }
 }

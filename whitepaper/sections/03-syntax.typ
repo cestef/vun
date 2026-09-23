@@ -75,6 +75,13 @@ uart := drivers.serial.uart;
 Baud := uart.Baud;
 ```
 
+Re-exporting many names reuses the prefix `..` that spreads arrays: the namespace member `..path;`
+makes every public member of the namespace at `path` a member here, and `..path.{ a, b };` the
+listed ones. The path starts at the package or a dependency, so spreads resolve from the manifest
+and the files without evaluation, and an umbrella namespace is a list of spreads. A name spread
+whole and also declared in the same namespace is an error, as a name defined in both a file and its
+directory is.
+
 The single privacy rule applies uniformly to declarations, members, files and directories: a name
 beginning with `_` is visible only within the namespace that declares it and those nested inside it.
 Privacy is thus visible at every use site without consulting the declaration.

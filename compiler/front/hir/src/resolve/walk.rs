@@ -5,19 +5,24 @@ use overt_index::IndexVec;
 use overt_intern::Interner;
 
 use super::Res;
-use super::declare::each_entry;
 use super::scope::{Kind, Scopes};
 use crate::tree::{
-    BinderId, BlockId, Cond, DeclId, ExprId, ExprKind, ForHead, Hir, List, Member, NsId, Param, PatId,
-    PatKind, Staged,
+    BinderId, BlockId, Cond, DeclId, ExprId, ExprKind, ForHead, Hir, List, NsId, Param, PatId, PatKind,
+    Staged,
 };
 use crate::visit::{self, Visitor};
 
 pub(super) struct Resolver<'i, 'c, 'd> {
     pub(super) scopes: Scopes,
     pub(super) names: IndexVec<ExprId, Option<Res>>,
+    pub(super) parents: IndexVec<NsId, Option<NsId>>,
+    /// The namespaces around the current node, innermost last.
+    pub(super) namespaces: Vec<NsId>,
     /// Whether visiting a pattern declares its binders; namespace members are declared up front.
     pub(super) declaring: bool,
+    /// Whether the declarations visited are namespace members, declared up front, rather than
+    /// block statements; `$for` bodies keep the value of their list.
+    pub(super) members: bool,
     pub(super) interner: &'i Interner,
     pub(super) cx: &'c mut DiagCx<'d>,
 }
@@ -85,24 +90,32 @@ impl Resolver<'_, '_, '_> {
 
 impl Visitor for Resolver<'_, '_, '_> {
     fn namespace(&mut self, hir: &Hir, ns: NsId) {
+        self.parents[ns] = self.namespaces.last().copied();
+        self.namespaces.push(ns);
         self.with_scope(Kind::Namespace, |this| {
-            let mut members = Vec::new();
-            each_entry(&hir.namespaces[ns].members, &mut |m| {
-                if let Member::Decl(d) = m {
-                    Self::binders(hir, hir.decls[*d].pat, &mut members);
-                }
-            });
+            let members = hir.members(ns);
             for binder in members {
                 this.declare(hir, binder);
             }
             let declaring = std::mem::replace(&mut this.declaring, false);
+            let members = std::mem::replace(&mut this.members, true);
             visit::walk_namespace(this, hir, ns);
             this.declaring = declaring;
+            this.members = members;
         });
+        self.namespaces.pop();
     }
 
     fn decl(&mut self, hir: &Hir, decl: DeclId) {
         let d = &hir.decls[decl];
+        // Namespace members are already declared. In a block a binding is visible after its value,
+        // except a compile-time one, which is also visible in it, as members are.
+        let mut binders = Vec::new();
+        hir.binders(d.pat, &mut binders);
+        let early = !self.members && !binders.is_empty() && binders.iter().all(|&b| hir.binders[b].comptime);
+        if early {
+            self.bind_pattern(hir, d.pat);
+        }
         for &a in &d.attrs {
             self.expr(hir, a);
         }
@@ -112,18 +125,19 @@ impl Visitor for Resolver<'_, '_, '_> {
         if let Some(value) = d.value {
             self.expr(hir, value);
         }
-        // In a block the binding is visible after its value; namespace members already are.
-        if self.scopes.innermost() == Some(Kind::Namespace) {
+        if self.members {
             self.pat(hir, d.pat);
-        } else {
+        } else if !early {
             self.bind_pattern(hir, d.pat);
         }
     }
 
     fn block(&mut self, hir: &Hir, block: BlockId) {
         let declaring = std::mem::replace(&mut self.declaring, false);
+        let members = std::mem::replace(&mut self.members, false);
         self.with_scope(Kind::Local, |this| visit::walk_block(this, hir, block));
         self.declaring = declaring;
+        self.members = members;
     }
 
     fn pat(&mut self, hir: &Hir, pat: PatId) {
@@ -168,7 +182,8 @@ impl Visitor for Resolver<'_, '_, '_> {
         let declaring = std::mem::replace(&mut self.declaring, false);
         match &hir.exprs[expr].kind {
             ExprKind::Name(name) => {
-                let res = self.scopes.lookup(hir, *name).map_or(Res::Outer(*name), Res::Binder);
+                let ns = *self.namespaces.last().expect("every expression is inside the file's namespace");
+                let res = self.scopes.lookup(hir, *name).map_or(Res::Outer { name: *name, ns }, Res::Binder);
                 self.names[expr] = Some(res);
             }
             ExprKind::If { cond, then, otherwise } => {

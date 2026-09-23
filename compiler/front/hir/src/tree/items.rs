@@ -3,7 +3,7 @@
 use overt_grammar::TokenKind;
 use overt_origin::OriginId;
 
-use super::{BlockId, DeclId, ExprId, Name, PatId};
+use super::{BinderId, BlockId, DeclId, ExprId, Name, PatId};
 
 /// A list whose entries may be generated at compile time.
 pub type List<T> = Vec<Entry<T>>;
@@ -22,6 +22,15 @@ pub enum Staged<T> {
 pub enum Member {
     Decl(DeclId),
     Field(FieldDef),
+    Spread(Spread),
+}
+
+/// `..path` or `..path.{ a, b }`: members of the namespace at `path` become members here.
+pub struct Spread {
+    pub path: ExprId,
+    /// The selected names, binders of the enclosing namespace; `None` spreads every public member.
+    pub select: Option<Vec<BinderId>>,
+    pub origin: OriginId,
 }
 
 /// `name: T = default` in a `struct`.

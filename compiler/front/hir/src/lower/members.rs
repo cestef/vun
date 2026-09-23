@@ -3,9 +3,11 @@
 use overt_grammar::{NodeField, NodeKind};
 use overt_syntax::cst::{Fields, NodeId};
 
+use super::pats::Mode;
 use super::{Lower, is_filler};
 use crate::tree::{
-    Block, BlockId, Decl, DeclId, ExprId, FieldDef, List, Member, Name, Namespace, NsId, Stmt, Variant,
+    Block, BlockId, Decl, DeclId, ExprId, FieldDef, List, Member, Name, Namespace, NsId, Spread, Stmt,
+    Variant,
 };
 
 impl Lower<'_, '_> {
@@ -20,6 +22,7 @@ impl Lower<'_, '_> {
         match self.kind(inner) {
             NodeKind::Binding | NodeKind::TypedBinding => Some(Member::Decl(self.decl(inner, doc, attrs))),
             NodeKind::Field => Some(Member::Field(self.field(inner, doc, attrs))),
+            NodeKind::Spread => Some(Member::Spread(self.spread(inner))),
             _ => None,
         }
     }
@@ -33,11 +36,22 @@ impl Lower<'_, '_> {
     pub(super) fn decl(&mut self, n: NodeId, doc: Vec<String>, attrs: Vec<ExprId>) -> DeclId {
         let f = self.fields(n);
         let mutable = f.one(NodeField::Mut).is_some();
-        let pat = self.pat_at(&f, n, NodeField::Pattern, mutable);
+        let pat = self.pat_at(&f, n, NodeField::Pattern, Mode { mutable, ..Mode::PLAIN });
         let ty = f.one(NodeField::Type).map(|t| self.expr(t));
         let value = f.one(NodeField::Value).map(|v| self.expr(v));
         let origin = self.origin(n);
         self.hir.decls.push(Decl { pat, ty, value, attrs, doc, origin })
+    }
+
+    fn spread(&mut self, n: NodeId) -> Spread {
+        let f = self.fields(n);
+        let path = self.operand(&f, n, NodeField::Source);
+        let select = f.one(NodeField::Select).map(|s| {
+            let mut names = self.fields(s).get(NodeField::Names).to_vec();
+            names.retain(|&n| self.kind(n) == NodeKind::Name);
+            names.into_iter().map(|n| self.binder(n, Mode::PLAIN)).collect()
+        });
+        Spread { path, select, origin: self.origin(n) }
     }
 
     fn field(&mut self, n: NodeId, doc: Vec<String>, attrs: Vec<ExprId>) -> FieldDef {

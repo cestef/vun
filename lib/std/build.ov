@@ -9,4 +9,4 @@ package := .{
     .deps = .{},
 };
 
-build := (b: &mut Build) {};
+build := (b: &mut std.build.Build) {};

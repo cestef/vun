@@ -1,6 +1,6 @@
 //! One compilation: its sources, origins and diagnostics.
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use overt_build::manifest::{self, Manifest};
 use overt_diag::{DiagCtxt, DiagCx, DiagSink, Diagnostic, Msg, errors};
@@ -11,10 +11,12 @@ use overt_intern::Interner;
 use overt_origin::OriginTable;
 use overt_span::{FileId, SourceFiles, SourceMap};
 use overt_syntax::cst::Cst;
+use overt_syntax::literal::Decl;
 use overt_syntax::tokens::Tokens;
 use overt_syntax::{lexer, literal, parser};
 
 use crate::formats::{self, Format};
+use crate::packages::{FileScope, LIBRARY, Packages};
 
 pub struct Session {
     pub sources: SourceFiles,
@@ -23,6 +25,9 @@ pub struct Session {
     pub diag: DiagCtxt,
     /// How diagnostics are shown.
     pub format: &'static Format,
+    pub packages: Packages,
+    /// Where default dependencies are found.
+    pub library: PathBuf,
 }
 
 impl Default for Session {
@@ -33,6 +38,8 @@ impl Default for Session {
             origins: OriginTable::default(),
             diag: DiagCtxt::default(),
             format: formats::default(),
+            packages: Packages::default(),
+            library: PathBuf::from(LIBRARY),
         }
     }
 }
@@ -45,18 +52,22 @@ impl Session {
 
     /// Reads a source file; a read failure becomes a diagnostic.
     pub fn load(&mut self, path: &Path) -> Option<FileId> {
-        match std::fs::read_to_string(path) {
-            Ok(text) => Some(self.sources.add(path.display().to_string(), text)),
-            Err(e) => {
+        let text = self.read(path)?;
+        Some(self.sources.add(path.display().to_string(), text))
+    }
+
+    /// Reads a file's text; a read failure becomes a diagnostic.
+    pub fn read(&mut self, path: &Path) -> Option<String> {
+        std::fs::read_to_string(path)
+            .map_err(|e| {
                 let msg = Msg::new()
                     .text("cannot read ")
                     .code(path.display().to_string())
                     .text(": ")
                     .text(e.to_string());
                 self.diag.error(Diagnostic::error(errors::IO_UNREADABLE_FILE, msg));
-                None
-            }
-        }
+            })
+            .ok()
     }
 
     #[must_use]
@@ -74,26 +85,41 @@ impl Session {
         parser::parse(tokens, text, &mut DiagCx { diag: &mut self.diag, origins: &mut self.origins })
     }
 
-    /// Lowers a parsed file to HIR and resolves its names, reporting what needs no types.
-    pub fn lower(&mut self, tokens: &Tokens, cst: &Cst) -> (Hir, Resolution) {
+    pub fn lower(&mut self, tokens: &Tokens, cst: &Cst) -> Hir {
         let text = &self.sources.file(tokens.file()).text;
-        let source = lower::Source { cst, tokens, text };
-        let hir = lower::lower(source, &mut self.interner, &mut self.origins);
-        let resolution = resolve::resolve(
-            &hir,
-            &self.interner,
-            &mut DiagCx { diag: &mut self.diag, origins: &mut self.origins },
-        );
-        (hir, resolution)
+        lower::lower(lower::Source { cst, tokens, text }, &mut self.interner, &mut self.origins)
+    }
+
+    /// Resolves the names of `file` within it and against its package, reporting what needs no
+    /// types.
+    pub fn resolve(&mut self, file: FileId, hir: &Hir) -> Resolution {
+        let mut cx = DiagCx { diag: &mut self.diag, origins: &mut self.origins };
+        let resolution = resolve::resolve(hir, &self.interner, &mut cx);
+        let package = self.package_of(file);
+        self.scope(package);
+        let spreads = self.spreads(package, hir, &resolution);
+        let outside = FileScope { package: &self.packages.scopes[&package], spreads: &spreads };
+        let mut cx = DiagCx { diag: &mut self.diag, origins: &mut self.origins };
+        resolution.check_outer(hir, &outside, &self.interner, &mut cx);
+        resolution
     }
 
     /// Reads the manifest of the `build.ov` loaded as `file` (spec 12, section 2).
     pub fn manifest(&mut self, file: FileId) -> Option<Manifest> {
+        self.declarations(file, |decls, cx| manifest::read(decls, file, cx))
+    }
+
+    /// Runs `read` over the literal declarations of `file`.
+    pub fn declarations<R>(
+        &mut self,
+        file: FileId,
+        read: impl FnOnce(&[Decl<'_>], &mut DiagCx<'_>) -> R,
+    ) -> R {
         let tokens = self.lex(file);
         let cst = self.parse(&tokens);
         let text = &self.sources.file(file).text;
         let decls = literal::declarations(&cst, &tokens, text);
-        manifest::read(&decls, file, &mut DiagCx { diag: &mut self.diag, origins: &mut self.origins })
+        read(&decls, &mut DiagCx { diag: &mut self.diag, origins: &mut self.origins })
     }
 
     /// Emits every diagnostic in deterministic order.

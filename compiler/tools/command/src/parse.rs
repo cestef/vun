@@ -1,7 +1,7 @@
 //! Walking a command tree over the arguments.
 
-use overt_diag::suggest::closest;
 use overt_diag::{ChildKind, DiagId, Diagnostic, Msg, errors};
+use overt_suggest::closest;
 
 use crate::{Args, Command, HELP, HELP_COMMAND, Param, ParamKind, Program, VERSION};
 
@@ -160,10 +160,7 @@ fn suggestion<'a, Cx>(
     candidates: impl IntoIterator<Item = &'a str>,
     selected: &Selected<'_, Cx>,
 ) -> Msg {
-    match closest(given, candidates) {
-        Some(near) => Msg::new().text("did you mean ").code(near).text("?"),
-        None => see_help(selected),
-    }
+    closest(given, candidates).map_or_else(|| see_help(selected), Msg::did_you_mean)
 }
 
 fn unknown_command<Cx>(selected: &Selected<'_, Cx>, name: &str) -> Box<Diagnostic> {

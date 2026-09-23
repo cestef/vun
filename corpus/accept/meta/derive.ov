@@ -4,7 +4,7 @@ derive := ($T: type) -> type { struct {
     serialize := (v: &T, w: &mut Dyn(Encoder)) -> Result((), Encoder.Error) {
         w.begin_struct(std.meta.name_of(T))?;
         $for f in std.meta.fields(T) {
-            key := $if .some(r) = std.meta.attr(f, rename) { r.to } else { f.name };
+            key := $if .some(r) = std.meta.attr(f, serde.rename) { r.to } else { f.name };
             w.field(key)?;
             Serialize.serialize(&v.$(f.name), w)?;
         }

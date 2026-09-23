@@ -1,19 +1,16 @@
 //! Names every file sees without qualification, unless its manifest lists another prelude
 //! (`.prelude`, spec 01, section 8).
-u8 := std.int.unsigned(8);
-u16 := std.int.unsigned(16);
-u32 := std.int.unsigned(32);
-u64 := std.int.unsigned(64);
-i8 := std.int.signed(8);
-i16 := std.int.signed(16);
-i32 := std.int.signed(32);
-i64 := std.int.signed(64);
-usize := lang.Int(0..=target.usize_max);
 
-bool := lang.bool;
-never := lang.never;
-Option := lang.Option;
-Result := lang.Result;
-Iter := std.iter.Iter;
-Async := std.task.Async;
-assert := std.testing.assert;
+/// Integer types by width, `usize` and `isize`.
+..lang.int;
+
+/// Primitive types, and the attributes the compiler acts on (spec 02, section 5).
+..lang.{
+    type, Int, bool, never, f16, f32, f64, Option, Result, interface,
+    abi, impl, kind, layout, link, lint, opt, panic, stack, target,
+};
+
+..lang.meta.{ Code };
+..std.iter.{ Iter };
+..std.task.{ Async };
+..std.testing.{ assert, test };

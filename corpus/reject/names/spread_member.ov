@@ -1,0 +1,3 @@
+//! A spread selects only names its namespace exports (spec 01, section 8).
+
+..lang.int.{ u8, u17 }; //~ names.unresolved "has no member `u17`"

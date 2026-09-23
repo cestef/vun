@@ -249,3 +249,14 @@ fn borrow_modes_and_pattern_forms() {
         "(Binding':= f (Fn'( ) (Block'{ (If'if (Test'= (Binding':= n (Call'( (DotName'. some) x ))) e) (Block'{ })) })))"
     );
 }
+
+#[test]
+fn spreads() {
+    assert_eq!(first("..lang.int;"), "(Spread'.. (Member'. lang int))");
+    assert_eq!(first("..std.{ mem, \\type };"), "(Spread'.. std (Select'.{ mem , \\type }))");
+    assert_eq!(
+        first("S := struct { ..a; x: u8, };"),
+        "(Binding':= S (Struct'struct { (Spread'.. a) ; (Field': x u8) , }))"
+    );
+    assert_eq!(parse_text("..a.{ 1 };").1, [errors::SYNTAX_EXPECTED_NAME]);
+}

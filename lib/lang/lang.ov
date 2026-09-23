@@ -31,3 +31,9 @@ Coroutine := ($Y: type, $R: type) -> Interface {
         end: (self: &take Self) = _;
     }})
 };
+
+/// The type of the attributes the compiler acts on (spec 02, section 5).
+Attribute: type = _;
+/// `#[impl(I(T))]`: checks and registers a witness of the interface `I` for `T` (spec 02,
+/// section 3).
+impl: ($witness: type) -> Attribute = _;

@@ -1,0 +1,7 @@
+//! Stand-in for a reader of CMSIS-SVD device descriptions.
+
+Register := struct { name: &[u8], offset: usize, reset: u32, width: u8 };
+Peripheral := struct { registers: &[Register] };
+Device := struct {};
+parse := ($text: &[u8]) -> Device { .{} };
+bits := ($r: Register) -> type { lang.int.unsigned(r.width) };

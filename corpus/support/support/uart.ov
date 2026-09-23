@@ -1,0 +1,3 @@
+//! Stand-in for the UART driver the interface examples wrap.
+
+Error := enum { overrun, framing };

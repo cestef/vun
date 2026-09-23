@@ -6,6 +6,7 @@
 
 pub mod commands;
 pub mod formats;
+pub mod packages;
 mod registry;
 mod session;
 pub mod stages;

@@ -3,7 +3,7 @@
 use overt_grammar::{ASSIGN, NodeKind, TokenKind};
 use overt_index::Idx;
 
-use super::{Brace, End, List, Parser};
+use super::{Brace, End, Item, List, Parser};
 use crate::cst::{Anchor, Mark};
 use crate::tokens::TokenId;
 
@@ -48,6 +48,10 @@ impl Parser<'_, '_, '_> {
             self.block_like(list);
             return End::Block;
         }
+        if list == List::Members && self.at(TokenKind::DotDot) {
+            self.spread();
+            return End::Semi;
+        }
         let mark = self.out.mark();
         let mutable = self.at(TokenKind::Mut);
         if mutable {
@@ -87,6 +91,19 @@ impl Parser<'_, '_, '_> {
                 self.recover_entry(mark)
             }
         }
+    }
+
+    /// `..path;` or `..path.{ a, b };`: members of another namespace become members here.
+    fn spread(&mut self) {
+        let mark = self.out.mark();
+        let op = self.bump();
+        self.expr(Brace::Continues);
+        if self.at(TokenKind::DotLBrace) {
+            let select = self.out.mark();
+            let (open, _) = self.group_of(List::Items(Item::Name));
+            self.out.node(NodeKind::Select, Anchor::Token(open), select);
+        }
+        self.out.node(NodeKind::Spread, Anchor::Token(op), mark);
     }
 
     /// The `;` ending an entry. Tokens left on the same line are junk and skipped up to it; on a

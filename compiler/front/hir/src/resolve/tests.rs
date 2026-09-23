@@ -53,6 +53,8 @@ fn duplicates_and_shadowing() {
         // Parameter names of a function type label positions and shadow nothing.
         ("symbol := 1; export: (symbol: u8) -> u8 = _;", &[]),
         ("F := (a: u8, a: u8) -> u8;", &[errors::NAMES_SHADOWED]),
+        // Selected names are members of the namespace they are spread into.
+        ("..lang.int.{ u8 }; u8 := 1;", &[errors::NAMES_DUPLICATE]),
     ];
     for &(text, expected) in cases {
         assert_eq!(check(text).0, expected, "{text:?}");
@@ -64,6 +66,13 @@ fn functions_see_compile_time_binders_and_captures() {
     // `T` is a compile-time parameter, visible in the nested function; `n` is captured.
     assert_eq!(check("P := ($T: type) -> type { struct { f := (x: T) -> T { x }; } };"), (vec![], 3));
     assert_eq!(check("f := () { n := 1; g := [n] () -> u8 { n }; h := () -> u8 { n }; };"), (vec![], 2));
+}
+
+#[test]
+fn compile_time_locals_are_visible_in_their_value_and_nested_functions() {
+    // `$R` names itself from a function inside its value; `$for` binders are compile-time.
+    assert_eq!(check("F := () -> type { $R := struct { f := (r: &R) {}; }; R };"), (vec![], 2));
+    assert_eq!(check("S := struct { $for r in rs { f := () -> u8 { r }; } };"), (vec![], 1));
 }
 
 #[test]

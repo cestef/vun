@@ -5,6 +5,7 @@
 use std::path::{Path, PathBuf};
 
 use overt_harness::discover;
+use overt_span::EXTENSION;
 
 use crate::generate;
 
@@ -12,7 +13,7 @@ pub(crate) const MAX_LINES: u32 = 300;
 
 /// Directories checked, relative to the repository root, with the extension of their sources.
 const CHECKED: &[(&str, &str)] =
-    &[("compiler", "rs"), ("fuzz/fuzz_targets", "rs"), ("lib", "ov"), ("corpus", "ov")];
+    &[("compiler", "rs"), ("fuzz/fuzz_targets", "rs"), ("lib", EXTENSION), ("corpus", EXTENSION)];
 
 pub(crate) struct Oversized {
     pub(crate) path: PathBuf,

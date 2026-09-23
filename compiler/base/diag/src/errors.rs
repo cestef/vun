@@ -114,6 +114,12 @@ pub const MANIFEST_UNKNOWN_FIELD: DiagId = DiagId::new(
 pub const MANIFEST_INVALID_FIELD: DiagId = DiagId::new(
     "lang.errors.manifest.invalid_field",
 );
+/// Packages and their namespaces on disk (spec 01, section 8, and spec 12, section 3).
+pub const PACKAGE: DiagId = DiagId::new("lang.errors.package");
+pub const PACKAGE_MISSING_DEP: DiagId = DiagId::new("lang.errors.package.missing_dep");
+pub const PACKAGE_MISSING_NAMESPACE: DiagId = DiagId::new(
+    "lang.errors.package.missing_namespace",
+);
 /// Reading and writing files.
 pub const IO: DiagId = DiagId::new("lang.errors.io");
 pub const IO_UNREADABLE_FILE: DiagId = DiagId::new("lang.errors.io.unreadable_file");
@@ -176,6 +182,8 @@ pub const ALL: &[DiagId] = &[
     MANIFEST_MISSING_FIELD,
     MANIFEST_UNKNOWN_FIELD,
     MANIFEST_INVALID_FIELD,
+    PACKAGE_MISSING_DEP,
+    PACKAGE_MISSING_NAMESPACE,
     IO_UNREADABLE_FILE,
     CLI_UNKNOWN_COMMAND,
     CLI_MISSING_ARGUMENT,

@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use overt_diag::{DiagCtxt, DiagCx};
 use overt_harness::{discover, repo_root, snapshot_tree};
 use overt_origin::OriginTable;
-use overt_span::SourceFiles;
+use overt_span::{EXTENSION, SourceFiles};
 use overt_syntax::lexer::lex;
 use overt_syntax::tokens::Tokens;
 
@@ -20,7 +20,7 @@ fn sources() -> Vec<PathBuf> {
     let root = repo_root();
     ["corpus/accept", "lib"]
         .iter()
-        .flat_map(|dir| discover(&root.join(dir), "ov").expect("readable tree"))
+        .flat_map(|dir| discover(&root.join(dir), EXTENSION).expect("readable tree"))
         .collect()
 }
 
@@ -40,9 +40,10 @@ fn repository_sources_lex_cleanly_and_losslessly() {
 fn corpus_token_dumps_match_snapshots() {
     let snapshots = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/snapshots/tokens");
     let corpus = repo_root().join("corpus/accept");
-    let changed =
-        snapshot_tree(&corpus, "ov", &snapshots, "tokens", |text| lex_text(text).0.dump(text).to_string())
-            .expect("snapshot io");
+    let changed = snapshot_tree(&corpus, EXTENSION, &snapshots, "tokens", |text| {
+        lex_text(text).0.dump(text).to_string()
+    })
+    .expect("snapshot io");
     for c in &changed {
         eprintln!("--- {}: expected\n{}\n--- actual\n{}", c.source.display(), c.expected, c.actual);
     }

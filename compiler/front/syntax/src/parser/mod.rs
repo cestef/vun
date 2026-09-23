@@ -68,6 +68,8 @@ enum Item {
     Param,
     /// `pattern [if guard] => value`.
     Arm,
+    /// A plain name, as selected by a spread: `..ns.{ a, b }`.
+    Name,
 }
 
 /// How an entry of a list ends.

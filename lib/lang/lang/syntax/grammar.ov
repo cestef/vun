@@ -130,6 +130,8 @@ NodeKind := .{
         .binding(.optional(.\mut), .one(.pattern), .one(.value)),
         .typed_binding(.optional(.\mut), .one(.pattern), .one(.type), .optional(.value)),
         .field(.optional(.\mut), .one(.pattern), .one(.type), .optional(.value)),
+        .spread(.one(.source), .optional(.select)),
+        .select(.many(.names)),
         .param(.one(.pattern), .one(.type)),
         .returns(.one(.type)),
         .\fn(.many(.params), .optional(.returns), .one(.block)),

@@ -34,16 +34,23 @@ pub struct Manifest {
     pub members: Vec<String>,
     /// Namespaces whose public names every file sees unqualified (spec 01, section 8).
     pub prelude: Vec<String>,
+    /// The `.prelude` field, or the `package` declaration when the prelude is the default.
+    pub prelude_span: Span,
 }
 
 /// The prelude of a manifest that does not name one.
 pub const DEFAULT_PRELUDE: &str = "std.prelude";
+
+/// Dependencies every package has unless it declares its own under the same name (spec 01,
+/// section 8), found in the toolchain's library.
+pub const DEFAULT_DEPS: &[&str] = &["lang", "std", "targets"];
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Dep {
     pub name: String,
     pub source: Source,
     pub kind: DepKind,
+    pub span: Span,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -84,6 +91,13 @@ mod field {
     pub(super) const DEP: &[&str] = &[VERSION, HASH, URLS, PATH, KIND];
 }
 
+/// Whether a `build.ov` holds a manifest: it declares `package`. One that does not is an ordinary
+/// source file, such as the namespace `std.build`.
+#[must_use]
+pub fn declared(decls: &[Decl<'_>]) -> bool {
+    decls.iter().any(|d| d.name == PACKAGE)
+}
+
 /// Reads the manifest from the declarations of a `build.ov`; `file` locates a missing `package`.
 pub fn read(decls: &[Decl<'_>], file: FileId, cx: &mut DiagCx<'_>) -> Option<Manifest> {
     let Some(package) = decls.iter().find(|d| d.name == PACKAGE) else {
@@ -104,8 +118,9 @@ pub fn read(decls: &[Decl<'_>], file: FileId, cx: &mut DiagCx<'_>) -> Option<Man
     let include = fields.require(field::INCLUDE).and_then(|d| strings(d, cx));
     let deps = fields.get(field::DEPS).map_or(Some(Vec::new()), |d| deps(d, cx));
     let members = fields.get(field::MEMBERS).map_or(Some(Vec::new()), |d| strings(d, cx));
-    let prelude =
-        fields.get(field::PRELUDE).map_or(Some(vec![DEFAULT_PRELUDE.to_owned()]), |d| strings(d, cx));
+    let prelude_decl = fields.get(field::PRELUDE);
+    let prelude = prelude_decl.map_or(Some(vec![DEFAULT_PRELUDE.to_owned()]), |d| strings(d, cx));
+    let prelude_span = prelude_decl.unwrap_or(package).span;
     fields.finish(cx);
     Some(Manifest {
         name: name?,
@@ -117,6 +132,7 @@ pub fn read(decls: &[Decl<'_>], file: FileId, cx: &mut DiagCx<'_>) -> Option<Man
         deps: deps?,
         members: members?,
         prelude: prelude?,
+        prelude_span,
     })
 }
 
@@ -151,5 +167,5 @@ fn dep(decl: &Decl<'_>, cx: &mut DiagCx<'_>) -> Option<Dep> {
         }
     };
     fields.finish(cx);
-    Some(Dep { name: decl.name.to_owned(), source: source?, kind: kind? })
+    Some(Dep { name: decl.name.to_owned(), source: source?, kind: kind?, span: decl.span })
 }

@@ -16,6 +16,7 @@ use overt_syntax::cst::{Anchor, Cst, Fields, NodeId};
 use overt_syntax::tokens::Tokens;
 
 use crate::tree::{Entry, Hir, List, Name, Staged};
+use pats::Mode;
 
 /// A parsed file, as lowering reads it.
 #[derive(Clone, Copy)]
@@ -161,7 +162,7 @@ impl<'a> Lower<'a, '_> {
                 let f = self.fields(control);
                 let head = f.one(NodeField::Head).filter(|&h| self.kind(h) == NodeKind::In)?;
                 let h = self.fields(head);
-                let pat = self.pat_at(&h, head, NodeField::Pattern, false);
+                let pat = self.pat_at(&h, head, NodeField::Pattern, Mode { comptime: true, ..Mode::PLAIN });
                 let iter = self.operand(&h, head, NodeField::Value);
                 let body = self.block_entries(&f, one);
                 Some(Staged::For { pat, iter, body, origin })

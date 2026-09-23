@@ -1,40 +1,46 @@
 use overt_diag::{DiagCtxt, DiagCx, DiagId, errors};
 use overt_harness::{discover, repo_root};
 use overt_origin::OriginTable;
-use overt_span::SourceFiles;
-use overt_syntax::literal::declarations;
+use overt_span::{EXTENSION, FileId, SourceFiles};
+use overt_syntax::literal::{Decl, declarations};
 use overt_syntax::{lexer, parser};
 
-use super::{DepKind, Manifest, Source, Version, read};
+use super::{DepKind, Manifest, Source, Version, declared, read};
+use crate::layout::MANIFEST;
 
-fn manifest(text: &str) -> (Option<Manifest>, Vec<DiagId>) {
-    let file = SourceFiles::new().add("build.ov", text);
+fn parsed<R>(text: &str, f: impl FnOnce(&[Decl<'_>], FileId, &mut DiagCx<'_>) -> R) -> (R, Vec<DiagId>) {
+    let file = SourceFiles::new().add(MANIFEST, text);
     let (mut diag, mut origins) = (DiagCtxt::new(), OriginTable::new());
     let mut cx = DiagCx { diag: &mut diag, origins: &mut origins };
     let tokens = lexer::lex(file, text, &mut cx);
     let cst = parser::parse(&tokens, text, &mut cx);
-    let manifest = read(&declarations(&cst, &tokens, text), file, &mut cx);
-    (manifest, diag.sorted().into_iter().map(|d| d.id.clone()).collect())
+    let result = f(&declarations(&cst, &tokens, text), file, &mut cx);
+    (result, diag.sorted().into_iter().map(|d| d.id.clone()).collect())
+}
+
+fn declares(text: &str) -> bool {
+    parsed(text, |decls, _, _| declared(decls)).0
+}
+
+fn manifest(text: &str) -> (Option<Manifest>, Vec<DiagId>) {
+    parsed(text, read)
 }
 
 #[test]
-fn every_build_file_reads() {
+fn every_manifest_reads() {
     let root = repo_root();
     let mut read = 0;
     for dir in ["lib", "corpus"] {
-        for path in discover(&root.join(dir), "ov").unwrap() {
-            // A manifest sits next to its package namespace `<dir>.ov`; `std/std/build.ov` is a module.
-            let dir = path.parent().unwrap();
-            let namespace = dir.join(dir.file_name().unwrap()).with_extension("ov");
-            if path.file_name().is_some_and(|n| n == "build.ov") && namespace.exists() {
-                let text = std::fs::read_to_string(&path).unwrap();
+        for path in discover(&root.join(dir), EXTENSION).unwrap() {
+            let text = std::fs::read_to_string(&path).unwrap();
+            if path.file_name().is_some_and(|n| n == MANIFEST) && declares(&text) {
                 let (manifest, ids) = manifest(&text);
                 assert!(manifest.is_some() && ids.is_empty(), "{}: {ids:?}", path.display());
                 read += 1;
             }
         }
     }
-    assert_eq!(read, 7, "manifests found");
+    assert_eq!(read, 9, "manifests found");
 }
 
 #[test]

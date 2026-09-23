@@ -2,3 +2,7 @@
 
 Spec: type = _;
 require: ($features: Features) -> Attribute = _;
+Features: type = _;
+
+/// The largest address of the target: `usize` is `Int(0..=usize_max)`.
+usize_max: Int(0..) = _;

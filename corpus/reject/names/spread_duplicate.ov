@@ -1,0 +1,5 @@
+//! A name spread into a namespace may not also be declared there, or spread twice (spec 01,
+//! section 8).
+
+..lang.int; //~ names.duplicate "`u8` is spread from `lang.int` and declared here"
+u8 := 1;

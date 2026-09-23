@@ -1,0 +1,4 @@
+//! Stand-in for a regular-expression library compiling patterns at compile time.
+
+Regex := struct {};
+compile := ($pattern: &[u8]) -> Regex { .{} };

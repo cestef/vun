@@ -1,5 +1,7 @@
 //! A borrow tied to a critical section cannot leave it (spec 07, section 2).
 
+..std.{ sync };
+
 ticks: sync.Shared(u32) = .init(0);
 
 leak := () -> &mut u32 {

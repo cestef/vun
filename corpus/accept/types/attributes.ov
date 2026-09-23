@@ -1,5 +1,8 @@
 //! Attributes are compile-time values attached to the next declaration (spec 02, section 5).
 
+u2 := unsigned(2);
+u29 := unsigned(29);
+
 #[layout.bits(u32)]
 Ctrl := struct { enable: bool, mode: u2, _: u29 };
 

@@ -1,0 +1,117 @@
+//! Namespaces and what they export, read from disk; a file's declarations are read once per
+//! content.
+
+use std::path::Path;
+
+use overt_build::layout::Location;
+use overt_hash::Hash;
+use overt_hir::tree::{Member, each_entry};
+use overt_intern::Symbol;
+use overt_syntax::visibility::Visibility;
+
+use super::PackageKey;
+use crate::Session;
+
+/// A package's root namespace, or one below it by member names.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct Namespace {
+    pub package: PackageKey,
+    pub path: Vec<Symbol>,
+}
+
+/// Why a path names no namespace.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Unfound {
+    /// Its first name is not the package or a dependency.
+    Root,
+    /// The dependency it starts at cannot be loaded; that is already reported.
+    Dep,
+    /// Nothing on disk at the path.
+    Absent,
+}
+
+/// What a file contributes to its namespace: its top-level names, and the paths it spreads whole.
+#[derive(Clone, Default)]
+pub(super) struct Declared {
+    names: Vec<Symbol>,
+    spreads: Vec<Vec<Symbol>>,
+}
+
+impl Session {
+    /// The namespace at `path` as seen from `package`: its first name is the package itself or a
+    /// dependency (spec 01, section 8).
+    ///
+    /// # Errors
+    /// Returns why no namespace is there.
+    pub fn namespace_at(&mut self, package: PackageKey, path: &[Symbol]) -> Result<Namespace, Unfound> {
+        let (&first, rest) = path.split_first().ok_or(Unfound::Root)?;
+        let p = &self.packages.list[&package];
+        let root = if p.name == Some(first) {
+            package
+        } else {
+            let index = p.deps.iter().position(|d| d.name == first).ok_or(Unfound::Root)?;
+            self.dep(package, index).ok_or(Unfound::Dep)?
+        };
+        let ns = Namespace { package: root, path: rest.to_vec() };
+        self.location(&ns).filter(Location::exists).map(|_| ns).ok_or(Unfound::Absent)
+    }
+
+    /// The public names of `ns`, which other namespaces see.
+    pub fn exports(&mut self, ns: &Namespace) -> Vec<Symbol> {
+        let mut names = self.members(ns);
+        names.retain(|&n| Visibility::of(self.interner.resolve(n)) == Visibility::Public);
+        names
+    }
+
+    /// The names of `ns`: declared in its file, exported by what it spreads whole, and held in its
+    /// directory. A namespace reached again while its own spreads are read contributes nothing
+    /// more.
+    pub fn members(&mut self, ns: &Namespace) -> Vec<Symbol> {
+        let Some(location) = self.location(ns) else { return Vec::new() };
+        if !self.packages.expanding.insert(location.clone()) {
+            return Vec::new();
+        }
+        let declared = location.file().and_then(|path| self.declared(&path)).unwrap_or_default();
+        let mut names = declared.names;
+        for path in &declared.spreads {
+            if let Ok(target) = self.namespace_at(ns.package, path) {
+                names.extend(self.exports(&target));
+            }
+        }
+        names.extend(location.children().iter().map(|c| self.interner.intern(c)));
+        self.packages.expanding.remove(&location);
+        names
+    }
+
+    fn location(&self, ns: &Namespace) -> Option<Location> {
+        let root = self.packages.list[&ns.package].root(&self.interner)?;
+        Some(ns.path.iter().fold(root, |l, &s| l.member(self.interner.resolve(s))))
+    }
+
+    /// What the file at `path` declares at its top level, read once per content.
+    fn declared(&mut self, path: &Path) -> Option<Declared> {
+        let text = self.read(path)?;
+        let hash = Hash::of(text.as_bytes());
+        if let Some(known) = self.packages.declared.get(&hash) {
+            return Some(known.clone());
+        }
+        let file = self.sources.add(path.display().to_string(), text);
+        let tokens = self.lex(file);
+        let cst = self.parse(&tokens);
+        let hir = self.lower(&tokens, &cst);
+        let mut declared = Declared::default();
+        if let Some(root) = hir.root {
+            declared.names = hir.members(root).into_iter().map(|b| hir.binders[b].name).collect();
+            each_entry(&hir.namespaces[root].members, &mut |m| {
+                if let Member::Spread(s) = m
+                    && s.select.is_none()
+                    && let Some((_, path)) = hir.path(s.path)
+                {
+                    declared.spreads.push(path);
+                }
+            });
+        }
+        self.packages.declared.insert(hash, declared.clone());
+        Some(declared)
+    }
+}

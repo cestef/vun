@@ -1,4 +1,7 @@
 //! The fields of a `layout.bits(uN)` struct sum to N bits (spec 05, section 6).
 
+u2 := unsigned(2);
+u28 := unsigned(28);
+
 #[layout.bits(u32)]
 Ctrl := struct { enable: bool, mode: u2, _: u28 }; //~ layout.bits_width

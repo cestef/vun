@@ -75,7 +75,7 @@ package := .{
     },
 };
 
-build := (b: &mut Build) {
+build := (b: &mut std.build.Build) {
     chip := b.dep(.stm32f4, .{ .variant = .f407 });       // parameters, not features
     fw := b.program(.{
         .root = "blinky/app.ov",
@@ -94,6 +94,12 @@ build := (b: &mut Build) {
 
 - `.prelude` lists the namespaces whose public names every file of the package sees
   unqualified, so that tools resolve names from the manifest alone.
+- A directory holds a package when its `build.ov` declares `package`. A file belongs to the package
+  of the nearest such directory above it. Any other `build.ov` is an ordinary source file, such as
+  the namespace `std.build`.
+- The package manager identifies a package by the content hash of its `include` tree (section 3),
+  and the compiler keys what it caches the same way: packages by that hash, files by the hash of
+  their text.
 - `package` must be a **literal**: strings, integers, enum literals, and nested anonymous structs
   and tuples. Tools and indexes read it with the ordinary parser, without evaluating anything.
 - `build` is ordinary compile-time code with a `&mut Build` capability. It runs in the sandboxed

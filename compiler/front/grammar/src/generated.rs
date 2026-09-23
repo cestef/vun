@@ -298,6 +298,8 @@ pub enum NodeKind {
     Binding,
     TypedBinding,
     Field,
+    Spread,
+    Select,
     Param,
     Returns,
     Fn,
@@ -362,6 +364,8 @@ impl NodeKind {
         Self::Binding,
         Self::TypedBinding,
         Self::Field,
+        Self::Spread,
+        Self::Select,
         Self::Param,
         Self::Returns,
         Self::Fn,
@@ -431,6 +435,9 @@ pub enum NodeField {
     Pattern,
     Value,
     Type,
+    Source,
+    Select,
+    Names,
     Params,
     Returns,
     Block,
@@ -477,6 +484,9 @@ impl NodeField {
             Self::Pattern => "pattern",
             Self::Value => "value",
             Self::Type => "type",
+            Self::Source => "source",
+            Self::Select => "select",
+            Self::Names => "names",
             Self::Params => "params",
             Self::Returns => "returns",
             Self::Block => "block",
@@ -633,6 +643,29 @@ impl NodeKind {
                     NodeSlot {
                         field: NodeField::Value,
                         count: Count::Optional,
+                        kind: None,
+                    },
+                ]
+            }
+            Self::Spread => {
+                &[
+                    NodeSlot {
+                        field: NodeField::Source,
+                        count: Count::One,
+                        kind: None,
+                    },
+                    NodeSlot {
+                        field: NodeField::Select,
+                        count: Count::Optional,
+                        kind: Some(NodeKind::Select),
+                    },
+                ]
+            }
+            Self::Select => {
+                &[
+                    NodeSlot {
+                        field: NodeField::Names,
+                        count: Count::Many,
                         kind: None,
                     },
                 ]

@@ -8,7 +8,7 @@ use overt_origin::{OriginId, OriginTable};
 use overt_span::SourceMap;
 
 use crate::resolve::{Res, Resolution};
-use crate::tree::{BlockId, DeclId, ExprId, ExprKind, Hir, Lit, Name, NsId, PatId, PatKind};
+use crate::tree::{BlockId, DeclId, ExprId, ExprKind, Hir, Lit, Name, NsId, PatId, PatKind, Spread};
 use crate::visit::{self, Visitor};
 
 /// Indentation per tree level.
@@ -129,6 +129,15 @@ impl Visitor for Printer<'_> {
 
     fn decl(&mut self, hir: &Hir, decl: DeclId) {
         self.line(hir.decls[decl].origin, "Decl", |p| visit::walk_decl(p, hir, decl));
+    }
+
+    fn spread(&mut self, hir: &Hir, spread: &Spread) {
+        let names: Option<Vec<&str>> = spread
+            .select
+            .as_ref()
+            .map(|s| s.iter().map(|&b| self.interner.resolve(hir.binders[b].name)).collect());
+        let label = names.map_or_else(|| "Spread".to_owned(), |n| format!("Spread {{ {} }}", n.join(", ")));
+        self.line(spread.origin, &label, |p| p.expr(hir, spread.path));
     }
 
     fn block(&mut self, hir: &Hir, block: BlockId) {

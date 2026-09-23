@@ -1,0 +1,56 @@
+//! Stand-ins for what corpus programs take from drivers, other libraries, other corpus files and
+//! parts of `std` not written yet. The corpus prelude lists this namespace, so its public names
+//! are visible in every corpus file; its children (`serde`, `svd`, ...) stand for packages.
+
+/// Memory and files.
+Own := ($T: type) -> type { struct { ptr: *T } };
+Alloc := struct {};
+Fs := struct {};
+Config := struct {};
+Error := enum { fs, oom, parse };
+parse := (f: &Fs, cfg: &out Config) -> Result((), Error) { .ok(()) };
+
+/// Capabilities and devices.
+Critical := struct {};
+Dma := struct {};
+Led := struct {};
+Timer := struct {};
+Serial := struct {};
+Uart := struct {};
+Point := struct { x: i32, y: i32 };
+Reg := ($T: type) -> type { struct { raw: T } };
+
+/// Interfaces.
+Dyn := ($I: lang.Interface) -> type { struct {} };
+Encoder := interface(($Self: type) -> type { struct {
+    Error: type = _;
+}});
+Serialize := ($T: type) -> lang.Interface {
+    interface(($Self: type) -> type { struct {
+        serialize: ($E: type, v: &T, w: &mut E) -> Result((), E.Error) = _;
+    }})
+};
+
+/// Program pieces the examples call.
+Cache := struct {};
+Queue := struct {};
+Packet := struct { bytes: [16]u8 };
+use := ($T: type, v: T) {};
+handle_read := (r: u8) {};
+handle_write := (w: u8) {};
+reset := () {};
+poll := () {};
+load := (key: u32) -> Result(Config, Error) { .ok(.{}) };
+crc32 := (bytes: &[u8]) -> u32 { 0 };
+node := ($N: type, net: N, i: u32) -> Async(never) { for {} };
+leaders := ($S: type, s: &S) -> u32 { 0 };
+blink := (led: &mut Led, timer: &Timer) -> Async(never) { for {} };
+
+/// A hosted runtime's system capability.
+System := struct {};
+Exit := enum { code(u8) };
+exit := (e: Exit) -> never { for {} };
+report := (t: &lang.panic.Trap) {};
+
+/// Visible only inside `support`; the reject corpus selects it to show `names.private`.
+_hidden := 0;

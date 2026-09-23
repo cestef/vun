@@ -1,0 +1,8 @@
+//! Stand-in for a serialization library.
+
+/// Field attribute: the name to serialize under.
+rename := ($to: &[u8]) -> Rename { .{ .to = to } };
+Rename := struct { to: &[u8] };
+
+/// The witness of `support.Serialize(T)` derived from `T`'s fields.
+derive := ($T: type) -> type { struct {} };

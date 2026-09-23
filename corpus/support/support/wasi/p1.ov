@@ -1,0 +1,5 @@
+//! Preview 1 commands.
+
+System := struct {};
+Exit := enum { success, code(u8) };
+command := ($main: (&mut System) -> Exit) -> type { struct {} };

@@ -13,7 +13,7 @@ package := .{
     },
 };
 
-build := (b: &mut Build) {
+build := (b: &mut std.build.Build) {
     chip := b.dep(.stm32f4, .{ .variant = .f407 });
     fw := b.program(.{
         .root = "blinky/app.ov",

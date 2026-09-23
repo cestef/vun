@@ -4,7 +4,7 @@
 use overt_index::{Idx, IndexVec};
 use overt_origin::{OriginId, OriginTable};
 
-use crate::tree::{BlockId, DeclId, ExprId, Hir, NsId, PatId, PatKind};
+use crate::tree::{BlockId, DeclId, ExprId, Hir, NsId, PatId, PatKind, Spread};
 use crate::visit::{self, Visitor};
 
 /// The arenas of the HIR, for reporting which node is malformed.
@@ -71,6 +71,12 @@ impl Visitor for Visits {
     fn expr(&mut self, hir: &Hir, expr: ExprId) {
         count(&mut self.exprs, expr.index());
         visit::walk_expr(self, hir, expr);
+    }
+    fn spread(&mut self, hir: &Hir, spread: &Spread) {
+        for b in spread.select.iter().flatten() {
+            count(&mut self.binders, b.index());
+        }
+        self.expr(hir, spread.path);
     }
     fn pat(&mut self, hir: &Hir, pat: PatId) {
         count(&mut self.pats, pat.index());

@@ -1,5 +1,7 @@
 //! Interior mutability is always synchronized (spec 07, section 2).
 
+..std.{ sync };
+
 ticks: sync.Shared(u32) = .init(0);
 events: sync.Atomic(u32) = .init(0);
 

@@ -1,7 +1,7 @@
 //! Reading records and typed values out of literals, reporting where they do not fit.
 
-use overt_diag::suggest::closest;
 use overt_diag::{ChildKind, DiagCx, Diagnostic, Msg, errors};
+use overt_suggest::closest;
 use overt_syntax::literal::{Decl, Literal};
 
 /// The fields of a record literal, checked against the names a reader knows.
@@ -57,10 +57,7 @@ impl<'a, 's> Fields<'a, 's> {
                 .code(self.record.name);
             let mut diag = Diagnostic::error(errors::MANIFEST_UNKNOWN_FIELD, msg);
             if let Some(near) = closest(d.name, self.known.iter().copied()) {
-                diag = diag.child(
-                    ChildKind::Help,
-                    Msg::new().text("did you mean ").code(format!(".{near}")).text("?"),
-                );
+                diag = diag.child(ChildKind::Help, Msg::did_you_mean(format!(".{near}")));
             }
             cx.error_at(d.span, diag);
         }

@@ -11,6 +11,8 @@ publish = false
 
 [workspace.dependencies]
 overt-index = { path = "compiler/base/index" }
+overt-suggest = { path = "compiler/base/suggest" }
+overt-hash = { path = "compiler/base/hash" }
 overt-span = { path = "compiler/base/span" }
 overt-intern = { path = "compiler/base/intern" }
 overt-origin = { path = "compiler/base/origin" }
@@ -68,6 +70,7 @@ syn = { version = "2", default-features = false, features = ["full", "parsing", 
 prettyplease = "0.2"
 annotate-snippets = "0.12"
 ariadne = "0.6"
+sha2 = "0.10"
 
 [workspace.lints.rust]
 unsafe_code = "deny"
