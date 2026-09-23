@@ -5,8 +5,9 @@ use std::io::Write;
 
 use overt_command::{Args, Param, ParamKind};
 use overt_diag::suggest::closest;
-use overt_diag::{ChildKind, DiagSink, Diagnostic, Msg, errors};
-use overt_render_annotate::{AnnotateRenderer, Color};
+use overt_diag::{ChildKind, Color, DiagSink, Diagnostic, Msg, errors};
+use overt_render_annotate::AnnotateRenderer;
+use overt_render_ariadne::AriadneRenderer;
 use overt_render_short::ShortRenderer;
 
 use crate::Session;
@@ -25,6 +26,11 @@ pub const FORMATS: &[Format] = &[
         sink: |out, color| Box::new(AnnotateRenderer::new(out, color)),
     },
     Format {
+        name: "ariadne",
+        about: "source excerpts with one color per label role",
+        sink: |out, color| Box::new(AriadneRenderer::new(out, color)),
+    },
+    Format {
         name: "short",
         about: "one line per diagnostic: file:line:col: severity[id]: message",
         sink: |out, _| Box::new(ShortRenderer::new(out)),
@@ -34,7 +40,7 @@ pub const FORMATS: &[Format] = &[
 pub const FORMAT: Param = Param {
     name: "format",
     short: None,
-    about: "how diagnostics are shown: terminal (default) or short",
+    about: "how diagnostics are shown; a wrong name lists the formats",
     kind: ParamKind::Option,
 };
 

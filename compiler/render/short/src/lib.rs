@@ -20,10 +20,7 @@ impl<W: Write> ShortRenderer<W> {
 impl<W: Write> DiagSink for ShortRenderer<W> {
     fn emit(&mut self, d: &Diagnostic, origins: &OriginTable, sources: &dyn SourceMap) {
         if let Some(label) = &d.primary {
-            let span = origins.source_span(label.origin);
-            let file = sources.file(span.file);
-            let at = file.line_col(span.range.lo);
-            let _ = write!(self.out, "{}:{}:{}: ", file.path, at.line, at.col);
+            let _ = write!(self.out, "{}: ", sources.locate(origins.source_span(label.origin)));
         }
         // Best-effort output: a closed stream must not abort compilation.
         let _ = writeln!(self.out, "{}[{}]: {}", d.severity, d.id, d.message);

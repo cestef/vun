@@ -11,6 +11,13 @@ use crate::{Diagnostic, Severity};
 pub struct ErrorGuaranteed(());
 
 /// Output for diagnostics: terminal, short, JSON, SARIF, LSP.
+/// Whether a sink writes terminal colors.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Color {
+    Never,
+    Always,
+}
+
 pub trait DiagSink {
     fn emit(&mut self, d: &Diagnostic, origins: &OriginTable, sources: &dyn SourceMap);
 }

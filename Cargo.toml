@@ -67,6 +67,7 @@ quote = { version = "1", default-features = false }
 syn = { version = "2", default-features = false, features = ["full", "parsing", "printing"] }
 prettyplease = "0.2"
 annotate-snippets = "0.12"
+ariadne = "0.6"
 
 [workspace.lints.rust]
 unsafe_code = "deny"

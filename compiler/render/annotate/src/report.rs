@@ -36,10 +36,8 @@ pub(crate) fn groups<'a>(
         }
     }
     for frame in &d.trace {
-        let span = cx.origins.source_span(frame.origin);
-        let file = cx.sources.file(span.file);
-        let at = file.line_col(span.range.lo);
-        let msg = format!("{} at {}:{}:{}", frame.msg, file.path, at.line, at.col);
+        let at = cx.sources.locate(cx.origins.source_span(frame.origin));
+        let msg = format!("{} at {at}", frame.msg);
         title = title.element(Level::NOTE.message(msg));
     }
     groups.insert(0, title);

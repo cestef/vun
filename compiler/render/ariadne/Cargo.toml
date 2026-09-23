@@ -13,3 +13,4 @@ workspace = true
 overt-diag.workspace = true
 overt-origin.workspace = true
 overt-span.workspace = true
+ariadne.workspace = true

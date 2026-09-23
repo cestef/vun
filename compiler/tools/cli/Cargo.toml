@@ -17,4 +17,4 @@ workspace = true
 overt-driver.workspace = true
 overt-command.workspace = true
 overt-trace.workspace = true
-overt-render-annotate.workspace = true
+overt-diag.workspace = true

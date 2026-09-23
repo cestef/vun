@@ -3,9 +3,9 @@
 use std::io::{self, IsTerminal};
 use std::process::ExitCode;
 
+use overt_diag::Color;
 use overt_driver::Session;
 use overt_driver::commands::PROGRAM;
-use overt_render_annotate::Color;
 
 /// Disables colors when set, per <https://no-color.org>.
 const NO_COLOR: &str = "NO_COLOR";

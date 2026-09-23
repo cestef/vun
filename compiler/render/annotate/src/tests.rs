@@ -1,8 +1,8 @@
-use overt_diag::{ChildKind, DiagSink, Diagnostic, Edit, Fix, Label, Msg, Safety, errors};
+use overt_diag::{ChildKind, Color, DiagSink, Diagnostic, Edit, Fix, Label, Msg, Safety, errors};
 use overt_origin::OriginTable;
 use overt_span::{SourceFiles, Span};
 
-use crate::{AnnotateRenderer, Color};
+use crate::AnnotateRenderer;
 
 fn render(d: &Diagnostic, origins: &OriginTable, files: &SourceFiles) -> String {
     let mut out = Vec::new();

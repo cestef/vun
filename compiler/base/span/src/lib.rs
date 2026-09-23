@@ -118,6 +118,25 @@ impl SourceFile {
 /// Read access to source files.
 pub trait SourceMap {
     fn file(&self, id: FileId) -> &SourceFile;
+
+    /// Where `span` starts, as shown to users.
+    fn locate(&self, span: Span) -> Location<'_> {
+        let file = self.file(span.file);
+        Location { path: &file.path, at: file.line_col(span.range.lo) }
+    }
+}
+
+/// A position as shown to users; displays as `path:line:col`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Location<'a> {
+    pub path: &'a str,
+    pub at: LineCol,
+}
+
+impl std::fmt::Display for Location<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}:{}:{}", self.path, self.at.line, self.at.col)
+    }
 }
 
 /// An in-memory set of source files.

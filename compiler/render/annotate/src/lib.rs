@@ -9,16 +9,9 @@ use std::io::Write;
 
 use annotate_snippets::Renderer;
 use annotate_snippets::renderer::DecorStyle;
-use overt_diag::{DiagSink, Diagnostic};
+use overt_diag::{Color, DiagSink, Diagnostic};
 use overt_origin::OriginTable;
 use overt_span::SourceMap;
-
-/// Whether output carries terminal colors.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Color {
-    Never,
-    Always,
-}
 
 pub struct AnnotateRenderer<W: Write> {
     out: W,
