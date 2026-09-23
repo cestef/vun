@@ -8,7 +8,6 @@
 
 use std::path::Path;
 
-use overt_build::layout::{Location, SEPARATOR};
 use overt_syntax::literal::{Decl, Literal};
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::quote;
@@ -16,6 +15,7 @@ use quote::quote;
 use overt_diag::{DiagId, Msg};
 
 use crate::generate::{self, Generator, Read, Source};
+use crate::names::docs;
 
 pub(crate) const GENERATOR: Generator =
     Generator { source: "lib/lang/lang/errors.ov", output: "compiler/base/diag/src/errors.rs", emit };
@@ -27,17 +27,16 @@ const UNEXPLAINED: DiagId = DiagId::new("xtask.errors.unexplained");
 const EXPLANATION: &str = "explanation";
 const EMBED: [&str; 2] = ["meta", "embed"];
 
-/// Where packages live, relative to the repository root.
-const PACKAGES: &str = "lib";
-
-fn emit(source: &Source<'_>) -> Read<TokenStream> {
-    let namespace = namespace(source.path);
+fn emit(sources: &[Source<'_>]) -> Read<TokenStream> {
+    // The source is one file.
+    let source = &sources[0];
+    let namespace = source.namespace_text();
     let mut ids = Vec::new();
     collect(&mut Vec::new(), &source.decls, &mut ids);
     if ids.is_empty() {
         return Err(generate::error(
             EMPTY,
-            source.path,
+            &source.path,
             &namespace,
             Msg::new().text("declares no diagnostics"),
         ));
@@ -50,15 +49,17 @@ fn emit(source: &Source<'_>) -> Read<TokenStream> {
     });
     let diagnostics: Vec<&Id<'_>> = ids.iter().filter(|id| id.entry == Entry::Diagnostic).collect();
     let names = diagnostics.iter().map(|id| id.constant());
-    let dir =
-        Path::new(source.path).parent().and_then(|d| d.strip_prefix(PACKAGES).ok()).unwrap_or(Path::new(""));
+    let dir = Path::new(&source.path)
+        .parent()
+        .and_then(|d| d.strip_prefix(generate::PACKAGES).ok())
+        .unwrap_or(Path::new(""));
     let mut pages = Vec::new();
     for id in &diagnostics {
         let Some(page) = id.page else {
             let name = id.within.join(&DiagId::SEPARATOR.to_string());
             let msg =
                 Msg::new().text("has no ").code(format!(".{EXPLANATION} = {}(\"...\")", EMBED.join(".")));
-            return Err(generate::error(UNEXPLAINED, source.path, &name, msg));
+            return Err(generate::error(UNEXPLAINED, &source.path, &name, msg));
         };
         let (name, path) = (id.constant(), dir.join(page).display().to_string());
         pages.push(quote! { (#name, #path) });
@@ -102,7 +103,7 @@ where
 {
     for d in decls {
         within.push(d.name);
-        let doc = d.doc.iter().map(|l| format!(" {l}")).collect();
+        let doc = docs(&d.doc);
         if let Literal::Namespace(members) = &d.value {
             ids.push(Id { entry: Entry::Group, within: within.clone(), doc, page: None });
             collect(within, members, ids);
@@ -114,13 +115,4 @@ where
         }
         within.pop();
     }
-}
-
-/// The binding path of a source file of a package in [`PACKAGES`]: `lib/lang/lang/errors.ov` is
-/// `lang.errors`.
-fn namespace(source: &str) -> String {
-    let path = Path::new(source);
-    let package = path.strip_prefix(PACKAGES).ok().and_then(|p| p.iter().next());
-    let names = package.and_then(|name| Location::path_of(&Path::new(PACKAGES).join(name), path));
-    names.unwrap_or_default().join(SEPARATOR)
 }

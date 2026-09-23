@@ -6,8 +6,8 @@ use overt_syntax::literal::Literal;
 use proc_macro2::TokenStream;
 use quote::quote;
 
-use super::names::{constant, ident, pascal};
 use super::{ENTRY_NAME, ENTRY_TEXT, Enum, Slot, Variant};
+use crate::names::{constant, ident, pascal};
 
 impl Enum<'_> {
     pub(super) fn emit(&self) -> TokenStream {

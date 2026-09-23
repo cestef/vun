@@ -113,7 +113,12 @@ defined in exactly one place and cannot drift.
 reader of `build.ov` manifests, spec 12) and translates each declaration by the shape of its
 value: a `PascalCase` record of lists is a kind, an `enum` an enum, any other list a table whose
 element type is inferred. The same task generates the diagnostic ids of `overt-diag` from
-`lang/errors.ov`. A test fails when a generated file is stale.
+`lang/errors.ov`, and the compiler's primitives from `lang` itself: every top-level declaration
+of a `lang` namespace whose value is `_` is one, and each namespace becomes an enum of its
+primitives (`primitives::mem::Mem`), wrapped by `Primitive`, so the compiler matches each
+namespace's primitives apart and a primitive it does not implement fails to compile. A hole
+inside an interface's requirement struct is a requirement, not a primitive. A test fails when a
+generated file is stale.
 
 **Node fields.** A branch kind declares its children as tagged slots, in source order and without
 punctuation: `.binding(.optional(.\mut), .one(.pattern), .one(.value))`. A slot is `one`,

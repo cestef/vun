@@ -7,4 +7,11 @@ pub mod check;
 pub mod eval;
 pub mod int;
 pub mod layout;
+#[rustfmt::skip]
+pub mod primitives;
 pub mod ty;
+
+pub use primitives::Primitive;
+
+#[cfg(test)]
+mod tests;

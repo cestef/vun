@@ -6,6 +6,8 @@ mod explanations;
 mod generate;
 mod grammar;
 mod lines;
+mod names;
+mod primitives;
 #[cfg(test)]
 mod tests;
 

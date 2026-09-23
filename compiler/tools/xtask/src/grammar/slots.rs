@@ -8,9 +8,9 @@
 use proc_macro2::TokenStream;
 use quote::quote;
 
-use super::names::{ident, pascal};
 use super::{Enum, Grammar};
 use crate::generate::Read;
+use crate::names::{ident, pascal};
 
 /// Suffix removed from a kind's name to name its field and slot types.
 const KIND_SUFFIX: &str = "Kind";

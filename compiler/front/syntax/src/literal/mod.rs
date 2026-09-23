@@ -44,6 +44,8 @@ pub enum Literal<'s> {
     Enum(Vec<Decl<'s>>),
     /// `struct { name := value; }`; fields are skipped.
     Namespace(Vec<Decl<'s>>),
+    /// `_`: provided from outside (spec 01, section 3).
+    Hole,
     Opaque,
 }
 

@@ -12,12 +12,11 @@ use proc_macro2::TokenStream;
 use crate::generate::{self, Generator, Read, Source};
 
 mod enums;
-mod names;
 mod slots;
 mod tables;
 
+use crate::names::{docs, is_type_name};
 use enums::entry_variant;
-use names::{docs, is_type_name};
 
 pub(crate) const GENERATOR: Generator = Generator {
     source: "lib/lang/lang/syntax/grammar.ov",
@@ -32,7 +31,9 @@ const UNRESOLVED: DiagId = DiagId::new("xtask.grammar.unresolved");
 const ENTRY_NAME: &str = "name";
 const ENTRY_TEXT: &str = "text";
 
-fn emit(source: &Source<'_>) -> Read<TokenStream> {
+fn emit(sources: &[Source<'_>]) -> Read<TokenStream> {
+    // The source is one file.
+    let source = &sources[0];
     Grammar::read(source)?.emit(source)
 }
 

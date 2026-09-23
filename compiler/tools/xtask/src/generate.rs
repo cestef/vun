@@ -1,44 +1,68 @@
 //! Rust sources generated from Overt sources, which stay the single source of truth.
 //!
-//! A [`Generator`] reads the literal declarations of one `.ov` file and emits typed Rust tokens;
-//! reading, parsing, formatting and the staleness check are shared here. Adding a generator is
-//! adding an entry to [`ALL`].
+//! A [`Generator`] reads the literal declarations of the `.ov` files at its source, one file or a
+//! directory of them, and emits typed Rust tokens; reading, parsing, formatting and the staleness
+//! check are shared here. Adding a generator is adding an entry to [`ALL`].
 
 use std::path::Path;
 
+use overt_build::layout::{Location, SEPARATOR};
 use overt_diag::{DiagCtxt, DiagCx, DiagId, Diagnostic, Msg};
+use overt_fs::{Relative, Tree};
 use overt_origin::OriginTable;
-use overt_span::SourceFiles;
+use overt_span::{EXTENSION, SourceFiles};
 use overt_syntax::literal::{Decl, declarations};
 use proc_macro2::TokenStream;
 use quote::quote;
 
-use crate::{errors, grammar};
+use crate::{errors, grammar, primitives};
 
 pub(crate) struct Generator {
-    /// The Overt source, relative to the repository root.
+    /// The Overt file, or the directory of them, relative to the repository root.
     pub(crate) source: &'static str,
     /// The generated Rust module, relative to the repository root.
     pub(crate) output: &'static str,
-    pub(crate) emit: fn(&Source<'_>) -> Read<TokenStream>,
+    /// Receives one source per file, in path order.
+    pub(crate) emit: fn(&[Source<'_>]) -> Read<TokenStream>,
 }
 
-/// A parsed source handed to a generator.
+/// A parsed file handed to a generator.
 pub(crate) struct Source<'s> {
-    pub(crate) path: &'static str,
+    /// Relative to the repository root.
+    pub(crate) path: String,
     pub(crate) decls: Vec<Decl<'s>>,
 }
 
 pub(crate) type Read<T> = Result<T, Box<Diagnostic>>;
 
-pub(crate) const ALL: &[Generator] = &[grammar::GENERATOR, errors::GENERATOR];
+pub(crate) const ALL: &[Generator] = &[grammar::GENERATOR, errors::GENERATOR, primitives::GENERATOR];
 
 const SYNTAX: DiagId = DiagId::new("xtask.generate.syntax");
+
+/// Where packages live, relative to the repository root.
+pub(crate) const PACKAGES: &str = "lib";
 
 /// A diagnostic about the declaration `decl` of `source`.
 pub(crate) fn error(id: DiagId, source: &str, decl: &str, msg: Msg) -> Box<Diagnostic> {
     let at = Msg::new().code(decl).text(" in ").code(source).text(": ");
     Box::new(Diagnostic::error(id, at.append(msg)))
+}
+
+impl Source<'_> {
+    /// The binding path of the file, as a namespace of its package in [`PACKAGES`]:
+    /// `lib/lang/lang/errors.ov` is `lang.errors`. `None` for a file outside the package's root
+    /// namespace, such as its manifest.
+    pub(crate) fn namespace(&self) -> Option<Vec<String>> {
+        let path = Path::new(&self.path);
+        let package = path.strip_prefix(PACKAGES).ok()?.iter().next()?;
+        let names = Location::path_of(&Path::new(PACKAGES).join(package), path)?;
+        (names.first().map(String::as_str) == package.to_str()).then_some(names)
+    }
+
+    /// [`Self::namespace`] joined as written.
+    pub(crate) fn namespace_text(&self) -> String {
+        self.namespace().unwrap_or_default().join(SEPARATOR)
+    }
 }
 
 impl Generator {
@@ -48,25 +72,38 @@ impl Generator {
     /// Returns the diagnostics of a source that cannot be read or parsed, or that has a shape the
     /// generator does not translate.
     pub(crate) fn generate(&self, root: &Path) -> Result<String, Box<Diagnostic>> {
-        let path = root.join(self.source);
-        let text = std::fs::read_to_string(&path).map_err(|e| {
-            let msg = Msg::new().text("cannot read ").code(self.source);
-            Box::new(Diagnostic::error(overt_diag::errors::IO_UNREADABLE_FILE, msg).caused_by(&e))
-        })?;
-        let file = SourceFiles::new().add(self.source, text.as_str());
-        let (mut diag, origins) = (DiagCtxt::new(), OriginTable::new());
-        let mut cx = DiagCx { diag: &mut diag, origins: &origins };
-        let tokens = overt_syntax::lexer::lex(file, &text, &mut cx);
-        let cst = overt_syntax::parser::parse(&tokens, &text, &mut cx);
-        if diag.error_count() > 0 {
-            let run = format!("overt dump cst {}", self.source);
-            let msg = Msg::new().code(self.source).text(" does not parse; run ").code(run);
-            return Err(Box::new(Diagnostic::error(SYNTAX, msg)));
+        let unreadable = |e: &std::io::Error, path: &str| {
+            let msg = Msg::new().text("cannot read ").code(path);
+            Box::new(Diagnostic::error(overt_diag::errors::IO_UNREADABLE_FILE, msg).caused_by(e))
+        };
+        let files = root.join(self.source).files().map_err(|e| unreadable(&e, self.source))?;
+        let mut texts = Vec::new();
+        for file in files.iter().filter(|f| f.extension().is_some_and(|e| e == EXTENSION)) {
+            let path = file.relative_to(root).unwrap_or_else(|| file.clone()).display().to_string();
+            let text = std::fs::read_to_string(file).map_err(|e| unreadable(&e, &path))?;
+            texts.push((path, text));
         }
-        let source = Source { path: self.source, decls: declarations(&cst, &tokens, &text) };
-        let items = (self.emit)(&source)?;
+        let mut sources = Vec::new();
+        for (path, text) in &texts {
+            sources.push(Self::parse(path, text)?);
+        }
+        let items = (self.emit)(&sources)?;
         let header = format!(" Generated by `cargo xtask generate` from `{}`; do not edit.", self.source);
         let module = syn::parse2(quote! { #![doc = #header] #items }).expect("generators emit Rust items");
         Ok(prettyplease::unparse(&module))
+    }
+
+    fn parse<'s>(path: &str, text: &'s str) -> Read<Source<'s>> {
+        let file = SourceFiles::new().add(path, text);
+        let (mut diag, origins) = (DiagCtxt::new(), OriginTable::new());
+        let mut cx = DiagCx { diag: &mut diag, origins: &origins };
+        let tokens = overt_syntax::lexer::lex(file, text, &mut cx);
+        let cst = overt_syntax::parser::parse(&tokens, text, &mut cx);
+        if diag.error_count() > 0 {
+            let run = format!("overt dump cst {path}");
+            let msg = Msg::new().code(path).text(" does not parse; run ").code(run);
+            return Err(Box::new(Diagnostic::error(SYNTAX, msg)));
+        }
+        Ok(Source { path: path.to_owned(), decls: declarations(&cst, &tokens, text) })
     }
 }

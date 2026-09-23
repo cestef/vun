@@ -80,6 +80,7 @@ impl<'s> Reader<'_, 's> {
         let items = || children.iter().copied().filter(|&c| self.cst.kind(c) != NodeKind::Punct);
         Some(match self.cst.kind(n) {
             NodeKind::DotName => Literal::Name(self.name(*children.first()?)?),
+            NodeKind::Hole => Literal::Hole,
             NodeKind::String => Literal::String(lexer::literal(self.token(n)?, self.text(n)?)?),
             NodeKind::Int => Literal::Int(integer(self.text(n)?)?),
             NodeKind::Prefix if self.token(n)? == TokenKind::Minus => match self.read(*children.first()?)? {

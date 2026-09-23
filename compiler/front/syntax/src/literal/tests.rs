@@ -117,3 +117,10 @@ fn values_are_set_in_place() {
     let after = overt_diag::Edit::apply(&[hal.set(before, &newer).unwrap()], before);
     assert_eq!(after, "p := .{\n    .hal = .{ .version = \"1.2.0\" },\n};");
 }
+
+#[test]
+fn reads_and_writes_holes() {
+    let decls = read("Int: ($r: Range) -> type = _;\nx := f(_);");
+    assert_eq!((decls[0].name, &decls[0].value), ("Int", &Literal::Hole));
+    assert_eq!(Literal::Hole.source().as_deref(), Ok("_"));
+}

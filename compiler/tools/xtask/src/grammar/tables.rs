@@ -5,9 +5,9 @@ use overt_syntax::literal::{Decl, Literal};
 use proc_macro2::TokenStream;
 use quote::{ToTokens, quote};
 
-use super::names::{constant, docs, ident, pascal};
 use super::{Enum, Grammar, SHAPE, Ty, UNRESOLVED, error_at};
 use crate::generate::{Read, Source};
+use crate::names::{constant, docs, ident, pascal};
 
 impl<'s> Grammar<'s> {
     pub(super) fn emit(&self, source: &Source<'s>) -> Read<TokenStream> {
