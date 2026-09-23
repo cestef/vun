@@ -28,6 +28,8 @@ fn locks_round_trip_in_canonical_order() {
     assert!(text.lines().nth(2).unwrap().ends_with(" via stm32f4"), "{text}");
     assert_eq!(Lock::parse(&text), Ok(lock.clone()));
     assert_eq!(lock.selected(hal).map(|e| e.version), Version::parse("2.1.4"));
+    let older = Lock::new([lock.entries(), &[entry("hal", "2.0.0", Some(hal), None)]].concat());
+    assert_eq!(older.selected(hal).map(|e| e.version), Version::parse("2.1.4"), "the largest is selected");
 }
 
 #[test]

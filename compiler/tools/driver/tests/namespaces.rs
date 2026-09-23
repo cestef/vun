@@ -12,5 +12,5 @@ fn names_in_both_a_file_and_its_directory_are_duplicates() {
     app.include.push(app.name.clone());
     let dir = fx.write("", &app, "uart := 1;\ngpio := 2;\n");
     fx.root.write(dir.join(&app.name).join("uart.ov"), "");
-    assert_eq!(Fixture::check(&Fixture::file(&dir, &app)), [errors::NAMES_DUPLICATE]);
+    assert_eq!(fx.check(&Fixture::file(&dir, &app)), [errors::NAMES_DUPLICATE]);
 }

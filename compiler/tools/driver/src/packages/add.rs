@@ -3,10 +3,11 @@
 //! hash it has now, so that every later fetch is checked against it.
 
 use std::fmt;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use overt_build::layout::MANIFEST;
 use overt_build::manifest::{self, DepKind, Manifest, Source, Version};
+use overt_build::store::Label;
 use overt_diag::{Diagnostic, Edit as TextEdit, Msg, errors};
 use overt_fs::{Edit, Relative};
 use overt_hash::{Hash, Snapshot};
@@ -50,8 +51,14 @@ struct Found {
 enum Place {
     /// A directory, by its path from the project.
     Path(String),
-    /// A stored archive, by the tree hash it has now and where it was fetched.
-    Archive { hash: Hash, url: String },
+    /// An archive unpacked under staging, by where it was fetched; it is stored once declared.
+    Archive { url: String, staged: Staged },
+}
+
+/// An unpacked archive awaiting its move into the store.
+struct Staged {
+    dir: PathBuf,
+    snapshot: Snapshot,
 }
 
 impl Session {
@@ -72,18 +79,27 @@ impl Session {
         let Some(Found { at, kind, manifest: stated }) = found else { return Ok(None) };
         let name = addition.name.map(str::to_owned).or_else(|| stated.as_ref().map(|m| m.name.clone()));
         let name = name.ok_or(Unstated::Name)?;
-        let source = match at {
-            Place::Archive { hash, url } => {
+        let (source, unstored) = match at {
+            Place::Archive { url, staged } => {
                 let version = addition.version.or_else(|| stated.as_ref().map(|m| m.version));
-                Source::Archive { version: version.ok_or(Unstated::Version)?, hash, urls: vec![url] }
+                let version = version.ok_or(Unstated::Version)?;
+                (Source::Archive { version, hash: staged.snapshot.root(), urls: vec![url] }, Some(staged))
             }
-            Place::Path(path) => Source::Path(path),
+            Place::Path(path) => (Source::Path(path), None),
         };
         let dep = manifest::Dep { name, source, kind, span: Span::new(file, 0, 0) };
         if let Some(existing) = project.deps.iter().find(|d| d.name == dep.name) {
             let msg = Msg::new().code(&dep.name).text(" is already a dependency");
             self.report(Some(existing.span), Diagnostic::error(errors::PACKAGE_DUPLICATE_DEP, msg));
             return Ok(None);
+        }
+        if let (Some(staged), Source::Archive { version, .. }) = (&unstored, &dep.source) {
+            let label = Label { name: &dep.name, version: *version };
+            if let Err(why) = Self::commit(&self.store, &staged.dir, &staged.snapshot, label) {
+                let msg = Msg::new().text("cannot store ").code(&dep.name);
+                self.diag.error(Diagnostic::error(errors::PACKAGE_FETCH_FAILED, msg).caused_by(&why));
+                return Ok(None);
+            }
         }
         let text = self.text(file).to_owned();
         match self.declarations(file, |decls, _| dep.declare(decls, &text)) {
@@ -120,19 +136,18 @@ impl Session {
         Some(Found { at, kind: DepKind::Overt, manifest: Some(manifest) })
     }
 
-    /// The archive at `url`, fetched into the store; an archive without a manifest is foreign.
+    /// The archive at `url`, unpacked under staging; an archive without a manifest is foreign.
     fn archive(&mut self, url: &str) -> Option<Found> {
-        let store = self.store();
         // Its contents, and so its hash, are unknown until it is unpacked.
-        let staging = store.staging(Hash::of(url.as_bytes()));
-        let fetched = Self::unpack(&staging, url).and_then(|unpacked| {
+        let staging = self.store.staging(Hash::of(url.as_bytes()));
+        let fetched = Self::unpack(&staging, url).map(|unpacked| {
             let manifest_path = unpacked.join(MANIFEST);
             let manifest = manifest_path.is_file().then(|| self.manifest_at(&manifest_path)).flatten();
             let kind = if manifest.is_some() { DepKind::Overt } else { DepKind::Foreign };
             let snapshot = Snapshot::of(&unpacked, &self.include(kind, &unpacked));
-            Self::commit(&store, &staging, &snapshot)?;
-            let at = Place::Archive { hash: snapshot.root(), url: url.to_owned() };
-            Ok(Found { at, kind, manifest })
+            let at =
+                Place::Archive { url: url.to_owned(), staged: Staged { dir: staging.clone(), snapshot } };
+            Found { at, kind, manifest }
         });
         match fetched {
             Ok(found) => Some(found),

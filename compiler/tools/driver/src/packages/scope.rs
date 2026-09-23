@@ -162,7 +162,7 @@ impl Session {
         let note =
             Msg::new().text("expected ").code(expected.to_string()).text(", found ").code(actual.to_string());
         let mut d = Diagnostic::error(errors::PACKAGE_HASH_MISMATCH, msg).child(ChildKind::Note, note);
-        let recorded = std::fs::read_to_string(self.store().snapshot(expected)).ok();
+        let recorded = std::fs::read_to_string(self.store.snapshot(expected)).ok();
         let recorded = recorded.and_then(|text| Snapshot::parse(&text));
         for (path, change) in recorded.map(|r| r.changes(current)).unwrap_or_default() {
             let what = match change {

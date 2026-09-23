@@ -44,7 +44,7 @@ blinky/
   fuzz/                 corpus and crash inputs, per test
   docs/                 guides; API docs come from doc comments
   vendor/               only after `overt pkg vendor`
-  .overt/               local store and caches, ignored by version control
+  .overt/               local build caches, ignored by version control
 ```
 
 No directory name is significant to the compiler except through `build.ov`, which states the roots.
@@ -122,14 +122,22 @@ build := (b: &mut std.build.Build) {
   the compiler's caches already use, so nothing is hashed twice. BLAKE3 is also the only hash the
   toolchain uses, for caches as well: measured at 2 to 3 GiB/s on one core and 12 GiB/s on 14,
   against 1.4 GiB/s for SHA-256 with hardware support.
-- **Store.** Fetched packages are kept in the project's `.overt/store`, nested by the hash alone:
-  `.overt/store/blake3/<first 2 digest characters>/<remaining 50>/`, so the first level has at most
-  1024 directories. An entry holds the unpacked `package/` and the `snapshot` it was verified with
-  (one `hash mode path` line per file, the mode `-` or `x` for executable). Loading a stored package recomputes its tree hash; a difference
-  is `package.hash_mismatch`, which names every file added, removed or modified since the fetch.
+- **Store.** Fetched packages are kept in one store per user, shared by every project:
+  `overt/store` in the user's cache directory (`~/.cache` on Unix, including macOS, as command-line
+  tools expect; the known folder on Windows), or the directory `OVERT_STORE` names. Entries nest by
+  the hash alone, `<store>/blake3/<first 2 digest characters>/<remaining 50>/`, so the first level
+  has at most 1024 directories. An entry holds the unpacked `package/`, the `snapshot` it was
+  verified with (one `hash mode path` line per file, the mode `-` or `x` for executable), and a
+  `label` with the name and version it was declared under, for people; the hash stays the only key.
+  Loading a stored package recomputes its tree hash; a difference is `package.hash_mismatch`, which
+  names every file added, removed or modified since the fetch.
+- **Roots and collection.** Writing a lockfile registers its project under `<store>/roots/`. `overt
+  cache gc` keeps every entry a registered lockfile records, removes the rest and all staging, and
+  forgets projects whose lockfile is gone; `overt cache list` shows each entry's size, label and
+  whether a lockfile keeps it.
 - **Fetching.** `overt pkg fetch` walks the dependency graph from the project and stores every
   archive dependency the store lacks. Mirrors are tried in order; an archive is unpacked under
-  `.overt/store/staging/`, verified against the declared hash, and moved into its entry only then,
+  `<store>/staging/`, verified against the declared hash, and moved into its entry only then,
   so the store never holds unverified contents. When every mirror fails, `package.fetch_failed`
   lists each mirror with the chain of causes (spec 10).
 - **Adding.** `overt pkg add <source>` declares a dependency in `build.ov`. A directory is declared
@@ -164,8 +172,10 @@ build := (b: &mut std.build.Build) {
 
 ## 4. The lockfile
 
-`overt.lock` records what selection chose and fetching verified, one independent line per entry,
-sorted, with no whole-file hash, so merges never conflict:
+`overt.lock` records every version the graph requires and the hash it was verified against, one
+independent line per entry, sorted, with no whole-file hash, so merges never conflict. The selected
+version of an identity is the largest recorded; recording the others too keeps in the store what
+reading the graph needs, as `go.sum` does:
 
 ```
 # overt.lock 1 (written by `overt pkg`; do not edit)
@@ -214,7 +224,8 @@ One binary, subcommands grouped by what they act on. The CLI is a thin shell ove
 | `overt pkg api [diff <old>]` | public API and the version bump it requires |
 | `overt tool bind <header>`, `overt tool header`, `overt tool svd <file>` | C bindings, C headers, register packages |
 | `overt target flash\|attach\|debug` | flash, stream logs, GDB server (section 9) |
-| `overt toolchain ...`, `overt cache ...` | toolchains and build caches |
+| `overt toolchain ...` | toolchains |
+| `overt cache list\|gc` | the shared store: entries, sizes, labels; collection by lockfile roots |
 | `overt lsp` | language server |
 
 ### Conventions enforced by tools

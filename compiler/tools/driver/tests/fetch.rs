@@ -4,9 +4,7 @@
 mod common;
 
 use common::Fixture;
-use overt_build::store::Store;
 use overt_diag::errors;
-use overt_driver::Session;
 use overt_driver::packages::Fetched;
 use overt_pkg::{Archive, Scheme};
 
@@ -21,8 +19,7 @@ fn fetched_packages_are_stored_verified_and_checked() {
     app.deps.push(Fixture::stored("hal", "1.0.0", &url, hash));
     let dir = fx.write("app", &app, "x := gpio;\n");
 
-    let mut session = Session::new();
-    session.store = Some(Store::in_project(&dir));
+    let mut session = fx.session();
     let project = session.package_at(&dir).unwrap();
     let fetched: Vec<_> = session.fetch(project).into_iter().map(|(_, h, f)| (h, f)).collect();
     assert!(matches!(fetched.as_slice(), [(h, Fetched::Stored { .. })] if *h == hash), "{fetched:?}");
@@ -31,12 +28,12 @@ fn fetched_packages_are_stored_verified_and_checked() {
 
     // The stored package resolves `gpio` through the prelude.
     let file = Fixture::file(&dir, &app);
-    assert_eq!(Fixture::check(&file), []);
+    assert_eq!(fx.check(&file), []);
 
     // A stored file changed afterwards is named.
-    let stored = Store::in_project(&dir).package(hash);
+    let stored = fx.store().package(hash);
     fx.root.write(Fixture::file(&stored, &hal), "gpio := 2;\n");
-    let mut check = Session::new();
+    let mut check = fx.session();
     let loaded = check.load(&file).unwrap();
     check.check(loaded);
     let mismatch = check.diag.sorted().into_iter().find(|d| d.id == errors::PACKAGE_HASH_MISMATCH).unwrap();
@@ -51,8 +48,7 @@ fn failing_mirrors_are_reported_with_their_causes() {
     let mut app = Fixture::manifest("app", 1, "0.1.0");
     app.deps.push(Fixture::stored("hal", "1.0.0", &url, overt_hash::Hash::of(b"none")));
     let dir = fx.write("app", &app, "");
-    let mut session = Session::new();
-    session.store = Some(Store::in_project(&dir));
+    let mut session = fx.session();
     let project = session.package_at(&dir).unwrap();
     assert!(matches!(session.fetch(project).as_slice(), [(_, _, Fetched::Failed)]));
     let d = session.diag.sorted().into_iter().find(|d| d.id == errors::PACKAGE_FETCH_FAILED).unwrap();

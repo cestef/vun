@@ -24,7 +24,6 @@ use overt_build::lock::Lock;
 use overt_build::manifest::{
     self, DEFAULT_DEPS, DEFAULT_PRELUDE, DepKind, Identity, Manifest, Source, Version,
 };
-use overt_build::store::Store;
 use overt_diag::{Diagnostic, Msg, errors};
 use overt_hash::{Hash, Snapshot};
 use overt_intern::{Interner, Symbol};
@@ -121,8 +120,8 @@ impl Package {
 }
 
 impl Session {
-    /// The package `file` belongs to. The first one found is the project, whose store holds
-    /// fetched dependencies.
+    /// The package `file` belongs to. The first one found is the project, whose graph version
+    /// selection runs over.
     pub fn package_of(&mut self, file: FileId) -> PackageKey {
         let path = PathBuf::from(&self.sources.file(file).path);
         let found = path.ancestors().skip(1).find_map(|dir| self.package_at(dir));
@@ -130,24 +129,17 @@ impl Session {
         if self.packages.root.is_none() {
             self.packages.root = found;
         }
-        if self.store.is_none() {
-            let dir = path.parent().map(Path::to_path_buf).unwrap_or_default();
-            let project = self.packages.list.get(&key).map_or(dir, |p| p.dir.clone());
-            self.store = Some(Store::in_project(&project));
-        }
         key
     }
 
-    /// The project around the current directory, whose store then holds fetched packages; its
-    /// absence is reported.
+    /// The project around the current directory; its absence is reported.
     ///
     /// # Errors
     /// Returns an error if the current directory cannot be read.
     pub fn project(&mut self) -> std::io::Result<Option<(PathBuf, PackageKey)>> {
         let here = std::env::current_dir()?;
         let found = here.ancestors().find_map(|d| self.package_at(d).map(|p| (d.to_path_buf(), p)));
-        if let Some((dir, key)) = &found {
-            self.store = Some(Store::in_project(dir));
+        if let Some((_, key)) = &found {
             self.packages.root = Some(*key);
         } else {
             let msg = Msg::new().text("no ").code(MANIFEST).text(" declaring ").code(manifest::PACKAGE);
@@ -157,17 +149,11 @@ impl Session {
         Ok(found)
     }
 
-    /// The project's store; the current directory's before a project is found.
-    #[must_use]
-    pub fn store(&self) -> Store {
-        self.store.clone().unwrap_or_else(|| Store::in_project(Path::new(".")))
-    }
-
     /// Where a dependency is on disk; a stored one in the project's store.
     fn dep_dir(&self, source: &DepSource) -> PathBuf {
         match source {
             DepSource::Dir(dir) => dir.clone(),
-            DepSource::Stored { hash, .. } => self.store().package(*hash),
+            DepSource::Stored { hash, .. } => self.store.package(*hash),
         }
     }
 

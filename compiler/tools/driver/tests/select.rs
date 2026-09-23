@@ -5,9 +5,9 @@ mod common;
 
 use common::Fixture;
 use overt_build::lock::{self, Lock, Locked};
-use overt_build::store::Store;
+use overt_build::manifest::Identity;
 use overt_diag::errors;
-use overt_driver::Session;
+use overt_hash::Hash;
 
 const HAL_ID: u64 = 7;
 
@@ -28,24 +28,33 @@ fn the_largest_required_version_is_selected_everywhere() {
     app.deps.extend([Fixture::stored("hal", "1.0.0", &old_url, old), Fixture::local("drv", "../drv")]);
     let dir = fx.write("app", &app, "x := b;\n");
 
-    let mut session = Session::new();
-    session.store = Some(Store::in_project(&dir));
+    let mut session = fx.session();
     let project = session.package_at(&dir).unwrap();
     session.fetch(project);
     let selection = session.write_lock(&dir, project);
     assert!(!session.failed(), "{:?}", session.diag.sorted());
-    let [selected] = selection.entries() else { panic!("{selection}") };
+    assert_eq!(selection.entries().len(), 2, "every required version is recorded: {selection}");
+    let selected = selection.selected(Identity { id: HAL_ID, major: 1 }).unwrap();
     assert_eq!(
         (selected.version, selected.hash, selected.via.as_deref()),
         (new_hal.version, new, Some("drv"))
     );
 
+    // The lockfile roots both in the store, labeled; an entry nothing records is collected.
+    let rooted: Vec<_> = fx.store().list().unwrap().into_iter().filter(|l| l.rooted).collect();
+    let labels: Vec<_> = rooted.iter().filter_map(|l| l.label.as_deref()).collect();
+    assert_eq!(labels.len(), 2);
+    assert!(labels.contains(&"hal 1.0.0") && labels.contains(&"hal 1.2.0"), "{labels:?}");
+    fx.root.write(fx.store().package(Hash::of(b"stray")).join("x.ov"), "");
+    let collected = fx.store().collect().unwrap();
+    assert_eq!((collected.removed.len(), collected.kept), (1, 2));
+
     // The app declares hal 1.0.0 but sees 1.2.0, which has `b`.
     let app_file = Fixture::file(&dir, &app);
-    assert_eq!(Fixture::check(&app_file), []);
+    assert_eq!(fx.check(&app_file), []);
 
     // A lockfile recording something else is stale.
     let stale = Lock::new(vec![Locked { hash: old, ..selected.clone() }]);
     fx.root.write(dir.join(lock::FILE), stale.to_string());
-    assert!(Fixture::check(&app_file).contains(&errors::PACKAGE_STALE_LOCK));
+    assert!(fx.check(&app_file).contains(&errors::PACKAGE_STALE_LOCK));
 }

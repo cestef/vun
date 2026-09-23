@@ -6,7 +6,6 @@ mod common;
 use common::Fixture;
 use overt_build::layout::MANIFEST;
 use overt_build::manifest::{DepKind, Source, Version};
-use overt_build::store::Store;
 use overt_diag::errors;
 use overt_driver::Session;
 use overt_driver::packages::{Addition, Unstated};
@@ -23,8 +22,7 @@ fn added_dependencies_are_declared_and_resolve() {
     app.prelude.push(hal.name.clone());
     let dir = fx.write("app", &app, "y := gpio + util.x;\n");
 
-    let mut session = Session::new();
-    session.store = Some(Store::in_project(&dir));
+    let mut session = fx.session();
     let add = |session: &mut Session, source: &str| {
         session.add(&dir, &Addition { source, name: None, version: None })
     };
@@ -38,7 +36,7 @@ fn added_dependencies_are_declared_and_resolve() {
 
     let text = std::fs::read_to_string(dir.join(MANIFEST)).unwrap();
     assert!(text.contains(".util = .{ .path = \"../util\" }"), "{text}");
-    assert_eq!(Fixture::check(&Fixture::file(&dir, &app)), [], "{text}");
+    assert_eq!(fx.check(&Fixture::file(&dir, &app)), [], "{text}");
 }
 
 #[test]
@@ -49,8 +47,7 @@ fn foreign_archives_need_a_name_and_a_version() {
     let (bytes, _) = Archive::pack(&fx.root.join("sdk"), &["x.c".into()]).unwrap();
     let archive = fx.root.write(format!("sdk{}", Archive::SUFFIX), bytes);
     let url = Scheme::file_url(&archive);
-    let mut session = Session::new();
-    session.store = Some(Store::in_project(&dir));
+    let mut session = fx.session();
     let unnamed = Addition { source: &url, name: None, version: None };
     assert_eq!(session.add(&dir, &unnamed).unwrap_err(), Unstated::Name);
     let unversioned = Addition { source: &url, name: Some("sdk"), version: None };

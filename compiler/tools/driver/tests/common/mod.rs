@@ -7,6 +7,7 @@ use std::path::{Path, PathBuf};
 
 use overt_build::layout::MANIFEST;
 use overt_build::manifest::{DEFAULT_PRELUDE, Dep, DepKind, EDITION, Manifest, Source, Version};
+use overt_build::store::Store;
 use overt_diag::DiagId;
 use overt_driver::Session;
 use overt_fs::Scratch;
@@ -84,9 +85,21 @@ impl Fixture {
         (Scheme::file_url(&path), snapshot.root())
     }
 
-    /// The diagnostics of checking `file` in a fresh session.
-    pub(crate) fn check(file: &Path) -> Vec<DiagId> {
+    /// The store of this fixture, in place of the user's.
+    pub(crate) fn store(&self) -> Store {
+        Store::at(&self.root.join(Store::DIR))
+    }
+
+    /// A fresh session using this fixture's store.
+    pub(crate) fn session(&self) -> Session {
         let mut session = Session::new();
+        session.store = self.store();
+        session
+    }
+
+    /// The diagnostics of checking `file` in a fresh session.
+    pub(crate) fn check(&self, file: &Path) -> Vec<DiagId> {
+        let mut session = self.session();
         let file = session.load(file).unwrap();
         session.check(file);
         session.diag.sorted().into_iter().map(|d| d.id.clone()).collect()

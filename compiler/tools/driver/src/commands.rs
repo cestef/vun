@@ -83,7 +83,7 @@ pub const PROGRAM: Program<Session> = Program {
                     planned("prune", "remove unused toolchains"),
                 ],
             ),
-            planned("cache", "manage build caches"),
+            group(cache::GROUP, "the shared store of fetched packages", cache::COMMANDS),
             planned("lsp", "run the language server"),
             Command {
                 name: "components",
@@ -201,6 +201,7 @@ fn components(_: &mut Session, _: &Args, out: &mut dyn Write) -> io::Result<Outc
     Ok(Outcome::Success)
 }
 
+mod cache;
 mod pkg;
 
 pub(crate) use pkg::FETCH_PATH;

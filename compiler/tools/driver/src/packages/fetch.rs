@@ -8,8 +8,8 @@ use std::path::{Path, PathBuf};
 use std::{fmt, fs, io};
 
 use overt_build::layout::MANIFEST;
-use overt_build::manifest::DepKind;
-use overt_build::store::Store;
+use overt_build::manifest::{DepKind, Version};
+use overt_build::store::{Label, Store};
 use overt_diag::{ChildKind, Diagnostic, Msg, errors};
 use overt_fs::{Edit, Tree};
 use overt_hash::{Hash, Snapshot};
@@ -76,11 +76,11 @@ impl Session {
             for (index, dep) in deps.iter().enumerate() {
                 let outcome = match &dep.source {
                     DepSource::Stored { hash, .. } if done.iter().any(|(_, h, _)| h == hash) => continue,
-                    DepSource::Stored { hash, urls, .. } => {
+                    DepSource::Stored { hash, version, urls } => {
                         let outcome = if self.present(*hash) {
                             Fetched::Present
                         } else {
-                            self.download(dep, *hash, urls)
+                            self.download(dep, *hash, *version, urls)
                         };
                         done.push((dep.name, *hash, outcome.clone()));
                         outcome
@@ -100,7 +100,7 @@ impl Session {
 
     /// Whether the store holds `hash` as it was verified.
     fn present(&self, hash: Hash) -> bool {
-        let store = self.store();
+        let store = &self.store;
         let Some(recorded) = fs::read_to_string(store.snapshot(hash)).ok().and_then(|t| Snapshot::parse(&t))
         else {
             return false;
@@ -110,12 +110,14 @@ impl Session {
         Snapshot::of(&store.package(hash), &top) == recorded
     }
 
-    fn download(&mut self, dep: &Dep, hash: Hash, urls: &[String]) -> Fetched {
-        let store = self.store();
+    fn download(&mut self, dep: &Dep, hash: Hash, version: Version, urls: &[String]) -> Fetched {
+        let store = self.store.clone();
         let staging = store.staging(hash);
+        let name = self.interner.resolve(dep.name).to_owned();
+        let label = Label { name: &name, version };
         let mut rejected = Vec::new();
         for url in urls {
-            match self.stage(dep.kind, &store, hash, &staging, url) {
+            match self.stage(dep.kind, &store, hash, &staging, url, label) {
                 Ok(()) => return Fetched::Stored { url: url.clone() },
                 Err(why) => rejected.push((url, why)),
             }
@@ -142,13 +144,14 @@ impl Session {
         hash: Hash,
         staging: &Path,
         url: &str,
+        label: Label<'_>,
     ) -> Result<(), Rejected> {
         let unpacked = Self::unpack(staging, url)?;
         let snapshot = Snapshot::of(&unpacked, &self.include(kind, &unpacked));
         if snapshot.root() != hash {
             return Err(Rejected::Hash { found: snapshot.root() });
         }
-        Self::commit(store, staging, &snapshot)
+        Self::commit(store, staging, &snapshot, label)
     }
 
     /// Downloads and unpacks `url` into a fresh `staging` entry, returning where the package is.
@@ -160,10 +163,16 @@ impl Session {
     }
 
     /// Moves the verified `staging` entry into the store under the root of `snapshot`, recording
-    /// the snapshot it was verified with.
-    pub(super) fn commit(store: &Store, staging: &Path, snapshot: &Snapshot) -> Result<(), Rejected> {
+    /// the snapshot it was verified with and its label.
+    pub(super) fn commit(
+        store: &Store,
+        staging: &Path,
+        snapshot: &Snapshot,
+        label: Label<'_>,
+    ) -> Result<(), Rejected> {
         let commit = || -> io::Result<()> {
             staging.join(Store::SNAPSHOT).put(snapshot.to_string())?;
+            staging.join(Store::LABEL).put(label.to_string())?;
             store.entry(snapshot.root()).replace_with(staging)
         };
         commit().map_err(Rejected::Store)

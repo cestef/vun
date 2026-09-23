@@ -1,5 +1,6 @@
-//! The lockfile, `overt.lock` (spec 12, section 4): what version selection chose and verified, one
-//! independent line per entry, sorted, so that merges never conflict.
+//! The lockfile, `overt.lock` (spec 12, section 4): every version the graph requires, with the
+//! hash it was verified against, one independent line per entry, sorted, so that merges never
+//! conflict. The selected version of an identity is the largest recorded.
 
 use std::fmt;
 
@@ -10,13 +11,13 @@ use crate::manifest::{Identity, Version};
 /// The lockfile's name, next to the manifest.
 pub const FILE: &str = "overt.lock";
 
-/// A lockfile: the selected packages, sorted by name and then identity.
+/// A lockfile: the required packages, sorted by name, version and identity.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Lock {
     entries: Vec<Locked>,
 }
 
-/// One selected package.
+/// One required package.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Locked {
     /// The name the first dependent to require it binds it to.
@@ -71,10 +72,10 @@ impl Lock {
         &self.entries
     }
 
-    /// The entry selected for `identity`.
+    /// The entry selected for `identity`: the largest version required.
     #[must_use]
     pub fn selected(&self, identity: Identity) -> Option<&Locked> {
-        self.entries.iter().find(|e| e.identity == Some(identity))
+        self.entries.iter().filter(|e| e.identity == Some(identity)).max_by_key(|e| e.version)
     }
 
     /// Reads the text form.

@@ -48,6 +48,12 @@ impl Hash {
     pub fn parse(text: &str) -> Option<Self> {
         let (name, digest) = text.split_once(Self::SEPARATOR)?;
         let &algorithm = Algorithm::ALL.iter().find(|a| a.name() == name)?;
+        Self::from_digest(algorithm, digest)
+    }
+
+    /// The hash of `algorithm` whose digest has the text encoding `digest`.
+    #[must_use]
+    pub fn from_digest(algorithm: Algorithm, digest: &str) -> Option<Self> {
         Some(Self { algorithm, digest: base32::decode(digest)? })
     }
 

@@ -1,12 +1,33 @@
-//! The local store: fetched packages by content hash (spec 12, section 3). An entry is nested as
-//! `<project>/.overt/store/<algorithm>/<first digest characters>/<rest of the digest>/`, so that
-//! no directory grows past a few thousand entries and every path is derived from the hash alone;
-//! it holds the unpacked `package/` and the `snapshot` of its file hashes verified when fetched.
-//! A fetch unpacks under `staging/` and moves the entry in place once verified.
+//! The store: fetched packages by content hash (spec 12, section 3), shared by every project of a
+//! user. An entry is nested as `<store>/<algorithm>/<first digest characters>/<rest of the
+//! digest>/`, so that no directory grows past a few thousand entries and every path is derived
+//! from the hash alone; it holds the unpacked `package/`, the `snapshot` of its file hashes
+//! verified when fetched, and a `label` naming it for people. A fetch unpacks under `staging/` and
+//! moves the entry in place once verified. Projects register their lockfiles under `roots/`, and
+//! collection keeps what some registered lockfile records.
+
+mod collect;
+#[cfg(test)]
+mod tests;
 
 use std::path::{Path, PathBuf};
 
 use overt_hash::Hash;
+
+pub use collect::{Collected, Listed};
+
+/// What a store entry is called for people: the name and version a dependent declared.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Label<'a> {
+    pub name: &'a str,
+    pub version: crate::manifest::Version,
+}
+
+impl std::fmt::Display for Label<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{} {}", self.name, self.version)
+    }
+}
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Store {
@@ -14,19 +35,44 @@ pub struct Store {
 }
 
 impl Store {
-    /// A project's local state, ignored by version control.
-    pub const LOCAL: &str = ".overt";
+    /// Names the store's directory instead of the user's cache.
+    pub const ENV: &str = "OVERT_STORE";
+    /// The toolchain's directory in the user's cache.
+    pub const CACHE: &str = "overt";
     pub const DIR: &str = "store";
     /// Digest characters naming the first level: 32 * 32 = 1024 directories in base32.
     pub const SPLIT: usize = 2;
     pub const PACKAGE: &str = "package";
     pub const SNAPSHOT: &str = "snapshot";
+    pub const LABEL: &str = "label";
     pub const STAGING: &str = "staging";
+    pub const ROOTS: &str = "roots";
 
-    /// The store of the project in `dir`.
+    /// The store in `dir`.
     #[must_use]
-    pub fn in_project(dir: &Path) -> Self {
-        Self { root: dir.join(Self::LOCAL).join(Self::DIR) }
+    pub fn at(dir: &Path) -> Self {
+        Self { root: dir.to_path_buf() }
+    }
+
+    /// The user's store: the directory named by [`Self::ENV`], or `overt/store` in the user's
+    /// cache directory (XDG on Unix, including macOS, as command-line tools expect; the known
+    /// folder on Windows), or in the temporary directory for a user without a home.
+    #[must_use]
+    pub fn user() -> Self {
+        use etcetera::BaseStrategy;
+        let named = std::env::var_os(Self::ENV).map(PathBuf::from);
+        let cache = || {
+            let base =
+                etcetera::choose_base_strategy().map_or_else(|_| std::env::temp_dir(), |b| b.cache_dir());
+            base.join(Self::CACHE).join(Self::DIR)
+        };
+        Self::at(&named.unwrap_or_else(cache))
+    }
+
+    /// Its directory.
+    #[must_use]
+    pub fn dir(&self) -> &Path {
+        &self.root
     }
 
     /// The entry of the package with tree hash `hash`.
@@ -49,12 +95,15 @@ impl Store {
         self.entry(hash).join(Self::SNAPSHOT)
     }
 
+    /// The name and version a dependent declared the package under, for people reading the store.
+    #[must_use]
+    pub fn label(&self, hash: Hash) -> PathBuf {
+        self.entry(hash).join(Self::LABEL)
+    }
+
     /// Where a fetch of `hash` builds its entry before moving it in place.
     #[must_use]
     pub fn staging(&self, hash: Hash) -> PathBuf {
         self.root.join(Self::STAGING).join(hash.algorithm().name()).join(hash.digest())
     }
 }
-
-#[cfg(test)]
-mod tests;

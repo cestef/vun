@@ -16,6 +16,12 @@ pub trait Tree {
     /// # Errors
     /// Returns an error if the directory cannot be read.
     fn entries(&self) -> io::Result<Vec<PathBuf>>;
+
+    /// The bytes of the files at or below this path.
+    ///
+    /// # Errors
+    /// Returns an error if the path does not exist or an entry cannot be read.
+    fn size(&self) -> io::Result<u64>;
 }
 
 impl Tree for Path {
@@ -35,5 +41,9 @@ impl Tree for Path {
             std::fs::read_dir(self)?.map(|e| e.map(|e| e.path())).collect::<io::Result<Vec<_>>>()?;
         entries.sort();
         Ok(entries)
+    }
+
+    fn size(&self) -> io::Result<u64> {
+        self.files()?.iter().try_fold(0, |total, f| Ok(total + f.metadata()?.len()))
     }
 }

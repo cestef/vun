@@ -1,12 +1,14 @@
 //! Minimal version selection (spec 12, sections 3 and 4): every version any package of the graph
-//! requires is a minimum, the selected version of an identity is the largest of them, and the
-//! lockfile records the selection. There is no solver: selection is a function of the manifests.
+//! requires is a minimum, and the selected version of an identity is the largest of them. The
+//! lockfile records every required version, from which the selection follows, so that the store
+//! keeps what checking the project reads. There is no solver: selection is a function of the
+//! manifests.
 
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
 
 use overt_build::lock::{self, Lock, Locked};
-use overt_build::manifest::{DepKind, Identity};
+use overt_build::manifest::{DepKind, Identity, Version};
 use overt_diag::{ChildKind, Diagnostic, Msg, errors};
 use overt_fs::Edit;
 
@@ -15,11 +17,11 @@ use crate::Session;
 use crate::commands::{FETCH_PATH, PROGRAM};
 
 impl Session {
-    /// The versions selected for the graph of `project`, over the packages present as declared;
-    /// the others are reported where their names are used, or by fetching.
+    /// The versions the graph of `project` requires, over the packages present as declared; the
+    /// others are reported where their names are used, or by fetching.
     pub fn select(&mut self, project: PackageKey) -> Lock {
-        let mut chosen: HashMap<Identity, Locked> = HashMap::new();
-        let mut foreign = Vec::new();
+        let mut required_by: HashMap<(Identity, Version), Locked> = HashMap::new();
+        let mut entries = Vec::new();
         let mut seen = HashSet::new();
         let mut pending = vec![project];
         while let Some(package) = pending.pop() {
@@ -36,21 +38,20 @@ impl Session {
                 let name = self.interner.resolve(dep.name).to_owned();
                 let required = Locked { name, version, identity, hash, via: via.clone() };
                 match identity {
-                    None if dep.kind == DepKind::Foreign => foreign.push(required),
+                    None if dep.kind == DepKind::Foreign => entries.push(required),
                     None => {}
-                    Some(identity) => match chosen.get(&identity) {
-                        Some(held) if held.version == version && held.hash != hash => {
-                            self.conflict(held, &required);
-                        }
-                        Some(held) if held.version >= version => {}
-                        _ => {
-                            chosen.insert(identity, required);
+                    Some(identity) => match required_by.get(&(identity, version)) {
+                        Some(held) if held.hash != hash => self.conflict(&held.clone(), &required),
+                        Some(_) => {}
+                        None => {
+                            required_by.insert((identity, version), required.clone());
+                            entries.push(required);
                         }
                     },
                 }
             }
         }
-        Lock::new(chosen.into_values().chain(foreign).collect())
+        Lock::new(entries)
     }
 
     /// What selection chose for `identity` in the project's graph, which is selected once and
@@ -65,15 +66,16 @@ impl Session {
         self.packages.selection.as_ref()?.selected(identity).cloned()
     }
 
-    /// Writes the lockfile of the project in `dir` when its selection differs from it, returning
-    /// the selection.
+    /// Writes the lockfile of the project in `dir` when its selection differs from it, registers
+    /// the project as a root of the store, and returns the selection.
     pub fn write_lock(&mut self, dir: &Path, project: PackageKey) -> Lock {
         let selection = self.select(project);
         let path = dir.join(lock::FILE);
         let text = selection.to_string();
-        if std::fs::read_to_string(&path).ok().as_deref() != Some(text.as_str())
-            && let Err(e) = path.put(&text)
-        {
+        let unchanged = std::fs::read_to_string(&path).ok().as_deref() == Some(text.as_str());
+        // The lockfile is what keeps the project's entries in the shared store.
+        let written = if unchanged { Ok(()) } else { path.put(&text) };
+        if let Err(e) = written.and_then(|()| self.store.register(dir)) {
             let msg = Msg::new().text("cannot write ").code(path.display().to_string());
             self.diag.error(Diagnostic::error(errors::IO_UNWRITABLE_FILE, msg).caused_by(&e));
         }

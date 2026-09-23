@@ -66,6 +66,7 @@ overt-cli = { path = "compiler/tools/cli" }
 overt-xtask = { path = "compiler/tools/xtask" }
 
 # external
+etcetera = "0.10"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
 proc-macro2 = { version = "1", default-features = false }

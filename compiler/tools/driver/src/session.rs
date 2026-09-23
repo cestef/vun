@@ -29,8 +29,8 @@ pub struct Session {
     pub packages: Packages,
     /// Where default dependencies are found.
     pub library: PathBuf,
-    /// The project's store of fetched dependencies, set by the first package found.
-    pub store: Option<Store>,
+    /// The store of fetched packages, the user's unless set.
+    pub store: Store,
 }
 
 impl Default for Session {
@@ -43,7 +43,7 @@ impl Default for Session {
             format: formats::default(),
             packages: Packages::default(),
             library: PathBuf::from(LIBRARY),
-            store: None,
+            store: Store::user(),
         }
     }
 }
