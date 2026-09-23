@@ -115,6 +115,7 @@ impl Session {
                 Change::Added => " was added",
                 Change::Removed => " was removed",
                 Change::Modified => " was modified",
+                Change::Mode => " changed whether it is executable",
             };
             d = d.child(ChildKind::Note, Msg::new().code(path).text(what).text(" since it was fetched"));
         }

@@ -161,7 +161,7 @@ fn dump(session: &mut Session, args: &Args, out: &mut dyn Write, stage: Stage) -
         if let Some(manifest) = session.manifest(file) {
             writeln!(out, "{manifest:#?}")?;
         }
-        return Ok(if session.failed() { Outcome::Failure } else { Outcome::Success });
+        return Ok(session.outcome());
     }
     let tokens = session.lex(file);
     match stage {
@@ -185,7 +185,7 @@ fn dump(session: &mut Session, args: &Args, out: &mut dyn Write, stage: Stage) -
         }
         Stage::Manifest => unreachable!("read above"),
     }
-    Ok(if session.failed() { Outcome::Failure } else { Outcome::Success })
+    Ok(session.outcome())
 }
 
 #[expect(clippy::unnecessary_wraps, reason = "every command has the `Run` signature")]
@@ -194,7 +194,7 @@ fn check(session: &mut Session, args: &Args, _: &mut dyn Write) -> io::Result<Ou
     if let Some(file) = session.load(Path::new(path)) {
         session.check(file);
     }
-    Ok(if session.failed() { Outcome::Failure } else { Outcome::Success })
+    Ok(session.outcome())
 }
 
 fn components(_: &mut Session, _: &Args, out: &mut dyn Write) -> io::Result<Outcome> {
@@ -209,3 +209,11 @@ fn components(_: &mut Session, _: &Args, out: &mut dyn Write) -> io::Result<Outc
 mod pkg;
 #[cfg(test)]
 mod tests;
+
+impl Session {
+    /// How a command that reported its failures as diagnostics ends.
+    #[must_use]
+    pub fn outcome(&self) -> Outcome {
+        if self.failed() { Outcome::Failure } else { Outcome::Success }
+    }
+}

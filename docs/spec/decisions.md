@@ -56,6 +56,8 @@
 | 50 | BLAKE3 everywhere; package hashes are Merkle trees of directory entries, written `blake3:<base32>`; the store nests by algorithm and digest prefix | accepted | 12 |
 | 51 | Packages are published as `.ovpkg`: a zstd stream of the snapshot then the files; fetches verify before storing | accepted | 12 |
 | 52 | Errors keep their source chains; diagnostics render them as `caused by` children | accepted | 10 |
+| 53 | `overt pkg add` trusts an archive on first use and writes its entry as a literal into `.deps`, keeping the manifest's layout; `overt pkg pack` writes `<name>-<version>.ovpkg` | proposed | 12 |
+| 54 | A snapshot entry records whether its file is executable; the tree hash has a third entry kind for executable files and `.ovpkg` (version 2) restores the bit | accepted (the user's Nix review) | 12 |
 
 ## Questions, with how they were settled
 

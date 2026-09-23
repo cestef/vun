@@ -1,13 +1,14 @@
 //! The package archive, `.ovpkg`: one zstd stream holding a header, the snapshot of the package's
-//! files (their paths and hashes, from which the package hash is computed), then each file's bytes
-//! in snapshot order. Archives carry no timestamps, owners or modes, so identical trees give
-//! identical archives, and unpacking checks every file against the snapshot as it is written.
+//! files (their paths, hashes and whether they are executable, from which the package hash is
+//! computed), then each file's bytes in snapshot order. Archives carry no timestamps, owners or
+//! other modes, so identical trees give identical archives, and unpacking checks every file against
+//! the snapshot as it is written.
 
 use std::fs;
 use std::io::{self, Read, Write};
 use std::path::{Path, PathBuf};
 
-use overt_fs::Edit;
+use overt_fs::{Edit, Modes};
 use overt_hash::{Hash, Snapshot};
 
 pub struct Archive;
@@ -40,9 +41,10 @@ impl std::fmt::Display for Malformed {
 impl std::error::Error for Malformed {}
 
 impl Archive {
-    pub const EXTENSION: &str = "ovpkg";
+    pub const SUFFIX: &str = ".ovpkg";
     const MAGIC: &[u8; 8] = b"overtpkg";
-    const VERSION: u32 = 1;
+    /// 2: snapshot lines carry the mode.
+    const VERSION: u32 = 2;
     /// zstd level for publishing: archives are written once and read many times, and decoding
     /// speed does not depend on the level.
     const LEVEL: i32 = 19;
@@ -93,11 +95,13 @@ impl Archive {
             .ok_or_else(|| Self::invalid(Malformed::Index))?;
         for (path, expected) in snapshot.files() {
             let contents = Self::read_part(&mut input, Self::MAX_FILE)?;
-            if Hash::of(&contents) != expected {
+            if Hash::of(&contents) != expected.hash {
                 let path = path.join(&Snapshot::PATH_SEPARATOR.to_string());
                 return Err(Self::invalid(Malformed::Mismatch(path)));
             }
-            Self::join(dir, path).put(contents)?;
+            let target = Self::join(dir, path);
+            target.put(contents)?;
+            target.set_mode(expected.mode)?;
         }
         Ok(snapshot)
     }

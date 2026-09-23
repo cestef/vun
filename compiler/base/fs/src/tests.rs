@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use super::{Edit, Relative, Scratch, Tree};
+use super::{Edit, Mode, Modes, Relative, Scratch, Tree};
 
 fn names(paths: &[PathBuf], root: &std::path::Path) -> Vec<String> {
     paths.iter().map(|p| p.strip_prefix(root).unwrap().to_string_lossy().into_owned()).collect()
@@ -48,4 +48,16 @@ fn relative_paths_climb_to_the_common_directory() {
     assert_eq!(relative, std::path::Path::new("../libs/util"));
     assert_eq!(dir.join("app").relative_to(&dir.join("app")).unwrap(), std::path::Path::new("."));
     assert!(dir.join("absent").relative_to(dir.path()).is_none());
+}
+
+#[cfg(unix)]
+#[test]
+fn modes_are_set_and_read_back() {
+    let dir = Scratch::new("mode");
+    let path = dir.write("configure", "#!/bin/sh\n");
+    assert_eq!(path.mode(), Mode::Regular);
+    path.set_mode(Mode::Executable).unwrap();
+    assert_eq!(path.mode(), Mode::Executable);
+    path.set_mode(Mode::Regular).unwrap();
+    assert_eq!(path.mode(), Mode::Regular);
 }

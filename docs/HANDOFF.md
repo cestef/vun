@@ -32,7 +32,8 @@ ariadne renderer; handoff; settled open questions (decisions 28 to 44); HIR; nam
 `names.unresolved`; `overt-suggest` and `overt-hash`; graph, fs and outline crates; BLAKE3 Merkle
 hashes and the nested store; `overt pkg fetch`, `.ovpkg` and error chains; file and directory
 duplicates, `overt_fs::Edit` and `Scratch`; `overt pkg add` and `pack`, literals written back
-(`Literal::source`, `laid_out`, `Decl::insert`, `Edit::apply`).
+(`Literal::source`, `laid_out`, `Decl::insert`, `Edit::apply`); the executable bit in snapshots,
+tree hashes and `.ovpkg` 2.
 The user asked for commits per batch: commit each finished batch with `jj`.
 
 ## 2. How the user works (non-negotiable)
@@ -48,7 +49,9 @@ The user asked for commits per batch: commit each finished batch with `jj`.
 - Code: generic, reusable and pluggable; **no hard-coded names or special cases**, behavior driven
   by declared data; single source of truth (generate, do not restate); no magic values; typed
   messages; structured errors; verifiers for every representation; fuzzing only in `fuzz/`.
-- Tooling: `jj` only; conventional one-line commits without AI mentions; commit only when asked.
+- Tooling: `jj` only; conventional one-line commits without AI mentions; commit each finished
+  batch and keep going to the next milestone without stopping. Tests run with `cargo nextest run`.
+- Methods on the owning type, never orphan helper functions; follow the surrounding conventions.
 - Writing: never em dashes; no unicode arrows in prose. Caveman-style terse replies are enabled
   by a hook; code, docs and commits are written normally.
 
@@ -105,10 +108,10 @@ tested (the rest are stubs):
 | `overt-origin` | `OriginId`, `Origin`, `Via`, `OriginTable`. |
 | `overt-diag` | `DiagId`, `Severity`, `Msg` (typed parts, `append`), `Label`, `Fix`, `ChildKind` (Display), `Diagnostic`, `DiagCtxt`, `DiagCx::error_at`, `DiagSink`; `Msg::did_you_mean`; `errors` (generated). |
 | `overt-suggest` | `closest` (did-you-mean by edit distance), `Lookup` on slices (find by name or the closest name). Generic, no diag types. |
-| `overt-hash` | BLAKE3 only. `Algorithm` (typed, `name`), `Hash` (`blake3:<base32>`, `parse`, `digest`, `of(bytes)`, `tree(dir, include)`), `Snapshot` (per-file hashes by path, `root` = Merkle tree over path components with directory nodes in a derived key, `changes`, text form, portable plain-component paths), `Change`. Package identity, manifest `.hash`, every cache key. |
+| `overt-hash` | BLAKE3 only. `Algorithm` (typed, `name`), `Hash` (`blake3:<base32>`, `parse`, `digest`, `of(bytes)`, `tree(dir, include)`), `Snapshot` (per-file `Entry { hash, mode }` by path, `root` = Merkle tree over path components with directory nodes in a derived key, `changes`, text form, portable plain-component paths), `Change`. Package identity, manifest `.hash`, every cache key. |
 | `overt-pkg` | `Mirror` (`parse`, `fetch`), `SCHEMES` (https, http, file), `FORMATS` (`.ovpkg`, `.tar.zst`, `.tar.xz`, `.tar.gz`, `.tar`, `.zip`; `strip` of a forge's top directory), `Archive` (`.ovpkg`: `pack`, `unpack` verifying each file), `Failure`/`Malformed` with sources. |
 | `overt-graph` | `Requirements<K>` (`add`, `order`, `OrderError`): the pass manager's ordering. |
-| `overt-fs` | `Tree` on `Path`: `files` (recursive, sorted), `entries`. `Edit` on `Path`: `put` (creates parents), `remove` (absent is removed), `fresh` (empty directory), `replace_with` (move a directory in whole). `Scratch`: a test directory removed on drop. Every filesystem write in the compiler and its tests goes through them. |
+| `overt-fs` | `Tree` on `Path`: `files` (recursive, sorted), `entries`. `Modes` on `Path` (`mode`, `set_mode`: `Mode::{Regular, Executable}`); `Relative` (`relative_to`). `Edit` on `Path`: `put` (creates parents), `remove` (absent is removed), `fresh` (empty directory), `replace_with` (move a directory in whole). `Scratch`: a test directory removed on drop. Every filesystem write in the compiler and its tests goes through them. |
 | `overt-outline` | `Outline` + `Outlined::node`: indented tree text for the CST and HIR dumps. |
 | `overt-grammar` | `generated.rs`: `NodeField`, `NodeSlot`, `Count`, `NodeKind::slots` (children per kind, from tagged entries), `TokenKind` (+ `TRIVIA`, `ATOMS`, `KEYWORDS`, `PUNCTUATION`, `END`, `text()`), `NodeKind` (`LEAVES`, `BRANCHES`), `Context`, `Assoc`, tables `CONTEXTUAL`, `DELIMITERS`, `INFIX`, `PREFIX`, `POSTFIX`, `ASSIGN`, `OPERANDS`, `ELEMENT_TYPES`, `LITERAL_TYPES`. `lib.rs` derives lookups: `punctuation`, `keyword`, `is_trivia`, `infix` (`Prec`, `Infix`), `closer`/`opens`/`closes`, `is_leaf`, `contextual`. |
 | `overt-syntax` | `tokens` (SoA tokens + trivia side table, `verify`); `lexer` (`lex`, recovery, `literal(kind, text)` for string values, backslash escapes); `cst` (postorder `(kind, Anchor, size)`, `Anchor::{Token, Missing}`, `children`, `span`, `dump`, `verify` -> `Malformed`); `parser` (`parse`); `literal` (`declarations` -> `Decl { name, doc, value: Literal, span }`, `Literal::Tagged`); `literal::{print, insert}` write values back (`Literal::source`, `Literal::laid_out` within `WIDTH`, `Decl::insert` -> `overt_diag::Edit`); `Cst::fields(n)` -> `Fields` (`get`, `one`, `assigned`), matched against the kind's slots; `children_rev` walks without allocating. |
@@ -144,12 +147,12 @@ without a failure. clippy pedantic is clean.
 ## 6. Commands
 
 ```sh
-cargo fmt && cargo clippy --all-targets && cargo test && cargo xtask generate --check && cargo xtask lines
+cargo fmt && cargo clippy --all-targets && cargo nextest run && cargo xtask generate --check && cargo xtask lines
 cargo run -q -p overt-cli -- dump cst corpus/accept/integers/ring_buffer.ov
 cargo run -q -p overt-cli -- help dump
 cargo xtask generate                       # after editing grammar.ov or errors.ov
 cargo xtask corpus                         # corpus verdicts: pass, pending, fail
-OVERT_BLESS=1 cargo test -p overt-syntax   # accept snapshot changes, after reading the diff
+OVERT_BLESS=1 cargo nextest run -p overt-syntax  # accept snapshot changes, after reading the diff
 cd fuzz && cargo +nightly fuzz run parse -- -max_total_time=120   # cargo-fuzz is installed now
 typst compile whitepaper/main.typ whitepaper/overt.pdf
 ```
@@ -179,7 +182,12 @@ In order:
    not files (`..lang.int.X` where `X` is a `struct`); member paths (`a.b.c` checked against
    namespaces) belong with sema. A name declared in `x.ov` and held in `x/` is `names.duplicate`
    (`Session::check_children`).
-2. Packages: minimal version selection and the lockfile (spec 12, sections 3 and 4). Fetching,
+2. Packaging roadmap from the user's Nix review, in order: a shared user store
+   (`~/.cache/overt/store`) with project lockfiles as GC roots and `overt cache gc`; readable store
+   entries (the hash stays the key); planned builds (typed step records, `overt build --dry-run`,
+   steps keyed by inputs); signed binary caches (`.caches`, ed25519 trusted keys). Later: early
+   cutoff, sandboxed steps, `--verify-reproducible`, `overt pkg why`, a `.replace` override.
+   Packages: minimal version selection and the lockfile (spec 12, sections 3 and 4). Fetching,
    verification, `overt pkg add` (trust on first use, the entry written through
    `Dep::declare` and `Decl::insert`) and `overt pkg pack` exist.
 3. `names.private` (needs member types: sema), `binding.hole_value` (needs attribute resolution).

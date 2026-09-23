@@ -1,11 +1,11 @@
 //! Writing literal values as Overt source, the inverse of reading them, so that tools change
 //! manifests through typed values rather than formatted text.
 
-use std::fmt::{self, Write};
+use std::fmt::{self, Write as _};
 
 use overt_grammar::TokenKind;
 
-use super::{Decl, Literal};
+use super::Literal;
 use crate::lexer::{ESCAPE, SIMPLE_ESCAPES, is_ident};
 
 /// Why a value has no literal source.
@@ -39,19 +39,15 @@ impl std::error::Error for Unwritable {}
 pub const WIDTH: usize = 100;
 pub(super) const INDENT: &str = "    ";
 
-pub(super) fn token(kind: TokenKind) -> &'static str {
-    kind.text().expect("punctuation has a spelling")
-}
-
 impl Literal<'_> {
     /// The source that reads back as this value, on one line.
     ///
     /// # Errors
     /// Returns why the value has no literal source.
     pub fn source(&self) -> Result<String, Unwritable> {
-        let mut out = String::new();
-        self.write(&mut out)?;
-        Ok(out)
+        let mut w = Writer::default();
+        w.value(self)?;
+        Ok(w.out)
     }
 
     /// The source of this value starting `column` characters into a line indented by `indent`:
@@ -60,159 +56,168 @@ impl Literal<'_> {
     /// # Errors
     /// Returns why the value has no literal source.
     pub fn laid_out(&self, indent: &str, column: usize) -> Result<String, Unwritable> {
-        let flat = self.source()?;
-        let items: Vec<Item<'_, '_>> = match self {
-            Self::List(items) if !items.is_empty() => items.iter().map(Item::Value).collect(),
-            Self::Record(fields) if !fields.is_empty() => fields.iter().map(Item::Field).collect(),
-            _ => return Ok(flat),
-        };
-        if column + flat.len() <= WIDTH {
-            return Ok(flat);
-        }
-        let inner = format!("{indent}{INDENT}");
-        let mut out = token(TokenKind::DotLBrace).to_owned();
-        for item in items {
-            out.push('\n');
-            out.push_str(&inner);
-            out.push_str(&item.laid_out(&inner)?);
-            out.push_str(token(TokenKind::Comma));
-        }
-        out.push('\n');
-        out.push_str(indent);
-        out.push_str(token(TokenKind::RBrace));
-        Ok(out)
-    }
-
-    fn write(&self, out: &mut String) -> Result<(), Unwritable> {
-        match self {
-            Self::Name(name) => write_field_name(name, out),
-            Self::Tagged(tag, payload) => {
-                write_field_name(tag, out)?;
-                out.push_str(token(TokenKind::LParen));
-                write_items(payload, out, Self::write)?;
-                out.push_str(token(TokenKind::RParen));
-                Ok(())
-            }
-            Self::String(text) => {
-                write_string(text, out);
-                Ok(())
-            }
-            Self::Int(value) => {
-                let _ = write!(out, "{value}");
-                Ok(())
-            }
-            Self::List(items) => write_braced(items, out, Self::write),
-            Self::Record(fields) => write_braced(fields, out, |d, out| write_field(d.name, &d.value, out)),
-            Self::Enum(_) | Self::Namespace(_) => Err(Unwritable::Type),
-            Self::Opaque => Err(Unwritable::Opaque),
-        }
+        Item::Value(self).laid_out(indent, column)
     }
 }
 
-/// An item of a list or record laid out on its own line.
-enum Item<'a, 's> {
+/// Overt source being written.
+#[derive(Default)]
+pub(super) struct Writer {
+    pub(super) out: String,
+}
+
+impl Writer {
+    /// How punctuation of `kind` is spelled.
+    pub(super) fn spelling(kind: TokenKind) -> &'static str {
+        kind.text().expect("punctuation has a spelling")
+    }
+
+    pub(super) fn token(&mut self, kind: TokenKind) -> &mut Self {
+        self.out.push_str(Self::spelling(kind));
+        self
+    }
+
+    pub(super) fn text(&mut self, text: &str) -> &mut Self {
+        self.out.push_str(text);
+        self
+    }
+
+    /// A line break, then `indent`.
+    pub(super) fn line(&mut self, indent: &str) -> &mut Self {
+        self.out.push('\n');
+        self.text(indent)
+    }
+
+    /// `.name`, escaped when the name is a keyword.
+    fn name(&mut self, name: &str) -> Result<&mut Self, Unwritable> {
+        if !is_ident(name) {
+            return Err(Unwritable::Name);
+        }
+        self.token(TokenKind::Dot);
+        if TokenKind::keyword(name).is_some() {
+            self.out.push(ESCAPE);
+        }
+        Ok(self.text(name))
+    }
+
+    /// `.name = `, before a field's value.
+    pub(super) fn field(&mut self, name: &str) -> Result<&mut Self, Unwritable> {
+        Ok(self.name(name)?.text(" ").token(TokenKind::Eq).text(" "))
+    }
+
+    fn value(&mut self, value: &Literal<'_>) -> Result<(), Unwritable> {
+        match value {
+            Literal::Name(name) => self.name(name).map(drop),
+            Literal::Tagged(tag, payload) => {
+                self.name(tag)?.token(TokenKind::LParen);
+                self.items(payload, Self::value)?;
+                self.token(TokenKind::RParen);
+                Ok(())
+            }
+            Literal::String(text) => {
+                self.string(text);
+                Ok(())
+            }
+            Literal::Int(value) => {
+                let _ = write!(self.out, "{value}");
+                Ok(())
+            }
+            Literal::List(items) => self.braced(items, Self::value),
+            Literal::Record(fields) => self.braced(fields, |w, d| w.field(d.name)?.value(&d.value)),
+            Literal::Enum(_) | Literal::Namespace(_) => Err(Unwritable::Type),
+            Literal::Opaque => Err(Unwritable::Opaque),
+        }
+    }
+
+    /// `.{ a, b }`, or `.{}` when empty.
+    fn braced<T>(
+        &mut self,
+        items: &[T],
+        item: impl Fn(&mut Self, &T) -> Result<(), Unwritable>,
+    ) -> Result<(), Unwritable> {
+        self.token(TokenKind::DotLBrace);
+        if !items.is_empty() {
+            self.text(" ");
+            self.items(items, item)?;
+            self.text(" ");
+        }
+        self.token(TokenKind::RBrace);
+        Ok(())
+    }
+
+    /// `a, b`
+    fn items<T>(
+        &mut self,
+        items: &[T],
+        item: impl Fn(&mut Self, &T) -> Result<(), Unwritable>,
+    ) -> Result<(), Unwritable> {
+        for (i, it) in items.iter().enumerate() {
+            if i > 0 {
+                self.token(TokenKind::Comma).text(" ");
+            }
+            item(self, it)?;
+        }
+        Ok(())
+    }
+
+    /// A quoted string whose escapes read back as `text`.
+    fn string(&mut self, text: &str) {
+        const QUOTE: char = '"';
+        self.out.push(QUOTE);
+        for c in text.chars() {
+            match SIMPLE_ESCAPES.iter().find(|&&(_, value)| value == c && c != '\'') {
+                Some(&(escape, _)) => {
+                    self.out.push(ESCAPE);
+                    self.out.push(escape);
+                }
+                None if c.is_control() => {
+                    let _ = write!(self.out, "{ESCAPE}u{{{:x}}}", u32::from(c));
+                }
+                None => self.out.push(c),
+            }
+        }
+        self.out.push(QUOTE);
+    }
+}
+
+/// What is laid out on a line of its own: a value, or a record's field.
+pub(super) enum Item<'a, 's> {
     Value(&'a Literal<'s>),
-    Field(&'a Decl<'s>),
+    Field(&'a str, &'a Literal<'s>),
 }
 
 impl Item<'_, '_> {
-    fn laid_out(&self, indent: &str) -> Result<String, Unwritable> {
-        // The comma after the item counts toward the width.
-        let column = indent.len() + token(TokenKind::Comma).len();
-        match self {
-            Self::Value(value) => value.laid_out(indent, column),
-            Self::Field(decl) => laid_out_field(decl.name, &decl.value, indent, column),
-        }
-    }
-}
-
-/// `.name = value`, laid out from `column`.
-pub(super) fn laid_out_field(
-    name: &str,
-    value: &Literal<'_>,
-    indent: &str,
-    column: usize,
-) -> Result<String, Unwritable> {
-    let mut out = String::new();
-    write_field_prefix(name, &mut out)?;
-    let value = value.laid_out(indent, column + out.len())?;
-    out.push_str(&value);
-    Ok(out)
-}
-
-fn write_field(name: &str, value: &Literal<'_>, out: &mut String) -> Result<(), Unwritable> {
-    write_field_prefix(name, out)?;
-    value.write(out)
-}
-
-/// `.name = `
-pub(super) fn write_field_prefix(name: &str, out: &mut String) -> Result<(), Unwritable> {
-    write_field_name(name, out)?;
-    out.push(' ');
-    out.push_str(token(TokenKind::Eq));
-    out.push(' ');
-    Ok(())
-}
-
-/// `.name`, escaped when the name is a keyword.
-fn write_field_name(name: &str, out: &mut String) -> Result<(), Unwritable> {
-    if !is_ident(name) {
-        return Err(Unwritable::Name);
-    }
-    out.push_str(token(TokenKind::Dot));
-    if TokenKind::keyword(name).is_some() {
-        out.push(ESCAPE);
-    }
-    out.push_str(name);
-    Ok(())
-}
-
-/// `.{ a, b }`, or `.{}` when empty.
-fn write_braced<T>(
-    items: &[T],
-    out: &mut String,
-    write: impl Fn(&T, &mut String) -> Result<(), Unwritable>,
-) -> Result<(), Unwritable> {
-    out.push_str(token(TokenKind::DotLBrace));
-    if !items.is_empty() {
-        out.push(' ');
-        write_items(items, out, write)?;
-        out.push(' ');
-    }
-    out.push_str(token(TokenKind::RBrace));
-    Ok(())
-}
-
-fn write_items<T>(
-    items: &[T],
-    out: &mut String,
-    write: impl Fn(&T, &mut String) -> Result<(), Unwritable>,
-) -> Result<(), Unwritable> {
-    for (i, item) in items.iter().enumerate() {
-        if i > 0 {
-            out.push_str(token(TokenKind::Comma));
-            out.push(' ');
-        }
-        write(item, out)?;
-    }
-    Ok(())
-}
-
-/// A quoted string whose escapes read back as `text`.
-fn write_string(text: &str, out: &mut String) {
-    const QUOTE: char = '"';
-    out.push(QUOTE);
-    for c in text.chars() {
-        match SIMPLE_ESCAPES.iter().find(|&&(_, value)| value == c && c != '\'') {
-            Some(&(escape, _)) => {
-                out.push(ESCAPE);
-                out.push(escape);
+    /// Its source starting `column` characters into a line indented by `indent`, on one line when
+    /// it fits within [`WIDTH`].
+    pub(super) fn laid_out(&self, indent: &str, column: usize) -> Result<String, Unwritable> {
+        let value = match *self {
+            Self::Field(name, value) => {
+                let mut w = Writer::default();
+                w.field(name)?;
+                let value = Item::Value(value).laid_out(indent, column + w.out.len())?;
+                return Ok(w.text(&value).out.clone());
             }
-            None if c.is_control() => {
-                let _ = write!(out, "{ESCAPE}u{{{:x}}}", u32::from(c));
-            }
-            None => out.push(c),
+            Self::Value(value) => value,
+        };
+        let flat = value.source()?;
+        let items: Vec<Item<'_, '_>> = match value {
+            Literal::List(items) => items.iter().map(Item::Value).collect(),
+            Literal::Record(fields) => fields.iter().map(|d| Item::Field(d.name, &d.value)).collect(),
+            _ => Vec::new(),
+        };
+        if items.is_empty() || column + flat.len() <= WIDTH {
+            return Ok(flat);
         }
+        let inner = format!("{indent}{INDENT}");
+        // The comma after each item counts toward the width.
+        let column = inner.len() + Writer::spelling(TokenKind::Comma).len();
+        let mut w = Writer::default();
+        w.token(TokenKind::DotLBrace);
+        for item in items {
+            let item = item.laid_out(&inner, column)?;
+            w.line(&inner).text(&item).token(TokenKind::Comma);
+        }
+        w.line(indent).token(TokenKind::RBrace);
+        Ok(w.out)
     }
-    out.push(QUOTE);
 }

@@ -22,7 +22,7 @@ corpus/        programs that must compile, and programs that must be rejected
 
 ```sh
 cargo build                 # the toolchain
-cargo test                  # unit tests
+cargo nextest run           # tests
 cargo run -p overt-cli      # the `overt` command
 cargo xtask generate        # regenerate Rust tables from grammar.ov and errors.ov
 cargo xtask corpus          # corpus verdicts: pass, pending, fail

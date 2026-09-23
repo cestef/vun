@@ -1,5 +1,7 @@
 use std::path::Path;
 
+use overt_fs::{Mode, Modes, Scratch};
+
 use super::{Algorithm, Change, Hash, Snapshot, base32};
 
 #[test]
@@ -47,7 +49,25 @@ fn snapshots_round_trip_and_name_changed_files() {
 fn snapshots_refuse_paths_leaving_their_tree() {
     let h = Hash::of(b"x");
     for path in ["../x", "a/../../x", "/etc/x", "a//b", ".", "a\\b"] {
-        assert_eq!(Snapshot::parse(&format!("{h} {path}")), None, "{path}");
+        assert_eq!(Snapshot::parse(&format!("{h} - {path}")), None, "{path}");
     }
-    assert!(Snapshot::parse(&format!("{h} a/b.ov")).is_some());
+    assert!(Snapshot::parse(&format!("{h} - a/b.ov")).is_some());
+    assert_eq!(Snapshot::parse(&format!("{h} a/b.ov")), None, "the mode is required");
+    assert_eq!(Snapshot::parse(&format!("{h} rw a/b.ov")), None);
+}
+
+#[test]
+fn the_executable_bit_is_part_of_the_tree() {
+    let dir = Scratch::new("mode");
+    let script = dir.write("configure", "#!/bin/sh\n");
+    let include = ["configure".to_owned()];
+    let regular = Snapshot::of(dir.path(), &include);
+    script.set_mode(Mode::Executable).unwrap();
+    let executable = Snapshot::of(dir.path(), &include);
+    if script.mode() == Mode::Executable {
+        assert_ne!(regular.root(), executable.root());
+        assert!(executable.to_string().contains(" x configure"), "{executable}");
+        assert_eq!(Snapshot::parse(&executable.to_string()), Some(executable.clone()));
+        assert_eq!(regular.changes(&executable), [("configure".to_owned(), Change::Mode)]);
+    }
 }

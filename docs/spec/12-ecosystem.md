@@ -115,8 +115,9 @@ build := (b: &mut std.build.Build) {
   algorithm is named so that another can follow; a hash of an unknown algorithm is an error.
 - **Tree hash.** The hash is a Merkle tree over directory entries. A file's node is the BLAKE3 hash
   of its contents; a directory's is the BLAKE3 hash, in a key derived from a context string reserved
-  for directories, of its entries in name order: a kind (file or directory), the name as one path
-  component, and the child's hash. Paths are components, never separators, so a tree hashes the
+  for directories, of its entries in name order: a kind (file, executable file or directory), the
+  name as one path component, and the child's hash. Being executable is the one mode a package
+  keeps, since vendor trees ship scripts such as `configure`; elsewhere than Unix no file is. Paths are components, never separators, so a tree hashes the
   same on every platform; a mismatch can name the file that differs; and a file's hash is the one
   the compiler's caches already use, so nothing is hashed twice. BLAKE3 is also the only hash the
   toolchain uses, for caches as well: measured at 2 to 3 GiB/s on one core and 12 GiB/s on 14,
@@ -124,7 +125,7 @@ build := (b: &mut std.build.Build) {
 - **Store.** Fetched packages are kept in the project's `.overt/store`, nested by the hash alone:
   `.overt/store/blake3/<first 2 digest characters>/<remaining 50>/`, so the first level has at most
   1024 directories. An entry holds the unpacked `package/` and the `snapshot` it was verified with
-  (one `hash path` line per file). Loading a stored package recomputes its tree hash; a difference
+  (one `hash mode path` line per file, the mode `-` or `x` for executable). Loading a stored package recomputes its tree hash; a difference
   is `package.hash_mismatch`, which names every file added, removed or modified since the fetch.
 - **Fetching.** `overt pkg fetch` walks the dependency graph from the project and stores every
   archive dependency the store lacks. Mirrors are tried in order; an archive is unpacked under
@@ -140,7 +141,8 @@ build := (b: &mut std.build.Build) {
   manifest's layout.
 - **Archives.** Overt packages are published as `.ovpkg`: one zstd stream (level 19, 128 MiB
   window) holding a header, the snapshot, then each file's bytes in snapshot order. It carries no
-  timestamps, owners or modes, so identical trees give identical archives, and unpacking checks
+  timestamps, owners or modes other than the executable bit of the snapshot, so identical trees
+  give identical archives, and unpacking checks
   each file against the snapshot as it is written. Snapshot paths are plain components (no `..`,
   no separators, no characters special on some platform), so an archive cannot write outside its
   tree. Foreign archives are read as `.tar.zst`, `.tar.xz`, `.tar.gz`, `.tar` and `.zip`; their

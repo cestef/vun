@@ -1,5 +1,6 @@
 //! Tree hashes: a Merkle tree over directory entries. A file's node is the hash of its contents; a
-//! directory's is the hash of its entries in name order, each a kind, a name and the child's hash.
+//! directory's is the hash of its entries in name order, each a kind (file, executable file or
+//! directory), a name and the child's hash.
 //! Names are single path components, so a tree hashes the same on every platform, and a file's
 //! hash is the one every cache already computes.
 
@@ -7,7 +8,7 @@ use std::collections::BTreeMap;
 use std::fmt;
 use std::path::{Component, Path};
 
-use overt_fs::Tree;
+use overt_fs::{Mode, Modes, Tree};
 
 use super::{Algorithm, Hash};
 
@@ -17,7 +18,14 @@ const DIRECTORY_CONTEXT: &str = "overt 2026 directory node";
 /// The hash of every file of a tree, by its path, from which the tree's hash is computed.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Snapshot {
-    files: BTreeMap<Vec<String>, Hash>,
+    files: BTreeMap<Vec<String>, Entry>,
+}
+
+/// A file of a snapshot: the hash of its contents and its mode.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Entry {
+    pub hash: Hash,
+    pub mode: Mode,
 }
 
 /// How a file differs between two snapshots.
@@ -26,10 +34,12 @@ pub enum Change {
     Added,
     Removed,
     Modified,
+    /// Same contents, made executable or no longer executable.
+    Mode,
 }
 
 enum Node {
-    File(Hash),
+    File(Entry),
     Directory(BTreeMap<String, Node>),
 }
 
@@ -38,7 +48,11 @@ enum Node {
 enum Kind {
     File = 0,
     Directory = 1,
+    Executable = 2,
 }
+
+/// How each mode is marked in the text form.
+const MODES: [(char, Mode); 2] = [('-', Mode::Regular), ('x', Mode::Executable)];
 
 impl Snapshot {
     /// Separates path components in the text form, on every platform.
@@ -61,14 +75,14 @@ impl Snapshot {
                     _ => None,
                 })
                 .collect();
-            files.insert(components, Hash::of(&bytes));
+            files.insert(components, Entry { hash: Hash::of(&bytes), mode: file.mode() });
         }
         Self { files }
     }
 
     /// The files by path components, in path order.
-    pub fn files(&self) -> impl Iterator<Item = (&[String], Hash)> {
-        self.files.iter().map(|(path, &hash)| (path.as_slice(), hash))
+    pub fn files(&self) -> impl Iterator<Item = (&[String], Entry)> {
+        self.files.iter().map(|(path, &entry)| (path.as_slice(), entry))
     }
 
     /// The tree hash.
@@ -85,10 +99,11 @@ impl Snapshot {
     #[must_use]
     pub fn changes(&self, other: &Self) -> Vec<(String, Change)> {
         let mut changes: Vec<(&Vec<String>, Change)> = Vec::new();
-        for (path, hash) in &self.files {
+        for (path, entry) in &self.files {
             match other.files.get(path) {
                 None => changes.push((path, Change::Removed)),
-                Some(h) if h != hash => changes.push((path, Change::Modified)),
+                Some(e) if e.hash != entry.hash => changes.push((path, Change::Modified)),
+                Some(e) if e.mode != entry.mode => changes.push((path, Change::Mode)),
                 Some(_) => {}
             }
         }
@@ -98,13 +113,18 @@ impl Snapshot {
         changes.into_iter().map(|(p, c)| (Self::path(p), c)).collect()
     }
 
-    /// Reads the text form: one `hash path` line per file. Every component must be a plain name,
-    /// so that a snapshot from an untrusted archive cannot name a file outside its tree.
+    /// Reads the text form: one `hash mode path` line per file, the mode `-` or `x` (executable).
+    /// Every component must be a plain name, so that a snapshot from an untrusted archive cannot
+    /// name a file outside its tree.
     #[must_use]
     pub fn parse(text: &str) -> Option<Self> {
         let mut files = BTreeMap::new();
         for line in text.lines() {
-            let (hash, path) = line.split_once(' ')?;
+            let (hash, rest) = line.split_once(' ')?;
+            let (mark, path) = rest.split_once(' ')?;
+            let mut marks = mark.chars();
+            let mark = marks.next().filter(|_| marks.next().is_none())?;
+            let mode = MODES.iter().find(|&&(m, _)| m == mark)?.1;
             let components: Vec<String> = path.split(Self::PATH_SEPARATOR).map(str::to_owned).collect();
             let plain = |c: &String| {
                 !c.contains(Self::FORBIDDEN)
@@ -113,7 +133,7 @@ impl Snapshot {
             if !components.iter().all(plain) {
                 return None;
             }
-            files.insert(components, Hash::parse(hash)?);
+            files.insert(components, Entry { hash: Hash::parse(hash)?, mode });
         }
         Some(Self { files })
     }
@@ -125,12 +145,15 @@ impl Snapshot {
 
 impl fmt::Display for Snapshot {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.files.iter().try_for_each(|(path, hash)| writeln!(f, "{hash} {}", Self::path(path)))
+        self.files.iter().try_for_each(|(path, entry)| {
+            let mark = MODES.iter().find(|&&(_, m)| m == entry.mode).map_or('-', |&(c, _)| c);
+            writeln!(f, "{} {mark} {}", entry.hash, Self::path(path))
+        })
     }
 }
 
 impl Node {
-    fn insert(&mut self, components: &[String], leaf: Hash) {
+    fn insert(&mut self, components: &[String], leaf: Entry) {
         let Self::Directory(entries) = self else { return };
         match components {
             [] => {}
@@ -146,12 +169,13 @@ impl Node {
 
     fn hash(&self) -> Hash {
         match self {
-            Self::File(leaf) => *leaf,
+            Self::File(leaf) => leaf.hash,
             Self::Directory(entries) => {
                 let mut hasher = blake3::Hasher::new_derive_key(DIRECTORY_CONTEXT);
                 for (name, child) in entries {
                     let kind = match child {
-                        Self::File(_) => Kind::File,
+                        Self::File(Entry { mode: Mode::Regular, .. }) => Kind::File,
+                        Self::File(Entry { mode: Mode::Executable, .. }) => Kind::Executable,
                         Self::Directory(_) => Kind::Directory,
                     };
                     hasher.update(&[kind as u8]);

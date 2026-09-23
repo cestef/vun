@@ -19,7 +19,7 @@ pub struct Format {
 
 pub const FORMATS: &[Format] = &[
     Format {
-        suffixes: &[".ovpkg"],
+        suffixes: &[Archive::SUFFIX],
         unpack: |bytes, dir| Archive::unpack(bytes, dir).map(drop),
         strip: false,
     },

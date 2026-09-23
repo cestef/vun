@@ -6,7 +6,7 @@ mod tree;
 
 use std::fmt;
 
-pub use tree::{Change, Snapshot};
+pub use tree::{Change, Entry, Snapshot};
 
 /// The hash functions a [`Hash`] can come from; the text form names it, so that another can
 /// follow without ambiguity.

@@ -21,6 +21,7 @@ use std::path::{Path, PathBuf};
 use overt_build::layout::{Location, MANIFEST};
 use overt_build::manifest::{self, DEFAULT_DEPS, DEFAULT_PRELUDE, DepKind, Manifest, Source};
 use overt_build::store::Store;
+use overt_diag::{Diagnostic, Msg, errors};
 use overt_hash::{Hash, Snapshot};
 use overt_intern::{Interner, Symbol};
 use overt_span::{FileId, SourceMap, Span};
@@ -121,6 +122,24 @@ impl Session {
             self.store = Some(Store::in_project(&project));
         }
         key
+    }
+
+    /// The project around the current directory, whose store then holds fetched packages; its
+    /// absence is reported.
+    ///
+    /// # Errors
+    /// Returns an error if the current directory cannot be read.
+    pub fn project(&mut self) -> std::io::Result<Option<(PathBuf, PackageKey)>> {
+        let here = std::env::current_dir()?;
+        let found = here.ancestors().find_map(|d| self.package_at(d).map(|p| (d.to_path_buf(), p)));
+        if let Some((dir, _)) = &found {
+            self.store = Some(Store::in_project(dir));
+        } else {
+            let msg = Msg::new().text("no ").code(MANIFEST).text(" declaring ").code(manifest::PACKAGE);
+            let msg = msg.text(" in this directory or above");
+            self.diag.error(Diagnostic::error(errors::PACKAGE_NO_PROJECT, msg));
+        }
+        Ok(found)
     }
 
     /// The project's store; the current directory's before a project is found.
