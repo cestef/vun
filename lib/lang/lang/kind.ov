@@ -1,0 +1,4 @@
+//! Kind restrictions (spec 05, section 1).
+
+linear: Attribute = _;
+fixed: Attribute = _;

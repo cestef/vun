@@ -1,0 +1,13 @@
+//! Borrows, raw pointers and memory access (spec 05).
+
+Ref: ($T: type) -> type = _;
+RefMut: ($T: type) -> type = _;
+RefOut: ($T: type) -> type = _;
+RefTake: ($T: type) -> type = _;
+Ptr: ($T: type) -> type = _;
+
+/// Unsynchronized interior mutability. Only usable in `unsafe` code (spec 07, section 2).
+Cell: ($T: type) -> type = _;
+
+volatile_load: unsafe ($T: type, p: *T) -> T = _;
+volatile_store: unsafe ($T: type, p: *T, value: T) = _;

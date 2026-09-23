@@ -1,0 +1,56 @@
+[package]
+name = "overt-driver"
+description = "The compiler as a library: sessions, registries, commands."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[features]
+default = ["backend-c", "backend-cranelift", "backend-qbe", "backend-llvm", "backend-process", "link-wild", "link-mold", "link-lld", "link-gnu", "link-msvc", "link-process"]
+backend-c = ["dep:overt-backend-c"]
+backend-cranelift = ["dep:overt-backend-cranelift"]
+backend-qbe = ["dep:overt-backend-qbe"]
+backend-llvm = ["dep:overt-backend-llvm"]
+backend-process = ["dep:overt-backend-process"]
+link-wild = ["dep:overt-link-wild"]
+link-mold = ["dep:overt-link-mold"]
+link-lld = ["dep:overt-link-lld"]
+link-gnu = ["dep:overt-link-gnu"]
+link-msvc = ["dep:overt-link-msvc"]
+link-process = ["dep:overt-link-process"]
+
+[dependencies]
+overt-trace.workspace = true
+overt-span.workspace = true
+overt-origin.workspace = true
+overt-diag.workspace = true
+overt-query.workspace = true
+overt-target.workspace = true
+overt-tool.workspace = true
+overt-syntax.workspace = true
+overt-hir.workspace = true
+overt-sema.workspace = true
+overt-mir.workspace = true
+overt-mir-passes.workspace = true
+overt-interp.workspace = true
+overt-lir.workspace = true
+overt-lir-passes.workspace = true
+overt-backend.workspace = true
+overt-link.workspace = true
+overt-build.workspace = true
+overt-render-short.workspace = true
+overt-backend-c = { workspace = true, optional = true }
+overt-backend-cranelift = { workspace = true, optional = true }
+overt-backend-qbe = { workspace = true, optional = true }
+overt-backend-llvm = { workspace = true, optional = true }
+overt-backend-process = { workspace = true, optional = true }
+overt-link-wild = { workspace = true, optional = true }
+overt-link-mold = { workspace = true, optional = true }
+overt-link-lld = { workspace = true, optional = true }
+overt-link-gnu = { workspace = true, optional = true }
+overt-link-msvc = { workspace = true, optional = true }
+overt-link-process = { workspace = true, optional = true }

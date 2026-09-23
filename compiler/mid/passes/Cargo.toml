@@ -1,0 +1,16 @@
+[package]
+name = "overt-mir-passes"
+description = "MIR checks and transforms."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+overt-mir.workspace = true
+overt-pass.workspace = true
+overt-diag.workspace = true
+overt-origin.workspace = true

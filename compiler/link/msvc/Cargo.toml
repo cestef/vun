@@ -1,0 +1,15 @@
+[package]
+name = "overt-link-msvc"
+description = "MSVC link.exe adapter."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+overt-diag.workspace = true
+overt-link.workspace = true
+overt-target.workspace = true

@@ -1,0 +1,9 @@
+//! Every compiler diagnostic. `overt-diag` mirrors this list and CI checks they agree.
+
+int := struct {
+    does_not_fit := diag.Diag{ .summary = "value does not fit the type", .explanation = meta.embed("errors/int/does_not_fit.md") };
+};
+
+types := struct {
+    mismatch := diag.Diag{ .summary = "mismatched types", .explanation = meta.embed("errors/types/mismatch.md") };
+};

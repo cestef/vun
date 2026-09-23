@@ -1,0 +1,1 @@
+//! Synchronized interior mutability; the only safe kind (spec 07, section 2).

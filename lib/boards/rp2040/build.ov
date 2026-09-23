@@ -1,0 +1,12 @@
+//! Build file of `rp2040`.
+
+package := .{
+    .name = "rp2040",
+    .id = 0x0000_0000_0000_0011,
+    .version = "0.0.0",
+    .edition = 2027,
+    .include = .{ "build.ov", "rp2040.ov", "rp2040" },
+    .deps = .{},
+};
+
+build := (b: &mut Build) {};

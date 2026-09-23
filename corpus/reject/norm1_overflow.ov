@@ -1,0 +1,7 @@
+//! The sum of two i32 magnitudes reaches 2^32, which does not fit u32 (spec 04).
+
+Point := struct { x: i32, y: i32 };
+
+norm1 := (p: Point) -> u32 {
+    p.x.abs() + p.y.abs()   //~ int.does_not_fit
+};

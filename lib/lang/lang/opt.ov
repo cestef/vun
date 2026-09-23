@@ -1,0 +1,8 @@
+//! Optimization controls; none changes meaning (spec 09, section 3).
+
+Inline := enum { always, never };
+Level := enum { speed, size };
+
+cold: Attribute = _;
+inline: ($mode: Inline) -> Attribute = _;
+level: ($level: Level) -> Attribute = _;

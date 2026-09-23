@@ -1,0 +1,6 @@
+//! Lints as values (spec 10, section 4).
+
+Level := enum { allow, warn, deny, forbid, expect };
+Lint: type = _;
+Cx: type = _;
+define: Attribute = _;

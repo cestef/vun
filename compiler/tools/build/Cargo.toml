@@ -1,0 +1,16 @@
+[package]
+name = "overt-build"
+description = "The build graph: evaluation of build.ov, steps, caching."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+overt-diag.workspace = true
+overt-target.workspace = true
+overt-tool.workspace = true
+overt-query.workspace = true

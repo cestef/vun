@@ -1,0 +1,3 @@
+//! Compile-time evaluation budgets (spec 03, section 7).
+
+fuel: ($steps: u64) -> Attribute = _;

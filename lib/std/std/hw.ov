@@ -1,0 +1,1 @@
+//! Hardware access: memory-mapped registers over volatile operations.

@@ -1,0 +1,33 @@
+//! Primitives of Overt.
+//!
+//! Every declaration whose value is `_` is provided by the compiler. Syntax desugars only into
+//! items of this package (spec appendix B), so reading it tells you what the syntax means.
+
+type: type = _;
+
+/// The integer type whose values are exactly those of the range `r` (spec 04).
+Int: ($r: Range) -> type = _;
+Range: type = _;
+
+f16: type = _;
+f32: type = _;
+f64: type = _;
+
+bool := enum { false, true };
+never := enum {};
+
+Option := ($T: type) -> type { enum { none, some(T) } };
+Result := ($T: type, $E: type) -> type { enum { ok(T), err(E) } };
+Step := ($Y: type, $R: type) -> type { enum { yielded(Y), done(R) } };
+
+Interface: type = _;
+/// Wraps a function from a type to its requirement struct, so it can constrain `$` parameters.
+interface: ($requirements: ($Self: type) -> type) -> Interface = _;
+
+/// The suspension protocol (spec 06).
+Coroutine := ($Y: type, $R: type) -> Interface {
+    interface(($Self: type) -> type { struct {
+        resume: (self: &mut Self) -> Step(Y, R) = _;
+        end: (self: &take Self) = _;
+    }})
+};

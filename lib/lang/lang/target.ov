@@ -1,0 +1,4 @@
+//! Target descriptions and feature requirements.
+
+Spec: type = _;
+require: ($features: Features) -> Attribute = _;

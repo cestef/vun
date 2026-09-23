@@ -1,0 +1,81 @@
+use overt_backend::Backend;
+use overt_link::Linker;
+
+/// The backends and linkers available to a session.
+#[derive(Default)]
+pub struct Registry {
+    backends: Vec<Box<dyn Backend>>,
+    linkers: Vec<Box<dyn Linker>>,
+}
+
+macro_rules! register {
+    ($registry:ident.$method:ident { $($feature:literal => $component:expr),* $(,)? }) => {
+        $(
+            #[cfg(feature = $feature)]
+            $registry.$method(Box::new($component));
+        )*
+    };
+}
+
+impl Registry {
+    /// Every backend and linker compiled into this toolchain.
+    #[must_use]
+    pub fn with_defaults() -> Self {
+        let mut r = Self::default();
+        register!(r.add_backend {
+            "backend-c" => overt_backend_c::CBackend,
+            "backend-cranelift" => overt_backend_cranelift::CraneliftBackend,
+            "backend-qbe" => overt_backend_qbe::QbeBackend,
+            "backend-llvm" => overt_backend_llvm::LlvmBackend,
+            "backend-process" => overt_backend_process::ProcessBackend,
+        });
+        register!(r.add_linker {
+            "link-wild" => overt_link_wild::WildLinker,
+            "link-mold" => overt_link_mold::MoldLinker,
+            "link-lld" => overt_link_lld::LldLinker,
+            "link-gnu" => overt_link_gnu::GnuLinker,
+            "link-msvc" => overt_link_msvc::MsvcLinker,
+            "link-process" => overt_link_process::ProcessLinker,
+        });
+        r
+    }
+
+    pub fn add_backend(&mut self, backend: Box<dyn Backend>) {
+        self.backends.push(backend);
+    }
+
+    pub fn add_linker(&mut self, linker: Box<dyn Linker>) {
+        self.linkers.push(linker);
+    }
+
+    pub fn backends(&self) -> impl Iterator<Item = &dyn Backend> {
+        self.backends.iter().map(AsRef::as_ref)
+    }
+
+    pub fn linkers(&self) -> impl Iterator<Item = &dyn Linker> {
+        self.linkers.iter().map(AsRef::as_ref)
+    }
+
+    #[must_use]
+    pub fn backend(&self, id: &str) -> Option<&dyn Backend> {
+        self.backends().find(|b| b.info().id == id)
+    }
+
+    #[must_use]
+    pub fn linker(&self, id: &str) -> Option<&dyn Linker> {
+        self.linkers().find(|l| l.info().id == id)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn defaults_register_enabled_components() {
+        let r = Registry::with_defaults();
+        assert!(r.backend(overt_backend_c::INFO.id).is_some());
+        assert!(r.linker(overt_link_lld::INFO.id).is_some());
+        assert!(r.backend("").is_none());
+    }
+}

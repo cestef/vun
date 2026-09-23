@@ -1,0 +1,11 @@
+//! `riscv64gc` targets.
+
+linux_gnu := lang.target.Spec{
+    .arch = .riscv64gc,
+    .pointer_bits = 64,
+    .endian = .little,
+    .object_format = .elf,
+    .entry_symbol = .some("_start"),
+    .default_backend = .cranelift,
+    .default_linker = .lld,
+};

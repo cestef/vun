@@ -1,0 +1,8 @@
+//! Tests, properties, benchmarks and simulation (spec 11).
+
+/// Marks a binding as a test. Plain data: the runner finds tests by reflection.
+test := struct {};
+
+assert := ($cond: lang.meta.Code(bool)) {
+    if !$cond { lang.panic.trap(&.{ .site = 0 }); }
+};

@@ -1,0 +1,30 @@
+//! Operators as interfaces. Every operator desugars to one of these (spec 02, section 4).
+
+Add := interface(($Self: type) -> type { struct {
+    Rhs: type = _;
+    Output: type = _;
+    add: (a: Self, b: Rhs) -> Output = _;
+}});
+
+Eq := interface(($Self: type) -> type { struct {
+    eq: (a: &Self, b: &Self) -> bool = _;
+}});
+
+Index := interface(($Self: type) -> type { struct {
+    Key: type = _;
+    Item: type = _;
+    at: (self: &Self, key: Key) -> &Item = _;
+}});
+
+/// What `e?` desugars to: continue with a value, or stop the function with a result.
+Try := interface(($Self: type) -> type { struct {
+    Value: type = _;
+    Stop: type = _;
+    branch: (self: Self) -> enum { go(Value), stop(Stop) } = _;
+}});
+
+/// What `for p in e` iterates.
+Iterate := interface(($Self: type) -> type { struct {
+    Iter: Interface = _;
+    iter: (self: Self) -> Iter = _;
+}});

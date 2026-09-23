@@ -1,0 +1,3 @@
+//! Inline assembly and architecture intrinsics, under `arch.<name>`.
+
+asm: unsafe ($template: &[u8], operands: Operands) = _;

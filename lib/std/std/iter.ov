@@ -1,0 +1,3 @@
+//! Iteration is suspension (spec 06, section 3).
+
+Iter := ($T: type) -> lang.Interface { lang.Coroutine(T, ()) };

@@ -1,0 +1,17 @@
+[package]
+name = "overt-syntax"
+description = "Lexer, postorder CST arrays and error-recovering parser."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+overt-span.workspace = true
+overt-origin.workspace = true
+overt-diag.workspace = true
+overt-intern.workspace = true
+overt-grammar.workspace = true

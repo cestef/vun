@@ -1,0 +1,9 @@
+//! Diagnostics as values (spec 10).
+
+Severity := enum { hint, info, warning, error };
+Safety := enum { safe, unsafe, placeholder, display_only };
+
+Diag := struct {
+    summary: &static [_]u8,
+    explanation: &static [_]u8,
+};

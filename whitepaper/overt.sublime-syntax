@@ -1,0 +1,45 @@
+%YAML 1.2
+---
+# Syntax highlighting for Overt code blocks in the whitepaper.
+# Token classes follow spec/01-syntax.md; keep in sync with lang/syntax/grammar.ov.
+name: Overt
+file_extensions: [ov]
+scope: source.overt
+
+contexts:
+  main:
+    - match: '//[/!].*$'
+      scope: comment.line.documentation.overt
+    - match: '//.*$'
+      scope: comment.line.overt
+    - match: '"'
+      push: string
+    - match: "'(\\\\.|[^'\\\\])'"
+      scope: constant.character.overt
+    - match: "'[a-z_][a-z0-9_]*"
+      scope: entity.name.label.overt
+    - match: '\b(mut|if|else|match|for|break|continue|return|yield|defer|and|or|struct|enum|unsafe)\b'
+      scope: keyword.control.overt
+    - match: '(?<=&)(out|take)\b|\bin\b'
+      scope: keyword.other.overt
+    - match: '#\[|#\{'
+      scope: punctuation.definition.annotation.overt
+    - match: '\$'
+      scope: keyword.operator.stage.overt
+    - match: '\b(0x[0-9a-fA-F_]+|0b[01_]+|0o[0-7_]+|[0-9][0-9_]*(\.[0-9_]+)?([eE][+-]?[0-9]+)?)\b'
+      scope: constant.numeric.overt
+    - match: '\b[A-Z][A-Za-z0-9]*\b'
+      scope: entity.name.type.overt
+    - match: '\b[a-z_][a-z0-9_]*(?=\s*:=)'
+      scope: entity.name.function.overt
+    - match: '(:=|->|=>|\.\.=?|\.\*|&mut|&)'
+      scope: keyword.operator.overt
+    - match: '\.[a-z_][a-z0-9_]*'
+      scope: variable.other.member.overt
+
+  string:
+    - meta_scope: string.quoted.double.overt
+    - match: '\\.'
+      scope: constant.character.escape.overt
+    - match: '"'
+      pop: true

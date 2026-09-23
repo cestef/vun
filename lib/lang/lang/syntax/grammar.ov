@@ -1,0 +1,85 @@
+//! The grammar of Overt, defined once. Generates the Rust `overt-grammar` crate, `lang.syntax`,
+//! the formatter's tables and the editor grammar (spec 13, section 5). Keyword token names are
+//! derived from their spelling; punctuation names are given.
+
+Context := enum { for_pattern, after_amp };
+
+trivia := [.whitespace, .comment];
+
+atoms := [.doc_comment, .module_doc_comment, .ident, .int, .float, .char, .string, .raw_string_line, .label];
+
+keywords := [
+    "mut",
+    "if",
+    "else",
+    "match",
+    "for",
+    "break",
+    "continue",
+    "return",
+    "yield",
+    "defer",
+    "and",
+    "or",
+    "struct",
+    "enum",
+    "unsafe",
+];
+
+punctuation := [
+    .{ .name = .colon_eq, .text = ":=" },
+    .{ .name = .colon, .text = ":" },
+    .{ .name = .eq, .text = "=" },
+    .{ .name = .eq_eq, .text = "==" },
+    .{ .name = .bang_eq, .text = "!=" },
+    .{ .name = .lt, .text = "<" },
+    .{ .name = .le, .text = "<=" },
+    .{ .name = .gt, .text = ">" },
+    .{ .name = .ge, .text = ">=" },
+    .{ .name = .arrow, .text = "->" },
+    .{ .name = .fat_arrow, .text = "=>" },
+    .{ .name = .dot, .text = "." },
+    .{ .name = .dot_star, .text = ".*" },
+    .{ .name = .dot_dot, .text = ".." },
+    .{ .name = .dot_dot_eq, .text = "..=" },
+    .{ .name = .dot_l_brace, .text = ".{" },
+    .{ .name = .comma, .text = "," },
+    .{ .name = .semi, .text = ";" },
+    .{ .name = .l_paren, .text = "(" },
+    .{ .name = .r_paren, .text = ")" },
+    .{ .name = .l_bracket, .text = "[" },
+    .{ .name = .r_bracket, .text = "]" },
+    .{ .name = .l_brace, .text = "{" },
+    .{ .name = .r_brace, .text = "}" },
+    .{ .name = .hash_l_bracket, .text = "#[" },
+    .{ .name = .hash_l_brace, .text = "#{" },
+    .{ .name = .dollar, .text = "$" },
+    .{ .name = .question, .text = "?" },
+    .{ .name = .amp, .text = "&" },
+    .{ .name = .pipe, .text = "|" },
+    .{ .name = .caret, .text = "^" },
+    .{ .name = .tilde, .text = "~" },
+    .{ .name = .bang, .text = "!" },
+    .{ .name = .plus, .text = "+" },
+    .{ .name = .minus, .text = "-" },
+    .{ .name = .star, .text = "*" },
+    .{ .name = .slash, .text = "/" },
+    .{ .name = .percent, .text = "%" },
+    .{ .name = .plus_plus, .text = "++" },
+    .{ .name = .shl, .text = "<<" },
+    .{ .name = .shr, .text = ">>" },
+    .{ .name = .plus_eq, .text = "+=" },
+    .{ .name = .minus_eq, .text = "-=" },
+    .{ .name = .star_eq, .text = "*=" },
+    .{ .name = .slash_eq, .text = "/=" },
+    .{ .name = .percent_eq, .text = "%=" },
+    .{ .name = .plus_percent_eq, .text = "+%=" },
+    .{ .name = .plus_pipe_eq, .text = "+|=" },
+    .{ .name = .underscore, .text = "_" },
+];
+
+contextual := [
+    .{ .text = "in", .context = .for_pattern },
+    .{ .text = "out", .context = .after_amp },
+    .{ .text = "take", .context = .after_amp },
+];

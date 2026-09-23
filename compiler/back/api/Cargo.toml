@@ -1,0 +1,15 @@
+[package]
+name = "overt-backend"
+description = "The `Backend` interface and artifacts."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+overt-lir.workspace = true
+overt-target.workspace = true
+overt-diag.workspace = true

@@ -1,0 +1,244 @@
+zig-0-16:
+  type: web
+  title: Zig 0.16.0 Release Notes
+  author: Zig Software Foundation
+  date: 2026
+  url: https://ziglang.org/download/0.16.0/release-notes.html
+
+zig-4055:
+  type: web
+  title: "Comptime performance (issue #4055)"
+  author: Zig contributors
+  url: https://github.com/ziglang/zig/issues/4055
+
+zig-rls:
+  type: web
+  title: "Remove result location semantics (issue #32009)"
+  author: Zig contributors
+  date: 2026-04
+  url: https://codeberg.org/ziglang/zig/issues/32009
+
+zig-devlog:
+  type: web
+  title: Zig Devlog
+  author: Zig Software Foundation
+  date: 2026
+  url: https://ziglang.org/devlog/2026/
+
+tpde:
+  type: article
+  title: "TPDE: A Fast Adaptable Compiler Back-End Framework"
+  author: ["Schwarz, Tobias", "Kamm, Tobias", "Engelke, Alexis"]
+  date: 2025
+  serial-number:
+    arxiv: "2505.22610"
+  url: https://arxiv.org/abs/2505.22610
+
+carbon-parse:
+  type: web
+  title: Carbon toolchain design, parse tree
+  author: Carbon Language contributors
+  url: https://github.com/carbon-language/carbon-lang/blob/trunk/toolchain/docs/parse.md
+
+wild-mold:
+  type: web
+  title: Benchmarking wild vs mold
+  author: Lattimore, David
+  date: 2026-09-18
+  url: https://davidlattimore.github.io/posts/2026/09/18/benchmarking-wild-vs-mold.html
+
+rust-checks:
+  type: article
+  title: Towards Understanding the Runtime Performance of Rust
+  author: ["Zhang, Yuchen", "Zhang, Yunhang", "Portokalidis, Georgios", "Xu, Jun"]
+  date: 2022
+  parent:
+    type: proceedings
+    title: Proceedings of the 37th IEEE/ACM International Conference on Automated Software Engineering (ASE)
+  url: https://dl.acm.org/doi/10.1145/3551349.3559494
+
+effekt:
+  type: article
+  title: Compiling Effect Handlers in Capability-Passing Style
+  author: ["Schuster, Philipp", "Brachthäuser, Jonathan Immanuel", "Ostermann, Klaus"]
+  date: 2020
+  parent:
+    type: proceedings
+    title: Proceedings of the ACM on Programming Languages (ICFP)
+  url: https://effekt-lang.org/publications
+
+lexa:
+  type: article
+  title: Lexical Effect Handlers, Directly
+  author: ["Ma, Cong", "Ge, Zhaoyi", "Lee, Edward", "Zhang, Yizhou"]
+  date: 2024
+  parent:
+    type: proceedings
+    title: Proceedings of the ACM on Programming Languages (OOPSLA)
+  url: https://cs.uwaterloo.ca/~yizhou/papers/lexa-oopsla2024.pdf
+
+rust-eii:
+  type: web
+  title: Externally Implementable Items (project goal and tracking issue 125418)
+  author: Rust Project
+  date: 2025
+  url: https://rust-lang.github.io/rust-project-goals/2025h1/eii.html
+
+roc-platform:
+  type: web
+  title: basic-cli platform header
+  author: Roc contributors
+  url: https://github.com/roc-lang/basic-cli/blob/main/platform/main.roc
+
+wasi-cli:
+  type: web
+  title: WASI CLI world definitions
+  author: WebAssembly Community Group
+  url: https://github.com/WebAssembly/wasi-cli
+
+annotate-snippets:
+  type: web
+  title: "Use annotate-snippets as the default emitter (rust-lang/rust PR 150032)"
+  author: Rust Project
+  date: 2025-12-17
+  url: https://github.com/rust-lang/rust/pull/150032
+
+rustc-diag:
+  type: web
+  title: Diagnostic and subdiagnostic structs
+  author: Rust Project
+  url: https://rustc-dev-guide.rust-lang.org/diagnostics/diagnostic-structs.html
+
+ruff-fixes:
+  type: web
+  title: Ruff linter documentation, fix safety
+  author: Astral
+  url: https://github.com/astral-sh/ruff/blob/main/docs/linter.md
+
+go-fix:
+  type: web
+  title: "Using go fix to modernize Go code"
+  author: The Go Authors
+  date: 2026
+  url: https://go.dev/blog/gofix
+
+go-mvs:
+  type: web
+  title: Minimal Version Selection
+  author: Cox, Russ
+  date: 2018
+  url: https://research.swtch.com/vgo-mvs
+
+unboxed-zig:
+  type: web
+  title: "Unboxed: Zig"
+  author: Nesbitt, Andrew
+  date: 2026-07-09
+  url: https://nesbitt.io/2026/07/09/unboxed-zig.html
+
+defmt:
+  type: web
+  title: defmt book
+  author: Ferrous Systems
+  url: https://defmt.ferrous-systems.com
+
+tigerbeetle-fuzz:
+  type: web
+  title: A Tale of Four Fuzzers
+  author: TigerBeetle
+  date: 2025-11-28
+  url: https://tigerbeetle.com/blog/2025-11-28-tale-of-four-fuzzers
+
+hylo:
+  type: web
+  title: Hylo language tour, functions and methods
+  author: Hylo contributors
+  url: https://docs.hylo-lang.org/language-tour/functions-and-methods
+
+scala-macros:
+  type: web
+  title: Scala 3 macros
+  author: Scala Center
+  url: https://docs.scala-lang.org/scala3/guides/macros/macros.html
+
+p2996:
+  type: report
+  title: "P2996: Reflection for C++26"
+  author: ["Childers, Wyatt", "Dimov, Peter", "Katz, Dan", "Revzin, Barry", "Sutton, Andrew", "Vali, Faisal", "Vandevoorde, Daveed"]
+  date: 2025
+  url: https://wg21.link/p2996
+
+p3294:
+  type: report
+  title: "P3294: Code Injection with Token Sequences"
+  author: ["Revzin, Barry", "Alexandrescu, Andrei", "Vandevoorde, Daveed"]
+  date: 2024
+  url: https://wg21.link/p3294
+
+sets-of-scopes:
+  type: article
+  title: Binding as Sets of Scopes
+  author: Flatt, Matthew
+  date: 2016
+  parent:
+    type: proceedings
+    title: Proceedings of the 43rd ACM SIGPLAN Symposium on Principles of Programming Languages (POPL)
+
+lean-notations:
+  type: article
+  title: "Beyond Notations: Hygienic Macro Expansion for Theorem Proving Languages"
+  author: ["Ullrich, Sebastian", "de Moura, Leonardo"]
+  date: 2020
+  parent:
+    type: proceedings
+    title: International Joint Conference on Automated Reasoning (IJCAR)
+
+metaocaml:
+  type: article
+  title: "The Design and Implementation of BER MetaOCaml"
+  author: Kiselyov, Oleg
+  date: 2014
+  parent:
+    type: proceedings
+    title: Functional and Logic Programming (FLOPS)
+
+clang-bytecode:
+  type: web
+  title: Clang bytecode interpreter update
+  author: Red Hat Developer
+  date: 2025-10-15
+  url: https://developers.redhat.com/articles/2025/10/15/clang-bytecode-interpreter-update
+
+proc-macro-size:
+  type: web
+  title: How much code does that proc macro generate?
+  author: Nethercote, Nicholas
+  date: 2025-06-26
+  url: https://nnethercote.github.io/2025/06/26/how-much-code-does-that-proc-macro-generate.html
+
+csmith:
+  type: article
+  title: Finding and Understanding Bugs in C Compilers
+  author: ["Yang, Xuejun", "Chen, Yang", "Eide, Eric", "Regehr, John"]
+  date: 2011
+  parent:
+    type: proceedings
+    title: Proceedings of the 32nd ACM SIGPLAN Conference on Programming Language Design and Implementation (PLDI)
+
+rust-async-size:
+  type: web
+  title: "Nested async forwarding doubles future size (rust-lang/rust issue 163195)"
+  author: Rust Project
+  url: https://github.com/rust-lang/rust/issues/163195
+
+austral:
+  type: web
+  title: Austral language specification, linear types
+  author: Borretti, Fernando
+  url: https://austral-lang.org/spec/spec.html
+
+hare-rt:
+  type: web
+  title: Hare runtime startup (rt/start.ha)
+  author: Hare contributors
+  url: https://git.sr.ht/~sircmpwn/hare

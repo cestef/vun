@@ -1,0 +1,10 @@
+//! Asynchronous tasks and executors (spec 06).
+
+/// A request yielded to the executor: resume the task when the event fires.
+Wait := struct {
+    event: &Event,
+};
+
+Event: type = _;
+
+Async := ($R: type) -> lang.Interface { lang.Coroutine(Wait, R) };

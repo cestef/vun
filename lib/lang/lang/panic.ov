@@ -1,0 +1,13 @@
+//! Traps and the typed link symbol that handles them (spec 07, section 3; spec 08).
+
+Trap := struct {
+    site: u32,
+};
+
+trap_symbol := "overt.trap";
+
+#[link.symbol(trap_symbol)]
+trap: (t: &Trap) -> never = _;
+
+/// Attribute: the function contains no undischarged trap site and calls only such functions.
+never: Attribute = _;

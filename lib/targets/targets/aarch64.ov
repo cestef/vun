@@ -1,0 +1,11 @@
+//! `aarch64` targets.
+
+linux_gnu := lang.target.Spec{
+    .arch = .aarch64,
+    .pointer_bits = 64,
+    .endian = .little,
+    .object_format = .elf,
+    .entry_symbol = .some("_start"),
+    .default_backend = .cranelift,
+    .default_linker = .mold,
+};

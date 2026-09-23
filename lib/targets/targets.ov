@@ -1,0 +1,1 @@
+//! Target descriptions, one namespace per architecture: `targets.<arch>.<system>`.

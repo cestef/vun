@@ -1,0 +1,11 @@
+//! `wasm32` targets.
+
+wasi_p1 := lang.target.Spec{
+    .arch = .wasm32,
+    .pointer_bits = 32,
+    .endian = .little,
+    .object_format = .wasm,
+    .entry_symbol = .some("_start"),
+    .default_backend = .llvm,
+    .default_linker = .lld,
+};

@@ -1,0 +1,21 @@
+//! Builds the program's exports at compile time (spec 08, section 2).
+
+Config := struct {
+    main: (p: Peripherals) -> never,
+    trap: (t: &lang.panic.Trap) -> never,
+    interrupts: Interrupts,
+};
+
+start := ($config: Config) -> type { struct {
+    #[link.section(".vectors"), link.export("__vectors")]
+    vectors := vector_table(config.interrupts);
+
+    #[link.export("Reset")]
+    reset := () -> never {
+        unsafe { init_memory(); }
+        config.main(unsafe { Peripherals.claim() })
+    };
+
+    #[link.export(lang.panic.trap_symbol)]
+    trap := config.trap;
+}};

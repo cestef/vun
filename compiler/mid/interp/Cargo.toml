@@ -1,0 +1,16 @@
+[package]
+name = "overt-interp"
+description = "The reference interpreter: compile-time evaluation, tests, semantics."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+overt-mir.workspace = true
+overt-sema.workspace = true
+overt-target.workspace = true
+overt-diag.workspace = true

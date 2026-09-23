@@ -1,0 +1,10 @@
+//! The build API used by `build.ov` files (spec 12, section 2).
+
+/// The interface every `build.ov` conforms to.
+Package := lang.interface(($Self: type) -> type { struct {
+    package: Manifest = _;
+    build: (b: &mut Build) = _;
+}});
+
+Manifest: type = _;
+Build: type = _;

@@ -1,0 +1,1 @@
+//! STM32F4 runtime: vector table, reset handler, peripherals.

@@ -1,0 +1,16 @@
+[package]
+name = "overt-lir-passes"
+description = "LIR transforms: ABI lowering, identical-body merging."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+overt-lir.workspace = true
+overt-abi.workspace = true
+overt-pass.workspace = true
+overt-diag.workspace = true

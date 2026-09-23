@@ -1,0 +1,77 @@
+[workspace]
+resolver = "3"
+members = ["compiler/*/*"]
+
+[workspace.package]
+version = "0.0.0"
+edition = "2024"
+rust-version = "1.98"
+publish = false
+
+[workspace.dependencies]
+overt-index = { path = "compiler/base/index" }
+overt-span = { path = "compiler/base/span" }
+overt-intern = { path = "compiler/base/intern" }
+overt-origin = { path = "compiler/base/origin" }
+overt-diag = { path = "compiler/base/diag" }
+overt-query = { path = "compiler/base/query" }
+overt-pass = { path = "compiler/base/pass" }
+overt-tool = { path = "compiler/base/tool" }
+overt-trace = { path = "compiler/base/trace" }
+overt-target = { path = "compiler/base/target" }
+overt-grammar = { path = "compiler/front/grammar" }
+overt-syntax = { path = "compiler/front/syntax" }
+overt-hir = { path = "compiler/front/hir" }
+overt-sema = { path = "compiler/front/sema" }
+overt-mir = { path = "compiler/mid/mir" }
+overt-mir-passes = { path = "compiler/mid/passes" }
+overt-interp = { path = "compiler/mid/interp" }
+overt-lir = { path = "compiler/low/lir" }
+overt-abi = { path = "compiler/low/abi" }
+overt-lir-passes = { path = "compiler/low/passes" }
+overt-backend = { path = "compiler/back/api" }
+overt-backend-c = { path = "compiler/back/c" }
+overt-backend-cranelift = { path = "compiler/back/cranelift" }
+overt-backend-qbe = { path = "compiler/back/qbe" }
+overt-backend-llvm = { path = "compiler/back/llvm" }
+overt-backend-process = { path = "compiler/back/process" }
+overt-link = { path = "compiler/link/api" }
+overt-link-wild = { path = "compiler/link/wild" }
+overt-link-mold = { path = "compiler/link/mold" }
+overt-link-lld = { path = "compiler/link/lld" }
+overt-link-gnu = { path = "compiler/link/gnu" }
+overt-link-msvc = { path = "compiler/link/msvc" }
+overt-link-process = { path = "compiler/link/process" }
+overt-render-short = { path = "compiler/render/short" }
+overt-render-annotate = { path = "compiler/render/annotate" }
+overt-render-ariadne = { path = "compiler/render/ariadne" }
+overt-render-json = { path = "compiler/render/json" }
+overt-render-sarif = { path = "compiler/render/sarif" }
+overt-build = { path = "compiler/tools/build" }
+overt-fmt = { path = "compiler/tools/fmt" }
+overt-bind = { path = "compiler/tools/bind" }
+overt-probe = { path = "compiler/tools/probe" }
+overt-harness = { path = "compiler/tools/harness" }
+overt-driver = { path = "compiler/tools/driver" }
+overt-lsp = { path = "compiler/tools/lsp" }
+overt-cli = { path = "compiler/tools/cli" }
+overt-xtask = { path = "compiler/tools/xtask" }
+
+# external
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
+
+[workspace.lints.rust]
+unsafe_code = "deny"
+unreachable_pub = "warn"
+
+[workspace.lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+module_name_repetitions = "allow"
+
+[profile.dev]
+debug = 1
+
+[profile.release]
+lto = "thin"
+codegen-units = 16

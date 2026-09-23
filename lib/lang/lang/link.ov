@@ -1,0 +1,6 @@
+//! Linking attributes (spec 08).
+
+section: (name: &[u8]) -> Attribute = _;
+export: (symbol: &[u8]) -> Attribute = _;
+symbol: (name: &[u8]) -> Attribute = _;
+keep: Attribute = _;

@@ -1,0 +1,7 @@
+//! Layout attributes (spec 05, section 6).
+
+bits: ($Backing: type) -> Attribute = _;
+c: Attribute = _;
+tag: ($Tag: type) -> Attribute = _;
+align: ($bytes: usize) -> Attribute = _;
+offset: ($bytes: usize) -> Attribute = _;

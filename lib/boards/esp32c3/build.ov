@@ -1,0 +1,12 @@
+//! Build file of `esp32c3`.
+
+package := .{
+    .name = "esp32c3",
+    .id = 0x0000_0000_0000_0012,
+    .version = "0.0.0",
+    .edition = 2027,
+    .include = .{ "build.ov", "esp32c3.ov", "esp32c3" },
+    .deps = .{},
+};
+
+build := (b: &mut Build) {};

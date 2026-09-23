@@ -1,0 +1,15 @@
+[package]
+name = "overt-render-short"
+description = "One-line diagnostics: `file:line:col: severity[id]: message`."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+overt-diag.workspace = true
+overt-origin.workspace = true
+overt-span.workspace = true

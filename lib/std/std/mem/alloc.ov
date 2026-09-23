@@ -1,0 +1,7 @@
+//! Allocators are capabilities (spec 07, section 1).
+
+Allocator := lang.interface(($Self: type) -> type { struct {
+    Error: type = _;
+    alloc: (self: &mut Self, size: usize, align: usize) -> Result(*u8, Error) = _;
+    free: (self: &mut Self, p: *u8, size: usize, align: usize) = _;
+}});

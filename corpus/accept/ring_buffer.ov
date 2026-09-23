@@ -1,0 +1,26 @@
+//! A fixed-capacity ring buffer whose indexing needs no checks (spec 04).
+
+RingBuffer := ($T: type, $N: Int(1..=65536)) -> type {
+    Index := Int(0..N);
+    Ring := struct {
+        buf: [N]T,
+        head: Index = 0,
+        len: Int(0..=N) = 0,
+
+        push := (self: &mut Ring, v: T) -> Result((), T) {
+            if self.len == N { return .err(v); }
+            self.buf[(self.head + self.len) % N] = v;
+            self.len = (self.len + 1).to(Int(0..=N));
+            .ok(())
+        };
+
+        pop := (self: &mut Ring) -> ?T {
+            if self.len == 0 { return .none; }
+            v := self.buf[self.head];
+            self.head = (self.head + 1) % N;
+            self.len = (self.len - 1).to(Int(0..=N));
+            .some(v)
+        };
+    };
+    Ring
+};

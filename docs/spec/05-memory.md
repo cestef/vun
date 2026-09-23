@@ -1,0 +1,143 @@
+# 05. Memory
+
+## 1. Kinds
+
+Every type has three properties, computed structurally from its members. A declaration may make a
+type more restrictive (`#[kind.linear]`, `#[kind.fixed]`), never less.
+
+| Property | Values | Meaning |
+|----------|--------|---------|
+| duplication | **copy** / **linear** | copy values are duplicated by `=`; linear values must be consumed exactly once |
+| region | **free** / **scoped** | scoped values contain a borrow and obey the scoping rule (section 4) |
+| address | **movable** / **fixed** | fixed values never change address after construction |
+
+A fourth fact is derived, never declared: a type is **cell-free** if it contains no `lang.mem.Cell`.
+It is used by the aliasing rules (section 7).
+
+- Integers, floats, raw pointers, `&T` and arrays of copy types are copy.
+- `Own(T)`, files, DMA transfers, peripheral tokens and coroutine frames are linear.
+- Coroutine frames, intrusive list nodes and buffers under DMA are fixed. A fixed value is
+  constructed in place and may be borrowed or consumed in place (`&take`), never moved.
+
+There are no `Drop`, `Clone`, `Send`, `Sync`, `Unpin` or `Sized` traits. Their jobs are done by the
+three properties and by capabilities (spec 07).
+
+## 2. Place states and borrow modes
+
+Every place is `uninit` or `init`. The four borrow modes are named by the transition they perform
+on the place they borrow:
+
+| Borrow | Before | After | Access |
+|--------|--------|-------|--------|
+| `&x` | init | init | shared read; any number may coexist |
+| `&mut x` | init | init | exclusive read and write |
+| `&out x` | uninit | init | exclusive write; the callee must initialize |
+| `&take x` | init | uninit | exclusive; the callee must consume the value in place |
+
+Passing by value moves. A linear value leaves its place `uninit`; a copy value leaves it `init`.
+
+Rules, all checked on the control-flow graph:
+
+- Reading requires `init`. `mut buf: [4096]u8;` costs nothing, and reading it before writing it is a
+  compile error. There is no `undefined` value.
+- **At every scope exit, every place holding a linear value must be `uninit`.** Forgetting to close,
+  free, release or finish something is a compile error. No destructor ever runs implicitly.
+- A place that is `init` on one incoming path and `uninit` on another cannot be used after the join.
+- **An aggregate literal that exits early** (a `?` in a field initializer, say) leaves the fields
+  already built owned by the enclosing scope, and the rule above applies to them.
+
+## 3. `defer`
+
+`defer s;` runs `s` at every exit of the enclosing block, in reverse order. If `s` consumes a linear
+place, it runs on exactly the exits where that place is still `init` and is skipped on exits where
+the value was already moved. Which exits those are is known statically, so there is no runtime flag.
+A place whose state is ambiguous at an exit is a compile error. This removes the need for
+`errdefer`.
+
+```ov
+load := (fs: &mut Fs, a: &mut Alloc, path: &[u8]) -> Result(Own(Config), Error) {
+    f := fs.open(path).map_err(Error.fs)?;
+    defer fs.close(f);                    // every exit
+    cfg := a.create(Config).map_err(Error.oom)?;
+    defer a.destroy(cfg);                 // only exits where cfg is still owned
+    parse(&f, &out cfg.*).map_err(Error.parse)?;
+    .ok(cfg)                              // cfg moves out: the destroy is skipped on this exit
+};
+```
+
+## 4. Borrows are scoped
+
+A scoped value (a borrow, or anything containing one) may live in locals, parameters and fields of
+other scoped types. It may be returned only from a function taking at least one borrow, and it is
+then tied to **all** of that call's borrowed arguments. That rule replaces lifetime annotations.
+
+```ov
+longest := (a: &[u8], b: &[u8]) -> &[u8] { if a.len >= b.len { a } else { b } };
+
+Parser := struct { input: &[u8], pos: usize };           // scoped
+parser := (input: &[u8]) -> Parser { .{ .input = input, .pos = 0 } };
+```
+
+A borrow cannot be stored in a free value: a top-level binding, an `Own`, a heap node. Long-lived
+structures use ownership, indices into pools and arenas, or raw pointers in `unsafe` code.
+
+**Static region.** Borrows of immutable top-level bindings have type `&static T`, which is free and
+copy and is accepted wherever `&T` is expected. It is the only subtyping rule. String literals are
+`&static [N]u8`. There are exactly two regions, static and scoped.
+
+Exclusivity is checked per function with non-lexical liveness. Borrows escape only through returns
+tied to arguments, so no interprocedural analysis is needed.
+
+## 5. Pointers
+
+- `Own(T)`: unique owning pointer, linear, safe to dereference. It comes from an allocator and goes
+  back to one; freeing it requires holding the allocator.
+- `*T`: raw pointer; copy, free, non-null. Creating one is safe. Dereferencing, offsetting and
+  casting are `unsafe`.
+- Volatile and atomic access are operations in `lang.mem`, not type qualifiers.
+  `std.hw.Reg(T)` and `std.sync.Atomic(T)` wrap them.
+
+## 6. Layout
+
+Defined, never left to the implementation:
+
+- `struct`: declaration order, natural alignment, C-style padding. The compiler never reorders; the
+  `perf.padding` lint reports padding and offers a reordering fix.
+- `#[layout.bits(uN)] struct`: bit-exact, least significant bit first; fields must sum to N bits.
+- `#[layout.c] struct`: the target C ABI's layout.
+- `#[layout.tag(uN)] enum`: explicit tag representation.
+- `#[layout.align(N)]`, `#[layout.offset(N)]`: raise alignment, place a field at an offset.
+- **Niches (one rule).** An enum with one payload-free variant and one payload variant whose type has
+  unused bit patterns stores the tag in an unused pattern. Unused patterns are: the null pointer,
+  out-of-range values of range integers (`Int(0..200)` in 8 bits has 56), and unused enum tags.
+  `?*T` is one pointer; `?Int(0..255)` in 16 bits uses 256.
+- Struct-of-arrays is a library: `std.collections.Soa(T)` generates the split layout by reflection.
+
+## 7. Construction, assignment and passing
+
+These rules exist because the naive "results are always built in place" model failed in practice
+(research notes, section 3: Zig's result location semantics, now slated for removal).
+
+1. **Initialization is in place.** Initializing an `uninit` place (a binding, an `&out` target, a
+   field in a literal, a frame in a coroutine) writes the result directly into it. This is a
+   guarantee: returning a 4 KiB struct into a new binding never copies it, and it is what makes
+   fixed types constructible.
+2. **Assignment is evaluate, then move.** Storing into an `init` place evaluates the right-hand side
+   completely, then moves it in. `p = .{ .x = p.y, .y = p.x }` swaps. The optimizer elides the
+   temporary only when the right-hand side provably does not read the destination.
+3. **Passing by value is a semantic copy or move.** The ABI may pass a hidden pointer for large
+   values only when the source is a temporary, a moved linear value, or a local with no live
+   borrow; this is never observable. Small `&T` of cell-free `T` may be passed in registers.
+4. **Function addresses are not unique.** Identical lowered functions may be merged (spec 13).
+
+## 8. Aliasing facts
+
+Part of the language definition, not optimizer folklore:
+
+- `&mut`, `&out` and `&take` borrows are exclusive: no other access to the place while they live.
+  Backends may mark them `noalias` / `restrict`.
+- `&T` of a cell-free `T` points to memory that does not change while the borrow lives. Backends
+  may mark it read-only and non-aliasing for writes.
+- If a function's result type is free, none of its borrow parameters escape (`captures(none)`).
+- Violating these through raw pointers is undefined behavior (appendix C). The reference
+  interpreter checks them, so `overt test` detects violations in `unsafe` code.

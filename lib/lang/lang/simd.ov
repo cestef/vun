@@ -1,0 +1,4 @@
+//! Vector types (spec 04, section 3).
+
+Vector: ($lanes: usize, $T: type) -> type = _;
+Mask: ($lanes: usize) -> type = _;

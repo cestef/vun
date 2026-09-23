@@ -1,0 +1,1 @@
+//! Deferred logging: format strings interned in a non-loaded section (spec 12, section 9).

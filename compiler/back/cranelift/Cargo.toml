@@ -1,0 +1,16 @@
+[package]
+name = "overt-backend-cranelift"
+description = "Cranelift backend: fast debug builds."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+overt-backend.workspace = true
+overt-diag.workspace = true
+overt-lir.workspace = true
+overt-target.workspace = true

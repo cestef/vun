@@ -1,0 +1,1 @@
+//! Terminal diagnostics through ariadne.

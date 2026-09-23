@@ -1,0 +1,15 @@
+[package]
+name = "overt-link"
+description = "The `Linker` interface and the target-independent link plan."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+overt-target.workspace = true
+overt-diag.workspace = true
+overt-origin.workspace = true
