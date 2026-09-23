@@ -5,14 +5,15 @@ use std::path::Path;
 
 use overt_command::{Action, Args, Command, Outcome, Param, ParamKind, Program};
 
-use crate::{Registry, Session, VERSION};
+use crate::{Registry, Session, VERSION, formats};
 
 pub const PROGRAM: Program<Session> = Program {
     version: VERSION,
+    configure: formats::configure,
     root: Command {
         name: "overt",
         about: "The Overt toolchain.",
-        params: &[],
+        params: &[formats::FORMAT],
         action: Action::Group(&[
             planned("new", "create a package"),
             planned("build", "build the package"),

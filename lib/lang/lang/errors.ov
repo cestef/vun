@@ -113,5 +113,6 @@ cli := struct {
     unexpected_argument := diag.Diag{ .explanation = meta.embed("errors/cli/unexpected_argument.md") };
     unknown_option := diag.Diag{ .explanation = meta.embed("errors/cli/unknown_option.md") };
     missing_value := diag.Diag{ .explanation = meta.embed("errors/cli/missing_value.md") };
+    invalid_value := diag.Diag{ .explanation = meta.embed("errors/cli/invalid_value.md") };
     unavailable_command := diag.Diag{ .explanation = meta.embed("errors/cli/unavailable_command.md") };
 };

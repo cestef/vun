@@ -5,17 +5,19 @@ const FILE: Param = Param { name: "file", short: None, about: "a source file", k
 const FORMAT: Param =
     Param { name: "format", short: Some('f'), about: "output format", kind: ParamKind::Option };
 const QUIET: Param = Param { name: "quiet", short: Some('q'), about: "print less", kind: ParamKind::Flag };
+const COLOR: Param = Param { name: "color", short: None, about: "use colors", kind: ParamKind::Flag };
 
 fn ok(_: &mut (), _: &Args, out: &mut dyn std::io::Write) -> std::io::Result<Outcome> {
     out.flush().map(|()| Outcome::Success)
 }
 
 const PROGRAM: Program<()> = Program {
+    configure: crate::unconfigured,
     version: "1.0",
     root: Command {
         name: "tool",
         about: "a tool",
-        params: &[],
+        params: &[COLOR],
         action: Action::Group(&[
             Command {
                 name: "dump",
@@ -93,4 +95,12 @@ fn usage_errors_suggest_and_point_at_help() {
     assert_eq!(error("dump cst a --format").0, errors::CLI_MISSING_VALUE);
     assert_eq!(error("-V2").0, errors::CLI_UNKNOWN_OPTION);
     assert!(matches!(parse(&PROGRAM, &argv("-help")), Ok(Request::Help(_))));
+}
+
+#[test]
+fn group_options_apply_below() {
+    for line in ["--color dump cst a.ov", "dump --color cst a.ov", "dump cst a.ov --color"] {
+        let Ok(Request::Run(_, args)) = parse(&PROGRAM, &argv(line)) else { panic!("{line:?} did not run") };
+        assert!(args.flag(&COLOR), "{line:?}");
+    }
 }

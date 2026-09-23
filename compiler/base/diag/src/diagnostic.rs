@@ -81,6 +81,12 @@ impl Diagnostic {
     }
 
     #[must_use]
+    pub fn fix(mut self, fix: Fix) -> Self {
+        self.fixes.push(fix);
+        self
+    }
+
+    #[must_use]
     pub fn child(mut self, kind: ChildKind, msg: impl Into<Msg>) -> Self {
         self.children.push(Child { kind, msg: msg.into(), labels: Vec::new(), fixes: Vec::new() });
         self

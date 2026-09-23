@@ -3,7 +3,7 @@
 
 use std::io::Write;
 
-use overt_diag::{DiagSink, Diagnostic};
+use overt_diag::{ChildKind, DiagSink, Diagnostic};
 use overt_origin::OriginTable;
 use overt_span::SourceMap;
 
@@ -29,6 +29,9 @@ impl<W: Write> DiagSink for ShortRenderer<W> {
         let _ = writeln!(self.out, "{}[{}]: {}", d.severity, d.id, d.message);
         for child in &d.children {
             let _ = writeln!(self.out, "  = {}: {}", child.kind, child.msg);
+        }
+        for fix in &d.fixes {
+            let _ = writeln!(self.out, "  = {}: {} [{}]", ChildKind::Help, fix.msg, fix.safety);
         }
     }
 }

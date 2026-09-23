@@ -19,6 +19,19 @@ pub use parse::{Request, Selected, parse};
 pub struct Program<Cx: 'static> {
     pub version: &'static str,
     pub root: Command<Cx>,
+    /// Applies the options a command inherits to the context, before the command runs.
+    pub configure: Configure<Cx>,
+}
+
+/// Reads inherited options into the context; an invalid value is a usage error.
+pub type Configure<Cx> = fn(&mut Cx, &Args) -> Result<(), Box<Diagnostic>>;
+
+/// A [`Configure`] for programs whose groups declare no options.
+///
+/// # Errors
+/// Never.
+pub fn unconfigured<Cx>(_: &mut Cx, _: &Args) -> Result<(), Box<Diagnostic>> {
+    Ok(())
 }
 
 pub struct Command<Cx: 'static> {
@@ -141,7 +154,11 @@ pub fn run<Cx>(
             writeln!(out, "{} {}", program.root.name, program.version).map(|()| Outcome::Success)
         }
         Request::Run(selected, args) => match selected.last().action {
-            Action::Run(run) => run(cx, &args, out),
+            Action::Run(run) => {
+                (program.configure)(cx, &args)
+                    .map_err(|diagnostic| Refusal { outcome: Outcome::Usage, diagnostic })?;
+                run(cx, &args, out)
+            }
             Action::Planned => {
                 let msg = Msg::new().code(selected.invocation()).text(" is not available yet");
                 let diagnostic = Box::new(Diagnostic::error(errors::CLI_UNAVAILABLE_COMMAND, msg));

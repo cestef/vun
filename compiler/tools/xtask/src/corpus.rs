@@ -9,7 +9,7 @@ use std::collections::BTreeSet;
 use std::fmt::Write;
 use std::path::{Path, PathBuf};
 
-use overt_diag::{DiagId, Diagnostic, errors};
+use overt_diag::{ChildKind, DiagId, Diagnostic, errors};
 use overt_driver::Session;
 use overt_driver::stages::implemented;
 use overt_harness::{self as harness, At, Mismatch, Reported, compare, discover, expectations};
@@ -105,6 +105,9 @@ fn reported(session: &Session, d: &Diagnostic) -> Reported {
     let mut text = d.message.to_string();
     for child in &d.children {
         let _ = write!(text, "\n{}: {}", child.kind, child.msg);
+    }
+    for fix in &d.fixes {
+        let _ = write!(text, "\n{}: {}", ChildKind::Help, fix.msg);
     }
     Reported { at: At { line, id: d.id.to_string() }, col, text }
 }

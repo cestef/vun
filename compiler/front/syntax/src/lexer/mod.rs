@@ -43,7 +43,7 @@ const DOC_COMMENT: &str = "///";
 const MODULE_DOC_COMMENT: &str = "//!";
 const RAW_STRING_LINE: &str = "\\\\";
 /// Takes the next word or string literally.
-const ESCAPE: char = '\\';
+pub(crate) const ESCAPE: char = '\\';
 
 /// Lexes one file. Diagnostics go to `cx`; the result is always a complete token stream.
 ///

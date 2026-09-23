@@ -2,7 +2,7 @@
 
 use std::fmt::Write;
 
-use crate::parse::{options, positionals};
+use crate::parse::positionals;
 use crate::{Action, HELP_COMMAND, Param, ParamKind, Program, Selected};
 
 /// Marks commands that are declared but not implemented.
@@ -31,7 +31,7 @@ pub fn help<Cx>(program: &Program<Cx>, selected: &Selected<'_, Cx>) -> String {
     section(&mut page, "commands", children);
     let arguments = positionals(command).map(|p| (format!("<{}>", p.name), p.about.to_owned()));
     section(&mut page, "arguments", arguments);
-    let options = options(command, selected.is_root()).map(|p| (spelling(p), p.about.to_owned()));
+    let options = selected.options().map(|p| (spelling(p), p.about.to_owned()));
     section(&mut page, "options", options);
     page
 }

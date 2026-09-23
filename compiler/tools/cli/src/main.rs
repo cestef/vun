@@ -1,11 +1,14 @@
 //! The `overt` command: a thin shell over `overt-driver`.
 
-use std::io;
+use std::io::{self, IsTerminal};
 use std::process::ExitCode;
 
 use overt_driver::Session;
 use overt_driver::commands::PROGRAM;
-use overt_render_short::ShortRenderer;
+use overt_render_annotate::Color;
+
+/// Disables colors when set, per <https://no-color.org>.
+const NO_COLOR: &str = "NO_COLOR";
 
 fn main() -> ExitCode {
     overt_trace::init(&overt_trace::Config::from_env());
@@ -17,6 +20,11 @@ fn main() -> ExitCode {
             refusal.outcome
         },
     );
-    session.emit(&mut ShortRenderer::new(io::stderr()));
+    let color = if io::stderr().is_terminal() && std::env::var_os(NO_COLOR).is_none() {
+        Color::Always
+    } else {
+        Color::Never
+    };
+    session.emit(&mut *(session.format.sink)(Box::new(io::stderr()), color));
     outcome.into()
 }

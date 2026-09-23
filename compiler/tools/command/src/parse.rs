@@ -45,6 +45,14 @@ impl<'p, Cx> Selected<'p, Cx> {
         std::iter::once(self.root).chain(self.below.iter().copied())
     }
 
+    /// The options the last command accepts: its own, then those of the groups above it, which
+    /// apply to every command below them, then the built-in ones.
+    pub fn options(&self) -> impl Iterator<Item = &'p Param> {
+        let builtins: &'static [Param] = if self.is_root() { &[HELP, VERSION] } else { &[HELP] };
+        let declared = self.iter().collect::<Vec<_>>().into_iter().rev().flat_map(|c| c.params);
+        declared.filter(|p| p.kind != ParamKind::Positional).chain(builtins)
+    }
+
     /// The command line selecting these commands: `overt dump cst`.
     #[must_use]
     pub fn invocation(&self) -> String {
@@ -66,8 +74,7 @@ pub fn parse<'p, Cx>(program: &'p Program<Cx>, words: &[String]) -> Result<Reque
     while let Some(word) = rest.next() {
         let command = selected.last();
         if let Some(option) = option(word) {
-            let param = find_option(command, selected.is_root(), &option)
-                .ok_or_else(|| unknown_option(&selected, &option))?;
+            let param = find_option(&selected, &option).ok_or_else(|| unknown_option(&selected, &option))?;
             match (param.kind, option) {
                 _ if param.name == HELP.name => help = true,
                 _ if param.name == VERSION.name => return Ok(Request::Version),
@@ -128,18 +135,12 @@ fn option(arg: &str) -> Option<Given<'_>> {
     }
 }
 
-/// The options a command accepts, including the built-in ones.
-pub(crate) fn options<Cx>(command: &Command<Cx>, root: bool) -> impl Iterator<Item = &Param> {
-    let builtins: &[Param] = if root { &[HELP, VERSION] } else { &[HELP] };
-    command.params.iter().filter(|p| p.kind != ParamKind::Positional).chain(builtins)
-}
-
 pub(crate) fn positionals<Cx>(command: &Command<Cx>) -> impl Iterator<Item = &Param> {
     command.params.iter().filter(|p| p.kind == ParamKind::Positional)
 }
 
-fn find_option<'c, Cx>(command: &'c Command<Cx>, root: bool, given: &Given<'_>) -> Option<&'c Param> {
-    options(command, root).find(|p| match *given {
+fn find_option<'p, Cx>(selected: &Selected<'p, Cx>, given: &Given<'_>) -> Option<&'p Param> {
+    selected.options().find(|p| match *given {
         Given::Long(name, _) => p.name == name,
         Given::Short(c) => p.short == Some(c),
     })
@@ -178,8 +179,7 @@ fn unknown_option<Cx>(selected: &Selected<'_, Cx>, given: &Given<'_>) -> Box<Dia
     };
     let msg =
         Msg::new().text("unknown option ").code(written.clone()).text(" for ").code(selected.invocation());
-    let options = options(selected.last(), selected.is_root());
-    let names: Vec<String> = options.map(|p| format!("{LONG}{}", p.name)).collect();
+    let names: Vec<String> = selected.options().map(|p| format!("{LONG}{}", p.name)).collect();
     let help = suggestion(&written, names.iter().map(String::as_str), selected);
     usage_error(errors::CLI_UNKNOWN_OPTION, msg, help)
 }

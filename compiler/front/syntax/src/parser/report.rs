@@ -1,11 +1,12 @@
 //! Parser diagnostics: one report per position, placed where the absent thing belongs.
 
-use overt_diag::{ChildKind, DiagId, Diagnostic, Msg, errors};
+use overt_diag::{ChildKind, DiagId, Diagnostic, Fix, Msg, Safety, errors};
 use overt_grammar::TokenKind;
 use overt_index::Idx;
 use overt_span::{ByteRange, Span};
 
 use super::{List, Parser};
+use crate::lexer::ESCAPE;
 use crate::tokens::TokenId;
 
 impl Parser<'_, '_, '_> {
@@ -26,7 +27,27 @@ impl Parser<'_, '_, '_> {
     pub(super) fn report_expected(&mut self, expected: &[TokenKind]) {
         let texts = expected.iter().map(|k| k.text().unwrap_or_default());
         let msg = self.found(Msg::new().text("expected ").code_list(texts).text(", found "));
-        self.report_missing(errors::SYNTAX_EXPECTED_TOKEN, msg);
+        let mut d = Diagnostic::error(errors::SYNTAX_EXPECTED_TOKEN, msg);
+        if let [only] = expected
+            && let Some(text) = only.text()
+        {
+            d = d.fix(self.insertion(text));
+        }
+        self.report(self.gap(), d);
+    }
+
+    /// A fix inserting `text` where something absent belongs. Unsafe: the parser cannot know that
+    /// the insertion is what was meant.
+    pub(super) fn insertion(&self, text: &str) -> Fix {
+        let msg = Msg::new().text("insert ").code(text);
+        Fix { preferred: true, ..Fix::replace(msg, Safety::Unsafe, self.gap(), text) }
+    }
+
+    /// A fix escaping the keyword `token` so that it reads as a name.
+    pub(super) fn escape(&self, token: TokenId) -> Fix {
+        let escaped = format!("{ESCAPE}{}", self.text(token));
+        let msg = Msg::new().text("to use a keyword as a name, escape it: ").code(escaped.clone());
+        Fix::replace(msg, Safety::Unsafe, self.tokens.span(token), escaped)
     }
 
     /// Reports something absent right after the previous token, where it belongs.

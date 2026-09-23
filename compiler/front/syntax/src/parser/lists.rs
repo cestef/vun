@@ -79,8 +79,10 @@ impl Parser<'_, '_, '_> {
         let opener = self.text(open).to_owned();
         let msg = Msg::new().text("unclosed ").code(opener);
         let help = Msg::new().text("expected ").code(close.text().unwrap_or_default()).text(", found ");
+        let closer = close.text().unwrap_or_default();
         let d = Diagnostic::error(errors::SYNTAX_UNCLOSED_DELIMITER, msg)
-            .child(ChildKind::Help, self.found(help));
+            .child(ChildKind::Help, self.found(help))
+            .fix(self.insertion(closer));
         self.report(self.tokens.span(open), d);
         self.missing(NodeKind::Punct);
     }

@@ -44,6 +44,7 @@ overt-backend.workspace = true
 overt-link.workspace = true
 overt-build.workspace = true
 overt-render-short.workspace = true
+overt-render-annotate.workspace = true
 overt-backend-c = { workspace = true, optional = true }
 overt-backend-cranelift = { workspace = true, optional = true }
 overt-backend-qbe = { workspace = true, optional = true }

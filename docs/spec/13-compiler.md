@@ -235,5 +235,7 @@ Rules:
 - There is one frontend: the LSP runs on the same query engine as the compiler.
 - Command lines are declared, never matched by hand: `overt-command` holds command trees (names,
   typed parameters, subcommands, actions) as data, and parses, renders help and reports usage
-  errors as diagnostics, with suggestions, from them. `overt-driver` declares the `overt` tree;
+  errors as diagnostics, with suggestions, from them. Options declared on a group apply to every
+  command below it (`overt --format short dump cst f.ov` and `overt dump cst f.ov --format short`
+  are one request), and a program's `configure` step applies them before the command runs. `overt-driver` declares the `overt` tree;
   `xtask` declares its own with the same crate.

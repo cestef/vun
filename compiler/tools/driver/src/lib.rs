@@ -5,6 +5,7 @@
 //! through the `process` adapters.
 
 pub mod commands;
+pub mod formats;
 mod registry;
 mod session;
 pub mod stages;

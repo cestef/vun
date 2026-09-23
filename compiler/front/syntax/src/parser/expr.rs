@@ -1,6 +1,6 @@
 //! Operator expressions and operands.
 
-use overt_diag::{ChildKind, Diagnostic, Msg, errors};
+use overt_diag::{Diagnostic, Msg, errors};
 use overt_grammar::{Assoc, Context, LITERAL_TYPES, NodeKind, POSTFIX, PREFIX, Prec, TokenKind};
 
 use super::{Brace, Item, List, Parser};
@@ -151,9 +151,7 @@ impl Parser<'_, '_, '_> {
                 let msg = self.found(Msg::new().text("expected an expression, found "));
                 let mut d = Diagnostic::error(errors::SYNTAX_EXPECTED_EXPRESSION, msg);
                 if let Some(keyword) = self.nearby_keyword() {
-                    let escaped = format!("\\{}", self.text(keyword));
-                    let help = Msg::new().text("to use a keyword as a name, escape it: ").code(escaped);
-                    d = d.child(ChildKind::Help, help);
+                    d = d.fix(self.escape(keyword));
                 }
                 self.report(self.gap(), d);
                 self.missing(NodeKind::Error);

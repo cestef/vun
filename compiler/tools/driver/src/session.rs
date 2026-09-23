@@ -9,11 +9,25 @@ use overt_syntax::cst::Cst;
 use overt_syntax::tokens::Tokens;
 use overt_syntax::{lexer, parser};
 
-#[derive(Default)]
+use crate::formats::{self, Format};
+
 pub struct Session {
     pub sources: SourceFiles,
     pub origins: OriginTable,
     pub diag: DiagCtxt,
+    /// How diagnostics are shown.
+    pub format: &'static Format,
+}
+
+impl Default for Session {
+    fn default() -> Self {
+        Self {
+            sources: SourceFiles::default(),
+            origins: OriginTable::default(),
+            diag: DiagCtxt::default(),
+            format: formats::default(),
+        }
+    }
 }
 
 impl Session {

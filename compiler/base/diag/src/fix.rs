@@ -1,5 +1,7 @@
 //! Labels and machine-applicable fixes.
 
+use std::fmt;
+
 use overt_origin::OriginId;
 use overt_span::Span;
 
@@ -26,6 +28,17 @@ pub enum Safety {
     DisplayOnly,
 }
 
+impl fmt::Display for Safety {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(match self {
+            Self::Safe => "safe",
+            Self::Unsafe => "unsafe",
+            Self::Placeholder => "placeholder",
+            Self::DisplayOnly => "display only",
+        })
+    }
+}
+
 /// A hole in a placeholder edit: a byte range of the edit text and the choices to offer.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Hole {
@@ -47,4 +60,13 @@ pub struct Fix {
     pub safety: Safety,
     pub edits: Vec<Edit>,
     pub preferred: bool,
+}
+
+impl Fix {
+    /// A fix of one edit replacing `span` with `text`; an empty span inserts.
+    #[must_use]
+    pub fn replace(msg: impl Into<Msg>, safety: Safety, span: Span, text: impl Into<String>) -> Self {
+        let edit = Edit { span, text: text.into(), holes: Vec::new() };
+        Self { msg: msg.into(), safety, edits: vec![edit], preferred: false }
+    }
 }

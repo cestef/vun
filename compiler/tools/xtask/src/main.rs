@@ -35,6 +35,7 @@ const CHECK: Param = Param {
 };
 
 const PROGRAM: Program<Cx> = Program {
+    configure: overt_command::unconfigured,
     version: env!("CARGO_PKG_VERSION"),
     root: Command {
         name: "cargo xtask",
