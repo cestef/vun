@@ -11,7 +11,7 @@ use overt_build::layout::MANIFEST;
 use overt_build::manifest::DepKind;
 use overt_build::store::Store;
 use overt_diag::{ChildKind, Diagnostic, Msg, errors};
-use overt_fs::Tree;
+use overt_fs::{Edit, Tree};
 use overt_hash::{Hash, Snapshot};
 use overt_intern::Symbol;
 use overt_pkg::{Failure, Mirror};
@@ -120,7 +120,7 @@ impl Session {
                 Err(why) => rejected.push((url, why)),
             }
         }
-        let _ = fs::remove_dir_all(&staging);
+        let _ = staging.remove();
         let name = self.interner.resolve(dep.name);
         let msg = Msg::new().text("cannot fetch ").code(name).text(" (").code(hash.to_string()).text(")");
         let mut d = Diagnostic::error(errors::PACKAGE_FETCH_FAILED, msg);
@@ -143,8 +143,7 @@ impl Session {
         staging: &Path,
         url: &str,
     ) -> Result<(), Rejected> {
-        let _ = fs::remove_dir_all(staging);
-        fs::create_dir_all(staging).map_err(Rejected::Store)?;
+        staging.fresh().map_err(Rejected::Store)?;
         let unpacked = staging.join(Store::PACKAGE);
         Mirror::parse(url).and_then(|m| m.fetch(&unpacked)).map_err(Rejected::Mirror)?;
         let include = self.include(kind, &unpacked);
@@ -152,14 +151,9 @@ impl Session {
         if snapshot.root() != hash {
             return Err(Rejected::Hash { found: snapshot.root() });
         }
-        let entry = store.entry(hash);
         let commit = || -> io::Result<()> {
-            fs::write(staging.join(Store::SNAPSHOT), snapshot.to_string())?;
-            if let Some(parent) = entry.parent() {
-                fs::create_dir_all(parent)?;
-            }
-            let _ = fs::remove_dir_all(&entry);
-            fs::rename(staging, &entry)
+            staging.join(Store::SNAPSHOT).put(snapshot.to_string())?;
+            store.entry(hash).replace_with(staging)
         };
         commit().map_err(Rejected::Store)
     }

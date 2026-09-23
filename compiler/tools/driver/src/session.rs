@@ -98,6 +98,7 @@ impl Session {
         let package = self.package_of(file);
         self.scope(package);
         let spreads = self.spreads(package, hir, &resolution);
+        self.check_children(file, hir);
         let outside = FileScope { package: &self.packages.scopes[&package], spreads: &spreads };
         let mut cx = DiagCx { diag: &mut self.diag, origins: &mut self.origins };
         resolution.check_outer(hir, &outside, &self.interner, &mut cx);

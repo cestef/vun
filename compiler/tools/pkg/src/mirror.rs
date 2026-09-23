@@ -3,7 +3,7 @@
 use std::fs;
 use std::path::Path;
 
-use overt_fs::Tree;
+use overt_fs::{Edit, Tree};
 
 use super::{Failure, Format};
 
@@ -54,15 +54,14 @@ impl<'u> Mirror<'u> {
         let bytes = (self.scheme.read)(self.url, &self.url[self.scheme.prefix.len()..])?;
         let raw = dir.with_extension("unpacking");
         let unpack = Failure::Unpack;
-        let _ = fs::remove_dir_all(&raw);
+        raw.remove().map_err(unpack)?;
         self.format.unpack(&bytes, &raw).map_err(unpack)?;
         let entries = raw.entries().map_err(unpack)?;
         let root = match entries.as_slice() {
             [only] if self.format.strip && only.is_dir() => only.clone(),
             _ => raw.clone(),
         };
-        fs::rename(&root, dir).map_err(unpack)?;
-        let _ = fs::remove_dir_all(&raw);
-        Ok(())
+        dir.replace_with(&root).map_err(unpack)?;
+        raw.remove().map_err(unpack)
     }
 }

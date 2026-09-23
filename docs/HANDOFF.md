@@ -29,7 +29,9 @@ History (jj, newest last): scaffold; lexer; parser, CST, tables, CLI and corpus;
 assignments; corpus grown to 40 accept and 50 reject; modules split and the 300-line limit;
 tagged literals and node fields; terminal renderer, `--format` and parser fixes; manifests;
 ariadne renderer; handoff; settled open questions (decisions 28 to 44); HIR; name resolution; integer widths in `lang.int`; package loading, spreads and
-`names.unresolved`; `overt-suggest` and `overt-hash`.
+`names.unresolved`; `overt-suggest` and `overt-hash`; graph, fs and outline crates; BLAKE3 Merkle
+hashes and the nested store; `overt pkg fetch`, `.ovpkg` and error chains; file and directory
+duplicates, `overt_fs::Edit` and `Scratch`.
 The user asked for commits per batch: commit each finished batch with `jj`.
 
 ## 2. How the user works (non-negotiable)
@@ -105,7 +107,7 @@ tested (the rest are stubs):
 | `overt-hash` | BLAKE3 only. `Algorithm` (typed, `name`), `Hash` (`blake3:<base32>`, `parse`, `digest`, `of(bytes)`, `tree(dir, include)`), `Snapshot` (per-file hashes by path, `root` = Merkle tree over path components with directory nodes in a derived key, `changes`, text form, portable plain-component paths), `Change`. Package identity, manifest `.hash`, every cache key. |
 | `overt-pkg` | `Mirror` (`parse`, `fetch`), `SCHEMES` (https, http, file), `FORMATS` (`.ovpkg`, `.tar.zst`, `.tar.xz`, `.tar.gz`, `.tar`, `.zip`; `strip` of a forge's top directory), `Archive` (`.ovpkg`: `pack`, `unpack` verifying each file), `Failure`/`Malformed` with sources. |
 | `overt-graph` | `Requirements<K>` (`add`, `order`, `OrderError`): the pass manager's ordering. |
-| `overt-fs` | `Tree` on `Path`: `files` (recursive, sorted), `entries`. Behind `Hash::tree`, `Location::children`, harness `discover`. |
+| `overt-fs` | `Tree` on `Path`: `files` (recursive, sorted), `entries`. `Edit` on `Path`: `put` (creates parents), `remove` (absent is removed), `fresh` (empty directory), `replace_with` (move a directory in whole). `Scratch`: a test directory removed on drop. Every filesystem write in the compiler and its tests goes through them. |
 | `overt-outline` | `Outline` + `Outlined::node`: indented tree text for the CST and HIR dumps. |
 | `overt-grammar` | `generated.rs`: `NodeField`, `NodeSlot`, `Count`, `NodeKind::slots` (children per kind, from tagged entries), `TokenKind` (+ `TRIVIA`, `ATOMS`, `KEYWORDS`, `PUNCTUATION`, `END`, `text()`), `NodeKind` (`LEAVES`, `BRANCHES`), `Context`, `Assoc`, tables `CONTEXTUAL`, `DELIMITERS`, `INFIX`, `PREFIX`, `POSTFIX`, `ASSIGN`, `OPERANDS`, `ELEMENT_TYPES`, `LITERAL_TYPES`. `lib.rs` derives lookups: `punctuation`, `keyword`, `is_trivia`, `infix` (`Prec`, `Infix`), `closer`/`opens`/`closes`, `is_leaf`, `contextual`. |
 | `overt-syntax` | `tokens` (SoA tokens + trivia side table, `verify`); `lexer` (`lex`, recovery, `literal(kind, text)` for string values, backslash escapes); `cst` (postorder `(kind, Anchor, size)`, `Anchor::{Token, Missing}`, `children`, `span`, `dump`, `verify` -> `Malformed`); `parser` (`parse`); `literal` (`declarations` -> `Decl { name, doc, value: Literal, span }`, `Literal::Tagged`); `Cst::fields(n)` -> `Fields` (`get`, `one`, `assigned`), matched against the kind's slots; `children_rev` walks without allocating. |
@@ -174,16 +176,16 @@ In order:
 1. Done in the fourth session: package loading, spreads, `names.unresolved`. Still open there:
    spread paths through aliases (`..uart;` after `uart := a.b;`) and through declarations that are
    not files (`..lang.int.X` where `X` is a `struct`); member paths (`a.b.c` checked against
-   namespaces) belong with sema. `names.duplicate` for a name in both `x.ov` and `x/` is not
-   reported yet.
+   namespaces) belong with sema. A name declared in `x.ov` and held in `x/` is `names.duplicate`
+   (`Session::check_children`).
 2. Packages: `overt pkg add <url>` (fetch, compute the hash, write `.deps` with it),
    `overt pkg pack` (write a `.ovpkg` with `Archive::pack`), minimal version selection and the
    lockfile (spec 12, sections 3 and 4). Fetching and verification exist (`overt pkg fetch`).
 3. `names.private` (needs member types: sema), `binding.hole_value` (needs attribute resolution).
-3. Desugaring into `lang` items with `Via::Desugar` origins (appendix B), queries, sema (with
+4. Desugaring into `lang` items with `Via::Desugar` origins (appendix B), queries, sema (with
    narrowing, decision 35, exhaustive match, decision 29), MIR, interpreter.
-4. Explanation pages `errors/<group>/<id>.md` for every diagnostic, and `overt explain`.
-5. Fuzz the parser longer (the verifier checks node fields; 150 s runs are clean).
+5. Explanation pages `errors/<group>/<id>.md` for every diagnostic, and `overt explain`.
+6. Fuzz the parser longer (the verifier checks node fields; 150 s runs are clean).
 
 The corpus has 40 accept and 54 reject programs (67 pass, 27 pending on later stages), plus
 `corpus/build.ov` (prelude `std.prelude` then `support`) and `corpus/support`, stand-ins for what

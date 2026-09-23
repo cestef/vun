@@ -7,6 +7,7 @@ use std::fs;
 use std::io::{self, Read, Write};
 use std::path::{Path, PathBuf};
 
+use overt_fs::Edit;
 use overt_hash::{Hash, Snapshot};
 
 pub struct Archive;
@@ -96,11 +97,7 @@ impl Archive {
                 let path = path.join(&Snapshot::PATH_SEPARATOR.to_string());
                 return Err(Self::invalid(Malformed::Mismatch(path)));
             }
-            let target = Self::join(dir, path);
-            if let Some(parent) = target.parent() {
-                fs::create_dir_all(parent)?;
-            }
-            fs::write(target, contents)?;
+            Self::join(dir, path).put(contents)?;
         }
         Ok(snapshot)
     }

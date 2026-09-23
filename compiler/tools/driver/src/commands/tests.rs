@@ -1,4 +1,5 @@
 use super::*;
+use overt_fs::Scratch;
 use std::collections::HashSet;
 
 fn check_names(command: &Command<Session>) {
@@ -17,12 +18,11 @@ fn names_are_unique_at_every_level() {
 
 #[test]
 fn dump_cst_prints_the_tree() {
-    let path = std::env::temp_dir().join(format!("overt-dump-{}.ov", std::process::id()));
-    std::fs::write(&path, "x := 1;\n").unwrap();
+    let dir = Scratch::new("dump");
+    let path = dir.write("dump.ov", "x := 1;\n");
     let argv = ["dump", "cst", path.to_str().unwrap()].map(str::to_owned);
     let (mut session, mut out) = (Session::new(), Vec::new());
     let outcome = overt_command::run(&PROGRAM, &argv, &mut session, &mut out).unwrap();
-    std::fs::remove_file(&path).unwrap();
     assert_eq!(outcome, Outcome::Success);
     assert!(String::from_utf8(out).unwrap().starts_with("File Eof 8..8"));
 }

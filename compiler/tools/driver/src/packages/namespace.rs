@@ -4,8 +4,10 @@
 use std::path::Path;
 
 use overt_build::layout::Location;
-use overt_hir::tree::{Member, each_entry};
+use overt_diag::{Diagnostic, Msg, errors};
+use overt_hir::tree::{Hir, Member, each_entry};
 use overt_intern::Symbol;
+use overt_span::{FileId, SourceMap};
 use overt_syntax::visibility::Visibility;
 
 use super::PackageKey;
@@ -92,6 +94,23 @@ impl Session {
         names.extend(location.children().iter().map(|c| self.interner.intern(c)));
         self.packages.expanding.remove(&location);
         names
+    }
+
+    /// Reports the top-level names of `file` that its directory also holds: both are members of
+    /// one namespace.
+    pub(crate) fn check_children(&mut self, file: FileId, hir: &Hir) {
+        let Some(root) = hir.root else { return };
+        let location = Location::of(Path::new(&self.sources.file(file).path));
+        let children = location.children();
+        for b in hir.members(root) {
+            let name = self.interner.resolve(hir.binders[b].name);
+            if children.iter().any(|c| c == name) {
+                let dir = location.dir().display().to_string();
+                let msg = Msg::new().code(name).text(" is declared here and also held in ").code(dir);
+                let d = Diagnostic::error(errors::NAMES_DUPLICATE, msg);
+                self.diag.error(d.at(hir.binders[b].origin, None));
+            }
+        }
     }
 
     fn location(&self, ns: &Namespace) -> Option<Location> {

@@ -1,43 +1,14 @@
-//! Walking directory trees in a stable order, so that everything built from a walk (hashes,
-//! corpus runs, snapshots) is deterministic.
+//! Filesystem operations shared by the compiler and its tests: walks in a stable order, so that
+//! everything built from a walk (hashes, corpus runs, snapshots) is deterministic, writes that
+//! create what they need, and directories replaced whole.
 
-use std::io;
-use std::path::{Path, PathBuf};
+mod edit;
+mod scratch;
+mod walk;
 
-/// Directory walks on paths.
-pub trait Tree {
-    /// The files at or below this path, recursively, sorted; a file is its own only entry.
-    ///
-    /// # Errors
-    /// Returns an error if the path does not exist or a directory cannot be read.
-    fn files(&self) -> io::Result<Vec<PathBuf>>;
-
-    /// The files and directories directly in this directory, sorted.
-    ///
-    /// # Errors
-    /// Returns an error if the directory cannot be read.
-    fn entries(&self) -> io::Result<Vec<PathBuf>>;
-}
-
-impl Tree for Path {
-    fn files(&self) -> io::Result<Vec<PathBuf>> {
-        if self.is_file() {
-            return Ok(vec![self.to_path_buf()]);
-        }
-        let mut found = Vec::new();
-        for entry in self.entries()? {
-            found.extend(entry.files()?);
-        }
-        Ok(found)
-    }
-
-    fn entries(&self) -> io::Result<Vec<PathBuf>> {
-        let mut entries =
-            std::fs::read_dir(self)?.map(|e| e.map(|e| e.path())).collect::<io::Result<Vec<_>>>()?;
-        entries.sort();
-        Ok(entries)
-    }
-}
+pub use edit::Edit;
+pub use scratch::Scratch;
+pub use walk::Tree;
 
 #[cfg(test)]
 mod tests;

@@ -1,20 +1,12 @@
 use std::fs;
-use std::path::PathBuf;
 
 use flate2::Compression;
 use flate2::write::GzEncoder;
 
+use overt_fs::Scratch;
 use overt_hash::Snapshot;
 
 use super::{Archive, Failure, Mirror};
-
-/// A fresh directory for one test.
-fn scratch(name: &str) -> PathBuf {
-    let dir = std::env::temp_dir().join(format!("overt-pkg-{}-{name}", std::process::id()));
-    let _ = fs::remove_dir_all(&dir);
-    fs::create_dir_all(&dir).unwrap();
-    dir
-}
 
 /// A `.tar.gz` holding `files` under one top-level directory, as forges produce.
 fn archive(files: &[(&str, &str)]) -> Vec<u8> {
@@ -31,9 +23,8 @@ fn archive(files: &[(&str, &str)]) -> Vec<u8> {
 
 #[test]
 fn file_mirrors_unpack_without_the_top_level_directory() {
-    let dir = scratch("unpack");
-    let path = dir.join("pkg.tar.gz");
-    fs::write(&path, archive(&[("a.ov", "a := 1;"), ("sub/b.ov", "b := 2;")])).unwrap();
+    let dir = Scratch::new("unpack");
+    let path = dir.write("pkg.tar.gz", archive(&[("a.ov", "a := 1;"), ("sub/b.ov", "b := 2;")]));
     let url = format!("file://{}", path.display());
     Mirror::parse(&url).unwrap().fetch(&dir.join("out")).unwrap();
     assert_eq!(fs::read_to_string(dir.join("out/sub/b.ov")).unwrap(), "b := 2;");
@@ -49,16 +40,14 @@ fn unknown_schemes_and_formats_are_named() {
 
 #[test]
 fn package_archives_are_reproducible_and_verified() {
-    let dir = scratch("ovpkg");
+    let dir = Scratch::new("ovpkg");
     let src = dir.join("src");
-    fs::create_dir_all(src.join("demo")).unwrap();
-    fs::write(src.join("build.ov"), "package := 1;").unwrap();
-    fs::write(src.join("demo/a.ov"), "a := 1;").unwrap();
+    dir.write("src/build.ov", "package := 1;");
+    dir.write("src/demo/a.ov", "a := 1;");
     let include = ["build.ov".to_owned(), "demo".to_owned()];
     let (bytes, snapshot) = Archive::pack(&src, &include).unwrap();
     assert_eq!(Archive::pack(&src, &include).unwrap().0, bytes, "identical trees, identical archives");
-    let path = dir.join("demo.ovpkg");
-    fs::write(&path, &bytes).unwrap();
+    let path = dir.write("demo.ovpkg", &bytes);
     Mirror::parse(&format!("file://{}", path.display())).unwrap().fetch(&dir.join("out")).unwrap();
     assert_eq!(Snapshot::of(&dir.join("out"), &include), snapshot);
     // A file whose bytes differ from the index is refused.

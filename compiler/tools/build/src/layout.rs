@@ -27,6 +27,12 @@ impl Location {
         Self { base: dir.join(name) }
     }
 
+    /// The namespace whose source file is `file`.
+    #[must_use]
+    pub fn of(file: &Path) -> Self {
+        Self { base: file.with_extension("") }
+    }
+
     #[must_use]
     pub fn member(&self, name: &str) -> Self {
         Self { base: self.base.join(name) }
@@ -36,6 +42,12 @@ impl Location {
     #[must_use]
     pub fn file(&self) -> Option<PathBuf> {
         Some(self.base.with_extension(EXTENSION)).filter(|f| f.is_file())
+    }
+
+    /// Its directory, whether or not it exists.
+    #[must_use]
+    pub fn dir(&self) -> &Path {
+        &self.base
     }
 
     #[must_use]

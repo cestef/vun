@@ -19,7 +19,7 @@ use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 
-use overt_fs::Tree;
+use overt_fs::{Edit, Tree};
 
 /// The repository root, located from this crate's own place in the workspace.
 ///
@@ -243,10 +243,7 @@ pub fn snapshot_tree(
 }
 
 fn write(path: &Path, contents: &str) -> io::Result<Snapshot> {
-    if let Some(dir) = path.parent() {
-        fs::create_dir_all(dir)?;
-    }
-    fs::write(path, contents)?;
+    path.put(contents)?;
     Ok(Snapshot::Written)
 }
 

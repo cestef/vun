@@ -1,6 +1,6 @@
 [package]
 name = "overt-fs"
-description = "Walking directory trees in a stable order."
+description = "Filesystem operations: stable walks, writes, whole-directory replacement."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
