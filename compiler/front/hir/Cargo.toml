@@ -15,3 +15,5 @@ overt-origin.workspace = true
 overt-diag.workspace = true
 overt-intern.workspace = true
 overt-syntax.workspace = true
+overt-index.workspace = true
+overt-grammar.workspace = true

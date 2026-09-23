@@ -1,0 +1,108 @@
+//! Namespaces, declarations, fields, variants and blocks.
+
+use overt_grammar::{NodeField, NodeKind};
+use overt_syntax::cst::{Fields, NodeId};
+
+use super::{Lower, is_filler};
+use crate::tree::{
+    Block, BlockId, Decl, DeclId, ExprId, FieldDef, List, Member, Name, Namespace, NsId, Stmt, Variant,
+};
+
+impl Lower<'_, '_> {
+    /// The members of a file or a `struct` body.
+    pub(super) fn members(&mut self, nodes: impl IntoIterator<Item = NodeId>) -> List<Member> {
+        let nodes: Vec<_> = nodes.into_iter().filter(|&n| !is_filler(self.kind(n))).collect();
+        self.entries(nodes, &mut |this, n| this.member(n))
+    }
+
+    fn member(&mut self, n: NodeId) -> Option<Member> {
+        let (inner, doc, attrs) = self.annotations(n);
+        match self.kind(inner) {
+            NodeKind::Binding | NodeKind::TypedBinding => Some(Member::Decl(self.decl(inner, doc, attrs))),
+            NodeKind::Field => Some(Member::Field(self.field(inner, doc, attrs))),
+            _ => None,
+        }
+    }
+
+    pub(super) fn namespace(&mut self, f: &Fields, n: NodeId) -> NsId {
+        let members = self.members(f.get(NodeField::Members).to_vec());
+        let origin = self.origin(n);
+        self.hir.namespaces.push(Namespace { members, origin })
+    }
+
+    pub(super) fn decl(&mut self, n: NodeId, doc: Vec<String>, attrs: Vec<ExprId>) -> DeclId {
+        let f = self.fields(n);
+        let mutable = f.one(NodeField::Mut).is_some();
+        let pat = self.pat_at(&f, n, NodeField::Pattern, mutable);
+        let ty = f.one(NodeField::Type).map(|t| self.expr(t));
+        let value = f.one(NodeField::Value).map(|v| self.expr(v));
+        let origin = self.origin(n);
+        self.hir.decls.push(Decl { pat, ty, value, attrs, doc, origin })
+    }
+
+    fn field(&mut self, n: NodeId, doc: Vec<String>, attrs: Vec<ExprId>) -> FieldDef {
+        let f = self.fields(n);
+        let mutable = f.one(NodeField::Mut).is_some();
+        let name = f.one(NodeField::Pattern).map_or(Name::Hole, |p| self.name(p));
+        let ty = self.operand(&f, n, NodeField::Type);
+        let default = f.one(NodeField::Value).map(|v| self.expr(v));
+        let origin = self.origin(n);
+        FieldDef { name, mutable, ty, default, attrs, doc, origin }
+    }
+
+    pub(super) fn variants(&mut self, f: &Fields) -> List<Variant> {
+        self.entries(f.get(NodeField::Variants).to_vec(), &mut |this, n| {
+            let (inner, doc, _) = this.annotations(n);
+            let origin = this.origin(inner);
+            match this.kind(inner) {
+                NodeKind::Name => Some(Variant { name: this.name(inner), payload: Vec::new(), doc, origin }),
+                NodeKind::Call => {
+                    let f = this.fields(inner);
+                    let name = f.one(NodeField::Callee).map_or(Name::Hole, |c| this.name(c));
+                    let payload = f.get(NodeField::Args).iter().map(|&a| this.expr(a)).collect();
+                    Some(Variant { name, payload, doc, origin })
+                }
+                _ => None,
+            }
+        })
+    }
+
+    /// The block in `field`; an empty block standing for `n` when absent.
+    pub(super) fn block_at(&mut self, f: &Fields, n: NodeId, field: NodeField) -> BlockId {
+        self.block(f.one(field).unwrap_or(n))
+    }
+
+    /// A `{ }` block or a `#{ }` quote: its statements, and the last expression as its value when
+    /// no `;` follows it.
+    pub(super) fn block(&mut self, n: NodeId) -> BlockId {
+        let origin = self.origin(n);
+        if !matches!(self.kind(n), NodeKind::Block | NodeKind::Quote) {
+            return self.hir.blocks.push(Block { stmts: Vec::new(), tail: None, origin });
+        }
+        // The tail is the last child before the closing brace, when it is an expression.
+        let last = self.source.cst.children_rev(n).nth(1);
+        let tail = last.filter(|&c| !is_filler(self.kind(c)) && self.is_value(c));
+        let statements: Vec<_> =
+            self.fields(n).get(NodeField::Statements).iter().copied().filter(|&c| Some(c) != tail).collect();
+        let stmts = self.entries(statements, &mut |this, s| Some(this.stmt(s)));
+        let tail = tail.map(|t| self.expr(t));
+        self.hir.blocks.push(Block { stmts, tail, origin })
+    }
+
+    /// Whether a statement node is an expression, which can be a block's value.
+    fn is_value(&self, n: NodeId) -> bool {
+        !matches!(
+            self.kind(n),
+            NodeKind::Binding | NodeKind::TypedBinding | NodeKind::Assign | NodeKind::Doc | NodeKind::Attr
+        )
+    }
+
+    fn stmt(&mut self, n: NodeId) -> Stmt {
+        let (inner, doc, attrs) = self.annotations(n);
+        match self.kind(inner) {
+            NodeKind::Binding | NodeKind::TypedBinding => Stmt::Decl(self.decl(inner, doc, attrs)),
+            NodeKind::Assign => self.assignment(inner),
+            _ => Stmt::Expr(self.expr(inner)),
+        }
+    }
+}
