@@ -14,3 +14,9 @@ overt-diag.workspace = true
 overt-target.workspace = true
 overt-tool.workspace = true
 overt-query.workspace = true
+overt-syntax.workspace = true
+overt-span.workspace = true
+overt-origin.workspace = true
+
+[dev-dependencies]
+overt-harness.workspace = true

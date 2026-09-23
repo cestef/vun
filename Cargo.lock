@@ -156,7 +156,11 @@ name = "overt-build"
 version = "0.0.0"
 dependencies = [
  "overt-diag",
+ "overt-harness",
+ "overt-origin",
  "overt-query",
+ "overt-span",
+ "overt-syntax",
  "overt-target",
  "overt-tool",
 ]

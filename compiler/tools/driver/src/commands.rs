@@ -95,6 +95,12 @@ const DUMPS: &[Command<Session>] = &[
         params: &[FILE],
         action: Action::Run(|s, args, out| dump(s, args, out, Stage::Cst)),
     },
+    Command {
+        name: "manifest",
+        about: "the package manifest read from a build.ov",
+        params: &[FILE],
+        action: Action::Run(|s, args, out| dump(s, args, out, Stage::Manifest)),
+    },
     planned("hir", "the high-level representation"),
     planned("mir", "the mid-level representation"),
     planned("lir", "the low-level representation"),
@@ -118,11 +124,18 @@ const fn group(
 enum Stage {
     Tokens,
     Cst,
+    Manifest,
 }
 
 fn dump(session: &mut Session, args: &Args, out: &mut dyn Write, stage: Stage) -> io::Result<Outcome> {
     let path = args.value(&FILE).expect("positional parameters are present when a command runs");
     let Some(file) = session.load(Path::new(path)) else { return Ok(Outcome::Failure) };
+    if let Stage::Manifest = stage {
+        if let Some(manifest) = session.manifest(file) {
+            writeln!(out, "{manifest:#?}")?;
+        }
+        return Ok(if session.failed() { Outcome::Failure } else { Outcome::Success });
+    }
     let tokens = session.lex(file);
     match stage {
         Stage::Tokens => write!(out, "{}", tokens.dump(session.text(file)))?,
@@ -130,6 +143,7 @@ fn dump(session: &mut Session, args: &Args, out: &mut dyn Write, stage: Stage) -
             let cst = session.parse(&tokens);
             write!(out, "{}", cst.dump(&tokens, session.text(file)))?;
         }
+        Stage::Manifest => unreachable!("read above"),
     }
     Ok(if session.failed() { Outcome::Failure } else { Outcome::Success })
 }

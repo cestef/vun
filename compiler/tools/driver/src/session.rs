@@ -2,12 +2,13 @@
 
 use std::path::Path;
 
+use overt_build::manifest::{self, Manifest};
 use overt_diag::{DiagCtxt, DiagCx, DiagSink, Diagnostic, Msg, errors};
 use overt_origin::OriginTable;
 use overt_span::{FileId, SourceFiles, SourceMap};
 use overt_syntax::cst::Cst;
 use overt_syntax::tokens::Tokens;
-use overt_syntax::{lexer, parser};
+use overt_syntax::{lexer, literal, parser};
 
 use crate::formats::{self, Format};
 
@@ -65,6 +66,15 @@ impl Session {
     pub fn parse(&mut self, tokens: &Tokens) -> Cst {
         let text = &self.sources.file(tokens.file()).text;
         parser::parse(tokens, text, &mut DiagCx { diag: &mut self.diag, origins: &mut self.origins })
+    }
+
+    /// Reads the manifest of the `build.ov` loaded as `file` (spec 12, section 2).
+    pub fn manifest(&mut self, file: FileId) -> Option<Manifest> {
+        let tokens = self.lex(file);
+        let cst = self.parse(&tokens);
+        let text = &self.sources.file(file).text;
+        let decls = literal::declarations(&cst, &tokens, text);
+        manifest::read(&decls, file, &mut DiagCx { diag: &mut self.diag, origins: &mut self.origins })
     }
 
     /// Emits every diagnostic in deterministic order.

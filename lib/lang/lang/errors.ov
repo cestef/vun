@@ -101,6 +101,14 @@ link := struct {
     unavailable := diag.Diag{ .explanation = meta.embed("errors/link/unavailable.md") };
 };
 
+/// Package manifests: the `package` literal of `build.ov` (spec 12, section 2).
+manifest := struct {
+    missing_package := diag.Diag{ .explanation = meta.embed("errors/manifest/missing_package.md") };
+    missing_field := diag.Diag{ .explanation = meta.embed("errors/manifest/missing_field.md") };
+    unknown_field := diag.Diag{ .explanation = meta.embed("errors/manifest/unknown_field.md") };
+    invalid_field := diag.Diag{ .explanation = meta.embed("errors/manifest/invalid_field.md") };
+};
+
 /// Reading and writing files.
 io := struct {
     unreadable_file := diag.Diag{ .explanation = meta.embed("errors/io/unreadable_file.md") };

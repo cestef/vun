@@ -11,6 +11,8 @@ use std::borrow::Cow;
 
 use overt_grammar::{NodeField, NodeKind, TokenKind};
 
+use overt_span::Span;
+
 use crate::cst::{Anchor, Cst, NodeId};
 use crate::lexer;
 use crate::tokens::Tokens;
@@ -40,6 +42,8 @@ pub struct Decl<'s> {
     pub name: &'s str,
     pub doc: Vec<&'s str>,
     pub value: Literal<'s>,
+    /// The source of the value, or of the whole declaration when it has none.
+    pub span: Span,
 }
 
 impl<'s> Literal<'s> {
@@ -159,8 +163,9 @@ impl<'s> Reader<'_, 's> {
             NodeKind::Binding | NodeKind::TypedBinding => {
                 let fields = self.cst.fields(n)?;
                 let name = self.name(fields.one(NodeField::Pattern)?)?;
-                let value = fields.one(NodeField::Value).map_or(Literal::Opaque, |v| self.value(v));
-                Some(Decl { name, doc, value })
+                let value = fields.one(NodeField::Value);
+                let span = self.span(value.unwrap_or(n));
+                Some(Decl { name, doc, value: value.map_or(Literal::Opaque, |v| self.value(v)), span })
             }
             _ => None,
         }
@@ -203,9 +208,14 @@ impl<'s> Reader<'_, 's> {
     }
 
     fn field_init(&self, n: NodeId) -> Option<Decl<'s>> {
-        let [field, value] = self.children(n)[..] else { return None };
-        let [name] = self.children(field)[..] else { return None };
-        Some(Decl { name: self.name(name)?, doc: Vec::new(), value: self.value(value) })
+        let fields = self.cst.fields(n)?;
+        let (target, value) = (fields.one(NodeField::Target)?, fields.one(NodeField::Value)?);
+        let name = self.name(self.cst.fields(target)?.one(NodeField::Property)?)?;
+        Some(Decl { name, doc: Vec::new(), value: self.value(value), span: self.span(value) })
+    }
+
+    fn span(&self, n: NodeId) -> Span {
+        self.cst.span(n, self.tokens)
     }
 
     fn variant(&self, n: NodeId, mut doc: Vec<&'s str>) -> Option<Decl<'s>> {
@@ -214,9 +224,12 @@ impl<'s> Reader<'_, 's> {
                 doc.push(self.doc_line(n)?);
                 self.variant(*self.children(n).last()?, doc)
             }
-            NodeKind::Name => Some(Decl { name: self.name(n)?, doc, value: Literal::Opaque }),
+            NodeKind::Name => {
+                Some(Decl { name: self.name(n)?, doc, value: Literal::Opaque, span: self.span(n) })
+            }
             NodeKind::Call => {
-                Some(Decl { name: self.name(*self.children(n).first()?)?, doc, value: Literal::Opaque })
+                let name = self.name(*self.children(n).first()?)?;
+                Some(Decl { name, doc, value: Literal::Opaque, span: self.span(n) })
             }
             _ => None,
         }

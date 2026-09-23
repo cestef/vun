@@ -100,6 +100,20 @@ pub const BACKEND_UNAVAILABLE: DiagId = DiagId::new("lang.errors.backend.unavail
 /// Linking (spec 13).
 pub const LINK: DiagId = DiagId::new("lang.errors.link");
 pub const LINK_UNAVAILABLE: DiagId = DiagId::new("lang.errors.link.unavailable");
+/// Package manifests: the `package` literal of `build.ov` (spec 12, section 2).
+pub const MANIFEST: DiagId = DiagId::new("lang.errors.manifest");
+pub const MANIFEST_MISSING_PACKAGE: DiagId = DiagId::new(
+    "lang.errors.manifest.missing_package",
+);
+pub const MANIFEST_MISSING_FIELD: DiagId = DiagId::new(
+    "lang.errors.manifest.missing_field",
+);
+pub const MANIFEST_UNKNOWN_FIELD: DiagId = DiagId::new(
+    "lang.errors.manifest.unknown_field",
+);
+pub const MANIFEST_INVALID_FIELD: DiagId = DiagId::new(
+    "lang.errors.manifest.invalid_field",
+);
 /// Reading and writing files.
 pub const IO: DiagId = DiagId::new("lang.errors.io");
 pub const IO_UNREADABLE_FILE: DiagId = DiagId::new("lang.errors.io.unreadable_file");
@@ -158,6 +172,10 @@ pub const ALL: &[DiagId] = &[
     PANIC_NEVER_VIOLATED,
     BACKEND_UNAVAILABLE,
     LINK_UNAVAILABLE,
+    MANIFEST_MISSING_PACKAGE,
+    MANIFEST_MISSING_FIELD,
+    MANIFEST_UNKNOWN_FIELD,
+    MANIFEST_INVALID_FIELD,
     IO_UNREADABLE_FILE,
     CLI_UNKNOWN_COMMAND,
     CLI_MISSING_ARGUMENT,
