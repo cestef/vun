@@ -77,8 +77,13 @@ pub enum Safety  { Safe, Unsafe, Placeholder, DisplayOnly }
   are namespaced like everything else: `lang.errors.int.does_not_fit`, `std.lints.perf.padding`,
   `mydrivers.lints.raw_mmio`. Compiler errors are shown relative to `lang.errors`
   (`int.does_not_fit`). A renamed id keeps its old path as an alias.
-- **Explanations.** Every id has a page (`docs/diag/<path>.md`) with a failing example and a fixed
-  one, both compiled in CI. `overt explain <id>` works offline; the LSP links to the rendered page.
+- **Explanations.** Every id has a page, the file its `Diag` value embeds
+  (`.explanation = meta.embed("errors/names/duplicate.md")`, next to `lang/errors.ov` for the
+  compiler's own). A page has an `Example` section, whose annotated file reports exactly its `//~`
+  annotations, and a `Fix` section, whose version of that file reports nothing; blocks may name
+  their file (```` ```ov build.ov ````), so an example can be a package. Both are checked with the
+  corpus; examples that only a command shows are `console` transcripts. `overt explain <id>` prints
+  the page offline, suggesting the closest id for a misspelled one; the LSP links to the page.
 - **Messages are written inline**, in English, with structured arguments. Translation is left
   possible but not built (research notes, section 5: rustc removed its translation files in 2026).
 

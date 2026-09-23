@@ -56,13 +56,18 @@
 | 50 | BLAKE3 everywhere; package hashes are Merkle trees of directory entries, written `blake3:<base32>`; the store nests by algorithm and digest prefix | accepted | 12 |
 | 51 | Packages are published as `.ovpkg`: a zstd stream of the snapshot then the files; fetches verify before storing | accepted | 12 |
 | 52 | Errors keep their source chains; diagnostics render them as `caused by` children | accepted | 10 |
-| 53 | `overt pkg add` trusts an archive on first use and writes its entry as a literal into `.deps`, keeping the manifest's layout; `overt pkg pack` writes `<name>-<version>.ovpkg` | proposed | 12 |
+| 53 | `overt pkg add` trusts an archive on first use and writes its entry as a literal into `.deps`, keeping the manifest's layout; `overt pkg pack` writes `<name>-<version>.ovpkg` | accepted | 12 |
 | 54 | A snapshot entry records whether its file is executable; the tree hash has a third entry kind for executable files and `.ovpkg` (version 2) restores the bit | accepted (the user's Nix review) | 12 |
-| 55 | Minimal version selection runs over the packages present; every dependency resolves to the version selected for its identity; `overt.lock` records every required version (`dep name version id/major hash [via dependent]`, the id in 16 hex digits), the selected one being the largest, written by `overt pkg fetch` and `add`; the edition is 2026 | proposed (edition by the user) | 12 |
+| 55 | Minimal version selection runs over the packages present; every dependency resolves to the version selected for its identity; `overt.lock` records every required version (`dep name version id/major hash [via dependent]`, the id in 16 hex digits), the selected one being the largest, written by `overt pkg fetch` and `add`; the edition is 2026 | accepted | 12 |
 | 56 | One store per user in the XDG cache directory (`OVERT_STORE` overrides), entries labeled for people; lockfiles are GC roots registered under `<store>/roots/`; `overt cache list\|gc` | accepted (the user's Nix review) | 12 |
-| 57 | The query engine memoizes with verifying traces of interface hashes (BLAKE3 of the value's `Hash`), verified once per revision; cycles recover through a per-query rule | proposed | 13 |
-| 58 | Symbols come from one process-wide, sharded, append-only pool: equal by pointer, hashed by the BLAKE3 of their text, ordered by text, so hashes and orders built from them are stable across processes and schedules | proposed | 13 |
+| 57 | The query engine memoizes with verifying traces of interface hashes (BLAKE3 of the value's `Hash`), verified once per revision; cycles recover through a per-query rule | accepted | 13 |
+| 58 | Symbols come from one process-wide, sharded, append-only pool: equal by pointer, hashed by the BLAKE3 of their text, ordered by text, so hashes and orders built from them are stable across processes and schedules | accepted | 13 |
 | 59 | Stable identities: `FileId` hashes by `<package>@<version>/<path>` (a loose file by its path), `OriginId` by its via and anchor (a declaration by name within its declaration, a node by its span relative to its declaration) | accepted | 10, 13 |
+| 60 | `overt pkg update` reads versions from an index speaking a Go-proxy-style protocol (`<index>/<id>/<major>/list`, `.../<version>.ovpkg`); an index is a mirror, never an authority: what it serves is verified by hash | accepted | 12 |
+| 61 | The query database persists with facet and postcard under `.overt/queries/`, keyed by the toolchain's hash | accepted | 13 |
+| 62 | Explanation pages stay explicit data: each `Diag` embeds its page, as user lint packages will | accepted | 10 |
+| 63 | Binary caches are declared in the root manifest (`.caches` with their ed25519 keys); a cached output is used only when signed by a declared key over (step key, output hash), and built locally otherwise | accepted | 12 |
+| 64 | `.replace` in the root manifest substitutes a path or a hash for an identity (`id/major`) anywhere in the graph, and the lockfile records it as a `replace` line | accepted | 12 |
 
 ## Questions, with how they were settled
 

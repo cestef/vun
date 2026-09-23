@@ -35,6 +35,10 @@ pub(crate) enum Verdict {
     /// Annotations naming ids that `lang.errors` does not declare.
     Undeclared(BTreeSet<At>),
     Malformed(harness::Malformed),
+    /// An example shown as a command transcript, which no file check covers.
+    Shown,
+    /// A diagnostic whose explanation page is missing or does not show it.
+    Unexplained(crate::explanations::Unexplained),
 }
 
 pub(crate) struct Outcome {
@@ -42,12 +46,12 @@ pub(crate) struct Outcome {
     pub(crate) verdict: Verdict,
 }
 
-/// Runs every corpus file under `root`.
+/// Runs every corpus file under `root`, and the examples of the explanation pages.
 ///
 /// # Errors
 /// Returns an error if a corpus directory or file cannot be read.
 pub(crate) fn run(root: &Path) -> std::io::Result<Vec<Outcome>> {
-    let mut outcomes = Vec::new();
+    let mut outcomes = crate::explanations::run(root)?;
     for &(dir, expect) in SUITES {
         for path in discover(&root.join(dir), EXTENSION)? {
             let verdict = check(&path, expect)?;
@@ -57,7 +61,11 @@ pub(crate) fn run(root: &Path) -> std::io::Result<Vec<Outcome>> {
     Ok(outcomes)
 }
 
-fn check(path: &Path, expect: Expect) -> std::io::Result<Verdict> {
+/// The verdict of the file at `path`, expected to report nothing or exactly its annotations.
+///
+/// # Errors
+/// Returns an error if the file cannot be read.
+pub(crate) fn check(path: &Path, expect: Expect) -> std::io::Result<Verdict> {
     let text = std::fs::read_to_string(path)?;
     let mut session = Session::new();
     if let Some(file) = session.load(path) {

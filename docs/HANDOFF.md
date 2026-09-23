@@ -126,7 +126,7 @@ tested (the rest are stubs):
 | `overt-render-annotate` | default `terminal` format: labels by file, notes, fixes as patches, traces. |
 | `overt-render-ariadne` | `--format ariadne`: one color per label role; fixes as help lines. |
 | `overt-build` | `lock` (`Lock`, `Locked`, `FILE`, text form), `Manifest::{literal, source, identity}`, `Identity`, `EDITION`; `manifest::read` -> `Manifest` (`Version`, `Dep` with span, `Source`, `DepKind`, `prelude_span`), `manifest::declared` (a `build.ov` is a manifest iff it declares `package`), `DEFAULT_DEPS`, `DEFAULT_PRELUDE`; generic record reader reporting missing, unknown (did-you-mean) and ill-typed fields. `store::Store` (`Store::user()` in the XDG cache via `etcetera`, or `Store::at`; `<algorithm>/<2 chars>/<rest>/{package/,snapshot,label}`, `staging/`, `roots/`; `register`, `list`, `collect`, `Label`). `layout`: `MANIFEST`, `SEPARATOR` (from the grammar's `.`), `Location` (namespace on disk: `root`, `member`, `file`, `exists`, `children`, `path_of`). |
-| `overt-harness` | `repo_root`, `expectations` (`//~ id [@col] ["fragment"]...` -> `Expected`, or `Malformed`), `Reported`, `compare` -> `Mismatch { missing, unexpected, differing }`, `discover`, `snapshot`, `snapshot_tree` (mirrors a source tree, `OVERT_BLESS`). |
+| `overt-harness` | `repo_root`, `expectations` (`//~ id [@col] ["fragment"]...` -> `Expected`, or `Malformed`), `Reported`, `compare` -> `Mismatch { missing, unexpected, differing }`, `discover`, `snapshot`, `snapshot_tree` (mirrors a source tree, `OVERT_BLESS`), `Page::parse` (Markdown sections by `##`, `Block { lang, file, text }`) for the explanation checks. |
 | `overt-xtask` | `cargo xtask generate [--check]`: pluggable `generate::Generator { source, output, emit }` table (`grammar`, `errors`); shared read/parse/emit/format (quote + prettyplease). `cargo xtask corpus`: runs `corpus/accept` (must be clean) and `corpus/reject` (exact `//~` set) through `Session::check`; a file whose missing ids all belong to stages that do not exist yet is pending (`overt_driver::stages::STAGES`, groups from `errors.ov` namespaces via `DiagId::within`). |
 | backends, linkers, target, pass, trace, tool | as in the first session (stubs with `const INFO`). |
 
@@ -199,7 +199,10 @@ In order:
    open; stable file and origin identities exist, decision 59), then
    desugaring into `lang` items with `Via::Desugar` origins (appendix B), queries, sema (with
    narrowing, decision 35, exhaustive match, decision 29), MIR, interpreter.
-5. Explanation pages `errors/<group>/<id>.md` for every diagnostic, and `overt explain`.
+5. Done: explanation pages `lib/lang/lang/errors/<group>/<id>.md` for every diagnostic, read from
+   each `Diag`'s `meta.embed` (generated `errors::EXPLANATIONS`), checked with the corpus
+   (`xtask/src/explanations.rs`: `## Example` reports exactly its annotations, `## Fix` nothing;
+   `console` sections are shown), printed by `overt explain <id>`. A new diagnostic needs its page.
 6. Fuzz the parser longer (the verifier checks node fields; 150 s runs are clean).
 
 The corpus has 40 accept and 54 reject programs (67 pass, 27 pending on later stages), plus

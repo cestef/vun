@@ -16,6 +16,7 @@ workspace = true
 [dependencies]
 overt-command.workspace = true
 overt-diag.workspace = true
+overt-fs.workspace = true
 overt-origin.workspace = true
 overt-render-short.workspace = true
 overt-span.workspace = true

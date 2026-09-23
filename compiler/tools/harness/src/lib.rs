@@ -21,6 +21,10 @@ use std::path::{Path, PathBuf};
 
 use overt_fs::{Edit, Tree};
 
+mod page;
+
+pub use page::{Block, Page};
+
 /// The repository root, located from this crate's own place in the workspace.
 ///
 /// # Panics

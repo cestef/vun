@@ -30,7 +30,7 @@ pub const PROGRAM: Program<Session> = Program {
             planned("fmt", "format source files"),
             planned("fix", "apply fixes from diagnostics"),
             planned("doc", "generate documentation"),
-            planned("explain", "explain a diagnostic"),
+            explain::EXPLAIN,
             group("dump", "print an intermediate representation with origins", DUMPS),
             group(
                 pkg::GROUP,
@@ -196,6 +196,7 @@ fn components(_: &mut Session, _: &Args, out: &mut dyn Write) -> io::Result<Outc
 }
 
 mod cache;
+mod explain;
 mod pkg;
 
 pub(crate) use pkg::FETCH_PATH;

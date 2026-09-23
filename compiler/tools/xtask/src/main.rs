@@ -2,6 +2,7 @@
 
 mod corpus;
 mod errors;
+mod explanations;
 mod generate;
 mod grammar;
 mod lines;
@@ -94,7 +95,7 @@ fn generate_all(cx: &mut Cx, args: &Args, out: &mut dyn Write) -> io::Result<Out
 
 fn run_corpus(_: &mut Cx, _: &Args, out: &mut dyn Write) -> io::Result<Outcome> {
     let outcomes = corpus::run(&repo_root())?;
-    let (mut passed, mut pending, mut failed) = (0, 0, 0);
+    let (mut passed, mut pending, mut shown, mut failed) = (0, 0, 0, 0);
     for o in &outcomes {
         match &o.verdict {
             corpus::Verdict::Pass => passed += 1,
@@ -102,6 +103,11 @@ fn run_corpus(_: &mut Cx, _: &Args, out: &mut dyn Write) -> io::Result<Outcome> 
                 pending += 1;
                 let ids: Vec<_> = later.iter().map(|at| format!("{}:{}", at.line, at.id)).collect();
                 writeln!(out, "pending {}: awaits {}", o.path.display(), ids.join(", "))?;
+            }
+            corpus::Verdict::Shown => shown += 1,
+            corpus::Verdict::Unexplained(why) => {
+                failed += 1;
+                writeln!(out, "fail    {}: {why}", o.path.display())?;
             }
             corpus::Verdict::Malformed(malformed) => {
                 failed += 1;
@@ -140,7 +146,7 @@ fn run_corpus(_: &mut Cx, _: &Args, out: &mut dyn Write) -> io::Result<Outcome> 
             }
         }
     }
-    writeln!(out, "{passed} passed, {pending} pending, {failed} failed")?;
+    writeln!(out, "{passed} passed, {pending} pending, {shown} shown, {failed} failed")?;
     Ok(if failed == 0 { Outcome::Success } else { Outcome::Failure })
 }
 

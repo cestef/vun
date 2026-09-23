@@ -5,8 +5,11 @@ use crate::{corpus, generate, lines};
 #[test]
 fn corpus_has_no_failures() {
     let outcomes = corpus::run(&repo_root()).expect("readable corpus");
-    let failed: Vec<_> =
-        outcomes.iter().filter(|o| matches!(o.verdict, corpus::Verdict::Fail(_))).map(|o| &o.path).collect();
+    let failed: Vec<_> = outcomes
+        .iter()
+        .filter(|o| matches!(o.verdict, corpus::Verdict::Fail(_) | corpus::Verdict::Unexplained(_)))
+        .map(|o| &o.path)
+        .collect();
     assert!(failed.is_empty(), "failing corpus files: {failed:?}; run `cargo xtask corpus`");
 }
 

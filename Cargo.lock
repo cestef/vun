@@ -864,6 +864,7 @@ dependencies = [
  "overt-command",
  "overt-diag",
  "overt-driver",
+ "overt-fs",
  "overt-grammar",
  "overt-harness",
  "overt-origin",
