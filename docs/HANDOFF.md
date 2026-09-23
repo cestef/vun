@@ -1,6 +1,6 @@
 # Handoff
 
-State of Overt as of 2026-09-23 (second session), written for the next agent. Read this, then
+State of Overt as of 2026-09-23 (third session), written for the next agent. Read this, then
 `CLAUDE.md` (the user's rules and the agent working procedure; it exists on disk but is excluded
 by the user's global gitignore, so it is not in version control), then
 `docs/spec/00-principles.md`.
@@ -13,13 +13,17 @@ the user, with a Rust compiler. Aim: embedded to servers, performant, low-level,
 desugars into `lang`; `std` has no privilege; nothing runs that the program did not write.
 
 Status: design draft 2 (spec in `docs/spec/`), a Typst whitepaper draft, a 47-crate Rust
-workspace, a lexer, a postorder CST with a verifier, an error-recovering parser, a reader of
-literal declarations, generated grammar and diagnostic tables, and a declarative CLI. Every file
-in `lib/` and `corpus/accept` parses cleanly. Nothing is name-resolved or type-checked yet.
+workspace, a lexer, a postorder CST whose verifier also checks named children (node fields), an
+error-recovering parser with machine-applicable fixes, a reader of literal declarations (with
+tagged values), generated grammar and diagnostic tables, a declarative CLI, three diagnostic
+renderers (`terminal` over annotate-snippets, `ariadne`, `short`) and a `build.ov` manifest
+reader. Every file in `lib/` and `corpus/accept` parses cleanly and verifies. Nothing is
+name-resolved or type-checked yet.
 
-History (jj): `chore: scaffold workspace, spec and whitepaper`, `feat: lexer with lossless tokens
-and recovery`. Everything from the second session is uncommitted in the working copy (the user
-commits when they ask).
+History (jj, newest last): scaffold; lexer; parser, CST, tables, CLI and corpus; bitwise compound
+assignments; corpus grown to 40 accept and 50 reject; modules split and the 300-line limit;
+tagged literals and node fields; terminal renderer, `--format` and parser fixes; manifests;
+ariadne renderer. The user asked for commits per batch: commit each finished batch with `jj`.
 
 ## 2. How the user works (non-negotiable)
 
@@ -90,12 +94,15 @@ tested (the rest are stubs):
 | `overt-span` | `FileId`, `ByteRange`, `Span`, `SourceFile` (`line_col`), `SourceMap`, `SourceFiles`. |
 | `overt-origin` | `OriginId`, `Origin`, `Via`, `OriginTable`. |
 | `overt-diag` | `DiagId`, `Severity`, `Msg` (typed parts, `append`), `Label`, `Fix`, `ChildKind` (Display), `Diagnostic`, `DiagCtxt`, `DiagCx::error_at`, `DiagSink`; `suggest::closest` (did-you-mean by edit distance); `errors` (generated). |
-| `overt-grammar` | `generated.rs`: `TokenKind` (+ `TRIVIA`, `ATOMS`, `KEYWORDS`, `PUNCTUATION`, `END`, `text()`), `NodeKind` (`LEAVES`, `BRANCHES`), `Context`, `Assoc`, tables `CONTEXTUAL`, `DELIMITERS`, `INFIX`, `PREFIX`, `POSTFIX`, `ASSIGN`, `OPERANDS`, `ELEMENT_TYPES`, `LITERAL_TYPES`. `lib.rs` derives lookups: `punctuation`, `keyword`, `is_trivia`, `infix` (`Prec`, `Infix`), `closer`/`opens`/`closes`, `is_leaf`, `contextual`. |
-| `overt-syntax` | `tokens` (SoA tokens + trivia side table, `verify`); `lexer` (`lex`, recovery, `literal(kind, text)` for string values, backslash escapes); `cst` (postorder `(kind, Anchor, size)`, `Anchor::{Token, Missing}`, `children`, `span`, `dump`, `verify` -> `Malformed`); `parser` (`parse`); `literal` (`declarations` -> `Decl { name, doc, value: Literal }`). |
-| `overt-command` | Declarative command trees: `Program`, `Command`, `Action::{Run, Group, Planned}`, `Param`/`ParamKind::{Positional, Flag, Option}`, `Args`, `parse` -> `Request`, `Selected`, generated `help`, `run` -> `Outcome`/`Refusal`, `Outcome` -> `ExitCode` (usage = 64). Usage errors are diagnostics with suggestions. |
-| `overt-driver` | `stages::STAGES` (implemented stages and the diagnostic groups they report), `Session::check` (runs them), `commands::PROGRAM` (the whole `overt` tree of spec 12.7, most commands `Planned`; `dump tokens|cst`, `components` run), `Registry`, `Session` (`load`, `text`, `lex`, `parse`, `emit`, `failed`). |
+| `overt-grammar` | `generated.rs`: `NodeField`, `NodeSlot`, `Count`, `NodeKind::slots` (children per kind, from tagged entries), `TokenKind` (+ `TRIVIA`, `ATOMS`, `KEYWORDS`, `PUNCTUATION`, `END`, `text()`), `NodeKind` (`LEAVES`, `BRANCHES`), `Context`, `Assoc`, tables `CONTEXTUAL`, `DELIMITERS`, `INFIX`, `PREFIX`, `POSTFIX`, `ASSIGN`, `OPERANDS`, `ELEMENT_TYPES`, `LITERAL_TYPES`. `lib.rs` derives lookups: `punctuation`, `keyword`, `is_trivia`, `infix` (`Prec`, `Infix`), `closer`/`opens`/`closes`, `is_leaf`, `contextual`. |
+| `overt-syntax` | `tokens` (SoA tokens + trivia side table, `verify`); `lexer` (`lex`, recovery, `literal(kind, text)` for string values, backslash escapes); `cst` (postorder `(kind, Anchor, size)`, `Anchor::{Token, Missing}`, `children`, `span`, `dump`, `verify` -> `Malformed`); `parser` (`parse`); `literal` (`declarations` -> `Decl { name, doc, value: Literal, span }`, `Literal::Tagged`); `Cst::fields(n)` -> `Fields` (`get`, `one`, `field_of`), matched against the kind's slots. |
+| `overt-command` | Options of a group apply to every command below it; `Program.configure` applies them before a run. Declarative command trees: `Program`, `Command`, `Action::{Run, Group, Planned}`, `Param`/`ParamKind::{Positional, Flag, Option}`, `Args`, `parse` -> `Request`, `Selected`, generated `help`, `run` -> `Outcome`/`Refusal`, `Outcome` -> `ExitCode` (usage = 64). Usage errors are diagnostics with suggestions. |
+| `overt-driver` | `stages::STAGES` (implemented stages and the diagnostic groups they report), `Session::check` (runs them), `commands::PROGRAM` (the whole `overt` tree of spec 12.7, most commands `Planned`; `dump tokens|cst|manifest`, `components` run), `formats::FORMATS` (renderer registry behind `--format`), `Registry`, `Session` (`load`, `text`, `lex`, `parse`, `emit`, `failed`). |
 | `overt-cli` | `main` runs `PROGRAM` through `overt-command` and renders diagnostics once at the end. |
-| `overt-render-short` | `file:line:col: severity[id]: message`, then `  = help: ...` lines. |
+| `overt-render-short` | `file:line:col: severity[id]: message`, then `  = help: ...` lines (fixes too). |
+| `overt-render-annotate` | default `terminal` format: labels by file, notes, fixes as patches, traces. |
+| `overt-render-ariadne` | `--format ariadne`: one color per label role; fixes as help lines. |
+| `overt-build` | `manifest::read` -> `Manifest` (`Version`, `Dep`, `Source`, `DepKind`); generic record reader reporting missing, unknown (did-you-mean) and ill-typed fields. |
 | `overt-harness` | `repo_root`, `expectations` (`//~ id [@col] ["fragment"]...` -> `Expected`, or `Malformed`), `Reported`, `compare` -> `Mismatch { missing, unexpected, differing }`, `discover`, `snapshot`, `snapshot_tree` (mirrors a source tree, `OVERT_BLESS`). |
 | `overt-xtask` | `cargo xtask generate [--check]`: pluggable `generate::Generator { source, output, emit }` table (`grammar`, `errors`); shared read/parse/emit/format (quote + prettyplease). `cargo xtask corpus`: runs `corpus/accept` (must be clean) and `corpus/reject` (exact `//~` set) through `Session::check`; a file whose missing ids all belong to stages that do not exist yet is pending (`overt_driver::stages::STAGES`, groups from `errors.ov` namespaces via `DiagId::within`). |
 | backends, linkers, target, pass, trace, tool | as in the first session (stubs with `const INFO`). |
@@ -150,24 +157,30 @@ typst compile whitepaper/main.typ whitepaper/overt.pdf
 
 In order:
 
-1. **Phase 0 corpus** (in progress): `corpus/accept/<area>/` holds 27 programs adapted from the
-   spec's examples (all parse cleanly), `corpus/reject/<group>/` 26 files: 8 syntax files that
-   pass and 18 semantic files pending on stages that do not exist, plus 7 lexer and parser
-   files (one per syntax diagnostic; nesting depth stays a unit test). `cargo xtask corpus`
-   reports 42 passed, 18 pending; syntax rejects pin columns and help text. Grow both to about 40 (FFI, `$`-generated code, interfaces used
-   generically, coroutine cancellation, `&take`/`&out`, layout attributes, lints).
-2. **Node fields in `grammar.ov`** (open question 14): named children per node kind, generated
-   typed accessors over the CST, then use them in HIR lowering.
-3. **Renderer**: `overt-render-annotate` over annotate-snippets with labels, notes and fix diffs;
-   parser diagnostics should gain secondary labels (the unclosed delimiter's opener) and
-   machine-applicable fixes (insert `;`, escape a keyword).
-4. **Manifest reading**: `build.ov` `package` literal through `overt_syntax::literal`.
-5. HIR (desugaring with `Via::Desugar`, name resolution), queries, sema, MIR, interpreter.
+1. **HIR and name resolution** (in progress, see below): lowering the CST through `Cst::fields`,
+   scopes, and the syntactic checks of the `names` and `binding` groups (`duplicate`, `shadowed`,
+   `irrefutable_test`). `names.unresolved` needs an environment (packages, prelude); see open
+   question "corpus environment" in section 9.
+2. Package loading: namespaces from `<name>.ov` + `<name>/`, dependencies from manifests, the
+   prelude.
+3. Desugaring into `lang` items with `Via::Desugar` origins (appendix B), queries, sema, MIR,
+   interpreter.
+4. Explanation pages `errors/<group>/<id>.md` for every diagnostic, and `overt explain`.
+5. Fuzz the parser longer (the verifier now checks node fields; 150 s runs are clean).
+
+The corpus has 40 accept and 50 reject programs (59 pass, 31 pending on later stages).
 
 ## 9. Open questions and known gaps
 
-- `decisions.md` open questions 1 to 16. New ones from this session: 14 (node fields), 15 (typed
-  literal position rule versus `T.{ }`), 16 (lowercase primitive names).
+- `decisions.md` open questions 1 to 24. 14 was resolved by decision 27 (tagged values and node
+  fields, accepted). 17 to 24 came from the question "is Overt good for writing compilers":
+  nominal identity of type literals, exhaustive `match`, pattern forms, matching through
+  borrows, arena-tied trees, typed handles, collected registrations, text. They await the user.
+- **Corpus environment** (undecided): accept programs use names they do not declare (`uart`,
+  `serde`, `Point`). Before `names.unresolved` can run on them, either they become
+  self-contained, or the corpus gets a support package and a prelude that re-exports it (the
+  spec lets a build choose its prelude, but the build is not a literal; a manifest field
+  `.prelude` would be a language change).
 - Decisions 23 (CST shape) and 25 (`static` contextual) are proposals awaiting the user.
 - `lang/errors.ov` now declares planned ids for later stages (`names`, `binding`, `safety`,
   `place`, `borrow`, `panic` groups, `int.width_cap`), one per spec rule the reject corpus
@@ -192,3 +205,12 @@ In order:
   outside tests, so alias (`use TokenKind as K;`).
 - `'x` lexes as a label; `'\n` without a closing quote is the unterminated character case.
 - `CLAUDE.md` is ignored by the user's global gitignore, so `jj st` never shows it.
+- Node fields: each distinct shape is its own kind (`binding`/`typed_binding`,
+  `struct_lit`/`typed_lit`); a field named after a node kind is restricted to it; `error` is a
+  branch that wraps what recovery skipped, so a failed entry is one node. The fuzzer finds parser
+  outputs that do not fit their slots: run `cargo +nightly fuzz run parse`, then `fuzz tmin`, then
+  `overt dump cst` on the minimized input (dumps show each child's field).
+- `cargo xtask generate` is built from the driver: when the driver uses a new diagnostic id,
+  bootstrap with a temporary existing id, generate, then restore.
+- A `?` inside a match arm returns from the whole function: in readers that must report every
+  problem, combine results with a `match` on the tuple instead.
