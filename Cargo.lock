@@ -743,6 +743,9 @@ dependencies = [
 [[package]]
 name = "overt-query"
 version = "0.0.0"
+dependencies = [
+ "overt-hash",
+]
 
 [[package]]
 name = "overt-render-annotate"

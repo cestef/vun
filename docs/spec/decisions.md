@@ -60,6 +60,7 @@
 | 54 | A snapshot entry records whether its file is executable; the tree hash has a third entry kind for executable files and `.ovpkg` (version 2) restores the bit | accepted (the user's Nix review) | 12 |
 | 55 | Minimal version selection runs over the packages present; every dependency resolves to the version selected for its identity; `overt.lock` records every required version (`dep name version id/major hash [via dependent]`, the id in 16 hex digits), the selected one being the largest, written by `overt pkg fetch` and `add`; the edition is 2026 | proposed (edition by the user) | 12 |
 | 56 | One store per user in the XDG cache directory (`OVERT_STORE` overrides), entries labeled for people; lockfiles are GC roots registered under `<store>/roots/`; `overt cache list\|gc` | accepted (the user's Nix review) | 12 |
+| 57 | The query engine memoizes with verifying traces of interface hashes (BLAKE3 of the value's `Hash`), verified once per revision; cycles recover through a per-query rule | proposed | 13 |
 
 ## Questions, with how they were settled
 

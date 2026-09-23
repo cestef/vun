@@ -110,6 +110,7 @@ tested (the rest are stubs):
 | `overt-suggest` | `closest` (did-you-mean by edit distance), `Lookup` on slices (find by name or the closest name). Generic, no diag types. |
 | `overt-hash` | BLAKE3 only. `Algorithm` (typed, `name`), `Hash` (`blake3:<base32>`, `parse`, `digest`, `of(bytes)`, `tree(dir, include)`), `Snapshot` (per-file `Entry { hash, mode }` by path, `root` = Merkle tree over path components with directory nodes in a derived key, `changes`, text form, portable plain-component paths), `Change`. Package identity, manifest `.hash`, every cache key. |
 | `overt-pkg` | `Mirror` (`parse`, `fetch`), `SCHEMES` (https, http, file), `FORMATS` (`.ovpkg`, `.tar.zst`, `.tar.xz`, `.tar.gz`, `.tar`, `.zip`; `strip` of a forge's top directory), `Archive` (`.ovpkg`: `pack`, `unpack` verifying each file), `Failure`/`Malformed` with sources. |
+| `overt-query` | `Query` (`NAME`, `Key`, `Value`, `compute`, `interface`, `cycle`), `Db` (`set`, `get`, `revision`), `Cx` (`get` records reads), `Cycle`. Verifying traces of interface hashes, early cutoff, one verification per revision. Not persisted yet, single-flight per thread only. |
 | `overt-graph` | `Requirements<K>` (`add`, `order`, `OrderError`): the pass manager's ordering. |
 | `overt-fs` | `Tree` on `Path`: `files` (recursive, sorted), `entries`. `Modes` on `Path` (`mode`, `set_mode`: `Mode::{Regular, Executable}`); `Relative` (`relative_to`). `Edit` on `Path`: `put` (creates parents), `remove` (absent is removed), `fresh` (empty directory), `replace_with` (move a directory in whole). `Scratch`: a test directory removed on drop. Every filesystem write in the compiler and its tests goes through them. |
 | `overt-outline` | `Outline` + `Outlined::node`: indented tree text for the CST and HIR dumps. |
@@ -192,7 +193,8 @@ In order:
    `overt pkg add` (trust on first use, entries written through `Dep::declare`/`Decl::insert`) and
    `overt pkg pack`. Open: `overt pkg update` needs a source of newer versions (an index).
 3. `names.private` (needs member types: sema), `binding.hole_value` (needs attribute resolution).
-4. Desugaring into `lang` items with `Via::Desugar` origins (appendix B), queries, sema (with
+4. Sema on `overt-query` (the engine exists; persistence to disk and parallel single-flight are
+   open), then desugaring into `lang` items with `Via::Desugar` origins (appendix B), queries, sema (with
    narrowing, decision 35, exhaustive match, decision 29), MIR, interpreter.
 5. Explanation pages `errors/<group>/<id>.md` for every diagnostic, and `overt explain`.
 6. Fuzz the parser longer (the verifier checks node fields; 150 s runs are clean).

@@ -50,7 +50,13 @@ years (rustc's parallel front end). So both are designed in from phase 1.
 **Queries.**
 - The unit of incremental work is a declaration or a function body, never an expression.
 - Every query result has an interface hash; dependents are re-run only when the interface changed
-  (early cutoff, as Go does per package).
+  (early cutoff, as Go does per package). A memo keeps a verifying trace (Mokhov, Mitchell and
+  Peyton Jones, *Build systems à la carte*): the interface hash of each query it read. In a later
+  revision it is reused when every dependency, brought up to date, hashes as recorded, and it is
+  checked at most once per revision, as Salsa's memos are. Traces hold content hashes rather than
+  revision numbers, so they stay valid in the next process. Inputs are set, and a set that leaves
+  an input's interface unchanged starts no revision. A query that reaches itself gets the value
+  its `cycle` rule gives, with the path of queries, instead of looping.
 - The query database is persisted to disk from phase 1, with a bounded cache for bodies (new Salsa
   initially grew rust-analyzer's memory about 4x).
 

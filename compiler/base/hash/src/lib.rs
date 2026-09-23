@@ -69,6 +69,41 @@ impl Hash {
     }
 }
 
+/// A [`std::hash::Hasher`] over BLAKE3, so that any `std::hash::Hash` value has a content hash:
+/// what query results are compared by. The encoding is Rust's, stable within one build of the
+/// toolchain, which is what every cache is keyed by as well.
+#[derive(Default)]
+pub struct Hasher(blake3::Hasher);
+
+impl std::hash::Hasher for Hasher {
+    fn write(&mut self, bytes: &[u8]) {
+        self.0.update(bytes);
+    }
+
+    /// The first 8 bytes of the digest; [`Hasher::finish_hash`] gives the whole.
+    fn finish(&self) -> u64 {
+        let digest = self.0.finalize();
+        u64::from_le_bytes(digest.as_bytes()[..8].try_into().expect("8 bytes"))
+    }
+}
+
+impl Hasher {
+    #[must_use]
+    pub fn finish_hash(&self) -> Hash {
+        Hash { algorithm: Algorithm::Blake3, digest: *self.0.finalize().as_bytes() }
+    }
+}
+
+impl Hash {
+    /// The content hash of a value, through its `std::hash::Hash`.
+    #[must_use]
+    pub fn of_value<T: std::hash::Hash + ?Sized>(value: &T) -> Self {
+        let mut hasher = Hasher::default();
+        value.hash(&mut hasher);
+        hasher.finish_hash()
+    }
+}
+
 impl fmt::Display for Hash {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}{}{}", self.algorithm.name(), Self::SEPARATOR, self.digest())
