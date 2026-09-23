@@ -5,7 +5,7 @@ use std::fmt;
 
 /// One part of a message. Structured parts let renderers style them and machine formats keep
 /// them apart.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum MsgPart {
     Text(Cow<'static, str>),
     Code(String),
@@ -14,7 +14,7 @@ pub enum MsgPart {
 }
 
 /// A message, built from typed parts rather than formatted text.
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct Msg(pub Vec<MsgPart>);
 
 impl Msg {

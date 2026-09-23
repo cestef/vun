@@ -1,6 +1,7 @@
 //! High-level IR: the CST lowered into roles, names resolved within a file, and the checks that
 //! need no types (spec 13, section 1).
 
+pub mod db;
 pub mod dump;
 pub mod lower;
 pub mod resolve;

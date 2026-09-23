@@ -6,8 +6,8 @@ use std::sync::Arc;
 use overt_build::manifest::{self, Manifest};
 use overt_build::store::Store;
 use overt_diag::{DiagCtxt, DiagCx, DiagSink, Diagnostic, Msg, errors};
+use overt_hir::db::{FileRef, FileText, Parsed, ParsedFile};
 use overt_hir::lower;
-use overt_hir::resolve::{self, Resolution};
 use overt_hir::tree::Hir;
 use overt_origin::OriginTable;
 use overt_query::Db;
@@ -94,19 +94,34 @@ impl Session {
         lower::lower(lower::Source { cst, tokens, text }, &self.origins)
     }
 
-    /// Resolves the names of `file` within it and against its package, reporting what needs no
-    /// types.
-    pub fn resolve(&mut self, file: FileId, hir: &Hir) -> Resolution {
-        let mut cx = DiagCx { diag: &mut self.diag, origins: &self.origins };
-        let resolution = resolve::resolve(hir, &mut cx);
+    /// The file lexed, parsed, lowered and resolved within itself, from the queries, with the
+    /// inputs of its package graph set first; what those stages reported is recorded.
+    ///
+    /// # Panics
+    /// Never: the file's text is set just before.
+    pub fn parsed(&mut self, file: FileId) -> Arc<ParsedFile> {
+        let path = PathBuf::from(&self.sources.file(file).path);
+        let package = self.package_of(file);
+        let id = self.publish(package);
+        let key = FileRef { package: id, path: self.packages.list[&package].relative(&path) };
+        // The file as loaded, which its package's files do not include when it is loose.
+        self.db.set::<FileText>(key.clone(), Some(Arc::from(self.text(file))));
+        let parsed = self.db.get::<Parsed>(&key).expect("its text is set");
+        self.diag.absorb(&parsed.diag);
+        parsed
+    }
+
+    /// Resolves the names of `parsed`, the file `file`, against its package, reporting what
+    /// needs no types.
+    pub fn check_names(&mut self, file: FileId, parsed: &ParsedFile) {
+        let (hir, resolution) = (&parsed.hir, &parsed.resolution);
         let package = self.package_of(file);
         self.scope(package);
-        let spreads = self.spreads(package, hir, &resolution);
+        let spreads = self.spreads(package, hir, resolution);
         self.check_children(file, hir);
         let outside = FileScope { package: &self.packages.scopes[&package], spreads: &spreads };
         let mut cx = DiagCx { diag: &mut self.diag, origins: &self.origins };
         resolution.check_outer(hir, &outside, &mut cx);
-        resolution
     }
 
     /// Reads the manifest of the `build.ov` loaded as `file` (spec 12, section 2).

@@ -3,7 +3,7 @@
 use std::collections::HashMap;
 
 use overt_build::layout::SEPARATOR;
-use overt_diag::{ChildKind, DiagCx, Diagnostic, ErrorGuaranteed, Msg, errors};
+use overt_diag::{ChildKind, Diagnostic, ErrorGuaranteed, Msg, errors};
 use overt_intern::Symbol;
 use overt_span::Span;
 
@@ -36,6 +36,14 @@ impl std::fmt::Display for Absent {
 }
 
 impl std::error::Error for Absent {}
+
+/// Why a dependency's package cannot be loaded.
+pub(super) enum Unfetched {
+    /// It is not there as declared: the diagnostic saying so, not yet reported.
+    Absent(Box<Diagnostic>),
+    /// Reported while the graph was selected, such as a version conflict.
+    Reported(ErrorGuaranteed),
+}
 
 /// What a name from outside a file refers to.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -82,17 +90,30 @@ impl Session {
     /// # Errors
     /// Returns the proof that why it cannot be loaded is reported.
     pub fn dep(&mut self, package: PackageKey, index: usize) -> Result<PackageKey, ErrorGuaranteed> {
+        self.dep_unreported(package, index).map_err(|why| match why {
+            Unfetched::Absent(d) => self.diag.error_once(*d),
+            Unfetched::Reported(reported) => reported,
+        })
+    }
+
+    /// [`Self::dep`], with why it cannot be loaded returned rather than reported, for whoever
+    /// needs it.
+    pub(super) fn dep_unreported(
+        &mut self,
+        package: PackageKey,
+        index: usize,
+    ) -> Result<PackageKey, Unfetched> {
         let dep = self.packages.list[&package].deps[index].clone();
-        let declared = self.dep_package(&dep)?;
+        let declared = self.absence(&dep).map_err(Unfetched::Absent)?;
         let Some((identity, _)) = self.packages.list[&declared].release else { return Ok(declared) };
         if let Some(replace) = self.replacement(identity) {
-            return self.dep_package(&replace.dep);
+            return self.absence(&replace.dep).map_err(Unfetched::Absent);
         }
-        match self.selected(identity)? {
+        match self.selected(identity).map_err(Unfetched::Reported)? {
             Some(locked) if PackageKey::Content(locked.hash) != declared => {
                 let source =
                     DepSource::Stored { hash: locked.hash, version: locked.version, urls: Vec::new() };
-                self.dep_package(&Dep { source, ..dep })
+                self.absence(&Dep { source, ..dep }).map_err(Unfetched::Absent)
             }
             _ => Ok(declared),
         }
@@ -101,21 +122,27 @@ impl Session {
     /// The package `dep` declares, checked against its hash when it is stored; why not is
     /// reported once per package, however many dependents declare it.
     pub(super) fn dep_package(&mut self, dep: &Dep) -> Result<PackageKey, ErrorGuaranteed> {
+        self.absence(dep).map_err(|d| self.diag.error_once(*d))
+    }
+
+    /// The package `dep` declares, or why it is not there: one diagnostic per package directory,
+    /// so that reporting it again records nothing new.
+    fn absence(&mut self, dep: &Dep) -> Result<PackageKey, Box<Diagnostic>> {
         let dir = self.dep_dir(&dep.source);
-        if let Some(&reported) = self.packages.absent.get(&dir) {
-            return Err(reported);
+        if let Some(d) = self.packages.absent.get(&dir) {
+            return Err(Box::new(d.clone()));
         }
-        let reported = match self.found(dep) {
+        let d = match self.found(dep) {
             Ok(found) => return Ok(found),
             Err(Absent::Missing) => self.missing_dep(dep),
             Err(Absent::Mismatch { expected, actual }) => {
                 let snapshot = &self.packages.list[&PackageKey::Content(actual)].snapshot;
-                let d = self.mismatch(dep, expected, actual, snapshot);
-                self.report(dep.span, d)
+                self.mismatch(dep, expected, actual, snapshot)
             }
         };
-        self.packages.absent.insert(dir, reported);
-        Err(reported)
+        let d = self.located(dep.span, d);
+        self.packages.absent.insert(dir, d.clone());
+        Err(Box::new(d))
     }
 
     /// The package `dep` declares, if it is there as declared.
@@ -157,19 +184,18 @@ impl Session {
         poisoned
     }
 
-    fn missing_dep(&mut self, dep: &Dep) -> ErrorGuaranteed {
+    fn missing_dep(&self, dep: &Dep) -> Diagnostic {
         let msg = Msg::new().text("cannot find dependency ").code(dep.name.as_str());
         let dir = self.dep_dir(&dep.source).display().to_string();
         let d = Diagnostic::error(errors::PACKAGE_MISSING_DEP, msg.text(" at ").code(dir));
-        let d = match dep.source {
+        match dep.source {
             DepSource::Dir(_) => d,
             DepSource::Stored { hash, .. } => {
                 let fetch = PROGRAM.invocation(&FETCH_PATH).expect("fetch is a command");
                 let help = Msg::new().code(hash.to_string()).text(" is fetched by ").code(fetch);
                 d.child(ChildKind::Help, help)
             }
-        };
-        self.report(dep.span, d)
+        }
     }
 
     /// That the stored package of `dep` hashes to `actual`, naming the files changed since the
@@ -201,9 +227,15 @@ impl Session {
     }
 
     pub(super) fn report(&mut self, span: Option<Span>, d: Diagnostic) -> ErrorGuaranteed {
+        let d = self.located(span, d);
+        self.diag.error(d)
+    }
+
+    /// `d` with its primary label at `span`, when there is one.
+    fn located(&self, span: Option<Span>, d: Diagnostic) -> Diagnostic {
         match span {
-            Some(span) => DiagCx { diag: &mut self.diag, origins: &self.origins }.error_at(span, d),
-            None => self.diag.error(d),
+            Some(span) => d.at(self.origins.source(span), None),
+            None => d,
         }
     }
 }

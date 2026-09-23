@@ -13,7 +13,7 @@ use super::PackageKey;
 use crate::Session;
 
 /// Separates a package's name from its version in a file key.
-const VERSION_MARK: char = '@';
+pub(super) const VERSION_MARK: char = '@';
 /// Separates the parts of a file key, on every platform.
 const SEPARATOR: char = Snapshot::PATH_SEPARATOR;
 
@@ -42,9 +42,10 @@ impl Session {
         let release = around.and_then(|(dir, key)| {
             let package = &self.packages.list[&key];
             let relative = path.strip_prefix(&dir).ok()?;
-            let parts: Vec<_> = relative.iter().map(|p| p.to_string_lossy()).collect();
-            let (name, (_, version)) = (package.name?, package.release?);
-            Some(format!("{name}{VERSION_MARK}{version}{SEPARATOR}{}", parts.join(&SEPARATOR.to_string())))
+            let parts = relative.iter().map(|p| p.to_string_lossy().into_owned());
+            let key = package.key();
+            (!key.is_empty())
+                .then(|| [key].into_iter().chain(parts).collect::<Vec<_>>().join(&SEPARATOR.to_string()))
         });
         release.unwrap_or_else(|| path.display().to_string())
     }

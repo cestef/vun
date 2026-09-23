@@ -172,6 +172,8 @@ impl std::fmt::Display for Location<'_> {
 #[derive(Default)]
 pub struct SourceFiles {
     files: boxcar::Vec<SourceFile>,
+    /// Each file by its key and the hash of its text, so that adding it again returns it.
+    added: std::sync::RwLock<std::collections::HashMap<(u64, overt_hash::Hash), FileId>>,
 }
 
 impl SourceFiles {
@@ -187,14 +189,23 @@ impl SourceFiles {
         self.add_as(&key, path, text)
     }
 
-    /// Adds a file under `key`, which names it the same way in every process, shown as `path`.
+    /// Adds a file under `key`, which names it the same way in every process, shown as `path`;
+    /// the same key with the same text is the file already added.
     ///
     /// # Panics
-    /// Panics past `u32::MAX` files.
+    /// Panics past `u32::MAX` files, or if a thread panicked while adding.
     pub fn add_as(&self, key: &str, path: impl Into<String>, text: impl Into<String>) -> FileId {
         let key = overt_hash::Hash::of(key.as_bytes()).short();
-        let index = self.files.push(SourceFile::new(path.into(), text.into()));
-        FileId { index: u32::try_from(index).expect("fewer than 2^32 files"), key }
+        let text = text.into();
+        let identity = (key, overt_hash::Hash::of(text.as_bytes()));
+        if let Some(&file) = self.added.read().expect("source files").get(&identity) {
+            return file;
+        }
+        let mut added = self.added.write().expect("source files");
+        *added.entry(identity).or_insert_with(|| {
+            let index = self.files.push(SourceFile::new(path.into(), text));
+            FileId { index: u32::try_from(index).expect("fewer than 2^32 files"), key }
+        })
     }
 }
 

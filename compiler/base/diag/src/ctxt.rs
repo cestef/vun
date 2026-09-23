@@ -36,8 +36,8 @@ impl DiagCx<'_> {
     }
 }
 
-/// Collects diagnostics for one compilation.
-#[derive(Default)]
+/// Collects diagnostics: for one compilation, or as the reports of one query, which are data.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct DiagCtxt {
     diagnostics: Vec<Diagnostic>,
 }
@@ -53,6 +53,26 @@ impl DiagCtxt {
         d.severity = Severity::Error;
         self.diagnostics.push(d);
         ErrorGuaranteed(())
+    }
+
+    /// Records an error unless an equal one is recorded, and returns the proof that it was.
+    pub fn error_once(&mut self, mut d: Diagnostic) -> ErrorGuaranteed {
+        d.severity = Severity::Error;
+        if !self.diagnostics.contains(&d) {
+            self.diagnostics.push(d);
+        }
+        ErrorGuaranteed(())
+    }
+
+    /// Records the diagnostics of `other` not already recorded, since queries reached from
+    /// several places return the same reports; the proof of an error when `other` holds one.
+    pub fn absorb(&mut self, other: &Self) -> Option<ErrorGuaranteed> {
+        for d in &other.diagnostics {
+            if !self.diagnostics.contains(d) {
+                self.diagnostics.push(d.clone());
+            }
+        }
+        (other.error_count() > 0).then_some(ErrorGuaranteed(()))
     }
 
     pub fn report(&mut self, d: Diagnostic) {

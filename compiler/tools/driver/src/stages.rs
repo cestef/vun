@@ -37,9 +37,7 @@ pub fn implemented(id: &DiagId) -> bool {
 impl Session {
     /// Runs every stage that exists on `file`.
     pub fn check(&mut self, file: FileId) {
-        let tokens = self.lex(file);
-        let cst = self.parse(&tokens);
-        let hir = self.lower(&tokens, &cst);
-        self.resolve(file, &hir);
+        let parsed = self.parsed(file);
+        self.check_names(file, &parsed);
     }
 }

@@ -171,10 +171,10 @@ fn dump(session: &mut Session, args: &Args, out: &mut dyn Write, stage: Stage) -
             write!(out, "{}", cst.dump(&tokens, session.text(file)))?;
         }
         Stage::Hir => {
-            let cst = session.parse(&tokens);
-            let hir = session.lower(&tokens, &cst);
-            let resolution = session.resolve(file, &hir);
-            let text = overt_hir::dump::dump(&hir, &resolution, &session.origins, &*session.sources);
+            let parsed = session.parsed(file);
+            session.check_names(file, &parsed);
+            let text =
+                overt_hir::dump::dump(&parsed.hir, &parsed.resolution, &session.origins, &*session.sources);
             write!(out, "{text}")?;
         }
         Stage::Manifest => unreachable!("read above"),

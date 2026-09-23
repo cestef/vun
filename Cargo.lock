@@ -806,6 +806,7 @@ dependencies = [
  "overt-intern",
  "overt-origin",
  "overt-outline",
+ "overt-query",
  "overt-span",
  "overt-suggest",
  "overt-syntax",

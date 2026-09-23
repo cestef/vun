@@ -19,7 +19,8 @@ overt-intern.workspace = true
 overt-syntax.workspace = true
 overt-index.workspace = true
 overt-grammar.workspace = true
+overt-hash.workspace = true
+overt-query.workspace = true
 
 [dev-dependencies]
-overt-hash.workspace = true
 overt-harness.workspace = true

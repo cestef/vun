@@ -32,7 +32,7 @@ impl fmt::Display for DiagId {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum Severity {
     Hint,
     Info,
@@ -52,7 +52,7 @@ impl fmt::Display for Severity {
 }
 
 /// What produced a diagnostic.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum DiagSource {
     Compiler,
     Lint { group: Cow<'static, str> },

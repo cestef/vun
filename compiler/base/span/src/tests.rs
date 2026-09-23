@@ -38,3 +38,11 @@ fn file_ids_hash_by_key_not_by_order() {
     assert_eq!(hash(a), hash(b));
     assert_eq!(second.file(b).path, "/home/b/hal/hal.ov");
 }
+
+#[test]
+fn a_file_added_again_is_the_same_file() {
+    let files = SourceFiles::new();
+    let a = files.add_as("p@1.0.0/a.ov", "/x/a.ov", "x := 1;");
+    assert_eq!(a, files.add_as("p@1.0.0/a.ov", "/y/a.ov", "x := 1;"));
+    assert_ne!(a, files.add_as("p@1.0.0/a.ov", "/x/a.ov", "x := 2;"), "an edited file is another");
+}
