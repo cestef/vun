@@ -19,7 +19,11 @@ fn threads_record_origins_without_waiting() {
     std::thread::scope(|s| {
         for lo in 0..4 {
             let t = &t;
-            s.spawn(move || (0..100).map(|i| t.source(Span::new(f, lo, lo + i))).count());
+            s.spawn(move || {
+                for i in 0..100 {
+                    let _ = t.source(Span::new(f, lo, lo + i));
+                }
+            });
         }
     });
     assert_eq!(t.len(), 400);

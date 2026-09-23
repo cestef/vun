@@ -17,7 +17,7 @@ fn read(text: &str) -> Vec<Decl<'_>> {
 #[test]
 fn reads_literals_and_skips_the_rest() {
     let text = "/// doc\nxs := [.a, .\\unsafe, \"s\", -0x1_0];\nr: T = .{ .k = 1, .l = .{ 2 } };\n\
-                E := enum { /// v\n a, b(u8) };\nS := struct { f: u8, d := f(); };\n";
+                E := enum { /// v\n a, b(u8) };\nS := struct { f: u8, d := f() + 1; };\n";
     let decls = read(text);
     let names: Vec<_> = decls.iter().map(|d| d.name).collect();
     assert_eq!(names, ["xs", "r", "E", "S"]);
@@ -96,4 +96,15 @@ fn long_insertions_are_laid_out_one_field_per_line() {
     assert_eq!(after, expected);
     let read_back = read(&after)[0].value.decls().unwrap()[1].value.get("hal").unwrap().source();
     assert_eq!(read_back, dep.source());
+}
+
+#[test]
+fn typed_literals_and_path_calls_read_and_write_back() {
+    let text = "d := diag.Diag{ .explanation = meta.embed(\"errors/a.md\") };";
+    let value = &read(text)[0].value;
+    let Literal::Typed(ty, _) = value else { panic!("{value:?}") };
+    assert_eq!(ty, &["diag", "Diag"]);
+    let (path, args) = value.get("explanation").and_then(Literal::as_call).unwrap();
+    assert_eq!((path, args), (&["meta", "embed"][..], &[Literal::String("errors/a.md".into())][..]));
+    assert_eq!(value.source().unwrap(), "diag.Diag{ .explanation = meta.embed(\"errors/a.md\") }");
 }

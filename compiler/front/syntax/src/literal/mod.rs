@@ -3,7 +3,8 @@
 //! Tools read `build.ov` manifests and `lang/syntax/grammar.ov` this way. A declaration
 //! `name := value;` whose value is made of strings, integers, `.name` literals, tagged values
 //! `.name(a, b)`, lists `[a, b]`,
-//! anonymous structs `.{ .field = value }` and type literals `enum { ... }` and
+//! anonymous structs `.{ .field = value }`, typed ones `a.T{ .field = value }`, calls of paths
+//! with literal arguments `a.f(x)`, and type literals `enum { ... }` and
 //! `struct { name := value; }` reads as the corresponding [`Literal`]. Any other expression reads
 //! as [`Literal::Opaque`], so a caller can walk a file whose other values it does not need.
 
@@ -35,6 +36,10 @@ pub enum Literal<'s> {
     List(Vec<Literal<'s>>),
     /// `.{ .name = value }`
     Record(Vec<Decl<'s>>),
+    /// `a.T{ .name = value }`: the type's path and the record.
+    Typed(Vec<&'s str>, Box<Literal<'s>>),
+    /// `a.f(x, y)`: a call of a path, which a reader interprets by the path.
+    Call(Vec<&'s str>, Vec<Literal<'s>>),
     /// `enum { a, b(T) }`; the payloads read as `Opaque`.
     Enum(Vec<Decl<'s>>),
     /// `struct { name := value; }`; fields are skipped.
@@ -58,10 +63,11 @@ impl<'s> Literal<'s> {
         Self::List(items.into_iter().map(|s| Self::String(Cow::Borrowed(s))).collect())
     }
 
-    /// The value of the field `name` of a record or namespace.
+    /// The value of the field `name` of a record, typed record or namespace.
     #[must_use]
     pub fn get(&self, name: &str) -> Option<&Self> {
         match self {
+            Self::Typed(_, record) => record.get(name),
             Self::Record(decls) | Self::Namespace(decls) | Self::Enum(decls) => {
                 decls.iter().find(|d| d.name == name).map(|d| &d.value)
             }
@@ -81,6 +87,15 @@ impl<'s> Literal<'s> {
     pub fn as_name(&self) -> Option<&'s str> {
         match *self {
             Self::Name(name) => Some(name),
+            _ => None,
+        }
+    }
+
+    /// The path and arguments of a call.
+    #[must_use]
+    pub fn as_call(&self) -> Option<(&[&'s str], &[Self])> {
+        match self {
+            Self::Call(path, args) => Some((path, args)),
             _ => None,
         }
     }

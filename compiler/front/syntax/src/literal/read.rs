@@ -89,9 +89,21 @@ impl<'s> Reader<'_, 's> {
             NodeKind::Array => Literal::List(items().map(|c| self.value(c)).collect()),
             NodeKind::Call => {
                 let mut items = items();
-                let tag = items.next().filter(|&c| self.cst.kind(c) == NodeKind::DotName)?;
-                let Literal::Name(tag) = self.read(tag)? else { return None };
-                Literal::Tagged(tag, items.map(|c| self.value(c)).collect())
+                let callee = items.next()?;
+                let args = items.map(|c| self.value(c)).collect();
+                match self.cst.kind(callee) {
+                    NodeKind::DotName => {
+                        let Literal::Name(tag) = self.read(callee)? else { return None };
+                        Literal::Tagged(tag, args)
+                    }
+                    _ => Literal::Call(self.path(callee)?, args),
+                }
+            }
+            NodeKind::TypedLit => {
+                let fields = self.cst.fields(n)?;
+                let ty = self.path(fields.one(NodeField::Type)?)?;
+                let record = fields.get(NodeField::Fields).iter().map(|&c| self.field_init(c));
+                Literal::Typed(ty, Box::new(Literal::Record(record.collect::<Option<_>>()?)))
             }
             NodeKind::StructLit => {
                 let inits: Vec<_> = items().collect();
@@ -105,6 +117,20 @@ impl<'s> Reader<'_, 's> {
             NodeKind::Struct => Literal::Namespace(self.decls(items())),
             _ => return None,
         })
+    }
+
+    /// A name or a chain of members: `a.b.c`.
+    fn path(&self, n: NodeId) -> Option<Vec<&'s str>> {
+        match self.cst.kind(n) {
+            NodeKind::Name => Some(vec![self.name(n)?]),
+            NodeKind::Member => {
+                let fields = self.cst.fields(n)?;
+                let mut path = self.path(fields.one(NodeField::Object)?)?;
+                path.push(self.name(fields.one(NodeField::Property)?)?);
+                Some(path)
+            }
+            _ => None,
+        }
     }
 
     fn field_init(&self, n: NodeId) -> Option<Decl<'s>> {

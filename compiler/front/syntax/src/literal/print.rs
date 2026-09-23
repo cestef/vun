@@ -140,20 +140,47 @@ impl Writer {
                 let _ = write!(self.out, "{value}");
                 Ok(())
             }
-            Literal::List(items) => self.braced(items, Self::value),
-            Literal::Record(fields) => self.braced(fields, |w, d| w.field(d.name)?.value(&d.value)),
+            Literal::List(items) => self.braced(TokenKind::DotLBrace, items, Self::value),
+            Literal::Record(fields) => self.record(TokenKind::DotLBrace, fields),
+            Literal::Typed(path, record) => match &**record {
+                Literal::Record(fields) => self.path(path)?.record(TokenKind::LBrace, fields),
+                _ => Err(Unwritable::Opaque),
+            },
+            Literal::Call(path, args) => {
+                self.path(path)?.token(TokenKind::LParen);
+                self.items(args, Self::value)?;
+                self.token(TokenKind::RParen);
+                Ok(())
+            }
             Literal::Enum(_) | Literal::Namespace(_) => Err(Unwritable::Type),
             Literal::Opaque => Err(Unwritable::Opaque),
         }
     }
 
-    /// `.{ a, b }`, or `.{}` when empty.
+    /// `a.b.c`
+    fn path(&mut self, path: &[&str]) -> Result<&mut Self, Unwritable> {
+        for (i, name) in path.iter().enumerate() {
+            if i > 0 {
+                self.token(TokenKind::Dot);
+            }
+            self.binder(name)?;
+        }
+        Ok(self)
+    }
+
+    /// `.{ .a = x }` after `open`.
+    fn record(&mut self, open: TokenKind, fields: &[Decl<'_>]) -> Result<(), Unwritable> {
+        self.braced(open, fields, |w, d| w.field(d.name)?.value(&d.value))
+    }
+
+    /// `.{ a, b }`, or `.{}` when empty, opened by `open`.
     fn braced<T>(
         &mut self,
+        open: TokenKind,
         items: &[T],
         item: impl Fn(&mut Self, &T) -> Result<(), Unwritable>,
     ) -> Result<(), Unwritable> {
-        self.token(TokenKind::DotLBrace);
+        self.token(open);
         if !items.is_empty() {
             self.text(" ");
             self.items(items, item)?;
