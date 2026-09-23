@@ -19,7 +19,7 @@ fn renders_labels_notes_and_fixes() {
         let lo = u32::try_from(text.find(needle).unwrap()).unwrap();
         Span::new(f, lo, lo + u32::try_from(needle.len()).unwrap())
     };
-    let mut origins = OriginTable::new();
+    let origins = OriginTable::new();
     let (sum, result) = (origins.source(span("p.x.abs() + p.y.abs()")), origins.source(span("u32")));
     let mut d = Diagnostic::error(errors::INT_DOES_NOT_FIT, "value does not fit the result type")
         .at(sum, Some(Msg::new().text("this is ").code("Int(0..=4294967296)")))

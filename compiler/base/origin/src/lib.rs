@@ -4,8 +4,11 @@
 //! instruction, artifact symbol and link-plan entry holds an [`OriginId`]. An [`Origin`] records a
 //! span, how the entity came to exist ([`Via`]), and the origin it was derived from. Chains are
 //! shared, so the cost per entity is one `u32`. See spec 10, section 1.
+//!
+//! The table is append-only and shared: threads record origins through `&self` without waiting on
+//! each other.
 
-use overt_index::{IndexVec, index};
+use overt_index::{Idx, index};
 use overt_span::Span;
 
 index! {
@@ -51,7 +54,7 @@ pub struct Origin {
 
 #[derive(Default)]
 pub struct OriginTable {
-    origins: IndexVec<OriginId, Origin>,
+    origins: boxcar::Vec<Origin>,
 }
 
 impl OriginTable {
@@ -61,22 +64,22 @@ impl OriginTable {
     }
 
     /// Records an origin for user-written source.
-    pub fn source(&mut self, span: Span) -> OriginId {
+    pub fn source(&self, span: Span) -> OriginId {
         self.push(Origin { span, via: Via::Source, parent: None })
     }
 
     /// Records an origin derived from `parent`.
-    pub fn derive(&mut self, parent: OriginId, span: Span, via: Via) -> OriginId {
+    pub fn derive(&self, parent: OriginId, span: Span, via: Via) -> OriginId {
         self.push(Origin { span, via, parent: Some(parent) })
     }
 
-    pub fn push(&mut self, origin: Origin) -> OriginId {
-        self.origins.push(origin)
+    pub fn push(&self, origin: Origin) -> OriginId {
+        OriginId::new(self.origins.push(origin))
     }
 
     #[must_use]
     pub fn len(&self) -> usize {
-        self.origins.len()
+        self.origins.count()
     }
 
     #[must_use]
@@ -84,9 +87,11 @@ impl OriginTable {
         self.origins.is_empty()
     }
 
+    /// # Panics
+    /// Panics if `id` was not recorded in this table.
     #[must_use]
     pub fn get(&self, id: OriginId) -> &Origin {
-        &self.origins[id]
+        &self.origins[id.index()]
     }
 
     /// Walks from `id` towards user code, starting with `id` itself.

@@ -32,8 +32,8 @@ fn sexp(cst: &Cst, tokens: &Tokens, text: &str, n: NodeId) -> std::string::Strin
 /// The top-level entries of `text` and the diagnostic ids, after checking the verifier.
 fn parse_text(text: &str) -> (Vec<std::string::String>, Vec<DiagId>) {
     let file = SourceFiles::new().add("t.ov", text);
-    let (mut diag, mut origins) = (DiagCtxt::new(), OriginTable::new());
-    let mut cx = DiagCx { diag: &mut diag, origins: &mut origins };
+    let (mut diag, origins) = (DiagCtxt::new(), OriginTable::new());
+    let mut cx = DiagCx { diag: &mut diag, origins: &origins };
     let tokens = lex(file, text, &mut cx);
     let cst = parse(&tokens, text, &mut cx);
     assert_eq!(cst.verify(&tokens), Ok(()), "{text:?}");
@@ -218,8 +218,8 @@ fn fields_name_the_children() {
     use overt_grammar::{NodeField as F, NodeKind as K};
     let text = "mut f: T = (a: u8, b) -> u8 { a };";
     let file = SourceFiles::new().add("t.ov", text);
-    let (mut diag, mut origins) = (DiagCtxt::new(), OriginTable::new());
-    let mut cx = DiagCx { diag: &mut diag, origins: &mut origins };
+    let (mut diag, origins) = (DiagCtxt::new(), OriginTable::new());
+    let mut cx = DiagCx { diag: &mut diag, origins: &origins };
     let tokens = lex(file, text, &mut cx);
     let cst = parse(&tokens, text, &mut cx);
     let binding = cst.children(cst.root()).next().unwrap();

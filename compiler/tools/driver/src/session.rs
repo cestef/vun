@@ -74,30 +74,30 @@ impl Session {
 
     pub fn lex(&mut self, file: FileId) -> Tokens {
         let text = &self.sources.file(file).text;
-        lexer::lex(file, text, &mut DiagCx { diag: &mut self.diag, origins: &mut self.origins })
+        lexer::lex(file, text, &mut DiagCx { diag: &mut self.diag, origins: &self.origins })
     }
 
     pub fn parse(&mut self, tokens: &Tokens) -> Cst {
         let text = &self.sources.file(tokens.file()).text;
-        parser::parse(tokens, text, &mut DiagCx { diag: &mut self.diag, origins: &mut self.origins })
+        parser::parse(tokens, text, &mut DiagCx { diag: &mut self.diag, origins: &self.origins })
     }
 
     pub fn lower(&mut self, tokens: &Tokens, cst: &Cst) -> Hir {
         let text = &self.sources.file(tokens.file()).text;
-        lower::lower(lower::Source { cst, tokens, text }, &mut self.origins)
+        lower::lower(lower::Source { cst, tokens, text }, &self.origins)
     }
 
     /// Resolves the names of `file` within it and against its package, reporting what needs no
     /// types.
     pub fn resolve(&mut self, file: FileId, hir: &Hir) -> Resolution {
-        let mut cx = DiagCx { diag: &mut self.diag, origins: &mut self.origins };
+        let mut cx = DiagCx { diag: &mut self.diag, origins: &self.origins };
         let resolution = resolve::resolve(hir, &mut cx);
         let package = self.package_of(file);
         self.scope(package);
         let spreads = self.spreads(package, hir, &resolution);
         self.check_children(file, hir);
         let outside = FileScope { package: &self.packages.scopes[&package], spreads: &spreads };
-        let mut cx = DiagCx { diag: &mut self.diag, origins: &mut self.origins };
+        let mut cx = DiagCx { diag: &mut self.diag, origins: &self.origins };
         resolution.check_outer(hir, &outside, &mut cx);
         resolution
     }
@@ -117,7 +117,7 @@ impl Session {
         let cst = self.parse(&tokens);
         let text = &self.sources.file(file).text;
         let decls = literal::declarations(&cst, &tokens, text);
-        read(&decls, &mut DiagCx { diag: &mut self.diag, origins: &mut self.origins })
+        read(&decls, &mut DiagCx { diag: &mut self.diag, origins: &self.origins })
     }
 
     /// Emits every diagnostic in deterministic order.

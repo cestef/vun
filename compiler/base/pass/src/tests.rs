@@ -22,9 +22,9 @@ fn requirements_run_first() {
     let mut pm = PassManager::new();
     pm.register(Box::new(Named("borrows", &["places"])));
     pm.register(Box::new(Named("places", &[])));
-    let (mut diag, mut origins) = (DiagCtxt::new(), OriginTable::new());
+    let (mut diag, origins) = (DiagCtxt::new(), OriginTable::new());
     let mut log = Vec::new();
-    let report = DiagCx { diag: &mut diag, origins: &mut origins };
+    let report = DiagCx { diag: &mut diag, origins: &origins };
     pm.run(&mut log, &mut PassCx { report }).unwrap();
     assert_eq!(log, ["places", "borrows"]);
 }

@@ -9,7 +9,7 @@ fn renders_location_and_relative_id() {
     let f = files.add("src/geom.ov", text);
     let expr = "p.x.abs() + p.y.abs()";
     let lo = u32::try_from(text.find(expr).unwrap()).unwrap();
-    let mut origins = OriginTable::new();
+    let origins = OriginTable::new();
     let at = origins.source(Span::new(f, lo, lo + u32::try_from(expr.len()).unwrap()));
     let d = Diagnostic::error(errors::INT_DOES_NOT_FIT, "value does not fit the result type").at(at, None);
 

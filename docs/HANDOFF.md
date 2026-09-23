@@ -105,6 +105,7 @@ tested (the rest are stubs):
 |-------|----------|
 | `overt-index` | `Idx`, `index!`, `IndexVec` (push, get, last, iter). Every arena. |
 | `overt-intern` | `Symbol::intern`, `Symbol::as_str`: one sharded, append-only pool per process; equal by pointer, hashed by text (BLAKE3), ordered by text. No interner handle is passed around. |
+| `overt-origin` | `OriginTable` over `boxcar` (append-only, `&self`), `Origin`, `Via`, `Chain`. |
 | `overt-span` | `FileId`, `ByteRange`, `Span`, `SourceFile` (`line_col`), `SourceMap`, `SourceFiles`. |
 | `overt-origin` | `OriginId`, `Origin`, `Via`, `OriginTable`. |
 | `overt-diag` | `DiagId`, `Severity`, `Msg` (typed parts, `append`), `Label`, `Fix`, `ChildKind` (Display), `Diagnostic`, `DiagCtxt`, `DiagCx::error_at`, `DiagSink`; `Msg::did_you_mean`; `errors` (generated). |
@@ -195,7 +196,8 @@ In order:
    `overt pkg pack`. Open: `overt pkg update` needs a source of newer versions (an index).
 3. `names.private` (needs member types: sema), `binding.hole_value` (needs attribute resolution).
 4. Sema on `overt-query` (the engine exists; persistence to disk and parallel single-flight are
-   open), then desugaring into `lang` items with `Via::Desugar` origins (appendix B), queries, sema (with
+   open; persisting needs stable file and origin identities, question 25 in `decisions.md`), then
+   desugaring into `lang` items with `Via::Desugar` origins (appendix B), queries, sema (with
    narrowing, decision 35, exhaustive match, decision 29), MIR, interpreter.
 5. Explanation pages `errors/<group>/<id>.md` for every diagnostic, and `overt explain`.
 6. Fuzz the parser longer (the verifier checks node fields; 150 s runs are clean).

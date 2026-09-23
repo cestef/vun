@@ -25,7 +25,7 @@ pub trait DiagSink {
 /// Where a stage reports: the diagnostics, and the origins their labels point to.
 pub struct DiagCx<'a> {
     pub diag: &'a mut DiagCtxt,
-    pub origins: &'a mut OriginTable,
+    pub origins: &'a OriginTable,
 }
 
 impl DiagCx<'_> {

@@ -7,8 +7,8 @@ use overt_span::SourceFiles;
 
 fn lex_text(text: &str) -> (Vec<(TokenKind, std::string::String)>, Vec<DiagId>) {
     let file = SourceFiles::new().add("t.ov", text);
-    let (mut diag, mut origins) = (DiagCtxt::new(), OriginTable::new());
-    let tokens = lex(file, text, &mut DiagCx { diag: &mut diag, origins: &mut origins });
+    let (mut diag, origins) = (DiagCtxt::new(), OriginTable::new());
+    let tokens = lex(file, text, &mut DiagCx { diag: &mut diag, origins: &origins });
     let significant = tokens.ids().map(|t| (tokens.kind(t), tokens.range(t).of(text).to_owned()));
     let ids = diag.sorted().into_iter().map(|d| d.id.clone()).collect();
     (significant.collect(), ids)

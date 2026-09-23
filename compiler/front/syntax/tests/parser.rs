@@ -20,8 +20,8 @@ struct Parsed {
 
 fn parse_text(text: &str) -> Parsed {
     let file = SourceFiles::new().add("input.ov", text);
-    let (mut diag, mut origins) = (DiagCtxt::new(), OriginTable::new());
-    let mut cx = DiagCx { diag: &mut diag, origins: &mut origins };
+    let (mut diag, origins) = (DiagCtxt::new(), OriginTable::new());
+    let mut cx = DiagCx { diag: &mut diag, origins: &origins };
     let tokens = lex(file, text, &mut cx);
     let cst = parse(&tokens, text, &mut cx);
     Parsed { tokens, cst, diag }

@@ -16,8 +16,8 @@ fn repository_sources_lower_and_verify() {
         for path in discover(&root.join(dir), EXTENSION).unwrap() {
             let text = std::fs::read_to_string(&path).unwrap();
             let file = SourceFiles::new().add(path.display().to_string(), text.as_str());
-            let (mut diag, mut origins) = (DiagCtxt::new(), OriginTable::new());
-            let mut cx = DiagCx { diag: &mut diag, origins: &mut origins };
+            let (mut diag, origins) = (DiagCtxt::new(), OriginTable::new());
+            let mut cx = DiagCx { diag: &mut diag, origins: &origins };
             let tokens = lexer::lex(file, &text, &mut cx);
             let cst = parser::parse(&tokens, &text, &mut cx);
             let hir = lower(Source { cst: &cst, tokens: &tokens, text: &text }, cx.origins);

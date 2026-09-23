@@ -11,8 +11,8 @@ use overt_syntax::tokens::Tokens;
 
 fn lex_text(text: &str) -> (Tokens, DiagCtxt) {
     let file = SourceFiles::new().add("input.ov", text);
-    let (mut diag, mut origins) = (DiagCtxt::new(), OriginTable::new());
-    let tokens = lex(file, text, &mut DiagCx { diag: &mut diag, origins: &mut origins });
+    let (mut diag, origins) = (DiagCtxt::new(), OriginTable::new());
+    let tokens = lex(file, text, &mut DiagCx { diag: &mut diag, origins: &origins });
     (tokens, diag)
 }
 

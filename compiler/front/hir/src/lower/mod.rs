@@ -27,7 +27,7 @@ pub struct Source<'a> {
 }
 
 /// Lowers the file `source` into HIR.
-pub fn lower(source: Source<'_>, origins: &mut OriginTable) -> Hir {
+pub fn lower(source: Source<'_>, origins: &OriginTable) -> Hir {
     let mut lower = Lower { source, origins, hir: Hir::default() };
     let root = source.cst.root();
     let members = lower.members(source.cst.children(root));
@@ -38,7 +38,7 @@ pub fn lower(source: Source<'_>, origins: &mut OriginTable) -> Hir {
 
 struct Lower<'a, 'i> {
     source: Source<'a>,
-    origins: &'i mut OriginTable,
+    origins: &'i OriginTable,
     hir: Hir,
 }
 

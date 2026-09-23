@@ -10,8 +10,8 @@ use crate::layout::MANIFEST;
 
 fn parsed<R>(text: &str, f: impl FnOnce(&[Decl<'_>], FileId, &mut DiagCx<'_>) -> R) -> (R, Vec<DiagId>) {
     let file = SourceFiles::new().add(MANIFEST, text);
-    let (mut diag, mut origins) = (DiagCtxt::new(), OriginTable::new());
-    let mut cx = DiagCx { diag: &mut diag, origins: &mut origins };
+    let (mut diag, origins) = (DiagCtxt::new(), OriginTable::new());
+    let mut cx = DiagCx { diag: &mut diag, origins: &origins };
     let tokens = lexer::lex(file, text, &mut cx);
     let cst = parser::parse(&tokens, text, &mut cx);
     let result = f(&declarations(&cst, &tokens, text), file, &mut cx);

@@ -130,3 +130,10 @@ None is open. Each keeps its reasoning; decisions 27 to 44 record the outcomes.
     interner, hash maps and formatting. Settled (decision 43): all library (`std.text`, `std.collections`,
     `std.fmt`), with a `Str` type that is a UTF-8-checked `&[u8]`; self-host the literal reader as
     the benchmark of that library.
+25. **Stable identities for persisted queries.** Query traces hold content hashes and symbols hash
+    by text, but `FileId` and `OriginId` are indices into per-process tables, so a persisted HIR
+    or diagnostic would point at the wrong entries in the next process. Options: keep ids
+    per process and persist results in an id-free form re-interned on load (rust-analyzer does not
+    persist at all); or make them stable, a file by its package and path and an origin relative
+    to its declaration (rustc's `DefPathHash` and item-relative spans). Lean: the second, with
+    declarations as the unit that queries already are.

@@ -10,5 +10,6 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
+boxcar.workspace = true
 overt-index.workspace = true
 overt-span.workspace = true

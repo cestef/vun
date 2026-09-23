@@ -185,7 +185,7 @@ impl Session {
     pub(super) fn report(&mut self, span: Option<Span>, d: Diagnostic) {
         match span {
             Some(span) => {
-                DiagCx { diag: &mut self.diag, origins: &mut self.origins }.error_at(span, d);
+                DiagCx { diag: &mut self.diag, origins: &self.origins }.error_at(span, d);
             }
             None => {
                 self.diag.error(d);

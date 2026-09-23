@@ -10,8 +10,8 @@ use crate::tree::ExprKind;
 /// The diagnostics of resolving `text`, and how many names resolved inside the file.
 fn check(text: &str) -> (Vec<DiagId>, usize) {
     let file = SourceFiles::new().add("t.ov", text);
-    let (mut diag, mut origins) = (DiagCtxt::new(), OriginTable::new());
-    let mut cx = DiagCx { diag: &mut diag, origins: &mut origins };
+    let (mut diag, origins) = (DiagCtxt::new(), OriginTable::new());
+    let mut cx = DiagCx { diag: &mut diag, origins: &origins };
     let tokens = lexer::lex(file, text, &mut cx);
     let cst = parser::parse(&tokens, text, &mut cx);
     assert_eq!(cx.diag.error_count(), 0, "{text:?} does not parse");

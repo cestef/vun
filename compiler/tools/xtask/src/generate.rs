@@ -54,8 +54,8 @@ impl Generator {
             Box::new(Diagnostic::error(overt_diag::errors::IO_UNREADABLE_FILE, msg).caused_by(&e))
         })?;
         let file = SourceFiles::new().add(self.source, text.as_str());
-        let (mut diag, mut origins) = (DiagCtxt::new(), OriginTable::new());
-        let mut cx = DiagCx { diag: &mut diag, origins: &mut origins };
+        let (mut diag, origins) = (DiagCtxt::new(), OriginTable::new());
+        let mut cx = DiagCx { diag: &mut diag, origins: &origins };
         let tokens = overt_syntax::lexer::lex(file, &text, &mut cx);
         let cst = overt_syntax::parser::parse(&tokens, &text, &mut cx);
         if diag.error_count() > 0 {
