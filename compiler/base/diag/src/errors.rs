@@ -123,6 +123,8 @@ pub const PACKAGE_MISSING_NAMESPACE: DiagId = DiagId::new(
 pub const PACKAGE_HASH_MISMATCH: DiagId = DiagId::new(
     "lang.errors.package.hash_mismatch",
 );
+pub const PACKAGE_FETCH_FAILED: DiagId = DiagId::new("lang.errors.package.fetch_failed");
+pub const PACKAGE_NO_PROJECT: DiagId = DiagId::new("lang.errors.package.no_project");
 /// Reading and writing files.
 pub const IO: DiagId = DiagId::new("lang.errors.io");
 pub const IO_UNREADABLE_FILE: DiagId = DiagId::new("lang.errors.io.unreadable_file");
@@ -188,6 +190,8 @@ pub const ALL: &[DiagId] = &[
     PACKAGE_MISSING_DEP,
     PACKAGE_MISSING_NAMESPACE,
     PACKAGE_HASH_MISMATCH,
+    PACKAGE_FETCH_FAILED,
+    PACKAGE_NO_PROJECT,
     IO_UNREADABLE_FILE,
     CLI_UNKNOWN_COMMAND,
     CLI_MISSING_ARGUMENT,

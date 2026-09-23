@@ -105,7 +105,7 @@ fn run_corpus(_: &mut Cx, _: &Args, out: &mut dyn Write) -> io::Result<Outcome> 
             }
             corpus::Verdict::Malformed(malformed) => {
                 failed += 1;
-                writeln!(out, "fail    {}: malformed annotation {malformed:?}", o.path.display())?;
+                writeln!(out, "fail    {}: malformed annotation: {malformed}", o.path.display())?;
             }
             corpus::Verdict::Undeclared(ids) => {
                 failed += 1;

@@ -38,7 +38,12 @@ pub const PROGRAM: Program<Session> = Program {
                 &[
                     planned("add", "add a dependency"),
                     planned("update", "raise dependency versions"),
-                    planned("fetch", "download dependencies into the local store"),
+                    Command {
+                        name: "fetch",
+                        about: "download dependencies into the local store",
+                        params: &[],
+                        action: Action::Run(pkg::fetch),
+                    },
                     planned("vendor", "copy dependencies into vendor/"),
                     planned("why", "explain why a package is in the graph"),
                     planned("tag", "release workspace members"),
@@ -190,5 +195,6 @@ fn components(_: &mut Session, _: &Args, out: &mut dyn Write) -> io::Result<Outc
     Ok(Outcome::Success)
 }
 
+mod pkg;
 #[cfg(test)]
 mod tests;

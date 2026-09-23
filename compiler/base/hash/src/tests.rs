@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use super::{Algorithm, Hash, base32};
+use super::{Algorithm, Change, Hash, Snapshot, base32};
 
 #[test]
 fn text_form_names_the_algorithm_and_round_trips() {
@@ -29,4 +29,25 @@ fn trees_depend_on_contents_and_names_only() {
     assert_eq!(whole, Hash::tree(&src, &["tree.rs".into(), "lib.rs".into(), "absent".into()]));
     assert_ne!(whole, Hash::tree(&src, &["lib.rs".into()]));
     assert_ne!(Hash::tree(&src, &["lib.rs".into()]), Hash::of(&std::fs::read(src.join("lib.rs")).unwrap()));
+}
+
+#[test]
+fn snapshots_round_trip_and_name_changed_files() {
+    let src = Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
+    let all = Snapshot::of(&src, &["lib.rs".into(), "tree.rs".into()]);
+    assert_eq!(Snapshot::parse(&all.to_string()), Some(all.clone()));
+    assert_eq!(all.root(), Hash::tree(&src, &["tree.rs".into(), "lib.rs".into()]));
+    let fewer = Snapshot::of(&src, &["lib.rs".into(), "tests.rs".into()]);
+    let changes = all.changes(&fewer);
+    assert_eq!(changes, [("tests.rs".to_owned(), Change::Added), ("tree.rs".to_owned(), Change::Removed)]);
+    assert_eq!(Snapshot::parse("blake3:zz lib.rs"), None);
+}
+
+#[test]
+fn snapshots_refuse_paths_leaving_their_tree() {
+    let h = Hash::of(b"x");
+    for path in ["../x", "a/../../x", "/etc/x", "a//b", ".", "a\\b"] {
+        assert_eq!(Snapshot::parse(&format!("{h} {path}")), None, "{path}");
+    }
+    assert!(Snapshot::parse(&format!("{h} a/b.ov")).is_some());
 }

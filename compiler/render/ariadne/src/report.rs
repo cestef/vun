@@ -66,6 +66,7 @@ pub(crate) fn write(
         match child.kind {
             ChildKind::Note => report.add_note(text),
             ChildKind::Help => report.add_help(text),
+            ChildKind::Cause => report.add_note(format!("{}: {text}", ChildKind::Cause)),
         }
         for fix in &child.fixes {
             report.add_help(describe(fix, sources_));

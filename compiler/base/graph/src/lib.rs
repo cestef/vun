@@ -12,6 +12,19 @@ pub enum OrderError<K> {
     Cycle(K),
 }
 
+impl<K: std::fmt::Display> std::fmt::Display for OrderError<K> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Missing { node, requires } => {
+                write!(f, "`{node}` requires `{requires}`, which is not present")
+            }
+            Self::Cycle(node) => write!(f, "the requirements of `{node}` form a cycle"),
+        }
+    }
+}
+
+impl<K: std::fmt::Debug + std::fmt::Display> std::error::Error for OrderError<K> {}
+
 /// Nodes by key, each with the keys it requires.
 pub struct Requirements<K> {
     keys: Vec<K>,

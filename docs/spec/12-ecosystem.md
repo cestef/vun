@@ -121,10 +121,24 @@ build := (b: &mut std.build.Build) {
   the compiler's caches already use, so nothing is hashed twice. BLAKE3 is also the only hash the
   toolchain uses, for caches as well: measured at 2 to 3 GiB/s on one core and 12 GiB/s on 14,
   against 1.4 GiB/s for SHA-256 with hardware support.
-- **Store.** Fetched packages are unpacked in the project's `.overt/store`, nested by the hash
-  alone: `.overt/store/blake3/<first 2 digest characters>/<remaining 50>/`. The first level has at
-  most 1024 directories, so no directory grows large. Loading a stored package recomputes its tree
-  hash, and a difference is `package.hash_mismatch` with both hashes.
+- **Store.** Fetched packages are kept in the project's `.overt/store`, nested by the hash alone:
+  `.overt/store/blake3/<first 2 digest characters>/<remaining 50>/`, so the first level has at most
+  1024 directories. An entry holds the unpacked `package/` and the `snapshot` it was verified with
+  (one `hash path` line per file). Loading a stored package recomputes its tree hash; a difference
+  is `package.hash_mismatch`, which names every file added, removed or modified since the fetch.
+- **Fetching.** `overt pkg fetch` walks the dependency graph from the project and stores every
+  archive dependency the store lacks. Mirrors are tried in order; an archive is unpacked under
+  `.overt/store/staging/`, verified against the declared hash, and moved into its entry only then,
+  so the store never holds unverified contents. When every mirror fails, `package.fetch_failed`
+  lists each mirror with the chain of causes (spec 10).
+- **Archives.** Overt packages are published as `.ovpkg`: one zstd stream (level 19, 128 MiB
+  window) holding a header, the snapshot, then each file's bytes in snapshot order. It carries no
+  timestamps, owners or modes, so identical trees give identical archives, and unpacking checks
+  each file against the snapshot as it is written. Snapshot paths are plain components (no `..`,
+  no separators, no characters special on some platform), so an archive cannot write outside its
+  tree. Foreign archives are read as `.tar.zst`, `.tar.xz`, `.tar.gz`, `.tar` and `.zip`; their
+  single top-level directory, as forges produce, is dropped. Schemes (`https`, `http`, `file`) and
+  formats are tables, so another is one entry.
 - **Sources.** URLs are a mirror list. Any mirror, the local store, or a vendor directory serving the
   right bytes is equally valid. An optional community index (a cache and a transparency log in the
   style of Go's proxy and checksum database) may exist; it is never an authority.

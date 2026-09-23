@@ -136,6 +136,14 @@ pub struct Refusal {
     pub diagnostic: Box<Diagnostic>,
 }
 
+impl std::fmt::Display for Refusal {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.diagnostic.message.fmt(f)
+    }
+}
+
+impl std::error::Error for Refusal {}
+
 /// Parses `words` against `program` and runs the selected command, or prints help or the version.
 ///
 /// # Errors

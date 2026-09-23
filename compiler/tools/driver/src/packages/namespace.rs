@@ -29,6 +29,18 @@ pub enum Unfound {
     Absent,
 }
 
+impl std::fmt::Display for Unfound {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            Self::Root => "the path does not start at the package or a dependency",
+            Self::Dep => "the dependency it starts at cannot be loaded",
+            Self::Absent => "nothing is on disk at the path",
+        })
+    }
+}
+
+impl std::error::Error for Unfound {}
+
 /// What a file contributes to its namespace: its top-level names, and the paths it spreads whole.
 #[derive(Clone, Default)]
 pub(super) struct Declared {

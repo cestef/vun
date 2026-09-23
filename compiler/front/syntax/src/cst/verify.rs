@@ -25,6 +25,24 @@ pub enum Malformed {
     Fields { node: NodeId },
 }
 
+impl std::fmt::Display for Malformed {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match *self {
+            Self::Size { node } => write!(f, "node {}: subtree size ends inside a child", node.index()),
+            Self::LeafWithChildren { node } => write!(f, "node {}: a leaf has children", node.index()),
+            Self::Root => f.write_str("the nodes are not one tree rooted at a file"),
+            Self::Shared { token } => write!(f, "token {} anchors more than one node", token.index()),
+            Self::Unowned { token } => write!(f, "token {} anchors no node", token.index()),
+            Self::Scattered { node } => write!(f, "node {}: its tokens are not contiguous", node.index()),
+            Self::Fields { node } => {
+                write!(f, "node {}: its children do not fit its kind's slots", node.index())
+            }
+        }
+    }
+}
+
+impl std::error::Error for Malformed {}
+
 /// The tokens found in a finished subtree while verifying.
 #[derive(Clone, Copy)]
 struct Extent {

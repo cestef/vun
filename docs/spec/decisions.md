@@ -54,6 +54,8 @@
 | 48 | A directory holds a package when its `build.ov` declares `package`; caches are keyed by content hash | accepted | 12 |
 | 49 | `targets` is a default dependency, like `lang` and `std` | accepted | 01, 12 |
 | 50 | BLAKE3 everywhere; package hashes are Merkle trees of directory entries, written `blake3:<base32>`; the store nests by algorithm and digest prefix | accepted | 12 |
+| 51 | Packages are published as `.ovpkg`: a zstd stream of the snapshot then the files; fetches verify before storing | accepted | 12 |
+| 52 | Errors keep their source chains; diagnostics render them as `caused by` children | accepted | 10 |
 
 ## Questions, with how they were settled
 

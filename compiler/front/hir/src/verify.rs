@@ -39,6 +39,35 @@ pub enum Malformed {
     },
 }
 
+impl Arena {
+    #[must_use]
+    pub const fn name(self) -> &'static str {
+        match self {
+            Self::Namespace => "namespace",
+            Self::Decl => "declaration",
+            Self::Block => "block",
+            Self::Expr => "expression",
+            Self::Pat => "pattern",
+            Self::Binder => "binder",
+        }
+    }
+}
+
+impl std::fmt::Display for Malformed {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match *self {
+            Self::NoRoot => f.write_str("the HIR has no root namespace"),
+            Self::Unreached { arena, index } => {
+                write!(f, "{} {index} is not reached from the root", arena.name())
+            }
+            Self::Shared { arena, index } => write!(f, "{} {index} is reached twice", arena.name()),
+            Self::NoOrigin { arena, index } => write!(f, "{} {index} has no origin", arena.name()),
+        }
+    }
+}
+
+impl std::error::Error for Malformed {}
+
 #[derive(Default)]
 struct Visits {
     namespaces: Vec<u32>,

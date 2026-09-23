@@ -64,12 +64,8 @@ impl Session {
     pub fn read(&mut self, path: &Path) -> Option<String> {
         std::fs::read_to_string(path)
             .map_err(|e| {
-                let msg = Msg::new()
-                    .text("cannot read ")
-                    .code(path.display().to_string())
-                    .text(": ")
-                    .text(e.to_string());
-                self.diag.error(Diagnostic::error(errors::IO_UNREADABLE_FILE, msg));
+                let msg = Msg::new().text("cannot read ").code(path.display().to_string());
+                self.diag.error(Diagnostic::error(errors::IO_UNREADABLE_FILE, msg).caused_by(&e));
             })
             .ok()
     }

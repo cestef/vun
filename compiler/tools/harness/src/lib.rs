@@ -90,6 +90,18 @@ pub enum Malformed {
     Fragment { line: u32 },
 }
 
+impl std::fmt::Display for Malformed {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match *self {
+            Self::AboveFile { line } => write!(f, "line {line}: `^` points above the first line"),
+            Self::Column { line } => write!(f, "line {line}: `@` is not followed by a column"),
+            Self::Fragment { line } => write!(f, "line {line}: a fragment has no closing quote"),
+        }
+    }
+}
+
+impl std::error::Error for Malformed {}
+
 /// The annotations written in `text`.
 ///
 /// # Errors

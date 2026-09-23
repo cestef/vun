@@ -1,0 +1,182 @@
+//! Filling the project's store with its stored dependencies (spec 12, section 3): each is
+//! downloaded from its mirrors in order, unpacked under staging, verified against its hash, and
+//! moved into its entry with the snapshot it was verified with.
+
+use std::collections::HashSet;
+use std::error::Error;
+use std::path::Path;
+use std::{fmt, fs, io};
+
+use overt_build::layout::MANIFEST;
+use overt_build::manifest::DepKind;
+use overt_build::store::Store;
+use overt_diag::{ChildKind, Diagnostic, Msg, errors};
+use overt_fs::Tree;
+use overt_hash::{Hash, Snapshot};
+use overt_intern::Symbol;
+use overt_pkg::{Failure, Mirror};
+
+use super::{Dep, DepSource, PackageKey};
+use crate::Session;
+
+/// What fetching did for one stored dependency.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Fetched {
+    /// Already in the store, matching the snapshot it was verified with.
+    Present,
+    /// Downloaded from this mirror and verified.
+    Stored { url: String },
+    /// No mirror served it; reported.
+    Failed,
+}
+
+/// Why the archive of one mirror was not stored.
+#[derive(Debug)]
+enum Rejected {
+    Mirror(Failure),
+    /// The unpacked tree hashes to another package.
+    Hash {
+        found: Hash,
+    },
+    Store(io::Error),
+}
+
+impl fmt::Display for Rejected {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Mirror(failure) => failure.fmt(f),
+            Self::Hash { found } => write!(f, "its contents hash to `{found}`"),
+            Self::Store(_) => f.write_str("cannot move it into the store"),
+        }
+    }
+}
+
+impl Error for Rejected {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        match self {
+            Self::Mirror(failure) => failure.source(),
+            Self::Hash { .. } => None,
+            Self::Store(e) => Some(e),
+        }
+    }
+}
+
+impl Session {
+    /// Fetches every stored dependency reachable from `project` that the store lacks, returning
+    /// what happened to each, by name and hash, in the order they were reached.
+    pub fn fetch(&mut self, project: PackageKey) -> Vec<(Symbol, Hash, Fetched)> {
+        let mut done: Vec<(Symbol, Hash, Fetched)> = Vec::new();
+        let mut seen = HashSet::new();
+        let mut pending = vec![project];
+        while let Some(package) = pending.pop() {
+            if !seen.insert(package) {
+                continue;
+            }
+            let deps = self.packages.list[&package].deps.clone();
+            for (index, dep) in deps.iter().enumerate() {
+                let outcome = match &dep.source {
+                    DepSource::Stored { hash, .. } if done.iter().any(|(_, h, _)| h == hash) => continue,
+                    DepSource::Stored { hash, urls } => {
+                        let outcome = if self.present(*hash) {
+                            Fetched::Present
+                        } else {
+                            self.download(dep, *hash, urls)
+                        };
+                        done.push((dep.name, *hash, outcome.clone()));
+                        outcome
+                    }
+                    DepSource::Dir(_) => Fetched::Present,
+                };
+                if outcome != Fetched::Failed
+                    && dep.kind == DepKind::Overt
+                    && let Some(next) = self.dep(package, index)
+                {
+                    pending.push(next);
+                }
+            }
+        }
+        done
+    }
+
+    /// Whether the store holds `hash` as it was verified.
+    fn present(&self, hash: Hash) -> bool {
+        let store = self.store();
+        let Some(recorded) = fs::read_to_string(store.snapshot(hash)).ok().and_then(|t| Snapshot::parse(&t))
+        else {
+            return false;
+        };
+        let mut top: Vec<String> = recorded.files().map(|(path, _)| path[0].clone()).collect();
+        top.dedup();
+        Snapshot::of(&store.package(hash), &top) == recorded
+    }
+
+    fn download(&mut self, dep: &Dep, hash: Hash, urls: &[String]) -> Fetched {
+        let store = self.store();
+        let staging = store.staging(hash);
+        let mut rejected = Vec::new();
+        for url in urls {
+            match self.stage(dep.kind, &store, hash, &staging, url) {
+                Ok(()) => return Fetched::Stored { url: url.clone() },
+                Err(why) => rejected.push((url, why)),
+            }
+        }
+        let _ = fs::remove_dir_all(&staging);
+        let name = self.interner.resolve(dep.name);
+        let msg = Msg::new().text("cannot fetch ").code(name).text(" (").code(hash.to_string()).text(")");
+        let mut d = Diagnostic::error(errors::PACKAGE_FETCH_FAILED, msg);
+        if urls.is_empty() {
+            d = d.child(ChildKind::Help, Msg::new().text("declare mirrors in its ").code(".urls"));
+        }
+        for (url, why) in rejected {
+            d = d.child(ChildKind::Note, Msg::new().text("from ").code(url.as_str())).caused_by(&why);
+        }
+        self.report(dep.span, d);
+        Fetched::Failed
+    }
+
+    /// Downloads `url` under `staging`, verifies it against `hash` and moves it into the store.
+    fn stage(
+        &mut self,
+        kind: DepKind,
+        store: &Store,
+        hash: Hash,
+        staging: &Path,
+        url: &str,
+    ) -> Result<(), Rejected> {
+        let _ = fs::remove_dir_all(staging);
+        fs::create_dir_all(staging).map_err(Rejected::Store)?;
+        let unpacked = staging.join(Store::PACKAGE);
+        Mirror::parse(url).and_then(|m| m.fetch(&unpacked)).map_err(Rejected::Mirror)?;
+        let include = self.include(kind, &unpacked);
+        let snapshot = Snapshot::of(&unpacked, &include);
+        if snapshot.root() != hash {
+            return Err(Rejected::Hash { found: snapshot.root() });
+        }
+        let entry = store.entry(hash);
+        let commit = || -> io::Result<()> {
+            fs::write(staging.join(Store::SNAPSHOT), snapshot.to_string())?;
+            if let Some(parent) = entry.parent() {
+                fs::create_dir_all(parent)?;
+            }
+            let _ = fs::remove_dir_all(&entry);
+            fs::rename(staging, &entry)
+        };
+        commit().map_err(Rejected::Store)
+    }
+
+    /// What the hash of an unpacked package covers: its manifest's `include`, or everything in
+    /// it for a foreign package.
+    fn include(&mut self, kind: DepKind, dir: &Path) -> Vec<String> {
+        let manifest = (kind == DepKind::Overt).then(|| self.manifest_at(&dir.join(MANIFEST))).flatten();
+        manifest.map_or_else(
+            || {
+                let entries = dir.entries().unwrap_or_default();
+                entries
+                    .iter()
+                    .filter_map(|e| e.file_name().map(|n| n.to_string_lossy().into_owned()))
+                    .collect()
+            },
+            |m| m.include,
+        )
+    }
+}

@@ -122,5 +122,6 @@ fn child_level(kind: ChildKind) -> Level<'static> {
     match kind {
         ChildKind::Note => Level::NOTE,
         ChildKind::Help => Level::HELP,
+        ChildKind::Cause => Level::NOTE.with_name(Some(ChildKind::Cause.name())),
     }
 }

@@ -7,6 +7,8 @@ use overt_diag::{ChildKind, DiagCx, Diagnostic, Msg, errors};
 use overt_intern::Symbol;
 use overt_span::Span;
 
+use overt_hash::{Change, Hash, Snapshot};
+
 use super::{Dep, DepSource, Namespace, PackageKey, Unfound};
 use crate::Session;
 
@@ -53,14 +55,11 @@ impl Session {
             self.missing_dep(&dep);
             return None;
         };
-        match (dep.source, found) {
-            (DepSource::Stored(expected), PackageKey::Content(actual)) if expected != actual => {
-                let name = self.interner.resolve(dep.name);
-                let msg =
-                    Msg::new().text("the stored contents of ").code(name).text(" do not match its hash");
-                let note = Msg::new().text("expected ").code(expected.to_string()).text(", found ");
-                let d = Diagnostic::error(errors::PACKAGE_HASH_MISMATCH, msg)
-                    .child(ChildKind::Note, note.code(actual.to_string()));
+        match (&dep.source, found) {
+            (&DepSource::Stored { hash: expected, .. }, PackageKey::Content(actual))
+                if expected != actual =>
+            {
+                let d = self.mismatch(&dep, expected, actual, &self.packages.list[&found].snapshot);
                 self.report(dep.span, d);
                 None
             }
@@ -93,12 +92,33 @@ impl Session {
         let d = Diagnostic::error(errors::PACKAGE_MISSING_DEP, msg.text(" at ").code(dir));
         let d = match dep.source {
             DepSource::Dir(_) => d,
-            DepSource::Stored(hash) => {
+            DepSource::Stored { hash, .. } => {
                 let help = Msg::new().code(hash.to_string()).text(" is fetched by ").code("overt pkg fetch");
                 d.child(ChildKind::Help, help)
             }
         };
         self.report(dep.span, d);
+    }
+
+    /// That the stored package of `dep` hashes to `actual`, naming the files changed since the
+    /// snapshot recorded when it was fetched.
+    fn mismatch(&self, dep: &Dep, expected: Hash, actual: Hash, current: &Snapshot) -> Diagnostic {
+        let name = self.interner.resolve(dep.name);
+        let msg = Msg::new().text("the stored contents of ").code(name).text(" do not match its hash");
+        let note =
+            Msg::new().text("expected ").code(expected.to_string()).text(", found ").code(actual.to_string());
+        let mut d = Diagnostic::error(errors::PACKAGE_HASH_MISMATCH, msg).child(ChildKind::Note, note);
+        let recorded = std::fs::read_to_string(self.store().snapshot(expected)).ok();
+        let recorded = recorded.and_then(|text| Snapshot::parse(&text));
+        for (path, change) in recorded.map(|r| r.changes(current)).unwrap_or_default() {
+            let what = match change {
+                Change::Added => " was added",
+                Change::Removed => " was removed",
+                Change::Modified => " was modified",
+            };
+            d = d.child(ChildKind::Note, Msg::new().code(path).text(what).text(" since it was fetched"));
+        }
+        d
     }
 
     /// That `path` names no namespace.

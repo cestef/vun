@@ -8,7 +8,9 @@ use super::Store;
 fn paths_nest_by_algorithm_then_digest_prefix() {
     let hash = Hash::of(b"package");
     let digest = hash.digest();
-    let path = Store::in_project(Path::new("p")).path(hash);
-    let expected = Path::new("p/.overt/store/blake3").join(&digest[..2]).join(&digest[2..]);
-    assert_eq!(path, expected);
+    let store = Store::in_project(Path::new("p"));
+    let entry = Path::new("p/.overt/store/blake3").join(&digest[..2]).join(&digest[2..]);
+    assert_eq!(store.entry(hash), entry);
+    assert_eq!(store.package(hash), entry.join("package"));
+    assert_eq!(store.snapshot(hash), entry.join("snapshot"));
 }

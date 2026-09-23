@@ -50,8 +50,8 @@ impl Generator {
     pub(crate) fn generate(&self, root: &Path) -> Result<String, Box<Diagnostic>> {
         let path = root.join(self.source);
         let text = std::fs::read_to_string(&path).map_err(|e| {
-            let msg = Msg::new().text("cannot read ").code(self.source).text(": ").text(e.to_string());
-            Box::new(Diagnostic::error(overt_diag::errors::IO_UNREADABLE_FILE, msg))
+            let msg = Msg::new().text("cannot read ").code(self.source);
+            Box::new(Diagnostic::error(overt_diag::errors::IO_UNREADABLE_FILE, msg).caused_by(&e))
         })?;
         let file = SourceFiles::new().add(self.source, text.as_str());
         let (mut diag, mut origins) = (DiagCtxt::new(), OriginTable::new());

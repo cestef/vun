@@ -48,7 +48,9 @@ by a stable identifier and a major version, and versions by the content hash of 
 URLs serving only as mirrors. The hash is a BLAKE3 Merkle tree over directory entries named by path
 component, so it is the same on every platform, a mismatch names the file that differs, and each
 file's hash is the key the compiler's caches already use; fetched packages are stored under a path
-derived from the hash alone. Resolution is minimal version selection @go-mvs: declared versions are
+derived from the hash alone. Packages are published as a canonical archive, a zstd stream of the
+file index followed by the files, so identical trees give identical archives and every file is
+verified as it is unpacked, before anything reaches the store. Resolution is minimal version selection @go-mvs: declared versions are
 minimums, the largest minimum is selected, and different major versions are different packages.
 Dependencies are instantiated with compile-time parameters rather than globally unified features, so no
 dependent can change another's build.

@@ -6,6 +6,8 @@ mod tree;
 
 use std::fmt;
 
+pub use tree::{Change, Snapshot};
+
 /// The hash functions a [`Hash`] can come from; the text form names it, so that another can
 /// follow without ambiguity.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]

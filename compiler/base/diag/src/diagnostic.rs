@@ -12,14 +12,25 @@ pub enum ChildKind {
     Note,
     /// A suggestion.
     Help,
+    /// What caused the diagnostic, then what caused that, outermost first.
+    Cause,
+}
+
+impl ChildKind {
+    /// How renderers title it.
+    #[must_use]
+    pub const fn name(self) -> &'static str {
+        match self {
+            Self::Note => "note",
+            Self::Help => "help",
+            Self::Cause => "caused by",
+        }
+    }
 }
 
 impl fmt::Display for ChildKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(match self {
-            Self::Note => "note",
-            Self::Help => "help",
-        })
+        f.write_str(self.name())
     }
 }
 
@@ -90,5 +101,12 @@ impl Diagnostic {
     pub fn child(mut self, kind: ChildKind, msg: impl Into<Msg>) -> Self {
         self.children.push(Child { kind, msg: msg.into(), labels: Vec::new(), fixes: Vec::new() });
         self
+    }
+
+    /// One [`ChildKind::Cause`] for `error` and each of its sources in turn.
+    #[must_use]
+    pub fn caused_by(self, error: &(dyn std::error::Error + 'static)) -> Self {
+        std::iter::successors(Some(error), |e| e.source())
+            .fold(self, |d, e| d.child(ChildKind::Cause, Msg::new().text(e.to_string())))
     }
 }

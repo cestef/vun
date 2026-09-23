@@ -9,6 +9,7 @@
 //! Everything is keyed by content: a package by the hash of its `include` tree, a manifest and a
 //! file's declarations by the hash of their text, a scope by its package.
 
+mod fetch;
 mod namespace;
 mod scope;
 mod spread;
@@ -17,12 +18,13 @@ use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
 use overt_build::layout::{Location, MANIFEST};
-use overt_build::manifest::{self, DEFAULT_DEPS, DEFAULT_PRELUDE, Manifest, Source};
+use overt_build::manifest::{self, DEFAULT_DEPS, DEFAULT_PRELUDE, DepKind, Manifest, Source};
 use overt_build::store::Store;
-use overt_hash::Hash;
+use overt_hash::{Hash, Snapshot};
 use overt_intern::{Interner, Symbol};
 use overt_span::{FileId, SourceMap, Span};
 
+pub use fetch::Fetched;
 pub use namespace::{Namespace, Unfound};
 pub use scope::{Outer, Scope};
 pub use spread::{FileScope, Spreads};
@@ -51,6 +53,8 @@ pub struct Package {
     pub prelude: Vec<String>,
     /// Where a manifest declares the prelude.
     pub prelude_span: Option<Span>,
+    /// The hashes of its files, from which its key is computed; empty for [`PackageKey::Loose`].
+    pub snapshot: Snapshot,
 }
 
 /// A dependency: the name it is bound to, where it comes from, and where it is declared.
@@ -58,6 +62,7 @@ pub struct Package {
 pub struct Dep {
     pub name: Symbol,
     pub source: DepSource,
+    pub kind: DepKind,
     /// `None` for a default dependency.
     pub span: Option<Span>,
 }
@@ -66,8 +71,8 @@ pub struct Dep {
 pub enum DepSource {
     /// A directory on disk.
     Dir(PathBuf),
-    /// A package in the store, by its tree hash.
-    Stored(Hash),
+    /// A package in the store, by its tree hash, and the mirrors that serve it.
+    Stored { hash: Hash, urls: Vec<String> },
 }
 
 #[derive(Default)]
@@ -88,7 +93,8 @@ impl Package {
         for &default in DEFAULT_DEPS {
             let name = interner.intern(default);
             if self.name != Some(name) && self.deps.iter().all(|d| d.name != name) {
-                self.deps.push(Dep { name, source: DepSource::Dir(library.join(default)), span: None });
+                let source = DepSource::Dir(library.join(default));
+                self.deps.push(Dep { name, source, kind: DepKind::Overt, span: None });
             }
         }
         self
@@ -115,14 +121,17 @@ impl Session {
         key
     }
 
+    /// The project's store; the current directory's before a project is found.
+    #[must_use]
+    pub fn store(&self) -> Store {
+        self.store.clone().unwrap_or_else(|| Store::in_project(Path::new(".")))
+    }
+
     /// Where a dependency is on disk; a stored one in the project's store.
     fn dep_dir(&self, source: &DepSource) -> PathBuf {
         match source {
             DepSource::Dir(dir) => dir.clone(),
-            DepSource::Stored(hash) => {
-                let store = self.store.clone().unwrap_or_else(|| Store::in_project(Path::new(".")));
-                store.path(*hash)
-            }
+            DepSource::Stored { hash, .. } => self.store().package(*hash),
         }
     }
 
@@ -130,15 +139,19 @@ impl Session {
     pub fn package_at(&mut self, dir: &Path) -> Option<PackageKey> {
         let path = dir.join(MANIFEST);
         let manifest = self.manifest_at(&path.is_file().then_some(path)?)?;
-        let key = PackageKey::Content(Hash::tree(dir, &manifest.include));
+        let snapshot = Snapshot::of(dir, &manifest.include);
+        let key = PackageKey::Content(snapshot.root());
         if !self.packages.list.contains_key(&key) {
             let name = Some(self.interner.intern(&manifest.name));
             let deps = manifest.deps.iter().map(|d| Dep {
                 name: self.interner.intern(&d.name),
                 source: match &d.source {
                     Source::Path(path) => DepSource::Dir(dir.join(path)),
-                    Source::Archive { hash, .. } => DepSource::Stored(*hash),
+                    Source::Archive { hash, urls, .. } => {
+                        DepSource::Stored { hash: *hash, urls: urls.clone() }
+                    }
                 },
+                kind: d.kind,
                 span: Some(d.span),
             });
             let package = Package {
@@ -147,6 +160,7 @@ impl Session {
                 deps: deps.collect(),
                 prelude: manifest.prelude,
                 prelude_span: Some(manifest.prelude_span),
+                snapshot,
             };
             let package = package.with_defaults(&self.library, &mut self.interner);
             self.packages.list.insert(key, package);
@@ -155,7 +169,7 @@ impl Session {
     }
 
     /// The manifest in the `build.ov` at `path`, read once per content.
-    fn manifest_at(&mut self, path: &Path) -> Option<Manifest> {
+    pub(super) fn manifest_at(&mut self, path: &Path) -> Option<Manifest> {
         let read = |s: &mut Self, file| {
             s.declarations(file, |decls, cx| {
                 manifest::declared(decls).then(|| manifest::read(decls, file, cx)).flatten()
@@ -186,8 +200,14 @@ impl Session {
     fn loose(&mut self) -> PackageKey {
         if !self.packages.list.contains_key(&PackageKey::Loose) {
             let prelude = vec![DEFAULT_PRELUDE.to_owned()];
-            let package =
-                Package { name: None, dir: PathBuf::new(), deps: Vec::new(), prelude, prelude_span: None };
+            let package = Package {
+                name: None,
+                dir: PathBuf::new(),
+                deps: Vec::new(),
+                prelude,
+                prelude_span: None,
+                snapshot: Snapshot::default(),
+            };
             let package = package.with_defaults(&self.library, &mut self.interner);
             self.packages.list.insert(PackageKey::Loose, package);
         }

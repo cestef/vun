@@ -54,6 +54,7 @@ overt-render-ariadne = { path = "compiler/render/ariadne" }
 overt-render-json = { path = "compiler/render/json" }
 overt-render-sarif = { path = "compiler/render/sarif" }
 overt-build = { path = "compiler/tools/build" }
+overt-pkg = { path = "compiler/tools/pkg" }
 overt-fmt = { path = "compiler/tools/fmt" }
 overt-bind = { path = "compiler/tools/bind" }
 overt-probe = { path = "compiler/tools/probe" }
@@ -74,6 +75,12 @@ prettyplease = "0.2"
 annotate-snippets = "0.12"
 ariadne = "0.6"
 blake3 = { version = "1", default-features = false, features = ["std"] }
+ureq = "3"
+flate2 = "1"
+tar = "0.4"
+zip = { version = "8", default-features = false, features = ["deflate-flate2"] }
+zstd = { version = "0.13", default-features = false }
+lzma-rs = "0.3"
 
 [workspace.lints.rust]
 unsafe_code = "deny"

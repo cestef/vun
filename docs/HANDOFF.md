@@ -102,7 +102,8 @@ tested (the rest are stubs):
 | `overt-origin` | `OriginId`, `Origin`, `Via`, `OriginTable`. |
 | `overt-diag` | `DiagId`, `Severity`, `Msg` (typed parts, `append`), `Label`, `Fix`, `ChildKind` (Display), `Diagnostic`, `DiagCtxt`, `DiagCx::error_at`, `DiagSink`; `Msg::did_you_mean`; `errors` (generated). |
 | `overt-suggest` | `closest` (did-you-mean by edit distance), `Lookup` on slices (find by name or the closest name). Generic, no diag types. |
-| `overt-hash` | BLAKE3 only. `Algorithm` (typed, `name`), `Hash` (`blake3:<base32>`, `parse`, `digest`, `of(bytes)`, `tree(dir, include)`: Merkle tree over path components, directory nodes in a derived key). Package identity, manifest `.hash`, every cache key. |
+| `overt-hash` | BLAKE3 only. `Algorithm` (typed, `name`), `Hash` (`blake3:<base32>`, `parse`, `digest`, `of(bytes)`, `tree(dir, include)`), `Snapshot` (per-file hashes by path, `root` = Merkle tree over path components with directory nodes in a derived key, `changes`, text form, portable plain-component paths), `Change`. Package identity, manifest `.hash`, every cache key. |
+| `overt-pkg` | `Mirror` (`parse`, `fetch`), `SCHEMES` (https, http, file), `FORMATS` (`.ovpkg`, `.tar.zst`, `.tar.xz`, `.tar.gz`, `.tar`, `.zip`; `strip` of a forge's top directory), `Archive` (`.ovpkg`: `pack`, `unpack` verifying each file), `Failure`/`Malformed` with sources. |
 | `overt-graph` | `Requirements<K>` (`add`, `order`, `OrderError`): the pass manager's ordering. |
 | `overt-fs` | `Tree` on `Path`: `files` (recursive, sorted), `entries`. Behind `Hash::tree`, `Location::children`, harness `discover`. |
 | `overt-outline` | `Outline` + `Outlined::node`: indented tree text for the CST and HIR dumps. |
@@ -110,12 +111,12 @@ tested (the rest are stubs):
 | `overt-syntax` | `tokens` (SoA tokens + trivia side table, `verify`); `lexer` (`lex`, recovery, `literal(kind, text)` for string values, backslash escapes); `cst` (postorder `(kind, Anchor, size)`, `Anchor::{Token, Missing}`, `children`, `span`, `dump`, `verify` -> `Malformed`); `parser` (`parse`); `literal` (`declarations` -> `Decl { name, doc, value: Literal, span }`, `Literal::Tagged`); `Cst::fields(n)` -> `Fields` (`get`, `one`, `assigned`), matched against the kind's slots; `children_rev` walks without allocating. |
 | `overt-hir` | `tree` (arenas: namespaces, decls, blocks, exprs, pats, binders; `List`/`Entry::Staged` for `$for`/`$if`), `lower` (one `Cst::fields` per node), `visit` (`Visitor` + `walk_*`), `verify` (tree property, origins), `resolve` (scopes: namespace, local, function, signature; `Res::{Binder, Outer { name, ns }}`, `Resolution::parents`; the checks; `Resolution::check_outer` over the `Outside` trait reports `names.unresolved`), `dump`. `Member::Spread` (`..path`, `..path.{ a, b }`; selected names are binders). `Hir::members`, `Hir::binders`, `Hir::path`, `tree::each_entry`. |
 | `overt-command` | Options of a group apply to every command below it; `Program.configure` applies them before a run. Declarative command trees: `Program`, `Command`, `Action::{Run, Group, Planned}`, `Param`/`ParamKind::{Positional, Flag, Option}`, `Args`, `parse` -> `Request`, `Selected`, generated `help`, `run` -> `Outcome`/`Refusal`, `Outcome` -> `ExitCode` (usage = 64). Usage errors are diagnostics with suggestions. |
-| `overt-driver` | `stages::STAGES` (implemented stages and the diagnostic groups they report), `Session::check` (runs them), `commands::PROGRAM` (the whole `overt` tree of spec 12.7, most commands `Planned`; `dump tokens|cst|manifest`, `components` run), `formats::FORMATS` (renderer registry behind `--format`), `Registry`, `Session` (`load`, `read`, `text`, `lex`, `parse`, `lower`, `resolve`, `declarations`, `manifest`, `emit`, `failed`). `packages`: `PackageKey::{Content(Hash), Loose}`, `Package` (deps, prelude), `Session::{package_of, package_at, dep, namespace_at, members, exports, scope, spreads}`, `Scope`/`Outer`, `FileScope` (implements `Outside`), `LIBRARY` (the toolchain library, today the repo's `lib/`). Caches keyed by content hash: manifests and file declarations by text hash, packages by include-tree hash. |
+| `overt-driver` | `stages::STAGES` (implemented stages and the diagnostic groups they report), `Session::check` (runs them), `commands::PROGRAM` (the whole `overt` tree of spec 12.7, most commands `Planned`; `dump tokens|cst|manifest`, `components` run), `formats::FORMATS` (renderer registry behind `--format`), `Registry`, `Session` (`load`, `read`, `text`, `lex`, `parse`, `lower`, `resolve`, `declarations`, `manifest`, `emit`, `failed`). `packages`: `PackageKey::{Content(Hash), Loose}`, `Package` (deps, prelude), `Session::{package_of, package_at, dep, namespace_at, members, exports, scope, spreads}`, `Scope`/`Outer`, `FileScope` (implements `Outside`), `Session::fetch` -> `Fetched` (graph walk, mirrors in order, staging, verify, commit) behind `overt pkg fetch`, `LIBRARY` (the toolchain library, today the repo's `lib/`). Caches keyed by content hash: manifests and file declarations by text hash, packages by include-tree hash. |
 | `overt-cli` | `main` runs `PROGRAM` through `overt-command` and renders diagnostics once at the end. |
 | `overt-render-short` | `file:line:col: severity[id]: message`, then `  = help: ...` lines (fixes too). |
 | `overt-render-annotate` | default `terminal` format: labels by file, notes, fixes as patches, traces. |
 | `overt-render-ariadne` | `--format ariadne`: one color per label role; fixes as help lines. |
-| `overt-build` | `manifest::read` -> `Manifest` (`Version`, `Dep` with span, `Source`, `DepKind`, `prelude_span`), `manifest::declared` (a `build.ov` is a manifest iff it declares `package`), `DEFAULT_DEPS`, `DEFAULT_PRELUDE`; generic record reader reporting missing, unknown (did-you-mean) and ill-typed fields. `store::Store` (`.overt/store/<algorithm>/<2 chars>/<rest>`). `layout`: `MANIFEST`, `SEPARATOR` (from the grammar's `.`), `Location` (namespace on disk: `root`, `member`, `file`, `exists`, `children`, `path_of`). |
+| `overt-build` | `manifest::read` -> `Manifest` (`Version`, `Dep` with span, `Source`, `DepKind`, `prelude_span`), `manifest::declared` (a `build.ov` is a manifest iff it declares `package`), `DEFAULT_DEPS`, `DEFAULT_PRELUDE`; generic record reader reporting missing, unknown (did-you-mean) and ill-typed fields. `store::Store` (`.overt/store/<algorithm>/<2 chars>/<rest>/{package/,snapshot}`, `staging/`). `layout`: `MANIFEST`, `SEPARATOR` (from the grammar's `.`), `Location` (namespace on disk: `root`, `member`, `file`, `exists`, `children`, `path_of`). |
 | `overt-harness` | `repo_root`, `expectations` (`//~ id [@col] ["fragment"]...` -> `Expected`, or `Malformed`), `Reported`, `compare` -> `Mismatch { missing, unexpected, differing }`, `discover`, `snapshot`, `snapshot_tree` (mirrors a source tree, `OVERT_BLESS`). |
 | `overt-xtask` | `cargo xtask generate [--check]`: pluggable `generate::Generator { source, output, emit }` table (`grammar`, `errors`); shared read/parse/emit/format (quote + prettyplease). `cargo xtask corpus`: runs `corpus/accept` (must be clean) and `corpus/reject` (exact `//~` set) through `Session::check`; a file whose missing ids all belong to stages that do not exist yet is pending (`overt_driver::stages::STAGES`, groups from `errors.ov` namespaces via `DiagId::within`). |
 | backends, linkers, target, pass, trace, tool | as in the first session (stubs with `const INFO`). |
@@ -175,7 +176,10 @@ In order:
    not files (`..lang.int.X` where `X` is a `struct`); member paths (`a.b.c` checked against
    namespaces) belong with sema. `names.duplicate` for a name in both `x.ov` and `x/` is not
    reported yet.
-2. `names.private` (needs member types: sema), `binding.hole_value` (needs attribute resolution).
+2. Packages: `overt pkg add <url>` (fetch, compute the hash, write `.deps` with it),
+   `overt pkg pack` (write a `.ovpkg` with `Archive::pack`), minimal version selection and the
+   lockfile (spec 12, sections 3 and 4). Fetching and verification exist (`overt pkg fetch`).
+3. `names.private` (needs member types: sema), `binding.hole_value` (needs attribute resolution).
 3. Desugaring into `lang` items with `Via::Desugar` origins (appendix B), queries, sema (with
    narrowing, decision 35, exhaustive match, decision 29), MIR, interpreter.
 4. Explanation pages `errors/<group>/<id>.md` for every diagnostic, and `overt explain`.
@@ -187,7 +191,7 @@ programs take from drivers, other libraries and unwritten parts of `std`.
 
 ## 9. Open questions and known gaps
 
-- Decisions 45 to 50 are accepted (50: BLAKE3 Merkle hashes, base32, nested store) (fourth session): `lang.int`, spreads, compile-time block
+- Decisions 45 to 52 are accepted (50: BLAKE3 Merkle hashes, base32, nested store; 51: `.ovpkg`; 52: error chains) (fourth session): `lang.int`, spreads, compile-time block
   bindings visible in their own value, manifest detection and content-hash caches, `targets` as a
   default dependency. Corpus type functions write `$Ring`, `$Regs`, `$Block`.
 - Build files name `std.build.Build` explicitly (no build-only prelude). New questions go there as

@@ -24,6 +24,8 @@ link-msvc = ["dep:overt-link-msvc"]
 link-process = ["dep:overt-link-process"]
 
 [dependencies]
+overt-pkg.workspace = true
+overt-fs.workspace = true
 overt-suggest.workspace = true
 overt-hash.workspace = true
 overt-command.workspace = true
@@ -61,3 +63,6 @@ overt-link-lld = { workspace = true, optional = true }
 overt-link-gnu = { workspace = true, optional = true }
 overt-link-msvc = { workspace = true, optional = true }
 overt-link-process = { workspace = true, optional = true }
+
+[dev-dependencies]
+overt-hash.workspace = true
