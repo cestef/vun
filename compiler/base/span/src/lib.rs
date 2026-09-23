@@ -167,10 +167,11 @@ impl std::fmt::Display for Location<'_> {
     }
 }
 
-/// An in-memory set of source files.
+/// An in-memory set of source files, appended to through a shared reference, so that every
+/// query of a compilation adds to one table.
 #[derive(Default)]
 pub struct SourceFiles {
-    files: Vec<SourceFile>,
+    files: boxcar::Vec<SourceFile>,
 }
 
 impl SourceFiles {
@@ -180,7 +181,7 @@ impl SourceFiles {
     }
 
     /// Adds a file keyed by its path.
-    pub fn add(&mut self, path: impl Into<String>, text: impl Into<String>) -> FileId {
+    pub fn add(&self, path: impl Into<String>, text: impl Into<String>) -> FileId {
         let path = path.into();
         let key = path.clone();
         self.add_as(&key, path, text)
@@ -190,11 +191,10 @@ impl SourceFiles {
     ///
     /// # Panics
     /// Panics past `u32::MAX` files.
-    pub fn add_as(&mut self, key: &str, path: impl Into<String>, text: impl Into<String>) -> FileId {
+    pub fn add_as(&self, key: &str, path: impl Into<String>, text: impl Into<String>) -> FileId {
         let key = overt_hash::Hash::of(key.as_bytes()).short();
-        let index = u32::try_from(self.files.len()).expect("fewer than 2^32 files");
-        self.files.push(SourceFile::new(path.into(), text.into()));
-        FileId { index, key }
+        let index = self.files.push(SourceFile::new(path.into(), text.into()));
+        FileId { index: u32::try_from(index).expect("fewer than 2^32 files"), key }
     }
 }
 

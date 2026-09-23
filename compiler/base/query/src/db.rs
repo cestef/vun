@@ -43,6 +43,7 @@ pub struct Db {
     tables: RwLock<HashMap<TypeId, Box<dyn Any + Send + Sync>>>,
     /// The persisted queries.
     pub(crate) codecs: RwLock<HashMap<TypeId, Codec>>,
+    resources: RwLock<HashMap<TypeId, Arc<dyn Any + Send + Sync>>>,
 }
 
 impl Db {
@@ -69,6 +70,23 @@ impl Db {
         let revision = Revision(self.revision.fetch_add(1, Ordering::AcqRel) + 1);
         let memo = Memo::<Q> { value, hash, deps: Arc::new([]), verified: Some(revision), input: true };
         self.store(key, memo);
+    }
+
+    /// The shared table of type `T`, created empty on first use. Resources are append-only tables
+    /// that every query adds to, such as origins and source files: interners, not inputs, so
+    /// reading them records no dependency.
+    ///
+    /// # Panics
+    /// Panics if the resources were poisoned by a panicking query.
+    #[must_use]
+    pub fn resource<T: Default + Send + Sync + 'static>(&self) -> Arc<T> {
+        let found = self.resources.read().expect("query resources").get(&TypeId::of::<T>()).cloned();
+        let resource = found.unwrap_or_else(|| {
+            let mut resources = self.resources.write().expect("query resources");
+            let entry = resources.entry(TypeId::of::<T>()).or_insert_with(|| Arc::new(T::default()));
+            Arc::clone(entry)
+        });
+        resource.downcast::<T>().expect("one resource per type")
     }
 
     /// The value of `Q` at `key`, from a fresh context.

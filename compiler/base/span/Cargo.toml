@@ -11,3 +11,4 @@ workspace = true
 
 [dependencies]
 overt-hash.workspace = true
+boxcar.workspace = true

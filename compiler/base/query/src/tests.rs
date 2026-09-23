@@ -180,3 +180,11 @@ fn memos_of_unregistered_queries_and_other_formats_are_not_loaded() {
     assert!(matches!(Db::new().load(&other), Err(Unloaded::Format { found: 2 })));
     assert!(matches!(Db::new().load(&[]), Err(Unloaded::Decode(_))));
 }
+
+#[test]
+fn resources_are_shared_per_type() {
+    let db = Db::new();
+    let first = db.resource::<std::sync::Mutex<Vec<u8>>>();
+    first.lock().unwrap().push(1);
+    assert_eq!(*db.resource::<std::sync::Mutex<Vec<u8>>>().lock().unwrap(), [1]);
+}

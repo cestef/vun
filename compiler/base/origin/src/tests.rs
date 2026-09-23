@@ -36,7 +36,7 @@ fn identities_survive_shifts_and_new_tables() {
     let name = Symbol::intern("limit");
     // The same declaration, 40 bytes further down, read in another process.
     let [(first, a), (second, b)] =
-        [(SourceFiles::new(), 10), (SourceFiles::new(), 50)].map(|(mut files, at)| {
+        [(SourceFiles::new(), 10), (SourceFiles::new(), 50)].map(|(files, at)| {
             let f = files.add("pkg@1.0.0/pkg.ov", "");
             let t = OriginTable::new();
             let decl = t.declaration(Span::new(f, at, at + 10), None, name);

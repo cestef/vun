@@ -1,6 +1,7 @@
 //! One compilation: its sources, origins and diagnostics.
 
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 use overt_build::manifest::{self, Manifest};
 use overt_build::store::Store;
@@ -9,6 +10,7 @@ use overt_hir::lower;
 use overt_hir::resolve::{self, Resolution};
 use overt_hir::tree::Hir;
 use overt_origin::OriginTable;
+use overt_query::Db;
 use overt_span::{FileId, SourceFiles, SourceMap};
 use overt_syntax::cst::Cst;
 use overt_syntax::literal::Decl;
@@ -19,8 +21,10 @@ use crate::formats::{self, Format};
 use crate::packages::{FileScope, LIBRARY, Packages};
 
 pub struct Session {
-    pub sources: SourceFiles,
-    pub origins: OriginTable,
+    /// The queries of the compilation, whose shared tables `sources` and `origins` are.
+    pub db: Db,
+    pub sources: Arc<SourceFiles>,
+    pub origins: Arc<OriginTable>,
     pub diag: DiagCtxt,
     /// How diagnostics are shown.
     pub format: &'static Format,
@@ -33,9 +37,11 @@ pub struct Session {
 
 impl Default for Session {
     fn default() -> Self {
+        let db = Db::new();
         Self {
-            sources: SourceFiles::default(),
-            origins: OriginTable::default(),
+            sources: db.resource(),
+            origins: db.resource(),
+            db,
             diag: DiagCtxt::default(),
             format: formats::default(),
             packages: Packages::default(),
@@ -124,7 +130,7 @@ impl Session {
     /// Emits every diagnostic in deterministic order.
     pub fn emit(&self, sink: &mut dyn DiagSink) {
         for d in self.diag.sorted() {
-            sink.emit(d, &self.origins, &self.sources);
+            sink.emit(d, &self.origins, &*self.sources);
         }
     }
 

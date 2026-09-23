@@ -1061,6 +1061,7 @@ dependencies = [
 name = "overt-span"
 version = "0.0.0"
 dependencies = [
+ "boxcar",
  "overt-hash",
 ]
 

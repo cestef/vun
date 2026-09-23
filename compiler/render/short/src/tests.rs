@@ -4,7 +4,7 @@ use overt_span::{SourceFiles, Span};
 
 #[test]
 fn renders_location_and_relative_id() {
-    let mut files = SourceFiles::new();
+    let files = SourceFiles::new();
     let text = "norm1 := (p: Point) -> u32 {\n    p.x.abs() + p.y.abs()\n};\n";
     let f = files.add("src/geom.ov", text);
     let expr = "p.x.abs() + p.y.abs()";

@@ -12,7 +12,7 @@ fn render(d: &Diagnostic, origins: &OriginTable, files: &SourceFiles) -> String 
 
 #[test]
 fn renders_labels_notes_and_fixes() {
-    let mut files = SourceFiles::new();
+    let files = SourceFiles::new();
     let text = "norm1 := (p: Point) -> u32 {\n    p.x.abs() + p.y.abs()\n};\n";
     let f = files.add("src/geom.ov", text);
     let span = |needle: &str| {
