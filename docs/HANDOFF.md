@@ -1,6 +1,6 @@
 # Handoff
 
-State of Overt as of 2026-09-23 (fourth session), written for the next agent. Read this, then
+State of Overt as of 2026-09-24 (fourth session), written for the next agent. Read this, then
 `CLAUDE.md` (the user's rules and the agent working procedure; it exists on disk but is excluded
 by the user's global gitignore, so it is not in version control), then
 `docs/spec/00-principles.md`.
@@ -21,7 +21,12 @@ reader, and HIR: lowering through node fields, a verifier (the HIR is a tree wit
 visitor, and name resolution within a file with the checks that need no types (`names.duplicate`,
 `names.shadowed`, `binding.irrefutable_test`), and package loading: manifests, dependencies,
 preludes and spreads (`..ns;`, `..ns.{ a, b };`), so names not declared in a file resolve against
-its package and report `names.unresolved`. `overt check <file>` runs every stage;
+its package and report `names.unresolved`. Packages: manifests read and written as literals,
+BLAKE3 Merkle hashes, `.ovpkg` archives, one store per user with lockfile roots, minimal version
+selection and `overt.lock`, `.replace`, indexes, and `overt pkg add|fetch|update|pack`,
+`overt cache list|gc`. Infrastructure for sema: a query engine with verifying traces, a global
+symbol pool, a shared origin table, and stable file and origin identities. Every diagnostic has a
+checked explanation page (`overt explain`). `overt check <file>` runs every stage;
 `overt dump hir` prints the resolved HIR with origins. Every file in `lib/` and `corpus/accept`
 parses, lowers, verifies and resolves cleanly. Nothing is type-checked yet.
 
@@ -33,7 +38,10 @@ ariadne renderer; handoff; settled open questions (decisions 28 to 44); HIR; nam
 hashes and the nested store; `overt pkg fetch`, `.ovpkg` and error chains; file and directory
 duplicates, `overt_fs::Edit` and `Scratch`; `overt pkg add` and `pack`, literals written back
 (`Literal::source`, `laid_out`, `Decl::insert`, `Edit::apply`); the executable bit in snapshots,
-tree hashes and `.ovpkg` 2.
+tree hashes and `.ovpkg` 2; nextest; MVS and `overt.lock`; the shared user store, labels and
+`cache gc`; `overt-query`; the global symbol pool; the shared origin table; typed literals and path
+calls in the literal reader; stable file and origin identities; `overt explain` and the explanation
+pages; `.replace`; `overt pkg update` through indexes.
 The user asked for commits per batch: commit each finished batch with `jj`.
 
 ## 2. How the user works (non-negotiable)
@@ -125,7 +133,7 @@ tested (the rest are stubs):
 | `overt-render-short` | `file:line:col: severity[id]: message`, then `  = help: ...` lines (fixes too). |
 | `overt-render-annotate` | default `terminal` format: labels by file, notes, fixes as patches, traces. |
 | `overt-render-ariadne` | `--format ariadne`: one color per label role; fixes as help lines. |
-| `overt-build` | `lock` (`Lock`, `Locked`, `FILE`, text form), `Manifest::{literal, source, identity}`, `Identity`, `EDITION`; `manifest::read` -> `Manifest` (`Version`, `Dep` with span, `Source`, `DepKind`, `prelude_span`), `manifest::declared` (a `build.ov` is a manifest iff it declares `package`), `DEFAULT_DEPS`, `DEFAULT_PRELUDE`; generic record reader reporting missing, unknown (did-you-mean) and ill-typed fields. `store::Store` (`Store::user()` in the XDG cache via `etcetera`, or `Store::at`; `<algorithm>/<2 chars>/<rest>/{package/,snapshot,label}`, `staging/`, `roots/`; `register`, `list`, `collect`, `Label`). `layout`: `MANIFEST`, `SEPARATOR` (from the grammar's `.`), `Location` (namespace on disk: `root`, `member`, `file`, `exists`, `children`, `path_of`). |
+| `overt-build` | `index` (`Index::{listing, archive}`, `Listing`), `lock` (`Lock`, `Locked`, `Replaced`/`Replacing`, `FILE`, text form), `Manifest::{replace, index}`, `Replacement`, `Dep::{declare, redeclare}`, `Manifest::{literal, source, identity}`, `Identity`, `EDITION`; `manifest::read` -> `Manifest` (`Version`, `Dep` with span, `Source`, `DepKind`, `prelude_span`), `manifest::declared` (a `build.ov` is a manifest iff it declares `package`), `DEFAULT_DEPS`, `DEFAULT_PRELUDE`; generic record reader reporting missing, unknown (did-you-mean) and ill-typed fields. `store::Store` (`Store::user()` in the XDG cache via `etcetera`, or `Store::at`; `<algorithm>/<2 chars>/<rest>/{package/,snapshot,label}`, `staging/`, `roots/`; `register`, `list`, `collect`, `Label`). `layout`: `MANIFEST`, `SEPARATOR` (from the grammar's `.`), `Location` (namespace on disk: `root`, `member`, `file`, `exists`, `children`, `path_of`). |
 | `overt-harness` | `repo_root`, `expectations` (`//~ id [@col] ["fragment"]...` -> `Expected`, or `Malformed`), `Reported`, `compare` -> `Mismatch { missing, unexpected, differing }`, `discover`, `snapshot`, `snapshot_tree` (mirrors a source tree, `OVERT_BLESS`), `Page::parse` (Markdown sections by `##`, `Block { lang, file, text }`) for the explanation checks. |
 | `overt-xtask` | `cargo xtask generate [--check]`: pluggable `generate::Generator { source, output, emit }` table (`grammar`, `errors`); shared read/parse/emit/format (quote + prettyplease). `cargo xtask corpus`: runs `corpus/accept` (must be clean) and `corpus/reject` (exact `//~` set) through `Session::check`; a file whose missing ids all belong to stages that do not exist yet is pending (`overt_driver::stages::STAGES`, groups from `errors.ov` namespaces via `DiagId::within`). |
 | backends, linkers, target, pass, trace, tool | as in the first session (stubs with `const INFO`). |
@@ -185,15 +193,19 @@ In order:
    not files (`..lang.int.X` where `X` is a `struct`); member paths (`a.b.c` checked against
    namespaces) belong with sema. A name declared in `x.ov` and held in `x/` is `names.duplicate`
    (`Session::check_children`).
-2. Packaging roadmap from the user's Nix review, in order. Done: the executable bit; the shared
-   user store (`Store::user`, `OVERT_STORE`) with lockfiles as roots, `overt cache list|gc`, labeled
-   entries. Next: planned builds (typed step records, `overt build --dry-run`,
-   steps keyed by inputs); signed binary caches (`.caches`, ed25519 trusted keys). Later: early
-   cutoff, sandboxed steps, `--verify-reproducible`, `overt pkg why`, a `.replace` override.
-   Done: minimal version selection (`Session::select`, `dep()` binds the selected version) and
-   `overt.lock` (`overt_build::lock`), written by `pkg fetch` and `pkg add`; fetching, verification,
-   `overt pkg add` (trust on first use, entries written through `Dep::declare`/`Decl::insert`) and
-   `overt pkg pack`. Open: `overt pkg update` needs a source of newer versions (an index).
+2. Packaging, from the user's Nix review. Done: executable bit, shared user store with lockfile
+   roots (`overt cache list|gc`), labeled entries, MVS and `overt.lock` (every required version),
+   `pkg add|fetch|update|pack`, indexes (decision 60), `.replace` (decision 64). Open:
+   - Bugs found while writing the explanation pages: `pkg fetch` cannot rewrite a stale lockfile
+     (fetch walks `dep()`, which selects and reports `package.stale_lock`; fetch should walk the
+     declared versions and leave the lock check to `check`); a hash mismatch also reports a stale
+     lock (a cascade); the `version_conflict` note shows "the project" as code;
+     `package.stale_lock` and `package.version_conflict` carry no span (point them at the lock
+     entry and at a requiring dependency). Update `package/stale_lock.md` when fixed.
+   - Query persistence with facet and postcard under `.overt/queries/` (decision 61).
+   - Signed binary caches (decision 63) and planned builds wait for the compile-time evaluator,
+     since both need `build.ov`'s `build` function evaluated. Later: early cutoff of build steps,
+     sandboxed steps, `--verify-reproducible`, `overt pkg why`.
 3. `names.private` (needs member types: sema), `binding.hole_value` (needs attribute resolution).
 4. Sema on `overt-query` (the engine exists; persistence to disk and parallel single-flight are
    open; stable file and origin identities exist, decision 59), then
@@ -203,15 +215,19 @@ In order:
    each `Diag`'s `meta.embed` (generated `errors::EXPLANATIONS`), checked with the corpus
    (`xtask/src/explanations.rs`: `## Example` reports exactly its annotations, `## Fix` nothing;
    `console` sections are shown), printed by `overt explain <id>`. A new diagnostic needs its page.
-6. Fuzz the parser longer (the verifier checks node fields; 150 s runs are clean).
+6. Fuzz the parser longer (the verifier checks node fields; 150 s runs are clean). The syntax pages
+   found `syntax.nesting_too_deep` fires at 256 levels while its message says "deeper than 256"
+   (off by one), and appendix D cites the parse rules as spec 01 section 5; they are section 6.
 
-The corpus has 40 accept and 54 reject programs (67 pass, 27 pending on later stages), plus
+The corpus has 40 accept and 54 reject programs plus 63 explanation pages (`cargo xtask corpus`:
+132 passed, 48 pending on later stages, 20 shown as transcripts, 0 failed), plus
 `corpus/build.ov` (prelude `std.prelude` then `support`) and `corpus/support`, stand-ins for what
 programs take from drivers, other libraries and unwritten parts of `std`.
 
 ## 9. Open questions and known gaps
 
-- Decisions 45 to 52 are accepted (50: BLAKE3 Merkle hashes, base32, nested store; 51: `.ovpkg`; 52: error chains) (fourth session): `lang.int`, spreads, compile-time block
+- Decisions 45 to 64 are all accepted; no decision is open. 61 (query persistence) and 63 (signed
+  caches) are accepted but not built. Earlier: decisions 45 to 52 are accepted (50: BLAKE3 Merkle hashes, base32, nested store; 51: `.ovpkg`; 52: error chains) (fourth session): `lang.int`, spreads, compile-time block
   bindings visible in their own value, manifest detection and content-hash caches, `targets` as a
   default dependency. Corpus type functions write `$Ring`, `$Regs`, `$Block`.
 - Build files name `std.build.Build` explicitly (no build-only prelude). New questions go there as
@@ -255,3 +271,11 @@ programs take from drivers, other libraries and unwritten parts of `std`.
   `.{ "lang", "lang.int" }`, no `std`), so integer widths live in `lang.int`, not `std`.
 - Every diagnostic helper phrase has one home: `Msg::did_you_mean`; the `.ov` extension is
   `overt_span::EXTENSION`; namespace paths on disk go through `overt_build::layout::Location`.
+- Parallel work in a second jj workspace (`jj workspace add`) needs its own `CARGO_TARGET_DIR`:
+  artifact names do not include the source path, so two trees sharing `~/.cargo/target` build
+  each other's crates. Before rebasing a workspace's commits from another workspace, run `jj st`
+  in it so its working copy is snapshotted; otherwise its edits end up in a divergent recovery
+  commit.
+- Tests never touch the user's store: the driver test fixture (`tests/common`) gives each session
+  a store in its scratch directory, and the CLI honours `OVERT_STORE`.
+- Test manifests are written with `Manifest::source`, never formatted by hand.
