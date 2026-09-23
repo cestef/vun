@@ -149,8 +149,8 @@ fn persisting(text: &str) -> Db {
 fn saved_memos_are_reused_until_their_trace_changes() {
     let first = persisting("one two");
     assert_eq!(first.get::<Words>(&"a".into()), ["one", "two"]);
-    let saved = first.save().unwrap();
-    assert_eq!(saved, first.save().unwrap(), "the saved form is deterministic");
+    let saved = first.save();
+    assert_eq!(saved, first.save(), "the saved form is deterministic");
     assert_eq!(WORDS.count(), 1);
 
     // Another process with the same input reuses the memo.
@@ -170,7 +170,7 @@ fn saved_memos_are_reused_until_their_trace_changes() {
 fn memos_of_unregistered_queries_and_other_formats_are_not_loaded() {
     let first = persisting("x");
     first.get::<Words>(&"a".into());
-    let saved = first.save().unwrap();
+    let saved = first.save();
     let bare = Db::new();
     bare.persist::<Words>();
     assert_eq!(bare.load(&saved).unwrap(), 0, "a trace reading an unregistered query is skipped");

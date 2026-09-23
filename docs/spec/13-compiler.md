@@ -61,7 +61,8 @@ years (rustc's parallel front end). So both are designed in from phase 1.
   its `cycle` rule gives, with the path of queries, instead of looping.
 - The query database is persisted to disk from phase 1, with a bounded cache for bodies (new Salsa
   initially grew rust-analyzer's memory about 4x). A query opts in when its keys and values are
-  data (`Persist`, facet-postcard); its computed memos are saved with their traces, by query name,
+  data (`Persist`, encoded by `overt-codec`, which has no dependencies; an interned value
+  persists by content and is interned again when read); its computed memos are saved with their traces, by query name,
   in `.overt/queries/` under the toolchain's hash. A memo whose trace reads a query that is not
   persisted is not saved, and a loaded memo is verified before its first use like any memo of an
   earlier revision, so a stale file costs recomputation, never a wrong result.

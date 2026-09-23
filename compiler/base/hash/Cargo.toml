@@ -12,4 +12,4 @@ workspace = true
 [dependencies]
 overt-fs.workspace = true
 blake3.workspace = true
-facet.workspace = true
+overt-codec.workspace = true

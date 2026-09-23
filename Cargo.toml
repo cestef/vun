@@ -12,6 +12,7 @@ publish = false
 [workspace.dependencies]
 overt-index = { path = "compiler/base/index" }
 overt-suggest = { path = "compiler/base/suggest" }
+overt-codec = { path = "compiler/base/codec" }
 overt-hash = { path = "compiler/base/hash" }
 overt-graph = { path = "compiler/base/graph" }
 overt-fs = { path = "compiler/base/fs" }
@@ -83,9 +84,7 @@ tar = "0.4"
 zip = { version = "8", default-features = false, features = ["deflate-flate2"] }
 zstd = { version = "0.13", default-features = false }
 lzma-rs = "0.3"
-facet = "0.46"
 num-bigint = "0.5"
-facet-postcard = "0.46"
 
 [workspace.lints.rust]
 unsafe_code = "deny"

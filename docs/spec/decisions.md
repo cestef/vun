@@ -64,7 +64,7 @@
 | 58 | Symbols come from one process-wide, sharded, append-only pool: equal by pointer, hashed by the BLAKE3 of their text, ordered by text, so hashes and orders built from them are stable across processes and schedules | accepted | 13 |
 | 59 | Stable identities: `FileId` hashes by `<package>@<version>/<path>` (a loose file by its path), `OriginId` by its via and anchor (a declaration by name within its declaration, a node by its span relative to its declaration) | accepted | 10, 13 |
 | 60 | `overt pkg update` reads versions from an index speaking a Go-proxy-style protocol (`<index>/<id>/<major>/list`, `.../<version>.ovpkg`); an index is a mirror, never an authority: what it serves is verified by hash | accepted | 12 |
-| 61 | The query database persists with facet and postcard under `.overt/queries/`, keyed by the toolchain's hash | accepted | 13 |
+| 61 | The query database persists under `.overt/queries/`, keyed by the toolchain's hash, in the encoding of `overt-codec` (LEB128 varints, length-prefixed sequences, no dependencies; each type says how it persists); first written with facet-postcard, replaced by the user's choice to avoid its ~30 crates | accepted | 13 |
 | 62 | Explanation pages stay explicit data: each `Diag` embeds its page, as user lint packages will | accepted | 10 |
 | 63 | Binary caches are declared in the root manifest (`.caches` with their ed25519 keys); a cached output is used only when signed by a declared key over (step key, output hash), and built locally otherwise | accepted | 12 |
 | 64 | `.replace` in the root manifest substitutes a path or a hash for an identity (`id/major`) anywhere in the graph, and the lockfile records it as a `replace` line | accepted | 12 |

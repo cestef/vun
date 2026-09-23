@@ -22,7 +22,7 @@ use overt_hash::Hash;
 
 pub use cx::{Cx, Cycle};
 pub use db::Db;
-pub use persist::{Persist, Unloaded, Unsaved};
+pub use persist::{Persist, Unloaded};
 
 /// A point in the history of inputs.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
