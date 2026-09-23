@@ -1,6 +1,7 @@
 //! Exact integers (spec 04, section 1): compile-time values have no bound, so every value and
 //! every range bound is an arbitrary-precision integer.
 
+mod extended;
 mod interval;
 #[cfg(test)]
 mod tests;
@@ -10,7 +11,8 @@ use std::ops::{Add, Mul, Neg, Sub};
 
 use num_bigint::{BigInt, Sign};
 
-pub use interval::{Interval, Storage};
+pub use extended::Extended;
+pub use interval::{Divided, Divisor, Interval, Storage};
 
 /// An integer of any size.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]

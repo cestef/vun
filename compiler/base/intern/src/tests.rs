@@ -1,7 +1,7 @@
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 
-use super::Symbol;
+use super::{Interned, Pool, Symbol};
 
 #[test]
 fn interning_is_idempotent_across_threads() {
@@ -25,4 +25,16 @@ fn hashes_depend_on_the_text_only() {
     let before = hash(Symbol::intern("gpio"));
     let _ = Symbol::intern("uart");
     assert_eq!(hash(Symbol::intern("gpio")), before);
+}
+
+static PAIRS: Pool<(Symbol, u32)> = Pool::new();
+
+#[test]
+fn interned_values_are_shared_and_hash_by_content() {
+    let a = PAIRS.intern((Symbol::intern("a"), 1));
+    assert_eq!(a, PAIRS.intern((Symbol::intern("a"), 1)));
+    assert_ne!(a, PAIRS.intern((Symbol::intern("a"), 2)));
+    assert_eq!(a.1, 1);
+    let hash = |v: Interned<(Symbol, u32)>| overt_hash::Hash::of_value(&v);
+    assert_eq!(hash(a), hash(PAIRS.intern((Symbol::intern("a"), 1))));
 }

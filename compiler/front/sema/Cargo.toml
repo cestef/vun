@@ -11,6 +11,7 @@ workspace = true
 
 [dependencies]
 overt-origin.workspace = true
+overt-hash.workspace = true
 overt-diag.workspace = true
 overt-intern.workspace = true
 overt-query.workspace = true

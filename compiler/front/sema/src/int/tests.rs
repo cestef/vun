@@ -1,5 +1,4 @@
-use super::interval::{Divided, Divisor};
-use super::{Integer, Interval, Storage};
+use super::{Divided, Divisor, Extended, Integer, Interval, Storage};
 
 fn int(lo: i128, hi: i128) -> Interval {
     Interval::closed(lo.into(), hi.into()).unwrap()
@@ -7,7 +6,8 @@ fn int(lo: i128, hi: i128) -> Interval {
 
 /// Every result of applying `op` to the values of `a` and `b`, for checking ranges exhaustively.
 fn exhaustive(a: &Interval, b: &Interval, op: impl Fn(i128, i128) -> Option<i128>) -> Option<Interval> {
-    let values = |r: &Interval| r.lo().to_i128().unwrap()..=r.hi().to_i128().unwrap();
+    let bound = |e: &Extended| e.finite().and_then(Integer::to_i128).unwrap();
+    let values = |r: &Interval| bound(r.lo())..=bound(r.hi());
     let op = &op;
     let results = values(a).flat_map(|x| values(b).filter_map(move |y| op(x, y)));
     results.fold(None, |range, v| {
@@ -64,10 +64,25 @@ fn storage_is_the_smallest_direct_width() {
     assert_eq!(int(-128, 127).storage(), Some(Storage::B8));
     assert_eq!(int(-129, 0).storage(), Some(Storage::B16));
     assert_eq!(int(-1, 200).storage(), Some(Storage::B16), "no offset encoding");
-    assert_eq!(int(0, 7).bits(), 3);
-    assert_eq!(int(-4, 3).bits(), 3);
-    assert_eq!(int(-1, -1).bits(), 1);
+    assert_eq!(int(0, 7).bits(), Some(3));
+    assert_eq!(int(-4, 3).bits(), Some(3));
+    assert_eq!(int(-1, -1).bits(), Some(1));
     let u64 = Interval::half_open(0.into(), &Integer::power_of_two(64)).unwrap();
     assert_eq!(u64.mul(&u64).storage(), Some(Storage::B128));
     assert_eq!(u64.mul(&u64).mul(&u64).storage(), None, "past the width cap");
+}
+
+#[test]
+fn unbounded_ranges_have_no_storage_and_stay_sound() {
+    let from_one = Interval::at_least(1.into());
+    assert_eq!(from_one.storage(), None, "compile time only");
+    let shifted = from_one.sub(&Interval::singleton(1.into()));
+    assert_eq!((shifted.lo(), shifted.hi()), (&Extended::Finite(0.into()), &Extended::PosInf));
+    assert_eq!(int(-2, 3).mul(&from_one).lo(), &Extended::NegInf);
+    assert_eq!(int(0, 0).mul(&from_one), int(0, 0), "zero times anything is zero");
+    let quotient = int(10, 20).div(&from_one).range.unwrap();
+    assert_eq!(quotient, int(0, 20));
+    let remainder = int(-5, 5).rem(&from_one).range.unwrap();
+    assert_eq!(remainder, int(-5, 5));
+    assert!(from_one.contains(&int(1, 1_000_000)));
 }

@@ -1049,6 +1049,7 @@ version = "0.0.0"
 dependencies = [
  "num-bigint",
  "overt-diag",
+ "overt-hash",
  "overt-hir",
  "overt-intern",
  "overt-origin",

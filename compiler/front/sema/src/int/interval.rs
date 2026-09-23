@@ -1,13 +1,14 @@
 //! Integer ranges and their arithmetic (spec 04, rules 1, 2, 5 to 7; whitepaper section 5): each
 //! operation is monotone in each operand on the domains used, so its extremes are at the corners.
 
-use super::Integer;
+use super::{Extended, Integer};
 
-/// The integers from `lo` to `hi`, both included: the values of `Int(lo..=hi)`. Never empty.
+/// The integers from `lo` to `hi`, both included: the values of `Int(lo..=hi)`, or of `Int(lo..)`
+/// with an infinite end. Never empty.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Interval {
-    lo: Integer,
-    hi: Integer,
+    lo: Extended,
+    hi: Extended,
 }
 
 /// Whether a divisor's range contains zero, which makes the division a trap site (rule 6).
@@ -51,10 +52,16 @@ impl Storage {
 }
 
 impl Interval {
+    /// `lo..=hi` over endpoints, or `None` when it holds nothing or starts at `+inf`.
+    #[must_use]
+    pub fn new(lo: Extended, hi: Extended) -> Option<Self> {
+        (lo <= hi && lo != Extended::PosInf && hi != Extended::NegInf).then_some(Self { lo, hi })
+    }
+
     /// `lo..=hi`, or `None` when it holds nothing.
     #[must_use]
     pub fn closed(lo: Integer, hi: Integer) -> Option<Self> {
-        (lo <= hi).then_some(Self { lo, hi })
+        Self::new(Extended::Finite(lo), Extended::Finite(hi))
     }
 
     /// `lo..hi`, or `None` when it holds nothing.
@@ -63,19 +70,25 @@ impl Interval {
         Self::closed(lo, hi - &Integer::from(1))
     }
 
+    /// `lo..`: every integer from `lo` up.
+    #[must_use]
+    pub fn at_least(lo: Integer) -> Self {
+        Self { lo: Extended::Finite(lo), hi: Extended::PosInf }
+    }
+
     /// The type of a literal: exactly `n`.
     #[must_use]
     pub fn singleton(n: Integer) -> Self {
-        Self { lo: n.clone(), hi: n }
+        Self { lo: Extended::Finite(n.clone()), hi: Extended::Finite(n) }
     }
 
     #[must_use]
-    pub const fn lo(&self) -> &Integer {
+    pub const fn lo(&self) -> &Extended {
         &self.lo
     }
 
     #[must_use]
-    pub const fn hi(&self) -> &Integer {
+    pub const fn hi(&self) -> &Extended {
         &self.hi
     }
 
@@ -92,15 +105,15 @@ impl Interval {
         Self { lo: self.lo.clone().min(other.lo.clone()), hi: self.hi.clone().max(other.hi.clone()) }
     }
 
-    /// The smallest range holding every value.
-    fn spanning(values: impl IntoIterator<Item = Integer>) -> Option<Self> {
+    /// The smallest range holding every endpoint.
+    fn spanning(values: impl IntoIterator<Item = Extended>) -> Option<Self> {
         values.into_iter().fold(None, |range, n| {
-            let point = Self::singleton(n);
+            let point = Self { lo: n.clone(), hi: n };
             Some(range.map_or(point.clone(), |r: Self| r.hull(&point)))
         })
     }
 
-    fn corners(&self, other: &Self, op: impl Fn(&Integer, &Integer) -> Integer) -> Self {
+    fn corners(&self, other: &Self, op: impl Fn(&Extended, &Extended) -> Extended) -> Self {
         let corners =
             [(&self.lo, &other.lo), (&self.lo, &other.hi), (&self.hi, &other.lo), (&self.hi, &other.hi)];
         Self::spanning(corners.map(|(a, b)| op(a, b))).expect("four corners")
@@ -108,46 +121,42 @@ impl Interval {
 
     #[must_use]
     pub fn add(&self, other: &Self) -> Self {
-        Self { lo: &self.lo + &other.lo, hi: &self.hi + &other.hi }
+        Self { lo: self.lo.add(&other.lo), hi: self.hi.add(&other.hi) }
     }
 
     #[must_use]
     pub fn sub(&self, other: &Self) -> Self {
-        Self { lo: &self.lo - &other.hi, hi: &self.hi - &other.lo }
+        self.add(&other.neg())
     }
 
     #[must_use]
     pub fn mul(&self, other: &Self) -> Self {
-        self.corners(other, |a, b| a * b)
+        self.corners(other, Extended::mul)
     }
 
     #[must_use]
     pub fn neg(&self) -> Self {
-        Self { lo: -&self.hi, hi: -&self.lo }
+        Self { lo: self.hi.neg(), hi: self.lo.neg() }
     }
 
     /// The divisor's range without zero: its negative part and its positive part.
     fn nonzero_parts(&self) -> impl Iterator<Item = Self> {
-        let below = Self::closed(self.lo.clone(), (&self.hi).min(&Integer::from(-1)).clone());
-        let above = Self::closed((&self.lo).max(&Integer::from(1)).clone(), self.hi.clone());
+        let (minus_one, one) = (Extended::Finite(Integer::from(-1)), Extended::Finite(Integer::from(1)));
+        let below = Self::new(self.lo.clone(), self.hi.clone().min(minus_one));
+        let above = Self::new(self.lo.clone().max(one), self.hi.clone());
         below.into_iter().chain(above)
     }
 
     fn divisor(&self) -> Divisor {
-        if self.lo <= Integer::zero() && Integer::zero() <= self.hi {
-            Divisor::MayBeZero
-        } else {
-            Divisor::NonZero
-        }
+        let zero = Extended::Finite(Integer::zero());
+        if self.lo <= zero && zero <= self.hi { Divisor::MayBeZero } else { Divisor::NonZero }
     }
 
     /// Division rounding toward zero: over each sign of the divisor, the quotient's extremes are
     /// at the corners.
     #[must_use]
-    #[expect(clippy::missing_panics_doc, reason = "the divisor's parts exclude zero")]
     pub fn div(&self, divisor: &Self) -> Divided {
-        let parts =
-            divisor.nonzero_parts().map(|d| self.corners(&d, |a, b| a.checked_div(b).expect("no zero")));
+        let parts = divisor.nonzero_parts().map(|d| self.corners(&d, Extended::div));
         Divided { range: parts.reduce(|a, b| a.hull(&b)), divisor: divisor.divisor() }
     }
 
@@ -156,11 +165,12 @@ impl Interval {
     /// is the largest divisor magnitude.
     #[must_use]
     pub fn rem(&self, divisor: &Self) -> Divided {
-        let largest = divisor.nonzero_parts().map(|d| d.lo.abs().max(d.hi.abs())).max();
+        let magnitude = |e: &Extended| e.clone().max(e.neg());
+        let largest = divisor.nonzero_parts().map(|d| magnitude(&d.lo).max(magnitude(&d.hi))).max();
         let range = largest.map(|m| {
-            let one = Integer::from(1);
-            let lo = self.lo.clone().min(Integer::zero()).max(&one - &m);
-            let hi = self.hi.clone().max(Integer::zero()).min(&m - &one);
+            let (zero, one) = (Extended::Finite(Integer::zero()), Extended::Finite(Integer::from(1)));
+            let lo = self.lo.clone().min(zero.clone()).max(one.add(&m.neg()));
+            let hi = self.hi.clone().max(zero).min(m.add(&one.neg()));
             Self { lo, hi }
         });
         Divided { range, divisor: divisor.divisor() }
@@ -169,26 +179,28 @@ impl Interval {
     /// Whether a value can be negative, so that it is stored in two's complement.
     #[must_use]
     pub fn is_signed(&self) -> bool {
-        self.lo.is_negative()
+        self.lo < Extended::Finite(Integer::zero())
     }
 
     /// The fewest bits that hold every value directly, in two's complement when signed: the width
-    /// of a `layout.bits` field (rule 7).
+    /// of a `layout.bits` field (rule 7). `None` for an unbounded range.
     #[must_use]
-    pub fn bits(&self) -> u64 {
-        if self.is_signed() {
-            let below = (&-&self.lo - &Integer::from(1)).magnitude_bits();
-            let above = if self.hi.is_negative() { 0 } else { self.hi.magnitude_bits() };
+    pub fn bits(&self) -> Option<u64> {
+        let (lo, hi) = (self.lo.finite()?, self.hi.finite()?);
+        Some(if self.is_signed() {
+            let below = (&-lo - &Integer::from(1)).magnitude_bits();
+            let above = if hi.is_negative() { 0 } else { hi.magnitude_bits() };
             below.max(above) + 1
         } else {
-            self.hi.magnitude_bits()
-        }
+            hi.magnitude_bits()
+        })
     }
 
-    /// Where the range is stored, or `None` past 128 bits, the width cap (rule 5).
+    /// Where the range is stored, or `None` past 128 bits (the width cap, rule 5) or for an
+    /// unbounded range, which exists at compile time only.
     #[must_use]
     pub fn storage(&self) -> Option<Storage> {
-        let bits = self.bits();
+        let bits = self.bits()?;
         Storage::ALL.into_iter().find(|s| bits <= s.bits())
     }
 }

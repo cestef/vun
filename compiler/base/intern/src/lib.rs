@@ -21,7 +21,11 @@ struct Entry {
     text: &'static str,
 }
 
-/// Shards of the pool, chosen by hash, so that threads interning different names rarely wait.
+mod pool;
+
+pub use pool::{Interned, Pool};
+
+/// Shards of a pool, chosen by hash, so that threads interning different values rarely wait.
 const SHARDS: usize = 16;
 
 type Shard = RwLock<HashMap<&'static str, Symbol>>;
