@@ -6,7 +6,7 @@ use std::path::Path;
 
 use flate2::read::GzDecoder;
 
-use crate::Archive;
+use crate::{Archive, Tar, Zstd};
 
 pub struct Format {
     pub suffixes: &'static [&'static str],
@@ -25,7 +25,7 @@ pub const FORMATS: &[Format] = &[
     },
     Format {
         suffixes: &[".tar.zst", ".tzst"],
-        unpack: |bytes, dir| tar::Archive::new(zstd::stream::read::Decoder::new(bytes)?).unpack(dir),
+        unpack: |bytes, dir| Tar::unpack(Zstd::reader(bytes)?, dir),
         strip: true,
     },
     Format {
@@ -33,16 +33,16 @@ pub const FORMATS: &[Format] = &[
         unpack: |bytes, dir| {
             let mut tar = Vec::new();
             lzma_rs::xz_decompress(&mut BufReader::new(bytes), &mut tar).map_err(io::Error::other)?;
-            tar::Archive::new(tar.as_slice()).unpack(dir)
+            Tar::unpack(tar.as_slice(), dir)
         },
         strip: true,
     },
     Format {
         suffixes: &[".tar.gz", ".tgz"],
-        unpack: |bytes, dir| tar::Archive::new(GzDecoder::new(bytes)).unpack(dir),
+        unpack: |bytes, dir| Tar::unpack(GzDecoder::new(bytes), dir),
         strip: true,
     },
-    Format { suffixes: &[".tar"], unpack: |bytes, dir| tar::Archive::new(bytes).unpack(dir), strip: true },
+    Format { suffixes: &[".tar"], unpack: |bytes, dir| Tar::unpack(bytes, dir), strip: true },
     Format {
         suffixes: &[".zip"],
         unpack: |bytes, dir| {

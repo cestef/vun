@@ -4,6 +4,8 @@
 mod archive;
 mod format;
 mod mirror;
+mod tar;
+mod zstd;
 
 use std::error::Error;
 use std::{fmt, io};
@@ -11,6 +13,8 @@ use std::{fmt, io};
 pub use archive::{Archive, Malformed};
 pub use format::{FORMATS, Format};
 pub use mirror::{Mirror, SCHEMES, Scheme};
+pub use tar::Tar;
+pub use zstd::Zstd;
 
 /// Why a mirror could not provide an archive; the underlying error is its [`Error::source`].
 #[derive(Debug)]

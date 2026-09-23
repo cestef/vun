@@ -122,7 +122,7 @@ tested (the rest are stubs):
 | `overt-suggest` | `closest` (did-you-mean by edit distance), `Lookup` on slices (find by name or the closest name). Generic, no diag types. |
 | `overt-codec` | `Encode`, `Decode`, `Malformed`, `take`, `record!` (a struct field by field): LEB128 varints, zigzag for signed, length-prefixed text and sequences, tagged options and booleans. No dependencies. |
 | `overt-hash` | BLAKE3 only. `Algorithm` (typed, `name`), `Hash` (`blake3:<base32>`, `parse`, `digest`, `of(bytes)`, `tree(dir, include)`), `Snapshot` (per-file `Entry { hash, mode }` by path, `root` = Merkle tree over path components with directory nodes in a derived key, `changes`, text form, portable plain-component paths), `Change`. Package identity, manifest `.hash`, every cache key. |
-| `overt-pkg` | `Mirror` (`parse`, `fetch`), `SCHEMES` (https, http, file), `FORMATS` (`.ovpkg`, `.tar.zst`, `.tar.xz`, `.tar.gz`, `.tar`, `.zip`; `strip` of a forge's top directory), `Archive` (`.ovpkg`: `pack`, `unpack` verifying each file), `Failure`/`Malformed` with sources. |
+| `overt-pkg` | `Mirror` (`parse`, `fetch`), `SCHEMES` (https, http, file), `FORMATS` (`.ovpkg`, `.tar.zst`, `.tar.xz`, `.tar.gz`, `.tar`, `.zip`; `strip` of a forge's top directory), `Archive` (`.ovpkg`: `pack`, `unpack` verifying each file), `Tar` (own reader: ustar, GNU long names, PAX paths; links refused; paths through `Snapshot::components`), `Zstd` (ruzstd), `Failure`/`Malformed` with sources. |
 | `overt-query` | `Query` (`NAME`, `Key`, `Value`, `compute`, `interface`, `cycle`), `Db` (`set`, `get`, `revision`, `persist::<Q>`, `save`, `load`), `Cx` (`get` records reads), `Cycle`, `Persist` (opt-in, keys and values `overt_codec::{Encode, Decode}`), `Unloaded`, `Db::resource::<T>()` (shared append-only tables: `SourceFiles`, `OriginTable`). Verifying traces of interface hashes, early cutoff, one verification per revision; loaded memos are unverified (`verified: None`). Single-flight per thread only. The driver does not save or load yet: that comes with the first persisted sema queries (`.overt/queries/<toolchain hash>`). |
 | `overt-sema` | `int`: `Integer` (num-bigint), `Interval` (`add`, `sub`, `mul`, `neg`, `div`/`rem` -> `Divided { range, divisor: Divisor }`, `contains`, `hull`, `bits`, `storage` -> `Storage` or `None` past the width cap), tested exhaustively against small ranges. `primitives` (generated): one module and enum per `lang` namespace (`primitives::mem::Mem`), `Primitive` over them (`ALL`, `namespace`, `name`). Stubs: `check`, `eval` (`Evaluator` trait), `layout`, `ty`. |
 | `overt-graph` | `Requirements<K>` (`add`, `order`, `OrderError`): the pass manager's ordering. |
@@ -223,7 +223,7 @@ programs take from drivers, other libraries and unwritten parts of `std`.
 ## 9. Open questions and known gaps
 
 - Decisions 65 (partial graphs resolve through the lockfile) and 66 (primitives from `lang`) are
-  proposed. Decisions 45 to 64 are accepted. 61 (query persistence) and 63 (signed
+  proposed; 67 (pure-Rust dependencies) is accepted. Decisions 45 to 64 are accepted. 61 (query persistence) and 63 (signed
   caches) are accepted but not built. Earlier: decisions 45 to 52 are accepted (50: BLAKE3 Merkle hashes, base32, nested store; 51: `.ovpkg`; 52: error chains) (fourth session): `lang.int`, spreads, compile-time block
   bindings visible in their own value, manifest detection and content-hash caches, `targets` as a
   default dependency. Corpus type functions write `$Ring`, `$Regs`, `$Block`.

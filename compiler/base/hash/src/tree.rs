@@ -125,17 +125,21 @@ impl Snapshot {
             let mut marks = mark.chars();
             let mark = marks.next().filter(|_| marks.next().is_none())?;
             let mode = MODES.iter().find(|&&(m, _)| m == mark)?.1;
-            let components: Vec<String> = path.split(Self::PATH_SEPARATOR).map(str::to_owned).collect();
-            let plain = |c: &String| {
-                !c.contains(Self::FORBIDDEN)
-                    && matches!(Path::new(c).components().next(), Some(Component::Normal(n)) if n == c.as_str())
-            };
-            if !components.iter().all(plain) {
-                return None;
-            }
-            files.insert(components, Entry { hash: Hash::parse(hash)?, mode });
+            files.insert(Self::components(path)?, Entry { hash: Hash::parse(hash)?, mode });
         }
         Some(Self { files })
+    }
+
+    /// The components of `path`, written with [`Self::PATH_SEPARATOR`], if each is a plain name:
+    /// not empty, `.` or `..`, and holding no [`Self::FORBIDDEN`] character. Paths from untrusted
+    /// archives go through it, so that none names a file outside its tree.
+    #[must_use]
+    pub fn components(path: &str) -> Option<Vec<String>> {
+        let plain = |c: &str| {
+            !c.contains(Self::FORBIDDEN)
+                && matches!(Path::new(c).components().next(), Some(Component::Normal(n)) if n == c)
+        };
+        path.split(Self::PATH_SEPARATOR).map(|c| plain(c).then(|| c.to_owned())).collect()
     }
 
     fn path(components: &[String]) -> String {

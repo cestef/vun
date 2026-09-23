@@ -1,4 +1,4 @@
-//! The package archive, `.ovpkg`: one zstd stream holding a header, the snapshot of the package's
+//! The package archive, `.ovpkg`: one zstd frame holding a header, the snapshot of the package's
 //! files (their paths, hashes and whether they are executable, from which the package hash is
 //! computed), then each file's bytes in snapshot order. Archives carry no timestamps, owners or
 //! other modes, so identical trees give identical archives, and unpacking checks every file against
@@ -10,6 +10,8 @@ use std::path::{Path, PathBuf};
 
 use overt_fs::{Edit, Modes};
 use overt_hash::{Hash, Snapshot};
+
+use crate::Zstd;
 
 pub struct Archive;
 
@@ -45,11 +47,6 @@ impl Archive {
     const MAGIC: &[u8; 8] = b"overtpkg";
     /// 2: snapshot lines carry the mode.
     const VERSION: u32 = 2;
-    /// zstd level for publishing: archives are written once and read many times, and decoding
-    /// speed does not depend on the level.
-    const LEVEL: i32 = 19;
-    /// log2 of the zstd window, so that content repeated far apart is found.
-    const WINDOW_LOG: u32 = 27;
     /// Bounds on what an archive may declare, against a hostile mirror.
     const MAX_INDEX: u64 = 64 << 20;
     const MAX_FILE: u64 = 1 << 30;
@@ -57,12 +54,10 @@ impl Archive {
     /// The archive of the files under `dir` named by `include`, and their snapshot.
     ///
     /// # Errors
-    /// Returns an error if a file cannot be read or compression fails.
+    /// Returns an error if a file cannot be read.
     pub fn pack(dir: &Path, include: &[String]) -> io::Result<(Vec<u8>, Snapshot)> {
         let snapshot = Snapshot::of(dir, include);
-        let mut out = zstd::stream::write::Encoder::new(Vec::new(), Self::LEVEL)?;
-        out.long_distance_matching(true)?;
-        out.window_log(Self::WINDOW_LOG)?;
+        let mut out = Vec::new();
         let index = snapshot.to_string();
         out.write_all(Self::MAGIC)?;
         out.write_all(&Self::VERSION.to_le_bytes())?;
@@ -70,7 +65,7 @@ impl Archive {
         for (path, _) in snapshot.files() {
             Self::write_part(&mut out, &fs::read(Self::join(dir, path))?)?;
         }
-        Ok((out.finish()?, snapshot))
+        Ok((Zstd::compress(&out), snapshot))
     }
 
     /// Unpacks `bytes` into `dir`, returning the snapshot every file was checked against.
@@ -79,8 +74,7 @@ impl Archive {
     /// Returns an error if the archive is malformed, a file does not match its hash, or writing
     /// fails.
     pub fn unpack(bytes: &[u8], dir: &Path) -> io::Result<Snapshot> {
-        let mut input = zstd::stream::read::Decoder::new(bytes)?;
-        input.window_log_max(Self::WINDOW_LOG)?;
+        let mut input = Zstd::reader(bytes)?;
         let mut magic = [0; 8];
         input.read_exact(&mut magic)?;
         let mut version = [0; 4];

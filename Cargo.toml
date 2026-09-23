@@ -69,20 +69,18 @@ overt-xtask = { path = "compiler/tools/xtask" }
 # external
 boxcar = "0.2"
 etcetera = "0.10"
-tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
+tracing = { version = "0.1", default-features = false, features = ["std"] }
 proc-macro2 = { version = "1", default-features = false }
 quote = { version = "1", default-features = false }
 syn = { version = "2", default-features = false, features = ["full", "parsing", "printing"] }
 prettyplease = "0.2"
 annotate-snippets = "0.12"
 ariadne = "0.6"
-blake3 = { version = "1", default-features = false, features = ["std"] }
+blake3 = { version = "1", default-features = false, features = ["std", "pure"] }
 ureq = "3"
 flate2 = "1"
-tar = "0.4"
 zip = { version = "8", default-features = false, features = ["deflate-flate2"] }
-zstd = { version = "0.13", default-features = false }
+ruzstd = { version = "0.9", default-features = false, features = ["std"] }
 lzma-rs = "0.3"
 num-bigint = "0.5"
 

@@ -147,14 +147,16 @@ build := (b: &mut std.build.Build) {
   manifest; an archive without one is foreign and takes them from `--name` and `--version`. The
   entry is written as a literal (the reader's inverse), into `.deps` or a new `.deps`, keeping the
   manifest's layout.
-- **Archives.** Overt packages are published as `.ovpkg`: one zstd stream (level 19, 128 MiB
-  window) holding a header, the snapshot, then each file's bytes in snapshot order. It carries no
+- **Archives.** Overt packages are published as `.ovpkg`: one zstd frame (written by the pure-Rust
+  encoder at its fastest level, about zstd's level 1; any zstd decoder reads it) holding a header, the snapshot, then each file's bytes in snapshot order. It carries no
   timestamps, owners or modes other than the executable bit of the snapshot, so identical trees
   give identical archives, and unpacking checks
   each file against the snapshot as it is written. Snapshot paths are plain components (no `..`,
   no separators, no characters special on some platform), so an archive cannot write outside its
   tree. Foreign archives are read as `.tar.zst`, `.tar.xz`, `.tar.gz`, `.tar` and `.zip`; their
-  single top-level directory, as forges produce, is dropped. Schemes (`https`, `http`, `file`) and
+  single top-level directory, as forges produce, is dropped. A tar archive may name paths through
+  ustar, GNU long-name or PAX `path` records; it holds files and directories only, since a
+  package tree has no links, and a link is refused. Schemes (`https`, `http`, `file`) and
   formats are tables, so another is one entry. `overt pkg pack` writes the project's
   `<name>-<version>.ovpkg` and prints its hash.
 - **Updating.** `overt pkg update` raises each stored dependency to the newest release of its major

@@ -3,14 +3,18 @@
 //! Crates log through the re-exported [`tracing`], so the dependency is declared once. What is
 //! shown is chosen at run time:
 //!
-//! - `OVERT_LOG` takes a `tracing` filter, such as `overt_sema=debug,overt_mir_passes=trace`;
+//! - `OVERT_LOG` takes directives, such as `overt_sema=debug,overt_mir_passes=trace` or `info`;
 //! - `OVERT_LOG_FORMAT` is `compact` (default) or `tree`;
 //! - `OVERT_TIMINGS=1` reports the duration of every closed span, which gives per-stage timings.
 
+mod filter;
+mod subscriber;
+#[cfg(test)]
+mod tests;
+
 pub use tracing;
 
-use tracing_subscriber::EnvFilter;
-use tracing_subscriber::fmt::format::FmtSpan;
+pub use filter::Filter;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum Format {
@@ -50,16 +54,6 @@ impl Config {
 
 /// Installs the global subscriber. Without a filter, only warnings and errors are shown.
 pub fn init(config: &Config) {
-    let filter = config.filter.as_deref().map_or_else(|| EnvFilter::new("warn"), EnvFilter::new);
-    let spans = if config.timings { FmtSpan::CLOSE } else { FmtSpan::NONE };
-    let builder = tracing_subscriber::fmt()
-        .with_env_filter(filter)
-        .with_span_events(spans)
-        .with_writer(std::io::stderr)
-        .with_target(true);
     // A subscriber may already be installed by an embedding tool; keep that one.
-    let _ = match config.format {
-        Format::Compact => builder.compact().try_init(),
-        Format::Tree => builder.pretty().try_init(),
-    };
+    let _ = tracing::subscriber::set_global_default(subscriber::Writer::new(config));
 }

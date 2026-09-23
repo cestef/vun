@@ -70,6 +70,7 @@
 | 64 | `.replace` in the root manifest substitutes a path or a hash for an identity (`id/major`) anywhere in the graph, and the lockfile records it as a `replace` line | accepted | 12 |
 | 65 | A partial graph (absent packages) resolves through the lockfile and neither checks nor writes it; fetching walks the declared graph; an absent package is reported once, and names it could provide are not reported (`ErrorGuaranteed` poisons the scope) | proposed | 10, 12 |
 | 66 | The compiler's primitives are the top-level `= _` declarations of `lang`, generated as one enum per namespace (`primitives::mem::Mem`) under `Primitive`; holes inside interface requirement structs are requirements | proposed | 00, 13 |
+| 67 | Dependencies are pure Rust wherever a production-grade crate exists or the format is small enough to read ourselves: own tar reader and trace subscriber, `ruzstd` (`.ovpkg` at its fastest level), BLAKE3's `pure` build (measured 20 to 35% slower here, still far above lexing); TLS keeps `rustls` with `ring`, the one native dependency | accepted | 12, 13 |
 
 ## Questions, with how they were settled
 

@@ -13,14 +13,11 @@ workspace = true
 overt-fs.workspace = true
 ureq.workspace = true
 flate2.workspace = true
-tar.workspace = true
 zip.workspace = true
-zstd.workspace = true
+ruzstd.workspace = true
 lzma-rs.workspace = true
 overt-hash.workspace = true
 
 [dev-dependencies]
 flate2.workspace = true
-tar.workspace = true
-zstd.workspace = true
 overt-hash.workspace = true
