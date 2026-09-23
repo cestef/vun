@@ -47,7 +47,15 @@ impl Parser<'_, '_, '_> {
             let callee = self.out.mark();
             self.function_or_tuple(brace);
             let closure = self.out.single_since(callee) && self.out.last() == Some(NodeKind::Fn);
-            if closure { NodeKind::Closure } else { NodeKind::ArrayType }
+            if closure {
+                NodeKind::Closure
+            } else if shape.single() {
+                NodeKind::ArrayType
+            } else {
+                // Any other number of items before a group only makes sense as closure captures.
+                self.report_expected(&[TokenKind::LBrace]);
+                NodeKind::Error
+            }
         } else if shape.single() && ELEMENT_TYPES.contains(&self.peek()) {
             self.prefix(brace);
             NodeKind::ArrayType

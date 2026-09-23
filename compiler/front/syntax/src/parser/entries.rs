@@ -4,7 +4,7 @@ use overt_grammar::{ASSIGN, NodeKind, TokenKind};
 use overt_index::Idx;
 
 use super::{Brace, End, List, Parser};
-use crate::cst::Anchor;
+use crate::cst::{Anchor, Mark};
 use crate::tokens::TokenId;
 
 impl Parser<'_, '_, '_> {
@@ -54,7 +54,7 @@ impl Parser<'_, '_, '_> {
             self.leaf(NodeKind::Mut);
         } else if !self.starts_expr() {
             self.report_expected_entry(list);
-            return self.recover_entry();
+            return self.recover_entry(mark);
         }
         self.expr(Brace::Continues);
         match self.peek() {
@@ -71,7 +71,7 @@ impl Parser<'_, '_, '_> {
                     self.expr(Brace::Continues);
                 }
                 let field = !statements && (self.at(TokenKind::Comma) || self.at(close));
-                let kind = if field { NodeKind::Field } else { NodeKind::Binding };
+                let kind = if field { NodeKind::Field } else { NodeKind::TypedBinding };
                 self.out.node(kind, Anchor::Token(op), mark);
                 if field { End::Comma } else { End::Semi }
             }
@@ -84,7 +84,7 @@ impl Parser<'_, '_, '_> {
             _ if statements && !mutable => End::Value,
             _ => {
                 self.report_expected(&[TokenKind::ColonEq, TokenKind::Colon]);
-                self.recover_entry()
+                self.recover_entry(mark)
             }
         }
     }
@@ -113,11 +113,14 @@ impl Parser<'_, '_, '_> {
         self.source[between.start as usize..between.end as usize].contains('\n')
     }
 
-    pub(super) fn recover_entry(&mut self) -> End {
+    /// Skips the rest of a malformed entry; everything it pushed since `mark` becomes one `Error`,
+    /// so that an annotation wraps a single node.
+    pub(super) fn recover_entry(&mut self, mark: Mark) -> End {
         self.recover(&[TokenKind::Semi, TokenKind::Comma]);
         if !self.eat(TokenKind::Semi) {
             self.eat(TokenKind::Comma);
         }
+        self.out.node(NodeKind::Error, Anchor::Missing(self.current()), mark);
         End::Recovered
     }
 }

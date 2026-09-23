@@ -266,11 +266,19 @@ impl TokenKind {
         }
     }
 }
-/// Kinds of syntax tree nodes (spec 13, section 2). A leaf never has children.
+/// How many nodes a child position of a kind holds.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum Count {
+    One,
+    Optional,
+    Many,
+}
+/// Kinds of syntax tree nodes (spec 13, section 2). A leaf never has children. A branch lists its
+/// children in source order, punctuation left out; `Cst::fields` matches them. An `error` stands for
+/// skipped or absent source; a skipped group holds the tokens after its first.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum NodeKind {
     Punct,
-    Error,
     ModuleDoc,
     Mut,
     Mode,
@@ -282,10 +290,12 @@ pub enum NodeKind {
     String,
     RawStringLine,
     Label,
+    Error,
     File,
     Doc,
     Attr,
     Binding,
+    TypedBinding,
     Field,
     Param,
     Returns,
@@ -302,6 +312,7 @@ pub enum NodeKind {
     ArrayRepeat,
     ArrayType,
     StructLit,
+    TypedLit,
     FieldInit,
     DotName,
     Member,
@@ -329,7 +340,6 @@ pub enum NodeKind {
 impl NodeKind {
     pub const LEAVES: &[Self] = &[
         Self::Punct,
-        Self::Error,
         Self::ModuleDoc,
         Self::Mut,
         Self::Mode,
@@ -343,10 +353,12 @@ impl NodeKind {
         Self::Label,
     ];
     pub const BRANCHES: &[Self] = &[
+        Self::Error,
         Self::File,
         Self::Doc,
         Self::Attr,
         Self::Binding,
+        Self::TypedBinding,
         Self::Field,
         Self::Param,
         Self::Returns,
@@ -363,6 +375,7 @@ impl NodeKind {
         Self::ArrayRepeat,
         Self::ArrayType,
         Self::StructLit,
+        Self::TypedLit,
         Self::FieldInit,
         Self::DotName,
         Self::Member,
@@ -402,6 +415,698 @@ pub enum Assoc {
     Left,
     /// Chaining is an error: `a < b < c`.
     None,
+}
+/// The named children of [`NodeKind`] kinds.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum NodeField {
+    Skipped,
+    Items,
+    Target,
+    Values,
+    Mut,
+    Pattern,
+    Value,
+    Type,
+    Params,
+    Returns,
+    Block,
+    Captures,
+    Fn,
+    Statements,
+    Members,
+    Variants,
+    Inner,
+    Count,
+    Length,
+    Element,
+    Fields,
+    Property,
+    Object,
+    Callee,
+    Args,
+    Subscript,
+    Mode,
+    Operand,
+    Left,
+    Right,
+    Place,
+    Condition,
+    Otherwise,
+    Head,
+    Scrutinee,
+    Arms,
+    Guard,
+    Body,
+    Label,
+    Lines,
+}
+impl NodeField {
+    /// The name of this field in `grammar.ov`.
+    #[must_use]
+    pub const fn name(self) -> &'static str {
+        match self {
+            Self::Skipped => "skipped",
+            Self::Items => "items",
+            Self::Target => "target",
+            Self::Values => "values",
+            Self::Mut => "mut",
+            Self::Pattern => "pattern",
+            Self::Value => "value",
+            Self::Type => "type",
+            Self::Params => "params",
+            Self::Returns => "returns",
+            Self::Block => "block",
+            Self::Captures => "captures",
+            Self::Fn => "fn",
+            Self::Statements => "statements",
+            Self::Members => "members",
+            Self::Variants => "variants",
+            Self::Inner => "inner",
+            Self::Count => "count",
+            Self::Length => "length",
+            Self::Element => "element",
+            Self::Fields => "fields",
+            Self::Property => "property",
+            Self::Object => "object",
+            Self::Callee => "callee",
+            Self::Args => "args",
+            Self::Subscript => "subscript",
+            Self::Mode => "mode",
+            Self::Operand => "operand",
+            Self::Left => "left",
+            Self::Right => "right",
+            Self::Place => "place",
+            Self::Condition => "condition",
+            Self::Otherwise => "otherwise",
+            Self::Head => "head",
+            Self::Scrutinee => "scrutinee",
+            Self::Arms => "arms",
+            Self::Guard => "guard",
+            Self::Body => "body",
+            Self::Label => "label",
+            Self::Lines => "lines",
+        }
+    }
+}
+/// One child position of a [`NodeKind`]: its field, how many nodes it holds, and the kind they must have, if restricted.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct NodeSlot {
+    pub field: NodeField,
+    pub count: Count,
+    pub kind: Option<NodeKind>,
+}
+impl NodeKind {
+    /// The children of this kind in source order; empty for kinds without children.
+    #[must_use]
+    #[allow(
+        clippy::too_many_lines,
+        clippy::match_same_arms,
+        reason = "one arm per kind, as declared"
+    )]
+    pub const fn slots(self) -> &'static [NodeSlot] {
+        match self {
+            Self::Error => {
+                &[
+                    NodeSlot {
+                        field: NodeField::Skipped,
+                        count: Count::Many,
+                        kind: None,
+                    },
+                ]
+            }
+            Self::File => {
+                &[
+                    NodeSlot {
+                        field: NodeField::Items,
+                        count: Count::Many,
+                        kind: None,
+                    },
+                ]
+            }
+            Self::Doc => {
+                &[
+                    NodeSlot {
+                        field: NodeField::Target,
+                        count: Count::One,
+                        kind: None,
+                    },
+                ]
+            }
+            Self::Attr => {
+                &[
+                    NodeSlot {
+                        field: NodeField::Values,
+                        count: Count::Many,
+                        kind: None,
+                    },
+                    NodeSlot {
+                        field: NodeField::Target,
+                        count: Count::One,
+                        kind: None,
+                    },
+                ]
+            }
+            Self::Binding => {
+                &[
+                    NodeSlot {
+                        field: NodeField::Mut,
+                        count: Count::Optional,
+                        kind: Some(NodeKind::Mut),
+                    },
+                    NodeSlot {
+                        field: NodeField::Pattern,
+                        count: Count::One,
+                        kind: None,
+                    },
+                    NodeSlot {
+                        field: NodeField::Value,
+                        count: Count::One,
+                        kind: None,
+                    },
+                ]
+            }
+            Self::TypedBinding => {
+                &[
+                    NodeSlot {
+                        field: NodeField::Mut,
+                        count: Count::Optional,
+                        kind: Some(NodeKind::Mut),
+                    },
+                    NodeSlot {
+                        field: NodeField::Pattern,
+                        count: Count::One,
+                        kind: None,
+                    },
+                    NodeSlot {
+                        field: NodeField::Type,
+                        count: Count::One,
+                        kind: None,
+                    },
+                    NodeSlot {
+                        field: NodeField::Value,
+                        count: Count::Optional,
+                        kind: None,
+                    },
+                ]
+            }
+            Self::Field => {
+                &[
+                    NodeSlot {
+                        field: NodeField::Mut,
+                        count: Count::Optional,
+                        kind: Some(NodeKind::Mut),
+                    },
+                    NodeSlot {
+                        field: NodeField::Pattern,
+                        count: Count::One,
+                        kind: None,
+                    },
+                    NodeSlot {
+                        field: NodeField::Type,
+                        count: Count::One,
+                        kind: None,
+                    },
+                    NodeSlot {
+                        field: NodeField::Value,
+                        count: Count::Optional,
+                        kind: None,
+                    },
+                ]
+            }
+            Self::Param => {
+                &[
+                    NodeSlot {
+                        field: NodeField::Pattern,
+                        count: Count::One,
+                        kind: None,
+                    },
+                    NodeSlot {
+                        field: NodeField::Type,
+                        count: Count::One,
+                        kind: None,
+                    },
+                ]
+            }
+            Self::Returns => {
+                &[
+                    NodeSlot {
+                        field: NodeField::Type,
+                        count: Count::One,
+                        kind: None,
+                    },
+                ]
+            }
+            Self::Fn => {
+                &[
+                    NodeSlot {
+                        field: NodeField::Params,
+                        count: Count::Many,
+                        kind: None,
+                    },
+                    NodeSlot {
+                        field: NodeField::Returns,
+                        count: Count::Optional,
+                        kind: Some(NodeKind::Returns),
+                    },
+                    NodeSlot {
+                        field: NodeField::Block,
+                        count: Count::One,
+                        kind: Some(NodeKind::Block),
+                    },
+                ]
+            }
+            Self::FnType => {
+                &[
+                    NodeSlot {
+                        field: NodeField::Params,
+                        count: Count::Many,
+                        kind: None,
+                    },
+                    NodeSlot {
+                        field: NodeField::Returns,
+                        count: Count::Optional,
+                        kind: Some(NodeKind::Returns),
+                    },
+                ]
+            }
+            Self::Closure => {
+                &[
+                    NodeSlot {
+                        field: NodeField::Captures,
+                        count: Count::Many,
+                        kind: None,
+                    },
+                    NodeSlot {
+                        field: NodeField::Fn,
+                        count: Count::One,
+                        kind: Some(NodeKind::Fn),
+                    },
+                ]
+            }
+            Self::Block => {
+                &[
+                    NodeSlot {
+                        field: NodeField::Statements,
+                        count: Count::Many,
+                        kind: None,
+                    },
+                ]
+            }
+            Self::Quote => {
+                &[
+                    NodeSlot {
+                        field: NodeField::Statements,
+                        count: Count::Many,
+                        kind: None,
+                    },
+                ]
+            }
+            Self::Struct => {
+                &[
+                    NodeSlot {
+                        field: NodeField::Members,
+                        count: Count::Many,
+                        kind: None,
+                    },
+                ]
+            }
+            Self::Enum => {
+                &[
+                    NodeSlot {
+                        field: NodeField::Variants,
+                        count: Count::Many,
+                        kind: None,
+                    },
+                ]
+            }
+            Self::Paren => {
+                &[
+                    NodeSlot {
+                        field: NodeField::Inner,
+                        count: Count::One,
+                        kind: None,
+                    },
+                ]
+            }
+            Self::Tuple => {
+                &[
+                    NodeSlot {
+                        field: NodeField::Items,
+                        count: Count::Many,
+                        kind: None,
+                    },
+                ]
+            }
+            Self::Array => {
+                &[
+                    NodeSlot {
+                        field: NodeField::Items,
+                        count: Count::Many,
+                        kind: None,
+                    },
+                ]
+            }
+            Self::ArrayRepeat => {
+                &[
+                    NodeSlot {
+                        field: NodeField::Value,
+                        count: Count::One,
+                        kind: None,
+                    },
+                    NodeSlot {
+                        field: NodeField::Count,
+                        count: Count::One,
+                        kind: None,
+                    },
+                ]
+            }
+            Self::ArrayType => {
+                &[
+                    NodeSlot {
+                        field: NodeField::Length,
+                        count: Count::One,
+                        kind: None,
+                    },
+                    NodeSlot {
+                        field: NodeField::Element,
+                        count: Count::One,
+                        kind: None,
+                    },
+                ]
+            }
+            Self::StructLit => {
+                &[
+                    NodeSlot {
+                        field: NodeField::Fields,
+                        count: Count::Many,
+                        kind: None,
+                    },
+                ]
+            }
+            Self::TypedLit => {
+                &[
+                    NodeSlot {
+                        field: NodeField::Type,
+                        count: Count::One,
+                        kind: None,
+                    },
+                    NodeSlot {
+                        field: NodeField::Fields,
+                        count: Count::Many,
+                        kind: None,
+                    },
+                ]
+            }
+            Self::FieldInit => {
+                &[
+                    NodeSlot {
+                        field: NodeField::Target,
+                        count: Count::One,
+                        kind: None,
+                    },
+                    NodeSlot {
+                        field: NodeField::Value,
+                        count: Count::One,
+                        kind: None,
+                    },
+                ]
+            }
+            Self::DotName => {
+                &[
+                    NodeSlot {
+                        field: NodeField::Property,
+                        count: Count::One,
+                        kind: None,
+                    },
+                ]
+            }
+            Self::Member => {
+                &[
+                    NodeSlot {
+                        field: NodeField::Object,
+                        count: Count::One,
+                        kind: None,
+                    },
+                    NodeSlot {
+                        field: NodeField::Property,
+                        count: Count::One,
+                        kind: None,
+                    },
+                ]
+            }
+            Self::Call => {
+                &[
+                    NodeSlot {
+                        field: NodeField::Callee,
+                        count: Count::One,
+                        kind: None,
+                    },
+                    NodeSlot {
+                        field: NodeField::Args,
+                        count: Count::Many,
+                        kind: None,
+                    },
+                ]
+            }
+            Self::Index => {
+                &[
+                    NodeSlot {
+                        field: NodeField::Object,
+                        count: Count::One,
+                        kind: None,
+                    },
+                    NodeSlot {
+                        field: NodeField::Subscript,
+                        count: Count::One,
+                        kind: None,
+                    },
+                ]
+            }
+            Self::Prefix => {
+                &[
+                    NodeSlot {
+                        field: NodeField::Mode,
+                        count: Count::Optional,
+                        kind: Some(NodeKind::Mode),
+                    },
+                    NodeSlot {
+                        field: NodeField::Operand,
+                        count: Count::One,
+                        kind: None,
+                    },
+                ]
+            }
+            Self::Postfix => {
+                &[
+                    NodeSlot {
+                        field: NodeField::Operand,
+                        count: Count::One,
+                        kind: None,
+                    },
+                ]
+            }
+            Self::Infix => {
+                &[
+                    NodeSlot {
+                        field: NodeField::Left,
+                        count: Count::One,
+                        kind: None,
+                    },
+                    NodeSlot {
+                        field: NodeField::Right,
+                        count: Count::Optional,
+                        kind: None,
+                    },
+                ]
+            }
+            Self::Assign => {
+                &[
+                    NodeSlot {
+                        field: NodeField::Place,
+                        count: Count::One,
+                        kind: None,
+                    },
+                    NodeSlot {
+                        field: NodeField::Value,
+                        count: Count::One,
+                        kind: None,
+                    },
+                ]
+            }
+            Self::If => {
+                &[
+                    NodeSlot {
+                        field: NodeField::Condition,
+                        count: Count::One,
+                        kind: None,
+                    },
+                    NodeSlot {
+                        field: NodeField::Block,
+                        count: Count::One,
+                        kind: Some(NodeKind::Block),
+                    },
+                    NodeSlot {
+                        field: NodeField::Otherwise,
+                        count: Count::Optional,
+                        kind: None,
+                    },
+                ]
+            }
+            Self::Test => {
+                &[
+                    NodeSlot {
+                        field: NodeField::Pattern,
+                        count: Count::One,
+                        kind: None,
+                    },
+                    NodeSlot {
+                        field: NodeField::Value,
+                        count: Count::One,
+                        kind: None,
+                    },
+                ]
+            }
+            Self::For => {
+                &[
+                    NodeSlot {
+                        field: NodeField::Head,
+                        count: Count::Optional,
+                        kind: None,
+                    },
+                    NodeSlot {
+                        field: NodeField::Block,
+                        count: Count::One,
+                        kind: Some(NodeKind::Block),
+                    },
+                ]
+            }
+            Self::In => {
+                &[
+                    NodeSlot {
+                        field: NodeField::Pattern,
+                        count: Count::One,
+                        kind: None,
+                    },
+                    NodeSlot {
+                        field: NodeField::Value,
+                        count: Count::One,
+                        kind: None,
+                    },
+                ]
+            }
+            Self::Match => {
+                &[
+                    NodeSlot {
+                        field: NodeField::Scrutinee,
+                        count: Count::One,
+                        kind: None,
+                    },
+                    NodeSlot {
+                        field: NodeField::Arms,
+                        count: Count::Many,
+                        kind: None,
+                    },
+                ]
+            }
+            Self::Arm => {
+                &[
+                    NodeSlot {
+                        field: NodeField::Pattern,
+                        count: Count::One,
+                        kind: None,
+                    },
+                    NodeSlot {
+                        field: NodeField::Guard,
+                        count: Count::Optional,
+                        kind: Some(NodeKind::Guard),
+                    },
+                    NodeSlot {
+                        field: NodeField::Value,
+                        count: Count::Optional,
+                        kind: None,
+                    },
+                ]
+            }
+            Self::Guard => {
+                &[
+                    NodeSlot {
+                        field: NodeField::Condition,
+                        count: Count::One,
+                        kind: None,
+                    },
+                ]
+            }
+            Self::Labeled => {
+                &[
+                    NodeSlot {
+                        field: NodeField::Body,
+                        count: Count::One,
+                        kind: None,
+                    },
+                ]
+            }
+            Self::Return => {
+                &[
+                    NodeSlot {
+                        field: NodeField::Value,
+                        count: Count::Optional,
+                        kind: None,
+                    },
+                ]
+            }
+            Self::Break => {
+                &[
+                    NodeSlot {
+                        field: NodeField::Label,
+                        count: Count::Optional,
+                        kind: Some(NodeKind::Label),
+                    },
+                    NodeSlot {
+                        field: NodeField::Value,
+                        count: Count::Optional,
+                        kind: None,
+                    },
+                ]
+            }
+            Self::Continue => {
+                &[
+                    NodeSlot {
+                        field: NodeField::Label,
+                        count: Count::Optional,
+                        kind: Some(NodeKind::Label),
+                    },
+                ]
+            }
+            Self::Yield => {
+                &[
+                    NodeSlot {
+                        field: NodeField::Value,
+                        count: Count::One,
+                        kind: None,
+                    },
+                ]
+            }
+            Self::Defer => {
+                &[
+                    NodeSlot {
+                        field: NodeField::Body,
+                        count: Count::One,
+                        kind: None,
+                    },
+                ]
+            }
+            Self::MultilineString => {
+                &[
+                    NodeSlot {
+                        field: NodeField::Lines,
+                        count: Count::Many,
+                        kind: None,
+                    },
+                ]
+            }
+            _ => &[],
+        }
+    }
 }
 /// Words that are keywords only in one context.
 pub const CONTEXTUAL: &[(&str, Context)] = &[

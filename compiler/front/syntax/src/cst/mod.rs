@@ -15,10 +15,12 @@ use crate::tokens::{TokenId, Tokens};
 
 mod builder;
 mod dump;
+mod fields;
 mod verify;
 
-pub(crate) use builder::Builder;
+pub(crate) use builder::{Builder, Mark};
 pub use dump::Dump;
+pub use fields::Fields;
 pub use verify::Malformed;
 
 index! {

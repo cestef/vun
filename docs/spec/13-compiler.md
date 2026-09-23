@@ -103,6 +103,16 @@ value: a `PascalCase` record of lists is a kind, an `enum` an enum, any other li
 element type is inferred. The same task generates the diagnostic ids of `overt-diag` from
 `lang/errors.ov`. A test fails when a generated file is stale.
 
+**Node fields.** A branch kind declares its children as tagged slots, in source order and without
+punctuation: `.binding(.optional(.\mut), .one(.pattern), .one(.value))`. A slot is `one`,
+`optional` or `many`; a field named after a node kind holds a node of that kind, any other field
+any node. The generator derives a field enum and each kind's slots; `Cst::fields` assigns a node's
+children to them (left to right, backtracking, leaving a node to a later slot restricted to its
+kind), and the CST verifier requires every node to fit. Each distinct shape is its own kind, so a
+kind's fields never depend on its anchor token: `x := e` is `binding` and `x: T = e` is
+`typed_binding`, `.{ }` is `struct_lit` and `T{ }` is `typed_lit`. Malformed source is an `error`
+node, which holds what recovery skipped and fits any slot. Dumps print each child's field.
+
 ## 6. Compile-time evaluation
 
 `overt-interp` interprets MIR under an explicit target model (layout, endianness, ranges, traps,

@@ -4,7 +4,9 @@
 //! `cargo xtask grammar` reads this file as literal data, by shape and never by name:
 //! - a `PascalCase` record of lists defines a kind: its entries are the kind's variants, and each
 //!   list is also a table of its own. An entry is `.name`, a spelling `"text"` (named after
-//!   itself), or `.{ .name = .x, .text = "..." }`;
+//!   itself), `.{ .name = .x, .text = "..." }`, or `.name(.count(.field), ...)` for a kind with
+//!   named children: `count` is a variant of `Count`, and a field named after a variant of the kind
+//!   holds a node of that kind, any other field any node;
 //! - an `enum` declaration defines an enum;
 //! - any other list is a table; `.name` items resolve to the one kind or enum that has them all.
 
@@ -105,18 +107,68 @@ TokenKind := .{
     .end = [.eof],
 };
 
-/// Kinds of syntax tree nodes (spec 13, section 2). A leaf never has children.
+/// How many nodes a child position of a kind holds.
+Count := enum {
+    one,
+    optional,
+    many,
+};
+
+/// Kinds of syntax tree nodes (spec 13, section 2). A leaf never has children. A branch lists its
+/// children in source order, punctuation left out; `Cst::fields` matches them. An `error` stands for
+/// skipped or absent source; a skipped group holds the tokens after its first.
 NodeKind := .{
     .leaves = [
-        .punct, .error, .module_doc, .\mut, .mode, .name, .hole, .int, .float, .char, .string,
+        .punct, .module_doc, .\mut, .mode, .name, .hole, .int, .float, .char, .string,
         .raw_string_line, .label,
     ],
     .branches = [
-        .file, .doc, .attr, .binding, .field, .param, .returns, .fn, .fn_type, .closure, .block,
-        .quote, .\struct, .\enum, .paren, .tuple, .array, .array_repeat, .array_type, .struct_lit,
-        .field_init, .dot_name, .member, .call, .index, .prefix, .postfix, .infix, .assign, .\if,
-        .test, .\for, .in, .\match, .arm, .guard, .labeled, .\return, .\break, .\continue,
-        .\yield, .\defer, .multiline_string,
+        .error(.many(.skipped)),
+        .file(.many(.items)),
+        .doc(.one(.target)),
+        .attr(.many(.values), .one(.target)),
+        .binding(.optional(.\mut), .one(.pattern), .one(.value)),
+        .typed_binding(.optional(.\mut), .one(.pattern), .one(.type), .optional(.value)),
+        .field(.optional(.\mut), .one(.pattern), .one(.type), .optional(.value)),
+        .param(.one(.pattern), .one(.type)),
+        .returns(.one(.type)),
+        .\fn(.many(.params), .optional(.returns), .one(.block)),
+        .fn_type(.many(.params), .optional(.returns)),
+        .closure(.many(.captures), .one(.\fn)),
+        .block(.many(.statements)),
+        .quote(.many(.statements)),
+        .\struct(.many(.members)),
+        .\enum(.many(.variants)),
+        .paren(.one(.inner)),
+        .tuple(.many(.items)),
+        .array(.many(.items)),
+        .array_repeat(.one(.value), .one(.count)),
+        .array_type(.one(.length), .one(.element)),
+        .struct_lit(.many(.fields)),
+        .typed_lit(.one(.type), .many(.fields)),
+        .field_init(.one(.target), .one(.value)),
+        .dot_name(.one(.property)),
+        .member(.one(.object), .one(.property)),
+        .call(.one(.callee), .many(.args)),
+        .index(.one(.object), .one(.subscript)),
+        .prefix(.optional(.mode), .one(.operand)),
+        .postfix(.one(.operand)),
+        .infix(.one(.left), .optional(.right)),
+        .assign(.one(.place), .one(.value)),
+        .\if(.one(.condition), .one(.block), .optional(.otherwise)),
+        .test(.one(.pattern), .one(.value)),
+        .\for(.optional(.head), .one(.block)),
+        .in(.one(.pattern), .one(.value)),
+        .\match(.one(.scrutinee), .many(.arms)),
+        .arm(.one(.pattern), .optional(.guard), .optional(.value)),
+        .guard(.one(.condition)),
+        .labeled(.one(.body)),
+        .\return(.optional(.value)),
+        .\break(.optional(.label), .optional(.value)),
+        .\continue(.optional(.label)),
+        .\yield(.one(.value)),
+        .\defer(.one(.body)),
+        .multiline_string(.many(.lines)),
     ],
 };
 

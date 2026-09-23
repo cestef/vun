@@ -12,12 +12,13 @@ use crate::generate::{Read, Source};
 impl<'s> Grammar<'s> {
     pub(super) fn emit(&self, source: &Source<'s>) -> Read<TokenStream> {
         let enums = self.enums.iter().map(Enum::emit);
+        let slots = self.enums.iter().map(|e| self.slots(e)).collect::<Read<Vec<_>>>()?;
         let tables = source
             .decls
             .iter()
             .filter_map(|d| d.value.as_list().map(|items| self.table(d, items)))
             .collect::<Read<Vec<_>>>()?;
-        Ok(quote! { #(#enums)* #(#tables)* })
+        Ok(quote! { #(#enums)* #(#slots)* #(#tables)* })
     }
 
     pub(super) fn table(&self, d: &Decl<'s>, items: &[Literal<'s>]) -> Read<TokenStream> {

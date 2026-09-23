@@ -1,14 +1,15 @@
 //! Reading literal declarations as data, without evaluating anything (spec 12, section 2).
 //!
 //! Tools read `build.ov` manifests and `lang/syntax/grammar.ov` this way. A declaration
-//! `name := value;` whose value is made of strings, integers, `.name` literals, lists `[a, b]`,
+//! `name := value;` whose value is made of strings, integers, `.name` literals, tagged values
+//! `.name(a, b)`, lists `[a, b]`,
 //! anonymous structs `.{ .field = value }` and type literals `enum { ... }` and
 //! `struct { name := value; }` reads as the corresponding [`Literal`]. Any other expression reads
 //! as [`Literal::Opaque`], so a caller can walk a file whose other values it does not need.
 
 use std::borrow::Cow;
 
-use overt_grammar::{NodeKind, TokenKind};
+use overt_grammar::{NodeField, NodeKind, TokenKind};
 
 use crate::cst::{Anchor, Cst, NodeId};
 use crate::lexer;
@@ -18,6 +19,8 @@ use crate::tokens::Tokens;
 pub enum Literal<'s> {
     /// `.name`
     Name(&'s str),
+    /// `.name(a, b)`: a name with a payload.
+    Tagged(&'s str, Vec<Literal<'s>>),
     String(Cow<'s, str>),
     Int(i128),
     /// `[a, b]`, or `.{ a, b }` with positional items.
@@ -63,6 +66,15 @@ impl<'s> Literal<'s> {
     pub fn as_name(&self) -> Option<&'s str> {
         match *self {
             Self::Name(name) => Some(name),
+            _ => None,
+        }
+    }
+
+    /// The tag and payload of a tagged value.
+    #[must_use]
+    pub fn as_tagged(&self) -> Option<(&'s str, &[Self])> {
+        match self {
+            Self::Tagged(tag, payload) => Some((tag, payload)),
             _ => None,
         }
     }
@@ -144,17 +156,11 @@ impl<'s> Reader<'_, 's> {
                 self.decl(*children.last()?, doc)
             }
             NodeKind::Attr => self.decl(*children.last()?, doc),
-            NodeKind::Binding => {
-                let name =
-                    self.name(children.iter().copied().find(|&c| self.cst.kind(c) != NodeKind::Mut)?)?;
-                let value = match self.token(n)? {
-                    TokenKind::ColonEq => children.last().copied(),
-                    _ => children
-                        .iter()
-                        .position(|&c| self.token(c) == Some(TokenKind::Eq))
-                        .map(|i| children[i + 1]),
-                };
-                Some(Decl { name, doc, value: value.map_or(Literal::Opaque, |v| self.value(v)) })
+            NodeKind::Binding | NodeKind::TypedBinding => {
+                let fields = self.cst.fields(n)?;
+                let name = self.name(fields.one(NodeField::Pattern)?)?;
+                let value = fields.one(NodeField::Value).map_or(Literal::Opaque, |v| self.value(v));
+                Some(Decl { name, doc, value })
             }
             _ => None,
         }
@@ -176,7 +182,13 @@ impl<'s> Reader<'_, 's> {
                 _ => return None,
             },
             NodeKind::Array => Literal::List(items().map(|c| self.value(c)).collect()),
-            NodeKind::StructLit if self.token(n)? == TokenKind::DotLBrace => {
+            NodeKind::Call => {
+                let mut items = items();
+                let tag = items.next().filter(|&c| self.cst.kind(c) == NodeKind::DotName)?;
+                let Literal::Name(tag) = self.read(tag)? else { return None };
+                Literal::Tagged(tag, items.map(|c| self.value(c)).collect())
+            }
+            NodeKind::StructLit => {
                 let inits: Vec<_> = items().collect();
                 if inits.iter().all(|&c| self.cst.kind(c) == NodeKind::FieldInit) {
                     Literal::Record(inits.into_iter().filter_map(|c| self.field_init(c)).collect())

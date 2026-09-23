@@ -3,6 +3,7 @@
 use overt_grammar::{NodeKind, TokenKind};
 
 use super::Parser;
+use crate::cst::Anchor;
 
 impl Parser<'_, '_, '_> {
     /// Skips tokens as `Error` leaves up to one in `stops`, or a closing delimiter, outside any
@@ -23,19 +24,21 @@ impl Parser<'_, '_, '_> {
         }
     }
 
-    /// Skips the current token as an `Error` leaf, with its whole group if it opens one.
+    /// Skips the current token as an `Error` node, holding the rest of its group if it opens one.
     pub(super) fn skip_group(&mut self) {
         if self.at(TokenKind::Eof) {
             self.missing(NodeKind::Error);
             return;
         }
+        let mark = self.out.mark();
         let opens = self.peek().opens();
-        self.leaf(NodeKind::Error);
+        let token = self.bump();
         if opens {
             self.recover(&[]);
             if !self.at(TokenKind::Eof) {
-                self.leaf(NodeKind::Error);
+                self.leaf(NodeKind::Punct);
             }
         }
+        self.out.node(NodeKind::Error, Anchor::Token(token), mark);
     }
 }

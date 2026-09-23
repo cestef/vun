@@ -13,6 +13,7 @@ use crate::generate::{self, Generator, Read, Source};
 
 mod enums;
 mod names;
+mod slots;
 mod tables;
 
 use enums::entry_variant;
@@ -53,6 +54,14 @@ struct Variant<'s> {
     name: &'s str,
     doc: Vec<String>,
     text: Option<&'s str>,
+    /// For a kind entry written `.name(slots...)`, its children.
+    slots: Vec<Slot<'s>>,
+}
+
+/// One child position of a kind: `.count(.field)`.
+struct Slot<'s> {
+    count: &'s str,
+    field: &'s str,
 }
 
 struct Grammar<'s> {
@@ -80,7 +89,7 @@ impl<'s> Grammar<'s> {
                     doc: docs(&d.doc),
                     variants: variants
                         .iter()
-                        .map(|v| Variant { name: v.name, doc: docs(&v.doc), text: None })
+                        .map(|v| Variant { name: v.name, doc: docs(&v.doc), text: None, slots: Vec::new() })
                         .collect(),
                     lists: Vec::new(),
                 }),
@@ -103,7 +112,8 @@ impl<'s> Grammar<'s> {
                 let variant = entry_variant(entry).ok_or_else(|| {
                     let record = format!(".{{ .{ENTRY_NAME} = .x, .{ENTRY_TEXT} = \"...\" }}");
                     let msg = Msg::new().text("entries are ").code(".name").text(", ").code("\"text\"");
-                    error_at(SHAPE, d.name, msg.text(" or ").code(record))
+                    let msg = msg.text(", ").code(record).text(" or ").code(".name(.count(.field), ...)");
+                    error_at(SHAPE, d.name, msg)
                 })?;
                 names.push(variant.name);
                 kind.variants.push(variant);

@@ -11,6 +11,7 @@ impl Parser<'_, '_, '_> {
     /// Entries up to `close`, which is left for the caller.
     pub(super) fn list(&mut self, list: List, close: TokenKind) -> Shape {
         let mut shape = Shape::default();
+        let start = self.out.mark();
         while !self.at(close) && !self.at(TokenKind::Eof) {
             let before = self.pos;
             let proceed = if let List::Items(item) = list {
@@ -27,6 +28,9 @@ impl Parser<'_, '_, '_> {
                 break;
             }
         }
+        // Counted from the tree, so that skipped tokens count as items and a list holding junk is
+        // never taken for a single parenthesized or bracketed operand.
+        shape.items = self.out.nodes_since(start, |k| k != NodeKind::Punct);
         shape
     }
 
@@ -176,7 +180,11 @@ impl Parser<'_, '_, '_> {
             let span = self.tokens.span(token);
             self.report(span, Diagnostic::error(errors::SYNTAX_EXPECTED_DECLARATION, msg));
         }
+        let before = self.out.mark();
         let result = body(self);
+        if !open.is_empty() && self.out.mark() == before {
+            self.missing(NodeKind::Error);
+        }
         for (kind, token, mark) in open.into_iter().rev() {
             self.out.node(kind, Anchor::Token(token), mark);
         }

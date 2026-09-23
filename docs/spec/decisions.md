@@ -30,6 +30,7 @@
 | 24 | A backslash takes what follows literally: `\name` escapes a keyword, `\"..."` is a raw string, `\\` a raw line | accepted | 01 |
 | 25 | `static` is contextual after `&`, like `out` and `take` | proposed | 01, 05 |
 | 26 | Command lines are declared as data (`overt-command`), for the CLI and repository tasks | accepted | 13 |
+| 27 | Literal data reads tagged values `.name(a, b)`; node kinds declare their children as tagged slots, one kind per shape, checked by the CST verifier | accepted | 13 |
 
 ## Open questions
 
@@ -57,11 +58,38 @@
     prefix allowing BLAKE3 later.
 13. **Vendoring by default** for firmware projects, per gingerBill's argument. Lean: offer
     `overt pkg vendor`, do not default.
-14. **Node fields in the grammar.** Spec 13 wants typed accessors generated from node fields;
-    `grammar.ov` lists node kinds only. Lean: add named children per kind when HIR lowering needs
-    them, and generate accessors with `cargo xtask grammar`.
+14. **Node fields in the grammar.** Resolved by decision 27.
 15. **Typed literal after other operands.** `T{ }` is recognized after a name, a member access or a
     call. An alternative with no position rule is `T.{ }`, reusing `.{`. Lean: keep `T{ }` unless
     the rule proves confusing.
 16. **Lowercase primitive type names** (`u8`, `bool`, `type`) versus the `PascalCase` rule for
     types. Lean: an exemption list in `naming.case` for `lang` and the prelude.
+17. **Nominal identity of type literals.** Memoization makes `Pair(u16)` one type, but the spec
+    does not say whether two identical `struct { raw: u32 }` literals in different declarations
+    are one type. Compilers need distinct handle types (`NodeId`, `TypeId`) that do not mix. Lean:
+    every `struct`/`enum` literal is nominal, identified by its origin plus its compile-time
+    arguments; aliases (`u8 := Int(0..=255)`) stay structural because they are not literals.
+18. **Exhaustive `match`.** Not stated anywhere. Lean: `match` must cover every value of its
+    scrutinee's type (enums by variant, integers by range); a missing case is an error naming it.
+19. **Pattern forms.** Patterns are expressions in the syntax, but their meaning is only given by
+    example. Needed: or-patterns (`.a | .b`, reusing `|`), range patterns (`'a'..='z'`), rest
+    patterns (`.{ .x = a, .. }`, `[first, ..rest]`, reusing prefix `..`), and binding a whole
+    value while matching its shape. Lean: define each as the meaning of the existing operator in
+    pattern position, no new symbol; for the whole-value binding, `n := .add(l, r)` in an arm.
+20. **Matching through borrows.** Matching `e: &Expr` against `.add(l, r)` must say whether `l` is
+    `&Expr` or a copy. Lean: one rule, the binding mode is inherited from the scrutinee's borrow
+    (`&` gives `&`, `&mut` gives `&mut`), as with `.` on places.
+21. **Arena-tied trees.** Recursive enums through `&T` are scoped values, which the rules already
+    allow in locals and in other scoped types. Lean: make this the documented way to build trees
+    (`std.mem.Arena` returning `&mut T` tied to the arena borrow), keeping `Own` for trees that
+    outlive a scope, and add a corpus program that parses into an arena.
+22. **Typed handles.** Index-based graphs need `Handle(T)` tied to one arena or list, with checked
+    indexing whose trap sites the optimizer can remove. Lean: a `std.collections` library type
+    over a nominal struct (17), no language support.
+23. **Collected registrations.** Pass managers and lint registries want every item carrying an
+    attribute (`#[pass]`), which conflicts with lazy resolution. Lean: collection is explicit,
+    `std.meta.collect(package, attr)` over a package's declarations, evaluated only when called.
+24. **Text.** Strings are byte arrays. A compiler needs UTF-8 slices, a growable buffer, an
+    interner, hash maps and formatting. Lean: all library (`std.text`, `std.collections`,
+    `std.fmt`), with a `Str` type that is a UTF-8-checked `&[u8]`; self-host the literal reader as
+    the benchmark of that library.

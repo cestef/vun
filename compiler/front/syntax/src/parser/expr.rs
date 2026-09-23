@@ -37,12 +37,8 @@ impl Parser<'_, '_, '_> {
             } else if PREFIX.contains(&k) {
                 let mark = p.out.mark();
                 let token = p.bump();
-                if k == TokenKind::Amp {
-                    if p.at(TokenKind::Mut) {
-                        p.leaf(NodeKind::Mut);
-                    } else if p.at_word(Context::AfterAmp) {
-                        p.leaf(NodeKind::Mode);
-                    }
+                if k == TokenKind::Amp && (p.at(TokenKind::Mut) || p.at_word(Context::AfterAmp)) {
+                    p.leaf(NodeKind::Mode);
                 }
                 p.prefix(brace);
                 p.out.node(NodeKind::Prefix, Anchor::Token(token), mark);
@@ -74,7 +70,7 @@ impl Parser<'_, '_, '_> {
                     if brace == Brace::Continues
                         && self.out.last().is_some_and(|k| LITERAL_TYPES.contains(&k)) =>
                 {
-                    (NodeKind::StructLit, self.group_of(List::Items(Item::Value)).0)
+                    (NodeKind::TypedLit, self.group_of(List::Items(Item::Value)).0)
                 }
                 _ => break,
             };

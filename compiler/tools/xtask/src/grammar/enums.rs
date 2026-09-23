@@ -7,7 +7,7 @@ use proc_macro2::TokenStream;
 use quote::quote;
 
 use super::names::{constant, ident, pascal};
-use super::{ENTRY_NAME, ENTRY_TEXT, Enum, Variant};
+use super::{ENTRY_NAME, ENTRY_TEXT, Enum, Slot, Variant};
 
 impl Enum<'_> {
     pub(super) fn emit(&self) -> TokenStream {
@@ -45,10 +45,15 @@ impl Enum<'_> {
     }
 }
 
-/// A kind's entry: `.name`, a spelling `"text"` named after itself, or `.{ .name, .text }`.
+/// A kind's entry: `.name`, a spelling `"text"` named after itself, `.{ .name, .text }`, or
+/// `.name(.count(.field), ...)` with the kind's children.
 pub(super) fn entry_variant<'s>(entry: &Literal<'s>) -> Option<Variant<'s>> {
     let (name, text) = match entry {
         Literal::Name(name) => (*name, None),
+        Literal::Tagged(name, payload) => {
+            let slots = payload.iter().map(slot).collect::<Option<_>>()?;
+            return Some(Variant { name, doc: Vec::new(), text: None, slots });
+        }
         Literal::String(Cow::Borrowed(text)) => (*text, Some(*text)),
         Literal::Record(_) => match (entry.get(ENTRY_NAME)?, entry.get(ENTRY_TEXT)?) {
             (Literal::Name(name), Literal::String(Cow::Borrowed(text))) => (*name, Some(*text)),
@@ -56,5 +61,11 @@ pub(super) fn entry_variant<'s>(entry: &Literal<'s>) -> Option<Variant<'s>> {
         },
         _ => return None,
     };
-    Some(Variant { name, doc: Vec::new(), text })
+    Some(Variant { name, doc: Vec::new(), text, slots: Vec::new() })
+}
+
+/// `.count(.field)`.
+fn slot<'s>(value: &Literal<'s>) -> Option<Slot<'s>> {
+    let (count, [Literal::Name(field)]) = value.as_tagged()? else { return None };
+    Some(Slot { count, field })
 }

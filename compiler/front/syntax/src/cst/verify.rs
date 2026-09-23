@@ -21,6 +21,8 @@ pub enum Malformed {
     Unowned { token: TokenId },
     /// The tokens of a subtree are not contiguous.
     Scattered { node: NodeId },
+    /// The children of a node do not fit the slots of its kind.
+    Fields { node: NodeId },
 }
 
 /// The tokens found in a finished subtree while verifying.
@@ -54,8 +56,9 @@ impl Extent {
 
 impl Cst {
     /// Checks the tree's invariants: subtree sizes nest, leaves have no children, the array is one
-    /// tree rooted at `File`, every token anchors exactly one node, and every subtree covers a
-    /// contiguous run of tokens. This is the verifier of this representation.
+    /// tree rooted at `File`, every token anchors exactly one node, every subtree covers a
+    /// contiguous run of tokens, and the children of every node fit its kind's slots. This is the
+    /// verifier of this representation.
     ///
     /// # Errors
     /// Returns the first violation found.
@@ -87,6 +90,9 @@ impl Cst {
             }
             if !extent.contiguous() {
                 return Err(Malformed::Scattered { node: n });
+            }
+            if self.fields(n).is_none() {
+                return Err(Malformed::Fields { node: n });
             }
             finished.push(extent);
         }

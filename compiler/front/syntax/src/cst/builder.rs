@@ -1,9 +1,9 @@
 //! Building a tree in postorder.
 
 use overt_grammar::NodeKind;
-use overt_index::IndexVec;
+use overt_index::{Idx, IndexVec};
 
-use super::{Anchor, Cst};
+use super::{Anchor, Cst, NodeId};
 
 /// Where a node's children begin: the array length before the first of them was pushed.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -44,6 +44,17 @@ impl Builder {
     /// Whether the nodes pushed since `mark` form a single subtree.
     pub(crate) fn single_since(&self, mark: Mark) -> bool {
         self.cst.sizes.last().is_some_and(|&size| size as usize == self.cst.len() - mark.0)
+    }
+
+    /// The number of subtrees pushed since `mark`, at the top level, whose root satisfies `keep`.
+    pub(crate) fn nodes_since(&self, mark: Mark, keep: impl Fn(NodeKind) -> bool) -> usize {
+        let (mut end, mut count) = (self.cst.len(), 0);
+        while end > mark.0 {
+            let root = end - 1;
+            count += usize::from(keep(self.cst.kinds[NodeId::new(root)]));
+            end -= self.cst.sizes[NodeId::new(root)] as usize;
+        }
+        count
     }
 
     pub(crate) fn finish(self) -> Cst {

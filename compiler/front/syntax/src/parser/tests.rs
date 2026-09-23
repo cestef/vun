@@ -69,7 +69,10 @@ fn groups_become_functions_by_what_follows() {
         "(Binding':= f (Fn'( (Param': a u8) ) (Returns'-> u8) (Block'{ a })))"
     );
     assert_eq!(first("f := () { };"), "(Binding':= f (Fn'( ) (Block'{ })))");
-    assert_eq!(first("f: (u8, bool) -> u8 = _;"), "(Binding': f (FnType'( u8 , bool ) (Returns'-> u8)) = _)");
+    assert_eq!(
+        first("f: (u8, bool) -> u8 = _;"),
+        "(TypedBinding': f (FnType'( u8 , bool ) (Returns'-> u8)) = _)"
+    );
     assert_eq!(first("t := (a, b);"), "(Binding':= t (Tuple'( a , b )))");
     assert_eq!(first("t := (a,);"), "(Binding':= t (Tuple'( a , )))");
     assert_eq!(first("t := ();"), "(Binding':= t (Tuple'( )))");
@@ -80,7 +83,7 @@ fn groups_become_functions_by_what_follows() {
     );
     assert_eq!(
         first("f: unsafe (p: *u8) = _;"),
-        "(Binding': f (Prefix'unsafe (FnType'( (Param': p (Prefix'* u8)) ))) = _)"
+        "(TypedBinding': f (Prefix'unsafe (FnType'( (Param': p (Prefix'* u8)) ))) = _)"
     );
 }
 
@@ -88,9 +91,12 @@ fn groups_become_functions_by_what_follows() {
 fn brackets() {
     assert_eq!(first("a := [1, 2];"), "(Binding':= a (Array'[ 1 , 2 ]))");
     assert_eq!(first("a := [0; 4];"), "(Binding':= a (ArrayRepeat'[ 0 ; 4 ]))");
-    assert_eq!(first("mut b: [N]u8;"), "(Binding': mut b (ArrayType'[ N ] u8))");
-    assert_eq!(first("b: &static [_]u8 = _;"), "(Binding': b (Prefix'& static (ArrayType'[ _ ] u8)) = _)");
-    assert_eq!(first("m: [2][3]u8 = _;"), "(Binding': m (ArrayType'[ 2 ] (ArrayType'[ 3 ] u8)) = _)");
+    assert_eq!(first("mut b: [N]u8;"), "(TypedBinding': mut b (ArrayType'[ N ] u8))");
+    assert_eq!(
+        first("b: &static [_]u8 = _;"),
+        "(TypedBinding': b (Prefix'& static (ArrayType'[ _ ] u8)) = _)"
+    );
+    assert_eq!(first("m: [2][3]u8 = _;"), "(TypedBinding': m (ArrayType'[ 2 ] (ArrayType'[ 3 ] u8)) = _)");
     assert_eq!(
         first("c := [&mut n] (x: u8) { n += x; };"),
         "(Binding':= c (Closure'[ (Prefix'& mut n) ] (Fn'( (Param': x u8) ) (Block'{ (Assign'+= n x) ; }))))"
@@ -102,7 +108,7 @@ fn brackets() {
 fn literals() {
     assert_eq!(
         first("p := Point{ .x = 1 };"),
-        "(Binding':= p (StructLit'{ Point (FieldInit'= (DotName'. x) 1) }))"
+        "(Binding':= p (TypedLit'{ Point (FieldInit'= (DotName'. x) 1) }))"
     );
     assert_eq!(
         first("p := .{ .x = 1, 2 };"),
@@ -195,4 +201,35 @@ fn deep_nesting_is_bounded() {
     assert_eq!(parse_text(&text).1, [errors::SYNTAX_NESTING_TOO_DEEP]);
     let text = format!("x := {}1;", "-".repeat(depth));
     assert_eq!(parse_text(&text).1, [errors::SYNTAX_NESTING_TOO_DEEP]);
+}
+
+#[test]
+fn recovered_trees_fit_their_slots() {
+    // Inputs the fuzzer found: junk in a list, a dangling doc before a failed entry, and brackets
+    // before a group that is neither a closure nor an array type.
+    for text in ["[)#[", "///\n'''", "[](", "[a, b](c)"] {
+        let (_, ids) = parse_text(text);
+        assert!(!ids.is_empty(), "{text:?} should report");
+    }
+}
+
+#[test]
+fn fields_name_the_children() {
+    use overt_grammar::{NodeField as F, NodeKind as K};
+    let text = "mut f: T = (a: u8, b) -> u8 { a };";
+    let file = SourceFiles::new().add("t.ov", text);
+    let (mut diag, mut origins) = (DiagCtxt::new(), OriginTable::new());
+    let mut cx = DiagCx { diag: &mut diag, origins: &mut origins };
+    let tokens = lex(file, text, &mut cx);
+    let cst = parse(&tokens, text, &mut cx);
+    let binding = cst.children(cst.root()).next().unwrap();
+    let fields = cst.fields(binding).unwrap();
+    let kind = |f| fields.one(f).map(|n| cst.kind(n));
+    assert_eq!([kind(F::Mut), kind(F::Pattern), kind(F::Type)], [Some(K::Mut), Some(K::Name), Some(K::Name)]);
+    let function = cst.fields(fields.one(F::Value).unwrap()).unwrap();
+    let params: Vec<_> = function.get(F::Params).iter().map(|&n| cst.kind(n)).collect();
+    assert_eq!(params, [K::Param, K::Name]);
+    assert_eq!(function.one(F::Returns).map(|n| cst.kind(n)), Some(K::Returns));
+    assert_eq!(function.one(F::Block).map(|n| cst.kind(n)), Some(K::Block));
+    assert!(function.get(F::Statements).is_empty());
 }

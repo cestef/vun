@@ -37,3 +37,17 @@ fn reads_literals_and_skips_the_rest() {
     let members = decls[3].value.decls().unwrap();
     assert_eq!((members.len(), members[0].name, &members[0].value), (1, "d", &Literal::Opaque));
 }
+
+#[test]
+fn reads_tagged_values() {
+    let decls = read("t := [.one(.a), .pair(.b, [1]), .none()];");
+    assert_eq!(
+        decls[0].value,
+        Literal::List(vec![
+            Literal::Tagged("one", vec![Literal::Name("a")]),
+            Literal::Tagged("pair", vec![Literal::Name("b"), Literal::List(vec![Literal::Int(1)])]),
+            Literal::Tagged("none", vec![]),
+        ])
+    );
+    assert_eq!(decls[0].value.as_list().unwrap()[0].as_tagged(), Some(("one", &[Literal::Name("a")][..])));
+}
