@@ -1,0 +1,32 @@
+//! A constrained parameter may use only its interface's members; dynamic dispatch is a library
+//! (spec 02, section 3).
+
+Shape := interface(($Self: type) -> type { struct {
+    area: (self: &Self) -> u64 = _;
+    name := (self: &Self) -> &static [_]u8 { std.meta.name_of(Self) };
+}});
+
+Square := struct { side: u16 };
+
+#[impl(Shape(Square))]
+SquareShape := struct {
+    area := (self: &Square) -> u64 { self.side * self.side };
+};
+
+total := ($S: Shape, shapes: &[S]) -> u64 {
+    mut sum: u64 = 0;
+    for s in shapes { sum += s.area(); }
+    sum
+};
+
+largest := (shapes: &[std.Dyn(Shape)]) -> ?&std.Dyn(Shape) {
+    mut best: ?&std.Dyn(Shape) = .none;
+    for s in shapes {
+        if .some(b) = best { if s.area() <= b.area() { continue; } }
+        best = .some(s);
+    }
+    best
+};
+
+squares := [Square{ .side = 2 }, Square{ .side = 3 }];
+sum := total(Square, &squares);

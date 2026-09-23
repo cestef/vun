@@ -1,0 +1,8 @@
+//! An `&out` borrow must be initialized before the callee returns (spec 05, section 2).
+
+Header := struct { magic: u32, len: u16 };
+
+read := (bytes: &[6]u8, h: &out Header) {
+    if bytes[0] == 0 { return; } //~ place.out_unwritten
+    h.* = .{ .magic = 1, .len = 2 };
+};

@@ -1,0 +1,23 @@
+//! Computed names generate declarations that read like hand-written ones (spec 03, section 2).
+
+Register := struct { name: &static [_]u8, offset: usize, reset: u32 };
+
+Block := ($registers: &[Register]) -> type {
+    Regs := struct {
+        $for r in registers {
+            #[layout.offset(r.offset)]
+            $(r.name): std.hw.Reg(u32),
+        }
+        $for r in registers {
+            $("reset_" ++ r.name) := (self: &mut Regs) { self.$(r.name).write(r.reset); };
+        }
+    };
+    Regs
+};
+
+Timer := Block(&[
+    .{ .name = "cr1", .offset = 0x00, .reset = 0 },
+    .{ .name = "arr", .offset = 0x2c, .reset = 0xffff },
+]);
+
+rearm := (t: &mut Timer) { t.reset_arr(); };

@@ -1,0 +1,6 @@
+//! Reflecting on a type that is still being defined is an error (spec 03, section 6).
+
+Grow := struct {
+    a: u8,
+    size := std.meta.size(Grow); //~ meta.frozen
+};

@@ -1,0 +1,24 @@
+//! Only narrowing can fail, and narrowing is explicit (spec 04, section 1).
+
+percent := (part: u32, whole: Int(1..=4294967295)) -> u8 {
+    (part.to(u64) * 100 / whole).sat(u8)
+};
+
+checksum := (bytes: &[u8]) -> u8 {
+    mut sum: u8 = 0;
+    for b in bytes { sum +%= b; }
+    sum
+};
+
+parse_digit := (c: u8) -> ?Int(0..=9) {
+    if c < '0' or c > '9' { return .none; }
+    (c - '0').try_to(Int(0..=9))
+};
+
+Level := Int(0..8);
+
+brighter := (l: Level) -> Level { (l + 1).sat(Level) };
+
+lerp := (a: u16, b: u16, t: u8) -> u16 {
+    ((a * (255 - t) + b * t) / 255).to(u16)
+};

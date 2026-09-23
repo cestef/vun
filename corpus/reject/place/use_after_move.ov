@@ -1,0 +1,8 @@
+//! Passing a linear value by value leaves its place `uninit` (spec 05, section 2).
+
+close_twice := (fs: &mut Fs, path: &[u8]) -> Result((), Error) {
+    f := fs.open(path)?;
+    fs.close(f);
+    fs.close(f); //~ place.read_uninit
+    .ok(())
+};

@@ -44,6 +44,8 @@ pub const INT_WIDTH_CAP: DiagId = DiagId::new("lang.errors.int.width_cap");
 /// Type checking (spec 02).
 pub const TYPES: DiagId = DiagId::new("lang.errors.types");
 pub const TYPES_MISMATCH: DiagId = DiagId::new("lang.errors.types.mismatch");
+pub const TYPES_NO_MEMBER: DiagId = DiagId::new("lang.errors.types.no_member");
+pub const TYPES_NO_IMPL: DiagId = DiagId::new("lang.errors.types.no_impl");
 /// Name resolution and visibility (spec 01, sections 3, 7 and 8).
 pub const NAMES: DiagId = DiagId::new("lang.errors.names");
 pub const NAMES_UNRESOLVED: DiagId = DiagId::new("lang.errors.names.unresolved");
@@ -61,11 +63,29 @@ pub const SAFETY: DiagId = DiagId::new("lang.errors.safety");
 pub const SAFETY_REQUIRES_UNSAFE: DiagId = DiagId::new(
     "lang.errors.safety.requires_unsafe",
 );
+/// Interface conformance (spec 02, section 3).
+pub const IMPL: DiagId = DiagId::new("lang.errors.impl");
+pub const IMPL_MISSING_REQUIREMENT: DiagId = DiagId::new(
+    "lang.errors.impl.missing_requirement",
+);
+pub const IMPL_DUPLICATE: DiagId = DiagId::new("lang.errors.impl.duplicate");
+/// Coroutine frames (spec 06, section 1).
+pub const COROUTINE: DiagId = DiagId::new("lang.errors.coroutine");
+pub const COROUTINE_RECURSIVE_FRAME: DiagId = DiagId::new(
+    "lang.errors.coroutine.recursive_frame",
+);
+/// Layout attributes (spec 05, section 6).
+pub const LAYOUT: DiagId = DiagId::new("lang.errors.layout");
+pub const LAYOUT_BITS_WIDTH: DiagId = DiagId::new("lang.errors.layout.bits_width");
+/// Compile-time evaluation and reflection (spec 03).
+pub const META: DiagId = DiagId::new("lang.errors.meta");
+pub const META_FROZEN: DiagId = DiagId::new("lang.errors.meta.frozen");
 /// Place states (spec 05, section 2).
 pub const PLACE: DiagId = DiagId::new("lang.errors.place");
 pub const PLACE_READ_UNINIT: DiagId = DiagId::new("lang.errors.place.read_uninit");
 pub const PLACE_LINEAR_LEAK: DiagId = DiagId::new("lang.errors.place.linear_leak");
 pub const PLACE_AMBIGUOUS_JOIN: DiagId = DiagId::new("lang.errors.place.ambiguous_join");
+pub const PLACE_OUT_UNWRITTEN: DiagId = DiagId::new("lang.errors.place.out_unwritten");
 /// Scoped borrows and exclusivity (spec 05, sections 4 and 8).
 pub const BORROW: DiagId = DiagId::new("lang.errors.borrow");
 pub const BORROW_CONFLICT: DiagId = DiagId::new("lang.errors.borrow.conflict");
@@ -113,6 +133,8 @@ pub const ALL: &[DiagId] = &[
     INT_DOES_NOT_FIT,
     INT_WIDTH_CAP,
     TYPES_MISMATCH,
+    TYPES_NO_MEMBER,
+    TYPES_NO_IMPL,
     NAMES_UNRESOLVED,
     NAMES_SHADOWED,
     NAMES_PRIVATE,
@@ -120,9 +142,15 @@ pub const ALL: &[DiagId] = &[
     BINDING_HOLE_VALUE,
     BINDING_IRREFUTABLE_TEST,
     SAFETY_REQUIRES_UNSAFE,
+    IMPL_MISSING_REQUIREMENT,
+    IMPL_DUPLICATE,
+    COROUTINE_RECURSIVE_FRAME,
+    LAYOUT_BITS_WIDTH,
+    META_FROZEN,
     PLACE_READ_UNINIT,
     PLACE_LINEAR_LEAK,
     PLACE_AMBIGUOUS_JOIN,
+    PLACE_OUT_UNWRITTEN,
     BORROW_CONFLICT,
     BORROW_ESCAPE,
     BORROW_IN_FREE_VALUE,

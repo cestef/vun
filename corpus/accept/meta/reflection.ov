@@ -1,0 +1,22 @@
+//! Reflection turns types into plain data; types are made by writing type literals
+//! (spec 03, section 6).
+
+/// A struct of optional fields, one per field of `T`.
+Partial := ($T: type) -> type { struct {
+    $for f in std.meta.fields(T) {
+        $(f.name): ?f.type = .none,
+    }
+}};
+
+Config := struct { baud: u32, parity: bool };
+
+merge := (base: Config, over: Partial(Config)) -> Config {
+    mut out := base;
+    $for f in std.meta.fields(Config) {
+        if .some(v) = over.$(f.name) { out.$(f.name) = v; }
+    }
+    out
+};
+
+#[test]
+size := () { $assert(std.meta.size(Config) == 8); };

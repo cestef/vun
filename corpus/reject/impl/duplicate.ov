@@ -1,0 +1,13 @@
+//! At most one impl per interface and type (spec 02, section 3).
+
+Shape := interface(($Self: type) -> type { struct {
+    area: (self: &Self) -> u64 = _;
+}});
+
+Square := struct { side: u16 };
+
+#[impl(Shape(Square))]
+SquareArea := struct { area := (self: &Square) -> u64 { self.side * self.side }; };
+
+#[impl(Shape(Square))] //~ impl.duplicate
+SquareZero := struct { area := (self: &Square) -> u64 { 0 }; };

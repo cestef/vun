@@ -1,0 +1,26 @@
+//! `&out` initializes a place; `&take` consumes a value in place (spec 05, section 2).
+
+Header := struct { magic: u32, len: u16 };
+
+read_header := (bytes: &[6]u8, h: &out Header) {
+    h.* = .{
+        .magic = u32.from_le(bytes[0..4]),
+        .len = u16.from_le(bytes[4..6]),
+    };
+};
+
+parse := (bytes: &[6]u8) -> Header {
+    mut h: Header;
+    read_header(bytes, &out h);
+    h
+};
+
+Transfer := #[kind.linear, kind.fixed] struct { channel: u8 };
+
+finish := (t: &take Transfer, dma: &mut Dma) { dma.release(t.channel); };
+
+copy := (dma: &mut Dma, src: &[u8], dst: &mut [u8]) {
+    mut t := dma.start(src, dst);
+    t.wait();
+    finish(&take t, dma);
+};

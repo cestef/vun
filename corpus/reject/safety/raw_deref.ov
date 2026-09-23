@@ -1,0 +1,5 @@
+//! Dereferencing a raw pointer is `unsafe` (spec 05, section 5).
+
+peek := (p: *u32) -> u32 {
+    p.* //~ safety.requires_unsafe
+};

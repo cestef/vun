@@ -1,0 +1,36 @@
+//! Frames are linear: ending one runs the defers of its suspension point (spec 06, section 1).
+
+lines := (port: &mut Serial, buf: &mut [128]u8) -> Async(usize) {
+    port.enable();
+    defer port.disable();
+    mut n: usize = 0;
+    for n < buf.len {
+        b := yield ..port.read_byte();
+        if b == '\n' { break; }
+        buf[n] = b;
+        n += 1;
+    }
+    n
+};
+
+first_line := (port: &mut Serial, timer: &Timer) -> Async(?usize) {
+    mut buf: [128]u8 = [0; 128];
+    mut reader := lines(port, &mut buf);
+    mut timeout := timer.after(.ms(100));
+    result := yield ..std.task.select(.{ &mut reader, &mut timeout });
+    reader.end();
+    timeout.end();
+    match result {
+        .first(n) => .some(n),
+        .second(()) => .none,
+    }
+};
+
+take_while_small := (xs: Iter(u32)) -> u32 {
+    mut sum: u32 = 0;
+    for x in xs {
+        if x > 100 { break; }
+        sum +|= x;
+    }
+    sum
+};

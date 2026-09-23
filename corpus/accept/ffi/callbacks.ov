@@ -1,0 +1,21 @@
+//! Function pointers carry their ABI, so C can call back into Overt (spec 07, section 4).
+
+Compare := #[abi.c] (a: *u8, b: *u8) -> i32;
+
+#[link.symbol("qsort"), abi.c]
+qsort: unsafe (base: *u8, count: usize, size: usize, cmp: Compare) = _;
+
+#[abi.c]
+by_value := (a: *u8, b: *u8) -> i32 {
+    x := unsafe { a.cast(u32).* };
+    y := unsafe { b.cast(u32).* };
+    match x.cmp(y) {
+        .less => -1,
+        .equal => 0,
+        .greater => 1,
+    }
+};
+
+sort := (xs: &mut [u32]) {
+    unsafe { qsort(xs.ptr().cast(u8), xs.len, std.meta.size(u32), by_value); }
+};

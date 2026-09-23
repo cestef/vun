@@ -1,0 +1,23 @@
+//! Interior mutability is always synchronized (spec 07, section 2).
+
+ticks: sync.Shared(u32) = .init(0);
+events: sync.Atomic(u32) = .init(0);
+
+#[panic.never]
+on_systick := () {
+    sync.critical([] (cs: &Critical) { ticks.get(cs).* +%= 1; });
+    events.add(1, .relaxed);
+};
+
+uptime := () -> u32 {
+    sync.critical([] (cs: &Critical) -> u32 { ticks.get(cs).* })
+};
+
+Queue := struct {
+    items: sync.Mutex([16]u32),
+    push := (self: &Queue, sys: &mut std.os.System, v: u32) {
+        mut guard := self.items.lock(sys);
+        guard.get().*[0] = v;
+        guard.unlock();
+    };
+};

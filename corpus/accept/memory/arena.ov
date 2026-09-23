@@ -1,0 +1,39 @@
+//! Allocation needs an allocator value; nothing is freed implicitly (spec 07, section 1).
+
+Node := struct { value: u32, next: ?Own(Node) };
+
+push := (a: &mut std.mem.alloc.Fixed, head: ?Own(Node), value: u32) -> Result(Own(Node), std.mem.alloc.Error) {
+    node := a.create(Node)?;
+    node.* = .{ .value = value, .next = head };
+    .ok(node)
+};
+
+free_all := (a: &mut std.mem.alloc.Fixed, head: ?Own(Node)) {
+    mut cur := head;
+    for .some(node) = cur {
+        cur = node.next;
+        a.destroy(node);
+    }
+};
+
+build := () -> u32 {
+    mut storage: [1024]u8;
+    mut a := std.mem.alloc.Fixed.init(&mut storage);
+    mut list: ?Own(Node) = .none;
+    for i in 0..4 {
+        list = .some(push(&mut a, list, i).expect("fits"));
+    }
+    sum := sum_list(&list);
+    free_all(&mut a, list);
+    sum
+};
+
+sum_list := (head: &?Own(Node)) -> u32 {
+    mut sum: u32 = 0;
+    mut cur := head;
+    for .some(node) = cur.* {
+        sum +|= node.value;
+        cur = &node.next;
+    }
+    sum
+};

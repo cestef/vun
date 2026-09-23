@@ -1,0 +1,8 @@
+//! A `#[panic.never]` function may call only `#[panic.never]` functions (spec 07, section 3).
+
+halve := (x: u32) -> u32 { x / 2 };
+
+#[panic.never]
+tick := (x: u32) -> u32 {
+    halve(x) //~ panic.never_violated
+};

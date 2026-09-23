@@ -1,0 +1,8 @@
+//! A frame cannot contain itself unless the recursion goes through an `Own` (spec 06, section 1).
+
+Tree := struct { value: u32, children: &[Tree] };
+
+walk := (t: &Tree) -> Iter(u32) { //~ coroutine.recursive_frame
+    yield t.value;
+    for c in t.children { yield ..walk(c); }
+};

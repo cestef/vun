@@ -1,0 +1,10 @@
+//! Inside a generic body, a constrained value may use only its interface's members
+//! (spec 02, section 3).
+
+Shape := interface(($Self: type) -> type { struct {
+    area: (self: &Self) -> u64 = _;
+}});
+
+describe := ($S: Shape, s: &S) -> u64 {
+    s.area() + s.perimeter() //~ types.no_member
+};

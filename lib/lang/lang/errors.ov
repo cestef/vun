@@ -27,6 +27,8 @@ int := struct {
 /// Type checking (spec 02).
 types := struct {
     mismatch := diag.Diag{ .explanation = meta.embed("errors/types/mismatch.md") };
+    no_member := diag.Diag{ .explanation = meta.embed("errors/types/no_member.md") };
+    no_impl := diag.Diag{ .explanation = meta.embed("errors/types/no_impl.md") };
 };
 
 /// Name resolution and visibility (spec 01, sections 3, 7 and 8).
@@ -48,11 +50,33 @@ safety := struct {
     requires_unsafe := diag.Diag{ .explanation = meta.embed("errors/safety/requires_unsafe.md") };
 };
 
+/// Interface conformance (spec 02, section 3).
+impl := struct {
+    missing_requirement := diag.Diag{ .explanation = meta.embed("errors/impl/missing_requirement.md") };
+    duplicate := diag.Diag{ .explanation = meta.embed("errors/impl/duplicate.md") };
+};
+
+/// Coroutine frames (spec 06, section 1).
+coroutine := struct {
+    recursive_frame := diag.Diag{ .explanation = meta.embed("errors/coroutine/recursive_frame.md") };
+};
+
+/// Layout attributes (spec 05, section 6).
+layout := struct {
+    bits_width := diag.Diag{ .explanation = meta.embed("errors/layout/bits_width.md") };
+};
+
+/// Compile-time evaluation and reflection (spec 03).
+meta := struct {
+    frozen := diag.Diag{ .explanation = meta.embed("errors/meta/frozen.md") };
+};
+
 /// Place states (spec 05, section 2).
 place := struct {
     read_uninit := diag.Diag{ .explanation = meta.embed("errors/place/read_uninit.md") };
     linear_leak := diag.Diag{ .explanation = meta.embed("errors/place/linear_leak.md") };
     ambiguous_join := diag.Diag{ .explanation = meta.embed("errors/place/ambiguous_join.md") };
+    out_unwritten := diag.Diag{ .explanation = meta.embed("errors/place/out_unwritten.md") };
 };
 
 /// Scoped borrows and exclusivity (spec 05, sections 4 and 8).

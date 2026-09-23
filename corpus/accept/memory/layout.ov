@@ -1,0 +1,26 @@
+//! Layout is defined, never left to the implementation (spec 05, section 6).
+
+#[layout.bits(u32)]
+Ctrl := struct { enable: bool, mode: u2, prescale: u5, _: u24 };
+
+#[layout.c]
+Timespec := struct { sec: i64, nsec: i32 };
+
+#[layout.tag(u8)]
+Command := enum { nop, read(u16), write(u16, u8) };
+
+#[layout.align(64)]
+Line := struct { bytes: [64]u8 };
+
+Regs := struct {
+    #[layout.offset(0x00)] ctrl: Ctrl,
+    #[layout.offset(0x10)] status: u32,
+};
+
+/// Declarations resolve lazily, so compile-time checks live in a body that is compiled.
+#[test]
+sizes := () {
+    $assert(std.meta.size(Ctrl) == 4);
+    $assert(std.meta.size(?*u8) == std.meta.size(*u8));
+    $assert(std.meta.size(?Int(0..200)) == 1);
+};

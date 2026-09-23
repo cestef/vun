@@ -1,0 +1,5 @@
+//! The unsynchronized `lang.mem.Cell` is usable only in `unsafe` code (spec 07, section 2).
+
+bump := (c: &lang.mem.Cell(u32)) {
+    c.set(c.get() + 1); //~ safety.requires_unsafe
+};

@@ -1,0 +1,5 @@
+//! Bit operations exist on `uN` types only (spec 04, section 1).
+
+low_byte := (x: i32) -> i32 {
+    x & 0xff //~ types.no_impl
+};
