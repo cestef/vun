@@ -10,5 +10,6 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
+overt-graph.workspace = true
 overt-diag.workspace = true
 overt-origin.workspace = true

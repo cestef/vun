@@ -130,17 +130,31 @@ impl Session {
 
     /// The manifest in the `build.ov` at `path`, read once per content.
     fn manifest_at(&mut self, path: &Path) -> Option<Manifest> {
+        let read = |s: &mut Self, file| {
+            s.declarations(file, |decls, cx| {
+                manifest::declared(decls).then(|| manifest::read(decls, file, cx)).flatten()
+            })
+        };
+        self.by_content(path, |p| &mut p.manifests, read).flatten()
+    }
+
+    /// What `derive` computes from the file at `path`, once per content: `cache` selects where
+    /// results are kept by the hash of the text.
+    fn by_content<V: Clone>(
+        &mut self,
+        path: &Path,
+        cache: fn(&mut Packages) -> &mut HashMap<Hash, V>,
+        derive: impl FnOnce(&mut Self, FileId) -> V,
+    ) -> Option<V> {
         let text = self.read(path)?;
         let hash = Hash::of(text.as_bytes());
-        if let Some(known) = self.packages.manifests.get(&hash) {
-            return known.clone();
+        if let Some(known) = cache(&mut self.packages).get(&hash) {
+            return Some(known.clone());
         }
         let file = self.sources.add(path.display().to_string(), text);
-        let manifest = self.declarations(file, |decls, cx| {
-            manifest::declared(decls).then(|| manifest::read(decls, file, cx)).flatten()
-        });
-        self.packages.manifests.insert(hash, manifest.clone());
-        manifest
+        let value = derive(self, file);
+        cache(&mut self.packages).insert(hash, value.clone());
+        Some(value)
     }
 
     fn loose(&mut self) -> PackageKey {

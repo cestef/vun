@@ -1,7 +1,8 @@
 //! Reading records and typed values out of literals, reporting where they do not fit.
 
 use overt_diag::{ChildKind, DiagCx, Diagnostic, Msg, errors};
-use overt_suggest::closest;
+use overt_hash::{Algorithm, Hash};
+use overt_suggest::{Lookup, closest};
 use overt_syntax::literal::{Decl, Literal};
 
 /// The fields of a record literal, checked against the names a reader knows.
@@ -66,8 +67,14 @@ impl<'a, 's> Fields<'a, 's> {
 
 /// Reports that `decl` is not `expected`.
 pub(super) fn invalid<T>(decl: &Decl<'_>, expected: Msg, cx: &mut DiagCx<'_>) -> Option<T> {
+    invalid_with(decl, expected, None, cx)
+}
+
+/// Reports that `decl` is not `expected`, with a help.
+fn invalid_with<T>(decl: &Decl<'_>, expected: Msg, help: Option<Msg>, cx: &mut DiagCx<'_>) -> Option<T> {
     let msg = Msg::new().code(format!(".{}", decl.name)).text(" must be ").append(expected);
-    cx.error_at(decl.span, Diagnostic::error(errors::MANIFEST_INVALID_FIELD, msg));
+    let d = Diagnostic::error(errors::MANIFEST_INVALID_FIELD, msg);
+    cx.error_at(decl.span, help.into_iter().fold(d, |d, h| d.child(ChildKind::Help, h)));
     None
 }
 
@@ -76,6 +83,18 @@ pub(super) fn string(decl: &Decl<'_>, cx: &mut DiagCx<'_>) -> Option<String> {
         Literal::String(s) => Some(s.to_string()),
         _ => invalid(decl, Msg::new().text("a string"), cx),
     }
+}
+
+/// A content hash in its text form, `algorithm:digest`.
+pub(super) fn hash(decl: &Decl<'_>, cx: &mut DiagCx<'_>) -> Option<Hash> {
+    match &decl.value {
+        Literal::String(text) => Hash::parse(text),
+        _ => None,
+    }
+    .or_else(|| {
+        let algorithms = Algorithm::ALL.iter().map(|a| format!("{}{}...", a.name(), Hash::SEPARATOR));
+        invalid(decl, Msg::new().text("a content hash: ").code_list(algorithms), cx)
+    })
 }
 
 /// An integer that fits `T`.
@@ -101,9 +120,12 @@ pub(super) fn strings(decl: &Decl<'_>, cx: &mut DiagCx<'_>) -> Option<Vec<String
 
 /// One of the names in `table`, written `.name`.
 pub(super) fn choice<T: Copy>(decl: &Decl<'_>, table: &[(&str, T)], cx: &mut DiagCx<'_>) -> Option<T> {
-    let found = decl.value.as_name().and_then(|n| table.iter().find(|(name, _)| *name == n));
-    found.map(|&(_, v)| v).or_else(|| {
-        let names = table.iter().map(|(name, _)| format!(".{name}"));
-        invalid(decl, Msg::new().text("one of ").code_list(names), cx)
-    })
+    match table.lookup(decl.value.as_name().unwrap_or_default(), |(name, _)| name) {
+        Ok(&(_, value)) => Some(value),
+        Err(near) => {
+            let names = table.iter().map(|(name, _)| format!(".{name}"));
+            let help = near.map(|n| Msg::did_you_mean(format!(".{n}")));
+            invalid_with(decl, Msg::new().text("one of ").code_list(names), help, cx)
+        }
+    }
 }

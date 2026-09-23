@@ -19,6 +19,8 @@ use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 
+use overt_fs::Tree;
+
 /// The repository root, located from this crate's own place in the workspace.
 ///
 /// # Panics
@@ -164,20 +166,9 @@ pub fn compare(expected: &[Expected], reported: &[Reported]) -> Mismatch {
 /// # Errors
 /// Returns an error if a directory cannot be read.
 pub fn discover(dir: &Path, ext: &str) -> io::Result<Vec<PathBuf>> {
-    let mut found = Vec::new();
-    let mut pending = vec![dir.to_path_buf()];
-    while let Some(dir) = pending.pop() {
-        for entry in fs::read_dir(&dir)? {
-            let path = entry?.path();
-            if path.is_dir() {
-                pending.push(path);
-            } else if path.extension().is_some_and(|e| e == ext) {
-                found.push(path);
-            }
-        }
-    }
-    found.sort();
-    Ok(found)
+    let mut files = dir.files()?;
+    files.retain(|f| f.extension().is_some_and(|e| e == ext));
+    Ok(files)
 }
 
 /// The outcome of a snapshot check.

@@ -12,7 +12,8 @@ use overt_diag::{DiagCx, Diagnostic, Msg, errors};
 use overt_span::{FileId, Span};
 use overt_syntax::literal::{Decl, Literal};
 
-use record::{Fields, choice, int, string, strings};
+use overt_hash::Hash;
+use record::{Fields, choice, hash, int, string, strings};
 pub use version::Version;
 
 /// The declaration `std.build.Package` requires to hold the manifest.
@@ -56,7 +57,7 @@ pub struct Dep {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Source {
     /// A released version, fetched from any mirror and checked against its hash.
-    Archive { version: Version, hash: String, urls: Vec<String> },
+    Archive { version: Version, hash: Hash, urls: Vec<String> },
     /// A package next to this one, by path.
     Path(String),
 }
@@ -151,7 +152,7 @@ fn dep(decl: &Decl<'_>, cx: &mut DiagCx<'_>) -> Option<Dep> {
         (Some(path), None) => string(path, cx).map(Source::Path),
         (None, Some(version)) => {
             let version = Version::read(version, cx);
-            let hash = fields.require(field::HASH).and_then(|d| string(d, cx));
+            let hash = fields.require(field::HASH).and_then(|d| hash(d, cx));
             let urls = fields.get(field::URLS).map_or(Some(Vec::new()), |d| strings(d, cx));
             match (version, hash, urls) {
                 (Some(version), Some(hash), Some(urls)) => Some(Source::Archive { version, hash, urls }),

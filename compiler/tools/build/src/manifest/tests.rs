@@ -49,8 +49,8 @@ fn reads_every_field() {
         .name = "blinky", .id = 0x6a80, .version = "0.3.1", .edition = 2027, .toolchain = "0.4.2",
         .include = .{ "build.ov", "blinky" }, .prelude = .{ "std.prelude", "support" },
         .deps = .{
-            .hal = .{ .version = "1.3.0", .hash = "sha256-9f2c", .urls = .{ "https://x" } },
-            .cmsis = .{ .version = "5.9.0", .hash = "sha256-11ab", .kind = .foreign },
+            .hal = .{ .version = "1.3.0", .hash = "sha256:9f2c000000000000000000000000000000000000000000000000000000000000", .urls = .{ "https://x" } },
+            .cmsis = .{ .version = "5.9.0", .hash = "sha256:11ab000000000000000000000000000000000000000000000000000000000000", .kind = .foreign },
             .util = .{ .path = "../util" },
         },
     };"#;
@@ -70,6 +70,11 @@ fn reports_where_the_manifest_is_wrong() {
     let cases: &[(&str, &[DiagId])] = &[
         ("build := 1;", &[errors::MANIFEST_MISSING_PACKAGE]),
         ("package := 1;", &[errors::MANIFEST_INVALID_FIELD]),
+        (
+            r#"package := .{ .name = "a", .id = 1, .version = "1.0.0", .edition = 1, .include = .{},
+                .deps = .{ .x = .{ .version = "1.0.0", .hash = "sha256-11ab" } } };"#,
+            &[errors::MANIFEST_INVALID_FIELD],
+        ),
         (
             r#"package := .{ .name = "a", .id = 1, .version = "1.0", .edition = 1, .include = .{} };"#,
             &[errors::MANIFEST_INVALID_FIELD],

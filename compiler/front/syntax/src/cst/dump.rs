@@ -3,6 +3,7 @@
 use std::fmt;
 
 use overt_grammar::NodeField;
+use overt_outline::{Outline, Outlined};
 use overt_span::ByteRange;
 
 use super::{Anchor, Cst, NodeId};
@@ -15,38 +16,39 @@ pub struct Dump<'a> {
     pub(super) source: &'a str,
 }
 
-/// Indentation per tree level in dumps.
-const DUMP_INDENT: usize = 2;
+struct Printer<'d, 'a> {
+    dump: &'d Dump<'a>,
+    out: Outline,
+}
 
-impl Dump<'_> {
-    fn node(
-        &self,
-        f: &mut fmt::Formatter<'_>,
-        n: NodeId,
-        depth: usize,
-        field: Option<NodeField>,
-    ) -> fmt::Result {
-        let indent = depth * DUMP_INDENT;
-        write!(f, "{:indent$}", "")?;
-        if let Some(field) = field {
-            write!(f, "{}: ", field.name())?;
-        }
-        write!(f, "{:?} ", self.cst.kind(n))?;
-        match self.cst.anchor(n) {
+impl Outlined for Printer<'_, '_> {
+    fn outline(&mut self) -> &mut Outline {
+        &mut self.out
+    }
+}
+
+impl Printer<'_, '_> {
+    /// A node, prefixed by the field it fills in its parent, then its children.
+    fn visit(&mut self, n: NodeId, field: Option<NodeField>) {
+        let Dump { cst, tokens, source } = *self.dump;
+        let field = field.map(|f| format!("{}: ", f.name())).unwrap_or_default();
+        let at = match cst.anchor(n) {
             Anchor::Token(t) => {
-                let range = self.tokens.range(t);
+                let range = tokens.range(t);
                 let ByteRange { lo, hi } = range;
-                writeln!(f, "{:?} {lo}..{hi} {:?}", self.tokens.kind(t), range.of(self.source))?;
+                format!("{:?} {lo}..{hi} {:?}", tokens.kind(t), range.of(source))
             }
-            Anchor::Missing(t) => writeln!(f, "missing at {}", self.tokens.range(t).lo)?,
-        }
-        let fields = self.cst.fields(n).unwrap_or_default();
-        let mut assigned = fields.assigned().peekable();
-        self.cst.children(n).try_for_each(|c| {
-            // Children and assignments are both in source order; punctuation has no field.
-            let field = assigned.next_if(|&(node, _)| node == c).map(|(_, field)| field);
-            self.node(f, c, depth + 1, field)
-        })
+            Anchor::Missing(t) => format!("missing at {}", tokens.range(t).lo),
+        };
+        self.node(format_args!("{field}{:?} {at}", cst.kind(n)), |p| {
+            let fields = cst.fields(n).unwrap_or_default();
+            let mut assigned = fields.assigned().peekable();
+            for c in cst.children(n) {
+                // Children and assignments are both in source order; punctuation has no field.
+                let field = assigned.next_if(|&(node, _)| node == c).map(|(_, field)| field);
+                p.visit(c, field);
+            }
+        });
     }
 }
 
@@ -55,6 +57,8 @@ impl fmt::Display for Dump<'_> {
         if self.cst.is_empty() {
             return Ok(());
         }
-        self.node(f, self.cst.root(), 0, None)
+        let mut printer = Printer { dump: self, out: Outline::new() };
+        printer.visit(self.cst.root(), None);
+        f.write_str(&printer.out.finish())
     }
 }

@@ -50,8 +50,8 @@
 | 44 | The leans of questions 4 to 9 and 11 to 13 are accepted as stated below | accepted | various |
 | 45 | Integer types by width are `lang.int.unsigned(bits)` and `lang.int.signed(bits)`; `lang.int` declares `u8` to `i128`, `usize`, `isize`, which `std.prelude` re-exports | accepted | 04 |
 | 46 | Spreads `..path;` and `..path.{ a, b };` re-export the public members of a namespace; the path starts at the package or a dependency | accepted | 01 |
-| 47 | A compile-time block binding is visible in its own value; `$for` binders are compile-time | proposed | 01 |
-| 48 | A directory holds a package when its `build.ov` declares `package`; caches are keyed by content hash | proposed | 12 |
+| 47 | A compile-time block binding is visible in its own value; `$for` binders are compile-time | accepted | 01 |
+| 48 | A directory holds a package when its `build.ov` declares `package`; caches are keyed by content hash | accepted | 12 |
 | 49 | `targets` is a default dependency, like `lang` and `std` | accepted | 01, 12 |
 
 ## Questions, with how they were settled

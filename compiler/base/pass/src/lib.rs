@@ -3,9 +3,8 @@
 //! MIR and LIR checks and transforms implement [`Pass`]. A [`PassManager`] orders them by their
 //! declared requirements, so adding a pass never means editing a hard-coded pipeline.
 
-use std::collections::HashMap;
-
 use overt_diag::DiagCx;
+use overt_graph::Requirements;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PassResult {
@@ -31,49 +30,8 @@ pub trait Pass<Ir: ?Sized> {
     fn run(&self, ir: &mut Ir, cx: &mut PassCx<'_>) -> PassResult;
 }
 
-/// An error in the declared dependencies of a set of passes.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum OrderError {
-    /// A pass requires one that is not registered.
-    Missing { pass: &'static str, requires: &'static str },
-    /// The requirements form a cycle through this pass.
-    Cycle(&'static str),
-}
-
-#[derive(Clone, Copy, PartialEq, Eq)]
-enum Mark {
-    New,
-    Visiting,
-    Done,
-}
-
-/// Depth-first traversal of pass requirements.
-struct Walk<'a, Ir: ?Sized> {
-    passes: &'a [Box<dyn Pass<Ir>>],
-    index: HashMap<&'static str, usize>,
-    marks: Vec<Mark>,
-    order: Vec<usize>,
-}
-
-impl<Ir: ?Sized> Walk<'_, Ir> {
-    fn visit(&mut self, i: usize) -> Result<(), OrderError> {
-        let passes = self.passes;
-        let pass = &passes[i];
-        match self.marks[i] {
-            Mark::Done => return Ok(()),
-            Mark::Visiting => return Err(OrderError::Cycle(pass.id())),
-            Mark::New => {}
-        }
-        self.marks[i] = Mark::Visiting;
-        for &requires in pass.requires() {
-            let j = *self.index.get(requires).ok_or(OrderError::Missing { pass: pass.id(), requires })?;
-            self.visit(j)?;
-        }
-        self.marks[i] = Mark::Done;
-        self.order.push(i);
-        Ok(())
-    }
-}
+/// An error in the declared dependencies of a set of passes, by pass id.
+pub type OrderError = overt_graph::OrderError<&'static str>;
 
 /// Orders and runs registered passes.
 pub struct PassManager<Ir: ?Sized> {
@@ -101,16 +59,11 @@ impl<Ir: ?Sized> PassManager<Ir> {
     /// # Errors
     /// Returns an error if a requirement is missing or requirements form a cycle.
     pub fn order(&self) -> Result<Vec<usize>, OrderError> {
-        let mut walk = Walk {
-            passes: &self.passes,
-            index: self.passes.iter().enumerate().map(|(i, p)| (p.id(), i)).collect(),
-            marks: vec![Mark::New; self.passes.len()],
-            order: Vec::with_capacity(self.passes.len()),
-        };
-        for i in 0..self.passes.len() {
-            walk.visit(i)?;
+        let mut requirements = Requirements::new();
+        for pass in &self.passes {
+            requirements.add(pass.id(), pass.requires().iter().copied());
         }
-        Ok(walk.order)
+        requirements.order()
     }
 
     /// Runs every pass once, in [`order`](Self::order).

@@ -4,6 +4,7 @@
 
 use std::path::{Path, PathBuf};
 
+use overt_fs::Tree;
 use overt_grammar::TokenKind;
 use overt_span::EXTENSION;
 
@@ -46,14 +47,14 @@ impl Location {
     /// directory of the same name are one member.
     #[must_use]
     pub fn children(&self) -> Vec<String> {
-        let Ok(entries) = std::fs::read_dir(&self.base) else { return Vec::new() };
-        let mut names: Vec<String> = entries
-            .filter_map(Result::ok)
-            .map(|e| e.path())
+        let mut names: Vec<String> = self
+            .base
+            .entries()
+            .unwrap_or_default()
+            .into_iter()
             .filter(|p| p.is_dir() || p.extension().is_some_and(|e| e == EXTENSION))
             .filter_map(|p| p.file_stem().map(|s| s.to_string_lossy().into_owned()))
             .collect();
-        names.sort();
         names.dedup();
         names
     }

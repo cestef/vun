@@ -101,8 +101,11 @@ tested (the rest are stubs):
 | `overt-span` | `FileId`, `ByteRange`, `Span`, `SourceFile` (`line_col`), `SourceMap`, `SourceFiles`. |
 | `overt-origin` | `OriginId`, `Origin`, `Via`, `OriginTable`. |
 | `overt-diag` | `DiagId`, `Severity`, `Msg` (typed parts, `append`), `Label`, `Fix`, `ChildKind` (Display), `Diagnostic`, `DiagCtxt`, `DiagCx::error_at`, `DiagSink`; `Msg::did_you_mean`; `errors` (generated). |
-| `overt-suggest` | `closest` (did-you-mean by edit distance), `distance`. Generic, no diag types. |
-| `overt-hash` | `Hash` (SHA-256, `sha256-` Display): `of(bytes)`, `tree(dir, include)`. Package identity and every cache key. |
+| `overt-suggest` | `closest` (did-you-mean by edit distance), `Lookup` on slices (find by name or the closest name). Generic, no diag types. |
+| `overt-hash` | `Algorithm` (typed, `name`), `Hash` (`algorithm:digest`, `parse`, `of(bytes)`, `tree(dir, include)`). Package identity, manifest `.hash`, every cache key. |
+| `overt-graph` | `Requirements<K>` (`add`, `order`, `OrderError`): the pass manager's ordering. |
+| `overt-fs` | `Tree` on `Path`: `files` (recursive, sorted), `entries`. Behind `Hash::tree`, `Location::children`, harness `discover`. |
+| `overt-outline` | `Outline` + `Outlined::node`: indented tree text for the CST and HIR dumps. |
 | `overt-grammar` | `generated.rs`: `NodeField`, `NodeSlot`, `Count`, `NodeKind::slots` (children per kind, from tagged entries), `TokenKind` (+ `TRIVIA`, `ATOMS`, `KEYWORDS`, `PUNCTUATION`, `END`, `text()`), `NodeKind` (`LEAVES`, `BRANCHES`), `Context`, `Assoc`, tables `CONTEXTUAL`, `DELIMITERS`, `INFIX`, `PREFIX`, `POSTFIX`, `ASSIGN`, `OPERANDS`, `ELEMENT_TYPES`, `LITERAL_TYPES`. `lib.rs` derives lookups: `punctuation`, `keyword`, `is_trivia`, `infix` (`Prec`, `Infix`), `closer`/`opens`/`closes`, `is_leaf`, `contextual`. |
 | `overt-syntax` | `tokens` (SoA tokens + trivia side table, `verify`); `lexer` (`lex`, recovery, `literal(kind, text)` for string values, backslash escapes); `cst` (postorder `(kind, Anchor, size)`, `Anchor::{Token, Missing}`, `children`, `span`, `dump`, `verify` -> `Malformed`); `parser` (`parse`); `literal` (`declarations` -> `Decl { name, doc, value: Literal, span }`, `Literal::Tagged`); `Cst::fields(n)` -> `Fields` (`get`, `one`, `assigned`), matched against the kind's slots; `children_rev` walks without allocating. |
 | `overt-hir` | `tree` (arenas: namespaces, decls, blocks, exprs, pats, binders; `List`/`Entry::Staged` for `$for`/`$if`), `lower` (one `Cst::fields` per node), `visit` (`Visitor` + `walk_*`), `verify` (tree property, origins), `resolve` (scopes: namespace, local, function, signature; `Res::{Binder, Outer { name, ns }}`, `Resolution::parents`; the checks; `Resolution::check_outer` over the `Outside` trait reports `names.unresolved`), `dump`. `Member::Spread` (`..path`, `..path.{ a, b }`; selected names are binders). `Hir::members`, `Hir::binders`, `Hir::path`, `tree::each_entry`. |
@@ -184,10 +187,9 @@ programs take from drivers, other libraries and unwritten parts of `std`.
 
 ## 9. Open questions and known gaps
 
-- Proposed, awaiting the user: decision 47 (a compile-time block binding is visible in its own
-  value, so `$Ring := struct { push := (self: &mut Ring) ... }` works; `$for` binders are
-  compile-time) and decision 48 (a directory holds a package when its `build.ov` declares
-  `package`; content-hash cache keys). Corpus type functions now write `$Ring`, `$Regs`, `$Block`.
+- Decisions 45 to 49 are accepted (fourth session): `lang.int`, spreads, compile-time block
+  bindings visible in their own value, manifest detection and content-hash caches, `targets` as a
+  default dependency. Corpus type functions write `$Ring`, `$Regs`, `$Block`.
 - Build files name `std.build.Build` explicitly (no build-only prelude). New questions go there as
   "proposed" until the user decides.
 - `lang/errors.ov` now declares planned ids for later stages (`names`, `binding`, `safety`,

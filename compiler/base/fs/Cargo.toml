@@ -1,0 +1,10 @@
+[package]
+name = "overt-fs"
+description = "Walking directory trees in a stable order."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true

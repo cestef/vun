@@ -10,6 +10,8 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
+overt-hash.workspace = true
+overt-fs.workspace = true
 overt-suggest.workspace = true
 overt-diag.workspace = true
 overt-target.workspace = true

@@ -4,7 +4,6 @@
 use std::path::Path;
 
 use overt_build::layout::Location;
-use overt_hash::Hash;
 use overt_hir::tree::{Member, each_entry};
 use overt_intern::Symbol;
 use overt_syntax::visibility::Visibility;
@@ -90,28 +89,27 @@ impl Session {
 
     /// What the file at `path` declares at its top level, read once per content.
     fn declared(&mut self, path: &Path) -> Option<Declared> {
-        let text = self.read(path)?;
-        let hash = Hash::of(text.as_bytes());
-        if let Some(known) = self.packages.declared.get(&hash) {
-            return Some(known.clone());
-        }
-        let file = self.sources.add(path.display().to_string(), text);
-        let tokens = self.lex(file);
-        let cst = self.parse(&tokens);
-        let hir = self.lower(&tokens, &cst);
-        let mut declared = Declared::default();
-        if let Some(root) = hir.root {
-            declared.names = hir.members(root).into_iter().map(|b| hir.binders[b].name).collect();
-            each_entry(&hir.namespaces[root].members, &mut |m| {
-                if let Member::Spread(s) = m
-                    && s.select.is_none()
-                    && let Some((_, path)) = hir.path(s.path)
-                {
-                    declared.spreads.push(path);
+        self.by_content(
+            path,
+            |p| &mut p.declared,
+            |s, file| {
+                let tokens = s.lex(file);
+                let cst = s.parse(&tokens);
+                let hir = s.lower(&tokens, &cst);
+                let mut declared = Declared::default();
+                if let Some(root) = hir.root {
+                    declared.names = hir.members(root).into_iter().map(|b| hir.binders[b].name).collect();
+                    each_entry(&hir.namespaces[root].members, &mut |m| {
+                        if let Member::Spread(s) = m
+                            && s.select.is_none()
+                            && let Some((_, path)) = hir.path(s.path)
+                        {
+                            declared.spreads.push(path);
+                        }
+                    });
                 }
-            });
-        }
-        self.packages.declared.insert(hash, declared.clone());
-        Some(declared)
+                declared
+            },
+        )
     }
 }

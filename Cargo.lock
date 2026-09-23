@@ -220,8 +220,10 @@ name = "overt-build"
 version = "0.0.0"
 dependencies = [
  "overt-diag",
+ "overt-fs",
  "overt-grammar",
  "overt-harness",
+ "overt-hash",
  "overt-origin",
  "overt-query",
  "overt-span",
@@ -308,17 +310,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "overt-fs"
+version = "0.0.0"
+
+[[package]]
 name = "overt-grammar"
+version = "0.0.0"
+
+[[package]]
+name = "overt-graph"
 version = "0.0.0"
 
 [[package]]
 name = "overt-harness"
 version = "0.0.0"
+dependencies = [
+ "overt-fs",
+]
 
 [[package]]
 name = "overt-hash"
 version = "0.0.0"
 dependencies = [
+ "overt-fs",
  "sha2",
 ]
 
@@ -332,6 +346,7 @@ dependencies = [
  "overt-index",
  "overt-intern",
  "overt-origin",
+ "overt-outline",
  "overt-span",
  "overt-suggest",
  "overt-syntax",
@@ -477,10 +492,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "overt-outline"
+version = "0.0.0"
+
+[[package]]
 name = "overt-pass"
 version = "0.0.0"
 dependencies = [
  "overt-diag",
+ "overt-graph",
  "overt-origin",
 ]
 
@@ -575,6 +595,7 @@ dependencies = [
  "overt-harness",
  "overt-index",
  "overt-origin",
+ "overt-outline",
  "overt-span",
  "overt-trace",
 ]

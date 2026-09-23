@@ -8,7 +8,7 @@ use overt_diag::{ChildKind, Color, DiagSink, Diagnostic, Msg, errors};
 use overt_render_annotate::AnnotateRenderer;
 use overt_render_ariadne::AriadneRenderer;
 use overt_render_short::ShortRenderer;
-use overt_suggest::closest;
+use overt_suggest::Lookup;
 
 use crate::Session;
 
@@ -55,11 +55,10 @@ pub fn default() -> &'static Format {
 /// Returns a usage error naming the known formats when the value is not one of them.
 pub fn configure(session: &mut Session, args: &Args) -> Result<(), Box<Diagnostic>> {
     let Some(name) = args.value(&FORMAT) else { return Ok(()) };
-    session.format = FORMATS.iter().find(|f| f.name == name).ok_or_else(|| {
-        let names = FORMATS.iter().map(|f| f.name);
+    session.format = FORMATS.lookup(name, |f| f.name).map_err(|near| {
         let msg = Msg::new().text("unknown format ").code(name);
-        let help = closest(name, names.clone())
-            .map_or_else(|| Msg::new().text("formats: ").code_list(names), Msg::did_you_mean);
+        let names = || Msg::new().text("formats: ").code_list(FORMATS.iter().map(|f| f.name));
+        let help = near.map_or_else(names, Msg::did_you_mean);
         Box::new(Diagnostic::error(errors::CLI_INVALID_VALUE, msg).child(ChildKind::Help, help))
     })?;
     Ok(())

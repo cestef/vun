@@ -15,6 +15,21 @@ pub fn closest<'a>(name: &str, candidates: impl IntoIterator<Item = &'a str>) ->
         .map(|(_, c)| c)
 }
 
+/// Finding an item of a table by name, or else the name closest to the one asked for.
+pub trait Lookup<T> {
+    /// The item whose `key` is `name`.
+    ///
+    /// # Errors
+    /// Returns the closest name, if one is close enough, when no item is named `name`.
+    fn lookup<'t>(&'t self, name: &str, key: impl Fn(&'t T) -> &'t str) -> Result<&'t T, Option<&'t str>>;
+}
+
+impl<T> Lookup<T> for [T] {
+    fn lookup<'t>(&'t self, name: &str, key: impl Fn(&'t T) -> &'t str) -> Result<&'t T, Option<&'t str>> {
+        self.iter().find(|t| key(t) == name).ok_or_else(|| closest(name, self.iter().map(&key)))
+    }
+}
+
 /// Levenshtein distance over characters.
 fn distance(a: &str, b: &str) -> usize {
     let b: Vec<char> = b.chars().collect();

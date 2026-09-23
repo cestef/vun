@@ -1,18 +1,14 @@
 //! The text form of a HIR for `overt dump hir`: one node per line, indented by depth, with the
 //! source position of its origin and, for names, what they resolve to.
 
-use std::fmt::Write;
-
 use overt_intern::Interner;
 use overt_origin::{OriginId, OriginTable};
+use overt_outline::{Outline, Outlined};
 use overt_span::SourceMap;
 
 use crate::resolve::{Res, Resolution};
 use crate::tree::{BlockId, DeclId, ExprId, ExprKind, Hir, Lit, Name, NsId, PatId, PatKind, Spread};
 use crate::visit::{self, Visitor};
-
-/// Indentation per tree level.
-const INDENT: usize = 2;
 
 /// Renders `hir` as text.
 #[must_use]
@@ -23,31 +19,32 @@ pub fn dump(
     origins: &OriginTable,
     sources: &dyn SourceMap,
 ) -> String {
-    let mut printer = Printer { out: String::new(), depth: 0, resolution, interner, origins, sources };
+    let mut printer = Printer { out: Outline::new(), resolution, interner, origins, sources };
     if let Some(root) = hir.root {
         printer.namespace(hir, root);
     }
-    printer.out
+    printer.out.finish()
 }
 
 struct Printer<'a> {
-    out: String,
-    depth: usize,
+    out: Outline,
     resolution: &'a Resolution,
     interner: &'a Interner,
     origins: &'a OriginTable,
     sources: &'a dyn SourceMap,
 }
 
+impl Outlined for Printer<'_> {
+    fn outline(&mut self) -> &mut Outline {
+        &mut self.out
+    }
+}
+
 impl Printer<'_> {
     /// Writes one line for a node, then its children one level deeper.
     fn line(&mut self, origin: OriginId, label: &str, children: impl FnOnce(&mut Self)) {
         let at = self.sources.locate(self.origins.source_span(origin)).at;
-        let indent = self.depth * INDENT;
-        let _ = writeln!(self.out, "{:indent$}{label} @{}:{}", "", at.line, at.col);
-        self.depth += 1;
-        children(self);
-        self.depth -= 1;
+        self.node(format_args!("{label} @{}:{}", at.line, at.col), children);
     }
 
     fn name(&self, name: Name) -> String {
