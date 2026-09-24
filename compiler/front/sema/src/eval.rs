@@ -8,11 +8,11 @@
 use std::sync::{Arc, OnceLock};
 
 use overt_hir::db::Parsed;
-use overt_hir::tree::{Entry, ExprKind, Param, PatKind};
+use overt_hir::tree::{BinderId, Entry, ExprKind, Param, PatKind};
 use overt_query::{Cx, Cycle, Query};
 
 use crate::env::Unevaluated;
-use crate::item::ExprRef;
+use crate::item::{ExprRef, Node};
 use crate::ty::Value;
 
 /// A compile-time call: a function value and its arguments. Types built during the call are
@@ -29,6 +29,16 @@ pub struct Instance {
 pub struct Func {
     pub literal: ExprRef,
     pub within: Option<Arc<Instance>>,
+    /// The `$for` bindings of the entries that generated it, which its body sees too.
+    pub staged: Arc<[Staging]>,
+}
+
+/// A `$for` binder bound to one item of its iteration (spec 03, section 2): what that step
+/// generates sees the binder as the item.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct Staging {
+    pub binder: Node<BinderId>,
+    pub value: Value,
 }
 
 pub trait Evaluator: Send + Sync {
@@ -83,7 +93,7 @@ impl Instantiation {
     /// The function literal `f`, outside any call, with no parameter bound.
     #[must_use]
     pub fn plain(f: ExprRef) -> Self {
-        Self { f: Func { literal: f, within: None }, args: Vec::new() }
+        Self { f: Func { literal: f, within: None, staged: Arc::from([]) }, args: Vec::new() }
     }
 
     /// The instantiation `call` runs: its function, with its `$` parameters bound to the call's

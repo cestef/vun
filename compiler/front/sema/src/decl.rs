@@ -12,7 +12,7 @@ use overt_query::{Cx, Cycle, Query};
 
 use crate::Primitive;
 use crate::env::{Env, Unevaluated};
-use crate::eval::Instance;
+use crate::eval::{Instance, Staging};
 use crate::item::DeclRef;
 use crate::target::Target;
 use crate::ty::Value;
@@ -31,7 +31,7 @@ impl Query for DeclValue {
         let decl = &hir.decls[key.decl.id];
         let value = decl.value.ok_or(Unevaluated::Runtime)?;
         if !matches!(hir.exprs[value].kind, ExprKind::Hole) {
-            let types = cx.get::<TypedDecl>(&(key.clone(), None));
+            let types = cx.get::<TypedDecl>(&(key.clone(), None, Vec::new()));
             return env.typed_by(types).eval(value);
         }
         let package = cx.get::<Package>(&key.file.package);
@@ -83,7 +83,11 @@ impl Env<'_, '_> {
         let ty = match (decl.ty, decl.value) {
             (Some(annotation), _) => self.ty(annotation)?,
             (None, Some(value)) => {
-                let key = (DeclRef::new(self.file.clone(), hir, decl_id), self.instance.clone());
+                let key = (
+                    DeclRef::new(self.file.clone(), hir, decl_id),
+                    self.instance.clone(),
+                    self.staged().to_vec(),
+                );
                 let typed = self.cx.get::<TypedDecl>(&key).ok_or(Unevaluated::Unsupported)?;
                 typed.types.get(&value).ok_or(Unevaluated::Unsupported)?.ty
             }
@@ -100,14 +104,15 @@ pub struct TypedDecl;
 
 impl Query for TypedDecl {
     const NAME: &'static str = "typed_decl";
-    type Key = (DeclRef, Option<Instance>);
+    type Key = (DeclRef, Option<Instance>, Vec<Staging>);
     type Value = Option<Arc<TypedBody>>;
 
-    fn compute(cx: &Cx<'_>, (decl, instance): &Self::Key) -> Self::Value {
+    fn compute(cx: &Cx<'_>, (decl, instance, staged): &Self::Key) -> Self::Value {
         let env = match instance {
             Some(instance) => Env::within(cx, instance)?,
             None => Env::of(cx, &decl.file)?,
         };
+        let env = env.staging(staged);
         let mut typer = Typer::new(&env, Stage::Compile);
         typer.decl(&env.parsed.hir, decl.decl.id);
         Some(Arc::new(typer.finish(0)))

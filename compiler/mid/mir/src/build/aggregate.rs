@@ -41,12 +41,13 @@ impl Builder<'_, '_, '_> {
                     self.env.member(Value::Type(ty), *name).map(Operand::Const).map_err(|_| unbuilt)
                 })
             }
-            ExprKind::Member { object, name: Name::Plain(name) } => {
+            ExprKind::Member { object, name } => {
                 // A path to a constant, such as `lang.int.u8`, is its value.
                 if let Ok(value) = self.env.eval(expr) {
                     return Some(Ok(Operand::Const(value)));
                 }
-                let (object, name) = (*object, *name);
+                let Some(name) = self.env.name(name) else { return Some(Err(unbuilt)) };
+                let object = *object;
                 self.operand(object).map(|operand| self.temp(Rvalue::Field { operand, name }, origin))
             }
             ExprKind::Index { object, index } => {

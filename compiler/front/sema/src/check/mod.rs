@@ -65,7 +65,7 @@ impl Visitor for Checker<'_, '_, '_> {
             self.visibility(hir, m);
             if let Member::Decl(d) = m {
                 self.evaluate(hir, *d);
-                let key = (DeclRef::new(self.env.file.clone(), hir, *d), None);
+                let key = (DeclRef::new(self.env.file.clone(), hir, *d), None, Vec::new());
                 if let Some(typed) = self.env.cx.get::<TypedDecl>(&key) {
                     self.diag.absorb(&typed.diag);
                 }

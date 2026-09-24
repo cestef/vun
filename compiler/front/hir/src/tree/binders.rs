@@ -56,6 +56,12 @@ impl Hir {
         decls.into_iter().find(|&d| self.binds(d, |b| b == binder))
     }
 
+    /// The declaration binding `binder`, among members or in a block.
+    #[must_use]
+    pub fn decl_of(&self, binder: BinderId) -> Option<DeclId> {
+        self.decls.iter().map(|(d, _)| d).find(|&d| self.binds(d, |b| b == binder))
+    }
+
     /// The declarations among the members of `ns`, including staged ones.
     fn member_decls(&self, ns: NsId) -> Vec<DeclId> {
         let mut out = Vec::new();

@@ -31,9 +31,20 @@ impl Env<'_, '_> {
             ExprKind::Index { object, index } => self.index(*object, *index),
             ExprKind::Name(_) => match self.parsed.resolution.names[expr] {
                 Some(Res::Binder(b)) if let Some(bound) = self.bindings.get(&b) => Ok(bound.clone()),
+                // A `$` local that is never assigned has the value of its declaration, fixed by
+                // the call evaluated in, such as `$Regs := struct { ... }`.
+                Some(Res::Binder(b))
+                    if hir.binders[b].comptime && !hir.binders[b].mutable && hir.member_decl(b).is_none() =>
+                {
+                    let decl = hir.decl_of(b).ok_or(Unevaluated::Runtime)?;
+                    self.eval(hir.decls[decl].value.ok_or(Unevaluated::Runtime)?)
+                }
                 _ => self.value_of(self.resolve(expr)?),
             },
-            ExprKind::Member { object, name: Name::Plain(name) } => self.member(self.eval(*object)?, *name),
+            ExprKind::Member { object, name } => {
+                let name = self.name(name).ok_or(Unevaluated::Unsupported)?;
+                self.member(self.eval(*object)?, name)
+            }
             ExprKind::Enum(_) => Ok(self.nominal(expr, NominalKind::Enum)),
             ExprKind::Struct(_) => Ok(self.nominal(expr, NominalKind::Struct)),
             ExprKind::Prefix { op: TokenKind::Amp, mode, operand } => self.borrow(expr, *mode, *operand),
@@ -198,7 +209,11 @@ impl Env<'_, '_> {
     #[must_use]
     pub fn func(&self, literal: ExprId) -> Func {
         let within = self.instance.clone().map(Arc::new);
-        Func { literal: ExprRef::new(self.file.clone(), &self.parsed.hir, literal), within }
+        Func {
+            literal: ExprRef::new(self.file.clone(), &self.parsed.hir, literal),
+            within,
+            staged: Arc::from(self.staged.as_slice()),
+        }
     }
 
     /// The type the `struct` or `enum` literal `literal` evaluates to here, identified by the

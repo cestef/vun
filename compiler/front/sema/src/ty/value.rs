@@ -8,7 +8,7 @@ use overt_hir::db::Namespace;
 use super::{Ty, TyKind};
 use crate::Primitive;
 use crate::eval::Func;
-use crate::int::{Integer, Interval};
+use crate::int::{Extended, Integer, Interval};
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Value {
@@ -42,6 +42,23 @@ pub enum Value {
 }
 
 impl Value {
+    /// The items a `$for` steps through: those of an array, or the integers of a finite range.
+    #[must_use]
+    pub fn items(self) -> Option<Vec<Self>> {
+        match self {
+            Self::Array(items) => Some(items),
+            Self::Range(None) => Some(Vec::new()),
+            Self::Range(Some(range)) => {
+                let (Extended::Finite(lo), Extended::Finite(hi)) = (range.lo(), range.hi()) else {
+                    return None;
+                };
+                let (lo, hi) = (lo.to_i128()?, hi.to_i128()?);
+                Some((lo..=hi).map(|n| Self::Int(Integer::from(n))).collect())
+            }
+            _ => None,
+        }
+    }
+
     /// The type of this value, for a value of a type with methods: an integer's is the type of
     /// that integer alone, since every integer type holding it has the same impls.
     #[must_use]

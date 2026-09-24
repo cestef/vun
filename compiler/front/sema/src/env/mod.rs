@@ -16,14 +16,14 @@ use std::sync::Arc;
 use overt_grammar::PATH_SEPARATOR;
 use overt_hir::db::{CheckedNames, FileNames, FileRef, Namespace, Outer, Package, Parsed, ParsedFile, Scope};
 use overt_hir::resolve::Res;
-use overt_hir::tree::{BinderId, Entry, ExprId, ExprKind, Param, PatKind};
+use overt_hir::tree::{BinderId, Entry, ExprId, ExprKind, Name, Param, PatKind};
 use overt_intern::Symbol;
 use overt_origin::OriginTable;
 use overt_query::Cx;
 use overt_span::{SourceFiles, SourceMap};
 
 use crate::decl::DeclValue;
-use crate::eval::{Func, Instance};
+use crate::eval::{Func, Instance, Staging};
 use crate::item::{DeclRef, Declared, ExprRef, Site};
 use crate::member::{Found, MemberValue, Members};
 use crate::trap::Trap;
@@ -49,6 +49,7 @@ pub enum Unevaluated {
     Unsupported,
 }
 
+#[derive(Clone)]
 pub struct Env<'a, 'db> {
     pub cx: &'a Cx<'db>,
     pub file: FileRef,
@@ -58,6 +59,8 @@ pub struct Env<'a, 'db> {
     pub instance: Option<Instance>,
     /// The parameters of that call, bound to its arguments.
     bindings: HashMap<BinderId, Value>,
+    /// The `$for` bindings evaluated under, also among `bindings`.
+    staged: Vec<Staging>,
     /// The types of the expressions evaluated, where typing found them: forms typed by their
     /// context, such as `.{ }` and `.name`, evaluate only with them.
     types: Option<Arc<TypedBody>>,
@@ -74,6 +77,7 @@ impl<'a, 'db> Env<'a, 'db> {
             names: cx.get::<FileNames>(file)?,
             instance: None,
             bindings: HashMap::new(),
+            staged: Vec::new(),
             types: None,
         })
     }
@@ -107,7 +111,51 @@ impl<'a, 'db> Env<'a, 'db> {
         });
         let bound: Vec<_> = binders.zip(args).filter_map(|(b, arg)| Some((b?, arg?))).collect();
         env.bindings.extend(bound);
-        Some(env)
+        Some(env.staging(&f.staged))
+    }
+
+    /// This environment under the `$for` bindings `staged` as well.
+    #[must_use]
+    pub fn staging(mut self, staged: &[Staging]) -> Self {
+        for s in staged {
+            self.bindings.insert(s.binder.id, s.value.clone());
+            self.staged.push(s.clone());
+        }
+        self
+    }
+
+    /// The value `binder` is bound to here: a parameter of the call evaluated in, or a `$for`
+    /// binder.
+    #[must_use]
+    pub fn bound(&self, binder: BinderId) -> Option<&Value> {
+        self.bindings.get(&binder)
+    }
+
+    /// The `$for` bindings evaluated under.
+    #[must_use]
+    pub fn staged(&self) -> &[Staging] {
+        &self.staged
+    }
+
+    /// The symbol `name` spells here: a plain name, or `$(e)` for `e` a string known at compile
+    /// time (spec 03, section 2).
+    #[must_use]
+    pub fn name(&self, name: &Name) -> Option<Symbol> {
+        match name {
+            Name::Plain(name) => Some(*name),
+            Name::Computed(expr) => {
+                let Ok(Value::Array(bytes)) = self.eval(*expr) else { return None };
+                let bytes = bytes
+                    .iter()
+                    .map(|b| match b {
+                        Value::Int(n) => n.to_i128().and_then(|n| u8::try_from(n).ok()),
+                        _ => None,
+                    })
+                    .collect::<Option<Vec<u8>>>()?;
+                Some(Symbol::intern(std::str::from_utf8(&bytes).ok()?))
+            }
+            Name::Index(_) | Name::Hole => None,
+        }
     }
 
     /// This environment, evaluating with the types `types` found.

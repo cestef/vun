@@ -5,7 +5,7 @@
 //! `resume` result carries each item in its variant `yielded`.
 
 use overt_grammar::ITERATION;
-use overt_hir::tree::{BlockId, Cond, ExprId, ForHead};
+use overt_hir::tree::{BlockId, Cond, ExprId, ExprKind, ForHead};
 use overt_intern::Symbol;
 
 use super::{Known, Stage, Typer};
@@ -56,6 +56,20 @@ impl Typer<'_, '_, '_> {
             Ends::With(known) => Some(known),
             Ends::Never | Ends::Unknown => None,
         }
+    }
+
+    /// `label: body`, a labeled loop.
+    pub(super) fn labeled(&mut self, expr: ExprId, label: Symbol, body: ExprId) -> Option<Known> {
+        let hir = self.hir();
+        let ExprKind::For { head, body: block } = &hir.exprs[body].kind else {
+            overt_hir::visit::walk_expr(self, hir, expr);
+            return None;
+        };
+        let known = self.looping(Some(label), head, *block);
+        if let Some(known) = known {
+            self.types.insert(body, known);
+        }
+        known
     }
 
     /// `break label value`: the value joins those of the loop it leaves.

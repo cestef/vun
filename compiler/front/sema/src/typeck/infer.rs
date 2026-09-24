@@ -26,7 +26,13 @@ impl Typer<'_, '_, '_> {
                 compile(TyKind::int(&Interval::singleton(Integer::from(i128::from(u32::from(*c))))))
             }
             ExprKind::Name(_) => self.name(expr),
-            ExprKind::Member { object, name: Name::Plain(name) } => self.member(expr, *object, *name),
+            ExprKind::Member { object, name } => {
+                let Some(name) = self.env.name(name) else {
+                    self.typed(*object);
+                    return None;
+                };
+                self.member(expr, *object, name)
+            }
             ExprKind::StructLit { ty: Some(ty), fields } => {
                 self.typed(*ty);
                 let target = self.ty(*ty);
@@ -71,17 +77,7 @@ impl Typer<'_, '_, '_> {
             }
             ExprKind::If { cond, then, otherwise } => self.branch(expr, cond, *then, *otherwise),
             ExprKind::For { head, body } => self.looping(None, head, *body),
-            ExprKind::Labeled { label, body } => {
-                let ExprKind::For { head, body: block } = &hir.exprs[*body].kind else {
-                    visit::walk_expr(self, hir, expr);
-                    return None;
-                };
-                let known = self.looping(Some(*label), head, *block);
-                if let Some(known) = known {
-                    self.types.insert(*body, known);
-                }
-                known
-            }
+            ExprKind::Labeled { label, body } => self.labeled(expr, *label, *body),
             ExprKind::Postfix { op: TokenKind::DotStar, operand } => {
                 let known = self.typed(*operand)?;
                 Some(Known { ty: known.ty.pointee()?, ..known })
@@ -127,10 +123,14 @@ impl Typer<'_, '_, '_> {
 
     /// A local by the type it was bound with; any other name by its declaration's type.
     fn name(&mut self, expr: ExprId) -> Option<Known> {
-        if let Some(Res::Binder(b)) = self.env.parsed.resolution.names[expr]
-            && let Some(known) = self.locals.get(&b)
-        {
-            return Some(*known);
+        if let Some(Res::Binder(b)) = self.env.parsed.resolution.names[expr] {
+            if let Some(known) = self.locals.get(&b) {
+                return Some(*known);
+            }
+            // A binder the environment binds, such as a `$for` binder: its value's type.
+            if let Some(ty) = self.env.bound(b).and_then(Value::ty) {
+                return Some(Known { ty, stage: Stage::Compile });
+            }
         }
         self.site(self.env.resolve(expr).ok()?)
     }
@@ -186,6 +186,8 @@ impl Typer<'_, '_, '_> {
                 self.env.cx.get::<MemberType>(&(known.ty, name)).ok()
             }
             Found::Variant(_) => None,
+            // A member missing from the type and its impls is not reported yet: the corpus
+            // stand-ins do not declare every member their programs use (HANDOFF).
             Found::Absent | Found::Unknown => {
                 let owner = self.method(expr, known.ty, name)?;
                 self.methods.insert(expr, (owner, name));
