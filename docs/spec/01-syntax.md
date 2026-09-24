@@ -153,6 +153,8 @@ plain function value.
 > by value, `&`, `&mut`, `&out`, `&take` or `&temp`.
 
 Arguments inside `( )` are ordinary expressions, so borrowing them is written out: `f(&mut x)`.
+The place `a` is computed before the arguments, and borrowed after them, so `v.push(v.len())`
+reads `v` before the `&mut v` its receiver takes begins.
 Lookup is `T`'s namespace, then `T`'s impls. If `a: &mut T`, lookup continues to `T`, because a
 borrow type has no namespace of its own. If `T` is an owner (a struct with a `#[kind.owns]`
 pointer field, such as `Own(U)`) lacking the member, lookup continues to `U`: `.` goes where `.*`

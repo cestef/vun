@@ -11,6 +11,14 @@ use overt_sema::ty::Value;
 
 use super::{Builder, Unbuilt};
 use crate::body::{Aggregate, Operand, Rvalue};
+use crate::place::Place;
+
+/// How a method's receiver is passed: borrowed in a mode, from a place computed before the
+/// arguments, or as a value.
+enum Receiver {
+    Borrowed { mode: Option<Symbol>, place: Place, origin: OriginId },
+    Value(Operand),
+}
 
 impl Builder<'_, '_, '_> {
     pub(super) fn call(
@@ -22,13 +30,15 @@ impl Builder<'_, '_, '_> {
     ) -> Result<Operand, Unbuilt> {
         let unbuilt = Unbuilt { at: origin };
         // `a.f(b)` is `T.f(a, b)`, `f` the method the typer found (spec 01, section 4).
-        let (callee, mut values) = match self.method(callee)? {
+        let (callee, receiver) = match self.method(callee)? {
             Some((f, receiver, name)) => {
                 let receiver = self.receiver(&f, receiver, name)?;
-                (f, vec![receiver])
+                (f, Some(receiver))
             }
-            None => (self.operand(callee)?, Vec::new()),
+            None => (self.operand(callee)?, None),
         };
+        // The receiver's slot, filled once the arguments are evaluated.
+        let mut values: Vec<Operand> = receiver.iter().map(|_| Self::unit()).collect();
         // A variant's constructor builds the variant.
         if let Operand::Const(Value::Constructor { ty, name }) = &callee {
             let kind = Aggregate::Variant { ty: *ty, name: *name };
@@ -65,6 +75,15 @@ impl Builder<'_, '_, '_> {
             }
             fill(&mut values);
         }
+        // A borrowed receiver is borrowed after the arguments are evaluated, its place computed
+        // before them: `v.push(v.len())` reads `v` before `&mut v` is taken (two-phase).
+        match receiver {
+            Some(Receiver::Borrowed { mode, place, origin }) => {
+                values[0] = self.temp(Rvalue::Ref { mode, place }, origin);
+            }
+            Some(Receiver::Value(operand)) => values[0] = operand,
+            None => {}
+        }
         Ok(self.temp(Rvalue::Call { callee, args: values }, origin))
     }
 
@@ -82,7 +101,7 @@ impl Builder<'_, '_, '_> {
 
     /// The receiver `a` of `a.f(b)`, passed as `f`'s first parameter asks: a borrow of `a` in
     /// that parameter's mode, or `a` itself (spec 01, section 4).
-    fn receiver(&mut self, f: &Operand, receiver: ExprId, name: Symbol) -> Result<Operand, Unbuilt> {
+    fn receiver(&mut self, f: &Operand, receiver: ExprId, name: Symbol) -> Result<Receiver, Unbuilt> {
         let first = match f {
             Operand::Const(Value::Fn(func)) => Env::inside(self.env.cx, func, [])
                 .and_then(|env| env.literal_signature(func.literal.expr.id, &[]).ok())
@@ -94,9 +113,9 @@ impl Builder<'_, '_, '_> {
                 let origin = self.env.parsed.hir.exprs[receiver].origin;
                 let place = self.reached(receiver, name)?;
                 let mode = (!mode.is_empty()).then(|| Symbol::intern(mode));
-                Ok(self.temp(Rvalue::Ref { mode, place }, origin))
+                Ok(Receiver::Borrowed { mode, place, origin })
             }
-            None => self.operand(receiver),
+            None => self.operand(receiver).map(Receiver::Value),
         }
     }
 }
