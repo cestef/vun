@@ -2,7 +2,8 @@
 //! value in memory is passed by address, a result in memory written through an address; under
 //! the C convention (`#[abi.c]`) such a value is a record of the scalars C sees in it.
 
-use vun_lir::{AbiType, Conv, Ext, Record, Scalar, Signature};
+use vun_desugar::Access;
+use vun_lir::{AbiType, Alias, Conv, Ext, Record, Scalar, Signature};
 use vun_origin::OriginId;
 use vun_sema::layout::Parts;
 use vun_sema::member::Members;
@@ -45,6 +46,12 @@ impl Lowering<'_, '_> {
                 Repr::Scalar(s) if s.is_int() => {
                     let signed = self.types.int(ty).is_some_and(|(_, signed)| signed);
                     Some(AbiType::Int(s, if signed { Ext::Sign } else { Ext::Zero }))
+                }
+                // An exclusive borrow's address reaches what nothing else does while it lives.
+                Repr::Scalar(Scalar::Ptr) => {
+                    let exclusive =
+                        ty.borrowing().is_some_and(|(mode, ..)| mode.access() == Access::Exclusive);
+                    Some(AbiType::Address(if exclusive { Alias::Exclusive } else { Alias::Any }))
                 }
                 Repr::Scalar(s) => Some(AbiType::Scalar(s)),
                 Repr::Memory(_) if conv == Conv::C => Some(AbiType::Record(self.types.record(ty, at)?)),

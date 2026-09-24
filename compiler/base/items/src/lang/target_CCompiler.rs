@@ -8,4 +8,6 @@
 use crate::Item;
 pub const command: Item = Item::new(&["lang", "target", "CCompiler", "command"]);
 pub const flags: Item = Item::new(&["lang", "target", "CCompiler", "flags"]);
+pub const link_flags: Item = Item::new(&["lang", "target", "CCompiler", "link_flags"]);
 pub const atomics: Item = Item::new(&["lang", "target", "CCompiler", "atomics"]);
+pub const frame_sizes: Item = Item::new(&["lang", "target", "CCompiler", "frame_sizes"]);

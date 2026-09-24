@@ -14,12 +14,23 @@ Atomics := enum {
     gnu,
 };
 
-/// The C compiler building a target's C: its command, the flags that give the C backend's rules
-/// (strict C99, memory without type-based aliasing), and what it offers beyond C99.
+/// How a C compiler reports the size of each function's frame.
+FrameSizes := enum {
+    /// It does not.
+    none,
+    /// `-fstack-usage`: a `.su` file beside each object, as GCC and Clang write it.
+    stack_usage,
+};
+
+/// The C compiler building a target's C, and driving its link: its command, the flags that give
+/// the C backend's rules (strict C99, memory without type-based aliasing), those its links take
+/// (bare metal brings no C runtime), and what it offers beyond C99.
 CCompiler := struct {
     command: &[u8],
     flags: &[&[u8]],
+    link_flags: &[&[u8]],
     atomics: Atomics,
+    frame_sizes: FrameSizes,
 };
 
 /// The C types of a target as its C compiler lays them out: the C backend declares its own

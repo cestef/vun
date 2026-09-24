@@ -27,8 +27,10 @@ pub enum Conv {
 /// reaching them by address.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum AbiType {
-    /// A float or an address.
+    /// A float.
     Scalar(Scalar),
+    /// An address, and whether anything else reaches what it does while the call runs.
+    Address(Alias),
     /// An integer, and how it extends to a wider register, as its range reads it: C declares it
     /// signed or unsigned by that.
     Int(Scalar, Ext),
@@ -37,6 +39,15 @@ pub enum AbiType {
         size: u64,
         align: u64,
     },
+}
+
+/// What else reaches what an address passed to a call reaches, while the call runs.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum Alias {
+    /// Anything may.
+    Any,
+    /// Nothing but this address and those made from it: an exclusive borrow (spec 05, section 8).
+    Exclusive,
 }
 
 /// How an integer extends to a wider register: with zeros, or copies of its sign bit.
@@ -60,7 +71,7 @@ impl AbiType {
     pub fn value(&self) -> Scalar {
         match self {
             Self::Scalar(s) | Self::Int(s, _) => *s,
-            Self::Record(_) | Self::Memory { .. } => Scalar::Ptr,
+            Self::Address(_) | Self::Record(_) | Self::Memory { .. } => Scalar::Ptr,
         }
     }
 }
@@ -83,13 +94,13 @@ impl Signature {
         self.params.iter().map(AbiType::value).chain(out).collect()
     }
 
-    /// Whether every integer it passes says how it extends, and nothing else does.
+    /// Whether every integer it passes says how it extends, and every address what aliases it.
     #[must_use]
     pub fn well_formed(&self) -> bool {
         self.params.iter().chain(&self.result).all(|p| match p {
-            AbiType::Scalar(s) => !s.is_int(),
+            AbiType::Scalar(s) => s.is_float(),
             AbiType::Int(s, _) => s.is_int(),
-            AbiType::Record(_) | AbiType::Memory { .. } => true,
+            AbiType::Address(_) | AbiType::Record(_) | AbiType::Memory { .. } => true,
         })
     }
 
@@ -104,6 +115,7 @@ impl Signature {
     pub fn returns(&self) -> Option<Scalar> {
         match &self.result {
             Some(AbiType::Scalar(s) | AbiType::Int(s, _)) => Some(*s),
+            Some(AbiType::Address(_)) => Some(Scalar::Ptr),
             Some(AbiType::Record(_) | AbiType::Memory { .. }) | None => None,
         }
     }

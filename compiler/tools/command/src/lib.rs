@@ -142,6 +142,8 @@ pub enum Outcome {
     Failure,
     /// Command-line misuse, reported as `EX_USAGE` from `sysexits.h`.
     Usage,
+    /// The status a program the command ran exited with, passed on.
+    Exited(u8),
 }
 
 /// Exit status of command-line misuse, from `sysexits.h`.
@@ -153,6 +155,7 @@ impl From<Outcome> for ExitCode {
             Outcome::Success => Self::SUCCESS,
             Outcome::Failure => Self::FAILURE,
             Outcome::Usage => Self::from(EX_USAGE),
+            Outcome::Exited(status) => Self::from(status),
         }
     }
 }

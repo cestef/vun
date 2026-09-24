@@ -485,6 +485,7 @@ version = "0.0.0"
 dependencies = [
  "vun-backend",
  "vun-diag",
+ "vun-hash",
  "vun-index",
  "vun-intern",
  "vun-lir",
@@ -794,7 +795,11 @@ name = "vun-link-gnu"
 version = "0.0.0"
 dependencies = [
  "vun-diag",
+ "vun-fs",
+ "vun-intern",
  "vun-link",
+ "vun-origin",
+ "vun-span",
  "vun-target",
  "vun-tool",
 ]
@@ -1078,6 +1083,9 @@ dependencies = [
 [[package]]
 name = "vun-tool"
 version = "0.0.0"
+dependencies = [
+ "vun-intern",
+]
 
 [[package]]
 name = "vun-trace"

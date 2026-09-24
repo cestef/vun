@@ -7,9 +7,9 @@ use std::fmt;
 use vun_intern::Symbol;
 use vun_items::Item;
 use vun_items::lang::{Option as option, target_C as c, target_CInt as cint, target_Endian as endian};
-use vun_items::lang::{target_Atomics as atomics, target_CCompiler as compiler};
+use vun_items::lang::{target_Atomics as atomics, target_CCompiler as compiler, target_FrameSizes as frames};
 use vun_items::lang::{target_Host as host, target_Spec as spec};
-use vun_target::{Atomics, CCompiler, CInt, CTypes, Endian, Host, TargetSpec};
+use vun_target::{Atomics, CCompiler, CInt, CTypes, Endian, FrameSizes, Host, TargetSpec};
 
 use crate::ty::Value;
 
@@ -147,13 +147,25 @@ impl Read for Atomics {
     }
 }
 
+impl Read for FrameSizes {
+    fn read(value: &Value) -> Result<Self, Unread> {
+        match value {
+            Value::Variant { name, .. } if *name == frames::none.symbol() => Ok(Self::None),
+            Value::Variant { name, .. } if *name == frames::stack_usage.symbol() => Ok(Self::StackUsage),
+            _ => Err(Unread::Record),
+        }
+    }
+}
+
 impl Read for CCompiler {
     fn read(value: &Value) -> Result<Self, Unread> {
         let m = Members::of(value)?;
         Ok(Self {
             command: m.string(compiler::command)?,
             flags: m.strings(compiler::flags)?,
+            link_flags: m.strings(compiler::link_flags)?,
             atomics: m.read(compiler::atomics)?,
+            frame_sizes: m.read(compiler::frame_sizes)?,
         })
     }
 }

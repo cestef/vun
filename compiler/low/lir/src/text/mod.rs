@@ -9,7 +9,7 @@ use std::fmt;
 use vun_origin::OriginId;
 use vun_span::LineCol;
 
-use crate::func::{AbiType, Conv, Ext, Function, Linkage, Record, Signature};
+use crate::func::{AbiType, Alias, Conv, Ext, Function, Linkage, Record, Signature};
 use crate::unit::{ImportKind, Unit};
 
 impl fmt::Display for Conv {
@@ -38,6 +38,8 @@ impl fmt::Display for AbiType {
             Self::Scalar(s) => s.fmt(f),
             Self::Int(s, Ext::Zero) => write!(f, "{s} zext"),
             Self::Int(s, Ext::Sign) => write!(f, "{s} sext"),
+            Self::Address(Alias::Any) => f.write_str("ptr"),
+            Self::Address(Alias::Exclusive) => f.write_str("ptr noalias"),
             Self::Record(r) => r.fmt(f),
             Self::Memory { size, align } => write!(f, "[{size} align {align}]"),
         }

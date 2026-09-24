@@ -3,7 +3,7 @@
 //! the C convention they are `iN` or `uN` as their LIR extension says, and records are `struct`s
 //! passed and returned by value.
 
-use vun_lir::{AbiType, Conv, Ext, Record, Signature};
+use vun_lir::{AbiType, Alias, Conv, Ext, Record, Signature};
 use vun_origin::OriginId;
 
 use super::Emitter;
@@ -22,7 +22,8 @@ impl Emitter<'_> {
         match ty {
             &AbiType::Int(s, ext) if conv == Conv::C => self.int(s.bits(0), ext == Ext::Sign, at),
             &AbiType::Scalar(s) | &AbiType::Int(s, _) => self.scalar(s, at),
-            AbiType::Memory { .. } => Ok(Ty::address()),
+            AbiType::Address(Alias::Exclusive) => Ok(Ty::Restrict(Box::new(Ty::address()))),
+            AbiType::Address(Alias::Any) | AbiType::Memory { .. } => Ok(Ty::address()),
             AbiType::Record(record) => Ok(Ty::Struct(self.record(record, at)?)),
         }
     }

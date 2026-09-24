@@ -14,3 +14,9 @@ vun-diag.workspace = true
 vun-link.workspace = true
 vun-target.workspace = true
 vun-tool.workspace = true
+vun-fs.workspace = true
+vun-intern.workspace = true
+
+[dev-dependencies]
+vun-origin.workspace = true
+vun-span.workspace = true

@@ -206,6 +206,8 @@ pub struct Proto {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Item {
+    /// `#include "name"`: a header of the same program.
+    Include(&'static str),
     Typedef(Decl),
     Aggregate {
         kind: Aggregate,

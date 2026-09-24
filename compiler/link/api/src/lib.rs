@@ -7,6 +7,7 @@
 use std::path::PathBuf;
 
 use vun_diag::{DiagCtxt, Diagnostic, ErrorGuaranteed, Msg, errors};
+use vun_intern::Symbol;
 use vun_origin::OriginId;
 use vun_target::{Name, Support, TargetSpec, Unsupported};
 
@@ -21,7 +22,7 @@ pub enum OutputKind {
 /// A region of target memory, such as flash or RAM.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct MemoryRegion {
-    pub name: String,
+    pub name: Symbol,
     pub origin: u64,
     pub len: u64,
     /// Where the build declared it.
@@ -30,11 +31,11 @@ pub struct MemoryRegion {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SectionPlacement {
-    pub name: String,
+    pub name: Symbol,
     /// Region holding the contents at run time.
-    pub region: String,
+    pub region: Symbol,
     /// Region holding the initial contents, when different (`.data` loaded from flash).
-    pub load_region: Option<String>,
+    pub load_region: Option<Symbol>,
     /// Keep even if unreferenced.
     pub keep: bool,
 }
@@ -47,7 +48,7 @@ pub struct LinkPlan {
     pub output: PathBuf,
     pub kind: OutputKind,
     /// From the target (spec 08, rule 2).
-    pub entry: Option<vun_intern::Symbol>,
+    pub entry: Option<Symbol>,
     pub regions: Vec<MemoryRegion>,
     pub sections: Vec<SectionPlacement>,
 }

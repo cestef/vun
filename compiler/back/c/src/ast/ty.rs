@@ -29,6 +29,8 @@ pub enum Ty {
     Double,
     Pointer(Box<Ty>),
     Volatile(Box<Ty>),
+    /// A pointer through which alone what it reaches is reached (C99's `restrict`).
+    Restrict(Box<Ty>),
     Struct(Ident),
     Union(Ident),
     /// A pointer to a function taking `params` and giving `result`.

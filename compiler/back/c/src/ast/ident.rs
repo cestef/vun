@@ -138,6 +138,11 @@ impl Ident {
 }
 
 impl Own {
+    /// Whether the linker sees it when a program spans several files: functions and data.
+    const fn linked(self) -> bool {
+        matches!(self, Self::Func(_) | Self::Data(_))
+    }
+
     /// An index as the number in a name.
     fn number(i: usize) -> u32 {
         u32::try_from(i).expect("indices fit u32")
@@ -209,16 +214,21 @@ const KEYWORDS: [&str; 37] = [
     "_Imaginary",
 ];
 
-/// The spellings of the names of one file.
+/// The spellings of the names of one program.
+#[derive(Clone)]
 pub struct Names {
     taken: HashSet<&'static str>,
+    /// Marks the functions and data of a program spanning several files, which the linker then
+    /// sees: `p1f3a_f3`, the program's own, never another's.
+    tag: Option<u32>,
 }
 
 impl Names {
-    /// The names of a file declaring or using `symbols`.
+    /// The names of a program declaring or using `symbols`, tagged by `tag` when it spans
+    /// several files.
     #[must_use]
-    pub fn new(symbols: impl IntoIterator<Item = Symbol>) -> Self {
-        Self { taken: KEYWORDS.into_iter().chain(symbols.into_iter().map(Symbol::as_str)).collect() }
+    pub fn new(symbols: impl IntoIterator<Item = Symbol>, tag: Option<u32>) -> Self {
+        Self { taken: KEYWORDS.into_iter().chain(symbols.into_iter().map(Symbol::as_str)).collect(), tag }
     }
 
     /// Whether a link symbol can be written in C as it is: an identifier, not a keyword.
@@ -236,7 +246,10 @@ impl Names {
             Ident::Symbol(s) => Cow::Borrowed(s.as_str()),
             Ident::Builtin(b) => Cow::Borrowed(b.spelling()),
             Ident::Own(own) => {
-                let mut name = own.spelling();
+                let mut name = match self.tag {
+                    Some(tag) if own.linked() => format!("p{tag:x}_{}", own.spelling()),
+                    _ => own.spelling(),
+                };
                 while self.taken.contains(name.as_str()) {
                     name.push('_');
                 }

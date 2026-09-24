@@ -282,11 +282,9 @@ rules go to `decisions.md` as proposed unless the user approves them.
 ## 7. Next steps, in order
 
 0. Backends: the baseline backend (spec 13 section 8.3: x86_64, own encoder and ELF writer, over
-   `vun_lir::analysis`); in the C backend, shards by function hash, `restrict` from aliasing facts,
-   frame sizes (`-fstack-usage`), bare-metal links (linker scripts from `LinkPlan` regions), and
-   coroutine frames in lowering (`Form::Frame`, which stops `ffi/export.vun`). `LinkPlan` and
-   `vun-tool` still carry paths and arguments as `String`s. `Outcome` has no exit status, so
-   `vun run` reports failure, not the program's code.
+   `vun_lir::analysis`); coroutine frames in lowering (`Form::Frame`, which stops
+   `ffi/export.vun`); memory regions from a program's build options into `LinkPlan` (the `gnu`
+   adapter writes scripts from them), and a bare-metal runtime to link against.
 1. `std`: `std.task.Pool`, `std.testing.Sim`; a Linux runtime without the C library; text
    (`Str`) and collections; `print`'s `.fixes`. Generic bodies
    over a constrained `$A: Allocator` are neither typed nor lowered (`a.alloc(...)`), see 5 and 6.

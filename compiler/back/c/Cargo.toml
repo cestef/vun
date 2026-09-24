@@ -14,6 +14,7 @@ vun-backend.workspace = true
 vun-diag.workspace = true
 vun-lir.workspace = true
 vun-target.workspace = true
+vun-hash.workspace = true
 vun-index.workspace = true
 vun-intern.workspace = true
 vun-origin.workspace = true

@@ -3,14 +3,43 @@
 //! Anything the toolchain runs as a separate program goes through [`Tool`], with declared inputs
 //! and outputs so the build can cache and sandbox it (spec 12, section 8).
 
+use std::ffi::OsStr;
 use std::path::PathBuf;
 use std::process::Command;
 
+use vun_intern::Symbol;
+
+pub mod gcc;
+
+/// An argument of a tool: text, or a path, passed as the system spells it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Arg {
+    Text(Symbol),
+    Path(PathBuf),
+}
+
+impl Arg {
+    /// The argument as the system passes it.
+    #[must_use]
+    pub fn os(&self) -> &OsStr {
+        match self {
+            Self::Text(text) => OsStr::new(text.as_str()),
+            Self::Path(path) => path.as_os_str(),
+        }
+    }
+}
+
+impl From<&'static str> for Arg {
+    fn from(text: &'static str) -> Self {
+        Self::Text(Symbol::intern(text))
+    }
+}
+
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Invocation {
-    pub args: Vec<String>,
+    pub args: Vec<Arg>,
     /// Environment variables set for the run; nothing else is inherited when sandboxed.
-    pub env: Vec<(String, String)>,
+    pub env: Vec<(Symbol, Arg)>,
     pub cwd: Option<PathBuf>,
     /// Files the run reads. Part of the cache key.
     pub inputs: Vec<PathBuf>,
@@ -100,8 +129,8 @@ impl Tool for Executable {
 
     fn run(&self, inv: &Invocation) -> std::io::Result<Output> {
         let mut cmd = Command::new(&self.program);
-        cmd.args(&inv.args);
-        cmd.envs(inv.env.iter().map(|(k, v)| (k, v)));
+        cmd.args(inv.args.iter().map(Arg::os));
+        cmd.envs(inv.env.iter().map(|(k, v)| (k.as_str(), v.os())));
         if let Some(cwd) = &inv.cwd {
             cmd.current_dir(cwd);
         }

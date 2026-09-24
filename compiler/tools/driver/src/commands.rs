@@ -127,7 +127,8 @@ fn build(session: &mut Session, args: &Args, _: &mut dyn Write) -> io::Result<Ou
 fn run(session: &mut Session, args: &Args, _: &mut dyn Write) -> io::Result<Outcome> {
     let Some(program) = built(session, args) else { return Ok(session.outcome()) };
     let status = std::process::Command::new(&program).status()?;
-    Ok(if status.success() { Outcome::Success } else { Outcome::Failure })
+    // A program ended by a signal has no status to pass on.
+    Ok(status.code().and_then(|c| u8::try_from(c).ok()).map_or(Outcome::Failure, Outcome::Exited))
 }
 
 /// Applies the options every command takes.

@@ -84,7 +84,7 @@ impl FnEmit<'_, '_> {
                 &AbiType::Int(s, Ext::Sign) if signature.conv == Conv::C => {
                     Expr::Name(param).cast(self.e.scalar(s, func.origin)?)
                 }
-                AbiType::Scalar(_) | AbiType::Int(..) | AbiType::Memory { .. } => {
+                AbiType::Scalar(_) | AbiType::Int(..) | AbiType::Address(_) | AbiType::Memory { .. } => {
                     params.push(Decl::new(ty.clone(), Ident::value(v)));
                     continue;
                 }

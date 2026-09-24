@@ -6,6 +6,7 @@
 use std::path::PathBuf;
 
 use vun_diag::{DiagCtxt, Diagnostic, ErrorGuaranteed, Msg, errors};
+use vun_lir::FuncId;
 use vun_lir::unit::Unit;
 use vun_origin::OriginId;
 use vun_target::{Arches, Name, Support, TargetSpec, Unsupported};
@@ -18,6 +19,8 @@ pub enum Emits {
     Assembly,
     /// Source code, for a compiler tool.
     Source,
+    /// Source other sources include, compiled only through them.
+    Header,
     /// Code in memory.
     Jit,
 }
@@ -67,7 +70,7 @@ impl BackendInfo {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Artifact {
     /// Relative to the output directory.
-    pub name: String,
+    pub name: PathBuf,
     pub kind: Emits,
     pub bytes: Vec<u8>,
 }
@@ -111,4 +114,11 @@ pub trait Backend {
         out: &mut dyn ArtifactSink,
         diag: &mut DiagCtxt,
     ) -> Result<(), ErrorGuaranteed>;
+
+    /// The frame size of each function of `unit`, in bytes, from what the tools building its
+    /// artifacts reported (`report`); none for a backend that reads no report.
+    fn frame_sizes(&self, unit: &Unit, report: &[u8]) -> Vec<(FuncId, u64)> {
+        let _ = (unit, report);
+        Vec::new()
+    }
 }

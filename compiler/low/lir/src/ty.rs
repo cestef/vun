@@ -17,9 +17,6 @@ pub enum Scalar {
 }
 
 impl Scalar {
-    pub const ALL: [Self; 9] =
-        [Self::I8, Self::I16, Self::I32, Self::I64, Self::I128, Self::F16, Self::F32, Self::F64, Self::Ptr];
-
     /// The integers, narrowest first.
     pub const INTEGERS: [Self; 5] = [Self::I8, Self::I16, Self::I32, Self::I64, Self::I128];
 

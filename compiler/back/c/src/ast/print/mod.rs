@@ -54,6 +54,10 @@ impl Printer<'_, '_, '_> {
                 self.ty(to)?;
                 self.f.write_str(if matches!(**to, Ty::Pointer(_)) { "*" } else { " *" })
             }
+            Ty::Restrict(pointer) => {
+                self.ty(pointer)?;
+                self.f.write_str("restrict")
+            }
             Ty::Volatile(ty) => {
                 self.f.write_str("volatile ")?;
                 self.ty(ty)
@@ -128,6 +132,7 @@ impl Printer<'_, '_, '_> {
 
     fn item(&mut self, item: &Item) -> fmt::Result {
         match item {
+            Item::Include(header) => writeln!(self.f, "#include \"{header}\""),
             Item::Typedef(decl) => {
                 self.f.write_str("typedef ")?;
                 self.decl(decl)?;

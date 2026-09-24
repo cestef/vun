@@ -8,10 +8,13 @@ mod ints;
 mod signature;
 
 use std::collections::BTreeSet;
+use std::path::PathBuf;
 
 use vun_backend::Lines;
+use vun_hash::Hash;
 use vun_intern::Symbol;
 use vun_lir::{Address, DataId, FuncId, ImportKind, Linkage, Record, Unit};
+use vun_origin::OriginId;
 use vun_target::TargetSpec;
 
 use crate::ast::{
@@ -24,6 +27,8 @@ pub(crate) struct Emitter<'u> {
     unit: &'u Unit,
     target: &'u TargetSpec,
     lines: &'u dyn Lines,
+    /// Whether the program spans several files.
+    shared: bool,
     /// The records the C convention passes by value, each a `struct` of its fields' types.
     records: Vec<(Record, Vec<Ty>)>,
     /// The sizes copied as one `struct` of bytes.
@@ -35,13 +40,35 @@ pub(crate) struct Emitter<'u> {
     checks: Vec<Item>,
 }
 
+/// A file the backend writes: its name, whether other files include it, and its C.
+pub(crate) struct Source {
+    pub(crate) name: PathBuf,
+    pub(crate) header: bool,
+    pub(crate) file: File,
+}
+
+/// The header of a program spanning several files, which each of them includes.
+pub(crate) const HEADER: &str = "program.h";
+/// The file of a program in one file.
+const PROGRAM: &str = "program.c";
+/// The file defining the data of a program spanning several.
+const DATA: &str = "data.c";
+
 impl<'u> Emitter<'u> {
-    /// The C file of `unit` for `target`.
-    pub(crate) fn file(unit: &'u Unit, target: &'u TargetSpec, lines: &'u dyn Lines) -> Result<File, Lack> {
+    /// The C of `unit` for `target`: one file, or, past `shard` functions, a header, the data and
+    /// shards of functions, each function in the shard its content hashes to.
+    pub(crate) fn sources(
+        unit: &'u Unit,
+        target: &'u TargetSpec,
+        lines: &'u dyn Lines,
+        shard: usize,
+    ) -> Result<Vec<Source>, Lack> {
+        let shards = Self::shards(unit, shard);
         let mut e = Self {
             unit,
             target,
             lines,
+            shared: shards > 1,
             records: Vec::new(),
             copies: BTreeSet::new(),
             helpers: BTreeSet::new(),
@@ -49,17 +76,18 @@ impl<'u> Emitter<'u> {
             checks: Vec::new(),
         };
         let symbols = e.symbols()?;
+        if let Some(at) = unit.functions.iter().map(|(_, f)| f.origin).next() {
+            e.int(unit.pointer_bits, false, at)?;
+        }
         let ints = e.ints();
         let imports = unit.imports.iter().map(|(_, i)| e.import(i)).collect::<Result<Vec<_>, _>>()?;
         let mut protos = Vec::new();
         let mut bodies = Vec::new();
         for (id, func) in unit.functions.iter() {
-            let storage = match func.linkage {
-                Linkage::Export(_) => Storage::Public,
-                Linkage::Internal => Storage::Static,
-            };
+            let storage = e.storage(func.linkage);
             protos.push(Item::Declare(e.proto(storage, e.func(id), &func.signature, func.origin)?));
-            bodies.push(e.define(id, storage)?);
+            let at = usize::try_from(Hash::of_value(func).short()).unwrap_or_default() % shards;
+            bodies.push((at, e.define(id, storage)?));
         }
         let data = e.objects()?;
         // A link symbol spelling a builtin the file uses would hide it.
@@ -68,31 +96,88 @@ impl<'u> Emitter<'u> {
                 unit.functions.iter().map(|(_, f)| f.origin).next().expect("builtins are used by functions");
             return Err(Missing::Symbol(clash).at(at));
         }
-        let mut items = ints;
-        items.extend(e.types());
-        items.extend(data.types);
-        items.append(&mut e.checks);
-        items.extend(e.helpers());
-        items.extend(imports);
-        items.extend(protos);
-        items.extend(data.objects);
-        items.extend(bodies);
-        Ok(File { names: Names::new(symbols), items })
+        let mut common = ints;
+        common.extend(e.types());
+        common.extend(data.types);
+        common.append(&mut e.checks);
+        common.extend(e.helpers());
+        common.extend(imports);
+        common.extend(protos);
+        common.extend(data.declared);
+        let names = Self::names(unit, shard);
+        let file = |items| File { names: names.clone(), items };
+        if !e.shared {
+            common.extend(data.defined);
+            common.extend(bodies.into_iter().map(|(_, body)| body));
+            return Ok(vec![Source { name: PathBuf::from(PROGRAM), header: false, file: file(common) }]);
+        }
+        let include = || Item::Include(HEADER);
+        let mut sources = vec![
+            Source { name: PathBuf::from(HEADER), header: true, file: file(common) },
+            Source {
+                name: PathBuf::from(DATA),
+                header: false,
+                file: file([include()].into_iter().chain(data.defined).collect()),
+            },
+        ];
+        let mut shard_items: Vec<Vec<Item>> = (0..shards).map(|_| vec![include()]).collect();
+        for (at, body) in bodies {
+            shard_items[at].push(body);
+        }
+        for (i, items) in shard_items.into_iter().enumerate() {
+            sources.push(Source {
+                name: PathBuf::from(format!("shard{i}.c")),
+                header: false,
+                file: file(items),
+            });
+        }
+        Ok(sources)
+    }
+
+    /// How many shards the functions of `unit` fill, `shard` in each.
+    fn shards(unit: &Unit, shard: usize) -> usize {
+        unit.functions.len().div_ceil(shard.max(1)).max(1)
+    }
+
+    /// The spellings of the names of `unit`'s C, tagged when it spans several files.
+    pub(crate) fn names(unit: &Unit, shard: usize) -> Names {
+        let tag = (Self::shards(unit, shard) > 1)
+            .then(|| u32::try_from(Hash::of_value(unit).short() & u64::from(u32::MAX)).unwrap_or_default());
+        Names::new(Self::linked(unit).map(|(s, _)| s), tag)
+    }
+
+    /// The link symbols of `unit`, exported or imported, with where each is written.
+    fn linked(unit: &Unit) -> impl Iterator<Item = (Symbol, OriginId)> {
+        let exported = |linkage: Linkage, at| match linkage {
+            Linkage::Export(s) => Some((s, at)),
+            Linkage::Internal => None,
+        };
+        let functions = unit.functions.iter().filter_map(move |(_, f)| exported(f.linkage, f.origin));
+        let data = unit.data.iter().filter_map(move |(_, d)| exported(d.linkage, d.origin));
+        functions.chain(data).chain(unit.imports.iter().map(|(_, i)| (i.symbol, i.origin)))
+    }
+
+    /// The name of function `id` of `unit`.
+    pub(crate) fn func_ident(unit: &Unit, id: FuncId) -> Ident {
+        match unit.functions[id].linkage {
+            Linkage::Export(s) => Ident::Symbol(s),
+            Linkage::Internal => Ident::func(id),
+        }
+    }
+
+    /// Who sees a definition of the unit: exports the linker; the rest this file, or, in a
+    /// program spanning several, each of them, under tagged names.
+    fn storage(&self, linkage: Linkage) -> Storage {
+        match linkage {
+            Linkage::Export(_) => Storage::Public,
+            Linkage::Internal if self.shared => Storage::Public,
+            Linkage::Internal => Storage::Static,
+        }
     }
 
     /// The unit's link symbols, each checked writable in C.
     fn symbols(&self) -> Result<Vec<Symbol>, Lack> {
-        let unit = self.unit;
-        let linked = |linkage: Linkage, at| match linkage {
-            Linkage::Export(s) => Some((s, at)),
-            Linkage::Internal => None,
-        };
-        let functions = unit.functions.iter().filter_map(|(_, f)| linked(f.linkage, f.origin));
-        let data = unit.data.iter().filter_map(|(_, d)| linked(d.linkage, d.origin));
-        let imports = unit.imports.iter().map(|(_, i)| (i.symbol, i.origin));
-        functions
-            .chain(data)
-            .chain(imports)
+        Self::linked(self.unit)
             .map(|(s, at)| if Names::writable(s) { Ok(s) } else { Err(Missing::Symbol(s).at(at)) })
             .collect()
     }
@@ -113,10 +198,7 @@ impl<'u> Emitter<'u> {
     }
 
     fn func(&self, id: FuncId) -> Ident {
-        match self.unit.functions[id].linkage {
-            Linkage::Export(s) => Ident::Symbol(s),
-            Linkage::Internal => Ident::func(id),
-        }
+        Self::func_ident(self.unit, id)
     }
 
     fn data_name(&self, id: DataId) -> Ident {

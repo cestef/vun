@@ -76,6 +76,12 @@ pub(super) const DUMPS: &[Command<Session>] = &[
         params: &[FILE, crate::codegen::BACKEND],
         action: Action::Run(|s, args, out| Stage::Code.dump(s, args, out)),
     },
+    Command {
+        name: "frames",
+        about: "the frame size of each function of the program a root file exports, as its tools report them",
+        params: &[FILE, crate::codegen::BACKEND],
+        action: Action::Run(|s, args, out| Stage::Frames.dump(s, args, out)),
+    },
     Command::planned("link", "the link plan"),
 ];
 
@@ -89,6 +95,7 @@ enum Stage {
     Program,
     Lir,
     Code,
+    Frames,
     Layout,
     Manifest,
     Plan,
@@ -164,6 +171,7 @@ impl Stage {
                 }
             }
             Self::Code => session.dump_code(file, args.value(&crate::codegen::BACKEND), out)?,
+            Self::Frames => session.dump_frames(file, args.value(&crate::codegen::BACKEND), out)?,
             Self::Program => {
                 let program = session.program(file);
                 for &(at, symbol) in &program.exports {

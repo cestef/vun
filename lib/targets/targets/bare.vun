@@ -1,53 +1,24 @@
-//! Bare metal: no system; a program brings its own runtime (spec 08).
+//! Bare metal: no system; a program brings its own runtime (spec 08), links without the C
+//! runtime, and starts at its reset handler.
+
+/// A 32-bit bare-metal target of `arch` and `cpu`, following `abi`, built with `command`.
+_on := ($arch: lang.meta.Name, $cpu: lang.meta.Name, $abi: lang.meta.Name, $command: &[u8]) -> lang.target.Spec {
+    .{
+        .arch = arch,
+        .cpu = cpu,
+        .os = .bare,
+        .abi = abi,
+        .pointer_bits = 32,
+        .endian = .little,
+        .object_format = .elf,
+        .entry_symbol = .some("Reset"),
+        .default_backend = .c,
+        .default_linker = .lld,
+        .c = targets.ilp32(targets.gnu(command, &["-nostdlib", "-nostartfiles"])),
+    }
+};
 
 /// ARM Cortex-M4 with its floating-point unit (Thumb-2, hard-float EABI).
-cortex_m4f := lang.target.Spec{
-    .arch = .arm,
-    .cpu = .cortex_m4f,
-    .os = .bare,
-    .abi = .eabihf,
-    .pointer_bits = 32,
-    .endian = .little,
-    .object_format = .elf,
-    .entry_symbol = .some("Reset"),
-    .default_backend = .c,
-    .default_linker = .lld,
-    .c = lang.target.C{
-        .short = .{ .bits = 16, .align = 2 },
-        .int = .{ .bits = 32, .align = 4 },
-        .long = .{ .bits = 32, .align = 4 },
-        .long_long = .{ .bits = 64, .align = 8 },
-        .pointer_align = 4,
-        .compiler = .{
-            .command = "arm-none-eabi-gcc",
-            .flags = &["-std=c99", "-fno-strict-aliasing"],
-            .atomics = .gnu,
-        },
-    },
-};
-
+cortex_m4f := _on(.arm, .cortex_m4f, .eabihf, "arm-none-eabi-gcc");
 /// 32-bit RISC-V with multiplication and compressed instructions (RV32IMC).
-rv32imc := lang.target.Spec{
-    .arch = .riscv32,
-    .cpu = .rv32imc,
-    .os = .bare,
-    .abi = .ilp32,
-    .pointer_bits = 32,
-    .endian = .little,
-    .object_format = .elf,
-    .entry_symbol = .some("Reset"),
-    .default_backend = .c,
-    .default_linker = .lld,
-    .c = lang.target.C{
-        .short = .{ .bits = 16, .align = 2 },
-        .int = .{ .bits = 32, .align = 4 },
-        .long = .{ .bits = 32, .align = 4 },
-        .long_long = .{ .bits = 64, .align = 8 },
-        .pointer_align = 4,
-        .compiler = .{
-            .command = "riscv32-unknown-elf-gcc",
-            .flags = &["-std=c99", "-fno-strict-aliasing"],
-            .atomics = .gnu,
-        },
-    },
-};
+rv32imc := _on(.riscv32, .rv32imc, .ilp32, "riscv32-unknown-elf-gcc");

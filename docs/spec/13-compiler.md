@@ -357,11 +357,26 @@ c` shows it, and `vun build` and `vun run` compile and link it.
   calls, naked functions, link sections, and atomics where the compiler has no builtins
   (`backend.lacks`).
 
+- **Aliasing.** An address a signature passes says what else reaches what it reaches
+  (`AbiType::Address(Alias)`): an exclusive borrow is `Alias::Exclusive` (spec 05, section 8), and
+  C declares it `restrict`.
+- **Shards.** A program of more functions than a shard holds (`SHARD`, 256) spans a header every
+  file includes (types, checks, declarations), a file of its data, and shards of functions, each
+  function in the shard its content hash gives, so the files compile in parallel and a changed
+  function recompiles one shard. Its functions and data are then seen by the linker, under names
+  tagged by the unit's content hash (`p1f3a_f3`), never another program's.
+
 The C compiler is target data (`lang.target.CCompiler`): its command, the flags the rules above
-need (`-std=c99 -fno-strict-aliasing`), and its atomics. `vun build` writes the backend's
-artifacts under `.vun/build/<content hash>/` next to the root file, compiles each source with it
-through `vun-tool`, and links with the target's linker; the `gnu` adapter drives GNU ld through
-the same compiler, which brings the C runtime's start files and libraries.
+need (`-std=c99 -ffreestanding -fno-strict-aliasing`: the output is freestanding C, declaring all
+it uses, so no function name means anything to the compiler), the flags its links take (bare
+metal: `-nostdlib -nostartfiles`), its atomics, and how it reports frame sizes
+(`lang.target.FrameSizes`). `vun build` writes the backend's artifacts under
+`.vun/build/<content hash>/` next to the root file, compiles each source with it through
+`vun-tool`, in parallel, with `-fstack-usage` where it has it (`vun dump frames` prints the sizes
+read back, `Backend::frame_sizes`), and links with the target's linker. The `gnu` adapter drives
+GNU ld through the same compiler; a plan's memory regions and section placement become a linker
+script, built as data (`Script`) and printed once. Tool arguments are typed (`vun_tool::Arg`:
+text or a path), and `vun run` passes the program's exit status on.
 
 ### 8.3 The baseline backend
 

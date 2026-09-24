@@ -12,16 +12,5 @@ wasm32 := lang.target.Spec{
     .entry_symbol = .some("_start"),
     .default_backend = .llvm,
     .default_linker = .lld,
-    .c = lang.target.C{
-        .short = .{ .bits = 16, .align = 2 },
-        .int = .{ .bits = 32, .align = 4 },
-        .long = .{ .bits = 32, .align = 4 },
-        .long_long = .{ .bits = 64, .align = 8 },
-        .pointer_align = 4,
-        .compiler = .{
-            .command = "clang",
-            .flags = &["-std=c99", "-fno-strict-aliasing"],
-            .atomics = .gnu,
-        },
-    },
+    .c = targets.ilp32(targets.gnu("clang", &[])),
 };

@@ -1,5 +1,6 @@
 //! Target descriptions, a namespace per system and a target per CPU: `targets.<system>.<cpu>`,
-//! such as `targets.linux.x86_64` or `targets.bare.cortex_m4f`.
+//! such as `targets.linux.x86_64` or `targets.bare.cortex_m4f`. What targets share is declared
+//! here once: the C backend's flags, the C compilers, and the C models.
 
 /// The machines the toolchain runs on, named as the toolchain names them (the architecture and
 /// system Rust's `std::env::consts` report), and the target each builds for unless told otherwise.
@@ -8,4 +9,37 @@ hosts := .{
     lang.target.Host{ .arch = .aarch64, .os = .linux, .target = targets.linux.arm64 },
     lang.target.Host{ .arch = .riscv64, .os = .linux, .target = targets.linux.riscv64 },
     lang.target.Host{ .arch = .aarch64, .os = .macos, .target = targets.macos.arm64 },
+};
+
+/// The flags giving the C backend's rules (spec 13, section 8.2): strict C99, freestanding C,
+/// memory without type-based aliasing.
+c_flags: &[&[u8]] = &["-std=c99", "-ffreestanding", "-fno-strict-aliasing"];
+
+/// A GCC or Clang driver, run as `command`, its links taking `link_flags`.
+gnu := ($command: &[u8], $link_flags: &[&[u8]]) -> lang.target.CCompiler {
+    .{ .command = command, .flags = c_flags, .link_flags = link_flags, .atomics = .gnu, .frame_sizes = .stack_usage }
+};
+
+/// The C types where `long` and addresses are 64 bits (LP64), built by `compiler`.
+lp64 := ($compiler: lang.target.CCompiler) -> lang.target.C {
+    .{
+        .short = .{ .bits = 16, .align = 2 },
+        .int = .{ .bits = 32, .align = 4 },
+        .long = .{ .bits = 64, .align = 8 },
+        .long_long = .{ .bits = 64, .align = 8 },
+        .pointer_align = 8,
+        .compiler = compiler,
+    }
+};
+
+/// The C types where `int`, `long` and addresses are 32 bits (ILP32), built by `compiler`.
+ilp32 := ($compiler: lang.target.CCompiler) -> lang.target.C {
+    .{
+        .short = .{ .bits = 16, .align = 2 },
+        .int = .{ .bits = 32, .align = 4 },
+        .long = .{ .bits = 32, .align = 4 },
+        .long_long = .{ .bits = 64, .align = 8 },
+        .pointer_align = 4,
+        .compiler = compiler,
+    }
 };

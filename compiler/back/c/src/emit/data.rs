@@ -8,7 +8,7 @@
 use std::collections::BTreeSet;
 
 use vun_index::IndexVec;
-use vun_lir::{Address, DataId, Linkage};
+use vun_lir::{Address, DataId};
 
 use super::Emitter;
 use crate::ast::{Aggregate, Binary, Decl, Expr, Ident, Item, Storage, Ty};
@@ -17,8 +17,11 @@ use crate::lack::{Lack, Missing};
 /// The items of the unit's data.
 pub(super) struct Objects {
     pub(super) types: Vec<Item>,
-    /// Declarations the cycles need, then every definition, in order.
-    pub(super) objects: Vec<Item>,
+    /// The declarations definitions need first: those cycles need, or, in a program spanning
+    /// several files, each object's, for the files using it.
+    pub(super) declared: Vec<Item>,
+    /// Every definition, in order.
+    pub(super) defined: Vec<Item>,
 }
 
 /// Where the walk ordering data objects is at one.
@@ -39,18 +42,17 @@ impl Emitter<'_> {
             let (aggregates, decl, init) = self.object(id)?;
             types.extend(aggregates);
             let data = &self.unit.data[id];
-            let storage = match data.linkage {
-                Linkage::Internal => Storage::Static,
-                Linkage::Export(_) => Storage::Public,
-            };
-            let object = |init| Item::Object { storage, constant: !data.writable, decl: decl.clone(), init };
-            if cyclic.contains(&id) {
-                declared.push(object(None));
+            let storage = self.storage(data.linkage);
+            let object =
+                |storage, init| Item::Object { storage, constant: !data.writable, decl: decl.clone(), init };
+            if self.shared {
+                declared.push(object(Storage::Extern, None));
+            } else if cyclic.contains(&id) {
+                declared.push(object(storage, None));
             }
-            defined.push(object(Some(init)));
+            defined.push(object(storage, Some(init)));
         }
-        declared.extend(defined);
-        Ok(Objects { types, objects: declared })
+        Ok(Objects { types, declared, defined })
     }
 
     /// The data objects, each after those it points to, and those a cycle reaches before their

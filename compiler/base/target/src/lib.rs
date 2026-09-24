@@ -52,12 +52,22 @@ pub enum Atomics {
     Gnu,
 }
 
-/// `lang.target.CCompiler`: the C compiler building a target's C.
+/// `lang.target.FrameSizes`: how a C compiler reports frame sizes.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum FrameSizes {
+    None,
+    /// `-fstack-usage`, a `.su` file beside each object.
+    StackUsage,
+}
+
+/// `lang.target.CCompiler`: the C compiler building a target's C, and driving its link.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct CCompiler {
     pub command: Symbol,
     pub flags: Vec<Symbol>,
+    pub link_flags: Vec<Symbol>,
     pub atomics: Atomics,
+    pub frame_sizes: FrameSizes,
 }
 
 /// `lang.target.C`: the C types of a target, and its C compiler.

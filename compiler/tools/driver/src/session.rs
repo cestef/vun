@@ -29,6 +29,7 @@ use vun_syntax::literal::Decl;
 use vun_syntax::tokens::Tokens;
 use vun_target::TargetSpec;
 
+use crate::Registry;
 use crate::formats::Format;
 use crate::packages::{LIBRARY, Packages};
 
@@ -52,6 +53,8 @@ pub struct Session {
     pub choice: Choice,
     /// The target, once chosen, or the report that none is.
     pub target: Option<Result<TargetSpec, ErrorGuaranteed>>,
+    /// The backends and linkers compiled into this toolchain.
+    pub registry: Registry,
 }
 
 impl Default for Session {
@@ -70,6 +73,7 @@ impl Default for Session {
             schemes: Schemes::default(),
             choice: Choice::host(),
             target: None,
+            registry: Registry::with_defaults(),
         }
     }
 }

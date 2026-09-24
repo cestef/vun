@@ -1,9 +1,10 @@
+use vun_backend::{Backend, Emits};
 use vun_index::Idx;
 use vun_intern::Symbol;
-use vun_lir::{AbiType, Builder, Conv, Ext, Linkage, Scalar, Signature, Terminator, Unit, Value};
+use vun_lir::{AbiType, Builder, Conv, Ext, FuncId, Linkage, Scalar, Signature, Terminator, Unit, Value};
 use vun_origin::{OriginId, OriginTable};
 use vun_span::{SourceFiles, Span};
-use vun_target::{Atomics, CCompiler, CInt, CTypes, Endian, TargetSpec};
+use vun_target::{Atomics, CCompiler, CInt, CTypes, Endian, FrameSizes, TargetSpec};
 
 use crate::ast::{Ident, Names};
 use crate::lack::Missing;
@@ -35,7 +36,13 @@ fn target() -> TargetSpec {
             long: int(64, 8),
             long_long: int(64, 8),
             pointer_align: 8,
-            compiler: CCompiler { command: name("cc"), flags: Vec::new(), atomics: Atomics::None },
+            compiler: CCompiler {
+                command: name("cc"),
+                flags: Vec::new(),
+                link_flags: Vec::new(),
+                atomics: Atomics::None,
+                frame_sizes: FrameSizes::StackUsage,
+            },
         },
     }
 }
@@ -48,15 +55,20 @@ impl vun_backend::Lines for NoLines {
     }
 }
 
-/// A unit exporting `symbol`, returning a constant of `ty`.
-fn constant(symbol: &str, ty: Scalar, origin: OriginId) -> Unit {
+/// A function of `linkage` returning a constant of `ty`.
+fn returning(linkage: Linkage, ty: Scalar, origin: OriginId) -> vun_lir::Function {
     let result = if ty.is_int() { AbiType::Int(ty, Ext::Zero) } else { AbiType::Scalar(ty) };
     let signature = Signature { conv: Conv::Vun, params: Vec::new(), result: Some(result) };
-    let mut b = Builder::new(Linkage::Export(Symbol::intern(symbol)), signature, origin);
+    let mut b = Builder::new(linkage, signature, origin);
     let v = b.constant(ty, 7, origin);
     b.terminate(Terminator::Return(Some(v)));
+    b.finish()
+}
+
+/// A unit exporting `symbol`, returning a constant of `ty`.
+fn constant(symbol: &str, ty: Scalar, origin: OriginId) -> Unit {
     let mut unit = Unit { pointer_bits: 64, ..Unit::default() };
-    unit.functions.push(b.finish());
+    unit.functions.push(returning(Linkage::Export(Symbol::intern(symbol)), ty, origin));
     unit
 }
 
@@ -64,17 +76,44 @@ fn constant(symbol: &str, ty: Scalar, origin: OriginId) -> Unit {
 fn what_c99_lacks_is_refused_where_it_is_needed() {
     let origins = OriginTable::new();
     let at = origin(&origins);
-    let wide = CBackend::source(&constant("wide", Scalar::I128, at), &target(), &NoLines);
+    let wide = CBackend::default().sources(&constant("wide", Scalar::I128, at), &target(), &NoLines);
     assert_eq!(wide, Err(Lack { missing: Missing::Int128, at }));
-    let keyword = CBackend::source(&constant("int", Scalar::I32, at), &target(), &NoLines);
+    let keyword = CBackend::default().sources(&constant("int", Scalar::I32, at), &target(), &NoLines);
     assert_eq!(keyword, Err(Lack { missing: Missing::Symbol(Symbol::intern("int")), at }));
-    assert!(CBackend::source(&constant("seven", Scalar::I32, at), &target(), &NoLines).is_ok());
+    assert!(CBackend::default().sources(&constant("seven", Scalar::I32, at), &target(), &NoLines).is_ok());
 }
 
 #[test]
 fn own_names_step_aside_for_link_symbols() {
-    let names = Names::new([Symbol::intern("v3"), Symbol::intern("v3_")]);
+    let names = Names::new([Symbol::intern("v3"), Symbol::intern("v3_")], None);
     assert_eq!(names.spell(Ident::value(Value::new(3))), "v3__");
     assert_eq!(names.spell(Ident::value(Value::new(4))), "v4");
     assert_eq!(names.spell(Ident::Symbol(Symbol::intern("v3"))), "v3");
+}
+
+#[test]
+fn a_program_past_a_shard_spans_a_header_its_data_and_shards() {
+    let origins = OriginTable::new();
+    let at = origin(&origins);
+    let mut unit = constant("seven", Scalar::I32, at);
+    for _ in 0..3 {
+        unit.functions.push(returning(Linkage::Internal, Scalar::I64, at));
+    }
+    let sharded = CBackend { shard: 2 }.sources(&unit, &target(), &NoLines).unwrap();
+    let kinds: Vec<Emits> = sharded.iter().map(|a| a.kind).collect();
+    assert_eq!(kinds, [Emits::Header, Emits::Source, Emits::Source, Emits::Source]);
+    let whole = CBackend::default().sources(&unit, &target(), &NoLines).unwrap();
+    assert_eq!(whole.iter().map(|a| a.kind).collect::<Vec<_>>(), [Emits::Source]);
+}
+
+#[test]
+fn frame_sizes_are_read_by_function() {
+    let origins = OriginTable::new();
+    let at = origin(&origins);
+    let mut unit = constant("seven", Scalar::I32, at);
+    unit.functions.push(returning(Linkage::Internal, Scalar::I64, at));
+    let report =
+        b"program.c:3:5:seven\t16\tstatic\nprogram.c:9:12:f1\t48\tstatic\nother.c:1:1:elsewhere\t8\tstatic\n";
+    let sizes = CBackend::default().frame_sizes(&unit, report);
+    assert_eq!(sizes, [(FuncId::new(0), 16), (FuncId::new(1), 48)]);
 }

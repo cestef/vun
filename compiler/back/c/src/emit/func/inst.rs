@@ -184,8 +184,8 @@ impl FnEmit<'_, '_> {
                 let place = self.operand(out.expect("a record result has an address")).at(c.result.clone());
                 self.body.push(Stmt::Assign(place, call(passed)));
             }
-            Some(AbiType::Scalar(s) | AbiType::Int(s, _)) => {
-                let s = *s;
+            Some(given @ (AbiType::Scalar(_) | AbiType::Int(..) | AbiType::Address(_))) => {
+                let s = given.value();
                 let signed =
                     matches!(signature.result, Some(AbiType::Int(_, Ext::Sign))) && signature.conv == Conv::C;
                 let value = if signed { call(passed).cast(self.e.scalar(s, at)?) } else { call(passed) };

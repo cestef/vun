@@ -9,3 +9,12 @@ use crate::Item;
 /// The machines the toolchain runs on, named as the toolchain names them (the architecture and
 /// system Rust's `std::env::consts` report), and the target each builds for unless told otherwise.
 pub const hosts: Item = Item::new(&["targets", "hosts"]);
+/// The flags giving the C backend's rules (spec 13, section 8.2): strict C99, freestanding C,
+/// memory without type-based aliasing.
+pub const c_flags: Item = Item::new(&["targets", "c_flags"]);
+/// A GCC or Clang driver, run as `command`, its links taking `link_flags`.
+pub const gnu: Item = Item::new(&["targets", "gnu"]);
+/// The C types where `long` and addresses are 64 bits (LP64), built by `compiler`.
+pub const lp64: Item = Item::new(&["targets", "lp64"]);
+/// The C types where `int`, `long` and addresses are 32 bits (ILP32), built by `compiler`.
+pub const ilp32: Item = Item::new(&["targets", "ilp32"]);

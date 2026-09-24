@@ -12,7 +12,10 @@ use vun_origin::{OriginId, OriginTable};
 use vun_span::{FileId, SourceFiles, SourceMap};
 use vun_suggest::Lookup;
 
-use crate::{Registry, Session};
+use vun_lir::Unit;
+use vun_target::TargetSpec;
+
+use crate::Session;
 
 pub const BACKEND: Param = Param {
     name: "backend",
@@ -54,8 +57,8 @@ impl Session {
         out: &mut dyn std::io::Write,
     ) -> std::io::Result<()> {
         match self.code(file, backend) {
-            Ok(artifacts) => {
-                for artifact in artifacts {
+            Ok(coded) => {
+                for artifact in coded.artifacts {
                     out.write_all(&artifact.bytes)?;
                 }
             }
@@ -69,36 +72,57 @@ impl Session {
     }
 
     /// The artifacts of the program rooted at `file`, from the backend named `backend`, or the
-    /// target's default.
+    /// target's default, with what made them.
     ///
     /// # Errors
     /// Returns why there is no code: the program does not lower, or a report says why.
     ///
     /// # Panics
     /// Never: naming a file chooses the target.
-    pub fn code(&mut self, file: FileId, backend: Option<&str>) -> Result<Vec<Artifact>, Uncoded> {
+    pub fn code(&mut self, file: FileId, backend: Option<&str>) -> Result<Coded, Uncoded> {
         let lowered = self.lir(file);
         let target =
             self.target.clone().expect("naming a file chooses the target").map_err(Uncoded::Reported)?;
-        let unit = match &*lowered {
-            Ok(unit) => unit,
-            Err(unlowered) => return Err(Uncoded::Unlowered(unlowered.clone())),
-        };
-        let registry = Registry::with_defaults();
-        let backends: Vec<&dyn Backend> = registry.backends().collect();
+        if let Err(unlowered) = &*lowered {
+            return Err(Uncoded::Unlowered(unlowered.clone()));
+        }
+        let backends: Vec<&dyn Backend> = self.registry.backends().collect();
         let name = backend.unwrap_or(target.default_backend.as_str());
-        let backend = backends.lookup(name, |b| b.info().id.0).map_err(|near| {
+        let chosen = backends.iter().position(|b| b.info().id.0 == name);
+        let Some(index) = chosen else {
+            let near = backends.lookup(name, |b| b.info().id.0).err().flatten();
             let msg = Msg::new().text("unknown backend ").code(name);
             let names = || Msg::new().text("backends: ").code_list(backends.iter().map(|b| b.info().id.0));
             let help = near.map_or_else(names, Msg::did_you_mean);
-            Uncoded::Reported(
-                self.diag
-                    .error(Diagnostic::error(errors::CLI_INVALID_VALUE, msg).child(ChildKind::Help, help)),
-            )
-        })?;
+            let d = Diagnostic::error(errors::CLI_INVALID_VALUE, msg).child(ChildKind::Help, help);
+            return Err(Uncoded::Reported(self.diag.error(d)));
+        };
         let lines = SourceLines { sources: Arc::clone(&self.sources), origins: Arc::clone(&self.origins) };
+        let unit = lowered.as_ref().as_ref().expect("checked above");
         let mut artifacts = Vec::new();
-        backend.emit(unit, &target, &lines, &mut artifacts, &mut self.diag).map_err(Uncoded::Reported)?;
-        Ok(artifacts)
+        backends[index]
+            .emit(unit, &target, &lines, &mut artifacts, &mut self.diag)
+            .map_err(Uncoded::Reported)?;
+        Ok(Coded { artifacts, backend: index, lowered, target })
+    }
+}
+
+/// What a backend made of a program, and what made it.
+pub struct Coded {
+    pub artifacts: Vec<Artifact>,
+    /// The backend, by its position in the session's registry.
+    pub backend: usize,
+    pub lowered: Arc<Result<Unit, Unlowered>>,
+    pub target: TargetSpec,
+}
+
+impl Coded {
+    /// The unit the artifacts are made of.
+    ///
+    /// # Panics
+    /// Never: only lowered programs are coded.
+    #[must_use]
+    pub fn unit(&self) -> &Unit {
+        self.lowered.as_ref().as_ref().expect("coded programs are lowered")
     }
 }

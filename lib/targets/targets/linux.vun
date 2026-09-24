@@ -1,79 +1,25 @@
 //! Linux, with the GNU C library.
 
+/// A 64-bit Linux target of `arch`, built with the system's C compiler.
+_on := ($arch: lang.meta.Name) -> lang.target.Spec {
+    .{
+        .arch = arch,
+        .cpu = .generic,
+        .os = .linux,
+        .abi = .gnu,
+        .pointer_bits = 64,
+        .endian = .little,
+        .object_format = .elf,
+        .entry_symbol = .some("_start"),
+        .default_backend = .cranelift,
+        .default_linker = .gnu,
+        .c = targets.lp64(targets.gnu("cc", &[])),
+    }
+};
+
 /// 64-bit x86.
-x86_64 := lang.target.Spec{
-    .arch = .x86_64,
-    .cpu = .generic,
-    .os = .linux,
-    .abi = .gnu,
-    .pointer_bits = 64,
-    .endian = .little,
-    .object_format = .elf,
-    .entry_symbol = .some("_start"),
-    .default_backend = .cranelift,
-    .default_linker = .gnu,
-    .c = lang.target.C{
-        .short = .{ .bits = 16, .align = 2 },
-        .int = .{ .bits = 32, .align = 4 },
-        .long = .{ .bits = 64, .align = 8 },
-        .long_long = .{ .bits = 64, .align = 8 },
-        .pointer_align = 8,
-        .compiler = .{
-            .command = "cc",
-            .flags = &["-std=c99", "-fno-strict-aliasing"],
-            .atomics = .gnu,
-        },
-    },
-};
-
+x86_64 := _on(.x86_64);
 /// 64-bit ARM (AArch64).
-arm64 := lang.target.Spec{
-    .arch = .arm64,
-    .cpu = .generic,
-    .os = .linux,
-    .abi = .gnu,
-    .pointer_bits = 64,
-    .endian = .little,
-    .object_format = .elf,
-    .entry_symbol = .some("_start"),
-    .default_backend = .cranelift,
-    .default_linker = .gnu,
-    .c = lang.target.C{
-        .short = .{ .bits = 16, .align = 2 },
-        .int = .{ .bits = 32, .align = 4 },
-        .long = .{ .bits = 64, .align = 8 },
-        .long_long = .{ .bits = 64, .align = 8 },
-        .pointer_align = 8,
-        .compiler = .{
-            .command = "cc",
-            .flags = &["-std=c99", "-fno-strict-aliasing"],
-            .atomics = .gnu,
-        },
-    },
-};
-
+arm64 := _on(.arm64);
 /// 64-bit RISC-V with the general extensions (RV64GC).
-riscv64 := lang.target.Spec{
-    .arch = .riscv64,
-    .cpu = .generic,
-    .os = .linux,
-    .abi = .gnu,
-    .pointer_bits = 64,
-    .endian = .little,
-    .object_format = .elf,
-    .entry_symbol = .some("_start"),
-    .default_backend = .cranelift,
-    .default_linker = .gnu,
-    .c = lang.target.C{
-        .short = .{ .bits = 16, .align = 2 },
-        .int = .{ .bits = 32, .align = 4 },
-        .long = .{ .bits = 64, .align = 8 },
-        .long_long = .{ .bits = 64, .align = 8 },
-        .pointer_align = 8,
-        .compiler = .{
-            .command = "cc",
-            .flags = &["-std=c99", "-fno-strict-aliasing"],
-            .atomics = .gnu,
-        },
-    },
-};
+riscv64 := _on(.riscv64);

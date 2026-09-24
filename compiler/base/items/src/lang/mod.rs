@@ -138,5 +138,6 @@ pub mod target_C;
 pub mod target_CCompiler;
 pub mod target_CInt;
 pub mod target_Endian;
+pub mod target_FrameSizes;
 pub mod target_Host;
 pub mod target_Spec;
