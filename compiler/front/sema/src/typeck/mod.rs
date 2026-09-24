@@ -5,9 +5,12 @@
 //! Function bodies are typed one at a time ([`Typed`]); the value of a declaration outside a body
 //! is typed where it is checked, and by [`crate::decl::DeclType`] where it is named.
 
+mod block;
 mod control;
 mod expect;
+mod expected;
 mod infer;
+mod pattern;
 #[cfg(test)]
 mod tests;
 
@@ -15,8 +18,8 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 use std::sync::Arc;
 
 use overt_diag::DiagCtxt;
-use overt_hir::tree::{BinderId, BlockId, DeclId, Entry, ExprId, ExprKind, Hir, NsId, PatKind, Stmt};
-use overt_hir::visit::{self, Visitor};
+use overt_hir::tree::{BinderId, BlockId, DeclId, Entry, ExprId, ExprKind, Hir, NsId, PatKind};
+use overt_hir::visit::Visitor;
 use overt_query::{Cx, Query};
 
 use crate::env::Env;
@@ -68,7 +71,8 @@ impl Query for Typed {
             Some(r) => typer.ty(*r),
             None => Some(TyKind::unit()),
         };
-        let found = typer.block_value(*body);
+        typer.result = result;
+        let found = typer.block_value(*body, result);
         if let (Some(found), Some(result)) = (found, result) {
             let at = hir.blocks[*body].tail.map_or(hir.blocks[*body].origin, |t| hir.exprs[t].origin);
             typer.expect(at, found, result, *returns);
@@ -87,6 +91,11 @@ pub struct Typer<'e, 'a, 'db> {
     /// Member expressions naming a declaration through a value: `p.norm` in `p.norm()`, whose
     /// call passes `p` first (spec 01, section 4).
     methods: HashSet<ExprId>,
+    /// The type expected of an expression where its context says, for forms typed by it:
+    /// `.name`, `.{ }` (spec 01, section 2).
+    expected: HashMap<ExprId, Ty>,
+    /// The result type of the function typed, which `return` values are checked against.
+    result: Option<Ty>,
     pub diag: DiagCtxt,
 }
 
@@ -99,6 +108,8 @@ impl<'e, 'a, 'db> Typer<'e, 'a, 'db> {
             types: HashMap::new(),
             locals: HashMap::new(),
             methods: HashSet::new(),
+            expected: HashMap::new(),
+            result: None,
             diag: DiagCtxt::new(),
         }
     }
@@ -119,22 +130,17 @@ impl<'e, 'a, 'db> Typer<'e, 'a, 'db> {
         self.types.get(&expr).copied()
     }
 
-    /// Types the statements of `block`, and gives its value: the tail, `()` without one, or
-    /// nothing known when a statement leaves the block.
-    fn block_value(&mut self, block: BlockId) -> Option<Known> {
-        let hir = self.hir();
-        visit::walk_block(self, hir, block);
-        let b = &hir.blocks[block];
-        if let Some(tail) = b.tail {
-            return self.types.get(&tail).copied();
+    /// Types `expr` where a value of type `expected` is wanted, if one is.
+    pub fn typed_as(&mut self, expr: ExprId, expected: Option<Ty>) -> Option<Known> {
+        if let Some(expected) = expected {
+            self.expected.insert(expr, expected);
         }
-        let leaves = b.stmts.iter().any(|s| {
-            matches!(s, Entry::One(Stmt::Expr(e)) if matches!(
-                hir.exprs[*e].kind,
-                ExprKind::Return(_) | ExprKind::Break { .. } | ExprKind::Continue { .. }
-            ))
-        });
-        (!leaves).then(|| Known { ty: TyKind::unit(), stage: Stage::Compile })
+        self.typed(expr)
+    }
+
+    /// The type the context of `expr` expects, if it says.
+    fn expected(&self, expr: ExprId) -> Option<Ty> {
+        self.expected.get(&expr).copied()
     }
 }
 
@@ -143,21 +149,18 @@ impl Visitor for Typer<'_, '_, '_> {
     fn namespace(&mut self, _: &Hir, _: NsId) {}
 
     fn block(&mut self, _: &Hir, block: BlockId) {
-        self.block_value(block);
+        self.block_value(block, None);
     }
 
     /// `x := e` takes the type of `e`; `x: T = e` checks `e` against `T` and takes `T`.
     fn decl(&mut self, hir: &Hir, decl: DeclId) {
         let d = &hir.decls[decl];
-        let found = d.value.and_then(|v| self.typed(v));
         let annotated = d.ty.and_then(|t| self.ty(t));
+        let found = d.value.and_then(|v| self.typed_as(v, annotated));
         if let (Some(found), Some(expected), Some(value)) = (found, annotated, d.value) {
             self.expect(hir.exprs[value].origin, found, expected, d.ty);
         }
-        if let (PatKind::Bind(binder), Some(ty)) = (&hir.pats[d.pat].kind, annotated.or(found.map(|k| k.ty)))
-        {
-            self.bind(*binder, ty);
-        }
+        self.pattern(d.pat, annotated.or(found.map(|k| k.ty)), None);
     }
 
     fn expr(&mut self, hir: &Hir, expr: ExprId) {

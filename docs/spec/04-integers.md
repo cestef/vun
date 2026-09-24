@@ -25,7 +25,8 @@ no separate compile-time integer type.
 1. **Arithmetic is exact.** `a + b` has the range computed by interval arithmetic on the operand
    types. `+`, `-`, `*` never overflow. `(a + b) / 2` is correct for every pair of `u32`.
 2. **Widening is implicit.** `Int(R)` is accepted where `Int(S)` is expected iff `R` lies within `S`.
-   It cannot lose information, so it is not a conversion.
+   It cannot lose information, so it is not a conversion. Tuples and arrays widen item by item:
+   `(1, 2)` is accepted where `(u8, u8)` is expected.
 3. **Narrowing is explicit**, through four `std` methods over `lang` primitives:
    - `x.to(T)`: traps if `x` is out of range;
    - `x.wrap(T)`: modular reduction, for power-of-two ranges;

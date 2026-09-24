@@ -15,7 +15,7 @@ use crate::int::{Integer, Interval};
 use crate::item::{Declared, Site};
 use crate::member::{Found, MemberType, Members};
 use crate::primitives::lang::Lang;
-use crate::ty::{TyKind, Value};
+use crate::ty::{Ty, TyKind, Value};
 
 impl Typer<'_, '_, '_> {
     pub(super) fn infer(&mut self, hir: &Hir, expr: ExprId) -> Option<Known> {
@@ -27,8 +27,25 @@ impl Typer<'_, '_, '_> {
             }
             ExprKind::Name(_) => self.name(expr),
             ExprKind::Member { object, name: Name::Plain(name) } => self.member(expr, *object, *name),
-            ExprKind::StructLit { ty: Some(ty), fields } => self.struct_lit(*ty, fields),
-            ExprKind::Block(block) => self.block_value(*block),
+            ExprKind::StructLit { ty: Some(ty), fields } => {
+                self.typed(*ty);
+                let target = self.ty(*ty);
+                self.struct_lit(target, fields)
+            }
+            ExprKind::StructLit { ty: None, fields } => self.struct_lit(self.expected(expr), fields),
+            ExprKind::DotName(Name::Plain(name)) => self.dot(expr, *name),
+            ExprKind::Tuple(items) => self.tuple(expr, items),
+            ExprKind::Match { scrutinee, arms } => self.matching(expr, *scrutinee, arms),
+            ExprKind::Return(value) => {
+                if let Some(value) = value {
+                    let found = self.typed_as(*value, self.result);
+                    if let (Some(found), Some(result)) = (found, self.result) {
+                        self.expect(hir.exprs[*value].origin, found, result, None);
+                    }
+                }
+                None
+            }
+            ExprKind::Block(block) => self.block_value(*block, self.expected(expr)),
             ExprKind::Prefix { op: TokenKind::Dollar, operand, .. } => {
                 let outer = std::mem::replace(&mut self.stage, Stage::Compile);
                 let known = self.typed(*operand);
@@ -39,16 +56,25 @@ impl Typer<'_, '_, '_> {
             ExprKind::Infix { op: TokenKind::And | TokenKind::Or, left, right: Some(right) } => {
                 self.logic(&[*left, *right])
             }
-            ExprKind::If { cond, then, otherwise } => self.branch(hir, cond, *then, *otherwise),
+            ExprKind::If { cond, then, otherwise } => self.branch(expr, cond, *then, *otherwise),
             ExprKind::Prefix { op: TokenKind::Minus, operand, .. } => {
                 let known = self.typed(*operand)?;
                 Some(Known { ty: TyKind::int(&known.ty.interval()?.neg()), ..known })
             }
             ExprKind::Infix { op, left, right: Some(right) } => {
-                let (left, right) = (self.typed(*left), self.typed(*right));
+                // The right operand is expected of the left's type: `c == .red`.
+                let left = self.typed(*left);
+                let right = self.typed_as(*right, left.map(|k| k.ty));
                 self.binary(expr, *op, left?, right?)
             }
-            ExprKind::Call { callee, args } => self.call(*callee, args),
+            ExprKind::Call { callee, args } => {
+                if let (ExprKind::DotName(_), Some(expected)) =
+                    (&hir.exprs[*callee].kind, self.expected(expr))
+                {
+                    self.expected.insert(*callee, expected);
+                }
+                self.call(*callee, args)
+            }
             // A function literal is a value; its body is typed on its own.
             ExprKind::Fn { params, returns, .. } => compile(self.env.signature(params, *returns).ok()?.ty()),
             ExprKind::FnType { .. } | ExprKind::Struct(_) | ExprKind::Enum(_) => {
@@ -124,10 +150,9 @@ impl Typer<'_, '_, '_> {
         }
     }
 
-    /// `T{ .name = value, ... }`: each field's value is checked against the field's type.
-    fn struct_lit(&mut self, ty: ExprId, fields: &[Entry<Arg>]) -> Option<Known> {
-        self.typed(ty);
-        let target = self.ty(ty);
+    /// `T{ .name = value, ... }`, or `.{ ... }` of the expected type: each field's value is
+    /// typed as the field and checked against it.
+    fn struct_lit(&mut self, target: Option<Ty>, fields: &[Entry<Arg>]) -> Option<Known> {
         let members = target.and_then(|t| self.env.cx.get::<Members>(&t));
         let mut stage = Stage::Compile;
         for field in fields {
@@ -135,27 +160,32 @@ impl Typer<'_, '_, '_> {
                 stage = Stage::Run.max(self.stage);
                 continue;
             };
-            let found = self.typed(*value);
-            stage = stage.max(found.map_or(self.stage, |k| k.stage));
-            let (Some(members), Some(Name::Plain(name)), Some(found)) = (&members, name, found) else {
-                continue;
-            };
             let at = self.hir().exprs[*value].origin;
-            match members.find(*name) {
-                Found::Field(field) => {
-                    self.check_visible(*value, *name, &field.visible);
-                    if let Ok(expected) = field.ty {
-                        self.expect(at, found, expected, None);
+            let found = match (&members, name) {
+                (Some(members), Some(Name::Plain(name))) => match members.find(*name) {
+                    Found::Field(field) => {
+                        self.check_visible(*value, *name, &field.visible);
+                        let expected = field.ty.as_ref().ok().copied();
+                        let found = self.typed_as(*value, expected);
+                        if let (Some(found), Some(expected)) = (found, expected) {
+                            self.expect(at, found, expected, None);
+                        }
+                        found
                     }
-                }
-                Found::Absent | Found::Decl(_) | Found::Variant(_) => self.no_member(at, target?, *name),
-                Found::Unknown => {}
-            }
+                    Found::Absent | Found::Decl(_) | Found::Variant(_) => {
+                        self.no_member(at, target?, *name);
+                        self.typed(*value)
+                    }
+                    Found::Unknown => self.typed(*value),
+                },
+                _ => self.typed(*value),
+            };
+            stage = stage.max(found.map_or(self.stage, |k| k.stage));
         }
         Some(Known { ty: target?, stage })
     }
 
-    fn site(&self, site: Site) -> Option<Known> {
+    pub(super) fn site(&self, site: Site) -> Option<Known> {
         match site {
             Site::Decl(decl) => self.env.cx.get::<DeclType>(&decl).ok(),
             Site::Namespace(_) => None,
@@ -189,11 +219,17 @@ impl Typer<'_, '_, '_> {
     /// it has the result type.
     fn call(&mut self, callee: ExprId, args: &[Entry<Arg>]) -> Option<Known> {
         let signature = self.typed(callee).and_then(|k| k.ty.signature());
+        // A method's receiver is passed in the mode its first parameter asks for.
+        let receiver = usize::from(self.methods.contains(&callee));
         let hir = self.hir();
         let (mut found, mut positional) = (Vec::new(), true);
         for arg in args {
             match arg {
-                Entry::One(Arg { name: None, value }) => found.push((*value, self.typed(*value))),
+                Entry::One(Arg { name: None, value }) => {
+                    let param =
+                        signature.as_ref().and_then(|s| s.params.get(receiver + found.len()).copied());
+                    found.push((*value, self.typed_as(*value, param)));
+                }
                 Entry::One(Arg { value, .. }) => {
                     positional = false;
                     self.typed(*value);
@@ -207,8 +243,6 @@ impl Typer<'_, '_, '_> {
             }
         }
         let signature = signature.filter(|_| positional)?;
-        // A method's receiver is passed in the mode its first parameter asks for.
-        let receiver = usize::from(self.methods.contains(&callee));
         let params = signature.params.get(receiver..)?;
         if params.len() != found.len() {
             return None;

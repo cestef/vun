@@ -91,3 +91,35 @@ constant := () -> Point { Point.origin };
         ]
     );
 }
+
+#[test]
+fn expected_types_type_dot_names_literals_tuples_and_matches() {
+    let app = "\
+Color := enum { red, green, blue(u8) };
+Point := struct { x: u8, y: u8 };
+pick := (c: Color) -> u8 { match c { .red => 1, .green => 2, .blue(n) => n } };
+bad := (c: Color) -> u8 { match c { .red => 1, .purple => 2, .blue(n) => n + 300 } };
+make := () -> Color { .blue(3) };
+wrong := () -> Color { .blue(300) };
+unknown := () -> Color { .yellow };
+anon := () -> Point { .{ .x = 1, .z = 2 } };
+early := (x: u8) -> u8 { return x + 1; };
+assign := () { mut y: u8 = 0; y = 256; };
+pair := () -> (u8, u8) { (1, 2) };
+wide := () -> (u8, u8) { (1, 300) };
+test := (c: Color) -> u8 { if .blue(n) = c { n } else { 0 } };
+";
+    assert_eq!(
+        reported(app),
+        [
+            "types.no_member: no member `purple` in `Color`",
+            "int.does_not_fit: value does not fit the type `u8`",
+            "int.does_not_fit: value does not fit the type `Int(0..=255)`",
+            "types.no_member: no member `yellow` in `Color`",
+            "types.no_member: no member `z` in `Point`",
+            "int.does_not_fit: value does not fit the type `Int(0..=255)`",
+            "int.does_not_fit: value does not fit the type `Int(0..=255)`",
+            "int.does_not_fit: value does not fit the type `Int(0..=255)`",
+        ]
+    );
+}

@@ -81,11 +81,19 @@ impl TyKind {
     }
 
     /// Whether a value of type `found` is accepted where this type is expected: integers whose
-    /// range lies within (spec 04, rule 2), or the type itself.
+    /// range lies within (spec 04, rule 2), tuples and arrays whose items are, or the type itself.
     #[must_use]
     pub fn accepts(&self, found: &Self) -> bool {
-        match (self.interval(), found.interval()) {
-            (Some(expected), Some(found)) => expected.contains(&found),
+        if let (Some(expected), Some(found)) = (self.interval(), found.interval()) {
+            return expected.contains(&found);
+        }
+        match (self, found) {
+            (Self::Tuple(expected), Self::Tuple(found)) => {
+                expected.len() == found.len() && expected.iter().zip(found).all(|(e, f)| e.accepts(f))
+            }
+            (Self::Array { len, elem }, Self::Array { len: found_len, elem: found_elem }) => {
+                len == found_len && elem.accepts(found_elem)
+            }
             _ => self == found,
         }
     }
@@ -94,18 +102,35 @@ impl TyKind {
     /// `borrows` (appendix B), which have no namespace of their own (spec 01, section 4).
     #[must_use]
     pub fn borrowed(&self) -> Option<Ty> {
+        self.borrow().map(|(_, ty)| ty)
+    }
+
+    /// The borrow type constructor and the type borrowed, for a borrow type.
+    #[must_use]
+    pub fn borrow(&self) -> Option<(Primitive, Ty)> {
         let Self::Primitive(p, args) = self else { return None };
         let [Value::Type(ty)] = args.as_slice() else { return None };
         let borrow = BORROWS.iter().filter_map(|(_, item)| item.rsplit_once(PATH_SEPARATOR));
-        borrow.into_iter().any(|(ns, name)| ns == p.namespace() && name == p.name()).then_some(*ty)
+        borrow.into_iter().any(|(ns, name)| ns == p.namespace() && name == p.name()).then_some((*p, *ty))
     }
 
-    /// The type values of both `self` and `other` have: the hull of two integer ranges, or the
-    /// type itself; `None` when they have none in common.
+    /// The type values of both `self` and `other` have: the hull of two integer ranges, item by
+    /// item for tuples and arrays, or the type itself; `None` when they have none in common.
     #[must_use]
     pub fn join(&self, other: &Self) -> Option<Ty> {
-        match (self.interval(), other.interval()) {
-            (Some(a), Some(b)) => Some(Self::int(&a.hull(&b))),
+        if let (Some(a), Some(b)) = (self.interval(), other.interval()) {
+            return Some(Self::int(&a.hull(&b)));
+        }
+        match (self, other) {
+            (Self::Tuple(a), Self::Tuple(b)) if a.len() == b.len() => {
+                let items = a.iter().zip(b).map(|(a, b)| a.join(b)).collect::<Option<_>>()?;
+                Some(Self::Tuple(items).intern())
+            }
+            (Self::Array { len, elem }, Self::Array { len: other_len, elem: other_elem })
+                if len == other_len =>
+            {
+                Some(Self::Array { len: len.clone(), elem: elem.join(other_elem)? }.intern())
+            }
             _ => (self == other).then(|| self.clone().intern()),
         }
     }

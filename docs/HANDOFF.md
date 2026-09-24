@@ -163,7 +163,7 @@ bodies, so `$for`/`$if` work in every list context; node kinds are chosen after 
 (postorder). One report per position; missing things are reported at the end of the previous
 token; nesting capped at 256; the keyword hint suggests `\keyword`.
 
-Tests: 155, including unit tests per crate, `tests/lexer.rs`, `tests/parser.rs` (all of `lib/` and
+Tests: 156, including unit tests per crate, `tests/lexer.rs`, `tests/parser.rs` (all of `lib/` and
 `corpus/accept` parse clean and verify, CST and token snapshots mirroring the corpus tree), CLI parsing tests, the
 generated-files-current test and the corpus test (no failing corpus file). Fuzz: `parse` ran 600k inputs in 4 minutes
 without a failure. clippy pedantic is clean.
@@ -222,8 +222,13 @@ In order:
      `return`, uninitialized locals and assignments to locals (`build/{loops,assign}.rs`);
      `x op= y` is `Rvalue::Narrow` with the place's type from `Typed` and the table `COMPOUND`;
      `Value::narrow`; the interpreter's `BUDGET` per call. Traps (decision 73): `trap::{Trap, Reason}` in `Unevaluated::Trapped(Box<Trap>)`, placed and traced by `Unevaluated::through(origin)` as they propagate (interpreter statements, `Env` calls); `Trap::report(root)`; reported by `Typer::ty` for annotations and by the checker, which computes every top-level value.
-     Next: `match`, narrowing by comparisons (decision 35), `if p = e`, `for p in e`,
-     `.name` with an expected enum type, `#[comptime.fuel]`.
+     Expected types (decision 74): `Typer::{typed_as, expected}` and `result`;
+     `typeck/{block,expected,pattern}.rs`: statements and assignments, `.name` (`dot`), tuples,
+     patterns against types (`pattern`, `test` through borrows), `match` (`matching`),
+     `if p = e`; `Typer::join` for branches; `TyKind::{accepts, join}` item by item.
+     Next: values of these forms at compile time (`Env` evaluating with an expected type, MIR
+     aggregates and `match` lowering), exhaustiveness (decision 29), narrowing by comparisons
+     (decision 35), `for p in e`, `#[comptime.fuel]`.
    - Struct declarations are typed in their instance (`MemberType`); bodies of generic functions are typed
      only where no `$` parameter is needed (`Typed(ExprRef)`), not per instance yet.
    - `types.no_member` on a value waits for impls: a method may come from a witness (spec 02,
