@@ -201,3 +201,23 @@ raised := large(30);
     let reported: Vec<_> = fixture.reported(&file).into_iter().map(|(id, _)| id).collect();
     assert_eq!(reported, [errors::COMPTIME_EXHAUSTED]);
 }
+
+#[test]
+fn places_are_read_and_written_in_parts() {
+    let fixture = Fixture::new("comptime-places");
+    let file = fixture.root.write(
+        "places.ov",
+        "\
+Pair := struct { a: u32, b: u32 };
+swap := ($p: Pair) -> Pair { mut q := p; q.a = p.b; q.b = p.a; q };
+first := () -> u32 { mut xs: [3]u32 = [1, 2, 3]; xs[0] = 7; xs[0] };
+past := () -> u32 { xs: [2]u32 = [1, 2]; i: u32 = 5; xs[i] };
+swapped := swap(Pair{ .a = 1, .b = 2 });
+a: Int(0..=swapped.a) = 3;
+seven: Int(0..=first()) = 8;
+end: Int(0..=past()) = 0;
+",
+    );
+    let reported: Vec<_> = fixture.reported(&file).into_iter().map(|(id, _)| id).collect();
+    assert_eq!(reported, [errors::INT_DOES_NOT_FIT, errors::INT_DOES_NOT_FIT, errors::COMPTIME_TRAP]);
+}

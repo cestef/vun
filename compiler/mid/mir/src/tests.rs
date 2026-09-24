@@ -13,11 +13,7 @@ fn body(origins: &OriginTable, edit: impl FnOnce(&mut Body)) -> Body {
     let mut locals = IndexVec::new();
     let ret = locals.push(LocalDecl { name: None, origin });
     let param = locals.push(LocalDecl { name: None, origin });
-    let stmt = Stmt {
-        place: Place { local: ret },
-        value: Rvalue::Use(Operand::Place(Place { local: param })),
-        origin,
-    };
+    let stmt = Stmt { place: Place::of(ret), value: Rvalue::Use(Operand::Place(Place::of(param))), origin };
     let mut blocks = IndexVec::new();
     blocks.push(Block { stmts: vec![stmt], term: Terminator { kind: TerminatorKind::Return, origin } });
     let mut body = Body { locals, params: vec![param], ret, blocks, origin };
@@ -29,7 +25,7 @@ fn body(origins: &OriginTable, edit: impl FnOnce(&mut Body)) -> Body {
 fn the_verifier_accepts_a_body_and_rejects_dangling_names() {
     let origins = OriginTable::new();
     assert_eq!(body(&origins, |_| {}).verify(&origins), Ok(()));
-    let unknown = body(&origins, |b| b.blocks[Idx::new(0)].stmts[0].place = Place { local: Idx::new(7) });
+    let unknown = body(&origins, |b| b.blocks[Idx::new(0)].stmts[0].place = Place::of(Idx::new(7)));
     let at = Entity::Stmt { block: 0, index: 0 };
     assert_eq!(unknown.verify(&origins), Err(Malformed::UnknownLocal { at, local: 7 }));
     let jump = body(&origins, |b| b.blocks[Idx::new(0)].term.kind = TerminatorKind::Goto(Idx::new(3)));

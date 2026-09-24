@@ -6,7 +6,7 @@ use overt_hir::tree::{BlockId as HirBlock, Cond, ExprId};
 use overt_origin::OriginId;
 
 use super::{Builder, Unbuilt};
-use crate::body::{Block, BlockId, LocalDecl, Operand, Rvalue, Terminator, TerminatorKind};
+use crate::body::{Block, BlockId, Local, LocalDecl, Operand, Rvalue, Terminator, TerminatorKind};
 use crate::place::Place;
 
 impl Builder<'_, '_, '_> {
@@ -22,8 +22,8 @@ impl Builder<'_, '_, '_> {
     }
 
     /// A new local for the value of the expression at `origin`.
-    pub(super) fn result(&mut self, origin: OriginId) -> Place {
-        Place { local: self.locals.push(LocalDecl { name: None, origin }) }
+    pub(super) fn result(&mut self, origin: OriginId) -> Local {
+        self.locals.push(LocalDecl { name: None, origin })
     }
 
     /// `if cond { then } else { otherwise }`; without `else`, the value is `()`.
@@ -41,17 +41,17 @@ impl Builder<'_, '_, '_> {
         self.terminate(TerminatorKind::Branch { cond, then: yes, otherwise: no }, origin);
         self.current = yes;
         let value = self.block(then)?;
-        self.assign(result, Rvalue::Use(value), origin);
+        self.assign(Place::of(result), Rvalue::Use(value), origin);
         self.terminate(TerminatorKind::Goto(join), origin);
         self.current = no;
         let value = match otherwise {
             Some(e) => self.operand(e)?,
             None => Self::unit(),
         };
-        self.assign(result, Rvalue::Use(value), origin);
+        self.assign(Place::of(result), Rvalue::Use(value), origin);
         self.terminate(TerminatorKind::Goto(join), origin);
         self.current = join;
-        Ok(Operand::Place(result))
+        Ok(Operand::Place(Place::of(result)))
     }
 
     /// `left and right`, `left or right`: `right` runs only when `left` does not decide.
@@ -64,9 +64,9 @@ impl Builder<'_, '_, '_> {
     ) -> Result<Operand, Unbuilt> {
         let result = self.result(origin);
         let value = self.operand(left)?;
-        self.assign(result, Rvalue::Use(value), origin);
+        self.assign(Place::of(result), Rvalue::Use(value), origin);
         let (rest, join) = (self.fresh(origin), self.fresh(origin));
-        let cond = Operand::Place(result);
+        let cond = Operand::Place(Place::of(result));
         let kind = if op == TokenKind::And {
             TerminatorKind::Branch { cond, then: rest, otherwise: join }
         } else {
@@ -75,9 +75,9 @@ impl Builder<'_, '_, '_> {
         self.terminate(kind, origin);
         self.current = rest;
         let value = self.operand(right)?;
-        self.assign(result, Rvalue::Use(value), origin);
+        self.assign(Place::of(result), Rvalue::Use(value), origin);
         self.terminate(TerminatorKind::Goto(join), origin);
         self.current = join;
-        Ok(Operand::Place(result))
+        Ok(Operand::Place(Place::of(result)))
     }
 }

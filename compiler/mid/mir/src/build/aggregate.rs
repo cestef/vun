@@ -1,6 +1,6 @@
-//! Values built from parts, and parts read back: struct literals (fields in declaration order,
-//! a missing one from its default), variants, tuples, arrays, fields and items. A form typed by
-//! its context takes its type from the typed body.
+//! Values built from parts: struct literals (fields in declaration order, a missing one from its
+//! default), variants, tuples and arrays. A form typed by its context takes its type from the
+//! typed body.
 
 use overt_hir::tree::{Arg, Entry, ExprId, ExprKind, List, Name};
 use overt_intern::Symbol;
@@ -13,8 +13,7 @@ use super::{Builder, Unbuilt};
 use crate::body::{Aggregate, Operand, Rvalue};
 
 impl Builder<'_, '_, '_> {
-    /// The MIR of `expr` when it builds a value from parts or reads a part; `None` for any
-    /// other form.
+    /// The MIR of `expr` when it builds a value from parts; `None` for any other form.
     pub(super) fn aggregate(&mut self, expr: ExprId) -> Option<Result<Operand, Unbuilt>> {
         let hir = &self.env.parsed.hir;
         let origin = hir.exprs[expr].origin;
@@ -38,22 +37,6 @@ impl Builder<'_, '_, '_> {
                 let ty = self.type_of(expr).ok_or(unbuilt);
                 ty.and_then(|ty| {
                     self.env().member(Value::Type(ty), *name).map(Operand::Const).map_err(|_| unbuilt)
-                })
-            }
-            ExprKind::Member { object, name } => {
-                // A path to a constant, such as `lang.int.u8`, is its value.
-                if let Ok(value) = self.env().eval(expr) {
-                    return Some(Ok(Operand::Const(value)));
-                }
-                let Some(name) = self.env().name(name) else { return Some(Err(unbuilt)) };
-                let object = *object;
-                self.operand(object).map(|operand| self.temp(Rvalue::Field { operand, name }, origin))
-            }
-            ExprKind::Index { object, index } => {
-                let (object, index) = (*object, *index);
-                self.operand(object).and_then(|operand| {
-                    let index = self.operand(index)?;
-                    Ok(self.temp(Rvalue::Index { operand, index }, origin))
                 })
             }
             _ => return None,

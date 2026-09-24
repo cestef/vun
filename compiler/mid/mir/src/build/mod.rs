@@ -4,9 +4,10 @@
 
 mod aggregate;
 mod assign;
+mod call;
 mod control;
 mod loops;
-mod method;
+mod place;
 mod staged;
 
 use std::collections::HashMap;
@@ -15,7 +16,7 @@ use std::sync::Arc;
 use overt_grammar::TokenKind;
 use overt_hir::resolve::Res;
 use overt_hir::tree::{
-    Arg, BinderId, BlockId as HirBlock, Entry, ExprId, ExprKind, Lit, PatKind, Stmt as HirStmt,
+    BinderId, BlockId as HirBlock, Entry, ExprId, ExprKind, Lit, PatKind, Stmt as HirStmt,
 };
 use overt_index::{Idx, IndexVec};
 use overt_origin::OriginId;
@@ -107,7 +108,7 @@ impl<'a, 'db> Builder<'_, 'a, 'db> {
             args.push(b.bind(binder));
         }
         let result = b.block(*body)?;
-        b.assign(Place { local: ret }, Rvalue::Use(result), origin);
+        b.assign(Place::of(ret), Rvalue::Use(result), origin);
         b.blocks[b.current].term = Terminator { kind: TerminatorKind::Return, origin };
         Ok(Body { locals: b.locals, params: args, ret, blocks: b.blocks, origin })
     }
@@ -155,9 +156,14 @@ impl<'a, 'db> Builder<'_, 'a, 'db> {
 
     /// `value` in a new temporary.
     fn temp(&mut self, value: Rvalue, origin: OriginId) -> Operand {
+        Operand::Place(Place::of(self.temp_local(value, origin)))
+    }
+
+    /// A new temporary local holding `value`.
+    fn temp_local(&mut self, value: Rvalue, origin: OriginId) -> Local {
         let local = self.locals.push(LocalDecl { name: None, origin });
-        self.assign(Place { local }, value, origin);
-        Operand::Place(Place { local })
+        self.assign(Place::of(local), value, origin);
+        local
     }
 
     /// The statements of `block`, then the value of its tail, or `()` without one.
@@ -182,7 +188,7 @@ impl<'a, 'db> Builder<'_, 'a, 'db> {
                 let value = decl.value.map(|v| self.operand(v)).transpose()?;
                 let local = self.bind(*binder);
                 if let Some(value) = value {
-                    self.assign(Place { local }, Rvalue::Use(value), decl.origin);
+                    self.assign(Place::of(local), Rvalue::Use(value), decl.origin);
                 }
             }
             HirStmt::Expr(e) => {
@@ -204,7 +210,7 @@ impl<'a, 'db> Builder<'_, 'a, 'db> {
             ExprKind::Lit(Lit::Int(n)) => Ok(Operand::Const(Value::Int(Integer::from(*n)))),
             ExprKind::Name(_) => match self.env.parsed.resolution.names[expr] {
                 Some(Res::Binder(b)) if self.bound.contains_key(&b) => {
-                    Ok(Operand::Place(Place { local: self.bound[&b] }))
+                    Ok(Operand::Place(Place::of(self.bound[&b])))
                 }
                 // A `$` parameter of an enclosing function, bound by the call running the body.
                 // A `$for` binder, or one bound by the instantiation, is a constant.
@@ -216,6 +222,12 @@ impl<'a, 'db> Builder<'_, 'a, 'db> {
             },
             ExprKind::Block(block) => self.block(*block),
             ExprKind::Quote(_) => Ok(self.quote(expr, origin)),
+            ExprKind::Member { .. }
+            | ExprKind::Index { .. }
+            | ExprKind::Postfix { op: TokenKind::DotStar, .. } => self.read(expr),
+            ExprKind::Prefix { op: TokenKind::Amp, mode, operand } => self.borrow(expr, *mode, *operand),
+            // `unsafe e` runs `e`; what it permits is checked, not lowered.
+            ExprKind::Prefix { op: TokenKind::Unsafe, operand, .. } => self.operand(*operand),
             ExprKind::Prefix { op: TokenKind::Dollar, operand, .. }
                 if matches!(hir.exprs[*operand].kind, ExprKind::If { .. }) =>
             {
@@ -253,29 +265,7 @@ impl<'a, 'db> Builder<'_, 'a, 'db> {
             ExprKind::Call { callee, .. } if matches!(hir.exprs[*callee].kind, ExprKind::DotName(_)) => {
                 self.aggregate(expr).unwrap_or(Err(unbuilt))
             }
-            ExprKind::Call { callee, args } => {
-                // `a.f(b)` is `T.f(a, b)`, `f` the method the typer found (spec 01, section 4).
-                let (callee, mut values) = match self.method(*callee)? {
-                    Some((f, receiver)) => (f, vec![self.operand(receiver)?]),
-                    None => (self.operand(*callee)?, Vec::new()),
-                };
-                // A `Code(T)` parameter receives its argument as code.
-                let quotes = match &callee {
-                    Operand::Const(Value::Fn(f)) => f.quotes(self.env.cx).unwrap_or_default(),
-                    _ => Vec::new(),
-                };
-                for arg in args {
-                    match arg {
-                        Entry::One(Arg { name: None, value }) if quotes.get(values.len()) == Some(&true) => {
-                            let code = self.quote(*value, origin);
-                            values.push(code);
-                        }
-                        Entry::One(Arg { name: None, value }) => values.push(self.operand(*value)?),
-                        _ => return Err(unbuilt),
-                    }
-                }
-                Ok(self.temp(Rvalue::Call { callee, args: values }, origin))
-            }
+            ExprKind::Call { callee, args } => self.call(*callee, args, origin),
             ExprKind::Struct(_) | ExprKind::Enum(_) | ExprKind::Fn { .. } => {
                 Ok(self.temp(self.comptime(expr), origin))
             }

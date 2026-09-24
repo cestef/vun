@@ -256,7 +256,7 @@ In order:
    - Decision 82: `decl::TypedDecl((decl, instance))` types a declaration's value (the checker
      absorbs its reports; `Env::decl_type` and `MemberValue` read it); `Env::typed_by` and
      `Env::type_of` give evaluation the types; `env/aggregate.rs` (`eval_as`, `record`,
-     `variant`, strings); `Value::item`; MIR `Rvalue::{Aggregate, Field, Index}`
+     `variant`, strings); `Value::item`; MIR `Rvalue::Aggregate` and places (decision 88)
      (`build/aggregate.rs`) run in the interpreter. MIR lowers 34 of 102 accept functions.
    - Decision 83 (batch 2 of the metaprogramming plan): `MemberTable::entries` expands `$for`/`$if`
      with `eval::Staging` bindings (`Env::staging`, `Env::bound`); `MemberDecl::staged` and
@@ -290,6 +290,17 @@ In order:
      span value type), fresh binders inside quotes, `std.meta.syntax`,
      duplicate computed names. Decision 87: `meta.escape` (`hir/src/resolve/stage.rs`, the
      resolver counts quotes; a `$(e)` computed name is not counted as a level yet).
+   - Decision 88, MIR places: `Place { local, projection }` with `Projection::{Deref, Field,
+     Index(Local)}` (`mir/src/place.rs`); `build/place.rs`: `Builder::{place, read, borrow,
+     through_borrows}` (`.` and indexing dereference once per borrow the typed body shows);
+     `Rvalue::Ref { mode, place }` is new and `Rvalue::{Field, Index}` are gone (reads
+     are places); assignments store to any place; `unsafe e` lowers `e`; `build/call.rs` holds
+     calls and methods. The interpreter reads places, rebuilds values to write parts
+     (`Value::{with_field, with_item}`), reads a shared borrow as the value, and refuses `&mut`
+     and writes through `.*` (no memory model yet). An index past the end traps
+     (`Reason::Bounds`). `cargo xtask corpus` now names what stops MIR most
+     (`Coverage::unbuilt`). Next blockers: extern calls (`= _` functions have no value),
+     patterns (`match`, `if p = e`, `(a, b) := e`), `for p in e`, closures, `?`, `[v; n]`.
    - `types.no_member` on values stays off: turning it on (tried) reports members the corpus
      stand-ins lack. Needed first: stand-in methods for `Timer`, `Serial`, `Led`, `Dma`, `Fs`,
      `Alloc`, `Device`, `System`, `Cache`, `Queue`, `Packet`, `Uart` in `corpus/support`,

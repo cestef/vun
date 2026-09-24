@@ -3,6 +3,7 @@
 //! interpreter both compute through here.
 
 use overt_grammar::{Narrowing, TokenKind};
+use overt_intern::Symbol;
 
 use crate::env::Unevaluated;
 use crate::int::{Extended, Integer, Interval};
@@ -38,12 +39,40 @@ impl Value {
     /// `self[index]`: the item of an array value at an integer index.
     ///
     /// # Errors
-    /// Returns [`Unevaluated::Unsupported`] for another value or index, or one out of range,
-    /// which checks report where they are typed.
+    /// Returns a trap for an index past the end, and [`Unevaluated::Unsupported`] for another
+    /// value or index.
     pub fn item(&self, index: &Self) -> Result<Self, Unevaluated> {
-        let (Self::Array(items), Self::Int(i)) = (self, index) else { return Err(Unevaluated::Unsupported) };
-        let i = i.to_i128().and_then(|i| usize::try_from(i).ok());
-        i.and_then(|i| items.get(i).cloned()).ok_or(Unevaluated::Unsupported)
+        let Self::Array(items) = self else { return Err(Unevaluated::Unsupported) };
+        items.get(Self::position(items, index)?).cloned().ok_or(Unevaluated::Unsupported)
+    }
+
+    /// This array with the item at `index` replaced by `item`.
+    ///
+    /// # Errors
+    /// As [`Self::item`].
+    pub fn with_item(self, index: &Self, item: Self) -> Result<Self, Unevaluated> {
+        let Self::Array(mut items) = self else { return Err(Unevaluated::Unsupported) };
+        let at = Self::position(&items, index)?;
+        items[at] = item;
+        Ok(Self::Array(items))
+    }
+
+    /// This struct value with its field `name` replaced by `value`.
+    ///
+    /// # Errors
+    /// Returns [`Unevaluated::Unsupported`] for a value without that field.
+    pub fn with_field(self, name: Symbol, value: Self) -> Result<Self, Unevaluated> {
+        let Self::Struct { ty, mut fields } = self else { return Err(Unevaluated::Unsupported) };
+        let slot = fields.iter_mut().find(|(n, _)| *n == name).ok_or(Unevaluated::Unsupported)?;
+        slot.1 = value;
+        Ok(Self::Struct { ty, fields })
+    }
+
+    /// Where the integer `index` is among `items`: a trap past the end.
+    fn position(items: &[Self], index: &Self) -> Result<usize, Unevaluated> {
+        let Self::Int(i) = index else { return Err(Unevaluated::Unsupported) };
+        let at = i.to_i128().and_then(|i| usize::try_from(i).ok());
+        at.filter(|&at| at < items.len()).ok_or_else(|| Unevaluated::trap(Reason::Bounds))
     }
 
     /// This integer brought into the range `range` (spec 04, rule 3): unchanged when it lies

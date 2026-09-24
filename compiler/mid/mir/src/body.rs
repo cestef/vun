@@ -73,15 +73,11 @@ pub enum Rvalue {
         kind: Aggregate,
         parts: Vec<Operand>,
     },
-    /// The field `name` of a struct value.
-    Field {
-        operand: Operand,
-        name: Symbol,
-    },
-    /// An item of an array value.
-    Index {
-        operand: Operand,
-        index: Operand,
+    /// `&mode place`: a borrow of the place in the mode the word after `&` names (the table
+    /// `borrows`), `None` for a shared one.
+    Ref {
+        mode: Option<Symbol>,
+        place: Place,
     },
     Call {
         callee: Operand,

@@ -2,7 +2,7 @@
 //! calls go through sema's memoized `Call` query, so recursion and repeated calls are shared.
 
 use overt_index::IndexVec;
-use overt_mir::{Aggregate, Body, Local, Operand, Rvalue, TerminatorKind};
+use overt_mir::{Aggregate, Body, Local, Operand, Place, Projection, Rvalue, TerminatorKind};
 use overt_query::Cx;
 use overt_sema::env::{Env, Unevaluated};
 use overt_sema::eval::{Instance, Metered, MeteredCall};
@@ -53,7 +53,7 @@ impl<'b, 'a, 'db> Frame<'b, 'a, 'db> {
             for stmt in &block.stmts {
                 self.spend(1)?;
                 let value = self.rvalue(&stmt.value).map_err(|e| e.through(stmt.origin))?;
-                self.locals[stmt.place.local] = Some(value);
+                self.write(&stmt.place, value).map_err(|e| e.through(stmt.origin))?;
             }
             match &block.term.kind {
                 TerminatorKind::Return => {
@@ -79,8 +79,55 @@ impl<'b, 'a, 'db> Frame<'b, 'a, 'db> {
 
     fn operand(&self, operand: &Operand) -> Result<Value, Unevaluated> {
         match operand {
-            Operand::Place(place) => self.locals[place.local].clone().ok_or(Unevaluated::Unsupported),
+            Operand::Place(place) => self.read(place),
             Operand::Const(value) => Ok(value.clone()),
+        }
+    }
+
+    fn local(&self, local: Local) -> Result<Value, Unevaluated> {
+        self.locals[local].clone().ok_or(Unevaluated::Unsupported)
+    }
+
+    /// The value at `place`. A borrow at compile time is shared, and a shared borrow of a
+    /// compile-time value is the value, so `.*` reads it.
+    fn read(&self, place: &Place) -> Result<Value, Unevaluated> {
+        let mut value = self.local(place.local)?;
+        for projection in &place.projection {
+            value = match projection {
+                Projection::Deref => value,
+                Projection::Field(name) => self.env.member(value, *name)?,
+                Projection::Index(index) => value.item(&self.local(*index)?)?,
+            };
+        }
+        Ok(value)
+    }
+
+    /// Stores `value` at `place`: a whole local, or a part of one, rebuilt around it.
+    fn write(&mut self, place: &Place, value: Value) -> Result<(), Unevaluated> {
+        let value = if place.projection.is_empty() {
+            value
+        } else {
+            self.replaced(self.local(place.local)?, &place.projection, value)?
+        };
+        self.locals[place.local] = Some(value);
+        Ok(())
+    }
+
+    /// `whole` with the part `projection` reaches replaced by `part`. Writing through `.*` needs
+    /// mutable borrows, which compile-time evaluation does not have yet.
+    fn replaced(&self, whole: Value, projection: &[Projection], part: Value) -> Result<Value, Unevaluated> {
+        let Some((first, rest)) = projection.split_first() else { return Ok(part) };
+        match first {
+            Projection::Field(name) => {
+                let inner = self.replaced(self.env.member(whole.clone(), *name)?, rest, part)?;
+                whole.with_field(*name, inner)
+            }
+            Projection::Index(index) => {
+                let index = self.local(*index)?;
+                let inner = self.replaced(whole.item(&index)?, rest, part)?;
+                whole.with_item(&index, inner)
+            }
+            Projection::Deref => Err(Unevaluated::Unsupported),
         }
     }
 
@@ -113,8 +160,9 @@ impl<'b, 'a, 'db> Frame<'b, 'a, 'db> {
                     Aggregate::Array => Value::Array(parts),
                 })
             }
-            Rvalue::Field { operand, name } => self.env.member(self.operand(operand)?, *name),
-            Rvalue::Index { operand, index } => self.operand(operand)?.item(&self.operand(index)?),
+            Rvalue::Ref { mode: None, place } => self.read(place),
+            // A mutable borrow at compile time needs a memory model of places.
+            Rvalue::Ref { mode: Some(_), .. } => Err(Unevaluated::Unsupported),
             Rvalue::Call { callee, args } => {
                 let args = args.iter().map(|a| self.operand(a)).collect::<Result<Vec<_>, _>>()?;
                 match self.operand(callee)? {

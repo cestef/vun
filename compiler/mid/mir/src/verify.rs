@@ -9,6 +9,7 @@ use overt_index::Idx;
 use overt_origin::{OriginId, OriginTable};
 
 use crate::body::{BlockId, Body, Local, Operand, Rvalue, TerminatorKind};
+use crate::place::{Place, Projection};
 
 /// The entities of a body, for reporting which is malformed.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -88,7 +89,7 @@ impl Body {
             for (index, stmt) in b.stmts.iter().enumerate() {
                 let at = Entity::Stmt { block: block.index(), index };
                 has(at, stmt.origin)?;
-                self.local(at, stmt.place.local)?;
+                self.place(at, &stmt.place)?;
                 self.rvalue(at, &stmt.value)?;
             }
             let at = Entity::Terminator(block.index());
@@ -116,18 +117,24 @@ impl Body {
 
     fn operand(&self, at: Entity, operand: &Operand) -> Result<(), Malformed> {
         match operand {
-            Operand::Place(place) => self.local(at, place.local),
+            Operand::Place(place) => self.place(at, place),
             Operand::Const(_) => Ok(()),
         }
     }
 
+    /// A place's local, and the locals its indices read.
+    fn place(&self, at: Entity, place: &Place) -> Result<(), Malformed> {
+        self.local(at, place.local)?;
+        place.projection.iter().try_for_each(|p| match p {
+            Projection::Index(local) => self.local(at, *local),
+            Projection::Deref | Projection::Field(_) => Ok(()),
+        })
+    }
+
     fn rvalue(&self, at: Entity, rvalue: &Rvalue) -> Result<(), Malformed> {
         let operands: Vec<&Operand> = match rvalue {
-            Rvalue::Use(o)
-            | Rvalue::Unary { operand: o, .. }
-            | Rvalue::Narrow { operand: o, .. }
-            | Rvalue::Field { operand: o, .. } => vec![o],
-            Rvalue::Index { operand, index } => vec![operand, index],
+            Rvalue::Use(o) | Rvalue::Unary { operand: o, .. } | Rvalue::Narrow { operand: o, .. } => vec![o],
+            Rvalue::Ref { place, .. } => return self.place(at, place),
             Rvalue::Aggregate { parts, .. } => parts.iter().collect(),
             Rvalue::Binary { left, right, .. } => vec![left, right],
             Rvalue::Range { lo, hi, .. } => [lo].into_iter().chain(hi).collect(),

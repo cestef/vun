@@ -9,7 +9,7 @@ use overt_origin::OriginId;
 use overt_sema::ty::Value;
 
 use super::{Builder, Unbuilt};
-use crate::body::{BlockId, Operand, Rvalue, TerminatorKind};
+use crate::body::{BlockId, Local, Operand, Rvalue, TerminatorKind};
 use crate::place::Place;
 
 /// A loop being lowered.
@@ -18,7 +18,7 @@ pub(super) struct Loop {
     head: BlockId,
     exit: BlockId,
     /// Where `break` writes the loop's value.
-    result: Place,
+    result: Local,
 }
 
 impl Builder<'_, '_, '_> {
@@ -41,7 +41,7 @@ impl Builder<'_, '_, '_> {
                 let (run, done) = (self.fresh(origin), self.fresh(origin));
                 self.terminate(TerminatorKind::Branch { cond, then: run, otherwise: done }, origin);
                 self.current = done;
-                self.assign(result, Rvalue::Use(Self::unit()), origin);
+                self.assign(Place::of(result), Rvalue::Use(Self::unit()), origin);
                 self.terminate(TerminatorKind::Goto(exit), origin);
                 self.current = run;
             }
@@ -53,7 +53,7 @@ impl Builder<'_, '_, '_> {
         lowered?;
         self.terminate(TerminatorKind::Goto(start), origin);
         self.current = exit;
-        Ok(Operand::Place(result))
+        Ok(Operand::Place(Place::of(result)))
     }
 
     /// `break 'label value`.
@@ -65,7 +65,7 @@ impl Builder<'_, '_, '_> {
     ) -> Result<Operand, Unbuilt> {
         let value = value.map(|v| self.operand(v)).transpose()?.unwrap_or_else(Self::unit);
         let (exit, result) = self.target(label, origin).map(|l| (l.exit, l.result))?;
-        self.assign(result, Rvalue::Use(value), origin);
+        self.assign(Place::of(result), Rvalue::Use(value), origin);
         Ok(self.jump(TerminatorKind::Goto(exit), origin))
     }
 
@@ -78,7 +78,7 @@ impl Builder<'_, '_, '_> {
     /// `return value`.
     pub(super) fn exit(&mut self, value: Option<ExprId>, origin: OriginId) -> Result<Operand, Unbuilt> {
         let value = value.map(|v| self.operand(v)).transpose()?.unwrap_or_else(Self::unit);
-        self.assign(Place { local: self.ret }, Rvalue::Use(value), origin);
+        self.assign(Place::of(self.ret), Rvalue::Use(value), origin);
         Ok(self.jump(TerminatorKind::Return, origin))
     }
 

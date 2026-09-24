@@ -8,11 +8,19 @@ use overt_origin::OriginId;
 use overt_span::LineCol;
 
 use crate::body::{Aggregate, Body, Operand, Rvalue, TerminatorKind};
-use crate::place::Place;
+use crate::place::{Place, Projection};
 
 impl fmt::Display for Place {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "_{}", self.local.index())
+        write!(f, "_{}", self.local.index())?;
+        for projection in &self.projection {
+            match projection {
+                Projection::Deref => f.write_str(".*")?,
+                Projection::Field(name) => write!(f, ".{name}")?,
+                Projection::Index(local) => write!(f, "[_{}]", local.index())?,
+            }
+        }
+        Ok(())
     }
 }
 
@@ -54,8 +62,8 @@ impl fmt::Display for Rvalue {
                 }
                 f.write_str(close)
             }
-            Self::Field { operand, name } => write!(f, "{operand}.{name}"),
-            Self::Index { operand, index } => write!(f, "{operand}[{index}]"),
+            Self::Ref { mode: None, place } => write!(f, "&{place}"),
+            Self::Ref { mode: Some(mode), place } => write!(f, "&{mode} {place}"),
             Self::Narrow { operand, ty, narrowing } => {
                 write!(f, "{operand} narrowed to {ty} ({narrowing:?})")
             }
@@ -104,9 +112,9 @@ impl fmt::Display for Text<'_> {
         f.write_str("fn(")?;
         for (i, &p) in body.params.iter().enumerate() {
             let name = body.locals[p].name.map_or("", |n| n.as_str());
-            write!(f, "{}{}: {name}", if i > 0 { ", " } else { "" }, Place { local: p })?;
+            write!(f, "{}{}: {name}", if i > 0 { ", " } else { "" }, Place::of(p))?;
         }
-        write!(f, ") -> {} {{", Place { local: body.ret })?;
+        write!(f, ") -> {} {{", Place::of(body.ret))?;
         self.end(f, body.origin)?;
         for (id, block) in body.blocks.iter() {
             writeln!(f, "  bb{}:", id.index())?;

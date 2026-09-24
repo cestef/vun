@@ -17,6 +17,8 @@ pub enum Reason {
     Narrowing,
     /// The call ran out of its step budget.
     Budget,
+    /// An index outside the items indexed.
+    Bounds,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -35,6 +37,7 @@ impl Reason {
             Self::Shift => "shift past any width",
             Self::Narrowing => "value outside the type it is narrowed to",
             Self::Budget => "the call ran out of its step budget",
+            Self::Bounds => "index outside the items",
         })
     }
 }
