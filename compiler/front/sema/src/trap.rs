@@ -54,6 +54,20 @@ impl Reason {
 }
 
 impl Unevaluated {
+    /// Why evaluation stopped, as a report says it after "could not run: ".
+    #[must_use]
+    pub fn why(&self) -> &'static str {
+        match self {
+            Self::Runtime => "it reads a value known only at run time",
+            Self::Interpreter => "no evaluator is installed",
+            Self::Cycle => "it depends on itself",
+            Self::Absent => "a name leads nowhere",
+            Self::Provided => "it reads a declaration provided from outside",
+            Self::Trapped(_) | Self::Failed => "a declaration it reads failed to evaluate",
+            Self::Unsupported => "it uses a form compile-time evaluation does not run yet",
+        }
+    }
+
     /// A trap for `reason` that has not been placed yet.
     #[must_use]
     pub fn trap(reason: Reason) -> Self {

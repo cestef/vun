@@ -1,5 +1,6 @@
-//! What lives as long as the program: a shared borrow of it is `&static` (the row `static` of the
-//! table `borrows`, spec 05, section 4).
+//! What `&e` makes of `e`: a borrow type when `e` denotes a type (type syntax mirrors value
+//! syntax, spec 01), and a `&static` borrow when it lives as long as the program (the row
+//! `static` of the table `borrows`, spec 05, section 4).
 
 use vun_hir::tree::{Entry, ExprId, ExprKind};
 
@@ -23,6 +24,12 @@ impl Env<'_, '_> {
             ExprKind::Name(_) => self.immutable_member(expr),
             _ => false,
         }
+    }
+
+    /// Whether `expr` denotes a type, such as `u8` or `[u8]`.
+    #[must_use]
+    pub fn denotes_type(&self, expr: ExprId) -> bool {
+        self.eval(expr).ok().and_then(|v| v.as_type()).is_some()
     }
 
     /// Whether the name `expr` leads to a top-level binding that is not `mut`.

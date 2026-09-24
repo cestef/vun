@@ -36,82 +36,99 @@ const PRIVATE: char = '_';
 
 #[expect(clippy::unnecessary_wraps, reason = "every generator emits through one signature")]
 fn emit(sources: &[Source<'_>]) -> Read<Vec<Module>> {
-    // The handles of each namespace's module: its declarations, and the namespaces inside it;
-    // and of each type's: its members.
-    let mut modules: BTreeMap<Vec<String>, Vec<TokenStream>> = BTreeMap::new();
-    for source in sources {
-        let Some(namespace) = source.namespace() else { continue };
-        modules.entry(namespace.clone()).or_default();
-        for decl in source.decls.iter().filter(|d| !d.name.starts_with(PRIVATE)) {
-            declare(&mut modules, &namespace, decl);
-        }
-        if let [parent @ .., name] = namespace.as_slice()
-            && !parent.is_empty()
-        {
-            let doc = docs(&[&format!("The namespace `{}`.", namespace.join(SEPARATOR))]);
-            modules.entry(parent.to_vec()).or_default().push(handle(parent, name, &doc));
-        }
-    }
-    let modules = modules.into_iter().filter(|(_, items)| !items.is_empty()).map(|(namespace, items)| {
-        let (name, access) = match namespace.as_slice() {
-            [_] => (ROOT.to_owned(), Access::Glob),
-            [_, inner @ ..] => (inner.join(JOIN), Access::Path),
-            [] => unreachable!("a namespace has a package"),
-        };
-        let doc = format!(" The declarations of `{}`.", namespace.join(SEPARATOR));
-        let items = quote! {
-            #![doc = #doc]
-            #![allow(
-                non_upper_case_globals,
-                non_snake_case,
-                reason = "handles and the modules of types' members are spelled as their declarations"
-            )]
-            use crate::Item;
-            #(#items)*
-        };
-        Module { name, access, items }
-    });
-    Ok(modules.collect())
+    Ok(Handles::of(sources).modules())
 }
 
-/// The Rust path of the handle of the declaration at the dotted `path`, for generated code of
-/// other crates: `lang.mem.Ptr` is `vun_items::lang::mem::Ptr`, `lang.Option` is
-/// `vun_items::lang::Option`, a package `lang` is `vun_items::lang`.
-pub(crate) fn rust_path(path: &str) -> TokenStream {
-    let segments: Vec<&str> = path.split(SEPARATOR).collect();
-    let krate = module(CRATE);
-    match segments.as_slice() {
-        [package] => {
-            let package = module(package);
-            quote! { #krate::#package }
-        }
-        [package, namespaces @ .., name] => {
-            let (package, name) = (module(package), module(name));
-            if namespaces.is_empty() {
-                quote! { #krate::#package::#name }
-            } else {
-                let inner = module(&namespaces.join(JOIN));
-                quote! { #krate::#package::#inner::#name }
+/// The handles of each module, by the path it is of: a namespace's declarations and the
+/// namespaces inside it, a type's members.
+#[derive(Default)]
+pub(crate) struct Handles(BTreeMap<Vec<String>, Vec<TokenStream>>);
+
+impl Handles {
+    fn of(sources: &[Source<'_>]) -> Self {
+        let mut handles = Self::default();
+        for source in sources {
+            let Some(namespace) = source.namespace() else { continue };
+            handles.0.entry(namespace.clone()).or_default();
+            for decl in source.decls.iter().filter(|d| !d.name.starts_with(PRIVATE)) {
+                handles.declare(&namespace, decl);
+            }
+            if let [parent @ .., name] = namespace.as_slice()
+                && !parent.is_empty()
+            {
+                let doc = docs(&[&format!("The namespace `{}`.", namespace.join(SEPARATOR))]);
+                handles.push(parent, name, &doc);
             }
         }
-        [] => unreachable!("a path has a segment"),
+        handles
     }
-}
 
-/// Adds to `modules` the handle of `decl`, declared in `namespace`, and those of its members.
-fn declare(modules: &mut BTreeMap<Vec<String>, Vec<TokenStream>>, namespace: &[String], decl: &Decl<'_>) {
-    modules.entry(namespace.to_vec()).or_default().push(handle(namespace, decl.name, &docs(&decl.doc)));
-    if let Literal::Namespace(members) | Literal::Enum(members) = &decl.value {
-        let path: Vec<String> = namespace.iter().cloned().chain([decl.name.to_owned()]).collect();
-        for member in members.iter().filter(|m| !m.name.starts_with(PRIVATE)) {
-            declare(modules, &path, member);
+    /// The handle of `decl`, declared in `namespace`, and those of its members.
+    fn declare(&mut self, namespace: &[String], decl: &Decl<'_>) {
+        self.push(namespace, decl.name, &docs(&decl.doc));
+        if let Literal::Namespace(members) | Literal::Enum(members) = &decl.value {
+            let path: Vec<String> = namespace.iter().cloned().chain([decl.name.to_owned()]).collect();
+            for member in members.iter().filter(|m| !m.name.starts_with(PRIVATE)) {
+                self.declare(&path, member);
+            }
         }
     }
-}
 
-/// `pub const name: Item`, the handle of the declaration `name` of `namespace`.
-fn handle(namespace: &[String], name: &str, doc: &[String]) -> TokenStream {
-    let ident = module(name);
-    let segments = namespace.iter().map(String::as_str).chain([name]);
-    quote! { #(#[doc = #doc])* pub const #ident: Item = Item::new(&[#(#segments),*]); }
+    /// `pub const name: Item`, the handle of the declaration `name` of `namespace`.
+    fn push(&mut self, namespace: &[String], name: &str, doc: &[String]) {
+        let ident = module(name);
+        let segments = namespace.iter().map(String::as_str).chain([name]);
+        let handle = quote! { #(#[doc = #doc])* pub const #ident: Item = Item::new(&[#(#segments),*]); };
+        self.0.entry(namespace.to_vec()).or_default().push(handle);
+    }
+
+    /// A module per path holding handles: a package's root namespace is the package's module.
+    fn modules(self) -> Vec<Module> {
+        let modules = self.0.into_iter().filter(|(_, items)| !items.is_empty());
+        modules
+            .map(|(namespace, items)| {
+                let (name, access) = match namespace.as_slice() {
+                    [_] => (ROOT.to_owned(), Access::Glob),
+                    [_, inner @ ..] => (inner.join(JOIN), Access::Path),
+                    [] => unreachable!("a namespace has a package"),
+                };
+                let doc = format!(" The declarations of `{}`.", namespace.join(SEPARATOR));
+                let items = quote! {
+                    #![doc = #doc]
+                    #![allow(
+                        non_upper_case_globals,
+                        non_snake_case,
+                        reason = "handles and the modules of types' members are spelled as their declarations"
+                    )]
+                    use crate::Item;
+                    #(#items)*
+                };
+                Module { name, access, items }
+            })
+            .collect()
+    }
+
+    /// The Rust path of the handle of the declaration at the dotted `path`, for generated code of
+    /// other crates: `lang.mem.Ptr` is `vun_items::lang::mem::Ptr`, `lang.Option` is
+    /// `vun_items::lang::Option`, a package `lang` is `vun_items::lang`.
+    pub(crate) fn rust_path(path: &str) -> TokenStream {
+        let segments: Vec<&str> = path.split(SEPARATOR).collect();
+        let krate = module(CRATE);
+        match segments.as_slice() {
+            [package] => {
+                let package = module(package);
+                quote! { #krate::#package }
+            }
+            [package, namespaces @ .., name] => {
+                let (package, name) = (module(package), module(name));
+                if namespaces.is_empty() {
+                    quote! { #krate::#package::#name }
+                } else {
+                    let inner = module(&namespaces.join(JOIN));
+                    quote! { #krate::#package::#inner::#name }
+                }
+            }
+            [] => unreachable!("a path has a segment"),
+        }
+    }
 }

@@ -6,7 +6,9 @@
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
 use crate::Item;
-/// The process's system. Only a runtime claims it, once, before `main`.
+/// The process's system, started with `args`. Only a runtime claims it, once, before `main`.
 pub const claim: Item = Item::new(&["std", "os", "System", "claim"]);
+/// The arguments the process was started with.
+pub const args: Item = Item::new(&["std", "os", "System", "args"]);
 pub const stdout: Item = Item::new(&["std", "os", "System", "stdout"]);
 pub const stderr: Item = Item::new(&["std", "os", "System", "stderr"]);

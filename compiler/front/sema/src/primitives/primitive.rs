@@ -106,6 +106,7 @@ impl Primitive {
         Self::Mem(mem::Mem::Array),
         Self::Mem(mem::Mem::len),
         Self::Mem(mem::Mem::items_pointer),
+        Self::Mem(mem::Mem::items_at),
         Self::Mem(mem::Mem::Cell),
         Self::Mem(mem::Mem::cell),
         Self::Mem(mem::Mem::cell_pointer),

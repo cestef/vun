@@ -13,12 +13,49 @@ stderr_fd := 2;
 
 /// Access to the operating system: files, sockets, threads, clocks, the environment.
 System := struct {
-    _held: (),
+    _args: Args,
 
-    /// The process's system. Only a runtime claims it, once, before `main`.
-    claim := unsafe () -> System { .{ ._held = () } };
+    /// The process's system, started with `args`. Only a runtime claims it, once, before `main`.
+    claim := unsafe (given: Args) -> System { .{ ._args = given } };
+    /// The arguments the process was started with.
+    args := (self: &System) -> Args { self._args };
     stdout := (self: &mut System) -> Stream { unsafe Stream.of(stdout_fd) };
     stderr := (self: &mut System) -> Stream { unsafe Stream.of(stderr_fd) };
+};
+
+/// The arguments a process was started with, its program's name first where the system passes
+/// one: each the bytes the system passed, without the zero that ends it there.
+Args := struct {
+    _count: usize,
+    _values: *(*u8),
+
+    /// The `count` arguments at `values`, each ending with a zero byte, as C's `main` receives
+    /// them; they must stay unchanged for as long as the arguments are read.
+    of := unsafe (count: usize, values: *(*u8)) -> Args { .{ ._count = count, ._values = values } };
+    /// How many arguments there are.
+    len := (self: &Args) -> usize { self._count };
+    /// The argument at `i`; `.none` past the last.
+    get := (self: &Args, i: usize) -> ?&[u8] {
+        if i >= self._count { return .none; }
+        first := unsafe self._values.offset(i.to(isize)).read();
+        mut n: usize = 0;
+        for unsafe first.offset(n.to(isize)).read() != 0 { n += 1; }
+        .some(unsafe lang.mem.items_at(u8, first, n))
+    };
+};
+
+/// Each argument in order: `for arg in sys.args()`.
+#[impl(lang.ops.Iterate(Args))]
+ArgsIterate := struct {
+    Iter := std.iter.Iter(&[u8]);
+    iter := (self: Args) -> Iter {
+        for i in 0..self.len() {
+            match self.get(i) {
+                .some(arg) => yield arg,
+                .none => {},
+            }
+        }
+    };
 };
 
 /// A byte stream the system holds open: standard output, a file, a socket.

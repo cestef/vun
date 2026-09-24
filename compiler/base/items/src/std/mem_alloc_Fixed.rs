@@ -8,8 +8,9 @@
 use crate::Item;
 /// An allocator over `storage`, which must outlive what it hands out.
 pub const init: Item = Item::new(&["std", "mem", "alloc", "Fixed", "init"]);
-/// `size` bytes aligned to `align`, a power of two.
-pub const alloc: Item = Item::new(&["std", "mem", "alloc", "Fixed", "alloc"]);
+/// The next `size` bytes aligned to `align`, a power of two: what its `Allocator` impl's
+/// `alloc` gives.
+pub const take: Item = Item::new(&["std", "mem", "alloc", "Fixed", "take"]);
 /// A place for a `T`, `uninit`, owned by the caller.
 pub const create: Item = Item::new(&["std", "mem", "alloc", "Fixed", "create"]);
 /// Gives `o` back; a fixed allocator reuses nothing, so this only ends the ownership.

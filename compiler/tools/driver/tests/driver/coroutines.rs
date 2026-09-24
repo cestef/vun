@@ -110,3 +110,24 @@ wrong := () -> bool { evens(4).count() };
     let ids: Vec<_> = fixture.reported(&file).into_iter().map(|(id, _)| id).collect();
     assert_eq!(ids, [errors::TYPES_MISMATCH]);
 }
+
+#[test]
+fn iterators_zip_chain_and_fold() {
+    let fixture = Fixture::new("coroutines-combinators");
+    let file = fixture.root.write(
+        "combinators.vun",
+        "\
+evens := (limit: u32) -> Iter(u32) { for i in 0..limit { if i % 2 == 0 { yield i; } } };
+ones := (n: u32) -> Iter(u8) { for _ in 0..n { yield 1; } };
+chained := () -> usize { evens(4).chain(evens(6)).count() };
+summed := () -> u32 { evens(10).fold(0, (acc: u32, x: u32) -> u32 { (acc + x).sat(u32) }) };
+zipped := () -> usize { evens(10).zip(ones(3)).count() };
+five: Int(chained()..=chained()) = 5;
+twenty: Int(summed()..=summed()) = 20;
+three: Int(zipped()..=zipped()) = 3;
+wrong: Int(zipped()..=zipped()) = 5;
+",
+    );
+    // Each count and sum is exact at compile time; `zip` stops with the shorter iterator.
+    assert_eq!(fixture.check(&file), [errors::INT_DOES_NOT_FIT]);
+}

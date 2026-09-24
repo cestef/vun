@@ -77,9 +77,10 @@ impl Namespace {
             let variant = variant(item);
             quote! { Self::#variant => #item }
         });
-        let namespace = items::rust_path(path);
+        let namespace = items::Handles::rust_path(path);
         let handles = self.items.iter().map(|(item, _)| {
-            let (variant, handle) = (variant(item), items::rust_path(&[path.as_str(), item].join(SEPARATOR)));
+            let (variant, handle) =
+                (variant(item), items::Handles::rust_path(&[path.as_str(), item].join(SEPARATOR)));
             quote! { Self::#variant => #handle }
         });
         let items = quote! {

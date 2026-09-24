@@ -34,8 +34,8 @@ trapped := 101;
 /// The exports of a program whose `main` the C library calls.
 start := ($main: (&mut std.os.System) -> std.os.Exit) -> type { struct {
     #[link.export("main"), abi.c]
-    entry := () -> i32 {
-        mut sys := unsafe std.os.System.claim();
+    entry := (argc: i32, argv: *(*u8)) -> i32 {
+        mut sys := unsafe std.os.System.claim(std.os.Args.of(argc.to(usize), argv));
         match main(&mut sys) {
             .ok => success,
             .code(status) => status,

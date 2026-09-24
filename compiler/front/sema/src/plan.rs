@@ -4,8 +4,8 @@
 //! and the steps are the values `std.build.plan` gives, which the driver reads by reflection.
 
 use vun_hir::db::FileRef;
-use vun_hir::tree::{Hir, Member, PatKind, each_entry};
 use vun_intern::Symbol;
+use vun_items::Item;
 use vun_origin::OriginId;
 use vun_query::{Cx, Query};
 
@@ -52,10 +52,10 @@ impl Planned {
     fn run(env: &Env<'_, '_>, whole: OriginId) -> Result<Plan, Unplanned> {
         let (cx, file, hir) = (env.cx, &env.file, &env.parsed.hir);
         let stopped = |why, at| Unplanned::Stopped { why, at };
-        let required = Required::of(env).map_err(|why| stopped(why, whole))?;
+        let required = env.requirements(vun_items::std::build::Package).map_err(|why| stopped(why, whole))?;
         // The package's plan runs the one declaration its interface requires.
         let [name] = required.as_slice() else { return Err(stopped(Unevaluated::Unsupported, whole)) };
-        let Some(decl) = declared(hir, *name) else {
+        let Some(decl) = hir.root.and_then(|root| hir.declaring(root, *name)) else {
             return Err(Unplanned::Missing { name: *name, at: whole });
         };
         let decl = DeclRef::new(file.clone(), hir, decl);
@@ -72,32 +72,14 @@ impl Planned {
     }
 }
 
-/// The names `std.build.Package` requires of a `build.vun`.
-struct Required;
-
-impl Required {
-    fn of(env: &Env<'_, '_>) -> Result<Vec<Symbol>, Unevaluated> {
-        let Value::Interface(package) = env.item(vun_items::std::build::Package)? else {
-            return Err(Unevaluated::Unsupported);
-        };
-        // The requirements are named alike for every type: any stands for the package.
-        let call = Instance { f: package, args: vec![Value::Type(TyKind::of_types())] };
-        let requirements = env.cx.get::<Call>(&call)?.as_type().ok_or(Unevaluated::Unsupported)?;
-        let members = env.cx.get::<Members>(&requirements).ok_or(Unevaluated::Unsupported)?;
-        Ok(members.decls.iter().filter(|d| d.decl.required(env.cx)).map(|d| d.name).collect())
+impl Env<'_, '_> {
+    /// The names the interface `interface` requires, which are alike for every type it is
+    /// applied to.
+    fn requirements(&self, interface: Item) -> Result<Vec<Symbol>, Unevaluated> {
+        let Value::Interface(f) = self.item(interface)? else { return Err(Unevaluated::Unsupported) };
+        let call = Instance { f, args: vec![Value::Type(TyKind::of_types())] };
+        let requirements = self.cx.get::<Call>(&call)?.as_type().ok_or(Unevaluated::Unsupported)?;
+        let members = self.cx.get::<Members>(&requirements).ok_or(Unevaluated::Unsupported)?;
+        Ok(members.decls.iter().filter(|d| d.decl.required(self.cx)).map(|d| d.name).collect())
     }
-}
-
-/// The top-level declaration of `hir` binding `name`.
-fn declared(hir: &Hir, name: Symbol) -> Option<vun_hir::tree::DeclId> {
-    let mut found = None;
-    each_entry(&hir.namespaces[hir.root?].members, &mut |m| {
-        if let Member::Decl(d) = m
-            && let PatKind::Bind(b) = hir.pats[hir.decls[*d].pat].kind
-            && hir.binders[b].name == name
-        {
-            found = found.or(Some(*d));
-        }
-    });
-    found
 }

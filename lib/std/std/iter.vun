@@ -34,6 +34,28 @@ IterMethods := ($Self: type, $T: type, $R: type) -> type { struct {
             left -= 1;
         }
     };
+    /// Pairs of an item and the item of `other` at the same position, as long as both have one.
+    zip := (self: Self, $U: type, $G: Iter(U), other: G) -> Iter((T, U)) {
+        mut rest := other;
+        for item in self {
+            match rest.resume() {
+                .yielded(paired) => yield (item, paired),
+                .done(_) => break,
+            }
+        }
+        rest.end();
+    };
+    /// The items, then those of `other`.
+    chain := (self: Self, $G: Iter(T), other: G) -> Iter(T) {
+        for item in self { yield item; }
+        for item in other { yield item; }
+    };
+    /// `f` applied to what it gave so far, from `init`, and each item in turn.
+    fold := (self: Self, $A: type, init: A, $F: lang.ops.Call((A, T), A), f: F) -> A {
+        mut acc := init;
+        for item in self { acc = f(acc, item); }
+        acc
+    };
     /// How many items there are.
     count := (self: Self) -> usize {
         mut n: usize = 0;

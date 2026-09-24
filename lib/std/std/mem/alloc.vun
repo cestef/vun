@@ -24,8 +24,9 @@ Fixed := struct {
         .{ ._base = base, ._len = n, ._used = 0 }
     };
 
-    /// `size` bytes aligned to `align`, a power of two.
-    alloc := (self: &mut Fixed, size: usize, align: usize) -> Result(*u8, Error) {
+    /// The next `size` bytes aligned to `align`, a power of two: what its `Allocator` impl's
+    /// `alloc` gives.
+    take := (self: &mut Fixed, size: usize, align: usize) -> Result(*u8, Error) {
         base := self._base.address();
         free := (base + self._used).sat(usize);
         aligned := ((free + align - 1).sat(usize) / align * align).sat(usize);
@@ -37,10 +38,21 @@ Fixed := struct {
 
     /// A place for a `T`, `uninit`, owned by the caller.
     create := (self: &mut Fixed, $T: type) -> Result(Own(T), Error) {
-        p := self.alloc(lang.meta.size(T), lang.meta.align(T))?;
+        p := self.take(lang.meta.size(T), lang.meta.align(T))?;
         .ok(unsafe Own(T).from_raw(p.cast(T)))
     };
 
     /// Gives `o` back; a fixed allocator reuses nothing, so this only ends the ownership.
     destroy := (self: &mut Fixed, $T: type, o: Own(T)) { o.into_raw(); };
+};
+
+#[impl(Allocator(Fixed))]
+FixedAllocator := struct {
+    Error := std.mem.alloc.Error;
+    /// `size` bytes aligned to `align`, from what the buffer has left.
+    alloc := (self: &mut Fixed, size: usize, align: usize) -> Result(*u8, std.mem.alloc.Error) {
+        self.take(size, align)
+    };
+    /// Nothing: a fixed allocator reuses no bytes until it is dropped as a whole.
+    free := (self: &mut Fixed, p: *u8, size: usize, align: usize) {};
 };

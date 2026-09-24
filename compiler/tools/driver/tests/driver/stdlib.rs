@@ -105,3 +105,49 @@ seven: Seven = [];
         "{lines:?}"
     );
 }
+
+#[test]
+fn a_fixed_buffer_is_an_allocator() {
+    let fixture = Fixture::new("std-fixed");
+    let file = fixture.root.write(
+        "fixed.vun",
+        "\
+..std.mem.alloc.{ Fixed };
+run := () -> u8 {
+    mut storage: [16]u8 = [0; 16];
+    mut fixed := Fixed.init(&mut storage);
+    first := fixed.alloc(4, 4);
+    x: u8 = first;
+    x
+};
+",
+    );
+    // `alloc` is found through the impl of `Allocator` and has its type.
+    let found = fixture.reported(&file);
+    assert_eq!(found.iter().map(|(id, _)| id.clone()).collect::<Vec<_>>(), [errors::TYPES_MISMATCH]);
+    assert!(found[0].1.contains("found `Result("), "{found:?}");
+}
+
+#[test]
+fn a_hosted_program_reads_its_arguments() {
+    let fixture = Fixture::new("std-args");
+    let file = fixture.root.write(
+        "args.vun",
+        "\
+start := std.os.start(main);
+main := (sys: &mut std.os.System) -> std.os.Exit {
+    mut out := sys.stdout();
+    std.fmt.print(&mut out, \"{} args\\n\", .{ sys.args().len() });
+    for arg in sys.args() {
+        std.fmt.print(&mut out, \"{}\\n\", .{ arg });
+        wrong: u8 = arg;
+    }
+    .ok
+};
+",
+    );
+    // Each argument is the bytes the system passed.
+    let found = fixture.reported(&file);
+    assert_eq!(found.iter().map(|(id, _)| id.clone()).collect::<Vec<_>>(), [errors::TYPES_MISMATCH]);
+    assert!(found[0].1.ends_with("found `&[Int(0..=255)]`"), "{found:?}");
+}

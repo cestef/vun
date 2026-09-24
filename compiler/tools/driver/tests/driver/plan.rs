@@ -18,23 +18,25 @@ package := .{
 };
 ";
 
-/// The actions the plan of a package whose `build.vun` holds `build` records, as literals.
-fn planned(fixture: &Fixture, build: &str) -> Option<Vec<String>> {
-    let path = fixture.root.write(MANIFEST, format!("{PACKAGE}\n{build}"));
-    let mut session = fixture.session();
-    let file = session.load(&path).unwrap();
-    let plan = session.plan(file)?;
-    let package = |p| session.db.get::<Package>(&p).name;
-    let span = Span::new(file, 0, 0);
-    Some(plan.actions.iter().map(|a| a.literal(span, &package).unwrap().source().unwrap()).collect())
+impl Fixture {
+    /// The actions the plan of a package whose `build.vun` holds `build` records, as literals.
+    fn planned(&self, build: &str) -> Option<Vec<String>> {
+        let path = self.root.write(MANIFEST, format!("{PACKAGE}\n{build}"));
+        let mut session = self.session();
+        let file = session.load(&path).unwrap();
+        let plan = session.plan(file)?;
+        let package = |p| session.db.get::<Package>(&p).name;
+        let span = Span::new(file, 0, 0);
+        Some(plan.actions.iter().map(|a| a.literal(span, &package).unwrap().source().unwrap()).collect())
+    }
 }
 
 #[test]
 fn a_plan_records_each_step_with_its_records() {
     let fixture = Fixture::new("plan-steps");
-    let actions = planned(
-        &fixture,
-        "\
+    let actions = fixture
+        .planned(
+            "\
 build := (b: &mut std.build.Build) {
     chip := b.dep(.stm32f4, .{ .variant = .f407 });
     fw := b.program(.{ .root = \"app.vun\", .target = targets.thumbv7em.none_eabihf, .deps = .{ .stm32f4 = chip } });
@@ -62,7 +64,7 @@ build := (b: &mut std.build.Build) {
 #[test]
 fn an_empty_build_plans_nothing() {
     let fixture = Fixture::new("plan-empty");
-    assert_eq!(planned(&fixture, "build := (b: &mut std.build.Build) {};\n"), Some(Vec::new()));
+    assert_eq!(fixture.planned("build := (b: &mut std.build.Build) {};\n"), Some(Vec::new()));
 }
 
 #[test]

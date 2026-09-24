@@ -162,9 +162,11 @@ frames suspend and resume; `End` of a finished frame is nothing, of a suspended 
 `cell`, `cell_pointer`, `atomic_*` with `Ordering`, `items_pointer`; `lang.diag.error`;
 `lang.meta.items`). `std`: `option`, `result`, `cmp`, `ptr`, `mem` (`Own`, `alloc.Fixed`),
 `int`, `seq` (`len`, `enumerate`), `iter` (`Iter`; `enumerate`, `map`, `filter`, `take`,
-`count` on every frame), `sync` (`critical` lending `&temp Critical`, `Shared`, `Atomic`,
-`Mutex` with a nested linear `Guard`, link symbols `enter`/`leave`), `os` (`System`, `Stream`
-with a `Writer` impl, `Exit`, `start` over `os.libc.start`), `fmt` (`Writer`, `Format`, `print`
+`zip`, `chain`, `fold`, `count` on every frame), `sync` (`critical` lending `&temp Critical`, `Shared`, `Atomic`,
+`Mutex` with a nested linear `Guard`, link symbols `enter`/`leave`), `os` (`System` with `args`,
+`Args` over C's `argc`/`argv` (`lang.mem.items_at`) iterable with `for`, `Stream` with a `Writer`
+impl, `Exit`, `start` over `os.libc.start`), `mem.alloc` (`Fixed` implements `Allocator`, its own
+method `take`), `fmt` (`Writer`, `Format`, `print`
 splitting the format at compile time and reporting a mismatched argument count), `diag`
 (`Report`, `error`), `task` (`Event`, `Wait` with `also`, `select`, `run`, `block_on`, link
 symbol `sleep`), `build` (`Build` records `Action`s, `plan` runs a package's `build`), `lints`
@@ -189,15 +191,14 @@ in MIR, constructor calls at compile time, members of made types), 123 (`&static
 positions, range slices, witnesses in the type's package), 124 (`std.fmt`), 125 (library
 diagnostics), 126 (executors, frames' `resume`/`end`), 127 (`std.iter` adapters), 128 to 130, 134, 135, 137 (static borrows of literals, `mut`
 statics at compile time), 138 (targets and lint groups as data, member handles), 139 (the size
-budget). New language
+budget), 140 (`std` iterators, arguments, `Fixed` as an `Allocator`). New language
 rules go to `decisions.md` as proposed unless the user approves them.
 
 ## 7. Next steps, in order
 
-1. `std`: `std.task.Pool`, `std.testing.Sim`, the runtimes' `std.task.sleep` (WFI on bare
-   metal, a futex wait hosted) and `std.sync.enter`/`leave`; `std.iter` `zip`, `chain`, `fold`;
-   `System.args`; a Linux runtime without the C library; `Allocator` impls for `Fixed`; text
-   (`Str`) and collections; `Format` for arrays of non-bytes, `print`'s `.fixes`.
+1. `std`: `std.task.Pool`, `std.testing.Sim`; a Linux runtime without the C library; text
+   (`Str`) and collections; `Format` for arrays of non-bytes, `print`'s `.fixes`. Generic bodies
+   over a constrained `$A: Allocator` are neither typed nor lowered (`a.alloc(...)`), see 5 and 6.
 2. Leaks at scope exits inside a body (found at the function's return only today), `fixed` and
    `scoped` kinds, frames' `end` running their defers (MIR `End`, the interpreter).
 3. Borrow rules left: top-level bindings as free values, frames' region from their parameters, a label where a conflicting borrow is

@@ -13,9 +13,10 @@ impl Typer<'_, '_, '_> {
     /// `&mode operand`.
     pub(super) fn borrow(&mut self, expr: ExprId, mode: Option<Symbol>, operand: ExprId) -> Option<Known> {
         let known = self.typed_as(operand, self.expected(expr).and_then(|t| t.pointee()))?;
-        let ty = TyKind::of_types();
-        if known.ty == ty {
-            return Some(known);
+        // Of a type, such as `u8` or `[u8]`, `&` makes a borrow type (type syntax mirrors value
+        // syntax, spec 01).
+        if known.ty == TyKind::of_types() || self.env().denotes_type(operand) {
+            return Some(Known { ty: TyKind::of_types(), ..known });
         }
         let word = mode.map_or("", Symbol::as_str);
         let &(_, item, before, after, access, extent) = BORROWS.iter().find(|(m, ..)| *m == word)?;

@@ -40,25 +40,11 @@ impl Session {
             }
             Err(Unplanned::Stopped { why: Unevaluated::Trapped(trap), at }) => trap.report(at),
             Err(Unplanned::Stopped { why, at }) => {
-                let msg =
-                    Msg::new().text("the plan of ").code(name).text(" could not run: ").text(stopped(&why));
+                let msg = Msg::new().text("the plan of ").code(name).text(" could not run: ").text(why.why());
                 Diagnostic::error(errors::PLAN_STOPPED, msg).at(at, None)
             }
         };
         self.diag.error(d);
         None
-    }
-}
-
-/// Why evaluation stopped, other than a trap, as a plan's report says it.
-fn stopped(why: &Unevaluated) -> &'static str {
-    match why {
-        Unevaluated::Runtime => "it reads a value known only at run time",
-        Unevaluated::Interpreter => "no evaluator is installed",
-        Unevaluated::Cycle => "it depends on itself",
-        Unevaluated::Absent => "a name leads nowhere",
-        Unevaluated::Provided => "it reads a declaration provided from outside",
-        Unevaluated::Trapped(_) | Unevaluated::Failed => "a declaration it reads failed to evaluate",
-        Unevaluated::Unsupported => "it uses a form compile-time evaluation does not run yet",
     }
 }

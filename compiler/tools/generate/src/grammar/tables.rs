@@ -133,7 +133,7 @@ impl<'s> Grammar<'s> {
     pub(super) fn value(&self, value: &Literal<'_>, ty: &Ty) -> TokenStream {
         match (ty, value) {
             (Ty::Str, Literal::String(text)) => quote! { #text },
-            (Ty::Item, Literal::String(path)) => items::rust_path(path),
+            (Ty::Item, Literal::String(path)) => items::Handles::rust_path(path),
             (Ty::Enum(i), Literal::Name(name)) => {
                 let (e, v) = (ident(self.enums[*i].name), pascal(name));
                 quote! { #e::#v }

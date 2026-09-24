@@ -19,6 +19,11 @@ pub const stdout_fd: Item = Item::new(&["std", "os", "stdout_fd"]);
 pub const stderr_fd: Item = Item::new(&["std", "os", "stderr_fd"]);
 /// Access to the operating system: files, sockets, threads, clocks, the environment.
 pub const System: Item = Item::new(&["std", "os", "System"]);
+/// The arguments a process was started with, its program's name first where the system passes
+/// one: each the bytes the system passed, without the zero that ends it there.
+pub const Args: Item = Item::new(&["std", "os", "Args"]);
+/// Each argument in order: `for arg in sys.args()`.
+pub const ArgsIterate: Item = Item::new(&["std", "os", "ArgsIterate"]);
 /// A byte stream the system holds open: standard output, a file, a socket.
 pub const Stream: Item = Item::new(&["std", "os", "Stream"]);
 pub const StreamWriter: Item = Item::new(&["std", "os", "StreamWriter"]);
