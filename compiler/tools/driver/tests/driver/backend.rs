@@ -5,17 +5,35 @@ use vun_harness::{ACCEPT, repo_root};
 
 use crate::common::Fixture;
 
-#[test]
-fn a_hosted_program_built_through_c_runs() {
-    let fixture = Fixture::new("backend-c-hello");
-    let text = std::fs::read_to_string(repo_root().join(ACCEPT).join("programs/hello.vun")).unwrap();
-    let path = fixture.root.write("hello.vun", text);
+/// The backends every program here is built through, which must agree.
+const BACKENDS: [&str; 2] = [vun_backend_c::INFO.id.0, vun_backend_baseline::INFO.id.0];
+
+/// Builds `source` through `backend` and runs it.
+fn run(name: &str, source: &str, backend: &str) -> std::process::Output {
+    let fixture = Fixture::new(&format!("{name}-{backend}"));
+    let path = fixture.root.write("main.vun", source);
     let mut session = fixture.session();
     let file = session.load(&path).unwrap();
-    let program = session.build(file, Some(vun_backend_c::INFO.id.0), None).unwrap();
-    let run = std::process::Command::new(program).output().unwrap();
-    assert!(run.status.success());
-    assert_eq!(run.stdout, b"hello\n");
+    let program = session.build(file, Some(backend), None);
+    let program = program.unwrap_or_else(|_| panic!("{:#?}", session.diag));
+    std::process::Command::new(program).output().unwrap()
+}
+
+/// Builds `source` through each backend and runs it: its exit status, the same through each.
+fn status(name: &str, source: &str) -> Option<i32> {
+    let statuses: Vec<Option<i32>> = BACKENDS.iter().map(|b| run(name, source, b).status.code()).collect();
+    assert!(statuses.windows(2).all(|w| w[0] == w[1]), "{BACKENDS:?} disagree: {statuses:?}");
+    statuses[0]
+}
+
+#[test]
+fn a_hosted_program_runs_through_each_backend() {
+    let text = std::fs::read_to_string(repo_root().join(ACCEPT).join("programs/hello.vun")).unwrap();
+    for backend in BACKENDS {
+        let run = run("backend-hello", &text, backend);
+        assert!(run.status.success());
+        assert_eq!(run.stdout, b"hello\n");
+    }
 }
 
 #[test]
@@ -40,19 +58,11 @@ fn a_program_split_into_shards_runs_and_reports_its_frames() {
 
 #[test]
 fn a_program_exits_with_the_status_it_returns() {
-    let fixture = Fixture::new("backend-c-status");
-    let path = fixture.root.write(
-        "status.vun",
-        "\
+    let source = "\
 start := std.os.start(main);
 main := (sys: &mut std.os.System) -> std.os.Exit { .code(3) };
-",
-    );
-    let mut session = fixture.session();
-    let file = session.load(&path).unwrap();
-    let program = session.build(file, Some(vun_backend_c::INFO.id.0), None).unwrap();
-    let run = std::process::Command::new(program).status().unwrap();
-    assert_eq!(run.code(), Some(3));
+";
+    assert_eq!(status("backend-status", source), Some(3));
 }
 
 /// A program driving a coroutine of its own, `values`, and exiting with what `body` computes
@@ -71,25 +81,14 @@ main := (sys: &mut std.os.System) -> std.os.Exit {{
     )
 }
 
-/// Builds `source` through the C backend and runs it, giving its exit status.
-fn status(name: &str, source: &str) -> Option<i32> {
-    let fixture = Fixture::new(name);
-    let path = fixture.root.write("main.vun", source);
-    let mut session = fixture.session();
-    let file = session.load(&path).unwrap();
-    let program = session.build(file, Some(vun_backend_c::INFO.id.0), None);
-    let program = program.unwrap_or_else(|_| panic!("{:#?}", session.diag));
-    std::process::Command::new(program).status().unwrap().code()
-}
-
 #[test]
 fn a_loop_resumes_a_coroutine_to_its_end() {
-    assert_eq!(status("backend-c-frames", &driving("total ^= x;")), Some(0x03 ^ 0x04 ^ 0x05 ^ 0x1e));
+    assert_eq!(status("backend-frames", &driving("total ^= x;")), Some(0x03 ^ 0x04 ^ 0x05 ^ 0x1e));
 }
 
 #[test]
 fn breaking_out_of_a_loop_ends_the_suspended_frame() {
-    assert_eq!(status("backend-c-break", &driving("if x == 5 { break; } total ^= x;")), Some(0x03 ^ 0x04));
+    assert_eq!(status("backend-break", &driving("if x == 5 { break; } total ^= x;")), Some(0x03 ^ 0x04));
 }
 
 #[test]
@@ -109,7 +108,7 @@ main := (sys: &mut std.os.System) -> std.os.Exit {
     .code((total + count).wrap(u8))
 };
 ";
-    assert_eq!(status("backend-c-loops", source), Some((31 + 6 + 255) % 256));
+    assert_eq!(status("backend-loops", source), Some((31 + 6 + 255) % 256));
 }
 
 #[test]
@@ -125,5 +124,67 @@ main := (sys: &mut std.os.System) -> std.os.Exit {
     .code(total)
 };
 ";
-    assert_eq!(status("backend-c-staged-frames", source), Some(16));
+    assert_eq!(status("backend-staged-frames", source), Some(16));
+}
+
+#[test]
+fn arithmetic_records_atomics_and_matches_run_as_they_mean() {
+    // Division and remainder of each signedness, shifts, bit operations, signed comparisons,
+    // nine parameters, records passed and returned in registers and in memory under the C
+    // convention, atomics, a match on integers and a copy of 320 bytes: 24, as computed by hand.
+    let source = "\
+start := std.os.start(main);
+
+mix := (a: u8, b: u16, c: u32, d: u64, e: i8, f: i16, g: i32, h: u8, k: Int(1..=255)) -> u64 {
+    q := d / 7;
+    r := d % 10;
+    s := g / 3;
+    t := g % 5;
+    u := (c >> 3) ^ (c << 2);
+    v := (a & 0x0f) | (b.wrap(u8) ^ h);
+    w := d / k;
+    neg: u8 = if e < 0 { 1 } else { 2 };
+    sign: u8 = if f <= -2 { 4 } else { 8 };
+    base := q.wrap(u8) + r.wrap(u8) + u.wrap(u8) + v + w.wrap(u8) + neg + sign;
+    base + (s + t + 1000).sat(u16)
+};
+
+#[layout.c]
+Pair := struct { x: u32, y: u64 };
+#[layout.c]
+Big := struct { a: u64, b: u64, c: u64 };
+
+#[abi.c]
+swap := (p: Pair) -> Pair { Pair{ .x = p.y.wrap(u32), .y = p.x } };
+#[abi.c]
+spin := (b: Big) -> Big { Big{ .a = b.c, .b = b.a, .c = b.b } };
+
+pick := (x: u8) -> u8 {
+    match x {
+        0 => 10,
+        1 => 20,
+        7 => 30,
+        _ => 40,
+    }
+};
+
+main := (sys: &mut std.os.System) -> std.os.Exit {
+    n := sys.args().len();
+    n8: u8 = n.sat(u8);
+    m := mix(n8, 700, 123456, 99999999999, -3, -2, -77, 5, 3);
+    p := swap(Pair{ .x = 1, .y = 2 });
+    big := spin(Big{ .a = 1, .b = 2, .c = 3 });
+    counter := std.sync.Atomic(u32).init(5);
+    old := counter.add(3, .seq_cst);
+    was := counter.swap(10, .seq_cst);
+    cas := counter.compare_swap(10, 11, .seq_cst);
+    now := counter.load(.acquire);
+    arr: [40]u64 = [7; 40];
+    copy := arr;
+    x := (m.wrap(u8) + p.y.wrap(u8) + p.x.wrap(u8) + (big.a.wrap(u8) * 3 + big.b.wrap(u8) * 5 + big.c.wrap(u8) * 7).wrap(u8)
+        + pick(n8) + pick((n8 + 6).wrap(u8)) + old.wrap(u8) + was.wrap(u8) + cas.wrap(u8) + now.wrap(u8) + copy[39].wrap(u8)).wrap(u8);
+    .code(x)
+};
+";
+    assert_eq!(status("backend-mix", source), Some(24));
 }

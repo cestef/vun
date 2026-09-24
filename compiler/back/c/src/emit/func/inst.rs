@@ -7,7 +7,7 @@ use vun_target::Atomics;
 
 use super::FnEmit;
 use crate::ast::{Binary, Builtin, Expr, Ident, Own, Stmt, Ty, Unary};
-use crate::lack::{Lack, Missing};
+use vun_backend::{Lack, Missing};
 
 impl FnEmit<'_, '_> {
     pub(super) fn inst(&mut self, inst: Inst) -> Result<(), Lack> {

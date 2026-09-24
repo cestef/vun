@@ -8,6 +8,7 @@ mod call;
 mod constant;
 mod convert;
 mod coroutine;
+mod int;
 mod place;
 mod primitive;
 mod rvalue;

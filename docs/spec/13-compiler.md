@@ -408,6 +408,21 @@ A native backend for debug builds, in TPDE's design, reading LIR through the sha
   object (ELF first), with relocations for calls, data and imports. Encoders and the object writer
   are part of the toolchain (no external crate).
 
+As built (`compiler/back/baseline`, x86-64 System V, ELF): every value has a home in the frame,
+allocated when first stored; constants and addresses of slots, data and functions (at constant
+offsets) are recomputed where used and fold into memory operands. Values are held in the
+registers a call may overwrite, but `r10` and `r11`, kept for the backend's own moves; before a
+call and at the end of every block each value still used is stored home, and each block starts
+with every register free. Vun's convention passes the signature's values in the registers C
+passes integers in, then on the stack; the C convention classifies records as System V does
+(integer records of up to 16 bytes in registers, larger ones in memory, a result in memory through
+an address passed first). Narrow integers are held with undefined upper bits and extended where an
+operation reads them (division, right shifts, conversions, C arguments). Not yet: callee-saved
+registers for loops, keeping registers across a fall-through, fusing a compare into its branch,
+frame sizes as a report, and floats and 128-bit integers, which are refused (`backend.lacks`).
+`vun build --backend baseline` links the object with the target's linker; the backend tests run
+every program through both backends and require the same result.
+
 | Linker | Use |
 |--------|-----|
 | wild | development links on Linux ELF; aiming at incremental linking; check linker-script support before firmware use |

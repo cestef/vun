@@ -7,7 +7,7 @@ use vun_lir::{AbiType, Block, Conv, Ext, Target, Terminator};
 
 use super::FnEmit;
 use crate::ast::{Expr, Ident, Own, Stmt};
-use crate::lack::Lack;
+use vun_backend::Lack;
 
 impl FnEmit<'_, '_> {
     pub(super) fn term(&mut self, block: Block) -> Result<(), Lack> {

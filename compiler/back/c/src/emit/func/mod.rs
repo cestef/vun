@@ -17,8 +17,8 @@ use vun_origin::OriginId;
 use super::Emitter;
 use super::signature::CSignature;
 use crate::ast::{Decl, Expr, Ident, Item, Own, Proto, Stmt, Storage, Ty};
-use crate::lack::Lack;
 use inline::Inlined;
+use vun_backend::Lack;
 
 pub(super) struct FnEmit<'e, 'u> {
     e: &'e mut Emitter<'u>,

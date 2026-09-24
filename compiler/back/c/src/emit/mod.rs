@@ -20,7 +20,7 @@ use vun_target::TargetSpec;
 use crate::ast::{
     Aggregate, Binary, Builtin, Decl, Expr, File, Ident, Item, Names, Own, Proto, Stmt, Storage, Ty, Unary,
 };
-use crate::lack::{Lack, Missing};
+use vun_backend::{Lack, Missing};
 
 /// What emitting a unit gathers as it goes.
 pub(crate) struct Emitter<'u> {

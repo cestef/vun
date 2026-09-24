@@ -1,0 +1,19 @@
+[package]
+name = "vun-backend-baseline"
+description = "Baseline backend: single-pass native code generation from LIR, in the style of TPDE."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+vun-backend.workspace = true
+vun-diag.workspace = true
+vun-index.workspace = true
+vun-intern.workspace = true
+vun-lir.workspace = true
+vun-origin.workspace = true
+vun-target.workspace = true

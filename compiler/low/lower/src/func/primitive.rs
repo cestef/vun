@@ -3,7 +3,7 @@
 //! operations of `lang.mem`.
 
 use vun_desugar::Narrowing;
-use vun_lir::{Access, BinOp, Cond, InstKind, Order, Scalar, Value};
+use vun_lir::{Access, BinOp, Cond, InstKind, Order, RmwOp, Scalar, Value};
 use vun_mir::Operand;
 use vun_sema::Primitive;
 use vun_sema::callable::Callable;
@@ -56,6 +56,9 @@ impl FnLower<'_, '_, '_> {
         };
         if let Some(op) = op {
             return self.arithmetic(op, arg(0)?, arg(1)?, dest, ty);
+        }
+        if let Primitive::Int(quotient @ (Int::div | Int::rem)) = p {
+            return self.divide(quotient == Int::div, arg(0)?, arg(1)?, dest, ty);
         }
         let cond = match p {
             Primitive::Int(Int::equal) => Some(Cond::Eq),
@@ -165,6 +168,20 @@ impl FnLower<'_, '_, '_> {
                 self.b.store(value, dest, Access::Plain, self.at);
                 Ok(())
             }
+            rmw @ (Mem::atomic_swap | Mem::atomic_add | Mem::atomic_sub) => {
+                let op = match rmw {
+                    Mem::atomic_swap => RmwOp::Swap,
+                    Mem::atomic_add => RmwOp::Add,
+                    _ => RmwOp::Sub,
+                };
+                let (addr, value) = (self.scalar_operand(arg(0)?)?, self.scalar_operand(arg(1)?)?);
+                let order = self.order(arg(2)?)?;
+                let scalar = self.scalar_of(ty)?;
+                let kind = InstKind::Rmw { op, addr, value, order };
+                let held = self.b.push(kind, Some(scalar), self.at).expect("an exchange gives what was held");
+                self.b.store(held, dest, Access::Plain, self.at);
+                Ok(())
+            }
             Mem::atomic_compare_swap => {
                 let (expected, new) = (self.scalar_operand(arg(1)?)?, self.scalar_operand(arg(2)?)?);
                 let order = self.order(arg(3)?)?;
@@ -203,34 +220,6 @@ impl FnLower<'_, '_, '_> {
             }
             _ => Err(unsupported()),
         }
-    }
-
-    /// `x op y` in the storage of the result's range `ty`.
-    fn arithmetic(
-        &mut self,
-        op: BinOp,
-        x: &Operand,
-        y: &Operand,
-        dest: Option<Value>,
-        ty: Ty,
-    ) -> Result<(), Unlowered> {
-        let Some(dest) = dest else { return Ok(()) };
-        let (int, signed) = self.l.types.int(ty).ok_or(Unlowered::unsupported(self.at, Form::Primitive))?;
-        let (x, y) = (self.int_operand(x, int)?, self.int_operand(y, int)?);
-        let op = if op == BinOp::LShr && signed { BinOp::AShr } else { op };
-        let value = self.b.binary(op, x, y, self.at);
-        self.b.store(value, dest, Access::Plain, self.at);
-        Ok(())
-    }
-
-    /// The integer `operand` in the storage `int`.
-    pub(crate) fn int_operand(&mut self, operand: &Operand, int: Scalar) -> Result<Value, Unlowered> {
-        let at = self.at;
-        let unsupported = move || Unlowered::unsupported(at, Form::Primitive);
-        let ty = self.operand_ty(operand).ok_or_else(unsupported)?;
-        let (own, signed) = self.l.types.int(ty).ok_or_else(unsupported)?;
-        let value = self.scalar_operand(operand)?;
-        Ok(self.resize(value, own, signed, int))
     }
 
     /// The integer a borrow `operand` reaches, as a signed 128-bit integer, so any two compare.

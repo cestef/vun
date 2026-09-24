@@ -14,3 +14,4 @@ vun-lir.workspace = true
 vun-origin.workspace = true
 vun-target.workspace = true
 vun-diag.workspace = true
+vun-intern.workspace = true

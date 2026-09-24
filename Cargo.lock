@@ -474,6 +474,20 @@ name = "vun-backend"
 version = "0.0.0"
 dependencies = [
  "vun-diag",
+ "vun-intern",
+ "vun-lir",
+ "vun-origin",
+ "vun-target",
+]
+
+[[package]]
+name = "vun-backend-baseline"
+version = "0.0.0"
+dependencies = [
+ "vun-backend",
+ "vun-diag",
+ "vun-index",
+ "vun-intern",
  "vun-lir",
  "vun-origin",
  "vun-target",
@@ -616,6 +630,7 @@ name = "vun-driver"
 version = "0.0.0"
 dependencies = [
  "vun-backend",
+ "vun-backend-baseline",
  "vun-backend-c",
  "vun-backend-cranelift",
  "vun-backend-llvm",

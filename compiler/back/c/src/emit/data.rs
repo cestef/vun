@@ -12,7 +12,7 @@ use vun_lir::{Address, DataId};
 
 use super::Emitter;
 use crate::ast::{Aggregate, Binary, Decl, Expr, Ident, Item, Storage, Ty};
-use crate::lack::{Lack, Missing};
+use vun_backend::{Lack, Missing};
 
 /// The items of the unit's data.
 pub(super) struct Objects {

@@ -9,7 +9,7 @@ use vun_target::CInt;
 
 use super::Emitter;
 use crate::ast::{Aggregate, Base, Binary, Decl, Expr, Ident, Item, Own, Suffix, Ty};
-use crate::lack::{Lack, Missing};
+use vun_backend::{Lack, Missing};
 
 /// The widths of the integers LIR has that C can declare.
 const WIDTHS: [u32; 4] = [8, 16, 32, 64];

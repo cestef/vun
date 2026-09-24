@@ -8,7 +8,7 @@ use vun_lir::{BinOp, CastOp, Cond, Reads, Scalar, Value};
 
 use super::FnEmit;
 use crate::ast::{Binary, Expr, Own, Ty};
-use crate::lack::Lack;
+use vun_backend::Lack;
 
 impl FnEmit<'_, '_> {
     /// An operand read as `reads` reads a value of `s`.

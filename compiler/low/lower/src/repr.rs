@@ -69,7 +69,15 @@ impl<'a, 'db> Types<'a, 'db> {
     /// where two integers are compared.
     #[must_use]
     pub fn common(self, a: Ty, b: Ty) -> Option<(Scalar, bool)> {
-        Self::storing(&a.interval()?.hull(&b.interval()?))
+        self.common_of(&[a, b])
+    }
+
+    /// The integer storing the values of every type of `tys`, and whether it is signed.
+    #[must_use]
+    pub fn common_of(self, tys: &[Ty]) -> Option<(Scalar, bool)> {
+        let ranges = tys.iter().map(|t| t.interval()).collect::<Option<Vec<_>>>()?;
+        let hull = ranges.iter().skip(1).fold(ranges.first()?.clone(), |h, r| h.hull(r));
+        Self::storing(&hull)
     }
 
     fn storing(range: &Interval) -> Option<(Scalar, bool)> {

@@ -3,9 +3,8 @@
 
 pub mod ast;
 mod emit;
-mod lack;
 
-pub use lack::{Lack, Missing};
+pub use vun_backend::{Lack, Missing};
 
 use std::collections::HashMap;
 use vun_backend::{Artifact, ArtifactSink, Backend, BackendCaps, BackendInfo, Emits, Lines};

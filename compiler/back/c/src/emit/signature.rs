@@ -8,7 +8,7 @@ use vun_origin::OriginId;
 
 use super::Emitter;
 use crate::ast::{Decl, Ident, Proto, Storage, Ty};
-use crate::lack::{Lack, Missing};
+use vun_backend::{Lack, Missing};
 
 /// A signature as C passes it.
 pub(super) struct CSignature {

@@ -25,6 +25,7 @@ impl Registry {
         let mut r = Self::default();
         register!(r.add_backend {
             "backend-c" => vun_backend_c::CBackend::default(),
+            "backend-baseline" => vun_backend_baseline::BaselineBackend,
             "backend-cranelift" => vun_backend_cranelift::CraneliftBackend,
             "backend-qbe" => vun_backend_qbe::QbeBackend,
             "backend-llvm" => vun_backend_llvm::LlvmBackend,

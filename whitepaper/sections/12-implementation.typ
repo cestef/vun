@@ -83,16 +83,16 @@ including the compiler's tables.
     [syntax], [lexer, error-recovering parser, postorder syntax tree with a verifier, literal reader; fuzzed],
     [HIR], [desugaring through the `lang` tables; name resolution, visibility, spreads],
     [semantic analysis], [types as values, compile-time evaluation, implementations and witnesses, reflection, code values, closures, coroutines, layout, kinds, inference of `$` parameters],
-    [MIR], [lowering of 93 of the 115 functions in the accepted corpus],
+    [MIR], [lowering of 83 of the 94 functions in the accepted corpus],
     [MIR checks], [place states, moves and leaks, `defer`, borrow conflicts and escapes, free values, `panic.never`],
     [interpreter], [runs compile-time code on MIR, including coroutine frames; no memory model for `&mut` yet],
     [packages], [manifests, BLAKE3 tree hashes, store and collection, `.tar.zst` archives, lockfile, minimal version selection, replacement, indexes],
-    [diagnostics], [74 identifiers in 20 groups, each with a checked explanation page; renderers in the annotate-snippets, ariadne and one-line styles],
-    [LIR, backends, linkers], [interfaces only],
+    [diagnostics], [84 identifiers in 23 groups, each with a checked explanation page; renderers in the annotate-snippets, ariadne and one-line styles],
+    [LIR, backends, linkers], [LIR with a verifier and the analyses backends share; lowering from MIR, coroutine frames included; a C backend writing strict C99 and a single-pass x86-64 backend writing ELF objects, which run the backend tests with identical results; linking through GNU ld],
     midrule,
-    [corpus], [43 source files to accept and 58 to reject; the harness reports 210 passing checks and no failures],
-    [test suite], [203 tests, including a check that every `lang` and `std` file is accepted],
-    [coverage], [69% of expressions in accepted function bodies are typed],
+    [corpus], [36 source files to accept and 58 to reject; the harness reports 207 passing checks and no failures],
+    [test suite], [265 tests, including a check that every `lang` and `std` file is accepted],
+    [coverage], [82% of expressions in accepted function bodies are typed],
     bottomrule,
   ),
   caption: [State of the implementation, September 2026.],
@@ -100,14 +100,13 @@ including the compiler's tables.
 
 #figure(
   code-size,
-  caption: [Lines of Rust per workspace group, including tests. The late stages consist of
-    interfaces only.],
+  caption: [Lines of Rust per workspace group, including tests, excluding generated code.],
 ) <fig-code-size>
 
 The main gaps, in the order in which they are planned, are: the remaining library surface (a thread
 pool, the simulator, text and collections); the `fixed` and `scoped` kinds and the ending of
 suspended frames; the driver side of the build function; the remaining MIR lowering (listed by the
-corpus harness); narrowing by comparisons and exhaustiveness checking; an evaluator with its own
+corpus harness); exhaustiveness checking; an evaluator with its own
 stack and a memory model for mutable borrows at compile time; and persistence of the front-end
 queries. @tab-roadmap gives the phases of the project and their exit criteria; the implementation
 is between phases 1 and 2.

@@ -42,6 +42,7 @@ vun-abi = { path = "compiler/low/abi" }
 vun-lir-passes = { path = "compiler/low/passes" }
 vun-backend = { path = "compiler/back/api" }
 vun-backend-c = { path = "compiler/back/c" }
+vun-backend-baseline = { path = "compiler/back/baseline" }
 vun-backend-cranelift = { path = "compiler/back/cranelift" }
 vun-backend-qbe = { path = "compiler/back/qbe" }
 vun-backend-llvm = { path = "compiler/back/llvm" }

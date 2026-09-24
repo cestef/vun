@@ -1,4 +1,4 @@
-//! What strict C99 cannot express, found while emitting (spec 13, section 8.2); each is refused,
+//! What a backend cannot express, found while emitting (spec 13, section 8); each is refused,
 //! never approximated.
 
 use vun_diag::{Diagnostic, Msg, errors};
@@ -9,6 +9,8 @@ use vun_origin::OriginId;
 pub enum Missing {
     Int128,
     Half,
+    /// Floating-point values.
+    Float,
     Atomic,
     Naked,
     Section,
@@ -42,6 +44,7 @@ impl Lack {
         let what = match self.missing {
             Missing::Int128 => Msg::new().text("128-bit integers"),
             Missing::Half => Msg::new().code("f16"),
+            Missing::Float => Msg::new().text("floating-point values"),
             Missing::Atomic => Msg::new().text("atomic memory access"),
             Missing::Naked => Msg::new().text("naked functions"),
             Missing::Section => Msg::new().text("link sections"),

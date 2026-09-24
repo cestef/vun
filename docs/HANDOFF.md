@@ -1,6 +1,6 @@
 # Handoff
 
-State of Vun as of 2026-09-25 (end of the eighth session), for the next agent. Read this, then
+State of Vun as of 2026-09-25 (end of the ninth session), for the next agent. Read this, then
 `CLAUDE.md` (rules and the agent procedure; on disk but ignored by the user's global gitignore, so
 `jj st` never shows it), then `docs/spec/00-principles.md`, `docs/spec/decisions.md` and the spec
 files of the area you touch.
@@ -233,6 +233,15 @@ printer), `emit/` (`ints.rs` integer types from the C model with `sizeof` checks
 `vun run` (`codegen.rs`, `program.rs`); the `gnu` linker adapter links through the target's C
 compiler. `vun run corpus/accept/programs/hello.vun --backend c` prints `hello` (a driver test).
 
+**Baseline backend** (`compiler/back/baseline`, decision 157, spec 13 section 8.3): `x86_64/encode`
+(`Asm`: typed instructions to bytes, labels patched at the end, `CodeReloc`s), `x86_64/abi.rs`
+(`Frame::of`: where a signature passes each value, System V records), `x86_64/func/` (the
+single-pass compiler: `values.rs` assignments, homes, recomputed values and eviction; `inst.rs`,
+`memory.rs`, `call.rs`, `term.rs`), `elf/` (`Object` as data, `write`), `object.rs` (a unit as one
+object). `vun run <file> --backend baseline` runs hello.vun; the driver's backend tests build every
+program through `BACKENDS` (C and baseline) and require equal results. `Lack`/`Missing` live in
+`vun-backend`.
+
 **Interpreter** (`compiler/mid/interp`): runs MIR on compile-time values; shared borrows read as
 values; exclusive borrows are loans (`Value::Loan`) that `.*` follows (`places.rs`), passed to
 calls as what they reach and written back from `Metered::written` (`loans.rs`, decision 135);
@@ -264,12 +273,13 @@ package's `build.vun` runs it (stage `plan`), `vun dump plan` prints its actions
 (`Value::literal`). Nothing carries the actions out yet.
 
 Progress: corpus 207 passed, 0 pending, 9 planned, 27 shown, 0 failed; 82% of accepted body
-expressions typed; MIR lowers 83 of 94 accepted functions. 261 tests, including one that checks
+expressions typed; MIR lowers 83 of 94 accepted functions. 265 tests, including one that checks
 every `lang` and `std` file cleanly.
 
 ## 6. Decisions
 
-Proposed also: 155 (frame layout), 156 (narrowing, runtime bounds, frame layouts in sema).
+Proposed also: 155 (frame layout), 156 (narrowing, runtime bounds, frame layouts in sema), 157
+(the baseline backend).
 Accepted (the user's choices, details proposed): 152 (backends after TPDE, baseline backend
 started after C), 153 (the C backend), 154 (targets named by system and CPU, chosen per session).
 Accepted: 1 to 84, 91, 92, 98 to 106, 109, 111, 116, 118 (no bespoke formats: `lock.vun`,
@@ -289,8 +299,13 @@ rules go to `decisions.md` as proposed unless the user approves them.
 
 ## 7. Next steps, in order
 
-0. Backends: the baseline backend (spec 13 section 8.3: x86_64, own encoder and ELF writer, over
-   `vun_lir::analysis`); memory regions from a program's build options into `LinkPlan` (the `gnu`
+0. The size budget: the distributed `vun` is 7,658,304 bytes, over the 6,422,528 of
+   `xtask/src/size.rs` (the commit before this session was already 7,510,528; the baseline
+   backend adds about 73 KiB of code). Raising it or cutting is the user's decision (139).
+   Baseline backend next: callee-saved registers for values used across a loop (the prologue
+   reserving their saves, patched), keeping registers across a fall-through to a block with one
+   predecessor, compare and branch fused, frame sizes reported (`stack.max`), floats (SSE) and
+   128-bit integers (pairs, helpers in Vun), DWARF lines, arm64. Backends: memory regions from a program's build options into `LinkPlan` (the `gnu`
    adapter writes scripts from them), and a bare-metal runtime to link against. Frames: sema's
    `Shapes` has no layout for frame types (only lowering's `Frames` query does), so
    `std.meta.size(f.Frame)` and types holding frames are unknown; frames of coroutines generated
@@ -325,6 +340,8 @@ rules go to `decisions.md` as proposed unless the user approves them.
 
 ## 8. Pitfalls
 
+- The shell may inherit `CARGO_TARGET_DIR` from an old environment: then `cargo build` writes
+  elsewhere and `./target/debug/vun` is stale. `unset CARGO_TARGET_DIR` first.
 - Nothing has a target until the driver chooses one (`Session::target_for`, on the first
   `file_ref`); code outside the driver that queries layouts sets `TargetOf` itself.
 - Run light checks while working (`-p <crate>`, one test); the full check line once per batch.

@@ -7,8 +7,8 @@ use vun_span::{SourceFiles, Span};
 use vun_target::{Atomics, CCompiler, CInt, CTypes, Endian, FrameSizes, TargetSpec};
 
 use crate::ast::{Ident, Names};
-use crate::lack::Missing;
 use crate::{CBackend, Lack};
+use vun_backend::Missing;
 
 fn origin(origins: &OriginTable) -> OriginId {
     let file = SourceFiles::new().add("a.vun", "f := () {};");

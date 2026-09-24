@@ -3,6 +3,10 @@
 //! Nothing above LIR knows about any backend. A backend declares its facts once, in a
 //! [`BackendInfo`]; support and capability checks are derived from it (spec 13, section 7).
 
+mod lack;
+
+pub use lack::{Lack, Missing};
+
 use std::path::PathBuf;
 
 use vun_diag::{DiagCtxt, Diagnostic, ErrorGuaranteed, Msg, errors};

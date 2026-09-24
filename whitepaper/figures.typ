@@ -174,7 +174,7 @@
 #let code-size = {
   // Listed bottom to top, so the layering order reads from the top.
   let groups = ("tools", "render", "link", "back", "low", "mid", "front", "base")
-  let lines = (9343, 480, 249, 292, 53, 4076, 18300, 5637)
+  let lines = (12952, 480, 466, 5378, 5314, 5058, 19880, 9671)
   let ys = range(groups.len())
   lq.diagram(
     width: 9cm, height: 4.4cm,
