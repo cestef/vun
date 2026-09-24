@@ -108,9 +108,10 @@ UartWriter := struct {
 - `#[impl(I(T))]` is a `lang` attribute. It checks the struct against the requirements of `I(T)`,
   fills in defaults, and registers the result, the **witness**, for the pair `(I, T)`.
 - An impl lives in the package of `T` or of `I` (orphan rule). At most one impl per pair.
-- Members of the witness join `T`'s method lookup (spec 01, section 4). A name collision between two
-  witnesses, or with `T`'s own members, is an error at the second impl; `UartWriter.write(&mut u, b)`
-  is always available as the explicit spelling.
+- Members of the witness join `T`'s method lookup (spec 01, section 4). A name declared by two
+  impls a file sees, or by an impl and `T` itself, is an error where it is looked up
+  (`impl.collision`), naming each declaration; `UartWriter.write(&mut u, b)` is always available
+  as the explicit spelling.
 - The witness is an ordinary named struct. `std.meta.witness(Writer, Uart)` returns it.
 - `T` may be a type constructor: a primitive such as `lang.Int`, or a function returning a type.
   The impl then covers every type the constructor makes, and its value is a function of the
@@ -125,7 +126,8 @@ UartWriter := struct {
 - `#[impl(T)]`, with no interface, adds the declarations of its struct to `T`'s method lookup and
   checks nothing else: methods without an abstraction. `T` may be a type or a type constructor,
   as above, so `#[impl(Result)]` on `($T: type, $E: type) -> type { struct { map_err := ... } }`
-  gives every result `map_err`. It lives in the package of `T`, and collides like a witness.
+  gives every result `map_err`. It registers no pair, so the orphan rule does not apply: any
+  package may add methods to any type, and the collision rule above keeps lookup unambiguous.
 - The impls a file sees are those of its package and of the packages it depends on, directly or
   not; the orphan rule places every impl of a pair in one of them.
 

@@ -187,6 +187,13 @@ impl Typer<'_, '_, '_> {
             }
             Found::Decl(decl) => {
                 self.check_visible(expr, name, &decl.visible);
+                // An impl declaring the type's own member again collides with it.
+                let also = self.env().methods(known.ty, name);
+                if !also.is_empty() {
+                    let origins =
+                        std::iter::once(decl.decl.decl.origin).chain(also.iter().map(|m| m.decl.decl.origin));
+                    self.collision(expr, name, origins.collect());
+                }
                 self.methods.insert(expr, (known.ty, name));
                 self.env().cx.get::<MemberType>(&(known.ty, name)).ok()
             }
@@ -199,13 +206,6 @@ impl Typer<'_, '_, '_> {
                 self.env().cx.get::<MemberType>(&(owner, name)).ok()
             }
         }
-    }
-
-    /// The struct declaring the method `name` that `ty` has through an impl (spec 02, section 3).
-    fn method(&mut self, expr: ExprId, ty: Ty, name: Symbol) -> Option<Ty> {
-        let method = self.env().method(ty, name)?;
-        self.check_visible(expr, name, &method.visible);
-        Some(method.owner)
     }
 
     /// `T{ .name = value, ... }`, or `.{ ... }` of the expected type: each field's value is

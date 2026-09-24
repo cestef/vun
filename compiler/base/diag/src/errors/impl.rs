@@ -6,3 +6,4 @@ pub const IMPL_MISSING_REQUIREMENT: DiagId = DiagId::new(
     "lang.errors.impl.missing_requirement",
 );
 pub const IMPL_DUPLICATE: DiagId = DiagId::new("lang.errors.impl.duplicate");
+pub const IMPL_COLLISION: DiagId = DiagId::new("lang.errors.impl.collision");

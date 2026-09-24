@@ -105,7 +105,14 @@ impl Env<'_, '_> {
     /// The method `name` that `ty` has through the impls this file sees.
     #[must_use]
     pub fn method(&self, ty: Ty, name: Symbol) -> Option<Method> {
+        self.methods(ty, name).into_iter().next()
+    }
+
+    /// Every method `name` that `ty` has through the impls this file sees: more than one is a
+    /// collision.
+    #[must_use]
+    pub fn methods(&self, ty: Ty, name: Symbol) -> Vec<Method> {
         let witnesses = self.cx.get::<Witnesses>(&(self.file.clone(), ty));
-        witnesses.iter().find_map(|w| w.method(self.cx, name))
+        witnesses.iter().filter_map(|w| w.method(self.cx, name)).collect()
     }
 }

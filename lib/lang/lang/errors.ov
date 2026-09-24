@@ -56,6 +56,7 @@ safety := struct {
 impl := struct {
     missing_requirement := diag.Diag{ .explanation = meta.embed("errors/impl/missing_requirement.md") };
     duplicate := diag.Diag{ .explanation = meta.embed("errors/impl/duplicate.md") };
+    collision := diag.Diag{ .explanation = meta.embed("errors/impl/collision.md") };
 };
 
 /// Coroutine frames (spec 06, section 1).
