@@ -38,4 +38,32 @@ impl Place {
         self.projection.push(projection);
         self
     }
+
+    /// Whether this place and `other` may share storage: one contains the other. Distinct
+    /// fields, positions and payload items are disjoint; items at run-time indices are not
+    /// told apart.
+    #[must_use]
+    pub fn overlaps(&self, other: &Self) -> bool {
+        self.local == other.local
+            && self.projection.iter().zip(&other.projection).all(|pair| match pair {
+                (Projection::Field(a), Projection::Field(b)) => a == b,
+                (Projection::Position(a), Projection::Position(b))
+                | (Projection::Payload(a), Projection::Payload(b)) => a == b,
+                _ => true,
+            })
+    }
+
+    /// Whether this place is reached through a borrow or pointer: storage outside its local.
+    #[must_use]
+    pub fn is_indirect(&self) -> bool {
+        self.projection.contains(&Projection::Deref)
+    }
+
+    /// The locals holding the indices this place reads.
+    pub fn indices(&self) -> impl Iterator<Item = Local> + '_ {
+        self.projection.iter().filter_map(|p| match p {
+            Projection::Index(local) => Some(*local),
+            _ => None,
+        })
+    }
 }

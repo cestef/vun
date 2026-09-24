@@ -63,14 +63,22 @@ PlaceState := enum {
     init,
 };
 
+/// What else may reach a borrowed place while the borrow lives (spec 05, section 8).
+Access := enum {
+    /// Reads, and other shared borrows; nothing writes.
+    shared,
+    /// Nothing: the place is reached only through the borrow.
+    exclusive,
+};
+
 /// Borrow types by the word after `&` (appendix B): `&T` is `lang.mem.Ref(T)`. Each mode is named
 /// by the transition it performs on the place it borrows (spec 05, section 2): the state it
-/// needs before, and the state the place has after.
+/// needs before, and the state the place has after; and by the access it leaves others.
 borrows := [
-    .{ .mode = "", .item = "lang.mem.Ref", .before = .init, .after = .init },
-    .{ .mode = "mut", .item = "lang.mem.RefMut", .before = .init, .after = .init },
-    .{ .mode = "out", .item = "lang.mem.RefOut", .before = .uninit, .after = .init },
-    .{ .mode = "take", .item = "lang.mem.RefTake", .before = .init, .after = .uninit },
+    .{ .mode = "", .item = "lang.mem.Ref", .before = .init, .after = .init, .access = .shared },
+    .{ .mode = "mut", .item = "lang.mem.RefMut", .before = .init, .after = .init, .access = .exclusive },
+    .{ .mode = "out", .item = "lang.mem.RefOut", .before = .uninit, .after = .init, .access = .exclusive },
+    .{ .mode = "take", .item = "lang.mem.RefTake", .before = .init, .after = .uninit, .access = .exclusive },
 ];
 
 /// How a compound assignment brings its result back to the place's type (spec 04, rule 9).

@@ -3,9 +3,11 @@
 //! Harnesses read this table to tell a missing diagnostic from one that belongs to a stage that
 //! does not exist yet.
 
-use overt_diag::{DiagId, errors};
+use overt_diag::{DiagCtxt, DiagId, errors};
+use overt_query::Query;
 use overt_span::{FileId, SourceMap};
 
+use overt_mir_passes::borrows::BorrowChecks;
 use overt_mir_passes::places::PlaceStates;
 use overt_sema::eval::Instantiation;
 
@@ -56,6 +58,7 @@ pub const STAGES: &[Stage] = &[
         input: Input::Source,
     },
     Stage { name: "places", reports: &[errors::PLACE], input: Input::Mir },
+    Stage { name: "borrows", reports: &[errors::BORROW_CONFLICT, errors::BORROW_ESCAPE], input: Input::Mir },
 ];
 
 impl Stage {
@@ -79,6 +82,7 @@ impl Session {
         self.check_names(file);
         self.check_types(file);
         self.check_places(file);
+        self.check_borrows(file);
     }
 
     /// The lines, first and last, of each function of `file` that MIR does not lower yet.
@@ -96,8 +100,18 @@ impl Session {
 
     /// Checks the place states of every function body of `file` (spec 05, section 2).
     pub fn check_places(&mut self, file: FileId) {
+        self.check_bodies::<PlaceStates>(file);
+    }
+
+    /// Checks the borrow rules in every function body of `file` (spec 05, sections 4 and 8).
+    pub fn check_borrows(&mut self, file: FileId) {
+        self.check_bodies::<BorrowChecks>(file);
+    }
+
+    /// Runs the MIR check `Q` on every function body of `file`.
+    fn check_bodies<Q: Query<Key = Instantiation, Value = Option<DiagCtxt>>>(&mut self, file: FileId) {
         for f in self.functions(file) {
-            if let Some(reports) = self.db.get::<PlaceStates>(&Instantiation::plain(f)) {
+            if let Some(reports) = self.db.get::<Q>(&Instantiation::plain(f)) {
                 self.diag.absorb(&reports);
             }
         }

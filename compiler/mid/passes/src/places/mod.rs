@@ -19,7 +19,7 @@ use overt_mir::{BlockId, Body, Local, Mir, Operand, Role, Rvalue, TerminatorKind
 use overt_origin::OriginId;
 use overt_query::{Cx, Query};
 use overt_sema::eval::Instantiation;
-use overt_sema::kinds::{Duplication, Kinds};
+use overt_sema::kinds::Kinds;
 use overt_sema::ty::Value;
 
 use states::{State, States};
@@ -34,10 +34,8 @@ impl Query for PlaceStates {
 
     fn compute(cx: &Cx<'_>, i: &Instantiation) -> Self::Value {
         let body = cx.get::<Mir>(i).ok()?;
-        let linear = body
-            .locals
-            .iter()
-            .filter(|(_, d)| d.ty.is_some_and(|t| cx.get::<Kinds>(&t) == Duplication::Linear));
+        let linear =
+            body.locals.iter().filter(|(_, d)| d.ty.is_some_and(|t| cx.get::<Kinds>(&t).is_linear()));
         let linear = linear.filter(|(_, d)| d.role == Role::Held).map(|(local, _)| local);
         let linear = linear.filter(|&l| l != body.ret).collect();
         Some(Analysis::new(&body, linear).run())
@@ -65,7 +63,7 @@ impl<'b> Analysis<'b> {
             .iter()
             .filter_map(|&p| {
                 let (mode, ..) = body.locals[p].ty?.borrowing()?;
-                let &(.., before, after) = BORROWS.iter().find(|(m, ..)| *m == mode)?;
+                let &(_, _, before, after, ..) = BORROWS.iter().find(|(m, ..)| *m == mode)?;
                 Some((p, (State::from(before), State::from(after))))
             })
             .collect();

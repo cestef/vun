@@ -111,7 +111,8 @@ impl<'a, 'db> Builder<'_, 'a, 'db> {
         };
         b.current = b.fresh(origin);
         let mut args = b.captures(literal, origin)?;
-        let types = env.literal_signature(literal, &f.args).map(|s| s.params).unwrap_or_default();
+        let signature = env.literal_signature(literal, &f.args).ok();
+        let types = signature.as_ref().map(|s| s.params.clone()).unwrap_or_default();
         for (index, param) in params.iter().enumerate() {
             let Entry::One(param) = param else { return Err(Unbuilt { at: origin }) };
             let pat = param.pat.ok_or(Unbuilt { at: param.origin })?;
@@ -125,7 +126,12 @@ impl<'a, 'db> Builder<'_, 'a, 'db> {
         let end = hir.blocks[*body].tail.map_or(hir.blocks[*body].origin, |t| hir.exprs[t].origin);
         b.assign(Place::of(ret), Rvalue::Use(result), end);
         b.blocks[b.current].term = Terminator { kind: TerminatorKind::Return, origin: end };
-        Ok(Body { locals: b.locals, params: args, ret, blocks: b.blocks, origin })
+        let mut body = Body { locals: b.locals, params: args, ret, blocks: b.blocks, origin };
+        // A coroutine's body ends with what its frame gives when done, not the frame.
+        if !body.suspends() {
+            body.locals[ret].ty = signature.map(|s| s.result);
+        }
+        Ok(body)
     }
 
     /// The environment lowered in: the function's, or a `$for` step's.

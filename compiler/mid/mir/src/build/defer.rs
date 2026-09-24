@@ -5,7 +5,7 @@
 use overt_hir::tree::ExprId;
 use overt_index::Idx;
 use overt_origin::OriginId;
-use overt_sema::kinds::{Duplication, Kinds};
+use overt_sema::kinds::Kinds;
 
 use super::{Builder, Unbuilt};
 use crate::body::{BlockId, Local, Operand, TerminatorKind};
@@ -58,9 +58,7 @@ impl Builder<'_, '_, '_> {
                 Operand::Place(p) if p.projection.is_empty() && p.local.index() < before => Some(p.local),
                 _ => None,
             })
-            .filter(|&l| {
-                self.locals[l].ty.is_some_and(|t| self.env.cx.get::<Kinds>(&t) == Duplication::Linear)
-            })
+            .filter(|&l| self.locals[l].ty.is_some_and(|t| self.env.cx.get::<Kinds>(&t).is_linear()))
             .collect();
         consumed.sort_unstable();
         consumed.dedup();

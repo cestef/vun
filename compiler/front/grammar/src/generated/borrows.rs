@@ -7,10 +7,10 @@
 use super::*;
 /// Borrow types by the word after `&` (appendix B): `&T` is `lang.mem.Ref(T)`. Each mode is named
 /// by the transition it performs on the place it borrows (spec 05, section 2): the state it
-/// needs before, and the state the place has after.
-pub const BORROWS: &[(&str, &str, PlaceState, PlaceState)] = &[
-    ("", "lang.mem.Ref", PlaceState::Init, PlaceState::Init),
-    ("mut", "lang.mem.RefMut", PlaceState::Init, PlaceState::Init),
-    ("out", "lang.mem.RefOut", PlaceState::Uninit, PlaceState::Init),
-    ("take", "lang.mem.RefTake", PlaceState::Init, PlaceState::Uninit),
+/// needs before, and the state the place has after; and by the access it leaves others.
+pub const BORROWS: &[(&str, &str, PlaceState, PlaceState, Access)] = &[
+    ("", "lang.mem.Ref", PlaceState::Init, PlaceState::Init, Access::Shared),
+    ("mut", "lang.mem.RefMut", PlaceState::Init, PlaceState::Init, Access::Exclusive),
+    ("out", "lang.mem.RefOut", PlaceState::Uninit, PlaceState::Init, Access::Exclusive),
+    ("take", "lang.mem.RefTake", PlaceState::Init, PlaceState::Uninit, Access::Exclusive),
 ];

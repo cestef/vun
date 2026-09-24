@@ -89,7 +89,7 @@ impl Analysis<'_> {
     /// the mode gives.
     fn borrow(&mut self, mode: Option<Symbol>, place: &Place, states: &mut States, origin: OriginId) {
         let word = mode.map_or("", Symbol::as_str);
-        let Some(&(.., before, after)) = BORROWS.iter().find(|(m, ..)| *m == word) else { return };
+        let Some(&(_, _, before, after, ..)) = BORROWS.iter().find(|(m, ..)| *m == word) else { return };
         if State::from(before) == State::Init {
             self.read(place, states, origin);
         }

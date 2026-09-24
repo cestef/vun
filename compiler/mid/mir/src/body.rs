@@ -202,6 +202,29 @@ pub struct Terminator {
     pub origin: OriginId,
 }
 
+impl TerminatorKind {
+    /// The blocks control may go to next.
+    #[must_use]
+    pub fn successors(&self) -> Vec<BlockId> {
+        match self {
+            Self::Return | Self::Unreachable => Vec::new(),
+            Self::Goto(to) => vec![*to],
+            Self::Yield { resume, .. } => vec![*resume],
+            Self::Branch { then, otherwise, .. } => vec![*then, *otherwise],
+            Self::Defer { run, skip, .. } => vec![*run, *skip],
+        }
+    }
+
+    /// The operands this reads.
+    #[must_use]
+    pub fn operands(&self) -> Vec<&Operand> {
+        match self {
+            Self::Branch { cond: o, .. } | Self::Yield { value: o, .. } => vec![o],
+            _ => Vec::new(),
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum TerminatorKind {
     Return,

@@ -3,6 +3,8 @@ mod form;
 pub use form::*;
 mod place_state;
 pub use place_state::*;
+mod access;
+pub use access::*;
 mod narrowing;
 pub use narrowing::*;
 mod token_kind;
