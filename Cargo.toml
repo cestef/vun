@@ -13,6 +13,7 @@ publish = false
 vun-index = { path = "compiler/base/index" }
 vun-suggest = { path = "compiler/base/suggest" }
 vun-codec = { path = "compiler/base/codec" }
+vun-json = { path = "compiler/base/json" }
 vun-hash = { path = "compiler/base/hash" }
 vun-graph = { path = "compiler/base/graph" }
 vun-fs = { path = "compiler/base/fs" }

@@ -691,6 +691,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "vun-json"
+version = "0.0.0"
+
+[[package]]
 name = "vun-link"
 version = "0.0.0"
 dependencies = [
