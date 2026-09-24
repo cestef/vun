@@ -149,8 +149,9 @@ escape; `free.rs` (`borrow.in_free_value`). `panics.rs` (`#[panic.never]`), `typ
 types along projections).
 
 **Interpreter** (`compiler/mid/interp`): runs MIR on compile-time values; shared borrows read as
-values; `&mut` and writes through `.*` are refused (no memory model); frames suspend and resume;
-`End` of a finished frame is nothing, of a suspended one unsupported.
+values; exclusive borrows are loans (`Value::Loan`) that `.*` follows (`places.rs`), passed to
+calls as what they reach and written back from `Metered::written` (`loans.rs`, decision 135);
+frames suspend and resume; `End` of a finished frame is nothing, of a suspended one unsupported.
 
 **Driver and tools**: `Session::check` runs names, types, places, borrows, panics;
 `stages::STAGES`; `Coverage`; `cargo gen`, `cargo xtask {corpus, lines}`.
@@ -200,8 +201,8 @@ rules go to `decisions.md` as proposed unless the user approves them.
    against requirements; narrowing by comparisons (decision 35), exhaustiveness (decision 29),
    `#[layout.offset]`/`#[layout.c]`, frame layouts, markers checked beyond `unsafe` and
    `panic.never`.
-7. Evaluator: its own stack (deep chains of compile-time calls overflow the host stack), a
-   memory model for `&mut` at compile time.
+7. Evaluator: its own stack (deep chains of compile-time calls overflow the host stack); loans
+   inside aggregate arguments (`select`'s tuple of `&mut`) and frames holding what they were lent.
 8. Persist the front-end queries; packaging: signed caches (decision 63), planned builds,
    `vun pkg why`; `.workspace` visibility.
 

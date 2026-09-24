@@ -17,6 +17,7 @@ mod library;
 mod loops;
 mod markers;
 mod mir;
+mod mutation;
 mod namespaces;
 mod places;
 mod quotes;

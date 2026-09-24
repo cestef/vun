@@ -11,6 +11,7 @@ use crate::Primitive;
 use crate::eval::{Code, Func, Suspended};
 use crate::int::{Extended, Integer, Interval};
 use crate::item::DeclRef;
+use crate::ops::Part;
 use crate::primitives::meta::Meta;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -65,6 +66,14 @@ pub enum Value {
     /// `lang.interface(f)`: the function `f` from a type to its requirement struct (spec 02,
     /// section 3).
     Interface(Func),
+    /// An exclusive borrow at compile time (`&mut`, `&out`, ...): the place of the running call it
+    /// reaches, a local and the parts under it. In a call's result, `local` is the position of
+    /// the parameter it was lent through. Calls take what it reaches and give it back changed,
+    /// so each stays a pure function of its arguments (spec 03, section 7).
+    Loan {
+        local: usize,
+        parts: Vec<Part>,
+    },
 }
 
 impl Value {

@@ -1,12 +1,12 @@
 //! Running a MIR body on compile-time values: locals hold values, statements compute them, and
 //! calls go through sema's memoized `Call` query, so recursion and repeated calls are shared.
+//! Places and exclusive borrows are in `places` and `loans`.
 
 use vun_index::{Idx, IndexVec};
-use vun_mir::{Aggregate, BlockId, Body, Local, Operand, Place, Projection, Rvalue, TerminatorKind};
+use vun_mir::{Aggregate, BlockId, Body, Local, Operand, Rvalue, TerminatorKind};
 use vun_query::Cx;
 use vun_sema::env::{Env, Unevaluated};
-use vun_sema::eval::{Instance, Metered, MeteredCall};
-use vun_sema::ops::Part;
+use vun_sema::eval::{Instance, Metered};
 use vun_sema::trap::Reason;
 use vun_sema::ty::Value;
 
@@ -59,7 +59,7 @@ impl<'b, 'a, 'db> Frame<'b, 'a, 'db> {
             Ok(Exit::Yielded { .. }) => Err(Unevaluated::Unsupported),
             Err(e) => Err(e),
         };
-        Metered { value, steps: self.steps }
+        self.finish(value)
     }
 
     /// Runs the body from `start` until it returns or yields.
@@ -111,59 +111,11 @@ impl<'b, 'a, 'db> Frame<'b, 'a, 'db> {
         Ok(())
     }
 
-    fn operand(&self, operand: &Operand) -> Result<Value, Unevaluated> {
+    pub(crate) fn operand(&self, operand: &Operand) -> Result<Value, Unevaluated> {
         match operand {
             Operand::Place(place) => self.read(place),
             Operand::Const(value) => Ok(value.clone()),
         }
-    }
-
-    fn local(&self, local: Local) -> Result<Value, Unevaluated> {
-        self.locals[local].clone().ok_or(Unevaluated::Unsupported)
-    }
-
-    /// The value at `place`. A borrow at compile time is shared, and a shared borrow of a
-    /// compile-time value is the value, so `.*` reads it.
-    pub(crate) fn read(&self, place: &Place) -> Result<Value, Unevaluated> {
-        let mut value = self.local(place.local)?;
-        for projection in &place.projection {
-            value = match self.part(projection)? {
-                Some(part) => value.part(&part)?,
-                None => value,
-            };
-        }
-        Ok(value)
-    }
-
-    /// Stores `value` at `place`: a whole local, or a part of one, rebuilt around it.
-    pub(crate) fn write(&mut self, place: &Place, value: Value) -> Result<(), Unevaluated> {
-        let value = if place.projection.is_empty() {
-            value
-        } else {
-            self.replaced(self.local(place.local)?, &place.projection, value)?
-        };
-        self.locals[place.local] = Some(value);
-        Ok(())
-    }
-
-    /// `whole` with the part `projection` reaches replaced by `part`. Writing through `.*` needs
-    /// mutable borrows, which compile-time evaluation does not have yet.
-    fn replaced(&self, whole: Value, projection: &[Projection], value: Value) -> Result<Value, Unevaluated> {
-        let Some((first, rest)) = projection.split_first() else { return Ok(value) };
-        let part = self.part(first)?.ok_or(Unevaluated::Unsupported)?;
-        let inner = self.replaced(whole.part(&part)?, rest, value)?;
-        whole.with_part(&part, inner)
-    }
-
-    /// The part of a value `projection` reaches, its index read; `None` for `.*`.
-    fn part(&self, projection: &Projection) -> Result<Option<Part>, Unevaluated> {
-        Ok(Some(match projection {
-            Projection::Deref => return Ok(None),
-            Projection::Field(name) => Part::Field(*name),
-            Projection::Index(index) => Part::Item(self.local(*index)?),
-            Projection::Position(at) => Part::Position(*at),
-            Projection::Payload(at) => Part::Payload(*at),
-        }))
     }
 
     fn rvalue(&mut self, rvalue: &Rvalue) -> Result<Value, Unevaluated> {
@@ -198,7 +150,7 @@ impl<'b, 'a, 'db> Frame<'b, 'a, 'db> {
                     }
                 })
             }
-            Rvalue::Ref { mode: None, place } => self.read(place),
+            Rvalue::Ref { mode, place } => self.borrow(*mode, place),
             Rvalue::Resume { frame, step } => self.resume(frame, *step),
             // A finished frame ends with nothing to run; the pending defers of a suspended one do
             // not run at compile time yet.
@@ -211,22 +163,9 @@ impl<'b, 'a, 'db> Frame<'b, 'a, 'db> {
                 Value::Variant { name, .. } => self.env.decide(name == *variant),
                 _ => Err(Unevaluated::Unsupported),
             },
-            // A mutable borrow at compile time needs a memory model of places.
             // `execute` ends a binding's scope without a value.
-            Rvalue::Dead | Rvalue::Ref { mode: Some(_), .. } => Err(Unevaluated::Unsupported),
-            Rvalue::Call { callee, args } => {
-                let args = args.iter().map(|a| self.operand(a)).collect::<Result<Vec<_>, _>>()?;
-                // A call of a function counts the steps it took (spec 03, section 7); a closure
-                // passes its captures first.
-                let (f, args) = match self.operand(callee)? {
-                    Value::Fn(f) | Value::Interface(f) => (f, args),
-                    Value::Closure { f, captures } => (f, captures.into_iter().chain(args).collect()),
-                    callee => return self.env.apply(callee, args),
-                };
-                let called = self.env.cx.get::<MeteredCall>(&Instance { f, args });
-                self.spend(called.steps)?;
-                called.value
-            }
+            Rvalue::Dead => Err(Unevaluated::Unsupported),
+            Rvalue::Call { callee, args } => self.call(callee, args),
         }
     }
 }

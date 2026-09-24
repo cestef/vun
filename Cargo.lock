@@ -750,8 +750,10 @@ dependencies = [
 name = "vun-interp"
 version = "0.0.0"
 dependencies = [
+ "vun-desugar",
  "vun-diag",
  "vun-index",
+ "vun-intern",
  "vun-mir",
  "vun-query",
  "vun-sema",

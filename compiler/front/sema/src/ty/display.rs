@@ -116,6 +116,7 @@ impl fmt::Display for Value {
             Self::Linked(_) => f.write_str("linked"),
             Self::Frame(_) => f.write_str("frame"),
             Self::Interface(_) => f.write_str("interface"),
+            Self::Loan { .. } => f.write_str("&mut _"),
         }
     }
 }

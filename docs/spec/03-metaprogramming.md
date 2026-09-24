@@ -204,6 +204,12 @@ generators that observe their own output, which is what makes impls and memoizat
   recorded dependency. Tasks that need I/O are build steps (spec 12).
 - **Purity.** As a consequence, every compile-time call is a pure function of its arguments. Calls
   are memoized by content hash, which also defines type identity: `Pair(u16)` is one type.
+- **Mutation.** An exclusive borrow (`&mut x`, `&out x`) is a loan of the place, which `.*`
+  reads and writes. A call takes what each loan reaches and gives back what its exclusive
+  parameters hold when it returns, which is stored through the loan: since an exclusive borrow is
+  the only way to its place while it lives, this is the same as sharing the place, and the call
+  stays a pure function of its arguments. A borrow a call returns into a parameter is a loan of
+  what the caller lent. A shared borrow reads as the value, which cannot change while it lives.
 - **Function values.** A function literal evaluated inside a compile-time call sees that call's
   parameters, as the types it builds do: a method of `Pair(u8)` sees `T` bound to `u8`. A
   signature whose types name `$` parameters is typed per call, with those bound to the call's

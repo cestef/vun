@@ -204,7 +204,7 @@ impl Interval {
 
 /// A part of a compile-time value: a struct's field, an array's item at an integer index, a
 /// tuple's item at a position, or an item of a variant's payload.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Part {
     Field(Symbol),
     Item(Value),

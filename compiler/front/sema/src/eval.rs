@@ -97,6 +97,17 @@ pub trait Evaluator: Send + Sync {
 pub struct Metered {
     pub value: Result<Value, Unevaluated>,
     pub steps: u64,
+    /// By parameter, what a parameter borrowed exclusively holds when the call returns: the
+    /// value its caller's loan reaches then; `None` for the other parameters.
+    pub written: Vec<Option<Value>>,
+}
+
+impl Metered {
+    /// A call that did not run: what stopped it.
+    #[must_use]
+    pub fn unrun(why: Unevaluated) -> Self {
+        Self { value: Err(why), steps: 0, written: Vec::new() }
+    }
 }
 
 /// The installed evaluator: a resource of the query database, set once by the driver.
@@ -122,17 +133,17 @@ impl Query for MeteredCall {
         // Every argument is a value of its parameter's type, as at run time.
         let signature = Instantiation::of(cx, call).and_then(|i| i.signature(cx).ok());
         if signature.is_some_and(|s| s.params.len() == call.args.len() && s.refuses(&call.args)) {
-            return Metered { value: Err(Unevaluated::trap(Reason::Argument)), steps: 0 };
+            return Metered::unrun(Unevaluated::trap(Reason::Argument));
         }
         let evaluators = cx.db().resource::<Evaluators>();
         match evaluators.0.get() {
             Some(evaluator) => evaluator.call(cx, call),
-            None => Metered { value: Err(Unevaluated::Interpreter), steps: 0 },
+            None => Metered::unrun(Unevaluated::Interpreter),
         }
     }
 
     fn cycle(_: &Cx<'_>, _: &Instance, _: &Cycle) -> Self::Value {
-        Metered { value: Err(Unevaluated::Cycle), steps: 0 }
+        Metered::unrun(Unevaluated::Cycle)
     }
 }
 

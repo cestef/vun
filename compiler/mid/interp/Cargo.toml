@@ -10,6 +10,8 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
+vun-desugar.workspace = true
+vun-intern.workspace = true
 vun-mir.workspace = true
 vun-sema.workspace = true
 vun-index.workspace = true
