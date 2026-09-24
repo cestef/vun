@@ -81,6 +81,7 @@ impl fmt::Display for Value {
             }
             Self::Fn(_) => f.write_str("fn"),
             Self::Code(_) => f.write_str("#{ .. }"),
+            Self::Linked(_) => f.write_str("linked"),
             Self::Interface(_) => f.write_str("interface"),
         }
     }

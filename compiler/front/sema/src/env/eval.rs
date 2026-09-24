@@ -66,6 +66,10 @@ impl Env<'_, '_> {
                 })
                 .collect::<Result<_, _>>()
                 .map(Value::Array),
+            ExprKind::Repeat { value, count } => {
+                let item = self.eval_as(*value, self.type_of(expr).and_then(|t| t.items()))?;
+                Value::repeat(item, &self.eval(*count)?)
+            }
             ExprKind::Prefix { op: TokenKind::Dollar, operand, .. } => self.splice(self.eval(*operand)?),
             ExprKind::Prefix { op, operand, .. } => self.unary(*op, &self.eval(*operand)?),
             ExprKind::Infix { op: op @ (TokenKind::DotDot | TokenKind::DotDotEq), left, right } => {
@@ -163,6 +167,8 @@ impl Env<'_, '_> {
             // An interface applied to a type is its requirement struct (spec 02, section 3).
             Value::Fn(f) | Value::Interface(f) => self.cx.get::<Call>(&Instance { f, args }),
             Value::Primitive(p) => p.apply(self, &args),
+            // A link symbol runs at run time only.
+            Value::Linked(_) => Err(Unevaluated::Runtime),
             _ => Err(Unevaluated::Unsupported),
         }
     }

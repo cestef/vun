@@ -79,6 +79,11 @@ pub enum Rvalue {
         mode: Option<Symbol>,
         place: Place,
     },
+    /// `[operand; count]`: an array of `count` copies, `count` known at compile time.
+    Repeat {
+        operand: Operand,
+        count: Value,
+    },
     /// Whether the value at `place` is the variant `variant`: a condition (the table `forms`).
     IsVariant {
         place: Place,

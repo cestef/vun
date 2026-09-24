@@ -1,11 +1,11 @@
 //! The value and the type of a namespace member's declaration. A declaration whose value is `_`
-//! in `lang` is its primitive (decision 66); elsewhere `_` is provided by the linker or an impl.
+//! in `lang` is its primitive (decision 66); elsewhere it is a link symbol the linker provides.
 
 use std::sync::Arc;
 
 use overt_grammar::PATH_SEPARATOR;
 use overt_hir::db::Package;
-use overt_hir::tree::{DeclId, ExprKind, PatKind};
+use overt_hir::tree::{DeclId, ExprKind, Hir, PatKind};
 use overt_hir::visit::Visitor;
 use overt_intern::Symbol;
 use overt_query::{Cx, Cycle, Query};
@@ -34,21 +34,32 @@ impl Query for DeclValue {
             let types = cx.get::<TypedDecl>(&(key.clone(), None, Vec::new()));
             return env.typed_by(types).eval(value);
         }
-        let package = cx.get::<Package>(&key.file.package);
-        let path = package.namespace_of(&key.file.path).ok_or(Unevaluated::Provided)?;
-        let namespace =
-            package.name.into_iter().chain(path).map(Symbol::as_str).collect::<Vec<_>>().join(PATH_SEPARATOR);
-        let mut binders = Vec::new();
-        hir.binders(decl.pat, &mut binders);
-        let name = binders.first().map(|&b| hir.binders[b].name).ok_or(Unevaluated::Provided)?;
-        let primitive =
-            Primitive::ALL.iter().find(|p| p.namespace() == namespace && p.name() == name.as_str());
-        let primitive = *primitive.ok_or(Unevaluated::Provided)?;
-        Ok(primitive.constant(&cx.db().resource::<Target>()).unwrap_or(Value::Primitive(primitive)))
+        // Outside `lang`, a declaration provided from outside is a link symbol (spec 08, section 3).
+        match Self::primitive(cx, key, hir) {
+            Some(primitive) => {
+                Ok(primitive.constant(&cx.db().resource::<Target>()).unwrap_or(Value::Primitive(primitive)))
+            }
+            None => Ok(Value::Linked(key.clone())),
+        }
     }
 
     fn cycle(_: &Cx<'_>, _: &DeclRef, _: &Cycle) -> Self::Value {
         Err(Unevaluated::Cycle)
+    }
+}
+
+impl DeclValue {
+    /// The primitive the hole declaration `key` of `hir` is, if it is one: by the path of its
+    /// namespace and its name.
+    fn primitive(cx: &Cx<'_>, key: &DeclRef, hir: &Hir) -> Option<Primitive> {
+        let package = cx.get::<Package>(&key.file.package);
+        let path = package.namespace_of(&key.file.path)?;
+        let namespace =
+            package.name.into_iter().chain(path).map(Symbol::as_str).collect::<Vec<_>>().join(PATH_SEPARATOR);
+        let mut binders = Vec::new();
+        hir.binders(hir.decls[key.decl.id].pat, &mut binders);
+        let name = hir.binders[*binders.first()?].name;
+        Primitive::ALL.iter().copied().find(|p| p.namespace() == namespace && p.name() == name.as_str())
     }
 }
 

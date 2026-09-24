@@ -1,5 +1,5 @@
 //! Values built from parts: struct literals (fields in declaration order, a missing one from its
-//! default), variants, tuples and arrays. A form typed by its context takes its type from the
+//! default), variants, tuples, arrays and repeated items. A form typed by its context takes its type from the
 //! typed body.
 
 use overt_hir::tree::{Arg, Entry, ExprId, ExprKind, List, Name};
@@ -21,6 +21,13 @@ impl Builder<'_, '_, '_> {
         Some(match &hir.exprs[expr].kind {
             ExprKind::Tuple(items) => self.parts(items, Aggregate::Tuple, origin),
             ExprKind::Array(items) => self.parts(items, Aggregate::Array, origin),
+            ExprKind::Repeat { value, count } => {
+                let (value, count) = (*value, *count);
+                self.env().eval(count).map_err(|_| unbuilt).and_then(|count| {
+                    let operand = self.operand(value)?;
+                    Ok(self.temp(Rvalue::Repeat { operand, count }, origin))
+                })
+            }
             ExprKind::StructLit { ty, fields } => {
                 let ty = match ty {
                     Some(ty) => self.env().ty(*ty).ok(),

@@ -164,6 +164,7 @@ impl<'b, 'a, 'db> Frame<'b, 'a, 'db> {
                 })
             }
             Rvalue::Ref { mode: None, place } => self.read(place),
+            Rvalue::Repeat { operand, count } => Value::repeat(self.operand(operand)?, count),
             Rvalue::IsVariant { place, variant } => match self.read(place)? {
                 Value::Variant { name, .. } => self.env.decide(name == *variant),
                 _ => Err(Unevaluated::Unsupported),

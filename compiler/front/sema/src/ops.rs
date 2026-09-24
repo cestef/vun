@@ -36,6 +36,17 @@ impl Value {
         Ok(Self::Int(n))
     }
 
+    /// `[item; count]`: an array of `count` copies of `item`.
+    ///
+    /// # Errors
+    /// Returns [`Unevaluated::Unsupported`] for a count that is not an integer that fits a
+    /// `usize`.
+    pub fn repeat(item: Self, count: &Self) -> Result<Self, Unevaluated> {
+        let Self::Int(n) = count else { return Err(Unevaluated::Unsupported) };
+        let n = n.to_i128().and_then(|n| usize::try_from(n).ok()).ok_or(Unevaluated::Unsupported)?;
+        Ok(Self::Array(vec![item; n]))
+    }
+
     /// The part `part` of this value.
     ///
     /// # Errors

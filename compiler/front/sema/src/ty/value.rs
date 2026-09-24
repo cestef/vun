@@ -9,6 +9,7 @@ use super::{Ty, TyKind};
 use crate::Primitive;
 use crate::eval::{Code, Func};
 use crate::int::{Extended, Integer, Interval};
+use crate::item::DeclRef;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Value {
@@ -36,6 +37,9 @@ pub enum Value {
     Namespace(Namespace),
     /// A function literal.
     Fn(Func),
+    /// A declaration the linker provides (`name: T = _;` outside `lang`): its link symbol, whose
+    /// value exists at run time only.
+    Linked(DeclRef),
     /// Code, not its value (spec 03, section 4).
     Code(Code),
     /// `lang.interface(f)`: the function `f` from a type to its requirement struct (spec 02,

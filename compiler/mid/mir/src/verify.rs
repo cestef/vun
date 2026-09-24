@@ -135,7 +135,10 @@ impl Body {
 
     fn rvalue(&self, at: Entity, rvalue: &Rvalue) -> Result<(), Malformed> {
         let operands: Vec<&Operand> = match rvalue {
-            Rvalue::Use(o) | Rvalue::Unary { operand: o, .. } | Rvalue::Narrow { operand: o, .. } => vec![o],
+            Rvalue::Use(o)
+            | Rvalue::Unary { operand: o, .. }
+            | Rvalue::Narrow { operand: o, .. }
+            | Rvalue::Repeat { operand: o, .. } => vec![o],
             Rvalue::Ref { place, .. } | Rvalue::IsVariant { place, .. } => return self.place(at, place),
             Rvalue::Aggregate { parts, .. } => parts.iter().collect(),
             Rvalue::Binary { left, right, .. } => vec![left, right],

@@ -65,6 +65,7 @@ impl fmt::Display for Rvalue {
                 f.write_str(close)
             }
             Self::Ref { mode: None, place } => write!(f, "&{place}"),
+            Self::Repeat { operand, count } => write!(f, "[{operand}; {count}]"),
             Self::IsVariant { place, variant } => write!(f, "{place} is .{variant}"),
             Self::Ref { mode: Some(mode), place } => write!(f, "&{mode} {place}"),
             Self::Narrow { operand, ty, narrowing } => {

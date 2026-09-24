@@ -305,8 +305,14 @@ In order:
      `Projection::{Position, Payload}`, `Rvalue::IsVariant`, `TerminatorKind::Unreachable`;
      sema `ops::Part` with `Value::{part, with_part}` is the one way parts are read and
      rebuilt. `Typer::ty` types an annotation it cannot evaluate, then evaluates it with those
-     types; `TyKind::of_types`. Next blockers: extern calls (`= _` functions have no value),
-     `for p in e`, closures, `?`, `[v; n]`, or-patterns that bind.
+     types; `TyKind::of_types`. Decision 90: `Value::Linked(DeclRef)` for linker-provided
+     declarations (`DeclValue::primitive` decides), `Value::repeat` and `Rvalue::Repeat`.
+     Next blockers (`cargo xtask corpus`): `for p in e` (coroutine frames: `iter`/`resume` are
+     compiler-provided members of the `lang.ops` impls, no frame model yet), closures (spec 01
+     says an anonymous struct of captures plus an impl of `lang.ops.Call`, which `lang.ops`
+     does not declare yet), `?` (no `Try` impls for `Option`/`Result`; `return r` needs `Stop`
+     accepted where the result type is), `$` splices of run-time code, `.{ }` without a known
+     type, or-patterns that bind.
    - `types.no_member` on values stays off: turning it on (tried) reports members the corpus
      stand-ins lack. Needed first: stand-in methods for `Timer`, `Serial`, `Led`, `Dma`, `Fs`,
      `Alloc`, `Device`, `System`, `Cache`, `Queue`, `Packet`, `Uart` in `corpus/support`,
