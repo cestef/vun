@@ -265,11 +265,110 @@ pub trait DiagSink {
 
 | Backend | Role | Targets | Notes |
 |---------|------|---------|-------|
-| C | reach | anything with a C99 compiler | first; vendor toolchains, Cortex-M, AVR, Xtensa; defined C only, `-fwrapv -fno-strict-aliasing`; `restrict` from aliasing facts; frame sizes via `-fstack-usage` |
+| C | reach | anything with a C99 compiler | first; vendor toolchains, Cortex-M, AVR, Xtensa; strict C99, defined C only (section 8.2); `restrict` from aliasing facts; frame sizes via `-fstack-usage` |
 | Cranelift | default debug backend | x86_64, aarch64, riscv64, s390x | in process; roughly 20% less codegen time than LLVM for rustc, code about 14% slower |
 | QBE | small and simple | amd64, arm64, rv64 | subprocess on IL text; no vectors (lowered), no tail calls, no 32-bit targets |
 | LLVM | optimized builds, widest native reach | ARM32/Thumb, RV32, AVR, wasm, ... | optional; `noalias`, `musttail`, stack-size sections |
-| baseline (later) | fastest debug builds | x86_64, aarch64 | a single-pass LIR backend in the style of TPDE (8x to 24x faster than LLVM -O0) |
+| baseline | fastest debug builds | x86_64, then aarch64 | a single-pass LIR backend in the style of TPDE (8x to 24x faster than LLVM -O0), section 8.3 |
+
+### 8.1 What every backend shares
+
+TPDE (Schwarz, Kamm and Engelke, 2025) compiles an SSA IR in two passes per function, an analysis
+and a single code generation pass, through an adapter over the IR it is given instead of a
+translation into its own. LIR is designed to be that IR, so no backend translates it into another
+representation before emitting:
+
+- **Dense ids.** Values, blocks, instructions and slots are `IndexVec` indices, so every per-value
+  or per-block table of a backend is an array, never a hash map.
+- **One edge per pair.** A terminator jumps to a block at most once with any given arguments: two
+  targets naming the same block carry the same arguments (the verifier checks it). Moves on an edge
+  therefore belong to the edge's pair of blocks, as TPDE's phi moves do.
+- **Semantics as data.** Each operation (`BinOp`, `Cond`, `CastOp`) declares its facts once: the
+  signedness it reads its operands with and its domain, the operands on which its result is
+  defined. Lowering guarantees the domain (a shift amount below the width, a divisor that is not
+  0, no signed division of the minimum by -1: arithmetic is exact, spec 04), and backends rely on
+  it, so no backend emits a check the language does not have.
+- **Analyses** (`vun_lir::analysis`), computed once per function and read by every backend:
+  - `Loops`: the loop forest, irreducible loops included (Wei, Mao, Zou and Chen, 2007), the whole
+    function being the root loop;
+  - `Order`: the order blocks are emitted in, reverse postorder with each loop's blocks kept
+    together, which shortens the live ranges of values ending at a loop's exit;
+  - `Liveness`: for each value its uses and the first and last block of its live range in `Order`,
+    and whether it lives to that block's end (a value used across a back edge lives through the
+    whole loop), in time linear in the instructions (Kohn, Leis and Neumann, 2018);
+  - `Moves`: the parallel copy of a jump's arguments into its target's parameters, sequenced with
+    one temporary per cycle.
+
+### 8.2 The C backend
+
+The C backend writes one translation unit per shard of functions, in strict C99, and never relies
+on behavior C leaves undefined:
+
+- **Integers** are the unsigned `uintN_t`: unsigned arithmetic wraps, as LIR's does. An operation
+  reading signed operands (`SDiv`, `AShr`, `SLt`, ...) converts them to `intN_t`, which is
+  two's complement on every target C reaches. An operand narrower than `int` is converted to
+  `unsigned` first, so promotion never turns unsigned arithmetic into signed overflow.
+- **Memory** is reached by typed access, `*(uint32_t *)p`, through `uint8_t *` addresses; LIR's
+  accesses are aligned by their layouts, and the toolchain profile passes `-fno-strict-aliasing`,
+  since LIR memory has no types. `Volatile` access goes through a `volatile` pointer. C99 has no
+  atomics, so a unit with atomic accesses needs a backend that has them (a diagnostic says which).
+- **Stack slots** are arrays of the unsigned integer whose alignment is the slot's, **data objects**
+  a union of the bytes, as byte runs and the addresses the relocations write (address constants,
+  `(uint8_t *)&d5 + 16`), with a member giving the alignment. Sizes and offsets are checked by
+  C99's negative-array idiom, since `_Static_assert` is C11. An alignment no integer type has is
+  a diagnostic.
+- **Functions.** Vun's convention passes values in memory as `uint8_t *` and a result in memory
+  through an address after the parameters. The C convention passes records as `struct`s declared
+  from `Record::fields`, copied between the parameter and the memory the body reads. Every function
+  is declared before any is defined, `static` unless exported.
+- **Control flow.** Blocks are labels, emitted in `Order` so that a jump to the next block is no
+  `goto`; block parameters are locals assigned by `Moves` before the jump; `Branch` is an `if`,
+  `Switch` a `switch`, `Unreachable` an empty infinite loop. A value used once, in its own block,
+  with nothing writing memory or calling between its definition and its use, is written inline as
+  an expression, so compare and branch read `if (v3 < v4)`, as TPDE fuses them.
+- **Names.** Link symbols are written as they are and must be C identifiers (a diagnostic
+  otherwise); internal functions and data are named by their ids, avoiding every link symbol of
+  the unit and C's keywords. Only freestanding headers are included (`stdint.h`, `stddef.h`), so an
+  import named like a C library function never meets a second declaration.
+- **Origins** become `#line` directives, so the C compiler's diagnostics and debug information
+  point at Vun source.
+- **What C99 lacks is refused, never approximated**: 128-bit integers, `f16`, atomics, guaranteed
+  tail calls, naked functions and link sections each need a backend with the capability.
+
+The C compiler is a toolchain profile, data naming its command and the flags the rules above need
+(`-std=c99 -fno-strict-aliasing`), run through `vun-tool` once per shard; for hosted targets the
+same compiler drives the link (the `gnu` linker adapter), which brings the C runtime's start
+files and libraries.
+
+### 8.3 The baseline backend
+
+A native backend for debug builds, in TPDE's design, reading LIR through the shared analyses:
+
+- **One pass per function.** Blocks in `Order`, instructions in program order; instruction
+  selection, register allocation and encoding happen together into a code buffer that later
+  steps only patch (jumps to later blocks).
+- **Values.** Each value has an assignment, indexed by its id: its register, if any, its spill
+  slot, whether the slot holds it, and its remaining uses from `Liveness`. A use decrements the
+  count; at zero, with the live range ending in the block, the register is free at once. Stack
+  slot addresses are recomputed from the frame pointer rather than spilled.
+- **Registers.** The lowest free register is taken; when none is, one is evicted round-robin. A
+  value used in several blocks of its innermost loop gets a callee-saved register for the loop.
+  Only the state at the current point is tracked: at a jump to a block with several
+  predecessors, or not next in `Order`, every live value without a fixed register is spilled, so
+  it has one known place, and `Moves` fills the target's parameters.
+- **Frames.** Always a frame pointer; the prologue reserves room for saving every callee-saved
+  register, and its frame size and saves are patched when the function ends. The frame size is
+  known exactly, so the baseline reports frame sizes (`stack.max`, spec 07).
+- **Instruction compilers** are a table from `InstKind` to a function per architecture. Fusion
+  looks only forward within a block: a compare whose one use is the branch ending it, an `Offset`
+  folded into a load's or store's address, a constant into an immediate.
+- **Semantics once.** TPDE derives its instruction sequences from C compiled by LLVM; the
+  baseline's are the operation facts of section 8.1 and small encoders per architecture, and an
+  operation an architecture cannot do in a few instructions (128-bit division, `f16`) calls a
+  helper written in Vun and compiled through the same pipeline.
+- **Output.** Functions are compiled in parallel into their own buffers; one thread assembles the
+  object (ELF first), with relocations for calls, data and imports. Encoders and the object writer
+  are part of the toolchain (no external crate).
 
 | Linker | Use |
 |--------|-----|
@@ -287,7 +386,7 @@ compiler/
   front/   grammar  desugar  syntax  hir  sema
   mid/     mir  passes  interp
   low/     lir  abi  passes
-  back/    api  c  cranelift  qbe  llvm  process
+  back/    api  c  baseline  cranelift  qbe  llvm  process
   link/    api  wild  mold  lld  gnu  msvc  process
   render/  short  annotate  ariadne  json  sarif
   tools/   build  fmt  bind  clang  probe  harness  driver  lsp  cli  generate  xtask

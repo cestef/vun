@@ -34,7 +34,7 @@ Async := ($R: type) -> lang.Interface { lang.Coroutine(Wait, R) };
 
 /// Waits for the next event: sleeps the core until an interrupt, or parks a hosted thread. A
 /// typed link symbol the runtime exports (spec 08, section 1).
-sleep_symbol := "vun.task.sleep";
+sleep_symbol := "vun_task_sleep";
 #[link.symbol(sleep_symbol)]
 sleep: () -> () = _;
 

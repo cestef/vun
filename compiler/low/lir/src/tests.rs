@@ -89,6 +89,17 @@ fn the_verifier_rejects_what_breaks_the_invariants() {
         matches!(mixed, Err((_, Reason::Type { expected: Scalar::I64, found: Scalar::F64 }))),
         "{mixed:?}"
     );
+    // The loop's test jumping to its head on both edges, with different totals.
+    let edges = reason(&|u| {
+        let func = &mut u.functions[f];
+        let [i, total] = [func.blocks[Idx::new(1)].params[0], func.blocks[Idx::new(1)].params[1]];
+        let Terminator::Branch { then, otherwise, .. } = &mut func.blocks[Idx::new(1)].term else {
+            unreachable!()
+        };
+        *then = Target { block: Idx::new(1), args: vec![i, total] };
+        *otherwise = Target { block: Idx::new(1), args: vec![total, i] };
+    });
+    assert_eq!(edges, Err((Entity::Block(f, Idx::new(1)), Reason::Edge(Idx::new(1)))));
     let elsewhere = OriginTable::new();
     assert_eq!(sum(o).verify(&elsewhere).map_err(|m| m.reason), Err(Reason::NoOrigin));
 }

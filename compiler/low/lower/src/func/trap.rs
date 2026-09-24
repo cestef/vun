@@ -1,7 +1,7 @@
 //! Trap sites (spec 07, section 3): a call of the link symbol `lang.panic.trap` with the site's
 //! `lang.panic.Trap`, whose id indexes the unit's message table, where the site is written.
 
-use vun_lir::{Address, Callee, InstKind, Target, Terminator, Value};
+use vun_lir::{Address, InstKind, Target, Terminator, Value};
 use vun_sema::int::Integer;
 use vun_sema::item::Site;
 use vun_sema::ty::Value as Constant;
@@ -38,9 +38,9 @@ impl FnLower<'_, '_, '_> {
         let Ok(Site::Decl(handler)) = self.l.env.site(vun_items::lang::panic::trap) else {
             return Err(unsupported());
         };
-        let handler = self.l.import(&handler, self.at)?;
+        let callee = self.l.linked(&handler, self.at)?.callee().ok_or_else(unsupported)?;
         let addr = self.b.addr(Address::Data(data), self.at);
-        self.b.push(InstKind::Call { callee: Callee::Import(handler), args: vec![addr] }, None, self.at);
+        self.b.push(InstKind::Call { callee, args: vec![addr] }, None, self.at);
         self.b.terminate(Terminator::Unreachable);
         Ok(())
     }

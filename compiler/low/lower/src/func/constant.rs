@@ -74,8 +74,8 @@ impl Lowering<'_, '_> {
                 out.relocs.push(address(Address::Func(id)));
             }
             Constant::Linked(decl) => {
-                let id = self.import(decl, at)?;
-                out.relocs.push(address(Address::Import(id)));
+                let target = self.linked(decl, at)?;
+                out.relocs.push(address(target));
             }
             Constant::Struct { fields, .. } => {
                 let members = cx.get::<Members>(&ty).ok_or_else(unsupported)?;

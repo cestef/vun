@@ -46,6 +46,9 @@ pub enum Reason {
     UnknownAddress(Address),
     /// A jump passing values that are not the target's parameters in number or type.
     Arguments(Block),
+    /// Two jumps of one terminator to a block, with different arguments: moves on an edge belong
+    /// to its pair of blocks (spec 13, section 8.1).
+    Edge(Block),
     /// An operand, or the value defined, of a type the instruction does not accept.
     Type {
         expected: Scalar,
@@ -158,8 +161,11 @@ impl Checker<'_> {
             for operand in data.term.operands() {
                 self.sees(at, &dominators, operand, block, None)?;
             }
-            for target in data.term.targets() {
+            for (i, target) in data.term.targets().enumerate() {
                 self.target(at, target)?;
+                if data.term.targets().take(i).any(|t| t.block == target.block && t.args != target.args) {
+                    return Self::fail(at, Reason::Edge(target.block));
+                }
             }
             self.term(block)?;
         }

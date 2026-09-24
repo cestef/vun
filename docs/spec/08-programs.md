@@ -96,7 +96,7 @@ A library is a root file with `#[link.export]` declarations and no runtime.
 
 ```vun
 // lang/panic.vun
-trap_symbol := "vun.trap";
+trap_symbol := "vun_trap";
 #[link.symbol(trap_symbol)]
 trap: (t: &Trap) -> never = _;
 ```

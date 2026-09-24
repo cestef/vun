@@ -4,7 +4,7 @@ Trap := struct {
     site: u32,
 };
 
-trap_symbol := "vun.trap";
+trap_symbol := "vun_trap";
 
 #[link.symbol(trap_symbol)]
 trap: (t: &Trap) -> lang.never = _;

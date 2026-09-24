@@ -8,7 +8,7 @@ use std::sync::Arc;
 use vun_hir::db::FileRef;
 use vun_index::Idx;
 use vun_intern::Symbol;
-use vun_lir::{Data, DataId, FuncId, Import, ImportId, ImportKind, Linkage, Reloc, Unit};
+use vun_lir::{Address, Data, DataId, FuncId, Import, ImportId, ImportKind, Linkage, Reloc, Unit};
 use vun_mir::{Concrete, Programs};
 use vun_origin::OriginId;
 use vun_query::{Cx, Query};
@@ -41,6 +41,8 @@ pub(crate) struct Lowering<'a, 'db> {
     pub(crate) unit: Unit,
     functions: HashMap<Instantiation, FuncId>,
     imports: HashMap<Symbol, ImportId>,
+    /// The functions the program exports, by symbol: what a link symbol of the program names.
+    exports: HashMap<Symbol, FuncId>,
     data: HashMap<(Vec<u8>, Vec<Reloc>, u64), DataId>,
     globals: HashMap<DeclRef, DataId>,
 }
@@ -59,6 +61,7 @@ impl<'a, 'db> Lowering<'a, 'db> {
             unit,
             functions,
             imports: HashMap::new(),
+            exports: program.exports.iter().map(|&(i, symbol)| (symbol, FuncId::new(i))).collect(),
             data: HashMap::new(),
             globals: HashMap::new(),
         };
@@ -80,10 +83,25 @@ impl<'a, 'db> Lowering<'a, 'db> {
         self.functions.get(f).copied().ok_or(Unlowered::unsupported(at, Form::Callee))
     }
 
-    /// The import of the declaration the linker provides, made once per symbol.
-    pub(crate) fn import(&mut self, decl: &DeclRef, at: OriginId) -> Result<ImportId, Unlowered> {
+    /// What the declaration the linker provides names: the function the program exports under
+    /// its symbol, or else an import, made once per symbol.
+    pub(crate) fn linked(&mut self, decl: &DeclRef, at: OriginId) -> Result<Address, Unlowered> {
         let cx = self.types.cx;
         let (symbol, abi) = decl.linked(cx).ok_or(Unlowered::unsupported(at, Form::Callee))?;
+        if let Some(&f) = self.exports.get(&symbol) {
+            return Ok(Address::Func(f));
+        }
+        self.import(decl, symbol, abi, at).map(Address::Import)
+    }
+
+    fn import(
+        &mut self,
+        decl: &DeclRef,
+        symbol: Symbol,
+        abi: Option<vun_sema::primitives::abi::Abi>,
+        at: OriginId,
+    ) -> Result<ImportId, Unlowered> {
+        let cx = self.types.cx;
         if let Some(&id) = self.imports.get(&symbol) {
             return Ok(id);
         }

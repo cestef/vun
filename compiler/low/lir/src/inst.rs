@@ -180,48 +180,61 @@ pub enum Terminator {
 }
 
 impl Terminator {
-    /// The jumps this may take.
-    #[must_use]
-    pub fn targets(&self) -> Vec<&Target> {
-        match self {
-            Self::Jump(t) => vec![t],
-            Self::Branch { then, otherwise, .. } => vec![then, otherwise],
-            Self::Switch { cases, default, .. } => cases.iter().map(|(_, t)| t).chain([default]).collect(),
-            Self::Return(_) | Self::Unreachable => Vec::new(),
-        }
+    /// The jumps this may take: a switch's cases, then its default.
+    pub fn targets(&self) -> impl Iterator<Item = &Target> {
+        let (cases, rest): (&[(u128, Target)], [Option<&Target>; 2]) = match self {
+            Self::Jump(t) => (&[], [Some(t), None]),
+            Self::Branch { then, otherwise, .. } => (&[], [Some(then), Some(otherwise)]),
+            Self::Switch { cases, default, .. } => (cases, [Some(default), None]),
+            Self::Return(_) | Self::Unreachable => (&[], [None, None]),
+        };
+        cases.iter().map(|(_, t)| t).chain(rest.into_iter().flatten())
     }
 
     /// The values this reads, jump arguments included.
-    #[must_use]
-    pub fn operands(&self) -> Vec<Value> {
+    pub fn operands(&self) -> impl Iterator<Item = Value> {
         let own = match self {
-            Self::Branch { cond, .. } => vec![*cond],
-            Self::Switch { value, .. } => vec![*value],
-            Self::Return(value) => value.iter().copied().collect(),
-            Self::Jump(_) | Self::Unreachable => Vec::new(),
+            Self::Branch { cond, .. } => Some(*cond),
+            Self::Switch { value, .. } => Some(*value),
+            Self::Return(value) => *value,
+            Self::Jump(_) | Self::Unreachable => None,
         };
-        own.into_iter().chain(self.targets().into_iter().flat_map(|t| t.args.iter().copied())).collect()
+        own.into_iter().chain(self.targets().flat_map(|t| t.args.iter().copied()))
     }
 }
 
 impl InstKind {
     /// The values this reads.
-    #[must_use]
-    pub fn operands(&self) -> Vec<Value> {
-        match self {
-            Self::Const { .. } | Self::SlotAddr(_) | Self::Addr(_) => Vec::new(),
-            Self::Binary { a, b, .. } | Self::Compare { a, b, .. } => vec![*a, *b],
-            Self::Cast { value, .. } => vec![*value],
-            Self::Select { cond, then, otherwise } => vec![*cond, *then, *otherwise],
-            Self::Load { addr, .. } => vec![*addr],
-            Self::Store { value, addr, .. } | Self::Rmw { addr, value, .. } => vec![*value, *addr],
-            Self::CompareExchange { addr, expected, new, .. } => vec![*addr, *expected, *new],
-            Self::Offset { base, offset } => vec![*base, *offset],
-            Self::Copy { to, from, .. } => vec![*to, *from],
-            Self::Call { callee: Callee::Indirect(f, _), args } => {
-                std::iter::once(*f).chain(args.iter().copied()).collect()
+    pub fn operands(&self) -> impl Iterator<Item = Value> {
+        let (own, args): ([Option<Value>; 3], &[Value]) = match self {
+            Self::Const { .. } | Self::SlotAddr(_) | Self::Addr(_) => ([None; 3], &[]),
+            Self::Binary { a, b, .. } | Self::Compare { a, b, .. } => ([Some(*a), Some(*b), None], &[]),
+            Self::Cast { value, .. } => ([Some(*value), None, None], &[]),
+            Self::Select { cond, then, otherwise } => ([Some(*cond), Some(*then), Some(*otherwise)], &[]),
+            Self::Load { addr, .. } => ([Some(*addr), None, None], &[]),
+            Self::Store { value, addr, .. } | Self::Rmw { addr, value, .. } => {
+                ([Some(*value), Some(*addr), None], &[])
             }
-            Self::Call { args, .. } => args.clone(),
+            Self::CompareExchange { addr, expected, new, .. } => {
+                ([Some(*addr), Some(*expected), Some(*new)], &[])
+            }
+            Self::Offset { base, offset } => ([Some(*base), Some(*offset), None], &[]),
+            Self::Copy { to, from, .. } => ([Some(*to), Some(*from), None], &[]),
+            Self::Call { callee: Callee::Indirect(f, _), args } => ([Some(*f), None, None], args),
+            Self::Call { args, .. } => ([None; 3], args),
+        };
+        own.into_iter().flatten().chain(args.iter().copied())
+    }
+}
+
+impl Address {
+    /// What a call of this address calls; data is not called.
+    #[must_use]
+    pub fn callee(self) -> Option<Callee> {
+        match self {
+            Self::Func(f) => Some(Callee::Func(f)),
+            Self::Import(i) => Some(Callee::Import(i)),
+            Self::Data(_) => None,
         }
     }
 }
