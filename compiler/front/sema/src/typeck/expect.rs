@@ -7,6 +7,7 @@ use overt_intern::Symbol;
 use overt_origin::OriginId;
 
 use super::{Known, Typer};
+use crate::env::Unevaluated;
 use crate::int::{Interval, Storage};
 use crate::ty::{Ty, TyKind};
 use crate::visible::Visible;
@@ -35,6 +36,18 @@ impl Typer<'_, '_, '_> {
             d = d.label(self.hir().exprs[because].origin, Some(here));
         }
         self.diag.error(d);
+    }
+
+    /// The type `expr` denotes, reporting a trap that fires while evaluating it.
+    pub(super) fn ty(&mut self, expr: ExprId) -> Option<Ty> {
+        match self.env.ty(expr) {
+            Ok(ty) => Some(ty),
+            Err(Unevaluated::Trapped(trap)) => {
+                self.diag.error(trap.report(self.hir().exprs[expr].origin));
+                None
+            }
+            Err(_) => None,
+        }
     }
 
     /// Reports the run-time intermediate `expr`, of range `range`, as needing more bits than the

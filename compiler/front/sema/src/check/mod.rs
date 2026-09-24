@@ -7,11 +7,13 @@ use std::sync::Arc;
 
 use overt_diag::DiagCtxt;
 use overt_hir::db::FileRef;
-use overt_hir::tree::{ExprId, ExprKind, Hir, Member, NsId, each_entry};
+use overt_hir::tree::{DeclId, ExprId, ExprKind, Hir, Member, NsId, each_entry};
 use overt_hir::visit::{self, Visitor};
 use overt_query::{Cx, Query};
 
-use crate::env::Env;
+use crate::decl::DeclValue;
+use crate::env::{Env, Unevaluated};
+use crate::item::DeclRef;
 use crate::item::ExprRef;
 use crate::typeck::{Stage, Typed, Typer};
 use crate::visible::Home;
@@ -34,6 +36,18 @@ impl Query for Checked {
     }
 }
 
+impl Checker<'_, '_, '_> {
+    /// Computes the value of the member declaration `decl`, as statics are at compile time
+    /// (spec 00, guarantee 1), reporting a trap that fires.
+    fn evaluate(&mut self, hir: &Hir, decl: DeclId) {
+        let Some(value) = hir.decls[decl].value else { return };
+        let decl = DeclRef::new(self.env.file.clone(), hir, decl);
+        if let Err(Unevaluated::Trapped(trap)) = self.env.cx.get::<DeclValue>(&decl) {
+            self.diag.error(trap.report(hir.exprs[value].origin));
+        }
+    }
+}
+
 /// Walks a whole file, checking what is typed apart: namespace members and function bodies.
 struct Checker<'e, 'a, 'db> {
     env: &'e Env<'a, 'db>,
@@ -47,6 +61,7 @@ impl Visitor for Checker<'_, '_, '_> {
         each_entry(&hir.namespaces[ns].members, &mut |m| {
             self.visibility(hir, m);
             if let Member::Decl(d) = m {
+                self.evaluate(hir, *d);
                 let mut typer = Typer::new(self.env, Stage::Compile);
                 typer.decl(hir, *d);
                 self.diag.absorb(&typer.diag);

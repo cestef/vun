@@ -163,7 +163,7 @@ bodies, so `$for`/`$if` work in every list context; node kinds are chosen after 
 (postorder). One report per position; missing things are reported at the end of the previous
 token; nesting capped at 256; the keyword hint suggests `\keyword`.
 
-Tests: 154, including unit tests per crate, `tests/lexer.rs`, `tests/parser.rs` (all of `lib/` and
+Tests: 155, including unit tests per crate, `tests/lexer.rs`, `tests/parser.rs` (all of `lib/` and
 `corpus/accept` parse clean and verify, CST and token snapshots mirroring the corpus tree), CLI parsing tests, the
 generated-files-current test and the corpus test (no failing corpus file). Fuzz: `parse` ran 600k inputs in 4 minutes
 without a failure. clippy pedantic is clean.
@@ -221,7 +221,7 @@ In order:
      Loops (decision 72): MIR lowers `for {}`, `for c {}`, labels, `break v`, `continue`,
      `return`, uninitialized locals and assignments to locals (`build/{loops,assign}.rs`);
      `x op= y` is `Rvalue::Narrow` with the place's type from `Typed` and the table `COMPOUND`;
-     `Value::narrow`; the interpreter's `BUDGET` per call gives `Unevaluated::Exhausted`.
+     `Value::narrow`; the interpreter's `BUDGET` per call. Traps (decision 73): `trap::{Trap, Reason}` in `Unevaluated::Trapped(Box<Trap>)`, placed and traced by `Unevaluated::through(origin)` as they propagate (interpreter statements, `Env` calls); `Trap::report(root)`; reported by `Typer::ty` for annotations and by the checker, which computes every top-level value.
      Next: `match`, narrowing by comparisons (decision 35), `if p = e`, `for p in e`,
      `.name` with an expected enum type, `#[comptime.fuel]`.
    - Struct declarations are typed in their instance (`MemberType`); bodies of generic functions are typed
@@ -240,8 +240,6 @@ In order:
      grammar `TokenKind`s until then.
    - Method calls (`a.f(x)`), struct fields and literals, then `int.does_not_fit` in
      `corpus/reject/integers/does_not_fit.ov` (`p.x.abs() + p.y.abs()`).
-   - Compile-time traps (`Unevaluated::Trapped`) become diagnostics with a "while evaluating"
-     trace; a step budget (`lang.comptime.fuel`).
    - Persist the front-end queries (`Persist` needs `Encode`/`Decode` for their keys and values;
      `Symbol` and `OriginId` persist by content) and wire `.overt/queries/<toolchain hash>`.
 2. Packaging, still open: signed binary caches (decision 63) and planned builds wait for the
@@ -253,7 +251,7 @@ In order:
 4. Fuzz the parser longer (120 s runs are clean).
 
 The corpus has 40 accept and 55 reject programs plus 63 explanation pages (`cargo xtask corpus`:
-141 passed, 42 pending on later stages, 20 shown as transcripts, 0 failed), plus
+145 passed, 42 pending on later stages, 20 shown as transcripts, 0 failed), plus
 `corpus/build.ov` (prelude `std.prelude` then `support`) and `corpus/support`, stand-ins for what
 programs take from drivers, other libraries and unwritten parts of `std`.
 

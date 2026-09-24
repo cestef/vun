@@ -81,6 +81,10 @@ pub const LAYOUT_BITS_WIDTH: DiagId = DiagId::new("lang.errors.layout.bits_width
 /// Compile-time evaluation and reflection (spec 03).
 pub const META: DiagId = DiagId::new("lang.errors.meta");
 pub const META_FROZEN: DiagId = DiagId::new("lang.errors.meta.frozen");
+/// Compile-time evaluation (spec 03, section 7).
+pub const COMPTIME: DiagId = DiagId::new("lang.errors.comptime");
+pub const COMPTIME_TRAP: DiagId = DiagId::new("lang.errors.comptime.trap");
+pub const COMPTIME_EXHAUSTED: DiagId = DiagId::new("lang.errors.comptime.exhausted");
 /// Place states (spec 05, section 2).
 pub const PLACE: DiagId = DiagId::new("lang.errors.place");
 pub const PLACE_READ_UNINIT: DiagId = DiagId::new("lang.errors.place.read_uninit");
@@ -185,6 +189,8 @@ pub const ALL: &[DiagId] = &[
     COROUTINE_RECURSIVE_FRAME,
     LAYOUT_BITS_WIDTH,
     META_FROZEN,
+    COMPTIME_TRAP,
+    COMPTIME_EXHAUSTED,
     PLACE_READ_UNINIT,
     PLACE_LINEAR_LEAK,
     PLACE_AMBIGUOUS_JOIN,
@@ -252,6 +258,8 @@ pub const EXPLANATIONS: &[(DiagId, &str)] = &[
     (COROUTINE_RECURSIVE_FRAME, "lang/lang/errors/coroutine/recursive_frame.md"),
     (LAYOUT_BITS_WIDTH, "lang/lang/errors/layout/bits_width.md"),
     (META_FROZEN, "lang/lang/errors/meta/frozen.md"),
+    (COMPTIME_TRAP, "lang/lang/errors/comptime/trap.md"),
+    (COMPTIME_EXHAUSTED, "lang/lang/errors/comptime/exhausted.md"),
     (PLACE_READ_UNINIT, "lang/lang/errors/place/read_uninit.md"),
     (PLACE_LINEAR_LEAK, "lang/lang/errors/place/linear_leak.md"),
     (PLACE_AMBIGUOUS_JOIN, "lang/lang/errors/place/ambiguous_join.md"),

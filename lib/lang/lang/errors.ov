@@ -72,6 +72,12 @@ meta := struct {
     frozen := diag.Diag{ .explanation = meta.embed("errors/meta/frozen.md") };
 };
 
+/// Compile-time evaluation (spec 03, section 7).
+comptime := struct {
+    trap := diag.Diag{ .explanation = meta.embed("errors/comptime/trap.md") };
+    exhausted := diag.Diag{ .explanation = meta.embed("errors/comptime/exhausted.md") };
+};
+
 /// Place states (spec 05, section 2).
 place := struct {
     read_uninit := diag.Diag{ .explanation = meta.embed("errors/place/read_uninit.md") };

@@ -51,7 +51,7 @@ impl Env<'_, '_> {
                 }
             }
             ExprKind::Block(block) => self.block(*block),
-            ExprKind::Call { callee, args } => self.call(*callee, args),
+            ExprKind::Call { callee, args } => self.call(*callee, args).map_err(|u| u.through(e.origin)),
             ExprKind::Fn { .. } => Ok(Value::Fn(ExprRef::new(self.file.clone(), hir, expr))),
             ExprKind::FnType { params, returns } => Ok(Value::Type(self.signature(params, *returns)?.ty())),
             ExprKind::Tuple(items) => items

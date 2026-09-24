@@ -61,11 +61,15 @@ impl Query for Typed {
         for param in params {
             let Entry::One(param) = param else { continue };
             let (Some(pat), Some(ty)) = (param.pat, param.ty) else { continue };
-            let (PatKind::Bind(binder), Ok(ty)) = (&hir.pats[pat].kind, env.ty(ty)) else { continue };
+            let (PatKind::Bind(binder), Some(ty)) = (&hir.pats[pat].kind, typer.ty(ty)) else { continue };
             typer.bind(*binder, ty);
         }
+        let result = match returns {
+            Some(r) => typer.ty(*r),
+            None => Some(TyKind::unit()),
+        };
         let found = typer.block_value(*body);
-        if let (Some(found), Ok(result)) = (found, env.result(*returns)) {
+        if let (Some(found), Some(result)) = (found, result) {
             let at = hir.blocks[*body].tail.map_or(hir.blocks[*body].origin, |t| hir.exprs[t].origin);
             typer.expect(at, found, result, *returns);
         }
@@ -146,7 +150,7 @@ impl Visitor for Typer<'_, '_, '_> {
     fn decl(&mut self, hir: &Hir, decl: DeclId) {
         let d = &hir.decls[decl];
         let found = d.value.and_then(|v| self.typed(v));
-        let annotated = d.ty.and_then(|t| self.env.ty(t).ok());
+        let annotated = d.ty.and_then(|t| self.ty(t));
         if let (Some(found), Some(expected), Some(value)) = (found, annotated, d.value) {
             self.expect(hir.exprs[value].origin, found, expected, d.ty);
         }

@@ -4,6 +4,7 @@ mod common;
 
 use common::Fixture;
 use overt_diag::errors;
+use overt_span::SourceMap;
 
 #[test]
 fn each_instantiation_of_a_type_function_is_its_own_type() {
@@ -105,4 +106,29 @@ early_over: Early = 2;
         messages,
         ["Sum", "Root", "Wrap", "Early"].map(|t| format!("value does not fit the type `{t}`"))
     );
+}
+
+#[test]
+fn a_compile_time_trap_is_reported_at_its_root_with_the_calls_it_fired_in() {
+    let fixture = Fixture::new("comptime-trap");
+    let file = fixture.root.write(
+        "trap.ov",
+        "\
+half := ($n: Int(0..=9)) -> Int(0..=10) { 10 / n };
+twice := ($n: Int(0..=9)) -> Int(0..=20) { half(n) + half(n) };
+Small := Int(0..=twice(0));
+",
+    );
+    let mut session = fixture.session();
+    let file = session.load(&file).unwrap();
+    session.check(file);
+    let reported = session.diag.sorted();
+    let [trap] = reported.as_slice() else { panic!("{reported:#?}") };
+    assert_eq!(trap.id, errors::COMPTIME_TRAP);
+    let line = |origin| {
+        let span = session.origins.source_span(origin);
+        session.sources.file(span.file).line_col(span.range.lo).line
+    };
+    assert_eq!(trap.labels.iter().map(|l| line(l.origin)).collect::<Vec<_>>(), [1]);
+    assert_eq!(trap.trace.iter().map(|t| line(t.origin)).collect::<Vec<_>>(), [2, 3]);
 }

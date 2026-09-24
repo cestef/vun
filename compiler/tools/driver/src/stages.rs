@@ -33,6 +33,7 @@ pub const STAGES: &[Stage] = &[
             errors::INT_WIDTH_CAP,
             errors::NAMES_PRIVATE,
             errors::NAMES_VISIBILITY,
+            errors::COMPTIME,
         ],
     },
 ];

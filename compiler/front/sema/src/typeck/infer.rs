@@ -127,7 +127,7 @@ impl Typer<'_, '_, '_> {
     /// `T{ .name = value, ... }`: each field's value is checked against the field's type.
     fn struct_lit(&mut self, ty: ExprId, fields: &[Entry<Arg>]) -> Option<Known> {
         self.typed(ty);
-        let target = self.env.ty(ty).ok();
+        let target = self.ty(ty);
         let members = target.and_then(|t| self.env.cx.get::<Members>(&t));
         let mut stage = Stage::Compile;
         for field in fields {

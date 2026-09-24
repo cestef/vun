@@ -25,10 +25,11 @@ use crate::decl::DeclValue;
 use crate::eval::Instance;
 use crate::item::{DeclRef, Declared, ExprRef, Site};
 use crate::member::{Found, Members};
+use crate::trap::Trap;
 use crate::ty::Value;
 
 /// Why an expression has no value at compile time here.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Unevaluated {
     /// It depends on run-time values, such as locals and parameters.
     Runtime,
@@ -40,10 +41,8 @@ pub enum Unevaluated {
     Absent,
     /// A declaration provided from outside that is not a primitive: by the linker or an impl.
     Provided,
-    /// A trap fired: a division by zero, a shift past any width, a failed narrowing.
-    Trapped,
-    /// A call ran out of its step budget (spec 03, section 7).
-    Exhausted,
+    /// A trap fired, which the evaluation root reports.
+    Trapped(Box<Trap>),
     /// A form not evaluated yet.
     Unsupported,
 }

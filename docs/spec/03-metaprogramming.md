@@ -182,6 +182,10 @@ generators that observe their own output, which is what makes impls and memoizat
   are memoized by content hash, which also defines type identity: `Pair(u16)` is one type.
 - **Target semantics.** Compile-time code uses the target's layout, word size and endianness
   (guarantee 4).
+- **Traps.** A trap that fires during evaluation (a division by zero, a failed `.to`, spec 04) is
+  an error, `comptime.trap`, at the value being computed: the trap site is labeled and each call
+  between them is a "while evaluating" frame. Every top-level value is computed, as statics are
+  (guarantee 1), so a trap in one is always reported.
 - **Budget.** Evaluation has a deterministic step budget per evaluation root, set with
   `#[comptime.fuel(n)]` on the declaration that starts it. Exhausting it is an error with a full
   "while evaluating" trace. Compile-time calls run on the evaluator's own stack, never the host's.

@@ -15,6 +15,7 @@ pub mod member;
 mod ops;
 #[rustfmt::skip]
 pub mod primitives;
+pub mod trap;
 pub mod ty;
 pub mod typeck;
 pub mod visible;

@@ -6,13 +6,14 @@ use overt_grammar::{Narrowing, TokenKind};
 
 use crate::env::Unevaluated;
 use crate::int::{Extended, Integer, Interval};
+use crate::trap::Reason;
 use crate::ty::Value;
 
 impl Value {
     /// `left op right`.
     ///
     /// # Errors
-    /// Returns [`Unevaluated::Trapped`] for a division by zero or a shift past any width, and
+    /// Returns a trap for a division by zero or a shift past any width, and
     /// [`Unevaluated::Unsupported`] for operands or an operator not computed yet.
     pub fn binary(op: TokenKind, left: &Self, right: &Self) -> Result<Self, Unevaluated> {
         let (Self::Int(a), Self::Int(b)) = (left, right) else { return Err(Unevaluated::Unsupported) };
@@ -20,10 +21,12 @@ impl Value {
             TokenKind::Plus => a + b,
             TokenKind::Minus => a - b,
             TokenKind::Star => a * b,
-            TokenKind::Slash => a.checked_div(b).ok_or(Unevaluated::Trapped)?,
-            TokenKind::Percent => a.checked_rem(b).ok_or(Unevaluated::Trapped)?,
-            TokenKind::Shl => a.shifted(b).ok_or(Unevaluated::Trapped)?,
-            TokenKind::Shr => a.shifted(&-b).ok_or(Unevaluated::Trapped)?,
+            TokenKind::Slash => a.checked_div(b).ok_or_else(|| Unevaluated::trap(Reason::DivisionByZero))?,
+            TokenKind::Percent => {
+                a.checked_rem(b).ok_or_else(|| Unevaluated::trap(Reason::DivisionByZero))?
+            }
+            TokenKind::Shl => a.shifted(b).ok_or_else(|| Unevaluated::trap(Reason::Shift))?,
+            TokenKind::Shr => a.shifted(&-b).ok_or_else(|| Unevaluated::trap(Reason::Shift))?,
             _ => return Err(Unevaluated::Unsupported),
         };
         Ok(Self::Int(n))
@@ -34,20 +37,20 @@ impl Value {
     /// the range for [`Narrowing::Wrap`], the nearer bound for [`Narrowing::Sat`].
     ///
     /// # Errors
-    /// Returns [`Unevaluated::Trapped`] when `.to` fails or the range is unbounded for `.wrap`,
+    /// Returns a trap when `.to` fails or the range is unbounded for `.wrap`,
     /// and [`Unevaluated::Unsupported`] for a value that is no integer.
     pub fn narrow(&self, range: &Interval, narrowing: Narrowing) -> Result<Self, Unevaluated> {
         let Self::Int(n) = self else { return Err(Unevaluated::Unsupported) };
         if range.contains(&Interval::singleton(n.clone())) {
             return Ok(self.clone());
         }
-        let bound = |b: &Extended| b.finite().cloned().ok_or(Unevaluated::Trapped);
+        let bound = |b: &Extended| b.finite().cloned().ok_or_else(|| Unevaluated::trap(Reason::Narrowing));
         let n = match narrowing {
-            Narrowing::To => return Err(Unevaluated::Trapped),
+            Narrowing::To => return Err(Unevaluated::trap(Reason::Narrowing)),
             Narrowing::Wrap => {
                 let (lo, hi) = (bound(range.lo())?, bound(range.hi())?);
                 let size = &(&hi - &lo) + &Integer::from(1);
-                &lo + &(n - &lo).modulo(&size).ok_or(Unevaluated::Trapped)?
+                &lo + &(n - &lo).modulo(&size).ok_or_else(|| Unevaluated::trap(Reason::Narrowing))?
             }
             Narrowing::Sat if Extended::Finite(n.clone()) < *range.lo() => bound(range.lo())?,
             Narrowing::Sat => bound(range.hi())?,

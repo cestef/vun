@@ -6,6 +6,7 @@ use overt_mir::{Body, Local, Operand, Rvalue, TerminatorKind};
 use overt_query::Cx;
 use overt_sema::env::{Env, Unevaluated};
 use overt_sema::eval::{Call, Instance};
+use overt_sema::trap::Reason;
 use overt_sema::ty::Value;
 
 /// The steps, statements and terminators, a compile-time call may run of its own body; the
@@ -48,10 +49,10 @@ impl<'b, 'a, 'db> Frame<'b, 'a, 'db> {
         loop {
             steps += 1 + block.stmts.len() as u64;
             if steps > BUDGET {
-                return Err(Unevaluated::Exhausted);
+                return Err(Unevaluated::trap(Reason::Budget).through(self.body.origin));
             }
             for stmt in &block.stmts {
-                let value = self.rvalue(&stmt.value)?;
+                let value = self.rvalue(&stmt.value).map_err(|e| e.through(stmt.origin))?;
                 self.locals[stmt.place.local] = Some(value);
             }
             match &block.term.kind {
