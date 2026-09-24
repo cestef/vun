@@ -20,7 +20,7 @@ memcpy_4k := (b: &mut testing.Bench) {
 
 #[test]
 election := (s: &mut testing.Sim) {
-    net := s.network(.{ .drop = .percent(5), .reorder = .true });
+    net := s.network(.{ .drop = .percent(5), .reorder = true });
     for i in 0..3 { s.spawn(node(net, i)); }
     s.run_until(.virtual(60 * s.second));
     assert(leaders(s) == 1);

@@ -95,7 +95,7 @@ Pair := ($T: type) -> type { struct { a: T, b: T } };
 #[impl(Pair)]
 PairMethods := ($T: type) -> type { struct { first := (p: Pair(T)) -> T { p.a }; } };
 first := (p: Pair(u8)) -> bool { p.first() };
-mapped := (r: Result(u8, u8)) -> Result(u8, bool) { r.map_err((e: u8) -> bool { .true }) };
+mapped := (r: Result(u8, u8)) -> Result(u8, bool) { r.map_err((e: u8) -> bool { true }) };
 ",
     );
     assert_eq!(

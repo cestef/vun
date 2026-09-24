@@ -19,7 +19,7 @@ Fs := struct {
     close := (self: &mut Fs, f: File) { .{ .fd = _ } := f; };
 };
 Config := struct {
-    done := (self: &Config) -> bool { .true };
+    done := (self: &Config) -> bool { true };
 };
 Error := enum { fs, oom, parse };
 parse := (f: &File, cfg: &out Config) -> Result((), Error) {

@@ -22,6 +22,9 @@ f32: type = _;
 f64: type = _;
 
 bool := enum { false, true };
+/// The two conditions by name, so that `true` reads as `.true` does where a `bool` is expected.
+true := bool.true;
+false := bool.false;
 never := enum {};
 /// How two values compare (`lang.ops.Ord`).
 Ordering := enum { less, equal, greater };

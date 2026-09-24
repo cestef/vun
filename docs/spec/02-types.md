@@ -66,7 +66,8 @@ structural: `u8 := Int(0..=255)` is `Int(0..=255)`.
 
 `bool`, `never` (the empty enum), `Option`, `Result`, `Step`, `Branch` and `Ordering` are
 ordinary enums declared in `lang`. Variant constructors are functions: `Result(u8, E).err` has type
-`(E) -> Result(u8, E)`.
+`(E) -> Result(u8, E)`. `true` and `false` are `lang` names for `bool.true` and `bool.false`, in
+the prelude; they are not keywords.
 
 A type made by a constructor with an empty enum such as `never` in place of some arguments is
 accepted where the same constructor with any arguments there is expected: `Result(never, E)` where

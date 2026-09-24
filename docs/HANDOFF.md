@@ -191,7 +191,7 @@ annotations (89), linked values and repeats (90), layout (93), place states (94)
 - Attributes do not attach to a block's tail expression; put kind attributes on the type
   constructor (`Own := #[kind.linear] ($T: type) -> type { struct { ... } }`).
 - Names in `lang` resolve within `lang` (its prelude is `lang`, `lang.int`); `true`/`false` are
-  not prelude names: write `.true` with an expected `bool`.
+  `lang` names (`bool.true`, `bool.false`) in the std prelude.
 - Integer arithmetic is exact: `x * 2` for `x: u32` does not fit `u32`; corpus programs are fixed
   to the rule, not the checker to the program.
 - Driver integration tests are one binary (`tests/driver/main.rs`, a module per area); tests use
