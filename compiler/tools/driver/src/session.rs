@@ -12,6 +12,7 @@ use overt_hir::tree::{ExprKind, Hir};
 use overt_interp::Interpreter;
 use overt_mir::{Body, Mir, Unbuilt};
 use overt_origin::OriginTable;
+use overt_pkg::Schemes;
 use overt_query::Db;
 use overt_sema::check::Checked;
 use overt_sema::eval::Evaluators;
@@ -38,6 +39,9 @@ pub struct Session {
     pub library: PathBuf,
     /// The store of fetched packages, the user's unless set.
     pub store: Store,
+    /// The URL schemes packages are downloaded through: `file://` unless the program installs
+    /// more, as `overt` does with `overt-http`.
+    pub schemes: Schemes,
 }
 
 impl Default for Session {
@@ -53,6 +57,7 @@ impl Default for Session {
             packages: Packages::default(),
             library: PathBuf::from(LIBRARY),
             store: Store::user(),
+            schemes: Schemes::default(),
         }
     }
 }

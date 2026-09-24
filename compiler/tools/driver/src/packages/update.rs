@@ -12,7 +12,7 @@ use overt_build::store::Label;
 use overt_diag::{ChildKind, Diagnostic, Msg, errors};
 use overt_hash::Hash;
 use overt_intern::Symbol;
-use overt_pkg::{Failure, Scheme};
+use overt_pkg::Failure;
 
 use super::{Dep, DepSource};
 use crate::Session;
@@ -101,7 +101,7 @@ impl Session {
 
     /// The listing at `url`; one that cannot be read is reported.
     fn listing(&mut self, url: &str) -> Option<Listing> {
-        let read = Scheme::get(url).map_err(Unlisted::Read).and_then(|bytes| {
+        let read = self.schemes.get(url).map_err(Unlisted::Read).and_then(|bytes| {
             String::from_utf8(bytes).ok().and_then(|text| Listing::parse(&text)).ok_or(Unlisted::Malformed)
         });
         match read {

@@ -15,7 +15,7 @@ use std::{fmt, io};
 pub use archive::{Archive, Malformed};
 pub use contents::{Contents, Packed};
 pub use format::{FORMATS, Format};
-pub use mirror::{Mirror, SCHEMES, Scheme};
+pub use mirror::{Mirror, Scheme, Schemes};
 pub use tar::Tar;
 pub use zip::Zip;
 pub use zstd::Zstd;
@@ -23,8 +23,8 @@ pub use zstd::Zstd;
 /// Why a mirror could not provide an archive; the underlying error is its [`Error::source`].
 #[derive(Debug)]
 pub enum Failure {
-    /// No scheme in [`SCHEMES`] reads the URL.
-    Scheme,
+    /// No scheme installed reads the URL; these are the ones that are.
+    Scheme(Vec<&'static str>),
     /// No format in [`FORMATS`] matches the end of the URL.
     Format,
     Download(Box<dyn Error + Send + Sync>),
@@ -34,10 +34,7 @@ pub enum Failure {
 impl fmt::Display for Failure {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Scheme => {
-                let schemes: Vec<_> = SCHEMES.iter().map(|s| s.prefix).collect();
-                write!(f, "no supported scheme; supported: {}", schemes.join(", "))
-            }
+            Self::Scheme(schemes) => write!(f, "no supported scheme; supported: {}", schemes.join(", ")),
             Self::Format => {
                 let suffixes: Vec<_> = FORMATS.iter().flat_map(|f| f.suffixes).copied().collect();
                 write!(f, "no known archive format; supported: {}", suffixes.join(", "))
@@ -51,7 +48,7 @@ impl fmt::Display for Failure {
 impl Error for Failure {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
-            Self::Scheme | Self::Format => None,
+            Self::Scheme(_) | Self::Format => None,
             Self::Download(e) => Some(e.as_ref()),
             Self::Unpack(e) => Some(e),
         }

@@ -56,6 +56,7 @@ overt-render-json = { path = "compiler/render/json" }
 overt-render-sarif = { path = "compiler/render/sarif" }
 overt-build = { path = "compiler/tools/build" }
 overt-pkg = { path = "compiler/tools/pkg" }
+overt-http = { path = "compiler/tools/http" }
 overt-fmt = { path = "compiler/tools/fmt" }
 overt-bind = { path = "compiler/tools/bind" }
 overt-probe = { path = "compiler/tools/probe" }

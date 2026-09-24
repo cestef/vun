@@ -15,6 +15,7 @@ workspace = true
 
 [dependencies]
 overt-driver.workspace = true
+overt-http.workspace = true
 overt-command.workspace = true
 overt-trace.workspace = true
 overt-diag.workspace = true

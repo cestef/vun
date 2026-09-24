@@ -376,6 +376,7 @@ dependencies = [
  "overt-command",
  "overt-diag",
  "overt-driver",
+ "overt-http",
  "overt-trace",
 ]
 
@@ -497,6 +498,14 @@ dependencies = [
  "overt-span",
  "overt-suggest",
  "overt-syntax",
+]
+
+[[package]]
+name = "overt-http"
+version = "0.0.0"
+dependencies = [
+ "bitreq",
+ "overt-pkg",
 ]
 
 [[package]]
@@ -663,7 +672,6 @@ dependencies = [
 name = "overt-pkg"
 version = "0.0.0"
 dependencies = [
- "bitreq",
  "flate2",
  "lzma-rs",
  "overt-fs",
@@ -865,9 +873,9 @@ dependencies = [
 
 [[package]]
 name = "rustls"
-version = "0.23.43"
+version = "0.23.45"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0283386ce02abc0151e1761d08802dfe86c173b0b494af5cbc086574e453da06"
+checksum = "0d41d731c7d2f962d1ccc364cec258de3c0e93b38c2fb3ba97ac74513048d634"
 dependencies = [
  "once_cell",
  "ring",
@@ -888,9 +896,9 @@ dependencies = [
 
 [[package]]
 name = "rustls-webpki"
-version = "0.103.13"
+version = "0.103.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "61c429a8649f110dddef65e2a5ad240f747e85f7758a6bccc7e5777bd33f756e"
+checksum = "f3c3cf1d8b1e7d4927e2d154c3fcb02979afb9939629c62cd9048d4f07b60ac2"
 dependencies = [
  "ring",
  "rustls-pki-types",
@@ -983,9 +991,9 @@ checksum = "ccf3ec651a847eb01de73ccad15eb7d99f80485de043efb2f370cd654f4ea44b"
 
 [[package]]
 name = "webpki-roots"
-version = "1.0.7"
+version = "1.0.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "52f5ee44c96cf55f1b349600768e3ece3a8f26010c05265ab73f945bb1a2eb9d"
+checksum = "7dcd9d09a39985f5344844e66b0c530a33843579125f23e21e9f0f220850f22a"
 dependencies = [
  "rustls-pki-types",
 ]

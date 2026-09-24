@@ -128,7 +128,7 @@ impl Session {
     fn archive(&mut self, url: &str) -> Option<Found> {
         // Its contents, and so its hash, are unknown until it is unpacked.
         let staging = self.store.staging(Hash::of(url.as_bytes()));
-        let fetched = Self::unpack(&staging, url).map(|unpacked| {
+        let fetched = self.unpack(&staging, url).map(|unpacked| {
             let manifest_path = unpacked.join(MANIFEST);
             let manifest = manifest_path.is_file().then(|| self.manifest_at(&manifest_path)).flatten();
             let kind = if manifest.is_some() { DepKind::Overt } else { DepKind::Foreign };

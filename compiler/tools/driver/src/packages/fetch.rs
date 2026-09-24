@@ -140,7 +140,7 @@ impl Session {
         url: &str,
         label: Label<'_>,
     ) -> Result<(), Rejected> {
-        let unpacked = Self::unpack(staging, url)?;
+        let unpacked = self.unpack(staging, url)?;
         let snapshot = Snapshot::of(&unpacked, &self.include(kind, &unpacked));
         if snapshot.root() != hash {
             return Err(Rejected::Hash { found: snapshot.root() });
@@ -149,10 +149,10 @@ impl Session {
     }
 
     /// Downloads and unpacks `url` into a fresh `staging` entry, returning where the package is.
-    pub(super) fn unpack(staging: &Path, url: &str) -> Result<PathBuf, Rejected> {
+    pub(super) fn unpack(&self, staging: &Path, url: &str) -> Result<PathBuf, Rejected> {
         staging.fresh().map_err(Rejected::Store)?;
         let unpacked = staging.join(Store::PACKAGE);
-        Mirror::parse(url).and_then(|m| m.fetch(&unpacked)).map_err(Rejected::Mirror)?;
+        Mirror::parse(url, &self.schemes).and_then(|m| m.fetch(&unpacked)).map_err(Rejected::Mirror)?;
         Ok(unpacked)
     }
 
