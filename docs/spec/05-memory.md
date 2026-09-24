@@ -141,7 +141,10 @@ Defined, never left to the implementation:
 - `struct`: declaration order, natural alignment, C-style padding. The compiler never reorders; the
   `perf.padding` lint reports padding and offers a reordering fix.
 - `#[layout.bits(uN)] struct`: bit-exact, least significant bit first; fields must sum to N bits.
-- `#[layout.c] struct`: the target C ABI's layout.
+- `#[layout.c] struct`: the target C ABI's layout, which is the default one on every target
+  described, and a promise that each field is of a type C reads the same way: full-width
+  integers, `bool`, `f32`, `f64`, `*T`, `?*T`, `#[abi.c]` functions and `?` of them, arrays of
+  these and other `#[layout.c]` structs (`layout.not_c`).
 - `#[layout.tag(uN)] enum`: explicit tag representation.
 - `#[layout.align(N)]`, `#[layout.offset(N)]`: raise alignment, place a field at an offset.
 - **Niches (one rule).** An enum with one payload-free variant and one payload variant whose type has

@@ -3,3 +3,4 @@ use crate::DiagId;
 /// Layout attributes (spec 05, section 6).
 pub const LAYOUT: DiagId = DiagId::new("lang.errors.layout");
 pub const LAYOUT_BITS_WIDTH: DiagId = DiagId::new("lang.errors.layout.bits_width");
+pub const LAYOUT_NOT_C: DiagId = DiagId::new("lang.errors.layout.not_c");

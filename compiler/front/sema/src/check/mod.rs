@@ -1,6 +1,7 @@
 //! Checking a file (spec 01, 02 and 04): each namespace member's value against its annotation,
 //! each function body, wherever the types are known, and where restricted names are visible.
 
+mod c_layout;
 mod frozen;
 mod holes;
 mod impls;
@@ -76,6 +77,7 @@ impl Visitor for Checker<'_, '_, '_> {
                 self.hole(hir, *d);
                 self.frozen(hir, *d);
                 self.bit_layout(hir, *d);
+                self.c_layout(hir, *d);
                 let key = (DeclRef::new(self.env.file.clone(), hir, *d), None, Vec::new());
                 if let Some(typed) = self.env.cx.get::<TypedDecl>(&key) {
                     self.diag.absorb(&typed.diag);

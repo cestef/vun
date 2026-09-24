@@ -68,6 +68,7 @@ coroutine := struct {
 /// Layout attributes (spec 05, section 6).
 layout := struct {
     bits_width := diag.Diag{ .explanation = meta.embed("errors/layout/bits_width.md") };
+    not_c := diag.Diag{ .explanation = meta.embed("errors/layout/not_c.md") };
 };
 
 /// Compile-time evaluation and reflection (spec 03).
