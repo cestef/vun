@@ -25,7 +25,7 @@ use vun_hir::tree::{BinderId, Entry, ExprId, ExprKind, Lit, PatKind};
 use vun_index::{Idx, IndexVec};
 use vun_origin::OriginId;
 use vun_query::{Cx, Cycle, Query};
-use vun_sema::env::Env;
+use vun_sema::env::{Env, Unevaluated};
 use vun_sema::eval::{Instantiation, Staging};
 use vun_sema::int::Integer;
 use vun_sema::ty::Value;
@@ -283,10 +283,15 @@ impl<'a, 'db> Builder<'_, 'a, 'db> {
             ExprKind::Struct(_) | ExprKind::Enum { .. } | ExprKind::Fn { .. } => {
                 Ok(self.temp(self.comptime(expr), origin))
             }
-            // Anything else only as a constant sema can compute, such as `lang.int.u8`.
+            // Anything else only as a constant sema can compute, such as `lang.int.u8`; one whose
+            // evaluation traps is evaluated by the call running the body, where the trap fires.
             _ => match self.aggregate(expr) {
                 Some(built) => built,
-                None => self.env().eval(expr).map(Operand::Const).map_err(|_| unbuilt),
+                None => match self.env().eval(expr) {
+                    Ok(value) => Ok(Operand::Const(value)),
+                    Err(Unevaluated::Trapped(_)) => Ok(self.temp(self.comptime(expr), origin)),
+                    Err(_) => Err(unbuilt),
+                },
             },
         }
     }

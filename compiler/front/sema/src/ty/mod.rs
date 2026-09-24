@@ -6,6 +6,7 @@
 //! names a type desugars into these (appendix B): `&T` is `lang.mem.Ref(T)`, `?T` is the enum
 //! `lang.Option(T)` evaluates to.
 
+mod admits;
 mod borrow;
 mod display;
 mod marker;

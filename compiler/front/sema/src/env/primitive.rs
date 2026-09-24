@@ -9,6 +9,7 @@ use super::{Env, Unevaluated};
 use crate::Primitive;
 use crate::eval::Staging;
 use crate::item::{DeclRef, Declared, Node, Site};
+use crate::trap::Reason;
 use crate::ty::{Marker, Signature, Value};
 
 impl Env<'_, '_> {
@@ -65,6 +66,19 @@ impl Env<'_, '_> {
             .collect();
         let signature = env.staging(&bound).signature(params, *returns)?;
         Ok(markers.into_iter().fold(signature, Signature::marked))
+    }
+
+    /// Traps when an argument of `args` is known not to be a value of its parameter's type, as
+    /// `-7` for the `$n: Int(0..)` of `lang.mem.Array`.
+    ///
+    /// # Errors
+    /// Returns the trap, [`Reason::Argument`].
+    pub fn check_arguments(&self, primitive: Primitive, args: &[Value]) -> Result<(), Unevaluated> {
+        let known: Vec<_> = args.iter().cloned().map(Some).collect();
+        match self.primitive_signature(primitive, &known) {
+            Ok(signature) if signature.refuses(args) => Err(Unevaluated::trap(Reason::Argument)),
+            _ => Ok(()),
+        }
     }
 
     /// The markers of `primitive`: its declaration's attributes that are markers, and those its

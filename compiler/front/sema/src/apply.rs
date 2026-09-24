@@ -23,6 +23,7 @@ impl Primitive {
     /// Returns why the application has no value: arguments of the wrong shape, or a primitive
     /// not applied at compile time yet.
     pub fn apply(self, env: &Env<'_, '_>, args: &[Value]) -> Result<Value, Unevaluated> {
+        env.check_arguments(self, args)?;
         match (self, args) {
             // `lang.Int(range)`: the integers of the range (spec 04, section 1).
             (Self::Lang(Lang::Int), [Value::Range(Some(range))]) => Ok(Value::Type(TyKind::int(range))),

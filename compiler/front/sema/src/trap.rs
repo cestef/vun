@@ -19,6 +19,9 @@ pub enum Reason {
     Budget,
     /// An index outside the items indexed.
     Bounds,
+    /// An argument of a compile-time call that is not a value of its parameter's type, such as
+    /// a negative length for `lang.mem.Array`.
+    Argument,
     /// Library code reported an error (`lang.diag.error`): its message, and where it points
     /// when it names a place.
     Reported {
@@ -44,6 +47,7 @@ impl Reason {
             Self::Narrowing => "value outside the type it is narrowed to",
             Self::Budget => "the call ran out of its step budget",
             Self::Bounds => "index outside the items",
+            Self::Argument => "argument outside the type of its parameter",
             Self::Reported { message, .. } => return Msg::new().text(message.clone()),
         })
     }

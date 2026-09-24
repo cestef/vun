@@ -214,7 +214,9 @@ generators that observe their own output, which is what makes impls and memoizat
 - **Traps.** A trap that fires during evaluation (a division by zero, a failed `.to`, spec 04) is
   an error, `comptime.trap`, at the value being computed: the trap site is labeled and each call
   between them is a "while evaluating" frame. Every top-level value is computed, as statics are
-  (guarantee 1), so a trap in one is always reported.
+  (guarantee 1), so a trap in one is always reported, once: by that value, not by each value
+  that reads it. An argument that is not a value of its parameter's type traps, whatever the
+  callee: `[3 - 10]u8` passes `-7` as the `$n: Int(0..)` of `lang.mem.Array`.
 - **Budget.** Every compile-time call has a deterministic step budget covering its own steps and
   those of the calls it makes, 2^24 unless `#[comptime.fuel(n)]` on the declaration of the
   function called sets another. A call's steps, like its value, are a function of the call alone,

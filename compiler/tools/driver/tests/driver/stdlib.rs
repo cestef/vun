@@ -72,3 +72,36 @@ main := (sys: &mut std.os.System) -> std.os.Exit {
     let ids: Vec<_> = lines.iter().map(|(id, _)| id.clone()).collect();
     assert_eq!(ids, [errors::COMPTIME_REPORTED, errors::COMPTIME_REPORTED], "{lines:?}");
 }
+
+#[test]
+fn traps_in_a_callees_signature_are_reported_once() {
+    let fixture = Fixture::new("std-signature-reports");
+    let file = fixture.root.write(
+        "signature.vun",
+        "\
+Digit := ($n: u8) -> type {
+    $if n > 9 { $std.diag.error(.{ .msg = \"one digit at most\" }); }
+    u8
+};
+at := ($n: u8) -> Digit(n) { n };
+wide := () -> u8 { at(12) };
+fine := () -> u8 { at(7) };
+Short := ($n: u8) -> type { [n - 10]u8 };
+short := ($n: u8) -> Short(n) { [0; n - 10] };
+three := () { x := short(3); };
+div := ($n: u8) -> [10 / n]u8 { [0; 10 / n] };
+zero := () { x := div(0); };
+Seven := Short(3);
+seven: Seven = [];
+",
+    );
+    // Each trap once: `-7` is no length of `lang.mem.Array`, and `seven` reads a declaration
+    // whose own check reports it.
+    let lines: Vec<_> = fixture.reported(&file);
+    let ids: Vec<_> = lines.iter().map(|(id, _)| id.clone()).collect();
+    assert_eq!(
+        ids,
+        [errors::COMPTIME_REPORTED, errors::COMPTIME_TRAP, errors::COMPTIME_TRAP, errors::COMPTIME_TRAP],
+        "{lines:?}"
+    );
+}

@@ -10,7 +10,6 @@ use vun_query::Cx;
 
 use super::omitted::{Plan, Unifier};
 use super::{Known, Typed, Typer};
-use crate::env::{Env, Unevaluated};
 use crate::eval::{Func, Instantiation};
 use crate::member::MemberValue;
 use crate::ty::{Signature, Ty, Value};
@@ -47,16 +46,18 @@ impl Typer<'_, '_, '_> {
             _ => None,
         };
         let instantiation = f.map(|f| self.instantiation(f, &slots, args, inferred.as_deref()));
-        if let Some(i) = instantiation.as_ref().filter(|i| i.generic(self.env().cx))
-            && let Some(typed) = self.env().cx.get::<Typed>(i)
-        {
+        // A generic instantiation's typing reports a trap in its own signature, which the call
+        // takes with the rest of its reports.
+        let absorbed = instantiation.as_ref().filter(|i| i.generic(self.env().cx)).and_then(|i| {
+            let typed = self.env().cx.get::<Typed>(i)?;
             self.absorb(call, i, &typed.diag);
-        }
+            Some(())
+        });
         let signature = known
             .filter(|_| inferred.is_none())
             .or_else(|| {
                 let signature = instantiation?.signature(self.env().cx);
-                self.reported(call, signature).ok()
+                if absorbed.is_some() { signature.ok() } else { self.reported(call, signature).ok() }
             })
             .or_else(|| self.primitive_signature(callee, args));
         let hir = self.hir();
@@ -272,11 +273,5 @@ impl Instantiation {
         let Some(comptime) = self.f.comptime(cx) else { return false };
         let bound = comptime.iter().zip(&self.args).all(|(&c, arg)| !c || arg.is_some());
         (self.f.within.is_some() || comptime.contains(&true)) && bound
-    }
-
-    /// The signature of this instantiation, its types evaluated with its `$` parameters bound.
-    fn signature(&self, cx: &Cx<'_>) -> Result<Signature, Unevaluated> {
-        let inside = Env::inside(cx, &self.f, self.args.iter().cloned()).ok_or(Unevaluated::Absent)?;
-        inside.literal_signature(self.f.literal.expr.id, &self.args)
     }
 }

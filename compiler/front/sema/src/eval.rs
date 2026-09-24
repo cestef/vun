@@ -13,9 +13,10 @@ use vun_hir::tree::{BinderId, Entry, ExprKind, Param, PatKind};
 use vun_intern::Symbol;
 use vun_query::{Cx, Cycle, Query};
 
-use crate::env::Unevaluated;
+use crate::env::{Env, Unevaluated};
 use crate::item::{ExprRef, Node};
-use crate::ty::{Ty, Value};
+use crate::trap::Reason;
+use crate::ty::{Signature, Ty, Value};
 
 /// A compile-time call: a function value and its arguments. Types built during the call are
 /// identified by it (decision 28), and its body sees its parameters bound to the arguments.
@@ -118,6 +119,11 @@ impl Query for MeteredCall {
     type Value = Metered;
 
     fn compute(cx: &Cx<'_>, call: &Instance) -> Self::Value {
+        // Every argument is a value of its parameter's type, as at run time.
+        let signature = Instantiation::of(cx, call).and_then(|i| i.signature(cx).ok());
+        if signature.is_some_and(|s| s.params.len() == call.args.len() && s.refuses(&call.args)) {
+            return Metered { value: Err(Unevaluated::trap(Reason::Argument)), steps: 0 };
+        }
         let evaluators = cx.db().resource::<Evaluators>();
         match evaluators.0.get() {
             Some(evaluator) => evaluator.call(cx, call),
@@ -171,6 +177,15 @@ impl Instantiation {
         let comptime = call.f.comptime(cx)?;
         let args = comptime.iter().zip(&call.args).map(|(&c, arg)| c.then(|| arg.clone())).collect();
         Some(Self { f: call.f.clone(), args })
+    }
+
+    /// The signature of this instantiation, its types evaluated with its `$` parameters bound.
+    ///
+    /// # Errors
+    /// Returns why a parameter or result type has no value.
+    pub fn signature(&self, cx: &Cx<'_>) -> Result<Signature, Unevaluated> {
+        let inside = Env::inside(cx, &self.f, self.args.iter().cloned()).ok_or(Unevaluated::Absent)?;
+        inside.literal_signature(self.f.literal.expr.id, &self.args)
     }
 }
 

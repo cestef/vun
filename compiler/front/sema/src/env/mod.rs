@@ -55,6 +55,8 @@ pub enum Unevaluated {
     Provided,
     /// A trap fired, which the evaluation root reports.
     Trapped(Box<Trap>),
+    /// A declaration it reads trapped, which the check of that declaration reports.
+    Failed,
     /// A form not evaluated yet.
     Unsupported,
 }
@@ -278,7 +280,10 @@ impl<'a, 'db> Env<'a, 'db> {
     /// Returns why it has no value at compile time here.
     pub fn value_of(&self, site: Site) -> Result<Value, Unevaluated> {
         match site {
-            Site::Decl(decl) => self.cx.get::<DeclValue>(&decl),
+            Site::Decl(decl) => match self.cx.get::<DeclValue>(&decl) {
+                Err(Unevaluated::Trapped(_)) => Err(Unevaluated::Failed),
+                value => value,
+            },
             Site::Namespace(ns) => Ok(Value::Namespace(ns)),
         }
     }
