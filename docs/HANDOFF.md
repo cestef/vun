@@ -308,11 +308,18 @@ In order:
      types; `TyKind::of_types`. Decision 90: `Value::Linked(DeclRef)` for linker-provided
      declarations (`DeclValue::primitive` decides), `Value::repeat` and `Rvalue::Repeat`.
      Next blockers (`cargo xtask corpus`): `for p in e` (coroutine frames: `iter`/`resume` are
-     compiler-provided members of the `lang.ops` impls, no frame model yet), closures (decision 91: `lang.ops.Call` with `call: (self: &mut Self, args: Params) -> R`,
-     the user's choice, not built yet), `$` splices of run-time code, `.{ }` without a known
+     compiler-provided members of the `lang.ops` impls, no frame model yet), closures in the capability programs (they wait for `std.sync`, which is empty), `$` splices of run-time code, `.{ }` without a known
      type, or-patterns that bind. Decision 91 (`?`): `typeck/early_return.rs`
      (`Typer::witness_of` shared with loops), `build/early_return.rs`; MIR returns the stop value
      as is (a backend widens `Result(never, E)` into the result layout, as with integers).
+     Closures (decision 91): `TyKind::Closure`, `TyKind::callable`, `Value::Closure { f,
+     captures }`; `typeck/closure.rs` (`Typer::{function, closure}`, shared with `Typed`;
+     `Instantiation::enclosing` makes a closure's `Typed` the enclosing body's);
+     `Hir::{closure_of, enclosing_function}`; MIR `build/closure.rs` (`Aggregate::Closure`,
+     captures as leading parameters, `Builder::binder_place` reads a captured borrow through
+     `.*`); calls pass captures first. Not done: witnesses of `lang.ops.Call` for closure types
+     (constrained `$F: Call(P, R)` parameters), `&mut` captures at compile time. `ty/relate.rs`
+     holds `accepts` and `join`.
    - `types.no_member` on values stays off: turning it on (tried) reports members the corpus
      stand-ins lack. Needed first: stand-in methods for `Timer`, `Serial`, `Led`, `Dma`, `Fs`,
      `Alloc`, `Device`, `System`, `Cache`, `Queue`, `Packet`, `Uart` in `corpus/support`,

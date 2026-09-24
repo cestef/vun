@@ -37,6 +37,12 @@ pub enum Value {
     Namespace(Namespace),
     /// A function literal.
     Fn(Func),
+    /// A closure: its function, and the values of its captures in the order written, passed
+    /// before the arguments.
+    Closure {
+        f: Func,
+        captures: Vec<Value>,
+    },
     /// A declaration the linker provides (`name: T = _;` outside `lang`): its link symbol, whose
     /// value exists at run time only.
     Linked(DeclRef),

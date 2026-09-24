@@ -39,7 +39,10 @@ impl Session {
                 Ok(_) => coverage.lowered += 1,
                 Err(unbuilt) => *coverage.unbuilt.entry(self.form_at(&file, unbuilt)).or_default() += 1,
             }
-            if let Some(typed) = self.db.get::<Typed>(&f) {
+            // A closure's body is typed, and counted, with the body it is written in.
+            let closure =
+                self.db.get::<Parsed>(&file).is_some_and(|p| p.hir.closure_of(f.f.literal.expr.id).is_some());
+            if !closure && let Some(typed) = self.db.get::<Typed>(&f) {
                 coverage.exprs += typed.exprs;
                 coverage.typed += typed.typed_count();
             }

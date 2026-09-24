@@ -17,7 +17,7 @@ impl Typer<'_, '_, '_> {
     /// A call of a value of function type: its arguments are checked against the parameters, and
     /// it has the result type.
     pub(super) fn call(&mut self, call: ExprId, callee: ExprId, args: &[Entry<Arg>]) -> Option<Known> {
-        let known = self.typed(callee).and_then(|k| k.ty.signature());
+        let known = self.typed(callee).and_then(|k| k.ty.callable());
         // A method's receiver is passed in the mode its first parameter asks for.
         let receiver = usize::from(self.methods.contains_key(&callee));
         let instantiation = self.instantiation(callee, receiver, args);

@@ -132,6 +132,12 @@ pub enum Aggregate {
     },
     Tuple,
     Array,
+    /// A closure: the function literal `literal`, evaluated in the call running the body under
+    /// the bindings `staged`, and its captures, the parts in the order written.
+    Closure {
+        literal: ExprId,
+        staged: Vec<Staging>,
+    },
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]

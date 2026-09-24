@@ -101,6 +101,16 @@ impl Env<'_, '_> {
             }
             ExprKind::Call { callee, args } => self.call(*callee, args).map_err(|u| u.through(e.origin)),
             ExprKind::Fn { .. } => Ok(Value::Fn(self.func(expr))),
+            ExprKind::Closure { captures, func } => {
+                let captures = captures
+                    .iter()
+                    .map(|c| match c {
+                        Entry::One(c) => self.eval(*c),
+                        Entry::Staged(_) => Err(Unevaluated::Unsupported),
+                    })
+                    .collect::<Result<_, _>>()?;
+                Ok(Value::Closure { f: self.func(*func), captures })
+            }
             ExprKind::FnType { params, returns } => Ok(Value::Type(self.signature(params, *returns)?.ty())),
             ExprKind::Tuple(items) => items
                 .iter()
@@ -167,6 +177,9 @@ impl Env<'_, '_> {
         match callee {
             // An interface applied to a type is its requirement struct (spec 02, section 3).
             Value::Fn(f) | Value::Interface(f) => self.cx.get::<Call>(&Instance { f, args }),
+            Value::Closure { f, captures } => {
+                self.cx.get::<Call>(&Instance { f, args: captures.into_iter().chain(args).collect() })
+            }
             Value::Primitive(p) => p.apply(self, &args),
             // A link symbol runs at run time only.
             Value::Linked(_) => Err(Unevaluated::Runtime),

@@ -57,6 +57,10 @@ impl fmt::Display for Rvalue {
                     }
                     Aggregate::Tuple => ("(", ")"),
                     Aggregate::Array => ("[", "]"),
+                    Aggregate::Closure { literal, .. } => {
+                        write!(f, "closure e{}", literal.index())?;
+                        ("[", "]")
+                    }
                 };
                 f.write_str(open)?;
                 for (i, part) in parts.iter().enumerate() {

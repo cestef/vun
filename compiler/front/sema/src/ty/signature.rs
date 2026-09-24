@@ -30,6 +30,16 @@ impl TyKind {
         Some(Signature { params: params.clone(), result: *result })
     }
 
+    /// The signature a value of this type is called with: a function's, or a closure's function's
+    /// without its captures.
+    #[must_use]
+    pub fn callable(&self) -> Option<Signature> {
+        match self {
+            Self::Closure(closure) => Some(closure.signature.clone()),
+            _ => self.signature(),
+        }
+    }
+
     /// `()`, the empty tuple: the result of a function written without one.
     #[must_use]
     pub fn unit() -> Ty {

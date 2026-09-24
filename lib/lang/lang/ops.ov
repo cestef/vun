@@ -120,6 +120,14 @@ ResultTry := ($T: type, $E: type) -> type { struct {
     };
 } };
 
+/// What calling a value that is no function means (spec 01, section 4): a closure is an anonymous
+/// struct of its captures with this impl, and `f(a, b)` is `call(&mut f, (a, b))`.
+Call := ($Params: type, $R: type) -> Interface {
+    interface(($Self: type) -> type { struct {
+        call: (self: &mut Self, args: Params) -> R = _;
+    }})
+};
+
 /// What `for p in e` iterates.
 Iterate := interface(($Self: type) -> type { struct {
     Iter: Interface = _;

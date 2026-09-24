@@ -47,6 +47,15 @@ impl fmt::Display for TyKind {
                 }
                 f.write_str(")")
             }
+            // `[x: u32, n: &mut u32] (u8) -> ()`: the captures, then the function.
+            Self::Closure(closure) => {
+                f.write_str("[")?;
+                for (i, (name, ty)) in closure.captures.iter().enumerate() {
+                    write!(f, "{}{name}: {ty}", if i > 0 { ", " } else { "" })?;
+                }
+                let sig = &closure.signature;
+                write!(f, "] {} -> {}", Self::Tuple(sig.params.clone()), sig.result)
+            }
         }
     }
 }
@@ -81,6 +90,7 @@ impl fmt::Display for Value {
                 f.write_str(&names.join("."))
             }
             Self::Fn(_) => f.write_str("fn"),
+            Self::Closure { .. } => f.write_str("closure"),
             Self::Code(_) => f.write_str("#{ .. }"),
             Self::Linked(_) => f.write_str("linked"),
             Self::Interface(_) => f.write_str("interface"),

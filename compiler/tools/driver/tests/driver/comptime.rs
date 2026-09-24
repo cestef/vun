@@ -268,3 +268,17 @@ wrong := ($x: u8) -> Result(u16, u16) { v := parse(x)?; .ok(v) };
     assert_eq!(ids, [errors::INT_DOES_NOT_FIT, errors::INT_DOES_NOT_FIT, errors::TYPES_MISMATCH]);
     assert_eq!(found[2].1, "expected `Result(u16, u16)`, found `Result(never, Int(0..=255))`");
 }
+
+#[test]
+fn closures_carry_their_captures() {
+    let fixture = Fixture::new("comptime-closures");
+    let file = fixture.root.write(
+        "closures.ov",
+        "\
+apply := () -> u64 { k: u32 = 3; add := [k] (v: u32) -> u64 { v + k }; add(4) };
+seven: Int(0..=apply()) = 8;
+",
+    );
+    let reported: Vec<_> = fixture.reported(&file).into_iter().map(|(id, _)| id).collect();
+    assert_eq!(reported, [errors::INT_DOES_NOT_FIT]);
+}

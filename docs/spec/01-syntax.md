@@ -134,11 +134,15 @@ A closure lists what it captures, spelled exactly as the values would be passed:
 ```ov
 mut n: u32 = 0;
 inc := [&mut n] (by: u8) { n += by; };   // captures a borrow: scoped (spec 05)
-dbl := [x] () -> u32 { x * 2 };          // captures a copy: free
+dbl := [x] () -> u64 { x * 2 };          // captures a copy: free
 ```
 
 A closure is sugar for an anonymous struct of its captures plus an `impl` of `lang.ops.Call`
-(appendix B). A literal with no capture list captures nothing and is a plain function value.
+(appendix B), whose `call` borrows the closure mutably: `call: (self: &mut Self, args: Params)
+-> R`, so calling one needs a mutable place. Inside the body, a captured name means the captured
+place: through a captured borrow, what it points to. The body sees the binders it captures, so it
+is typed with the body it is written in. A literal with no capture list captures nothing and is a
+plain function value.
 
 ### Calls and methods
 

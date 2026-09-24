@@ -49,6 +49,7 @@ declaration whose value is `_`.
 | `x op= y` | `x = (x op y).to(lang.meta.TypeOf(x))` |
 | `x op%= y`, `x op\|= y` | `x = (x op y).wrap(...)`, `.sat(...)` |
 | `e?` | `match lang.ops.Try.branch(e) { .go(v) => v, .stop(r) => return r }` |
+| `f(a, b)`, `f` a closure | `lang.ops.Call(P, R).call(&mut f, (a, b))`: the closure's function with its captures first |
 | `if p = e { a } else { b }` | `match e { p => a, _ => b }` |
 | `for c { b }` | `for { if !c { break; } b }` |
 | `for p = e { b }` | `for { match e { p => b, _ => break } }` |

@@ -5,6 +5,7 @@
 //! carries the origin of the source that produced it (spec 10, section 1).
 
 mod binders;
+mod enclosing;
 mod expr;
 mod items;
 mod pat;

@@ -20,7 +20,7 @@ impl Builder<'_, '_, '_> {
         let origin = hir.exprs[expr].origin;
         match &hir.exprs[expr].kind {
             ExprKind::Name(_) => match self.env.parsed.resolution.names[expr] {
-                Some(Res::Binder(b)) if self.bound.contains_key(&b) => Ok(Place::of(self.bound[&b])),
+                Some(Res::Binder(b)) if self.bound.contains_key(&b) => Ok(self.binder_place(b)),
                 _ => self.held(expr, origin),
             },
             ExprKind::Member { object, name } if self.env().eval(expr).is_err() => {

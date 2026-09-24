@@ -7,6 +7,7 @@
 
 mod block;
 mod call;
+mod closure;
 mod control;
 mod early_return;
 mod expect;
@@ -25,16 +26,14 @@ use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::sync::Arc;
 
 use overt_diag::DiagCtxt;
-use overt_hir::tree::{
-    BinderId, BlockId, DeclId, Entry, ExprId, ExprKind, Hir, NsId, PatId, PatKind, Staged,
-};
+use overt_hir::tree::{BinderId, BlockId, DeclId, ExprId, ExprKind, Hir, NsId, PatId, Staged};
 use overt_hir::visit::Visitor;
 use overt_intern::Symbol;
 use overt_query::{Cx, Cycle, Query};
 
 use crate::env::Env;
 use crate::eval::Instantiation;
-use crate::ty::{Ty, TyKind, Value};
+use crate::ty::Ty;
 
 /// When a value is known: at compile time, or only at run time. Only run-time integers are
 /// capped at 128 bits (spec 04, rule 5).
@@ -89,7 +88,7 @@ pub struct Step {
 }
 
 /// Counts the expressions of a body, as the typer reaches them: not into nested functions or
-/// namespaces, which are typed on their own.
+/// namespaces, which are typed on their own, but into closures, typed as part of the body.
 struct Exprs(usize);
 
 impl Visitor for Exprs {
@@ -97,8 +96,13 @@ impl Visitor for Exprs {
 
     fn expr(&mut self, hir: &Hir, expr: ExprId) {
         self.0 += 1;
-        if !matches!(hir.exprs[expr].kind, ExprKind::Fn { .. }) {
-            overt_hir::visit::walk_expr(self, hir, expr);
+        match &hir.exprs[expr].kind {
+            ExprKind::Fn { .. } => {}
+            ExprKind::Closure { func, .. } => {
+                overt_hir::visit::walk_expr(self, hir, expr);
+                overt_hir::visit::walk_expr(self, hir, *func);
+            }
+            _ => overt_hir::visit::walk_expr(self, hir, expr),
         }
     }
 }
@@ -114,32 +118,16 @@ impl Query for Typed {
     type Value = Option<Arc<TypedBody>>;
 
     fn compute(cx: &Cx<'_>, i: &Instantiation) -> Self::Value {
+        if let Some(enclosing) = i.enclosing(cx) {
+            return cx.get::<Self>(&enclosing);
+        }
         let env = Env::inside(cx, &i.f, i.args.iter().cloned())?;
         let hir = &env.parsed.hir;
         let ExprKind::Fn { params, returns, body } = &hir.exprs[i.f.literal.expr.id].kind else {
             return None;
         };
         let mut typer = Typer::new(&env, Stage::Run);
-        for (index, param) in params.iter().enumerate() {
-            let Entry::One(param) = param else { continue };
-            let (Some(pat), Some(ty)) = (param.pat, param.ty) else { continue };
-            let PatKind::Bind(binder) = &hir.pats[pat].kind else { continue };
-            // A `$` parameter bound by the instantiation has the type of its value alone.
-            let bound = i.args.get(index).and_then(Option::as_ref).and_then(Value::ty);
-            let Some(ty) = bound.or_else(|| typer.ty(ty)) else { continue };
-            typer.bind(*binder, ty);
-        }
-        let result = match returns {
-            Some(r) => typer.ty(*r),
-            None => Some(TyKind::unit()),
-        };
-        typer.result = result;
-        typer.written = *returns;
-        let found = typer.block_value(*body, result);
-        if let (Some(found), Some(result)) = (found, result) {
-            let at = hir.blocks[*body].tail.map_or(hir.blocks[*body].origin, |t| hir.exprs[t].origin);
-            typer.expect(at, found, result, *returns);
-        }
+        typer.function(params, *returns, *body, &i.args);
         let mut exprs = Exprs(0);
         exprs.block(hir, *body);
         Some(Arc::new(typer.finish(exprs.0)))

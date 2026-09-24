@@ -161,6 +161,9 @@ impl<'b, 'a, 'db> Frame<'b, 'a, 'db> {
                     }
                     Aggregate::Tuple => Value::Tuple(parts),
                     Aggregate::Array => Value::Array(parts),
+                    Aggregate::Closure { literal, staged } => {
+                        Value::Closure { f: self.env.clone().staging(staged).func(*literal), captures: parts }
+                    }
                 })
             }
             Rvalue::Ref { mode: None, place } => self.read(place),
@@ -173,15 +176,16 @@ impl<'b, 'a, 'db> Frame<'b, 'a, 'db> {
             Rvalue::Ref { mode: Some(_), .. } => Err(Unevaluated::Unsupported),
             Rvalue::Call { callee, args } => {
                 let args = args.iter().map(|a| self.operand(a)).collect::<Result<Vec<_>, _>>()?;
-                match self.operand(callee)? {
-                    // A call of a function counts the steps it took (spec 03, section 7).
-                    Value::Fn(f) | Value::Interface(f) => {
-                        let called = self.env.cx.get::<MeteredCall>(&Instance { f, args });
-                        self.spend(called.steps)?;
-                        called.value
-                    }
-                    callee => self.env.apply(callee, args),
-                }
+                // A call of a function counts the steps it took (spec 03, section 7); a closure
+                // passes its captures first.
+                let (f, args) = match self.operand(callee)? {
+                    Value::Fn(f) | Value::Interface(f) => (f, args),
+                    Value::Closure { f, captures } => (f, captures.into_iter().chain(args).collect()),
+                    callee => return self.env.apply(callee, args),
+                };
+                let called = self.env.cx.get::<MeteredCall>(&Instance { f, args });
+                self.spend(called.steps)?;
+                called.value
             }
         }
     }

@@ -5,6 +5,7 @@
 mod aggregate;
 mod assign;
 mod call;
+mod closure;
 mod control;
 mod early_return;
 mod loops;
@@ -12,7 +13,7 @@ mod pattern;
 mod place;
 mod staged;
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 use overt_grammar::TokenKind;
@@ -67,6 +68,8 @@ struct Builder<'e, 'a, 'db> {
     current: BlockId,
     /// The local each binder of the body is stored in.
     bound: HashMap<BinderId, Local>,
+    /// The captured binders whose local holds a borrow of them.
+    through: HashSet<BinderId>,
     /// Where the result is written before returning.
     ret: Local,
     /// The loops around the code lowered, innermost last.
@@ -95,6 +98,7 @@ impl<'a, 'db> Builder<'_, 'a, 'db> {
             blocks: IndexVec::new(),
             current: Idx::new(0),
             bound: HashMap::new(),
+            through: HashSet::new(),
             ret,
             loops: Vec::new(),
             f: f.clone(),
@@ -102,7 +106,7 @@ impl<'a, 'db> Builder<'_, 'a, 'db> {
             path: Vec::new(),
         };
         b.current = b.fresh(origin);
-        let mut args = Vec::new();
+        let mut args = b.captures(literal, origin)?;
         for param in params {
             let Entry::One(param) = param else { return Err(Unbuilt { at: origin }) };
             let pat = param.pat.ok_or(Unbuilt { at: param.origin })?;
@@ -221,7 +225,7 @@ impl<'a, 'db> Builder<'_, 'a, 'db> {
             ExprKind::Lit(Lit::Int(n)) => Ok(Operand::Const(Value::Int(Integer::from(*n)))),
             ExprKind::Name(_) => match self.env.parsed.resolution.names[expr] {
                 Some(Res::Binder(b)) if self.bound.contains_key(&b) => {
-                    Ok(Operand::Place(Place::of(self.bound[&b])))
+                    Ok(Operand::Place(self.binder_place(b)))
                 }
                 // A `$` parameter of an enclosing function, bound by the call running the body.
                 // A `$for` binder, or one bound by the instantiation, is a constant.
@@ -255,6 +259,7 @@ impl<'a, 'db> Builder<'_, 'a, 'db> {
             ExprKind::Postfix { op: TokenKind::Question, operand } => {
                 self.early_return(expr, *operand, origin)
             }
+            ExprKind::Closure { captures, func } => self.closure(captures, *func, origin),
             ExprKind::Match { scrutinee, arms } => self.matching(*scrutinee, arms, origin),
             ExprKind::If { cond, then, otherwise } => self.branch(cond, *then, *otherwise, origin),
             ExprKind::For { head, body } => self.repeat(None, head, *body, origin),
