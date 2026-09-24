@@ -7,6 +7,7 @@ mod assign;
 mod call;
 mod control;
 mod loops;
+mod pattern;
 mod place;
 mod staged;
 
@@ -181,14 +182,23 @@ impl<'a, 'db> Builder<'_, 'a, 'db> {
         match stmt {
             HirStmt::Decl(d) => {
                 let decl = &hir.decls[*d];
-                let PatKind::Bind(binder) = &hir.pats[decl.pat].kind else {
-                    return Err(Unbuilt { at: decl.origin });
-                };
-                // Without a value, the local starts uninitialized.
-                let value = decl.value.map(|v| self.operand(v)).transpose()?;
-                let local = self.bind(*binder);
-                if let Some(value) = value {
-                    self.assign(Place::of(local), Rvalue::Use(value), decl.origin);
+                match (&hir.pats[decl.pat].kind, decl.value) {
+                    (PatKind::Bind(binder), value) => {
+                        // Without a value, the local starts uninitialized.
+                        let value = value.map(|v| self.operand(v)).transpose()?;
+                        let local = self.bind(*binder);
+                        if let Some(value) = value {
+                            self.assign(Place::of(local), Rvalue::Use(value), decl.origin);
+                        }
+                    }
+                    // A pattern that always matches, such as `(a, b) := pair`.
+                    (_, Some(value)) => {
+                        let matched = self.declared(value)?;
+                        let never = self.fresh(decl.origin);
+                        self.test(decl.pat, &matched, never)?;
+                        self.blocks[never].term.kind = TerminatorKind::Unreachable;
+                    }
+                    (_, None) => return Err(Unbuilt { at: decl.origin }),
                 }
             }
             HirStmt::Expr(e) => {
@@ -241,6 +251,7 @@ impl<'a, 'db> Builder<'_, 'a, 'db> {
             ExprKind::Infix { op: op @ (TokenKind::And | TokenKind::Or), left, right: Some(right) } => {
                 self.logic(*op, *left, *right, origin)
             }
+            ExprKind::Match { scrutinee, arms } => self.matching(*scrutinee, arms, origin),
             ExprKind::If { cond, then, otherwise } => self.branch(cond, *then, *otherwise, origin),
             ExprKind::For { head, body } => self.repeat(None, head, *body, origin),
             ExprKind::Labeled { label, body } => match &hir.exprs[*body].kind {

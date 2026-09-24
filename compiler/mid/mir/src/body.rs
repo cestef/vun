@@ -79,6 +79,11 @@ pub enum Rvalue {
         mode: Option<Symbol>,
         place: Place,
     },
+    /// Whether the value at `place` is the variant `variant`: a condition (the table `forms`).
+    IsVariant {
+        place: Place,
+        variant: Symbol,
+    },
     Call {
         callee: Operand,
         args: Vec<Operand>,
@@ -139,6 +144,8 @@ pub struct Terminator {
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum TerminatorKind {
     Return,
+    /// Control never gets here, such as past the arms of an exhaustive `match`.
+    Unreachable,
     Goto(BlockId),
     /// To `then` when the condition `cond` holds, to `otherwise` when it does not.
     Branch {

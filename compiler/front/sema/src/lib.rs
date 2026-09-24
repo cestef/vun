@@ -13,7 +13,7 @@ pub mod int;
 pub mod item;
 pub mod layout;
 pub mod member;
-mod ops;
+pub mod ops;
 #[rustfmt::skip]
 pub mod primitives;
 mod reflect;

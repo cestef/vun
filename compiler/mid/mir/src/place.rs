@@ -19,6 +19,10 @@ pub enum Projection {
     Field(Symbol),
     /// The item at the index held in a local.
     Index(Local),
+    /// The item at a fixed position of a tuple.
+    Position(usize),
+    /// An item of the payload of a variant, once tested to be one.
+    Payload(usize),
 }
 
 impl Place {

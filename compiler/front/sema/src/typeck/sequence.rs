@@ -10,8 +10,18 @@ use crate::ty::{TyKind, Value};
 
 impl Typer<'_, '_, '_> {
     /// `(a, b)`: a tuple of its items' types, each typed as and checked against the expected
-    /// tuple's item.
+    /// tuple's item; or a tuple type, of types.
     pub(super) fn tuple(&mut self, expr: ExprId, items: &[Entry<ExprId>]) -> Option<Known> {
+        // Where a type is expected, a tuple of types is a type: `()` is the unit type.
+        let types = TyKind::of_types();
+        if self.expected(expr) == Some(types) {
+            for item in items {
+                let Entry::One(item) = item else { return None };
+                let known = self.typed_as(*item, Some(types))?;
+                self.expect(self.hir().exprs[*item].origin, known, types, None);
+            }
+            return Some(Known { ty: types, stage: Stage::Compile });
+        }
         let expected = self.expected(expr).and_then(|t| match &*t {
             TyKind::Tuple(parts) if parts.len() == items.len() => Some(parts.clone()),
             _ => None,

@@ -6,7 +6,9 @@ use overt_hir::tree::ExprId;
 use overt_intern::Symbol;
 use overt_origin::OriginId;
 
-use super::{Known, Typer};
+use std::sync::Arc;
+
+use super::{Known, Stage, TypedBody, Typer};
 use crate::env::Unevaluated;
 use crate::int::{Interval, Storage};
 use crate::ty::{Ty, TyKind};
@@ -40,7 +42,22 @@ impl Typer<'_, '_, '_> {
 
     /// The type `expr` denotes, reporting a trap that fires while evaluating it.
     pub(super) fn ty(&mut self, expr: ExprId) -> Option<Ty> {
-        match self.env().ty(expr) {
+        let evaluated = match self.env().ty(expr) {
+            // Forms typed by their context, such as `.square(5)` in `Int(0..=area(.square(5)))`,
+            // evaluate once the annotation is typed.
+            Err(Unevaluated::Unsupported) => {
+                let outer = std::mem::replace(&mut self.stage, Stage::Compile);
+                self.typed(expr);
+                self.stage = outer;
+                let types = TypedBody {
+                    types: self.types.iter().map(|(&e, &k)| (e, k)).collect(),
+                    ..TypedBody::default()
+                };
+                self.env().clone().typed_by(Some(Arc::new(types))).ty(expr)
+            }
+            evaluated => evaluated,
+        };
+        match evaluated {
             Ok(ty) => Some(ty),
             Err(Unevaluated::Trapped(trap)) => {
                 self.diag.error(trap.report(self.hir().exprs[expr].origin));

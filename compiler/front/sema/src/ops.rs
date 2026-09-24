@@ -1,6 +1,6 @@
 //! What operators compute (spec 04): on compile-time values, where integer arithmetic is exact and
-//! a division by zero is a trap, and on integer types, by interval arithmetic. Sema and the
-//! interpreter both compute through here.
+//! a division by zero is a trap, and on integer types, by interval arithmetic; and the parts of
+//! compile-time values. Sema and the interpreter both compute through here.
 
 use overt_grammar::{Narrowing, TokenKind};
 use overt_intern::Symbol;
@@ -36,43 +36,46 @@ impl Value {
         Ok(Self::Int(n))
     }
 
-    /// `self[index]`: the item of an array value at an integer index.
+    /// The part `part` of this value.
     ///
     /// # Errors
-    /// Returns a trap for an index past the end, and [`Unevaluated::Unsupported`] for another
-    /// value or index.
-    pub fn item(&self, index: &Self) -> Result<Self, Unevaluated> {
-        let Self::Array(items) = self else { return Err(Unevaluated::Unsupported) };
-        items.get(Self::position(items, index)?).cloned().ok_or(Unevaluated::Unsupported)
+    /// Returns a trap for an index past the end, and [`Unevaluated::Unsupported`] for a value
+    /// without that part.
+    pub fn part(&self, part: &Part) -> Result<Self, Unevaluated> {
+        let parts = match (part, self) {
+            (Part::Field(name), Self::Struct { fields, .. }) => {
+                return fields
+                    .iter()
+                    .find(|(n, _)| n == name)
+                    .map(|(_, v)| v.clone())
+                    .ok_or(Unevaluated::Unsupported);
+            }
+            (Part::Item(_), Self::Array(items)) | (Part::Position(_), Self::Tuple(items)) => items,
+            (Part::Payload(_), Self::Variant { payload, .. }) => payload,
+            _ => return Err(Unevaluated::Unsupported),
+        };
+        Ok(parts[part.position(parts)?].clone())
     }
 
-    /// This array with the item at `index` replaced by `item`.
+    /// This value with its part `part` replaced by `value`.
     ///
     /// # Errors
-    /// As [`Self::item`].
-    pub fn with_item(self, index: &Self, item: Self) -> Result<Self, Unevaluated> {
-        let Self::Array(mut items) = self else { return Err(Unevaluated::Unsupported) };
-        let at = Self::position(&items, index)?;
-        items[at] = item;
-        Ok(Self::Array(items))
-    }
-
-    /// This struct value with its field `name` replaced by `value`.
-    ///
-    /// # Errors
-    /// Returns [`Unevaluated::Unsupported`] for a value without that field.
-    pub fn with_field(self, name: Symbol, value: Self) -> Result<Self, Unevaluated> {
-        let Self::Struct { ty, mut fields } = self else { return Err(Unevaluated::Unsupported) };
-        let slot = fields.iter_mut().find(|(n, _)| *n == name).ok_or(Unevaluated::Unsupported)?;
-        slot.1 = value;
-        Ok(Self::Struct { ty, fields })
-    }
-
-    /// Where the integer `index` is among `items`: a trap past the end.
-    fn position(items: &[Self], index: &Self) -> Result<usize, Unevaluated> {
-        let Self::Int(i) = index else { return Err(Unevaluated::Unsupported) };
-        let at = i.to_i128().and_then(|i| usize::try_from(i).ok());
-        at.filter(|&at| at < items.len()).ok_or_else(|| Unevaluated::trap(Reason::Bounds))
+    /// As [`Self::part`].
+    pub fn with_part(mut self, part: &Part, value: Self) -> Result<Self, Unevaluated> {
+        let slot = match (part, &mut self) {
+            (Part::Field(name), Self::Struct { fields, .. }) => {
+                &mut fields.iter_mut().find(|(n, _)| n == name).ok_or(Unevaluated::Unsupported)?.1
+            }
+            (Part::Item(_), Self::Array(items))
+            | (Part::Position(_), Self::Tuple(items))
+            | (Part::Payload(_), Self::Variant { payload: items, .. }) => {
+                let at = part.position(items)?;
+                &mut items[at]
+            }
+            _ => return Err(Unevaluated::Unsupported),
+        };
+        *slot = value;
+        Ok(self)
     }
 
     /// This integer brought into the range `range` (spec 04, rule 3): unchanged when it lies
@@ -169,5 +172,27 @@ impl Interval {
             TokenKind::Percent => self.rem(other).range,
             _ => None,
         }
+    }
+}
+
+/// A part of a compile-time value: a struct's field, an array's item at an integer index, a
+/// tuple's item at a position, or an item of a variant's payload.
+#[derive(Clone, Debug)]
+pub enum Part {
+    Field(Symbol),
+    Item(Value),
+    Position(usize),
+    Payload(usize),
+}
+
+impl Part {
+    /// Where this part is among `parts`: an index past the end traps.
+    fn position(&self, parts: &[Value]) -> Result<usize, Unevaluated> {
+        let at = match self {
+            Self::Item(Value::Int(i)) => i.to_i128().and_then(|i| usize::try_from(i).ok()),
+            Self::Position(at) | Self::Payload(at) => Some(*at),
+            Self::Item(_) | Self::Field(_) => return Err(Unevaluated::Unsupported),
+        };
+        at.filter(|&at| at < parts.len()).ok_or_else(|| Unevaluated::trap(Reason::Bounds))
     }
 }

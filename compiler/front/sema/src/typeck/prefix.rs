@@ -7,15 +7,13 @@ use overt_hir::tree::ExprId;
 use overt_intern::Symbol;
 
 use super::{Known, Typer};
-use crate::Primitive;
-use crate::primitives::lang::Lang;
 use crate::ty::{TyKind, Value};
 
 impl Typer<'_, '_, '_> {
     /// `&mode operand`.
     pub(super) fn borrow(&mut self, expr: ExprId, mode: Option<Symbol>, operand: ExprId) -> Option<Known> {
         let known = self.typed_as(operand, self.expected(expr).and_then(|t| t.pointee()))?;
-        let ty = TyKind::primitive(Primitive::Lang(Lang::r#type));
+        let ty = TyKind::of_types();
         if known.ty == ty {
             return Some(known);
         }

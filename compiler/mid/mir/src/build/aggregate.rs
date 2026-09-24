@@ -44,7 +44,7 @@ impl Builder<'_, '_, '_> {
     }
 
     /// The type the typed body found for `expr`.
-    fn type_of(&self, expr: ExprId) -> Option<Ty> {
+    pub(super) fn type_of(&self, expr: ExprId) -> Option<Ty> {
         let typed = self.typed()?;
         typed.types.get(&expr).map(|k| k.ty)
     }

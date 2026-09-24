@@ -8,6 +8,7 @@ use overt_intern::Symbol;
 
 use super::{Env, Unevaluated};
 use crate::member::{Found, Members};
+use crate::ops::Part;
 use crate::ty::{Nominal, Ty, TyKind, Value};
 
 impl Env<'_, '_> {
@@ -88,6 +89,6 @@ impl Env<'_, '_> {
 
     /// `object[index]`.
     pub(super) fn index(&self, object: ExprId, index: ExprId) -> Result<Value, Unevaluated> {
-        self.eval(object)?.item(&self.eval(index)?)
+        self.eval(object)?.part(&Part::Item(self.eval(index)?))
     }
 }

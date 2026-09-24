@@ -34,12 +34,9 @@ impl Builder<'_, '_, '_> {
         otherwise: Option<ExprId>,
         origin: OriginId,
     ) -> Result<Operand, Unbuilt> {
-        let Cond::Expr(cond) = cond else { return Err(Unbuilt { at: origin }) };
-        let cond = self.operand(*cond)?;
         let result = self.result(origin);
-        let (yes, no, join) = (self.fresh(origin), self.fresh(origin), self.fresh(origin));
-        self.terminate(TerminatorKind::Branch { cond, then: yes, otherwise: no }, origin);
-        self.current = yes;
+        let (no, join) = (self.fresh(origin), self.fresh(origin));
+        self.condition(cond, no, origin)?;
         let value = self.block(then)?;
         self.assign(Place::of(result), Rvalue::Use(value), origin);
         self.terminate(TerminatorKind::Goto(join), origin);
@@ -52,6 +49,21 @@ impl Builder<'_, '_, '_> {
         self.terminate(TerminatorKind::Goto(join), origin);
         self.current = join;
         Ok(Operand::Place(Place::of(result)))
+    }
+
+    /// Goes on when `cond` holds, with the binders of a test bound, and to `fail` when not.
+    pub(super) fn condition(&mut self, cond: &Cond, fail: BlockId, origin: OriginId) -> Result<(), Unbuilt> {
+        match cond {
+            Cond::Expr(cond) => {
+                let cond = self.operand(*cond)?;
+                self.guard(cond, fail, origin);
+            }
+            Cond::Test { pat, value } => {
+                let matched = self.scrutinee(*value)?;
+                self.test(*pat, &matched, fail)?;
+            }
+        }
+        Ok(())
     }
 
     /// `left and right`, `left or right`: `right` runs only when `left` does not decide.

@@ -6,6 +6,7 @@ use overt_mir::{Aggregate, Body, Local, Operand, Place, Projection, Rvalue, Term
 use overt_query::Cx;
 use overt_sema::env::{Env, Unevaluated};
 use overt_sema::eval::{Instance, Metered, MeteredCall};
+use overt_sema::ops::Part;
 use overt_sema::trap::Reason;
 use overt_sema::ty::Value;
 
@@ -59,6 +60,7 @@ impl<'b, 'a, 'db> Frame<'b, 'a, 'db> {
                 TerminatorKind::Return => {
                     return self.locals[self.body.ret].take().ok_or(Unevaluated::Unsupported);
                 }
+                TerminatorKind::Unreachable => return Err(Unevaluated::Unsupported),
                 TerminatorKind::Goto(to) => block = &self.body.blocks[*to],
                 TerminatorKind::Branch { cond, then, otherwise } => {
                     let next = if self.env.holds(&self.operand(cond)?)? { then } else { otherwise };
@@ -93,10 +95,9 @@ impl<'b, 'a, 'db> Frame<'b, 'a, 'db> {
     fn read(&self, place: &Place) -> Result<Value, Unevaluated> {
         let mut value = self.local(place.local)?;
         for projection in &place.projection {
-            value = match projection {
-                Projection::Deref => value,
-                Projection::Field(name) => self.env.member(value, *name)?,
-                Projection::Index(index) => value.item(&self.local(*index)?)?,
+            value = match self.part(projection)? {
+                Some(part) => value.part(&part)?,
+                None => value,
             };
         }
         Ok(value)
@@ -115,20 +116,22 @@ impl<'b, 'a, 'db> Frame<'b, 'a, 'db> {
 
     /// `whole` with the part `projection` reaches replaced by `part`. Writing through `.*` needs
     /// mutable borrows, which compile-time evaluation does not have yet.
-    fn replaced(&self, whole: Value, projection: &[Projection], part: Value) -> Result<Value, Unevaluated> {
-        let Some((first, rest)) = projection.split_first() else { return Ok(part) };
-        match first {
-            Projection::Field(name) => {
-                let inner = self.replaced(self.env.member(whole.clone(), *name)?, rest, part)?;
-                whole.with_field(*name, inner)
-            }
-            Projection::Index(index) => {
-                let index = self.local(*index)?;
-                let inner = self.replaced(whole.item(&index)?, rest, part)?;
-                whole.with_item(&index, inner)
-            }
-            Projection::Deref => Err(Unevaluated::Unsupported),
-        }
+    fn replaced(&self, whole: Value, projection: &[Projection], value: Value) -> Result<Value, Unevaluated> {
+        let Some((first, rest)) = projection.split_first() else { return Ok(value) };
+        let part = self.part(first)?.ok_or(Unevaluated::Unsupported)?;
+        let inner = self.replaced(whole.part(&part)?, rest, value)?;
+        whole.with_part(&part, inner)
+    }
+
+    /// The part of a value `projection` reaches, its index read; `None` for `.*`.
+    fn part(&self, projection: &Projection) -> Result<Option<Part>, Unevaluated> {
+        Ok(Some(match projection {
+            Projection::Deref => return Ok(None),
+            Projection::Field(name) => Part::Field(*name),
+            Projection::Index(index) => Part::Item(self.local(*index)?),
+            Projection::Position(at) => Part::Position(*at),
+            Projection::Payload(at) => Part::Payload(*at),
+        }))
     }
 
     fn rvalue(&mut self, rvalue: &Rvalue) -> Result<Value, Unevaluated> {
@@ -161,6 +164,10 @@ impl<'b, 'a, 'db> Frame<'b, 'a, 'db> {
                 })
             }
             Rvalue::Ref { mode: None, place } => self.read(place),
+            Rvalue::IsVariant { place, variant } => match self.read(place)? {
+                Value::Variant { name, .. } => self.env.decide(name == *variant),
+                _ => Err(Unevaluated::Unsupported),
+            },
             // A mutable borrow at compile time needs a memory model of places.
             Rvalue::Ref { mode: Some(_), .. } => Err(Unevaluated::Unsupported),
             Rvalue::Call { callee, args } => {

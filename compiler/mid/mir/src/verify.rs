@@ -95,7 +95,7 @@ impl Body {
             let at = Entity::Terminator(block.index());
             has(at, b.term.origin)?;
             match &b.term.kind {
-                TerminatorKind::Return => {}
+                TerminatorKind::Return | TerminatorKind::Unreachable => {}
                 TerminatorKind::Goto(to) => self.block(at, *to)?,
                 TerminatorKind::Branch { cond, then, otherwise } => {
                     self.operand(at, cond)?;
@@ -127,14 +127,16 @@ impl Body {
         self.local(at, place.local)?;
         place.projection.iter().try_for_each(|p| match p {
             Projection::Index(local) => self.local(at, *local),
-            Projection::Deref | Projection::Field(_) => Ok(()),
+            Projection::Deref | Projection::Field(_) | Projection::Position(_) | Projection::Payload(_) => {
+                Ok(())
+            }
         })
     }
 
     fn rvalue(&self, at: Entity, rvalue: &Rvalue) -> Result<(), Malformed> {
         let operands: Vec<&Operand> = match rvalue {
             Rvalue::Use(o) | Rvalue::Unary { operand: o, .. } | Rvalue::Narrow { operand: o, .. } => vec![o],
-            Rvalue::Ref { place, .. } => return self.place(at, place),
+            Rvalue::Ref { place, .. } | Rvalue::IsVariant { place, .. } => return self.place(at, place),
             Rvalue::Aggregate { parts, .. } => parts.iter().collect(),
             Rvalue::Binary { left, right, .. } => vec![left, right],
             Rvalue::Range { lo, hi, .. } => [lo].into_iter().chain(hi).collect(),

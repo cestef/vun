@@ -299,8 +299,14 @@ In order:
      (`Value::{with_field, with_item}`), reads a shared borrow as the value, and refuses `&mut`
      and writes through `.*` (no memory model yet). An index past the end traps
      (`Reason::Bounds`). `cargo xtask corpus` now names what stops MIR most
-     (`Coverage::unbuilt`). Next blockers: extern calls (`= _` functions have no value),
-     patterns (`match`, `if p = e`, `(a, b) := e`), `for p in e`, closures, `?`, `[v; n]`.
+     (`Coverage::unbuilt`).
+   - Decision 89, MIR patterns: `build/pattern.rs` (`Matched`, `Builder::{scrutinee, declared,
+     test, either, guard, matching}`), `Builder::condition` for `if`/`for` heads,
+     `Projection::{Position, Payload}`, `Rvalue::IsVariant`, `TerminatorKind::Unreachable`;
+     sema `ops::Part` with `Value::{part, with_part}` is the one way parts are read and
+     rebuilt. `Typer::ty` types an annotation it cannot evaluate, then evaluates it with those
+     types; `TyKind::of_types`. Next blockers: extern calls (`= _` functions have no value),
+     `for p in e`, closures, `?`, `[v; n]`, or-patterns that bind.
    - `types.no_member` on values stays off: turning it on (tried) reports members the corpus
      stand-ins lack. Needed first: stand-in methods for `Timer`, `Serial`, `Led`, `Dma`, `Fs`,
      `Alloc`, `Device`, `System`, `Cache`, `Queue`, `Packet`, `Uart` in `corpus/support`,

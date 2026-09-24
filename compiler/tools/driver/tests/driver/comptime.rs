@@ -221,3 +221,26 @@ end: Int(0..=past()) = 0;
     let reported: Vec<_> = fixture.reported(&file).into_iter().map(|(id, _)| id).collect();
     assert_eq!(reported, [errors::INT_DOES_NOT_FIT, errors::INT_DOES_NOT_FIT, errors::COMPTIME_TRAP]);
 }
+
+#[test]
+fn patterns_test_and_bind() {
+    let fixture = Fixture::new("comptime-patterns");
+    let file = fixture.root.write(
+        "patterns.ov",
+        "\
+Shape := enum { circle(u8), square(u8), none };
+area := ($s: Shape) -> u16 { match s { .circle(r) => r, .square(w) => w * w, .none => 0 } };
+unwrap := ($o: ?u8) -> u8 { if .some(v) = o { v } else { 0 } };
+first := () -> u8 { (a, b) := (4, 5); a + b };
+drain := () -> u8 { mut o: ?u8 = .some(3); mut n: u8 = 0; for .some(v) = o { n += v; o = .none; } n };
+kind := ($x: u8) -> u8 { match x { 0..=9 => 1, 10 | 11 => 2, _ => 3 } };
+sq: Int(0..=area(.square(5))) = 26;
+some: Int(0..=unwrap(.some(7))) = 8;
+pair: Int(0..=first()) = 10;
+drained: Int(0..=drain()) = 4;
+kinded: Int(0..=kind(11)) = 3;
+",
+    );
+    let reported: Vec<_> = fixture.reported(&file).into_iter().map(|(id, _)| id).collect();
+    assert_eq!(reported, [errors::INT_DOES_NOT_FIT; 5]);
+}

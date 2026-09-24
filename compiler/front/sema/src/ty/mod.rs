@@ -72,6 +72,12 @@ impl TyKind {
         Self::Primitive(primitive, Vec::new()).intern()
     }
 
+    /// `lang.type`, the type of types.
+    #[must_use]
+    pub fn of_types() -> Ty {
+        Self::primitive(Primitive::Lang(Lang::r#type))
+    }
+
     /// `lang.mem.Array(len, elem)`: `[len]elem`.
     #[must_use]
     pub fn array(len: Integer, elem: Ty) -> Ty {

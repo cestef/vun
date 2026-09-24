@@ -7,14 +7,12 @@ use overt_hir::visit;
 use overt_intern::Symbol;
 
 use super::{Known, Stage, Typer};
-use crate::Primitive;
 use crate::decl::DeclType;
 use crate::env::Env;
 use crate::eval::{Call, Instance};
 use crate::int::{Integer, Interval};
 use crate::item::{Declared, Site};
 use crate::member::{Found, MemberType, Members};
-use crate::primitives::lang::Lang;
 use crate::ty::{Ty, TyKind, Value};
 
 impl Typer<'_, '_, '_> {
@@ -47,7 +45,7 @@ impl Typer<'_, '_, '_> {
             // A type written in an expression, such as the argument of `Pair(u8)` or `[4]u8`.
             ExprKind::ArrayType { .. } => {
                 visit::walk_expr(self, hir, expr);
-                compile(TyKind::primitive(Primitive::Lang(Lang::r#type)))
+                compile(TyKind::of_types())
             }
             ExprKind::Match { scrutinee, arms } => self.matching(expr, *scrutinee, arms),
             ExprKind::Return(value) => {
@@ -106,9 +104,7 @@ impl Typer<'_, '_, '_> {
             ExprKind::Fn { params, returns, .. } => {
                 compile(self.env().signature(params, *returns).ok()?.ty())
             }
-            ExprKind::FnType { .. } | ExprKind::Struct(_) | ExprKind::Enum(_) => {
-                compile(TyKind::primitive(Primitive::Lang(Lang::r#type)))
-            }
+            ExprKind::FnType { .. } | ExprKind::Struct(_) | ExprKind::Enum(_) => compile(TyKind::of_types()),
             // `#{ e }` is code of the type of `e` (spec 03, section 4).
             ExprKind::Quote(block) => {
                 let known = self.block_value(*block, None)?;

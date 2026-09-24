@@ -3,7 +3,7 @@
 //! back to the head, and `return v` leaves the function. Code after them is unreachable, lowered
 //! into a fresh block nothing enters.
 
-use overt_hir::tree::{BlockId as HirBlock, Cond, ExprId, ForHead};
+use overt_hir::tree::{BlockId as HirBlock, ExprId, ForHead};
 use overt_intern::Symbol;
 use overt_origin::OriginId;
 use overt_sema::ty::Value;
@@ -36,16 +36,16 @@ impl Builder<'_, '_, '_> {
         self.current = start;
         match head {
             ForHead::Forever => {}
-            ForHead::While(Cond::Expr(cond)) => {
-                let cond = self.operand(*cond)?;
-                let (run, done) = (self.fresh(origin), self.fresh(origin));
-                self.terminate(TerminatorKind::Branch { cond, then: run, otherwise: done }, origin);
+            ForHead::While(cond) => {
+                let done = self.fresh(origin);
+                self.condition(cond, done, origin)?;
+                let run = self.current;
                 self.current = done;
                 self.assign(Place::of(result), Rvalue::Use(Self::unit()), origin);
                 self.terminate(TerminatorKind::Goto(exit), origin);
                 self.current = run;
             }
-            ForHead::While(Cond::Test { .. }) | ForHead::In { .. } => return Err(Unbuilt { at: origin }),
+            ForHead::In { .. } => return Err(Unbuilt { at: origin }),
         }
         self.loops.push(Loop { label, head: start, exit, result });
         let lowered = self.block(body);

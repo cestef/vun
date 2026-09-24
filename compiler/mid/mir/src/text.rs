@@ -18,6 +18,8 @@ impl fmt::Display for Place {
                 Projection::Deref => f.write_str(".*")?,
                 Projection::Field(name) => write!(f, ".{name}")?,
                 Projection::Index(local) => write!(f, "[_{}]", local.index())?,
+                Projection::Position(at) => write!(f, ".{at}")?,
+                Projection::Payload(at) => write!(f, ".payload.{at}")?,
             }
         }
         Ok(())
@@ -63,6 +65,7 @@ impl fmt::Display for Rvalue {
                 f.write_str(close)
             }
             Self::Ref { mode: None, place } => write!(f, "&{place}"),
+            Self::IsVariant { place, variant } => write!(f, "{place} is .{variant}"),
             Self::Ref { mode: Some(mode), place } => write!(f, "&{mode} {place}"),
             Self::Narrow { operand, ty, narrowing } => {
                 write!(f, "{operand} narrowed to {ty} ({narrowing:?})")
@@ -124,6 +127,7 @@ impl fmt::Display for Text<'_> {
             }
             match &block.term.kind {
                 TerminatorKind::Return => write!(f, "    return")?,
+                TerminatorKind::Unreachable => write!(f, "    unreachable")?,
                 TerminatorKind::Goto(to) => write!(f, "    goto bb{}", to.index())?,
                 TerminatorKind::Branch { cond, then, otherwise } => {
                     write!(f, "    if {cond} goto bb{} else bb{}", then.index(), otherwise.index())?;
