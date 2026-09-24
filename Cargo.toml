@@ -77,7 +77,7 @@ prettyplease = "0.2"
 annotate-snippets = "0.12"
 ariadne = "0.6"
 blake3 = { version = "1", default-features = false, features = ["std", "pure"] }
-ureq = "3"
+bitreq = { version = "0.3", features = ["https"] }
 flate2 = "1"
 zip = { version = "8", default-features = false, features = ["deflate-flate2"] }
 ruzstd = { version = "0.9", default-features = false, features = ["std"] }

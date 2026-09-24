@@ -11,7 +11,7 @@ workspace = true
 
 [dependencies]
 overt-fs.workspace = true
-ureq.workspace = true
+bitreq.workspace = true
 flate2.workspace = true
 zip.workspace = true
 ruzstd.workspace = true

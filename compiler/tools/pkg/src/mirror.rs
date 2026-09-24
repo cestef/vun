@@ -10,6 +10,24 @@ use super::{Failure, Format};
 /// The largest archive read, against a mirror serving without end.
 const MAX_ARCHIVE: u64 = 4 << 30;
 
+/// The statuses of a successful response (RFC 9110, section 15.3).
+const SUCCESS: std::ops::RangeInclusive<i32> = 200..=299;
+
+/// A response whose status is not a success.
+#[derive(Debug)]
+pub(crate) struct Refused {
+    code: i32,
+    reason: String,
+}
+
+impl std::fmt::Display for Refused {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "the server answered {} {}", self.code, self.reason)
+    }
+}
+
+impl std::error::Error for Refused {}
+
 pub struct Scheme {
     pub prefix: &'static str,
     /// Reads the resource: given the whole URL and what follows the prefix.
@@ -45,9 +63,14 @@ impl Scheme {
 
     /// Reads an `http` or `https` URL, up to [`MAX_ARCHIVE`] bytes.
     fn http(url: &str, _: &str) -> Result<Vec<u8>, Failure> {
-        let failed = |e: ureq::Error| Failure::Download(Box::new(e));
-        let mut response = ureq::get(url).call().map_err(failed)?;
-        response.body_mut().with_config().limit(MAX_ARCHIVE).read_to_vec().map_err(failed)
+        let limit = usize::try_from(MAX_ARCHIVE).unwrap_or(usize::MAX);
+        let request = bitreq::get(url).with_max_body_size(limit);
+        let response = request.send().map_err(|e| Failure::Download(Box::new(e)))?;
+        if !SUCCESS.contains(&response.status_code) {
+            let refused = Refused { code: response.status_code, reason: response.reason_phrase };
+            return Err(Failure::Download(Box::new(refused)));
+        }
+        Ok(response.into_bytes())
     }
 
     /// The URL of the local file `path`.
