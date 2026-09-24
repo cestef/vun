@@ -88,7 +88,7 @@ impl<'b> Analysis<'b> {
     fn constants(body: &Body) -> BTreeMap<Local, i128> {
         let mut assigned: BTreeMap<Local, Option<i128>> = BTreeMap::new();
         for (_, block) in body.blocks.iter() {
-            for stmt in &block.stmts {
+            for stmt in block.stmts.iter().filter(|s| s.value != Rvalue::Dead) {
                 let value = match (&stmt.value, stmt.place.projection.is_empty()) {
                     (Rvalue::Use(Operand::Const(Value::Int(n))), true) => n.to_i128(),
                     _ => None,
@@ -178,6 +178,10 @@ impl<'b> Analysis<'b> {
     fn block(&mut self, block: BlockId, states: &mut States) -> Vec<BlockId> {
         let b = &self.body.blocks[block];
         for stmt in &b.stmts {
+            if stmt.value == Rvalue::Dead {
+                self.scope_ends(stmt.place.local, states, stmt.origin);
+                continue;
+            }
             self.rvalue(&stmt.value, states, stmt.origin);
             self.write(&stmt.place, states, stmt.origin);
         }
@@ -209,15 +213,7 @@ impl<'b> Analysis<'b> {
         let leaked: Vec<Local> =
             self.linear.iter().copied().filter(|&l| states.locals[l] != State::Uninit).collect();
         for local in leaked {
-            let what = self.body.locals[local]
-                .name
-                .map_or_else(|| Msg::new().text("a linear value"), |n| Msg::new().code(n.as_str()));
-            let msg = what.text(" is still held here, and linear values must be consumed before returning");
-            let help = Msg::new()
-                .text("pass it to what consumes it, such as a close or a free, or ")
-                .code("defer")
-                .text(" that call where the value is made");
-            self.advise(errors::PLACE_LINEAR_LEAK, origin, msg, Some(help));
+            self.leak(local, origin, "returning");
         }
         let unwritten: Vec<Local> = self
             .targets
@@ -233,6 +229,29 @@ impl<'b> Analysis<'b> {
                 Msg::new().code(name).text(" is not written on this path, and must be before returning");
             self.report(errors::PLACE_OUT_UNWRITTEN, origin, msg);
         }
+    }
+
+    /// At the end of the scope of `local`'s binding, a linear value it holds is leaked.
+    fn scope_ends(&mut self, local: Local, states: &mut States, origin: OriginId) {
+        if self.linear.contains(&local) && states.locals[local] != State::Uninit {
+            self.leak(local, origin, "its scope ends");
+        }
+        states.end(local);
+    }
+
+    /// Reports the linear value in `local` as still held at `origin`, before `when`.
+    fn leak(&mut self, local: Local, origin: OriginId, when: &str) {
+        let what = self.body.locals[local]
+            .name
+            .map_or_else(|| Msg::new().text("a linear value"), |n| Msg::new().code(n.as_str()));
+        let msg = what
+            .text(" is still held here, and linear values must be consumed before ")
+            .text(when.to_owned());
+        let help = Msg::new()
+            .text("pass it to what consumes it, such as a close or a free, or ")
+            .code("defer")
+            .text(" that call where the value is made");
+        self.advise(errors::PLACE_LINEAR_LEAK, origin, msg, Some(help));
     }
 
     fn report(&mut self, id: DiagId, origin: OriginId, msg: Msg) {

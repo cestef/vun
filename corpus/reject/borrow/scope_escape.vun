@@ -1,0 +1,12 @@
+//! A borrow cannot be used after the scope of what it borrows ends (spec 05, section 4).
+
+zero: u8 = 0;
+
+latest := (xs: &[u8]) -> u8 {
+    mut last: &u8 = &zero;
+    for x in xs { //~ borrow.escape
+        copy: u8 = x.*;
+        last = &copy;
+    }
+    last.*
+};

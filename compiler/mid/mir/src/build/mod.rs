@@ -75,8 +75,8 @@ struct Builder<'e, 'a, 'db> {
     ret: Local,
     /// The loops around the code lowered, innermost last.
     loops: Vec<loops::Loop>,
-    /// The deferred statements in scope, latest last.
-    defers: Vec<ExprId>,
+    /// What runs at the exits of the blocks around the code lowered, latest last.
+    pending: Vec<defer::Pending>,
     /// The instantiation lowered, whose typed body gives the types of places.
     f: Instantiation,
     /// The environment of the `$for` step lowered, if any: `env` under its bindings.
@@ -104,7 +104,7 @@ impl<'a, 'db> Builder<'_, 'a, 'db> {
             through: HashSet::new(),
             ret,
             loops: Vec::new(),
-            defers: Vec::new(),
+            pending: Vec::new(),
             f: f.clone(),
             step: None,
             path: Vec::new(),
@@ -121,7 +121,7 @@ impl<'a, 'db> Builder<'_, 'a, 'db> {
             b.locals[local].ty = types.get(index).copied();
             args.push(local);
         }
-        let result = b.block(*body)?;
+        let result = b.scope(*body, defer::Exit::Function)?;
         // The body ends where its value is written, or at the body.
         let end = hir.blocks[*body].tail.map_or(hir.blocks[*body].origin, |t| hir.exprs[t].origin);
         b.assign(Place::of(ret), Rvalue::Use(result), end);

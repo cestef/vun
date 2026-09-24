@@ -96,3 +96,20 @@ tied := () -> u8 {
     let ids: Vec<_> = fixture.reported(&file).into_iter().map(|(id, _)| id).collect();
     assert_eq!(ids, [errors::BORROW_ESCAPE, errors::BORROW_CONFLICT]);
 }
+
+#[test]
+fn borrows_do_not_outlive_the_scope_of_what_they_borrow() {
+    let fixture = Fixture::new("borrows-scopes");
+    let file = fixture.root.write(
+        "scopes.vun",
+        "\
+zero: u8 = 0;
+outlived := () -> u8 { mut r: &u8 = &zero; { x: u8 = 1; r = &x; } r.* };
+within := () -> u8 { x: u8 = 1; mut r: &u8 = &zero; { r = &x; } r.* };
+unused := () { mut r: &u8 = &zero; { x: u8 = 1; r = &x; } };
+",
+    );
+    let found = fixture.reported(&file);
+    let ids: Vec<_> = found.iter().map(|(id, _)| id.clone()).collect();
+    assert_eq!(ids, [errors::BORROW_ESCAPE], "{found:?}");
+}

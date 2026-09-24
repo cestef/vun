@@ -63,3 +63,30 @@ inner := () -> u32 { f := open(); { defer close(f); } size(&f) };
     let ids: Vec<_> = fixture.reported(&file).into_iter().map(|(id, _)| id).collect();
     assert_eq!(ids, [errors::PLACE_AMBIGUOUS_JOIN, errors::PLACE_READ_UNINIT]);
 }
+
+#[test]
+fn linear_values_are_consumed_before_their_scope_ends() {
+    let fixture = Fixture::new("places-scopes");
+    let file = fixture.root.write(
+        "scopes.vun",
+        "\
+File := #[kind.linear] struct { fd: u32 };
+open := () -> File { .{ .fd = 3 } };
+close := (f: File) { .{ .fd = _ } := f; };
+inner := () -> u32 { { f := open(); } 1 };
+looped := () { for i in 0..3 { f := open(); } };
+skipped := (flag: bool) { for { f := open(); if flag { continue; } close(f); break; } };
+handed := () -> File { g := { f := open(); f }; g };
+closed := () { { f := open(); close(f); } };
+",
+    );
+    let found = fixture.reported(&file);
+    let lines: Vec<_> = found.iter().map(|(id, _)| id.clone()).collect();
+    // Each at the end of the block holding `f`: the inner block, the loop body, the `continue`.
+    assert_eq!(
+        lines,
+        [errors::PLACE_LINEAR_LEAK, errors::PLACE_LINEAR_LEAK, errors::PLACE_LINEAR_LEAK],
+        "{found:?}"
+    );
+    assert!(found[0].1.contains("before its scope ends"), "{found:?}");
+}

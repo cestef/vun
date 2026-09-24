@@ -83,6 +83,12 @@ impl States {
         if written { State::Init } else { whole }
     }
 
+    /// The binding of `local` goes out of scope: it holds nothing any more.
+    pub(super) fn end(&mut self, local: Local) {
+        self.locals[local] = State::Uninit;
+        self.parts.retain(|(l, _), _| *l != local);
+    }
+
     /// The whole of `local` is written.
     pub(super) fn write(&mut self, local: Local) {
         self.locals[local] = State::Init;

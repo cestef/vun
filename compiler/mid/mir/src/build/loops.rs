@@ -10,6 +10,7 @@ use vun_origin::OriginId;
 use vun_sema::member::MemberValue;
 use vun_sema::ty::{Ty, Value};
 
+use super::defer::Exit;
 use super::pattern::Matched;
 use super::{Builder, Unbuilt};
 use crate::body::{BlockId, Local, Operand, Rvalue, TerminatorKind};
@@ -76,7 +77,7 @@ impl Builder<'_, '_, '_> {
                 self.current = run;
             }
         }
-        self.loops.push(Loop { label, head: start, exit, result, depth: self.defers.len() });
+        self.loops.push(Loop { label, head: start, exit, result, depth: self.pending.len() });
         let lowered = self.block(body);
         self.loops.pop();
         lowered?;
@@ -108,14 +109,14 @@ impl Builder<'_, '_, '_> {
         let value = value.map(|v| self.operand(v)).transpose()?.unwrap_or_else(Self::unit);
         let (exit, result, depth) = self.target(label, origin).map(|l| (l.exit, l.result, l.depth))?;
         self.assign(Place::of(result), Rvalue::Use(value), origin);
-        self.unwind(depth, origin)?;
+        self.unwind(depth, origin, Exit::Scope)?;
         Ok(self.jump(TerminatorKind::Goto(exit), origin))
     }
 
     /// `continue 'label`.
     pub(super) fn again(&mut self, label: Option<Symbol>, origin: OriginId) -> Result<Operand, Unbuilt> {
         let (head, depth) = self.target(label, origin).map(|l| (l.head, l.depth))?;
-        self.unwind(depth, origin)?;
+        self.unwind(depth, origin, Exit::Scope)?;
         Ok(self.jump(TerminatorKind::Goto(head), origin))
     }
 
@@ -123,7 +124,7 @@ impl Builder<'_, '_, '_> {
     pub(super) fn exit(&mut self, value: Option<ExprId>, origin: OriginId) -> Result<Operand, Unbuilt> {
         let value = value.map(|v| self.operand(v)).transpose()?.unwrap_or_else(Self::unit);
         self.assign(Place::of(self.ret), Rvalue::Use(value), origin);
-        self.unwind(0, origin)?;
+        self.unwind(0, origin, Exit::Function)?;
         Ok(self.jump(TerminatorKind::Return, origin))
     }
 

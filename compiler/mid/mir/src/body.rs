@@ -112,6 +112,10 @@ pub enum Rvalue {
     End {
         frame: Place,
     },
+    /// The binding of the place assigned goes out of scope: its storage ends, and a linear value
+    /// still held there is leaked (spec 05, section 2). Written at every exit of the binding's
+    /// block, after the block's deferred statements.
+    Dead,
     /// `[operand; count]`: an array of `count` copies, `count` known at compile time.
     Repeat {
         operand: Operand,
@@ -170,7 +174,8 @@ impl Rvalue {
             | Self::End { .. }
             | Self::IsVariant { .. }
             | Self::Comptime { .. }
-            | Self::Quote { .. } => Vec::new(),
+            | Self::Quote { .. }
+            | Self::Dead => Vec::new(),
         }
     }
 }

@@ -19,6 +19,11 @@ impl Checker<'_> {
         for (index, stmt) in b.stmts.iter().enumerate() {
             let own = self.taken.get(&(block, index)).copied();
             let loans = Self::live_loans(&holds, &live[block][index], own);
+            if stmt.value == Rvalue::Dead {
+                self.outlived(&loans, stmt.place.local, stmt.origin);
+                self.hold(block, index, stmt, &mut holds);
+                continue;
+            }
             for (place, access) in Self::accesses(stmt) {
                 self.conflicts(&loans, place, access, stmt.origin);
             }
@@ -110,6 +115,20 @@ impl Checker<'_> {
                 let help =
                     Msg::new().text("return the value itself, or a borrow of something a parameter lends");
                 self.report(errors::BORROW_ESCAPE, origin, msg, None, Some(help));
+            }
+        }
+    }
+
+    /// The scope of the binding in `local` ends at `origin`: a live loan of its own storage
+    /// would outlive it (spec 05, section 4).
+    fn outlived(&mut self, loans: &BTreeSet<LoanId>, local: vun_mir::Local, origin: OriginId) {
+        for &loan in loans {
+            let l = &self.loans[loan];
+            if l.source == Source::Taken && l.place.local == local && !l.place.is_indirect() {
+                let msg =
+                    self.name(&l.place).text(" goes out of scope here while a borrow of it is still used");
+                let help = Msg::new().text("declare it in the scope where the borrow is used");
+                self.report(errors::BORROW_ESCAPE, origin, msg, Some(loan), Some(help));
             }
         }
     }

@@ -7,6 +7,7 @@ use vun_intern::Symbol;
 use vun_origin::OriginId;
 use vun_sema::member::MemberValue;
 
+use super::defer::Exit;
 use super::{Builder, Unbuilt};
 use crate::body::{Operand, Rvalue, TerminatorKind};
 use crate::place::{Place, Projection};
@@ -36,7 +37,7 @@ impl Builder<'_, '_, '_> {
         let on = self.current;
         self.current = stopped;
         self.assign(Place::of(self.ret), carried(&branched), origin);
-        self.unwind(0, origin)?;
+        self.unwind(0, origin, Exit::Function)?;
         self.terminate(TerminatorKind::Return, origin);
         self.current = on;
         Ok(result)

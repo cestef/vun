@@ -69,6 +69,11 @@ impl<'b, 'a, 'db> Frame<'b, 'a, 'db> {
             self.spend(1)?;
             for stmt in &block.stmts {
                 self.spend(1)?;
+                // A binding going out of scope leaves its storage.
+                if stmt.value == Rvalue::Dead {
+                    self.locals[stmt.place.local] = None;
+                    continue;
+                }
                 let value = self.rvalue(&stmt.value).map_err(|e| e.through(stmt.origin))?;
                 self.write(&stmt.place, value).map_err(|e| e.through(stmt.origin))?;
             }
@@ -207,7 +212,8 @@ impl<'b, 'a, 'db> Frame<'b, 'a, 'db> {
                 _ => Err(Unevaluated::Unsupported),
             },
             // A mutable borrow at compile time needs a memory model of places.
-            Rvalue::Ref { mode: Some(_), .. } => Err(Unevaluated::Unsupported),
+            // `execute` ends a binding's scope without a value.
+            Rvalue::Dead | Rvalue::Ref { mode: Some(_), .. } => Err(Unevaluated::Unsupported),
             Rvalue::Call { callee, args } => {
                 let args = args.iter().map(|a| self.operand(a)).collect::<Result<Vec<_>, _>>()?;
                 // A call of a function counts the steps it took (spec 03, section 7); a closure

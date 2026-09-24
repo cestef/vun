@@ -1,0 +1,11 @@
+//! A linear value must be consumed before the scope of its binding ends, not only before the
+//! function returns (spec 05, section 2).
+
+sizes := (fs: &mut Fs, paths: &[&[u8]]) -> Result(u64, Error) {
+    mut total: u64 = 0;
+    for path in paths { //~ place.linear_leak
+        f := fs.open(path.*)?;
+        total = (total + f.size()).to(u64);
+    }
+    .ok(total)
+};

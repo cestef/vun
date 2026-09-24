@@ -199,7 +199,7 @@ impl Builder<'_, '_, '_> {
             Binding::Copy => Rvalue::Use(Operand::Place(place)),
             Binding::Borrow(mode) => Rvalue::Ref { mode, place },
         };
-        let local = self.bind(binder);
+        let local = self.bind_scoped(binder);
         self.assign(Place::of(local), value, origin);
     }
 

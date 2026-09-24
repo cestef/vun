@@ -5,7 +5,8 @@ A borrow outlives the scope it was taken in.
 A scoped value (a borrow, or anything containing one) may be returned only from a function taking
 at least one borrow, and it is then tied to all of that call's borrowed arguments (spec 05,
 section 4). A borrow of a local, or one tied to a critical section (spec 07, section 2), cannot
-leave its scope.
+leave its scope: not by the result, and not by a variable of an outer scope used after the
+local's scope ends.
 
 ## Example
 
