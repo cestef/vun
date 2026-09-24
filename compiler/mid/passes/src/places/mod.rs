@@ -6,6 +6,7 @@
 //! moves it, leaving its place `uninit`, and a function returns only with every linear place
 //! `uninit` (spec 05, section 1: kinds).
 
+mod moved;
 mod states;
 mod transfer;
 
@@ -22,6 +23,7 @@ use overt_sema::eval::Instantiation;
 use overt_sema::kinds::Kinds;
 use overt_sema::ty::Value;
 
+use moved::Moved;
 use states::{State, States};
 
 /// The place-state reports of an instantiation's body; `None` when it has no MIR yet.
@@ -37,8 +39,9 @@ impl Query for PlaceStates {
         let linear =
             body.locals.iter().filter(|(_, d)| d.ty.is_some_and(|t| cx.get::<Kinds>(&t).is_linear()));
         let linear = linear.filter(|(_, d)| d.role == Role::Held).map(|(local, _)| local);
-        let linear = linear.filter(|&l| l != body.ret).collect();
-        Some(Analysis::new(&body, linear).run())
+        let linear: BTreeSet<Local> = linear.filter(|&l| l != body.ret).collect();
+        let moved = Moved::find(cx, &body, |l| linear.contains(&l));
+        Some(Analysis::new(&body, linear, moved).run())
     }
 }
 
@@ -50,6 +53,8 @@ struct Analysis<'b> {
     constants: BTreeMap<Local, i128>,
     /// The locals holding linear values, which a read moves and a return must find `uninit`.
     linear: BTreeSet<Local>,
+    /// The linear values moved out of borrows, by the local they land in.
+    moved: Vec<(Local, OriginId)>,
     diag: DiagCtxt,
     reported: BTreeSet<(DiagId, OriginId)>,
     /// Whether transfers report what they find: only once the states are fixed.
@@ -57,7 +62,7 @@ struct Analysis<'b> {
 }
 
 impl<'b> Analysis<'b> {
-    fn new(body: &'b Body, linear: BTreeSet<Local>) -> Self {
+    fn new(body: &'b Body, linear: BTreeSet<Local>, moved: Vec<(Local, OriginId)>) -> Self {
         let targets = body
             .params
             .iter()
@@ -72,6 +77,7 @@ impl<'b> Analysis<'b> {
             targets,
             constants: Self::constants(body),
             linear,
+            moved,
             diag: DiagCtxt::new(),
             reported: BTreeSet::new(),
             reporting: false,
@@ -126,19 +132,11 @@ impl<'b> Analysis<'b> {
     /// borrow or owner, which does not own it to give. The local it lands in is left out of the
     /// linear ones, so that the report is not repeated as a leak.
     fn moved_out(&mut self) {
-        let body = self.body;
-        for (_, block) in body.blocks.iter() {
-            for stmt in &block.stmts {
-                if let Rvalue::Use(Operand::Place(source)) = &stmt.value
-                    && source.is_indirect()
-                    && stmt.place.projection.is_empty()
-                    && self.linear.remove(&stmt.place.local)
-                {
-                    let msg =
-                        Msg::new().text("this moves a linear value out of a borrow, which does not own it");
-                    self.report(errors::PLACE_MOVE_OUT_OF_BORROW, stmt.origin, msg);
-                    self.derived(stmt.place.local);
-                }
+        for (local, origin) in std::mem::take(&mut self.moved) {
+            if self.linear.remove(&local) {
+                let msg = Msg::new().text("this moves a linear value out of a borrow, which does not own it");
+                self.report(errors::PLACE_MOVE_OUT_OF_BORROW, origin, msg);
+                self.derived(local);
             }
         }
     }

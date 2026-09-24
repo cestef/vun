@@ -7,6 +7,7 @@ use overt_hir::resolve::Res;
 use overt_hir::tree::{ExprId, ExprKind};
 use overt_intern::Symbol;
 use overt_origin::OriginId;
+use overt_sema::env::Hop;
 use overt_sema::member::Members;
 
 use super::{Builder, Unbuilt};
@@ -26,7 +27,7 @@ impl Builder<'_, '_, '_> {
             },
             ExprKind::Member { object, name } if self.env().eval(expr).is_err() => {
                 let name = self.env().name(name).ok_or(Unbuilt { at: origin })?;
-                Ok(self.through_borrows(*object)?.project(Projection::Field(name)))
+                Ok(self.reached(*object, name)?.project(Projection::Field(name)))
             }
             ExprKind::Index { object, index } => {
                 // Only an integer index names one item; bounds take a part, a value.
@@ -91,6 +92,21 @@ impl Builder<'_, '_, '_> {
         while let Some(pointee) = ty.and_then(|t| t.borrowed()) {
             place = place.project(Projection::Deref);
             ty = Some(pointee);
+        }
+        Ok(place)
+    }
+
+    /// The place `object`, followed through the borrows and owners `.name` looks through.
+    pub(super) fn reached(&mut self, object: ExprId, name: Symbol) -> Result<Place, Unbuilt> {
+        let mut place = self.place(object)?;
+        let Some(ty) = self.typed().and_then(|t| t.types.get(&object).map(|k| k.ty)) else {
+            return Ok(place);
+        };
+        for hop in self.env().reach(ty, name).0 {
+            if let Hop::Owner(field) = hop {
+                place = place.project(Projection::Field(field));
+            }
+            place = place.project(Projection::Deref);
         }
         Ok(place)
     }

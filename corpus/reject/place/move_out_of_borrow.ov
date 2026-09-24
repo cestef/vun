@@ -7,8 +7,8 @@ sum_list := (head: &?Own(Node)) -> u32 {
     mut sum: u32 = 0;
     mut cur := head;
     for .some(node) = cur.* { //~ place.move_out_of_borrow
-        sum +|= node.*.value;
-        cur = &node.*.next;
+        sum +|= node.value;
+        cur = &node.next;
     }
     sum
 };

@@ -154,7 +154,10 @@ plain function value.
 
 Arguments inside `( )` are ordinary expressions, so borrowing them is written out: `f(&mut x)`.
 Lookup is `T`'s namespace, then `T`'s impls. If `a: &mut T`, lookup continues to `T`, because a
-borrow type has no namespace of its own. There is no other auto-deref and no `Deref` interface.
+borrow type has no namespace of its own. If `T` is an owner (a struct with a `#[kind.owns]`
+pointer field, such as `Own(U)`) lacking the member, lookup continues to `U`: `.` goes where `.*`
+goes, so `node.value` reads a field of an `Own(Node)` or a `&Own(Node)`. There is no other
+auto-deref and no `Deref` interface; nothing user-defined runs.
 
 ## 5. Types and literals
 

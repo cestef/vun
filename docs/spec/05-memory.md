@@ -47,9 +47,10 @@ Rules, all checked on the control-flow graph:
 - A part named without running the program (a field, a tuple position, an item at a constant
   index) has its own state once written: `buf[0] = 1;` makes `buf[0]` readable, not `buf[1]`. A
   part at an index known only at run time needs the whole place `init`.
-- A linear value cannot be moved out of a place reached through `.*`: a borrow or an owner
-  does not give up what it points to. Matching or reading through the borrow itself binds by
-  borrow instead (`place.move_out_of_borrow`).
+- A linear value cannot be moved out of a place reached through a borrow's `.*`: a borrow does
+  not own what it points to. Matching or reading through the borrow itself binds by borrow
+  instead (`place.move_out_of_borrow`). An owner held by value owns its target, so moving a
+  part out of it is allowed (`cur = node.next` before freeing `node`).
 - **At every scope exit, every place holding a linear value must be `uninit`.** Forgetting to close,
   free, release or finish something is a compile error. No destructor ever runs implicitly.
 - A place that is `init` on one incoming path and `uninit` on another cannot be used after the join.
@@ -119,8 +120,8 @@ tied to arguments, so no interprocedural analysis is needed.
 - `Own(T)`: unique owning pointer, linear, free, safe to dereference. It comes from an allocator
   and goes back to one; freeing it requires holding the allocator. It is a library struct whose
   pointer field is marked `#[kind.owns]`: `.*` on a struct reads through the field so marked,
-  as it does on a borrow or pointer, so `cfg.*.name` reaches a field of what an `Own(Config)`
-  owns. There is no other dereference: `.` looks through borrows only.
+  as it does on a borrow or pointer, and `.` looks through it as through a borrow when the owner
+  lacks the member, so `cfg.name` reaches a field of what an `Own(Config)` owns.
 - `*T`: raw pointer; copy, free, non-null. Creating one is safe. Dereferencing, offsetting and
   casting are `unsafe`.
 - Volatile and atomic access are operations in `lang.mem`, not type qualifiers.

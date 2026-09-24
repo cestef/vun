@@ -52,11 +52,11 @@ Parser := struct { input: &[u8] };
 Boxed := #[kind.free] struct { parser: Parser };
 boxed := (p: Parser) -> Boxed { .{ .parser = p } };
 owned := (p: *Parser) -> Own(Parser) { .{ .ptr = p } };
-value := (o: &Own(Node)) -> u8 { o.*.*.value };
+value := (o: &Own(Node)) -> u8 { o.value };
 walk := (head: &?Own(Node)) -> u8 {
     mut cur := head;
     mut last: u8 = 0;
-    for .some(node) = cur { last = node.*.*.value; cur = &node.*.*.next; }
+    for .some(node) = cur { last = node.value; cur = &node.next; }
     last
 };
 ",

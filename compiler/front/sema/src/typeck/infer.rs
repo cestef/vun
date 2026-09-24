@@ -177,7 +177,8 @@ impl Typer<'_, '_, '_> {
             }
         }
         let known = known?;
-        let known = Known { ty: known.ty.borrowed().unwrap_or(known.ty), ..known };
+        // `.` looks through borrows, and through owners lacking the member (spec 01, section 4).
+        let known = Known { ty: self.env().reach(known.ty, name).1, ..known };
         let members = self.env().cx.get::<Members>(&known.ty);
         match members.as_deref().map_or(Found::Unknown, |m| m.find(name)) {
             Found::Field(field) => {

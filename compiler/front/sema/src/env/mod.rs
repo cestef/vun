@@ -14,6 +14,9 @@ mod eval;
 mod frame;
 mod path;
 mod primitive;
+mod reach;
+
+pub use reach::Hop;
 
 pub use condition::Selected;
 
