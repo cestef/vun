@@ -131,8 +131,18 @@ model); frames suspend and resume (`frames.rs`).
 `Coverage` (typed expressions, lowered functions, what stops MIR); `cargo xtask {generate,
 corpus, lines}`.
 
-Progress (corpus/accept): 58% of body expressions typed, 73 of 110 functions lowered. Corpus:
-181 passed, 21 pending, 20 shown, 0 failed. 189 tests.
+Progress (corpus/accept): 61% of body expressions typed, 79 of 112 functions lowered. Corpus:
+195 passed, 7 pending, 20 shown, 0 failed. 193 tests, including one that checks every `lang` and
+`std` file cleanly.
+
+Since then (decisions 106 to 113): callbacks generic over `lang.ops.Call` (table `calls`,
+`Env::implemented`, constraint inference); raw pointer primitives, `lang.panic.fail(Reason)`,
+`lang.meta.span`/`align`, `Value::Origin`; `std.ptr`, a real `std.mem.Own`, `std.mem.alloc.Fixed`,
+`expect`; empty types accepted anywhere; spread-selected names evaluate (`Hir::spread_of`);
+function-type markers (`ty/marker.rs`: `Marker`, table `fn_markers` with relations), `unsafe` as
+one marker (`typeck/safety.rs`, `safety.requires_unsafe`), `#[panic.never]` on MIR
+(`passes/panics.rs`), `binding.hole_value` (`check/holes.rs`), `lang.int.abs`/`magnitude`, bit
+operations on `uN` only (`types.no_impl`). `passes/types.rs` types places along projections.
 
 Language surface since the review (decisions 99 to 105): omitted `$` arguments inferred
 (`typeck/omitted.rs`, `TypedBody::inferred`, `types.cannot_infer`, `types.arity`); variant
@@ -145,9 +155,11 @@ Value lookups skip variants (`r.ok()` is the method).
 
 ## 6. Decisions
 
-Decisions 1 to 84, 91, 92 and 98 to 105 are accepted (65 to 84 on the agent's recommendation;
-91, 92 and 98 to 105 with the user's choices or on the review the user accepted). 85 to 90 and 93
-to 97 are proposed: $for in bodies (85), code values (86), quote levels (87), MIR places (88), MIR
+Decisions 1 to 84, 91, 92, 98 to 106, 109 and 111 are accepted (65 to 84 on the agent's
+recommendation; the rest with the user's choices or on the review the user accepted). 85 to 90,
+93 to 97, 107, 108, 110, 112 and 113 are proposed (107: pointer primitives and `std` on them;
+108: empty types accepted anywhere; 110: `lang.hint.unreachable`; 112: `abs`, holes; 113: bit
+operations); $for in bodies (85), code values (86), quote levels (87), MIR places (88), MIR
 patterns and typed annotations (89), linked values and repeats (90), layout (93), place states
 (94), kinds and moves (95), `defer` (96), borrow rules (97). New language rules go to
 `decisions.md` as proposed unless the user approves them.
@@ -167,10 +179,11 @@ patterns and typed annotations (89), linked values and repeats (90), layout (93)
    program types (`Dma`, `Uart`, `System`, `svd`), `std.Dyn`, `std.sync`.
 5. MIR gaps (`cargo xtask corpus` lists them): run-time splices of code, `.{ }` and `.name` in
    plain instantiations of generic bodies, or-patterns that bind, `lang.simd.chunks`.
-6. Sema gaps: operand checks and `types.no_impl` for operators, impl member types against
-   requirements, constrained `$W: Writer`, narrowing by comparisons (decision 35),
-   exhaustiveness (decision 29), `c.span()`, `meta.frozen`, `#[layout.offset]`/`#[layout.c]`,
-   frame layouts, `std.int` `abs` and power-of-two `.wrap`.
+6. Sema gaps: impl member types against requirements, constrained `$W: Writer` (members of
+   `W` limited to the interface's), narrowing by comparisons (decision 35), exhaustiveness
+   (decision 29), `meta.frozen`, `#[layout.offset]`/`#[layout.c]`, frame layouts,
+   `coroutine.recursive_frame`, markers checked beyond `unsafe` and `panic.never` (`abi`,
+   `stack.max`, `target.require` are carried and compared but not checked on bodies).
 7. Evaluator: its own stack (deep chains of compile-time calls overflow the host stack), a
    memory model for `&mut` at compile time.
 8. Persist the front-end queries; packaging: signed caches (decision 63), planned builds,
