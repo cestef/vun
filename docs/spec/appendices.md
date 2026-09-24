@@ -7,7 +7,7 @@ declaration whose value is `_`.
 
 | Module | Contents |
 |--------|----------|
-| `lang` | `type`, `Int`, `Fn`, `f16`, `f32`, `f64`, `bool`, `never`, `Range`, `Option`, `Result`, `Step`, `Coroutine`, `Interface`, `interface` |
+| `lang` | `type`, `Int`, `Fn`, `f16`, `f32`, `f64`, `bool`, `never`, `Range`, `Bounds`, `Option`, `Result`, `Step`, `Coroutine`, `Interface`, `interface` |
 | `lang.ops` | `Add`, `Sub`, `Mul`, `Div`, `Rem`, `Neg`, `BitAnd`, `BitOr`, `BitXor`, `Not`, `Shl`, `Shr`, `Concat`, `Eq`, `Ord`, `Index`, `Call`, `Try`, `Iterate` |
 | `lang.mem` | `Ref`, `RefMut`, `RefOut`, `RefTake`, `Ptr`, `Slice`, `Array`, `len`, `Cell`, `volatile_load`, `volatile_store`, `atomic_*`, `copy`, `fill`, `prefetch` |
 | `lang.meta` | `Code`, `Name`, `quote` primitives, type and declaration info, witnesses, attributes, origins, spans, `embed`, `heap`, `TypeOf` |
@@ -40,7 +40,7 @@ declaration whose value is `_`.
 | `&T`, `&mut T`, `&out T`, `&take T` | `lang.mem.Ref(T)`, `RefMut(T)`, `RefOut(T)`, `RefTake(T)` (the table `borrows`) |
 | `if c`, `for c`, `a and b`, `!c` | `c` has the type `lang.bool` and holds when it is `lang.bool.true` (the table `forms`) |
 | `(A, B) -> R` | `lang.Fn((A, B), R)` with the attributes of the literal |
-| `a..b`, `a..=b` | `lang.Range` values, half-open and closed |
+| `a..b`, `a..=b` | half-open and closed bounds of type `lang.Bounds(T)`, `T` the integers any such range holds (the table `forms`); where a `lang.Range` is expected, the range they denote |
 | `a + b` (each operator) | `lang.ops.Add.add(a, b)`: the interface and function the table `operators` of `lang.syntax.desugar` gives |
 | `a == b`, `a != b` | `lang.ops.Eq.eq(&a, &b)`, `Eq.ne` (provided) |
 | `a < b`, `<=`, `>`, `>=` | `lang.ops.Ord.lt(&a, &b)`, `le`, `gt`, `ge`, provided from `Ord.cmp` |

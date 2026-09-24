@@ -8,6 +8,10 @@ type: type = _;
 /// The integer type whose values are exactly those of the range `r` (spec 04).
 Int: ($r: Range) -> type = _;
 Range: type = _;
+/// The type of `a..b`, `a..=b` and `a..` at run time: bounds whose items are all values of `T`,
+/// so `0..n` with `n: u8` is `Bounds(Int(0..=254))`. Where a `Range` is expected, bounds are
+/// that range.
+Bounds: ($T: type) -> type = _;
 
 /// The type of functions from a tuple of `params` to `result`: `(A, B) -> R` is
 /// `Fn((A, B), R)` (appendix B).

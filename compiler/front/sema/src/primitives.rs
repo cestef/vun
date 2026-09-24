@@ -513,6 +513,10 @@ pub mod lang {
         /// The integer type whose values are exactly those of the range `r` (spec 04).
         Int,
         Range,
+        /// The type of `a..b`, `a..=b` and `a..` at run time: bounds whose items are all values of `T`,
+        /// so `0..n` with `n: u8` is `Bounds(Int(0..=254))`. Where a `Range` is expected, bounds are
+        /// that range.
+        Bounds,
         /// The type of functions from a tuple of `params` to `result`: `(A, B) -> R` is
         /// `Fn((A, B), R)` (appendix B).
         Fn,
@@ -537,6 +541,7 @@ pub mod lang {
             Self::r#type,
             Self::Int,
             Self::Range,
+            Self::Bounds,
             Self::Fn,
             Self::f16,
             Self::f32,
@@ -554,6 +559,7 @@ pub mod lang {
                 Self::r#type => "type",
                 Self::Int => "Int",
                 Self::Range => "Range",
+                Self::Bounds => "Bounds",
                 Self::Fn => "Fn",
                 Self::f16 => "f16",
                 Self::f32 => "f32",
@@ -679,6 +685,7 @@ impl Primitive {
         Self::Lang(lang::Lang::r#type),
         Self::Lang(lang::Lang::Int),
         Self::Lang(lang::Lang::Range),
+        Self::Lang(lang::Lang::Bounds),
         Self::Lang(lang::Lang::Fn),
         Self::Lang(lang::Lang::f16),
         Self::Lang(lang::Lang::f32),

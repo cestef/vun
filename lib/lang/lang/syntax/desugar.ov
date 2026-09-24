@@ -31,8 +31,10 @@ Form := enum {
     condition,
     /// The value of the condition type on which a condition holds.
     truth,
-    /// The values `a..b` and `a..=b`.
+    /// The values `a..b` and `a..=b` at compile time.
     range,
+    /// The type of `a..b` and `a..=b`.
+    bounds,
     /// The type `[n]T`.
     array,
     /// The type `[T]`.
@@ -44,6 +46,7 @@ forms := [
     .{ .form = .condition, .item = "lang.bool" },
     .{ .form = .truth, .item = "lang.bool.true" },
     .{ .form = .range, .item = "lang.Range" },
+    .{ .form = .bounds, .item = "lang.Bounds" },
     .{ .form = .array, .item = "lang.mem.Array" },
     .{ .form = .slice, .item = "lang.mem.Slice" },
 ];

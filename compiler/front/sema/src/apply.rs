@@ -34,9 +34,10 @@ impl Primitive {
             (Self::Mem(Mem::Array), [Value::Int(len), elem]) => {
                 Ok(Value::Type(TyKind::array(len.clone(), elem.as_type().ok_or(Unevaluated::Unsupported)?)))
             }
-            // Borrow, pointer, cell and slice types have no structure beyond their argument.
+            // Bounds, borrow, pointer, cell and slice types have no structure beyond their argument.
             (
-                Self::Mem(
+                Self::Lang(Lang::Bounds)
+                | Self::Mem(
                     Mem::Ref | Mem::RefMut | Mem::RefOut | Mem::RefTake | Mem::Ptr | Mem::Cell | Mem::Slice,
                 ),
                 [arg],

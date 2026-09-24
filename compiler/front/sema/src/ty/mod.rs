@@ -95,6 +95,18 @@ impl TyKind {
         }
     }
 
+    /// The item type of a `lang.Bounds` type: the integers its ranges hold.
+    #[must_use]
+    pub fn bounds(&self) -> Option<Ty> {
+        match self {
+            Self::Primitive(Primitive::Lang(Lang::Bounds), args) => match args.as_slice() {
+                [Value::Type(items)] => Some(*items),
+                _ => None,
+            },
+            _ => None,
+        }
+    }
+
     /// The item type of an array or slice type.
     #[must_use]
     pub fn items(&self) -> Option<Ty> {
@@ -114,11 +126,18 @@ impl TyKind {
     }
 
     /// Whether a value of type `found` is accepted where this type is expected: integers whose
-    /// range lies within (spec 04, rule 2), tuples and arrays whose items are, or the type itself.
+    /// range lies within (spec 04, rule 2), tuples, arrays and bounds whose items are, bounds
+    /// where a `lang.Range` is expected, or the type itself.
     #[must_use]
     pub fn accepts(&self, found: &Self) -> bool {
         if let (Some(expected), Some(found)) = (self.interval(), found.interval()) {
             return expected.contains(&found);
+        }
+        if let Some(found_items) = found.bounds() {
+            return match self.bounds() {
+                Some(items) => items.accepts(&found_items),
+                None => *self == Self::Primitive(Primitive::Lang(Lang::Range), Vec::new()),
+            };
         }
         match (self, found) {
             (Self::Tuple(expected), Self::Tuple(found)) => {
@@ -143,10 +162,19 @@ impl TyKind {
     /// The borrow type constructor and the type borrowed, for a borrow type.
     #[must_use]
     pub fn borrow(&self) -> Option<(Primitive, Ty)> {
+        self.borrowing().map(|(_, p, ty)| (p, ty))
+    }
+
+    /// For a borrow type: the word after `&` that writes it (the table `borrows`), its
+    /// constructor and the type borrowed.
+    #[must_use]
+    pub fn borrowing(&self) -> Option<(&'static str, Primitive, Ty)> {
         let Self::Primitive(p, args) = self else { return None };
         let [Value::Type(ty)] = args.as_slice() else { return None };
-        let borrow = BORROWS.iter().filter_map(|(_, item)| item.rsplit_once(PATH_SEPARATOR));
-        borrow.into_iter().any(|(ns, name)| ns == p.namespace() && name == p.name()).then_some((*p, *ty))
+        BORROWS.iter().find_map(|(mode, item)| {
+            let (ns, name) = item.rsplit_once(PATH_SEPARATOR)?;
+            (ns == p.namespace() && name == p.name()).then_some((*mode, *p, *ty))
+        })
     }
 
     /// The type values of both `self` and `other` have: the hull of two integer ranges, item by

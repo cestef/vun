@@ -20,6 +20,11 @@ exact, so `1 << 64` needs no wider type.
 A literal `5` has type `Int(5..=5)`, and a character literal `'a'` has type `Int(97..=97)`. There is
 no separate compile-time integer type.
 
+A range `a..b`, `a..=b` or `a..` has type `lang.Bounds(T)`, where `T` is the integer type of
+every item such bounds can cover: for `i: u8` and `n: u8`, `i..n` is `Bounds(Int(0..=254))`, so
+`for k in i..n` binds `k: Int(0..=254)`. `lang.Range`, the argument of `Int`, is the set a range
+denotes at compile time; bounds are accepted where a `Range` is expected.
+
 ### Rules
 
 1. **Arithmetic is exact.** `a + b` has the range computed by interval arithmetic on the operand

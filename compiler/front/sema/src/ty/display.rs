@@ -17,7 +17,13 @@ impl fmt::Display for TyKind {
         if let Some(sig) = self.signature() {
             return write!(f, "{} -> {}", Self::Tuple(sig.params), sig.result);
         }
-        // Sequences as written: `[4]u8`, `[u8]`.
+        // Borrows and sequences as written: `&mut T`, `[4]u8`, `[u8]`.
+        if let Some((mode, _, ty)) = self.borrowing() {
+            return match mode {
+                "" => write!(f, "&{ty}"),
+                mode => write!(f, "&{mode} {ty}"),
+            };
+        }
         if let Some((len, elem)) = self.as_array() {
             return write!(f, "[{len}]{elem}");
         }

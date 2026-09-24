@@ -69,6 +69,9 @@ impl Typer<'_, '_, '_> {
                 let known = self.typed(*operand)?;
                 Some(Known { ty: TyKind::int(&known.ty.interval()?.neg()), ..known })
             }
+            ExprKind::Infix { op: op @ (TokenKind::DotDot | TokenKind::DotDotEq), left, right } => {
+                self.range(*op, *left, *right)
+            }
             ExprKind::Infix { op, left, right: Some(right) } => {
                 // The right operand is expected of the left's type: `c == .red`.
                 let left = self.typed(*left);

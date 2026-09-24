@@ -102,6 +102,18 @@ impl Value {
 }
 
 impl Interval {
+    /// Every item of some `a..b`, `a..=b` or `a..` (by `op`) whose bounds lie in `lo` and `hi`:
+    /// the type of the items of `lang.Bounds`. `None` when no such range holds an item.
+    #[must_use]
+    pub fn items(op: TokenKind, lo: &Self, hi: Option<&Self>) -> Option<Self> {
+        let top = match (hi.map(Self::hi), op) {
+            (None | Some(Extended::PosInf), _) => Extended::PosInf,
+            (Some(Extended::Finite(hi)), TokenKind::DotDot) => Extended::Finite(hi - &Integer::from(1)),
+            (Some(hi), _) => hi.clone(),
+        };
+        Self::new(lo.lo().clone(), top)
+    }
+
     /// The range of `self op other` over integers of these ranges (rule 1); `None` for an
     /// operator not typed yet, or a division by a divisor that is always zero.
     #[must_use]

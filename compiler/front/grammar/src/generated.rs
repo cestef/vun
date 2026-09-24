@@ -7,8 +7,10 @@ pub enum Form {
     Condition,
     /// The value of the condition type on which a condition holds.
     Truth,
-    /// The values `a..b` and `a..=b`.
+    /// The values `a..b` and `a..=b` at compile time.
     Range,
+    /// The type of `a..b` and `a..=b`.
+    Bounds,
     /// The type `[n]T`.
     Array,
     /// The type `[T]`.
@@ -1196,6 +1198,7 @@ pub const FORMS: &[(Form, &str)] = &[
     (Form::Condition, "lang.bool"),
     (Form::Truth, "lang.bool.true"),
     (Form::Range, "lang.Range"),
+    (Form::Bounds, "lang.Bounds"),
     (Form::Array, "lang.mem.Array"),
     (Form::Slice, "lang.mem.Slice"),
 ];
