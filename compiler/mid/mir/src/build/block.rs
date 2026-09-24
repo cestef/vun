@@ -26,8 +26,10 @@ impl Builder<'_, '_, '_> {
                 match (&hir.pats[decl.pat].kind, decl.value) {
                     (PatKind::Bind(binder), value) => {
                         // Without a value, the local starts uninitialized.
+                        let ty = value.and_then(|v| self.type_of(v));
                         let value = value.map(|v| self.operand(v)).transpose()?;
                         let local = self.bind(*binder);
+                        self.locals[local].ty = ty;
                         if let Some(value) = value {
                             self.assign(Place::of(local), Rvalue::Use(value), decl.origin);
                         }

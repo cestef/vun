@@ -11,7 +11,7 @@ use overt_sema::member::{Found, Members};
 use overt_sema::ty::{Ty, TyKind};
 
 use super::{Builder, Unbuilt};
-use crate::body::{BlockId, Operand, Rvalue, TerminatorKind};
+use crate::body::{BlockId, Operand, Role, Rvalue, TerminatorKind};
 use crate::place::{Place, Projection};
 
 /// How a pattern's binders hold what they bind.
@@ -43,23 +43,27 @@ impl Matched {
 }
 
 impl Builder<'_, '_, '_> {
-    /// The value of `expr` matched by a test, looking through a borrow.
+    /// The value of `expr` matched by a test: through a borrow, the place borrowed, whose parts
+    /// binders borrow; otherwise the value itself, taken out of its place, since matching by
+    /// value consumes it.
     pub(super) fn scrutinee(&mut self, expr: ExprId) -> Result<Matched, Unbuilt> {
-        let place = self.place(expr)?;
         let ty = self.type_of(expr);
-        Ok(match ty.and_then(|t| t.borrowing()) {
-            Some((mode, _, inner)) => Matched {
-                place: place.project(Projection::Deref),
-                ty: Some(inner),
-                binding: Binding::Borrow((!mode.is_empty()).then(|| Symbol::intern(mode))),
-            },
-            None => Matched { place, ty, binding: Binding::Copy },
-        })
+        if let Some((mode, _, inner)) = ty.and_then(|t| t.borrowing()) {
+            let place = self.place(expr)?.project(Projection::Deref);
+            let binding = Binding::Borrow((!mode.is_empty()).then(|| Symbol::intern(mode)));
+            return Ok(Matched { place, ty: Some(inner), binding });
+        }
+        self.declared(expr)
     }
 
-    /// The value of `expr` matched by a declaration's pattern, which binds copies.
+    /// The value of `expr` matched by a declaration's pattern, taken out of its place.
     pub(super) fn declared(&mut self, expr: ExprId) -> Result<Matched, Unbuilt> {
-        Ok(Matched { place: self.place(expr)?, ty: self.type_of(expr), binding: Binding::Copy })
+        let value = self.operand(expr)?;
+        let origin = self.env.parsed.hir.exprs[expr].origin;
+        let local = self.temp_local(Rvalue::Use(value), origin);
+        self.locals[local].ty = self.type_of(expr);
+        self.locals[local].role = Role::Unpacked;
+        Ok(Matched { place: Place::of(local), ty: self.type_of(expr), binding: Binding::Copy })
     }
 
     /// Tests `matched` against `pat`: on in the current block when it matches, with the binders

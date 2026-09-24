@@ -11,6 +11,7 @@ pub mod eval;
 pub mod fuel;
 pub mod int;
 pub mod item;
+pub mod kinds;
 pub mod layout;
 pub mod member;
 pub mod ops;

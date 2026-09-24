@@ -8,15 +8,25 @@ use crate::Primitive;
 use crate::ty::Value;
 
 impl Env<'_, '_> {
-    /// The attributes written on the declaration whose value is the literal `literal`.
+    /// The attributes of the literal `literal`: written on it (`#[kind.linear] struct { }`) or on
+    /// the declaration whose value it is.
     #[must_use]
     pub fn attrs_of(&self, literal: ExprId) -> Vec<ExprId> {
         let hir = &self.parsed.hir;
-        hir.decls
-            .iter()
-            .find(|(_, d)| d.value == Some(literal))
-            .map(|(_, d)| d.attrs.clone())
-            .unwrap_or_default()
+        let mut attrs = Vec::new();
+        let mut value = literal;
+        for (id, e) in hir.exprs.iter() {
+            if let ExprKind::Attributed { attrs: on, inner } = &e.kind
+                && *inner == literal
+            {
+                attrs.extend(on);
+                value = id;
+            }
+        }
+        if let Some((_, decl)) = hir.decls.iter().find(|(_, d)| d.value == Some(value)) {
+            attrs.extend(&decl.attrs);
+        }
+        attrs
     }
 
     /// The arguments of the attribute `primitive` among `attrs`, evaluated: `#[layout.bits(u32)]`

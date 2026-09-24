@@ -2,8 +2,9 @@
 //! borrow and return is checked against the state its place has on every path to it. Parts
 //! reached by fields and constant indices are tracked on their own; a dynamic index needs the
 //! whole written. A borrow parameter's target starts in the state its mode needs before, and must
-//! reach the state its mode leaves after (the table `borrows`). Kinds, and with them moves and
-//! linear leaks, come later: every value is copied for now.
+//! reach the state its mode leaves after (the table `borrows`). A read of a whole linear value
+//! moves it, leaving its place `uninit`, and a function returns only with every linear place
+//! `uninit` (spec 05, section 1: kinds).
 
 mod states;
 mod transfer;
@@ -14,10 +15,11 @@ use overt_diag::{DiagCtxt, DiagId, Diagnostic, Msg, errors};
 use overt_grammar::BORROWS;
 use overt_index::{Idx, IndexVec};
 use overt_intern::Symbol;
-use overt_mir::{BlockId, Body, Local, Mir, Operand, Rvalue, TerminatorKind};
+use overt_mir::{BlockId, Body, Local, Mir, Operand, Role, Rvalue, TerminatorKind};
 use overt_origin::OriginId;
 use overt_query::{Cx, Query};
 use overt_sema::eval::Instantiation;
+use overt_sema::kinds::{Duplication, Kinds};
 use overt_sema::ty::Value;
 
 use states::{State, States};
@@ -32,7 +34,13 @@ impl Query for PlaceStates {
 
     fn compute(cx: &Cx<'_>, i: &Instantiation) -> Self::Value {
         let body = cx.get::<Mir>(i).ok()?;
-        Some(Analysis::new(&body).run())
+        let linear = body
+            .locals
+            .iter()
+            .filter(|(_, d)| d.ty.is_some_and(|t| cx.get::<Kinds>(&t) == Duplication::Linear));
+        let linear = linear.filter(|(_, d)| d.role == Role::Held).map(|(local, _)| local);
+        let linear = linear.filter(|&l| l != body.ret).collect();
+        Some(Analysis::new(&body, linear).run())
     }
 }
 
@@ -42,6 +50,8 @@ struct Analysis<'b> {
     targets: BTreeMap<Local, (State, State)>,
     /// The locals assigned once, a constant integer: the indices a part can be named by.
     constants: BTreeMap<Local, i128>,
+    /// The locals holding linear values, which a read moves and a return must find `uninit`.
+    linear: BTreeSet<Local>,
     diag: DiagCtxt,
     reported: BTreeSet<(DiagId, OriginId)>,
     /// Whether transfers report what they find: only once the states are fixed.
@@ -49,7 +59,7 @@ struct Analysis<'b> {
 }
 
 impl<'b> Analysis<'b> {
-    fn new(body: &'b Body) -> Self {
+    fn new(body: &'b Body, linear: BTreeSet<Local>) -> Self {
         let targets = body
             .params
             .iter()
@@ -63,6 +73,7 @@ impl<'b> Analysis<'b> {
             body,
             targets,
             constants: Self::constants(body),
+            linear,
             diag: DiagCtxt::new(),
             reported: BTreeSet::new(),
             reporting: false,
@@ -149,8 +160,18 @@ impl<'b> Analysis<'b> {
         }
     }
 
-    /// At a return, each borrow parameter's target that its mode leaves `init` must be.
+    /// At a return, each borrow parameter's target that its mode leaves `init` must be, and
+    /// every linear place must be `uninit`: nothing is closed implicitly.
     fn returns(&mut self, states: &States, origin: OriginId) {
+        let leaked: Vec<Local> =
+            self.linear.iter().copied().filter(|&l| states.locals[l] != State::Uninit).collect();
+        for local in leaked {
+            let what = self.body.locals[local]
+                .name
+                .map_or_else(|| Msg::new().text("a linear value"), |n| Msg::new().code(n.as_str()));
+            let msg = what.text(" is still held here, and linear values must be consumed before returning");
+            self.report(errors::PLACE_LINEAR_LEAK, origin, msg);
+        }
         let unwritten: Vec<Local> = self
             .targets
             .iter()

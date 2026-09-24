@@ -20,3 +20,23 @@ partly := (flag: bool, h: &out u8) { if flag { h.* = 1; } };
     let ids: Vec<_> = fixture.reported(&file).into_iter().map(|(id, _)| id).collect();
     assert_eq!(ids, [errors::PLACE_READ_UNINIT, errors::PLACE_AMBIGUOUS_JOIN, errors::PLACE_OUT_UNWRITTEN]);
 }
+
+#[test]
+fn linear_values_move_and_must_be_consumed() {
+    let fixture = Fixture::new("places-linear");
+    let file = fixture.root.write(
+        "linear.ov",
+        "\
+File := #[kind.linear] struct { fd: u32 };
+open := () -> File { .{ .fd = 3 } };
+close := (f: File) { .{ .fd = _ } := f; };
+size := (f: &File) -> u32 { f.fd };
+twice := () { f := open(); close(f); close(f); };
+leak := () -> u32 { f := open(); size(&f) };
+field := () -> u32 { f := open(); n := f.fd; close(f); n };
+dropped := () { open(); };
+",
+    );
+    let ids: Vec<_> = fixture.reported(&file).into_iter().map(|(id, _)| id).collect();
+    assert_eq!(ids, [errors::PLACE_READ_UNINIT, errors::PLACE_LINEAR_LEAK, errors::PLACE_LINEAR_LEAK]);
+}

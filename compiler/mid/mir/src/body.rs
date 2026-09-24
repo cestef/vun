@@ -39,9 +39,19 @@ impl Body {
 pub struct LocalDecl {
     /// `None` for a temporary.
     pub name: Option<Symbol>,
-    /// Its type, where known: for now, a parameter's.
+    /// Its type, where known.
     pub ty: Option<Ty>,
+    pub role: Role,
     pub origin: OriginId,
+}
+
+/// What a local holds for the checks.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum Role {
+    /// A value, which is consumed as a whole.
+    Held,
+    /// A value a pattern takes apart: its parts, bound or dropped, carry what it held.
+    Unpacked,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]

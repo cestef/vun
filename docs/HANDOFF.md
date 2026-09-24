@@ -340,9 +340,16 @@ In order:
      `borrows` gained `before`/`after` (`PlaceState` in `desugar.ov`), `LocalDecl::ty` (set for
      parameters), reads of named locals are statements at the reading expression, the driver
      stage `places` (`Session::check_places`), `stages::Input` and `Session::unlowered` (the
-     corpus keeps MIR-stage reports pending in bodies not lowered). Next: kinds (spec 05,
-     section 1: copy/linear from `#[kind.linear]` and structure), moves leaving linear places
-     `uninit`, `place.linear_leak` at scope exits, then `defer` lowered per exit.
+     corpus keeps MIR-stage reports pending in bodies not lowered).
+   - Decision 95, kinds and moves: `sema/src/kinds.rs` (`Kinds`, `Duplication`), `Env::attrs_of`
+     reads attributes on attributed literals too, MIR temporaries and bound locals carry their
+     types (`Builder::operand` wraps `value`), `mir::Role` (`Unpacked` for values a pattern takes
+     apart), `Builder::receiver` borrows receivers per the method's first parameter, final
+     returns point at the body's tail. Next: `defer` (lower per exit, then drop the deferred
+     statements on exits where their linear operand is `uninit`; ambiguous is an error),
+     `fixed` and `scoped` kinds, scope exits inside a body (leaks are found at the return),
+     corpus stand-ins (`Fs.open`, a linear `File`) so `linear_leak.ov` and `use_after_move.ov`
+     lower.
    - `types.no_member` on values stays off: turning it on (tried) reports members the corpus
      stand-ins lack. Needed first: stand-in methods for `Timer`, `Serial`, `Led`, `Dma`, `Fs`,
      `Alloc`, `Device`, `System`, `Cache`, `Queue`, `Packet`, `Uart` in `corpus/support`,

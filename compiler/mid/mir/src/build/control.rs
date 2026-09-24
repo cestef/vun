@@ -6,7 +6,7 @@ use overt_hir::tree::{BlockId as HirBlock, Cond, ExprId};
 use overt_origin::OriginId;
 
 use super::{Builder, Unbuilt};
-use crate::body::{Block, BlockId, Local, LocalDecl, Operand, Rvalue, Terminator, TerminatorKind};
+use crate::body::{Block, BlockId, Local, LocalDecl, Operand, Role, Rvalue, Terminator, TerminatorKind};
 use crate::place::Place;
 
 impl Builder<'_, '_, '_> {
@@ -23,7 +23,7 @@ impl Builder<'_, '_, '_> {
 
     /// A new local for the value of the expression at `origin`.
     pub(super) fn result(&mut self, origin: OriginId) -> Local {
-        self.locals.push(LocalDecl { name: None, ty: None, origin })
+        self.locals.push(LocalDecl { name: None, ty: None, role: Role::Held, origin })
     }
 
     /// `if cond { then } else { otherwise }`; without `else`, the value is `()`.

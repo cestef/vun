@@ -7,7 +7,8 @@ pub mod text;
 pub mod verify;
 
 pub use body::{
-    Aggregate, Block, BlockId, Body, Local, LocalDecl, Operand, Rvalue, Stmt, Terminator, TerminatorKind,
+    Aggregate, Block, BlockId, Body, Local, LocalDecl, Operand, Role, Rvalue, Stmt, Terminator,
+    TerminatorKind,
 };
 pub use build::{Mir, Unbuilt};
 pub use place::{Place, Projection};

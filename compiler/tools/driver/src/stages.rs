@@ -55,11 +55,7 @@ pub const STAGES: &[Stage] = &[
         ],
         input: Input::Source,
     },
-    Stage {
-        name: "places",
-        reports: &[errors::PLACE_READ_UNINIT, errors::PLACE_AMBIGUOUS_JOIN, errors::PLACE_OUT_UNWRITTEN],
-        input: Input::Mir,
-    },
+    Stage { name: "places", reports: &[errors::PLACE], input: Input::Mir },
 ];
 
 impl Stage {

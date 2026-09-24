@@ -31,7 +31,7 @@ use overt_sema::ty::Value;
 use overt_sema::typeck::{Step, Typed, TypedBody};
 
 use crate::body::{
-    Block, BlockId, Body, Local, LocalDecl, Operand, Rvalue, Stmt, Terminator, TerminatorKind,
+    Block, BlockId, Body, Local, LocalDecl, Operand, Role, Rvalue, Stmt, Terminator, TerminatorKind,
 };
 use crate::place::Place;
 
@@ -91,7 +91,7 @@ impl<'a, 'db> Builder<'_, 'a, 'db> {
             return Err(Unbuilt { at: origin });
         };
         let mut locals = IndexVec::new();
-        let ret = locals.push(LocalDecl { name: None, ty: None, origin });
+        let ret = locals.push(LocalDecl { name: None, ty: None, role: Role::Held, origin });
         let mut b = Builder {
             env,
             locals,
@@ -117,8 +117,10 @@ impl<'a, 'db> Builder<'_, 'a, 'db> {
             args.push(local);
         }
         let result = b.block(*body)?;
-        b.assign(Place::of(ret), Rvalue::Use(result), origin);
-        b.blocks[b.current].term = Terminator { kind: TerminatorKind::Return, origin };
+        // The body ends where its value is written, or at the body.
+        let end = hir.blocks[*body].tail.map_or(hir.blocks[*body].origin, |t| hir.exprs[t].origin);
+        b.assign(Place::of(ret), Rvalue::Use(result), end);
+        b.blocks[b.current].term = Terminator { kind: TerminatorKind::Return, origin: end };
         Ok(Body { locals: b.locals, params: args, ret, blocks: b.blocks, origin })
     }
 
@@ -154,7 +156,8 @@ impl<'a, 'db> Builder<'_, 'a, 'db> {
     /// A local for `binder`, which names in the body read from now on.
     fn bind(&mut self, binder: BinderId) -> Local {
         let b = &self.env.parsed.hir.binders[binder];
-        let local = self.locals.push(LocalDecl { name: Some(b.name), ty: None, origin: b.origin });
+        let local =
+            self.locals.push(LocalDecl { name: Some(b.name), ty: None, role: Role::Held, origin: b.origin });
         self.bound.insert(binder, local);
         local
     }
@@ -170,21 +173,37 @@ impl<'a, 'db> Builder<'_, 'a, 'db> {
 
     /// A new temporary local holding `value`.
     fn temp_local(&mut self, value: Rvalue, origin: OriginId) -> Local {
-        let local = self.locals.push(LocalDecl { name: None, ty: None, origin });
+        let local = self.locals.push(LocalDecl { name: None, ty: None, role: Role::Held, origin });
         self.assign(Place::of(local), value, origin);
         local
     }
 
+    /// The value of `expr`; a temporary holding it has its type, so that checks know its kind.
     fn operand(&mut self, expr: ExprId) -> Result<Operand, Unbuilt> {
+        let operand = self.value(expr)?;
+        if let Operand::Place(Place { local, projection }) = &operand
+            && projection.is_empty()
+            && self.locals[*local].ty.is_none()
+            && self.locals[*local].name.is_none()
+        {
+            self.locals[*local].ty = self.type_of(expr);
+        }
+        Ok(operand)
+    }
+
+    fn value(&mut self, expr: ExprId) -> Result<Operand, Unbuilt> {
         let hir = &self.env.parsed.hir;
         let origin = hir.exprs[expr].origin;
         let unbuilt = Unbuilt { at: origin };
         match &hir.exprs[expr].kind {
             ExprKind::Lit(Lit::Int(n)) => Ok(Operand::Const(Value::Int(Integer::from(*n)))),
             ExprKind::Name(_) => match self.env.parsed.resolution.names[expr] {
-                // A read of a local is a statement where it is written, which checks point at.
+                // A read of a local is a statement where it is written, which checks point at; a
+                // read of a linear value moves it, so the temporary has the value's type.
                 Some(Res::Binder(b)) if self.bound.contains_key(&b) => {
-                    Ok(self.temp(Rvalue::Use(Operand::Place(self.binder_place(b))), origin))
+                    let read = self.temp_local(Rvalue::Use(Operand::Place(self.binder_place(b))), origin);
+                    self.locals[read].ty = self.type_of(expr);
+                    Ok(Operand::Place(Place::of(read)))
                 }
                 // A `$` parameter of an enclosing function, bound by the call running the body.
                 // A `$for` binder, or one bound by the instantiation, is a constant.

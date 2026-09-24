@@ -46,9 +46,13 @@ impl Analysis<'_> {
         }
     }
 
-    pub(super) fn operand(&mut self, operand: &Operand, states: &States, origin: OriginId) {
+    /// A use of `operand`: a read, which moves a whole linear value out of its place.
+    pub(super) fn operand(&mut self, operand: &Operand, states: &mut States, origin: OriginId) {
         if let Operand::Place(place) = operand {
             self.read(place, states, origin);
+            if place.projection.is_empty() && self.linear.contains(&place.local) {
+                states.locals[place.local] = State::Uninit;
+            }
         }
     }
 

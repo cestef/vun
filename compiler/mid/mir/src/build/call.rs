@@ -3,7 +3,9 @@
 //! (spec 03, section 4).
 
 use overt_hir::tree::{Arg, Entry, ExprId, ExprKind};
+use overt_intern::Symbol;
 use overt_origin::OriginId;
+use overt_sema::env::Env;
 use overt_sema::member::MemberValue;
 use overt_sema::ty::Value;
 
@@ -20,7 +22,10 @@ impl Builder<'_, '_, '_> {
         let unbuilt = Unbuilt { at: origin };
         // `a.f(b)` is `T.f(a, b)`, `f` the method the typer found (spec 01, section 4).
         let (callee, mut values) = match self.method(callee)? {
-            Some((f, receiver)) => (f, vec![self.operand(receiver)?]),
+            Some((f, receiver)) => {
+                let receiver = self.receiver(&f, receiver)?;
+                (f, vec![receiver])
+            }
             None => (self.operand(callee)?, Vec::new()),
         };
         // A `Code(T)` parameter receives its argument as code.
@@ -51,5 +56,25 @@ impl Builder<'_, '_, '_> {
         let Some(method) = typed.methods.get(&callee) else { return Ok(None) };
         let f = self.env.cx.get::<MemberValue>(method).map_err(|_| unbuilt)?;
         Ok(Some((Operand::Const(f), object)))
+    }
+
+    /// The receiver `a` of `a.f(b)`, passed as `f`'s first parameter asks: a borrow of `a` in
+    /// that parameter's mode, or `a` itself (spec 01, section 4).
+    fn receiver(&mut self, f: &Operand, receiver: ExprId) -> Result<Operand, Unbuilt> {
+        let first = match f {
+            Operand::Const(Value::Fn(func)) => Env::inside(self.env.cx, func, [])
+                .and_then(|env| env.literal_signature(func.literal.expr.id, &[]).ok())
+                .and_then(|s| s.params.first().copied()),
+            _ => None,
+        };
+        match first.and_then(|t| t.borrowing()) {
+            Some((mode, ..)) => {
+                let origin = self.env.parsed.hir.exprs[receiver].origin;
+                let place = self.place(receiver)?;
+                let mode = (!mode.is_empty()).then(|| Symbol::intern(mode));
+                Ok(self.temp(Rvalue::Ref { mode, place }, origin))
+            }
+            None => self.operand(receiver),
+        }
     }
 }
