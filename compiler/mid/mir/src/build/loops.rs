@@ -3,7 +3,7 @@
 //! back to the head, and `return v` leaves the function. Code after them is unreachable, lowered
 //! into a fresh block nothing enters.
 
-use vun_grammar::ITERATION;
+use vun_desugar::ITERATION;
 use vun_hir::tree::{BlockId as HirBlock, ExprId, ForHead};
 use vun_intern::Symbol;
 use vun_origin::OriginId;

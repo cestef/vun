@@ -16,6 +16,7 @@ vun-diag.workspace = true
 vun-sema.workspace = true
 vun-hir.workspace = true
 vun-grammar.workspace = true
+vun-desugar.workspace = true
 vun-index.workspace = true
 vun-query.workspace = true
 vun-span.workspace = true

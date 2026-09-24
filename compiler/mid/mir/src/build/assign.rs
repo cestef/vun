@@ -2,7 +2,8 @@
 //! of `x` by the narrowing the table `compound` gives (appendix B, spec 04 rule 9), the type
 //! read from the typed body.
 
-use vun_grammar::{COMPOUND, TokenKind};
+use vun_desugar::COMPOUND;
+use vun_grammar::TokenKind;
 use vun_hir::tree::ExprId;
 use vun_origin::OriginId;
 

@@ -2,7 +2,7 @@
 //! impls (spec 01, section 4), and an argument for a `Code(T)` parameter is passed as code
 //! (spec 03, section 4).
 
-use vun_grammar::ITERATION;
+use vun_desugar::ITERATION;
 use vun_hir::tree::{Arg, Entry, ExprId, ExprKind, Name};
 use vun_intern::Symbol;
 use vun_origin::OriginId;

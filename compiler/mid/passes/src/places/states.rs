@@ -3,7 +3,7 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use vun_grammar::PlaceState;
+use vun_desugar::PlaceState;
 use vun_index::IndexVec;
 use vun_intern::Symbol;
 use vun_mir::Local;

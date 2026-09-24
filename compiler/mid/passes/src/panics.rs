@@ -3,8 +3,9 @@
 //! here: a division by a value that may be 0, a narrowing that may not fit (`Narrowing::To`), and
 //! an index not proven within an array; a call of a function without the promise may trap too.
 
+use vun_desugar::Narrowing;
 use vun_diag::{DiagCtxt, Diagnostic, Msg, errors};
-use vun_grammar::{Narrowing, TokenKind};
+use vun_grammar::TokenKind;
 use vun_mir::{Body, Mir, Operand, Place, Projection, Rvalue};
 use vun_origin::OriginId;
 use vun_query::{Cx, Query};

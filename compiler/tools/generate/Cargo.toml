@@ -1,0 +1,27 @@
+[package]
+name = "vun-generate"
+description = "Rust sources generated from Vun sources: grammar, tables, diagnostic ids, primitives, item handles."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+# Only what reading `.vun` data needs: never a crate that consumes generated tables, so that no
+# generated change can keep the generator from building (decision 132).
+[dependencies]
+vun-build.workspace = true
+vun-command.workspace = true
+vun-diag.workspace = true
+vun-fs.workspace = true
+vun-origin.workspace = true
+vun-render-short.workspace = true
+vun-span.workspace = true
+vun-syntax.workspace = true
+vun-harness.workspace = true
+proc-macro2.workspace = true
+quote.workspace = true
+syn.workspace = true
+prettyplease.workspace = true

@@ -47,20 +47,31 @@ corpus/accept, corpus/reject      programs; reject files carry `//~ id` annotati
 corpus/support                    stand-ins for what programs take from drivers and missing std
 compiler/<stage>/<crate>          base < front < mid < low < back, link, render < tools
 fuzz/                             cargo-fuzz targets `lex`, `parse` (outside the workspace)
+whitepaper/                       Typst paper: `main.typ`, `template.typ`, `sections/NN-*.typ`,
+                                  `figures.typ` (cetz diagrams, lilaq plots), `refs.yml`,
+                                  `vun.sublime-syntax` + `vun.tmTheme` (code), `term.sublime-syntax`
+                                  + `term.tmTheme` (```term blocks: `$` commands, diagnostics as
+                                  annotate-snippets prints them, IR dumps)
 ```
 
-Generated directories (never edit; edit the `.vun` source and run `cargo xtask generate`):
-`compiler/front/grammar/src/generated/` (a module per enum and table, node slots in
-`node_field`, `node_slot`, `node_kind_slots`), `compiler/base/diag/src/errors/` (a module per
-group, `all`), `compiler/front/sema/src/primitives/` (a module per `lang` namespace,
-`primitive`). Generators emit `generate::Module`s (`Access::{Glob, Path, Impl}`);
+The whitepaper states the implementation's numbers (corpus, tests, lines per stage, diagnostic
+ids) and quotes real `vun` output in ```term blocks; refresh them when they change.
+
+Generated directories (never edit; edit the `.vun` source and run `cargo gen`, the generator
+`vun-generate`, built apart from the compiler): `compiler/front/grammar/src/generated/` (kinds and
+parse tables of `grammar.vun`, node slots in `node_field`, `node_slot`, `node_kind_slots`),
+`compiler/front/desugar/src/generated/` (the tables of `desugar.vun`, their `item` and `interface`
+columns as handles), `compiler/base/diag/src/errors/` (a module per group, `all`),
+`compiler/front/sema/src/primitives/` (a module per `lang` namespace, `primitive`, each with its
+`item()`), `compiler/base/items/src/{lang,std}/` (a handle per public declaration and namespace:
+Rust names a `lang` or `std` declaration only through `vun_items`). Generators emit `generate::Module`s (`Access::{Glob, Path, Impl}`);
 `Generator::changes` compares whole directories and removes stale files; generated files obey the
 300-line limit.
 
 ## 4. Commands
 
 ```sh
-cargo fmt && cargo clippy --all-targets && cargo nextest run && cargo xtask generate --check && cargo xtask lines
+cargo fmt && cargo clippy --all-targets && cargo nextest run && cargo gen --check && cargo xtask lines
 cargo xtask corpus            # verdicts, then coverage and what stops MIR most
 cargo run -q -p vun-cli -- check|dump tokens|cst|hir|mir <file>
 VUN_BLESS=1 cargo nextest run -p vun-syntax    # snapshots, only after reading the diff
@@ -142,7 +153,7 @@ values; `&mut` and writes through `.*` are refused (no memory model); frames sus
 `End` of a finished frame is nothing, of a suspended one unsupported.
 
 **Driver and tools**: `Session::check` runs names, types, places, borrows, panics;
-`stages::STAGES`; `Coverage`; `cargo xtask {generate, corpus, lines}`.
+`stages::STAGES`; `Coverage`; `cargo gen`, `cargo xtask {corpus, lines}`.
 
 **Libraries**: `lang` (primitives: `lang.mem` borrows `Ref`..`RefStatic`, pointers, `Cell`,
 `cell`, `cell_pointer`, `atomic_*` with `Ordering`, `items_pointer`; `lang.diag.error`;
@@ -207,10 +218,13 @@ rules go to `decisions.md` as proposed unless the user approves them.
 - Crates bake in `env!("CARGO_MANIFEST_DIR")` (`vun_harness::repo_root`), and cargo does not
   rebuild them when the repository moves: run `cargo clean` after a move. The target directory is
   the repository's own `target/`.
-- `cargo xtask generate` is built from the crates it regenerates: when a change breaks the
-  generated code or a caller of a changed table shape, make callers tolerant first (tuple
-  patterns with `..`), or hand-patch the generated files to the new shape, build, regenerate. A
-  new diagnostic id used by the driver needs a temporary existing id first.
+- `cargo gen` never depends on what it generates for others (decision 132): change a table or a
+  declaration, run it, then fix the consumers the compiler points at. The session that runs it
+  must use the repository's `target/`: a `CARGO_TARGET_DIR` inherited from an older environment
+  builds elsewhere.
+- Generated code is built with `vun_syntax::make` (`File`, `Item`, `Expr`) and printed by one
+  writer; never format Vun source as text. Declarations of `lang` and `std` are named by their
+  `vun_items` handles, never by strings.
 - `cargo fmt` rewraps code: an edit script matching old text can silently miss afterwards; check
   that replacements applied (assert in the script).
 - Python heredocs with Rust escapes are fragile; prefer the Edit tool for backslashes. A script

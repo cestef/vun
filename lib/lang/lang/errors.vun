@@ -1,4 +1,4 @@
-//! Every compiler diagnostic, grouped by area. `cargo xtask generate` derives the ids of
+//! Every compiler diagnostic, grouped by area. `cargo gen` derives the ids of
 //! `vun-diag` from this file. Each entry's explanation page lives next to it under `errors/`.
 
 /// Tokens and syntax trees (spec 01).
@@ -136,6 +136,13 @@ package := struct {
     unnamed := diag.Diag{ .explanation = meta.embed("errors/package/unnamed.md") };
     version_conflict := diag.Diag{ .explanation = meta.embed("errors/package/version_conflict.md") };
     stale_lock := diag.Diag{ .explanation = meta.embed("errors/package/stale_lock.md") };
+};
+
+/// The toolchain's tools and the native libraries they load (decision 131).
+tool := struct {
+    missing_library := diag.Diag{ .explanation = meta.embed("errors/tool/missing_library.md") };
+    bind_failed := diag.Diag{ .explanation = meta.embed("errors/tool/bind_failed.md") };
+    bind_skipped := diag.Diag{ .explanation = meta.embed("errors/tool/bind_skipped.md") };
 };
 
 /// Reading and writing files.

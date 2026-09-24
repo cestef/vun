@@ -4,7 +4,8 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use vun_grammar::{Form, TYPE_PREFIXES, TokenKind};
+use vun_desugar::{Form, TYPE_PREFIXES};
+use vun_grammar::TokenKind;
 use vun_hir::resolve::Res;
 
 use vun_hir::tree::{BinderId, Entry, ExprId, ExprKind, Hir, Param, PatKind};
@@ -183,7 +184,7 @@ impl Unifier<'_, '_, '_> {
             }
             ExprKind::Prefix { op, operand, .. } => {
                 if let Some((_, item)) = TYPE_PREFIXES.iter().find(|(t, _)| t == op)
-                    && let Ok(constructor) = env.item(item)
+                    && let Ok(constructor) = env.item(*item)
                 {
                     self.parts(&constructor, ty, &[*operand]);
                 }

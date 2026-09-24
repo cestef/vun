@@ -24,7 +24,7 @@ corpus/        programs that must compile, and programs that must be rejected
 cargo build                 # the toolchain
 cargo nextest run           # tests
 cargo run -p vun-cli      # the `vun` command
-cargo xtask generate        # regenerate Rust tables from grammar.vun and errors.vun
+cargo gen                   # regenerate Rust from grammar, desugar, errors and lang, std
 cargo xtask corpus          # corpus verdicts: pass, pending, fail
 cargo xtask lines           # no source file past 300 lines
 cargo run -q -p vun-cli -- dump cst corpus/accept/integers/ring_buffer.vun

@@ -39,8 +39,8 @@ const UNICODE_ESCAPE_DIGITS: usize = 6;
 const RADIX_PREFIXES: [(char, u32); 3] = [('x', 16), ('o', 8), ('b', 2)];
 
 const COMMENT: &str = "//";
-const DOC_COMMENT: &str = "///";
-const MODULE_DOC_COMMENT: &str = "//!";
+pub(crate) const DOC_COMMENT: &str = "///";
+pub(crate) const MODULE_DOC_COMMENT: &str = "//!";
 const RAW_STRING_LINE: &str = "\\\\";
 /// Takes the next word or string literally.
 pub(crate) const ESCAPE: char = '\\';

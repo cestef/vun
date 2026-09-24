@@ -1,7 +1,7 @@
 //! Borrow types (appendix B, the table `borrows`): `&T` and the other modes, each a `lang.mem`
 //! constructor named by the words after `&`, with the transition, access and extent its row gives.
 
-use vun_grammar::{BORROWS, Extent, PATH_SEPARATOR};
+use vun_desugar::{BORROWS, Extent};
 
 use super::{Ty, TyKind, Value};
 use crate::Primitive;
@@ -56,16 +56,15 @@ impl TyKind {
         let (_, item, ..) = BORROWS.iter().find(|&&(.., extent)| extent == Extent::Static)?;
         let byte = Self::int(&Interval::closed(Integer::from(0), Integer::from(i128::from(u8::MAX)))?);
         let bytes = Self::array(Integer::from(i128::try_from(len).ok()?), byte);
-        Some(Self::Primitive(Primitive::at(item)?, vec![Value::Type(bytes)]).intern())
+        Some(Self::Primitive(Primitive::at(*item)?, vec![Value::Type(bytes)]).intern())
     }
 }
 
 impl Primitive {
-    /// The primitive at the path `item`, as tables name them: `lang.mem.Ref`.
+    /// The primitive `item` is, as tables name them: `lang.mem.Ref`.
     #[must_use]
-    pub fn at(item: &str) -> Option<Self> {
-        let (ns, name) = item.rsplit_once(PATH_SEPARATOR)?;
-        Self::ALL.iter().copied().find(|p| p.namespace() == ns && p.name() == name)
+    pub fn at(item: vun_items::Item) -> Option<Self> {
+        Self::ALL.iter().copied().find(|p| p.item() == item)
     }
 
     /// The words after `&` that write this borrow type constructor (the table `borrows`).

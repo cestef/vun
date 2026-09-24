@@ -104,7 +104,7 @@ impl fmt::Display for Value {
             Self::Variant { name, .. } | Self::Name(name) => write!(f, ".{name}"),
             Self::Constructor { ty, name } => write!(f, "{ty}.{name}"),
             Self::Struct { ty, .. } => write!(f, "{ty}{{ .. }}"),
-            Self::Primitive(p) => write!(f, "{}.{}", p.namespace(), p.name()),
+            Self::Primitive(p) => write!(f, "{}", p.item()),
             Self::Namespace(ns) => {
                 let names: Vec<_> = ns.path.iter().map(|n| n.as_str()).collect();
                 f.write_str(&names.join("."))

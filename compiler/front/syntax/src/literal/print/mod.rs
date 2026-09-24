@@ -37,7 +37,7 @@ impl std::error::Error for Unwritable {}
 /// The width lines are kept within, and the indentation of each nesting level, until `vun fmt`
 /// owns the layout.
 pub const WIDTH: usize = 100;
-pub(super) const INDENT: &str = "    ";
+pub(crate) const INDENT: &str = "    ";
 
 mod layout;
 
@@ -66,34 +66,34 @@ impl Literal<'_> {
 
 /// Vun source being written.
 #[derive(Default)]
-pub(super) struct Writer {
-    pub(super) out: String,
+pub(crate) struct Writer {
+    pub(crate) out: String,
 }
 
 impl Writer {
     /// How punctuation of `kind` is spelled.
-    pub(super) fn spelling(kind: TokenKind) -> &'static str {
+    pub(crate) fn spelling(kind: TokenKind) -> &'static str {
         kind.text().expect("punctuation has a spelling")
     }
 
-    pub(super) fn token(&mut self, kind: TokenKind) -> &mut Self {
+    pub(crate) fn token(&mut self, kind: TokenKind) -> &mut Self {
         self.out.push_str(Self::spelling(kind));
         self
     }
 
-    pub(super) fn text(&mut self, text: &str) -> &mut Self {
+    pub(crate) fn text(&mut self, text: &str) -> &mut Self {
         self.out.push_str(text);
         self
     }
 
     /// A line break, then `indent`.
-    pub(super) fn line(&mut self, indent: &str) -> &mut Self {
+    pub(crate) fn line(&mut self, indent: &str) -> &mut Self {
         self.out.push('\n');
         self.text(indent)
     }
 
     /// `name`, escaped when it is a keyword.
-    fn binder(&mut self, name: &str) -> Result<&mut Self, Unwritable> {
+    pub(crate) fn binder(&mut self, name: &str) -> Result<&mut Self, Unwritable> {
         if !is_ident(name) {
             return Err(Unwritable::Name);
         }
@@ -113,7 +113,7 @@ impl Writer {
         Ok(self.name(name)?.text(" ").token(TokenKind::Eq).text(" "))
     }
 
-    fn value(&mut self, value: &Literal<'_>) -> Result<(), Unwritable> {
+    pub(crate) fn value(&mut self, value: &Literal<'_>) -> Result<(), Unwritable> {
         match value {
             Literal::Name(name) => self.name(name).map(drop),
             Literal::Tagged(tag, payload) => {
@@ -152,7 +152,7 @@ impl Writer {
     }
 
     /// `a.b.c`
-    fn path(&mut self, path: &[&str]) -> Result<&mut Self, Unwritable> {
+    pub(crate) fn path(&mut self, path: &[&str]) -> Result<&mut Self, Unwritable> {
         for (i, name) in path.iter().enumerate() {
             if i > 0 {
                 self.token(TokenKind::Dot);
@@ -185,7 +185,7 @@ impl Writer {
     }
 
     /// `a, b`
-    fn items<T>(
+    pub(crate) fn items<T>(
         &mut self,
         items: &[T],
         item: impl Fn(&mut Self, &T) -> Result<(), Unwritable>,
@@ -200,7 +200,7 @@ impl Writer {
     }
 
     /// A quoted string whose escapes read back as `text`.
-    fn string(&mut self, text: &str) {
+    pub(crate) fn string(&mut self, text: &str) {
         const QUOTE: char = '"';
         self.out.push(QUOTE);
         for c in text.chars() {

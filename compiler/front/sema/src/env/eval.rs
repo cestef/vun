@@ -2,7 +2,8 @@
 
 use std::sync::Arc;
 
-use vun_grammar::{BORROWS, Form, MARKERS, TYPE_PREFIXES, TokenKind};
+use vun_desugar::{BORROWS, Form, MARKERS, TYPE_PREFIXES};
+use vun_grammar::TokenKind;
 use vun_hir::tree::{Arg, BlockId, Cond, Entry, ExprId, ExprKind, List, Lit, Name, Param};
 use vun_intern::Symbol;
 use vun_origin::OriginTable;
@@ -45,7 +46,7 @@ impl Env<'_, '_> {
                 if let Some((_, item)) = TYPE_PREFIXES.iter().find(|(t, _)| t == op) =>
             {
                 let ty = self.ty(*operand)?;
-                self.apply(self.item(item)?, vec![Value::Type(ty)])
+                self.apply(self.item(*item)?, vec![Value::Type(ty)])
             }
             ExprKind::Prefix { op, operand, .. } if MARKERS.iter().any(|(t, _)| t == op) => {
                 self.marked(*op, *operand)
@@ -222,7 +223,7 @@ impl Env<'_, '_> {
         let (_, item, ..) = BORROWS.iter().find(|(m, ..)| *m == word).ok_or(Unevaluated::Unsupported)?;
         let value = self.eval_as(operand, self.type_of(expr).and_then(|t| t.pointee()))?;
         match value.as_type() {
-            Some(ty) => self.apply(self.item(item)?, vec![Value::Type(ty)]),
+            Some(ty) => self.apply(self.item(*item)?, vec![Value::Type(ty)]),
             // A shared borrow of a compile-time value reads the value, which never changes.
             None if word.is_empty() => Ok(value),
             None => Err(Unevaluated::Runtime),

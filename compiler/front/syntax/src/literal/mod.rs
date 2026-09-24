@@ -20,12 +20,13 @@ use vun_span::Span;
 
 use crate::cst::Cst;
 use crate::tokens::Tokens;
+pub(crate) use print::{INDENT, Writer};
 pub use print::{Unwritable, WIDTH};
 use read::Reader;
 pub use read::integer;
 
 /// Starts a doc comment line, with the space after it.
-const DOC: &str = "/// ";
+pub(crate) const DOC: &str = "/// ";
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Literal<'s> {

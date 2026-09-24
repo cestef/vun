@@ -1,7 +1,8 @@
 //! Ranges (appendix B): `a..b`, `a..=b` and `a..` have type `lang.Bounds(T)`, `T` the integers
 //! any range with such bounds can hold; where a `lang.Range` is expected, bounds are that range.
 
-use vun_grammar::{Form, TokenKind};
+use vun_desugar::Form;
+use vun_grammar::TokenKind;
 use vun_hir::tree::ExprId;
 
 use super::{Known, Typer};

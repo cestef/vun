@@ -2,7 +2,8 @@
 //! a condition holds, both found through the table `forms` (appendix B). Comparisons produce
 //! conditions, so their values are built here.
 
-use vun_grammar::{FORMS, Form, TokenKind};
+use vun_desugar::{FORMS, Form};
+use vun_grammar::TokenKind;
 use vun_hir::tree::{BlockId, Cond, ExprId, ExprKind};
 
 use super::{Env, Unevaluated};
@@ -16,7 +17,7 @@ impl Env<'_, '_> {
     /// Returns why the item has no value here.
     pub fn form(&self, form: Form) -> Result<Value, Unevaluated> {
         let (_, item) = FORMS.iter().find(|(f, _)| *f == form).ok_or(Unevaluated::Absent)?;
-        self.item(item)
+        self.item(*item)
     }
 
     /// The type of conditions.

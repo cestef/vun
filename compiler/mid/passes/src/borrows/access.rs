@@ -3,8 +3,8 @@
 
 use std::collections::BTreeSet;
 
+use vun_desugar::Access;
 use vun_diag::{Msg, errors};
-use vun_grammar::Access;
 use vun_mir::{BlockId, Operand, Place, Role, Rvalue, Stmt, TerminatorKind};
 use vun_origin::OriginId;
 

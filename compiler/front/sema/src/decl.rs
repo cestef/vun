@@ -3,7 +3,6 @@
 
 use std::sync::Arc;
 
-use vun_grammar::PATH_SEPARATOR;
 use vun_hir::db::Package;
 use vun_hir::tree::{DeclId, ExprKind, Hir, PatKind};
 use vun_hir::visit::Visitor;
@@ -54,12 +53,11 @@ impl DeclValue {
     fn primitive(cx: &Cx<'_>, key: &DeclRef, hir: &Hir) -> Option<Primitive> {
         let package = cx.get::<Package>(&key.file.package);
         let path = package.namespace_of(&key.file.path)?;
-        let namespace =
-            package.name.into_iter().chain(path).map(Symbol::as_str).collect::<Vec<_>>().join(PATH_SEPARATOR);
         let mut binders = Vec::new();
         hir.binders(hir.decls[key.decl.id].pat, &mut binders);
         let name = hir.binders[*binders.first()?].name;
-        Primitive::ALL.iter().copied().find(|p| p.namespace() == namespace && p.name() == name.as_str())
+        let at: Vec<&str> = package.name.into_iter().chain(path).chain([name]).map(Symbol::as_str).collect();
+        Primitive::ALL.iter().copied().find(|p| p.item().path() == at.as_slice())
     }
 }
 

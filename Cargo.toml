@@ -14,6 +14,7 @@ vun-index = { path = "compiler/base/index" }
 vun-suggest = { path = "compiler/base/suggest" }
 vun-codec = { path = "compiler/base/codec" }
 vun-json = { path = "compiler/base/json" }
+vun-items = { path = "compiler/base/items" }
 vun-hash = { path = "compiler/base/hash" }
 vun-graph = { path = "compiler/base/graph" }
 vun-fs = { path = "compiler/base/fs" }
@@ -28,6 +29,7 @@ vun-tool = { path = "compiler/base/tool" }
 vun-trace = { path = "compiler/base/trace" }
 vun-target = { path = "compiler/base/target" }
 vun-grammar = { path = "compiler/front/grammar" }
+vun-desugar = { path = "compiler/front/desugar" }
 vun-syntax = { path = "compiler/front/syntax" }
 vun-hir = { path = "compiler/front/hir" }
 vun-sema = { path = "compiler/front/sema" }
@@ -60,6 +62,7 @@ vun-pkg = { path = "compiler/tools/pkg" }
 vun-http = { path = "compiler/tools/http" }
 vun-fmt = { path = "compiler/tools/fmt" }
 vun-bind = { path = "compiler/tools/bind" }
+vun-clang = { path = "compiler/tools/clang" }
 vun-probe = { path = "compiler/tools/probe" }
 vun-command = { path = "compiler/tools/command" }
 vun-harness = { path = "compiler/tools/harness" }
@@ -67,6 +70,7 @@ vun-driver = { path = "compiler/tools/driver" }
 vun-lsp = { path = "compiler/tools/lsp" }
 vun-cli = { path = "compiler/tools/cli" }
 vun-xtask = { path = "compiler/tools/xtask" }
+vun-generate = { path = "compiler/tools/generate" }
 
 # external
 boxcar = "0.2"
@@ -85,6 +89,8 @@ zip = { version = "8", default-features = false, features = ["deflate-flate2"] }
 ruzstd = { version = "0.9", default-features = false, features = ["std"] }
 lzma-rs = "0.3"
 num-bigint = "0.5"
+# libclang loaded at run time, never linked (decision 131); `clang_9_0` is the oldest accepted.
+clang-sys = { version = "1.8", default-features = false, features = ["runtime", "clang_9_0"] }
 
 [workspace.lints.rust]
 unsafe_code = "deny"
@@ -100,3 +106,10 @@ debug = 1
 [profile.release]
 lto = "thin"
 codegen-units = 16
+
+# What is distributed: slower to build, smaller and faster to run; `cargo xtask size` measures it.
+[profile.dist]
+inherits = "release"
+lto = "fat"
+codegen-units = 1
+strip = true

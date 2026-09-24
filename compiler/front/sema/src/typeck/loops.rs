@@ -4,7 +4,7 @@
 //! `lang.ops.Iterate` for the type of `e` names the coroutine interface of its iterator, whose
 //! `resume` result carries each item in its variant `yielded`.
 
-use vun_grammar::ITERATION;
+use vun_desugar::ITERATION;
 use vun_hir::tree::{BlockId, Cond, ExprId, ExprKind, ForHead};
 use vun_intern::Symbol;
 
@@ -92,9 +92,9 @@ impl Typer<'_, '_, '_> {
         self.loops[target].value = joined.map_or(Ends::Unknown, Ends::With);
     }
 
-    /// The witness of the interface at `path`, such as `lang.ops.Iterate`, for `ty`.
-    pub(super) fn witness_of(&self, path: &str, ty: Ty) -> Option<Ty> {
-        let Ok(Value::Interface(interface)) = self.env().item(path) else { return None };
+    /// The witness of the interface `item`, such as `lang.ops.Iterate`, for `ty`.
+    pub(super) fn witness_of(&self, item: vun_items::Item, ty: Ty) -> Option<Ty> {
+        let Ok(Value::Interface(interface)) = self.env().item(item) else { return None };
         let witnesses = self.env().cx.get::<Witnesses>(&(self.env().file.clone(), ty));
         witnesses
             .iter()

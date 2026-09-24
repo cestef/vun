@@ -7,6 +7,7 @@ use vun_build::layout::MANIFEST;
 use vun_build::manifest;
 use vun_diag::{Diagnostic, Msg, errors};
 use vun_hash::Snapshot;
+use vun_hir::db::Scope;
 use vun_span::{FileId, SourceMap};
 
 use super::PackageKey;
@@ -28,6 +29,15 @@ impl Session {
             self.packages.root = found;
         }
         key
+    }
+
+    /// The names a file in `dir` sees from outside itself: its package's, its dependencies'
+    /// and its prelude's (spec 01, section 8), which a declaration there may not shadow.
+    pub fn names_seen_in(&mut self, dir: &Path) -> Vec<String> {
+        let key = self.package_around(dir).map_or_else(|| self.loose(), |(_, key)| key);
+        let id = self.publish(key);
+        let scope = self.db.get::<Scope>(&id);
+        scope.names.keys().map(|n| n.as_str().to_owned()).collect()
     }
 
     /// The package whose directory is `dir` or the nearest one above it.

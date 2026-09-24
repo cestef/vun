@@ -1,6 +1,7 @@
 //! Expressions and types.
 
-use vun_grammar::{MODE_SEPARATOR, NodeField, NodeKind, TokenKind};
+use vun_desugar::MODE_SEPARATOR;
+use vun_grammar::{NodeField, NodeKind, TokenKind};
 use vun_intern::Symbol;
 use vun_syntax::cst::{Fields, NodeId};
 use vun_syntax::lexer;

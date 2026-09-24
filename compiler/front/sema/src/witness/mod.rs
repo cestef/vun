@@ -12,7 +12,7 @@ mod lookup;
 
 use std::sync::Arc;
 
-use vun_grammar::CALLS;
+use vun_desugar::CALLS;
 use vun_hir::db::{FileRef, Package, PackageId};
 use vun_hir::tree::{Arg, Entry, ExprId, ExprKind, Member, each_entry};
 use vun_origin::OriginId;
@@ -102,7 +102,7 @@ impl Env<'_, '_> {
             return Some(args);
         }
         let (interface, _) = CALLS.first()?;
-        if self.item(interface).ok()? != *constructor {
+        if self.item(*interface).ok()? != *constructor {
             return None;
         }
         let signature = ty.callable()?;

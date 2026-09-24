@@ -1,0 +1,14 @@
+[package]
+name = "vun-desugar"
+description = "What syntax desugars into (appendix B), generated from lang/syntax/desugar.vun."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+vun-grammar.workspace = true
+vun-items.workspace = true

@@ -25,6 +25,8 @@ link-process = ["dep:vun-link-process"]
 
 [dependencies]
 vun-pkg.workspace = true
+vun-bind.workspace = true
+vun-clang.workspace = true
 vun-fs.workspace = true
 vun-suggest.workspace = true
 vun-hash.workspace = true

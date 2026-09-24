@@ -19,5 +19,7 @@ vun-target.workspace = true
 vun-hir.workspace = true
 vun-span.workspace = true
 vun-grammar.workspace = true
+vun-desugar.workspace = true
+vun-items.workspace = true
 vun-syntax.workspace = true
 num-bigint.workspace = true

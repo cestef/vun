@@ -4,10 +4,11 @@ use crate::primitives::{lang, mem};
 #[test]
 fn primitives_are_the_top_level_holes_of_lang_by_namespace() {
     assert!(Primitive::ALL.contains(&Primitive::Mem(mem::Mem::Ref)));
-    assert_eq!((Primitive::Lang(lang::Lang::Int).namespace(), lang::Lang::Int.name()), ("lang", "Int"));
+    assert_eq!(Primitive::Lang(lang::Lang::Int).item(), vun_items::lang::Int);
+    assert_eq!(Primitive::Lang(lang::Lang::Int).namespace(), vun_items::lang);
     assert_eq!(Primitive::Lang(lang::Lang::r#type).name(), "type");
     // Requirements of interfaces are not primitives: `lang.ops.Add.add` is a hole inside a call.
-    assert!(Primitive::ALL.iter().all(|p| p.namespace() != "lang.ops"), "{:?}", Primitive::ALL);
+    assert!(Primitive::ALL.iter().all(|p| p.namespace() != vun_items::lang::ops), "{:?}", Primitive::ALL);
 }
 
 /// A database holding a `lang` with an integer primitive and an app seeing it through its
@@ -55,7 +56,7 @@ fn values_are_checked_against_their_types_through_the_prelude() {
 
 #[test]
 fn narrowing_traps_wraps_and_saturates() {
-    use vun_grammar::Narrowing;
+    use vun_desugar::Narrowing;
 
     use crate::env::Unevaluated;
     use crate::int::{Integer, Interval};

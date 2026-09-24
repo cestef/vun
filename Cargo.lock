@@ -100,6 +100,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4e7648175b45a9a48536d676f68d918270699102aa8dab5496df06904c914600"
 
 [[package]]
+name = "clang-sys"
+version = "1.9.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "157a8ba7b480713b56f4c09fd13fc3e0a22a5dfab8097ba61cbc5feef950788a"
+dependencies = [
+ "glob",
+ "libc",
+ "libloading",
+]
+
+[[package]]
 name = "constant_time_eq"
 version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -184,6 +195,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "glob"
+version = "0.3.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e4eba85ea1d0a966a983acd07deee566e67395d2d96b6fb39e62b5a833f1eb0b"
+
+[[package]]
 name = "hashbrown"
 version = "0.17.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -213,6 +230,16 @@ name = "libc"
 version = "0.2.189"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3eaf3ede3fee6db1a4c2ee091bf8a8b4dccdc6d17f656fb07896ee72867612f2"
+
+[[package]]
+name = "libloading"
+version = "0.8.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d7c4b02199fee7c5d21a5ae7d8cfa79a6ef5bb2fc834d6e9058e89c825efdc55"
+dependencies = [
+ "cfg-if",
+ "windows-link",
+]
 
 [[package]]
 name = "lzma-rs"
@@ -505,8 +532,11 @@ dependencies = [
 name = "vun-bind"
 version = "0.0.0"
 dependencies = [
- "vun-diag",
- "vun-target",
+ "vun-clang",
+ "vun-desugar",
+ "vun-grammar",
+ "vun-items",
+ "vun-syntax",
 ]
 
 [[package]]
@@ -527,6 +557,13 @@ dependencies = [
  "vun-syntax",
  "vun-target",
  "vun-tool",
+]
+
+[[package]]
+name = "vun-clang"
+version = "0.0.0"
+dependencies = [
+ "clang-sys",
 ]
 
 [[package]]
@@ -553,6 +590,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "vun-desugar"
+version = "0.0.0"
+dependencies = [
+ "vun-grammar",
+ "vun-items",
+]
+
+[[package]]
 name = "vun-diag"
 version = "0.0.0"
 dependencies = [
@@ -570,7 +615,9 @@ dependencies = [
  "vun-backend-llvm",
  "vun-backend-process",
  "vun-backend-qbe",
+ "vun-bind",
  "vun-build",
+ "vun-clang",
  "vun-command",
  "vun-diag",
  "vun-fs",
@@ -618,6 +665,25 @@ name = "vun-fs"
 version = "0.0.0"
 
 [[package]]
+name = "vun-generate"
+version = "0.0.0"
+dependencies = [
+ "prettyplease",
+ "proc-macro2",
+ "quote",
+ "syn",
+ "vun-build",
+ "vun-command",
+ "vun-diag",
+ "vun-fs",
+ "vun-harness",
+ "vun-origin",
+ "vun-render-short",
+ "vun-span",
+ "vun-syntax",
+]
+
+[[package]]
 name = "vun-grammar"
 version = "0.0.0"
 
@@ -645,6 +711,7 @@ dependencies = [
 name = "vun-hir"
 version = "0.0.0"
 dependencies = [
+ "vun-desugar",
  "vun-diag",
  "vun-fs",
  "vun-grammar",
@@ -688,6 +755,13 @@ dependencies = [
  "vun-mir",
  "vun-query",
  "vun-sema",
+]
+
+[[package]]
+name = "vun-items"
+version = "0.0.0"
+dependencies = [
+ "vun-grammar",
 ]
 
 [[package]]
@@ -788,6 +862,7 @@ dependencies = [
 name = "vun-mir"
 version = "0.0.0"
 dependencies = [
+ "vun-desugar",
  "vun-diag",
  "vun-grammar",
  "vun-hir",
@@ -803,6 +878,7 @@ dependencies = [
 name = "vun-mir-passes"
 version = "0.0.0"
 dependencies = [
+ "vun-desugar",
  "vun-diag",
  "vun-grammar",
  "vun-index",
@@ -917,11 +993,13 @@ name = "vun-sema"
 version = "0.0.0"
 dependencies = [
  "num-bigint",
+ "vun-desugar",
  "vun-diag",
  "vun-grammar",
  "vun-hash",
  "vun-hir",
  "vun-intern",
+ "vun-items",
  "vun-origin",
  "vun-query",
  "vun-span",
@@ -950,6 +1028,7 @@ dependencies = [
  "vun-grammar",
  "vun-harness",
  "vun-index",
+ "vun-items",
  "vun-origin",
  "vun-outline",
  "vun-span",
@@ -975,21 +1054,14 @@ dependencies = [
 name = "vun-xtask"
 version = "0.0.0"
 dependencies = [
- "prettyplease",
- "proc-macro2",
- "quote",
- "syn",
- "vun-build",
  "vun-command",
  "vun-diag",
  "vun-driver",
  "vun-fs",
- "vun-grammar",
  "vun-harness",
  "vun-origin",
  "vun-render-short",
  "vun-span",
- "vun-syntax",
 ]
 
 [[package]]

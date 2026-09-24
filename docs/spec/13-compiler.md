@@ -110,16 +110,27 @@ compiler crate; `lang.syntax`, which compile-time code uses to read code values 
 formatter's node table; and the tree-sitter grammar for editors. Tokens and nodes are therefore
 defined in exactly one place and cannot drift.
 
-`cargo xtask generate` reads the grammar with the compiler's own parser as literal data (the
+`cargo gen` reads the grammar with the compiler's own parser as literal data (the
 reader of `build.vun` manifests, spec 12) and translates each declaration by the shape of its
 value: a `PascalCase` record of lists is a kind, an `enum` an enum, any other list a table whose
-element type is inferred. The same task generates the diagnostic ids of `vun-diag` from
-`lang/errors.vun`, and the compiler's primitives from `lang` itself: every top-level declaration
+element type is inferred; a table's `item` and `interface` columns name declarations of `lang`,
+and are generated as their handles. `grammar.vun` goes to `vun-grammar`, which the parser is built
+from, and `desugar.vun` to `vun-desugar`, which only later stages read. The same task generates the
+diagnostic ids of `vun-diag` from `lang/errors.vun`, a typed handle (`vun_items::Item`) for every
+public declaration and namespace of `lang` and `std` (`vun_items::lang::int::unsigned`), through
+which Rust code names a declaration, never by a string, and the compiler's primitives from `lang`
+itself: every top-level declaration
 of a `lang` namespace whose value is `_` is one, and each namespace becomes an enum of its
 primitives (`primitives::mem::Mem`), wrapped by `Primitive`, so the compiler matches each
 namespace's primitives apart and a primitive it does not implement fails to compile. A hole
 inside an interface's requirement struct is a requirement, not a primitive. A test fails when a
 generated file is stale.
+
+The generator is its own binary, `vun-generate` (`cargo gen`), built from only what reading `.vun`
+data needs (syntax, grammar, diagnostics): no crate it depends on reads a generated table or
+handle, and what it depends on that is generated (token and node kinds, diagnostic ids) refers to
+nothing else, so a generated change breaking any consumer never keeps it from running again
+(decision 132).
 
 **Node fields.** A branch kind declares its children as tagged slots, in source order and without
 punctuation: `.binding(.optional(.\mut), .one(.pattern), .one(.value))`. A slot is `one`,
@@ -202,9 +213,21 @@ pub trait DiagSink {
 - **Targets are data written in Vun.** A `TargetSpec` (word size, endianness, alignments, ABIs,
   features, object format, entry symbol, default backend and linker) is a compile-time value from
   the `targets` package. Adding a target adds a file; the compiler is not rebuilt.
-- **Static registration by default** (Cargo features choose what is compiled in), **dynamic
-  registration by process**: external backends and linkers speak LIR text and `LinkPlan` JSON. Rust
-  has no stable dylib ABI, and processes isolate failures.
+- **One binary, three kinds of component** (decision 131). `vun` is one executable, and what it
+  holds is decided per component:
+  - *compiled in*: the front end, checks, MIR, the interpreter, `fmt`, the language server,
+    packages, diagnostic renderers and the pure-Rust backends (C text, Cranelift); enough to check,
+    build and run a program with nothing else installed. Cargo features choose the set.
+  - *a native library loaded on first use*: libclang for `vun tool bind`, libLLVM for the LLVM
+    backend, through a thin adapter crate each, the only crates allowed `unsafe`. Never linked in;
+    missing, it is one diagnostic naming the library and the versions accepted, and every other
+    command works.
+  - *a process*: third-party backends and linkers speak LIR text and `LinkPlan` JSON. Rust has no
+    stable dylib ABI, and processes isolate failures. Never the toolchain's own features, whose
+    input would then be another program's output.
+- **The binary has a size budget.** `cargo xtask size` builds the `dist` profile and fails past the
+  budget in `size-budget.txt`, set from the first measured build; a new external crate is a
+  decision stating its cost.
 - **The link plan is abstract.** Memory regions and sections from the build go into `LinkPlan`; the
   lld and GNU ld adapters turn them into linker scripts, others into flags.
 - **Capabilities are checked, never faked.** A program needing guaranteed tail calls, frame sizes or
@@ -232,14 +255,14 @@ pub trait DiagSink {
 
 ```
 compiler/
-  base/    index  span  intern  origin  diag  query  pass  tool  target  trace
-  front/   grammar  syntax  hir  sema
+  base/    index  span  intern  origin  diag  query  pass  tool  target  trace  items  json
+  front/   grammar  desugar  syntax  hir  sema
   mid/     mir  passes  interp
   low/     lir  abi  passes
   back/    api  c  cranelift  qbe  llvm  process
   link/    api  wild  mold  lld  gnu  msvc  process
   render/  short  annotate  ariadne  json  sarif
-  tools/   build  fmt  bind  probe  harness  driver  lsp  cli  xtask
+  tools/   build  fmt  bind  clang  probe  harness  driver  lsp  cli  generate  xtask
 lib/
   lang/     primitives (declarations with `= _`), syntax/grammar.vun
   std/      prelude, iter, task, mem, sync, fmt, text, meta, diag, lints, log, hw, os, simd, testing, build,

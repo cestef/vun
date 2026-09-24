@@ -1,7 +1,7 @@
 //! The signatures of primitives: each is declared in `lang` with a function type (decision 66),
 //! whose types may name its `$` parameters, so a call is typed with them bound to its arguments.
 
-use vun_grammar::MARKERS;
+use vun_desugar::MARKERS;
 use vun_hir::tree::{Entry, ExprKind, Param, PatKind};
 use vun_intern::Symbol;
 

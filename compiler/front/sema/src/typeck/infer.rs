@@ -1,6 +1,7 @@
 //! The type of each form typed so far. Any other form has its parts typed and no type itself.
 
-use vun_grammar::{OPERATORS, TokenKind};
+use vun_desugar::OPERATORS;
+use vun_grammar::TokenKind;
 use vun_hir::resolve::Res;
 use vun_hir::tree::{Arg, Entry, ExprId, ExprKind, Hir, Lit, Name};
 use vun_hir::visit;
@@ -290,7 +291,7 @@ impl Typer<'_, '_, '_> {
             return Some(Known { ty: TyKind::int(&range), stage });
         }
         let (_, interface, function) = OPERATORS.iter().find(|(token, ..)| *token == op)?;
-        let Ok(Value::Interface(f)) = self.env().item(interface) else { return None };
+        let Ok(Value::Interface(f)) = self.env().item(*interface) else { return None };
         let requirements = self.env().cx.get::<Call>(&Instance { f, args: vec![Value::Type(left.ty)] });
         let key = (requirements.ok()?.as_type()?, Symbol::intern(function));
         let function = self.env().cx.get::<MemberType>(&key).ok()?;

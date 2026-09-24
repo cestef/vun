@@ -66,7 +66,7 @@ pub const PROGRAM: Program<Session> = Program {
                 "tool",
                 "C bindings, C headers, register packages",
                 &[
-                    Command::planned("bind", "generate declarations from a C header"),
+                    tool::BIND,
                     Command::planned("header", "emit a C header for a library"),
                     Command::planned("svd", "generate a register package from an SVD file"),
                 ],
@@ -218,6 +218,7 @@ fn components(_: &mut Session, _: &Args, out: &mut dyn Write) -> io::Result<Outc
 mod cache;
 mod explain;
 mod pkg;
+mod tool;
 
 pub(crate) use pkg::FETCH_PATH;
 #[cfg(test)]

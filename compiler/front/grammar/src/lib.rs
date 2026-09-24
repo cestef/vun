@@ -1,6 +1,6 @@
-//! Token kinds, node kinds and operator tables, generated from `lib/lang/lang/syntax/grammar.vun`.
+//! Token kinds, node kinds and parse tables, generated from `lib/lang/lang/syntax/grammar.vun`.
 //!
-//! The grammar is defined once, as Vun data (spec 13, section 5). `cargo xtask generate` writes
+//! The grammar is defined once, as Vun data (spec 13, section 5). `cargo gen` writes
 //! the kinds and tables into `generated/`, a module per declaration; this file derives lookups
 //! from them.
 
@@ -13,9 +13,6 @@ pub use generated::*;
 
 /// Separates the members of a path, as written: `std.prelude`.
 pub const PATH_SEPARATOR: &str = TokenKind::Dot.text().unwrap();
-
-/// Separates the words of a borrow mode in the table `borrows`: `temp mut`.
-pub const MODE_SEPARATOR: &str = " ";
 
 /// Punctuation, longest spelling first, so the first prefix match is the longest one.
 static PUNCTUATION_BY_LENGTH: LazyLock<Vec<TokenKind>> = LazyLock::new(|| {

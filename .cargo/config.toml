@@ -1,2 +1,4 @@
 [alias]
 xtask = "run --quiet --package vun-xtask --"
+# The generator is built apart from the compiler (decision 132).
+gen = "run --quiet --package vun-generate --"

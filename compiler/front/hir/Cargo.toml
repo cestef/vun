@@ -19,6 +19,7 @@ vun-intern.workspace = true
 vun-syntax.workspace = true
 vun-index.workspace = true
 vun-grammar.workspace = true
+vun-desugar.workspace = true
 vun-hash.workspace = true
 vun-query.workspace = true
 

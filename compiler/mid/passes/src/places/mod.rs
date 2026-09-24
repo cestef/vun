@@ -12,8 +12,8 @@ mod transfer;
 
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
+use vun_desugar::BORROWS;
 use vun_diag::{ChildKind, DiagCtxt, DiagId, Diagnostic, Msg, errors};
-use vun_grammar::BORROWS;
 use vun_index::{Idx, IndexVec};
 use vun_intern::Symbol;
 use vun_mir::{BlockId, Body, Local, Mir, Operand, Role, Rvalue, TerminatorKind};

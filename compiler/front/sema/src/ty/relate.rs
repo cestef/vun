@@ -1,7 +1,7 @@
 //! How types relate: which values a type accepts where another is expected, and the type values
 //! of two types both have.
 
-use vun_grammar::Extent;
+use vun_desugar::Extent;
 
 use super::{NominalKind, Ty, TyKind, Value};
 use crate::Primitive;

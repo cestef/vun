@@ -1,8 +1,9 @@
 //! What typing reports: a value whose type is not the one expected, a run-time integer past the
 //! width cap, and a member its type does not have.
 
+use vun_desugar::{COMPOUND, Narrowing, OPERATORS};
 use vun_diag::{ChildKind, Diagnostic, Msg, errors};
-use vun_grammar::{COMPOUND, Narrowing, OPERATORS, TokenKind};
+use vun_grammar::TokenKind;
 use vun_hir::tree::ExprId;
 use vun_intern::Symbol;
 use vun_origin::OriginId;
@@ -122,7 +123,7 @@ impl<'a, 'db> Typer<'_, 'a, 'db> {
     /// Reports the operator `op` at `expr` as having no impl for `ty`, the type of its left side.
     pub(super) fn no_impl(&mut self, expr: ExprId, op: TokenKind, ty: Ty) {
         let Some((_, interface, _)) = OPERATORS.iter().find(|(t, ..)| *t == op) else { return };
-        let msg = Msg::new().text("no impl of ").code(*interface).text(" for ").ty(ty.to_string());
+        let msg = Msg::new().text("no impl of ").code(interface.to_string()).text(" for ").ty(ty.to_string());
         let note = Msg::new()
             .text("bit operations exist on ")
             .code("uN")

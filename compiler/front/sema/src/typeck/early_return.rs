@@ -2,7 +2,7 @@
 //! through the table `early_return`. Its value has the type `go` carries, and what `stop` carries
 //! must be accepted by the function's result type.
 
-use vun_grammar::EARLY_RETURN;
+use vun_desugar::EARLY_RETURN;
 use vun_hir::tree::ExprId;
 use vun_intern::Symbol;
 

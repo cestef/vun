@@ -3,7 +3,8 @@
 //! that interface's `resume` (the table `iteration`). Also the signatures of function literals
 //! and how long a call holds each parameter's borrow.
 
-use vun_grammar::{BORROWS, Extent, ITERATION, TokenKind};
+use vun_desugar::{BORROWS, Extent, ITERATION};
+use vun_grammar::TokenKind;
 use vun_hir::tree::{Arg, Entry, ExprId, ExprKind, Param, PatKind};
 use vun_intern::Symbol;
 use vun_origin::OriginTable;

@@ -15,6 +15,7 @@ vun-pass.workspace = true
 vun-diag.workspace = true
 vun-origin.workspace = true
 vun-grammar.workspace = true
+vun-desugar.workspace = true
 vun-index.workspace = true
 vun-intern.workspace = true
 vun-query.workspace = true

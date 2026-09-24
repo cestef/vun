@@ -1,7 +1,8 @@
 //! Function bodies: locals, and basic blocks of statements ending in a terminator (spec 13,
 //! section 3). Every local, statement and terminator carries the origin that produced it.
 
-use vun_grammar::{Narrowing, TokenKind};
+use vun_desugar::Narrowing;
+use vun_grammar::TokenKind;
 use vun_hir::tree::ExprId;
 use vun_index::{IndexVec, index};
 use vun_intern::Symbol;

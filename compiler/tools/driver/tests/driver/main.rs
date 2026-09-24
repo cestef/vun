@@ -4,6 +4,7 @@
 mod common;
 
 mod add;
+mod bind;
 mod borrows;
 mod comptime;
 mod coroutines;

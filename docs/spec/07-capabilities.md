@@ -103,8 +103,9 @@ backend that cannot report frame sizes cannot build a program that uses `stack.m
 - A C import is a declaration provided by the linker:
   `#[link.symbol("puts"), abi.c] puts: unsafe (s: *u8) -> i32 = _;`
 - `#[link.export("name")]` exports a binding under a C symbol.
-- `vun bind foo.h` generates Vun declarations from C headers through libclang, using the
-  build's real compile flags. `vun header` emits a C header for a Vun library. Both are tools,
-  not language features (spec 12).
+- `vun tool bind foo.h --cflags "..."` generates Vun declarations from C headers through
+  libclang, loaded when the command runs (decision 131), with the build's real compile flags
+  (decision 134). `vun tool header` emits a C header for a Vun library. Both are tools, not
+  language features (spec 12).
 - Inline assembly is `lang.arch.asm(template, operands)`, a `lang` function taking compile-time
   data. It is `unsafe`.

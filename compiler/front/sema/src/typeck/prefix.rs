@@ -2,7 +2,7 @@
 //! `borrows` (appendix B), `unsafe e` has the type of `e`, and so does `#[attrs] e`, whose
 //! attributes are data. A borrow of a type, as in `Pair(&u8)`, is a type.
 
-use vun_grammar::BORROWS;
+use vun_desugar::BORROWS;
 use vun_hir::tree::ExprId;
 use vun_intern::Symbol;
 
@@ -20,7 +20,7 @@ impl Typer<'_, '_, '_> {
         let word = mode.map_or("", Symbol::as_str);
         let (_, item, ..) = BORROWS.iter().find(|(m, ..)| *m == word)?;
         let borrow =
-            self.env().apply(self.env().item(item).ok()?, vec![Value::Type(known.ty)]).ok()?.as_type()?;
+            self.env().apply(self.env().item(*item).ok()?, vec![Value::Type(known.ty)]).ok()?.as_type()?;
         Some(Known { ty: borrow, ..known })
     }
 

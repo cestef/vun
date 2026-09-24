@@ -1,7 +1,7 @@
 //! `e?` (appendix B): the witness's `branch` of `lang.ops.Try` the typer found, then the value
 //! the variant `go` carries, or a return of what `stop` carries (the table `early_return`).
 
-use vun_grammar::EARLY_RETURN;
+use vun_desugar::EARLY_RETURN;
 use vun_hir::tree::ExprId;
 use vun_intern::Symbol;
 use vun_origin::OriginId;

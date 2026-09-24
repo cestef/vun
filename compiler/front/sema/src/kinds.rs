@@ -7,7 +7,7 @@
 //! `#[kind.free]` is free, and holding a scoped value in it, even through a type argument, is an
 //! error its kind records.
 
-use vun_grammar::Extent;
+use vun_desugar::Extent;
 use vun_query::{Cx, Cycle, Query};
 
 use crate::Primitive;

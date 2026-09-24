@@ -1,22 +1,16 @@
 //! Repository automation, run through the `cargo xtask` alias.
 
 mod corpus;
-mod errors;
 mod explanations;
-mod generate;
-mod grammar;
 mod lines;
-mod names;
-mod primitives;
 #[cfg(test)]
 mod tests;
 
 use std::io::{self, Write};
 use std::process::ExitCode;
 
-use vun_command::{Action, Args, Command, Outcome, Param, ParamKind, Program};
+use vun_command::{Action, Args, Command, Outcome, Program};
 use vun_diag::{ChildKind, DiagCtxt, DiagId, DiagSink, Diagnostic, Msg};
-use vun_fs::Edit;
 use vun_harness::repo_root;
 use vun_origin::OriginTable;
 use vun_render_short::ShortRenderer;
@@ -32,14 +26,6 @@ struct Cx {
 }
 
 const OVERSIZED: DiagId = DiagId::new("xtask.lines.oversized");
-const STALE: DiagId = DiagId::new("xtask.generate.stale");
-
-const CHECK: Param = Param {
-    name: "check",
-    short: None,
-    about: "fail if a generated file is out of date instead of writing it",
-    kind: ParamKind::Flag,
-};
 
 const PROGRAM: Program<Cx> = Program {
     configure: vun_command::unconfigured,
@@ -49,12 +35,6 @@ const PROGRAM: Program<Cx> = Program {
         about: "Repository automation.",
         params: &[],
         action: Action::Group(&[
-            Command {
-                name: "generate",
-                about: "regenerate Rust sources from their Vun sources (grammar, diagnostic ids)",
-                params: &[CHECK],
-                action: Action::Run(generate_all),
-            },
             Command {
                 name: "corpus",
                 about: "run corpus/accept and corpus/reject through the stages that exist",
@@ -70,40 +50,6 @@ const PROGRAM: Program<Cx> = Program {
         ]),
     },
 };
-
-fn generate_all(cx: &mut Cx, args: &Args, out: &mut dyn Write) -> io::Result<Outcome> {
-    let root = repo_root();
-    let mut outcome = Outcome::Success;
-    for generator in generate::ALL {
-        let generated = match generator.generate(&root) {
-            Ok(generated) => generated,
-            Err(d) => {
-                cx.diag.error(*d);
-                outcome = Outcome::Failure;
-                continue;
-            }
-        };
-        let changes = generator.changes(&root, &generated)?;
-        if changes.is_empty() {
-            writeln!(out, "{} is up to date", generator.output)?;
-        } else if args.flag(&CHECK) {
-            let msg = Msg::new().code(generator.output).text(" is out of date with ").code(generator.source);
-            let help = Msg::new().text("run ").code("cargo xtask generate");
-            cx.diag.error(Diagnostic::error(STALE, msg).child(ChildKind::Help, help));
-            outcome = Outcome::Failure;
-        } else {
-            let dir = root.join(generator.output);
-            for name in &changes.differing {
-                dir.join(name).put(&generated[name])?;
-            }
-            for path in &changes.stale {
-                std::fs::remove_file(path)?;
-            }
-            writeln!(out, "wrote {}", generator.output)?;
-        }
-    }
-    Ok(outcome)
-}
 
 fn run_corpus(_: &mut Cx, _: &Args, out: &mut dyn Write) -> io::Result<Outcome> {
     let outcomes = Corpus { root: &repo_root() }.outcomes()?;

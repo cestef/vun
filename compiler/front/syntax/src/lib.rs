@@ -3,6 +3,7 @@
 pub mod cst;
 pub mod lexer;
 pub mod literal;
+pub mod make;
 pub mod parser;
 pub mod tokens;
 pub mod visibility;

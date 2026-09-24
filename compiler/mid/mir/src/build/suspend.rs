@@ -3,7 +3,8 @@
 //! has what it returns; `for p in e` drives the iterator `e`'s witness of `lang.ops.Iterate`
 //! makes (the table `iteration`).
 
-use vun_grammar::{ITERATION, TokenKind};
+use vun_desugar::ITERATION;
+use vun_grammar::TokenKind;
 use vun_hir::tree::{ExprId, ExprKind};
 use vun_intern::Symbol;
 use vun_origin::OriginId;

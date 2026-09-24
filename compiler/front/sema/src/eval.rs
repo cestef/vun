@@ -7,7 +7,7 @@
 
 use std::sync::{Arc, OnceLock};
 
-use vun_grammar::ITERATION;
+use vun_desugar::ITERATION;
 use vun_hir::db::Parsed;
 use vun_hir::tree::{BinderId, Entry, ExprKind, Param, PatKind};
 use vun_intern::Symbol;

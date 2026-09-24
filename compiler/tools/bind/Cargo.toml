@@ -1,6 +1,6 @@
 [package]
 name = "vun-bind"
-description = "C header bindings and C header emission."
+description = "C header bindings: Vun declarations from a header, read through libclang."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -10,5 +10,8 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
-vun-diag.workspace = true
-vun-target.workspace = true
+vun-clang.workspace = true
+vun-grammar.workspace = true
+vun-desugar.workspace = true
+vun-items.workspace = true
+vun-syntax.workspace = true

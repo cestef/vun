@@ -15,8 +15,9 @@ mod free;
 
 use std::collections::{BTreeMap, BTreeSet};
 
+use vun_desugar::{Access, BORROWS, Extent};
 use vun_diag::{ChildKind, DiagCtxt, DiagId, Diagnostic, Msg};
-use vun_grammar::{Access, BORROWS, Extent, TokenKind};
+use vun_grammar::TokenKind;
 use vun_index::{IndexVec, index};
 use vun_intern::Symbol;
 use vun_mir::{BlockId, Body, Local, Mir, Operand, Place, Projection, Rvalue};
