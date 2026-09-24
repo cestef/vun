@@ -131,44 +131,52 @@ model); frames suspend and resume (`frames.rs`).
 `Coverage` (typed expressions, lowered functions, what stops MIR); `cargo xtask {generate,
 corpus, lines}`.
 
-Progress (corpus/accept): 57% of body expressions typed, 68 of 105 functions lowered. Corpus:
-173 passed, 21 pending, 20 shown, 0 failed. 188 tests. Calls infer omitted `$` arguments
-(`typeck/omitted.rs`, `TypedBody::inferred`); variant constructors are values
-(`Value::Constructor`); `std.result` gives `map_err`.
+Progress (corpus/accept): 58% of body expressions typed, 73 of 110 functions lowered. Corpus:
+181 passed, 21 pending, 20 shown, 0 failed. 189 tests.
+
+Language surface since the review (decisions 99 to 105): omitted `$` arguments inferred
+(`typeck/omitted.rs`, `TypedBody::inferred`, `types.cannot_infer`, `types.arity`); variant
+constructors as values (`Value::Constructor`); `.` through owners (`Env::reach`, `Hop`);
+two-phase receivers (MIR `Receiver`); `#[impl(T)]` without an interface (`ImplDecl::contract`),
+`impl.collision` at lookups (`typeck/methods.rs`); `true`/`false` names; attributes on block
+tails (kind attributes on literals only); enum namespaces (`ExprKind::Enum { variants, ns }`);
+`place.move_out_of_borrow` (`places/moved.rs`). `std`: `option`, `result`, `cmp` in Overt.
+Value lookups skip variants (`r.ok()` is the method).
 
 ## 6. Decisions
 
-Decisions 1 to 84, 91, 92, 98 and 99 are accepted (65 to 84 on the agent's recommendation when the
-user asked to settle them; 91, 92, 98 and 99 with the user's choices). 85 to 90 and 93 to 97 are
-proposed:
-$for in bodies (85), code values (86), quote levels (87), MIR places (88), MIR patterns and typed
-annotations (89), linked values and repeats (90), layout (93), place states (94), kinds and moves
-(95), `defer` (96), borrow rules (97). New language rules go to `decisions.md` as proposed unless the user approves them.
+Decisions 1 to 84, 91, 92 and 98 to 105 are accepted (65 to 84 on the agent's recommendation;
+91, 92 and 98 to 105 with the user's choices or on the review the user accepted). 85 to 90 and 93
+to 97 are proposed: $for in bodies (85), code values (86), quote levels (87), MIR places (88), MIR
+patterns and typed annotations (89), linked values and repeats (90), layout (93), place states
+(94), kinds and moves (95), `defer` (96), borrow rules (97). New language rules go to
+`decisions.md` as proposed unless the user approves them.
 
 ## 7. Next steps, in order
 
-1. After `defer`: leaks at scope exits inside a body (found at the function's return only
-   today), `fixed` and `scoped` kinds, frames' `end` running their defers. `memory/defer.ov`
-   waits on `Result.map_err` (step 3).
-2. Borrow rules left: `&temp` parameters (results not tied to them), `&static`, top-level
-   bindings as free values, frames' region from their parameters, `critical_escape.ov` (needs
-   `std.sync`), two-phase borrows if programs need them (decision 97 says no).
-3. Library and stand-ins so `types.no_member` on values can turn on (the probe in
-   `typeck/infer.rs::member` is off): a real `std.mem.Own` (today a stand-in with
-   `#[kind.owns]`), `std.Dyn`, `Result.expect` (needs a panic in `std`), `std.sync` (`Shared`, `critical`), `std.iter`
-   adapters (`enumerate`), and stand-ins tied to program types (`Dma`, `Uart`, `System`, `svd`).
-4. MIR gaps (`cargo xtask corpus` lists them): run-time splices of code (expansion at the call
-   site), `.{ }` and `.name` in plain instantiations of generic bodies, or-patterns that bind,
-   `lang.simd.chunks`.
-5. Sema gaps: operand checks and `types.no_impl` for operators, impl member types against
-   requirements, collision rule, constrained `$W: Writer`, narrowing by comparisons (decision
-   35), exhaustiveness (decision 29), `c.span()`, `meta.frozen` (lazy members never cycle today),
-   `#[layout.offset]`/`#[layout.c]`, frame layouts, `std.int` `abs` and power-of-two `.wrap`.
-6. Evaluator: its own stack (an unbounded chain of distinct compile-time calls overflows the host
-   stack before the budget), a memory model for `&mut` at compile time.
-7. Persist the front-end queries (`.overt/queries/<toolchain hash>`); packaging: signed caches
-   (decision 63), planned builds, `overt pkg why`; `.workspace` visibility.
-8. `names.private`, `binding.hole_value`; fuzz the parser longer.
+1. `std` needs `lang` primitives before most of it can be written: raw pointer offset and cast
+   (`std.mem.alloc.Fixed`, `create`/`destroy`, a real `std.mem.Own` replacing the stand-in),
+   a panic with a message (`Result.expect`, `std.panic.fail`), output symbols (`std.fmt.print`),
+   executors over frames (`std.task.run`, `select`), `std.iter` adapters as coroutine functions.
+   Closures are not accepted where a function type is (`map` takes `(T) -> U`): decide whether
+   function-type parameters accept `lang.ops.Call` values.
+2. Leaks at scope exits inside a body (found at the function's return only today), `fixed` and
+   `scoped` kinds, frames' `end` running their defers.
+3. Borrow rules left: `&temp` parameters, `&static`, top-level bindings as free values, frames'
+   region from their parameters, `critical_escape.ov` (needs `std.sync`), a label where a
+   conflicting borrow is used later.
+4. `types.no_member` on values (the probe in `typeck/infer.rs::member` is off): stand-ins tied to
+   program types (`Dma`, `Uart`, `System`, `svd`), `std.Dyn`, `std.sync`.
+5. MIR gaps (`cargo xtask corpus` lists them): run-time splices of code, `.{ }` and `.name` in
+   plain instantiations of generic bodies, or-patterns that bind, `lang.simd.chunks`.
+6. Sema gaps: operand checks and `types.no_impl` for operators, impl member types against
+   requirements, constrained `$W: Writer`, narrowing by comparisons (decision 35),
+   exhaustiveness (decision 29), `c.span()`, `meta.frozen`, `#[layout.offset]`/`#[layout.c]`,
+   frame layouts, `std.int` `abs` and power-of-two `.wrap`.
+7. Evaluator: its own stack (deep chains of compile-time calls overflow the host stack), a
+   memory model for `&mut` at compile time.
+8. Persist the front-end queries; packaging: signed caches (decision 63), planned builds,
+   `overt pkg why`; `.workspace` visibility. `names.private`, `binding.hole_value`.
 
 ## 8. Pitfalls
 
