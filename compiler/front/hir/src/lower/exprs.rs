@@ -114,7 +114,10 @@ impl Lower<'_, '_> {
             NodeKind::Block => ExprKind::Block(self.block(n)),
             NodeKind::Quote => ExprKind::Quote(self.block(n)),
             NodeKind::Struct => ExprKind::Struct(self.namespace(&f, n)),
-            NodeKind::Enum => ExprKind::Enum(self.variants(&f)),
+            NodeKind::Enum => {
+                let (variants, ns) = self.enum_body(&f, n);
+                ExprKind::Enum { variants, ns }
+            }
             NodeKind::Doc | NodeKind::Attr => {
                 let (inner, _, attrs) = self.annotations(n);
                 ExprKind::Attributed { attrs, inner: self.expr(inner) }

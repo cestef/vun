@@ -45,6 +45,7 @@ compilation is therefore an ordinary `$if`, never a file-name convention or a pr
 | `struct { a: A, b: B, d := e; }` | product; fields in declaration order; declarations are its namespace |
 | `enum { a, b }` | tags only |
 | `enum { none, some(T) }` | sum type with payloads |
+| `enum { a, b; d := e; }` | variants, then after `;` declarations: its namespace, as a struct's |
 | `(A, B)` | tuple |
 | `[N]T` | array, a value |
 | `[T]` | a slice: the items of an array of any length, reached through a borrow |

@@ -33,6 +33,27 @@ impl Lower<'_, '_> {
         self.hir.namespaces.push(Namespace { members, origin })
     }
 
+    /// The members of an `enum` literal: its variants, then the declarations after `;`, which are
+    /// its namespace.
+    pub(super) fn enum_body(&mut self, f: &Fields, n: NodeId) -> (List<Variant>, NsId) {
+        let (variants, members): (Vec<NodeId>, Vec<NodeId>) =
+            f.get(NodeField::Members).iter().partition(|&&c| self.is_variant(c));
+        let variants = self.variants(variants);
+        let members = self.members(members);
+        let origin = self.origin(n);
+        (variants, self.hir.namespaces.push(Namespace { members, origin }))
+    }
+
+    /// Whether a member node of an `enum` is a variant, `name` or `name(T)`, through its docs.
+    fn is_variant(&self, n: NodeId) -> bool {
+        let mut inner = n;
+        while matches!(self.kind(inner), NodeKind::Doc | NodeKind::Attr) {
+            let Some(target) = self.fields(inner).one(NodeField::Target) else { return false };
+            inner = target;
+        }
+        matches!(self.kind(inner), NodeKind::Name | NodeKind::Call) || self.staged_control(inner).is_some()
+    }
+
     pub(super) fn decl(&mut self, n: NodeId, doc: Vec<String>, attrs: Vec<ExprId>) -> DeclId {
         let f = self.fields(n);
         let mutable = f.one(NodeField::Mut).is_some();
@@ -65,8 +86,8 @@ impl Lower<'_, '_> {
         FieldDef { name, mutable, ty, default, attrs, doc, origin }
     }
 
-    pub(super) fn variants(&mut self, f: &Fields) -> List<Variant> {
-        self.entries(f.get(NodeField::Variants).to_vec(), &mut |this, n| {
+    fn variants(&mut self, nodes: Vec<NodeId>) -> List<Variant> {
+        self.entries(nodes, &mut |this, n| {
             let (inner, doc, _) = this.annotations(n);
             let origin = this.origin(inner);
             match this.kind(inner) {

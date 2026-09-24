@@ -140,7 +140,7 @@ NodeKind := .{
         .block(.many(.statements)),
         .quote(.many(.statements)),
         .\struct(.many(.members)),
-        .\enum(.many(.variants)),
+        .\enum(.many(.members)),
         .paren(.one(.inner)),
         .tuple(.many(.items)),
         .array(.many(.items)),

@@ -129,7 +129,11 @@ pub enum ExprKind {
         func: ExprId,
     },
     Struct(NsId),
-    Enum(List<Variant>),
+    /// `enum { variants; declarations }`: the declarations are its namespace, as a struct's.
+    Enum {
+        variants: List<Variant>,
+        ns: NsId,
+    },
     /// `#[attrs] e` on an expression, such as a function type with an ABI.
     Attributed {
         attrs: Vec<ExprId>,
@@ -173,7 +177,7 @@ impl ExprKind {
             ExprKind::FnType { .. } => "FnType",
             ExprKind::Closure { .. } => "Closure",
             ExprKind::Struct(_) => "Struct",
-            ExprKind::Enum(_) => "Enum",
+            ExprKind::Enum { .. } => "Enum",
             ExprKind::Attributed { .. } => "Attributed",
         }
     }

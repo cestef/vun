@@ -45,8 +45,10 @@ impl Env<'_, '_> {
                 let name = self.name(name).ok_or(Unevaluated::Unsupported)?;
                 self.member(self.eval(*object)?, name)
             }
-            ExprKind::Enum(variants) if variants.is_empty() => Ok(self.nominal(expr, NominalKind::Empty)),
-            ExprKind::Enum(_) => Ok(self.nominal(expr, NominalKind::Enum)),
+            ExprKind::Enum { variants, .. } if variants.is_empty() => {
+                Ok(self.nominal(expr, NominalKind::Empty))
+            }
+            ExprKind::Enum { .. } => Ok(self.nominal(expr, NominalKind::Enum)),
             ExprKind::Struct(_) => Ok(self.nominal(expr, NominalKind::Struct)),
             ExprKind::Prefix { op: TokenKind::Amp, mode, operand } => self.borrow(expr, *mode, *operand),
             ExprKind::Prefix { op, operand, .. }

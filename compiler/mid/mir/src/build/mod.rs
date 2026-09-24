@@ -280,7 +280,7 @@ impl<'a, 'db> Builder<'_, 'a, 'db> {
                 self.aggregate(expr).unwrap_or(Err(unbuilt))
             }
             ExprKind::Call { callee, args } => self.call(expr, *callee, args, origin),
-            ExprKind::Struct(_) | ExprKind::Enum(_) | ExprKind::Fn { .. } => {
+            ExprKind::Struct(_) | ExprKind::Enum { .. } | ExprKind::Fn { .. } => {
                 Ok(self.temp(self.comptime(expr), origin))
             }
             // Anything else only as a constant sema can compute, such as `lang.int.u8`.

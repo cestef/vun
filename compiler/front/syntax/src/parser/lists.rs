@@ -46,6 +46,22 @@ impl Parser<'_, '_, '_> {
         }
     }
 
+    /// `{ variants }` or `{ variants; declarations }`: an enum's variants, then, after `;`, members
+    /// as in a struct body, its namespace.
+    pub(super) fn enum_body(&mut self) {
+        let open = self.current();
+        if !self.eat(TokenKind::LBrace) {
+            self.report_expected(&[TokenKind::LBrace]);
+            self.missing(NodeKind::Punct);
+            return;
+        }
+        self.list(List::Items(Item::Value), TokenKind::RBrace);
+        if self.eat(TokenKind::Semi) {
+            self.list(List::Members, TokenKind::RBrace);
+        }
+        self.close(TokenKind::RBrace, open);
+    }
+
     /// `{ list }` as a `Block` node.
     pub(super) fn block(&mut self, list: List) {
         if !self.at(TokenKind::LBrace) {

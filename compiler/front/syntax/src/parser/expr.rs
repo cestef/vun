@@ -147,7 +147,7 @@ impl Parser<'_, '_, '_> {
             }
             TokenKind::Enum => {
                 let token = self.bump();
-                self.braced(List::Items(Item::Value));
+                self.enum_body();
                 (NodeKind::Enum, token)
             }
             TokenKind::Return

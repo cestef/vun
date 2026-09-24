@@ -214,12 +214,15 @@ pub fn walk_expr<V: Visitor + ?Sized>(v: &mut V, hir: &Hir, expr: ExprId) {
             v.expr(hir, *func);
         }
         ExprKind::Struct(ns) => v.namespace(hir, *ns),
-        ExprKind::Enum(variants) => walk_list(v, hir, variants, &mut |v, variant| {
-            if let Computed(e) = variant.name {
-                v.expr(hir, e);
-            }
-            each(v, hir, &variant.payload);
-        }),
+        ExprKind::Enum { variants, ns } => {
+            walk_list(v, hir, variants, &mut |v, variant| {
+                if let Computed(e) = variant.name {
+                    v.expr(hir, e);
+                }
+                each(v, hir, &variant.payload);
+            });
+            v.namespace(hir, *ns);
+        }
         ExprKind::Attributed { attrs, inner } => {
             each(v, hir, attrs);
             v.expr(hir, *inner);

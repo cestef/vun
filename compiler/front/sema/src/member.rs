@@ -108,7 +108,10 @@ impl Query for Members {
         let mut table = MemberTable { complete: true, ..MemberTable::default() };
         match &env.parsed.hir.exprs[literal.expr.id].kind {
             ExprKind::Struct(ns) => table.struct_members(&env, *ns, literal),
-            ExprKind::Enum(variants) => table.variants(&env, variants),
+            ExprKind::Enum { variants, ns } => {
+                table.variants(&env, variants);
+                table.struct_members(&env, *ns, literal);
+            }
             _ => return None,
         }
         Some(Arc::new(table))
