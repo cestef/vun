@@ -4,18 +4,32 @@
 //! does not exist yet.
 
 use overt_diag::{DiagId, errors};
-use overt_span::FileId;
+use overt_span::{FileId, SourceMap};
+
+use overt_mir_passes::places::PlaceStates;
+use overt_sema::eval::Instantiation;
 
 use crate::Session;
 
 pub struct Stage {
     pub name: &'static str,
     pub reports: &'static [DiagId],
+    pub input: Input,
+}
+
+/// What a stage reads.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Input {
+    /// The source, through the front end.
+    Source,
+    /// Function bodies in MIR, which some forms do not lower to yet: a stage that reads MIR says
+    /// nothing about a body that is not lowered.
+    Mir,
 }
 
 pub const STAGES: &[Stage] = &[
-    Stage { name: "load", reports: &[errors::IO] },
-    Stage { name: "syntax", reports: &[errors::SYNTAX] },
+    Stage { name: "load", reports: &[errors::IO], input: Input::Source },
+    Stage { name: "syntax", reports: &[errors::SYNTAX], input: Input::Source },
     Stage {
         name: "names",
         reports: &[
@@ -26,6 +40,7 @@ pub const STAGES: &[Stage] = &[
             errors::META_ESCAPE,
             errors::PACKAGE,
         ],
+        input: Input::Source,
     },
     Stage {
         name: "types",
@@ -38,6 +53,12 @@ pub const STAGES: &[Stage] = &[
             errors::IMPL,
             errors::LAYOUT_BITS_WIDTH,
         ],
+        input: Input::Source,
+    },
+    Stage {
+        name: "places",
+        reports: &[errors::PLACE_READ_UNINIT, errors::PLACE_AMBIGUOUS_JOIN, errors::PLACE_OUT_UNWRITTEN],
+        input: Input::Mir,
     },
 ];
 
@@ -45,7 +66,13 @@ impl Stage {
     /// Whether some stage that exists reports `id`.
     #[must_use]
     pub fn implemented(id: &DiagId) -> bool {
-        STAGES.iter().flat_map(|s| s.reports).any(|group| id.within(group))
+        Self::of(id).is_some()
+    }
+
+    /// The stage that reports `id`, if one exists.
+    #[must_use]
+    pub fn of(id: &DiagId) -> Option<&'static Self> {
+        STAGES.iter().find(|s| s.reports.iter().any(|group| id.within(group)))
     }
 }
 
@@ -55,5 +82,28 @@ impl Session {
         self.parsed(file);
         self.check_names(file);
         self.check_types(file);
+        self.check_places(file);
+    }
+
+    /// The lines, first and last, of each function of `file` that MIR does not lower yet.
+    pub fn unlowered(&mut self, file: FileId) -> Vec<(u32, u32)> {
+        let bodies = self.bodies(file);
+        let unlowered = bodies.into_iter().filter(|(_, body)| body.is_err());
+        unlowered
+            .map(|(f, _)| {
+                let span = self.origins.source_span(f.expr.origin);
+                let source = self.sources.file(span.file);
+                (source.line_col(span.range.lo).line, source.line_col(span.range.hi).line)
+            })
+            .collect()
+    }
+
+    /// Checks the place states of every function body of `file` (spec 05, section 2).
+    pub fn check_places(&mut self, file: FileId) {
+        for f in self.functions(file) {
+            if let Some(reports) = self.db.get::<PlaceStates>(&Instantiation::plain(f)) {
+                self.diag.absorb(&reports);
+            }
+        }
     }
 }

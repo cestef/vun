@@ -191,7 +191,7 @@ impl Env<'_, '_> {
     /// type `operand`. A borrow of a value exists at run time only.
     fn borrow(&self, expr: ExprId, mode: Option<Symbol>, operand: ExprId) -> Result<Value, Unevaluated> {
         let word = mode.map_or("", Symbol::as_str);
-        let (_, item) = BORROWS.iter().find(|(m, _)| *m == word).ok_or(Unevaluated::Unsupported)?;
+        let (_, item, ..) = BORROWS.iter().find(|(m, ..)| *m == word).ok_or(Unevaluated::Unsupported)?;
         let value = self.eval_as(operand, self.type_of(expr).and_then(|t| t.pointee()))?;
         match value.as_type() {
             Some(ty) => self.apply(self.item(item)?, vec![Value::Type(ty)]),

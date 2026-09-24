@@ -39,6 +39,8 @@ impl Body {
 pub struct LocalDecl {
     /// `None` for a temporary.
     pub name: Option<Symbol>,
+    /// Its type, where known: for now, a parameter's.
+    pub ty: Option<Ty>,
     pub origin: OriginId,
 }
 

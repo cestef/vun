@@ -217,7 +217,7 @@ impl TyKind {
     pub fn borrowing(&self) -> Option<(&'static str, Primitive, Ty)> {
         let Self::Primitive(p, args) = self else { return None };
         let [Value::Type(ty)] = args.as_slice() else { return None };
-        BORROWS.iter().find_map(|(mode, item)| {
+        BORROWS.iter().find_map(|(mode, item, ..)| {
             let (ns, name) = item.rsplit_once(PATH_SEPARATOR)?;
             (ns == p.namespace() && name == p.name()).then_some((*mode, *p, *ty))
         })

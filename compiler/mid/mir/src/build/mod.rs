@@ -91,7 +91,7 @@ impl<'a, 'db> Builder<'_, 'a, 'db> {
             return Err(Unbuilt { at: origin });
         };
         let mut locals = IndexVec::new();
-        let ret = locals.push(LocalDecl { name: None, origin });
+        let ret = locals.push(LocalDecl { name: None, ty: None, origin });
         let mut b = Builder {
             env,
             locals,
@@ -107,11 +107,14 @@ impl<'a, 'db> Builder<'_, 'a, 'db> {
         };
         b.current = b.fresh(origin);
         let mut args = b.captures(literal, origin)?;
-        for param in params {
+        let types = env.literal_signature(literal, &f.args).map(|s| s.params).unwrap_or_default();
+        for (index, param) in params.iter().enumerate() {
             let Entry::One(param) = param else { return Err(Unbuilt { at: origin }) };
             let pat = param.pat.ok_or(Unbuilt { at: param.origin })?;
             let PatKind::Bind(binder) = hir.pats[pat].kind else { return Err(Unbuilt { at: param.origin }) };
-            args.push(b.bind(binder));
+            let local = b.bind(binder);
+            b.locals[local].ty = types.get(index).copied();
+            args.push(local);
         }
         let result = b.block(*body)?;
         b.assign(Place::of(ret), Rvalue::Use(result), origin);
@@ -151,7 +154,7 @@ impl<'a, 'db> Builder<'_, 'a, 'db> {
     /// A local for `binder`, which names in the body read from now on.
     fn bind(&mut self, binder: BinderId) -> Local {
         let b = &self.env.parsed.hir.binders[binder];
-        let local = self.locals.push(LocalDecl { name: Some(b.name), origin: b.origin });
+        let local = self.locals.push(LocalDecl { name: Some(b.name), ty: None, origin: b.origin });
         self.bound.insert(binder, local);
         local
     }
@@ -167,7 +170,7 @@ impl<'a, 'db> Builder<'_, 'a, 'db> {
 
     /// A new temporary local holding `value`.
     fn temp_local(&mut self, value: Rvalue, origin: OriginId) -> Local {
-        let local = self.locals.push(LocalDecl { name: None, origin });
+        let local = self.locals.push(LocalDecl { name: None, ty: None, origin });
         self.assign(Place::of(local), value, origin);
         local
     }
@@ -179,8 +182,9 @@ impl<'a, 'db> Builder<'_, 'a, 'db> {
         match &hir.exprs[expr].kind {
             ExprKind::Lit(Lit::Int(n)) => Ok(Operand::Const(Value::Int(Integer::from(*n)))),
             ExprKind::Name(_) => match self.env.parsed.resolution.names[expr] {
+                // A read of a local is a statement where it is written, which checks point at.
                 Some(Res::Binder(b)) if self.bound.contains_key(&b) => {
-                    Ok(Operand::Place(self.binder_place(b)))
+                    Ok(self.temp(Rvalue::Use(Operand::Place(self.binder_place(b))), origin))
                 }
                 // A `$` parameter of an enclosing function, bound by the call running the body.
                 // A `$for` binder, or one bound by the instantiation, is a constant.

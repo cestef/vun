@@ -14,6 +14,7 @@ mod layout;
 mod loops;
 mod mir;
 mod namespaces;
+mod places;
 mod quotes;
 mod reflection;
 mod replace;

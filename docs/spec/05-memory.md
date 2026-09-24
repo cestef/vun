@@ -43,6 +43,9 @@ Rules, all checked on the control-flow graph:
 
 - Reading requires `init`. `mut buf: [4096]u8;` costs nothing, and reading it before writing it is a
   compile error. There is no `undefined` value.
+- A part named without running the program (a field, a tuple position, an item at a constant
+  index) has its own state once written: `buf[0] = 1;` makes `buf[0]` readable, not `buf[1]`. A
+  part at an index known only at run time needs the whole place `init`.
 - **At every scope exit, every place holding a linear value must be `uninit`.** Forgetting to close,
   free, release or finish something is a compile error. No destructor ever runs implicitly.
 - A place that is `init` on one incoming path and `uninit` on another cannot be used after the join.

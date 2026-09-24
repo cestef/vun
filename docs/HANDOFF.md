@@ -334,7 +334,15 @@ In order:
      `Layouts`, `Layouts::bits` for bit structs), `env/attr.rs` (`Env::{attrs_of, attribute}`,
      also used by `Func::fuel`), `lang.meta.size`, `check/layout.rs` (`layout.bits_width`),
      `_` fields kept in `MemberTable`, `Members` returns nothing on a cycle. `defer` waits for
-     place states (it must skip exits where its linear operand moved, spec 05 section 3).
+     moves (it must skip exits where its linear operand moved, spec 05 section 3).
+   - Decision 94, place states: `mid/passes/src/places/{mod,states,transfer}.rs` (query
+     `PlaceStates`, a forward dataflow to a fixed point, then one reporting sweep), the table
+     `borrows` gained `before`/`after` (`PlaceState` in `desugar.ov`), `LocalDecl::ty` (set for
+     parameters), reads of named locals are statements at the reading expression, the driver
+     stage `places` (`Session::check_places`), `stages::Input` and `Session::unlowered` (the
+     corpus keeps MIR-stage reports pending in bodies not lowered). Next: kinds (spec 05,
+     section 1: copy/linear from `#[kind.linear]` and structure), moves leaving linear places
+     `uninit`, `place.linear_leak` at scope exits, then `defer` lowered per exit.
    - `types.no_member` on values stays off: turning it on (tried) reports members the corpus
      stand-ins lack. Needed first: stand-in methods for `Timer`, `Serial`, `Led`, `Dma`, `Fs`,
      `Alloc`, `Device`, `System`, `Cache`, `Queue`, `Packet`, `Uart` in `corpus/support`,

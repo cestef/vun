@@ -23,7 +23,7 @@ impl Builder<'_, '_, '_> {
 
     /// A new local for the value of the expression at `origin`.
     pub(super) fn result(&mut self, origin: OriginId) -> Local {
-        self.locals.push(LocalDecl { name: None, origin })
+        self.locals.push(LocalDecl { name: None, ty: None, origin })
     }
 
     /// `if cond { then } else { otherwise }`; without `else`, the value is `()`.

@@ -640,9 +640,14 @@ name = "overt-mir-passes"
 version = "0.0.0"
 dependencies = [
  "overt-diag",
+ "overt-grammar",
+ "overt-index",
+ "overt-intern",
  "overt-mir",
  "overt-origin",
  "overt-pass",
+ "overt-query",
+ "overt-sema",
 ]
 
 [[package]]

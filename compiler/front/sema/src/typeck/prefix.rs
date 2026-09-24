@@ -18,7 +18,7 @@ impl Typer<'_, '_, '_> {
             return Some(known);
         }
         let word = mode.map_or("", Symbol::as_str);
-        let (_, item) = BORROWS.iter().find(|(m, _)| *m == word)?;
+        let (_, item, ..) = BORROWS.iter().find(|(m, ..)| *m == word)?;
         let borrow =
             self.env().apply(self.env().item(item).ok()?, vec![Value::Type(known.ty)]).ok()?.as_type()?;
         Some(Known { ty: borrow, ..known })

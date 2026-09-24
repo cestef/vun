@@ -17,7 +17,7 @@ free_all := (a: &mut std.mem.alloc.Fixed, head: ?Own(Node)) {
 };
 
 build := () -> u32 {
-    mut storage: [1024]u8;
+    mut storage: [1024]u8 = [0; 1024];
     mut a := std.mem.alloc.Fixed.init(&mut storage);
     mut list: ?Own(Node) = .none;
     for i in 0..4 {

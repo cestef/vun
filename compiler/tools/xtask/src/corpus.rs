@@ -1,8 +1,9 @@
 //! `cargo xtask corpus`: runs `corpus/accept` and `corpus/reject` through the driver's stages and
 //! compares what they report with what the files expect (spec 10, section 7).
 //!
-//! A rejected file whose missing diagnostics all belong to stages that do not exist yet is
-//! pending, not failing, so the corpus can be written ahead of the compiler (roadmap phase 0).
+//! A rejected file whose missing diagnostics all belong to stages that do not exist yet, or to
+//! stages reading MIR in functions MIR does not lower yet, is pending, not failing, so the corpus
+//! can be written ahead of the compiler (roadmap phase 0).
 
 use overt_fs::Tree;
 use std::collections::BTreeSet;
@@ -10,7 +11,7 @@ use std::fmt::Write;
 use std::path::{Path, PathBuf};
 
 use overt_diag::{ChildKind, DiagId, Diagnostic, errors};
-use overt_driver::stages::Stage;
+use overt_driver::stages::{Input, Stage};
 use overt_driver::{Coverage, Session};
 use overt_harness::{self as harness, At, Expected, Mismatch, Reported};
 use overt_span::{EXTENSION, SourceMap};
@@ -100,8 +101,10 @@ impl Verdict {
     pub(crate) fn of(path: &Path, expect: Expect) -> std::io::Result<Self> {
         let text = std::fs::read_to_string(path)?;
         let mut session = Session::new();
+        let mut unlowered = Vec::new();
         if let Some(file) = session.load(path) {
             session.check(file);
+            unlowered = session.unlowered(file);
         }
         let reported: Vec<Reported> = session.diag.sorted().iter().map(|d| reported(&session, d)).collect();
         let expected = match expect {
@@ -125,12 +128,25 @@ impl Verdict {
             Self::Pass
         } else if mismatch.unexpected.is_empty()
             && mismatch.differing.is_empty()
-            && mismatch.missing.iter().all(|at| !Stage::implemented(&DiagId::compiler(&at.id)))
+            && mismatch.missing.iter().all(|at| Self::later(at, &unlowered))
         {
             Self::Pending(mismatch.missing)
         } else {
             Self::Fail(mismatch)
         })
+    }
+}
+
+impl Verdict {
+    /// Whether the diagnostic expected at `at` belongs to a stage that does not exist yet, or to
+    /// one reading MIR in a function MIR does not lower yet (lines `unlowered`).
+    fn later(at: &At, unlowered: &[(u32, u32)]) -> bool {
+        match Stage::of(&DiagId::compiler(&at.id)) {
+            None => true,
+            Some(stage) => {
+                stage.input == Input::Mir && unlowered.iter().any(|&(lo, hi)| (lo..=hi).contains(&at.line))
+            }
+        }
     }
 }
 

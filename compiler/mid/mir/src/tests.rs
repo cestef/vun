@@ -11,8 +11,8 @@ fn body(origins: &OriginTable, edit: impl FnOnce(&mut Body)) -> Body {
     let file = SourceFiles::new().add("a.ov", "f := (x: u8) -> u8 { x };");
     let origin = origins.source(Span::new(file, 5, 24));
     let mut locals = IndexVec::new();
-    let ret = locals.push(LocalDecl { name: None, origin });
-    let param = locals.push(LocalDecl { name: None, origin });
+    let ret = locals.push(LocalDecl { name: None, ty: None, origin });
+    let param = locals.push(LocalDecl { name: None, ty: None, origin });
     let stmt = Stmt { place: Place::of(ret), value: Rvalue::Use(Operand::Place(Place::of(param))), origin };
     let mut blocks = IndexVec::new();
     blocks.push(Block { stmts: vec![stmt], term: Terminator { kind: TerminatorKind::Return, origin } });

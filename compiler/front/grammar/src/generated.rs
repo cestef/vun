@@ -16,6 +16,12 @@ pub enum Form {
     /// The type `[T]`.
     Slice,
 }
+/// The states of a place (spec 05, section 2).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum PlaceState {
+    Uninit,
+    Init,
+}
 /// How a compound assignment brings its result back to the place's type (spec 04, rule 9).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Narrowing {
@@ -1207,12 +1213,14 @@ pub const TYPE_PREFIXES: &[(TokenKind, &str)] = &[
     (TokenKind::Question, "lang.Option"),
     (TokenKind::Star, "lang.mem.Ptr"),
 ];
-/// Borrow types by the word after `&` (appendix B): `&T` is `lang.mem.Ref(T)`.
-pub const BORROWS: &[(&str, &str)] = &[
-    ("", "lang.mem.Ref"),
-    ("mut", "lang.mem.RefMut"),
-    ("out", "lang.mem.RefOut"),
-    ("take", "lang.mem.RefTake"),
+/// Borrow types by the word after `&` (appendix B): `&T` is `lang.mem.Ref(T)`. Each mode is named
+/// by the transition it performs on the place it borrows (spec 05, section 2): the state it
+/// needs before, and the state the place has after.
+pub const BORROWS: &[(&str, &str, PlaceState, PlaceState)] = &[
+    ("", "lang.mem.Ref", PlaceState::Init, PlaceState::Init),
+    ("mut", "lang.mem.RefMut", PlaceState::Init, PlaceState::Init),
+    ("out", "lang.mem.RefOut", PlaceState::Uninit, PlaceState::Init),
+    ("take", "lang.mem.RefTake", PlaceState::Init, PlaceState::Uninit),
 ];
 /// Compound assignments: `x op= y` is `x = (x op y)` narrowed back to the type of `x`.
 pub const COMPOUND: &[(TokenKind, TokenKind, Narrowing)] = &[
