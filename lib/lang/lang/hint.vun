@@ -1,5 +1,6 @@
 //! Hints inside function bodies (spec 09, section 3).
 
-cold: () = _;
+/// The branch calling it is rarely taken.
+cold: () -> () = _;
 /// Control never gets here: unchecked, as after assembly that does not return.
 unreachable: unsafe () -> lang.never = _;

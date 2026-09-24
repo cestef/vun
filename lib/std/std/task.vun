@@ -36,7 +36,7 @@ Async := ($R: type) -> lang.Interface { lang.Coroutine(Wait, R) };
 /// typed link symbol the runtime exports (spec 08, section 1).
 sleep_symbol := "vun.task.sleep";
 #[link.symbol(sleep_symbol)]
-sleep: () = _;
+sleep: () -> () = _;
 
 /// Which of two tasks finished first, with its result.
 Either := ($A: type, $B: type) -> type { enum { first(A), second(B) } };

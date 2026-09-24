@@ -112,6 +112,7 @@ backend := struct {
 /// Linking (spec 13).
 link := struct {
     unavailable := diag.Diag{ .explanation = meta.embed("errors/link/unavailable.md") };
+    export_mismatch := diag.Diag{ .explanation = meta.embed("errors/link/export_mismatch.md") };
 };
 
 /// Package manifests: the `package` literal of `build.vun` (spec 12, section 2).

@@ -3,6 +3,7 @@
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[allow(non_camel_case_types, reason = "variants are named as their declarations")]
 pub enum Hint {
+    /// The branch calling it is rarely taken.
     cold,
     /// Control never gets here: unchecked, as after assembly that does not return.
     unreachable,

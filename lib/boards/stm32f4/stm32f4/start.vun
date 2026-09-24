@@ -32,4 +32,24 @@ start := ($config: Config) -> type { struct {
 
     #[link.export(lang.panic.trap_symbol)]
     trap := config.trap;
+
+    /// Masks interrupts, keeping `PRIMASK` as it was: one core, so the section is never
+    /// contended and nests by restoring the mask.
+    #[link.export(std.sync.enter_symbol), panic.never]
+    enter := () -> std.sync.Mask {
+        mut primask: usize = 0;
+        unsafe { lang.arch.asm("mrs {mask}, PRIMASK\ncpsid i", .{ .mask = &out primask }); }
+        unsafe std.sync.Mask.of(primask, true)
+    };
+
+    #[link.export(std.sync.leave_symbol), panic.never]
+    leave := (mask: std.sync.Mask) {
+        if mask.bits() & 1 == 0 {
+            unsafe { lang.arch.asm("cpsie i", .{}); }
+        }
+    };
+
+    /// Waits for an interrupt.
+    #[link.export(std.task.sleep_symbol)]
+    sleep := () { unsafe { lang.arch.asm("wfi", .{}); } };
 }};

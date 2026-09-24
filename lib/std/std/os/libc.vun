@@ -1,5 +1,6 @@
-//! A runtime on top of the C library: exports C `main` and the trap handler, and reaches the
-//! system through the C library's functions (spec 08, section 2).
+//! A runtime on top of the C library: exports C `main`, the trap handler, the critical section
+//! and the executors' sleep, and reaches the system through the C library's functions (spec 08,
+//! section 2).
 
 #[link.symbol("write"), abi.c]
 write: unsafe (fd: i32, bytes: *u8, count: usize) -> isize = _;
@@ -8,6 +9,23 @@ exit: unsafe (status: i32) -> lang.never = _;
 /// Where the calling thread's `errno` is.
 #[link.symbol("__errno_location"), abi.c]
 errno_location: unsafe () -> *i32 = _;
+
+/// A signal set as the C library lays it out: 1024 bits, of which Linux uses the first 64.
+Sigset := [16]u64;
+#[link.symbol("sigfillset"), abi.c, panic.never]
+sigfillset: unsafe (set: *Sigset) -> i32 = _;
+#[link.symbol("pthread_sigmask"), abi.c, panic.never]
+pthread_sigmask: unsafe (how: i32, set: *Sigset, old: *Sigset) -> i32 = _;
+/// `how` for `pthread_sigmask`: add the set to the mask, or make it the mask.
+sig_block := 0;
+sig_setmask := 2;
+#[link.symbol("pthread_self"), abi.c, panic.never]
+pthread_self: unsafe () -> usize = _;
+#[link.symbol("sched_yield"), abi.c]
+sched_yield: unsafe () -> i32 = _;
+
+/// The thread holding the critical section, 0 when none: a thread entering it again nests.
+owner: std.sync.Atomic(usize) = .init(0);
 
 /// The status C `main` returns for `std.os.Exit.ok`, and the one a trap exits with.
 success := 0;
@@ -26,4 +44,40 @@ start := ($main: (&mut std.os.System) -> std.os.Exit) -> type { struct {
 
     #[link.export(lang.panic.trap_symbol)]
     trap := (t: &lang.panic.Trap) -> lang.never { unsafe exit(trapped) };
+
+    /// Blocks the thread's signals, the interrupts of a hosted program, and takes the section
+    /// from other threads.
+    #[link.export(std.sync.enter_symbol), panic.never]
+    enter := () -> std.sync.Mask {
+        mut all: Sigset = [0; 16];
+        mut old: Sigset = [0; 16];
+        unsafe {
+            sigfillset(lang.mem.pointer_to(Sigset, &all));
+            pthread_sigmask(sig_block, lang.mem.pointer_to(Sigset, &all), lang.mem.pointer_to(Sigset, &old));
+        }
+        me := unsafe pthread_self();
+        outer := owner.load(.acquire) != me;
+        if outer {
+            for owner.compare_swap(0, me, .acquire) != 0 {}
+        }
+        unsafe std.sync.Mask.of(old[0], outer)
+    };
+
+    #[link.export(std.sync.leave_symbol), panic.never]
+    leave := (mask: std.sync.Mask) {
+        if mask.outer() {
+            owner.store(0, .release);
+        }
+        mut set: Sigset = [0; 16];
+        set[0] = mask.bits();
+        mut old: Sigset = [0; 16];
+        unsafe {
+            pthread_sigmask(sig_setmask, lang.mem.pointer_to(Sigset, &set), lang.mem.pointer_to(Sigset, &old));
+        }
+    };
+
+    /// Gives the core to other threads: what fires an event runs on one of them, or in a
+    /// signal handler, and nothing is missed between an executor's check and its sleep.
+    #[link.export(std.task.sleep_symbol)]
+    sleep := () { unsafe { sched_yield(); } };
 }};

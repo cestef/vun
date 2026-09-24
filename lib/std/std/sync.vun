@@ -2,8 +2,20 @@
 //! is global mutual exclusion: `Shared(T)` is reached only with the `&Critical` it lends, and
 //! `Atomic(T)` and `Mutex(T)` synchronize by themselves.
 
-/// The interrupt mask `enter` found, which `leave` restores.
-Mask := struct { _bits: usize };
+/// The interrupt mask `enter` found, which `leave` restores, and whether that `enter` took the
+/// section, which its `leave` then gives back: sections nest.
+Mask := struct {
+    _bits: usize,
+    _outer: bool,
+
+    /// The mask a runtime's `enter` records.
+    #[panic.never]
+    of := unsafe (mask: usize, took: bool) -> Mask { .{ ._bits = mask, ._outer = took } };
+    #[panic.never]
+    bits := (self: &Mask) -> usize { self._bits };
+    #[panic.never]
+    outer := (self: &Mask) -> bool { self._outer };
+};
 
 /// The runtime's critical section, typed link symbols it exports (spec 08, section 1): `enter`
 /// masks interrupts and, on multi-core targets, takes the global lock; `leave` undoes it.

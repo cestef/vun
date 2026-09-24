@@ -5,6 +5,7 @@ mod frozen;
 mod holes;
 mod impls;
 mod layout;
+mod link;
 mod visible;
 
 use std::sync::Arc;
@@ -39,6 +40,7 @@ impl Query for Checked {
             checker.namespace(&env.parsed.hir, root);
         }
         checker.impls();
+        checker.exports();
         Some(Arc::new(checker.diag))
     }
 }

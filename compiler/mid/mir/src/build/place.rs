@@ -8,7 +8,9 @@ use vun_hir::tree::{ExprId, ExprKind};
 use vun_intern::Symbol;
 use vun_origin::OriginId;
 use vun_sema::env::Hop;
+use vun_sema::int::Interval;
 use vun_sema::member::Members;
+use vun_sema::ty::{TyKind, Value};
 
 use super::{Builder, Unbuilt};
 use crate::body::{Operand, Role, Rvalue};
@@ -45,12 +47,20 @@ impl Builder<'_, '_, '_> {
                     return Err(Unbuilt { at: origin });
                 }
                 let place = self.through_borrows(*object)?;
+                let constant = self.env().eval(*index);
                 let index = self.place(*index)?;
                 let index = if index.projection.is_empty() {
                     index.local
                 } else {
                     self.temp_local(Rvalue::Use(Operand::Place(index)), origin)
                 };
+                // A temporary holding a constant has the type of that integer alone, which
+                // proves it within the items where it is.
+                if self.locals[index].name.is_none()
+                    && let Ok(Value::Int(n)) = constant
+                {
+                    self.locals[index].ty = Some(TyKind::int(&Interval::singleton(n)));
+                }
                 Ok(place.project(Projection::Index(index)))
             }
             // Through a struct owning its target, `.*` goes through its `#[kind.owns]` field.

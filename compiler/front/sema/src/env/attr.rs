@@ -14,14 +14,18 @@ impl Env<'_, '_> {
     pub fn attrs_of(&self, literal: ExprId) -> Vec<ExprId> {
         let hir = &self.parsed.hir;
         let mut attrs = Vec::new();
+        // Up through the attributes and marker prefixes around it, as in
+        // `#[panic.never] of := unsafe (...) { ... }`, to the declaration it is the value of.
         let mut value = literal;
-        for (id, e) in hir.exprs.iter() {
-            if let ExprKind::Attributed { attrs: on, inner } = &e.kind
-                && *inner == literal
-            {
+        while let Some((id, e)) = hir.exprs.iter().find(|(_, e)| match &e.kind {
+            ExprKind::Attributed { inner, .. } => *inner == value,
+            ExprKind::Prefix { op, operand, .. } => *operand == value && Marker::of_prefix(*op).is_some(),
+            _ => false,
+        }) {
+            if let ExprKind::Attributed { attrs: on, .. } = &e.kind {
                 attrs.extend(on);
-                value = id;
             }
+            value = id;
         }
         if let Some((_, decl)) = hir.decls.iter().find(|(_, d)| d.value == Some(value)) {
             attrs.extend(&decl.attrs);

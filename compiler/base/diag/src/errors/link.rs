@@ -3,3 +3,4 @@ use crate::DiagId;
 /// Linking (spec 13).
 pub const LINK: DiagId = DiagId::new("lang.errors.link");
 pub const LINK_UNAVAILABLE: DiagId = DiagId::new("lang.errors.link.unavailable");
+pub const LINK_EXPORT_MISMATCH: DiagId = DiagId::new("lang.errors.link.export_mismatch");
