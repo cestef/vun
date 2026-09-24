@@ -11,16 +11,18 @@ mod eval;
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use overt_grammar::PATH_SEPARATOR;
 use overt_hir::db::{CheckedNames, FileNames, FileRef, Namespace, Outer, Package, Parsed, ParsedFile, Scope};
 use overt_hir::resolve::Res;
 use overt_hir::tree::{BinderId, Entry, ExprId, ExprKind, Param, PatKind};
+use overt_intern::Symbol;
 use overt_origin::OriginTable;
 use overt_query::Cx;
 use overt_span::{SourceFiles, SourceMap};
 
 use crate::decl::DeclValue;
 use crate::eval::Instance;
-use crate::item::{DeclRef, Declared, Site};
+use crate::item::{DeclRef, Declared, ExprRef, Site};
 use crate::ty::Value;
 
 /// Why an expression has no value at compile time here.
@@ -88,6 +90,15 @@ impl<'a, 'db> Env<'a, 'db> {
         Some(env)
     }
 
+    /// The environment the literal `literal` was evaluated in: inside `instance`, or in its file.
+    #[must_use]
+    pub fn defining(cx: &'a Cx<'db>, literal: &ExprRef, instance: Option<&Instance>) -> Option<Self> {
+        match instance {
+            Some(call) => Self::within(cx, call),
+            None => Self::of(cx, &literal.file),
+        }
+    }
+
     /// Where the name expression `expr` leads.
     ///
     /// # Errors
@@ -103,25 +114,44 @@ impl<'a, 'db> Env<'a, 'db> {
                     self.parsed.resolution.enclosing(ns).flatten().find_map(|n| {
                         self.names.spreads.brought.get(&n).and_then(|brought| brought.get(&name))
                     });
-                let target = match spread {
-                    Some(ns) => ns.clone(),
-                    None => match self.cx.get::<Scope>(&self.file.package).names.get(&name) {
-                        Some(Outer::Prelude(ns)) => ns.clone(),
-                        Some(Outer::Package(package)) => {
-                            return Ok(Site::Namespace(Namespace { package: *package, path: Vec::new() }));
-                        }
-                        Some(Outer::Dep(index)) => {
-                            let dep = &self.cx.get::<Package>(&self.file.package).deps[*index];
-                            let package = dep.package.clone().map_err(|_| Unevaluated::Absent)?;
-                            return Ok(Site::Namespace(Namespace { package, path: Vec::new() }));
-                        }
-                        None => return Err(Unevaluated::Absent),
-                    },
-                };
-                self.cx.get::<Declared>(&(target, name)).ok_or(Unevaluated::Absent)
+                match spread {
+                    Some(ns) => self.cx.get::<Declared>(&(ns.clone(), name)).ok_or(Unevaluated::Absent),
+                    None => self.outer(name),
+                }
             }
             None => Err(Unevaluated::Unsupported),
         }
+    }
+
+    /// Where `name` leads outside the file: the package, a dependency, or the prelude.
+    fn outer(&self, name: Symbol) -> Result<Site, Unevaluated> {
+        let root = |package| Ok(Site::Namespace(Namespace { package, path: Vec::new() }));
+        match self.cx.get::<Scope>(&self.file.package).names.get(&name) {
+            Some(Outer::Prelude(ns)) => {
+                self.cx.get::<Declared>(&(ns.clone(), name)).ok_or(Unevaluated::Absent)
+            }
+            Some(Outer::Package(package)) => root(*package),
+            Some(Outer::Dep(index)) => {
+                let dep = &self.cx.get::<Package>(&self.file.package).deps[*index];
+                root(dep.package.clone().map_err(|_| Unevaluated::Absent)?)
+            }
+            None => Err(Unevaluated::Absent),
+        }
+    }
+
+    /// The value of the item at `path`, such as `lang.ops.Eq`, which syntax desugars into
+    /// (appendix B): its first name is looked up outside the file, the rest as members.
+    ///
+    /// # Errors
+    /// Returns why the item has no value here, such as a replaced `lang` that lacks it.
+    pub fn item(&self, path: &str) -> Result<Value, Unevaluated> {
+        let mut names = path.split(PATH_SEPARATOR).map(Symbol::intern);
+        let mut site = self.outer(names.next().ok_or(Unevaluated::Absent)?)?;
+        for name in names {
+            let Value::Namespace(ns) = self.value_of(site)? else { return Err(Unevaluated::Unsupported) };
+            site = self.cx.get::<Declared>(&(ns, name)).ok_or(Unevaluated::Absent)?;
+        }
+        self.value_of(site)
     }
 
     /// The value of `site`.

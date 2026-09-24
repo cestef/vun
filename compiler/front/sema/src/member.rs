@@ -6,11 +6,12 @@ use std::sync::Arc;
 
 use overt_hir::tree::{Entry, ExprKind, Member, Name};
 use overt_intern::Symbol;
-use overt_query::{Cx, Query};
+use overt_query::{Cx, Cycle, Query};
 
 use crate::env::{Env, Unevaluated};
 use crate::item::DeclRef;
 use crate::ty::{Nominal, NominalKind, Ty, TyKind};
+use crate::typeck::Known;
 
 #[derive(Debug, Default, PartialEq, Eq, Hash)]
 pub struct MemberTable {
@@ -57,10 +58,7 @@ impl Query for Members {
         let TyKind::Nominal(Nominal { literal, instance, kind: NominalKind::Struct, .. }) = &**ty else {
             return None;
         };
-        let env = match instance {
-            Some(call) => Env::within(cx, call)?,
-            None => Env::of(cx, &literal.file)?,
-        };
+        let env = Env::defining(cx, literal, instance.as_ref())?;
         let hir = &env.parsed.hir;
         let ExprKind::Struct(ns) = hir.exprs[literal.expr].kind else { return None };
         let mut table = MemberTable { complete: true, ..MemberTable::default() };
@@ -84,5 +82,28 @@ impl Query for Members {
             }
         }
         Some(Arc::new(table))
+    }
+}
+
+/// The type of the declaration `name` among a struct type's members, evaluated where the struct
+/// was built: `Eq(u8).eq` is `(&u8, &u8) -> bool`.
+pub struct MemberType;
+
+impl Query for MemberType {
+    const NAME: &'static str = "member_type";
+    type Key = (Ty, Symbol);
+    type Value = Result<Known, Unevaluated>;
+
+    fn compute(cx: &Cx<'_>, (ty, name): &Self::Key) -> Self::Value {
+        let TyKind::Nominal(Nominal { literal, instance, .. }) = &**ty else {
+            return Err(Unevaluated::Unsupported);
+        };
+        let members = cx.get::<Members>(ty).ok_or(Unevaluated::Unsupported)?;
+        let Found::Decl(decl) = members.find(*name) else { return Err(Unevaluated::Absent) };
+        Env::defining(cx, literal, instance.as_ref()).ok_or(Unevaluated::Absent)?.decl_type(decl.decl)
+    }
+
+    fn cycle(_: &Cx<'_>, _: &Self::Key, _: &Cycle) -> Self::Value {
+        Err(Unevaluated::Cycle)
     }
 }

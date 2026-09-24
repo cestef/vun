@@ -4,6 +4,7 @@
 use crate::Primitive;
 use crate::env::Unevaluated;
 use crate::primitives::lang::Lang;
+use crate::primitives::mem::Mem;
 use crate::ty::{Signature, TyKind, Value};
 
 impl Primitive {
@@ -23,6 +24,16 @@ impl Primitive {
                 };
                 let TyKind::Tuple(params) = &*params else { return Err(Unevaluated::Unsupported) };
                 Ok(Value::Type(Signature { params: params.clone(), result }.ty()))
+            }
+            // `lang.interface(f)` wraps `f` so that it can constrain `$` parameters.
+            (Self::Lang(Lang::interface), [Value::Fn(f)]) => Ok(Value::Interface(f.clone())),
+            // Borrow, pointer and cell types have no structure beyond their argument.
+            (
+                Self::Mem(Mem::Ref | Mem::RefMut | Mem::RefOut | Mem::RefTake | Mem::Ptr | Mem::Cell),
+                [arg],
+            ) => {
+                let arg = arg.as_type().ok_or(Unevaluated::Unsupported)?;
+                Ok(Value::Type(TyKind::Primitive(self, vec![Value::Type(arg)]).intern()))
             }
             _ => Err(Unevaluated::Unsupported),
         }

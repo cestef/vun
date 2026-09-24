@@ -161,7 +161,7 @@ bodies, so `$for`/`$if` work in every list context; node kinds are chosen after 
 (postorder). One report per position; missing things are reported at the end of the previous
 token; nesting capped at 256; the keyword hint suggests `\keyword`.
 
-Tests: 146, including unit tests per crate, `tests/lexer.rs`, `tests/parser.rs` (all of `lib/` and
+Tests: 147, including unit tests per crate, `tests/lexer.rs`, `tests/parser.rs` (all of `lib/` and
 `corpus/accept` parse clean and verify, CST and token snapshots mirroring the corpus tree), CLI parsing tests, the
 generated-files-current test and the corpus test (no failing corpus file). Fuzz: `parse` ran 600k inputs in 4 minutes
 without a failure. clippy pedantic is clean.
@@ -206,12 +206,12 @@ In order:
    from `lang.int`. Typed: namespace members against their annotations, function bodies
    (parameters, locals, names by `DeclType`, arithmetic, calls against `lang.Fn` signatures, the
    result against the declared one), `int.width_cap` on run-time intermediates. Next:
-   - Interfaces: `interface(f)` should evaluate to a value wrapping `f`; the requirement struct
-     for a type is `Call(Instance { f, [Type(T)] })`, whose members `Members` already evaluates
-     with `Self` bound. That gives `lang.ops.Eq.eq`'s result type (`bool`) by data, then
-     comparisons, `if`, `and`, `or`. `&T` in types needs `lang.mem.Ref` (prefix `&` in `Env::eval`).
-   - Declarations inside a struct built by a call (`Pair(u8).swap`) are typed by `DeclType`
-     without the instance's bindings, so they stay unknown; bodies of generic functions are typed
+   - Operators: `interface(f)` evaluates to `Value::Interface(f)`; a non-arithmetic operator is
+     typed by its function in the requirement struct `Call(Instance { f, [Type(left)] })`,
+     through `MemberType` (decision 69, tables `OPERATORS`, `BORROWS`), so `a < b` is `bool`
+     from `lang`. Next: operand checks against the requirement's parameters, `types.no_impl`
+     (needs impls), `if`/`and`/`or` typing and MIR branches, prefix operators (`-`, `!`, `~`).
+   - Struct declarations are typed in their instance (`MemberType`); bodies of generic functions are typed
      only where no `$` parameter is needed (`Typed(ExprRef)`), not per instance yet.
    - `types.no_member` on a value waits for impls: a method may come from a witness (spec 02,
      section 3), so only struct-literal field names are reported.
@@ -242,8 +242,9 @@ programs take from drivers, other libraries and unwritten parts of `std`.
 
 ## 9. Open questions and known gaps
 
-- Decisions 65 (partial graphs resolve through the lockfile), 66 (primitives from `lang`) and 68
-  (`lang.Fn`, what is compile-time-only, nominal type names) are proposed; 67 (pure-Rust dependencies) is accepted. Decisions 45 to 64 are accepted. 61 (query persistence) and 63 (signed
+- Decisions 65 (partial graphs resolve through the lockfile), 66 (primitives from `lang`), 68
+  (`lang.Fn`, what is compile-time-only, nominal type names) and 69 (appendix B as data, `Ord`,
+  `Eq.ne`) are proposed; 67 (pure-Rust dependencies) is accepted. Decisions 45 to 64 are accepted. 61 (query persistence) and 63 (signed
   caches) are accepted but not built. Earlier: decisions 45 to 52 are accepted (50: BLAKE3 Merkle hashes, base32, nested store; 51: `.ovpkg`; 52: error chains) (fourth session): `lang.int`, spreads, compile-time block
   bindings visible in their own value, manifest detection and content-hash caches, `targets` as a
   default dependency. Corpus type functions write `$Ring`, `$Regs`, `$Block`.

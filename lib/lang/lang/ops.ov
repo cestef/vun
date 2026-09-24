@@ -1,13 +1,88 @@
-//! Operators as interfaces. Every operator desugars to one of these (spec 02, section 4).
+//! Operators as interfaces. Every operator desugars to one of these (spec 02, section 4); the
+//! table `operators` of `lang.syntax.grammar` says which.
 
+/// `a + b`.
 Add := interface(($Self: type) -> type { struct {
     Rhs: type = _;
     Output: type = _;
     add: (a: Self, b: Rhs) -> Output = _;
 }});
 
+/// `a - b`.
+Sub := interface(($Self: type) -> type { struct {
+    Rhs: type = _;
+    Output: type = _;
+    sub: (a: Self, b: Rhs) -> Output = _;
+}});
+
+/// `a * b`.
+Mul := interface(($Self: type) -> type { struct {
+    Rhs: type = _;
+    Output: type = _;
+    mul: (a: Self, b: Rhs) -> Output = _;
+}});
+
+/// `a / b`.
+Div := interface(($Self: type) -> type { struct {
+    Rhs: type = _;
+    Output: type = _;
+    div: (a: Self, b: Rhs) -> Output = _;
+}});
+
+/// `a % b`.
+Rem := interface(($Self: type) -> type { struct {
+    Rhs: type = _;
+    Output: type = _;
+    rem: (a: Self, b: Rhs) -> Output = _;
+}});
+
+/// `a ++ b`, and `[..a, x]`.
+Concat := interface(($Self: type) -> type { struct {
+    Rhs: type = _;
+    Output: type = _;
+    concat: (a: Self, b: Rhs) -> Output = _;
+}});
+
+/// `a & b`: bit operations keep the type (spec 04, rule 8).
+BitAnd := interface(($Self: type) -> type { struct {
+    bit_and: (a: Self, b: Self) -> Self = _;
+}});
+
+/// `a | b`: bit operations keep the type (spec 04, rule 8).
+BitOr := interface(($Self: type) -> type { struct {
+    bit_or: (a: Self, b: Self) -> Self = _;
+}});
+
+/// `a ^ b`: bit operations keep the type (spec 04, rule 8).
+BitXor := interface(($Self: type) -> type { struct {
+    bit_xor: (a: Self, b: Self) -> Self = _;
+}});
+
+/// `a << n`: shifts keep the type of `a` (spec 04, rule 8).
+Shl := interface(($Self: type) -> type { struct {
+    Amount: type = _;
+    shl: (a: Self, n: Amount) -> Self = _;
+}});
+
+/// `a >> n`: shifts keep the type of `a` (spec 04, rule 8).
+Shr := interface(($Self: type) -> type { struct {
+    Amount: type = _;
+    shr: (a: Self, n: Amount) -> Self = _;
+}});
+
+/// `a == b` and `a != b`.
 Eq := interface(($Self: type) -> type { struct {
     eq: (a: &Self, b: &Self) -> bool = _;
+    ne := (a: &Self, b: &Self) -> bool { !eq(a, b) };
+}});
+
+/// `a < b`, `a <= b`, `a > b` and `a >= b`: a total order, from `cmp`.
+Ord := interface(($Self: type) -> type { struct {
+    cmp: (a: &Self, b: &Self) -> Ordering = _;
+    lt := (a: &Self, b: &Self) -> bool { match cmp(a, b) { .less => .true, _ => .false } };
+    le := (a: &Self, b: &Self) -> bool { match cmp(a, b) { .greater => .false, _ => .true } };
+    gt := (a: &Self, b: &Self) -> bool { match cmp(a, b) { .greater => .true, _ => .false } };
+    ge := (a: &Self, b: &Self) -> bool { match cmp(a, b) { .less => .false, _ => .true } };
 }});
 
 Index := interface(($Self: type) -> type { struct {

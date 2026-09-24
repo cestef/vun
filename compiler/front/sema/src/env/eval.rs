@@ -1,8 +1,9 @@
 //! Evaluating constant forms, and the types annotations denote.
 
-use overt_grammar::TokenKind;
+use overt_grammar::{BORROWS, TokenKind};
 use overt_hir::resolve::Res;
 use overt_hir::tree::{Arg, Entry, ExprId, ExprKind, List, Lit, Name, Param};
+use overt_intern::Symbol;
 use overt_origin::OriginTable;
 
 use super::{Env, Unevaluated};
@@ -33,6 +34,7 @@ impl Env<'_, '_> {
             },
             ExprKind::Enum(_) => Ok(self.nominal(expr, NominalKind::Enum)),
             ExprKind::Struct(_) => Ok(self.nominal(expr, NominalKind::Struct)),
+            ExprKind::Prefix { op: TokenKind::Amp, mode, operand } => self.borrow(*mode, *operand),
             ExprKind::Prefix { op, operand, .. } => Value::unary(*op, &self.eval(*operand)?),
             ExprKind::Infix { op: op @ (TokenKind::DotDot | TokenKind::DotDotEq), left, right } => {
                 let hi = right.map(|r| self.eval(r)).transpose()?;
@@ -69,6 +71,18 @@ impl Env<'_, '_> {
         match callee {
             Value::Fn(f) => self.cx.get::<Call>(&Instance { f, args }),
             Value::Primitive(p) => p.apply(&args),
+            _ => Err(Unevaluated::Unsupported),
+        }
+    }
+
+    /// `&T`, `&mut T`, ...: the borrow type the word after `&` names (appendix B), applied to the
+    /// type `operand`. A borrow of a value exists at run time only.
+    fn borrow(&self, mode: Option<Symbol>, operand: ExprId) -> Result<Value, Unevaluated> {
+        let word = mode.map_or("", Symbol::as_str);
+        let (_, item) = BORROWS.iter().find(|(m, _)| *m == word).ok_or(Unevaluated::Unsupported)?;
+        let ty = self.eval(operand)?.as_type().ok_or(Unevaluated::Runtime)?;
+        match self.item(item)? {
+            Value::Primitive(p) => p.apply(&[Value::Type(ty)]),
             _ => Err(Unevaluated::Unsupported),
         }
     }

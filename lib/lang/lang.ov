@@ -19,6 +19,8 @@ f64: type = _;
 
 bool := enum { false, true };
 never := enum {};
+/// How two values compare (`lang.ops.Ord`).
+Ordering := enum { less, equal, greater };
 
 Option := ($T: type) -> type { enum { none, some(T) } };
 Result := ($T: type, $E: type) -> type { enum { ok(T), err(E) } };

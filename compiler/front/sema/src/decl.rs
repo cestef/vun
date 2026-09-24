@@ -3,7 +3,7 @@
 
 use overt_grammar::PATH_SEPARATOR;
 use overt_hir::db::Package;
-use overt_hir::tree::{ExprKind, PatKind};
+use overt_hir::tree::{DeclId, ExprKind, PatKind};
 use overt_intern::Symbol;
 use overt_query::{Cx, Cycle, Query};
 
@@ -55,22 +55,31 @@ impl Query for DeclType {
     type Value = Result<Known, Unevaluated>;
 
     fn compute(cx: &Cx<'_>, key: &DeclRef) -> Self::Value {
-        let env = Env::of(cx, &key.file).ok_or(Unevaluated::Absent)?;
-        let hir = &env.parsed.hir;
-        let decl = &hir.decls[key.decl];
-        let PatKind::Bind(binder) = hir.pats[decl.pat].kind else { return Err(Unevaluated::Unsupported) };
-        let stage = if hir.binders[binder].mutable { Stage::Run } else { Stage::Compile };
-        let ty = match (decl.ty, decl.value) {
-            (Some(annotation), _) => env.ty(annotation)?,
-            (None, Some(value)) => {
-                Typer::new(&env, Stage::Compile).typed(value).ok_or(Unevaluated::Unsupported)?.ty
-            }
-            (None, None) => return Err(Unevaluated::Unsupported),
-        };
-        Ok(Known { ty, stage })
+        Env::of(cx, &key.file).ok_or(Unevaluated::Absent)?.decl_type(key.decl)
     }
 
     fn cycle(_: &Cx<'_>, _: &DeclRef, _: &Cycle) -> Self::Value {
         Err(Unevaluated::Cycle)
+    }
+}
+
+impl Env<'_, '_> {
+    /// The type of the declaration `decl` here: its annotation, or the type of its value.
+    ///
+    /// # Errors
+    /// Returns why the type is not known here.
+    pub fn decl_type(&self, decl: DeclId) -> Result<Known, Unevaluated> {
+        let hir = &self.parsed.hir;
+        let decl = &hir.decls[decl];
+        let PatKind::Bind(binder) = hir.pats[decl.pat].kind else { return Err(Unevaluated::Unsupported) };
+        let stage = if hir.binders[binder].mutable { Stage::Run } else { Stage::Compile };
+        let ty = match (decl.ty, decl.value) {
+            (Some(annotation), _) => self.ty(annotation)?,
+            (None, Some(value)) => {
+                Typer::new(self, Stage::Compile).typed(value).ok_or(Unevaluated::Unsupported)?.ty
+            }
+            (None, None) => return Err(Unevaluated::Unsupported),
+        };
+        Ok(Known { ty, stage })
     }
 }

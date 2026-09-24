@@ -1,6 +1,6 @@
 //! The type of each form typed so far. Any other form has its parts typed and no type itself.
 
-use overt_grammar::TokenKind;
+use overt_grammar::{OPERATORS, TokenKind};
 use overt_hir::resolve::Res;
 use overt_hir::tree::{Arg, Entry, ExprId, ExprKind, Hir, Lit, Name};
 use overt_hir::visit::{self, Visitor};
@@ -9,9 +9,10 @@ use overt_intern::Symbol;
 use super::{Known, Stage, Typer};
 use crate::Primitive;
 use crate::decl::DeclType;
+use crate::eval::{Call, Instance};
 use crate::int::{Integer, Interval};
 use crate::item::{Declared, Site};
-use crate::member::{Found, Members};
+use crate::member::{Found, MemberType, Members};
 use crate::primitives::lang::Lang;
 use crate::ty::{TyKind, Value};
 
@@ -39,7 +40,7 @@ impl Typer<'_, '_, '_> {
             }
             ExprKind::Infix { op, left, right: Some(right) } => {
                 let (left, right) = (self.typed(*left), self.typed(*right));
-                self.arithmetic(expr, *op, left?, right?)
+                self.binary(expr, *op, left?, right?)
             }
             ExprKind::Call { callee, args } => self.call(*callee, args),
             // A function literal is a value; its body is typed on its own.
@@ -74,11 +75,7 @@ impl Typer<'_, '_, '_> {
         if matches!(self.hir().exprs[object].kind, ExprKind::Name(_) | ExprKind::Member { .. }) {
             match self.env.eval(object) {
                 Ok(Value::Namespace(ns)) => return self.site(self.env.cx.get::<Declared>(&(ns, name))?),
-                Ok(Value::Type(ty)) => {
-                    let members = self.env.cx.get::<Members>(&ty)?;
-                    let Found::Decl(decl) = members.find(name) else { return None };
-                    return self.site(Site::Decl(decl.clone()));
-                }
+                Ok(Value::Type(ty)) => return self.env.cx.get::<MemberType>(&(ty, name)).ok(),
                 _ => {}
             }
         }
@@ -86,9 +83,9 @@ impl Typer<'_, '_, '_> {
         let members = self.env.cx.get::<Members>(&known.ty)?;
         match members.find(name) {
             Found::Field(ty) => Some(Known { ty: *ty.as_ref().ok()?, stage: known.stage }),
-            Found::Decl(decl) => {
+            Found::Decl(_) => {
                 self.methods.insert(expr);
-                self.site(Site::Decl(decl.clone()))
+                self.env.cx.get::<MemberType>(&(known.ty, name)).ok()
             }
             // Impls add methods to a type (spec 02, section 3), and they are not collected yet,
             // so a name missing from the struct is not known to be no member.
@@ -129,16 +126,27 @@ impl Typer<'_, '_, '_> {
         }
     }
 
-    /// An integer operation, by interval arithmetic (spec 04, rule 1). A run-time intermediate
-    /// past the width cap is reported (rule 5) and has no type, so nothing depending on it is.
-    fn arithmetic(&mut self, expr: ExprId, op: TokenKind, left: Known, right: Known) -> Option<Known> {
-        let range = left.ty.interval()?.binary(op, &right.ty.interval()?)?;
+    /// `left op right`: integer arithmetic by interval arithmetic (spec 04, rule 1), any other
+    /// operator by the function of its `lang.ops` interface for the type of `left` (appendix B).
+    /// A run-time intermediate past the width cap is reported (rule 5) and has no type, so
+    /// nothing depending on it is.
+    fn binary(&mut self, expr: ExprId, op: TokenKind, left: Known, right: Known) -> Option<Known> {
         let stage = left.stage.max(right.stage);
-        if stage == Stage::Run && range.storage().is_none() && range.bits().is_some() {
-            self.width_cap(expr, &range);
-            return None;
+        if let (Some(a), Some(b)) = (left.ty.interval(), right.ty.interval())
+            && let Some(range) = a.binary(op, &b)
+        {
+            if stage == Stage::Run && range.storage().is_none() && range.bits().is_some() {
+                self.width_cap(expr, &range);
+                return None;
+            }
+            return Some(Known { ty: TyKind::int(&range), stage });
         }
-        Some(Known { ty: TyKind::int(&range), stage })
+        let (_, interface, function) = OPERATORS.iter().find(|(token, ..)| *token == op)?;
+        let Ok(Value::Interface(f)) = self.env.item(interface) else { return None };
+        let requirements = self.env.cx.get::<Call>(&Instance { f, args: vec![Value::Type(left.ty)] });
+        let key = (requirements.ok()?.as_type()?, Symbol::intern(function));
+        let function = self.env.cx.get::<MemberType>(&key).ok()?;
+        Some(Known { ty: function.ty.signature()?.result, stage })
     }
 
     /// A call of a value of function type: its arguments are checked against the parameters, and

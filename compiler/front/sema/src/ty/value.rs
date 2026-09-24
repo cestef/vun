@@ -35,6 +35,9 @@ pub enum Value {
     Namespace(Namespace),
     /// A function literal.
     Fn(ExprRef),
+    /// `lang.interface(f)`: the function `f` from a type to its requirement struct (spec 02,
+    /// section 3).
+    Interface(ExprRef),
 }
 
 impl Value {

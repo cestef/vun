@@ -36,10 +36,12 @@ declaration whose value is `_`.
 | Syntax | Meaning |
 |--------|---------|
 | `?T` | `lang.Option(T)` |
-| `&T`, `&mut T`, `&out T`, `&take T` | `lang.mem.Ref(T)`, `RefMut(T)`, `RefOut(T)`, `RefTake(T)` |
+| `&T`, `&mut T`, `&out T`, `&take T` | `lang.mem.Ref(T)`, `RefMut(T)`, `RefOut(T)`, `RefTake(T)` (the table `borrows`) |
 | `(A, B) -> R` | `lang.Fn((A, B), R)` with the attributes of the literal |
 | `a..b`, `a..=b` | `lang.Range` values, half-open and closed |
-| `a + b` (each operator) | `lang.ops.Add.add(a, b)` (the corresponding interface) |
+| `a + b` (each operator) | `lang.ops.Add.add(a, b)`: the interface and function the table `operators` of `lang.syntax.grammar` gives |
+| `a == b`, `a != b` | `lang.ops.Eq.eq(&a, &b)`, `Eq.ne` (provided) |
+| `a < b`, `<=`, `>`, `>=` | `lang.ops.Ord.lt(&a, &b)`, `le`, `gt`, `ge`, provided from `Ord.cmp` |
 | `a[i]` | `lang.ops.Index.at(&a, i)`, or `at_mut(&mut a, i)` in a place context |
 | `f(x)` where `f` is not a function | `lang.ops.Call.call(&f, (x,))` |
 | `x op= y` | `x = (x op y).to(lang.meta.TypeOf(x))` |

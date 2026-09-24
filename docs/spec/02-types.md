@@ -127,7 +127,10 @@ pointer. Dynamic dispatch is library code.
 
 Every operator desugars to an interface in `lang.ops` (appendix B): `a + b` is
 `lang.ops.Add.add(a, b)`, `a[i]` is `lang.ops.Index.at(&a, i)`, `a == b` is `lang.ops.Eq.eq(&a, &b)`,
-`f(x)` on a non-function value is `lang.ops.Call.call(&f, (x,))`. Integer, float and vector
+`f(x)` on a non-function value is `lang.ops.Call.call(&f, (x,))`. Which interface and function each
+operator names is data, the table `operators` of `lang.syntax.grammar`, so the compiler finds them
+by lookup; the result of `a == b` is the result type of `Eq.eq` for the type of `a`, `bool` in
+`lang`. `Ord` requires `cmp` and provides `lt`, `le`, `gt` and `ge`; `Eq` provides `ne`. Integer, float and vector
 operators are impls whose functions are `_`, provided by the compiler. User types implement the
 same interfaces and dispatch statically.
 

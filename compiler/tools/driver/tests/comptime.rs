@@ -26,3 +26,18 @@ wide := (p: Pair(u16)) -> u8 { p.b };
         ]
     );
 }
+
+#[test]
+fn operators_are_typed_by_their_lang_ops_interfaces() {
+    let fixture = Fixture::new("comptime-operators");
+    let file = fixture.root.write(
+        "ops.ov",
+        "\
+less := (a: u8, b: u8) -> bool { a < b };
+differ := (a: u8) -> bool { a != 3 };
+bits := (a: u8, b: u8) -> u8 { a & b };
+equal := (a: u8, b: u8) -> u8 { a == b };
+",
+    );
+    assert_eq!(fixture.reported(&file), [(errors::TYPES_MISMATCH, "expected `u8`, found `bool`".to_owned())]);
+}

@@ -1186,6 +1186,34 @@ pub const INFIX: &[(Assoc, &[TokenKind])] = &[
     (Assoc::Left, &[TokenKind::Plus, TokenKind::Minus]),
     (Assoc::Left, &[TokenKind::Star, TokenKind::Slash, TokenKind::Percent]),
 ];
+/// What infix operators desugar to (appendix B): `a op b` is `function(a, b)` of the interface at
+/// `interface`, for the type of `a`. `and`, `or` and ranges are not interfaces.
+pub const OPERATORS: &[(TokenKind, &str, &str)] = &[
+    (TokenKind::Plus, "lang.ops.Add", "add"),
+    (TokenKind::Minus, "lang.ops.Sub", "sub"),
+    (TokenKind::Star, "lang.ops.Mul", "mul"),
+    (TokenKind::Slash, "lang.ops.Div", "div"),
+    (TokenKind::Percent, "lang.ops.Rem", "rem"),
+    (TokenKind::Amp, "lang.ops.BitAnd", "bit_and"),
+    (TokenKind::Pipe, "lang.ops.BitOr", "bit_or"),
+    (TokenKind::Caret, "lang.ops.BitXor", "bit_xor"),
+    (TokenKind::Shl, "lang.ops.Shl", "shl"),
+    (TokenKind::Shr, "lang.ops.Shr", "shr"),
+    (TokenKind::PlusPlus, "lang.ops.Concat", "concat"),
+    (TokenKind::EqEq, "lang.ops.Eq", "eq"),
+    (TokenKind::BangEq, "lang.ops.Eq", "ne"),
+    (TokenKind::Lt, "lang.ops.Ord", "lt"),
+    (TokenKind::Le, "lang.ops.Ord", "le"),
+    (TokenKind::Gt, "lang.ops.Ord", "gt"),
+    (TokenKind::Ge, "lang.ops.Ord", "ge"),
+];
+/// Borrow types by the word after `&` (appendix B): `&T` is `lang.mem.Ref(T)`.
+pub const BORROWS: &[(&str, &str)] = &[
+    ("", "lang.mem.Ref"),
+    ("mut", "lang.mem.RefMut"),
+    ("out", "lang.mem.RefOut"),
+    ("take", "lang.mem.RefTake"),
+];
 /// Operators written before their operand. `&` may be followed by borrow modes (`&temp mut`);
 /// `..` without an operand is a rest pattern.
 pub const PREFIX: &[TokenKind] = &[
