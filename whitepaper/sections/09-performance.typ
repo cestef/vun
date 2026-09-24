@@ -9,7 +9,7 @@ structs, the specified layout of coroutine frames, and the non-uniqueness of fun
 which permits identical instantiations to be merged.
 
 Checks are the main cost of safety in comparable languages. Measurements of Rust attribute roughly
-half of the overhead of its run-time checks to bounds checking @rust-checks. In Overt, overflow checks
+half of the overhead of its run-time checks to bounds checking @rust-checks. In Vun, overflow checks
 do not exist, indexing with an index of the right range type is unchecked by construction, and the
 checks that remain branch to one cold stub per function carrying a site identifier; the message text
 lives in a table that is not loaded on embedded targets, in the manner of deferred logging @defmt.

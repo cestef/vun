@@ -6,4 +6,4 @@ Programs written before the compiler, to test the design (roadmap phase 0) and l
 - `reject/`: programs that must fail with exactly the diagnostics annotated in them:
   `//~ id` on the offending line, or `//~^ id` for the line above (one `^` per line).
 
-`cargo xtask corpus` runs both through `overt-harness`.
+`cargo xtask corpus` runs both through `vun-harness`.

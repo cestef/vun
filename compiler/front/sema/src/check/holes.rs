@@ -2,8 +2,8 @@
 //! primitives), a declaration with a `link` attribute (the linker) and an interface's
 //! requirements (each impl) may say; anywhere else it is `binding.hole_value`.
 
-use overt_diag::{Diagnostic, Msg, errors};
-use overt_hir::tree::{DeclId, ExprKind, Hir};
+use vun_diag::{Diagnostic, Msg, errors};
+use vun_hir::tree::{DeclId, ExprKind, Hir};
 
 use super::Checker;
 use crate::Primitive;
@@ -33,7 +33,7 @@ impl Checker<'_, '_, '_> {
             .text(" attribute");
         let diagnostic = Diagnostic::error(errors::BINDING_HOLE_VALUE, msg)
             .at(hir.exprs[value].origin, None)
-            .child(overt_diag::ChildKind::Help, help);
+            .child(vun_diag::ChildKind::Help, help);
         self.diag.error(diagnostic);
     }
 
@@ -46,7 +46,7 @@ impl Checker<'_, '_, '_> {
     }
 
     /// Whether `callee` is `lang.interface`, whose argument's struct holds requirements.
-    pub(super) fn is_interface(&self, callee: overt_hir::tree::ExprId) -> bool {
+    pub(super) fn is_interface(&self, callee: vun_hir::tree::ExprId) -> bool {
         matches!(self.env.eval(callee), Ok(Value::Primitive(Primitive::Lang(Lang::interface))))
     }
 }

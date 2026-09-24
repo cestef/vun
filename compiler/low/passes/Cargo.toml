@@ -1,5 +1,5 @@
 [package]
-name = "overt-lir-passes"
+name = "vun-lir-passes"
 description = "LIR transforms: ABI lowering, identical-body merging."
 version.workspace = true
 edition.workspace = true
@@ -10,7 +10,7 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
-overt-lir.workspace = true
-overt-abi.workspace = true
-overt-pass.workspace = true
-overt-diag.workspace = true
+vun-lir.workspace = true
+vun-abi.workspace = true
+vun-pass.workspace = true
+vun-diag.workspace = true

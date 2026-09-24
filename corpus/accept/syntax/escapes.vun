@@ -6,7 +6,7 @@ path := \"C:\dir\new";
 escaped := "tab\there\n";
 banner :=
     \\  _____
-    \\ | "ov" |
+    \\ | "vun" |
     \\  -----
 ;
 

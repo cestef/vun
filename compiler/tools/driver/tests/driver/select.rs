@@ -2,10 +2,10 @@
 //! uses, the lockfile records it, and a lockfile that does not is reported.
 
 use crate::common::Fixture;
-use overt_build::lock::{self, Lock, Locked};
-use overt_build::manifest::Identity;
-use overt_diag::errors;
-use overt_hash::Hash;
+use vun_build::lock::{self, Lock, Locked};
+use vun_build::manifest::Identity;
+use vun_diag::errors;
+use vun_hash::Hash;
 
 const HAL_ID: u64 = 7;
 
@@ -43,7 +43,7 @@ fn the_largest_required_version_is_selected_everywhere() {
     let labels: Vec<_> = rooted.iter().filter_map(|l| l.label.as_deref()).collect();
     assert_eq!(labels.len(), 2);
     assert!(labels.contains(&"hal 1.0.0") && labels.contains(&"hal 1.2.0"), "{labels:?}");
-    fx.root.write(fx.store().package(Hash::of(b"stray")).join("x.ov"), "");
+    fx.root.write(fx.store().package(Hash::of(b"stray")).join("x.vun"), "");
     let collected = fx.store().collect().unwrap();
     assert_eq!((collected.removed.len(), collected.kept), (1, 2));
 

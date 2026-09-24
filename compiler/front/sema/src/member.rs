@@ -4,10 +4,10 @@
 
 use std::sync::Arc;
 
-use overt_grammar::TokenKind;
-use overt_hir::tree::{Entry, ExprKind, List, Member, Name, NsId, PatKind, Staged, Variant};
-use overt_intern::Symbol;
-use overt_query::{Cx, Cycle, Query};
+use vun_grammar::TokenKind;
+use vun_hir::tree::{Entry, ExprKind, List, Member, Name, NsId, PatKind, Staged, Variant};
+use vun_intern::Symbol;
+use vun_query::{Cx, Cycle, Query};
 
 use crate::Primitive;
 use crate::decl::TypedDecl;

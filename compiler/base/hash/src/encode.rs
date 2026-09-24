@@ -1,6 +1,6 @@
 //! A hash persists as its algorithm's position in [`Algorithm::ALL`], then its digest.
 
-use overt_codec::{Decode, Encode, Malformed};
+use vun_codec::{Decode, Encode, Malformed};
 
 use crate::{Algorithm, Hash};
 

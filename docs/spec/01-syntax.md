@@ -25,7 +25,7 @@ express is a keyword.
 
 ### Where the rest went
 
-| Other languages | Overt | Spec |
+| Other languages | Vun | Spec |
 |-----------------|-------|------|
 | `const`, `let`, `var`, `static` | `x := e` binds; `mut x := e` binds mutably; at top level both are statics | 1.3 |
 | `fn`, `func`, `proc` | a function is a tuple pattern with a body: `(a: u32) -> u32 { a + 1 }` | 1.4 |
@@ -75,7 +75,7 @@ Type syntax mirrors value syntax. Patterns mirror constructors. Each symbol mean
 
 ## 3. Bindings
 
-```ov
+```vun
 limit := 64;                   // immutable binding, type inferred
 mut count: u32 = 0;            // mutable binding with an explicit type
 mut buf: [4096]u8;             // uninitialized: must be written before it is read (spec 05)
@@ -110,7 +110,7 @@ mut buf: [4096]u8;             // uninitialized: must be written before it is re
 A function literal is a typed tuple pattern, an optional result type and a body. It is a value like
 any other, so naming a function is binding it:
 
-```ov
+```vun
 add := (a: u32, b: u32) -> u64 { a + b };
 tick := () { counter.bump(); };                       // result type () may be omitted
 Pair := ($T: type) -> type { struct { a: T, b: T } }; // $: known at compile time (spec 02)
@@ -131,7 +131,7 @@ Pair := ($T: type) -> type { struct { a: T, b: T } }; // $: known at compile tim
 
 A closure lists what it captures, spelled exactly as the values would be passed:
 
-```ov
+```vun
 mut n: u32 = 0;
 inc := [&mut n] (by: u8) { n += by; };   // captures a borrow: scoped (spec 05)
 dbl := [x] () -> u64 { x * 2 };          // captures a copy: free
@@ -163,7 +163,7 @@ auto-deref and no `Deref` interface; nothing user-defined runs.
 
 ## 5. Types and literals
 
-```ov
+```vun
 Point := struct {
     x: i32,                       // fields: `name: T` separated by `,`
     y: i32 = 0,                   // field default
@@ -197,7 +197,7 @@ Literals:
 
 ## 6. Control flow
 
-```ov
+```vun
 if a < b { a } else { b }
 
 if .some(v) = cache.get(key) { use(v); }          // `=` in a head is a pattern match
@@ -268,7 +268,7 @@ Operator precedence, high to low: postfix (`.`, `()`, `[]`, `.*`, `?`), prefix (
 
 ### Parse rules
 
-The grammar is the table in `lang/syntax/grammar.ov` (spec 13, section 5) plus these rules, which
+The grammar is the table in `lang/syntax/grammar.vun` (spec 13, section 5) plus these rules, which
 settle every place where a token could continue two constructs:
 
 - **Patterns are expressions in the syntax tree.** Patterns mirror constructors, so `(a, b)`,
@@ -303,7 +303,7 @@ scope is the namespace that declares the name, unless the `lang` attribute `visi
 | `#[visible(.package)]` | the declaring package |
 | `#[visible(.workspace)]` | the packages of the declaring package's workspace (spec 12) |
 
-```ov
+```vun
 _raw := 0x4000_1000;                  // this namespace
 #[visible(.within(drivers))]
 _regs := Regs.at(_raw);               // anywhere inside drivers
@@ -322,8 +322,8 @@ _abi := 3;                            // sibling packages of the workspace
 
 ```
 drivers/
-  uart.ov          drivers.uart: visible outside the package
-  _registers.ov    drivers._registers: visible inside drivers/ only
+  uart.vun          drivers.uart: visible outside the package
+  _registers.vun    drivers._registers: visible inside drivers/ only
   _dma/            drivers._dma: visible inside drivers/ only
 ```
 
@@ -336,10 +336,10 @@ drivers/
 
 - A file is a struct whose members are its top-level declarations.
 - A directory is a struct whose members are its files and subdirectories (without extensions).
-- A file and a directory with the same name merge into one namespace: `serial.ov` holds the
+- A file and a directory with the same name merge into one namespace: `serial.vun` holds the
   declarations and doc comment of `serial`, and `serial/` holds its children. A name defined in both
   is an error.
-- A package is a namespace too. By default its root is `<name>.ov` plus `<name>/` in the package
+- A package is a namespace too. By default its root is `<name>.vun` plus `<name>/` in the package
   directory (spec 12).
 - The build declares a package's dependencies, and **each dependency is a binding in scope under
   its declared name**; the package itself is one under its own name. `lang`, `std` and `targets`
@@ -352,7 +352,7 @@ drivers/
   namespaces, innermost first), then among the package and its dependencies, then in the prelude,
   the first listed namespace first.
 
-```ov
+```vun
 uart := mydrivers.serial.uart;    // a module is a value; binding it is importing it
 Baud := uart.Baud;                // re-exporting one name is binding it
 ```
@@ -362,7 +362,7 @@ member of the namespace at `path` a member here, and `..path.{ a, b };` makes th
 members. It is the prefix `..` of spreading, applied to a namespace, and it re-exports what it
 brings: an umbrella namespace is a list of spreads.
 
-```ov
+```vun
 ..lang.int;                        // u8 to i128, usize, isize
 ..std.mem.{ Arena, copy };         // two names
 ```

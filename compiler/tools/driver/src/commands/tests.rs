@@ -1,6 +1,6 @@
 use super::*;
-use overt_fs::Scratch;
 use std::collections::HashSet;
+use vun_fs::Scratch;
 
 fn check_names(command: &Command<Session>) {
     let children = command.children();
@@ -19,7 +19,7 @@ fn names_are_unique_at_every_level() {
 #[test]
 fn dump_cst_prints_the_tree() {
     let dir = Scratch::new("dump");
-    let path = dir.write("dump.ov", "x := 1;\n");
+    let path = dir.write("dump.vun", "x := 1;\n");
     let argv = ["dump", "cst", path.to_str().unwrap()].map(str::to_owned);
     let (mut session, mut out) = (Session::new(), Vec::new());
     let outcome = PROGRAM.run(&argv, &mut session, &mut out).unwrap();

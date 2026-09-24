@@ -1,14 +1,14 @@
-//! `overt pkg`: the project's dependencies and releases (spec 12, sections 3 and 7).
+//! `vun pkg`: the project's dependencies and releases (spec 12, sections 3 and 7).
 
 use std::io::{self, Write};
 use std::path::PathBuf;
 
-use overt_build::layout::MANIFEST;
-use overt_build::manifest::{Source, Version};
-use overt_command::{Action, Args, Command, Outcome, Param, ParamKind};
-use overt_diag::{ChildKind, Diagnostic, Msg, errors};
-use overt_fs::Edit;
-use overt_pkg::{FORMATS, Format};
+use vun_build::layout::MANIFEST;
+use vun_build::manifest::{Source, Version};
+use vun_command::{Action, Args, Command, Outcome, Param, ParamKind};
+use vun_diag::{ChildKind, Diagnostic, Msg, errors};
+use vun_fs::Edit;
+use vun_pkg::{FORMATS, Format};
 
 use crate::Session;
 use crate::packages::{Addition, Fetched, Unstated};
@@ -22,7 +22,7 @@ pub(super) const FETCH: Command<Session> = Command {
     params: &[],
     action: Action::Run(fetch),
 };
-/// Where `overt pkg fetch` is below the root, for messages that suggest it.
+/// Where `vun pkg fetch` is below the root, for messages that suggest it.
 pub(crate) const FETCH_PATH: [&str; 2] = [GROUP, FETCH.name];
 
 pub(super) const SOURCE: Param = Param {
@@ -50,7 +50,7 @@ pub(super) const OUT: Param = Param {
     kind: ParamKind::Option,
 };
 
-/// `overt pkg fetch`: downloads the stored dependencies of the project into its store.
+/// `vun pkg fetch`: downloads the stored dependencies of the project into its store.
 fn fetch(session: &mut Session, _: &Args, out: &mut dyn Write) -> io::Result<Outcome> {
     let Some((dir, project)) = session.project()? else { return Ok(Outcome::Failure) };
     for (name, hash, fetched) in session.fetch(project) {
@@ -67,7 +67,7 @@ fn fetch(session: &mut Session, _: &Args, out: &mut dyn Write) -> io::Result<Out
     Ok(session.outcome())
 }
 
-/// `overt pkg add <source>`: declares a dependency, fetching an archive once to learn its hash.
+/// `vun pkg add <source>`: declares a dependency, fetching an archive once to learn its hash.
 pub(super) fn add(session: &mut Session, args: &Args, out: &mut dyn Write) -> io::Result<Outcome> {
     let Some((dir, _)) = session.project()? else { return Ok(Outcome::Failure) };
     let version = match args.value(&VERSION).map(|v| (v, Version::parse(v))) {
@@ -107,7 +107,7 @@ pub(super) fn add(session: &mut Session, args: &Args, out: &mut dyn Write) -> io
     Ok(session.outcome())
 }
 
-/// `overt pkg update`: raises the stored dependencies of the project within their majors, then
+/// `vun pkg update`: raises the stored dependencies of the project within their majors, then
 /// rewrites the lockfile.
 pub(super) fn update(session: &mut Session, _: &Args, out: &mut dyn Write) -> io::Result<Outcome> {
     let Some((dir, _)) = session.project()? else { return Ok(Outcome::Failure) };
@@ -127,7 +127,7 @@ pub(super) fn update(session: &mut Session, _: &Args, out: &mut dyn Write) -> io
     Ok(session.outcome())
 }
 
-/// `overt pkg pack`: writes the project's archive, named after its release, in the published
+/// `vun pkg pack`: writes the project's archive, named after its release, in the published
 /// format unless `--out` names another format by its suffix.
 pub(super) fn pack(session: &mut Session, args: &Args, out: &mut dyn Write) -> io::Result<Outcome> {
     let Some((dir, _)) = session.project()? else { return Ok(Outcome::Failure) };

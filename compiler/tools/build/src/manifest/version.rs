@@ -2,8 +2,8 @@
 
 use std::fmt;
 
-use overt_diag::{DiagCx, Msg};
-use overt_syntax::literal::{Decl, Literal};
+use vun_diag::{DiagCx, Msg};
+use vun_syntax::literal::{Decl, Literal};
 
 use super::record::Record;
 

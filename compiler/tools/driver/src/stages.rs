@@ -3,14 +3,14 @@
 //! Harnesses read this table to tell a missing diagnostic from one that belongs to a stage that
 //! does not exist yet.
 
-use overt_diag::{DiagCtxt, DiagId, errors};
-use overt_query::Query;
-use overt_span::{FileId, SourceMap};
+use vun_diag::{DiagCtxt, DiagId, errors};
+use vun_query::Query;
+use vun_span::{FileId, SourceMap};
 
-use overt_mir_passes::borrows::BorrowChecks;
-use overt_mir_passes::panics::PanicChecks;
-use overt_mir_passes::places::PlaceStates;
-use overt_sema::eval::Instantiation;
+use vun_mir_passes::borrows::BorrowChecks;
+use vun_mir_passes::panics::PanicChecks;
+use vun_mir_passes::places::PlaceStates;
+use vun_sema::eval::Instantiation;
 
 use crate::Session;
 

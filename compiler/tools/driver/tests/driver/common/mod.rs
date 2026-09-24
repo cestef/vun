@@ -3,17 +3,17 @@
 
 use std::path::{Path, PathBuf};
 
-use overt_build::layout::MANIFEST;
-use overt_build::manifest::{
+use vun_build::layout::MANIFEST;
+use vun_build::manifest::{
     DEFAULT_PRELUDE, Dep, DepKind, EDITION, Identity, Manifest, Replacement, Source, Version,
 };
-use overt_build::store::Store;
-use overt_diag::DiagId;
-use overt_driver::Session;
-use overt_fs::Scratch;
-use overt_hash::Hash;
-use overt_pkg::{Format, Scheme};
-use overt_span::{EXTENSION, SourceFiles, Span};
+use vun_build::store::Store;
+use vun_diag::DiagId;
+use vun_driver::Session;
+use vun_fs::Scratch;
+use vun_hash::Hash;
+use vun_pkg::{Format, Scheme};
+use vun_span::{EXTENSION, SourceFiles, Span};
 
 /// A scratch directory of packages.
 pub(crate) struct Fixture {
@@ -52,7 +52,7 @@ impl Fixture {
     pub(crate) fn stored(name: &str, version: &str, url: &str, hash: Hash) -> Dep {
         let version = Version::parse(version).unwrap();
         let source = Source::Archive { version, hash, urls: vec![url.to_owned()] };
-        Dep { name: name.into(), source, kind: DepKind::Overt, span: Self::unread() }
+        Dep { name: name.into(), source, kind: DepKind::Vun, span: Self::unread() }
     }
 
     /// Replaces `identity` everywhere with the package in the directory `path`.
@@ -62,12 +62,7 @@ impl Fixture {
 
     /// A dependency on the package in the directory `path`.
     pub(crate) fn local(name: &str, path: &str) -> Dep {
-        Dep {
-            name: name.into(),
-            source: Source::Path(path.into()),
-            kind: DepKind::Overt,
-            span: Self::unread(),
-        }
+        Dep { name: name.into(), source: Source::Path(path.into()), kind: DepKind::Vun, span: Self::unread() }
     }
 
     /// Writes the package of `manifest` into the directory `dir`, its root file holding `source`,

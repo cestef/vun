@@ -8,7 +8,7 @@ so every use of `I` on `T` means one thing (spec 02, section 3). An impl lives i
 
 ## Example
 
-```ov
+```vun
 Shape := interface(($Self: type) -> type { struct {
     area: (self: &Self) -> u64 = _;
 }});
@@ -26,7 +26,7 @@ SquareZero := struct { area := (self: &Square) -> u64 { 0 }; };
 
 Keep one impl; a different behavior belongs to a different type or an ordinary function:
 
-```ov
+```vun
 Shape := interface(($Self: type) -> type { struct {
     area: (self: &Self) -> u64 = _;
 }});

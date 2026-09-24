@@ -3,11 +3,11 @@
 //! that interface's `resume` (the table `iteration`). Also the signatures of function literals
 //! and how long a call holds each parameter's borrow.
 
-use overt_grammar::{BORROWS, Extent, ITERATION, TokenKind};
-use overt_hir::tree::{Entry, ExprId, ExprKind, Param, PatKind};
-use overt_intern::Symbol;
-use overt_origin::OriginTable;
-use overt_query::Cx;
+use vun_grammar::{BORROWS, Extent, ITERATION, TokenKind};
+use vun_hir::tree::{Entry, ExprId, ExprKind, Param, PatKind};
+use vun_intern::Symbol;
+use vun_origin::OriginTable;
+use vun_query::Cx;
 
 use super::{Env, Unevaluated};
 use crate::eval::{Call, Func, Instance};

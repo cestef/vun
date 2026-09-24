@@ -1,7 +1,7 @@
 //! Operator expressions and operands.
 
-use overt_diag::{Diagnostic, Msg, errors};
-use overt_grammar::{Assoc, Context, LITERAL_TYPES, NodeKind, POSTFIX, PREFIX, Prec, TokenKind};
+use vun_diag::{Diagnostic, Msg, errors};
+use vun_grammar::{Assoc, Context, LITERAL_TYPES, NodeKind, POSTFIX, PREFIX, Prec, TokenKind};
 
 use super::{Brace, Item, List, Parser};
 use crate::cst::Anchor;

@@ -5,7 +5,7 @@ package := .{
     .id = 0x0000_0000_0000_0002,
     .version = "0.0.0",
     .edition = 2026,
-    .include = .{ "build.ov", "std.ov", "std" },
+    .include = .{ "build.vun", "std.vun", "std" },
     .deps = .{},
 };
 

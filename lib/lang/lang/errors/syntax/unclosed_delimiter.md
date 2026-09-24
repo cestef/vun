@@ -8,7 +8,7 @@ argument list left open ends at the statement's `;`; a body left open ends at th
 
 ## Example
 
-```ov
+```vun
 run := (x: u8, y: u8) {};
 a := 1;
 b := 2;
@@ -22,7 +22,7 @@ main := () {
 
 Close the group before the `;`:
 
-```ov
+```vun
 run := (x: u8, y: u8) {};
 a := 1;
 b := 2;

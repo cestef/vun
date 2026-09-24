@@ -1,5 +1,5 @@
 [package]
-name = "overt-bind"
+name = "vun-bind"
 description = "C header bindings and C header emission."
 version.workspace = true
 edition.workspace = true
@@ -10,5 +10,5 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
-overt-diag.workspace = true
-overt-target.workspace = true
+vun-diag.workspace = true
+vun-target.workspace = true

@@ -1,17 +1,17 @@
 //! The interface to compile-time evaluation (spec 13, section 6).
 //!
-//! Sema defines what it needs from an evaluator; `overt-interp` implements it, and the driver
+//! Sema defines what it needs from an evaluator; `vun-interp` implements it, and the driver
 //! installs it in the query database, so that sema calls it without depending on it. Calls are
 //! memoized on the function and its arguments (spec 03, section 7), which also makes `Pair(u16)`
 //! one type.
 
 use std::sync::{Arc, OnceLock};
 
-use overt_grammar::ITERATION;
-use overt_hir::db::Parsed;
-use overt_hir::tree::{BinderId, Entry, ExprKind, Param, PatKind};
-use overt_intern::Symbol;
-use overt_query::{Cx, Cycle, Query};
+use vun_grammar::ITERATION;
+use vun_hir::db::Parsed;
+use vun_hir::tree::{BinderId, Entry, ExprKind, Param, PatKind};
+use vun_intern::Symbol;
+use vun_query::{Cx, Cycle, Query};
 
 use crate::env::Unevaluated;
 use crate::item::{ExprRef, Node};

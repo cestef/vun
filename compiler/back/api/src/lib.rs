@@ -3,9 +3,9 @@
 //! Nothing above LIR knows about any backend. A backend declares its facts once, in a
 //! [`BackendInfo`]; support and capability checks are derived from it (spec 13, section 7).
 
-use overt_diag::{DiagCtxt, Diagnostic, ErrorGuaranteed, Msg, errors};
-use overt_lir::unit::Unit;
-use overt_target::{Arches, Support, TargetSpec, Unsupported};
+use vun_diag::{DiagCtxt, Diagnostic, ErrorGuaranteed, Msg, errors};
+use vun_lir::unit::Unit;
+use vun_target::{Arches, Support, TargetSpec, Unsupported};
 
 /// What a backend produces.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

@@ -13,7 +13,7 @@ choice is right, and this error names the value.
 
 ## Example
 
-```ov
+```vun
 pick := (flag: bool) -> u8 {
     mut x: u8;
     if flag { x = 1; }
@@ -25,7 +25,7 @@ pick := (flag: bool) -> u8 {
 
 Give the place the same state on every path:
 
-```ov
+```vun
 pick := (flag: bool) -> u8 {
     mut x: u8;
     if flag { x = 1; } else { x = 0; }

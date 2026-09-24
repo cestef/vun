@@ -1,13 +1,13 @@
-//! `overt pkg add`: a path and an archive are declared in the manifest, the archive with the hash
+//! `vun pkg add`: a path and an archive are declared in the manifest, the archive with the hash
 //! it had when first fetched, and the project then resolves through them.
 
 use crate::common::Fixture;
-use overt_build::layout::MANIFEST;
-use overt_build::manifest::{DepKind, Source, Version};
-use overt_diag::errors;
-use overt_driver::Session;
-use overt_driver::packages::{Addition, Unstated};
-use overt_pkg::{Format, Scheme};
+use vun_build::layout::MANIFEST;
+use vun_build::manifest::{DepKind, Source, Version};
+use vun_diag::errors;
+use vun_driver::Session;
+use vun_driver::packages::{Addition, Unstated};
+use vun_pkg::{Format, Scheme};
 
 #[test]
 fn added_dependencies_are_declared_and_resolve() {

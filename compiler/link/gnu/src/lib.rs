@@ -1,8 +1,8 @@
 //! GNU ld: compatibility with vendor toolchains, with linker scripts.
 
-use overt_diag::{DiagCtxt, ErrorGuaranteed};
-use overt_link::{LinkPlan, Linker, LinkerInfo};
-use overt_target::{ObjectFormat, TargetSpec};
+use vun_diag::{DiagCtxt, ErrorGuaranteed};
+use vun_link::{LinkPlan, Linker, LinkerInfo};
+use vun_target::{ObjectFormat, TargetSpec};
 
 pub const INFO: LinkerInfo = LinkerInfo { id: "gnu", formats: &[ObjectFormat::Elf], regions: true };
 

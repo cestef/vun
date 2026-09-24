@@ -2,8 +2,8 @@
 //! quote around it or, outside every quote, from run time to compile time. A chain of `$` that
 //! escapes past every level is `meta.escape`.
 
-use overt_diag::{ChildKind, Diagnostic, Msg, errors};
-use overt_grammar::TokenKind;
+use vun_diag::{ChildKind, Diagnostic, Msg, errors};
+use vun_grammar::TokenKind;
 
 use super::walk::Resolver;
 use crate::tree::{BlockId, ExprId, ExprKind, Hir};

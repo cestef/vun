@@ -2,13 +2,13 @@
 //! methods from `std` impls (decision 78).
 
 use crate::common::Fixture;
-use overt_diag::errors;
+use vun_diag::errors;
 
 #[test]
 fn lengths_bounds_and_parts_are_typed() {
     let fixture = Fixture::new("sequences-typed");
     let file = fixture.root.write(
-        "seq.ov",
+        "seq.vun",
         "\
 last := (xs: &[u32]) -> u32 { xs[xs.len() - 1] };
 count := (xs: &[u32]) -> bool { xs.len() };

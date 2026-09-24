@@ -4,14 +4,14 @@
 
 == One stage operator
 
-A type in Overt is a value of type `type`, and values that must be known during compilation are
+A type in Vun is a value of type `type`, and values that must be known during compilation are
 marked with `$`. The sigil has one meaning in every position: _evaluate one stage earlier_. On a
 parameter, `($T: type)` requires the argument at compile time; on an expression, `$e` forces
 evaluation at compile time; on control flow, `$for` and `$if` unroll or select during compilation.
 Inside a quotation, described below, the same sigil means "at generation time". A compile-time value
 used at run time becomes a constant, with no further notation.
 
-```ov
+```vun
 Pair := ($T: type) -> type { struct { a: T, b: T } };
 dot := ($N: usize, a: &[N]f32, b: &[N]f32) -> f32 {
     mut acc: f32 = 0;
@@ -39,7 +39,7 @@ and most code generation needs nothing more.
 or a string. Together with `$for` and `$if` in list contexts (struct bodies, enum bodies, argument
 lists, array literals, match arms), this lets generated declarations read like hand-written ones:
 
-```ov
+```vun
 Peripheral := ($p: svd.Peripheral) -> type {
     Block := struct {
         $for r in p.registers {
@@ -65,7 +65,7 @@ where `T` is the type `e` would have. Within a quotation `$` escapes to generati
 of type `Code(T)` receives its argument as code rather than as a value; this property of a signature
 constitutes the entire macro system:
 
-```ov
+```vun
 assert := ($cond: Code(bool)) {
     if !$cond { std.panic.fail(.assertion(cond.source(), cond.span())); }
 };
@@ -93,6 +93,6 @@ each generator call up to user code. Diagnostics in generated code therefore poi
 generated construct and its generator, and navigation on a computed name reaches the `$(...)` that
 produced it. The cost of generation is reported as well: measurements elsewhere show that generated
 code size can dominate compile time @proc-macro-size, and that interpreter design matters by large
-factors @zig-4055 @clang-bytecode. Overt's evaluator therefore lowers bodies once to a register
+factors @zig-4055 @clang-bytecode. Vun's evaluator therefore lowers bodies once to a register
 bytecode, interns values only when they escape into types or constants, and persists memoized calls
 across builds.

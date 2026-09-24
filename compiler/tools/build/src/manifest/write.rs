@@ -3,10 +3,10 @@
 
 use std::borrow::Cow;
 
-use overt_diag::Edit;
-use overt_syntax::literal::{Decl, Literal, Unwritable};
+use vun_diag::Edit;
+use vun_syntax::literal::{Decl, Literal, Unwritable};
 
-use overt_span::Span;
+use vun_span::Span;
 
 use super::{DEFAULT_PRELUDE, DEP_KINDS, Dep, DepKind, Manifest, PACKAGE, Replacement, Source, field};
 
@@ -44,7 +44,7 @@ impl Manifest {
         Literal::Record(fields)
     }
 
-    /// The `package` declaration of a `build.ov`.
+    /// The `package` declaration of a `build.vun`.
     ///
     /// # Errors
     /// Returns why a field has no literal source.
@@ -93,7 +93,7 @@ impl Dep {
     #[must_use]
     pub fn literal(&self) -> Literal<'_> {
         let mut fields = self.source.fields(self.span);
-        let kind = DEP_KINDS.iter().find(|&&(_, k)| k == self.kind && k != DepKind::Overt);
+        let kind = DEP_KINDS.iter().find(|&&(_, k)| k == self.kind && k != DepKind::Vun);
         let at = |name, value| Decl { name, doc: Vec::new(), value, span: self.span };
         fields.extend(kind.map(|&(name, _)| at(field::KIND, Literal::Name(name))));
         Literal::Record(fields)

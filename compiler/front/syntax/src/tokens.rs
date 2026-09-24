@@ -7,9 +7,9 @@
 
 use std::fmt;
 
-use overt_grammar::TokenKind;
-use overt_index::{Idx, IndexVec, index};
-use overt_span::{ByteRange, FileId, Span};
+use vun_grammar::TokenKind;
+use vun_index::{Idx, IndexVec, index};
+use vun_span::{ByteRange, FileId, Span};
 
 index! {
     pub struct TokenId;
@@ -92,7 +92,7 @@ impl Tokens {
         })
     }
 
-    /// A line per lexeme, for `overt dump tokens` and snapshots.
+    /// A line per lexeme, for `vun dump tokens` and snapshots.
     #[must_use]
     pub fn dump<'a>(&'a self, source: &'a str) -> Dump<'a> {
         Dump { tokens: self, source }

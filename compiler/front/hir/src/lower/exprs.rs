@@ -1,9 +1,9 @@
 //! Expressions and types.
 
-use overt_grammar::{MODE_SEPARATOR, NodeField, NodeKind, TokenKind};
-use overt_intern::Symbol;
-use overt_syntax::cst::{Fields, NodeId};
-use overt_syntax::lexer;
+use vun_grammar::{MODE_SEPARATOR, NodeField, NodeKind, TokenKind};
+use vun_intern::Symbol;
+use vun_syntax::cst::{Fields, NodeId};
+use vun_syntax::lexer;
 
 use super::Lower;
 use crate::tree::{Arg, Expr, ExprId, ExprKind, List, Lit, Name};
@@ -148,7 +148,7 @@ impl Lower<'_, '_> {
         match self.kind(n) {
             NodeKind::Name => ExprKind::Name(self.symbol(n)),
             NodeKind::Hole => ExprKind::Hole,
-            NodeKind::Int => overt_syntax::literal::integer(self.text(n))
+            NodeKind::Int => vun_syntax::literal::integer(self.text(n))
                 .map_or(ExprKind::Error, |i| ExprKind::Lit(Lit::Int(i))),
             NodeKind::Float => ExprKind::Lit(Lit::Float(self.text(n).to_owned())),
             NodeKind::Char => self

@@ -1,9 +1,9 @@
 //! Packages on disk: manifests, dependencies, the store and the lockfile (spec 12, sections 1 to
-//! 4). Once a graph is loaded, it is published as query inputs (`overt_hir::db`), where
+//! 4). Once a graph is loaded, it is published as query inputs (`vun_hir::db`), where
 //! namespaces, scopes and name checks are computed.
 //!
-//! A file belongs to the package of the nearest enclosing `build.ov` that declares `package`; a
-//! `build.ov` without it is an ordinary module, such as `std.build`.
+//! A file belongs to the package of the nearest enclosing `build.vun` that declares `package`; a
+//! `build.vun` without it is an ordinary module, such as `std.build`.
 //!
 //! Everything is keyed by content: a package by the hash of its `include` tree, a manifest by the
 //! hash of its text.
@@ -22,13 +22,13 @@ mod update;
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
-use overt_build::layout::MANIFEST;
-use overt_build::lock::{Lock, Replaced, Replacing};
-use overt_build::manifest::{DEFAULT_DEPS, DEFAULT_PRELUDE, DepKind, Identity, Manifest, Source, Version};
-use overt_diag::{Diagnostic, ErrorGuaranteed};
-use overt_hash::{Hash, Snapshot};
-use overt_intern::Symbol;
-use overt_span::{FileId, Span};
+use vun_build::layout::MANIFEST;
+use vun_build::lock::{Lock, Replaced, Replacing};
+use vun_build::manifest::{DEFAULT_DEPS, DEFAULT_PRELUDE, DepKind, Identity, Manifest, Source, Version};
+use vun_diag::{Diagnostic, ErrorGuaranteed};
+use vun_hash::{Hash, Snapshot};
+use vun_intern::Symbol;
+use vun_span::{FileId, Span};
 
 pub use add::{Addition, Unstated};
 pub use fetch::Fetched;
@@ -110,7 +110,7 @@ impl DepSource {
 #[derive(Default)]
 pub struct Packages {
     pub list: HashMap<PackageKey, Package>,
-    /// Manifests by the hash of their text; `None` for a `build.ov` that declares no `package`.
+    /// Manifests by the hash of their text; `None` for a `build.vun` that declares no `package`.
     manifests: HashMap<Hash, Option<Manifest>>,
     /// The project: the package whose graph version selection runs over.
     pub root: Option<PackageKey>,
@@ -129,7 +129,7 @@ impl Package {
             let name = Symbol::intern(default);
             if self.name != Some(name) && self.deps.iter().all(|d| d.name != name) {
                 let source = DepSource::Dir(library.join(default));
-                self.deps.push(Dep { name, source, kind: DepKind::Overt, span: None });
+                self.deps.push(Dep { name, source, kind: DepKind::Vun, span: None });
             }
         }
         self
@@ -158,7 +158,7 @@ impl Session {
                 dep: Dep {
                     name: Symbol::intern(&r.name),
                     source: DepSource::of(dir, &r.source),
-                    kind: DepKind::Overt,
+                    kind: DepKind::Vun,
                     span: Some(r.span),
                 },
                 recorded: Replaced {
@@ -194,7 +194,7 @@ impl Session {
         Some(key)
     }
 
-    /// The manifest in the `build.ov` at `path`, read once per content.
+    /// The manifest in the `build.vun` at `path`, read once per content.
     pub fn manifest_at(&mut self, path: &Path) -> Option<Manifest> {
         let read = |s: &mut Self, file| {
             s.declarations(file, |decls, cx| {

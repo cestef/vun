@@ -8,7 +8,7 @@ follows it here.
 ## Example
 
 ```console
-$ overt check blinky.ov --format
+$ vun check blinky.vun --format
 error[cli.missing_value]: option `--format` needs a value
   │
   ╰ help: write `--format <format>`
@@ -17,5 +17,5 @@ error[cli.missing_value]: option `--format` needs a value
 ## Fix
 
 ```console
-$ overt check blinky.ov --format short
+$ vun check blinky.vun --format short
 ```

@@ -1,21 +1,21 @@
-//! Declaring a new dependency (`overt pkg add`, spec 12, section 3): a directory is declared by
+//! Declaring a new dependency (`vun pkg add`, spec 12, section 3): a directory is declared by
 //! its path, and an archive is fetched once, trusted on first use, stored, and declared with the
 //! hash it has now, so that every later fetch is checked against it.
 
 use std::fmt;
 use std::path::{Path, PathBuf};
 
-use overt_build::layout::MANIFEST;
-use overt_build::manifest::{self, DepKind, Manifest, Source, Version};
-use overt_build::store::Label;
-use overt_diag::{Diagnostic, Msg, errors};
-use overt_fs::{Edit, Relative};
-use overt_hash::{Hash, Snapshot};
-use overt_span::Span;
+use vun_build::layout::MANIFEST;
+use vun_build::manifest::{self, DepKind, Manifest, Source, Version};
+use vun_build::store::Label;
+use vun_diag::{Diagnostic, Msg, errors};
+use vun_fs::{Edit, Relative};
+use vun_hash::{Hash, Snapshot};
+use vun_span::Span;
 
 use crate::Session;
 
-/// What `overt pkg add` is asked to declare: a directory or an archive's URL, and the name and
+/// What `vun pkg add` is asked to declare: a directory or an archive's URL, and the name and
 /// version to use when the package does not state them.
 pub struct Addition<'a> {
     pub source: &'a str,
@@ -121,7 +121,7 @@ impl Session {
         };
         let relative = target.relative_to(dir)?;
         let at = Place::Path(relative.to_string_lossy().into_owned());
-        Some(Found { at, kind: DepKind::Overt, manifest: Some(manifest) })
+        Some(Found { at, kind: DepKind::Vun, manifest: Some(manifest) })
     }
 
     /// The archive at `url`, unpacked under staging; an archive without a manifest is foreign.
@@ -131,7 +131,7 @@ impl Session {
         let fetched = self.unpack(&staging, url).map(|unpacked| {
             let manifest_path = unpacked.join(MANIFEST);
             let manifest = manifest_path.is_file().then(|| self.manifest_at(&manifest_path)).flatten();
-            let kind = if manifest.is_some() { DepKind::Overt } else { DepKind::Foreign };
+            let kind = if manifest.is_some() { DepKind::Vun } else { DepKind::Foreign };
             let snapshot = Snapshot::of(&unpacked, &self.include(kind, &unpacked));
             let at =
                 Place::Archive { url: url.to_owned(), staged: Staged { dir: staging.clone(), snapshot } };

@@ -2,13 +2,13 @@
 //! borrow of a function's own storage cannot be returned.
 
 use crate::common::Fixture;
-use overt_diag::errors;
+use vun_diag::errors;
 
 #[test]
 fn exclusive_loans_conflict_only_while_used() {
     let fixture = Fixture::new("borrows-conflict");
     let file = fixture.root.write(
-        "conflict.ov",
+        "conflict.vun",
         "\
 Point := struct { x: u8, y: u8 };
 shared := (xs: &mut [4]u8) -> u16 { a := &xs[0]; b := &xs[1]; a.* + b.* };
@@ -29,7 +29,7 @@ grow := (b: &mut Buf) { b.push(b.len()); };
 fn borrows_of_own_storage_do_not_escape() {
     let fixture = Fixture::new("borrows-escape");
     let file = fixture.root.write(
-        "escape.ov",
+        "escape.vun",
         "\
 first := (xs: &[4]u8) -> &u8 { &xs[0] };
 pick := (a: &u8, b: &u8) -> &u8 { a };
@@ -46,7 +46,7 @@ param := (x: u8) -> &u8 { &x };
 fn free_types_hold_no_borrows_and_owners_deref() {
     let fixture = Fixture::new("borrows-free");
     let file = fixture.root.write(
-        "free.ov",
+        "free.vun",
         "\
 Node := struct { value: u8, next: ?Own(Node) };
 Own := ($T: type) -> type { #[kind.linear] #[kind.free] struct { #[kind.owns] ptr: *T } };
@@ -71,7 +71,7 @@ walk := (head: &?Own(Node)) -> u8 {
 fn temp_borrows_are_lent_for_the_call() {
     let fixture = Fixture::new("borrows-temp");
     let file = fixture.root.write(
-        "temp.ov",
+        "temp.vun",
         "\
 find := (hay: &[4]u8, needle: &temp [4]u8) -> &[4]u8 { hay };
 leak := (hay: &[4]u8, needle: &temp [4]u8) -> &[4]u8 { needle };

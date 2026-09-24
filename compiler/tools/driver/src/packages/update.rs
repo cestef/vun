@@ -1,18 +1,18 @@
-//! Raising dependencies (`overt pkg update`, spec 12, section 3): each stored dependency is raised
+//! Raising dependencies (`vun pkg update`, spec 12, section 3): each stored dependency is raised
 //! to the newest release its identity's major has in the project's indexes. The release is
 //! fetched from the index, verified against the hash the listing states, stored, and its entry in
 //! `.deps` rewritten with that hash, so the index is trusted no more than any mirror.
 
 use std::path::Path;
 
-use overt_build::index::{Index, Listing};
-use overt_build::layout::MANIFEST;
-use overt_build::manifest::{self, DepKind, Source, Version};
-use overt_build::store::Label;
-use overt_diag::{ChildKind, Diagnostic, Msg, errors};
-use overt_hash::Hash;
-use overt_intern::Symbol;
-use overt_pkg::Failure;
+use vun_build::index::{Index, Listing};
+use vun_build::layout::MANIFEST;
+use vun_build::manifest::{self, DepKind, Source, Version};
+use vun_build::store::Label;
+use vun_diag::{ChildKind, Diagnostic, Msg, errors};
+use vun_hash::Hash;
+use vun_intern::Symbol;
+use vun_pkg::Failure;
 
 use super::{Dep, DepSource};
 use crate::Session;
@@ -60,7 +60,7 @@ impl Session {
         let Some(file) = self.load(&path) else { return Vec::new() };
         let Some(project) = self.manifest(file) else { return Vec::new() };
         let mut raised: Vec<(manifest::Dep, Updated)> = Vec::new();
-        for dep in project.deps.iter().filter(|d| d.kind == DepKind::Overt) {
+        for dep in project.deps.iter().filter(|d| d.kind == DepKind::Vun) {
             let Source::Archive { version, .. } = dep.source else { continue };
             let declared = Dep {
                 name: Symbol::intern(&dep.name),
@@ -77,8 +77,7 @@ impl Session {
                 let url = index.archive(identity, to);
                 let label = Label { name: &dep.name, version: to };
                 let store = self.store.clone();
-                if let Err(why) = self.stage(DepKind::Overt, &store, hash, &store.staging(hash), &url, label)
-                {
+                if let Err(why) = self.stage(DepKind::Vun, &store, hash, &store.staging(hash), &url, label) {
                     let msg = Msg::new().text("cannot fetch ").code(&dep.name).text(" ").code(to.to_string());
                     self.diag.error(Diagnostic::error(errors::PACKAGE_FETCH_FAILED, msg).caused_by(&why));
                     break;

@@ -3,11 +3,11 @@
 
 use std::path::{Path, PathBuf};
 
-use overt_build::layout::MANIFEST;
-use overt_build::manifest;
-use overt_diag::{Diagnostic, Msg, errors};
-use overt_hash::Snapshot;
-use overt_span::{FileId, SourceMap};
+use vun_build::layout::MANIFEST;
+use vun_build::manifest;
+use vun_diag::{Diagnostic, Msg, errors};
+use vun_hash::Snapshot;
+use vun_span::{FileId, SourceMap};
 
 use super::PackageKey;
 use crate::Session;

@@ -1,5 +1,5 @@
 [package]
-name = "overt-http"
+name = "vun-http"
 description = "The network schemes of package downloads: http and https, over bitreq and rustls."
 version.workspace = true
 edition.workspace = true
@@ -10,5 +10,5 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
-overt-pkg.workspace = true
+vun-pkg.workspace = true
 bitreq.workspace = true

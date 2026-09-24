@@ -10,8 +10,8 @@ mod write;
 
 use std::io;
 
-use overt_fs::Mode;
-use overt_hash::Snapshot;
+use vun_fs::Mode;
+use vun_hash::Snapshot;
 
 /// Records come in blocks of this size, and every header is one block.
 const BLOCK: usize = 512;

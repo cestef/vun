@@ -4,11 +4,11 @@
 
 use std::mem::{replace, take};
 
-use overt_hir::db::Parsed;
-use overt_hir::resolve::Res;
-use overt_hir::tree::{Entry, ExprId, ExprKind, List, Param, PatKind};
-use overt_intern::Symbol;
-use overt_query::Cx;
+use vun_hir::db::Parsed;
+use vun_hir::resolve::Res;
+use vun_hir::tree::{Entry, ExprId, ExprKind, List, Param, PatKind};
+use vun_intern::Symbol;
+use vun_query::Cx;
 
 use super::{Known, Typer};
 use crate::eval::Instantiation;

@@ -23,13 +23,13 @@ pub use condition::Selected;
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use overt_hir::db::{CheckedNames, FileNames, FileRef, Namespace, Outer, Package, Parsed, ParsedFile, Scope};
-use overt_hir::resolve::Res;
-use overt_hir::tree::{BinderId, Entry, ExprId, ExprKind, Name, Param, PatKind};
-use overt_intern::Symbol;
-use overt_origin::OriginTable;
-use overt_query::Cx;
-use overt_span::{SourceFiles, SourceMap};
+use vun_hir::db::{CheckedNames, FileNames, FileRef, Namespace, Outer, Package, Parsed, ParsedFile, Scope};
+use vun_hir::resolve::Res;
+use vun_hir::tree::{BinderId, Entry, ExprId, ExprKind, Name, Param, PatKind};
+use vun_intern::Symbol;
+use vun_origin::OriginTable;
+use vun_query::Cx;
+use vun_span::{SourceFiles, SourceMap};
 
 use crate::decl::DeclValue;
 use crate::eval::{Func, Instance, Staging};

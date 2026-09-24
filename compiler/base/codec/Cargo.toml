@@ -1,5 +1,5 @@
 [package]
-name = "overt-codec"
+name = "vun-codec"
 description = "A compact binary encoding for persisted data, without dependencies."
 version.workspace = true
 edition.workspace = true

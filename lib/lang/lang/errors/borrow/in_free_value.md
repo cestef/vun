@@ -11,7 +11,7 @@ indices into pools and arenas, or raw pointers in `unsafe` code.
 
 ## Example
 
-```ov
+```vun
 Parser := struct { input: &[u8] };
 Boxed := #[kind.free] struct { parser: Parser };
 
@@ -24,7 +24,7 @@ boxed := (p: Parser) -> Boxed {
 
 Keep the scoped value in a scoped place, such as a local or the caller's result, tied to `input`:
 
-```ov
+```vun
 Parser := struct { input: &[u8] };
 
 parser := (input: &[u8]) -> Parser {

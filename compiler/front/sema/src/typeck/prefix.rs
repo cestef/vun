@@ -2,9 +2,9 @@
 //! `borrows` (appendix B), `unsafe e` has the type of `e`, and so does `#[attrs] e`, whose
 //! attributes are data. A borrow of a type, as in `Pair(&u8)`, is a type.
 
-use overt_grammar::BORROWS;
-use overt_hir::tree::ExprId;
-use overt_intern::Symbol;
+use vun_grammar::BORROWS;
+use vun_hir::tree::ExprId;
+use vun_intern::Symbol;
 
 use super::{Known, Typer};
 use crate::ty::{TyKind, Value};

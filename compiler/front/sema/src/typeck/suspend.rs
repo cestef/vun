@@ -1,9 +1,9 @@
 //! `yield v` and `yield ..e` (spec 06): a value yielded is checked against what the coroutine
 //! function yields; delegating yields what `e`'s frame yields and has what it returns.
 
-use overt_diag::{ChildKind, Diagnostic, Msg, errors};
-use overt_grammar::TokenKind;
-use overt_hir::tree::{ExprId, ExprKind};
+use vun_diag::{ChildKind, Diagnostic, Msg, errors};
+use vun_grammar::TokenKind;
+use vun_hir::tree::{ExprId, ExprKind};
 
 use super::{Known, Stage, Typer};
 use crate::ty::{Ty, TyKind};

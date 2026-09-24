@@ -4,12 +4,12 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use overt_grammar::{Form, TYPE_PREFIXES, TokenKind};
-use overt_hir::resolve::Res;
+use vun_grammar::{Form, TYPE_PREFIXES, TokenKind};
+use vun_hir::resolve::Res;
 
-use overt_hir::tree::{BinderId, Entry, ExprId, ExprKind, Hir, Param, PatKind};
-use overt_hir::visit::{self, Visitor};
-use overt_intern::Symbol;
+use vun_hir::tree::{BinderId, Entry, ExprId, ExprKind, Hir, Param, PatKind};
+use vun_hir::visit::{self, Visitor};
+use vun_intern::Symbol;
 
 use crate::env::Env;
 use crate::eval::Func;

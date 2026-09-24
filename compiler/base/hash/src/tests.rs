@@ -1,12 +1,12 @@
 use std::path::Path;
 
-use overt_fs::{Mode, Modes, Scratch};
+use vun_fs::{Mode, Modes, Scratch};
 
 use super::{Algorithm, Change, Hash, Snapshot, base32};
 
 #[test]
 fn text_form_names_the_algorithm_and_round_trips() {
-    let h = Hash::of(b"overt");
+    let h = Hash::of(b"vun");
     let text = h.to_string();
     assert!(text.starts_with("blake3:") && text.len() == "blake3:".len() + 52, "{text}");
     assert_eq!(Hash::parse(&text), Some(h));
@@ -51,9 +51,9 @@ fn snapshots_refuse_paths_leaving_their_tree() {
     for path in ["../x", "a/../../x", "/etc/x", "a//b", ".", "a\\b"] {
         assert_eq!(Snapshot::parse(&format!("{h} - {path}")), None, "{path}");
     }
-    assert!(Snapshot::parse(&format!("{h} - a/b.ov")).is_some());
-    assert_eq!(Snapshot::parse(&format!("{h} a/b.ov")), None, "the mode is required");
-    assert_eq!(Snapshot::parse(&format!("{h} rw a/b.ov")), None);
+    assert!(Snapshot::parse(&format!("{h} - a/b.vun")).is_some());
+    assert_eq!(Snapshot::parse(&format!("{h} a/b.vun")), None, "the mode is required");
+    assert_eq!(Snapshot::parse(&format!("{h} rw a/b.vun")), None);
 }
 
 #[test]

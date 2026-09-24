@@ -4,9 +4,9 @@ use std::io::{self, Write};
 use std::ops::Range;
 
 use ariadne::{CharSet, Config, IndexType, Label, Report, ReportKind, sources};
-use overt_diag::{ChildKind, Color, Diagnostic, Fix, Severity};
-use overt_origin::{OriginId, OriginTable};
-use overt_span::{SourceMap, Span};
+use vun_diag::{ChildKind, Color, Diagnostic, Fix, Severity};
+use vun_origin::{OriginId, OriginTable};
+use vun_span::{SourceMap, Span};
 
 use crate::AriadneRenderer;
 

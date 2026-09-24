@@ -1,6 +1,6 @@
-//! Token kinds, node kinds and operator tables, generated from `lib/lang/lang/syntax/grammar.ov`.
+//! Token kinds, node kinds and operator tables, generated from `lib/lang/lang/syntax/grammar.vun`.
 //!
-//! The grammar is defined once, as Overt data (spec 13, section 5). `cargo xtask generate` writes
+//! The grammar is defined once, as Vun data (spec 13, section 5). `cargo xtask generate` writes
 //! the kinds and tables into `generated/`, a module per declaration; this file derives lookups
 //! from them.
 

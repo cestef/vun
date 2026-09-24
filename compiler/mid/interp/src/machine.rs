@@ -1,14 +1,14 @@
 //! Running a MIR body on compile-time values: locals hold values, statements compute them, and
 //! calls go through sema's memoized `Call` query, so recursion and repeated calls are shared.
 
-use overt_index::{Idx, IndexVec};
-use overt_mir::{Aggregate, BlockId, Body, Local, Operand, Place, Projection, Rvalue, TerminatorKind};
-use overt_query::Cx;
-use overt_sema::env::{Env, Unevaluated};
-use overt_sema::eval::{Instance, Metered, MeteredCall};
-use overt_sema::ops::Part;
-use overt_sema::trap::Reason;
-use overt_sema::ty::Value;
+use vun_index::{Idx, IndexVec};
+use vun_mir::{Aggregate, BlockId, Body, Local, Operand, Place, Projection, Rvalue, TerminatorKind};
+use vun_query::Cx;
+use vun_sema::env::{Env, Unevaluated};
+use vun_sema::eval::{Instance, Metered, MeteredCall};
+use vun_sema::ops::Part;
+use vun_sema::trap::Reason;
+use vun_sema::ty::Value;
 
 /// One call's locals.
 pub struct Frame<'b, 'a, 'db> {

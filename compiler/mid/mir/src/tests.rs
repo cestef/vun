@@ -1,6 +1,6 @@
-use overt_index::{Idx, IndexVec};
-use overt_origin::OriginTable;
-use overt_span::{SourceFiles, Span};
+use vun_index::{Idx, IndexVec};
+use vun_origin::OriginTable;
+use vun_span::{SourceFiles, Span};
 
 use crate::body::{Block, Body, LocalDecl, Operand, Role, Rvalue, Stmt, Terminator, TerminatorKind};
 use crate::place::Place;
@@ -8,7 +8,7 @@ use crate::verify::{Entity, Malformed};
 
 /// `_0 = _1; return` with one parameter, and `edit` applied.
 fn body(origins: &OriginTable, edit: impl FnOnce(&mut Body)) -> Body {
-    let file = SourceFiles::new().add("a.ov", "f := (x: u8) -> u8 { x };");
+    let file = SourceFiles::new().add("a.vun", "f := (x: u8) -> u8 { x };");
     let origin = origins.source(Span::new(file, 5, 24));
     let mut locals = IndexVec::new();
     let ret = locals.push(LocalDecl { name: None, ty: None, role: Role::Held, origin });

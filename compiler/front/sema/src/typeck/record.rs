@@ -2,9 +2,9 @@
 //! structural type from what it holds, `.{ .a = 1 }` a record and `.{ 1, 2 }` a tuple; a bare
 //! `.name` there is a `lang.meta.Name`.
 
-use overt_hir::tree::{Arg, Entry, ExprId, List, Name};
-use overt_hir::visit;
-use overt_intern::Symbol;
+use vun_hir::tree::{Arg, Entry, ExprId, List, Name};
+use vun_hir::visit;
+use vun_intern::Symbol;
 
 use super::{Known, Stage, Typer};
 use crate::Primitive;

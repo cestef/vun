@@ -1,9 +1,9 @@
 //! Parser diagnostics: one report per position, placed where the absent thing belongs.
 
-use overt_diag::{ChildKind, DiagId, Diagnostic, Fix, Msg, Safety, errors};
-use overt_grammar::TokenKind;
-use overt_index::Idx;
-use overt_span::{ByteRange, Span};
+use vun_diag::{ChildKind, DiagId, Diagnostic, Fix, Msg, Safety, errors};
+use vun_grammar::TokenKind;
+use vun_index::Idx;
+use vun_span::{ByteRange, Span};
 
 use super::{List, Parser};
 use crate::lexer::ESCAPE;

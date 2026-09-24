@@ -1,5 +1,5 @@
 //! Every compiler diagnostic, grouped by area. `cargo xtask generate` derives the ids of
-//! `overt-diag` from this file. Each entry's explanation page lives next to it under `errors/`.
+//! `vun-diag` from this file. Each entry's explanation page lives next to it under `errors/`.
 
 /// Tokens and syntax trees (spec 01).
 syntax := struct {
@@ -113,7 +113,7 @@ link := struct {
     unavailable := diag.Diag{ .explanation = meta.embed("errors/link/unavailable.md") };
 };
 
-/// Package manifests: the `package` literal of `build.ov` (spec 12, section 2).
+/// Package manifests: the `package` literal of `build.vun` (spec 12, section 2).
 manifest := struct {
     missing_package := diag.Diag{ .explanation = meta.embed("errors/manifest/missing_package.md") };
     missing_field := diag.Diag{ .explanation = meta.embed("errors/manifest/missing_field.md") };

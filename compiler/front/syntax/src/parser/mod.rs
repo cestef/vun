@@ -9,8 +9,8 @@
 //! operands become nodes anchored where they were expected, and skipped tokens become `Error`
 //! leaves.
 
-use overt_diag::DiagCx;
-use overt_trace::tracing;
+use vun_diag::DiagCx;
+use vun_trace::tracing;
 
 use crate::cst::{Builder, Cst};
 use crate::tokens::Tokens;

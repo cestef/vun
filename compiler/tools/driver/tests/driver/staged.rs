@@ -1,13 +1,13 @@
 //! `$for` and `$if` in type bodies and computed names (spec 03, section 2).
 
 use crate::common::Fixture;
-use overt_diag::errors;
+use vun_diag::errors;
 
 #[test]
 fn generated_members_are_typed_and_evaluated() {
     let fixture = Fixture::new("staged-members");
     let file = fixture.root.write(
-        "peripheral.ov",
+        "peripheral.vun",
         "\
 Register := struct { name: &[u8], reset: u32 };
 Block := ($registers: &[Register]) -> type {
@@ -31,7 +31,7 @@ field := (t: Timer) -> bool { t.cr1 };
 fn staged_statements_are_typed_per_step() {
     let fixture = Fixture::new("staged-statements");
     let file = fixture.root.write(
-        "fields.ov",
+        "fields.vun",
         "\
 Config := struct { baud: u32, parity: bool };
 copy := (c: Config) -> Config {
@@ -56,7 +56,7 @@ taken := () {
 fn staged_statements_run_unrolled() {
     let fixture = Fixture::new("staged-run");
     let file = fixture.root.write(
-        "dot.ov",
+        "dot.vun",
         "\
 dot := ($N: u32, a: &[N]u32, b: &[N]u32) -> u64 {
     mut acc: u64 = 0;

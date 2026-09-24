@@ -2,8 +2,8 @@
 
 use std::fmt;
 
-use overt_origin::OriginId;
-use overt_span::Span;
+use vun_origin::OriginId;
+use vun_span::Span;
 
 use crate::Msg;
 

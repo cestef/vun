@@ -3,9 +3,9 @@
 
 use std::fmt;
 
-use overt_index::Idx;
-use overt_origin::OriginId;
-use overt_span::LineCol;
+use vun_index::Idx;
+use vun_origin::OriginId;
+use vun_span::LineCol;
 
 use crate::body::{Aggregate, Body, Operand, Rvalue, TerminatorKind};
 use crate::place::{Place, Projection};
@@ -37,7 +37,7 @@ impl fmt::Display for Operand {
 
 impl fmt::Display for Rvalue {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let text = |op: overt_grammar::TokenKind| op.text().unwrap_or("?");
+        let text = |op: vun_grammar::TokenKind| op.text().unwrap_or("?");
         match self {
             Self::Use(operand) => operand.fmt(f),
             Self::Binary { op, left, right } => write!(f, "{left} {} {right}", text(*op)),
@@ -88,7 +88,7 @@ impl fmt::Display for Rvalue {
 }
 
 /// A body as text; with a locator, each line ends with the source position of its origin, as
-/// `overt dump mir` prints it (spec 10, section 1).
+/// `vun dump mir` prints it (spec 10, section 1).
 pub struct Text<'b> {
     body: &'b Body,
     locate: Option<&'b dyn Fn(OriginId) -> LineCol>,

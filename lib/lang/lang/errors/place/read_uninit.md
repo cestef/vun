@@ -9,7 +9,7 @@ its place `uninit`. The check runs on the control-flow graph.
 
 ## Example
 
-```ov
+```vun
 first := () -> u8 {
     mut buf: [16]u8;
     buf[0] //~ place.read_uninit
@@ -20,7 +20,7 @@ first := () -> u8 {
 
 Initialize the place before reading it:
 
-```ov
+```vun
 first := () -> u8 {
     buf: [16]u8 = [0; 16];
     buf[0]

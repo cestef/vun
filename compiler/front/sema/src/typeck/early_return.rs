@@ -2,9 +2,9 @@
 //! through the table `early_return`. Its value has the type `go` carries, and what `stop` carries
 //! must be accepted by the function's result type.
 
-use overt_grammar::EARLY_RETURN;
-use overt_hir::tree::ExprId;
-use overt_intern::Symbol;
+use vun_grammar::EARLY_RETURN;
+use vun_hir::tree::ExprId;
+use vun_intern::Symbol;
 
 use super::{Known, Typer};
 use crate::member::{Found, MemberType, Members};

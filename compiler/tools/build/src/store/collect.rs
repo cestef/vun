@@ -6,8 +6,8 @@ use std::collections::HashSet;
 use std::io;
 use std::path::{Path, PathBuf};
 
-use overt_fs::{Edit, Tree};
-use overt_hash::{Algorithm, Hash};
+use vun_fs::{Edit, Tree};
+use vun_hash::{Algorithm, Hash};
 
 use super::Store;
 use crate::lock::{self, Lock};

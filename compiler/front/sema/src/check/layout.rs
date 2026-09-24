@@ -1,8 +1,8 @@
 //! Layout attributes (spec 05, section 6): the fields of a `#[layout.bits(uN)]` struct take
 //! exactly N bits.
 
-use overt_diag::{Diagnostic, Msg, errors};
-use overt_hir::tree::{DeclId, ExprKind, Hir};
+use vun_diag::{Diagnostic, Msg, errors};
+use vun_hir::tree::{DeclId, ExprKind, Hir};
 
 use super::Checker;
 use crate::Primitive;

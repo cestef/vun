@@ -8,7 +8,7 @@ read through the borrow itself instead, which binds or reads by borrow (spec 01,
 
 ## Example
 
-```ov
+```vun
 File := #[kind.linear] struct { fd: u32 };
 
 fd := (slot: &?File) -> u32 {
@@ -23,7 +23,7 @@ fd := (slot: &?File) -> u32 {
 
 Match on the borrow, so that `f` is a `&File`:
 
-```ov
+```vun
 File := #[kind.linear] struct { fd: u32 };
 
 fd := (slot: &?File) -> u32 {

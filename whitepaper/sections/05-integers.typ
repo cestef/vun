@@ -4,8 +4,8 @@
 
 Integer overflow is treated by systems languages in one of three ways: as undefined behavior (C), as
 a check whose presence depends on the build profile (Rust), or as an unconditional trap (Swift). All
-three accept that `a + b` on two machine integers may fail to denote the mathematical sum. Overt
-does not: in Overt, arithmetic is exact, and the only operation that can fail to represent a value is
+three accept that `a + b` on two machine integers may fail to denote the mathematical sum. Vun
+does not: in Vun, arithmetic is exact, and the only operation that can fail to represent a value is
 an explicit narrowing.
 
 == Types
@@ -84,7 +84,7 @@ for them a narrower type is explicit, for instance through `Index.try_to(i)`.
 The benefits compound in the code systems programmers write most. In a ring buffer of compile-time
 capacity $N$, advancing the head needs neither a check nor an annotation beyond the type:
 
-```ov
+```vun
 Index := Int(0..N);
 mut head: Index = 0;
 head = (head + 1) % N;      // Int[1, N] mod N is Int[0, N - 1] = Index: no check

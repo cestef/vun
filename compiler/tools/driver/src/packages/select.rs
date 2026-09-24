@@ -6,10 +6,10 @@
 
 use std::collections::HashMap;
 
-use overt_build::lock::{Lock, Locked};
-use overt_build::manifest::{DepKind, Identity, Version};
-use overt_diag::{ChildKind, Diagnostic, ErrorGuaranteed, Msg, errors};
-use overt_span::Span;
+use vun_build::lock::{Lock, Locked};
+use vun_build::manifest::{DepKind, Identity, Version};
+use vun_diag::{ChildKind, Diagnostic, ErrorGuaranteed, Msg, errors};
+use vun_span::Span;
 
 use super::{Dep, DepSource, PackageKey, Replace};
 use crate::Session;
@@ -42,7 +42,7 @@ impl Session {
         let mut failed = None;
         self.walk(project, |s, package, dep| {
             let loaded = match dep.kind {
-                DepKind::Overt => s.found(dep).map_err(|_| absent.push(dep.clone())).ok(),
+                DepKind::Vun => s.found(dep).map_err(|_| absent.push(dep.clone())).ok(),
                 DepKind::Foreign => None,
             };
             let identity = loaded.and_then(|k| s.packages.list[&k].release).map(|(i, _)| i);

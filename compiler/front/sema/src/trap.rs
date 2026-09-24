@@ -2,8 +2,8 @@
 //! is reported once, at the evaluation root that needed the value, with the trap site labeled
 //! and a "while evaluating" frame for each call between them.
 
-use overt_diag::{Diagnostic, Msg, TraceFrame, errors};
-use overt_origin::OriginId;
+use vun_diag::{Diagnostic, Msg, TraceFrame, errors};
+use vun_origin::OriginId;
 
 use crate::env::Unevaluated;
 

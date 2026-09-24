@@ -1,5 +1,5 @@
 //! Markdown pages with code examples: sections by `##` heading, each holding fenced blocks tagged
-//! with a language and optionally the file the block is: ```` ```ov build.ov ````.
+//! with a language and optionally the file the block is: ```` ```vun build.vun ````.
 
 /// Opens and closes a fenced block.
 const FENCE: &str = "```";

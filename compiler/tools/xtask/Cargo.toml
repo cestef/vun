@@ -1,5 +1,5 @@
 [package]
-name = "overt-xtask"
+name = "vun-xtask"
 description = "Repository automation: grammar generation, corpus runs."
 version.workspace = true
 edition.workspace = true
@@ -7,25 +7,25 @@ rust-version.workspace = true
 publish.workspace = true
 
 [[bin]]
-name = "overt-xtask"
+name = "vun-xtask"
 path = "src/main.rs"
 
 [lints]
 workspace = true
 
 [dependencies]
-overt-command.workspace = true
-overt-diag.workspace = true
-overt-fs.workspace = true
-overt-origin.workspace = true
-overt-render-short.workspace = true
-overt-span.workspace = true
-overt-syntax.workspace = true
-overt-harness.workspace = true
-overt-grammar.workspace = true
+vun-command.workspace = true
+vun-diag.workspace = true
+vun-fs.workspace = true
+vun-origin.workspace = true
+vun-render-short.workspace = true
+vun-span.workspace = true
+vun-syntax.workspace = true
+vun-harness.workspace = true
+vun-grammar.workspace = true
 proc-macro2.workspace = true
 quote.workspace = true
 syn.workspace = true
 prettyplease.workspace = true
-overt-driver.workspace = true
-overt-build.workspace = true
+vun-driver.workspace = true
+vun-build.workspace = true

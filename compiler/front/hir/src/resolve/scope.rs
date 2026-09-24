@@ -2,7 +2,7 @@
 
 use std::collections::HashMap;
 
-use overt_intern::Symbol;
+use vun_intern::Symbol;
 
 use crate::tree::{BinderId, Hir};
 

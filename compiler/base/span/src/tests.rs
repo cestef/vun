@@ -2,7 +2,7 @@ use super::*;
 
 #[test]
 fn line_col_counts_from_one() {
-    let file = SourceFile::new("a.ov".into(), "x := 1;\ny := 2;\n".into());
+    let file = SourceFile::new("a.vun".into(), "x := 1;\ny := 2;\n".into());
     assert_eq!(file.line_col(0), LineCol { line: 1, col: 1 });
     assert_eq!(file.line_col(8), LineCol { line: 2, col: 1 });
     assert_eq!(file.line_col(10), LineCol { line: 2, col: 3 });
@@ -21,7 +21,7 @@ fn lines_exclude_their_breaks() {
 #[test]
 fn cover_joins_ranges() {
     let files = SourceFiles::new();
-    let f = files.add("a.ov", "");
+    let f = files.add("a.vun", "");
     assert_eq!(Span::new(f, 4, 6).cover(Span::new(f, 1, 5)), Span::new(f, 1, 6));
 }
 
@@ -31,18 +31,18 @@ fn file_ids_hash_by_key_not_by_order() {
     let hash =
         |id: FileId| BuildHasherDefault::<std::collections::hash_map::DefaultHasher>::default().hash_one(id);
     let first = SourceFiles::new();
-    let a = first.add_as("hal@1.0.0/hal.ov", "/home/a/hal/hal.ov", "");
+    let a = first.add_as("hal@1.0.0/hal.vun", "/home/a/hal/hal.vun", "");
     let second = SourceFiles::new();
-    let _ = second.add("other.ov", "");
-    let b = second.add_as("hal@1.0.0/hal.ov", "/home/b/hal/hal.ov", "");
+    let _ = second.add("other.vun", "");
+    let b = second.add_as("hal@1.0.0/hal.vun", "/home/b/hal/hal.vun", "");
     assert_eq!(hash(a), hash(b));
-    assert_eq!(second.file(b).path, "/home/b/hal/hal.ov");
+    assert_eq!(second.file(b).path, "/home/b/hal/hal.vun");
 }
 
 #[test]
 fn a_file_added_again_is_the_same_file() {
     let files = SourceFiles::new();
-    let a = files.add_as("p@1.0.0/a.ov", "/x/a.ov", "x := 1;");
-    assert_eq!(a, files.add_as("p@1.0.0/a.ov", "/y/a.ov", "x := 1;"));
-    assert_ne!(a, files.add_as("p@1.0.0/a.ov", "/x/a.ov", "x := 2;"), "an edited file is another");
+    let a = files.add_as("p@1.0.0/a.vun", "/x/a.vun", "x := 1;");
+    assert_eq!(a, files.add_as("p@1.0.0/a.vun", "/y/a.vun", "x := 1;"));
+    assert_ne!(a, files.add_as("p@1.0.0/a.vun", "/x/a.vun", "x := 2;"), "an edited file is another");
 }

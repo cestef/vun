@@ -2,8 +2,8 @@
 //! expected type (a variant, a variant's constructor, or a declaration of its namespace, or for
 //! a type provided from outside, of the namespace declaring it).
 
-use overt_hir::tree::ExprId;
-use overt_intern::Symbol;
+use vun_hir::tree::ExprId;
+use vun_intern::Symbol;
 
 use super::{Known, Stage, Typer};
 use crate::item::Declared;

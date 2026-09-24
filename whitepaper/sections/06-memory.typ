@@ -63,7 +63,7 @@ place is in state $I$, and is omitted on the exits where the value was moved awa
 computed statically, the choice needs no run-time flag, and the separate construct for
 "cleanup on error only" found in other languages is unnecessary.
 
-```ov
+```vun
 load := (fs: &mut Fs, a: &mut Alloc, path: &[u8]) -> Result(Own(Config), Error) {
     f := fs.open(path).map_err(Error.fs)?;
     defer fs.close(f);
@@ -92,7 +92,7 @@ use ownership, indices into pools, or raw pointers in `unsafe` code.
 
 Result-location semantics, in which every result is constructed directly in its destination, was
 adopted by Zig and has since been judged a failed experiment @zig-rls: an assignment that reads its
-own destination, such as a swap written as a struct literal, observes a half-written value. Overt
+own destination, such as a swap written as a struct literal, observes a half-written value. Vun
 restricts the guarantee to where it is sound.
 
 #rule[initialization][Initializing a place in state $U$ constructs the value in that place. This is

@@ -1,6 +1,6 @@
-//! Rust sources generated from Overt sources, which stay the single source of truth.
+//! Rust sources generated from Vun sources, which stay the single source of truth.
 //!
-//! A [`Generator`] reads the literal declarations of the `.ov` files at its source, one file or a
+//! A [`Generator`] reads the literal declarations of the `.vun` files at its source, one file or a
 //! directory of them, and emits typed Rust modules, which become the files of its output
 //! directory, each one concern, with a `mod.rs` declaring them; reading, parsing, formatting and
 //! the staleness check are shared here. Adding a generator is adding an entry to [`ALL`].
@@ -8,22 +8,22 @@
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
-use overt_build::layout::{Location, SEPARATOR};
-use overt_diag::{DiagCtxt, DiagCx, DiagId, Diagnostic, Msg};
-use overt_fs::{Relative, Tree};
-use overt_origin::OriginTable;
-use overt_span::{EXTENSION, SourceFiles};
-use overt_syntax::cst::Cst;
-use overt_syntax::literal::Decl;
-use overt_syntax::tokens::Tokens;
 use proc_macro2::TokenStream;
 use quote::quote;
+use vun_build::layout::{Location, SEPARATOR};
+use vun_diag::{DiagCtxt, DiagCx, DiagId, Diagnostic, Msg};
+use vun_fs::{Relative, Tree};
+use vun_origin::OriginTable;
+use vun_span::{EXTENSION, SourceFiles};
+use vun_syntax::cst::Cst;
+use vun_syntax::literal::Decl;
+use vun_syntax::tokens::Tokens;
 
 use crate::names::module;
 use crate::{errors, grammar, primitives};
 
 pub(crate) struct Generator {
-    /// The Overt file, or the directory of them, relative to the repository root.
+    /// The Vun file, or the directory of them, relative to the repository root.
     pub(crate) source: &'static str,
     /// The generated Rust module's directory, relative to the repository root, which holds
     /// nothing else.
@@ -93,7 +93,7 @@ impl Generator {
 
 impl Source<'_> {
     /// The binding path of the file, as a namespace of its package in [`PACKAGES`]:
-    /// `lib/lang/lang/errors.ov` is `lang.errors`. `None` for a file outside the package's root
+    /// `lib/lang/lang/errors.vun` is `lang.errors`. `None` for a file outside the package's root
     /// namespace, such as its manifest.
     pub(crate) fn namespace(&self) -> Option<Vec<String>> {
         let path = Path::new(&self.path);
@@ -117,7 +117,7 @@ impl Generator {
     pub(crate) fn generate(&self, root: &Path) -> Result<BTreeMap<String, String>, Box<Diagnostic>> {
         let unreadable = |e: &std::io::Error, path: &str| {
             let msg = Msg::new().text("cannot read ").code(path);
-            Box::new(Diagnostic::error(overt_diag::errors::IO_UNREADABLE_FILE, msg).caused_by(e))
+            Box::new(Diagnostic::error(vun_diag::errors::IO_UNREADABLE_FILE, msg).caused_by(e))
         };
         let files = root.join(self.source).files().map_err(|e| unreadable(&e, self.source))?;
         let mut texts = Vec::new();
@@ -202,7 +202,7 @@ impl Generator {
         let tokens = Tokens::lex(file, text, &mut cx);
         let cst = Cst::parse(&tokens, text, &mut cx);
         if diag.error_count() > 0 {
-            let run = format!("overt dump cst {path}");
+            let run = format!("vun dump cst {path}");
             let msg = Msg::new().code(path).text(" does not parse; run ").code(run);
             return Err(Box::new(Diagnostic::error(SYNTAX, msg)));
         }

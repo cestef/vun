@@ -1,12 +1,12 @@
 use super::*;
-use overt_diag::errors;
-use overt_span::{SourceFiles, Span};
+use vun_diag::errors;
+use vun_span::{SourceFiles, Span};
 
 #[test]
 fn renders_location_and_relative_id() {
     let files = SourceFiles::new();
     let text = "norm1 := (p: Point) -> u32 {\n    p.x.abs() + p.y.abs()\n};\n";
-    let f = files.add("src/geom.ov", text);
+    let f = files.add("src/geom.vun", text);
     let expr = "p.x.abs() + p.y.abs()";
     let lo = u32::try_from(text.find(expr).unwrap()).unwrap();
     let origins = OriginTable::new();
@@ -17,6 +17,6 @@ fn renders_location_and_relative_id() {
     ShortRenderer::new(&mut out).emit(&d, &origins, &files);
     assert_eq!(
         String::from_utf8(out).unwrap(),
-        "src/geom.ov:2:5: error[int.does_not_fit]: value does not fit the result type\n"
+        "src/geom.vun:2:5: error[int.does_not_fit]: value does not fit the result type\n"
     );
 }

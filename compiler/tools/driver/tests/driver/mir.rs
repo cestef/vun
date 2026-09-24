@@ -1,9 +1,9 @@
 //! Every function of the repository that MIR lowers verifies (spec 13, section 4).
 
-use overt_driver::Session;
-use overt_fs::Tree;
-use overt_harness::repo_root;
-use overt_span::EXTENSION;
+use vun_driver::Session;
+use vun_fs::Tree;
+use vun_harness::repo_root;
+use vun_span::EXTENSION;
 
 #[test]
 fn repository_bodies_lower_to_mir_that_verifies() {

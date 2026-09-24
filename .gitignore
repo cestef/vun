@@ -1,5 +1,5 @@
 /target
-.overt/
+.vun/
 /whitepaper/*.pdf
 /fuzz/target
 /fuzz/corpus

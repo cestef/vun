@@ -1,7 +1,7 @@
 //! Places: what statements write, operands read and borrows take. A place is a local and the
 //! projections applied to it in order: through a borrow or pointer, into a field, or to an item.
 
-use overt_intern::Symbol;
+use vun_intern::Symbol;
 
 use crate::body::Local;
 

@@ -12,9 +12,9 @@ mod pat;
 mod path;
 mod suspends;
 
-use overt_index::{IndexVec, index};
-use overt_intern::Symbol;
-use overt_origin::OriginId;
+use vun_index::{IndexVec, index};
+use vun_intern::Symbol;
+use vun_origin::OriginId;
 
 pub use binders::each_entry;
 pub use expr::{Arg, Cond, Expr, ExprKind, ForHead, Lit};

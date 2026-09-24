@@ -1,13 +1,13 @@
 //! Function bodies: locals, and basic blocks of statements ending in a terminator (spec 13,
 //! section 3). Every local, statement and terminator carries the origin that produced it.
 
-use overt_grammar::{Narrowing, TokenKind};
-use overt_hir::tree::ExprId;
-use overt_index::{IndexVec, index};
-use overt_intern::Symbol;
-use overt_origin::OriginId;
-use overt_sema::eval::Staging;
-use overt_sema::ty::{Ty, Value};
+use vun_grammar::{Narrowing, TokenKind};
+use vun_hir::tree::ExprId;
+use vun_index::{IndexVec, index};
+use vun_intern::Symbol;
+use vun_origin::OriginId;
+use vun_sema::eval::Staging;
+use vun_sema::ty::{Ty, Value};
 
 use crate::place::Place;
 

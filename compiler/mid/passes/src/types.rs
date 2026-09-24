@@ -1,10 +1,10 @@
 //! The types of places, followed along their projections from the local's type; `None` where a
 //! type on the way is not known.
 
-use overt_mir::{Body, Place, Projection};
-use overt_query::Cx;
-use overt_sema::member::Members;
-use overt_sema::ty::{Ty, TyKind, Value};
+use vun_mir::{Body, Place, Projection};
+use vun_query::Cx;
+use vun_sema::member::Members;
+use vun_sema::ty::{Ty, TyKind, Value};
 
 /// Place types in one body.
 pub(crate) struct PlaceTypes<'c, 'b> {

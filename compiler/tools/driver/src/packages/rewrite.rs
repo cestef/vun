@@ -3,11 +3,11 @@
 
 use std::path::Path;
 
-use overt_build::manifest::PACKAGE;
-use overt_diag::{Diagnostic, Edit, Msg, errors};
-use overt_fs::Edit as _;
-use overt_span::{FileId, Span};
-use overt_syntax::literal::{Decl, Unwritable};
+use vun_build::manifest::PACKAGE;
+use vun_diag::{Diagnostic, Edit, Msg, errors};
+use vun_fs::Edit as _;
+use vun_span::{FileId, Span};
+use vun_syntax::literal::{Decl, Unwritable};
 
 use crate::Session;
 

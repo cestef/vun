@@ -2,12 +2,12 @@
 //! without running it; resuming the frame runs its body from where it stopped until it yields
 //! or returns, and stores where it stopped back in the frame.
 
-use overt_index::{Idx, IndexVec};
-use overt_mir::{Body, Mir, Place};
-use overt_query::Cx;
-use overt_sema::env::{Env, Unevaluated};
-use overt_sema::eval::{Instance, Instantiation, Resumed, Suspended};
-use overt_sema::ty::{Ty, Value};
+use vun_index::{Idx, IndexVec};
+use vun_mir::{Body, Mir, Place};
+use vun_query::Cx;
+use vun_sema::env::{Env, Unevaluated};
+use vun_sema::eval::{Instance, Instantiation, Resumed, Suspended};
+use vun_sema::ty::{Ty, Value};
 
 use crate::machine::{Exit, Frame};
 

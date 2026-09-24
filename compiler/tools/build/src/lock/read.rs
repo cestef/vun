@@ -1,11 +1,11 @@
 //! Reading a lockfile's declarations, reporting each one that does not read at its source.
 
-use overt_diag::{DiagCtxt, DiagCx, Msg};
-use overt_origin::OriginTable;
-use overt_span::{FileId, SourceFiles, Span};
-use overt_syntax::cst::Cst;
-use overt_syntax::literal::{Decl, Literal};
-use overt_syntax::tokens::Tokens;
+use vun_diag::{DiagCtxt, DiagCx, Msg};
+use vun_origin::OriginTable;
+use vun_span::{FileId, SourceFiles, Span};
+use vun_syntax::cst::Cst;
+use vun_syntax::literal::{Decl, Literal};
+use vun_syntax::tokens::Tokens;
 
 use super::{FILE, LAYOUT, Lock, Locked, Replaced, Replacing, field};
 use crate::manifest::record::{Fields, Record};

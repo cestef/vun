@@ -1,5 +1,5 @@
 //! Archive formats, by the suffix of the URL or file: the ones forges and vendors publish, one of
-//! which packages are published in. Each reads and writes, so that `overt pkg pack` can publish
+//! which packages are published in. Each reads and writes, so that `vun pkg pack` can publish
 //! in any of them. Every format writes fixed metadata, so identical trees give identical archives.
 
 use std::io::{self, BufReader, Write};
@@ -8,12 +8,12 @@ use std::path::Path;
 use flate2::Compression;
 use flate2::read::GzDecoder;
 use flate2::write::GzEncoder;
-use overt_hash::Snapshot;
+use vun_hash::Snapshot;
 
 use crate::{Contents, Tar, Zip, Zstd};
 
 pub struct Format {
-    /// The first is what `overt pkg pack` names the archives it writes.
+    /// The first is what `vun pkg pack` names the archives it writes.
     pub suffixes: &'static [&'static str],
     /// Unpacks an archive into a directory; entries escaping it are refused by the readers.
     pub(crate) unpack: fn(&[u8], &Path) -> io::Result<()>,

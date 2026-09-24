@@ -1,16 +1,16 @@
 //! The explanation pages of the diagnostics (spec 10, section 1), checked as corpus files. A page
-//! has an `Example` section, whose Overt blocks report the page's diagnostic exactly as their
+//! has an `Example` section, whose Vun blocks report the page's diagnostic exactly as their
 //! `//~` annotations say, and a `Fix` section, whose version of the annotated file reports
-//! nothing. A block may name the file it is (```` ```ov build.ov ````), so an example can be a
+//! nothing. A block may name the file it is (```` ```vun build.vun ````), so an example can be a
 //! package; a section of command transcripts (`console`) is shown, not checked.
 
 use std::fmt;
 use std::path::{Path, PathBuf};
 
-use overt_diag::{DiagId, errors};
-use overt_fs::Scratch;
-use overt_harness::{Block, Expected, Page};
-use overt_span::EXTENSION;
+use vun_diag::{DiagId, errors};
+use vun_fs::Scratch;
+use vun_harness::{Block, Expected, Page};
+use vun_span::EXTENSION;
 
 use crate::corpus::{Corpus, Expect, Outcome, Verdict};
 

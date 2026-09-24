@@ -1,7 +1,7 @@
 use std::path::Path;
 
-use overt_fs::Scratch;
-use overt_hash::Hash;
+use vun_fs::Scratch;
+use vun_hash::Hash;
 
 use super::Store;
 use crate::lock::{self, Lock, Locked};
@@ -25,7 +25,7 @@ fn collection_keeps_what_registered_lockfiles_record() {
     let store = Store::at(&dir.join("store"));
     let [kept, dropped] = [Hash::of(b"kept"), Hash::of(b"dropped")];
     for hash in [kept, dropped] {
-        dir.write(store.package(hash).join("a.ov"), "a := 1;\n");
+        dir.write(store.package(hash).join("a.vun"), "a := 1;\n");
     }
     dir.write(store.label(kept), "hal 1.0.0\n");
     let locked = Locked {

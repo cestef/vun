@@ -2,10 +2,10 @@
 //! first, behind a `Defer` terminator naming the linear locals it consumes, so that the place
 //! states run it only on exits where they are still `init`.
 
-use overt_hir::tree::ExprId;
-use overt_index::Idx;
-use overt_origin::OriginId;
-use overt_sema::kinds::Kinds;
+use vun_hir::tree::ExprId;
+use vun_index::Idx;
+use vun_origin::OriginId;
+use vun_sema::kinds::Kinds;
 
 use super::{Builder, Unbuilt};
 use crate::body::{BlockId, Local, Operand, TerminatorKind};

@@ -62,7 +62,7 @@ impl Grammar<'_> {
             pub enum #field_ty { #(#field_variants),* }
 
             impl #field_ty {
-                /// The name of this field in `grammar.ov`.
+                /// The name of this field in `grammar.vun`.
                 #[must_use]
                 pub const fn name(self) -> &'static str {
                     match self {

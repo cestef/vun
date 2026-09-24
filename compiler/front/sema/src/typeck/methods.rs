@@ -1,10 +1,10 @@
 //! Methods through impls (spec 02, section 3), and names declared twice for one type: by two
 //! impls a file sees, or by an impl and the type itself (`impl.collision`).
 
-use overt_diag::{Diagnostic, Msg, errors};
-use overt_hir::tree::ExprId;
-use overt_intern::Symbol;
-use overt_origin::OriginId;
+use vun_diag::{Diagnostic, Msg, errors};
+use vun_hir::tree::ExprId;
+use vun_intern::Symbol;
+use vun_origin::OriginId;
 
 use super::{Known, Typer};
 use crate::eval::{Call, Instance};

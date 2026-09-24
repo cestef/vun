@@ -16,8 +16,8 @@
 
 use std::hash::{Hash, Hasher};
 
-use overt_intern::Symbol;
-use overt_span::Span;
+use vun_intern::Symbol;
+use vun_span::Span;
 
 /// An [`Origin`] in an [`OriginTable`]: equal by position in the table, hashed by the origin's
 /// anchored identity.
@@ -132,7 +132,7 @@ impl OriginTable {
     /// The hash identifying `origin` in every process: how it came to exist, and its span relative
     /// to its anchor.
     fn identity(&self, origin: &Origin) -> u64 {
-        let mut hasher = overt_hash::Hasher::default();
+        let mut hasher = vun_hash::Hasher::default();
         origin.via.hash(&mut hasher);
         origin.parent.hash(&mut hasher);
         origin.anchor.hash(&mut hasher);

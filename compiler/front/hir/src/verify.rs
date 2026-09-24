@@ -1,8 +1,8 @@
 //! The verifier of the HIR: it is a tree, so every node is reached from the root exactly once,
 //! and every node has an origin in the table (spec 13, section 4).
 
-use overt_index::{Idx, IndexVec};
-use overt_origin::{OriginId, OriginTable};
+use vun_index::{Idx, IndexVec};
+use vun_origin::{OriginId, OriginTable};
 
 use crate::tree::{BlockId, DeclId, ExprId, Hir, NsId, PatId, PatKind, Spread};
 use crate::visit::{self, Visitor};

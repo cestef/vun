@@ -7,7 +7,7 @@
 //! `#[kind.free]` is free, and holding a scoped value in it, even through a type argument, is an
 //! error its kind records.
 
-use overt_query::{Cx, Cycle, Query};
+use vun_query::{Cx, Cycle, Query};
 
 use crate::Primitive;
 use crate::env::Env;

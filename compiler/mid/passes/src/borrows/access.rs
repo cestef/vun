@@ -3,10 +3,10 @@
 
 use std::collections::BTreeSet;
 
-use overt_diag::{Msg, errors};
-use overt_grammar::Access;
-use overt_mir::{BlockId, Operand, Place, Rvalue, Stmt, TerminatorKind};
-use overt_origin::OriginId;
+use vun_diag::{Msg, errors};
+use vun_grammar::Access;
+use vun_mir::{BlockId, Operand, Place, Rvalue, Stmt, TerminatorKind};
+use vun_origin::OriginId;
 
 use super::flow::{Holds, Live};
 use super::{Checker, LoanId, Source};
@@ -41,7 +41,7 @@ impl Checker<'_> {
     }
 
     /// The loans some live local holds, but `own`, the one being taken.
-    fn live_loans(holds: &Holds, live: &BTreeSet<overt_mir::Local>, own: Option<LoanId>) -> BTreeSet<LoanId> {
+    fn live_loans(holds: &Holds, live: &BTreeSet<vun_mir::Local>, own: Option<LoanId>) -> BTreeSet<LoanId> {
         live.iter().flat_map(|&l| holds[l].iter().copied()).filter(|&loan| Some(loan) != own).collect()
     }
 

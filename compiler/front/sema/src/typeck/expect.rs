@@ -1,11 +1,11 @@
 //! What typing reports: a value whose type is not the one expected, a run-time integer past the
 //! width cap, and a member its type does not have.
 
-use overt_diag::{ChildKind, Diagnostic, Msg, errors};
-use overt_grammar::{COMPOUND, Narrowing, OPERATORS, TokenKind};
-use overt_hir::tree::ExprId;
-use overt_intern::Symbol;
-use overt_origin::OriginId;
+use vun_diag::{ChildKind, Diagnostic, Msg, errors};
+use vun_grammar::{COMPOUND, Narrowing, OPERATORS, TokenKind};
+use vun_hir::tree::ExprId;
+use vun_intern::Symbol;
+use vun_origin::OriginId;
 
 use std::sync::Arc;
 

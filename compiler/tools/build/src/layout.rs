@@ -1,17 +1,17 @@
 //! Where namespaces live on disk (spec 01, section 8, and spec 12, section 1): a namespace is the
-//! file `<base>.ov` merged with the directory `<base>/`, and a package's root namespace is its
+//! file `<base>.vun` merged with the directory `<base>/`, and a package's root namespace is its
 //! name in the package directory.
 
 use std::path::{Path, PathBuf};
 
-use overt_fs::Tree;
-use overt_span::EXTENSION;
+use vun_fs::Tree;
+use vun_span::EXTENSION;
 
 /// The file holding a package's manifest (spec 12, section 2).
-pub const MANIFEST: &str = overt_span::source_file!("build");
+pub const MANIFEST: &str = vun_span::source_file!("build");
 
 /// Separates the members of a namespace path: `std.prelude`.
-pub const SEPARATOR: &str = overt_grammar::PATH_SEPARATOR;
+pub const SEPARATOR: &str = vun_grammar::PATH_SEPARATOR;
 
 /// A namespace on disk, by the path its file and directory share.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -71,7 +71,7 @@ impl Location {
     }
 
     /// The namespace path of the source `file` of the package in `dir`: in `lib/lang`,
-    /// `lib/lang/lang/errors.ov` is `lang.errors`.
+    /// `lib/lang/lang/errors.vun` is `lang.errors`.
     #[must_use]
     pub fn path_of(dir: &Path, file: &Path) -> Option<Vec<String>> {
         let relative = file.strip_prefix(dir).ok()?.with_extension("");

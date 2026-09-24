@@ -1,7 +1,7 @@
 //! Declarative command trees: argument parsing, generated help and usage errors as diagnostics.
 //!
 //! A program is a tree of [`Command`]s declared as data. Parsing walks the tree, so names,
-//! parameters and help are declared once, and every front end (`overt`, `cargo xtask`) accepts
+//! parameters and help are declared once, and every front end (`vun`, `cargo xtask`) accepts
 //! the same syntax: `<command>... [--flag] [--option value] <argument>...`, with `-h`/`--help`
 //! everywhere, `help <command>...` in groups, and `-V`/`--version` on the root.
 
@@ -11,7 +11,7 @@ mod parse;
 use std::io::{self, Write};
 use std::process::ExitCode;
 
-use overt_diag::{Diagnostic, Msg, errors};
+use vun_diag::{Diagnostic, Msg, errors};
 
 pub use parse::{Request, Selected};
 
@@ -73,7 +73,7 @@ impl<Cx> Command<Cx> {
 }
 
 impl<Cx> Program<Cx> {
-    /// The command line selecting the command at `path` below the root, such as `overt pkg
+    /// The command line selecting the command at `path` below the root, such as `vun pkg
     /// fetch`, for messages that suggest it; `None` if no command is there.
     #[must_use]
     pub fn invocation(&self, path: &[&str]) -> Option<String> {

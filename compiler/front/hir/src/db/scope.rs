@@ -4,11 +4,11 @@
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
-use overt_diag::{DiagCtxt, DiagCx, ErrorGuaranteed};
-use overt_grammar::PATH_SEPARATOR;
-use overt_intern::Symbol;
-use overt_origin::OriginTable;
-use overt_query::{Cx, Query};
+use vun_diag::{DiagCtxt, DiagCx, ErrorGuaranteed};
+use vun_grammar::PATH_SEPARATOR;
+use vun_intern::Symbol;
+use vun_origin::OriginTable;
+use vun_query::{Cx, Query};
 
 use super::input::{Package, PackageId, Unloaded};
 use super::layout::Namespace;

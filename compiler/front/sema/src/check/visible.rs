@@ -1,10 +1,10 @@
 //! Visibility in a file (spec 01, section 7): each `#[visible(...)]` must apply where it is
 //! written, and a spread may select only names that reach it.
 
-use overt_diag::{ChildKind, Diagnostic, Msg, errors};
-use overt_hir::db::NamespaceAt;
-use overt_hir::tree::{ExprId, Hir, Member, Name, Spread};
-use overt_intern::Symbol;
+use vun_diag::{ChildKind, Diagnostic, Msg, errors};
+use vun_hir::db::NamespaceAt;
+use vun_hir::tree::{ExprId, Hir, Member, Name, Spread};
+use vun_intern::Symbol;
 
 use super::Checker;
 use crate::env::Env;

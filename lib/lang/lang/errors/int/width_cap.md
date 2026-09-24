@@ -9,7 +9,7 @@ no cap.
 
 ## Example
 
-```ov
+```vun
 cube := (x: u64) -> u64 {
     (x * x * x).to(u64) //~ int.width_cap
 };
@@ -19,7 +19,7 @@ cube := (x: u64) -> u64 {
 
 Narrow the square before the second multiplication, so no intermediate exceeds 128 bits:
 
-```ov
+```vun
 cube := (x: u64) -> u64 {
     ((x * x).to(u64) * x).to(u64)
 };

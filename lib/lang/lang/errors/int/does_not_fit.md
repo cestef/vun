@@ -10,7 +10,7 @@ language would let through at run time.
 
 ## Example
 
-```ov
+```vun
 Point := struct { x: i32, y: i32 };
 
 norm1 := (p: Point) -> u32 {
@@ -22,7 +22,7 @@ norm1 := (p: Point) -> u32 {
 
 Declare a type that holds the whole range, here `Int(0..=2^32)`, or narrow explicitly:
 
-```ov
+```vun
 Point := struct { x: i32, y: i32 };
 
 norm1 := (p: Point) -> u64 {
@@ -32,7 +32,7 @@ norm1 := (p: Point) -> u64 {
 
 Or narrow where the value is known to fit, and let compound assignments narrow for you:
 
-```ov
+```vun
 Point := struct { x: i32, y: i32 };
 
 norm1 := (p: Point) -> u32 {

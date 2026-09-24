@@ -9,7 +9,7 @@ range (spec 04, section 1, rule 2) and `&static T` for `&T` (spec 05, section 4)
 
 ## Example
 
-```ov
+```vun
 NodeId := struct { raw: u32 };
 TypeId := struct { raw: u32 };
 
@@ -22,7 +22,7 @@ type_of := (n: NodeId) -> TypeId {
 
 Build a value of the expected type explicitly:
 
-```ov
+```vun
 NodeId := struct { raw: u32 };
 TypeId := struct { raw: u32 };
 

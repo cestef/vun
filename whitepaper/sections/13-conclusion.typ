@@ -2,7 +2,7 @@
 
 = Conclusion and open problems <sec-conclusion>
 
-Overt's premise is that a systems language can be small in concepts without being small in reach: seven
+Vun's premise is that a systems language can be small in concepts without being small in reach: seven
 concepts, each with one rule, cover integer arithmetic without overflow, resource safety without
 destructors, borrowing without lifetime annotations, asynchronous code without pinning or allocation,
 code generation without a macro language, and program start-up without compiler-known names.

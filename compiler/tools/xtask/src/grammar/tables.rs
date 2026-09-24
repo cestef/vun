@@ -1,9 +1,9 @@
 //! Tables: lists whose element type is inferred from their values.
 
-use overt_diag::Msg;
-use overt_syntax::literal::{Decl, Literal};
 use proc_macro2::TokenStream;
 use quote::{ToTokens, quote};
+use vun_diag::Msg;
+use vun_syntax::literal::{Decl, Literal};
 
 use super::{Enum, GENERATOR, Grammar, SHAPE, Ty, UNRESOLVED};
 use crate::generate::{Module, Read, Source};

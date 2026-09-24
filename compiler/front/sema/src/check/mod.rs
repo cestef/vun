@@ -9,11 +9,11 @@ mod visible;
 
 use std::sync::Arc;
 
-use overt_diag::DiagCtxt;
-use overt_hir::db::FileRef;
-use overt_hir::tree::{DeclId, ExprId, ExprKind, Hir, Member, NsId, each_entry};
-use overt_hir::visit::{self, Visitor};
-use overt_query::{Cx, Query};
+use vun_diag::DiagCtxt;
+use vun_hir::db::FileRef;
+use vun_hir::tree::{DeclId, ExprId, ExprKind, Hir, Member, NsId, each_entry};
+use vun_hir::visit::{self, Visitor};
+use vun_query::{Cx, Query};
 
 use crate::decl::{DeclValue, TypedDecl};
 use crate::env::{Env, Unevaluated};

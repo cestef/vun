@@ -4,8 +4,8 @@
 use std::io::{self, Read};
 use std::path::Path;
 
-use overt_fs::{Edit, Modes};
-use overt_hash::Snapshot;
+use vun_fs::{Edit, Modes};
+use vun_hash::Snapshot;
 
 use super::{BLOCK, Field, Header, Kind, Malformed, PAX_PATH, Tar};
 

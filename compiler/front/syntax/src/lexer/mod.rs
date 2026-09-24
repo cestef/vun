@@ -10,10 +10,10 @@
 //! One rule depends on context: a number directly after `.` is lexed without a fraction, so that
 //! `t.0.1` indexes twice instead of reading `0.1`.
 
-use overt_diag::DiagCx;
-use overt_grammar::TokenKind;
-use overt_span::FileId;
-use overt_trace::tracing;
+use vun_diag::DiagCx;
+use vun_grammar::TokenKind;
+use vun_span::FileId;
+use vun_trace::tracing;
 
 use crate::tokens::{Builder, Lexeme, Tokens};
 

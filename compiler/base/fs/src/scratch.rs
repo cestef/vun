@@ -16,7 +16,7 @@ impl Scratch {
     /// Panics if the directory cannot be created.
     #[must_use]
     pub fn new(name: &str) -> Self {
-        let dir = std::env::temp_dir().join(format!("overt-{}-{name}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("vun-{}-{name}", std::process::id()));
         dir.fresh().expect("scratch directory");
         Self { dir }
     }

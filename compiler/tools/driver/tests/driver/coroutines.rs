@@ -1,13 +1,13 @@
 //! Coroutine functions, frames and `for p in e` (spec 06), at compile time.
 
 use crate::common::Fixture;
-use overt_diag::errors;
+use vun_diag::errors;
 
 #[test]
 fn frames_yield_to_for_and_to_delegation() {
     let fixture = Fixture::new("coroutines-frames");
     let file = fixture.root.write(
-        "frames.ov",
+        "frames.vun",
         "\
 three := () -> Iter(u8) { yield 1; yield 2; yield 3; };
 sum := () -> u16 { mut n: u16 = 0; for x in three() { n += x; } n };
@@ -39,7 +39,7 @@ frame := () -> u8 { three() };
 fn bounds_arrays_and_slices_iterate_through_lang() {
     let fixture = Fixture::new("coroutines-lang");
     let file = fixture.root.write(
-        "iterate.ov",
+        "iterate.vun",
         "\
 range := () -> u16 { mut n: u16 = 0; for i in 0..5 { n += i; } n };
 ten: Int(0..=range()) = 11;

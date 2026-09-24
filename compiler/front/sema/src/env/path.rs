@@ -1,8 +1,8 @@
 //! Items reached by their path, such as `lang.ops.Eq`, which syntax desugars into (appendix B)
 //! and primitives are declared at.
 
-use overt_grammar::PATH_SEPARATOR;
-use overt_intern::Symbol;
+use vun_grammar::PATH_SEPARATOR;
+use vun_intern::Symbol;
 
 use super::{Env, Unevaluated};
 use crate::item::{Declared, Site};

@@ -8,7 +8,7 @@ keeps a mistyped path or pattern from silently meaning something else.
 
 ## Example
 
-```ov
+```vun
 path := "C:\dir"; //~ syntax.invalid_escape
 ```
 
@@ -16,6 +16,6 @@ path := "C:\dir"; //~ syntax.invalid_escape
 
 Take the string literally with a leading backslash, so it has no escapes:
 
-```ov
+```vun
 path := \"C:\dir";
 ```

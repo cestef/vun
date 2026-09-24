@@ -1,6 +1,6 @@
 //! The names a pattern or a namespace introduces.
 
-use overt_intern::Symbol;
+use vun_intern::Symbol;
 
 use super::{BinderId, DeclId, Entry, ExprId, Hir, List, Member, NsId, PatId, PatKind, Spread, Staged};
 

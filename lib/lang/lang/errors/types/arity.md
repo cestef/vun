@@ -9,7 +9,7 @@ those.
 
 ## Example
 
-```ov
+```vun
 add := (a: u8, b: u8) -> u16 { a + b };
 
 three := () -> u16 {
@@ -21,7 +21,7 @@ three := () -> u16 {
 
 Pass one argument per parameter:
 
-```ov
+```vun
 add := (a: u8, b: u8) -> u16 { a + b };
 
 three := () -> u16 {

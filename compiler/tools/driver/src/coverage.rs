@@ -5,12 +5,12 @@ use std::collections::BTreeMap;
 use std::fmt;
 use std::ops::AddAssign;
 
-use overt_hir::db::{FileRef, Parsed};
-use overt_hir::tree::ExprKind;
-use overt_mir::{Mir, Unbuilt};
-use overt_sema::eval::Instantiation;
-use overt_sema::typeck::Typed;
-use overt_span::FileId;
+use vun_hir::db::{FileRef, Parsed};
+use vun_hir::tree::ExprKind;
+use vun_mir::{Mir, Unbuilt};
+use vun_sema::eval::Instantiation;
+use vun_sema::typeck::Typed;
+use vun_span::FileId;
 
 use crate::Session;
 

@@ -3,25 +3,25 @@
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use overt_build::manifest::Manifest;
-use overt_build::store::Store;
-use overt_diag::{DiagCtxt, DiagCx, DiagSink, Diagnostic, Msg, errors};
-use overt_hir::db::{FileNames, FileRef, FileText, Parsed, ParsedFile};
-use overt_hir::lower;
-use overt_hir::tree::{ExprKind, Hir};
-use overt_interp::Interpreter;
-use overt_mir::{Body, Mir, Unbuilt};
-use overt_origin::OriginTable;
-use overt_pkg::Schemes;
-use overt_query::Db;
-use overt_sema::check::Checked;
-use overt_sema::eval::Evaluators;
-use overt_sema::eval::Instantiation;
-use overt_sema::item::ExprRef;
-use overt_span::{FileId, SourceFiles, SourceMap};
-use overt_syntax::cst::Cst;
-use overt_syntax::literal::Decl;
-use overt_syntax::tokens::Tokens;
+use vun_build::manifest::Manifest;
+use vun_build::store::Store;
+use vun_diag::{DiagCtxt, DiagCx, DiagSink, Diagnostic, Msg, errors};
+use vun_hir::db::{FileNames, FileRef, FileText, Parsed, ParsedFile};
+use vun_hir::lower;
+use vun_hir::tree::{ExprKind, Hir};
+use vun_interp::Interpreter;
+use vun_mir::{Body, Mir, Unbuilt};
+use vun_origin::OriginTable;
+use vun_pkg::Schemes;
+use vun_query::Db;
+use vun_sema::check::Checked;
+use vun_sema::eval::Evaluators;
+use vun_sema::eval::Instantiation;
+use vun_sema::item::ExprRef;
+use vun_span::{FileId, SourceFiles, SourceMap};
+use vun_syntax::cst::Cst;
+use vun_syntax::literal::Decl;
+use vun_syntax::tokens::Tokens;
 
 use crate::formats::Format;
 use crate::packages::{LIBRARY, Packages};
@@ -40,7 +40,7 @@ pub struct Session {
     /// The store of fetched packages, the user's unless set.
     pub store: Store,
     /// The URL schemes packages are downloaded through: `file://` unless the program installs
-    /// more, as `overt` does with `overt-http`.
+    /// more, as `vun` does with `vun-http`.
     pub schemes: Schemes,
 }
 
@@ -158,7 +158,7 @@ impl Session {
         }
     }
 
-    /// Reads the manifest of the `build.ov` loaded as `file` (spec 12, section 2).
+    /// Reads the manifest of the `build.vun` loaded as `file` (spec 12, section 2).
     pub fn manifest(&mut self, file: FileId) -> Option<Manifest> {
         self.declarations(file, |decls, cx| Manifest::read(decls, file, cx))
     }

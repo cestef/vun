@@ -7,9 +7,9 @@ mod tests;
 
 use std::io::Write;
 
-use overt_diag::{Color, DiagSink, Diagnostic};
-use overt_origin::OriginTable;
-use overt_span::SourceMap;
+use vun_diag::{Color, DiagSink, Diagnostic};
+use vun_origin::OriginTable;
+use vun_span::SourceMap;
 
 pub struct AriadneRenderer<W: Write> {
     out: W,

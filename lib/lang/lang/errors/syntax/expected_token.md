@@ -9,7 +9,7 @@ belongs.
 
 ## Example
 
-```ov
+```vun
 limit := 64 //~ syntax.expected_token
 count := 0;
 ```
@@ -18,7 +18,7 @@ count := 0;
 
 Insert the expected token:
 
-```ov
+```vun
 limit := 64;
 count := 0;
 ```

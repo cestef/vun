@@ -2,7 +2,7 @@
 //! items; an array literal has the join of its items (`[1, 2, 3]` is `[3]Int(1..=3)`, widened on
 //! use), and indexing an array or a slice, directly or through a borrow, gives its item.
 
-use overt_hir::tree::{Entry, ExprId};
+use vun_hir::tree::{Entry, ExprId};
 
 use super::{Known, Stage, Typer};
 use crate::int::Integer;
@@ -123,7 +123,7 @@ impl Typer<'_, '_, '_> {
     fn walk_entry(&mut self, entry: &Entry<ExprId>) {
         let hir = self.hir();
         if let Entry::Staged(staged) = entry {
-            overt_hir::visit::Visitor::staged(self, hir, staged, &mut |v, e: &ExprId| {
+            vun_hir::visit::Visitor::staged(self, hir, staged, &mut |v, e: &ExprId| {
                 v.typed(*e);
             });
         }

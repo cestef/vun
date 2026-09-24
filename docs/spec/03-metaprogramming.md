@@ -3,7 +3,7 @@
 Goal: the whole language at compile time, and code generation that is typed, hygienic, traceable
 and pleasant to read. No code is ever built by formatting strings or by pasting token streams.
 
-The design has four layers. Each is ordinary Overt; together they add no keyword.
+The design has four layers. Each is ordinary Vun; together they add no keyword.
 
 | Layer | Mechanism | Covers |
 |-------|-----------|--------|
@@ -17,7 +17,7 @@ The design has four layers. Each is ordinary Overt; together they add no keyword
 A function body with compile-time parameters is already a typed template: it is type-checked,
 its names resolve lexically, and the compile-time parts are marked with `$`.
 
-```ov
+```vun
 dot := ($N: usize, a: &[N]f32, b: &[N]f32) -> f32 {
     mut acc: f32 = 0;
     $for i in 0..N { acc += a[i] * b[i]; }   // unrolled; i is a constant in each copy
@@ -40,7 +40,7 @@ whole `if`.
 A name position may hold `$(e)`, where `e` is a compile-time `lang.meta.Name` or string. This is
 the only way to produce a name that is not written literally.
 
-```ov
+```vun
 Peripheral := ($p: svd.Peripheral) -> type {
     Block := struct {
         $for r in p.registers {
@@ -65,8 +65,8 @@ array literals, match arms. That is what makes generated declarations read like 
 Spec 02 already makes `#[impl(I(T))]` accept any expression producing a struct. A derive is a
 function returning one; it may itself contain templates, which is the "inception" case:
 
-```ov
-// serde/derive.ov
+```vun
+// serde/derive.vun
 derive := ($T: type) -> type { struct {
     serialize := (v: &T, w: &mut Dyn(Encoder)) -> Result((), Encoder.Error) {
         w.begin_struct(std.meta.name_of(T))?;
@@ -92,7 +92,7 @@ lazily like everything else.
 `lang.meta.Code(T)` where `T` is the type `e` would have. Inside a quote, `$` means "evaluate now,
 at generation time", exactly as it means "evaluate at compile time" outside one.
 
-```ov
+```vun
 square := ($x: Code(f32)) -> Code(f32) { #{ $x * $x } };
 ```
 
@@ -116,7 +116,7 @@ A parameter of type `Code(T)` receives its argument as code instead of evaluatin
 property of the signature, visible in documentation and in editor inlay hints, and it is the whole
 macro system:
 
-```ov
+```vun
 assert := ($cond: Code(bool)) {
     if !$cond { std.panic.fail(.assertion(cond.source(), cond.span())); }
 };
@@ -145,7 +145,7 @@ and `c.span()`.
   compile time. `std.meta.span(s, lo, hi)` gives the source span of a substring of a literal, so
   their errors point inside the literal.
 
-```ov
+```vun
 is_ident := re.compile("[a-z_][a-z0-9_]*");   // parsed to a DFA at compile time; tables in rodata
 ```
 
@@ -165,7 +165,7 @@ Hygiene comes from construction, not from renaming passes.
 
 `std.meta` (over `lang.meta`) turns types and declarations into plain data:
 
-```ov
+```vun
 std.meta.fields(Point)        // [.{ .name = "x", .type = i32, .attrs = ..., .offset = 0 }, ...]
 std.meta.decls(Point)         // declarations, with values and attributes
 std.meta.size(Point)          // 8
@@ -238,5 +238,5 @@ Bevy. So the evaluator is designed for speed from the start (spec 13):
 3. Calls are memoized on (function, interned arguments), persisted across builds.
 4. A JIT behind the `Evaluator` interface is a later option; it must reproduce the target model
    and is differential-tested against the interpreter.
-5. `overt check --meta-stats` reports evaluation time and generated code size per generator, so
+5. `vun check --meta-stats` reports evaluation time and generated code size per generator, so
    the cost of a derive is visible.

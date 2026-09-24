@@ -42,7 +42,7 @@ impl<T: Hash + Eq + Send + Sync + 'static> Pool<T> {
     /// # Panics
     /// Panics if a thread panicked while interning.
     pub fn intern(&'static self, value: T) -> Interned<T> {
-        let hash = overt_hash::Hash::of_value(&value).short();
+        let hash = vun_hash::Hash::of_value(&value).short();
         let shard = &self.shards[usize::try_from(hash % SHARDS as u64).expect("fits")];
         if let Some(&interned) = shard.read().expect("pool").get(&value) {
             return interned;

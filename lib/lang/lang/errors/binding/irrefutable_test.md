@@ -7,7 +7,7 @@ always true, which is an error: bind with `:=` instead (spec 01, section 6).
 
 ## Example
 
-```ov
+```vun
 first := (pair: (u8, u8)) -> u8 {
     if (a, b) = pair { a } else { 0 } //~ binding.irrefutable_test
 };
@@ -17,7 +17,7 @@ first := (pair: (u8, u8)) -> u8 {
 
 Bind the pattern, since any irrefutable pattern binds:
 
-```ov
+```vun
 first := (pair: (u8, u8)) -> u8 {
     (a, _) := pair;
     a

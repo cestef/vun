@@ -2,13 +2,13 @@
 //! `fn_markers` gives each, and `#[panic.never]` checked on the body.
 
 use crate::common::Fixture;
-use overt_diag::errors;
+use vun_diag::errors;
 
 #[test]
 fn functions_are_accepted_by_the_relation_of_their_markers() {
     let fixture = Fixture::new("markers-accept");
     let file = fixture.root.write(
-        "accept.ov",
+        "accept.vun",
         "\
 plain := (x: u8) -> u8 { x };
 risky := unsafe (x: u8) -> u8 { x };
@@ -38,7 +38,7 @@ g := () -> u8 { bound(large) };
 fn functions_that_never_trap_contain_no_trap_site() {
     let fixture = Fixture::new("markers-never");
     let file = fixture.root.write(
-        "never.ov",
+        "never.vun",
         "\
 #[panic.never]
 halve := (x: u32) -> u32 { x / 2 };

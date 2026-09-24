@@ -9,7 +9,7 @@ leave its scope.
 
 ## Example
 
-```ov
+```vun
 dangling := () -> &u8 {
     x: u8 = 1;
     &x //~ borrow.escape
@@ -20,7 +20,7 @@ dangling := () -> &u8 {
 
 Return the value itself, or a borrow of something the caller lends:
 
-```ov
+```vun
 value := () -> u8 {
     x: u8 = 1;
     x

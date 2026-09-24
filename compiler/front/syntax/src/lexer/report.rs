@@ -1,6 +1,6 @@
 //! Lexer diagnostics.
 
-use overt_diag::{ChildKind, DiagId, Diagnostic, Msg, errors};
+use vun_diag::{ChildKind, DiagId, Diagnostic, Msg, errors};
 
 use super::{Lexer, SIMPLE_ESCAPES};
 

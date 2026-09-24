@@ -1,0 +1,2 @@
+//! The syntax of Vun as types, for compile-time code reading code values (spec 03, section 4).
+//! Token and node types are generated from `syntax/grammar.vun`.

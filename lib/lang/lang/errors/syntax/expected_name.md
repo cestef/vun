@@ -7,7 +7,7 @@ The same diagnostic covers other places that take only a name.
 
 ## Example
 
-```ov
+```vun
 Point := struct { x: i32, y: i32 };
 origin := Point{ .x = 0, .y = 0 };
 x := origin.; //~ syntax.expected_name
@@ -17,7 +17,7 @@ x := origin.; //~ syntax.expected_name
 
 Name the member:
 
-```ov
+```vun
 Point := struct { x: i32, y: i32 };
 origin := Point{ .x = 0, .y = 0 };
 x := origin.x;

@@ -3,11 +3,11 @@
 //! has what it returns; `for p in e` drives the iterator `e`'s witness of `lang.ops.Iterate`
 //! makes (the table `iteration`).
 
-use overt_grammar::{ITERATION, TokenKind};
-use overt_hir::tree::{ExprId, ExprKind};
-use overt_intern::Symbol;
-use overt_origin::OriginId;
-use overt_sema::ty::Ty;
+use vun_grammar::{ITERATION, TokenKind};
+use vun_hir::tree::{ExprId, ExprKind};
+use vun_intern::Symbol;
+use vun_origin::OriginId;
+use vun_sema::ty::Ty;
 
 use super::{Builder, Unbuilt};
 use crate::body::{Local, Operand, Rvalue, TerminatorKind};

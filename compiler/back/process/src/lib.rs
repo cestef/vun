@@ -1,9 +1,9 @@
 //! External backends: any executable reading LIR text on standard input.
 
-use overt_backend::{ArtifactSink, Backend, BackendCaps, BackendInfo, Emits};
-use overt_diag::{DiagCtxt, ErrorGuaranteed};
-use overt_lir::unit::Unit;
-use overt_target::{Arches, TargetSpec};
+use vun_backend::{ArtifactSink, Backend, BackendCaps, BackendInfo, Emits};
+use vun_diag::{DiagCtxt, ErrorGuaranteed};
+use vun_lir::unit::Unit;
+use vun_target::{Arches, TargetSpec};
 
 pub const INFO: BackendInfo = BackendInfo {
     id: "process",

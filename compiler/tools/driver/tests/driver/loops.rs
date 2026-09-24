@@ -1,13 +1,13 @@
 //! Loops: heads, items through `lang.ops.Iterate` (the table `iteration`), and `break` values.
 
 use crate::common::Fixture;
-use overt_diag::errors;
+use vun_diag::errors;
 
 #[test]
 fn loop_items_and_values_are_typed() {
     let fixture = Fixture::new("loops-typed");
     let file = fixture.root.write(
-        "loops.ov",
+        "loops.vun",
         "\
 count := (n: u8) { for i in 0..n { x: bool = i; } };
 each := (xs: &[u16]) { for x in xs { y: bool = x; } };

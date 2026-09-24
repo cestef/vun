@@ -8,20 +8,20 @@ the ones still to come `(planned)`; running one reports this instead of doing no
 ## Example
 
 ```console
-$ overt pkg update
-error[cli.unavailable_command]: `overt pkg update` is not available yet
+$ vun pkg update
+error[cli.unavailable_command]: `vun pkg update` is not available yet
 ```
 
 ## Fix
 
-Use a command that is available; `overt pkg --help` marks the planned ones:
+Use a command that is available; `vun pkg --help` marks the planned ones:
 
 ```console
-$ overt pkg --help
+$ vun pkg --help
 dependencies, releases and API diffs
 
-usage: overt pkg <command> [options]
-       overt pkg help <command>
+usage: vun pkg <command> [options]
+       vun pkg help <command>
 
 commands:
   add     declare a dependency, fetching an archive to learn its hash

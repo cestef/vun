@@ -32,11 +32,11 @@ mod tests;
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::sync::Arc;
 
-use overt_diag::DiagCtxt;
-use overt_hir::tree::{BinderId, BlockId, DeclId, ExprId, ExprKind, Hir, NsId, PatId, Staged};
-use overt_hir::visit::Visitor;
-use overt_intern::Symbol;
-use overt_query::{Cx, Cycle, Query};
+use vun_diag::DiagCtxt;
+use vun_hir::tree::{BinderId, BlockId, DeclId, ExprId, ExprKind, Hir, NsId, PatId, Staged};
+use vun_hir::visit::Visitor;
+use vun_intern::Symbol;
+use vun_query::{Cx, Cycle, Query};
 
 use crate::env::Env;
 use crate::eval::Instantiation;
@@ -112,10 +112,10 @@ impl Visitor for Exprs {
         match &hir.exprs[expr].kind {
             ExprKind::Fn { .. } => {}
             ExprKind::Closure { func, .. } => {
-                overt_hir::visit::walk_expr(self, hir, expr);
-                overt_hir::visit::walk_expr(self, hir, *func);
+                vun_hir::visit::walk_expr(self, hir, expr);
+                vun_hir::visit::walk_expr(self, hir, *func);
             }
-            _ => overt_hir::visit::walk_expr(self, hir, expr),
+            _ => vun_hir::visit::walk_expr(self, hir, expr),
         }
     }
 }

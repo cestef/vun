@@ -8,7 +8,7 @@ its own body, so a loop that never ends is an error rather than a compiler that 
 
 ## Example
 
-```ov
+```vun
 spin := ($n: u8) -> u8 { for { } };
 Stuck := Int(0..=spin(1)); //~ comptime.exhausted
 ```
@@ -17,7 +17,7 @@ Stuck := Int(0..=spin(1)); //~ comptime.exhausted
 
 Give the loop a condition that ends it:
 
-```ov
+```vun
 spin := ($n: u8) -> u8 {
     mut i: u8 = 0;
     for i < n { i += 1; }

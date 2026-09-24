@@ -9,12 +9,12 @@ fn names(paths: &[PathBuf], root: &std::path::Path) -> Vec<String> {
 #[test]
 fn walks_are_sorted_and_a_file_is_its_own_walk() {
     let dir = Scratch::new("walk");
-    dir.write("b.ov", "");
-    dir.write("a/z.ov", "");
-    dir.write("a/y.ov", "");
-    assert_eq!(names(&dir.path().files().unwrap(), dir.path()), ["a/y.ov", "a/z.ov", "b.ov"]);
-    assert_eq!(names(&dir.path().entries().unwrap(), dir.path()), ["a", "b.ov"]);
-    assert_eq!(dir.join("b.ov").files().unwrap(), [dir.join("b.ov")]);
+    dir.write("b.vun", "");
+    dir.write("a/z.vun", "");
+    dir.write("a/y.vun", "");
+    assert_eq!(names(&dir.path().files().unwrap(), dir.path()), ["a/y.vun", "a/z.vun", "b.vun"]);
+    assert_eq!(names(&dir.path().entries().unwrap(), dir.path()), ["a", "b.vun"]);
+    assert_eq!(dir.join("b.vun").files().unwrap(), [dir.join("b.vun")]);
     assert!(dir.join("absent").files().is_err());
 }
 
@@ -22,10 +22,10 @@ fn walks_are_sorted_and_a_file_is_its_own_walk() {
 fn edits_create_parents_and_replace_whole_directories() {
     let dir = Scratch::new("edit");
     let target = dir.join("store/entry");
-    dir.write("store/entry/old.ov", "old");
-    dir.write("staging/new.ov", "new");
+    dir.write("store/entry/old.vun", "old");
+    dir.write("staging/new.vun", "new");
     target.replace_with(&dir.join("staging")).unwrap();
-    assert_eq!(names(&target.files().unwrap(), &target), ["new.ov"]);
+    assert_eq!(names(&target.files().unwrap(), &target), ["new.vun"]);
     assert!(!dir.join("staging").exists());
     target.fresh().unwrap();
     assert!(target.entries().unwrap().is_empty());
@@ -42,8 +42,8 @@ fn scratch_directories_are_removed_when_dropped() {
 #[test]
 fn relative_paths_climb_to_the_common_directory() {
     let dir = Scratch::new("relative");
-    dir.write("app/build.ov", "");
-    dir.write("libs/util/build.ov", "");
+    dir.write("app/build.vun", "");
+    dir.write("libs/util/build.vun", "");
     let relative = dir.join("libs/util").relative_to(&dir.join("app")).unwrap();
     assert_eq!(relative, std::path::Path::new("../libs/util"));
     assert_eq!(dir.join("app").relative_to(&dir.join("app")).unwrap(), std::path::Path::new("."));

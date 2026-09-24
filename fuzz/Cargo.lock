@@ -116,99 +116,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9f7c3e4beb33f85d45ae3e3a1792185706c8e16d043238c593331cc7cd313b50"
 
 [[package]]
-name = "overt-codec"
-version = "0.0.0"
-
-[[package]]
-name = "overt-diag"
-version = "0.0.0"
-dependencies = [
- "overt-origin",
- "overt-span",
-]
-
-[[package]]
-name = "overt-fs"
-version = "0.0.0"
-
-[[package]]
-name = "overt-fuzz"
-version = "0.0.0"
-dependencies = [
- "libfuzzer-sys",
- "overt-diag",
- "overt-origin",
- "overt-span",
- "overt-syntax",
-]
-
-[[package]]
-name = "overt-grammar"
-version = "0.0.0"
-
-[[package]]
-name = "overt-hash"
-version = "0.0.0"
-dependencies = [
- "blake3",
- "overt-codec",
- "overt-fs",
-]
-
-[[package]]
-name = "overt-index"
-version = "0.0.0"
-
-[[package]]
-name = "overt-intern"
-version = "0.0.0"
-dependencies = [
- "overt-hash",
-]
-
-[[package]]
-name = "overt-origin"
-version = "0.0.0"
-dependencies = [
- "boxcar",
- "overt-hash",
- "overt-intern",
- "overt-span",
-]
-
-[[package]]
-name = "overt-outline"
-version = "0.0.0"
-
-[[package]]
-name = "overt-span"
-version = "0.0.0"
-dependencies = [
- "boxcar",
- "overt-hash",
-]
-
-[[package]]
-name = "overt-syntax"
-version = "0.0.0"
-dependencies = [
- "overt-diag",
- "overt-grammar",
- "overt-index",
- "overt-origin",
- "overt-outline",
- "overt-span",
- "overt-trace",
-]
-
-[[package]]
-name = "overt-trace"
-version = "0.0.0"
-dependencies = [
- "tracing",
-]
-
-[[package]]
 name = "pin-project-lite"
 version = "0.2.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -243,4 +150,97 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "db97caf9d906fbde555dd62fa95ddba9eecfd14cb388e4f491a66d74cd5fb79a"
 dependencies = [
  "once_cell",
+]
+
+[[package]]
+name = "vun-codec"
+version = "0.0.0"
+
+[[package]]
+name = "vun-diag"
+version = "0.0.0"
+dependencies = [
+ "vun-origin",
+ "vun-span",
+]
+
+[[package]]
+name = "vun-fs"
+version = "0.0.0"
+
+[[package]]
+name = "vun-fuzz"
+version = "0.0.0"
+dependencies = [
+ "libfuzzer-sys",
+ "vun-diag",
+ "vun-origin",
+ "vun-span",
+ "vun-syntax",
+]
+
+[[package]]
+name = "vun-grammar"
+version = "0.0.0"
+
+[[package]]
+name = "vun-hash"
+version = "0.0.0"
+dependencies = [
+ "blake3",
+ "vun-codec",
+ "vun-fs",
+]
+
+[[package]]
+name = "vun-index"
+version = "0.0.0"
+
+[[package]]
+name = "vun-intern"
+version = "0.0.0"
+dependencies = [
+ "vun-hash",
+]
+
+[[package]]
+name = "vun-origin"
+version = "0.0.0"
+dependencies = [
+ "boxcar",
+ "vun-hash",
+ "vun-intern",
+ "vun-span",
+]
+
+[[package]]
+name = "vun-outline"
+version = "0.0.0"
+
+[[package]]
+name = "vun-span"
+version = "0.0.0"
+dependencies = [
+ "boxcar",
+ "vun-hash",
+]
+
+[[package]]
+name = "vun-syntax"
+version = "0.0.0"
+dependencies = [
+ "vun-diag",
+ "vun-grammar",
+ "vun-index",
+ "vun-origin",
+ "vun-outline",
+ "vun-span",
+ "vun-trace",
+]
+
+[[package]]
+name = "vun-trace"
+version = "0.0.0"
+dependencies = [
+ "tracing",
 ]

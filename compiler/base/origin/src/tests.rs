@@ -1,9 +1,9 @@
 use super::*;
-use overt_span::SourceFiles;
+use vun_span::SourceFiles;
 
 #[test]
 fn chains_lead_back_to_source() {
-    let f = SourceFiles::new().add("a.ov", "");
+    let f = SourceFiles::new().add("a.vun", "");
     let t = OriginTable::new();
     let written = t.source(Span::new(f, 10, 20));
     let desugared = t.derive(written, Span::new(f, 10, 20), Via::Desugar(DesugarRule(3)));
@@ -14,7 +14,7 @@ fn chains_lead_back_to_source() {
 
 #[test]
 fn threads_record_origins_without_waiting() {
-    let f = SourceFiles::new().add("a.ov", "");
+    let f = SourceFiles::new().add("a.vun", "");
     let t = OriginTable::new();
     std::thread::scope(|s| {
         for lo in 0..4 {
@@ -31,13 +31,13 @@ fn threads_record_origins_without_waiting() {
 
 #[test]
 fn identities_survive_shifts_and_new_tables() {
-    use overt_hash::Hash;
-    use overt_intern::Symbol;
+    use vun_hash::Hash;
+    use vun_intern::Symbol;
     let name = Symbol::intern("limit");
     // The same declaration, 40 bytes further down, read in another process.
     let [(first, a), (second, b)] =
         [(SourceFiles::new(), 10), (SourceFiles::new(), 50)].map(|(files, at)| {
-            let f = files.add("pkg@1.0.0/pkg.ov", "");
+            let f = files.add("pkg@1.0.0/pkg.vun", "");
             let t = OriginTable::new();
             let decl = t.declaration(Span::new(f, at, at + 10), None, name);
             let inner = t.inside(decl, Span::new(f, at + 2, at + 4));
@@ -48,7 +48,7 @@ fn identities_survive_shifts_and_new_tables() {
     assert_eq!(first.source_span(a[2]).range.lo, 12);
     assert_eq!(second.source_span(b[2]).range.lo, 52);
     // Another name, or a node elsewhere in the declaration, is another origin.
-    let f = SourceFiles::new().add("pkg@1.0.0/pkg.ov", "");
+    let f = SourceFiles::new().add("pkg@1.0.0/pkg.vun", "");
     let t = OriginTable::new();
     let other = t.declaration(Span::new(f, 10, 20), None, Symbol::intern("other"));
     assert_ne!(Hash::of_value(&other), Hash::of_value(&a[0]));
@@ -58,9 +58,9 @@ fn identities_survive_shifts_and_new_tables() {
 
 #[test]
 fn nodes_know_the_declaration_they_are_written_in() {
-    let f = SourceFiles::new().add("a.ov", "");
+    let f = SourceFiles::new().add("a.vun", "");
     let t = OriginTable::new();
-    let name = overt_intern::Symbol::intern("Point");
+    let name = vun_intern::Symbol::intern("Point");
     let decl = t.declaration(Span::new(f, 0, 30), None, name);
     let literal = t.inside(decl, Span::new(f, 9, 30));
     let lowered = t.derive(literal, Span::new(f, 9, 30), Via::Lower(PassId(1)));

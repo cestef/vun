@@ -8,15 +8,15 @@ knows about any backend; nothing above the linker adapter knows about any linker
 
 ```
  source
-   |  overt-syntax      tokens + postorder CST arrays; error-recovering parser
+   |  vun-syntax      tokens + postorder CST arrays; error-recovering parser
    v
  HIR                   desugaring into `lang` items (appendix B), name resolution
-   |  overt-sema        demand-driven, parallel: type checking and compile-time evaluation interleaved
+   |  vun-sema        demand-driven, parallel: type checking and compile-time evaluation interleaved
    v
  MIR                   control-flow graph over places; one body per instantiation
    |  MIR passes        checks: place states, kinds, borrows, scoping, panic.never, stack
    |                    transforms: coroutines, defer, range-based check elision, instrumentation
-   +--> overt-interp    reference semantics: runs compile-time code and tests
+   +--> vun-interp    reference semantics: runs compile-time code and tests
    v
  LIR                   type-erased SSA: i8..i128, f16..f64, ptr, vectors; loads, stores, calls
    |  LIR passes         ABI lowering per backend capabilities, identical-body merging
@@ -61,9 +61,9 @@ years (rustc's parallel front end). So both are designed in from phase 1.
   its `cycle` rule gives, with the path of queries, instead of looping.
 - The query database is persisted to disk from phase 1, with a bounded cache for bodies (new Salsa
   initially grew rust-analyzer's memory about 4x). A query opts in when its keys and values are
-  data (`Persist`, encoded by `overt-codec`, which has no dependencies; an interned value
+  data (`Persist`, encoded by `vun-codec`, which has no dependencies; an interned value
   persists by content and is interned again when read); its computed memos are saved with their traces, by query name,
-  in `.overt/queries/` under the toolchain's hash. A memo whose trace reads a query that is not
+  in `.vun/queries/` under the toolchain's hash. A memo whose trace reads a query that is not
   persisted is not saved, and a loaded memo is verified before its first use like any memo of an
   earlier revision, so a stale file costs recomputation, never a wrong result.
 
@@ -104,17 +104,17 @@ compiler, reject any entity without one.
 
 ## 5. One grammar, many consumers
 
-The grammar (tokens, node kinds, their fields) is defined once, in `lang/syntax/grammar.ov`, as Overt
+The grammar (tokens, node kinds, their fields) is defined once, in `lang/syntax/grammar.vun`, as Vun
 data. From it are generated: the Rust kind enums and typed accessors used by the parser and every
 compiler crate; `lang.syntax`, which compile-time code uses to read code values (spec 03); the
 formatter's node table; and the tree-sitter grammar for editors. Tokens and nodes are therefore
 defined in exactly one place and cannot drift.
 
 `cargo xtask generate` reads the grammar with the compiler's own parser as literal data (the
-reader of `build.ov` manifests, spec 12) and translates each declaration by the shape of its
+reader of `build.vun` manifests, spec 12) and translates each declaration by the shape of its
 value: a `PascalCase` record of lists is a kind, an `enum` an enum, any other list a table whose
-element type is inferred. The same task generates the diagnostic ids of `overt-diag` from
-`lang/errors.ov`, and the compiler's primitives from `lang` itself: every top-level declaration
+element type is inferred. The same task generates the diagnostic ids of `vun-diag` from
+`lang/errors.vun`, and the compiler's primitives from `lang` itself: every top-level declaration
 of a `lang` namespace whose value is `_` is one, and each namespace becomes an enum of its
 primitives (`primitives::mem::Mem`), wrapped by `Primitive`, so the compiler matches each
 namespace's primitives apart and a primitive it does not implement fails to compile. A hole
@@ -133,7 +133,7 @@ node, which holds what recovery skipped and fits any slot. Dumps print each chil
 
 ## 6. Compile-time evaluation
 
-`overt-interp` interprets MIR under an explicit target model (layout, endianness, ranges, traps,
+`vun-interp` interprets MIR under an explicit target model (layout, endianness, ranges, traps,
 pointer provenance). It is the definition of the language's semantics, and it is also what runs
 compile-time code, tests in the default mode, and doctests.
 
@@ -199,7 +199,7 @@ pub trait DiagSink {
 }
 ```
 
-- **Targets are data written in Overt.** A `TargetSpec` (word size, endianness, alignments, ABIs,
+- **Targets are data written in Vun.** A `TargetSpec` (word size, endianness, alignments, ABIs,
   features, object format, entry symbol, default backend and linker) is a compile-time value from
   the `targets` package. Adding a target adds a file; the compiler is not rebuilt.
 - **Static registration by default** (Cargo features choose what is compiled in), **dynamic
@@ -241,31 +241,31 @@ compiler/
   render/  short  annotate  ariadne  json  sarif
   tools/   build  fmt  bind  probe  harness  driver  lsp  cli  xtask
 lib/
-  lang/     primitives (declarations with `= _`), syntax/grammar.ov
+  lang/     primitives (declarations with `= _`), syntax/grammar.vun
   std/      prelude, iter, task, mem, sync, fmt, text, meta, diag, lints, log, hw, os, simd, testing, build,
             collections
   targets/  one namespace per architecture: targets.<arch>.<system>
   boards/   example runtimes: stm32f4, rp2040, esp32c3
 ```
 
-Directory names are short because the path gives context; packages are named `overt-<name>`
-(`compiler/back/c` is `overt-backend-c`, `compiler/back/api` is `overt-backend`).
+Directory names are short because the path gives context; packages are named `vun-<name>`
+(`compiler/back/c` is `vun-backend-c`, `compiler/back/api` is `vun-backend`).
 
 Rules:
-- `overt-driver` is a library; the CLI, the LSP and the test harness are thin shells over it.
+- `vun-driver` is a library; the CLI, the LSP and the test harness are thin shells over it.
 - A crate depends only on crates in earlier groups: `base` < `front` < `mid` < `low` <
   `back`, `link`, `render` < `tools`. Where a later stage implements something an earlier one
-  needs, the earlier one owns the trait (`overt-sema` defines `Evaluator`, `overt-interp`
+  needs, the earlier one owns the trait (`vun-sema` defines `Evaluator`, `vun-interp`
   implements it).
 - Components declare their facts once (`BackendInfo`, `LinkerInfo`); support checks derive from
   them. Tables declared once generate their enums and lookups (tokens, diagnostic ids, commands).
-- Every arena is an `IndexVec` addressed by its own index newtype (`overt-index`).
-- Logging goes through `overt-trace` (`OVERT_LOG`, `OVERT_LOG_FORMAT`, `OVERT_TIMINGS`); corpus
-  and snapshot tests go through `overt-harness` (`OVERT_BLESS`).
+- Every arena is an `IndexVec` addressed by its own index newtype (`vun-index`).
+- Logging goes through `vun-trace` (`VUN_LOG`, `VUN_LOG_FORMAT`, `VUN_TIMINGS`); corpus
+  and snapshot tests go through `vun-harness` (`VUN_BLESS`).
 - There is one frontend: the LSP runs on the same query engine as the compiler.
-- Command lines are declared, never matched by hand: `overt-command` holds command trees (names,
+- Command lines are declared, never matched by hand: `vun-command` holds command trees (names,
   typed parameters, subcommands, actions) as data, and parses, renders help and reports usage
   errors as diagnostics, with suggestions, from them. Options declared on a group apply to every
-  command below it (`overt --format short dump cst f.ov` and `overt dump cst f.ov --format short`
-  are one request), and a program's `configure` step applies them before the command runs. `overt-driver` declares the `overt` tree;
+  command below it (`vun --format short dump cst f.vun` and `vun dump cst f.vun --format short`
+  are one request), and a program's `configure` step applies them before the command runs. `vun-driver` declares the `vun` tree;
   `xtask` declares its own with the same crate.

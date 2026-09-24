@@ -1,4 +1,4 @@
-//! The `package` literal of a `build.ov` (spec 12, section 2), read without evaluating anything.
+//! The `package` literal of a `build.vun` (spec 12, section 2), read without evaluating anything.
 //!
 //! Every field is checked: missing required fields, unknown fields (with the closest known name)
 //! and values of the wrong shape are diagnostics at the offending source.
@@ -11,14 +11,14 @@ mod tests;
 mod version;
 mod write;
 
-use overt_diag::{DiagCx, Diagnostic, Msg, errors};
-use overt_span::{FileId, Span};
-use overt_syntax::literal::Decl;
+use vun_diag::{DiagCx, Diagnostic, Msg, errors};
+use vun_span::{FileId, Span};
+use vun_syntax::literal::Decl;
 
 pub use identity::Identity;
-use overt_hash::Hash;
 use record::{Fields, Record};
 pub use version::Version;
+use vun_hash::Hash;
 
 /// The declaration `std.build.Package` requires to hold the manifest.
 pub const PACKAGE: &str = "package";
@@ -26,7 +26,7 @@ pub const PACKAGE: &str = "package";
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Manifest {
     pub name: String,
-    /// Chosen once by `overt new`; survives renames.
+    /// Chosen once by `vun new`; survives renames.
     pub id: u64,
     pub version: Version,
     pub edition: u16,
@@ -85,13 +85,13 @@ pub enum Source {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum DepKind {
-    /// An Overt package with its own `build.ov`.
-    Overt,
+    /// A Vun package with its own `build.vun`.
+    Vun,
     /// A source archive without one, compiled by the dependent's build (spec 12, section 8).
     Foreign,
 }
 
-const DEP_KINDS: &[(&str, DepKind)] = &[("overt", DepKind::Overt), ("foreign", DepKind::Foreign)];
+const DEP_KINDS: &[(&str, DepKind)] = &[("vun", DepKind::Vun), ("foreign", DepKind::Foreign)];
 
 mod field {
     pub(super) const NAME: &str = "name";
@@ -118,20 +118,20 @@ mod field {
 }
 
 impl Manifest {
-    /// Whether a `build.ov` holds a manifest: it declares `package`. One that does not is an ordinary
+    /// Whether a `build.vun` holds a manifest: it declares `package`. One that does not is an ordinary
     /// source file, such as the namespace `std.build`.
     #[must_use]
     pub fn declared(decls: &[Decl<'_>]) -> bool {
         decls.iter().any(|d| d.name == PACKAGE)
     }
 
-    /// Reads the manifest from the declarations of a `build.ov`; `file` locates a missing `package`.
+    /// Reads the manifest from the declarations of a `build.vun`; `file` locates a missing `package`.
     pub fn read(decls: &[Decl<'_>], file: FileId, cx: &mut DiagCx<'_>) -> Option<Self> {
         let Some(package) = decls.iter().find(|d| d.name == PACKAGE) else {
             let msg = Msg::new().text("no ").code(PACKAGE).text(" declaration");
             let help = Msg::new().text("declare ").code(format!("{PACKAGE} := .{{ .name = \"...\", ... }};"));
             let d = Diagnostic::error(errors::MANIFEST_MISSING_PACKAGE, msg)
-                .child(overt_diag::ChildKind::Help, help);
+                .child(vun_diag::ChildKind::Help, help);
             cx.error_at(Span::new(file, 0, 0), d);
             return None;
         };

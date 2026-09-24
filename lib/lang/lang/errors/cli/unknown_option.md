@@ -9,8 +9,8 @@ points at the command's `--help`, which lists them.
 ## Example
 
 ```console
-$ overt check --formt=short blinky.ov
-error[cli.unknown_option]: unknown option `--formt` for `overt check`
+$ vun check --formt=short blinky.vun
+error[cli.unknown_option]: unknown option `--formt` for `vun check`
   │
   ╰ help: did you mean `--format`?
 ```
@@ -18,5 +18,5 @@ error[cli.unknown_option]: unknown option `--formt` for `overt check`
 ## Fix
 
 ```console
-$ overt check --format=short blinky.ov
+$ vun check --format=short blinky.vun
 ```

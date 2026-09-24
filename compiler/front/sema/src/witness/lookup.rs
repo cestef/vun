@@ -3,10 +3,10 @@
 
 use std::sync::Arc;
 
-use overt_hir::db::FileRef;
-use overt_hir::tree::ExprKind;
-use overt_intern::Symbol;
-use overt_query::{Cx, Cycle, Query};
+use vun_hir::db::FileRef;
+use vun_hir::tree::ExprKind;
+use vun_intern::Symbol;
+use vun_query::{Cx, Cycle, Query};
 
 use super::{ImplDecl, Impls};
 use crate::decl::DeclValue;

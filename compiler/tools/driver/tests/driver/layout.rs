@@ -1,13 +1,13 @@
 //! Layout (spec 05, section 6): natural alignment and padding, niches, layout attributes.
 
 use crate::common::Fixture;
-use overt_diag::errors;
+use vun_diag::errors;
 
 #[test]
 fn sizes_follow_the_layout_rules() {
     let fixture = Fixture::new("layout-sizes");
     let file = fixture.root.write(
-        "sizes.ov",
+        "sizes.vun",
         "\
 Config := struct { baud: u32, parity: bool };
 u3 := unsigned(3);

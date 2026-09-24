@@ -1,5 +1,5 @@
 [package]
-name = "overt-fmt"
+name = "vun-fmt"
 description = "The formatter. It has no options."
 version.workspace = true
 edition.workspace = true
@@ -10,4 +10,4 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
-overt-syntax.workspace = true
+vun-syntax.workspace = true

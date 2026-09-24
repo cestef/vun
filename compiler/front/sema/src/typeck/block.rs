@@ -1,9 +1,9 @@
 //! Blocks and their statements: declarations, expressions, nested blocks and assignments, whose
 //! value is checked against the place's type.
 
-use overt_grammar::TokenKind;
-use overt_hir::tree::{BlockId, Entry, ExprKind, Stmt};
-use overt_hir::visit::{self, Visitor};
+use vun_grammar::TokenKind;
+use vun_hir::tree::{BlockId, Entry, ExprKind, Stmt};
+use vun_hir::visit::{self, Visitor};
 
 use super::{Known, Stage, Typer};
 use crate::ty::{Ty, TyKind};

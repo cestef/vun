@@ -275,560 +275,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9f7c3e4beb33f85d45ae3e3a1792185706c8e16d043238c593331cc7cd313b50"
 
 [[package]]
-name = "overt-abi"
-version = "0.0.0"
-dependencies = [
- "overt-lir",
- "overt-target",
-]
-
-[[package]]
-name = "overt-backend"
-version = "0.0.0"
-dependencies = [
- "overt-diag",
- "overt-lir",
- "overt-target",
-]
-
-[[package]]
-name = "overt-backend-c"
-version = "0.0.0"
-dependencies = [
- "overt-backend",
- "overt-diag",
- "overt-lir",
- "overt-target",
-]
-
-[[package]]
-name = "overt-backend-cranelift"
-version = "0.0.0"
-dependencies = [
- "overt-backend",
- "overt-diag",
- "overt-lir",
- "overt-target",
-]
-
-[[package]]
-name = "overt-backend-llvm"
-version = "0.0.0"
-dependencies = [
- "overt-backend",
- "overt-diag",
- "overt-lir",
- "overt-target",
-]
-
-[[package]]
-name = "overt-backend-process"
-version = "0.0.0"
-dependencies = [
- "overt-backend",
- "overt-diag",
- "overt-lir",
- "overt-target",
-]
-
-[[package]]
-name = "overt-backend-qbe"
-version = "0.0.0"
-dependencies = [
- "overt-backend",
- "overt-diag",
- "overt-lir",
- "overt-target",
-]
-
-[[package]]
-name = "overt-bind"
-version = "0.0.0"
-dependencies = [
- "overt-diag",
- "overt-target",
-]
-
-[[package]]
-name = "overt-build"
-version = "0.0.0"
-dependencies = [
- "etcetera",
- "overt-diag",
- "overt-fs",
- "overt-grammar",
- "overt-harness",
- "overt-hash",
- "overt-origin",
- "overt-pkg",
- "overt-query",
- "overt-span",
- "overt-suggest",
- "overt-syntax",
- "overt-target",
- "overt-tool",
-]
-
-[[package]]
-name = "overt-cli"
-version = "0.0.0"
-dependencies = [
- "overt-command",
- "overt-diag",
- "overt-driver",
- "overt-http",
- "overt-trace",
-]
-
-[[package]]
-name = "overt-codec"
-version = "0.0.0"
-
-[[package]]
-name = "overt-command"
-version = "0.0.0"
-dependencies = [
- "overt-diag",
- "overt-suggest",
-]
-
-[[package]]
-name = "overt-diag"
-version = "0.0.0"
-dependencies = [
- "overt-origin",
- "overt-span",
-]
-
-[[package]]
-name = "overt-driver"
-version = "0.0.0"
-dependencies = [
- "overt-backend",
- "overt-backend-c",
- "overt-backend-cranelift",
- "overt-backend-llvm",
- "overt-backend-process",
- "overt-backend-qbe",
- "overt-build",
- "overt-command",
- "overt-diag",
- "overt-fs",
- "overt-harness",
- "overt-hash",
- "overt-hir",
- "overt-index",
- "overt-intern",
- "overt-interp",
- "overt-link",
- "overt-link-gnu",
- "overt-link-lld",
- "overt-link-mold",
- "overt-link-msvc",
- "overt-link-process",
- "overt-link-wild",
- "overt-lir",
- "overt-lir-passes",
- "overt-mir",
- "overt-mir-passes",
- "overt-origin",
- "overt-pkg",
- "overt-query",
- "overt-render-annotate",
- "overt-render-ariadne",
- "overt-render-short",
- "overt-sema",
- "overt-span",
- "overt-suggest",
- "overt-syntax",
- "overt-target",
- "overt-tool",
- "overt-trace",
-]
-
-[[package]]
-name = "overt-fmt"
-version = "0.0.0"
-dependencies = [
- "overt-syntax",
-]
-
-[[package]]
-name = "overt-fs"
-version = "0.0.0"
-
-[[package]]
-name = "overt-grammar"
-version = "0.0.0"
-
-[[package]]
-name = "overt-graph"
-version = "0.0.0"
-
-[[package]]
-name = "overt-harness"
-version = "0.0.0"
-dependencies = [
- "overt-fs",
-]
-
-[[package]]
-name = "overt-hash"
-version = "0.0.0"
-dependencies = [
- "blake3",
- "overt-codec",
- "overt-fs",
-]
-
-[[package]]
-name = "overt-hir"
-version = "0.0.0"
-dependencies = [
- "overt-diag",
- "overt-fs",
- "overt-grammar",
- "overt-harness",
- "overt-hash",
- "overt-index",
- "overt-intern",
- "overt-origin",
- "overt-outline",
- "overt-query",
- "overt-span",
- "overt-suggest",
- "overt-syntax",
-]
-
-[[package]]
-name = "overt-http"
-version = "0.0.0"
-dependencies = [
- "bitreq",
- "overt-pkg",
-]
-
-[[package]]
-name = "overt-index"
-version = "0.0.0"
-
-[[package]]
-name = "overt-intern"
-version = "0.0.0"
-dependencies = [
- "overt-hash",
-]
-
-[[package]]
-name = "overt-interp"
-version = "0.0.0"
-dependencies = [
- "overt-diag",
- "overt-index",
- "overt-mir",
- "overt-query",
- "overt-sema",
-]
-
-[[package]]
-name = "overt-link"
-version = "0.0.0"
-dependencies = [
- "overt-diag",
- "overt-origin",
- "overt-target",
-]
-
-[[package]]
-name = "overt-link-gnu"
-version = "0.0.0"
-dependencies = [
- "overt-diag",
- "overt-link",
- "overt-target",
-]
-
-[[package]]
-name = "overt-link-lld"
-version = "0.0.0"
-dependencies = [
- "overt-diag",
- "overt-link",
- "overt-target",
-]
-
-[[package]]
-name = "overt-link-mold"
-version = "0.0.0"
-dependencies = [
- "overt-diag",
- "overt-link",
- "overt-target",
-]
-
-[[package]]
-name = "overt-link-msvc"
-version = "0.0.0"
-dependencies = [
- "overt-diag",
- "overt-link",
- "overt-target",
-]
-
-[[package]]
-name = "overt-link-process"
-version = "0.0.0"
-dependencies = [
- "overt-diag",
- "overt-link",
- "overt-target",
-]
-
-[[package]]
-name = "overt-link-wild"
-version = "0.0.0"
-dependencies = [
- "overt-diag",
- "overt-link",
- "overt-target",
-]
-
-[[package]]
-name = "overt-lir"
-version = "0.0.0"
-dependencies = [
- "overt-intern",
- "overt-mir",
- "overt-origin",
- "overt-target",
-]
-
-[[package]]
-name = "overt-lir-passes"
-version = "0.0.0"
-dependencies = [
- "overt-abi",
- "overt-diag",
- "overt-lir",
- "overt-pass",
-]
-
-[[package]]
-name = "overt-lsp"
-version = "0.0.0"
-dependencies = [
- "overt-driver",
-]
-
-[[package]]
-name = "overt-mir"
-version = "0.0.0"
-dependencies = [
- "overt-diag",
- "overt-grammar",
- "overt-hir",
- "overt-index",
- "overt-intern",
- "overt-origin",
- "overt-query",
- "overt-sema",
- "overt-span",
-]
-
-[[package]]
-name = "overt-mir-passes"
-version = "0.0.0"
-dependencies = [
- "overt-diag",
- "overt-grammar",
- "overt-index",
- "overt-intern",
- "overt-mir",
- "overt-origin",
- "overt-pass",
- "overt-query",
- "overt-sema",
-]
-
-[[package]]
-name = "overt-origin"
-version = "0.0.0"
-dependencies = [
- "boxcar",
- "overt-hash",
- "overt-intern",
- "overt-span",
-]
-
-[[package]]
-name = "overt-outline"
-version = "0.0.0"
-
-[[package]]
-name = "overt-pass"
-version = "0.0.0"
-dependencies = [
- "overt-diag",
- "overt-graph",
- "overt-origin",
-]
-
-[[package]]
-name = "overt-pkg"
-version = "0.0.0"
-dependencies = [
- "flate2",
- "lzma-rs",
- "overt-fs",
- "overt-hash",
- "ruzstd",
- "zip",
-]
-
-[[package]]
-name = "overt-probe"
-version = "0.0.0"
-dependencies = [
- "overt-diag",
- "overt-target",
-]
-
-[[package]]
-name = "overt-query"
-version = "0.0.0"
-dependencies = [
- "overt-codec",
- "overt-hash",
-]
-
-[[package]]
-name = "overt-render-annotate"
-version = "0.0.0"
-dependencies = [
- "annotate-snippets",
- "overt-diag",
- "overt-origin",
- "overt-span",
-]
-
-[[package]]
-name = "overt-render-ariadne"
-version = "0.0.0"
-dependencies = [
- "ariadne",
- "overt-diag",
- "overt-origin",
- "overt-span",
-]
-
-[[package]]
-name = "overt-render-json"
-version = "0.0.0"
-dependencies = [
- "overt-diag",
- "overt-origin",
- "overt-span",
-]
-
-[[package]]
-name = "overt-render-sarif"
-version = "0.0.0"
-dependencies = [
- "overt-diag",
- "overt-origin",
- "overt-span",
-]
-
-[[package]]
-name = "overt-render-short"
-version = "0.0.0"
-dependencies = [
- "overt-diag",
- "overt-origin",
- "overt-span",
-]
-
-[[package]]
-name = "overt-sema"
-version = "0.0.0"
-dependencies = [
- "num-bigint",
- "overt-diag",
- "overt-grammar",
- "overt-hash",
- "overt-hir",
- "overt-intern",
- "overt-origin",
- "overt-query",
- "overt-span",
- "overt-syntax",
- "overt-target",
-]
-
-[[package]]
-name = "overt-span"
-version = "0.0.0"
-dependencies = [
- "boxcar",
- "overt-hash",
-]
-
-[[package]]
-name = "overt-suggest"
-version = "0.0.0"
-
-[[package]]
-name = "overt-syntax"
-version = "0.0.0"
-dependencies = [
- "overt-diag",
- "overt-fs",
- "overt-grammar",
- "overt-harness",
- "overt-index",
- "overt-origin",
- "overt-outline",
- "overt-span",
- "overt-trace",
-]
-
-[[package]]
-name = "overt-target"
-version = "0.0.0"
-
-[[package]]
-name = "overt-tool"
-version = "0.0.0"
-
-[[package]]
-name = "overt-trace"
-version = "0.0.0"
-dependencies = [
- "tracing",
-]
-
-[[package]]
-name = "overt-xtask"
-version = "0.0.0"
-dependencies = [
- "overt-build",
- "overt-command",
- "overt-diag",
- "overt-driver",
- "overt-fs",
- "overt-grammar",
- "overt-harness",
- "overt-origin",
- "overt-render-short",
- "overt-span",
- "overt-syntax",
- "prettyplease",
- "proc-macro2",
- "quote",
- "syn",
-]
-
-[[package]]
 name = "pin-project-lite"
 version = "0.2.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -987,6 +433,560 @@ name = "untrusted"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8ecb6da28b8a351d773b68d5825ac39017e680750f980f3a1a85cd8dd28a47c1"
+
+[[package]]
+name = "vun-abi"
+version = "0.0.0"
+dependencies = [
+ "vun-lir",
+ "vun-target",
+]
+
+[[package]]
+name = "vun-backend"
+version = "0.0.0"
+dependencies = [
+ "vun-diag",
+ "vun-lir",
+ "vun-target",
+]
+
+[[package]]
+name = "vun-backend-c"
+version = "0.0.0"
+dependencies = [
+ "vun-backend",
+ "vun-diag",
+ "vun-lir",
+ "vun-target",
+]
+
+[[package]]
+name = "vun-backend-cranelift"
+version = "0.0.0"
+dependencies = [
+ "vun-backend",
+ "vun-diag",
+ "vun-lir",
+ "vun-target",
+]
+
+[[package]]
+name = "vun-backend-llvm"
+version = "0.0.0"
+dependencies = [
+ "vun-backend",
+ "vun-diag",
+ "vun-lir",
+ "vun-target",
+]
+
+[[package]]
+name = "vun-backend-process"
+version = "0.0.0"
+dependencies = [
+ "vun-backend",
+ "vun-diag",
+ "vun-lir",
+ "vun-target",
+]
+
+[[package]]
+name = "vun-backend-qbe"
+version = "0.0.0"
+dependencies = [
+ "vun-backend",
+ "vun-diag",
+ "vun-lir",
+ "vun-target",
+]
+
+[[package]]
+name = "vun-bind"
+version = "0.0.0"
+dependencies = [
+ "vun-diag",
+ "vun-target",
+]
+
+[[package]]
+name = "vun-build"
+version = "0.0.0"
+dependencies = [
+ "etcetera",
+ "vun-diag",
+ "vun-fs",
+ "vun-grammar",
+ "vun-harness",
+ "vun-hash",
+ "vun-origin",
+ "vun-pkg",
+ "vun-query",
+ "vun-span",
+ "vun-suggest",
+ "vun-syntax",
+ "vun-target",
+ "vun-tool",
+]
+
+[[package]]
+name = "vun-cli"
+version = "0.0.0"
+dependencies = [
+ "vun-command",
+ "vun-diag",
+ "vun-driver",
+ "vun-http",
+ "vun-trace",
+]
+
+[[package]]
+name = "vun-codec"
+version = "0.0.0"
+
+[[package]]
+name = "vun-command"
+version = "0.0.0"
+dependencies = [
+ "vun-diag",
+ "vun-suggest",
+]
+
+[[package]]
+name = "vun-diag"
+version = "0.0.0"
+dependencies = [
+ "vun-origin",
+ "vun-span",
+]
+
+[[package]]
+name = "vun-driver"
+version = "0.0.0"
+dependencies = [
+ "vun-backend",
+ "vun-backend-c",
+ "vun-backend-cranelift",
+ "vun-backend-llvm",
+ "vun-backend-process",
+ "vun-backend-qbe",
+ "vun-build",
+ "vun-command",
+ "vun-diag",
+ "vun-fs",
+ "vun-harness",
+ "vun-hash",
+ "vun-hir",
+ "vun-index",
+ "vun-intern",
+ "vun-interp",
+ "vun-link",
+ "vun-link-gnu",
+ "vun-link-lld",
+ "vun-link-mold",
+ "vun-link-msvc",
+ "vun-link-process",
+ "vun-link-wild",
+ "vun-lir",
+ "vun-lir-passes",
+ "vun-mir",
+ "vun-mir-passes",
+ "vun-origin",
+ "vun-pkg",
+ "vun-query",
+ "vun-render-annotate",
+ "vun-render-ariadne",
+ "vun-render-short",
+ "vun-sema",
+ "vun-span",
+ "vun-suggest",
+ "vun-syntax",
+ "vun-target",
+ "vun-tool",
+ "vun-trace",
+]
+
+[[package]]
+name = "vun-fmt"
+version = "0.0.0"
+dependencies = [
+ "vun-syntax",
+]
+
+[[package]]
+name = "vun-fs"
+version = "0.0.0"
+
+[[package]]
+name = "vun-grammar"
+version = "0.0.0"
+
+[[package]]
+name = "vun-graph"
+version = "0.0.0"
+
+[[package]]
+name = "vun-harness"
+version = "0.0.0"
+dependencies = [
+ "vun-fs",
+]
+
+[[package]]
+name = "vun-hash"
+version = "0.0.0"
+dependencies = [
+ "blake3",
+ "vun-codec",
+ "vun-fs",
+]
+
+[[package]]
+name = "vun-hir"
+version = "0.0.0"
+dependencies = [
+ "vun-diag",
+ "vun-fs",
+ "vun-grammar",
+ "vun-harness",
+ "vun-hash",
+ "vun-index",
+ "vun-intern",
+ "vun-origin",
+ "vun-outline",
+ "vun-query",
+ "vun-span",
+ "vun-suggest",
+ "vun-syntax",
+]
+
+[[package]]
+name = "vun-http"
+version = "0.0.0"
+dependencies = [
+ "bitreq",
+ "vun-pkg",
+]
+
+[[package]]
+name = "vun-index"
+version = "0.0.0"
+
+[[package]]
+name = "vun-intern"
+version = "0.0.0"
+dependencies = [
+ "vun-hash",
+]
+
+[[package]]
+name = "vun-interp"
+version = "0.0.0"
+dependencies = [
+ "vun-diag",
+ "vun-index",
+ "vun-mir",
+ "vun-query",
+ "vun-sema",
+]
+
+[[package]]
+name = "vun-link"
+version = "0.0.0"
+dependencies = [
+ "vun-diag",
+ "vun-origin",
+ "vun-target",
+]
+
+[[package]]
+name = "vun-link-gnu"
+version = "0.0.0"
+dependencies = [
+ "vun-diag",
+ "vun-link",
+ "vun-target",
+]
+
+[[package]]
+name = "vun-link-lld"
+version = "0.0.0"
+dependencies = [
+ "vun-diag",
+ "vun-link",
+ "vun-target",
+]
+
+[[package]]
+name = "vun-link-mold"
+version = "0.0.0"
+dependencies = [
+ "vun-diag",
+ "vun-link",
+ "vun-target",
+]
+
+[[package]]
+name = "vun-link-msvc"
+version = "0.0.0"
+dependencies = [
+ "vun-diag",
+ "vun-link",
+ "vun-target",
+]
+
+[[package]]
+name = "vun-link-process"
+version = "0.0.0"
+dependencies = [
+ "vun-diag",
+ "vun-link",
+ "vun-target",
+]
+
+[[package]]
+name = "vun-link-wild"
+version = "0.0.0"
+dependencies = [
+ "vun-diag",
+ "vun-link",
+ "vun-target",
+]
+
+[[package]]
+name = "vun-lir"
+version = "0.0.0"
+dependencies = [
+ "vun-intern",
+ "vun-mir",
+ "vun-origin",
+ "vun-target",
+]
+
+[[package]]
+name = "vun-lir-passes"
+version = "0.0.0"
+dependencies = [
+ "vun-abi",
+ "vun-diag",
+ "vun-lir",
+ "vun-pass",
+]
+
+[[package]]
+name = "vun-lsp"
+version = "0.0.0"
+dependencies = [
+ "vun-driver",
+]
+
+[[package]]
+name = "vun-mir"
+version = "0.0.0"
+dependencies = [
+ "vun-diag",
+ "vun-grammar",
+ "vun-hir",
+ "vun-index",
+ "vun-intern",
+ "vun-origin",
+ "vun-query",
+ "vun-sema",
+ "vun-span",
+]
+
+[[package]]
+name = "vun-mir-passes"
+version = "0.0.0"
+dependencies = [
+ "vun-diag",
+ "vun-grammar",
+ "vun-index",
+ "vun-intern",
+ "vun-mir",
+ "vun-origin",
+ "vun-pass",
+ "vun-query",
+ "vun-sema",
+]
+
+[[package]]
+name = "vun-origin"
+version = "0.0.0"
+dependencies = [
+ "boxcar",
+ "vun-hash",
+ "vun-intern",
+ "vun-span",
+]
+
+[[package]]
+name = "vun-outline"
+version = "0.0.0"
+
+[[package]]
+name = "vun-pass"
+version = "0.0.0"
+dependencies = [
+ "vun-diag",
+ "vun-graph",
+ "vun-origin",
+]
+
+[[package]]
+name = "vun-pkg"
+version = "0.0.0"
+dependencies = [
+ "flate2",
+ "lzma-rs",
+ "ruzstd",
+ "vun-fs",
+ "vun-hash",
+ "zip",
+]
+
+[[package]]
+name = "vun-probe"
+version = "0.0.0"
+dependencies = [
+ "vun-diag",
+ "vun-target",
+]
+
+[[package]]
+name = "vun-query"
+version = "0.0.0"
+dependencies = [
+ "vun-codec",
+ "vun-hash",
+]
+
+[[package]]
+name = "vun-render-annotate"
+version = "0.0.0"
+dependencies = [
+ "annotate-snippets",
+ "vun-diag",
+ "vun-origin",
+ "vun-span",
+]
+
+[[package]]
+name = "vun-render-ariadne"
+version = "0.0.0"
+dependencies = [
+ "ariadne",
+ "vun-diag",
+ "vun-origin",
+ "vun-span",
+]
+
+[[package]]
+name = "vun-render-json"
+version = "0.0.0"
+dependencies = [
+ "vun-diag",
+ "vun-origin",
+ "vun-span",
+]
+
+[[package]]
+name = "vun-render-sarif"
+version = "0.0.0"
+dependencies = [
+ "vun-diag",
+ "vun-origin",
+ "vun-span",
+]
+
+[[package]]
+name = "vun-render-short"
+version = "0.0.0"
+dependencies = [
+ "vun-diag",
+ "vun-origin",
+ "vun-span",
+]
+
+[[package]]
+name = "vun-sema"
+version = "0.0.0"
+dependencies = [
+ "num-bigint",
+ "vun-diag",
+ "vun-grammar",
+ "vun-hash",
+ "vun-hir",
+ "vun-intern",
+ "vun-origin",
+ "vun-query",
+ "vun-span",
+ "vun-syntax",
+ "vun-target",
+]
+
+[[package]]
+name = "vun-span"
+version = "0.0.0"
+dependencies = [
+ "boxcar",
+ "vun-hash",
+]
+
+[[package]]
+name = "vun-suggest"
+version = "0.0.0"
+
+[[package]]
+name = "vun-syntax"
+version = "0.0.0"
+dependencies = [
+ "vun-diag",
+ "vun-fs",
+ "vun-grammar",
+ "vun-harness",
+ "vun-index",
+ "vun-origin",
+ "vun-outline",
+ "vun-span",
+ "vun-trace",
+]
+
+[[package]]
+name = "vun-target"
+version = "0.0.0"
+
+[[package]]
+name = "vun-tool"
+version = "0.0.0"
+
+[[package]]
+name = "vun-trace"
+version = "0.0.0"
+dependencies = [
+ "tracing",
+]
+
+[[package]]
+name = "vun-xtask"
+version = "0.0.0"
+dependencies = [
+ "prettyplease",
+ "proc-macro2",
+ "quote",
+ "syn",
+ "vun-build",
+ "vun-command",
+ "vun-diag",
+ "vun-driver",
+ "vun-fs",
+ "vun-grammar",
+ "vun-harness",
+ "vun-origin",
+ "vun-render-short",
+ "vun-span",
+ "vun-syntax",
+]
 
 [[package]]
 name = "wasi"

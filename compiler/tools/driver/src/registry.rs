@@ -1,5 +1,5 @@
-use overt_backend::Backend;
-use overt_link::Linker;
+use vun_backend::Backend;
+use vun_link::Linker;
 
 /// The backends and linkers available to a session.
 #[derive(Default)]
@@ -23,19 +23,19 @@ impl Registry {
     pub fn with_defaults() -> Self {
         let mut r = Self::default();
         register!(r.add_backend {
-            "backend-c" => overt_backend_c::CBackend,
-            "backend-cranelift" => overt_backend_cranelift::CraneliftBackend,
-            "backend-qbe" => overt_backend_qbe::QbeBackend,
-            "backend-llvm" => overt_backend_llvm::LlvmBackend,
-            "backend-process" => overt_backend_process::ProcessBackend,
+            "backend-c" => vun_backend_c::CBackend,
+            "backend-cranelift" => vun_backend_cranelift::CraneliftBackend,
+            "backend-qbe" => vun_backend_qbe::QbeBackend,
+            "backend-llvm" => vun_backend_llvm::LlvmBackend,
+            "backend-process" => vun_backend_process::ProcessBackend,
         });
         register!(r.add_linker {
-            "link-wild" => overt_link_wild::WildLinker,
-            "link-mold" => overt_link_mold::MoldLinker,
-            "link-lld" => overt_link_lld::LldLinker,
-            "link-gnu" => overt_link_gnu::GnuLinker,
-            "link-msvc" => overt_link_msvc::MsvcLinker,
-            "link-process" => overt_link_process::ProcessLinker,
+            "link-wild" => vun_link_wild::WildLinker,
+            "link-mold" => vun_link_mold::MoldLinker,
+            "link-lld" => vun_link_lld::LldLinker,
+            "link-gnu" => vun_link_gnu::GnuLinker,
+            "link-msvc" => vun_link_msvc::MsvcLinker,
+            "link-process" => vun_link_process::ProcessLinker,
         });
         r
     }

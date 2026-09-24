@@ -1,5 +1,5 @@
 [package]
-name = "overt-hir"
+name = "vun-hir"
 description = "High-level IR: desugaring into `lang` items and name resolution."
 version.workspace = true
 edition.workspace = true
@@ -10,18 +10,18 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
-overt-outline.workspace = true
-overt-suggest.workspace = true
-overt-span.workspace = true
-overt-origin.workspace = true
-overt-diag.workspace = true
-overt-intern.workspace = true
-overt-syntax.workspace = true
-overt-index.workspace = true
-overt-grammar.workspace = true
-overt-hash.workspace = true
-overt-query.workspace = true
+vun-outline.workspace = true
+vun-suggest.workspace = true
+vun-span.workspace = true
+vun-origin.workspace = true
+vun-diag.workspace = true
+vun-intern.workspace = true
+vun-syntax.workspace = true
+vun-index.workspace = true
+vun-grammar.workspace = true
+vun-hash.workspace = true
+vun-query.workspace = true
 
 [dev-dependencies]
-overt-fs.workspace = true
-overt-harness.workspace = true
+vun-fs.workspace = true
+vun-harness.workspace = true

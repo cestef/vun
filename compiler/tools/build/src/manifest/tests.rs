@@ -1,11 +1,11 @@
-use overt_diag::{DiagCtxt, DiagCx, DiagId, errors};
-use overt_fs::Tree;
-use overt_harness::repo_root;
-use overt_origin::OriginTable;
-use overt_span::{EXTENSION, FileId, SourceFiles};
-use overt_syntax::cst::Cst;
-use overt_syntax::literal::Decl;
-use overt_syntax::tokens::Tokens;
+use vun_diag::{DiagCtxt, DiagCx, DiagId, errors};
+use vun_fs::Tree;
+use vun_harness::repo_root;
+use vun_origin::OriginTable;
+use vun_span::{EXTENSION, FileId, SourceFiles};
+use vun_syntax::cst::Cst;
+use vun_syntax::literal::Decl;
+use vun_syntax::tokens::Tokens;
 
 use super::{DepKind, Identity, Manifest, Source, Version};
 use crate::layout::MANIFEST;
@@ -58,7 +58,7 @@ fn every_manifest_reads() {
 fn reads_every_field() {
     let text = r#"package := .{
         .name = "blinky", .id = 0x6a80, .version = "0.3.1", .edition = 2026, .toolchain = "0.4.2",
-        .include = .{ "build.ov", "blinky" }, .prelude = .{ "std.prelude", "support" },
+        .include = .{ "build.vun", "blinky" }, .prelude = .{ "std.prelude", "support" },
         .deps = .{
             .hal = .{ .version = "1.3.0", .hash = "blake3:k3f2aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", .urls = .{ "https://x" } },
             .cmsis = .{ .version = "5.9.0", .hash = "blake3:m7qdaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", .kind = .foreign },
@@ -70,10 +70,10 @@ fn reads_every_field() {
     assert!(ids.is_empty(), "{ids:?}");
     assert_eq!((m.name.as_str(), m.id, m.edition), ("blinky", 0x6a80, 2026));
     assert_eq!(m.toolchain, Version::parse("0.4.2"));
-    assert_eq!(m.include, ["build.ov", "blinky"]);
+    assert_eq!(m.include, ["build.vun", "blinky"]);
     assert_eq!(m.prelude, ["std.prelude", "support"]);
     let deps: Vec<_> = m.deps.iter().map(|d| (d.name.as_str(), d.kind)).collect();
-    assert_eq!(deps, [("hal", DepKind::Overt), ("cmsis", DepKind::Foreign), ("util", DepKind::Overt)]);
+    assert_eq!(deps, [("hal", DepKind::Vun), ("cmsis", DepKind::Foreign), ("util", DepKind::Vun)]);
     assert_eq!(m.deps[2].source, Source::Path("../util".into()));
     let [hal] = m.replace.as_slice() else { panic!("{:?}", m.replace) };
     assert_eq!(
@@ -133,17 +133,16 @@ fn versions_are_canonical_triples() {
 
 #[test]
 fn declared_deps_read_back() {
-    let hash = overt_hash::Hash::of(b"hal");
+    let hash = vun_hash::Hash::of(b"hal");
     let archive = Source::Archive {
         version: Version::parse("1.2.0").unwrap(),
         hash,
         urls: vec!["https://example.org/hal-1.2.0.tar.zst".into()],
     };
-    let wanted =
-        [("util", Source::Path("../util".into()), DepKind::Overt), ("hal", archive, DepKind::Foreign)];
+    let wanted = [("util", Source::Path("../util".into()), DepKind::Vun), ("hal", archive, DepKind::Foreign)];
     let mut text =
         "package := .{\n    .name = \"app\", .id = 1, .version = \"0.1.0\", .edition = 2026,\n    \
-                    .include = .{ \"build.ov\" },\n};\n"
+                    .include = .{ \"build.vun\" },\n};\n"
             .to_owned();
     for (name, source, kind) in &wanted {
         let edit = parsed(&text, |decls, file, _| {
@@ -151,12 +150,12 @@ fn declared_deps_read_back() {
                 name: (*name).into(),
                 source: source.clone(),
                 kind: *kind,
-                span: overt_span::Span::new(file, 0, 0),
+                span: vun_span::Span::new(file, 0, 0),
             };
             dep.declare(decls, &text).unwrap()
         })
         .0;
-        text = overt_diag::Edit::apply(&[edit], &text);
+        text = vun_diag::Edit::apply(&[edit], &text);
     }
     let (manifest, ids) = manifest(&text);
     assert!(ids.is_empty(), "{ids:?}\n{text}");

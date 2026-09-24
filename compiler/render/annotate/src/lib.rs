@@ -9,9 +9,9 @@ use std::io::Write;
 
 use annotate_snippets::Renderer;
 use annotate_snippets::renderer::DecorStyle;
-use overt_diag::{Color, DiagSink, Diagnostic};
-use overt_origin::OriginTable;
-use overt_span::SourceMap;
+use vun_diag::{Color, DiagSink, Diagnostic};
+use vun_origin::OriginTable;
+use vun_span::SourceMap;
 
 pub struct AnnotateRenderer<W: Write> {
     out: W,

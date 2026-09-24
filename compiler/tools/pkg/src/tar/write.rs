@@ -3,7 +3,7 @@
 
 use std::io;
 
-use overt_fs::Mode;
+use vun_fs::Mode;
 
 use super::{BLOCK, Field, Header, Kind, PAX_PATH, Tar};
 use crate::Contents;

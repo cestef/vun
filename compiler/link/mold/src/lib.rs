@@ -1,8 +1,8 @@
 //! mold: fast, mature ELF linking.
 
-use overt_diag::{DiagCtxt, ErrorGuaranteed};
-use overt_link::{LinkPlan, Linker, LinkerInfo};
-use overt_target::{ObjectFormat, TargetSpec};
+use vun_diag::{DiagCtxt, ErrorGuaranteed};
+use vun_link::{LinkPlan, Linker, LinkerInfo};
+use vun_target::{ObjectFormat, TargetSpec};
 
 pub const INFO: LinkerInfo = LinkerInfo { id: "mold", formats: &[ObjectFormat::Elf], regions: false };
 

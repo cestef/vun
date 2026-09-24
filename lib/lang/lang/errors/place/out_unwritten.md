@@ -8,7 +8,7 @@ call without any check.
 
 ## Example
 
-```ov
+```vun
 Header := struct { magic: u32, len: u16 };
 
 read := (bytes: &[6]u8, h: &out Header) {
@@ -21,7 +21,7 @@ read := (bytes: &[6]u8, h: &out Header) {
 
 Write the place before every return:
 
-```ov
+```vun
 Header := struct { magic: u32, len: u16 };
 
 read := (bytes: &[6]u8, h: &out Header) {

@@ -1,4 +1,4 @@
-use overt_harness::repo_root;
+use vun_harness::repo_root;
 
 use crate::corpus::{self, Corpus};
 use crate::generate;
@@ -35,7 +35,7 @@ fn no_file_is_monolithic() {
 
 #[test]
 fn a_file_no_longer_generated_is_stale() {
-    let root = overt_fs::Scratch::new("xtask-stale");
+    let root = vun_fs::Scratch::new("xtask-stale");
     let output = root.join(generate::ALL[0].output);
     root.write(output.join("mod.rs"), "current");
     root.write(output.join("removed.rs"), "old");

@@ -1,7 +1,7 @@
 //! Impls in a file (spec 02, section 3): each provides the requirements of its interface, and no
 //! two impls the file sees register a witness for the same interface and type.
 
-use overt_diag::{Diagnostic, Msg, errors};
+use vun_diag::{Diagnostic, Msg, errors};
 
 use super::Checker;
 use crate::decl::DeclValue;

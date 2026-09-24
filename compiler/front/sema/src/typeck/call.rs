@@ -2,10 +2,10 @@
 //! signature. A signature whose types name `$` parameters, such as `($T: type, x: u8) -> T`, is
 //! typed per call, inside the callee with those parameters bound to the call's arguments.
 
-use overt_diag::{ChildKind, Diagnostic, Msg, TraceFrame, errors};
-use overt_hir::tree::{Arg, Entry, ExprId, ExprKind};
-use overt_hir::visit::Visitor;
-use overt_query::Cx;
+use vun_diag::{ChildKind, Diagnostic, Msg, TraceFrame, errors};
+use vun_hir::tree::{Arg, Entry, ExprId, ExprKind};
+use vun_hir::visit::Visitor;
+use vun_query::Cx;
 
 use super::omitted::{Plan, Unifier};
 use super::{Known, Typed, Typer};

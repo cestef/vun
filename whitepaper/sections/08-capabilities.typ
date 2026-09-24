@@ -25,7 +25,7 @@ A survey of entry mechanisms shows that they reduce to three pieces: a symbol th
 calls, a user definition of that symbol, and an entry symbol at which the linker begins; where they
 involve anything more, it is a name the compiler recognizes, or inspection of the root module
 @hare-rt @rust-eii. Hosts that state a typed requirement instead, such as Roc platforms and WASI
-components, avoid both @roc-platform @wasi-cli. Overt adopts three rules.
+components, avoid both @roc-platform @wasi-cli. Vun adopts three rules.
 
 #rule[exports][A program is built from a root file, and its output is every declaration marked
 `#[link.export]` reachable from that file's bindings. No binding name, signature or build field
@@ -35,12 +35,12 @@ denotes an entry point.]
 definition is reported before linking, with the origin of each definition.]
 
 #rule[typed link symbols][A declaration provided by the linker may be satisfied by an export in the
-same program; when both are Overt, their types must be equal.]
+same program; when both are Vun, their types must be equal.]
 
 A _runtime_ is then an ordinary compile-time function that takes the program's `main` and returns a
 struct type of exports. Choosing a runtime is calling it:
 
-```ov
+```vun
 start := std.os.start(main);
 main := (sys: &mut std.os.System) -> std.os.Exit { ... };
 ```

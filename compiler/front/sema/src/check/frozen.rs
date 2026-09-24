@@ -2,9 +2,9 @@
 //! defining it is evaluated, so a member of a `struct` literal cannot reflect on the type that
 //! literal makes: `meta.frozen` for `fields`, `size` or `align` of it.
 
-use overt_diag::{Diagnostic, Msg, errors};
-use overt_hir::tree::{Arg, DeclId, Entry, ExprId, ExprKind, Hir};
-use overt_hir::visit::{self, Visitor};
+use vun_diag::{Diagnostic, Msg, errors};
+use vun_hir::tree::{Arg, DeclId, Entry, ExprId, ExprKind, Hir};
+use vun_hir::visit::{self, Visitor};
 
 use super::Checker;
 use crate::Primitive;

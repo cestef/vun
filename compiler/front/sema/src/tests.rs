@@ -12,17 +12,17 @@ fn primitives_are_the_top_level_holes_of_lang_by_namespace() {
 
 /// A database holding a `lang` with an integer primitive and an app seeing it through its
 /// prelude, the app's root file holding `app`.
-pub(crate) fn packages(app: &str) -> (overt_query::Db, overt_hir::db::FileRef) {
+pub(crate) fn packages(app: &str) -> (vun_query::Db, vun_hir::db::FileRef) {
     use std::sync::Arc;
 
-    use overt_hash::Hash;
-    use overt_hir::db::{DepData, FileRef, FileText, Package, PackageData, PackageId};
-    use overt_intern::Symbol;
+    use vun_hash::Hash;
+    use vun_hir::db::{DepData, FileRef, FileText, Package, PackageData, PackageId};
+    use vun_intern::Symbol;
 
-    let db = overt_query::Db::new();
+    let db = vun_query::Db::new();
     let (lang, user) = (PackageId(Hash::of(b"lang")), PackageId(Hash::of(b"app")));
     let text = "type: type = _;\nInt: ($r: Range) -> type = _;\nRange: type = _;\nbool := enum { false, true };\nu8 := Int(0..=255);\n";
-    let files = |name: &str| vec![format!("{name}.ov")];
+    let files = |name: &str| vec![format!("{name}.vun")];
     let data = |name: &str, deps, prelude| PackageData {
         name: Some(Symbol::intern(name)),
         dir: format!("/{name}"),
@@ -35,8 +35,8 @@ pub(crate) fn packages(app: &str) -> (overt_query::Db, overt_hir::db::FileRef) {
     db.set::<Package>(lang, Arc::new(data("lang", Vec::new(), Vec::new())));
     let dep = DepData { name: Symbol::intern("lang"), package: Ok(lang) };
     db.set::<Package>(user, Arc::new(data("app", vec![dep], vec![vec![Symbol::intern("lang")]])));
-    db.set::<FileText>(FileRef { package: lang, path: "lang.ov".into() }, Some(text.into()));
-    let file = FileRef { package: user, path: "app.ov".into() };
+    db.set::<FileText>(FileRef { package: lang, path: "lang.vun".into() }, Some(text.into()));
+    let file = FileRef { package: user, path: "app.vun".into() };
     db.set::<FileText>(file.clone(), Some(app.into()));
     (db, file)
 }
@@ -55,7 +55,7 @@ fn values_are_checked_against_their_types_through_the_prelude() {
 
 #[test]
 fn narrowing_traps_wraps_and_saturates() {
-    use overt_grammar::Narrowing;
+    use vun_grammar::Narrowing;
 
     use crate::env::Unevaluated;
     use crate::int::{Integer, Interval};

@@ -5,7 +5,7 @@
 Every integer type is `Int(lo..hi)` (half-open) or `Int(lo..=hi)` (closed). The usual names are
 prelude bindings:
 
-```ov
+```vun
 u8    := Int(0..=255);
 u3    := Int(0..=7);                        // arbitrary widths are not special
 usize := Int(0..=target.usize_max);
@@ -62,9 +62,9 @@ denotes at compile time; bounds are accepted where a `Range` is expected.
    and `x +|= y` uses `.sat`.
 
 So the trap sites of integer code are exactly: `.to`, a compound assignment, a division by a value
-that may be zero, and an index not proven in range. `overt check --traps` lists them.
+that may be zero, and an index not proven in range. `vun check --traps` lists them.
 
-```ov
+```vun
 N := 64;
 Index := Int(0..N);
 
@@ -73,7 +73,7 @@ head = (head + 1) % N;    // Int(1..=64) % 64 is Int(0..64), which is Index: no 
 buf[head] = byte;         // buf: [N]u8 and head: Index: no bounds check
 ```
 
-```ov
+```vun
 mid := (a: u32, b: u32) -> u32 { (a + b) / 2 };     // Int(0..=2^33-2) / 2 fits u32: no check
 norm1 := (p: Point) -> u64 { p.x.abs() + p.y.abs() }; // Int(0..=2^32) fits u64
 ```
@@ -87,7 +87,7 @@ Exact arithmetic moves cost rather than removing it. Two places need attention, 
 reported rather than hidden:
 
 - **Wide intermediates.** `u64 * u64` is a 128-bit multiply, expensive on 32-bit cores.
-  `overt check --widen` lists every intermediate wider than the target's native word.
+  `vun check --widen` lists every intermediate wider than the target's native word.
 - **Loop counters.** `i += 1` is a trap site. `for i in 0..n` yields `i: Int(0..n.max)` with no
   trap, and for compile-time `n` the index type is exact, so indexing an array of that length is
   unchecked. MIR range analysis removes the remaining counter checks when it can prove them.
@@ -103,7 +103,7 @@ are vectorizable and reproducible at once. There are no implicit int/float conve
 
 SIMD is a type, not a mode:
 
-```ov
+```vun
 V := lang.simd.Vector(8, f32);
 
 saxpy := (a: f32, x: &[N]f32, y: &mut [N]f32) {

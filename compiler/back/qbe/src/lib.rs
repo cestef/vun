@@ -1,9 +1,9 @@
 //! QBE as a subprocess on IL text: small and simple, no vectors, no 32-bit targets.
 
-use overt_backend::{ArtifactSink, Backend, BackendCaps, BackendInfo, Emits};
-use overt_diag::{DiagCtxt, ErrorGuaranteed};
-use overt_lir::unit::Unit;
-use overt_target::{Arches, TargetSpec};
+use vun_backend::{ArtifactSink, Backend, BackendCaps, BackendInfo, Emits};
+use vun_diag::{DiagCtxt, ErrorGuaranteed};
+use vun_lir::unit::Unit;
+use vun_target::{Arches, TargetSpec};
 
 pub const INFO: BackendInfo = BackendInfo {
     id: "qbe",

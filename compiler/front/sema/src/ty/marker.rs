@@ -3,7 +3,7 @@
 //! The table `fn_markers` names them and says how a function carrying one is accepted where a
 //! function type is expected; the table `markers` gives the prefixes that put one.
 
-use overt_grammar::{FN_MARKERS, MARKERS, PATH_SEPARATOR, Relation, TokenKind};
+use vun_grammar::{FN_MARKERS, MARKERS, PATH_SEPARATOR, Relation, TokenKind};
 
 use super::Value;
 use crate::Primitive;

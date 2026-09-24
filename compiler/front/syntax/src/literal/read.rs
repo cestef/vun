@@ -1,7 +1,7 @@
 //! Reading literal values from the CST.
 
-use overt_grammar::{NodeField, NodeKind, TokenKind};
-use overt_span::Span;
+use vun_grammar::{NodeField, NodeKind, TokenKind};
+use vun_span::Span;
 
 use super::{DOC, Decl, Literal};
 use crate::cst::{Anchor, Cst, NodeId};

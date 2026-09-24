@@ -1,16 +1,16 @@
 //! Lexing of the repository's own sources: clean, lossless, and snapshotted.
 
-use overt_fs::Tree;
 use std::path::{Path, PathBuf};
+use vun_fs::Tree;
 
-use overt_diag::{DiagCtxt, DiagCx};
-use overt_harness::{Snapshot, repo_root};
-use overt_origin::OriginTable;
-use overt_span::{EXTENSION, SourceFiles};
-use overt_syntax::tokens::Tokens;
+use vun_diag::{DiagCtxt, DiagCx};
+use vun_harness::{Snapshot, repo_root};
+use vun_origin::OriginTable;
+use vun_span::{EXTENSION, SourceFiles};
+use vun_syntax::tokens::Tokens;
 
 fn lex_text(text: &str) -> (Tokens, DiagCtxt) {
-    let file = SourceFiles::new().add("input.ov", text);
+    let file = SourceFiles::new().add("input.vun", text);
     let (mut diag, origins) = (DiagCtxt::new(), OriginTable::new());
     let tokens = Tokens::lex(file, text, &mut DiagCx { diag: &mut diag, origins: &origins });
     (tokens, diag)
@@ -47,5 +47,5 @@ fn corpus_token_dumps_match_snapshots() {
     for c in &changed {
         eprintln!("--- {}: expected\n{}\n--- actual\n{}", c.source.display(), c.expected, c.actual);
     }
-    assert!(changed.is_empty(), "tokens dumps changed; rerun with OVERT_BLESS=1 to accept");
+    assert!(changed.is_empty(), "tokens dumps changed; rerun with VUN_BLESS=1 to accept");
 }

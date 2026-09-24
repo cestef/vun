@@ -10,7 +10,7 @@ attribute that marks the entry point because the linker needs one. Taken togethe
 language into a set of mechanisms that interact in ways a programmer must learn case by case, and
 that an implementation must special-case in turn.
 
-Overt starts from the opposite constraint. The language is a small set of _concepts_, each governed
+Vun starts from the opposite constraint. The language is a small set of _concepts_, each governed
 by exactly one rule, and every other feature must be either one of those concepts, a library built
 from them, or a documented rewrite into them. When a behavior cannot be explained by the concept
 list and the desugaring table, the design is considered wrong, not the explanation incomplete.
@@ -23,12 +23,12 @@ once, properties that systems programmers usually trade against each other:
 - *Safety without annotation burden.* Memory safety, freedom from data races and freedom from
   resource leaks hold in safe code, with no lifetime annotations and no garbage collector.
 - *No privileged code.* The standard library, the startup code for a microcontroller, the test
-  runner and the dynamic dispatch machinery are ordinary Overt, written with the same facilities
+  runner and the dynamic dispatch machinery are ordinary Vun, written with the same facilities
   available to any program.
 
 == Contributions
 
-This paper describes the design of Overt and the architecture of its implementation. Specifically:
+This paper describes the design of Vun and the architecture of its implementation. Specifically:
 
 + A *layering rule* under which every primitive is a declaration in a source package (`lang`),
   syntax desugars only into that package, and the standard library holds no privilege
@@ -57,4 +57,4 @@ This paper describes the design of Overt and the architecture of its implementat
 
 This is a design paper. The specification exists as a set of documents; the compiler is at the
 start of its first phase. Statements about performance are design targets derived from measurements
-of comparable systems, cited where they appear, and not measurements of Overt.
+of comparable systems, cited where they appear, and not measurements of Vun.

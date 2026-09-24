@@ -8,7 +8,7 @@ run time to compile time. A chain of `$` inside `n` quotes can escape at most `n
 
 ## Example
 
-```ov
+```vun
 twice := ($x: Code(u32)) -> Code(u32) { #{ $$$x } }; //~ meta.escape
 ```
 
@@ -16,6 +16,6 @@ twice := ($x: Code(u32)) -> Code(u32) { #{ $$$x } }; //~ meta.escape
 
 Escape only as far as the stages around the code:
 
-```ov
+```vun
 twice := ($x: Code(u32)) -> Code(u32) { #{ $x } };
 ```

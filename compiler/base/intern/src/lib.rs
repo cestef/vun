@@ -39,7 +39,7 @@ impl Symbol {
     /// Panics if a thread panicked while interning.
     #[must_use]
     pub fn intern(text: &str) -> Self {
-        let hash = overt_hash::Hash::of(text.as_bytes()).short();
+        let hash = vun_hash::Hash::of(text.as_bytes()).short();
         let shard = &POOL[usize::try_from(hash % SHARDS as u64).expect("fits")];
         if let Some(&symbol) = shard.read().expect("interner").get(text) {
             return symbol;

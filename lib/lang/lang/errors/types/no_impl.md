@@ -8,7 +8,7 @@ section 1: bit operations exist on `uN` types only (rule 8).
 
 ## Example
 
-```ov
+```vun
 low_byte := (x: i32) -> i32 {
     x & 0xff //~ types.no_impl
 };
@@ -18,7 +18,7 @@ low_byte := (x: i32) -> i32 {
 
 Use an unsigned type, which has the bit operations:
 
-```ov
+```vun
 low_byte := (x: u32) -> u32 {
     x & 0xff
 };

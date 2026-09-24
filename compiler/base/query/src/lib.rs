@@ -18,7 +18,7 @@ mod tests;
 
 use std::fmt;
 
-use overt_hash::Hash;
+use vun_hash::Hash;
 
 pub use cx::{Cx, Cycle};
 pub use db::Db;

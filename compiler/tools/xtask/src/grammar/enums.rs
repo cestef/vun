@@ -2,9 +2,9 @@
 
 use std::borrow::Cow;
 
-use overt_syntax::literal::Literal;
 use proc_macro2::TokenStream;
 use quote::quote;
+use vun_syntax::literal::Literal;
 
 use super::{ENTRY_NAME, ENTRY_TEXT, Enum, Slot, Variant};
 use crate::names::{constant, ident, pascal};

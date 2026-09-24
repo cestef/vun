@@ -16,9 +16,9 @@ mod stage;
 mod tests;
 mod walk;
 
-use overt_diag::DiagCx;
-use overt_index::IndexVec;
-use overt_intern::Symbol;
+use vun_diag::DiagCx;
+use vun_index::IndexVec;
+use vun_intern::Symbol;
 
 use crate::tree::{BinderId, ExprId, Hir, NsId};
 pub use outer::Outside;

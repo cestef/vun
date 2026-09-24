@@ -2,7 +2,7 @@
 //! the lockfile records it.
 
 use crate::common::Fixture;
-use overt_build::manifest::Identity;
+use vun_build::manifest::Identity;
 
 const HAL: Identity = Identity { id: 7, major: 1 };
 

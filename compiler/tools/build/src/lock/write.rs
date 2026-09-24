@@ -3,14 +3,14 @@
 use std::borrow::Cow;
 use std::fmt;
 
-use overt_span::{SourceFiles, Span};
-use overt_syntax::literal::{Decl, Literal};
+use vun_span::{SourceFiles, Span};
+use vun_syntax::literal::{Decl, Literal};
 
 use super::{FILE, LAYOUT, Lock, Locked, Replaced, Replacing, field};
 use crate::manifest::Identity;
 
 /// The doc comment of the lockfile's first declaration.
-const WRITTEN_BY: &str = "Written by `overt pkg` from the selected versions; do not edit.";
+const WRITTEN_BY: &str = "Written by `vun pkg` from the selected versions; do not edit.";
 
 impl Lock {
     /// Its declarations, located at `span`.

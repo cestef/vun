@@ -3,8 +3,8 @@
 use std::path::{Path, PathBuf};
 
 use crate::common::Fixture;
-use overt_diag::{DiagId, errors};
-use overt_span::EXTENSION;
+use vun_diag::{DiagId, errors};
+use vun_span::EXTENSION;
 
 /// A package `app` holding `app.net.wire`, which declares a name per scope, and `app.util`.
 struct Scopes {

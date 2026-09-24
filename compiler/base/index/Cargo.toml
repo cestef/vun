@@ -1,5 +1,5 @@
 [package]
-name = "overt-index"
+name = "vun-index"
 description = "Typed indices and the vectors they index."
 version.workspace = true
 edition.workspace = true

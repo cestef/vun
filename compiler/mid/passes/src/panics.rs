@@ -3,15 +3,15 @@
 //! here: a division by a value that may be 0, a narrowing that may not fit (`Narrowing::To`), and
 //! an index not proven within an array; a call of a function without the promise may trap too.
 
-use overt_diag::{DiagCtxt, Diagnostic, Msg, errors};
-use overt_grammar::{Narrowing, TokenKind};
-use overt_mir::{Body, Mir, Operand, Place, Projection, Rvalue};
-use overt_origin::OriginId;
-use overt_query::{Cx, Query};
-use overt_sema::env::Env;
-use overt_sema::eval::Instantiation;
-use overt_sema::int::{Extended, Integer, Interval};
-use overt_sema::ty::{Marker, Value};
+use vun_diag::{DiagCtxt, Diagnostic, Msg, errors};
+use vun_grammar::{Narrowing, TokenKind};
+use vun_mir::{Body, Mir, Operand, Place, Projection, Rvalue};
+use vun_origin::OriginId;
+use vun_query::{Cx, Query};
+use vun_sema::env::Env;
+use vun_sema::eval::Instantiation;
+use vun_sema::int::{Extended, Integer, Interval};
+use vun_sema::ty::{Marker, Value};
 
 use crate::types::PlaceTypes;
 

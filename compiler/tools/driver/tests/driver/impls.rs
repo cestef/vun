@@ -1,13 +1,13 @@
 //! Impls and witnesses (spec 02, section 3), over the toolchain's `lang` and `std`.
 
 use crate::common::Fixture;
-use overt_diag::errors;
+use vun_diag::errors;
 
 #[test]
 fn methods_come_from_witnesses_then_interface_defaults() {
     let fixture = Fixture::new("impls-methods");
     let file = fixture.root.write(
-        "shapes.ov",
+        "shapes.vun",
         "\
 Shape := interface(($Self: type) -> type { struct {
     area: (self: &Self) -> u64 = _;
@@ -33,7 +33,7 @@ sides := (s: Square) -> bool { s.sides() };
 fn an_impl_for_a_type_constructor_covers_every_type_it_makes() {
     let fixture = Fixture::new("impls-constructors");
     let file = fixture.root.write(
-        "pairs.ov",
+        "pairs.vun",
         "\
 Pair := ($T: type) -> type { struct { a: T, b: T } };
 First := interface(($Self: type) -> type { struct {
@@ -61,7 +61,7 @@ Again := struct {};
 fn integer_methods_come_from_the_std_impl_for_lang_int() {
     let fixture = Fixture::new("impls-integers");
     let file = fixture.root.write(
-        "narrow.ov",
+        "narrow.vun",
         "\
 narrow := (x: u32) -> (u8, u16, u8, ?u8) { (x.to(u8), x.wrap(u16), x.sat(u8), x.try_to(u8)) };
 wrong := (x: u32) -> u8 { x.wrap(u16) };
@@ -89,7 +89,7 @@ wrapped: Wrapped = 45;
 fn an_impl_without_an_interface_adds_methods() {
     let fixture = Fixture::new("impls-inherent");
     let file = fixture.root.write(
-        "pairs.ov",
+        "pairs.vun",
         "\
 Pair := ($T: type) -> type { struct { a: T, b: T } };
 #[impl(Pair)]

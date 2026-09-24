@@ -1,15 +1,15 @@
 //! Parsing of the repository's own sources: clean, verified, and snapshotted. The rejection
 //! corpus runs through `cargo xtask corpus`.
 
-use overt_fs::Tree;
 use std::path::{Path, PathBuf};
+use vun_fs::Tree;
 
-use overt_diag::{DiagCtxt, DiagCx};
-use overt_harness::{Snapshot, repo_root};
-use overt_origin::OriginTable;
-use overt_span::{EXTENSION, SourceFiles};
-use overt_syntax::cst::Cst;
-use overt_syntax::tokens::Tokens;
+use vun_diag::{DiagCtxt, DiagCx};
+use vun_harness::{Snapshot, repo_root};
+use vun_origin::OriginTable;
+use vun_span::{EXTENSION, SourceFiles};
+use vun_syntax::cst::Cst;
+use vun_syntax::tokens::Tokens;
 
 struct Parsed {
     tokens: Tokens,
@@ -18,7 +18,7 @@ struct Parsed {
 }
 
 fn parse_text(text: &str) -> Parsed {
-    let file = SourceFiles::new().add("input.ov", text);
+    let file = SourceFiles::new().add("input.vun", text);
     let (mut diag, origins) = (DiagCtxt::new(), OriginTable::new());
     let mut cx = DiagCx { diag: &mut diag, origins: &origins };
     let tokens = Tokens::lex(file, text, &mut cx);
@@ -65,5 +65,5 @@ fn corpus_cst_dumps_match_snapshots() {
     for c in &changed {
         eprintln!("--- {}: expected\n{}\n--- actual\n{}", c.source.display(), c.expected, c.actual);
     }
-    assert!(changed.is_empty(), "cst dumps changed; rerun with OVERT_BLESS=1 to accept");
+    assert!(changed.is_empty(), "cst dumps changed; rerun with VUN_BLESS=1 to accept");
 }

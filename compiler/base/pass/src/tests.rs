@@ -1,6 +1,6 @@
 use super::*;
-use overt_diag::DiagCtxt;
-use overt_origin::OriginTable;
+use vun_diag::DiagCtxt;
+use vun_origin::OriginTable;
 
 struct Named(&'static str, &'static [&'static str]);
 

@@ -1,7 +1,7 @@
 //! Where `.name` finds `name` (spec 01, section 4): through borrows, which have no members, and
 //! through owners that lack it, to what they own.
 
-use overt_intern::Symbol;
+use vun_intern::Symbol;
 
 use super::Env;
 use crate::member::{Found, MemberTable, Members};

@@ -8,7 +8,7 @@ digits (`0x`) make the whole literal malformed.
 
 ## Example
 
-```ov
+```vun
 mask := 0b1021; //~ syntax.malformed_number
 ```
 
@@ -16,6 +16,6 @@ mask := 0b1021; //~ syntax.malformed_number
 
 Write only digits of the literal's radix:
 
-```ov
+```vun
 mask := 0b1011;
 ```

@@ -1,5 +1,5 @@
 [package]
-name = "overt-link"
+name = "vun-link"
 description = "The `Linker` interface and the target-independent link plan."
 version.workspace = true
 edition.workspace = true
@@ -10,6 +10,6 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
-overt-target.workspace = true
-overt-diag.workspace = true
-overt-origin.workspace = true
+vun-target.workspace = true
+vun-diag.workspace = true
+vun-origin.workspace = true

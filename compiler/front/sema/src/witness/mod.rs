@@ -12,11 +12,11 @@ mod lookup;
 
 use std::sync::Arc;
 
-use overt_grammar::CALLS;
-use overt_hir::db::{FileRef, Package, PackageId};
-use overt_hir::tree::{Arg, Entry, ExprId, ExprKind, Member, each_entry};
-use overt_origin::OriginId;
-use overt_query::{Cx, Cycle, Query};
+use vun_grammar::CALLS;
+use vun_hir::db::{FileRef, Package, PackageId};
+use vun_hir::tree::{Arg, Entry, ExprId, ExprKind, Member, each_entry};
+use vun_origin::OriginId;
+use vun_query::{Cx, Cycle, Query};
 
 use crate::Primitive;
 use crate::env::Env;

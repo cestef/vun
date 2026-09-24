@@ -1,5 +1,5 @@
 [package]
-name = "overt-pkg"
+name = "vun-pkg"
 description = "Fetching package archives: mirrors, downloads and unpacking."
 version.workspace = true
 edition.workspace = true
@@ -10,12 +10,12 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
-overt-fs.workspace = true
+vun-fs.workspace = true
 flate2.workspace = true
 zip.workspace = true
 ruzstd.workspace = true
 lzma-rs.workspace = true
-overt-hash.workspace = true
+vun-hash.workspace = true
 
 [dev-dependencies]
-overt-hash.workspace = true
+vun-hash.workspace = true

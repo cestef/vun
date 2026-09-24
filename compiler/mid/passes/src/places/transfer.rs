@@ -1,11 +1,11 @@
 //! How statements change and check place states: reads need `init`, writes make it, borrows
 //! need and leave the states their mode names (the table `borrows`).
 
-use overt_diag::{Msg, errors};
-use overt_grammar::BORROWS;
-use overt_intern::Symbol;
-use overt_mir::{BlockId, Local, Operand, Place, Projection, Rvalue};
-use overt_origin::OriginId;
+use vun_diag::{Msg, errors};
+use vun_grammar::BORROWS;
+use vun_intern::Symbol;
+use vun_mir::{BlockId, Local, Operand, Place, Projection, Rvalue};
+use vun_origin::OriginId;
 
 use super::Analysis;
 use super::states::{Key, State, States};

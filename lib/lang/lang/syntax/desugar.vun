@@ -1,6 +1,6 @@
 //! What syntax means (appendix B): the `lang` items operators, borrows and other forms desugar
 //! into, as data the compiler looks up, so no `lang` name is written in the compiler. Read with
-//! `grammar.ov`, whose token kinds these tables name.
+//! `grammar.vun`, whose token kinds these tables name.
 
 /// What infix operators desugar to (appendix B): `a op b` is `function(a, b)` of the interface at
 /// `interface`, for the type of `a`. `and`, `or` and ranges are not interfaces.

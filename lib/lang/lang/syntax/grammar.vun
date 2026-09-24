@@ -1,4 +1,4 @@
-//! The grammar of Overt, defined once. Generates the Rust `overt-grammar` crate, `lang.syntax`,
+//! The grammar of Vun, defined once. Generates the Rust `vun-grammar` crate, `lang.syntax`,
 //! the formatter's tables and the editor grammar (spec 13, section 5).
 //!
 //! `cargo xtask grammar` reads this file as literal data, by shape and never by name:

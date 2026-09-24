@@ -1,8 +1,8 @@
 //! Expressions, including types, which are compile-time values (spec 02).
 
-use overt_grammar::TokenKind;
-use overt_intern::Symbol;
-use overt_origin::OriginId;
+use vun_grammar::TokenKind;
+use vun_intern::Symbol;
+use vun_origin::OriginId;
 
 use super::{Arm, BlockId, ExprId, List, Name, NsId, Param, PatId, Variant};
 

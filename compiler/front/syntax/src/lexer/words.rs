@@ -1,7 +1,7 @@
 //! Comments, words and punctuation.
 
-use overt_diag::{Msg, errors};
-use overt_grammar::TokenKind;
+use vun_diag::{Msg, errors};
+use vun_grammar::TokenKind;
 
 use super::{DOC_COMMENT, ESCAPE, Lexer, MODULE_DOC_COMMENT, is_ident_continue, is_ident_start};
 

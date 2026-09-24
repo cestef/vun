@@ -1,6 +1,6 @@
 [package]
-name = "overt-build"
-description = "The build graph: evaluation of build.ov, steps, caching."
+name = "vun-build"
+description = "The build graph: evaluation of build.vun, steps, caching."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -10,19 +10,19 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
-overt-pkg.workspace = true
+vun-pkg.workspace = true
 etcetera.workspace = true
-overt-hash.workspace = true
-overt-fs.workspace = true
-overt-suggest.workspace = true
-overt-diag.workspace = true
-overt-target.workspace = true
-overt-tool.workspace = true
-overt-query.workspace = true
-overt-syntax.workspace = true
-overt-grammar.workspace = true
-overt-span.workspace = true
-overt-origin.workspace = true
+vun-hash.workspace = true
+vun-fs.workspace = true
+vun-suggest.workspace = true
+vun-diag.workspace = true
+vun-target.workspace = true
+vun-tool.workspace = true
+vun-query.workspace = true
+vun-syntax.workspace = true
+vun-grammar.workspace = true
+vun-span.workspace = true
+vun-origin.workspace = true
 
 [dev-dependencies]
-overt-harness.workspace = true
+vun-harness.workspace = true

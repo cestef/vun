@@ -6,14 +6,14 @@ use std::error::Error;
 use std::path::{Path, PathBuf};
 use std::{fmt, fs, io};
 
-use overt_build::layout::MANIFEST;
-use overt_build::manifest::{DepKind, Version};
-use overt_build::store::{Label, Store};
-use overt_diag::{ChildKind, Diagnostic, Msg, errors};
-use overt_fs::{Edit, Tree};
-use overt_hash::{Hash, Snapshot};
-use overt_intern::Symbol;
-use overt_pkg::{Failure, Mirror};
+use vun_build::layout::MANIFEST;
+use vun_build::manifest::{DepKind, Version};
+use vun_build::store::{Label, Store};
+use vun_diag::{ChildKind, Diagnostic, Msg, errors};
+use vun_fs::{Edit, Tree};
+use vun_hash::{Hash, Snapshot};
+use vun_intern::Symbol;
+use vun_pkg::{Failure, Mirror};
 
 use super::{Dep, DepSource, PackageKey};
 use crate::Session;
@@ -72,7 +72,7 @@ impl Session {
         // The declared graph, not the selected one: selection reads the lockfile this fills.
         self.walk(project, |s, _, dep| {
             let fetched = s.obtain(dep, &mut done);
-            (fetched != Some(Fetched::Failed) && dep.kind == DepKind::Overt)
+            (fetched != Some(Fetched::Failed) && dep.kind == DepKind::Vun)
                 .then(|| s.dep_package(dep).ok())
                 .flatten()
         });
@@ -175,7 +175,7 @@ impl Session {
     /// What the hash of an unpacked package covers: its manifest's `include`, or everything in
     /// it for a foreign package.
     pub(super) fn include(&mut self, kind: DepKind, dir: &Path) -> Vec<String> {
-        let manifest = (kind == DepKind::Overt).then(|| self.manifest_at(&dir.join(MANIFEST))).flatten();
+        let manifest = (kind == DepKind::Vun).then(|| self.manifest_at(&dir.join(MANIFEST))).flatten();
         manifest.map_or_else(
             || {
                 let entries = dir.entries().unwrap_or_default();

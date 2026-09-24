@@ -1,9 +1,9 @@
 //! Where namespaces are in a package (spec 01, section 8), read from the list of its files: the
-//! namespace `a.b` of the package `p` is the file `p/a/b.ov` merged with the directory `p/a/b/`.
+//! namespace `a.b` of the package `p` is the file `p/a/b.vun` merged with the directory `p/a/b/`.
 
-use overt_hash::Snapshot;
-use overt_intern::Symbol;
-use overt_span::EXTENSION;
+use vun_hash::Snapshot;
+use vun_intern::Symbol;
+use vun_span::EXTENSION;
 
 use super::input::{PackageData, PackageId};
 

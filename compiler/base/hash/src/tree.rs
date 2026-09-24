@@ -8,12 +8,12 @@ use std::collections::BTreeMap;
 use std::fmt;
 use std::path::{Component, Path};
 
-use overt_fs::{Mode, Modes, Tree};
+use vun_fs::{Mode, Modes, Tree};
 
 use super::{Algorithm, Hash};
 
 /// Separates directory nodes from file contents, so that no file hashes like a directory.
-const DIRECTORY_CONTEXT: &str = "overt 2026 directory node";
+const DIRECTORY_CONTEXT: &str = "vun 2026 directory node";
 
 /// The hash of every file of a tree, by its path, from which the tree's hash is computed.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]

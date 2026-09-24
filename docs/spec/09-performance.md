@@ -19,7 +19,7 @@ may assume. Compile-time performance of the implementation is in spec 13.
 ## 2. Checks
 
 Bounds checks are the dominant cost of safety in comparable languages (research notes, section 3:
-about half of Rust's checking overhead). Overt's approach:
+about half of Rust's checking overhead). Vun's approach:
 
 - Overflow checks do not exist: arithmetic is exact, narrowing is explicit (spec 04).
 - Indexing with a range-typed index of the right bound is unchecked by construction; `for i in 0..N`
@@ -71,7 +71,7 @@ Monomorphization is the default and the only semantic model. Code size is contro
   exact because LIR is type-erased (spec 13);
 - `#[opt.level(.size)]` and `#[opt.inline(.never)]` on hot generic helpers;
 - `std.Dyn(I)` when dynamic dispatch is the better trade;
-- `overt check --meta-stats`, which reports generated code size per generic and per generator.
+- `vun check --meta-stats`, which reports generated code size per generic and per generator.
 
 ## 5. Build profiles
 

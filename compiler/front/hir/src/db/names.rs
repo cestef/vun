@@ -5,13 +5,13 @@ use std::collections::BTreeMap;
 use std::collections::btree_map::Entry;
 use std::sync::Arc;
 
-use overt_diag::{ChildKind, DiagCtxt, DiagCx, Diagnostic, ErrorGuaranteed, Msg, errors};
-use overt_grammar::PATH_SEPARATOR;
-use overt_intern::Symbol;
-use overt_origin::OriginTable;
-use overt_query::{Cx, Query};
-use overt_suggest::closest;
-use overt_syntax::visibility::Visibility;
+use vun_diag::{ChildKind, DiagCtxt, DiagCx, Diagnostic, ErrorGuaranteed, Msg, errors};
+use vun_grammar::PATH_SEPARATOR;
+use vun_intern::Symbol;
+use vun_origin::OriginTable;
+use vun_query::{Cx, Query};
+use vun_suggest::closest;
+use vun_syntax::visibility::Visibility;
 
 use super::input::{FileRef, Package, PackageData, Unloaded};
 use super::layout::Namespace;

@@ -1,6 +1,6 @@
 //! Laying written values out on lines: within the width, or one item per line.
 
-use overt_grammar::TokenKind;
+use vun_grammar::TokenKind;
 
 use super::{INDENT, Unwritable, WIDTH, Writer};
 use crate::literal::{DOC, Decl, Literal};

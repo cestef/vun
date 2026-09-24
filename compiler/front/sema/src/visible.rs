@@ -2,13 +2,13 @@
 //! scope, the namespace declaring it unless `#[visible(...)]` widens it. The attribute is the
 //! primitive `lang.visible`, and its argument a value of `lang.scope`, so both are read as data.
 
-use overt_diag::{ChildKind, Diagnostic, Msg, errors};
-use overt_grammar::PATH_SEPARATOR;
-use overt_hir::db::{FileRef, Namespace, Package, PackageId};
-use overt_hir::tree::{Arg, DeclId, Entry, ExprId, ExprKind, Name};
-use overt_intern::Symbol;
-use overt_origin::{OriginId, OriginTable};
-use overt_syntax::visibility::Visibility;
+use vun_diag::{ChildKind, Diagnostic, Msg, errors};
+use vun_grammar::PATH_SEPARATOR;
+use vun_hir::db::{FileRef, Namespace, Package, PackageId};
+use vun_hir::tree::{Arg, DeclId, Entry, ExprId, ExprKind, Name};
+use vun_intern::Symbol;
+use vun_origin::{OriginId, OriginTable};
+use vun_syntax::visibility::Visibility;
 
 use crate::Primitive;
 use crate::env::Env;

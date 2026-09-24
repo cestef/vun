@@ -2,8 +2,8 @@
 //! a condition holds, both found through the table `forms` (appendix B). Comparisons produce
 //! conditions, so their values are built here.
 
-use overt_grammar::{FORMS, Form, TokenKind};
-use overt_hir::tree::{BlockId, Cond, ExprId, ExprKind};
+use vun_grammar::{FORMS, Form, TokenKind};
+use vun_hir::tree::{BlockId, Cond, ExprId, ExprKind};
 
 use super::{Env, Unevaluated};
 use crate::member::Members;

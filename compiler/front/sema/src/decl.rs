@@ -3,12 +3,12 @@
 
 use std::sync::Arc;
 
-use overt_grammar::PATH_SEPARATOR;
-use overt_hir::db::Package;
-use overt_hir::tree::{DeclId, ExprKind, Hir, PatKind};
-use overt_hir::visit::Visitor;
-use overt_intern::Symbol;
-use overt_query::{Cx, Cycle, Query};
+use vun_grammar::PATH_SEPARATOR;
+use vun_hir::db::Package;
+use vun_hir::tree::{DeclId, ExprKind, Hir, PatKind};
+use vun_hir::visit::Visitor;
+use vun_intern::Symbol;
+use vun_query::{Cx, Cycle, Query};
 
 use crate::Primitive;
 use crate::env::{Env, Unevaluated};

@@ -10,7 +10,7 @@ where the name is used, with every declaration it could mean.
 
 ## Example
 
-```ov
+```vun
 Point := struct { x: u8 };
 
 #[impl(Point)]
@@ -28,7 +28,7 @@ use := (p: Point) -> Point {
 
 Rename one method, or spell the call explicitly through the impl you mean:
 
-```ov
+```vun
 Point := struct { x: u8 };
 
 #[impl(Point)]

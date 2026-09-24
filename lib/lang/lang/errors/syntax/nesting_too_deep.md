@@ -9,7 +9,7 @@ this deep is almost always generated.
 
 ## Example
 
-```ov
+```vun
 x :=
     ((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((
     ((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((
@@ -26,6 +26,6 @@ x :=
 
 Drop the redundant nesting, or split the expression into named bindings:
 
-```ov
+```vun
 x := 1;
 ```

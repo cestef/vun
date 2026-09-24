@@ -8,7 +8,7 @@ with `\\`.
 
 ## Example
 
-```ov
+```vun
 greeting := "hello; //~ syntax.unterminated_string
 ```
 
@@ -16,6 +16,6 @@ greeting := "hello; //~ syntax.unterminated_string
 
 Close the string on the same line:
 
-```ov
+```vun
 greeting := "hello";
 ```

@@ -8,7 +8,7 @@ appears.
 
 == Keywords
 
-Overt reserves fifteen words: `mut`, `if`, `else`, `match`, `for`, `break`, `continue`, `return`,
+Vun reserves fifteen words: `mut`, `if`, `else`, `match`, `for`, `break`, `continue`, `return`,
 `yield`, `defer`, `and`, `or`, `struct`, `enum` and `unsafe`; and five contextual ones: `in` after
 a `for` pattern, and `out`, `take`, `static` and `temp` after `&`. For comparison, Lua reserves 22 words,
 Go 25, Rust 39 and C 44. A backslash takes what follows literally, so `\unsafe` is an ordinary
@@ -42,7 +42,7 @@ variant (`.some(x)`), selects an enumeration value (`.output`), calls a construc
 (`.ms(500)`) or builds an anonymous struct (`.{ .x = 1 }`). The prefix `..` always spreads, and the
 infix `..` always forms a range.
 
-```ov
+```vun
 Point := struct {
     x: i32,
     y: i32 = 0,
@@ -71,7 +71,7 @@ files and subdirectories; a file and a directory of the same name merge into one
 dependency declared by the build is a binding in scope under its declared name. Importing a module is
 therefore binding it, and re-exporting is binding again:
 
-```ov
+```vun
 uart := drivers.serial.uart;
 Baud := uart.Baud;
 ```

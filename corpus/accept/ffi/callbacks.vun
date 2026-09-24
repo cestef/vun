@@ -1,4 +1,4 @@
-//! Function pointers carry their ABI, so C can call back into Overt (spec 07, section 4).
+//! Function pointers carry their ABI, so C can call back into Vun (spec 07, section 4).
 
 Compare := #[abi.c] (a: *u8, b: *u8) -> i32;
 

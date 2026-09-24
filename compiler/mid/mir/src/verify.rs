@@ -5,8 +5,8 @@
 use std::collections::HashSet;
 use std::fmt;
 
-use overt_index::Idx;
-use overt_origin::{OriginId, OriginTable};
+use vun_index::Idx;
+use vun_origin::{OriginId, OriginTable};
 
 use crate::body::{BlockId, Body, Local, Operand, Rvalue, TerminatorKind};
 use crate::place::{Place, Projection};

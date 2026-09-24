@@ -7,7 +7,7 @@ integer literal of its Unicode scalar value (spec 01, section 5).
 
 ## Example
 
-```ov
+```vun
 newline := '\n; //~ syntax.unterminated_char
 ```
 
@@ -15,6 +15,6 @@ newline := '\n; //~ syntax.unterminated_char
 
 Close the literal after its character:
 
-```ov
+```vun
 newline := '\n';
 ```

@@ -1,10 +1,10 @@
-//! The build API used by `build.ov` files (spec 12, section 2). `build` runs at compile time,
+//! The build API used by `build.vun` files (spec 12, section 2). `build` runs at compile time,
 //! in the sandbox, with a `&mut Build` capability, and records a plan: steps that the driver
 //! carries out once it returns. What only the package knows, its dependencies' names and
 //! parameters, a program's options, is written as records, which the driver reads by
 //! reflection (decision 116).
 
-/// The interface every `build.ov` conforms to: `package`, a record read without evaluation, and
+/// The interface every `build.vun` conforms to: `package`, a record read without evaluation, and
 /// `build`.
 Package := lang.interface(($Self: type) -> type { struct {
     build: (b: &mut Build) = _;
@@ -29,7 +29,7 @@ Build := struct {
     _steps: u32,
 
     /// The dependency `name` of `package.deps`, built with `params`: a record of the parameters
-    /// its own `build.ov` declares, such as `.{ .variant = .f407 }`.
+    /// its own `build.vun` declares, such as `.{ .variant = .f407 }`.
     dep := (self: &mut Build, $name: lang.meta.Name, $P: type, params: P) -> Dep {
         .{ .step = self._step() }
     };

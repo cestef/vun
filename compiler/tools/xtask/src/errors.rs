@@ -1,4 +1,4 @@
-//! The diagnostic ids of `overt-diag`, from `lib/lang/lang/errors.ov`.
+//! The diagnostic ids of `vun-diag`, from `lib/lang/lang/errors.vun`.
 //!
 //! Every declaration of the file is a diagnostic, grouped in namespaces; its id is its binding
 //! path, derived from where the file sits in its package (spec 01, section 8). Each namespace also
@@ -8,17 +8,17 @@
 
 use std::path::Path;
 
-use overt_syntax::literal::{Decl, Literal};
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::quote;
+use vun_syntax::literal::{Decl, Literal};
 
-use overt_diag::{DiagId, Msg};
+use vun_diag::{DiagId, Msg};
 
 use crate::generate::{self, Access, Generator, Module, Read, Source};
 use crate::names::docs;
 
 pub(crate) const GENERATOR: Generator =
-    Generator { source: "lib/lang/lang/errors.ov", output: "compiler/base/diag/src/errors", emit };
+    Generator { source: "lib/lang/lang/errors.vun", output: "compiler/base/diag/src/errors", emit };
 
 /// The module listing every diagnostic and its explanation page.
 const ALL_MODULE: &str = "all";

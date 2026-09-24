@@ -52,7 +52,7 @@ pub enum NodeField {
     Lines,
 }
 impl NodeField {
-    /// The name of this field in `grammar.ov`.
+    /// The name of this field in `grammar.vun`.
     #[must_use]
     pub const fn name(self) -> &'static str {
         match self {

@@ -2,8 +2,8 @@
 //! a division by zero is a trap, and on integer types, by interval arithmetic; and the parts of
 //! compile-time values. Sema and the interpreter both compute through here.
 
-use overt_grammar::{Narrowing, TokenKind};
-use overt_intern::Symbol;
+use vun_grammar::{Narrowing, TokenKind};
+use vun_intern::Symbol;
 
 use crate::env::Unevaluated;
 use crate::int::{Extended, Integer, Interval};

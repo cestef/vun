@@ -8,7 +8,7 @@ backslash must touch what it escapes; alone, it means nothing.
 
 ## Example
 
-```ov
+```vun
 Mode := enum { safe, \ unsafe }; //~ syntax.stray_escape
 ```
 
@@ -16,6 +16,6 @@ Mode := enum { safe, \ unsafe }; //~ syntax.stray_escape
 
 Write the backslash directly before the word:
 
-```ov
+```vun
 Mode := enum { safe, \unsafe };
 ```

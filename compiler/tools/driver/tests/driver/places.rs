@@ -2,13 +2,13 @@
 //! tracked, linear values move, and `defer` runs where its operand is still held.
 
 use crate::common::Fixture;
-use overt_diag::errors;
+use vun_diag::errors;
 
 #[test]
 fn place_states_follow_writes_and_borrows() {
     let fixture = Fixture::new("places-states");
     let file = fixture.root.write(
-        "places.ov",
+        "places.vun",
         "\
 fill := (h: &out u8) { h.* = 1; };
 filled := () -> u8 { mut x: u8; fill(&out x); x };
@@ -26,7 +26,7 @@ partly := (flag: bool, h: &out u8) { if flag { h.* = 1; } };
 fn linear_values_move_and_must_be_consumed() {
     let fixture = Fixture::new("places-linear");
     let file = fixture.root.write(
-        "linear.ov",
+        "linear.vun",
         "\
 File := #[kind.linear] struct { fd: u32 };
 open := () -> File { .{ .fd = 3 } };
@@ -46,7 +46,7 @@ dropped := () { open(); };
 fn deferred_statements_run_on_the_exits_still_holding_their_operand() {
     let fixture = Fixture::new("places-defer");
     let file = fixture.root.write(
-        "defer.ov",
+        "defer.vun",
         "\
 File := #[kind.linear] struct { fd: u32 };
 open := () -> File { .{ .fd = 3 } };

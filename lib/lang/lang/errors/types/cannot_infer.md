@@ -8,7 +8,7 @@ declared ones (spec 02, section 1). When no argument's type fixes it, it must be
 
 ## Example
 
-```ov
+```vun
 first := ($T: type, xs: ?T) -> ?T { xs };
 
 none := () {
@@ -20,7 +20,7 @@ none := () {
 
 Write the `$` arguments:
 
-```ov
+```vun
 first := ($T: type, xs: ?T) -> ?T { xs };
 
 none := () {

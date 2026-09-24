@@ -1,10 +1,10 @@
 //! Compile-time values (spec 03, section 7): what evaluation produces and what types are applied
 //! to. Every value hashes by content, so types built from values do too.
 
-use overt_intern::Symbol;
-use overt_origin::OriginId;
+use vun_intern::Symbol;
+use vun_origin::OriginId;
 
-use overt_hir::db::Namespace;
+use vun_hir::db::Namespace;
 
 use super::{Ty, TyKind};
 use crate::Primitive;

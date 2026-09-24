@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, RwLock};
 
-use overt_hash::Hash;
+use vun_hash::Hash;
 
 use super::cx::{Cx, Edge};
 use super::persist::Codec;

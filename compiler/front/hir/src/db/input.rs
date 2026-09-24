@@ -4,11 +4,11 @@
 use std::path::Path;
 use std::sync::Arc;
 
-use overt_diag::DiagCtxt;
-use overt_hash::{Hash, Snapshot};
-use overt_intern::Symbol;
-use overt_query::{Cx, Query};
-use overt_span::Span;
+use vun_diag::DiagCtxt;
+use vun_hash::{Hash, Snapshot};
+use vun_intern::Symbol;
+use vun_query::{Cx, Query};
+use vun_span::Span;
 
 /// A package, by the hash of its `include` tree, or the stand-in for files outside any package.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]

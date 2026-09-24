@@ -2,13 +2,13 @@
 //! `.` and indexing look through borrows (spec 01, section 4), so the typed body decides where a
 //! dereference goes.
 
-use overt_grammar::TokenKind;
-use overt_hir::resolve::Res;
-use overt_hir::tree::{ExprId, ExprKind};
-use overt_intern::Symbol;
-use overt_origin::OriginId;
-use overt_sema::env::Hop;
-use overt_sema::member::Members;
+use vun_grammar::TokenKind;
+use vun_hir::resolve::Res;
+use vun_hir::tree::{ExprId, ExprKind};
+use vun_intern::Symbol;
+use vun_origin::OriginId;
+use vun_sema::env::Hop;
+use vun_sema::member::Members;
 
 use super::{Builder, Unbuilt};
 use crate::body::{Operand, Rvalue};

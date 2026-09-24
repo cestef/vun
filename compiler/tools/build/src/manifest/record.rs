@@ -1,9 +1,9 @@
 //! Reading records and typed values out of literals, reporting where they do not fit.
 
-use overt_diag::{ChildKind, DiagCx, Diagnostic, Msg, errors};
-use overt_hash::{Algorithm, Hash};
-use overt_suggest::{Lookup, closest};
-use overt_syntax::literal::{Decl, Literal};
+use vun_diag::{ChildKind, DiagCx, Diagnostic, Msg, errors};
+use vun_hash::{Algorithm, Hash};
+use vun_suggest::{Lookup, closest};
+use vun_syntax::literal::{Decl, Literal};
 
 /// The fields of a record literal, checked against the names a reader knows.
 pub(crate) struct Fields<'a, 's> {

@@ -1,13 +1,13 @@
-//! `overt pkg update`: a dependency is raised to the newest release its index lists in its major,
+//! `vun pkg update`: a dependency is raised to the newest release its index lists in its major,
 //! verified against the listed hash, and its manifest entry rewritten.
 
 use crate::common::Fixture;
-use overt_build::index::{Index, Listing};
-use overt_build::layout::MANIFEST;
-use overt_build::manifest::Identity;
-use overt_diag::errors;
-use overt_hash::Hash;
-use overt_pkg::{Format, Scheme};
+use vun_build::index::{Index, Listing};
+use vun_build::layout::MANIFEST;
+use vun_build::manifest::Identity;
+use vun_diag::errors;
+use vun_hash::Hash;
+use vun_pkg::{Format, Scheme};
 
 const HAL: Identity = Identity { id: 7, major: 1 };
 

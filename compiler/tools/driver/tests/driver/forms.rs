@@ -2,13 +2,13 @@
 //! branch that does not fit.
 
 use crate::common::Fixture;
-use overt_diag::errors;
+use vun_diag::errors;
 
 #[test]
 fn borrows_attributes_and_struct_patterns_are_typed() {
     let fixture = Fixture::new("forms-typed");
     let file = fixture.root.write(
-        "forms.ov",
+        "forms.vun",
         "\
 Linear := #[kind.linear] struct { channel: u8 };
 Point := struct { x: u8, y: u16 };

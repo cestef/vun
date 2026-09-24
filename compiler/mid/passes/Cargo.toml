@@ -1,5 +1,5 @@
 [package]
-name = "overt-mir-passes"
+name = "vun-mir-passes"
 description = "MIR checks and transforms."
 version.workspace = true
 edition.workspace = true
@@ -10,12 +10,12 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
-overt-mir.workspace = true
-overt-pass.workspace = true
-overt-diag.workspace = true
-overt-origin.workspace = true
-overt-grammar.workspace = true
-overt-index.workspace = true
-overt-intern.workspace = true
-overt-query.workspace = true
-overt-sema.workspace = true
+vun-mir.workspace = true
+vun-pass.workspace = true
+vun-diag.workspace = true
+vun-origin.workspace = true
+vun-grammar.workspace = true
+vun-index.workspace = true
+vun-intern.workspace = true
+vun-query.workspace = true
+vun-sema.workspace = true

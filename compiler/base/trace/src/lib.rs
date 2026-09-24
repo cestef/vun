@@ -3,9 +3,9 @@
 //! Crates log through the re-exported [`tracing`], so the dependency is declared once. What is
 //! shown is chosen at run time:
 //!
-//! - `OVERT_LOG` takes directives, such as `overt_sema=debug,overt_mir_passes=trace` or `info`;
-//! - `OVERT_LOG_FORMAT` is `compact` (default) or `tree`;
-//! - `OVERT_TIMINGS=1` reports the duration of every closed span, which gives per-stage timings.
+//! - `VUN_LOG` takes directives, such as `vun_sema=debug,vun_mir_passes=trace` or `info`;
+//! - `VUN_LOG_FORMAT` is `compact` (default) or `tree`;
+//! - `VUN_TIMINGS=1` reports the duration of every closed span, which gives per-stage timings.
 
 mod filter;
 mod subscriber;
@@ -33,9 +33,9 @@ pub struct Config {
 }
 
 impl Config {
-    pub const FILTER_VAR: &'static str = "OVERT_LOG";
-    pub const FORMAT_VAR: &'static str = "OVERT_LOG_FORMAT";
-    pub const TIMINGS_VAR: &'static str = "OVERT_TIMINGS";
+    pub const FILTER_VAR: &'static str = "VUN_LOG";
+    pub const FORMAT_VAR: &'static str = "VUN_LOG_FORMAT";
+    pub const TIMINGS_VAR: &'static str = "VUN_TIMINGS";
 
     /// Reads the configuration from the environment.
     #[must_use]

@@ -1,13 +1,13 @@
 //! Reflection turns types into data (spec 03, section 6).
 
 use crate::common::Fixture;
-use overt_diag::errors;
+use vun_diag::errors;
 
 #[test]
 fn fields_generate_members() {
     let fixture = Fixture::new("reflection-fields");
     let file = fixture.root.write(
-        "partial.ov",
+        "partial.vun",
         "\
 Partial := ($T: type) -> type { struct {
     $for f in std.meta.fields(T) { $(f.name): ?f.type = .none, }

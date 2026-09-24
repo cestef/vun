@@ -1,10 +1,10 @@
-//! The indented text form of a tree, for `overt dump cst` and snapshots.
+//! The indented text form of a tree, for `vun dump cst` and snapshots.
 
 use std::fmt;
 
-use overt_grammar::NodeField;
-use overt_outline::{Outline, Outlined};
-use overt_span::ByteRange;
+use vun_grammar::NodeField;
+use vun_outline::{Outline, Outlined};
+use vun_span::ByteRange;
 
 use super::{Anchor, Cst, NodeId};
 use crate::tokens::Tokens;

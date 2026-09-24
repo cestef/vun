@@ -1,10 +1,10 @@
 //! The toolchain's own sources, `lang` and `std`, check without a diagnostic: they obey every
 //! rule the compiler enforces on user code.
 
-use overt_driver::Session;
-use overt_fs::Tree;
-use overt_harness::repo_root;
-use overt_span::EXTENSION;
+use vun_driver::Session;
+use vun_fs::Tree;
+use vun_harness::repo_root;
+use vun_span::EXTENSION;
 
 #[test]
 fn library_sources_check_cleanly() {

@@ -9,7 +9,7 @@ every exit where it is still held (spec 05, section 3).
 
 ## Example
 
-```ov
+```vun
 File := #[kind.linear] struct { len: u64 };
 
 #[link.symbol("file_open")]
@@ -27,7 +27,7 @@ size := (path: &[u8]) -> u64 {
 
 Consume the value before the scope exits, here by closing the file:
 
-```ov
+```vun
 File := #[kind.linear] struct { len: u64 };
 
 #[link.symbol("file_open")]

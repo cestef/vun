@@ -1,15 +1,15 @@
-//! The query inputs of loaded packages (`overt_hir::db`): each package's description, with its
+//! The query inputs of loaded packages (`vun_hir::db`): each package's description, with its
 //! dependencies resolved but not reported, and the text of its source files.
 
 use std::path::Path;
 use std::sync::Arc;
 
-use overt_build::layout::SEPARATOR;
-use overt_diag::DiagCtxt;
-use overt_hash::{Hash, Snapshot};
-use overt_hir::db::{DepData, FileRef, FileText, Package as PackageInput, PackageData, PackageId, Unloaded};
-use overt_intern::Symbol;
-use overt_span::EXTENSION;
+use vun_build::layout::SEPARATOR;
+use vun_diag::DiagCtxt;
+use vun_hash::{Hash, Snapshot};
+use vun_hir::db::{DepData, FileRef, FileText, Package as PackageInput, PackageData, PackageId, Unloaded};
+use vun_intern::Symbol;
+use vun_span::EXTENSION;
 
 use super::deps::Unfetched;
 use super::locate::VERSION_MARK;

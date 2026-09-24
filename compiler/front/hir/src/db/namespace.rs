@@ -3,10 +3,10 @@
 
 use std::sync::Arc;
 
-use overt_diag::{Diagnostic, Msg, errors};
-use overt_intern::Symbol;
-use overt_query::{Cx, Cycle, Query};
-use overt_syntax::visibility::Visibility;
+use vun_diag::{Diagnostic, Msg, errors};
+use vun_intern::Symbol;
+use vun_query::{Cx, Cycle, Query};
+use vun_syntax::visibility::Visibility;
 
 use super::input::{FileRef, Package, PackageId, Unloaded};
 use super::layout::Namespace;

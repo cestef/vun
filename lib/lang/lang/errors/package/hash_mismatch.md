@@ -12,9 +12,9 @@ modified since the fetch, from the snapshot recorded with the entry.
 A file of the stored `hal` was edited in place:
 
 ```console
-$ overt check app.ov
+$ vun check app.vun
 error[package.hash_mismatch]: the stored contents of `hal` do not match its hash
-   ╭▸ build.ov:8:16
+   ╭▸ build.vun:8:16
    │
  8 │           .hal = .{
    │ ┏━━━━━━━━━━━━━━━━┛
@@ -25,7 +25,7 @@ error[package.hash_mismatch]: the stored contents of `hal` do not match its hash
    │ ┗━━━━━━━━━┛
    │
    ├ note: expected `blake3:zfydsfjcithfeney4uucojbfrxp4azcrmyw3j3fdtkmwsm6cnptq`, found `blake3:sij22cdvfdz4bt4d43pgtpq7rh4gsszrkf6m53ho6yau45vraikq`
-   ╰ note: `hal.ov` was modified since it was fetched
+   ╰ note: `hal.vun` was modified since it was fetched
 ```
 
 ## Fix
@@ -34,7 +34,7 @@ Fetch the package again; an entry that differs from its snapshot is replaced by 
 Changes meant to last belong in a `.path` dependency or a new release, not in the store:
 
 ```console
-$ overt pkg fetch
+$ vun pkg fetch
 stored  hal blake3:zfydsfjcithfeney4uucojbfrxp4azcrmyw3j3fdtkmwsm6cnptq from file://hal-1.0.0.tar.zst
-$ overt check app.ov
+$ vun check app.vun
 ```

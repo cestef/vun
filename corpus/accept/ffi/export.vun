@@ -1,6 +1,6 @@
 //! A library is a root file with exports and no runtime (spec 08, section 2).
 
-#[link.export("overt_crc32"), abi.c]
+#[link.export("vun_crc32"), abi.c]
 crc32 := (data: *u8, len: usize) -> u32 {
     bytes := unsafe { lang.mem.slice(data, len) };
     mut crc: u32 = 0xffff_ffff;
@@ -17,5 +17,5 @@ crc32 := (data: *u8, len: usize) -> u32 {
 #[layout.c]
 Version := struct { major: u16, minor: u16 };
 
-#[link.export("overt_version"), abi.c]
+#[link.export("vun_version"), abi.c]
 version := () -> Version { .{ .major = 0, .minor = 1 } };

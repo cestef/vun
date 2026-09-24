@@ -1,22 +1,22 @@
 //! Source files, file ids and byte spans.
 //!
 //! A [`Span`] is a half-open byte range inside one source file. Spans never cross files; anything
-//! that relates several locations does so through origin chains (`overt-origin`).
+//! that relates several locations does so through origin chains (`vun-origin`).
 
 use std::hash::{Hash, Hasher};
 
-/// The extension of Overt source files, as a literal for [`source_file!`].
+/// The extension of Vun source files, as a literal for [`source_file!`].
 #[macro_export]
 macro_rules! extension {
     () => {
-        "ov"
+        "vun"
     };
 }
 
-/// The extension of Overt source files.
+/// The extension of Vun source files.
 pub const EXTENSION: &str = extension!();
 
-/// The name of the source file `stem` with the extension: `source_file!("build")` is `build.ov`.
+/// The name of the source file `stem` with the extension: `source_file!("build")` is `build.vun`.
 #[macro_export]
 macro_rules! source_file {
     ($stem:literal) => {
@@ -195,7 +195,7 @@ impl std::fmt::Display for Location<'_> {
 pub struct SourceFiles {
     files: boxcar::Vec<SourceFile>,
     /// Each file by its key and the hash of its text, so that adding it again returns it.
-    added: std::sync::RwLock<std::collections::HashMap<(u64, overt_hash::Hash), FileId>>,
+    added: std::sync::RwLock<std::collections::HashMap<(u64, vun_hash::Hash), FileId>>,
 }
 
 impl SourceFiles {
@@ -217,9 +217,9 @@ impl SourceFiles {
     /// # Panics
     /// Panics past `u32::MAX` files, or if a thread panicked while adding.
     pub fn add_as(&self, key: &str, path: impl Into<String>, text: impl Into<String>) -> FileId {
-        let key = overt_hash::Hash::of(key.as_bytes()).short();
+        let key = vun_hash::Hash::of(key.as_bytes()).short();
         let text = text.into();
-        let identity = (key, overt_hash::Hash::of(text.as_bytes()));
+        let identity = (key, vun_hash::Hash::of(text.as_bytes()));
         if let Some(&file) = self.added.read().expect("source files").get(&identity) {
             return file;
         }

@@ -1,12 +1,12 @@
 //! Named children: a branch's children, punctuation left out, assigned to the slots its kind
-//! declares in `grammar.ov` (`NodeKind::slots`).
+//! declares in `grammar.vun` (`NodeKind::slots`).
 //!
 //! Assignment runs left to right and backtracks: `many` slots take as many nodes as they can and
 //! `optional` slots take one when they can, giving back when a later slot would go unfilled. A
 //! node that a later slot is restricted to is left to that slot first. A slot
 //! restricted to a kind also accepts `Error`, the placeholder the parser leaves for a missing node.
 
-use overt_grammar::{Count, NodeField, NodeKind, NodeSlot};
+use vun_grammar::{Count, NodeField, NodeKind, NodeSlot};
 
 use super::{Cst, NodeId};
 

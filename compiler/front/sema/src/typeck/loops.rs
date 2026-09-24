@@ -4,9 +4,9 @@
 //! `lang.ops.Iterate` for the type of `e` names the coroutine interface of its iterator, whose
 //! `resume` result carries each item in its variant `yielded`.
 
-use overt_grammar::ITERATION;
-use overt_hir::tree::{BlockId, Cond, ExprId, ExprKind, ForHead};
-use overt_intern::Symbol;
+use vun_grammar::ITERATION;
+use vun_hir::tree::{BlockId, Cond, ExprId, ExprKind, ForHead};
+use vun_intern::Symbol;
 
 use super::{Known, Stage, Typer};
 use crate::eval::{Call, Instance};
@@ -65,7 +65,7 @@ impl Typer<'_, '_, '_> {
     pub(super) fn labeled(&mut self, expr: ExprId, label: Symbol, body: ExprId) -> Option<Known> {
         let hir = self.hir();
         let ExprKind::For { head, body: block } = &hir.exprs[body].kind else {
-            overt_hir::visit::walk_expr(self, hir, expr);
+            vun_hir::visit::walk_expr(self, hir, expr);
             return None;
         };
         let known = self.looping(Some(label), head, *block);

@@ -1,6 +1,6 @@
-# Overt documentation
+# Vun documentation
 
-> Working name. Source extension `.ov`, CLI `overt`.
+> Working name. Source extension `.vun`, CLI `vun`.
 
 Draft 2 of the design. Each file in `spec/` covers one area and can be read on its own;
 `spec/00-principles.md` is the entry point and everything else refers back to it.

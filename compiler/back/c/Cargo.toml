@@ -1,5 +1,5 @@
 [package]
-name = "overt-backend-c"
+name = "vun-backend-c"
 description = "C99 backend: reach every target with a C compiler."
 version.workspace = true
 edition.workspace = true
@@ -10,7 +10,7 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
-overt-backend.workspace = true
-overt-diag.workspace = true
-overt-lir.workspace = true
-overt-target.workspace = true
+vun-backend.workspace = true
+vun-diag.workspace = true
+vun-lir.workspace = true
+vun-target.workspace = true

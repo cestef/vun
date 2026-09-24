@@ -24,7 +24,7 @@ declared types, and a type found twice is the join of both, as for the branches 
 written. A variant with a payload is a function value: `E.fs` for `fs(u8)` has type
 `(u8) -> E`.
 
-```ov
+```vun
 Pair := ($T: type) -> type { struct { a: T, b: T } };
 P := Pair(u16);                            // same arguments, same type (memoized, spec 03)
 
@@ -82,7 +82,7 @@ accepted where the same constructor with any arguments there is expected: `Resul
 An interface is a function from a type to a struct of requirements. `lang.interface` wraps such a
 function so that it can be used as a constraint.
 
-```ov
+```vun
 Writer := interface(($Self: type) -> type { struct {
     Error: type = _;                                             // required
     write: (self: &mut Self, bytes: &[u8]) -> Result(usize, Error) = _;
@@ -100,7 +100,7 @@ others, and `write` refers to it by name because declarations resolve lazily.
 
 ### Conformance
 
-```ov
+```vun
 #[impl(Writer(Uart))]
 UartWriter := struct {
     Error := uart.Error;
@@ -138,7 +138,7 @@ UartWriter := struct {
 
 A compile-time parameter whose annotation is an interface is constrained by it:
 
-```ov
+```vun
 log := ($W: Writer, w: &mut W, msg: &[u8]) -> Result((), W.Error) {
     w.write_all(msg)
 };
@@ -158,7 +158,7 @@ function or closure passed.
 
 Because an impl is any expression producing a struct, deriving is calling a function:
 
-```ov
+```vun
 #[impl(Serialize(Point))]
 PointSerialize := serde.derive(Point);
 ```
@@ -186,7 +186,7 @@ same interfaces and dispatch statically.
 An attribute is any compile-time value, attached with `#[...]` to the next declaration, field,
 parameter or type expression:
 
-```ov
+```vun
 #[layout.bits(u32)]
 Ctrl := struct { enable: bool, mode: u2, _: u29 };
 

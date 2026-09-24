@@ -1,4 +1,4 @@
-//! Primitives of Overt.
+//! Primitives of Vun.
 //!
 //! Every declaration whose value is `_` is provided by the compiler. Syntax desugars only into
 //! items of this package (spec appendix B), so reading it tells you what the syntax means.

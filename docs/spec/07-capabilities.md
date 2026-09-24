@@ -26,7 +26,7 @@ Consequence: **every value that is safe to share is safe to share across threads
 so no `Send`/`Sync` properties are needed. The unsynchronized `lang.mem.Cell(T)` is usable only in
 `unsafe` code, and is what makes a type not cell-free (spec 05).
 
-```ov
+```vun
 ticks: sync.Shared(u32) = .init(0);
 
 #[panic.never]
@@ -51,7 +51,7 @@ critical section.
   embedded targets and still report the exact source span on the host (spec 10).
 - **`#[panic.never]`** on a function is checked transitively: its body may contain no undischarged
   trap site, and it may call only `#[panic.never]` functions.
-- `overt check --traps` lists every remaining trap site with the reason it remains.
+- `vun check --traps` lists every remaining trap site with the reason it remains.
 
 ## 4. Function types
 
@@ -67,7 +67,7 @@ Function pointers carry the same properties, so the analyses survive indirect ca
 
 Each property is a **marker**: a `lang` attribute, with its arguments, that the function type
 carries (`#[panic.never] (u8) -> u8`, a function literal or a declaration marked so). The table
-`fn_markers` of `desugar.ov` names them and gives each a relation, which decides where a function
+`fn_markers` of `desugar.vun` names them and gives each a relation, which decides where a function
 is accepted in place of an expected function type:
 
 | Relation | Markers | Accepted when the function has |
@@ -98,8 +98,8 @@ backend that cannot report frame sizes cannot build a program that uses `stack.m
 - A C import is a declaration provided by the linker:
   `#[link.symbol("puts"), abi.c] puts: unsafe (s: *u8) -> i32 = _;`
 - `#[link.export("name")]` exports a binding under a C symbol.
-- `overt bind foo.h` generates Overt declarations from C headers through libclang, using the
-  build's real compile flags. `overt header` emits a C header for an Overt library. Both are tools,
+- `vun bind foo.h` generates Vun declarations from C headers through libclang, using the
+  build's real compile flags. `vun header` emits a C header for a Vun library. Both are tools,
   not language features (spec 12).
 - Inline assembly is `lang.arch.asm(template, operands)`, a `lang` function taking compile-time
   data. It is `unsafe`.

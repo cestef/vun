@@ -1,4 +1,4 @@
-//! The lockfile, `lock.ov` beside the manifest (spec 12, section 4): an Overt literal file
+//! The lockfile, `lock.vun` beside the manifest (spec 12, section 4): a Vun literal file
 //! recording every version the graph requires, with the hash it was verified against, one entry
 //! per line, sorted, so that merges never conflict. The selected version of an identity is the
 //! largest recorded. It is read without evaluation and written by the literal writer, as
@@ -9,12 +9,12 @@ mod read;
 mod tests;
 mod write;
 
-use overt_hash::Hash;
+use vun_hash::Hash;
 
 use crate::manifest::{Identity, Version};
 
 /// The lockfile's name, next to the manifest.
-pub const FILE: &str = overt_span::source_file!("lock");
+pub const FILE: &str = vun_span::source_file!("lock");
 
 /// The version of the lockfile's layout this toolchain reads and writes.
 pub const LAYOUT: u32 = 1;

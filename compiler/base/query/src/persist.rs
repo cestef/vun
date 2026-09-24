@@ -1,5 +1,5 @@
 //! Memos that outlive the process (spec 13, section 2): computed memos of the queries registered
-//! with [`Db::persist`], with their traces, in the encoding of `overt-codec`. A loaded memo is verified
+//! with [`Db::persist`], with their traces, in the encoding of `vun-codec`. A loaded memo is verified
 //! before its first use, like any memo from an earlier revision, so a stale one is recomputed and
 //! never trusted. Traces hold interface hashes, which do not depend on the process, so they stay
 //! valid across processes.
@@ -9,8 +9,8 @@ use std::collections::HashMap;
 use std::fmt;
 use std::sync::Arc;
 
-use overt_codec::{Decode, Encode, Malformed, record};
-use overt_hash::Hash;
+use vun_codec::{Decode, Encode, Malformed, record};
+use vun_hash::Hash;
 
 use super::Query;
 use super::cx::{Edge, Read};

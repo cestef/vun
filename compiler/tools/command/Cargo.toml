@@ -1,5 +1,5 @@
 [package]
-name = "overt-command"
+name = "vun-command"
 description = "Declarative command trees: argument parsing, generated help, usage diagnostics."
 version.workspace = true
 edition.workspace = true
@@ -10,5 +10,5 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
-overt-suggest.workspace = true
-overt-diag.workspace = true
+vun-suggest.workspace = true
+vun-diag.workspace = true

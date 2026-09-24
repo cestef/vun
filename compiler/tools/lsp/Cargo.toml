@@ -1,5 +1,5 @@
 [package]
-name = "overt-lsp"
+name = "vun-lsp"
 description = "The language server, on the same query engine as the compiler."
 version.workspace = true
 edition.workspace = true
@@ -10,4 +10,4 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
-overt-driver.workspace = true
+vun-driver.workspace = true

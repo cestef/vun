@@ -1,8 +1,8 @@
 //! Ranges (appendix B): `a..b`, `a..=b` and `a..` have type `lang.Bounds(T)`, `T` the integers
 //! any range with such bounds can hold; where a `lang.Range` is expected, bounds are that range.
 
-use overt_grammar::{Form, TokenKind};
-use overt_hir::tree::ExprId;
+use vun_grammar::{Form, TokenKind};
+use vun_hir::tree::ExprId;
 
 use super::{Known, Typer};
 use crate::int::Interval;

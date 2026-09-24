@@ -1,5 +1,5 @@
 [package]
-name = "overt-target"
+name = "vun-target"
 description = "Target descriptions: layout, ABIs, features, entry symbol."
 version.workspace = true
 edition.workspace = true

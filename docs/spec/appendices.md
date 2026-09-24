@@ -11,7 +11,7 @@ declaration whose value is `_`.
 | `lang.ops` | `Add`, `Sub`, `Mul`, `Div`, `Rem`, `Neg`, `BitAnd`, `BitOr`, `BitXor`, `Not`, `Shl`, `Shr`, `Concat`, `Eq`, `Ord`, `Index`, `Call`, `Try`, `Iterate` |
 | `lang.mem` | `Ref`, `RefMut`, `RefOut`, `RefTake`, `RefTemp`, `RefTempMut`, `Ptr`, `Slice`, `Array`, `len`, `Cell`, `pointer_to`, `address`, `offset`, `cast`, `read`, `write`, `copy`, `fill`, `volatile_load`, `volatile_store`, `atomic_*`, `prefetch` |
 | `lang.meta` | `Code`, `Name`, `quote` primitives, type and declaration info, witnesses, attributes, origins, spans, `embed`, `heap`, `TypeOf` |
-| `lang.syntax` | token and node types generated from `grammar.ov` |
+| `lang.syntax` | token and node types generated from `grammar.vun` |
 | `lang.diag` | `Diag`, `Severity`, `Safety`, reporting primitives |
 | `lang.errors` | every compiler diagnostic, as `Diag` values |
 | `lang.lint` | `Lint`, `Cx`, `pattern`, `define` |
@@ -85,7 +85,7 @@ that is the definition of safe.
 
 ## D. Grammar sketch
 
-Informal; the normative grammar is `lang/syntax/grammar.ov` plus the parse rules of spec 01,
+Informal; the normative grammar is `lang/syntax/grammar.vun` plus the parse rules of spec 01,
 section 6. Patterns are parsed as expressions (`pattern = expr` below).
 
 ```

@@ -9,7 +9,7 @@ provides it (spec 02, section 3). Anywhere else, `_` as a value is an error.
 
 ## Example
 
-```ov
+```vun
 answer: u32 = _; //~ binding.hole_value
 ```
 
@@ -17,7 +17,7 @@ answer: u32 = _; //~ binding.hole_value
 
 Give the binding its value, or name the symbol the linker provides it from:
 
-```ov
+```vun
 #[link.symbol("answer")]
 answer: u32 = _;
 ```

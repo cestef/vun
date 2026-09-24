@@ -1,9 +1,9 @@
 //! Names not declared in the file: spread into one of its namespaces, the package itself, its
 //! dependencies and its prelude.
 
-use overt_diag::{ChildKind, DiagCx, Diagnostic, ErrorGuaranteed, Msg, errors};
-use overt_intern::Symbol;
-use overt_suggest::closest;
+use vun_diag::{ChildKind, DiagCx, Diagnostic, ErrorGuaranteed, Msg, errors};
+use vun_intern::Symbol;
+use vun_suggest::closest;
 
 use super::{Res, Resolution};
 use crate::tree::{Hir, NsId};

@@ -1,7 +1,7 @@
 //! Blocks and statements: declarations bind locals, a pattern that always matches destructures,
 //! expressions run for their effects, and the tail is the block's value.
 
-use overt_hir::tree::{BlockId as HirBlock, PatKind, Stmt as HirStmt};
+use vun_hir::tree::{BlockId as HirBlock, PatKind, Stmt as HirStmt};
 
 use super::{Builder, Unbuilt};
 use crate::body::{Operand, Rvalue, TerminatorKind};

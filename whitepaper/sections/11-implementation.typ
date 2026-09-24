@@ -13,7 +13,7 @@ Three decisions shape the architecture. First, *the reference semantics is execu
 of MIR under an explicit target model runs compile-time code and tests, and every backend is checked
 against it by differential testing on a corpus and on randomly generated programs @csmith. Second,
 *every stage after the front end is replaceable*: backends, linkers, external tools, passes, evaluators
-and diagnostic renderers are interfaces; targets are data written in Overt; and external backends and
+and diagnostic renderers are interfaces; targets are data written in Vun; and external backends and
 linkers are processes that exchange LIR text and a linker-independent plan. The initial backends are C,
 for reach; Cranelift, for fast debug builds; QBE, for simplicity; and LLVM, for optimized code. Third,
 *speed is structural*: data-oriented layouts, which reduced Zig's front-end time by 20 to 40 percent
@@ -22,6 +22,6 @@ hashes; parallel analysis and code generation from the first phase; and merging 
 type-erased LIR is identical. Measurements elsewhere show that once a backend is fast, the front end
 dominates @tpde, so these choices are made before the first line of the front end is written.
 
-The grammar is defined once, as Overt data, and generates the parser's syntax kinds, the syntax types
+The grammar is defined once, as Vun data, and generates the parser's syntax kinds, the syntax types
 available to compile-time code, the formatter's tables and the editor grammar, so that tokens and nodes
 cannot drift between the compiler and the language's own view of itself.

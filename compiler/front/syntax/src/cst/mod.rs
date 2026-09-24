@@ -7,9 +7,9 @@
 //! source (a missing `;`, a missing operand) is anchored before the token where it was expected;
 //! the parser reported it when it created the node.
 
-use overt_grammar::NodeKind;
-use overt_index::{Idx, IndexVec, index};
-use overt_span::{ByteRange, Span};
+use vun_grammar::NodeKind;
+use vun_index::{Idx, IndexVec, index};
+use vun_span::{ByteRange, Span};
 
 use crate::tokens::{TokenId, Tokens};
 
@@ -125,7 +125,7 @@ impl Cst {
         Span { file: tokens.file(), range }
     }
 
-    /// An indented line per node, for `overt dump cst` and snapshots.
+    /// An indented line per node, for `vun dump cst` and snapshots.
     #[must_use]
     pub fn dump<'a>(&'a self, tokens: &'a Tokens, source: &'a str) -> Dump<'a> {
         Dump { cst: self, tokens, source }

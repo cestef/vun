@@ -11,11 +11,11 @@ give each hash and who requires it.
 ## Example
 
 ```console
-$ overt pkg fetch
+$ vun pkg fetch
 present hal blake3:zfydsfjcithfeney4uucojbfrxp4azcrmyw3j3fdtkmwsm6cnptq
 present hal blake3:i2awm7xqhnlzsujcu5ukmn2owcntcqyycpr2d4kuhqquxzgxkz6q
 error[package.version_conflict]: `hal` `1.0.0` is required with two hashes
-   ╭▸ ../drv/build.ov:8:16
+   ╭▸ ../drv/build.vun:8:16
    │
  8 │           .hal = .{
    │ ┏━━━━━━━━━━━━━━━━┛
@@ -25,7 +25,7 @@ error[package.version_conflict]: `hal` `1.0.0` is required with two hashes
 12 │ ┃         },
    │ ┗━━━━━━━━━┛
    │
-   ⸬  build.ov:8:16
+   ⸬  build.vun:8:16
    │
  8 │           .hal = .{
    │ ┌────────────────┘
@@ -47,8 +47,8 @@ Find which hash is the release and declare it in the other dependent's `.hash`, 
 project's:
 
 ```console
-$ grep hash build.ov
+$ grep hash build.vun
             .hash = "blake3:i2awm7xqhnlzsujcu5ukmn2owcntcqyycpr2d4kuhqquxzgxkz6q",
-$ overt pkg fetch
+$ vun pkg fetch
 present hal blake3:i2awm7xqhnlzsujcu5ukmn2owcntcqyycpr2d4kuhqquxzgxkz6q
 ```

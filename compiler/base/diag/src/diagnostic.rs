@@ -2,7 +2,7 @@
 
 use std::fmt;
 
-use overt_origin::OriginId;
+use vun_origin::OriginId;
 
 use crate::{DiagId, DiagSource, Fix, Label, Msg, Severity};
 

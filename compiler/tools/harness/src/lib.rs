@@ -19,7 +19,7 @@ use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 
-use overt_fs::{Edit, Tree};
+use vun_fs::{Edit, Tree};
 
 mod page;
 
@@ -44,7 +44,7 @@ const REPO_DEPTH: usize = 3;
 /// Marker that starts an expectation inside a line comment.
 pub const MARKER: &str = "//~";
 /// Environment variable that makes snapshot checks overwrite instead of compare.
-pub const BLESS_VAR: &str = "OVERT_BLESS";
+pub const BLESS_VAR: &str = "VUN_BLESS";
 
 /// A diagnostic expected or reported on a one-based line.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]

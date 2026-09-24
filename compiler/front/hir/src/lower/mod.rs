@@ -9,11 +9,11 @@ mod exprs;
 mod members;
 mod pats;
 
-use overt_grammar::{NodeField, NodeKind, TokenKind};
-use overt_intern::Symbol;
-use overt_origin::{OriginId, OriginTable};
-use overt_syntax::cst::{Anchor, Cst, Fields, NodeId};
-use overt_syntax::tokens::Tokens;
+use vun_grammar::{NodeField, NodeKind, TokenKind};
+use vun_intern::Symbol;
+use vun_origin::{OriginId, OriginTable};
+use vun_syntax::cst::{Anchor, Cst, Fields, NodeId};
+use vun_syntax::tokens::Tokens;
 
 use crate::tree::{Entry, Hir, List, Name, Staged};
 use pats::Mode;
@@ -136,7 +136,7 @@ impl<'a> Lower<'a, '_> {
     fn name(&mut self, n: NodeId) -> Name {
         match self.kind(n) {
             NodeKind::Name => Name::Plain(self.symbol(n)),
-            NodeKind::Int => overt_syntax::literal::integer(self.text(n))
+            NodeKind::Int => vun_syntax::literal::integer(self.text(n))
                 .and_then(|i| u32::try_from(i).ok())
                 .map_or(Name::Hole, Name::Index),
             NodeKind::Prefix if self.token(n) == Some(TokenKind::Dollar) => {

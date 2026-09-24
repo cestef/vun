@@ -1,9 +1,9 @@
-//! `overt cache`: the user's store of fetched packages (spec 12, section 3).
+//! `vun cache`: the user's store of fetched packages (spec 12, section 3).
 
 use std::io::{self, Write};
 
-use overt_command::{Action, Args, Command, Outcome};
-use overt_diag::{Diagnostic, Msg, errors};
+use vun_command::{Action, Args, Command, Outcome};
+use vun_diag::{Diagnostic, Msg, errors};
 
 use crate::Session;
 

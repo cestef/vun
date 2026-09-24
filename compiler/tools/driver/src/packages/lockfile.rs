@@ -4,10 +4,10 @@
 use std::collections::HashSet;
 use std::path::Path;
 
-use overt_build::lock::{self, Lock};
-use overt_diag::{ChildKind, Diagnostic, Msg, errors};
-use overt_fs::Edit;
-use overt_span::{ByteRange, SourceMap, Span};
+use vun_build::lock::{self, Lock};
+use vun_diag::{ChildKind, Diagnostic, Msg, errors};
+use vun_fs::Edit;
+use vun_span::{ByteRange, SourceMap, Span};
 
 use super::{PackageKey, Selection};
 use crate::Session;

@@ -1,10 +1,10 @@
 //! The type of each form typed so far. Any other form has its parts typed and no type itself.
 
-use overt_grammar::{OPERATORS, TokenKind};
-use overt_hir::resolve::Res;
-use overt_hir::tree::{Arg, Entry, ExprId, ExprKind, Hir, Lit, Name};
-use overt_hir::visit;
-use overt_intern::Symbol;
+use vun_grammar::{OPERATORS, TokenKind};
+use vun_hir::resolve::Res;
+use vun_hir::tree::{Arg, Entry, ExprId, ExprKind, Hir, Lit, Name};
+use vun_hir::visit;
+use vun_intern::Symbol;
 
 use super::{Known, Stage, Typer};
 use crate::decl::DeclType;

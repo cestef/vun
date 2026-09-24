@@ -1,7 +1,7 @@
 //! Entries of member and statement lists: declarations, fields, assignments, values.
 
-use overt_grammar::{ASSIGN, NodeKind, TokenKind};
-use overt_index::Idx;
+use vun_grammar::{ASSIGN, NodeKind, TokenKind};
+use vun_index::Idx;
 
 use super::{Brace, End, Item, List, Parser};
 use crate::cst::{Anchor, Mark};

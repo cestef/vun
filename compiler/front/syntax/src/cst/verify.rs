@@ -1,7 +1,7 @@
 //! The verifier of the tree: sizes nest, leaves are leaves, tokens are owned once and contiguously.
 
-use overt_grammar::NodeKind;
-use overt_index::Idx;
+use vun_grammar::NodeKind;
+use vun_index::Idx;
 
 use super::{Anchor, Cst, NodeId};
 use crate::tokens::{TokenId, Tokens};

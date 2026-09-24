@@ -1,7 +1,7 @@
 //! Lists and the entries of namespaces, blocks, calls and matches.
 
-use overt_grammar::TokenKind;
-use overt_origin::OriginId;
+use vun_grammar::TokenKind;
+use vun_origin::OriginId;
 
 use super::{BinderId, BlockId, DeclId, ExprId, Name, PatId};
 

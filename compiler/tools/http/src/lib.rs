@@ -1,12 +1,12 @@
 //! The network schemes of package downloads (spec 12, section 3): `https://` and `http://`,
-//! which a program installs into its `overt_pkg::Schemes`. They live apart from `overt-pkg` so
+//! which a program installs into its `vun_pkg::Schemes`. They live apart from `vun-pkg` so
 //! that the TLS stack builds beside the compiler, not before it.
 
 use std::error::Error;
 use std::fmt;
 use std::ops::RangeInclusive;
 
-use overt_pkg::{Failure, Scheme};
+use vun_pkg::{Failure, Scheme};
 
 /// `https://` and `http://`, read by [`get`].
 pub const SCHEMES: &[Scheme] =

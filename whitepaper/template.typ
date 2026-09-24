@@ -1,4 +1,4 @@
-// Overt whitepaper template: minimal, academic, one column.
+// Vun whitepaper template: minimal, academic, one column.
 
 #let accent = rgb("#1f3a5f")
 
@@ -30,7 +30,7 @@
   show heading.where(level: 2): it => { v(1em, weak: true); block(text(11pt, it)); v(0.4em, weak: true) }
   show heading.where(level: 3): it => { v(0.8em, weak: true); block(text(10.5pt, style: "italic", it.body)) }
 
-  set raw(syntaxes: "overt.sublime-syntax")
+  set raw(syntaxes: "vun.sublime-syntax")
   show raw: set text(font: "DejaVu Sans Mono", size: 8.4pt)
   show raw.where(block: true): it => block(
     width: 100%,

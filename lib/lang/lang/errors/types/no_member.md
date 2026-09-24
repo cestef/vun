@@ -9,7 +9,7 @@ section 3).
 
 ## Example
 
-```ov
+```vun
 Shape := interface(($Self: type) -> type { struct {
     area: (self: &Self) -> u64 = _;
 }});
@@ -23,7 +23,7 @@ describe := ($S: Shape, s: &S) -> u64 {
 
 Use only the members the interface declares, or declare the member it lacks:
 
-```ov
+```vun
 Shape := interface(($Self: type) -> type { struct {
     area: (self: &Self) -> u64 = _;
     perimeter: (self: &Self) -> u64 = _;

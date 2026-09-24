@@ -1,5 +1,5 @@
-//! `OVERT_LOG` filters: comma-separated directives, each a level (`debug`) or a target and a
-//! level (`overt_sema=trace`). The directive with the longest target that prefixes an event's
+//! `VUN_LOG` filters: comma-separated directives, each a level (`debug`) or a target and a
+//! level (`vun_sema=trace`). The directive with the longest target that prefixes an event's
 //! target decides; a directive without a target applies everywhere.
 
 use tracing::Level;

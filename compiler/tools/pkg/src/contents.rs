@@ -3,8 +3,8 @@
 use std::io;
 use std::path::Path;
 
-use overt_fs::Mode;
-use overt_hash::Snapshot;
+use vun_fs::Mode;
+use vun_hash::Snapshot;
 
 pub struct Contents<'a> {
     pub dir: &'a Path,

@@ -8,7 +8,7 @@ generators that observe their own output, which keeps impls and memoization soun
 
 ## Example
 
-```ov
+```vun
 Grow := struct {
     a: u8,
     size := std.meta.size(Grow); //~ meta.frozen
@@ -19,7 +19,7 @@ Grow := struct {
 
 Reflect on the type outside its definition, once it is complete:
 
-```ov
+```vun
 Grow := struct {
     a: u8,
 };

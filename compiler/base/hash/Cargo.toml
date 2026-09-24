@@ -1,5 +1,5 @@
 [package]
-name = "overt-hash"
+name = "vun-hash"
 description = "Content hashes: of bytes and of file trees."
 version.workspace = true
 edition.workspace = true
@@ -10,6 +10,6 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
-overt-fs.workspace = true
+vun-fs.workspace = true
 blake3.workspace = true
-overt-codec.workspace = true
+vun-codec.workspace = true

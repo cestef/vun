@@ -1,6 +1,6 @@
 //! Paths: a name followed by member names, `a.b.c`.
 
-use overt_intern::Symbol;
+use vun_intern::Symbol;
 
 use super::{ExprId, ExprKind, Hir, Name};
 

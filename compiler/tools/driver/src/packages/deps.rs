@@ -1,10 +1,10 @@
 //! Loading dependencies: the package of each, checked against its hash, as selection chose it;
 //! why one cannot be loaded is a diagnostic, reported where the dependency is needed.
 
-use overt_diag::{ChildKind, Diagnostic, ErrorGuaranteed, Msg, errors};
-use overt_span::Span;
+use vun_diag::{ChildKind, Diagnostic, ErrorGuaranteed, Msg, errors};
+use vun_span::Span;
 
-use overt_hash::{Change, Hash, Snapshot};
+use vun_hash::{Change, Hash, Snapshot};
 
 use super::{Dep, DepSource, PackageKey};
 use crate::Session;

@@ -1,8 +1,8 @@
 //! The resolving walk: scopes follow the tree, and each binder is checked as it is declared.
 
-use overt_diag::{ChildKind, DiagCx, Diagnostic, Msg, errors};
-use overt_grammar::TokenKind;
-use overt_index::IndexVec;
+use vun_diag::{ChildKind, DiagCx, Diagnostic, Msg, errors};
+use vun_grammar::TokenKind;
+use vun_index::IndexVec;
 
 use super::Res;
 use super::scope::{Kind, Scopes};

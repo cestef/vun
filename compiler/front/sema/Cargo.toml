@@ -1,5 +1,5 @@
 [package]
-name = "overt-sema"
+name = "vun-sema"
 description = "Demand-driven type checking interleaved with compile-time evaluation."
 version.workspace = true
 edition.workspace = true
@@ -10,14 +10,14 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
-overt-origin.workspace = true
-overt-hash.workspace = true
-overt-diag.workspace = true
-overt-intern.workspace = true
-overt-query.workspace = true
-overt-target.workspace = true
-overt-hir.workspace = true
-overt-span.workspace = true
-overt-grammar.workspace = true
-overt-syntax.workspace = true
+vun-origin.workspace = true
+vun-hash.workspace = true
+vun-diag.workspace = true
+vun-intern.workspace = true
+vun-query.workspace = true
+vun-target.workspace = true
+vun-hir.workspace = true
+vun-span.workspace = true
+vun-grammar.workspace = true
+vun-syntax.workspace = true
 num-bigint.workspace = true

@@ -35,6 +35,6 @@ fn interned_values_are_shared_and_hash_by_content() {
     assert_eq!(a, PAIRS.intern((Symbol::intern("a"), 1)));
     assert_ne!(a, PAIRS.intern((Symbol::intern("a"), 2)));
     assert_eq!(a.1, 1);
-    let hash = |v: Interned<(Symbol, u32)>| overt_hash::Hash::of_value(&v);
+    let hash = |v: Interned<(Symbol, u32)>| vun_hash::Hash::of_value(&v);
     assert_eq!(hash(a), hash(PAIRS.intern((Symbol::intern("a"), 1))));
 }

@@ -1,6 +1,6 @@
 //! Skipping tokens after an error, so that the tree keeps its shape.
 
-use overt_grammar::{NodeKind, TokenKind};
+use vun_grammar::{NodeKind, TokenKind};
 
 use super::Parser;
 use crate::cst::Anchor;

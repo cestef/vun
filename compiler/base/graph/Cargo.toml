@@ -1,5 +1,5 @@
 [package]
-name = "overt-graph"
+name = "vun-graph"
 description = "Ordering nodes by their declared requirements."
 version.workspace = true
 edition.workspace = true

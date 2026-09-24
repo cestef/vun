@@ -1,5 +1,5 @@
 [package]
-name = "overt-outline"
+name = "vun-outline"
 description = "Text laid out as an indented tree."
 version.workspace = true
 edition.workspace = true

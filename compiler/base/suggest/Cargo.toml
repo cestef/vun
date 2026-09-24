@@ -1,5 +1,5 @@
 [package]
-name = "overt-suggest"
+name = "vun-suggest"
 description = "Did-you-mean suggestions by edit distance."
 version.workspace = true
 edition.workspace = true

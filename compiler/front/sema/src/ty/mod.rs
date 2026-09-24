@@ -14,8 +14,8 @@ mod signature;
 mod tests;
 mod value;
 
-use overt_grammar::{BORROWS, Extent, PATH_SEPARATOR};
-use overt_intern::{Interned, Pool, Symbol};
+use vun_grammar::{BORROWS, Extent, PATH_SEPARATOR};
+use vun_intern::{Interned, Pool, Symbol};
 
 use crate::Primitive;
 use crate::eval::{Func, Instance};

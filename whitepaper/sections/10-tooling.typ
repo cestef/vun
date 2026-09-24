@@ -22,7 +22,7 @@ entities are dropped. Diagnostic identifiers are binding paths to values in `lan
 they are namespaced like every other name. The model is independent of rendering; the terminal
 renderer is an adapter over the library rustc adopted in 2025 @annotate-snippets.
 
-Lints are compile-time values. A lint is defined in Overt, runs in the sandboxed evaluator over a
+Lints are compile-time values. A lint is defined in Vun, runs in the sandboxed evaluator over a
 read-only typed view of the program, and is configured by naming its value, so a misspelled lint is a
 compile-time error. Naming and organization conventions are lints enabled by default: the case of a
 binding is decided by what it is (types and type-returning functions in `PascalCase`, everything else
@@ -42,7 +42,7 @@ the reference interpreter, which detects every detectable item of the undefined-
 
 == Packages
 
-The manifest is the build file, written in Overt. Its package description must be a literal, so tools
+The manifest is the build file, written in Vun. Its package description must be a literal, so tools
 read it without evaluation; its build function is sandboxed compile-time code. Packages are identified
 by a stable identifier and a major version, and versions by the content hash of their sources, with
 URLs serving only as mirrors. The hash is a BLAKE3 Merkle tree over directory entries named by path

@@ -14,13 +14,13 @@ mod tests;
 use std::io::{self, Write};
 use std::process::ExitCode;
 
-use overt_command::{Action, Args, Command, Outcome, Param, ParamKind, Program};
-use overt_diag::{ChildKind, DiagCtxt, DiagId, DiagSink, Diagnostic, Msg};
-use overt_fs::Edit;
-use overt_harness::repo_root;
-use overt_origin::OriginTable;
-use overt_render_short::ShortRenderer;
-use overt_span::SourceFiles;
+use vun_command::{Action, Args, Command, Outcome, Param, ParamKind, Program};
+use vun_diag::{ChildKind, DiagCtxt, DiagId, DiagSink, Diagnostic, Msg};
+use vun_fs::Edit;
+use vun_harness::repo_root;
+use vun_origin::OriginTable;
+use vun_render_short::ShortRenderer;
+use vun_span::SourceFiles;
 
 use corpus::Corpus;
 use lines::Oversized;
@@ -42,7 +42,7 @@ const CHECK: Param = Param {
 };
 
 const PROGRAM: Program<Cx> = Program {
-    configure: overt_command::unconfigured,
+    configure: vun_command::unconfigured,
     version: env!("CARGO_PKG_VERSION"),
     root: Command {
         name: "cargo xtask",
@@ -51,7 +51,7 @@ const PROGRAM: Program<Cx> = Program {
         action: Action::Group(&[
             Command {
                 name: "generate",
-                about: "regenerate Rust sources from their Overt sources (grammar, diagnostic ids)",
+                about: "regenerate Rust sources from their Vun sources (grammar, diagnostic ids)",
                 params: &[CHECK],
                 action: Action::Run(generate_all),
             },
@@ -131,7 +131,7 @@ fn run_corpus(_: &mut Cx, _: &Args, out: &mut dyn Write) -> io::Result<Outcome> 
                 for at in ids {
                     writeln!(
                         out,
-                        "  undeclared {}:{} (declare it in lib/lang/lang/errors.ov)",
+                        "  undeclared {}:{} (declare it in lib/lang/lang/errors.vun)",
                         at.line, at.id
                     )?;
                 }

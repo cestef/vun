@@ -1,7 +1,7 @@
 //! Conditions and branches: `and`, `or`, `!` and `if` heads take the condition type of `lang`
 //! (the table `forms`), and an `if` has the type both its branches can take.
 
-use overt_hir::tree::{BlockId, Cond, ExprId};
+use vun_hir::tree::{BlockId, Cond, ExprId};
 
 use super::{Known, Stage, Typer};
 use crate::ty::{Ty, TyKind};

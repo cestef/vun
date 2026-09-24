@@ -1,4 +1,4 @@
-//! Rust spellings of names from Overt sources.
+//! Rust spellings of names from Vun sources.
 
 use proc_macro2::{Ident, Span};
 

@@ -39,12 +39,15 @@ fn compare_reports_missing_unexpected_and_differing() {
 
 #[test]
 fn pages_hold_blocks_by_section() {
-    let page = "# id\n\n## Example\n\n```ov build.ov\npackage := 1;\n```\n\n```ov\nx := 1; //~ a.b\n```\n\n## Fix\n\n```console\n$ overt check\n```\n";
+    let page = "# id\n\n## Example\n\n```vun build.vun\npackage := 1;\n```\n\n```vun\nx := 1; //~ a.b\n```\n\n## Fix\n\n```console\n$ vun check\n```\n";
     let page = super::Page::parse(page);
     let example = page.section("Example");
     assert_eq!(example.len(), 2);
-    assert_eq!((example[0].file.as_deref(), example[0].text.as_str()), (Some("build.ov"), "package := 1;\n"));
-    assert_eq!((example[1].lang.as_str(), example[1].file.as_deref()), ("ov", None));
+    assert_eq!(
+        (example[0].file.as_deref(), example[0].text.as_str()),
+        (Some("build.vun"), "package := 1;\n")
+    );
+    assert_eq!((example[1].lang.as_str(), example[1].file.as_deref()), ("vun", None));
     assert_eq!(page.section("Fix")[0].lang, "console");
     assert!(page.section("Absent").is_empty());
 }

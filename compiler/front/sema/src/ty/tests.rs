@@ -13,6 +13,6 @@ fn equal_types_are_one_and_ranges_are_sets() {
     assert_ne!(byte_ref, u8);
     assert_eq!(TyKind::primitive(Primitive::Lang(Lang::f32)), TyKind::primitive(Primitive::Lang(Lang::f32)));
     let array = TyKind::array(Integer::from(4), u8);
-    let hash = |t| overt_hash::Hash::of_value(&t);
+    let hash = |t| vun_hash::Hash::of_value(&t);
     assert_eq!(hash(array), hash(TyKind::array(Integer::from(4), half_open)));
 }

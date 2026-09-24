@@ -1,10 +1,10 @@
-//! The `overt` command tree (spec 12, section 7), shared by every front end of the driver.
+//! The `vun` command tree (spec 12, section 7), shared by every front end of the driver.
 
-use overt_span::SourceMap;
 use std::io::{self, Write};
 use std::path::Path;
+use vun_span::SourceMap;
 
-use overt_command::{Action, Args, Command, Outcome, Param, ParamKind, Program};
+use vun_command::{Action, Args, Command, Outcome, Param, ParamKind, Program};
 
 use crate::{Registry, Session, VERSION, formats};
 
@@ -12,8 +12,8 @@ pub const PROGRAM: Program<Session> = Program {
     version: VERSION,
     configure: formats::configure,
     root: Command {
-        name: "overt",
-        about: "The Overt toolchain.",
+        name: "vun",
+        about: "The Vun toolchain.",
         params: &[formats::FORMAT],
         action: Action::Group(&[
             Command::planned("new", "create a package"),
@@ -119,7 +119,7 @@ const DUMPS: &[Command<Session>] = &[
     },
     Command {
         name: "manifest",
-        about: "the package manifest read from a build.ov",
+        about: "the package manifest read from a build.vun",
         params: &[FILE],
         action: Action::Run(|s, args, out| Stage::Manifest.dump(s, args, out)),
     },
@@ -139,7 +139,7 @@ const DUMPS: &[Command<Session>] = &[
     Command::planned("link", "the link plan"),
 ];
 
-/// What `overt dump` prints.
+/// What `vun dump` prints.
 #[derive(Clone, Copy)]
 enum Stage {
     Tokens,

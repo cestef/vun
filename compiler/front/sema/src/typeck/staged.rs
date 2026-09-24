@@ -7,9 +7,9 @@ use std::collections::BTreeMap;
 use std::mem::take;
 use std::sync::Arc;
 
-use overt_diag::DiagCtxt;
-use overt_hir::tree::{ExprId, ExprKind, Hir, PatKind, Staged};
-use overt_hir::visit::{walk_list, walk_staged};
+use vun_diag::DiagCtxt;
+use vun_hir::tree::{ExprId, ExprKind, Hir, PatKind, Staged};
+use vun_hir::visit::{walk_list, walk_staged};
 
 use super::{Known, Stage, Step, TypedBody, Typer};
 use crate::env::{Env, Selected};

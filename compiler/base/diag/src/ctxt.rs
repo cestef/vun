@@ -1,7 +1,7 @@
 //! Collecting diagnostics: the context, the sink interface and the error token.
 
-use overt_origin::OriginTable;
-use overt_span::{SourceMap, Span};
+use vun_origin::OriginTable;
+use vun_span::{SourceMap, Span};
 
 use crate::{Diagnostic, Severity, TraceFrame};
 

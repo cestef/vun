@@ -10,7 +10,7 @@ function's body is not implicitly unsafe (spec 01, section 4).
 
 ## Example
 
-```ov
+```vun
 peek := (p: *u32) -> u32 {
     p.* //~ safety.requires_unsafe
 };
@@ -20,7 +20,7 @@ peek := (p: *u32) -> u32 {
 
 Wrap the operation in an `unsafe` block, which states that the pointer is valid here:
 
-```ov
+```vun
 peek := (p: *u32) -> u32 {
     unsafe { p.* }
 };

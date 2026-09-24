@@ -2,7 +2,7 @@
 //! `#[comptime.fuel(n)]` on the declaration of the function called. The attribute is the
 //! primitive `lang.comptime.fuel`, read as data.
 
-use overt_query::Cx;
+use vun_query::Cx;
 
 use crate::Primitive;
 use crate::env::Env;

@@ -7,7 +7,7 @@ a `bool` with `c`, and `a..b..c` has no meaning. Other operators associate to th
 
 ## Example
 
-```ov
+```vun
 inside := (lo: u8, x: u8, hi: u8) -> bool {
     lo < x < hi //~ syntax.chained_operator
 };
@@ -17,7 +17,7 @@ inside := (lo: u8, x: u8, hi: u8) -> bool {
 
 Join the comparisons with `and`, or add parentheses when a chain is really meant:
 
-```ov
+```vun
 inside := (lo: u8, x: u8, hi: u8) -> bool {
     lo < x and x < hi
 };

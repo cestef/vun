@@ -29,7 +29,7 @@ as timers and peripheral transfers yield those requests; ordinary asynchronous c
 Wakeups are therefore owned by the executor rather than threaded through every resumption, and
 executors, timers and channels are library code.
 
-```ov
+```vun
 blink := (led: &mut Led, timer: &Timer) -> Async(never) {
     for { led.toggle(); yield ..timer.after(.ms(500)); }
 };

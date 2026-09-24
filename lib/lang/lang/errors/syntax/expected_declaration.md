@@ -9,7 +9,7 @@ following is reported too.
 
 ## Example
 
-```ov
+```vun
 limit := 64;
 /// The largest frame, in bytes. //~ syntax.expected_declaration
 ```
@@ -18,7 +18,7 @@ limit := 64;
 
 Place the doc comment before the declaration it documents:
 
-```ov
+```vun
 /// The largest frame, in bytes.
 limit := 64;
 ```

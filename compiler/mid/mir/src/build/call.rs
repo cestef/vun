@@ -2,12 +2,12 @@
 //! impls (spec 01, section 4), and an argument for a `Code(T)` parameter is passed as code
 //! (spec 03, section 4).
 
-use overt_hir::tree::{Arg, Entry, ExprId, ExprKind};
-use overt_intern::Symbol;
-use overt_origin::OriginId;
-use overt_sema::env::Env;
-use overt_sema::member::MemberValue;
-use overt_sema::ty::Value;
+use vun_hir::tree::{Arg, Entry, ExprId, ExprKind};
+use vun_intern::Symbol;
+use vun_origin::OriginId;
+use vun_sema::env::Env;
+use vun_sema::member::MemberValue;
+use vun_sema::ty::Value;
 
 use super::{Builder, Unbuilt};
 use crate::body::{Aggregate, Operand, Rvalue};

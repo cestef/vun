@@ -1,7 +1,7 @@
 //! Strings, characters and their escapes.
 
-use overt_diag::{ChildKind, Diagnostic, Msg, errors};
-use overt_grammar::TokenKind;
+use vun_diag::{ChildKind, Diagnostic, Msg, errors};
+use vun_grammar::TokenKind;
 
 use super::{
     BYTE_ESCAPE_DIGITS, ESCAPE, Lexer, SIMPLE_ESCAPES, UNICODE_ESCAPE_DIGITS, is_ident_continue,

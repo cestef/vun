@@ -4,9 +4,9 @@
 //! Unchecked operations: calling a function whose type is marked, `.*` on a raw pointer, any
 //! access to a top-level `mut` binding, and a member of a `lang.mem.Cell`.
 
-use overt_diag::{Diagnostic, Msg, errors};
-use overt_hir::resolve::Res;
-use overt_hir::tree::{ExprId, ExprKind};
+use vun_diag::{Diagnostic, Msg, errors};
+use vun_hir::resolve::Res;
+use vun_hir::tree::{ExprId, ExprKind};
 
 use super::{Known, Typer};
 use crate::Primitive;
@@ -42,7 +42,7 @@ impl Typer<'_, '_, '_> {
             .text(", stating that what it relies on holds here");
         let d = Diagnostic::error(errors::SAFETY_REQUIRES_UNSAFE, msg)
             .at(self.hir().exprs[expr].origin, None)
-            .child(overt_diag::ChildKind::Help, help);
+            .child(vun_diag::ChildKind::Help, help);
         self.diag.error(d);
     }
 

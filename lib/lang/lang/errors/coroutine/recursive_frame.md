@@ -9,7 +9,7 @@ so it is an error unless the recursion goes through an `Own` (spec 06, section 1
 
 ## Example
 
-```ov
+```vun
 Tree := struct { value: u32, children: &[Tree] };
 
 walk := (t: &Tree) -> Iter(u32) { //~ coroutine.recursive_frame
@@ -23,7 +23,7 @@ walk := (t: &Tree) -> Iter(u32) { //~ coroutine.recursive_frame
 Recurse in an ordinary function, whose frames live on the stack, or allocate each nested frame in
 an `Own`:
 
-```ov
+```vun
 Tree := struct { value: u32, children: &[Tree] };
 
 sum := (t: &Tree) -> u64 {

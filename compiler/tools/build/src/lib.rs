@@ -1,4 +1,4 @@
-//! The build graph: evaluation of build.ov, steps, caching.
+//! The build graph: evaluation of build.vun, steps, caching.
 
 pub mod index;
 pub mod layout;

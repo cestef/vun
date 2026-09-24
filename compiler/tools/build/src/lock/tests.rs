@@ -1,4 +1,4 @@
-use overt_hash::Hash;
+use vun_hash::Hash;
 
 use super::{Lock, Locked, Replaced, Replacing};
 use crate::manifest::{Identity, Version};

@@ -12,7 +12,7 @@ mod tests;
 
 use std::path::{Path, PathBuf};
 
-use overt_hash::Hash;
+use vun_hash::Hash;
 
 pub use collect::{Collected, Listed};
 
@@ -36,9 +36,9 @@ pub struct Store {
 
 impl Store {
     /// Names the store's directory instead of the user's cache.
-    pub const ENV: &str = "OVERT_STORE";
+    pub const ENV: &str = "VUN_STORE";
     /// The toolchain's directory in the user's cache.
-    pub const CACHE: &str = "overt";
+    pub const CACHE: &str = "vun";
     pub const DIR: &str = "store";
     /// Digest characters naming the first level: 32 * 32 = 1024 directories in base32.
     pub const SPLIT: usize = 2;
@@ -54,7 +54,7 @@ impl Store {
         Self { root: dir.to_path_buf() }
     }
 
-    /// The user's store: the directory named by [`Self::ENV`], or `overt/store` in the user's
+    /// The user's store: the directory named by [`Self::ENV`], or `vun/store` in the user's
     /// cache directory (XDG on Unix, including macOS, as command-line tools expect; the known
     /// folder on Windows), or in the temporary directory for a user without a home.
     #[must_use]

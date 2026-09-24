@@ -2,8 +2,8 @@
 //! a scoped value inside a type marked `#[kind.free]`, from operands whose types do not, is where
 //! the borrow is stored.
 
-use overt_diag::{Msg, errors};
-use overt_mir::{Operand, Rvalue};
+use vun_diag::{Msg, errors};
+use vun_mir::{Operand, Rvalue};
 
 use super::Checker;
 

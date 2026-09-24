@@ -1,6 +1,6 @@
 [package]
-name = "overt-grammar"
-description = "Token and node kinds, generated from lang/syntax/grammar.ov."
+name = "vun-grammar"
+description = "Token and node kinds, generated from lang/syntax/grammar.vun."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

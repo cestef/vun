@@ -1,7 +1,7 @@
 //! What primitives do when applied at compile time. Sema and the interpreter both apply them
 //! through here, so each primitive has one definition.
 
-use overt_grammar::Narrowing;
+use vun_grammar::Narrowing;
 
 use crate::Primitive;
 use crate::env::{Env, Unevaluated};

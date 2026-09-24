@@ -1,6 +1,6 @@
 //! Target descriptions: layout, ABIs, features, entry symbol.
 //!
-//! Targets are data. The canonical descriptions are Overt values in `lib/targets`; this crate is
+//! Targets are data. The canonical descriptions are Vun values in `lib/targets`; this crate is
 //! their Rust mirror, filled in by evaluating those values.
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]

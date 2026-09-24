@@ -3,8 +3,8 @@
 //! MIR and LIR checks and transforms implement [`Pass`]. A [`PassManager`] orders them by their
 //! declared requirements, so adding a pass never means editing a hard-coded pipeline.
 
-use overt_diag::DiagCx;
-use overt_graph::Requirements;
+use vun_diag::DiagCx;
+use vun_graph::Requirements;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PassResult {
@@ -31,7 +31,7 @@ pub trait Pass<Ir: ?Sized> {
 }
 
 /// An error in the declared dependencies of a set of passes, by pass id.
-pub type OrderError = overt_graph::OrderError<&'static str>;
+pub type OrderError = vun_graph::OrderError<&'static str>;
 
 /// Orders and runs registered passes.
 pub struct PassManager<Ir: ?Sized> {

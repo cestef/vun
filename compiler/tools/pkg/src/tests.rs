@@ -1,15 +1,15 @@
-use overt_fs::{Mode, Modes, Scratch};
-use overt_hash::Snapshot;
+use vun_fs::{Mode, Modes, Scratch};
+use vun_hash::Snapshot;
 
 use super::{FORMATS, Failure, Mirror, Scheme, Schemes};
 
 /// A package tree with a nested file, an executable one and a path past the ustar name field.
 fn tree(dir: &Scratch) -> Vec<String> {
-    dir.write("src/build.ov", "package := 1;");
-    dir.write("src/demo/a.ov", "a := 1;");
+    dir.write("src/build.vun", "package := 1;");
+    dir.write("src/demo/a.vun", "a := 1;");
     dir.write("src/configure", "#!/bin/sh\n").set_mode(Mode::Executable).unwrap();
-    dir.write(format!("src/demo/{}/deep.ov", "d".repeat(120)), "deep := 1;");
-    ["build.ov", "configure", "demo"].map(str::to_owned).to_vec()
+    dir.write(format!("src/demo/{}/deep.vun", "d".repeat(120)), "deep := 1;");
+    ["build.vun", "configure", "demo"].map(str::to_owned).to_vec()
 }
 
 #[test]

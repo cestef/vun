@@ -4,7 +4,7 @@ One primitive covers iterators, generators, async I/O and hand-written state mac
 
 ## 1. The protocol
 
-```ov
+```vun
 // lang
 Step := ($Y: type, $R: type) -> type { enum { yielded(Y), done(R) } };
 
@@ -49,7 +49,7 @@ exactly `for y in e { yield y; }` (appendix B), so there is no hidden resume inp
 
 ## 3. Iterators and async are aliases
 
-```ov
+```vun
 // std
 Iter := ($T: type) -> Interface { Coroutine(T, ()) };
 Async := ($R: type) -> Interface { Coroutine(task.Wait, R) };
@@ -59,7 +59,7 @@ Async := ($R: type) -> Interface { Coroutine(task.Wait, R) };
 (timers, peripherals, channels) yield it; ordinary async code only delegates with `yield ..`. The
 executor, not the task, owns wakeups, so no waker is threaded through every resume.
 
-```ov
+```vun
 evens := (limit: u32) -> Iter(u32) {
     for i in 0..limit { if i % 2 == 0 { yield i; } }
 };

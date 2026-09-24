@@ -9,10 +9,10 @@ mod frames;
 pub mod machine;
 pub mod memory;
 
-use overt_mir::Mir;
-use overt_query::Cx;
-use overt_sema::env::Unevaluated;
-use overt_sema::eval::{Evaluator, Instance, Instantiation, Metered};
+use vun_mir::Mir;
+use vun_query::Cx;
+use vun_sema::env::Unevaluated;
+use vun_sema::eval::{Evaluator, Instance, Instantiation, Metered};
 
 use machine::Frame;
 

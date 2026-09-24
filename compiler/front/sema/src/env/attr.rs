@@ -1,7 +1,7 @@
 //! Attributes as data (spec 02, section 5): an attribute the compiler acts on is a call of a
 //! `lang` primitive, found by its value, never by its name.
 
-use overt_hir::tree::{Arg, Entry, ExprId, ExprKind};
+use vun_hir::tree::{Arg, Entry, ExprId, ExprKind};
 
 use super::Env;
 use crate::Primitive;

@@ -1,9 +1,9 @@
 //! Moves out of borrows: a linear value read whole from a place whose path crosses the `.*` of
 //! a borrow. Crossing an owner's `.*` is not one, for an owner held by value owns its target.
 
-use overt_mir::{Body, Local, Operand, Place, Projection, Rvalue};
-use overt_origin::OriginId;
-use overt_query::Cx;
+use vun_mir::{Body, Local, Operand, Place, Projection, Rvalue};
+use vun_origin::OriginId;
+use vun_query::Cx;
 
 use crate::types::PlaceTypes;
 

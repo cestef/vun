@@ -8,7 +8,7 @@ section 8). A spread that selects a name its namespace does not export is report
 
 ## Example
 
-```ov
+```vun
 area := (w: u32, h: u32) -> u64 {
     w * hieght //~ names.unresolved
 };
@@ -18,7 +18,7 @@ area := (w: u32, h: u32) -> u64 {
 
 Spell the name as it is bound, or declare it:
 
-```ov
+```vun
 area := (w: u32, h: u32) -> u64 {
     w * h
 };

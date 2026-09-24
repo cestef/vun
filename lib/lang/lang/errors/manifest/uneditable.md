@@ -1,8 +1,8 @@
 # manifest.uneditable
 
-`overt pkg add` cannot write the new dependency into the manifest.
+`vun pkg add` cannot write the new dependency into the manifest.
 
-`overt pkg add` declares a dependency by inserting its entry into `.deps` as a literal, the inverse
+`vun pkg add` declares a dependency by inserting its entry into `.deps` as a literal, the inverse
 of the reader, keeping the manifest's layout (spec 12, section 3). The entry's name becomes a
 field name, so it must be an identifier; `--name` overrides the name the package states. The
 cause says what cannot be written. The manifest is left unchanged.
@@ -10,9 +10,9 @@ cause says what cannot be written. The manifest is left unchanged.
 ## Example
 
 ```console
-$ overt pkg add ../hal --name hal-next
+$ vun pkg add ../hal --name hal-next
 error[manifest.uneditable]: cannot declare `hal-next` in this manifest
-   ╭▸ ~/app/build.ov:1:12
+   ╭▸ ~/app/build.vun:1:12
    │
  1 │   package := .{
    │ ┏━━━━━━━━━━━━┛
@@ -32,6 +32,6 @@ error[manifest.uneditable]: cannot declare `hal-next` in this manifest
 Give a name that is an identifier:
 
 ```console
-$ overt pkg add ../hal --name hal_next
+$ vun pkg add ../hal --name hal_next
 added hal_next at ../hal
 ```

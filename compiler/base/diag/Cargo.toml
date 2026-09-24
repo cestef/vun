@@ -1,5 +1,5 @@
 [package]
-name = "overt-diag"
+name = "vun-diag"
 description = "The diagnostic model: labels, fixes, severities, sinks."
 version.workspace = true
 edition.workspace = true
@@ -10,5 +10,5 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
-overt-span.workspace = true
-overt-origin.workspace = true
+vun-span.workspace = true
+vun-origin.workspace = true

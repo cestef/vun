@@ -2,7 +2,7 @@
 
 use std::borrow::Cow;
 
-use overt_grammar::TokenKind;
+use vun_grammar::TokenKind;
 
 use super::{BYTE_ESCAPE_DIGITS, ESCAPE, RAW_STRING_LINE, SIMPLE_ESCAPES};
 

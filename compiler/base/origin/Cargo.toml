@@ -1,5 +1,5 @@
 [package]
-name = "overt-origin"
+name = "vun-origin"
 description = "Origin chains tracing every compiler entity back to source."
 version.workspace = true
 edition.workspace = true
@@ -10,7 +10,7 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
-overt-hash.workspace = true
-overt-intern.workspace = true
+vun-hash.workspace = true
+vun-intern.workspace = true
 boxcar.workspace = true
-overt-span.workspace = true
+vun-span.workspace = true

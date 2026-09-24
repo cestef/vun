@@ -1,5 +1,5 @@
 [package]
-name = "overt-pass"
+name = "vun-pass"
 description = "Passes over an intermediate representation, with declared dependencies."
 version.workspace = true
 edition.workspace = true
@@ -10,6 +10,6 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
-overt-graph.workspace = true
-overt-diag.workspace = true
-overt-origin.workspace = true
+vun-graph.workspace = true
+vun-diag.workspace = true
+vun-origin.workspace = true

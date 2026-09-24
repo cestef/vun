@@ -1,5 +1,5 @@
 [package]
-name = "overt-query"
+name = "vun-query"
 description = "The demand-driven, incremental query engine."
 version.workspace = true
 edition.workspace = true
@@ -10,5 +10,5 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
-overt-hash.workspace = true
-overt-codec.workspace = true
+vun-hash.workspace = true
+vun-codec.workspace = true

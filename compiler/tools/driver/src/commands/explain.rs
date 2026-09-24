@@ -1,11 +1,11 @@
-//! `overt explain <id>`: the explanation page of a diagnostic, offline (spec 10, section 1).
+//! `vun explain <id>`: the explanation page of a diagnostic, offline (spec 10, section 1).
 
 use std::io::{self, Write};
 use std::path::Path;
 
-use overt_command::{Action, Args, Command, Outcome, Param, ParamKind};
-use overt_diag::{ChildKind, Diagnostic, Msg, errors};
-use overt_suggest::closest;
+use vun_command::{Action, Args, Command, Outcome, Param, ParamKind};
+use vun_diag::{ChildKind, Diagnostic, Msg, errors};
+use vun_suggest::closest;
 
 use crate::Session;
 use crate::packages::LIBRARY;

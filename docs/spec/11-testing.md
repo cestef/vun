@@ -12,7 +12,7 @@ load time.
 
 **The parameters select what kind of test it is:**
 
-```ov
+```vun
 #[test]
 crc_vector := () { assert(crc32("123456789") == 0xCBF4_3926); };
 
@@ -40,11 +40,11 @@ election := (s: &mut testing.Sim) {
 
 | Parameters | Kind | Run by |
 |------------|------|--------|
-| none | unit test | `overt test` |
-| values of ordinary types | property test | `overt test` (seeded cases), `overt fuzz` (coverage-guided) |
+| none | unit test | `vun test` |
+| values of ordinary types | property test | `vun test` (seeded cases), `vun fuzz` (coverage-guided) |
 | `&[u8]` | fuzz target | same |
-| `&mut testing.Bench` | benchmark | `overt bench` |
-| `&mut testing.Sim` | simulation | `overt test`, `overt sim --seeds N` |
+| `&mut testing.Bench` | benchmark | `vun bench` |
+| `&mut testing.Sim` | simulation | `vun test`, `vun sim --seeds N` |
 
 Attributes: `#[test.fuel(n)]` sets a deterministic step budget instead of a wall-clock timeout;
 `#[test.ignore(.reason = "...")]`; `#[test.on(.target)]` restricts a test to target runs.
@@ -65,11 +65,11 @@ A type overrides its generator by implementing `testing.Arbitrary`. A single tes
 `#[test.gen(...)]` on a parameter.
 
 Corpus and crash inputs live in `fuzz/<test path>/`, are committed, and replay as regressions on
-every `overt test`.
+every `vun test`.
 
 ## 3. Execution modes
 
-`overt test --on <mode>`:
+`vun test --on <mode>`:
 
 - **`interp`** (default): the reference interpreter. It traps deterministically on every item of
   appendix C in `unsafe` code, including aliasing violations (spec 05, section 8), so every test run
@@ -97,16 +97,16 @@ is TigerBeetle's and FoundationDB's approach, with no runtime support.
 - `--measure time` (default natively): statistics over wall-clock samples.
 - `--measure instructions`: counts LIR operations in the interpreter; deterministic, suitable as a CI
   gate. Natively, hardware counters where available; on Cortex-M, the DWT cycle counter.
-- Baselines live in `.overt/bench/`; `--fail-over 3%` fails the run on regression.
+- Baselines live in `.vun/bench/`; `--fail-over 3%` fails the run on regression.
 
 ## 6. Other checks
 
 - **Snapshots**: `testing.snapshot(v)` renders a value by reflection into
-  `tests/snapshots/<test path>.snap`; `overt test --accept` updates them.
+  `tests/snapshots/<test path>.snap`; `vun test --accept` updates them.
 - **Doctests**: code blocks in doc comments compile and run in the interpreter.
 - **Rejection tests**: files in `tests/reject/` annotated with expected diagnostics (spec 10,
   section 7).
-- **Coverage**: `overt cover` uses MIR region counters, identical on every backend; output is lcov.
-- **Mutation testing** (later): `overt mutate` mutates MIR and reruns tests in the interpreter,
+- **Coverage**: `vun cover` uses MIR region counters, identical on every backend; output is lcov.
+- **Mutation testing** (later): `vun mutate` mutates MIR and reruns tests in the interpreter,
   without rebuilding.
 - **C dependencies** can be built with sanitizers by the build step that compiles them.

@@ -1,7 +1,7 @@
 //! Walking a command tree over the arguments.
 
-use overt_diag::{ChildKind, DiagId, Diagnostic, Msg, errors};
-use overt_suggest::closest;
+use vun_diag::{ChildKind, DiagId, Diagnostic, Msg, errors};
+use vun_suggest::closest;
 
 use crate::{Args, Command, HELP, HELP_COMMAND, Param, ParamKind, Program, VERSION};
 
@@ -53,7 +53,7 @@ impl<'p, Cx> Selected<'p, Cx> {
         declared.filter(|p| p.kind != ParamKind::Positional).chain(builtins)
     }
 
-    /// The command line selecting these commands: `overt dump cst`.
+    /// The command line selecting these commands: `vun dump cst`.
     #[must_use]
     pub fn invocation(&self) -> String {
         self.iter().map(|c| c.name).collect::<Vec<_>>().join(" ")

@@ -3,7 +3,7 @@
 //! alignment and C-style padding; an enum with one payload-free variant and one payload variant
 //! whose payload has unused patterns keeps its tag in one of them (the niche rule).
 
-use overt_query::{Cx, Cycle, Query};
+use vun_query::{Cx, Cycle, Query};
 
 use crate::Primitive;
 use crate::env::Env;

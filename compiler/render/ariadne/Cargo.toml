@@ -1,5 +1,5 @@
 [package]
-name = "overt-render-ariadne"
+name = "vun-render-ariadne"
 description = "Terminal diagnostics through ariadne."
 version.workspace = true
 edition.workspace = true
@@ -10,7 +10,7 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
-overt-diag.workspace = true
-overt-origin.workspace = true
-overt-span.workspace = true
+vun-diag.workspace = true
+vun-origin.workspace = true
+vun-span.workspace = true
 ariadne.workspace = true

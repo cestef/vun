@@ -15,16 +15,16 @@ mod free;
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use overt_diag::{ChildKind, DiagCtxt, DiagId, Diagnostic, Msg};
-use overt_grammar::{Access, BORROWS, Extent, TokenKind};
-use overt_index::{IndexVec, index};
-use overt_intern::Symbol;
-use overt_mir::{BlockId, Body, Local, Mir, Operand, Place, Projection, Rvalue};
-use overt_origin::OriginId;
-use overt_query::{Cx, Query};
-use overt_sema::eval::Instantiation;
-use overt_sema::kinds::{Kind, Kinds};
-use overt_sema::ty::Value;
+use vun_diag::{ChildKind, DiagCtxt, DiagId, Diagnostic, Msg};
+use vun_grammar::{Access, BORROWS, Extent, TokenKind};
+use vun_index::{IndexVec, index};
+use vun_intern::Symbol;
+use vun_mir::{BlockId, Body, Local, Mir, Operand, Place, Projection, Rvalue};
+use vun_origin::OriginId;
+use vun_query::{Cx, Query};
+use vun_sema::eval::Instantiation;
+use vun_sema::kinds::{Kind, Kinds};
+use vun_sema::ty::Value;
 
 index! {
     struct LoanId;

@@ -68,7 +68,7 @@ A place whose state is ambiguous at an exit is a compile error. This removes the
 held; on the others the ones still held must be consumed some other way. An exit inside a deferred
 statement (a `?` in it) runs only the statements deferred before it.
 
-```ov
+```vun
 load := (fs: &mut Fs, a: &mut Alloc, path: &[u8]) -> Result(Own(Config), Error) {
     f := fs.open(path).map_err(Error.fs)?;
     defer fs.close(f);                    // every exit
@@ -85,7 +85,7 @@ A scoped value (a borrow, or anything containing one) may live in locals, parame
 other scoped types. It may be returned only from a function taking at least one borrow, and it is
 then tied to **all** of that call's borrowed arguments. That rule replaces lifetime annotations.
 
-```ov
+```vun
 longest := (a: &[u8], b: &[u8]) -> &[u8] { if a.len() >= b.len() { a } else { b } };
 
 Parser := struct { input: &[u8], pos: usize };           // scoped
@@ -175,4 +175,4 @@ Part of the language definition, not optimizer folklore:
   may mark it read-only and non-aliasing for writes.
 - If a function's result type is free, none of its borrow parameters escape (`captures(none)`).
 - Violating these through raw pointers is undefined behavior (appendix C). The reference
-  interpreter checks them, so `overt test` detects violations in `unsafe` code.
+  interpreter checks them, so `vun test` detects violations in `unsafe` code.

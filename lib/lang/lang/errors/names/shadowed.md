@@ -9,7 +9,7 @@ library never breaks its users.
 
 ## Example
 
-```ov
+```vun
 total := (xs: &[u32]) -> u64 {
     sum: u64 = 0;
     for x in xs {
@@ -23,7 +23,7 @@ total := (xs: &[u32]) -> u64 {
 
 Assign to the existing binding, made `mut`, or give the new one its own name:
 
-```ov
+```vun
 total := (xs: &[u32]) -> u64 {
     mut sum: u64 = 0;
     for x in xs {

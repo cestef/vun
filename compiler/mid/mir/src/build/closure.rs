@@ -2,9 +2,9 @@
 //! function takes the captures before its parameters. A capture by borrow (`[&mut n]`) holds the
 //! borrow, so the body reaches `n` through it.
 
-use overt_hir::resolve::Res;
-use overt_hir::tree::{BinderId, Entry, ExprId, ExprKind, List};
-use overt_origin::OriginId;
+use vun_hir::resolve::Res;
+use vun_hir::tree::{BinderId, Entry, ExprId, ExprKind, List};
+use vun_origin::OriginId;
 
 use super::{Builder, Unbuilt};
 use crate::body::{Aggregate, Local, Operand, Rvalue};

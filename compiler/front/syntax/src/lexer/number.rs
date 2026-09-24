@@ -1,7 +1,7 @@
 //! Integer and float literals.
 
-use overt_diag::{Msg, errors};
-use overt_grammar::TokenKind;
+use vun_diag::{Msg, errors};
+use vun_grammar::TokenKind;
 
 use super::{Lexer, RADIX_PREFIXES, is_ident_continue};
 

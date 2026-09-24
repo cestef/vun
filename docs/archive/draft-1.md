@@ -1,6 +1,6 @@
-# Overt: language design, draft 1
+# Vun: language design, draft 1
 
-> Working name. Rename freely; nothing below depends on it. Source extension `.ov`, CLI `overt`.
+> Working name. Rename freely; nothing below depends on it. Source extension `.vun`, CLI `vun`.
 
 ## 0. Thesis
 
@@ -21,7 +21,7 @@ explained by the concept list plus the desugaring table, it is a bug in the desi
 syntax  --desugars into-->  lang  <--built on--  std  <--built on--  your code
 ```
 
-- **`lang`** is a package written in ordinary Overt source. It declares, with real signatures and
+- **`lang`** is a package written in ordinary Vun source. It declares, with real signatures and
   doc comments, every primitive the compiler provides: integer and pointer operations, the
   `Coroutine` interface, volatile and atomic access, reflection. A function declared without a
   body is provided from outside; in `lang` the compiler provides it, anywhere else the linker does
@@ -31,7 +31,7 @@ syntax  --desugars into-->  lang  <--built on--  std  <--built on--  your code
   to a named `lang` item (appendix B). You can read what they mean by reading `lang`.
 - **`std` is plain library code on top of `lang`.** `Option`, `Result`, allocators, `Mmio`,
   `Dyn`, executors, formatting, the OS layer, target startup code: all ordinary, all replaceable.
-- **What is available to you is regular Overt.** There is nothing `std` can do that your code
+- **What is available to you is regular Vun.** There is nothing `std` can do that your code
   cannot.
 
 ### Guarantees
@@ -85,7 +85,7 @@ mut out take                                      borrow modes (only after `&`)
 
 What is *not* a keyword, and where it went instead:
 
-| Elsewhere a keyword | In Overt |
+| Elsewhere a keyword | In Vun |
 |---------------------|----------|
 | `while`, `loop` | `for cond { }`, `for { }` (one loop form) |
 | `static` | a top-level `const` or `var` |
@@ -121,7 +121,7 @@ and matched with `.some(x)`. Struct literals `.{ .x = 1 }` destructure as `.{ .x
 
 ### 2.3 Shape of a program
 
-```ov
+```vun
 const Point = struct { x: i32, y: i32 };
 
 const mid = fn(a: u32, b: u32) -> u32 {
@@ -149,8 +149,8 @@ fields are its files and subdirectories. A package is its root directory. The bu
 packages a package depends on, and **each dependency is a binding in scope under its declared
 name**. That is the whole module system:
 
-```ov
-const uart = mydriver.serial.uart;   // file mydriver/serial/uart.ov of package `mydriver`
+```vun
+const uart = mydriver.serial.uart;   // file mydriver/serial/uart.vun of package `mydriver`
 pub const Baud = uart.Baud;          // re-export is just a binding
 ```
 
@@ -161,7 +161,7 @@ another one, or for none.
 
 ## 3. Types as comptime values
 
-```ov
+```vun
 fn Pair(comptime T: type) -> type {
     struct { a: T, b: T }
 }
@@ -182,7 +182,7 @@ const P = Pair(u16);   // same arguments, same type
 
 `std.meta` (on top of `lang.meta`) turns types into plain data and back:
 
-```ov
+```vun
 const info = std.meta.info(Point);        // plain struct: kind, fields, size, align, attributes
 const Point3 = std.meta.build(info.with_field("z", i32));
 std.meta.size(Point)                      // 8
@@ -195,7 +195,7 @@ There is no separate macro language and there are no textual macros.
 An interface is a type literal describing a set of types. Used where a type is expected, it
 constrains a comptime parameter.
 
-```ov
+```vun
 pub const Writer = interface {
     const Error: type;
     fn write(self: &mut Self, bytes: &[u8]) -> Result(usize, Self.Error);
@@ -233,7 +233,7 @@ same way, statically dispatched.
 
 An attribute is any comptime value, attached with `#[...]`:
 
-```ov
+```vun
 #[link.section(".vectors"), link.keep]
 pub const vectors = ...;
 
@@ -255,7 +255,7 @@ serializer. One mechanism, not one per feature.
 
 Every integer type is `Int(lo..hi)` or `Int(lo..=hi)`. The familiar names are prelude bindings:
 
-```ov
+```vun
 const u8    = Int(0..=255);
 const i32   = Int(-2147483648..=2147483647);
 const u3    = Int(0..=7);                    // arbitrary widths are not special
@@ -289,7 +289,7 @@ Compound assignment is sugar: `x += y` is `x = (x + y).to(TypeOf(x))`; `x +%= y`
 `x +|= y` uses `.sat`. So the trap sites in integer code are exactly: `.to`, a compound
 assignment, a division by a possibly-zero value, and an index not proven in range.
 
-```ov
+```vun
 const N = 64;
 const Index = Int(0..N);
 
@@ -321,7 +321,7 @@ functions: `Result(u8, E).err` has type `fn(E) -> Result(u8, E)`.
 
 `match` is exhaustive. `if e is p { a } else { b }` is sugar for a two-arm `match`.
 
-```ov
+```vun
 match cmd {
     .read(r) => handle_read(r),
     .write(w) if w.len > 0 => handle_write(w),
@@ -385,7 +385,7 @@ exits where the value was already moved. Which exits those are is known statical
 runtime flag. A place whose state is ambiguous at an exit is a compile error. This removes the need
 for `errdefer`:
 
-```ov
+```vun
 fn load(fs: &mut Fs, a: &mut Alloc, path: &[u8]) -> Result(Own(Config), Error) {
     const f = try fs.open(path) else Error.fs;
     defer fs.close(f);                  // every exit
@@ -430,7 +430,7 @@ A scoped value (a borrow, or anything containing one) may live in locals, parame
 other scoped types. It may be returned only from a function taking at least one borrow, and it is
 then tied to **all** of that call's borrowed arguments.
 
-```ov
+```vun
 fn longest(a: &[u8], b: &[u8]) -> &[u8] { if a.len >= b.len { a } else { b } }
 
 const Parser = struct { input: &[u8], pos: usize };   // scoped
@@ -466,7 +466,7 @@ its own. There is no auto-deref beyond that one step and no `Deref` trait.
 
 A closure names its captures, written exactly as they would be passed:
 
-```ov
+```vun
 var count: u32 = 0;
 const inc = fn [&mut count] (n: u8) { count += n };   // scoped: captures a borrow
 const dbl = fn [x] () -> u32 { x * 2 };                // free and copy: x captured by value
@@ -481,7 +481,7 @@ follow from its captures like any struct's. A closure with no captures is a plai
 
 One primitive covers iterators, generators, async I/O and hand-written state machines.
 
-```ov
+```vun
 // in lang
 pub const Step = fn(comptime Y: type, comptime R: type) -> type { enum { yielded(Y), done(R) } };
 
@@ -513,14 +513,14 @@ pub const Coroutine = fn(comptime In: type, comptime Y: type, comptime R: type) 
 
 Built on it, in `std`:
 
-```ov
+```vun
 pub const Iter  = fn(comptime T: type) -> type { Coroutine((), T, ()) };
 pub const Async = fn(comptime R: type) -> type { Coroutine(&task.Waker, task.Pending, R) };
 ```
 
 `for x in e` iterates any `Iter`: slices, ranges and generator functions alike.
 
-```ov
+```vun
 fn evens(limit: u32) -> Iter(u32) {
     for i in 0..limit { if i % 2 == 0 { yield i; } }
 }
@@ -561,7 +561,7 @@ masked on single-core targets, plus a spinlock on multi-core ones. As a conseque
 that is safe to share is safe to share across threads and interrupts**, so no `Send`/`Sync`
 properties are needed. The unsynchronized `lang.mem.Cell(T)` is `unsafe`-only.
 
-```ov
+```vun
 const ticks: Shared(u32) = .init(0);
 
 #[panic.never]
@@ -578,7 +578,7 @@ critical section.
 The build names one declaration as the program. Its type comes from whatever runtime package you
 use, and it describes everything the compiler and linker need from you:
 
-```ov
+```vun
 // hosted
 pub const program = std.os.Program{ .main = main };
 fn main(sys: &mut std.os.System) -> std.os.Exit { ... }
@@ -606,7 +606,7 @@ fn main(p: stm32f4.Peripherals) -> never { ... }
   ends its execution context.
 - **`#[panic.never]`** on a function is checked transitively: it may contain no undischarged trap
   site and may only call `#[panic.never]` functions.
-- `overt check --traps` lists every remaining trap site and why it remains.
+- `vun check --traps` lists every remaining trap site and why it remains.
 
 ### 9.4 Function types and resource bounds
 
@@ -621,11 +621,11 @@ graph. Recursion is rejected under a `stack.max` bound unless its depth is compt
 ### 9.5 Foreign code
 
 - A bodiless function with `#[abi.c]` is a C import; calling it is `unsafe`.
-- `#[link.export("name")]` exports an Overt function or constant under a C symbol.
-- `overt bind foo.h` (a tool, not a language feature) generates Overt declarations from C headers
-  through libclang. `overt header` emits a C header for an Overt library. Together with static
-  library output, this lets Overt code live inside ESP-IDF, Zephyr, FreeRTOS or vendor CMake
-  projects, and lets C live inside Overt ones.
+- `#[link.export("name")]` exports a Vun function or constant under a C symbol.
+- `vun bind foo.h` (a tool, not a language feature) generates Vun declarations from C headers
+  through libclang. `vun header` emits a C header for a Vun library. Together with static
+  library output, this lets Vun code live inside ESP-IDF, Zephyr, FreeRTOS or vendor CMake
+  projects, and lets C live inside Vun ones.
 - Inline assembly is `lang.arch.asm(...)`, a `lang` function taking the template and operands as
   comptime data. It is `unsafe`.
 
@@ -644,14 +644,14 @@ graph. Recursion is rejected under a `stack.max` bound unless its depth is compt
 
 ## 11. Build
 
-`build.ov` is ordinary Overt, evaluated at comptime with a `&mut Build` capability. It produces a
+`build.vun` is ordinary Vun, evaluated at comptime with a `&mut Build` capability. It produces a
 build graph, which the driver executes. Comptime cannot run programs; build steps can, and they are
-declared explicitly as graph nodes (C compilers, `overt bind`, code signing).
+declared explicitly as graph nodes (C compilers, `vun bind`, code signing).
 
-```ov
+```vun
 pub fn build(b: &mut Build) {
     const fw = b.program(.{
-        .root = "src/main.ov",
+        .root = "src/main.vun",
         .program = "program",
         .target = targets.thumbv7em_none_eabihf,
         .deps = .{ .stm32f4 = b.dep("stm32f4") },
@@ -681,16 +681,16 @@ frontend can be swapped: backends, linkers, targets, analyses, evaluators and di
 
 ```
  source
-   |  overt-syntax      lossless CST, error-recovering parser
+   |  vun-syntax      lossless CST, error-recovering parser
    v
  HIR                   desugaring into `lang` items (appendix B), name resolution
-   |  overt-sema        demand-driven: type checking and comptime evaluation interleaved
+   |  vun-sema        demand-driven: type checking and comptime evaluation interleaved
    v
  MIR                   control-flow graph over places; one body per instantiation
    |  MIR passes        checks: place states, kinds, borrows, scoping, panic.never, stack
    |                    transforms: coroutine lowering, defer lowering, range-based check elision
    |
-   +--> overt-interp    reference interpreter: runs comptime and tests, defines the semantics
+   +--> vun-interp    reference interpreter: runs comptime and tests, defines the semantics
    |
    v
  LIR                   target-independent SSA: scalars, pointers, memory ops, calls, blocks
@@ -760,7 +760,7 @@ pub trait DiagSink {
 }
 ```
 
-- **Targets are data, written in Overt.** A `TargetSpec` (word size, endianness, alignments, ABIs,
+- **Targets are data, written in Vun.** A `TargetSpec` (word size, endianness, alignments, ABIs,
   features, object format, default backend and linker) is a comptime value from the `targets`
   package. Adding a target means adding a file; the compiler is not rebuilt.
 - **Registration is static by default** (Cargo features choose which backends and linkers are
@@ -798,13 +798,13 @@ is a deployment detail the language knows nothing about.
 
 ```
 compiler/
-  base/   overt-span  overt-diag  overt-query (incremental, demand-driven engine)
-  front/  overt-syntax  overt-hir  overt-sema
-  mid/    overt-mir  overt-mir-passes  overt-interp
-  low/    overt-lir  overt-lir-passes  overt-abi  overt-target
-  back/   overt-backend (traits)  overt-backend-{c,qbe,cranelift,llvm,process}
-  link/   overt-link (traits)  overt-link-{wild,mold,lld,gnu,msvc,process}
-  tools/  overt-build  overt-driver (library)  overt-cli  overt-lsp  overt-fmt  overt-bind
+  base/   vun-span  vun-diag  vun-query (incremental, demand-driven engine)
+  front/  vun-syntax  vun-hir  vun-sema
+  mid/    vun-mir  vun-mir-passes  vun-interp
+  low/    vun-lir  vun-lir-passes  vun-abi  vun-target
+  back/   vun-backend (traits)  vun-backend-{c,qbe,cranelift,llvm,process}
+  link/   vun-link (traits)  vun-link-{wild,mold,lld,gnu,msvc,process}
+  tools/  vun-build  vun-driver (library)  vun-cli  vun-lsp  vun-fmt  vun-bind
 lib/
   lang/     primitives: declarations only, bodies provided by the compiler
   std/      prelude, mem, sync, task, fmt, meta, mmio, os/*
@@ -812,13 +812,13 @@ lib/
   boards/   example runtime packages (stm32f4, rp2040, esp32c3, linux, wasi)
 ```
 
-Principles: `overt-driver` is a library and the CLI is a thin shell over it; the LSP and the test
+Principles: `vun-driver` is a library and the CLI is a thin shell over it; the LSP and the test
 harness use the same library. Crates depend only on crates in earlier groups. Every IR has a
 verifier that runs between passes in debug builds of the compiler.
 
 ### 12.7 Semantics are executable
 
-`overt-interp` interprets MIR under an explicit target model (layout, endianness, ranges, traps).
+`vun-interp` interprets MIR under an explicit target model (layout, endianness, ranges, traps).
 It runs comptime code and `test` blocks, and it defines what programs mean. Every backend is
 checked against it by differential testing, using the test corpus and randomly generated programs
 in the style of Csmith. That keeps guarantees 3 and 4 true across backends.
@@ -829,7 +829,7 @@ in the style of Csmith. That keeps guarantees 3 and 4 true across backends.
 
 ### 13.1 Registers
 
-```ov
+```vun
 #[layout.tag(u2)]
 const Mode = enum { input, output, alt, analog };
 
@@ -857,7 +857,7 @@ because `pin: Int(0..16)` and `pins: [16]Mode`.
 
 ### 13.2 Async blinky with serial echo
 
-```ov
+```vun
 pub const program = stm32f4.Program{
     .main = main,
     .panic = stm32f4.halt,
@@ -892,7 +892,7 @@ fn echo(s: &mut Serial) -> Async(never) {
 
 ### 13.3 Hosted
 
-```ov
+```vun
 pub const program = std.os.Program{ .main = main };
 
 fn main(sys: &mut std.os.System) -> std.os.Exit {
@@ -904,7 +904,7 @@ fn main(sys: &mut std.os.System) -> std.os.Exit {
 
 ### 13.4 Ring buffer
 
-```ov
+```vun
 pub fn RingBuffer(comptime T: type, comptime N: Int(1..=65536)) -> type {
     const Index = Int(0..N);
     const Ring = struct {
@@ -933,7 +933,7 @@ pub fn RingBuffer(comptime T: type, comptime N: Int(1..=65536)) -> type {
 
 ### 13.5 Reflection
 
-```ov
+```vun
 fn dump(comptime T: type, v: &T, w: &mut Dyn(Writer)) -> Result((), Writer.Error) {
     comptime for f in std.meta.info(T).fields {
         try std.fmt.print(w, "{} = {}\n", .{ f.name, std.meta.field(v, f.name) });
@@ -955,7 +955,7 @@ fn dump(comptime T: type, v: &T, w: &mut Dyn(Writer)) -> Result((), Writer.Error
 | 2 | MIR checks: place states, kinds, defer, borrows, scoping; coroutine lowering | Must-fail corpus rejected with the expected diagnostic codes; generators and async run in `interp` |
 | 3 | LIR, C backend, `Linker` trait with lld and GNU ld, QEMU runner | Blinky on a real board; differential tests against `interp` pass |
 | 4 | QBE and Cranelift backends; wild and mold; hosted `std.os` | Compiler test suite passes natively on all three backends |
-| 5 | Board packages, `std.task` executors, stack and `panic.never` analyses, `overt bind` | Measured stack high-water mark within the computed bound; Overt running inside an ESP-IDF project |
+| 5 | Board packages, `std.task` executors, stack and `panic.never` analyses, `vun bind` | Measured stack high-water mark within the computed bound; Vun running inside an ESP-IDF project |
 | 6 | `fmt`, LSP, `check --traps`, LLVM backend | Usable daily; code size within 10% of C on a reference firmware |
 
 ---

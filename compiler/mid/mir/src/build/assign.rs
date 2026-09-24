@@ -2,9 +2,9 @@
 //! of `x` by the narrowing the table `compound` gives (appendix B, spec 04 rule 9), the type
 //! read from the typed body.
 
-use overt_grammar::{COMPOUND, TokenKind};
-use overt_hir::tree::ExprId;
-use overt_origin::OriginId;
+use vun_grammar::{COMPOUND, TokenKind};
+use vun_hir::tree::ExprId;
+use vun_origin::OriginId;
 
 use super::{Builder, Unbuilt};
 use crate::body::{Operand, Rvalue};

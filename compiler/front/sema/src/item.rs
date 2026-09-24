@@ -2,11 +2,11 @@
 //! spreads (selected names, or every export of a whole spread), or as a child namespace in its
 //! directory.
 
-use overt_hir::db::{Exports, FileRef, Namespace, NamespaceAt, Package, Parsed};
-use overt_hir::tree::{DeclId, ExprId, Hir};
-use overt_intern::Symbol;
-use overt_origin::OriginId;
-use overt_query::{Cx, Cycle, Query};
+use vun_hir::db::{Exports, FileRef, Namespace, NamespaceAt, Package, Parsed};
+use vun_hir::tree::{DeclId, ExprId, Hir};
+use vun_intern::Symbol;
+use vun_origin::OriginId;
+use vun_query::{Cx, Cycle, Query};
 
 /// A node of a file's HIR: `id` finds it in the file, and its origin identifies it, so that it
 /// hashes the same in every process and after edits elsewhere in the file (decision 59).

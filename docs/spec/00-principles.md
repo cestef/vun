@@ -19,7 +19,7 @@ explained by the concept list plus the desugaring table (appendix B), it is a bu
 syntax  --desugars into-->  lang  <--built on--  std  <--built on--  your code
 ```
 
-- **`lang`** is a package of ordinary Overt source. It declares, with real signatures and doc
+- **`lang`** is a package of ordinary Vun source. It declares, with real signatures and doc
   comments, every primitive the compiler provides. A declaration whose value is `_` is provided
   from outside the source: in `lang` by the compiler, elsewhere by the linker or by an `impl`.
   There is no `@builtin` namespace, no magic identifier, no special function name.
@@ -63,7 +63,7 @@ syntax  --desugars into-->  lang  <--built on--  std  <--built on--  your code
   what compile-time evaluation gives for free.
 - User-extensible grammar. Extension happens through compile-time code and libraries, so every
   program is read with the same grammar. Code generation is first-class (spec 03), but it
-  produces Overt, not new syntax.
+  produces Vun, not new syntax.
 - Hiding the machine.
 - General algebraic effect handlers. With no heap and statically sized frames, the handler classes
   that can be implemented are already covered: tail-resumptive handlers are capability values,

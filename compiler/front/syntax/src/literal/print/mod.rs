@@ -1,9 +1,9 @@
-//! Writing literal values as Overt source, the inverse of reading them, so that tools change
+//! Writing literal values as Vun source, the inverse of reading them, so that tools change
 //! manifests through typed values rather than formatted text.
 
 use std::fmt::{self, Write as _};
 
-use overt_grammar::TokenKind;
+use vun_grammar::TokenKind;
 
 use super::{Decl, Literal};
 use crate::lexer::{ESCAPE, SIMPLE_ESCAPES, is_ident};
@@ -34,7 +34,7 @@ impl fmt::Display for Unwritable {
 
 impl std::error::Error for Unwritable {}
 
-/// The width lines are kept within, and the indentation of each nesting level, until `overt fmt`
+/// The width lines are kept within, and the indentation of each nesting level, until `vun fmt`
 /// owns the layout.
 pub const WIDTH: usize = 100;
 pub(super) const INDENT: &str = "    ";
@@ -64,7 +64,7 @@ impl Literal<'_> {
     }
 }
 
-/// Overt source being written.
+/// Vun source being written.
 #[derive(Default)]
 pub(super) struct Writer {
     pub(super) out: String,

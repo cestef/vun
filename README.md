@@ -1,8 +1,8 @@
-# Overt
+# Vun
 
 A systems programming language with nothing behind the scenes. Working name.
 
-Status: design draft 2 and a compiler skeleton. Nothing compiles Overt yet.
+Status: design draft 2 and a compiler skeleton. Nothing compiles Vun yet.
 
 ```
 docs/          specification, research notes, decision log
@@ -16,19 +16,19 @@ compiler/      the compiler, a Rust workspace
   link/        linker interface and adapters (wild, mold, lld, GNU ld, MSVC, process)
   render/      diagnostic renderers (short, annotate-snippets, ariadne, JSON, SARIF)
   tools/       driver, CLI, LSP, formatter, build, bindings, probe, harness, xtask
-lib/           Overt sources: lang, std, targets, boards
+lib/           Vun sources: lang, std, targets, boards
 corpus/        programs that must compile, and programs that must be rejected
 ```
 
 ```sh
 cargo build                 # the toolchain
 cargo nextest run           # tests
-cargo run -p overt-cli      # the `overt` command
-cargo xtask generate        # regenerate Rust tables from grammar.ov and errors.ov
+cargo run -p vun-cli      # the `vun` command
+cargo xtask generate        # regenerate Rust tables from grammar.vun and errors.vun
 cargo xtask corpus          # corpus verdicts: pass, pending, fail
 cargo xtask lines           # no source file past 300 lines
-cargo run -q -p overt-cli -- dump cst corpus/accept/integers/ring_buffer.ov
-OVERT_LOG=overt_sema=debug OVERT_TIMINGS=1 cargo run -p overt-cli -- build
+cargo run -q -p vun-cli -- dump cst corpus/accept/integers/ring_buffer.vun
+VUN_LOG=vun_sema=debug VUN_TIMINGS=1 cargo run -p vun-cli -- build
 ```
 
 Start with [docs/spec/00-principles.md](docs/spec/00-principles.md).

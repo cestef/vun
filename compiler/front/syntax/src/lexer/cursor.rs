@@ -1,6 +1,6 @@
 //! The character cursor over the source text.
 
-use overt_span::{ByteRange, Span};
+use vun_span::{ByteRange, Span};
 
 use super::{Lexer, offset};
 

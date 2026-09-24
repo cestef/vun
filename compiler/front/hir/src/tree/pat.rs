@@ -1,6 +1,6 @@
 //! Patterns: what bindings, parameters, tests and arms match against.
 
-use overt_origin::OriginId;
+use vun_origin::OriginId;
 
 use super::{BinderId, ExprId, List, Name, PatId};
 
@@ -48,7 +48,7 @@ impl PatKind {
     /// Whether the pattern matches every value of its type, as far as syntax tells: binders,
     /// holes, and tuples and anonymous structs of those.
     #[must_use]
-    pub fn irrefutable(&self, pats: &overt_index::IndexVec<PatId, super::Pat>) -> bool {
+    pub fn irrefutable(&self, pats: &vun_index::IndexVec<PatId, super::Pat>) -> bool {
         let all = |entries: &List<PatId>| {
             entries.iter().all(|e| match e {
                 super::Entry::One(p) => pats[*p].kind.irrefutable(pats),

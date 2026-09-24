@@ -3,9 +3,9 @@
 
 use std::io::Write;
 
-use overt_diag::{ChildKind, DiagSink, Diagnostic};
-use overt_origin::OriginTable;
-use overt_span::SourceMap;
+use vun_diag::{ChildKind, DiagSink, Diagnostic};
+use vun_origin::OriginTable;
+use vun_span::SourceMap;
 
 pub struct ShortRenderer<W: Write> {
     out: W,

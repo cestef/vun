@@ -8,14 +8,14 @@ describes each argument.
 ## Example
 
 ```console
-$ overt check
-error[cli.missing_argument]: `overt check` needs `<file>`: the source file to read
+$ vun check
+error[cli.missing_argument]: `vun check` needs `<file>`: the source file to read
   │
-  ╰ help: usage: `overt check [options] <file>`
+  ╰ help: usage: `vun check [options] <file>`
 ```
 
 ## Fix
 
 ```console
-$ overt check blinky.ov
+$ vun check blinky.vun
 ```

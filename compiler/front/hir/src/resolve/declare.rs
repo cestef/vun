@@ -1,6 +1,6 @@
 //! Declaring binders: duplicates and shadowing are reported as each name is declared.
 
-use overt_diag::{ChildKind, Diagnostic, Label, Msg, errors};
+use vun_diag::{ChildKind, Diagnostic, Label, Msg, errors};
 
 use super::scope::Kind;
 use super::walk::Resolver;

@@ -1,12 +1,12 @@
-use overt_diag::{DiagCx, DiagId, errors};
+use vun_diag::{DiagCx, DiagId, errors};
 
 use super::MAX_NESTING;
 use crate::cst::NodeId;
 use crate::cst::{Anchor, Cst};
 use crate::tokens::Tokens;
-use overt_diag::DiagCtxt;
-use overt_origin::OriginTable;
-use overt_span::SourceFiles;
+use vun_diag::DiagCtxt;
+use vun_origin::OriginTable;
+use vun_span::SourceFiles;
 
 /// The tree as an s-expression: `(Kind'token children)` for branches, the token text for
 /// leaves, `?Kind` for missing nodes.
@@ -30,7 +30,7 @@ fn sexp(cst: &Cst, tokens: &Tokens, text: &str, n: NodeId) -> std::string::Strin
 
 /// The top-level entries of `text` and the diagnostic ids, after checking the verifier.
 fn parse_text(text: &str) -> (Vec<std::string::String>, Vec<DiagId>) {
-    let file = SourceFiles::new().add("t.ov", text);
+    let file = SourceFiles::new().add("t.vun", text);
     let (mut diag, origins) = (DiagCtxt::new(), OriginTable::new());
     let mut cx = DiagCx { diag: &mut diag, origins: &origins };
     let tokens = Tokens::lex(file, text, &mut cx);
@@ -214,9 +214,9 @@ fn recovered_trees_fit_their_slots() {
 
 #[test]
 fn fields_name_the_children() {
-    use overt_grammar::{NodeField as F, NodeKind as K};
+    use vun_grammar::{NodeField as F, NodeKind as K};
     let text = "mut f: T = (a: u8, b) -> u8 { a };";
-    let file = SourceFiles::new().add("t.ov", text);
+    let file = SourceFiles::new().add("t.vun", text);
     let (mut diag, origins) = (DiagCtxt::new(), OriginTable::new());
     let mut cx = DiagCx { diag: &mut diag, origins: &origins };
     let tokens = Tokens::lex(file, text, &mut cx);

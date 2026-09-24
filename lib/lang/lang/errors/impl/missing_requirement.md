@@ -8,7 +8,7 @@ in the defaults; every requirement without a default must be provided (spec 02, 
 
 ## Example
 
-```ov
+```vun
 Writer := interface(($Self: type) -> type { struct {
     Error: type = _;
     write: (self: &mut Self, bytes: &[u8]) -> Result(usize, Error) = _;
@@ -26,7 +26,7 @@ SinkWriter := struct {
 
 Provide the missing requirement, `write`:
 
-```ov
+```vun
 Writer := interface(($Self: type) -> type { struct {
     Error: type = _;
     write: (self: &mut Self, bytes: &[u8]) -> Result(usize, Error) = _;

@@ -9,7 +9,7 @@ section 1).
 
 ## Example
 
-```ov
+```vun
 limit := 64;
 twice := limit * ; //~ syntax.expected_expression
 ```
@@ -18,7 +18,7 @@ twice := limit * ; //~ syntax.expected_expression
 
 Write the missing operand:
 
-```ov
+```vun
 limit := 64;
 twice := limit * 2;
 ```

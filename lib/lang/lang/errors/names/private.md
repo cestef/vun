@@ -10,7 +10,7 @@ site. A spread cannot select a name restricted elsewhere either (spec 01, sectio
 
 ## Example
 
-```ov
+```vun
 Uart := struct {
     _raw: u32,
     new := () -> Uart { .{ ._raw = 0 } };
@@ -25,7 +25,7 @@ peek := (u: &Uart) -> u32 {
 
 Read the member from inside its namespace, and expose what outside code needs under a public name:
 
-```ov
+```vun
 Uart := struct {
     _raw: u32,
     new := () -> Uart { .{ ._raw = 0 } };

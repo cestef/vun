@@ -3,8 +3,8 @@
 
 use std::sync::Arc;
 
-use overt_hir::tree::{Entry, ExprId, ExprKind, Param};
-use overt_query::Cx;
+use vun_hir::tree::{Entry, ExprId, ExprKind, Param};
+use vun_query::Cx;
 
 use super::{Env, Unevaluated};
 use crate::Primitive;

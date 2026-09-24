@@ -1,14 +1,14 @@
-//! Every Overt file of the repository lowers to HIR that verifies, and resolves.
+//! Every Vun file of the repository lowers to HIR that verifies, and resolves.
 
-use overt_diag::{DiagCtxt, DiagCx};
-use overt_fs::Tree;
-use overt_harness::repo_root;
-use overt_hir::lower::Source;
-use overt_hir::tree::Hir;
-use overt_origin::OriginTable;
-use overt_span::{EXTENSION, SourceFiles};
-use overt_syntax::cst::Cst;
-use overt_syntax::tokens::Tokens;
+use vun_diag::{DiagCtxt, DiagCx};
+use vun_fs::Tree;
+use vun_harness::repo_root;
+use vun_hir::lower::Source;
+use vun_hir::tree::Hir;
+use vun_origin::OriginTable;
+use vun_span::{EXTENSION, SourceFiles};
+use vun_syntax::cst::Cst;
+use vun_syntax::tokens::Tokens;
 
 #[test]
 fn repository_sources_lower_and_verify() {
@@ -40,8 +40,8 @@ fn repository_sources_lower_and_verify() {
 }
 
 /// The origins of every declaration and expression of `text`, lowered in a fresh table.
-fn origins(text: &str) -> overt_hash::Hash {
-    let file = SourceFiles::new().add_as("pkg@1.0.0/pkg.ov", "pkg.ov", text);
+fn origins(text: &str) -> vun_hash::Hash {
+    let file = SourceFiles::new().add_as("pkg@1.0.0/pkg.vun", "pkg.vun", text);
     let (mut diag, origins) = (DiagCtxt::new(), OriginTable::new());
     let mut cx = DiagCx { diag: &mut diag, origins: &origins };
     let tokens = Tokens::lex(file, text, &mut cx);
@@ -49,7 +49,7 @@ fn origins(text: &str) -> overt_hash::Hash {
     let hir = Hir::lower(Source { cst: &cst, tokens: &tokens, text }, cx.origins);
     let decls: Vec<_> = hir.decls.iter().map(|(_, d)| d.origin).collect();
     let exprs: Vec<_> = hir.exprs.iter().map(|(_, e)| e.origin).collect();
-    overt_hash::Hash::of_value(&(decls, exprs))
+    vun_hash::Hash::of_value(&(decls, exprs))
 }
 
 #[test]

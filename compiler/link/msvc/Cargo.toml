@@ -1,5 +1,5 @@
 [package]
-name = "overt-link-msvc"
+name = "vun-link-msvc"
 description = "MSVC link.exe adapter."
 version.workspace = true
 edition.workspace = true
@@ -10,6 +10,6 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
-overt-diag.workspace = true
-overt-link.workspace = true
-overt-target.workspace = true
+vun-diag.workspace = true
+vun-link.workspace = true
+vun-target.workspace = true

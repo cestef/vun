@@ -1,5 +1,5 @@
 [package]
-name = "overt-abi"
+name = "vun-abi"
 description = "Calling conventions: lowering calls to a target ABI."
 version.workspace = true
 edition.workspace = true
@@ -10,5 +10,5 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
-overt-lir.workspace = true
-overt-target.workspace = true
+vun-lir.workspace = true
+vun-target.workspace = true

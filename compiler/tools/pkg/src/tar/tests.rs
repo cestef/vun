@@ -1,6 +1,6 @@
 use std::io;
 
-use overt_fs::{Mode, Scratch};
+use vun_fs::{Mode, Scratch};
 
 use super::{Header, Kind, Tar};
 
@@ -17,8 +17,8 @@ fn archive(entries: &[(Kind, &str, &[u8])]) -> Vec<u8> {
 #[test]
 fn paths_come_from_gnu_and_pax_records() {
     let dir = Scratch::new("tarpaths");
-    let long = format!("{}/deep.ov", "d".repeat(120));
-    let pax = Tar::pax_record("path", "pax/named.ov");
+    let long = format!("{}/deep.vun", "d".repeat(120));
+    let pax = Tar::pax_record("path", "pax/named.vun");
     let bytes = archive(&[
         (Kind::LongName, "././@LongLink", long.as_bytes()),
         (Kind::File, "ignored", b"long"),
@@ -26,31 +26,31 @@ fn paths_come_from_gnu_and_pax_records() {
         (Kind::Directory, "dir/", b""),
         (Kind::Extended, "PaxHeader", pax.as_bytes()),
         (Kind::File, "short", b"pax"),
-        (Kind::File, "./plain.ov", b"plain"),
+        (Kind::File, "./plain.vun", b"plain"),
     ]);
     Tar::unpack(bytes.as_slice(), &dir.join("out")).unwrap();
     let read = |path: &str| std::fs::read_to_string(dir.join("out").join(path)).unwrap();
     assert_eq!(
-        (read(&long), read("pax/named.ov"), read("plain.ov")),
+        (read(&long), read("pax/named.vun"), read("plain.vun")),
         ("long".into(), "pax".into(), "plain".into())
     );
-    assert_eq!(pax, "21 path=pax/named.ov\n", "the length counts its own digits");
+    assert_eq!(pax, "22 path=pax/named.vun\n", "the length counts its own digits");
 }
 
 #[test]
 fn links_escaping_paths_and_bad_checksums_are_refused() {
     let dir = Scratch::new("tarbad");
-    let mut corrupt = archive(&[(Kind::File, "a.ov", b"a")]);
+    let mut corrupt = archive(&[(Kind::File, "a.vun", b"a")]);
     corrupt[0] = b'b';
     let bad = [
         archive(&[(Kind::Other(b'2'), "link", b"")]),
-        archive(&[(Kind::File, "../escape.ov", b"x")]),
+        archive(&[(Kind::File, "../escape.vun", b"x")]),
         corrupt,
     ];
     for bytes in bad {
         let err = Tar::unpack(bytes.as_slice(), &dir.join("out")).unwrap_err();
         assert_eq!(err.kind(), io::ErrorKind::InvalidData, "{err}");
     }
-    assert!(!dir.join("escape.ov").exists());
+    assert!(!dir.join("escape.vun").exists());
     assert_eq!(Header::new(Kind::File, "x", Mode::Executable, 0).mode().unwrap(), Mode::Executable);
 }

@@ -8,7 +8,7 @@ section 1, rule 7), so reserved bits are written out as `_` fields.
 
 ## Example
 
-```ov
+```vun
 u2 := unsigned(2);
 u28 := unsigned(28);
 
@@ -20,7 +20,7 @@ Ctrl := struct { enable: bool, mode: u2, _: u28 }; //~ layout.bits_width
 
 Size the fields, here the reserved one, so that they fill the 32 bits:
 
-```ov
+```vun
 u2 := unsigned(2);
 u29 := unsigned(29);
 

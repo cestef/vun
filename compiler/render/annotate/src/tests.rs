@@ -1,6 +1,6 @@
-use overt_diag::{ChildKind, Color, DiagSink, Diagnostic, Edit, Fix, Label, Msg, Safety, errors};
-use overt_origin::OriginTable;
-use overt_span::{SourceFiles, Span};
+use vun_diag::{ChildKind, Color, DiagSink, Diagnostic, Edit, Fix, Label, Msg, Safety, errors};
+use vun_origin::OriginTable;
+use vun_span::{SourceFiles, Span};
 
 use crate::AnnotateRenderer;
 
@@ -14,7 +14,7 @@ fn render(d: &Diagnostic, origins: &OriginTable, files: &SourceFiles) -> String 
 fn renders_labels_notes_and_fixes() {
     let files = SourceFiles::new();
     let text = "norm1 := (p: Point) -> u32 {\n    p.x.abs() + p.y.abs()\n};\n";
-    let f = files.add("src/geom.ov", text);
+    let f = files.add("src/geom.vun", text);
     let span = |needle: &str| {
         let lo = u32::try_from(text.find(needle).unwrap()).unwrap();
         Span::new(f, lo, lo + u32::try_from(needle.len()).unwrap())
@@ -34,7 +34,7 @@ fn renders_labels_notes_and_fixes() {
     let out = render(&d, &origins, &files);
     for expected in [
         "error[int.does_not_fit]: value does not fit the result type",
-        "src/geom.ov:2:5",
+        "src/geom.vun:2:5",
         "this is `Int(0..=4294967296)`",
         "result type",
         "note: the sum reaches 2^32",
@@ -47,7 +47,7 @@ fn renders_labels_notes_and_fixes() {
 
 #[test]
 fn renders_without_a_location() {
-    let d = Diagnostic::error(errors::IO_UNREADABLE_FILE, "cannot read `x.ov`");
+    let d = Diagnostic::error(errors::IO_UNREADABLE_FILE, "cannot read `x.vun`");
     let out = render(&d, &OriginTable::new(), &SourceFiles::new());
-    assert!(out.starts_with("error[io.unreadable_file]: cannot read `x.ov`"), "{out}");
+    assert!(out.starts_with("error[io.unreadable_file]: cannot read `x.vun`"), "{out}");
 }

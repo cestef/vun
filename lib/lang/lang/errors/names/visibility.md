@@ -9,7 +9,7 @@ declaration, since a scope is always around what it holds.
 
 ## Example
 
-```ov
+```vun
 #[visible(.package)] //~ names.visibility
 limit := 64;
 ```
@@ -18,7 +18,7 @@ limit := 64;
 
 Start the name with `_` to restrict it, or drop the attribute to keep it public:
 
-```ov
+```vun
 #[visible(.package)]
 _limit := 64;
 ```

@@ -4,14 +4,14 @@
 
 == The layering rule
 
-Overt distinguishes four layers, and the relation between them is the first rule of the design:
+Vun distinguishes four layers, and the relation between them is the first rule of the design:
 
 #align(center)[
   syntax #h(0.6em) $arrow.r.long$ #h(0.6em) `lang` #h(0.6em) $arrow.l.long$ #h(0.6em) `std`
   #h(0.6em) $arrow.l.long$ #h(0.6em) user code
 ]
 
-The package `lang` is written in Overt. It declares, with ordinary signatures and documentation,
+The package `lang` is written in Vun. It declares, with ordinary signatures and documentation,
 every primitive the compiler provides: integer and pointer operations, volatile and atomic access,
 the coroutine protocol, reflection, and the attributes the compiler acts on. A primitive is a
 declaration whose value is the hole `_`: in `lang` the compiler supplies the value; anywhere else
@@ -59,7 +59,7 @@ The design commits to five properties. Each constrains every later decision.
     [7], [Functions can suspend], [A function containing `yield` returns a sized, immovable frame.],
     table.hline(),
   ),
-  caption: [The seven concepts of Overt. Every other feature is expressed through them.],
+  caption: [The seven concepts of Vun. Every other feature is expressed through them.],
 ) <tab-concepts>
 
 @tab-concepts is the entire conceptual inventory. Features familiar from other systems languages
@@ -70,9 +70,9 @@ Iterators and asynchronous tasks are both suspension (concept 7).
 
 == Non-goals
 
-Three omissions are deliberate. Overt does not aim for maximal type-system expressiveness: there are
+Three omissions are deliberate. Vun does not aim for maximal type-system expressiveness: there are
 no higher-kinded types, and type-level computation is ordinary compile-time evaluation. It does not
-allow user-extensible grammar: code generation produces Overt, never new syntax, so every program is
+allow user-extensible grammar: code generation produces Vun, never new syntax, so every program is
 read with one grammar. And it does not provide general algebraic effect handlers. Without a heap and
 with statically sized frames, the classes of handler that can be implemented are tail-resumptive
 handlers, which are capability values @effekt; abortive handlers, which are result values; and

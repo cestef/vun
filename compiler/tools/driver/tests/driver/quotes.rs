@@ -1,13 +1,13 @@
 //! Code values: quotes, `Code(T)` parameters and splices (spec 03, section 4).
 
 use crate::common::Fixture;
-use overt_diag::errors;
+use vun_diag::errors;
 
 #[test]
 fn quotes_and_code_arguments_splice_where_they_were_written() {
     let fixture = Fixture::new("quotes");
     let file = fixture.root.write(
-        "quotes.ov",
+        "quotes.vun",
         "\
 square := ($x: Code(u32)) -> Code(u64) { #{ $x * $x } };
 pick := ($cond: Code(bool)) -> u8 { if $cond { 1 } else { 2 } };
@@ -35,7 +35,7 @@ argument := () -> u8 { pick(3) };
 fn code_values_give_their_source() {
     let fixture = Fixture::new("quotes-source");
     let file = fixture.root.write(
-        "source.ov",
+        "source.vun",
         "\
 width := ($c: Code(u32)) -> usize { c.source().len() };
 five: Int(0..=width(1 + 2)) = 6;

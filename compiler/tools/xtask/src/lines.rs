@@ -2,10 +2,10 @@
 //! directory module by concern (`CLAUDE.md`, code rules). Generated files are held to it too:
 //! generators emit one module per declaration or group.
 
-use overt_fs::Tree;
 use std::path::{Path, PathBuf};
+use vun_fs::Tree;
 
-use overt_span::EXTENSION;
+use vun_span::EXTENSION;
 
 pub(crate) const MAX_LINES: u32 = 300;
 

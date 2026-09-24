@@ -1,11 +1,11 @@
 //! `e?` (appendix B): the witness's `branch` of `lang.ops.Try` the typer found, then the value
 //! the variant `go` carries, or a return of what `stop` carries (the table `early_return`).
 
-use overt_grammar::EARLY_RETURN;
-use overt_hir::tree::ExprId;
-use overt_intern::Symbol;
-use overt_origin::OriginId;
-use overt_sema::member::MemberValue;
+use vun_grammar::EARLY_RETURN;
+use vun_hir::tree::ExprId;
+use vun_intern::Symbol;
+use vun_origin::OriginId;
+use vun_sema::member::MemberValue;
 
 use super::{Builder, Unbuilt};
 use crate::body::{Operand, Rvalue, TerminatorKind};

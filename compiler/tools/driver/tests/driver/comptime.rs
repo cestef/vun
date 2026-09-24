@@ -1,14 +1,14 @@
 //! Compile-time evaluation through the whole front end, over the toolchain's `lang` and `std`.
 
 use crate::common::Fixture;
-use overt_diag::errors;
-use overt_span::SourceMap;
+use vun_diag::errors;
+use vun_span::SourceMap;
 
 #[test]
 fn each_instantiation_of_a_type_function_is_its_own_type() {
     let fixture = Fixture::new("comptime-instances");
     let file = fixture.root.write(
-        "pairs.ov",
+        "pairs.vun",
         "\
 Pair := ($T: type) -> type { struct { a: T, b: T } };
 same := (p: Pair(u8)) -> Pair(u8) { p };
@@ -30,7 +30,7 @@ wide := (p: Pair(u16)) -> u8 { p.b };
 fn operators_are_typed_by_their_lang_ops_interfaces() {
     let fixture = Fixture::new("comptime-operators");
     let file = fixture.root.write(
-        "ops.ov",
+        "ops.vun",
         "\
 less := (a: u8, b: u8) -> bool { a < b };
 differ := (a: u8) -> bool { a != 3 };
@@ -45,7 +45,7 @@ equal := (a: u8, b: u8) -> u8 { a == b };
 fn branches_run_at_compile_time_and_join_their_types() {
     let fixture = Fixture::new("comptime-branches");
     let file = fixture.root.write(
-        "branches.ov",
+        "branches.vun",
         "\
 max := ($a: Int(0..=100), $b: Int(0..=100)) -> Int(0..=100) { if a > b { a } else { b } };
 pick := ($n: u8) -> u8 { if n == 1 and !(n > 5) or n == 7 { 10 } else { 20 } };
@@ -71,7 +71,7 @@ head := (x: u8) -> u8 { if x { 1 } else { 2 } };
 fn loops_and_assignments_run_at_compile_time() {
     let fixture = Fixture::new("comptime-loops");
     let file = fixture.root.write(
-        "loops.ov",
+        "loops.vun",
         "\
 sum := ($n: u8) -> u16 {
     mut total: u16 = 0;
@@ -110,7 +110,7 @@ early_over: Early = 2;
 fn a_compile_time_trap_is_reported_at_its_root_with_the_calls_it_fired_in() {
     let fixture = Fixture::new("comptime-trap");
     let file = fixture.root.write(
-        "trap.ov",
+        "trap.vun",
         "\
 half := ($n: Int(0..=9)) -> Int(0..=10) { 10 / n };
 twice := ($n: Int(0..=9)) -> Int(0..=20) { half(n) + half(n) };
@@ -135,7 +135,7 @@ Small := Int(0..=twice(0));
 fn type_syntax_and_sequences_are_typed() {
     let fixture = Fixture::new("comptime-sequences");
     let file = fixture.root.write(
-        "sequences.ov",
+        "sequences.vun",
         "\
 first := (xs: [4]u8) -> u8 { xs[0] };
 slice := (xs: &[u8]) -> u8 { xs[1] };
@@ -162,7 +162,7 @@ pointer := (p: *u8) -> *u8 { p };
 fn compile_time_calls_build_and_read_values() {
     let fixture = Fixture::new("comptime-values");
     let file = fixture.root.write(
-        "values.ov",
+        "values.vun",
         "\
 Pair := struct { a: u8, b: u8 = 5 };
 make := ($x: u8) -> Pair { .{ .a = x } };
@@ -186,7 +186,7 @@ offset: Offset = 45;
 fn a_call_spends_the_steps_of_the_calls_it_makes() {
     let fixture = Fixture::new("comptime-fuel");
     let file = fixture.root.write(
-        "fuel.ov",
+        "fuel.vun",
         "\
 count := ($n: u32) -> u32 { mut i: u32 = 0; for i < n { i += 1; } i };
 #[comptime.fuel(40)]
@@ -206,7 +206,7 @@ raised := large(30);
 fn places_are_read_and_written_in_parts() {
     let fixture = Fixture::new("comptime-places");
     let file = fixture.root.write(
-        "places.ov",
+        "places.vun",
         "\
 Pair := struct { a: u32, b: u32 };
 swap := ($p: Pair) -> Pair { mut q := p; q.a = p.b; q.b = p.a; q };
@@ -229,7 +229,7 @@ seven: Int(0..=repeated()) = 8;
 fn patterns_test_and_bind() {
     let fixture = Fixture::new("comptime-patterns");
     let file = fixture.root.write(
-        "patterns.ov",
+        "patterns.vun",
         "\
 Shape := enum { circle(u8), square(u8), none };
 area := ($s: Shape) -> u16 { match s { .circle(r) => r, .square(w) => w * w, .none => 0 } };
@@ -252,7 +252,7 @@ kinded: Int(0..=kind(11)) = 3;
 fn early_returns_go_on_or_stop() {
     let fixture = Fixture::new("comptime-try");
     let file = fixture.root.write(
-        "try.ov",
+        "try.vun",
         "\
 parse := ($x: u8) -> Result(u8, u8) { if x > 9 { .err(x) } else { .ok(x) } };
 double := ($x: u8) -> Result(u16, u8) { v := parse(x)?; .ok(v + v) };
@@ -273,7 +273,7 @@ wrong := ($x: u8) -> Result(u16, u16) { v := parse(x)?; .ok(v) };
 fn closures_carry_their_captures() {
     let fixture = Fixture::new("comptime-closures");
     let file = fixture.root.write(
-        "closures.ov",
+        "closures.vun",
         "\
 apply := () -> u64 { k: u32 = 3; add := [k] (v: u32) -> u64 { v + k }; add(4) };
 seven: Int(0..=apply()) = 8;

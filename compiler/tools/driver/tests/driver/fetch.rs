@@ -1,10 +1,10 @@
-//! `overt pkg fetch` end to end: a package archive served by a `file://` mirror is stored,
+//! `vun pkg fetch` end to end: a package archive served by a `file://` mirror is stored,
 //! verified, used through the prelude, and a stored file changed afterwards is named.
 
 use crate::common::Fixture;
-use overt_diag::errors;
-use overt_driver::packages::Fetched;
-use overt_pkg::{Format, Scheme};
+use vun_diag::errors;
+use vun_driver::packages::Fetched;
+use vun_pkg::{Format, Scheme};
 
 #[test]
 fn fetched_packages_are_stored_verified_and_checked() {
@@ -36,7 +36,7 @@ fn fetched_packages_are_stored_verified_and_checked() {
     check.check(loaded);
     let mismatch = check.diag.sorted().into_iter().find(|d| d.id == errors::PACKAGE_HASH_MISMATCH).unwrap();
     let notes: Vec<_> = mismatch.children.iter().map(|c| c.msg.to_string()).collect();
-    assert!(notes.iter().any(|n| n.contains("hal.ov") && n.contains("modified")), "{notes:?}");
+    assert!(notes.iter().any(|n| n.contains("hal.vun") && n.contains("modified")), "{notes:?}");
 }
 
 #[test]
@@ -44,7 +44,7 @@ fn failing_mirrors_are_reported_with_their_causes() {
     let fx = Fixture::new("fail");
     let url = Scheme::file_url(&fx.root.join(format!("absent{}", Format::PUBLISHED.suffix())));
     let mut app = Fixture::manifest("app", 1, "0.1.0");
-    app.deps.push(Fixture::stored("hal", "1.0.0", &url, overt_hash::Hash::of(b"none")));
+    app.deps.push(Fixture::stored("hal", "1.0.0", &url, vun_hash::Hash::of(b"none")));
     let dir = fx.write("app", &app, "");
     let mut session = fx.session();
     let project = session.package_at(&dir).unwrap();

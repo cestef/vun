@@ -1,13 +1,13 @@
 //! Generic code is checked per instantiation and reported at the definition (spec 02, section 3).
 
 use crate::common::Fixture;
-use overt_diag::errors;
+use vun_diag::errors;
 
 #[test]
 fn generic_bodies_are_typed_per_instantiation() {
     let fixture = Fixture::new("generics-instances");
     let file = fixture.root.write(
-        "generic.ov",
+        "generic.vun",
         "\
 narrow := ($T: type, x: T) -> u8 { x };
 fine := () -> u8 { narrow(u8, 3) };
@@ -33,7 +33,7 @@ bad := (p: Pair(u32)) -> u8 { p.small() };
 fn omitted_comptime_arguments_are_inferred_from_the_others() {
     let fixture = Fixture::new("generics-inferred");
     let file = fixture.root.write(
-        "inferred.ov",
+        "inferred.vun",
         "\
 max := ($T: type, a: T, b: T) -> T { if a > b { a } else { b } };
 E := enum { fs(u8), oom };
@@ -54,7 +54,7 @@ none := () { first(.none); };
 fn callbacks_take_functions_closures_and_constructors() {
     let fixture = Fixture::new("generics-callables");
     let file = fixture.root.write(
-        "callables.ov",
+        "callables.vun",
         "\
 E := enum { bad(u8) };
 lit := (o: ?u8) -> ?u16 { o.map((x: u8) -> u16 { x + 1 }) };

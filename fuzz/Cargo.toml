@@ -1,5 +1,5 @@
 [package]
-name = "overt-fuzz"
+name = "vun-fuzz"
 description = "Fuzz targets, run with cargo-fuzz: `cargo fuzz run <target>`."
 version = "0.0.0"
 edition = "2024"
@@ -12,10 +12,10 @@ cargo-fuzz = true
 
 [dependencies]
 libfuzzer-sys = "0.4"
-overt-diag = { path = "../compiler/base/diag" }
-overt-origin = { path = "../compiler/base/origin" }
-overt-span = { path = "../compiler/base/span" }
-overt-syntax = { path = "../compiler/front/syntax" }
+vun-diag = { path = "../compiler/base/diag" }
+vun-origin = { path = "../compiler/base/origin" }
+vun-span = { path = "../compiler/base/span" }
+vun-syntax = { path = "../compiler/front/syntax" }
 
 [[bin]]
 name = "lex"

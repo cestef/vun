@@ -1,4 +1,4 @@
-//! The primitives of `overt-sema`, from `lib/lang`: every declaration of the package's namespace
+//! The primitives of `vun-sema`, from `lib/lang`: every declaration of the package's namespace
 //! whose value is `_` is provided by the compiler (spec 00, the layering rule), so those
 //! declarations are the table of what the compiler implements.
 //!
@@ -11,11 +11,11 @@
 //! written, and `Primitive` holds one variant per namespace, so each namespace's primitives are
 //! implemented and matched apart.
 
-use overt_build::layout::SEPARATOR;
-use overt_diag::{DiagId, Msg};
-use overt_syntax::literal::Literal;
 use proc_macro2::{Ident, Span};
 use quote::quote;
+use vun_build::layout::SEPARATOR;
+use vun_diag::{DiagId, Msg};
+use vun_syntax::literal::Literal;
 
 use crate::generate::{Access, Generator, Module, Read, Source};
 use crate::names::{docs, ident, pascal};

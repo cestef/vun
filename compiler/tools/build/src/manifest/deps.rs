@@ -1,7 +1,7 @@
 //! The `.deps` and `.replace` entries of a manifest: where each package comes from.
 
-use overt_diag::{DiagCx, Diagnostic, Msg, errors};
-use overt_syntax::literal::{Decl, Literal};
+use vun_diag::{DiagCx, Diagnostic, Msg, errors};
+use vun_syntax::literal::{Decl, Literal};
 
 use super::record::{Fields, Record};
 use super::{DEP_KINDS, Dep, DepKind, Identity, Replacement, Source, Version, field};
@@ -18,7 +18,7 @@ impl Dep {
 
     fn read(decl: &Decl<'_>, cx: &mut DiagCx<'_>) -> Option<Self> {
         let mut fields = Fields::new(decl, field::DEP, cx)?;
-        let kind = fields.get(field::KIND).map_or(Some(DepKind::Overt), |d| d.choice(DEP_KINDS, cx));
+        let kind = fields.get(field::KIND).map_or(Some(DepKind::Vun), |d| d.choice(DEP_KINDS, cx));
         let source = Source::read(&mut fields, decl, cx);
         fields.finish(cx);
         Some(Self { name: decl.name.to_owned(), source: source?, kind: kind?, span: decl.span })

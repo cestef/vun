@@ -52,15 +52,15 @@ fn error(line: &str) -> (DiagId, String) {
 
 #[test]
 fn runs_with_typed_arguments() {
-    let Ok(Request::Run(path, args)) = PROGRAM.parse(&argv("dump cst -q a.ov --format=json")) else {
+    let Ok(Request::Run(path, args)) = PROGRAM.parse(&argv("dump cst -q a.vun --format=json")) else {
         panic!("not a run")
     };
     assert_eq!(names(&path), ["tool", "dump", "cst"]);
     assert_eq!(
         (args.value(&FILE), args.value(&FORMAT), args.flag(&QUIET)),
-        (Some("a.ov"), Some("json"), true)
+        (Some("a.vun"), Some("json"), true)
     );
-    let Ok(Request::Run(_, args)) = PROGRAM.parse(&argv("dump cst --format short a.ov")) else {
+    let Ok(Request::Run(_, args)) = PROGRAM.parse(&argv("dump cst --format short a.vun")) else {
         panic!("not a run")
     };
     assert_eq!(args.value(&FORMAT), Some("short"));
@@ -99,7 +99,7 @@ fn usage_errors_suggest_and_point_at_help() {
 
 #[test]
 fn group_options_apply_below() {
-    for line in ["--color dump cst a.ov", "dump --color cst a.ov", "dump cst a.ov --color"] {
+    for line in ["--color dump cst a.vun", "dump --color cst a.vun", "dump cst a.vun --color"] {
         let Ok(Request::Run(_, args)) = PROGRAM.parse(&argv(line)) else { panic!("{line:?} did not run") };
         assert!(args.flag(&COLOR), "{line:?}");
     }

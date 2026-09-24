@@ -3,7 +3,7 @@
 use std::fs;
 use std::path::Path;
 
-use overt_fs::{Edit, Tree};
+use vun_fs::{Edit, Tree};
 
 use super::{Failure, Format};
 
@@ -29,7 +29,7 @@ impl Scheme {
 }
 
 /// The schemes URLs are read through: `file://` always, and those a program installs, such as
-/// the network schemes of `overt-http`. Keeping network access out of this crate keeps its TLS
+/// the network schemes of `vun-http`. Keeping network access out of this crate keeps its TLS
 /// stack off the build path of everything that fetches packages.
 pub struct Schemes {
     list: Vec<&'static Scheme>,

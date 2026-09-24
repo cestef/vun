@@ -1,13 +1,13 @@
-//! The kinds and tables of `overt-grammar`, from the files of `lib/lang/lang/syntax`: the grammar
+//! The kinds and tables of `vun-grammar`, from the files of `lib/lang/lang/syntax`: the grammar
 //! and the desugaring tables, read as one set of declarations.
 //!
 //! Declarations are translated by the shape of their value, never by their name (the rules are in
-//! the header of `grammar.ov`), so a new kind, enum or table needs no change here. After changing
+//! the header of `grammar.vun`), so a new kind, enum or table needs no change here. After changing
 //! the token set, generate twice: the parser that reads the grammar is built from the previous
 //! output.
 
-use overt_diag::{DiagId, Msg};
-use overt_syntax::literal::{Decl, Literal};
+use vun_diag::{DiagId, Msg};
+use vun_syntax::literal::{Decl, Literal};
 
 use crate::generate::{Generator, Module, Read, Source};
 
@@ -43,7 +43,7 @@ struct Enum<'s> {
 }
 
 struct Variant<'s> {
-    /// The name in `grammar.ov`, by which tables refer to it.
+    /// The name in `grammar.vun`, by which tables refer to it.
     name: &'s str,
     doc: Vec<String>,
     text: Option<&'s str>,

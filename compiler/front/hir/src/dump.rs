@@ -1,9 +1,9 @@
-//! The text form of a HIR for `overt dump hir`: one node per line, indented by depth, with the
+//! The text form of a HIR for `vun dump hir`: one node per line, indented by depth, with the
 //! source position of its origin and, for names, what they resolve to.
 
-use overt_origin::{OriginId, OriginTable};
-use overt_outline::{Outline, Outlined};
-use overt_span::SourceMap;
+use vun_origin::{OriginId, OriginTable};
+use vun_outline::{Outline, Outlined};
+use vun_span::SourceMap;
 
 use crate::resolve::{Res, Resolution};
 use crate::tree::{BlockId, DeclId, ExprId, ExprKind, Hir, Lit, NsId, PatId, PatKind, Spread};
@@ -46,7 +46,7 @@ impl Printer<'_> {
             ExprKind::Name(s) => {
                 let text = s.as_str();
                 match self.resolution.names[expr] {
-                    Some(Res::Binder(b)) => format!("Name {text} -> binder {}", overt_index::Idx::index(b)),
+                    Some(Res::Binder(b)) => format!("Name {text} -> binder {}", vun_index::Idx::index(b)),
                     _ => format!("Name {text} -> outer"),
                 }
             }
@@ -99,7 +99,7 @@ impl Visitor for Printer<'_> {
                     if binder.mutable { "mut " } else { "" },
                     if binder.comptime { "$" } else { "" }
                 );
-                format!("Bind {marks}{} = binder {}", binder.name.as_str(), overt_index::Idx::index(*b))
+                format!("Bind {marks}{} = binder {}", binder.name.as_str(), vun_index::Idx::index(*b))
             }
             PatKind::Hole => "Hole".to_owned(),
             PatKind::Tuple(_) => "Tuple".to_owned(),

@@ -9,7 +9,7 @@ where the trap fired, and lists each call it fired in (spec 03, section 7).
 
 ## Example
 
-```ov
+```vun
 half := ($n: u8) -> u8 { 10 / n };
 Small := Int(0..=half(0)); //~ comptime.trap
 ```
@@ -19,7 +19,7 @@ Small := Int(0..=half(0)); //~ comptime.trap
 Call the function with a value it can compute, or make the divisor's type exclude zero, so the
 division is no trap site:
 
-```ov
+```vun
 half := ($n: Int(1..=255)) -> u8 { 10 / n };
 Small := Int(0..=half(2));
 ```

@@ -5,16 +5,16 @@
 //! stages reading MIR in functions MIR does not lower yet, is pending, not failing, so the corpus
 //! can be written ahead of the compiler (roadmap phase 0).
 
-use overt_fs::Tree;
 use std::collections::BTreeSet;
 use std::fmt::Write;
 use std::path::{Path, PathBuf};
+use vun_fs::Tree;
 
-use overt_diag::{ChildKind, DiagId, Diagnostic, errors};
-use overt_driver::stages::{Input, Stage};
-use overt_driver::{Coverage, Session};
-use overt_harness::{self as harness, At, Expected, Mismatch, Reported};
-use overt_span::{EXTENSION, SourceMap};
+use vun_diag::{ChildKind, DiagId, Diagnostic, errors};
+use vun_driver::stages::{Input, Stage};
+use vun_driver::{Coverage, Session};
+use vun_harness::{self as harness, At, Expected, Mismatch, Reported};
+use vun_span::{EXTENSION, SourceMap};
 
 /// Where the corpus lives, relative to the repository root, and what its files expect.
 pub(crate) const SUITES: &[(&str, Expect)] =

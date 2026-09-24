@@ -3,8 +3,8 @@
 //! context, `.{ }` or `.name`, evaluates with the type expected of it, from its surroundings or
 //! from typing.
 
-use overt_hir::tree::{Arg, Entry, ExprId, ExprKind, List, Name};
-use overt_intern::Symbol;
+use vun_hir::tree::{Arg, Entry, ExprId, ExprKind, List, Name};
+use vun_intern::Symbol;
 
 use super::{Env, Unevaluated};
 use crate::member::{Found, Members};

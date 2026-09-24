@@ -1,5 +1,5 @@
 [package]
-name = "overt-intern"
+name = "vun-intern"
 description = "Interned symbols, one concurrent pool per process."
 version.workspace = true
 edition.workspace = true
@@ -10,4 +10,4 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
-overt-hash.workspace = true
+vun-hash.workspace = true

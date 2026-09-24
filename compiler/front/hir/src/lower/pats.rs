@@ -1,7 +1,7 @@
 //! Patterns, from expressions in pattern position: they mirror constructors (spec 01, section 6).
 
-use overt_grammar::{NodeField, NodeKind, TokenKind};
-use overt_syntax::cst::{Fields, NodeId};
+use vun_grammar::{NodeField, NodeKind, TokenKind};
+use vun_syntax::cst::{Fields, NodeId};
 
 use super::Lower;
 use crate::tree::{Binder, BinderId, Name, Pat, PatId, PatKind};

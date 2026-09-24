@@ -3,15 +3,15 @@
 A command is given more positional arguments than it declares.
 
 Each command declares its arguments (spec 12, section 7); a word left over after them is not
-ignored. `overt check` takes one file.
+ignored. `vun check` takes one file.
 
 ## Example
 
 ```console
-$ overt check blinky.ov board.ov
-error[cli.unexpected_argument]: unexpected argument `board.ov` for `overt check`
+$ vun check blinky.vun board.vun
+error[cli.unexpected_argument]: unexpected argument `board.vun` for `vun check`
   │
-  ╰ help: see `overt check --help`
+  ╰ help: see `vun check --help`
 ```
 
 ## Fix
@@ -19,6 +19,6 @@ error[cli.unexpected_argument]: unexpected argument `board.ov` for `overt check`
 Run the command once per argument:
 
 ```console
-$ overt check blinky.ov
-$ overt check board.ov
+$ vun check blinky.vun
+$ vun check board.vun
 ```

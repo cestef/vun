@@ -1,6 +1,6 @@
 //! Compilation units: functions, data, symbols.
 
-use overt_origin::OriginId;
+use vun_origin::OriginId;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Linkage {

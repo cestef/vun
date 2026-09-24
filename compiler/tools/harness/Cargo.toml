@@ -1,5 +1,5 @@
 [package]
-name = "overt-harness"
+name = "vun-harness"
 description = "Test harnesses: corpus expectations, snapshots, blessing."
 version.workspace = true
 edition.workspace = true
@@ -10,4 +10,4 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
-overt-fs.workspace = true
+vun-fs.workspace = true

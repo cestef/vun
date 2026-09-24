@@ -5,7 +5,7 @@ use std::cell::RefCell;
 use std::fmt;
 use std::sync::Arc;
 
-use overt_hash::Hash;
+use vun_hash::Hash;
 
 use super::Query;
 use super::db::{Db, Memo};

@@ -3,9 +3,9 @@
 
 use std::collections::{BTreeSet, VecDeque};
 
-use overt_grammar::Extent;
-use overt_index::{Idx, IndexVec};
-use overt_mir::{BlockId, Local, Operand, Rvalue, Stmt, Terminator, TerminatorKind};
+use vun_grammar::Extent;
+use vun_index::{Idx, IndexVec};
+use vun_mir::{BlockId, Local, Operand, Rvalue, Stmt, Terminator, TerminatorKind};
 
 use super::{Checker, LoanId};
 

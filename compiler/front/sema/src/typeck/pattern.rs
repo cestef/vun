@@ -2,7 +2,7 @@
 //! and gives its binders the types of the parts they bind. Through a borrow, binders borrow the
 //! parts in the same mode (decision 31). A `match` has the type all its arms can take.
 
-use overt_hir::tree::{Arm, Entry, ExprId, ExprKind, Name, PatId, PatKind};
+use vun_hir::tree::{Arm, Entry, ExprId, ExprKind, Name, PatId, PatKind};
 
 use super::{Known, Typer};
 use crate::Primitive;

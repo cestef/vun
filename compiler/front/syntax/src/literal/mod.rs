@@ -1,6 +1,6 @@
 //! Reading literal declarations as data, without evaluating anything (spec 12, section 2).
 //!
-//! Tools read `build.ov` manifests and `lang/syntax/grammar.ov` this way. A declaration
+//! Tools read `build.vun` manifests and `lang/syntax/grammar.vun` this way. A declaration
 //! `name := value;` whose value is made of strings, integers, `.name` literals, tagged values
 //! `.name(a, b)`, lists `[a, b]`,
 //! anonymous structs `.{ .field = value }`, typed ones `a.T{ .field = value }`, calls of paths
@@ -16,7 +16,7 @@ mod tests;
 
 use std::borrow::Cow;
 
-use overt_span::Span;
+use vun_span::Span;
 
 use crate::cst::Cst;
 use crate::tokens::Tokens;

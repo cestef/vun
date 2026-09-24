@@ -8,7 +8,7 @@ lives until its last use, not to the end of its block (spec 05, section 4).
 
 ## Example
 
-```ov
+```vun
 bump := (xs: &mut [4]u8) {
     first := &mut xs[0];
     xs[1] = 2; //~ borrow.conflict
@@ -20,7 +20,7 @@ bump := (xs: &mut [4]u8) {
 
 Finish with the borrow before touching the place again:
 
-```ov
+```vun
 bump := (xs: &mut [4]u8) {
     first := &mut xs[0];
     first.* = 1;
