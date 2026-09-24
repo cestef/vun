@@ -29,7 +29,7 @@ express is a keyword.
 |-----------------|-------|------|
 | `const`, `let`, `var`, `static` | `x := e` binds; `mut x := e` binds mutably; at top level both are statics | 1.3 |
 | `fn`, `func`, `proc` | a function is a tuple pattern with a body: `(a: u32) -> u32 { a + 1 }` | 1.4 |
-| `pub`, `export`, `private` | a leading `_` makes a name private to its namespace | 1.7 |
+| `pub`, `export`, `private`, `internal` | a leading `_` restricts a name to its namespace; `#[visible(...)]` widens it to an enclosing namespace, the package or the workspace | 1.7 |
 | `comptime`, `const fn`, `constexpr` | `$` marks what is known at compile time | 02 |
 | `interface`, `trait`, `impl` | `interface(...)` is a `lang` function; `#[impl(...)]` is a `lang` attribute | 02 |
 | `extern`, `intrinsic` | a declaration whose value is `_` is provided from outside | 1.3 |
@@ -59,7 +59,7 @@ Type syntax mirrors value syntax. Patterns mirror constructors. Each symbol mean
 | `(A) -> R` | function type |
 | `[ ]` | sequences: type `[N]T`, value `[a, b]`, index `a[i]`, captures `[&mut n] (x: u8) { }` |
 | `.{ }` | anonymous struct value `.{ .x = 1 }` |
-| `.name` | `name` looked up in the expected type: `.some(x)`, `.output`, `.ms(500)`, `.{ }` |
+| `.name` | `name` looked up in the expected type: `.some(x)`, `.output`, `.ms(500)`, `.{ }`; for a type provided from outside (`T: type = _`), in the namespace declaring it |
 | `.*` | dereference (postfix) |
 | `&` | borrow: `&x` is a value and `&T` its type; likewise `&mut`, `&out`, `&take`, `&temp` |
 | `?` | optional: `?T` is the type; postfix `e?` propagates an absent or failed value |
@@ -275,10 +275,33 @@ settle every place where a token could continue two constructs:
 
 ## 7. Visibility
 
-One rule: **a name starting with `_` is visible only inside the namespace that declares it**, and
-in namespaces nested within it. Everything else is visible wherever its parent is.
+One rule: **a name starting with `_` is restricted; it is visible only inside its scope**, and in
+the namespaces nested within it. Everything else is public: visible wherever its parent is. The
+scope is the namespace that declares the name, unless the `lang` attribute `visible` widens it:
 
-It applies uniformly to declarations, struct members, files and directories:
+| Attribute | Scope |
+|-----------|-------|
+| none | the declaring namespace |
+| `#[visible(.within(ns))]` | the enclosing namespace `ns`, such as `drivers` or the package itself |
+| `#[visible(.package)]` | the declaring package |
+| `#[visible(.workspace)]` | the packages of the declaring package's workspace (spec 12) |
+
+```ov
+_raw := 0x4000_1000;                  // this namespace
+#[visible(.within(drivers))]
+_regs := Regs.at(_raw);               // anywhere inside drivers
+#[visible(.package)]
+_parse := (bytes: &[u8]) -> Frame { ... };
+#[visible(.workspace)]
+_abi := 3;                            // sibling packages of the workspace
+```
+
+- The scope of `.within(ns)` must enclose the declaration; otherwise, and on a public name, the
+  attribute is `names.visibility`. Widening never makes a name public: public names are exactly
+  those without `_`, so a package's public API is its tree minus underscored names.
+- The rule applies uniformly to declarations, struct members, files and directories. A file or
+  directory has no declaration to carry the attribute, so its scope is its parent namespace; a
+  restricted namespace placed at the package root (`_impl/`) is visible in the whole package.
 
 ```
 drivers/
@@ -287,8 +310,10 @@ drivers/
   _dma/            drivers._dma: visible inside drivers/ only
 ```
 
-A package's public API is therefore its tree minus underscored names. Privacy is visible at every
-use site (`regs._raw`), and can be read without looking up the declaration.
+- Restriction is visible at every use site (`regs._raw`) without looking up the declaration; how
+  far it reaches is in the declaration.
+- `Scope` and its values are declared in `lang.scope`; `.package` is looked up there because
+  `Scope` is the expected type (section 2), so the compiler reads the attribute as data.
 
 ## 8. Modules and packages
 
@@ -329,4 +354,6 @@ brings: an umbrella namespace is a list of spreads.
   from the manifest and the files alone, without evaluation.
 - A selected name is a member like a declared one. A name spread whole may not also be declared in
   the same namespace or spread there twice (`names.duplicate`), as with a file and a directory.
-- Only public names are spread; selecting a private one is `names.private`.
+- A whole spread brings the public names, so it resolves without evaluation. A selection may name a
+  restricted name visible where the spread is written, and any other is `names.private`. A spread
+  member keeps the declaration's scope, so re-exporting never widens it.

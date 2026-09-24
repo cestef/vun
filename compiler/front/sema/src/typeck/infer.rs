@@ -9,6 +9,7 @@ use overt_intern::Symbol;
 use super::{Known, Stage, Typer};
 use crate::Primitive;
 use crate::decl::DeclType;
+use crate::env::Env;
 use crate::eval::{Call, Instance};
 use crate::int::{Integer, Interval};
 use crate::item::{Declared, Site};
@@ -74,16 +75,35 @@ impl Typer<'_, '_, '_> {
         // Only a path names a namespace or a type, so nothing else is evaluated here.
         if matches!(self.hir().exprs[object].kind, ExprKind::Name(_) | ExprKind::Member { .. }) {
             match self.env.eval(object) {
-                Ok(Value::Namespace(ns)) => return self.site(self.env.cx.get::<Declared>(&(ns, name))?),
-                Ok(Value::Type(ty)) => return self.env.cx.get::<MemberType>(&(ty, name)).ok(),
+                Ok(Value::Namespace(ns)) => {
+                    let site = self.env.cx.get::<Declared>(&(ns, name))?;
+                    if let Site::Decl(decl) = &site
+                        && let Some(visible) =
+                            Env::of(self.env.cx, &decl.file).map(|e| e.decl_visible(decl.decl, name))
+                    {
+                        self.check_visible(expr, name, &visible);
+                    }
+                    return self.site(site);
+                }
+                Ok(Value::Type(ty)) => {
+                    if let Found::Decl(decl) = self.env.cx.get::<Members>(&ty)?.find(name) {
+                        self.check_visible(expr, name, &decl.visible);
+                    }
+                    return self.env.cx.get::<MemberType>(&(ty, name)).ok();
+                }
                 _ => {}
             }
         }
         let known = known?;
+        let known = Known { ty: known.ty.borrowed().unwrap_or(known.ty), ..known };
         let members = self.env.cx.get::<Members>(&known.ty)?;
         match members.find(name) {
-            Found::Field(ty) => Some(Known { ty: *ty.as_ref().ok()?, stage: known.stage }),
-            Found::Decl(_) => {
+            Found::Field(field) => {
+                self.check_visible(expr, name, &field.visible);
+                Some(Known { ty: *field.ty.as_ref().ok()?, stage: known.stage })
+            }
+            Found::Decl(decl) => {
+                self.check_visible(expr, name, &decl.visible);
                 self.methods.insert(expr);
                 self.env.cx.get::<MemberType>(&(known.ty, name)).ok()
             }
@@ -111,9 +131,14 @@ impl Typer<'_, '_, '_> {
             };
             let at = self.hir().exprs[*value].origin;
             match members.find(*name) {
-                Found::Field(Ok(expected)) => self.expect(at, found, *expected, None),
+                Found::Field(field) => {
+                    self.check_visible(*value, *name, &field.visible);
+                    if let Ok(expected) = field.ty {
+                        self.expect(at, found, expected, None);
+                    }
+                }
                 Found::Absent | Found::Decl(_) => self.no_member(at, target?, *name),
-                Found::Field(Err(_)) | Found::Unknown => {}
+                Found::Unknown => {}
             }
         }
         Some(Known { ty: target?, stage })

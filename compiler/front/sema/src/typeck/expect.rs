@@ -9,6 +9,7 @@ use overt_origin::OriginId;
 use super::{Known, Typer};
 use crate::int::{Interval, Storage};
 use crate::ty::{Ty, TyKind};
+use crate::visible::Visible;
 
 impl Typer<'_, '_, '_> {
     /// Checks that a value of `found`, written at `at`, is accepted where `expected` is, the type
@@ -50,6 +51,14 @@ impl Typer<'_, '_, '_> {
             .child(ChildKind::Note, note)
             .child(ChildKind::Help, help);
         self.diag.error(d);
+    }
+
+    /// Reports `name`, used at `expr`, when its visibility `visible` does not reach there.
+    pub(super) fn check_visible(&mut self, expr: ExprId, name: Symbol, visible: &Visible) {
+        if self.env.sees(visible, expr) != Some(false) {
+            return;
+        }
+        self.diag.error(self.env.not_visible(self.hir().exprs[expr].origin, name, visible));
     }
 
     /// Reports `name`, used at `at`, as no member of `ty`.

@@ -12,22 +12,37 @@ use crate::env::{Env, Unevaluated};
 use crate::item::DeclRef;
 use crate::ty::{Nominal, NominalKind, Ty, TyKind};
 use crate::typeck::Known;
+use crate::visible::{Home, Visible};
 
 #[derive(Debug, Default, PartialEq, Eq, Hash)]
 pub struct MemberTable {
-    /// Fields in declaration order, with their types.
-    pub fields: Vec<(Symbol, Result<Ty, Unevaluated>)>,
-    pub decls: Vec<(Symbol, DeclRef)>,
+    /// Fields in declaration order.
+    pub fields: Vec<Field>,
+    pub decls: Vec<MemberDecl>,
     /// Whether every member is written literally, with no `$for`, `$if`, computed name or
     /// spread: only then is a name missing from the table no member at all.
     pub complete: bool,
 }
 
+#[derive(Debug, PartialEq, Eq, Hash)]
+pub struct Field {
+    pub name: Symbol,
+    pub ty: Result<Ty, Unevaluated>,
+    pub visible: Visible,
+}
+
+#[derive(Debug, PartialEq, Eq, Hash)]
+pub struct MemberDecl {
+    pub name: Symbol,
+    pub decl: DeclRef,
+    pub visible: Visible,
+}
+
 /// What a name is among a type's members.
 #[derive(Debug, PartialEq, Eq)]
 pub enum Found<'m> {
-    Field(&'m Result<Ty, Unevaluated>),
-    Decl(&'m DeclRef),
+    Field(&'m Field),
+    Decl(&'m MemberDecl),
     Absent,
     /// Not among the members written literally, but perhaps generated.
     Unknown,
@@ -36,10 +51,10 @@ pub enum Found<'m> {
 impl MemberTable {
     #[must_use]
     pub fn find(&self, name: Symbol) -> Found<'_> {
-        if let Some((_, ty)) = self.fields.iter().find(|(n, _)| *n == name) {
-            return Found::Field(ty);
+        if let Some(field) = self.fields.iter().find(|f| f.name == name) {
+            return Found::Field(field);
         }
-        if let Some((_, decl)) = self.decls.iter().find(|(n, _)| *n == name) {
+        if let Some(decl) = self.decls.iter().find(|d| d.name == name) {
             return Found::Decl(decl);
         }
         if self.complete { Found::Absent } else { Found::Unknown }
@@ -67,16 +82,25 @@ impl Query for Members {
                 table.complete = false;
                 continue;
             };
+            let home = Home::Struct(literal.clone());
             match member {
                 Member::Field(field) => match field.name {
-                    Name::Plain(name) => table.fields.push((name, env.ty(field.ty))),
+                    Name::Plain(name) => {
+                        let (visible, _) = env.visible(name, &field.attrs, home);
+                        table.fields.push(Field { name, ty: env.ty(field.ty), visible });
+                    }
                     _ => table.complete = false,
                 },
                 Member::Decl(decl) => {
+                    let d = &hir.decls[*decl];
                     let mut binders = Vec::new();
-                    hir.binders(hir.decls[*decl].pat, &mut binders);
+                    hir.binders(d.pat, &mut binders);
                     let decl = DeclRef { file: env.file.clone(), decl: *decl };
-                    table.decls.extend(binders.iter().map(|&b| (hir.binders[b].name, decl.clone())));
+                    for b in binders {
+                        let name = hir.binders[b].name;
+                        let (visible, _) = env.visible(name, &d.attrs, home.clone());
+                        table.decls.push(MemberDecl { name, decl: decl.clone(), visible });
+                    }
                 }
                 Member::Spread(_) => table.complete = false,
             }
@@ -100,7 +124,7 @@ impl Query for MemberType {
         };
         let members = cx.get::<Members>(ty).ok_or(Unevaluated::Unsupported)?;
         let Found::Decl(decl) = members.find(*name) else { return Err(Unevaluated::Absent) };
-        Env::defining(cx, literal, instance.as_ref()).ok_or(Unevaluated::Absent)?.decl_type(decl.decl)
+        Env::defining(cx, literal, instance.as_ref()).ok_or(Unevaluated::Absent)?.decl_type(decl.decl.decl)
     }
 
     fn cycle(_: &Cx<'_>, _: &Self::Key, _: &Cycle) -> Self::Value {

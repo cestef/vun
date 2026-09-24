@@ -2,6 +2,8 @@
 
 Code: ($T: type) -> type = _;
 Name: type = _;
+/// The type of files, directories and packages as values (spec 01, section 8).
+Namespace: type = _;
 Origin: type = _;
 
 TypeOf: ($e: Code(type)) -> type = _;

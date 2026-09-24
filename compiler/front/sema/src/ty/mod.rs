@@ -12,6 +12,7 @@ mod signature;
 mod tests;
 mod value;
 
+use overt_grammar::{BORROWS, PATH_SEPARATOR};
 use overt_intern::{Interned, Pool, Symbol};
 
 use crate::Primitive;
@@ -87,6 +88,16 @@ impl TyKind {
             (Some(expected), Some(found)) => expected.contains(&found),
             _ => self == found,
         }
+    }
+
+    /// The type a borrow type borrows: `T` for `&T`, `&mut T` and the other modes of the table
+    /// `borrows` (appendix B), which have no namespace of their own (spec 01, section 4).
+    #[must_use]
+    pub fn borrowed(&self) -> Option<Ty> {
+        let Self::Primitive(p, args) = self else { return None };
+        let [Value::Type(ty)] = args.as_slice() else { return None };
+        let borrow = BORROWS.iter().filter_map(|(_, item)| item.rsplit_once(PATH_SEPARATOR));
+        borrow.into_iter().any(|(ns, name)| ns == p.namespace() && name == p.name()).then_some(*ty)
     }
 
     /// The range of an integer type.

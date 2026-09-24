@@ -17,6 +17,7 @@ mod ops;
 pub mod primitives;
 pub mod ty;
 pub mod typeck;
+pub mod visible;
 
 pub use primitives::Primitive;
 

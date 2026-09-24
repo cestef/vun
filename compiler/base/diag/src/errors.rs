@@ -51,6 +51,7 @@ pub const NAMES: DiagId = DiagId::new("lang.errors.names");
 pub const NAMES_UNRESOLVED: DiagId = DiagId::new("lang.errors.names.unresolved");
 pub const NAMES_SHADOWED: DiagId = DiagId::new("lang.errors.names.shadowed");
 pub const NAMES_PRIVATE: DiagId = DiagId::new("lang.errors.names.private");
+pub const NAMES_VISIBILITY: DiagId = DiagId::new("lang.errors.names.visibility");
 pub const NAMES_DUPLICATE: DiagId = DiagId::new("lang.errors.names.duplicate");
 /// Bindings and patterns (spec 01, sections 3 and 6).
 pub const BINDING: DiagId = DiagId::new("lang.errors.binding");
@@ -174,6 +175,7 @@ pub const ALL: &[DiagId] = &[
     NAMES_UNRESOLVED,
     NAMES_SHADOWED,
     NAMES_PRIVATE,
+    NAMES_VISIBILITY,
     NAMES_DUPLICATE,
     BINDING_HOLE_VALUE,
     BINDING_IRREFUTABLE_TEST,
@@ -240,6 +242,7 @@ pub const EXPLANATIONS: &[(DiagId, &str)] = &[
     (NAMES_UNRESOLVED, "lang/lang/errors/names/unresolved.md"),
     (NAMES_SHADOWED, "lang/lang/errors/names/shadowed.md"),
     (NAMES_PRIVATE, "lang/lang/errors/names/private.md"),
+    (NAMES_VISIBILITY, "lang/lang/errors/names/visibility.md"),
     (NAMES_DUPLICATE, "lang/lang/errors/names/duplicate.md"),
     (BINDING_HOLE_VALUE, "lang/lang/errors/binding/hole_value.md"),
     (BINDING_IRREFUTABLE_TEST, "lang/lang/errors/binding/irrefutable_test.md"),

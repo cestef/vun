@@ -775,6 +775,7 @@ dependencies = [
  "overt-origin",
  "overt-query",
  "overt-span",
+ "overt-syntax",
  "overt-target",
 ]
 

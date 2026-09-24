@@ -21,8 +21,9 @@ are recovered as follows.
 - *Functions.* A function literal is a typed tuple pattern, an optional result type and a body:
   `(a: u32, b: u32) -> u64 { a + b }`. Naming a function is binding it.
 - *Compile time.* The sigil `$` replaces `comptime`, `constexpr` and similar words (@sec-staging).
-- *Visibility.* A leading underscore makes a name private to its enclosing namespace; there is no
-  `pub`.
+- *Visibility.* A leading underscore restricts a name to its enclosing namespace, and the `lang`
+  attribute `visible` widens the scope to an enclosing namespace, the package or the workspace; there
+  is no `pub`.
 - *Interfaces and conformance.* `interface` is a function in `lang`, and conformance is the `lang`
   attribute `#[impl(...)]`.
 - *Foreign and primitive declarations.* A declaration whose value is `_` is provided from outside.
@@ -83,5 +84,7 @@ whole and also declared in the same namespace is an error, as a name defined in 
 directory is.
 
 The single privacy rule applies uniformly to declarations, members, files and directories: a name
-beginning with `_` is visible only within the namespace that declares it and those nested inside it.
-Privacy is thus visible at every use site without consulting the declaration.
+beginning with `_` is restricted to a scope, and visible only within it and the namespaces nested
+inside it. The scope is the declaring namespace unless the `lang` attribute `visible` widens it to an
+enclosing namespace, the package or the workspace. Restriction is thus visible at every use site
+without consulting the declaration, and widening never makes a name public.

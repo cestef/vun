@@ -1,5 +1,7 @@
-//! Type checking a file (spec 02 and 04): each namespace member's value against its annotation,
-//! and each function body, wherever the types are known.
+//! Checking a file (spec 01, 02 and 04): each namespace member's value against its annotation,
+//! each function body, wherever the types are known, and where restricted names are visible.
+
+mod visible;
 
 use std::sync::Arc;
 
@@ -12,6 +14,7 @@ use overt_query::{Cx, Query};
 use crate::env::Env;
 use crate::item::ExprRef;
 use crate::typeck::{Stage, Typed, Typer};
+use crate::visible::Home;
 
 /// What checking a file reports; `None` for a file the driver did not read.
 pub struct Checked;
@@ -23,7 +26,7 @@ impl Query for Checked {
 
     fn compute(cx: &Cx<'_>, key: &FileRef) -> Self::Value {
         let env = Env::of(cx, key)?;
-        let mut checker = Checker { env: &env, diag: DiagCtxt::new() };
+        let mut checker = Checker { env: &env, diag: DiagCtxt::new(), homes: vec![env.home()] };
         if let Some(root) = env.parsed.hir.root {
             checker.namespace(&env.parsed.hir, root);
         }
@@ -35,11 +38,14 @@ impl Query for Checked {
 struct Checker<'e, 'a, 'db> {
     env: &'e Env<'a, 'db>,
     diag: DiagCtxt,
+    /// The namespaces around the members visited, innermost last.
+    homes: Vec<Home>,
 }
 
 impl Visitor for Checker<'_, '_, '_> {
     fn namespace(&mut self, hir: &Hir, ns: NsId) {
         each_entry(&hir.namespaces[ns].members, &mut |m| {
+            self.visibility(hir, m);
             if let Member::Decl(d) = m {
                 let mut typer = Typer::new(self.env, Stage::Compile);
                 typer.decl(hir, *d);
@@ -55,6 +61,12 @@ impl Visitor for Checker<'_, '_, '_> {
             if let Some(typed) = self.env.cx.get::<Typed>(&f) {
                 self.diag.absorb(&typed.diag);
             }
+        }
+        if let ExprKind::Struct(_) = hir.exprs[expr].kind {
+            self.homes.push(Home::Struct(ExprRef { file: self.env.file.clone(), expr }));
+            visit::walk_expr(self, hir, expr);
+            self.homes.pop();
+            return;
         }
         visit::walk_expr(self, hir, expr);
     }

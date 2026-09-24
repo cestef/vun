@@ -55,6 +55,12 @@ impl ByteRange {
         Self { lo: self.lo.min(other.lo), hi: self.hi.max(other.hi) }
     }
 
+    /// Whether `other` lies within this range.
+    #[must_use]
+    pub const fn contains(self, other: Self) -> bool {
+        self.lo <= other.lo && other.hi <= self.hi
+    }
+
     /// The text this range selects.
     #[must_use]
     pub fn of(self, text: &str) -> &str {

@@ -181,22 +181,18 @@ impl Check<'_, '_> {
         for &b in select {
             let name = hir.binders[b].name;
             let text = name.as_str();
-            let exists = members.contains(&name);
-            if exists && Visibility::of(text) == Visibility::Public {
+            // Whether a restricted name reaches the spread depends on its attributes, which sema
+            // reads (spec 01, section 7).
+            if members.contains(&name) {
                 continue;
             }
-            let d = if exists {
-                let msg = Msg::new().code(text).text(" is private to ").code(path);
-                Diagnostic::error(errors::NAMES_PRIVATE, msg)
-            } else {
-                let msg = Msg::new().code(path).text(" has no member ").code(text);
-                let d = Diagnostic::error(errors::NAMES_UNRESOLVED, msg);
-                let public =
-                    members.iter().map(|m| m.as_str()).filter(|m| Visibility::of(m) == Visibility::Public);
-                match closest(text, public) {
-                    Some(near) => d.child(ChildKind::Help, Msg::did_you_mean(near)),
-                    None => d,
-                }
+            let msg = Msg::new().code(path).text(" has no member ").code(text);
+            let d = Diagnostic::error(errors::NAMES_UNRESOLVED, msg);
+            let public =
+                members.iter().map(|m| m.as_str()).filter(|m| Visibility::of(m) == Visibility::Public);
+            let d = match closest(text, public) {
+                Some(near) => d.child(ChildKind::Help, Msg::did_you_mean(near)),
+                None => d,
             };
             self.checked.diag.error(d.at(hir.binders[b].origin, None));
         }

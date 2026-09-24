@@ -4,16 +4,17 @@
 pub enum Visibility {
     /// Visible wherever its parent is.
     Public,
-    /// Visible only inside the declaring namespace and the namespaces nested in it.
-    Private,
+    /// Visible only inside its scope and the namespaces nested in it: the declaring namespace,
+    /// unless `#[visible(...)]` widens it.
+    Restricted,
 }
 
 impl Visibility {
-    /// Starts every private name.
+    /// Starts every restricted name.
     pub const PREFIX: char = '_';
 
     #[must_use]
     pub fn of(name: &str) -> Self {
-        if name.starts_with(Self::PREFIX) { Self::Private } else { Self::Public }
+        if name.starts_with(Self::PREFIX) { Self::Restricted } else { Self::Public }
     }
 }

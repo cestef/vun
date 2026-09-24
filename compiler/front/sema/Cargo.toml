@@ -19,4 +19,5 @@ overt-target.workspace = true
 overt-hir.workspace = true
 overt-span.workspace = true
 overt-grammar.workspace = true
+overt-syntax.workspace = true
 num-bigint.workspace = true

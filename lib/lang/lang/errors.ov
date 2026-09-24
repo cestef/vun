@@ -36,6 +36,7 @@ names := struct {
     unresolved := diag.Diag{ .explanation = meta.embed("errors/names/unresolved.md") };
     shadowed := diag.Diag{ .explanation = meta.embed("errors/names/shadowed.md") };
     private := diag.Diag{ .explanation = meta.embed("errors/names/private.md") };
+    visibility := diag.Diag{ .explanation = meta.embed("errors/names/visibility.md") };
     duplicate := diag.Diag{ .explanation = meta.embed("errors/names/duplicate.md") };
 };
 

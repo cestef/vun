@@ -1,11 +1,12 @@
 # names.private
 
-A name starting with `_` is used outside the namespace that declares it.
+A name starting with `_` is used outside its scope.
 
-A name starting with `_` is visible only inside the namespace that declares it and the namespaces
-nested within it (spec 01, section 7). The rule is the same for declarations, struct members,
-files and directories, so privacy shows at every use site. A spread cannot select a private name
-either (spec 01, section 8).
+A name starting with `_` is restricted: it is visible only inside its scope and the namespaces
+nested within it (spec 01, section 7). The scope is the namespace that declares the name, unless
+`#[visible(...)]` widens it to an enclosing namespace, the package or the workspace. The rule is the
+same for declarations, struct members, files and directories, so restriction shows at every use
+site. A spread cannot select a name restricted elsewhere either (spec 01, section 8).
 
 ## Example
 

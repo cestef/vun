@@ -278,6 +278,8 @@ pub mod meta {
     pub enum Meta {
         Code,
         Name,
+        /// The type of files, directories and packages as values (spec 01, section 8).
+        Namespace,
         Origin,
         TypeOf,
         origin,
@@ -288,6 +290,7 @@ pub mod meta {
         pub const ALL: &[Self] = &[
             Self::Code,
             Self::Name,
+            Self::Namespace,
             Self::Origin,
             Self::TypeOf,
             Self::origin,
@@ -299,6 +302,7 @@ pub mod meta {
             match self {
                 Self::Code => "Code",
                 Self::Name => "Name",
+                Self::Namespace => "Namespace",
                 Self::Origin => "Origin",
                 Self::TypeOf => "TypeOf",
                 Self::origin => "origin",
@@ -348,6 +352,40 @@ pub mod panic {
             match self {
                 Self::trap => "trap",
                 Self::never => "never",
+            }
+        }
+    }
+}
+pub mod scope {
+    /// The primitives declared in `lang.scope`.
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+    #[allow(non_camel_case_types, reason = "variants are named as their declarations")]
+    pub enum Scope {
+        /// A scope: the namespaces, packages or workspace a name starting with `_` is visible in.
+        Scope,
+        /// The declaring package.
+        package,
+        /// The packages of the declaring package's workspace (spec 12).
+        workspace,
+        /// The enclosing namespace `namespace`, and the namespaces nested in it.
+        within,
+    }
+    impl Scope {
+        pub const NAMESPACE: &str = "lang.scope";
+        pub const ALL: &[Self] = &[
+            Self::Scope,
+            Self::package,
+            Self::workspace,
+            Self::within,
+        ];
+        /// The declaration's name.
+        #[must_use]
+        pub const fn name(self) -> &'static str {
+            match self {
+                Self::Scope => "Scope",
+                Self::package => "package",
+                Self::workspace => "workspace",
+                Self::within => "within",
             }
         }
     }
@@ -448,6 +486,9 @@ pub mod lang {
         /// `#[impl(I(T))]`: checks and registers a witness of the interface `I` for `T` (spec 02,
         /// section 3).
         r#impl,
+        /// `#[visible(scope)]`: widens where a name starting with `_` is visible from its namespace to
+        /// `scope` (spec 01, section 7).
+        visible,
     }
     impl Lang {
         pub const NAMESPACE: &str = "lang";
@@ -463,6 +504,7 @@ pub mod lang {
             Self::interface,
             Self::Attribute,
             Self::r#impl,
+            Self::visible,
         ];
         /// The declaration's name.
         #[must_use]
@@ -479,6 +521,7 @@ pub mod lang {
                 Self::interface => "interface",
                 Self::Attribute => "Attribute",
                 Self::r#impl => "impl",
+                Self::visible => "visible",
             }
         }
     }
@@ -514,6 +557,8 @@ pub enum Primitive {
     Opt(opt::Opt),
     /// `lang.panic`
     Panic(panic::Panic),
+    /// `lang.scope`
+    Scope(scope::Scope),
     /// `lang.simd`
     Simd(simd::Simd),
     /// `lang.stack`
@@ -559,6 +604,7 @@ impl Primitive {
         Self::Mem(mem::Mem::volatile_store),
         Self::Meta(meta::Meta::Code),
         Self::Meta(meta::Meta::Name),
+        Self::Meta(meta::Meta::Namespace),
         Self::Meta(meta::Meta::Origin),
         Self::Meta(meta::Meta::TypeOf),
         Self::Meta(meta::Meta::origin),
@@ -568,6 +614,10 @@ impl Primitive {
         Self::Opt(opt::Opt::level),
         Self::Panic(panic::Panic::trap),
         Self::Panic(panic::Panic::never),
+        Self::Scope(scope::Scope::Scope),
+        Self::Scope(scope::Scope::package),
+        Self::Scope(scope::Scope::workspace),
+        Self::Scope(scope::Scope::within),
         Self::Simd(simd::Simd::Vector),
         Self::Simd(simd::Simd::Mask),
         Self::Stack(stack::Stack::max),
@@ -587,6 +637,7 @@ impl Primitive {
         Self::Lang(lang::Lang::interface),
         Self::Lang(lang::Lang::Attribute),
         Self::Lang(lang::Lang::r#impl),
+        Self::Lang(lang::Lang::visible),
     ];
     /// The binding path of the namespace declaring it.
     #[must_use]
@@ -606,6 +657,7 @@ impl Primitive {
             Self::Meta(_) => meta::Meta::NAMESPACE,
             Self::Opt(_) => opt::Opt::NAMESPACE,
             Self::Panic(_) => panic::Panic::NAMESPACE,
+            Self::Scope(_) => scope::Scope::NAMESPACE,
             Self::Simd(_) => simd::Simd::NAMESPACE,
             Self::Stack(_) => stack::Stack::NAMESPACE,
             Self::Target(_) => target::Target::NAMESPACE,
@@ -630,6 +682,7 @@ impl Primitive {
             Self::Meta(p) => p.name(),
             Self::Opt(p) => p.name(),
             Self::Panic(p) => p.name(),
+            Self::Scope(p) => p.name(),
             Self::Simd(p) => p.name(),
             Self::Stack(p) => p.name(),
             Self::Target(p) => p.name(),

@@ -1,0 +1,13 @@
+//! Where a restricted name is visible (spec 01, section 7): the argument of `lang.visible`.
+
+/// A scope: the namespaces, packages or workspace a name starting with `_` is visible in.
+Scope: type = _;
+
+/// The declaring package.
+package: Scope = _;
+
+/// The packages of the declaring package's workspace (spec 12).
+workspace: Scope = _;
+
+/// The enclosing namespace `namespace`, and the namespaces nested in it.
+within: ($namespace: meta.Namespace) -> Scope = _;
