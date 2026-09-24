@@ -2,6 +2,8 @@
 //! declarations become locals; any other name is a constant sema evaluates. A form not lowered
 //! yet is [`Unbuilt`], at its origin, so that evaluation stops rather than guesses.
 
+mod control;
+
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -10,7 +12,7 @@ use overt_hir::resolve::Res;
 use overt_hir::tree::{
     Arg, BinderId, BlockId as HirBlock, Entry, ExprId, ExprKind, Lit, PatKind, Stmt as HirStmt,
 };
-use overt_index::IndexVec;
+use overt_index::{Idx, IndexVec};
 use overt_origin::OriginId;
 use overt_query::{Cx, Query};
 use overt_sema::env::Env;
@@ -62,10 +64,9 @@ impl Builder<'_, '_, '_> {
         };
         let mut locals = IndexVec::new();
         let ret = locals.push(LocalDecl { name: None, origin });
-        let open = Terminator { kind: TerminatorKind::Return, origin };
-        let mut blocks = IndexVec::new();
-        let current = blocks.push(Block { stmts: Vec::new(), term: open });
-        let mut b = Builder { env, locals, blocks, current, bound: HashMap::new() };
+        let mut b =
+            Builder { env, locals, blocks: IndexVec::new(), current: Idx::new(0), bound: HashMap::new() };
+        b.current = b.fresh(origin);
         let mut args = Vec::new();
         for param in params {
             let Entry::One(param) = param else { return Err(Unbuilt { at: origin }) };
@@ -147,12 +148,19 @@ impl Builder<'_, '_, '_> {
                 let hi = right.map(|r| self.operand(r)).transpose()?;
                 Ok(self.temp(Rvalue::Range { op: *op, lo, hi }, origin))
             }
-            ExprKind::Infix { op: TokenKind::And | TokenKind::Or, .. } => Err(unbuilt),
+            ExprKind::Infix { op: op @ (TokenKind::And | TokenKind::Or), left, right: Some(right) } => {
+                self.logic(*op, *left, *right, origin)
+            }
+            ExprKind::If { cond, then, otherwise } => self.branch(cond, *then, *otherwise, origin),
             ExprKind::Infix { op, left, right: Some(right) } => {
                 let (left, right) = (self.operand(*left)?, self.operand(*right)?);
                 Ok(self.temp(Rvalue::Binary { op: *op, left, right }, origin))
             }
-            ExprKind::Prefix { op: op @ (TokenKind::Minus | TokenKind::Tilde), operand, .. } => {
+            ExprKind::Prefix {
+                op: op @ (TokenKind::Minus | TokenKind::Tilde | TokenKind::Bang),
+                operand,
+                ..
+            } => {
                 let operand = self.operand(*operand)?;
                 Ok(self.temp(Rvalue::Unary { op: *op, operand }, origin))
             }

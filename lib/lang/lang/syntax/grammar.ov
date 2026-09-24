@@ -225,36 +225,6 @@ infix := [
     .{ .assoc = .left, .tokens = [.star, .slash, .percent] },
 ];
 
-/// What infix operators desugar to (appendix B): `a op b` is `function(a, b)` of the interface at
-/// `interface`, for the type of `a`. `and`, `or` and ranges are not interfaces.
-operators := [
-    .{ .token = .plus, .interface = "lang.ops.Add", .function = "add" },
-    .{ .token = .minus, .interface = "lang.ops.Sub", .function = "sub" },
-    .{ .token = .star, .interface = "lang.ops.Mul", .function = "mul" },
-    .{ .token = .slash, .interface = "lang.ops.Div", .function = "div" },
-    .{ .token = .percent, .interface = "lang.ops.Rem", .function = "rem" },
-    .{ .token = .amp, .interface = "lang.ops.BitAnd", .function = "bit_and" },
-    .{ .token = .pipe, .interface = "lang.ops.BitOr", .function = "bit_or" },
-    .{ .token = .caret, .interface = "lang.ops.BitXor", .function = "bit_xor" },
-    .{ .token = .shl, .interface = "lang.ops.Shl", .function = "shl" },
-    .{ .token = .shr, .interface = "lang.ops.Shr", .function = "shr" },
-    .{ .token = .plus_plus, .interface = "lang.ops.Concat", .function = "concat" },
-    .{ .token = .eq_eq, .interface = "lang.ops.Eq", .function = "eq" },
-    .{ .token = .bang_eq, .interface = "lang.ops.Eq", .function = "ne" },
-    .{ .token = .lt, .interface = "lang.ops.Ord", .function = "lt" },
-    .{ .token = .le, .interface = "lang.ops.Ord", .function = "le" },
-    .{ .token = .gt, .interface = "lang.ops.Ord", .function = "gt" },
-    .{ .token = .ge, .interface = "lang.ops.Ord", .function = "ge" },
-];
-
-/// Borrow types by the word after `&` (appendix B): `&T` is `lang.mem.Ref(T)`.
-borrows := [
-    .{ .mode = "", .item = "lang.mem.Ref" },
-    .{ .mode = "mut", .item = "lang.mem.RefMut" },
-    .{ .mode = "out", .item = "lang.mem.RefOut" },
-    .{ .mode = "take", .item = "lang.mem.RefTake" },
-];
-
 /// Operators written before their operand. `&` may be followed by borrow modes (`&temp mut`);
 /// `..` without an operand is a rest pattern.
 prefix := [.minus, .bang, .tilde, .amp, .star, .question, .dot_dot, .dollar, .\unsafe];

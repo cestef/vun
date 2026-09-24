@@ -5,6 +5,7 @@
 //! Function bodies are typed one at a time ([`Typed`]); the value of a declaration outside a body
 //! is typed where it is checked, and by [`crate::decl::DeclType`] where it is named.
 
+mod control;
 mod expect;
 mod infer;
 #[cfg(test)]

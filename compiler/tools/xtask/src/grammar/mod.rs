@@ -1,4 +1,5 @@
-//! The kinds and tables of `overt-grammar`, from `lib/lang/lang/syntax/grammar.ov`.
+//! The kinds and tables of `overt-grammar`, from the files of `lib/lang/lang/syntax`: the grammar
+//! and the desugaring tables, read as one set of declarations.
 //!
 //! Declarations are translated by the shape of their value, never by their name (the rules are in
 //! the header of `grammar.ov`), so a new kind, enum or table needs no change here. After changing
@@ -18,11 +19,8 @@ mod tables;
 use crate::names::{docs, is_type_name};
 use enums::entry_variant;
 
-pub(crate) const GENERATOR: Generator = Generator {
-    source: "lib/lang/lang/syntax/grammar.ov",
-    output: "compiler/front/grammar/src/generated.rs",
-    emit,
-};
+pub(crate) const GENERATOR: Generator =
+    Generator { source: "lib/lang/lang/syntax", output: "compiler/front/grammar/src/generated.rs", emit };
 
 const SHAPE: DiagId = DiagId::new("xtask.grammar.shape");
 const UNRESOLVED: DiagId = DiagId::new("xtask.grammar.unresolved");
@@ -32,9 +30,9 @@ const ENTRY_NAME: &str = "name";
 const ENTRY_TEXT: &str = "text";
 
 fn emit(sources: &[Source<'_>]) -> Read<TokenStream> {
-    // The source is one file.
-    let source = &sources[0];
-    Grammar::read(source)?.emit(source)
+    let decls = sources.iter().flat_map(|s| s.decls.iter().cloned()).collect();
+    let source = Source { path: GENERATOR.source.to_owned(), decls };
+    Grammar::read(&source)?.emit(&source)
 }
 
 fn error_at(id: DiagId, decl: &str, msg: Msg) -> Box<Diagnostic> {

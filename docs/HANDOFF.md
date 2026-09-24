@@ -87,7 +87,8 @@ fuzz/                     cargo-fuzz crate (outside the workspace): targets `lex
 ```
 
 Generated files (never edit; edit the `.ov` source and run `cargo xtask generate`):
-`compiler/front/grammar/src/generated.rs` and `compiler/base/diag/src/errors.rs`.
+`compiler/front/grammar/src/generated.rs` (from `lib/lang/lang/syntax/`: `grammar.ov` and
+`desugar.ov`, read as one set of declarations) and `compiler/base/diag/src/errors.rs`.
 
 ## 4. Language design in brief
 
@@ -161,7 +162,7 @@ bodies, so `$for`/`$if` work in every list context; node kinds are chosen after 
 (postorder). One report per position; missing things are reported at the end of the previous
 token; nesting capped at 256; the keyword hint suggests `\keyword`.
 
-Tests: 149, including unit tests per crate, `tests/lexer.rs`, `tests/parser.rs` (all of `lib/` and
+Tests: 150, including unit tests per crate, `tests/lexer.rs`, `tests/parser.rs` (all of `lib/` and
 `corpus/accept` parse clean and verify, CST and token snapshots mirroring the corpus tree), CLI parsing tests, the
 generated-files-current test and the corpus test (no failing corpus file). Fuzz: `parse` ran 600k inputs in 4 minutes
 without a failure. clippy pedantic is clean.
@@ -210,7 +211,14 @@ In order:
      typed by its function in the requirement struct `Call(Instance { f, [Type(left)] })`,
      through `MemberType` (decision 69, tables `OPERATORS`, `BORROWS`), so `a < b` is `bool`
      from `lang`. Next: operand checks against the requirement's parameters, `types.no_impl`
-     (needs impls), `if`/`and`/`or` typing and MIR branches, prefix operators (`-`, `!`, `~`).
+     (needs impls), prefix `~` and `-` through interfaces.
+   - Conditions (decision 71): `Env::{form, condition, holds, decide, binary, unary}`
+     (`env/condition.rs`) find `lang.bool` and its truth through `FORMS`; `Env::member` reads
+     enum variants (`MemberTable::variants`, `Found::Variant`); the typer types `and`, `or`,
+     `!`, `if` (`typeck/control.rs`, `TyKind::join`); MIR has `TerminatorKind::Branch` and
+     lowers `if`, `and`, `or` (`build/control.rs`); the interpreter branches with `Env::holds`.
+     Next: `for` loops (`Goto` back edges) and a step budget, `match`, narrowing by comparisons
+     (decision 35), `if p = e`, assignments in MIR, `.name` with an expected enum type.
    - Struct declarations are typed in their instance (`MemberType`); bodies of generic functions are typed
      only where no `$` parameter is needed (`Typed(ExprRef)`), not per instance yet.
    - `types.no_member` on a value waits for impls: a method may come from a witness (spec 02,
@@ -247,7 +255,7 @@ programs take from drivers, other libraries and unwritten parts of `std`.
 ## 9. Open questions and known gaps
 
 - Decisions 65 (partial graphs resolve through the lockfile), 66 (primitives from `lang`), 68
-  (`lang.Fn`, what is compile-time-only, nominal type names) and 69 (appendix B as data, `Ord`,
+  (`lang.Fn`, what is compile-time-only, nominal type names), 71 (conditions as data) and 69 (appendix B as data, `Ord`,
   `Eq.ne`) are proposed; 70 (visibility levels) is accepted; 67 (pure-Rust dependencies) is accepted. Decisions 45 to 64 are accepted. 61 (query persistence) and 63 (signed
   caches) are accepted but not built. Earlier: decisions 45 to 52 are accepted (50: BLAKE3 Merkle hashes, base32, nested store; 51: `.ovpkg`; 52: error chains) (fourth session): `lang.int`, spreads, compile-time block
   bindings visible in their own value, manifest detection and content-hash caches, `targets` as a

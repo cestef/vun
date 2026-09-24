@@ -6,6 +6,7 @@
 //! Calls go to the installed evaluator (spec 13, section 6). Anything else is [`Unevaluated`],
 //! which checks treat as unknown and never report.
 
+mod condition;
 mod eval;
 
 use std::collections::HashMap;
@@ -23,6 +24,7 @@ use overt_span::{SourceFiles, SourceMap};
 use crate::decl::DeclValue;
 use crate::eval::Instance;
 use crate::item::{DeclRef, Declared, ExprRef, Site};
+use crate::member::{Found, Members};
 use crate::ty::Value;
 
 /// Why an expression has no value at compile time here.
@@ -146,12 +148,35 @@ impl<'a, 'db> Env<'a, 'db> {
     /// Returns why the item has no value here, such as a replaced `lang` that lacks it.
     pub fn item(&self, path: &str) -> Result<Value, Unevaluated> {
         let mut names = path.split(PATH_SEPARATOR).map(Symbol::intern);
-        let mut site = self.outer(names.next().ok_or(Unevaluated::Absent)?)?;
+        let mut value = self.value_of(self.outer(names.next().ok_or(Unevaluated::Absent)?)?)?;
         for name in names {
-            let Value::Namespace(ns) = self.value_of(site)? else { return Err(Unevaluated::Unsupported) };
-            site = self.cx.get::<Declared>(&(ns, name)).ok_or(Unevaluated::Absent)?;
+            value = self.member(value, name)?;
         }
-        self.value_of(site)
+        Ok(value)
+    }
+
+    /// The member `name` of `value` at compile time: a member of a namespace, a declaration of a
+    /// type's namespace, or a variant of an enum type without payload.
+    ///
+    /// # Errors
+    /// Returns why the member has no value here.
+    pub fn member(&self, value: Value, name: Symbol) -> Result<Value, Unevaluated> {
+        match value {
+            Value::Namespace(ns) => {
+                self.value_of(self.cx.get::<Declared>(&(ns, name)).ok_or(Unevaluated::Absent)?)
+            }
+            Value::Type(ty) => {
+                match self.cx.get::<Members>(&ty).ok_or(Unevaluated::Unsupported)?.find(name) {
+                    Found::Decl(decl) => self.cx.get::<DeclValue>(&decl.decl),
+                    Found::Variant(v) if v.payload.is_empty() => {
+                        Ok(Value::Variant { ty, name, payload: Vec::new() })
+                    }
+                    Found::Absent => Err(Unevaluated::Absent),
+                    _ => Err(Unevaluated::Unsupported),
+                }
+            }
+            _ => Err(Unevaluated::Unsupported),
+        }
     }
 
     /// The value of `site`.

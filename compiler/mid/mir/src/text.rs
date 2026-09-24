@@ -59,9 +59,12 @@ impl fmt::Display for Body {
             for stmt in &block.stmts {
                 writeln!(f, "    {} = {}", stmt.place, stmt.value)?;
             }
-            match block.term.kind {
+            match &block.term.kind {
                 TerminatorKind::Return => writeln!(f, "    return")?,
                 TerminatorKind::Goto(to) => writeln!(f, "    goto bb{}", to.index())?,
+                TerminatorKind::Branch { cond, then, otherwise } => {
+                    writeln!(f, "    if {cond} goto bb{} else bb{}", then.index(), otherwise.index())?;
+                }
             }
         }
         f.write_str("}")

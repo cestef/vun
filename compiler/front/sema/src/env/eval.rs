@@ -2,14 +2,14 @@
 
 use overt_grammar::{BORROWS, TokenKind};
 use overt_hir::resolve::Res;
-use overt_hir::tree::{Arg, Entry, ExprId, ExprKind, List, Lit, Name, Param};
+use overt_hir::tree::{Arg, BlockId, Cond, Entry, ExprId, ExprKind, List, Lit, Name, Param};
 use overt_intern::Symbol;
 use overt_origin::OriginTable;
 
 use super::{Env, Unevaluated};
 use crate::eval::{Call, Instance};
 use crate::int::Integer;
-use crate::item::{Declared, ExprRef};
+use crate::item::ExprRef;
 use crate::ty::{Nominal, NominalKind, Signature, Ty, TyKind, Value};
 
 impl Env<'_, '_> {
@@ -26,23 +26,31 @@ impl Env<'_, '_> {
                 Some(Res::Binder(b)) if let Some(bound) = self.bindings.get(&b) => Ok(bound.clone()),
                 _ => self.value_of(self.resolve(expr)?),
             },
-            ExprKind::Member { object, name: Name::Plain(name) } => match self.eval(*object)? {
-                Value::Namespace(ns) => {
-                    self.value_of(self.cx.get::<Declared>(&(ns, *name)).ok_or(Unevaluated::Absent)?)
-                }
-                _ => Err(Unevaluated::Unsupported),
-            },
+            ExprKind::Member { object, name: Name::Plain(name) } => self.member(self.eval(*object)?, *name),
             ExprKind::Enum(_) => Ok(self.nominal(expr, NominalKind::Enum)),
             ExprKind::Struct(_) => Ok(self.nominal(expr, NominalKind::Struct)),
             ExprKind::Prefix { op: TokenKind::Amp, mode, operand } => self.borrow(*mode, *operand),
-            ExprKind::Prefix { op, operand, .. } => Value::unary(*op, &self.eval(*operand)?),
+            ExprKind::Prefix { op, operand, .. } => self.unary(*op, &self.eval(*operand)?),
             ExprKind::Infix { op: op @ (TokenKind::DotDot | TokenKind::DotDotEq), left, right } => {
                 let hi = right.map(|r| self.eval(r)).transpose()?;
                 Value::range(*op, &self.eval(*left)?, hi.as_ref())
             }
-            ExprKind::Infix { op, left, right: Some(right) } => {
-                Value::binary(*op, &self.eval(*left)?, &self.eval(*right)?)
+            // `and` and `or` evaluate their right operand only when it decides.
+            ExprKind::Infix { op: op @ (TokenKind::And | TokenKind::Or), left, right: Some(right) } => {
+                let left = self.eval(*left)?;
+                if self.holds(&left)? == (*op == TokenKind::Or) { Ok(left) } else { self.eval(*right) }
             }
+            ExprKind::Infix { op, left, right: Some(right) } => {
+                self.binary(*op, &self.eval(*left)?, &self.eval(*right)?)
+            }
+            ExprKind::If { cond: Cond::Expr(cond), then, otherwise } => {
+                if self.holds(&self.eval(*cond)?)? {
+                    self.block(*then)
+                } else {
+                    otherwise.map_or_else(|| Ok(Value::Tuple(Vec::new())), |e| self.eval(e))
+                }
+            }
+            ExprKind::Block(block) => self.block(*block),
             ExprKind::Call { callee, args } => self.call(*callee, args),
             ExprKind::Fn { .. } => Ok(Value::Fn(ExprRef { file: self.file.clone(), expr })),
             ExprKind::FnType { params, returns } => Ok(Value::Type(self.signature(params, *returns)?.ty())),
@@ -56,6 +64,16 @@ impl Env<'_, '_> {
                 .map(Value::Tuple),
             _ => Err(Unevaluated::Unsupported),
         }
+    }
+
+    /// The value of a block without statements: its tail, or `()`. Statements run in the
+    /// evaluator.
+    fn block(&self, block: BlockId) -> Result<Value, Unevaluated> {
+        let block = &self.parsed.hir.blocks[block];
+        if !block.stmts.is_empty() {
+            return Err(Unevaluated::Interpreter);
+        }
+        block.tail.map_or_else(|| Ok(Value::Tuple(Vec::new())), |t| self.eval(t))
     }
 
     /// A call of a function value, which the evaluator runs, or of a primitive.

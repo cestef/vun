@@ -44,11 +44,15 @@ impl<'b, 'a, 'db> Frame<'b, 'a, 'db> {
                 let value = self.rvalue(&stmt.value)?;
                 self.locals[stmt.place.local] = Some(value);
             }
-            match block.term.kind {
+            match &block.term.kind {
                 TerminatorKind::Return => {
                     return self.locals[self.body.ret].take().ok_or(Unevaluated::Unsupported);
                 }
-                TerminatorKind::Goto(to) => block = &self.body.blocks[to],
+                TerminatorKind::Goto(to) => block = &self.body.blocks[*to],
+                TerminatorKind::Branch { cond, then, otherwise } => {
+                    let next = if self.env.holds(&self.operand(cond)?)? { then } else { otherwise };
+                    block = &self.body.blocks[*next];
+                }
             }
         }
     }
@@ -64,9 +68,9 @@ impl<'b, 'a, 'db> Frame<'b, 'a, 'db> {
         match rvalue {
             Rvalue::Use(operand) => self.operand(operand),
             Rvalue::Binary { op, left, right } => {
-                Value::binary(*op, &self.operand(left)?, &self.operand(right)?)
+                self.env.binary(*op, &self.operand(left)?, &self.operand(right)?)
             }
-            Rvalue::Unary { op, operand } => Value::unary(*op, &self.operand(operand)?),
+            Rvalue::Unary { op, operand } => self.env.unary(*op, &self.operand(operand)?),
             Rvalue::Range { op, lo, hi } => {
                 let hi = hi.as_ref().map(|h| self.operand(h)).transpose()?;
                 Value::range(*op, &self.operand(lo)?, hi.as_ref())

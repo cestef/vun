@@ -1,5 +1,5 @@
 //! Operators as interfaces. Every operator desugars to one of these (spec 02, section 4); the
-//! table `operators` of `lang.syntax.grammar` says which.
+//! table `operators` of `lang.syntax.desugar` says which.
 
 /// `a + b`.
 Add := interface(($Self: type) -> type { struct {

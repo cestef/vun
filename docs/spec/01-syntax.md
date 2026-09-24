@@ -212,7 +212,8 @@ for .some(job) = queue.pop() { run(job); }         // while the pattern matches
 config := load(path)?;                             // propagate .err / .none to the caller
 ```
 
-- `if`, `match`, `for` and blocks are expressions. `break v` gives a `for` its value; a `for` over
+- `if`, `match`, `for` and blocks are expressions. An `if` with `else` has the type both branches
+  can take: the hull of two integer ranges, or their common type; without `else`, it is `()`. `break v` gives a `for` its value; a `for` over
   a coroutine that runs to completion has the coroutine's result as its value (spec 06).
 - `e?` on `Result(T, E)` returns `.err(x)` from the enclosing function; on `?T` it returns `.none`.
   It never converts error types; `e.map_err(f)?` converts explicitly.

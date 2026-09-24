@@ -100,6 +100,16 @@ impl TyKind {
         borrow.into_iter().any(|(ns, name)| ns == p.namespace() && name == p.name()).then_some(*ty)
     }
 
+    /// The type values of both `self` and `other` have: the hull of two integer ranges, or the
+    /// type itself; `None` when they have none in common.
+    #[must_use]
+    pub fn join(&self, other: &Self) -> Option<Ty> {
+        match (self.interval(), other.interval()) {
+            (Some(a), Some(b)) => Some(Self::int(&a.hull(&b))),
+            _ => (self == other).then(|| self.clone().intern()),
+        }
+    }
+
     /// The range of an integer type.
     #[must_use]
     pub fn interval(&self) -> Option<Interval> {

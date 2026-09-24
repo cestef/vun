@@ -29,6 +29,22 @@ impl Value {
         Ok(Self::Int(n))
     }
 
+    /// Whether the comparison `left op right` of two integers holds; `None` for another operator
+    /// or other operands.
+    #[must_use]
+    pub fn compare(op: TokenKind, left: &Self, right: &Self) -> Option<bool> {
+        let (Self::Int(a), Self::Int(b)) = (left, right) else { return None };
+        Some(match op {
+            TokenKind::EqEq => a == b,
+            TokenKind::BangEq => a != b,
+            TokenKind::Lt => a < b,
+            TokenKind::Le => a <= b,
+            TokenKind::Gt => a > b,
+            TokenKind::Ge => a >= b,
+            _ => return None,
+        })
+    }
+
     /// `op operand`.
     ///
     /// # Errors

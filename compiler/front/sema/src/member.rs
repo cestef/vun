@@ -1,16 +1,16 @@
-//! The members of `struct` types (spec 02, section 2): fields, and declarations, which make the
-//! struct's namespace. A struct built in a compile-time call has its members evaluated inside
+//! The members of `struct` and `enum` types (spec 02, section 2): fields and declarations, which
+//! make a struct's namespace, and variants. A struct built in a compile-time call has its members evaluated inside
 //! that call, so `Pair(u8)` has fields of type `u8`.
 
 use std::sync::Arc;
 
-use overt_hir::tree::{Entry, ExprKind, Member, Name};
+use overt_hir::tree::{Entry, ExprKind, List, Member, Name, NsId, Variant};
 use overt_intern::Symbol;
 use overt_query::{Cx, Cycle, Query};
 
 use crate::env::{Env, Unevaluated};
-use crate::item::DeclRef;
-use crate::ty::{Nominal, NominalKind, Ty, TyKind};
+use crate::item::{DeclRef, ExprRef};
+use crate::ty::{Nominal, Ty, TyKind};
 use crate::typeck::Known;
 use crate::visible::{Home, Visible};
 
@@ -19,6 +19,8 @@ pub struct MemberTable {
     /// Fields in declaration order.
     pub fields: Vec<Field>,
     pub decls: Vec<MemberDecl>,
+    /// An enum's variants, in declaration order.
+    pub variants: Vec<VariantDef>,
     /// Whether every member is written literally, with no `$for`, `$if`, computed name or
     /// spread: only then is a name missing from the table no member at all.
     pub complete: bool,
@@ -38,11 +40,18 @@ pub struct MemberDecl {
     pub visible: Visible,
 }
 
+#[derive(Debug, PartialEq, Eq, Hash)]
+pub struct VariantDef {
+    pub name: Symbol,
+    pub payload: Vec<Result<Ty, Unevaluated>>,
+}
+
 /// What a name is among a type's members.
 #[derive(Debug, PartialEq, Eq)]
 pub enum Found<'m> {
     Field(&'m Field),
     Decl(&'m MemberDecl),
+    Variant(&'m VariantDef),
     Absent,
     /// Not among the members written literally, but perhaps generated.
     Unknown,
@@ -57,11 +66,14 @@ impl MemberTable {
         if let Some(decl) = self.decls.iter().find(|d| d.name == name) {
             return Found::Decl(decl);
         }
+        if let Some(variant) = self.variants.iter().find(|v| v.name == name) {
+            return Found::Variant(variant);
+        }
         if self.complete { Found::Absent } else { Found::Unknown }
     }
 }
 
-/// The members of a `struct` type; `None` for any other type.
+/// The members of a `struct` or `enum` type; `None` for any other type.
 pub struct Members;
 
 impl Query for Members {
@@ -70,26 +82,35 @@ impl Query for Members {
     type Value = Option<Arc<MemberTable>>;
 
     fn compute(cx: &Cx<'_>, ty: &Ty) -> Self::Value {
-        let TyKind::Nominal(Nominal { literal, instance, kind: NominalKind::Struct, .. }) = &**ty else {
-            return None;
-        };
+        let TyKind::Nominal(Nominal { literal, instance, .. }) = &**ty else { return None };
         let env = Env::defining(cx, literal, instance.as_ref())?;
-        let hir = &env.parsed.hir;
-        let ExprKind::Struct(ns) = hir.exprs[literal.expr].kind else { return None };
         let mut table = MemberTable { complete: true, ..MemberTable::default() };
+        match &env.parsed.hir.exprs[literal.expr].kind {
+            ExprKind::Struct(ns) => table.struct_members(&env, *ns, literal),
+            ExprKind::Enum(variants) => table.variants(&env, variants),
+            _ => return None,
+        }
+        Some(Arc::new(table))
+    }
+}
+
+impl MemberTable {
+    /// The fields and declarations of the body `ns` of the `struct` literal `literal`.
+    fn struct_members(&mut self, env: &Env<'_, '_>, ns: NsId, literal: &ExprRef) {
+        let hir = &env.parsed.hir;
+        let home = Home::Struct(literal.clone());
         for entry in &hir.namespaces[ns].members {
             let Entry::One(member) = entry else {
-                table.complete = false;
+                self.complete = false;
                 continue;
             };
-            let home = Home::Struct(literal.clone());
             match member {
                 Member::Field(field) => match field.name {
                     Name::Plain(name) => {
-                        let (visible, _) = env.visible(name, &field.attrs, home);
-                        table.fields.push(Field { name, ty: env.ty(field.ty), visible });
+                        let (visible, _) = env.visible(name, &field.attrs, home.clone());
+                        self.fields.push(Field { name, ty: env.ty(field.ty), visible });
                     }
-                    _ => table.complete = false,
+                    _ => self.complete = false,
                 },
                 Member::Decl(decl) => {
                     let d = &hir.decls[*decl];
@@ -99,13 +120,25 @@ impl Query for Members {
                     for b in binders {
                         let name = hir.binders[b].name;
                         let (visible, _) = env.visible(name, &d.attrs, home.clone());
-                        table.decls.push(MemberDecl { name, decl: decl.clone(), visible });
+                        self.decls.push(MemberDecl { name, decl: decl.clone(), visible });
                     }
                 }
-                Member::Spread(_) => table.complete = false,
+                Member::Spread(_) => self.complete = false,
             }
         }
-        Some(Arc::new(table))
+    }
+
+    /// The variants of an `enum` literal, in declaration order.
+    fn variants(&mut self, env: &Env<'_, '_>, variants: &List<Variant>) {
+        for entry in variants {
+            match entry {
+                Entry::One(Variant { name: Name::Plain(name), payload, .. }) => {
+                    let payload = payload.iter().map(|&t| env.ty(t)).collect();
+                    self.variants.push(VariantDef { name: *name, payload });
+                }
+                _ => self.complete = false,
+            }
+        }
     }
 }
 

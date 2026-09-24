@@ -37,9 +37,10 @@ declaration whose value is `_`.
 |--------|---------|
 | `?T` | `lang.Option(T)` |
 | `&T`, `&mut T`, `&out T`, `&take T` | `lang.mem.Ref(T)`, `RefMut(T)`, `RefOut(T)`, `RefTake(T)` (the table `borrows`) |
+| `if c`, `for c`, `a and b`, `!c` | `c` has the type `lang.bool` and holds when it is `lang.bool.true` (the table `forms`) |
 | `(A, B) -> R` | `lang.Fn((A, B), R)` with the attributes of the literal |
 | `a..b`, `a..=b` | `lang.Range` values, half-open and closed |
-| `a + b` (each operator) | `lang.ops.Add.add(a, b)`: the interface and function the table `operators` of `lang.syntax.grammar` gives |
+| `a + b` (each operator) | `lang.ops.Add.add(a, b)`: the interface and function the table `operators` of `lang.syntax.desugar` gives |
 | `a == b`, `a != b` | `lang.ops.Eq.eq(&a, &b)`, `Eq.ne` (provided) |
 | `a < b`, `<=`, `>`, `>=` | `lang.ops.Ord.lt(&a, &b)`, `le`, `gt`, `ge`, provided from `Ord.cmp` |
 | `a[i]` | `lang.ops.Index.at(&a, i)`, or `at_mut(&mut a, i)` in a place context |

@@ -35,6 +35,11 @@ impl Typer<'_, '_, '_> {
                 self.stage = outer;
                 known
             }
+            ExprKind::Prefix { op: TokenKind::Bang, operand, .. } => self.logic(&[*operand]),
+            ExprKind::Infix { op: TokenKind::And | TokenKind::Or, left, right: Some(right) } => {
+                self.logic(&[*left, *right])
+            }
+            ExprKind::If { cond, then, otherwise } => self.branch(hir, cond, *then, *otherwise),
             ExprKind::Prefix { op: TokenKind::Minus, operand, .. } => {
                 let known = self.typed(*operand)?;
                 Some(Known { ty: TyKind::int(&known.ty.interval()?.neg()), ..known })
@@ -86,10 +91,16 @@ impl Typer<'_, '_, '_> {
                     return self.site(site);
                 }
                 Ok(Value::Type(ty)) => {
-                    if let Found::Decl(decl) = self.env.cx.get::<Members>(&ty)?.find(name) {
-                        self.check_visible(expr, name, &decl.visible);
-                    }
-                    return self.env.cx.get::<MemberType>(&(ty, name)).ok();
+                    return match self.env.cx.get::<Members>(&ty)?.find(name) {
+                        Found::Decl(decl) => {
+                            self.check_visible(expr, name, &decl.visible);
+                            self.env.cx.get::<MemberType>(&(ty, name)).ok()
+                        }
+                        Found::Variant(v) if v.payload.is_empty() => {
+                            Some(Known { ty, stage: Stage::Compile })
+                        }
+                        _ => None,
+                    };
                 }
                 _ => {}
             }
@@ -109,7 +120,7 @@ impl Typer<'_, '_, '_> {
             }
             // Impls add methods to a type (spec 02, section 3), and they are not collected yet,
             // so a name missing from the struct is not known to be no member.
-            Found::Absent | Found::Unknown => None,
+            Found::Absent | Found::Unknown | Found::Variant(_) => None,
         }
     }
 
@@ -137,7 +148,7 @@ impl Typer<'_, '_, '_> {
                         self.expect(at, found, expected, None);
                     }
                 }
-                Found::Absent | Found::Decl(_) => self.no_member(at, target?, *name),
+                Found::Absent | Found::Decl(_) | Found::Variant(_) => self.no_member(at, target?, *name),
                 Found::Unknown => {}
             }
         }

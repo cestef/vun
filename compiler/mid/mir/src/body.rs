@@ -95,4 +95,10 @@ pub struct Terminator {
 pub enum TerminatorKind {
     Return,
     Goto(BlockId),
+    /// To `then` when the condition `cond` holds, to `otherwise` when it does not.
+    Branch {
+        cond: Operand,
+        then: BlockId,
+        otherwise: BlockId,
+    },
 }
