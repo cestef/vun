@@ -187,7 +187,8 @@ fn dump(session: &mut Session, args: &Args, out: &mut dyn Write, stage: Stage) -
         Stage::Mir => {
             let bodies = session.bodies(file);
             let locate = |o| session.sources.locate(session.origins.source_span(o)).at;
-            for (origin, body) in bodies {
+            for (f, body) in bodies {
+                let origin = f.expr.origin;
                 match body {
                     Ok(body) => writeln!(out, "{}", body.dump(&locate))?,
                     Err(unbuilt) => {

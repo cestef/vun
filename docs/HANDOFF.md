@@ -255,7 +255,7 @@ In order:
    declaration's members needs sema.
 4. Fuzz the parser longer (120 s runs are clean).
 
-The corpus has 40 accept and 55 reject programs plus 63 explanation pages (`cargo xtask corpus`:
+`cargo xtask corpus` ends with the phase 1 progress measure (`overt_driver::Coverage`, `Session::coverage`): the share of function-body expressions sema types and of functions MIR lowers in `corpus/accept` (26% and 14 of 102 at the end of the sixth session). The corpus has 40 accept and 55 reject programs plus 63 explanation pages (`cargo xtask corpus`:
 145 passed, 42 pending on later stages, 20 shown as transcripts, 0 failed), plus
 `corpus/build.ov` (prelude `std.prelude` then `support`) and `corpus/support`, stand-ins for what
 programs take from drivers, other libraries and unwritten parts of `std`.

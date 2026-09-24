@@ -10,8 +10,8 @@ use std::fmt::Write;
 use std::path::{Path, PathBuf};
 
 use overt_diag::{ChildKind, DiagId, Diagnostic, errors};
-use overt_driver::Session;
 use overt_driver::stages::implemented;
+use overt_driver::{Coverage, Session};
 use overt_harness::{self as harness, At, Mismatch, Reported, compare, discover, expectations};
 use overt_span::{EXTENSION, SourceMap};
 
@@ -59,6 +59,27 @@ pub(crate) fn run(root: &Path) -> std::io::Result<Vec<Outcome>> {
         }
     }
     Ok(outcomes)
+}
+
+/// How much of the programs that must compile the stages that exist understand.
+///
+/// # Errors
+/// Returns an error if the directory cannot be read.
+pub(crate) fn coverage(root: &Path) -> std::io::Result<Coverage> {
+    let mut total = Coverage::default();
+    for &(dir, expect) in SUITES {
+        if expect != Expect::Clean {
+            continue;
+        }
+        for path in discover(&root.join(dir), EXTENSION)? {
+            let mut session = Session::new();
+            if let Some(file) = session.load(&path) {
+                session.check(file);
+                total += session.coverage(file);
+            }
+        }
+    }
+    Ok(total)
 }
 
 /// The verdict of the file at `path`, expected to report nothing or exactly its annotations.

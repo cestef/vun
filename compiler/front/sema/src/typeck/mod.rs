@@ -41,11 +41,28 @@ pub struct Known {
     pub stage: Stage,
 }
 
-/// A typed function body: the type of each expression typed, and what typing reports.
+/// A typed function body: the type of each expression typed, what typing reports, and how many
+/// expressions the body holds, nested functions and quotes apart.
 #[derive(Debug, Default, PartialEq, Eq, Hash)]
 pub struct TypedBody {
     pub types: BTreeMap<ExprId, Known>,
     pub diag: DiagCtxt,
+    pub exprs: usize,
+}
+
+/// Counts the expressions of a body, as the typer reaches them: not into nested functions,
+/// quotes or namespaces, which are typed on their own.
+struct Exprs(usize);
+
+impl Visitor for Exprs {
+    fn namespace(&mut self, _: &Hir, _: NsId) {}
+
+    fn expr(&mut self, hir: &Hir, expr: ExprId) {
+        self.0 += 1;
+        if !matches!(hir.exprs[expr].kind, ExprKind::Fn { .. } | ExprKind::Quote(_)) {
+            overt_hir::visit::walk_expr(self, hir, expr);
+        }
+    }
 }
 
 /// The typed body of a function literal; `None` for a file the driver did not read.
@@ -77,7 +94,13 @@ impl Query for Typed {
             let at = hir.blocks[*body].tail.map_or(hir.blocks[*body].origin, |t| hir.exprs[t].origin);
             typer.expect(at, found, result, *returns);
         }
-        Some(Arc::new(TypedBody { types: typer.types.into_iter().collect(), diag: typer.diag }))
+        let mut exprs = Exprs(0);
+        exprs.block(hir, *body);
+        Some(Arc::new(TypedBody {
+            types: typer.types.into_iter().collect(),
+            diag: typer.diag,
+            exprs: exprs.0,
+        }))
     }
 }
 

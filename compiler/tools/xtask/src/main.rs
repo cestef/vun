@@ -149,6 +149,7 @@ fn run_corpus(_: &mut Cx, _: &Args, out: &mut dyn Write) -> io::Result<Outcome> 
         }
     }
     writeln!(out, "{passed} passed, {pending} pending, {shown} shown, {failed} failed")?;
+    writeln!(out, "corpus/accept: {}", corpus::coverage(&repo_root())?)?;
     Ok(if failed == 0 { Outcome::Success } else { Outcome::Failure })
 }
 

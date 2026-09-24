@@ -11,7 +11,7 @@ use overt_hir::lower;
 use overt_hir::tree::{ExprKind, Hir};
 use overt_interp::Interpreter;
 use overt_mir::{Body, Mir, Unbuilt};
-use overt_origin::{OriginId, OriginTable};
+use overt_origin::OriginTable;
 use overt_query::Db;
 use overt_sema::check::Checked;
 use overt_sema::eval::Evaluators;
@@ -112,14 +112,18 @@ impl Session {
         parsed
     }
 
-    /// The MIR of each function literal of `file`, in source order, by the literal's origin.
-    pub fn bodies(&mut self, file: FileId) -> Vec<(OriginId, Result<Arc<Body>, Unbuilt>)> {
+    /// The function literals of `file`, in source order.
+    pub fn functions(&mut self, file: FileId) -> Vec<ExprRef> {
         let key = self.file_ref(file);
         let parsed = self.parsed(file);
         let literals = parsed.hir.exprs.iter().filter(|(_, e)| matches!(e.kind, ExprKind::Fn { .. }));
-        literals
-            .map(|(id, e)| (e.origin, self.db.get::<Mir>(&ExprRef::new(key.clone(), &parsed.hir, id))))
-            .collect()
+        literals.map(|(id, _)| ExprRef::new(key.clone(), &parsed.hir, id)).collect()
+    }
+
+    /// The MIR of each function literal of `file`, in source order.
+    pub fn bodies(&mut self, file: FileId) -> Vec<(ExprRef, Result<Arc<Body>, Unbuilt>)> {
+        let functions = self.functions(file);
+        functions.into_iter().map(|f| (f.clone(), self.db.get::<Mir>(&f))).collect()
     }
 
     /// How the queries name `file`, with the inputs of its package graph and its text set.

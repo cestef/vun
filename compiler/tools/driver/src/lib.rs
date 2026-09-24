@@ -5,12 +5,14 @@
 //! through the `process` adapters.
 
 pub mod commands;
+mod coverage;
 pub mod formats;
 pub mod packages;
 mod registry;
 mod session;
 pub mod stages;
 
+pub use coverage::Coverage;
 pub use registry::Registry;
 pub use session::Session;
 
