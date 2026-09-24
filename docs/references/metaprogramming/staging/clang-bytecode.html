@@ -1,0 +1,4326 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr" prefix="content: http://purl.org/rss/1.0/modules/content/  dc: http://purl.org/dc/terms/  foaf: http://xmlns.com/foaf/0.1/  og: http://ogp.me/ns#  rdfs: http://www.w3.org/2000/01/rdf-schema#  schema: http://schema.org/  sioc: http://rdfs.org/sioc/ns#  sioct: http://rdfs.org/sioc/types#  skos: http://www.w3.org/2004/02/skos/core#  xsd: http://www.w3.org/2001/XMLSchema# ">
+  <head>
+    <title>Clang bytecode interpreter update | Red Hat Developer</title>
+                              <!-- TrustArc -->
+      <script id="trustarc" type="text/javascript" src="//static.redhat.com/libs/redhat/marketing/latest/trustarc/trustarc.js" async></script>
+      <!-- End TrustArc -->
+    
+          <script id="dpal" src="https://www.redhat.com/ma/dpal.js" async></script>
+    
+    <link rel="preconnect" href="//ka-p.fontawesome.com" />
+    <link rel="preconnect" href="//www.gstatic.com" />
+    <meta charset="utf-8" />
+<script type="importmap">{"imports":{"@rhds/elements/":"/modules/contrib/red_hat_shared_libs/dist/rhds-elements/modules/","react":"https://esm.sh/react@18.2.0","react/jsx-runtime":"https://esm.sh/react@18.2.0/jsx-runtime","react-dom":"https://esm.sh/react-dom@18.2.0","react-dom/client":"https://esm.sh/react-dom@18.2.0/client","redux-logger":"https://esm.sh/redux-logger","unified":"https://esm.sh/unified"},"scopes":{}}</script>
+<script id="datalayer-cpx-newsdesk" type="module" data-event="cpx-report" src="/libraries/chapeaux--cpx-newsdesk/newsdesk.js?v=0.9.2"></script>
+<script id="datalayer-page-load-started" type="module" data-event="Page Load Started" src="/libraries/chapeaux--cpx-reporter/reporter.js?v=0.14.0" data-emit="cpx-report">
+    {
+        "analyticsTitle": "Clang bytecode interpreter update",
+        "blogAuthor": "Timm Baeder",
+        "cms": "RHD CMS 10",
+        "pageCategory": "articles",
+        "contentID": "287650",
+        "contentType": "article",
+        "dataObject": "digitalData",
+        "destinationURL": "https://developers.redhat.com/articles/2025/10/15/clang-bytecode-interpreter-update",
+        "gated": "false",
+        "queryParameters": "",
+        "severityLevel": "",
+        "siteLanguage": "en",
+        "siteName": "rhd",
+        "pageStatus": "Published",
+        "pageSubType": "",
+        "subsection": "2025",
+        "subsection2": "10",
+        "subsection3": "15",
+        "pageTitle": "Clang bytecode interpreter update | Red Hat Developer",
+        "pageType": "article",
+        "taxonomyAudience": [],
+        "taxonomyBusinessUnit": [],
+        "taxonomyCampaign": [],
+        "taxonomyCheatSheetTags": [],
+        "taxonomyControlTags": [],
+        "taxonomyEventCategories": [],
+        "taxonomyLifecycle": [],
+        "taxonomyProduct": [
+            "9985"
+        ],
+        "taxonomyProductCategories": [],
+        "taxonomyProductLine": [],
+        "taxonomyProject": [],
+        "taxonomyPromotion": [],
+        "taxonomyRegion": [],
+        "taxonomyStage": [],
+        "taxonomyTopic": [
+            "s423"
+        ],
+        "taxonomyVideoResourceTags": [],
+        "offerID": "",
+        "productCategory": "",
+        "productCertifiedVendor": "",
+        "productComponents": "",
+        "productPublicationStatus": "",
+        "productSBR": "",
+        "productTags": "",
+        "products": "\u003Ca href=\u0022/taxonomy/term/9985\u0022 hreflang=\u0022en\u0022\u003ERed Hat Enterprise Linux\u003C/a\u003E"
+    }
+</script>
+<meta name="description" content="Learn about recent improvements made to the Clang bytecode interpreter, including performance optimizations, libc++ testing, and the #embed benchmark." />
+<link rel="canonical" href="https://developers.redhat.com/articles/2025/10/15/clang-bytecode-interpreter-update" />
+<link rel="image_src" href="https://developers.redhat.com/sites/default/files/styles/share/public/2021_Linux_Topic_image_B.png?itok=PfB3lac5" />
+<meta name="referrer" content="no-referrer" />
+<meta property="og:determiner" content="the" />
+<meta property="og:site_name" content="Red Hat Developer" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://developers.redhat.com/articles/2025/10/15/clang-bytecode-interpreter-update" />
+<meta property="og:title" content="Clang bytecode interpreter update | Red Hat Developer" />
+<meta property="og:description" content="Learn about recent improvements made to the Clang bytecode interpreter, including performance optimizations, libc++ testing, and the #embed benchmark" />
+<meta property="og:image" content="https://developers.redhat.com/sites/default/files/styles/share/public/2021_Linux_Topic_image_B.png?itok=PfB3lac5" />
+<meta property="og:image:secure_url" content="https://developers.redhat.com/sites/default/files/styles/share/public/2021_Linux_Topic_image_B.png?itok=PfB3lac5" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="627" />
+<meta property="og:image:alt" content="Featured image for: SCTP over UDP in the Linux kernel." />
+<meta property="og:updated_time" content="2025-10-15T07:00:00+0000" />
+<meta property="og:locale" content="en_US" />
+<meta property="article:author" content="Timm Baeder" />
+<meta property="article:publisher" content="https://www.facebook.com/RedHatDeveloperProgram" />
+<meta property="article:tag" content="Linux" />
+<meta property="article:published_time" content="2025-10-15T07:16:20+0000" />
+<meta property="article:modified_time" content="2025-10-15T07:00:00+0000" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:description" content="It’s October again, so let me tell you what happened with the clang bytecode interpreter this year. In case this is the first you&#039;ve encountered this topic: This is a project for a bytecode" />
+<meta name="twitter:site" content="@rhdevelopers" />
+<meta name="twitter:title" content="Clang bytecode interpreter update | Red Hat Developer" />
+<meta name="twitter:creator" content="@rhdevelopers" />
+<meta name="twitter:image" content="https://developers.redhat.com/sites/default/files/styles/share/public/2021_Linux_Topic_image_B.png?itok=PfB3lac5" />
+<meta name="twitter:image:alt" content="Featured image for: SCTP over UDP in the Linux kernel." />
+<meta name="rhd:node-type" content="article" />
+<meta name="rhd:taxonomy-product" content="Red Hat Enterprise Linux" />
+<meta name="rhd:taxonomy-topic" content="Linux" />
+<meta name="Generator" content="Drupal 10 (https://www.drupal.org)" />
+<meta name="MobileOptimized" content="width" />
+<meta name="HandheldFriendly" content="true" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<script type="application/ld+json" id="schema-metatag">{
+    "@context": "https://schema.org",
+    "@graph": [
+        {
+            "@type": "Article",
+            "headline": "Clang bytecode interpreter update",
+            "name": "Clang bytecode interpreter update | Red Hat Developer",
+            "about": "Linux",
+            "description": "It’s October again, so let me tell you what happened with the clang bytecode interpreter this year. In case this is the first you\u0027ve encountered this topic: This is a project for a bytecode interpreter in clang to evaluate constant expressions at compile time. This work is already available in all recent clang versions when -fexperimental-new-constant-interpreter is passed.Previous articles in this series:",
+            "image": {
+                "@type": "ImageObject",
+                "url": "https://developers.redhat.com/sites/default/files/styles/share/public/2021_Linux_Topic_image_B.png?itok=PfB3lac5"
+            },
+            "datePublished": "2025-10-15T07:16:20+0000",
+            "dateModified": "2025-10-15T07:00:00+0000",
+            "isAccessibleForFree": "True",
+            "author": [
+                {
+                    "@type": "Person",
+                    "name": "Timm Baeder"
+                }
+            ],
+            "mainEntityOfPage": "https://developers.redhat.com/articles/2025/10/15/clang-bytecode-interpreter-update"
+        },
+        {
+            "@type": "ImageObject",
+            "url": "https://developers.redhat.com/themes/custom/rhdp_fe/images/metatags/2023_Global_Shared_image__A.png",
+            "height": "630",
+            "width": "1200"
+        },
+        {
+            "@type": "Organization",
+            "@id": "https://developers.redhat.com/#organization",
+            "name": "Red Hat",
+            "sameAs": [
+                "https://www.facebook.com/RedHatDeveloperProgram/",
+                "https://twitter.com/rhdevelopers"
+            ],
+            "url": "https://developers.redhat.com/",
+            "image": {
+                "@type": "ImageObject",
+                "url": "https://developers.redhat.com/themes/custom/rhdp_fe/logo.svg"
+            },
+            "logo": {
+                "@type": "ImageObject",
+                "representativeOfPage": "False",
+                "url": "https://developers.redhat.com/themes/custom/rhdp_fe/logo.svg",
+                "width": "540",
+                "height": "174"
+            },
+            "address": {
+                "@type": "PostalAddress",
+                "streetAddress": "100 East Davie Street",
+                "addressLocality": "Raleigh",
+                "addressRegion": "North Carolina",
+                "postalCode": "27601",
+                "addressCountry": "USA"
+            }
+        },
+        {
+            "@type": "Person",
+            "name": "Timm Baeder",
+            "url": "https://developers.redhat.com//author/timm-baeder"
+        },
+        {
+            "@type": "WebPage",
+            "@id": "https://developers.redhat.com/articles/2025/10/15/clang-bytecode-interpreter-update#webpage",
+            "description": "It’s October again, so let me tell you what happened with the clang bytecode interpreter this year. In case this is the first you\u0027ve encountered this topic: This is a project for a bytecode interpreter in clang to evaluate constant expressions at compile time. This work is already available in all recent clang versions when -fexperimental-new-constant-interpreter is passed.Previous articles in this series:",
+            "publisher": {
+                "@type": "Organization",
+                "@id": "https://developers.redhat.com/#organization"
+            },
+            "isAccessibleForFree": "True",
+            "inLanguage": "en-US"
+        },
+        {
+            "@type": "WebSite",
+            "@id": "https://developers.redhat.com/#website",
+            "name": "Red Hat Developer",
+            "url": "https://developers.redhat.com/",
+            "potentialAction": {
+                "@type": "SearchAction",
+                "target": {
+                    "@type": "EntryPoint",
+                    "urlTemplate": "https://developers.redhat.com/search?t={search_term_string}",
+                    "inLanguage": "en-US"
+                },
+                "query": "https://developers.redhat.com/search?t={search_term_string}",
+                "query-input": "required name=search_term_string"
+            },
+            "publisher": {
+                "@type": "Organization",
+                "@id": "https://developers.redhat.com/#organization"
+            },
+            "inLanguage": "en-US"
+        }
+    ]
+}</script>
+<link rel="icon" href="/themes/custom/rhdp_fe/favicons/favicon.ico" type="image/vnd.microsoft.icon" />
+
+    <link rel="apple-touch-icon" sizes="180x180" href="/themes/custom/rhdp_fe/favicons/apple-touch-icon-180x180.png">
+    <link rel="apple-touch-icon" sizes="152x152" href="/themes/custom/rhdp_fe/favicons/apple-touch-icon-152x152.png">
+    <link rel="apple-touch-icon" sizes="120x120" href="/themes/custom/rhdp_fe/favicons/apple-touch-icon-120x120.png">
+    <link rel="apple-touch-icon" sizes="76x76" href="/themes/custom/rhdp_fe/favicons/apple-touch-icon-76x76.png">
+    <link rel="apple-touch-icon" sizes="57x57" href="/themes/custom/rhdp_fe/favicons/apple-touch-icon-57x57.png">
+
+    <link rel="icon" type="image/png" sizes="32x32" href="/themes/custom/rhdp_fe/favicons/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/themes/custom/rhdp_fe/favicons/favicon-16x16.png">
+
+    <link rel="manifest" href="/themes/custom/rhdp_fe/favicons/site.webmanifest">
+    <link rel="mask-icon" href="/themes/custom/rhdp_fe/favicons/safari-pinned-tab.svg" color="#000">
+    <meta name="msapplication-TileColor" content="#000">
+    <meta name="msapplication-config" content="/themes/custom/rhdp_fe/favicons/browserconfig.xml">
+    <meta name="theme-color" content="#ffffff">
+
+    <link rel="stylesheet" media="all" href="/sites/default/files/css/css_3DM-z_PsA0nUgEONQ78w1CH3wv0Y4mrgF8_j0lGuBmk.css?delta=0&amp;language=en&amp;theme=rhdp_fe&amp;include=eJxtT1uOwzAIvJAd_3TPExGDY1Q_EDitevt1qiralfozDDNigHgn5NF15YbUxlZ6vIc_3MWuFFAPgbIgQ-m7q3MEQuIySJcIMrg3p4RrhrEKaA4n-DhbjwpP0su1DCctvFmQRL7Bg3f4F3A0Tjx56n3mh--y04xr_Nz-s0o5dm4WNEMhHW83EeEG85vaEcopydRC7EjWWISGF2WrlyMwZnJL5XXz0ezSP9WPTJWcvWxQDRsYuQfT08Ibl7nlKPQLrfKCPg" />
+<link rel="stylesheet" media="all" href="/sites/default/files/css/css_i_LbdXVODICES5txHEtgNk2q6LJZadMvHxhA9VcjbKU.css?delta=1&amp;language=en&amp;theme=rhdp_fe&amp;include=eJxtT1uOwzAIvJAd_3TPExGDY1Q_EDitevt1qiralfozDDNigHgn5NF15YbUxlZ6vIc_3MWuFFAPgbIgQ-m7q3MEQuIySJcIMrg3p4RrhrEKaA4n-DhbjwpP0su1DCctvFmQRL7Bg3f4F3A0Tjx56n3mh--y04xr_Nz-s0o5dm4WNEMhHW83EeEG85vaEcopydRC7EjWWISGF2WrlyMwZnJL5XXz0ezSP9WPTJWcvWxQDRsYuQfT08Ibl7nlKPQLrfKCPg" />
+
+
+    <script src="/libraries/chapeaux--cpx-cookie/cpx-cookie.js?v=0.11.0" type="module"></script>
+<script src="/libraries/chapeaux--cpx-reporter/cpx-reporter.js?v=0.14.0" type="module"></script>
+<script src="/libraries/chapeaux--cpx-user/cpx-user.js?v=0.9.1" type="module"></script>
+
+  </head>
+  <body class="path-node page-node-type-article page-articles-2025-10-15-clang-bytecode-interpreter-update" id="rhd-page-body">
+        <a href="#main-content" class="visually-hidden focusable skip-link">
+      Skip to main content
+    </a>
+    
+      <div class="dialog-off-canvas-main-canvas" data-off-canvas-main-canvas>
+    <div id="rlc">
+  <div>
+    
+      <div class="rhd-universal-header">
+    
+  <pfe-navigation data-analytics-region="mega menu" id="pfe-navigation" role="banner"> 
+    <nav data-analytics-region="main nav" role="navigation" aria-label="Main Navigation"  id="block-redhatuniversalnavigation" data-block-plugin-id="system_menu_block:red-hat-universal-navigation" class="pfe-navigation">
+      <div class="pfe-navigation__logo-wrapper" id="pfe-navigation__logo-wrapper">
+        <a href="/" class="pfe-navigation__logo-link" data-analytics-text="Logo" data-analytics-category="Logo" data-analytics-level="1">
+          <img class="pfe-navigation__logo-image" src="/themes/custom/rhdp_fe/images/branding/2023_RHDLogo_reverse.svg" alt="Redhat Developers  Logo" height="40" width="100"/>
+        </a>
+      </div>
+                    
+
+          
+            
+            
+            
+            
+            
+            
+            
+            
+            
+                                  
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+                  
+                              <ul class="pfe-navigation__menu" id="pfe-navigation__menu">
+                    <style scope="pfe-navigation">
+  .view_mode_link_group h3 a, .view_mode_column_with_title_outer h3 a {
+    color: #06c;
+    text-decoration: none;
+    font-weight: bold;
+  }
+  .view_mode_link_group h3 a:hover, .view_mode_column_with_title_outer h3 a:hover {
+    text-decoration: underline;
+  }
+
+  .desktop-col-span-2,
+  .desktop-col-span-3,
+  .desktop-col-span-4 {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 16px;
+  }
+
+  .desktop-col-span-2>div,
+  .desktop-col-span-3>div,
+  .desktop-col-span-4>div {
+    flex: 1 1 auto;
+    width: 160px;
+  }
+
+  .column_with_right_border {
+    border-right: 1px solid var(--pfe-theme--color--ui--border--lighter, #d2d2d2);
+  }
+
+  li.view_mode_feature {
+    display: grid;
+    align-items: start;
+    grid-template-columns: auto;
+    grid-template-rows: auto auto;
+    grid-template-areas: "title"
+                         "feat";
+
+  }
+
+  li.view_mode_feature[data-feature-image-url] {
+    display: grid;
+    align-items: center;
+    grid-template-columns: 64px auto;
+    grid-template-rows: auto auto;
+    grid-template-areas: "icon title"
+  }
+
+  li.view_mode_feature[data-feature-text][data-feature-image-url] {
+    display: grid;
+    align-items: start;
+    grid-template-columns: 64px auto;
+    grid-template-rows: auto auto;
+    grid-template-areas: "icon title"
+                         "icon feat";
+  }
+
+  li.view_mode_feature a {
+    grid-area: title;
+  }
+
+  li.view_mode_feature .field--name-field-link-image {
+    grid-area: icon;
+  }
+
+  li.view_mode_feature .field--name-field-link-image > div {
+    padding-right: 12px;
+    display: grid;
+  }
+
+  li.view_mode_feature[data-feature-text][data-feature-image-url] .field--name-field-link-image > div {
+    display: block;
+  }
+
+  li.view_mode_feature .field--name-field-link-image img {
+    width: 100%;
+    height: auto;
+    object-fit: contain;
+    object-position: top left;
+  }
+
+  li.view_mode_feature div.field--name-field-feature-text {
+    grid-area: feat;
+  }
+
+  li.view_mode_feature_callout {
+    display: grid;
+    grid-template-columns: auto;
+    grid-template-rows: auto auto;
+    grid-template-areas: "title"
+                         "feat";
+  }
+
+  li.view_mode_feature_callout[data-feature-image-url] {
+    display: grid;
+    grid-template-columns: auto;
+    grid-template-rows: auto auto auto;
+    grid-template-areas: "image"
+                         "title"
+                         "feat";
+  }
+
+  li.view_mode_feature_callout h3 {
+    grid-area: title;
+    color: #fff;
+    margin-top: 1rem !important;
+  }
+
+  li.view_mode_feature_callout img {
+    grid-area: image;
+    max-width: 100%;
+    height: auto;
+    object-fit: contain;
+    object-position: top left;
+  }
+
+  li.view_mode_feature_callout div.field--name-field-feature-text {
+    grid-area: feat;
+  }
+
+  .column-feature {
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: cover;
+    background-color: #000;
+    margin: -32px -16px -32px -16px;
+    padding: 32px 16px;
+    color: #fff;
+  }
+
+  .column-feature-light {
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: cover;
+    margin: -32px -16px -32px -16px;
+    padding: 32px 16px;
+  }
+
+  .column-feature-light li.view_mode_feature_callout h3 {
+    color: var(--pfe-navigation__dropdown--Color,#151515);;
+  }
+
+  @media only screen and (max-width: 767px) {
+    li.view_mode_feature_callout img {
+      display: none;
+    }
+
+    .desktop-col-span-2,
+    .desktop-col-span-3,
+    .desktop-col-span-4 {
+      -ms-flex-direction: column;
+      flex-direction: column;
+    }
+
+    .desktop-col-span-2>div,
+    .desktop-col-span-3>div,
+    .desktop-col-span-4>div {
+      max-width: 100%;
+    }
+
+    .column_with_right_border {
+      border-right: none;
+      border-bottom: 1px solid var(--pfe-theme--color--ui--border--lighter, #d2d2d2);
+    }
+  }
+</style>
+              
+                          
+                  <li class="pfe-navigation__menu-item view_mode_has_columns">
+                                            <span class="pfe-navigation__menu-link view_mode_has_columns" data-analytics-level="1" data-analytics-text="AI" data-analytics-category="AI">AI</span>
+                                                                                <div  class="pfe-navigation__dropdown view_mode_has_columns" style="">
+                          
+
+          
+          
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+                                  
+            
+            
+            
+            
+                  
+                                            
+                          
+                                                    <div  class="view_mode_column_with_title_outer" style="">
+                    <h3>
+                          <span class="view_mode_column_with_title" data-analytics-level="2" data-analytics-text="Get started with AI" data-analytics-category="AI|Get started with AI">Get started with AI</span>
+                      </h3>
+                          
+
+          
+          
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+                  
+                                        <ul>
+                        
+                          
+                  <li data-feature-text="has-text" class="view_mode_feature">
+                                            <a href="/products/red-hat-ai" class="view_mode_feature" data-analytics-level="2" data-analytics-text="Red Hat AI" data-analytics-category="AI|Get started with AI" data-drupal-link-system-path="node/286988">Red Hat AI</a>
+                                                      
+  <div class="field field--name-field-feature-text field--type-string-long field--label-hidden field__items">
+        <div class="field__item">Accelerate the development and deployment of enterprise AI solutions.</div>
+  </div>
+                                  </li>
+                                    
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+                  
+            
+                          
+                  <li data-feature-text="has-text" class="view_mode_feature">
+                                            <a href="https://docs.redhat.com/en/learn/ai" class="view_mode_feature" data-analytics-level="2" data-analytics-text="AI learning hub" data-analytics-category="AI|Get started with AI">AI learning hub</a>
+                                                      
+  <div class="field field--name-field-feature-text field--type-string-long field--label-hidden field__items">
+        <div class="field__item">Explore learning materials and tools, organized by task.</div>
+  </div>
+                                  </li>
+                                    
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+                  
+            
+                          
+                  <li data-feature-text="has-text" class="view_mode_feature">
+                                            <a href="https://www.redhat.com/en/interactive-experiences#ai-platform" class="view_mode_feature" data-analytics-level="2" data-analytics-text="AI interactive demos" data-analytics-category="AI|Get started with AI">AI interactive demos</a>
+                                                      
+
+          
+  <div class="field field--name-field-feature-text field--type-string-long field--label-hidden field__items">
+        <div class="field__item">Click through scenarios with Red Hat AI, including training LLMs and more.</div>
+  </div>
+    
+
+
+                                  </li>
+                                  </ul>
+                        
+
+
+    
+
+
+                        </div>
+                                                  
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+                                  
+            
+            
+            
+                  
+            
+                          
+                                                    <div  style="margin-top: var(--rh-custom-column-top-margin);">
+                          
+
+          
+          
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+                  
+                                        <ul>
+                        
+                          
+                  <li data-feature-text="has-text" class="view_mode_feature">
+                                            <a href="/learn/openshift-ai" class="view_mode_feature" data-analytics-level="2" data-analytics-text="AI/ML learning paths" data-analytics-category="AI|Column 2" data-drupal-link-system-path="node/272351">AI/ML learning paths</a>
+                                                      
+  <div class="field field--name-field-feature-text field--type-string-long field--label-hidden field__items">
+        <div class="field__item">Expand your OpenShift AI knowledge using these learning resources.</div>
+  </div>
+                                  </li>
+                                    
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+                  
+            
+                          
+                  <li data-feature-text="has-text" class="view_mode_feature">
+                                            <a href="https://docs.redhat.com/en/learn/ai-quickstarts" class="view_mode_feature" data-analytics-level="2" data-analytics-text="AI quickstarts" data-analytics-category="AI|Column 2">AI quickstarts</a>
+                                                      
+
+          
+  <div class="field field--name-field-feature-text field--type-string-long field--label-hidden field__items">
+        <div class="field__item">Focused AI use cases designed for fast deployment on Red Hat AI platforms.</div>
+  </div>
+    
+
+
+                                  </li>
+                                    
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+                  
+            
+                          
+                  <li data-feature-text="has-text" class="view_mode_feature">
+                                            <a href="https://docs.redhat.com/en/ai-foundations" class="view_mode_feature" data-analytics-level="2" data-analytics-text="No-cost AI training" data-analytics-category="AI|Column 2">No-cost AI training</a>
+                                                      
+
+          
+  <div class="field field--name-field-feature-text field--type-string-long field--label-hidden field__items">
+        <div class="field__item">Foundational Red Hat AI training.</div>
+  </div>
+    
+
+
+                                  </li>
+                                  </ul>
+                        
+
+
+    
+
+
+                        </div>
+                                                  
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+                                  
+            
+            
+            
+            
+                  
+            
+                          
+                                                    <div  class="view_mode_column_with_title_outer" style="">
+                    <h3>
+                          <span class="view_mode_column_with_title" data-analytics-level="2" data-analytics-text="Featured resources" data-analytics-category="AI|Featured resources">Featured resources</span>
+                      </h3>
+                          
+          
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+                  
+                                        <ul>
+                        
+                          
+                  <li class="view_mode_default">
+                                            <a href="/learn/openshift-ai" class="view_mode_default" data-analytics-level="2" data-analytics-text="OpenShift AI learning" data-analytics-category="AI|Featured resources" data-drupal-link-system-path="node/272351">OpenShift AI learning</a>
+                                                      
+
+          
+    
+
+
+                                  </li>
+                                    
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+                  
+            
+                          
+                  <li class="view_mode_default">
+                                            <a href="/e-books/open-source-ai-developers" class="view_mode_default" data-analytics-level="2" data-analytics-text="Open source AI for developers" data-analytics-category="AI|Featured resources" data-drupal-link-system-path="node/286419">Open source AI for developers</a>
+                                                      
+
+          
+    
+
+
+                                  </li>
+                                    
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+                  
+            
+                          
+                  <li class="view_mode_default">
+                                            <a href="https://www.redhat.com/en/technologies/all-products#artificial-intelligence" class="view_mode_default" data-analytics-level="2" data-analytics-text="AI product application development" data-analytics-category="AI|Featured resources">AI product application development</a>
+                                                      
+
+          
+    
+
+
+                                  </li>
+                                    
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+                  
+            
+                          
+                  <li class="view_mode_default">
+                                            <a href="/topics/ai-ml" class="view_mode_default" data-analytics-level="2" data-analytics-text="Open source-powered AI/ML for hybrid cloud" data-analytics-category="AI|Featured resources" data-drupal-link-system-path="node/287323">Open source-powered AI/ML for hybrid cloud</a>
+                                                      
+                                  </li>
+                                    
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+                  
+            
+                          
+                  <li class="view_mode_default">
+                                            <a href="https://developers.redhat.com/cheat-sheets/ai-nodejs" class="view_mode_default" data-analytics-level="2" data-analytics-text="AI and Node.js cheat sheet" data-analytics-category="AI|Featured resources">AI and Node.js cheat sheet</a>
+                                                      
+                                  </li>
+                                  </ul>
+                        
+
+
+                        </div>
+                                                  
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+                                  
+            
+            
+            
+            
+                  
+            
+                          
+                                                    <div  class="view_mode_column_with_title_outer" style="">
+                    <h3>
+                          <span class="view_mode_column_with_title" data-analytics-level="2" data-analytics-text="Red Hat AI Factory with NVIDIA" data-analytics-category="AI|Red Hat AI Factory with NVIDIA">Red Hat AI Factory with NVIDIA</span>
+                      </h3>
+                          
+
+          
+          
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+                  
+                                        <ul>
+                        
+                          
+                  <li class="view_mode_default">
+                                            <span class="view_mode_default" data-analytics-level="2" data-analytics-text="Red Hat AI Factory with NVIDIA is a co-engineered, enterprise-grade AI solution for building, deploying, and managing AI at scale across hybrid cloud environments." data-analytics-category="AI|Red Hat AI Factory with NVIDIA">Red Hat AI Factory with NVIDIA is a co-engineered, enterprise-grade AI solution for building, deploying, and managing AI at scale across hybrid cloud environments.</span>
+                                                      
+
+          
+    
+
+
+                                  </li>
+                                    
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+                  
+            
+                          
+                  <li class="view_mode_vanilla_call_to_action">
+                                            <pfe-cta>
+              <a href="https://www.redhat.com/en/products/ai/factory-with-nvidia" data-analytics-linkType="cta" data-analytics-level="2" data-analytics-text="Explore the solution" data-analytics-category="AI|Red Hat AI Factory with NVIDIA">Explore the solution</a>
+            </pfe-cta>
+                                          
+
+          
+    
+
+
+                                  </li>
+                                  </ul>
+                        
+
+
+    
+
+
+                        </div>
+                                                        
+
+
+    
+
+
+                        </div>
+                          </li>
+                                    
+            
+            
+            
+            
+            
+            
+            
+            
+            
+                                  
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+                  
+            
+                          
+                  <li class="pfe-navigation__menu-item view_mode_has_columns">
+                                            <span class="pfe-navigation__menu-link view_mode_has_columns" data-analytics-level="1" data-analytics-text="Learn" data-analytics-category="Learn">Learn</span>
+                                                                                <div  class="pfe-navigation__dropdown view_mode_has_columns" style="">
+                          
+
+          
+          
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+                                  
+            
+            
+            
+            
+                  
+                                            
+                          
+                                                    <div  class="view_mode_column_with_title_outer" style="">
+                    <h3>
+                          <span class="view_mode_column_with_title" data-analytics-level="2" data-analytics-text="Self-guided" data-analytics-category="Learn|Self-guided">Self-guided</span>
+                      </h3>
+                          
+
+          
+          
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+                  
+                                        <ul>
+                        
+                          
+                  <li data-feature-text="has-text" class="view_mode_feature">
+                                            <a href="https://docs.redhat.com/en" class="view_mode_feature" data-analytics-level="2" data-analytics-text="Documentation" data-analytics-category="Learn|Self-guided">Documentation</a>
+                                                      
+
+          
+  <div class="field field--name-field-feature-text field--type-string-long field--label-hidden field__items">
+        <div class="field__item">Find answers, get step-by-step guidance, and learn how to use Red Hat products.</div>
+  </div>
+    
+
+
+                                  </li>
+                                    
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+                  
+            
+                          
+                  <li data-feature-text="has-text" class="view_mode_feature">
+                                            <a href="/learn" class="view_mode_feature" data-analytics-level="2" data-analytics-text="Learning paths" data-analytics-category="Learn|Self-guided" data-drupal-link-system-path="node/263961">Learning paths</a>
+                                                      
+
+          
+  <div class="field field--name-field-feature-text field--type-string-long field--label-hidden field__items">
+        <div class="field__item">Explore curated walkthroughs for common development tasks.</div>
+  </div>
+    
+
+
+                                  </li>
+                                    
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+                  
+            
+                          
+                  <li data-feature-text="has-text" class="view_mode_feature">
+                                            <a href="http://docs.redhat.com/en/learn/guided-learning" class="view_mode_feature" data-analytics-level="2" data-analytics-text="Guided learning" data-analytics-category="Learn|Self-guided">Guided learning</a>
+                                                      
+
+          
+  <div class="field field--name-field-feature-text field--type-string-long field--label-hidden field__items">
+        <div class="field__item">Receive custom learning paths powered by our AI assistant.</div>
+  </div>
+    
+
+
+                                  </li>
+                                    
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+                  
+            
+                          
+                  <li class="view_mode_vanilla_call_to_action">
+                                            <pfe-cta>
+              <a href="/learn" data-analytics-linkType="cta" data-analytics-level="2" data-analytics-text="See all learning" data-analytics-category="Learn|Self-guided" data-drupal-link-system-path="node/263961">See all learning</a>
+            </pfe-cta>
+                                          
+                                  </li>
+                                  </ul>
+                        
+
+
+    
+
+
+                        </div>
+                                                  
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+                                  
+            
+            
+            
+            
+                  
+            
+                          
+                                                    <div  class="view_mode_column_with_title_outer" style="">
+                    <h3>
+                          <span class="view_mode_column_with_title" data-analytics-level="2" data-analytics-text="Hands-on" data-analytics-category="Learn|Hands-on">Hands-on</span>
+                      </h3>
+                          
+
+          
+          
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+                  
+                                        <ul>
+                        
+                          
+                  <li data-feature-text="has-text" class="view_mode_feature">
+                                            <a href="/developer-sandbox" class="view_mode_feature" data-analytics-level="2" data-analytics-text="Developer Sandbox" data-analytics-category="Learn|Hands-on" data-drupal-link-system-path="node/267151">Developer Sandbox</a>
+                                                      
+
+          
+  <div class="field field--name-field-feature-text field--type-string-long field--label-hidden field__items">
+        <div class="field__item">Spin up Red Hat&#039;s products and technologies without setup or configuration.</div>
+  </div>
+    
+
+
+                                  </li>
+                                    
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+                  
+            
+                          
+                  <li data-feature-text="has-text" class="view_mode_feature">
+                                            <a href="https://www.redhat.com/en/interactive-labs" class="view_mode_feature" data-analytics-level="2" data-analytics-text="Interactive labs" data-analytics-category="Learn|Hands-on">Interactive labs</a>
+                                                      
+
+          
+  <div class="field field--name-field-feature-text field--type-string-long field--label-hidden field__items">
+        <div class="field__item">Learn by doing in these hands-on, browser-based experiences.</div>
+  </div>
+    
+
+
+                                  </li>
+                                    
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+                  
+            
+                          
+                  <li data-feature-text="has-text" class="view_mode_feature">
+                                            <a href="https://www.redhat.com/en/interactive-experiences" class="view_mode_feature" data-analytics-level="2" data-analytics-text="Interactive demos" data-analytics-category="Learn|Hands-on">Interactive demos</a>
+                                                      
+  <div class="field field--name-field-feature-text field--type-string-long field--label-hidden field__items">
+        <div class="field__item">Click through product features in these guided tours.</div>
+  </div>
+                                  </li>
+                                  </ul>
+                        
+
+
+    
+
+
+                        </div>
+                                                  
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+                                  
+            
+            
+            
+            
+                  
+            
+                          
+                                                    <div  class="view_mode_column_with_title_outer" style="">
+                    <h3>
+                          <span class="view_mode_column_with_title" data-analytics-level="2" data-analytics-text="Browse by topic" data-analytics-category="Learn|Browse by topic">Browse by topic</span>
+                      </h3>
+                          
+
+          
+          
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+                  
+                                        <ul>
+                        
+                          
+                  <li class="view_mode_default">
+                                            <a href="https://developers.redhat.com/topics/ai-ml" class="view_mode_default" data-analytics-level="2" data-analytics-text="AI/ML" data-analytics-category="Learn|Browse by topic">AI/ML</a>
+                                                      
+
+          
+    
+
+
+                                  </li>
+                                    
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+                  
+            
+                          
+                  <li class="view_mode_default">
+                                            <a href="https://developers.redhat.com/topics/automation" class="view_mode_default" data-analytics-level="2" data-analytics-text="Automation" data-analytics-category="Learn|Browse by topic">Automation</a>
+                                                      
+
+          
+    
+
+
+                                  </li>
+                                    
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+                  
+            
+                          
+                  <li class="view_mode_default">
+                                            <a href="/topics/java" class="view_mode_default" data-analytics-level="2" data-analytics-text="Java" data-analytics-category="Learn|Browse by topic" data-drupal-link-system-path="node/284351">Java</a>
+                                                      
+
+          
+    
+
+
+                                  </li>
+                                    
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+                  
+            
+                          
+                  <li class="view_mode_default">
+                                            <a href="https://developers.redhat.com/topics/kubernetes" class="view_mode_default" data-analytics-level="2" data-analytics-text="Kubernetes" data-analytics-category="Learn|Browse by topic">Kubernetes</a>
+                                                      
+
+          
+    
+
+
+                                  </li>
+                                    
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+                  
+            
+                          
+                  <li class="view_mode_default">
+                                            <a href="/topics/linux" class="view_mode_default" data-analytics-level="2" data-analytics-text="Linux" data-analytics-category="Learn|Browse by topic" data-drupal-link-system-path="node/204685">Linux</a>
+                                                      
+
+          
+    
+
+
+                                  </li>
+                                    
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+                  
+            
+                          
+                  <li class="view_mode_vanilla_call_to_action">
+                                            <pfe-cta>
+              <a href="/topics" data-analytics-linkType="cta" data-analytics-level="2" data-analytics-text="See all topics" data-analytics-category="Learn|Browse by topic" data-drupal-link-system-path="node/285467">See all topics</a>
+            </pfe-cta>
+                                          
+
+          
+    
+
+
+                                  </li>
+                                  </ul>
+                        
+
+
+    
+
+
+                        </div>
+                                                  
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+                                  
+            
+            
+            
+            
+                  
+            
+                          
+                                                    <div  class="view_mode_column_with_title_outer" style="">
+                    <h3>
+                          <span class="view_mode_column_with_title" data-analytics-level="2" data-analytics-text="Training &amp; certifications" data-analytics-category="Learn|Training &amp; certifications">Training &amp; certifications</span>
+                      </h3>
+                          
+
+          
+          
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+                  
+                                        <ul>
+                        
+                          
+                  <li class="view_mode_default">
+                                            <a href="https://www.redhat.com/en/services/training/all-courses-exams" class="view_mode_default" data-analytics-level="2" data-analytics-text="Courses and exams" data-analytics-category="Learn|Training &amp; certifications">Courses and exams</a>
+                                                      
+                                  </li>
+                                    
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+                  
+            
+                          
+                  <li class="view_mode_default">
+                                            <a href="https://www.redhat.com/en/services/certifications" class="view_mode_default" data-analytics-level="2" data-analytics-text="Certifications" data-analytics-category="Learn|Training &amp; certifications">Certifications</a>
+                                                      
+
+          
+    
+
+
+                                  </li>
+                                    
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+                  
+            
+                          
+                  <li class="view_mode_default">
+                                            <a href="https://www.redhat.com/en/services/skills-assessment" class="view_mode_default" data-analytics-level="2" data-analytics-text="Skills assessments" data-analytics-category="Learn|Training &amp; certifications">Skills assessments</a>
+                                                      
+
+          
+    
+
+
+                                  </li>
+                                    
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+                  
+            
+                          
+                  <li class="view_mode_default">
+                                            <a href="https://www.redhat.com/en/services/training/red-hat-academy" class="view_mode_default" data-analytics-level="2" data-analytics-text="Red Hat Academy" data-analytics-category="Learn|Training &amp; certifications">Red Hat Academy</a>
+                                                      
+                                  </li>
+                                    
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+                  
+            
+                          
+                  <li class="view_mode_default">
+                                            <a href="https://www.redhat.com/en/services/training/learning-subscription" class="view_mode_default" data-analytics-level="2" data-analytics-text="Learning subscription" data-analytics-category="Learn|Training &amp; certifications">Learning subscription</a>
+                                                      
+
+          
+    
+
+
+                                  </li>
+                                    
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+                  
+            
+                          
+                  <li class="view_mode_vanilla_call_to_action">
+                                            <pfe-cta>
+              <a href="https://www.redhat.com/en/services/training-and-certification" data-analytics-linkType="cta" data-analytics-level="2" data-analytics-text="Explore training" data-analytics-category="Learn|Training &amp; certifications">Explore training</a>
+            </pfe-cta>
+                                          
+
+          
+    
+
+
+                                  </li>
+                                  </ul>
+                        
+
+
+    
+
+
+                        </div>
+                                                        
+
+
+    
+
+
+                        </div>
+                          </li>
+                                    
+            
+            
+            
+            
+            
+            
+            
+            
+            
+                                  
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+                  
+            
+                          
+                  <li class="pfe-navigation__menu-item view_mode_has_columns">
+                                            <span class="pfe-navigation__menu-link view_mode_has_columns" data-analytics-level="1" data-analytics-text="Build" data-analytics-category="Build">Build</span>
+                                                                                <div  class="pfe-navigation__dropdown view_mode_has_columns" style="">
+                          
+          
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+                                  
+            
+            
+            
+            
+                  
+                                            
+                          
+                                                    <div  class="view_mode_column_with_title_outer" style="">
+                    <h3>
+                          <span class="view_mode_column_with_title" data-analytics-level="2" data-analytics-text="Get started" data-analytics-category="Build|Get started">Get started</span>
+                      </h3>
+                          
+
+          
+          
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+                  
+                                        <ul>
+                        
+                          
+                  <li data-feature-text="has-text" class="view_mode_feature">
+                                            <a href="/products/red-hat-build-podman-desktop" class="view_mode_feature" data-analytics-level="2" data-analytics-text="Red Hat build of Podman Desktop" data-analytics-category="Build|Get started" data-drupal-link-system-path="node/287954">Red Hat build of Podman Desktop</a>
+                                                      
+
+          
+  <div class="field field--name-field-feature-text field--type-string-long field--label-hidden field__items">
+        <div class="field__item">A downloadable, local development hub to experiment with our products and builds.</div>
+  </div>
+    
+
+
+                                  </li>
+                                    
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+                  
+            
+                          
+                  <li data-feature-text="has-text" class="view_mode_feature">
+                                            <a href="/developer-sandbox" class="view_mode_feature" data-analytics-level="2" data-analytics-text="Developer Sandbox" data-analytics-category="Build|Get started" data-drupal-link-system-path="node/267151">Developer Sandbox</a>
+                                                      
+
+          
+  <div class="field field--name-field-feature-text field--type-string-long field--label-hidden field__items">
+        <div class="field__item">Spin up Red Hat&#039;s products and technologies without setup or configuration.</div>
+  </div>
+    
+
+
+                                  </li>
+                                  </ul>
+                        
+
+
+    
+
+
+                        </div>
+                                                  
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+                                  
+            
+            
+            
+            
+                  
+            
+                          
+                                                    <div  class="view_mode_column_with_title_outer" style="">
+                    <h3>
+                          <span class="view_mode_column_with_title" data-analytics-level="2" data-analytics-text="Download products" data-analytics-category="Build|Download products">Download products</span>
+                      </h3>
+                          
+          
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+                  
+                                        <ul>
+                        
+                          
+                  <li class="view_mode_feature">
+                                            <span class="view_mode_feature" data-analytics-level="2" data-analytics-text="Access product downloads to start building and testing right away." data-analytics-category="Build|Download products">Access product downloads to start building and testing right away.</span>
+                                                      
+
+          
+    
+
+
+                                  </li>
+                                    
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+                  
+            
+                          
+                  <li class="view_mode_default">
+                                            <a href="/products/rhel/download" class="view_mode_default" data-analytics-level="2" data-analytics-text="Red Hat Enterprise Linux" data-analytics-category="Build|Download products" data-drupal-link-system-path="node/285179">Red Hat Enterprise Linux</a>
+                                                      
+
+          
+    
+
+
+                                  </li>
+                                    
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+                  
+            
+                          
+                  <li class="view_mode_default">
+                                            <a href="https://developers.redhat.com/products/red-hat-ai" class="view_mode_default" data-analytics-level="2" data-analytics-text="Red Hat AI" data-analytics-category="Build|Download products">Red Hat AI</a>
+                                                      
+
+          
+    
+
+
+                                  </li>
+                                    
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+                  
+            
+                          
+                  <li class="view_mode_default">
+                                            <a href="https://developers.redhat.com/products/openshift/download" class="view_mode_default" data-analytics-level="2" data-analytics-text="Red Hat OpenShift" data-analytics-category="Build|Download products">Red Hat OpenShift</a>
+                                                      
+
+          
+    
+
+
+                                  </li>
+                                    
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+                  
+            
+                          
+                  <li class="view_mode_default">
+                                            <a href="/products/ansible/download" class="view_mode_default" data-analytics-level="2" data-analytics-text="Red Hat Ansible Automation Platform" data-analytics-category="Build|Download products" data-drupal-link-system-path="node/285113">Red Hat Ansible Automation Platform</a>
+                                                      
+
+          
+    
+
+
+                                  </li>
+                                    
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+                  
+            
+                          
+                  <li class="view_mode_vanilla_call_to_action">
+                                            <pfe-cta>
+              <a href="/products" data-analytics-linkType="cta" data-analytics-level="2" data-analytics-text="See all products" data-analytics-category="Build|Download products" data-drupal-link-system-path="node/285498">See all products</a>
+            </pfe-cta>
+                                          
+                                  </li>
+                                  </ul>
+                        
+
+
+                        </div>
+                                                  
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+                                  
+            
+            
+            
+            
+                  
+            
+                          
+                                                    <div  class="view_mode_column_with_title_outer" style="">
+                    <h3>
+                          <span class="view_mode_column_with_title" data-analytics-level="2" data-analytics-text="Featured" data-analytics-category="Build|Featured">Featured</span>
+                      </h3>
+                          
+
+          
+          
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+                  
+                                        <ul>
+                        
+                          
+                  <li class="view_mode_default">
+                                            <a href="/products/openjdk" class="view_mode_default" data-analytics-level="2" data-analytics-text="Red Hat build of OpenJDK" data-analytics-category="Build|Featured" data-drupal-link-system-path="node/285574">Red Hat build of OpenJDK</a>
+                                                      
+
+          
+    
+
+
+                                  </li>
+                                    
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+                  
+            
+                          
+                  <li class="view_mode_default">
+                                            <a href="/products/eap" class="view_mode_default" data-analytics-level="2" data-analytics-text="Red Hat JBoss Enterprise Application Platform" data-analytics-category="Build|Featured" data-drupal-link-system-path="node/285907">Red Hat JBoss Enterprise Application Platform</a>
+                                                      
+
+          
+    
+
+
+                                  </li>
+                                    
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+                  
+            
+                          
+                  <li class="view_mode_default">
+                                            <a href="/products/openshift-dev-spaces" class="view_mode_default" data-analytics-level="2" data-analytics-text="Red Hat OpenShift Dev Spaces" data-analytics-category="Build|Featured" data-drupal-link-system-path="node/286033">Red Hat OpenShift Dev Spaces</a>
+                                                      
+
+          
+    
+
+
+                                  </li>
+                                    
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+                  
+            
+                          
+                  <li class="view_mode_default">
+                                            <a href="/products/red-hat-developer-toolset/download" class="view_mode_default" data-analytics-level="2" data-analytics-text="Red Hat Developer Toolset" data-analytics-category="Build|Featured" data-drupal-link-system-path="node/285863">Red Hat Developer Toolset</a>
+                                                      
+
+          
+    
+
+
+                                  </li>
+                                  </ul>
+                        
+
+
+    
+
+
+                        </div>
+                                                  
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+                                  
+            
+            
+            
+            
+                  
+            
+                          
+                                                    <div  class="view_mode_column_with_title_outer" style="">
+                    <h3>
+                          <span class="view_mode_column_with_title" data-analytics-level="2" data-analytics-text="References" data-analytics-category="Build|References">References</span>
+                      </h3>
+                          
+
+          
+          
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+                  
+                                        <ul>
+                        
+                          
+                  <li class="view_mode_default">
+                                            <a href="/e-books" class="view_mode_default" data-analytics-level="2" data-analytics-text="E-books" data-analytics-category="Build|References" data-drupal-link-system-path="node/267101">E-books</a>
+                                                      
+                                  </li>
+                                    
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+                  
+            
+                          
+                  <li class="view_mode_default">
+                                            <a href="https://docs.redhat.com/en" class="view_mode_default" data-analytics-level="2" data-analytics-text="Documentation" data-analytics-category="Build|References">Documentation</a>
+                                                      
+
+          
+    
+
+
+                                  </li>
+                                    
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+                  
+            
+                          
+                  <li class="view_mode_default">
+                                            <a href="/cheat-sheets" class="view_mode_default" data-analytics-level="2" data-analytics-text="Cheat sheets" data-analytics-category="Build|References" data-drupal-link-system-path="node/267111">Cheat sheets</a>
+                                                      
+
+          
+    
+
+
+                                  </li>
+                                    
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+                  
+            
+                          
+                  <li class="view_mode_default">
+                                            <a href="https://www.redhat.com/architect/portfolio/" class="view_mode_default" data-analytics-level="2" data-analytics-text="Architecture center" data-analytics-category="Build|References">Architecture center</a>
+                                                      
+                                  </li>
+                                  </ul>
+                        
+
+
+    
+
+
+                        </div>
+                                                        
+
+
+                        </div>
+                          </li>
+                                    
+            
+            
+            
+            
+            
+            
+            
+            
+            
+                                  
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+                  
+            
+                          
+                  <li class="pfe-navigation__menu-item view_mode_has_columns">
+                                            <span class="pfe-navigation__menu-link view_mode_has_columns" data-analytics-level="1" data-analytics-text="Community" data-analytics-category="Community">Community</span>
+                                                                                <div  class="pfe-navigation__dropdown view_mode_has_columns" style="">
+                          
+
+          
+          
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+                                  
+            
+            
+            
+            
+                  
+                                            
+                          
+                                                    <div  class="view_mode_column_with_title_outer" style="">
+                    <h3>
+                          <span class="view_mode_column_with_title" data-analytics-level="2" data-analytics-text="Get involved" data-analytics-category="Community|Get involved">Get involved</span>
+                      </h3>
+                          
+
+          
+          
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+                  
+                                        <ul>
+                        
+                          
+                  <li class="view_mode_default">
+                                            <a href="/events" class="view_mode_default" data-analytics-level="2" data-analytics-text="Events" data-analytics-category="Community|Get involved" data-drupal-link-system-path="node/276891">Events</a>
+                                                      
+
+          
+    
+
+
+                                  </li>
+                                    
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+                  
+            
+                          
+                  <li class="view_mode_default">
+                                            <a href="https://www.redhat.com/en/events/ai" class="view_mode_default" data-analytics-level="2" data-analytics-text="Live AI events" data-analytics-category="Community|Get involved">Live AI events</a>
+                                                      
+
+          
+
+          
+    
+
+
+    
+
+
+                                  </li>
+                                    
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+                  
+            
+                          
+                  <li class="view_mode_default">
+                                            <a href="https://www.redhat.com/en/summit" class="view_mode_default" data-analytics-level="2" data-analytics-text="Red Hat Summit" data-analytics-category="Community|Get involved">Red Hat Summit</a>
+                                                      
+
+          
+    
+
+
+                                  </li>
+                                    
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+                  
+            
+                          
+                  <li class="view_mode_default">
+                                            <a href="https://access.redhat.com/accelerators" class="view_mode_default" data-analytics-level="2" data-analytics-text="Red Hat Accelerators" data-analytics-category="Community|Get involved">Red Hat Accelerators</a>
+                                                      
+
+          
+    
+
+
+                                  </li>
+                                    
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+                  
+            
+                          
+                  <li class="view_mode_default">
+                                            <a href="https://access.redhat.com/discussions/" class="view_mode_default" data-analytics-level="2" data-analytics-text="Community discussions" data-analytics-category="Community|Get involved">Community discussions</a>
+                                                      
+
+          
+    
+
+
+                                  </li>
+                                  </ul>
+                        
+
+
+    
+
+
+                        </div>
+                                                  
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+                                  
+            
+            
+            
+            
+                  
+            
+                          
+                                                    <div  class="view_mode_column_with_title_outer" style="">
+                    <h3>
+                          <span class="view_mode_column_with_title" data-analytics-level="2" data-analytics-text="Follow along" data-analytics-category="Community|Follow along">Follow along</span>
+                      </h3>
+                          
+          
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+                  
+                                        <ul>
+                        
+                          
+                  <li class="view_mode_default">
+                                            <a href="/blog" class="view_mode_default" data-analytics-level="2" data-analytics-text="Articles &amp; blogs" data-analytics-category="Community|Follow along" data-drupal-link-system-path="node/277891">Articles &amp; blogs</a>
+                                                      
+                                  </li>
+                                    
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+                  
+            
+                          
+                  <li class="view_mode_default">
+                                            <a href="/newsletter" class="view_mode_default" data-analytics-level="2" data-analytics-text="Developer newsletter" data-analytics-category="Community|Follow along" data-drupal-link-system-path="node/286854">Developer newsletter</a>
+                                                      
+
+          
+    
+
+
+                                  </li>
+                                    
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+                  
+            
+                          
+                  <li class="view_mode_default">
+                                            <a href="https://www.youtube.com/@RedHatDevelopers" class="view_mode_default" data-analytics-level="2" data-analytics-text="Videos" data-analytics-category="Community|Follow along">Videos</a>
+                                                      
+                                  </li>
+                                    
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+                  
+            
+                          
+                  <li class="view_mode_default">
+                                            <a href="https://github.com/redhat-developer" class="view_mode_default" data-analytics-level="2" data-analytics-text="Github" data-analytics-category="Community|Follow along">Github</a>
+                                                      
+
+          
+    
+
+
+                                  </li>
+                                  </ul>
+                        
+
+
+                        </div>
+                                                  
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+                                  
+            
+            
+            
+            
+                  
+            
+                          
+                                                    <div  class="view_mode_column_with_title_outer" style="">
+                    <h3>
+                          <span class="view_mode_column_with_title" data-analytics-level="2" data-analytics-text="Get help" data-analytics-category="Community|Get help">Get help</span>
+                      </h3>
+                          
+          
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+                  
+                                        <ul>
+                        
+                          
+                  <li class="view_mode_default">
+                                            <a href="https://www.redhat.com/en/contact/customer-service" class="view_mode_default" data-analytics-level="2" data-analytics-text="Customer service" data-analytics-category="Community|Get help">Customer service</a>
+                                                      
+
+          
+    
+
+
+                                  </li>
+                                    
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+                  
+            
+                          
+                  <li class="view_mode_default">
+                                            <a href="https://access.redhat.com/support" class="view_mode_default" data-analytics-level="2" data-analytics-text="Customer support" data-analytics-category="Community|Get help">Customer support</a>
+                                                      
+
+          
+    
+
+
+                                  </li>
+                                    
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+                  
+            
+                          
+                  <li class="view_mode_default">
+                                            <a href="https://access.redhat.com/support/contact" class="view_mode_default" data-analytics-level="2" data-analytics-text="Regional contacts" data-analytics-category="Community|Get help">Regional contacts</a>
+                                                      
+
+          
+    
+
+
+                                  </li>
+                                    
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+                  
+            
+                          
+                  <li class="view_mode_default">
+                                            <a href="https://catalog.redhat.com/en/search?searchType=Partners" class="view_mode_default" data-analytics-level="2" data-analytics-text="Find a partner" data-analytics-category="Community|Get help">Find a partner</a>
+                                                      
+                                  </li>
+                                  </ul>
+                        
+
+
+                        </div>
+                                                  
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+                                  
+            
+            
+            
+            
+                  
+            
+                          
+                                                    <div  class="view_mode_column_with_title_outer" style="">
+                    <h3>
+                          <span class="view_mode_column_with_title" data-analytics-level="2" data-analytics-text="Join the Red Hat Developer program" data-analytics-category="Community|Join the Red Hat Developer program">Join the Red Hat Developer program</span>
+                      </h3>
+                          
+
+          
+          
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+                  
+                                        <ul>
+                        
+                          
+                  <li class="view_mode_default">
+                                            <span class="view_mode_default" data-analytics-level="2" data-analytics-text="Download Red Hat products and project builds, access support documentation, learning content, and more." data-analytics-category="Community|Join the Red Hat Developer program">Download Red Hat products and project builds, access support documentation, learning content, and more.</span>
+                                                      
+
+          
+
+          
+
+          
+    
+
+
+    
+
+
+    
+
+
+                                  </li>
+                                    
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+                  
+            
+                          
+                  <li class="view_mode_vanilla_call_to_action">
+                                            <pfe-cta>
+              <a href="/about" data-analytics-linkType="cta" data-analytics-level="2" data-analytics-text="Explore the benefits" data-analytics-category="Community|Join the Red Hat Developer program" data-drupal-link-system-path="node/286849">Explore the benefits</a>
+            </pfe-cta>
+                                          
+
+          
+    
+
+
+                                  </li>
+                                  </ul>
+                        
+
+
+    
+
+
+                        </div>
+                                                        
+
+
+    
+
+
+                        </div>
+                          </li>
+                                  </ul>
+                        
+
+          </nav>
+
+      <!-- Site Search -->
+    <div slot="search" class="pfe-navigation__search pfe-navigation__search--default-styles">
+      <form action="/search" method="get">
+        <label for="pfe-navigation__search-label-universal">Search</label>
+        <input id="pfe-navigation__search-label-universal" name="q" type="text" placeholder="Enter your search term"/>
+                  <input type="hidden" name="search-type" value="global" />
+                <button>Search</button>
+      </form>
+    </div>
+    <!-- End Site Search -->
+  
+  <!-- Custom Button -->
+    <!-- End Custom Button -->
+
+          <!-- User Account --><rh-account-dropdown slot="account" tmp-login-link="javascript:void(document.dispatchEvent(new Event(&#039;keycloakRhdLogin&#039;)));" tmp-logout-link="javascript:void(document.dispatchEvent(new Event(&#039;keycloakRhdLogout&#039;)));" > </rh-account-dropdown>
+    <!-- End User Account -->
+        <!-- Site switcher -->
+    <div slot="secondary-links" class="pfe-navigation__site-switcher">
+      <button class="pfe-navigation__secondary-link" data-analytics-text="All Red Hat" data-analytics-category="All Red Hat" data-analytics-level="1">
+        <pfe-icon icon="web-icon-grid-3x3" size="sm" aria-hidden="true"></pfe-icon>
+        <!-- @todo Make sure to make string translateable -->
+        All Red Hat
+      </button>
+      <pfe-navigation-dropdown dropdown-width="full">
+        <site-switcher></site-switcher>
+      </pfe-navigation-dropdown>
+    </div>
+    <!-- End Site switcher -->
+  </pfe-navigation>
+  <style>:root
+{
+  --rh-custom-column-top-margin: 41px;
+  --pfe-navigation--content-max-width: 1400px;
+}
+@media(max-width: 1200px){:root {
+  --rh-custom-column-top-margin: 0;
+}
+}</style><!-- Override the all site selected site -->
+<style>
+  site-switcher {
+    --developers--logo: var(--developers--logo--you-are-here);
+    --developers--backgroundColor: var(--background--you-are-here);
+    --developers--label: var(--label--you-are-here);
+    --developers--margin-top: 0;
+    --rhdc--logo: initial;
+    --rhdc--backgroundColor: initial;
+    --rhdc--label: initial;
+    --rhdc--margin-top: initial;
+  }
+</style>
+<!-- End Override the all site selected site -->
+  
+  
+
+
+  </div>
+
+    
+  </div>
+  <main role="main">
+    <a id="main-content" tabindex="-1"></a>
+    
+    <div class="rhd-layout-content">
+
+      
+  <div class="region region-title">
+    <div data-drupal-messages-fallback class="hidden"></div>
+
+  </div>
+
+      
+  <div class="region region-content">
+    
+<div id="block-rhdp2-content" data-block-plugin-id="system_main_block" class="block block-system block-system-main-block">
+  
+    
+      <div>
+    
+
+
+
+
+<div about="/articles/2025/10/15/clang-bytecode-interpreter-update" class="component rhd-c-article author-left" level="Unclassified" id="rhd-article">
+  <div class="pf-v6-l-grid pf-m-gutter">
+    <div class="article-info-wrapper pf-v6-l-grid__item pf-lg-12-col pf-m-8-col-on-lg">
+      <div class="article-info-left">
+        
+        <h1 id="developer-materials" class='article-info-title'><span>Clang bytecode interpreter update</span>
+</h1>
+        
+                <div class='rhd-c-meta-info'>
+          <div class='pf-v6-l-flex pf-v6-u-align-items-flex-start'>
+            <div class="rhd-c-article-date">
+              <div class="publish-date">October 15, 2025</div>
+            </div>
+                                          		
+											
+	<div class="rhd-c-main-author-with-count rhd-c-card-tile__author">
+		<span class="rhd-c-main-author-with-count__author-image"></span>
+		<div class='rhd-c-main-author-with-count__author-list'>
+															<span class="rhd-c-main-author-with-count__author">
+						<span class='rhd-c-main-author-with-count__author-name'>
+							<a href="/author/timm-baeder">Timm Baeder</a>
+						</span>
+					</span>
+													</div>
+	</div>
+                                    </div>
+                      
+
+
+
+    
+    
+        
+            
+      <dl  class="related-tags related-tags-topics">
+    <dt class="tag-label">Related topics:</dt>
+    <dd class="tag-links"><a href="/topics/linux" hreflang="en">Linux</a></dd>
+  </dl>
+
+
+  
+
+                                
+
+
+
+    
+    
+        
+            
+      <dl  class="related-tags related-tags-products">
+    <dt class="tag-label">Related products:</dt>
+    <dd class="tag-links"><a href="/products/rhel/overview" hreflang="en">Red Hat Enterprise Linux</a></dd>
+  </dl>
+
+
+  
+
+                            </div>
+      </div>
+      <div class="pf-v6-l-grid">
+                  <div class="rhd-c-article-toc" style="display: none;">
+            <div class="pf-v6-c-menu">
+              <button class="pf-v6-c-menu-toggle" type="button" id="toc-dropdown-button" aria-expanded="false">
+                <span class="pf-v6-c-menu-toggle__text">
+                  <rh-icon set="ui" icon="document-fill"></rh-icon>
+                  Table of contents:
+                  <span id="toc-dropdown-active-section"></span>
+                </span>
+                <span class="pf-v6-c-menu-toggle__toggle-icon">
+                  <rh-icon set="ui" icon="caret-down-fill"></rh-icon>
+                </span>
+              </button>
+              <div class="pf-v6-c-menu__content">
+                <ul class="rhd-c-article-toc-nav pf-v6-c-menu__list" aria-labelledby="toc-dropdown-button" hidden></ul>
+              </div>
+            </div>
+          </div>
+                <div class="article-content pf-v6-c-content pf-v6-l-grid__item rhd-c-fetch-article-toc">
+          <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN" "http://www.w3.org/TR/REC-html40/loose.dtd">
+<html><body><p dir="ltr">It&rsquo;s October again, so let me tell you what happened with the clang bytecode interpreter this year. In case this is the first you've encountered this topic: This is a project for a bytecode interpreter in clang to evaluate constant expressions at compile time. This work is already available in all recent clang versions when&nbsp;<code>-fexperimental-new-constant-interpreter</code> is passed.</p><p dir="ltr">Previous articles in this series:</p><ul><li dir="ltr" aria-level="1"><a href="https://developers.redhat.com/articles/2024/10/21/new-constant-expression-interpreter-clang">A new constant expression interpreter for Clang (2022)</a></li><li dir="ltr" aria-level="1"><a href="https://developers.redhat.com/articles/2024/10/21/new-constant-expression-interpreter-clang-part-2">Part 2 (2023)</a></li><li dir="ltr" aria-level="1"><a href="https://developers.redhat.com/articles/2024/10/22/new-constant-expression-interpreter-clang-part-3">Part 3 (2024)</a></li></ul><p dir="ltr">According to Git, there were roughly 500 commits since my last blog post. While there was no huge new feature or breakthrough that I can remember now, the implementation got a lot more solid. I&rsquo;ve also done a good chunk of performance work this year.&nbsp;</p><p dir="ltr">While we still had approximately 155 failures in the clang test suite last year, we are now down to 90. You can track the progress&nbsp;<a href="https://tbaederr.github.io/stats/">here</a>. We now have an actual working implementation of&nbsp;<code>builtin_constant_p</code>. And while it does disagree with the current interpreter in a few edge cases, it should be enough for all real-world use cases (see the section about <a href="#libc-test">libc++ testing</a>).</p><p dir="ltr">In the remainder of this blog post, let's have a more detailed look at a few of the changes that happened in the last year.</p><h2 dir="ltr"><strong>Optimizing reads from known sources</strong></h2><p dir="ltr">When looking at constant expressions (and especially functions), one might have the urge to optimize things away. Let's say we profile the interpreter and figure out that integer additions are particularly inefficient. We might want to check that the right-hand side of a += compound assignment operator is not 0 and not emit any bytecode if it is.</p><pre><code class="language-cpp">constexpr&nbsp;int&nbsp;test()&nbsp;{
+&nbsp;&nbsp;int&nbsp;a;
+&nbsp;&nbsp;a&nbsp;+=&nbsp;0;
+&nbsp;&nbsp;a&nbsp;+=&nbsp;1;
+&nbsp;&nbsp;return&nbsp;a;
+}
+static_assert(test()&nbsp;==&nbsp;1);</code></pre><p dir="ltr">Not doing the first addition here would be faster of course, but if you look closely, you notice that&nbsp;a is left uninitialized, so the first addition already fails. Not emitting it causes the diagnostic to appear for the second addition, which is wrong. You can imagine similar cases for divisions or multiplications by 1, a unary +, or all discarded statements. If they can fail, we need to evaluate them and diagnose failure.</p><p dir="ltr">This is only one example, but in general we need to be cautious with optimizations on this level because we need to diagnose all undefined behavior, and quality of the diagnostic output is&nbsp; important.</p><p dir="ltr">Let&rsquo;s instead look at something we&nbsp;<em>can&nbsp;</em>optimize.</p><pre><code class="language-cpp">constexpr&nbsp;int&nbsp;G&nbsp;=&nbsp;12;
+constexpr&nbsp;int&nbsp;test(int&nbsp;P)&nbsp;{
+&nbsp;&nbsp;int&nbsp;L&nbsp;=&nbsp;8;
+&nbsp;&nbsp;return&nbsp;G&nbsp;+&nbsp;L&nbsp;+&nbsp;P;
+}
+static_assert(test(5)&nbsp;==&nbsp;25);</code></pre><p dir="ltr">This code is pretty straightforward and should work. It adds up the values of a global variable, a local variable, and a parameter. For all three values, the abstract syntax tree (AST) that clang generates consists of a node to get a pointer to the variable, and one to load from that variable.&nbsp; In detail, it looks something like this:</p><pre><code class="language-plaintext">      `-ImplicitCastExpr 0x7d5284257a50 &lt;col:18&gt; 'int' &lt;LValueToRValue&gt;
+        `-DeclRefExpr 0x7d5284257a28 &lt;col:18&gt; 'int' lvalue ParmVar 0x7d5284257660 'P' 'int'</code></pre><p dir="ltr">Here we see the lvalue for the parameter&nbsp;<code>P</code> and the lvalue-to-rvalue cast that loads the value from the parameter. We used to emit bytecode just like this:</p><pre><code class="language-plaintext">[..]
+48 &nbsp; &nbsp;&nbsp;GetPtrGlobal&nbsp; &nbsp; &nbsp;&nbsp;0
+64 &nbsp; &nbsp;&nbsp;LoadPopSint32
+72 &nbsp; &nbsp;&nbsp;GetPtrLocal &nbsp; &nbsp; &nbsp;&nbsp;40
+88 &nbsp; &nbsp;&nbsp;LoadPopSint32
+96 &nbsp; &nbsp;&nbsp;AddSint32
+104&nbsp; &nbsp;&nbsp;GetPtrParam &nbsp; &nbsp; &nbsp;&nbsp;0
+120&nbsp; &nbsp;&nbsp;LoadPopSint32
+128&nbsp; &nbsp;&nbsp;AddSint32
+136&nbsp; &nbsp;&nbsp;Destroy &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;&nbsp;0
+152&nbsp; &nbsp;&nbsp;RetSint32
+[..]</code></pre><p dir="ltr">For brevity, I've removed some less interesting opcodes at the beginning and at the end of the function. As you can see from the bytecode, we get a pointer (<code>GetPtrLocal</code>,&nbsp;<code>GetPtrGlobal</code>,&nbsp;<code>GetPtrParam</code>) for all three values, followed by a load of a 32-bit signed integer (<code>LoadPopSint32</code>). Those values are added up and returned from the function. This works just fine, but we can do better.</p><p dir="ltr">Even before this optimization, we had opcodes to get the value of a variable without the need to first get a pointer to it. Instead of a&nbsp;<code>GetPtrGlobal</code> + <code>LoadPop</code> pair, we can instead emit just a&nbsp;<code>GetGlobal</code> opcode, which immediately pushes the value of the global variable on the stack. This reduces traffic on our stack data structure and reduces the amount of pointers we create. The latter is particularly important because we&rsquo;re always tracking what memory a pointer points to, just in case that memory goes out of scope.</p><p dir="ltr">Because the relevant opcodes already existed, we only needed to do some type checks when generating bytecode and the result looks like this:</p><pre><code class="language-plaintext">[...]
+48 &nbsp; &nbsp;&nbsp;GetGlobalSint32&nbsp; &nbsp;&nbsp;0
+64 &nbsp; &nbsp;&nbsp;GetLocalSint32 &nbsp; &nbsp;&nbsp;40
+80 &nbsp; &nbsp;&nbsp;AddSint32
+88 &nbsp; &nbsp;&nbsp;GetParamSint32 &nbsp; &nbsp;&nbsp;0
+104&nbsp; &nbsp;&nbsp;AddSint32
+112&nbsp; &nbsp;&nbsp;Destroy&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;&nbsp;0
+128&nbsp; &nbsp;&nbsp;RetSint32
+[...]</code></pre><p dir="ltr">This is nicer to read, and also more efficient. When evaluating <code>LoadPop</code> opcode, we don&rsquo;t know whether the pointer we load from is a global variable, a local variable, a temporary, a parameter, and so on. We need to be conservative, and do all possible checks. If we know where we load from, then we can skip unnecessary work. For example, loading a value from an extern variable doesn&rsquo;t generally work, so we need to check for this. But local variables cannot be extern and so we can skip this check for the&nbsp;<code>GetLocal</code> opcode.</p><h2>libc++ testing</h2><p dir="ltr">In January 2025, I started running the libc++ test suite in addition to the clang test suite. The libc++ tests provide more real-world use cases whereas the clang test suite usually stress-tests against edge cases in the C and C++ language specifications. As such, the initial run of the libc++ test suite resulted in a large number of failures (Figure 1).</p><figure class="rhd-u-has-filter-caption" role="group">
+
+<figure class="media media--type-image media--view-mode-article-content rhd-c-figure">
+  
+        <a href="/sites/default/files/image2_117.png" data-featherlight="image"><picture><source srcset="/sites/default/files/styles/article_floated/public/image2_117.png.webp?itok=Erm-lMPo" type="image/webp"></source><img loading="lazy" src="/sites/default/files/styles/article_floated/public/image2_117.png?itok=Erm-lMPo" width="600" height="302" alt="Image showing clang and libc++ test suite failures with the bytecode interpreter over time." typeof="foaf:Image"></picture>
+
+</a>
+
+  </figure>
+
+<figcaption class="rhd-c-caption">Figure 1: clang and libc++ test suite failures with the bytecode interpreter over time.</figcaption>
+</figure>
+<p dir="ltr">We initially had over 750 test failures. A large chunk of those was caused by missing support for some string builtins. The libc++ test suite extensively tests&nbsp;<code>std::string</code>, after all. Through that and other tests, such as those for&nbsp;<code>std::vector</code>, it also uses dynamic memory allocation at compile time a lot.&nbsp;</p><p dir="ltr">The libc++ test cases are usually unfortunately exceedingly complex. Fixing them requires a variation of:</p><ul><li dir="ltr" aria-level="1">Letting clang preprocess the test so the result is independent of include files and most command-line options. This usually results in a file that is way too large. The longest one I saw was around 300KLOC.</li><li dir="ltr" aria-level="1">Use a mixture of manual editing and running&nbsp;<a href="https://github.com/marxin/cvise">cvise</a> to reduce the test case. If you&rsquo;ve never had to do something like this: Good! Otherwise,&nbsp;cvise is great and you should know how to use it.</li><li dir="ltr" aria-level="1">Debugging the reduced test case to figure out the root cause of the problem.</li></ul><p dir="ltr">I often managed to reduce the failing test case to a self-contained test of just a few dozen lines. After three months, we reached the milestone of zero test failures.</p><p dir="ltr">Because libc++ is in active development, it changes constantly. This means we sometimes see regressions in the number of test failures, but that's okay.</p><h1 dir="ltr">The #embed benchmark</h1><p dir="ltr">Let's look at an example benchmark using&nbsp;<code>#embed</code>:</p><pre><code class="language-cpp">constexpr&nbsp;char&nbsp;str[]&nbsp;=&nbsp;{
+#embed&nbsp;"sqlite3.c"&nbsp;suffix(,0)
+};
+consteval&nbsp;unsigned&nbsp;checksum(const&nbsp;char&nbsp;*s)&nbsp;{
+&nbsp;&nbsp;unsigned&nbsp;result&nbsp;=&nbsp;0;
+&nbsp;&nbsp;for&nbsp;(const&nbsp;char&nbsp;*p&nbsp;=&nbsp;s;&nbsp;*p&nbsp;!=&nbsp;'\0';&nbsp;++p)&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;result&nbsp;+=&nbsp;*p;
+&nbsp;&nbsp;}
+&nbsp;&nbsp;return&nbsp;result;
+}
+constexpr&nbsp;unsigned&nbsp;C&nbsp;=&nbsp;checksum(str);</code></pre><p dir="ltr">This test case simply reads the sqlite3 amalgamation (which has almost 9MB) into a global char array, then sums up all the character values into a variable&nbsp;C.</p><p dir="ltr">Let's time this test with the current interpreter and then with the bytecode interpreter. All runs are using a regular release build of clang with assertions disabled but no other compiler flags set.</p><pre><code class="language-plaintext">hyperfine&nbsp;-r&nbsp;30&nbsp;-w&nbsp;3&nbsp;'bin/clang -c embed.cpp -std=c++20 -Wno-c23-extensions -fconstexpr-steps=1000000000'
+Benchmark&nbsp;1:&nbsp;bin/clang&nbsp;-c&nbsp;embed.cpp&nbsp;-std=c++20&nbsp;-Wno-c23-extensions&nbsp;-fconstexpr-steps=1000000000
+&nbsp;&nbsp;Time&nbsp;(mean&nbsp;&plusmn;&nbsp;&sigma;): &nbsp; &nbsp;&nbsp;36.490&nbsp;s&nbsp;&plusmn;&nbsp;&nbsp;0.361&nbsp;s&nbsp; &nbsp;&nbsp;[User:&nbsp;36.161&nbsp;s,&nbsp;System:&nbsp;0.299&nbsp;s]
+&nbsp;&nbsp;Range&nbsp;(min&nbsp;&hellip;&nbsp;max): &nbsp;&nbsp;35.711&nbsp;s&nbsp;&hellip;&nbsp;37.611&nbsp;s&nbsp; &nbsp;&nbsp;30&nbsp;runs
+hyperfine&nbsp;-r&nbsp;30&nbsp;-w&nbsp;3&nbsp;'bin/clang -c embed.cpp -std=c++20 -Wno-c23-extensions -fconstexpr-steps=1000000000 -fexperimental-new-constant-interpreter'
+Benchmark&nbsp;1:&nbsp;bin/clang&nbsp;-c&nbsp;embed.cpp&nbsp;-std=c++20&nbsp;-Wno-c23-extensions&nbsp;-fconstexpr-steps=1000000000&nbsp;-fexperimental-new-constant-interpreter
+&nbsp;&nbsp;Time&nbsp;(mean&nbsp;&plusmn;&nbsp;&sigma;): &nbsp; &nbsp;&nbsp;14.799&nbsp;s&nbsp;&plusmn;&nbsp;&nbsp;0.274&nbsp;s&nbsp; &nbsp;&nbsp;[User:&nbsp;14.484&nbsp;s,&nbsp;System:&nbsp;0.303&nbsp;s]
+&nbsp;&nbsp;Range&nbsp;(min&nbsp;&hellip;&nbsp;max): &nbsp;&nbsp;14.332&nbsp;s&nbsp;&hellip;&nbsp;15.345&nbsp;s&nbsp; &nbsp;&nbsp;30&nbsp;runs</code></pre><p dir="ltr">So the bytecode interpreter only needs roughly 50% of the time that the current interpreter takes. That's good, but let's look at some of the (Figure 2).</p><figure class="rhd-u-has-filter-caption" role="group">
+
+<figure class="media media--type-image media--view-mode-article-content rhd-c-figure">
+  
+        <a href="/sites/default/files/image1_185.png" data-featherlight="image"><picture><source srcset="/sites/default/files/styles/article_floated/public/image1_185.png.webp?itok=xEh4kHB1" type="image/webp"></source><img loading="lazy" src="/sites/default/files/styles/article_floated/public/image1_185.png?itok=xEh4kHB1" width="600" height="326" alt="Bar chart showing the runtimes of the embed benchmark. The bytecode interpreter takes less than half the time." typeof="foaf:Image"></picture>
+
+</a>
+
+  </figure>
+
+<figcaption class="rhd-c-caption">Figure 2: The runtimes of the embed benchmark. The bytecode interpreter takes less than half the time.</figcaption>
+</figure>
+<p dir="ltr">Our test case consists of the first declaration of&nbsp;<code>str</code>, which initializes a large char array. That&rsquo;s not a function call so the bytecode interpreter doesn&rsquo;t interpret bytecode here at all, it instead evaluates the expressions as they come. This is similar to what the current interpreter is doing, but the bytecode interpreter has some additional overhead. If we look at the runtime for only the initialization, the bytecode interpreter is slower.</p><figure class="rhd-u-has-filter-caption" role="group">
+
+<figure class="media media--type-image media--view-mode-article-content rhd-c-figure">
+  
+        <a href="/sites/default/files/image5_63.png" data-featherlight="image"><picture><source srcset="/sites/default/files/styles/article_floated/public/image5_63.png.webp?itok=-eAe1y4s" type="image/webp"></source><img loading="lazy" src="/sites/default/files/styles/article_floated/public/image5_63.png?itok=-eAe1y4s" width="600" height="326" alt="Bar chart showing the runtimes of the embed benchmark. The bytecode interpreter takes less than half the time." typeof="foaf:Image"></picture>
+
+</a>
+
+  </figure>
+
+<figcaption class="rhd-c-caption">Figure 3: The runtimes of the embed benchmark without the function call. The bytecode interpreter is slower.</figcaption>
+</figure>
+<p dir="ltr">The difference used to be much worse but I've optimized the bytecode interpreter to be more performant when checking large arrays for initialization.</p><h2 dir="ltr"><strong>Heap allocation benchmark</strong></h2><p dir="ltr">Here's another benchmark that I've been looking at in the past year:</p><pre><code class="language-cpp">constexpr&nbsp;int&nbsp;x&nbsp;=&nbsp;[]()&nbsp;{
+&nbsp;&nbsp;for&nbsp;(unsigned&nbsp;I&nbsp;=&nbsp;0;&nbsp;I&nbsp;!=&nbsp;10'000;&nbsp;++I)&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;char&nbsp;*buffer&nbsp;=&nbsp;new&nbsp;char[1024];
+&nbsp;&nbsp;&nbsp;&nbsp;for&nbsp;(unsigned&nbsp;c&nbsp;=&nbsp;0;&nbsp;c&nbsp;!=&nbsp;1024;&nbsp;++c)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;buffer[c]&nbsp;=&nbsp;97&nbsp;+&nbsp;(c&nbsp;%&nbsp;26);
+&nbsp;&nbsp;&nbsp;&nbsp;delete[]&nbsp;buffer;
+&nbsp;&nbsp;}
+&nbsp;&nbsp;return&nbsp;1;
+}();</code></pre><p dir="ltr">This is a pretty simple but useless test benchmarking dynamic memory allocation. We allocate some memory, fill it with some characters, and then we free the memory again. This is all done in a lambda that gets called immediately. The final output is just a variable with the value 1.</p><p dir="ltr">This is a benchmark we can even time against GCC (I was using 14.3.1), so let's do that:</p><pre><code class="language-plaintext">$&nbsp;hyperfine&nbsp;-r&nbsp;30&nbsp;-w&nbsp;3&nbsp;'bin/clang -c new-delete.cpp -std=c++23 -fconstexpr-steps=1000000000'
+Benchmark&nbsp;1:&nbsp;bin/clang&nbsp;-c&nbsp;new-delete.cpp&nbsp;-std=c++23&nbsp;-fconstexpr-steps=1000000000
+&nbsp;&nbsp;Time&nbsp;(mean&nbsp;&plusmn;&nbsp;&sigma;): &nbsp; &nbsp;&nbsp;27.792&nbsp;s&nbsp;&plusmn;&nbsp;&nbsp;0.263&nbsp;s&nbsp; &nbsp;&nbsp;[User:&nbsp;27.732&nbsp;s,&nbsp;System:&nbsp;0.036&nbsp;s]
+&nbsp;&nbsp;Range&nbsp;(min&nbsp;&hellip;&nbsp;max): &nbsp;&nbsp;27.329&nbsp;s&nbsp;&hellip;&nbsp;28.287&nbsp;s&nbsp; &nbsp;&nbsp;30&nbsp;runs
+$&nbsp;hyperfine&nbsp;-r&nbsp;30&nbsp;-w&nbsp;3&nbsp;'bin/clang -c new-delete.cpp -std=c++23 -fconstexpr-steps=1000000000 -fexperimental-new-constant-interpreter'
+Benchmark&nbsp;1:&nbsp;bin/clang&nbsp;-c&nbsp;new-delete.cpp&nbsp;-std=c++23&nbsp;-fconstexpr-steps=1000000000&nbsp;-fexperimental-new-constant-interpreter
+&nbsp;&nbsp;Time&nbsp;(mean&nbsp;&plusmn;&nbsp;&sigma;):&nbsp; &nbsp; &nbsp;&nbsp;4.241&nbsp;s&nbsp;&plusmn;&nbsp;&nbsp;0.103&nbsp;s&nbsp; &nbsp;&nbsp;[User:&nbsp;4.218&nbsp;s,&nbsp;System:&nbsp;0.019&nbsp;s]
+&nbsp;&nbsp;Range&nbsp;(min&nbsp;&hellip;&nbsp;max):&nbsp; &nbsp;&nbsp;4.070&nbsp;s&nbsp;&hellip;&nbsp;&nbsp;4.504&nbsp;s&nbsp; &nbsp;&nbsp;30&nbsp;runs
+$&nbsp;hyperfine&nbsp;-r&nbsp;30&nbsp;-w&nbsp;3&nbsp;'/usr/bin/g++ -c new-delete.cpp -std=c++23 -fconstexpr-ops-limit=1000000000'
+Benchmark&nbsp;1:&nbsp;/usr/bin/g++&nbsp;-c&nbsp;new-delete.cpp&nbsp;-std=c++23&nbsp;-fconstexpr-ops-limit=1000000000
+&nbsp;&nbsp;Time&nbsp;(mean&nbsp;&plusmn;&nbsp;&sigma;): &nbsp; &nbsp;&nbsp;43.829&nbsp;s&nbsp;&plusmn;&nbsp;&nbsp;0.308&nbsp;s&nbsp; &nbsp;&nbsp;[User:&nbsp;42.170&nbsp;s,&nbsp;System:&nbsp;1.619&nbsp;s]
+&nbsp;&nbsp;Range&nbsp;(min&nbsp;&hellip;&nbsp;max): &nbsp;&nbsp;43.201&nbsp;s&nbsp;&hellip;&nbsp;44.556&nbsp;s&nbsp; &nbsp;&nbsp;30&nbsp;runs</code></pre><p>Figure 4 illustrates the comparison.</p><figure class="rhd-u-has-filter-caption" role="group">
+
+<figure class="media media--type-image media--view-mode-article-content rhd-c-figure">
+  
+        <a href="/sites/default/files/image3_100.png" data-featherlight="image"><picture><source srcset="/sites/default/files/styles/article_floated/public/image3_100.png.webp?itok=TXZtaJov" type="image/webp"></source><img loading="lazy" src="/sites/default/files/styles/article_floated/public/image3_100.png?itok=TXZtaJov" width="600" height="326" alt="Bar chart showing the runtimes of clang with the current interpreter, clang with the bytecode interpreter and GCC. GCC is the slowest, followed by clang with the current interpreter. The bytecode interpreter is much faster than both of the others." typeof="foaf:Image"></picture>
+
+</a>
+
+  </figure>
+
+<figcaption class="rhd-c-caption">Figure 4: The runtimes of clang with the current interpreter, clang with the bytecode interpreter and GCC. GCC is the slowest, followed by clang with the current interpreter. The bytecode interpreter is much faster than both of the others.</figcaption>
+</figure>
+<p dir="ltr">GCC has an interesting optimization that seems to eliminate the heap allocation altogether if it is unused. If we remove the loop initializing the allocated memory (and increase the size from&nbsp;<code>1024</code> to&nbsp;<code>1024 * 1024</code>), GCC is better than both the new and old clang interpreters:</p><pre><code class="language-plaintext">$&nbsp;hyperfine&nbsp;-r&nbsp;30&nbsp;-w&nbsp;3&nbsp;'bin/clang -c new-delete.cpp -std=c++23 -fconstexpr-steps=1000000000'
+Benchmark&nbsp;1:&nbsp;bin/clang&nbsp;-c&nbsp;new-delete.cpp&nbsp;-std=c++23&nbsp;-fconstexpr-steps=1000000000
+&nbsp;&nbsp;Time&nbsp;(mean&nbsp;&plusmn;&nbsp;&sigma;): &nbsp; &nbsp;&nbsp;1048.113&nbsp;s&nbsp;&plusmn;&nbsp;19.781&nbsp;s&nbsp; &nbsp;&nbsp;[User:&nbsp;783.382&nbsp;s,&nbsp;System:&nbsp;263.909&nbsp;s]
+&nbsp;&nbsp;Range&nbsp;(min&nbsp;&hellip;&nbsp;max): &nbsp;&nbsp;1008.151&nbsp;s&nbsp;&hellip;&nbsp;1082.708&nbsp;s&nbsp; &nbsp;&nbsp;30&nbsp;runs
+$&nbsp;hyperfine&nbsp;-r&nbsp;30&nbsp;-w&nbsp;3&nbsp;'bin/clang -c new-delete.cpp -std=c++23 -fconstexpr-steps=1000000000 -fexperimental-new-constant-interpreter'
+Benchmark&nbsp;1:&nbsp;bin/clang&nbsp;-c&nbsp;new-delete.cpp&nbsp;-std=c++23&nbsp;-fconstexpr-steps=1000000000&nbsp;-fexperimental-new-constant-interpreter
+&nbsp;&nbsp;Time&nbsp;(mean&nbsp;&plusmn;&nbsp;&sigma;): &nbsp; &nbsp;&nbsp;439.9&nbsp;ms&nbsp;&plusmn;&nbsp;&nbsp;19.2&nbsp;ms&nbsp; &nbsp;&nbsp;[User:&nbsp;421.7&nbsp;ms,&nbsp;System:&nbsp;17.5&nbsp;ms]
+&nbsp;&nbsp;Range&nbsp;(min&nbsp;&hellip;&nbsp;max): &nbsp;&nbsp;406.7&nbsp;ms&nbsp;&hellip;&nbsp;475.7&nbsp;ms&nbsp; &nbsp;&nbsp;30&nbsp;runs
+$&nbsp;hyperfine&nbsp;-r&nbsp;30&nbsp;-w&nbsp;3&nbsp;'/usr/bin/g++ -c new-delete.cpp -std=c++23 -fconstexpr-ops-limit=1000000000'
+Benchmark&nbsp;1:&nbsp;/usr/bin/g++&nbsp;-c&nbsp;new-delete.cpp&nbsp;-std=c++23&nbsp;-fconstexpr-ops-limit=1000000000
+&nbsp;&nbsp;Time&nbsp;(mean&nbsp;&plusmn;&nbsp;&sigma;): &nbsp; &nbsp;&nbsp;116.8&nbsp;ms&nbsp;&plusmn;&nbsp;&nbsp;23.8&nbsp;ms&nbsp; &nbsp;&nbsp;[User:&nbsp;101.0&nbsp;ms,&nbsp;System:&nbsp;15.7&nbsp;ms]
+&nbsp;&nbsp;Range&nbsp;(min&nbsp;&hellip;&nbsp;max):&nbsp; &nbsp;&nbsp;91.4&nbsp;ms&nbsp;&hellip;&nbsp;152.4&nbsp;ms&nbsp; &nbsp;&nbsp;30&nbsp;runs</code></pre><p>In this case, clang with the current interpreter is much slower than both GCC and the bytecode interpreter. Note the logarithmic Y axis in Figure 5,</p><figure class="rhd-u-has-filter-caption" role="group">
+
+<figure class="media media--type-image media--view-mode-article-content rhd-c-figure">
+  
+        <a href="/sites/default/files/image4_76.png" data-featherlight="image"><picture><source srcset="/sites/default/files/styles/article_floated/public/image4_76.png.webp?itok=FZ4Z5HR6" type="image/webp"></source><img loading="lazy" src="/sites/default/files/styles/article_floated/public/image4_76.png?itok=FZ4Z5HR6" width="600" height="326" alt="Bar chart showing the runtimes of clang with the current interpreter, clang with the bytecode interpreter and GCC. GCC is the slowest, followed by clang with the current interpreter. The bytecode interpreter is much faster than both of the others." typeof="foaf:Image"></picture>
+
+</a>
+
+  </figure>
+
+<figcaption class="rhd-c-caption">Figure 5: The runtimes of clang with the current interpreter, clang with the bytecode interpreter and GCC. Both clang with the bytecode interpreter and GCC are vastly faster than clang with the current interpreter.</figcaption>
+</figure>
+<p dir="ltr">GCC is almost four times as fast as the bytecode interpreter. It either removes the heap allocation entirely or new + delete expressions are just very efficiently implemented. I have not profiled clang with the current interpreter thoroughly but I can imagine that zero-initializing the APValue (the data structure clang uses to represent compile-time evaluated values) of the array already takes that long.</p><h2 dir="ltr"><strong>Further work</strong></h2><p dir="ltr">There are still a few features that need to be implemented, and definitely a few underlying problems. I&rsquo;ve added a&nbsp;<strong>clang:bytecode</strong> label in GitHub to track several of them in the&nbsp;<a href="https://github.com/llvm/llvm-project/issues?q=is%3Aissue%20state%3Aopen%20label%3Aclang%3Abytecode">upstream LLVM repository</a>.&nbsp;</p><p dir="ltr">I'll continue working on this project, and I&rsquo;ve also asked for help on the&nbsp;<a href="https://discourse.llvm.org/t/looking-for-help-with-the-bytecode-interpreter-in-clang/84512">LLVM Discourse</a>. Other people have also implemented a lot of the recent vector elementwise builtins. So if you&rsquo;re interested, you can always try to compile your favorite C or C++ project with&nbsp;-fexperimental-new-constant-interpreter and report all problems (or successes!) you find. Any implementation help is also highly appreciated, of course.&nbsp;</p><p dir="ltr">Part of me hopes that this is the last blog post I write about this topic, but see you next year!</p></body></html>
+
+                            </div>
+      </div>
+    </div>
+    <aside class="article-aside pf-v6-l-grid__item pf-lg-12-col pf-m-4-col-on-lg">
+                    <div class="component rhd-c-box related-articles">
+          <h2 class="pf-v6-c-title">Related Posts</h2>
+          <ul class="rhd-c-lists__list">
+            
+<li  about="/articles/2025/04/16/gcc-and-gcc-toolset-versions-rhel-explainer" level="Unclassified" class="rhd-c-lists__list-item">
+  <h3>
+    <a href="/articles/2025/04/16/gcc-and-gcc-toolset-versions-rhel-explainer"><span>GCC and gcc-toolset versions in RHEL: An explainer</span>
+</a>
+  </h3>
+</li>
+
+<li  about="/articles/2025/01/30/how-implement-c23-embed-gcc-15" level="Unclassified" class="rhd-c-lists__list-item">
+  <h3>
+    <a href="/articles/2025/01/30/how-implement-c23-embed-gcc-15"><span>How to implement C23 #embed in GCC 15</span>
+</a>
+  </h3>
+</li>
+
+<li  about="/articles/2025/01/22/monitor-gcc-compile-time" level="Unclassified" class="rhd-c-lists__list-item">
+  <h3>
+    <a href="/articles/2025/01/22/monitor-gcc-compile-time"><span>Monitor GCC compile time</span>
+</a>
+  </h3>
+</li>
+
+<li  about="/articles/2024/06/13/practical-guide-linker-section-ordering" level="Unclassified" class="rhd-c-lists__list-item">
+  <h3>
+    <a href="/articles/2024/06/13/practical-guide-linker-section-ordering"><span>A practical guide to linker section ordering</span>
+</a>
+  </h3>
+</li>
+
+<li  about="/articles/2024/10/21/new-constant-expression-interpreter-clang" level="Unclassified" class="rhd-c-lists__list-item">
+  <h3>
+    <a href="/articles/2024/10/21/new-constant-expression-interpreter-clang"><span>A new constant expression interpreter for Clang</span>
+</a>
+  </h3>
+</li>
+
+<li  about="/articles/2024/12/11/making-memcpynull-null-0-well-defined" level="Unclassified" class="rhd-c-lists__list-item">
+  <h3>
+    <a href="/articles/2024/12/11/making-memcpynull-null-0-well-defined"><span>Making memcpy(NULL, NULL, 0) well-defined</span>
+</a>
+  </h3>
+</li>
+
+          </ul>
+        </div>
+            
+  <div class="region region-content-aside">
+    <div class="views-element-container component rhd-c-box block block-views block-views-blockcontent-recent-recent-posts" id="block-rhdp-fe-views-block-content-recent-recent-posts" data-block-plugin-id="views_block:content_recent-recent_posts">
+  
+      <h2>Recent Posts</h2>
+    
+      <div>
+
+
+<div class="view view-content-recent view-id-content_recent view-display-id-recent_posts js-view-dom-id-2ead9f15d3e6e3a3425bc5e800c554ccb64815558eaf78116f130cec6e27dfdb">
+  
+    
+      
+            <div class="view-content">
+        <div class="rhd-c-lists">
+  
+  <ul class="rhd-c-lists__list">
+
+          <li class="rhd-c-lists__list-item"><h3><a href="/articles/2026/06/09/bring-your-own-evaluation-framework-evalhub" hreflang="en">Bring your own evaluation framework to EvalHub</a></h3></li>
+          <li class="rhd-c-lists__list-item"><h3><a href="/articles/2026/06/09/integrate-openshift-ai-and-pg-airman-mcp-server" hreflang="en">Integrate OpenShift AI and PG Airman MCP Server</a></h3></li>
+          <li class="rhd-c-lists__list-item"><h3><a href="/articles/2026/06/08/build-local-voice-agent-red-hat-openshift-ai" hreflang="en">Build a local voice agent with Red Hat OpenShift AI</a></h3></li>
+          <li class="rhd-c-lists__list-item"><h3><a href="/articles/2026/06/08/gang-autoscaling-openshift-kueue-and-provisionrequest" hreflang="en">Gang autoscaling on OpenShift with Kueue and ProvisionRequest</a></h3></li>
+          <li class="rhd-c-lists__list-item"><h3><a href="/articles/2026/06/05/installing-red-hat-enterprise-linux-10-bootc-image-bootc" hreflang="en">Installing Red Hat Enterprise Linux 10 from a bootc image with bootc</a></h3></li>
+    
+  </ul>
+
+</div>
+
+      </div>
+      
+          </div>
+</div>
+
+  </div>
+
+  </div>
+
+                        <div class="component rhd-c-box rhd-m-alt-style rhd-m-sticky rhd-c-next-steps">
+            <h2 class="pf-v6-c-title">
+              What’s up next?
+            </h2>
+            <div class="pf-v6-c-content">
+              <p><span>Download the Advanced Linux Commands cheat sheet. You'll learn to manage applications and executables in a Linux operating system, define search criteria and query audit logs, set and monitor network access, and more.</span></p>
+            </div>
+                          <a class="pf-v6-c-button pf-m-link pf-v6-u-pl-0 rhd-c-next-steps__cta-link" href="https://developers.redhat.com/cheat-sheets/advanced-linux-commands" data-analytics-linktype="cta" data-analytics-text="Get the cheat sheet" data-analytics-category="What's up next?">
+                Get the cheat sheet
+                <span class="pf-v6-c-button__icon pf-m-end">
+                  <i class="rh-arrow-right" aria-hidden="true"></i>
+                </span>
+              </a>
+                      </div>
+                  </aside>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+  </div>
+
+
+    </div>
+      </main>
+
+      <div>
+      
+  <div class="region region-rhd-footer">
+    
+<div id="block-redhatunifiedfooter" data-block-plugin-id="red_hat_unified_footer_block" class="block block-red-hat-unified-footer block-red-hat-unified-footer-block">
+  
+    
+      <div>
+    
+<rh-footer data-analytics-region="page-footer">
+      <a slot="logo" href="/" data-analytics-category="Footer" data-analytics-text="Logo">
+    <img alt="Red Hat Developers logo" src="/themes/custom/rhdp_fe/images/branding/2023_RHDLogo_reverse.svg" loading="lazy" />
+  </a>
+  
+        <rh-footer-social-link slot="social-links" icon="linkedin">
+    <a href="https://www.linkedin.com/showcase/red-hat-developer" data-analytics-region="social-links-exit"
+      data-analytics-category="Footer|social-links"
+      data-analytics-text="LinkedIn"
+      
+    >LinkedIn</a>
+  </rh-footer-social-link>
+    <rh-footer-social-link slot="social-links" icon="youtube">
+    <a href="https://www.youtube.com/channel/UC7noUdfWp-ukXUlAsJnSm-Q" data-analytics-region="social-links-exit"
+      data-analytics-category="Footer|social-links"
+      data-analytics-text="YouTube"
+      
+    >YouTube</a>
+  </rh-footer-social-link>
+    <rh-footer-social-link slot="social-links" icon="x">
+    <a href="https://twitter.com/rhdevelopers" data-analytics-region="social-links-exit"
+      data-analytics-category="Footer|social-links"
+      data-analytics-text="Twitter"
+      
+    >Twitter</a>
+  </rh-footer-social-link>
+    <rh-footer-social-link slot="social-links" icon="facebook">
+    <a href="https://www.facebook.com/redhat" data-analytics-region="social-links-exit"
+      data-analytics-category="Footer|social-links"
+      data-analytics-text="Facebook"
+      
+    >Facebook</a>
+  </rh-footer-social-link>
+  
+            <h3 slot="links" data-analytics-text="Platforms">Platforms</h3>
+  <ul slot="links">
+        <li>
+      <a href="/products/red-hat-ai" data-analytics-category="Footer|Platforms"
+        data-analytics-text="Red Hat AI" >Red Hat AI</a>
+    </li>
+        <li>
+      <a href="https://developers.redhat.com/products/rhel/overview" data-analytics-category="Footer|Platforms"
+        data-analytics-text="Red Hat Enterprise Linux" >Red Hat Enterprise Linux</a>
+    </li>
+        <li>
+      <a href="https://developers.redhat.com/products/openshift/overview" data-analytics-category="Footer|Platforms"
+        data-analytics-text="Red Hat OpenShift" >Red Hat OpenShift</a>
+    </li>
+        <li>
+      <a href="https://developers.redhat.com/products/ansible/overview" data-analytics-category="Footer|Platforms"
+        data-analytics-text="Red Hat Ansible Automation Platform" >Red Hat Ansible Automation Platform</a>
+    </li>
+        <li>
+      <a href="/products" data-analytics-category="Footer|Platforms"
+        data-analytics-text="See all products" >See all products</a>
+    </li>
+      </ul>
+          <h3 slot="links" data-analytics-text="Build">Build</h3>
+  <ul slot="links">
+        <li>
+      <a href="https://developers.redhat.com/developer-sandbox" data-analytics-category="Footer|Build"
+        data-analytics-text="Developer Sandbox" >Developer Sandbox</a>
+    </li>
+        <li>
+      <a href="/topics/developer-tools" data-analytics-category="Footer|Build"
+        data-analytics-text="Developer tools" >Developer tools</a>
+    </li>
+        <li>
+      <a href="https://developers.redhat.com/learn#assembly-id-70181" data-analytics-category="Footer|Build"
+        data-analytics-text="Interactive tutorials" >Interactive tutorials</a>
+    </li>
+        <li>
+      <a href="https://developers.redhat.com/api-catalog/" data-analytics-category="Footer|Build"
+        data-analytics-text="API catalog" >API catalog</a>
+    </li>
+      </ul>
+          <h3 slot="links" data-analytics-text="Quicklinks">Quicklinks</h3>
+  <ul slot="links">
+        <li>
+      <a href="/learn" data-analytics-category="Footer|Quicklinks"
+        data-analytics-text="Learning resources" >Learning resources</a>
+    </li>
+        <li>
+      <a href="/e-books" data-analytics-category="Footer|Quicklinks"
+        data-analytics-text="E-books" >E-books</a>
+    </li>
+        <li>
+      <a href="/cheat-sheets" data-analytics-category="Footer|Quicklinks"
+        data-analytics-text="Cheat sheets" >Cheat sheets</a>
+    </li>
+        <li>
+      <a href="/blog" data-analytics-category="Footer|Quicklinks"
+        data-analytics-text="Blog" >Blog</a>
+    </li>
+        <li>
+      <a href="/events" data-analytics-category="Footer|Quicklinks"
+        data-analytics-text="Events" >Events</a>
+    </li>
+        <li>
+      <a href="/newsletter" data-analytics-category="Footer|Quicklinks"
+        data-analytics-text="Newsletter" >Newsletter</a>
+    </li>
+      </ul>
+          <h3 slot="links" data-analytics-text="Communicate">Communicate</h3>
+  <ul slot="links">
+        <li>
+      <a href="https://developers.redhat.com/about" data-analytics-category="Footer|Communicate"
+        data-analytics-text="About us" >About us</a>
+    </li>
+        <li>
+      <a href="https://developers.redhat.com/contact-sales" data-analytics-category="Footer|Communicate"
+        data-analytics-text="Contact sales" >Contact sales</a>
+    </li>
+        <li>
+      <a href="https://catalog.redhat.com/partners/" data-analytics-category="Footer|Communicate"
+        data-analytics-text="Find a partner" >Find a partner</a>
+    </li>
+        <li>
+      <a href="/report_a_website_issue" data-analytics-category="Footer|Communicate"
+        data-analytics-text="Report a website issue"  class="use-ajax" data-dialog-type="modal" aria-haspopup="dialog" data-dialog-options="{&quot;width&quot;:800,&quot;title&quot;:&quot;Report a website issue&quot;}">Report a website issue</a>
+    </li>
+        <li>
+      <a href="https://status.redhat.com/" data-analytics-category="Footer|Communicate"
+        data-analytics-text="Site status dashboard" >Site status dashboard</a>
+    </li>
+        <li>
+      <a href="https://access.redhat.com/security/team/contact/" data-analytics-category="Footer|Communicate"
+        data-analytics-text="Report a security problem" >Report a security problem</a>
+    </li>
+      </ul>
+    
+    
+      <rh-footer-block slot="main-secondary">
+    <h3 slot="header" data-analytics-text="About Red Hat Developer" id="about-red-hat-developer">RED HAT DEVELOPER</h3>
+<p class="pf-v6-u-mb-md">Build here. Go anywhere.</p>
+<p class="pf-v6-u-mb-md">We serve the builders. The problem solvers who create careers with code.</p>
+<p class="pf-v6-u-mb-md">Join us if you’re a developer, software engineer, web designer, front-end designer, UX designer, computer scientist, architect, tester, product manager, project manager or team lead.</p>
+<p class="pf-v6-u-mb-md"><a title="Create a Red Hat Developer account" class="rhd-c-footer-sidebar-signup pf-m-link-white" href="/register">Sign me up <svg style="display: inline-block; font-size: inherit; height: 1em; overflow: visible; vertical-align: -.125em; width: .875em;" class="svg-inline--fa fa-arrow-right fa-w-14" aria-hidden="true" focusable="false" data-prefix="fas" data-icon="arrow-right" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" data-fa-i2svg=""><path fill="currentColor" d="M190.5 66.9l22.2-22.2c9.4-9.4 24.6-9.4 33.9 0L441 239c9.4 9.4 9.4 24.6 0 33.9L246.6 467.3c-9.4 9.4-24.6 9.4-33.9 0l-22.2-22.2c-9.5-9.5-9.3-25 .4-34.3L311.4 296H24c-13.3 0-24-10.7-24-24v-32c0-13.3 10.7-24 24-24h287.4L190.9 101.2c-9.8-9.3-10-24.8-.4-34.3z"></path></svg></a></p>
+  </rh-footer-block>
+  
+    
+  <rh-footer-universal slot="universal">
+
+                <h3 slot="links-primary" hidden data-analytics-text="Red Hat legal and privacy links">Red Hat legal and privacy links</h3>
+    <ul slot="links-primary" data-analytics-region="page-footer-bottom-primary">
+            <li>
+        <a href="https://redhat.com/en/about/company" data-analytics-category="Footer|Corporate"
+          data-analytics-text="About Red Hat" >About Red Hat</a>
+      </li>
+            <li>
+        <a href="https://redhat.com/en/jobs" data-analytics-category="Footer|Corporate"
+          data-analytics-text="Jobs" >Jobs</a>
+      </li>
+            <li>
+        <a href="https://redhat.com/en/events" data-analytics-category="Footer|Corporate"
+          data-analytics-text="Events" >Events</a>
+      </li>
+            <li>
+        <a href="https://redhat.com/en/about/office-locations" data-analytics-category="Footer|Corporate"
+          data-analytics-text="Locations" >Locations</a>
+      </li>
+            <li>
+        <a href="https://redhat.com/en/contact" data-analytics-category="Footer|Corporate"
+          data-analytics-text="Contact Red Hat" >Contact Red Hat</a>
+      </li>
+            <li>
+        <a href="https://redhat.com/en/blog" data-analytics-category="Footer|Corporate"
+          data-analytics-text="Red Hat Blog" >Red Hat Blog</a>
+      </li>
+            <li>
+        <a href="https://www.redhat.com/en/about/our-culture/diversity-equity-inclusion" data-analytics-category="Footer|Corporate"
+          data-analytics-text="Inclusion at Red Hat" >Inclusion at Red Hat</a>
+      </li>
+            <li>
+        <a href="https://coolstuff.redhat.com/" data-analytics-category="Footer|Corporate"
+          data-analytics-text="Cool Stuff Store" >Cool Stuff Store</a>
+      </li>
+            <li>
+        <a href="https://www.redhat.com/en/summit" data-analytics-category="Footer|Corporate"
+          data-analytics-text="Red Hat Summit" >Red Hat Summit</a>
+      </li>
+          </ul>
+    
+    <rh-footer-copyright slot="links-secondary">© 2026 Red Hat</rh-footer-copyright>
+
+                <h3 slot="links-secondary" hidden data-analytics-text="Red Hat legal and privacy links">Red Hat legal and privacy links</h3>
+    <ul slot="links-secondary" data-analytics-region="page-footer-bottom-secondary">
+            <li>
+        <a href="https://redhat.com/en/about/privacy-policy"
+          data-analytics-category="Footer|Red Hat legal and privacy links"
+          data-analytics-text="Privacy statement" >Privacy statement</a>
+      </li>
+            <li>
+        <a href="https://redhat.com/en/about/terms-use"
+          data-analytics-category="Footer|Red Hat legal and privacy links"
+          data-analytics-text="Terms of use" >Terms of use</a>
+      </li>
+            <li>
+        <a href="https://redhat.com/en/about/all-policies-guidelines"
+          data-analytics-category="Footer|Red Hat legal and privacy links"
+          data-analytics-text="All policies and guidelines" >All policies and guidelines</a>
+      </li>
+            <li>
+        <a href="https://redhat.com/en/about/digital-accessibility"
+          data-analytics-category="Footer|Red Hat legal and privacy links"
+          data-analytics-text="Digital accessibility" >Digital accessibility</a>
+      </li>
+      
+            <li><span id="teconsent"> </span></li>
+          </ul>
+    
+  </rh-footer-universal>
+</rh-footer>
+
+    </div>
+  </div>
+
+<div id="block-rhdp-fe-askredhatchatdrawer" data-block-plugin-id="parh_chat_drawer_block" class="block block-red-hat-parh block-parh-chat-drawer-block">
+  
+    
+      <div>
+    <div
+  class="parh-chat-drawer"
+  id="parh-drawer-root-parh_chat_drawer_block_c185af6e"
+  data-parh-drawer-block-id="parh_chat_drawer_block_c185af6e"
+  data-parh-toggle-label-open="Ask&#x20;AI&#x20;&#x28;Beta&#x29;"
+  data-parh-toggle-label-close="Close&#x20;AI"
+  data-parh-toggle-text-open="Ask&#x20;AI&#x20;&#x28;Beta&#x29;"
+  data-parh-toggle-text-close="Close&#x20;AI"
+>
+  <button
+    type="button"
+    class="parh-chat-drawer__toggle"
+    aria-expanded="false"
+    aria-controls="parh-drawer-panel-parh_chat_drawer_block_c185af6e"
+    aria-label="Ask&#x20;AI&#x20;&#x28;Beta&#x29;"
+  >
+    <span class="parh-chat-drawer__toggle-icon ask-ai-button__icon" aria-hidden="true">
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none" focusable="false" aria-hidden="true">
+        <path d="M14 6H8.5V4.5H9.375C9.71972 4.5 10 4.21973 10 3.875V1.625C10 1.28027 9.71972 1 9.375 1H6.625C6.28027 1 6 1.28027 6 1.625V3.875C6 4.21973 6.28027 4.5 6.625 4.5H7.5V6H2C1.17285 6 0.5 6.67285 0.5 7.5V13.5C0.5 14.3272 1.17285 15 2 15H14C14.8272 15 15.5 14.3272 15.5 13.5V7.5C15.5 6.67285 14.8272 6 14 6ZM7 2H9V3.5H7V2ZM14.5 13.5C14.5 13.7759 14.2759 14 14 14H2C1.72436 14 1.5 13.7759 1.5 13.5V7.5C1.5 7.22437 1.72436 7 2 7H14C14.2759 7 14.5 7.22437 14.5 7.5V13.5ZM4.375 9V10C4.375 10.207 4.20703 10.375 4 10.375H3C2.79297 10.375 2.625 10.207 2.625 10V9C2.625 8.79297 2.79297 8.625 3 8.625H4C4.20703 8.625 4.375 8.79297 4.375 9ZM13.375 9V10C13.375 10.207 13.207 10.375 13 10.375H12C11.793 10.375 11.625 10.207 11.625 10V9C11.625 8.79297 11.793 8.625 12 8.625H13C13.207 8.625 13.375 8.79297 13.375 9ZM9.84961 11.2373C9.99512 11.4307 9.95606 11.7046 9.7627 11.8496C9.25098 12.2344 8.6416 12.4375 8 12.4375C7.3584 12.4375 6.74878 12.2344 6.23706 11.8496C6.0437 11.7046 6.00488 11.4307 6.1499 11.2373C6.29517 11.0435 6.56982 11.0044 6.76245 11.1504C7.48071 11.6894 8.51855 11.6894 9.2373 11.1504C9.43067 11.0039 9.70508 11.0439 9.84961 11.2373Z" fill="currentColor"/>
+      </svg>
+    </span>
+    <span class="parh-chat-drawer__toggle-text">Ask AI (Beta)</span>
+  </button>
+
+  <aside
+    id="parh-drawer-panel-parh_chat_drawer_block_c185af6e"
+    class="parh-chat-drawer__panel"
+    hidden
+    aria-hidden="true"
+  >
+    <div
+      class="parh-chat-drawer__resize-handle"
+      role="separator"
+      aria-orientation="vertical"
+      aria-label="Resize chat panel"
+      tabindex="0"
+    ></div>
+    <div class="parh-chat-drawer__panel-body">
+      <div id="parh-container-parh_chat_drawer_block_c185af6e" class="parh-container parh-container--drawer">
+        <div id="parh-chat-wrapper-parh_chat_drawer_block_c185af6e" class="parh-chat-wrapper" style="display: none;">
+        </div>
+        <div id="parh-login-wrapper-parh_chat_drawer_block_c185af6e" class="parh-login-wrapper" style="display: none;">
+          <div class="parh-login-required">
+            <div class="parh-login-message">
+              <h3>Chat Support</h3>
+              <p>Please log in with your Red Hat account to access chat support.</p>
+              <button type="button" class="parh-login-button" onclick="window.parhTriggerLogin()">
+                Log In with Red Hat SSO
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </aside>
+</div>
+
+<style>
+  .parh-container--drawer .parh-login-required {
+    padding: 20px;
+    text-align: center;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    background-color: #f8f9fa;
+    margin: 10px;
+  }
+
+  .parh-container--drawer .parh-login-message h3 {
+    margin-top: 0;
+    color: #495057;
+  }
+
+  .parh-container--drawer .parh-login-message p {
+    margin-bottom: 15px;
+    color: #6c757d;
+  }
+
+  .parh-container--drawer .parh-login-button {
+    background-color: #007bff;
+    border-color: #007bff;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    border: none;
+    font-size: 14px;
+  }
+
+  .parh-container--drawer .parh-login-button:hover {
+    background-color: #0056b3;
+    border-color: #004085;
+  }
+
+</style>
+
+    </div>
+  </div>
+
+<div id="block-rhdp-fe-parhdeployfix" data-block-plugin-id="block_content:71e3d6b2-f389-4f41-a56f-517da7c687da" class="block block-block-content block-block-content71e3d6b2-f389-4f41-a56f-517da7c687da">
+  
+    
+      <div>
+    
+  <div class="field field--name-body field--type-text-with-summary field--label-hidden field__items">
+        <div class="field__item"><!--
+  PRODUCTION WORKAROUND — PARH drawer FAB DOM placement
+
+  Use only if production is still on older parh-chat-drawer.js that misses
+  .rhd-universal-header or falls back to document.body.
+
+  How to add in Drupal:
+  1. Structure → Block layout → place a "Custom block" (or Basic block) in a
+     region that loads on every page (e.g. Footer, or a global region after
+     the header stack). Give it high weight so it runs after PARH markup exists.
+  2. Body format: "Full HTML" (or any format that does NOT strip <script>).
+  3. Paste everything below the dashed line (including <script>…</script>).
+  4. Clear caches. Check CSP: inline scripts may need a nonce/hash in strict CSP.
+
+  Remove this block after deploying the fixed red_hat_parh module to avoid
+  duplicate logic.
+--><script>
+(function () {
+  'use strict';
+  var ATTR = 'data-parh-prod-placement-workaround';
+  var MAX = 35;
+  var DELAY = 50;
+  var n = 0;
+
+  function getAnchor() {
+    return document.querySelector('#rlc .rhd-universal-header')
+      || document.querySelector('.rhd-universal-header');
+  }
+
+  function tryPlace() {
+    var toggle = document.querySelector('.parh-chat-drawer__toggle');
+    if (!toggle) {
+      return false;
+    }
+    if (toggle.getAttribute(ATTR) === '1') {
+      return true;
+    }
+    var a = getAnchor();
+    if (!a) {
+      return false;
+    }
+    if (a.nextElementSibling === toggle) {
+      toggle.setAttribute(ATTR, '1');
+      return true;
+    }
+    a.insertAdjacentElement('afterend', toggle);
+    toggle.setAttribute(ATTR, '1');
+    return true;
+  }
+
+  function fallback() {
+    var toggle = document.querySelector('.parh-chat-drawer__toggle');
+    if (!toggle || toggle.getAttribute(ATTR) === '1') {
+      return;
+    }
+    var main = document.querySelector('#rlc main');
+    if (main) {
+      main.insertAdjacentElement('beforebegin', toggle);
+    }
+    else {
+      var inner = document.querySelector('#rlc > div');
+      if (inner) {
+        inner.appendChild(toggle);
+      }
+    }
+    toggle.setAttribute(ATTR, '1');
+  }
+
+  function tick() {
+    if (tryPlace()) {
+      return;
+    }
+    n += 1;
+    if (n >= MAX) {
+      fallback();
+      return;
+    }
+    window.setTimeout(tick, DELAY);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function () {
+      requestAnimationFrame(function () {
+        if (!tryPlace()) {
+          tick();
+        }
+      });
+    });
+  }
+  else {
+    requestAnimationFrame(function () {
+      if (!tryPlace()) {
+        tick();
+      }
+    });
+  }
+})();
+</script></div>
+  </div>
+    </div>
+  </div>
+
+  </div>
+
+    </div>
+  </div>
+
+  </div>
+
+    <cpx-user eddl>
+  <cpx-cookie key="rh_jwt_rhd_web" parse="jwt" emit="token-ready"></cpx-cookie>
+</cpx-user>
+<cpx-reporter event="User Detected" beat="eddl-user-ready"></cpx-reporter>
+<cpx-reporter event="Page Load Completed" beat="eddl-user-detected"></cpx-reporter>
+          <!-- TrustArc -->
+      <div id="consent_blackbar" style="position: fixed;bottom: 0;width: 100%;z-index: 5;padding: 10px;"></div>
+        <script type="application/json" data-drupal-selector="drupal-settings-json">{"path":{"baseUrl":"\/","pathPrefix":"","currentPath":"node\/287650","currentPathIsAdmin":false,"isFront":false,"currentLanguage":"en"},"pluralDelimiter":"\u0003","suppressDeprecationErrors":true,"ajaxPageState":{"libraries":"eJx1UUFywzAI_JAdXdr3aLCEbRIsNICT5vfFmTZNZ9oLgl0BC5QLVnLRTK1i84mlXNKLPxRRTFX3DnyqBCzLCc7wMVRwYLij5g09_CWV_pGLyIXwH1Kxi3qARbYuLVr883E31GELYZBm4sg4FehO0gbFmlfwzAjaqC25g6-W_oaz-Z3RnkkddE2HGUuEY1W4RZ9v1lY4XKbJ0t7oimrAucE1A3M28pdKwc8U_iwS6tLf8Ovvn2q0wDFJglJkb56rSq9yi9HWmh8rt4S1cgZ3pWl_tA2qfB3qPXfeF2ox9AqM6g92RqwTxOk2qcAH1ANLoE6FMZ_tCRWpOFqj3tF_gV_Y2JVsezJnUhjJbMexCDOWkPAkY8sxZ5v5_jYW--lxKDKT1_h4R19xw8Hu5rilCQyHK-HN0sOeQvrO-An4WwJj","theme":"rhdp_fe","theme_token":null},"ajaxTrustedUrl":[],"red_hat_jwt":{"client_id":"rhd-web","cookie_name":"rh_jwt_rhd_web","scopes":"api.dxp_portals.developers api.ask_red_hat","leeway":"0","realm":"redhat-external","sso_host":"https:\/\/sso.redhat.com","user_integration":1,"user_plugin":"internal_registration_only_user_auth","debug":0,"store_external_id":1,"sanitize_external_id":0,"external_id_jwt_property":"sub","stateless_auth":0,"drupal_authentication":1},"rhd_admin":{"admin-logout-too":false},"red_hat_parh":{"blocks":[],"drawerBlocks":{"parh_chat_drawer_block_c185af6e":{"block_id":"parh_chat_drawer_block_c185af6e","keycloak_object_name":"rhdp_fe_app.rhdKeycloak","app_source_id":"DRHC-001","cdn_base_url":"https:\/\/access.redhat.com\/ask\/cdn\/@ifd-ui\/ask-redhat-core@latest","app_env":"PROD","enable_debug_logging":false,"enable_parh_import_map":false,"wrapper_css_url":"\/modules\/custom\/red_hat_parh\/css\/parh-chat-wrapper.css"}}},"ajax":[],"user":{"uid":0,"permissionsHash":"d26d7eb4f228907fe30e93f8bd6def59344a4cb5f5d941197dc085b4a11abc91"},"rhd":{"contentGateway":{"baseUrl":"https:\/\/developers.redhat.com","fileBaseUrl":"\/\/developers.redhat.com\/content-gateway\/file\/"},"red_hat_universal_navigation":{"red_hat_environment":"prod","red_hat_universal_navigation_environment":"prod","red_hat_environment_calc_nav":"prod"}}}</script>
+<script src="/sites/default/files/js/js_mTLlfBRqwIb_F3YuxllJpOrAJEmcC9IPkzMucd4wF18.js?scope=footer&amp;delta=0&amp;language=en&amp;theme=rhdp_fe&amp;include=eJx1jkGOwzAIRS9U16s5D6I2TUiJsQC3ndtPUo2idtEN8P_7Aooa5Wqjo5wro-h0xgWfp4qBgr9ksFJs85RLf0JRvTF9gUZdLTaz6Nq1UYsvweFkJ6MKMwZ0tDnvJZVNpmr4eKM-4z4KXzxvkatqfKGj8Z3MUaDhHVAEnIP8yH5wnjBYW8ZSdLSAatqrPtrJ5goX0XLzTLUKYITxZbwWbajcqHKo_UCXMXHbn0Ihi512uFJGCy5CsPhhFa2UvHHvFB_mv5e6sa8HWdgwsfugVFSEynbvgPsT7vqu955ippX-AFOdtKw"></script>
+<script src="/modules/contrib/red_hat_shared_libs/dist/rhds-elements/modules/rh-footer/rh-footer.js" type="module"></script>
+<script src="/modules/contrib/red_hat_shared_libs/dist/@patternfly/pfe-cta/dist/pfe-cta.min.js" type="module"></script>
+<script src="/modules/contrib/red_hat_shared_libs/dist/@cpelements/pfe-navigation/dist/pfe-navigation.min.js" type="module"></script>
+<script src="/modules/contrib/red_hat_shared_libs/dist/@cpelements/rh-site-switcher/dist/site-switcher.min.js" type="module"></script>
+<script src="/modules/contrib/red_hat_shared_libs/dist/@cpelements/rh-account-dropdown/dist/rh-account-dropdown.min.js" type="module"></script>
+<script src="/modules/contrib/red_hat_shared_libs/dist/@patternfly/pfe-avatar/dist/pfe-avatar.min.js" type="module"></script>
+<script src="/sites/default/files/js/js_OQOb3BpBtvR1Rk6CKL2hDN0rNzQx30jzyCTAM__hoEs.js?scope=footer&amp;delta=7&amp;language=en&amp;theme=rhdp_fe&amp;include=eJx1jkGOwzAIRS9U16s5D6I2TUiJsQC3ndtPUo2idtEN8P_7Aooa5Wqjo5wro-h0xgWfp4qBgr9ksFJs85RLf0JRvTF9gUZdLTaz6Nq1UYsvweFkJ6MKMwZ0tDnvJZVNpmr4eKM-4z4KXzxvkatqfKGj8Z3MUaDhHVAEnIP8yH5wnjBYW8ZSdLSAatqrPtrJ5goX0XLzTLUKYITxZbwWbajcqHKo_UCXMXHbn0Ihi512uFJGCy5CsPhhFa2UvHHvFB_mv5e6sa8HWdgwsfugVFSEynbvgPsT7vqu955ippX-AFOdtKw"></script>
+<script src="/core/assets/vendor/ckeditor5/ckeditor5-dll/ckeditor5-dll.js?v=44.0.0"></script>
+<script src="/modules/contrib/red_hat_shared_libs/dist/rhds-elements/modules/rh-alert/rh-alert.js" type="module"></script>
+<script src="/modules/contrib/red_hat_shared_libs/dist/rhds-elements/modules/rh-button/rh-button.js" type="module"></script>
+<script src="/sites/default/files/js/js_cnhb3VLQOI1ecvXGGhrHpf7428wfTRZR9m4c9vl_px0.js?scope=footer&amp;delta=11&amp;language=en&amp;theme=rhdp_fe&amp;include=eJx1jkGOwzAIRS9U16s5D6I2TUiJsQC3ndtPUo2idtEN8P_7Aooa5Wqjo5wro-h0xgWfp4qBgr9ksFJs85RLf0JRvTF9gUZdLTaz6Nq1UYsvweFkJ6MKMwZ0tDnvJZVNpmr4eKM-4z4KXzxvkatqfKGj8Z3MUaDhHVAEnIP8yH5wnjBYW8ZSdLSAatqrPtrJ5goX0XLzTLUKYITxZbwWbajcqHKo_UCXMXHbn0Ihi512uFJGCy5CsPhhFa2UvHHvFB_mv5e6sa8HWdgwsfugVFSEynbvgPsT7vqu955ippX-AFOdtKw"></script>
+<script src="/themes/custom/rhdp_fe/dist/js/articles.js?tg1n43" defer></script>
+<script src="/themes/custom/rhdp_fe/dist/js/code-snippet.js?tg1n43" defer></script>
+<script src="/sites/default/files/js/js_gcV9hbHp9CojjxIXdz2jnEi14fqOHnZWODP12fI8nLc.js?scope=footer&amp;delta=14&amp;language=en&amp;theme=rhdp_fe&amp;include=eJx1jkGOwzAIRS9U16s5D6I2TUiJsQC3ndtPUo2idtEN8P_7Aooa5Wqjo5wro-h0xgWfp4qBgr9ksFJs85RLf0JRvTF9gUZdLTaz6Nq1UYsvweFkJ6MKMwZ0tDnvJZVNpmr4eKM-4z4KXzxvkatqfKGj8Z3MUaDhHVAEnIP8yH5wnjBYW8ZSdLSAatqrPtrJ5goX0XLzTLUKYITxZbwWbajcqHKo_UCXMXHbn0Ihi512uFJGCy5CsPhhFa2UvHHvFB_mv5e6sa8HWdgwsfugVFSEynbvgPsT7vqu955ippX-AFOdtKw"></script>
+<script src="https://issues.redhat.com/plugins/servlet/issueCollectorBootstrap.js?locale=en-UK&amp;collectorId=03f305bd" defer></script>
+<script src="/themes/custom/rhdp_fe/dist/js/custom-jira-collector.js?tg1n43" defer></script>
+<script src="/sites/default/files/js/js_h6VaIcZwDNezggwxQnbDSQRviKRwqbNu9tLlqwZP48o.js?scope=footer&amp;delta=17&amp;language=en&amp;theme=rhdp_fe&amp;include=eJx1jkGOwzAIRS9U16s5D6I2TUiJsQC3ndtPUo2idtEN8P_7Aooa5Wqjo5wro-h0xgWfp4qBgr9ksFJs85RLf0JRvTF9gUZdLTaz6Nq1UYsvweFkJ6MKMwZ0tDnvJZVNpmr4eKM-4z4KXzxvkatqfKGj8Z3MUaDhHVAEnIP8yH5wnjBYW8ZSdLSAatqrPtrJ5goX0XLzTLUKYITxZbwWbajcqHKo_UCXMXHbn0Ihi512uFJGCy5CsPhhFa2UvHHvFB_mv5e6sa8HWdgwsfugVFSEynbvgPsT7vqu955ippX-AFOdtKw"></script>
+<script src="/themes/custom/rhdp_fe/dist/js/sso.js?tg1n43" type="module"></script>
+<script src="/modules/contrib/red_hat_shared_libs/dist/rhds-elements/modules/rh-cta/rh-cta.js" type="module"></script>
+<script src="/modules/contrib/red_hat_shared_libs/dist/rhds-elements/modules/rh-icon/rh-icon.js" type="module"></script>
+<script src="/sites/default/files/js/js_NUOw-74hjQ_kO2sI8-aiYW2g5av__MFJMwL_QW5sw1U.js?scope=footer&amp;delta=21&amp;language=en&amp;theme=rhdp_fe&amp;include=eJx1jkGOwzAIRS9U16s5D6I2TUiJsQC3ndtPUo2idtEN8P_7Aooa5Wqjo5wro-h0xgWfp4qBgr9ksFJs85RLf0JRvTF9gUZdLTaz6Nq1UYsvweFkJ6MKMwZ0tDnvJZVNpmr4eKM-4z4KXzxvkatqfKGj8Z3MUaDhHVAEnIP8yH5wnjBYW8ZSdLSAatqrPtrJ5goX0XLzTLUKYITxZbwWbajcqHKo_UCXMXHbn0Ihi512uFJGCy5CsPhhFa2UvHHvFB_mv5e6sa8HWdgwsfugVFSEynbvgPsT7vqu955ippX-AFOdtKw"></script>
+<script src="/themes/custom/rhdp_fe/dist/js/pdf-links.js?tg1n43" defer></script>
+<script src="/themes/custom/rhdp_fe/dist/js/scroll-to-top.js?tg1n43" defer></script>
+
+        <script type="text/javascript">
+      if (("undefined" !== typeof _satellite) && ("function" === typeof _satellite.pageBottom)) {
+        _satellite.pageBottom();
+      }
+    </script>
+        
+    <!-- Feedback form -->
+          <pfe-modal></pfe-modal>
+      </body>
+</html>

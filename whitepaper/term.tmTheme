@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Terminal colors for term.sublime-syntax: annotate-snippets' default styles (bright ANSI
+     colors, bold) on a dark background. -->
+<plist version="1.0">
+<dict>
+  <key>name</key>
+  <string>Vun terminal</string>
+  <key>settings</key>
+  <array>
+    <dict>
+      <key>settings</key>
+      <dict>
+        <key>background</key>
+        <string>#1c1f24</string>
+        <key>foreground</key>
+        <string>#d5d8dc</string>
+      </dict>
+    </dict>
+    <dict>
+      <key>scope</key>
+      <string>markup.error.term, markup.primary.term</string>
+      <key>settings</key>
+      <dict>
+        <key>foreground</key>
+        <string>#ff6b6b</string>
+        <key>fontStyle</key>
+        <string>bold</string>
+      </dict>
+    </dict>
+    <dict>
+      <key>scope</key>
+      <string>markup.warning.term</string>
+      <key>settings</key>
+      <dict>
+        <key>foreground</key>
+        <string>#e5c07b</string>
+        <key>fontStyle</key>
+        <string>bold</string>
+      </dict>
+    </dict>
+    <dict>
+      <key>scope</key>
+      <string>markup.message.term, markup.command.term, markup.child.term</string>
+      <key>settings</key>
+      <dict>
+        <key>foreground</key>
+        <string>#ffffff</string>
+        <key>fontStyle</key>
+        <string>bold</string>
+      </dict>
+    </dict>
+    <dict>
+      <key>scope</key>
+      <string>markup.gutter.term, markup.gutter.number.term, markup.secondary.term</string>
+      <key>settings</key>
+      <dict>
+        <key>foreground</key>
+        <string>#6cb6ff</string>
+        <key>fontStyle</key>
+        <string>bold</string>
+      </dict>
+    </dict>
+    <dict>
+      <key>scope</key>
+      <string>markup.note.term, markup.prompt.term</string>
+      <key>settings</key>
+      <dict>
+        <key>foreground</key>
+        <string>#8ee06c</string>
+        <key>fontStyle</key>
+        <string>bold</string>
+      </dict>
+    </dict>
+    <dict>
+      <key>scope</key>
+      <string>markup.help.term</string>
+      <key>settings</key>
+      <dict>
+        <key>foreground</key>
+        <string>#56d8e4</string>
+        <key>fontStyle</key>
+        <string>bold</string>
+      </dict>
+    </dict>
+    <dict>
+      <key>scope</key>
+      <string>markup.option.term, markup.path.term</string>
+      <key>settings</key>
+      <dict>
+        <key>foreground</key>
+        <string>#b8bcc4</string>
+      </dict>
+    </dict>
+    <dict>
+      <key>scope</key>
+      <string>comment.origin.term</string>
+      <key>settings</key>
+      <dict>
+        <key>foreground</key>
+        <string>#7a828e</string>
+      </dict>
+    </dict>
+    <dict>
+      <key>scope</key>
+      <string>entity.name.label.term, keyword.other.term</string>
+      <key>settings</key>
+      <dict>
+        <key>foreground</key>
+        <string>#c792ea</string>
+      </dict>
+    </dict>
+    <dict>
+      <key>scope</key>
+      <string>variable.other.local.term</string>
+      <key>settings</key>
+      <dict>
+        <key>foreground</key>
+        <string>#e5c07b</string>
+      </dict>
+    </dict>
+  </array>
+</dict>
+</plist>

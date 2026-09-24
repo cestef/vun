@@ -1,0 +1,90 @@
+%YAML 1.2
+---
+# Terminal sessions in the whitepaper: `$` command lines, diagnostics as the annotate-snippets
+# renderer prints them (Unicode decoration), and IR dumps. Colors come from term.tmTheme, which
+# follows the renderer's default styles.
+name: Vun terminal
+file_extensions: [term]
+scope: source.term
+
+variables:
+  id: '[a-z_][a-z0-9_.]*'
+  gutter: '[│╭╰├]▸?╴?'
+
+contexts:
+  main:
+    - include: command
+    - include: headers
+    - match: '^(\s*)(\d*)(\s*)({{gutter}})'
+      captures:
+        2: markup.gutter.number.term
+        4: markup.gutter.term
+      push: after_gutter
+    - include: dump
+
+  command:
+    - match: '^(\$)(\s+)(\S+)'
+      captures:
+        1: markup.prompt.term
+        3: markup.command.term
+      push: arguments
+
+  arguments:
+    - meta_scope: meta.command.term
+    - match: '\s--?[a-z][a-z-]*'
+      scope: markup.option.term
+    - match: '$'
+      pop: true
+
+  # `error[id]: message`, and the same for warnings, notes and help at the top level.
+  headers:
+    - match: '^(error)(\[{{id}}\])?(:)(.*)$'
+      captures:
+        1: markup.error.term
+        2: markup.error.term
+        3: markup.error.term
+        4: markup.message.term
+    - match: '^(warning)(\[{{id}}\])?(:)(.*)$'
+      captures:
+        1: markup.warning.term
+        2: markup.warning.term
+        3: markup.warning.term
+        4: markup.message.term
+    - match: '^(note|help)(:)'
+      captures:
+        1: markup.child.term
+    # The one-line format: `path:line:col: error[id]: message`.
+    - match: '^(\S+:\d+:\d+:)(\s)(error)(\[{{id}}\])?(:)(.*)$'
+      captures:
+        1: markup.path.term
+        3: markup.error.term
+        4: markup.error.term
+        5: markup.error.term
+        6: markup.message.term
+
+  after_gutter:
+    - match: '$'
+      pop: true
+    - match: '\b(note)(:)'
+      captures:
+        1: markup.note.term
+        2: markup.note.term
+    - match: '\b(help)(:)'
+      captures:
+        1: markup.help.term
+        2: markup.help.term
+    - match: '━+.*$'
+      scope: markup.primary.term
+    - match: '─+.*$'
+      scope: markup.secondary.term
+
+  # `vun dump mir`: locals, blocks, keywords, and the origin of every statement.
+  dump:
+    - match: '@\d+:\d+'
+      scope: comment.origin.term
+    - match: '\bbb\d+\b'
+      scope: entity.name.label.term
+    - match: '\b_\d+\b'
+      scope: variable.other.local.term
+    - match: '\b(fn|const|return|goto|branch|yield|defer|unreachable)\b'
+      scope: keyword.other.term

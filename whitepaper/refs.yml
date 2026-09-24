@@ -242,3 +242,32 @@ hare-rt:
   title: Hare runtime startup (rt/start.ha)
   author: Hare contributors
   url: https://git.sr.ht/~sircmpwn/hare
+
+build-systems:
+  type: article
+  title: Build Systems à la Carte
+  author: ["Mokhov, Andrey", "Mitchell, Neil", "Peyton Jones, Simon"]
+  date: 2018
+  parent:
+    type: proceedings
+    title: Proceedings of the ACM on Programming Languages (ICFP)
+  url: https://doi.org/10.1145/3236774
+
+salsa-memory:
+  type: web
+  title: "Memory usage after the port to new Salsa (rust-analyzer issue 19402)"
+  author: rust-analyzer contributors
+  date: 2025
+  url: https://github.com/rust-lang/rust-analyzer/issues/19402
+
+cranelift-rustc:
+  type: web
+  title: Cranelift code generation comes to Rust
+  author: Tweede golf
+  url: https://tweedegolf.nl/en/blog/235
+
+qbe:
+  type: web
+  title: "QBE: compiler backend, comparison with LLVM"
+  author: Cattaneo, Quentin
+  url: https://c9x.me/compile/doc/llvm.html

@@ -1,0 +1,4 @@
+rt: low-level runtime support
+
+The rt (runtime) module provides support code for the Hare compiler. It is not
+guaranteed to be portable between different Hare compilers.
