@@ -16,7 +16,7 @@ use overt_query::{Cx, Query};
 use overt_sema::env::Env;
 use overt_sema::eval::FnRef;
 use overt_sema::int::Integer;
-use overt_sema::ty::Value;
+use overt_sema::ty::{NominalKind, Value};
 
 use crate::body::{
     Block, BlockId, Body, Local, LocalDecl, Operand, Rvalue, Stmt, Terminator, TerminatorKind,
@@ -166,6 +166,12 @@ impl Builder<'_, '_, '_> {
                     })
                     .collect::<Result<Vec<_>, _>>()?;
                 Ok(self.temp(Rvalue::Call { callee, args }, origin))
+            }
+            ExprKind::Struct(_) => {
+                Ok(self.temp(Rvalue::Nominal { literal: origin, kind: NominalKind::Struct }, origin))
+            }
+            ExprKind::Enum(_) => {
+                Ok(self.temp(Rvalue::Nominal { literal: origin, kind: NominalKind::Enum }, origin))
             }
             // Anything else only as a constant sema can compute, such as `lang.int.u8`.
             _ => self.env.eval(expr).map(Operand::Const).map_err(|_| unbuilt),

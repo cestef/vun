@@ -3,14 +3,17 @@
 
 use overt_index::IndexVec;
 use overt_mir::{Body, Local, Operand, Rvalue, TerminatorKind};
+use overt_origin::OriginTable;
 use overt_query::Cx;
 use overt_sema::env::Unevaluated;
 use overt_sema::eval::Call;
-use overt_sema::ty::Value;
+use overt_sema::ty::{Nominal, Value};
 
 /// One call's locals.
 pub struct Frame<'b> {
     body: &'b Body,
+    /// The call's arguments, which identify the types its literals evaluate to.
+    args: Vec<Value>,
     locals: IndexVec<Local, Option<Value>>,
 }
 
@@ -27,7 +30,7 @@ impl<'b> Frame<'b> {
         for (&param, arg) in body.params.iter().zip(args) {
             locals[param] = Some(arg.clone());
         }
-        Ok(Self { body, locals })
+        Ok(Self { body, args: args.to_vec(), locals })
     }
 
     /// Runs the body to its return, and gives the result.
@@ -67,6 +70,10 @@ impl<'b> Frame<'b> {
             Rvalue::Range { op, lo, hi } => {
                 let hi = hi.as_ref().map(|h| self.operand(h)).transpose()?;
                 Value::range(*op, &self.operand(lo)?, hi.as_ref())
+            }
+            Rvalue::Nominal { literal, kind } => {
+                let origins = cx.db().resource::<OriginTable>();
+                Ok(Value::Type(Nominal::evaluated(&origins, *literal, *kind, self.args.clone())))
             }
             Rvalue::Call { callee, args } => {
                 let args = args.iter().map(|a| self.operand(a)).collect::<Result<Vec<_>, _>>()?;

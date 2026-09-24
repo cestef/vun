@@ -13,7 +13,7 @@ mod tests;
 mod value;
 
 use overt_intern::{Interned, Pool, Symbol};
-use overt_origin::OriginId;
+use overt_origin::{OriginId, OriginTable};
 
 use crate::Primitive;
 use crate::int::{Integer, Interval};
@@ -51,6 +51,16 @@ pub struct Nominal {
     pub kind: NominalKind,
     /// The declaration the literal is written in, which diagnostics name the type by.
     pub name: Option<Symbol>,
+}
+
+impl Nominal {
+    /// The type the `kind` literal written at `literal` evaluates to, in a call with the
+    /// compile-time arguments `args` (decision 28): `Pair(u16)` is one type, `Pair(u8)` another.
+    #[must_use]
+    pub fn evaluated(origins: &OriginTable, literal: OriginId, kind: NominalKind, args: Vec<Value>) -> Ty {
+        let name = origins.declaration_name(literal);
+        TyKind::Nominal(Self { literal, args, kind, name }).intern()
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]

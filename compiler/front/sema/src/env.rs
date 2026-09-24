@@ -197,11 +197,11 @@ impl<'a, 'db> Env<'a, 'db> {
         Ok(Signature { params, result: self.result(returns)? })
     }
 
-    /// The type a `struct` or `enum` literal written at `literal` evaluates to, outside any
-    /// function, so with no compile-time arguments (decision 28).
+    /// The type a `struct` or `enum` literal written at `literal` evaluates to outside any call, so
+    /// with no compile-time arguments (decision 28).
     fn nominal(&self, literal: OriginId, kind: NominalKind) -> Value {
-        let name = self.cx.db().resource::<OriginTable>().declaration_name(literal);
-        Value::Type(TyKind::Nominal(Nominal { literal, args: Vec::new(), kind, name }).intern())
+        let origins = self.cx.db().resource::<OriginTable>();
+        Value::Type(Nominal::evaluated(&origins, literal, kind, Vec::new()))
     }
 
     /// The source text of `expr`, as written.

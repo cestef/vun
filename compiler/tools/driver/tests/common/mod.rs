@@ -109,9 +109,14 @@ impl Fixture {
 
     /// The diagnostics of checking `file` in a fresh session.
     pub(crate) fn check(&self, file: &Path) -> Vec<DiagId> {
+        self.reported(file).into_iter().map(|(id, _)| id).collect()
+    }
+
+    /// The ids and messages of checking `file` in a fresh session.
+    pub(crate) fn reported(&self, file: &Path) -> Vec<(DiagId, String)> {
         let mut session = self.session();
         let file = session.load(file).unwrap();
         session.check(file);
-        session.diag.sorted().into_iter().map(|d| d.id.clone()).collect()
+        session.diag.sorted().into_iter().map(|d| (d.id.clone(), d.message.to_string())).collect()
     }
 }

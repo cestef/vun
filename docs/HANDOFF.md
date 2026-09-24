@@ -144,7 +144,7 @@ tested (the rest are stubs):
 | `overt-build` | `index` (`Index::{listing, archive}`, `Listing`), `lock` (`Lock`, `Locked`, `Replaced`/`Replacing`, `FILE`, text form), `Manifest::{replace, index}`, `Replacement`, `Dep::{declare, redeclare}`, `Manifest::{literal, source, identity}`, `Identity`, `EDITION`; `manifest::read` -> `Manifest` (`Version`, `Dep` with span, `Source`, `DepKind`, `prelude_span`), `manifest::declared` (a `build.ov` is a manifest iff it declares `package`), `DEFAULT_DEPS`, `DEFAULT_PRELUDE`; generic record reader reporting missing, unknown (did-you-mean) and ill-typed fields. `store::Store` (`Store::user()` in the XDG cache via `etcetera`, or `Store::at`; `<algorithm>/<2 chars>/<rest>/{package/,snapshot,label}`, `staging/`, `roots/`; `register`, `list`, `collect`, `Label`). `layout`: `MANIFEST`, `SEPARATOR` (from the grammar's `.`), `Location` (namespace on disk: `root`, `member`, `file`, `exists`, `children`, `path_of`). |
 | `overt-harness` | `repo_root`, `expectations` (`//~ id [@col] ["fragment"]...` -> `Expected`, or `Malformed`), `Reported`, `compare` -> `Mismatch { missing, unexpected, differing }`, `discover`, `snapshot`, `snapshot_tree` (mirrors a source tree, `OVERT_BLESS`), `Page::parse` (Markdown sections by `##`, `Block { lang, file, text }`) for the explanation checks. |
 | `overt-xtask` | `cargo xtask generate [--check]`: pluggable `generate::Generator { source, output, emit }` table (`grammar`, `errors`); shared read/parse/emit/format (quote + prettyplease). `cargo xtask corpus`: runs `corpus/accept` (must be clean) and `corpus/reject` (exact `//~` set) through `Session::check`; a file whose missing ids all belong to stages that do not exist yet is pending (`overt_driver::stages::STAGES`, groups from `errors.ov` namespaces via `DiagId::within`). |
-| `overt-mir` | `Body` (locals, params, `ret`, blocks of `Stmt { place, value: Rvalue, origin }`, `Terminator`), `Rvalue::{Use, Binary, Unary, Range, Call}` (operators as grammar `TokenKind`s), `Operand::{Place, Const(Value)}`, `Place { local }`; `Mir(FnRef)` query lowering a function literal through sema's `Env` (`Unbuilt { at }` for forms not lowered yet: comparisons, `if`, `and`/`or`, assignments); text format (`Display`). |
+| `overt-mir` | `Body` (locals, params, `ret`, blocks of `Stmt { place, value: Rvalue, origin }`, `Terminator`), `Rvalue::{Use, Binary, Unary, Range, Call, Nominal}` (a `struct`/`enum` literal, typed by the interpreter with its call's arguments, so `Pair(u8)` and `Pair(u16)` differ) (operators as grammar `TokenKind`s), `Operand::{Place, Const(Value)}`, `Place { local }`; `Mir(FnRef)` query lowering a function literal through sema's `Env` (`Unbuilt { at }` for forms not lowered yet: comparisons, `if`, `and`/`or`, assignments); text format (`Display`). |
 | `overt-interp` | `Interpreter` implements `sema::eval::Evaluator`: `Frame` runs a body on compile-time values; calls go through sema's `Call` query; operators through `Value::{binary, unary, range}`, primitives through `Primitive::apply`. Installed by `Session::default` in the `Evaluators` resource. |
 | `overt-trace` | Own subscriber: `Filter` (`OVERT_LOG` directives, most specific target wins), compact and tree output, span timings. |
 | backends, linkers, target, pass, tool | as in the first session (stubs with `const INFO`). |
@@ -161,7 +161,7 @@ bodies, so `$for`/`$if` work in every list context; node kinds are chosen after 
 (postorder). One report per position; missing things are reported at the end of the previous
 token; nesting capped at 256; the keyword hint suggests `\keyword`.
 
-Tests: 144, including unit tests per crate, `tests/lexer.rs`, `tests/parser.rs` (all of `lib/` and
+Tests: 145, including unit tests per crate, `tests/lexer.rs`, `tests/parser.rs` (all of `lib/` and
 `corpus/accept` parse clean and verify, CST and token snapshots mirroring the corpus tree), CLI parsing tests, the
 generated-files-current test and the corpus test (no failing corpus file). Fuzz: `parse` ran 600k inputs in 4 minutes
 without a failure. clippy pedantic is clean.
@@ -206,9 +206,6 @@ In order:
    from `lang.int`. Typed: namespace members against their annotations, function bodies
    (parameters, locals, names by `DeclType`, arithmetic, calls against `lang.Fn` signatures, the
    result against the declared one), `int.width_cap` on run-time intermediates. Next:
-   - Nominal types built inside a function (`Pair(u16)`) carry no arguments yet: `Env::nominal`
-     always uses `args: Vec::new()`, so every instantiation is one type. The interpreter must pass
-     its call's compile-time arguments (`Via::Instantiate`).
    - A call's argument diagnostic names the parameter type by its value (`Int(0..=255)`); label
      the parameter's declaration when the callee is a known function literal.
    - `lang.bool` and comparisons: comparisons desugar to `lang.ops.Eq`/`Ord`, whose results name

@@ -5,7 +5,7 @@ use overt_grammar::TokenKind;
 use overt_index::{IndexVec, index};
 use overt_intern::Symbol;
 use overt_origin::OriginId;
-use overt_sema::ty::Value;
+use overt_sema::ty::{NominalKind, Value};
 
 use crate::place::Place;
 
@@ -69,6 +69,12 @@ pub enum Rvalue {
     Call {
         callee: Operand,
         args: Vec<Operand>,
+    },
+    /// The type a `struct` or `enum` literal evaluates to, identified by the literal and the
+    /// arguments of the call running the body (decision 28).
+    Nominal {
+        literal: OriginId,
+        kind: NominalKind,
     },
 }
 

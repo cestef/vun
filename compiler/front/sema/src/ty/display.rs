@@ -1,5 +1,5 @@
 //! Types as diagnostics show them: integers by their range, primitives by name with their
-//! arguments, literals by kind.
+//! arguments, literals by the declaration they are written in with its arguments, or by kind.
 
 use std::fmt;
 
@@ -18,22 +18,8 @@ impl fmt::Display for TyKind {
             return write!(f, "{} -> {}", Self::Tuple(sig.params), sig.result);
         }
         match self {
-            Self::Primitive(p, args) if args.is_empty() => f.write_str(p.name()),
-            Self::Primitive(p, args) => {
-                write!(f, "{}(", p.name())?;
-                for (i, arg) in args.iter().enumerate() {
-                    if i > 0 {
-                        f.write_str(", ")?;
-                    }
-                    match arg {
-                        Value::Type(ty) => write!(f, "{ty}")?,
-                        Value::Int(n) => write!(f, "{n}")?,
-                        _ => f.write_str("..")?,
-                    }
-                }
-                f.write_str(")")
-            }
-            Self::Nominal(Nominal { name: Some(name), .. }) => f.write_str(name.as_str()),
+            Self::Primitive(p, args) => Applied(p.name(), args).fmt(f),
+            Self::Nominal(Nominal { name: Some(name), args, .. }) => Applied(name.as_str(), args).fmt(f),
             Self::Nominal(n) => f.write_str(match n.kind {
                 NominalKind::Struct => "struct { .. }",
                 NominalKind::Enum => "enum { .. }",
@@ -47,6 +33,29 @@ impl fmt::Display for TyKind {
             }
             Self::Array { len, elem } => write!(f, "[{len}]{elem}"),
         }
+    }
+}
+
+/// `name(args)`, or `name` alone without arguments: a primitive or a type-returning function
+/// applied to compile-time values.
+struct Applied<'a>(&'a str, &'a [Value]);
+
+impl fmt::Display for Applied<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.0)?;
+        if self.1.is_empty() {
+            return Ok(());
+        }
+        f.write_str("(")?;
+        for (i, arg) in self.1.iter().enumerate() {
+            f.write_str(if i > 0 { ", " } else { "" })?;
+            match arg {
+                Value::Type(ty) => ty.fmt(f)?,
+                Value::Int(n) => n.fmt(f)?,
+                _ => f.write_str("..")?,
+            }
+        }
+        f.write_str(")")
     }
 }
 

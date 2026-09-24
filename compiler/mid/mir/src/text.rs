@@ -4,6 +4,7 @@
 use std::fmt;
 
 use overt_index::Idx;
+use overt_sema::ty::NominalKind;
 
 use crate::body::{Body, Operand, Rvalue, TerminatorKind};
 use crate::place::Place;
@@ -32,6 +33,8 @@ impl fmt::Display for Rvalue {
             Self::Unary { op, operand } => write!(f, "{}{operand}", text(*op)),
             Self::Range { op, lo, hi: Some(hi) } => write!(f, "{lo}{}{hi}", text(*op)),
             Self::Range { op, lo, hi: None } => write!(f, "{lo}{}", text(*op)),
+            Self::Nominal { kind: NominalKind::Struct, .. } => f.write_str("struct { .. }"),
+            Self::Nominal { kind: NominalKind::Enum, .. } => f.write_str("enum { .. }"),
             Self::Call { callee, args } => {
                 write!(f, "{callee}(")?;
                 for (i, arg) in args.iter().enumerate() {
