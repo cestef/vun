@@ -15,7 +15,16 @@ parse := (bytes: &[6]u8) -> Header {
     h
 };
 
-Transfer := #[kind.linear, kind.fixed] struct { channel: u8 };
+Transfer := #[kind.linear, kind.fixed] struct {
+    channel: u8,
+    wait := (self: &mut Transfer) {};
+};
+
+/// A DMA controller: the example's stand-in for a device driver.
+Dma := struct {
+    start := (self: &mut Dma, src: &[u8], dst: &mut [u8]) -> Transfer { .{ .channel = 0 } };
+    release := (self: &mut Dma, channel: u8) {};
+};
 
 finish := (t: &take Transfer, dma: &mut Dma) { dma.release(t.channel); };
 

@@ -1,5 +1,10 @@
 //! Preview 1 commands.
 
-System := struct {};
+System := struct {
+    stdout := (self: &mut System) -> Stdout { .{} };
+    args := (self: &System) -> &[&[u8]] { &[] };
+};
+/// The standard output stream.
+Stdout := struct {};
 Exit := enum { ok, code(u8) };
 command := ($main: (&mut System) -> Exit) -> type { struct {} };

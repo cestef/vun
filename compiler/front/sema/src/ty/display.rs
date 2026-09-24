@@ -55,6 +55,7 @@ impl fmt::Display for TyKind {
                 }
                 f.write_str(" }")
             }
+            Self::Param(param) => f.write_str(param.name.as_str()),
             Self::Frame(frame) => match frame.name {
                 Some(name) => write!(f, "{name}.Frame"),
                 None => f.write_str("Frame"),

@@ -29,7 +29,7 @@ Shape := interface(($Self: type) -> type { struct {
     perimeter: (self: &Self) -> u64 = _;
 }});
 
-describe := ($S: Shape, s: &S) -> u64 {
+describe := ($S: Shape, s: &S) -> u128 {
     s.area() + s.perimeter()
 };
 ```

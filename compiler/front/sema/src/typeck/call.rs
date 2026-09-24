@@ -125,7 +125,6 @@ impl Typer<'_, '_, '_> {
             // A form typed by its context, such as `.none`, has no type to infer from.
             let hir = self.hir();
             let contextual = |e: ExprId| match &hir.exprs[e].kind {
-                ExprKind::DotName(_) | ExprKind::StructLit { ty: None, .. } => true,
                 ExprKind::Call { callee, .. } => matches!(hir.exprs[*callee].kind, ExprKind::DotName(_)),
                 _ => false,
             };

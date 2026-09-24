@@ -1,12 +1,56 @@
-//! The build API used by `build.ov` files (spec 12, section 2).
+//! The build API used by `build.ov` files (spec 12, section 2). `build` runs at compile time,
+//! in the sandbox, with a `&mut Build` capability, and records a plan: steps that the driver
+//! carries out once it returns. What only the package knows, its dependencies' names and
+//! parameters, a program's options, is written as records, which the driver reads by
+//! reflection (decision 116).
 
-/// The interface every `build.ov` conforms to.
+/// The interface every `build.ov` conforms to: `package`, a record read without evaluation, and
+/// `build`.
 Package := lang.interface(($Self: type) -> type { struct {
-    package: Manifest = _;
     build: (b: &mut Build) = _;
 }});
 
-/// A package's description, as `build.ov` states it (spec 12, section 2).
-Manifest := struct { name: &[u8], version: &[u8] };
-/// The build being planned, which `build` adds steps to; the driver makes it.
-Build := struct { _plan: u32 };
+/// A step of the plan, which later steps name.
+Step := struct { index: u32 };
+/// A dependency of the package, as a step builds it.
+Dep := struct { step: Step };
+/// A program, as a step builds it.
+Program := struct { step: Step };
+
+/// A probe attached to a device.
+Probe := struct { chip: &[u8] };
+/// How a program reaches its device.
+Flash := enum { probe(Probe), uf2, dfu };
+/// Where a program's tests run.
+Runner := enum { host, qemu(&[u8]), probe(Probe) };
+
+/// The plan being recorded.
+Build := struct {
+    _steps: u32,
+
+    /// The dependency `name` of `package.deps`, built with `params`: a record of the parameters
+    /// its own `build.ov` declares, such as `.{ .variant = .f407 }`.
+    dep := (self: &mut Build, $name: lang.meta.Name, $P: type, params: P) -> Dep {
+        .{ .step = self._step() }
+    };
+
+    /// A program built from `options`: a record with its `root` file, its `target`, its `deps` by
+    /// name and its `memory` map.
+    program := (self: &mut Build, $O: type, options: O) -> Program { .{ .step = self._step() } };
+
+    /// Writes the program `built` to its device by `method`.
+    flash := (self: &mut Build, built: Program, method: Flash) { self._step(); };
+
+    /// Runs the tests of the program `built` on `runner`.
+    test_on := (self: &mut Build, built: Program, runner: Runner) { self._step(); };
+
+    /// The level of each lint for the package: pairs of a lint and a level, such as
+    /// `.{ .{ std.lints.pedantic, .warn } }`.
+    lints := (self: &mut Build, $L: type, levels: L) { self._step(); };
+
+    /// A new step, after every step recorded.
+    _step := (self: &mut Build) -> Step {
+        self._steps +|= 1;
+        .{ .index = self._steps }
+    };
+};

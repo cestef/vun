@@ -49,6 +49,10 @@ pub const STAGES: &[Stage] = &[
         name: "types",
         reports: &[
             errors::TYPES_MISMATCH,
+            errors::TYPES_NO_MEMBER,
+            errors::TYPES_NO_IMPL,
+            errors::TYPES_CANNOT_INFER,
+            errors::TYPES_ARITY,
             errors::INT_WIDTH_CAP,
             errors::NAMES_PRIVATE,
             errors::NAMES_VISIBILITY,

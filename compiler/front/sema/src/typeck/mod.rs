@@ -134,7 +134,7 @@ impl Query for Typed {
         if let Some(enclosing) = i.enclosing(cx) {
             return cx.get::<Self>(&enclosing);
         }
-        let env = Env::inside(cx, &i.f, i.args.iter().cloned())?;
+        let env = Env::inside(cx, &i.f, i.args.iter().cloned())?.abstracted(i.f.literal.expr.id);
         let hir = &env.parsed.hir;
         let ExprKind::Fn { body, .. } = &hir.exprs[i.f.literal.expr.id].kind else { return None };
         let mut typer = Typer::new(&env, Stage::Run);

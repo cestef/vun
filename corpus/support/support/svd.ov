@@ -2,6 +2,8 @@
 
 Register := struct { name: &[u8], offset: usize, reset: u32, width: u8 };
 Peripheral := struct { registers: &[Register] };
-Device := struct {};
+Device := struct {
+    peripheral := (self: &Device, name: &[u8]) -> Peripheral { .{ .registers = &[] } };
+};
 parse := ($text: &[u8]) -> Device { .{} };
 bits := ($r: Register) -> type { lang.int.unsigned(r.width) };

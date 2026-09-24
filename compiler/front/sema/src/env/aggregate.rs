@@ -19,7 +19,9 @@ impl Env<'_, '_> {
     pub fn eval_as(&self, expr: ExprId, expected: Option<Ty>) -> Result<Value, Unevaluated> {
         let expected = expected.or_else(|| self.type_of(expr));
         match (&self.parsed.hir.exprs[expr].kind, expected) {
-            (ExprKind::DotName(Name::Plain(name)), Some(ty)) => self.member(Value::Type(ty), *name),
+            (ExprKind::DotName(Name::Plain(name)), Some(ty)) if Some(ty) != Value::Name(*name).ty() => {
+                self.member(Value::Type(ty), *name)
+            }
             (ExprKind::StructLit { ty: None, fields }, Some(ty)) => self.record(ty, fields),
             (ExprKind::Call { callee, args }, Some(ty))
                 if let ExprKind::DotName(Name::Plain(name)) = self.parsed.hir.exprs[*callee].kind =>
@@ -28,7 +30,7 @@ impl Env<'_, '_> {
             }
             // Without a type, `.name` is the name itself, and `.{ }` a record or a tuple of what it
             // holds.
-            (ExprKind::DotName(Name::Plain(name)), None) => Ok(Value::Name(*name)),
+            (ExprKind::DotName(Name::Plain(name)), _) => Ok(Value::Name(*name)),
             (ExprKind::StructLit { ty: None, fields }, None) => self.anonymous(fields),
             (ExprKind::DotName(_), None) => Err(Unevaluated::Unsupported),
             (ExprKind::Call { callee, .. }, None)

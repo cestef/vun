@@ -181,8 +181,10 @@ impl Typer<'_, '_, '_> {
         // `.` looks through borrows, and through owners lacking the member (spec 01, section 4).
         let known = Known { ty: self.env().reach(known.ty, name).1, ..known };
         self.cell_member(expr, known.ty);
-        if let TyKind::Record(_) = &*known.ty {
-            return self.record_field(expr, known.ty, name, known.stage);
+        match &*known.ty {
+            TyKind::Record(_) => return self.record_field(expr, known.ty, name, known.stage),
+            TyKind::Param(_) => return self.param_member(expr, known.ty, name),
+            _ => {}
         }
         let members = self.env().cx.get::<Members>(&known.ty);
         match members.as_deref().map_or(Found::Unknown, |m| m.find(name)) {
@@ -202,11 +204,15 @@ impl Typer<'_, '_, '_> {
                 self.methods.insert(expr, (known.ty, name));
                 self.env().cx.get::<MemberType>(&(known.ty, name)).ok()
             }
-            // A member missing from the type and its impls is not reported yet: the corpus
-            // stand-ins do not declare every member their programs use (HANDOFF). A variant is
-            // reached through its type, never through a value, so a value's lookup goes on.
-            Found::Variant(_) | Found::Absent | Found::Unknown => {
-                let owner = self.method(expr, known.ty, name)?;
+            // A member missing from the type and its impls; a variant is reached through its
+            // type, never through a value, so a value's lookup goes on to the impls.
+            found @ (Found::Variant(_) | Found::Absent | Found::Unknown) => {
+                let Some(owner) = self.method(expr, known.ty, name) else {
+                    if !matches!(found, Found::Unknown) {
+                        self.no_member(self.hir().exprs[expr].origin, known.ty, name);
+                    }
+                    return None;
+                };
                 self.methods.insert(expr, (owner, name));
                 self.env().cx.get::<MemberType>(&(owner, name)).ok()
             }

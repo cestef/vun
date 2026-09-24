@@ -82,7 +82,9 @@ impl Query for Kinds {
             TyKind::Primitive(Primitive::Mem(Mem::Array | Mem::Slice | Mem::Cell), args) => {
                 Kind::of_parts(args.iter().filter_map(Value::as_type).map(|t| of(&t)))
             }
-            TyKind::Primitive(..) => Kind::COPY_FREE,
+            // A constrained `$` parameter is unknown until an instantiation binds it, so checks
+            // built on it stay silent.
+            TyKind::Primitive(..) | TyKind::Param(_) => Kind::COPY_FREE,
             TyKind::Tuple(items) => Kind::of_parts(items.iter().map(of)),
             TyKind::Record(fields) => Kind::of_parts(fields.iter().map(|(_, t)| of(t))),
             TyKind::Closure(Closure { captures, .. }) => Kind::of_parts(captures.iter().map(|(_, t)| of(t))),

@@ -7,7 +7,7 @@ use overt_intern::Symbol;
 use overt_origin::OriginId;
 use overt_sema::env::Env;
 use overt_sema::member::{Found, Members};
-use overt_sema::ty::{Nominal, Ty, TyKind, Value};
+use overt_sema::ty::{Nominal, Ty, TyKind};
 
 use super::{Builder, Unbuilt};
 use crate::body::{Aggregate, Operand, Rvalue};
@@ -40,11 +40,9 @@ impl Builder<'_, '_, '_> {
                 let ty = self.type_of(expr).ok_or(unbuilt);
                 ty.and_then(|ty| self.variant(ty, name, args, origin))
             }
-            ExprKind::DotName(Name::Plain(name)) => {
+            ExprKind::DotName(Name::Plain(_)) => {
                 let ty = self.type_of(expr).ok_or(unbuilt);
-                ty.and_then(|ty| {
-                    self.env().member(Value::Type(ty), *name).map(Operand::Const).map_err(|_| unbuilt)
-                })
+                ty.and_then(|ty| self.env().eval_as(expr, Some(ty)).map(Operand::Const).map_err(|_| unbuilt))
             }
             _ => return None,
         })

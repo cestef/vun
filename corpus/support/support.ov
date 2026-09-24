@@ -30,7 +30,6 @@ parse := (f: &File, cfg: &out Config) -> Result((), Error) {
 ready := std.task.Event{ .id = 0 };
 Duration := enum { ms(u32) };
 Critical := struct {};
-Dma := struct {};
 Led := struct {
     toggle := (self: &mut Led) {};
 };
@@ -48,12 +47,18 @@ Serial := struct {
     };
     write := (self: &mut Serial, bytes: &[u8]) -> Async(()) { yield .{ .event = &ready }; };
 };
-Uart := struct {};
+Uart := struct {
+    send := (self: &mut Uart, bytes: &[u8]) -> Result(usize, uart.Error) { .ok(bytes.len()) };
+};
 Point := struct { x: i32, y: i32 };
 Reg := ($T: type) -> type { struct { raw: T } };
 
 /// Interfaces.
-Dyn := ($I: lang.Interface) -> type { struct {} };
+Dyn := ($I: lang.Interface) -> type { struct {
+    begin_struct := (self: &mut Dyn(I), name: &[u8]) -> Result((), Encoder.Error) { .ok(()) };
+    field := (self: &mut Dyn(I), name: &[u8]) -> Result((), Encoder.Error) { .ok(()) };
+    end_struct := (self: &mut Dyn(I)) -> Result((), Encoder.Error) { .ok(()) };
+} };
 Encoder := interface(($Self: type) -> type { struct {
     Error: type = _;
 }});

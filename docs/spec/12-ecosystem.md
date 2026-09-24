@@ -104,6 +104,14 @@ build := (b: &mut std.build.Build) {
   and tuples. Tools and indexes read it with the ordinary parser, without evaluating anything.
 - `build` is ordinary compile-time code with a `&mut Build` capability. It runs in the sandboxed
   evaluator: no I/O, no processes (spec 03, section 7).
+- `std.build.Build` records a plan of steps, which the driver carries out once `build` returns:
+  `b.dep($name, params) -> Dep` names a dependency of `package.deps` (a `lang.meta.Name`, so
+  `.stm32f4`) with the parameters its own `build.ov` declares; `b.program(options) -> Program`
+  takes a record with `root`, `target`, `deps` and `memory`; `b.flash(program, method)` with a
+  `std.build.Flash` (`.probe(.{ .chip = ... })`, `.uf2`, `.dfu`); `b.test_on(program, runner)`
+  with a `std.build.Runner`; `b.lints(levels)` with pairs of a lint and a level. What only the
+  package knows, names and parameters, is written as records (spec 02, section 2), whose types
+  are inferred and which the driver reads by reflection.
 - Everything configurable in a project is configured here, in Overt: dependencies, targets, memory
   maps, lints, profiles, flash methods, test targets. There is no second configuration format.
 

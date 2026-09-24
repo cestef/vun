@@ -3,7 +3,7 @@
 //! that interface's `resume` (the table `iteration`).
 
 use overt_grammar::ITERATION;
-use overt_hir::tree::{ExprId, ExprKind};
+use overt_hir::tree::{Entry, ExprId, ExprKind, Param, PatKind};
 use overt_intern::Symbol;
 use overt_origin::OriginTable;
 
@@ -11,9 +11,35 @@ use super::{Env, Unevaluated};
 use crate::eval::{Call, Instance};
 use crate::item::ExprRef;
 use crate::member::{Found, MemberType, Members};
-use crate::ty::{Frame, Marker, Signature, Ty, TyKind, Value};
+use crate::ty::{Frame, Marker, Param as ParamTy, Signature, Ty, TyKind, Value};
 
 impl Env<'_, '_> {
+    /// This environment with each `$` parameter of the function literal `literal` that nothing
+    /// binds and an interface constrains bound to that parameter as the generic body sees it
+    /// (`TyKind::Param`), so that the body is typed against the interface (spec 02, section 3).
+    #[must_use]
+    pub fn abstracted(mut self, literal: ExprId) -> Self {
+        let parsed = std::sync::Arc::clone(&self.parsed);
+        let hir = &parsed.hir;
+        let ExprKind::Fn { params, .. } = &hir.exprs[literal].kind else { return self };
+        for param in params {
+            let Entry::One(Param { pat: Some(pat), ty: Some(annotation), .. }) = param else { continue };
+            let PatKind::Bind(binder) = hir.pats[*pat].kind else { continue };
+            if !hir.binders[binder].comptime || self.bindings.contains_key(&binder) {
+                continue;
+            }
+            if let Ok(Value::Interface(interface)) = self.eval(*annotation) {
+                let param = ParamTy {
+                    literal: ExprRef::new(self.file.clone(), hir, literal),
+                    name: hir.binders[binder].name,
+                    interface,
+                };
+                self.bindings.insert(binder, Value::Type(TyKind::Param(param).intern()));
+            }
+        }
+        self
+    }
+
     /// The signature of the function literal `literal` here, `args` the values of its `$`
     /// parameters where an instantiation binds them: a coroutine function returns its frame.
     ///

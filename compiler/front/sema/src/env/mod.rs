@@ -67,7 +67,7 @@ pub struct Env<'a, 'db> {
     /// The compile-time call evaluated in, if any: types built here are identified by it.
     pub instance: Option<Instance>,
     /// The parameters of that call, bound to its arguments.
-    bindings: HashMap<BinderId, Value>,
+    pub(super) bindings: HashMap<BinderId, Value>,
     /// The `$for` bindings evaluated under, also among `bindings`.
     staged: Vec<Staging>,
     /// The types of the expressions evaluated, where typing found them: forms typed by their

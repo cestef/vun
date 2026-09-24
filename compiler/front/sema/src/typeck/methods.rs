@@ -6,8 +6,10 @@ use overt_hir::tree::ExprId;
 use overt_intern::Symbol;
 use overt_origin::OriginId;
 
-use super::Typer;
-use crate::ty::Ty;
+use super::{Known, Typer};
+use crate::eval::{Call, Instance};
+use crate::member::{Found, MemberType, Members};
+use crate::ty::{Ty, TyKind, Value};
 
 impl Typer<'_, '_, '_> {
     /// The struct declaring the method `name` that `ty` has through an impl (spec 02, section 3);
@@ -30,5 +32,25 @@ impl Typer<'_, '_, '_> {
             d = d.label(origin, Some(Msg::new().text("declared here")));
         }
         self.diag.error(d);
+    }
+
+    /// The member `name` of a constrained `$` parameter's value in its generic body: a
+    /// declaration of the interface's requirement struct for it, which is all the body may use.
+    pub(super) fn param_member(&mut self, expr: ExprId, ty: Ty, name: Symbol) -> Option<Known> {
+        let TyKind::Param(param) = &*ty else { return None };
+        let call = Instance { f: param.interface.clone(), args: vec![Value::Type(ty)] };
+        let requirements = self.env().cx.get::<Call>(&call).ok()?.as_type()?;
+        let members = self.env().cx.get::<Members>(&requirements)?;
+        match members.find(name) {
+            Found::Decl(_) => {
+                self.methods.insert(expr, (requirements, name));
+                self.env().cx.get::<MemberType>(&(requirements, name)).ok()
+            }
+            Found::Unknown => None,
+            _ => {
+                self.no_member(self.hir().exprs[expr].origin, ty, name);
+                None
+            }
+        }
     }
 }

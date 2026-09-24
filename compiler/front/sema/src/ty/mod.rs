@@ -51,6 +51,19 @@ pub enum TyKind {
     Closure(Closure),
     /// The frame a call of a coroutine function returns (spec 06, section 1).
     Frame(Frame),
+    /// A `$` parameter constrained by an interface, as the generic body sees it before an
+    /// instantiation binds it: its members are the interface's requirements for it (spec 02,
+    /// section 3).
+    Param(Param),
+}
+
+/// A constrained `$` parameter of a function literal, by its name.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct Param {
+    pub literal: ExprRef,
+    pub name: Symbol,
+    /// The function from a type to the requirement struct.
+    pub interface: Func,
 }
 
 /// The type of the frames of one coroutine function: its literal, the call it was evaluated in,

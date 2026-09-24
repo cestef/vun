@@ -79,7 +79,7 @@ impl Query for Layouts {
                 Some(Layout::sequence(fields.iter().map(|(_, t)| layout(t)).collect::<Option<Vec<_>>>()?))
             }
             TyKind::Nominal(nominal) => Self::nominal(cx, *ty, nominal),
-            TyKind::Frame(_) => None,
+            TyKind::Frame(_) | TyKind::Param(_) => None,
         }
     }
 
