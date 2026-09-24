@@ -47,6 +47,14 @@ impl fmt::Display for TyKind {
                 }
                 f.write_str(")")
             }
+            // `.{ a: u8, b: .{ c: bool } }`: a record by its fields.
+            Self::Record(fields) => {
+                f.write_str(".{ ")?;
+                for (i, (name, ty)) in fields.iter().enumerate() {
+                    write!(f, "{}{name}: {ty}", if i > 0 { ", " } else { "" })?;
+                }
+                f.write_str(" }")
+            }
             Self::Frame(frame) => match frame.name {
                 Some(name) => write!(f, "{name}.Frame"),
                 None => f.write_str("Frame"),
@@ -86,7 +94,7 @@ impl fmt::Display for Value {
                 }
                 f.write_str("]")
             }
-            Self::Variant { name, .. } => write!(f, ".{name}"),
+            Self::Variant { name, .. } | Self::Name(name) => write!(f, ".{name}"),
             Self::Constructor { ty, name } => write!(f, "{ty}.{name}"),
             Self::Struct { ty, .. } => write!(f, "{ty}{{ .. }}"),
             Self::Primitive(p) => write!(f, "{}.{}", p.namespace(), p.name()),

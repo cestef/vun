@@ -26,10 +26,11 @@ impl Env<'_, '_> {
             {
                 self.variant(ty, name, args)
             }
-            // Without a type, these forms have no value.
-            (ExprKind::DotName(_) | ExprKind::StructLit { ty: None, .. }, None) => {
-                Err(Unevaluated::Unsupported)
-            }
+            // Without a type, `.name` is the name itself, and `.{ }` a record or a tuple of what it
+            // holds.
+            (ExprKind::DotName(Name::Plain(name)), None) => Ok(Value::Name(*name)),
+            (ExprKind::StructLit { ty: None, fields }, None) => self.anonymous(fields),
+            (ExprKind::DotName(_), None) => Err(Unevaluated::Unsupported),
             (ExprKind::Call { callee, .. }, None)
                 if matches!(self.parsed.hir.exprs[*callee].kind, ExprKind::DotName(_)) =>
             {
@@ -39,9 +40,45 @@ impl Env<'_, '_> {
         }
     }
 
+    /// `.{ .a = x, .b = y }` or `.{ x, y }` with no type expected: a record of its fields, by
+    /// the types of their values, or a tuple.
+    fn anonymous(&self, fields: &List<Arg>) -> Result<Value, Unevaluated> {
+        let mut named = Vec::new();
+        let mut items = Vec::new();
+        for field in fields {
+            match field {
+                Entry::One(Arg { name: Some(Name::Plain(name)), value }) => {
+                    named.push((*name, self.eval(*value)?));
+                }
+                Entry::One(Arg { name: None, value }) => items.push(self.eval(*value)?),
+                _ => return Err(Unevaluated::Unsupported),
+            }
+        }
+        if named.is_empty() {
+            return Ok(Value::Tuple(items));
+        }
+        if !items.is_empty() {
+            return Err(Unevaluated::Unsupported);
+        }
+        named.sort_by_key(|(name, _)| name.as_str());
+        let types = named.iter().map(|(n, v)| Some((*n, v.ty()?))).collect::<Option<Vec<_>>>();
+        let ty = TyKind::Record(types.ok_or(Unevaluated::Unsupported)?).intern();
+        Ok(Value::Struct { ty, fields: named })
+    }
+
     /// `T{ .name = value, ... }`: every field of `ty` in declaration order, from the literal or
-    /// from its default.
+    /// from its default; for a record type, its fields.
     pub(super) fn record(&self, ty: Ty, fields: &List<Arg>) -> Result<Value, Unevaluated> {
+        if let TyKind::Record(types) = &*ty {
+            let values = types.iter().map(|(name, field)| {
+                let written = fields.iter().find_map(|f| match f {
+                    Entry::One(Arg { name: Some(Name::Plain(n)), value }) if n == name => Some(*value),
+                    _ => None,
+                });
+                Ok((*name, self.eval_as(written.ok_or(Unevaluated::Unsupported)?, Some(*field))?))
+            });
+            return Ok(Value::Struct { ty, fields: values.collect::<Result<_, Unevaluated>>()? });
+        }
         let members = self.cx.get::<Members>(&ty).ok_or(Unevaluated::Unsupported)?;
         let TyKind::Nominal(Nominal { literal, instance, .. }) = &*ty else {
             return Err(Unevaluated::Unsupported);

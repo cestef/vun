@@ -5,7 +5,8 @@
     reason = "generated modules share one namespace"
 )]
 use super::*;
-/// Infix operator levels, loosest first (spec 01, section 6).
+/// Infix operator levels, loosest first (spec 01, section 6). Each level lists its tokens by
+/// borrow, so that levels of different sizes share one type.
 pub const INFIX: &[(Assoc, &[TokenKind])] = &[
     (Assoc::Left, &[TokenKind::Or]),
     (Assoc::Left, &[TokenKind::And]),

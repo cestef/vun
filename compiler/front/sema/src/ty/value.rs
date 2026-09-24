@@ -11,6 +11,7 @@ use crate::Primitive;
 use crate::eval::{Code, Func, Suspended};
 use crate::int::{Extended, Integer, Interval};
 use crate::item::DeclRef;
+use crate::primitives::meta::Meta;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Value {
@@ -59,6 +60,8 @@ pub enum Value {
     Code(Code),
     /// Where something is written: a `lang.meta.Origin`.
     Origin(OriginId),
+    /// A bare `.name` where no type is expected: a `lang.meta.Name`.
+    Name(Symbol),
     /// `lang.interface(f)`: the function `f` from a type to its requirement struct (spec 02,
     /// section 3).
     Interface(Func),
@@ -95,6 +98,10 @@ impl Value {
         match self {
             Self::Int(n) => Some(TyKind::int(&Interval::singleton(n.clone()))),
             Self::Struct { ty, .. } | Self::Variant { ty, .. } => Some(*ty),
+            Self::Name(_) => Some(TyKind::primitive(Primitive::Meta(Meta::Name))),
+            Self::Tuple(items) => {
+                Some(TyKind::Tuple(items.iter().map(Self::ty).collect::<Option<_>>()?).intern())
+            }
             _ => None,
         }
     }

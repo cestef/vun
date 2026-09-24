@@ -43,6 +43,10 @@ impl TyKind {
             return expected.accepts(&found);
         }
         match (self, found) {
+            (Self::Record(expected), Self::Record(found)) => {
+                expected.len() == found.len()
+                    && expected.iter().zip(found).all(|((n, e), (m, f))| n == m && e.accepts(f))
+            }
             (Self::Tuple(expected), Self::Tuple(found)) => {
                 expected.len() == found.len() && expected.iter().zip(found).all(|(e, f)| e.accepts(f))
             }
@@ -78,7 +82,23 @@ impl TyKind {
         if let (Some(a), Some(b)) = (self.interval(), other.interval()) {
             return Some(Self::int(&a.hull(&b)));
         }
+        // Borrows of arrays of one item type, in one mode, meet as a borrow of a slice.
+        if let (Some((mode, p, a)), Some((other_mode, _, b))) = (self.borrowing(), other.borrowing())
+            && mode == other_mode
+            && let (Some((_, a)), Some((_, b))) = (a.as_array(), b.as_array())
+        {
+            let item = a.join(&b)?;
+            return Some(Self::Primitive(p, vec![Value::Type(Self::slice(item))]).intern());
+        }
         match (self, other) {
+            (Self::Record(a), Self::Record(b)) if a.len() == b.len() => {
+                let fields = a
+                    .iter()
+                    .zip(b)
+                    .map(|((n, x), (m, y))| (n == m).then(|| Some((*n, x.join(y)?))).flatten())
+                    .collect::<Option<_>>()?;
+                Some(Self::Record(fields).intern())
+            }
             (Self::Tuple(a), Self::Tuple(b)) if a.len() == b.len() => {
                 let items = a.iter().zip(b).map(|(a, b)| a.join(b)).collect::<Option<_>>()?;
                 Some(Self::Tuple(items).intern())

@@ -119,6 +119,7 @@
 | 113 | Rule 8 as typing: at run time, `&`, `|`, `^`, `<<`, `>>` exist on `uN` types (`Int(0..=2^N - 1)`) only and keep the type, the type of the run-time operand when the other is a constant; any other integer type is `types.no_impl`. Compile-time integers are exact and keep computing without a width | proposed | 04 |
 | 114 | `coroutine.recursive_frame` is reported at a coroutine function whose body delegates (`yield ..e`) to a frame of the same function; a cycle through other functions waits on frame layouts | proposed | 06 |
 | 115 | The freeze rule is checked on declarations: a member of a `struct` literal whose value applies `lang.meta.fields`, `size` or `align` to the type that literal makes is `meta.frozen`; reflection reached through a function called from such a member waits on tracking the types being defined during evaluation | proposed | 03 |
+| 116 | Structural records: an anonymous `.{ .a = x }` where no type is expected has the type `TyKind::Record` of its fields sorted by name, a positional `.{ x, y }` a tuple, and a bare `.name` there is a `lang.meta.Name` (`Value::Name`); records join and are accepted field-wise; two borrows of arrays of one item type in one mode join as a borrow of a slice (`lang`'s precedence table lists its tokens by `&[...]`, which the literal reader reads as the list); `.name(args)` without a context stays untyped; a local annotated with a type not known has no type rather than its value's | accepted (the user chose structural records) | 02 |
 
 ## Questions, with how they were settled
 

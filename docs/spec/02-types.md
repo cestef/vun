@@ -46,6 +46,8 @@ compilation is therefore an ordinary `$if`, never a file-name convention or a pr
 | `enum { a, b }` | tags only |
 | `enum { none, some(T) }` | sum type with payloads |
 | `enum { a, b; d := e; }` | variants, then after `;` declarations: its namespace, as a struct's |
+| `.{ .a = x, .b = y }` where no type is expected | a record: structural, its fields sorted by name, so records with the same fields are one type; `.{ x, y }` is a tuple |
+| `.name` where no type is expected | a `lang.meta.Name` value |
 | `(A, B)` | tuple |
 | `[N]T` | array, a value |
 | `[T]` | a slice: the items of an array of any length, reached through a borrow |

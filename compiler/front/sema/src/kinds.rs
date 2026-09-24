@@ -84,6 +84,7 @@ impl Query for Kinds {
             }
             TyKind::Primitive(..) => Kind::COPY_FREE,
             TyKind::Tuple(items) => Kind::of_parts(items.iter().map(of)),
+            TyKind::Record(fields) => Kind::of_parts(fields.iter().map(|(_, t)| of(t))),
             TyKind::Closure(Closure { captures, .. }) => Kind::of_parts(captures.iter().map(|(_, t)| of(t))),
             TyKind::Frame(_) => Kind { duplication: Duplication::Linear, ..Kind::COPY_FREE },
             TyKind::Nominal(nominal) => Self::nominal(cx, *ty, nominal),

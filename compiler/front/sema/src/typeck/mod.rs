@@ -21,6 +21,7 @@ pub use loops::Iteration;
 mod pattern;
 mod prefix;
 mod range;
+mod record;
 mod safety;
 mod sequence;
 mod staged;
@@ -280,7 +281,9 @@ impl Visitor for Typer<'_, '_, '_> {
         if let (Some(found), Some(expected), Some(value)) = (found, annotated, d.value) {
             self.expect(hir.exprs[value].origin, found, expected, d.ty);
         }
-        self.pattern(d.pat, annotated.or(found.map(|k| k.ty)), None);
+        // A local annotated with a type not known here has no type, not its value's.
+        let ty = if d.ty.is_some() { annotated } else { found.map(|k| k.ty) };
+        self.pattern(d.pat, ty, None);
     }
 
     fn expr(&mut self, hir: &Hir, expr: ExprId) {

@@ -75,6 +75,9 @@ impl Query for Layouts {
             TyKind::Closure(Closure { captures, .. }) => {
                 Some(Layout::sequence(captures.iter().map(|(_, t)| layout(t)).collect::<Option<Vec<_>>>()?))
             }
+            TyKind::Record(fields) => {
+                Some(Layout::sequence(fields.iter().map(|(_, t)| layout(t)).collect::<Option<Vec<_>>>()?))
+            }
             TyKind::Nominal(nominal) => Self::nominal(cx, *ty, nominal),
             TyKind::Frame(_) => None,
         }

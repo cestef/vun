@@ -72,6 +72,27 @@ impl Builder<'_, '_, '_> {
     /// in declaration order, a missing field from its default.
     fn record(&mut self, ty: Ty, fields: &List<Arg>, origin: OriginId) -> Result<Operand, Unbuilt> {
         let unbuilt = Unbuilt { at: origin };
+        // A structural literal: a tuple of its items, or a record of its fields by name.
+        if let TyKind::Tuple(_) | TyKind::Record(_) = &*ty {
+            let mut written = Vec::new();
+            for field in fields {
+                let Entry::One(Arg { name, value }) = field else { return Err(unbuilt) };
+                written.push((*name, self.operand(*value)?));
+            }
+            let kind = match &*ty {
+                TyKind::Record(types) => {
+                    let names: Vec<Symbol> = types.iter().map(|(n, _)| *n).collect();
+                    written.sort_by_key(|(name, _)| match name {
+                        Some(Name::Plain(n)) => names.iter().position(|m| m == n),
+                        _ => None,
+                    });
+                    Aggregate::Struct { ty, fields: names }
+                }
+                _ => Aggregate::Tuple,
+            };
+            let parts = written.into_iter().map(|(_, part)| part).collect();
+            return Ok(self.temp(Rvalue::Aggregate { kind, parts }, origin));
+        }
         let members = self.env.cx.get::<Members>(&ty).ok_or(unbuilt)?;
         let TyKind::Nominal(Nominal { literal, instance, .. }) = &*ty else { return Err(unbuilt) };
         let mut written = Vec::new();

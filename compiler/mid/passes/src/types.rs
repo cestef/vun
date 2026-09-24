@@ -28,6 +28,9 @@ impl PlaceTypes<'_, '_> {
         match projection {
             Projection::Deref => ty.pointee(),
             Projection::Field(name) => {
+                if let TyKind::Record(fields) = &*ty {
+                    return fields.iter().find(|(n, _)| n == name).map(|(_, t)| *t);
+                }
                 let members = self.cx.get::<Members>(&ty)?;
                 members.fields.iter().find(|f| f.name == *name).and_then(|f| f.ty.as_ref().ok().copied())
             }

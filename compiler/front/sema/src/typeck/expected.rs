@@ -13,7 +13,7 @@ use crate::ty::{Signature, TyKind, Value};
 impl Typer<'_, '_, '_> {
     /// `.name` where the context expects a type.
     pub(super) fn dot(&mut self, expr: ExprId, name: Symbol) -> Option<Known> {
-        let expected = self.expected(expr)?;
+        let Some(expected) = self.expected(expr) else { return Some(Self::bare_name()) };
         let origin = self.hir().exprs[expr].origin;
         let compile = |ty| Some(Known { ty, stage: Stage::Compile });
         match &*expected {
@@ -41,7 +41,7 @@ impl Typer<'_, '_, '_> {
                 };
                 self.site(site)
             }
-            TyKind::Tuple(_) | TyKind::Closure(_) | TyKind::Frame(_) => None,
+            TyKind::Tuple(_) | TyKind::Record(_) | TyKind::Closure(_) | TyKind::Frame(_) => None,
         }
     }
 }

@@ -36,7 +36,10 @@ impl Typer<'_, '_, '_> {
                 let target = self.ty(*ty);
                 self.struct_lit(target, fields)
             }
-            ExprKind::StructLit { ty: None, fields } => self.struct_lit(self.expected(expr), fields),
+            ExprKind::StructLit { ty: None, fields } => match self.expected(expr) {
+                Some(expected) => self.struct_lit(Some(expected), fields),
+                None => self.record_lit(fields),
+            },
             ExprKind::DotName(Name::Plain(name)) => self.dot(expr, *name),
             ExprKind::Tuple(items) => self.tuple(expr, items),
             ExprKind::Array(items) => self.array(expr, items),
@@ -93,14 +96,10 @@ impl Typer<'_, '_, '_> {
                 let right = self.typed_as(*right, left.map(|k| k.ty));
                 self.binary(expr, *op, left?, right?)
             }
-            ExprKind::Call { callee, args } => {
-                if let (ExprKind::DotName(_), Some(expected)) =
-                    (&hir.exprs[*callee].kind, self.expected(expr))
-                {
-                    self.expected.insert(*callee, expected);
-                }
-                self.call(expr, *callee, args)
+            ExprKind::Call { callee, args } if matches!(hir.exprs[*callee].kind, ExprKind::DotName(_)) => {
+                self.dot_call(expr, *callee, args)
             }
+            ExprKind::Call { callee, args } => self.call(expr, *callee, args),
             // A function literal is a value; its body is typed on its own.
             ExprKind::Closure { captures, func } => self.closure(expr, captures, *func),
             ExprKind::Fn { .. } => compile(self.env().literal_signature(expr, &[]).ok()?.ty()),
@@ -182,6 +181,9 @@ impl Typer<'_, '_, '_> {
         // `.` looks through borrows, and through owners lacking the member (spec 01, section 4).
         let known = Known { ty: self.env().reach(known.ty, name).1, ..known };
         self.cell_member(expr, known.ty);
+        if let TyKind::Record(_) = &*known.ty {
+            return self.record_field(expr, known.ty, name, known.stage);
+        }
         let members = self.env().cx.get::<Members>(&known.ty);
         match members.as_deref().map_or(Found::Unknown, |m| m.find(name)) {
             Found::Field(field) => {

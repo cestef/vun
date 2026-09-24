@@ -87,6 +87,8 @@ impl<'s> Reader<'_, 's> {
                 Literal::Int(i) => Literal::Int(-i),
                 _ => return None,
             },
+            // A borrow of a literal is the literal: `&[.a, .b]` lists as `[.a, .b]` does.
+            NodeKind::Prefix if self.token(n)? == TokenKind::Amp => self.read(*children.last()?)?,
             NodeKind::Array => Literal::List(items().map(|c| self.value(c)).collect()),
             NodeKind::Call => {
                 let mut items = items();

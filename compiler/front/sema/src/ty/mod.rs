@@ -43,6 +43,9 @@ pub enum TyKind {
     /// A `struct` or `enum` literal (decision 28).
     Nominal(Nominal),
     Tuple(Vec<Ty>),
+    /// An anonymous literal written where no type is expected (`.{ .a = 1 }`): structural, its
+    /// fields sorted by name, so records with the same fields are one type.
+    Record(Vec<(Symbol, Ty)>),
     /// A closure (spec 01, section 4): an anonymous struct of its captures, called through
     /// `lang.ops.Call`.
     Closure(Closure),
