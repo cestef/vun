@@ -49,7 +49,7 @@ impl Query for Witnesses {
     fn compute(cx: &Cx<'_>, (file, ty): &Self::Key) -> Self::Value {
         let Some(env) = Env::of(cx, file) else { return Arc::from([]) };
         let home = match &**ty {
-            TyKind::Nominal(nominal) => Some(nominal.literal.file.package),
+            TyKind::Nominal(nominal) => Some(&nominal.literal.file),
             _ => None,
         };
         let impls = env.impl_files(home).into_iter().flat_map(|f| cx.get::<Impls>(&f).to_vec());
@@ -72,8 +72,12 @@ impl Witness {
         let (witness, requirements) = if let Value::Type(_) = decl.target {
             (value.as_type()?, decl.contract.as_ref().map(|c| c.requirements))
         } else {
-            let env = Env::of(cx, &decl.decl.file)?;
-            let witness = env.apply(value, args).ok()?.as_type()?;
+            // A constructor's witness is made for the arguments; a type taking none, such as a
+            // primitive `Cx: type = _`, has the witness itself.
+            let witness = match value {
+                Value::Type(witness) => witness,
+                value => Env::of(cx, &decl.decl.file)?.apply(value, args).ok()?.as_type()?,
+            };
             let requirements = match &decl.contract {
                 Some(contract) => {
                     let call = Instance { f: contract.interface.clone(), args: vec![Value::Type(ty)] };

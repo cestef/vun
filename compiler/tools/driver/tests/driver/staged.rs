@@ -74,3 +74,19 @@ seven_again: Int(0..=sum()) = 7;
     let reported: Vec<_> = fixture.reported(&file).into_iter().map(|(id, _)| id).collect();
     assert_eq!(reported, [errors::INT_DOES_NOT_FIT; 3]);
 }
+
+#[test]
+fn staged_branches_compare_types() {
+    let fixture = Fixture::new("staged-same");
+    let file = fixture.root.write(
+        "same.vun",
+        "\
+width := ($T: type) -> u8 { $if lang.meta.same(T, u8) { 8 } else { 0 } };
+eight: Int(width(u8)..=width(u8)) = 8;
+none: Int(width(u16)..=width(u16)) = 0;
+wrong: Int(width(u16)..=width(u16)) = 8;
+",
+    );
+    // `lang.meta.same` tells whether two types are one; `wrong` has the value `none` has.
+    assert_eq!(fixture.check(&file), [errors::INT_DOES_NOT_FIT]);
+}

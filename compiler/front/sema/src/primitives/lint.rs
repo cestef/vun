@@ -4,19 +4,40 @@
 #[allow(non_camel_case_types, reason = "variants are named as their declarations")]
 pub enum Lint {
     Lint,
-    Cx,
     define,
+    /// What a lint's check sees of the code it checks.
+    Cx,
+    /// The function a checked call calls, compared with `==` against a declaration.
+    Callee,
+    /// Whether the code `cx` checks is inside the namespace `ns`.
+    inside,
+    /// Reports `message` at `at` with the fixes `fixes`, a tuple of them.
+    report,
+    /// Whether `a` and `b` call the same function.
+    same_callee,
 }
 impl Lint {
     pub const NAMESPACE: vun_items::Item = vun_items::lang::lint;
-    pub const ALL: &[Self] = &[Self::Lint, Self::Cx, Self::define];
+    pub const ALL: &[Self] = &[
+        Self::Lint,
+        Self::define,
+        Self::Cx,
+        Self::Callee,
+        Self::inside,
+        Self::report,
+        Self::same_callee,
+    ];
     /// The declaration's name.
     #[must_use]
     pub const fn name(self) -> &'static str {
         match self {
             Self::Lint => "Lint",
-            Self::Cx => "Cx",
             Self::define => "define",
+            Self::Cx => "Cx",
+            Self::Callee => "Callee",
+            Self::inside => "inside",
+            Self::report => "report",
+            Self::same_callee => "same_callee",
         }
     }
     /// The declaration.
@@ -24,8 +45,12 @@ impl Lint {
     pub const fn item(self) -> vun_items::Item {
         match self {
             Self::Lint => vun_items::lang::lint::Lint,
-            Self::Cx => vun_items::lang::lint::Cx,
             Self::define => vun_items::lang::lint::define,
+            Self::Cx => vun_items::lang::lint::Cx,
+            Self::Callee => vun_items::lang::lint::Callee,
+            Self::inside => vun_items::lang::lint::inside,
+            Self::report => vun_items::lang::lint::report,
+            Self::same_callee => vun_items::lang::lint::same_callee,
         }
     }
 }

@@ -11,6 +11,8 @@ pub enum Meta {
     TypeOf,
     origin,
     embed,
+    /// Whether `A` and `B` are one type: made by the same constructor from the same arguments.
+    same,
     /// A compile-time value of any type, with its type: what a plan records of a record whose type
     /// each call infers (spec 03, section 7). It exists at compile time only.
     Any,
@@ -44,6 +46,7 @@ impl Meta {
         Self::TypeOf,
         Self::origin,
         Self::embed,
+        Self::same,
         Self::Any,
         Self::any,
         Self::append,
@@ -66,6 +69,7 @@ impl Meta {
             Self::TypeOf => "TypeOf",
             Self::origin => "origin",
             Self::embed => "embed",
+            Self::same => "same",
             Self::Any => "Any",
             Self::any => "any",
             Self::append => "append",
@@ -89,6 +93,7 @@ impl Meta {
             Self::TypeOf => vun_items::lang::meta::TypeOf,
             Self::origin => vun_items::lang::meta::origin,
             Self::embed => vun_items::lang::meta::embed,
+            Self::same => vun_items::lang::meta::same,
             Self::Any => vun_items::lang::meta::Any,
             Self::any => vun_items::lang::meta::any,
             Self::append => vun_items::lang::meta::append,

@@ -31,3 +31,24 @@ arm := (c: bool, x: u8, y: u16) -> u8 { if c { x } else { y } };
         ]
     );
 }
+
+#[test]
+fn temporaries_are_borrowed_as_expected_and_empty_literals_are_unit() {
+    let fixture = Fixture::new("forms-temporaries");
+    let file = fixture.root.write(
+        "temporaries.vun",
+        "\
+read := (x: &u8) -> u8 { x.* };
+seven := () -> u8 { read(&7) };
+narrow: Int(7..=7) = 7;
+place := () -> u8 { read(&narrow) };
+empty := () { e := .{}; unit: () = e; wrong: u8 = e; };
+",
+    );
+    // `&7` borrows a `u8` holding 7; `narrow` keeps its own type, which `&u8` does not accept.
+    let found = fixture.reported(&file);
+    let ids: Vec<_> = found.iter().map(|(id, _)| id.clone()).collect();
+    assert_eq!(ids, [errors::TYPES_MISMATCH, errors::TYPES_MISMATCH], "{found:?}");
+    assert!(found[0].1.contains("&static Int(7..=7)"), "{found:?}");
+    assert!(found[1].1.ends_with("found `()`"), "{found:?}");
+}

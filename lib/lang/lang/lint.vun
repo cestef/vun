@@ -1,6 +1,36 @@
-//! Lints as values (spec 10, section 4).
+//! Lints as values (spec 10, section 4). A lint's check sees the code checked through `Cx`, a
+//! read-only view versioned with `lang`, and the calls it makes as `Call`s. The view is declared
+//! here and typed; it runs once lints run.
 
 Level := enum { allow, warn, deny, forbid, expect };
 Lint: type = _;
-Cx: type = _;
 define: Attribute = _;
+
+/// What a lint's check sees of the code it checks.
+Cx: type = _;
+/// The function a checked call calls, compared with `==` against a declaration.
+Callee: type = _;
+/// A call in the code checked: what it calls, and where it is written.
+Call := struct { callee: Callee, origin: lang.meta.Origin };
+
+/// Whether the code `cx` checks is inside the namespace `ns`.
+inside: (cx: &Cx, ns: lang.meta.Namespace) -> bool = _;
+/// Reports `message` at `at` with the fixes `fixes`, a tuple of them.
+report: ($A: type, cx: &mut Cx, at: lang.meta.Origin, message: &[u8], fixes: A) = _;
+/// Whether `a` and `b` call the same function.
+same_callee: (a: &Callee, b: &Callee) -> bool = _;
+
+#[impl(Cx)]
+CxMethods := struct {
+    /// Whether the code checked is inside the namespace `ns`.
+    inside := (self: &Cx, ns: lang.meta.Namespace) -> bool { lang.lint.inside(self, ns) };
+    /// Reports `message` at `at` with the fixes `fixes`.
+    report := (self: &mut Cx, at: lang.meta.Origin, message: &[u8], $A: type, fixes: A) {
+        lang.lint.report(A, self, at, message, fixes);
+    };
+};
+
+#[impl(lang.ops.Eq(Callee))]
+CalleeEq := struct {
+    eq := (a: &Callee, b: &Callee) -> bool { lang.lint.same_callee(a, b) };
+};

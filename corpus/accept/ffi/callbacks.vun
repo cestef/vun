@@ -9,7 +9,7 @@ qsort: unsafe (base: *u8, count: usize, size: usize, cmp: Compare) = _;
 by_value := (a: *u8, b: *u8) -> i32 {
     x := unsafe { a.cast(u32).* };
     y := unsafe { b.cast(u32).* };
-    match x.cmp(y) {
+    match x.cmp(&y) {
         .less => -1,
         .equal => 0,
         .greater => 1,

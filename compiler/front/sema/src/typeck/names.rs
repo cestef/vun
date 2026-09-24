@@ -73,14 +73,21 @@ impl Typer<'_, '_, '_> {
         let known = known?;
         // `.` looks through borrows, and through owners lacking the member (spec 01, section 4).
         let known = Known { ty: self.env().reach(known.ty, name).1, ..known };
-        self.cell_member(expr, known.ty);
         match &*known.ty {
             TyKind::Record(_) => return self.record_field(expr, known.ty, name, known.stage),
             TyKind::Param(_) | TyKind::Frame(_) => return self.required_member(expr, known.ty, name),
             _ => {}
         }
+        // A type without a namespace of its own, such as an integer, a tuple, an array or a
+        // borrow, has only its impls' members. They are unknown for a nominal type whose members
+        // are, and for a value declaring its own, a type or an interface not known here.
         let members = self.env().cx.get::<Members>(&known.ty);
-        match members.as_deref().map_or(Found::Unknown, |m| m.find(name)) {
+        let unknown = if matches!(&*known.ty, TyKind::Nominal(_)) || known.ty.declares_members() {
+            Found::Unknown
+        } else {
+            Found::Absent
+        };
+        match members.as_deref().map_or(unknown, |m| m.find(name)) {
             Found::Field(field) => {
                 self.check_visible(expr, name, &field.visible);
                 Some(Known { ty: *field.ty.as_ref().ok()?, stage: known.stage })

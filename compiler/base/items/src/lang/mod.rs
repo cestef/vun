@@ -41,6 +41,8 @@ pub mod kind;
 pub mod layout;
 pub mod link;
 pub mod lint;
+pub mod lint_CalleeEq;
+pub mod lint_CxMethods;
 pub mod lint_Level;
 pub mod mem;
 pub mod mem_Ordering;

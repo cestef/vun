@@ -49,7 +49,17 @@ impl Frame<'_, '_, '_> {
     /// The value at `place`.
     pub(crate) fn read(&self, place: &Place) -> Result<Value, Unevaluated> {
         let (local, parts) = self.resolve(place)?;
-        self.at(local, &parts)
+        match self.at(local, &parts)? {
+            // A lent parameter read whole is lent on: a loan of it, as its caller's loan is.
+            value
+                if place.projection.is_empty()
+                    && self.exclusive(local)
+                    && !matches!(value, Value::Loan { .. }) =>
+            {
+                Ok(Value::Loan { local: local.index(), parts })
+            }
+            value => Ok(value),
+        }
     }
 
     /// Stores `value` at `place`: a whole local, or a part of one, rebuilt around it.

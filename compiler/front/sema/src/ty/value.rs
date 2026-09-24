@@ -117,7 +117,8 @@ impl Value {
     }
 
     /// The type of this value, for a value of a type with methods: an integer's is the type of
-    /// that integer alone, since every integer type holding it has the same impls.
+    /// that integer alone, since every integer type holding it has the same impls; a type's is
+    /// `type`; an array's is of the type its items have in common.
     #[must_use]
     pub fn ty(&self) -> Option<Ty> {
         match self {
@@ -127,6 +128,12 @@ impl Value {
             Self::Any { .. } => Some(TyKind::primitive(Primitive::Meta(Meta::Any))),
             Self::Tuple(items) => {
                 Some(TyKind::Tuple(items.iter().map(Self::ty).collect::<Option<_>>()?).intern())
+            }
+            Self::Type(_) => Some(TyKind::of_types()),
+            // An array's items have the type they all have in common.
+            Self::Array(items) => {
+                let item = items.iter().map(Self::ty).reduce(|a, b| a?.join(&*b?))??;
+                Some(TyKind::array(Integer::from(items.len()), item))
             }
             _ => None,
         }

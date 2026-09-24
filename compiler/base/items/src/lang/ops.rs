@@ -32,6 +32,8 @@ pub const Shr: Item = Item::new(&["lang", "ops", "Shr"]);
 pub const Eq: Item = Item::new(&["lang", "ops", "Eq"]);
 /// `a < b`, `a <= b`, `a > b` and `a >= b`: a total order, from `cmp`.
 pub const Ord: Item = Item::new(&["lang", "ops", "Ord"]);
+/// Integers in their order.
+pub const IntOrd: Item = Item::new(&["lang", "ops", "IntOrd"]);
 pub const Index: Item = Item::new(&["lang", "ops", "Index"]);
 /// What `e?` desugars to: continue with a value, or stop the function with a result.
 pub const Try: Item = Item::new(&["lang", "ops", "Try"]);

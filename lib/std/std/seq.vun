@@ -11,6 +11,9 @@ Sequence := interface(($Self: type) -> type { struct {
 SliceSequence := ($T: type) -> type { struct {
     #[panic.never]
     len := (xs: &[T]) -> usize { lang.mem.len(T, xs) };
+    /// A pointer to the first item, for passing the items to code outside the language.
+    #[panic.never]
+    ptr := (xs: &[T]) -> *T { lang.mem.items_pointer(T, xs) };
     /// A borrow of each item with its position, from 0.
     enumerate := (xs: &[T]) -> std.iter.Iter((usize, &T)) { yield ..xs.iter().enumerate(); };
 } };
@@ -19,6 +22,9 @@ SliceSequence := ($T: type) -> type { struct {
 ArraySequence := ($n: Int(0..), $T: type) -> type { struct {
     #[panic.never]
     len := (xs: &[n]T) -> usize { n };
+    /// A pointer to the first item, for passing the items to code outside the language.
+    #[panic.never]
+    ptr := (xs: &[n]T) -> *T { lang.mem.items_pointer(T, xs) };
     /// A borrow of each item with its position, from 0.
     enumerate := (xs: &[n]T) -> std.iter.Iter((usize, &T)) {
         items: &[T] = xs;

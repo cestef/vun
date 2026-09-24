@@ -14,6 +14,8 @@ pub const Origin: Item = Item::new(&["lang", "meta", "Origin"]);
 pub const TypeOf: Item = Item::new(&["lang", "meta", "TypeOf"]);
 pub const origin: Item = Item::new(&["lang", "meta", "origin"]);
 pub const embed: Item = Item::new(&["lang", "meta", "embed"]);
+/// Whether `A` and `B` are one type: made by the same constructor from the same arguments.
+pub const same: Item = Item::new(&["lang", "meta", "same"]);
 /// A compile-time value of any type, with its type: what a plan records of a record whose type
 /// each call infers (spec 03, section 7). It exists at compile time only.
 pub const Any: Item = Item::new(&["lang", "meta", "Any"]);

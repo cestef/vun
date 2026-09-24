@@ -178,8 +178,8 @@ run from the requirements of `std.build.Package` and calls `std.build.plan` with
 package's `build.vun` runs it (stage `plan`), `vun dump plan` prints its actions as literals
 (`Value::literal`). Nothing carries the actions out yet.
 
-Progress: corpus 214 passed, 0 pending, 23 shown, 0 failed; 73% of body expressions typed; MIR
-lowers 94 of 115 functions (stops: `$` 3, `For` 3, `Member` 3, `StructLit` 3). 227 tests,
+Progress: corpus 214 passed, 0 pending, 23 shown, 0 failed; 74% of body expressions typed; MIR
+lowers 94 of 115 functions (stops: `$` 3, `For` 3, `Member` 3, `StructLit` 3). 234 tests,
 including one that checks every `lang` and `std` file cleanly.
 
 ## 6. Decisions
@@ -191,13 +191,15 @@ in MIR, constructor calls at compile time, members of made types), 123 (`&static
 positions, range slices, witnesses in the type's package), 124 (`std.fmt`), 125 (library
 diagnostics), 126 (executors, frames' `resume`/`end`), 127 (`std.iter` adapters), 128 to 130, 134, 135, 137 (static borrows of literals, `mut`
 statics at compile time), 138 (targets and lint groups as data, member handles), 139 (the size
-budget), 140 (`std` iterators, arguments, `Fixed` as an `Allocator`). New language
+budget), 140 (`std` iterators, arguments, `Fixed` as an `Allocator`), 141 (values' types, members
+of types without a namespace, requirements through witnesses), 143 (receivers after inferred
+`$` arguments, lent parameters lent on); accepted: 142 (the `lang.lint` view). New language
 rules go to `decisions.md` as proposed unless the user approves them.
 
 ## 7. Next steps, in order
 
 1. `std`: `std.task.Pool`, `std.testing.Sim`; a Linux runtime without the C library; text
-   (`Str`) and collections; `Format` for arrays of non-bytes, `print`'s `.fixes`. Generic bodies
+   (`Str`) and collections; `print`'s `.fixes`. Generic bodies
    over a constrained `$A: Allocator` are neither typed nor lowered (`a.alloc(...)`), see 5 and 6.
 2. Leaks at scope exits inside a body (found at the function's return only today), `fixed` and
    `scoped` kinds, frames' `end` running their defers (MIR `End`, the interpreter).
@@ -208,8 +210,9 @@ rules go to `decisions.md` as proposed unless the user approves them.
    options as a typed record (`root`, `target: lang.target.Spec`, `deps`, `memory`).
 5. MIR gaps (`cargo xtask corpus` lists them): run-time splices of code, `.{ }` and `.name` in
    plain instantiations of generic bodies, or-patterns that bind, `lang.simd.chunks`.
-6. Sema gaps: traps inside a callee's instantiated signature are not reported; members of
-   primitive types missing from every impl are silent (no `types.no_member`); impl member types
+6. Sema gaps: an operator on values other than integers is typed through its `lang.ops`
+   interface but neither evaluated nor lowered to the witness's function (`T == u8` on types,
+   a user `Eq`); traps inside a callee's instantiated signature are not reported; impl member types
    against requirements; narrowing by comparisons (decision 35), exhaustiveness (decision 29),
    `#[layout.offset]`/`#[layout.c]`, frame layouts, markers checked beyond `unsafe` and
    `panic.never`.

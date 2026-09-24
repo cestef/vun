@@ -28,9 +28,14 @@ impl Typer<'_, '_, '_> {
         for (index, param) in params.iter().enumerate() {
             let ty = match param {
                 Entry::One(Param { pat: Some(pat), ty: Some(ty), .. }) => {
-                    // A `$` parameter bound by the instantiation has the type of its value alone.
+                    // A `$` parameter bound by the instantiation has the type of its value alone,
+                    // where its annotation accepts that type: a compile-time `&[u8]` holds an
+                    // array, whose borrow the annotation is.
                     let bound = bound.get(index).and_then(Option::as_ref).and_then(Value::ty);
-                    let ty = bound.or_else(|| self.ty(*ty));
+                    let ty = match (bound, self.ty(*ty)) {
+                        (Some(bound), Some(written)) if !written.accepts(&bound) => Some(written),
+                        (bound, written) => bound.or(written),
+                    };
                     if let (PatKind::Bind(binder), Some(ty)) = (&hir.pats[*pat].kind, ty) {
                         self.bind(*binder, ty);
                     }

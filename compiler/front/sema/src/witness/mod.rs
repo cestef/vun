@@ -172,10 +172,10 @@ impl Env<'_, '_> {
     /// The files whose impls this file sees: itself, the namespaces of its package, and those of every
     /// package its package depends on, directly or not (spec 02, section 3: an impl lives in the
     /// package of its type or of its interface, which the code using both depends on); and those
-    /// of `home`, the package a type is declared in, where a generic body instantiated with the
-    /// type finds the type's impls.
+    /// of `home`, the file a type is declared in, and its package, where a generic body
+    /// instantiated with the type finds the type's impls.
     #[must_use]
-    pub fn impl_files(&self, home: Option<PackageId>) -> Vec<FileRef> {
+    pub fn impl_files(&self, home: Option<&FileRef>) -> Vec<FileRef> {
         let mut packages: Vec<PackageId> = vec![self.file.package];
         let mut i = 0;
         while let Some(&package) = packages.get(i) {
@@ -188,13 +188,14 @@ impl Env<'_, '_> {
             }
             i += 1;
         }
-        packages.extend(home.filter(|home| !packages.contains(home)));
+        packages.extend(home.map(|f| f.package).filter(|home| !packages.contains(home)));
         let mut files = vec![self.file.clone()];
+        files.extend(home.filter(|&home| *home != self.file).cloned());
         for package in packages {
             let data = self.cx.get::<Package>(&package);
             let namespaces = data.files.iter().filter(|path| data.namespace_of(path).is_some());
             let paths = namespaces.map(|path| FileRef { package, path: path.clone() });
-            files.extend(paths.filter(|f| *f != self.file));
+            files.extend(paths.filter(|f| *f != self.file && Some(f) != home));
         }
         files
     }

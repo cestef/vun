@@ -92,3 +92,20 @@ unknown: Int(read()..=read()) = 2;
     // `unknown` has no type to check 2 against, where `known` does.
     assert_eq!(fixture.check(&file), [errors::INT_DOES_NOT_FIT]);
 }
+
+#[test]
+fn a_lent_parameter_is_lent_on() {
+    let fixture = Fixture::new("comptime-mut-lent-on");
+    let file = fixture.root.write(
+        "lent.vun",
+        "\
+bump := (x: &mut u32) { x.* +|= 1; };
+twice := (x: &mut u32) { bump(x); bump(x); };
+run := () -> u32 { mut n: u32 = 0; twice(&mut n); n };
+two: Int(run()..=run()) = 2;
+wrong: Int(run()..=run()) = 1;
+",
+    );
+    // `twice` passes on the borrow it was lent, and what `bump` writes comes back through both.
+    assert_eq!(fixture.check(&file), [errors::INT_DOES_NOT_FIT]);
+}

@@ -132,6 +132,20 @@ impl TyKind {
         Self::primitive(Primitive::Lang(Lang::r#type))
     }
 
+    /// Whether the values of this type have members of their own, which the value declares: a
+    /// type, an interface, a namespace, or a function making one, such as an interface
+    /// constructor. Other values have the members of their type.
+    #[must_use]
+    pub fn declares_members(&self) -> bool {
+        match self {
+            Self::Primitive(
+                Primitive::Lang(Lang::r#type | Lang::Interface) | Primitive::Meta(Meta::Namespace),
+                _,
+            ) => true,
+            _ => self.signature().is_some_and(|s| s.result.declares_members()),
+        }
+    }
+
     /// `lang.mem.Array(len, elem)`: `[len]elem`.
     #[must_use]
     pub fn array(len: Integer, elem: Ty) -> Ty {

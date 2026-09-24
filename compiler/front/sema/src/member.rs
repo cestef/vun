@@ -269,8 +269,18 @@ impl Query for MemberValue {
         let env = env.staging(&decl.staged).typed_by(types);
         let value = env.parsed.hir.decls[decl.decl.decl.id].value.ok_or(Unevaluated::Runtime)?;
         match env.parsed.hir.exprs[value].kind {
-            // A requirement of an interface, which an impl provides.
-            ExprKind::Hole => Err(Unevaluated::Provided),
+            // A requirement of the interface made for a type `Self`, its first argument: what the
+            // witness of `Self` provides, as a default of the interface sees it (`Error` in
+            // `Writer.write_all`).
+            ExprKind::Hole => {
+                let target = instance.as_ref().and_then(|i| i.args.first()).and_then(Value::as_type);
+                match target.and_then(|t| env.method(t, *name)) {
+                    Some(provided) if provided.owner != *ty => {
+                        cx.get::<MemberValue>(&(provided.owner, *name))
+                    }
+                    _ => Err(Unevaluated::Provided),
+                }
+            }
             _ => env.eval(value),
         }
     }

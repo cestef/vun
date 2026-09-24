@@ -85,6 +85,15 @@ Ord := interface(($Self: type) -> type { struct {
     ge := (a: &Self, b: &Self) -> bool { match cmp(a, b) { .less => false, _ => true } };
 }});
 
+/// Integers in their order.
+#[impl(Ord(Int))]
+IntOrd := ($r: Range) -> type { struct {
+    #[panic.never]
+    cmp := (a: &Int(r), b: &Int(r)) -> Ordering {
+        if a.* < b.* { .less } else if a.* > b.* { .greater } else { .equal }
+    };
+} };
+
 Index := interface(($Self: type) -> type { struct {
     Key: type = _;
     Item: type = _;

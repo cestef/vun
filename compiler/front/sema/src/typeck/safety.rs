@@ -1,8 +1,9 @@
 //! `unsafe` (spec 07, section 4): something marked `unsafe` is used only where someone vouched
 //! for it. An `unsafe` expression is vouched for where it is written, so the operations in it
 //! may be unchecked; a function or function type marked `unsafe` is vouched for at each call.
-//! Unchecked operations: calling a function whose type is marked, `.*` on a raw pointer, any
-//! access to a top-level `mut` binding, and a member of a `lang.mem.Cell`.
+//! Unchecked operations: calling a function whose type is marked, `.*` on a raw pointer, and any
+//! access to a top-level `mut` binding; a `lang.mem.Cell` is reached only through `unsafe`
+//! functions.
 
 use vun_diag::{Diagnostic, Msg, errors};
 use vun_hir::resolve::Res;
@@ -66,13 +67,6 @@ impl Typer<'_, '_, '_> {
                     .text(" binding ")
                     .code(hir.binders[b].name.as_str()),
             );
-        }
-    }
-
-    /// A member reached in a value of type `ty`: unchecked in a `lang.mem.Cell`.
-    pub(super) fn cell_member(&mut self, expr: ExprId, ty: Ty) {
-        if matches!(&*ty, TyKind::Primitive(Primitive::Mem(Mem::Cell), _)) {
-            self.unchecked(expr, Msg::new().text("using an unsynchronized ").code("Cell"));
         }
     }
 }

@@ -51,8 +51,10 @@ impl Query for Mir {
     type Value = Result<Arc<Body>, Unbuilt>;
 
     fn compute(cx: &Cx<'_>, i: &Instantiation) -> Self::Value {
+        // What is evaluated while lowering, `$if` conditions and `$for` items, is typed as the
+        // body is.
         let env = Env::inside(cx, &i.f, i.args.iter().cloned()).expect("a function value's file is read");
-        Builder::lower(&env, i).map(Arc::new)
+        Builder::lower(&env.typed_by(cx.get::<Typed>(i)), i).map(Arc::new)
     }
 
     fn cycle(_: &Cx<'_>, i: &Instantiation, _: &Cycle) -> Self::Value {

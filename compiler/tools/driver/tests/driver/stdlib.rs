@@ -151,3 +151,37 @@ main := (sys: &mut std.os.System) -> std.os.Exit {
     assert_eq!(found.iter().map(|(id, _)| id.clone()).collect::<Vec<_>>(), [errors::TYPES_MISMATCH]);
     assert!(found[0].1.ends_with("found `&[Int(0..=255)]`"), "{found:?}");
 }
+
+#[test]
+fn print_runs_at_compile_time_through_any_writer() {
+    let fixture = Fixture::new("std-print-comptime");
+    let file = fixture.root.write(
+        "counted.vun",
+        "\
+Count := struct { n: usize };
+#[impl(std.fmt.Writer(Count))]
+CountWriter := struct {
+    Error := ();
+    write := (self: &mut Count, bytes: &[u8]) -> Result(usize, ()) {
+        self.n = (self.n + bytes.len()).sat(usize);
+        .ok(bytes.len())
+    };
+};
+counted := ($A: type, args: A) -> usize {
+    mut c := Count{ .n = 0 };
+    std.fmt.print(&mut c, \"<{} {}>\", args);
+    c.n
+};
+numbers := () -> usize { xs: [3]u16 = [1, 20, 300]; counted(.{ xs, \"ab\" }) };
+negative := () -> usize { none: [0]u16 = []; counted(.{ -45, none }) };
+nothing := () -> usize { mut c := Count{ .n = 0 }; std.fmt.print(&mut c, \"plain\", .{}); c.n };
+seventeen: Int(numbers()..=numbers()) = 17;
+eight: Int(negative()..=negative()) = 8;
+five: Int(nothing()..=nothing()) = 5;
+wrong: Int(nothing()..=nothing()) = 4;
+",
+    );
+    // `<[1, 20, 300] ab>`, `<-45 []>` and `plain`: arrays of other items than bytes are written
+    // item by item, through the defaults of `Writer` that the impl does not declare.
+    assert_eq!(fixture.check(&file), [errors::INT_DOES_NOT_FIT]);
+}

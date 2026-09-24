@@ -42,6 +42,12 @@ fn holds_loan(value: &Value) -> bool {
 }
 
 impl Frame<'_, '_, '_> {
+    /// Whether `local` is typed as an exclusive borrow. One holding a value rather than a loan is
+    /// a parameter lent to this call, which holds what its caller's loan reaches.
+    pub(crate) fn exclusive(&self, local: Local) -> bool {
+        self.body.locals[local].ty.and_then(|t| t.borrowing()).is_some_and(|(mode, ..)| exclusive(mode))
+    }
+
     /// `&mode place`: a loan of the place for an exclusive mode; the value for a shared one,
     /// which a shared borrow of a compile-time value reads as.
     pub(crate) fn borrow(&self, mode: Option<Symbol>, place: &Place) -> Result<Value, Unevaluated> {
@@ -110,14 +116,11 @@ impl Frame<'_, '_, '_> {
     /// in the result named by the position of the parameter it was lent through. A loan of the
     /// call's own storage cannot outlive it.
     pub(crate) fn finish(self, value: Result<Value, Unevaluated>) -> Metered {
-        let exclusive_param = |p: Local| {
-            self.body.locals[p].ty.and_then(|t| t.borrowing()).is_some_and(|(mode, ..)| exclusive(mode))
-        };
         let written = self
             .body
             .params
             .iter()
-            .map(|&p| exclusive_param(p).then(|| self.locals[p].clone()).flatten())
+            .map(|&p| self.exclusive(p).then(|| self.locals[p].clone()).flatten())
             .collect();
         let value = value.and_then(|value| match value {
             Value::Loan { local, parts } => {

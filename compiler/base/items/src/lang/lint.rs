@@ -8,5 +8,18 @@
 use crate::Item;
 pub const Level: Item = Item::new(&["lang", "lint", "Level"]);
 pub const Lint: Item = Item::new(&["lang", "lint", "Lint"]);
-pub const Cx: Item = Item::new(&["lang", "lint", "Cx"]);
 pub const define: Item = Item::new(&["lang", "lint", "define"]);
+/// What a lint's check sees of the code it checks.
+pub const Cx: Item = Item::new(&["lang", "lint", "Cx"]);
+/// The function a checked call calls, compared with `==` against a declaration.
+pub const Callee: Item = Item::new(&["lang", "lint", "Callee"]);
+/// A call in the code checked: what it calls, and where it is written.
+pub const Call: Item = Item::new(&["lang", "lint", "Call"]);
+/// Whether the code `cx` checks is inside the namespace `ns`.
+pub const inside: Item = Item::new(&["lang", "lint", "inside"]);
+/// Reports `message` at `at` with the fixes `fixes`, a tuple of them.
+pub const report: Item = Item::new(&["lang", "lint", "report"]);
+/// Whether `a` and `b` call the same function.
+pub const same_callee: Item = Item::new(&["lang", "lint", "same_callee"]);
+pub const CxMethods: Item = Item::new(&["lang", "lint", "CxMethods"]);
+pub const CalleeEq: Item = Item::new(&["lang", "lint", "CalleeEq"]);

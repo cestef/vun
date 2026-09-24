@@ -10,6 +10,9 @@ TypeOf: ($e: Code(type)) -> type = _;
 origin: ($T: type) -> Origin = _;
 embed: ($path: &[u8]) -> &static [_]u8 = _;
 
+/// Whether `A` and `B` are one type: made by the same constructor from the same arguments.
+same: ($A: type, $B: type) -> bool = _;
+
 /// A compile-time value of any type, with its type: what a plan records of a record whose type
 /// each call infers (spec 03, section 7). It exists at compile time only.
 Any: type = _;

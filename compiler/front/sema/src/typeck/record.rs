@@ -26,7 +26,7 @@ impl Typer<'_, '_, '_> {
     }
 
     /// `.{ ... }` with no type expected: a record of its named fields, or a tuple of its
-    /// positional items; `None` for a mix, or a part whose type is not known.
+    /// positional items, `()` for `.{}`; `None` for a mix, or a part whose type is not known.
     pub(super) fn record_lit(&mut self, fields: &[Entry<Arg>]) -> Option<Known> {
         let mut named: Vec<(Symbol, Ty)> = Vec::new();
         let mut items: Vec<Ty> = Vec::new();
@@ -42,12 +42,13 @@ impl Typer<'_, '_, '_> {
                 _ => known = false,
             }
         }
+        // Without named fields, `.{}` included, it is a tuple, as the evaluator makes it.
         let ty = match (named.is_empty(), items.is_empty()) {
-            (_, true) if known => {
+            (true, _) if known => TyKind::Tuple(items).intern(),
+            (false, true) if known => {
                 named.sort_by_key(|(name, _)| name.as_str());
                 TyKind::Record(named).intern()
             }
-            (true, false) if known => TyKind::Tuple(items).intern(),
             _ => return None,
         };
         Some(Known { ty, stage })

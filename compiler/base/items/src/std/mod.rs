@@ -9,7 +9,6 @@ pub mod build_Runner;
 pub mod cmp;
 pub mod diag;
 pub mod fmt;
-pub mod fmt_BytesFormat;
 pub mod int;
 pub mod iter;
 pub mod lints;

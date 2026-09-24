@@ -27,7 +27,12 @@ pub const digits_max: Item = Item::new(&["std", "fmt", "digits_max"]);
 pub const zero: Item = Item::new(&["std", "fmt", "zero"]);
 pub const minus: Item = Item::new(&["std", "fmt", "minus"]);
 pub const radix: Item = Item::new(&["std", "fmt", "radix"]);
+/// Around and between the items of a sequence.
+pub const opening: Item = Item::new(&["std", "fmt", "opening"]);
+pub const closing: Item = Item::new(&["std", "fmt", "closing"]);
+pub const separator: Item = Item::new(&["std", "fmt", "separator"]);
 pub const IntFormat: Item = Item::new(&["std", "fmt", "IntFormat"]);
-pub const BytesFormat: Item = Item::new(&["std", "fmt", "BytesFormat"]);
-/// Arrays of bytes, as they are; a string literal is a borrow of one.
+/// The items of a slice: bytes as they are, any other items as `[a, b]`, each by its own `Format`.
+pub const SliceFormat: Item = Item::new(&["std", "fmt", "SliceFormat"]);
+/// The items of an array, as those of a slice; a string literal is a borrow of an array of bytes.
 pub const ArrayFormat: Item = Item::new(&["std", "fmt", "ArrayFormat"]);

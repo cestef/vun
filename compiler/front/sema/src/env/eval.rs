@@ -138,8 +138,10 @@ impl Env<'_, '_> {
             ExprKind::Member { object, name: Name::Plain(name) } => {
                 let ty = self.type_of(*object);
                 let object = self.eval(*object)?;
-                // A namespace's member is a declaration, never a method of the namespace.
-                let ty = if matches!(object, Value::Namespace(_)) { None } else { object.ty().or(ty) };
+                // A member of a namespace or of a type is a declaration, never a method of the
+                // namespace or of `type`.
+                let declared = matches!(object, Value::Namespace(_) | Value::Type(_));
+                let ty = if declared { None } else { object.ty().or(ty) };
                 match ty {
                     // Through borrows, as `.` goes: a compile-time borrow is its value.
                     Some(ty) => {

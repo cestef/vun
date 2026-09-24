@@ -48,8 +48,8 @@ impl Builder<'_, '_, '_> {
                 let binder = Node { id: binder, origin: hir.binders[binder].origin };
                 for (index, value) in items.into_iter().enumerate() {
                     let env = self.env().clone().staging(&[Staging { binder, value }]);
-                    let outer = self.step.replace(env);
                     self.path.push(Step { at: *pat, index });
+                    let outer = self.step.replace(env.typed_by(self.typed()));
                     let built = self.stmts(body);
                     self.path.pop();
                     self.step = outer;
