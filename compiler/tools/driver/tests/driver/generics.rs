@@ -28,3 +28,24 @@ bad := (p: Pair(u32)) -> u8 { p.small() };
         ]
     );
 }
+
+#[test]
+fn omitted_comptime_arguments_are_inferred_from_the_others() {
+    let fixture = Fixture::new("generics-inferred");
+    let file = fixture.root.write(
+        "inferred.ov",
+        "\
+max := ($T: type, a: T, b: T) -> T { if a > b { a } else { b } };
+E := enum { fs(u8), oom };
+apply := ($A: type, $B: type, x: A, f: (A) -> B) -> B { f(x) };
+joined := (x: u8) -> u8 { max(3, x) };
+written := (x: u8) -> u8 { max(u8, 3, x) };
+constructor := (x: u8) -> E { apply(x, E.fs) };
+wrong := (x: u8) -> bool { max(3, x) };
+first := ($T: type, o: ?T) -> ?T { o };
+none := () { first(.none); };
+",
+    );
+    let ids: Vec<_> = fixture.reported(&file).into_iter().map(|(id, _)| id).collect();
+    assert_eq!(ids, [errors::TYPES_MISMATCH, errors::TYPES_CANNOT_INFER]);
+}

@@ -37,6 +37,12 @@ pub enum Value {
     Namespace(Namespace),
     /// A function literal.
     Fn(Func),
+    /// A variant with a payload named as a value, `E.fs`: the function from its payload to the
+    /// variant.
+    Constructor {
+        ty: Ty,
+        name: Symbol,
+    },
     /// A closure: its function, and the values of its captures in the order written, passed
     /// before the arguments.
     Closure {

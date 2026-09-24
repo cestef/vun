@@ -1,10 +1,12 @@
 //! `defer` runs on the exits where its linear operand is still init (spec 05, section 3).
 
-load := (fs: &mut Fs, a: &mut Alloc, path: &[u8]) -> Result(Own(Config), Error) {
-    f := fs.open(path).map_err(Error.fs)?;
+LoadError := enum { fs(Error), oom(Error), parse(Error) };
+
+load := (fs: &mut Fs, a: &mut Alloc, path: &[u8]) -> Result(Own(Config), LoadError) {
+    f := fs.open(path).map_err(LoadError.fs)?;
     defer fs.close(f);
-    cfg := a.create(Config).map_err(Error.oom)?;
+    cfg := a.create(Config).map_err(LoadError.oom)?;
     defer a.destroy(cfg);
-    parse(&f, &out cfg.*).map_err(Error.parse)?;
+    parse(&f, &out cfg.*).map_err(LoadError.parse)?;
     .ok(cfg)
 };

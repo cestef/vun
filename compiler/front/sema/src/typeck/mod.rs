@@ -14,6 +14,7 @@ mod expect;
 mod expected;
 mod infer;
 mod loops;
+mod omitted;
 
 pub use loops::Iteration;
 mod pattern;
@@ -36,7 +37,7 @@ use overt_query::{Cx, Cycle, Query};
 
 use crate::env::Env;
 use crate::eval::Instantiation;
-use crate::ty::Ty;
+use crate::ty::{Ty, Value};
 
 /// When a value is known: at compile time, or only at run time. Only run-time integers are
 /// capped at 128 bits (spec 04, rule 5).
@@ -66,6 +67,8 @@ pub struct TypedBody {
     pub steps: BTreeMap<Step, Arc<TypedBody>>,
     /// How each `for p in e` drives `e`, by `e`.
     pub iterations: BTreeMap<ExprId, Iteration>,
+    /// The `$` arguments each call leaves out, by parameter, as inferred.
+    pub inferred: BTreeMap<ExprId, Vec<(usize, Value)>>,
     pub diag: DiagCtxt,
     pub exprs: usize,
 }
@@ -161,6 +164,7 @@ pub struct Typer<'e, 'a, 'db> {
     /// The typed steps of the `$for`s typed so far.
     steps: BTreeMap<Step, Arc<TypedBody>>,
     iterations: BTreeMap<ExprId, Iteration>,
+    inferred: BTreeMap<ExprId, Vec<(usize, Value)>>,
     /// The type expected of an expression where its context says, for forms typed by it:
     /// `.name`, `.{ }` (spec 01, section 2).
     expected: HashMap<ExprId, Ty>,
@@ -187,6 +191,7 @@ impl<'e, 'a, 'db> Typer<'e, 'a, 'db> {
             methods: HashMap::new(),
             steps: BTreeMap::new(),
             iterations: BTreeMap::new(),
+            inferred: BTreeMap::new(),
             expected: HashMap::new(),
             result: None,
             written: None,
@@ -205,6 +210,7 @@ impl<'e, 'a, 'db> Typer<'e, 'a, 'db> {
             methods: self.methods.into_iter().collect(),
             steps: self.steps,
             iterations: self.iterations,
+            inferred: self.inferred,
             diag: self.diag,
             exprs,
         }

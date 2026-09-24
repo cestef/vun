@@ -16,6 +16,14 @@ and `$` has one meaning everywhere: **evaluate this one stage earlier**. In ordi
 
 A value known at compile time may be used at run time without ceremony: it becomes a constant.
 
+A `$` parameter named in the type of a later parameter may be left out of a call: either every
+such parameter or none. Its value is inferred by matching the types of the arguments against the
+declared types, and a type found twice is the join of both, as for the branches of an `if`;
+`max(3, x)` for `x: u8` has `T = u8`. A parameter no argument determines is an error
+(`types.cannot_infer`), and one no later type names, such as the `T` of `a.create(T)`, is always
+written. A variant with a payload is a function value: `E.fs` for `fs(u8)` has type
+`(u8) -> E`.
+
 ```ov
 Pair := ($T: type) -> type { struct { a: T, b: T } };
 P := Pair(u16);                            // same arguments, same type (memoized, spec 03)

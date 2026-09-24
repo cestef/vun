@@ -7,6 +7,7 @@
 Own := #[kind.linear] #[kind.free] ($T: type) -> type { struct { #[kind.owns] ptr: *T } };
 Alloc := struct {
     create := (self: &mut Alloc, $T: type) -> Result(Own(T), Error) { .err(.oom) };
+    destroy := (self: &mut Alloc, $T: type, o: Own(T)) { .{ .ptr = _ } := o; };
 };
 /// An open file, which must be closed.
 File := #[kind.linear] struct {

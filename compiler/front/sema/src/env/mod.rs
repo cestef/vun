@@ -227,7 +227,8 @@ impl<'a, 'db> Env<'a, 'db> {
     }
 
     /// The member `name` of `value` at compile time: a member of a namespace, a declaration of a
-    /// type's namespace or of its impls, or a variant of an enum type without payload.
+    /// type's namespace or of its impls, a variant of an enum type without payload, or the
+    /// constructor of one with a payload.
     ///
     /// # Errors
     /// Returns why the member has no value here.
@@ -243,13 +244,14 @@ impl<'a, 'db> Env<'a, 'db> {
                     Found::Variant(v) if v.payload.is_empty() => {
                         Ok(Value::Variant { ty, name, payload: Vec::new() })
                     }
+                    Found::Variant(_) => Ok(Value::Constructor { ty, name }),
                     // Then the type's impls (spec 01, section 4).
                     found @ (Found::Absent | Found::Unknown) => match self.method(ty, name) {
                         Some(method) => self.cx.get::<MemberValue>(&(method.owner, name)),
                         None if found == Found::Absent => Err(Unevaluated::Absent),
                         None => Err(Unevaluated::Unsupported),
                     },
-                    Found::Field(_) | Found::Variant(_) => Err(Unevaluated::Unsupported),
+                    Found::Field(_) => Err(Unevaluated::Unsupported),
                 }
             }
             // A field of a struct value.

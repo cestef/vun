@@ -181,6 +181,7 @@ impl Env<'_, '_> {
                 self.cx.get::<Call>(&Instance { f, args: captures.into_iter().chain(args).collect() })
             }
             Value::Primitive(p) => p.apply(self, &args),
+            Value::Constructor { ty, name } => Ok(Value::Variant { ty, name, payload: args }),
             // A link symbol runs at run time only.
             Value::Linked(_) => Err(Unevaluated::Runtime),
             _ => Err(Unevaluated::Unsupported),

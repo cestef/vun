@@ -13,7 +13,7 @@ use crate::eval::{Call, Instance};
 use crate::int::{Integer, Interval};
 use crate::item::{Declared, Site};
 use crate::member::{Found, MemberType, Members};
-use crate::ty::{Ty, TyKind, Value};
+use crate::ty::{Signature, Ty, TyKind, Value};
 
 impl Typer<'_, '_, '_> {
     pub(super) fn infer(&mut self, hir: &Hir, expr: ExprId) -> Option<Known> {
@@ -160,7 +160,13 @@ impl Typer<'_, '_, '_> {
                         Found::Variant(v) if v.payload.is_empty() => {
                             Some(Known { ty, stage: Stage::Compile })
                         }
-                        Found::Variant(_) | Found::Field(_) => None,
+                        // A constructor is a function from the payload to the variant.
+                        Found::Variant(v) => {
+                            let params =
+                                v.payload.iter().map(|p| p.as_ref().ok().copied()).collect::<Option<_>>()?;
+                            Some(Known { ty: Signature { params, result: ty }.ty(), stage: Stage::Compile })
+                        }
+                        Found::Field(_) => None,
                         Found::Absent | Found::Unknown => {
                             let owner = self.method(expr, ty, name)?;
                             self.env().cx.get::<MemberType>(&(owner, name)).ok()

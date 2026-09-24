@@ -87,6 +87,7 @@ impl fmt::Display for Value {
                 f.write_str("]")
             }
             Self::Variant { name, .. } => write!(f, ".{name}"),
+            Self::Constructor { ty, name } => write!(f, "{ty}.{name}"),
             Self::Struct { ty, .. } => write!(f, "{ty}{{ .. }}"),
             Self::Primitive(p) => write!(f, "{}.{}", p.namespace(), p.name()),
             Self::Namespace(ns) => {

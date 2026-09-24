@@ -10,11 +10,12 @@ use overt_sema::member::MemberValue;
 use overt_sema::ty::Value;
 
 use super::{Builder, Unbuilt};
-use crate::body::{Operand, Rvalue};
+use crate::body::{Aggregate, Operand, Rvalue};
 
 impl Builder<'_, '_, '_> {
     pub(super) fn call(
         &mut self,
+        call: ExprId,
         callee: ExprId,
         args: &[Entry<Arg>],
         origin: OriginId,
@@ -28,11 +29,31 @@ impl Builder<'_, '_, '_> {
             }
             None => (self.operand(callee)?, Vec::new()),
         };
+        // A variant's constructor builds the variant.
+        if let Operand::Const(Value::Constructor { ty, name }) = &callee {
+            let kind = Aggregate::Variant { ty: *ty, name: *name };
+            let parts = args
+                .iter()
+                .map(|arg| match arg {
+                    Entry::One(Arg { name: None, value }) => self.operand(*value),
+                    _ => Err(unbuilt),
+                })
+                .collect::<Result<_, _>>()?;
+            return Ok(self.temp(Rvalue::Aggregate { kind, parts }, origin));
+        }
         // A `Code(T)` parameter receives its argument as code.
         let quotes = match &callee {
             Operand::Const(Value::Fn(f)) => f.quotes(self.env.cx).unwrap_or_default(),
             _ => Vec::new(),
         };
+        // The `$` arguments the call leaves out, as the typer inferred them.
+        let inferred = self.typed().and_then(|t| t.inferred.get(&call).cloned()).unwrap_or_default();
+        let fill = |values: &mut Vec<Operand>| {
+            while let Some((_, value)) = inferred.iter().find(|(slot, _)| *slot == values.len()) {
+                values.push(Operand::Const(value.clone()));
+            }
+        };
+        fill(&mut values);
         for arg in args {
             match arg {
                 Entry::One(Arg { name: None, value }) if quotes.get(values.len()) == Some(&true) => {
@@ -42,6 +63,7 @@ impl Builder<'_, '_, '_> {
                 Entry::One(Arg { name: None, value }) => values.push(self.operand(*value)?),
                 _ => return Err(unbuilt),
             }
+            fill(&mut values);
         }
         Ok(self.temp(Rvalue::Call { callee, args: values }, origin))
     }

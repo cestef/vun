@@ -277,7 +277,7 @@ impl<'a, 'db> Builder<'_, 'a, 'db> {
             ExprKind::Call { callee, .. } if matches!(hir.exprs[*callee].kind, ExprKind::DotName(_)) => {
                 self.aggregate(expr).unwrap_or(Err(unbuilt))
             }
-            ExprKind::Call { callee, args } => self.call(*callee, args, origin),
+            ExprKind::Call { callee, args } => self.call(expr, *callee, args, origin),
             ExprKind::Struct(_) | ExprKind::Enum(_) | ExprKind::Fn { .. } => {
                 Ok(self.temp(self.comptime(expr), origin))
             }
