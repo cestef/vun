@@ -39,6 +39,8 @@ pub enum Operation {
 pub struct Operator {
     pub method: (Ty, Symbol),
     pub inferred: Vec<(usize, Value)>,
+    /// The type of the call's result.
+    pub result: Ty,
 }
 
 impl Typer<'_, '_, '_> {
@@ -125,7 +127,8 @@ impl Typer<'_, '_, '_> {
             return None;
         }
         let inferred = applied.inferred.unwrap_or_default();
-        self.operators.insert(at, Operator { method: (owner, function), inferred });
+        let result = applied.known.ty;
+        self.operators.insert(at, Operator { method: (owner, function), inferred, result });
         Some(Known { stage, ..applied.known })
     }
 }

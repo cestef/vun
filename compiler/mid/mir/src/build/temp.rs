@@ -14,6 +14,13 @@ impl Builder<'_, '_, '_> {
         Operand::Place(Place::of(self.temp_local(value, origin)))
     }
 
+    /// `value` in a new temporary of type `ty`, what typing found for it.
+    pub(super) fn typed_temp(&mut self, value: Rvalue, ty: Ty, origin: OriginId) -> Operand {
+        let local = self.temp_local(value, origin);
+        self.locals[local].ty = Some(ty);
+        Operand::Place(Place::of(local))
+    }
+
     /// A new temporary local holding `value`.
     pub(super) fn temp_local(&mut self, value: Rvalue, origin: OriginId) -> Local {
         let ty = self.rvalue_ty(&value);
@@ -32,6 +39,8 @@ impl Builder<'_, '_, '_> {
         match value {
             Rvalue::Use(o) => operand(o),
             Rvalue::Not { .. } | Rvalue::IsVariant { .. } => self.env.condition().ok(),
+            Rvalue::Resume { step, .. } => Some(*step),
+            Rvalue::End { .. } => Some(TyKind::unit()),
             Rvalue::Ref { mode, place } => TyKind::borrowed_as(*mode, place.ty(self.env.cx, &self.locals)?),
             Rvalue::Aggregate {
                 kind: Aggregate::Struct { ty, .. } | Aggregate::Variant { ty, .. }, ..

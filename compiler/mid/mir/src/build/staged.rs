@@ -44,10 +44,16 @@ impl Builder<'_, '_, '_> {
             Staged::For { pat, iter, body, origin } => {
                 let unbuilt = Unbuilt { at: *origin };
                 let items = self.env().eval(*iter).ok().and_then(Value::items).ok_or(unbuilt)?;
-                let PatKind::Bind(binder) = hir.pats[*pat].kind else { return Err(unbuilt) };
-                let binder = Node { id: binder, origin: hir.binders[binder].origin };
+                // `_` binds nothing: the body is repeated as written.
+                let binder = match hir.pats[*pat].kind {
+                    PatKind::Bind(binder) => Some(Node { id: binder, origin: hir.binders[binder].origin }),
+                    PatKind::Hole => None,
+                    _ => return Err(unbuilt),
+                };
                 for (index, value) in items.into_iter().enumerate() {
-                    let env = self.env().clone().staging(&[Staging { binder, value }]);
+                    let staged: Vec<Staging> =
+                        binder.iter().map(|&binder| Staging { binder, value: value.clone() }).collect();
+                    let env = self.env().clone().staging(&staged);
                     self.path.push(Step { at: *pat, index });
                     let outer = self.step.replace(env.typed_by(self.typed()));
                     let built = self.stmts(body);

@@ -133,9 +133,12 @@ impl<'a, 'db> Builder<'_, 'a, 'db> {
         b.blocks[b.current].term = Terminator { kind: TerminatorKind::Return, origin: end };
         let mut body = Body { locals: b.locals, params: args, ret, blocks: b.blocks, origin };
         // A coroutine's body ends with what its frame gives when done, not the frame.
-        if !body.suspends() {
-            body.locals[ret].ty = signature.map(|s| s.result);
-        }
+        let result = signature.map(|s| s.result);
+        body.locals[ret].ty = if body.suspends() {
+            result.and_then(|frame| env.frame_step(frame)).map(|(_, done)| done)
+        } else {
+            result
+        };
         Ok(body)
     }
 

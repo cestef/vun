@@ -172,7 +172,9 @@ from what they hold (`build/temp.rs`); place types along projections are `Place:
 operands, every local typed, else `Unready` (`Unbuilt`, `Unevaluated`, `Untyped`). `Programs`
 (query, `program.rs`): the exports of a root file (`Func::export`, members of the struct types
 its bindings evaluate to) and every instantiation and link symbol they reach; `vun dump program`.
-`hello.vun` reaches 19 functions, all concrete.
+`hello.vun` reaches 27 functions and `ffi/export.vun` 4, all concrete (a driver test holds every
+corpus program to it). Operators record their result type (`Operator::result`); a coroutine's
+result local has its `done` type; `$for _ in ...` unrolls without a binder.
 
 **Passes** (`compiler/mid/passes`): `places/` (uninitialized reads, joins, `&out`, moves of linear
 values, `End` consumes, `place.linear_leak` at returns, `place.move_out_of_borrow`, `Defer`).

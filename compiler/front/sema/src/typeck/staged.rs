@@ -32,19 +32,31 @@ impl<'a, 'db> Typer<'_, 'a, 'db> {
             Staged::For { pat, iter, body, .. } => {
                 let items = self.evaluating().eval(*iter);
                 let items = self.reported(*iter, items).ok().and_then(Value::items);
-                let (Some(items), PatKind::Bind(binder)) = (items, &hir.pats[*pat].kind) else {
+                // `_` binds nothing: each step is the body as written.
+                let binder = match hir.pats[*pat].kind {
+                    PatKind::Bind(binder) => Some(binder),
+                    PatKind::Hole => None,
+                    _ => {
+                        self.undecided(|t| walk_staged(t, hir, staged, entry));
+                        return;
+                    }
+                };
+                let Some(items) = items else {
                     self.undecided(|t| walk_staged(t, hir, staged, entry));
                     return;
                 };
                 let item = self.typed(*iter).and_then(|k| self.iteration(k.ty)).map(|(_, item)| item);
-                let node = Node { id: *binder, origin: hir.binders[*binder].origin };
                 for (index, value) in items.into_iter().enumerate() {
                     // A step's binder has the type of its item alone, as a bound `$` parameter.
                     let ty = value.ty().or(item);
-                    let env = self.env().clone().staging(&[Staging { binder: node, value }]);
+                    let staged: Vec<Staging> = binder
+                        .map(|b| Staging { binder: Node { id: b, origin: hir.binders[b].origin }, value })
+                        .into_iter()
+                        .collect();
+                    let env = self.env().clone().staging(&staged);
                     let typed = self.step(env, |t| {
-                        if let Some(ty) = ty {
-                            t.bind(*binder, ty);
+                        if let (Some(binder), Some(ty)) = (binder, ty) {
+                            t.bind(binder, ty);
                         }
                         walk_list(t, hir, body, entry);
                     });
