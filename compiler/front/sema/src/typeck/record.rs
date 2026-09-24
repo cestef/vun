@@ -12,6 +12,19 @@ use crate::primitives::meta::Meta;
 use crate::ty::{Ty, TyKind};
 
 impl Typer<'_, '_, '_> {
+    /// `t.0`, or `t.$(i)` with `i` known: the item of the tuple `t` at that position, through
+    /// borrows as `.` goes.
+    pub(super) fn position(&mut self, expr: ExprId, object: ExprId, at: usize) -> Option<Known> {
+        let known = self.typed(object)?;
+        let tuple = std::iter::successors(Some(known.ty), |t| t.borrowed()).last()?;
+        let TyKind::Tuple(items) = &*tuple else { return None };
+        let found = items.get(at).copied();
+        if found.is_none() {
+            self.no_member(self.hir().exprs[expr].origin, tuple, Symbol::intern(&at.to_string()));
+        }
+        Some(Known { ty: found?, stage: known.stage })
+    }
+
     /// `.{ ... }` with no type expected: a record of its named fields, or a tuple of its
     /// positional items; `None` for a mix, or a part whose type is not known.
     pub(super) fn record_lit(&mut self, fields: &[Entry<Arg>]) -> Option<Known> {

@@ -20,17 +20,16 @@ impl Typer<'_, '_, '_> {
         let compile = |ty| Some(Known { ty, stage: Stage::Compile });
         match &hir.exprs[expr].kind {
             ExprKind::Lit(Lit::Int(n)) => compile(TyKind::int(&Interval::singleton(Integer::from(*n)))),
+            ExprKind::Lit(Lit::String(text)) => compile(TyKind::string(text.len())?),
             ExprKind::Lit(Lit::Char(c)) => {
                 compile(TyKind::int(&Interval::singleton(Integer::from(i128::from(u32::from(*c))))))
             }
             ExprKind::Name(_) => self.name(expr),
-            ExprKind::Member { object, name } => {
-                let Some(name) = self.env().name(name) else {
-                    self.typed(*object);
-                    return None;
-                };
-                self.member(expr, *object, name)
-            }
+            ExprKind::Member { object, name } => match (self.env().name(name), self.env().position(name)) {
+                (Some(name), _) => self.member(expr, *object, name),
+                (None, Some(at)) => self.position(expr, *object, at),
+                (None, None) => self.typed(*object).and(None),
+            },
             ExprKind::StructLit { ty: Some(ty), fields } => {
                 self.typed(*ty);
                 let target = self.ty(*ty);

@@ -14,7 +14,7 @@ use crate::env::Env;
 use crate::eval::{Call, Instance};
 use crate::item::DeclRef;
 use crate::member::{Found, Members};
-use crate::ty::{Ty, Value};
+use crate::ty::{Ty, TyKind, Value};
 use crate::visible::Visible;
 
 /// The witness of an impl for one type.
@@ -37,7 +37,8 @@ pub struct Method {
     pub visible: Visible,
 }
 
-/// The witnesses of a type that a file sees, by the impls declared in its scope.
+/// The witnesses of a type that a file sees, by the impls declared in its scope and in the
+/// package declaring the type.
 pub struct Witnesses;
 
 impl Query for Witnesses {
@@ -47,7 +48,11 @@ impl Query for Witnesses {
 
     fn compute(cx: &Cx<'_>, (file, ty): &Self::Key) -> Self::Value {
         let Some(env) = Env::of(cx, file) else { return Arc::from([]) };
-        let impls = env.impl_files().into_iter().flat_map(|f| cx.get::<Impls>(&f).to_vec());
+        let home = match &**ty {
+            TyKind::Nominal(nominal) => Some(nominal.literal.file.package),
+            _ => None,
+        };
+        let impls = env.impl_files(home).into_iter().flat_map(|f| cx.get::<Impls>(&f).to_vec());
         impls.filter_map(|decl| Witness::of(cx, decl, *ty)).collect()
     }
 

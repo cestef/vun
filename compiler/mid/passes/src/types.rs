@@ -46,6 +46,10 @@ impl PlaceTypes<'_, '_> {
                 let first = items.next()?;
                 items.all(|t| t == first).then_some(first)
             }
+            // Items at bounds are a run of the sequence, as its slice type.
+            Projection::Index(index) if self.body.locals[*index].ty.is_some_and(|t| t.bounds().is_some()) => {
+                ty.items().map(TyKind::slice)
+            }
             Projection::Index(_) => match &*ty {
                 TyKind::Primitive(_, args) => args.iter().rev().find_map(Value::as_type),
                 _ => None,

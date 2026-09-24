@@ -6,5 +6,12 @@ System := struct {
 };
 /// The standard output stream.
 Stdout := struct {};
+#[impl(std.fmt.Writer(Stdout))]
+StdoutWriter := struct {
+    Error := Errno;
+    write := (self: &mut Stdout, bytes: &[u8]) -> Result(usize, Errno) { .ok(bytes.len()) };
+};
+/// Why a call failed.
+Errno := struct { code: u16 };
 Exit := enum { ok, code(u8) };
 command := ($main: (&mut System) -> Exit) -> type { struct {} };

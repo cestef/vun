@@ -10,6 +10,8 @@ pub enum Mem {
     /// `&temp T` and `&temp mut T`: a parameter's borrow lent for the call only (spec 05, section 4).
     RefTemp,
     RefTempMut,
+    /// `&static T`: a borrow of what lives as long as the program (spec 05, section 4).
+    RefStatic,
     Ptr,
     /// `[T]`: the items of an array of any length, reached through a borrow (`&[T]`).
     Slice,
@@ -63,6 +65,7 @@ impl Mem {
         Self::RefTake,
         Self::RefTemp,
         Self::RefTempMut,
+        Self::RefStatic,
         Self::Ptr,
         Self::Slice,
         Self::Array,
@@ -98,6 +101,7 @@ impl Mem {
             Self::RefTake => "RefTake",
             Self::RefTemp => "RefTemp",
             Self::RefTempMut => "RefTempMut",
+            Self::RefStatic => "RefStatic",
             Self::Ptr => "Ptr",
             Self::Slice => "Slice",
             Self::Array => "Array",

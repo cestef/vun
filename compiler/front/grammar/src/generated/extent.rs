@@ -12,4 +12,7 @@ pub enum Extent {
     Tied,
     /// For the call only: the result is not tied to it, and the callee may not return it.
     Temp,
+    /// For the whole program: a borrow of a literal or of an immutable top-level binding, which
+    /// is free, and is the only extent required where it is written (spec 05, section 4).
+    Static,
 }

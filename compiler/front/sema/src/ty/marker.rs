@@ -3,7 +3,7 @@
 //! The table `fn_markers` names them and says how a function carrying one is accepted where a
 //! function type is expected; the table `markers` gives the prefixes that put one.
 
-use vun_grammar::{FN_MARKERS, MARKERS, PATH_SEPARATOR, Relation, TokenKind};
+use vun_grammar::{FN_MARKERS, MARKERS, Relation, TokenKind};
 
 use super::Value;
 use crate::Primitive;
@@ -21,18 +21,12 @@ impl Marker {
     #[must_use]
     pub fn of_prefix(token: TokenKind) -> Option<Self> {
         let (_, item) = MARKERS.iter().find(|(t, _)| *t == token)?;
-        Some(Self { item: Self::primitive(item)?, args: Vec::new() })
-    }
-
-    /// The primitive at the path `item` of `lang`.
-    fn primitive(item: &str) -> Option<Primitive> {
-        let (ns, name) = item.rsplit_once(PATH_SEPARATOR)?;
-        Primitive::ALL.iter().copied().find(|p| p.namespace() == ns && p.name() == name)
+        Some(Self { item: Primitive::at(item)?, args: Vec::new() })
     }
 
     /// The attributes that are markers, with their relations (the table `fn_markers`).
     pub fn kinds() -> impl Iterator<Item = (Primitive, Relation)> {
-        FN_MARKERS.iter().filter_map(|(item, relation)| Some((Self::primitive(item)?, *relation)))
+        FN_MARKERS.iter().filter_map(|(item, relation)| Some((Primitive::at(item)?, *relation)))
     }
 
     /// Whether `markers` promise that the function never traps (`#[panic.never]`).

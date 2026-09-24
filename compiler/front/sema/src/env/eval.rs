@@ -11,6 +11,7 @@ use super::{Env, Unevaluated};
 use crate::eval::{Call, Func, Instance};
 use crate::int::Integer;
 use crate::item::ExprRef;
+use crate::ops::Part;
 use crate::ty::{Nominal, NominalKind, Signature, Ty, TyKind, Value};
 
 impl Env<'_, '_> {
@@ -29,10 +30,11 @@ impl Env<'_, '_> {
             ExprKind::StructLit { ty: None, .. } | ExprKind::DotName(_) => self.eval_as(expr, None),
             ExprKind::Index { object, index } => self.index(*object, *index),
             ExprKind::Name(_) => self.named(expr),
-            ExprKind::Member { object, name } => {
-                let name = self.name(name).ok_or(Unevaluated::Unsupported)?;
-                self.member(self.eval(*object)?, name)
-            }
+            ExprKind::Member { object, name } => match (self.name(name), self.position(name)) {
+                (Some(name), _) => self.member(self.eval(*object)?, name),
+                (None, Some(at)) => self.eval(*object)?.part(&Part::Position(at)),
+                (None, None) => Err(Unevaluated::Unsupported),
+            },
             ExprKind::Enum { variants, .. } if variants.is_empty() => {
                 Ok(self.nominal(expr, NominalKind::Empty))
             }

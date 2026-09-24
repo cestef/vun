@@ -6,6 +6,7 @@
 //! names a type desugars into these (appendix B): `&T` is `lang.mem.Ref(T)`, `?T` is the enum
 //! `lang.Option(T)` evaluates to.
 
+mod borrow;
 mod display;
 mod marker;
 mod relate;
@@ -14,7 +15,6 @@ mod signature;
 mod tests;
 mod value;
 
-use vun_grammar::{BORROWS, Extent, PATH_SEPARATOR};
 use vun_intern::{Interned, Pool, Symbol};
 
 use crate::Primitive;
@@ -204,19 +204,6 @@ impl TyKind {
         Self::Primitive(Primitive::Lang(Lang::Int), vec![Value::Range(Some(range.clone()))]).intern()
     }
 
-    /// The type a borrow type borrows: `T` for `&T`, `&mut T` and the other modes of the table
-    /// `borrows` (appendix B), which have no namespace of their own (spec 01, section 4).
-    #[must_use]
-    pub fn borrowed(&self) -> Option<Ty> {
-        self.borrow().map(|(_, ty)| ty)
-    }
-
-    /// The borrow type constructor and the type borrowed, for a borrow type.
-    #[must_use]
-    pub fn borrow(&self) -> Option<(Primitive, Ty)> {
-        self.borrowing().map(|(_, p, ty)| (p, ty))
-    }
-
     /// The type a borrow or a raw pointer points to: what `.*` reads.
     #[must_use]
     pub fn pointee(&self) -> Option<Ty> {
@@ -229,35 +216,6 @@ impl TyKind {
         }
     }
 
-    /// For a borrow type: the word after `&` that writes it (the table `borrows`), its
-    /// constructor and the type borrowed.
-    #[must_use]
-    pub fn borrowing(&self) -> Option<(&'static str, Primitive, Ty)> {
-        let Self::Primitive(p, args) = self else { return None };
-        let [Value::Type(ty)] = args.as_slice() else { return None };
-        Some((p.borrow_mode()?, *p, *ty))
-    }
-
-    /// Whether the borrow modes `a` and `b` perform one transition and leave one access (the
-    /// table `borrows`), differing at most in how long a call holds them.
-    #[must_use]
-    pub fn alike(a: &str, b: &str) -> bool {
-        let row = |mode: &str| {
-            BORROWS
-                .iter()
-                .find(|(m, ..)| *m == mode)
-                .map(|&(_, _, before, after, access, _)| (before, after, access))
-        };
-        row(a).is_some() && row(a) == row(b)
-    }
-
-    /// How long a call holds a borrow of this type (the table `borrows`).
-    #[must_use]
-    pub fn extent(&self) -> Option<Extent> {
-        let (mode, ..) = self.borrowing()?;
-        BORROWS.iter().find(|(m, ..)| *m == mode).map(|&(.., extent)| extent)
-    }
-
     /// The range of an integer type.
     #[must_use]
     pub fn interval(&self) -> Option<Interval> {
@@ -268,16 +226,5 @@ impl TyKind {
             },
             _ => None,
         }
-    }
-}
-
-impl Primitive {
-    /// The words after `&` that write this borrow type constructor (the table `borrows`).
-    #[must_use]
-    pub fn borrow_mode(self) -> Option<&'static str> {
-        BORROWS.iter().find_map(|(mode, item, ..)| {
-            let (ns, name) = item.rsplit_once(PATH_SEPARATOR)?;
-            (ns == self.namespace() && name == self.name()).then_some(*mode)
-        })
     }
 }

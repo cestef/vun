@@ -1,6 +1,8 @@
 //! How types relate: which values a type accepts where another is expected, and the type values
 //! of two types both have.
 
+use vun_grammar::Extent;
+
 use super::{NominalKind, Ty, TyKind, Value};
 use crate::Primitive;
 use crate::primitives::lang::Lang;
@@ -27,10 +29,12 @@ impl TyKind {
             };
         }
         // Borrows of one transition and access are accepted for each other: a `&temp` parameter
-        // takes an ordinary borrow, lent for the call only (spec 05, section 4).
+        // takes an ordinary borrow, lent for the call only, and a `&static` one goes wherever a
+        // borrow does; only where `&static` is written is it required (spec 05, section 4).
         if let (Some((mode, p, _)), Some((found_mode, _, pointee))) = (self.borrowing(), found.borrowing())
             && mode != found_mode
             && Self::alike(mode, found_mode)
+            && self.extent() != Some(Extent::Static)
         {
             return self.accepts(&Self::Primitive(p, vec![Value::Type(pointee)]).intern());
         }
@@ -90,13 +94,19 @@ impl TyKind {
         if let (Some(a), Some(b)) = (self.interval(), other.interval()) {
             return Some(Self::int(&a.hull(&b)));
         }
-        // Borrows of arrays of one item type, in one mode, meet as a borrow of a slice.
-        if let (Some((mode, p, a)), Some((other_mode, _, b))) = (self.borrowing(), other.borrowing())
-            && mode == other_mode
-            && let (Some((_, a)), Some((_, b))) = (a.as_array(), b.as_array())
+        // Borrows of one transition and access meet in the shorter extent, a `&static` one as
+        // the other; borrows of arrays of one item type meet as a borrow of a slice.
+        if let (Some((mode, p, a)), Some((other_mode, q, b))) = (self.borrowing(), other.borrowing())
+            && Self::alike(mode, other_mode)
+            && (a != b || mode != other_mode)
         {
-            let item = a.join(&b)?;
-            return Some(Self::Primitive(p, vec![Value::Type(Self::slice(item))]).intern());
+            let p = if self.extent() == Some(Extent::Static) { q } else { p };
+            let pointee = match (a.as_array(), b.as_array()) {
+                _ if a == b => a,
+                (Some((_, a)), Some((_, b))) => Self::slice(a.join(&b)?),
+                _ => return None,
+            };
+            return Some(Self::Primitive(p, vec![Value::Type(pointee)]).intern());
         }
         match (self, other) {
             (Self::Record(a), Self::Record(b)) if a.len() == b.len() => {

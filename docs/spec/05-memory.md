@@ -114,7 +114,9 @@ structs (spec 02), with checked indexing whose checks range analysis removes whe
 
 **Static region.** Borrows of immutable top-level bindings have type `&static T`, which is free and
 copy and is accepted wherever `&T` is expected. It is the only subtyping rule. String literals are
-`&static [N]u8`. There are exactly two regions, static and scoped.
+`&static [N]u8`. There are exactly two regions, static and scoped. In the table `borrows`, `static`
+is the extent of the row `lang.mem.RefStatic`; borrows of one transition and access meet in the
+shorter extent, so `if c { "text" } else { buf }` is a plain `&[u8]`.
 
 Exclusivity is checked per function with non-lexical liveness. Borrows escape only through returns
 tied to arguments, so no interprocedural analysis is needed.

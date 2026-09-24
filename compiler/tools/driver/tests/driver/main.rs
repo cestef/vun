@@ -24,5 +24,6 @@ mod replace;
 mod select;
 mod sequences;
 mod staged;
+mod stdlib;
 mod update;
 mod visibility;

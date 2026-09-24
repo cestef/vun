@@ -61,6 +61,10 @@ impl Value {
                     .map(|(_, v)| v.clone())
                     .ok_or(Unevaluated::Unsupported);
             }
+            // Items at a range of indices are that run of items, as `xs[a..b]` borrows them.
+            (Part::Item(Self::Range(range)), Self::Array(items)) => {
+                return Ok(Self::Array(items[Part::run(range.as_ref(), items.len())?].to_vec()));
+            }
             (Part::Item(_), Self::Array(items)) | (Part::Position(_), Self::Tuple(items)) => items,
             (Part::Payload(_), Self::Variant { payload, .. }) => payload,
             _ => return Err(Unevaluated::Unsupported),
@@ -208,6 +212,22 @@ pub enum Part {
 }
 
 impl Part {
+    /// The indices `range` covers among `len` items: an open end reaches the last; a range past
+    /// the end traps.
+    fn run(range: Option<&Interval>, len: usize) -> Result<std::ops::Range<usize>, Unevaluated> {
+        let Some(range) = range else { return Ok(0..0) };
+        let index = |n: &Integer| n.to_i128().and_then(|n| usize::try_from(n).ok());
+        let lo = range.lo().finite().and_then(index);
+        let end = match range.hi() {
+            Extended::PosInf => Some(len),
+            hi => hi.finite().and_then(index).and_then(|hi| hi.checked_add(1)),
+        };
+        match (lo, end) {
+            (Some(lo), Some(end)) if lo <= end && end <= len => Ok(lo..end),
+            _ => Err(Unevaluated::trap(Reason::Bounds)),
+        }
+    }
+
     /// Where this part is among `parts`: an index past the end traps.
     fn position(&self, parts: &[Value]) -> Result<usize, Unevaluated> {
         let at = match self {

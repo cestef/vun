@@ -170,9 +170,11 @@ impl Env<'_, '_> {
 impl Env<'_, '_> {
     /// The files whose impls this file sees: itself, the namespaces of its package, and those of every
     /// package its package depends on, directly or not (spec 02, section 3: an impl lives in the
-    /// package of its type or of its interface, which the code using both depends on).
+    /// package of its type or of its interface, which the code using both depends on); and those
+    /// of `home`, the package a type is declared in, where a generic body instantiated with the
+    /// type finds the type's impls.
     #[must_use]
-    pub fn impl_files(&self) -> Vec<FileRef> {
+    pub fn impl_files(&self, home: Option<PackageId>) -> Vec<FileRef> {
         let mut packages: Vec<PackageId> = vec![self.file.package];
         let mut i = 0;
         while let Some(&package) = packages.get(i) {
@@ -185,6 +187,7 @@ impl Env<'_, '_> {
             }
             i += 1;
         }
+        packages.extend(home.filter(|home| !packages.contains(home)));
         let mut files = vec![self.file.clone()];
         for package in packages {
             let data = self.cx.get::<Package>(&package);

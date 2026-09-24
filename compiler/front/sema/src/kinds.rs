@@ -7,6 +7,7 @@
 //! `#[kind.free]` is free, and holding a scoped value in it, even through a type argument, is an
 //! error its kind records.
 
+use vun_grammar::Extent;
 use vun_query::{Cx, Cycle, Query};
 
 use crate::Primitive;
@@ -75,8 +76,10 @@ impl Query for Kinds {
 
     fn compute(cx: &Cx<'_>, ty: &Ty) -> Self::Value {
         let of = |ty: &Ty| cx.get::<Self>(ty);
+        // A borrow is scoped, but for a `&static` one, which lives as long as the program.
         if ty.borrowing().is_some() {
-            return Kind { region: Region::Scoped, ..Kind::COPY_FREE };
+            let region = if ty.extent() == Some(Extent::Static) { Region::Free } else { Region::Scoped };
+            return Kind { region, ..Kind::COPY_FREE };
         }
         match &**ty {
             TyKind::Primitive(Primitive::Mem(Mem::Array | Mem::Slice | Mem::Cell), args) => {

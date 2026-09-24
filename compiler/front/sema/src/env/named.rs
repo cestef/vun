@@ -1,9 +1,9 @@
 //! The values of names: bindings of the environment, `$` locals, and declarations, a member of a
 //! `struct` literal written inside a compile-time call being the member of the type that call
-//! made.
+//! made; and tuple positions written in a name position.
 
 use vun_hir::resolve::Res;
-use vun_hir::tree::{BinderId, ExprId};
+use vun_hir::tree::{BinderId, ExprId, Name};
 use vun_origin::OriginTable;
 
 use super::{Env, Unevaluated};
@@ -28,6 +28,19 @@ impl Env<'_, '_> {
             }
             Some(Res::Binder(b)) if let Some(member) = self.made_member(b) => member,
             _ => self.value_of(self.resolve(expr)?),
+        }
+    }
+
+    /// The tuple position a member name writes: `.0`, or `.$(i)` with `i` a known integer.
+    #[must_use]
+    pub fn position(&self, name: &Name) -> Option<usize> {
+        match name {
+            Name::Index(at) => usize::try_from(*at).ok(),
+            Name::Computed(expr) => match self.eval(*expr) {
+                Ok(Value::Int(at)) => at.to_i128().and_then(|at| usize::try_from(at).ok()),
+                _ => None,
+            },
+            Name::Plain(_) | Name::Hole => None,
         }
     }
 

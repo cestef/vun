@@ -31,14 +31,17 @@ impl Builder<'_, '_, '_> {
                 _ => self.held(expr, origin),
             },
             ExprKind::Member { object, name } if self.env().eval(expr).is_err() => {
+                if let Some(at) = self.env().position(name) {
+                    return Ok(self.through_borrows(*object)?.project(Projection::Position(at)));
+                }
                 let name = self.env().name(name).ok_or(Unbuilt { at: origin })?;
                 Ok(self.reached(*object, name)?.project(Projection::Field(name)))
             }
             ExprKind::Index { object, index } => {
-                // Only an integer index names one item; bounds take a part, a value.
+                // An integer index names one item; bounds name the run of items they cover.
                 let typed = self.typed().ok_or(Unbuilt { at: origin })?;
-                let integer = typed.types.get(index).is_some_and(|k| k.ty.interval().is_some());
-                if !integer {
+                let known = typed.types.get(index).map(|k| k.ty);
+                if !known.is_some_and(|t| t.interval().is_some() || t.bounds().is_some()) {
                     return Err(Unbuilt { at: origin });
                 }
                 let place = self.through_borrows(*object)?;
@@ -65,14 +68,23 @@ impl Builder<'_, '_, '_> {
         }
     }
 
-    /// The value of the place `expr`, copied out of it; a path to a constant is its value.
+    /// The value of the place `expr`, copied out of it; a path to a constant is its value. A run
+    /// of items reached through a borrow, `xs[a..b]`, is borrowed again in the same mode.
     pub(super) fn read(&mut self, expr: ExprId) -> Result<Operand, Unbuilt> {
         if let Ok(value) = self.env().eval(expr) {
             return Ok(Operand::Const(value));
         }
         let origin = self.env.parsed.hir.exprs[expr].origin;
         let place = self.place(expr)?;
-        Ok(self.temp(Rvalue::Use(Operand::Place(place)), origin))
+        let run = matches!(self.env.parsed.hir.exprs[expr].kind, ExprKind::Index { .. });
+        let borrow = self.type_of(expr).and_then(|t| t.borrowing());
+        match borrow {
+            Some((mode, ..)) if run => {
+                let mode = (!mode.is_empty()).then(|| Symbol::intern(mode));
+                Ok(self.temp(Rvalue::Ref { mode, place }, origin))
+            }
+            _ => Ok(self.temp(Rvalue::Use(Operand::Place(place)), origin)),
+        }
     }
 
     /// `&mode operand`: a borrow of the place `operand`, or, for a type, the borrow type.

@@ -159,6 +159,13 @@ constructor function at compile time (`Env::constructed`); `env/named.rs` gives 
 `struct` literal inside a call the instance that call made (`Env::made_member`). Corpus: 202
 passed, 0 pending; MIR lowers 89 of 115 functions.
 
+Since then (decisions 123, 124): `&static` (row `static`, `TyKind::string` for literals, kinds
+free), tuple positions (`Env::position`, typed in `typeck/record.rs`, MIR `Projection::Position`),
+range slices lowered as borrows of item runs (`Part::run` at compile time), witnesses also looked
+up in the type's own package (`Env::impl_files(home)`), and `std.fmt` (`Writer`, `Format`,
+`print` splitting the format at compile time; impls for integers, byte slices and arrays).
+Missing: a count check of `print`'s arguments needs library diagnostics (`std.diag.error`).
+
 Language surface since the review (decisions 99 to 105): omitted `$` arguments inferred
 (`typeck/omitted.rs`, `TypedBody::inferred`, `types.cannot_infer`, `types.arity`); variant
 constructors as values (`Value::Constructor`); `.` through owners (`Env::reach`, `Hop`);
@@ -181,14 +188,15 @@ patterns and typed annotations (89), linked values and repeats (90), layout (93)
 
 ## 7. Next steps, in order
 
-1. `std` next: `std.fmt.print` (a `Writer` and `Format` interface, the format string parsed at
-   compile time), executors over frames (`std.task.run`, `select`), `std.iter` adapters as
+1. `std` next: library diagnostics (`std.diag.error` over `lang.diag`, so `print` reports a
+   format that does not match its arguments where it is written), executors over frames (`std.task.run`, `select`), `std.iter` adapters as
    coroutine functions, `System.args`, a Linux runtime without the C library, `Allocator`
    impls for `Fixed`, text (`Str`) and collections. Pointer primitives, `Own`, `Fixed`, `fail`,
    `expect`, `ptr`, `option`, `result`, `cmp` exist (decision 107).
 2. Leaks at scope exits inside a body (found at the function's return only today), `fixed` and
    `scoped` kinds, frames' `end` running their defers.
-3. Borrow rules left: `&static`, top-level bindings as free values, frames'
+3. Borrow rules left: `&x` of an immutable top-level binding typed `&static`, top-level
+   bindings as free values, frames'
    region from their parameters, a label where a
    conflicting borrow is used later.
 4. The driver side of `std.build`: run `build` (needs `&mut` at compile time, step 8) and read

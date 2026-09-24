@@ -25,11 +25,18 @@ System := struct {
 Stream := struct {
     _fd: i32,
 
-    /// The stream the system knows as `fd`, which must be open for as long as the stream is used.
-    of := unsafe (fd: i32) -> Stream { .{ ._fd = fd } };
+    /// The stream the system knows as `number`, which must be open for as long as the stream is used.
+    of := unsafe (number: i32) -> Stream { .{ ._fd = number } };
+    /// The number the system knows it by.
+    fd := (self: &Stream) -> i32 { self._fd };
+};
+
+#[impl(std.fmt.Writer(Stream))]
+StreamWriter := struct {
+    Error := std.os.Error;
     /// Writes some of `bytes`, returning how many.
-    write := (self: &mut Stream, bytes: &[u8]) -> Result(usize, Error) {
-        written := unsafe std.os.libc.write(self._fd, lang.mem.items_pointer(u8, bytes), bytes.len());
+    write := (self: &mut Stream, bytes: &[u8]) -> Result(usize, std.os.Error) {
+        written := unsafe std.os.libc.write(self.fd(), lang.mem.items_pointer(u8, bytes), bytes.len());
         if written < 0 {
             .err(.{ .number = unsafe std.os.libc.errno_location().read() })
         } else {

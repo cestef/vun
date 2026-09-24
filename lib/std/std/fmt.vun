@@ -1,1 +1,108 @@
-//! Formatting, with format strings checked at compile time.
+//! Formatting, with format strings read at compile time (spec 03, section 4):
+//! `print(w, "{} args\n", .{ n })` writes the text of the format string with each `{}` replaced by
+//! the next argument, as its `Format` impl writes it.
+
+/// Where bytes are written (spec 02, section 3).
+Writer := interface(($Self: type) -> type { struct {
+    Error: type = _;
+    /// Writes some of `bytes`, returning how many.
+    write: (self: &mut Self, bytes: &[u8]) -> Result(usize, Error) = _;
+    /// Writes all of `bytes`.
+    write_all := (self: &mut Self, bytes: &[u8]) -> Result((), Error) {
+        mut rest := bytes;
+        for rest.len() > 0 { rest = rest[self.write(rest)?..]; }
+        .ok(())
+    };
+}});
+
+/// How a value is written as text.
+Format := interface(($Self: type) -> type { struct {
+    format: ($W: Writer, value: &Self, w: &mut W) -> Result((), W.Error) = _;
+}});
+
+/// A run of text of a format string, and the argument written after it.
+Piece := struct {
+    text: &[u8],
+    /// The position of the argument; past the last argument for the text that ends the string.
+    arg: usize,
+};
+
+/// Opens and closes the place of an argument.
+open := "{"[0];
+close := "}"[0];
+
+/// The number of arguments `format` takes: its `{}`.
+holes := ($format: &[u8]) -> usize {
+    mut n: usize = 0;
+    mut i: usize = 0;
+    for i + 1 < format.len() {
+        if format[i] == open and format[i + 1] == close { n += 1; i += 2; } else { i += 1; }
+    }
+    n
+};
+
+/// `format` split at each `{}`: one piece per argument, then the text after the last.
+pieces := ($format: &[u8]) -> [holes(format) + 1]Piece {
+    mut out: [holes(format) + 1]Piece = [.{ .text = "", .arg = 0 }; holes(format) + 1];
+    mut n: usize = 0;
+    mut start: usize = 0;
+    mut i: usize = 0;
+    for i + 1 < format.len() {
+        if format[i] == open and format[i + 1] == close {
+            out[n] = .{ .text = format[start..i], .arg = n };
+            n += 1;
+            i += 2;
+            start = i;
+        } else {
+            i += 1;
+        }
+    }
+    out[n] = .{ .text = format[start..], .arg = n };
+    out
+};
+
+/// Writes `format` to `w`, each `{}` replaced by the next item of `args`.
+print := ($W: Writer, w: &mut W, $format: &[u8], $A: type, args: A) -> Result((), W.Error) {
+    $for piece in pieces(format) {
+        w.write_all(piece.text)?;
+        $if piece.arg < holes(format) { args.$(piece.arg).format(w)?; }
+    }
+    .ok(())
+};
+
+/// Room for the decimal digits of the widest integer.
+digits_max := 40;
+zero := "0"[0];
+minus := "-";
+radix := 10;
+
+#[impl(Format(Int))]
+IntFormat := ($r: lang.Range) -> type { struct {
+    /// In decimal, with `-` before a negative value.
+    format := ($W: Writer, value: &Int(r), w: &mut W) -> Result((), W.Error) {
+        if value.* < 0 { w.write_all(minus)?; }
+        mut rest: u128 = value.*.abs();
+        mut digits: [digits_max]u8 = [zero; digits_max];
+        mut at: usize = digits_max - 1;
+        digits[at] = (zero + rest % radix).to(u8);
+        rest = rest / radix;
+        for rest > 0 {
+            at -= 1;
+            digits[at] = (zero + rest % radix).to(u8);
+            rest = rest / radix;
+        }
+        w.write_all(digits[at..])
+    };
+} };
+
+#[impl(Format(lang.mem.Slice(u8)))]
+BytesFormat := struct {
+    /// As they are.
+    format := ($W: Writer, value: &[u8], w: &mut W) -> Result((), W.Error) { w.write_all(value) };
+};
+
+/// Arrays of bytes, as they are; a string literal is a borrow of one.
+#[impl(Format(lang.mem.Array))]
+ArrayFormat := ($n: Int(0..), $T: type) -> type { struct {
+    format := ($W: Writer, value: &[n]T, w: &mut W) -> Result((), W.Error) { w.write_all(value) };
+} };
