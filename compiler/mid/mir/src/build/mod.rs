@@ -48,7 +48,7 @@ impl Query for Mir {
 
     fn cycle(cx: &Cx<'_>, f: &ExprRef, _: &Cycle) -> Self::Value {
         let env = Env::of(cx, &f.file).expect("a function value's file is read");
-        Err(Unbuilt { at: env.parsed.hir.exprs[f.expr].origin })
+        Err(Unbuilt { at: env.parsed.hir.exprs[f.expr.id].origin })
     }
 }
 
@@ -71,8 +71,8 @@ struct Builder<'e, 'a, 'db> {
 impl Builder<'_, '_, '_> {
     fn lower(env: &Env<'_, '_>, f: &ExprRef) -> Result<Body, Unbuilt> {
         let hir = &env.parsed.hir;
-        let origin = hir.exprs[f.expr].origin;
-        let ExprKind::Fn { params, body, .. } = &hir.exprs[f.expr].kind else {
+        let origin = hir.exprs[f.expr.id].origin;
+        let ExprKind::Fn { params, body, .. } = &hir.exprs[f.expr.id].kind else {
             return Err(Unbuilt { at: origin });
         };
         let mut locals = IndexVec::new();

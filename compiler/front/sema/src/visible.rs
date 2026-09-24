@@ -161,7 +161,7 @@ impl Env<'_, '_> {
             (Reach::Home, Home::Struct(literal)) => {
                 let origins = self.cx.db().resource::<OriginTable>();
                 let name = Env::of(self.cx, &literal.file)
-                    .and_then(|env| origins.declaration_name(env.parsed.hir.exprs[literal.expr].origin));
+                    .and_then(|env| origins.declaration_name(env.parsed.hir.exprs[literal.expr.id].origin));
                 name.map_or_else(|| Msg::new().text("its struct"), |n| Msg::new().code(n.as_str()))
             }
             (Reach::Package(_), _) => Msg::new().text("its package"),
@@ -185,10 +185,10 @@ impl Env<'_, '_> {
                     let origins = self.cx.db().resource::<OriginTable>();
                     let span = |file: &ExprRef| {
                         let env = Env::of(self.cx, &file.file)?;
-                        Some(origins.source_span(env.parsed.hir.exprs[file.expr].origin))
+                        Some(origins.source_span(env.parsed.hir.exprs[file.expr.id].origin))
                     };
                     let (outer, inner) =
-                        (span(literal)?, span(&ExprRef { file: self.file.clone(), expr: at })?);
+                        (span(literal)?, span(&ExprRef::new(self.file.clone(), &self.parsed.hir, at))?);
                     outer.file == inner.file && outer.range.contains(inner.range)
                 }
             },

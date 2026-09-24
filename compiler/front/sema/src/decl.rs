@@ -23,7 +23,7 @@ impl Query for DeclValue {
     fn compute(cx: &Cx<'_>, key: &DeclRef) -> Self::Value {
         let env = Env::of(cx, &key.file).ok_or(Unevaluated::Absent)?;
         let hir = &env.parsed.hir;
-        let decl = &hir.decls[key.decl];
+        let decl = &hir.decls[key.decl.id];
         let value = decl.value.ok_or(Unevaluated::Runtime)?;
         if !matches!(hir.exprs[value].kind, ExprKind::Hole) {
             return env.eval(value);
@@ -55,7 +55,7 @@ impl Query for DeclType {
     type Value = Result<Known, Unevaluated>;
 
     fn compute(cx: &Cx<'_>, key: &DeclRef) -> Self::Value {
-        Env::of(cx, &key.file).ok_or(Unevaluated::Absent)?.decl_type(key.decl)
+        Env::of(cx, &key.file).ok_or(Unevaluated::Absent)?.decl_type(key.decl.id)
     }
 
     fn cycle(_: &Cx<'_>, _: &DeclRef, _: &Cycle) -> Self::Value {

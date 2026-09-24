@@ -84,7 +84,7 @@ impl Typer<'_, '_, '_> {
                     let site = self.env.cx.get::<Declared>(&(ns, name))?;
                     if let Site::Decl(decl) = &site
                         && let Some(visible) =
-                            Env::of(self.env.cx, &decl.file).map(|e| e.decl_visible(decl.decl, name))
+                            Env::of(self.env.cx, &decl.file).map(|e| e.decl_visible(decl.decl.id, name))
                     {
                         self.check_visible(expr, name, &visible);
                     }

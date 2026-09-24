@@ -80,7 +80,7 @@ impl<'a, 'db> Env<'a, 'db> {
     pub fn within(cx: &'a Cx<'db>, instance: &Instance) -> Option<Self> {
         let mut env = Self::of(cx, &instance.f.file)?;
         let hir = &env.parsed.hir;
-        let ExprKind::Fn { params, .. } = &hir.exprs[instance.f.expr].kind else { return None };
+        let ExprKind::Fn { params, .. } = &hir.exprs[instance.f.expr.id].kind else { return None };
         let binders = params.iter().map(|p| match p {
             Entry::One(Param { pat: Some(pat), .. }) => match hir.pats[*pat].kind {
                 PatKind::Bind(b) => Some(b),
@@ -111,7 +111,7 @@ impl<'a, 'db> Env<'a, 'db> {
         match self.parsed.resolution.names[expr] {
             Some(Res::Binder(b)) => {
                 let decl = self.parsed.hir.member_decl(b).ok_or(Unevaluated::Runtime)?;
-                Ok(Site::Decl(DeclRef { file: self.file.clone(), decl }))
+                Ok(Site::Decl(DeclRef::new(self.file.clone(), &self.parsed.hir, decl)))
             }
             Some(Res::Outer { name, ns }) => {
                 let spread =

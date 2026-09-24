@@ -57,7 +57,8 @@ impl Checker<'_, '_, '_> {
             let Some(Site::Decl(decl)) = self.env.cx.get::<Declared>(&(target.clone(), name)) else {
                 continue;
             };
-            let Some(visible) = Env::of(self.env.cx, &decl.file).map(|env| env.decl_visible(decl.decl, name))
+            let Some(visible) =
+                Env::of(self.env.cx, &decl.file).map(|env| env.decl_visible(decl.decl.id, name))
             else {
                 continue;
             };

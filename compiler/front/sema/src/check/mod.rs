@@ -57,13 +57,13 @@ impl Visitor for Checker<'_, '_, '_> {
 
     fn expr(&mut self, hir: &Hir, expr: ExprId) {
         if let ExprKind::Fn { .. } = hir.exprs[expr].kind {
-            let f = ExprRef { file: self.env.file.clone(), expr };
+            let f = ExprRef::new(self.env.file.clone(), hir, expr);
             if let Some(typed) = self.env.cx.get::<Typed>(&f) {
                 self.diag.absorb(&typed.diag);
             }
         }
         if let ExprKind::Struct(_) = hir.exprs[expr].kind {
-            self.homes.push(Home::Struct(ExprRef { file: self.env.file.clone(), expr }));
+            self.homes.push(Home::Struct(ExprRef::new(self.env.file.clone(), hir, expr)));
             visit::walk_expr(self, hir, expr);
             self.homes.pop();
             return;

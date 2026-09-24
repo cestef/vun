@@ -56,7 +56,7 @@ impl Query for Typed {
     fn compute(cx: &Cx<'_>, f: &ExprRef) -> Self::Value {
         let env = Env::of(cx, &f.file)?;
         let hir = &env.parsed.hir;
-        let ExprKind::Fn { params, returns, body } = &hir.exprs[f.expr].kind else { return None };
+        let ExprKind::Fn { params, returns, body } = &hir.exprs[f.expr.id].kind else { return None };
         let mut typer = Typer::new(&env, Stage::Run);
         for param in params {
             let Entry::One(param) = param else { continue };

@@ -52,7 +52,7 @@ impl Env<'_, '_> {
             }
             ExprKind::Block(block) => self.block(*block),
             ExprKind::Call { callee, args } => self.call(*callee, args),
-            ExprKind::Fn { .. } => Ok(Value::Fn(ExprRef { file: self.file.clone(), expr })),
+            ExprKind::Fn { .. } => Ok(Value::Fn(ExprRef::new(self.file.clone(), hir, expr))),
             ExprKind::FnType { params, returns } => Ok(Value::Type(self.signature(params, *returns)?.ty())),
             ExprKind::Tuple(items) => items
                 .iter()
@@ -144,7 +144,7 @@ impl Env<'_, '_> {
     pub fn nominal(&self, literal: ExprId, kind: NominalKind) -> Value {
         let name =
             self.cx.db().resource::<OriginTable>().declaration_name(self.parsed.hir.exprs[literal].origin);
-        let literal = ExprRef { file: self.file.clone(), expr: literal };
+        let literal = ExprRef::new(self.file.clone(), &self.parsed.hir, literal);
         Value::Type(
             TyKind::Nominal(Nominal { literal, instance: self.instance.clone(), kind, name }).intern(),
         )

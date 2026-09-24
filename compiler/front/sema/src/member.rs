@@ -85,7 +85,7 @@ impl Query for Members {
         let TyKind::Nominal(Nominal { literal, instance, .. }) = &**ty else { return None };
         let env = Env::defining(cx, literal, instance.as_ref())?;
         let mut table = MemberTable { complete: true, ..MemberTable::default() };
-        match &env.parsed.hir.exprs[literal.expr].kind {
+        match &env.parsed.hir.exprs[literal.expr.id].kind {
             ExprKind::Struct(ns) => table.struct_members(&env, *ns, literal),
             ExprKind::Enum(variants) => table.variants(&env, variants),
             _ => return None,
@@ -116,7 +116,7 @@ impl MemberTable {
                     let d = &hir.decls[*decl];
                     let mut binders = Vec::new();
                     hir.binders(d.pat, &mut binders);
-                    let decl = DeclRef { file: env.file.clone(), decl: *decl };
+                    let decl = DeclRef::new(env.file.clone(), hir, *decl);
                     for b in binders {
                         let name = hir.binders[b].name;
                         let (visible, _) = env.visible(name, &d.attrs, home.clone());
@@ -157,7 +157,7 @@ impl Query for MemberType {
         };
         let members = cx.get::<Members>(ty).ok_or(Unevaluated::Unsupported)?;
         let Found::Decl(decl) = members.find(*name) else { return Err(Unevaluated::Absent) };
-        Env::defining(cx, literal, instance.as_ref()).ok_or(Unevaluated::Absent)?.decl_type(decl.decl.decl)
+        Env::defining(cx, literal, instance.as_ref()).ok_or(Unevaluated::Absent)?.decl_type(decl.decl.decl.id)
     }
 
     fn cycle(_: &Cx<'_>, _: &Self::Key, _: &Cycle) -> Self::Value {
