@@ -125,7 +125,8 @@ impl Typer<'_, '_, '_> {
                     return self.site(site);
                 }
                 Ok(Value::Type(ty)) => {
-                    return match self.env.cx.get::<Members>(&ty)?.find(name) {
+                    let members = self.env.cx.get::<Members>(&ty);
+                    return match members.as_deref().map_or(Found::Unknown, |m| m.find(name)) {
                         Found::Decl(decl) => {
                             self.check_visible(expr, name, &decl.visible);
                             self.env.cx.get::<MemberType>(&(ty, name)).ok()
@@ -133,7 +134,8 @@ impl Typer<'_, '_, '_> {
                         Found::Variant(v) if v.payload.is_empty() => {
                             Some(Known { ty, stage: Stage::Compile })
                         }
-                        _ => None,
+                        Found::Variant(_) | Found::Field(_) => None,
+                        Found::Absent | Found::Unknown => self.method(expr, ty, name),
                     };
                 }
                 _ => {}
@@ -141,8 +143,8 @@ impl Typer<'_, '_, '_> {
         }
         let known = known?;
         let known = Known { ty: known.ty.borrowed().unwrap_or(known.ty), ..known };
-        let members = self.env.cx.get::<Members>(&known.ty)?;
-        match members.find(name) {
+        let members = self.env.cx.get::<Members>(&known.ty);
+        match members.as_deref().map_or(Found::Unknown, |m| m.find(name)) {
             Found::Field(field) => {
                 self.check_visible(expr, name, &field.visible);
                 Some(Known { ty: *field.ty.as_ref().ok()?, stage: known.stage })
@@ -152,10 +154,22 @@ impl Typer<'_, '_, '_> {
                 self.methods.insert(expr);
                 self.env.cx.get::<MemberType>(&(known.ty, name)).ok()
             }
-            // Impls add methods to a type (spec 02, section 3), and they are not collected yet,
-            // so a name missing from the struct is not known to be no member.
-            Found::Absent | Found::Unknown | Found::Variant(_) => None,
+            Found::Variant(_) => None,
+            Found::Absent | Found::Unknown => {
+                let method = self.method(expr, known.ty, name);
+                if method.is_some() {
+                    self.methods.insert(expr);
+                }
+                method
+            }
         }
+    }
+
+    /// The type of the method `name` that `ty` has through an impl (spec 02, section 3).
+    fn method(&mut self, expr: ExprId, ty: Ty, name: Symbol) -> Option<Known> {
+        let method = self.env.method(ty, name)?;
+        self.check_visible(expr, name, &method.visible);
+        self.env.cx.get::<MemberType>(&(method.owner, name)).ok()
     }
 
     /// `T{ .name = value, ... }`, or `.{ ... }` of the expected type: each field's value is

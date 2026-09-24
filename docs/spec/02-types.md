@@ -94,6 +94,13 @@ UartWriter := struct {
   witnesses, or with `T`'s own members, is an error at the second impl; `UartWriter.write(&mut u, b)`
   is always available as the explicit spelling.
 - The witness is an ordinary named struct. `std.meta.witness(Writer, Uart)` returns it.
+- `T` may be a type constructor: a primitive such as `lang.Int`, or a function returning a type.
+  The impl then covers every type the constructor makes, and its value is a function of the
+  constructor's arguments that gives the witness of each. `#[impl(Narrow(Int))]` on
+  `IntNarrow := ($r: Range) -> type { struct { ... } }` makes `IntNarrow(r)` the witness for
+  `Int(r)`; an impl for `Pair` covers `Pair(u8)`, and a second impl for `Pair(u8)` is a duplicate.
+- The impls a file sees are those of its package and of the packages it depends on, directly or
+  not; the orphan rule places every impl of a pair in one of them.
 
 ### Constraints
 

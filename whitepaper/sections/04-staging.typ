@@ -52,7 +52,9 @@ Peripheral := ($p: svd.Peripheral) -> type {
 ```
 
 *Witnesses from values.* An interface conformance is registered by the attribute `#[impl(I(T))]` on
-any expression producing a struct, so deriving an implementation is calling a function. The derived
+any expression producing a struct, so deriving an implementation is calling a function. When `T` is
+a type constructor, such as `Int`, the impl is a function of the constructor's arguments and covers
+every type the constructor makes; the methods of built-in types are such impls, in the library. The derived
 code may itself contain templates, and generated code then runs compile-time code of its own when it
 is instantiated; because generation yields ordinary values analyzed lazily, this recursion requires
 no additional mechanism.

@@ -19,6 +19,7 @@ pub mod trap;
 pub mod ty;
 pub mod typeck;
 pub mod visible;
+pub mod witness;
 
 pub use primitives::Primitive;
 

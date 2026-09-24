@@ -1,6 +1,7 @@
 //! Checking a file (spec 01, 02 and 04): each namespace member's value against its annotation,
 //! each function body, wherever the types are known, and where restricted names are visible.
 
+mod impls;
 mod visible;
 
 use std::sync::Arc;
@@ -32,6 +33,7 @@ impl Query for Checked {
         if let Some(root) = env.parsed.hir.root {
             checker.namespace(&env.parsed.hir, root);
         }
+        checker.impls();
         Some(Arc::new(checker.diag))
     }
 }

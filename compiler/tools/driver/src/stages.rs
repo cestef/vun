@@ -34,6 +34,7 @@ pub const STAGES: &[Stage] = &[
             errors::NAMES_PRIVATE,
             errors::NAMES_VISIBILITY,
             errors::COMPTIME,
+            errors::IMPL,
         ],
     },
 ];

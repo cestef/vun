@@ -114,7 +114,8 @@ impl Env<'_, '_> {
     /// Returns why the call has no value.
     pub fn apply(&self, callee: Value, args: Vec<Value>) -> Result<Value, Unevaluated> {
         match callee {
-            Value::Fn(f) => self.cx.get::<Call>(&Instance { f, args }),
+            // An interface applied to a type is its requirement struct (spec 02, section 3).
+            Value::Fn(f) | Value::Interface(f) => self.cx.get::<Call>(&Instance { f, args }),
             Value::Primitive(p) => p.apply(&args),
             _ => Err(Unevaluated::Unsupported),
         }

@@ -233,8 +233,22 @@ In order:
      (decision 35), `for p in e`, `#[comptime.fuel]`.
    - Struct declarations are typed in their instance (`MemberType`); bodies of generic functions are typed
      only where no `$` parameter is needed (`Typed(ExprRef)`), not per instance yet.
-   - `types.no_member` on a value waits for impls: a method may come from a witness (spec 02,
-     section 3), so only struct-literal field names are reported.
+   - Impls (decision 76, `sema/src/witness/`): `Impls(FileRef)` collects `#[impl(I(T))]`
+     declarations, reading `I` and `T` from the instance of the requirement struct `I(T)`;
+     `T` may be a type constructor (`TyKind::made_by`), whose impl is a function of its
+     arguments. `Witnesses((file, ty))` gives a type's witnesses over the file's package graph;
+     `Env::method` finds a member of a witness, then a default of the interface, used by
+     `Typer::member` (methods and `T.name`) and `Env::member`. The checker reports
+     `impl.missing_requirement` and `impl.duplicate` (`check/impls.rs`). Next: the collision
+     rule (a witness member named like `T`'s own members or another witness's), checking the
+     types of provided members against the requirements, requirements of constructor impls per
+     type, constrained `$W: Writer` parameters, `types.no_member` on values now that impls are
+     collected, MIR and the interpreter calling methods, integer operators as `lang` impls.
+   - Methods of built-in types are std impls over type constructors (the user's choice): next,
+     `std.int` with `to`, `wrap`, `sat`, `try_to` and `abs` as an impl for `lang.Int`, over
+     `lang.int` primitives. Their result types depend on `$` arguments (`x.to(u8)` is `u8`), so
+     calls must type signatures with the `$` arguments bound first. Slice and array `.len` is a
+     member of `[T]` without a call (spec 05), not a method: decide how `[T]` declares it.
    - Visibility (decision 70): `.workspace` is not enforced (`Env::sees` returns `None`) until
      `PackageData` records the workspace a package belongs to (the root manifest's `.members`).
      `.name` with an expected type is only implemented for `lang.scope` inside `#[visible]`;
@@ -245,8 +259,8 @@ In order:
      `bool` in `lang`; find it by data, never by name. Then `if`, `and`, `or` in MIR (branches).
    - Appendix B as a `.ov` table (operators to `lang.ops` items), generated; MIR's operators are
      grammar `TokenKind`s until then.
-   - Method calls (`a.f(x)`), struct fields and literals, then `int.does_not_fit` in
-     `corpus/reject/integers/does_not_fit.ov` (`p.x.abs() + p.y.abs()`).
+   - `int.does_not_fit` in `corpus/reject/integers/does_not_fit.ov` (`p.x.abs() + p.y.abs()`)
+     waits for `std.int`.
    - Persist the front-end queries (`Persist` needs `Encode`/`Decode` for their keys and values;
      `Symbol` and `OriginId` persist by content) and wire `.overt/queries/<toolchain hash>`.
 2. Packaging, still open: signed binary caches (decision 63) and planned builds wait for the
@@ -258,14 +272,14 @@ In order:
 4. Fuzz the parser longer (120 s runs are clean).
 
 `cargo xtask corpus` ends with the phase 1 progress measure (`overt_driver::Coverage`, `Session::coverage`): the share of function-body expressions sema types and of functions MIR lowers in `corpus/accept` (26% before decision 75, 32% after). The corpus has 40 accept and 55 reject programs plus 63 explanation pages (`cargo xtask corpus`:
-145 passed, 42 pending on later stages, 20 shown as transcripts, 0 failed), plus
+149 passed, 38 pending on later stages, 20 shown as transcripts, 0 failed), plus
 `corpus/build.ov` (prelude `std.prelude` then `support`) and `corpus/support`, stand-ins for what
 programs take from drivers, other libraries and unwritten parts of `std`.
 
 ## 9. Open questions and known gaps
 
 - Decisions 65 (partial graphs resolve through the lockfile), 66 (primitives from `lang`), 68
-  (`lang.Fn`, what is compile-time-only, nominal type names), 71 (conditions as data) and 69 (appendix B as data, `Ord`,
+  (`lang.Fn`, what is compile-time-only, nominal type names), 71 (conditions as data), 76 (impls over type constructors) and 69 (appendix B as data, `Ord`,
   `Eq.ne`) are proposed; 70 (visibility levels) is accepted; 67 (pure-Rust dependencies) is accepted. Decisions 45 to 64 are accepted. 61 (query persistence) and 63 (signed
   caches) are accepted but not built. Earlier: decisions 45 to 52 are accepted (50: BLAKE3 Merkle hashes, base32, nested store; 51: `.ovpkg`; 52: error chains) (fourth session): `lang.int`, spreads, compile-time block
   bindings visible in their own value, manifest detection and content-hash caches, `targets` as a
