@@ -3,7 +3,6 @@
 //! parts in the same mode (decision 31). A `match` has the type all its arms can take.
 
 use overt_hir::tree::{Arm, Entry, ExprId, ExprKind, Name, PatId, PatKind};
-use overt_hir::visit;
 
 use super::{Known, Typer};
 use crate::Primitive;
@@ -74,7 +73,22 @@ impl Typer<'_, '_, '_> {
                     self.against(*hi, ty);
                 }
             }
-            PatKind::Struct { .. } => visit::walk_pat(self, hir, pat),
+            PatKind::Struct { ty: written, fields } => {
+                let ty = written.and_then(|t| self.ty(t)).or(ty);
+                let members = ty.and_then(|t| self.env.cx.get::<Members>(&t));
+                for (i, field) in fields.iter().enumerate() {
+                    let Entry::One((name, field)) = field else { continue };
+                    let found = members.as_ref().and_then(|m| match name {
+                        Some(Name::Plain(name)) => match m.find(*name) {
+                            Found::Field(f) => f.ty.as_ref().ok().copied(),
+                            _ => None,
+                        },
+                        None => m.fields.get(i).and_then(|f| f.ty.as_ref().ok().copied()),
+                        Some(_) => None,
+                    });
+                    self.pattern(*field, found, borrow);
+                }
+            }
             PatKind::Hole | PatKind::Rest(_) | PatKind::Error => {}
         }
     }
@@ -110,6 +124,7 @@ impl Typer<'_, '_, '_> {
             }
             let Some(value) = arm.value else { continue };
             let found = self.typed_as(value, expected);
+            let found = self.fits(value, found, expected);
             let leaves = matches!(
                 hir.exprs[value].kind,
                 ExprKind::Return(_) | ExprKind::Break { .. } | ExprKind::Continue { .. }

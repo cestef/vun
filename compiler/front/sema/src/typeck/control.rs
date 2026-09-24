@@ -4,7 +4,7 @@
 use overt_hir::tree::{BlockId, Cond, ExprId};
 
 use super::{Known, Stage, Typer};
-use crate::ty::TyKind;
+use crate::ty::{Ty, TyKind};
 
 impl Typer<'_, '_, '_> {
     /// Operands that must be conditions, and their result, a condition.
@@ -39,13 +39,33 @@ impl Typer<'_, '_, '_> {
                 matched.map(|k| k.stage)
             }
         };
-        let then = self.block_value(then, expected);
+        let then_value = self.block_value(then, expected);
         let Some(otherwise) = otherwise else {
             return Some(Known { ty: TyKind::unit(), stage: Stage::Compile });
         };
+        let then_at = self.hir().blocks[then].tail;
+        let then = match then_at {
+            Some(tail) => self.fits(tail, then_value, expected),
+            None => then_value,
+        };
         let found = self.typed_as(otherwise, expected);
+        let found = self.fits(otherwise, found, expected);
         let joined = self.join(otherwise, then?, found?)?;
         Some(Known { stage: joined.stage.max(head.unwrap_or(self.stage)), ..joined })
+    }
+
+    /// A branch's value `found` at `at`, reported there when it does not fit the type the
+    /// context expects of the whole; `None` then, so that the whole is not reported again.
+    pub(super) fn fits(&mut self, at: ExprId, found: Option<Known>, expected: Option<Ty>) -> Option<Known> {
+        let (found, expected) = (found?, expected);
+        match expected {
+            Some(expected) if !expected.accepts(&found.ty) => {
+                let written = self.written.filter(|_| self.result == Some(expected));
+                self.expect(self.hir().exprs[at].origin, found, expected, written);
+                None
+            }
+            _ => Some(found),
+        }
     }
 
     /// The type both a branch typed so far, `sofar`, and the branch `at`, `found`, can take;

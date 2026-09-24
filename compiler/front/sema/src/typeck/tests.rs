@@ -117,7 +117,7 @@ test := (c: Color) -> u8 { if .blue(n) = c { n } else { 0 } };
             "int.does_not_fit: value does not fit the type `Int(0..=255)`",
             "types.no_member: no member `yellow` in `Color`",
             "types.no_member: no member `z` in `Point`",
-            "int.does_not_fit: value does not fit the type `Int(0..=255)`",
+            "int.does_not_fit: value does not fit the type `u8`",
             "int.does_not_fit: value does not fit the type `Int(0..=255)`",
             "int.does_not_fit: value does not fit the type `Int(0..=255)`",
         ]

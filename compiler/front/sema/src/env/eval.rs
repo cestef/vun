@@ -71,6 +71,8 @@ impl Env<'_, '_> {
                 }
             }
             ExprKind::Block(block) => self.block(*block),
+            // Attributes on an expression are data, read where they act.
+            ExprKind::Attributed { inner, .. } => self.eval(*inner),
             ExprKind::Call { callee, args } => self.call(*callee, args).map_err(|u| u.through(e.origin)),
             ExprKind::Fn { .. } => Ok(Value::Fn(self.func(expr))),
             ExprKind::FnType { params, returns } => Ok(Value::Type(self.signature(params, *returns)?.ty())),

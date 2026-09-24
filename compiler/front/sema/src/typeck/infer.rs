@@ -48,7 +48,7 @@ impl Typer<'_, '_, '_> {
                 if let Some(value) = value {
                     let found = self.typed_as(*value, self.result);
                     if let (Some(found), Some(result)) = (found, self.result) {
-                        self.expect(hir.exprs[*value].origin, found, result, None);
+                        self.expect(hir.exprs[*value].origin, found, result, self.written);
                     }
                 }
                 None
@@ -61,6 +61,11 @@ impl Typer<'_, '_, '_> {
                 known
             }
             ExprKind::Prefix { op: TokenKind::Bang, operand, .. } => self.logic(&[*operand]),
+            ExprKind::Prefix { op: TokenKind::Amp, mode, operand } => self.borrow(*mode, *operand),
+            ExprKind::Prefix { op: TokenKind::Unsafe, operand, .. } => {
+                self.typed_as(*operand, self.expected(expr))
+            }
+            ExprKind::Attributed { attrs, inner } => self.attributed(expr, attrs, *inner),
             ExprKind::Infix { op: TokenKind::And | TokenKind::Or, left, right: Some(right) } => {
                 self.logic(&[*left, *right])
             }

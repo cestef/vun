@@ -13,6 +13,7 @@ mod expected;
 mod infer;
 mod loops;
 mod pattern;
+mod prefix;
 mod range;
 mod sequence;
 #[cfg(test)]
@@ -103,6 +104,7 @@ impl Query for Typed {
             None => Some(TyKind::unit()),
         };
         typer.result = result;
+        typer.written = *returns;
         let found = typer.block_value(*body, result);
         if let (Some(found), Some(result)) = (found, result) {
             let at = hir.blocks[*body].tail.map_or(hir.blocks[*body].origin, |t| hir.exprs[t].origin);
@@ -141,6 +143,8 @@ pub struct Typer<'e, 'a, 'db> {
     expected: HashMap<ExprId, Ty>,
     /// The result type of the function typed, which `return` values are checked against.
     result: Option<Ty>,
+    /// The annotation the result type is written as, which reports name it by.
+    written: Option<ExprId>,
     /// The loops around the expression typed, innermost last, which `break` values join.
     loops: Vec<loops::Loop>,
     pub diag: DiagCtxt,
@@ -157,6 +161,7 @@ impl<'e, 'a, 'db> Typer<'e, 'a, 'db> {
             methods: HashMap::new(),
             expected: HashMap::new(),
             result: None,
+            written: None,
             loops: Vec::new(),
             diag: DiagCtxt::new(),
         }

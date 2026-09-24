@@ -1,13 +1,13 @@
 //! Patterns mirror constructors, and parse as expressions (spec 01, section 6).
 
-Shape := enum { circle(u32), rect(Point, Point), empty };
+Shape := enum { circle(u16), rect(Point, Point), empty };
 Point := struct { x: i32, y: i32 };
 
 describe := (s: &Shape) -> u64 {
     match s.* {
         .circle(0) => 0,
         .circle(r) => r * r * 3,
-        .rect(.{ .x = x0, .y = y0 }, .{ .x = x1, .y = y1 }) if x0 < x1 and y0 < y1 => (x1 - x0) * (y1 - y0),
+        .rect(.{ .x = x0, .y = y0 }, .{ .x = x1, .y = y1 }) if x0 < x1 and y0 < y1 => ((x1 - x0) * (y1 - y0)).to(u64),
         .rect(_, _) => 0,
         .empty => 0,
     }
