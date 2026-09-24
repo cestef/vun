@@ -23,8 +23,9 @@ pub struct Witness {
     pub decl: ImplDecl,
     /// The struct the impl gives for the type.
     pub ty: Ty,
-    /// `I(T)` for the type, whose declarations with a value are the defaults.
-    pub requirements: Ty,
+    /// `I(T)` for the type, whose declarations with a value are the defaults; `None` for an impl
+    /// without an interface.
+    pub requirements: Option<Ty>,
 }
 
 /// A method a type has through an impl: a declaration of the witness, or a default of the
@@ -64,12 +65,18 @@ impl Witness {
         })?;
         let value = cx.get::<DeclValue>(&decl.decl).ok()?;
         let (witness, requirements) = if let Value::Type(_) = decl.target {
-            (value.as_type()?, decl.requirements)
+            (value.as_type()?, decl.contract.as_ref().map(|c| c.requirements))
         } else {
             let env = Env::of(cx, &decl.decl.file)?;
             let witness = env.apply(value, args).ok()?.as_type()?;
-            let call = Instance { f: decl.interface.clone(), args: vec![Value::Type(ty)] };
-            (witness, cx.get::<Call>(&call).ok()?.as_type()?)
+            let requirements = match &decl.contract {
+                Some(contract) => {
+                    let call = Instance { f: contract.interface.clone(), args: vec![Value::Type(ty)] };
+                    Some(cx.get::<Call>(&call).ok()?.as_type()?)
+                }
+                None => None,
+            };
+            (witness, requirements)
         };
         Some(Self { decl, ty: witness, requirements })
     }
@@ -80,7 +87,7 @@ impl Witness {
             Found::Decl(d) => Some(Method { owner, decl: d.decl.clone(), visible: d.visible.clone() }),
             _ => None,
         };
-        declared(self.ty).or_else(|| declared(self.requirements).filter(|m| !m.decl.required(cx)))
+        declared(self.ty).or_else(|| declared(self.requirements?).filter(|m| !m.decl.required(cx)))
     }
 }
 

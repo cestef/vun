@@ -121,6 +121,10 @@ UartWriter := struct {
   takes that type first, then the interface's arguments. `#[impl(Iterate(Coroutine))]` on
   `CoroutineIterate := ($Self: type, $Y: type, $R: type) -> type { ... }` makes every coroutine
   frame its own iterator.
+- `#[impl(T)]`, with no interface, adds the declarations of its struct to `T`'s method lookup and
+  checks nothing else: methods without an abstraction. `T` may be a type or a type constructor,
+  as above, so `#[impl(Result)]` on `($T: type, $E: type) -> type { struct { map_err := ... } }`
+  gives every result `map_err`. It lives in the package of `T`, and collides like a witness.
 - The impls a file sees are those of its package and of the packages it depends on, directly or
   not; the orphan rule places every impl of a pair in one of them.
 

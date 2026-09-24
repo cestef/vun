@@ -1,18 +1,9 @@
-//! Results (spec 07, section 3): converting a result's error, by an impl for every
-//! `Result(T, E)`.
+//! Results (spec 07, section 3): methods of every `Result(T, E)`, by an impl without an
+//! interface.
 
-/// What a result answers.
-Fallible := interface(($Self: type) -> type { struct {
-    Value: type = _;
-    Error: type = _;
+#[impl(Result)]
+ResultMethods := ($T: type, $E: type) -> type { struct {
     /// The result with its error passed through `f`: `e.map_err(f)?` converts as it propagates.
-    map_err: (r: Self, $F: type, f: (Error) -> F) -> Result(Value, F) = _;
-}});
-
-#[impl(Fallible(Result))]
-ResultFallible := ($T: type, $E: type) -> type { struct {
-    Value := T;
-    Error := E;
     map_err := (r: Result(T, E), $F: type, f: (E) -> F) -> Result(T, F) {
         match r { .ok(v) => .ok(v), .err(e) => .err(f(e)) }
     };

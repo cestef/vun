@@ -20,18 +20,18 @@ impl Checker<'_, '_, '_> {
     /// Reports each requirement of `I(T)` that the witness of `decl` does not provide. The
     /// witness of a type constructor is checked per type it is used for.
     fn requirements(&mut self, decl: &ImplDecl) {
-        let Value::Type(_) = decl.target else { return };
+        let (Value::Type(_), Some(contract)) = (&decl.target, &decl.contract) else { return };
         let cx = self.env.cx;
         let Some(witness) = cx.get::<DeclValue>(&decl.decl).ok().and_then(|v| v.as_type()) else { return };
         let (Some(provided), Some(required)) =
-            (cx.get::<Members>(&witness), cx.get::<Members>(&decl.requirements))
+            (cx.get::<Members>(&witness), cx.get::<Members>(&contract.requirements))
         else {
             return;
         };
         for requirement in required.decls.iter().filter(|d| d.decl.required(cx)) {
             if provided.find(requirement.name) == Found::Absent {
                 let msg = Msg::new().text("the impl does not provide ").code(requirement.name.as_str());
-                let label = Msg::new().code(decl.requirements.to_string()).text(" requires it");
+                let label = Msg::new().code(contract.requirements.to_string()).text(" requires it");
                 let d = Diagnostic::error(errors::IMPL_MISSING_REQUIREMENT, msg)
                     .at(decl.attr, None)
                     .label(requirement.decl.decl.origin, Some(label));
@@ -50,7 +50,8 @@ impl Checker<'_, '_, '_> {
         else {
             return;
         };
-        let msg = Msg::new().text("a second impl of ").code(decl.requirements.to_string());
+        let Some(contract) = &decl.contract else { return };
+        let msg = Msg::new().text("a second impl of ").code(contract.requirements.to_string());
         let d = Diagnostic::error(errors::IMPL_DUPLICATE, msg)
             .at(decl.attr, None)
             .label(first.attr, Some(Msg::new().text("the first impl is here")));

@@ -5,7 +5,8 @@
 //! value is a function of the constructor's arguments giving the witness of each (decision 76).
 //! `T` may also be an interface constructor, such as `lang.Coroutine`: the impl covers every type
 //! implementing an interface it makes, and its value takes that type, then the interface's
-//! arguments (decision 92).
+//! arguments (decision 92). `#[impl(T)]`, with no interface, gives `T` the declarations of its
+//! value as methods, found by the same lookup (decision 102).
 
 mod lookup;
 
@@ -25,16 +26,24 @@ use crate::ty::{Nominal, Ty, TyKind, Value};
 
 pub use lookup::{Method, Witness, Witnesses};
 
-/// A declaration marked `#[impl(I(T))]`.
+/// A declaration marked `#[impl(I(T))]`, or `#[impl(T)]` for methods without an interface.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct ImplDecl {
     pub decl: DeclRef,
     /// The attribute, where the impl is reported.
     pub attr: OriginId,
-    /// `I`: its function from a type to the requirement struct.
-    pub interface: Func,
+    /// The interface implemented; `None` for `#[impl(T)]`, whose declarations are methods of
+    /// `T` only.
+    pub contract: Option<Contract>,
     /// `T`: a type, or a type constructor for every type it makes.
     pub target: Value,
+}
+
+/// The interface an impl implements.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct Contract {
+    /// `I`: its function from a type to the requirement struct.
+    pub interface: Func,
     /// `I(T)` as the attribute wrote it, whose declarations are the requirements.
     pub requirements: Ty,
 }
@@ -47,8 +56,11 @@ impl ImplDecl {
             Value::Type(ty) => ty.made_by(&a.target).is_some(),
             _ => false,
         };
-        self.interface == other.interface
-            && (self.target == other.target || covers(self, other) || covers(other, self))
+        let same = match (&self.contract, &other.contract) {
+            (Some(a), Some(b)) => a.interface == b.interface,
+            _ => false,
+        };
+        same && (self.target == other.target || covers(self, other) || covers(other, self))
     }
 }
 
@@ -95,10 +107,10 @@ impl Query for Impls {
             each_entry(&ns.members, &mut |member| {
                 let Member::Decl(decl) = member else { return };
                 for &attr in &hir.decls[*decl].attrs {
-                    if let Some((interface, target, requirements)) = env.impl_attr(attr) {
+                    if let Some((contract, target)) = env.impl_attr(attr) {
                         let decl = DeclRef::new(file.clone(), hir, *decl);
                         let attr = hir.exprs[attr].origin;
-                        impls.push(ImplDecl { decl, attr, interface, target, requirements });
+                        impls.push(ImplDecl { decl, attr, contract, target });
                     }
                 }
             });
@@ -112,19 +124,27 @@ impl Query for Impls {
 }
 
 impl Env<'_, '_> {
-    /// The interface, the target and the requirement struct of `#[impl(I(T))]` at `attr`;
-    /// `None` for any other attribute. The attribute is the primitive `lang.impl`, and `I(T)`
-    /// the struct its interface's function built for `T`, which records both.
-    fn impl_attr(&self, attr: ExprId) -> Option<(Func, Value, Ty)> {
-        let ExprKind::Call { callee, args } = &self.parsed.hir.exprs[attr].kind else { return None };
+    /// The contract and the target of `#[impl(I(T))]` or `#[impl(T)]` at `attr`; `None` for
+    /// any other attribute. The attribute is the primitive `lang.impl`; an argument that is an
+    /// interface applied to a target gives the struct its function built, which records both.
+    fn impl_attr(&self, attr: ExprId) -> Option<(Option<Contract>, Value)> {
+        let hir = &self.parsed.hir;
+        let ExprKind::Call { callee, args } = &hir.exprs[attr].kind else { return None };
         let Ok(Value::Primitive(Primitive::Lang(Lang::r#impl))) = self.eval(*callee) else { return None };
         let [Entry::One(Arg { name: None, value })] = args.as_slice() else { return None };
+        let applied = match &hir.exprs[*value].kind {
+            ExprKind::Call { callee, .. } => matches!(self.eval(*callee), Ok(Value::Interface(_))),
+            _ => false,
+        };
+        if !applied {
+            return Some((None, self.eval(*value).ok()?));
+        }
         let requirements = self.ty(*value).ok()?;
         let TyKind::Nominal(Nominal { instance: Some(Instance { f, args }), .. }) = &*requirements else {
             return None;
         };
         let [target] = args.as_slice() else { return None };
-        Some((f.clone(), target.clone(), requirements))
+        Some((Some(Contract { interface: f.clone(), requirements }), target.clone()))
     }
 }
 

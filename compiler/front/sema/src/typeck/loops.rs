@@ -96,7 +96,10 @@ impl Typer<'_, '_, '_> {
     pub(super) fn witness_of(&self, path: &str, ty: Ty) -> Option<Ty> {
         let Ok(Value::Interface(interface)) = self.env().item(path) else { return None };
         let witnesses = self.env().cx.get::<Witnesses>(&(self.env().file.clone(), ty));
-        witnesses.iter().find(|w| w.decl.interface == interface).map(|w| w.ty)
+        witnesses
+            .iter()
+            .find(|w| w.decl.contract.as_ref().is_some_and(|c| c.interface == interface))
+            .map(|w| w.ty)
     }
 
     /// How `for p in e` drives `e` of type `ty`, and the type of the items it binds, looking

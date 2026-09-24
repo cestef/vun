@@ -84,3 +84,22 @@ wrapped: Wrapped = 45;
         ]
     );
 }
+
+#[test]
+fn an_impl_without_an_interface_adds_methods() {
+    let fixture = Fixture::new("impls-inherent");
+    let file = fixture.root.write(
+        "pairs.ov",
+        "\
+Pair := ($T: type) -> type { struct { a: T, b: T } };
+#[impl(Pair)]
+PairMethods := ($T: type) -> type { struct { first := (p: Pair(T)) -> T { p.a }; } };
+first := (p: Pair(u8)) -> bool { p.first() };
+mapped := (r: Result(u8, u8)) -> Result(u8, bool) { r.map_err((e: u8) -> bool { .true }) };
+",
+    );
+    assert_eq!(
+        fixture.reported(&file),
+        [(errors::TYPES_MISMATCH, "expected `bool`, found `Int(0..=255)`".to_owned())]
+    );
+}
