@@ -6,6 +6,7 @@ use overt_hir::tree::ExprId;
 use overt_index::{IndexVec, index};
 use overt_intern::Symbol;
 use overt_origin::OriginId;
+use overt_sema::eval::Staging;
 use overt_sema::ty::{Ty, Value};
 
 use crate::place::Place;
@@ -96,8 +97,12 @@ pub enum Rvalue {
     /// A compile-time value that depends on the call running the body, evaluated in its
     /// environment: a `struct` or `enum` literal, identified by the call (decision 28), a
     /// function literal, which sees the call's parameters, or such a parameter of an enclosing
-    /// function.
-    Comptime(ExprId),
+    /// function. `staged` are the `$for` bindings of the step it is written in (spec 03,
+    /// section 1).
+    Comptime {
+        expr: ExprId,
+        staged: Vec<Staging>,
+    },
 }
 
 /// What an [`Rvalue::Aggregate`] builds.

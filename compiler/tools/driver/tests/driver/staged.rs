@@ -67,8 +67,10 @@ fits: Int(0..=dot(3, &[1, 2, 3], &[4, 5, 6])) = 32;
 over: Int(0..=dot(3, &[1, 2, 3], &[4, 5, 6])) = 33;
 seven := () -> u8 { $if 1 > 2 { (1, 2) } else if 2 > 1 { 7 } else { 9 } };
 eight: Int(0..=seven()) = 8;
+sum := () -> u32 { mut s: u32 = 0; $for i in 0..3 { f := () -> u32 { i + 1 }; s += f(); } s };
+seven_again: Int(0..=sum()) = 7;
 ",
     );
     let reported: Vec<_> = fixture.reported(&file).into_iter().map(|(id, _)| id).collect();
-    assert_eq!(reported, [errors::INT_DOES_NOT_FIT, errors::INT_DOES_NOT_FIT]);
+    assert_eq!(reported, [errors::INT_DOES_NOT_FIT; 3]);
 }

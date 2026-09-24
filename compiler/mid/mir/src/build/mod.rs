@@ -117,6 +117,12 @@ impl<'a, 'db> Builder<'_, 'a, 'db> {
         self.step.as_ref().unwrap_or(self.env)
     }
 
+    /// `expr`, evaluated by the call running the body, under the bindings of the step lowered.
+    fn comptime(&self, expr: ExprId) -> Rvalue {
+        let own = self.env.staged().len();
+        Rvalue::Comptime { expr, staged: self.env().staged()[own..].to_vec() }
+    }
+
     /// The typed body of the code lowered: the instantiation's, or a `$for` step's in it.
     fn typed(&self) -> Option<Arc<TypedBody>> {
         let mut typed = self.env.cx.get::<Typed>(&self.f)?;
@@ -195,7 +201,7 @@ impl<'a, 'db> Builder<'_, 'a, 'db> {
                 // A `$for` binder, or one bound by the instantiation, is a constant.
                 Some(Res::Binder(b)) if hir.binders[b].comptime => match self.env().bound(b) {
                     Some(value) => Ok(Operand::Const(value.clone())),
-                    None => Ok(self.temp(Rvalue::Comptime(expr), origin)),
+                    None => Ok(self.temp(self.comptime(expr), origin)),
                 },
                 _ => self.env().eval(expr).map(Operand::Const).map_err(|_| unbuilt),
             },
@@ -252,7 +258,7 @@ impl<'a, 'db> Builder<'_, 'a, 'db> {
                 Ok(self.temp(Rvalue::Call { callee, args: values }, origin))
             }
             ExprKind::Struct(_) | ExprKind::Enum(_) | ExprKind::Fn { .. } => {
-                Ok(self.temp(Rvalue::Comptime(expr), origin))
+                Ok(self.temp(self.comptime(expr), origin))
             }
             // Anything else only as a constant sema can compute, such as `lang.int.u8`.
             _ => match self.aggregate(expr) {

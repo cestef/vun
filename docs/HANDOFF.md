@@ -276,8 +276,8 @@ In order:
      (`env/condition.rs`, `Selected`). MIR `build/staged.rs` mirrors it (`Builder::{stmts,
      unroll, selected}`, `Builder::typed()` follows the step path); a bound comptime binder is
      an `Operand::Const`. HIR: a `$for` last in a block is not its tail. Coverage counts step
-     types (`TypedBody::typed_count`). Gap: `Rvalue::Comptime` inside a step is evaluated by the
-     interpreter without the step's bindings; a report inside a step repeats once per step.
+     types (`TypedBody::typed_count`). `Rvalue::Comptime { expr, staged }` carries the step's
+     bindings. Gap: a report inside a step repeats once per step.
    - Metaprogramming plan, remaining: (5) quotes and `Code` values (`#{ }`, `$`
      splices, `Code` parameters, `std.meta.source`/`span`), plus duplicate computed names.
    - `types.no_member` on values stays off: turning it on (tried) reports members the corpus

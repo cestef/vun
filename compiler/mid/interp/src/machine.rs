@@ -98,7 +98,7 @@ impl<'b, 'a, 'db> Frame<'b, 'a, 'db> {
             Rvalue::Narrow { operand, ty, narrowing } => {
                 self.operand(operand)?.narrow(&ty.interval().ok_or(Unevaluated::Unsupported)?, *narrowing)
             }
-            Rvalue::Comptime(expr) => self.env.eval(*expr),
+            Rvalue::Comptime { expr, staged } => self.env.clone().staging(staged).eval(*expr),
             Rvalue::Aggregate { kind, parts } => {
                 let parts = parts.iter().map(|p| self.operand(p)).collect::<Result<Vec<_>, _>>()?;
                 Ok(match kind {
