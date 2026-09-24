@@ -1,6 +1,6 @@
 # Handoff
 
-State of Vun as of 2026-09-24 (end of the sixth session), for the next agent. Read this, then
+State of Vun as of 2026-09-24 (end of the seventh session), for the next agent. Read this, then
 `CLAUDE.md` (rules and the agent procedure; on disk but ignored by the user's global gitignore, so
 `jj st` never shows it), then `docs/spec/00-principles.md`, `docs/spec/decisions.md` and the spec
 files of the area you touch.
@@ -72,158 +72,138 @@ typst compile whitepaper/main.typ whitepaper/vun.pdf
 
 Front end and infrastructure (stable; see the code for detail): `vun-index` (`IndexVec`,
 `into_vec`, `From<Vec>`), `vun-intern` (process-wide `Symbol`), `vun-origin` (stable
-`OriginId`s anchored to declarations), `vun-span`, `vun-diag` (`Msg` parts, `Diagnostic`,
-`DiagCtxt`), `vun-query` (verifying traces; persistence built but not wired), `vun-syntax`,
-`vun-hir` (+ `db`: the front end as queries), `vun-command` (declarative CLI), `vun-build`,
-`vun-pkg`, `vun-http`, `vun-hash`, `vun-fs` (`Tree`, `Edit`, `Scratch`), `vun-harness`,
-`vun-trace`, three renderers.
+`OriginId`s anchored to declarations), `vun-span` (`extension!`, `source_file!`), `vun-diag`
+(`Msg` parts, `Diagnostic`, `DiagCtxt`, `Diagnostic::moved`), `vun-query` (verifying traces;
+persistence built but not wired), `vun-syntax` (the literal printer writes `Decl::source` and
+`Decl::listed`, one item per line), `vun-hir` (+ `db`: the front end as queries), `vun-command`
+(declarative CLI), `vun-build` (manifests, `lock.vun` via `Lock::read`), `vun-pkg` (archive
+formats, `Format::PUBLISHED` is `.tar.zst`), `vun-http`, `vun-hash`, `vun-fs` (`Tree`, `Edit`,
+`Scratch`), `vun-harness`, `vun-trace`, three renderers.
 
 **Sema** (`compiler/front/sema`):
-- Types (`ty/`): `TyKind::{Primitive, Nominal, Tuple, Closure, Frame}`; `Nominal` kinds `Struct`,
-  `Enum`, `Empty`; `ty/relate.rs` has `accepts` (integer ranges, bounds, borrows of arrays as
-  slices, `Code(T)` covariance, constructors applied to `never`) and `join`.
+- Types (`ty/`): `TyKind::{Primitive, Nominal, Tuple, Record, Closure, Frame, Param}`; `Nominal`
+  kinds `Struct`, `Enum`, `Empty` (`TyKind::is_empty`). `ty/relate.rs`: `accepts` (integer
+  ranges, bounds, borrows of arrays as slices, borrows of one transition and access for each other
+  but where `&static` is written, signatures with markers, records, `Code(T)` covariance, empty
+  types anywhere) and `join` (borrows meet in the shorter extent). `ty/borrow.rs`: the table
+  `borrows` (`borrowing`, `alike`, `extent`, `TyKind::string` for `&static [N]u8`,
+  `Primitive::{at, borrow_mode}`). `ty/marker.rs`: function-type markers (table `fn_markers`).
+  `ty/display.rs`: large bounds by powers of two (`Int(0..2^64)`).
 - Values (`ty/value.rs`): ints, ranges, types, tuples, arrays, variants, structs, primitives,
-  namespaces, `Fn`, `Closure`, `Linked` (linker-provided `= _` outside `lang`), `Frame`
-  (`eval::Suspended`), `Code`, `Interface`. Parts through `ops::Part` (`Value::{part,
-  with_part}`).
-- Evaluation (`env/`): `Env::eval` for constant forms, calls through the metered `Call` query
-  (`eval::MeteredCall`: steps include callees; `fuel::FUEL` or `#[comptime.fuel(n)]` on the
-  called function); `env/{attr,code,frame,path,primitive,condition,aggregate}.rs`. Attributes
-  are read as data (`Env::{attrs_of, attribute}`).
-- Typing (`typeck/`): the `Typer` visitor per `Instantiation` (`Typed` query), expected types,
-  patterns, loops, `for p in e` (records `Iteration`), `$for`/`$if` steps (`TypedBody::steps`),
-  quotes and splices, `?` (`early_return.rs`), closures and function bodies (`closure.rs`),
-  coroutines (`suspend.rs`), primitives typed per call (`Env::primitive_signature`).
-- Items: `Declared`, `DeclValue`, `DeclType`, `TypedDecl`, `Members` (expands `$for`/`$if`,
-  keeps `_` fields), `MemberType`, `MemberValue`, impls and witnesses (`witness/`: targets may be
-  types, type constructors, or interface constructors taking the type first), visibility,
-  reflection (`reflect.rs`: `lang.meta.{fields, name_of, size, source}`), layout (`layout.rs`,
-  query `Layouts`), kinds (`kinds.rs`, query `Kinds`: `Kind { duplication, region, misplaced }`
-  from parts and `#[kind.linear|free]` on a literal or its constructor), `#[kind.owns]` (the
-  field `.*` reads through, `MemberTable::deref`), `check/` (the file checker: values,
-  impls, visibility, `layout.bits_width`).
+  namespaces, `Fn`, `Closure`, `Constructor`, `Linked` (`= _` outside `lang`, needs a `link`
+  attribute), `Frame` (`eval::Suspended`), `Code`, `Interface`, `Origin`, `Name`. Parts through
+  `ops::Part` (`Value::{part, with_part}`; an item part at a range is a run, `Part::run`).
+- Evaluation (`env/`): `Env::eval` for constant forms; calls through the metered `Call` query;
+  compile-time calls evaluate arguments as their parameters' types and look methods up through
+  borrows; `.name(args)` where a type is expected calls a variant or a constructor function
+  (`Env::constructed`); `env/named.rs` gives names their values, a member of a `struct` literal
+  inside a compile-time call being that call's (`Env::made_member`), and tuple positions
+  (`Env::position`). Frames record the interface call they are written as (`Frame::written`), so
+  `$F: Async(A)` infers `A` (`Env::implemented`).
+- Typing (`typeck/`): the `Typer` per `Instantiation` (`Typed` query): expected types, patterns,
+  loops, `$for`/`$if` steps (`staged.rs`; `Typer::undecided` counts `$if`/`$for` not decided,
+  under which `$e` is typed but not run), `$e` run while typing where all it reads is known,
+  traps and library reports from `$if`, `$for`, `$e` and instantiated signatures reported at the
+  root (`Typer::reported`, evaluating with the types found so far, `Typer::evaluating`), library
+  reports moved to the call that led to them (`Typer::absorb`), quotes and splices, `?`,
+  closures, coroutines, omitted `$` arguments (`omitted.rs`), methods and collisions
+  (`methods.rs`; `required_member` for constrained parameters and frames, a frame answering its
+  interface's `resume` and `end` and having its impls' methods), records and tuple positions
+  (`record.rs`), `unsafe` (`safety.rs`), string literals `&static [N]u8`.
+- Items: `Declared`, `DeclValue`, `DeclType`, `TypedDecl`, `Members`, `MemberType`,
+  `MemberValue`, impls and witnesses (`witness/`: targets are types, type constructors or
+  interface constructors; a type's witnesses also come from the package declaring it,
+  `Env::impl_files(home)`), visibility, reflection (`lang.meta.{fields, items, name_of, size,
+  align, source, span}`), layout, kinds (`Kinds`: `&static` is free), `check/`.
+- Traps (`trap.rs`): `Reason` includes `Reported { message, at }` (`lang.diag.error`), shown as
+  `comptime.reported` with the library's message.
 
-**MIR** (`compiler/mid/mir`): places with projections (`Deref`, `Field`, `Index`, `Position`,
-`Payload`); rvalues `Use`, `Binary`, `Unary`, `Range`, `Narrow`, `Aggregate` (struct, variant,
-tuple, array, closure), `Call`, `Ref`, `IsVariant`, `Resume`, `Repeat`, `Comptime`, `Quote`;
-terminators `Return`, `Goto`, `Branch`, `Yield`, `Defer`, `Unreachable`; `LocalDecl { name, ty, role }`.
-`build/`: one module per form (blocks, calls with receivers per signature, places, patterns,
-control, loops with `for p in e`, suspension, closures, staged, `?`, aggregates, `defer`: the
-statement lowered again at each exit behind `Defer { consumes, run, skip }`). Binder locals take
-their types from `TypedBody::binders`. Unlowered forms
-are `Unbuilt { at }`; `Body::verify` runs on every lowered body in the tests.
+**MIR** (`compiler/mid/mir`): places with projections (`Deref`, `Field`, `Index` (a local holding
+an integer, or bounds for a run of items), `Position`, `Payload`); rvalues `Use`, `Binary`,
+`Unary`, `Range`, `Narrow`, `Aggregate`, `Call`, `Ref`, `IsVariant`, `Resume`, `End`, `Repeat`,
+`Comptime`, `Quote`; terminators `Return`, `Goto`, `Branch`, `Yield`, `Defer`, `Unreachable`;
+`LocalDecl { name, ty, role }` with `Role::{Held, Unpacked, Static}` (a top-level binding's
+storage). `build/`: one module per form; receivers take their mode from `MemberType`; a frame's
+`resume()`/`end()` lower to `Resume`/`End` (table `iteration`, column `end`); a call of an empty
+type ends its block; `xs[a..b]` through a borrow is a borrow of the run. Unlowered forms are
+`Unbuilt { at }`; `Body::verify` runs on every lowered body in the tests.
 
-**Passes** (`compiler/mid/passes`): `places/` (query `PlaceStates`): uninitialized reads, joins,
-`&out` targets, moves of linear values, `place.linear_leak` at returns, `Defer` decided statically
-(runs where every consumed local is `init`). `borrows/` (query `BorrowChecks`): loans from
-`Rvalue::Ref` flow forward into locals (scoped results hold their operands' loans), locals'
-liveness backward; an access overlapping a live loan conflicts when either is exclusive (column
-`access` of `borrows`), a write skips loans past a `.*` inside it; loans of own storage in the
-result escape; `free.rs` reports values built misplaced (`borrow.in_free_value`). Stage `places` in the
-driver; stages declare `Input::{Source, Mir}` so the corpus keeps MIR reports pending in bodies
-MIR does not lower (`Session::unlowered`).
+**Passes** (`compiler/mid/passes`): `places/` (uninitialized reads, joins, `&out`, moves of linear
+values, `End` consumes, `place.linear_leak` at returns, `place.move_out_of_borrow`, `Defer`).
+`borrows/`: loans from `Rvalue::Ref` flow into locals (a call's scoped result holds its
+arguments' loans but those passed to `&temp` parameters, per `Func::extents`); a `&temp`
+parameter is a `Source::Lent` loan that conflicts with nothing and escapes when it reaches the
+result; conflicts by the column `access`; loans of own storage (not `Role::Static`) in the result
+escape; `free.rs` (`borrow.in_free_value`). `panics.rs` (`#[panic.never]`), `types.rs` (place
+types along projections).
 
-**Interpreter** (`compiler/mid/interp`): runs MIR on compile-time values; places are rebuilt to
-write parts; shared borrows read as values; `&mut` and writes through `.*` are refused (no memory
-model); frames suspend and resume (`frames.rs`).
+**Interpreter** (`compiler/mid/interp`): runs MIR on compile-time values; shared borrows read as
+values; `&mut` and writes through `.*` are refused (no memory model); frames suspend and resume;
+`End` of a finished frame is nothing, of a suspended one unsupported.
 
-**Driver and tools**: `Session::check` runs names, types, places; `stages::STAGES`;
-`Coverage` (typed expressions, lowered functions, what stops MIR); `cargo xtask {generate,
-corpus, lines}`.
+**Driver and tools**: `Session::check` runs names, types, places, borrows, panics;
+`stages::STAGES`; `Coverage`; `cargo xtask {generate, corpus, lines}`.
 
-Progress (corpus/accept): 61% of body expressions typed, 79 of 112 functions lowered. Corpus:
-195 passed, 7 pending, 20 shown, 0 failed. 193 tests, including one that checks every `lang` and
-`std` file cleanly.
+**Libraries**: `lang` (primitives: `lang.mem` borrows `Ref`..`RefStatic`, pointers, `Cell`,
+`cell`, `cell_pointer`, `atomic_*` with `Ordering`, `items_pointer`; `lang.diag.error`;
+`lang.meta.items`). `std`: `option`, `result`, `cmp`, `ptr`, `mem` (`Own`, `alloc.Fixed`),
+`int`, `seq` (`len`, `enumerate`), `iter` (`Iter`; `enumerate`, `map`, `filter`, `take`,
+`count` on every frame), `sync` (`critical` lending `&temp Critical`, `Shared`, `Atomic`,
+`Mutex` with a nested linear `Guard`, link symbols `enter`/`leave`), `os` (`System`, `Stream`
+with a `Writer` impl, `Exit`, `start` over `os.libc.start`), `fmt` (`Writer`, `Format`, `print`
+splitting the format at compile time and reporting a mismatched argument count), `diag`
+(`Report`, `error`), `task` (`Event`, `Wait` with `also`, `select`, `run`, `block_on`, link
+symbol `sleep`), `build` (records a plan; not run yet), `panic`.
 
-Since then (decisions 106 to 113): callbacks generic over `lang.ops.Call` (table `calls`,
-`Env::implemented`, constraint inference); raw pointer primitives, `lang.panic.fail(Reason)`,
-`lang.meta.span`/`align`, `Value::Origin`; `std.ptr`, a real `std.mem.Own`, `std.mem.alloc.Fixed`,
-`expect`; empty types accepted anywhere; spread-selected names evaluate (`Hir::spread_of`);
-function-type markers (`ty/marker.rs`: `Marker`, table `fn_markers` with relations), `unsafe` as
-one marker (`typeck/safety.rs`, `safety.requires_unsafe`), `#[panic.never]` on MIR
-(`passes/panics.rs`), `binding.hole_value` (`check/holes.rs`), `lang.int.abs`/`magnitude`, bit
-operations on `uN` only (`types.no_impl`). `passes/types.rs` types places along projections.
-
-Since then (decisions 118, 119): no bespoke formats. The lockfile is `lock.vun`, a Vun literal
-file read by `Lock::read` (through `manifest::record`) and written by `Decl::listed` (one entry per
-line); packages are published as `.tar.zst` (`Format::PUBLISHED`), the `.ovpkg` code is gone; file
-names derive from `vun_span::source_file!`. `&temp` borrows are rows of `borrows` with the column
-`extent` (`Primitive::borrow_mode`, `TyKind::{alike, extent}`, `Func::extents`); in `borrows/` a
-`&temp` parameter is a `Source::Lent` loan, and call results are not tied to `&temp` arguments.
-
-Since then (decisions 121, 122): `std.sync` (`critical` lending `&temp Critical`, `Shared`,
-`Atomic`, `Mutex` with a nested linear `Guard`) over `lang.mem.{cell, cell_pointer, atomic_*}`;
-`std.os` (`System`, `Stream`, `Exit`, `start` = `std.os.libc.start`). MIR: top-level bindings are
-`Role::Static` places; receivers take their mode from `MemberType`. Sema: `.name(args)` calls a
-constructor function at compile time (`Env::constructed`); `env/named.rs` gives a member of a
-`struct` literal inside a call the instance that call made (`Env::made_member`). Corpus: 202
-passed, 0 pending; MIR lowers 89 of 115 functions.
-
-Since then (decisions 123, 124): `&static` (row `static`, `TyKind::string` for literals, kinds
-free), tuple positions (`Env::position`, typed in `typeck/record.rs`, MIR `Projection::Position`),
-range slices lowered as borrows of item runs (`Part::run` at compile time), witnesses also looked
-up in the type's own package (`Env::impl_files(home)`), and `std.fmt` (`Writer`, `Format`,
-`print` splitting the format at compile time; impls for integers, byte slices and arrays).
-Library diagnostics (decision 125): `lang.diag.error`, `std.diag.error`, `comptime.reported`
-moved to the caller (`Typer::absorb`), `$e` run while typing (`Typer::undecided` counts undecided
-`$if`/`$for`), `Typer::evaluating` (evaluation with the types found so far).
-
-Executors (decision 126): `std.task.{Event, Wait, select, run, block_on}`; frames' `resume`
-and `end` typed and lowered (MIR `Rvalue::End`), `Frame::written` for inference through aliases
-such as `Async(A)`. `std.iter` adapters as methods of every frame (decision 127). MIR lowers 93 of
-115 functions.
-
-Language surface since the review (decisions 99 to 105): omitted `$` arguments inferred
-(`typeck/omitted.rs`, `TypedBody::inferred`, `types.cannot_infer`, `types.arity`); variant
-constructors as values (`Value::Constructor`); `.` through owners (`Env::reach`, `Hop`);
-two-phase receivers (MIR `Receiver`); `#[impl(T)]` without an interface (`ImplDecl::contract`),
-`impl.collision` at lookups (`typeck/methods.rs`); `true`/`false` names; attributes on block
-tails (kind attributes on literals only); enum namespaces (`ExprKind::Enum { variants, ns }`);
-`place.move_out_of_borrow` (`places/moved.rs`). `std`: `option`, `result`, `cmp` in Vun.
-Value lookups skip variants (`r.ok()` is the method).
+Progress: corpus 204 passed, 0 pending, 20 shown, 0 failed; 69% of body expressions typed; MIR
+lowers 93 of 115 functions (stops: `StructLit` 4, `$` 3, `For` 3, `Member` 3). 199 tests,
+including one that checks every `lang` and `std` file cleanly.
 
 ## 6. Decisions
 
-Decisions 1 to 84, 91, 92, 98 to 106, 109 and 111 are accepted (65 to 84 on the agent's
-recommendation; the rest with the user's choices or on the review the user accepted). 85 to 90,
-93 to 97, 107, 108, 110, 112 and 113 are proposed (107: pointer primitives and `std` on them;
-108: empty types accepted anywhere; 110: `lang.hint.unreachable`; 112: `abs`, holes; 113: bit
-operations); $for in bodies (85), code values (86), quote levels (87), MIR places (88), MIR
-patterns and typed annotations (89), linked values and repeats (90), layout (93), place states
-(94), kinds and moves (95), `defer` (96), borrow rules (97). New language rules go to
-`decisions.md` as proposed unless the user approves them.
+Accepted: 1 to 84, 91, 92, 98 to 106, 109, 111, 116, 118 (no bespoke formats: `lock.vun`,
+`.tar.zst`), 120 (the rename to Vun). Proposed, awaiting the user: 85 to 90, 93 to 97, 107, 108,
+110, 112 to 115, 117 (`std.build` API), 119 (`&temp`), 121 (`std.sync`, `std.os`), 122 (statics
+in MIR, constructor calls at compile time, members of made types), 123 (`&static`, tuple
+positions, range slices, witnesses in the type's package), 124 (`std.fmt`), 125 (library
+diagnostics), 126 (executors, frames' `resume`/`end`), 127 (`std.iter` adapters). New language
+rules go to `decisions.md` as proposed unless the user approves them.
 
 ## 7. Next steps, in order
 
-1. `std` next: `std.task.Pool`, `std.testing.Sim`, the runtimes' `std.task.sleep` (WFI on
-   bare metal, a futex wait hosted), more `std.iter` adapters (`zip`, `chain`, `fold`),
-   `System.args`, a Linux runtime without the C library, `Allocator`
-   impls for `Fixed`, text (`Str`) and collections. Pointer primitives, `Own`, `Fixed`, `fail`,
-   `expect`, `ptr`, `option`, `result`, `cmp` exist (decision 107).
+1. `std`: `std.task.Pool`, `std.testing.Sim`, the runtimes' `std.task.sleep` (WFI on bare
+   metal, a futex wait hosted) and `std.sync.enter`/`leave`; `std.iter` `zip`, `chain`, `fold`;
+   `System.args`; a Linux runtime without the C library; `Allocator` impls for `Fixed`; text
+   (`Str`) and collections; `Format` for arrays of non-bytes, `print`'s `.fixes`.
 2. Leaks at scope exits inside a body (found at the function's return only today), `fixed` and
-   `scoped` kinds, frames' `end` running their defers.
-3. Borrow rules left: `&x` of an immutable top-level binding typed `&static`, top-level
-   bindings as free values, frames'
-   region from their parameters, a label where a
-   conflicting borrow is used later.
-4. The driver side of `std.build`: run `build` (needs `&mut` at compile time, step 8) and read
+   `scoped` kinds, frames' `end` running their defers (MIR `End`, the interpreter).
+3. Borrow rules left: `&x` of an immutable top-level binding typed `&static`, top-level bindings
+   as free values, frames' region from their parameters, a label where a conflicting borrow is
+   used later.
+4. The driver side of `std.build`: run `build` (needs `&mut` at compile time, step 7) and read
    the recorded plan; `lib/targets` as a typed package so `.target = targets...` types.
 5. MIR gaps (`cargo xtask corpus` lists them): run-time splices of code, `.{ }` and `.name` in
    plain instantiations of generic bodies, or-patterns that bind, `lang.simd.chunks`.
-6. Sema gaps: impl member types against requirements, constrained `$W: Writer` (members of
-   `W` limited to the interface's), narrowing by comparisons (decision 35), exhaustiveness
-   (decision 29), `meta.frozen`, `#[layout.offset]`/`#[layout.c]`, frame layouts,
-   `coroutine.recursive_frame`, markers checked beyond `unsafe` and `panic.never` (`abi`,
-   `stack.max`, `target.require` are carried and compared but not checked on bodies).
+6. Sema gaps: traps inside a callee's instantiated signature are not reported; members of
+   primitive types missing from every impl are silent (no `types.no_member`); impl member types
+   against requirements; narrowing by comparisons (decision 35), exhaustiveness (decision 29),
+   `#[layout.offset]`/`#[layout.c]`, frame layouts, markers checked beyond `unsafe` and
+   `panic.never`.
 7. Evaluator: its own stack (deep chains of compile-time calls overflow the host stack), a
    memory model for `&mut` at compile time.
 8. Persist the front-end queries; packaging: signed caches (decision 63), planned builds,
-   `vun pkg why`; `.workspace` visibility. `names.private`, `binding.hole_value`.
+   `vun pkg why`; `.workspace` visibility.
 
 ## 8. Pitfalls
 
 - The project was renamed from Overt to Vun (crates `vun-*`, CLI `vun`, sources `.vun`, `VUN_*`
   variables); the extension comes from `vun_span::extension!`, file names from `source_file!`.
+- `or` is a keyword: a field cannot be named `or` (the `Wait` chain is `also`).
+- `$if` cannot bind a pattern (`$if .some(i) = x` does not resolve `i`); carry the value instead.
+- A test module named `std` would shadow the Rust crate: the driver's is `stdlib.rs`.
+- Children namespaces are not in scope by bare name inside their parent: write `std.os.libc`.
+- Private (`_`) fields are visible only inside their own struct literal: a constructor or an
+  accessor goes in that struct (`Critical.run`, `Stream.of`, `Mutex.Guard.acquire`).
 - Crates bake in `env!("CARGO_MANIFEST_DIR")` (`vun_harness::repo_root`), and cargo does not
   rebuild them when the repository moves: run `cargo clean` after a move. The target directory is
   the repository's own `target/`.
