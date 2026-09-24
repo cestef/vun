@@ -2,10 +2,10 @@
 //! a division by zero is a trap, and on integer types, by interval arithmetic. Sema and the
 //! interpreter both compute through here.
 
-use overt_grammar::TokenKind;
+use overt_grammar::{Narrowing, TokenKind};
 
 use crate::env::Unevaluated;
-use crate::int::Interval;
+use crate::int::{Extended, Integer, Interval};
 use crate::ty::Value;
 
 impl Value {
@@ -25,6 +25,32 @@ impl Value {
             TokenKind::Shl => a.shifted(b).ok_or(Unevaluated::Trapped)?,
             TokenKind::Shr => a.shifted(&-b).ok_or(Unevaluated::Trapped)?,
             _ => return Err(Unevaluated::Unsupported),
+        };
+        Ok(Self::Int(n))
+    }
+
+    /// This integer brought into the range `range` (spec 04, rule 3): unchanged when it lies
+    /// within, and otherwise a trap for [`Narrowing::To`], the value congruent modulo the size of
+    /// the range for [`Narrowing::Wrap`], the nearer bound for [`Narrowing::Sat`].
+    ///
+    /// # Errors
+    /// Returns [`Unevaluated::Trapped`] when `.to` fails or the range is unbounded for `.wrap`,
+    /// and [`Unevaluated::Unsupported`] for a value that is no integer.
+    pub fn narrow(&self, range: &Interval, narrowing: Narrowing) -> Result<Self, Unevaluated> {
+        let Self::Int(n) = self else { return Err(Unevaluated::Unsupported) };
+        if range.contains(&Interval::singleton(n.clone())) {
+            return Ok(self.clone());
+        }
+        let bound = |b: &Extended| b.finite().cloned().ok_or(Unevaluated::Trapped);
+        let n = match narrowing {
+            Narrowing::To => return Err(Unevaluated::Trapped),
+            Narrowing::Wrap => {
+                let (lo, hi) = (bound(range.lo())?, bound(range.hi())?);
+                let size = &(&hi - &lo) + &Integer::from(1);
+                &lo + &(n - &lo).modulo(&size).ok_or(Unevaluated::Trapped)?
+            }
+            Narrowing::Sat if Extended::Finite(n.clone()) < *range.lo() => bound(range.lo())?,
+            Narrowing::Sat => bound(range.hi())?,
         };
         Ok(Self::Int(n))
     }

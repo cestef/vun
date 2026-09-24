@@ -2,7 +2,9 @@
 //! declarations become locals; any other name is a constant sema evaluates. A form not lowered
 //! yet is [`Unbuilt`], at its origin, so that evaluation stops rather than guesses.
 
+mod assign;
 mod control;
+mod loops;
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -14,7 +16,7 @@ use overt_hir::tree::{
 };
 use overt_index::{Idx, IndexVec};
 use overt_origin::OriginId;
-use overt_query::{Cx, Query};
+use overt_query::{Cx, Cycle, Query};
 use overt_sema::env::Env;
 use overt_sema::int::Integer;
 use overt_sema::item::ExprRef;
@@ -41,7 +43,12 @@ impl Query for Mir {
 
     fn compute(cx: &Cx<'_>, f: &ExprRef) -> Self::Value {
         let env = Env::of(cx, &f.file).expect("a function value's file is read");
-        Builder::lower(&env, f.expr).map(Arc::new)
+        Builder::lower(&env, f).map(Arc::new)
+    }
+
+    fn cycle(cx: &Cx<'_>, f: &ExprRef, _: &Cycle) -> Self::Value {
+        let env = Env::of(cx, &f.file).expect("a function value's file is read");
+        Err(Unbuilt { at: env.parsed.hir.exprs[f.expr].origin })
     }
 }
 
@@ -53,19 +60,33 @@ struct Builder<'e, 'a, 'db> {
     current: BlockId,
     /// The local each binder of the body is stored in.
     bound: HashMap<BinderId, Local>,
+    /// Where the result is written before returning.
+    ret: Local,
+    /// The loops around the code lowered, innermost last.
+    loops: Vec<loops::Loop>,
+    /// The function lowered, whose typed body gives the types of places.
+    f: ExprRef,
 }
 
 impl Builder<'_, '_, '_> {
-    fn lower(env: &Env<'_, '_>, f: ExprId) -> Result<Body, Unbuilt> {
+    fn lower(env: &Env<'_, '_>, f: &ExprRef) -> Result<Body, Unbuilt> {
         let hir = &env.parsed.hir;
-        let origin = hir.exprs[f].origin;
-        let ExprKind::Fn { params, body, .. } = &hir.exprs[f].kind else {
+        let origin = hir.exprs[f.expr].origin;
+        let ExprKind::Fn { params, body, .. } = &hir.exprs[f.expr].kind else {
             return Err(Unbuilt { at: origin });
         };
         let mut locals = IndexVec::new();
         let ret = locals.push(LocalDecl { name: None, origin });
-        let mut b =
-            Builder { env, locals, blocks: IndexVec::new(), current: Idx::new(0), bound: HashMap::new() };
+        let mut b = Builder {
+            env,
+            locals,
+            blocks: IndexVec::new(),
+            current: Idx::new(0),
+            bound: HashMap::new(),
+            ret,
+            loops: Vec::new(),
+            f: f.clone(),
+        };
         b.current = b.fresh(origin);
         let mut args = Vec::new();
         for param in params {
@@ -108,12 +129,15 @@ impl Builder<'_, '_, '_> {
             match stmt {
                 HirStmt::Decl(d) => {
                     let decl = &hir.decls[*d];
-                    let (PatKind::Bind(binder), Some(value)) = (&hir.pats[decl.pat].kind, decl.value) else {
+                    let PatKind::Bind(binder) = &hir.pats[decl.pat].kind else {
                         return Err(Unbuilt { at: decl.origin });
                     };
-                    let value = self.operand(value)?;
+                    // Without a value, the local starts uninitialized.
+                    let value = decl.value.map(|v| self.operand(v)).transpose()?;
                     let local = self.bind(*binder);
-                    self.assign(Place { local }, Rvalue::Use(value), decl.origin);
+                    if let Some(value) = value {
+                        self.assign(Place { local }, Rvalue::Use(value), decl.origin);
+                    }
                 }
                 HirStmt::Expr(e) => {
                     self.operand(*e)?;
@@ -121,7 +145,7 @@ impl Builder<'_, '_, '_> {
                 HirStmt::Block(inner) => {
                     self.block(*inner)?;
                 }
-                HirStmt::Assign { origin, .. } => return Err(Unbuilt { at: *origin }),
+                HirStmt::Assign { op, place, value, origin } => self.store(*op, *place, *value, *origin)?,
             }
         }
         match hir.blocks[block].tail {
@@ -152,6 +176,14 @@ impl Builder<'_, '_, '_> {
                 self.logic(*op, *left, *right, origin)
             }
             ExprKind::If { cond, then, otherwise } => self.branch(cond, *then, *otherwise, origin),
+            ExprKind::For { head, body } => self.repeat(None, head, *body, origin),
+            ExprKind::Labeled { label, body } => match &hir.exprs[*body].kind {
+                ExprKind::For { head, body } => self.repeat(Some(*label), head, *body, origin),
+                _ => Err(unbuilt),
+            },
+            ExprKind::Break { label, value } => self.leave(*label, *value, origin),
+            ExprKind::Continue { label } => self.again(*label, origin),
+            ExprKind::Return(value) => self.exit(*value, origin),
             ExprKind::Infix { op, left, right: Some(right) } => {
                 let (left, right) = (self.operand(*left)?, self.operand(*right)?);
                 Ok(self.temp(Rvalue::Binary { op: *op, left, right }, origin))

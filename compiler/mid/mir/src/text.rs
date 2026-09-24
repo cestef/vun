@@ -35,6 +35,9 @@ impl fmt::Display for Rvalue {
             Self::Range { op, lo, hi: None } => write!(f, "{lo}{}", text(*op)),
             Self::Nominal { kind: NominalKind::Struct, .. } => f.write_str("struct { .. }"),
             Self::Nominal { kind: NominalKind::Enum, .. } => f.write_str("enum { .. }"),
+            Self::Narrow { operand, ty, narrowing } => {
+                write!(f, "{operand} narrowed to {ty} ({narrowing:?})")
+            }
             Self::Call { callee, args } => {
                 write!(f, "{callee}(")?;
                 for (i, arg) in args.iter().enumerate() {

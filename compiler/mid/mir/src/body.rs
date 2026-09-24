@@ -1,12 +1,12 @@
 //! Function bodies: locals, and basic blocks of statements ending in a terminator (spec 13,
 //! section 3). Every local, statement and terminator carries the origin that produced it.
 
-use overt_grammar::TokenKind;
+use overt_grammar::{Narrowing, TokenKind};
 use overt_hir::tree::ExprId;
 use overt_index::{IndexVec, index};
 use overt_intern::Symbol;
 use overt_origin::OriginId;
-use overt_sema::ty::{NominalKind, Value};
+use overt_sema::ty::{NominalKind, Ty, Value};
 
 use crate::place::Place;
 
@@ -70,6 +70,13 @@ pub enum Rvalue {
     Call {
         callee: Operand,
         args: Vec<Operand>,
+    },
+    /// `operand` brought into the integer type `ty` as a compound assignment does (spec 04,
+    /// rule 9): a trap site for [`Narrowing::To`].
+    Narrow {
+        operand: Operand,
+        ty: Ty,
+        narrowing: Narrowing,
     },
     /// The type a `struct` or `enum` literal of the body's file evaluates to, identified by the
     /// literal and the call running the body (decision 28).

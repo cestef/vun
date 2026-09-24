@@ -57,6 +57,13 @@ impl Integer {
         (!divisor.is_zero()).then(|| Self(&self.0 % &divisor.0))
     }
 
+    /// The remainder of dividing by `modulus` that has the modulus's sign, as modular reduction
+    /// computes it; `None` for a zero modulus.
+    #[must_use]
+    pub fn modulo(&self, modulus: &Self) -> Option<Self> {
+        (!modulus.is_zero()).then(|| Self(((&self.0 % &modulus.0) + &modulus.0) % &modulus.0))
+    }
+
     /// `self * 2^amount`, or `self / 2^amount` rounded toward negative infinity for a negative
     /// amount, as `<<` and `>>` compute at compile time; `None` for an amount past `u32`.
     #[must_use]

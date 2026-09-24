@@ -52,3 +52,24 @@ fn values_are_checked_against_their_types_through_the_prelude() {
         "{reports:?}"
     );
 }
+
+#[test]
+fn narrowing_traps_wraps_and_saturates() {
+    use overt_grammar::Narrowing;
+
+    use crate::env::Unevaluated;
+    use crate::int::{Integer, Interval};
+    use crate::ty::Value;
+
+    let u8 = Interval::closed(Integer::from(0), Integer::from(255)).unwrap();
+    let int = |n: i32| Value::Int(Integer::from(n));
+    let narrow = |n, how| int(n).narrow(&u8, how);
+    assert_eq!(narrow(200, Narrowing::To), Ok(int(200)));
+    assert_eq!(narrow(260, Narrowing::To), Err(Unevaluated::Trapped));
+    assert_eq!(narrow(260, Narrowing::Wrap), Ok(int(4)));
+    assert_eq!(narrow(-1, Narrowing::Wrap), Ok(int(255)));
+    assert_eq!(narrow(-7, Narrowing::Sat), Ok(int(0)));
+    assert_eq!(narrow(999, Narrowing::Sat), Ok(int(255)));
+    let unbounded = Interval::at_least(Integer::from(0));
+    assert_eq!(int(-1).narrow(&unbounded, Narrowing::Wrap), Err(Unevaluated::Trapped));
+}

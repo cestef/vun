@@ -67,3 +67,42 @@ head := (x: u8) -> u8 { if x { 1 } else { 2 } };
         ]
     );
 }
+
+#[test]
+fn loops_and_assignments_run_at_compile_time() {
+    let fixture = Fixture::new("comptime-loops");
+    let file = fixture.root.write(
+        "loops.ov",
+        "\
+sum := ($n: u8) -> u16 {
+    mut total: u16 = 0;
+    mut i: u8 = 0;
+    for i < n { i += 1; total += i; }
+    total
+};
+root := ($n: u8) -> u8 {
+    mut i: u8 = 0;
+    'search: for {
+        if i * i > n { break 'search i; }
+        i += 1;
+    }
+};
+wrap := ($n: u8) -> u8 { mut x: u8 = n; x +%= 250; x };
+early := ($n: u8) -> u8 { if n > 3 { return 1; } 2 };
+Sum := Int(0..=sum(4));
+Root := Int(0..=root(20));
+Wrap := Int(0..=wrap(10));
+Early := Int(0..=early(9));
+sum_fits: Sum = 10;
+sum_over: Sum = 11;
+root_over: Root = 6;
+wrap_over: Wrap = 5;
+early_over: Early = 2;
+",
+    );
+    let messages: Vec<String> = fixture.reported(&file).into_iter().map(|(_, m)| m).collect();
+    assert_eq!(
+        messages,
+        ["Sum", "Root", "Wrap", "Early"].map(|t| format!("value does not fit the type `{t}`"))
+    );
+}

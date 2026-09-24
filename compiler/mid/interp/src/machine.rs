@@ -8,6 +8,11 @@ use overt_sema::env::{Env, Unevaluated};
 use overt_sema::eval::{Call, Instance};
 use overt_sema::ty::Value;
 
+/// The steps, statements and terminators, a compile-time call may run of its own body; the
+/// calls it makes have their own. A budget per call, not per evaluation root, keeps a memoized
+/// call's outcome independent of which root reached it first.
+pub const BUDGET: u64 = 1 << 24;
+
 /// One call's locals.
 pub struct Frame<'b, 'a, 'db> {
     body: &'b Body,
@@ -39,7 +44,12 @@ impl<'b, 'a, 'db> Frame<'b, 'a, 'db> {
     /// Returns why a statement has no value.
     pub fn run(mut self) -> Result<Value, Unevaluated> {
         let mut block = &self.body.blocks[overt_index::Idx::new(0)];
+        let mut steps: u64 = 0;
         loop {
+            steps += 1 + block.stmts.len() as u64;
+            if steps > BUDGET {
+                return Err(Unevaluated::Exhausted);
+            }
             for stmt in &block.stmts {
                 let value = self.rvalue(&stmt.value)?;
                 self.locals[stmt.place.local] = Some(value);
@@ -74,6 +84,9 @@ impl<'b, 'a, 'db> Frame<'b, 'a, 'db> {
             Rvalue::Range { op, lo, hi } => {
                 let hi = hi.as_ref().map(|h| self.operand(h)).transpose()?;
                 Value::range(*op, &self.operand(lo)?, hi.as_ref())
+            }
+            Rvalue::Narrow { operand, ty, narrowing } => {
+                self.operand(operand)?.narrow(&ty.interval().ok_or(Unevaluated::Unsupported)?, *narrowing)
             }
             Rvalue::Nominal { literal, kind } => Ok(self.env.nominal(*literal, *kind)),
             Rvalue::Call { callee, args } => {

@@ -52,3 +52,33 @@ borrows := [
     .{ .mode = "out", .item = "lang.mem.RefOut" },
     .{ .mode = "take", .item = "lang.mem.RefTake" },
 ];
+
+/// How a compound assignment brings its result back to the place's type (spec 04, rule 9).
+Narrowing := enum {
+    /// Traps outside the type: `x = (x op y).to(TypeOf(x))`.
+    to,
+    /// Modular reduction: `.wrap`.
+    wrap,
+    /// Clamps to the bounds: `.sat`.
+    sat,
+};
+
+/// Compound assignments: `x op= y` is `x = (x op y)` narrowed back to the type of `x`.
+compound := [
+    .{ .token = .plus_eq, .op = .plus, .narrowing = .to },
+    .{ .token = .minus_eq, .op = .minus, .narrowing = .to },
+    .{ .token = .star_eq, .op = .star, .narrowing = .to },
+    .{ .token = .slash_eq, .op = .slash, .narrowing = .to },
+    .{ .token = .percent_eq, .op = .percent, .narrowing = .to },
+    .{ .token = .amp_eq, .op = .amp, .narrowing = .to },
+    .{ .token = .pipe_eq, .op = .pipe, .narrowing = .to },
+    .{ .token = .caret_eq, .op = .caret, .narrowing = .to },
+    .{ .token = .shl_eq, .op = .shl, .narrowing = .to },
+    .{ .token = .shr_eq, .op = .shr, .narrowing = .to },
+    .{ .token = .plus_percent_eq, .op = .plus, .narrowing = .wrap },
+    .{ .token = .minus_percent_eq, .op = .minus, .narrowing = .wrap },
+    .{ .token = .star_percent_eq, .op = .star, .narrowing = .wrap },
+    .{ .token = .plus_pipe_eq, .op = .plus, .narrowing = .sat },
+    .{ .token = .minus_pipe_eq, .op = .minus, .narrowing = .sat },
+    .{ .token = .star_pipe_eq, .op = .star, .narrowing = .sat },
+];

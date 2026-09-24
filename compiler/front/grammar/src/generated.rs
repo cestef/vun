@@ -12,6 +12,16 @@ pub enum Form {
     /// `?T`.
     Optional,
 }
+/// How a compound assignment brings its result back to the place's type (spec 04, rule 9).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum Narrowing {
+    /// Traps outside the type: `x = (x op y).to(TypeOf(x))`.
+    To,
+    /// Modular reduction: `.wrap`.
+    Wrap,
+    /// Clamps to the bounds: `.sat`.
+    Sat,
+}
 /// Kinds of tokens.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum TokenKind {
@@ -1192,6 +1202,25 @@ pub const BORROWS: &[(&str, &str)] = &[
     ("mut", "lang.mem.RefMut"),
     ("out", "lang.mem.RefOut"),
     ("take", "lang.mem.RefTake"),
+];
+/// Compound assignments: `x op= y` is `x = (x op y)` narrowed back to the type of `x`.
+pub const COMPOUND: &[(TokenKind, TokenKind, Narrowing)] = &[
+    (TokenKind::PlusEq, TokenKind::Plus, Narrowing::To),
+    (TokenKind::MinusEq, TokenKind::Minus, Narrowing::To),
+    (TokenKind::StarEq, TokenKind::Star, Narrowing::To),
+    (TokenKind::SlashEq, TokenKind::Slash, Narrowing::To),
+    (TokenKind::PercentEq, TokenKind::Percent, Narrowing::To),
+    (TokenKind::AmpEq, TokenKind::Amp, Narrowing::To),
+    (TokenKind::PipeEq, TokenKind::Pipe, Narrowing::To),
+    (TokenKind::CaretEq, TokenKind::Caret, Narrowing::To),
+    (TokenKind::ShlEq, TokenKind::Shl, Narrowing::To),
+    (TokenKind::ShrEq, TokenKind::Shr, Narrowing::To),
+    (TokenKind::PlusPercentEq, TokenKind::Plus, Narrowing::Wrap),
+    (TokenKind::MinusPercentEq, TokenKind::Minus, Narrowing::Wrap),
+    (TokenKind::StarPercentEq, TokenKind::Star, Narrowing::Wrap),
+    (TokenKind::PlusPipeEq, TokenKind::Plus, Narrowing::Sat),
+    (TokenKind::MinusPipeEq, TokenKind::Minus, Narrowing::Sat),
+    (TokenKind::StarPipeEq, TokenKind::Star, Narrowing::Sat),
 ];
 /// Words that are keywords only in one context.
 pub const CONTEXTUAL: &[(&str, Context)] = &[

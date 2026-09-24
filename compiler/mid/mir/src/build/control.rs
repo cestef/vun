@@ -4,7 +4,6 @@
 use overt_grammar::TokenKind;
 use overt_hir::tree::{BlockId as HirBlock, Cond, ExprId};
 use overt_origin::OriginId;
-use overt_sema::ty::Value;
 
 use super::{Builder, Unbuilt};
 use crate::body::{Block, BlockId, LocalDecl, Operand, Rvalue, Terminator, TerminatorKind};
@@ -18,12 +17,12 @@ impl Builder<'_, '_, '_> {
     }
 
     /// Ends the current block with `kind`.
-    fn terminate(&mut self, kind: TerminatorKind, origin: OriginId) {
+    pub(super) fn terminate(&mut self, kind: TerminatorKind, origin: OriginId) {
         self.blocks[self.current].term = Terminator { kind, origin };
     }
 
     /// A new local for the value of the expression at `origin`.
-    fn result(&mut self, origin: OriginId) -> Place {
+    pub(super) fn result(&mut self, origin: OriginId) -> Place {
         Place { local: self.locals.push(LocalDecl { name: None, origin }) }
     }
 
@@ -47,7 +46,7 @@ impl Builder<'_, '_, '_> {
         self.current = no;
         let value = match otherwise {
             Some(e) => self.operand(e)?,
-            None => Operand::Const(Value::Tuple(Vec::new())),
+            None => Self::unit(),
         };
         self.assign(result, Rvalue::Use(value), origin);
         self.terminate(TerminatorKind::Goto(join), origin);

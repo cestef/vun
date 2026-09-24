@@ -40,8 +40,10 @@ pub enum Unevaluated {
     Absent,
     /// A declaration provided from outside that is not a primitive: by the linker or an impl.
     Provided,
-    /// A trap fired: a division by zero, or a shift past any width.
+    /// A trap fired: a division by zero, a shift past any width, a failed narrowing.
     Trapped,
+    /// A call ran out of its step budget (spec 03, section 7).
+    Exhausted,
     /// A form not evaluated yet.
     Unsupported,
 }
