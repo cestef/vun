@@ -212,7 +212,8 @@ pub trait DiagSink {
 
 - **Targets are data written in Vun.** A `TargetSpec` (word size, endianness, alignments, ABIs,
   features, object format, entry symbol, default backend and linker) is a compile-time value from
-  the `targets` package. Adding a target adds a file; the compiler is not rebuilt.
+  the `targets` package, a `lang.target.Spec`: architectures, object formats, backends and linkers
+  are `lang.meta.Name`s, sets the registries extend, and endianness is `lang.target.Endian`. Adding a target adds a file; the compiler is not rebuilt.
 - **One binary, three kinds of component** (decision 131). `vun` is one executable, and what it
   holds is decided per component:
   - *compiled in*: the front end, checks, MIR, the interpreter, `fmt`, the language server,

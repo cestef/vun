@@ -19,6 +19,8 @@ package := .{
     .include = .{ "build.vun", "blinky.vun" },
     .prelde = .{ "std.prelude" }, //~ manifest.unknown_field "did you mean `.prelude`?"
 };
+
+build := (b: &mut std.build.Build) {};
 ```
 
 ## Fix
@@ -34,4 +36,6 @@ package := .{
     .include = .{ "build.vun", "blinky.vun" },
     .prelude = .{ "std.prelude" },
 };
+
+build := (b: &mut std.build.Build) {};
 ```

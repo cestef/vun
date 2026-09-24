@@ -167,20 +167,29 @@ frames suspend and resume; `End` of a finished frame is nothing, of a suspended 
 with a `Writer` impl, `Exit`, `start` over `os.libc.start`), `fmt` (`Writer`, `Format`, `print`
 splitting the format at compile time and reporting a mismatched argument count), `diag`
 (`Report`, `error`), `task` (`Event`, `Wait` with `also`, `select`, `run`, `block_on`, link
-symbol `sleep`), `build` (records a plan; not run yet), `panic`.
+symbol `sleep`), `build` (`Build` records `Action`s, `plan` runs a package's `build`), `lints`
+(a namespace per group, with its `level`), `panic`. `lang.target.Spec` is a struct; `lib/targets`
+declares one per target.
 
-Progress: corpus 204 passed, 0 pending, 20 shown, 0 failed; 69% of body expressions typed; MIR
-lowers 93 of 115 functions (stops: `StructLit` 4, `$` 3, `For` 3, `Member` 3). 199 tests,
+**Plans** (`sema/src/plan.rs`, driver `plan.rs`): the `Planned` query takes the declaration to
+run from the requirements of `std.build.Package` and calls `std.build.plan` with it; checking a
+package's `build.vun` runs it (stage `plan`), `vun dump plan` prints its actions as literals
+(`Value::literal`). Nothing carries the actions out yet.
+
+Progress: corpus 214 passed, 0 pending, 23 shown, 0 failed; 73% of body expressions typed; MIR
+lowers 94 of 115 functions (stops: `$` 3, `For` 3, `Member` 3, `StructLit` 3). 227 tests,
 including one that checks every `lang` and `std` file cleanly.
 
 ## 6. Decisions
 
 Accepted: 1 to 84, 91, 92, 98 to 106, 109, 111, 116, 118 (no bespoke formats: `lock.vun`,
-`.tar.zst`), 120 (the rename to Vun). Proposed, awaiting the user: 85 to 90, 93 to 97, 107, 108,
+`.tar.zst`), 120 (the rename to Vun), 131 to 133, 136 (plans with `lang.meta.Any`). Proposed, awaiting the user: 85 to 90, 93 to 97, 107, 108,
 110, 112 to 115, 117 (`std.build` API), 119 (`&temp`), 121 (`std.sync`, `std.os`), 122 (statics
 in MIR, constructor calls at compile time, members of made types), 123 (`&static`, tuple
 positions, range slices, witnesses in the type's package), 124 (`std.fmt`), 125 (library
-diagnostics), 126 (executors, frames' `resume`/`end`), 127 (`std.iter` adapters). New language
+diagnostics), 126 (executors, frames' `resume`/`end`), 127 (`std.iter` adapters), 128 to 130, 134, 135, 137 (static borrows of literals, `mut`
+statics at compile time), 138 (targets and lint groups as data, member handles), 139 (the size
+budget). New language
 rules go to `decisions.md` as proposed unless the user approves them.
 
 ## 7. Next steps, in order
@@ -191,11 +200,11 @@ rules go to `decisions.md` as proposed unless the user approves them.
    (`Str`) and collections; `Format` for arrays of non-bytes, `print`'s `.fixes`.
 2. Leaks at scope exits inside a body (found at the function's return only today), `fixed` and
    `scoped` kinds, frames' `end` running their defers (MIR `End`, the interpreter).
-3. Borrow rules left: `&x` of an immutable top-level binding typed `&static`, top-level bindings
-   as free values, frames' region from their parameters, a label where a conflicting borrow is
+3. Borrow rules left: top-level bindings as free values, frames' region from their parameters, a label where a conflicting borrow is
    used later.
-4. The driver side of `std.build`: run `build` (needs `&mut` at compile time, step 7) and read
-   the recorded plan; `lib/targets` as a typed package so `.target = targets...` types.
+4. `vun build`: carry out a plan's actions in order (decode them by the `vun_items` handles of
+   `std.build.Action`'s variants), starting with `program` once a backend exists; a program's
+   options as a typed record (`root`, `target: lang.target.Spec`, `deps`, `memory`).
 5. MIR gaps (`cargo xtask corpus` lists them): run-time splices of code, `.{ }` and `.name` in
    plain instantiations of generic bodies, or-patterns that bind, `lang.simd.chunks`.
 6. Sema gaps: traps inside a callee's instantiated signature are not reported; members of

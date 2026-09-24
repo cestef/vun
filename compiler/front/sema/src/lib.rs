@@ -16,6 +16,7 @@ pub mod layout;
 pub mod link;
 pub mod member;
 pub mod ops;
+pub mod plan;
 #[rustfmt::skip]
 pub mod primitives;
 mod reflect;

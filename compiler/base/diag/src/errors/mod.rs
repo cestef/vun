@@ -35,6 +35,8 @@ mod manifest;
 pub use manifest::*;
 mod package;
 pub use package::*;
+mod plan;
+pub use plan::*;
 mod tool;
 pub use tool::*;
 mod io;

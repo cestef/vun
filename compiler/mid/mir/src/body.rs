@@ -55,6 +55,17 @@ pub enum Role {
     Unpacked,
     /// A top-level binding's storage, which outlives every call: a borrow of it escapes nowhere.
     Static,
+    /// A `mut` top-level binding's storage: a static, as `Static`, holding its initial value,
+    /// whose value later is known at run time only.
+    StaticMut,
+}
+
+impl Role {
+    /// Whether the local is a top-level binding's storage.
+    #[must_use]
+    pub fn is_static(self) -> bool {
+        matches!(self, Self::Static | Self::StaticMut)
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]

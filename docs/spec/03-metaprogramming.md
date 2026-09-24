@@ -196,6 +196,10 @@ generators that observe their own output, which is what makes impls and memoizat
 
 - **The whole language.** Every construct available at run time is available at compile time,
   including mutation, loops, recursion, allocation and coroutines.
+- **Values of any type.** `lang.meta.Any` holds a compile-time value with its type
+  (`lang.meta.any(T, x)`), for data whose type each call infers, such as the records a build plan
+  keeps; it exists at compile time only. `lang.meta.append(T, items, item)` gives the items
+  followed by one more, in compile-time memory, as a `&static [T]`.
 - **Allocation.** Compile-time code allocates from `std.meta.heap()`. Compile-time memory is
   collected by the compiler; data that reaches run time (through a constant or a type) is frozen
   into read-only data, and pointers into it become static addresses.

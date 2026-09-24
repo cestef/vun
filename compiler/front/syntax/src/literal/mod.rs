@@ -42,6 +42,8 @@ pub enum Literal<'s> {
     Record(Vec<Decl<'s>>),
     /// `a.T{ .name = value }`: the type's path and the record.
     Typed(Vec<&'s str>, Box<Literal<'s>>),
+    /// `a.b.c`: a declaration or namespace named by its path, which a reader interprets.
+    Path(Vec<&'s str>),
     /// `a.f(x, y)`: a call of a path, which a reader interprets by the path.
     Call(Vec<&'s str>, Vec<Literal<'s>>),
     /// `enum { a, b(T) }`; the payloads read as `Opaque`.

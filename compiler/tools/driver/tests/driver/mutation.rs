@@ -54,3 +54,41 @@ twenty: Int(second()..=second()) = 20;
     let ids: Vec<_> = found.iter().map(|(id, _)| id.clone()).collect();
     assert_eq!(ids, [errors::INT_DOES_NOT_FIT], "{found:?}");
 }
+
+#[test]
+fn methods_with_compile_time_parameters_change_their_receiver() {
+    let fixture = Fixture::new("comptime-mut-generic");
+    let file = fixture.root.write(
+        "generic.vun",
+        "\
+P := struct {
+    n: u32,
+    add := (self: &mut P, $T: type, x: T) { self.n +|= 1; };
+};
+written := () -> u32 { mut p := P{ .n = 0 }; p.add(u32, 1); p.n };
+inferred := () -> u32 { mut p := P{ .n = 0 }; p.add(1); p.add(2); p.n };
+one: Int(written()..=written()) = 1;
+two: Int(inferred()..=inferred()) = 2;
+",
+    );
+    // The receiver is lent, not copied, though the method's type depends on `T`.
+    assert_eq!(fixture.check(&file), []);
+}
+
+#[test]
+fn a_mut_binding_is_read_at_run_time_only() {
+    let fixture = Fixture::new("comptime-mut-static");
+    let file = fixture.root.write(
+        "statics.vun",
+        "\
+mut count: u8 = 1;
+fixed: u8 = 1;
+read := () -> u8 { unsafe { count } };
+known: Int(fixed..=fixed) = 2;
+unknown: Int(read()..=read()) = 2;
+",
+    );
+    // `count` holds 1 only until something writes it: it has no compile-time value, so
+    // `unknown` has no type to check 2 against, where `known` does.
+    assert_eq!(fixture.check(&file), [errors::INT_DOES_NOT_FIT]);
+}

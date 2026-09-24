@@ -3,7 +3,7 @@
 //! exclusive borrow, goes on at the place it reaches.
 
 use vun_index::Idx;
-use vun_mir::{Local, Place, Projection};
+use vun_mir::{Local, Place, Projection, Role};
 use vun_sema::env::Unevaluated;
 use vun_sema::ops::Part;
 use vun_sema::ty::Value;
@@ -11,8 +11,12 @@ use vun_sema::ty::Value;
 use crate::machine::Frame;
 
 impl Frame<'_, '_, '_> {
+    /// What `local` holds; a `mut` static's is known at run time only.
     pub(crate) fn local(&self, local: Local) -> Result<Value, Unevaluated> {
-        self.locals[local].clone().ok_or(Unevaluated::Unsupported)
+        match self.body.locals[local].role {
+            Role::StaticMut => Err(Unevaluated::Runtime),
+            _ => self.locals[local].clone().ok_or(Unevaluated::Unsupported),
+        }
     }
 
     /// The local and parts `place` reaches, through the loans its `.*` cross.

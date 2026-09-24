@@ -136,6 +136,7 @@ impl Writer {
                 Literal::Record(fields) => self.path(path)?.record(TokenKind::LBrace, fields),
                 _ => Err(Unwritable::Opaque),
             },
+            Literal::Path(path) => self.path(path).map(|_| ()),
             Literal::Call(path, args) => {
                 self.path(path)?.token(TokenKind::LParen);
                 self.items(args, Self::value)?;

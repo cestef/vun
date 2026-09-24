@@ -1,7 +1,7 @@
-//! The declarations of the toolchain's packages as typed handles: `lang::OPTION`,
-//! `lang::int::UNSIGNED`, `std::PRELUDE`. `cargo xtask generate` writes a module per namespace
-//! from `lib/lang` and `lib/std`, so a handle exists exactly when its declaration does, and Rust
-//! code never names one by a path in a string.
+//! The declarations of the toolchain's packages as typed handles: `lang::Option`,
+//! `lang::int::unsigned`, `std::build_Build::new`. `cargo gen` writes a module per namespace and
+//! per type with members from `lib/lang` and `lib/std`, so a handle exists exactly when its
+//! declaration does, and Rust code never names one by a path in a string.
 
 #[rustfmt::skip]
 pub mod lang;

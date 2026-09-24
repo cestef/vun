@@ -66,6 +66,7 @@ pub const STAGES: &[Stage] = &[
         ],
         input: Input::Source,
     },
+    Stage { name: "plan", reports: &[errors::PLAN], input: Input::Source },
     Stage { name: "places", reports: &[errors::PLACE], input: Input::Mir },
     Stage { name: "borrows", reports: &[errors::BORROW], input: Input::Mir },
     Stage { name: "panics", reports: &[errors::PANIC], input: Input::Mir },
@@ -91,6 +92,7 @@ impl Session {
         self.parsed(file);
         self.check_names(file);
         self.check_types(file);
+        self.check_plan(file);
         self.check_places(file);
         self.check_borrows(file);
         self.check_bodies::<PanicChecks>(file);

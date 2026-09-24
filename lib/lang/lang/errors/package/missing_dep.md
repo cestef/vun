@@ -22,6 +22,8 @@ package := .{
         .board = .{ .path = "board" }, //~ package.missing_dep
     },
 };
+
+build := (b: &mut std.build.Build) {};
 ```
 
 ## Fix
@@ -40,6 +42,8 @@ package := .{
         .board = .{ .path = "board" },
     },
 };
+
+build := (b: &mut std.build.Build) {};
 ```
 
 ```vun board/build.vun

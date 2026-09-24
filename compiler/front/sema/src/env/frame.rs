@@ -151,17 +151,25 @@ impl Func {
     /// (`&temp T`); `tied` for a parameter that is not a borrow. `None` when its file is not read.
     #[must_use]
     pub fn extents(&self, cx: &Cx<'_>) -> Option<Vec<Extent>> {
+        let extent = |mode: Option<&str>| {
+            mode.and_then(|word| BORROWS.iter().find(|(m, ..)| *m == word)).map_or(Extent::Tied, |&(.., e)| e)
+        };
+        Some(self.modes(cx)?.into_iter().map(extent).collect())
+    }
+
+    /// The borrow mode each parameter's annotation writes, the words after `&` (`""` for `&T`),
+    /// whatever the `$` parameters: known before the call is instantiated. `None` for a parameter
+    /// that is not written as a borrow; `None` altogether when its file is not read.
+    #[must_use]
+    pub fn modes(&self, cx: &Cx<'_>) -> Option<Vec<Option<&'static str>>> {
         let env = Env::inside(cx, self, [])?;
         let hir = &env.parsed.hir;
         let ExprKind::Fn { params, .. } = &hir.exprs[self.literal.expr.id].kind else { return None };
-        let extent = |param: &Entry<Param>| {
-            let Entry::One(Param { ty: Some(ty), .. }) = param else { return Extent::Tied };
-            let ExprKind::Prefix { op: TokenKind::Amp, mode, .. } = hir.exprs[*ty].kind else {
-                return Extent::Tied;
-            };
-            let word = mode.map_or("", Symbol::as_str);
-            BORROWS.iter().find(|(m, ..)| *m == word).map_or(Extent::Tied, |&(.., extent)| extent)
+        let mode = |param: &Entry<Param>| {
+            let Entry::One(Param { ty: Some(ty), .. }) = param else { return None };
+            let ExprKind::Prefix { op: TokenKind::Amp, mode, .. } = hir.exprs[*ty].kind else { return None };
+            Some(mode.map_or("", Symbol::as_str))
         };
-        Some(params.iter().map(extent).collect())
+        Some(params.iter().map(mode).collect())
     }
 }

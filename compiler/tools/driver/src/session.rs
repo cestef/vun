@@ -132,7 +132,7 @@ impl Session {
     }
 
     /// How the queries name `file`, with the inputs of its package graph and its text set.
-    fn file_ref(&mut self, file: FileId) -> FileRef {
+    pub(crate) fn file_ref(&mut self, file: FileId) -> FileRef {
         let path = PathBuf::from(&self.sources.file(file).path);
         let package = self.package_of(file);
         let id = self.publish(package);

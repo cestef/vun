@@ -38,7 +38,7 @@ impl Builder<'_, '_, '_> {
         // `a.f(b)` is `T.f(a, b)`, `f` the method the typer found (spec 01, section 4).
         let (callee, receiver) = match self.method(callee)? {
             Some((f, receiver, method)) => {
-                let receiver = self.receiver(&method, receiver)?;
+                let receiver = self.receiver(&f, &method, receiver)?;
                 (f, Some(receiver))
             }
             None => (self.operand(callee)?, None),
@@ -144,12 +144,17 @@ impl Builder<'_, '_, '_> {
     /// The receiver `a` of `a.f(b)`, passed as the first parameter of the method `f` asks, by
     /// the type typing found for it: a borrow of `a` in that parameter's mode, or `a` itself
     /// (spec 01, section 4).
-    fn receiver(&mut self, method: &Method, receiver: ExprId) -> Result<Receiver, Unbuilt> {
+    fn receiver(&mut self, f: &Operand, method: &Method, receiver: ExprId) -> Result<Receiver, Unbuilt> {
         let name = method.1;
         let known = self.env.cx.get::<MemberType>(method).ok();
         let first = known.and_then(|k| k.ty.callable()).and_then(|s| s.params.first().copied());
-        match first.and_then(|t| t.borrowing()) {
-            Some((mode, ..)) => {
+        // A method whose type depends on its `$` parameters has a receiver written all the same.
+        let written = || match f {
+            Operand::Const(Value::Fn(f)) => f.modes(self.env.cx)?.first().copied().flatten(),
+            _ => None,
+        };
+        match first.and_then(|t| t.borrowing()).map(|(mode, ..)| mode).or_else(written) {
+            Some(mode) => {
                 let origin = self.env.parsed.hir.exprs[receiver].origin;
                 let place = self.reached(receiver, name)?;
                 let mode = (!mode.is_empty()).then(|| Symbol::intern(mode));

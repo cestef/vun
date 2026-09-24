@@ -11,6 +11,13 @@ fn primitives_are_the_top_level_holes_of_lang_by_namespace() {
     assert!(Primitive::ALL.iter().all(|p| p.namespace() != vun_items::lang::ops), "{:?}", Primitive::ALL);
 }
 
+#[test]
+fn members_of_types_have_handles_by_their_path() {
+    assert_eq!(vun_items::std::build_Build::new.path(), ["std", "build", "Build", "new"]);
+    assert_eq!(vun_items::std::build_Action::dep.to_string(), "std.build.Action.dep");
+    assert_eq!(vun_items::lang::target_Endian::little.name(), "little");
+}
+
 /// A database holding a `lang` with an integer primitive and an app seeing it through its
 /// prelude, the app's root file holding `app`.
 pub(crate) fn packages(app: &str) -> (vun_query::Db, vun_hir::db::FileRef) {

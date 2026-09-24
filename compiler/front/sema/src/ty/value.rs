@@ -66,6 +66,11 @@ pub enum Value {
     /// `lang.interface(f)`: the function `f` from a type to its requirement struct (spec 02,
     /// section 3).
     Interface(Func),
+    /// `lang.meta.any(T, value)`: a value with its type, at compile time only.
+    Any {
+        ty: Ty,
+        value: Box<Value>,
+    },
     /// An exclusive borrow at compile time (`&mut`, `&out`, ...): the place of the running call it
     /// reaches, a local and the parts under it. In a call's result, `local` is the position of
     /// the parameter it was lent through. Calls take what it reaches and give it back changed,
@@ -119,6 +124,7 @@ impl Value {
             Self::Int(n) => Some(TyKind::int(&Interval::singleton(n.clone()))),
             Self::Struct { ty, .. } | Self::Variant { ty, .. } => Some(*ty),
             Self::Name(_) => Some(TyKind::primitive(Primitive::Meta(Meta::Name))),
+            Self::Any { .. } => Some(TyKind::primitive(Primitive::Meta(Meta::Any))),
             Self::Tuple(items) => {
                 Some(TyKind::Tuple(items.iter().map(Self::ty).collect::<Option<_>>()?).intern())
             }

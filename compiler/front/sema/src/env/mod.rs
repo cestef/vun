@@ -12,6 +12,7 @@ mod code;
 mod condition;
 mod eval;
 mod frame;
+mod lasting;
 mod named;
 mod path;
 mod primitive;
@@ -32,7 +33,6 @@ use vun_origin::OriginTable;
 use vun_query::Cx;
 use vun_span::{SourceFiles, SourceMap};
 
-use crate::decl::DeclValue;
 use crate::eval::{Func, Instance, Staging};
 use crate::item::{DeclRef, Declared, ExprRef, Site};
 use crate::member::{Found, MemberValue, Members};
@@ -271,20 +271,6 @@ impl<'a, 'db> Env<'a, 'db> {
                 fields.into_iter().find(|(n, _)| *n == name).map(|(_, v)| v).ok_or(Unevaluated::Absent)
             }
             _ => Err(Unevaluated::Unsupported),
-        }
-    }
-
-    /// The value of `site`.
-    ///
-    /// # Errors
-    /// Returns why it has no value at compile time here.
-    pub fn value_of(&self, site: Site) -> Result<Value, Unevaluated> {
-        match site {
-            Site::Decl(decl) => match self.cx.get::<DeclValue>(&decl) {
-                Err(Unevaluated::Trapped(_)) => Err(Unevaluated::Failed),
-                value => value,
-            },
-            Site::Namespace(ns) => Ok(Value::Namespace(ns)),
         }
     }
 

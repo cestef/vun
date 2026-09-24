@@ -138,6 +138,12 @@ package := struct {
     stale_lock := diag.Diag{ .explanation = meta.embed("errors/package/stale_lock.md") };
 };
 
+/// A package's plan, which its `build` records (spec 12, section 2).
+plan := struct {
+    missing_build := diag.Diag{ .explanation = meta.embed("errors/plan/missing_build.md") };
+    stopped := diag.Diag{ .explanation = meta.embed("errors/plan/stopped.md") };
+};
+
 /// The toolchain's tools and the native libraries they load (decision 131).
 tool := struct {
     missing_library := diag.Diag{ .explanation = meta.embed("errors/tool/missing_library.md") };

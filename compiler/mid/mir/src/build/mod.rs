@@ -20,7 +20,6 @@ use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 use vun_grammar::TokenKind;
-use vun_hir::resolve::Res;
 use vun_hir::tree::{BinderId, Entry, ExprId, ExprKind, Lit, PatKind};
 use vun_index::{Idx, IndexVec};
 use vun_origin::OriginId;
@@ -209,22 +208,7 @@ impl<'a, 'db> Builder<'_, 'a, 'db> {
         let unbuilt = Unbuilt { at: origin };
         match &hir.exprs[expr].kind {
             ExprKind::Lit(Lit::Int(n)) => Ok(Operand::Const(Value::Int(Integer::from(*n)))),
-            ExprKind::Name(_) => match self.env.parsed.resolution.names[expr] {
-                // A read of a local is a statement where it is written, which checks point at; a
-                // read of a linear value moves it, so the temporary has the value's type.
-                Some(Res::Binder(b)) if self.bound.contains_key(&b) => {
-                    let read = self.temp_local(Rvalue::Use(Operand::Place(self.binder_place(b))), origin);
-                    self.locals[read].ty = self.type_of(expr);
-                    Ok(Operand::Place(Place::of(read)))
-                }
-                // A `$` parameter of an enclosing function, bound by the call running the body.
-                // A `$for` binder, or one bound by the instantiation, is a constant.
-                Some(Res::Binder(b)) if hir.binders[b].comptime => match self.env().bound(b) {
-                    Some(value) => Ok(Operand::Const(value.clone())),
-                    None => Ok(self.temp(self.comptime(expr), origin)),
-                },
-                _ => self.env().eval(expr).map(Operand::Const).map_err(|_| unbuilt),
-            },
+            ExprKind::Name(_) => self.named(expr, origin),
             ExprKind::Block(block) => self.block(*block),
             // Attributes are read where they apply, from the expression they mark.
             ExprKind::Attributed { inner, .. } => self.operand(*inner),

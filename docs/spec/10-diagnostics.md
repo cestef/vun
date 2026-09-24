@@ -192,6 +192,9 @@ raw_mmio := lang.lint.Lint{
 
 ### Levels and groups
 
+A group is a namespace of `std.lints` (`std.lints.pedantic`), which configuring names and which
+declares its default `level`; a library's group is a namespace of its own.
+
 Levels: `allow`, `warn`, `deny`, `forbid` (cannot be lowered below), `expect` (warns if the lint does
 not fire). Every override takes a reason.
 

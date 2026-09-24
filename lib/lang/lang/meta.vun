@@ -10,6 +10,14 @@ TypeOf: ($e: Code(type)) -> type = _;
 origin: ($T: type) -> Origin = _;
 embed: ($path: &[u8]) -> &static [_]u8 = _;
 
+/// A compile-time value of any type, with its type: what a plan records of a record whose type
+/// each call infers (spec 03, section 7). It exists at compile time only.
+Any: type = _;
+/// `value`, of type `T`, as an `Any`.
+any: ($T: type, value: T) -> Any = _;
+/// The items of `items` followed by `item`, in compile-time memory (spec 03, section 7).
+append: ($T: type, items: &[T], item: T) -> &static [T] = _;
+
 /// A field of a struct type, as reflection gives it (spec 03, section 6).
 Field := struct {
     name: &[u8],

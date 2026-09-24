@@ -1,0 +1,5 @@
+//! Restrictions a project chooses, such as no `unsafe`.
+
+/// The level of the group's lints unless a build or an attribute sets another (spec 10,
+/// section 4).
+level: lang.lint.Level = .allow;

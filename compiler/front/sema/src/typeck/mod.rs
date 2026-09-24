@@ -15,6 +15,7 @@ mod expected;
 mod infer;
 mod loops;
 mod methods;
+mod names;
 mod omitted;
 
 pub use loops::Iteration;

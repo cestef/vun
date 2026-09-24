@@ -5,13 +5,17 @@
 //! Each namespace becomes a module of constants, one per public declaration, spelled as the
 //! declaration, raw where it is a Rust keyword: `lang.int.unsigned` is `lang::int::unsigned`,
 //! `lang.type` is `lang::r#type`. Vun names are unique in a namespace, so handles are too. A
-//! package's root namespace is its module itself.
+//! package's root namespace is its module itself. The public members of a `struct` literal and
+//! the variants of an `enum` literal have handles too, in a module of their type's path as a
+//! nested namespace's is: `std.os.libc.start` is `std::os_libc::start`, `std.build.Build.new` is
+//! `std::build_Build::new`.
 
 use std::collections::BTreeMap;
 
 use proc_macro2::TokenStream;
 use quote::quote;
 use vun_build::layout::SEPARATOR;
+use vun_syntax::literal::{Decl, Literal};
 
 use crate::generate::{Access, Generator, Module, Read, Source};
 use crate::names::{docs, module};
@@ -32,13 +36,14 @@ const PRIVATE: char = '_';
 
 #[expect(clippy::unnecessary_wraps, reason = "every generator emits through one signature")]
 fn emit(sources: &[Source<'_>]) -> Read<Vec<Module>> {
-    // The handles of each namespace's module: its declarations, and the namespaces inside it.
+    // The handles of each namespace's module: its declarations, and the namespaces inside it;
+    // and of each type's: its members.
     let mut modules: BTreeMap<Vec<String>, Vec<TokenStream>> = BTreeMap::new();
     for source in sources {
         let Some(namespace) = source.namespace() else { continue };
-        let items = modules.entry(namespace.clone()).or_default();
+        modules.entry(namespace.clone()).or_default();
         for decl in source.decls.iter().filter(|d| !d.name.starts_with(PRIVATE)) {
-            items.push(handle(&namespace, decl.name, &docs(&decl.doc)));
+            declare(&mut modules, &namespace, decl);
         }
         if let [parent @ .., name] = namespace.as_slice()
             && !parent.is_empty()
@@ -56,7 +61,11 @@ fn emit(sources: &[Source<'_>]) -> Read<Vec<Module>> {
         let doc = format!(" The declarations of `{}`.", namespace.join(SEPARATOR));
         let items = quote! {
             #![doc = #doc]
-            #![allow(non_upper_case_globals, reason = "handles are spelled as their declarations")]
+            #![allow(
+                non_upper_case_globals,
+                non_snake_case,
+                reason = "handles and the modules of types' members are spelled as their declarations"
+            )]
             use crate::Item;
             #(#items)*
         };
@@ -86,6 +95,17 @@ pub(crate) fn rust_path(path: &str) -> TokenStream {
             }
         }
         [] => unreachable!("a path has a segment"),
+    }
+}
+
+/// Adds to `modules` the handle of `decl`, declared in `namespace`, and those of its members.
+fn declare(modules: &mut BTreeMap<Vec<String>, Vec<TokenStream>>, namespace: &[String], decl: &Decl<'_>) {
+    modules.entry(namespace.to_vec()).or_default().push(handle(namespace, decl.name, &docs(&decl.doc)));
+    if let Literal::Namespace(members) | Literal::Enum(members) = &decl.value {
+        let path: Vec<String> = namespace.iter().cloned().chain([decl.name.to_owned()]).collect();
+        for member in members.iter().filter(|m| !m.name.starts_with(PRIVATE)) {
+            declare(modules, &path, member);
+        }
     }
 }
 

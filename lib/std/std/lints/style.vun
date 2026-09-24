@@ -1,0 +1,5 @@
+//! Code that is written in an unusual way.
+
+/// The level of the group's lints unless a build or an attribute sets another (spec 10,
+/// section 4).
+level: lang.lint.Level = .warn;

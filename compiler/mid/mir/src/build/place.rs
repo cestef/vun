@@ -7,8 +7,10 @@ use vun_hir::resolve::Res;
 use vun_hir::tree::{ExprId, ExprKind};
 use vun_intern::Symbol;
 use vun_origin::OriginId;
-use vun_sema::env::Hop;
+use vun_sema::decl::DeclValue;
+use vun_sema::env::{Hop, Unevaluated};
 use vun_sema::int::Interval;
+use vun_sema::item::Site;
 use vun_sema::member::Members;
 use vun_sema::ty::{TyKind, Value};
 
@@ -25,6 +27,15 @@ impl Builder<'_, '_, '_> {
         match &hir.exprs[expr].kind {
             ExprKind::Name(_) => match self.env.parsed.resolution.names[expr] {
                 Some(Res::Binder(b)) if self.bound.contains_key(&b) => Ok(self.binder_place(b)),
+                // A `mut` top-level binding is a static, starting as its initial value.
+                _ if let Ok(Site::Decl(decl)) = self.env().resolve(expr)
+                    && decl.mutable(self.env.cx) =>
+                {
+                    let initial = self.env.cx.get::<DeclValue>(&decl).map_err(|_| Unbuilt { at: origin })?;
+                    let local = self.temp_local(Rvalue::Use(Operand::Const(initial)), origin);
+                    self.locals[local].role = Role::StaticMut;
+                    Ok(Place::of(local))
+                }
                 Some(Res::Binder(b)) if !hir.binders[b].comptime => {
                     let place = self.held(expr, origin)?;
                     self.locals[place.local].role = Role::Static;
@@ -142,5 +153,33 @@ impl Builder<'_, '_, '_> {
     fn held(&mut self, expr: ExprId, origin: OriginId) -> Result<Place, Unbuilt> {
         let value = self.operand(expr)?;
         Ok(Place::of(self.temp_local(Rvalue::Use(value), origin)))
+    }
+
+    /// The value of the name `expr`: a local read where it is written, a `$` binder's value, a
+    /// constant, or what a `mut` top-level binding's storage holds.
+    pub(super) fn named(&mut self, expr: ExprId, origin: OriginId) -> Result<Operand, Unbuilt> {
+        let hir = &self.env.parsed.hir;
+        let unbuilt = Unbuilt { at: origin };
+        match self.env.parsed.resolution.names[expr] {
+            // A read of a local is a statement where it is written, which checks point at; a
+            // read of a linear value moves it, so the temporary has the value's type.
+            Some(Res::Binder(b)) if self.bound.contains_key(&b) => {
+                let read = self.temp_local(Rvalue::Use(Operand::Place(self.binder_place(b))), origin);
+                self.locals[read].ty = self.type_of(expr);
+                Ok(Operand::Place(Place::of(read)))
+            }
+            // A `$` parameter of an enclosing function, bound by the call running the body.
+            // A `$for` binder, or one bound by the instantiation, is a constant.
+            Some(Res::Binder(b)) if hir.binders[b].comptime => match self.env().bound(b) {
+                Some(value) => Ok(Operand::Const(value.clone())),
+                None => Ok(self.temp(self.comptime(expr), origin)),
+            },
+            // A constant is its value; a `mut` binding's is read from its storage.
+            _ => match self.env().eval(expr) {
+                Ok(value) => Ok(Operand::Const(value)),
+                Err(Unevaluated::Runtime) => self.read(expr),
+                Err(_) => Err(unbuilt),
+            },
+        }
     }
 }

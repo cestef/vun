@@ -115,6 +115,13 @@ impl Primitive {
                 let bytes = if meta == Meta::size { layout.size } else { layout.align };
                 Ok(Value::Int(Integer::from(u128::from(bytes))))
             }
+            (Self::Meta(Meta::any), [ty, value]) => {
+                let ty = ty.as_type().ok_or(Unevaluated::Unsupported)?;
+                Ok(Value::Any { ty, value: Box::new(value.clone()) })
+            }
+            (Self::Meta(Meta::append), [_, Value::Array(items), item]) => {
+                Ok(Value::Array(items.iter().chain([item]).cloned().collect()))
+            }
             (Self::Meta(Meta::span), [_, Value::Code(code)]) => Ok(Value::Origin(code.expr.expr.origin)),
             (Self::Meta(Meta::source), [_, Value::Code(code)]) => {
                 let env = Env::quoted(env.cx, code).ok_or(Unevaluated::Absent)?;

@@ -1,1 +1,2 @@
-//! The standard lints, grouped (spec 10, section 4).
+//! The standard lints, grouped (spec 10, section 4): each group is a namespace, which
+//! configuring names, as `std.lints.pedantic`, and which declares its default `level`.

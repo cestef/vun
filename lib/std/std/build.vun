@@ -10,8 +10,8 @@ Package := lang.interface(($Self: type) -> type { struct {
     build: (b: &mut Build) = _;
 }});
 
-/// A step of the plan, which later steps name.
-Step := struct { index: u32 };
+/// A step of the plan, by its position: later steps name it.
+Step := struct { index: usize };
 /// A dependency of the package, as a step builds it.
 Dep := struct { step: Step };
 /// A program, as a step builds it.
@@ -24,33 +24,72 @@ Flash := enum { probe(Probe), uf2, dfu };
 /// Where a program's tests run.
 Runner := enum { host, qemu(&[u8]), probe(Probe) };
 
+/// What a step of the plan does. Records whose types each call infers are kept with their type,
+/// as `lang.meta.Any`.
+Action := enum {
+    dep(Needed),
+    /// The options of a program.
+    program(lang.meta.Any),
+    flash(Flashed),
+    test_on(Tested),
+    /// The lint levels.
+    lints(lang.meta.Any),
+};
+/// A dependency by its name in `package.deps`, and the parameters it is built with.
+Needed := struct { name: lang.meta.Name, params: lang.meta.Any };
+/// A program to write to its device, and how.
+Flashed := struct { program: Program, method: Flash };
+/// A program whose tests run, and where.
+Tested := struct { program: Program, runner: Runner };
+
 /// The plan being recorded.
 Build := struct {
-    _steps: u32,
+    _actions: &static [Action],
+
+    /// A plan without steps, the one the driver lends `build`.
+    new := () -> Build { .{ ._actions = &[] } };
+
+    /// What each step does, in the order recorded.
+    actions := (self: &Build) -> &static [Action] { self._actions };
 
     /// The dependency `name` of `package.deps`, built with `params`: a record of the parameters
     /// its own `build.vun` declares, such as `.{ .variant = .f407 }`.
     dep := (self: &mut Build, $name: lang.meta.Name, $P: type, params: P) -> Dep {
-        .{ .step = self._step() }
+        .{ .step = self._record(.dep(.{ .name = name, .params = lang.meta.any(P, params) })) }
     };
 
     /// A program built from `options`: a record with its `root` file, its `target`, its `deps` by
     /// name and its `memory` map.
-    program := (self: &mut Build, $O: type, options: O) -> Program { .{ .step = self._step() } };
+    program := (self: &mut Build, $O: type, options: O) -> Program {
+        .{ .step = self._record(.program(lang.meta.any(O, options))) }
+    };
 
     /// Writes the program `built` to its device by `method`.
-    flash := (self: &mut Build, built: Program, method: Flash) { self._step(); };
+    flash := (self: &mut Build, built: Program, method: Flash) {
+        self._record(.flash(.{ .program = built, .method = method }));
+    };
 
     /// Runs the tests of the program `built` on `runner`.
-    test_on := (self: &mut Build, built: Program, runner: Runner) { self._step(); };
+    test_on := (self: &mut Build, built: Program, runner: Runner) {
+        self._record(.test_on(.{ .program = built, .runner = runner }));
+    };
 
     /// The level of each lint for the package: pairs of a lint and a level, such as
     /// `.{ .{ std.lints.pedantic, .warn } }`.
-    lints := (self: &mut Build, $L: type, levels: L) { self._step(); };
+    lints := (self: &mut Build, $L: type, levels: L) { self._record(.lints(lang.meta.any(L, levels))); };
 
-    /// A new step, after every step recorded.
-    _step := (self: &mut Build) -> Step {
-        self._steps +|= 1;
-        .{ .index = self._steps }
+    /// Records `action` as a new step, after every step recorded.
+    _record := (self: &mut Build, action: Action) -> Step {
+        step: Step = .{ .index = self._actions.len() };
+        self._actions = lang.meta.append(Action, self._actions, action);
+        step
     };
+};
+
+/// What a package plans: its `build`, the declaration `Package` requires of a `build.vun`, run
+/// on a plan without steps. The driver calls it, then carries out each action in order.
+plan := ($build: (b: &mut Build)) -> &static [Action] {
+    mut b := Build.new();
+    build(&mut b);
+    b.actions()
 };

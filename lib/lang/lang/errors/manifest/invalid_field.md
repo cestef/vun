@@ -18,6 +18,8 @@ package := .{
     .edition = 2026,
     .include = .{ "build.vun", "blinky.vun" },
 };
+
+build := (b: &mut std.build.Build) {};
 ```
 
 ## Fix
@@ -32,4 +34,6 @@ package := .{
     .edition = 2026,
     .include = .{ "build.vun", "blinky.vun" },
 };
+
+build := (b: &mut std.build.Build) {};
 ```

@@ -125,3 +125,13 @@ fn reads_and_writes_holes() {
     assert_eq!((decls[0].name, &decls[0].value), ("Int", &Literal::Hole));
     assert_eq!(Literal::Hole.source().as_deref(), Ok("_"));
 }
+
+#[test]
+fn paths_read_and_write_back() {
+    let text = "lints := .{ .{ std.lints.pedantic, .warn } };";
+    let value = &read(text)[0].value;
+    let Literal::List(items) = value else { panic!("{value:?}") };
+    let Literal::List(pair) = &items[0] else { panic!("{items:?}") };
+    assert_eq!(pair[0], Literal::Path(vec!["std", "lints", "pedantic"]));
+    assert_eq!(value.source().unwrap(), ".{ .{ std.lints.pedantic, .warn } }");
+}

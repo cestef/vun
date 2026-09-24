@@ -17,6 +17,8 @@ package := .{
     .edition = 2026,
     .include = .{ "build.vun", "blinky.vun", "blinky" },
 };
+
+build := (b: &mut std.build.Build) {};
 ```
 
 ```vun blinky.vun
@@ -35,6 +37,8 @@ package := .{
     .edition = 2026,
     .include = .{ "build.vun", "blinky.vun", "blinky" },
 };
+
+build := (b: &mut std.build.Build) {};
 ```
 
 ```vun blinky.vun

@@ -3,7 +3,6 @@
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[allow(non_camel_case_types, reason = "variants are named as their declarations")]
 pub enum Target {
-    Spec,
     require,
     Features,
     /// The largest address of the target: `usize` is `Int(0..=usize_max)`.
@@ -11,17 +10,11 @@ pub enum Target {
 }
 impl Target {
     pub const NAMESPACE: vun_items::Item = vun_items::lang::target;
-    pub const ALL: &[Self] = &[
-        Self::Spec,
-        Self::require,
-        Self::Features,
-        Self::usize_max,
-    ];
+    pub const ALL: &[Self] = &[Self::require, Self::Features, Self::usize_max];
     /// The declaration's name.
     #[must_use]
     pub const fn name(self) -> &'static str {
         match self {
-            Self::Spec => "Spec",
             Self::require => "require",
             Self::Features => "Features",
             Self::usize_max => "usize_max",
@@ -31,7 +24,6 @@ impl Target {
     #[must_use]
     pub const fn item(self) -> vun_items::Item {
         match self {
-            Self::Spec => vun_items::lang::target::Spec,
             Self::require => vun_items::lang::target::require,
             Self::Features => vun_items::lang::target::Features,
             Self::usize_max => vun_items::lang::target::usize_max,

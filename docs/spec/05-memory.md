@@ -112,9 +112,12 @@ as the arena borrow; a tree that must outlive its scope uses `Own` nodes and an 
 graphs with cycles, `std.collections.Handle(T)` gives typed indices into a pool, over nominal
 structs (spec 02), with checked indexing whose checks range analysis removes when it can.
 
-**Static region.** Borrows of immutable top-level bindings have type `&static T`, which is free and
-copy and is accepted wherever `&T` is expected. It is the only subtyping rule. String literals are
-`&static [N]u8`. There are exactly two regions, static and scoped. In the table `borrows`, `static`
+**Static region.** Shared borrows of what lives as long as the program have type `&static T`, which
+is free and copy and is accepted wherever `&T` is expected: an immutable top-level binding, and a
+literal, or a tuple, array or record of literals (`&[]`, `&.{ 1, 2 }`). It is the only subtyping
+rule. String literals are `&static [N]u8`. A `mut` top-level binding is a static that can change,
+so its borrows are scoped, and at compile time it has no value: what it holds is known at run time
+only. There are exactly two regions, static and scoped. In the table `borrows`, `static`
 is the extent of the row `lang.mem.RefStatic`; borrows of one transition and access meet in the
 shorter extent, so `if c { "text" } else { buf }` is a plain `&[u8]`.
 

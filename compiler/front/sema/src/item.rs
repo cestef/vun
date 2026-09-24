@@ -3,7 +3,7 @@
 //! directory.
 
 use vun_hir::db::{Exports, FileRef, Namespace, NamespaceAt, Package, Parsed};
-use vun_hir::tree::{DeclId, ExprId, Hir};
+use vun_hir::tree::{DeclId, ExprId, Hir, PatKind};
 use vun_intern::Symbol;
 use vun_origin::OriginId;
 use vun_query::{Cx, Cycle, Query};
@@ -32,6 +32,17 @@ pub struct ExprRef {
 }
 
 impl DeclRef {
+    /// Whether the declaration binds a `mut` name: a static, whose value is read at run time.
+    #[must_use]
+    pub fn mutable(&self, cx: &Cx<'_>) -> bool {
+        let Some(parsed) = cx.get::<Parsed>(&self.file) else { return false };
+        let hir = &parsed.hir;
+        match hir.pats[hir.decls[self.decl.id].pat].kind {
+            PatKind::Bind(b) => hir.binders[b].mutable,
+            _ => false,
+        }
+    }
+
     #[must_use]
     pub fn new(file: FileRef, hir: &Hir, decl: DeclId) -> Self {
         Self { file, decl: Node { id: decl, origin: hir.decls[decl].origin } }

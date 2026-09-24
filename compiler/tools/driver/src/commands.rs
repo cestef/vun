@@ -2,6 +2,7 @@
 
 use std::io::{self, Write};
 use std::path::Path;
+use vun_hir::db::Package;
 use vun_span::SourceMap;
 
 use vun_command::{Action, Args, Command, Outcome, Param, ParamKind, Program};
@@ -124,6 +125,12 @@ const DUMPS: &[Command<Session>] = &[
         action: Action::Run(|s, args, out| Stage::Manifest.dump(s, args, out)),
     },
     Command {
+        name: "plan",
+        about: "the steps a build.vun's build records, one per line",
+        params: &[FILE],
+        action: Action::Run(|s, args, out| Stage::Plan.dump(s, args, out)),
+    },
+    Command {
         name: "hir",
         about: "the high-level representation, names resolved, with origins",
         params: &[FILE],
@@ -147,6 +154,7 @@ enum Stage {
     Hir,
     Mir,
     Manifest,
+    Plan,
 }
 
 impl Stage {
@@ -157,6 +165,18 @@ impl Stage {
         if let Self::Manifest = self {
             if let Some(manifest) = session.manifest(file) {
                 writeln!(out, "{manifest:#?}")?;
+            }
+            return Ok(session.outcome());
+        }
+        if let Self::Plan = self {
+            for action in session.plan(file).map(|p| p.actions).unwrap_or_default() {
+                // What no literal spells, such as a type, shows as diagnostics show values.
+                let span = vun_span::Span::new(file, 0, 0);
+                let package = |p| session.db.get::<Package>(&p).name;
+                match action.literal(span, &package).and_then(|l| l.source().ok()) {
+                    Some(source) => writeln!(out, "{source}")?,
+                    None => writeln!(out, "{action}")?,
+                }
             }
             return Ok(session.outcome());
         }
@@ -191,7 +211,7 @@ impl Stage {
                     }
                 }
             }
-            Self::Manifest => unreachable!("read above"),
+            Self::Manifest | Self::Plan => unreachable!("printed above"),
         }
         Ok(session.outcome())
     }

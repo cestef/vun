@@ -8,6 +8,7 @@ pub mod commands;
 mod coverage;
 pub mod formats;
 pub mod packages;
+mod plan;
 mod registry;
 mod session;
 pub mod stages;

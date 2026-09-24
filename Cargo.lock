@@ -627,6 +627,7 @@ dependencies = [
  "vun-index",
  "vun-intern",
  "vun-interp",
+ "vun-items",
  "vun-link",
  "vun-link-gnu",
  "vun-link-lld",

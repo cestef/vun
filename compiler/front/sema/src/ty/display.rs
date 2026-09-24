@@ -112,6 +112,7 @@ impl fmt::Display for Value {
             Self::Fn(_) => f.write_str("fn"),
             Self::Closure { .. } => f.write_str("closure"),
             Self::Code(_) => f.write_str("#{ .. }"),
+            Self::Any { value, .. } => write!(f, "{value}"),
             Self::Origin(_) => f.write_str("origin"),
             Self::Linked(_) => f.write_str("linked"),
             Self::Frame(_) => f.write_str("frame"),

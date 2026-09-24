@@ -113,3 +113,23 @@ unused := () { mut r: &u8 = &zero; { x: u8 = 1; r = &x; } };
     let ids: Vec<_> = found.iter().map(|(id, _)| id.clone()).collect();
     assert_eq!(ids, [errors::BORROW_ESCAPE], "{found:?}");
 }
+
+#[test]
+fn borrows_of_what_lasts_are_static() {
+    let fixture = Fixture::new("borrows-static");
+    let file = fixture.root.write(
+        "lasting.vun",
+        "\
+zero: u8 = 0;
+mut count: u8 = 0;
+Empty := struct { items: &static [u8] };
+literal := () -> Empty { .{ .items = &[] } };
+binding := () -> &static u8 { &zero };
+local := () -> &static u8 { x: u8 = 1; &x };
+counted := () -> &static u8 { unsafe { &count } };
+",
+    );
+    // A literal and an immutable top-level binding live as long as the program; a local does
+    // not, and a `mut` binding may change while borrowed.
+    assert_eq!(fixture.check(&file), [errors::TYPES_MISMATCH, errors::TYPES_MISMATCH]);
+}

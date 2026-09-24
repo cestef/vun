@@ -20,6 +20,7 @@ mod mir;
 mod mutation;
 mod namespaces;
 mod places;
+mod plan;
 mod quotes;
 mod reflection;
 mod replace;

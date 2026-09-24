@@ -5,6 +5,7 @@ use vun_intern::Symbol;
 use vun_items::Item;
 
 use super::{Env, Unevaluated};
+use crate::decl::DeclValue;
 use crate::item::{Declared, Site};
 use crate::ty::Value;
 
@@ -36,5 +37,21 @@ impl Env<'_, '_> {
             site = self.cx.get::<Declared>(&(ns, name)).ok_or(Unevaluated::Absent)?;
         }
         Ok(site)
+    }
+
+    /// The value of `site`.
+    ///
+    /// # Errors
+    /// Returns why it has no value at compile time here.
+    pub fn value_of(&self, site: Site) -> Result<Value, Unevaluated> {
+        match site {
+            // A `mut` binding is a static: what it holds is known at run time only.
+            Site::Decl(decl) if decl.mutable(self.cx) => Err(Unevaluated::Runtime),
+            Site::Decl(decl) => match self.cx.get::<DeclValue>(&decl) {
+                Err(Unevaluated::Trapped(_)) => Err(Unevaluated::Failed),
+                value => value,
+            },
+            Site::Namespace(ns) => Ok(Value::Namespace(ns)),
+        }
     }
 }

@@ -104,6 +104,12 @@ build := (b: &mut std.build.Build) {
   and tuples. Tools and indexes read it with the ordinary parser, without evaluating anything.
 - `build` is ordinary compile-time code with a `&mut Build` capability. It runs in the sandboxed
   evaluator: no I/O, no processes (spec 03, section 7).
+- The driver runs `build` through `std.build.plan`, which lends it a `Build` without steps and
+  returns the `std.build.Action`s recorded, one per step: `dep`, `program`, `flash`, `test_on`,
+  `lints`. The compiler knows neither the name `build`, which it takes from the requirements of
+  `std.build.Package`, nor the shape of an action. Records whose types each call infers are kept
+  as `lang.meta.Any`. Checking a package's `build.vun` runs its plan, so a trap in `build` is an
+  error there; `vun dump plan build.vun` prints the actions, one literal per line.
 - `std.build.Build` records a plan of steps, which the driver carries out once `build` returns:
   `b.dep($name, params) -> Dep` names a dependency of `package.deps` (a `lang.meta.Name`, so
   `.stm32f4`) with the parameters its own `build.vun` declares; `b.program(options) -> Program`
