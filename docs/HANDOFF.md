@@ -166,27 +166,37 @@ patterns and typed annotations (89), linked values and repeats (90), layout (93)
 
 ## 7. Next steps, in order
 
-1. `std` next: output symbols (`std.fmt.print`), executors over frames (`std.task.run`,
+1. No bespoke formats in the ecosystem (the user's request, accepted; add it to `decisions.md`).
+   The lockfile becomes an Overt literal file, `lock.ov` beside `build.ov`, read by
+   `overt_syntax::literal` and written by its printer like manifests; its name derives from
+   `overt_span::EXTENSION` as `MANIFEST` should. Declarations `version`, `deps` (one sorted entry
+   per line: `.name`, `.version`, `.id` as `.foreign` or `.{ id, major }`, `.hash`, `.via`) and
+   `replace`; same semantics, spans on entries for `package.stale_lock`. `lock.ov` is no source
+   namespace. `.ovpkg` is dropped: packages are published as `.tar.zst` (`pkg pack` writes
+   `<name>-<version>.tar.zst`, indexes serve `<version>.tar.zst`), the custom format's code removed.
+   Update spec 12 and every mention (`rg 'overt\.lock|ovpkg'`). The project is renamed to Vun
+   right after (crates `vun-*`, CLI `vun`, `.vun`, `VUN_*`), so derive names from constants.
+2. `std` next: output symbols (`std.fmt.print`), executors over frames (`std.task.run`,
    `select`), `std.iter` adapters as coroutine functions, `std.os` entry points, `Allocator`
    impls for `Fixed`, text (`Str`) and collections. Pointer primitives, `Own`, `Fixed`, `fail`,
    `expect`, `ptr`, `option`, `result`, `cmp` exist (decision 107).
-2. Leaks at scope exits inside a body (found at the function's return only today), `fixed` and
+3. Leaks at scope exits inside a body (found at the function's return only today), `fixed` and
    `scoped` kinds, frames' `end` running their defers.
-3. Borrow rules left: `&temp` parameters, `&static`, top-level bindings as free values, frames'
+4. Borrow rules left: `&temp` parameters, `&static`, top-level bindings as free values, frames'
    region from their parameters, `critical_escape.ov` (needs `std.sync`), a label where a
    conflicting borrow is used later.
-4. The driver side of `std.build`: run `build` (needs `&mut` at compile time, step 7) and read
+5. The driver side of `std.build`: run `build` (needs `&mut` at compile time, step 8) and read
    the recorded plan; `lib/targets` as a typed package so `.target = targets...` types.
-5. MIR gaps (`cargo xtask corpus` lists them): run-time splices of code, `.{ }` and `.name` in
+6. MIR gaps (`cargo xtask corpus` lists them): run-time splices of code, `.{ }` and `.name` in
    plain instantiations of generic bodies, or-patterns that bind, `lang.simd.chunks`.
-6. Sema gaps: impl member types against requirements, constrained `$W: Writer` (members of
+7. Sema gaps: impl member types against requirements, constrained `$W: Writer` (members of
    `W` limited to the interface's), narrowing by comparisons (decision 35), exhaustiveness
    (decision 29), `meta.frozen`, `#[layout.offset]`/`#[layout.c]`, frame layouts,
    `coroutine.recursive_frame`, markers checked beyond `unsafe` and `panic.never` (`abi`,
    `stack.max`, `target.require` are carried and compared but not checked on bodies).
-7. Evaluator: its own stack (deep chains of compile-time calls overflow the host stack), a
+8. Evaluator: its own stack (deep chains of compile-time calls overflow the host stack), a
    memory model for `&mut` at compile time.
-8. Persist the front-end queries; packaging: signed caches (decision 63), planned builds,
+9. Persist the front-end queries; packaging: signed caches (decision 63), planned builds,
    `overt pkg why`; `.workspace` visibility. `names.private`, `binding.hole_value`.
 
 ## 8. Pitfalls
