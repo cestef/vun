@@ -30,6 +30,7 @@ types := struct {
     no_member := diag.Diag{ .explanation = meta.embed("errors/types/no_member.md") };
     no_impl := diag.Diag{ .explanation = meta.embed("errors/types/no_impl.md") };
     cannot_infer := diag.Diag{ .explanation = meta.embed("errors/types/cannot_infer.md") };
+    arity := diag.Diag{ .explanation = meta.embed("errors/types/arity.md") };
 };
 
 /// Name resolution and visibility (spec 01, sections 3, 7 and 8).

@@ -36,6 +36,14 @@ impl Plan {
         (!omitted.is_empty() && slots.len() == written).then_some(Self { slots, omitted })
     }
 
+    /// The argument counts a call of `f` may pass, the receiver included: every parameter, or
+    /// every one but the inferable `$` parameters when there are some.
+    pub(super) fn counts(env: &Env<'_, '_>, f: &Func) -> Vec<usize> {
+        let Some(inferable) = Self::inferable(env, f) else { return Vec::new() };
+        let without = inferable.iter().filter(|&&i| !i).count();
+        if without == inferable.len() { vec![inferable.len()] } else { vec![inferable.len(), without] }
+    }
+
     /// Whether each parameter of `f` is a `$` parameter named in a later parameter's type.
     fn inferable(env: &Env<'_, '_>, f: &Func) -> Option<Vec<bool>> {
         let inside = Env::inside(env.cx, f, [])?;

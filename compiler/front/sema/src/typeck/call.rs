@@ -31,6 +31,14 @@ impl Typer<'_, '_, '_> {
             .collect();
         let plan =
             f.as_ref().zip(written.as_ref()).and_then(|(f, w)| Plan::of(self.env(), f, receiver + w.len()));
+        if let (Some(f), Some(written), None) = (&f, &written, &plan) {
+            let counts = Plan::counts(self.env(), f);
+            self.arity(call, &counts, receiver, receiver + written.len());
+            for &arg in written {
+                self.typed(arg);
+            }
+            return None;
+        }
         let slots = plan.as_ref().map_or_else(|| (0..receiver + args.len()).collect(), |p| p.slots.clone());
         let omitted = plan.as_ref().filter(|p| !p.omitted.is_empty());
         let inferred = match (omitted, f.as_ref(), written.as_ref()) {
@@ -80,6 +88,7 @@ impl Typer<'_, '_, '_> {
             return None;
         }
         if inferred.is_none() && signature.params.len() != slots.len() {
+            self.arity(call, &[signature.params.len()], receiver, slots.len());
             return None;
         }
         for (&slot, (value, known)) in slots[receiver..].iter().zip(found) {
@@ -147,6 +156,27 @@ impl Typer<'_, '_, '_> {
             plan.omitted.iter().copied().zip(values.into_iter().flatten()).collect();
         self.inferred.insert(call, inferred.clone());
         Some(inferred)
+    }
+
+    /// Reports a call passing `found` arguments to a function taking one of `counts`, each
+    /// counting the receiver, which the message leaves out.
+    fn arity(&mut self, call: ExprId, counts: &[usize], receiver: usize, found: usize) {
+        let Some(&all) = counts.first() else { return };
+        let count = |n: usize| i128::try_from(n.saturating_sub(receiver)).unwrap_or(i128::MAX);
+        let mut msg = Msg::new()
+            .text("this call passes ")
+            .num(count(found))
+            .text(" arguments, and the function takes ")
+            .num(count(all));
+        if let Some(&fewer) = counts.get(1) {
+            msg = msg
+                .text(", or ")
+                .num(count(fewer))
+                .text(" leaving out its inferred ")
+                .code("$")
+                .text(" arguments");
+        }
+        self.diag.error(Diagnostic::error(errors::TYPES_ARITY, msg).at(self.hir().exprs[call].origin, None));
     }
 
     /// The function value a call of `callee` runs, when known here: a method, or a function
