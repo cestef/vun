@@ -16,6 +16,9 @@ impl Value {
     /// Returns a trap for a division by zero or a shift past any width, and
     /// [`Unevaluated::Unsupported`] for operands or an operator not computed yet.
     pub fn binary(op: TokenKind, left: &Self, right: &Self) -> Result<Self, Unevaluated> {
+        if let (TokenKind::PlusPlus, Self::Array(a), Self::Array(b)) = (op, left, right) {
+            return Ok(Self::Array(a.iter().chain(b).cloned().collect()));
+        }
         let (Self::Int(a), Self::Int(b)) = (left, right) else { return Err(Unevaluated::Unsupported) };
         let n = match op {
             TokenKind::Plus => a + b,
@@ -30,6 +33,17 @@ impl Value {
             _ => return Err(Unevaluated::Unsupported),
         };
         Ok(Self::Int(n))
+    }
+
+    /// `self[index]`: the item of an array value at an integer index.
+    ///
+    /// # Errors
+    /// Returns [`Unevaluated::Unsupported`] for another value or index, or one out of range,
+    /// which checks report where they are typed.
+    pub fn item(&self, index: &Self) -> Result<Self, Unevaluated> {
+        let (Self::Array(items), Self::Int(i)) = (self, index) else { return Err(Unevaluated::Unsupported) };
+        let i = i.to_i128().and_then(|i| usize::try_from(i).ok());
+        i.and_then(|i| items.get(i).cloned()).ok_or(Unevaluated::Unsupported)
     }
 
     /// This integer brought into the range `range` (spec 04, rule 3): unchanged when it lies

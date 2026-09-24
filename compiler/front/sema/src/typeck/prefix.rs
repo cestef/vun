@@ -13,8 +13,8 @@ use crate::ty::{TyKind, Value};
 
 impl Typer<'_, '_, '_> {
     /// `&mode operand`.
-    pub(super) fn borrow(&mut self, mode: Option<Symbol>, operand: ExprId) -> Option<Known> {
-        let known = self.typed(operand)?;
+    pub(super) fn borrow(&mut self, expr: ExprId, mode: Option<Symbol>, operand: ExprId) -> Option<Known> {
+        let known = self.typed_as(operand, self.expected(expr).and_then(|t| t.pointee()))?;
         let ty = TyKind::primitive(Primitive::Lang(Lang::r#type));
         if known.ty == ty {
             return Some(known);

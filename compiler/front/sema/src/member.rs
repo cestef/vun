@@ -8,6 +8,7 @@ use overt_hir::tree::{Entry, ExprKind, List, Member, Name, NsId, Variant};
 use overt_intern::Symbol;
 use overt_query::{Cx, Cycle, Query};
 
+use crate::decl::TypedDecl;
 use crate::env::{Env, Unevaluated};
 use crate::item::{DeclRef, ExprRef};
 use crate::ty::{Nominal, Ty, TyKind, Value};
@@ -31,6 +32,8 @@ pub struct Field {
     pub name: Symbol,
     pub ty: Result<Ty, Unevaluated>,
     pub visible: Visible,
+    /// The value a literal that omits the field gives it, evaluated where the struct was built.
+    pub default: Option<ExprRef>,
 }
 
 #[derive(Debug, PartialEq, Eq, Hash)]
@@ -108,7 +111,8 @@ impl MemberTable {
                 Member::Field(field) => match field.name {
                     Name::Plain(name) => {
                         let (visible, _) = env.visible(name, &field.attrs, home.clone());
-                        self.fields.push(Field { name, ty: env.ty(field.ty), visible });
+                        let default = field.default.map(|d| ExprRef::new(env.file.clone(), hir, d));
+                        self.fields.push(Field { name, ty: env.ty(field.ty), visible, default });
                     }
                     _ => self.complete = false,
                 },
@@ -180,7 +184,8 @@ impl Query for MemberValue {
         };
         let members = cx.get::<Members>(ty).ok_or(Unevaluated::Unsupported)?;
         let Found::Decl(decl) = members.find(*name) else { return Err(Unevaluated::Absent) };
-        let env = Env::defining(cx, literal, instance.as_ref()).ok_or(Unevaluated::Absent)?;
+        let types = cx.get::<TypedDecl>(&(decl.decl.clone(), instance.clone()));
+        let env = Env::defining(cx, literal, instance.as_ref()).ok_or(Unevaluated::Absent)?.typed_by(types);
         let value = env.parsed.hir.decls[decl.decl.decl.id].value.ok_or(Unevaluated::Runtime)?;
         match env.parsed.hir.exprs[value].kind {
             // A requirement of an interface, which an impl provides.

@@ -252,6 +252,11 @@ In order:
      are `_` in `lang.ops`), coroutine values (`-> Iter(u32)` returns an interface, not a type),
      borrow modes of slice items (`&mut [T]` should yield `&mut T`), narrowing by comparisons
      (decision 35) inside loops.
+   - Decision 82: `decl::TypedDecl((decl, instance))` types a declaration's value (the checker
+     absorbs its reports; `Env::decl_type` and `MemberValue` read it); `Env::typed_by` and
+     `Env::type_of` give evaluation the types; `env/aggregate.rs` (`eval_as`, `record`,
+     `variant`, strings); `Value::item`; MIR `Rvalue::{Aggregate, Field, Index}`
+     (`build/aggregate.rs`) run in the interpreter. MIR lowers 34 of 102 accept functions.
    - Decision 81: borrows (`typeck/prefix.rs`), `unsafe` blocks, attributed expressions (also in
      `Env::eval`), struct patterns, per-branch reports (`Typer::fits`, naming the written result
      type through `Typer::written`). Remaining untyped in `corpus/accept`: calls into `std`
@@ -304,7 +309,7 @@ In order:
    declaration's members needs sema.
 4. Fuzz the parser longer (120 s runs are clean).
 
-`cargo xtask corpus` ends with the phase 1 progress measure (`overt_driver::Coverage`, `Session::coverage`): the share of function-body expressions sema types and of functions MIR lowers in `corpus/accept` (26% before decision 75, 32% after, 33% and 17 functions after 77, 41% after 80, 42% after 81). The corpus has 40 accept and 55 reject programs plus 63 explanation pages (`cargo xtask corpus`:
+`cargo xtask corpus` ends with the phase 1 progress measure (`overt_driver::Coverage`, `Session::coverage`): the share of function-body expressions sema types and of functions MIR lowers in `corpus/accept` (26% before decision 75, 32% after, 33% and 17 functions after 77, 41% after 80, 42% after 81, 43% and 34 lowered after 82). The corpus has 40 accept and 55 reject programs plus 63 explanation pages (`cargo xtask corpus`:
 149 passed, 38 pending on later stages, 20 shown as transcripts, 0 failed), plus
 `corpus/build.ov` (prelude `std.prelude` then `support`) and `corpus/support`, stand-ins for what
 programs take from drivers, other libraries and unwritten parts of `std`.

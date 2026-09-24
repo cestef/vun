@@ -24,6 +24,11 @@ impl Env<'_, '_> {
         let e = &hir.exprs[expr];
         match &e.kind {
             ExprKind::Lit(Lit::Int(n)) => Ok(Value::Int(Integer::from(*n))),
+            ExprKind::Lit(Lit::Char(c)) => Ok(Value::Int(Integer::from(i128::from(u32::from(*c))))),
+            ExprKind::Lit(Lit::String(text)) => Ok(Self::string(text)),
+            ExprKind::StructLit { ty: Some(ty), fields } => self.record(self.ty(*ty)?, fields),
+            ExprKind::StructLit { ty: None, .. } | ExprKind::DotName(_) => self.eval_as(expr, None),
+            ExprKind::Index { object, index } => self.index(*object, *index),
             ExprKind::Name(_) => match self.parsed.resolution.names[expr] {
                 Some(Res::Binder(b)) if let Some(bound) = self.bindings.get(&b) => Ok(bound.clone()),
                 _ => self.value_of(self.resolve(expr)?),
@@ -31,7 +36,7 @@ impl Env<'_, '_> {
             ExprKind::Member { object, name: Name::Plain(name) } => self.member(self.eval(*object)?, *name),
             ExprKind::Enum(_) => Ok(self.nominal(expr, NominalKind::Enum)),
             ExprKind::Struct(_) => Ok(self.nominal(expr, NominalKind::Struct)),
-            ExprKind::Prefix { op: TokenKind::Amp, mode, operand } => self.borrow(*mode, *operand),
+            ExprKind::Prefix { op: TokenKind::Amp, mode, operand } => self.borrow(expr, *mode, *operand),
             ExprKind::Prefix { op, operand, .. }
                 if let Some((_, item)) = TYPE_PREFIXES.iter().find(|(t, _)| t == op) =>
             {
@@ -45,7 +50,7 @@ impl Env<'_, '_> {
             ExprKind::Array(items) => items
                 .iter()
                 .map(|item| match item {
-                    Entry::One(item) => self.eval(*item),
+                    Entry::One(item) => self.eval_as(*item, self.type_of(expr).and_then(|t| t.items())),
                     Entry::Staged(_) => Err(Unevaluated::Unsupported),
                 })
                 .collect::<Result<_, _>>()
@@ -73,6 +78,9 @@ impl Env<'_, '_> {
             ExprKind::Block(block) => self.block(*block),
             // Attributes on an expression are data, read where they act.
             ExprKind::Attributed { inner, .. } => self.eval(*inner),
+            ExprKind::Call { callee, .. } if matches!(hir.exprs[*callee].kind, ExprKind::DotName(_)) => {
+                self.eval_as(expr, None)
+            }
             ExprKind::Call { callee, args } => self.call(*callee, args).map_err(|u| u.through(e.origin)),
             ExprKind::Fn { .. } => Ok(Value::Fn(self.func(expr))),
             ExprKind::FnType { params, returns } => Ok(Value::Type(self.signature(params, *returns)?.ty())),
@@ -140,11 +148,16 @@ impl Env<'_, '_> {
 
     /// `&T`, `&mut T`, ...: the borrow type the word after `&` names (appendix B), applied to the
     /// type `operand`. A borrow of a value exists at run time only.
-    fn borrow(&self, mode: Option<Symbol>, operand: ExprId) -> Result<Value, Unevaluated> {
+    fn borrow(&self, expr: ExprId, mode: Option<Symbol>, operand: ExprId) -> Result<Value, Unevaluated> {
         let word = mode.map_or("", Symbol::as_str);
         let (_, item) = BORROWS.iter().find(|(m, _)| *m == word).ok_or(Unevaluated::Unsupported)?;
-        let ty = self.eval(operand)?.as_type().ok_or(Unevaluated::Runtime)?;
-        self.apply(self.item(item)?, vec![Value::Type(ty)])
+        let value = self.eval_as(operand, self.type_of(expr).and_then(|t| t.pointee()))?;
+        match value.as_type() {
+            Some(ty) => self.apply(self.item(item)?, vec![Value::Type(ty)]),
+            // A shared borrow of a compile-time value reads the value, which never changes.
+            None if word.is_empty() => Ok(value),
+            None => Err(Unevaluated::Runtime),
+        }
     }
 
     /// The type `expr` denotes, evaluated where a type is expected.

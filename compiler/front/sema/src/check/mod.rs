@@ -12,12 +12,12 @@ use overt_hir::tree::{DeclId, ExprId, ExprKind, Hir, Member, NsId, each_entry};
 use overt_hir::visit::{self, Visitor};
 use overt_query::{Cx, Query};
 
-use crate::decl::DeclValue;
+use crate::decl::{DeclValue, TypedDecl};
 use crate::env::{Env, Unevaluated};
 use crate::eval::Instantiation;
 use crate::item::DeclRef;
 use crate::item::ExprRef;
-use crate::typeck::{Stage, Typed, Typer};
+use crate::typeck::Typed;
 use crate::visible::Home;
 
 /// What checking a file reports; `None` for a file the driver did not read.
@@ -65,9 +65,10 @@ impl Visitor for Checker<'_, '_, '_> {
             self.visibility(hir, m);
             if let Member::Decl(d) = m {
                 self.evaluate(hir, *d);
-                let mut typer = Typer::new(self.env, Stage::Compile);
-                typer.decl(hir, *d);
-                self.diag.absorb(&typer.diag);
+                let key = (DeclRef::new(self.env.file.clone(), hir, *d), None);
+                if let Some(typed) = self.env.cx.get::<TypedDecl>(&key) {
+                    self.diag.absorb(&typed.diag);
+                }
             }
         });
         visit::walk_namespace(self, hir, ns);

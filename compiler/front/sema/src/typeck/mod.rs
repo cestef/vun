@@ -112,12 +112,7 @@ impl Query for Typed {
         }
         let mut exprs = Exprs(0);
         exprs.block(hir, *body);
-        Some(Arc::new(TypedBody {
-            types: typer.types.into_iter().collect(),
-            methods: typer.methods.into_iter().collect(),
-            diag: typer.diag,
-            exprs: exprs.0,
-        }))
+        Some(Arc::new(typer.finish(exprs.0)))
     }
 
     /// A body that reaches itself through calls is typed on its way in; the inner reach sees
@@ -164,6 +159,17 @@ impl<'e, 'a, 'db> Typer<'e, 'a, 'db> {
             written: None,
             loops: Vec::new(),
             diag: DiagCtxt::new(),
+        }
+    }
+
+    /// What this typer found, over a body of `exprs` expressions.
+    #[must_use]
+    pub fn finish(self, exprs: usize) -> TypedBody {
+        TypedBody {
+            types: self.types.into_iter().collect(),
+            methods: self.methods.into_iter().collect(),
+            diag: self.diag,
+            exprs,
         }
     }
 

@@ -67,6 +67,21 @@ pub enum Rvalue {
         lo: Operand,
         hi: Option<Operand>,
     },
+    /// A value built from parts, in the order `kind` gives.
+    Aggregate {
+        kind: Aggregate,
+        parts: Vec<Operand>,
+    },
+    /// The field `name` of a struct value.
+    Field {
+        operand: Operand,
+        name: Symbol,
+    },
+    /// An item of an array value.
+    Index {
+        operand: Operand,
+        index: Operand,
+    },
     Call {
         callee: Operand,
         args: Vec<Operand>,
@@ -83,6 +98,23 @@ pub enum Rvalue {
     /// function literal, which sees the call's parameters, or such a parameter of an enclosing
     /// function.
     Comptime(ExprId),
+}
+
+/// What an [`Rvalue::Aggregate`] builds.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub enum Aggregate {
+    /// A value of the struct type `ty`: its fields `fields`, in declaration order.
+    Struct {
+        ty: Ty,
+        fields: Vec<Symbol>,
+    },
+    /// The variant `name` of the enum type `ty`, its parts the payload.
+    Variant {
+        ty: Ty,
+        name: Symbol,
+    },
+    Tuple,
+    Array,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]

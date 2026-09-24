@@ -2,6 +2,7 @@
 //! declarations become locals; any other name is a constant sema evaluates. A form not lowered
 //! yet is [`Unbuilt`], at its origin, so that evaluation stops rather than guesses.
 
+mod aggregate;
 mod assign;
 mod control;
 mod loops;
@@ -202,6 +203,9 @@ impl Builder<'_, '_, '_> {
                 let operand = self.operand(*operand)?;
                 Ok(self.temp(Rvalue::Unary { op: *op, operand }, origin))
             }
+            ExprKind::Call { callee, .. } if matches!(hir.exprs[*callee].kind, ExprKind::DotName(_)) => {
+                self.aggregate(expr).unwrap_or(Err(unbuilt))
+            }
             ExprKind::Call { callee, args } => {
                 // `a.f(b)` is `T.f(a, b)`, `f` the method the typer found (spec 01, section 4).
                 let (callee, mut values) = match self.method(*callee)? {
@@ -220,7 +224,10 @@ impl Builder<'_, '_, '_> {
                 Ok(self.temp(Rvalue::Comptime(expr), origin))
             }
             // Anything else only as a constant sema can compute, such as `lang.int.u8`.
-            _ => self.env.eval(expr).map(Operand::Const).map_err(|_| unbuilt),
+            _ => match self.aggregate(expr) {
+                Some(built) => built,
+                None => self.env.eval(expr).map(Operand::Const).map_err(|_| unbuilt),
+            },
         }
     }
 }

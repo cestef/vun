@@ -6,6 +6,7 @@
 //! Calls go to the installed evaluator (spec 13, section 6). Anything else is [`Unevaluated`],
 //! which checks treat as unknown and never report.
 
+mod aggregate;
 mod condition;
 mod eval;
 
@@ -26,7 +27,8 @@ use crate::eval::{Func, Instance};
 use crate::item::{DeclRef, Declared, ExprRef, Site};
 use crate::member::{Found, MemberValue, Members};
 use crate::trap::Trap;
-use crate::ty::Value;
+use crate::ty::{Ty, Value};
+use crate::typeck::TypedBody;
 
 /// Why an expression has no value at compile time here.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -56,6 +58,9 @@ pub struct Env<'a, 'db> {
     pub instance: Option<Instance>,
     /// The parameters of that call, bound to its arguments.
     bindings: HashMap<BinderId, Value>,
+    /// The types of the expressions evaluated, where typing found them: forms typed by their
+    /// context, such as `.{ }` and `.name`, evaluate only with them.
+    types: Option<Arc<TypedBody>>,
 }
 
 impl<'a, 'db> Env<'a, 'db> {
@@ -69,6 +74,7 @@ impl<'a, 'db> Env<'a, 'db> {
             names: cx.get::<FileNames>(file)?,
             instance: None,
             bindings: HashMap::new(),
+            types: None,
         })
     }
 
@@ -102,6 +108,19 @@ impl<'a, 'db> Env<'a, 'db> {
         let bound: Vec<_> = binders.zip(args).filter_map(|(b, arg)| Some((b?, arg?))).collect();
         env.bindings.extend(bound);
         Some(env)
+    }
+
+    /// This environment, evaluating with the types `types` found.
+    #[must_use]
+    pub fn typed_by(mut self, types: Option<Arc<TypedBody>>) -> Self {
+        self.types = types;
+        self
+    }
+
+    /// The type typing found for `expr`, if any.
+    #[must_use]
+    pub fn type_of(&self, expr: ExprId) -> Option<Ty> {
+        self.types.as_ref()?.types.get(&expr).map(|k| k.ty)
     }
 
     /// The environment the literal `literal` was evaluated in: inside `instance`, or in its file.
@@ -192,6 +211,10 @@ impl<'a, 'db> Env<'a, 'db> {
                     },
                     Found::Field(_) | Found::Variant(_) => Err(Unevaluated::Unsupported),
                 }
+            }
+            // A field of a struct value.
+            Value::Struct { fields, .. } => {
+                fields.into_iter().find(|(n, _)| *n == name).map(|(_, v)| v).ok_or(Unevaluated::Absent)
             }
             _ => Err(Unevaluated::Unsupported),
         }

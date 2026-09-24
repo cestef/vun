@@ -7,7 +7,7 @@ use overt_index::Idx;
 use overt_origin::OriginId;
 use overt_span::LineCol;
 
-use crate::body::{Body, Operand, Rvalue, TerminatorKind};
+use crate::body::{Aggregate, Body, Operand, Rvalue, TerminatorKind};
 use crate::place::Place;
 
 impl fmt::Display for Place {
@@ -35,6 +35,26 @@ impl fmt::Display for Rvalue {
             Self::Range { op, lo, hi: Some(hi) } => write!(f, "{lo}{}{hi}", text(*op)),
             Self::Range { op, lo, hi: None } => write!(f, "{lo}{}", text(*op)),
             Self::Comptime(expr) => write!(f, "comptime e{}", expr.index()),
+            Self::Aggregate { kind, parts } => {
+                let (open, close) = match kind {
+                    Aggregate::Struct { ty, .. } | Aggregate::Variant { ty, .. } => {
+                        write!(f, "{ty}")?;
+                        if let Aggregate::Variant { name, .. } = kind {
+                            write!(f, ".{name}")?;
+                        }
+                        ("{ ", " }")
+                    }
+                    Aggregate::Tuple => ("(", ")"),
+                    Aggregate::Array => ("[", "]"),
+                };
+                f.write_str(open)?;
+                for (i, part) in parts.iter().enumerate() {
+                    write!(f, "{}{part}", if i > 0 { ", " } else { "" })?;
+                }
+                f.write_str(close)
+            }
+            Self::Field { operand, name } => write!(f, "{operand}.{name}"),
+            Self::Index { operand, index } => write!(f, "{operand}[{index}]"),
             Self::Narrow { operand, ty, narrowing } => {
                 write!(f, "{operand} narrowed to {ty} ({narrowing:?})")
             }

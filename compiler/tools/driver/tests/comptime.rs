@@ -159,3 +159,27 @@ pointer := (p: *u8) -> *u8 { p };
         ]
     );
 }
+
+#[test]
+fn compile_time_calls_build_and_read_values() {
+    let fixture = Fixture::new("comptime-values");
+    let file = fixture.root.write(
+        "values.ov",
+        "\
+Pair := struct { a: u8, b: u8 = 5 };
+make := ($x: u8) -> Pair { .{ .a = x } };
+swap := ($p: Pair) -> Pair { Pair{ .a = p.b, .b = p.a } };
+Big := Int(0..=swap(make(3)).a);
+big: Big = 6;
+second := ($xs: [3]u8) -> u8 { xs[1] };
+Second := Int(0..=second([1, 9, 2]));
+two: Second = 10;
+Register := struct { name: &[u8], offset: u16 };
+regs: &[Register] = &[.{ .name = \"cr1\", .offset = 0 }, .{ .name = \"arr\", .offset = 0x2c }];
+Offset := Int(0..=regs[1].offset);
+offset: Offset = 45;
+",
+    );
+    let fit = |ty: &str| (errors::INT_DOES_NOT_FIT, format!("value does not fit the type `{ty}`"));
+    assert_eq!(fixture.reported(&file), [fit("Big"), fit("Second"), fit("Offset")]);
+}

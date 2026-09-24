@@ -41,7 +41,7 @@ impl Typer<'_, '_, '_> {
 
     /// `[a, b, c]`: an array of the join of its items, each typed as the expected item.
     pub(super) fn array(&mut self, expr: ExprId, items: &[Entry<ExprId>]) -> Option<Known> {
-        let expected = self.expected(expr).and_then(|t| t.as_array().map(|(_, elem)| elem));
+        let expected = self.expected(expr).and_then(|t| t.items());
         let mut joined: Option<Option<Known>> = None;
         for item in items {
             let Entry::One(item) = item else {

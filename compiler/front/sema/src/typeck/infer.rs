@@ -61,7 +61,7 @@ impl Typer<'_, '_, '_> {
                 known
             }
             ExprKind::Prefix { op: TokenKind::Bang, operand, .. } => self.logic(&[*operand]),
-            ExprKind::Prefix { op: TokenKind::Amp, mode, operand } => self.borrow(*mode, *operand),
+            ExprKind::Prefix { op: TokenKind::Amp, mode, operand } => self.borrow(expr, *mode, *operand),
             ExprKind::Prefix { op: TokenKind::Unsafe, operand, .. } => {
                 self.typed_as(*operand, self.expected(expr))
             }

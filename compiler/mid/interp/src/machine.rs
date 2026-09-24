@@ -2,7 +2,7 @@
 //! calls go through sema's memoized `Call` query, so recursion and repeated calls are shared.
 
 use overt_index::IndexVec;
-use overt_mir::{Body, Local, Operand, Rvalue, TerminatorKind};
+use overt_mir::{Aggregate, Body, Local, Operand, Rvalue, TerminatorKind};
 use overt_query::Cx;
 use overt_sema::env::{Env, Unevaluated};
 use overt_sema::eval::Instance;
@@ -90,6 +90,21 @@ impl<'b, 'a, 'db> Frame<'b, 'a, 'db> {
                 self.operand(operand)?.narrow(&ty.interval().ok_or(Unevaluated::Unsupported)?, *narrowing)
             }
             Rvalue::Comptime(expr) => self.env.eval(*expr),
+            Rvalue::Aggregate { kind, parts } => {
+                let parts = parts.iter().map(|p| self.operand(p)).collect::<Result<Vec<_>, _>>()?;
+                Ok(match kind {
+                    Aggregate::Struct { ty, fields } => {
+                        Value::Struct { ty: *ty, fields: fields.iter().copied().zip(parts).collect() }
+                    }
+                    Aggregate::Variant { ty, name } => {
+                        Value::Variant { ty: *ty, name: *name, payload: parts }
+                    }
+                    Aggregate::Tuple => Value::Tuple(parts),
+                    Aggregate::Array => Value::Array(parts),
+                })
+            }
+            Rvalue::Field { operand, name } => self.env.member(self.operand(operand)?, *name),
+            Rvalue::Index { operand, index } => self.operand(operand)?.item(&self.operand(index)?),
             Rvalue::Call { callee, args } => {
                 let args = args.iter().map(|a| self.operand(a)).collect::<Result<Vec<_>, _>>()?;
                 self.env.apply(self.operand(callee)?, args)

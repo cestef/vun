@@ -107,16 +107,22 @@ impl TyKind {
         }
     }
 
-    /// The item type of an array or slice type.
+    /// The item type of a slice type.
     #[must_use]
-    pub fn items(&self) -> Option<Ty> {
+    pub fn slice_items(&self) -> Option<Ty> {
         match self {
             Self::Primitive(Primitive::Mem(Mem::Slice), args) => match args.as_slice() {
                 [Value::Type(elem)] => Some(*elem),
                 _ => None,
             },
-            _ => self.as_array().map(|(_, elem)| elem),
+            _ => None,
         }
+    }
+
+    /// The item type of an array or slice type.
+    #[must_use]
+    pub fn items(&self) -> Option<Ty> {
+        self.slice_items().or_else(|| self.as_array().map(|(_, elem)| elem))
     }
 
     /// `lang.Int(range)`.
@@ -127,7 +133,8 @@ impl TyKind {
 
     /// Whether a value of type `found` is accepted where this type is expected: integers whose
     /// range lies within (spec 04, rule 2), tuples, arrays and bounds whose items are, bounds
-    /// where a `lang.Range` is expected, or the type itself.
+    /// where a `lang.Range` is expected, a borrow of an array where a borrow of a slice of its
+    /// items is (spec 02), or the type itself.
     #[must_use]
     pub fn accepts(&self, found: &Self) -> bool {
         if let (Some(expected), Some(found)) = (self.interval(), found.interval()) {
@@ -138,6 +145,14 @@ impl TyKind {
                 Some(items) => items.accepts(&found_items),
                 None => *self == Self::Primitive(Primitive::Lang(Lang::Range), Vec::new()),
             };
+        }
+        // A borrow of an array is a borrow of its items as a slice, in the same mode.
+        if let (Some((mode, _, expected)), Some((found_mode, _, found))) =
+            (self.borrowing(), found.borrowing())
+            && mode == found_mode
+            && let (Some(items), Some((_, found_items))) = (expected.slice_items(), found.as_array())
+        {
+            return items.accepts(&found_items);
         }
         match (self, found) {
             (Self::Tuple(expected), Self::Tuple(found)) => {
