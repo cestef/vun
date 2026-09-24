@@ -137,6 +137,11 @@ formats, `Format::PUBLISHED` is `.tar.zst`), `vun-http`, `vun-hash`, `vun-fs` (`
 - Traps (`trap.rs`): `Reason` includes `Reported { message, at }` (`lang.diag.error`), shown as
   `comptime.reported` with the library's message.
 
+**Narrowing** (decision 156, `typeck/narrow.rs`): `Facts` of a condition (the table
+`comparisons`, `Compared` on `Comparison` in `int/compare.rs`), `Typer::narrowed` overlaid on
+locals by `name()`, scoped with `narrowing`, extended after an `if` that cannot fall through
+(`after`). `lang.ops` iterators count through narrowed immutable bindings.
+
 **Typed tables** (decision 149): borrow modes are `vun_desugar::Borrow` (a row of `BORROWS`:
 `written`, `of`, `plain`, `lasting`, `item`, `before`, `after`, `access`, `extent`, `alike`);
 HIR `ExprKind::Borrow { mode: Option<Borrow> }` (`None` is reported as `syntax.unknown_borrow` by
@@ -195,8 +200,10 @@ Memory}`, slots, blocks with parameters, instructions, values), `Builder`, `Unit
 `func/` per concern: places (`Reached` with a slice's length), constants (`Lowering::encode`),
 conversions (ranges, arrays item by item, enums variant by variant), rvalues, calls (functions,
 imports, `lang` primitives with link symbols), primitives (`lang.int` arithmetic and comparisons,
-narrowings, `lang.mem`), bounds and runs, traps. hello.vun lowers to LIR that verifies;
-coroutine frames (export.vun's `for` over a slice) are not lowered yet (`Form::Frame`).
+narrowings, `lang.mem`, `lang.bounds`), bounds and runs, traps, coroutine frames (`Frames`,
+`frame/`: `resume` and `end` from one body). `Bounds(T)` at run time is its low bound, a second
+bound and a `BoundsEnd` byte (`Open`, `Before`, `Through`). `Framing` gives sema frame layouts
+(`vun_sema::layout::Framers`, installed by the driver next to the interpreter).
 
 **LIR analyses** (`vun_lir::analysis`, spec 13 section 8.1, after TPDE): `Cfg`, `Loops` (Wei et
 al., irreducible loops included), `Order` (reverse postorder, loops contiguous, `span`, `next`),
@@ -256,12 +263,13 @@ run from the requirements of `std.build.Package` and calls `std.build.plan` with
 package's `build.vun` runs it (stage `plan`), `vun dump plan` prints its actions as literals
 (`Value::literal`). Nothing carries the actions out yet.
 
-Progress: corpus 205 passed, 0 pending, 9 planned, 23 shown, 0 failed; 83% of accepted body
-expressions typed; MIR lowers 83 of 94 accepted functions. 236 tests, including one that checks
+Progress: corpus 207 passed, 0 pending, 9 planned, 27 shown, 0 failed; 82% of accepted body
+expressions typed; MIR lowers 83 of 94 accepted functions. 261 tests, including one that checks
 every `lang` and `std` file cleanly.
 
 ## 6. Decisions
 
+Proposed also: 155 (frame layout), 156 (narrowing, runtime bounds, frame layouts in sema).
 Accepted (the user's choices, details proposed): 152 (backends after TPDE, baseline backend
 started after C), 153 (the C backend), 154 (targets named by system and CPU, chosen per session).
 Accepted: 1 to 84, 91, 92, 98 to 106, 109, 111, 116, 118 (no bespoke formats: `lock.vun`,
@@ -287,8 +295,10 @@ rules go to `decisions.md` as proposed unless the user approves them.
    `Shapes` has no layout for frame types (only lowering's `Frames` query does), so
    `std.meta.size(f.Frame)` and types holding frames are unknown; frames of coroutines generated
    inside `$for` do not map back to their instantiation (`Frame::instantiation` drops `staged`).
-   `lang.ops`' slice iterator adds 1 to a `usize`, which needs 65 bits until comparisons narrow
-   ranges (decision 35): the C backend refuses it, so `for` over slices waits for that.
+   `f.Frame` (spec 06) is not implemented: no function value has a member `Frame`, and
+   `lang.meta.TypeOf` takes `Code(type)`, not a value, so a frame type is named only through an
+   inferred `$F` (the surface is the user's to choose). A slice value (`xs[a..b]` not borrowed)
+   reaches lowering as `backend.unlowered` ("no layout") instead of a sema error.
 1. `std`: `std.task.Pool`, `std.testing.Sim`; a Linux runtime without the C library; text
    (`Str`) and collections; `print`'s `.fixes`. Generic bodies
    over a constrained `$A: Allocator` are neither typed nor lowered (`a.alloc(...)`), see 5 and 6.
@@ -305,7 +315,7 @@ rules go to `decisions.md` as proposed unless the user approves them.
 6. Sema gaps: a library report from a range primitive (rule 8) carries a "while evaluating"
    frame inside `lang.int`; traps inside a callee's instantiated signature are not reported; impl
    member types
-   against requirements; narrowing by comparisons (decision 35), exhaustiveness (decision 29),
+   against requirements; exhaustiveness (decision 29),
    `#[layout.offset]`/`#[layout.c]`, frame layouts, markers checked beyond `unsafe` and
    `panic.never`.
 7. Evaluator: its own stack (deep chains of compile-time calls overflow the host stack); loans

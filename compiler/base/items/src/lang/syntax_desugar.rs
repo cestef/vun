@@ -10,6 +10,11 @@ use crate::Item;
 /// interface, in the witness of that interface for the type of `a`, the operands passed as the
 /// function's parameters ask. `and`, `or` and ranges are not interfaces.
 pub const operators: Item = Item::new(&["lang", "syntax", "desugar", "operators"]);
+/// How a comparison relates its left operand to its right.
+pub const Comparison: Item = Item::new(&["lang", "syntax", "desugar", "Comparison"]);
+/// The comparisons that narrow ranges (spec 04, rule 4): where `a op b` holds on integers, `a`
+/// and `b` are related as `holds` says, and where it fails, as its negation says.
+pub const comparisons: Item = Item::new(&["lang", "syntax", "desugar", "comparisons"]);
 /// What prefix operators desugar to (appendix B): `op a` calls `function` in the witness of its
 /// interface for the type of `a`. `!` is not an interface: it negates a condition (`forms`).
 pub const prefix_operators: Item = Item::new(

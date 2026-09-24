@@ -41,6 +41,7 @@ declaration whose value is `_`.
 | `if c`, `for c`, `a and b`, `!c` | `c` has the type `lang.bool` and holds when it is `lang.bool.true` (the table `forms`) |
 | `(A, B) -> R` | `lang.Fn((A, B), R)` with the attributes of the literal |
 | `a..b`, `a..=b` | half-open and closed bounds of type `lang.Bounds(T)`, `T` the integers any such range holds (the table `forms`); where a `lang.Range` is expected, the range they denote |
+| `a < b` (each comparison) in a condition | narrows the ranges of immutable integer bindings it compares where it holds and where it fails (the table `comparisons`, spec 04, rule 4) |
 | `a + b` (each operator) | `lang.ops.Add.add(a, b)`: the interface and function the table `operators` of `lang.syntax.desugar` gives |
 | `a == b`, `a != b` | `lang.ops.Eq.eq(&a, &b)`, `Eq.ne` (provided) |
 | `a < b`, `<=`, `>`, `>=` | `lang.ops.Ord.lt(&a, &b)`, `le`, `gt`, `ge`, provided from `Ord.cmp` |

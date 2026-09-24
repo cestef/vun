@@ -91,3 +91,39 @@ fn a_loop_resumes_a_coroutine_to_its_end() {
 fn breaking_out_of_a_loop_ends_the_suspended_frame() {
     assert_eq!(status("backend-c-break", &driving("if x == 5 { break; } total ^= x;")), Some(0x03 ^ 0x04));
 }
+
+#[test]
+fn loops_over_slices_arrays_and_bounds_count_within_their_items() {
+    let source = "\
+start := std.os.start(main);
+main := (sys: &mut std.os.System) -> std.os.Exit {
+    xs: [5]u8 = [1, 2, 4, 8, 16];
+    mut total: u8 = 0;
+    for x in &xs { total = (total + x.*).wrap(u8); }
+    for x in &xs[1..=2] { total = (total + x.*).wrap(u8); }
+    n: u8 = sys.args().len().sat(u8);
+    last: u8 = (n + 254).sat(u8);
+    mut count: u8 = 0;
+    for _ in 0..=last { count = (count + 1).sat(u8); }
+    for _ in n..n { count = 0; }
+    .code((total + count).wrap(u8))
+};
+";
+    assert_eq!(status("backend-c-loops", source), Some((31 + 6 + 255) % 256));
+}
+
+#[test]
+fn coroutines_generated_by_staged_loops_run_as_their_steps() {
+    let source = "\
+start := std.os.start(main);
+main := (sys: &mut std.os.System) -> std.os.Exit {
+    mut total: u8 = 0;
+    $for k in [3, 5] {
+        gen := () -> std.iter.Iter(u8) { yield k; yield k; };
+        for x in gen() { total = (total + x).wrap(u8); }
+    }
+    .code(total)
+};
+";
+    assert_eq!(status("backend-c-staged-frames", source), Some(16));
+}

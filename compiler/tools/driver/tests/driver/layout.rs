@@ -116,3 +116,25 @@ Bits := #[layout.bits(u8)] struct { enable: bool, mode: unsigned(3), _: unsigned
     ];
     assert_eq!(shapes, expected);
 }
+
+#[test]
+fn frames_and_types_holding_them_have_the_layouts_lowering_gives() {
+    let fixture = Fixture::new("layout-frames");
+    let file = fixture.root.write(
+        "frames.vun",
+        "\
+values := (a: u8) -> std.iter.Iter(u8) { yield a; yield 4; };
+Holder := ($F: type) -> type { struct { f: F, tag: u8 } };
+size_of := ($F: type, f: &F) -> usize { $std.meta.size(Holder(F)) };
+main := () -> u8 {
+    mut frame := values(1);
+    n: Int(0..=2) = size_of(&frame);
+    frame.end();
+    n
+};
+",
+    );
+    // The frame keeps its state and `a`, a byte each, and the holder a byte more.
+    let ids: Vec<_> = fixture.reported(&file).into_iter().map(|(id, _)| id).collect();
+    assert_eq!(ids, [errors::INT_DOES_NOT_FIT]);
+}

@@ -2,6 +2,7 @@
 //! every range bound is an arbitrary-precision integer.
 
 mod bits;
+mod compare;
 mod extended;
 mod interval;
 #[cfg(test)]
@@ -13,6 +14,7 @@ use std::ops::{Add, Mul, Neg, Sub};
 use num_bigint::{BigInt, Sign};
 
 pub use bits::Bitwise;
+pub use compare::Compared;
 pub use extended::Extended;
 pub use interval::{Divided, Divisor, Interval, Storage};
 

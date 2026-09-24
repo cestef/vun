@@ -123,6 +123,7 @@ pub mod stack;
 pub mod syntax;
 pub mod syntax_desugar;
 pub mod syntax_desugar_Access;
+pub mod syntax_desugar_Comparison;
 pub mod syntax_desugar_Extent;
 pub mod syntax_desugar_Form;
 pub mod syntax_desugar_Narrowing;

@@ -9,10 +9,12 @@ pub enum Bounds {
     first,
     /// Whether `x` is the greatest item of `b`; never for bounds without an end, such as `a..`.
     ends,
+    /// The item after `x` in `b`, or `x` itself when it is the greatest: counting up never leaves `T`.
+    after,
 }
 impl Bounds {
     pub const NAMESPACE: vun_items::Item = vun_items::lang::bounds;
-    pub const ALL: &[Self] = &[Self::empty, Self::first, Self::ends];
+    pub const ALL: &[Self] = &[Self::empty, Self::first, Self::ends, Self::after];
     /// The declaration's name.
     #[must_use]
     pub const fn name(self) -> &'static str {
@@ -20,6 +22,7 @@ impl Bounds {
             Self::empty => "empty",
             Self::first => "first",
             Self::ends => "ends",
+            Self::after => "after",
         }
     }
     /// The declaration.
@@ -29,6 +32,7 @@ impl Bounds {
             Self::empty => vun_items::lang::bounds::empty,
             Self::first => vun_items::lang::bounds::first,
             Self::ends => vun_items::lang::bounds::ends,
+            Self::after => vun_items::lang::bounds::after,
         }
     }
 }

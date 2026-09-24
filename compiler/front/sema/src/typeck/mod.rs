@@ -17,6 +17,7 @@ mod infer;
 mod loops;
 mod methods;
 mod names;
+mod narrow;
 pub(crate) mod omitted;
 mod operator;
 
@@ -70,6 +71,9 @@ pub struct Typer<'e, 'a, 'db> {
     stage: Stage,
     types: HashMap<ExprId, Known>,
     locals: HashMap<BinderId, Known>,
+    /// The ranges immutable integer bindings are narrowed to where the expression typed is
+    /// (spec 04, rule 4).
+    narrowed: HashMap<BinderId, Ty>,
     /// Member expressions naming a declaration through a value: `p.norm` in `p.norm()`, whose
     /// call passes `p` first (spec 01, section 4); each with the struct declaring it, the type's
     /// own or a witness, and its name.
@@ -110,6 +114,7 @@ impl<'e, 'a, 'db> Typer<'e, 'a, 'db> {
             stage,
             types: HashMap::new(),
             locals: HashMap::new(),
+            narrowed: HashMap::new(),
             methods: HashMap::new(),
             operators: BTreeMap::new(),
             steps: BTreeMap::new(),

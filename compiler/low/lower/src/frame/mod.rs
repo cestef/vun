@@ -10,7 +10,7 @@ use vun_index::IndexVec;
 use vun_lir::Scalar;
 use vun_mir::{BlockId, Concrete, Local};
 use vun_query::{Cx, Cycle, Query};
-use vun_sema::layout::Layout;
+use vun_sema::layout::{Framer, Layout};
 use vun_sema::target::TargetOf;
 use vun_sema::ty::{Ty, TyKind};
 
@@ -82,5 +82,14 @@ impl Query for Frames {
     fn cycle(_: &Cx<'_>, ty: &Ty, _: &Cycle) -> Self::Value {
         let TyKind::Frame(frame) = &**ty else { unreachable!("frames are shaped by their types") };
         Arc::new(Err(Unlowered { at: frame.literal.expr.origin, why: Why::Recursive }))
+    }
+}
+
+/// Frame layouts for sema (`vun_sema::layout::Framers`), from [`Frames`].
+pub struct Framing;
+
+impl Framer for Framing {
+    fn layout(&self, cx: &Cx<'_>, ty: &Ty) -> Option<Layout> {
+        cx.get::<Frames>(ty).as_ref().as_ref().ok().map(|shape| shape.layout)
     }
 }

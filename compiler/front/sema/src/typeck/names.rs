@@ -20,7 +20,7 @@ impl Typer<'_, '_, '_> {
         self.mutable_static(expr);
         if let Some(Res::Binder(b)) = self.env().parsed.resolution.names[expr] {
             if let Some(known) = self.locals.get(&b) {
-                return Some(*known);
+                return Some(Known { ty: self.narrowed.get(&b).copied().unwrap_or(known.ty), ..*known });
             }
             // A binder the environment binds, such as a `$for` binder: its value's type.
             if let Some(ty) = self.env().bound(b).and_then(Value::ty) {

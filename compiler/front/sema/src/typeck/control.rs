@@ -1,6 +1,7 @@
 //! Conditions and branches: `and`, `or`, `!` and `if` heads take the condition type of `lang`
 //! (the table `forms`), and an `if` has the type both its branches can take.
 
+use vun_grammar::TokenKind;
 use vun_hir::tree::{BlockId, Cond, ExprId};
 
 use super::{Known, Stage, Typer};
@@ -21,6 +22,16 @@ impl Typer<'_, '_, '_> {
         Some(Known { ty: condition?, stage })
     }
 
+    /// `left and right`, whose right operand is typed where `left` holds, or `left or right`,
+    /// where it fails.
+    pub(super) fn connective(&mut self, op: TokenKind, left: ExprId, right: ExprId) -> Option<Known> {
+        let first = self.logic(&[left]);
+        let facts = self.facts(left);
+        let known = if op == TokenKind::And { facts.holds } else { facts.fails };
+        let second = self.narrowing(&known, |t| t.logic(&[right]));
+        Some(Known { stage: first?.stage.max(second?.stage), ..second? })
+    }
+
     /// `if cond { then } else { otherwise }`: without `else`, its value is `()`.
     pub(super) fn branch(
         &mut self,
@@ -30,8 +41,13 @@ impl Typer<'_, '_, '_> {
         otherwise: Option<ExprId>,
     ) -> Option<Known> {
         let expected = self.expected(expr);
+        let mut facts = super::narrow::Facts::default();
         let head = match cond {
-            Cond::Expr(c) => self.logic(&[*c]).map(|k| k.stage),
+            Cond::Expr(c) => {
+                let head = self.logic(&[*c]).map(|k| k.stage);
+                facts = self.facts(*c);
+                head
+            }
             // `if p = e`: `p` is matched against `e` as a `match` arm is.
             Cond::Test { pat, value } => {
                 let matched = self.typed(*value);
@@ -39,7 +55,7 @@ impl Typer<'_, '_, '_> {
                 matched.map(|k| k.stage)
             }
         };
-        let then_value = self.block_value(then, expected);
+        let then_value = self.narrowing(&facts.holds, |t| t.block_value(then, expected));
         let Some(otherwise) = otherwise else {
             return Some(Known { ty: TyKind::unit(), stage: Stage::Compile });
         };
@@ -48,7 +64,7 @@ impl Typer<'_, '_, '_> {
             Some(tail) => self.fits(tail, then_value, expected),
             None => then_value,
         };
-        let found = self.typed_as(otherwise, expected);
+        let found = self.narrowing(&facts.fails, |t| t.typed_as(otherwise, expected));
         let found = self.fits(otherwise, found, expected);
         let joined = self.join(otherwise, then?, found?)?;
         Some(Known { stage: joined.stage.max(head.unwrap_or(self.stage)), ..joined })

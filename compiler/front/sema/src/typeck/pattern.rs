@@ -139,11 +139,13 @@ impl Typer<'_, '_, '_> {
         for arm in arms {
             let Entry::One(arm) = arm else { continue };
             self.test(arm.pat, matched);
+            let mut holds = Vec::new();
             if let Some(guard) = arm.guard {
                 self.logic(&[guard]);
+                holds = self.facts(guard).holds;
             }
             let Some(value) = arm.value else { continue };
-            let found = self.typed_as(value, expected);
+            let found = self.narrowing(&holds, |t| t.typed_as(value, expected));
             let found = self.fits(value, found, expected);
             let leaves = matches!(
                 hir.exprs[value].kind,

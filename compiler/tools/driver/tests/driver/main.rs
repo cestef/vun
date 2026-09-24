@@ -21,6 +21,7 @@ mod markers;
 mod mir;
 mod mutation;
 mod namespaces;
+mod narrowing;
 mod places;
 mod plan;
 mod quotes;

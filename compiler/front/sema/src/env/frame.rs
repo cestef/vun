@@ -63,6 +63,7 @@ impl Env<'_, '_> {
                 let frame = Frame {
                     literal: ExprRef::new(self.file.clone(), hir, literal),
                     within: self.instance.clone(),
+                    staged: self.staged().into(),
                     args: args.to_vec(),
                     interface,
                     written: returns.and_then(|r| self.written_call(r)),

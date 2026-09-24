@@ -121,6 +121,12 @@ impl Interval {
         Self { lo: self.lo.clone().min(other.lo.clone()), hi: self.hi.clone().max(other.hi.clone()) }
     }
 
+    /// The values in both, `None` when they share none.
+    #[must_use]
+    pub fn meet(&self, other: &Self) -> Option<Self> {
+        Self::new(self.lo.clone().max(other.lo.clone()), self.hi.clone().min(other.hi.clone()))
+    }
+
     /// The smallest range holding every endpoint.
     fn spanning(values: impl IntoIterator<Item = Extended>) -> Option<Self> {
         values.into_iter().fold(None, |range, n| {

@@ -76,6 +76,8 @@ pub struct Param {
 pub struct Frame {
     pub literal: ExprRef,
     pub within: Option<Instance>,
+    /// The `$for` bindings of the entries that generated the coroutine function.
+    pub staged: std::sync::Arc<[crate::eval::Staging]>,
     pub args: Vec<Option<Value>>,
     pub interface: Func,
     /// The call the interface is written as, when it is one: `Iter(u32)`, whose constructor
@@ -91,7 +93,7 @@ impl Frame {
         let f = crate::eval::Func {
             literal: self.literal.clone(),
             within: self.within.clone().map(std::sync::Arc::new),
-            staged: std::sync::Arc::from([]),
+            staged: self.staged.clone(),
         };
         crate::eval::Instantiation::new(f, self.args.clone())
     }

@@ -172,7 +172,7 @@ BoundsIterate := ($T: type) -> type { struct {
         for {
             yield i;
             if bounds.ends(T, self, i) { break; }
-            i += 1;
+            i = bounds.after(T, self, i);
         }
     };
 } };
@@ -182,10 +182,14 @@ BoundsIterate := ($T: type) -> type { struct {
 SliceIterate := ($T: type) -> type { struct {
     Iter := Coroutine(&T, ());
     iter := (self: &[T]) -> Iter {
-        mut i: usize = 0;
-        for i < mem.len(T, self) {
+        n: usize = mem.len(T, self);
+        mut next: usize = 0;
+        for {
+            // `i` is below `n` past the test, so `i + 1` is a `usize` (spec 04, rule 4).
+            i := next;
+            if i >= n { return; }
             yield &self[i];
-            i += 1;
+            next = i + 1;
         }
     };
 } };
@@ -195,10 +199,12 @@ SliceIterate := ($T: type) -> type { struct {
 ArrayIterate := ($n: Int(0..), $T: type) -> type { struct {
     Iter := Coroutine(T, ());
     iter := (self: [n]T) -> Iter {
-        mut i: usize = 0;
-        for i < n {
+        mut next: Int(0..=n) = 0;
+        for {
+            i := next;
+            if i >= n { return; }
             yield self[i];
-            i += 1;
+            next = i + 1;
         }
     };
 } };

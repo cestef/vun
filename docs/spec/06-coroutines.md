@@ -143,3 +143,7 @@ goes, by the state, to the start or past the `yield` the frame is suspended at, 
 `yield` or the return, sets the state and gives the step; resuming a finished frame traps. `end`
 goes to the path ending the frame at its `yield`, which runs what is pending there. Calling the
 coroutine function writes the state and the parameters into the place receiving the frame.
+
+The compiler stage that knows liveness gives frame types their layout, so a frame's size and those
+of types holding frames are known wherever a layout is (`std.meta.size`). A coroutine function
+written by a `$for` step is one per step: its frames are laid out with that step's bindings.

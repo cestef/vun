@@ -6,3 +6,5 @@ empty: ($T: type, b: Bounds(T)) -> bool = _;
 first: ($T: type, b: Bounds(T)) -> T = _;
 /// Whether `x` is the greatest item of `b`; never for bounds without an end, such as `a..`.
 ends: ($T: type, b: Bounds(T), x: T) -> bool = _;
+/// The item after `x` in `b`, or `x` itself when it is the greatest: counting up never leaves `T`.
+after: ($T: type, b: Bounds(T), x: T) -> T = _;

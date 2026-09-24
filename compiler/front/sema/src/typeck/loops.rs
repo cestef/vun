@@ -33,10 +33,12 @@ impl Typer<'_, '_, '_> {
     /// `label: for head { body }`, its label `None` when it has none.
     pub(super) fn looping(&mut self, label: Option<Symbol>, head: &ForHead, body: BlockId) -> Option<Known> {
         let ends = Ends::With(Known { ty: TyKind::unit(), stage: Stage::Compile });
+        let mut holds = Vec::new();
         let value = match head {
             ForHead::Forever => Ends::Never,
             ForHead::While(Cond::Expr(cond)) => {
                 self.logic(&[*cond]);
+                holds = self.facts(*cond).holds;
                 ends
             }
             ForHead::While(Cond::Test { pat, value }) => {
@@ -54,10 +56,15 @@ impl Typer<'_, '_, '_> {
             }
         };
         self.loops.push(Loop { label, value });
-        self.block_value(body, None);
+        self.narrowing(&holds, |t| t.block_value(body, None));
         match self.loops.pop()?.value {
             Ends::With(known) => Some(known),
-            Ends::Never | Ends::Unknown => None,
+            // A loop nothing leaves gives no value: it has the empty type.
+            Ends::Never => {
+                let never = self.env().item(vun_items::lang::never).ok()?.as_type()?;
+                Some(Known { ty: never, stage: Stage::Compile })
+            }
+            Ends::Unknown => None,
         }
     }
 
@@ -107,8 +114,13 @@ impl Typer<'_, '_, '_> {
     pub(super) fn iteration(&self, ty: Ty) -> Option<(Iteration, Ty)> {
         let &IterationRow { function, iterator, resume, each: item, .. } = ITERATION.first()?;
         let interface = function.parent()?;
-        let witness =
-            self.witness_of(interface, ty).or_else(|| self.witness_of(interface, ty.borrowed()?))?;
+        // Through a borrow, the borrowed value's impl, a borrowed array being the slice of its
+        // items, as its borrow is accepted as one.
+        let through = || {
+            let borrowed = ty.borrowed()?;
+            Some(borrowed.as_array().map_or(borrowed, |(_, item)| TyKind::slice(item)))
+        };
+        let witness = self.witness_of(interface, ty).or_else(|| self.witness_of(interface, through()?))?;
         let member = (witness, iterator.symbol());
         let Ok(Value::Interface(coroutine)) = self.env().cx.get::<MemberValue>(&member) else { return None };
         let requirements = self

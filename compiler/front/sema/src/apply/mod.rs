@@ -76,6 +76,10 @@ impl Primitive {
             (Self::Bounds(Bounds::ends), [_, Value::Range(Some(items)), Value::Int(x)]) => {
                 env.decide(items.hi().finite() == Some(x))
             }
+            (Self::Bounds(Bounds::after), [_, Value::Range(Some(items)), Value::Int(x)]) => {
+                let last = items.hi().finite() == Some(x);
+                Ok(Value::Int(if last { x.clone() } else { x + &Integer::from(1) }))
+            }
             // `lang.mem.len(T, xs)`: the number of items `xs` borrows.
             (Self::Mem(Mem::len), [_, Value::Array(items)]) => Ok(Value::Int(Integer::from(items.len()))),
             (Self::Int(int), args) => int.apply(env, args),

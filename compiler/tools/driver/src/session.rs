@@ -21,6 +21,7 @@ use vun_sema::decl::DeclValue;
 use vun_sema::eval::Evaluators;
 use vun_sema::eval::Instantiation;
 use vun_sema::item::{DeclRef, ExprRef};
+use vun_sema::layout::Framers;
 use vun_sema::target::Choice;
 use vun_sema::ty::{Ty, Value};
 use vun_span::{FileId, SourceFiles, SourceMap};
@@ -61,6 +62,7 @@ impl Default for Session {
     fn default() -> Self {
         let db = Db::new();
         db.resource::<Evaluators>().install(Arc::new(Interpreter));
+        db.resource::<Framers>().install(Arc::new(vun_lower::Framing));
         Self {
             sources: db.resource(),
             origins: db.resource(),

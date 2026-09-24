@@ -47,7 +47,9 @@ denotes at compile time; bounds are accepted where a `Range` is expected.
    for match guards in their arm, and after an `if` whose branch cannot fall through
    (`if i >= n { return .none; }`). Mutable places are never narrowed, since any write would undo
    it. Narrowing is part of type checking, defined on the syntax of conditions, and never depends
-   on the optimizer.
+   on the optimizer. The comparisons that narrow, and what each tells, are the table `comparisons`
+   of `lang.syntax.desugar`. Where a comparison of a binding cannot hold, the binding keeps its
+   range. A `for` loop nothing leaves has the empty type.
 5. **Width cap.** An intermediate range that needs more than 128 bits is a compile error; narrow an
    intermediate. Compile-time-only values have no cap: literals, immutable namespace members,
    `$` parameters and bindings, operands of `$e`, and operations on those alone.

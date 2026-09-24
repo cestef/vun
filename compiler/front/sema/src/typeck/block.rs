@@ -2,7 +2,7 @@
 //! value is checked against the place's type.
 
 use vun_desugar::COMPOUND;
-use vun_hir::tree::{BlockId, Entry, ExprKind, Stmt};
+use vun_hir::tree::{BlockId, Stmt};
 use vun_hir::visit::{self, Visitor};
 
 use super::{Known, Stage, Typer};
@@ -14,17 +14,17 @@ impl Typer<'_, '_, '_> {
     pub(super) fn block_value(&mut self, block: BlockId, expected: Option<Ty>) -> Option<Known> {
         let hir = self.hir();
         let b = &hir.blocks[block];
-        visit::walk_list(self, hir, &b.stmts, &mut |v, s| v.stmt(s));
-        if let Some(tail) = b.tail {
-            return self.typed_as(tail, expected);
-        }
-        let leaves = b.stmts.iter().any(|s| {
-            matches!(s, Entry::One(Stmt::Expr(e)) if matches!(
-                hir.exprs[*e].kind,
-                ExprKind::Return(_) | ExprKind::Break { .. } | ExprKind::Continue { .. }
-            ))
-        });
-        (!leaves).then(|| Known { ty: TyKind::unit(), stage: Stage::Compile })
+        // Narrowings made after a statement last to the end of the block.
+        self.narrowing(&Vec::new(), |t| {
+            visit::walk_list(t, hir, &b.stmts, &mut |v, s| {
+                v.stmt(s);
+                v.after(s);
+            });
+            match b.tail {
+                Some(tail) => t.typed_as(tail, expected),
+                None => (!t.leaves(block)).then(|| Known { ty: TyKind::unit(), stage: Stage::Compile }),
+            }
+        })
     }
 
     fn stmt(&mut self, stmt: &Stmt) {

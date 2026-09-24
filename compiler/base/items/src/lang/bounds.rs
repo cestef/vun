@@ -12,3 +12,5 @@ pub const empty: Item = Item::new(&["lang", "bounds", "empty"]);
 pub const first: Item = Item::new(&["lang", "bounds", "first"]);
 /// Whether `x` is the greatest item of `b`; never for bounds without an end, such as `a..`.
 pub const ends: Item = Item::new(&["lang", "bounds", "ends"]);
+/// The item after `x` in `b`, or `x` itself when it is the greatest: counting up never leaves `T`.
+pub const after: Item = Item::new(&["lang", "bounds", "after"]);

@@ -4,6 +4,7 @@
 //! variant and one payload variant whose payload has unused patterns keeps its tag in one of them
 //! (the niche rule).
 
+mod frame;
 mod nominal;
 mod shape;
 mod text;
@@ -12,6 +13,7 @@ use std::sync::Arc;
 
 use vun_query::{Cx, Cycle, Query};
 
+pub use frame::{Framer, Framers};
 pub use shape::{Layout, Niche, Parts, Shape, Tag};
 pub use text::Text;
 
@@ -22,8 +24,28 @@ use crate::primitives::mem::Mem;
 use crate::target::TargetOf;
 use crate::ty::{Closure, Ty, TyKind, Value};
 
+/// How bounds at run time end, the byte after their two bounds: the second bound is the end past
+/// the last item, or the last item itself, so no bound needs a value past its items' storage.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum BoundsEnd {
+    /// `a..`: no end.
+    Open,
+    /// `a..b`: the end past the last item.
+    Before,
+    /// `a..=b`: the last item.
+    Through,
+}
+
+impl BoundsEnd {
+    /// The byte stored for it.
+    #[must_use]
+    pub const fn tag(self) -> u128 {
+        self as u128
+    }
+}
+
 /// The shape of a type; `None` for a type without one at run time (`type`, an unbounded
-/// integer, a slice, a frame, whose layout is not computed yet), or with a part without one.
+/// integer, a slice, a frame no framer shapes), or with a part without one.
 pub struct Shapes;
 
 impl Query for Shapes {
@@ -45,7 +67,8 @@ impl Query for Shapes {
             }
             TyKind::Record(fields) => Shape::sequence(layouts(&mut fields.iter().map(|(_, t)| t))?),
             TyKind::Nominal(nominal) => Self::nominal(cx, *ty, nominal)?,
-            TyKind::Frame(_) | TyKind::Param(_) => return None,
+            TyKind::Frame(_) => Shape::whole(Framers::layout(cx, *ty)?),
+            TyKind::Param(_) => return None,
         };
         Some(Arc::new(shape))
     }
@@ -115,8 +138,8 @@ impl Shapes {
                 let layout = Layout { size: item.size.checked_mul(len)?, align: item.align, niche };
                 Some(Shape { layout, parts: Parts::Array { stride: item.size, len } })
             }
-            // Bounds at run time: the low bound, the end past the last item, and whether there
-            // is an end, the bounds in the items' storage, or the word's when they have none.
+            // Bounds at run time: the low bound, the second bound and how they end
+            // (`BoundsEnd`), the bounds in the items' storage, or the word's when they have none.
             Primitive::Lang(Lang::Bounds) => {
                 let item = Self::bound(cx, &arg(0)?)?;
                 let flag = Layout::scalar(1, None);

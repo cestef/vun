@@ -63,8 +63,8 @@ impl Typer<'_, '_, '_> {
             ExprKind::Borrow { mode: Some(mode), operand } => self.borrow(expr, *mode, *operand),
             ExprKind::Prefix { op: TokenKind::Unsafe, operand, .. } => self.vouching(expr, *operand),
             ExprKind::Attributed { attrs, inner } => self.attributed(expr, attrs, *inner),
-            ExprKind::Infix { op: TokenKind::And | TokenKind::Or, left, right: Some(right) } => {
-                self.logic(&[*left, *right])
+            ExprKind::Infix { op: op @ (TokenKind::And | TokenKind::Or), left, right: Some(right) } => {
+                self.connective(*op, *left, *right)
             }
             ExprKind::If { cond, then, otherwise } => self.branch(expr, cond, *then, *otherwise),
             ExprKind::For { head, body } => self.looping(None, head, *body),

@@ -79,6 +79,9 @@ impl FnLower<'_, '_, '_> {
             let holds = self.b.compare(cond, x, y, self.at);
             return self.condition(holds, dest, ty);
         }
+        if let Primitive::Bounds(b) = p {
+            return self.bounded(b, &runtime, dest, ty);
+        }
         let Some(dest) = dest else { return Ok(()) };
         match p {
             Primitive::Int(narrowing @ (Int::to | Int::wrap | Int::sat)) => {

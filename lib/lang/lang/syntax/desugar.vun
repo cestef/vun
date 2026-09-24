@@ -25,6 +25,27 @@ operators := [
     .{ .token = .ge, .function = "lang.ops.Ord.ge" },
 ];
 
+/// How a comparison relates its left operand to its right.
+Comparison := enum {
+    less,
+    at_most,
+    greater,
+    at_least,
+    equal,
+    unequal,
+};
+
+/// The comparisons that narrow ranges (spec 04, rule 4): where `a op b` holds on integers, `a`
+/// and `b` are related as `holds` says, and where it fails, as its negation says.
+comparisons := [
+    .{ .token = .lt, .holds = .less },
+    .{ .token = .le, .holds = .at_most },
+    .{ .token = .gt, .holds = .greater },
+    .{ .token = .ge, .holds = .at_least },
+    .{ .token = .eq_eq, .holds = .equal },
+    .{ .token = .bang_eq, .holds = .unequal },
+];
+
 /// What prefix operators desugar to (appendix B): `op a` calls `function` in the witness of its
 /// interface for the type of `a`. `!` is not an interface: it negates a condition (`forms`).
 prefix_operators := [
