@@ -4,7 +4,8 @@
 
 Every type has three properties, computed structurally from its members. A declaration may make a
 type more restrictive (`#[kind.linear]`, `#[kind.fixed]`, `#[kind.free]`), never less. The
-attributes go on the type's literal or on the type constructor that makes it.
+attributes go on the type's literal, also when it is a constructor's value:
+`Own := ($T: type) -> type { #[kind.linear] #[kind.free] struct { ... } }`.
 
 | Property | Values | Meaning |
 |----------|--------|---------|

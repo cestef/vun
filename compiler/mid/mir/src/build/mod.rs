@@ -226,6 +226,8 @@ impl<'a, 'db> Builder<'_, 'a, 'db> {
                 _ => self.env().eval(expr).map(Operand::Const).map_err(|_| unbuilt),
             },
             ExprKind::Block(block) => self.block(*block),
+            // Attributes are read where they apply, from the expression they mark.
+            ExprKind::Attributed { inner, .. } => self.operand(*inner),
             ExprKind::Quote(_) => Ok(self.quote(expr, origin)),
             ExprKind::Member { .. }
             | ExprKind::Index { .. }

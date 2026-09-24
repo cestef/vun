@@ -97,8 +97,8 @@ impl Query for Kinds {
 }
 
 impl Kinds {
-    /// A struct or enum: as its parts make it, then as `#[kind.linear]` and `#[kind.free]` mark
-    /// it, on its literal or on the type constructor it is made by.
+    /// A struct or enum: as its parts make it, then as `#[kind.linear]` and `#[kind.free]` on its
+    /// literal mark it.
     fn nominal(cx: &Cx<'_>, ty: Ty, nominal: &Nominal) -> Kind {
         let marked = |attr| Self::marked(cx, nominal, Primitive::Kind(attr));
         let parts = cx.get::<Members>(&ty).map_or(Kind::COPY_FREE, |members| {
@@ -120,14 +120,9 @@ impl Kinds {
         kind
     }
 
-    /// Whether `attr` marks the literal of `nominal`, or the function whose call made it.
+    /// Whether `attr` marks the literal of `nominal`.
     fn marked(cx: &Cx<'_>, nominal: &Nominal, attr: Primitive) -> bool {
-        let on_literal = Env::defining(cx, &nominal.literal, nominal.instance.as_ref())
-            .is_some_and(|env| env.attribute(&env.attrs_of(nominal.literal.expr.id), attr).is_some());
-        let on_constructor = nominal.instance.as_ref().is_some_and(|i| {
-            Env::inside(cx, &i.f, [])
-                .is_some_and(|env| env.attribute(&env.attrs_of(i.f.literal.expr.id), attr).is_some())
-        });
-        on_literal || on_constructor
+        Env::defining(cx, &nominal.literal, nominal.instance.as_ref())
+            .is_some_and(|env| env.attribute(&env.attrs_of(nominal.literal.expr.id), attr).is_some())
     }
 }

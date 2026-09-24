@@ -104,18 +104,17 @@ impl Lower<'_, '_> {
         self.hir.blocks.push(Block { stmts, tail, origin })
     }
 
-    /// Whether a statement node is an expression, which can be a block's value. A `$for` generates
-    /// statements, even last (spec 03, section 1).
+    /// Whether a statement node is an expression, which can be a block's value, attributes and
+    /// docs included: `{ #[kind.linear] struct { ... } }`. A `$for` generates statements, even
+    /// last (spec 03, section 1).
     fn is_value(&self, n: NodeId) -> bool {
-        self.staged_control(n).is_none_or(|c| self.kind(c) != NodeKind::For)
-            && !matches!(
-                self.kind(n),
-                NodeKind::Binding
-                    | NodeKind::TypedBinding
-                    | NodeKind::Assign
-                    | NodeKind::Doc
-                    | NodeKind::Attr
-            )
+        let mut inner = n;
+        while matches!(self.kind(inner), NodeKind::Doc | NodeKind::Attr) {
+            let Some(target) = self.fields(inner).one(NodeField::Target) else { return false };
+            inner = target;
+        }
+        self.staged_control(inner).is_none_or(|c| self.kind(c) != NodeKind::For)
+            && !matches!(self.kind(inner), NodeKind::Binding | NodeKind::TypedBinding | NodeKind::Assign)
     }
 
     fn stmt(&mut self, n: NodeId) -> Stmt {

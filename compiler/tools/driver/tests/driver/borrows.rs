@@ -49,7 +49,7 @@ fn free_types_hold_no_borrows_and_owners_deref() {
         "free.ov",
         "\
 Node := struct { value: u8, next: ?Own(Node) };
-Own := #[kind.linear] #[kind.free] ($T: type) -> type { struct { #[kind.owns] ptr: *T } };
+Own := ($T: type) -> type { #[kind.linear] #[kind.free] struct { #[kind.owns] ptr: *T } };
 Parser := struct { input: &[u8] };
 Boxed := #[kind.free] struct { parser: Parser };
 boxed := (p: Parser) -> Boxed { .{ .parser = p } };

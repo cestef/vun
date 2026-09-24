@@ -188,8 +188,8 @@ annotations (89), linked values and repeats (90), layout (93), place states (94)
 - Attributes are written bare only from the namespaces the std prelude lists (`kind`, `layout`,
   `abi`, ...); a new compiler attribute goes in one of those, never in a namespace like
   `lang.mem` that users reach as `std.mem`.
-- Attributes do not attach to a block's tail expression; put kind attributes on the type
-  constructor (`Own := #[kind.linear] ($T: type) -> type { struct { ... } }`).
+- Kind attributes go on the type's literal, also in a constructor's tail:
+  `Own := ($T: type) -> type { #[kind.linear] struct { ... } }`.
 - Names in `lang` resolve within `lang` (its prelude is `lang`, `lang.int`); `true`/`false` are
   `lang` names (`bool.true`, `bool.false`) in the std prelude.
 - Integer arithmetic is exact: `x * 2` for `x: u32` does not fit `u32`; corpus programs are fixed
