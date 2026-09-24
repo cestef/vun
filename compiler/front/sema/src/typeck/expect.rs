@@ -2,7 +2,7 @@
 //! width cap, and a member its type does not have.
 
 use overt_diag::{ChildKind, Diagnostic, Msg, errors};
-use overt_grammar::{COMPOUND, Narrowing};
+use overt_grammar::{COMPOUND, Narrowing, OPERATORS, TokenKind};
 use overt_hir::tree::ExprId;
 use overt_intern::Symbol;
 use overt_origin::OriginId;
@@ -106,6 +106,24 @@ impl Typer<'_, '_, '_> {
             return;
         }
         self.diag.error(self.env().not_visible(self.hir().exprs[expr].origin, name, visible));
+    }
+
+    /// Reports the operator `op` at `expr` as having no impl for `ty`, the type of its left side.
+    pub(super) fn no_impl(&mut self, expr: ExprId, op: TokenKind, ty: Ty) {
+        let Some((_, interface, _)) = OPERATORS.iter().find(|(t, ..)| *t == op) else { return };
+        let msg = Msg::new().text("no impl of ").code(*interface).text(" for ").ty(ty.to_string());
+        let note = Msg::new()
+            .text("bit operations exist on ")
+            .code("uN")
+            .text(" types only: ")
+            .code("Int(0..=2^N - 1)");
+        let help =
+            Msg::new().text("use an unsigned type, or bring the value into one with ").code(".wrap(uN)");
+        let d = Diagnostic::error(errors::TYPES_NO_IMPL, msg)
+            .at(self.hir().exprs[expr].origin, None)
+            .child(ChildKind::Note, note)
+            .child(ChildKind::Help, help);
+        self.diag.error(d);
     }
 
     /// Reports `name`, used at `at`, as no member of `ty`.

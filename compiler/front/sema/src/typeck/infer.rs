@@ -259,6 +259,20 @@ impl Typer<'_, '_, '_> {
     /// nothing depending on it is.
     fn binary(&mut self, expr: ExprId, op: TokenKind, left: Known, right: Known) -> Option<Known> {
         let stage = left.stage.max(right.stage);
+        // At run time, bit operations keep the type, and exist on `uN` types only (spec 04,
+        // rule 8); compile-time integers are exact and have no width.
+        // A constant takes the type of the run-time operand it meets, as a literal does.
+        if Interval::BITWISE.contains(&op)
+            && stage == Stage::Run
+            && let (Some(_), Some(_)) = (left.ty.interval(), right.ty.interval())
+        {
+            let ty = if left.stage == Stage::Run { left.ty } else { right.ty };
+            if ty.interval().is_some_and(|i| i.is_unsigned_width()) {
+                return Some(Known { ty, stage });
+            }
+            self.no_impl(expr, op, ty);
+            return None;
+        }
         if let (Some(a), Some(b)) = (left.ty.interval(), right.ty.interval())
             && let Some(range) = a.binary(op, &b)
         {

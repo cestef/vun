@@ -171,6 +171,17 @@ impl Interval {
         Self::new(lo.lo().clone(), top)
     }
 
+    /// The operators whose integer impls exist on `uN` types only and keep the type (rule 8).
+    pub const BITWISE: [TokenKind; 5] =
+        [TokenKind::Amp, TokenKind::Pipe, TokenKind::Caret, TokenKind::Shl, TokenKind::Shr];
+
+    /// Whether this is the range of a `uN` type, `0..=2^N - 1`, which bit operations need.
+    #[must_use]
+    pub fn is_unsigned_width(&self) -> bool {
+        let (Some(bits), Some(count)) = (self.bits(), self.count()) else { return false };
+        !self.is_signed() && Integer::from(1).shifted(&Integer::from(u128::from(bits))) == Some(count)
+    }
+
     /// The range of `self op other` over integers of these ranges (rule 1); `None` for an
     /// operator not typed yet, or a division by a divisor that is always zero.
     #[must_use]
