@@ -16,9 +16,18 @@ Array: ($n: Int(0..), $T: type) -> type = _;
 /// The number of items `xs` borrows.
 #[panic.never]
 len: ($T: type, xs: &[T]) -> usize = _;
+/// A pointer to the first item `xs` borrows, for passing it to code outside the language.
+#[panic.never]
+items_pointer: ($T: type, xs: &[T]) -> *T = _;
 
 /// Unsynchronized interior mutability. Only usable in `unsafe` code (spec 07, section 2).
 Cell: ($T: type) -> type = _;
+/// A cell holding `value`.
+#[panic.never]
+cell: ($T: type, value: T) -> Cell(T) = _;
+/// A pointer to what `c` holds, through which it may change while `c` is borrowed shared.
+#[panic.never]
+cell_pointer: unsafe ($T: type, c: &Cell(T)) -> *T = _;
 
 /// A pointer to what `r` borrows. Creating a pointer is safe; using it is not (spec 05, section 5).
 #[panic.never]
@@ -49,3 +58,23 @@ fill: unsafe ($T: type, to: *T, value: T, n: usize) = _;
 volatile_load: unsafe ($T: type, p: *T) -> T = _;
 #[panic.never]
 volatile_store: unsafe ($T: type, p: *T, value: T) = _;
+
+/// How an atomic access orders the accesses around it, as C11 defines the orders.
+Ordering := enum { relaxed, acquire, release, acq_rel, seq_cst };
+
+/// Atomic accesses to what `p` points to, which must be aligned for `T` and accessed atomically
+/// only while shared (spec 05, section 5). The read-modify-write ones return the value held
+/// before; `atomic_add` and `atomic_sub` wrap within `T`.
+#[panic.never]
+atomic_load: unsafe ($T: type, p: *T, order: Ordering) -> T = _;
+#[panic.never]
+atomic_store: unsafe ($T: type, p: *T, value: T, order: Ordering) = _;
+#[panic.never]
+atomic_swap: unsafe ($T: type, p: *T, value: T, order: Ordering) -> T = _;
+/// Stores `new` when `p` holds `expected`.
+#[panic.never]
+atomic_compare_swap: unsafe ($T: type, p: *T, expected: T, new: T, order: Ordering) -> T = _;
+#[panic.never]
+atomic_add: unsafe ($T: type, p: *T, value: T, order: Ordering) -> T = _;
+#[panic.never]
+atomic_sub: unsafe ($T: type, p: *T, value: T, order: Ordering) -> T = _;

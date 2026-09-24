@@ -5,13 +5,15 @@
 use vun_hir::tree::{Arg, Entry, ExprId, ExprKind};
 use vun_intern::Symbol;
 use vun_origin::OriginId;
-use vun_sema::env::Env;
-use vun_sema::member::MemberValue;
-use vun_sema::ty::Value;
+use vun_sema::member::{MemberType, MemberValue};
+use vun_sema::ty::{Ty, Value};
 
 use super::{Builder, Unbuilt};
 use crate::body::{Aggregate, Operand, Rvalue};
 use crate::place::Place;
+
+/// A method, by the type it is found through and its name: the key of `MemberType`.
+type Method = (Ty, Symbol);
 
 /// How a method's receiver is passed: borrowed in a mode, from a place computed before the
 /// arguments, or as a value.
@@ -31,8 +33,8 @@ impl Builder<'_, '_, '_> {
         let unbuilt = Unbuilt { at: origin };
         // `a.f(b)` is `T.f(a, b)`, `f` the method the typer found (spec 01, section 4).
         let (callee, receiver) = match self.method(callee)? {
-            Some((f, receiver, name)) => {
-                let receiver = self.receiver(&f, receiver, name)?;
+            Some((f, receiver, method)) => {
+                let receiver = self.receiver(&method, receiver)?;
                 (f, Some(receiver))
             }
             None => (self.operand(callee)?, None),
@@ -87,27 +89,25 @@ impl Builder<'_, '_, '_> {
         Ok(self.temp(Rvalue::Call { callee, args: values }, origin))
     }
 
-    /// The method `callee` names through a value, and the value; `None` when `callee` names no
-    /// method.
-    fn method(&self, callee: ExprId) -> Result<Option<(Operand, ExprId, Symbol)>, Unbuilt> {
+    /// The method `callee` names through a value, the value, and the method by its type and
+    /// name; `None` when `callee` names no method.
+    fn method(&self, callee: ExprId) -> Result<Option<(Operand, ExprId, Method)>, Unbuilt> {
         let e = &self.env.parsed.hir.exprs[callee];
         let ExprKind::Member { object, .. } = e.kind else { return Ok(None) };
         let unbuilt = Unbuilt { at: e.origin };
         let typed = self.typed().ok_or(unbuilt)?;
         let Some(method) = typed.methods.get(&callee) else { return Ok(None) };
         let f = self.env.cx.get::<MemberValue>(method).map_err(|_| unbuilt)?;
-        Ok(Some((Operand::Const(f), object, method.1)))
+        Ok(Some((Operand::Const(f), object, *method)))
     }
 
-    /// The receiver `a` of `a.f(b)`, passed as `f`'s first parameter asks: a borrow of `a` in
-    /// that parameter's mode, or `a` itself (spec 01, section 4).
-    fn receiver(&mut self, f: &Operand, receiver: ExprId, name: Symbol) -> Result<Receiver, Unbuilt> {
-        let first = match f {
-            Operand::Const(Value::Fn(func)) => Env::inside(self.env.cx, func, [])
-                .and_then(|env| env.literal_signature(func.literal.expr.id, &[]).ok())
-                .and_then(|s| s.params.first().copied()),
-            _ => None,
-        };
+    /// The receiver `a` of `a.f(b)`, passed as the first parameter of the method `f` asks, by
+    /// the type typing found for it: a borrow of `a` in that parameter's mode, or `a` itself
+    /// (spec 01, section 4).
+    fn receiver(&mut self, method: &Method, receiver: ExprId) -> Result<Receiver, Unbuilt> {
+        let name = method.1;
+        let known = self.env.cx.get::<MemberType>(method).ok();
+        let first = known.and_then(|k| k.ty.callable()).and_then(|s| s.params.first().copied());
         match first.and_then(|t| t.borrowing()) {
             Some((mode, ..)) => {
                 let origin = self.env.parsed.hir.exprs[receiver].origin;

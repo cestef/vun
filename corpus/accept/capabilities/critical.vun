@@ -6,5 +6,5 @@ ticks: sync.Shared(u32) = .init(0);
 
 #[panic.never]
 on_systick := () {
-    sync.critical([] (cs: &Critical) { ticks.get(cs).* +%= 1; });
+    sync.critical([] (cs: &temp sync.Critical) { ticks.get(cs).* +%= 1; });
 };

@@ -7,7 +7,7 @@ Anything that touches the outside world requires holding a value that grants it:
 | Capability | Where it comes from | Grants |
 |------------|---------------------|--------|
 | `&mut A` with `$A: Allocator` | you construct one: `mem.alloc.Fixed.init(&mut buf)`, `os.Heap` | allocation |
-| `&Critical` | `sync.critical([...] (cs: &Critical) { ... })` | access to `Shared(T)` |
+| `&Critical` | `sync.critical([...] (cs: &temp Critical) { ... })` | access to `Shared(T)` |
 | peripheral tokens | the `Peripherals` value a board runtime passes to `main` | MMIO for that peripheral |
 | `&mut os.System` | the value a hosted runtime passes to `main` | files, sockets, threads, clocks, environment |
 | `&mut Build` | the build driver | declaring the build graph |
@@ -31,12 +31,17 @@ ticks: sync.Shared(u32) = .init(0);
 
 #[panic.never]
 on_systick := () {
-    sync.critical([] (cs: &Critical) { ticks.get(cs).* +%= 1; });
+    sync.critical([] (cs: &temp sync.Critical) { ticks.get(cs).* +%= 1; });
 };
 ```
 
-`ticks.get(cs)` returns `&mut u32` tied to `cs` by the scoping rule, so it cannot escape the
-critical section.
+`sync.critical` takes `$F: lang.ops.Call((&temp Critical), R)` and lends the `Critical` it makes
+for the call only (spec 05, section 4). `ticks.get(cs)` returns `&mut u32` tied to `cs` by the
+scoping rule, so returning it from the closure is `borrow.escape`: nothing reached through `cs`
+leaves the critical section. The section itself is two typed link symbols the runtime exports,
+`std.sync.enter` and `leave` (spec 08, section 1). `Shared(T)` and `Atomic(T)` hold a
+`lang.mem.Cell(T)`, reached through `lang.mem.cell_pointer` and the `lang.mem.atomic_*`
+primitives in `unsafe` code; `Mutex(T)` spins on an `Atomic(bool)` and returns a linear `Guard`.
 
 ## 3. Errors and traps
 

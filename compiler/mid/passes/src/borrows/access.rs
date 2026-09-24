@@ -5,7 +5,7 @@ use std::collections::BTreeSet;
 
 use vun_diag::{Msg, errors};
 use vun_grammar::Access;
-use vun_mir::{BlockId, Operand, Place, Rvalue, Stmt, TerminatorKind};
+use vun_mir::{BlockId, Operand, Place, Role, Rvalue, Stmt, TerminatorKind};
 use vun_origin::OriginId;
 
 use super::flow::{Holds, Live};
@@ -100,7 +100,9 @@ impl Checker<'_> {
                     .code("&temp")
                     .text(" parameter never reaches the result; return what another parameter lends");
                 self.report(errors::BORROW_ESCAPE, returned, msg, Some(loan), Some(help));
-            } else if !self.loans[loan].place.is_indirect() {
+            } else if !self.loans[loan].place.is_indirect()
+                && self.body.locals[self.loans[loan].place.local].role != Role::Static
+            {
                 let origin = self.loans[loan].origin;
                 let msg = self
                     .name(&self.loans[loan].place)

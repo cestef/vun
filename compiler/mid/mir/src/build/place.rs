@@ -11,7 +11,7 @@ use vun_sema::env::Hop;
 use vun_sema::member::Members;
 
 use super::{Builder, Unbuilt};
-use crate::body::{Operand, Rvalue};
+use crate::body::{Operand, Role, Rvalue};
 use crate::place::{Place, Projection};
 
 impl Builder<'_, '_, '_> {
@@ -23,6 +23,11 @@ impl Builder<'_, '_, '_> {
         match &hir.exprs[expr].kind {
             ExprKind::Name(_) => match self.env.parsed.resolution.names[expr] {
                 Some(Res::Binder(b)) if self.bound.contains_key(&b) => Ok(self.binder_place(b)),
+                Some(Res::Binder(b)) if !hir.binders[b].comptime => {
+                    let place = self.held(expr, origin)?;
+                    self.locals[place.local].role = Role::Static;
+                    Ok(place)
+                }
                 _ => self.held(expr, origin),
             },
             ExprKind::Member { object, name } if self.env().eval(expr).is_err() => {

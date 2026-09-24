@@ -1,1 +1,29 @@
-//! A runtime on top of the C library: exports C `main`.
+//! A runtime on top of the C library: exports C `main` and the trap handler, and reaches the
+//! system through the C library's functions (spec 08, section 2).
+
+#[link.symbol("write"), abi.c]
+write: unsafe (fd: i32, bytes: *u8, count: usize) -> isize = _;
+#[link.symbol("exit"), abi.c]
+exit: unsafe (status: i32) -> lang.never = _;
+/// Where the calling thread's `errno` is.
+#[link.symbol("__errno_location"), abi.c]
+errno_location: unsafe () -> *i32 = _;
+
+/// The status C `main` returns for `std.os.Exit.ok`, and the one a trap exits with.
+success := 0;
+trapped := 101;
+
+/// The exports of a program whose `main` the C library calls.
+start := ($main: (&mut std.os.System) -> std.os.Exit) -> type { struct {
+    #[link.export("main"), abi.c]
+    entry := () -> i32 {
+        mut sys := unsafe std.os.System.claim();
+        match main(&mut sys) {
+            .ok => success,
+            .code(status) => status,
+        }
+    };
+
+    #[link.export(lang.panic.trap_symbol)]
+    trap := (t: &lang.panic.Trap) -> lang.never { unsafe exit(trapped) };
+}};

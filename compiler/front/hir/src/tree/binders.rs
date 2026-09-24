@@ -2,7 +2,9 @@
 
 use vun_intern::Symbol;
 
-use super::{BinderId, DeclId, Entry, ExprId, Hir, List, Member, NsId, PatId, PatKind, Spread, Staged};
+use super::{
+    BinderId, DeclId, Entry, ExprId, ExprKind, Hir, List, Member, NsId, PatId, PatKind, Spread, Staged,
+};
 
 impl Hir {
     /// Binders introduced by a pattern, without visiting the expressions inside it.
@@ -54,6 +56,21 @@ impl Hir {
     pub fn member_decl(&self, binder: BinderId) -> Option<DeclId> {
         let decls = self.namespaces.iter().flat_map(|(ns, _)| self.member_decls(ns));
         decls.into_iter().find(|&d| self.binds(d, |b| b == binder))
+    }
+
+    /// The namespace among whose members `binder` is declared; `None` for a local.
+    #[must_use]
+    pub fn member_ns(&self, binder: BinderId) -> Option<NsId> {
+        let mut namespaces = self.namespaces.iter().map(|(ns, _)| ns);
+        namespaces.find(|&ns| self.member_decls(ns).into_iter().any(|d| self.binds(d, |b| b == binder)))
+    }
+
+    /// The `struct` literal whose members `ns` holds, if it is one.
+    #[must_use]
+    pub fn struct_of(&self, ns: NsId) -> Option<ExprId> {
+        self.exprs
+            .iter()
+            .find_map(|(e, expr)| matches!(expr.kind, ExprKind::Struct(n) if n == ns).then_some(e))
     }
 
     /// The path of the spread selecting `binder`, as `..std.mem.{ Own }` selects `Own`.

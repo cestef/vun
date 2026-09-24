@@ -12,6 +12,7 @@ mod code;
 mod condition;
 mod eval;
 mod frame;
+mod named;
 mod path;
 mod primitive;
 mod reach;

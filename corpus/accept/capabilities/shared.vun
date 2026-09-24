@@ -7,12 +7,12 @@ events: sync.Atomic(u32) = .init(0);
 
 #[panic.never]
 on_systick := () {
-    sync.critical([] (cs: &Critical) { ticks.get(cs).* +%= 1; });
+    sync.critical([] (cs: &temp sync.Critical) { ticks.get(cs).* +%= 1; });
     events.add(1, .relaxed);
 };
 
 uptime := () -> u32 {
-    sync.critical([] (cs: &Critical) -> u32 { ticks.get(cs).* })
+    sync.critical([] (cs: &temp sync.Critical) -> u32 { ticks.get(cs).* })
 };
 
 Queue := struct {

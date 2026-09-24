@@ -1,1 +1,42 @@
-//! Hosted runtimes and the `System` capability (spec 08, section 2).
+//! Hosted runtimes and the `System` capability (spec 08, section 2). A hosted program is
+//! `start := std.os.start(main)`; the runtime makes the one `System` and passes it to `main`.
+
+/// How the program ends: `ok`, or a status for the process that started it.
+Exit := enum { ok, code(u8) };
+
+/// Why a request to the system failed: the error number it reported.
+Error := struct { number: i32 };
+
+/// The streams every process starts with, by their numbers.
+stdout_fd := 1;
+stderr_fd := 2;
+
+/// Access to the operating system: files, sockets, threads, clocks, the environment.
+System := struct {
+    _held: (),
+
+    /// The process's system. Only a runtime claims it, once, before `main`.
+    claim := unsafe () -> System { .{ ._held = () } };
+    stdout := (self: &mut System) -> Stream { unsafe Stream.of(stdout_fd) };
+    stderr := (self: &mut System) -> Stream { unsafe Stream.of(stderr_fd) };
+};
+
+/// A byte stream the system holds open: standard output, a file, a socket.
+Stream := struct {
+    _fd: i32,
+
+    /// The stream the system knows as `fd`, which must be open for as long as the stream is used.
+    of := unsafe (fd: i32) -> Stream { .{ ._fd = fd } };
+    /// Writes some of `bytes`, returning how many.
+    write := (self: &mut Stream, bytes: &[u8]) -> Result(usize, Error) {
+        written := unsafe std.os.libc.write(self._fd, lang.mem.items_pointer(u8, bytes), bytes.len());
+        if written < 0 {
+            .err(.{ .number = unsafe std.os.libc.errno_location().read() })
+        } else {
+            .ok(written.to(usize))
+        }
+    };
+};
+
+/// The hosted runtime: the C library's.
+start := std.os.libc.start;

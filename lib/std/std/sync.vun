@@ -1,1 +1,113 @@
-//! Synchronized interior mutability; the only safe kind (spec 07, section 2).
+//! Synchronized interior mutability; the only safe kind (spec 07, section 2). A critical section
+//! is global mutual exclusion: `Shared(T)` is reached only with the `&Critical` it lends, and
+//! `Atomic(T)` and `Mutex(T)` synchronize by themselves.
+
+/// The interrupt mask `enter` found, which `leave` restores.
+Mask := struct { _bits: usize };
+
+/// The runtime's critical section, typed link symbols it exports (spec 08, section 1): `enter`
+/// masks interrupts and, on multi-core targets, takes the global lock; `leave` undoes it.
+enter_symbol := "vun.critical.enter";
+leave_symbol := "vun.critical.leave";
+#[link.symbol(enter_symbol), panic.never]
+enter: () -> Mask = _;
+#[link.symbol(leave_symbol), panic.never]
+leave: (mask: Mask) = _;
+
+/// Holding the critical section. Only `critical` makes one, and it lends it for the call only,
+/// so nothing reached through it outlives the section.
+Critical := struct {
+    _held: (),
+
+    /// Runs `f` in the critical section and returns its result, which cannot hold what `f` was
+    /// lent.
+    #[panic.never]
+    run := ($R: type, $F: lang.ops.Call((&temp Critical), R), f: F) -> R {
+        mask := enter();
+        cs := Critical{ ._held = () };
+        result := f(&cs);
+        leave(mask);
+        result
+    };
+};
+
+critical := Critical.run;
+
+/// A value reached only inside the critical section.
+Shared := ($T: type) -> type { struct {
+    _value: lang.mem.Cell(T),
+
+    init := (value: T) -> Shared(T) { .{ ._value = lang.mem.cell(T, value) } };
+    /// The value, for as long as `cs` is held.
+    #[panic.never]
+    get := (self: &Shared(T), cs: &Critical) -> &mut T {
+        unsafe { &mut lang.mem.cell_pointer(T, &self._value).* }
+    };
+} };
+
+Ordering := lang.mem.Ordering;
+
+/// A value accessed atomically. Adding and subtracting wrap within `T`; each returns the value
+/// held before, as `swap` and `compare_swap` do.
+Atomic := ($T: type) -> type { struct {
+    _value: lang.mem.Cell(T),
+
+    init := (value: T) -> Atomic(T) { .{ ._value = lang.mem.cell(T, value) } };
+    #[panic.never]
+    load := (self: &Atomic(T), order: Ordering) -> T { unsafe lang.mem.atomic_load(T, self._at(), order) };
+    #[panic.never]
+    store := (self: &Atomic(T), value: T, order: Ordering) {
+        unsafe lang.mem.atomic_store(T, self._at(), value, order)
+    };
+    #[panic.never]
+    swap := (self: &Atomic(T), value: T, order: Ordering) -> T {
+        unsafe lang.mem.atomic_swap(T, self._at(), value, order)
+    };
+    /// Stores `new` when the value is `expected`.
+    #[panic.never]
+    compare_swap := (self: &Atomic(T), expected: T, new: T, order: Ordering) -> T {
+        unsafe lang.mem.atomic_compare_swap(T, self._at(), expected, new, order)
+    };
+    #[panic.never]
+    add := (self: &Atomic(T), value: T, order: Ordering) -> T {
+        unsafe lang.mem.atomic_add(T, self._at(), value, order)
+    };
+    #[panic.never]
+    sub := (self: &Atomic(T), value: T, order: Ordering) -> T {
+        unsafe lang.mem.atomic_sub(T, self._at(), value, order)
+    };
+
+    #[panic.never]
+    _at := (self: &Atomic(T)) -> *T { unsafe lang.mem.cell_pointer(T, &self._value) };
+} };
+
+/// A value one holder at a time reaches, through the guard `lock` returns. Waiting spins on an
+/// atomic flag; the system capability is what a hosted runtime will park on.
+Mutex := ($T: type) -> type { struct {
+    _locked: Atomic(bool),
+    _value: lang.mem.Cell(T),
+
+    init := (value: T) -> Mutex(T) {
+        .{ ._locked = Atomic(bool).init(false), ._value = lang.mem.cell(T, value) }
+    };
+    /// Waits until no guard is held, then holds one.
+    lock := (self: &Mutex(T), sys: &mut std.os.System) -> Guard { Guard.acquire(self) };
+
+    /// Holding the mutex: the value is reached through it until `unlock`, which must be called.
+    Guard := #[kind.linear] struct {
+        _mutex: &Mutex(T),
+
+        /// Waits until no guard is held, then holds one.
+        acquire := (mutex: &Mutex(T)) -> Guard {
+            for mutex._locked.compare_swap(false, true, .acquire) {}
+            .{ ._mutex = mutex }
+        };
+        get := (self: &mut Guard) -> &mut T {
+            unsafe { &mut lang.mem.cell_pointer(T, &self._mutex._value).* }
+        };
+        unlock := (self: Guard) {
+            .{ ._mutex = mutex } := self;
+            mutex._locked.store(false, .release);
+        };
+    };
+} };

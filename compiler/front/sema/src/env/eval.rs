@@ -3,7 +3,6 @@
 use std::sync::Arc;
 
 use vun_grammar::{BORROWS, Form, MARKERS, TYPE_PREFIXES, TokenKind};
-use vun_hir::resolve::Res;
 use vun_hir::tree::{Arg, BlockId, Cond, Entry, ExprId, ExprKind, List, Lit, Name, Param};
 use vun_intern::Symbol;
 use vun_origin::OriginTable;
@@ -145,6 +144,16 @@ impl Env<'_, '_> {
             }
             _ => self.eval(callee)?,
         };
+        self.call_value(callee, values, args)
+    }
+
+    /// `callee(values..., args)`: the arguments evaluated after `values`, which a receiver fills.
+    pub(super) fn call_value(
+        &self,
+        callee: Value,
+        mut values: Vec<Value>,
+        args: &[Entry<Arg>],
+    ) -> Result<Value, Unevaluated> {
         // A `Code(T)` parameter receives its argument as code.
         let quotes = match &callee {
             Value::Fn(f) => f.quotes(self.cx).unwrap_or_default(),
@@ -179,24 +188,6 @@ impl Env<'_, '_> {
             // A link symbol runs at run time only.
             Value::Linked(_) => Err(Unevaluated::Runtime),
             _ => Err(Unevaluated::Unsupported),
-        }
-    }
-
-    /// The value of the name `expr`: a binding of this environment, a `$` local fixed by its
-    /// declaration, or what the name resolves to.
-    fn named(&self, expr: ExprId) -> Result<Value, Unevaluated> {
-        let hir = &self.parsed.hir;
-        match self.parsed.resolution.names[expr] {
-            Some(Res::Binder(b)) if let Some(bound) = self.bindings.get(&b) => Ok(bound.clone()),
-            // A `$` local that is never assigned has the value of its declaration, fixed by
-            // the call evaluated in, such as `$Regs := struct { ... }`.
-            Some(Res::Binder(b))
-                if hir.binders[b].comptime && !hir.binders[b].mutable && hir.member_decl(b).is_none() =>
-            {
-                let decl = hir.decl_of(b).ok_or(Unevaluated::Runtime)?;
-                self.eval(hir.decls[decl].value.ok_or(Unevaluated::Runtime)?)
-            }
-            _ => self.value_of(self.resolve(expr)?),
         }
     }
 

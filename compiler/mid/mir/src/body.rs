@@ -52,6 +52,8 @@ pub enum Role {
     Held,
     /// A value a pattern takes apart: its parts, bound or dropped, carry what it held.
     Unpacked,
+    /// A top-level binding's storage, which outlives every call: a borrow of it escapes nowhere.
+    Static,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]

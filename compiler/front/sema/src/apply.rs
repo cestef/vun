@@ -32,6 +32,8 @@ impl Primitive {
                 let TyKind::Tuple(params) = &*params else { return Err(Unevaluated::Unsupported) };
                 Ok(Value::Type(Signature::new(params.clone(), result).ty()))
             }
+            // A cell's value at compile time is what it holds.
+            (Self::Mem(Mem::cell), [_, value]) => Ok(value.clone()),
             // `lang.interface(f)` wraps `f` so that it can constrain `$` parameters.
             (Self::Lang(Lang::interface), [Value::Fn(f)]) => Ok(Value::Interface(f.clone())),
             // `lang.mem.Array(n, T)`: `[n]T`.

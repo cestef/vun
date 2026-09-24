@@ -17,8 +17,14 @@ pub enum Mem {
     Array,
     /// The number of items `xs` borrows.
     len,
+    /// A pointer to the first item `xs` borrows, for passing it to code outside the language.
+    items_pointer,
     /// Unsynchronized interior mutability. Only usable in `unsafe` code (spec 07, section 2).
     Cell,
+    /// A cell holding `value`.
+    cell,
+    /// A pointer to what `c` holds, through which it may change while `c` is borrowed shared.
+    cell_pointer,
     /// A pointer to what `r` borrows. Creating a pointer is safe; using it is not (spec 05, section 5).
     pointer_to,
     /// The address `p` holds.
@@ -37,6 +43,16 @@ pub enum Mem {
     fill,
     volatile_load,
     volatile_store,
+    /// Atomic accesses to what `p` points to, which must be aligned for `T` and accessed atomically
+    /// only while shared (spec 05, section 5). The read-modify-write ones return the value held
+    /// before; `atomic_add` and `atomic_sub` wrap within `T`.
+    atomic_load,
+    atomic_store,
+    atomic_swap,
+    /// Stores `new` when `p` holds `expected`.
+    atomic_compare_swap,
+    atomic_add,
+    atomic_sub,
 }
 impl Mem {
     pub const NAMESPACE: &str = "lang.mem";
@@ -51,7 +67,10 @@ impl Mem {
         Self::Slice,
         Self::Array,
         Self::len,
+        Self::items_pointer,
         Self::Cell,
+        Self::cell,
+        Self::cell_pointer,
         Self::pointer_to,
         Self::address,
         Self::offset,
@@ -62,6 +81,12 @@ impl Mem {
         Self::fill,
         Self::volatile_load,
         Self::volatile_store,
+        Self::atomic_load,
+        Self::atomic_store,
+        Self::atomic_swap,
+        Self::atomic_compare_swap,
+        Self::atomic_add,
+        Self::atomic_sub,
     ];
     /// The declaration's name.
     #[must_use]
@@ -77,7 +102,10 @@ impl Mem {
             Self::Slice => "Slice",
             Self::Array => "Array",
             Self::len => "len",
+            Self::items_pointer => "items_pointer",
             Self::Cell => "Cell",
+            Self::cell => "cell",
+            Self::cell_pointer => "cell_pointer",
             Self::pointer_to => "pointer_to",
             Self::address => "address",
             Self::offset => "offset",
@@ -88,6 +116,12 @@ impl Mem {
             Self::fill => "fill",
             Self::volatile_load => "volatile_load",
             Self::volatile_store => "volatile_store",
+            Self::atomic_load => "atomic_load",
+            Self::atomic_store => "atomic_store",
+            Self::atomic_swap => "atomic_swap",
+            Self::atomic_compare_swap => "atomic_compare_swap",
+            Self::atomic_add => "atomic_add",
+            Self::atomic_sub => "atomic_sub",
         }
     }
 }

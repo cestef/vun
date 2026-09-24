@@ -66,3 +66,28 @@ wrong := (o: ?u8, k: u8) -> ?bool { o.map([k] (x: u8) -> u16 { x + k }) };
     let ids: Vec<_> = fixture.reported(&file).into_iter().map(|(id, _)| id).collect();
     assert_eq!(ids, [errors::TYPES_MISMATCH]);
 }
+
+#[test]
+fn members_named_inside_a_call_are_those_of_the_type_it_made() {
+    let fixture = Fixture::new("generics-made");
+    let file = fixture.root.write(
+        "made.vun",
+        "\
+M := ($T: type) -> type { struct {
+    x: T,
+    make := (self: &M(T)) -> G { G.of(self.x) };
+    G := struct {
+        y: T,
+        of := (y: T) -> G { .{ .y = y } };
+        get := (self: &G) -> T { self.y };
+    };
+    init := (x: T) -> M(T) { .{ .x = x } };
+} };
+m: M(u8) = .init(3);
+same := () -> u8 { m.make().get() };
+wrong := () -> bool { m.make().get() };
+",
+    );
+    let ids: Vec<_> = fixture.reported(&file).into_iter().map(|(id, _)| id).collect();
+    assert_eq!(ids, [errors::TYPES_MISMATCH]);
+}

@@ -26,7 +26,7 @@ impl Env<'_, '_> {
             (ExprKind::Call { callee, args }, Some(ty))
                 if let ExprKind::DotName(Name::Plain(name)) = self.parsed.hir.exprs[*callee].kind =>
             {
-                self.variant(ty, name, args)
+                self.constructed(ty, name, args)
             }
             // Without a type, `.name` is the name itself, and `.{ }` a record or a tuple of what it
             // holds.
@@ -108,10 +108,13 @@ impl Env<'_, '_> {
         Ok(Value::Struct { ty, fields: values })
     }
 
-    /// `.name(args)` of the enum type `ty`: the variant with its payload.
-    fn variant(&self, ty: Ty, name: Symbol, args: &List<Arg>) -> Result<Value, Unevaluated> {
+    /// `.name(args)` where a `ty` is expected: its variant `name` with the payload, or a call of
+    /// its constructor function `name`.
+    fn constructed(&self, ty: Ty, name: Symbol, args: &List<Arg>) -> Result<Value, Unevaluated> {
         let members = self.cx.get::<Members>(&ty).ok_or(Unevaluated::Unsupported)?;
-        let Found::Variant(variant) = members.find(name) else { return Err(Unevaluated::Absent) };
+        let Found::Variant(variant) = members.find(name) else {
+            return self.call_value(self.member(Value::Type(ty), name)?, Vec::new(), args);
+        };
         let payload = args
             .iter()
             .enumerate()
