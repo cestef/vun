@@ -1,490 +1,183 @@
 # Handoff
 
-State of Overt as of 2026-09-24 (sixth session), written for the next agent. Read this, then
-`CLAUDE.md` (the user's rules and the agent working procedure; it exists on disk but is excluded
-by the user's global gitignore, so it is not in version control), then
-`docs/spec/00-principles.md`.
+State of Overt as of 2026-09-24 (end of the sixth session), for the next agent. Read this, then
+`CLAUDE.md` (rules and the agent procedure; on disk but ignored by the user's global gitignore, so
+`jj st` never shows it), then `docs/spec/00-principles.md`, `docs/spec/decisions.md` and the spec
+files of the area you touch.
 
-## 1. What this project is
+## 1. What this is
 
-Overt (working name, extension `.ov`, CLI `overt`) is a systems programming language designed by
-the user, with a Rust compiler. Aim: embedded to servers, performant, low-level, ergonomic, with
-**no magic**: every primitive is an ordinary declaration in a source package `lang`; syntax only
-desugars into `lang`; `std` has no privilege; nothing runs that the program did not write.
+Overt (`.ov`, CLI `overt`) is a systems language designed by the user, compiled by a Rust
+workspace. **No magic**: every primitive is a `= _` declaration of the source package `lang`,
+syntax desugars only into `lang`, `std` has no privilege, nothing runs that the program did not
+write. Spec in `docs/spec/` (draft 2), Typst whitepaper in `whitepaper/`, Overt sources in `lib/`,
+test programs in `corpus/`.
 
-Status: design draft 2 (spec in `docs/spec/`), a Typst whitepaper draft, a 48-crate Rust
-workspace, a lexer, a postorder CST whose verifier also checks named children (node fields), an
-error-recovering parser with machine-applicable fixes, a reader of literal declarations (with
-tagged values), generated grammar and diagnostic tables, a declarative CLI, three diagnostic
-renderers (`terminal` over annotate-snippets, `ariadne`, `short`) and a `build.ov` manifest
-reader, and HIR: lowering through node fields, a verifier (the HIR is a tree with origins), a
-visitor, and name resolution within a file with the checks that need no types (`names.duplicate`,
-`names.shadowed`, `binding.irrefutable_test`), and package loading: manifests, dependencies,
-preludes and spreads (`..ns;`, `..ns.{ a, b };`), so names not declared in a file resolve against
-its package and report `names.unresolved`. Packages: manifests read and written as literals,
-BLAKE3 Merkle hashes, `.ovpkg` archives, one store per user with lockfile roots, minimal version
-selection and `overt.lock`, `.replace`, indexes, and `overt pkg add|fetch|update|pack`,
-`overt cache list|gc`. Infrastructure for sema: a query engine with verifying traces, a global
-symbol pool, a shared origin table, and stable file and origin identities. Every diagnostic has a
-checked explanation page (`overt explain`). `overt check <file>` runs every stage;
-`overt dump hir` prints the resolved HIR with origins. Every file in `lib/` and `corpus/accept`
-parses, lowers, verifies and resolves cleanly. Type checking has begun: annotated declarations
-and function bodies are typed (`types.mismatch`, `int.does_not_fit`, `int.width_cap`), with
-compile-time calls run by the interpreter.
-
-History (jj, newest last): scaffold; lexer; parser, CST, tables, CLI and corpus; bitwise compound
-assignments; corpus grown to 40 accept and 50 reject; modules split and the 300-line limit;
-tagged literals and node fields; terminal renderer, `--format` and parser fixes; manifests;
-ariadne renderer; handoff; settled open questions (decisions 28 to 44); HIR; name resolution; integer widths in `lang.int`; package loading, spreads and
-`names.unresolved`; `overt-suggest` and `overt-hash`; graph, fs and outline crates; BLAKE3 Merkle
-hashes and the nested store; `overt pkg fetch`, `.ovpkg` and error chains; file and directory
-duplicates, `overt_fs::Edit` and `Scratch`; `overt pkg add` and `pack`, literals written back
-(`Literal::source`, `laid_out`, `Decl::insert`, `Edit::apply`); the executable bit in snapshots,
-tree hashes and `.ovpkg` 2; nextest; MVS and `overt.lock`; the shared user store, labels and
-`cache gc`; `overt-query`; the global symbol pool; the shared origin table; typed literals and path
-calls in the literal reader; stable file and origin identities; `overt explain` and the explanation
-pages; `.replace`; `overt pkg update` through indexes. Fifth session: lockfile fixes without
-cascades (decision 65), `nesting_too_deep` wording, persisted query memos, exact integers and
-intervals in `overt-sema`, primitives generated from `lang` (decision 66), MIR and the
-interpreter, body typing with `lang.Fn` (decision 68).
-The user asked for commits per batch: commit each finished batch with `jj`.
+Built so far: lexer, postorder CST with a verifier, error-recovering parser, literal reader, HIR
+with resolution, package system (manifests, BLAKE3 Merkle hashes, `.ovpkg`, user store, MVS,
+`overt.lock`, `.replace`, indexes, `overt pkg add|fetch|update|pack`, `overt cache list|gc`), a
+query engine, sema (types as values, compile-time evaluation through MIR and an interpreter, impls,
+reflection, code values, coroutines, closures, layout, kinds), MIR with the place-state pass, three
+diagnostic renderers, explanation pages for every diagnostic (`overt explain`).
 
 ## 2. How the user works (non-negotiable)
 
-`CLAUDE.md` has the rules and a seven-step working procedure; follow it. In short:
-
-- They iterate fast, add requirements mid-task and expect them integrated immediately, and they
-  want the agent to keep going to the next step without stopping. They like research-backed
-  decisions (clone references into `~/code/strangers`, fetch pages with `curl`, never WebFetch)
-  and dry, behavioral names, never puns.
-- Design: no magic, one rule per concept, no edge cases, minimal keywords, deep namespacing,
-  conventions as default-on lints, full traceability, typed codegen, pedantic diagnostics.
-- Code: generic, reusable and pluggable; **no hard-coded names or special cases**, behavior driven
-  by declared data; single source of truth (generate, do not restate); no magic values; typed
-  messages; structured errors; verifiers for every representation; fuzzing only in `fuzz/`.
-- Tooling: `jj` only; conventional one-line commits without AI mentions; commit each finished
-  batch and keep going to the next milestone without stopping. Tests run with `cargo nextest run`.
-- Methods on the owning type, never orphan helper functions; follow the surrounding conventions.
-- Writing: never em dashes; no unicode arrows in prose. Caveman-style terse replies are enabled
-  by a hook; code, docs and commits are written normally.
+- Fast iteration; requirements arrive mid-task and are integrated at once; keep going to the next
+  step without stopping; commit each finished batch with `jj` (conventional one-line subjects, no
+  AI mention). They choose language surface themselves: ask with concrete options and a
+  recommendation (`AskUserQuestion`) when a rule is genuinely theirs, otherwise pick and report.
+- Design: one rule per concept, no edge cases, minimal keywords, deep namespacing, lints for
+  conventions, full traceability, typed codegen.
+- Code: generic and data-driven (no hard-coded names: find `lang` items through tables such as
+  `forms`, `borrows`, `iteration`, `early_return`), single source of truth, no magic values or
+  flags (enums), structured errors, methods on owning types, a verifier per representation, files
+  at most 300 lines with tests in `tests.rs`, clippy pedantic clean, `cargo nextest run`.
+- Writing: no em dashes, no unicode arrows in prose. Replies are caveman-terse (a hook); code, docs
+  and commits are written normally.
 
 ## 3. Repository map
 
 ```
-CLAUDE.md                 rules and agent procedure (untracked by global gitignore; keep updated)
-README.md                 overview and commands
-Cargo.toml                workspace: members compiler/*/*, exclude fuzz; workspace deps; lints
-docs/spec/00..14, appendices.md, decisions.md    the specification
-docs/research/, docs/archive/                    survey behind draft 2; draft 1
-whitepaper/               Typst paper; `typst compile main.typ overt.pdf` works
-compiler/<stage>/<crate>  the Rust workspace (section 5)
-lib/                      Overt sources: lang/, std/, targets/, boards/
-lib/lang/lang/syntax/grammar.ov   THE grammar: token kinds, node kinds, enums, parse tables
-lib/lang/lang/syntax/desugar.ov   appendix B as data: operators, borrows, forms
-lib/lang/lang/errors.ov           every compiler diagnostic id
-corpus/accept             programs that must compile (CST snapshots in compiler/front/syntax/tests)
-corpus/reject             must-fail programs with `//~ id` annotations (`cargo xtask corpus`)
-fuzz/                     cargo-fuzz crate (outside the workspace): targets `lex`, `parse`
+lib/lang/lang/syntax/grammar.ov   token kinds, node kinds and parse tables
+lib/lang/lang/syntax/desugar.ov   appendix B as data: operators, borrows (with place transitions),
+                                  forms, type_prefixes, compound, iteration, early_return
+lib/lang/lang/errors.ov           every compiler diagnostic id, with explanation pages in errors/
+lib/lang, lib/std                 `lang` (primitives, ops impls, iterators) and `std`
+corpus/accept, corpus/reject      programs; reject files carry `//~ id` annotations
+corpus/support                    stand-ins for what programs take from drivers and missing std
+compiler/<stage>/<crate>          base < front < mid < low < back, link, render < tools
+fuzz/                             cargo-fuzz targets `lex`, `parse` (outside the workspace)
 ```
 
 Generated directories (never edit; edit the `.ov` source and run `cargo xtask generate`):
-`compiler/front/grammar/src/generated/` (from `lib/lang/lang/syntax/`: `grammar.ov` and
-`desugar.ov`, read as one set of declarations; a module per enum, per table, and the node slots
-in `node_field`, `node_slot`, `node_kind_slots`), `compiler/base/diag/src/errors/` (a module per
-error group, `all` for `ALL` and `EXPLANATIONS`) and `compiler/front/sema/src/primitives/` (a
-module per `lang` namespace, `primitive` for `Primitive`). Generators emit `generate::Module`s
-(`Access::{Glob, Path, Impl}`); `Generator::changes` compares the whole directory, stale files
-included; generated files are held to the 300-line limit.
+`compiler/front/grammar/src/generated/` (a module per enum and table, node slots in
+`node_field`, `node_slot`, `node_kind_slots`), `compiler/base/diag/src/errors/` (a module per
+group, `all`), `compiler/front/sema/src/primitives/` (a module per `lang` namespace,
+`primitive`). Generators emit `generate::Module`s (`Access::{Glob, Path, Impl}`);
+`Generator::changes` compares whole directories and removes stale files; generated files obey the
+300-line limit.
 
-## 4. Language design in brief
-
-Full detail in `docs/spec/`. Decisions 1 to 6 and 24, 26 in `decisions.md` are accepted by the
-user; the others are proposals.
-
-- **Seven concepts** (spec 00): bindings, types as compile-time values (`$`), range integers,
-  place states, scoped borrows, capabilities as values, suspension.
-- **Syntax** (spec 01): 15 keywords; 4 contextual (`in` after a `for` pattern; `out`, `take`,
-  `static` after `&`). Bindings `x := e`, `x: T = e`; functions are typed tuple patterns
-  `(a: u32) -> u64 { }`; `name: T = _;` is provided from outside; `$` is one stage earlier;
-  `#[...]` attributes, `#{ }` quotes; `_` prefix is private.
-- **Backslash takes what follows literally** (decision 24, user-approved): `\unsafe` is a name,
-  `\"C:\dir"` is a string without escapes, `\\` lines are a raw multi-line string. `"..."` is the
-  only escaped string form. `lang.diag.Safety` uses `\unsafe`.
-- **Parse rules** (spec 01, section 5, "Parse rules"): patterns are expressions in the CST; in
-  `if`/`for`/`match` heads and after `->`, `{` opens the body; typed literals `T{ }` only after a
-  name, member or call; `[e]` followed by a type start is `[e]T`; block-like statements end at
-  their `}`; comparisons and ranges do not chain; `a..` is open; a group with a typed parameter or
-  followed by `->` is a function type, and a function literal with a body.
-
-## 5. Compiler architecture as built
-
-Layering: `base` < `front` < `mid` < `low` < `back`, `link`, `render` < `tools`. Implemented and
-tested (the rest are stubs):
-
-| Crate | Contents |
-|-------|----------|
-| `overt-index` | `Idx`, `index!`, `IndexVec` (push, get, last, iter). Every arena. |
-| `overt-intern` | `Symbol::intern`, `Symbol::as_str`: one sharded, append-only pool per process; equal by pointer, hashed by text (BLAKE3), ordered by text. No interner handle is passed around. |
-| `overt-origin` | `OriginTable` over `boxcar` (append-only, `&self`: `source`, `declaration`, `inside`, `derive`, `contains`), `Origin` with `Anchor::{File, Declaration, Within}`, `Via`, `Chain`. `OriginId` hashes by its anchored identity (decision 59); lowering anchors origins to declarations (`Lower::declaring`). |
-| `overt-span` | `FileId` (hashes by its key: `SourceFiles::add_as`; the driver keys files `<package>@<version>/<path>` through `Session::file_key`), `ByteRange`, `Span`, `SourceFile` (`line_col`), `SourceMap`, `SourceFiles`, `EXTENSION`. |
-| `overt-origin` | `OriginId`, `Origin`, `Via`, `OriginTable`. |
-| `overt-diag` | `DiagId`, `Severity`, `Msg` (typed parts, `append`), `Label`, `Fix`, `ChildKind` (Display), `Diagnostic` (`label` adds a secondary label), `DiagCtxt`, `DiagCx::error_at`, `DiagSink`, `ErrorGuaranteed`; `Msg::did_you_mean`; `errors` (generated). |
-| `overt-suggest` | `closest` (did-you-mean by edit distance), `Lookup` on slices (find by name or the closest name). Generic, no diag types. |
-| `overt-codec` | `Encode`, `Decode`, `Malformed`, `take`, `record!` (a struct field by field): LEB128 varints, zigzag for signed, length-prefixed text and sequences, tagged options and booleans. No dependencies. |
-| `overt-hash` | BLAKE3 only. `Algorithm` (typed, `name`), `Hash` (`blake3:<base32>`, `parse`, `digest`, `of(bytes)`, `tree(dir, include)`), `Snapshot` (per-file `Entry { hash, mode }` by path, `root` = Merkle tree over path components with directory nodes in a derived key, `changes`, text form, portable plain-component paths), `Change`. Package identity, manifest `.hash`, every cache key. |
-| `overt-pkg` | `Mirror` (`parse(url, &Schemes)`, `fetch`), `Schemes` (a registry: `file://` by default, `install` adds more; `Session::schemes` holds one), `FORMATS` (`.ovpkg`, `.tar.zst`, `.tar.xz`, `.tar.gz`, `.tar`, `.zip`; `strip` of a forge's top directory), `Archive` (`.ovpkg`: `pack`, `unpack` verifying each file), `Format` rows both read and write (`Format::pack(dir, include, top)`, `Archive::FORMAT` is the `.ovpkg` row), `Contents` (a snapshot's files read from disk under a top directory), `Tar` (`Header` shared by reader and writer: ustar, GNU long names, PAX paths; links refused; paths through `Snapshot::components`), `Zip`, `Zstd` (ruzstd), `Failure`/`Malformed` with sources. `lzma-rs` writes valid but uncompressed xz, so `.tar.xz` packs are larger than `.tar`. |
-| `overt-http` | The network schemes, `SCHEMES` (`https://`, `http://` over `bitreq` with rustls, a 4 GiB body cap, non-2xx statuses as `Refused`), installed by the `overt` binary only, so the TLS stack (`cc`, `ring`, `rustls`) builds beside the compiler crates instead of before them. |
-| `overt-query` | `Query` (`NAME`, `Key`, `Value`, `compute`, `interface`, `cycle`), `Db` (`set`, `get`, `revision`, `persist::<Q>`, `save`, `load`), `Cx` (`get` records reads), `Cycle`, `Persist` (opt-in, keys and values `overt_codec::{Encode, Decode}`), `Unloaded`, `Db::resource::<T>()` (shared append-only tables: `SourceFiles`, `OriginTable`). Verifying traces of interface hashes, early cutoff, one verification per revision; loaded memos are unverified (`verified: None`). Single-flight per thread only. The driver does not save or load yet: that comes with the first persisted sema queries (`.overt/queries/<toolchain hash>`). |
-| `overt-sema` | `int`: `Integer` (num-bigint), `Interval` (`add`, `sub`, `mul`, `neg`, `div`/`rem` -> `Divided { range, divisor: Divisor }`, `contains`, `hull`, `bits`, `storage` -> `Storage` or `None` past the width cap), tested exhaustively against small ranges. `primitives` (generated): one module and enum per `lang` namespace (`primitives::mem::Mem`), `Primitive` over them (`ALL`, `namespace`, `name`). `ty`: `Ty = Interned<TyKind>` (`Primitive(p, args)`, `Nominal { literal, args, kind }`, `Tuple`, `Array`; `TyKind::int`, `interval`, `accepts`, `signature` -> `Signature` (`lang.Fn((A, B), R)`), `unit`, Display; a `Nominal` shows the declaration its literal is written in), `Value` (`Int`, `Range(Option<Interval>)`, `Type`, `Tuple`, `Variant`, `Struct`, `Primitive`, `Namespace`; `as_type`). Queries: `item::Declared((Namespace, Symbol)) -> Option<Site>` (through spreads and directories), `decl::DeclValue(DeclRef)` (a `lang` hole is its primitive), `decl::DeclType(DeclRef) -> Known` (annotation or value type, `Stage::Compile` unless `mut`), `typeck::Typed(FnRef) -> TypedBody` (types per expression and reports), `check::Checked(FileRef)` (a `Visitor` over the file: members through `Typer::decl`, bodies through `Typed`). `typeck::Typer` is a HIR `Visitor`: literals, names (locals by annotation or value, others by `DeclType`), namespace members, blocks, `-`, arithmetic by `Interval::binary` with `int.width_cap` on `Stage::Run` intermediates, calls against `Fn` signatures, `$e`; other forms have their parts typed and no type. `Env::{ty, result, signature}` evaluate annotations. `eval::Instance { f: ExprRef, args }` is a compile-time call (the `Call` key); `Env::within(cx, instance)` binds the function's parameters to the arguments, and `Env::nominal` identifies a literal by `ExprRef` plus the instance. `member::Members(Ty) -> MemberTable` (fields with types evaluated in the instance, declarations, `complete` when nothing is generated or spread; `find` -> `Found`). The typer types fields (`p.x`), members of a type's namespace (`Point.origin`), method calls (receiver skipped against the first parameter), and `T{ .x = e }` (fields checked, unknown names `types.no_member`). `ExprRef` and `DeclRef` hold a `Node<Id>` (the index and its origin) and compare and hash by the origin, so keys and types built on them are stable across processes and edits (decision 59); build them with `ExprRef::new(file, hir, expr)`, `DeclRef::new`. `visible`: `Home::{Namespace, File, Struct}`, `Reach::{Public, Home, Within, Package, Workspace}`, `Visible`; `Env::visible(name, attrs, home)` reads `#[visible(...)]` as data (the primitive `lang.visible`, values of `lang.scope` looked up in the namespace declaring `Scope`) and returns what is `Misplaced`; `Env::sees(visible, at)` (`None` for the workspace), `not_visible`, `scope_msg`, `decl_visible`. `MemberTable` entries (`Field`, `MemberDecl`) carry their `Visible`; `TyKind::borrowed` lets `.` look through `&T` (table `BORROWS`). `check/visible.rs` reports `names.visibility` and spread selections of restricted names (moved out of `overt_hir::db::names`, which now only reports unknown selected names). `env::Env` resolves names to sites and evaluates constant forms; anything else is `Unevaluated` and never reported. Stubs: `eval` (`Evaluator` trait), `layout`. |
-| `overt-graph` | `Requirements<K>` (`add`, `order`, `OrderError`): the pass manager's ordering. |
-| `overt-fs` | `Tree` on `Path`: `files` (recursive, sorted), `entries`. `Modes` on `Path` (`mode`, `set_mode`: `Mode::{Regular, Executable}`); `Relative` (`relative_to`). `Edit` on `Path`: `put` (creates parents), `remove` (absent is removed), `fresh` (empty directory), `replace_with` (move a directory in whole). `Scratch`: a test directory removed on drop. Every filesystem write in the compiler and its tests goes through them. |
-| `overt-outline` | `Outline` + `Outlined::node`: indented tree text for the CST and HIR dumps. |
-| `overt-grammar` | `generated/`: `NodeField`, `NodeSlot`, `Count`, `NodeKind::slots` (children per kind, from tagged entries), `TokenKind` (+ `TRIVIA`, `ATOMS`, `KEYWORDS`, `PUNCTUATION`, `END`, `text()`), `NodeKind` (`LEAVES`, `BRANCHES`), `Context`, `Assoc`, tables `CONTEXTUAL`, `DELIMITERS`, `INFIX`, `PREFIX`, `POSTFIX`, `ASSIGN`, `OPERANDS`, `ELEMENT_TYPES`, `LITERAL_TYPES`. `lib.rs` derives lookups: `punctuation`, `keyword`, `is_trivia`, `infix` (`Prec`, `Infix`), `closer`/`opens`/`closes`, `is_leaf`, `contextual`. |
-| `overt-syntax` | `tokens` (SoA tokens + trivia side table, `verify`); `lexer` (`Tokens::lex`, recovery, `literal(kind, text)` for string values, backslash escapes); `cst` (postorder `(kind, Anchor, size)`, `Anchor::{Token, Missing}`, `children`, `span`, `dump`, `verify` -> `Malformed`); `parser` (`Cst::parse`); `literal` (`Cst::declarations` -> `Decl { name, doc, value: Literal, span }`, `Literal::Tagged`); `literal::{print, insert}` write values back (`Literal::source`, `Literal::laid_out` within `WIDTH`, `Decl::insert` -> `overt_diag::Edit`); `Cst::fields(n)` -> `Fields` (`get`, `one`, `assigned`), matched against the kind's slots; `children_rev` walks without allocating. |
-| `overt-hir` | `tree` (arenas: namespaces, decls, blocks, exprs, pats, binders; `List`/`Entry::Staged` for `$for`/`$if`), `lower` (`Hir::lower`, one `Cst::fields` per node), `visit` (`Visitor` + `walk_*`), `verify` (`Hir::verify`: tree property, origins), `resolve` (`Hir::resolve`; scopes: namespace, local, function, signature; `Res::{Binder, Outer { name, ns }}`, `Resolution::parents`; the checks; `Resolution::check_outer` over the `Outside` trait reports `names.unresolved`), `dump` (`Hir::dump`, `ExprKind::name`). `Member::Spread` (`..path`, `..path.{ a, b }`; selected names are binders). `Hir::members`, `Hir::binders`, `Hir::path`, `tree::each_entry`. |
-| `overt-hir::db` | The front end as queries. Inputs set by the driver: `Package(PackageId) -> PackageData` (name, dir, key, deps as `Result<PackageId, Unloaded>`, prelude, files) and `FileText(FileRef)`. Queries: `Parsed(FileRef)` (tokens, CST, HIR, resolution, reports), `NamespaceAt`, `Members`, `Exports` (cycles give nothing more), `Scope(PackageId)` (names, `poisoned`, reports), `FileNames(FileRef)` (spreads, file/directory duplicates, `check_outer`). Reports are data (`DiagCtxt` in values); an absent dependency carries its prepared diagnostic, returned only where it is needed; the driver absorbs reports, deduplicated. Namespace layout is read from `PackageData::files` (`file_of`, `children`, `holds`, `namespace_of`, `directory`). |
-| `overt-command` | Options of a group apply to every command below it; `Program.configure` applies them before a run. Declarative command trees: `Program`, `Command`, `Action::{Run, Group, Planned}`, `Param`/`ParamKind::{Positional, Flag, Option}`, `Args`, `Program::parse` -> `Request`, `Selected`, generated `Selected::help`, `Program::run` -> `Outcome`/`Refusal`, `Outcome` -> `ExitCode` (usage = 64). Usage errors are diagnostics with suggestions. |
-| `overt-driver` | `stages::STAGES` (implemented stages and the diagnostic groups they report), `Session::check` (runs them: `parsed`, `check_names` over the queries), `commands::PROGRAM` (the whole `overt` tree of spec 12.7, most commands `Planned`; `dump tokens|cst|manifest`, `components` run), `formats::FORMATS` (renderer registry behind `--format`), `Registry`, `Session` (`load`, `read`, `text`, `lex`, `parse`, `lower`, `resolve`, `declarations`, `manifest`, `emit`, `failed`). `packages`: `PackageKey::{Content(Hash), Loose}`, `Package` (deps, prelude), `Session::{package_of, package_at, dep, namespace_at, members, exports, scope, spreads}`, `Scope`/`Outer`, `FileScope` (implements `Outside`), `Session::fetch` -> `Fetched` (graph walk, mirrors in order, staging, verify, commit) behind `overt pkg fetch`, `LIBRARY` (the toolchain library, today the repo's `lib/`). Caches keyed by content hash: manifests and file declarations by text hash, packages by include-tree hash. |
-| `overt-cli` | `main` runs `PROGRAM` through `overt-command` and renders diagnostics once at the end. |
-| `overt-render-short` | `file:line:col: severity[id]: message`, then `  = help: ...` lines (fixes too). |
-| `overt-render-annotate` | default `terminal` format: labels by file, notes, fixes as patches, traces. |
-| `overt-render-ariadne` | `--format ariadne`: one color per label role; fixes as help lines. |
-| `overt-build` | `index` (`Index::{listing, archive}`, `Listing`), `lock` (`Lock`, `Locked`, `Replaced`/`Replacing`, `FILE`, text form), `Manifest::{replace, index}`, `Replacement`, `Dep::{declare, redeclare}`, `Manifest::{literal, source, identity}`, `Identity`, `EDITION`; `Manifest::read` (`Version`, `Dep` with span, `Source`, `DepKind`, `prelude_span`), `Manifest::declared` (a `build.ov` is a manifest iff it declares `package`), `DEFAULT_DEPS`, `DEFAULT_PRELUDE`; generic record reader (`Fields`, the `Record` trait on `Decl`) reporting missing, unknown (did-you-mean) and ill-typed fields. `store::Store` (`Store::user()` in the XDG cache via `etcetera`, or `Store::at`; `<algorithm>/<2 chars>/<rest>/{package/,snapshot,label}`, `staging/`, `roots/`; `register`, `list`, `collect`, `Label`). `layout`: `MANIFEST`, `SEPARATOR` (from the grammar's `.`), `Location` (namespace on disk: `root`, `member`, `file`, `exists`, `children`, `path_of`). |
-| `overt-harness` | `repo_root`, `Expected::all` (`//~ id [@col] ["fragment"]...`, or `Malformed`), `Reported`, `Mismatch::between` -> `Mismatch { missing, unexpected, differing }`, `Snapshot::{check, tree}` (mirrors a source tree, `OVERT_BLESS`); source discovery is `overt_fs::Tree::files_with`; `Page::parse` (Markdown sections by `##`, `Block { lang, file, text }`) for the explanation checks. |
-| `overt-xtask` | `cargo xtask generate [--check]`: pluggable `generate::Generator { source, output, emit }` table (`grammar`, `errors`); shared read/parse/emit/format (quote + prettyplease). `cargo xtask corpus`: runs `corpus/accept` (must be clean) and `corpus/reject` (exact `//~` set) through `Session::check`; a file whose missing ids all belong to stages that do not exist yet is pending (`overt_driver::stages::STAGES`, groups from `errors.ov` namespaces via `DiagId::within`). |
-| `overt-mir` | `Body` (locals, params, `ret`, blocks of `Stmt { place, value: Rvalue, origin }`, `Terminator`), `Rvalue::{Use, Binary, Unary, Range, Call, Nominal}` (a `struct`/`enum` literal, typed by the interpreter with its call's arguments, so `Pair(u8)` and `Pair(u16)` differ) (operators as grammar `TokenKind`s), `Operand::{Place, Const(Value)}`, `Place { local }`; `Mir(FnRef)` query lowering a function literal through sema's `Env` (`Unbuilt { at }` for forms not lowered yet: comparisons, `if`, `and`/`or`, assignments); text format (`Display`; `Body::dump(locate)` adds each line's origin, behind `overt dump mir`), `Body::verify` -> `verify::Malformed` (locals, places, jump targets, parameters, origins), checked on every body the repository lowers (`driver/tests/driver/mir.rs`, through `Session::bodies`). |
-| `overt-interp` | `Interpreter` implements `sema::eval::Evaluator`: `Frame` runs a body on compile-time values; calls go through sema's `Call` query; operators through `Value::{binary, unary, range}`, primitives through `Primitive::apply`. Installed by `Session::default` in the `Evaluators` resource. |
-| `overt-trace` | Own subscriber: `Filter` (`OVERT_LOG` directives, most specific target wins), compact and tree output, span timings. |
-| backends, linkers, target, pass, tool | as in the first session (stubs with `const INFO`). |
-
-**CST design.** One node per token (Carbon style), children before parents. A bracketed node is
-anchored at its opening token with the closer as a `Punct` leaf; separators and terminators are
-`Punct` leaves; `Binding`/`Field` are anchored at `:=`/`:`; absent tokens or operands are nodes
-with `Anchor::Missing(next token)`; skipped tokens are `Error` leaves. `Doc` and `Attr` wrap the
-thing they annotate. The verifier checks size nesting, leaf arity, a single `File` root, one
-owner per token, contiguous subtrees.
-
-**Parser design.** Recursive descent; `List::{Members, Statements, Items(Item)}` drives all
-bodies, so `$for`/`$if` work in every list context; node kinds are chosen after children
-(postorder). One report per position; missing things are reported at the end of the previous
-token; nesting capped at 256; the keyword hint suggests `\keyword`.
-
-Tests: 157, including unit tests per crate, `tests/lexer.rs`, `tests/parser.rs` (all of `lib/` and
-`corpus/accept` parse clean and verify, CST and token snapshots mirroring the corpus tree), CLI parsing tests, the
-generated-files-current test and the corpus test (no failing corpus file). Fuzz: `parse` ran 600k inputs in 4 minutes
-without a failure. clippy pedantic is clean.
-
-## 6. Commands
+## 4. Commands
 
 ```sh
 cargo fmt && cargo clippy --all-targets && cargo nextest run && cargo xtask generate --check && cargo xtask lines
-cargo run -q -p overt-cli -- dump cst corpus/accept/integers/ring_buffer.ov
-cargo run -q -p overt-cli -- help dump
-cargo xtask generate                       # after editing grammar.ov or errors.ov
-cargo xtask corpus                         # corpus verdicts: pass, pending, fail
-OVERT_BLESS=1 cargo nextest run -p overt-syntax  # accept snapshot changes, after reading the diff
-cd fuzz && cargo +nightly fuzz run parse -- -max_total_time=120   # cargo-fuzz is installed now
+cargo xtask corpus            # verdicts, then coverage and what stops MIR most
+cargo run -q -p overt-cli -- check|dump tokens|cst|hir|mir <file>
+OVERT_BLESS=1 cargo nextest run -p overt-syntax    # snapshots, only after reading the diff
+cd fuzz && cargo +nightly fuzz run parse -- -max_total_time=120
 typst compile whitepaper/main.typ whitepaper/overt.pdf
 ```
 
-## 7. Conventions to keep
+## 5. The compiler as built, by area
 
-- New diagnostic: add it to `lib/lang/lang/errors.ov` in its group, run `cargo xtask generate`,
-  report with `Msg` parts and `ChildKind::Help`/`Note` children.
-- New token, node kind or grammar table: edit `grammar.ov` only, run `cargo xtask generate`
-  (twice when the token set changes, since the reader is built from the previous output). Tables
-  are typed by their values; a `.name` list resolves to the one enum holding all its names.
-- New command: add a `Command` to `overt-driver::commands::PROGRAM` (or to `xtask`), with typed
-  `Param`s; never parse arguments by hand.
-- New generator: a module in `xtask` with a `const GENERATOR`, listed in `generate::ALL`.
-- Files stay at most 300 lines, one concern each (`cargo xtask lines`, also a test). Split a
-  growing file into a directory module; unit tests live in a sibling `tests.rs`
-  (`foo.rs` + `foo/tests.rs`, or `src/tests.rs` for a crate root).
-- No orphan functions (`CLAUDE.md`, code rules). A function that works on a type is a method or associated function of
-  that type (`Hir::verify`, `Program::parse`, `Manifest::read`); a foreign type gets a
-  crate-local extension trait (`Record` for `Decl`). Free functions stay only where no type owns
-  the logic: `main`, tests, handlers registered in tables, visitor `walk_*` defaults, mappings
-  between two foreign types, generic algorithms (`suggest::closest`).
-- Arenas: `index!` + `IndexVec`. Crates: `compiler/<stage>/<name>`, workspace fields, lints,
-  workspace dependency entry.
+Front end and infrastructure (stable; see the code for detail): `overt-index` (`IndexVec`,
+`into_vec`, `From<Vec>`), `overt-intern` (process-wide `Symbol`), `overt-origin` (stable
+`OriginId`s anchored to declarations), `overt-span`, `overt-diag` (`Msg` parts, `Diagnostic`,
+`DiagCtxt`), `overt-query` (verifying traces; persistence built but not wired), `overt-syntax`,
+`overt-hir` (+ `db`: the front end as queries), `overt-command` (declarative CLI), `overt-build`,
+`overt-pkg`, `overt-http`, `overt-hash`, `overt-fs` (`Tree`, `Edit`, `Scratch`), `overt-harness`,
+`overt-trace`, three renderers.
 
-## 8. Next steps
+**Sema** (`compiler/front/sema`):
+- Types (`ty/`): `TyKind::{Primitive, Nominal, Tuple, Closure, Frame}`; `Nominal` kinds `Struct`,
+  `Enum`, `Empty`; `ty/relate.rs` has `accepts` (integer ranges, bounds, borrows of arrays as
+  slices, `Code(T)` covariance, constructors applied to `never`) and `join`.
+- Values (`ty/value.rs`): ints, ranges, types, tuples, arrays, variants, structs, primitives,
+  namespaces, `Fn`, `Closure`, `Linked` (linker-provided `= _` outside `lang`), `Frame`
+  (`eval::Suspended`), `Code`, `Interface`. Parts through `ops::Part` (`Value::{part,
+  with_part}`).
+- Evaluation (`env/`): `Env::eval` for constant forms, calls through the metered `Call` query
+  (`eval::MeteredCall`: steps include callees; `fuel::FUEL` or `#[comptime.fuel(n)]` on the
+  called function); `env/{attr,code,frame,path,primitive,condition,aggregate}.rs`. Attributes
+  are read as data (`Env::{attrs_of, attribute}`).
+- Typing (`typeck/`): the `Typer` visitor per `Instantiation` (`Typed` query), expected types,
+  patterns, loops, `for p in e` (records `Iteration`), `$for`/`$if` steps (`TypedBody::steps`),
+  quotes and splices, `?` (`early_return.rs`), closures and function bodies (`closure.rs`),
+  coroutines (`suspend.rs`), primitives typed per call (`Env::primitive_signature`).
+- Items: `Declared`, `DeclValue`, `DeclType`, `TypedDecl`, `Members` (expands `$for`/`$if`,
+  keeps `_` fields), `MemberType`, `MemberValue`, impls and witnesses (`witness/`: targets may be
+  types, type constructors, or interface constructors taking the type first), visibility,
+  reflection (`reflect.rs`: `lang.meta.{fields, name_of, size, source}`), layout (`layout.rs`,
+  query `Layouts`), kinds (`kinds.rs`, query `Kinds`), `check/` (the file checker: values,
+  impls, visibility, `layout.bits_width`).
 
-In order:
+**MIR** (`compiler/mid/mir`): places with projections (`Deref`, `Field`, `Index`, `Position`,
+`Payload`); rvalues `Use`, `Binary`, `Unary`, `Range`, `Narrow`, `Aggregate` (struct, variant,
+tuple, array, closure), `Call`, `Ref`, `IsVariant`, `Resume`, `Repeat`, `Comptime`, `Quote`;
+terminators `Return`, `Goto`, `Branch`, `Yield`, `Unreachable`; `LocalDecl { name, ty, role }`.
+`build/`: one module per form (blocks, calls with receivers per signature, places, patterns,
+control, loops with `for p in e`, suspension, closures, staged, `?`, aggregates). Unlowered forms
+are `Unbuilt { at }`; `Body::verify` runs on every lowered body in the tests.
 
-1. Sema, continued. State: the front end runs as queries (`overt_hir::db`); `overt_sema` has
-   types and values, `Declared`, `DeclValue`, `Call` (memoized compile-time calls through the
-   installed `Evaluator`), `Checked`; MIR v0 (`overt_mir::Mir`) and the interpreter v0
-   (`overt_interp::Interpreter`) evaluate compile-time calls, so `u8 := unsigned(8)` is computed
-   from `lang.int`. Typed: namespace members against their annotations, function bodies
-   (parameters, locals, names by `DeclType`, arithmetic, calls against `lang.Fn` signatures, the
-   result against the declared one), `int.width_cap` on run-time intermediates. Next:
-   - Operators: `interface(f)` evaluates to `Value::Interface(f)`; a non-arithmetic operator is
-     typed by its function in the requirement struct `Call(Instance { f, [Type(left)] })`,
-     through `MemberType` (decision 69, tables `OPERATORS`, `BORROWS`), so `a < b` is `bool`
-     from `lang`. Next: operand checks against the requirement's parameters, `types.no_impl`
-     (needs impls), prefix `~` and `-` through interfaces.
-   - Conditions (decision 71): `Env::{form, condition, holds, decide, binary, unary}`
-     (`env/condition.rs`) find `lang.bool` and its truth through `FORMS`; `Env::member` reads
-     enum variants (`MemberTable::variants`, `Found::Variant`); the typer types `and`, `or`,
-     `!`, `if` (`typeck/control.rs`, `TyKind::join`); MIR has `TerminatorKind::Branch` and
-     lowers `if`, `and`, `or` (`build/control.rs`); the interpreter branches with `Env::holds`.
-     Loops (decision 72): MIR lowers `for {}`, `for c {}`, labels, `break v`, `continue`,
-     `return`, uninitialized locals and assignments to locals (`build/{loops,assign}.rs`);
-     `x op= y` is `Rvalue::Narrow` with the place's type from `Typed` and the table `COMPOUND`;
-     `Value::narrow`. Budgets (decision 72, revised): `eval::MeteredCall` memoizes a call's value with its steps (`Metered`), its own plus those of the calls it makes; `Call` reads the value; `fuel::FUEL` (2^24) or `#[comptime.fuel(n)]` on the called function's declaration (`Func::fuel`); `Frame::spend` traps past it. Traps (decision 73): `trap::{Trap, Reason}` in `Unevaluated::Trapped(Box<Trap>)`, placed and traced by `Unevaluated::through(origin)` as they propagate (interpreter statements, `Env` calls); `Trap::report(root)`; reported by `Typer::ty` for annotations and by the checker, which computes every top-level value.
-     Expected types (decision 74): `Typer::{typed_as, expected}` and `result`;
-     `typeck/{block,expected,pattern}.rs`: statements and assignments, `.name` (`dot`), tuples,
-     patterns against types (`pattern`, `test` through borrows), `match` (`matching`),
-     `if p = e`; `Typer::join` for branches; `TyKind::{accepts, join}` item by item.
-     Sequences (decision 75): `TyKind::Slice`, `Value::Array`, `Env::apply`, `TYPE_PREFIXES`;
-     `typeck/sequence.rs` (tuples, arrays, repeats, integer indexing).
-     Next: values of these forms at compile time (`Env` evaluating with an expected type, MIR
-     aggregates and `match` lowering), exhaustiveness (decision 29), narrowing by comparisons
-     (decision 35), `for p in e`, `#[comptime.fuel]`.
-   - Generic code is typed and lowered per instantiation (`eval::Instantiation`: a `Func` with
-     its `$` arguments; `Typed` and `Mir` are keyed by it, `Instantiation::plain` for ordinary
-     bodies). A call reaching a generic instantiation types it and absorbs its reports at the
-     definition, with a trace frame at the call (`DiagCtxt::absorb_through`, `typeck/call.rs`).
-     Bound `$` parameters are typed by their value. Coverage still counts plain bodies only.
-   - Sequences (decisions 78, 79): `[N]T`/`[T]` are `lang.mem.Array`/`Slice` (`TyKind::{array,
-     slice, as_array, items}`, the table `forms`); `std.seq.Sequence` gives `.len()` over
-     `lang.mem.len`; `sema::target::Target` (a query resource, 64-bit until the driver sets a
-     target) gives `lang.target.usize_max`. `a..b` is `lang.Bounds(T)` (`typeck/range.rs`,
-     `Interval::items`), accepted where a `Range` is expected; `x[a..b]` is a part.
-   - Loops (decision 80, `typeck/loops.rs`): `break` values join into the loop's value; `for p
-     in e` items through the table `iteration` and the `lang.ops` impls for `Bounds`, `Slice`,
-     `Array`; `.*` through `TyKind::pointee`. Next: MIR for `for p in e` (the iterator primitives
-     are `_` in `lang.ops`), coroutine values (`-> Iter(u32)` returns an interface, not a type),
-     borrow modes of slice items (`&mut [T]` should yield `&mut T`), narrowing by comparisons
-     (decision 35) inside loops.
-   - Decision 82: `decl::TypedDecl((decl, instance))` types a declaration's value (the checker
-     absorbs its reports; `Env::decl_type` and `MemberValue` read it); `Env::typed_by` and
-     `Env::type_of` give evaluation the types; `env/aggregate.rs` (`eval_as`, `record`,
-     `variant`, strings); `Value::item`; MIR `Rvalue::Aggregate` and places (decision 88)
-     (`build/aggregate.rs`) run in the interpreter. MIR lowers 34 of 102 accept functions.
-   - Decision 83 (batch 2 of the metaprogramming plan): `MemberTable::entries` expands `$for`/`$if`
-     with `eval::Staging` bindings (`Env::staging`, `Env::bound`); `MemberDecl::staged` and
-     `Func::staged` carry them; `TypedDecl` is keyed by `(decl, instance, staged)`;
-     `Env::name` resolves `$(e)`; typer, evaluator and MIR read members by computed names; `$`
-     locals evaluate from their declaration (`Hir::decl_of`). Test: `driver/tests/driver/staged.rs`.
-   - Decision 84 (batch 3, reflection): `lang.meta.{Field, fields, name_of}`, spread by
-     `std.meta`; `sema/src/reflect.rs` fills a descriptor's fields by name (table `FIELD`), the
-     descriptor type read from the primitive's declared result (`Env::result_of`, `Env::site` in
-     `env/path.rs`); `Value::string`. Test: `driver/tests/driver/reflection.rs`. Remaining:
-     `decls`, `size` and `offset` (need `layout`), `attrs`/`attr` (need attribute values),
-     `meta.frozen` (a cycle through `Members` becomes `Unevaluated::Cycle`, never reported yet).
-   - Decision 85 (batch 4): `$for`/`$if` in bodies. `typeck/staged.rs`: `Typer::unroll` (the
-     `Visitor::staged` override) types each `$for` step under `Typer::step` (a step `Env`
-     overlay, `Typer::env()`), kept in `TypedBody::steps` by `Step { at, index }`;
-     `Typer::comptime` types `$e`, selecting a `$if`'s branch through `Env::select`
-     (`env/condition.rs`, `Selected`). MIR `build/staged.rs` mirrors it (`Builder::{stmts,
-     unroll, selected}`, `Builder::typed()` follows the step path); a bound comptime binder is
-     an `Operand::Const`. HIR: a `$for` last in a block is not its tail. Coverage counts step
-     types (`TypedBody::typed_count`). `Rvalue::Comptime { expr, staged }` carries the step's
-     bindings. Gap: a report inside a step repeats once per step.
-   - Decision 86 (batch 5, code values): `eval::Code { expr, within, bound }`, `Value::Code`,
-     `TyKind::{code, quoted}`; `env/code.rs`: `Env::{code, quoted, splice}`, `Func::quotes`
-     (parameters of type `Code(T)`); `Env::eval` quotes `#{ }`, splices `$c`, passes code
-     arguments; the typer types quotes as `Code(T)`, splices as `T` (`Typer::comptime`), code
-     arguments against `T` (`typeck/call.rs`); MIR `Rvalue::Quote` (interpreter builds the code
-     in the frame's environment); `lang.meta.source` and `std.meta.Quoted` (`c.source()`);
-     `lang.mem.len` applies at compile time. Tests: `driver/tests/driver/quotes.rs`. Remaining:
-     expansion of spliced code at the call site (MIR inlining: `assert(len <= 64)` in a
-     run-time body stays unbuilt, since the code reads the caller's locals), `c.span()` (needs a
-     span value type), fresh binders inside quotes, `std.meta.syntax`,
-     duplicate computed names. Decision 87: `meta.escape` (`hir/src/resolve/stage.rs`, the
-     resolver counts quotes; a `$(e)` computed name is not counted as a level yet).
-   - Decision 88, MIR places: `Place { local, projection }` with `Projection::{Deref, Field,
-     Index(Local)}` (`mir/src/place.rs`); `build/place.rs`: `Builder::{place, read, borrow,
-     through_borrows}` (`.` and indexing dereference once per borrow the typed body shows);
-     `Rvalue::Ref { mode, place }` is new and `Rvalue::{Field, Index}` are gone (reads
-     are places); assignments store to any place; `unsafe e` lowers `e`; `build/call.rs` holds
-     calls and methods. The interpreter reads places, rebuilds values to write parts
-     (`Value::{with_field, with_item}`), reads a shared borrow as the value, and refuses `&mut`
-     and writes through `.*` (no memory model yet). An index past the end traps
-     (`Reason::Bounds`). `cargo xtask corpus` now names what stops MIR most
-     (`Coverage::unbuilt`).
-   - Decision 89, MIR patterns: `build/pattern.rs` (`Matched`, `Builder::{scrutinee, declared,
-     test, either, guard, matching}`), `Builder::condition` for `if`/`for` heads,
-     `Projection::{Position, Payload}`, `Rvalue::IsVariant`, `TerminatorKind::Unreachable`;
-     sema `ops::Part` with `Value::{part, with_part}` is the one way parts are read and
-     rebuilt. `Typer::ty` types an annotation it cannot evaluate, then evaluates it with those
-     types; `TyKind::of_types`. Decision 90: `Value::Linked(DeclRef)` for linker-provided
-     declarations (`DeclValue::primitive` decides), `Value::repeat` and `Rvalue::Repeat`.
-     Next blockers (`cargo xtask corpus`): closures in the capability programs (they wait for `std.sync`, which is empty), `$` splices of run-time code, `.{ }` without a known
-     type, or-patterns that bind. Decision 91 (`?`): `typeck/early_return.rs`
-     (`Typer::witness_of` shared with loops), `build/early_return.rs`; MIR returns the stop value
-     as is (a backend widens `Result(never, E)` into the result layout, as with integers).
-     Closures (decision 91): `TyKind::Closure`, `TyKind::callable`, `Value::Closure { f,
-     captures }`; `typeck/closure.rs` (`Typer::{function, closure}`, shared with `Typed`;
-     `Instantiation::enclosing` makes a closure's `Typed` the enclosing body's);
-     `Hir::{closure_of, enclosing_function}`; MIR `build/closure.rs` (`Aggregate::Closure`,
-     captures as leading parameters, `Builder::binder_place` reads a captured borrow through
-     `.*`); calls pass captures first. Not done: witnesses of `lang.ops.Call` for closure types
-     (constrained `$F: Call(P, R)` parameters), `&mut` captures at compile time. `ty/relate.rs`
-     holds `accepts` and `join`.
-   - Decision 92, coroutines: `TyKind::Frame`, `Env::{literal_signature, resumed, frame_step}`
-     (`env/frame.rs`), `Hir::suspends`, `Typer::function` for coroutine bodies (`yields`),
-     `typeck/suspend.rs` (`yield`, `yield ..e`), `Iteration { witness, step }` recorded per
-     `for p in e` (`TypedBody::iterations`), `TyKind::implements` for impls over interface
-     constructors (`Witness::of` passes the type first), `Env::primitive_signature`
-     (`env/primitive.rs`) types `$`-dependent primitive calls. MIR `build/suspend.rs`
-     (`yielded`, `drive`), `for p in e` in `build/loops.rs` (`iterator`), `build/block.rs`.
-     Interpreter `frames.rs` (`Frame::{suspend, resume}`, `Exit`), `eval::{Suspended,
-     Resumed}`, `Body::suspends`. Not done: `end` of frames (defers), a `for`'s value from
-     `done`, frames at run time (state machines, spec 06 section 5), `f.Frame` as a written
-     name, coroutine recursion checks.
-   - Decision 93, layout: `sema/src/layout.rs` (`Layout { size, align, niches }`, query
-     `Layouts`, `Layouts::bits` for bit structs), `env/attr.rs` (`Env::{attrs_of, attribute}`,
-     also used by `Func::fuel`), `lang.meta.size`, `check/layout.rs` (`layout.bits_width`),
-     `_` fields kept in `MemberTable`, `Members` returns nothing on a cycle. `defer` waits for
-     moves (it must skip exits where its linear operand moved, spec 05 section 3).
-   - Decision 94, place states: `mid/passes/src/places/{mod,states,transfer}.rs` (query
-     `PlaceStates`, a forward dataflow to a fixed point, then one reporting sweep), the table
-     `borrows` gained `before`/`after` (`PlaceState` in `desugar.ov`), `LocalDecl::ty` (set for
-     parameters), reads of named locals are statements at the reading expression, the driver
-     stage `places` (`Session::check_places`), `stages::Input` and `Session::unlowered` (the
-     corpus keeps MIR-stage reports pending in bodies not lowered).
-   - Decision 95, kinds and moves: `sema/src/kinds.rs` (`Kinds`, `Duplication`), `Env::attrs_of`
-     reads attributes on attributed literals too, MIR temporaries and bound locals carry their
-     types (`Builder::operand` wraps `value`), `mir::Role` (`Unpacked` for values a pattern takes
-     apart), `Builder::receiver` borrows receivers per the method's first parameter, final
-     returns point at the body's tail. Next: `defer` (lower per exit, then drop the deferred
-     statements on exits where their linear operand is `uninit`; ambiguous is an error),
-     `fixed` and `scoped` kinds, scope exits inside a body (leaks are found at the return).
-     Corpus stand-ins now declare the methods programs call (`Fs.open`/`close` over a linear
-     `File`, `Serial`, `Timer`, `Led`, `Cache`, `Queue`, `Job`, `Packet`, `Config.done`,
-     `Alloc.create`); `types.no_member` on values still waits for `Own` field access,
-     `std.Dyn`, `Result.map_err` (with `$` inference and variant constructors as values),
-     `Alloc.destroy`, and stand-ins tied to program types (`Dma`, `Uart`, `System`, `svd`).
-   - `types.no_member` on values stays off: turning it on (tried) reports members the corpus
-     stand-ins lack. Needed first: stand-in methods for `Timer`, `Serial`, `Led`, `Dma`, `Fs`,
-     `Alloc`, `Device`, `System`, `Cache`, `Queue`, `Packet`, `Uart` in `corpus/support`,
-     inference of `$` arguments (`a.destroy(node)`), access through `Own`, `?` (`Try`),
-     variant constructors as function values (`map_err(Error.fs)`), `Result.map_err`, `std.Dyn`.
-   - Decision 81: borrows (`typeck/prefix.rs`), `unsafe` blocks, attributed expressions (also in
-     `Env::eval`), struct patterns, per-branch reports (`Typer::fits`, naming the written result
-     type through `Typer::written`). Remaining untyped in `corpus/accept`: calls into `std`
-     stand-ins without signatures, string literals (`&static [N]u8` needs regions), floats,
-     `$` forms, closures, quotes, `yield`.
-   - Impls (decision 76, `sema/src/witness/`): `Impls(FileRef)` collects `#[impl(I(T))]`
-     declarations, reading `I` and `T` from the instance of the requirement struct `I(T)`;
-     `T` may be a type constructor (`TyKind::made_by`), whose impl is a function of its
-     arguments. `Witnesses((file, ty))` gives a type's witnesses over the file's package graph;
-     `Env::method` finds a member of a witness, then a default of the interface, used by
-     `Typer::member` (methods and `T.name`) and `Env::member`. The checker reports
-     `impl.missing_requirement` and `impl.duplicate` (`check/impls.rs`). Next: the collision
-     rule (a witness member named like `T`'s own members or another witness's), checking the
-     types of provided members against the requirements, requirements of constructor impls per
-     type, constrained `$W: Writer` parameters, `types.no_member` on values now that impls are
-     collected, MIR and the interpreter calling methods, integer operators as `lang` impls.
-   - Methods of built-in types are std impls over type constructors (the user's choice).
-     Decision 77: `std.int.Narrow` (`lib/std/std/int.ov`) is the impl for `lang.Int` giving
-     `to`, `wrap`, `sat`, `try_to` over `lang.int.{to, wrap, sat, fits}` (`Primitive::apply`,
-     which now takes the `Env`). `eval::Func` is a function value with the call it was built in
-     (`Env::within` binds outer calls first; `Env::inside` binds some parameters, for
-     signatures); `MemberValue((ty, name))` evaluates a struct's declaration in its instance;
-     `typeck/call.rs` types `$`-dependent signatures per call (`Typer::dependent`); `Env::call`
-     evaluates `a.f(b)` as `T.f(a, b)` with `Value::ty`; `TypedBody::methods` lets MIR lower
-     method calls (`build/method.rs`); `Rvalue::Comptime(expr)` (replacing `Nominal`) evaluates
-     literals and outer `$` parameters in the frame's environment. Next: `abs` (its result type
-     needs range bounds from `lang`, such as `lang.int.magnitude(r)`), `.wrap` only for
-     power-of-two ranges (spec 04 says so; `Value::narrow` wraps any finite range), slice and
-     array `.len`, a member of `[T]` read without a call (spec 05), not a method: decide how
-     `[T]` declares it; pointer `.cast`.
-   - Visibility (decision 70): `.workspace` is not enforced (`Env::sees` returns `None`) until
-     `PackageData` records the workspace a package belongs to (the root manifest's `.members`).
-     `.name` with an expected type is only implemented for `lang.scope` inside `#[visible]`;
-     general expected-type lookup comes with enum literals and `.{ }`.
-   - A call's argument diagnostic names the parameter type by its value (`Int(0..=255)`); label
-     the parameter's declaration when the callee is a known function literal.
-   - `lang.bool` and comparisons: comparisons desugar to `lang.ops.Eq`/`Ord`, whose results name
-     `bool` in `lang`; find it by data, never by name. Then `if`, `and`, `or` in MIR (branches).
-   - Appendix B as a `.ov` table (operators to `lang.ops` items), generated; MIR's operators are
-     grammar `TokenKind`s until then.
-   - `int.does_not_fit` in `corpus/reject/integers/does_not_fit.ov` (`p.x.abs() + p.y.abs()`)
-     waits for `std.int`.
-   - Persist the front-end queries (`Persist` needs `Encode`/`Decode` for their keys and values;
-     `Symbol` and `OriginId` persist by content) and wire `.overt/queries/<toolchain hash>`.
-2. Packaging, still open: signed binary caches (decision 63) and planned builds wait for the
-   evaluator; later `--verify-reproducible`, `overt pkg why`. `lzma-rs` writes uncompressed xz.
-   Paths in diagnostics mix relative and absolute forms depending on how a directory was found.
-3. `names.private` (needs member types), `binding.hole_value` (needs attribute resolution).
-   Spreads through aliases are forbidden by spec 01, section 8; spreading a `struct`
-   declaration's members needs sema.
-4. Fuzz the parser longer (120 s runs are clean).
+**Passes** (`compiler/mid/passes`): `places/` (query `PlaceStates`): uninitialized reads, joins,
+`&out` targets, moves of linear values, `place.linear_leak` at returns. Stage `places` in the
+driver; stages declare `Input::{Source, Mir}` so the corpus keeps MIR reports pending in bodies
+MIR does not lower (`Session::unlowered`).
 
-`cargo xtask corpus` ends with the phase 1 progress measure (`overt_driver::Coverage`, `Session::coverage`): the share of function-body expressions sema types and of functions MIR lowers in `corpus/accept` (26% before decision 75, 32% after, 33% and 17 functions after 77, 41% after 80, 42% after 81, 43% and 34 lowered after 82, 44% after 83 and 84). The corpus has 40 accept and 55 reject programs plus 63 explanation pages (`cargo xtask corpus`:
-149 passed, 38 pending on later stages, 20 shown as transcripts, 0 failed), plus
-`corpus/build.ov` (prelude `std.prelude` then `support`) and `corpus/support`, stand-ins for what
-programs take from drivers, other libraries and unwritten parts of `std`.
+**Interpreter** (`compiler/mid/interp`): runs MIR on compile-time values; places are rebuilt to
+write parts; shared borrows read as values; `&mut` and writes through `.*` are refused (no memory
+model); frames suspend and resume (`frames.rs`).
 
-## 9. Open questions and known gaps
+**Driver and tools**: `Session::check` runs names, types, places; `stages::STAGES`;
+`Coverage` (typed expressions, lowered functions, what stops MIR); `cargo xtask {generate,
+corpus, lines}`.
 
-- Every decision up to 84 is accepted: 65 to 84 on the agent's recommendation when the user asked
-  to settle the open ones (2026-09-24), 72 revised (budgets cover the calls a call makes, fuel on
-  the called function). 61 (query persistence) and 63 (signed caches) are accepted but not built.
-  Corpus type functions write `$Ring`, `$Regs`, `$Block`.
-- Known gap in budgets: calls recurse on the host stack through queries, so an unbounded chain of
-  distinct calls overflows it before any budget is spent; spec 03 wants the evaluator's own stack.
-- Build files name `std.build.Build` explicitly (no build-only prelude). New questions go there as
-  "proposed" until the user decides.
-- `lang/errors.ov` now declares planned ids for later stages (`names`, `binding`, `safety`,
-  `place`, `borrow`, `panic` groups, `int.width_cap`), one per spec rule the reject corpus
-  exercises. Their names are accepted as working names; rename freely, then `cargo xtask generate`.
-- Whitepaper bibliography partly from memory; research notes' **[unverified]** claims stay
-  unverified.
-- `overt-tool`, `lir` and the MIR passes are stubs; `sema`, `mir` and `interp` are at v0.
+Progress (corpus/accept): 54% of body expressions typed, 63 of 102 functions lowered. Corpus:
+163 passed, 27 pending, 20 shown, 0 failed. 183 tests.
 
-## 10. Pitfalls met
+## 6. Decisions
 
-- Error cascades: the lexer records the tokens it diagnosed (`Tokens::diagnosed`); the parser stays
-  quiet right after consuming one, and skips same-line junk before a missing `;`. Keep new
-  recovery generic in the same way.
-- Python one-liners that open a file for writing before reading it truncate it. Heredoc Python
-  with Rust string escapes is fragile; for edits containing backslashes prefer the Edit tool.
-- `cargo fmt` silently leaves overlong lines inside long string literals; wrap them by hand.
-- Generated files carry `#[rustfmt::skip]` on their `mod` declaration, so `cargo fmt` does not
-  fight prettyplease; the staleness test compares exact bytes.
-- `tracing::instrument` fails through the re-export; use `debug_span!` from `overt_trace::tracing`.
-- In tests, `use TokenKind::*` shadows `String`; clippy pedantic also rejects enum glob imports
-  outside tests, so alias (`use TokenKind as K;`).
-- `'x` lexes as a label; `'\n` without a closing quote is the unterminated character case.
-- `CLAUDE.md` is ignored by the user's global gitignore, so `jj st` never shows it.
-- Node fields: each distinct shape is its own kind (`binding`/`typed_binding`,
-  `struct_lit`/`typed_lit`); a field named after a node kind is restricted to it; `error` is a
-  branch that wraps what recovery skipped, so a failed entry is one node. The fuzzer finds parser
-  outputs that do not fit their slots: run `cargo +nightly fuzz run parse`, then `fuzz tmin`, then
-  `overt dump cst` on the minimized input (dumps show each child's field).
-- `cargo xtask generate` is built from the driver: when the driver uses a new diagnostic id,
-  bootstrap with a temporary existing id, generate, then restore.
-- A `?` inside a match arm returns from the whole function: in readers that must report every
-  problem, combine results with a `match` on the tuple instead.
-- Query values must hash by content: `HashMap` is not `Hash` (use `BTreeMap`), and `Arc<Hir>`-like
-  values hash by the text they come from. Reports are data (`DiagCtxt` in a value, deduplicated by
-  `absorb`); a query never emits.
-- `DiagId::within` counts an id as within itself, so a stage may list a single id
-  (`errors::INT_WIDTH_CAP`) as well as a group. Listing `int.does_not_fit` would fail
-  `corpus/reject/integers/does_not_fit.ov` until methods (`.abs()`) are typed.
-- Checks report only what they know: an `Unevaluated` value or an unknown type is silence, never a
-  guess. A stage lists exactly the ids it implements in `stages::STAGES`, or corpus files it cannot
-  handle yet fail instead of staying pending.
-- Performance: one walk per purpose. Lowering fetches `Cst::fields` once per node; resolution
-  and the syntactic checks share one walk; verifiers and dumps run only in tests and on demand.
-- `OVERT_BLESS` blesses when the variable is present, whatever its value: `OVERT_BLESS=0` blesses,
-  and so does an empty `OVERT_BLESS=` prefix. Never write it on a command unless blessing.
-- Lib files are resolved too: a name used in `lang` must exist in `lang` (its prelude is
-  `.{ "lang", "lang.int" }`, no `std`), so integer widths live in `lang.int`, not `std`.
-- Every diagnostic helper phrase has one home: `Msg::did_you_mean`; the `.ov` extension is
-  `overt_span::EXTENSION`; namespace paths on disk go through `overt_build::layout::Location`.
-- Parallel work in a second jj workspace (`jj workspace add`) needs its own `CARGO_TARGET_DIR`:
-  artifact names do not include the source path, so two trees sharing `~/.cargo/target` build
-  each other's crates. Before rebasing a workspace's commits from another workspace, run `jj st`
-  in it so its working copy is snapshotted; otherwise its edits end up in a divergent recovery
-  commit.
-- The driver's integration tests are one binary, `tests/driver/main.rs` with a module per
-  area; add a module there, never a new top-level `tests/*.rs`, so a change links one binary.
-- Tests never touch the user's store: the driver test fixture (`tests/driver/common`) gives each session
-  a store in its scratch directory, and the CLI honours `OVERT_STORE`.
-- Test manifests are written with `Manifest::source`, never formatted by hand.
+Decisions 1 to 84, 91 and 92 are accepted (65 to 84 on the agent's recommendation when the user
+asked to settle them; 91 and 92 with the user's choices). 85 to 90 and 93 to 95 are proposed:
+$for in bodies (85), code values (86), quote levels (87), MIR places (88), MIR patterns and typed
+annotations (89), linked values and repeats (90), layout (93), place states (94), kinds and moves
+(95). New language rules go to `decisions.md` as proposed unless the user approves them.
+
+## 7. Next steps, in order
+
+1. `defer` (spec 05, section 3): lower the deferred statement at every exit, then drop it on
+   exits where its linear operand is `uninit`; an ambiguous state there is an error. Then scope
+   exits inside a body (leaks are found at the function's return only), `fixed` and `scoped`
+   kinds, frames' `end` running their defers.
+2. Borrow rules (spec 05, sections 4 and 7; `borrow.*` reject programs): exclusivity, escape,
+   scoped values in free results.
+3. Library and stand-ins so `types.no_member` on values can turn on (the probe in
+   `typeck/infer.rs::member` is off): field access through `Own` (no auto-deref: decide the
+   surface with the user), `std.Dyn`, `Result.map_err` with inference of `$` arguments and
+   variant constructors as function values, `std.sync` (`Shared`, `critical`), `std.iter`
+   adapters (`enumerate`), and stand-ins tied to program types (`Dma`, `Uart`, `System`, `svd`).
+4. MIR gaps (`cargo xtask corpus` lists them): run-time splices of code (expansion at the call
+   site), `.{ }` and `.name` in plain instantiations of generic bodies, or-patterns that bind,
+   `lang.simd.chunks`.
+5. Sema gaps: operand checks and `types.no_impl` for operators, impl member types against
+   requirements, collision rule, constrained `$W: Writer`, narrowing by comparisons (decision
+   35), exhaustiveness (decision 29), `c.span()`, `meta.frozen` (lazy members never cycle today),
+   `#[layout.offset]`/`#[layout.c]`, frame layouts, `std.int` `abs` and power-of-two `.wrap`.
+6. Evaluator: its own stack (an unbounded chain of distinct compile-time calls overflows the host
+   stack before the budget), a memory model for `&mut` at compile time.
+7. Persist the front-end queries (`.overt/queries/<toolchain hash>`); packaging: signed caches
+   (decision 63), planned builds, `overt pkg why`; `.workspace` visibility.
+8. `names.private`, `binding.hole_value`; fuzz the parser longer.
+
+## 8. Pitfalls
+
+- `cargo xtask generate` is built from the crates it regenerates: when a change breaks the
+  generated code or a caller of a changed table shape, make callers tolerant first (tuple
+  patterns with `..`), or hand-patch the generated files to the new shape, build, regenerate. A
+  new diagnostic id used by the driver needs a temporary existing id first.
+- `cargo fmt` rewraps code: an edit script matching old text can silently miss afterwards; check
+  that replacements applied (assert in the script).
+- Python heredocs with Rust escapes are fragile; prefer the Edit tool for backslashes. A script
+  that opens a file for writing before reading truncates it.
+- Query values must hash by content (`BTreeMap`, not `HashMap`); reports are data, never emitted
+  by a query. A query whose cycle is possible needs a `cycle` rule (the default panics).
+- Checks report only what they know: unknown types and `Unevaluated` values are silence. A stage
+  lists exactly the ids it implements, or corpus files fail instead of pending.
+- `OVERT_BLESS` blesses whenever set, whatever its value.
+- Names in `lang` resolve within `lang` (its prelude is `lang`, `lang.int`); `true`/`false` are
+  not prelude names: write `.true` with an expected `bool`.
+- Integer arithmetic is exact: `x * 2` for `x: u32` does not fit `u32`; corpus programs are fixed
+  to the rule, not the checker to the program.
+- Driver integration tests are one binary (`tests/driver/main.rs`, a module per area); tests use
+  scratch stores (`OVERT_STORE`); manifests in tests are written with `Manifest::source`.
+- A second `jj` workspace needs its own `CARGO_TARGET_DIR`; run `jj st` in it before rebasing.
