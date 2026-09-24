@@ -135,6 +135,20 @@ impl Unifier<'_, '_, '_> {
                 unifier.unify(annotation, &Value::Type(*ty));
             }
         }
+        // A parameter found to be a type may fix others through its constraint: `U` in
+        // `$F: Call((T), U)` from the signature of the function or closure `F` is.
+        loop {
+            let found = unifier.bound.len();
+            for &i in &plan.omitted {
+                let (Some(binder), Some(annotation)) = params[i] else { continue };
+                if let Some(Value::Type(ty)) = unifier.bound.get(&binder).cloned() {
+                    unifier.constraint(annotation, ty);
+                }
+            }
+            if unifier.bound.len() == found {
+                break;
+            }
+        }
         Some(plan.omitted.iter().map(|&i| params[i].0.and_then(|b| unifier.bound.get(&b).cloned())).collect())
     }
 
@@ -218,6 +232,20 @@ impl Unifier<'_, '_, '_> {
                 }
             }
             _ => {}
+        }
+    }
+
+    /// Matches the constraint `annotation`, an interface applied to arguments, against the
+    /// arguments of that interface `ty` implements.
+    fn constraint(&mut self, annotation: ExprId, ty: Ty) {
+        let env = self.env;
+        let ExprKind::Call { callee, args } = &env.parsed.hir.exprs[annotation].kind else { return };
+        let Ok(constructor) = env.eval(*callee) else { return };
+        let Some(made) = env.implemented(ty, &constructor) else { return };
+        for (arg, part) in args.iter().zip(&made) {
+            if let Entry::One(arg) = arg {
+                self.unify(arg.value, part);
+            }
         }
     }
 

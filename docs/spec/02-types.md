@@ -145,6 +145,13 @@ log := ($W: Writer, w: &mut W, msg: &[u8]) -> Result((), W.Error) {
 Inside a generic body, a value of type `W` may use only `Writer`'s members. The check runs per
 instantiation and is reported against the generic definition.
 
+A function type `(T) -> U` is a plain function value: static and capture-free. Code taking a
+callback is generic over `lang.ops.Call` (the table `calls`), which function values and closures
+both implement, so it takes either with static dispatch:
+`map := (o: ?T, $U: type, $F: lang.ops.Call((T), U), f: F) -> ?U`. When `$F` is inferred from
+`f`, the arguments of its constraint are inferred from the type found: `U` is the result of the
+function or closure passed.
+
 ### Deriving
 
 Because an impl is any expression producing a struct, deriving is calling a function:

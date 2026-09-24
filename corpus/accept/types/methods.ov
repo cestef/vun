@@ -1,5 +1,6 @@
 //! Methods of options and results come from `std` impls without an interface (decision 102);
-//! `$` arguments of generic functions are inferred (decision 99).
+//! `$` arguments of generic functions are inferred (decision 99), and callbacks are functions or
+//! closures alike (decision 106).
 
 Reading := enum { missing, bad(u8) };
 
@@ -16,3 +17,5 @@ scaled := (raw: ?u8) -> u16 {
 present := (raw: ?u8) -> bool { raw.is_some() and level(raw).is_ok() };
 
 brightest := (a: ?u8, b: ?u8) -> u8 { std.cmp.max(a.unwrap_or(0), b.unwrap_or(0)) };
+
+offset := (raw: ?u8, by: u8) -> ?u16 { raw.map([by] (v: u8) -> u16 { v + by }) };

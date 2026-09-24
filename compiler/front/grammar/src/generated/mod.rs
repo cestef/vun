@@ -32,6 +32,8 @@ mod borrows;
 pub use borrows::*;
 mod compound;
 pub use compound::*;
+mod calls;
+pub use calls::*;
 mod early_return;
 pub use early_return::*;
 mod iteration;

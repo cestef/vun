@@ -49,3 +49,20 @@ none := () { first(.none); };
     let ids: Vec<_> = fixture.reported(&file).into_iter().map(|(id, _)| id).collect();
     assert_eq!(ids, [errors::TYPES_MISMATCH, errors::TYPES_CANNOT_INFER]);
 }
+
+#[test]
+fn callbacks_take_functions_closures_and_constructors() {
+    let fixture = Fixture::new("generics-callables");
+    let file = fixture.root.write(
+        "callables.ov",
+        "\
+E := enum { bad(u8) };
+lit := (o: ?u8) -> ?u16 { o.map((x: u8) -> u16 { x + 1 }) };
+clo := (o: ?u8, k: u8) -> ?u16 { o.map([k] (x: u8) -> u16 { x + k }) };
+ctor := (r: Result(u8, u8)) -> Result(u8, E) { r.map_err(E.bad) };
+wrong := (o: ?u8, k: u8) -> ?bool { o.map([k] (x: u8) -> u16 { x + k }) };
+",
+    );
+    let ids: Vec<_> = fixture.reported(&file).into_iter().map(|(id, _)| id).collect();
+    assert_eq!(ids, [errors::TYPES_MISMATCH]);
+}

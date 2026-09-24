@@ -111,6 +111,13 @@ compound := [
     .{ .token = .star_pipe_eq, .op = .star, .narrowing = .sat },
 ];
 
+/// What calling a value that is not a function literal means (spec 01, section 4): `f(a, b)` is
+/// `function(&mut f, (a, b))` of `interface`, which function values and closures implement, so a
+/// parameter `$F: Call((T), U)` takes either.
+calls := [
+    .{ .interface = "lang.ops.Call", .function = "call" },
+];
+
 /// What `e?` means (appendix B): the witness of `interface` for the type of `e` gives
 /// `function`, whose result carries the value in the variant `go` and what the function returns
 /// in the variant `stop`.

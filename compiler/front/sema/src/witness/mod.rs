@@ -12,6 +12,7 @@ mod lookup;
 
 use std::sync::Arc;
 
+use overt_grammar::CALLS;
 use overt_hir::db::{FileRef, Package, PackageId};
 use overt_hir::tree::{Arg, Entry, ExprId, ExprKind, Member, each_entry};
 use overt_origin::OriginId;
@@ -87,6 +88,24 @@ impl TyKind {
         let (Value::Fn(f), Self::Frame(frame)) = (constructor, self) else { return None };
         let made = frame.interface.within.as_ref()?;
         (made.f == *f).then(|| made.args.clone())
+    }
+}
+
+impl Env<'_, '_> {
+    /// The arguments of the interface `constructor` makes that `ty` implements: a frame's
+    /// declared interface, or, for the interface calls go through (the table `calls`), the
+    /// parameters and result of a function or closure.
+    #[must_use]
+    pub fn implemented(&self, ty: Ty, constructor: &Value) -> Option<Vec<Value>> {
+        if let Some(args) = ty.implements(constructor) {
+            return Some(args);
+        }
+        let (interface, _) = CALLS.first()?;
+        if self.item(interface).ok()? != *constructor {
+            return None;
+        }
+        let signature = ty.callable()?;
+        Some(vec![Value::Type(TyKind::Tuple(signature.params).intern()), Value::Type(signature.result)])
     }
 }
 

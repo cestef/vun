@@ -8,11 +8,11 @@ ResultMethods := ($T: type, $E: type) -> type { struct {
     /// The value, or `default` on an error.
     unwrap_or := (r: Result(T, E), default: T) -> T { match r { .ok(v) => v, .err(_) => default } };
     /// The value passed through `f`.
-    map := (r: Result(T, E), $U: type, f: (T) -> U) -> Result(U, E) {
+    map := (r: Result(T, E), $U: type, $C: lang.ops.Call((T), U), f: C) -> Result(U, E) {
         match r { .ok(v) => .ok(f(v)), .err(e) => .err(e) }
     };
     /// The result with its error passed through `f`: `e.map_err(f)?` converts as it propagates.
-    map_err := (r: Result(T, E), $F: type, f: (E) -> F) -> Result(T, F) {
+    map_err := (r: Result(T, E), $F: type, $C: lang.ops.Call((E), F), f: C) -> Result(T, F) {
         match r { .ok(v) => .ok(v), .err(e) => .err(f(e)) }
     };
     /// The value, dropping the error.

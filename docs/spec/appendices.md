@@ -48,6 +48,7 @@ declaration whose value is `_`.
 | `f(x)` where `f` is not a function | `lang.ops.Call.call(&f, (x,))` |
 | `x op= y` | `x = (x op y).to(lang.meta.TypeOf(x))` |
 | `x op%= y`, `x op\|= y` | `x = (x op y).wrap(...)`, `.sat(...)` |
+| `f(a, b)`, `f` not a function literal | `lang.ops.Call.call(&mut f, (a, b))`, implemented by function values and closures (the table `calls`) |
 | `e?` | `match lang.ops.Try.branch(e) { .go(v) => v, .stop(r) => return r }` |
 | `f(a, b)`, `f` a closure | `lang.ops.Call(P, R).call(&mut f, (a, b))`: the closure's function with its captures first |
 | `if p = e { a } else { b }` | `match e { p => a, _ => b }` |

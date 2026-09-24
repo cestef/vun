@@ -230,7 +230,11 @@ impl Env<'_, '_> {
         let params = params
             .iter()
             .map(|param| match param {
-                Entry::One(Param { ty: Some(t), .. }) => self.ty(*t),
+                // `$W: Writer`: a parameter constrained by an interface holds a type.
+                Entry::One(Param { ty: Some(t), .. }) => match self.eval(*t) {
+                    Ok(Value::Interface(_)) => Ok(TyKind::of_types()),
+                    _ => self.ty(*t),
+                },
                 _ => Err(Unevaluated::Unsupported),
             })
             .collect::<Result<_, _>>()?;
