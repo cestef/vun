@@ -13,10 +13,11 @@ mod tests;
 mod value;
 
 use overt_intern::{Interned, Pool, Symbol};
-use overt_origin::{OriginId, OriginTable};
 
 use crate::Primitive;
+use crate::eval::Instance;
 use crate::int::{Integer, Interval};
+use crate::item::ExprRef;
 use crate::primitives::lang::Lang;
 
 pub use signature::Signature;
@@ -42,25 +43,16 @@ pub enum TyKind {
     },
 }
 
-/// The identity of a `struct` or `enum` literal: where it is written and the compile-time
-/// arguments of the evaluation that produced it. Its members are looked up from the literal.
+/// The identity of a `struct` or `enum` literal: where it is written and the compile-time call
+/// that evaluated it (decision 28). Its members are looked up from the literal.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Nominal {
-    pub literal: OriginId,
-    pub args: Vec<Value>,
+    pub literal: ExprRef,
+    /// `None` for a literal evaluated outside any call.
+    pub instance: Option<Instance>,
     pub kind: NominalKind,
     /// The declaration the literal is written in, which diagnostics name the type by.
     pub name: Option<Symbol>,
-}
-
-impl Nominal {
-    /// The type the `kind` literal written at `literal` evaluates to, in a call with the
-    /// compile-time arguments `args` (decision 28): `Pair(u16)` is one type, `Pair(u8)` another.
-    #[must_use]
-    pub fn evaluated(origins: &OriginTable, literal: OriginId, kind: NominalKind, args: Vec<Value>) -> Ty {
-        let name = origins.declaration_name(literal);
-        TyKind::Nominal(Self { literal, args, kind, name }).intern()
-    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]

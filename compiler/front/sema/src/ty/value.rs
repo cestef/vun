@@ -7,8 +7,8 @@ use overt_hir::db::Namespace;
 
 use super::{Ty, TyKind};
 use crate::Primitive;
-use crate::eval::FnRef;
 use crate::int::{Integer, Interval};
+use crate::item::ExprRef;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Value {
@@ -34,7 +34,7 @@ pub enum Value {
     /// A file or directory: a struct whose members are its declarations (spec 01, section 8).
     Namespace(Namespace),
     /// A function literal.
-    Fn(FnRef),
+    Fn(ExprRef),
 }
 
 impl Value {

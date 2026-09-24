@@ -1,8 +1,9 @@
-//! What typing reports: a value whose type is not the one expected, and a run-time integer past
-//! the width cap.
+//! What typing reports: a value whose type is not the one expected, a run-time integer past the
+//! width cap, and a member its type does not have.
 
 use overt_diag::{ChildKind, Diagnostic, Msg, errors};
 use overt_hir::tree::ExprId;
+use overt_intern::Symbol;
 use overt_origin::OriginId;
 
 use super::{Known, Typer};
@@ -49,5 +50,11 @@ impl Typer<'_, '_, '_> {
             .child(ChildKind::Note, note)
             .child(ChildKind::Help, help);
         self.diag.error(d);
+    }
+
+    /// Reports `name`, used at `at`, as no member of `ty`.
+    pub(super) fn no_member(&mut self, at: OriginId, ty: Ty, name: Symbol) {
+        let msg = Msg::new().text("no member ").code(name.as_str()).text(" in ").ty(ty.to_string());
+        self.diag.error(Diagnostic::error(errors::TYPES_NO_MEMBER, msg).at(at, None));
     }
 }

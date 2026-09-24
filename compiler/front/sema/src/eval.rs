@@ -7,26 +7,26 @@
 
 use std::sync::{Arc, OnceLock};
 
-use overt_hir::db::FileRef;
-use overt_hir::tree::ExprId;
 use overt_query::{Cx, Cycle, Query};
 
 use crate::env::Unevaluated;
+use crate::item::ExprRef;
 use crate::ty::Value;
 
-/// A function literal, by the file and expression that write it: a function value's identity.
-#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct FnRef {
-    pub file: FileRef,
-    pub expr: ExprId,
+/// A compile-time call: a function literal and its arguments. Types built during the call are
+/// identified by it (decision 28), and its body sees its parameters bound to the arguments.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct Instance {
+    pub f: ExprRef,
+    pub args: Vec<Value>,
 }
 
 pub trait Evaluator: Send + Sync {
-    /// Calls `f` with `args` at compile time, reading what it needs through `cx`.
+    /// Runs `call` at compile time, reading what it needs through `cx`.
     ///
     /// # Errors
     /// Returns why the call has no value.
-    fn call(&self, cx: &Cx<'_>, f: &FnRef, args: &[Value]) -> Result<Value, Unevaluated>;
+    fn call(&self, cx: &Cx<'_>, call: &Instance) -> Result<Value, Unevaluated>;
 }
 
 /// The installed evaluator: a resource of the query database, set once by the driver.
@@ -45,13 +45,13 @@ pub struct Call;
 
 impl Query for Call {
     const NAME: &'static str = "call";
-    type Key = (FnRef, Vec<Value>);
+    type Key = Instance;
     type Value = Result<Value, Unevaluated>;
 
-    fn compute(cx: &Cx<'_>, (f, args): &Self::Key) -> Self::Value {
+    fn compute(cx: &Cx<'_>, call: &Instance) -> Self::Value {
         let evaluators = cx.db().resource::<Evaluators>();
         let evaluator = evaluators.0.get().ok_or(Unevaluated::Interpreter)?;
-        evaluator.call(cx, f, args)
+        evaluator.call(cx, call)
     }
 
     fn cycle(_: &Cx<'_>, _: &Self::Key, _: &Cycle) -> Self::Value {

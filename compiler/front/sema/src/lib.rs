@@ -11,6 +11,7 @@ pub mod eval;
 pub mod int;
 pub mod item;
 pub mod layout;
+pub mod member;
 mod ops;
 #[rustfmt::skip]
 pub mod primitives;

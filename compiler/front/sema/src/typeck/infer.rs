@@ -11,6 +11,7 @@ use crate::Primitive;
 use crate::decl::DeclType;
 use crate::int::{Integer, Interval};
 use crate::item::{Declared, Site};
+use crate::member::{Found, Members};
 use crate::primitives::lang::Lang;
 use crate::ty::{TyKind, Value};
 
@@ -23,7 +24,8 @@ impl Typer<'_, '_, '_> {
                 compile(TyKind::int(&Interval::singleton(Integer::from(i128::from(u32::from(*c))))))
             }
             ExprKind::Name(_) => self.name(expr),
-            ExprKind::Member { object, name: Name::Plain(name) } => self.member(*object, *name),
+            ExprKind::Member { object, name: Name::Plain(name) } => self.member(expr, *object, *name),
+            ExprKind::StructLit { ty: Some(ty), fields } => self.struct_lit(*ty, fields),
             ExprKind::Block(block) => self.block_value(*block),
             ExprKind::Prefix { op: TokenKind::Dollar, operand, .. } => {
                 let outer = std::mem::replace(&mut self.stage, Stage::Compile);
@@ -64,15 +66,60 @@ impl Typer<'_, '_, '_> {
         self.site(self.env.resolve(expr).ok()?)
     }
 
-    /// A member of a namespace; members of other values are not typed yet.
-    fn member(&mut self, object: ExprId, name: Symbol) -> Option<Known> {
-        self.typed(object);
-        // Only a path names a namespace, so nothing else is evaluated here.
-        if !matches!(self.hir().exprs[object].kind, ExprKind::Name(_) | ExprKind::Member { .. }) {
-            return None;
+    /// A member of a namespace, of a type's namespace, or of a value: a field, or a declaration of
+    /// its type, called as a method.
+    fn member(&mut self, expr: ExprId, object: ExprId, name: Symbol) -> Option<Known> {
+        let known = self.typed(object);
+        // Only a path names a namespace or a type, so nothing else is evaluated here.
+        if matches!(self.hir().exprs[object].kind, ExprKind::Name(_) | ExprKind::Member { .. }) {
+            match self.env.eval(object) {
+                Ok(Value::Namespace(ns)) => return self.site(self.env.cx.get::<Declared>(&(ns, name))?),
+                Ok(Value::Type(ty)) => {
+                    let members = self.env.cx.get::<Members>(&ty)?;
+                    let Found::Decl(decl) = members.find(name) else { return None };
+                    return self.site(Site::Decl(decl.clone()));
+                }
+                _ => {}
+            }
         }
-        let Ok(Value::Namespace(ns)) = self.env.eval(object) else { return None };
-        self.site(self.env.cx.get::<Declared>(&(ns, name))?)
+        let known = known?;
+        let members = self.env.cx.get::<Members>(&known.ty)?;
+        match members.find(name) {
+            Found::Field(ty) => Some(Known { ty: *ty.as_ref().ok()?, stage: known.stage }),
+            Found::Decl(decl) => {
+                self.methods.insert(expr);
+                self.site(Site::Decl(decl.clone()))
+            }
+            // Impls add methods to a type (spec 02, section 3), and they are not collected yet,
+            // so a name missing from the struct is not known to be no member.
+            Found::Absent | Found::Unknown => None,
+        }
+    }
+
+    /// `T{ .name = value, ... }`: each field's value is checked against the field's type.
+    fn struct_lit(&mut self, ty: ExprId, fields: &[Entry<Arg>]) -> Option<Known> {
+        self.typed(ty);
+        let target = self.env.ty(ty).ok();
+        let members = target.and_then(|t| self.env.cx.get::<Members>(&t));
+        let mut stage = Stage::Compile;
+        for field in fields {
+            let Entry::One(Arg { name, value }) = field else {
+                stage = Stage::Run.max(self.stage);
+                continue;
+            };
+            let found = self.typed(*value);
+            stage = stage.max(found.map_or(self.stage, |k| k.stage));
+            let (Some(members), Some(Name::Plain(name)), Some(found)) = (&members, name, found) else {
+                continue;
+            };
+            let at = self.hir().exprs[*value].origin;
+            match members.find(*name) {
+                Found::Field(Ok(expected)) => self.expect(at, found, *expected, None),
+                Found::Absent | Found::Decl(_) => self.no_member(at, target?, *name),
+                Found::Field(Err(_)) | Found::Unknown => {}
+            }
+        }
+        Some(Known { ty: target?, stage })
     }
 
     fn site(&self, site: Site) -> Option<Known> {
@@ -116,10 +163,13 @@ impl Typer<'_, '_, '_> {
             }
         }
         let signature = signature.filter(|_| positional)?;
-        if signature.params.len() != found.len() {
+        // A method's receiver is passed in the mode its first parameter asks for.
+        let receiver = usize::from(self.methods.contains(&callee));
+        let params = signature.params.get(receiver..)?;
+        if params.len() != found.len() {
             return None;
         }
-        for (&param, (value, known)) in signature.params.iter().zip(found) {
+        for (&param, (value, known)) in params.iter().zip(found) {
             if let Some(known) = known {
                 self.expect(self.hir().exprs[value].origin, known, param, None);
             }

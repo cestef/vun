@@ -544,7 +544,6 @@ dependencies = [
  "overt-diag",
  "overt-index",
  "overt-mir",
- "overt-origin",
  "overt-query",
  "overt-sema",
 ]

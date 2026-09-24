@@ -19,7 +19,9 @@ impl fmt::Display for TyKind {
         }
         match self {
             Self::Primitive(p, args) => Applied(p.name(), args).fmt(f),
-            Self::Nominal(Nominal { name: Some(name), args, .. }) => Applied(name.as_str(), args).fmt(f),
+            Self::Nominal(Nominal { name: Some(name), instance, .. }) => {
+                Applied(name.as_str(), instance.as_ref().map_or(&[], |i| &i.args)).fmt(f)
+            }
             Self::Nominal(n) => f.write_str(match n.kind {
                 NominalKind::Struct => "struct { .. }",
                 NominalKind::Enum => "enum { .. }",

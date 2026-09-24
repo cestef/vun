@@ -15,4 +15,3 @@ overt-sema.workspace = true
 overt-index.workspace = true
 overt-query.workspace = true
 overt-diag.workspace = true
-overt-origin.workspace = true

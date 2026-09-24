@@ -3,7 +3,7 @@
 //! directory.
 
 use overt_hir::db::{Exports, FileRef, Namespace, NamespaceAt, Package, Parsed};
-use overt_hir::tree::DeclId;
+use overt_hir::tree::{DeclId, ExprId};
 use overt_intern::Symbol;
 use overt_query::{Cx, Cycle, Query};
 
@@ -12,6 +12,14 @@ use overt_query::{Cx, Cycle, Query};
 pub struct DeclRef {
     pub file: FileRef,
     pub decl: DeclId,
+}
+
+/// An expression, by its file and its place in the file's HIR. A function literal's is the
+/// function value's identity.
+#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct ExprRef {
+    pub file: FileRef,
+    pub expr: ExprId,
 }
 
 /// What a member name leads to.

@@ -10,7 +10,7 @@ mod infer;
 #[cfg(test)]
 mod tests;
 
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::sync::Arc;
 
 use overt_diag::DiagCtxt;
@@ -19,7 +19,7 @@ use overt_hir::visit::{self, Visitor};
 use overt_query::{Cx, Query};
 
 use crate::env::Env;
-use crate::eval::FnRef;
+use crate::item::ExprRef;
 use crate::ty::{Ty, TyKind};
 
 /// When a value is known: at compile time, or only at run time. Only run-time integers are
@@ -49,10 +49,10 @@ pub struct Typed;
 
 impl Query for Typed {
     const NAME: &'static str = "typed";
-    type Key = FnRef;
+    type Key = ExprRef;
     type Value = Option<Arc<TypedBody>>;
 
-    fn compute(cx: &Cx<'_>, f: &FnRef) -> Self::Value {
+    fn compute(cx: &Cx<'_>, f: &ExprRef) -> Self::Value {
         let env = Env::of(cx, &f.file)?;
         let hir = &env.parsed.hir;
         let ExprKind::Fn { params, returns, body } = &hir.exprs[f.expr].kind else { return None };
@@ -79,13 +79,23 @@ pub struct Typer<'e, 'a, 'db> {
     stage: Stage,
     types: HashMap<ExprId, Known>,
     locals: HashMap<BinderId, Known>,
+    /// Member expressions naming a declaration through a value: `p.norm` in `p.norm()`, whose
+    /// call passes `p` first (spec 01, section 4).
+    methods: HashSet<ExprId>,
     pub diag: DiagCtxt,
 }
 
 impl<'e, 'a, 'db> Typer<'e, 'a, 'db> {
     #[must_use]
     pub fn new(env: &'e Env<'a, 'db>, stage: Stage) -> Self {
-        Self { env, stage, types: HashMap::new(), locals: HashMap::new(), diag: DiagCtxt::new() }
+        Self {
+            env,
+            stage,
+            types: HashMap::new(),
+            locals: HashMap::new(),
+            methods: HashSet::new(),
+            diag: DiagCtxt::new(),
+        }
     }
 
     fn hir(&self) -> &'e Hir {

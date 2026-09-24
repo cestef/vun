@@ -14,8 +14,8 @@ use overt_index::IndexVec;
 use overt_origin::OriginId;
 use overt_query::{Cx, Query};
 use overt_sema::env::Env;
-use overt_sema::eval::FnRef;
 use overt_sema::int::Integer;
+use overt_sema::item::ExprRef;
 use overt_sema::ty::{NominalKind, Value};
 
 use crate::body::{
@@ -34,10 +34,10 @@ pub struct Mir;
 
 impl Query for Mir {
     const NAME: &'static str = "mir";
-    type Key = FnRef;
+    type Key = ExprRef;
     type Value = Result<Arc<Body>, Unbuilt>;
 
-    fn compute(cx: &Cx<'_>, f: &FnRef) -> Self::Value {
+    fn compute(cx: &Cx<'_>, f: &ExprRef) -> Self::Value {
         let env = Env::of(cx, &f.file).expect("a function value's file is read");
         Builder::lower(&env, f.expr).map(Arc::new)
     }
@@ -168,10 +168,10 @@ impl Builder<'_, '_, '_> {
                 Ok(self.temp(Rvalue::Call { callee, args }, origin))
             }
             ExprKind::Struct(_) => {
-                Ok(self.temp(Rvalue::Nominal { literal: origin, kind: NominalKind::Struct }, origin))
+                Ok(self.temp(Rvalue::Nominal { literal: expr, kind: NominalKind::Struct }, origin))
             }
             ExprKind::Enum(_) => {
-                Ok(self.temp(Rvalue::Nominal { literal: origin, kind: NominalKind::Enum }, origin))
+                Ok(self.temp(Rvalue::Nominal { literal: expr, kind: NominalKind::Enum }, origin))
             }
             // Anything else only as a constant sema can compute, such as `lang.int.u8`.
             _ => self.env.eval(expr).map(Operand::Const).map_err(|_| unbuilt),

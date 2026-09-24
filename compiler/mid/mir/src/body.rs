@@ -2,6 +2,7 @@
 //! section 3). Every local, statement and terminator carries the origin that produced it.
 
 use overt_grammar::TokenKind;
+use overt_hir::tree::ExprId;
 use overt_index::{IndexVec, index};
 use overt_intern::Symbol;
 use overt_origin::OriginId;
@@ -70,10 +71,10 @@ pub enum Rvalue {
         callee: Operand,
         args: Vec<Operand>,
     },
-    /// The type a `struct` or `enum` literal evaluates to, identified by the literal and the
-    /// arguments of the call running the body (decision 28).
+    /// The type a `struct` or `enum` literal of the body's file evaluates to, identified by the
+    /// literal and the call running the body (decision 28).
     Nominal {
-        literal: OriginId,
+        literal: ExprId,
         kind: NominalKind,
     },
 }

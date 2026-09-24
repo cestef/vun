@@ -10,7 +10,7 @@ use overt_hir::visit::{self, Visitor};
 use overt_query::{Cx, Query};
 
 use crate::env::Env;
-use crate::eval::FnRef;
+use crate::item::ExprRef;
 use crate::typeck::{Stage, Typed, Typer};
 
 /// What checking a file reports; `None` for a file the driver did not read.
@@ -51,7 +51,7 @@ impl Visitor for Checker<'_, '_, '_> {
 
     fn expr(&mut self, hir: &Hir, expr: ExprId) {
         if let ExprKind::Fn { .. } = hir.exprs[expr].kind {
-            let f = FnRef { file: self.env.file.clone(), expr };
+            let f = ExprRef { file: self.env.file.clone(), expr };
             if let Some(typed) = self.env.cx.get::<Typed>(&f) {
                 self.diag.absorb(&typed.diag);
             }

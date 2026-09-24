@@ -150,6 +150,9 @@ namespaces, `struct` and `enum` literals (nominal, decision 28), ranges, tuples,
 primitive type constructors applied to constants (`Int(0..=255)`); a call goes to the evaluator.
 Types come from the same values: a parameter or local has its annotation's type, a namespace
 member its annotation or its value's type, and each function body is typed on its own query. A
+compile-time call is an instance: its body, and what it builds, are evaluated with its parameters
+bound to its arguments, so the fields of `Pair(u8)` have type `u8`, and a `struct` or `enum`
+literal evaluated in it is identified by the literal and the instance (decision 28). A
 value or type that is not known yet is unknown, and checks that would need it stay silent rather
 than guess.
 

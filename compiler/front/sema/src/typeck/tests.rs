@@ -66,3 +66,28 @@ same := (n: NodeId) -> NodeId { n };
 ";
     assert_eq!(reported(app), ["types.mismatch: expected `TypeId`, found `NodeId`"]);
 }
+
+#[test]
+fn fields_literals_and_methods_of_structs_are_typed() {
+    let app = "\
+Point := struct {
+    x: u8,
+    y: u8,
+    origin := Point{ .x = 0, .y = 0 };
+    norm := (p: Point) -> Int(0..=510) { p.x + p.y };
+};
+sum := (p: Point) -> u8 { p.x + p.y };
+literal := () -> Point { Point{ .x = 300, .z = 1 } };
+method := (p: Point) -> u8 { p.norm() };
+constant := () -> Point { Point.origin };
+";
+    assert_eq!(
+        reported(app),
+        [
+            "int.does_not_fit: value does not fit the type `u8`",
+            "int.does_not_fit: value does not fit the type `Int(0..=255)`",
+            "types.no_member: no member `z` in `Point`",
+            "int.does_not_fit: value does not fit the type `u8`",
+        ]
+    );
+}
