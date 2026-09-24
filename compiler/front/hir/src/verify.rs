@@ -78,40 +78,34 @@ struct Visits {
     binders: Vec<u32>,
 }
 
-fn count(counts: &mut [u32], index: usize) {
-    if let Some(c) = counts.get_mut(index) {
-        *c += 1;
-    }
-}
-
 impl Visitor for Visits {
     fn namespace(&mut self, hir: &Hir, ns: NsId) {
-        count(&mut self.namespaces, ns.index());
+        Self::count(&mut self.namespaces, ns.index());
         visit::walk_namespace(self, hir, ns);
     }
     fn decl(&mut self, hir: &Hir, decl: DeclId) {
-        count(&mut self.decls, decl.index());
+        Self::count(&mut self.decls, decl.index());
         visit::walk_decl(self, hir, decl);
     }
     fn block(&mut self, hir: &Hir, block: BlockId) {
-        count(&mut self.blocks, block.index());
+        Self::count(&mut self.blocks, block.index());
         visit::walk_block(self, hir, block);
     }
     fn expr(&mut self, hir: &Hir, expr: ExprId) {
-        count(&mut self.exprs, expr.index());
+        Self::count(&mut self.exprs, expr.index());
         visit::walk_expr(self, hir, expr);
     }
     fn spread(&mut self, hir: &Hir, spread: &Spread) {
         for b in spread.select.iter().flatten() {
-            count(&mut self.binders, b.index());
+            Self::count(&mut self.binders, b.index());
         }
         self.expr(hir, spread.path);
     }
     fn pat(&mut self, hir: &Hir, pat: PatId) {
-        count(&mut self.pats, pat.index());
+        Self::count(&mut self.pats, pat.index());
         match hir.pats[pat].kind {
             PatKind::Bind(b) | PatKind::Rest(Some(b)) | PatKind::At { binder: b, .. } => {
-                count(&mut self.binders, b.index());
+                Self::count(&mut self.binders, b.index());
             }
             _ => {}
         }
@@ -119,44 +113,55 @@ impl Visitor for Visits {
     }
 }
 
-/// Checks that `hir` is a tree rooted at its root namespace whose origins are all in `origins`.
-///
-/// # Errors
-/// Returns the first violation, arena by arena.
-pub fn verify(hir: &Hir, origins: &OriginTable) -> Result<(), Malformed> {
-    let root = hir.root.ok_or(Malformed::NoRoot)?;
-    let mut visits = Visits {
-        namespaces: vec![0; hir.namespaces.len()],
-        decls: vec![0; hir.decls.len()],
-        blocks: vec![0; hir.blocks.len()],
-        exprs: vec![0; hir.exprs.len()],
-        pats: vec![0; hir.pats.len()],
-        binders: vec![0; hir.binders.len()],
-    };
-    visits.namespace(hir, root);
-    let arenas = [
-        (Arena::Namespace, &visits.namespaces, origins_of(&hir.namespaces, |n| n.origin)),
-        (Arena::Decl, &visits.decls, origins_of(&hir.decls, |d| d.origin)),
-        (Arena::Block, &visits.blocks, origins_of(&hir.blocks, |b| b.origin)),
-        (Arena::Expr, &visits.exprs, origins_of(&hir.exprs, |e| e.origin)),
-        (Arena::Pat, &visits.pats, origins_of(&hir.pats, |p| p.origin)),
-        (Arena::Binder, &visits.binders, origins_of(&hir.binders, |b| b.origin)),
-    ];
-    for (arena, counts, node_origins) in arenas {
-        for (index, (&visits, origin)) in counts.iter().zip(node_origins).enumerate() {
-            match visits {
-                0 => return Err(Malformed::Unreached { arena, index }),
-                1 => {}
-                _ => return Err(Malformed::Shared { arena, index }),
-            }
-            if !origins.contains(origin) {
-                return Err(Malformed::NoOrigin { arena, index });
+impl Hir {
+    /// Checks that this HIR is a tree rooted at its root namespace whose origins are all in `origins`.
+    ///
+    /// # Errors
+    /// Returns the first violation, arena by arena.
+    pub fn verify(&self, origins: &OriginTable) -> Result<(), Malformed> {
+        let root = self.root.ok_or(Malformed::NoRoot)?;
+        let mut visits = Visits {
+            namespaces: vec![0; self.namespaces.len()],
+            decls: vec![0; self.decls.len()],
+            blocks: vec![0; self.blocks.len()],
+            exprs: vec![0; self.exprs.len()],
+            pats: vec![0; self.pats.len()],
+            binders: vec![0; self.binders.len()],
+        };
+        visits.namespace(self, root);
+        let arenas = [
+            (Arena::Namespace, &visits.namespaces, Visits::origins(&self.namespaces, |n| n.origin)),
+            (Arena::Decl, &visits.decls, Visits::origins(&self.decls, |d| d.origin)),
+            (Arena::Block, &visits.blocks, Visits::origins(&self.blocks, |b| b.origin)),
+            (Arena::Expr, &visits.exprs, Visits::origins(&self.exprs, |e| e.origin)),
+            (Arena::Pat, &visits.pats, Visits::origins(&self.pats, |p| p.origin)),
+            (Arena::Binder, &visits.binders, Visits::origins(&self.binders, |b| b.origin)),
+        ];
+        for (arena, counts, node_origins) in arenas {
+            for (index, (&visits, origin)) in counts.iter().zip(node_origins).enumerate() {
+                match visits {
+                    0 => return Err(Malformed::Unreached { arena, index }),
+                    1 => {}
+                    _ => return Err(Malformed::Shared { arena, index }),
+                }
+                if !origins.contains(origin) {
+                    return Err(Malformed::NoOrigin { arena, index });
+                }
             }
         }
+        Ok(())
     }
-    Ok(())
 }
 
-fn origins_of<I: Idx, T>(arena: &IndexVec<I, T>, origin: impl Fn(&T) -> OriginId) -> Vec<OriginId> {
-    arena.iter().map(|(_, node)| origin(node)).collect()
+impl Visits {
+    /// The origins of the nodes of `arena`, in index order.
+    fn origins<I: Idx, T>(arena: &IndexVec<I, T>, origin: impl Fn(&T) -> OriginId) -> Vec<OriginId> {
+        arena.iter().map(|(_, node)| origin(node)).collect()
+    }
+
+    fn count(counts: &mut [u32], index: usize) {
+        if let Some(c) = counts.get_mut(index) {
+            *c += 1;
+        }
+    }
 }

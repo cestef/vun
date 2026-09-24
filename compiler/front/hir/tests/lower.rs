@@ -2,11 +2,12 @@
 
 use overt_diag::{DiagCtxt, DiagCx};
 use overt_harness::{discover, repo_root};
-use overt_hir::lower::{Source, lower};
-use overt_hir::{resolve, verify};
+use overt_hir::lower::Source;
+use overt_hir::tree::Hir;
 use overt_origin::OriginTable;
 use overt_span::{EXTENSION, SourceFiles};
-use overt_syntax::{lexer, parser};
+use overt_syntax::cst::Cst;
+use overt_syntax::tokens::Tokens;
 
 #[test]
 fn repository_sources_lower_and_verify() {
@@ -18,13 +19,13 @@ fn repository_sources_lower_and_verify() {
             let file = SourceFiles::new().add(path.display().to_string(), text.as_str());
             let (mut diag, origins) = (DiagCtxt::new(), OriginTable::new());
             let mut cx = DiagCx { diag: &mut diag, origins: &origins };
-            let tokens = lexer::lex(file, &text, &mut cx);
-            let cst = parser::parse(&tokens, &text, &mut cx);
-            let hir = lower(Source { cst: &cst, tokens: &tokens, text: &text }, cx.origins);
-            if let Err(malformed) = verify::verify(&hir, cx.origins) {
+            let tokens = Tokens::lex(file, &text, &mut cx);
+            let cst = Cst::parse(&tokens, &text, &mut cx);
+            let hir = Hir::lower(Source { cst: &cst, tokens: &tokens, text: &text }, cx.origins);
+            if let Err(malformed) = hir.verify(cx.origins) {
                 failures.push(format!("{}: {malformed:?}", path.display()));
             }
-            resolve::resolve(&hir, &mut cx);
+            hir.resolve(&mut cx);
             if diag.error_count() > 0 {
                 failures.push(format!(
                     "{}: {:?}",
@@ -42,9 +43,9 @@ fn origins(text: &str) -> overt_hash::Hash {
     let file = SourceFiles::new().add_as("pkg@1.0.0/pkg.ov", "pkg.ov", text);
     let (mut diag, origins) = (DiagCtxt::new(), OriginTable::new());
     let mut cx = DiagCx { diag: &mut diag, origins: &origins };
-    let tokens = lexer::lex(file, text, &mut cx);
-    let cst = parser::parse(&tokens, text, &mut cx);
-    let hir = lower(Source { cst: &cst, tokens: &tokens, text }, cx.origins);
+    let tokens = Tokens::lex(file, text, &mut cx);
+    let cst = Cst::parse(&tokens, text, &mut cx);
+    let hir = Hir::lower(Source { cst: &cst, tokens: &tokens, text }, cx.origins);
     let decls: Vec<_> = hir.decls.iter().map(|(_, d)| d.origin).collect();
     let exprs: Vec<_> = hir.exprs.iter().map(|(_, e)| e.origin).collect();
     overt_hash::Hash::of_value(&(decls, exprs))

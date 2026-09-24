@@ -7,7 +7,7 @@ use super::Checker;
 use crate::decl::DeclValue;
 use crate::member::{Found, Members};
 use crate::ty::Value;
-use crate::witness::{ImplDecl, Impls, scope};
+use crate::witness::{ImplDecl, Impls};
 
 impl Checker<'_, '_, '_> {
     pub(super) fn impls(&mut self) {
@@ -43,7 +43,7 @@ impl Checker<'_, '_, '_> {
     /// Reports `decl` when an impl before it registers a witness for a pair it covers too.
     fn unique(&mut self, decl: &ImplDecl) {
         let cx = self.env.cx;
-        let impls = scope(cx, &self.env.file).into_iter().flat_map(|f| cx.get::<Impls>(&f).to_vec());
+        let impls = self.env.impl_files().into_iter().flat_map(|f| cx.get::<Impls>(&f).to_vec());
         let Some(first) = impls
             .filter(|other| other.decl < decl.decl && other.overlaps(decl))
             .min_by(|a, b| a.decl.cmp(&b.decl))

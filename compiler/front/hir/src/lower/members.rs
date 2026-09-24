@@ -3,8 +3,8 @@
 use overt_grammar::{NodeField, NodeKind};
 use overt_syntax::cst::{Fields, NodeId};
 
+use super::Lower;
 use super::pats::Mode;
-use super::{Lower, is_filler};
 use crate::tree::{
     Block, BlockId, Decl, DeclId, ExprId, FieldDef, List, Member, Name, Namespace, NsId, Spread, Stmt,
     Variant,
@@ -13,7 +13,7 @@ use crate::tree::{
 impl Lower<'_, '_> {
     /// The members of a file or a `struct` body.
     pub(super) fn members(&mut self, nodes: impl IntoIterator<Item = NodeId>) -> List<Member> {
-        let nodes: Vec<_> = nodes.into_iter().filter(|&n| !is_filler(self.kind(n))).collect();
+        let nodes: Vec<_> = nodes.into_iter().filter(|&n| !self.filler(n)).collect();
         self.entries(nodes, &mut |this, n| this.member(n))
     }
 
@@ -96,7 +96,7 @@ impl Lower<'_, '_> {
         }
         // The tail is the last child before the closing brace, when it is an expression.
         let last = self.source.cst.children_rev(n).nth(1);
-        let tail = last.filter(|&c| !is_filler(self.kind(c)) && self.is_value(c));
+        let tail = last.filter(|&c| !self.filler(c) && self.is_value(c));
         let statements: Vec<_> =
             self.fields(n).get(NodeField::Statements).iter().copied().filter(|&c| Some(c) != tail).collect();
         let stmts = self.entries(statements, &mut |this, s| Some(this.stmt(s)));

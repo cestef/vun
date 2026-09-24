@@ -8,7 +8,7 @@ use overt_hir::tree::ExprKind;
 use overt_intern::Symbol;
 use overt_query::{Cx, Cycle, Query};
 
-use super::{ImplDecl, Impls, scope};
+use super::{ImplDecl, Impls};
 use crate::decl::DeclValue;
 use crate::env::Env;
 use crate::eval::{Call, Instance};
@@ -45,7 +45,8 @@ impl Query for Witnesses {
     type Value = Arc<[Witness]>;
 
     fn compute(cx: &Cx<'_>, (file, ty): &Self::Key) -> Self::Value {
-        let impls = scope(cx, file).into_iter().flat_map(|f| cx.get::<Impls>(&f).to_vec());
+        let Some(env) = Env::of(cx, file) else { return Arc::from([]) };
+        let impls = env.impl_files().into_iter().flat_map(|f| cx.get::<Impls>(&f).to_vec());
         impls.filter_map(|decl| Witness::of(cx, decl, *ty)).collect()
     }
 

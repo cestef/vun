@@ -116,28 +116,30 @@ impl Env<'_, '_> {
     }
 }
 
-/// The files whose impls a file sees: itself, the namespaces of its package, and those of every
-/// package its package depends on, directly or not (spec 02, section 3: an impl lives in the
-/// package of its type or of its interface, which the code using both depends on).
-pub(crate) fn scope(cx: &Cx<'_>, file: &FileRef) -> Vec<FileRef> {
-    let mut packages: Vec<PackageId> = vec![file.package];
-    let mut i = 0;
-    while let Some(&package) = packages.get(i) {
-        for dep in &cx.get::<Package>(&package).deps {
-            if let Ok(dep) = &dep.package
-                && !packages.contains(dep)
-            {
-                packages.push(*dep);
+impl Env<'_, '_> {
+    /// The files whose impls this file sees: itself, the namespaces of its package, and those of every
+    /// package its package depends on, directly or not (spec 02, section 3: an impl lives in the
+    /// package of its type or of its interface, which the code using both depends on).
+    pub fn impl_files(&self) -> Vec<FileRef> {
+        let mut packages: Vec<PackageId> = vec![self.file.package];
+        let mut i = 0;
+        while let Some(&package) = packages.get(i) {
+            for dep in &self.cx.get::<Package>(&package).deps {
+                if let Ok(dep) = &dep.package
+                    && !packages.contains(dep)
+                {
+                    packages.push(*dep);
+                }
             }
+            i += 1;
         }
-        i += 1;
+        let mut files = vec![self.file.clone()];
+        for package in packages {
+            let data = self.cx.get::<Package>(&package);
+            let namespaces = data.files.iter().filter(|path| data.namespace_of(path).is_some());
+            let paths = namespaces.map(|path| FileRef { package, path: path.clone() });
+            files.extend(paths.filter(|f| *f != self.file));
+        }
+        files
     }
-    let mut files = vec![file.clone()];
-    for package in packages {
-        let data = cx.get::<Package>(&package);
-        let namespaces = data.files.iter().filter(|path| data.namespace_of(path).is_some());
-        let paths = namespaces.map(|path| FileRef { package, path: path.clone() });
-        files.extend(paths.filter(|f| f != file));
-    }
-    files
 }

@@ -24,9 +24,7 @@ use std::path::{Path, PathBuf};
 
 use overt_build::layout::MANIFEST;
 use overt_build::lock::{Lock, Replaced, Replacing};
-use overt_build::manifest::{
-    self, DEFAULT_DEPS, DEFAULT_PRELUDE, DepKind, Identity, Manifest, Source, Version,
-};
+use overt_build::manifest::{DEFAULT_DEPS, DEFAULT_PRELUDE, DepKind, Identity, Manifest, Source, Version};
 use overt_diag::{Diagnostic, ErrorGuaranteed};
 use overt_hash::{Hash, Snapshot};
 use overt_intern::Symbol;
@@ -200,7 +198,7 @@ impl Session {
     pub fn manifest_at(&mut self, path: &Path) -> Option<Manifest> {
         let read = |s: &mut Self, file| {
             s.declarations(file, |decls, cx| {
-                manifest::declared(decls).then(|| manifest::read(decls, file, cx)).flatten()
+                Manifest::declared(decls).then(|| Manifest::read(decls, file, cx)).flatten()
             })
         };
         self.by_content(path, |p| &mut p.manifests, read).flatten()

@@ -136,3 +136,45 @@ pub enum ExprKind {
         inner: ExprId,
     },
 }
+
+impl ExprKind {
+    /// The name of this kind of expression.
+    #[must_use]
+    pub fn name(&self) -> &'static str {
+        match self {
+            ExprKind::Error => "Error",
+            ExprKind::Hole => "Hole",
+            ExprKind::Name(_) => "Name",
+            ExprKind::Lit(_) => "Lit",
+            ExprKind::DotName(_) => "DotName",
+            ExprKind::Member { .. } => "Member",
+            ExprKind::Call { .. } => "Call",
+            ExprKind::Index { .. } => "Index",
+            ExprKind::StructLit { .. } => "StructLit",
+            ExprKind::Tuple(_) => "Tuple",
+            ExprKind::Array(_) => "Array",
+            ExprKind::Repeat { .. } => "Repeat",
+            ExprKind::ArrayType { .. } => "ArrayType",
+            ExprKind::Prefix { .. } => "Prefix",
+            ExprKind::Postfix { .. } => "Postfix",
+            ExprKind::Infix { .. } => "Infix",
+            ExprKind::Block(_) => "Block",
+            ExprKind::Quote(_) => "Quote",
+            ExprKind::If { .. } => "If",
+            ExprKind::For { .. } => "For",
+            ExprKind::Match { .. } => "Match",
+            ExprKind::Labeled { .. } => "Labeled",
+            ExprKind::Return(_) => "Return",
+            ExprKind::Break { .. } => "Break",
+            ExprKind::Continue { .. } => "Continue",
+            ExprKind::Yield(_) => "Yield",
+            ExprKind::Defer(_) => "Defer",
+            ExprKind::Fn { .. } => "Fn",
+            ExprKind::FnType { .. } => "FnType",
+            ExprKind::Closure { .. } => "Closure",
+            ExprKind::Struct(_) => "Struct",
+            ExprKind::Enum(_) => "Enum",
+            ExprKind::Attributed { .. } => "Attributed",
+        }
+    }
+}

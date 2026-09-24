@@ -2,28 +2,29 @@ use overt_diag::{DiagCtxt, DiagCx, DiagId, errors};
 use overt_harness::{discover, repo_root};
 use overt_origin::OriginTable;
 use overt_span::{EXTENSION, FileId, SourceFiles};
-use overt_syntax::literal::{Decl, declarations};
-use overt_syntax::{lexer, parser};
+use overt_syntax::cst::Cst;
+use overt_syntax::literal::Decl;
+use overt_syntax::tokens::Tokens;
 
-use super::{DepKind, Identity, Manifest, Source, Version, declared, read};
+use super::{DepKind, Identity, Manifest, Source, Version};
 use crate::layout::MANIFEST;
 
 fn parsed<R>(text: &str, f: impl FnOnce(&[Decl<'_>], FileId, &mut DiagCx<'_>) -> R) -> (R, Vec<DiagId>) {
     let file = SourceFiles::new().add(MANIFEST, text);
     let (mut diag, origins) = (DiagCtxt::new(), OriginTable::new());
     let mut cx = DiagCx { diag: &mut diag, origins: &origins };
-    let tokens = lexer::lex(file, text, &mut cx);
-    let cst = parser::parse(&tokens, text, &mut cx);
-    let result = f(&declarations(&cst, &tokens, text), file, &mut cx);
+    let tokens = Tokens::lex(file, text, &mut cx);
+    let cst = Cst::parse(&tokens, text, &mut cx);
+    let result = f(&cst.declarations(&tokens, text), file, &mut cx);
     (result, diag.sorted().into_iter().map(|d| d.id.clone()).collect())
 }
 
 fn declares(text: &str) -> bool {
-    parsed(text, |decls, _, _| declared(decls)).0
+    parsed(text, |decls, _, _| Manifest::declared(decls)).0
 }
 
 fn manifest(text: &str) -> (Option<Manifest>, Vec<DiagId>) {
-    parsed(text, read)
+    parsed(text, Manifest::read)
 }
 
 #[test]

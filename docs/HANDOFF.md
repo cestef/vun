@@ -194,6 +194,11 @@ typst compile whitepaper/main.typ whitepaper/overt.pdf
 - Files stay at most 300 lines, one concern each (`cargo xtask lines`, also a test). Split a
   growing file into a directory module; unit tests live in a sibling `tests.rs`
   (`foo.rs` + `foo/tests.rs`, or `src/tests.rs` for a crate root).
+- No orphan functions (`CLAUDE.md`, code rules). A function that works on a type is a method or associated function of
+  that type (`Hir::verify`, `Program::parse`, `Manifest::read`); a foreign type gets a
+  crate-local extension trait (`Record` for `Decl`). Free functions stay only where no type owns
+  the logic: `main`, tests, handlers registered in tables, visitor `walk_*` defaults, mappings
+  between two foreign types, generic algorithms (`suggest::closest`).
 - Arenas: `index!` + `IndexVec`. Crates: `compiler/<stage>/<name>`, workspace fields, lints,
   workspace dependency entry.
 

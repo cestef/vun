@@ -1,5 +1,6 @@
 use super::*;
-use crate::{lexer::lex, parser::parse};
+use crate::cst::Cst;
+use crate::tokens::Tokens;
 use overt_diag::{DiagCtxt, DiagCx};
 use overt_origin::OriginTable;
 use overt_span::SourceFiles;
@@ -8,10 +9,10 @@ fn read(text: &str) -> Vec<Decl<'_>> {
     let file = SourceFiles::new().add("t.ov", text);
     let (mut diag, origins) = (DiagCtxt::new(), OriginTable::new());
     let mut cx = DiagCx { diag: &mut diag, origins: &origins };
-    let tokens = lex(file, text, &mut cx);
-    let cst = parse(&tokens, text, &mut cx);
+    let tokens = Tokens::lex(file, text, &mut cx);
+    let cst = Cst::parse(&tokens, text, &mut cx);
     assert_eq!(diag.error_count(), 0);
-    declarations(&cst, &tokens, text)
+    cst.declarations(&tokens, text)
 }
 
 #[test]

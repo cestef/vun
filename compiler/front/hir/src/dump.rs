@@ -9,14 +9,16 @@ use crate::resolve::{Res, Resolution};
 use crate::tree::{BlockId, DeclId, ExprId, ExprKind, Hir, Lit, NsId, PatId, PatKind, Spread};
 use crate::visit::{self, Visitor};
 
-/// Renders `hir` as text.
-#[must_use]
-pub fn dump(hir: &Hir, resolution: &Resolution, origins: &OriginTable, sources: &dyn SourceMap) -> String {
-    let mut printer = Printer { out: Outline::new(), resolution, origins, sources };
-    if let Some(root) = hir.root {
-        printer.namespace(hir, root);
+impl Hir {
+    /// Renders this HIR as text, with what its names resolve to.
+    #[must_use]
+    pub fn dump(&self, resolution: &Resolution, origins: &OriginTable, sources: &dyn SourceMap) -> String {
+        let mut printer = Printer { out: Outline::new(), resolution, origins, sources };
+        if let Some(root) = self.root {
+            printer.namespace(self, root);
+        }
+        printer.out.finish()
     }
-    printer.out.finish()
 }
 
 struct Printer<'a> {
@@ -55,50 +57,11 @@ impl Printer<'_> {
             ExprKind::DotName(n) => format!("DotName .{n}"),
             ExprKind::Member { name, .. } => format!("Member .{name}"),
             ExprKind::Prefix { op, .. } | ExprKind::Postfix { op, .. } | ExprKind::Infix { op, .. } => {
-                format!("{} {}", variant(&hir.exprs[expr].kind), op.text().unwrap_or_default())
+                format!("{} {}", hir.exprs[expr].kind.name(), op.text().unwrap_or_default())
             }
             ExprKind::Labeled { label, .. } => format!("Labeled '{}", label.as_str()),
-            kind => variant(kind).to_owned(),
+            kind => kind.name().to_owned(),
         }
-    }
-}
-
-/// The name of an expression kind, as the dump prints it.
-fn variant(kind: &ExprKind) -> &'static str {
-    match kind {
-        ExprKind::Error => "Error",
-        ExprKind::Hole => "Hole",
-        ExprKind::Name(_) => "Name",
-        ExprKind::Lit(_) => "Lit",
-        ExprKind::DotName(_) => "DotName",
-        ExprKind::Member { .. } => "Member",
-        ExprKind::Call { .. } => "Call",
-        ExprKind::Index { .. } => "Index",
-        ExprKind::StructLit { .. } => "StructLit",
-        ExprKind::Tuple(_) => "Tuple",
-        ExprKind::Array(_) => "Array",
-        ExprKind::Repeat { .. } => "Repeat",
-        ExprKind::ArrayType { .. } => "ArrayType",
-        ExprKind::Prefix { .. } => "Prefix",
-        ExprKind::Postfix { .. } => "Postfix",
-        ExprKind::Infix { .. } => "Infix",
-        ExprKind::Block(_) => "Block",
-        ExprKind::Quote(_) => "Quote",
-        ExprKind::If { .. } => "If",
-        ExprKind::For { .. } => "For",
-        ExprKind::Match { .. } => "Match",
-        ExprKind::Labeled { .. } => "Labeled",
-        ExprKind::Return(_) => "Return",
-        ExprKind::Break { .. } => "Break",
-        ExprKind::Continue { .. } => "Continue",
-        ExprKind::Yield(_) => "Yield",
-        ExprKind::Defer(_) => "Defer",
-        ExprKind::Fn { .. } => "Fn",
-        ExprKind::FnType { .. } => "FnType",
-        ExprKind::Closure { .. } => "Closure",
-        ExprKind::Struct(_) => "Struct",
-        ExprKind::Enum(_) => "Enum",
-        ExprKind::Attributed { .. } => "Attributed",
     }
 }
 

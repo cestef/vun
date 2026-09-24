@@ -1,23 +1,25 @@
 use overt_diag::{DiagCtxt, DiagCx, DiagId, errors};
 use overt_origin::OriginTable;
 use overt_span::SourceFiles;
-use overt_syntax::{lexer, parser};
+use overt_syntax::cst::Cst;
+use overt_syntax::tokens::Tokens;
 
-use super::{Res, resolve};
-use crate::lower::{Source, lower};
+use super::Res;
+use crate::lower::Source;
 use crate::tree::ExprKind;
+use crate::tree::Hir;
 
 /// The diagnostics of resolving `text`, and how many names resolved inside the file.
 fn check(text: &str) -> (Vec<DiagId>, usize) {
     let file = SourceFiles::new().add("t.ov", text);
     let (mut diag, origins) = (DiagCtxt::new(), OriginTable::new());
     let mut cx = DiagCx { diag: &mut diag, origins: &origins };
-    let tokens = lexer::lex(file, text, &mut cx);
-    let cst = parser::parse(&tokens, text, &mut cx);
+    let tokens = Tokens::lex(file, text, &mut cx);
+    let cst = Cst::parse(&tokens, text, &mut cx);
     assert_eq!(cx.diag.error_count(), 0, "{text:?} does not parse");
-    let hir = lower(Source { cst: &cst, tokens: &tokens, text }, cx.origins);
-    assert_eq!(crate::verify::verify(&hir, cx.origins), Ok(()));
-    let resolution = resolve(&hir, &mut cx);
+    let hir = Hir::lower(Source { cst: &cst, tokens: &tokens, text }, cx.origins);
+    assert_eq!(hir.verify(cx.origins), Ok(()));
+    let resolution = hir.resolve(&mut cx);
     let inside = hir
         .exprs
         .iter()

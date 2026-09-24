@@ -1,9 +1,8 @@
 use overt_diag::{DiagCx, DiagId, errors};
 
-use super::{MAX_NESTING, parse};
+use super::MAX_NESTING;
 use crate::cst::NodeId;
 use crate::cst::{Anchor, Cst};
-use crate::lexer::lex;
 use crate::tokens::Tokens;
 use overt_diag::DiagCtxt;
 use overt_origin::OriginTable;
@@ -34,8 +33,8 @@ fn parse_text(text: &str) -> (Vec<std::string::String>, Vec<DiagId>) {
     let file = SourceFiles::new().add("t.ov", text);
     let (mut diag, origins) = (DiagCtxt::new(), OriginTable::new());
     let mut cx = DiagCx { diag: &mut diag, origins: &origins };
-    let tokens = lex(file, text, &mut cx);
-    let cst = parse(&tokens, text, &mut cx);
+    let tokens = Tokens::lex(file, text, &mut cx);
+    let cst = Cst::parse(&tokens, text, &mut cx);
     assert_eq!(cst.verify(&tokens), Ok(()), "{text:?}");
     let entries = cst.children(cst.root()).map(|n| sexp(&cst, &tokens, text, n)).collect();
     (entries, diag.sorted().into_iter().map(|d| d.id.clone()).collect())
@@ -220,8 +219,8 @@ fn fields_name_the_children() {
     let file = SourceFiles::new().add("t.ov", text);
     let (mut diag, origins) = (DiagCtxt::new(), OriginTable::new());
     let mut cx = DiagCx { diag: &mut diag, origins: &origins };
-    let tokens = lex(file, text, &mut cx);
-    let cst = parse(&tokens, text, &mut cx);
+    let tokens = Tokens::lex(file, text, &mut cx);
+    let cst = Cst::parse(&tokens, text, &mut cx);
     let binding = cst.children(cst.root()).next().unwrap();
     let fields = cst.fields(binding).unwrap();
     let kind = |f| fields.one(f).map(|n| cst.kind(n));

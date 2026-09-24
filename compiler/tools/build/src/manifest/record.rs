@@ -23,7 +23,7 @@ impl<'a, 's> Fields<'a, 's> {
         let decls: &[Decl<'s>] = match &record.value {
             Literal::Record(decls) => decls,
             Literal::List(items) if items.is_empty() => &[],
-            _ => return invalid(record, Msg::new().text("a record ").code(".{ .field = value }"), cx),
+            _ => return record.invalid(Msg::new().text("a record ").code(".{ .field = value }"), cx),
         };
         Some(Self { record, decls, known, missing: Vec::new() })
     }
@@ -65,67 +65,80 @@ impl<'a, 's> Fields<'a, 's> {
     }
 }
 
-/// Reports that `decl` is not `expected`.
-pub(super) fn invalid<T>(decl: &Decl<'_>, expected: Msg, cx: &mut DiagCx<'_>) -> Option<T> {
-    invalid_with(decl, expected, None, cx)
+/// Reading a declaration's literal as a typed value, reporting when it does not fit.
+pub(super) trait Record {
+    /// Reports that this declaration is not `expected`.
+    fn invalid<T>(&self, expected: Msg, cx: &mut DiagCx<'_>) -> Option<T>;
+    /// Reports that this declaration is not `expected`, with a help.
+    fn invalid_with<T>(&self, expected: Msg, help: Option<Msg>, cx: &mut DiagCx<'_>) -> Option<T>;
+    fn string(&self, cx: &mut DiagCx<'_>) -> Option<String>;
+    /// A content hash in its text form, `algorithm:digest`.
+    fn content_hash(&self, cx: &mut DiagCx<'_>) -> Option<Hash>;
+    /// An integer that fits `T`.
+    fn int<T: TryFrom<i128>>(&self, cx: &mut DiagCx<'_>) -> Option<T>;
+    /// A list of strings: `.{ "a", "b" }` or `[ "a", "b" ]`.
+    fn strings(&self, cx: &mut DiagCx<'_>) -> Option<Vec<String>>;
+    /// One of the names in `table`, written `.name`.
+    fn choice<T: Copy>(&self, table: &[(&str, T)], cx: &mut DiagCx<'_>) -> Option<T>;
 }
 
-/// Reports that `decl` is not `expected`, with a help.
-fn invalid_with<T>(decl: &Decl<'_>, expected: Msg, help: Option<Msg>, cx: &mut DiagCx<'_>) -> Option<T> {
-    let msg = Msg::new().code(format!(".{}", decl.name)).text(" must be ").append(expected);
-    let d = Diagnostic::error(errors::MANIFEST_INVALID_FIELD, msg);
-    cx.error_at(decl.span, help.into_iter().fold(d, |d, h| d.child(ChildKind::Help, h)));
-    None
-}
-
-pub(super) fn string(decl: &Decl<'_>, cx: &mut DiagCx<'_>) -> Option<String> {
-    match &decl.value {
-        Literal::String(s) => Some(s.to_string()),
-        _ => invalid(decl, Msg::new().text("a string"), cx),
+impl Record for Decl<'_> {
+    fn invalid<T>(&self, expected: Msg, cx: &mut DiagCx<'_>) -> Option<T> {
+        self.invalid_with(expected, None, cx)
     }
-}
 
-/// A content hash in its text form, `algorithm:digest`.
-pub(super) fn hash(decl: &Decl<'_>, cx: &mut DiagCx<'_>) -> Option<Hash> {
-    match &decl.value {
-        Literal::String(text) => Hash::parse(text),
-        _ => None,
+    fn invalid_with<T>(&self, expected: Msg, help: Option<Msg>, cx: &mut DiagCx<'_>) -> Option<T> {
+        let msg = Msg::new().code(format!(".{}", self.name)).text(" must be ").append(expected);
+        let d = Diagnostic::error(errors::MANIFEST_INVALID_FIELD, msg);
+        cx.error_at(self.span, help.into_iter().fold(d, |d, h| d.child(ChildKind::Help, h)));
+        None
     }
-    .or_else(|| {
-        let algorithms = Algorithm::ALL.iter().map(|a| format!("{}{}...", a.name(), Hash::SEPARATOR));
-        invalid(decl, Msg::new().text("a content hash: ").code_list(algorithms), cx)
-    })
-}
 
-/// An integer that fits `T`.
-pub(super) fn int<T: TryFrom<i128>>(decl: &Decl<'_>, cx: &mut DiagCx<'_>) -> Option<T> {
-    match decl.value {
-        Literal::Int(i) => {
-            T::try_from(i).ok().or_else(|| invalid(decl, Msg::new().text("a smaller integer"), cx))
+    fn string(&self, cx: &mut DiagCx<'_>) -> Option<String> {
+        match &self.value {
+            Literal::String(s) => Some(s.to_string()),
+            _ => self.invalid(Msg::new().text("a string"), cx),
         }
-        _ => invalid(decl, Msg::new().text("an integer"), cx),
     }
-}
 
-/// A list of strings: `.{ "a", "b" }` or `[ "a", "b" ]`.
-pub(super) fn strings(decl: &Decl<'_>, cx: &mut DiagCx<'_>) -> Option<Vec<String>> {
-    let items: &[Literal<'_>] = match &decl.value {
-        Literal::List(items) => items,
-        Literal::Record(fields) if fields.is_empty() => &[],
-        _ => return invalid(decl, Msg::new().text("a list of strings"), cx),
-    };
-    let texts: Option<Vec<String>> = items.iter().map(|i| i.as_str().map(str::to_owned)).collect();
-    texts.or_else(|| invalid(decl, Msg::new().text("a list of strings"), cx))
-}
+    fn content_hash(&self, cx: &mut DiagCx<'_>) -> Option<Hash> {
+        match &self.value {
+            Literal::String(text) => Hash::parse(text),
+            _ => None,
+        }
+        .or_else(|| {
+            let algorithms = Algorithm::ALL.iter().map(|a| format!("{}{}...", a.name(), Hash::SEPARATOR));
+            self.invalid(Msg::new().text("a content hash: ").code_list(algorithms), cx)
+        })
+    }
 
-/// One of the names in `table`, written `.name`.
-pub(super) fn choice<T: Copy>(decl: &Decl<'_>, table: &[(&str, T)], cx: &mut DiagCx<'_>) -> Option<T> {
-    match table.lookup(decl.value.as_name().unwrap_or_default(), |(name, _)| name) {
-        Ok(&(_, value)) => Some(value),
-        Err(near) => {
-            let names = table.iter().map(|(name, _)| format!(".{name}"));
-            let help = near.map(|n| Msg::did_you_mean(format!(".{n}")));
-            invalid_with(decl, Msg::new().text("one of ").code_list(names), help, cx)
+    fn int<T: TryFrom<i128>>(&self, cx: &mut DiagCx<'_>) -> Option<T> {
+        match self.value {
+            Literal::Int(i) => {
+                T::try_from(i).ok().or_else(|| self.invalid(Msg::new().text("a smaller integer"), cx))
+            }
+            _ => self.invalid(Msg::new().text("an integer"), cx),
+        }
+    }
+
+    fn strings(&self, cx: &mut DiagCx<'_>) -> Option<Vec<String>> {
+        let items: &[Literal<'_>] = match &self.value {
+            Literal::List(items) => items,
+            Literal::Record(fields) if fields.is_empty() => &[],
+            _ => return self.invalid(Msg::new().text("a list of strings"), cx),
+        };
+        let texts: Option<Vec<String>> = items.iter().map(|i| i.as_str().map(str::to_owned)).collect();
+        texts.or_else(|| self.invalid(Msg::new().text("a list of strings"), cx))
+    }
+
+    fn choice<T: Copy>(&self, table: &[(&str, T)], cx: &mut DiagCx<'_>) -> Option<T> {
+        match table.lookup(self.value.as_name().unwrap_or_default(), |(name, _)| name) {
+            Ok(&(_, value)) => Some(value),
+            Err(near) => {
+                let names = table.iter().map(|(name, _)| format!(".{name}"));
+                let help = near.map(|n| Msg::did_you_mean(format!(".{n}")));
+                self.invalid_with(Msg::new().text("one of ").code_list(names), help, cx)
+            }
         }
     }
 }

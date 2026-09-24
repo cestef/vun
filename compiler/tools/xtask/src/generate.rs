@@ -11,7 +11,9 @@ use overt_diag::{DiagCtxt, DiagCx, DiagId, Diagnostic, Msg};
 use overt_fs::{Relative, Tree};
 use overt_origin::OriginTable;
 use overt_span::{EXTENSION, SourceFiles};
-use overt_syntax::literal::{Decl, declarations};
+use overt_syntax::cst::Cst;
+use overt_syntax::literal::Decl;
+use overt_syntax::tokens::Tokens;
 use proc_macro2::TokenStream;
 use quote::quote;
 
@@ -97,13 +99,13 @@ impl Generator {
         let file = SourceFiles::new().add(path, text);
         let (mut diag, origins) = (DiagCtxt::new(), OriginTable::new());
         let mut cx = DiagCx { diag: &mut diag, origins: &origins };
-        let tokens = overt_syntax::lexer::lex(file, text, &mut cx);
-        let cst = overt_syntax::parser::parse(&tokens, text, &mut cx);
+        let tokens = Tokens::lex(file, text, &mut cx);
+        let cst = Cst::parse(&tokens, text, &mut cx);
         if diag.error_count() > 0 {
             let run = format!("overt dump cst {path}");
             let msg = Msg::new().code(path).text(" does not parse; run ").code(run);
             return Err(Box::new(Diagnostic::error(SYNTAX, msg)));
         }
-        Ok(Source { path: path.to_owned(), decls: declarations(&cst, &tokens, text) })
+        Ok(Source { path: path.to_owned(), decls: cst.declarations(&tokens, text) })
     }
 }

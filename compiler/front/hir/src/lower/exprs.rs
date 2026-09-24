@@ -4,7 +4,7 @@ use overt_grammar::{NodeField, NodeKind, TokenKind};
 use overt_syntax::cst::{Fields, NodeId};
 use overt_syntax::lexer;
 
-use super::{Lower, is_filler};
+use super::Lower;
 use crate::tree::{Arg, Expr, ExprId, ExprKind, List, Lit, Name};
 
 impl Lower<'_, '_> {
@@ -29,7 +29,7 @@ impl Lower<'_, '_> {
     }
 
     fn exprs(&mut self, nodes: &[NodeId]) -> List<ExprId> {
-        let nodes: Vec<_> = nodes.iter().copied().filter(|&n| !is_filler(self.kind(n))).collect();
+        let nodes: Vec<_> = nodes.iter().copied().filter(|&n| !self.filler(n)).collect();
         self.entries(nodes, &mut |this, n| Some(this.expr(n)))
     }
 

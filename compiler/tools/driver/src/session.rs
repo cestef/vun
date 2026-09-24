@@ -3,7 +3,7 @@
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use overt_build::manifest::{self, Manifest};
+use overt_build::manifest::Manifest;
 use overt_build::store::Store;
 use overt_diag::{DiagCtxt, DiagCx, DiagSink, Diagnostic, Msg, errors};
 use overt_hir::db::{FileNames, FileRef, FileText, Parsed, ParsedFile};
@@ -20,7 +20,6 @@ use overt_span::{FileId, SourceFiles, SourceMap};
 use overt_syntax::cst::Cst;
 use overt_syntax::literal::Decl;
 use overt_syntax::tokens::Tokens;
-use overt_syntax::{lexer, literal, parser};
 
 use crate::formats::{self, Format};
 use crate::packages::{LIBRARY, Packages};
@@ -87,17 +86,17 @@ impl Session {
 
     pub fn lex(&mut self, file: FileId) -> Tokens {
         let text = &self.sources.file(file).text;
-        lexer::lex(file, text, &mut DiagCx { diag: &mut self.diag, origins: &self.origins })
+        Tokens::lex(file, text, &mut DiagCx { diag: &mut self.diag, origins: &self.origins })
     }
 
     pub fn parse(&mut self, tokens: &Tokens) -> Cst {
         let text = &self.sources.file(tokens.file()).text;
-        parser::parse(tokens, text, &mut DiagCx { diag: &mut self.diag, origins: &self.origins })
+        Cst::parse(tokens, text, &mut DiagCx { diag: &mut self.diag, origins: &self.origins })
     }
 
     pub fn lower(&mut self, tokens: &Tokens, cst: &Cst) -> Hir {
         let text = &self.sources.file(tokens.file()).text;
-        lower::lower(lower::Source { cst, tokens, text }, &self.origins)
+        Hir::lower(lower::Source { cst, tokens, text }, &self.origins)
     }
 
     /// The file lexed, parsed, lowered and resolved within itself, from the queries, with the
@@ -155,7 +154,7 @@ impl Session {
 
     /// Reads the manifest of the `build.ov` loaded as `file` (spec 12, section 2).
     pub fn manifest(&mut self, file: FileId) -> Option<Manifest> {
-        self.declarations(file, |decls, cx| manifest::read(decls, file, cx))
+        self.declarations(file, |decls, cx| Manifest::read(decls, file, cx))
     }
 
     /// Runs `read` over the literal declarations of `file`.
@@ -167,7 +166,7 @@ impl Session {
         let tokens = self.lex(file);
         let cst = self.parse(&tokens);
         let text = &self.sources.file(file).text;
-        let decls = literal::declarations(&cst, &tokens, text);
+        let decls = cst.declarations(&tokens, text);
         read(&decls, &mut DiagCx { diag: &mut self.diag, origins: &self.origins })
     }
 

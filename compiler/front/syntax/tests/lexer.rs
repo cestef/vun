@@ -6,13 +6,12 @@ use overt_diag::{DiagCtxt, DiagCx};
 use overt_harness::{discover, repo_root, snapshot_tree};
 use overt_origin::OriginTable;
 use overt_span::{EXTENSION, SourceFiles};
-use overt_syntax::lexer::lex;
 use overt_syntax::tokens::Tokens;
 
 fn lex_text(text: &str) -> (Tokens, DiagCtxt) {
     let file = SourceFiles::new().add("input.ov", text);
     let (mut diag, origins) = (DiagCtxt::new(), OriginTable::new());
-    let tokens = lex(file, text, &mut DiagCx { diag: &mut diag, origins: &origins });
+    let tokens = Tokens::lex(file, text, &mut DiagCx { diag: &mut diag, origins: &origins });
     (tokens, diag)
 }
 

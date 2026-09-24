@@ -3,7 +3,7 @@
 use overt_grammar::{NodeField, NodeKind, TokenKind};
 use overt_syntax::cst::{Fields, NodeId};
 
-use super::{Lower, is_filler};
+use super::Lower;
 use crate::tree::{Binder, BinderId, Name, Pat, PatId, PatKind};
 
 /// How the binders of a pattern bind.
@@ -99,12 +99,8 @@ impl Lower<'_, '_> {
                 None => PatKind::Error,
             },
             NodeKind::Tuple => {
-                let items: Vec<_> = f
-                    .get(NodeField::Items)
-                    .to_vec()
-                    .into_iter()
-                    .filter(|&i| !is_filler(self.kind(i)))
-                    .collect();
+                let items: Vec<_> =
+                    f.get(NodeField::Items).to_vec().into_iter().filter(|&i| !self.filler(i)).collect();
                 PatKind::Tuple(self.entries(items, &mut |this, i| Some(this.pattern(i, mode))))
             }
             NodeKind::DotName => PatKind::Variant { name: self.field_name(n), args: None },

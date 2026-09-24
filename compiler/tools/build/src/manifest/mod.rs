@@ -15,10 +15,9 @@ use overt_diag::{DiagCx, Diagnostic, Msg, errors};
 use overt_span::{FileId, Span};
 use overt_syntax::literal::Decl;
 
-use deps::{deps, replacements};
 pub use identity::Identity;
 use overt_hash::Hash;
-use record::{Fields, int, string, strings};
+use record::{Fields, Record};
 pub use version::Version;
 
 /// The declaration `std.build.Package` requires to hold the manifest.
@@ -118,51 +117,53 @@ mod field {
     pub(super) const REPLACEMENT: &[&str] = &[ID, MAJOR, VERSION, HASH, URLS, PATH];
 }
 
-/// Whether a `build.ov` holds a manifest: it declares `package`. One that does not is an ordinary
-/// source file, such as the namespace `std.build`.
-#[must_use]
-pub fn declared(decls: &[Decl<'_>]) -> bool {
-    decls.iter().any(|d| d.name == PACKAGE)
-}
+impl Manifest {
+    /// Whether a `build.ov` holds a manifest: it declares `package`. One that does not is an ordinary
+    /// source file, such as the namespace `std.build`.
+    #[must_use]
+    pub fn declared(decls: &[Decl<'_>]) -> bool {
+        decls.iter().any(|d| d.name == PACKAGE)
+    }
 
-/// Reads the manifest from the declarations of a `build.ov`; `file` locates a missing `package`.
-pub fn read(decls: &[Decl<'_>], file: FileId, cx: &mut DiagCx<'_>) -> Option<Manifest> {
-    let Some(package) = decls.iter().find(|d| d.name == PACKAGE) else {
-        let msg = Msg::new().text("no ").code(PACKAGE).text(" declaration");
-        let help = Msg::new().text("declare ").code(format!("{PACKAGE} := .{{ .name = \"...\", ... }};"));
-        let d =
-            Diagnostic::error(errors::MANIFEST_MISSING_PACKAGE, msg).child(overt_diag::ChildKind::Help, help);
-        cx.error_at(Span::new(file, 0, 0), d);
-        return None;
-    };
-    let mut fields = Fields::new(package, field::PACKAGE, cx)?;
-    // Every field is read before any result is used, so that one run reports every problem.
-    let name = fields.require(field::NAME).and_then(|d| string(d, cx));
-    let id = fields.require(field::ID).and_then(|d| int(d, cx));
-    let version = fields.require(field::VERSION).and_then(|d| Version::read(d, cx));
-    let edition = fields.require(field::EDITION).and_then(|d| int(d, cx));
-    let toolchain = fields.get(field::TOOLCHAIN).map_or(Some(None), |d| Version::read(d, cx).map(Some));
-    let include = fields.require(field::INCLUDE).and_then(|d| strings(d, cx));
-    let deps = fields.get(field::DEPS).map_or(Some(Vec::new()), |d| deps(d, cx));
-    let replace = fields.get(field::REPLACE).map_or(Some(Vec::new()), |d| replacements(d, cx));
-    let index = fields.get(field::INDEX).map_or(Some(Vec::new()), |d| strings(d, cx));
-    let members = fields.get(field::MEMBERS).map_or(Some(Vec::new()), |d| strings(d, cx));
-    let prelude_decl = fields.get(field::PRELUDE);
-    let prelude = prelude_decl.map_or(Some(vec![DEFAULT_PRELUDE.to_owned()]), |d| strings(d, cx));
-    let prelude_span = prelude_decl.unwrap_or(package).span;
-    fields.finish(cx);
-    Some(Manifest {
-        name: name?,
-        id: id?,
-        version: version?,
-        edition: edition?,
-        toolchain: toolchain?,
-        include: include?,
-        deps: deps?,
-        replace: replace?,
-        index: index?,
-        members: members?,
-        prelude: prelude?,
-        prelude_span,
-    })
+    /// Reads the manifest from the declarations of a `build.ov`; `file` locates a missing `package`.
+    pub fn read(decls: &[Decl<'_>], file: FileId, cx: &mut DiagCx<'_>) -> Option<Self> {
+        let Some(package) = decls.iter().find(|d| d.name == PACKAGE) else {
+            let msg = Msg::new().text("no ").code(PACKAGE).text(" declaration");
+            let help = Msg::new().text("declare ").code(format!("{PACKAGE} := .{{ .name = \"...\", ... }};"));
+            let d = Diagnostic::error(errors::MANIFEST_MISSING_PACKAGE, msg)
+                .child(overt_diag::ChildKind::Help, help);
+            cx.error_at(Span::new(file, 0, 0), d);
+            return None;
+        };
+        let mut fields = Fields::new(package, field::PACKAGE, cx)?;
+        // Every field is read before any result is used, so that one run reports every problem.
+        let name = fields.require(field::NAME).and_then(|d| d.string(cx));
+        let id = fields.require(field::ID).and_then(|d| d.int(cx));
+        let version = fields.require(field::VERSION).and_then(|d| Version::read(d, cx));
+        let edition = fields.require(field::EDITION).and_then(|d| d.int(cx));
+        let toolchain = fields.get(field::TOOLCHAIN).map_or(Some(None), |d| Version::read(d, cx).map(Some));
+        let include = fields.require(field::INCLUDE).and_then(|d| d.strings(cx));
+        let deps = fields.get(field::DEPS).map_or(Some(Vec::new()), |d| Dep::list(d, cx));
+        let replace = fields.get(field::REPLACE).map_or(Some(Vec::new()), |d| Replacement::list(d, cx));
+        let index = fields.get(field::INDEX).map_or(Some(Vec::new()), |d| d.strings(cx));
+        let members = fields.get(field::MEMBERS).map_or(Some(Vec::new()), |d| d.strings(cx));
+        let prelude_decl = fields.get(field::PRELUDE);
+        let prelude = prelude_decl.map_or(Some(vec![DEFAULT_PRELUDE.to_owned()]), |d| d.strings(cx));
+        let prelude_span = prelude_decl.unwrap_or(package).span;
+        fields.finish(cx);
+        Some(Self {
+            name: name?,
+            id: id?,
+            version: version?,
+            edition: edition?,
+            toolchain: toolchain?,
+            include: include?,
+            deps: deps?,
+            replace: replace?,
+            index: index?,
+            members: members?,
+            prelude: prelude?,
+            prelude_span,
+        })
+    }
 }

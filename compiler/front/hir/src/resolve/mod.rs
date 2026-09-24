@@ -42,19 +42,21 @@ pub struct Resolution {
     pub parents: IndexVec<NsId, Option<NsId>>,
 }
 
-/// Resolves the names of `hir` and reports duplicates, shadowing and irrefutable tests.
-pub fn resolve(hir: &Hir, cx: &mut DiagCx<'_>) -> Resolution {
-    let mut resolver = walk::Resolver {
-        scopes: Scopes::default(),
-        names: IndexVec::filled(None, hir.exprs.len()),
-        parents: IndexVec::filled(None, hir.namespaces.len()),
-        namespaces: Vec::new(),
-        declaring: false,
-        members: false,
-        cx,
-    };
-    if let Some(root) = hir.root {
-        crate::visit::Visitor::namespace(&mut resolver, hir, root);
+impl Hir {
+    /// Resolves the names of `hir` and reports duplicates, shadowing and irrefutable tests.
+    pub fn resolve(&self, cx: &mut DiagCx<'_>) -> Resolution {
+        let mut resolver = walk::Resolver {
+            scopes: Scopes::default(),
+            names: IndexVec::filled(None, self.exprs.len()),
+            parents: IndexVec::filled(None, self.namespaces.len()),
+            namespaces: Vec::new(),
+            declaring: false,
+            members: false,
+            cx,
+        };
+        if let Some(root) = self.root {
+            crate::visit::Visitor::namespace(&mut resolver, self, root);
+        }
+        Resolution { names: resolver.names, parents: resolver.parents }
     }
-    Resolution { names: resolver.names, parents: resolver.parents }
 }

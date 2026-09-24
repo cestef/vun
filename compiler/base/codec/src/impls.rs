@@ -3,76 +3,85 @@
 
 use std::sync::Arc;
 
-use crate::{Decode, Encode, Malformed, take};
+use crate::{Decode, Encode, Input, Malformed};
 
 /// Bits carried by each varint byte; the high bit says another byte follows.
 const VARINT_BITS: u32 = 7;
 const VARINT_MORE: u8 = 0x80;
 
-fn encode_varint(mut n: u128, out: &mut Vec<u8>) {
-    loop {
-        let low = u8::try_from(n & u128::from(!VARINT_MORE)).expect("masked to seven bits");
-        n >>= VARINT_BITS;
-        if n == 0 {
-            out.push(low);
-            return;
+/// LEB128: seven bits per byte, low first.
+impl Encode for u128 {
+    fn encode(&self, out: &mut Vec<u8>) {
+        let mut n = *self;
+        loop {
+            let low = u8::try_from(n & u128::from(!VARINT_MORE)).expect("masked to seven bits");
+            n >>= VARINT_BITS;
+            if n == 0 {
+                out.push(low);
+                return;
+            }
+            out.push(low | VARINT_MORE);
         }
-        out.push(low | VARINT_MORE);
     }
 }
 
-fn decode_varint(input: &mut &[u8]) -> Result<u128, Malformed> {
-    let mut n: u128 = 0;
-    for shift in (0..u128::BITS).step_by(VARINT_BITS as usize) {
-        let byte = take(input, 1)?[0];
-        let bits = u128::from(byte & !VARINT_MORE);
-        n |= bits.checked_shl(shift).filter(|shifted| shifted >> shift == bits).ok_or(Malformed::Overflow)?;
-        if byte & VARINT_MORE == 0 {
-            return Ok(n);
+impl Decode for u128 {
+    fn decode(input: &mut &[u8]) -> Result<Self, Malformed> {
+        let mut n: u128 = 0;
+        for shift in (0..u128::BITS).step_by(VARINT_BITS as usize) {
+            let byte = input.front(1)?[0];
+            let bits = u128::from(byte & !VARINT_MORE);
+            n |= bits
+                .checked_shl(shift)
+                .filter(|shifted| shifted >> shift == bits)
+                .ok_or(Malformed::Overflow)?;
+            if byte & VARINT_MORE == 0 {
+                return Ok(n);
+            }
         }
+        Err(Malformed::Overflow)
     }
-    Err(Malformed::Overflow)
 }
 
 macro_rules! unsigned {
     ($($ty:ty),*) => {$(
         impl Encode for $ty {
             fn encode(&self, out: &mut Vec<u8>) {
-                encode_varint(u128::from(*self), out);
+                u128::from(*self).encode(out);
             }
         }
 
         impl Decode for $ty {
             fn decode(input: &mut &[u8]) -> Result<Self, Malformed> {
-                <$ty>::try_from(decode_varint(input)?).map_err(|_| Malformed::Overflow)
+                <$ty>::try_from(u128::decode(input)?).map_err(|_| Malformed::Overflow)
             }
         }
     )*};
 }
-unsigned!(u16, u32, u64, u128);
+unsigned!(u16, u32, u64);
 
 impl Encode for usize {
     fn encode(&self, out: &mut Vec<u8>) {
-        encode_varint(*self as u128, out);
+        (*self as u128).encode(out);
     }
 }
 
 impl Decode for usize {
     fn decode(input: &mut &[u8]) -> Result<Self, Malformed> {
-        Self::try_from(decode_varint(input)?).map_err(|_| Malformed::Overflow)
+        Self::try_from(u128::decode(input)?).map_err(|_| Malformed::Overflow)
     }
 }
 
 /// Zigzag: small magnitudes of either sign stay short.
 impl Encode for i128 {
     fn encode(&self, out: &mut Vec<u8>) {
-        encode_varint(((self << 1) ^ (self >> (i128::BITS - 1))).cast_unsigned(), out);
+        ((self << 1) ^ (self >> (i128::BITS - 1))).cast_unsigned().encode(out);
     }
 }
 
 impl Decode for i128 {
     fn decode(input: &mut &[u8]) -> Result<Self, Malformed> {
-        let n = decode_varint(input)?;
+        let n = u128::decode(input)?;
         Ok((n >> 1).cast_signed() ^ -(n & 1).cast_signed())
     }
 }
@@ -85,7 +94,7 @@ impl Encode for u8 {
 
 impl Decode for u8 {
     fn decode(input: &mut &[u8]) -> Result<Self, Malformed> {
-        Ok(take(input, 1)?[0])
+        Ok(input.front(1)?[0])
     }
 }
 
@@ -113,7 +122,7 @@ impl<const N: usize> Encode for [u8; N] {
 
 impl<const N: usize> Decode for [u8; N] {
     fn decode(input: &mut &[u8]) -> Result<Self, Malformed> {
-        Ok(take(input, N)?.try_into().expect("taken N bytes"))
+        Ok(input.front(N)?.try_into().expect("taken N bytes"))
     }
 }
 
@@ -133,7 +142,7 @@ impl Encode for String {
 impl Decode for String {
     fn decode(input: &mut &[u8]) -> Result<Self, Malformed> {
         let len = usize::decode(input)?;
-        let bytes = take(input, len)?;
+        let bytes = input.front(len)?;
         std::str::from_utf8(bytes).map(str::to_owned).map_err(|_| Malformed::Text)
     }
 }

@@ -129,9 +129,11 @@ impl<'s> Literal<'s> {
     }
 }
 
-/// The top-level `name := value;` and `name: T = value;` declarations of a parsed file.
-#[must_use]
-pub fn declarations<'s>(cst: &Cst, tokens: &Tokens, source: &'s str) -> Vec<Decl<'s>> {
-    let reader = Reader { cst, tokens, source };
-    reader.decls(cst.children(cst.root()))
+impl Cst {
+    /// The top-level `name := value;` and `name: T = value;` declarations of a parsed file.
+    #[must_use]
+    pub fn declarations<'s>(&self, tokens: &Tokens, source: &'s str) -> Vec<Decl<'s>> {
+        let reader = Reader { cst: self, tokens, source };
+        reader.decls(self.children(self.root()))
+    }
 }

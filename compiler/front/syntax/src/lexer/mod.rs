@@ -45,29 +45,31 @@ const RAW_STRING_LINE: &str = "\\\\";
 /// Takes the next word or string literally.
 pub(crate) const ESCAPE: char = '\\';
 
-/// Lexes one file. Diagnostics go to `cx`; the result is always a complete token stream.
-///
-/// # Panics
-/// Panics if `text` is 4 GiB or larger, which `SourceFile` already rules out.
-pub fn lex(file: FileId, text: &str, cx: &mut DiagCx<'_>) -> Tokens {
-    let _span = tracing::debug_span!("lex", ?file, bytes = text.len()).entered();
-    assert!(u32::try_from(text.len()).is_ok(), "source files are smaller than 4 GiB");
-    let mut lexer = Lexer { file, text, pos: 0, after_dot: false, cx };
-    let mut out = Builder::new(file, text.len() / 4);
-    while lexer.pos < text.len() {
-        let (lo, reported) = (lexer.pos, lexer.cx.diag.error_count());
-        let kind = lexer.lexeme();
-        if !kind.is_trivia() {
-            lexer.after_dot = kind == TokenKind::Dot;
+impl Tokens {
+    /// Lexes one file. Diagnostics go to `cx`; the result is always a complete token stream.
+    ///
+    /// # Panics
+    /// Panics if `text` is 4 GiB or larger, which `SourceFile` already rules out.
+    pub fn lex(file: FileId, text: &str, cx: &mut DiagCx<'_>) -> Self {
+        let _span = tracing::debug_span!("lex", ?file, bytes = text.len()).entered();
+        assert!(u32::try_from(text.len()).is_ok(), "source files are smaller than 4 GiB");
+        let mut lexer = Lexer { file, text, pos: 0, after_dot: false, cx };
+        let mut out = Builder::new(file, text.len() / 4);
+        while lexer.pos < text.len() {
+            let (lo, reported) = (lexer.pos, lexer.cx.diag.error_count());
+            let kind = lexer.lexeme();
+            if !kind.is_trivia() {
+                lexer.after_dot = kind == TokenKind::Dot;
+            }
+            out.push(Lexeme { kind, range: lexer.range_from(lo) });
+            if lexer.cx.diag.error_count() > reported {
+                out.diagnosed();
+            }
         }
-        out.push(Lexeme { kind, range: lexer.range_from(lo) });
-        if lexer.cx.diag.error_count() > reported {
-            out.diagnosed();
-        }
+        let tokens = out.finish(offset(text.len()));
+        tracing::debug!(tokens = tokens.len(), "lexed");
+        tokens
     }
-    let tokens = out.finish(offset(text.len()));
-    tracing::debug!(tokens = tokens.len(), "lexed");
-    tokens
 }
 
 /// The text a string, raw string, raw line or character token denotes; `None` for other tokens

@@ -26,14 +26,17 @@ pub struct Source<'a> {
     pub text: &'a str,
 }
 
-/// Lowers the file `source` into HIR.
-pub fn lower(source: Source<'_>, origins: &OriginTable) -> Hir {
-    let mut lower = Lower { source, origins, hir: Hir::default(), declaration: None };
-    let root = source.cst.root();
-    let members = lower.members(source.cst.children(root));
-    let origin = lower.origin(root);
-    lower.hir.root = Some(lower.hir.namespaces.push(crate::tree::Namespace { members, origin }));
-    lower.hir
+impl Hir {
+    /// Lowers the file `source` into HIR.
+    #[must_use]
+    pub fn lower(source: Source<'_>, origins: &OriginTable) -> Self {
+        let mut lower = Lower { source, origins, hir: Self::default(), declaration: None };
+        let root = source.cst.root();
+        let members = lower.members(source.cst.children(root));
+        let origin = lower.origin(root);
+        lower.hir.root = Some(lower.hir.namespaces.push(crate::tree::Namespace { members, origin }));
+        lower.hir
+    }
 }
 
 struct Lower<'a, 'i> {
@@ -79,6 +82,19 @@ impl<'a> Lower<'a, '_> {
         let lowered = lower(self);
         self.declaration = outer;
         (lowered, origin)
+    }
+
+    /// The text of the doc comment `n` without `///` and the space after it.
+    fn doc_line(&self, n: NodeId) -> String {
+        const DOC: &str = "///";
+        let text = self.text(n);
+        let line = text.strip_prefix(DOC).unwrap_or(text);
+        line.strip_prefix(' ').unwrap_or(line).to_owned()
+    }
+
+    /// Whether `n` stands for nothing in a list: a separator or a module doc.
+    fn filler(&self, n: NodeId) -> bool {
+        matches!(self.kind(n), NodeKind::Punct | NodeKind::ModuleDoc)
     }
 
     fn kind(&self, n: NodeId) -> NodeKind {
@@ -142,7 +158,7 @@ impl<'a> Lower<'a, '_> {
             }
             let f = self.fields(n);
             if self.kind(n) == NodeKind::Doc {
-                doc.push(doc_line(self.text(n)));
+                doc.push(self.doc_line(n));
             }
             for &value in f.get(NodeField::Values) {
                 attrs.push(self.expr(value));
@@ -226,16 +242,4 @@ impl<'a> Lower<'a, '_> {
         let statements = f.one(NodeField::Block).map(|b| self.fields(b).get(NodeField::Statements).to_vec());
         self.entries(statements.unwrap_or_default(), one)
     }
-}
-
-/// A doc comment's text without `///` and the space after it.
-fn doc_line(text: &str) -> String {
-    const DOC: &str = "///";
-    let line = text.strip_prefix(DOC).unwrap_or(text);
-    line.strip_prefix(' ').unwrap_or(line).to_owned()
-}
-
-/// Nodes that stand for nothing in lists: separators and module docs.
-fn is_filler(kind: NodeKind) -> bool {
-    matches!(kind, NodeKind::Punct | NodeKind::ModuleDoc)
 }

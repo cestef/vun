@@ -50,10 +50,10 @@ impl Config {
             timings: var(Self::TIMINGS_VAR).is_some_and(|v| v == "1"),
         }
     }
-}
 
-/// Installs the global subscriber. Without a filter, only warnings and errors are shown.
-pub fn init(config: &Config) {
-    // A subscriber may already be installed by an embedding tool; keep that one.
-    let _ = tracing::subscriber::set_global_default(subscriber::Writer::new(config));
+    /// Installs the global subscriber. Without a filter, only warnings and errors are shown.
+    pub fn install(&self) {
+        // A subscriber may already be installed by an embedding tool; keep that one.
+        let _ = tracing::subscriber::set_global_default(subscriber::Writer::new(self));
+    }
 }

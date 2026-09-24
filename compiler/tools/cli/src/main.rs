@@ -11,7 +11,7 @@ use overt_driver::commands::PROGRAM;
 const NO_COLOR: &str = "NO_COLOR";
 
 fn main() -> ExitCode {
-    overt_trace::init(&overt_trace::Config::from_env());
+    overt_trace::Config::from_env().install();
     let argv: Vec<String> = std::env::args().skip(1).collect();
     let mut session = Session::new();
     let outcome = overt_command::run(&PROGRAM, &argv, &mut session, &mut io::stdout().lock()).unwrap_or_else(

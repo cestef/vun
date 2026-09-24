@@ -180,8 +180,7 @@ fn dump(session: &mut Session, args: &Args, out: &mut dyn Write, stage: Stage) -
         Stage::Hir => {
             let parsed = session.parsed(file);
             session.check_names(file);
-            let text =
-                overt_hir::dump::dump(&parsed.hir, &parsed.resolution, &session.origins, &*session.sources);
+            let text = parsed.hir.dump(&parsed.resolution, &session.origins, &*session.sources);
             write!(out, "{text}")?;
         }
         Stage::Mir => {

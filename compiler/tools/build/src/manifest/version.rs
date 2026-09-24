@@ -5,7 +5,7 @@ use std::fmt;
 use overt_diag::{DiagCx, Msg};
 use overt_syntax::literal::{Decl, Literal};
 
-use super::record::invalid;
+use super::record::Record;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Version {
@@ -34,7 +34,7 @@ impl Version {
             Literal::String(text) => Self::parse(text),
             _ => None,
         }
-        .or_else(|| invalid(decl, Msg::new().text("a version ").code("\"major.minor.patch\""), cx))
+        .or_else(|| decl.invalid(Msg::new().text("a version ").code("\"major.minor.patch\""), cx))
     }
 }
 

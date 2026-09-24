@@ -68,17 +68,24 @@ impl fmt::Display for Malformed {
 
 impl std::error::Error for Malformed {}
 
-/// Takes `n` bytes from the front of `input`.
-///
-/// # Errors
-/// Returns [`Malformed::Truncated`] if fewer remain.
-pub fn take<'a>(input: &mut &'a [u8], n: usize) -> Result<&'a [u8], Malformed> {
-    if input.len() < n {
-        return Err(Malformed::Truncated);
+/// The bytes a value is decoded from, consumed from the front.
+pub trait Input<'a> {
+    /// Takes `n` bytes from the front.
+    ///
+    /// # Errors
+    /// Returns [`Malformed::Truncated`] if fewer remain.
+    fn front(&mut self, n: usize) -> Result<&'a [u8], Malformed>;
+}
+
+impl<'a> Input<'a> for &'a [u8] {
+    fn front(&mut self, n: usize) -> Result<&'a [u8], Malformed> {
+        if self.len() < n {
+            return Err(Malformed::Truncated);
+        }
+        let (taken, rest) = self.split_at(n);
+        *self = rest;
+        Ok(taken)
     }
-    let (taken, rest) = input.split_at(n);
-    *input = rest;
-    Ok(taken)
 }
 
 /// Implements [`Encode`] and [`Decode`] for a struct, field by field in the order listed.

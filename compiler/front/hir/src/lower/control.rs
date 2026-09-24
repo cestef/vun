@@ -3,8 +3,8 @@
 use overt_grammar::{NodeField, NodeKind};
 use overt_syntax::cst::{Fields, NodeId};
 
+use super::Lower;
 use super::pats::Mode;
-use super::{Lower, is_filler};
 use crate::tree::{Arm, Cond, ExprKind, ForHead, List, Param};
 
 impl Lower<'_, '_> {
@@ -86,7 +86,7 @@ impl Lower<'_, '_> {
     /// Parameters: in a function literal every entry is a pattern, typed or not; in a function
     /// type an untyped entry is a type.
     fn params(&mut self, nodes: &[NodeId], literal: bool) -> List<Param> {
-        let nodes: Vec<_> = nodes.iter().copied().filter(|&n| !is_filler(self.kind(n))).collect();
+        let nodes: Vec<_> = nodes.iter().copied().filter(|&n| !self.filler(n)).collect();
         self.entries(nodes, &mut |this, n| {
             let (inner, _, attrs) = this.annotations(n);
             let origin = this.origin(inner);

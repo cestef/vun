@@ -1,6 +1,6 @@
 //! The token cursor: looking ahead, consuming tokens and pushing leaves.
 
-use overt_grammar::{Context, NodeKind, OPERANDS, PREFIX, TokenKind, contextual};
+use overt_grammar::{Context, NodeKind, OPERANDS, PREFIX, TokenKind};
 use overt_index::Idx;
 
 use super::Parser;
@@ -34,7 +34,7 @@ impl Parser<'_, '_, '_> {
     }
 
     pub(super) fn at_word(&self, context: Context) -> bool {
-        self.at(TokenKind::Ident) && contextual(self.text(self.current()), context)
+        self.at(TokenKind::Ident) && context.keyword(self.text(self.current()))
     }
 
     pub(super) fn starts_expr(&self) -> bool {

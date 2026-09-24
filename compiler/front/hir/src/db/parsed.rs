@@ -10,11 +10,10 @@ use overt_query::{Cx, Query};
 use overt_span::{FileId, SourceFiles};
 use overt_syntax::cst::Cst;
 use overt_syntax::tokens::Tokens;
-use overt_syntax::{lexer, parser};
 
 use super::input::{FileRef, FileText, Package};
 use crate::lower;
-use crate::resolve::{self, Resolution};
+use crate::resolve::Resolution;
 use crate::tree::Hir;
 
 pub struct ParsedFile {
@@ -52,10 +51,10 @@ impl Query for Parsed {
         let file = sources.add_as(&package.file_key(&key.path), package.display(&key.path), &*text);
         let mut diag = DiagCtxt::new();
         let mut dcx = DiagCx { diag: &mut diag, origins: &origins };
-        let tokens = lexer::lex(file, &text, &mut dcx);
-        let cst = parser::parse(&tokens, &text, &mut dcx);
-        let hir = lower::lower(lower::Source { cst: &cst, tokens: &tokens, text: &text }, &origins);
-        let resolution = resolve::resolve(&hir, &mut dcx);
+        let tokens = Tokens::lex(file, &text, &mut dcx);
+        let cst = Cst::parse(&tokens, &text, &mut dcx);
+        let hir = Hir::lower(lower::Source { cst: &cst, tokens: &tokens, text: &text }, &origins);
+        let resolution = hir.resolve(&mut dcx);
         let text = Hash::of(text.as_bytes());
         Some(Arc::new(ParsedFile { file, tokens, cst, hir, resolution, diag, text }))
     }

@@ -28,15 +28,17 @@ mod tests;
 /// How deeply expressions and blocks may nest before the parser gives up on a subtree.
 const MAX_NESTING: u32 = 256;
 
-/// Parses one file. Diagnostics go to `cx`; the result is always a complete tree.
-pub fn parse(tokens: &Tokens, source: &str, cx: &mut DiagCx<'_>) -> Cst {
-    let _span = tracing::debug_span!("parse", file = ?tokens.file(), tokens = tokens.len()).entered();
-    let mut parser =
-        Parser { tokens, source, pos: 0, depth: 0, reported: None, out: Builder::new(tokens.len()), cx };
-    parser.file();
-    let cst = parser.out.finish();
-    tracing::debug!(nodes = cst.len(), "parsed");
-    cst
+impl Cst {
+    /// Parses one file. Diagnostics go to `cx`; the result is always a complete tree.
+    pub fn parse(tokens: &Tokens, source: &str, cx: &mut DiagCx<'_>) -> Self {
+        let _span = tracing::debug_span!("parse", file = ?tokens.file(), tokens = tokens.len()).entered();
+        let mut parser =
+            Parser { tokens, source, pos: 0, depth: 0, reported: None, out: Builder::new(tokens.len()), cx };
+        parser.file();
+        let cst = parser.out.finish();
+        tracing::debug!(nodes = cst.len(), "parsed");
+        cst
+    }
 }
 
 /// Whether a `{` after an operand continues the expression. In the head of `if`, `for` and

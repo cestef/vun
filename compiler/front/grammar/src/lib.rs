@@ -41,10 +41,12 @@ pub struct Infix {
     pub assoc: Assoc,
 }
 
-/// Whether `word` is a keyword in `context`.
-#[must_use]
-pub fn contextual(word: &str, context: Context) -> bool {
-    CONTEXTUAL.contains(&(word, context))
+impl Context {
+    /// Whether `word` is a keyword in this context.
+    #[must_use]
+    pub fn keyword(self, word: &str) -> bool {
+        CONTEXTUAL.contains(&(word, self))
+    }
 }
 
 impl NodeKind {

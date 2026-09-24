@@ -8,8 +8,6 @@ use overt_harness::{discover, repo_root, snapshot_tree};
 use overt_origin::OriginTable;
 use overt_span::{EXTENSION, SourceFiles};
 use overt_syntax::cst::Cst;
-use overt_syntax::lexer::lex;
-use overt_syntax::parser::parse;
 use overt_syntax::tokens::Tokens;
 
 struct Parsed {
@@ -22,8 +20,8 @@ fn parse_text(text: &str) -> Parsed {
     let file = SourceFiles::new().add("input.ov", text);
     let (mut diag, origins) = (DiagCtxt::new(), OriginTable::new());
     let mut cx = DiagCx { diag: &mut diag, origins: &origins };
-    let tokens = lex(file, text, &mut cx);
-    let cst = parse(&tokens, text, &mut cx);
+    let tokens = Tokens::lex(file, text, &mut cx);
+    let cst = Cst::parse(&tokens, text, &mut cx);
     Parsed { tokens, cst, diag }
 }
 
