@@ -2,6 +2,7 @@
 //! to. Every value hashes by content, so types built from values do too.
 
 use overt_intern::Symbol;
+use overt_origin::OriginId;
 
 use overt_hir::db::Namespace;
 
@@ -56,6 +57,8 @@ pub enum Value {
     Frame(Box<Suspended>),
     /// Code, not its value (spec 03, section 4).
     Code(Code),
+    /// Where something is written: a `lang.meta.Origin`.
+    Origin(OriginId),
     /// `lang.interface(f)`: the function `f` from a type to its requirement struct (spec 02,
     /// section 3).
     Interface(Func),

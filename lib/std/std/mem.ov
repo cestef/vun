@@ -1,2 +1,16 @@
 //! Memory: allocators, owning pointers, copying, and `Arena`, which hands out `&mut T` tied to
 //! the arena borrow so that trees are ordinary scoped values (decision 40, spec 05, section 4).
+
+/// An owning pointer (spec 05, section 5): linear, free, and read through with `.*` and `.`.
+/// Freeing it needs the allocator it came from.
+Own := ($T: type) -> type { #[kind.linear] #[kind.free] struct {
+    #[kind.owns] _ptr: *T,
+
+    /// Ownership of what `p` points to, which nothing else may hold or free.
+    from_raw := unsafe (p: *T) -> Own(T) { .{ ._ptr = p } };
+    /// The pointer, giving ownership up: freeing what it points to is the caller's.
+    into_raw := (o: Own(T)) -> *T {
+        .{ ._ptr = p } := o;
+        p
+    };
+} };

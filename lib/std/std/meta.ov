@@ -8,9 +8,12 @@
 Quoted := interface(($Self: type) -> type { struct {
     /// The source text of the code, as written.
     source: (c: &Self) -> &[u8] = _;
+    /// Where the code is written.
+    span: (c: &Self) -> lang.meta.Origin = _;
 }});
 
 #[impl(Quoted(lang.meta.Code))]
 CodeQuoted := ($T: type) -> type { struct {
     source := (c: &Code(T)) -> &[u8] { lang.meta.source(T, c) };
+    span := (c: &Code(T)) -> lang.meta.Origin { lang.meta.span(T, c) };
 } };

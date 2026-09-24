@@ -78,11 +78,13 @@ impl Primitive {
             (Self::Meta(Meta::name_of), [ty]) => {
                 Ok(Value::string(&ty.as_type().ok_or(Unevaluated::Unsupported)?.to_string()))
             }
-            (Self::Meta(Meta::size), [ty]) => {
+            (Self::Meta(meta @ (Meta::size | Meta::align)), [ty]) => {
                 let ty = ty.as_type().ok_or(Unevaluated::Unsupported)?;
                 let layout = env.cx.get::<Layouts>(&ty).ok_or(Unevaluated::Unsupported)?;
-                Ok(Value::Int(Integer::from(u128::from(layout.size))))
+                let bytes = if meta == Meta::size { layout.size } else { layout.align };
+                Ok(Value::Int(Integer::from(u128::from(bytes))))
             }
+            (Self::Meta(Meta::span), [_, Value::Code(code)]) => Ok(Value::Origin(code.expr.expr.origin)),
             (Self::Meta(Meta::source), [_, Value::Code(code)]) => {
                 let env = Env::quoted(env.cx, code).ok_or(Unevaluated::Absent)?;
                 Ok(Value::string(&env.source(code.expr.expr.id)))

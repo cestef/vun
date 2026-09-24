@@ -15,6 +15,10 @@ ResultMethods := ($T: type, $E: type) -> type { struct {
     map_err := (r: Result(T, E), $F: type, $C: lang.ops.Call((E), F), f: C) -> Result(T, F) {
         match r { .ok(v) => .ok(v), .err(e) => .err(f(e)) }
     };
+    /// The value, or a trap with `message` on an error.
+    expect := (r: Result(T, E), $message: &[u8]) -> T {
+        match r { .ok(v) => v, .err(_) => lang.panic.fail(.message(message)) }
+    };
     /// The value, dropping the error.
     ok := (r: Result(T, E)) -> ?T { match r { .ok(v) => .some(v), .err(_) => .none } };
 } };

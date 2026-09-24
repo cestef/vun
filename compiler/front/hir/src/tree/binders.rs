@@ -2,7 +2,7 @@
 
 use overt_intern::Symbol;
 
-use super::{BinderId, DeclId, Entry, Hir, List, Member, NsId, PatId, PatKind, Spread, Staged};
+use super::{BinderId, DeclId, Entry, ExprId, Hir, List, Member, NsId, PatId, PatKind, Spread, Staged};
 
 impl Hir {
     /// Binders introduced by a pattern, without visiting the expressions inside it.
@@ -54,6 +54,22 @@ impl Hir {
     pub fn member_decl(&self, binder: BinderId) -> Option<DeclId> {
         let decls = self.namespaces.iter().flat_map(|(ns, _)| self.member_decls(ns));
         decls.into_iter().find(|&d| self.binds(d, |b| b == binder))
+    }
+
+    /// The path of the spread selecting `binder`, as `..std.mem.{ Own }` selects `Own`.
+    #[must_use]
+    pub fn spread_of(&self, binder: BinderId) -> Option<ExprId> {
+        let mut found = None;
+        for (ns, _) in self.namespaces.iter() {
+            each_entry(&self.namespaces[ns].members, &mut |m| {
+                if let Member::Spread(spread) = m
+                    && spread.select.as_ref().is_some_and(|s| s.contains(&binder))
+                {
+                    found = Some(spread.path);
+                }
+            });
+        }
+        found
     }
 
     /// The declaration binding `binder`, among members or in a block.

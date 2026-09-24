@@ -123,8 +123,9 @@ tied to arguments, so no interprocedural analysis is needed.
   pointer field is marked `#[kind.owns]`: `.*` on a struct reads through the field so marked,
   as it does on a borrow or pointer, and `.` looks through it as through a borrow when the owner
   lacks the member, so `cfg.name` reaches a field of what an `Own(Config)` owns.
-- `*T`: raw pointer; copy, free, non-null. Creating one is safe. Dereferencing, offsetting and
-  casting are `unsafe`.
+- `*T`: raw pointer; copy, free, non-null. Creating one (`lang.mem.pointer_to`) and reading its
+  address are safe. Dereferencing, offsetting and casting (`lang.mem.read`, `write`, `offset`,
+  `cast`, `copy`, `fill`) are `unsafe`; `std.ptr` gives them as methods of `*T`.
 - Volatile and atomic access are operations in `lang.mem`, not type qualifiers.
   `std.hw.Reg(T)` and `std.sync.Atomic(T)` wrap them.
 

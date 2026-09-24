@@ -18,8 +18,12 @@ pub enum Meta {
     name_of,
     /// The size of `T` in bytes under the target (spec 05, section 6).
     size,
+    /// The alignment of `T` in bytes under the target (spec 05, section 6).
+    align,
     /// The source text of the code `c`, as written.
     source,
+    /// Where the code `c` is written.
+    span,
 }
 impl Meta {
     pub const NAMESPACE: &str = "lang.meta";
@@ -34,7 +38,9 @@ impl Meta {
         Self::fields,
         Self::name_of,
         Self::size,
+        Self::align,
         Self::source,
+        Self::span,
     ];
     /// The declaration's name.
     #[must_use]
@@ -50,7 +56,9 @@ impl Meta {
             Self::fields => "fields",
             Self::name_of => "name_of",
             Self::size => "size",
+            Self::align => "align",
             Self::source => "source",
+            Self::span => "span",
         }
     }
 }

@@ -196,8 +196,14 @@ impl<'a, 'db> Env<'a, 'db> {
     pub fn resolve(&self, expr: ExprId) -> Result<Site, Unevaluated> {
         match self.parsed.resolution.names[expr] {
             Some(Res::Binder(b)) => {
-                let decl = self.parsed.hir.member_decl(b).ok_or(Unevaluated::Runtime)?;
-                Ok(Site::Decl(DeclRef::new(self.file.clone(), &self.parsed.hir, decl)))
+                let hir = &self.parsed.hir;
+                if let Some(decl) = hir.member_decl(b) {
+                    return Ok(Site::Decl(DeclRef::new(self.file.clone(), hir, decl)));
+                }
+                // A name a spread selects is the member of the namespace it spreads.
+                let path = hir.spread_of(b).ok_or(Unevaluated::Runtime)?;
+                let Value::Namespace(ns) = self.eval(path)? else { return Err(Unevaluated::Unsupported) };
+                self.cx.get::<Declared>(&(ns, hir.binders[b].name)).ok_or(Unevaluated::Absent)
             }
             Some(Res::Outer { name, ns }) => {
                 let spread =

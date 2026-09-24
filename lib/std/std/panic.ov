@@ -1,0 +1,3 @@
+//! Ending the execution context (spec 07, section 3): `fail` is a trap site with a message.
+
+..lang.panic.{ fail };

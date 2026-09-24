@@ -43,7 +43,8 @@ critical section.
 - **Recoverable errors** are `Result(T, E)` values; `e?` propagates, `e.map_err(f)?` converts.
 - **Traps** end the current execution context. Trap sites are: a failed `.to`, a compound
   assignment out of range, a zero divisor, an unproven index, unwrapping `.none`, and
-  `std.panic.fail(...)`. There is no unwinding.
+  `std.panic.fail(reason)`, whose compile-time `lang.panic.Reason` (`.message(text)` or
+  `.assertion(source, origin)`) makes each distinct reason its own site. There is no unwinding.
 - A trap calls `lang.panic.trap`, a typed link symbol that the program's runtime provides
   (spec 08). Every trap site passes a 32-bit **site id**; the message table mapping ids to origin
   chains and text is emitted into a non-loaded section, so traps cost a call and a constant on

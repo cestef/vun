@@ -154,12 +154,10 @@ patterns and typed annotations (89), linked values and repeats (90), layout (93)
 
 ## 7. Next steps, in order
 
-1. `std` needs `lang` primitives before most of it can be written: raw pointer offset and cast
-   (`std.mem.alloc.Fixed`, `create`/`destroy`, a real `std.mem.Own` replacing the stand-in),
-   a panic with a message (`Result.expect`, `std.panic.fail`), output symbols (`std.fmt.print`),
-   executors over frames (`std.task.run`, `select`), `std.iter` adapters as coroutine functions.
-   Closures are not accepted where a function type is (`map` takes `(T) -> U`): decide whether
-   function-type parameters accept `lang.ops.Call` values.
+1. `std` next: output symbols (`std.fmt.print`), executors over frames (`std.task.run`,
+   `select`), `std.iter` adapters as coroutine functions, `std.os` entry points, `Allocator`
+   impls for `Fixed`, text (`Str`) and collections. Pointer primitives, `Own`, `Fixed`, `fail`,
+   `expect`, `ptr`, `option`, `result`, `cmp` exist (decision 107).
 2. Leaks at scope exits inside a body (found at the function's return only today), `fixed` and
    `scoped` kinds, frames' `end` running their defers.
 3. Borrow rules left: `&temp` parameters, `&static`, top-level bindings as free values, frames'
@@ -198,6 +196,8 @@ patterns and typed annotations (89), linked values and repeats (90), layout (93)
   `lang.mem` that users reach as `std.mem`.
 - Kind attributes go on the type's literal, also in a constructor's tail:
   `Own := ($T: type) -> type { #[kind.linear] struct { ... } }`.
+- Inside a `lang` namespace file, its own names shadow `lang`'s: `never` in `lang/panic.ov` is
+  the attribute `panic.never`, so write `lang.never` there.
 - Names in `lang` resolve within `lang` (its prelude is `lang`, `lang.int`); `true`/`false` are
   `lang` names (`bool.true`, `bool.false`) in the std prelude.
 - Integer arithmetic is exact: `x * 2` for `x: u32` does not fit `u32`; corpus programs are fixed

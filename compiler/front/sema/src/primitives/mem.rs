@@ -16,6 +16,22 @@ pub enum Mem {
     len,
     /// Unsynchronized interior mutability. Only usable in `unsafe` code (spec 07, section 2).
     Cell,
+    /// A pointer to what `r` borrows. Creating a pointer is safe; using it is not (spec 05, section 5).
+    pointer_to,
+    /// The address `p` holds.
+    address,
+    /// The pointer `n` items of `T` past `p`.
+    offset,
+    /// `p` as a pointer to a `U`.
+    cast,
+    /// The value at `p`, which must be `init`.
+    read,
+    /// Stores `value` at `p`, whatever was there.
+    write,
+    /// Copies `n` items from `from` to `to`, which may overlap.
+    copy,
+    /// Stores `value` in `n` items from `to`.
+    fill,
     volatile_load,
     volatile_store,
 }
@@ -31,6 +47,14 @@ impl Mem {
         Self::Array,
         Self::len,
         Self::Cell,
+        Self::pointer_to,
+        Self::address,
+        Self::offset,
+        Self::cast,
+        Self::read,
+        Self::write,
+        Self::copy,
+        Self::fill,
         Self::volatile_load,
         Self::volatile_store,
     ];
@@ -47,6 +71,14 @@ impl Mem {
             Self::Array => "Array",
             Self::len => "len",
             Self::Cell => "Cell",
+            Self::pointer_to => "pointer_to",
+            Self::address => "address",
+            Self::offset => "offset",
+            Self::cast => "cast",
+            Self::read => "read",
+            Self::write => "write",
+            Self::copy => "copy",
+            Self::fill => "fill",
             Self::volatile_load => "volatile_load",
             Self::volatile_store => "volatile_store",
         }

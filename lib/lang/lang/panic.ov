@@ -7,7 +7,18 @@ Trap := struct {
 trap_symbol := "overt.trap";
 
 #[link.symbol(trap_symbol)]
-trap: (t: &Trap) -> never = _;
+trap: (t: &Trap) -> lang.never = _;
+
+/// Why a trap site fails, known when compiling, so the message table records it.
+Reason := enum {
+    message(&[u8]),
+    /// A condition that did not hold: its source and where it is written.
+    assertion(&[u8], lang.meta.Origin),
+};
+
+/// A trap site ending the execution context for `reason` (spec 07, section 3); each distinct
+/// reason is its own site, whose id and text the message table records.
+fail: ($reason: Reason) -> lang.never = _;
 
 /// Attribute: the function contains no undischarged trap site and calls only such functions.
 never: Attribute = _;

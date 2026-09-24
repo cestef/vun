@@ -1,0 +1,14 @@
+//! Raw pointers (spec 05, section 5): methods of every `*T` over the primitives of `lang.mem`.
+//! Creating a pointer and reading its address are safe; the rest is `unsafe`.
+
+#[impl(lang.mem.Ptr)]
+PtrMethods := ($T: type) -> type { struct {
+    address := (p: *T) -> usize { lang.mem.address(T, p) };
+    offset := unsafe (p: *T, n: isize) -> *T { lang.mem.offset(T, p, n) };
+    cast := unsafe (p: *T, $U: type) -> *U { lang.mem.cast(T, U, p) };
+    read := unsafe (p: *T) -> T { lang.mem.read(T, p) };
+    write := unsafe (p: *T, value: T) { lang.mem.write(T, p, value) };
+} };
+
+/// A pointer to what `r` borrows.
+to := ($T: type, r: &T) -> *T { lang.mem.pointer_to(T, r) };

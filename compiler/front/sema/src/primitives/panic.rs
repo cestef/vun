@@ -4,17 +4,21 @@
 #[allow(non_camel_case_types, reason = "variants are named as their declarations")]
 pub enum Panic {
     trap,
+    /// A trap site ending the execution context for `reason` (spec 07, section 3); each distinct
+    /// reason is its own site, whose id and text the message table records.
+    fail,
     /// Attribute: the function contains no undischarged trap site and calls only such functions.
     never,
 }
 impl Panic {
     pub const NAMESPACE: &str = "lang.panic";
-    pub const ALL: &[Self] = &[Self::trap, Self::never];
+    pub const ALL: &[Self] = &[Self::trap, Self::fail, Self::never];
     /// The declaration's name.
     #[must_use]
     pub const fn name(self) -> &'static str {
         match self {
             Self::trap => "trap",
+            Self::fail => "fail",
             Self::never => "never",
         }
     }

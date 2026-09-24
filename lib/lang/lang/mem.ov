@@ -16,5 +16,22 @@ len: ($T: type, xs: &[T]) -> usize = _;
 /// Unsynchronized interior mutability. Only usable in `unsafe` code (spec 07, section 2).
 Cell: ($T: type) -> type = _;
 
+/// A pointer to what `r` borrows. Creating a pointer is safe; using it is not (spec 05, section 5).
+pointer_to: ($T: type, r: &T) -> *T = _;
+/// The address `p` holds.
+address: ($T: type, p: *T) -> usize = _;
+/// The pointer `n` items of `T` past `p`.
+offset: unsafe ($T: type, p: *T, n: isize) -> *T = _;
+/// `p` as a pointer to a `U`.
+cast: unsafe ($T: type, $U: type, p: *T) -> *U = _;
+/// The value at `p`, which must be `init`.
+read: unsafe ($T: type, p: *T) -> T = _;
+/// Stores `value` at `p`, whatever was there.
+write: unsafe ($T: type, p: *T, value: T) = _;
+/// Copies `n` items from `from` to `to`, which may overlap.
+copy: unsafe ($T: type, to: *T, from: *T, n: usize) = _;
+/// Stores `value` in `n` items from `to`.
+fill: unsafe ($T: type, to: *T, value: T, n: usize) = _;
+
 volatile_load: unsafe ($T: type, p: *T) -> T = _;
 volatile_store: unsafe ($T: type, p: *T, value: T) = _;

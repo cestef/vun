@@ -3,11 +3,10 @@
 //! are visible in every corpus file; its children (`serde`, `svd`, ...) stand for packages.
 
 /// Memory and files.
-/// An owning pointer: linear, free, and read through with `.*` (spec 05, section 5).
-Own := ($T: type) -> type { #[kind.linear] #[kind.free] struct { #[kind.owns] ptr: *T } };
+Own := std.mem.Own;
 Alloc := struct {
     create := (self: &mut Alloc, $T: type) -> Result(Own(T), Error) { .err(.oom) };
-    destroy := (self: &mut Alloc, $T: type, o: Own(T)) { .{ .ptr = _ } := o; };
+    destroy := (self: &mut Alloc, $T: type, o: Own(T)) { o.into_raw(); };
 };
 /// An open file, which must be closed.
 File := #[kind.linear] struct {

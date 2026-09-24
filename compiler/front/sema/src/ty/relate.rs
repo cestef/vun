@@ -10,9 +10,13 @@ impl TyKind {
     /// range lies within (spec 04, rule 2), tuples, arrays and bounds whose items are, bounds
     /// where a `lang.Range` is expected, a borrow of an array where a borrow of a slice of its
     /// items is (spec 02), code of an accepted value, a type made with `never` where the same
-    /// constructor is expected, or the type itself.
+    /// constructor is expected, or the type itself. An empty type such as `never` is accepted
+    /// anywhere: it has no value to be wrong, so a trap or a `return` fits any arm.
     #[must_use]
     pub fn accepts(&self, found: &Self) -> bool {
+        if matches!(found, Self::Nominal(n) if n.kind == NominalKind::Empty) {
+            return true;
+        }
         if let (Some(expected), Some(found)) = (self.interval(), found.interval()) {
             return expected.contains(&found);
         }

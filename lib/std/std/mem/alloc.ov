@@ -1,7 +1,46 @@
 //! Allocators are capabilities (spec 07, section 1).
 
+..std.mem.{ Own };
+
 Allocator := lang.interface(($Self: type) -> type { struct {
     Error: type = _;
     alloc: (self: &mut Self, size: usize, align: usize) -> Result(*u8, Error) = _;
     free: (self: &mut Self, p: *u8, size: usize, align: usize) = _;
 }});
+
+/// Why an allocation failed.
+Error := enum { exhausted };
+
+/// An allocator handing out the bytes of one buffer in order, freeing nothing until it is
+/// dropped as a whole.
+Fixed := struct {
+    _base: *u8,
+    _len: usize,
+    _used: usize,
+
+    /// An allocator over `storage`, which must outlive what it hands out.
+    init := ($n: usize, storage: &mut [n]u8) -> Fixed {
+        base := unsafe std.ptr.to([n]u8, &storage.*).cast(u8);
+        .{ ._base = base, ._len = n, ._used = 0 }
+    };
+
+    /// `size` bytes aligned to `align`, a power of two.
+    alloc := (self: &mut Fixed, size: usize, align: usize) -> Result(*u8, Error) {
+        base := self._base.address();
+        free := (base + self._used).sat(usize);
+        aligned := ((free + align - 1).sat(usize) / align * align).sat(usize);
+        start := (aligned - base).sat(usize);
+        if start + size > self._len { return .err(.exhausted); }
+        self._used = (start + size).sat(usize);
+        .ok(unsafe self._base.offset(start.sat(isize)))
+    };
+
+    /// A place for a `T`, `uninit`, owned by the caller.
+    create := (self: &mut Fixed, $T: type) -> Result(Own(T), Error) {
+        p := self.alloc(lang.meta.size(T), lang.meta.align(T))?;
+        .ok(unsafe Own(T).from_raw(p.cast(T)))
+    };
+
+    /// Gives `o` back; a fixed allocator reuses nothing, so this only ends the ownership.
+    destroy := (self: &mut Fixed, $T: type, o: Own(T)) { o.into_raw(); };
+};
