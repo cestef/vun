@@ -114,7 +114,7 @@ macro system:
 
 ```ov
 assert := ($cond: Code(bool)) {
-    if !$cond { std.panic.fail(.assertion(std.meta.source(cond), std.meta.span(cond))); }
+    if !$cond { std.panic.fail(.assertion(cond.source(), cond.span())); }
 };
 
 assert(len <= N);   // the argument arrives as code; the message quotes it with its span
@@ -122,6 +122,13 @@ assert(len <= N);   // the argument arrives as code; the message quotes it with 
 
 Because the parameter is `$`, each call site instantiates `assert` with its own code, so the check
 compiles to exactly `if !(len <= N) { ... }` at the call site.
+
+A code value is written where its code is: its names resolve there, with the bindings of the call
+and of the `$for` steps it was written in, and splicing it at compile time evaluates it there. An
+argument for `Code(T)` is typed as a `T`, and `Code(T)` accepts code of any value `T` accepts. A
+code value is passed on by borrow (`&Code(T)`), since a `Code(T)` parameter would quote the name
+instead: `std.meta.Quoted`, an impl for `lang.meta.Code`, gives `c.source()`, the text as written,
+and `c.span()`.
 
 ### Reading and building code
 

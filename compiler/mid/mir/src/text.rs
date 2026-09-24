@@ -35,6 +35,7 @@ impl fmt::Display for Rvalue {
             Self::Range { op, lo, hi: Some(hi) } => write!(f, "{lo}{}{hi}", text(*op)),
             Self::Range { op, lo, hi: None } => write!(f, "{lo}{}", text(*op)),
             Self::Comptime { expr, .. } => write!(f, "comptime e{}", expr.index()),
+            Self::Quote { expr, .. } => write!(f, "quote e{}", expr.index()),
             Self::Aggregate { kind, parts } => {
                 let (open, close) = match kind {
                     Aggregate::Struct { ty, .. } | Aggregate::Variant { ty, .. } => {

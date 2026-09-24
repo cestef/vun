@@ -50,7 +50,8 @@ impl<'a, 'db> Typer<'_, 'a, 'db> {
         }
     }
 
-    /// `$operand`: a `$if` selects its branch, anything else is computed at compile time.
+    /// `$operand`: a `$if` selects its branch, code of type `Code(T)` is spliced as a value of
+    /// `T`, and anything else is computed at compile time.
     pub(super) fn comptime(&mut self, expr: ExprId, operand: ExprId) -> Option<Known> {
         if matches!(self.hir().exprs[operand].kind, ExprKind::If { .. }) {
             return self.selected(expr, operand);
@@ -58,7 +59,10 @@ impl<'a, 'db> Typer<'_, 'a, 'db> {
         let outer = std::mem::replace(&mut self.stage, Stage::Compile);
         let known = self.typed(operand);
         self.stage = outer;
-        known
+        match known.and_then(|k| k.ty.quoted()) {
+            Some(ty) => Some(Known { ty, stage: self.stage }),
+            None => known,
+        }
     }
 
     /// `$if` as a value: the branch its known conditions take, typed as the value; with a

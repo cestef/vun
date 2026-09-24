@@ -2,3 +2,15 @@
 //! `collect(package, attr)`, which gathers declarations carrying an attribute (decision 42).
 
 ..lang.meta.{ Field, fields, name_of };
+
+/// What a code value tells of itself (spec 03, section 4). A code value is passed by borrow:
+/// a parameter of type `Code(T)` itself would receive its argument as code.
+Quoted := interface(($Self: type) -> type { struct {
+    /// The source text of the code, as written.
+    source: (c: &Self) -> &[u8] = _;
+}});
+
+#[impl(Quoted(lang.meta.Code))]
+CodeQuoted := ($T: type) -> type { struct {
+    source := (c: &Code(T)) -> &[u8] { lang.meta.source(T, c) };
+} };

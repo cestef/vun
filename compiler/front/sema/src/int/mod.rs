@@ -97,6 +97,12 @@ impl From<u128> for Integer {
     }
 }
 
+impl From<usize> for Integer {
+    fn from(n: usize) -> Self {
+        Self(BigInt::from(n))
+    }
+}
+
 impl From<i32> for Integer {
     fn from(n: i32) -> Self {
         Self(BigInt::from(n))

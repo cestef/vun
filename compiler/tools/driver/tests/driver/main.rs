@@ -12,6 +12,7 @@ mod impls;
 mod loops;
 mod mir;
 mod namespaces;
+mod quotes;
 mod reflection;
 mod replace;
 mod select;

@@ -330,6 +330,8 @@ pub mod meta {
         /// The name of `T` as diagnostics show it: a `struct` or `enum` literal by the declaration it is
         /// written in, with its compile-time arguments.
         name_of,
+        /// The source text of the code `c`, as written.
+        source,
     }
     impl Meta {
         pub const NAMESPACE: &str = "lang.meta";
@@ -343,6 +345,7 @@ pub mod meta {
             Self::embed,
             Self::fields,
             Self::name_of,
+            Self::source,
         ];
         /// The declaration's name.
         #[must_use]
@@ -357,6 +360,7 @@ pub mod meta {
                 Self::embed => "embed",
                 Self::fields => "fields",
                 Self::name_of => "name_of",
+                Self::source => "source",
             }
         }
     }
@@ -676,6 +680,7 @@ impl Primitive {
         Self::Meta(meta::Meta::embed),
         Self::Meta(meta::Meta::fields),
         Self::Meta(meta::Meta::name_of),
+        Self::Meta(meta::Meta::source),
         Self::Opt(opt::Opt::cold),
         Self::Opt(opt::Opt::inline),
         Self::Opt(opt::Opt::level),

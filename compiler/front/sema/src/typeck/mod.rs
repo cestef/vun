@@ -87,8 +87,8 @@ pub struct Step {
     pub index: usize,
 }
 
-/// Counts the expressions of a body, as the typer reaches them: not into nested functions,
-/// quotes or namespaces, which are typed on their own.
+/// Counts the expressions of a body, as the typer reaches them: not into nested functions or
+/// namespaces, which are typed on their own.
 struct Exprs(usize);
 
 impl Visitor for Exprs {
@@ -96,7 +96,7 @@ impl Visitor for Exprs {
 
     fn expr(&mut self, hir: &Hir, expr: ExprId) {
         self.0 += 1;
-        if !matches!(hir.exprs[expr].kind, ExprKind::Fn { .. } | ExprKind::Quote(_)) {
+        if !matches!(hir.exprs[expr].kind, ExprKind::Fn { .. }) {
             overt_hir::visit::walk_expr(self, hir, expr);
         }
     }

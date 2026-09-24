@@ -3,7 +3,7 @@
 square := ($x: Code(f32)) -> Code(f32) { #{ $x * $x } };
 
 assert := ($cond: Code(bool)) {
-    if !$cond { std.panic.fail(.assertion(std.meta.source(cond), std.meta.span(cond))); }
+    if !$cond { std.panic.fail(.assertion(cond.source(), cond.span())); }
 };
 
 check := (len: usize) { assert(len <= 64); };

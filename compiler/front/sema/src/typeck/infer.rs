@@ -109,8 +109,11 @@ impl Typer<'_, '_, '_> {
             ExprKind::FnType { .. } | ExprKind::Struct(_) | ExprKind::Enum(_) => {
                 compile(TyKind::primitive(Primitive::Lang(Lang::r#type)))
             }
-            // Quoted code is typed where it is spliced.
-            ExprKind::Quote(_) => None,
+            // `#{ e }` is code of the type of `e` (spec 03, section 4).
+            ExprKind::Quote(block) => {
+                let known = self.block_value(*block, None)?;
+                Some(Known { ty: TyKind::code(known.ty), stage: Stage::Compile })
+            }
             _ => {
                 visit::walk_expr(self, hir, expr);
                 None

@@ -99,6 +99,7 @@ impl<'b, 'a, 'db> Frame<'b, 'a, 'db> {
                 self.operand(operand)?.narrow(&ty.interval().ok_or(Unevaluated::Unsupported)?, *narrowing)
             }
             Rvalue::Comptime { expr, staged } => self.env.clone().staging(staged).eval(*expr),
+            Rvalue::Quote { expr, staged } => Ok(Value::Code(self.env.clone().staging(staged).code(*expr))),
             Rvalue::Aggregate { kind, parts } => {
                 let parts = parts.iter().map(|p| self.operand(p)).collect::<Result<Vec<_>, _>>()?;
                 Ok(match kind {

@@ -21,7 +21,7 @@ use overt_index::{Idx, IndexVec};
 use overt_origin::OriginId;
 use overt_query::{Cx, Cycle, Query};
 use overt_sema::env::Env;
-use overt_sema::eval::Instantiation;
+use overt_sema::eval::{Instantiation, Staging};
 use overt_sema::int::Integer;
 use overt_sema::ty::Value;
 use overt_sema::typeck::{Step, Typed, TypedBody};
@@ -119,8 +119,17 @@ impl<'a, 'db> Builder<'_, 'a, 'db> {
 
     /// `expr`, evaluated by the call running the body, under the bindings of the step lowered.
     fn comptime(&self, expr: ExprId) -> Rvalue {
-        let own = self.env.staged().len();
-        Rvalue::Comptime { expr, staged: self.env().staged()[own..].to_vec() }
+        Rvalue::Comptime { expr, staged: self.stepped() }
+    }
+
+    /// The code `expr`, written in the call running the body.
+    fn quote(&mut self, expr: ExprId, origin: OriginId) -> Operand {
+        self.temp(Rvalue::Quote { expr, staged: self.stepped() }, origin)
+    }
+
+    /// The bindings of the `$for` steps lowered.
+    fn stepped(&self) -> Vec<Staging> {
+        self.env().staged()[self.env.staged().len()..].to_vec()
     }
 
     /// The typed body of the code lowered: the instantiation's, or a `$for` step's in it.
@@ -206,6 +215,7 @@ impl<'a, 'db> Builder<'_, 'a, 'db> {
                 _ => self.env().eval(expr).map(Operand::Const).map_err(|_| unbuilt),
             },
             ExprKind::Block(block) => self.block(*block),
+            ExprKind::Quote(_) => Ok(self.quote(expr, origin)),
             ExprKind::Prefix { op: TokenKind::Dollar, operand, .. }
                 if matches!(hir.exprs[*operand].kind, ExprKind::If { .. }) =>
             {
@@ -249,8 +259,17 @@ impl<'a, 'db> Builder<'_, 'a, 'db> {
                     Some((f, receiver)) => (f, vec![self.operand(receiver)?]),
                     None => (self.operand(*callee)?, Vec::new()),
                 };
+                // A `Code(T)` parameter receives its argument as code.
+                let quotes = match &callee {
+                    Operand::Const(Value::Fn(f)) => f.quotes(self.env.cx).unwrap_or_default(),
+                    _ => Vec::new(),
+                };
                 for arg in args {
                     match arg {
+                        Entry::One(Arg { name: None, value }) if quotes.get(values.len()) == Some(&true) => {
+                            let code = self.quote(*value, origin);
+                            values.push(code);
+                        }
                         Entry::One(Arg { name: None, value }) => values.push(self.operand(*value)?),
                         _ => return Err(unbuilt),
                     }

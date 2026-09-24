@@ -67,7 +67,7 @@ constitutes the entire macro system:
 
 ```ov
 assert := ($cond: Code(bool)) {
-    if !$cond { std.panic.fail(.assertion(std.meta.source(cond), std.meta.span(cond))); }
+    if !$cond { std.panic.fail(.assertion(cond.source(), cond.span())); }
 };
 assert(len <= N);
 ```

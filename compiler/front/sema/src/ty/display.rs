@@ -80,6 +80,7 @@ impl fmt::Display for Value {
                 f.write_str(&names.join("."))
             }
             Self::Fn(_) => f.write_str("fn"),
+            Self::Code(_) => f.write_str("#{ .. }"),
             Self::Interface(_) => f.write_str("interface"),
         }
     }

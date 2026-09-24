@@ -103,6 +103,12 @@ pub enum Rvalue {
         expr: ExprId,
         staged: Vec<Staging>,
     },
+    /// The code `expr`, written in the call running the body under the bindings `staged`: a
+    /// quote, or an argument for a `Code(T)` parameter (spec 03, section 4).
+    Quote {
+        expr: ExprId,
+        staged: Vec<Staging>,
+    },
 }
 
 /// What an [`Rvalue::Aggregate`] builds.

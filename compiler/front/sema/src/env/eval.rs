@@ -66,6 +66,7 @@ impl Env<'_, '_> {
                 })
                 .collect::<Result<_, _>>()
                 .map(Value::Array),
+            ExprKind::Prefix { op: TokenKind::Dollar, operand, .. } => self.splice(self.eval(*operand)?),
             ExprKind::Prefix { op, operand, .. } => self.unary(*op, &self.eval(*operand)?),
             ExprKind::Infix { op: op @ (TokenKind::DotDot | TokenKind::DotDotEq), left, right } => {
                 let hi = right.map(|r| self.eval(r)).transpose()?;
@@ -81,12 +82,13 @@ impl Env<'_, '_> {
             }
             ExprKind::If { cond: Cond::Expr(cond), then, otherwise } => {
                 if self.holds(&self.eval(*cond)?)? {
-                    self.block(*then)
+                    self.block_value(*then)
                 } else {
                     otherwise.map_or_else(|| Ok(Value::Tuple(Vec::new())), |e| self.eval(e))
                 }
             }
-            ExprKind::Block(block) => self.block(*block),
+            ExprKind::Block(block) => self.block_value(*block),
+            ExprKind::Quote(_) => Ok(Value::Code(self.code(expr))),
             // Attributes on an expression are data, read where they act.
             ExprKind::Attributed { inner, .. } => self.eval(*inner),
             ExprKind::Call { callee, .. } if matches!(hir.exprs[*callee].kind, ExprKind::DotName(_)) => {
@@ -109,7 +111,7 @@ impl Env<'_, '_> {
 
     /// The value of a block without statements: its tail, or `()`. Statements run in the
     /// evaluator.
-    fn block(&self, block: BlockId) -> Result<Value, Unevaluated> {
+    pub(super) fn block_value(&self, block: BlockId) -> Result<Value, Unevaluated> {
         let block = &self.parsed.hir.blocks[block];
         if !block.stmts.is_empty() {
             return Err(Unevaluated::Interpreter);
@@ -134,8 +136,16 @@ impl Env<'_, '_> {
             }
             _ => self.eval(callee)?,
         };
+        // A `Code(T)` parameter receives its argument as code.
+        let quotes = match &callee {
+            Value::Fn(f) => f.quotes(self.cx).unwrap_or_default(),
+            _ => Vec::new(),
+        };
         for arg in args {
             match arg {
+                Entry::One(Arg { name: None, value }) if quotes.get(values.len()) == Some(&true) => {
+                    values.push(Value::Code(self.code(*value)));
+                }
                 Entry::One(Arg { name: None, value }) => values.push(self.eval(*value)?),
                 _ => return Err(Unevaluated::Unsupported),
             }

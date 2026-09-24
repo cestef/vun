@@ -36,8 +36,11 @@ impl Typer<'_, '_, '_> {
         for arg in args {
             match arg {
                 Entry::One(Arg { name: None, value }) => {
-                    let param =
-                        signature.as_ref().and_then(|s| s.params.get(receiver + found.len()).copied());
+                    // An argument for a `Code(T)` parameter is code of a `T`.
+                    let param = signature
+                        .as_ref()
+                        .and_then(|s| s.params.get(receiver + found.len()).copied())
+                        .map(|p| p.quoted().unwrap_or(p));
                     found.push((*value, self.typed_as(*value, param)));
                 }
                 Entry::One(Arg { value, .. }) => {
@@ -59,6 +62,7 @@ impl Typer<'_, '_, '_> {
         }
         for (&param, (value, known)) in params.iter().zip(found) {
             if let Some(known) = known {
+                let param = param.quoted().unwrap_or(param);
                 self.expect(self.hir().exprs[value].origin, known, param, None);
             }
         }
@@ -75,9 +79,13 @@ impl Typer<'_, '_, '_> {
         };
         let Ok(Value::Fn(f)) = f else { return None };
         let comptime = f.comptime(self.env().cx)?;
-        let args = comptime.iter().enumerate().map(|(i, &comptime)| {
+        let quotes = f.quotes(self.env().cx)?;
+        let args = comptime.iter().zip(&quotes).enumerate().map(|(i, (&comptime, &quoted))| {
             let arg = i.checked_sub(receiver).and_then(|i| args.get(i));
             match (comptime, arg) {
+                (true, Some(Entry::One(Arg { name: None, value }))) if quoted => {
+                    Some(Value::Code(self.env().code(*value)))
+                }
                 (true, Some(Entry::One(Arg { name: None, value }))) => self.env().eval(*value).ok(),
                 _ => None,
             }

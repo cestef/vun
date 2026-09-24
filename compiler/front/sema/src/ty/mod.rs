@@ -21,6 +21,7 @@ use crate::int::{Integer, Interval};
 use crate::item::ExprRef;
 use crate::primitives::lang::Lang;
 use crate::primitives::mem::Mem;
+use crate::primitives::meta::Meta;
 
 pub use signature::Signature;
 pub use value::Value;
@@ -83,6 +84,24 @@ impl TyKind {
         Self::Primitive(Primitive::Mem(Mem::Slice), vec![Value::Type(elem)]).intern()
     }
 
+    /// `lang.meta.Code(ty)`: code whose value has type `ty`.
+    #[must_use]
+    pub fn code(ty: Ty) -> Ty {
+        Self::Primitive(Primitive::Meta(Meta::Code), vec![Value::Type(ty)]).intern()
+    }
+
+    /// The type of the value of code of this type: `T` for `Code(T)`.
+    #[must_use]
+    pub fn quoted(&self) -> Option<Ty> {
+        match self {
+            Self::Primitive(Primitive::Meta(Meta::Code), args) => match args.as_slice() {
+                [Value::Type(ty)] => Some(*ty),
+                _ => None,
+            },
+            _ => None,
+        }
+    }
+
     /// The length and item type of an array type.
     #[must_use]
     pub fn as_array(&self) -> Option<(&Integer, Ty)> {
@@ -134,7 +153,7 @@ impl TyKind {
     /// Whether a value of type `found` is accepted where this type is expected: integers whose
     /// range lies within (spec 04, rule 2), tuples, arrays and bounds whose items are, bounds
     /// where a `lang.Range` is expected, a borrow of an array where a borrow of a slice of its
-    /// items is (spec 02), or the type itself.
+    /// items is (spec 02), code of an accepted value, or the type itself.
     #[must_use]
     pub fn accepts(&self, found: &Self) -> bool {
         if let (Some(expected), Some(found)) = (self.interval(), found.interval()) {
@@ -153,6 +172,10 @@ impl TyKind {
             && let (Some(items), Some((_, found_items))) = (expected.slice_items(), found.as_array())
         {
             return items.accepts(&found_items);
+        }
+        // Code of a value is accepted where code of a type accepting it is.
+        if let (Some(expected), Some(found)) = (self.quoted(), found.quoted()) {
+            return expected.accepts(&found);
         }
         match (self, found) {
             (Self::Tuple(expected), Self::Tuple(found)) => {

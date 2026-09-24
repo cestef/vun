@@ -21,3 +21,6 @@ fields: ($T: type) -> &[Field] = _;
 /// The name of `T` as diagnostics show it: a `struct` or `enum` literal by the declaration it is
 /// written in, with its compile-time arguments.
 name_of: ($T: type) -> &[u8] = _;
+
+/// The source text of the code `c`, as written.
+source: ($T: type, c: &Code(T)) -> &[u8] = _;

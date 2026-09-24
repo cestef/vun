@@ -132,7 +132,7 @@ impl Body {
             Rvalue::Binary { left, right, .. } => vec![left, right],
             Rvalue::Range { lo, hi, .. } => [lo].into_iter().chain(hi).collect(),
             Rvalue::Call { callee, args } => [callee].into_iter().chain(args).collect(),
-            Rvalue::Comptime { .. } => Vec::new(),
+            Rvalue::Comptime { .. } | Rvalue::Quote { .. } => Vec::new(),
         };
         operands.into_iter().try_for_each(|o| self.operand(at, o))
     }

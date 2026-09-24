@@ -278,8 +278,17 @@ In order:
      an `Operand::Const`. HIR: a `$for` last in a block is not its tail. Coverage counts step
      types (`TypedBody::typed_count`). `Rvalue::Comptime { expr, staged }` carries the step's
      bindings. Gap: a report inside a step repeats once per step.
-   - Metaprogramming plan, remaining: (5) quotes and `Code` values (`#{ }`, `$`
-     splices, `Code` parameters, `std.meta.source`/`span`), plus duplicate computed names.
+   - Decision 86 (batch 5, code values): `eval::Code { expr, within, bound }`, `Value::Code`,
+     `TyKind::{code, quoted}`; `env/code.rs`: `Env::{code, quoted, splice}`, `Func::quotes`
+     (parameters of type `Code(T)`); `Env::eval` quotes `#{ }`, splices `$c`, passes code
+     arguments; the typer types quotes as `Code(T)`, splices as `T` (`Typer::comptime`), code
+     arguments against `T` (`typeck/call.rs`); MIR `Rvalue::Quote` (interpreter builds the code
+     in the frame's environment); `lang.meta.source` and `std.meta.Quoted` (`c.source()`);
+     `lang.mem.len` applies at compile time. Tests: `driver/tests/driver/quotes.rs`. Remaining:
+     expansion of spliced code at the call site (MIR inlining: `assert(len <= 64)` in a
+     run-time body stays unbuilt, since the code reads the caller's locals), `c.span()` (needs a
+     span value type), quote levels (`$$`), fresh binders inside quotes, `std.meta.syntax`,
+     duplicate computed names.
    - `types.no_member` on values stays off: turning it on (tried) reports members the corpus
      stand-ins lack. Needed first: stand-in methods for `Timer`, `Serial`, `Led`, `Dma`, `Fs`,
      `Alloc`, `Device`, `System`, `Cache`, `Queue`, `Packet`, `Uart` in `corpus/support`,

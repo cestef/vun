@@ -33,6 +33,16 @@ pub struct Func {
     pub staged: Arc<[Staging]>,
 }
 
+/// A code value (spec 03, section 4): an expression, and what it was written under, where its
+/// names resolve (hygiene by construction): the compile-time call and every binder bound there.
+/// A quote `#{ e }` is one, and so is an argument for a `Code(T)` parameter.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct Code {
+    pub expr: ExprRef,
+    pub within: Option<Arc<Instance>>,
+    pub bound: Arc<[Staging]>,
+}
+
 /// A `$for` binder bound to one item of its iteration (spec 03, section 2): what that step
 /// generates sees the binder as the item.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
