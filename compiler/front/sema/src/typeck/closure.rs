@@ -62,13 +62,14 @@ impl Typer<'_, '_, '_> {
             replace(&mut self.written, written),
             take(&mut self.loops),
             replace(&mut self.yields, yields),
+            replace(&mut self.framing, yields.is_some().then_some(literal)),
         );
         let found = self.block_value(body, result);
         if let (Some(found), Some(result)) = (found, result) {
             let at = hir.blocks[body].tail.map_or(hir.blocks[body].origin, |t| hir.exprs[t].origin);
             self.expect(at, found, result, written);
         }
-        (self.result, self.written, self.loops, self.yields) = outer;
+        (self.result, self.written, self.loops, self.yields, self.framing) = outer;
         Some(Signature::new(types?, signature_result?))
     }
 

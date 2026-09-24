@@ -57,6 +57,7 @@ pub const STAGES: &[Stage] = &[
             errors::LAYOUT_BITS_WIDTH,
             errors::SAFETY,
             errors::BINDING_HOLE_VALUE,
+            errors::COROUTINE,
         ],
         input: Input::Source,
     },

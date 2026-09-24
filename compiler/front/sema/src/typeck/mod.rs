@@ -178,6 +178,8 @@ pub struct Typer<'e, 'a, 'db> {
     loops: Vec<loops::Loop>,
     /// What the coroutine function typed yields, which `yield` values are checked against.
     yields: Option<Ty>,
+    /// The coroutine function literal typed, whose frame may not contain itself.
+    framing: Option<ExprId>,
     /// How many `unsafe` expressions enclose the expression typed: where unchecked operations
     /// are vouched for (spec 07, section 4).
     vouched: usize,
@@ -202,6 +204,7 @@ impl<'e, 'a, 'db> Typer<'e, 'a, 'db> {
             written: None,
             loops: Vec::new(),
             yields: None,
+            framing: None,
             vouched: 0,
             diag: DiagCtxt::new(),
         }
