@@ -47,6 +47,9 @@ Rules, all checked on the control-flow graph:
 - A part named without running the program (a field, a tuple position, an item at a constant
   index) has its own state once written: `buf[0] = 1;` makes `buf[0]` readable, not `buf[1]`. A
   part at an index known only at run time needs the whole place `init`.
+- A linear value cannot be moved out of a place reached through `.*`: a borrow or an owner
+  does not give up what it points to. Matching or reading through the borrow itself binds by
+  borrow instead (`place.move_out_of_borrow`).
 - **At every scope exit, every place holding a linear value must be `uninit`.** Forgetting to close,
   free, release or finish something is a compile error. No destructor ever runs implicitly.
 - A place that is `init` on one incoming path and `uninit` on another cannot be used after the join.

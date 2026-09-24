@@ -6,3 +6,6 @@ pub const PLACE_READ_UNINIT: DiagId = DiagId::new("lang.errors.place.read_uninit
 pub const PLACE_LINEAR_LEAK: DiagId = DiagId::new("lang.errors.place.linear_leak");
 pub const PLACE_AMBIGUOUS_JOIN: DiagId = DiagId::new("lang.errors.place.ambiguous_join");
 pub const PLACE_OUT_UNWRITTEN: DiagId = DiagId::new("lang.errors.place.out_unwritten");
+pub const PLACE_MOVE_OUT_OF_BORROW: DiagId = DiagId::new(
+    "lang.errors.place.move_out_of_borrow",
+);

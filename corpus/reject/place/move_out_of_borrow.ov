@@ -1,0 +1,14 @@
+//! Matching the target of a borrow moves a linear value out of it; matching the borrow binds by
+//! borrow (spec 05, section 1; spec 01, section 4).
+
+Node := struct { value: u32, next: ?Own(Node) };
+
+sum_list := (head: &?Own(Node)) -> u32 {
+    mut sum: u32 = 0;
+    mut cur := head;
+    for .some(node) = cur.* { //~ place.move_out_of_borrow
+        sum +|= node.*.value;
+        cur = &node.*.next;
+    }
+    sum
+};

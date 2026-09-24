@@ -113,12 +113,52 @@ impl<'b> Analysis<'b> {
             }
         }
         self.reporting = true;
+        self.moved_out();
         for (block, states) in at.iter() {
             if let Some(states) = states {
                 self.block(block, &mut states.clone());
             }
         }
         self.diag
+    }
+
+    /// Each linear value read whole out of a place reached through `.*` is moved out of a
+    /// borrow or owner, which does not own it to give. The local it lands in is left out of the
+    /// linear ones, so that the report is not repeated as a leak.
+    fn moved_out(&mut self) {
+        let body = self.body;
+        for (_, block) in body.blocks.iter() {
+            for stmt in &block.stmts {
+                if let Rvalue::Use(Operand::Place(source)) = &stmt.value
+                    && source.is_indirect()
+                    && stmt.place.projection.is_empty()
+                    && self.linear.remove(&stmt.place.local)
+                {
+                    let msg =
+                        Msg::new().text("this moves a linear value out of a borrow, which does not own it");
+                    self.report(errors::PLACE_MOVE_OUT_OF_BORROW, stmt.origin, msg);
+                    self.derived(stmt.place.local);
+                }
+            }
+        }
+    }
+
+    /// Leaves out of the linear locals those holding `local` or a part of it, transitively.
+    fn derived(&mut self, local: Local) {
+        let (mut work, mut seen) = (vec![local], BTreeSet::from([local]));
+        while let Some(from) = work.pop() {
+            for (_, block) in self.body.blocks.iter() {
+                for stmt in &block.stmts {
+                    if let Rvalue::Use(Operand::Place(source)) = &stmt.value
+                        && source.local == from
+                        && seen.insert(stmt.place.local)
+                    {
+                        self.linear.remove(&stmt.place.local);
+                        work.push(stmt.place.local);
+                    }
+                }
+            }
+        }
     }
 
     /// Parameters are `init`, other locals `uninit`; a borrow parameter's target is in the

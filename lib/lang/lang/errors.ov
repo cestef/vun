@@ -86,6 +86,7 @@ place := struct {
     linear_leak := diag.Diag{ .explanation = meta.embed("errors/place/linear_leak.md") };
     ambiguous_join := diag.Diag{ .explanation = meta.embed("errors/place/ambiguous_join.md") };
     out_unwritten := diag.Diag{ .explanation = meta.embed("errors/place/out_unwritten.md") };
+    move_out_of_borrow := diag.Diag{ .explanation = meta.embed("errors/place/move_out_of_borrow.md") };
 };
 
 /// Scoped borrows and exclusivity (spec 05, sections 4 and 8).
