@@ -23,6 +23,7 @@ pub const STAGES: &[Stage] = &[
             errors::NAMES_SHADOWED,
             errors::NAMES_UNRESOLVED,
             errors::BINDING_IRREFUTABLE_TEST,
+            errors::META_ESCAPE,
             errors::PACKAGE,
         ],
     },

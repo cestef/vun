@@ -1,6 +1,7 @@
 //! The resolving walk: scopes follow the tree, and each binder is checked as it is declared.
 
 use overt_diag::{ChildKind, DiagCx, Diagnostic, Msg, errors};
+use overt_grammar::TokenKind;
 use overt_index::IndexVec;
 
 use super::Res;
@@ -22,6 +23,8 @@ pub(super) struct Resolver<'c, 'd> {
     /// Whether the declarations visited are namespace members, declared up front, rather than
     /// block statements; `$for` bodies keep the value of their list.
     pub(super) members: bool,
+    /// The quotes around the current node (spec 03, section 4).
+    pub(super) quotes: usize,
     pub(super) cx: &'c mut DiagCx<'d>,
 }
 
@@ -179,6 +182,8 @@ impl Visitor for Resolver<'_, '_> {
     fn expr(&mut self, hir: &Hir, expr: ExprId) {
         let declaring = std::mem::replace(&mut self.declaring, false);
         match &hir.exprs[expr].kind {
+            ExprKind::Quote(block) => self.quoted(hir, *block),
+            ExprKind::Prefix { op: TokenKind::Dollar, .. } => self.escape(hir, expr),
             ExprKind::Name(name) => {
                 let ns = *self.namespaces.last().expect("every expression is inside the file's namespace");
                 let res = self.scopes.lookup(hir, *name).map_or(Res::Outer { name: *name, ns }, Res::Binder);

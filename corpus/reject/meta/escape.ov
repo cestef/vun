@@ -1,0 +1,4 @@
+//! Each `$` escapes one stage: out of a quote, or from run time to compile time (spec 03,
+//! section 4).
+
+square := ($x: Code(u32)) -> Code(u64) { #{ $$$x * $x } }; //~ meta.escape

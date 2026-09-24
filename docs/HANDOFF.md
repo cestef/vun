@@ -287,8 +287,9 @@ In order:
      `lang.mem.len` applies at compile time. Tests: `driver/tests/driver/quotes.rs`. Remaining:
      expansion of spliced code at the call site (MIR inlining: `assert(len <= 64)` in a
      run-time body stays unbuilt, since the code reads the caller's locals), `c.span()` (needs a
-     span value type), quote levels (`$$`), fresh binders inside quotes, `std.meta.syntax`,
-     duplicate computed names.
+     span value type), fresh binders inside quotes, `std.meta.syntax`,
+     duplicate computed names. Decision 87: `meta.escape` (`hir/src/resolve/stage.rs`, the
+     resolver counts quotes; a `$(e)` computed name is not counted as a level yet).
    - `types.no_member` on values stays off: turning it on (tried) reports members the corpus
      stand-ins lack. Needed first: stand-in methods for `Timer`, `Serial`, `Led`, `Dma`, `Fs`,
      `Alloc`, `Device`, `System`, `Cache`, `Queue`, `Packet`, `Uart` in `corpus/support`,

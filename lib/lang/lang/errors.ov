@@ -70,6 +70,7 @@ layout := struct {
 /// Compile-time evaluation and reflection (spec 03).
 meta := struct {
     frozen := diag.Diag{ .explanation = meta.embed("errors/meta/frozen.md") };
+    escape := diag.Diag{ .explanation = meta.embed("errors/meta/escape.md") };
 };
 
 /// Compile-time evaluation (spec 03, section 7).

@@ -82,3 +82,11 @@ fn irrefutable_tests_are_reported() {
     assert_eq!(check("f := (o: ?u8) { if .some(x) = o { } for .some(y) = o { } };").0, []);
     assert_eq!(check("f := (o: E) { if n := .a | .b = o { } };").0, []);
 }
+
+#[test]
+fn each_dollar_escapes_one_stage() {
+    let ok = "f := ($x: u8) { y := #{ #{ $$x } }; z := $x; w := #{ $x }; };";
+    assert!(check(ok).0.is_empty());
+    assert_eq!(check("f := ($x: u8) { y := $$x; };").0, [errors::META_ESCAPE]);
+    assert_eq!(check("f := ($x: u8) { y := #{ $$$x }; };").0, [errors::META_ESCAPE]);
+}

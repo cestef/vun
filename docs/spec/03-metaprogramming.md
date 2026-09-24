@@ -104,7 +104,11 @@ escaping inside a quote, and splicing code.
 | run time | insert the code | evaluate at compile time, embed the constant |
 | inside a quote | insert the code | evaluate at generation time, embed the constant |
 
-Quotes nest; `$` escapes one level, `$$` two. Multi-stage generation needs no other syntax.
+Quotes nest; `$` escapes one level, `$$` two. Multi-stage generation needs no other syntax. Each
+`$` escapes one level, out of the innermost quote around it or, outside every quote, from run time
+to compile time, so inside `n` quotes a chain of at most `n + 1` is meaningful; a longer one is
+`meta.escape`. Because a code value keeps what it was written under and evaluation is pure, a
+spliced value does not depend on when its level is generated.
 
 ### Code parameters
 

@@ -81,6 +81,7 @@ pub const LAYOUT_BITS_WIDTH: DiagId = DiagId::new("lang.errors.layout.bits_width
 /// Compile-time evaluation and reflection (spec 03).
 pub const META: DiagId = DiagId::new("lang.errors.meta");
 pub const META_FROZEN: DiagId = DiagId::new("lang.errors.meta.frozen");
+pub const META_ESCAPE: DiagId = DiagId::new("lang.errors.meta.escape");
 /// Compile-time evaluation (spec 03, section 7).
 pub const COMPTIME: DiagId = DiagId::new("lang.errors.comptime");
 pub const COMPTIME_TRAP: DiagId = DiagId::new("lang.errors.comptime.trap");
@@ -189,6 +190,7 @@ pub const ALL: &[DiagId] = &[
     COROUTINE_RECURSIVE_FRAME,
     LAYOUT_BITS_WIDTH,
     META_FROZEN,
+    META_ESCAPE,
     COMPTIME_TRAP,
     COMPTIME_EXHAUSTED,
     PLACE_READ_UNINIT,
@@ -258,6 +260,7 @@ pub const EXPLANATIONS: &[(DiagId, &str)] = &[
     (COROUTINE_RECURSIVE_FRAME, "lang/lang/errors/coroutine/recursive_frame.md"),
     (LAYOUT_BITS_WIDTH, "lang/lang/errors/layout/bits_width.md"),
     (META_FROZEN, "lang/lang/errors/meta/frozen.md"),
+    (META_ESCAPE, "lang/lang/errors/meta/escape.md"),
     (COMPTIME_TRAP, "lang/lang/errors/comptime/trap.md"),
     (COMPTIME_EXHAUSTED, "lang/lang/errors/comptime/exhausted.md"),
     (PLACE_READ_UNINIT, "lang/lang/errors/place/read_uninit.md"),

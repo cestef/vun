@@ -11,6 +11,7 @@
 mod declare;
 mod outer;
 mod scope;
+mod stage;
 #[cfg(test)]
 mod tests;
 mod walk;
@@ -43,7 +44,8 @@ pub struct Resolution {
 }
 
 impl Hir {
-    /// Resolves the names of `hir` and reports duplicates, shadowing and irrefutable tests.
+    /// Resolves the names of `hir` and reports duplicates, shadowing, irrefutable tests and `$`
+    /// with no stage to escape to.
     pub fn resolve(&self, cx: &mut DiagCx<'_>) -> Resolution {
         let mut resolver = walk::Resolver {
             scopes: Scopes::default(),
@@ -52,6 +54,7 @@ impl Hir {
             namespaces: Vec::new(),
             declaring: false,
             members: false,
+            quotes: 0,
             cx,
         };
         if let Some(root) = self.root {
