@@ -1,10 +1,8 @@
 //! Restricted names and the scopes `#[visible(...)]` widens them to (spec 01, section 7).
 
-mod common;
-
 use std::path::{Path, PathBuf};
 
-use common::Fixture;
+use crate::common::Fixture;
 use overt_diag::{DiagId, errors};
 use overt_span::EXTENSION;
 

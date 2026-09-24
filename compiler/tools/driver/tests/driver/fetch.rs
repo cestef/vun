@@ -1,9 +1,7 @@
 //! `overt pkg fetch` end to end: a package archive served by a `file://` mirror is stored,
 //! verified, used through the prelude, and a stored file changed afterwards is named.
 
-mod common;
-
-use common::Fixture;
+use crate::common::Fixture;
 use overt_diag::errors;
 use overt_driver::packages::Fetched;
 use overt_pkg::{Archive, Scheme};

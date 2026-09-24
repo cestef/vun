@@ -1,9 +1,7 @@
 //! Borrows, `unsafe` blocks, attributed type literals, struct patterns, and reports at the
 //! branch that does not fit.
 
-mod common;
-
-use common::Fixture;
+use crate::common::Fixture;
 use overt_diag::errors;
 
 #[test]

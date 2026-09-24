@@ -1,9 +1,7 @@
 //! `.replace`: the root manifest substitutes a package for an identity anywhere in the graph, and
 //! the lockfile records it.
 
-mod common;
-
-use common::Fixture;
+use crate::common::Fixture;
 use overt_build::manifest::Identity;
 
 const HAL: Identity = Identity { id: 7, major: 1 };

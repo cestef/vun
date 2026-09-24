@@ -1,9 +1,7 @@
 //! Minimal version selection: the largest version any package requires is the one every dependent
 //! uses, the lockfile records it, and a lockfile that does not is reported.
 
-mod common;
-
-use common::Fixture;
+use crate::common::Fixture;
 use overt_build::lock::{self, Lock, Locked};
 use overt_build::manifest::Identity;
 use overt_diag::errors;

@@ -1,8 +1,6 @@
 //! Impls and witnesses (spec 02, section 3), over the toolchain's `lang` and `std`.
 
-mod common;
-
-use common::Fixture;
+use crate::common::Fixture;
 use overt_diag::errors;
 
 #[test]

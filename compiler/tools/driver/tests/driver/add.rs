@@ -1,9 +1,7 @@
 //! `overt pkg add`: a path and an archive are declared in the manifest, the archive with the hash
 //! it had when first fetched, and the project then resolves through them.
 
-mod common;
-
-use common::Fixture;
+use crate::common::Fixture;
 use overt_build::layout::MANIFEST;
 use overt_build::manifest::{DepKind, Source, Version};
 use overt_diag::errors;

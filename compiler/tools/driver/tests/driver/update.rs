@@ -1,9 +1,7 @@
 //! `overt pkg update`: a dependency is raised to the newest release its index lists in its major,
 //! verified against the listed hash, and its manifest entry rewritten.
 
-mod common;
-
-use common::Fixture;
+use crate::common::Fixture;
 use overt_build::index::{Index, Listing};
 use overt_build::layout::MANIFEST;
 use overt_build::manifest::Identity;

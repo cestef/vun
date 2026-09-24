@@ -1,8 +1,6 @@
 //! `$for` and `$if` in type bodies and computed names (spec 03, section 2).
 
-mod common;
-
-use common::Fixture;
+use crate::common::Fixture;
 use overt_diag::errors;
 
 #[test]

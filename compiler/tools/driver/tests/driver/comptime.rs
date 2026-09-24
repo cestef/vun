@@ -1,8 +1,6 @@
 //! Compile-time evaluation through the whole front end, over the toolchain's `lang` and `std`.
 
-mod common;
-
-use common::Fixture;
+use crate::common::Fixture;
 use overt_diag::errors;
 use overt_span::SourceMap;
 

@@ -1,8 +1,6 @@
 //! Packages written for tests through the manifest writer: manifests, published archives, and
 //! checks from a fresh session.
 
-#![allow(dead_code, reason = "each test binary uses part of the fixture")]
-
 use std::path::{Path, PathBuf};
 
 use overt_build::layout::MANIFEST;

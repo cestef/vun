@@ -1,8 +1,6 @@
 //! Loops: heads, items through `lang.ops.Iterate` (the table `iteration`), and `break` values.
 
-mod common;
-
-use common::Fixture;
+use crate::common::Fixture;
 use overt_diag::errors;
 
 #[test]

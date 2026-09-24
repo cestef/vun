@@ -1,8 +1,6 @@
 //! Namespaces on disk: a file and the directory of the same name are one namespace.
 
-mod common;
-
-use common::Fixture;
+use crate::common::Fixture;
 use overt_diag::errors;
 
 #[test]

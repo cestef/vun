@@ -1,8 +1,6 @@
 //! Generic code is checked per instantiation and reported at the definition (spec 02, section 3).
 
-mod common;
-
-use common::Fixture;
+use crate::common::Fixture;
 use overt_diag::errors;
 
 #[test]

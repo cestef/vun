@@ -1,9 +1,7 @@
 //! Arrays, slices and ranges: `lang.mem.Array`, `lang.mem.Slice` and `lang.Bounds`, with their
 //! methods from `std` impls (decision 78).
 
-mod common;
-
-use common::Fixture;
+use crate::common::Fixture;
 use overt_diag::errors;
 
 #[test]
