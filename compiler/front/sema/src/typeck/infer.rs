@@ -61,9 +61,7 @@ impl Typer<'_, '_, '_> {
             ExprKind::Prefix { op: TokenKind::Dollar, operand, .. } => self.comptime(expr, *operand),
             ExprKind::Prefix { op: TokenKind::Bang, operand, .. } => self.logic(&[*operand]),
             ExprKind::Prefix { op: TokenKind::Amp, mode, operand } => self.borrow(expr, *mode, *operand),
-            ExprKind::Prefix { op: TokenKind::Unsafe, operand, .. } => {
-                self.typed_as(*operand, self.expected(expr))
-            }
+            ExprKind::Prefix { op: TokenKind::Unsafe, operand, .. } => self.vouching(expr, *operand),
             ExprKind::Attributed { attrs, inner } => self.attributed(expr, attrs, *inner),
             ExprKind::Infix { op: TokenKind::And | TokenKind::Or, left, right: Some(right) } => {
                 self.logic(&[*left, *right])
@@ -74,6 +72,7 @@ impl Typer<'_, '_, '_> {
             ExprKind::Postfix { op: TokenKind::Question, operand } => self.early_return(expr, *operand),
             ExprKind::Postfix { op: TokenKind::DotStar, operand } => {
                 let known = self.typed(*operand)?;
+                self.raw_deref(expr, known.ty);
                 let owned = || self.env().cx.get::<Members>(&known.ty)?.deref().map(|(_, ty)| ty);
                 Some(Known { ty: known.ty.pointee().or_else(owned)?, ..known })
             }
@@ -123,6 +122,7 @@ impl Typer<'_, '_, '_> {
 
     /// A local by the type it was bound with; any other name by its declaration's type.
     fn name(&mut self, expr: ExprId) -> Option<Known> {
+        self.mutable_static(expr);
         if let Some(Res::Binder(b)) = self.env().parsed.resolution.names[expr] {
             if let Some(known) = self.locals.get(&b) {
                 return Some(*known);
@@ -166,7 +166,7 @@ impl Typer<'_, '_, '_> {
                         Found::Variant(v) => {
                             let params =
                                 v.payload.iter().map(|p| p.as_ref().ok().copied()).collect::<Option<_>>()?;
-                            Some(Known { ty: Signature { params, result: ty }.ty(), stage: Stage::Compile })
+                            Some(Known { ty: Signature::new(params, ty).ty(), stage: Stage::Compile })
                         }
                         Found::Field(_) => None,
                         Found::Absent | Found::Unknown => {
@@ -181,6 +181,7 @@ impl Typer<'_, '_, '_> {
         let known = known?;
         // `.` looks through borrows, and through owners lacking the member (spec 01, section 4).
         let known = Known { ty: self.env().reach(known.ty, name).1, ..known };
+        self.cell_member(expr, known.ty);
         let members = self.env().cx.get::<Members>(&known.ty);
         match members.as_deref().map_or(Found::Unknown, |m| m.find(name)) {
             Found::Field(field) => {

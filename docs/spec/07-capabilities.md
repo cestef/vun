@@ -65,6 +65,15 @@ A function type carries, as part of the type, and all checked:
 
 Function pointers carry the same properties, so the analyses survive indirect calls.
 
+`unsafe` is one marker with one meaning: **`unsafe x` is used only where someone vouched for
+it.** An `unsafe` expression or block is used where it is written, so writing it vouches for the
+unchecked operations inside. A function literal or function type marked `unsafe` is used at each
+call, so each call sits inside an `unsafe` expression; the function's body vouches for nothing by
+being marked. The marker is the `lang` item `lang.safety.unsafe` (the table `markers`), carried
+in the function type; a function without it is accepted where one with it is expected, never the
+reverse. Unchecked operations: calling such a function, `.*` on a raw pointer, any access to a
+top-level `mut` binding, and a member of a `lang.mem.Cell` (`safety.requires_unsafe`).
+
 ### Stack bounds
 
 The compiler computes the worst-case stack use of every function from the whole-program call graph

@@ -15,6 +15,7 @@ pub mod mem;
 pub mod meta;
 pub mod opt;
 pub mod panic;
+pub mod safety;
 pub mod scope;
 pub mod simd;
 pub mod stack;

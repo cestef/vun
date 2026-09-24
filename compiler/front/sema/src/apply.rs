@@ -30,7 +30,7 @@ impl Primitive {
                     return Err(Unevaluated::Unsupported);
                 };
                 let TyKind::Tuple(params) = &*params else { return Err(Unevaluated::Unsupported) };
-                Ok(Value::Type(Signature { params: params.clone(), result }.ty()))
+                Ok(Value::Type(Signature::new(params.clone(), result).ty()))
             }
             // `lang.interface(f)` wraps `f` so that it can constrain `$` parameters.
             (Self::Lang(Lang::interface), [Value::Fn(f)]) => Ok(Value::Interface(f.clone())),

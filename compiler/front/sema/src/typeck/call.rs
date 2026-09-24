@@ -84,6 +84,9 @@ impl Typer<'_, '_, '_> {
             }
         }
         let signature = signature.filter(|_| positional)?;
+        if signature.is_unsafe() {
+            self.unchecked(call, Msg::new().text("calling a function whose type is ").code("unsafe"));
+        }
         if slots.len() != receiver + found.len() || signature.params.len() < slots.len() {
             return None;
         }

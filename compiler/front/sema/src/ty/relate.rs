@@ -34,6 +34,10 @@ impl TyKind {
         {
             return items.accepts(&found_items);
         }
+        // A function whose markers the expected type has too (spec 07, section 4).
+        if let (Some(expected), Some(found)) = (self.signature(), found.signature()) {
+            return expected.accepts(&found);
+        }
         // Code of a value is accepted where code of a type accepting it is.
         if let (Some(expected), Some(found)) = (self.quoted(), found.quoted()) {
             return expected.accepts(&found);

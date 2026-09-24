@@ -1,6 +1,7 @@
 //! The signatures of primitives: each is declared in `lang` with a function type (decision 66),
 //! whose types may name its `$` parameters, so a call is typed with them bound to its arguments.
 
+use overt_grammar::MARKERS;
 use overt_hir::tree::{Entry, ExprKind, Param, PatKind};
 use overt_intern::Symbol;
 
@@ -40,7 +41,15 @@ impl Env<'_, '_> {
         let env = Env::of(self.cx, &decl.file).ok_or(Unevaluated::Absent)?;
         let parsed = std::sync::Arc::clone(&env.parsed);
         let hir = &parsed.hir;
-        let annotation = hir.decls[decl.decl.id].ty.ok_or(Unevaluated::Unsupported)?;
+        let mut annotation = hir.decls[decl.decl.id].ty.ok_or(Unevaluated::Unsupported)?;
+        // `unsafe (...) -> T`: the prefixes mark the signature (the table `markers`).
+        let mut markers = Vec::new();
+        while let ExprKind::Prefix { op, operand, .. } = &hir.exprs[annotation].kind
+            && MARKERS.iter().any(|(t, _)| t == op)
+        {
+            markers.push(*op);
+            annotation = *operand;
+        }
         let ExprKind::FnType { params, returns } = &hir.exprs[annotation].kind else {
             return Err(Unevaluated::Unsupported);
         };
@@ -54,6 +63,7 @@ impl Env<'_, '_> {
                 hir.binders[binder].comptime.then(|| Some(Staging { binder: node, value: arg.clone()? }))?
             })
             .collect();
-        env.staging(&bound).signature(params, *returns)
+        let signature = env.staging(&bound).signature(params, *returns)?;
+        Ok(markers.into_iter().fold(signature, Signature::marked))
     }
 }

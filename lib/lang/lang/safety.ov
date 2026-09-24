@@ -1,0 +1,5 @@
+//! What `unsafe` marks (spec 07, section 4): something used only where someone vouched for the
+//! facts the compiler cannot check. A block or expression is vouched for where it is written;
+//! a function, or a function type, at each call.
+
+\unsafe: Attribute = _;

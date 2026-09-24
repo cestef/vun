@@ -46,7 +46,12 @@ impl Env<'_, '_> {
         };
         let mut signature = self.signature(params, None)?;
         signature.result = result.as_type().ok_or(Unevaluated::Unsupported)?;
-        Ok(signature)
+        // `unsafe (p: *T) -> T { ... }`: the prefixes around the literal mark its type.
+        let marking = hir.exprs.iter().filter_map(|(_, e)| match &e.kind {
+            ExprKind::Prefix { op, operand, .. } if *operand == literal => Some(*op),
+            _ => None,
+        });
+        Ok(marking.fold(signature, Signature::marked))
     }
 
     /// What resuming a frame of type `frame` gives: the result of its interface's `resume`, such

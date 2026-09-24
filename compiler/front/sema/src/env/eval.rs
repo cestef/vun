@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use overt_grammar::{BORROWS, Form, TYPE_PREFIXES, TokenKind};
+use overt_grammar::{BORROWS, Form, MARKERS, TYPE_PREFIXES, TokenKind};
 use overt_hir::resolve::Res;
 use overt_hir::tree::{Arg, BlockId, Cond, Entry, ExprId, ExprKind, List, Lit, Name, Param};
 use overt_intern::Symbol;
@@ -29,18 +29,7 @@ impl Env<'_, '_> {
             ExprKind::StructLit { ty: Some(ty), fields } => self.record(self.ty(*ty)?, fields),
             ExprKind::StructLit { ty: None, .. } | ExprKind::DotName(_) => self.eval_as(expr, None),
             ExprKind::Index { object, index } => self.index(*object, *index),
-            ExprKind::Name(_) => match self.parsed.resolution.names[expr] {
-                Some(Res::Binder(b)) if let Some(bound) = self.bindings.get(&b) => Ok(bound.clone()),
-                // A `$` local that is never assigned has the value of its declaration, fixed by
-                // the call evaluated in, such as `$Regs := struct { ... }`.
-                Some(Res::Binder(b))
-                    if hir.binders[b].comptime && !hir.binders[b].mutable && hir.member_decl(b).is_none() =>
-                {
-                    let decl = hir.decl_of(b).ok_or(Unevaluated::Runtime)?;
-                    self.eval(hir.decls[decl].value.ok_or(Unevaluated::Runtime)?)
-                }
-                _ => self.value_of(self.resolve(expr)?),
-            },
+            ExprKind::Name(_) => self.named(expr),
             ExprKind::Member { object, name } => {
                 let name = self.name(name).ok_or(Unevaluated::Unsupported)?;
                 self.member(self.eval(*object)?, name)
@@ -56,6 +45,9 @@ impl Env<'_, '_> {
             {
                 let ty = self.ty(*operand)?;
                 self.apply(self.item(item)?, vec![Value::Type(ty)])
+            }
+            ExprKind::Prefix { op, operand, .. } if MARKERS.iter().any(|(t, _)| t == op) => {
+                self.marked(*op, *operand)
             }
             ExprKind::ArrayType { len, elem } => {
                 let (len, elem) = (self.eval(*len)?, self.ty(*elem)?);
@@ -190,6 +182,34 @@ impl Env<'_, '_> {
         }
     }
 
+    /// The value of the name `expr`: a binding of this environment, a `$` local fixed by its
+    /// declaration, or what the name resolves to.
+    fn named(&self, expr: ExprId) -> Result<Value, Unevaluated> {
+        let hir = &self.parsed.hir;
+        match self.parsed.resolution.names[expr] {
+            Some(Res::Binder(b)) if let Some(bound) = self.bindings.get(&b) => Ok(bound.clone()),
+            // A `$` local that is never assigned has the value of its declaration, fixed by
+            // the call evaluated in, such as `$Regs := struct { ... }`.
+            Some(Res::Binder(b))
+                if hir.binders[b].comptime && !hir.binders[b].mutable && hir.member_decl(b).is_none() =>
+            {
+                let decl = hir.decl_of(b).ok_or(Unevaluated::Runtime)?;
+                self.eval(hir.decls[decl].value.ok_or(Unevaluated::Runtime)?)
+            }
+            _ => self.value_of(self.resolve(expr)?),
+        }
+    }
+
+    /// `unsafe (A) -> R`: the prefix `op` marks a function type (the table `markers`); any other
+    /// operand keeps its value.
+    fn marked(&self, op: TokenKind, operand: ExprId) -> Result<Value, Unevaluated> {
+        let value = self.eval(operand)?;
+        match value.as_type().and_then(|t| t.signature()) {
+            Some(signature) => Ok(Value::Type(signature.marked(op).ty())),
+            None => Ok(value),
+        }
+    }
+
     /// `&T`, `&mut T`, ...: the borrow type the word after `&` names (appendix B), applied to the
     /// type `operand`. A borrow of a value exists at run time only.
     fn borrow(&self, expr: ExprId, mode: Option<Symbol>, operand: ExprId) -> Result<Value, Unevaluated> {
@@ -238,7 +258,7 @@ impl Env<'_, '_> {
                 _ => Err(Unevaluated::Unsupported),
             })
             .collect::<Result<_, _>>()?;
-        Ok(Signature { params, result: self.result(returns)? })
+        Ok(Signature::new(params, self.result(returns)?))
     }
 
     /// The function value the function literal `literal` evaluates to here, inside the call

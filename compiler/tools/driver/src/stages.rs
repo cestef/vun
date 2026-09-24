@@ -54,6 +54,7 @@ pub const STAGES: &[Stage] = &[
             errors::COMPTIME,
             errors::IMPL,
             errors::LAYOUT_BITS_WIDTH,
+            errors::SAFETY,
         ],
         input: Input::Source,
     },

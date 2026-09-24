@@ -4,15 +4,18 @@
 #[allow(non_camel_case_types, reason = "variants are named as their declarations")]
 pub enum Hint {
     cold,
+    /// Control never gets here: unchecked, as after assembly that does not return.
+    unreachable,
 }
 impl Hint {
     pub const NAMESPACE: &str = "lang.hint";
-    pub const ALL: &[Self] = &[Self::cold];
+    pub const ALL: &[Self] = &[Self::cold, Self::unreachable];
     /// The declaration's name.
     #[must_use]
     pub const fn name(self) -> &'static str {
         match self {
             Self::cold => "cold",
+            Self::unreachable => "unreachable",
         }
     }
 }

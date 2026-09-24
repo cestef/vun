@@ -40,6 +40,8 @@ pub enum Primitive {
     Opt(opt::Opt),
     /// `lang.panic`
     Panic(panic::Panic),
+    /// `lang.safety`
+    Safety(safety::Safety),
     /// `lang.scope`
     Scope(scope::Scope),
     /// `lang.simd`
@@ -66,6 +68,7 @@ impl Primitive {
         Self::Float(float::Float::mul_add),
         Self::Flow(flow::Flow::tail),
         Self::Hint(hint::Hint::cold),
+        Self::Hint(hint::Hint::unreachable),
         Self::Int(int::Int::to),
         Self::Int(int::Int::wrap),
         Self::Int(int::Int::sat),
@@ -124,6 +127,7 @@ impl Primitive {
         Self::Panic(panic::Panic::trap),
         Self::Panic(panic::Panic::fail),
         Self::Panic(panic::Panic::never),
+        Self::Safety(safety::Safety::r#unsafe),
         Self::Scope(scope::Scope::Scope),
         Self::Scope(scope::Scope::package),
         Self::Scope(scope::Scope::workspace),
@@ -170,6 +174,7 @@ impl Primitive {
             Self::Meta(_) => meta::Meta::NAMESPACE,
             Self::Opt(_) => opt::Opt::NAMESPACE,
             Self::Panic(_) => panic::Panic::NAMESPACE,
+            Self::Safety(_) => safety::Safety::NAMESPACE,
             Self::Scope(_) => scope::Scope::NAMESPACE,
             Self::Simd(_) => simd::Simd::NAMESPACE,
             Self::Stack(_) => stack::Stack::NAMESPACE,
@@ -197,6 +202,7 @@ impl Primitive {
             Self::Meta(p) => p.name(),
             Self::Opt(p) => p.name(),
             Self::Panic(p) => p.name(),
+            Self::Safety(p) => p.name(),
             Self::Scope(p) => p.name(),
             Self::Simd(p) => p.name(),
             Self::Stack(p) => p.name(),

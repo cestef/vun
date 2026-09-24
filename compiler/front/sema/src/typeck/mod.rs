@@ -21,6 +21,7 @@ pub use loops::Iteration;
 mod pattern;
 mod prefix;
 mod range;
+mod safety;
 mod sequence;
 mod staged;
 mod suspend;
@@ -177,6 +178,9 @@ pub struct Typer<'e, 'a, 'db> {
     loops: Vec<loops::Loop>,
     /// What the coroutine function typed yields, which `yield` values are checked against.
     yields: Option<Ty>,
+    /// How many `unsafe` expressions enclose the expression typed: where unchecked operations
+    /// are vouched for (spec 07, section 4).
+    vouched: usize,
     pub diag: DiagCtxt,
 }
 
@@ -198,6 +202,7 @@ impl<'e, 'a, 'db> Typer<'e, 'a, 'db> {
             written: None,
             loops: Vec::new(),
             yields: None,
+            vouched: 0,
             diag: DiagCtxt::new(),
         }
     }

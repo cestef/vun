@@ -69,7 +69,7 @@ impl Typer<'_, '_, '_> {
             self.expect(at, found, result, written);
         }
         (self.result, self.written, self.loops, self.yields) = outer;
-        Some(Signature { params: types?, result: signature_result? })
+        Some(Signature::new(types?, signature_result?))
     }
 
     /// `[captures] (params) -> R { body }`: each capture typed here, the body typed as part of

@@ -21,7 +21,7 @@ impl Typer<'_, '_, '_> {
                 Found::Variant(v) if v.payload.is_empty() => compile(expected),
                 Found::Variant(v) => {
                     let params = v.payload.iter().map(|p| p.as_ref().ok().copied()).collect::<Option<_>>()?;
-                    compile(Signature { params, result: expected }.ty())
+                    compile(Signature::new(params, expected).ty())
                 }
                 Found::Decl(decl) => {
                     self.check_visible(expr, name, &decl.visible);

@@ -3,7 +3,10 @@
 start := ($main: (&mut System) -> Exit) -> type { struct {
     #[link.export("_start"), abi.naked]
     entry := () -> never {
-        unsafe { lang.arch.asm("mov rdi, rsp; and rsp, -16; call {boot}", .{ .boot = _boot }) }
+        unsafe {
+            lang.arch.asm("mov rdi, rsp; and rsp, -16; call {boot}", .{ .boot = _boot });
+            lang.hint.unreachable()
+        }
     };
 
     _boot := (sp: *usize) -> never {

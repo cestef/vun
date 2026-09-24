@@ -111,6 +111,12 @@ compound := [
     .{ .token = .star_pipe_eq, .op = .star, .narrowing = .sat },
 ];
 
+/// Prefixes that mark what they apply to with a `lang` item: `unsafe (...) -> T` carries
+/// `lang.safety.unsafe` in its type, as a property calls are checked against (spec 07, section 4).
+markers := [
+    .{ .token = .\unsafe, .item = "lang.safety.unsafe" },
+];
+
 /// What calling a value that is not a function literal means (spec 01, section 4): `f(a, b)` is
 /// `function(&mut f, (a, b))` of `interface`, which function values and closures implement, so a
 /// parameter `$F: Call((T), U)` takes either.
