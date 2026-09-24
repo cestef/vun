@@ -269,8 +269,16 @@ In order:
      `env/path.rs`); `Value::string`. Test: `driver/tests/driver/reflection.rs`. Remaining:
      `decls`, `size` and `offset` (need `layout`), `attrs`/`attr` (need attribute values),
      `meta.frozen` (a cycle through `Members` becomes `Unevaluated::Cycle`, never reported yet).
-   - Metaprogramming plan, remaining: (4) `$for`/`$if`
-     in function bodies (unrolled typing and MIR), (5) quotes and `Code` values (`#{ }`, `$`
+   - Decision 85 (batch 4): `$for`/`$if` in bodies. `typeck/staged.rs`: `Typer::unroll` (the
+     `Visitor::staged` override) types each `$for` step under `Typer::step` (a step `Env`
+     overlay, `Typer::env()`), kept in `TypedBody::steps` by `Step { at, index }`;
+     `Typer::comptime` types `$e`, selecting a `$if`'s branch through `Env::select`
+     (`env/condition.rs`, `Selected`). MIR `build/staged.rs` mirrors it (`Builder::{stmts,
+     unroll, selected}`, `Builder::typed()` follows the step path); a bound comptime binder is
+     an `Operand::Const`. HIR: a `$for` last in a block is not its tail. Coverage counts step
+     types (`TypedBody::typed_count`). Gap: `Rvalue::Comptime` inside a step is evaluated by the
+     interpreter without the step's bindings; a report inside a step repeats once per step.
+   - Metaprogramming plan, remaining: (5) quotes and `Code` values (`#{ }`, `$`
      splices, `Code` parameters, `std.meta.source`/`span`), plus duplicate computed names.
    - `types.no_member` on values stays off: turning it on (tried) reports members the corpus
      stand-ins lack. Needed first: stand-in methods for `Timer`, `Serial`, `Led`, `Dma`, `Fs`,

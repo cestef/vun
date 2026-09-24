@@ -28,6 +28,13 @@ dot := ($N: usize, a: &[N]f32, b: &[N]f32) -> f32 {
 Calling a function value known at compile time is always a static call, so templates compose
 through ordinary higher-order functions.
 
+Among statements, `$for` and `$if` generate statements: each step of a `$for` is the body with
+the binder bound to one item, typed and lowered on its own, so `a.$(f.name)` may have a different
+type in each step. A `$for` has no value and is never a block's value. `$if` used as a value,
+last in a block or in an expression, has the value of the branch it selects (spec 02, section 1).
+`$` on any other expression computes it at compile time; `$(if c { a } else { b })` computes the
+whole `if`.
+
 ## 2. L1: computed names
 
 A name position may hold `$(e)`, where `e` is a compile-time `lang.meta.Name` or string. This is

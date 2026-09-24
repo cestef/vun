@@ -9,7 +9,7 @@ use crate::ty::{Ty, TyKind};
 impl Typer<'_, '_, '_> {
     /// Operands that must be conditions, and their result, a condition.
     pub(super) fn logic(&mut self, operands: &[ExprId]) -> Option<Known> {
-        let condition = self.env.condition().ok();
+        let condition = self.env().condition().ok();
         let mut stage = Stage::Compile;
         for &operand in operands {
             let known = self.typed(operand);

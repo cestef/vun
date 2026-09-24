@@ -27,7 +27,7 @@ impl Typer<'_, '_, '_> {
             }
             ExprKind::Name(_) => self.name(expr),
             ExprKind::Member { object, name } => {
-                let Some(name) = self.env.name(name) else {
+                let Some(name) = self.env().name(name) else {
                     self.typed(*object);
                     return None;
                 };
@@ -60,12 +60,7 @@ impl Typer<'_, '_, '_> {
                 None
             }
             ExprKind::Block(block) => self.block_value(*block, self.expected(expr)),
-            ExprKind::Prefix { op: TokenKind::Dollar, operand, .. } => {
-                let outer = std::mem::replace(&mut self.stage, Stage::Compile);
-                let known = self.typed(*operand);
-                self.stage = outer;
-                known
-            }
+            ExprKind::Prefix { op: TokenKind::Dollar, operand, .. } => self.comptime(expr, *operand),
             ExprKind::Prefix { op: TokenKind::Bang, operand, .. } => self.logic(&[*operand]),
             ExprKind::Prefix { op: TokenKind::Amp, mode, operand } => self.borrow(expr, *mode, *operand),
             ExprKind::Prefix { op: TokenKind::Unsafe, operand, .. } => {
@@ -108,7 +103,9 @@ impl Typer<'_, '_, '_> {
                 self.call(expr, *callee, args)
             }
             // A function literal is a value; its body is typed on its own.
-            ExprKind::Fn { params, returns, .. } => compile(self.env.signature(params, *returns).ok()?.ty()),
+            ExprKind::Fn { params, returns, .. } => {
+                compile(self.env().signature(params, *returns).ok()?.ty())
+            }
             ExprKind::FnType { .. } | ExprKind::Struct(_) | ExprKind::Enum(_) => {
                 compile(TyKind::primitive(Primitive::Lang(Lang::r#type)))
             }
@@ -123,16 +120,16 @@ impl Typer<'_, '_, '_> {
 
     /// A local by the type it was bound with; any other name by its declaration's type.
     fn name(&mut self, expr: ExprId) -> Option<Known> {
-        if let Some(Res::Binder(b)) = self.env.parsed.resolution.names[expr] {
+        if let Some(Res::Binder(b)) = self.env().parsed.resolution.names[expr] {
             if let Some(known) = self.locals.get(&b) {
                 return Some(*known);
             }
             // A binder the environment binds, such as a `$for` binder: its value's type.
-            if let Some(ty) = self.env.bound(b).and_then(Value::ty) {
+            if let Some(ty) = self.env().bound(b).and_then(Value::ty) {
                 return Some(Known { ty, stage: Stage::Compile });
             }
         }
-        self.site(self.env.resolve(expr).ok()?)
+        self.site(self.env().resolve(expr).ok()?)
     }
 
     /// A member of a namespace, of a type's namespace, or of a value: a field, or a declaration of
@@ -141,23 +138,23 @@ impl Typer<'_, '_, '_> {
         let known = self.typed(object);
         // Only a path names a namespace or a type, so nothing else is evaluated here.
         if matches!(self.hir().exprs[object].kind, ExprKind::Name(_) | ExprKind::Member { .. }) {
-            match self.env.eval(object) {
+            match self.env().eval(object) {
                 Ok(Value::Namespace(ns)) => {
-                    let site = self.env.cx.get::<Declared>(&(ns, name))?;
+                    let site = self.env().cx.get::<Declared>(&(ns, name))?;
                     if let Site::Decl(decl) = &site
                         && let Some(visible) =
-                            Env::of(self.env.cx, &decl.file).map(|e| e.decl_visible(decl.decl.id, name))
+                            Env::of(self.env().cx, &decl.file).map(|e| e.decl_visible(decl.decl.id, name))
                     {
                         self.check_visible(expr, name, &visible);
                     }
                     return self.site(site);
                 }
                 Ok(Value::Type(ty)) => {
-                    let members = self.env.cx.get::<Members>(&ty);
+                    let members = self.env().cx.get::<Members>(&ty);
                     return match members.as_deref().map_or(Found::Unknown, |m| m.find(name)) {
                         Found::Decl(decl) => {
                             self.check_visible(expr, name, &decl.visible);
-                            self.env.cx.get::<MemberType>(&(ty, name)).ok()
+                            self.env().cx.get::<MemberType>(&(ty, name)).ok()
                         }
                         Found::Variant(v) if v.payload.is_empty() => {
                             Some(Known { ty, stage: Stage::Compile })
@@ -165,7 +162,7 @@ impl Typer<'_, '_, '_> {
                         Found::Variant(_) | Found::Field(_) => None,
                         Found::Absent | Found::Unknown => {
                             let owner = self.method(expr, ty, name)?;
-                            self.env.cx.get::<MemberType>(&(owner, name)).ok()
+                            self.env().cx.get::<MemberType>(&(owner, name)).ok()
                         }
                     };
                 }
@@ -174,7 +171,7 @@ impl Typer<'_, '_, '_> {
         }
         let known = known?;
         let known = Known { ty: known.ty.borrowed().unwrap_or(known.ty), ..known };
-        let members = self.env.cx.get::<Members>(&known.ty);
+        let members = self.env().cx.get::<Members>(&known.ty);
         match members.as_deref().map_or(Found::Unknown, |m| m.find(name)) {
             Found::Field(field) => {
                 self.check_visible(expr, name, &field.visible);
@@ -183,7 +180,7 @@ impl Typer<'_, '_, '_> {
             Found::Decl(decl) => {
                 self.check_visible(expr, name, &decl.visible);
                 self.methods.insert(expr, (known.ty, name));
-                self.env.cx.get::<MemberType>(&(known.ty, name)).ok()
+                self.env().cx.get::<MemberType>(&(known.ty, name)).ok()
             }
             Found::Variant(_) => None,
             // A member missing from the type and its impls is not reported yet: the corpus
@@ -191,14 +188,14 @@ impl Typer<'_, '_, '_> {
             Found::Absent | Found::Unknown => {
                 let owner = self.method(expr, known.ty, name)?;
                 self.methods.insert(expr, (owner, name));
-                self.env.cx.get::<MemberType>(&(owner, name)).ok()
+                self.env().cx.get::<MemberType>(&(owner, name)).ok()
             }
         }
     }
 
     /// The struct declaring the method `name` that `ty` has through an impl (spec 02, section 3).
     fn method(&mut self, expr: ExprId, ty: Ty, name: Symbol) -> Option<Ty> {
-        let method = self.env.method(ty, name)?;
+        let method = self.env().method(ty, name)?;
         self.check_visible(expr, name, &method.visible);
         Some(method.owner)
     }
@@ -206,7 +203,7 @@ impl Typer<'_, '_, '_> {
     /// `T{ .name = value, ... }`, or `.{ ... }` of the expected type: each field's value is
     /// typed as the field and checked against it.
     fn struct_lit(&mut self, target: Option<Ty>, fields: &[Entry<Arg>]) -> Option<Known> {
-        let members = target.and_then(|t| self.env.cx.get::<Members>(&t));
+        let members = target.and_then(|t| self.env().cx.get::<Members>(&t));
         let mut stage = Stage::Compile;
         for field in fields {
             let Entry::One(Arg { name, value }) = field else {
@@ -240,7 +237,7 @@ impl Typer<'_, '_, '_> {
 
     pub(super) fn site(&self, site: Site) -> Option<Known> {
         match site {
-            Site::Decl(decl) => self.env.cx.get::<DeclType>(&decl).ok(),
+            Site::Decl(decl) => self.env().cx.get::<DeclType>(&decl).ok(),
             Site::Namespace(_) => None,
         }
     }
@@ -261,10 +258,10 @@ impl Typer<'_, '_, '_> {
             return Some(Known { ty: TyKind::int(&range), stage });
         }
         let (_, interface, function) = OPERATORS.iter().find(|(token, ..)| *token == op)?;
-        let Ok(Value::Interface(f)) = self.env.item(interface) else { return None };
-        let requirements = self.env.cx.get::<Call>(&Instance { f, args: vec![Value::Type(left.ty)] });
+        let Ok(Value::Interface(f)) = self.env().item(interface) else { return None };
+        let requirements = self.env().cx.get::<Call>(&Instance { f, args: vec![Value::Type(left.ty)] });
         let key = (requirements.ok()?.as_type()?, Symbol::intern(function));
-        let function = self.env.cx.get::<MemberType>(&key).ok()?;
+        let function = self.env().cx.get::<MemberType>(&key).ok()?;
         Some(Known { ty: function.ty.signature()?.result, stage })
     }
 }

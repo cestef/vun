@@ -6,7 +6,6 @@ use overt_grammar::{COMPOUND, TokenKind};
 use overt_hir::resolve::Res;
 use overt_hir::tree::{ExprId, ExprKind};
 use overt_origin::OriginId;
-use overt_sema::typeck::Typed;
 
 use super::{Builder, Unbuilt};
 use crate::body::{Operand, Rvalue};
@@ -33,7 +32,7 @@ impl Builder<'_, '_, '_> {
             return Ok(());
         }
         let (_, binary, narrowing) = COMPOUND.iter().find(|(token, ..)| *token == op).ok_or(unbuilt)?;
-        let typed = self.env.cx.get::<Typed>(&self.f).ok_or(unbuilt)?;
+        let typed = self.typed().ok_or(unbuilt)?;
         let ty = typed.types.get(&place).ok_or(unbuilt)?.ty;
         let left = Operand::Place(place_local);
         let operand = self.temp(Rvalue::Binary { op: *binary, left, right: value }, origin);

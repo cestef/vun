@@ -43,7 +43,7 @@ impl Typer<'_, '_, '_> {
             PatKind::Variant { name, args } => {
                 let payload = match (name, ty) {
                     (Name::Plain(name), Some(ty)) => {
-                        match self.env.cx.get::<Members>(&ty).map(|m| m.find(*name).into()) {
+                        match self.env().cx.get::<Members>(&ty).map(|m| m.find(*name).into()) {
                             Some(Lookup::Variant(payload)) => Some(payload),
                             Some(Lookup::Absent) => {
                                 self.no_member(origin, ty, *name);
@@ -75,7 +75,7 @@ impl Typer<'_, '_, '_> {
             }
             PatKind::Struct { ty: written, fields } => {
                 let ty = written.and_then(|t| self.ty(t)).or(ty);
-                let members = ty.and_then(|t| self.env.cx.get::<Members>(&t));
+                let members = ty.and_then(|t| self.env().cx.get::<Members>(&t));
                 for (i, field) in fields.iter().enumerate() {
                     let Entry::One((name, field)) = field else { continue };
                     let found = members.as_ref().and_then(|m| match name {

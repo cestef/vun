@@ -26,3 +26,49 @@ field := (t: Timer) -> bool { t.cr1 };
     let found = |ty: &str| (errors::TYPES_MISMATCH, format!("expected `bool`, found `{ty}`"));
     assert_eq!(fixture.reported(&file), [found("Int(0..=4294967295)"), found("Int(0..=4294967295)")]);
 }
+
+#[test]
+fn staged_statements_are_typed_per_step() {
+    let fixture = Fixture::new("staged-statements");
+    let file = fixture.root.write(
+        "fields.ov",
+        "\
+Config := struct { baud: u32, parity: bool };
+copy := (c: Config) -> Config {
+    mut out := c;
+    $for f in std.meta.fields(Config) { out.$(f.name) = c.$(f.name); }
+    out
+};
+words := (c: Config) {
+    $for f in std.meta.fields(Config) { x: u32 = c.$(f.name); }
+};
+taken := () {
+    $if 1 > 2 { a: bool = 3; } else { b: bool = 4; }
+};
+",
+    );
+    let found =
+        |ty: &str, expected: &str| (errors::TYPES_MISMATCH, format!("expected `{expected}`, found `{ty}`"));
+    assert_eq!(fixture.reported(&file), [found("bool", "u32"), found("Int(4..=4)", "bool")]);
+}
+
+#[test]
+fn staged_statements_run_unrolled() {
+    let fixture = Fixture::new("staged-run");
+    let file = fixture.root.write(
+        "dot.ov",
+        "\
+dot := ($N: u32, a: &[N]u32, b: &[N]u32) -> u64 {
+    mut acc: u64 = 0;
+    $for i in 0..N { acc += a[i] * b[i]; }
+    acc
+};
+fits: Int(0..=dot(3, &[1, 2, 3], &[4, 5, 6])) = 32;
+over: Int(0..=dot(3, &[1, 2, 3], &[4, 5, 6])) = 33;
+seven := () -> u8 { $if 1 > 2 { (1, 2) } else if 2 > 1 { 7 } else { 9 } };
+eight: Int(0..=seven()) = 8;
+",
+    );
+    let reported: Vec<_> = fixture.reported(&file).into_iter().map(|(id, _)| id).collect();
+    assert_eq!(reported, [errors::INT_DOES_NOT_FIT, errors::INT_DOES_NOT_FIT]);
+}

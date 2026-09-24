@@ -19,7 +19,7 @@ impl Typer<'_, '_, '_> {
         if expected.accepts(&found.ty) {
             return;
         }
-        let written = because.map_or_else(|| expected.to_string(), |e| self.env.source(e));
+        let written = because.map_or_else(|| expected.to_string(), |e| self.env().source(e));
         // Integers that do not fit are their own diagnostic (spec 04, rule 2).
         let d = if expected.interval().is_some() && found.ty.interval().is_some() {
             let msg = Msg::new().text("value does not fit the type ").code(&written);
@@ -40,7 +40,7 @@ impl Typer<'_, '_, '_> {
 
     /// The type `expr` denotes, reporting a trap that fires while evaluating it.
     pub(super) fn ty(&mut self, expr: ExprId) -> Option<Ty> {
-        match self.env.ty(expr) {
+        match self.env().ty(expr) {
             Ok(ty) => Some(ty),
             Err(Unevaluated::Trapped(trap)) => {
                 self.diag.error(trap.report(self.hir().exprs[expr].origin));
@@ -68,10 +68,10 @@ impl Typer<'_, '_, '_> {
 
     /// Reports `name`, used at `expr`, when its visibility `visible` does not reach there.
     pub(super) fn check_visible(&mut self, expr: ExprId, name: Symbol, visible: &Visible) {
-        if self.env.sees(visible, expr) != Some(false) {
+        if self.env().sees(visible, expr) != Some(false) {
             return;
         }
-        self.diag.error(self.env.not_visible(self.hir().exprs[expr].origin, name, visible));
+        self.diag.error(self.env().not_visible(self.hir().exprs[expr].origin, name, visible));
     }
 
     /// Reports `name`, used at `at`, as no member of `ty`.

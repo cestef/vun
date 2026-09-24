@@ -91,25 +91,25 @@ impl Typer<'_, '_, '_> {
 
     /// The type of the items `for p in e` binds for `e` of type `ty`, looking through a borrow
     /// when the borrow itself is not iterated.
-    fn item(&self, ty: Ty) -> Option<Ty> {
+    pub(super) fn item(&self, ty: Ty) -> Option<Ty> {
         let &(interface, _, iterator, resume, item) = ITERATION.first()?;
-        let Ok(Value::Interface(iterate)) = self.env.item(interface) else { return None };
+        let Ok(Value::Interface(iterate)) = self.env().item(interface) else { return None };
         let witness = |ty: Ty| {
-            let witnesses = self.env.cx.get::<Witnesses>(&(self.env.file.clone(), ty));
+            let witnesses = self.env().cx.get::<Witnesses>(&(self.env().file.clone(), ty));
             witnesses.iter().find(|w| w.decl.interface == iterate).map(|w| w.ty)
         };
         let witness = witness(ty).or_else(|| witness(ty.borrowed()?))?;
         let member = (witness, Symbol::intern(iterator));
-        let Ok(Value::Interface(coroutine)) = self.env.cx.get::<MemberValue>(&member) else { return None };
+        let Ok(Value::Interface(coroutine)) = self.env().cx.get::<MemberValue>(&member) else { return None };
         let requirements = self
             .env
             .cx
             .get::<Call>(&Instance { f: coroutine, args: vec![Value::Type(ty)] })
             .ok()?
             .as_type()?;
-        let resumed = self.env.cx.get::<MemberType>(&(requirements, Symbol::intern(resume))).ok()?;
+        let resumed = self.env().cx.get::<MemberType>(&(requirements, Symbol::intern(resume))).ok()?;
         let step = resumed.ty.signature()?.result;
-        match self.env.cx.get::<Members>(&step)?.find(Symbol::intern(item)) {
+        match self.env().cx.get::<Members>(&step)?.find(Symbol::intern(item)) {
             Found::Variant(v) => v.payload.first()?.as_ref().ok().copied(),
             _ => None,
         }

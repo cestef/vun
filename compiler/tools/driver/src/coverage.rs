@@ -29,7 +29,7 @@ impl Session {
             coverage.lowered += usize::from(self.db.get::<Mir>(&f).is_ok());
             if let Some(typed) = self.db.get::<Typed>(&f) {
                 coverage.exprs += typed.exprs;
-                coverage.typed += typed.types.len();
+                coverage.typed += typed.typed_count();
             }
         }
         coverage

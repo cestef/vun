@@ -3,7 +3,6 @@
 
 use overt_hir::tree::{ExprId, ExprKind};
 use overt_sema::member::MemberValue;
-use overt_sema::typeck::Typed;
 
 use super::{Builder, Unbuilt};
 use crate::body::Operand;
@@ -15,7 +14,7 @@ impl Builder<'_, '_, '_> {
         let e = &self.env.parsed.hir.exprs[callee];
         let ExprKind::Member { object, .. } = e.kind else { return Ok(None) };
         let unbuilt = Unbuilt { at: e.origin };
-        let typed = self.env.cx.get::<Typed>(&self.f).ok_or(unbuilt)?;
+        let typed = self.typed().ok_or(unbuilt)?;
         let Some(method) = typed.methods.get(&callee) else { return Ok(None) };
         let f = self.env.cx.get::<MemberValue>(method).map_err(|_| unbuilt)?;
         Ok(Some((Operand::Const(f), object)))

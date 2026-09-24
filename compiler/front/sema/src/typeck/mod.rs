@@ -16,14 +16,17 @@ mod pattern;
 mod prefix;
 mod range;
 mod sequence;
+mod staged;
 #[cfg(test)]
 mod tests;
 
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::sync::Arc;
 
 use overt_diag::DiagCtxt;
-use overt_hir::tree::{BinderId, BlockId, DeclId, Entry, ExprId, ExprKind, Hir, NsId, PatKind};
+use overt_hir::tree::{
+    BinderId, BlockId, DeclId, Entry, ExprId, ExprKind, Hir, NsId, PatId, PatKind, Staged,
+};
 use overt_hir::visit::Visitor;
 use overt_intern::Symbol;
 use overt_query::{Cx, Cycle, Query};
@@ -54,8 +57,34 @@ pub struct TypedBody {
     pub types: BTreeMap<ExprId, Known>,
     /// Each method named through a value, with the struct declaring it and its name.
     pub methods: BTreeMap<ExprId, (Ty, Symbol)>,
+    /// The body of each step of a `$for`, typed with its binder bound (spec 03, section 1).
+    pub steps: BTreeMap<Step, Arc<TypedBody>>,
     pub diag: DiagCtxt,
     pub exprs: usize,
+}
+
+impl TypedBody {
+    /// How many expressions are typed, in the body or in some step of it.
+    #[must_use]
+    pub fn typed_count(&self) -> usize {
+        let mut typed = BTreeSet::new();
+        self.collect_typed(&mut typed);
+        typed.len()
+    }
+
+    fn collect_typed(&self, typed: &mut BTreeSet<ExprId>) {
+        typed.extend(self.types.keys().copied());
+        for step in self.steps.values() {
+            step.collect_typed(typed);
+        }
+    }
+}
+
+/// One step of a `$for` in a body: the `$for`, by its pattern, and the item bound.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct Step {
+    pub at: PatId,
+    pub index: usize,
 }
 
 /// Counts the expressions of a body, as the typer reaches them: not into nested functions,
@@ -125,6 +154,8 @@ impl Query for Typed {
 /// Types the expressions of one body, or one declaration outside a body, in source order.
 pub struct Typer<'e, 'a, 'db> {
     env: &'e Env<'a, 'db>,
+    /// The environment of the `$for` step typed, if any: `env` under its bindings.
+    step: Option<Env<'a, 'db>>,
     /// When the code typed runs: at compile time outside a body, or under `$`.
     stage: Stage,
     types: HashMap<ExprId, Known>,
@@ -133,6 +164,8 @@ pub struct Typer<'e, 'a, 'db> {
     /// call passes `p` first (spec 01, section 4); each with the struct declaring it, the type's
     /// own or a witness, and its name.
     methods: HashMap<ExprId, (Ty, Symbol)>,
+    /// The typed steps of the `$for`s typed so far.
+    steps: BTreeMap<Step, Arc<TypedBody>>,
     /// The type expected of an expression where its context says, for forms typed by it:
     /// `.name`, `.{ }` (spec 01, section 2).
     expected: HashMap<ExprId, Ty>,
@@ -150,10 +183,12 @@ impl<'e, 'a, 'db> Typer<'e, 'a, 'db> {
     pub fn new(env: &'e Env<'a, 'db>, stage: Stage) -> Self {
         Self {
             env,
+            step: None,
             stage,
             types: HashMap::new(),
             locals: HashMap::new(),
             methods: HashMap::new(),
+            steps: BTreeMap::new(),
             expected: HashMap::new(),
             result: None,
             written: None,
@@ -168,9 +203,15 @@ impl<'e, 'a, 'db> Typer<'e, 'a, 'db> {
         TypedBody {
             types: self.types.into_iter().collect(),
             methods: self.methods.into_iter().collect(),
+            steps: self.steps,
             diag: self.diag,
             exprs,
         }
+    }
+
+    /// The environment typed in: the file's, or a `$for` step's.
+    fn env(&self) -> &Env<'a, 'db> {
+        self.step.as_ref().unwrap_or(self.env)
     }
 
     fn hir(&self) -> &'e Hir {
@@ -206,6 +247,10 @@ impl<'e, 'a, 'db> Typer<'e, 'a, 'db> {
 impl Visitor for Typer<'_, '_, '_> {
     /// Members of a nested namespace are checked on their own, not as part of this body.
     fn namespace(&mut self, _: &Hir, _: NsId) {}
+
+    fn staged<T>(&mut self, hir: &Hir, staged: &Staged<T>, entry: &mut dyn FnMut(&mut Self, &T)) {
+        self.unroll(hir, staged, entry);
+    }
 
     fn block(&mut self, _: &Hir, block: BlockId) {
         self.block_value(block, None);

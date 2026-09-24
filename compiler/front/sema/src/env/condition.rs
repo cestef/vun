@@ -3,6 +3,7 @@
 //! conditions, so their values are built here.
 
 use overt_grammar::{FORMS, Form, TokenKind};
+use overt_hir::tree::{BlockId, Cond, ExprId, ExprKind};
 
 use super::{Env, Unevaluated};
 use crate::member::Members;
@@ -78,4 +79,36 @@ impl Env<'_, '_> {
             _ => Value::unary(op, operand),
         }
     }
+
+    /// The branch the `if` expression `expr` takes when its conditions are known here: `$if` as
+    /// a value selects its branch at compile time (spec 03, section 1), `else if` included.
+    ///
+    /// # Errors
+    /// Returns why a condition has no value here; a test condition (`if p = e`) is not selected.
+    pub fn select(&self, mut expr: ExprId) -> Result<Selected, Unevaluated> {
+        let hir = &self.parsed.hir;
+        loop {
+            let ExprKind::If { cond: Cond::Expr(cond), then, otherwise } = &hir.exprs[expr].kind else {
+                return Err(Unevaluated::Unsupported);
+            };
+            if self.holds(&self.eval(*cond)?)? {
+                return Ok(Selected::Block(*then));
+            }
+            match otherwise {
+                None => return Ok(Selected::Unit),
+                Some(e) if matches!(hir.exprs[*e].kind, ExprKind::If { .. }) => expr = *e,
+                Some(e) => return Ok(Selected::Expr(*e)),
+            }
+        }
+    }
+}
+
+/// The branch a `$if` takes.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Selected {
+    Block(BlockId),
+    /// An `else` that is not a block, or not a block written as one.
+    Expr(ExprId),
+    /// No `else`, and no condition held: `()`.
+    Unit,
 }

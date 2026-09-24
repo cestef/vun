@@ -192,10 +192,7 @@ impl<'a> Lower<'a, '_> {
         n: NodeId,
         one: &mut dyn FnMut(&mut Self, NodeId) -> Option<T>,
     ) -> Option<Staged<T>> {
-        if self.kind(n) != NodeKind::Prefix || self.token(n) != Some(TokenKind::Dollar) {
-            return None;
-        }
-        let control = self.fields(n).one(NodeField::Operand)?;
+        let control = self.staged_control(n)?;
         let origin = self.origin(n);
         match self.kind(control) {
             NodeKind::For => {
@@ -210,6 +207,15 @@ impl<'a> Lower<'a, '_> {
             NodeKind::If => Some(self.staged_if(control, origin, one)),
             _ => None,
         }
+    }
+
+    /// The `for` or `if` of a `$for` or `$if` node.
+    fn staged_control(&self, n: NodeId) -> Option<NodeId> {
+        if self.kind(n) != NodeKind::Prefix || self.token(n) != Some(TokenKind::Dollar) {
+            return None;
+        }
+        let control = self.fields(n).one(NodeField::Operand)?;
+        matches!(self.kind(control), NodeKind::For | NodeKind::If).then_some(control)
     }
 
     fn staged_if<T>(

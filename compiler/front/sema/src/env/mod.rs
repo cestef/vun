@@ -11,6 +11,8 @@ mod condition;
 mod eval;
 mod path;
 
+pub use condition::Selected;
+
 use std::collections::HashMap;
 use std::sync::Arc;
 

@@ -8,7 +8,6 @@ use overt_origin::OriginId;
 use overt_sema::env::Env;
 use overt_sema::member::{Found, Members};
 use overt_sema::ty::{Nominal, Ty, TyKind, Value};
-use overt_sema::typeck::Typed;
 
 use super::{Builder, Unbuilt};
 use crate::body::{Aggregate, Operand, Rvalue};
@@ -25,7 +24,7 @@ impl Builder<'_, '_, '_> {
             ExprKind::Array(items) => self.parts(items, Aggregate::Array, origin),
             ExprKind::StructLit { ty, fields } => {
                 let ty = match ty {
-                    Some(ty) => self.env.ty(*ty).ok(),
+                    Some(ty) => self.env().ty(*ty).ok(),
                     None => self.type_of(expr),
                 };
                 ty.ok_or(unbuilt).and_then(|ty| self.record(ty, fields, origin))
@@ -38,15 +37,15 @@ impl Builder<'_, '_, '_> {
             ExprKind::DotName(Name::Plain(name)) => {
                 let ty = self.type_of(expr).ok_or(unbuilt);
                 ty.and_then(|ty| {
-                    self.env.member(Value::Type(ty), *name).map(Operand::Const).map_err(|_| unbuilt)
+                    self.env().member(Value::Type(ty), *name).map(Operand::Const).map_err(|_| unbuilt)
                 })
             }
             ExprKind::Member { object, name } => {
                 // A path to a constant, such as `lang.int.u8`, is its value.
-                if let Ok(value) = self.env.eval(expr) {
+                if let Ok(value) = self.env().eval(expr) {
                     return Some(Ok(Operand::Const(value)));
                 }
-                let Some(name) = self.env.name(name) else { return Some(Err(unbuilt)) };
+                let Some(name) = self.env().name(name) else { return Some(Err(unbuilt)) };
                 let object = *object;
                 self.operand(object).map(|operand| self.temp(Rvalue::Field { operand, name }, origin))
             }
@@ -63,7 +62,7 @@ impl Builder<'_, '_, '_> {
 
     /// The type the typed body found for `expr`.
     fn type_of(&self, expr: ExprId) -> Option<Ty> {
-        let typed = self.env.cx.get::<Typed>(&self.f)?;
+        let typed = self.typed()?;
         typed.types.get(&expr).map(|k| k.ty)
     }
 

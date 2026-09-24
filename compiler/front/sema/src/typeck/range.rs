@@ -19,8 +19,8 @@ impl Typer<'_, '_, '_> {
             None => None,
         };
         let items = Interval::items(op, &lo.ty.interval()?, top.as_ref())?;
-        let bounds = self.env.form(Form::Bounds).ok()?;
-        let ty = self.env.apply(bounds, vec![Value::Type(TyKind::int(&items))]).ok()?.as_type()?;
+        let bounds = self.env().form(Form::Bounds).ok()?;
+        let ty = self.env().apply(bounds, vec![Value::Type(TyKind::int(&items))]).ok()?.as_type()?;
         Some(Known { ty, stage: hi.map_or(lo.stage, |hi| lo.stage.max(hi.stage)) })
     }
 }

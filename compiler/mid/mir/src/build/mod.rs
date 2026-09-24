@@ -7,6 +7,7 @@ mod assign;
 mod control;
 mod loops;
 mod method;
+mod staged;
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -23,6 +24,7 @@ use overt_sema::env::Env;
 use overt_sema::eval::Instantiation;
 use overt_sema::int::Integer;
 use overt_sema::ty::Value;
+use overt_sema::typeck::{Step, Typed, TypedBody};
 
 use crate::body::{
     Block, BlockId, Body, Local, LocalDecl, Operand, Rvalue, Stmt, Terminator, TerminatorKind,
@@ -68,9 +70,13 @@ struct Builder<'e, 'a, 'db> {
     loops: Vec<loops::Loop>,
     /// The instantiation lowered, whose typed body gives the types of places.
     f: Instantiation,
+    /// The environment of the `$for` step lowered, if any: `env` under its bindings.
+    step: Option<Env<'a, 'db>>,
+    /// The `$for` steps lowered, outermost first, which lead to their typed bodies.
+    path: Vec<Step>,
 }
 
-impl Builder<'_, '_, '_> {
+impl<'a, 'db> Builder<'_, 'a, 'db> {
     fn lower(env: &Env<'_, '_>, f: &Instantiation) -> Result<Body, Unbuilt> {
         let hir = &env.parsed.hir;
         let literal = f.f.literal.expr.id;
@@ -89,6 +95,8 @@ impl Builder<'_, '_, '_> {
             ret,
             loops: Vec::new(),
             f: f.clone(),
+            step: None,
+            path: Vec::new(),
         };
         b.current = b.fresh(origin);
         let mut args = Vec::new();
@@ -102,6 +110,20 @@ impl Builder<'_, '_, '_> {
         b.assign(Place { local: ret }, Rvalue::Use(result), origin);
         b.blocks[b.current].term = Terminator { kind: TerminatorKind::Return, origin };
         Ok(Body { locals: b.locals, params: args, ret, blocks: b.blocks, origin })
+    }
+
+    /// The environment lowered in: the function's, or a `$for` step's.
+    fn env(&self) -> &Env<'a, 'db> {
+        self.step.as_ref().unwrap_or(self.env)
+    }
+
+    /// The typed body of the code lowered: the instantiation's, or a `$for` step's in it.
+    fn typed(&self) -> Option<Arc<TypedBody>> {
+        let mut typed = self.env.cx.get::<Typed>(&self.f)?;
+        for step in &self.path {
+            typed = Arc::clone(typed.steps.get(step)?);
+        }
+        Some(typed)
     }
 
     /// A local for `binder`, which names in the body read from now on.
@@ -126,35 +148,37 @@ impl Builder<'_, '_, '_> {
     /// The statements of `block`, then the value of its tail, or `()` without one.
     fn block(&mut self, block: HirBlock) -> Result<Operand, Unbuilt> {
         let hir = &self.env.parsed.hir;
-        let origin = hir.blocks[block].origin;
-        for stmt in &hir.blocks[block].stmts {
-            let Entry::One(stmt) = stmt else { return Err(Unbuilt { at: origin }) };
-            match stmt {
-                HirStmt::Decl(d) => {
-                    let decl = &hir.decls[*d];
-                    let PatKind::Bind(binder) = &hir.pats[decl.pat].kind else {
-                        return Err(Unbuilt { at: decl.origin });
-                    };
-                    // Without a value, the local starts uninitialized.
-                    let value = decl.value.map(|v| self.operand(v)).transpose()?;
-                    let local = self.bind(*binder);
-                    if let Some(value) = value {
-                        self.assign(Place { local }, Rvalue::Use(value), decl.origin);
-                    }
-                }
-                HirStmt::Expr(e) => {
-                    self.operand(*e)?;
-                }
-                HirStmt::Block(inner) => {
-                    self.block(*inner)?;
-                }
-                HirStmt::Assign { op, place, value, origin } => self.store(*op, *place, *value, *origin)?,
-            }
-        }
+        self.stmts(&hir.blocks[block].stmts)?;
         match hir.blocks[block].tail {
             Some(tail) => self.operand(tail),
             None => Ok(Operand::Const(Value::Tuple(Vec::new()))),
         }
+    }
+
+    fn stmt(&mut self, stmt: &HirStmt) -> Result<(), Unbuilt> {
+        let hir = &self.env.parsed.hir;
+        match stmt {
+            HirStmt::Decl(d) => {
+                let decl = &hir.decls[*d];
+                let PatKind::Bind(binder) = &hir.pats[decl.pat].kind else {
+                    return Err(Unbuilt { at: decl.origin });
+                };
+                // Without a value, the local starts uninitialized.
+                let value = decl.value.map(|v| self.operand(v)).transpose()?;
+                let local = self.bind(*binder);
+                if let Some(value) = value {
+                    self.assign(Place { local }, Rvalue::Use(value), decl.origin);
+                }
+            }
+            HirStmt::Expr(e) => {
+                self.operand(*e)?;
+            }
+            HirStmt::Block(inner) => {
+                self.block(*inner)?;
+            }
+            HirStmt::Assign { op, place, value, origin } => self.store(*op, *place, *value, *origin)?,
+        }
+        Ok(())
     }
 
     fn operand(&mut self, expr: ExprId) -> Result<Operand, Unbuilt> {
@@ -168,12 +192,19 @@ impl Builder<'_, '_, '_> {
                     Ok(Operand::Place(Place { local: self.bound[&b] }))
                 }
                 // A `$` parameter of an enclosing function, bound by the call running the body.
-                Some(Res::Binder(b)) if hir.binders[b].comptime => {
-                    Ok(self.temp(Rvalue::Comptime(expr), origin))
-                }
-                _ => self.env.eval(expr).map(Operand::Const).map_err(|_| unbuilt),
+                // A `$for` binder, or one bound by the instantiation, is a constant.
+                Some(Res::Binder(b)) if hir.binders[b].comptime => match self.env().bound(b) {
+                    Some(value) => Ok(Operand::Const(value.clone())),
+                    None => Ok(self.temp(Rvalue::Comptime(expr), origin)),
+                },
+                _ => self.env().eval(expr).map(Operand::Const).map_err(|_| unbuilt),
             },
             ExprKind::Block(block) => self.block(*block),
+            ExprKind::Prefix { op: TokenKind::Dollar, operand, .. }
+                if matches!(hir.exprs[*operand].kind, ExprKind::If { .. }) =>
+            {
+                self.selected(*operand, origin)
+            }
             ExprKind::Infix { op: op @ (TokenKind::DotDot | TokenKind::DotDotEq), left, right } => {
                 let lo = self.operand(*left)?;
                 let hi = right.map(|r| self.operand(r)).transpose()?;
@@ -226,7 +257,7 @@ impl Builder<'_, '_, '_> {
             // Anything else only as a constant sema can compute, such as `lang.int.u8`.
             _ => match self.aggregate(expr) {
                 Some(built) => built,
-                None => self.env.eval(expr).map(Operand::Const).map_err(|_| unbuilt),
+                None => self.env().eval(expr).map(Operand::Const).map_err(|_| unbuilt),
             },
         }
     }

@@ -21,8 +21,8 @@ impl Typer<'_, '_, '_> {
         // A method's receiver is passed in the mode its first parameter asks for.
         let receiver = usize::from(self.methods.contains_key(&callee));
         let instantiation = self.instantiation(callee, receiver, args);
-        if let Some(i) = instantiation.as_ref().filter(|i| i.generic(self.env.cx))
-            && let Some(typed) = self.env.cx.get::<Typed>(i)
+        if let Some(i) = instantiation.as_ref().filter(|i| i.generic(self.env().cx))
+            && let Some(typed) = self.env().cx.get::<Typed>(i)
         {
             let frame = TraceFrame {
                 msg: "in the instantiation this call reaches".into(),
@@ -30,7 +30,7 @@ impl Typer<'_, '_, '_> {
             };
             self.diag.absorb_through(&typed.diag, &frame);
         }
-        let signature = known.or_else(|| instantiation?.signature(self.env.cx));
+        let signature = known.or_else(|| instantiation?.signature(self.env().cx));
         let hir = self.hir();
         let (mut found, mut positional) = (Vec::new(), true);
         for arg in args {
@@ -70,15 +70,15 @@ impl Typer<'_, '_, '_> {
     /// its argument, when that is known here.
     fn instantiation(&self, callee: ExprId, receiver: usize, args: &[Entry<Arg>]) -> Option<Instantiation> {
         let f = match self.methods.get(&callee) {
-            Some(method) => self.env.cx.get::<MemberValue>(method),
-            None => self.env.eval(callee),
+            Some(method) => self.env().cx.get::<MemberValue>(method),
+            None => self.env().eval(callee),
         };
         let Ok(Value::Fn(f)) = f else { return None };
-        let comptime = f.comptime(self.env.cx)?;
+        let comptime = f.comptime(self.env().cx)?;
         let args = comptime.iter().enumerate().map(|(i, &comptime)| {
             let arg = i.checked_sub(receiver).and_then(|i| args.get(i));
             match (comptime, arg) {
-                (true, Some(Entry::One(Arg { name: None, value }))) => self.env.eval(*value).ok(),
+                (true, Some(Entry::One(Arg { name: None, value }))) => self.env().eval(*value).ok(),
                 _ => None,
             }
         });
