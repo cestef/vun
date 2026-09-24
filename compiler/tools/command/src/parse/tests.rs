@@ -44,7 +44,7 @@ fn names(selected: &Selected<'_, ()>) -> Vec<&'static str> {
 }
 
 fn error(line: &str) -> (DiagId, String) {
-    match parse(&PROGRAM, &argv(line)) {
+    match PROGRAM.parse(&argv(line)) {
         Err(d) => (d.id, d.children.iter().map(|c| c.msg.to_string()).collect()),
         Ok(_) => panic!("{line:?} parsed"),
     }
@@ -52,7 +52,7 @@ fn error(line: &str) -> (DiagId, String) {
 
 #[test]
 fn runs_with_typed_arguments() {
-    let Ok(Request::Run(path, args)) = parse(&PROGRAM, &argv("dump cst -q a.ov --format=json")) else {
+    let Ok(Request::Run(path, args)) = PROGRAM.parse(&argv("dump cst -q a.ov --format=json")) else {
         panic!("not a run")
     };
     assert_eq!(names(&path), ["tool", "dump", "cst"]);
@@ -60,7 +60,7 @@ fn runs_with_typed_arguments() {
         (args.value(&FILE), args.value(&FORMAT), args.flag(&QUIET)),
         (Some("a.ov"), Some("json"), true)
     );
-    let Ok(Request::Run(_, args)) = parse(&PROGRAM, &argv("dump cst --format short a.ov")) else {
+    let Ok(Request::Run(_, args)) = PROGRAM.parse(&argv("dump cst --format short a.ov")) else {
         panic!("not a run")
     };
     assert_eq!(args.value(&FORMAT), Some("short"));
@@ -69,10 +69,10 @@ fn runs_with_typed_arguments() {
 #[test]
 fn help_and_version() {
     for line in ["", "dump", "help dump", "dump cst --help", "dump -h cst"] {
-        assert!(matches!(parse(&PROGRAM, &argv(line)), Ok(Request::Help(_))), "{line:?}");
+        assert!(matches!(PROGRAM.parse(&argv(line)), Ok(Request::Help(_))), "{line:?}");
     }
-    assert!(matches!(parse(&PROGRAM, &argv("-V")), Ok(Request::Version)));
-    let page = crate::help(&PROGRAM, &Selected::root(&PROGRAM.root));
+    assert!(matches!(PROGRAM.parse(&argv("-V")), Ok(Request::Version)));
+    let page = Selected::root(&PROGRAM.root).help(&PROGRAM);
     assert!(page.starts_with("tool 1.0\na tool\n\nusage: tool <command> [options]"), "{page}");
     assert!(page.contains("build  build it (planned)"), "{page}");
 }
@@ -94,13 +94,13 @@ fn usage_errors_suggest_and_point_at_help() {
     );
     assert_eq!(error("dump cst a --format").0, errors::CLI_MISSING_VALUE);
     assert_eq!(error("-V2").0, errors::CLI_UNKNOWN_OPTION);
-    assert!(matches!(parse(&PROGRAM, &argv("-help")), Ok(Request::Help(_))));
+    assert!(matches!(PROGRAM.parse(&argv("-help")), Ok(Request::Help(_))));
 }
 
 #[test]
 fn group_options_apply_below() {
     for line in ["--color dump cst a.ov", "dump --color cst a.ov", "dump cst a.ov --color"] {
-        let Ok(Request::Run(_, args)) = parse(&PROGRAM, &argv(line)) else { panic!("{line:?} did not run") };
+        let Ok(Request::Run(_, args)) = PROGRAM.parse(&argv(line)) else { panic!("{line:?} did not run") };
         assert!(args.flag(&COLOR), "{line:?}");
     }
 }

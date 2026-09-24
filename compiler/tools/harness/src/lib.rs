@@ -106,43 +106,46 @@ impl std::fmt::Display for Malformed {
 
 impl std::error::Error for Malformed {}
 
-/// The annotations written in `text`.
-///
-/// # Errors
-/// Returns the first annotation that cannot be read.
-pub fn expectations(text: &str) -> Result<Vec<Expected>, Malformed> {
-    let mut found = Vec::new();
-    for (line, number) in text.lines().zip(1u32..) {
-        let Some(start) = line.find(MARKER) else { continue };
-        let rest = &line[start + MARKER.len()..];
-        let up = rest.chars().take_while(|&c| c == '^').count();
-        let target = u32::try_from(up)
-            .ok()
-            .and_then(|up| number.checked_sub(up))
-            .filter(|&l| l > 0)
-            .ok_or(Malformed::AboveFile { line: number })?;
-        let rest = rest.trim_start_matches('^').trim_start();
-        let (id, mut rest) = rest.split_once(char::is_whitespace).unwrap_or((rest, ""));
-        let mut expected =
-            Expected { at: At { line: target, id: id.to_owned() }, col: None, fragments: Vec::new() };
-        loop {
-            rest = rest.trim_start();
-            if let Some(after) = rest.strip_prefix(COLUMN) {
-                let digits = after.find(|c: char| !c.is_ascii_digit()).unwrap_or(after.len());
-                expected.col = Some(after[..digits].parse().map_err(|_| Malformed::Column { line: number })?);
-                rest = &after[digits..];
-            } else if let Some(after) = rest.strip_prefix(FRAGMENT) {
-                let (fragment, after) =
-                    after.split_once(FRAGMENT).ok_or(Malformed::Fragment { line: number })?;
-                expected.fragments.push(fragment.to_owned());
-                rest = after;
-            } else {
-                break;
+impl Expected {
+    /// The annotations written in `text`.
+    ///
+    /// # Errors
+    /// Returns the first annotation that cannot be read.
+    pub fn all(text: &str) -> Result<Vec<Self>, Malformed> {
+        let mut found = Vec::new();
+        for (line, number) in text.lines().zip(1u32..) {
+            let Some(start) = line.find(MARKER) else { continue };
+            let rest = &line[start + MARKER.len()..];
+            let up = rest.chars().take_while(|&c| c == '^').count();
+            let target = u32::try_from(up)
+                .ok()
+                .and_then(|up| number.checked_sub(up))
+                .filter(|&l| l > 0)
+                .ok_or(Malformed::AboveFile { line: number })?;
+            let rest = rest.trim_start_matches('^').trim_start();
+            let (id, mut rest) = rest.split_once(char::is_whitespace).unwrap_or((rest, ""));
+            let mut expected =
+                Self { at: At { line: target, id: id.to_owned() }, col: None, fragments: Vec::new() };
+            loop {
+                rest = rest.trim_start();
+                if let Some(after) = rest.strip_prefix(COLUMN) {
+                    let digits = after.find(|c: char| !c.is_ascii_digit()).unwrap_or(after.len());
+                    expected.col =
+                        Some(after[..digits].parse().map_err(|_| Malformed::Column { line: number })?);
+                    rest = &after[digits..];
+                } else if let Some(after) = rest.strip_prefix(FRAGMENT) {
+                    let (fragment, after) =
+                        after.split_once(FRAGMENT).ok_or(Malformed::Fragment { line: number })?;
+                    expected.fragments.push(fragment.to_owned());
+                    rest = after;
+                } else {
+                    break;
+                }
             }
+            found.push(expected);
         }
-        found.push(expected);
+        Ok(found)
     }
-    Ok(found)
 }
 
 /// The difference between expected and reported diagnostics.
@@ -159,32 +162,23 @@ impl Mismatch {
     pub fn is_empty(&self) -> bool {
         self.missing.is_empty() && self.unexpected.is_empty() && self.differing.is_empty()
     }
-}
 
-#[must_use]
-pub fn compare(expected: &[Expected], reported: &[Reported]) -> Mismatch {
-    let expected_at: BTreeSet<At> = expected.iter().map(|e| e.at.clone()).collect();
-    let reported_at: BTreeSet<At> = reported.iter().map(|r| r.at.clone()).collect();
-    let differing = expected
-        .iter()
-        .filter(|e| reported_at.contains(&e.at) && !reported.iter().any(|r| e.matches(r)))
-        .map(|e| (e.clone(), reported.iter().filter(|r| r.at == e.at).cloned().collect()))
-        .collect();
-    Mismatch {
-        missing: expected_at.difference(&reported_at).cloned().collect(),
-        unexpected: reported_at.difference(&expected_at).cloned().collect(),
-        differing,
+    /// How the diagnostics `reported` differ from the annotations `expected`.
+    #[must_use]
+    pub fn between(expected: &[Expected], reported: &[Reported]) -> Self {
+        let expected_at: BTreeSet<At> = expected.iter().map(|e| e.at.clone()).collect();
+        let reported_at: BTreeSet<At> = reported.iter().map(|r| r.at.clone()).collect();
+        let differing = expected
+            .iter()
+            .filter(|e| reported_at.contains(&e.at) && !reported.iter().any(|r| e.matches(r)))
+            .map(|e| (e.clone(), reported.iter().filter(|r| r.at == e.at).cloned().collect()))
+            .collect();
+        Self {
+            missing: expected_at.difference(&reported_at).cloned().collect(),
+            unexpected: reported_at.difference(&expected_at).cloned().collect(),
+            differing,
+        }
     }
-}
-
-/// Files under `dir` with extension `ext`, recursively, in a stable order.
-///
-/// # Errors
-/// Returns an error if a directory cannot be read.
-pub fn discover(dir: &Path, ext: &str) -> io::Result<Vec<PathBuf>> {
-    let mut files = dir.files()?;
-    files.retain(|f| f.extension().is_some_and(|e| e == ext));
-    Ok(files)
 }
 
 /// The outcome of a snapshot check.
@@ -199,21 +193,6 @@ pub enum Snapshot {
     },
 }
 
-/// Compares `actual` with the snapshot at `path`, or writes it when blessing.
-///
-/// # Errors
-/// Returns an error if the snapshot cannot be read or written.
-pub fn snapshot(path: &Path, actual: &str) -> io::Result<Snapshot> {
-    let bless = std::env::var_os(BLESS_VAR).is_some();
-    match fs::read_to_string(path) {
-        Ok(expected) if expected == actual => Ok(Snapshot::Matches),
-        Ok(expected) if !bless => Ok(Snapshot::Differs { expected, actual: actual.to_owned() }),
-        Ok(_) => write(path, actual),
-        Err(e) if e.kind() == io::ErrorKind::NotFound => write(path, actual),
-        Err(e) => Err(e),
-    }
-}
-
 /// A snapshot that no longer matches.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Changed {
@@ -222,33 +201,50 @@ pub struct Changed {
     pub actual: String,
 }
 
-/// Snapshots `render(text)` of every file under `dir` with extension `ext`, at the same relative
-/// path under `snapshots` with the extension `kind`.
-///
-/// # Errors
-/// Returns an error if a source or snapshot cannot be read or written.
-pub fn snapshot_tree(
-    dir: &Path,
-    ext: &str,
-    snapshots: &Path,
-    kind: &str,
-    render: impl Fn(&str) -> String,
-) -> io::Result<Vec<Changed>> {
-    let mut changed = Vec::new();
-    for source in discover(dir, ext)? {
-        let actual = render(&fs::read_to_string(&source)?);
-        let relative = source.strip_prefix(dir).unwrap_or(&source);
-        let target = snapshots.join(relative).with_extension(kind);
-        if let Snapshot::Differs { expected, actual } = snapshot(&target, &actual)? {
-            changed.push(Changed { source, expected, actual });
+impl Snapshot {
+    /// Compares `actual` with the snapshot at `path`, or writes it when blessing.
+    ///
+    /// # Errors
+    /// Returns an error if the snapshot cannot be read or written.
+    pub fn check(path: &Path, actual: &str) -> io::Result<Self> {
+        let bless = std::env::var_os(BLESS_VAR).is_some();
+        match fs::read_to_string(path) {
+            Ok(expected) if expected == actual => Ok(Self::Matches),
+            Ok(expected) if !bless => Ok(Self::Differs { expected, actual: actual.to_owned() }),
+            Ok(_) => Self::write(path, actual),
+            Err(e) if e.kind() == io::ErrorKind::NotFound => Self::write(path, actual),
+            Err(e) => Err(e),
         }
     }
-    Ok(changed)
-}
 
-fn write(path: &Path, contents: &str) -> io::Result<Snapshot> {
-    path.put(contents)?;
-    Ok(Snapshot::Written)
+    /// Snapshots `render(text)` of every file under `dir` with extension `ext`, at the same relative
+    /// path under `snapshots` with the extension `kind`.
+    ///
+    /// # Errors
+    /// Returns an error if a source or snapshot cannot be read or written.
+    pub fn tree(
+        dir: &Path,
+        ext: &str,
+        snapshots: &Path,
+        kind: &str,
+        render: impl Fn(&str) -> String,
+    ) -> io::Result<Vec<Changed>> {
+        let mut changed = Vec::new();
+        for source in dir.files_with(ext)? {
+            let actual = render(&fs::read_to_string(&source)?);
+            let relative = source.strip_prefix(dir).unwrap_or(&source);
+            let target = snapshots.join(relative).with_extension(kind);
+            if let Self::Differs { expected, actual } = Self::check(&target, &actual)? {
+                changed.push(Changed { source, expected, actual });
+            }
+        }
+        Ok(changed)
+    }
+
+    fn write(path: &Path, contents: &str) -> io::Result<Self> {
+        path.put(contents)?;
+        Ok(Self::Written)
+    }
 }
 
 #[cfg(test)]

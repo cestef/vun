@@ -1,10 +1,11 @@
 //! Parsing of the repository's own sources: clean, verified, and snapshotted. The rejection
 //! corpus runs through `cargo xtask corpus`.
 
+use overt_fs::Tree;
 use std::path::{Path, PathBuf};
 
 use overt_diag::{DiagCtxt, DiagCx};
-use overt_harness::{discover, repo_root, snapshot_tree};
+use overt_harness::{Snapshot, repo_root};
 use overt_origin::OriginTable;
 use overt_span::{EXTENSION, SourceFiles};
 use overt_syntax::cst::Cst;
@@ -31,7 +32,7 @@ fn read(path: &Path) -> String {
 
 fn sources(dirs: &[&str]) -> Vec<PathBuf> {
     let root = repo_root();
-    dirs.iter().flat_map(|dir| discover(&root.join(dir), EXTENSION).expect("readable tree")).collect()
+    dirs.iter().flat_map(|dir| root.join(dir).files_with(EXTENSION).expect("readable tree")).collect()
 }
 
 #[test]
@@ -56,7 +57,7 @@ fn repository_sources_parse_cleanly_and_verify() {
 fn corpus_cst_dumps_match_snapshots() {
     let snapshots = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/snapshots/cst");
     let corpus = repo_root().join("corpus/accept");
-    let changed = snapshot_tree(&corpus, EXTENSION, &snapshots, "cst", |text| {
+    let changed = Snapshot::tree(&corpus, EXTENSION, &snapshots, "cst", |text| {
         let parsed = parse_text(text);
         parsed.cst.dump(&parsed.tokens, text).to_string()
     })

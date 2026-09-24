@@ -9,7 +9,7 @@ use std::path::{Path, PathBuf};
 
 use overt_diag::{DiagId, errors};
 use overt_fs::Scratch;
-use overt_harness::{Block, Page, expectations};
+use overt_harness::{Block, Expected, Page};
 use overt_span::EXTENSION;
 
 use crate::corpus::{self, Expect, Outcome, Verdict};
@@ -80,7 +80,7 @@ fn check(root: &Path, id: &DiagId, path: &Path) -> std::io::Result<Vec<(String, 
     }
     let relative = id.to_string();
     let annotated = example.iter().find(|(_, text)| {
-        expectations(text).is_ok_and(|expected| expected.iter().any(|e| e.at.id == relative))
+        Expected::all(text).is_ok_and(|expected| expected.iter().any(|e| e.at.id == relative))
     });
     let Some((checked, _)) = annotated.cloned() else {
         return Ok(vec![(String::new(), Verdict::Unexplained(Unexplained::NotShown))]);

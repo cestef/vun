@@ -1,5 +1,6 @@
 use overt_diag::{DiagCtxt, DiagCx, DiagId, errors};
-use overt_harness::{discover, repo_root};
+use overt_fs::Tree;
+use overt_harness::repo_root;
 use overt_origin::OriginTable;
 use overt_span::{EXTENSION, FileId, SourceFiles};
 use overt_syntax::cst::Cst;
@@ -32,7 +33,7 @@ fn every_manifest_reads() {
     let root = repo_root();
     let mut read = 0;
     for dir in ["lib", "corpus"] {
-        for path in discover(&root.join(dir), EXTENSION).unwrap() {
+        for path in root.join(dir).files_with(EXTENSION).unwrap() {
             let text = std::fs::read_to_string(&path).unwrap();
             if path.file_name().is_some_and(|n| n == MANIFEST) && declares(&text) {
                 let (read_once, ids) = manifest(&text);

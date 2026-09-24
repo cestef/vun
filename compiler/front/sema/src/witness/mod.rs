@@ -120,6 +120,7 @@ impl Env<'_, '_> {
     /// The files whose impls this file sees: itself, the namespaces of its package, and those of every
     /// package its package depends on, directly or not (spec 02, section 3: an impl lives in the
     /// package of its type or of its interface, which the code using both depends on).
+    #[must_use]
     pub fn impl_files(&self) -> Vec<FileRef> {
         let mut packages: Vec<PackageId> = vec![self.file.package];
         let mut i = 0;

@@ -2,9 +2,9 @@
 //! directory module by concern (`CLAUDE.md`, code rules). Generated files are exempt: their size
 //! follows their source.
 
+use overt_fs::Tree;
 use std::path::{Path, PathBuf};
 
-use overt_harness::discover;
 use overt_span::EXTENSION;
 
 use crate::generate;
@@ -28,7 +28,7 @@ pub(crate) fn oversized(root: &Path) -> std::io::Result<Vec<Oversized>> {
     let generated: Vec<PathBuf> = generate::ALL.iter().map(|g| root.join(g.output)).collect();
     let mut found = Vec::new();
     for &(dir, ext) in CHECKED {
-        for path in discover(&root.join(dir), ext)? {
+        for path in root.join(dir).files_with(ext)? {
             if generated.contains(&path) {
                 continue;
             }

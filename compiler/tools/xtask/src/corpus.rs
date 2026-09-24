@@ -4,6 +4,7 @@
 //! A rejected file whose missing diagnostics all belong to stages that do not exist yet is
 //! pending, not failing, so the corpus can be written ahead of the compiler (roadmap phase 0).
 
+use overt_fs::Tree;
 use std::borrow::Cow;
 use std::collections::BTreeSet;
 use std::fmt::Write;
@@ -12,7 +13,7 @@ use std::path::{Path, PathBuf};
 use overt_diag::{ChildKind, DiagId, Diagnostic, errors};
 use overt_driver::stages::implemented;
 use overt_driver::{Coverage, Session};
-use overt_harness::{self as harness, At, Mismatch, Reported, compare, discover, expectations};
+use overt_harness::{self as harness, At, Expected, Mismatch, Reported};
 use overt_span::{EXTENSION, SourceMap};
 
 /// Where the corpus lives, relative to the repository root, and what its files expect.
@@ -53,7 +54,7 @@ pub(crate) struct Outcome {
 pub(crate) fn run(root: &Path) -> std::io::Result<Vec<Outcome>> {
     let mut outcomes = crate::explanations::run(root)?;
     for &(dir, expect) in SUITES {
-        for path in discover(&root.join(dir), EXTENSION)? {
+        for path in root.join(dir).files_with(EXTENSION)? {
             let verdict = check(&path, expect)?;
             outcomes.push(Outcome { path: path.strip_prefix(root).unwrap_or(&path).to_path_buf(), verdict });
         }
@@ -71,7 +72,7 @@ pub(crate) fn coverage(root: &Path) -> std::io::Result<Coverage> {
         if expect != Expect::Clean {
             continue;
         }
-        for path in discover(&root.join(dir), EXTENSION)? {
+        for path in root.join(dir).files_with(EXTENSION)? {
             let mut session = Session::new();
             if let Some(file) = session.load(&path) {
                 session.check(file);
@@ -95,7 +96,7 @@ pub(crate) fn check(path: &Path, expect: Expect) -> std::io::Result<Verdict> {
     let reported: Vec<Reported> = session.diag.sorted().iter().map(|d| reported(&session, d)).collect();
     let expected = match expect {
         Expect::Clean => Vec::new(),
-        Expect::Annotated => match expectations(&text) {
+        Expect::Annotated => match Expected::all(&text) {
             Ok(expected) => expected,
             Err(malformed) => return Ok(Verdict::Malformed(malformed)),
         },
@@ -109,7 +110,7 @@ pub(crate) fn check(path: &Path, expect: Expect) -> std::io::Result<Verdict> {
     if !undeclared.is_empty() {
         return Ok(Verdict::Undeclared(undeclared));
     }
-    let mismatch = compare(&expected, &reported);
+    let mismatch = Mismatch::between(&expected, &reported);
     Ok(if mismatch.is_empty() {
         Verdict::Pass
     } else if mismatch.unexpected.is_empty()

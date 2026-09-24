@@ -22,7 +22,7 @@ fn dump_cst_prints_the_tree() {
     let path = dir.write("dump.ov", "x := 1;\n");
     let argv = ["dump", "cst", path.to_str().unwrap()].map(str::to_owned);
     let (mut session, mut out) = (Session::new(), Vec::new());
-    let outcome = overt_command::run(&PROGRAM, &argv, &mut session, &mut out).unwrap();
+    let outcome = PROGRAM.run(&argv, &mut session, &mut out).unwrap();
     assert_eq!(outcome, Outcome::Success);
     assert!(String::from_utf8(out).unwrap().starts_with("File Eof 8..8"));
 }

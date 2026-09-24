@@ -23,4 +23,5 @@ overt-hash.workspace = true
 overt-query.workspace = true
 
 [dev-dependencies]
+overt-fs.workspace = true
 overt-harness.workspace = true

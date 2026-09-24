@@ -514,6 +514,7 @@ name = "overt-hir"
 version = "0.0.0"
 dependencies = [
  "overt-diag",
+ "overt-fs",
  "overt-grammar",
  "overt-harness",
  "overt-hash",
@@ -797,6 +798,7 @@ name = "overt-syntax"
 version = "0.0.0"
 dependencies = [
  "overt-diag",
+ "overt-fs",
  "overt-grammar",
  "overt-harness",
  "overt-index",

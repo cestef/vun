@@ -11,6 +11,16 @@ pub trait Tree {
     /// Returns an error if the path does not exist or a directory cannot be read.
     fn files(&self) -> io::Result<Vec<PathBuf>>;
 
+    /// The files at or below this path whose extension is `ext`, sorted.
+    ///
+    /// # Errors
+    /// As [`Tree::files`].
+    fn files_with(&self, ext: &str) -> io::Result<Vec<PathBuf>> {
+        let mut files = self.files()?;
+        files.retain(|f| f.extension().is_some_and(|e| e == ext));
+        Ok(files)
+    }
+
     /// The files and directories directly in this directory, sorted.
     ///
     /// # Errors

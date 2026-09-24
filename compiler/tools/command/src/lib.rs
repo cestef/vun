@@ -13,8 +13,7 @@ use std::process::ExitCode;
 
 use overt_diag::{Diagnostic, Msg, errors};
 
-pub use help::help;
-pub use parse::{Request, Selected, parse};
+pub use parse::{Request, Selected};
 
 pub struct Program<Cx: 'static> {
     pub version: &'static str,
@@ -161,37 +160,34 @@ impl std::fmt::Display for Refusal {
 
 impl std::error::Error for Refusal {}
 
-/// Parses `words` against `program` and runs the selected command, or prints help or the version.
-///
-/// # Errors
-/// Returns a refusal for usage errors and for commands that are not implemented yet.
-pub fn run<Cx>(
-    program: &Program<Cx>,
-    words: &[String],
-    cx: &mut Cx,
-    out: &mut dyn Write,
-) -> Result<Outcome, Refusal> {
-    let request =
-        parse(program, words).map_err(|diagnostic| Refusal { outcome: Outcome::Usage, diagnostic })?;
-    let written = match request {
-        Request::Help(selected) => write!(out, "{}", help(program, &selected)).map(|()| Outcome::Success),
-        Request::Version => {
-            writeln!(out, "{} {}", program.root.name, program.version).map(|()| Outcome::Success)
-        }
-        Request::Run(selected, args) => match selected.last().action {
-            Action::Run(run) => {
-                (program.configure)(cx, &args)
-                    .map_err(|diagnostic| Refusal { outcome: Outcome::Usage, diagnostic })?;
-                run(cx, &args, out)
+impl<Cx> Program<Cx> {
+    /// Parses `words` against this program and runs the selected command, or prints help or the version.
+    ///
+    /// # Errors
+    /// Returns a refusal for usage errors and for commands that are not implemented yet.
+    pub fn run(&self, words: &[String], cx: &mut Cx, out: &mut dyn Write) -> Result<Outcome, Refusal> {
+        let request =
+            self.parse(words).map_err(|diagnostic| Refusal { outcome: Outcome::Usage, diagnostic })?;
+        let written = match request {
+            Request::Help(selected) => write!(out, "{}", selected.help(self)).map(|()| Outcome::Success),
+            Request::Version => {
+                writeln!(out, "{} {}", self.root.name, self.version).map(|()| Outcome::Success)
             }
-            Action::Planned => {
-                let msg = Msg::new().code(selected.invocation()).text(" is not available yet");
-                let diagnostic = Box::new(Diagnostic::error(errors::CLI_UNAVAILABLE_COMMAND, msg));
-                return Err(Refusal { outcome: Outcome::Failure, diagnostic });
-            }
-            Action::Group(_) => unreachable!("parse turns a bare group into a help request"),
-        },
-    };
-    // Output that cannot be written, such as a closed pipe, fails the command without a report.
-    Ok(written.unwrap_or(Outcome::Failure))
+            Request::Run(selected, args) => match selected.last().action {
+                Action::Run(run) => {
+                    (self.configure)(cx, &args)
+                        .map_err(|diagnostic| Refusal { outcome: Outcome::Usage, diagnostic })?;
+                    run(cx, &args, out)
+                }
+                Action::Planned => {
+                    let msg = Msg::new().code(selected.invocation()).text(" is not available yet");
+                    let diagnostic = Box::new(Diagnostic::error(errors::CLI_UNAVAILABLE_COMMAND, msg));
+                    return Err(Refusal { outcome: Outcome::Failure, diagnostic });
+                }
+                Action::Group(_) => unreachable!("parse turns a bare group into a help request"),
+            },
+        };
+        // Output that cannot be written, such as a closed pipe, fails the command without a report.
+        Ok(written.unwrap_or(Outcome::Failure))
+    }
 }

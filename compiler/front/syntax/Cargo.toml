@@ -19,4 +19,5 @@ overt-grammar.workspace = true
 overt-trace.workspace = true
 
 [dev-dependencies]
+overt-fs.workspace = true
 overt-harness.workspace = true

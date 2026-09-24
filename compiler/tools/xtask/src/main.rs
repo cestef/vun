@@ -174,11 +174,10 @@ fn check_lines(cx: &mut Cx, _: &Args, out: &mut dyn Write) -> io::Result<Outcome
 fn main() -> ExitCode {
     let argv: Vec<String> = std::env::args().skip(1).collect();
     let mut cx = Cx::default();
-    let outcome =
-        overt_command::run(&PROGRAM, &argv, &mut cx, &mut io::stdout().lock()).unwrap_or_else(|refusal| {
-            cx.diag.error(*refusal.diagnostic);
-            refusal.outcome
-        });
+    let outcome = PROGRAM.run(&argv, &mut cx, &mut io::stdout().lock()).unwrap_or_else(|refusal| {
+        cx.diag.error(*refusal.diagnostic);
+        refusal.outcome
+    });
     let (origins, sources) = (OriginTable::new(), SourceFiles::new());
     let mut renderer = ShortRenderer::new(io::stderr());
     for d in cx.diag.sorted() {

@@ -14,12 +14,10 @@ fn main() -> ExitCode {
     overt_trace::Config::from_env().install();
     let argv: Vec<String> = std::env::args().skip(1).collect();
     let mut session = Session::new();
-    let outcome = overt_command::run(&PROGRAM, &argv, &mut session, &mut io::stdout().lock()).unwrap_or_else(
-        |refusal| {
-            session.diag.error(*refusal.diagnostic);
-            refusal.outcome
-        },
-    );
+    let outcome = PROGRAM.run(&argv, &mut session, &mut io::stdout().lock()).unwrap_or_else(|refusal| {
+        session.diag.error(*refusal.diagnostic);
+        refusal.outcome
+    });
     let color = if io::stderr().is_terminal() && std::env::var_os(NO_COLOR).is_none() {
         Color::Always
     } else {
