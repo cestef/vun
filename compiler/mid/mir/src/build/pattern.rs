@@ -114,7 +114,7 @@ impl Builder<'_, '_, '_> {
                 for (i, arg) in args.iter().flatten().enumerate() {
                     let Entry::One(arg) = arg else { return Err(unbuilt) };
                     let ty = payload.get(i).copied().flatten();
-                    self.test(*arg, &matched.part(Projection::Payload(i), ty), fail)?;
+                    self.test(*arg, &matched.part(Projection::Payload { variant: *name, at: i }, ty), fail)?;
                 }
                 Ok(())
             }

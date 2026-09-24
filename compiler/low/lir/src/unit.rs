@@ -54,4 +54,7 @@ pub struct Unit {
     pub imports: IndexVec<ImportId, Import>,
     /// The width of addresses on the target, in bits.
     pub pointer_bits: u32,
+    /// Where each trap site is written, by its id (`lang.panic.Trap.site`): the message table
+    /// that reports a trap (spec 07, section 3).
+    pub sites: Vec<OriginId>,
 }

@@ -70,6 +70,19 @@ impl Shapes {
         Some(Layout::scalar(bytes, Niche::past(bytes, last, &range.count()?)))
     }
 
+    /// How a bound of `Bounds(item)` is stored: as an item, or as a word for items of an
+    /// unbounded range, whose bounds at run time are those of what they index or count.
+    #[must_use]
+    pub fn bound(cx: &Cx<'_>, item: &Ty) -> Option<Layout> {
+        match item.interval() {
+            Some(range) if range.storage().is_none() => {
+                let pointer = Self::pointer(cx)?;
+                Some(Layout { niche: None, ..pointer })
+            }
+            _ => Some(Layout { niche: None, ..Self::layout(cx, item)? }),
+        }
+    }
+
     /// A pointer of the target: as wide as an address; never null.
     fn pointer(cx: &Cx<'_>) -> Option<Layout> {
         let usize_max = cx.db().resource::<Target>().usize_max.clone();
@@ -101,6 +114,13 @@ impl Shapes {
                 let niche = if len == 0 { None } else { item.niche };
                 let layout = Layout { size: item.size.checked_mul(len)?, align: item.align, niche };
                 Some(Shape { layout, parts: Parts::Array { stride: item.size, len } })
+            }
+            // Bounds at run time: the low bound, the end past the last item, and whether there
+            // is an end, the bounds in the items' storage, or the word's when they have none.
+            Primitive::Lang(Lang::Bounds) => {
+                let item = Self::bound(cx, &arg(0)?)?;
+                let flag = Layout::scalar(1, None);
+                Some(Shape::sequence([item, item, flag]))
             }
             Primitive::Mem(Mem::Cell) => {
                 let inner = cx.get::<Self>(&arg(0)?)?;

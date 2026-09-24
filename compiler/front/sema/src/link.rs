@@ -15,6 +15,7 @@ use vun_intern::Symbol;
 use crate::env::Env;
 use crate::eval::Func;
 use crate::item::DeclRef;
+use crate::primitives::abi::Abi;
 use crate::primitives::link::Link;
 
 impl Func {
@@ -25,6 +26,32 @@ impl Func {
         let attrs = env.attrs_of(self.literal.expr.id);
         let args = env.attribute(&attrs, Primitive::Link(Link::export))?;
         Some(Symbol::intern(&args.first()?.text()?))
+    }
+
+    /// The calling convention its attributes name (`#[abi.c]`), if any (spec 07, section 4).
+    #[must_use]
+    pub fn abi(&self, cx: &Cx<'_>) -> Option<Abi> {
+        let env = Env::defining(cx, &self.literal, self.within.as_deref())?;
+        Abi::of(&env, &env.attrs_of(self.literal.expr.id))
+    }
+}
+
+impl DeclRef {
+    /// The symbol the linker provides this declaration under (`#[link.symbol(s)]`), and the
+    /// calling convention its attributes name.
+    #[must_use]
+    pub fn linked(&self, cx: &Cx<'_>) -> Option<(Symbol, Option<Abi>)> {
+        let env = Env::of(cx, &self.file)?;
+        let attrs = &env.parsed.hir.decls[self.decl.id].attrs;
+        let args = env.attribute(attrs, Primitive::Link(Link::symbol))?;
+        Some((Symbol::intern(&args.first()?.text()?), Abi::of(&env, attrs)))
+    }
+}
+
+impl Abi {
+    /// The first convention among `attrs`.
+    fn of(env: &Env<'_, '_>, attrs: &[vun_hir::tree::ExprId]) -> Option<Self> {
+        Self::ALL.iter().copied().find(|&abi| env.attribute(attrs, Primitive::Abi(abi)).is_some())
     }
 }
 

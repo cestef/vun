@@ -42,13 +42,10 @@ impl Place {
                 TyKind::Tuple(items) => items.get(*at).copied(),
                 _ => None,
             },
-            Projection::Payload(at) => {
-                // The type of an item of a payload: known when every variant with one agrees.
+            Projection::Payload { variant, at } => {
                 let members = cx.get::<Members>(&ty)?;
-                let mut items =
-                    members.variants.iter().filter_map(|v| v.payload.get(*at)?.as_ref().ok().copied());
-                let first = items.next()?;
-                items.all(|t| t == first).then_some(first)
+                let variant = members.variants.iter().find(|v| v.name == *variant)?;
+                variant.payload.get(*at)?.as_ref().ok().copied()
             }
             // Items at bounds are a run of the sequence, as its slice type.
             Projection::Index(index) if locals[*index].ty.is_some_and(|t| t.bounds().is_some()) => {

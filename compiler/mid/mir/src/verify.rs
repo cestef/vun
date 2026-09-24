@@ -139,9 +139,10 @@ impl Body {
         self.local(at, place.local)?;
         place.projection.iter().try_for_each(|p| match p {
             Projection::Index(local) => self.local(at, *local),
-            Projection::Deref | Projection::Field(_) | Projection::Position(_) | Projection::Payload(_) => {
-                Ok(())
-            }
+            Projection::Deref
+            | Projection::Field(_)
+            | Projection::Position(_)
+            | Projection::Payload { .. } => Ok(()),
         })
     }
 

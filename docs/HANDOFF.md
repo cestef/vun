@@ -185,6 +185,19 @@ result; conflicts by the column `access`; loans of own storage (not `Role::Stati
 escape; `free.rs` (`borrow.in_free_value`). `panics.rs` (`#[panic.never]`), `types.rs` (place
 types along projections).
 
+**LIR** (`compiler/low/lir`, decision 150): `Unit` (functions, data with relocations, imports,
+`sites`, `pointer_bits`), `Function` (signature with `Conv` and `AbiType::{Scalar, Record,
+Memory}`, slots, blocks with parameters, instructions, values), `Builder`, `Unit::verify`
+(dominance, types, targets, origins), the text format (`Unit::dump`).
+
+**Lowering** (`compiler/low/lower`, decision 151): query `Lowered` (root file to
+`Result<Unit, Unlowered>`), `vun dump lir`. `Types::repr` (zero, scalar, memory), signatures,
+`func/` per concern: places (`Reached` with a slice's length), constants (`Lowering::encode`),
+conversions (ranges, arrays item by item, enums variant by variant), rvalues, calls (functions,
+imports, `lang` primitives with link symbols), primitives (`lang.int` arithmetic and comparisons,
+narrowings, `lang.mem`), bounds and runs, traps. hello.vun lowers to LIR that verifies;
+coroutine frames (export.vun's `for` over a slice) are not lowered yet (`Form::Frame`).
+
 **Interpreter** (`compiler/mid/interp`): runs MIR on compile-time values; shared borrows read as
 values; exclusive borrows are loans (`Value::Loan`) that `.*` follows (`places.rs`), passed to
 calls as what they reach and written back from `Metered::written` (`loans.rs`, decision 135);
@@ -232,7 +245,7 @@ statics at compile time), 138 (targets and lint groups as data, member handles),
 budget), 140 (`std` iterators, arguments, `Fixed` as an `Allocator`), 141 (values' types, members
 of types without a namespace, requirements through witnesses), 143 (receivers after inferred
 `$` arguments, lent parameters lent on), 145 (layout placement), 146 (`yield` as an exit, cancel
-paths), 148 (`Programs`, `Concrete`), 149 (typed borrow modes and tables); accepted: 142 (the `lang.lint` view), 147 (namespace
+paths), 148 (`Programs`, `Concrete`), 149 (typed borrow modes and tables), 150 (LIR), 151 (lowering); accepted: 142 (the `lang.lint` view), 147 (namespace
 members reported, `corpus/planned`). New language
 rules go to `decisions.md` as proposed unless the user approves them.
 

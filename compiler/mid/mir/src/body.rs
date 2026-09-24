@@ -4,6 +4,7 @@
 use vun_index::{IndexVec, index};
 use vun_intern::Symbol;
 use vun_origin::OriginId;
+use vun_sema::item::DeclRef;
 use vun_sema::ty::Ty;
 
 use crate::place::Place;
@@ -52,25 +53,35 @@ pub struct LocalDecl {
     pub origin: OriginId,
 }
 
-/// What a local holds for the checks.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+/// What a local holds for the checks, and for code generation where it lives.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Role {
     /// A value, which is consumed as a whole.
     Held,
     /// A value a pattern takes apart: its parts, bound or dropped, carry what it held.
     Unpacked,
-    /// A top-level binding's storage, which outlives every call: a borrow of it escapes nowhere.
-    Static,
-    /// A `mut` top-level binding's storage: a static, as `Static`, holding its initial value,
-    /// whose value later is known at run time only.
-    StaticMut,
+    /// The storage of the top-level binding `decl`, which outlives every call: a borrow of it
+    /// escapes nowhere.
+    Static(DeclRef),
+    /// The storage of the `mut` top-level binding `decl`: a static, as `Static`, holding its
+    /// initial value, whose value later is known at run time only.
+    StaticMut(DeclRef),
 }
 
 impl Role {
     /// Whether the local is a top-level binding's storage.
     #[must_use]
-    pub fn is_static(self) -> bool {
-        matches!(self, Self::Static | Self::StaticMut)
+    pub fn is_static(&self) -> bool {
+        self.global().is_some()
+    }
+
+    /// The top-level binding whose storage the local is.
+    #[must_use]
+    pub fn global(&self) -> Option<&DeclRef> {
+        match self {
+            Self::Static(decl) | Self::StaticMut(decl) => Some(decl),
+            Self::Held | Self::Unpacked => None,
+        }
     }
 }
 

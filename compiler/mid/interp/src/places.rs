@@ -4,6 +4,7 @@
 
 use vun_index::Idx;
 use vun_mir::{Local, Place, Projection, Role};
+use vun_sema::decl::DeclValue;
 use vun_sema::env::Unevaluated;
 use vun_sema::ops::Part;
 use vun_sema::ty::Value;
@@ -13,8 +14,12 @@ use crate::machine::Frame;
 impl Frame<'_, '_, '_> {
     /// What `local` holds; a `mut` static's is known at run time only.
     pub(crate) fn local(&self, local: Local) -> Result<Value, Unevaluated> {
-        match self.body.locals[local].role {
-            Role::StaticMut => Err(Unevaluated::Runtime),
+        match &self.body.locals[local].role {
+            Role::StaticMut(_) => Err(Unevaluated::Runtime),
+            // A top-level binding's storage holds its value, which never changes.
+            Role::Static(decl) => {
+                self.locals[local].clone().map_or_else(|| self.env.cx.get::<DeclValue>(decl), Ok)
+            }
             _ => self.locals[local].clone().ok_or(Unevaluated::Unsupported),
         }
     }
@@ -89,7 +94,7 @@ impl Frame<'_, '_, '_> {
             Projection::Field(name) => Part::Field(*name),
             Projection::Index(index) => Part::Item(self.local(*index)?),
             Projection::Position(at) => Part::Position(*at),
-            Projection::Payload(at) => Part::Payload(*at),
+            Projection::Payload { at, .. } => Part::Payload(*at),
         }))
     }
 }

@@ -637,6 +637,7 @@ dependencies = [
  "vun-link-wild",
  "vun-lir",
  "vun-lir-passes",
+ "vun-lower",
  "vun-mir",
  "vun-mir-passes",
  "vun-origin",
@@ -856,6 +857,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "vun-lower"
+version = "0.0.0"
+dependencies = [
+ "vun-desugar",
+ "vun-grammar",
+ "vun-hir",
+ "vun-index",
+ "vun-intern",
+ "vun-items",
+ "vun-lir",
+ "vun-mir",
+ "vun-origin",
+ "vun-query",
+ "vun-sema",
+ "vun-target",
+]
+
+[[package]]
 name = "vun-lsp"
 version = "0.0.0"
 dependencies = [
@@ -872,6 +891,7 @@ dependencies = [
  "vun-hir",
  "vun-index",
  "vun-intern",
+ "vun-items",
  "vun-origin",
  "vun-query",
  "vun-sema",

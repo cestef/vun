@@ -37,6 +37,7 @@ vun-mir = { path = "compiler/mid/mir" }
 vun-mir-passes = { path = "compiler/mid/passes" }
 vun-interp = { path = "compiler/mid/interp" }
 vun-lir = { path = "compiler/low/lir" }
+vun-lower = { path = "compiler/low/lower" }
 vun-abi = { path = "compiler/low/abi" }
 vun-lir-passes = { path = "compiler/low/passes" }
 vun-backend = { path = "compiler/back/api" }

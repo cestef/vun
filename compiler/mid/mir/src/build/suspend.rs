@@ -57,7 +57,7 @@ impl Builder<'_, '_, '_> {
         mut each: impl FnMut(&mut Self, Place) -> Result<(), Unbuilt>,
     ) -> Result<Operand, Unbuilt> {
         let unbuilt = Unbuilt { at: origin };
-        let item = ITERATION.first().ok_or(unbuilt)?.each;
+        let row = ITERATION.first().ok_or(unbuilt)?;
         let head = self.fresh(origin);
         self.terminate(TerminatorKind::Goto(head), origin);
         self.current = head;
@@ -66,13 +66,14 @@ impl Builder<'_, '_, '_> {
         self.locals[resumed].role = Role::Unpacked;
         let resumed = Place::of(resumed);
         let returned = self.fresh(origin);
-        let yielded = Rvalue::IsVariant { place: resumed.clone(), variant: item.symbol() };
+        let yielded = Rvalue::IsVariant { place: resumed.clone(), variant: row.each.symbol() };
         let cond = self.temp(yielded, origin);
         self.guard(cond, returned, origin);
-        each(self, resumed.clone().project(Projection::Payload(0)))?;
+        each(self, resumed.clone().project(Projection::Payload { variant: row.each.symbol(), at: 0 }))?;
         self.terminate(TerminatorKind::Goto(head), origin);
         self.current = returned;
-        let result = self.temp(Rvalue::Use(Operand::Place(resumed.project(Projection::Payload(0)))), origin);
+        let done = Projection::Payload { variant: row.done.symbol(), at: 0 };
+        let result = self.temp(Rvalue::Use(Operand::Place(resumed.project(done))), origin);
         // The frame returned; ending it frees it (spec 06, section 1).
         self.temp(Rvalue::End { frame: Place::of(frame) }, origin);
         Ok(result)

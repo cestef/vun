@@ -48,6 +48,7 @@ vun-mir.workspace = true
 vun-mir-passes.workspace = true
 vun-interp.workspace = true
 vun-lir.workspace = true
+vun-lower.workspace = true
 vun-lir-passes.workspace = true
 vun-backend.workspace = true
 vun-link.workspace = true

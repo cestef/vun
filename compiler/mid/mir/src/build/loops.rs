@@ -78,7 +78,8 @@ impl Builder<'_, '_, '_> {
                 self.guard(cond, done, origin);
                 let never = self.fresh(origin);
                 self.blocks[never].term.kind = TerminatorKind::Unreachable;
-                let matched = Matched::copied(resumed.project(Projection::Payload(0)));
+                let matched =
+                    Matched::copied(resumed.project(Projection::Payload { variant: item.symbol(), at: 0 }));
                 self.test(*pat, &matched, never)?;
                 let run = self.current;
                 self.current = done;

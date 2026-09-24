@@ -22,12 +22,14 @@ pub enum Conv {
     Naked,
 }
 
-/// A value a signature passes: a scalar, or a record passed by value under the C convention,
-/// which the body and callers hold in memory, reaching it by address.
+/// A value a signature passes: a scalar; a record passed by value under the C convention; or a
+/// value in memory passed by address under Vun's. The body and callers hold both in memory,
+/// reaching them by address.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum AbiType {
     Scalar(Scalar),
     Record(Record),
+    Memory { size: u64, align: u64 },
 }
 
 /// A record as C lays it out: its size, alignment and the scalars at their offsets.
@@ -44,7 +46,7 @@ impl AbiType {
     pub fn value(&self) -> Scalar {
         match self {
             Self::Scalar(s) => *s,
-            Self::Record(_) => Scalar::Ptr,
+            Self::Record(_) | Self::Memory { .. } => Scalar::Ptr,
         }
     }
 }
@@ -53,18 +55,24 @@ impl AbiType {
 pub struct Signature {
     pub conv: Conv,
     pub params: Vec<AbiType>,
-    /// The result; a record result is written through the address the body receives after its
+    /// The result; one in memory is written through the address the body receives after its
     /// parameters, and callers pass.
     pub result: Option<AbiType>,
 }
 
 impl Signature {
     /// The types of the values the entry block receives and a call passes: the parameters, then
-    /// the address of a record result.
+    /// the address of a result in memory.
     #[must_use]
     pub fn values(&self) -> Vec<Scalar> {
-        let out = matches!(self.result, Some(AbiType::Record(_))).then_some(Scalar::Ptr);
+        let out = self.through().then_some(Scalar::Ptr);
         self.params.iter().map(AbiType::value).chain(out).collect()
+    }
+
+    /// Whether the result is written through an address rather than returned.
+    #[must_use]
+    pub fn through(&self) -> bool {
+        matches!(self.result, Some(AbiType::Record(_) | AbiType::Memory { .. }))
     }
 
     /// The type of the value a call gives, for a scalar result.
@@ -72,7 +80,7 @@ impl Signature {
     pub fn returns(&self) -> Option<Scalar> {
         match &self.result {
             Some(AbiType::Scalar(s)) => Some(*s),
-            Some(AbiType::Record(_)) | None => None,
+            Some(AbiType::Record(_) | AbiType::Memory { .. }) | None => None,
         }
     }
 }

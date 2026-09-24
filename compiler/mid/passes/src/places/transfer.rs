@@ -152,7 +152,7 @@ impl Analysis<'_> {
             .map(|p| match p {
                 Projection::Field(name) => Some(Key::Field(*name)),
                 Projection::Position(at) => Some(Key::Position(*at)),
-                Projection::Payload(at) => Some(Key::Payload(*at)),
+                Projection::Payload { at, .. } => Some(Key::Payload(*at)),
                 Projection::Index(index) => self.constants.get(index).map(|&n| Key::Item(n)),
                 Projection::Deref => None,
             })

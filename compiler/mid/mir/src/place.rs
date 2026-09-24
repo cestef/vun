@@ -21,8 +21,11 @@ pub enum Projection {
     Index(Local),
     /// The item at a fixed position of a tuple.
     Position(usize),
-    /// An item of the payload of a variant, once tested to be one.
-    Payload(usize),
+    /// The item at `at` of the payload of the variant `variant`, once tested to be one.
+    Payload {
+        variant: Symbol,
+        at: usize,
+    },
 }
 
 impl Place {
@@ -47,8 +50,11 @@ impl Place {
         self.local == other.local
             && self.projection.iter().zip(&other.projection).all(|pair| match pair {
                 (Projection::Field(a), Projection::Field(b)) => a == b,
-                (Projection::Position(a), Projection::Position(b))
-                | (Projection::Payload(a), Projection::Payload(b)) => a == b,
+                (Projection::Position(a), Projection::Position(b)) => a == b,
+                // The payloads of different variants share storage.
+                (Projection::Payload { variant: va, at: a }, Projection::Payload { variant: vb, at: b }) => {
+                    va != vb || a == b
+                }
                 _ => true,
             })
     }

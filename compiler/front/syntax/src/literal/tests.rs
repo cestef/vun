@@ -16,7 +16,7 @@ fn read(text: &str) -> Vec<Decl<'_>> {
 }
 
 #[test]
-fn reads_literals_and_skips_the_rest() {
+fn reads_literals_and_leaves_the_rest_opaque() {
     let text = "/// doc\nxs := [.a, .\\unsafe, \"s\", -0x1_0];\nr: T = .{ .k = 1, .l = .{ 2 } };\n\
                 E := enum { /// v\n a, b(u8) };\nS := struct { f: u8, d := f() + 1; };\n";
     let decls = read(text);
@@ -36,7 +36,8 @@ fn reads_literals_and_skips_the_rest() {
     let variants = decls[2].value.decls().unwrap();
     assert_eq!((variants[0].name, &variants[0].doc[..], variants[1].name), ("a", &["v"][..], "b"));
     let members = decls[3].value.decls().unwrap();
-    assert_eq!((members.len(), members[0].name, &members[0].value), (1, "d", &Literal::Opaque));
+    let names: Vec<_> = members.iter().map(|m| (m.name, &m.value)).collect();
+    assert_eq!(names, [("f", &Literal::Opaque), ("d", &Literal::Opaque)]);
 }
 
 #[test]

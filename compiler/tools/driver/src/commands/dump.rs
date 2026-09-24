@@ -64,7 +64,12 @@ pub(super) const DUMPS: &[Command<Session>] = &[
         params: &[FILE],
         action: Action::Run(|s, args, out| Stage::Program.dump(s, args, out)),
     },
-    Command::planned("lir", "the low-level representation"),
+    Command {
+        name: "lir",
+        about: "the low-level representation of the program a root file exports, with origins",
+        params: &[FILE],
+        action: Action::Run(|s, args, out| Stage::Lir.dump(s, args, out)),
+    },
     Command::planned("link", "the link plan"),
 ];
 
@@ -76,6 +81,7 @@ enum Stage {
     Hir,
     Mir,
     Program,
+    Lir,
     Layout,
     Manifest,
     Plan,
@@ -132,6 +138,22 @@ impl Stage {
                 let bodies = session.bodies(file);
                 for (f, body) in bodies {
                     session.dump_body(f.expr.origin, body, out)?;
+                }
+            }
+            Self::Lir => {
+                let lowered = session.lir(file);
+                let locate = |o| session.sources.locate(session.origins.source_span(o)).at;
+                match &*lowered {
+                    Ok(unit) => {
+                        write!(out, "{}", unit.dump(&locate))?;
+                        if let Err(malformed) = unit.verify(&session.origins) {
+                            writeln!(out, "malformed: {malformed}")?;
+                        }
+                    }
+                    Err(unlowered) => {
+                        let at = session.sources.locate(session.origins.source_span(unlowered.at));
+                        writeln!(out, "not lowered at {at}: {unlowered}")?;
+                    }
                 }
             }
             Self::Program => {

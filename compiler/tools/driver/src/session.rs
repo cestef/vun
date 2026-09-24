@@ -11,6 +11,7 @@ use vun_hir::lower;
 use vun_hir::tree::{ExprKind, Hir};
 use vun_intern::Symbol;
 use vun_interp::Interpreter;
+use vun_lower::{Lowered, Unlowered};
 use vun_mir::{Body, Mir, Program, Programs, Unbuilt};
 use vun_origin::OriginTable;
 use vun_pkg::Schemes;
@@ -150,6 +151,12 @@ impl Session {
     pub fn program(&mut self, file: FileId) -> Arc<Program> {
         let key = self.file_ref(file);
         self.db.get::<Programs>(&key)
+    }
+
+    /// The LIR of the program whose root is `file`, or why it does not lower.
+    pub fn lir(&mut self, file: FileId) -> Arc<Result<vun_lir::Unit, Unlowered>> {
+        let key = self.file_ref(file);
+        self.db.get::<Lowered>(&key)
     }
 
     /// The MIR of each function literal of `file`, in source order.

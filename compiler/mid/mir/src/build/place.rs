@@ -8,7 +8,6 @@ use vun_hir::resolve::Res;
 use vun_hir::tree::{ExprId, ExprKind};
 use vun_intern::Symbol;
 use vun_origin::OriginId;
-use vun_sema::decl::DeclValue;
 use vun_sema::env::{Hop, Unevaluated};
 use vun_sema::int::Interval;
 use vun_sema::item::Site;
@@ -17,7 +16,7 @@ use vun_sema::ty::{TyKind, Value};
 
 use super::{Builder, Unbuilt};
 use crate::place::{Place, Projection};
-use crate::{Operand, Role, Rvalue};
+use crate::{Local, LocalDecl, Operand, Role, Rvalue};
 
 impl Builder<'_, '_, '_> {
     /// The place `expr` denotes: a local, or a projection of a place. Any other expression is
@@ -32,16 +31,12 @@ impl Builder<'_, '_, '_> {
                 _ if let Ok(Site::Decl(decl)) = self.env().resolve(expr)
                     && decl.mutable(self.env.cx) =>
                 {
-                    let initial = self.env.cx.get::<DeclValue>(&decl).map_err(|_| Unbuilt { at: origin })?;
-                    let local = self.temp_local(Rvalue::Use(Operand::Const(initial)), origin);
-                    self.locals[local].role = Role::StaticMut;
-                    Ok(Place::of(local))
+                    Ok(Place::of(self.global(Role::StaticMut(decl), expr, origin)))
                 }
-                Some(Res::Binder(b)) if !hir.binders[b].comptime => {
-                    let place = self.held(expr, origin)?;
-                    self.locals[place.local].role = Role::Static;
-                    Ok(place)
-                }
+                Some(Res::Binder(b)) if !hir.binders[b].comptime => match self.env().resolve(expr) {
+                    Ok(Site::Decl(decl)) => Ok(Place::of(self.global(Role::Static(decl), expr, origin))),
+                    _ => self.held(expr, origin),
+                },
                 _ => self.held(expr, origin),
             },
             ExprKind::Member { object, name } if self.env().eval(expr).is_err() => {
@@ -133,13 +128,26 @@ impl Builder<'_, '_, '_> {
         let Some(ty) = self.typed().and_then(|t| t.types.get(&object).map(|k| k.ty)) else {
             return Ok(place);
         };
-        for hop in self.env().reach(ty, name).0 {
+        // A run of items through a borrow, `xs[a..b]`, reads as a borrow of the run, whose place
+        // is the run itself: the first borrow is already gone through.
+        let run = place.ty(self.env.cx, &self.locals).is_some_and(|t| Some(t) == ty.borrowed());
+        for (i, hop) in self.env().reach(ty, name).0.into_iter().enumerate() {
+            if run && i == 0 && !matches!(hop, Hop::Owner(_)) {
+                continue;
+            }
             if let Hop::Owner(field) = hop {
                 place = place.project(Projection::Field(field));
             }
             place = place.project(Projection::Deref);
         }
         Ok(place)
+    }
+
+    /// The storage of a top-level binding, `init` from the program's start: a local of the
+    /// binding's type, which nothing in the body writes first.
+    fn global(&mut self, role: Role, expr: ExprId, origin: OriginId) -> Local {
+        let ty = self.type_of(expr);
+        self.locals.push(LocalDecl { name: None, ty, role, origin })
     }
 
     /// A temporary holding the value of `expr`.

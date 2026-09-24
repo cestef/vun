@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+
+    <meta content='Andrew Nesbitt' name='author'>
+    <meta content='@andrewnez@mastodon.social' name='fediverse:creator'>
+    <meta content='noodp' name='robots'>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <link rel="stylesheet" href="/style.css">
+    <script defer src="https://media.ethicalads.io/media/client/ethicalads.min.js"></script>
+    <script>
+      (function(){var t=localStorage.getItem('theme');if(t)document.documentElement.setAttribute('data-theme',t)})();
+    </script>
+    <link rel="me" href="https://mastodon.social/@andrewnez">
+    <link rel="me" href="https://github.com/andrew">
+    <link rel="author" href="/humans.txt">
+
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge"><!-- Begin Jekyll SEO tag v2.9.0 -->
+<title>Unboxed: Zig | Andrew Nesbitt</title>
+<meta name="generator" content="Jekyll v4.4.1" />
+<meta property="og:title" content="Unboxed: Zig" />
+<meta name="author" content="Andrew Nesbitt" />
+<meta property="og:locale" content="en_US" />
+<meta name="description" content="Zig’s package manager: mechanics, categorisation, governance, threat model." />
+<meta name="twitter:description" property="og:description" content="Zig’s package manager: mechanics, categorisation, governance, threat model." />
+<link rel="canonical" href="https://nesbitt.io/2026/07/09/unboxed-zig.html" />
+<meta property="og:url" content="https://nesbitt.io/2026/07/09/unboxed-zig.html" />
+<meta property="og:site_name" content="Andrew Nesbitt" />
+<meta property="og:image" content="https://nesbitt.io/images/boxes.png" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2026-07-09T10:00:00+00:00" />
+<meta property="article:modified_time" content="2026-07-09T10:00:00+00:00" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:image" content="https://nesbitt.io/images/boxes.png" />
+<meta name="twitter:title" content="Unboxed: Zig" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Andrew Nesbitt"},"dateModified":"2026-07-09T10:00:00+00:00","datePublished":"2026-07-09T10:00:00+00:00","description":"Zig’s package manager: mechanics, categorisation, governance, threat model.","headline":"Unboxed: Zig","image":"https://nesbitt.io/images/boxes.png","mainEntityOfPage":{"@type":"WebPage","@id":"https://nesbitt.io/2026/07/09/unboxed-zig.html"},"publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://nesbitt.io/images/boxes.png"},"name":"Andrew Nesbitt"},"url":"https://nesbitt.io/2026/07/09/unboxed-zig.html"}</script>
+<!-- End Jekyll SEO tag -->
+<link type="application/atom+xml" rel="alternate" href="https://nesbitt.io/feed.xml" title="Andrew Nesbitt" /><link rel="alternate" type="text/markdown" href="/2026/07/09/unboxed-zig.md">
+    <link rel="site.standard.publication" href="at://did:plc:q3moczhdry2263q35ffqqzs5/site.standard.publication/3mnkktcb4vt2j">
+<link rel="site.standard.document" href="at://did:plc:q3moczhdry2263q35ffqqzs5/site.standard.document/3mqa57igr322o">
+
+  </head>
+  <body>
+    <div class="container">
+      <div class="row">
+        <nav class="navbar navbar-expand-lg w-100">
+          <a href="/" class="navbar-brand face" aria-label="Home"></a>
+          <span class="navbar-brand mb-0 h1"> <a href="/">Andrew Nesbitt</a>     </span>
+
+          <ul class="navbar-nav nav ml-auto">
+            <li class="nav-item">
+              <a rel="me" href="https://mastodon.social/@andrewnez" aria-label="Mastodon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M11.19 12.195c2.016-.24 3.77-1.475 3.99-2.603.348-1.778.32-4.339.32-4.339 0-3.47-2.286-4.488-2.286-4.488C12.062.238 10.083.017 8.027 0h-.05C5.92.017 3.942.238 2.79.765c0 0-2.285 1.017-2.285 4.488l-.002.662c-.004.64-.007 1.35.011 2.091.083 3.394.626 6.74 3.78 7.57 1.454.383 2.703.463 3.709.408 1.823-.1 2.847-.647 2.847-.647l-.06-1.317s-1.303.41-2.767.36c-1.45-.05-2.98-.156-3.215-1.928a4 4 0 0 1-.033-.496s1.424.346 3.228.428c1.103.05 2.137-.064 3.188-.189zm1.613-2.47H11.13v-4.08c0-.859-.364-1.295-1.091-1.295-.804 0-1.207.517-1.207 1.541v2.233H7.168V5.89c0-1.024-.403-1.541-1.207-1.541-.727 0-1.091.436-1.091 1.296v4.079H3.197V5.522q0-1.288.66-2.046c.456-.505 1.052-.764 1.793-.764.856 0 1.504.328 1.933.983L8 4.39l.417-.695c.429-.655 1.077-.983 1.934-.983.74 0 1.336.259 1.791.764q.662.757.661 2.046z"/></svg></a>&nbsp;
+              <a rel="me" href="https://github.com/andrew" aria-label="GitHub"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8"/></svg></a>&nbsp;
+              <a href="/feed.xml" aria-label="RSS Feed"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2zm1.5 2.5c5.523 0 10 4.477 10 10a1 1 0 1 1-2 0 8 8 0 0 0-8-8 1 1 0 0 1 0-2m0 4a6 6 0 0 1 6 6 1 1 0 1 1-2 0 4 4 0 0 0-4-4 1 1 0 0 1 0-2m.5 7a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3"/></svg></a>&nbsp;
+              <a href="/search" aria-label="Search"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001q.044.06.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1 1 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0"/></svg></a>&nbsp;
+              <button class="theme-toggle" id="theme-toggle" aria-label="Toggle dark mode"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M6 .278a.77.77 0 0 1 .08.858 7.2 7.2 0 0 0-.878 3.46c0 4.021 3.278 7.277 7.318 7.277q.792-.001 1.533-.16a.79.79 0 0 1 .81.316.73.73 0 0 1-.031.893A8.35 8.35 0 0 1 8.344 16C3.734 16 0 12.286 0 7.71 0 4.266 2.114 1.312 5.124.06A.75.75 0 0 1 6 .278"/></svg></button>
+            </li>
+            <li class="navbar-item">
+
+            </li>
+          </ul>
+        </nav>
+      </div>
+
+      <main aria-label="Content">
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+
+  <header class="post-header">
+    <h1 class="post-title p-name" itemprop="name headline">Unboxed: Zig</h1>
+    <p class="post-tagline">Zig&#39;s package manager: mechanics, categorisation, governance, threat model.</p>
+    <p class="post-meta">
+      <time class="dt-published" datetime="2026-07-09T10:00:00+00:00" itemprop="datePublished">Jul 9, 2026
+      </time><span class="post-tags"><a href="/search#package-managers" class="post-tag">package-managers</a><a href="/search#unboxed" class="post-tag">unboxed</a><a href="/search#zig" class="post-tag">zig</a></span></p>
+  </header>
+
+  <div class="post-content e-content" itemprop="articleBody">
+    <p>This is the first in a series of posts working through individual package managers against a fixed set of headings, so they can be compared directly. The headings come from earlier posts: the <a href="/2025/12/29/categorizing-package-manager-clients.html">client</a> and <a href="/2025/12/29/categorizing-package-registries.html">registry</a> categorisations, the <a href="/2025/12/22/package-registries-are-governance-as-a-service.html">governance</a> post, and the <a href="/2026/05/05/package-manager-threat-models.html">threat model</a>.</p>
+
+<p>Zig’s package manager has been built into the <code class="language-plaintext highlighter-rouge">zig</code> binary since <a href="https://ziglang.org/download/0.11.0/release-notes.html#Package-Management">0.11 in August 2023</a>, with no separate tool and no central registry. A <code class="language-plaintext highlighter-rouge">build.zig.zon</code> file lists dependencies as URLs with content hashes, and <code class="language-plaintext highlighter-rouge">zig build</code> fetches and compiles everything together. The language and the tool are both run by the <a href="https://ziglang.org/zsf/">Zig Software Foundation</a>, a 501(c)(3).</p>
+
+<h2 id="how-it-works">How it works</h2>
+
+<p>A Zig project has a <code class="language-plaintext highlighter-rouge">build.zig</code> program at its root, describing targets, compile flags, and which dependencies to link where, alongside a <code class="language-plaintext highlighter-rouge">build.zig.zon</code> data file listing metadata and dependencies. Despite the similar names, <code class="language-plaintext highlighter-rouge">build.zig.zon</code> is inert data that can be parsed without running anything, while <code class="language-plaintext highlighter-rouge">build.zig</code> is arbitrary Zig code that gets compiled and executed. Which of the two an operation touches is where most of the security properties come from.</p>
+
+<div class="language-zig highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="o">.</span><span class="p">{</span>
+    <span class="p">.</span><span class="py">name</span> <span class="o">=</span> <span class="p">.</span><span class="py">example</span><span class="p">,</span>
+    <span class="p">.</span><span class="py">version</span> <span class="o">=</span> <span class="s">"0.3.1"</span><span class="p">,</span>
+    <span class="p">.</span><span class="py">fingerprint</span> <span class="o">=</span> <span class="mi">0x6a8091f57c7f07ff</span><span class="p">,</span>
+    <span class="p">.</span><span class="py">minimum_zig_version</span> <span class="o">=</span> <span class="s">"0.16.0"</span><span class="p">,</span>
+    <span class="p">.</span><span class="py">dependencies</span> <span class="o">=</span> <span class="o">.</span><span class="p">{</span>
+        <span class="p">.</span><span class="py">known_folders</span> <span class="o">=</span> <span class="o">.</span><span class="p">{</span>
+            <span class="p">.</span><span class="py">url</span> <span class="o">=</span> <span class="s">"https://github.com/ziglibs/known-folders/archive/refs/tags/1.1.0.tar.gz"</span><span class="p">,</span>
+            <span class="p">.</span><span class="py">hash</span> <span class="o">=</span> <span class="s">"known_folders-1.1.0-Fy-PJtnVAAC1Qq48Hf6_4er0Ku98mFvx99UUwo9-mrJd"</span><span class="p">,</span>
+        <span class="p">},</span>
+        <span class="p">.</span><span class="py">tracy</span> <span class="o">=</span> <span class="o">.</span><span class="p">{</span>
+            <span class="p">.</span><span class="py">url</span> <span class="o">=</span> <span class="s">"git+https://github.com/wolfpld/tracy#v0.11.1"</span><span class="p">,</span>
+            <span class="p">.</span><span class="py">hash</span> <span class="o">=</span> <span class="s">"N-V-__8AAKw3UgOhKDsrn8hRlOoGmVBl5x91fMi0WQwVaokf"</span><span class="p">,</span>
+            <span class="p">.</span><span class="py">lazy</span> <span class="o">=</span> <span class="kc">true</span><span class="p">,</span>
+        <span class="p">},</span>
+    <span class="p">},</span>
+    <span class="p">.</span><span class="py">paths</span> <span class="o">=</span> <span class="o">.</span><span class="p">{</span>
+        <span class="s">"build.zig"</span><span class="p">,</span>
+        <span class="s">"build.zig.zon"</span><span class="p">,</span>
+        <span class="s">"src"</span><span class="p">,</span>
+        <span class="s">"LICENSE"</span><span class="p">,</span>
+    <span class="p">},</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>The <code class="language-plaintext highlighter-rouge">.zon</code> extension is <a href="https://github.com/ziglang/zig/blob/master/lib/std/zon.zig">Zig Object Notation</a>, a subset of Zig’s syntax restricted to literals and anonymous structs with no expressions, imports, or function calls. The <a href="https://github.com/ziglang/zig/blob/master/doc/build.zig.zon.md"><code class="language-plaintext highlighter-rouge">fingerprint</code></a> is a 64-bit integer combining a random 32-bit id with a checksum of the <code class="language-plaintext highlighter-rouge">name</code>, generated once when the package is created. It stays the same through renames and repo moves, so it’s the package’s identity independent of whichever URL currently serves it.</p>
+
+<p>Each dependency is either a <code class="language-plaintext highlighter-rouge">.url</code> and <code class="language-plaintext highlighter-rouge">.hash</code> pair or a local <code class="language-plaintext highlighter-rouge">.path</code>. The hash is computed over the extracted files after applying the <code class="language-plaintext highlighter-rouge">.paths</code> inclusion list from the dependency’s own manifest, so a package author decides which files count towards its identity. The <a href="https://github.com/ziglang/zig/blob/master/doc/build.zig.zon.md">documentation</a> is explicit that the hash is the identity and the URL is just one place to get it: “packages do not come from a <code class="language-plaintext highlighter-rouge">url</code>; they come from a <code class="language-plaintext highlighter-rouge">hash</code>. <code class="language-plaintext highlighter-rouge">url</code> is just one of many possible mirrors.”</p>
+
+<p>The <a href="https://github.com/ziglang/zig/pull/22994">hash string</a> is <code class="language-plaintext highlighter-rouge">$name-$version-</code> followed by URL-safe base64 packing the fingerprint id, decompressed size, and 200 bits of truncated SHA-256, so a <code class="language-plaintext highlighter-rouge">zig-pkg/</code> directory listing stays readable without a lookup table. A dependency with no <code class="language-plaintext highlighter-rouge">build.zig.zon</code> of its own, like <code class="language-plaintext highlighter-rouge">tracy</code> above, is a “naked” package and gets the placeholders <code class="language-plaintext highlighter-rouge">N-V-</code> and a sentinel id instead. <code class="language-plaintext highlighter-rouge">.lazy = true</code> defers fetching until the dependency is referenced from <code class="language-plaintext highlighter-rouge">build.zig</code>.</p>
+
+<p>Dependencies are fetched by downloading the URL, verifying it against the pinned hash, unpacking into a project-local <code class="language-plaintext highlighter-rouge">zig-pkg/</code> directory named by the hash, and recursing into that dependency’s own <code class="language-plaintext highlighter-rouge">.zon</code>. A canonical recompressed tarball is kept in the <a href="https://ziglang.org/download/0.16.0/release-notes.html#Fetch-Packages-Into-Project-Local-Directory">global cache</a> so a second project using the same hash doesn’t redownload. <code class="language-plaintext highlighter-rouge">zig fetch &lt;url&gt;</code> on its own downloads one URL and prints the computed hash for pasting into a manifest, without recursing. Supported schemes are <code class="language-plaintext highlighter-rouge">http(s)://</code> for tarballs and git bundles, <code class="language-plaintext highlighter-rouge">git+http(s)://</code> for the git smart protocol with a ref in the fragment, <code class="language-plaintext highlighter-rouge">file://</code>, and bare paths.</p>
+
+<p><code class="language-plaintext highlighter-rouge">zig build</code> compiles <code class="language-plaintext highlighter-rouge">build.zig</code> together with every dependency’s <code class="language-plaintext highlighter-rouge">build.zig</code> into a single executable and runs it, so a transitive dependency’s build code is linked into the same program as yours rather than invoked as a separate process per package. Calling into a dependency from your build script <a href="https://github.com/ziglang/zig/blob/master/lib/std/Build.zig">runs that dependency’s build script</a>, which can do the same for its own dependencies.</p>
+
+<p>Every <code class="language-plaintext highlighter-rouge">.zon</code> in the tree pins its direct dependencies by content hash, so there’s no version resolution step and the full tree is determined once the root’s hashes are fixed. Two dependencies that pin different hashes of the same upstream both get fetched and both exist, with deduplication by hash only. Version selection using the <code class="language-plaintext highlighter-rouge">fingerprint</code> field is <a href="https://github.com/ziglang/zig/issues/14288">planned</a> and <a href="https://kristoff.it/blog/zig-self-hosted-now-what/">expected to look like Go’s minimal version selection</a>, but as of 0.16 the only cross-tree check is that the <a href="https://ziglang.org/download/0.16.0/release-notes.html#Fetch-Packages-Into-Project-Local-Directory">same fingerprint and version can’t appear with two different hashes</a>.</p>
+
+<p>0.14 introduced the <a href="https://ziglang.org/download/0.14.0/release-notes.html">current hash format and the <code class="language-plaintext highlighter-rouge">fingerprint</code> field</a>. 0.16 moved extracted packages from the global cache into a <a href="https://ziglang.org/devlog/2026/#2026-02-06">project-local <code class="language-plaintext highlighter-rouge">zig-pkg/</code> directory</a> and added <a href="https://ziglang.org/download/0.16.0/release-notes.html#Ability-to-Override-Packages-Locally"><code class="language-plaintext highlighter-rouge">--fork</code></a> for overriding a package across the whole tree. On 30 June the fetching logic, HTTP client, TLS, and git protocol were <a href="https://ziglang.org/devlog/2026/?2026-06-30#2026-06-30">moved out of the compiler binary</a> into the build-system process, shipped as source.</p>
+
+<h2 id="categorisation">Categorisation</h2>
+
+<h3 id="categorisation-client">Client</h3>
+
+<p><strong>Resolution algorithm.</strong> None: each manifest pins exact content hashes with no version ranges. Closest to the <a href="/2025/12/29/categorizing-package-manager-clients.html#resolution-algorithms">explicit-dependencies bucket</a> alongside Nix and Guix, though without a <a href="/2026/07/07/content-addressing-in-package-managers.html">content-addressed store</a> underneath, and with minimal version selection <a href="https://github.com/ziglang/zig/issues/14288">planned</a>.</p>
+
+<p><strong>Lockfile.</strong> Manifest is the lock: <code class="language-plaintext highlighter-rouge">build.zig.zon</code> pins content hashes for every direct dependency and each dependency does the same for its own, with no separate file. Doesn’t fit any of the <a href="/2025/12/29/categorizing-package-manager-clients.html#lockfiles-and-reproducibility">existing buckets</a> cleanly: reproducible without a lockfile like Go, but by pinning hashes in the manifest rather than by deterministic resolution.</p>
+
+<p><strong>Build hooks.</strong> Allowed: <code class="language-plaintext highlighter-rouge">build.zig</code> is a Zig program compiled and run at build time with every dependency’s <code class="language-plaintext highlighter-rouge">build.zig</code> compiled into the same process, comparable to Cargo’s <code class="language-plaintext highlighter-rouge">build.rs</code>, Gradle, or Swift’s <code class="language-plaintext highlighter-rouge">Package.swift</code>.</p>
+
+<p><strong>Tuesday test.</strong> <a href="/2026/04/15/the-tuesday-test.html">Fails</a>, i.e. the install can observe inputs the manifest doesn’t declare: <code class="language-plaintext highlighter-rouge">build.zig</code> is Turing-complete and runs for every dependency, though <code class="language-plaintext highlighter-rouge">.zon</code> on its own is pure data and would pass alone.</p>
+
+<p><strong>Manifest format.</strong> Custom for metadata (<code class="language-plaintext highlighter-rouge">.zon</code>), host language for build logic (<code class="language-plaintext highlighter-rouge">build.zig</code>), where most tools in the <a href="/2025/12/29/categorizing-package-manager-clients.html#manifest-format">categorisation</a> put both in one file. Being a bespoke format rather than JSON or TOML, <code class="language-plaintext highlighter-rouge">.zon</code> needs its own parser in <a href="/2026/01/29/zig-and-the-mxn-supply-chain-problem.html">every cross-ecosystem tool</a> that reads manifests, <a href="https://ecosyste.ms">ecosyste.ms</a> and <a href="https://github.com/git-pkgs">git-pkgs</a> included.</p>
+
+<h3 id="categorisation-registry">Registry</h3>
+
+<p><strong>Architecture.</strong> <a href="/2025/12/29/categorizing-package-registries.html#registry-architecture">Source host as registry</a>, alongside Go modules, Deno, and Carthage, with no central index and packages served as tarballs or git refs at whatever URL the author chose.</p>
+
+<p><strong>Review model.</strong> None: whoever controls the URL controls what’s served at it.</p>
+
+<p><strong>Namespacing.</strong> URL-based for location, but identity is the <code class="language-plaintext highlighter-rouge">name</code> plus a self-generated 64-bit <code class="language-plaintext highlighter-rouge">fingerprint</code>, which doesn’t match any bucket in the <a href="/2025/12/29/categorizing-package-registries.html#namespacing">namespacing categorisation</a>.</p>
+
+<p><strong>Distribution model.</strong> Source only, compiled on the client.</p>
+
+<p><strong>Ecosystem scope.</strong> Language-specific, though Zig’s C interop and bundled <code class="language-plaintext highlighter-rouge">zig cc</code> mean C and C++ libraries are commonly packaged as Zig dependencies too.</p>
+
+<p><strong>Version retention.</strong> Delegated to the source host, so a GitHub release stays available until the repo owner deletes it or the account goes away, and there’s no yank mechanism.</p>
+
+<p><strong>Size.</strong> Without a central index there’s no canonical count, though <a href="https://zigistry.dev/">Zigistry</a> scrapes GitHub for repos with a <code class="language-plaintext highlighter-rouge">build.zig.zon</code> and indexes what it finds.</p>
+
+<p><strong>Mirroring.</strong> Trivial in principle since the client accepts any URL and verifies by hash, though each <code class="language-plaintext highlighter-rouge">.zon</code> names one URL per dependency, so if that URL goes dead the depender has to edit their manifest.</p>
+
+<h2 id="governance">Governance</h2>
+
+<p>The <a href="https://ziglang.org/zsf/">Zig Software Foundation</a> governs the language and the tool, funded by donations, but package hosting and name authority are outside its remit since there’s no registry for it to operate.</p>
+
+<p>Name ownership rests on the <code class="language-plaintext highlighter-rouge">fingerprint</code>, and the <a href="https://github.com/ziglang/zig/blob/master/doc/build.zig.zon.md">manifest documentation</a> says a fork of a maintained project should regenerate it, calling a fork that keeps the upstream’s value “hostile, attempting to take control over the original project’s identity”. Nothing enforces that and there’s no arbiter to appeal to. Availability, account recovery, DMCA takedowns and abuse handling all fall to whichever source host the URL points at, which in practice is overwhelmingly GitHub. Removal of a malicious version is something only the repo owner or the source host can do, and neither has any way to signal downstream <code class="language-plaintext highlighter-rouge">.zon</code> files that already pin its hash. Changes to the package manager itself go through the <a href="https://github.com/ziglang/zig/issues">Zig issue tracker</a>.</p>
+
+<p>Loris Cro of the ZSF wrote in 2022 that <a href="https://kristoff.it/blog/zig-self-hosted-now-what/">“we don’t plan to create an official package index”</a>, so the absence of a <a href="/2025/12/22/package-registries-are-governance-as-a-service.html">governance provider</a> is a design choice rather than a gap.</p>
+
+<h2 id="comparisons">Comparisons</h2>
+
+<p>The closest existing designs are Go modules and pre-JSR Deno (when it imported dependencies directly by URL): URL-addressed source, no publish step, no central registry, integrity by content hash. Go’s <code class="language-plaintext highlighter-rouge">go.sum</code> and checksum database are the nearest equivalent to <code class="language-plaintext highlighter-rouge">.zon</code> hashes, though Go verifies against a public log rather than only what the depending project committed. Swift Package Manager is close on the client side, with a host-language build manifest and git-URL dependencies, but resolves version ranges against tags rather than pinning a single hash. Bazel’s <a href="https://bazel.build/rules/lib/repo/http#http_archive"><code class="language-plaintext highlighter-rouge">http_archive</code></a> takes a URL list plus a <code class="language-plaintext highlighter-rouge">sha256</code> with the hash as the identity and the URLs as interchangeable mirrors, then evaluates a hermetic Starlark <code class="language-plaintext highlighter-rouge">BUILD</code> file rather than a Turing-complete build program.</p>
+
+<p>The <code class="language-plaintext highlighter-rouge">fingerprint</code> is what none of those have: a package identity that survives a URL change, whereas in Go the identity is the module path and moving a repo creates a new module. The <a href="https://ziglang.org/download/0.16.0/release-notes.html#Ability-to-Override-Packages-Locally"><code class="language-plaintext highlighter-rouge">--fork</code> flag</a> uses it to substitute a local checkout for every occurrence of a package across the whole dependency tree, regardless of which URLs the intermediate <code class="language-plaintext highlighter-rouge">.zon</code> files pinned. It is a CLI argument only, not a manifest field, and the release notes call that <a href="https://ziglang.org/download/0.16.0/release-notes.html#Ability-to-Override-Packages-Locally">“appropriately ephemeral”</a>.</p>
+
+<p>There is no <code class="language-plaintext highlighter-rouge">build.zig.zon</code> field equivalent to Cargo’s <a href="https://doc.rust-lang.org/cargo/reference/overriding-dependencies.html"><code class="language-plaintext highlighter-rouge">[patch]</code></a>, Go’s <a href="https://go.dev/ref/mod#go-mod-file-replace"><code class="language-plaintext highlighter-rouge">replace</code></a>, npm’s <code class="language-plaintext highlighter-rouge">overrides</code> or pub’s <code class="language-plaintext highlighter-rouge">dependency_overrides</code>, and <a href="https://github.com/ziglang/zig/issues/14288">no update subcommand</a> for direct dependencies either.</p>
+
+<p>With exact-hash pins at every level and no ranges to re-resolve, a fix in a low-level dependency reaches a project only when every intermediate <code class="language-plaintext highlighter-rouge">.zon</code> on the path has been re-released with the new hash. Until then the root’s options are forking the intermediates, vendoring a patched <code class="language-plaintext highlighter-rouge">zig-pkg/</code> into source control, or passing <code class="language-plaintext highlighter-rouge">--fork</code> on every build. The flag isn’t recorded anywhere, so the same commit builds a different tree depending on whether it was passed, in a design where the committed manifest is otherwise a complete lock. Once <a href="https://github.com/ziglang/zig/issues/14288">minimal version selection</a> lands, listing the fixed version in the root <code class="language-plaintext highlighter-rouge">.zon</code> would be enough, as it is in <code class="language-plaintext highlighter-rouge">go.mod</code>.</p>
+
+<p>The <code class="language-plaintext highlighter-rouge">.paths</code> filter is close to the <code class="language-plaintext highlighter-rouge">files</code> array in <code class="language-plaintext highlighter-rouge">package.json</code> or <code class="language-plaintext highlighter-rouge">include</code> in <code class="language-plaintext highlighter-rouge">Cargo.toml</code>, except that the hash is computed after the filter is applied rather than over a tarball the author uploaded, so the inclusion list is part of the identity rather than a packaging convenience.</p>
+
+<h2 id="threat-model">Threat model</h2>
+
+<h3 id="client">Client</h3>
+
+<p><strong>Code execution at install time.</strong> <code class="language-plaintext highlighter-rouge">zig build --fetch</code> runs nothing from the package: it downloads each URL, verifies the hash, extracts and parses each dependency’s <code class="language-plaintext highlighter-rouge">.zon</code> as data, and recurses without compiling <code class="language-plaintext highlighter-rouge">build.zig</code>. <code class="language-plaintext highlighter-rouge">zig build</code> compiles your <code class="language-plaintext highlighter-rouge">build.zig</code> and every dependency’s <code class="language-plaintext highlighter-rouge">build.zig</code> into <a href="https://github.com/ziglang/zig/blob/master/lib/std/Build.zig">one executable</a> and runs it, so a dependency’s build script executes with your privileges the first time you build. There’s no flag to disable that, since the build script is how a dependency exposes its artifacts. A <code class="language-plaintext highlighter-rouge">.lazy = true</code> dependency isn’t fetched, and its <code class="language-plaintext highlighter-rouge">build.zig</code> isn’t compiled in, until <a href="https://github.com/ziglang/zig/blob/master/lib/std/Build.zig"><code class="language-plaintext highlighter-rouge">b.lazyDependency</code></a> is called for it.</p>
+
+<p><strong>Code execution before install time.</strong> Since <code class="language-plaintext highlighter-rouge">.zon</code> is data, parsing a manifest and running <code class="language-plaintext highlighter-rouge">zig fetch</code> on an untrusted URL are safe modulo the extractor, but <code class="language-plaintext highlighter-rouge">zig build</code> on an untrusted checkout compiles and runs <code class="language-plaintext highlighter-rouge">build.zig</code>, and so do <code class="language-plaintext highlighter-rouge">zig build -h</code> and <code class="language-plaintext highlighter-rouge">--list-steps</code>, since the step list comes from executing the configure phase.</p>
+
+<p><strong>Lockfile guarantees by design.</strong> The manifest pins 200 bits of SHA-256 for every direct dependency, and each of those pins its own, so the whole tree is fixed by content and every install is a locked install. The guarantee is per-project and starts at first fetch: the hash protects a project from the URL’s contents changing later, but there’s no independent record of what the URL served at the moment the hash was first written down. Go’s <a href="https://go.dev/ref/mod#checksum-database">checksum database</a> is the counterexample, a public log that records what each module path served so a substituted first fetch would disagree with everyone else’s. Without an equivalent, two Zig projects adding the same URL a week apart can pin different hashes with nothing to flag the discrepancy. Plain <code class="language-plaintext highlighter-rouge">http://</code> URLs are accepted without a warning, and an already-unpacked <code class="language-plaintext highlighter-rouge">zig-pkg/&lt;hash&gt;/</code> directory is not re-hashed before reuse.</p>
+
+<p><strong>Package name identity.</strong> <code class="language-plaintext highlighter-rouge">name</code> is a bare Zig identifier, at most 32 bytes, case-sensitive, ASCII only, so the usual normalisation gaps don’t apply. Deduplication and <code class="language-plaintext highlighter-rouge">--fork</code> match on <code class="language-plaintext highlighter-rouge">name</code> plus <code class="language-plaintext highlighter-rouge">fingerprint</code>, so two packages sharing a <code class="language-plaintext highlighter-rouge">name</code> with different fingerprints coexist in the same tree.</p>
+
+<p><strong>Resolution across multiple sources.</strong> Each dependency entry names exactly one URL, so there’s no source ordering to get wrong and the dependency-confusion pattern doesn’t apply. The related failure mode is a stale URL: the <code class="language-plaintext highlighter-rouge">.zon</code> records where the author fetched from, and if that host disappears there’s no automatic fallback even though any mirror serving the same bytes would satisfy the hash.</p>
+
+<h3 id="registry">Registry</h3>
+
+<p><strong>Namespace allocation.</strong> Fingerprints are self-asserted rather than allocated, so a fork can write the upstream’s value into its own manifest verbatim and be matched as the same package. Typosquatting on the URL is the source host’s problem.</p>
+
+<p><strong>Maintainer lifecycle.</strong> Maintainership is control of the source repo, so adding a maintainer means adding a GitHub collaborator, and nothing signals that to anyone with the package in their tree. Account recovery is whatever the source host provides, and a lapsed custom domain in a <code class="language-plaintext highlighter-rouge">.url</code> is a straightforward takeover, mitigated only by the hash pin in existing dependers’ manifests.</p>
+
+<p><strong>Immutability of published versions.</strong> The hash in a depender’s <code class="language-plaintext highlighter-rouge">.zon</code> guarantees they get the bytes they locked but not their continued availability, and the tag or release the URL points at can be replaced with something else that new dependers will then pin. Git tags can be <a href="https://arxiv.org/abs/2606.31354">force-pushed</a>, GitHub release assets can be replaced, and there’s no transparency log recording what a URL served when.</p>
+
+<p><strong>Provenance from source to artifact.</strong> The artifact is the source, so there’s no build step to attest. The hash proves you got what the depender pinned but not who wrote it or whether the URL’s repo matches the tarball, and trusted publishing would need somewhere to publish to.</p>
+
+<p><strong>The minimum viable publish credential.</strong> This is whatever the source host issues: for GitHub, a token or SSH key with push access to the repo, with scoping, expiry and 2FA on GitHub’s side and no separate publish surface for a Zig-specific credential to protect.</p>
+
+<p><strong>Blast radius and detection.</strong> Anomaly detection on publish, malicious-version markers that clients check, and central audit logging are all registry functions that nothing here stands in for. A compromised release spreads only as fast as dependers update their <code class="language-plaintext highlighter-rouge">.hash</code> fields, which is slower than a registry ecosystem with floating ranges but also means there’s no single place to pull it from once it’s out, and detection falls to whoever’s reading diffs on the source host.</p>
+
+<h3 id="the-tools-own-supply-chain">The tool’s own supply chain</h3>
+
+<p>The Zig compiler’s <a href="https://github.com/ziglang/zig/blob/master/build.zig.zon">own <code class="language-plaintext highlighter-rouge">build.zig.zon</code></a> declares zero external dependencies, with the only entries being <code class="language-plaintext highlighter-rouge">.path</code> references into the source tree. The toolchain components it needs are <a href="https://ziglang.org/download/0.16.0/release-notes.html#Toolchain">vendored into the release tarballs</a> rather than fetched. Since the <a href="https://ziglang.org/devlog/2026/?2026-06-30#2026-06-30">30 June change</a> the HTTP client, TLS stack, git protocol and decompressors ship as Zig source rather than compiled into the <code class="language-plaintext highlighter-rouge">zig</code> binary, which the devlog notes runs in <code class="language-plaintext highlighter-rouge">ReleaseSafe</code> so safety checks stay on for the networking code.</p>
+
+<h2 id="summary">Summary</h2>
+
+<p>Closest relatives are Go modules and pre-JSR Deno on the registry side, Swift Package Manager on the client side, and Bazel’s <code class="language-plaintext highlighter-rouge">http_archive</code> on the fetch model. Treating the content hash as the identity, with the URL just one place to fetch it, is the right way round, and <code class="language-plaintext highlighter-rouge">.zon</code> being pure data means the dependency graph can be read without executing anything. The compiler declaring zero external dependencies of its own is a supply chain position I’d like to see more of, and moving the networking stack out into <code class="language-plaintext highlighter-rouge">ReleaseSafe</code> source that can be patched without rebuilding the compiler is a good recent change.</p>
+
+<p><code class="language-plaintext highlighter-rouge">.zon</code> being a bespoke format rather than JSON or TOML means I’ve had to write a parser for it in both <a href="https://ecosyste.ms">ecosyste.ms</a> and <a href="https://github.com/git-pkgs">git-pkgs</a>, and so will everyone else building cross-ecosystem tooling. The tool ends up on the wrong side of the <a href="/2026/04/15/the-tuesday-test.html">Tuesday test</a> because <code class="language-plaintext highlighter-rouge">build.zig</code> is a full Zig program, when the pure-data <code class="language-plaintext highlighter-rouge">.zon</code> had it most of the way to passing. The governance functions a registry would provide fall to GitHub instead, which is now the arbiter of availability, account recovery and abuse handling for Zig packages without either party having chosen that.</p>
+
+<p>Nothing in the manifest can override a transitive dependency, so if a low-level package ships a security fix and an intermediate hasn’t re-released, the options are forking the intermediate or passing <code class="language-plaintext highlighter-rouge">--fork</code> on every build, and the flag leaves nothing in the repo to record that it was passed. Cargo, Go, npm, pub, Mix and Bazel all have a manifest field for this, and exact-hash pinning makes its absence matter more here than it would with version ranges.</p>
+
+  </div><aside class="related-posts">
+      <h3>Related posts</h3>
+      <ul><li>
+          <a class="related-title" href="/2026/09/24/package-manager-sandboxing.html">Package Manager Sandboxing</a>
+          <time class="related-meta" datetime="2026-09-24T09:00:00+00:00">Sep 24, 2026</time><p class="related-desc">A survey of sandbox usage across package manager clients.</p></li><li>
+          <a class="related-title" href="/2026/09/22/unfinished-work-in-package-security.html">Unfinished Work in Package Security</a>
+          <time class="related-meta" datetime="2026-09-22T09:00:00+00:00">Sep 22, 2026</time><p class="related-desc">Some assembly required.</p></li><li>
+          <a class="related-title" href="/2026/09/22/package-manager-threat-model-revisited.html">Package Manager Threat Model, Revisited</a>
+          <time class="related-meta" datetime="2026-09-22T09:00:00+00:00">Sep 22, 2026</time><p class="related-desc">Path traversal via a manifest field appeared in eight of ten package managers audited and thirty-three times in four months of everyone else&#39;s advisories.</p></li><li>
+          <a class="related-title" href="/2026/09/19/this-week-in-package-management.html">This Week in Package Management: 19 September 2026</a>
+          <time class="related-meta" datetime="2026-09-19T10:00:00+00:00">Sep 19, 2026</time><p class="related-desc">Releases, advisories, and articles from across the package management world</p></li><li>
+          <a class="related-title" href="/2026/09/12/this-week-in-package-management.html">This Week in Package Management: 12 September 2026</a>
+          <time class="related-meta" datetime="2026-09-12T10:00:00+00:00">Sep 12, 2026</time><p class="related-desc">Releases, advisories, and articles from across the package management world</p></li></ul>
+    </aside><a class="u-url" href="/2026/07/09/unboxed-zig.html" hidden></a>
+</article>
+
+      </main>
+
+      <footer class="site-footer">
+        <span class="footer-nav">
+          <a rel="me" href="https://mastodon.social/@andrewnez">Mastodon</a> ·
+          <a href="https://github.com/andrew">GitHub</a> ·
+          <a href="/feed.xml">RSS</a> ·
+          <a href="/llms.txt">llms.txt</a> ·
+          <a href="/stats">Stats</a> ·
+          <a href="/search">Search</a> ·
+          <a href="/about">About</a>
+        </span>
+        
+        <span class="footer-source">
+          <a href="/2026/07/09/unboxed-zig.md">Markdown</a> ·
+          <a href="https://github.com/andrew/nesbitt.io/blob/master/_posts/2026/2026-07-09-unboxed-zig.md">View source</a>
+        </span>
+        
+      </footer>
+    </div>
+    <script>
+      (function(){
+        var btn=document.getElementById('theme-toggle');
+        var moon='<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M6 .278a.77.77 0 0 1 .08.858 7.2 7.2 0 0 0-.878 3.46c0 4.021 3.278 7.277 7.318 7.277q.792-.001 1.533-.16a.79.79 0 0 1 .81.316.73.73 0 0 1-.031.893A8.35 8.35 0 0 1 8.344 16C3.734 16 0 12.286 0 7.71 0 4.266 2.114 1.312 5.124.06A.75.75 0 0 1 6 .278"/></svg>';
+        var sun='<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M8 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8M8 0a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-1 0v-2A.5.5 0 0 1 8 0m0 13a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-1 0v-2A.5.5 0 0 1 8 13m8-5a.5.5 0 0 1-.5.5h-2a.5.5 0 0 1 0-1h2a.5.5 0 0 1 .5.5M3 8a.5.5 0 0 1-.5.5h-2a.5.5 0 0 1 0-1h2A.5.5 0 0 1 3 8m10.657-5.657a.5.5 0 0 1 0 .707l-1.414 1.415a.5.5 0 1 1-.707-.708l1.414-1.414a.5.5 0 0 1 .707 0m-9.193 9.193a.5.5 0 0 1 0 .707L3.05 13.657a.5.5 0 0 1-.707-.707l1.414-1.414a.5.5 0 0 1 .707 0m9.193 2.121a.5.5 0 0 1-.707 0l-1.414-1.414a.5.5 0 0 1 .707-.707l1.414 1.414a.5.5 0 0 1 0 .707M3.757 4.464a.5.5 0 0 1-.707 0L1.636 3.05a.5.5 0 0 1 .707-.707l1.414 1.414a.5.5 0 0 1 0 .707"/></svg>';
+        function isDark(){
+          var t=document.documentElement.getAttribute('data-theme');
+          if(t)return t==='dark';
+          return window.matchMedia('(prefers-color-scheme: dark)').matches;
+        }
+        function updateIcon(){btn.innerHTML=isDark()?sun:moon}
+        updateIcon();
+        btn.addEventListener('click',function(){
+          var next=isDark()?'light':'dark';
+          document.documentElement.setAttribute('data-theme',next);
+          localStorage.setItem('theme',next);
+          updateIcon();
+        });
+        document.querySelectorAll('h2[id], h3[id], h4[id], h5[id]').forEach(function(h){
+          var a=document.createElement('a');
+          a.className='anchor-link';
+          a.href='#'+h.id;
+          a.textContent='#';
+          h.appendChild(a);
+        });
+      })();
+    </script>
+    <div data-ea-publisher="nesbittio" data-ea-type="text" data-ea-style="fixedfooter" class="adaptive"></div>
+  </body>
+</html>

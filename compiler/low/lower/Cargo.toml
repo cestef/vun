@@ -1,0 +1,24 @@
+[package]
+name = "vun-lower"
+description = "Lowering the MIR of a program to LIR."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+vun-desugar.workspace = true
+vun-grammar.workspace = true
+vun-hir.workspace = true
+vun-index.workspace = true
+vun-intern.workspace = true
+vun-items.workspace = true
+vun-lir.workspace = true
+vun-mir.workspace = true
+vun-origin.workspace = true
+vun-query.workspace = true
+vun-sema.workspace = true
+vun-target.workspace = true

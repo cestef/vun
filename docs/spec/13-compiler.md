@@ -102,7 +102,18 @@ per second per stage and fails on regressions.
   pattern), and its unused patterns (spec 05, section 6). `vun dump layout` prints them.
 - **LIR** is what every backend has in common: SSA values of scalar and vector types, memory
   operations, calls, branches. Range types, enums and aggregates are lowered before it. A new backend
-  translates LIR and nothing else.
+  translates LIR and nothing else. Values are scalars (`i8` to `i128`, `f16` to `f64`, `ptr`) in
+  blocks with parameters; aggregates live in stack slots and data objects, reached by address.
+  Functions, data and imports are named by id, and only exports and imports carry link symbols.
+  Under Vun's convention a value in memory is passed by address and a result in memory written
+  through an address passed after the parameters; under the C convention (`#[abi.c]`) such values
+  are records passed by value, their scalars given for the backend's classification. A trap site
+  calls `lang.panic.trap` with a `lang.panic.Trap` whose `site` indexes the unit's message table.
+- **Lowering** (`vun-lower`, query `Lowered`, `vun dump lir`) turns a program's concrete MIR into
+  LIR: every local a stack slot of its layout, a top-level binding one data object, statements the
+  instructions computing into their place; integers in their range's storage, converted where a
+  value moves between ranges; enums by their shapes; checks of indices and narrowings as trap
+  sites.
 - Both have **stable text formats**. Tests are written against them, dumps are readable and carry
   origins, and an external backend is any executable reading LIR text on standard input.
 

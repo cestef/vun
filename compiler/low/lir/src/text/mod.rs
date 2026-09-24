@@ -37,6 +37,7 @@ impl fmt::Display for AbiType {
         match self {
             Self::Scalar(s) => s.fmt(f),
             Self::Record(r) => r.fmt(f),
+            Self::Memory { size, align } => write!(f, "[{size} align {align}]"),
         }
     }
 }

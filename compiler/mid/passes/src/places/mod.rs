@@ -6,6 +6,7 @@
 //! moves it, leaving its place `uninit`, and a function returns only with every linear place
 //! `uninit` (spec 05, section 1: kinds).
 
+mod leak;
 mod moved;
 mod states;
 mod transfer;
@@ -22,6 +23,7 @@ use vun_sema::eval::Instantiation;
 use vun_sema::kinds::Kinds;
 use vun_sema::ty::Value;
 
+use leak::Stop;
 use moved::Moved;
 use states::{State, States};
 
@@ -161,12 +163,17 @@ impl<'b> Analysis<'b> {
         }
     }
 
-    /// Parameters are `init`, other locals `uninit`; a borrow parameter's target is in the
-    /// state its mode needs before the call.
+    /// Parameters and the storage of top-level bindings are `init`, other locals `uninit`; a
+    /// borrow parameter's target is in the state its mode needs before the call.
     fn entry(&self) -> States {
         let mut locals = IndexVec::filled(State::Uninit, self.body.locals.len());
         for &p in &self.body.params {
             locals[p] = State::Init;
+        }
+        for (local, decl) in self.body.locals.iter() {
+            if decl.role.is_static() {
+                locals[local] = State::Init;
+            }
         }
         let targets = self.targets.iter().map(|(&p, &(before, _))| (p, before)).collect();
         States { locals, parts: BTreeMap::new(), targets }
@@ -209,15 +216,6 @@ impl<'b> Analysis<'b> {
         }
     }
 
-    /// Every linear place still `init` where the function stops: nothing is closed implicitly.
-    fn leaks(&mut self, states: &States, origin: OriginId, stop: Stop) {
-        let leaked: Vec<Local> =
-            self.linear.iter().copied().filter(|&l| states.locals[l] != State::Uninit).collect();
-        for local in leaked {
-            self.leak(local, origin, stop);
-        }
-    }
-
     /// At a return, each borrow parameter's target that its mode leaves `init` must be, and
     /// every linear place must be `uninit`: nothing is closed implicitly.
     fn returns(&mut self, states: &States, origin: OriginId) {
@@ -246,19 +244,6 @@ impl<'b> Analysis<'b> {
         states.end(local);
     }
 
-    /// Reports the linear value in `local` as still held at `origin`, before `when`.
-    fn leak(&mut self, local: Local, origin: OriginId, stop: Stop) {
-        let what = self.body.locals[local]
-            .name
-            .map_or_else(|| Msg::new().text("a linear value"), |n| Msg::new().code(n.as_str()));
-        let msg = what.text(" is still held here, and linear values must be consumed ").text(stop.when());
-        let help = Msg::new()
-            .text("pass it to what consumes it, such as a close or a free, or ")
-            .code("defer")
-            .text(" that call where the value is made");
-        self.advise(errors::PLACE_LINEAR_LEAK, origin, msg, Some(help));
-    }
-
     fn report(&mut self, id: DiagId, origin: OriginId, msg: Msg) {
         self.advise(id, origin, msg, None);
     }
@@ -271,26 +256,6 @@ impl<'b> Analysis<'b> {
                 d = d.child(ChildKind::Help, help);
             }
             self.diag.error(d);
-        }
-    }
-}
-
-/// Where a place's value must be consumed by.
-#[derive(Clone, Copy, PartialEq, Eq)]
-enum Stop {
-    Return,
-    /// The end of a binding's scope.
-    Scope,
-    /// The end of the frame while suspended at a `yield`, which runs only what is pending there.
-    Ended,
-}
-
-impl Stop {
-    fn when(self) -> &'static str {
-        match self {
-            Self::Return => "before returning",
-            Self::Scope => "before its scope ends",
-            Self::Ended => "or deferred before a `yield`, where ending the frame stops it",
         }
     }
 }

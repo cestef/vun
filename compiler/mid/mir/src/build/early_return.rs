@@ -20,7 +20,7 @@ impl Builder<'_, '_, '_> {
     ) -> Result<Operand, Unbuilt> {
         let unbuilt = Unbuilt { at: origin };
         // The variant `stop` is the other one, so a failed test of `go` is a stop.
-        let go = EARLY_RETURN.first().ok_or(unbuilt)?.go;
+        let row = EARLY_RETURN.first().ok_or(unbuilt)?;
         let typed = self.typed().ok_or(unbuilt)?;
         let method = typed.methods.get(&expr).ok_or(unbuilt)?;
         let branch = self.env.cx.get::<MemberValue>(method).map_err(|_| unbuilt)?;
@@ -31,13 +31,18 @@ impl Builder<'_, '_, '_> {
         self.locals[branched].role = Role::Unpacked;
         let branched = Place::of(branched);
         let stopped = self.fresh(origin);
-        let going = self.temp(Rvalue::IsVariant { place: branched.clone(), variant: go.symbol() }, origin);
+        let going =
+            self.temp(Rvalue::IsVariant { place: branched.clone(), variant: row.go.symbol() }, origin);
         self.guard(going, stopped, origin);
-        let carried = |p: &Place| Rvalue::Use(Operand::Place(p.clone().project(Projection::Payload(0))));
-        let result = self.temp(carried(&branched), origin);
+        let carried = |p: &Place, variant: vun_items::Item| {
+            Rvalue::Use(Operand::Place(
+                p.clone().project(Projection::Payload { variant: variant.symbol(), at: 0 }),
+            ))
+        };
+        let result = self.temp(carried(&branched, row.go), origin);
         let on = self.current;
         self.current = stopped;
-        self.assign(Place::of(self.ret), carried(&branched), origin);
+        self.assign(Place::of(self.ret), carried(&branched, row.stop), origin);
         self.unwind(0, origin, Exit::Function)?;
         self.terminate(TerminatorKind::Return, origin);
         self.current = on;

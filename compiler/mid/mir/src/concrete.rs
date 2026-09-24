@@ -65,7 +65,7 @@ impl Query for Concrete {
             .env(cx)
             .ok_or(Unready::Unevaluated { at: i.f.literal.expr.origin, why: Unevaluated::Absent })?;
         body.evaluate(&env)?;
-        body.propagate();
+        body.propagate(&i.args);
         body.typed()?;
         Ok(Arc::new(body))
     }
@@ -121,9 +121,50 @@ impl Body {
         Ok(())
     }
 
-    /// Replaces each read of a local written once, whole, with a constant, and never borrowed,
-    /// by that constant.
-    fn propagate(&mut self) {
+    /// Replaces each read of a local holding a constant by that constant: a `$` parameter bound
+    /// to `bound`'s value, or a local written once, whole, with a constant, and never borrowed;
+    /// until no read changes. A constant written into a local nothing reads is dropped.
+    fn propagate(&mut self, bound: &[Option<Value>]) {
+        loop {
+            let (writes, mut constants) = self.writes();
+            for (&param, value) in self.params.iter().zip(bound) {
+                constants[param].clone_from(value);
+            }
+            let is_bound =
+                |local: Local| self.params.iter().zip(bound).any(|(&p, v)| p == local && v.is_some());
+            let constant = |local: Local| {
+                (is_bound(local) || writes[local] == 1).then(|| constants[local].clone()).flatten()
+            };
+            let mut changed = false;
+            for (_, block) in self.blocks.iter_mut() {
+                let operands = block.stmts.iter_mut().flat_map(|s| s.value.operands_mut());
+                for operand in operands.chain(block.term.kind.operands_mut()) {
+                    if let Operand::Place(place) = operand
+                        && place.projection.is_empty()
+                        && let Some(value) = constant(place.local)
+                    {
+                        *operand = Operand::Const(value);
+                        changed = true;
+                    }
+                }
+            }
+            if !changed {
+                break;
+            }
+        }
+        let read = self.read();
+        for (_, block) in self.blocks.iter_mut() {
+            block.stmts.retain(|s| {
+                !(s.place.projection.is_empty()
+                    && !read.contains(&s.place.local)
+                    && matches!(s.value, Rvalue::Use(Operand::Const(_))))
+            });
+        }
+    }
+
+    /// How many statements write each local, parameters and the result counting once more, and
+    /// the constant each is written with whole, if any.
+    fn writes(&self) -> (IndexVec<Local, u32>, IndexVec<Local, Option<Value>>) {
         let mut writes: IndexVec<Local, u32> = IndexVec::filled(0, self.locals.len());
         let mut constants: IndexVec<Local, Option<Value>> = IndexVec::filled(None, self.locals.len());
         for (_, block) in self.blocks.iter() {
@@ -142,18 +183,50 @@ impl Body {
         for &local in self.params.iter().chain([&self.ret]) {
             writes[local] += 1;
         }
-        let constant = |local: Local| (writes[local] == 1).then(|| constants[local].clone()).flatten();
-        for (_, block) in self.blocks.iter_mut() {
-            let operands = block.stmts.iter_mut().flat_map(|s| s.value.operands_mut());
-            for operand in operands.chain(block.term.kind.operands_mut()) {
-                if let Operand::Place(place) = operand
-                    && place.projection.is_empty()
-                    && let Some(value) = constant(place.local)
-                {
-                    *operand = Operand::Const(value);
+        (writes, constants)
+    }
+
+    /// The locals some statement or terminator reads: through operands, borrows, tests,
+    /// projections of what it writes and the indices places use; the result is read by the
+    /// return.
+    #[must_use]
+    pub fn read(&self) -> std::collections::HashSet<Local> {
+        let mut read = std::collections::HashSet::from([self.ret]);
+        let mut place = |p: &crate::Place, whole: bool| {
+            if whole || !p.projection.is_empty() {
+                read.insert(p.local);
+            }
+            read.extend(p.indices());
+        };
+        for (_, block) in self.blocks.iter() {
+            for stmt in &block.stmts {
+                place(&stmt.place, false);
+                match &stmt.value {
+                    Rvalue::Ref { place: p, .. }
+                    | Rvalue::IsVariant { place: p, .. }
+                    | Rvalue::Resume { frame: p, .. }
+                    | Rvalue::End { frame: p } => place(p, true),
+                    value => {
+                        for operand in value.operands() {
+                            if let Operand::Place(p) = operand {
+                                place(p, true);
+                            }
+                        }
+                    }
+                }
+            }
+            for operand in block.term.kind.operands() {
+                if let Operand::Place(p) = operand {
+                    place(p, true);
+                }
+            }
+            if let crate::TerminatorKind::Defer { consumes, .. } = &block.term.kind {
+                for &local in consumes {
+                    place(&crate::Place::of(local), true);
                 }
             }
         }
+        read
     }
 
     /// Whether every local has a type.

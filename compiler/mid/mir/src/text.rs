@@ -19,7 +19,7 @@ impl fmt::Display for Place {
                 Projection::Field(name) => write!(f, ".{name}")?,
                 Projection::Index(local) => write!(f, "[_{}]", local.index())?,
                 Projection::Position(at) => write!(f, ".{at}")?,
-                Projection::Payload(at) => write!(f, ".payload.{at}")?,
+                Projection::Payload { variant, at } => write!(f, ".{variant}.{at}")?,
             }
         }
         Ok(())
