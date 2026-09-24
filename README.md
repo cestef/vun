@@ -27,6 +27,7 @@ cargo run -p vun-cli      # the `vun` command
 cargo gen                   # regenerate Rust from grammar, desugar, errors and lang, std
 cargo xtask corpus          # corpus verdicts: pass, pending, fail
 cargo xtask lines           # no source file past 300 lines
+cargo xtask size            # the dist build of vun within its byte budget (decision 131)
 cargo run -q -p vun-cli -- dump cst corpus/accept/integers/ring_buffer.vun
 VUN_LOG=vun_sema=debug VUN_TIMINGS=1 cargo run -p vun-cli -- build
 ```

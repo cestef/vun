@@ -1061,6 +1061,7 @@ dependencies = [
  "vun-driver",
  "vun-fs",
  "vun-harness",
+ "vun-json",
  "vun-origin",
  "vun-render-short",
  "vun-span",

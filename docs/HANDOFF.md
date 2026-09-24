@@ -73,6 +73,7 @@ Rust names a `lang` or `std` declaration only through `vun_items`). Generators e
 ```sh
 cargo fmt && cargo clippy --all-targets && cargo nextest run && cargo gen --check && cargo xtask lines
 cargo xtask corpus            # verdicts, then coverage and what stops MIR most
+cargo xtask size              # builds `vun` as distributed; fails past its budget
 cargo run -q -p vun-cli -- check|dump tokens|cst|hir|mir <file>
 VUN_BLESS=1 cargo nextest run -p vun-syntax    # snapshots, only after reading the diff
 cd fuzz && cargo +nightly fuzz run parse -- -max_total_time=120
@@ -154,7 +155,8 @@ calls as what they reach and written back from `Metered::written` (`loans.rs`, d
 frames suspend and resume; `End` of a finished frame is nothing, of a suspended one unsupported.
 
 **Driver and tools**: `Session::check` runs names, types, places, borrows, panics;
-`stages::STAGES`; `Coverage`; `cargo gen`, `cargo xtask {corpus, lines}`.
+`stages::STAGES`; `Coverage`; `cargo gen`, `cargo xtask {corpus, lines, size}` (the budget in `xtask/src/size.rs`,
+6,422,528 bytes; the dist build measured 6,382,768).
 
 **Libraries**: `lang` (primitives: `lang.mem` borrows `Ref`..`RefStatic`, pointers, `Cell`,
 `cell`, `cell_pointer`, `atomic_*` with `Ordering`, `items_pointer`; `lang.diag.error`;

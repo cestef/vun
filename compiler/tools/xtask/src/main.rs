@@ -3,6 +3,7 @@
 mod corpus;
 mod explanations;
 mod lines;
+mod size;
 #[cfg(test)]
 mod tests;
 
@@ -18,6 +19,7 @@ use vun_span::SourceFiles;
 
 use corpus::Corpus;
 use lines::Oversized;
+use size::Measured;
 
 /// What tasks report to.
 #[derive(Default)]
@@ -26,6 +28,7 @@ struct Cx {
 }
 
 const OVERSIZED: DiagId = DiagId::new("xtask.lines.oversized");
+const OVER_BUDGET: DiagId = DiagId::new("xtask.size.over_budget");
 
 const PROGRAM: Program<Cx> = Program {
     configure: vun_command::unconfigured,
@@ -46,6 +49,12 @@ const PROGRAM: Program<Cx> = Program {
                 about: "fail on source files too long to stay one concern",
                 params: &[],
                 action: Action::Run(check_lines),
+            },
+            Command {
+                name: "size",
+                about: "fail when the distributed vun outgrows its budget",
+                params: &[],
+                action: Action::Run(check_size),
             },
         ]),
     },
@@ -125,6 +134,31 @@ fn check_lines(cx: &mut Cx, _: &Args, out: &mut dyn Write) -> io::Result<Outcome
         writeln!(out, "every source file has at most {} lines", lines::MAX_LINES)?;
     }
     Ok(if oversized.is_empty() { Outcome::Success } else { Outcome::Failure })
+}
+
+fn check_size(cx: &mut Cx, _: &Args, out: &mut dyn Write) -> io::Result<Outcome> {
+    let measured = Measured::build(&repo_root())?;
+    let within = measured.bytes <= size::BUDGET;
+    if within {
+        writeln!(
+            out,
+            "{} is {} bytes, {} under the budget of {}",
+            measured.path.display(),
+            measured.bytes,
+            size::BUDGET - measured.bytes,
+            size::BUDGET
+        )?;
+    } else {
+        let msg = Msg::new()
+            .code(measured.path.display().to_string())
+            .text(" is ")
+            .num(measured.bytes)
+            .text(" bytes, over the budget of ")
+            .num(size::BUDGET);
+        let help = Msg::new().text("find what grew; raising the budget takes a decision (decision 131)");
+        cx.diag.error(Diagnostic::error(OVER_BUDGET, msg).child(ChildKind::Help, help));
+    }
+    Ok(if within { Outcome::Success } else { Outcome::Failure })
 }
 
 fn main() -> ExitCode {

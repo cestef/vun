@@ -21,3 +21,15 @@ fn no_file_is_monolithic() {
         oversized.iter().map(|o| format!("{} ({} lines)", o.path.display(), o.lines)).collect();
     assert!(listed.is_empty(), "files past {} lines: {listed:?}; split them by concern", lines::MAX_LINES);
 }
+
+#[test]
+fn the_measured_binary_is_the_last_executable_cargo_reports() {
+    let messages = [
+        r#"{"reason":"compiler-artifact","executable":null}"#,
+        "not json",
+        r#"{"reason":"compiler-artifact","executable":"/t/dist/vun"}"#,
+        r#"{"reason":"build-finished","success":true}"#,
+    ]
+    .join("\n");
+    assert_eq!(crate::size::Measured::executable(&messages), Some("/t/dist/vun".into()));
+}
