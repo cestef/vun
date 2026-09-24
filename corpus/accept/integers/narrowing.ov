@@ -6,7 +6,7 @@ percent := (part: u32, whole: Int(1..=4294967295)) -> u8 {
 
 checksum := (bytes: &[u8]) -> u8 {
     mut sum: u8 = 0;
-    for b in bytes { sum +%= b; }
+    for b in bytes { sum +%= b.*; }
     sum
 };
 

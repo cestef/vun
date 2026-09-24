@@ -11,6 +11,7 @@ mod control;
 mod expect;
 mod expected;
 mod infer;
+mod loops;
 mod pattern;
 mod range;
 mod sequence;
@@ -140,6 +141,8 @@ pub struct Typer<'e, 'a, 'db> {
     expected: HashMap<ExprId, Ty>,
     /// The result type of the function typed, which `return` values are checked against.
     result: Option<Ty>,
+    /// The loops around the expression typed, innermost last, which `break` values join.
+    loops: Vec<loops::Loop>,
     pub diag: DiagCtxt,
 }
 
@@ -154,6 +157,7 @@ impl<'e, 'a, 'db> Typer<'e, 'a, 'db> {
             methods: HashMap::new(),
             expected: HashMap::new(),
             result: None,
+            loops: Vec::new(),
             diag: DiagCtxt::new(),
         }
     }

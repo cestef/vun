@@ -103,3 +103,25 @@ Iterate := interface(($Self: type) -> type { struct {
     Iter: Interface = _;
     iter: (self: Self) -> Iter = _;
 }});
+
+/// Bounds give their items from the start up (spec 04); the compiler provides the iterator.
+#[impl(Iterate(Bounds))]
+BoundsIterate := ($T: type) -> type { struct {
+    Iter := Coroutine(T, ());
+    iter: (self: Bounds(T)) -> Iter = _;
+} };
+
+/// A slice, through a borrow, gives a borrow of each of its items in order; the compiler provides
+/// the iterator.
+#[impl(Iterate(mem.Slice))]
+SliceIterate := ($T: type) -> type { struct {
+    Iter := Coroutine(&T, ());
+    iter: (self: &[T]) -> Iter = _;
+} };
+
+/// An array value gives each of its items in order; the compiler provides the iterator.
+#[impl(Iterate(mem.Array))]
+ArrayIterate := ($n: Int(0..), $T: type) -> type { struct {
+    Iter := Coroutine(T, ());
+    iter: (self: [n]T) -> Iter = _;
+} };

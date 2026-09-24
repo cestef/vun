@@ -165,6 +165,18 @@ impl TyKind {
         self.borrowing().map(|(_, p, ty)| (p, ty))
     }
 
+    /// The type a borrow or a raw pointer points to: what `.*` reads.
+    #[must_use]
+    pub fn pointee(&self) -> Option<Ty> {
+        match self {
+            Self::Primitive(Primitive::Mem(Mem::Ptr), args) => match args.as_slice() {
+                [Value::Type(ty)] => Some(*ty),
+                _ => None,
+            },
+            _ => self.borrowed(),
+        }
+    }
+
     /// For a borrow type: the word after `&` that writes it (the table `borrows`), its
     /// constructor and the type borrowed.
     #[must_use]

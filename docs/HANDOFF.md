@@ -236,8 +236,22 @@ In order:
      Next: values of these forms at compile time (`Env` evaluating with an expected type, MIR
      aggregates and `match` lowering), exhaustiveness (decision 29), narrowing by comparisons
      (decision 35), `for p in e`, `#[comptime.fuel]`.
-   - Struct declarations are typed in their instance (`MemberType`); bodies of generic functions are typed
-     only where no `$` parameter is needed (`Typed(ExprRef)`), not per instance yet.
+   - Generic code is typed and lowered per instantiation (`eval::Instantiation`: a `Func` with
+     its `$` arguments; `Typed` and `Mir` are keyed by it, `Instantiation::plain` for ordinary
+     bodies). A call reaching a generic instantiation types it and absorbs its reports at the
+     definition, with a trace frame at the call (`DiagCtxt::absorb_through`, `typeck/call.rs`).
+     Bound `$` parameters are typed by their value. Coverage still counts plain bodies only.
+   - Sequences (decisions 78, 79): `[N]T`/`[T]` are `lang.mem.Array`/`Slice` (`TyKind::{array,
+     slice, as_array, items}`, the table `forms`); `std.seq.Sequence` gives `.len()` over
+     `lang.mem.len`; `sema::target::Target` (a query resource, 64-bit until the driver sets a
+     target) gives `lang.target.usize_max`. `a..b` is `lang.Bounds(T)` (`typeck/range.rs`,
+     `Interval::items`), accepted where a `Range` is expected; `x[a..b]` is a part.
+   - Loops (decision 80, `typeck/loops.rs`): `break` values join into the loop's value; `for p
+     in e` items through the table `iteration` and the `lang.ops` impls for `Bounds`, `Slice`,
+     `Array`; `.*` through `TyKind::pointee`. Next: MIR for `for p in e` (the iterator primitives
+     are `_` in `lang.ops`), coroutine values (`-> Iter(u32)` returns an interface, not a type),
+     borrow modes of slice items (`&mut [T]` should yield `&mut T`), narrowing by comparisons
+     (decision 35) inside loops.
    - Impls (decision 76, `sema/src/witness/`): `Impls(FileRef)` collects `#[impl(I(T))]`
      declarations, reading `I` and `T` from the instance of the requirement struct `I(T)`;
      `T` may be a type constructor (`TyKind::made_by`), whose impl is a function of its
@@ -285,15 +299,15 @@ In order:
    declaration's members needs sema.
 4. Fuzz the parser longer (120 s runs are clean).
 
-`cargo xtask corpus` ends with the phase 1 progress measure (`overt_driver::Coverage`, `Session::coverage`): the share of function-body expressions sema types and of functions MIR lowers in `corpus/accept` (26% before decision 75, 32% after, 33% and 17 functions after 77). The corpus has 40 accept and 55 reject programs plus 63 explanation pages (`cargo xtask corpus`:
+`cargo xtask corpus` ends with the phase 1 progress measure (`overt_driver::Coverage`, `Session::coverage`): the share of function-body expressions sema types and of functions MIR lowers in `corpus/accept` (26% before decision 75, 32% after, 33% and 17 functions after 77, 41% after 80). The corpus has 40 accept and 55 reject programs plus 63 explanation pages (`cargo xtask corpus`:
 149 passed, 38 pending on later stages, 20 shown as transcripts, 0 failed), plus
 `corpus/build.ov` (prelude `std.prelude` then `support`) and `corpus/support`, stand-ins for what
 programs take from drivers, other libraries and unwritten parts of `std`.
 
 ## 9. Open questions and known gaps
 
-- Decisions 65 (partial graphs resolve through the lockfile), 66 (primitives from `lang`), 68
-  (`lang.Fn`, what is compile-time-only, nominal type names), 71 (conditions as data), 76 (impls over type constructors), 77 (function values in their call, `std.int`) and 69 (appendix B as data, `Ord`,
+- Decisions 78 (array and slice constructors, `len()`) and 79 (`lang.Bounds`) are accepted in their user-chosen parts. Decisions 65 (partial graphs resolve through the lockfile), 66 (primitives from `lang`), 68
+  (`lang.Fn`, what is compile-time-only, nominal type names), 71 (conditions as data), 76 (impls over type constructors), 77 (function values in their call, `std.int`), 80 (loops) and 69 (appendix B as data, `Ord`,
   `Eq.ne`) are proposed; 70 (visibility levels) is accepted; 67 (pure-Rust dependencies) is accepted. Decisions 45 to 64 are accepted. 61 (query persistence) and 63 (signed
   caches) are accepted but not built. Earlier: decisions 45 to 52 are accepted (50: BLAKE3 Merkle hashes, base32, nested store; 51: `.ovpkg`; 52: error chains) (fourth session): `lang.int`, spreads, compile-time block
   bindings visible in their own value, manifest detection and content-hash caches, `targets` as a

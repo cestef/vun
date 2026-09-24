@@ -215,6 +215,10 @@ config := load(path)?;                             // propagate .err / .none to 
 - `if`, `match`, `for` and blocks are expressions. An `if` with `else` has the type both branches
   can take: the hull of two integer ranges, or their common type; without `else`, it is `()`. `break v` gives a `for` its value; a `for` over
   a coroutine that runs to completion has the coroutine's result as its value (spec 06).
+- `for p in e` binds `p` to each item of `e`, through the impl of `lang.ops.Iterate` for the
+  type of `e` (the table `iteration`, appendix B). Bounds give their integers, an array value its
+  items, and a slice reached through a borrow a borrow of each item: `for c in t.children` binds
+  `c: &Tree`, and `for b in bytes { sum +%= b.*; }` reads each byte.
 - `e?` on `Result(T, E)` returns `.err(x)` from the enclosing function; on `?T` it returns `.none`.
   It never converts error types; `e.map_err(f)?` converts explicitly.
 - `and`, `or` short-circuit; `!` negates.

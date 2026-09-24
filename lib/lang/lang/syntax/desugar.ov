@@ -94,3 +94,10 @@ compound := [
     .{ .token = .minus_pipe_eq, .op = .minus, .narrowing = .sat },
     .{ .token = .star_pipe_eq, .op = .star, .narrowing = .sat },
 ];
+
+/// What `for p in e` drives (appendix B): the witness of `interface` for the type of `e` gives
+/// the iterator through `function` and names its coroutine interface `iterator`; each item is
+/// the payload of the variant `item` of what the interface's `resume` returns.
+iteration := [
+    .{ .interface = "lang.ops.Iterate", .function = "iter", .iterator = "Iter", .resume = "resume", .item = "yielded" },
+];

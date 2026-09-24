@@ -52,7 +52,7 @@ declaration whose value is `_`.
 | `if p = e { a } else { b }` | `match e { p => a, _ => b }` |
 | `for c { b }` | `for { if !c { break; } b }` |
 | `for p = e { b }` | `for { match e { p => b, _ => break } }` |
-| `for p in e { b }` | `{ mut it := lang.ops.Iterate.iter(e); defer it.end(); 'l: for { match it.resume() { .yielded(p) => b, .done(r) => break 'l r } } }` |
+| `for p in e { b }` (the table `iteration`) | `{ mut it := lang.ops.Iterate.iter(e); defer it.end(); 'l: for { match it.resume() { .yielded(p) => b, .done(r) => break 'l r } } }` |
 | `yield ..e` | `for y in e { yield y; }` |
 | `a.f(args)` | `TypeOf(a).f(<a in the mode of f's first parameter>, args)` |
 | `[caps] (ps) -> R { b }` | an anonymous struct of `caps` with an `impl` of `lang.ops.Call` |

@@ -65,6 +65,26 @@ impl Typer<'_, '_, '_> {
                 self.logic(&[*left, *right])
             }
             ExprKind::If { cond, then, otherwise } => self.branch(expr, cond, *then, *otherwise),
+            ExprKind::For { head, body } => self.looping(None, head, *body),
+            ExprKind::Labeled { label, body } => {
+                let ExprKind::For { head, body: block } = &hir.exprs[*body].kind else {
+                    visit::walk_expr(self, hir, expr);
+                    return None;
+                };
+                let known = self.looping(Some(*label), head, *block);
+                if let Some(known) = known {
+                    self.types.insert(*body, known);
+                }
+                known
+            }
+            ExprKind::Postfix { op: TokenKind::DotStar, operand } => {
+                let known = self.typed(*operand)?;
+                Some(Known { ty: known.ty.pointee()?, ..known })
+            }
+            ExprKind::Break { label, value } => {
+                self.leave(expr, *label, *value);
+                None
+            }
             ExprKind::Prefix { op: TokenKind::Minus, operand, .. } => {
                 let known = self.typed(*operand)?;
                 Some(Known { ty: TyKind::int(&known.ty.interval()?.neg()), ..known })
