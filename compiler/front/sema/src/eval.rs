@@ -42,11 +42,18 @@ pub struct Staging {
 }
 
 pub trait Evaluator: Send + Sync {
-    /// Runs `call` at compile time, reading what it needs through `cx`.
-    ///
-    /// # Errors
-    /// Returns why the call has no value.
-    fn call(&self, cx: &Cx<'_>, call: &Instance) -> Result<Value, Unevaluated>;
+    /// Runs `call` at compile time, reading what it needs through `cx`, within the step budget
+    /// of its function.
+    fn call(&self, cx: &Cx<'_>, call: &Instance) -> Metered;
+}
+
+/// What a compile-time call gives, and the steps it took: its own and those of the calls it
+/// made. Both are functions of the call alone, so a memoized call's outcome does not depend on
+/// which evaluation reached it first.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct Metered {
+    pub value: Result<Value, Unevaluated>,
+    pub steps: u64,
 }
 
 /// The installed evaluator: a resource of the query database, set once by the driver.
@@ -60,7 +67,28 @@ impl Evaluators {
     }
 }
 
-/// A compile-time call, memoized on its function and arguments.
+/// A compile-time call, memoized on its function and arguments, with the steps it took.
+pub struct MeteredCall;
+
+impl Query for MeteredCall {
+    const NAME: &'static str = "metered_call";
+    type Key = Instance;
+    type Value = Metered;
+
+    fn compute(cx: &Cx<'_>, call: &Instance) -> Self::Value {
+        let evaluators = cx.db().resource::<Evaluators>();
+        match evaluators.0.get() {
+            Some(evaluator) => evaluator.call(cx, call),
+            None => Metered { value: Err(Unevaluated::Interpreter), steps: 0 },
+        }
+    }
+
+    fn cycle(_: &Cx<'_>, _: &Instance, _: &Cycle) -> Self::Value {
+        Metered { value: Err(Unevaluated::Cycle), steps: 0 }
+    }
+}
+
+/// The value of a compile-time call.
 pub struct Call;
 
 impl Query for Call {
@@ -69,9 +97,7 @@ impl Query for Call {
     type Value = Result<Value, Unevaluated>;
 
     fn compute(cx: &Cx<'_>, call: &Instance) -> Self::Value {
-        let evaluators = cx.db().resource::<Evaluators>();
-        let evaluator = evaluators.0.get().ok_or(Unevaluated::Interpreter)?;
-        evaluator.call(cx, call)
+        cx.get::<MeteredCall>(call).value
     }
 
     fn cycle(_: &Cx<'_>, _: &Self::Key, _: &Cycle) -> Self::Value {

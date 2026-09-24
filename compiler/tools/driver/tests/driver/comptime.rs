@@ -181,3 +181,23 @@ offset: Offset = 45;
     let fit = |ty: &str| (errors::INT_DOES_NOT_FIT, format!("value does not fit the type `{ty}`"));
     assert_eq!(fixture.reported(&file), [fit("Big"), fit("Second"), fit("Offset")]);
 }
+
+#[test]
+fn a_call_spends_the_steps_of_the_calls_it_makes() {
+    let fixture = Fixture::new("comptime-fuel");
+    let file = fixture.root.write(
+        "fuel.ov",
+        "\
+count := ($n: u32) -> u32 { mut i: u32 = 0; for i < n { i += 1; } i };
+#[comptime.fuel(40)]
+small := ($n: u32) -> u32 { count(n) };
+#[comptime.fuel(1000)]
+large := ($n: u32) -> u32 { count(n) };
+fits := small(3);
+spent := small(30);
+raised := large(30);
+",
+    );
+    let reported: Vec<_> = fixture.reported(&file).into_iter().map(|(id, _)| id).collect();
+    assert_eq!(reported, [errors::COMPTIME_EXHAUSTED]);
+}

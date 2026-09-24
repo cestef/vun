@@ -227,7 +227,7 @@ In order:
      Loops (decision 72): MIR lowers `for {}`, `for c {}`, labels, `break v`, `continue`,
      `return`, uninitialized locals and assignments to locals (`build/{loops,assign}.rs`);
      `x op= y` is `Rvalue::Narrow` with the place's type from `Typed` and the table `COMPOUND`;
-     `Value::narrow`; the interpreter's `BUDGET` per call. Traps (decision 73): `trap::{Trap, Reason}` in `Unevaluated::Trapped(Box<Trap>)`, placed and traced by `Unevaluated::through(origin)` as they propagate (interpreter statements, `Env` calls); `Trap::report(root)`; reported by `Typer::ty` for annotations and by the checker, which computes every top-level value.
+     `Value::narrow`. Budgets (decision 72, revised): `eval::MeteredCall` memoizes a call's value with its steps (`Metered`), its own plus those of the calls it makes; `Call` reads the value; `fuel::FUEL` (2^24) or `#[comptime.fuel(n)]` on the called function's declaration (`Func::fuel`); `Frame::spend` traps past it. Traps (decision 73): `trap::{Trap, Reason}` in `Unevaluated::Trapped(Box<Trap>)`, placed and traced by `Unevaluated::through(origin)` as they propagate (interpreter statements, `Env` calls); `Trap::report(root)`; reported by `Typer::ty` for annotations and by the checker, which computes every top-level value.
      Expected types (decision 74): `Typer::{typed_as, expected}` and `result`;
      `typeck/{block,expected,pattern}.rs`: statements and assignments, `.name` (`dot`), tuples,
      patterns against types (`pattern`, `test` through borrows), `match` (`matching`),
@@ -336,18 +336,17 @@ programs take from drivers, other libraries and unwritten parts of `std`.
 
 ## 9. Open questions and known gaps
 
-- Decisions 78 (array and slice constructors, `len()`) and 79 (`lang.Bounds`) are accepted in their user-chosen parts. Decisions 65 (partial graphs resolve through the lockfile), 66 (primitives from `lang`), 68
-  (`lang.Fn`, what is compile-time-only, nominal type names), 71 (conditions as data), 76 (impls over type constructors), 77 (function values in their call, `std.int`), 80 (loops) and 69 (appendix B as data, `Ord`,
-  `Eq.ne`) are proposed; 70 (visibility levels) is accepted; 67 (pure-Rust dependencies) is accepted. Decisions 45 to 64 are accepted. 61 (query persistence) and 63 (signed
-  caches) are accepted but not built. Earlier: decisions 45 to 52 are accepted (50: BLAKE3 Merkle hashes, base32, nested store; 51: `.ovpkg`; 52: error chains) (fourth session): `lang.int`, spreads, compile-time block
-  bindings visible in their own value, manifest detection and content-hash caches, `targets` as a
-  default dependency. Corpus type functions write `$Ring`, `$Regs`, `$Block`.
+- Every decision up to 84 is accepted: 65 to 84 on the agent's recommendation when the user asked
+  to settle the open ones (2026-09-24), 72 revised (budgets cover the calls a call makes, fuel on
+  the called function). 61 (query persistence) and 63 (signed caches) are accepted but not built.
+  Corpus type functions write `$Ring`, `$Regs`, `$Block`.
+- Known gap in budgets: calls recurse on the host stack through queries, so an unbounded chain of
+  distinct calls overflows it before any budget is spent; spec 03 wants the evaluator's own stack.
 - Build files name `std.build.Build` explicitly (no build-only prelude). New questions go there as
   "proposed" until the user decides.
 - `lang/errors.ov` now declares planned ids for later stages (`names`, `binding`, `safety`,
   `place`, `borrow`, `panic` groups, `int.width_cap`), one per spec rule the reject corpus
-  exercises. Their names are proposals; rename freely, then `cargo xtask generate`.
-- Diagnostics have no explanation pages (`errors/*.md`) yet; `lang/errors.ov` references them.
+  exercises. Their names are accepted as working names; rename freely, then `cargo xtask generate`.
 - Whitepaper bibliography partly from memory; research notes' **[unverified]** claims stay
   unverified.
 - `overt-tool`, `lir` and the MIR passes are stubs; `sema`, `mir` and `interp` are at v0.

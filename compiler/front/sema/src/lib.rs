@@ -8,6 +8,7 @@ pub mod check;
 pub mod decl;
 pub mod env;
 pub mod eval;
+pub mod fuel;
 pub mod int;
 pub mod item;
 pub mod layout;
