@@ -118,6 +118,7 @@
 | 112 | `lang.int.magnitude($r) -> Range` (the absolute values of a range, at compile time) and `lang.int.abs($r, x) -> Int(magnitude(r))`; `std.int` gives `x.abs()` through `#[impl(Int)]`. `binding.hole_value` is checked: `_` as a value only in `lang`, with a `link` attribute, or among an interface's requirements; `std.task.Event`, `std.build.Manifest` and `Build` became structs. A test checks that every `lang` and `std` file checks cleanly | proposed | 01, 04 |
 | 113 | Rule 8 as typing: at run time, `&`, `|`, `^`, `<<`, `>>` exist on `uN` types (`Int(0..=2^N - 1)`) only and keep the type, the type of the run-time operand when the other is a constant; any other integer type is `types.no_impl`. Compile-time integers are exact and keep computing without a width | proposed | 04 |
 | 114 | `coroutine.recursive_frame` is reported at a coroutine function whose body delegates (`yield ..e`) to a frame of the same function; a cycle through other functions waits on frame layouts | proposed | 06 |
+| 115 | The freeze rule is checked on declarations: a member of a `struct` literal whose value applies `lang.meta.fields`, `size` or `align` to the type that literal makes is `meta.frozen`; reflection reached through a function called from such a member waits on tracking the types being defined during evaluation | proposed | 03 |
 
 ## Questions, with how they were settled
 

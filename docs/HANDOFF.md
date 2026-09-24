@@ -175,8 +175,11 @@ patterns and typed annotations (89), linked values and repeats (90), layout (93)
 3. Borrow rules left: `&temp` parameters, `&static`, top-level bindings as free values, frames'
    region from their parameters, `critical_escape.ov` (needs `std.sync`), a label where a
    conflicting borrow is used later.
-4. `types.no_member` on values (the probe in `typeck/infer.rs::member` is off): stand-ins tied to
-   program types (`Dma`, `Uart`, `System`, `svd`), `std.Dyn`, `std.sync`.
+4. `types.no_member` on values (the probe in `typeck/infer.rs::member` is off): turning it on
+   fails six accept programs, all on missing members: stand-ins (`Dma.start`/`release`,
+   `Uart.send`, `System.stdout`/`args`, `svd` `Device.peripheral`, `Dyn` members) and the
+   `std.build.Build` API (`dep`, `program`, `flash`, `lints`), whose design spec 12 only sketches
+   and which is the user's to settle (its `dep` names a package's own dependencies).
 5. MIR gaps (`cargo xtask corpus` lists them): run-time splices of code, `.{ }` and `.name` in
    plain instantiations of generic bodies, or-patterns that bind, `lang.simd.chunks`.
 6. Sema gaps: impl member types against requirements, constrained `$W: Writer` (members of

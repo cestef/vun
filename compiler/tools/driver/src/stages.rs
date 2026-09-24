@@ -58,6 +58,7 @@ pub const STAGES: &[Stage] = &[
             errors::SAFETY,
             errors::BINDING_HOLE_VALUE,
             errors::COROUTINE,
+            errors::META_FROZEN,
         ],
         input: Input::Source,
     },
