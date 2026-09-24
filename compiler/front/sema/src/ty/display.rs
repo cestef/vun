@@ -38,6 +38,34 @@ impl fmt::Display for TyKind {
     }
 }
 
+/// Compile-time values as dumps show them: integers and types as written, variants by name.
+impl fmt::Display for Value {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Int(n) => n.fmt(f),
+            Self::Range(Some(range)) => write!(f, "{}..={}", Bound(range.lo()), Bound(range.hi())),
+            Self::Range(None) => f.write_str("0..0"),
+            Self::Type(ty) => ty.fmt(f),
+            Self::Tuple(items) => {
+                f.write_str("(")?;
+                for (i, item) in items.iter().enumerate() {
+                    write!(f, "{}{item}", if i > 0 { ", " } else { "" })?;
+                }
+                f.write_str(")")
+            }
+            Self::Variant { name, .. } => write!(f, ".{name}"),
+            Self::Struct { ty, .. } => write!(f, "{ty}{{ .. }}"),
+            Self::Primitive(p) => write!(f, "{}.{}", p.namespace(), p.name()),
+            Self::Namespace(ns) => {
+                let names: Vec<_> = ns.path.iter().map(|n| n.as_str()).collect();
+                f.write_str(&names.join("."))
+            }
+            Self::Fn(_) => f.write_str("fn"),
+            Self::Interface(_) => f.write_str("interface"),
+        }
+    }
+}
+
 /// `name(args)`, or `name` alone without arguments: a primitive or a type-returning function
 /// applied to compile-time values.
 struct Applied<'a>(&'a str, &'a [Value]);
@@ -51,11 +79,7 @@ impl fmt::Display for Applied<'_> {
         f.write_str("(")?;
         for (i, arg) in self.1.iter().enumerate() {
             f.write_str(if i > 0 { ", " } else { "" })?;
-            match arg {
-                Value::Type(ty) => ty.fmt(f)?,
-                Value::Int(n) => n.fmt(f)?,
-                _ => f.write_str("..")?,
-            }
+            arg.fmt(f)?;
         }
         f.write_str(")")
     }

@@ -1,5 +1,6 @@
 //! The `overt` command tree (spec 12, section 7), shared by every front end of the driver.
 
+use overt_span::SourceMap;
 use std::io::{self, Write};
 use std::path::Path;
 
@@ -128,7 +129,12 @@ const DUMPS: &[Command<Session>] = &[
         params: &[FILE],
         action: Action::Run(|s, args, out| dump(s, args, out, Stage::Hir)),
     },
-    planned("mir", "the mid-level representation"),
+    Command {
+        name: "mir",
+        about: "the mid-level representation of each function, with origins",
+        params: &[FILE],
+        action: Action::Run(|s, args, out| dump(s, args, out, Stage::Mir)),
+    },
     planned("lir", "the low-level representation"),
     planned("link", "the link plan"),
 ];
@@ -151,6 +157,7 @@ enum Stage {
     Tokens,
     Cst,
     Hir,
+    Mir,
     Manifest,
 }
 
@@ -176,6 +183,23 @@ fn dump(session: &mut Session, args: &Args, out: &mut dyn Write, stage: Stage) -
             let text =
                 overt_hir::dump::dump(&parsed.hir, &parsed.resolution, &session.origins, &*session.sources);
             write!(out, "{text}")?;
+        }
+        Stage::Mir => {
+            let bodies = session.bodies(file);
+            let locate = |o| session.sources.locate(session.origins.source_span(o)).at;
+            for (origin, body) in bodies {
+                match body {
+                    Ok(body) => writeln!(out, "{}", body.dump(&locate))?,
+                    Err(unbuilt) => {
+                        let (at, form) = (locate(origin), locate(unbuilt.at));
+                        writeln!(
+                            out,
+                            "fn @{}:{}: not lowered yet, at @{}:{}",
+                            at.line, at.col, form.line, form.col
+                        )?;
+                    }
+                }
+            }
         }
         Stage::Manifest => unreachable!("read above"),
     }

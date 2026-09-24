@@ -8,12 +8,14 @@ use overt_build::store::Store;
 use overt_diag::{DiagCtxt, DiagCx, DiagSink, Diagnostic, Msg, errors};
 use overt_hir::db::{FileNames, FileRef, FileText, Parsed, ParsedFile};
 use overt_hir::lower;
-use overt_hir::tree::Hir;
+use overt_hir::tree::{ExprKind, Hir};
 use overt_interp::Interpreter;
-use overt_origin::OriginTable;
+use overt_mir::{Body, Mir, Unbuilt};
+use overt_origin::{OriginId, OriginTable};
 use overt_query::Db;
 use overt_sema::check::Checked;
 use overt_sema::eval::Evaluators;
+use overt_sema::item::ExprRef;
 use overt_span::{FileId, SourceFiles, SourceMap};
 use overt_syntax::cst::Cst;
 use overt_syntax::literal::Decl;
@@ -108,6 +110,16 @@ impl Session {
         let parsed = self.db.get::<Parsed>(&key).expect("its text is set");
         self.diag.absorb(&parsed.diag);
         parsed
+    }
+
+    /// The MIR of each function literal of `file`, in source order, by the literal's origin.
+    pub fn bodies(&mut self, file: FileId) -> Vec<(OriginId, Result<Arc<Body>, Unbuilt>)> {
+        let key = self.file_ref(file);
+        let parsed = self.parsed(file);
+        let literals = parsed.hir.exprs.iter().filter(|(_, e)| matches!(e.kind, ExprKind::Fn { .. }));
+        literals
+            .map(|(id, e)| (e.origin, self.db.get::<Mir>(&ExprRef::new(key.clone(), &parsed.hir, id))))
+            .collect()
     }
 
     /// How the queries name `file`, with the inputs of its package graph and its text set.

@@ -65,4 +65,5 @@ overt-link-msvc = { workspace = true, optional = true }
 overt-link-process = { workspace = true, optional = true }
 
 [dev-dependencies]
+overt-harness.workspace = true
 overt-hash.workspace = true

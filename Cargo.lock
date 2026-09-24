@@ -442,6 +442,7 @@ dependencies = [
  "overt-command",
  "overt-diag",
  "overt-fs",
+ "overt-harness",
  "overt-hash",
  "overt-hir",
  "overt-index",
