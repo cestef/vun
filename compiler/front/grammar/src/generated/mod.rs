@@ -5,6 +5,8 @@ mod place_state;
 pub use place_state::*;
 mod access;
 pub use access::*;
+mod extent;
+pub use extent::*;
 mod narrowing;
 pub use narrowing::*;
 mod relation;

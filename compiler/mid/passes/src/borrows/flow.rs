@@ -3,6 +3,7 @@
 
 use std::collections::{BTreeSet, VecDeque};
 
+use overt_grammar::Extent;
 use overt_index::{Idx, IndexVec};
 use overt_mir::{BlockId, Local, Operand, Rvalue, Stmt, Terminator, TerminatorKind};
 
@@ -18,7 +19,11 @@ impl Checker<'_> {
     /// The loans each local may hold at the entry of each block reached.
     pub(super) fn holding(&self) -> IndexVec<BlockId, Option<Holds>> {
         let mut at: IndexVec<BlockId, Option<Holds>> = IndexVec::filled(None, self.body.blocks.len());
-        at[BlockId::new(0)] = Some(IndexVec::filled(BTreeSet::new(), self.body.locals.len()));
+        let mut entry = IndexVec::filled(BTreeSet::new(), self.body.locals.len());
+        for &(param, loan) in &self.lent {
+            entry[param].insert(loan);
+        }
+        at[BlockId::new(0)] = Some(entry);
         let mut work = VecDeque::from([BlockId::new(0)]);
         while let Some(block) = work.pop_front() {
             let Some(mut holds) = at[block].clone() else { continue };
@@ -50,7 +55,8 @@ impl Checker<'_> {
     }
 
     /// What `stmt` makes its place hold: the loan it takes, with those of the borrow it goes
-    /// through; or, for a scoped value, the loans of everything it is built from.
+    /// through; or, for a scoped value, the loans of everything it is built from but the
+    /// arguments a call holds for itself only (`&temp`).
     pub(super) fn hold(&self, block: BlockId, index: usize, stmt: &Stmt, holds: &mut Holds) {
         let flows: BTreeSet<LoanId> = match &stmt.value {
             Rvalue::Ref { place, .. } => {
@@ -61,21 +67,39 @@ impl Checker<'_> {
                 }
                 flows
             }
-            value if self.scoped.contains(&stmt.place.local) => value
-                .operands()
-                .into_iter()
-                .filter_map(|o| match o {
-                    Operand::Place(p) => Some(p.local),
-                    Operand::Const(_) => None,
-                })
-                .flat_map(|l| holds[l].iter().copied())
-                .collect(),
+            value if self.scoped.contains(&stmt.place.local) => {
+                let temp = self.calls.get(&(block, index));
+                Self::built_from(value, temp)
+                    .into_iter()
+                    .filter_map(|o| match o {
+                        Operand::Place(p) => Some(p.local),
+                        Operand::Const(_) => None,
+                    })
+                    .flat_map(|l| holds[l].iter().copied())
+                    .collect()
+            }
             _ => BTreeSet::new(),
         };
         if stmt.place.projection.is_empty() {
             holds[stmt.place.local] = flows;
         } else {
             holds[stmt.place.local].extend(flows);
+        }
+    }
+
+    /// The operands a value is built from: for a call, the callee and the arguments but those
+    /// its callee holds for the call only.
+    fn built_from<'v>(value: &'v Rvalue, extents: Option<&Vec<Extent>>) -> Vec<&'v Operand> {
+        match (value, extents) {
+            (Rvalue::Call { callee, args }, Some(extents)) => std::iter::once(callee)
+                .chain(
+                    args.iter()
+                        .enumerate()
+                        .filter(|(i, _)| extents.get(*i) != Some(&Extent::Temp))
+                        .map(|(_, a)| a),
+                )
+                .collect(),
+            _ => value.operands(),
         }
     }
 

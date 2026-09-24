@@ -9,7 +9,7 @@ declaration whose value is `_`.
 |--------|----------|
 | `lang` | `type`, `Int`, `Fn`, `f16`, `f32`, `f64`, `bool`, `never`, `Range`, `Bounds`, `Option`, `Result`, `Step`, `Coroutine`, `Interface`, `interface` |
 | `lang.ops` | `Add`, `Sub`, `Mul`, `Div`, `Rem`, `Neg`, `BitAnd`, `BitOr`, `BitXor`, `Not`, `Shl`, `Shr`, `Concat`, `Eq`, `Ord`, `Index`, `Call`, `Try`, `Iterate` |
-| `lang.mem` | `Ref`, `RefMut`, `RefOut`, `RefTake`, `Ptr`, `Slice`, `Array`, `len`, `Cell`, `pointer_to`, `address`, `offset`, `cast`, `read`, `write`, `copy`, `fill`, `volatile_load`, `volatile_store`, `atomic_*`, `prefetch` |
+| `lang.mem` | `Ref`, `RefMut`, `RefOut`, `RefTake`, `RefTemp`, `RefTempMut`, `Ptr`, `Slice`, `Array`, `len`, `Cell`, `pointer_to`, `address`, `offset`, `cast`, `read`, `write`, `copy`, `fill`, `volatile_load`, `volatile_store`, `atomic_*`, `prefetch` |
 | `lang.meta` | `Code`, `Name`, `quote` primitives, type and declaration info, witnesses, attributes, origins, spans, `embed`, `heap`, `TypeOf` |
 | `lang.syntax` | token and node types generated from `grammar.ov` |
 | `lang.diag` | `Diag`, `Severity`, `Safety`, reporting primitives |
@@ -37,7 +37,7 @@ declaration whose value is `_`.
 |--------|---------|
 | `?T`, `*T` | `lang.Option(T)`, `lang.mem.Ptr(T)` (the table `type_prefixes`) |
 | `[N]T`, `[T]` | `lang.mem.Array(N, T)`, `lang.mem.Slice(T)` (the table `forms`) |
-| `&T`, `&mut T`, `&out T`, `&take T` | `lang.mem.Ref(T)`, `RefMut(T)`, `RefOut(T)`, `RefTake(T)` (the table `borrows`) |
+| `&T`, `&mut T`, `&out T`, `&take T`, `&temp T`, `&temp mut T` | `lang.mem.Ref(T)`, `RefMut(T)`, `RefOut(T)`, `RefTake(T)`, `RefTemp(T)`, `RefTempMut(T)` (the table `borrows`) |
 | `if c`, `for c`, `a and b`, `!c` | `c` has the type `lang.bool` and holds when it is `lang.bool.true` (the table `forms`) |
 | `(A, B) -> R` | `lang.Fn((A, B), R)` with the attributes of the literal |
 | `a..b`, `a..=b` | half-open and closed bounds of type `lang.Bounds(T)`, `T` the integers any such range holds (the table `forms`); where a `lang.Range` is expected, the range they denote |
@@ -98,7 +98,7 @@ annotated(x)= { doc_comment | "#[" items "]" } x
 items       = [ item { "," item } [ "," ] ]
 item        = annotated(expr [ "=" expr | ":" type ]) | "$" block_like
 expr        = prefix { binop prefix }                       (precedence: spec 01, section 6)
-prefix      = { "-" | "!" | "~" | "&" [ "mut" | "out" | "take" | "static" ] | "*" | "?" | ".."
+prefix      = { "-" | "!" | "~" | "&" [ "temp" ] [ "mut" | "out" | "take" | "static" ] | "*" | "?" | ".."
               | "$" | "unsafe" | "#[" items "]" } postfix
 postfix     = primary { "." ( name | int | "$" primary ) | ".*" | "?" | "(" items ")"
               | "[" expr "]" | "{" items "}" }              ("{" only after a name, member or call)

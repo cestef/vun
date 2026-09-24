@@ -5,7 +5,9 @@
 //! overlapping its place conflicts when either is exclusive: the table `borrows` says which modes
 //! are, a write is, a read is not. A loan of the function's own storage, a place not reached
 //! through `.*`, that reaches the return escapes, and a value holding a borrow inside a type
-//! marked `#[kind.free]` is reported where it is built.
+//! marked `#[kind.free]` is reported where it is built. A `&temp` parameter's borrow is lent for
+//! the call only: a call's result is not tied to what it is passed as one, and a callee's own
+//! `&temp` parameter is a loan that escapes when it reaches the return.
 
 mod access;
 mod flow;
@@ -14,14 +16,15 @@ mod free;
 use std::collections::{BTreeMap, BTreeSet};
 
 use overt_diag::{ChildKind, DiagCtxt, DiagId, Diagnostic, Msg};
-use overt_grammar::{Access, BORROWS, TokenKind};
+use overt_grammar::{Access, BORROWS, Extent, TokenKind};
 use overt_index::{IndexVec, index};
 use overt_intern::Symbol;
-use overt_mir::{BlockId, Body, Local, Mir, Place, Rvalue};
+use overt_mir::{BlockId, Body, Local, Mir, Operand, Place, Projection, Rvalue};
 use overt_origin::OriginId;
 use overt_query::{Cx, Query};
 use overt_sema::eval::Instantiation;
 use overt_sema::kinds::{Kind, Kinds};
+use overt_sema::ty::Value;
 
 index! {
     struct LoanId;
@@ -37,11 +40,45 @@ impl Query for BorrowChecks {
 
     fn compute(cx: &Cx<'_>, i: &Instantiation) -> Self::Value {
         let body = cx.get::<Mir>(i).ok()?;
+        let calls = Self::extents(cx, &body);
         let kinds: BTreeMap<Local, Kind> =
             body.locals.iter().filter_map(|(local, d)| Some((local, cx.get::<Kinds>(&d.ty?)))).collect();
         let having = |f: fn(&Kind) -> bool| kinds.iter().filter(|(_, k)| f(k)).map(|(&l, _)| l).collect();
-        Some(Checker::new(&body, having(|k| k.is_scoped()), having(|k| k.misplaced)).run())
+        Some(Checker::new(&body, calls, having(|k| k.is_scoped()), having(|k| k.misplaced)).run())
     }
+}
+
+impl BorrowChecks {
+    /// How long each call statement's callee holds each argument, where the callee is known.
+    fn extents(cx: &Cx<'_>, body: &Body) -> BTreeMap<(BlockId, usize), Vec<Extent>> {
+        let mut calls = BTreeMap::new();
+        for (block, b) in body.blocks.iter() {
+            for (index, stmt) in b.stmts.iter().enumerate() {
+                let Rvalue::Call { callee, .. } = &stmt.value else { continue };
+                let extents = match callee {
+                    Operand::Const(Value::Fn(f)) => f.extents(cx),
+                    Operand::Const(_) => None,
+                    Operand::Place(p) => body.locals[p.local]
+                        .ty
+                        .and_then(|t| t.callable())
+                        .map(|s| s.params.iter().map(|t| t.extent().unwrap_or(Extent::Tied)).collect()),
+                };
+                if let Some(extents) = extents {
+                    calls.insert((block, index), extents);
+                }
+            }
+        }
+        calls
+    }
+}
+
+/// Where a loan comes from.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Source {
+    /// A borrow the body takes.
+    Taken,
+    /// A `&temp` parameter, lent for the call: it conflicts with nothing and must not escape.
+    Lent,
 }
 
 /// A borrow taken in the body.
@@ -50,6 +87,7 @@ struct Loan {
     /// The word after `&` (the table `borrows`), empty for a shared borrow.
     mode: Option<Symbol>,
     access: Access,
+    source: Source,
     origin: OriginId,
 }
 
@@ -58,6 +96,10 @@ struct Checker<'b> {
     loans: IndexVec<LoanId, Loan>,
     /// The loan each borrow statement takes, by its block and position.
     taken: BTreeMap<(BlockId, usize), LoanId>,
+    /// The loans lent to the body by its `&temp` parameters, which hold them at the entry.
+    lent: Vec<(Local, LoanId)>,
+    /// How long each call's callee holds each argument, where it is known.
+    calls: BTreeMap<(BlockId, usize), Vec<Extent>>,
     /// The locals holding scoped values, which the loans of what they are built from flow into.
     scoped: BTreeSet<Local>,
     /// The locals whose type holds a scoped value inside a free one.
@@ -67,7 +109,12 @@ struct Checker<'b> {
 }
 
 impl<'b> Checker<'b> {
-    fn new(body: &'b Body, scoped: BTreeSet<Local>, misplaced: BTreeSet<Local>) -> Self {
+    fn new(
+        body: &'b Body,
+        calls: BTreeMap<(BlockId, usize), Vec<Extent>>,
+        scoped: BTreeSet<Local>,
+        misplaced: BTreeSet<Local>,
+    ) -> Self {
         let mut loans = IndexVec::new();
         let mut taken = BTreeMap::new();
         for (block, b) in body.blocks.iter() {
@@ -77,12 +124,28 @@ impl<'b> Checker<'b> {
                     place: place.clone(),
                     mode: *mode,
                     access: Self::access(*mode),
+                    source: Source::Taken,
                     origin: stmt.origin,
                 });
                 taken.insert((block, index), loan);
             }
         }
-        Self { body, loans, taken, scoped, misplaced, diag: DiagCtxt::new(), reported: BTreeSet::new() }
+        let mut lent = Vec::new();
+        for &param in &body.params {
+            let d = &body.locals[param];
+            let Some((mode, ..)) = d.ty.and_then(|t| t.borrowing()) else { continue };
+            if d.ty.and_then(|t| t.extent()) == Some(Extent::Temp) {
+                let mode = (!mode.is_empty()).then(|| Symbol::intern(mode));
+                let place = Place::of(param).project(Projection::Deref);
+                let access = Self::access(mode);
+                lent.push((
+                    param,
+                    loans.push(Loan { place, mode, access, source: Source::Lent, origin: d.origin }),
+                ));
+            }
+        }
+        let diag = DiagCtxt::new();
+        Self { body, loans, taken, lent, calls, scoped, misplaced, diag, reported: BTreeSet::new() }
     }
 
     fn run(mut self) -> DiagCtxt {
@@ -100,7 +163,7 @@ impl<'b> Checker<'b> {
     /// What others may do with a place borrowed in `mode` (the table `borrows`).
     fn access(mode: Option<Symbol>) -> Access {
         let word = mode.map_or("", Symbol::as_str);
-        BORROWS.iter().find(|(m, ..)| *m == word).map_or(Access::Shared, |&(.., access)| access)
+        BORROWS.iter().find(|(m, ..)| *m == word).map_or(Access::Shared, |&(_, _, _, _, access, ..)| access)
     }
 
     /// Reports at `origin`, pointing at where `loan` was taken when given.
@@ -114,7 +177,11 @@ impl<'b> Checker<'b> {
                 let l = &self.loans[loan];
                 let spelled =
                     [TokenKind::Amp.text().unwrap_or_default(), l.mode.map_or("", Symbol::as_str)].concat();
-                let label = Msg::new().text("borrowed as ").code(spelled).text(" here");
+                let verb = match l.source {
+                    Source::Taken => "borrowed as ",
+                    Source::Lent => "lent as ",
+                };
+                let label = Msg::new().text(verb).code(spelled).text(" here");
                 diagnostic = diagnostic.label(l.origin, Some(label));
             }
             self.diag.error(diagnostic);

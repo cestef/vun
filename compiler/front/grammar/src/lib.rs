@@ -14,6 +14,9 @@ pub use generated::*;
 /// Separates the members of a path, as written: `std.prelude`.
 pub const PATH_SEPARATOR: &str = TokenKind::Dot.text().unwrap();
 
+/// Separates the words of a borrow mode in the table `borrows`: `temp mut`.
+pub const MODE_SEPARATOR: &str = " ";
+
 /// Punctuation, longest spelling first, so the first prefix match is the longest one.
 static PUNCTUATION_BY_LENGTH: LazyLock<Vec<TokenKind>> = LazyLock::new(|| {
     let mut kinds = TokenKind::PUNCTUATION.to_vec();

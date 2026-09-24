@@ -66,3 +66,33 @@ walk := (head: &?Own(Node)) -> u8 {
     let ids: Vec<_> = fixture.reported(&file).into_iter().map(|(id, _)| id).collect();
     assert_eq!(ids, [errors::BORROW_IN_FREE_VALUE, errors::BORROW_IN_FREE_VALUE]);
 }
+
+#[test]
+fn temp_borrows_are_lent_for_the_call() {
+    let fixture = Fixture::new("borrows-temp");
+    let file = fixture.root.write(
+        "temp.ov",
+        "\
+find := (hay: &[4]u8, needle: &temp [4]u8) -> &[4]u8 { hay };
+leak := (hay: &[4]u8, needle: &temp [4]u8) -> &[4]u8 { needle };
+bump := (x: &temp mut u8) { x.* = 1; };
+untied := () -> u8 {
+    a: [4]u8 = [1, 2, 3, 4];
+    mut b: [4]u8 = [4, 4, 4, 4];
+    r := find(&a, &b);
+    b[0] = 5;
+    bump(&mut b[1]);
+    r[0]
+};
+tied := () -> u8 {
+    a: [4]u8 = [1, 2, 3, 4];
+    mut c: [4]u8 = [4, 4, 4, 4];
+    s := find(&c, &a);
+    c[0] = 1;
+    s[0]
+};
+",
+    );
+    let ids: Vec<_> = fixture.reported(&file).into_iter().map(|(id, _)| id).collect();
+    assert_eq!(ids, [errors::BORROW_ESCAPE, errors::BORROW_CONFLICT]);
+}

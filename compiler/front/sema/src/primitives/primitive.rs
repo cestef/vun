@@ -95,6 +95,8 @@ impl Primitive {
         Self::Mem(mem::Mem::RefMut),
         Self::Mem(mem::Mem::RefOut),
         Self::Mem(mem::Mem::RefTake),
+        Self::Mem(mem::Mem::RefTemp),
+        Self::Mem(mem::Mem::RefTempMut),
         Self::Mem(mem::Mem::Ptr),
         Self::Mem(mem::Mem::Slice),
         Self::Mem(mem::Mem::Array),

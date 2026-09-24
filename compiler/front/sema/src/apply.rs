@@ -40,14 +40,15 @@ impl Primitive {
             }
             // Bounds, borrow, pointer, cell, slice and code types have no structure beyond their
             // argument.
-            (
-                Self::Meta(Meta::Code)
-                | Self::Lang(Lang::Bounds)
-                | Self::Mem(
-                    Mem::Ref | Mem::RefMut | Mem::RefOut | Mem::RefTake | Mem::Ptr | Mem::Cell | Mem::Slice,
-                ),
-                [arg],
-            ) => {
+            (p, [arg])
+                if p.borrow_mode().is_some()
+                    || matches!(
+                        p,
+                        Self::Meta(Meta::Code)
+                            | Self::Lang(Lang::Bounds)
+                            | Self::Mem(Mem::Ptr | Mem::Cell | Mem::Slice)
+                    ) =>
+            {
                 let arg = arg.as_type().ok_or(Unevaluated::Unsupported)?;
                 Ok(Value::Type(TyKind::Primitive(self, vec![Value::Type(arg)]).intern()))
             }

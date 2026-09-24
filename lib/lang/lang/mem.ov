@@ -4,6 +4,9 @@ Ref: ($T: type) -> type = _;
 RefMut: ($T: type) -> type = _;
 RefOut: ($T: type) -> type = _;
 RefTake: ($T: type) -> type = _;
+/// `&temp T` and `&temp mut T`: a parameter's borrow lent for the call only (spec 05, section 4).
+RefTemp: ($T: type) -> type = _;
+RefTempMut: ($T: type) -> type = _;
 Ptr: ($T: type) -> type = _;
 /// `[T]`: the items of an array of any length, reached through a borrow (`&[T]`).
 Slice: ($T: type) -> type = _;

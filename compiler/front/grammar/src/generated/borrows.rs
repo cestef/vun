@@ -5,12 +5,57 @@
     reason = "generated modules share one namespace"
 )]
 use super::*;
-/// Borrow types by the word after `&` (appendix B): `&T` is `lang.mem.Ref(T)`. Each mode is named
+/// Borrow types by the words after `&` (appendix B): `&T` is `lang.mem.Ref(T)`. Each mode is named
 /// by the transition it performs on the place it borrows (spec 05, section 2): the state it
-/// needs before, and the state the place has after; and by the access it leaves others.
-pub const BORROWS: &[(&str, &str, PlaceState, PlaceState, Access)] = &[
-    ("", "lang.mem.Ref", PlaceState::Init, PlaceState::Init, Access::Shared),
-    ("mut", "lang.mem.RefMut", PlaceState::Init, PlaceState::Init, Access::Exclusive),
-    ("out", "lang.mem.RefOut", PlaceState::Uninit, PlaceState::Init, Access::Exclusive),
-    ("take", "lang.mem.RefTake", PlaceState::Init, PlaceState::Uninit, Access::Exclusive),
+/// needs before, and the state the place has after; by the access it leaves others; and by how
+/// long a call holds it. Borrows of one transition and access are accepted for each other.
+pub const BORROWS: &[(&str, &str, PlaceState, PlaceState, Access, Extent)] = &[
+    (
+        "",
+        "lang.mem.Ref",
+        PlaceState::Init,
+        PlaceState::Init,
+        Access::Shared,
+        Extent::Tied,
+    ),
+    (
+        "mut",
+        "lang.mem.RefMut",
+        PlaceState::Init,
+        PlaceState::Init,
+        Access::Exclusive,
+        Extent::Tied,
+    ),
+    (
+        "out",
+        "lang.mem.RefOut",
+        PlaceState::Uninit,
+        PlaceState::Init,
+        Access::Exclusive,
+        Extent::Tied,
+    ),
+    (
+        "take",
+        "lang.mem.RefTake",
+        PlaceState::Init,
+        PlaceState::Uninit,
+        Access::Exclusive,
+        Extent::Tied,
+    ),
+    (
+        "temp",
+        "lang.mem.RefTemp",
+        PlaceState::Init,
+        PlaceState::Init,
+        Access::Shared,
+        Extent::Temp,
+    ),
+    (
+        "temp mut",
+        "lang.mem.RefTempMut",
+        PlaceState::Init,
+        PlaceState::Init,
+        Access::Exclusive,
+        Extent::Temp,
+    ),
 ];

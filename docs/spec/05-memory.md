@@ -95,7 +95,10 @@ parser := (input: &[u8]) -> Parser { .{ .input = input, .pos = 0 } };
 **Temporary borrows.** A parameter whose type is `&temp T` or `&temp mut T` is lent for the call
 only: the result is not tied to it, and the function may not return it or put it into anything it
 returns. So `find := (hay: &[u8], needle: &temp [u8]) -> &[u8]` returns a borrow tied to `hay`
-alone, and a caller may pass a short-lived `needle`.
+alone, and a caller may pass a short-lived `needle`. The table `borrows` records this as each
+mode's extent (`tied` or `temp`). A `&temp` borrow and the ordinary borrow of the same transition
+and access are accepted for each other, so the rule is carried by the parameter and checked in the
+callee's body, where a `&temp` parameter is a loan that must not reach the result.
 
 A borrow cannot be stored in a free value: a top-level binding, an `Own`, a heap node. A type is
 made free by `#[kind.free]`: neither its parts nor its type arguments may then be scoped, so

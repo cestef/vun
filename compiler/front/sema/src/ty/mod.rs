@@ -14,7 +14,7 @@ mod signature;
 mod tests;
 mod value;
 
-use overt_grammar::{BORROWS, PATH_SEPARATOR};
+use overt_grammar::{BORROWS, Extent, PATH_SEPARATOR};
 use overt_intern::{Interned, Pool, Symbol};
 
 use crate::Primitive;
@@ -235,10 +235,27 @@ impl TyKind {
     pub fn borrowing(&self) -> Option<(&'static str, Primitive, Ty)> {
         let Self::Primitive(p, args) = self else { return None };
         let [Value::Type(ty)] = args.as_slice() else { return None };
-        BORROWS.iter().find_map(|(mode, item, ..)| {
-            let (ns, name) = item.rsplit_once(PATH_SEPARATOR)?;
-            (ns == p.namespace() && name == p.name()).then_some((*mode, *p, *ty))
-        })
+        Some((p.borrow_mode()?, *p, *ty))
+    }
+
+    /// Whether the borrow modes `a` and `b` perform one transition and leave one access (the
+    /// table `borrows`), differing at most in how long a call holds them.
+    #[must_use]
+    pub fn alike(a: &str, b: &str) -> bool {
+        let row = |mode: &str| {
+            BORROWS
+                .iter()
+                .find(|(m, ..)| *m == mode)
+                .map(|&(_, _, before, after, access, _)| (before, after, access))
+        };
+        row(a).is_some() && row(a) == row(b)
+    }
+
+    /// How long a call holds a borrow of this type (the table `borrows`).
+    #[must_use]
+    pub fn extent(&self) -> Option<Extent> {
+        let (mode, ..) = self.borrowing()?;
+        BORROWS.iter().find(|(m, ..)| *m == mode).map(|&(.., extent)| extent)
     }
 
     /// The range of an integer type.
@@ -251,5 +268,16 @@ impl TyKind {
             },
             _ => None,
         }
+    }
+}
+
+impl Primitive {
+    /// The words after `&` that write this borrow type constructor (the table `borrows`).
+    #[must_use]
+    pub fn borrow_mode(self) -> Option<&'static str> {
+        BORROWS.iter().find_map(|(mode, item, ..)| {
+            let (ns, name) = item.rsplit_once(PATH_SEPARATOR)?;
+            (ns == self.namespace() && name == self.name()).then_some(*mode)
+        })
     }
 }

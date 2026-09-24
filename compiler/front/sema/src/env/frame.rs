@@ -1,14 +1,16 @@
 //! Coroutine functions and their frames (spec 06): a function whose body yields returns a frame,
 //! of a type implementing the interface it declares; what the frame yields and returns come from
-//! that interface's `resume` (the table `iteration`).
+//! that interface's `resume` (the table `iteration`). Also the signatures of function literals
+//! and how long a call holds each parameter's borrow.
 
-use overt_grammar::ITERATION;
+use overt_grammar::{BORROWS, Extent, ITERATION, TokenKind};
 use overt_hir::tree::{Entry, ExprId, ExprKind, Param, PatKind};
 use overt_intern::Symbol;
 use overt_origin::OriginTable;
+use overt_query::Cx;
 
 use super::{Env, Unevaluated};
-use crate::eval::{Call, Instance};
+use crate::eval::{Call, Func, Instance};
 use crate::item::ExprRef;
 use crate::member::{Found, MemberType, Members};
 use crate::ty::{Frame, Marker, Param as ParamTy, Signature, Ty, TyKind, Value};
@@ -115,5 +117,25 @@ impl Env<'_, '_> {
             _ => None,
         };
         Some((payload(item)?, payload(done)?))
+    }
+}
+
+impl Func {
+    /// How long a call holds each parameter's borrow, as its annotation writes the mode
+    /// (`&temp T`); `tied` for a parameter that is not a borrow. `None` when its file is not read.
+    #[must_use]
+    pub fn extents(&self, cx: &Cx<'_>) -> Option<Vec<Extent>> {
+        let env = Env::inside(cx, self, [])?;
+        let hir = &env.parsed.hir;
+        let ExprKind::Fn { params, .. } = &hir.exprs[self.literal.expr.id].kind else { return None };
+        let extent = |param: &Entry<Param>| {
+            let Entry::One(Param { ty: Some(ty), .. }) = param else { return Extent::Tied };
+            let ExprKind::Prefix { op: TokenKind::Amp, mode, .. } = hir.exprs[*ty].kind else {
+                return Extent::Tied;
+            };
+            let word = mode.map_or("", Symbol::as_str);
+            BORROWS.iter().find(|(m, ..)| *m == word).map_or(Extent::Tied, |&(.., extent)| extent)
+        };
+        Some(params.iter().map(extent).collect())
     }
 }

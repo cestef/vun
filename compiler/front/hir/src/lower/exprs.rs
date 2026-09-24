@@ -1,6 +1,7 @@
 //! Expressions and types.
 
-use overt_grammar::{NodeField, NodeKind, TokenKind};
+use overt_grammar::{MODE_SEPARATOR, NodeField, NodeKind, TokenKind};
+use overt_intern::Symbol;
 use overt_syntax::cst::{Fields, NodeId};
 use overt_syntax::lexer;
 
@@ -98,7 +99,10 @@ impl Lower<'_, '_> {
                 elem: self.operand(&f, n, NodeField::Element),
             },
             NodeKind::Prefix => {
-                let mode = f.one(NodeField::Mode).map(|m| self.symbol(m));
+                // The words after `&`, as the table `borrows` spells them: `temp mut`.
+                let words: Vec<&str> =
+                    f.get(NodeField::Mode).iter().map(|&m| self.symbol(m).as_str()).collect();
+                let mode = (!words.is_empty()).then(|| Symbol::intern(&words.join(MODE_SEPARATOR)));
                 let operand = self.operand(&f, n, NodeField::Operand);
                 self.token(n).map_or(ExprKind::Error, |op| ExprKind::Prefix { op, mode, operand })
             }

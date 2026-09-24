@@ -71,7 +71,7 @@ pub enum ExprKind {
         len: ExprId,
         elem: ExprId,
     },
-    /// `op operand`; after `&`, `mode` is the borrow mode word (`mut`, `out`, `take`, `static`).
+    /// `op operand`; after `&`, `mode` is the borrow mode's words (`mut`, `out`, `temp mut`, ...).
     Prefix {
         op: TokenKind,
         mode: Option<Symbol>,

@@ -106,7 +106,7 @@ impl Layouts {
             Primitive::Lang(Lang::f64) => float(Storage::B64),
             Primitive::Lang(Lang::Fn) | Primitive::Mem(Mem::Ptr) => Self::pointer(cx),
             // A borrow of a slice also holds its length.
-            Primitive::Mem(Mem::Ref | Mem::RefMut | Mem::RefOut | Mem::RefTake) => {
+            borrow if borrow.borrow_mode().is_some() => {
                 let pointer = Self::pointer(cx)?;
                 match arg(0)?.slice_items() {
                     Some(_) => Some(Layout::sequence([pointer, Layout { niches: 0, ..pointer }])),

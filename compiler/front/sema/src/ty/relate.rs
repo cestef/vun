@@ -26,6 +26,14 @@ impl TyKind {
                 None => *self == Self::Primitive(Primitive::Lang(Lang::Range), Vec::new()),
             };
         }
+        // Borrows of one transition and access are accepted for each other: a `&temp` parameter
+        // takes an ordinary borrow, lent for the call only (spec 05, section 4).
+        if let (Some((mode, p, _)), Some((found_mode, _, pointee))) = (self.borrowing(), found.borrowing())
+            && mode != found_mode
+            && Self::alike(mode, found_mode)
+        {
+            return self.accepts(&Self::Primitive(p, vec![Value::Type(pointee)]).intern());
+        }
         // A borrow of an array is a borrow of its items as a slice, in the same mode.
         if let (Some((mode, _, expected)), Some((found_mode, _, found))) =
             (self.borrowing(), found.borrowing())

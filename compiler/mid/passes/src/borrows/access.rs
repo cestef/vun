@@ -9,7 +9,7 @@ use overt_mir::{BlockId, Operand, Place, Rvalue, Stmt, TerminatorKind};
 use overt_origin::OriginId;
 
 use super::flow::{Holds, Live};
-use super::{Checker, LoanId};
+use super::{Checker, LoanId, Source};
 
 impl Checker<'_> {
     /// Checks the statements of `block` from the loans held at its entry.
@@ -36,7 +36,7 @@ impl Checker<'_> {
             }
         }
         if b.term.kind == TerminatorKind::Return {
-            self.escapes(&holds[body.ret]);
+            self.escapes(&holds[body.ret], b.term.origin);
         }
     }
 
@@ -71,7 +71,10 @@ impl Checker<'_> {
     fn conflicts(&mut self, loans: &BTreeSet<LoanId>, place: &Place, access: Access, origin: OriginId) {
         for &loan in loans {
             let l = &self.loans[loan];
-            if l.place.overlaps(place) && (l.access == Access::Exclusive || access == Access::Exclusive) {
+            if l.source == Source::Taken
+                && l.place.overlaps(place)
+                && (l.access == Access::Exclusive || access == Access::Exclusive)
+            {
                 let what = self.name(&l.place);
                 let msg = what.text(" is reached here while a borrow of it is still used later");
                 let help = if l.access == Access::Exclusive {
@@ -84,10 +87,20 @@ impl Checker<'_> {
         }
     }
 
-    /// The loans of the function's own storage in its result.
-    fn escapes(&mut self, loans: &BTreeSet<LoanId>) {
+    /// The loans of the function's own storage in its result, and those its `&temp` parameters
+    /// lend.
+    fn escapes(&mut self, loans: &BTreeSet<LoanId>, returned: OriginId) {
         for &loan in loans {
-            if !self.loans[loan].place.is_indirect() {
+            if self.loans[loan].source == Source::Lent {
+                let msg = self
+                    .name(&self.loans[loan].place)
+                    .text(" is lent for the call only, and a borrow tied to it is returned");
+                let help = Msg::new()
+                    .text("a ")
+                    .code("&temp")
+                    .text(" parameter never reaches the result; return what another parameter lends");
+                self.report(errors::BORROW_ESCAPE, returned, msg, Some(loan), Some(help));
+            } else if !self.loans[loan].place.is_indirect() {
                 let origin = self.loans[loan].origin;
                 let msg = self
                     .name(&self.loans[loan].place)
