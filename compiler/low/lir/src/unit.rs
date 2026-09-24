@@ -1,39 +1,57 @@
-//! Compilation units: functions, data, symbols.
+//! Compilation units: what a backend receives to emit one object. Functions, data and imports are
+//! addressed by their ids; only exports and imports carry link symbols.
 
+use vun_index::IndexVec;
+use vun_intern::Symbol;
 use vun_origin::OriginId;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Linkage {
-    Internal,
-    /// Exported under its name (`#[link.export]`).
-    Export,
-    /// Provided from outside (`= _` with a link attribute).
-    Import,
-}
+use crate::entity::{DataId, FuncId, ImportId};
+use crate::func::{Function, Linkage, Signature};
+use crate::inst::Address;
 
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Function {
-    pub name: String,
-    pub linkage: Linkage,
-    pub origin: OriginId,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
+/// Initialized memory: bytes, with the addresses written into them at link time.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Data {
-    pub name: String,
     pub linkage: Linkage,
-    /// Link section, if not the default one.
-    pub section: Option<String>,
-    /// Contents; `None` for zero-initialized data of `size` bytes.
-    pub bytes: Option<Vec<u8>>,
-    pub size: u64,
-    pub align: u32,
+    pub bytes: Vec<u8>,
+    /// Addresses stored in the bytes, by the offset of the word holding each.
+    pub relocs: Vec<Reloc>,
+    pub align: u64,
+    /// Whether the program writes it: a `mut` top-level binding (spec 05, section 4).
+    pub writable: bool,
+    /// Link section, when not the default one (`#[link.section]`).
+    pub section: Option<Symbol>,
     pub origin: OriginId,
 }
 
-/// What a backend receives: everything needed to emit one object.
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+/// The address of `target`, plus `addend` bytes, written at `offset` of a data object.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct Reloc {
+    pub offset: u64,
+    pub target: Address,
+    pub addend: i64,
+}
+
+/// What a linked symbol is.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub enum ImportKind {
+    Func(Signature),
+    Data,
+}
+
+/// A symbol the unit uses and something else defines (`name: T = _;` with `#[link.symbol]`).
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct Import {
+    pub symbol: Symbol,
+    pub kind: ImportKind,
+    pub origin: OriginId,
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct Unit {
-    pub functions: Vec<Function>,
-    pub data: Vec<Data>,
+    pub functions: IndexVec<FuncId, Function>,
+    pub data: IndexVec<DataId, Data>,
+    pub imports: IndexVec<ImportId, Import>,
+    /// The width of addresses on the target, in bits.
+    pub pointer_bits: u32,
 }

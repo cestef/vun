@@ -10,7 +10,7 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
-vun-origin.workspace = true
+vun-index.workspace = true
 vun-intern.workspace = true
-vun-target.workspace = true
-vun-mir.workspace = true
+vun-origin.workspace = true
+vun-span.workspace = true

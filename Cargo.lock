@@ -839,10 +839,10 @@ dependencies = [
 name = "vun-lir"
 version = "0.0.0"
 dependencies = [
+ "vun-index",
  "vun-intern",
- "vun-mir",
  "vun-origin",
- "vun-target",
+ "vun-span",
 ]
 
 [[package]]
