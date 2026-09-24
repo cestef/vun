@@ -11,7 +11,7 @@ pub mod memory;
 use overt_mir::Mir;
 use overt_query::Cx;
 use overt_sema::env::Unevaluated;
-use overt_sema::eval::{Evaluator, Instance};
+use overt_sema::eval::{Evaluator, Instance, Instantiation};
 use overt_sema::ty::Value;
 
 use machine::Frame;
@@ -21,7 +21,8 @@ pub struct Interpreter;
 
 impl Evaluator for Interpreter {
     fn call(&self, cx: &Cx<'_>, call: &Instance) -> Result<Value, Unevaluated> {
-        let body = cx.get::<Mir>(&call.f.literal).map_err(|_| Unevaluated::Unsupported)?;
+        let instantiation = Instantiation::of(cx, call).ok_or(Unevaluated::Absent)?;
+        let body = cx.get::<Mir>(&instantiation).map_err(|_| Unevaluated::Unsupported)?;
         Frame::new(cx, &body, call)?.run()
     }
 }

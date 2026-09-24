@@ -5,6 +5,7 @@ use std::fmt;
 use std::ops::AddAssign;
 
 use overt_mir::Mir;
+use overt_sema::eval::Instantiation;
 use overt_sema::typeck::Typed;
 use overt_span::FileId;
 
@@ -24,6 +25,7 @@ impl Session {
         let mut coverage = Coverage::default();
         for f in self.functions(file) {
             coverage.bodies += 1;
+            let f = Instantiation::plain(f);
             coverage.lowered += usize::from(self.db.get::<Mir>(&f).is_ok());
             if let Some(typed) = self.db.get::<Typed>(&f) {
                 coverage.exprs += typed.exprs;

@@ -14,6 +14,7 @@ use overt_query::{Cx, Query};
 
 use crate::decl::DeclValue;
 use crate::env::{Env, Unevaluated};
+use crate::eval::Instantiation;
 use crate::item::DeclRef;
 use crate::item::ExprRef;
 use crate::typeck::{Stage, Typed, Typer};
@@ -75,7 +76,7 @@ impl Visitor for Checker<'_, '_, '_> {
     fn expr(&mut self, hir: &Hir, expr: ExprId) {
         if let ExprKind::Fn { .. } = hir.exprs[expr].kind {
             let f = ExprRef::new(self.env.file.clone(), hir, expr);
-            if let Some(typed) = self.env.cx.get::<Typed>(&f) {
+            if let Some(typed) = self.env.cx.get::<Typed>(&Instantiation::plain(f)) {
                 self.diag.absorb(&typed.diag);
             }
         }

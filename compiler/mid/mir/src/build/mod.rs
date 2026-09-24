@@ -19,8 +19,8 @@ use overt_index::{Idx, IndexVec};
 use overt_origin::OriginId;
 use overt_query::{Cx, Cycle, Query};
 use overt_sema::env::Env;
+use overt_sema::eval::Instantiation;
 use overt_sema::int::Integer;
-use overt_sema::item::ExprRef;
 use overt_sema::ty::Value;
 
 use crate::body::{
@@ -34,22 +34,22 @@ pub struct Unbuilt {
     pub at: OriginId,
 }
 
-/// The MIR of a function literal.
+/// The MIR of an instantiation of a function literal: generic code is lowered per
+/// instantiation, with its `$` parameters bound (spec 13, section 3).
 pub struct Mir;
 
 impl Query for Mir {
     const NAME: &'static str = "mir";
-    type Key = ExprRef;
+    type Key = Instantiation;
     type Value = Result<Arc<Body>, Unbuilt>;
 
-    fn compute(cx: &Cx<'_>, f: &ExprRef) -> Self::Value {
-        let env = Env::of(cx, &f.file).expect("a function value's file is read");
-        Builder::lower(&env, f).map(Arc::new)
+    fn compute(cx: &Cx<'_>, i: &Instantiation) -> Self::Value {
+        let env = Env::inside(cx, &i.f, i.args.iter().cloned()).expect("a function value's file is read");
+        Builder::lower(&env, i).map(Arc::new)
     }
 
-    fn cycle(cx: &Cx<'_>, f: &ExprRef, _: &Cycle) -> Self::Value {
-        let env = Env::of(cx, &f.file).expect("a function value's file is read");
-        Err(Unbuilt { at: env.parsed.hir.exprs[f.expr.id].origin })
+    fn cycle(_: &Cx<'_>, i: &Instantiation, _: &Cycle) -> Self::Value {
+        Err(Unbuilt { at: i.f.literal.expr.origin })
     }
 }
 
@@ -65,15 +65,16 @@ struct Builder<'e, 'a, 'db> {
     ret: Local,
     /// The loops around the code lowered, innermost last.
     loops: Vec<loops::Loop>,
-    /// The function lowered, whose typed body gives the types of places.
-    f: ExprRef,
+    /// The instantiation lowered, whose typed body gives the types of places.
+    f: Instantiation,
 }
 
 impl Builder<'_, '_, '_> {
-    fn lower(env: &Env<'_, '_>, f: &ExprRef) -> Result<Body, Unbuilt> {
+    fn lower(env: &Env<'_, '_>, f: &Instantiation) -> Result<Body, Unbuilt> {
         let hir = &env.parsed.hir;
-        let origin = hir.exprs[f.expr.id].origin;
-        let ExprKind::Fn { params, body, .. } = &hir.exprs[f.expr.id].kind else {
+        let literal = f.f.literal.expr.id;
+        let origin = hir.exprs[literal].origin;
+        let ExprKind::Fn { params, body, .. } = &hir.exprs[literal].kind else {
             return Err(Unbuilt { at: origin });
         };
         let mut locals = IndexVec::new();

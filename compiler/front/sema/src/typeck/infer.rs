@@ -81,7 +81,7 @@ impl Typer<'_, '_, '_> {
                 {
                     self.expected.insert(*callee, expected);
                 }
-                self.call(*callee, args)
+                self.call(expr, *callee, args)
             }
             // A function literal is a value; its body is typed on its own.
             ExprKind::Fn { params, returns, .. } => compile(self.env.signature(params, *returns).ok()?.ty()),

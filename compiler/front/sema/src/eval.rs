@@ -7,6 +7,8 @@
 
 use std::sync::{Arc, OnceLock};
 
+use overt_hir::db::Parsed;
+use overt_hir::tree::{Entry, ExprKind, Param, PatKind};
 use overt_query::{Cx, Cycle, Query};
 
 use crate::env::Unevaluated;
@@ -64,5 +66,50 @@ impl Query for Call {
 
     fn cycle(_: &Cx<'_>, _: &Self::Key, _: &Cycle) -> Self::Value {
         Err(Unevaluated::Cycle)
+    }
+}
+
+/// A function value with its `$` parameters bound to their values: what a body is typed and
+/// lowered for (spec 02, section 3: generic code is checked per instantiation). A function
+/// without `$` parameters, outside any call, has one instantiation.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct Instantiation {
+    pub f: Func,
+    /// By parameter: the value of each `$` parameter, `None` for the others and for unknown ones.
+    pub args: Vec<Option<Value>>,
+}
+
+impl Instantiation {
+    /// The function literal `f`, outside any call, with no parameter bound.
+    #[must_use]
+    pub fn plain(f: ExprRef) -> Self {
+        Self { f: Func { literal: f, within: None }, args: Vec::new() }
+    }
+
+    /// The instantiation `call` runs: its function, with its `$` parameters bound to the call's
+    /// arguments.
+    #[must_use]
+    pub fn of(cx: &Cx<'_>, call: &Instance) -> Option<Self> {
+        let comptime = call.f.comptime(cx)?;
+        let args = comptime.iter().zip(&call.args).map(|(&c, arg)| c.then(|| arg.clone())).collect();
+        Some(Self { f: call.f.clone(), args })
+    }
+}
+
+impl Func {
+    /// Whether each parameter of this function is a `$` parameter; `None` when its file is not
+    /// read.
+    #[must_use]
+    pub fn comptime(&self, cx: &Cx<'_>) -> Option<Vec<bool>> {
+        let parsed = cx.get::<Parsed>(&self.literal.file)?;
+        let hir = &parsed.hir;
+        let ExprKind::Fn { params, .. } = &hir.exprs[self.literal.expr.id].kind else { return None };
+        let comptime = params.iter().map(|p| match p {
+            Entry::One(Param { pat: Some(pat), .. }) => {
+                matches!(hir.pats[*pat].kind, PatKind::Bind(b) if hir.binders[b].comptime)
+            }
+            _ => false,
+        });
+        Some(comptime.collect())
     }
 }

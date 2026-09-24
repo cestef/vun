@@ -3,7 +3,7 @@
 use overt_origin::OriginTable;
 use overt_span::{SourceMap, Span};
 
-use crate::{Diagnostic, Severity};
+use crate::{Diagnostic, Severity, TraceFrame};
 
 /// Proof that an error was emitted. Only [`DiagCtxt`] creates one, so a poisoned type or value
 /// carrying it guarantees that the build fails and that later diagnostics about it can be dropped.
@@ -73,6 +73,18 @@ impl DiagCtxt {
             }
         }
         (other.error_count() > 0).then_some(ErrorGuaranteed(()))
+    }
+
+    /// Records the diagnostics of `other` that are not recorded yet, each reached through
+    /// `frame`: an error in a generic body, found in the instantiation a call reached.
+    pub fn absorb_through(&mut self, other: &Self, frame: &TraceFrame) {
+        for d in &other.diagnostics {
+            let mut d = d.clone();
+            d.trace.push(frame.clone());
+            if !self.diagnostics.contains(&d) {
+                self.diagnostics.push(d);
+            }
+        }
     }
 
     pub fn report(&mut self, d: Diagnostic) {

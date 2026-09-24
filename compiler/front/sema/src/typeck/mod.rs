@@ -23,10 +23,10 @@ use overt_diag::DiagCtxt;
 use overt_hir::tree::{BinderId, BlockId, DeclId, Entry, ExprId, ExprKind, Hir, NsId, PatKind};
 use overt_hir::visit::Visitor;
 use overt_intern::Symbol;
-use overt_query::{Cx, Query};
+use overt_query::{Cx, Cycle, Query};
 
 use crate::env::Env;
-use crate::item::ExprRef;
+use crate::eval::Instantiation;
 use crate::ty::{Ty, TyKind};
 
 /// When a value is known: at compile time, or only at run time. Only run-time integers are
@@ -70,18 +70,22 @@ impl Visitor for Exprs {
     }
 }
 
-/// The typed body of a function literal; `None` for a file the driver did not read.
+/// The typed body of an instantiation of a function literal; `None` for a file the driver did
+/// not read. A generic body is typed for each instantiation its callers reach, with its `$`
+/// parameters bound, and what that reports is reported at the generic definition.
 pub struct Typed;
 
 impl Query for Typed {
     const NAME: &'static str = "typed";
-    type Key = ExprRef;
+    type Key = Instantiation;
     type Value = Option<Arc<TypedBody>>;
 
-    fn compute(cx: &Cx<'_>, f: &ExprRef) -> Self::Value {
-        let env = Env::of(cx, &f.file)?;
+    fn compute(cx: &Cx<'_>, i: &Instantiation) -> Self::Value {
+        let env = Env::inside(cx, &i.f, i.args.iter().cloned())?;
         let hir = &env.parsed.hir;
-        let ExprKind::Fn { params, returns, body } = &hir.exprs[f.expr.id].kind else { return None };
+        let ExprKind::Fn { params, returns, body } = &hir.exprs[i.f.literal.expr.id].kind else {
+            return None;
+        };
         let mut typer = Typer::new(&env, Stage::Run);
         for param in params {
             let Entry::One(param) = param else { continue };
@@ -107,6 +111,12 @@ impl Query for Typed {
             diag: typer.diag,
             exprs: exprs.0,
         }))
+    }
+
+    /// A body that reaches itself through calls is typed on its way in; the inner reach sees
+    /// nothing.
+    fn cycle(_: &Cx<'_>, _: &Instantiation, _: &Cycle) -> Self::Value {
+        None
     }
 }
 

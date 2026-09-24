@@ -15,6 +15,7 @@ use overt_origin::OriginTable;
 use overt_query::Db;
 use overt_sema::check::Checked;
 use overt_sema::eval::Evaluators;
+use overt_sema::eval::Instantiation;
 use overt_sema::item::ExprRef;
 use overt_span::{FileId, SourceFiles, SourceMap};
 use overt_syntax::cst::Cst;
@@ -122,7 +123,7 @@ impl Session {
     /// The MIR of each function literal of `file`, in source order.
     pub fn bodies(&mut self, file: FileId) -> Vec<(ExprRef, Result<Arc<Body>, Unbuilt>)> {
         let functions = self.functions(file);
-        functions.into_iter().map(|f| (f.clone(), self.db.get::<Mir>(&f))).collect()
+        functions.into_iter().map(|f| (f.clone(), self.db.get::<Mir>(&Instantiation::plain(f)))).collect()
     }
 
     /// How the queries name `file`, with the inputs of its package graph and its text set.
