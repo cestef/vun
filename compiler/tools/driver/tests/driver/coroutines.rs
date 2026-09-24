@@ -74,10 +74,10 @@ once := (e: &std.task.Event) -> u32 {
 };
 either := (e: &std.task.Event) -> std.task.Async(bool) {
     mut c := count(e);
+    defer c.end();
     mut d := count(e);
+    defer d.end();
     r := yield ..std.task.select(.{ &mut c, &mut d });
-    c.end();
-    d.end();
     match r { .first(_) => true, .second(_) => false }
 };
 kept := (e: &std.task.Event) -> u32 {
@@ -130,4 +130,31 @@ wrong: Int(zipped()..=zipped()) = 5;
     );
     // Each count and sum is exact at compile time; `zip` stops with the shorter iterator.
     assert_eq!(fixture.check(&file), [errors::INT_DOES_NOT_FIT]);
+}
+
+#[test]
+fn a_frame_ended_at_a_yield_runs_only_what_is_pending_there() {
+    let fixture = Fixture::new("coroutines-cancel");
+    let file = fixture.root.write(
+        "cancel.vun",
+        "\
+count := (e: &std.task.Event) -> std.task.Async(u32) { yield .{ .event = e }; 3 };
+held := (e: &std.task.Event) -> std.task.Async(u32) {
+    mut c := count(e);
+    yield .{ .event = e };
+    c.end();
+    3
+};
+deferred := (e: &std.task.Event) -> std.task.Async(u32) {
+    mut c := count(e);
+    defer c.end();
+    yield .{ .event = e };
+    3
+};
+",
+    );
+    // Ending `held` at its `yield` would leave `c` held; `deferred` ends it there.
+    let found = fixture.reported(&file);
+    assert_eq!(found.len(), 1, "{found:?}");
+    assert_eq!(found[0].0, errors::PLACE_LINEAR_LEAK);
 }

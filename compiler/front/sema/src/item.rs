@@ -130,3 +130,20 @@ impl Query for Declared {
         None
     }
 }
+
+impl Declared {
+    /// Whether every member of `ns` is named as written, none computed (`$(e) := ...`): only
+    /// then is a name [`Declared`] does not find no member at all.
+    #[must_use]
+    pub fn complete(cx: &Cx<'_>, ns: &Namespace) -> bool {
+        let package = cx.get::<Package>(&ns.package);
+        let file =
+            package.file_of(&ns.path).map(|path| FileRef { package: ns.package, path: path.to_owned() });
+        let Some(parsed) = file.and_then(|f| cx.get::<Parsed>(&f)) else { return true };
+        let hir = &parsed.hir;
+        let Some(root) = hir.root else { return true };
+        hir.member_decls(root)
+            .into_iter()
+            .all(|d| !matches!(hir.pats[hir.decls[d].pat].kind, PatKind::Computed(_)))
+    }
+}

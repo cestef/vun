@@ -14,8 +14,6 @@ use vun_sema::eval::Instantiation;
 use vun_sema::int::{Extended, Integer, Interval};
 use vun_sema::ty::{Marker, Value};
 
-use crate::types::PlaceTypes;
-
 /// The `panic.never` reports of an instantiation's body; `None` when it has no MIR yet.
 pub struct PanicChecks;
 
@@ -119,7 +117,7 @@ impl Check<'_, '_, '_, '_> {
 
     /// Reports each index of `place` not proven within the array it indexes.
     fn indices(&mut self, place: &Place, origin: OriginId) {
-        let types = PlaceTypes { cx: self.env.cx, body: self.body }.along(place);
+        let types = place.types(self.env.cx, &self.body.locals);
         for (projection, ty) in place.projection.iter().zip(&types) {
             let Projection::Index(index) = projection else { continue };
             let bounds = ty.and_then(|t| t.as_array().and_then(|(len, _)| len.to_i128()));

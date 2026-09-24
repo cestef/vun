@@ -1,37 +1,41 @@
 //! The types of places, followed along their projections from the local's type; `None` where a
 //! type on the way is not known.
 
-use vun_mir::{Body, Place, Projection};
+use vun_index::IndexVec;
 use vun_query::Cx;
 use vun_sema::member::Members;
 use vun_sema::ty::{Ty, TyKind, Value};
 
-/// Place types in one body.
-pub(crate) struct PlaceTypes<'c, 'b> {
-    pub(crate) cx: &'c Cx<'c>,
-    pub(crate) body: &'b Body,
-}
+use crate::{Local, LocalDecl, Place, Projection};
 
-impl PlaceTypes<'_, '_> {
-    /// The type of each prefix of `place`: the local's, then after each projection.
-    pub(crate) fn along(&self, place: &Place) -> Vec<Option<Ty>> {
-        let mut types = vec![self.body.locals[place.local].ty];
-        for projection in &place.projection {
-            let next = types.last().copied().flatten().and_then(|ty| self.step(ty, projection));
+impl Place {
+    /// The type of each prefix of this place among `locals`: the local's, then after each
+    /// projection.
+    #[must_use]
+    pub fn types(&self, cx: &Cx<'_>, locals: &IndexVec<Local, LocalDecl>) -> Vec<Option<Ty>> {
+        let mut types = vec![locals[self.local].ty];
+        for projection in &self.projection {
+            let next = types.last().copied().flatten().and_then(|ty| Self::step(cx, locals, ty, projection));
             types.push(next);
         }
         types
     }
 
+    /// The type of this place among `locals`, where known.
+    #[must_use]
+    pub fn ty(&self, cx: &Cx<'_>, locals: &IndexVec<Local, LocalDecl>) -> Option<Ty> {
+        self.types(cx, locals).pop().flatten()
+    }
+
     /// The type after one projection of a value of type `ty`.
-    fn step(&self, ty: Ty, projection: &Projection) -> Option<Ty> {
+    fn step(cx: &Cx<'_>, locals: &IndexVec<Local, LocalDecl>, ty: Ty, projection: &Projection) -> Option<Ty> {
         match projection {
             Projection::Deref => ty.pointee(),
             Projection::Field(name) => {
                 if let TyKind::Record(fields) = &*ty {
                     return fields.iter().find(|(n, _)| n == name).map(|(_, t)| *t);
                 }
-                let members = self.cx.get::<Members>(&ty)?;
+                let members = cx.get::<Members>(&ty)?;
                 members.fields.iter().find(|f| f.name == *name).and_then(|f| f.ty.as_ref().ok().copied())
             }
             Projection::Position(at) => match &*ty {
@@ -40,14 +44,14 @@ impl PlaceTypes<'_, '_> {
             },
             Projection::Payload(at) => {
                 // The type of an item of a payload: known when every variant with one agrees.
-                let members = self.cx.get::<Members>(&ty)?;
+                let members = cx.get::<Members>(&ty)?;
                 let mut items =
                     members.variants.iter().filter_map(|v| v.payload.get(*at)?.as_ref().ok().copied());
                 let first = items.next()?;
                 items.all(|t| t == first).then_some(first)
             }
             // Items at bounds are a run of the sequence, as its slice type.
-            Projection::Index(index) if self.body.locals[*index].ty.is_some_and(|t| t.bounds().is_some()) => {
+            Projection::Index(index) if locals[*index].ty.is_some_and(|t| t.bounds().is_some()) => {
                 ty.items().map(TyKind::slice)
             }
             Projection::Index(_) => match &*ty {

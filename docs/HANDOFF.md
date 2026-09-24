@@ -44,6 +44,8 @@ lib/lang/lang/syntax/desugar.vun   appendix B as data: operators, borrows (with 
 lib/lang/lang/errors.vun           every compiler diagnostic id, with explanation pages in errors/
 lib/lang, lib/std                 `lang` (primitives, ops impls, iterators) and `std`
 corpus/accept, corpus/reject      programs; reject files carry `//~ id` annotations
+corpus/planned                    programs waiting for library APIs: parse, report only unresolved
+                                  names (listed as what each waits for); move to accept once clean
 corpus/support                    stand-ins for what programs take from drivers and missing std
 compiler/<stage>/<crate>          base < front < mid < low < back, link, render < tools
 fuzz/                             cargo-fuzz targets `lex`, `parse` (outside the workspace)
@@ -74,7 +76,7 @@ Rust names a `lang` or `std` declaration only through `vun_items`). Generators e
 cargo fmt && cargo clippy --all-targets && cargo nextest run && cargo gen --check && cargo xtask lines
 cargo xtask corpus            # verdicts, then coverage and what stops MIR most
 cargo xtask size              # builds `vun` as distributed; fails past its budget
-cargo run -q -p vun-cli -- check|dump tokens|cst|hir|mir <file>
+cargo run -q -p vun-cli -- check|dump tokens|cst|hir|mir|layout|program <file>
 VUN_BLESS=1 cargo nextest run -p vun-syntax    # snapshots, only after reading the diff
 cd fuzz && cargo +nightly fuzz run parse -- -max_total_time=120
 typst compile whitepaper/main.typ whitepaper/vun.pdf
@@ -110,7 +112,8 @@ formats, `Format::PUBLISHED` is `.tar.zst`), `vun-http`, `vun-hash`, `vun-fs` (`
   borrows; `.name(args)` where a type is expected calls a variant or a constructor function
   (`Env::constructed`); `env/named.rs` gives names their values, a member of a `struct` literal
   inside a compile-time call being that call's (`Env::made_member`), and tuple positions
-  (`Env::position`). Frames record the interface call they are written as (`Frame::written`), so
+  (`Env::position`). A member a namespace does not declare is `names.unresolved`
+  (`Typer::absent`, unless `Declared::complete` says the namespace computes names). Frames record the interface call they are written as (`Frame::written`), so
   `$F: Async(A)` infers `A` (`Env::implemented`).
 - Typing (`typeck/`): the `Typer` per `Instantiation` (`Typed` query): expected types, patterns,
   loops, `$for`/`$if` steps (`staged.rs`; `Typer::undecided` counts `$if`/`$for` not decided,
@@ -122,6 +125,10 @@ formats, `Format::PUBLISHED` is `.tar.zst`), `vun-http`, `vun-hash`, `vun-fs` (`
   (`methods.rs`; `required_member` for constrained parameters and frames, a frame answering its
   interface's `resume` and `end` and having its impls' methods), records and tuple positions
   (`record.rs`), `unsafe` (`safety.rs`), string literals `&static [N]u8`.
+- Layout (`layout/`): the query `Shapes` gives each type's `Shape` (`Layout` with its `Niche`,
+  and `Parts`: sequence offsets, array stride, bit offsets, or an enum's `Tag` (`Alone`, `Index`,
+  `Niche`) and payload offsets); `Shapes::layout` for size and alignment; `Shape::text` is the
+  `vun dump layout` format.
 - Items: `Declared`, `DeclValue`, `DeclType`, `TypedDecl`, `Members`, `MemberType`,
   `MemberValue`, impls and witnesses (`witness/`: targets are types, type constructors or
   interface constructors; a type's witnesses also come from the package declaring it,
@@ -142,12 +149,22 @@ primitive) gives any callee's `$` parameters and borrow modes (`Written`).
 **MIR** (`compiler/mid/mir`): places with projections (`Deref`, `Field`, `Index` (a local holding
 an integer, or bounds for a run of items), `Position`, `Payload`); rvalues `Use`, `Binary`,
 `Unary`, `Range`, `Narrow`, `Aggregate`, `Call`, `Ref`, `IsVariant`, `Resume`, `End`, `Repeat`,
-`Comptime`, `Quote`; terminators `Return`, `Goto`, `Branch`, `Yield`, `Defer`, `Unreachable`;
+`Comptime`, `Quote`; terminators `Return`, `Goto`, `Branch`, `Yield` (with a `cancel` path running
+what is pending, ending in `Ended`), `Defer`, `Unreachable`;
 `LocalDecl { name, ty, role }` with `Role::{Held, Unpacked, Static}` (a top-level binding's
 storage). `build/`: one module per form; receivers take their mode from `MemberType`; a frame's
 `resume()`/`end()` lower to `Resume`/`End` (table `iteration`, column `end`); a call of an empty
 type ends its block; `xs[a..b]` through a borrow is a borrow of the run. Unlowered forms are
-`Unbuilt { at }`; `Body::verify` runs on every lowered body in the tests.
+`Unbuilt { at }`; `Body::verify` runs on every lowered body in the tests. Temporaries are typed
+from what they hold (`build/temp.rs`); place types along projections are `Place::types`/`ty`.
+`for p in e` and `yield ..e` end their frame on every exit (`Pending::End`). `Lowered` (on
+`Instantiation`): `env`, `called` (a call's instantiation from its constant `$` arguments);
+`Instantiation::new` makes one instantiation per function with no `$` parameter bound.
+`Concrete` (query): a body for code generation, compile-time values as constants propagated into
+operands, every local typed, else `Unready` (`Unbuilt`, `Unevaluated`, `Untyped`). `Programs`
+(query, `program.rs`): the exports of a root file (`Func::export`, members of the struct types
+its bindings evaluate to) and every instantiation and link symbol they reach; `vun dump program`.
+`hello.vun` reaches 19 functions, all concrete.
 
 **Passes** (`compiler/mid/passes`): `places/` (uninitialized reads, joins, `&out`, moves of linear
 values, `End` consumes, `place.linear_leak` at returns, `place.move_out_of_borrow`, `Defer`).
@@ -161,7 +178,7 @@ types along projections).
 **Interpreter** (`compiler/mid/interp`): runs MIR on compile-time values; shared borrows read as
 values; exclusive borrows are loans (`Value::Loan`) that `.*` follows (`places.rs`), passed to
 calls as what they reach and written back from `Metered::written` (`loans.rs`, decision 135);
-frames suspend and resume; `End` of a finished frame is nothing, of a suspended one unsupported.
+frames suspend and resume; `End` of a suspended frame runs its cancel path (`Body::cancel_of`).
 
 **Driver and tools**: `Session::check` runs names, types, places, borrows, panics;
 `stages::STAGES`; `Coverage`; `cargo gen`, `cargo xtask {corpus, lines, size}` (the budget in `xtask/src/size.rs`,
@@ -188,9 +205,9 @@ run from the requirements of `std.build.Package` and calls `std.build.plan` with
 package's `build.vun` runs it (stage `plan`), `vun dump plan` prints its actions as literals
 (`Value::literal`). Nothing carries the actions out yet.
 
-Progress: corpus 214 passed, 0 pending, 23 shown, 0 failed; 73% of body expressions typed; MIR
-lowers 93 of 115 functions (stops: `$` 3, `For` 3, `Member` 3, `StructLit` 3, `==` 2). 234 tests,
-including one that checks every `lang` and `std` file cleanly.
+Progress: corpus 205 passed, 0 pending, 9 planned, 23 shown, 0 failed; 83% of accepted body
+expressions typed; MIR lowers 83 of 94 accepted functions. 236 tests, including one that checks
+every `lang` and `std` file cleanly.
 
 ## 6. Decisions
 
@@ -204,7 +221,9 @@ diagnostics), 126 (executors, frames' `resume`/`end`), 127 (`std.iter` adapters)
 statics at compile time), 138 (targets and lint groups as data, member handles), 139 (the size
 budget), 140 (`std` iterators, arguments, `Fixed` as an `Allocator`), 141 (values' types, members
 of types without a namespace, requirements through witnesses), 143 (receivers after inferred
-`$` arguments, lent parameters lent on); accepted: 142 (the `lang.lint` view). New language
+`$` arguments, lent parameters lent on), 145 (layout placement), 146 (`yield` as an exit, cancel
+paths), 148 (`Programs`, `Concrete`); accepted: 142 (the `lang.lint` view), 147 (namespace
+members reported, `corpus/planned`). New language
 rules go to `decisions.md` as proposed unless the user approves them.
 
 ## 7. Next steps, in order

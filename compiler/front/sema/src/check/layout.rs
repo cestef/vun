@@ -8,7 +8,7 @@ use super::Checker;
 use crate::Primitive;
 use crate::decl::DeclValue;
 use crate::item::DeclRef;
-use crate::layout::Layouts;
+use crate::layout::Shapes;
 use crate::member::Members;
 use crate::primitives::layout::Layout;
 use crate::ty::Value;
@@ -30,8 +30,8 @@ impl Checker<'_, '_, '_> {
             return;
         };
         let Some(members) = cx.get::<Members>(&ty) else { return };
-        let fields = members.fields.iter().map(|f| Layouts::bits(cx, *f.ty.as_ref().ok()?));
-        let (Some(taken), Some(width)) = (fields.sum::<Option<u64>>(), Layouts::bits(cx, backing)) else {
+        let fields = members.fields.iter().map(|f| Shapes::bits(cx, *f.ty.as_ref().ok()?));
+        let (Some(taken), Some(width)) = (fields.sum::<Option<u64>>(), Shapes::bits(cx, backing)) else {
             return;
         };
         if taken != width {

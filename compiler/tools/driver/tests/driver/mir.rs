@@ -2,14 +2,14 @@
 
 use vun_driver::Session;
 use vun_fs::Tree;
-use vun_harness::repo_root;
+use vun_harness::{SOURCES, repo_root};
 use vun_span::EXTENSION;
 
 #[test]
 fn repository_bodies_lower_to_mir_that_verifies() {
     let root = repo_root();
     let (mut failures, mut lowered) = (Vec::new(), 0);
-    for dir in ["lib", "corpus/accept"] {
+    for dir in SOURCES {
         for path in root.join(dir).files_with(EXTENSION).unwrap() {
             let mut session = Session::new();
             let Some(file) = session.load(&path) else { continue };

@@ -10,9 +10,10 @@ use vun_intern::Symbol;
 use vun_origin::OriginId;
 use vun_sema::ty::Ty;
 
+use super::defer::{Exit, Pending};
 use super::{Builder, Unbuilt};
-use crate::body::{Local, Operand, Rvalue, TerminatorKind};
 use crate::place::{Place, Projection};
+use crate::{Local, Operand, Role, Rvalue, TerminatorKind};
 
 impl Builder<'_, '_, '_> {
     /// `yield value`, or `yield ..frame`.
@@ -23,21 +24,28 @@ impl Builder<'_, '_, '_> {
             let step = self.type_of(operand).and_then(|t| self.env().resumed(t)).ok_or(unbuilt)?;
             let value = self.operand(operand)?;
             let frame = self.temp_local(Rvalue::Use(value), origin);
-            return self.drive(frame, step, origin, |b, item| {
-                b.suspend(Operand::Place(item), origin);
-                Ok(())
-            });
+            // Ending this frame while it drives the other ends the other too.
+            let depth = self.pending.len();
+            self.pending.push(Pending::End(frame));
+            let driven = self.drive(frame, step, origin, |b, item| b.suspend(Operand::Place(item), origin));
+            self.pending.truncate(depth);
+            return driven;
         }
         let value = self.operand(value)?;
-        self.suspend(value, origin);
+        self.suspend(value, origin)?;
         Ok(Self::unit())
     }
 
-    /// Suspends with `value`, going on in a new block when resumed.
-    fn suspend(&mut self, value: Operand, origin: OriginId) {
-        let resume = self.fresh(origin);
-        self.terminate(TerminatorKind::Yield { value, resume }, origin);
+    /// Suspends with `value`, going on in a new block when resumed; ending the frame here runs
+    /// what is pending, the latest first.
+    fn suspend(&mut self, value: Operand, origin: OriginId) -> Result<(), Unbuilt> {
+        let (resume, cancel) = (self.fresh(origin), self.fresh(origin));
+        self.terminate(TerminatorKind::Yield { value, resume, cancel }, origin);
+        self.current = cancel;
+        self.unwind(0, origin, Exit::Function)?;
+        self.terminate(TerminatorKind::Ended, origin);
         self.current = resume;
+        Ok(())
     }
 
     /// Resumes the frame in `frame` until it returns: `each` runs for the place of every item it
@@ -54,7 +62,10 @@ impl Builder<'_, '_, '_> {
         let head = self.fresh(origin);
         self.terminate(TerminatorKind::Goto(head), origin);
         self.current = head;
-        let resumed = Place::of(self.temp_local(Rvalue::Resume { frame: Place::of(frame), step }, origin));
+        // Each step is taken apart: the item it yields, or what it returns.
+        let resumed = self.temp_local(Rvalue::Resume { frame: Place::of(frame), step }, origin);
+        self.locals[resumed].role = Role::Unpacked;
+        let resumed = Place::of(resumed);
         let returned = self.fresh(origin);
         let yielded = Rvalue::IsVariant { place: resumed.clone(), variant: Symbol::intern(item) };
         let cond = self.temp(yielded, origin);
@@ -62,6 +73,9 @@ impl Builder<'_, '_, '_> {
         each(self, resumed.clone().project(Projection::Payload(0)))?;
         self.terminate(TerminatorKind::Goto(head), origin);
         self.current = returned;
-        Ok(self.temp(Rvalue::Use(Operand::Place(resumed.project(Projection::Payload(0)))), origin))
+        let result = self.temp(Rvalue::Use(Operand::Place(resumed.project(Projection::Payload(0)))), origin);
+        // The frame returned; ending it frees it (spec 06, section 1).
+        self.temp(Rvalue::End { frame: Place::of(frame) }, origin);
+        Ok(result)
     }
 }

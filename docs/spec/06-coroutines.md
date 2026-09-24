@@ -24,7 +24,10 @@ Coroutine := ($Y: type, $R: type) -> Interface {
   (`std.meta.size(blink.Frame)`), so frames can live on the stack, in a static, in a pool or in an
   `Own`, and none of these needs a heap.
 - Frames are **linear**: you must `end` them, which runs the defers of the current suspension point.
-  Cancellation is explicit and structured.
+  Cancellation is explicit and structured. Each `yield` is therefore an exit of the function, the
+  one ending the frame takes: every linear local held there must be consumed by a statement
+  deferred before it, or it leaks (`place.linear_leak`). Frames driven by `for` or `yield ..` at
+  that point are ended there too.
 - Frames are **fixed**: locals may be borrowed across a `yield`, so a frame never moves. No `Pin`
   wrapper exists, because "fixed" is a kind.
 - `yield v` suspends with `v`. It has no result: data flows into a coroutine only through the

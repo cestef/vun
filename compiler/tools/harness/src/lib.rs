@@ -41,6 +41,17 @@ pub fn repo_root() -> PathBuf {
 /// Depth of this crate below the repository root: `compiler/tools/harness`.
 const REPO_DEPTH: usize = 3;
 
+/// Programs that check without a diagnostic.
+pub const ACCEPT: &str = "corpus/accept";
+/// Programs annotated with the diagnostics they cause.
+pub const REJECT: &str = "corpus/reject";
+/// Programs written ahead of the libraries they use: they parse, and are listed by the names they
+/// wait for until they check clean.
+pub const PLANNED: &str = "corpus/planned";
+/// The directories of Vun sources that must lex, parse and lower cleanly: the libraries and every
+/// program meant to check.
+pub const SOURCES: &[&str] = &["lib", ACCEPT, PLANNED];
+
 /// Marker that starts an expectation inside a line comment.
 pub const MARKER: &str = "//~";
 /// Environment variable that makes snapshot checks overwrite instead of compare.

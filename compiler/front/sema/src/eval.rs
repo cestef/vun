@@ -185,8 +185,16 @@ impl Instantiation {
     #[must_use]
     pub fn of(cx: &Cx<'_>, call: &Instance) -> Option<Self> {
         let comptime = call.f.comptime(cx)?;
-        let args = comptime.iter().zip(&call.args).map(|(&c, arg)| c.then(|| arg.clone())).collect();
-        Some(Self { f: call.f.clone(), args })
+        let args = comptime.iter().zip(&call.args).map(|(&c, arg)| c.then(|| arg.clone()));
+        Some(Self::new(call.f.clone(), args.collect()))
+    }
+
+    /// `f` with its `$` parameters bound to `args`, by parameter: a function with none bound
+    /// has one instantiation, however it is reached.
+    #[must_use]
+    pub fn new(f: Func, args: Vec<Option<Value>>) -> Self {
+        let args = if args.iter().all(Option::is_none) { Vec::new() } else { args };
+        Self { f, args }
     }
 
     /// The signature of this instantiation, its types evaluated with its `$` parameters bound.

@@ -2,7 +2,8 @@
 //! lowered again at every exit of its block, behind a `Defer` terminator naming the linear locals
 //! it consumes, so that the place states run it only on exits where they are still `init`. A
 //! binding's scope ends there too, with `Rvalue::Dead`, where the place states find a linear
-//! value it still holds (spec 05, section 2).
+//! value it still holds (spec 05, section 2), and a `for p in e` loop ends its iterator's frame
+//! (spec 06, section 1).
 
 use vun_hir::tree::{BinderId, ExprId};
 use vun_index::Idx;
@@ -10,8 +11,8 @@ use vun_origin::OriginId;
 use vun_sema::kinds::Kinds;
 
 use super::{Builder, Unbuilt};
-use crate::body::{BlockId, Local, Operand, Rvalue, TerminatorKind};
 use crate::place::Place;
+use crate::{BlockId, Local, Operand, Rvalue, TerminatorKind};
 
 /// Where an exit goes: on in the function, where the bindings whose scope it leaves end, or out
 /// of it, where the return checks what is still held.
@@ -27,6 +28,8 @@ pub(super) enum Pending {
     Defer(ExprId),
     /// The end of the scope of the binding in the local.
     Binding(Local),
+    /// The iterator frame of a `for p in e` loop, ended at every exit leaving the loop.
+    End(Local),
 }
 
 impl Builder<'_, '_, '_> {
@@ -52,6 +55,9 @@ impl Builder<'_, '_, '_> {
                     self.assign(Place::of(local), Rvalue::Dead, origin);
                 }
                 Pending::Binding(_) => {}
+                Pending::End(frame) => {
+                    self.temp(Rvalue::End { frame: Place::of(frame) }, origin);
+                }
                 Pending::Defer(statement) => {
                     // An exit inside the statement runs only what was pushed before it.
                     let later = self.pending.split_off(at);

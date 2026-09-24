@@ -5,8 +5,6 @@ use vun_mir::{Body, Local, Operand, Place, Projection, Rvalue};
 use vun_origin::OriginId;
 use vun_query::Cx;
 
-use crate::types::PlaceTypes;
-
 /// The statements moving a linear value out of a borrow: the local it lands in, and where.
 pub(super) struct Moved;
 
@@ -30,7 +28,7 @@ impl Moved {
     /// Whether the path of `place` goes through a borrow, by the types along it; not when a type
     /// on the way is unknown.
     fn crosses_borrow(cx: &Cx<'_>, body: &Body, place: &Place) -> bool {
-        let types = PlaceTypes { cx, body }.along(place);
+        let types = place.types(cx, &body.locals);
         place
             .projection
             .iter()

@@ -8,7 +8,12 @@ fn corpus_has_no_failures() {
     let outcomes = Corpus { root: &repo_root() }.outcomes().expect("readable corpus");
     let failed: Vec<_> = outcomes
         .iter()
-        .filter(|o| matches!(o.verdict, corpus::Verdict::Fail(_) | corpus::Verdict::Unexplained(_)))
+        .filter(|o| {
+            matches!(
+                o.verdict,
+                corpus::Verdict::Fail(_) | corpus::Verdict::Unexplained(_) | corpus::Verdict::Ready
+            )
+        })
         .map(|o| &o.path)
         .collect();
     assert!(failed.is_empty(), "failing corpus files: {failed:?}; run `cargo xtask corpus`");

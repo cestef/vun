@@ -6,8 +6,8 @@ use vun_hir::tree::{BlockId as HirBlock, Cond, ExprId};
 use vun_origin::OriginId;
 
 use super::{Builder, Unbuilt};
-use crate::body::{Block, BlockId, Local, LocalDecl, Operand, Role, Rvalue, Terminator, TerminatorKind};
 use crate::place::Place;
+use crate::{Block, BlockId, Local, LocalDecl, Operand, Role, Rvalue, Terminator, TerminatorKind};
 
 impl Builder<'_, '_, '_> {
     /// A new, empty block, returning until something terminates it.

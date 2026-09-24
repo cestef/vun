@@ -6,7 +6,7 @@ mod int;
 use crate::Primitive;
 use crate::env::{Env, Unevaluated};
 use crate::int::Integer;
-use crate::layout::Layouts;
+use crate::layout::Shapes;
 use crate::primitives::bounds::Bounds;
 use crate::primitives::diag::Diag;
 use crate::primitives::lang::Lang;
@@ -109,7 +109,7 @@ impl Primitive {
             }
             (Self::Meta(meta @ (Meta::size | Meta::align)), [ty]) => {
                 let ty = ty.as_type().ok_or(Unevaluated::Unsupported)?;
-                let layout = env.cx.get::<Layouts>(&ty).ok_or(Unevaluated::Unsupported)?;
+                let layout = Shapes::layout(env.cx, &ty).ok_or(Unevaluated::Unsupported)?;
                 let bytes = if meta == Meta::size { layout.size } else { layout.align };
                 Ok(Value::Int(Integer::from(u128::from(bytes))))
             }

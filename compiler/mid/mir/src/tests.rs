@@ -2,9 +2,9 @@ use vun_index::{Idx, IndexVec};
 use vun_origin::OriginTable;
 use vun_span::{SourceFiles, Span};
 
-use crate::body::{Block, Body, LocalDecl, Operand, Role, Rvalue, Stmt, Terminator, TerminatorKind};
 use crate::place::Place;
 use crate::verify::{Entity, Malformed};
+use crate::{Block, Body, LocalDecl, Operand, Role, Rvalue, Stmt, Terminator, TerminatorKind};
 
 /// `_0 = _1; return` with one parameter, and `edit` applied.
 fn body(origins: &OriginTable, edit: impl FnOnce(&mut Body)) -> Body {

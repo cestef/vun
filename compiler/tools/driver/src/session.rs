@@ -9,15 +9,18 @@ use vun_diag::{DiagCtxt, DiagCx, DiagSink, Diagnostic, Msg, errors};
 use vun_hir::db::{FileNames, FileRef, FileText, Parsed, ParsedFile};
 use vun_hir::lower;
 use vun_hir::tree::{ExprKind, Hir};
+use vun_intern::Symbol;
 use vun_interp::Interpreter;
-use vun_mir::{Body, Mir, Unbuilt};
+use vun_mir::{Body, Mir, Program, Programs, Unbuilt};
 use vun_origin::OriginTable;
 use vun_pkg::Schemes;
 use vun_query::Db;
 use vun_sema::check::Checked;
+use vun_sema::decl::DeclValue;
 use vun_sema::eval::Evaluators;
 use vun_sema::eval::Instantiation;
-use vun_sema::item::ExprRef;
+use vun_sema::item::{DeclRef, ExprRef};
+use vun_sema::ty::{Ty, Value};
 use vun_span::{FileId, SourceFiles, SourceMap};
 use vun_syntax::cst::Cst;
 use vun_syntax::literal::Decl;
@@ -123,6 +126,30 @@ impl Session {
         let parsed = self.parsed(file);
         let literals = parsed.hir.exprs.iter().filter(|(_, e)| matches!(e.kind, ExprKind::Fn { .. }));
         literals.map(|(id, _)| ExprRef::new(key.clone(), &parsed.hir, id)).collect()
+    }
+
+    /// The types `file` binds at its top level, by name, in source order.
+    pub fn types(&mut self, file: FileId) -> Vec<(Symbol, Ty)> {
+        let key = self.file_ref(file);
+        let parsed = self.parsed(file);
+        let hir = &parsed.hir;
+        let Some(root) = hir.root else { return Vec::new() };
+        let mut types = Vec::new();
+        for decl in hir.member_decls(root) {
+            let Ok(Value::Type(ty)) = self.db.get::<DeclValue>(&DeclRef::new(key.clone(), hir, decl)) else {
+                continue;
+            };
+            let mut binders = Vec::new();
+            hir.binders(hir.decls[decl].pat, &mut binders);
+            types.extend(binders.first().map(|&b| (hir.binders[b].name, ty)));
+        }
+        types
+    }
+
+    /// The program whose root is `file`: its exports and the functions they reach.
+    pub fn program(&mut self, file: FileId) -> Arc<Program> {
+        let key = self.file_ref(file);
+        self.db.get::<Programs>(&key)
     }
 
     /// The MIR of each function literal of `file`, in source order.

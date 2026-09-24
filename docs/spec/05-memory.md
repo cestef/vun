@@ -153,7 +153,13 @@ Defined, never left to the implementation:
 - **Niches (one rule).** An enum with one payload-free variant and one payload variant whose type has
   unused bit patterns stores the tag in an unused pattern. Unused patterns are: the null pointer,
   out-of-range values of range integers (`Int(0..200)` in 8 bits has 56), and unused enum tags.
-  `?*T` is one pointer; `?Int(0..255)` in 16 bits uses 256.
+  `?*T` is one pointer; `?Int(0..255)` is one byte, `.none` being 255; `?Int(0..256)` is two.
+- **Which patterns.** The unused patterns of an integer are those after its range's last value,
+  counted up and wrapping in its storage; of a pointer, null; of a tag, those past the last
+  variant. A struct, tuple or array has the largest run among its parts, the first on a tie; an
+  enum using the niche rule takes the first pattern of the run, keeping the rest. An enum tagged
+  otherwise stores the variant's index first, in the smallest integer holding the indices (or the
+  `#[layout.tag]` integer), and every payload after it at the enum's alignment.
 - Struct-of-arrays is a library: `std.collections.Soa(T)` generates the split layout by reflection.
 
 ## 7. Construction, assignment and passing

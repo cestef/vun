@@ -61,6 +61,13 @@ impl Msg {
         self
     }
 
+    /// A path of names rendered as code, as written: `std.mem`.
+    #[must_use]
+    pub fn path<S: AsRef<str>>(self, names: impl IntoIterator<Item = S>) -> Self {
+        let names: Vec<S> = names.into_iter().collect();
+        self.code(names.iter().map(AsRef::as_ref).collect::<Vec<_>>().join("."))
+    }
+
     /// The parts of `other`, after these.
     #[must_use]
     pub fn append(mut self, other: Self) -> Self {

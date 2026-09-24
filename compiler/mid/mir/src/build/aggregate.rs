@@ -10,7 +10,7 @@ use vun_sema::member::{Found, Members};
 use vun_sema::ty::{Nominal, Ty, TyKind};
 
 use super::{Builder, Unbuilt};
-use crate::body::{Aggregate, Operand, Rvalue};
+use crate::{Aggregate, Operand, Rvalue};
 
 impl Builder<'_, '_, '_> {
     /// The MIR of `expr` when it builds a value from parts; `None` for any other form.

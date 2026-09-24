@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use vun_fs::Tree;
 
 use vun_diag::{DiagCtxt, DiagCx};
-use vun_harness::{Snapshot, repo_root};
+use vun_harness::{ACCEPT, SOURCES, Snapshot, repo_root};
 use vun_origin::OriginTable;
 use vun_span::{EXTENSION, SourceFiles};
 use vun_syntax::tokens::Tokens;
@@ -18,10 +18,7 @@ fn lex_text(text: &str) -> (Tokens, DiagCtxt) {
 
 fn sources() -> Vec<PathBuf> {
     let root = repo_root();
-    ["corpus/accept", "lib"]
-        .iter()
-        .flat_map(|dir| root.join(dir).files_with(EXTENSION).expect("readable tree"))
-        .collect()
+    SOURCES.iter().flat_map(|dir| root.join(dir).files_with(EXTENSION).expect("readable tree")).collect()
 }
 
 #[test]
@@ -39,7 +36,7 @@ fn repository_sources_lex_cleanly_and_losslessly() {
 #[test]
 fn corpus_token_dumps_match_snapshots() {
     let snapshots = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/snapshots/tokens");
-    let corpus = repo_root().join("corpus/accept");
+    let corpus = repo_root().join(ACCEPT);
     let changed = Snapshot::tree(&corpus, EXTENSION, &snapshots, "tokens", |text| {
         lex_text(text).0.dump(text).to_string()
     })

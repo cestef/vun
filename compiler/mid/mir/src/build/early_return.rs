@@ -9,8 +9,8 @@ use vun_sema::member::MemberValue;
 
 use super::defer::Exit;
 use super::{Builder, Unbuilt};
-use crate::body::{Operand, Rvalue, TerminatorKind};
 use crate::place::{Place, Projection};
+use crate::{Operand, Role, Rvalue, TerminatorKind};
 
 impl Builder<'_, '_, '_> {
     pub(super) fn early_return(
@@ -27,7 +27,10 @@ impl Builder<'_, '_, '_> {
         let branch = self.env.cx.get::<MemberValue>(method).map_err(|_| unbuilt)?;
         let value = self.operand(operand)?;
         let call = Rvalue::Call { callee: Operand::Const(branch), args: vec![value] };
-        let branched = Place::of(self.temp_local(call, origin));
+        // Its parts carry what it held: the value going on, or what is returned.
+        let branched = self.temp_local(call, origin);
+        self.locals[branched].role = Role::Unpacked;
+        let branched = Place::of(branched);
         let stopped = self.fresh(origin);
         let going =
             self.temp(Rvalue::IsVariant { place: branched.clone(), variant: Symbol::intern(go) }, origin);

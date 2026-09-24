@@ -1,5 +1,5 @@
-//! `cargo xtask corpus`: runs `corpus/accept` and `corpus/reject` through the driver's stages and
-//! compares what they report with what the files expect (spec 10, section 7).
+//! `cargo xtask corpus`: runs `corpus/accept`, `corpus/reject` and `corpus/planned` through the
+//! driver's stages and compares what they report with what the files expect (spec 10, section 7).
 //!
 //! A rejected file whose missing diagnostics all belong to stages that do not exist yet, or to
 //! stages reading MIR in functions MIR does not lower yet, is pending, not failing, so the corpus
@@ -13,12 +13,12 @@ use vun_fs::Tree;
 use vun_diag::{ChildKind, DiagId, Diagnostic, errors};
 use vun_driver::stages::{Input, Stage};
 use vun_driver::{Coverage, Session};
-use vun_harness::{self as harness, At, Expected, Mismatch, Reported};
+use vun_harness::{self as harness, ACCEPT, At, Expected, Mismatch, PLANNED, REJECT, Reported};
 use vun_span::{EXTENSION, SourceMap};
 
 /// Where the corpus lives, relative to the repository root, and what its files expect.
 pub(crate) const SUITES: &[(&str, Expect)] =
-    &[("corpus/accept", Expect::Clean), ("corpus/reject", Expect::Annotated)];
+    &[(ACCEPT, Expect::Clean), (REJECT, Expect::Annotated), (PLANNED, Expect::Planned)];
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Expect {
@@ -26,6 +26,8 @@ pub(crate) enum Expect {
     Clean,
     /// Exactly the `//~` annotations.
     Annotated,
+    /// Only names the libraries do not declare yet, until it checks clean.
+    Planned,
 }
 
 pub(crate) enum Verdict {
@@ -40,6 +42,10 @@ pub(crate) enum Verdict {
     Shown,
     /// A diagnostic whose explanation page is missing or does not show it.
     Unexplained(crate::explanations::Unexplained),
+    /// A planned program, with the names it waits for.
+    Planned(Vec<Reported>),
+    /// A planned program that checks clean, and belongs with the accepted ones.
+    Ready,
 }
 
 pub(crate) struct Outcome {
@@ -107,8 +113,18 @@ impl Verdict {
             unlowered = session.unlowered(file);
         }
         let reported: Vec<Reported> = session.diag.sorted().iter().map(|d| reported(&session, d)).collect();
+        if expect == Expect::Planned {
+            return Ok(if reported.is_empty() {
+                Self::Ready
+            } else if reported.iter().all(|r| DiagId::compiler(&r.at.id) == errors::NAMES_UNRESOLVED) {
+                Self::Planned(reported)
+            } else {
+                let unexpected = reported.iter().map(|r| r.at.clone()).collect();
+                Self::Fail(Mismatch { unexpected, ..Mismatch::default() })
+            });
+        }
         let expected = match expect {
-            Expect::Clean => Vec::new(),
+            Expect::Clean | Expect::Planned => Vec::new(),
             Expect::Annotated => match Expected::all(&text) {
                 Ok(expected) => expected,
                 Err(malformed) => return Ok(Self::Malformed(malformed)),

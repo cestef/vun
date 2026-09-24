@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use vun_fs::Tree;
 
 use vun_diag::{DiagCtxt, DiagCx};
-use vun_harness::{Snapshot, repo_root};
+use vun_harness::{ACCEPT, SOURCES, Snapshot, repo_root};
 use vun_origin::OriginTable;
 use vun_span::{EXTENSION, SourceFiles};
 use vun_syntax::cst::Cst;
@@ -37,7 +37,7 @@ fn sources(dirs: &[&str]) -> Vec<PathBuf> {
 
 #[test]
 fn repository_sources_parse_cleanly_and_verify() {
-    let files = sources(&["corpus/accept", "lib"]);
+    let files = sources(SOURCES);
     assert!(!files.is_empty());
     let mut failures = Vec::new();
     for path in files {
@@ -56,7 +56,7 @@ fn repository_sources_parse_cleanly_and_verify() {
 #[test]
 fn corpus_cst_dumps_match_snapshots() {
     let snapshots = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/snapshots/cst");
-    let corpus = repo_root().join("corpus/accept");
+    let corpus = repo_root().join(ACCEPT);
     let changed = Snapshot::tree(&corpus, EXTENSION, &snapshots, "cst", |text| {
         let parsed = parse_text(text);
         parsed.cst.dump(&parsed.tokens, text).to_string()

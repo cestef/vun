@@ -286,6 +286,9 @@ edits); a "suppress with reason" action inserts `#[lint.allow(...)]`.
   annotation may pin the column (`//~ id @12`) and require fragments of the rendered message,
   notes and help (`//~ id "escape it"`). An id must be declared in `lang.errors`; a file waiting
   only on stages that do not exist yet is reported as pending.
+- **Planned corpus.** Programs written ahead of the libraries they use (`corpus/planned`) must
+  parse, and may report only unresolved names, which the harness lists as what each waits for; a
+  planned file that checks clean fails until it moves to the accepted corpus.
 - **Snapshots** of the terminal rendering at fixed width without color, and of the JSON.
 - **Fix tests.** For every `Safe` fix in the corpus: the fixed file compiles, the diagnostic is gone,
   and applying fixes again changes nothing.

@@ -11,7 +11,7 @@ use vun_sema::typeck::Operation;
 
 use super::operator::Side;
 use super::{Builder, Unbuilt};
-use crate::body::Rvalue;
+use crate::Rvalue;
 
 impl Builder<'_, '_, '_> {
     pub(super) fn store(

@@ -10,11 +10,11 @@ use vun_origin::OriginId;
 use vun_sema::member::MemberValue;
 use vun_sema::ty::{Ty, Value};
 
-use super::defer::Exit;
+use super::defer::{Exit, Pending};
 use super::pattern::Matched;
 use super::{Builder, Unbuilt};
-use crate::body::{BlockId, Local, Operand, Rvalue, TerminatorKind};
 use crate::place::{Place, Projection};
+use crate::{BlockId, Local, Operand, Role, Rvalue, TerminatorKind};
 
 /// A loop being lowered.
 pub(super) struct Loop {
@@ -23,7 +23,10 @@ pub(super) struct Loop {
     exit: BlockId,
     /// Where `break` writes the loop's value.
     result: Local,
-    /// The deferred statements in scope outside the loop, which leaving it keeps.
+    /// What runs at exits pending outside the loop, which leaving it keeps.
+    outer: usize,
+    /// What runs at exits pending around each run of the body, which `continue` keeps: the
+    /// iterator frame's end too.
     depth: usize,
 }
 
@@ -42,6 +45,11 @@ impl Builder<'_, '_, '_> {
             ForHead::In { iter, .. } => Some(self.iterator(*iter, origin)?),
             _ => None,
         };
+        // Every exit leaving the loop ends the iterator's frame.
+        let outer = self.pending.len();
+        if let Some((frame, _)) = iterator {
+            self.pending.push(Pending::End(frame));
+        }
         let result = self.result(origin);
         let (start, exit) = (self.fresh(origin), self.fresh(origin));
         self.terminate(TerminatorKind::Goto(start), origin);
@@ -60,8 +68,10 @@ impl Builder<'_, '_, '_> {
             ForHead::In { pat, .. } => {
                 let (frame, step) = iterator.ok_or(Unbuilt { at: origin })?;
                 let &(.., item, _) = ITERATION.first().ok_or(Unbuilt { at: origin })?;
-                let resumed =
-                    Place::of(self.temp_local(Rvalue::Resume { frame: Place::of(frame), step }, origin));
+                // Each step is taken apart: the item it carries is bound.
+                let resumed = self.temp_local(Rvalue::Resume { frame: Place::of(frame), step }, origin);
+                self.locals[resumed].role = Role::Unpacked;
+                let resumed = Place::of(resumed);
                 let done = self.fresh(origin);
                 let yielded = Rvalue::IsVariant { place: resumed.clone(), variant: Symbol::intern(item) };
                 let cond = self.temp(yielded, origin);
@@ -73,13 +83,15 @@ impl Builder<'_, '_, '_> {
                 let run = self.current;
                 self.current = done;
                 self.assign(Place::of(result), Rvalue::Use(Self::unit()), origin);
+                self.unwind(outer, origin, Exit::Scope)?;
                 self.terminate(TerminatorKind::Goto(exit), origin);
                 self.current = run;
             }
         }
-        self.loops.push(Loop { label, head: start, exit, result, depth: self.pending.len() });
+        self.loops.push(Loop { label, head: start, exit, result, outer, depth: self.pending.len() });
         let lowered = self.block(body);
         self.loops.pop();
+        self.pending.truncate(outer);
         lowered?;
         self.terminate(TerminatorKind::Goto(start), origin);
         self.current = exit;
@@ -107,7 +119,7 @@ impl Builder<'_, '_, '_> {
         origin: OriginId,
     ) -> Result<Operand, Unbuilt> {
         let value = value.map(|v| self.operand(v)).transpose()?.unwrap_or_else(Self::unit);
-        let (exit, result, depth) = self.target(label, origin).map(|l| (l.exit, l.result, l.depth))?;
+        let (exit, result, depth) = self.target(label, origin).map(|l| (l.exit, l.result, l.outer))?;
         self.assign(Place::of(result), Rvalue::Use(value), origin);
         self.unwind(depth, origin, Exit::Scope)?;
         Ok(self.jump(TerminatorKind::Goto(exit), origin))

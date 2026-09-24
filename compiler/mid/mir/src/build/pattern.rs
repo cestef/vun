@@ -13,8 +13,8 @@ use vun_sema::typeck::Operation;
 
 use super::operator::Side;
 use super::{Builder, Unbuilt};
-use crate::body::{BlockId, Operand, Role, Rvalue, TerminatorKind};
 use crate::place::{Place, Projection};
+use crate::{BlockId, Operand, Role, Rvalue, TerminatorKind};
 
 /// How a pattern's binders hold what they bind.
 #[derive(Clone, Copy)]

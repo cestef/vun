@@ -6,4 +6,3 @@ pub mod kinds;
 pub mod panics;
 pub mod places;
 pub mod ranges;
-mod types;

@@ -2,7 +2,7 @@
 
 use vun_diag::{DiagCtxt, DiagCx};
 use vun_fs::Tree;
-use vun_harness::repo_root;
+use vun_harness::{SOURCES, repo_root};
 use vun_hir::lower::Source;
 use vun_hir::tree::Hir;
 use vun_origin::OriginTable;
@@ -14,7 +14,7 @@ use vun_syntax::tokens::Tokens;
 fn repository_sources_lower_and_verify() {
     let root = repo_root();
     let mut failures = Vec::new();
-    for dir in ["lib", "corpus/accept"] {
+    for dir in SOURCES {
         for path in root.join(dir).files_with(EXTENSION).unwrap() {
             let text = std::fs::read_to_string(&path).unwrap();
             let file = SourceFiles::new().add(path.display().to_string(), text.as_str());

@@ -7,8 +7,8 @@ use vun_hir::tree::{BinderId, Entry, ExprId, ExprKind, List};
 use vun_origin::OriginId;
 
 use super::{Builder, Unbuilt};
-use crate::body::{Aggregate, Local, Operand, Rvalue};
 use crate::place::{Place, Projection};
+use crate::{Aggregate, Local, Operand, Rvalue};
 
 impl Builder<'_, '_, '_> {
     /// `[captures] (params) { body }`: the closure value.

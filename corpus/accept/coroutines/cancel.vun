@@ -16,10 +16,11 @@ lines := (port: &mut Serial, buf: &mut [128]u8) -> Async(usize) {
 first_line := (port: &mut Serial, timer: &Timer) -> Async(?usize) {
     mut buf: [128]u8 = [0; 128];
     mut reader := lines(port, &mut buf);
+    defer reader.end();
     mut timeout := timer.after(.ms(100));
+    defer timeout.end();
+    // Ending this frame while it waits ends both, through the defers pending at the `yield`.
     result := yield ..std.task.select(.{ &mut reader, &mut timeout });
-    reader.end();
-    timeout.end();
     match result {
         .first(n) => .some(n),
         .second(()) => .none,

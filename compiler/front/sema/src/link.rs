@@ -10,9 +10,23 @@ use vun_origin::OriginId;
 use vun_query::{Cx, Cycle, Query};
 
 use crate::Primitive;
+use vun_intern::Symbol;
+
 use crate::env::Env;
+use crate::eval::Func;
 use crate::item::DeclRef;
 use crate::primitives::link::Link;
+
+impl Func {
+    /// The symbol this function is exported under (`#[link.export(s)]`), if any.
+    #[must_use]
+    pub fn export(&self, cx: &Cx<'_>) -> Option<Symbol> {
+        let env = Env::defining(cx, &self.literal, self.within.as_deref())?;
+        let attrs = env.attrs_of(self.literal.expr.id);
+        let args = env.attribute(&attrs, Primitive::Link(Link::export))?;
+        Some(Symbol::intern(&args.first()?.text()?))
+    }
+}
 
 /// A declaration naming a link symbol: one the linker provides, or an export providing it.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]

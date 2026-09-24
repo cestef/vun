@@ -11,7 +11,7 @@ use vun_sema::ty::Value;
 use vun_sema::typeck::Step;
 
 use super::{Builder, Unbuilt};
-use crate::body::Operand;
+use crate::Operand;
 
 impl Builder<'_, '_, '_> {
     /// The statements of `list`, generated ones included.

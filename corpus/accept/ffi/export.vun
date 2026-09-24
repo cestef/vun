@@ -2,7 +2,7 @@
 
 #[link.export("vun_crc32"), abi.c]
 crc32 := (data: *u8, len: usize) -> u32 {
-    bytes := unsafe { lang.mem.slice(data, len) };
+    bytes := unsafe { lang.mem.items_at(u8, data, len) };
     mut crc: u32 = 0xffff_ffff;
     for b in bytes {
         crc ^= b.*;

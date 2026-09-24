@@ -8,8 +8,8 @@ use std::fmt;
 use vun_index::Idx;
 use vun_origin::{OriginId, OriginTable};
 
-use crate::body::{BlockId, Body, Local, Operand, Rvalue, TerminatorKind};
 use crate::place::{Place, Projection};
+use crate::{BlockId, Body, Local, Operand, Rvalue, TerminatorKind};
 
 /// The entities of a body, for reporting which is malformed.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -95,11 +95,12 @@ impl Body {
             let at = Entity::Terminator(block.index());
             has(at, b.term.origin)?;
             match &b.term.kind {
-                TerminatorKind::Return | TerminatorKind::Unreachable => {}
+                TerminatorKind::Return | TerminatorKind::Ended | TerminatorKind::Unreachable => {}
                 TerminatorKind::Goto(to) => self.block(at, *to)?,
-                TerminatorKind::Yield { value, resume } => {
+                TerminatorKind::Yield { value, resume, cancel } => {
                     self.operand(at, value)?;
                     self.block(at, *resume)?;
+                    self.block(at, *cancel)?;
                 }
                 TerminatorKind::Branch { cond, then, otherwise } => {
                     self.operand(at, cond)?;

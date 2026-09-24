@@ -10,8 +10,8 @@ use vun_sema::member::{MemberType, MemberValue};
 use vun_sema::ty::{Ty, TyKind, Value};
 
 use super::{Builder, Unbuilt};
-use crate::body::{Aggregate, Operand, Rvalue, TerminatorKind};
 use crate::place::Place;
+use crate::{Aggregate, Operand, Rvalue, TerminatorKind};
 
 /// A method, by the type it is found through and its name: the key of `MemberType`.
 type Method = (Ty, Symbol);

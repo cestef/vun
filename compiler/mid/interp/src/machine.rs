@@ -31,6 +31,8 @@ pub(crate) enum Exit {
         value: Value,
         resume: BlockId,
     },
+    /// Ended while suspended, having run what was pending.
+    Ended,
 }
 
 impl<'b, 'a, 'db> Frame<'b, 'a, 'db> {
@@ -56,7 +58,7 @@ impl<'b, 'a, 'db> Frame<'b, 'a, 'db> {
         let value = match self.execute(Idx::new(0)) {
             Ok(Exit::Returned(value)) => Ok(value),
             // A body that suspends is a coroutine's, whose calls give frames instead.
-            Ok(Exit::Yielded { .. }) => Err(Unevaluated::Unsupported),
+            Ok(Exit::Yielded { .. } | Exit::Ended) => Err(Unevaluated::Unsupported),
             Err(e) => Err(e),
         };
         self.finish(value)
@@ -82,7 +84,8 @@ impl<'b, 'a, 'db> Frame<'b, 'a, 'db> {
                     let value = self.locals[self.body.ret].take().ok_or(Unevaluated::Unsupported)?;
                     return Ok(Exit::Returned(value));
                 }
-                TerminatorKind::Yield { value, resume } => {
+                TerminatorKind::Ended => return Ok(Exit::Ended),
+                TerminatorKind::Yield { value, resume, .. } => {
                     return Ok(Exit::Yielded { value: self.operand(value)?, resume: *resume });
                 }
                 TerminatorKind::Goto(to) => block = &self.body.blocks[*to],
@@ -151,10 +154,7 @@ impl<'b, 'a, 'db> Frame<'b, 'a, 'db> {
             Rvalue::Resume { frame, step } => self.resume(frame, *step),
             // A finished frame ends with nothing to run; the pending defers of a suspended one do
             // not run at compile time yet.
-            Rvalue::End { frame } => match self.read(frame)? {
-                Value::Frame(suspended) if suspended.at.is_none() => Ok(Value::Tuple(Vec::new())),
-                _ => Err(Unevaluated::Unsupported),
-            },
+            Rvalue::End { frame } => self.end(frame),
             Rvalue::Repeat { operand, count } => Value::repeat(self.operand(operand)?, count),
             Rvalue::IsVariant { place, variant } => match self.read(place)? {
                 Value::Variant { name, .. } => self.env.decide(name == *variant),

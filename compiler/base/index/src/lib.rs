@@ -103,6 +103,10 @@ impl<I: Idx, T> IndexVec<I, T> {
     pub fn iter(&self) -> impl Iterator<Item = (I, &T)> {
         self.raw.iter().enumerate().map(|(i, v)| (I::new(i), v))
     }
+
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = (I, &mut T)> {
+        self.raw.iter_mut().enumerate().map(|(i, v)| (I::new(i), v))
+    }
 }
 
 impl<I: Idx, T> ops::Index<I> for IndexVec<I, T> {

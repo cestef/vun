@@ -1006,6 +1006,7 @@ dependencies = [
  "vun-origin",
  "vun-query",
  "vun-span",
+ "vun-suggest",
  "vun-syntax",
  "vun-target",
 ]

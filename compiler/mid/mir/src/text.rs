@@ -7,8 +7,8 @@ use vun_index::Idx;
 use vun_origin::OriginId;
 use vun_span::LineCol;
 
-use crate::body::{Aggregate, Body, Operand, Rvalue, TerminatorKind};
 use crate::place::{Place, Projection};
+use crate::{Aggregate, Body, Operand, Rvalue, TerminatorKind};
 
 impl fmt::Display for Place {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -126,6 +126,18 @@ impl fmt::Display for Text<'_> {
         }
         write!(f, ") -> {} {{", Place::of(body.ret))?;
         self.end(f, body.origin)?;
+        // Every local's type, `?` where typing found none.
+        for (local, decl) in body.locals.iter() {
+            write!(f, "  let {}", Place::of(local))?;
+            if let Some(name) = decl.name {
+                write!(f, " {name}")?;
+            }
+            match decl.ty {
+                Some(ty) => write!(f, ": {ty}")?,
+                None => f.write_str(": ?")?,
+            }
+            self.end(f, decl.origin)?;
+        }
         for (id, block) in body.blocks.iter() {
             writeln!(f, "  bb{}:", id.index())?;
             for stmt in &block.stmts {
@@ -135,8 +147,9 @@ impl fmt::Display for Text<'_> {
             match &block.term.kind {
                 TerminatorKind::Return => write!(f, "    return")?,
                 TerminatorKind::Unreachable => write!(f, "    unreachable")?,
-                TerminatorKind::Yield { value, resume } => {
-                    write!(f, "    yield {value} -> bb{}", resume.index())?;
+                TerminatorKind::Ended => write!(f, "    ended")?,
+                TerminatorKind::Yield { value, resume, cancel } => {
+                    write!(f, "    yield {value} -> bb{} else end bb{}", resume.index(), cancel.index())?;
                 }
                 TerminatorKind::Goto(to) => write!(f, "    goto bb{}", to.index())?,
                 TerminatorKind::Branch { cond, then, otherwise } => {

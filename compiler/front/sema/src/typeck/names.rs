@@ -1,9 +1,12 @@
 //! Names and members: a local, a declaration, a namespace, a member of a type's namespace or of
 //! a value.
 
+use vun_diag::{ChildKind, Diagnostic, Msg, errors};
+use vun_hir::db::{Exports, Namespace};
 use vun_hir::resolve::Res;
 use vun_hir::tree::{ExprId, ExprKind};
 use vun_intern::Symbol;
+use vun_suggest::closest;
 
 use super::{Known, Stage, Typer};
 use crate::env::Env;
@@ -35,7 +38,10 @@ impl Typer<'_, '_, '_> {
         if matches!(self.hir().exprs[object].kind, ExprKind::Name(_) | ExprKind::Member { .. }) {
             match self.env().eval(object) {
                 Ok(Value::Namespace(ns)) => {
-                    let site = self.env().cx.get::<Declared>(&(ns, name))?;
+                    let Some(site) = self.env().cx.get::<Declared>(&(ns.clone(), name)) else {
+                        self.absent(expr, object, &ns, name);
+                        return None;
+                    };
                     if let Site::Decl(decl) = &site
                         && let Some(visible) =
                             Env::of(self.env().cx, &decl.file).map(|e| e.decl_visible(decl.decl.id, name))
@@ -117,5 +123,23 @@ impl Typer<'_, '_, '_> {
                 self.env().cx.get::<MemberType>(&(owner, name)).ok()
             }
         }
+    }
+
+    /// Reports `name`, used at `expr` on the namespace `ns` written as `object`, as no member of
+    /// it, when all its members are known.
+    fn absent(&mut self, expr: ExprId, object: ExprId, ns: &Namespace, name: Symbol) {
+        let cx = self.env().cx;
+        let Some((_, path)) = self.hir().path(object) else { return };
+        if !Declared::complete(cx, ns) {
+            return;
+        }
+        let msg =
+            Msg::new().path(path.iter().map(|s| s.as_str())).text(" has no member ").code(name.as_str());
+        let mut d = Diagnostic::error(errors::NAMES_UNRESOLVED, msg).at(self.hir().exprs[expr].origin, None);
+        let exports = cx.get::<Exports>(ns);
+        if let Some(near) = closest(name.as_str(), exports.iter().map(|s| s.as_str())) {
+            d = d.child(ChildKind::Help, Msg::did_you_mean(near));
+        }
+        self.diag.error(d);
     }
 }

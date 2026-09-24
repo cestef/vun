@@ -16,6 +16,7 @@ mod pattern;
 mod place;
 mod staged;
 mod suspend;
+mod temp;
 
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
@@ -31,10 +32,11 @@ use vun_sema::int::Integer;
 use vun_sema::ty::Value;
 use vun_sema::typeck::{Operation, Step, Typed, TypedBody};
 
-use crate::body::{
+use crate::Lowered;
+use crate::place::Place;
+use crate::{
     Block, BlockId, Body, Local, LocalDecl, Operand, Role, Rvalue, Stmt, Terminator, TerminatorKind,
 };
-use crate::place::Place;
 use operator::Side;
 
 /// A form MIR does not lower yet, by where it is written.
@@ -55,8 +57,8 @@ impl Query for Mir {
     fn compute(cx: &Cx<'_>, i: &Instantiation) -> Self::Value {
         // What is evaluated while lowering, `$if` conditions and `$for` items, is typed as the
         // body is.
-        let env = Env::inside(cx, &i.f, i.args.iter().cloned()).expect("a function value's file is read");
-        Builder::lower(&env.typed_by(cx.get::<Typed>(i)), i).map(Arc::new)
+        let env = i.env(cx).expect("a function value's file is read");
+        Builder::lower(&env, i).map(Arc::new)
     }
 
     fn cycle(_: &Cx<'_>, i: &Instantiation, _: &Cycle) -> Self::Value {
@@ -181,27 +183,15 @@ impl<'a, 'db> Builder<'_, 'a, 'db> {
         self.blocks[self.current].stmts.push(Stmt { place, value, origin });
     }
 
-    /// `value` in a new temporary.
-    fn temp(&mut self, value: Rvalue, origin: OriginId) -> Operand {
-        Operand::Place(Place::of(self.temp_local(value, origin)))
-    }
-
-    /// A new temporary local holding `value`.
-    fn temp_local(&mut self, value: Rvalue, origin: OriginId) -> Local {
-        let local = self.locals.push(LocalDecl { name: None, ty: None, role: Role::Held, origin });
-        self.assign(Place::of(local), value, origin);
-        local
-    }
-
     /// The value of `expr`; a temporary holding it has its type, so that checks know its kind.
     fn operand(&mut self, expr: ExprId) -> Result<Operand, Unbuilt> {
         let operand = self.value(expr)?;
         if let Operand::Place(Place { local, projection }) = &operand
             && projection.is_empty()
-            && self.locals[*local].ty.is_none()
             && self.locals[*local].name.is_none()
+            && let Some(ty) = self.type_of(expr)
         {
-            self.locals[*local].ty = self.type_of(expr);
+            self.locals[*local].ty = Some(ty);
         }
         Ok(operand)
     }

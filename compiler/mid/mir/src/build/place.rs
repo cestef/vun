@@ -15,8 +15,8 @@ use vun_sema::member::Members;
 use vun_sema::ty::{TyKind, Value};
 
 use super::{Builder, Unbuilt};
-use crate::body::{Operand, Role, Rvalue};
 use crate::place::{Place, Projection};
+use crate::{Operand, Role, Rvalue};
 
 impl Builder<'_, '_, '_> {
     /// The place `expr` denotes: a local, or a projection of a place. Any other expression is

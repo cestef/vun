@@ -11,8 +11,8 @@ use vun_sema::ty::Ty;
 use vun_sema::typeck::Operation;
 
 use super::{Builder, Unbuilt};
-use crate::body::{Operand, Rvalue};
 use crate::place::{Place, Projection};
+use crate::{Operand, Rvalue};
 
 /// An operand of an operator: an expression, or the place a pattern matches, of its type.
 pub(super) enum Side {

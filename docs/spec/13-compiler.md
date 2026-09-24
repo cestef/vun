@@ -88,7 +88,18 @@ per second per stage and fails on regressions.
 - **MIR** keeps what the checks need: places, borrow modes, enums, checked operations, suspension
   points, origins. Place-state and borrow checking are dataflow problems on its CFG, so they are
   non-lexical and treat every kind of control flow the same way (`defer` and `yield` become explicit
-  edges before checking).
+  edges before checking). A `yield` has two successors: where resuming goes on, and a cancel path
+  running what is pending there, which ending the suspended frame takes (terminator `Ended`).
+- **Programs.** A program is what its root file's exports reach (spec 08, section 1): from each
+  `#[link.export]` function, every function a body calls, with the `$` arguments of the call, or
+  takes as a value, and every declaration the linker provides (query `Programs`). Code
+  generation reads each reached instantiation *concrete* (query `Concrete`): its compile-time
+  values evaluated into constants that flow into the operands reading them, and every local
+  typed. A function that is not concrete stops the program's code generation with the reason
+  (`vun dump program` lists them).
+- **Layouts.** Every type with a run-time layout has a shape (query `Shapes`): its size and
+  alignment, the offset of each part, how an enum tells its variants (an index, or a niche
+  pattern), and its unused patterns (spec 05, section 6). `vun dump layout` prints them.
 - **LIR** is what every backend has in common: SSA values of scalar and vector types, memory
   operations, calls, branches. Range types, enums and aggregates are lowered before it. A new backend
   translates LIR and nothing else.

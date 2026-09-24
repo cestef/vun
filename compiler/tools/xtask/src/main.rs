@@ -62,7 +62,7 @@ const PROGRAM: Program<Cx> = Program {
 
 fn run_corpus(_: &mut Cx, _: &Args, out: &mut dyn Write) -> io::Result<Outcome> {
     let outcomes = Corpus { root: &repo_root() }.outcomes()?;
-    let (mut passed, mut pending, mut shown, mut failed) = (0, 0, 0, 0);
+    let (mut passed, mut pending, mut planned, mut shown, mut failed) = (0, 0, 0, 0, 0);
     for o in &outcomes {
         match &o.verdict {
             corpus::Verdict::Pass => passed += 1,
@@ -72,6 +72,22 @@ fn run_corpus(_: &mut Cx, _: &Args, out: &mut dyn Write) -> io::Result<Outcome> 
                 writeln!(out, "pending {}: awaits {}", o.path.display(), ids.join(", "))?;
             }
             corpus::Verdict::Shown => shown += 1,
+            corpus::Verdict::Planned(waits) => {
+                planned += 1;
+                writeln!(out, "planned {}: waits for", o.path.display())?;
+                for r in waits {
+                    writeln!(out, "  {}: {}", r.at.line, r.text.replace('\n', " | "))?;
+                }
+            }
+            corpus::Verdict::Ready => {
+                failed += 1;
+                writeln!(
+                    out,
+                    "fail    {}: checks clean; move it to {}",
+                    o.path.display(),
+                    vun_harness::ACCEPT
+                )?;
+            }
             corpus::Verdict::Unexplained(why) => {
                 failed += 1;
                 writeln!(out, "fail    {}: {why}", o.path.display())?;
@@ -113,7 +129,7 @@ fn run_corpus(_: &mut Cx, _: &Args, out: &mut dyn Write) -> io::Result<Outcome> 
             }
         }
     }
-    writeln!(out, "{passed} passed, {pending} pending, {shown} shown, {failed} failed")?;
+    writeln!(out, "{passed} passed, {pending} pending, {planned} planned, {shown} shown, {failed} failed")?;
     writeln!(out, "corpus/accept: {}", Corpus { root: &repo_root() }.coverage()?)?;
     Ok(if failed == 0 { Outcome::Success } else { Outcome::Failure })
 }

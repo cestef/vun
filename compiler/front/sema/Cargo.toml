@@ -13,6 +13,7 @@ workspace = true
 vun-origin.workspace = true
 vun-hash.workspace = true
 vun-diag.workspace = true
+vun-suggest.workspace = true
 vun-intern.workspace = true
 vun-query.workspace = true
 vun-target.workspace = true

@@ -97,7 +97,8 @@ impl Hir {
     }
 
     /// The declarations among the members of `ns`, including staged ones.
-    fn member_decls(&self, ns: NsId) -> Vec<DeclId> {
+    #[must_use]
+    pub fn member_decls(&self, ns: NsId) -> Vec<DeclId> {
         let mut out = Vec::new();
         each_entry(&self.namespaces[ns].members, &mut |m| {
             if let Member::Decl(d) = m {

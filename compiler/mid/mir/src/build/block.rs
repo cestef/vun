@@ -5,8 +5,8 @@ use vun_hir::tree::{BlockId as HirBlock, PatKind, Stmt as HirStmt};
 
 use super::defer::{Exit, Pending};
 use super::{Builder, Unbuilt};
-use crate::body::{Operand, Rvalue, TerminatorKind};
 use crate::place::Place;
+use crate::{Operand, Rvalue, TerminatorKind};
 
 impl Builder<'_, '_, '_> {
     /// The statements of `block`, then the value of its tail, or `()` without one; the

@@ -2,8 +2,6 @@
 
 use std::io::{self, Write};
 use std::path::Path;
-use vun_hir::db::Package;
-use vun_span::SourceMap;
 
 use vun_command::{Action, Args, Command, Outcome, Param, ParamKind, Program};
 
@@ -33,7 +31,7 @@ pub const PROGRAM: Program<Session> = Program {
             Command::planned("fix", "apply fixes from diagnostics"),
             Command::planned("doc", "generate documentation"),
             explain::EXPLAIN,
-            Command::group("dump", "print an intermediate representation with origins", DUMPS),
+            Command::group("dump", "print an intermediate representation with origins", dump::DUMPS),
             Command::group(
                 pkg::GROUP,
                 "dependencies, releases and API diffs",
@@ -102,120 +100,8 @@ pub const PROGRAM: Program<Session> = Program {
     },
 };
 
-const FILE: Param =
+pub(crate) const FILE: Param =
     Param { name: "file", short: None, about: "the source file to read", kind: ParamKind::Positional };
-
-const DUMPS: &[Command<Session>] = &[
-    Command {
-        name: "tokens",
-        about: "tokens and trivia with byte ranges",
-        params: &[FILE],
-        action: Action::Run(|s, args, out| Stage::Tokens.dump(s, args, out)),
-    },
-    Command {
-        name: "cst",
-        about: "the concrete syntax tree, one node per line",
-        params: &[FILE],
-        action: Action::Run(|s, args, out| Stage::Cst.dump(s, args, out)),
-    },
-    Command {
-        name: "manifest",
-        about: "the package manifest read from a build.vun",
-        params: &[FILE],
-        action: Action::Run(|s, args, out| Stage::Manifest.dump(s, args, out)),
-    },
-    Command {
-        name: "plan",
-        about: "the steps a build.vun's build records, one per line",
-        params: &[FILE],
-        action: Action::Run(|s, args, out| Stage::Plan.dump(s, args, out)),
-    },
-    Command {
-        name: "hir",
-        about: "the high-level representation, names resolved, with origins",
-        params: &[FILE],
-        action: Action::Run(|s, args, out| Stage::Hir.dump(s, args, out)),
-    },
-    Command {
-        name: "mir",
-        about: "the mid-level representation of each function, with origins",
-        params: &[FILE],
-        action: Action::Run(|s, args, out| Stage::Mir.dump(s, args, out)),
-    },
-    Command::planned("lir", "the low-level representation"),
-    Command::planned("link", "the link plan"),
-];
-
-/// What `vun dump` prints.
-#[derive(Clone, Copy)]
-enum Stage {
-    Tokens,
-    Cst,
-    Hir,
-    Mir,
-    Manifest,
-    Plan,
-}
-
-impl Stage {
-    /// Prints this stage of the file `args` names.
-    fn dump(self, session: &mut Session, args: &Args, out: &mut dyn Write) -> io::Result<Outcome> {
-        let path = args.value(&FILE).expect("positional parameters are present when a command runs");
-        let Some(file) = session.load(Path::new(path)) else { return Ok(Outcome::Failure) };
-        if let Self::Manifest = self {
-            if let Some(manifest) = session.manifest(file) {
-                writeln!(out, "{manifest:#?}")?;
-            }
-            return Ok(session.outcome());
-        }
-        if let Self::Plan = self {
-            for action in session.plan(file).map(|p| p.actions).unwrap_or_default() {
-                // What no literal spells, such as a type, shows as diagnostics show values.
-                let span = vun_span::Span::new(file, 0, 0);
-                let package = |p| session.db.get::<Package>(&p).name;
-                match action.literal(span, &package).and_then(|l| l.source().ok()) {
-                    Some(source) => writeln!(out, "{source}")?,
-                    None => writeln!(out, "{action}")?,
-                }
-            }
-            return Ok(session.outcome());
-        }
-        let tokens = session.lex(file);
-        match self {
-            Self::Tokens => write!(out, "{}", tokens.dump(session.text(file)))?,
-            Self::Cst => {
-                let cst = session.parse(&tokens);
-                write!(out, "{}", cst.dump(&tokens, session.text(file)))?;
-            }
-            Self::Hir => {
-                let parsed = session.parsed(file);
-                session.check_names(file);
-                let text = parsed.hir.dump(&parsed.resolution, &session.origins, &*session.sources);
-                write!(out, "{text}")?;
-            }
-            Self::Mir => {
-                let bodies = session.bodies(file);
-                let locate = |o| session.sources.locate(session.origins.source_span(o)).at;
-                for (f, body) in bodies {
-                    let origin = f.expr.origin;
-                    match body {
-                        Ok(body) => writeln!(out, "{}", body.dump(&locate))?,
-                        Err(unbuilt) => {
-                            let (at, form) = (locate(origin), locate(unbuilt.at));
-                            writeln!(
-                                out,
-                                "fn @{}:{}: not lowered yet, at @{}:{}",
-                                at.line, at.col, form.line, form.col
-                            )?;
-                        }
-                    }
-                }
-            }
-            Self::Manifest | Self::Plan => unreachable!("printed above"),
-        }
-        Ok(session.outcome())
-    }
-}
 
 #[expect(clippy::unnecessary_wraps, reason = "every command has the `Run` signature")]
 fn check(session: &mut Session, args: &Args, _: &mut dyn Write) -> io::Result<Outcome> {
@@ -236,6 +122,7 @@ fn components(_: &mut Session, _: &Args, out: &mut dyn Write) -> io::Result<Outc
 }
 
 mod cache;
+mod dump;
 mod explain;
 mod pkg;
 mod tool;

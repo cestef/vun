@@ -1,0 +1,166 @@
+//! Instantiations ready for code generation (spec 13, section 3): the MIR of a function with its
+//! `$` parameters bound, each compile-time value it reads evaluated into a constant that flows
+//! into the operands reading it, and every local typed.
+
+use std::sync::Arc;
+
+use vun_index::IndexVec;
+use vun_origin::OriginId;
+use vun_query::{Cx, Cycle, Query};
+use vun_sema::env::{Env, Unevaluated};
+use vun_sema::eval::{Func, Instantiation};
+use vun_sema::ty::Value;
+use vun_sema::typeck::Typed;
+
+use crate::{Body, Local, Mir, Operand, Rvalue, Unbuilt};
+
+/// Why an instantiation's body is not ready for code generation.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub enum Unready {
+    /// A form MIR does not lower yet.
+    Unbuilt(Unbuilt),
+    /// A compile-time value the body reads has none.
+    Unevaluated { at: OriginId, why: Unevaluated },
+    /// A local typing found no type for.
+    Untyped { at: OriginId },
+}
+
+impl From<Unbuilt> for Unready {
+    fn from(unbuilt: Unbuilt) -> Self {
+        Self::Unbuilt(unbuilt)
+    }
+}
+
+impl std::fmt::Display for Unready {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Unbuilt(_) => f.write_str("a form MIR does not lower yet"),
+            Self::Unevaluated { why, .. } => write!(f, "a compile-time value has none: {}", why.why()),
+            Self::Untyped { .. } => f.write_str("a local has no type"),
+        }
+    }
+}
+
+impl Unready {
+    /// Where the body stopped.
+    #[must_use]
+    pub fn at(&self) -> OriginId {
+        match self {
+            Self::Unbuilt(Unbuilt { at }) | Self::Unevaluated { at, .. } | Self::Untyped { at } => *at,
+        }
+    }
+}
+
+/// An instantiation's body as code generation reads it; see the module.
+pub struct Concrete;
+
+impl Query for Concrete {
+    const NAME: &'static str = "concrete";
+    type Key = Instantiation;
+    type Value = Result<Arc<Body>, Unready>;
+
+    fn compute(cx: &Cx<'_>, i: &Instantiation) -> Self::Value {
+        let mut body = Body::clone(&*cx.get::<Mir>(i)?);
+        let env = i
+            .env(cx)
+            .ok_or(Unready::Unevaluated { at: i.f.literal.expr.origin, why: Unevaluated::Absent })?;
+        body.evaluate(&env)?;
+        body.propagate();
+        body.typed()?;
+        Ok(Arc::new(body))
+    }
+
+    fn cycle(_: &Cx<'_>, i: &Instantiation, _: &Cycle) -> Self::Value {
+        Err(Unready::Unevaluated { at: i.f.literal.expr.origin, why: Unevaluated::Cycle })
+    }
+}
+
+/// What lowering an instantiation's body needs of it.
+pub trait Lowered {
+    /// The environment its body is lowered in: its `$` parameters bound, its types those typing
+    /// found.
+    fn env<'a, 'db>(&self, cx: &'a Cx<'db>) -> Option<Env<'a, 'db>>;
+
+    /// What a call of `f` with `args` runs: `f`, bound to the constants passed for its `$`
+    /// parameters.
+    fn called(cx: &Cx<'_>, f: &Func, args: &[Operand]) -> Self;
+}
+
+impl Lowered for Instantiation {
+    fn env<'a, 'db>(&self, cx: &'a Cx<'db>) -> Option<Env<'a, 'db>> {
+        Some(Env::inside(cx, &self.f, self.args.iter().cloned())?.typed_by(cx.get::<Typed>(self)))
+    }
+
+    fn called(cx: &Cx<'_>, f: &Func, args: &[Operand]) -> Self {
+        let comptime = f.comptime(cx).unwrap_or_default();
+        let bound = comptime.iter().zip(args).map(|(&c, arg)| match arg {
+            Operand::Const(value) if c => Some(value.clone()),
+            _ => None,
+        });
+        Self::new(f.clone(), bound.collect())
+    }
+}
+
+impl Body {
+    /// Evaluates each compile-time value in `env`: a `Comptime` value becomes a constant, a
+    /// quote the code it holds.
+    fn evaluate(&mut self, env: &Env<'_, '_>) -> Result<(), Unready> {
+        for (_, block) in self.blocks.iter_mut() {
+            for stmt in &mut block.stmts {
+                let value = match &stmt.value {
+                    Rvalue::Comptime { expr, staged } => env.clone().staging(staged).eval(*expr),
+                    Rvalue::Quote { expr, staged } => {
+                        Ok(Value::Code(env.clone().staging(staged).code(*expr)))
+                    }
+                    _ => continue,
+                };
+                let value = value.map_err(|why| Unready::Unevaluated { at: stmt.origin, why })?;
+                stmt.value = Rvalue::Use(Operand::Const(value));
+            }
+        }
+        Ok(())
+    }
+
+    /// Replaces each read of a local written once, whole, with a constant, and never borrowed,
+    /// by that constant.
+    fn propagate(&mut self) {
+        let mut writes: IndexVec<Local, u32> = IndexVec::filled(0, self.locals.len());
+        let mut constants: IndexVec<Local, Option<Value>> = IndexVec::filled(None, self.locals.len());
+        for (_, block) in self.blocks.iter() {
+            for stmt in &block.stmts {
+                writes[stmt.place.local] += 1;
+                if let Rvalue::Ref { place, .. } = &stmt.value {
+                    writes[place.local] += 1;
+                }
+                if let (true, Rvalue::Use(Operand::Const(value))) =
+                    (stmt.place.projection.is_empty(), &stmt.value)
+                {
+                    constants[stmt.place.local] = Some(value.clone());
+                }
+            }
+        }
+        for &local in self.params.iter().chain([&self.ret]) {
+            writes[local] += 1;
+        }
+        let constant = |local: Local| (writes[local] == 1).then(|| constants[local].clone()).flatten();
+        for (_, block) in self.blocks.iter_mut() {
+            let operands = block.stmts.iter_mut().flat_map(|s| s.value.operands_mut());
+            for operand in operands.chain(block.term.kind.operands_mut()) {
+                if let Operand::Place(place) = operand
+                    && place.projection.is_empty()
+                    && let Some(value) = constant(place.local)
+                {
+                    *operand = Operand::Const(value);
+                }
+            }
+        }
+    }
+
+    /// Whether every local has a type.
+    fn typed(&self) -> Result<(), Unready> {
+        match self.locals.iter().find(|(_, l)| l.ty.is_none()) {
+            Some((_, local)) => Err(Unready::Untyped { at: local.origin }),
+            None => Ok(()),
+        }
+    }
+}
