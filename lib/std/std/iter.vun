@@ -1,3 +1,43 @@
-//! Iteration is suspension (spec 06, section 3).
+//! Iteration is suspension (spec 06, section 3): an iterator is a coroutine yielding its items,
+//! and adapters are coroutine functions over one, methods of every frame.
 
 Iter := ($T: type) -> lang.Interface { lang.Coroutine(T, ()) };
+
+/// What every iterator can be turned into or summed up as: methods of each coroutine frame that
+/// yields `T`, by an impl without an interface over `lang.Coroutine`. Each consumes the frame.
+#[impl(lang.Coroutine)]
+IterMethods := ($Self: type, $T: type, $R: type) -> type { struct {
+    /// Each item with its position, from 0.
+    enumerate := (self: Self) -> Iter((usize, T)) {
+        mut at: usize = 0;
+        for item in self {
+            yield (at, item);
+            at += 1;
+        }
+    };
+    /// Each item passed through `f`.
+    map := (self: Self, $U: type, $F: lang.ops.Call((T), U), f: F) -> Iter(U) {
+        for item in self { yield f(item); }
+    };
+    /// The items `keep` holds for.
+    filter := (self: Self, $F: lang.ops.Call((&T), bool), keep: F) -> Iter(T) {
+        for item in self {
+            if keep(&item) { yield item; }
+        }
+    };
+    /// The first `n` items at most.
+    take := (self: Self, n: usize) -> Iter(T) {
+        mut left := n;
+        for item in self {
+            if left == 0 { break; }
+            yield item;
+            left -= 1;
+        }
+    };
+    /// How many items there are.
+    count := (self: Self) -> usize {
+        mut n: usize = 0;
+        for _ in self { n += 1; }
+        n
+    };
+} };

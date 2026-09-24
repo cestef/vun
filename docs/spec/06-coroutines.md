@@ -80,7 +80,10 @@ echo := (s: &mut Serial) -> Async(never) {
 };
 ```
 
-Slices, ranges, maps and generator functions all implement `Iter`. The optimizer flattens simple
+Slices, ranges, maps and generator functions all implement `Iter`. Adapters are coroutine
+functions too: `std.iter` gives every frame `enumerate`, `map`, `filter`, `take` and `count`, by an
+impl without an interface over `lang.Coroutine`, and slices and arrays have `enumerate` over their
+items' borrows. The optimizer flattens simple
 iterators into plain loops.
 
 ## 4. Executors

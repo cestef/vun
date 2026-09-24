@@ -36,7 +36,8 @@ impl Typer<'_, '_, '_> {
 
     /// The member `name` of a value whose type is known by an interface: a constrained `$`
     /// parameter in its generic body, which may use only what the interface requires, or a
-    /// frame, which answers its interface's requirements itself (spec 06, section 1).
+    /// frame, which answers its interface's requirements itself (spec 06, section 1) and has the
+    /// methods of its impls.
     pub(super) fn required_member(&mut self, expr: ExprId, ty: Ty, name: Symbol) -> Option<Known> {
         let interface = match &*ty {
             TyKind::Param(param) => &param.interface,
@@ -52,6 +53,13 @@ impl Typer<'_, '_, '_> {
                 self.env().cx.get::<MemberType>(&(requirements, name)).ok()
             }
             Found::Unknown => None,
+            // A frame has the methods of its impls too, as any value.
+            _ if matches!(&*ty, TyKind::Frame(_))
+                && let Some(owner) = self.method(expr, ty, name) =>
+            {
+                self.methods.insert(expr, (owner, name));
+                self.env().cx.get::<MemberType>(&(owner, name)).ok()
+            }
             _ => {
                 self.no_member(self.hir().exprs[expr].origin, ty, name);
                 None

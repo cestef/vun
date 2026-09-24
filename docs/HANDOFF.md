@@ -170,7 +170,8 @@ moved to the caller (`Typer::absorb`), `$e` run while typing (`Typer::undecided`
 
 Executors (decision 126): `std.task.{Event, Wait, select, run, block_on}`; frames' `resume`
 and `end` typed and lowered (MIR `Rvalue::End`), `Frame::written` for inference through aliases
-such as `Async(A)`. MIR lowers 92 of 115 functions.
+such as `Async(A)`. `std.iter` adapters as methods of every frame (decision 127). MIR lowers 93 of
+115 functions.
 
 Language surface since the review (decisions 99 to 105): omitted `$` arguments inferred
 (`typeck/omitted.rs`, `TypedBody::inferred`, `types.cannot_infer`, `types.arity`); variant
@@ -195,8 +196,8 @@ patterns and typed annotations (89), linked values and repeats (90), layout (93)
 ## 7. Next steps, in order
 
 1. `std` next: `std.task.Pool`, `std.testing.Sim`, the runtimes' `std.task.sleep` (WFI on
-   bare metal, a futex wait hosted), `std.iter` adapters as
-   coroutine functions, `System.args`, a Linux runtime without the C library, `Allocator`
+   bare metal, a futex wait hosted), more `std.iter` adapters (`zip`, `chain`, `fold`),
+   `System.args`, a Linux runtime without the C library, `Allocator`
    impls for `Fixed`, text (`Str`) and collections. Pointer primitives, `Own`, `Fixed`, `fail`,
    `expect`, `ptr`, `option`, `result`, `cmp` exist (decision 107).
 2. Leaks at scope exits inside a body (found at the function's return only today), `fixed` and

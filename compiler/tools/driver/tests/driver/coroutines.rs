@@ -89,3 +89,24 @@ kept := (e: &std.task.Event) -> u32 {
     let ids: Vec<_> = fixture.reported(&file).into_iter().map(|(id, _)| id).collect();
     assert_eq!(ids, [errors::PLACE_LINEAR_LEAK], "`kept` never ends its frame");
 }
+
+#[test]
+fn iterators_adapt_through_methods_of_every_frame() {
+    let fixture = Fixture::new("coroutines-adapters");
+    let file = fixture.root.write(
+        "adapters.vun",
+        "\
+evens := (limit: u32) -> Iter(u32) { for i in 0..limit { if i % 2 == 0 { yield i; } } };
+total := () -> usize { evens(10).take(3).count() };
+second := (xs: &[4]u8) -> u8 {
+    mut s: u8 = 0;
+    for (i, x) in xs.enumerate() { if i == 1 { s = x.*; } }
+    s
+};
+kept := () -> usize { evens(8).map((x: u32) -> u64 { x * 2 }).filter((x: &u64) -> bool { x.* > 2 }).count() };
+wrong := () -> bool { evens(4).count() };
+",
+    );
+    let ids: Vec<_> = fixture.reported(&file).into_iter().map(|(id, _)| id).collect();
+    assert_eq!(ids, [errors::TYPES_MISMATCH]);
+}
