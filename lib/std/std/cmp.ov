@@ -1,8 +1,11 @@
 //! Comparing values through `lang.ops.Ord`, whose `<` and `>` these use.
 
 /// The smaller of `a` and `b`, `a` when equal.
+#[panic.never]
 min := ($T: type, a: T, b: T) -> T { if b < a { b } else { a } };
 /// The larger of `a` and `b`, `a` when equal.
+#[panic.never]
 max := ($T: type, a: T, b: T) -> T { if b > a { b } else { a } };
 /// `x` brought within `lo..=hi`.
+#[panic.never]
 clamp := ($T: type, x: T, lo: T, hi: T) -> T { if x < lo { lo } else if x > hi { hi } else { x } };

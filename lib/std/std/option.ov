@@ -2,9 +2,12 @@
 
 #[impl(Option)]
 OptionMethods := ($T: type) -> type { struct {
+    #[panic.never]
     is_some := (o: &?T) -> bool { match o { .some(_) => true, .none => false } };
+    #[panic.never]
     is_none := (o: &?T) -> bool { match o { .some(_) => false, .none => true } };
     /// The value, or `default` when there is none.
+    #[panic.never]
     unwrap_or := (o: ?T, default: T) -> T { match o { .some(v) => v, .none => default } };
     /// The value, or a trap with `message` when there is none.
     expect := (o: ?T, $message: &[u8]) -> T { match o { .some(v) => v, .none => lang.panic.fail(.message(message)) } };
@@ -13,6 +16,7 @@ OptionMethods := ($T: type) -> type { struct {
         match o { .some(v) => .some(f(v)), .none => .none }
     };
     /// A result holding the value, or `error` when there is none.
+    #[panic.never]
     ok_or := (o: ?T, $E: type, error: E) -> Result(T, E) {
         match o { .some(v) => .ok(v), .none => .err(error) }
     };

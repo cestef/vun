@@ -7,6 +7,7 @@
 //! `lang.Option(T)` evaluates to.
 
 mod display;
+mod marker;
 mod relate;
 mod signature;
 #[cfg(test)]
@@ -24,6 +25,7 @@ use crate::primitives::lang::Lang;
 use crate::primitives::mem::Mem;
 use crate::primitives::meta::Meta;
 
+pub use marker::Marker;
 pub use signature::Signature;
 pub use value::Value;
 

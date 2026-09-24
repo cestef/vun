@@ -8,6 +8,7 @@ use overt_query::Query;
 use overt_span::{FileId, SourceMap};
 
 use overt_mir_passes::borrows::BorrowChecks;
+use overt_mir_passes::panics::PanicChecks;
 use overt_mir_passes::places::PlaceStates;
 use overt_sema::eval::Instantiation;
 
@@ -60,6 +61,7 @@ pub const STAGES: &[Stage] = &[
     },
     Stage { name: "places", reports: &[errors::PLACE], input: Input::Mir },
     Stage { name: "borrows", reports: &[errors::BORROW], input: Input::Mir },
+    Stage { name: "panics", reports: &[errors::PANIC], input: Input::Mir },
 ];
 
 impl Stage {
@@ -84,6 +86,7 @@ impl Session {
         self.check_types(file);
         self.check_places(file);
         self.check_borrows(file);
+        self.check_bodies::<PanicChecks>(file);
     }
 
     /// The lines, first and last, of each function of `file` that MIR does not lower yet.

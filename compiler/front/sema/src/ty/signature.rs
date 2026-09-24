@@ -1,21 +1,22 @@
 //! Function types: `(A, B) -> R` is `lang.Fn((A, B), R)` (appendix B). A function type also
-//! carries the markers its prefixes put on it (the table `markers`), such as the
-//! `lang.safety.unsafe` of `unsafe (A) -> R`, as a third argument when there are some; calls are
-//! checked against them (spec 07, section 4).
+//! carries its markers (spec 07, section 4), as a third argument when there are some; calls are
+//! checked against them.
 
-use overt_grammar::{MARKERS, PATH_SEPARATOR, TokenKind};
+use overt_grammar::TokenKind;
 
+use super::marker::Marker;
 use super::{Ty, TyKind, Value};
 use crate::Primitive;
 use crate::primitives::lang::Lang;
+use crate::primitives::safety::Safety;
 
 /// The parts of a function type.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Signature {
     pub params: Vec<Ty>,
     pub result: Ty,
-    /// The markers on the type, in the order of the table `markers`.
-    pub markers: Vec<Primitive>,
+    /// The markers on the type, in the order of the table `fn_markers`.
+    pub markers: Vec<Marker>,
 }
 
 impl Signature {
@@ -31,46 +32,52 @@ impl Signature {
         let mut args =
             vec![Value::Type(TyKind::Tuple(self.params.clone()).intern()), Value::Type(self.result)];
         if !self.markers.is_empty() {
-            args.push(Value::Tuple(self.markers.iter().map(|&m| Value::Primitive(m)).collect()));
+            args.push(Value::Tuple(self.markers.iter().map(Marker::value).collect()));
         }
         TyKind::Primitive(Primitive::Lang(Lang::Fn), args).intern()
     }
 
     /// This signature with the marker the prefix `token` puts, if it puts one.
     #[must_use]
-    pub fn marked(mut self, token: TokenKind) -> Self {
-        if let Some(marker) = Self::marker(token)
-            && !self.markers.contains(&marker)
-        {
-            self.markers.push(marker);
-            let order = |m: &Primitive| MARKERS.iter().position(|(t, _)| Self::marker(*t) == Some(*m));
-            self.markers.sort_by_key(order);
+    pub fn marked(self, token: TokenKind) -> Self {
+        match Marker::of_prefix(token) {
+            Some(marker) => self.with(marker),
+            None => self,
         }
+    }
+
+    /// This signature with `marker` too.
+    #[must_use]
+    pub fn with(mut self, marker: Marker) -> Self {
+        Marker::insert(&mut self.markers, marker);
         self
+    }
+
+    /// Whether this signature carries the marker `item`.
+    #[must_use]
+    pub fn has(&self, item: Primitive) -> bool {
+        self.markers.iter().any(|m| m.item == item)
     }
 
     /// Whether calling a function of this signature is `unsafe`.
     #[must_use]
     pub fn is_unsafe(&self) -> bool {
-        Self::marker(TokenKind::Unsafe).is_some_and(|m| self.markers.contains(&m))
+        self.has(Primitive::Safety(Safety::r#unsafe))
     }
 
-    /// The marker the prefix `token` puts on a function type (the table `markers`).
+    /// Whether a function of this signature promises never to trap.
     #[must_use]
-    pub fn marker(token: TokenKind) -> Option<Primitive> {
-        let (_, item) = MARKERS.iter().find(|(t, _)| *t == token)?;
-        let (ns, name) = item.rsplit_once(PATH_SEPARATOR)?;
-        Primitive::ALL.iter().copied().find(|p| p.namespace() == ns && p.name() == name)
+    pub fn never_traps(&self) -> bool {
+        Marker::never_traps(&self.markers)
     }
 
     /// Whether a function of signature `found` may be used where one of this signature is: the
-    /// same parameters and result, and no marker this one lacks, since each marker is a duty
-    /// its callers take on.
+    /// same parameters and result, and markers related as the table `fn_markers` says.
     #[must_use]
     pub fn accepts(&self, found: &Self) -> bool {
         self.params == found.params
             && self.result == found.result
-            && found.markers.iter().all(|m| self.markers.contains(m))
+            && Marker::accepts(&self.markers, &found.markers)
     }
 }
 
@@ -82,11 +89,7 @@ impl TyKind {
         let (params, result, markers) = match args.as_slice() {
             [Value::Type(params), Value::Type(result)] => (params, result, Vec::new()),
             [Value::Type(params), Value::Type(result), Value::Tuple(markers)] => {
-                let markers = markers.iter().map(|m| match m {
-                    Value::Primitive(p) => Some(*p),
-                    _ => None,
-                });
-                (params, result, markers.collect::<Option<_>>()?)
+                (params, result, markers.iter().map(Marker::from_value).collect::<Option<_>>()?)
             }
             _ => return None,
         };

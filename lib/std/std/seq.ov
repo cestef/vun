@@ -9,10 +9,12 @@ Sequence := interface(($Self: type) -> type { struct {
 
 #[impl(Sequence(lang.mem.Slice))]
 SliceSequence := ($T: type) -> type { struct {
+    #[panic.never]
     len := (xs: &[T]) -> usize { lang.mem.len(T, xs) };
 } };
 
 #[impl(Sequence(lang.mem.Array))]
 ArraySequence := ($n: Int(0..), $T: type) -> type { struct {
+    #[panic.never]
     len := (xs: &[n]T) -> usize { n };
 } };

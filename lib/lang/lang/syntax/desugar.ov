@@ -117,6 +117,31 @@ markers := [
     .{ .token = .\unsafe, .item = "lang.safety.unsafe" },
 ];
 
+/// How a function carrying a marker is accepted where a function type is expected (spec 07,
+/// section 4).
+Relation := enum {
+    /// A duty of the callers: accepted when the function has no duty the expected type lacks.
+    duty,
+    /// A promise to the callers: accepted when the function makes every promise expected.
+    guarantee,
+    /// A limit: accepted when the function's is at most the expected one, or none is expected.
+    bound,
+    /// A convention: accepted when both have the same ones.
+    identity,
+};
+
+/// The properties a function type carries as markers (spec 07, section 4): attributes on a
+/// function literal, a function type or a declaration, and the prefixes of the table `markers`.
+fn_markers := [
+    .{ .item = "lang.safety.unsafe", .relation = .duty },
+    .{ .item = "lang.target.require", .relation = .duty },
+    .{ .item = "lang.panic.never", .relation = .guarantee },
+    .{ .item = "lang.stack.max", .relation = .bound },
+    .{ .item = "lang.abi.c", .relation = .identity },
+    .{ .item = "lang.abi.interrupt", .relation = .identity },
+    .{ .item = "lang.abi.naked", .relation = .identity },
+];
+
 /// What calling a value that is not a function literal means (spec 01, section 4): `f(a, b)` is
 /// `function(&mut f, (a, b))` of `interface`, which function values and closures implement, so a
 /// parameter `$F: Call((T), U)` takes either.

@@ -6,10 +6,13 @@ Narrow := interface(($Self: type) -> type { struct {
     /// Traps when the value is outside `T`.
     to: (x: Self, $T: type) -> T = _;
     /// Reduces the value modulo the size of `T`.
+    #[panic.never]
     wrap: (x: Self, $T: type) -> T = _;
     /// Clamps the value to the bounds of `T`.
+    #[panic.never]
     sat: (x: Self, $T: type) -> T = _;
     /// `.none` when the value is outside `T`.
+    #[panic.never]
     try_to: (x: Self, $T: type) -> ?T = _;
 }});
 

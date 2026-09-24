@@ -5,7 +5,7 @@ use overt_hir::tree::{Arg, Entry, ExprId, ExprKind};
 
 use super::Env;
 use crate::Primitive;
-use crate::ty::Value;
+use crate::ty::{Marker, Signature, Value};
 
 impl Env<'_, '_> {
     /// The attributes of the literal `literal`: written on it (`#[kind.linear] struct { }`) or on
@@ -50,5 +50,29 @@ impl Env<'_, '_> {
                 })
                 .collect()
         })
+    }
+
+    /// The markers among `attrs`: those the table `fn_markers` names, with their arguments.
+    #[must_use]
+    pub fn markers(&self, attrs: &[ExprId]) -> Vec<Marker> {
+        let mut markers = Vec::new();
+        for (item, _) in Marker::kinds() {
+            if let Some(args) = self.attribute(attrs, item) {
+                Marker::insert(&mut markers, Marker { item, args });
+            }
+        }
+        markers
+    }
+
+    /// `value` marked by the markers among `attrs` when it is a function type, as in
+    /// `#[panic.never] (u8) -> u8`; any other value as it is.
+    #[must_use]
+    pub fn marked_by(&self, value: Value, attrs: &[ExprId]) -> Value {
+        match value.as_type().and_then(|t| t.signature()) {
+            Some(signature) => {
+                Value::Type(self.markers(attrs).into_iter().fold(signature, Signature::with).ty())
+            }
+            None => value,
+        }
     }
 }

@@ -92,7 +92,12 @@ impl Env<'_, '_> {
         let PatKind::Bind(binder) = hir.pats[decl.pat].kind else { return Err(Unevaluated::Unsupported) };
         let stage = if hir.binders[binder].mutable { Stage::Run } else { Stage::Compile };
         let ty = match (decl.ty, decl.value) {
-            (Some(annotation), _) => self.ty(annotation)?,
+            // A declaration's markers mark the function type it is annotated with, as in
+            // `#[abi.c] puts: unsafe (s: *u8) -> i32 = _`.
+            (Some(annotation), _) => {
+                let ty = Value::Type(self.ty(annotation)?);
+                self.marked_by(ty, &decl.attrs).as_type().ok_or(Unevaluated::Unsupported)?
+            }
             (None, Some(value)) => {
                 let key = (
                     DeclRef::new(self.file.clone(), hir, decl_id),

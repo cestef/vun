@@ -89,7 +89,7 @@ impl Env<'_, '_> {
             ExprKind::Block(block) => self.block_value(*block),
             ExprKind::Quote(_) => Ok(Value::Code(self.code(expr))),
             // Attributes on an expression are data, read where they act.
-            ExprKind::Attributed { inner, .. } => self.eval(*inner),
+            ExprKind::Attributed { attrs, inner } => Ok(self.marked_by(self.eval(*inner)?, attrs)),
             ExprKind::Call { callee, .. } if matches!(hir.exprs[*callee].kind, ExprKind::DotName(_)) => {
                 self.eval_as(expr, None)
             }

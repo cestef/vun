@@ -13,6 +13,7 @@ mod generics;
 mod impls;
 mod layout;
 mod loops;
+mod markers;
 mod mir;
 mod namespaces;
 mod places;

@@ -11,7 +11,7 @@ use super::{Env, Unevaluated};
 use crate::eval::{Call, Instance};
 use crate::item::ExprRef;
 use crate::member::{Found, MemberType, Members};
-use crate::ty::{Frame, Signature, Ty, TyKind, Value};
+use crate::ty::{Frame, Marker, Signature, Ty, TyKind, Value};
 
 impl Env<'_, '_> {
     /// The signature of the function literal `literal` here, `args` the values of its `$`
@@ -46,12 +46,23 @@ impl Env<'_, '_> {
         };
         let mut signature = self.signature(params, None)?;
         signature.result = result.as_type().ok_or(Unevaluated::Unsupported)?;
-        // `unsafe (p: *T) -> T { ... }`: the prefixes around the literal mark its type.
-        let marking = hir.exprs.iter().filter_map(|(_, e)| match &e.kind {
-            ExprKind::Prefix { op, operand, .. } if *operand == literal => Some(*op),
+        Ok(self.literal_markers(literal).into_iter().fold(signature, Signature::with))
+    }
+
+    /// The markers of the function literal `literal`: its attributes and its declaration's that
+    /// are markers, and those the prefixes around it put, as `unsafe (p: *T) -> T { ... }`.
+    #[must_use]
+    pub fn literal_markers(&self, literal: ExprId) -> Vec<Marker> {
+        let hir = &self.parsed.hir;
+        let mut markers = self.markers(&self.attrs_of(literal));
+        let prefixes = hir.exprs.iter().filter_map(|(_, e)| match &e.kind {
+            ExprKind::Prefix { op, operand, .. } if *operand == literal => Marker::of_prefix(*op),
             _ => None,
         });
-        Ok(marking.fold(signature, Signature::marked))
+        for marker in prefixes {
+            Marker::insert(&mut markers, marker);
+        }
+        markers
     }
 
     /// What resuming a frame of type `frame` gives: the result of its interface's `resume`, such

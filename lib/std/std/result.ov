@@ -3,9 +3,12 @@
 
 #[impl(Result)]
 ResultMethods := ($T: type, $E: type) -> type { struct {
+    #[panic.never]
     is_ok := (r: &Result(T, E)) -> bool { match r { .ok(_) => true, .err(_) => false } };
+    #[panic.never]
     is_err := (r: &Result(T, E)) -> bool { match r { .ok(_) => false, .err(_) => true } };
     /// The value, or `default` on an error.
+    #[panic.never]
     unwrap_or := (r: Result(T, E), default: T) -> T { match r { .ok(v) => v, .err(_) => default } };
     /// The value passed through `f`.
     map := (r: Result(T, E), $U: type, $C: lang.ops.Call((T), U), f: C) -> Result(U, E) {
@@ -20,5 +23,6 @@ ResultMethods := ($T: type, $E: type) -> type { struct {
         match r { .ok(v) => v, .err(_) => lang.panic.fail(.message(message)) }
     };
     /// The value, dropping the error.
+    #[panic.never]
     ok := (r: Result(T, E)) -> ?T { match r { .ok(v) => .some(v), .err(_) => .none } };
 } };

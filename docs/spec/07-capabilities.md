@@ -65,6 +65,18 @@ A function type carries, as part of the type, and all checked:
 
 Function pointers carry the same properties, so the analyses survive indirect calls.
 
+Each property is a **marker**: a `lang` attribute, with its arguments, that the function type
+carries (`#[panic.never] (u8) -> u8`, a function literal or a declaration marked so). The table
+`fn_markers` of `desugar.ov` names them and gives each a relation, which decides where a function
+is accepted in place of an expected function type:
+
+| Relation | Markers | Accepted when the function has |
+|----------|---------|--------------------------------|
+| duty (of the callers) | `unsafe`, `target.require(f)` | no duty the expected type lacks |
+| guarantee (to the callers) | `panic.never` | every guarantee the expected type has |
+| bound | `stack.max(n)` | a bound at most the expected one |
+| identity | `abi.c`, `abi.interrupt`, `abi.naked` | the same ones |
+
 `unsafe` is one marker with one meaning: **`unsafe x` is used only where someone vouched for
 it.** An `unsafe` expression or block is used where it is written, so writing it vouches for the
 unchecked operations inside. A function literal or function type marked `unsafe` is used at each

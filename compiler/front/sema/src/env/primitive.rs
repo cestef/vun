@@ -9,7 +9,7 @@ use super::{Env, Unevaluated};
 use crate::Primitive;
 use crate::eval::Staging;
 use crate::item::{DeclRef, Declared, Node, Site};
-use crate::ty::{Signature, Value};
+use crate::ty::{Marker, Signature, Value};
 
 impl Env<'_, '_> {
     /// The declaration of `primitive` in `lang`.
@@ -65,5 +65,23 @@ impl Env<'_, '_> {
             .collect();
         let signature = env.staging(&bound).signature(params, *returns)?;
         Ok(markers.into_iter().fold(signature, Signature::marked))
+    }
+
+    /// The markers of `primitive`: its declaration's attributes that are markers, and those its
+    /// annotation's prefixes put, as the `unsafe` of `offset: unsafe (...) -> *T = _`.
+    #[must_use]
+    pub fn primitive_markers(&self, primitive: Primitive) -> Vec<Marker> {
+        let Ok(decl) = self.primitive_decl(primitive) else { return Vec::new() };
+        let Some(env) = Env::of(self.cx, &decl.file) else { return Vec::new() };
+        let hir = &env.parsed.hir;
+        let mut markers = env.markers(&hir.decls[decl.decl.id].attrs);
+        let mut annotation = hir.decls[decl.decl.id].ty;
+        while let Some(ExprKind::Prefix { op, operand, .. }) = annotation.map(|a| &hir.exprs[a].kind) {
+            if let Some(marker) = Marker::of_prefix(*op) {
+                Marker::insert(&mut markers, marker);
+            }
+            annotation = Some(*operand);
+        }
+        markers
     }
 }
