@@ -123,4 +123,23 @@ double per forwarding layer):
 4. A function without `yield` that returns another coroutine returns that frame directly, with no
    wrapper.
 
-The frame-size algorithm is part of the specification, so sizes are the same on every backend.
+The frame-size algorithm is part of the specification, so sizes are the same on every backend:
+
+- A frame starts with its **state**, the narrowest unsigned integer telling apart: not started,
+  suspended at each `yield` (in the order of the blocks ending in one), and done.
+- A local is **held** by the frame when it is a run-time parameter, when it is borrowed anywhere in
+  the body (a borrow may reach it across a `yield`), or when it is **live across a `yield`**: read,
+  after resuming or on the path ending the frame there, before it is written whole. A delegated
+  frame is a local like any other, so it is constructed in place inside the parent's frame.
+- Two held locals may **share storage** unless one of them is a parameter or borrowed, or both
+  are live across one `yield`.
+- Held locals are **placed** in order, parameters first, then by local: each at the lowest offset
+  past the state, aligned to its alignment, overlapping no placed local it may not share storage
+  with. The frame's alignment is the largest of the state's and its locals', and its size the end
+  of the last local, rounded up to it.
+
+A coroutine function lowers to two functions from its one body (spec 13, section 3): `resume`
+goes, by the state, to the start or past the `yield` the frame is suspended at, runs to the next
+`yield` or the return, sets the state and gives the step; resuming a finished frame traps. `end`
+goes to the path ending the frame at its `yield`, which runs what is pending there. Calling the
+coroutine function writes the state and the parameters into the place receiving the frame.

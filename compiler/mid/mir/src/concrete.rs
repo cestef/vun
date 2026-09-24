@@ -186,45 +186,14 @@ impl Body {
         (writes, constants)
     }
 
-    /// The locals some statement or terminator reads: through operands, borrows, tests,
-    /// projections of what it writes and the indices places use; the result is read by the
-    /// return.
+    /// The locals some statement or terminator reads (`Stmt::reads`, `TerminatorKind::reads`);
+    /// the result is read by the return.
     #[must_use]
     pub fn read(&self) -> std::collections::HashSet<Local> {
         let mut read = std::collections::HashSet::from([self.ret]);
-        let mut place = |p: &crate::Place, whole: bool| {
-            if whole || !p.projection.is_empty() {
-                read.insert(p.local);
-            }
-            read.extend(p.indices());
-        };
         for (_, block) in self.blocks.iter() {
-            for stmt in &block.stmts {
-                place(&stmt.place, false);
-                match &stmt.value {
-                    Rvalue::Ref { place: p, .. }
-                    | Rvalue::IsVariant { place: p, .. }
-                    | Rvalue::Resume { frame: p, .. }
-                    | Rvalue::End { frame: p } => place(p, true),
-                    value => {
-                        for operand in value.operands() {
-                            if let Operand::Place(p) = operand {
-                                place(p, true);
-                            }
-                        }
-                    }
-                }
-            }
-            for operand in block.term.kind.operands() {
-                if let Operand::Place(p) = operand {
-                    place(p, true);
-                }
-            }
-            if let crate::TerminatorKind::Defer { consumes, .. } = &block.term.kind {
-                for &local in consumes {
-                    place(&crate::Place::of(local), true);
-                }
-            }
+            read.extend(block.stmts.iter().flat_map(crate::Stmt::reads));
+            read.extend(block.term.kind.reads());
         }
         read
     }

@@ -99,6 +99,45 @@ pub struct Stmt {
     pub origin: OriginId,
 }
 
+impl Stmt {
+    /// The locals it reads: through operands, borrows, tests, the projections of what it writes
+    /// and the indices places use.
+    #[must_use]
+    pub fn reads(&self) -> Vec<Local> {
+        let mut out = Vec::new();
+        self.place.read_by(false, &mut out);
+        match &self.value {
+            Rvalue::Ref { place, .. }
+            | Rvalue::IsVariant { place, .. }
+            | Rvalue::Resume { frame: place, .. }
+            | Rvalue::End { frame: place } => place.read_by(true, &mut out),
+            value => {
+                for operand in value.operands() {
+                    if let Operand::Place(place) = operand {
+                        place.read_by(true, &mut out);
+                    }
+                }
+            }
+        }
+        out
+    }
+
+    /// The local it writes whole, which holds nothing it held before.
+    #[must_use]
+    pub fn writes_whole(&self) -> Option<Local> {
+        self.place.projection.is_empty().then_some(self.place.local)
+    }
+
+    /// The local it borrows, which a borrow may reach from anywhere after.
+    #[must_use]
+    pub fn borrows(&self) -> Option<Local> {
+        match &self.value {
+            Rvalue::Ref { place, .. } => Some(place.local),
+            _ => None,
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Terminator {
     pub kind: TerminatorKind,
@@ -106,6 +145,21 @@ pub struct Terminator {
 }
 
 impl TerminatorKind {
+    /// The locals it reads: its operands, and what a deferred statement consumes.
+    #[must_use]
+    pub fn reads(&self) -> Vec<Local> {
+        let mut out = Vec::new();
+        for operand in self.operands() {
+            if let Operand::Place(place) = operand {
+                place.read_by(true, &mut out);
+            }
+        }
+        if let Self::Defer { consumes, .. } = self {
+            out.extend(consumes.iter().copied());
+        }
+        out
+    }
+
     /// The blocks control may go to next.
     #[must_use]
     pub fn successors(&self) -> Vec<BlockId> {

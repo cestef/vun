@@ -42,6 +42,15 @@ impl Place {
         self
     }
 
+    /// Adds the locals reading this place reads to `out`: its local, when it is read whole or
+    /// projected, and the indices it uses.
+    pub(crate) fn read_by(&self, whole: bool, out: &mut Vec<Local>) {
+        if whole || !self.projection.is_empty() {
+            out.push(self.local);
+        }
+        out.extend(self.indices());
+    }
+
     /// Whether this place and `other` may share storage: one contains the other. Distinct
     /// fields, positions and payload items are disjoint; items at run-time indices are not
     /// told apart.

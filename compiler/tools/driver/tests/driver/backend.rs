@@ -54,3 +54,40 @@ main := (sys: &mut std.os.System) -> std.os.Exit { .code(3) };
     let run = std::process::Command::new(program).status().unwrap();
     assert_eq!(run.code(), Some(3));
 }
+
+/// A program driving a coroutine of its own, `values`, and exiting with what `body` computes
+/// into `total` from each value `x`.
+fn driving(body: &str) -> String {
+    format!(
+        "\
+start := std.os.start(main);
+values := () -> std.iter.Iter(u8) {{ yield 3; yield 4; yield 5; yield 30; }};
+main := (sys: &mut std.os.System) -> std.os.Exit {{
+    mut total: u8 = 0;
+    for x in values() {{ {body} }}
+    .code(total)
+}};
+"
+    )
+}
+
+/// Builds `source` through the C backend and runs it, giving its exit status.
+fn status(name: &str, source: &str) -> Option<i32> {
+    let fixture = Fixture::new(name);
+    let path = fixture.root.write("main.vun", source);
+    let mut session = fixture.session();
+    let file = session.load(&path).unwrap();
+    let program = session.build(file, Some(vun_backend_c::INFO.id.0), None);
+    let program = program.unwrap_or_else(|_| panic!("{:#?}", session.diag));
+    std::process::Command::new(program).status().unwrap().code()
+}
+
+#[test]
+fn a_loop_resumes_a_coroutine_to_its_end() {
+    assert_eq!(status("backend-c-frames", &driving("total ^= x;")), Some(0x03 ^ 0x04 ^ 0x05 ^ 0x1e));
+}
+
+#[test]
+fn breaking_out_of_a_loop_ends_the_suspended_frame() {
+    assert_eq!(status("backend-c-break", &driving("if x == 5 { break; } total ^= x;")), Some(0x03 ^ 0x04));
+}

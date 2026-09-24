@@ -41,3 +41,37 @@ tail := (xs: &[u8], n: usize) -> usize { xs[n..].len() };
     // Indexing and slicing are trap sites.
     assert_eq!(unit.sites.len(), 2);
 }
+
+#[test]
+fn a_frame_holds_its_state_parameters_and_what_lives_across_a_yield() {
+    let fixture = Fixture::new("lir-frames");
+    let path = fixture.root.write(
+        "p.vun",
+        "\
+start := std.os.start(main);
+counter := (n: u8) -> std.iter.Iter(u8) { mut a: u8 = n; yield a; a ^= 1; yield a; };
+main := (sys: &mut std.os.System) -> std.os.Exit {
+    mut total: u8 = 0;
+    for x in counter(5) { total ^= x; }
+    .code(total)
+};
+",
+    );
+    let mut session = fixture.session();
+    let file = session.load(&path).unwrap();
+    let program = session.program(file);
+    let frame = program
+        .functions
+        .iter()
+        .filter_map(|i| session.db.get::<vun_mir::Concrete>(i).ok())
+        .flat_map(|body| body.locals.iter().filter_map(|(_, l)| l.ty).collect::<Vec<_>>())
+        .find(|ty| matches!(&**ty, vun_sema::ty::TyKind::Frame(_)))
+        .expect("main holds a frame");
+    let shaped = session.db.get::<vun_lower::Frames>(&frame);
+    let shape = shaped.as_ref().as_ref().unwrap();
+    assert_eq!((shape.state, shape.points.len()), (vun_lir::Scalar::I8, 2));
+    let mut offsets: Vec<u64> = shape.stored.iter().filter_map(|(_, o)| *o).collect();
+    offsets.sort_unstable();
+    assert_eq!(offsets, [1, 2]);
+    assert_eq!((shape.layout.size, shape.layout.align), (3, 1));
+}

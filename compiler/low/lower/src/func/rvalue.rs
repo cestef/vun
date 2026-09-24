@@ -50,7 +50,8 @@ impl FnLower<'_, '_, '_> {
                 Ok(())
             }
             Rvalue::Range { op, lo, hi } => self.range(*op, lo, hi.as_ref(), dest, ty),
-            Rvalue::Resume { .. } | Rvalue::End { .. } => Err(unsupported(Form::Frame)),
+            Rvalue::Resume { frame, .. } => self.drive(frame, dest, super::coroutine::Mode::Resume),
+            Rvalue::End { frame } => self.drive(frame, None, super::coroutine::Mode::End),
             Rvalue::Comptime { .. } | Rvalue::Quote { .. } => Err(unsupported(Form::Quote)),
             Rvalue::Dead => Ok(()),
         }
@@ -131,7 +132,7 @@ impl FnLower<'_, '_, '_> {
         Ok(())
     }
 
-    fn aggregate(
+    pub(super) fn aggregate(
         &mut self,
         kind: &Aggregate,
         parts: &[Operand],

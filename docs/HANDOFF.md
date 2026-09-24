@@ -282,9 +282,13 @@ rules go to `decisions.md` as proposed unless the user approves them.
 ## 7. Next steps, in order
 
 0. Backends: the baseline backend (spec 13 section 8.3: x86_64, own encoder and ELF writer, over
-   `vun_lir::analysis`); coroutine frames in lowering (`Form::Frame`, which stops
-   `ffi/export.vun`); memory regions from a program's build options into `LinkPlan` (the `gnu`
-   adapter writes scripts from them), and a bare-metal runtime to link against.
+   `vun_lir::analysis`); memory regions from a program's build options into `LinkPlan` (the `gnu`
+   adapter writes scripts from them), and a bare-metal runtime to link against. Frames: sema's
+   `Shapes` has no layout for frame types (only lowering's `Frames` query does), so
+   `std.meta.size(f.Frame)` and types holding frames are unknown; frames of coroutines generated
+   inside `$for` do not map back to their instantiation (`Frame::instantiation` drops `staged`).
+   `lang.ops`' slice iterator adds 1 to a `usize`, which needs 65 bits until comparisons narrow
+   ranges (decision 35): the C backend refuses it, so `for` over slices waits for that.
 1. `std`: `std.task.Pool`, `std.testing.Sim`; a Linux runtime without the C library; text
    (`Str`) and collections; `print`'s `.fixes`. Generic bodies
    over a constrained `$A: Allocator` are neither typed nor lowered (`a.alloc(...)`), see 5 and 6.

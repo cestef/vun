@@ -82,6 +82,12 @@ impl<'a, 'db> Types<'a, 'db> {
     /// # Errors
     /// Returns [`Why::NoLayout`] for a type with no layout at run time.
     pub fn repr(self, ty: Ty, at: OriginId) -> Result<Repr, Unlowered> {
+        if let TyKind::Frame(_) = &*ty {
+            return match &*self.cx.get::<crate::frame::Frames>(&ty) {
+                Ok(shape) => Ok(Repr::Memory(shape.layout)),
+                Err(unlowered) => Err(unlowered.clone()),
+            };
+        }
         if let Some((int, _)) = self.int(ty) {
             return Ok(Repr::Scalar(int));
         }

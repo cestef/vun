@@ -24,6 +24,8 @@ pub enum Why {
     Untargeted,
     /// The target's addresses are as wide as no integer of LIR.
     Address(u32),
+    /// A coroutine's frame would hold itself (spec 06, section 1).
+    Recursive,
 }
 
 /// What lowering does not handle yet.
@@ -55,6 +57,7 @@ impl fmt::Display for Unlowered {
             Why::Unsupported(form) => write!(f, "lowering to LIR does not handle {} yet", form.what()),
             Why::Untargeted => f.write_str("no target is chosen"),
             Why::Address(bits) => write!(f, "addresses of {bits} bits are as wide as no integer of LIR"),
+            Why::Recursive => f.write_str("the coroutine's frame would hold itself"),
         }
     }
 }

@@ -2,12 +2,14 @@
 //! from its concrete MIR, with range integers in their storage, aggregates and enums in memory
 //! by their shapes, and trap sites calling `lang.panic.trap`.
 
+mod frame;
 mod func;
 mod program;
 mod repr;
 mod signature;
 mod unlowered;
 
+pub use frame::{FrameShape, FrameState, Frames};
 pub use program::Lowered;
 pub use repr::{Repr, Types};
 pub use unlowered::{Form, Unlowered, Why};

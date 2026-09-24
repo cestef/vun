@@ -25,6 +25,34 @@ impl Lowering<'_, '_> {
         self.signature(&signature.params, signature.result, abi, at)
     }
 
+    /// How a value of type `ty` is passed under `conv`; `None` for a value of size 0.
+    pub(crate) fn passed(&self, ty: Ty, conv: Conv, at: OriginId) -> Result<Option<AbiType>, Unlowered> {
+        Ok(match self.types.repr(ty, at)? {
+            Repr::Zero => None,
+            // An integer extends by its range's sign; a tag or a truth value stored as one is
+            // bits, read unsigned.
+            Repr::Scalar(s) if s.is_int() => {
+                let signed = self.types.int(ty).is_some_and(|(_, signed)| signed);
+                Some(AbiType::Int(s, if signed { Ext::Sign } else { Ext::Zero }))
+            }
+            // An exclusive borrow's address reaches what nothing else does while it lives.
+            Repr::Scalar(Scalar::Ptr) => {
+                let exclusive = ty.borrowing().is_some_and(|(mode, ..)| mode.access() == Access::Exclusive);
+                Some(AbiType::Address(if exclusive { Alias::Exclusive } else { Alias::Any }))
+            }
+            Repr::Scalar(s) => Some(AbiType::Scalar(s)),
+            Repr::Memory(_) if conv == Conv::C => Some(AbiType::Record(self.types.record(ty, at)?)),
+            Repr::Memory(layout) => Some(AbiType::Memory { size: layout.size, align: layout.align }),
+        })
+    }
+
+    /// The signature of a coroutine's `resume` (giving its step, of type `step`) or `end`
+    /// (`None`): the frame's address, which nothing else reaches while it runs.
+    pub(crate) fn frame_signature(&self, step: Option<Ty>, at: OriginId) -> Result<Signature, Unlowered> {
+        let result = step.map(|step| self.passed(step, Conv::Vun, at)).transpose()?.flatten();
+        Ok(Signature { conv: Conv::Vun, params: vec![AbiType::Address(Alias::Exclusive)], result })
+    }
+
     /// The LIR signature of parameters of the types `params`, their result of type `result`.
     pub(crate) fn signature(
         &self,
@@ -38,26 +66,7 @@ impl Lowering<'_, '_> {
             Some(Abi::naked) => Conv::Naked,
             _ => Conv::Vun,
         };
-        let passed = |ty: Ty| -> Result<Option<AbiType>, Unlowered> {
-            Ok(match self.types.repr(ty, at)? {
-                Repr::Zero => None,
-                // An integer extends by its range's sign; a tag or a truth value stored as one is
-                // bits, read unsigned.
-                Repr::Scalar(s) if s.is_int() => {
-                    let signed = self.types.int(ty).is_some_and(|(_, signed)| signed);
-                    Some(AbiType::Int(s, if signed { Ext::Sign } else { Ext::Zero }))
-                }
-                // An exclusive borrow's address reaches what nothing else does while it lives.
-                Repr::Scalar(Scalar::Ptr) => {
-                    let exclusive =
-                        ty.borrowing().is_some_and(|(mode, ..)| mode.access() == Access::Exclusive);
-                    Some(AbiType::Address(if exclusive { Alias::Exclusive } else { Alias::Any }))
-                }
-                Repr::Scalar(s) => Some(AbiType::Scalar(s)),
-                Repr::Memory(_) if conv == Conv::C => Some(AbiType::Record(self.types.record(ty, at)?)),
-                Repr::Memory(layout) => Some(AbiType::Memory { size: layout.size, align: layout.align }),
-            })
-        };
+        let passed = |ty: Ty| self.passed(ty, conv, at);
         let params =
             params.iter().map(|&p| passed(p)).collect::<Result<Vec<_>, _>>()?.into_iter().flatten().collect();
         let result = passed(result)?;

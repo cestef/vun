@@ -84,6 +84,19 @@ pub struct Frame {
     pub name: Option<Symbol>,
 }
 
+impl Frame {
+    /// The instantiation of the coroutine function making frames of this type.
+    #[must_use]
+    pub fn instantiation(&self) -> crate::eval::Instantiation {
+        let f = crate::eval::Func {
+            literal: self.literal.clone(),
+            within: self.within.clone().map(std::sync::Arc::new),
+            staged: std::sync::Arc::from([]),
+        };
+        crate::eval::Instantiation::new(f, self.args.clone())
+    }
+}
+
 /// The type of a closure literal: where it is written, the call it was evaluated in, the type of
 /// each capture by the name of the binder captured, and the signature of its function.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]

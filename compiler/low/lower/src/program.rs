@@ -18,7 +18,7 @@ use vun_sema::item::DeclRef;
 use vun_sema::target::TargetOf;
 use vun_sema::ty::Value;
 
-use crate::func::FnLower;
+use crate::func::{FnLower, Mode};
 use crate::repr::Types;
 use crate::unlowered::{Form, Unlowered, Why};
 
@@ -41,6 +41,9 @@ pub(crate) struct Lowering<'a, 'db> {
     pub(crate) env: Env<'a, 'db>,
     pub(crate) unit: Unit,
     functions: HashMap<Instantiation, FuncId>,
+    /// The `end` of each coroutine function, after every function; its `resume` is at the
+    /// coroutine's own position.
+    ends: HashMap<Instantiation, FuncId>,
     imports: HashMap<Symbol, ImportId>,
     /// The functions the program exports, by symbol: what a link symbol of the program names.
     exports: HashMap<Symbol, FuncId>,
@@ -60,11 +63,28 @@ impl<'a, 'db> Lowering<'a, 'db> {
         let unit = Unit { pointer_bits: types.pointer_bits(), ..Unit::default() };
         let functions =
             program.functions.iter().enumerate().map(|(i, f)| (f.clone(), FuncId::new(i))).collect();
+        let mut bodies = Vec::new();
+        for f in &program.functions {
+            bodies.push(cx.get::<Concrete>(f).map_err(|u| Unlowered { at: u.at(), why: Why::Unready(u) }));
+        }
+        let coroutines: Vec<&Instantiation> = program
+            .functions
+            .iter()
+            .zip(&bodies)
+            .filter(|(_, b)| b.as_ref().is_ok_and(|b| b.suspends()))
+            .map(|(f, _)| f)
+            .collect();
+        let ends = coroutines
+            .iter()
+            .enumerate()
+            .map(|(k, &f)| (f.clone(), FuncId::new(program.functions.len() + k)))
+            .collect();
         let mut l = Self {
             types,
             env,
             unit,
             functions,
+            ends,
             imports: HashMap::new(),
             exports: program.exports.iter().map(|&(i, symbol)| (symbol, FuncId::new(i))).collect(),
             data: HashMap::new(),
@@ -73,12 +93,23 @@ impl<'a, 'db> Lowering<'a, 'db> {
         if let Some((i, unready)) = program.unready.first() {
             return Err(Unlowered { at: i.f.literal.expr.origin, why: Why::Unready(unready.clone()) });
         }
-        for (i, f) in program.functions.iter().enumerate() {
-            let body = cx.get::<Concrete>(f).map_err(|u| Unlowered { at: u.at(), why: Why::Unready(u) })?;
+        for (i, (f, body)) in program.functions.iter().zip(bodies).enumerate() {
+            let body = body?;
             let export = program.exports.iter().find(|(at, _)| *at == i).map(|&(_, symbol)| symbol);
-            let linkage = export.map_or(Linkage::Internal, Linkage::Export);
-            let func = FnLower::lower(&mut l, f, &body, linkage)?;
+            let func = match export {
+                None if body.suspends() => FnLower::coroutine(&mut l, f, &body, Mode::Resume)?,
+                // A coroutine function's frames are built where it is called: it has no symbol.
+                Some(_) if body.suspends() => return Err(Unlowered::unsupported(body.origin, Form::Frame)),
+                export => {
+                    FnLower::lower(&mut l, f, &body, export.map_or(Linkage::Internal, Linkage::Export))?
+                }
+            };
             l.unit.functions.push(func);
+        }
+        for f in coroutines {
+            let body = cx.get::<Concrete>(f).map_err(|u| Unlowered { at: u.at(), why: Why::Unready(u) })?;
+            let end = FnLower::coroutine(&mut l, f, &body, Mode::End)?;
+            l.unit.functions.push(end);
         }
         Ok(l.unit)
     }
@@ -86,6 +117,12 @@ impl<'a, 'db> Lowering<'a, 'db> {
     /// The id of the function `f` lowers to.
     pub(crate) fn function(&self, f: &Instantiation, at: OriginId) -> Result<FuncId, Unlowered> {
         self.functions.get(f).copied().ok_or(Unlowered::unsupported(at, Form::Callee))
+    }
+
+    /// The `resume` and `end` of the coroutine instantiation `f`.
+    pub(crate) fn coroutine(&self, f: &Instantiation, at: OriginId) -> Result<(FuncId, FuncId), Unlowered> {
+        let unlowered = || Unlowered::unsupported(at, Form::Frame);
+        Ok((*self.functions.get(f).ok_or_else(unlowered)?, *self.ends.get(f).ok_or_else(unlowered)?))
     }
 
     /// What the declaration the linker provides names: the function the program exports under
