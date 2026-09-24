@@ -104,13 +104,16 @@ Front end and infrastructure (stable; see the code for detail): `overt-index` (`
 **MIR** (`compiler/mid/mir`): places with projections (`Deref`, `Field`, `Index`, `Position`,
 `Payload`); rvalues `Use`, `Binary`, `Unary`, `Range`, `Narrow`, `Aggregate` (struct, variant,
 tuple, array, closure), `Call`, `Ref`, `IsVariant`, `Resume`, `Repeat`, `Comptime`, `Quote`;
-terminators `Return`, `Goto`, `Branch`, `Yield`, `Unreachable`; `LocalDecl { name, ty, role }`.
+terminators `Return`, `Goto`, `Branch`, `Yield`, `Defer`, `Unreachable`; `LocalDecl { name, ty, role }`.
 `build/`: one module per form (blocks, calls with receivers per signature, places, patterns,
-control, loops with `for p in e`, suspension, closures, staged, `?`, aggregates). Unlowered forms
+control, loops with `for p in e`, suspension, closures, staged, `?`, aggregates, `defer`: the
+statement lowered again at each exit behind `Defer { consumes, run, skip }`). Binder locals take
+their types from `TypedBody::binders`. Unlowered forms
 are `Unbuilt { at }`; `Body::verify` runs on every lowered body in the tests.
 
 **Passes** (`compiler/mid/passes`): `places/` (query `PlaceStates`): uninitialized reads, joins,
-`&out` targets, moves of linear values, `place.linear_leak` at returns. Stage `places` in the
+`&out` targets, moves of linear values, `place.linear_leak` at returns, `Defer` decided statically
+(runs where every consumed local is `init`). Stage `places` in the
 driver; stages declare `Input::{Source, Mir}` so the corpus keeps MIR reports pending in bodies
 MIR does not lower (`Session::unlowered`).
 
@@ -122,23 +125,22 @@ model); frames suspend and resume (`frames.rs`).
 `Coverage` (typed expressions, lowered functions, what stops MIR); `cargo xtask {generate,
 corpus, lines}`.
 
-Progress (corpus/accept): 54% of body expressions typed, 63 of 102 functions lowered. Corpus:
-163 passed, 27 pending, 20 shown, 0 failed. 183 tests.
+Progress (corpus/accept): 55% of body expressions typed, 67 of 105 functions lowered. Corpus:
+165 passed, 27 pending, 20 shown, 0 failed. 184 tests.
 
 ## 6. Decisions
 
 Decisions 1 to 84, 91 and 92 are accepted (65 to 84 on the agent's recommendation when the user
-asked to settle them; 91 and 92 with the user's choices). 85 to 90 and 93 to 95 are proposed:
+asked to settle them; 91 and 92 with the user's choices). 85 to 90 and 93 to 96 are proposed:
 $for in bodies (85), code values (86), quote levels (87), MIR places (88), MIR patterns and typed
 annotations (89), linked values and repeats (90), layout (93), place states (94), kinds and moves
-(95). New language rules go to `decisions.md` as proposed unless the user approves them.
+(95), `defer` (96). New language rules go to `decisions.md` as proposed unless the user approves them.
 
 ## 7. Next steps, in order
 
-1. `defer` (spec 05, section 3): lower the deferred statement at every exit, then drop it on
-   exits where its linear operand is `uninit`; an ambiguous state there is an error. Then scope
-   exits inside a body (leaks are found at the function's return only), `fixed` and `scoped`
-   kinds, frames' `end` running their defers.
+1. After `defer`: leaks at scope exits inside a body (found at the function's return only
+   today), `fixed` and `scoped` kinds, frames' `end` running their defers. `memory/defer.ov`
+   waits on `Result.map_err` (step 3).
 2. Borrow rules (spec 05, sections 4 and 7; `borrow.*` reject programs): exclusivity, escape,
    scoped values in free results.
 3. Library and stand-ins so `types.no_member` on values can turn on (the probe in
