@@ -20,7 +20,8 @@ ends := () -> Iter(u8) { yield 1; 5 };
 frame := () -> u8 { three() };
 ",
     );
-    let found = |expected: &str, ty: &str| (errors::TYPES_MISMATCH, format!("expected `{expected}`, found `{ty}`"));
+    let found =
+        |expected: &str, ty: &str| (errors::TYPES_MISMATCH, format!("expected `{expected}`, found `{ty}`"));
     let fit = |ty: &str| (errors::INT_DOES_NOT_FIT, format!("value does not fit the type `{ty}`"));
     assert_eq!(
         fixture.reported(&file),

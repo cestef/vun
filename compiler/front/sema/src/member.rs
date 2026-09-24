@@ -99,6 +99,12 @@ impl Query for Members {
         }
         Some(Arc::new(table))
     }
+
+    /// A type's members read while they are being computed, as by `$for f in fields(Self)` in
+    /// its own body (spec 03, section 6: the freeze rule).
+    fn cycle(_: &Cx<'_>, _: &Ty, _: &Cycle) -> Self::Value {
+        None
+    }
 }
 
 impl MemberTable {
@@ -143,7 +149,12 @@ impl MemberTable {
         let hir = &env.parsed.hir;
         match member {
             Member::Field(field) => {
-                let Some(name) = env.name(&field.name) else {
+                // A `_` field takes its space and is reached by no name, such as reserved bits.
+                let name = match &field.name {
+                    Name::Hole => TokenKind::Underscore.text().map(Symbol::intern),
+                    name => env.name(name),
+                };
+                let Some(name) = name else {
                     self.complete = false;
                     return;
                 };

@@ -198,6 +198,13 @@ impl Interval {
         })
     }
 
+    /// How many integers the range holds, when it is bounded.
+    #[must_use]
+    pub fn count(&self) -> Option<Integer> {
+        let (lo, hi) = (self.lo.finite()?, self.hi.finite()?);
+        Some(&(hi - lo) + &Integer::from(1))
+    }
+
     /// Where the range is stored, or `None` past 128 bits (the width cap, rule 5) or for an
     /// unbounded range, which exists at compile time only.
     #[must_use]

@@ -10,6 +10,7 @@ mod fetch;
 mod forms;
 mod generics;
 mod impls;
+mod layout;
 mod loops;
 mod mir;
 mod namespaces;

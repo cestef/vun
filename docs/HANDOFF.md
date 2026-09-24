@@ -330,6 +330,11 @@ In order:
      Resumed}`, `Body::suspends`. Not done: `end` of frames (defers), a `for`'s value from
      `done`, frames at run time (state machines, spec 06 section 5), `f.Frame` as a written
      name, coroutine recursion checks.
+   - Decision 93, layout: `sema/src/layout.rs` (`Layout { size, align, niches }`, query
+     `Layouts`, `Layouts::bits` for bit structs), `env/attr.rs` (`Env::{attrs_of, attribute}`,
+     also used by `Func::fuel`), `lang.meta.size`, `check/layout.rs` (`layout.bits_width`),
+     `_` fields kept in `MemberTable`, `Members` returns nothing on a cycle. `defer` waits for
+     place states (it must skip exits where its linear operand moved, spec 05 section 3).
    - `types.no_member` on values stays off: turning it on (tried) reports members the corpus
      stand-ins lack. Needed first: stand-in methods for `Timer`, `Serial`, `Led`, `Dma`, `Fs`,
      `Alloc`, `Device`, `System`, `Cache`, `Queue`, `Packet`, `Uart` in `corpus/support`,

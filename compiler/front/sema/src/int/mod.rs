@@ -78,6 +78,12 @@ impl Integer {
         self.0.magnitude().bits()
     }
 
+    /// The value, if it fits `u128`.
+    #[must_use]
+    pub fn to_u128(&self) -> Option<u128> {
+        u128::try_from(&self.0).ok()
+    }
+
     /// The value, if it fits `i128`.
     #[must_use]
     pub fn to_i128(&self) -> Option<i128> {

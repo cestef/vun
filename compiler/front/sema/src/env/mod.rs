@@ -7,6 +7,7 @@
 //! which checks treat as unknown and never report.
 
 mod aggregate;
+mod attr;
 mod code;
 mod condition;
 mod eval;

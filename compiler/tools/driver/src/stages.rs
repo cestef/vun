@@ -36,6 +36,7 @@ pub const STAGES: &[Stage] = &[
             errors::NAMES_VISIBILITY,
             errors::COMPTIME,
             errors::IMPL,
+            errors::LAYOUT_BITS_WIDTH,
         ],
     },
 ];

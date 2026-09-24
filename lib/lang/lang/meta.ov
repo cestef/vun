@@ -22,5 +22,8 @@ fields: ($T: type) -> &[Field] = _;
 /// written in, with its compile-time arguments.
 name_of: ($T: type) -> &[u8] = _;
 
+/// The size of `T` in bytes under the target (spec 05, section 6).
+size: ($T: type) -> usize = _;
+
 /// The source text of the code `c`, as written.
 source: ($T: type, c: &Code(T)) -> &[u8] = _;

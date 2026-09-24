@@ -1,7 +1,7 @@
 //! Reflection and code generation helpers over `lang.meta` (spec 03), including
 //! `collect(package, attr)`, which gathers declarations carrying an attribute (decision 42).
 
-..lang.meta.{ Field, fields, name_of };
+..lang.meta.{ Field, fields, name_of, size };
 
 /// What a code value tells of itself (spec 03, section 4). A code value is passed by borrow:
 /// a parameter of type `Code(T)` itself would receive its argument as code.

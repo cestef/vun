@@ -2,7 +2,6 @@
 //! `#[comptime.fuel(n)]` on the declaration of the function called. The attribute is the
 //! primitive `lang.comptime.fuel`, read as data.
 
-use overt_hir::tree::{Arg, Entry, ExprKind};
 use overt_query::Cx;
 
 use crate::Primitive;
@@ -26,16 +25,9 @@ impl Func {
     /// literal, if one does.
     fn set_fuel(&self, cx: &Cx<'_>) -> Option<u64> {
         let env = Env::of(cx, &self.literal.file)?;
-        let hir = &env.parsed.hir;
-        let (_, decl) = hir.decls.iter().find(|(_, d)| d.value == Some(self.literal.expr.id))?;
-        decl.attrs.iter().find_map(|&attr| {
-            let ExprKind::Call { callee, args } = &hir.exprs[attr].kind else { return None };
-            let Ok(Value::Primitive(Primitive::Comptime(Comptime::fuel))) = env.eval(*callee) else {
-                return None;
-            };
-            let [Entry::One(Arg { name: None, value })] = args.as_slice() else { return None };
-            let Ok(Value::Int(n)) = env.eval(*value) else { return None };
-            u64::try_from(n.to_i128()?).ok()
-        })
+        let attrs = env.attrs_of(self.literal.expr.id);
+        let args = env.attribute(&attrs, Primitive::Comptime(Comptime::fuel))?;
+        let [Value::Int(n)] = args.as_slice() else { return None };
+        u64::try_from(n.to_i128()?).ok()
     }
 }

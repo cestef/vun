@@ -6,6 +6,7 @@ use overt_grammar::Narrowing;
 use crate::Primitive;
 use crate::env::{Env, Unevaluated};
 use crate::int::Integer;
+use crate::layout::Layouts;
 use crate::primitives::bounds::Bounds;
 use crate::primitives::int::Int;
 use crate::primitives::lang::Lang;
@@ -76,6 +77,11 @@ impl Primitive {
             }
             (Self::Meta(Meta::name_of), [ty]) => {
                 Ok(Value::string(&ty.as_type().ok_or(Unevaluated::Unsupported)?.to_string()))
+            }
+            (Self::Meta(Meta::size), [ty]) => {
+                let ty = ty.as_type().ok_or(Unevaluated::Unsupported)?;
+                let layout = env.cx.get::<Layouts>(&ty).ok_or(Unevaluated::Unsupported)?;
+                Ok(Value::Int(Integer::from(u128::from(layout.size))))
             }
             (Self::Meta(Meta::source), [_, Value::Code(code)]) => {
                 let env = Env::quoted(env.cx, code).ok_or(Unevaluated::Absent)?;
