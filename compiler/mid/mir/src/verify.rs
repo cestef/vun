@@ -152,7 +152,8 @@ impl Body {
             | Rvalue::Repeat { operand: o, .. } => vec![o],
             Rvalue::Ref { place, .. }
             | Rvalue::IsVariant { place, .. }
-            | Rvalue::Resume { frame: place, .. } => {
+            | Rvalue::Resume { frame: place, .. }
+            | Rvalue::End { frame: place } => {
                 return self.place(at, place);
             }
             Rvalue::Aggregate { parts, .. } => parts.iter().collect(),

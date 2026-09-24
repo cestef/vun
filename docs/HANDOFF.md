@@ -168,6 +168,10 @@ Library diagnostics (decision 125): `lang.diag.error`, `std.diag.error`, `compti
 moved to the caller (`Typer::absorb`), `$e` run while typing (`Typer::undecided` counts undecided
 `$if`/`$for`), `Typer::evaluating` (evaluation with the types found so far).
 
+Executors (decision 126): `std.task.{Event, Wait, select, run, block_on}`; frames' `resume`
+and `end` typed and lowered (MIR `Rvalue::End`), `Frame::written` for inference through aliases
+such as `Async(A)`. MIR lowers 92 of 115 functions.
+
 Language surface since the review (decisions 99 to 105): omitted `$` arguments inferred
 (`typeck/omitted.rs`, `TypedBody::inferred`, `types.cannot_infer`, `types.arity`); variant
 constructors as values (`Value::Constructor`); `.` through owners (`Env::reach`, `Hop`);
@@ -190,7 +194,8 @@ patterns and typed annotations (89), linked values and repeats (90), layout (93)
 
 ## 7. Next steps, in order
 
-1. `std` next: executors over frames (`std.task.run`, `select`), `std.iter` adapters as
+1. `std` next: `std.task.Pool`, `std.testing.Sim`, the runtimes' `std.task.sleep` (WFI on
+   bare metal, a futex wait hosted), `std.iter` adapters as
    coroutine functions, `System.args`, a Linux runtime without the C library, `Allocator`
    impls for `Fixed`, text (`Str`) and collections. Pointer primitives, `Own`, `Fixed`, `fail`,
    `expect`, `ptr`, `option`, `result`, `cmp` exist (decision 107).

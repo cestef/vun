@@ -150,7 +150,8 @@ impl Checker<'_> {
         let mut uses: Vec<Local> = stmt.value.operands().into_iter().flat_map(Self::operand_locals).collect();
         if let Rvalue::Ref { place, .. }
         | Rvalue::IsVariant { place, .. }
-        | Rvalue::Resume { frame: place, .. } = &stmt.value
+        | Rvalue::Resume { frame: place, .. }
+        | Rvalue::End { frame: place } = &stmt.value
         {
             uses.push(place.local);
             uses.extend(place.indices());

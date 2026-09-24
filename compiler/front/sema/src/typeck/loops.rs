@@ -105,7 +105,8 @@ impl Typer<'_, '_, '_> {
     /// How `for p in e` drives `e` of type `ty`, and the type of the items it binds, looking
     /// through a borrow when the borrow itself is not iterated.
     pub(super) fn iteration(&self, ty: Ty) -> Option<(Iteration, Ty)> {
-        let &(interface, _, iterator, resume, item, _) = ITERATION.first()?;
+        let &(interface, _, iterator, resume, ..) = ITERATION.first()?;
+        let &(.., item, _) = ITERATION.first()?;
         let witness =
             self.witness_of(interface, ty).or_else(|| self.witness_of(interface, ty.borrowed()?))?;
         let member = (witness, Symbol::intern(iterator));

@@ -195,6 +195,12 @@ impl<'b, 'a, 'db> Frame<'b, 'a, 'db> {
             }
             Rvalue::Ref { mode: None, place } => self.read(place),
             Rvalue::Resume { frame, step } => self.resume(frame, *step),
+            // A finished frame ends with nothing to run; the pending defers of a suspended one do
+            // not run at compile time yet.
+            Rvalue::End { frame } => match self.read(frame)? {
+                Value::Frame(suspended) if suspended.at.is_none() => Ok(Value::Tuple(Vec::new())),
+                _ => Err(Unevaluated::Unsupported),
+            },
             Rvalue::Repeat { operand, count } => Value::repeat(self.operand(operand)?, count),
             Rvalue::IsVariant { place, variant } => match self.read(place)? {
                 Value::Variant { name, .. } => self.env.decide(name == *variant),

@@ -85,10 +85,19 @@ iterators into plain loops.
 
 ## 4. Executors
 
-Executors are `std` library code with no compiler support:
+Executors are `std` library code with no compiler support. A frame answers its interface's
+`resume` and `end` itself (the table `iteration`), so an executor calls `t.resume()` and
+`t.end()` like any method. An `Event` carries an atomic mark that `fire` sets, from an interrupt
+handler too, and an executor takes; a `Wait` names an event and, through `also`, another wait,
+a chain living in the waiting frames, so waiting on either of two tasks allocates nothing. A task
+resumed before its event fires finds no mark and yields again.
 
-- `std.task.run(tasks)`: single-threaded, sleeps until an interrupt or event (embedded, bare metal);
+- `std.task.run(tasks)`: single-threaded, over a tuple of borrowed tasks that never finish; it
+  resumes each task whose wait is ready and sleeps through the runtime's `std.task.sleep` (a
+  typed link symbol) between rounds (embedded, bare metal);
 - `std.task.block_on(t)`: hosted, one task;
+- `std.task.select(.{ &mut a, &mut b })`: inside a task, runs two tasks until one finishes and
+  gives `.first(r)` or `.second(r)`; both stay for the caller to end;
 - `std.task.Pool(n)`: hosted, thread pool;
 - `std.testing.Sim`: deterministic, seeded, virtual time (spec 11).
 

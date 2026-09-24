@@ -4,7 +4,7 @@
 //! and how long a call holds each parameter's borrow.
 
 use vun_grammar::{BORROWS, Extent, ITERATION, TokenKind};
-use vun_hir::tree::{Entry, ExprId, ExprKind, Param, PatKind};
+use vun_hir::tree::{Arg, Entry, ExprId, ExprKind, Param, PatKind};
 use vun_intern::Symbol;
 use vun_origin::OriginTable;
 use vun_query::Cx;
@@ -65,6 +65,7 @@ impl Env<'_, '_> {
                     within: self.instance.clone(),
                     args: args.to_vec(),
                     interface,
+                    written: returns.and_then(|r| self.written_call(r)),
                     name,
                 };
                 Value::Type(TyKind::Frame(frame).intern())
@@ -97,26 +98,50 @@ impl Env<'_, '_> {
     /// as `lang.Step(u32, ())`.
     #[must_use]
     pub fn resumed(&self, frame: Ty) -> Option<Ty> {
+        let &(_, _, _, resume, ..) = ITERATION.first()?;
+        Some(self.frame_member(frame, Symbol::intern(resume))?.signature()?.result)
+    }
+
+    /// The type of the member `name` a frame of type `frame` answers itself: a requirement of
+    /// the interface it implements, such as `resume`.
+    #[must_use]
+    pub fn frame_member(&self, frame: Ty, name: Symbol) -> Option<Ty> {
         let TyKind::Frame(Frame { interface, .. }) = &*frame else { return None };
-        let &(_, _, _, resume, _, _) = ITERATION.first()?;
         let requirements =
             self.cx.get::<Call>(&Instance { f: interface.clone(), args: vec![Value::Type(frame)] });
         let requirements = requirements.ok()?.as_type()?;
-        let resumed = self.cx.get::<MemberType>(&(requirements, Symbol::intern(resume))).ok()?;
-        Some(resumed.ty.signature()?.result)
+        Some(self.cx.get::<MemberType>(&(requirements, name)).ok()?.ty)
     }
 
     /// What frames of type `frame` yield and return: the payloads of the variants `item` and
     /// `done` of what resuming them gives.
     #[must_use]
     pub fn frame_step(&self, frame: Ty) -> Option<(Ty, Ty)> {
-        let &(_, _, _, _, item, done) = ITERATION.first()?;
+        let &(.., item, done) = ITERATION.first()?;
         let members = self.cx.get::<Members>(&self.resumed(frame)?)?;
         let payload = |variant: &str| match members.find(Symbol::intern(variant)) {
             Found::Variant(v) => v.payload.first()?.as_ref().ok().copied(),
             _ => None,
         };
         Some((payload(item)?, payload(done)?))
+    }
+}
+
+impl Env<'_, '_> {
+    /// The call `expr` writes, its callee and arguments evaluated, when it is a call of a
+    /// function value with plain arguments.
+    fn written_call(&self, expr: ExprId) -> Option<Instance> {
+        let ExprKind::Call { callee, args } = &self.parsed.hir.exprs[expr].kind else { return None };
+        let Ok(Value::Fn(f)) = self.eval(*callee) else { return None };
+        // A tuple of types, such as `()`, is the tuple type, as a type argument means it.
+        let args = args.iter().map(|a| match a {
+            Entry::One(Arg { name: None, value }) => match self.eval(*value).ok()? {
+                tuple @ Value::Tuple(_) => Some(tuple.as_type().map_or(tuple, Value::Type)),
+                value => Some(value),
+            },
+            _ => None,
+        });
+        Some(Instance { f, args: args.collect::<Option<_>>()? })
     }
 }
 

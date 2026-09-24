@@ -2,14 +2,15 @@
 //! impls (spec 01, section 4), and an argument for a `Code(T)` parameter is passed as code
 //! (spec 03, section 4).
 
-use vun_hir::tree::{Arg, Entry, ExprId, ExprKind};
+use vun_grammar::ITERATION;
+use vun_hir::tree::{Arg, Entry, ExprId, ExprKind, Name};
 use vun_intern::Symbol;
 use vun_origin::OriginId;
 use vun_sema::member::{MemberType, MemberValue};
-use vun_sema::ty::{Ty, Value};
+use vun_sema::ty::{Ty, TyKind, Value};
 
 use super::{Builder, Unbuilt};
-use crate::body::{Aggregate, Operand, Rvalue};
+use crate::body::{Aggregate, Operand, Rvalue, TerminatorKind};
 use crate::place::Place;
 
 /// A method, by the type it is found through and its name: the key of `MemberType`.
@@ -31,6 +32,9 @@ impl Builder<'_, '_, '_> {
         origin: OriginId,
     ) -> Result<Operand, Unbuilt> {
         let unbuilt = Unbuilt { at: origin };
+        if let Some(value) = self.frame_call(call, callee, args, origin)? {
+            return Ok(value);
+        }
         // `a.f(b)` is `T.f(a, b)`, `f` the method the typer found (spec 01, section 4).
         let (callee, receiver) = match self.method(callee)? {
             Some((f, receiver, method)) => {
@@ -86,7 +90,43 @@ impl Builder<'_, '_, '_> {
             Some(Receiver::Value(operand)) => values[0] = operand,
             None => {}
         }
-        Ok(self.temp(Rvalue::Call { callee, args: values }, origin))
+        let result = self.temp(Rvalue::Call { callee, args: values }, origin);
+        // A call of an empty type, such as `never`, does not come back.
+        if self.type_of(call).is_some_and(|t| t.is_empty()) {
+            self.terminate(TerminatorKind::Unreachable, origin);
+            self.current = self.fresh(origin);
+        }
+        Ok(result)
+    }
+
+    /// `frame.resume()` or `frame.end()` on a frame, which answers its interface's `resume` and
+    /// `end` itself (the table `iteration`); `None` for any other call.
+    fn frame_call(
+        &mut self,
+        call: ExprId,
+        callee: ExprId,
+        args: &[Entry<Arg>],
+        origin: OriginId,
+    ) -> Result<Option<Operand>, Unbuilt> {
+        let ExprKind::Member { object, name: Name::Plain(name) } = self.env.parsed.hir.exprs[callee].kind
+        else {
+            return Ok(None);
+        };
+        let ty = self.type_of(object);
+        let framed = std::iter::successors(ty, |t| t.borrowed()).any(|t| matches!(&*t, TyKind::Frame(_)));
+        let Some(&(_, _, _, resume, end, ..)) = ITERATION.first() else { return Ok(None) };
+        if !framed || !args.is_empty() {
+            return Ok(None);
+        }
+        let rvalue = if name.as_str() == resume {
+            let step = self.type_of(call).ok_or(Unbuilt { at: origin })?;
+            Rvalue::Resume { frame: self.through_borrows(object)?, step }
+        } else if name.as_str() == end {
+            Rvalue::End { frame: self.through_borrows(object)? }
+        } else {
+            return Ok(None);
+        };
+        Ok(Some(self.temp(rvalue, origin)))
     }
 
     /// The method `callee` names through a value, the value, and the method by its type and

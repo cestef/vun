@@ -1,11 +1,88 @@
-//! Asynchronous tasks and executors (spec 06).
+//! Asynchronous tasks and executors (spec 06). A task yields `Wait` requests; the executor, not
+//! the task, owns wakeups. Executors are library code over frames: `run` for bare metal,
+//! `block_on` for one task on a hosted system, `select` inside a task.
 
-/// A request yielded to the executor: resume the task when the event fires.
-Wait := struct {
-    event: &Event,
+/// Something that happens, which an executor watches: an interrupt, a timer, a device. Firing it,
+/// from an interrupt handler too, marks it until an executor takes the mark.
+Event := struct {
+    _fired: std.sync.Atomic(bool),
+
+    init := () -> Event { .{ ._fired = std.sync.Atomic(bool).init(false) } };
+    #[panic.never]
+    fire := (self: &Event) { self._fired.store(true, .release); };
+    /// Whether it fired since the mark was last taken, taking it.
+    #[panic.never]
+    take := (self: &Event) -> bool { self._fired.swap(false, .acquire) };
 };
 
-/// Something that happens, which an executor watches: an interrupt, a timer, a device.
-Event := struct { id: u32 };
+/// A request yielded to the executor: resume the task when `event` fires, or when the wait `also`
+/// names is ready: a chain living in the frames of the tasks waiting.
+Wait := struct {
+    event: &Event,
+    also: ?&Wait = .none,
+
+    /// Whether an event of the chain fired, taking its mark.
+    ready := (self: &Wait) -> bool {
+        self.event.take() or match self.also {
+            .some(other) => other.ready(),
+            .none => false,
+        }
+    };
+};
 
 Async := ($R: type) -> lang.Interface { lang.Coroutine(Wait, R) };
+
+/// Waits for the next event: sleeps the core until an interrupt, or parks a hosted thread. A
+/// typed link symbol the runtime exports (spec 08, section 1).
+sleep_symbol := "vun.task.sleep";
+#[link.symbol(sleep_symbol)]
+sleep: () = _;
+
+/// Which of two tasks finished first, with its result.
+Either := ($A: type, $B: type) -> type { enum { first(A), second(B) } };
+
+/// Runs two tasks until one finishes, and gives its result; both stay for the caller to end.
+select := ($A: type, $B: type, $F: Async(A), $G: Async(B), tasks: (&mut F, &mut G)) -> Async(Either(A, B)) {
+    for {
+        first := match tasks.0.resume() {
+            .done(result) => break .first(result),
+            .yielded(wait) => wait,
+        };
+        second := match tasks.1.resume() {
+            .done(result) => break .second(result),
+            .yielded(wait) => wait,
+        };
+        yield .{ .event = first.event, .also = .some(&second) };
+    }
+};
+
+/// Runs `tasks`, borrows of tasks that never finish, forever: each resumes when an event it waits
+/// on fires, and between rounds the core sleeps until an interrupt.
+run := ($T: type, tasks: T) -> never {
+    mut waits: [lang.meta.items(T).len()]?Wait = [.none; lang.meta.items(T).len()];
+    for {
+        $for i in 0..lang.meta.items(T).len() {
+            ready := match waits[i] {
+                .some(wait) => wait.ready(),
+                .none => true,
+            };
+            if ready {
+                match tasks.$(i).resume() {
+                    .yielded(wait) => { waits[i] = .some(wait); },
+                    .done(never) => never,
+                }
+            }
+        }
+        sleep();
+    }
+};
+
+/// Runs one task to its end on a hosted system, sleeping while it waits.
+block_on := ($R: type, $F: Async(R), task: &mut F) -> R {
+    for {
+        match task.resume() {
+            .done(result) => break result,
+            .yielded(wait) => { for !wait.ready() { sleep(); } },
+        }
+    }
+};

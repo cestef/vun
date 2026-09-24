@@ -182,7 +182,7 @@ impl Typer<'_, '_, '_> {
         self.cell_member(expr, known.ty);
         match &*known.ty {
             TyKind::Record(_) => return self.record_field(expr, known.ty, name, known.stage),
-            TyKind::Param(_) => return self.param_member(expr, known.ty, name),
+            TyKind::Param(_) | TyKind::Frame(_) => return self.required_member(expr, known.ty, name),
             _ => {}
         }
         let members = self.env().cx.get::<Members>(&known.ty);

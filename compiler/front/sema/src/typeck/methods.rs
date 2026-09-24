@@ -34,11 +34,16 @@ impl Typer<'_, '_, '_> {
         self.diag.error(d);
     }
 
-    /// The member `name` of a constrained `$` parameter's value in its generic body: a
-    /// declaration of the interface's requirement struct for it, which is all the body may use.
-    pub(super) fn param_member(&mut self, expr: ExprId, ty: Ty, name: Symbol) -> Option<Known> {
-        let TyKind::Param(param) = &*ty else { return None };
-        let call = Instance { f: param.interface.clone(), args: vec![Value::Type(ty)] };
+    /// The member `name` of a value whose type is known by an interface: a constrained `$`
+    /// parameter in its generic body, which may use only what the interface requires, or a
+    /// frame, which answers its interface's requirements itself (spec 06, section 1).
+    pub(super) fn required_member(&mut self, expr: ExprId, ty: Ty, name: Symbol) -> Option<Known> {
+        let interface = match &*ty {
+            TyKind::Param(param) => &param.interface,
+            TyKind::Frame(frame) => &frame.interface,
+            _ => return None,
+        };
+        let call = Instance { f: interface.clone(), args: vec![Value::Type(ty)] };
         let requirements = self.env().cx.get::<Call>(&call).ok()?.as_type()?;
         let members = self.env().cx.get::<Members>(&requirements)?;
         match members.find(name) {

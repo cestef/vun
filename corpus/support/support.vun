@@ -27,7 +27,7 @@ parse := (f: &File, cfg: &out Config) -> Result((), Error) {
 };
 
 /// Capabilities and devices. Asynchronous stand-ins wait on `ready` once.
-ready := std.task.Event{ .id = 0 };
+ready := std.task.Event.init();
 Duration := enum { ms(u32) };
 Led := struct {
     toggle := (self: &mut Led) {};

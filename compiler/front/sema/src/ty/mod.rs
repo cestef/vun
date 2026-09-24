@@ -68,13 +68,17 @@ pub struct Param {
 
 /// The type of the frames of one coroutine function: its literal, the call it was evaluated in,
 /// the values of its `$` parameters, and the interface it declares, such as `Iter(u32)`, which
-/// the frame implements. Named `f.Frame` after the declaration of the function.
+/// the frame implements, with the call it is written as. Named `f.Frame` after the declaration of
+/// the function.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Frame {
     pub literal: ExprRef,
     pub within: Option<Instance>,
     pub args: Vec<Option<Value>>,
     pub interface: Func,
+    /// The call the interface is written as, when it is one: `Iter(u32)`, whose constructor
+    /// may be an alias of the one making the interface, `lang.Coroutine`.
+    pub written: Option<Instance>,
     pub name: Option<Symbol>,
 }
 

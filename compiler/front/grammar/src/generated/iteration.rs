@@ -8,7 +8,8 @@ use super::*;
 /// What `for p in e` drives (appendix B): the witness of `interface` for the type of `e` gives
 /// the iterator through `function` and names its coroutine interface `iterator`; each item is
 /// the payload of the variant `item` of what the interface's `resume` returns, and the variant
-/// `done` carries what the coroutine returns.
-pub const ITERATION: &[(&str, &str, &str, &str, &str, &str)] = &[
-    ("lang.ops.Iterate", "iter", "Iter", "resume", "yielded", "done"),
+/// `done` carries what the coroutine returns. A frame answers the interface's `resume` and `end`
+/// itself (spec 06, section 1).
+pub const ITERATION: &[(&str, &str, &str, &str, &str, &str, &str)] = &[
+    ("lang.ops.Iterate", "iter", "Iter", "resume", "end", "yielded", "done"),
 ];

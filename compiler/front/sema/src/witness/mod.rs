@@ -82,12 +82,13 @@ impl TyKind {
     }
 
     /// The arguments of the interface made by `constructor` that this type implements: a
-    /// frame implements the interface its function declares, such as `Coroutine(u32, ())`.
+    /// frame implements the interface its function declares, such as `Coroutine(u32, ())`, and
+    /// the call it is written as, such as `Iter(u32)`.
     #[must_use]
     pub fn implements(&self, constructor: &Value) -> Option<Vec<Value>> {
         let (Value::Fn(f), Self::Frame(frame)) = (constructor, self) else { return None };
-        let made = frame.interface.within.as_ref()?;
-        (made.f == *f).then(|| made.args.clone())
+        let made = frame.interface.within.as_deref().into_iter().chain(frame.written.as_ref());
+        made.into_iter().find(|made| made.f == *f).map(|made| made.args.clone())
     }
 }
 

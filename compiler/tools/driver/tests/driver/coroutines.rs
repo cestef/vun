@@ -52,3 +52,40 @@ six: Int(0..=slice()) = 7;
     let reported: Vec<_> = fixture.reported(&file).into_iter().map(|(id, _)| id).collect();
     assert_eq!(reported, [errors::INT_DOES_NOT_FIT, errors::INT_DOES_NOT_FIT, errors::INT_DOES_NOT_FIT]);
 }
+
+#[test]
+fn executors_drive_frames_through_their_own_resume_and_end() {
+    let fixture = Fixture::new("coroutines-executors");
+    let file = fixture.root.write(
+        "executors.vun",
+        "\
+tick := (e: &std.task.Event) -> std.task.Async(never) { for { yield .{ .event = e }; } };
+count := (e: &std.task.Event) -> std.task.Async(u32) { yield .{ .event = e }; 3 };
+go := (e: &std.task.Event) -> never {
+    mut a := tick(e);
+    mut b := tick(e);
+    std.task.run(.{ &mut a, &mut b })
+};
+once := (e: &std.task.Event) -> u32 {
+    mut c := count(e);
+    n := std.task.block_on(&mut c);
+    c.end();
+    n
+};
+either := (e: &std.task.Event) -> std.task.Async(bool) {
+    mut c := count(e);
+    mut d := count(e);
+    r := yield ..std.task.select(.{ &mut c, &mut d });
+    c.end();
+    d.end();
+    match r { .first(_) => true, .second(_) => false }
+};
+kept := (e: &std.task.Event) -> u32 {
+    mut c := count(e);
+    std.task.block_on(&mut c)
+};
+",
+    );
+    let ids: Vec<_> = fixture.reported(&file).into_iter().map(|(id, _)| id).collect();
+    assert_eq!(ids, [errors::PLACE_LINEAR_LEAK], "`kept` never ends its frame");
+}

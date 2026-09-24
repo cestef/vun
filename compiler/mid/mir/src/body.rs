@@ -107,6 +107,11 @@ pub enum Rvalue {
         frame: Place,
         step: Ty,
     },
+    /// Ends the frame at `frame`, consuming it: a finished frame is freed, a suspended one runs
+    /// the defers pending at its suspension point (spec 06, section 1).
+    End {
+        frame: Place,
+    },
     /// `[operand; count]`: an array of `count` copies, `count` known at compile time.
     Repeat {
         operand: Operand,
@@ -162,6 +167,7 @@ impl Rvalue {
             Self::Call { callee, args } => std::iter::once(callee).chain(args).collect(),
             Self::Ref { .. }
             | Self::Resume { .. }
+            | Self::End { .. }
             | Self::IsVariant { .. }
             | Self::Comptime { .. }
             | Self::Quote { .. } => Vec::new(),

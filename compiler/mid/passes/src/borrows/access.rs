@@ -60,7 +60,7 @@ impl Checker<'_> {
         match &stmt.value {
             Rvalue::Ref { mode, place } => accesses.push((place, Self::access(*mode))),
             Rvalue::IsVariant { place, .. } => accesses.push((place, Access::Shared)),
-            Rvalue::Resume { frame, .. } => accesses.push((frame, Access::Exclusive)),
+            Rvalue::Resume { frame, .. } | Rvalue::End { frame } => accesses.push((frame, Access::Exclusive)),
             _ => {}
         }
         accesses

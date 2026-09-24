@@ -82,7 +82,8 @@ impl Check<'_, '_, '_, '_> {
             }
             Rvalue::Ref { place, .. }
             | Rvalue::IsVariant { place, .. }
-            | Rvalue::Resume { frame: place, .. } => {
+            | Rvalue::Resume { frame: place, .. }
+            | Rvalue::End { frame: place } => {
                 self.indices(place, origin);
             }
             _ => {}

@@ -103,7 +103,7 @@ impl Builder<'_, '_, '_> {
     }
 
     /// The place `object`, dereferenced once for each borrow its type is.
-    fn through_borrows(&mut self, object: ExprId) -> Result<Place, Unbuilt> {
+    pub(super) fn through_borrows(&mut self, object: ExprId) -> Result<Place, Unbuilt> {
         let mut place = self.place(object)?;
         let mut ty = self.typed().and_then(|t| t.types.get(&object).map(|k| k.ty));
         while let Some(pointee) = ty.and_then(|t| t.borrowed()) {

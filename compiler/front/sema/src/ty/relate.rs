@@ -8,6 +8,12 @@ use crate::Primitive;
 use crate::primitives::lang::Lang;
 
 impl TyKind {
+    /// Whether this type has no value, such as `never`: what has it never finishes.
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        matches!(self, Self::Nominal(n) if n.kind == NominalKind::Empty)
+    }
+
     /// Whether a value of type `found` is accepted where this type is expected: integers whose
     /// range lies within (spec 04, rule 2), tuples, arrays and bounds whose items are, bounds
     /// where a `lang.Range` is expected, a borrow of an array where a borrow of a slice of its
@@ -16,7 +22,7 @@ impl TyKind {
     /// anywhere: it has no value to be wrong, so a trap or a `return` fits any arm.
     #[must_use]
     pub fn accepts(&self, found: &Self) -> bool {
-        if matches!(found, Self::Nominal(n) if n.kind == NominalKind::Empty) {
+        if found.is_empty() {
             return true;
         }
         if let (Some(expected), Some(found)) = (self.interval(), found.interval()) {
@@ -78,9 +84,7 @@ impl TyKind {
     fn made_with_empty(&self, found: &Self) -> bool {
         let (Self::Nominal(expected), Self::Nominal(found)) = (self, found) else { return false };
         let (Some(call), Some(found_call)) = (&expected.instance, &found.instance) else { return false };
-        let empty = |v: &Value| {
-            v.as_type().is_some_and(|t| matches!(&*t, Self::Nominal(n) if n.kind == NominalKind::Empty))
-        };
+        let empty = |v: &Value| v.as_type().is_some_and(|t| t.is_empty());
         expected.literal == found.literal
             && call.f == found_call.f
             && call.args.len() == found_call.args.len()

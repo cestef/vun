@@ -175,13 +175,15 @@ early_return := [
 /// What `for p in e` drives (appendix B): the witness of `interface` for the type of `e` gives
 /// the iterator through `function` and names its coroutine interface `iterator`; each item is
 /// the payload of the variant `item` of what the interface's `resume` returns, and the variant
-/// `done` carries what the coroutine returns.
+/// `done` carries what the coroutine returns. A frame answers the interface's `resume` and `end`
+/// itself (spec 06, section 1).
 iteration := [
     .{
         .interface = "lang.ops.Iterate",
         .function = "iter",
         .iterator = "Iter",
         .resume = "resume",
+        .end = "end",
         .item = "yielded",
         .done = "done",
     },
