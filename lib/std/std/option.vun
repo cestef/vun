@@ -21,3 +21,14 @@ OptionMethods := ($T: type) -> type { struct {
         match o { .some(v) => .ok(v), .none => .err(error) }
     };
 } };
+
+/// Options are equal when both are `.none`, or both hold equal values.
+#[impl(lang.ops.Eq(Option))]
+OptionEq := ($T: type) -> type { struct {
+    eq := (a: &?T, b: &?T) -> bool {
+        match a {
+            .some(x) => match b { .some(y) => x == y, .none => false },
+            .none => match b { .some(_) => false, .none => true },
+        }
+    };
+} };

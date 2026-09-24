@@ -3,7 +3,6 @@
 //! conditions, so their values are built here.
 
 use vun_desugar::{FORMS, Form};
-use vun_grammar::TokenKind;
 use vun_hir::tree::{BlockId, Cond, ExprId, ExprKind};
 
 use super::{Env, Unevaluated};
@@ -59,26 +58,16 @@ impl Env<'_, '_> {
         }
     }
 
-    /// `left op right` at compile time, comparisons included.
+    /// The `lang.Ordering` saying where one value is against another.
     ///
     /// # Errors
-    /// As [`Value::binary`].
-    pub fn binary(&self, op: TokenKind, left: &Value, right: &Value) -> Result<Value, Unevaluated> {
-        match Value::compare(op, left, right) {
-            Some(holds) => self.decide(holds),
-            None => Value::binary(op, left, right),
-        }
-    }
-
-    /// `op operand` at compile time, `!` on conditions included.
-    ///
-    /// # Errors
-    /// As [`Value::unary`].
-    pub fn unary(&self, op: TokenKind, operand: &Value) -> Result<Value, Unevaluated> {
-        match op {
-            TokenKind::Bang => self.decide(!self.holds(operand)?),
-            _ => Value::unary(op, operand),
-        }
+    /// Returns why `lang.Ordering` is not known here.
+    pub fn ordering(&self, order: std::cmp::Ordering) -> Result<Value, Unevaluated> {
+        self.item(match order {
+            std::cmp::Ordering::Less => vun_items::lang::Ordering::less,
+            std::cmp::Ordering::Equal => vun_items::lang::Ordering::equal,
+            std::cmp::Ordering::Greater => vun_items::lang::Ordering::greater,
+        })
     }
 
     /// The branch the `if` expression `expr` takes when its conditions are known here: `$if` as

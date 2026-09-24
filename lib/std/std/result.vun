@@ -26,3 +26,14 @@ ResultMethods := ($T: type, $E: type) -> type { struct {
     #[panic.never]
     ok := (r: Result(T, E)) -> ?T { match r { .ok(v) => .some(v), .err(_) => .none } };
 } };
+
+/// Results are equal when both hold equal values, or both equal errors.
+#[impl(lang.ops.Eq(Result))]
+ResultEq := ($T: type, $E: type) -> type { struct {
+    eq := (a: &Result(T, E), b: &Result(T, E)) -> bool {
+        match a {
+            .ok(x) => match b { .ok(y) => x == y, .err(_) => false },
+            .err(x) => match b { .ok(_) => false, .err(y) => x == y },
+        }
+    };
+} };

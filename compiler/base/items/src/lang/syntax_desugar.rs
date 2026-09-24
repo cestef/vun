@@ -7,8 +7,14 @@
 )]
 use crate::Item;
 /// What infix operators desugar to (appendix B): `a op b` is `function(a, b)` of the interface at
-/// `interface`, for the type of `a`. `and`, `or` and ranges are not interfaces.
+/// `interface`, for the type of `a`, the operands passed as the function's parameters ask. `and`,
+/// `or` and ranges are not interfaces.
 pub const operators: Item = Item::new(&["lang", "syntax", "desugar", "operators"]);
+/// What prefix operators desugar to (appendix B): `op a` is `function(a)` of the interface at
+/// `interface`, for the type of `a`. `!` is not an interface: it negates a condition (`forms`).
+pub const prefix_operators: Item = Item::new(
+    &["lang", "syntax", "desugar", "prefix_operators"],
+);
 /// Syntax whose meaning is a `lang` item, besides operators and borrows (appendix B).
 pub const Form: Item = Item::new(&["lang", "syntax", "desugar", "Form"]);
 /// The item each form means.

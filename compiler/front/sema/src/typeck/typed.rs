@@ -1,0 +1,111 @@
+//! Typed bodies: what typing a body finds, and the query typing each instantiation.
+
+use std::collections::{BTreeMap, BTreeSet};
+use std::sync::Arc;
+
+use vun_diag::DiagCtxt;
+use vun_hir::tree::{BinderId, ExprId, ExprKind, Hir, NsId, PatId};
+use vun_hir::visit::Visitor;
+use vun_intern::Symbol;
+use vun_query::{Cx, Cycle, Query};
+
+use super::{Iteration, Known, Operation, Operator, Stage, Typer};
+use crate::env::Env;
+use crate::eval::Instantiation;
+use crate::ty::{Ty, Value};
+
+/// A typed function body: the type of each expression typed, what typing reports, and how many
+/// expressions the body holds, nested functions and quotes apart.
+#[derive(Debug, Default, PartialEq, Eq, Hash)]
+pub struct TypedBody {
+    pub types: BTreeMap<ExprId, Known>,
+    /// The type each local of the body holds, steps' included.
+    pub binders: BTreeMap<BinderId, Ty>,
+    /// Each method named through a value, with the struct declaring it and its name.
+    pub methods: BTreeMap<ExprId, (Ty, Symbol)>,
+    /// The body of each step of a `$for`, typed with its binder bound (spec 03, section 1).
+    pub steps: BTreeMap<Step, Arc<TypedBody>>,
+    /// How each `for p in e` drives `e`, by `e`.
+    pub iterations: BTreeMap<ExprId, Iteration>,
+    /// The `$` arguments each call leaves out, by parameter, as inferred.
+    pub inferred: BTreeMap<ExprId, Vec<(usize, Value)>>,
+    /// The function each operator calls (spec 02, section 4).
+    pub operators: BTreeMap<Operation, Operator>,
+    pub diag: DiagCtxt,
+    pub exprs: usize,
+}
+
+impl TypedBody {
+    /// How many expressions are typed, in the body or in some step of it.
+    #[must_use]
+    pub fn typed_count(&self) -> usize {
+        let mut typed = BTreeSet::new();
+        self.collect_typed(&mut typed);
+        typed.len()
+    }
+
+    fn collect_typed(&self, typed: &mut BTreeSet<ExprId>) {
+        typed.extend(self.types.keys().copied());
+        for step in self.steps.values() {
+            step.collect_typed(typed);
+        }
+    }
+}
+
+/// One step of a `$for` in a body: the `$for`, by its pattern, and the item bound.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct Step {
+    pub at: PatId,
+    pub index: usize,
+}
+
+/// Counts the expressions of a body, as the typer reaches them: not into nested functions or
+/// namespaces, which are typed on their own, but into closures, typed as part of the body.
+struct Exprs(usize);
+
+impl Visitor for Exprs {
+    fn namespace(&mut self, _: &Hir, _: NsId) {}
+
+    fn expr(&mut self, hir: &Hir, expr: ExprId) {
+        self.0 += 1;
+        match &hir.exprs[expr].kind {
+            ExprKind::Fn { .. } => {}
+            ExprKind::Closure { func, .. } => {
+                vun_hir::visit::walk_expr(self, hir, expr);
+                vun_hir::visit::walk_expr(self, hir, *func);
+            }
+            _ => vun_hir::visit::walk_expr(self, hir, expr),
+        }
+    }
+}
+
+/// The typed body of an instantiation of a function literal; `None` for a file the driver did
+/// not read. A generic body is typed for each instantiation its callers reach, with its `$`
+/// parameters bound, and what that reports is reported at the generic definition.
+pub struct Typed;
+
+impl Query for Typed {
+    const NAME: &'static str = "typed";
+    type Key = Instantiation;
+    type Value = Option<Arc<TypedBody>>;
+
+    fn compute(cx: &Cx<'_>, i: &Instantiation) -> Self::Value {
+        if let Some(enclosing) = i.enclosing(cx) {
+            return cx.get::<Self>(&enclosing);
+        }
+        let env = Env::inside(cx, &i.f, i.args.iter().cloned())?.abstracted(i.f.literal.expr.id);
+        let hir = &env.parsed.hir;
+        let ExprKind::Fn { body, .. } = &hir.exprs[i.f.literal.expr.id].kind else { return None };
+        let mut typer = Typer::new(&env, Stage::Run);
+        typer.function(i.f.literal.expr.id, &i.args);
+        let mut exprs = Exprs(0);
+        exprs.block(hir, *body);
+        Some(Arc::new(typer.finish(exprs.0)))
+    }
+
+    /// A body that reaches itself through calls is typed on its way in; the inner reach sees
+    /// nothing.
+    fn cycle(_: &Cx<'_>, _: &Instantiation, _: &Cycle) -> Self::Value {
+        None
+    }
+}

@@ -13,6 +13,12 @@ embed: ($path: &[u8]) -> &static [_]u8 = _;
 /// Whether `A` and `B` are one type: made by the same constructor from the same arguments.
 same: ($A: type, $B: type) -> bool = _;
 
+/// Types are equal when they are one type (spec 02, section 1: `Pair(u16)` is one type).
+#[impl(lang.ops.Eq(type))]
+TypeEq := struct {
+    eq := (a: &type, b: &type) -> bool { same(a.*, b.*) };
+};
+
 /// A compile-time value of any type, with its type: what a plan records of a record whose type
 /// each call infers (spec 03, section 7). It exists at compile time only.
 Any: type = _;
@@ -20,6 +26,22 @@ Any: type = _;
 any: ($T: type, value: T) -> Any = _;
 /// The items of `items` followed by `item`, in compile-time memory (spec 03, section 7).
 append: ($T: type, items: &[T], item: T) -> &static [T] = _;
+/// The items of `a` followed by those of `b`, in compile-time memory.
+concat: ($T: type, a: &[T], b: &[T]) -> &static [T] = _;
+
+/// `a ++ b` on sequences, at compile time: the items of both (spec 02, section 4).
+#[impl(lang.ops.Concat(lang.mem.Slice))]
+SliceConcat := ($T: type) -> type { struct {
+    Output := ($R: type) -> type { &static [T] };
+    concat := (a: &[T], b: &[T]) -> &static [T] { lang.meta.concat(T, a, b) };
+} };
+
+/// `a ++ b` on an array, as on the slice of its items: a string literal is a borrow of one.
+#[impl(lang.ops.Concat(lang.mem.Array))]
+ArrayConcat := ($n: Int(0..), $T: type) -> type { struct {
+    Output := ($R: type) -> type { &static [T] };
+    concat := (a: &[T], b: &[T]) -> &static [T] { lang.meta.concat(T, a, b) };
+} };
 
 /// A field of a struct type, as reflection gives it (spec 03, section 6).
 Field := struct {
@@ -29,6 +51,18 @@ Field := struct {
 
 /// The fields of the struct type `T` in declaration order, generated ones included.
 fields: ($T: type) -> &[Field] = _;
+/// A variant of an enum type, as reflection gives it.
+Variant := struct {
+    name: &[u8],
+    /// The types its payload holds, in order; none for a variant without one.
+    payload: &[type],
+};
+
+/// The variants of the enum type `T` in declaration order; none for another type.
+variants: ($T: type) -> &[Variant] = _;
+/// The position of the variant `v` is among the variants of its enum type `T`.
+#[panic.never]
+variant: ($T: type, v: &T) -> usize = _;
 /// The item types of the tuple type `T`, in order.
 items: ($T: type) -> &[type] = _;
 /// The name of `T` as diagnostics show it: a `struct` or `enum` literal by the declaration it is

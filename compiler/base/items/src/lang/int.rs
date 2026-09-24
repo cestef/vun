@@ -6,6 +6,8 @@
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
 use crate::Item;
+/// The namespace `lang.int.ops`.
+pub const ops: Item = Item::new(&["lang", "int", "ops"]);
 /// The unsigned integers of `bits` bits: `Int(0..2^bits)`.
 pub const unsigned: Item = Item::new(&["lang", "int", "unsigned"]);
 /// The two's-complement integers of `bits` bits: `Int(-2^(bits-1)..2^(bits-1))`.
@@ -35,3 +37,50 @@ pub const fits: Item = Item::new(&["lang", "int", "fits"]);
 pub const magnitude: Item = Item::new(&["lang", "int", "magnitude"]);
 /// The absolute value of `x`, whose range is the magnitude of `x`'s.
 pub const abs: Item = Item::new(&["lang", "int", "abs"]);
+/// The integers of the integer type `T`.
+pub const range: Item = Item::new(&["lang", "int", "range"]);
+/// The ranges of results (spec 04, rule 1): every sum of an integer of `a` and one of `b`, and
+/// so on, by interval arithmetic. `quotient` and `remainder` leave out a zero divisor.
+pub const sum: Item = Item::new(&["lang", "int", "sum"]);
+pub const difference: Item = Item::new(&["lang", "int", "difference"]);
+pub const product: Item = Item::new(&["lang", "int", "product"]);
+pub const quotient: Item = Item::new(&["lang", "int", "quotient"]);
+pub const remainder: Item = Item::new(&["lang", "int", "remainder"]);
+pub const negation: Item = Item::new(&["lang", "int", "negation"]);
+/// The range of a bit operation (rule 8): the `uN` range of one operand, which the other lies
+/// within, or for two compile-time values, the smallest `uN` range holding both. Other operands
+/// are reported: bit operations exist on `uN` types only.
+pub const bitwise: Item = Item::new(&["lang", "int", "bitwise"]);
+/// The range of `x << n` for `x` in `a` and `n` in `b`: `a` itself when it is a `uN` range,
+/// exact for a compile-time `x`.
+pub const shifted_left: Item = Item::new(&["lang", "int", "shifted_left"]);
+/// As `shifted_left`, for `x >> n`.
+pub const shifted_right: Item = Item::new(&["lang", "int", "shifted_right"]);
+/// Integer arithmetic, exact (rule 1): the result has the range computed from the operands'.
+pub const add: Item = Item::new(&["lang", "int", "add"]);
+pub const sub: Item = Item::new(&["lang", "int", "sub"]);
+pub const mul: Item = Item::new(&["lang", "int", "mul"]);
+/// Division rounding toward zero; a zero divisor traps (rule 6).
+pub const div: Item = Item::new(&["lang", "int", "div"]);
+/// The remainder of `div`, of the dividend's sign; a zero divisor traps (rule 6).
+pub const rem: Item = Item::new(&["lang", "int", "rem"]);
+pub const neg: Item = Item::new(&["lang", "int", "neg"]);
+/// Bit operations (rule 8), in two's complement.
+pub const bit_and: Item = Item::new(&["lang", "int", "bit_and"]);
+pub const bit_or: Item = Item::new(&["lang", "int", "bit_or"]);
+pub const bit_xor: Item = Item::new(&["lang", "int", "bit_xor"]);
+/// Every bit of `x` flipped, in its `uN` type.
+pub const bit_not: Item = Item::new(&["lang", "int", "bit_not"]);
+/// Shifts (rule 8): a `uN` value keeps its type, losing the bits shifted out; an amount past
+/// `N - 1` traps.
+pub const shl: Item = Item::new(&["lang", "int", "shl"]);
+pub const shr: Item = Item::new(&["lang", "int", "shr"]);
+/// Comparisons of integers of any two ranges.
+pub const equal: Item = Item::new(&["lang", "int", "equal"]);
+pub const unequal: Item = Item::new(&["lang", "int", "unequal"]);
+pub const less: Item = Item::new(&["lang", "int", "less"]);
+pub const less_equal: Item = Item::new(&["lang", "int", "less_equal"]);
+pub const greater: Item = Item::new(&["lang", "int", "greater"]);
+pub const greater_equal: Item = Item::new(&["lang", "int", "greater_equal"]);
+/// Where `x` is against `y`.
+pub const compare: Item = Item::new(&["lang", "int", "compare"]);

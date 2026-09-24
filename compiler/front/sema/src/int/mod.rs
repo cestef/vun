@@ -1,6 +1,7 @@
 //! Exact integers (spec 04, section 1): compile-time values have no bound, so every value and
 //! every range bound is an arbitrary-precision integer.
 
+mod bits;
 mod extended;
 mod interval;
 #[cfg(test)]
@@ -11,6 +12,7 @@ use std::ops::{Add, Mul, Neg, Sub};
 
 use num_bigint::{BigInt, Sign};
 
+pub use bits::Bitwise;
 pub use extended::Extended;
 pub use interval::{Divided, Divisor, Interval, Storage};
 

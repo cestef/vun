@@ -11,6 +11,7 @@ mod control;
 mod defer;
 mod early_return;
 mod loops;
+mod operator;
 mod pattern;
 mod place;
 mod staged;
@@ -28,12 +29,13 @@ use vun_sema::env::{Env, Unevaluated};
 use vun_sema::eval::{Instantiation, Staging};
 use vun_sema::int::Integer;
 use vun_sema::ty::Value;
-use vun_sema::typeck::{Step, Typed, TypedBody};
+use vun_sema::typeck::{Operation, Step, Typed, TypedBody};
 
 use crate::body::{
     Block, BlockId, Body, Local, LocalDecl, Operand, Role, Rvalue, Stmt, Terminator, TerminatorKind,
 };
 use crate::place::Place;
+use operator::Side;
 
 /// A form MIR does not lower yet, by where it is written.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -250,17 +252,15 @@ impl<'a, 'db> Builder<'_, 'a, 'db> {
             ExprKind::Continue { label } => self.again(*label, origin),
             ExprKind::Return(value) => self.exit(*value, origin),
             ExprKind::Defer(statement) => Ok(self.deferred(*statement)),
-            ExprKind::Infix { op, left, right: Some(right) } => {
-                let (left, right) = (self.operand(*left)?, self.operand(*right)?);
-                Ok(self.temp(Rvalue::Binary { op: *op, left, right }, origin))
+            ExprKind::Infix { left, right: Some(right), .. } => {
+                self.operator(Operation::Expr(expr), *left, vec![Side::Expr(*right)], origin)
             }
-            ExprKind::Prefix {
-                op: op @ (TokenKind::Minus | TokenKind::Tilde | TokenKind::Bang),
-                operand,
-                ..
-            } => {
+            ExprKind::Prefix { op: TokenKind::Minus | TokenKind::Tilde, operand, .. } => {
+                self.operator(Operation::Expr(expr), *operand, Vec::new(), origin)
+            }
+            ExprKind::Prefix { op: TokenKind::Bang, operand, .. } => {
                 let operand = self.operand(*operand)?;
-                Ok(self.temp(Rvalue::Unary { op: *op, operand }, origin))
+                Ok(self.temp(Rvalue::Not { operand }, origin))
             }
             ExprKind::Call { callee, .. } if matches!(hir.exprs[*callee].kind, ExprKind::DotName(_)) => {
                 self.aggregate(expr).unwrap_or(Err(unbuilt))

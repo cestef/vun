@@ -5,6 +5,7 @@
 //! Function bodies are typed one at a time ([`Typed`]); the value of a declaration outside a body
 //! is typed where it is checked, and by [`crate::decl::DeclType`] where it is named.
 
+mod apply;
 mod block;
 mod call;
 mod closure;
@@ -16,9 +17,12 @@ mod infer;
 mod loops;
 mod methods;
 mod names;
-mod omitted;
+pub(crate) mod omitted;
+mod operator;
 
 pub use loops::Iteration;
+pub use operator::{Operation, Operator};
+pub use typed::{Step, Typed, TypedBody};
 mod pattern;
 mod prefix;
 mod range;
@@ -29,18 +33,17 @@ mod staged;
 mod suspend;
 #[cfg(test)]
 mod tests;
+mod typed;
 
-use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
 
 use vun_diag::DiagCtxt;
-use vun_hir::tree::{BinderId, BlockId, DeclId, ExprId, ExprKind, Hir, NsId, PatId, Staged};
+use vun_hir::tree::{BinderId, BlockId, DeclId, ExprId, Hir, NsId, Staged};
 use vun_hir::visit::Visitor;
 use vun_intern::Symbol;
-use vun_query::{Cx, Cycle, Query};
 
 use crate::env::Env;
-use crate::eval::Instantiation;
 use crate::ty::{Ty, Value};
 
 /// When a value is known: at compile time, or only at run time. Only run-time integers are
@@ -58,100 +61,6 @@ pub struct Known {
     pub stage: Stage,
 }
 
-/// A typed function body: the type of each expression typed, what typing reports, and how many
-/// expressions the body holds, nested functions and quotes apart.
-#[derive(Debug, Default, PartialEq, Eq, Hash)]
-pub struct TypedBody {
-    pub types: BTreeMap<ExprId, Known>,
-    /// The type each local of the body holds, steps' included.
-    pub binders: BTreeMap<BinderId, Ty>,
-    /// Each method named through a value, with the struct declaring it and its name.
-    pub methods: BTreeMap<ExprId, (Ty, Symbol)>,
-    /// The body of each step of a `$for`, typed with its binder bound (spec 03, section 1).
-    pub steps: BTreeMap<Step, Arc<TypedBody>>,
-    /// How each `for p in e` drives `e`, by `e`.
-    pub iterations: BTreeMap<ExprId, Iteration>,
-    /// The `$` arguments each call leaves out, by parameter, as inferred.
-    pub inferred: BTreeMap<ExprId, Vec<(usize, Value)>>,
-    pub diag: DiagCtxt,
-    pub exprs: usize,
-}
-
-impl TypedBody {
-    /// How many expressions are typed, in the body or in some step of it.
-    #[must_use]
-    pub fn typed_count(&self) -> usize {
-        let mut typed = BTreeSet::new();
-        self.collect_typed(&mut typed);
-        typed.len()
-    }
-
-    fn collect_typed(&self, typed: &mut BTreeSet<ExprId>) {
-        typed.extend(self.types.keys().copied());
-        for step in self.steps.values() {
-            step.collect_typed(typed);
-        }
-    }
-}
-
-/// One step of a `$for` in a body: the `$for`, by its pattern, and the item bound.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct Step {
-    pub at: PatId,
-    pub index: usize,
-}
-
-/// Counts the expressions of a body, as the typer reaches them: not into nested functions or
-/// namespaces, which are typed on their own, but into closures, typed as part of the body.
-struct Exprs(usize);
-
-impl Visitor for Exprs {
-    fn namespace(&mut self, _: &Hir, _: NsId) {}
-
-    fn expr(&mut self, hir: &Hir, expr: ExprId) {
-        self.0 += 1;
-        match &hir.exprs[expr].kind {
-            ExprKind::Fn { .. } => {}
-            ExprKind::Closure { func, .. } => {
-                vun_hir::visit::walk_expr(self, hir, expr);
-                vun_hir::visit::walk_expr(self, hir, *func);
-            }
-            _ => vun_hir::visit::walk_expr(self, hir, expr),
-        }
-    }
-}
-
-/// The typed body of an instantiation of a function literal; `None` for a file the driver did
-/// not read. A generic body is typed for each instantiation its callers reach, with its `$`
-/// parameters bound, and what that reports is reported at the generic definition.
-pub struct Typed;
-
-impl Query for Typed {
-    const NAME: &'static str = "typed";
-    type Key = Instantiation;
-    type Value = Option<Arc<TypedBody>>;
-
-    fn compute(cx: &Cx<'_>, i: &Instantiation) -> Self::Value {
-        if let Some(enclosing) = i.enclosing(cx) {
-            return cx.get::<Self>(&enclosing);
-        }
-        let env = Env::inside(cx, &i.f, i.args.iter().cloned())?.abstracted(i.f.literal.expr.id);
-        let hir = &env.parsed.hir;
-        let ExprKind::Fn { body, .. } = &hir.exprs[i.f.literal.expr.id].kind else { return None };
-        let mut typer = Typer::new(&env, Stage::Run);
-        typer.function(i.f.literal.expr.id, &i.args);
-        let mut exprs = Exprs(0);
-        exprs.block(hir, *body);
-        Some(Arc::new(typer.finish(exprs.0)))
-    }
-
-    /// A body that reaches itself through calls is typed on its way in; the inner reach sees
-    /// nothing.
-    fn cycle(_: &Cx<'_>, _: &Instantiation, _: &Cycle) -> Self::Value {
-        None
-    }
-}
-
 /// Types the expressions of one body, or one declaration outside a body, in source order.
 pub struct Typer<'e, 'a, 'db> {
     env: &'e Env<'a, 'db>,
@@ -165,6 +74,7 @@ pub struct Typer<'e, 'a, 'db> {
     /// call passes `p` first (spec 01, section 4); each with the struct declaring it, the type's
     /// own or a witness, and its name.
     methods: HashMap<ExprId, (Ty, Symbol)>,
+    operators: BTreeMap<Operation, Operator>,
     /// The typed steps of the `$for`s typed so far.
     steps: BTreeMap<Step, Arc<TypedBody>>,
     iterations: BTreeMap<ExprId, Iteration>,
@@ -201,6 +111,7 @@ impl<'e, 'a, 'db> Typer<'e, 'a, 'db> {
             types: HashMap::new(),
             locals: HashMap::new(),
             methods: HashMap::new(),
+            operators: BTreeMap::new(),
             steps: BTreeMap::new(),
             iterations: BTreeMap::new(),
             inferred: BTreeMap::new(),
@@ -226,6 +137,7 @@ impl<'e, 'a, 'db> Typer<'e, 'a, 'db> {
             steps: self.steps,
             iterations: self.iterations,
             inferred: self.inferred,
+            operators: self.operators,
             diag: self.diag,
             exprs,
         }

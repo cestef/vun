@@ -12,3 +12,7 @@ pub const min: Item = Item::new(&["std", "cmp", "min"]);
 pub const max: Item = Item::new(&["std", "cmp", "max"]);
 /// `x` brought within `lo..=hi`.
 pub const clamp: Item = Item::new(&["std", "cmp", "clamp"]);
+/// An `Eq` witness for `T` by reflection (spec 03, section 3): a struct is equal field by field,
+/// each by its own `Eq`, and an enum without payloads variant by variant.
+/// `#[impl(lang.ops.Eq(Point))] PointEq := std.cmp.derive_eq(Point);`
+pub const derive_eq: Item = Item::new(&["std", "cmp", "derive_eq"]);

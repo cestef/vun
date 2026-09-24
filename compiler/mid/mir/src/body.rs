@@ -85,15 +85,9 @@ pub struct Stmt {
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Rvalue {
     Use(Operand),
-    /// An operator of the grammar's infix table, on integers: the `lang.ops` impls the compiler
-    /// provides.
-    Binary {
-        op: TokenKind,
-        left: Operand,
-        right: Operand,
-    },
-    Unary {
-        op: TokenKind,
+    /// `!c`: the other condition (the table `forms`). Operators are calls of the functions of
+    /// their `lang.ops` interfaces (spec 02, section 4).
+    Not {
         operand: Operand,
     },
     /// `lo..hi`, `lo..=hi` or `lo..`, by its operator.
@@ -172,12 +166,11 @@ impl Rvalue {
     pub fn operands(&self) -> Vec<&Operand> {
         match self {
             Self::Use(o)
-            | Self::Unary { operand: o, .. }
+            | Self::Not { operand: o }
             | Self::Narrow { operand: o, .. }
             | Self::Repeat { operand: o, .. } => {
                 vec![o]
             }
-            Self::Binary { left, right, .. } => vec![left, right],
             Self::Range { lo, hi, .. } => std::iter::once(lo).chain(hi).collect(),
             Self::Aggregate { parts, .. } => parts.iter().collect(),
             Self::Call { callee, args } => std::iter::once(callee).chain(args).collect(),

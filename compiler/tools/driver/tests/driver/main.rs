@@ -28,5 +28,6 @@ mod select;
 mod sequences;
 mod staged;
 mod stdlib;
+mod typing;
 mod update;
 mod visibility;

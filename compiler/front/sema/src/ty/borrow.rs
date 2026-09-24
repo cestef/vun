@@ -30,6 +30,24 @@ impl TyKind {
         Some((p.borrow_mode()?, *p, *ty))
     }
 
+    /// `&mode pointee`: the borrow type written with the words `mode` after `&`.
+    #[must_use]
+    pub fn borrowed_as(mode: &str, pointee: Ty) -> Option<Ty> {
+        let &(_, item, ..) = BORROWS.iter().find(|(m, ..)| *m == mode)?;
+        Some(Self::Primitive(Primitive::at(item)?, vec![Value::Type(pointee)]).intern())
+    }
+
+    /// The type reached through every borrow this type is, as `.` reaches it (spec 01,
+    /// section 4): `u8` for `&&u8`.
+    #[must_use]
+    pub fn through_borrows(&self) -> Ty {
+        let mut ty = self.clone().intern();
+        while let Some(pointee) = ty.borrowed() {
+            ty = pointee;
+        }
+        ty
+    }
+
     /// Whether the borrow modes `a` and `b` perform one transition and leave one access (the
     /// table `borrows`), differing at most in how long a call holds them.
     #[must_use]
@@ -64,7 +82,7 @@ impl Primitive {
     /// The primitive `item` is, as tables name them: `lang.mem.Ref`.
     #[must_use]
     pub fn at(item: vun_items::Item) -> Option<Self> {
-        Self::ALL.iter().copied().find(|p| p.item() == item)
+        Self::all().find(|p| p.item() == item)
     }
 
     /// The words after `&` that write this borrow type constructor (the table `borrows`).

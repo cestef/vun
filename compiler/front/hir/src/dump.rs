@@ -110,6 +110,7 @@ impl Visitor for Printer<'_> {
             PatKind::Rest(_) => "Rest".to_owned(),
             PatKind::At { binder, .. } => format!("At {}", hir.binders[*binder].name.as_str()),
             PatKind::Value(_) => "Value".to_owned(),
+            PatKind::Computed(_) => "Computed".to_owned(),
             PatKind::Error => "Error".to_owned(),
         };
         self.line(hir.pats[pat].origin, &format!("pattern {label}"), |p| visit::walk_pat(p, hir, pat));

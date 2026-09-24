@@ -3,7 +3,8 @@
 //! `grammar.vun`, whose token kinds these tables name.
 
 /// What infix operators desugar to (appendix B): `a op b` is `function(a, b)` of the interface at
-/// `interface`, for the type of `a`. `and`, `or` and ranges are not interfaces.
+/// `interface`, for the type of `a`, the operands passed as the function's parameters ask. `and`,
+/// `or` and ranges are not interfaces.
 operators := [
     .{ .token = .plus, .interface = "lang.ops.Add", .function = "add" },
     .{ .token = .minus, .interface = "lang.ops.Sub", .function = "sub" },
@@ -22,6 +23,13 @@ operators := [
     .{ .token = .le, .interface = "lang.ops.Ord", .function = "le" },
     .{ .token = .gt, .interface = "lang.ops.Ord", .function = "gt" },
     .{ .token = .ge, .interface = "lang.ops.Ord", .function = "ge" },
+];
+
+/// What prefix operators desugar to (appendix B): `op a` is `function(a)` of the interface at
+/// `interface`, for the type of `a`. `!` is not an interface: it negates a condition (`forms`).
+prefix_operators := [
+    .{ .token = .minus, .interface = "lang.ops.Neg", .function = "neg" },
+    .{ .token = .tilde, .interface = "lang.ops.Not", .function = "not" },
 ];
 
 /// Syntax whose meaning is a `lang` item, besides operators and borrows (appendix B).

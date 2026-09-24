@@ -105,6 +105,7 @@ impl<'a, 'db> Typer<'_, 'a, 'db> {
             take(&mut self.steps),
             take(&mut self.iterations),
             take(&mut self.inferred),
+            take(&mut self.operators),
         );
         f(self);
         let typed = TypedBody {
@@ -114,10 +115,11 @@ impl<'a, 'db> Typer<'_, 'a, 'db> {
             steps: take(&mut self.steps),
             iterations: take(&mut self.iterations),
             inferred: take(&mut self.inferred),
+            operators: take(&mut self.operators),
             diag: DiagCtxt::new(),
             exprs: 0,
         };
-        (self.types, self.methods, self.steps, self.iterations, self.inferred) = saved;
+        (self.types, self.methods, self.steps, self.iterations, self.inferred, self.operators) = saved;
         self.step = outer;
         typed
     }

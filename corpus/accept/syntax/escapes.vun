@@ -1,6 +1,8 @@
 //! A backslash takes what follows literally (spec 01, sections 1 and 5).
 
 Safety := enum { safe, \unsafe, placeholder };
+#[impl(lang.ops.Eq(Safety))]
+SafetyEq := std.cmp.derive_eq(Safety);
 
 path := \"C:\dir\new";
 escaped := "tab\there\n";

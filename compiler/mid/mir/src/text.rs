@@ -40,8 +40,7 @@ impl fmt::Display for Rvalue {
         let text = |op: vun_grammar::TokenKind| op.text().unwrap_or("?");
         match self {
             Self::Use(operand) => operand.fmt(f),
-            Self::Binary { op, left, right } => write!(f, "{left} {} {right}", text(*op)),
-            Self::Unary { op, operand } => write!(f, "{}{operand}", text(*op)),
+            Self::Not { operand } => write!(f, "{}{operand}", text(vun_grammar::TokenKind::Bang)),
             Self::Range { op, lo, hi: Some(hi) } => write!(f, "{lo}{}{hi}", text(*op)),
             Self::Range { op, lo, hi: None } => write!(f, "{lo}{}", text(*op)),
             Self::Comptime { expr, .. } => write!(f, "comptime e{}", expr.index()),

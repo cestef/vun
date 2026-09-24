@@ -3,71 +3,91 @@
 
 /// `a + b`.
 Add := interface(($Self: type) -> type { struct {
-    Rhs: type = _;
-    Output: type = _;
-    add: (a: Self, b: Rhs) -> Output = _;
+    /// The result's type for a right operand of type `R`.
+    Output: ($R: type) -> type = _;
+    add: ($R: type, a: Self, b: R) -> Output(R) = _;
 }});
 
 /// `a - b`.
 Sub := interface(($Self: type) -> type { struct {
-    Rhs: type = _;
-    Output: type = _;
-    sub: (a: Self, b: Rhs) -> Output = _;
+    /// The result's type for a right operand of type `R`.
+    Output: ($R: type) -> type = _;
+    sub: ($R: type, a: Self, b: R) -> Output(R) = _;
 }});
 
 /// `a * b`.
 Mul := interface(($Self: type) -> type { struct {
-    Rhs: type = _;
-    Output: type = _;
-    mul: (a: Self, b: Rhs) -> Output = _;
+    /// The result's type for a right operand of type `R`.
+    Output: ($R: type) -> type = _;
+    mul: ($R: type, a: Self, b: R) -> Output(R) = _;
 }});
 
 /// `a / b`.
 Div := interface(($Self: type) -> type { struct {
-    Rhs: type = _;
-    Output: type = _;
-    div: (a: Self, b: Rhs) -> Output = _;
+    /// The result's type for a right operand of type `R`.
+    Output: ($R: type) -> type = _;
+    div: ($R: type, a: Self, b: R) -> Output(R) = _;
 }});
 
 /// `a % b`.
 Rem := interface(($Self: type) -> type { struct {
-    Rhs: type = _;
-    Output: type = _;
-    rem: (a: Self, b: Rhs) -> Output = _;
+    /// The result's type for a right operand of type `R`.
+    Output: ($R: type) -> type = _;
+    rem: ($R: type, a: Self, b: R) -> Output(R) = _;
 }});
 
 /// `a ++ b`, and `[..a, x]`.
 Concat := interface(($Self: type) -> type { struct {
-    Rhs: type = _;
-    Output: type = _;
-    concat: (a: Self, b: Rhs) -> Output = _;
+    /// The result's type for a right operand of type `R`.
+    Output: ($R: type) -> type = _;
+    concat: ($R: type, a: Self, b: R) -> Output(R) = _;
 }});
 
-/// `a & b`: bit operations keep the type (spec 04, rule 8).
+/// `a & b` (spec 04, rule 8).
 BitAnd := interface(($Self: type) -> type { struct {
-    bit_and: (a: Self, b: Self) -> Self = _;
+    /// The result's type for a right operand of type `R`.
+    Output: ($R: type) -> type = _;
+    bit_and: ($R: type, a: Self, b: R) -> Output(R) = _;
 }});
 
-/// `a | b`: bit operations keep the type (spec 04, rule 8).
+/// `a | b` (spec 04, rule 8).
 BitOr := interface(($Self: type) -> type { struct {
-    bit_or: (a: Self, b: Self) -> Self = _;
+    /// The result's type for a right operand of type `R`.
+    Output: ($R: type) -> type = _;
+    bit_or: ($R: type, a: Self, b: R) -> Output(R) = _;
 }});
 
-/// `a ^ b`: bit operations keep the type (spec 04, rule 8).
+/// `a ^ b` (spec 04, rule 8).
 BitXor := interface(($Self: type) -> type { struct {
-    bit_xor: (a: Self, b: Self) -> Self = _;
+    /// The result's type for a right operand of type `R`.
+    Output: ($R: type) -> type = _;
+    bit_xor: ($R: type, a: Self, b: R) -> Output(R) = _;
 }});
 
-/// `a << n`: shifts keep the type of `a` (spec 04, rule 8).
+/// `a << b` (spec 04, rule 8).
 Shl := interface(($Self: type) -> type { struct {
-    Amount: type = _;
-    shl: (a: Self, n: Amount) -> Self = _;
+    /// The result's type for a right operand of type `R`.
+    Output: ($R: type) -> type = _;
+    shl: ($R: type, a: Self, b: R) -> Output(R) = _;
 }});
 
-/// `a >> n`: shifts keep the type of `a` (spec 04, rule 8).
+/// `a >> b` (spec 04, rule 8).
 Shr := interface(($Self: type) -> type { struct {
-    Amount: type = _;
-    shr: (a: Self, n: Amount) -> Self = _;
+    /// The result's type for a right operand of type `R`.
+    Output: ($R: type) -> type = _;
+    shr: ($R: type, a: Self, b: R) -> Output(R) = _;
+}});
+
+/// `-a`.
+Neg := interface(($Self: type) -> type { struct {
+    Output: type = _;
+    neg: (a: Self) -> Output = _;
+}});
+
+/// `~a` (spec 04, rule 8).
+Not := interface(($Self: type) -> type { struct {
+    Output: type = _;
+    not: (a: Self) -> Output = _;
 }});
 
 /// `a == b` and `a != b`.
@@ -84,15 +104,6 @@ Ord := interface(($Self: type) -> type { struct {
     gt := (a: &Self, b: &Self) -> bool { match cmp(a, b) { .greater => true, _ => false } };
     ge := (a: &Self, b: &Self) -> bool { match cmp(a, b) { .less => false, _ => true } };
 }});
-
-/// Integers in their order.
-#[impl(Ord(Int))]
-IntOrd := ($r: Range) -> type { struct {
-    #[panic.never]
-    cmp := (a: &Int(r), b: &Int(r)) -> Ordering {
-        if a.* < b.* { .less } else if a.* > b.* { .greater } else { .equal }
-    };
-} };
 
 Index := interface(($Self: type) -> type { struct {
     Key: type = _;

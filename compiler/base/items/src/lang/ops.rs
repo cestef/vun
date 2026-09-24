@@ -18,22 +18,24 @@ pub const Div: Item = Item::new(&["lang", "ops", "Div"]);
 pub const Rem: Item = Item::new(&["lang", "ops", "Rem"]);
 /// `a ++ b`, and `[..a, x]`.
 pub const Concat: Item = Item::new(&["lang", "ops", "Concat"]);
-/// `a & b`: bit operations keep the type (spec 04, rule 8).
+/// `a & b` (spec 04, rule 8).
 pub const BitAnd: Item = Item::new(&["lang", "ops", "BitAnd"]);
-/// `a | b`: bit operations keep the type (spec 04, rule 8).
+/// `a | b` (spec 04, rule 8).
 pub const BitOr: Item = Item::new(&["lang", "ops", "BitOr"]);
-/// `a ^ b`: bit operations keep the type (spec 04, rule 8).
+/// `a ^ b` (spec 04, rule 8).
 pub const BitXor: Item = Item::new(&["lang", "ops", "BitXor"]);
-/// `a << n`: shifts keep the type of `a` (spec 04, rule 8).
+/// `a << b` (spec 04, rule 8).
 pub const Shl: Item = Item::new(&["lang", "ops", "Shl"]);
-/// `a >> n`: shifts keep the type of `a` (spec 04, rule 8).
+/// `a >> b` (spec 04, rule 8).
 pub const Shr: Item = Item::new(&["lang", "ops", "Shr"]);
+/// `-a`.
+pub const Neg: Item = Item::new(&["lang", "ops", "Neg"]);
+/// `~a` (spec 04, rule 8).
+pub const Not: Item = Item::new(&["lang", "ops", "Not"]);
 /// `a == b` and `a != b`.
 pub const Eq: Item = Item::new(&["lang", "ops", "Eq"]);
 /// `a < b`, `a <= b`, `a > b` and `a >= b`: a total order, from `cmp`.
 pub const Ord: Item = Item::new(&["lang", "ops", "Ord"]);
-/// Integers in their order.
-pub const IntOrd: Item = Item::new(&["lang", "ops", "IntOrd"]);
 pub const Index: Item = Item::new(&["lang", "ops", "Index"]);
 /// What `e?` desugars to: continue with a value, or stop the function with a result.
 pub const Try: Item = Item::new(&["lang", "ops", "Try"]);

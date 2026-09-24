@@ -20,8 +20,14 @@ pub enum Meta {
     any,
     /// The items of `items` followed by `item`, in compile-time memory (spec 03, section 7).
     append,
+    /// The items of `a` followed by those of `b`, in compile-time memory.
+    concat,
     /// The fields of the struct type `T` in declaration order, generated ones included.
     fields,
+    /// The variants of the enum type `T` in declaration order; none for another type.
+    variants,
+    /// The position of the variant `v` is among the variants of its enum type `T`.
+    variant,
     /// The item types of the tuple type `T`, in order.
     items,
     /// The name of `T` as diagnostics show it: a `struct` or `enum` literal by the declaration it is
@@ -50,7 +56,10 @@ impl Meta {
         Self::Any,
         Self::any,
         Self::append,
+        Self::concat,
         Self::fields,
+        Self::variants,
+        Self::variant,
         Self::items,
         Self::name_of,
         Self::size,
@@ -73,7 +82,10 @@ impl Meta {
             Self::Any => "Any",
             Self::any => "any",
             Self::append => "append",
+            Self::concat => "concat",
             Self::fields => "fields",
+            Self::variants => "variants",
+            Self::variant => "variant",
             Self::items => "items",
             Self::name_of => "name_of",
             Self::size => "size",
@@ -97,7 +109,10 @@ impl Meta {
             Self::Any => vun_items::lang::meta::Any,
             Self::any => vun_items::lang::meta::any,
             Self::append => vun_items::lang::meta::append,
+            Self::concat => vun_items::lang::meta::concat,
             Self::fields => vun_items::lang::meta::fields,
+            Self::variants => vun_items::lang::meta::variants,
+            Self::variant => vun_items::lang::meta::variant,
             Self::items => vun_items::lang::meta::items,
             Self::name_of => vun_items::lang::meta::name_of,
             Self::size => vun_items::lang::meta::size,

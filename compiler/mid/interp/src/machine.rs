@@ -121,10 +121,7 @@ impl<'b, 'a, 'db> Frame<'b, 'a, 'db> {
     fn rvalue(&mut self, rvalue: &Rvalue) -> Result<Value, Unevaluated> {
         match rvalue {
             Rvalue::Use(operand) => self.operand(operand),
-            Rvalue::Binary { op, left, right } => {
-                self.env.binary(*op, &self.operand(left)?, &self.operand(right)?)
-            }
-            Rvalue::Unary { op, operand } => self.env.unary(*op, &self.operand(operand)?),
+            Rvalue::Not { operand } => self.env.decide(!self.env.holds(&self.operand(operand)?)?),
             Rvalue::Range { op, lo, hi } => {
                 let hi = hi.as_ref().map(|h| self.operand(h)).transpose()?;
                 Value::range(*op, &self.operand(lo)?, hi.as_ref())

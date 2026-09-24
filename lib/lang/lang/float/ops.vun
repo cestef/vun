@@ -1,0 +1,71 @@
+//! Floats' operators (spec 02, section 4): for each float type, the impls of `lang.ops` over
+//! the primitives of `lang.float`, made by one constructor per interface.
+
+/// The witness of `Add` for the float type `T`; the others alike.
+Add := ($T: type) -> type { struct { Output := ($R: type) -> type { T }; add := lang.float.add; } };
+Sub := ($T: type) -> type { struct { Output := ($R: type) -> type { T }; sub := lang.float.sub; } };
+Mul := ($T: type) -> type { struct { Output := ($R: type) -> type { T }; mul := lang.float.mul; } };
+Div := ($T: type) -> type { struct { Output := ($R: type) -> type { T }; div := lang.float.div; } };
+Rem := ($T: type) -> type { struct { Output := ($R: type) -> type { T }; rem := lang.float.rem; } };
+Neg := ($T: type) -> type { struct { Output := T; neg := lang.float.neg; } };
+/// IEEE equality: a NaN equals nothing.
+Eq := ($T: type) -> type { struct { eq := lang.float.equal; ne := lang.float.unequal; } };
+/// `cmp` is IEEE `totalOrder`; `<` and the others are IEEE comparisons, false with a NaN.
+Ord := ($T: type) -> type { struct {
+    cmp := lang.float.total_order;
+    lt := lang.float.less;
+    le := lang.float.less_equal;
+    gt := lang.float.greater;
+    ge := lang.float.greater_equal;
+} };
+
+#[impl(lang.ops.Add(f16))]
+F16Add := Add(f16);
+#[impl(lang.ops.Sub(f16))]
+F16Sub := Sub(f16);
+#[impl(lang.ops.Mul(f16))]
+F16Mul := Mul(f16);
+#[impl(lang.ops.Div(f16))]
+F16Div := Div(f16);
+#[impl(lang.ops.Rem(f16))]
+F16Rem := Rem(f16);
+#[impl(lang.ops.Neg(f16))]
+F16Neg := Neg(f16);
+#[impl(lang.ops.Eq(f16))]
+F16Eq := Eq(f16);
+#[impl(lang.ops.Ord(f16))]
+F16Ord := Ord(f16);
+
+#[impl(lang.ops.Add(f32))]
+F32Add := Add(f32);
+#[impl(lang.ops.Sub(f32))]
+F32Sub := Sub(f32);
+#[impl(lang.ops.Mul(f32))]
+F32Mul := Mul(f32);
+#[impl(lang.ops.Div(f32))]
+F32Div := Div(f32);
+#[impl(lang.ops.Rem(f32))]
+F32Rem := Rem(f32);
+#[impl(lang.ops.Neg(f32))]
+F32Neg := Neg(f32);
+#[impl(lang.ops.Eq(f32))]
+F32Eq := Eq(f32);
+#[impl(lang.ops.Ord(f32))]
+F32Ord := Ord(f32);
+
+#[impl(lang.ops.Add(f64))]
+F64Add := Add(f64);
+#[impl(lang.ops.Sub(f64))]
+F64Sub := Sub(f64);
+#[impl(lang.ops.Mul(f64))]
+F64Mul := Mul(f64);
+#[impl(lang.ops.Div(f64))]
+F64Div := Div(f64);
+#[impl(lang.ops.Rem(f64))]
+F64Rem := Rem(f64);
+#[impl(lang.ops.Neg(f64))]
+F64Neg := Neg(f64);
+#[impl(lang.ops.Eq(f64))]
+F64Eq := Eq(f64);
+#[impl(lang.ops.Ord(f64))]
+F64Ord := Ord(f64);

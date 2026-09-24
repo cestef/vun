@@ -1,11 +1,11 @@
 //! `#[panic.never]` (spec 07, section 3): a function promising never to trap contains no trap
 //! site its types do not discharge, and calls only functions making the same promise. Trap sites
-//! here: a division by a value that may be 0, a narrowing that may not fit (`Narrowing::To`), and
-//! an index not proven within an array; a call of a function without the promise may trap too.
+//! here: a narrowing that may not fit (`Narrowing::To`), an index not proven within an array, and
+//! a call of a function without the promise, where a primitive's compile-time arguments decide:
+//! a division is one of `lang.int.div`, a trap site only by a divisor that may be 0.
 
 use vun_desugar::Narrowing;
 use vun_diag::{DiagCtxt, Diagnostic, Msg, errors};
-use vun_grammar::TokenKind;
 use vun_mir::{Body, Mir, Operand, Place, Projection, Rvalue};
 use vun_origin::OriginId;
 use vun_query::{Cx, Query};
@@ -59,18 +59,11 @@ impl Check<'_, '_, '_, '_> {
             }
         }
         match rvalue {
-            Rvalue::Call { callee, .. } if self.may_trap(callee) => {
+            Rvalue::Call { callee, args } if self.may_trap(callee, args) => {
                 self.report(
                     origin,
                     Msg::new().text("this call may trap: the function called is not ").code("#[panic.never]"),
                 );
-            }
-            Rvalue::Binary { op: TokenKind::Slash | TokenKind::Percent, right, .. }
-                if self
-                    .interval(right)
-                    .is_none_or(|i| i.contains(&Interval::singleton(Integer::from(0)))) =>
-            {
-                self.report(origin, Msg::new().text("this divides by a value that may be 0"));
             }
             Rvalue::Narrow { operand, ty, narrowing: Narrowing::To } => {
                 let fits = self.interval(operand).zip(ty.interval()).is_some_and(|(v, t)| t.contains(&v));
@@ -91,9 +84,23 @@ impl Check<'_, '_, '_, '_> {
         }
     }
 
-    /// Whether calling `callee` may trap: a function or primitive without the promise; a
-    /// variant's constructor never does, and a callee of unknown type says nothing.
-    fn may_trap(&self, callee: &Operand) -> bool {
+    /// Whether calling `callee` with `args` may trap: a function or primitive without the
+    /// promise, but a primitive whose compile-time arguments show it cannot, such as a division by
+    /// a divisor whose range excludes 0; a variant's constructor never does, and a callee of
+    /// unknown type says nothing.
+    fn may_trap(&self, callee: &Operand, args: &[Operand]) -> bool {
+        if let Operand::Const(Value::Primitive(p)) = callee {
+            let known: Vec<Option<Value>> = args
+                .iter()
+                .map(|a| match a {
+                    Operand::Const(v) => Some(v.clone()),
+                    Operand::Place(_) => None,
+                })
+                .collect();
+            if let Some(traps) = p.may_trap(&known) {
+                return traps;
+            }
+        }
         let markers = match callee {
             Operand::Const(Value::Fn(f) | Value::Closure { f, .. }) => {
                 let Some(env) = Env::inside(self.env.cx, f, []) else { return false };

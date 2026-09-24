@@ -1,7 +1,7 @@
 //! Blocks and their statements: declarations, expressions, nested blocks and assignments, whose
 //! value is checked against the place's type.
 
-use vun_grammar::TokenKind;
+use vun_desugar::COMPOUND;
 use vun_hir::tree::{BlockId, Entry, ExprKind, Stmt};
 use vun_hir::visit::{self, Visitor};
 
@@ -40,11 +40,14 @@ impl Typer<'_, '_, '_> {
             // `x op= y` narrows back to the type of `x` (spec 04, rule 9): a trap site, not a
             // type error.
             Stmt::Assign { op, place, value, .. } => {
-                let place = self.typed(*place);
-                let plain = *op == TokenKind::Eq;
-                let found = self.typed_as(*value, place.filter(|_| plain).map(|k| k.ty));
-                if let (true, Some(place), Some(found)) = (plain, place, found) {
-                    self.expect(hir.exprs[*value].origin, found, place.ty, None);
+                if let Some(&(_, binary, _)) = COMPOUND.iter().find(|(token, ..)| token == op) {
+                    self.compound(*place, binary, *value);
+                } else {
+                    let place_known = self.typed(*place);
+                    let found = self.typed_as(*value, place_known.map(|k| k.ty));
+                    if let (Some(place), Some(found)) = (place_known, found) {
+                        self.expect(hir.exprs[*value].origin, found, place.ty, None);
+                    }
                 }
             }
         }

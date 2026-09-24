@@ -4,7 +4,9 @@
 
 use vun_hir::tree::{Arm, Entry, ExprId, ExprKind, Name, PatId, PatKind};
 
-use super::{Known, Typer};
+use vun_grammar::TokenKind;
+
+use super::{Known, Operation, Typer};
 use crate::Primitive;
 use crate::member::{Found, Members};
 use crate::ty::{Ty, TyKind, Value};
@@ -66,11 +68,29 @@ impl Typer<'_, '_, '_> {
                     self.pattern(alternative, ty, borrow);
                 }
             }
-            PatKind::Value(value) => self.against(*value, ty),
-            PatKind::Range { lo, hi, .. } => {
+            // A computed name is known at compile time; what it binds is the declaration's.
+            PatKind::Computed(name) => {
+                self.typed(*name);
+            }
+            // A value pattern matches when `value == x`; a range when `lo <= x` and `hi > x`, or
+            // `hi >= x` inclusive: operators on the value matched (spec 02, section 4).
+            PatKind::Value(value) => {
+                self.against(*value, ty);
+                if let Some(ty) = ty {
+                    self.tested(Operation::Test(pat), TokenKind::EqEq, *value, ty);
+                }
+            }
+            PatKind::Range { lo, hi, inclusive } => {
                 self.against(*lo, ty);
+                if let Some(ty) = ty {
+                    self.tested(Operation::Lower(pat), TokenKind::Le, *lo, ty);
+                }
                 if let Some(hi) = hi {
                     self.against(*hi, ty);
+                    let op = if *inclusive { TokenKind::Ge } else { TokenKind::Gt };
+                    if let Some(ty) = ty {
+                        self.tested(Operation::Upper(pat), op, *hi, ty);
+                    }
                 }
             }
             PatKind::Struct { ty: written, fields } => {

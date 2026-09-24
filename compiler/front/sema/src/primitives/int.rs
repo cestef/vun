@@ -15,6 +15,53 @@ pub enum Int {
     magnitude,
     /// The absolute value of `x`, whose range is the magnitude of `x`'s.
     abs,
+    /// The integers of the integer type `T`.
+    range,
+    /// The ranges of results (spec 04, rule 1): every sum of an integer of `a` and one of `b`, and
+    /// so on, by interval arithmetic. `quotient` and `remainder` leave out a zero divisor.
+    sum,
+    difference,
+    product,
+    quotient,
+    remainder,
+    negation,
+    /// The range of a bit operation (rule 8): the `uN` range of one operand, which the other lies
+    /// within, or for two compile-time values, the smallest `uN` range holding both. Other operands
+    /// are reported: bit operations exist on `uN` types only.
+    bitwise,
+    /// The range of `x << n` for `x` in `a` and `n` in `b`: `a` itself when it is a `uN` range,
+    /// exact for a compile-time `x`.
+    shifted_left,
+    /// As `shifted_left`, for `x >> n`.
+    shifted_right,
+    /// Integer arithmetic, exact (rule 1): the result has the range computed from the operands'.
+    add,
+    sub,
+    mul,
+    /// Division rounding toward zero; a zero divisor traps (rule 6).
+    div,
+    /// The remainder of `div`, of the dividend's sign; a zero divisor traps (rule 6).
+    rem,
+    neg,
+    /// Bit operations (rule 8), in two's complement.
+    bit_and,
+    bit_or,
+    bit_xor,
+    /// Every bit of `x` flipped, in its `uN` type.
+    bit_not,
+    /// Shifts (rule 8): a `uN` value keeps its type, losing the bits shifted out; an amount past
+    /// `N - 1` traps.
+    shl,
+    shr,
+    /// Comparisons of integers of any two ranges.
+    equal,
+    unequal,
+    less,
+    less_equal,
+    greater,
+    greater_equal,
+    /// Where `x` is against `y`.
+    compare,
 }
 impl Int {
     pub const NAMESPACE: vun_items::Item = vun_items::lang::int;
@@ -25,6 +72,35 @@ impl Int {
         Self::fits,
         Self::magnitude,
         Self::abs,
+        Self::range,
+        Self::sum,
+        Self::difference,
+        Self::product,
+        Self::quotient,
+        Self::remainder,
+        Self::negation,
+        Self::bitwise,
+        Self::shifted_left,
+        Self::shifted_right,
+        Self::add,
+        Self::sub,
+        Self::mul,
+        Self::div,
+        Self::rem,
+        Self::neg,
+        Self::bit_and,
+        Self::bit_or,
+        Self::bit_xor,
+        Self::bit_not,
+        Self::shl,
+        Self::shr,
+        Self::equal,
+        Self::unequal,
+        Self::less,
+        Self::less_equal,
+        Self::greater,
+        Self::greater_equal,
+        Self::compare,
     ];
     /// The declaration's name.
     #[must_use]
@@ -36,6 +112,35 @@ impl Int {
             Self::fits => "fits",
             Self::magnitude => "magnitude",
             Self::abs => "abs",
+            Self::range => "range",
+            Self::sum => "sum",
+            Self::difference => "difference",
+            Self::product => "product",
+            Self::quotient => "quotient",
+            Self::remainder => "remainder",
+            Self::negation => "negation",
+            Self::bitwise => "bitwise",
+            Self::shifted_left => "shifted_left",
+            Self::shifted_right => "shifted_right",
+            Self::add => "add",
+            Self::sub => "sub",
+            Self::mul => "mul",
+            Self::div => "div",
+            Self::rem => "rem",
+            Self::neg => "neg",
+            Self::bit_and => "bit_and",
+            Self::bit_or => "bit_or",
+            Self::bit_xor => "bit_xor",
+            Self::bit_not => "bit_not",
+            Self::shl => "shl",
+            Self::shr => "shr",
+            Self::equal => "equal",
+            Self::unequal => "unequal",
+            Self::less => "less",
+            Self::less_equal => "less_equal",
+            Self::greater => "greater",
+            Self::greater_equal => "greater_equal",
+            Self::compare => "compare",
         }
     }
     /// The declaration.
@@ -48,6 +153,35 @@ impl Int {
             Self::fits => vun_items::lang::int::fits,
             Self::magnitude => vun_items::lang::int::magnitude,
             Self::abs => vun_items::lang::int::abs,
+            Self::range => vun_items::lang::int::range,
+            Self::sum => vun_items::lang::int::sum,
+            Self::difference => vun_items::lang::int::difference,
+            Self::product => vun_items::lang::int::product,
+            Self::quotient => vun_items::lang::int::quotient,
+            Self::remainder => vun_items::lang::int::remainder,
+            Self::negation => vun_items::lang::int::negation,
+            Self::bitwise => vun_items::lang::int::bitwise,
+            Self::shifted_left => vun_items::lang::int::shifted_left,
+            Self::shifted_right => vun_items::lang::int::shifted_right,
+            Self::add => vun_items::lang::int::add,
+            Self::sub => vun_items::lang::int::sub,
+            Self::mul => vun_items::lang::int::mul,
+            Self::div => vun_items::lang::int::div,
+            Self::rem => vun_items::lang::int::rem,
+            Self::neg => vun_items::lang::int::neg,
+            Self::bit_and => vun_items::lang::int::bit_and,
+            Self::bit_or => vun_items::lang::int::bit_or,
+            Self::bit_xor => vun_items::lang::int::bit_xor,
+            Self::bit_not => vun_items::lang::int::bit_not,
+            Self::shl => vun_items::lang::int::shl,
+            Self::shr => vun_items::lang::int::shr,
+            Self::equal => vun_items::lang::int::equal,
+            Self::unequal => vun_items::lang::int::unequal,
+            Self::less => vun_items::lang::int::less,
+            Self::less_equal => vun_items::lang::int::less_equal,
+            Self::greater => vun_items::lang::int::greater,
+            Self::greater_equal => vun_items::lang::int::greater_equal,
+            Self::compare => vun_items::lang::int::compare,
         }
     }
 }

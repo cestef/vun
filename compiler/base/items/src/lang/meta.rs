@@ -16,6 +16,8 @@ pub const origin: Item = Item::new(&["lang", "meta", "origin"]);
 pub const embed: Item = Item::new(&["lang", "meta", "embed"]);
 /// Whether `A` and `B` are one type: made by the same constructor from the same arguments.
 pub const same: Item = Item::new(&["lang", "meta", "same"]);
+/// Types are equal when they are one type (spec 02, section 1: `Pair(u16)` is one type).
+pub const TypeEq: Item = Item::new(&["lang", "meta", "TypeEq"]);
 /// A compile-time value of any type, with its type: what a plan records of a record whose type
 /// each call infers (spec 03, section 7). It exists at compile time only.
 pub const Any: Item = Item::new(&["lang", "meta", "Any"]);
@@ -23,10 +25,22 @@ pub const Any: Item = Item::new(&["lang", "meta", "Any"]);
 pub const any: Item = Item::new(&["lang", "meta", "any"]);
 /// The items of `items` followed by `item`, in compile-time memory (spec 03, section 7).
 pub const append: Item = Item::new(&["lang", "meta", "append"]);
+/// The items of `a` followed by those of `b`, in compile-time memory.
+pub const concat: Item = Item::new(&["lang", "meta", "concat"]);
+/// `a ++ b` on sequences, at compile time: the items of both (spec 02, section 4).
+pub const SliceConcat: Item = Item::new(&["lang", "meta", "SliceConcat"]);
+/// `a ++ b` on an array, as on the slice of its items: a string literal is a borrow of one.
+pub const ArrayConcat: Item = Item::new(&["lang", "meta", "ArrayConcat"]);
 /// A field of a struct type, as reflection gives it (spec 03, section 6).
 pub const Field: Item = Item::new(&["lang", "meta", "Field"]);
 /// The fields of the struct type `T` in declaration order, generated ones included.
 pub const fields: Item = Item::new(&["lang", "meta", "fields"]);
+/// A variant of an enum type, as reflection gives it.
+pub const Variant: Item = Item::new(&["lang", "meta", "Variant"]);
+/// The variants of the enum type `T` in declaration order; none for another type.
+pub const variants: Item = Item::new(&["lang", "meta", "variants"]);
+/// The position of the variant `v` is among the variants of its enum type `T`.
+pub const variant: Item = Item::new(&["lang", "meta", "variant"]);
 /// The item types of the tuple type `T`, in order.
 pub const items: Item = Item::new(&["lang", "meta", "items"]);
 /// The name of `T` as diagnostics show it: a `struct` or `enum` literal by the declaration it is

@@ -12,7 +12,8 @@ use super::*;
 )]
 use vun_grammar::*;
 /// What infix operators desugar to (appendix B): `a op b` is `function(a, b)` of the interface at
-/// `interface`, for the type of `a`. `and`, `or` and ranges are not interfaces.
+/// `interface`, for the type of `a`, the operands passed as the function's parameters ask. `and`,
+/// `or` and ranges are not interfaces.
 pub const OPERATORS: &[(TokenKind, vun_items::Item, &str)] = &[
     (TokenKind::Plus, vun_items::lang::ops::Add, "add"),
     (TokenKind::Minus, vun_items::lang::ops::Sub, "sub"),

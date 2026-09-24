@@ -1,20 +1,17 @@
 //! The type of each form typed so far. Any other form has its parts typed and no type itself.
 
-use vun_desugar::OPERATORS;
 use vun_grammar::TokenKind;
 use vun_hir::tree::{Arg, Entry, ExprId, ExprKind, Hir, Lit, Name};
 use vun_hir::visit;
-use vun_intern::Symbol;
 
 use super::{Known, Stage, Typer};
 use crate::Primitive;
 use crate::decl::DeclType;
-use crate::eval::{Call, Instance};
 use crate::int::{Integer, Interval};
 use crate::item::Site;
-use crate::member::{Found, MemberType, Members};
+use crate::member::{Found, Members};
 use crate::primitives::meta::Meta;
-use crate::ty::{Ty, TyKind, Value};
+use crate::ty::{Ty, TyKind};
 
 impl Typer<'_, '_, '_> {
     pub(super) fn infer(&mut self, hir: &Hir, expr: ExprId) -> Option<Known> {
@@ -83,19 +80,13 @@ impl Typer<'_, '_, '_> {
                 self.leave(expr, *label, *value);
                 None
             }
-            ExprKind::Prefix { op: TokenKind::Minus, operand, .. } => {
-                let known = self.typed(*operand)?;
-                Some(Known { ty: TyKind::int(&known.ty.interval()?.neg()), ..known })
+            ExprKind::Prefix { op: op @ (TokenKind::Minus | TokenKind::Tilde), operand, .. } => {
+                self.prefix(expr, *op, *operand)
             }
             ExprKind::Infix { op: op @ (TokenKind::DotDot | TokenKind::DotDotEq), left, right } => {
                 self.range(*op, *left, *right)
             }
-            ExprKind::Infix { op, left, right: Some(right) } => {
-                // The right operand is expected of the left's type: `c == .red`.
-                let left = self.typed(*left);
-                let right = self.typed_as(*right, left.map(|k| k.ty));
-                self.binary(expr, *op, left?, right?)
-            }
+            ExprKind::Infix { op, left, right: Some(right) } => self.binary(expr, *op, *left, *right),
             ExprKind::Call { callee, args } if matches!(hir.exprs[*callee].kind, ExprKind::DotName(_)) => {
                 self.dot_call(expr, *callee, args)
             }
@@ -162,42 +153,5 @@ impl Typer<'_, '_, '_> {
                 Some(Known { ty: TyKind::primitive(Primitive::Meta(Meta::Namespace)), stage: Stage::Compile })
             }
         }
-    }
-
-    /// `left op right`: integer arithmetic by interval arithmetic (spec 04, rule 1), any other
-    /// operator by the function of its `lang.ops` interface for the type of `left` (appendix B).
-    /// A run-time intermediate past the width cap is reported (rule 5) and has no type, so
-    /// nothing depending on it is.
-    fn binary(&mut self, expr: ExprId, op: TokenKind, left: Known, right: Known) -> Option<Known> {
-        let stage = left.stage.max(right.stage);
-        // At run time, bit operations keep the type, and exist on `uN` types only (spec 04,
-        // rule 8); compile-time integers are exact and have no width.
-        // A constant takes the type of the run-time operand it meets, as a literal does.
-        if Interval::BITWISE.contains(&op)
-            && stage == Stage::Run
-            && let (Some(_), Some(_)) = (left.ty.interval(), right.ty.interval())
-        {
-            let ty = if left.stage == Stage::Run { left.ty } else { right.ty };
-            if ty.interval().is_some_and(|i| i.is_unsigned_width()) {
-                return Some(Known { ty, stage });
-            }
-            self.no_impl(expr, op, ty);
-            return None;
-        }
-        if let (Some(a), Some(b)) = (left.ty.interval(), right.ty.interval())
-            && let Some(range) = a.binary(op, &b)
-        {
-            if stage == Stage::Run && range.storage().is_none() && range.bits().is_some() {
-                self.width_cap(expr, &range);
-                return None;
-            }
-            return Some(Known { ty: TyKind::int(&range), stage });
-        }
-        let (_, interface, function) = OPERATORS.iter().find(|(token, ..)| *token == op)?;
-        let Ok(Value::Interface(f)) = self.env().item(*interface) else { return None };
-        let requirements = self.env().cx.get::<Call>(&Instance { f, args: vec![Value::Type(left.ty)] });
-        let key = (requirements.ok()?.as_type()?, Symbol::intern(function));
-        let function = self.env().cx.get::<MemberType>(&key).ok()?;
-        Some(Known { ty: function.ty.signature()?.result, stage })
     }
 }

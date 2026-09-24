@@ -14,13 +14,9 @@ impl Analysis<'_> {
     pub(super) fn rvalue(&mut self, rvalue: &Rvalue, states: &mut States, origin: OriginId) {
         match rvalue {
             Rvalue::Use(o)
-            | Rvalue::Unary { operand: o, .. }
+            | Rvalue::Not { operand: o }
             | Rvalue::Narrow { operand: o, .. }
             | Rvalue::Repeat { operand: o, .. } => self.operand(o, states, origin),
-            Rvalue::Binary { left, right, .. } => {
-                self.operand(left, states, origin);
-                self.operand(right, states, origin);
-            }
             Rvalue::Range { lo, hi, .. } => {
                 self.operand(lo, states, origin);
                 if let Some(hi) = hi {

@@ -121,12 +121,9 @@ fn emit(sources: &[Source<'_>]) -> Read<Vec<Module>> {
         let (module, name, doc) = (n.module(), n.name(), format!(" `{}`", n.path));
         quote! { #[doc = #doc] #name(#module::#name) }
     });
-    let all = namespaces.iter().flat_map(|n| {
+    let all = namespaces.iter().map(|n| {
         let (module, name) = (n.module(), n.name());
-        n.items.iter().map(move |(item, _)| {
-            let item = variant(item);
-            quote! { Self::#name(#module::#name::#item) }
-        })
+        quote! { #module::#name::ALL.iter().map(|&p| Self::#name(p)) }
     });
     let namespace = namespaces.iter().map(|n| {
         let (module, name) = (n.module(), n.name());
@@ -146,7 +143,10 @@ fn emit(sources: &[Source<'_>]) -> Read<Vec<Module>> {
         pub enum Primitive { #(#variants),* }
 
         impl Primitive {
-            pub const ALL: &[Self] = &[#(#all),*];
+            /// Every primitive, namespace by namespace.
+            pub fn all() -> impl Iterator<Item = Self> {
+                std::iter::empty() #(.chain(#all))*
+            }
 
             /// The namespace declaring it.
             #[must_use]

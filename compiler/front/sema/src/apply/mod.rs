@@ -1,15 +1,14 @@
 //! What primitives do when applied at compile time. Sema and the interpreter both apply them
 //! through here, so each primitive has one definition.
 
-use vun_desugar::Narrowing;
+mod int;
 
 use crate::Primitive;
 use crate::env::{Env, Unevaluated};
-use crate::int::{Integer, Interval};
+use crate::int::Integer;
 use crate::layout::Layouts;
 use crate::primitives::bounds::Bounds;
 use crate::primitives::diag::Diag;
-use crate::primitives::int::Int;
 use crate::primitives::lang::Lang;
 use crate::primitives::mem::Mem;
 use crate::primitives::meta::Meta;
@@ -17,6 +16,16 @@ use crate::trap::Reason;
 use crate::ty::{Signature, TyKind, Value};
 
 impl Primitive {
+    /// Whether a call with the compile-time arguments `args` may trap, where they decide (spec
+    /// 04, rules 6 and 8); `None` where the primitive's markers say it all.
+    #[must_use]
+    pub fn may_trap(self, args: &[Option<Value>]) -> Option<bool> {
+        match self {
+            Self::Int(int) => int.may_trap(args),
+            _ => None,
+        }
+    }
+
     /// The value of `self(args)` at compile time.
     ///
     /// # Errors
@@ -27,6 +36,8 @@ impl Primitive {
         match (self, args) {
             // `lang.Int(range)`: the integers of the range (spec 04, section 1).
             (Self::Lang(Lang::Int), [Value::Range(Some(range))]) => Ok(Value::Type(TyKind::int(range))),
+            // No integer is in an empty range: the empty type, of what never gives a value.
+            (Self::Lang(Lang::Int), [Value::Range(None)]) => env.item(vun_items::lang::never),
             // `lang.Fn(params, result)`: a function type (appendix B).
             (Self::Lang(Lang::Fn), [params, result]) => {
                 let (Some(params), Some(result)) = (params.as_type(), result.as_type()) else {
@@ -67,24 +78,7 @@ impl Primitive {
             }
             // `lang.mem.len(T, xs)`: the number of items `xs` borrows.
             (Self::Mem(Mem::len), [_, Value::Array(items)]) => Ok(Value::Int(Integer::from(items.len()))),
-            (Self::Int(Int::magnitude), [Value::Range(range)]) => {
-                Ok(Value::Range(range.as_ref().map(Interval::magnitude)))
-            }
-            (Self::Int(Int::abs), [Value::Range(_), Value::Int(x)]) => {
-                let magnitude = Interval::singleton(x.clone()).magnitude();
-                Ok(Value::Int(magnitude.lo().finite().ok_or(Unevaluated::Unsupported)?.clone()))
-            }
-            // Narrowing an integer to the integer type `T` (spec 04, rule 3).
-            (Self::Int(int), [Value::Range(_), x, Value::Type(ty)]) => {
-                let range = ty.interval().ok_or(Unevaluated::Unsupported)?;
-                match int {
-                    Int::to => x.narrow(&range, Narrowing::To),
-                    Int::wrap => x.narrow(&range, Narrowing::Wrap),
-                    Int::sat => x.narrow(&range, Narrowing::Sat),
-                    Int::fits => env.decide(x.narrow(&range, Narrowing::To).is_ok()),
-                    Int::magnitude | Int::abs => Err(Unevaluated::Unsupported),
-                }
-            }
+            (Self::Int(int), args) => int.apply(env, args),
             // Library diagnostics (spec 10, section 3).
             (Self::Diag(Diag::error), [message, at]) => {
                 let message = message.text().ok_or(Unevaluated::Unsupported)?;
@@ -103,6 +97,10 @@ impl Primitive {
                 _ => Err(Unevaluated::Unsupported),
             },
             // Reflection (spec 03, section 6).
+            (Self::Meta(Meta::variants), [ty]) => {
+                env.variants(self, ty.as_type().ok_or(Unevaluated::Unsupported)?)
+            }
+            (Self::Meta(Meta::variant), [_, value]) => env.variant_index(value),
             (Self::Meta(Meta::fields), [ty]) => {
                 env.fields(self, ty.as_type().ok_or(Unevaluated::Unsupported)?)
             }
@@ -125,6 +123,9 @@ impl Primitive {
             (Self::Meta(Meta::any), [ty, value]) => {
                 let ty = ty.as_type().ok_or(Unevaluated::Unsupported)?;
                 Ok(Value::Any { ty, value: Box::new(value.clone()) })
+            }
+            (Self::Meta(Meta::concat), [_, Value::Array(a), Value::Array(b)]) => {
+                Ok(Value::Array(a.iter().chain(b).cloned().collect()))
             }
             (Self::Meta(Meta::append), [_, Value::Array(items), item]) => {
                 Ok(Value::Array(items.iter().chain([item]).cloned().collect()))

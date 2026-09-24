@@ -3,13 +3,15 @@
 //! same mode (decision 31), as the typer types them. `match`, `if p = e`, `for p = e` and
 //! declarations with a pattern are built on tests.
 
-use vun_grammar::TokenKind;
 use vun_hir::tree::{Arm, BinderId, Entry, ExprId, Name, PatId, PatKind};
 use vun_intern::Symbol;
 use vun_origin::OriginId;
 use vun_sema::member::{Found, Members};
 use vun_sema::ty::{Ty, TyKind};
 
+use vun_sema::typeck::Operation;
+
+use super::operator::Side;
 use super::{Builder, Unbuilt};
 use crate::body::{BlockId, Operand, Role, Rvalue, TerminatorKind};
 use crate::place::{Place, Projection};
@@ -137,29 +139,26 @@ impl Builder<'_, '_, '_> {
                 Ok(())
             }
             PatKind::Or(alternatives) => self.either(alternatives, matched, fail, origin),
+            // The tests typing found: `value == x`, and `lo <= x` with `hi >= x` or `hi > x`.
             PatKind::Value(value) => {
-                let value = self.operand(*value)?;
-                let found = Operand::Place(matched.place.clone());
-                let cond =
-                    self.temp(Rvalue::Binary { op: TokenKind::EqEq, left: found, right: value }, origin);
+                let found = Side::Matched(matched.place.clone(), matched.ty);
+                let cond = self.operator(Operation::Test(pat), *value, vec![found], origin)?;
                 self.guard(cond, fail, origin);
                 Ok(())
             }
-            PatKind::Range { lo, hi, inclusive } => {
-                let found = Operand::Place(matched.place.clone());
-                let lo = self.operand(*lo)?;
-                let cond =
-                    self.temp(Rvalue::Binary { op: TokenKind::Le, left: lo, right: found.clone() }, origin);
+            PatKind::Range { lo, hi, .. } => {
+                let found = || Side::Matched(matched.place.clone(), matched.ty);
+                let cond = self.operator(Operation::Lower(pat), *lo, vec![found()], origin)?;
                 self.guard(cond, fail, origin);
                 if let Some(hi) = hi {
-                    let hi = self.operand(*hi)?;
-                    let op = if *inclusive { TokenKind::Le } else { TokenKind::Lt };
-                    let cond = self.temp(Rvalue::Binary { op, left: found, right: hi }, origin);
+                    let cond = self.operator(Operation::Upper(pat), *hi, vec![found()], origin)?;
                     self.guard(cond, fail, origin);
                 }
                 Ok(())
             }
-            PatKind::Variant { .. } | PatKind::Rest(Some(_)) | PatKind::Error => Err(unbuilt),
+            PatKind::Variant { .. } | PatKind::Rest(Some(_)) | PatKind::Computed(_) | PatKind::Error => {
+                Err(unbuilt)
+            }
         }
     }
 

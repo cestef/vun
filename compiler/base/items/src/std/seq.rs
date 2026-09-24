@@ -10,3 +10,7 @@ use crate::Item;
 pub const Sequence: Item = Item::new(&["std", "seq", "Sequence"]);
 pub const SliceSequence: Item = Item::new(&["std", "seq", "SliceSequence"]);
 pub const ArraySequence: Item = Item::new(&["std", "seq", "ArraySequence"]);
+/// Slices are equal when they hold as many items, equal in order.
+pub const SliceEq: Item = Item::new(&["std", "seq", "SliceEq"]);
+/// Arrays are equal when their items are, in order.
+pub const ArrayEq: Item = Item::new(&["std", "seq", "ArrayEq"]);

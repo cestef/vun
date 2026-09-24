@@ -8,26 +8,26 @@ use vun_desugar::{Form, TYPE_PREFIXES};
 use vun_grammar::TokenKind;
 use vun_hir::resolve::Res;
 
-use vun_hir::tree::{BinderId, Entry, ExprId, ExprKind, Hir, Param, PatKind};
+use vun_hir::tree::{BinderId, Entry, ExprId, ExprKind, Hir, Param};
 use vun_hir::visit::{self, Visitor};
 use vun_intern::Symbol;
 
+use crate::callable::Callable;
 use crate::env::Env;
-use crate::eval::Func;
 use crate::ty::{Nominal, Ty, TyKind, Value};
 
 /// Which parameter each written argument of a call is for.
-pub(super) struct Plan {
+pub(crate) struct Plan {
     /// The parameter of each written argument, the receiver's first.
-    pub(super) slots: Vec<usize>,
+    pub(crate) slots: Vec<usize>,
     /// The `$` parameters left out, to infer.
-    pub(super) omitted: Vec<usize>,
+    pub(crate) omitted: Vec<usize>,
 }
 
 impl Plan {
     /// How `written` arguments, the receiver included, go to the parameters of `f`: one each,
     /// or one each but for every `$` parameter a later parameter's type names.
-    pub(super) fn of(env: &Env<'_, '_>, f: &Func, written: usize) -> Option<Self> {
+    pub(crate) fn of(env: &Env<'_, '_>, f: &Callable, written: usize) -> Option<Self> {
         let inferable = Self::inferable(env, f)?;
         if written == inferable.len() {
             return Some(Self { slots: (0..written).collect(), omitted: Vec::new() });
@@ -39,50 +39,29 @@ impl Plan {
 
     /// The argument counts a call of `f` may pass, the receiver included: every parameter, or
     /// every one but the inferable `$` parameters when there are some.
-    pub(super) fn counts(env: &Env<'_, '_>, f: &Func) -> Vec<usize> {
+    pub(crate) fn counts(env: &Env<'_, '_>, f: &Callable) -> Vec<usize> {
         let Some(inferable) = Self::inferable(env, f) else { return Vec::new() };
         let without = inferable.iter().filter(|&&i| !i).count();
         if without == inferable.len() { vec![inferable.len()] } else { vec![inferable.len(), without] }
     }
 
     /// Whether each parameter of `f` is a `$` parameter named in a later parameter's type.
-    fn inferable(env: &Env<'_, '_>, f: &Func) -> Option<Vec<bool>> {
-        let inside = Env::inside(env.cx, f, [])?;
+    fn inferable(env: &Env<'_, '_>, f: &Callable) -> Option<Vec<bool>> {
+        let written = f.written(env)?;
+        let inside = &written.env;
         let hir = &inside.parsed.hir;
-        let params = Params::of(hir, f.literal.expr.id)?;
+        let params = written.params()?;
         Some(
             params
                 .iter()
                 .enumerate()
                 .map(|(i, (binder, _))| {
                     binder.filter(|&b| hir.binders[b].comptime).is_some_and(|b| {
-                        params[i + 1..].iter().any(|(_, ty)| ty.is_some_and(|t| Named::names(&inside, t, b)))
+                        params[i + 1..].iter().any(|(_, ty)| ty.is_some_and(|t| Named::names(inside, t, b)))
                     })
                 })
                 .collect(),
         )
-    }
-}
-
-/// The binder and the type annotation of each parameter of a function literal.
-struct Params;
-
-impl Params {
-    fn of(hir: &Hir, literal: ExprId) -> Option<Vec<(Option<BinderId>, Option<ExprId>)>> {
-        let ExprKind::Fn { params, .. } = &hir.exprs[literal].kind else { return None };
-        params
-            .iter()
-            .map(|p| match p {
-                Entry::One(Param { pat, ty, .. }) => {
-                    let binder = pat.and_then(|p| match hir.pats[p].kind {
-                        PatKind::Bind(b) => Some(b),
-                        _ => None,
-                    });
-                    Some((binder, *ty))
-                }
-                Entry::Staged(_) => None,
-            })
-            .collect()
     }
 }
 
@@ -112,7 +91,7 @@ impl Visitor for Named<'_, '_, '_> {
 
 /// Values for `$` parameters, found by matching the types they are named in against the types
 /// of the arguments.
-pub(super) struct Unifier<'e, 'a, 'db> {
+pub(crate) struct Unifier<'e, 'a, 'db> {
     env: &'e Env<'a, 'db>,
     wanted: BTreeSet<BinderId>,
     bound: BTreeMap<BinderId, Value>,
@@ -121,16 +100,16 @@ pub(super) struct Unifier<'e, 'a, 'db> {
 impl Unifier<'_, '_, '_> {
     /// Infers the omitted parameters of `plan` for a call of `f` whose written arguments have
     /// the types `args`; each is `None` when nothing determines it.
-    pub(super) fn infer(
+    pub(crate) fn infer(
         env: &Env<'_, '_>,
-        f: &Func,
+        f: &Callable,
         plan: &Plan,
         args: &[Option<Ty>],
     ) -> Option<Vec<Option<Value>>> {
-        let inside = Env::inside(env.cx, f, [])?;
-        let params = Params::of(&inside.parsed.hir, f.literal.expr.id)?;
+        let written = f.written(env)?;
+        let params = written.params()?;
         let wanted = plan.omitted.iter().filter_map(|&i| params[i].0).collect();
-        let mut unifier = Unifier { env: &inside, wanted, bound: BTreeMap::new() };
+        let mut unifier = Unifier { env: &written.env, wanted, bound: BTreeMap::new() };
         for (&slot, arg) in plan.slots.iter().zip(args) {
             if let (Some(ty), Some(annotation)) = (arg, params[slot].1) {
                 unifier.unify(annotation, &Value::Type(*ty));
@@ -154,10 +133,10 @@ impl Unifier<'_, '_, '_> {
     }
 
     /// The names of the binders of `plan`'s omitted parameters.
-    pub(super) fn names(env: &Env<'_, '_>, f: &Func, plan: &Plan) -> Vec<Symbol> {
-        let Some(inside) = Env::inside(env.cx, f, []) else { return Vec::new() };
-        let hir = &inside.parsed.hir;
-        let Some(params) = Params::of(hir, f.literal.expr.id) else { return Vec::new() };
+    pub(crate) fn names(env: &Env<'_, '_>, f: &Callable, plan: &Plan) -> Vec<Symbol> {
+        let Some(written) = f.written(env) else { return Vec::new() };
+        let Some(params) = written.params() else { return Vec::new() };
+        let hir = &written.env.parsed.hir;
         plan.omitted.iter().filter_map(|&i| params[i].0).map(|b| hir.binders[b].name).collect()
     }
 

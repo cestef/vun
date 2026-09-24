@@ -92,7 +92,7 @@ impl Lower<'_, '_> {
             NodeKind::Error => PatKind::Error,
             NodeKind::Prefix if self.token(n) == Some(TokenKind::Dollar) => match f.one(NodeField::Operand) {
                 Some(o) if self.kind(o) == NodeKind::Name => self.bind(o, Mode { comptime: true, ..mode }),
-                _ => PatKind::Value(self.expr(n)),
+                _ => PatKind::Computed(self.operand(&f, n, NodeField::Operand)),
             },
             NodeKind::Paren => match f.one(NodeField::Inner) {
                 Some(inner) => self.pattern_kind(inner, mode),

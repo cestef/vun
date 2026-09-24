@@ -1,3 +1,35 @@
 //! Floating-point operations that are explicit about precision (spec 04, section 2).
 
 mul_add: ($T: type, a: T, b: T, c: T) -> T = _;
+
+/// IEEE 754 arithmetic in the float type `T`, rounding to nearest: none traps, a division by
+/// zero giving an infinity (spec 04, section 2).
+#[panic.never]
+add: ($T: type, a: T, b: T) -> T = _;
+#[panic.never]
+sub: ($T: type, a: T, b: T) -> T = _;
+#[panic.never]
+mul: ($T: type, a: T, b: T) -> T = _;
+#[panic.never]
+div: ($T: type, a: T, b: T) -> T = _;
+#[panic.never]
+rem: ($T: type, a: T, b: T) -> T = _;
+#[panic.never]
+neg: ($T: type, a: T) -> T = _;
+/// IEEE 754 comparisons: a NaN is equal to nothing, itself included, and in no order.
+#[panic.never]
+equal: ($T: type, a: &T, b: &T) -> bool = _;
+#[panic.never]
+unequal: ($T: type, a: &T, b: &T) -> bool = _;
+#[panic.never]
+less: ($T: type, a: &T, b: &T) -> bool = _;
+#[panic.never]
+less_equal: ($T: type, a: &T, b: &T) -> bool = _;
+#[panic.never]
+greater: ($T: type, a: &T, b: &T) -> bool = _;
+#[panic.never]
+greater_equal: ($T: type, a: &T, b: &T) -> bool = _;
+/// IEEE 754 `totalOrder`: every float in one order, `-NaN < -inf < ... < -0 < +0 < ... < NaN`.
+#[panic.never]
+total_order: ($T: type, a: &T, b: &T) -> Ordering = _;
+

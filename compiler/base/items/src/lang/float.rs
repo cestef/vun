@@ -6,4 +6,23 @@
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
 use crate::Item;
+/// The namespace `lang.float.ops`.
+pub const ops: Item = Item::new(&["lang", "float", "ops"]);
 pub const mul_add: Item = Item::new(&["lang", "float", "mul_add"]);
+/// IEEE 754 arithmetic in the float type `T`, rounding to nearest: none traps, a division by
+/// zero giving an infinity (spec 04, section 2).
+pub const add: Item = Item::new(&["lang", "float", "add"]);
+pub const sub: Item = Item::new(&["lang", "float", "sub"]);
+pub const mul: Item = Item::new(&["lang", "float", "mul"]);
+pub const div: Item = Item::new(&["lang", "float", "div"]);
+pub const rem: Item = Item::new(&["lang", "float", "rem"]);
+pub const neg: Item = Item::new(&["lang", "float", "neg"]);
+/// IEEE 754 comparisons: a NaN is equal to nothing, itself included, and in no order.
+pub const equal: Item = Item::new(&["lang", "float", "equal"]);
+pub const unequal: Item = Item::new(&["lang", "float", "unequal"]);
+pub const less: Item = Item::new(&["lang", "float", "less"]);
+pub const less_equal: Item = Item::new(&["lang", "float", "less_equal"]);
+pub const greater: Item = Item::new(&["lang", "float", "greater"]);
+pub const greater_equal: Item = Item::new(&["lang", "float", "greater_equal"]);
+/// IEEE 754 `totalOrder`: every float in one order, `-NaN < -inf < ... < -0 < +0 < ... < NaN`.
+pub const total_order: Item = Item::new(&["lang", "float", "total_order"]);

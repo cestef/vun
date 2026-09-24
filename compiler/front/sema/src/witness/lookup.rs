@@ -6,6 +6,7 @@ use std::sync::Arc;
 use vun_hir::db::FileRef;
 use vun_hir::tree::ExprKind;
 use vun_intern::Symbol;
+use vun_items::Item;
 use vun_query::{Cx, Cycle, Query};
 
 use super::{ImplDecl, Impls};
@@ -115,6 +116,19 @@ impl Env<'_, '_> {
     #[must_use]
     pub fn method(&self, ty: Ty, name: Symbol) -> Option<Method> {
         self.methods(ty, name).into_iter().next()
+    }
+
+    /// The function `function` of the interface `interface` for `ty`: the witness's, or the
+    /// interface's default there. What an operator calls (the tables `operators` and
+    /// `prefix_operators`).
+    #[must_use]
+    pub fn implemented_by(&self, ty: Ty, interface: Item, function: Symbol) -> Option<Method> {
+        let Ok(Value::Interface(interface)) = self.item(interface) else { return None };
+        let witnesses = self.cx.get::<Witnesses>(&(self.file.clone(), ty));
+        witnesses
+            .iter()
+            .filter(|w| w.decl.contract.as_ref().is_some_and(|c| c.interface == interface))
+            .find_map(|w| w.method(self.cx, function))
     }
 
     /// Every method `name` that `ty` has through the impls this file sees: more than one is a

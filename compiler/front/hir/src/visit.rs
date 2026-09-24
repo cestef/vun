@@ -266,6 +266,6 @@ pub fn walk_pat<V: Visitor + ?Sized>(v: &mut V, hir: &Hir, pat: PatId) {
                 v.pat(hir, *p);
             });
         }
-        PatKind::Value(e) => v.expr(hir, *e),
+        PatKind::Value(e) | PatKind::Computed(e) => v.expr(hir, *e),
     }
 }

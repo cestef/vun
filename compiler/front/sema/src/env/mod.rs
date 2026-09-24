@@ -8,12 +8,14 @@
 
 mod aggregate;
 mod attr;
+mod call;
 mod code;
 mod condition;
 mod eval;
 mod frame;
 mod lasting;
 mod named;
+mod operator;
 mod path;
 mod primitive;
 mod reach;

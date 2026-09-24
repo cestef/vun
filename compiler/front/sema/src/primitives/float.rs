@@ -4,15 +4,60 @@
 #[allow(non_camel_case_types, reason = "variants are named as their declarations")]
 pub enum Float {
     mul_add,
+    /// IEEE 754 arithmetic in the float type `T`, rounding to nearest: none traps, a division by
+    /// zero giving an infinity (spec 04, section 2).
+    add,
+    sub,
+    mul,
+    div,
+    rem,
+    neg,
+    /// IEEE 754 comparisons: a NaN is equal to nothing, itself included, and in no order.
+    equal,
+    unequal,
+    less,
+    less_equal,
+    greater,
+    greater_equal,
+    /// IEEE 754 `totalOrder`: every float in one order, `-NaN < -inf < ... < -0 < +0 < ... < NaN`.
+    total_order,
 }
 impl Float {
     pub const NAMESPACE: vun_items::Item = vun_items::lang::float;
-    pub const ALL: &[Self] = &[Self::mul_add];
+    pub const ALL: &[Self] = &[
+        Self::mul_add,
+        Self::add,
+        Self::sub,
+        Self::mul,
+        Self::div,
+        Self::rem,
+        Self::neg,
+        Self::equal,
+        Self::unequal,
+        Self::less,
+        Self::less_equal,
+        Self::greater,
+        Self::greater_equal,
+        Self::total_order,
+    ];
     /// The declaration's name.
     #[must_use]
     pub const fn name(self) -> &'static str {
         match self {
             Self::mul_add => "mul_add",
+            Self::add => "add",
+            Self::sub => "sub",
+            Self::mul => "mul",
+            Self::div => "div",
+            Self::rem => "rem",
+            Self::neg => "neg",
+            Self::equal => "equal",
+            Self::unequal => "unequal",
+            Self::less => "less",
+            Self::less_equal => "less_equal",
+            Self::greater => "greater",
+            Self::greater_equal => "greater_equal",
+            Self::total_order => "total_order",
         }
     }
     /// The declaration.
@@ -20,6 +65,19 @@ impl Float {
     pub const fn item(self) -> vun_items::Item {
         match self {
             Self::mul_add => vun_items::lang::float::mul_add,
+            Self::add => vun_items::lang::float::add,
+            Self::sub => vun_items::lang::float::sub,
+            Self::mul => vun_items::lang::float::mul,
+            Self::div => vun_items::lang::float::div,
+            Self::rem => vun_items::lang::float::rem,
+            Self::neg => vun_items::lang::float::neg,
+            Self::equal => vun_items::lang::float::equal,
+            Self::unequal => vun_items::lang::float::unequal,
+            Self::less => vun_items::lang::float::less,
+            Self::less_equal => vun_items::lang::float::less_equal,
+            Self::greater => vun_items::lang::float::greater,
+            Self::greater_equal => vun_items::lang::float::greater_equal,
+            Self::total_order => vun_items::lang::float::total_order,
         }
     }
 }

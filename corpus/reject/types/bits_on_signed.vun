@@ -1,5 +1,6 @@
-//! Bit operations exist on `uN` types only (spec 04, section 1).
+//! Bit operations exist on `uN` types only (spec 04, rule 8): `lang.int.bitwise`, which the
+//! result's type is computed by, reports any other operand.
 
 low_byte := (x: i32) -> i32 {
-    x & 0xff //~ types.no_impl
+    x & 0xff //~ comptime.reported "bit operations exist on `uN` types only"
 };

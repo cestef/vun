@@ -56,130 +56,33 @@ pub enum Primitive {
     Lang(lang::Lang),
 }
 impl Primitive {
-    pub const ALL: &[Self] = &[
-        Self::Abi(abi::Abi::native),
-        Self::Abi(abi::Abi::c),
-        Self::Abi(abi::Abi::interrupt),
-        Self::Abi(abi::Abi::naked),
-        Self::Arch(arch::Arch::Operands),
-        Self::Arch(arch::Arch::asm),
-        Self::Bounds(bounds::Bounds::empty),
-        Self::Bounds(bounds::Bounds::first),
-        Self::Bounds(bounds::Bounds::ends),
-        Self::Comptime(comptime::Comptime::fuel),
-        Self::Diag(diag::Diag::error),
-        Self::Float(float::Float::mul_add),
-        Self::Flow(flow::Flow::tail),
-        Self::Hint(hint::Hint::cold),
-        Self::Hint(hint::Hint::unreachable),
-        Self::Int(int::Int::to),
-        Self::Int(int::Int::wrap),
-        Self::Int(int::Int::sat),
-        Self::Int(int::Int::fits),
-        Self::Int(int::Int::magnitude),
-        Self::Int(int::Int::abs),
-        Self::Kind(kind::Kind::linear),
-        Self::Kind(kind::Kind::free),
-        Self::Kind(kind::Kind::fixed),
-        Self::Kind(kind::Kind::owns),
-        Self::Layout(layout::Layout::bits),
-        Self::Layout(layout::Layout::c),
-        Self::Layout(layout::Layout::tag),
-        Self::Layout(layout::Layout::align),
-        Self::Layout(layout::Layout::offset),
-        Self::Link(link::Link::section),
-        Self::Link(link::Link::export),
-        Self::Link(link::Link::symbol),
-        Self::Link(link::Link::keep),
-        Self::Lint(lint::Lint::Lint),
-        Self::Lint(lint::Lint::define),
-        Self::Lint(lint::Lint::Cx),
-        Self::Lint(lint::Lint::Callee),
-        Self::Lint(lint::Lint::inside),
-        Self::Lint(lint::Lint::report),
-        Self::Lint(lint::Lint::same_callee),
-        Self::Mem(mem::Mem::Ref),
-        Self::Mem(mem::Mem::RefMut),
-        Self::Mem(mem::Mem::RefOut),
-        Self::Mem(mem::Mem::RefTake),
-        Self::Mem(mem::Mem::RefTemp),
-        Self::Mem(mem::Mem::RefTempMut),
-        Self::Mem(mem::Mem::RefStatic),
-        Self::Mem(mem::Mem::Ptr),
-        Self::Mem(mem::Mem::Slice),
-        Self::Mem(mem::Mem::Array),
-        Self::Mem(mem::Mem::len),
-        Self::Mem(mem::Mem::items_pointer),
-        Self::Mem(mem::Mem::items_at),
-        Self::Mem(mem::Mem::Cell),
-        Self::Mem(mem::Mem::cell),
-        Self::Mem(mem::Mem::cell_pointer),
-        Self::Mem(mem::Mem::pointer_to),
-        Self::Mem(mem::Mem::address),
-        Self::Mem(mem::Mem::offset),
-        Self::Mem(mem::Mem::cast),
-        Self::Mem(mem::Mem::read),
-        Self::Mem(mem::Mem::write),
-        Self::Mem(mem::Mem::copy),
-        Self::Mem(mem::Mem::fill),
-        Self::Mem(mem::Mem::volatile_load),
-        Self::Mem(mem::Mem::volatile_store),
-        Self::Mem(mem::Mem::atomic_load),
-        Self::Mem(mem::Mem::atomic_store),
-        Self::Mem(mem::Mem::atomic_swap),
-        Self::Mem(mem::Mem::atomic_compare_swap),
-        Self::Mem(mem::Mem::atomic_add),
-        Self::Mem(mem::Mem::atomic_sub),
-        Self::Meta(meta::Meta::Code),
-        Self::Meta(meta::Meta::Name),
-        Self::Meta(meta::Meta::Namespace),
-        Self::Meta(meta::Meta::Origin),
-        Self::Meta(meta::Meta::TypeOf),
-        Self::Meta(meta::Meta::origin),
-        Self::Meta(meta::Meta::embed),
-        Self::Meta(meta::Meta::same),
-        Self::Meta(meta::Meta::Any),
-        Self::Meta(meta::Meta::any),
-        Self::Meta(meta::Meta::append),
-        Self::Meta(meta::Meta::fields),
-        Self::Meta(meta::Meta::items),
-        Self::Meta(meta::Meta::name_of),
-        Self::Meta(meta::Meta::size),
-        Self::Meta(meta::Meta::align),
-        Self::Meta(meta::Meta::source),
-        Self::Meta(meta::Meta::span),
-        Self::Opt(opt::Opt::cold),
-        Self::Opt(opt::Opt::inline),
-        Self::Opt(opt::Opt::level),
-        Self::Panic(panic::Panic::trap),
-        Self::Panic(panic::Panic::fail),
-        Self::Panic(panic::Panic::never),
-        Self::Safety(safety::Safety::r#unsafe),
-        Self::Scope(scope::Scope::Scope),
-        Self::Scope(scope::Scope::package),
-        Self::Scope(scope::Scope::workspace),
-        Self::Scope(scope::Scope::within),
-        Self::Simd(simd::Simd::Vector),
-        Self::Simd(simd::Simd::Mask),
-        Self::Stack(stack::Stack::max),
-        Self::Stack(stack::Stack::depth),
-        Self::Target(target::Target::require),
-        Self::Target(target::Target::Features),
-        Self::Target(target::Target::usize_max),
-        Self::Lang(lang::Lang::r#type),
-        Self::Lang(lang::Lang::Int),
-        Self::Lang(lang::Lang::Range),
-        Self::Lang(lang::Lang::Bounds),
-        Self::Lang(lang::Lang::Fn),
-        Self::Lang(lang::Lang::f16),
-        Self::Lang(lang::Lang::f32),
-        Self::Lang(lang::Lang::f64),
-        Self::Lang(lang::Lang::Interface),
-        Self::Lang(lang::Lang::interface),
-        Self::Lang(lang::Lang::Attribute),
-        Self::Lang(lang::Lang::r#impl),
-        Self::Lang(lang::Lang::visible),
-    ];
+    /// Every primitive, namespace by namespace.
+    pub fn all() -> impl Iterator<Item = Self> {
+        std::iter::empty()
+            .chain(abi::Abi::ALL.iter().map(|&p| Self::Abi(p)))
+            .chain(arch::Arch::ALL.iter().map(|&p| Self::Arch(p)))
+            .chain(bounds::Bounds::ALL.iter().map(|&p| Self::Bounds(p)))
+            .chain(comptime::Comptime::ALL.iter().map(|&p| Self::Comptime(p)))
+            .chain(diag::Diag::ALL.iter().map(|&p| Self::Diag(p)))
+            .chain(float::Float::ALL.iter().map(|&p| Self::Float(p)))
+            .chain(flow::Flow::ALL.iter().map(|&p| Self::Flow(p)))
+            .chain(hint::Hint::ALL.iter().map(|&p| Self::Hint(p)))
+            .chain(int::Int::ALL.iter().map(|&p| Self::Int(p)))
+            .chain(kind::Kind::ALL.iter().map(|&p| Self::Kind(p)))
+            .chain(layout::Layout::ALL.iter().map(|&p| Self::Layout(p)))
+            .chain(link::Link::ALL.iter().map(|&p| Self::Link(p)))
+            .chain(lint::Lint::ALL.iter().map(|&p| Self::Lint(p)))
+            .chain(mem::Mem::ALL.iter().map(|&p| Self::Mem(p)))
+            .chain(meta::Meta::ALL.iter().map(|&p| Self::Meta(p)))
+            .chain(opt::Opt::ALL.iter().map(|&p| Self::Opt(p)))
+            .chain(panic::Panic::ALL.iter().map(|&p| Self::Panic(p)))
+            .chain(safety::Safety::ALL.iter().map(|&p| Self::Safety(p)))
+            .chain(scope::Scope::ALL.iter().map(|&p| Self::Scope(p)))
+            .chain(simd::Simd::ALL.iter().map(|&p| Self::Simd(p)))
+            .chain(stack::Stack::ALL.iter().map(|&p| Self::Stack(p)))
+            .chain(target::Target::ALL.iter().map(|&p| Self::Target(p)))
+            .chain(lang::Lang::ALL.iter().map(|&p| Self::Lang(p)))
+    }
     /// The namespace declaring it.
     #[must_use]
     pub const fn namespace(self) -> vun_items::Item {

@@ -184,14 +184,9 @@ impl MemberTable {
             }
             Member::Decl(decl) => {
                 let d = &hir.decls[*decl];
-                let names = if let PatKind::Value(e) = &hir.pats[d.pat].kind {
-                    // `$(e) := value`: a name computed at compile time.
-                    match &hir.exprs[*e].kind {
-                        ExprKind::Prefix { op: TokenKind::Dollar, operand, .. } => {
-                            env.name(&Name::Computed(*operand)).into_iter().collect()
-                        }
-                        _ => Vec::new(),
-                    }
+                // `$(e) := value`: a name computed at compile time.
+                let names = if let PatKind::Computed(e) = &hir.pats[d.pat].kind {
+                    env.name(&Name::Computed(*e)).into_iter().collect()
                 } else {
                     let mut binders = Vec::new();
                     hir.binders(d.pat, &mut binders);

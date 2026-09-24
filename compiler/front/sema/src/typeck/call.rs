@@ -1,6 +1,7 @@
-//! Calls (spec 01, section 4): arguments are checked against the parameters of the callee's
-//! signature. A signature whose types name `$` parameters, such as `($T: type, x: u8) -> T`, is
-//! typed per call, inside the callee with those parameters bound to the call's arguments.
+//! Calls as written (spec 01, section 4): the callee, a method's receiver and the arguments, applied
+//! as every call is (`apply`). A signature whose types name `$` parameters, such as
+//! `($T: type, x: u8) -> T`, is typed per call, inside the callee with those parameters bound to
+//! the call's arguments.
 
 use vun_diag::{ChildKind, DiagCtxt, Diagnostic, Msg, TraceFrame, errors};
 use vun_hir::tree::{Arg, Entry, ExprId, ExprKind};
@@ -8,20 +9,19 @@ use vun_hir::visit::Visitor;
 use vun_origin::OriginTable;
 use vun_query::Cx;
 
+use super::apply::{Argument, Callee, Passing};
 use super::omitted::{Plan, Unifier};
-use super::{Known, Typed, Typer};
-use crate::eval::{Func, Instantiation};
+use super::{Known, Typer};
+use crate::callable::Callable;
+use crate::eval::Instantiation;
 use crate::member::MemberValue;
-use crate::ty::{Signature, Ty, Value};
+use crate::ty::Ty;
 
 impl Typer<'_, '_, '_> {
     /// A call of a value of function type: its arguments are checked against the parameters, and
     /// it has the result type. `$` arguments left out are inferred from the others' types.
     pub(super) fn call(&mut self, call: ExprId, callee: ExprId, args: &[Entry<Arg>]) -> Option<Known> {
-        let known = self.typed(callee).and_then(|k| k.ty.callable());
-        // A method's receiver is passed in the mode its first parameter asks for.
-        let receiver = usize::from(self.methods.contains_key(&callee));
-        let f = self.called(callee);
+        let signature = self.typed(callee).and_then(|k| k.ty.callable());
         let written: Option<Vec<ExprId>> = args
             .iter()
             .map(|a| match a {
@@ -29,141 +29,78 @@ impl Typer<'_, '_, '_> {
                 _ => None,
             })
             .collect();
-        let plan =
-            f.as_ref().zip(written.as_ref()).and_then(|(f, w)| Plan::of(self.env(), f, receiver + w.len()));
-        if let (Some(f), Some(written), None) = (&f, &written, &plan) {
-            let counts = Plan::counts(self.env(), f);
-            self.arity(call, &counts, receiver, receiver + written.len());
-            for &arg in written {
-                self.typed(arg);
-            }
-            return None;
-        }
-        let slots = plan.as_ref().map_or_else(|| (0..receiver + args.len()).collect(), |p| p.slots.clone());
-        let omitted = plan.as_ref().filter(|p| !p.omitted.is_empty());
-        let inferred = match (omitted, f.as_ref(), written.as_ref()) {
-            (Some(plan), Some(f), Some(written)) => Some(self.inferred(call, callee, f, plan, written)?),
-            _ => None,
-        };
-        let instantiation = f.map(|f| self.instantiation(f, &slots, args, inferred.as_deref()));
-        // A generic instantiation's typing reports a trap in its own signature, which the call
-        // takes with the rest of its reports.
-        let absorbed = instantiation.as_ref().filter(|i| i.generic(self.env().cx)).and_then(|i| {
-            let typed = self.env().cx.get::<Typed>(i)?;
-            self.absorb(call, i, &typed.diag);
-            Some(())
-        });
-        let signature = known
-            .filter(|_| inferred.is_none())
-            .or_else(|| {
-                let signature = instantiation?.signature(self.env().cx);
-                if absorbed.is_some() { signature.ok() } else { self.reported(call, signature).ok() }
-            })
-            .or_else(|| self.primitive_signature(callee, args));
-        let hir = self.hir();
-        let (mut found, mut positional) = (Vec::new(), true);
-        for arg in args {
-            match arg {
-                Entry::One(Arg { name: None, value }) => {
-                    // An argument for a `Code(T)` parameter is code of a `T`.
-                    let param = slots
-                        .get(receiver + found.len())
-                        .and_then(|&slot| signature.as_ref()?.params.get(slot).copied())
-                        .map(|p| p.quoted().unwrap_or(p));
-                    found.push((*value, self.typed_as(*value, param)));
-                }
-                Entry::One(Arg { value, .. }) => {
-                    positional = false;
-                    self.typed(*value);
-                }
-                Entry::Staged(staged) => {
-                    positional = false;
-                    self.staged(hir, staged, &mut |v, a: &Arg| {
+        // Named and generated arguments are typed; no call takes them yet.
+        let Some(written) = written else {
+            let hir = self.hir();
+            for arg in args {
+                match arg {
+                    Entry::One(Arg { value, .. }) => {
+                        self.typed(*value);
+                    }
+                    Entry::Staged(staged) => self.staged(hir, staged, &mut |v, a: &Arg| {
                         v.typed(a.value);
-                    });
+                    }),
                 }
             }
-        }
-        let signature = signature.filter(|_| positional)?;
-        if signature.is_unsafe() {
-            self.unchecked(call, Msg::new().text("calling a function whose type is ").code("unsafe"));
-        }
-        if slots.len() != receiver + found.len() || signature.params.len() < slots.len() {
             return None;
-        }
-        if inferred.is_none() && signature.params.len() != slots.len() {
-            self.arity(call, &[signature.params.len()], receiver, slots.len());
-            return None;
-        }
-        for (&slot, (value, known)) in slots[receiver..].iter().zip(found) {
-            if let Some(known) = known {
-                let param = signature.params[slot];
-                let param = param.quoted().unwrap_or(param);
-                self.expect(self.hir().exprs[value].origin, known, param, None);
-            }
-        }
-        Some(Known { ty: signature.result, stage: self.stage })
-    }
-
-    /// The values of the `$` parameters `plan` leaves out, from the types of the receiver and the
-    /// `written` arguments, recorded for the call; `None`, reported, when one is not determined.
-    fn inferred(
-        &mut self,
-        call: ExprId,
-        callee: ExprId,
-        f: &Func,
-        plan: &Plan,
-        written: &[ExprId],
-    ) -> Option<Vec<(usize, Value)>> {
+        };
+        // A method's receiver is passed in the mode its first parameter asks for.
         let receiver = match &self.hir().exprs[callee].kind {
             ExprKind::Member { object, .. } if self.methods.contains_key(&callee) => Some(*object),
             _ => None,
         };
-        let types: Vec<Option<Ty>> =
-            receiver.iter().chain(written).map(|&e| self.typed(e).map(|k| k.ty)).collect();
-        let values = Unifier::infer(self.env(), f, plan, &types)?;
-        if values.iter().any(Option::is_none) {
-            // A form typed by its context, such as `.none`, has no type to infer from.
-            let hir = self.hir();
-            let contextual = |e: ExprId| match &hir.exprs[e].kind {
-                ExprKind::Call { callee, .. } => matches!(hir.exprs[*callee].kind, ExprKind::DotName(_)),
-                _ => false,
-            };
-            let args = receiver.iter().chain(written);
-            if types.iter().zip(args).all(|(ty, &e)| ty.is_some() || contextual(e)) {
-                let names = Unifier::names(self.env(), f, plan);
-                let msg = Msg::new()
-                    .text("cannot infer ")
-                    .code_list(names.iter().map(|n| n.as_str()))
-                    .text(" from the arguments; write them");
-                let note = Msg::new()
-                    .text("a ")
-                    .code("$")
-                    .text(" parameter may be left out when a later parameter's type names it, and is found from the types of the arguments; a form typed by its context, such as ")
-                    .code(".none")
-                    .text(", gives none");
-                let help = Msg::new()
-                    .text("write every such ")
-                    .code("$")
-                    .text(" argument, in order, before the others");
-                self.diag.error(
-                    Diagnostic::error(errors::TYPES_CANNOT_INFER, msg)
-                        .at(self.hir().exprs[call].origin, None)
-                        .child(ChildKind::Note, note)
-                        .child(ChildKind::Help, help),
-                );
-            }
-            return None;
+        let target = Callee { f: self.called(callee), signature, receiver, passing: Passing::Written };
+        let written: Vec<Argument> = written.into_iter().map(Argument::Expr).collect();
+        let applied = self.apply(call, &target, &written)?;
+        if let Some(inferred) = applied.inferred {
+            self.inferred.insert(call, inferred);
         }
-        let inferred: Vec<(usize, Value)> =
-            plan.omitted.iter().copied().zip(values.into_iter().flatten()).collect();
-        self.inferred.insert(call, inferred.clone());
-        Some(inferred)
+        Some(applied.known)
+    }
+
+    /// Reports the `$` arguments `plan` leaves out of a call of `f` as not inferred from the
+    /// types of its `operands`, when each has one or is typed by its context.
+    pub(super) fn cannot_infer(
+        &mut self,
+        call: ExprId,
+        f: &Callable,
+        plan: &Plan,
+        types: &[Option<Ty>],
+        operands: &[Option<ExprId>],
+    ) {
+        // A form typed by its context, such as `.none`, has no type to infer from.
+        let hir = self.hir();
+        let contextual = |e: Option<ExprId>| match e.map(|e| &hir.exprs[e].kind) {
+            Some(ExprKind::Call { callee, .. }) => matches!(hir.exprs[*callee].kind, ExprKind::DotName(_)),
+            _ => false,
+        };
+        if !types.iter().zip(operands).all(|(ty, &e)| ty.is_some() || contextual(e)) {
+            return;
+        }
+        let names = Unifier::names(self.env(), f, plan);
+        let msg = Msg::new()
+            .text("cannot infer ")
+            .code_list(names.iter().map(|n| n.as_str()))
+            .text(" from the arguments; write them");
+        let note = Msg::new()
+            .text("a ")
+            .code("$")
+            .text(" parameter may be left out when a later parameter's type names it, and is found from the types of the arguments; a form typed by its context, such as ")
+            .code(".none")
+            .text(", gives none");
+        let help =
+            Msg::new().text("write every such ").code("$").text(" argument, in order, before the others");
+        self.diag.error(
+            Diagnostic::error(errors::TYPES_CANNOT_INFER, msg)
+                .at(self.hir().exprs[call].origin, None)
+                .child(ChildKind::Note, note)
+                .child(ChildKind::Help, help),
+        );
     }
 
     /// Reports a call passing `found` arguments to a function taking one of `counts`, each
     /// counting the receiver, which the message leaves out.
-    fn arity(&mut self, call: ExprId, counts: &[usize], receiver: usize, found: usize) {
+    pub(super) fn arity(&mut self, call: ExprId, counts: &[usize], receiver: usize, found: usize) {
         let Some(&all) = counts.first() else { return };
         let count = |n: usize| i128::try_from(n.saturating_sub(receiver)).unwrap_or(i128::MAX);
         let mut msg = Msg::new()
@@ -182,65 +119,14 @@ impl Typer<'_, '_, '_> {
         self.diag.error(Diagnostic::error(errors::TYPES_ARITY, msg).at(self.hir().exprs[call].origin, None));
     }
 
-    /// The function value a call of `callee` runs, when known here: a method, or a function
+    /// What a call of `callee` runs, when known here: a method, or a function or primitive
     /// known at compile time.
-    fn called(&self, callee: ExprId) -> Option<Func> {
+    fn called(&self, callee: ExprId) -> Option<Callable> {
         let f = match self.methods.get(&callee) {
             Some(method) => self.env().cx.get::<MemberValue>(method),
             None => self.env().eval(callee),
         };
-        match f {
-            Ok(Value::Fn(f)) => Some(f),
-            _ => None,
-        }
-    }
-
-    /// The instantiation a call of `f` reaches, each `$` parameter bound to the value of its
-    /// argument when known here, or to the value inferred for it.
-    fn instantiation(
-        &self,
-        f: Func,
-        slots: &[usize],
-        args: &[Entry<Arg>],
-        inferred: Option<&[(usize, Value)]>,
-    ) -> Instantiation {
-        let comptime = f.comptime(self.env().cx).unwrap_or_default();
-        let quotes = f.quotes(self.env().cx).unwrap_or_default();
-        let receiver = slots.len().saturating_sub(args.len());
-        let mut values: Vec<Option<Value>> = vec![None; comptime.len()];
-        for (&slot, arg) in slots.iter().skip(receiver).zip(args) {
-            let (true, Entry::One(Arg { name: None, value })) = (comptime.get(slot) == Some(&true), arg)
-            else {
-                continue;
-            };
-            values[slot] = if quotes.get(slot) == Some(&true) {
-                Some(Value::Code(self.env().code(*value)))
-            } else {
-                self.env().eval(*value).ok()
-            };
-        }
-        for (slot, value) in inferred.into_iter().flatten() {
-            if let Some(v) = values.get_mut(*slot) {
-                *v = Some(value.clone());
-            }
-        }
-        Instantiation { args: values, f }
-    }
-}
-
-impl Typer<'_, '_, '_> {
-    /// The signature of a call of a primitive whose types name its `$` parameters, typed with
-    /// them bound to the call's arguments, such as `lang.bounds.first(T, b) -> T`.
-    fn primitive_signature(&self, callee: ExprId, args: &[Entry<Arg>]) -> Option<Signature> {
-        let Ok(Value::Primitive(primitive)) = self.env().eval(callee) else { return None };
-        let values: Vec<_> = args
-            .iter()
-            .map(|arg| match arg {
-                Entry::One(Arg { name: None, value }) => self.env().eval(*value).ok(),
-                _ => None,
-            })
-            .collect();
-        self.env().primitive_signature(primitive, &values).ok()
+        Callable::of(f.ok()?)
     }
 }
 
@@ -248,7 +134,7 @@ impl Typer<'_, '_, '_> {
     /// Takes the reports of the instantiation `i` that `call` reaches, each traced through the
     /// call. A library's report that points into the function reporting it is shown at the call,
     /// which led to it (spec 10, section 3).
-    fn absorb(&mut self, call: ExprId, i: &Instantiation, reports: &DiagCtxt) {
+    pub(super) fn absorb(&mut self, call: ExprId, i: &Instantiation, reports: &DiagCtxt) {
         let origin = self.hir().exprs[call].origin;
         let origins = self.env().cx.db().resource::<OriginTable>();
         let callee = origins.source_span(i.f.literal.expr.origin).file;
@@ -269,7 +155,7 @@ impl Typer<'_, '_, '_> {
 impl Instantiation {
     /// Whether this is an instantiation of generic code: a function built in a compile-time
     /// call, or one with `$` parameters, all bound.
-    fn generic(&self, cx: &Cx<'_>) -> bool {
+    pub(super) fn generic(&self, cx: &Cx<'_>) -> bool {
         let Some(comptime) = self.f.comptime(cx) else { return false };
         let bound = comptime.iter().zip(&self.args).all(|(&c, arg)| !c || arg.is_some());
         (self.f.within.is_some() || comptime.contains(&true)) && bound

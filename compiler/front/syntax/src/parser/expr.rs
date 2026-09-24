@@ -16,7 +16,8 @@ impl Parser<'_, '_, '_> {
         self.prefix(brace);
         let mut chained = None;
         while let Some(op) = self.peek().infix().filter(|op| op.prec >= min) {
-            if op.assoc == Assoc::None && chained == Some(op.prec) {
+            let wrong = op.assoc == Assoc::None && chained == Some(op.prec);
+            if wrong {
                 self.report_chained();
             }
             let token = self.bump();
@@ -24,7 +25,9 @@ impl Parser<'_, '_, '_> {
             if self.kind(token) != TokenKind::DotDot || self.starts_expr() {
                 self.binary(op.prec.tighter(), brace);
             }
-            self.out.node(NodeKind::Infix, Anchor::Token(token), mark);
+            // A chain reported is an error node, whose meaning no later stage guesses.
+            let kind = if wrong { NodeKind::Error } else { NodeKind::Infix };
+            self.out.node(kind, Anchor::Token(token), mark);
             chained = (op.assoc == Assoc::None).then_some(op.prec);
         }
     }

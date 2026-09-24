@@ -7,8 +7,11 @@ use vun_grammar::TokenKind;
 use vun_hir::tree::ExprId;
 use vun_origin::OriginId;
 
+use vun_sema::typeck::Operation;
+
+use super::operator::Side;
 use super::{Builder, Unbuilt};
-use crate::body::{Operand, Rvalue};
+use crate::body::Rvalue;
 
 impl Builder<'_, '_, '_> {
     pub(super) fn store(
@@ -20,17 +23,16 @@ impl Builder<'_, '_, '_> {
     ) -> Result<(), Unbuilt> {
         let unbuilt = Unbuilt { at: origin };
         let target = self.place(place)?;
-        let value = self.operand(value)?;
-        if op == TokenKind::Eq {
+        let Some(&(_, _, narrowing)) = COMPOUND.iter().find(|(token, ..)| *token == op) else {
+            let value = self.operand(value)?;
             self.assign(target, Rvalue::Use(value), origin);
             return Ok(());
-        }
-        let (_, binary, narrowing) = COMPOUND.iter().find(|(token, ..)| *token == op).ok_or(unbuilt)?;
+        };
+        // `x op= y` is `x = (x op y)` narrowed back to the type of `x` (spec 04, rule 9).
         let typed = self.typed().ok_or(unbuilt)?;
         let ty = typed.types.get(&place).ok_or(unbuilt)?.ty;
-        let left = Operand::Place(target.clone());
-        let operand = self.temp(Rvalue::Binary { op: *binary, left, right: value }, origin);
-        self.assign(target, Rvalue::Narrow { operand, ty, narrowing: *narrowing }, origin);
+        let operand = self.operator(Operation::Assign(place), place, vec![Side::Expr(value)], origin)?;
+        self.assign(target, Rvalue::Narrow { operand, ty, narrowing }, origin);
         Ok(())
     }
 }

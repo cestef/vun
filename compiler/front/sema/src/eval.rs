@@ -8,8 +8,7 @@
 use std::sync::{Arc, OnceLock};
 
 use vun_desugar::ITERATION;
-use vun_hir::db::Parsed;
-use vun_hir::tree::{BinderId, Entry, ExprKind, Param, PatKind};
+use vun_hir::tree::BinderId;
 use vun_intern::Symbol;
 use vun_query::{Cx, Cycle, Query};
 
@@ -200,20 +199,4 @@ impl Instantiation {
     }
 }
 
-impl Func {
-    /// Whether each parameter of this function is a `$` parameter; `None` when its file is not
-    /// read.
-    #[must_use]
-    pub fn comptime(&self, cx: &Cx<'_>) -> Option<Vec<bool>> {
-        let parsed = cx.get::<Parsed>(&self.literal.file)?;
-        let hir = &parsed.hir;
-        let ExprKind::Fn { params, .. } = &hir.exprs[self.literal.expr.id].kind else { return None };
-        let comptime = params.iter().map(|p| match p {
-            Entry::One(Param { pat: Some(pat), .. }) => {
-                matches!(hir.pats[*pat].kind, PatKind::Bind(b) if hir.binders[b].comptime)
-            }
-            _ => false,
-        });
-        Some(comptime.collect())
-    }
-}
+impl Func {}

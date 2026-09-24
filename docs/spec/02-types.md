@@ -179,9 +179,17 @@ Every operator desugars to an interface in `lang.ops` (appendix B): `a + b` is
 `f(x)` on a non-function value is `lang.ops.Call.call(&f, (x,))`. Which interface and function each
 operator names is data, the table `operators` of `lang.syntax.desugar`, so the compiler finds them
 by lookup; the result of `a == b` is the result type of `Eq.eq` for the type of `a`, `bool` in
-`lang`. `Ord` requires `cmp` and provides `lt`, `le`, `gt` and `ge`; `Eq` provides `ne`. Integer, float and vector
-operators are impls whose functions are `_`, provided by the compiler. User types implement the
-same interfaces and dispatch statically.
+`lang`. `Ord` requires `cmp` and provides `lt`, `le`, `gt` and `ge`; `Eq` provides `ne`. The
+arithmetic, bit and concatenation interfaces take the right operand's type per call
+(`add: ($R: type, a: Self, b: R) -> Output(R)`), since an integer result's range depends on both
+operands. Prefix `-` and `~` are `lang.ops.Neg` and `Not` (the table `prefix_operators`); `!`
+negates a condition. There is no other operator rule: every operand type, integers included, goes
+through its impl, and the operands are passed as the function's parameters ask, each reached
+through its borrows as `.` reaches a value. Integer, float and vector operators are impls whose
+functions are `_`, provided by the compiler: `lang.int.ops` gives `add := lang.int.add`, whose
+signature carries spec 04's rules through range primitives (`Int(lang.int.sum(a, b))`). A
+compound assignment and a literal or range pattern are operators too. User types implement the
+same interfaces and dispatch statically; `std.cmp.derive_eq(T)` derives `Eq` by reflection.
 
 ## 5. Attributes
 

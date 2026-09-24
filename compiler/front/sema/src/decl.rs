@@ -57,7 +57,7 @@ impl DeclValue {
         hir.binders(hir.decls[key.decl.id].pat, &mut binders);
         let name = hir.binders[*binders.first()?].name;
         let at: Vec<&str> = package.name.into_iter().chain(path).chain([name]).map(Symbol::as_str).collect();
-        Primitive::ALL.iter().copied().find(|p| p.item().path() == at.as_slice())
+        Primitive::all().find(|p| p.item().path() == at.as_slice())
     }
 }
 

@@ -29,6 +29,7 @@ impl Hir {
             | PatKind::Hole
             | PatKind::Range { .. }
             | PatKind::Value(_)
+            | PatKind::Computed(_)
             | PatKind::Error => {}
         }
     }

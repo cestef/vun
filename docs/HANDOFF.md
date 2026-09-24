@@ -130,6 +130,15 @@ formats, `Format::PUBLISHED` is `.tar.zst`), `vun-http`, `vun-hash`, `vun-fs` (`
 - Traps (`trap.rs`): `Reason` includes `Reported { message, at }` (`lang.diag.error`), shown as
   `comptime.reported` with the library's message.
 
+**Operators** (decision 144): no operator rule in the compiler. `typeck/operator.rs` finds the
+function of the operator's interface for the left operand's type (`Env::implemented_by`) and
+types it as a call through `typeck/apply.rs` (shared with written calls: `Callee`, `Passing`,
+`Argument`), recorded in `TypedBody.operators` by `Operation` (expression, compound place, pattern
+test); `env/operator.rs` evaluates by the same lookup; MIR `build/operator.rs` lowers to a call.
+Integer and float witnesses name primitives (`lib/lang/lang/{int,float}/ops.vun`); their
+values and ranges are `apply/int.rs`, bit ranges `int/bits.rs`. `Callable` (a `Func` or a
+primitive) gives any callee's `$` parameters and borrow modes (`Written`).
+
 **MIR** (`compiler/mid/mir`): places with projections (`Deref`, `Field`, `Index` (a local holding
 an integer, or bounds for a run of items), `Position`, `Payload`); rvalues `Use`, `Binary`,
 `Unary`, `Range`, `Narrow`, `Aggregate`, `Call`, `Ref`, `IsVariant`, `Resume`, `End`, `Repeat`,
@@ -161,7 +170,8 @@ frames suspend and resume; `End` of a finished frame is nothing, of a suspended 
 **Libraries**: `lang` (primitives: `lang.mem` borrows `Ref`..`RefStatic`, pointers, `Cell`,
 `cell`, `cell_pointer`, `atomic_*` with `Ordering`, `items_pointer`; `lang.diag.error`;
 `lang.meta.items`). `std`: `option`, `result`, `cmp`, `ptr`, `mem` (`Own`, `alloc.Fixed`),
-`int`, `seq` (`len`, `enumerate`), `iter` (`Iter`; `enumerate`, `map`, `filter`, `take`,
+`int`, `seq` (`len`, `enumerate`, `ptr`, `Eq` of slices and arrays), `cmp` (`derive_eq`),
+`option`/`result` (`Eq`), `iter` (`Iter`; `enumerate`, `map`, `filter`, `take`,
 `zip`, `chain`, `fold`, `count` on every frame), `sync` (`critical` lending `&temp Critical`, `Shared`, `Atomic`,
 `Mutex` with a nested linear `Guard`, link symbols `enter`/`leave`), `os` (`System` with `args`,
 `Args` over C's `argc`/`argv` (`lang.mem.items_at`) iterable with `for`, `Stream` with a `Writer`
@@ -178,14 +188,15 @@ run from the requirements of `std.build.Package` and calls `std.build.plan` with
 package's `build.vun` runs it (stage `plan`), `vun dump plan` prints its actions as literals
 (`Value::literal`). Nothing carries the actions out yet.
 
-Progress: corpus 214 passed, 0 pending, 23 shown, 0 failed; 74% of body expressions typed; MIR
-lowers 94 of 115 functions (stops: `$` 3, `For` 3, `Member` 3, `StructLit` 3). 234 tests,
+Progress: corpus 214 passed, 0 pending, 23 shown, 0 failed; 73% of body expressions typed; MIR
+lowers 93 of 115 functions (stops: `$` 3, `For` 3, `Member` 3, `StructLit` 3, `==` 2). 234 tests,
 including one that checks every `lang` and `std` file cleanly.
 
 ## 6. Decisions
 
 Accepted: 1 to 84, 91, 92, 98 to 106, 109, 111, 116, 118 (no bespoke formats: `lock.vun`,
-`.tar.zst`), 120 (the rename to Vun), 131 to 133, 136 (plans with `lang.meta.Any`). Proposed, awaiting the user: 85 to 90, 93 to 97, 107, 108,
+`.tar.zst`), 120 (the rename to Vun), 131 to 133, 136 (plans with `lang.meta.Any`), 142, 144
+(every operator through impls, integers included). Proposed, awaiting the user: 85 to 90, 93 to 97, 107, 108,
 110, 112 to 115, 117 (`std.build` API), 119 (`&temp`), 121 (`std.sync`, `std.os`), 122 (statics
 in MIR, constructor calls at compile time, members of made types), 123 (`&static`, tuple
 positions, range slices, witnesses in the type's package), 124 (`std.fmt`), 125 (library
@@ -208,11 +219,12 @@ rules go to `decisions.md` as proposed unless the user approves them.
 4. `vun build`: carry out a plan's actions in order (decode them by the `vun_items` handles of
    `std.build.Action`'s variants), starting with `program` once a backend exists; a program's
    options as a typed record (`root`, `target: lang.target.Spec`, `deps`, `memory`).
-5. MIR gaps (`cargo xtask corpus` lists them): run-time splices of code, `.{ }` and `.name` in
+5. MIR gaps (`cargo xtask corpus` lists them): `==` in two corpus functions whose operands are
+   not typed, run-time splices of code, `.{ }` and `.name` in
    plain instantiations of generic bodies, or-patterns that bind, `lang.simd.chunks`.
-6. Sema gaps: an operator on values other than integers is typed through its `lang.ops`
-   interface but neither evaluated nor lowered to the witness's function (`T == u8` on types,
-   a user `Eq`); traps inside a callee's instantiated signature are not reported; impl member types
+6. Sema gaps: a library report from a range primitive (rule 8) carries a "while evaluating"
+   frame inside `lang.int`; traps inside a callee's instantiated signature are not reported; impl
+   member types
    against requirements; narrowing by comparisons (decision 35), exhaustiveness (decision 29),
    `#[layout.offset]`/`#[layout.c]`, frame layouts, markers checked beyond `unsafe` and
    `panic.never`.
@@ -264,3 +276,10 @@ rules go to `decisions.md` as proposed unless the user approves them.
 - Driver integration tests are one binary (`tests/driver/main.rs`, a module per area); tests use
   scratch stores (`VUN_STORE`); manifests in tests are written with `Manifest::source`.
 - A second `jj` workspace needs its own `CARGO_TARGET_DIR`; run `jj st` in it before rebasing.
+- Inside `lang`'s operator impls, and anything they call, no operator may be written: it would
+  call the same impl again. Primitives and `match` on literal patterns only.
+- A witness's function may be named by a primitive (`add := lang.int.add`); a member of a
+  witness named like a module-level function shadows it inside the struct (write the full path,
+  `lang.meta.concat`).
+- Sema unit tests (`compiler/front/sema/src/tests.rs`) run on a stand-in `lang` without operator
+  impls: anything using an operator is tested in the driver (`tests/driver/typing.rs`).

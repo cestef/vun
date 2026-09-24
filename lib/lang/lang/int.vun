@@ -38,3 +38,68 @@ magnitude: ($r: Range) -> Range = _;
 /// The absolute value of `x`, whose range is the magnitude of `x`'s.
 #[panic.never]
 abs: ($r: Range, x: Int(r)) -> Int(magnitude(r)) = _;
+
+/// The integers of the integer type `T`.
+range: ($T: type) -> Range = _;
+
+/// The ranges of results (spec 04, rule 1): every sum of an integer of `a` and one of `b`, and
+/// so on, by interval arithmetic. `quotient` and `remainder` leave out a zero divisor.
+sum: ($a: Range, $b: Range) -> Range = _;
+difference: ($a: Range, $b: Range) -> Range = _;
+product: ($a: Range, $b: Range) -> Range = _;
+quotient: ($a: Range, $b: Range) -> Range = _;
+remainder: ($a: Range, $b: Range) -> Range = _;
+negation: ($a: Range) -> Range = _;
+/// The range of a bit operation (rule 8): the `uN` range of one operand, which the other lies
+/// within, or for two compile-time values, the smallest `uN` range holding both. Other operands
+/// are reported: bit operations exist on `uN` types only.
+bitwise: ($a: Range, $b: Range) -> Range = _;
+/// The range of `x << n` for `x` in `a` and `n` in `b`: `a` itself when it is a `uN` range,
+/// exact for a compile-time `x`.
+shifted_left: ($a: Range, $b: Range) -> Range = _;
+/// As `shifted_left`, for `x >> n`.
+shifted_right: ($a: Range, $b: Range) -> Range = _;
+
+/// Integer arithmetic, exact (rule 1): the result has the range computed from the operands'.
+#[panic.never]
+add: ($a: Range, $b: Range, x: Int(a), y: Int(b)) -> Int(sum(a, b)) = _;
+#[panic.never]
+sub: ($a: Range, $b: Range, x: Int(a), y: Int(b)) -> Int(difference(a, b)) = _;
+#[panic.never]
+mul: ($a: Range, $b: Range, x: Int(a), y: Int(b)) -> Int(product(a, b)) = _;
+/// Division rounding toward zero; a zero divisor traps (rule 6).
+div: ($a: Range, $b: Range, x: Int(a), y: Int(b)) -> Int(quotient(a, b)) = _;
+/// The remainder of `div`, of the dividend's sign; a zero divisor traps (rule 6).
+rem: ($a: Range, $b: Range, x: Int(a), y: Int(b)) -> Int(remainder(a, b)) = _;
+#[panic.never]
+neg: ($a: Range, x: Int(a)) -> Int(negation(a)) = _;
+/// Bit operations (rule 8), in two's complement.
+#[panic.never]
+bit_and: ($a: Range, $b: Range, x: Int(a), y: Int(b)) -> Int(bitwise(a, b)) = _;
+#[panic.never]
+bit_or: ($a: Range, $b: Range, x: Int(a), y: Int(b)) -> Int(bitwise(a, b)) = _;
+#[panic.never]
+bit_xor: ($a: Range, $b: Range, x: Int(a), y: Int(b)) -> Int(bitwise(a, b)) = _;
+/// Every bit of `x` flipped, in its `uN` type.
+#[panic.never]
+bit_not: ($a: Range, x: Int(a)) -> Int(bitwise(a, a)) = _;
+/// Shifts (rule 8): a `uN` value keeps its type, losing the bits shifted out; an amount past
+/// `N - 1` traps.
+shl: ($a: Range, $b: Range, x: Int(a), n: Int(b)) -> Int(shifted_left(a, b)) = _;
+shr: ($a: Range, $b: Range, x: Int(a), n: Int(b)) -> Int(shifted_right(a, b)) = _;
+/// Comparisons of integers of any two ranges.
+#[panic.never]
+equal: ($a: Range, $b: Range, x: &Int(a), y: &Int(b)) -> bool = _;
+#[panic.never]
+unequal: ($a: Range, $b: Range, x: &Int(a), y: &Int(b)) -> bool = _;
+#[panic.never]
+less: ($a: Range, $b: Range, x: &Int(a), y: &Int(b)) -> bool = _;
+#[panic.never]
+less_equal: ($a: Range, $b: Range, x: &Int(a), y: &Int(b)) -> bool = _;
+#[panic.never]
+greater: ($a: Range, $b: Range, x: &Int(a), y: &Int(b)) -> bool = _;
+#[panic.never]
+greater_equal: ($a: Range, $b: Range, x: &Int(a), y: &Int(b)) -> bool = _;
+/// Where `x` is against `y`.
+#[panic.never]
+compare: ($a: Range, $b: Range, x: &Int(a), y: &Int(b)) -> Ordering = _;

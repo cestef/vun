@@ -31,3 +31,26 @@ ArraySequence := ($n: Int(0..), $T: type) -> type { struct {
         yield ..items.iter().enumerate();
     };
 } };
+
+/// Slices are equal when they hold as many items, equal in order.
+#[impl(lang.ops.Eq(lang.mem.Slice))]
+SliceEq := ($T: type) -> type { struct {
+    eq := (a: &[T], b: &[T]) -> bool {
+        if a.len() != b.len() { return false; }
+        for i in 0..a.len() {
+            if a[i] != b[i] { return false; }
+        }
+        true
+    };
+} };
+
+/// Arrays are equal when their items are, in order.
+#[impl(lang.ops.Eq(lang.mem.Array))]
+ArrayEq := ($n: Int(0..), $T: type) -> type { struct {
+    eq := (a: &[n]T, b: &[n]T) -> bool {
+        for i in 0..n {
+            if a[i] != b[i] { return false; }
+        }
+        true
+    };
+} };

@@ -41,6 +41,8 @@ pub enum PatKind {
     },
     /// A value compared for equality: literals, constants.
     Value(ExprId),
+    /// `$(e)`: a binder whose name `e` computes at compile time (spec 03, section 2).
+    Computed(ExprId),
     Error,
 }
 
@@ -56,7 +58,7 @@ impl PatKind {
             })
         };
         match self {
-            Self::Bind(_) | Self::Hole | Self::Rest(_) => true,
+            Self::Bind(_) | Self::Computed(_) | Self::Hole | Self::Rest(_) => true,
             Self::At { pat, .. } => pats[*pat].kind.irrefutable(pats),
             Self::Or(alternatives) => alternatives.iter().any(|p| pats[*p].kind.irrefutable(pats)),
             Self::Tuple(items) => all(items),
