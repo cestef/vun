@@ -98,7 +98,9 @@ Front end and infrastructure (stable; see the code for detail): `overt-index` (`
   keeps `_` fields), `MemberType`, `MemberValue`, impls and witnesses (`witness/`: targets may be
   types, type constructors, or interface constructors taking the type first), visibility,
   reflection (`reflect.rs`: `lang.meta.{fields, name_of, size, source}`), layout (`layout.rs`,
-  query `Layouts`), kinds (`kinds.rs`, query `Kinds`), `check/` (the file checker: values,
+  query `Layouts`), kinds (`kinds.rs`, query `Kinds`: `Kind { duplication, region, misplaced }`
+  from parts and `#[kind.linear|free]` on a literal or its constructor), `#[kind.owns]` (the
+  field `.*` reads through, `MemberTable::deref`), `check/` (the file checker: values,
   impls, visibility, `layout.bits_width`).
 
 **MIR** (`compiler/mid/mir`): places with projections (`Deref`, `Field`, `Index`, `Position`,
@@ -113,7 +115,11 @@ are `Unbuilt { at }`; `Body::verify` runs on every lowered body in the tests.
 
 **Passes** (`compiler/mid/passes`): `places/` (query `PlaceStates`): uninitialized reads, joins,
 `&out` targets, moves of linear values, `place.linear_leak` at returns, `Defer` decided statically
-(runs where every consumed local is `init`). Stage `places` in the
+(runs where every consumed local is `init`). `borrows/` (query `BorrowChecks`): loans from
+`Rvalue::Ref` flow forward into locals (scoped results hold their operands' loans), locals'
+liveness backward; an access overlapping a live loan conflicts when either is exclusive (column
+`access` of `borrows`), a write skips loans past a `.*` inside it; loans of own storage in the
+result escape; `free.rs` reports values built misplaced (`borrow.in_free_value`). Stage `places` in the
 driver; stages declare `Input::{Source, Mir}` so the corpus keeps MIR reports pending in bodies
 MIR does not lower (`Session::unlowered`).
 
@@ -125,27 +131,29 @@ model); frames suspend and resume (`frames.rs`).
 `Coverage` (typed expressions, lowered functions, what stops MIR); `cargo xtask {generate,
 corpus, lines}`.
 
-Progress (corpus/accept): 55% of body expressions typed, 67 of 105 functions lowered. Corpus:
-165 passed, 27 pending, 20 shown, 0 failed. 184 tests.
+Progress (corpus/accept): 56% of body expressions typed, 67 of 105 functions lowered. Corpus:
+171 passed, 21 pending, 20 shown, 0 failed. 187 tests.
 
 ## 6. Decisions
 
-Decisions 1 to 84, 91 and 92 are accepted (65 to 84 on the agent's recommendation when the user
-asked to settle them; 91 and 92 with the user's choices). 85 to 90 and 93 to 96 are proposed:
+Decisions 1 to 84, 91, 92 and 98 are accepted (65 to 84 on the agent's recommendation when the
+user asked to settle them; 91, 92 and 98 with the user's choices). 85 to 90 and 93 to 97 are
+proposed:
 $for in bodies (85), code values (86), quote levels (87), MIR places (88), MIR patterns and typed
 annotations (89), linked values and repeats (90), layout (93), place states (94), kinds and moves
-(95), `defer` (96). New language rules go to `decisions.md` as proposed unless the user approves them.
+(95), `defer` (96), borrow rules (97). New language rules go to `decisions.md` as proposed unless the user approves them.
 
 ## 7. Next steps, in order
 
 1. After `defer`: leaks at scope exits inside a body (found at the function's return only
    today), `fixed` and `scoped` kinds, frames' `end` running their defers. `memory/defer.ov`
    waits on `Result.map_err` (step 3).
-2. Borrow rules (spec 05, sections 4 and 7; `borrow.*` reject programs): exclusivity, escape,
-   scoped values in free results.
+2. Borrow rules left: `&temp` parameters (results not tied to them), `&static`, top-level
+   bindings as free values, frames' region from their parameters, `critical_escape.ov` (needs
+   `std.sync`), two-phase borrows if programs need them (decision 97 says no).
 3. Library and stand-ins so `types.no_member` on values can turn on (the probe in
-   `typeck/infer.rs::member` is off): field access through `Own` (no auto-deref: decide the
-   surface with the user), `std.Dyn`, `Result.map_err` with inference of `$` arguments and
+   `typeck/infer.rs::member` is off): a real `std.mem.Own` (today a stand-in with
+   `#[kind.owns]`), `std.Dyn`, `Result.map_err` with inference of `$` arguments and
    variant constructors as function values, `std.sync` (`Shared`, `critical`), `std.iter`
    adapters (`enumerate`), and stand-ins tied to program types (`Dma`, `Uart`, `System`, `svd`).
 4. MIR gaps (`cargo xtask corpus` lists them): run-time splices of code (expansion at the call
@@ -176,6 +184,11 @@ annotations (89), linked values and repeats (90), layout (93), place states (94)
 - Checks report only what they know: unknown types and `Unevaluated` values are silence. A stage
   lists exactly the ids it implements, or corpus files fail instead of pending.
 - `OVERT_BLESS` blesses whenever set, whatever its value.
+- Attributes are written bare only from the namespaces the std prelude lists (`kind`, `layout`,
+  `abi`, ...); a new compiler attribute goes in one of those, never in a namespace like
+  `lang.mem` that users reach as `std.mem`.
+- Attributes do not attach to a block's tail expression; put kind attributes on the type
+  constructor (`Own := #[kind.linear] ($T: type) -> type { struct { ... } }`).
 - Names in `lang` resolve within `lang` (its prelude is `lang`, `lang.int`); `true`/`false` are
   not prelude names: write `.true` with an expected `bool`.
 - Integer arithmetic is exact: `x * 2` for `x: u32` does not fit `u32`; corpus programs are fixed
