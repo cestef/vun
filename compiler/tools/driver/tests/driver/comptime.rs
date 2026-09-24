@@ -176,10 +176,13 @@ Register := struct { name: &[u8], offset: u16 };
 regs: &[Register] = &[.{ .name = \"cr1\", .offset = 0 }, .{ .name = \"arr\", .offset = 0x2c }];
 Offset := Int(0..=regs[1].offset);
 offset: Offset = 45;
+pairs := .{ Pair{ .a = 1 }, Pair{ .a = 7 } };
+Seventh := Int(0..=pairs.1.a);
+seventh: Seventh = 8;
 ",
     );
     let fit = |ty: &str| (errors::INT_DOES_NOT_FIT, format!("value does not fit the type `{ty}`"));
-    assert_eq!(fixture.reported(&file), [fit("Big"), fit("Second"), fit("Offset")]);
+    assert_eq!(fixture.reported(&file), [fit("Big"), fit("Second"), fit("Offset"), fit("Seventh")]);
 }
 
 #[test]

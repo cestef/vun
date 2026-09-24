@@ -10,7 +10,6 @@ use vun_sema::int::Integer;
 use vun_sema::layout::{Parts, Tag};
 use vun_sema::member::Members;
 use vun_sema::primitives::mem::Mem;
-use vun_sema::target::Target;
 use vun_sema::ty::{Ty, TyKind, Value as Constant};
 use vun_target::Endian;
 
@@ -42,7 +41,7 @@ impl Lowering<'_, '_> {
             (usize::try_from(at).unwrap_or_default(), usize::try_from(width).unwrap_or_default());
         let slot = &mut bytes[at..at + width];
         slot.copy_from_slice(&bits[..width]);
-        if self.types.cx.db().resource::<Target>().endian == Endian::Big {
+        if self.types.endian == Endian::Big {
             slot.reverse();
         }
     }
@@ -131,7 +130,7 @@ impl Lowering<'_, '_> {
                 let data = self.constant(bytes.bytes, bytes.relocs, align, at);
                 out.relocs.push(address(Address::Data(data)));
                 if let Some(len) = len {
-                    let word = self.types.word().bytes(self.types.pointer_bits());
+                    let word = self.types.word.bytes(self.types.pointer_bits());
                     self.int(&Integer::from(len), word, &mut out.bytes, base + word);
                 }
             }
@@ -176,7 +175,7 @@ impl FnLower<'_, '_, '_> {
         let mut raw = [0u8; 16];
         raw[..bytes.bytes.len()].copy_from_slice(&bytes.bytes);
         let mut bits = u128::from_le_bytes(raw);
-        if self.l.types.cx.db().resource::<Target>().endian == Endian::Big {
+        if self.l.types.endian == Endian::Big {
             bits = u128::from_be_bytes(raw) >> (128 - 8 * bytes.bytes.len());
         }
         Ok(self.b.constant(scalar, bits, self.at))

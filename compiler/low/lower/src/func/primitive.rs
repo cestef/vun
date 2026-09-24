@@ -127,7 +127,7 @@ impl FnLower<'_, '_, '_> {
             part @ (Mem::len | Mem::items_pointer) => {
                 let from = self.operand_addr(arg(0)?)?;
                 let (scalar, offset) = match part {
-                    Mem::len => (self.l.types.word(), self.l.types.word().bytes(self.l.types.pointer_bits())),
+                    Mem::len => (self.l.types.word, self.l.types.word.bytes(self.l.types.pointer_bits())),
                     _ => (Scalar::Ptr, 0),
                 };
                 let at = self.at_offset(from, offset);
@@ -138,7 +138,7 @@ impl FnLower<'_, '_, '_> {
             Mem::items_at => {
                 let (addr, len) = (self.scalar_operand(arg(0)?)?, self.scalar_operand(arg(1)?)?);
                 self.b.store(addr, dest, Access::Plain, self.at);
-                let at = self.at_offset(dest, self.l.types.word().bytes(self.l.types.pointer_bits()));
+                let at = self.at_offset(dest, self.l.types.word.bytes(self.l.types.pointer_bits()));
                 self.b.store(len, at, Access::Plain, self.at);
                 Ok(())
             }

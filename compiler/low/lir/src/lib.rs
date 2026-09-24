@@ -2,8 +2,10 @@
 //! scalars; aggregates live in memory, reached by address. Functions, data and imports are
 //! addressed by their ids, and only exports and imports carry link symbols.
 
+pub mod analysis;
 pub mod build;
 pub mod entity;
+pub mod facts;
 pub mod func;
 pub mod inst;
 pub mod text;
@@ -13,6 +15,7 @@ pub mod verify;
 
 pub use build::Builder;
 pub use entity::{Block, DataId, FuncId, ImportId, Inst, Slot, Value};
+pub use facts::{Domain, Reads};
 pub use func::{AbiType, Conv, Function, Linkage, Record, Signature};
 pub use inst::{Access, Address, BinOp, Callee, CastOp, Cond, InstKind, Order, RmwOp, Target, Terminator};
 pub use ty::Scalar;

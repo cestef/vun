@@ -15,7 +15,7 @@ use crate::unlowered::{Form, Unlowered};
 impl FnLower<'_, '_, '_> {
     /// The storage of a bound of `Bounds(item)`, and whether it is signed.
     fn bound(&self, item: Ty) -> (Scalar, bool) {
-        self.l.types.int(item).unwrap_or((self.l.types.word(), false))
+        self.l.types.int(item).unwrap_or((self.l.types.word, false))
     }
 
     /// The offsets of the low bound, the end and the flag telling there is one.
@@ -70,7 +70,7 @@ impl FnLower<'_, '_, '_> {
         bounds: Value,
         ty: Ty,
     ) -> Result<Reached, Unlowered> {
-        let word = self.l.types.word();
+        let word = self.l.types.word;
         let (scalar, signed) =
             self.bound(ty.bounds().ok_or(Unlowered::unsupported(self.at, Form::Projection))?);
         let [at_lo, at_end, at_has] = self.fields(ty)?;

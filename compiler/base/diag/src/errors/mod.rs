@@ -29,6 +29,8 @@ mod panic;
 pub use panic::*;
 mod backend;
 pub use backend::*;
+mod target;
+pub use target::*;
 mod link;
 pub use link::*;
 mod manifest;

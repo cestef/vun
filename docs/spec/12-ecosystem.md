@@ -79,7 +79,7 @@ build := (b: &mut std.build.Build) {
     chip := b.dep(.stm32f4, .{ .variant = .f407 });       // parameters, not features
     fw := b.program(.{
         .root = "blinky/app.vun",
-        .target = targets.thumbv7em.none_eabihf,
+        .target = targets.bare.cortex_m4f,
         .deps = .{ .stm32f4 = chip },
         .memory = .{
             .flash = .{ .origin = 0x0800_0000, .len = 512 * 1024 },

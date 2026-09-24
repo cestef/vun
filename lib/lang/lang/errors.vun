@@ -109,6 +109,13 @@ panic := struct {
 /// Code generation backends (spec 13).
 backend := struct {
     unavailable := diag.Diag{ .explanation = meta.embed("errors/backend/unavailable.md") };
+    lacks := diag.Diag{ .explanation = meta.embed("errors/backend/lacks.md") };
+    tool := diag.Diag{ .explanation = meta.embed("errors/backend/tool.md") };
+};
+
+/// Targets (spec 13, section 7).
+target := struct {
+    unchosen := diag.Diag{ .explanation = meta.embed("errors/target/unchosen.md") };
 };
 
 /// Linking (spec 13).

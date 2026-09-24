@@ -3,6 +3,7 @@
 
 use vun_index::{Idx, IndexVec};
 
+use crate::analysis::Cfg;
 use crate::entity::Block;
 use crate::func::Function;
 
@@ -12,14 +13,7 @@ impl Dominators {
     /// The dominators of every block of `func`, iterated to the fixed point from `entry`.
     pub(super) fn of(func: &Function, entry: Block) -> Self {
         let count = func.blocks.len();
-        let mut preds: IndexVec<Block, Vec<Block>> = IndexVec::filled(Vec::new(), count);
-        for (block, data) in func.blocks.iter() {
-            for target in data.term.targets() {
-                if target.block.index() < count {
-                    preds[target.block].push(block);
-                }
-            }
-        }
+        let preds = Cfg::of(func).preds;
         let mut dom: IndexVec<Block, Vec<bool>> = IndexVec::filled(vec![true; count], count);
         dom[entry] = (0..count).map(|i| i == entry.index()).collect();
         let mut changed = true;

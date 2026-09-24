@@ -1,0 +1,43 @@
+//! Bare metal: no system; a program brings its own runtime (spec 08).
+
+/// ARM Cortex-M4 with its floating-point unit (Thumb-2, hard-float EABI).
+cortex_m4f := lang.target.Spec{
+    .arch = .arm,
+    .cpu = .cortex_m4f,
+    .os = .bare,
+    .abi = .eabihf,
+    .pointer_bits = 32,
+    .endian = .little,
+    .object_format = .elf,
+    .entry_symbol = .some("Reset"),
+    .default_backend = .c,
+    .default_linker = .lld,
+    .c = lang.target.C{
+        .short = .{ .bits = 16, .align = 2 },
+        .int = .{ .bits = 32, .align = 4 },
+        .long = .{ .bits = 32, .align = 4 },
+        .long_long = .{ .bits = 64, .align = 8 },
+        .pointer_align = 4,
+    },
+};
+
+/// 32-bit RISC-V with multiplication and compressed instructions (RV32IMC).
+rv32imc := lang.target.Spec{
+    .arch = .riscv32,
+    .cpu = .rv32imc,
+    .os = .bare,
+    .abi = .ilp32,
+    .pointer_bits = 32,
+    .endian = .little,
+    .object_format = .elf,
+    .entry_symbol = .some("Reset"),
+    .default_backend = .c,
+    .default_linker = .lld,
+    .c = lang.target.C{
+        .short = .{ .bits = 16, .align = 2 },
+        .int = .{ .bits = 32, .align = 4 },
+        .long = .{ .bits = 32, .align = 4 },
+        .long_long = .{ .bits = 64, .align = 8 },
+        .pointer_align = 4,
+    },
+};

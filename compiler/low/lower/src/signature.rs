@@ -70,7 +70,7 @@ impl Types<'_, '_> {
         }
         // A borrow of a slice: its address, then its length.
         if ty.borrowed().is_some_and(|t| t.slice_items().is_some()) {
-            let word = self.word();
+            let word = self.word;
             out.extend([(base, Scalar::Ptr), (base + word.bytes(self.pointer_bits()), word)]);
             return Ok(());
         }

@@ -1,0 +1,64 @@
+//! Linux, with the GNU C library.
+
+/// 64-bit x86.
+x86_64 := lang.target.Spec{
+    .arch = .x86_64,
+    .cpu = .generic,
+    .os = .linux,
+    .abi = .gnu,
+    .pointer_bits = 64,
+    .endian = .little,
+    .object_format = .elf,
+    .entry_symbol = .some("_start"),
+    .default_backend = .cranelift,
+    .default_linker = .mold,
+    .c = lang.target.C{
+        .short = .{ .bits = 16, .align = 2 },
+        .int = .{ .bits = 32, .align = 4 },
+        .long = .{ .bits = 64, .align = 8 },
+        .long_long = .{ .bits = 64, .align = 8 },
+        .pointer_align = 8,
+    },
+};
+
+/// 64-bit ARM (AArch64).
+arm64 := lang.target.Spec{
+    .arch = .arm64,
+    .cpu = .generic,
+    .os = .linux,
+    .abi = .gnu,
+    .pointer_bits = 64,
+    .endian = .little,
+    .object_format = .elf,
+    .entry_symbol = .some("_start"),
+    .default_backend = .cranelift,
+    .default_linker = .mold,
+    .c = lang.target.C{
+        .short = .{ .bits = 16, .align = 2 },
+        .int = .{ .bits = 32, .align = 4 },
+        .long = .{ .bits = 64, .align = 8 },
+        .long_long = .{ .bits = 64, .align = 8 },
+        .pointer_align = 8,
+    },
+};
+
+/// 64-bit RISC-V with the general extensions (RV64GC).
+riscv64 := lang.target.Spec{
+    .arch = .riscv64,
+    .cpu = .generic,
+    .os = .linux,
+    .abi = .gnu,
+    .pointer_bits = 64,
+    .endian = .little,
+    .object_format = .elf,
+    .entry_symbol = .some("_start"),
+    .default_backend = .cranelift,
+    .default_linker = .lld,
+    .c = lang.target.C{
+        .short = .{ .bits = 16, .align = 2 },
+        .int = .{ .bits = 32, .align = 4 },
+        .long = .{ .bits = 64, .align = 8 },
+        .long_long = .{ .bits = 64, .align = 8 },
+        .pointer_align = 8,
+    },
+};

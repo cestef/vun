@@ -7,3 +7,5 @@
 )]
 use crate::Item;
 pub const unavailable: Item = Item::new(&["lang", "errors", "backend", "unavailable"]);
+pub const lacks: Item = Item::new(&["lang", "errors", "backend", "lacks"]);
+pub const tool: Item = Item::new(&["lang", "errors", "backend", "tool"]);

@@ -2,9 +2,9 @@
 
 use vun_diag::{DiagCtxt, ErrorGuaranteed};
 use vun_link::{LinkPlan, Linker, LinkerInfo};
-use vun_target::{ObjectFormat, TargetSpec};
+use vun_target::{Name, TargetSpec};
 
-pub const INFO: LinkerInfo = LinkerInfo { id: "gnu", formats: &[ObjectFormat::Elf], regions: true };
+pub const INFO: LinkerInfo = LinkerInfo { id: Name("gnu"), formats: &[Name("elf")], regions: true };
 
 #[derive(Default)]
 pub struct GnuLinker;

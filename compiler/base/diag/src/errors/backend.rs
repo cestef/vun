@@ -3,3 +3,5 @@ use crate::DiagId;
 /// Code generation backends (spec 13).
 pub const BACKEND: DiagId = DiagId::new("lang.errors.backend");
 pub const BACKEND_UNAVAILABLE: DiagId = DiagId::new("lang.errors.backend.unavailable");
+pub const BACKEND_LACKS: DiagId = DiagId::new("lang.errors.backend.lacks");
+pub const BACKEND_TOOL: DiagId = DiagId::new("lang.errors.backend.tool");

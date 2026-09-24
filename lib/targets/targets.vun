@@ -1,1 +1,11 @@
-//! Target descriptions, one namespace per architecture: `targets.<arch>.<system>`.
+//! Target descriptions, a namespace per system and a target per CPU: `targets.<system>.<cpu>`,
+//! such as `targets.linux.x86_64` or `targets.bare.cortex_m4f`.
+
+/// The machines the toolchain runs on, named as the toolchain names them (the architecture and
+/// system Rust's `std::env::consts` report), and the target each builds for unless told otherwise.
+hosts := .{
+    lang.target.Host{ .arch = .x86_64, .os = .linux, .target = targets.linux.x86_64 },
+    lang.target.Host{ .arch = .aarch64, .os = .linux, .target = targets.linux.arm64 },
+    lang.target.Host{ .arch = .riscv64, .os = .linux, .target = targets.linux.riscv64 },
+    lang.target.Host{ .arch = .aarch64, .os = .macos, .target = targets.macos.arm64 },
+};

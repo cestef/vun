@@ -16,7 +16,16 @@ impl Env<'_, '_> {
     /// # Errors
     /// Returns why the item has no value here, such as a replaced `lang` that lacks it.
     pub fn item(&self, item: Item) -> Result<Value, Unevaluated> {
-        let mut names = item.path().iter().map(|n| Symbol::intern(n));
+        self.path(item.path().iter().map(|n| Symbol::intern(n)))
+    }
+
+    /// The value at the binding path `names`, its first name looked up outside the file, the
+    /// rest as members.
+    ///
+    /// # Errors
+    /// Returns why the path leads to no value here.
+    pub fn path(&self, names: impl IntoIterator<Item = Symbol>) -> Result<Value, Unevaluated> {
+        let mut names = names.into_iter();
         let mut value = self.value_of(self.outer(names.next().ok_or(Unevaluated::Absent)?)?)?;
         for name in names {
             value = self.member(value, name)?;

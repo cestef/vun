@@ -61,6 +61,8 @@ pub enum Unevaluated {
     Failed,
     /// A form not evaluated yet.
     Unsupported,
+    /// It depends on the target, which is not chosen yet.
+    Untargeted,
 }
 
 #[derive(Clone)]

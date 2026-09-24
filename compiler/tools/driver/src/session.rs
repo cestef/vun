@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 use vun_build::manifest::Manifest;
 use vun_build::store::Store;
-use vun_diag::{DiagCtxt, DiagCx, DiagSink, Diagnostic, Msg, errors};
+use vun_diag::{DiagCtxt, DiagCx, DiagSink, Diagnostic, ErrorGuaranteed, Msg, errors};
 use vun_hir::db::{FileNames, FileRef, FileText, Parsed, ParsedFile};
 use vun_hir::lower;
 use vun_hir::tree::{ExprKind, Hir};
@@ -21,11 +21,13 @@ use vun_sema::decl::DeclValue;
 use vun_sema::eval::Evaluators;
 use vun_sema::eval::Instantiation;
 use vun_sema::item::{DeclRef, ExprRef};
+use vun_sema::target::Choice;
 use vun_sema::ty::{Ty, Value};
 use vun_span::{FileId, SourceFiles, SourceMap};
 use vun_syntax::cst::Cst;
 use vun_syntax::literal::Decl;
 use vun_syntax::tokens::Tokens;
+use vun_target::TargetSpec;
 
 use crate::formats::Format;
 use crate::packages::{LIBRARY, Packages};
@@ -46,6 +48,10 @@ pub struct Session {
     /// The URL schemes packages are downloaded through: `file://` unless the program installs
     /// more, as `vun` does with `vun-http`.
     pub schemes: Schemes,
+    /// How the target is chosen: the running machine's unless `--target` names one.
+    pub choice: Choice,
+    /// The target, once chosen, or the report that none is.
+    pub target: Option<Result<TargetSpec, ErrorGuaranteed>>,
 }
 
 impl Default for Session {
@@ -62,6 +68,8 @@ impl Default for Session {
             library: PathBuf::from(LIBRARY),
             store: Store::user(),
             schemes: Schemes::default(),
+            choice: Choice::host(),
+            target: None,
         }
     }
 }
@@ -173,6 +181,8 @@ impl Session {
         let key = FileRef { package: id, path: self.packages.list[&package].relative(&path) };
         // The file as loaded, which its package's files do not include when it is loose.
         self.db.set::<FileText>(key.clone(), Some(Arc::from(self.text(file))));
+        // Reported once when none is; what needs it then stays unknown.
+        let _ = self.target_for(&key);
         key
     }
 

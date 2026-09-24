@@ -45,7 +45,7 @@ impl FnLower<'_, '_, '_> {
         if offset == 0 {
             return addr;
         }
-        let word = self.l.types.word();
+        let word = self.l.types.word;
         let offset = self.b.constant(word, u128::from(offset), self.at);
         self.b.offset(addr, offset, self.at)
     }
@@ -74,7 +74,7 @@ impl FnLower<'_, '_, '_> {
                 let addr = self.b.load(Scalar::Ptr, from.addr, Access::Plain, self.at);
                 let len = match pointee.slice_items() {
                     Some(_) => {
-                        let word = self.l.types.word();
+                        let word = self.l.types.word;
                         let at = self.at_offset(from.addr, word.bytes(self.l.types.pointer_bits()));
                         Some(self.b.load(word, at, Access::Plain, self.at))
                     }
@@ -129,7 +129,7 @@ impl FnLower<'_, '_, '_> {
     fn item(&mut self, from: Reached, local: vun_mir::Local) -> Result<Reached, Unlowered> {
         let at = self.at;
         let unsupported = move || Unlowered::unsupported(at, Form::Projection);
-        let word = self.l.types.word();
+        let word = self.l.types.word;
         let (item, len) = match (from.ty.as_array(), from.ty.slice_items(), from.len) {
             (Some((len, item)), ..) => {
                 let len = len.to_u128().ok_or_else(unsupported)?;

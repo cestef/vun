@@ -1,12 +1,12 @@
 //! Portable C99 through the configured C toolchain: reaches every target with a C compiler.
 
-use vun_backend::{ArtifactSink, Backend, BackendCaps, BackendInfo, Emits};
+use vun_backend::{ArtifactSink, Backend, BackendCaps, BackendInfo, Emits, Lines};
 use vun_diag::{DiagCtxt, ErrorGuaranteed};
 use vun_lir::unit::Unit;
-use vun_target::{Arches, TargetSpec};
+use vun_target::{Arches, Name, TargetSpec};
 
 pub const INFO: BackendInfo = BackendInfo {
-    id: "c",
+    id: Name("c"),
     arches: Arches::Any,
     caps: BackendCaps {
         emits: Emits::Source,
@@ -31,6 +31,7 @@ impl Backend for CBackend {
         &self,
         _unit: &Unit,
         _target: &TargetSpec,
+        _lines: &dyn Lines,
         _out: &mut dyn ArtifactSink,
         diag: &mut DiagCtxt,
     ) -> Result<(), ErrorGuaranteed> {

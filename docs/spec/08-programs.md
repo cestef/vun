@@ -115,7 +115,7 @@ trap: (t: &Trap) -> never = _;
 The build names the root file, the target, and the output kind. It does not name declarations:
 
 ```vun
-fw := b.program(.{ .root = "blinky/app.vun", .target = targets.thumbv7em.none_eabihf });
+fw := b.program(.{ .root = "blinky/app.vun", .target = targets.bare.cortex_m4f });
 ```
 
 The root file is the only place where bindings are evaluated to discover exports; everywhere else

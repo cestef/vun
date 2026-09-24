@@ -239,7 +239,17 @@ pub trait DiagSink {
 - **Targets are data written in Vun.** A `TargetSpec` (word size, endianness, alignments, ABIs,
   features, object format, entry symbol, default backend and linker) is a compile-time value from
   the `targets` package, a `lang.target.Spec`: architectures, object formats, backends and linkers
-  are `lang.meta.Name`s, sets the registries extend, and endianness is `lang.target.Endian`. Adding a target adds a file; the compiler is not rebuilt.
+  are `lang.meta.Name`s, sets the registries extend, and endianness is `lang.target.Endian`. Targets
+  are named by system, then CPU: `targets.linux.x86_64`, `targets.bare.cortex_m4f`; the
+  architecture, CPU, system and ABI are fields, never parts of a name. A `Spec` also holds the
+  target's C model (`lang.target.C`: the width and alignment of each C integer type), which the C
+  backend declares its types from. Adding a target adds a declaration; the compiler is not
+  rebuilt.
+- **The target is chosen once, and nothing assumes one.** `--target` names a declaration of
+  `targets` by its path (`--target bare.cortex_m4f`); without it, `targets.hosts` gives the
+  target of the machine running the toolchain, named as Rust's `std::env::consts` names it. The
+  choice is the query `Chosen`, and its result the input `TargetOf`, which has no default: every
+  width, byte order and layout is read from it, and is unknown until it is set.
 - **One binary, three kinds of component** (decision 131). `vun` is one executable, and what it
   holds is decided per component:
   - *compiled in*: the front end, checks, MIR, the interpreter, `fmt`, the language server,
@@ -266,10 +276,10 @@ pub trait DiagSink {
 | Backend | Role | Targets | Notes |
 |---------|------|---------|-------|
 | C | reach | anything with a C99 compiler | first; vendor toolchains, Cortex-M, AVR, Xtensa; strict C99, defined C only (section 8.2); `restrict` from aliasing facts; frame sizes via `-fstack-usage` |
-| Cranelift | default debug backend | x86_64, aarch64, riscv64, s390x | in process; roughly 20% less codegen time than LLVM for rustc, code about 14% slower |
+| Cranelift | default debug backend | x86_64, arm64, riscv64, s390x | in process; roughly 20% less codegen time than LLVM for rustc, code about 14% slower |
 | QBE | small and simple | amd64, arm64, rv64 | subprocess on IL text; no vectors (lowered), no tail calls, no 32-bit targets |
 | LLVM | optimized builds, widest native reach | ARM32/Thumb, RV32, AVR, wasm, ... | optional; `noalias`, `musttail`, stack-size sections |
-| baseline | fastest debug builds | x86_64, then aarch64 | a single-pass LIR backend in the style of TPDE (8x to 24x faster than LLVM -O0), section 8.3 |
+| baseline | fastest debug builds | x86_64, then arm64 | a single-pass LIR backend in the style of TPDE (8x to 24x faster than LLVM -O0), section 8.3 |
 
 ### 8.1 What every backend shares
 
@@ -394,7 +404,7 @@ lib/
   lang/     primitives (declarations with `= _`), syntax/grammar.vun
   std/      prelude, iter, task, mem, sync, fmt, text, meta, diag, lints, log, hw, os, simd, testing, build,
             collections
-  targets/  one namespace per architecture: targets.<arch>.<system>
+  targets/  a namespace per system, a target per CPU: targets.<system>.<cpu>
   boards/   example runtimes: stm32f4, rp2040, esp32c3
 ```
 

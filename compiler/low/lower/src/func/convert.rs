@@ -66,7 +66,7 @@ impl FnLower<'_, '_, '_> {
         {
             let addr = self.b.load(Scalar::Ptr, src, Access::Plain, self.at);
             self.b.store(addr, dest, Access::Plain, self.at);
-            let word = types.word();
+            let word = types.word;
             let len = self.b.constant(word, len.to_u128().unwrap_or_default(), self.at);
             let at = self.at_offset(dest, word.bytes(types.pointer_bits()));
             self.b.store(len, at, Access::Plain, self.at);
@@ -104,7 +104,7 @@ impl FnLower<'_, '_, '_> {
         len: u64,
         mut body: impl FnMut(&mut Self, Value) -> Result<(), Unlowered>,
     ) -> Result<(), Unlowered> {
-        let word = self.l.types.word();
+        let word = self.l.types.word;
         let (head, run, done) =
             (self.b.block(&[word], self.at), self.b.block(&[], self.at), self.b.block(&[], self.at));
         let zero = self.b.constant(word, 0, self.at);
@@ -127,7 +127,7 @@ impl FnLower<'_, '_, '_> {
     /// The address of the item at the index `i`, a word, of items `stride` bytes apart from
     /// `base`.
     pub(crate) fn scaled(&mut self, base: Value, i: Value, stride: u64) -> Value {
-        let stride = self.b.constant(self.l.types.word(), u128::from(stride), self.at);
+        let stride = self.b.constant(self.l.types.word, u128::from(stride), self.at);
         let offset = self.b.binary(vun_lir::BinOp::Mul, i, stride, self.at);
         self.b.offset(base, offset, self.at)
     }

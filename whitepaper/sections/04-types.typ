@@ -27,7 +27,7 @@ every package; there is no preprocessor and no file-name convention.
 
 ```vun
 scratch := () -> u32 {
-    $if target.arch == .thumbv7em { cortex_m.cycles() } else { 0 }
+    $if target.cpu == .cortex_m4f { cortex_m.cycles() } else { 0 }
 };
 ```
 

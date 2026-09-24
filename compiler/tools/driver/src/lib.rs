@@ -12,6 +12,7 @@ mod plan;
 mod registry;
 mod session;
 pub mod stages;
+pub mod target;
 
 pub use coverage::Coverage;
 pub use registry::Registry;

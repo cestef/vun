@@ -83,6 +83,7 @@ pub(crate) const ALL: &[Generator] = &[
     primitives::GENERATOR,
     items::LANG,
     items::STD,
+    items::TARGETS,
 ];
 
 const SYNTAX: DiagId = DiagId::new("generate.generate.syntax");

@@ -19,7 +19,7 @@ use crate::Primitive;
 use crate::int::{Integer, Interval, Storage};
 use crate::primitives::lang::Lang;
 use crate::primitives::mem::Mem;
-use crate::target::Target;
+use crate::target::TargetOf;
 use crate::ty::{Closure, Ty, TyKind, Value};
 
 /// The shape of a type; `None` for a type without one at run time (`type`, an unbounded
@@ -85,7 +85,7 @@ impl Shapes {
 
     /// A pointer of the target: as wide as an address; never null.
     fn pointer(cx: &Cx<'_>) -> Option<Layout> {
-        let usize_max = cx.db().resource::<Target>().usize_max.clone();
+        let usize_max = cx.get::<TargetOf>(&())?.usize_max.clone();
         let bytes = Interval::closed(Integer::zero(), usize_max)?.storage()?.bits() / u64::from(u8::BITS);
         Some(Layout::scalar(bytes, Some(Niche { offset: 0, bytes, start: 0, count: 1 })))
     }

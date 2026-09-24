@@ -1,4 +1,5 @@
 use vun_backend::Backend;
+use vun_intern::Symbol;
 use vun_link::Linker;
 
 /// The backends and linkers available to a session.
@@ -57,13 +58,13 @@ impl Registry {
     }
 
     #[must_use]
-    pub fn backend(&self, id: &str) -> Option<&dyn Backend> {
-        self.backends().find(|b| b.info().id == id)
+    pub fn backend(&self, name: Symbol) -> Option<&dyn Backend> {
+        self.backends().find(|b| b.info().id.is(name))
     }
 
     #[must_use]
-    pub fn linker(&self, id: &str) -> Option<&dyn Linker> {
-        self.linkers().find(|l| l.info().id == id)
+    pub fn linker(&self, name: Symbol) -> Option<&dyn Linker> {
+        self.linkers().find(|l| l.info().id.is(name))
     }
 }
 

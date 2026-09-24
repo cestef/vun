@@ -5,15 +5,15 @@ use std::path::Path;
 
 use vun_command::{Action, Args, Command, Outcome, Param, ParamKind, Program};
 
-use crate::{Registry, Session, VERSION, formats};
+use crate::{Registry, Session, VERSION, formats, target};
 
 pub const PROGRAM: Program<Session> = Program {
     version: VERSION,
-    configure: formats::configure,
+    configure,
     root: Command {
         name: "vun",
         about: "The Vun toolchain.",
-        params: &[formats::FORMAT],
+        params: &[formats::FORMAT, target::TARGET],
         action: Action::Group(&[
             Command::planned("new", "create a package"),
             Command::planned("build", "build the package"),
@@ -100,6 +100,12 @@ pub const PROGRAM: Program<Session> = Program {
     },
 };
 
+/// Applies the options every command takes.
+fn configure(session: &mut Session, args: &Args) -> Result<(), Box<vun_diag::Diagnostic>> {
+    formats::configure(session, args)?;
+    target::configure(session, args)
+}
+
 pub(crate) const FILE: Param =
     Param { name: "file", short: None, about: "the source file to read", kind: ParamKind::Positional };
 
@@ -114,8 +120,8 @@ fn check(session: &mut Session, args: &Args, _: &mut dyn Write) -> io::Result<Ou
 
 fn components(_: &mut Session, _: &Args, out: &mut dyn Write) -> io::Result<Outcome> {
     let r = Registry::with_defaults();
-    let backends: Vec<_> = r.backends().map(|b| b.info().id).collect();
-    let linkers: Vec<_> = r.linkers().map(|l| l.info().id).collect();
+    let backends: Vec<_> = r.backends().map(|b| b.info().id.0).collect();
+    let linkers: Vec<_> = r.linkers().map(|l| l.info().id.0).collect();
     writeln!(out, "backends: {}", backends.join(", "))?;
     writeln!(out, "linkers:  {}", linkers.join(", "))?;
     Ok(Outcome::Success)

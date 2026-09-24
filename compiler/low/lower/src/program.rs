@@ -15,6 +15,7 @@ use vun_query::{Cx, Query};
 use vun_sema::env::Env;
 use vun_sema::eval::Instantiation;
 use vun_sema::item::DeclRef;
+use vun_sema::target::TargetOf;
 use vun_sema::ty::Value;
 
 use crate::func::FnLower;
@@ -51,7 +52,11 @@ impl<'a, 'db> Lowering<'a, 'db> {
     fn program(cx: &'a Cx<'db>, root: &FileRef) -> Result<Unit, Unlowered> {
         let program = cx.get::<Programs>(root);
         let env = Env::of(cx, root).expect("the root file is read");
-        let types = Types { cx };
+        // Reported at the root file's namespace, the program as a whole.
+        let hir = &env.parsed.hir;
+        let at = hir.namespaces[hir.root.expect("a lowered file has a root namespace")].origin;
+        let target = cx.get::<TargetOf>(&()).ok_or(Unlowered { at, why: Why::Untargeted })?;
+        let types = Types::new(cx, &target).map_err(|bits| Unlowered { at, why: Why::Address(bits) })?;
         let unit = Unit { pointer_bits: types.pointer_bits(), ..Unit::default() };
         let functions =
             program.functions.iter().enumerate().map(|(i, f)| (f.clone(), FuncId::new(i))).collect();

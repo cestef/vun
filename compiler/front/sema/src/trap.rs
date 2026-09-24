@@ -65,6 +65,7 @@ impl Unevaluated {
             Self::Provided => "it reads a declaration provided from outside",
             Self::Trapped(_) | Self::Failed => "a declaration it reads failed to evaluate",
             Self::Unsupported => "it uses a form compile-time evaluation does not run yet",
+            Self::Untargeted => "it depends on the target, which is not chosen",
         }
     }
 

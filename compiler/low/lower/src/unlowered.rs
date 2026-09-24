@@ -20,6 +20,10 @@ pub enum Why {
     NoLayout(Ty),
     /// A form lowering does not handle yet.
     Unsupported(Form),
+    /// No target is chosen.
+    Untargeted,
+    /// The target's addresses are as wide as no integer of LIR.
+    Address(u32),
 }
 
 /// What lowering does not handle yet.
@@ -49,6 +53,8 @@ impl fmt::Display for Unlowered {
             Why::Unready(unready) => unready.fmt(f),
             Why::NoLayout(ty) => write!(f, "the type `{ty}` has no layout at run time"),
             Why::Unsupported(form) => write!(f, "lowering to LIR does not handle {} yet", form.what()),
+            Why::Untargeted => f.write_str("no target is chosen"),
+            Why::Address(bits) => write!(f, "addresses of {bits} bits are as wide as no integer of LIR"),
         }
     }
 }

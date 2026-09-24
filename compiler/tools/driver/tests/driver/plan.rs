@@ -39,7 +39,7 @@ fn a_plan_records_each_step_with_its_records() {
             "\
 build := (b: &mut std.build.Build) {
     chip := b.dep(.stm32f4, .{ .variant = .f407 });
-    fw := b.program(.{ .root = \"app.vun\", .target = targets.thumbv7em.none_eabihf, .deps = .{ .stm32f4 = chip } });
+    fw := b.program(.{ .root = \"app.vun\", .target = targets.bare.cortex_m4f, .deps = .{ .stm32f4 = chip } });
     b.flash(fw, .probe(.{ .chip = \"STM32F407VGTx\" }));
     b.test_on(fw, .qemu(\"lm3s6965\"));
     b.lints(.{ .{ std.lints.pedantic, .warn } });
@@ -47,8 +47,12 @@ build := (b: &mut std.build.Build) {
 ",
     )
     .expect("the plan runs");
-    let target = ".{ .arch = .thumbv7em, .pointer_bits = 32, .endian = .little, .object_format = .elf, \
-                  .entry_symbol = .some(\"Reset\"), .default_backend = .c, .default_linker = .lld }";
+    let target = ".{ .arch = .arm, .cpu = .cortex_m4f, .os = .bare, .abi = .eabihf, .pointer_bits = 32, \
+                  .endian = .little, \
+                  .object_format = .elf, .entry_symbol = .some(\"Reset\"), .default_backend = .c, \
+                  .default_linker = .lld, .c = .{ .short = .{ .bits = 16, .align = 2 }, \
+                  .int = .{ .bits = 32, .align = 4 }, .long = .{ .bits = 32, .align = 4 }, \
+                  .long_long = .{ .bits = 64, .align = 8 }, .pointer_align = 4 } }";
     assert_eq!(
         actions,
         [

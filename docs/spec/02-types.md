@@ -31,7 +31,7 @@ P := Pair(u16);                            // same arguments, same type (memoize
 max := ($T: type, a: T, b: T) -> T { if a > b { a } else { b } };
 
 scratch := () -> u32 {
-    $if target.arch == .thumbv7em { cortex_m.cycles() } else { 0 }
+    $if target.cpu == .cortex_m4f { cortex_m.cycles() } else { 0 }
 };
 ```
 

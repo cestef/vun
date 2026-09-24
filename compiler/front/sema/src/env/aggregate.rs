@@ -69,8 +69,19 @@ impl Env<'_, '_> {
     }
 
     /// `T{ .name = value, ... }`: every field of `ty` in declaration order, from the literal or
-    /// from its default; for a record type, its fields.
+    /// from its default; for a record type, its fields; for a tuple type, its positions.
     pub(super) fn record(&self, ty: Ty, fields: &List<Arg>) -> Result<Value, Unevaluated> {
+        // `.{ x, y }` where a tuple is expected: its items, each as its position's type.
+        if let TyKind::Tuple(types) = &*ty {
+            if fields.len() != types.len() {
+                return Err(Unevaluated::Unsupported);
+            }
+            let items = fields.iter().zip(types.iter()).map(|(field, &item)| match field {
+                Entry::One(Arg { name: None, value }) => self.eval_as(*value, Some(item)),
+                _ => Err(Unevaluated::Unsupported),
+            });
+            return items.collect::<Result<_, _>>().map(Value::Tuple);
+        }
         if let TyKind::Record(types) = &*ty {
             let values = types.iter().map(|(name, field)| {
                 let written = fields.iter().find_map(|f| match f {

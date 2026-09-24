@@ -2,11 +2,11 @@
 
 use vun_diag::{DiagCtxt, ErrorGuaranteed};
 use vun_link::{LinkPlan, Linker, LinkerInfo};
-use vun_target::{ObjectFormat, TargetSpec};
+use vun_target::{Name, TargetSpec};
 
 pub const INFO: LinkerInfo = LinkerInfo {
-    id: "process",
-    formats: &[ObjectFormat::Elf, ObjectFormat::Coff, ObjectFormat::MachO, ObjectFormat::Wasm],
+    id: Name("process"),
+    formats: &[Name("elf"), Name("coff"), Name("macho"), Name("wasm")],
     regions: true,
 };
 

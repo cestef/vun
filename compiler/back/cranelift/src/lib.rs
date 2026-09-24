@@ -1,13 +1,13 @@
 //! In-process Cranelift code generation: the default for debug builds.
 
-use vun_backend::{ArtifactSink, Backend, BackendCaps, BackendInfo, Emits};
+use vun_backend::{ArtifactSink, Backend, BackendCaps, BackendInfo, Emits, Lines};
 use vun_diag::{DiagCtxt, ErrorGuaranteed};
 use vun_lir::unit::Unit;
-use vun_target::{Arches, TargetSpec};
+use vun_target::{Arches, Name, TargetSpec};
 
 pub const INFO: BackendInfo = BackendInfo {
-    id: "cranelift",
-    arches: Arches::Only(&["x86_64", "aarch64", "riscv64", "s390x"]),
+    id: Name("cranelift"),
+    arches: Arches::Only(&[Name("x86_64"), Name("arm64"), Name("riscv64"), Name("s390x")]),
     caps: BackendCaps {
         emits: Emits::Object,
         c_abi: false,
@@ -31,6 +31,7 @@ impl Backend for CraneliftBackend {
         &self,
         _unit: &Unit,
         _target: &TargetSpec,
+        _lines: &dyn Lines,
         _out: &mut dyn ArtifactSink,
         diag: &mut DiagCtxt,
     ) -> Result<(), ErrorGuaranteed> {

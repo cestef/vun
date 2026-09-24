@@ -1,12 +1,14 @@
 //! The declarations of the toolchain's packages as typed handles: `lang::Option`,
 //! `lang::int::unsigned`, `std::build_Build::new`. `cargo gen` writes a module per namespace and
-//! per type with members from `lib/lang` and `lib/std`, so a handle exists exactly when its
+//! per type with members from `lib/lang`, `lib/std` and the root file of `lib/targets`, so a handle exists exactly when its
 //! declaration does, and Rust code never names one by a path in a string.
 
 #[rustfmt::skip]
 pub mod lang;
 #[rustfmt::skip]
 pub mod std;
+#[rustfmt::skip]
+pub mod targets;
 
 /// The package `lang`, whose namespaces and declarations are in the module of the same name.
 #[allow(non_upper_case_globals, reason = "handles are spelled as their declarations")]
@@ -14,6 +16,9 @@ pub const lang: Item = Item::new(&["lang"]);
 /// The package `std`.
 #[allow(non_upper_case_globals, reason = "handles are spelled as their declarations")]
 pub const std: Item = Item::new(&["std"]);
+/// The package `targets`.
+#[allow(non_upper_case_globals, reason = "handles are spelled as their declarations")]
+pub const targets: Item = Item::new(&["targets"]);
 
 use ::std::fmt;
 

@@ -7,13 +7,13 @@ use crate::func::{Conv, Linkage, Signature};
 use crate::verify::{Entity, Reason};
 use crate::{AbiType, BinOp, Builder, Cond, FuncId, InstKind, Scalar, Target, Terminator, Unit};
 
-fn origin(origins: &OriginTable) -> OriginId {
+pub(crate) fn origin(origins: &OriginTable) -> OriginId {
     let file = SourceFiles::new().add("a.vun", "sum := (n: u64) -> u64 { ... };");
     origins.source(Span::new(file, 0, 3))
 }
 
 /// `sum(n)`: adds `0..n` in a loop whose counter and total are block parameters.
-fn sum(origin: OriginId) -> Unit {
+pub(crate) fn sum(origin: OriginId) -> Unit {
     let int = AbiType::Scalar(Scalar::I64);
     let signature = Signature { conv: Conv::C, params: vec![int.clone()], result: Some(int) };
     let mut b = Builder::new(Linkage::Export(Symbol::intern("sum")), signature, origin);

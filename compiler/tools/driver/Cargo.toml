@@ -39,6 +39,7 @@ vun-query.workspace = true
 vun-target.workspace = true
 vun-tool.workspace = true
 vun-syntax.workspace = true
+vun-grammar.workspace = true
 vun-hir.workspace = true
 vun-intern.workspace = true
 vun-index.workspace = true

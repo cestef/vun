@@ -13,6 +13,7 @@ use vun_sema::primitives::lang::Lang;
 use vun_sema::primitives::mem::Mem;
 use vun_sema::target::Target;
 use vun_sema::ty::{Ty, TyKind};
+use vun_target::Endian;
 
 use crate::unlowered::{Unlowered, Why};
 
@@ -28,18 +29,25 @@ pub enum Repr {
 #[derive(Clone, Copy)]
 pub struct Types<'a, 'db> {
     pub cx: &'a Cx<'db>,
+    /// The order of the bytes of a value in memory.
+    pub endian: Endian,
+    /// The integer as wide as an address.
+    pub word: Scalar,
 }
 
-impl Types<'_, '_> {
-    #[must_use]
-    pub fn pointer_bits(self) -> u32 {
-        self.cx.db().resource::<Target>().address_bits()
+impl<'a, 'db> Types<'a, 'db> {
+    /// The representations on `target`, whose addresses must be as wide as an integer LIR has.
+    ///
+    /// # Errors
+    /// Returns the width of addresses when no integer of LIR is that wide.
+    pub fn new(cx: &'a Cx<'db>, target: &Target) -> Result<Self, u32> {
+        let word = Scalar::int(target.address_bits).ok_or(target.address_bits)?;
+        Ok(Self { cx, endian: target.endian, word })
     }
 
-    /// The integer as wide as an address.
     #[must_use]
-    pub fn word(self) -> Scalar {
-        Scalar::int(self.pointer_bits()).unwrap_or(Scalar::I64)
+    pub fn pointer_bits(self) -> u32 {
+        self.word.bits(0)
     }
 
     /// The shape of `ty`, needed at `at`.

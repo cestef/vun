@@ -8,7 +8,7 @@ use std::path::PathBuf;
 
 use vun_diag::{DiagCtxt, Diagnostic, ErrorGuaranteed, Msg, errors};
 use vun_origin::OriginId;
-use vun_target::{ObjectFormat, Support, TargetSpec, Unsupported};
+use vun_target::{Name, Support, TargetSpec, Unsupported};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum OutputKind {
@@ -55,8 +55,9 @@ pub struct LinkPlan {
 /// Everything known about a linker adapter without running it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct LinkerInfo {
-    pub id: &'static str,
-    pub formats: &'static [ObjectFormat],
+    pub id: Name,
+    /// The object formats it links, as targets name them.
+    pub formats: &'static [Name],
     /// Whether memory regions and section placement can be expressed (linker scripts).
     pub regions: bool,
 }
@@ -64,7 +65,7 @@ pub struct LinkerInfo {
 impl LinkerInfo {
     #[must_use]
     pub fn supports(&self, target: &TargetSpec, plan: &LinkPlan) -> Support {
-        if !self.formats.contains(&target.object_format) {
+        if !self.formats.iter().any(|f| f.is(target.object_format)) {
             return Support::No(Unsupported::ObjectFormat(target.object_format));
         }
         if !self.regions && !plan.regions.is_empty() {
@@ -75,7 +76,7 @@ impl LinkerInfo {
 
     /// Reports that this adapter cannot link yet.
     pub fn unavailable(&self, diag: &mut DiagCtxt) -> ErrorGuaranteed {
-        let msg = Msg::new().text("linker ").code(self.id).text(" cannot link yet");
+        let msg = Msg::new().text("linker ").code(self.id.0).text(" cannot link yet");
         diag.error(Diagnostic::error(errors::LINK_UNAVAILABLE, msg))
     }
 }

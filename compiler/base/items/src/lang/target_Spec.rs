@@ -6,7 +6,14 @@
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
 use crate::Item;
+/// The instruction set: `x86_64`, `arm64`, `riscv64`, `riscv32`, `arm`, `wasm32`.
 pub const arch: Item = Item::new(&["lang", "target", "Spec", "arch"]);
+/// The processor the code is for, `generic` for any of the architecture.
+pub const cpu: Item = Item::new(&["lang", "target", "Spec", "cpu"]);
+/// The system programs run on; `bare` on bare metal.
+pub const os: Item = Item::new(&["lang", "target", "Spec", "os"]);
+/// The conventions of the system's binaries: `gnu` (the GNU C library), `eabihf`, ...
+pub const abi: Item = Item::new(&["lang", "target", "Spec", "abi"]);
 /// The width of an address.
 pub const pointer_bits: Item = Item::new(&["lang", "target", "Spec", "pointer_bits"]);
 pub const endian: Item = Item::new(&["lang", "target", "Spec", "endian"]);
@@ -19,3 +26,4 @@ pub const default_backend: Item = Item::new(
 pub const default_linker: Item = Item::new(
     &["lang", "target", "Spec", "default_linker"],
 );
+pub const c: Item = Item::new(&["lang", "target", "Spec", "c"]);

@@ -1,68 +1,98 @@
-//! Target descriptions: layout, ABIs, features, entry symbol.
-//!
-//! Targets are data. The canonical descriptions are Vun values in `lib/targets`; this crate is
-//! their Rust mirror, filled in by evaluating those values.
+//! Targets as the compiler reads them: `lang.target.Spec` values of the `targets` package (spec
+//! 13, section 7), and the names components declare what they handle by.
 
+use std::fmt;
+
+use vun_intern::Symbol;
+
+/// A name of one of the open sets targets draw from (decision 138): architectures, systems,
+/// object formats, backends and linkers. Targets give theirs as `lang.meta.Name` values;
+/// components declare theirs statically.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct Name(pub &'static str);
+
+impl Name {
+    /// Whether a target's name is this one.
+    #[must_use]
+    pub fn is(self, name: Symbol) -> bool {
+        name.as_str() == self.0
+    }
+
+    #[must_use]
+    pub fn symbol(self) -> Symbol {
+        Symbol::intern(self.0)
+    }
+}
+
+impl fmt::Display for Name {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.0)
+    }
+}
+
+/// `lang.target.Endian`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Endian {
     Little,
     Big,
 }
 
+/// `lang.target.CInt`: a C integer type, its width in bits and alignment in bytes.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum ObjectFormat {
-    Elf,
-    MachO,
-    Coff,
-    Wasm,
+pub struct CInt {
+    pub bits: u32,
+    pub align: u32,
 }
 
+/// `lang.target.C`: the C types of a target.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum Abi {
-    Native,
-    C,
-    Interrupt,
-    Naked,
+pub struct CTypes {
+    pub short: CInt,
+    pub int: CInt,
+    pub long: CInt,
+    pub long_long: CInt,
+    pub pointer_align: u32,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+/// `lang.target.Spec`.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct TargetSpec {
-    /// Binding path in the `targets` package, such as `thumbv7em.none_eabihf`.
-    pub name: String,
-    pub arch: String,
-    pub pointer_bits: u8,
+    pub arch: Symbol,
+    pub cpu: Symbol,
+    pub os: Symbol,
+    pub abi: Symbol,
+    pub pointer_bits: u32,
     pub endian: Endian,
-    pub native_int_bits: u8,
-    pub max_align: u8,
-    pub abis: Vec<Abi>,
-    pub features: Vec<String>,
-    pub object_format: ObjectFormat,
+    pub object_format: Symbol,
     /// The linker's entry symbol; `None` for libraries (spec 08, rule 2).
-    pub entry_symbol: Option<String>,
-    pub default_backend: String,
-    pub default_linker: String,
+    pub entry_symbol: Option<Symbol>,
+    pub default_backend: Symbol,
+    pub default_linker: Symbol,
+    pub c: CTypes,
 }
 
-impl TargetSpec {
-    #[must_use]
-    pub fn usize_max(&self) -> u128 {
-        (1u128 << self.pointer_bits) - 1
-    }
+/// `lang.target.Host`: a machine the toolchain runs on, named as the toolchain names it (Rust's
+/// `std::env::consts`), and the target it builds for there by default.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct Host {
+    pub arch: Symbol,
+    pub os: Symbol,
+    pub target: TargetSpec,
 }
 
 /// The architectures a component handles.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Arches {
     Any,
-    Only(&'static [&'static str]),
+    Only(&'static [Name]),
 }
 
 impl Arches {
     #[must_use]
-    pub fn contains(self, arch: &str) -> bool {
+    pub fn contains(self, arch: Symbol) -> bool {
         match self {
             Self::Any => true,
-            Self::Only(list) => list.contains(&arch),
+            Self::Only(list) => list.iter().any(|n| n.is(arch)),
         }
     }
 }
@@ -77,7 +107,7 @@ pub enum Support {
 /// Why a component cannot handle a target or request.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Unsupported {
-    Arch(String),
-    ObjectFormat(ObjectFormat),
+    Arch(Symbol),
+    ObjectFormat(Symbol),
     MemoryRegions,
 }

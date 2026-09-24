@@ -119,7 +119,7 @@ impl FnLower<'_, '_, '_> {
         };
         self.b.store(addr, dest, Access::Plain, self.at);
         if ty.borrowed().and_then(|t| t.slice_items()).is_some() {
-            let word = self.l.types.word();
+            let word = self.l.types.word;
             let len = match (len, pointee.as_array()) {
                 (Some(len), _) => len,
                 (None, Some((n, _))) => self.b.constant(word, n.to_u128().unwrap_or_default(), self.at),

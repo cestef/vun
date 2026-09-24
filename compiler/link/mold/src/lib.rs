@@ -2,9 +2,9 @@
 
 use vun_diag::{DiagCtxt, ErrorGuaranteed};
 use vun_link::{LinkPlan, Linker, LinkerInfo};
-use vun_target::{ObjectFormat, TargetSpec};
+use vun_target::{Name, TargetSpec};
 
-pub const INFO: LinkerInfo = LinkerInfo { id: "mold", formats: &[ObjectFormat::Elf], regions: false };
+pub const INFO: LinkerInfo = LinkerInfo { id: Name("mold"), formats: &[Name("elf")], regions: false };
 
 #[derive(Default)]
 pub struct MoldLinker;
