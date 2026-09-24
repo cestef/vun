@@ -27,7 +27,8 @@ impl Env<'_, '_> {
                 continue;
             }
             let members = self.cx.get::<Members>(&ty);
-            let absent = members.as_deref().is_some_and(|m| matches!(m.find(name), Found::Absent));
+            let absent =
+                members.as_deref().is_some_and(|m| matches!(m.find(name), Found::Absent | Found::Variant(_)));
             match members.as_deref().and_then(MemberTable::deref) {
                 Some((field, target)) if absent && self.method(ty, name).is_none() => {
                     hops.push(Hop::Owner(field));

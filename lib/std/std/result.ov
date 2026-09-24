@@ -3,8 +3,18 @@
 
 #[impl(Result)]
 ResultMethods := ($T: type, $E: type) -> type { struct {
+    is_ok := (r: &Result(T, E)) -> bool { match r { .ok(_) => true, .err(_) => false } };
+    is_err := (r: &Result(T, E)) -> bool { match r { .ok(_) => false, .err(_) => true } };
+    /// The value, or `default` on an error.
+    unwrap_or := (r: Result(T, E), default: T) -> T { match r { .ok(v) => v, .err(_) => default } };
+    /// The value passed through `f`.
+    map := (r: Result(T, E), $U: type, f: (T) -> U) -> Result(U, E) {
+        match r { .ok(v) => .ok(f(v)), .err(e) => .err(e) }
+    };
     /// The result with its error passed through `f`: `e.map_err(f)?` converts as it propagates.
     map_err := (r: Result(T, E), $F: type, f: (E) -> F) -> Result(T, F) {
         match r { .ok(v) => .ok(v), .err(e) => .err(f(e)) }
     };
+    /// The value, dropping the error.
+    ok := (r: Result(T, E)) -> ?T { match r { .ok(v) => .some(v), .err(_) => .none } };
 } };

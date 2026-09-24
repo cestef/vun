@@ -199,10 +199,10 @@ impl Typer<'_, '_, '_> {
                 self.methods.insert(expr, (known.ty, name));
                 self.env().cx.get::<MemberType>(&(known.ty, name)).ok()
             }
-            Found::Variant(_) => None,
             // A member missing from the type and its impls is not reported yet: the corpus
-            // stand-ins do not declare every member their programs use (HANDOFF).
-            Found::Absent | Found::Unknown => {
+            // stand-ins do not declare every member their programs use (HANDOFF). A variant is
+            // reached through its type, never through a value, so a value's lookup goes on.
+            Found::Variant(_) | Found::Absent | Found::Unknown => {
                 let owner = self.method(expr, known.ty, name)?;
                 self.methods.insert(expr, (owner, name));
                 self.env().cx.get::<MemberType>(&(owner, name)).ok()

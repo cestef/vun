@@ -1,0 +1,18 @@
+//! Methods of options and results come from `std` impls without an interface (decision 102);
+//! `$` arguments of generic functions are inferred (decision 99).
+
+Reading := enum { missing, bad(u8) };
+
+level := (raw: ?u8) -> Result(u8, Reading) {
+    v := raw.ok_or(Reading.missing)?;
+    if v > 200 { return .err(.bad(v)); }
+    .ok(std.cmp.clamp(v, 10, 190))
+};
+
+scaled := (raw: ?u8) -> u16 {
+    level(raw).map((v: u8) -> u16 { v * 2 }).unwrap_or(0)
+};
+
+present := (raw: ?u8) -> bool { raw.is_some() and level(raw).is_ok() };
+
+brightest := (a: ?u8, b: ?u8) -> u8 { std.cmp.max(a.unwrap_or(0), b.unwrap_or(0)) };
