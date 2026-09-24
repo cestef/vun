@@ -5,13 +5,12 @@
 //! pending, not failing, so the corpus can be written ahead of the compiler (roadmap phase 0).
 
 use overt_fs::Tree;
-use std::borrow::Cow;
 use std::collections::BTreeSet;
 use std::fmt::Write;
 use std::path::{Path, PathBuf};
 
 use overt_diag::{ChildKind, DiagId, Diagnostic, errors};
-use overt_driver::stages::implemented;
+use overt_driver::stages::Stage;
 use overt_driver::{Coverage, Session};
 use overt_harness::{self as harness, At, Expected, Mismatch, Reported};
 use overt_span::{EXTENSION, SourceMap};
@@ -47,80 +46,92 @@ pub(crate) struct Outcome {
     pub(crate) verdict: Verdict,
 }
 
-/// Runs every corpus file under `root`, and the examples of the explanation pages.
-///
-/// # Errors
-/// Returns an error if a corpus directory or file cannot be read.
-pub(crate) fn run(root: &Path) -> std::io::Result<Vec<Outcome>> {
-    let mut outcomes = crate::explanations::run(root)?;
-    for &(dir, expect) in SUITES {
-        for path in root.join(dir).files_with(EXTENSION)? {
-            let verdict = check(&path, expect)?;
-            outcomes.push(Outcome { path: path.strip_prefix(root).unwrap_or(&path).to_path_buf(), verdict });
-        }
-    }
-    Ok(outcomes)
+/// The corpus and the explanation pages of the repository at `root`.
+pub(crate) struct Corpus<'r> {
+    pub(crate) root: &'r Path,
 }
 
-/// How much of the programs that must compile the stages that exist understand.
-///
-/// # Errors
-/// Returns an error if the directory cannot be read.
-pub(crate) fn coverage(root: &Path) -> std::io::Result<Coverage> {
-    let mut total = Coverage::default();
-    for &(dir, expect) in SUITES {
-        if expect != Expect::Clean {
-            continue;
-        }
-        for path in root.join(dir).files_with(EXTENSION)? {
-            let mut session = Session::new();
-            if let Some(file) = session.load(&path) {
-                session.check(file);
-                total += session.coverage(file);
+impl Corpus<'_> {
+    /// Runs every corpus file, and the examples of the explanation pages.
+    ///
+    /// # Errors
+    /// Returns an error if a corpus directory or file cannot be read.
+    pub(crate) fn outcomes(&self) -> std::io::Result<Vec<Outcome>> {
+        let mut outcomes = self.explanations()?;
+        for &(dir, expect) in SUITES {
+            for path in self.root.join(dir).files_with(EXTENSION)? {
+                let verdict = Verdict::of(&path, expect)?;
+                outcomes.push(Outcome {
+                    path: path.strip_prefix(self.root).unwrap_or(&path).to_path_buf(),
+                    verdict,
+                });
             }
         }
+        Ok(outcomes)
     }
-    Ok(total)
+
+    /// How much of the programs that must compile the stages that exist understand.
+    ///
+    /// # Errors
+    /// Returns an error if the directory cannot be read.
+    pub(crate) fn coverage(&self) -> std::io::Result<Coverage> {
+        let mut total = Coverage::default();
+        for &(dir, expect) in SUITES {
+            if expect != Expect::Clean {
+                continue;
+            }
+            for path in self.root.join(dir).files_with(EXTENSION)? {
+                let mut session = Session::new();
+                if let Some(file) = session.load(&path) {
+                    session.check(file);
+                    total += session.coverage(file);
+                }
+            }
+        }
+        Ok(total)
+    }
 }
 
-/// The verdict of the file at `path`, expected to report nothing or exactly its annotations.
-///
-/// # Errors
-/// Returns an error if the file cannot be read.
-pub(crate) fn check(path: &Path, expect: Expect) -> std::io::Result<Verdict> {
-    let text = std::fs::read_to_string(path)?;
-    let mut session = Session::new();
-    if let Some(file) = session.load(path) {
-        session.check(file);
+impl Verdict {
+    /// The verdict of the file at `path`, expected to report nothing or exactly its annotations.
+    ///
+    /// # Errors
+    /// Returns an error if the file cannot be read.
+    pub(crate) fn of(path: &Path, expect: Expect) -> std::io::Result<Self> {
+        let text = std::fs::read_to_string(path)?;
+        let mut session = Session::new();
+        if let Some(file) = session.load(path) {
+            session.check(file);
+        }
+        let reported: Vec<Reported> = session.diag.sorted().iter().map(|d| reported(&session, d)).collect();
+        let expected = match expect {
+            Expect::Clean => Vec::new(),
+            Expect::Annotated => match Expected::all(&text) {
+                Ok(expected) => expected,
+                Err(malformed) => return Ok(Self::Malformed(malformed)),
+            },
+        };
+        let undeclared: BTreeSet<At> = expected
+            .iter()
+            .map(|e| &e.at)
+            .filter(|at| !errors::ALL.contains(&DiagId::compiler(&at.id)))
+            .cloned()
+            .collect();
+        if !undeclared.is_empty() {
+            return Ok(Self::Undeclared(undeclared));
+        }
+        let mismatch = Mismatch::between(&expected, &reported);
+        Ok(if mismatch.is_empty() {
+            Self::Pass
+        } else if mismatch.unexpected.is_empty()
+            && mismatch.differing.is_empty()
+            && mismatch.missing.iter().all(|at| !Stage::implemented(&DiagId::compiler(&at.id)))
+        {
+            Self::Pending(mismatch.missing)
+        } else {
+            Self::Fail(mismatch)
+        })
     }
-    let reported: Vec<Reported> = session.diag.sorted().iter().map(|d| reported(&session, d)).collect();
-    let expected = match expect {
-        Expect::Clean => Vec::new(),
-        Expect::Annotated => match Expected::all(&text) {
-            Ok(expected) => expected,
-            Err(malformed) => return Ok(Verdict::Malformed(malformed)),
-        },
-    };
-    let undeclared: BTreeSet<At> = expected
-        .iter()
-        .map(|e| &e.at)
-        .filter(|at| !errors::ALL.contains(&compiler_id(&at.id)))
-        .cloned()
-        .collect();
-    if !undeclared.is_empty() {
-        return Ok(Verdict::Undeclared(undeclared));
-    }
-    let mismatch = Mismatch::between(&expected, &reported);
-    Ok(if mismatch.is_empty() {
-        Verdict::Pass
-    } else if mismatch.unexpected.is_empty()
-        && mismatch.differing.is_empty()
-        && mismatch.missing.iter().all(|at| !implemented(&compiler_id(&at.id)))
-    {
-        Verdict::Pending(mismatch.missing)
-    } else {
-        Verdict::Fail(mismatch)
-    })
 }
 
 /// A diagnostic as the harness compares it: position, id, and message with its children.
@@ -138,9 +149,4 @@ fn reported(session: &Session, d: &Diagnostic) -> Reported {
         let _ = write!(text, "\n{}: {}", ChildKind::Help, fix.msg);
     }
     Reported { at: At { line, id: d.id.to_string() }, col, text }
-}
-
-/// The full id of an annotation, which is written relative to the compiler's errors.
-fn compiler_id(relative: &str) -> DiagId {
-    DiagId(Cow::Owned(format!("{}{relative}", DiagId::COMPILER)))
 }

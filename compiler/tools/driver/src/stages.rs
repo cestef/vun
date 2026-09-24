@@ -39,10 +39,12 @@ pub const STAGES: &[Stage] = &[
     },
 ];
 
-/// Whether some stage that exists reports `id`.
-#[must_use]
-pub fn implemented(id: &DiagId) -> bool {
-    STAGES.iter().flat_map(|s| s.reports).any(|group| id.within(group))
+impl Stage {
+    /// Whether some stage that exists reports `id`.
+    #[must_use]
+    pub fn implemented(id: &DiagId) -> bool {
+        STAGES.iter().flat_map(|s| s.reports).any(|group| id.within(group))
+    }
 }
 
 impl Session {

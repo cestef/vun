@@ -1,10 +1,12 @@
 use overt_harness::repo_root;
 
-use crate::{corpus, generate, lines};
+use crate::corpus::{self, Corpus};
+use crate::generate;
+use crate::lines::{self, Oversized};
 
 #[test]
 fn corpus_has_no_failures() {
-    let outcomes = corpus::run(&repo_root()).expect("readable corpus");
+    let outcomes = Corpus { root: &repo_root() }.outcomes().expect("readable corpus");
     let failed: Vec<_> = outcomes
         .iter()
         .filter(|o| matches!(o.verdict, corpus::Verdict::Fail(_) | corpus::Verdict::Unexplained(_)))
@@ -25,7 +27,7 @@ fn generated_sources_are_current() {
 
 #[test]
 fn no_file_is_monolithic() {
-    let oversized = lines::oversized(&repo_root()).expect("readable sources");
+    let oversized = Oversized::all(&repo_root()).expect("readable sources");
     let listed: Vec<_> =
         oversized.iter().map(|o| format!("{} ({} lines)", o.path.display(), o.lines)).collect();
     assert!(listed.is_empty(), "files past {} lines: {listed:?}; split them by concern", lines::MAX_LINES);

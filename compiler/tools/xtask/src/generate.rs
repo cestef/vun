@@ -44,10 +44,12 @@ const SYNTAX: DiagId = DiagId::new("xtask.generate.syntax");
 /// Where packages live, relative to the repository root.
 pub(crate) const PACKAGES: &str = "lib";
 
-/// A diagnostic about the declaration `decl` of `source`.
-pub(crate) fn error(id: DiagId, source: &str, decl: &str, msg: Msg) -> Box<Diagnostic> {
-    let at = Msg::new().code(decl).text(" in ").code(source).text(": ");
-    Box::new(Diagnostic::error(id, at.append(msg)))
+impl Generator {
+    /// A diagnostic about the declaration `decl` of this generator's source.
+    pub(crate) fn error(&self, id: DiagId, decl: &str, msg: Msg) -> Box<Diagnostic> {
+        let at = Msg::new().code(decl).text(" in ").code(self.source).text(": ");
+        Box::new(Diagnostic::error(id, at.append(msg)))
+    }
 }
 
 impl Source<'_> {

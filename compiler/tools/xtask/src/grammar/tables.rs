@@ -5,7 +5,7 @@ use overt_syntax::literal::{Decl, Literal};
 use proc_macro2::TokenStream;
 use quote::{ToTokens, quote};
 
-use super::{Enum, Grammar, SHAPE, Ty, UNRESOLVED, error_at};
+use super::{Enum, GENERATOR, Grammar, SHAPE, Ty, UNRESOLVED};
 use crate::generate::{Read, Source};
 use crate::names::{constant, docs, ident, pascal};
 
@@ -32,9 +32,9 @@ impl<'s> Grammar<'s> {
     /// The one type of all `values`.
     pub(super) fn infer(&self, decl: &str, values: &[&Literal<'s>]) -> Read<Ty> {
         let mismatch =
-            || error_at(SHAPE, decl, Msg::new().text("the values of a table must share one shape"));
+            || GENERATOR.error(SHAPE, decl, Msg::new().text("the values of a table must share one shape"));
         match values.first() {
-            None => Err(error_at(SHAPE, decl, Msg::new().text("an empty list has no type to infer"))),
+            None => Err(GENERATOR.error(SHAPE, decl, Msg::new().text("an empty list has no type to infer"))),
             Some(Literal::String(_)) if values.iter().all(|v| v.as_str().is_some()) => Ok(Ty::Str),
             Some(Literal::Name(_)) => {
                 let names =
@@ -71,7 +71,7 @@ impl<'s> Grammar<'s> {
             [one] => Ok(one),
             [] => {
                 let names = names.iter().map(|n| format!(".{n}"));
-                Err(error_at(
+                Err(GENERATOR.error(
                     UNRESOLVED,
                     decl,
                     Msg::new().text("no kind or enum has all of ").code_list(names),
@@ -79,7 +79,7 @@ impl<'s> Grammar<'s> {
             }
             _ => {
                 let candidates = found.iter().map(|&i| self.enums[i].name);
-                Err(error_at(
+                Err(GENERATOR.error(
                     UNRESOLVED,
                     decl,
                     Msg::new().text("the names fit several enums: ").code_list(candidates),

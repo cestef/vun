@@ -20,24 +20,26 @@ pub(crate) struct Oversized {
     pub(crate) lines: u32,
 }
 
-/// Every checked file under `root` longer than [`MAX_LINES`], in path order.
-///
-/// # Errors
-/// Returns an error if a checked directory or file cannot be read.
-pub(crate) fn oversized(root: &Path) -> std::io::Result<Vec<Oversized>> {
-    let generated: Vec<PathBuf> = generate::ALL.iter().map(|g| root.join(g.output)).collect();
-    let mut found = Vec::new();
-    for &(dir, ext) in CHECKED {
-        for path in root.join(dir).files_with(ext)? {
-            if generated.contains(&path) {
-                continue;
-            }
-            let count = std::fs::read_to_string(&path)?.lines().count();
-            let lines = u32::try_from(count).unwrap_or(u32::MAX);
-            if lines > MAX_LINES {
-                found.push(Oversized { path: path.strip_prefix(root).unwrap_or(&path).to_path_buf(), lines });
+impl Oversized {
+    /// Every checked file under `root` longer than [`MAX_LINES`], in path order.
+    ///
+    /// # Errors
+    /// Returns an error if a checked directory or file cannot be read.
+    pub(crate) fn all(root: &Path) -> std::io::Result<Vec<Self>> {
+        let generated: Vec<PathBuf> = generate::ALL.iter().map(|g| root.join(g.output)).collect();
+        let mut found = Vec::new();
+        for &(dir, ext) in CHECKED {
+            for path in root.join(dir).files_with(ext)? {
+                if generated.contains(&path) {
+                    continue;
+                }
+                let count = std::fs::read_to_string(&path)?.lines().count();
+                let lines = u32::try_from(count).unwrap_or(u32::MAX);
+                if lines > MAX_LINES {
+                    found.push(Self { path: path.strip_prefix(root).unwrap_or(&path).to_path_buf(), lines });
+                }
             }
         }
+        Ok(found)
     }
-    Ok(found)
 }

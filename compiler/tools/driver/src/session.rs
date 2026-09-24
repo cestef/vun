@@ -21,7 +21,7 @@ use overt_syntax::cst::Cst;
 use overt_syntax::literal::Decl;
 use overt_syntax::tokens::Tokens;
 
-use crate::formats::{self, Format};
+use crate::formats::Format;
 use crate::packages::{LIBRARY, Packages};
 
 pub struct Session {
@@ -48,7 +48,7 @@ impl Default for Session {
             origins: db.resource(),
             db,
             diag: DiagCtxt::default(),
-            format: formats::default(),
+            format: Format::DEFAULT,
             packages: Packages::default(),
             library: PathBuf::from(LIBRARY),
             store: Store::user(),

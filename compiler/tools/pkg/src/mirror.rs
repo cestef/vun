@@ -16,8 +16,11 @@ pub struct Scheme {
     read: fn(&str, &str) -> Result<Vec<u8>, Failure>,
 }
 
-pub const SCHEMES: &[Scheme] =
-    &[Scheme { prefix: "https://", read: http }, Scheme { prefix: "http://", read: http }, Scheme::FILE];
+pub const SCHEMES: &[Scheme] = &[
+    Scheme { prefix: "https://", read: Scheme::http },
+    Scheme { prefix: "http://", read: Scheme::http },
+    Scheme::FILE,
+];
 
 impl Scheme {
     /// Files on this machine, by absolute path.
@@ -40,17 +43,18 @@ impl Scheme {
         SCHEMES.iter().find(|s| url.starts_with(s.prefix)).ok_or(Failure::Scheme)
     }
 
+    /// Reads an `http` or `https` URL, up to [`MAX_ARCHIVE`] bytes.
+    fn http(url: &str, _: &str) -> Result<Vec<u8>, Failure> {
+        let failed = |e: ureq::Error| Failure::Download(Box::new(e));
+        let mut response = ureq::get(url).call().map_err(failed)?;
+        response.body_mut().with_config().limit(MAX_ARCHIVE).read_to_vec().map_err(failed)
+    }
+
     /// The URL of the local file `path`.
     #[must_use]
     pub fn file_url(path: &Path) -> String {
         format!("{}{}", Self::FILE.prefix, path.display())
     }
-}
-
-fn http(url: &str, _: &str) -> Result<Vec<u8>, Failure> {
-    let failed = |e: ureq::Error| Failure::Download(Box::new(e));
-    let mut response = ureq::get(url).call().map_err(failed)?;
-    response.body_mut().with_config().limit(MAX_ARCHIVE).read_to_vec().map_err(failed)
 }
 
 /// A URL whose scheme and archive format are known.

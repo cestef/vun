@@ -7,42 +7,41 @@ use overt_origin::OriginTable;
 use overt_span::{FileId, SourceMap, Span};
 
 /// What the renderer needs to place labels and patches.
-struct Cx<'a> {
-    origins: &'a OriginTable,
-    sources: &'a dyn SourceMap,
+pub(crate) struct Cx<'a> {
+    pub(crate) origins: &'a OriginTable,
+    pub(crate) sources: &'a dyn SourceMap,
 }
 
-pub(crate) fn groups<'a>(
-    d: &Diagnostic,
-    origins: &'a OriginTable,
-    sources: &'a dyn SourceMap,
-) -> Vec<Group<'a>> {
-    let cx = Cx { origins, sources };
-    let labels: Vec<(&Label, AnnotationKind)> = d
-        .primary
-        .iter()
-        .map(|l| (l, AnnotationKind::Primary))
-        .chain(d.labels.iter().map(|l| (l, AnnotationKind::Context)))
-        .collect();
-    let mut title =
-        Group::with_title(level(d.severity).primary_title(d.message.to_string()).id(d.id.to_string()))
-            .elements(cx.snippets(&labels));
-    let mut groups = Vec::new();
-    for child in &d.children {
-        if child.labels.is_empty() && child.fixes.is_empty() {
-            title = title.element(child_level(child.kind).message(child.msg.to_string()));
-        } else {
-            groups.push(cx.child(child));
+impl<'a> Cx<'a> {
+    /// The groups showing `d`.
+    pub(crate) fn groups(&self, d: &Diagnostic) -> Vec<Group<'a>> {
+        let cx = self;
+        let labels: Vec<(&Label, AnnotationKind)> = d
+            .primary
+            .iter()
+            .map(|l| (l, AnnotationKind::Primary))
+            .chain(d.labels.iter().map(|l| (l, AnnotationKind::Context)))
+            .collect();
+        let mut title =
+            Group::with_title(level(d.severity).primary_title(d.message.to_string()).id(d.id.to_string()))
+                .elements(cx.snippets(&labels));
+        let mut groups = Vec::new();
+        for child in &d.children {
+            if child.labels.is_empty() && child.fixes.is_empty() {
+                title = title.element(child_level(child.kind).message(child.msg.to_string()));
+            } else {
+                groups.push(cx.child(child));
+            }
         }
+        for frame in &d.trace {
+            let at = cx.sources.locate(cx.origins.source_span(frame.origin));
+            let msg = format!("{} at {at}", frame.msg);
+            title = title.element(Level::NOTE.message(msg));
+        }
+        groups.insert(0, title);
+        groups.extend(d.fixes.iter().map(|f| cx.fix(f)));
+        groups
     }
-    for frame in &d.trace {
-        let at = cx.sources.locate(cx.origins.source_span(frame.origin));
-        let msg = format!("{} at {at}", frame.msg);
-        title = title.element(Level::NOTE.message(msg));
-    }
-    groups.insert(0, title);
-    groups.extend(d.fixes.iter().map(|f| cx.fix(f)));
-    groups
 }
 
 impl<'a> Cx<'a> {

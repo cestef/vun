@@ -19,6 +19,13 @@ impl DiagId {
         Self(Cow::Borrowed(path))
     }
 
+    /// The compiler error written `relative` to [`Self::COMPILER`], as annotations and
+    /// displays name it: `int.does_not_fit`.
+    #[must_use]
+    pub fn compiler(relative: &str) -> Self {
+        Self(Cow::Owned(format!("{}{relative}", Self::COMPILER)))
+    }
+
     /// Whether this id is `group` or lies in its namespace, such as `lang.errors.syntax`.
     #[must_use]
     pub fn within(&self, group: &Self) -> bool {

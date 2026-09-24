@@ -16,24 +16,24 @@ pub const PROGRAM: Program<Session> = Program {
         about: "The Overt toolchain.",
         params: &[formats::FORMAT],
         action: Action::Group(&[
-            planned("new", "create a package"),
-            planned("build", "build the package"),
-            planned("run", "build and run a program"),
+            Command::planned("new", "create a package"),
+            Command::planned("build", "build the package"),
+            Command::planned("run", "build and run a program"),
             Command {
                 name: "check",
                 about: "analyze without generating code",
                 params: &[FILE],
                 action: Action::Run(check),
             },
-            planned("test", "run tests, properties and simulations"),
-            planned("bench", "run benchmarks"),
-            planned("fuzz", "fuzz a test with coverage guidance"),
-            planned("fmt", "format source files"),
-            planned("fix", "apply fixes from diagnostics"),
-            planned("doc", "generate documentation"),
+            Command::planned("test", "run tests, properties and simulations"),
+            Command::planned("bench", "run benchmarks"),
+            Command::planned("fuzz", "fuzz a test with coverage guidance"),
+            Command::planned("fmt", "format source files"),
+            Command::planned("fix", "apply fixes from diagnostics"),
+            Command::planned("doc", "generate documentation"),
             explain::EXPLAIN,
-            group("dump", "print an intermediate representation with origins", DUMPS),
-            group(
+            Command::group("dump", "print an intermediate representation with origins", DUMPS),
+            Command::group(
                 pkg::GROUP,
                 "dependencies, releases and API diffs",
                 &[
@@ -50,47 +50,47 @@ pub const PROGRAM: Program<Session> = Program {
                         action: Action::Run(pkg::update),
                     },
                     pkg::FETCH,
-                    planned("vendor", "copy dependencies into vendor/"),
+                    Command::planned("vendor", "copy dependencies into vendor/"),
                     Command {
                         name: "pack",
                         about: "write the package's .ovpkg archive",
                         params: &[pkg::OUT],
                         action: Action::Run(pkg::pack),
                     },
-                    planned("why", "explain why a package is in the graph"),
-                    planned("tag", "release workspace members"),
-                    planned("api", "print the public API, or diff it against a release"),
+                    Command::planned("why", "explain why a package is in the graph"),
+                    Command::planned("tag", "release workspace members"),
+                    Command::planned("api", "print the public API, or diff it against a release"),
                 ],
             ),
-            group(
+            Command::group(
                 "tool",
                 "C bindings, C headers, register packages",
                 &[
-                    planned("bind", "generate declarations from a C header"),
-                    planned("header", "emit a C header for a library"),
-                    planned("svd", "generate a register package from an SVD file"),
+                    Command::planned("bind", "generate declarations from a C header"),
+                    Command::planned("header", "emit a C header for a library"),
+                    Command::planned("svd", "generate a register package from an SVD file"),
                 ],
             ),
-            group(
+            Command::group(
                 "target",
                 "flash, attach to and debug devices",
                 &[
-                    planned("flash", "write a program to a device"),
-                    planned("attach", "stream logs from a device"),
-                    planned("debug", "run a GDB server for a device"),
+                    Command::planned("flash", "write a program to a device"),
+                    Command::planned("attach", "stream logs from a device"),
+                    Command::planned("debug", "run a GDB server for a device"),
                 ],
             ),
-            group(
+            Command::group(
                 "toolchain",
                 "manage installed toolchains",
                 &[
-                    planned("list", "list installed toolchains"),
-                    planned("install", "install a toolchain"),
-                    planned("prune", "remove unused toolchains"),
+                    Command::planned("list", "list installed toolchains"),
+                    Command::planned("install", "install a toolchain"),
+                    Command::planned("prune", "remove unused toolchains"),
                 ],
             ),
-            group(cache::GROUP, "the shared store of fetched packages", cache::COMMANDS),
-            planned("lsp", "run the language server"),
+            Command::group(cache::GROUP, "the shared store of fetched packages", cache::COMMANDS),
+            Command::planned("lsp", "run the language server"),
             Command {
                 name: "components",
                 about: "list the backends and linkers in this toolchain",
@@ -109,47 +109,35 @@ const DUMPS: &[Command<Session>] = &[
         name: "tokens",
         about: "tokens and trivia with byte ranges",
         params: &[FILE],
-        action: Action::Run(|s, args, out| dump(s, args, out, Stage::Tokens)),
+        action: Action::Run(|s, args, out| Stage::Tokens.dump(s, args, out)),
     },
     Command {
         name: "cst",
         about: "the concrete syntax tree, one node per line",
         params: &[FILE],
-        action: Action::Run(|s, args, out| dump(s, args, out, Stage::Cst)),
+        action: Action::Run(|s, args, out| Stage::Cst.dump(s, args, out)),
     },
     Command {
         name: "manifest",
         about: "the package manifest read from a build.ov",
         params: &[FILE],
-        action: Action::Run(|s, args, out| dump(s, args, out, Stage::Manifest)),
+        action: Action::Run(|s, args, out| Stage::Manifest.dump(s, args, out)),
     },
     Command {
         name: "hir",
         about: "the high-level representation, names resolved, with origins",
         params: &[FILE],
-        action: Action::Run(|s, args, out| dump(s, args, out, Stage::Hir)),
+        action: Action::Run(|s, args, out| Stage::Hir.dump(s, args, out)),
     },
     Command {
         name: "mir",
         about: "the mid-level representation of each function, with origins",
         params: &[FILE],
-        action: Action::Run(|s, args, out| dump(s, args, out, Stage::Mir)),
+        action: Action::Run(|s, args, out| Stage::Mir.dump(s, args, out)),
     },
-    planned("lir", "the low-level representation"),
-    planned("link", "the link plan"),
+    Command::planned("lir", "the low-level representation"),
+    Command::planned("link", "the link plan"),
 ];
-
-const fn planned(name: &'static str, about: &'static str) -> Command<Session> {
-    Command { name, about, params: &[], action: Action::Planned }
-}
-
-const fn group(
-    name: &'static str,
-    about: &'static str,
-    children: &'static [Command<Session>],
-) -> Command<Session> {
-    Command { name, about, params: &[], action: Action::Group(children) }
-}
 
 /// What `overt dump` prints.
 #[derive(Clone, Copy)]
@@ -161,49 +149,52 @@ enum Stage {
     Manifest,
 }
 
-fn dump(session: &mut Session, args: &Args, out: &mut dyn Write, stage: Stage) -> io::Result<Outcome> {
-    let path = args.value(&FILE).expect("positional parameters are present when a command runs");
-    let Some(file) = session.load(Path::new(path)) else { return Ok(Outcome::Failure) };
-    if let Stage::Manifest = stage {
-        if let Some(manifest) = session.manifest(file) {
-            writeln!(out, "{manifest:#?}")?;
+impl Stage {
+    /// Prints this stage of the file `args` names.
+    fn dump(self, session: &mut Session, args: &Args, out: &mut dyn Write) -> io::Result<Outcome> {
+        let path = args.value(&FILE).expect("positional parameters are present when a command runs");
+        let Some(file) = session.load(Path::new(path)) else { return Ok(Outcome::Failure) };
+        if let Self::Manifest = self {
+            if let Some(manifest) = session.manifest(file) {
+                writeln!(out, "{manifest:#?}")?;
+            }
+            return Ok(session.outcome());
         }
-        return Ok(session.outcome());
-    }
-    let tokens = session.lex(file);
-    match stage {
-        Stage::Tokens => write!(out, "{}", tokens.dump(session.text(file)))?,
-        Stage::Cst => {
-            let cst = session.parse(&tokens);
-            write!(out, "{}", cst.dump(&tokens, session.text(file)))?;
-        }
-        Stage::Hir => {
-            let parsed = session.parsed(file);
-            session.check_names(file);
-            let text = parsed.hir.dump(&parsed.resolution, &session.origins, &*session.sources);
-            write!(out, "{text}")?;
-        }
-        Stage::Mir => {
-            let bodies = session.bodies(file);
-            let locate = |o| session.sources.locate(session.origins.source_span(o)).at;
-            for (f, body) in bodies {
-                let origin = f.expr.origin;
-                match body {
-                    Ok(body) => writeln!(out, "{}", body.dump(&locate))?,
-                    Err(unbuilt) => {
-                        let (at, form) = (locate(origin), locate(unbuilt.at));
-                        writeln!(
-                            out,
-                            "fn @{}:{}: not lowered yet, at @{}:{}",
-                            at.line, at.col, form.line, form.col
-                        )?;
+        let tokens = session.lex(file);
+        match self {
+            Self::Tokens => write!(out, "{}", tokens.dump(session.text(file)))?,
+            Self::Cst => {
+                let cst = session.parse(&tokens);
+                write!(out, "{}", cst.dump(&tokens, session.text(file)))?;
+            }
+            Self::Hir => {
+                let parsed = session.parsed(file);
+                session.check_names(file);
+                let text = parsed.hir.dump(&parsed.resolution, &session.origins, &*session.sources);
+                write!(out, "{text}")?;
+            }
+            Self::Mir => {
+                let bodies = session.bodies(file);
+                let locate = |o| session.sources.locate(session.origins.source_span(o)).at;
+                for (f, body) in bodies {
+                    let origin = f.expr.origin;
+                    match body {
+                        Ok(body) => writeln!(out, "{}", body.dump(&locate))?,
+                        Err(unbuilt) => {
+                            let (at, form) = (locate(origin), locate(unbuilt.at));
+                            writeln!(
+                                out,
+                                "fn @{}:{}: not lowered yet, at @{}:{}",
+                                at.line, at.col, form.line, form.col
+                            )?;
+                        }
                     }
                 }
             }
+            Self::Manifest => unreachable!("read above"),
         }
-        Stage::Manifest => unreachable!("read above"),
+        Ok(session.outcome())
     }
-    Ok(session.outcome())
 }
 
 #[expect(clippy::unnecessary_wraps, reason = "every command has the `Run` signature")]

@@ -17,7 +17,7 @@ use overt_syntax::literal::Literal;
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::quote;
 
-use crate::generate::{self, Generator, Read, Source};
+use crate::generate::{Generator, Read, Source};
 use crate::names::{docs, ident, pascal};
 
 pub(crate) const GENERATOR: Generator =
@@ -99,7 +99,7 @@ fn emit(sources: &[Source<'_>]) -> Read<TokenStream> {
     let namespaces: Vec<Namespace> = sources.iter().filter_map(Namespace::of).collect();
     if namespaces.is_empty() {
         let msg = Msg::new().text("declares no primitive: no declaration's value is ").code("_");
-        return Err(generate::error(EMPTY, GENERATOR.source, "lang", msg));
+        return Err(GENERATOR.error(EMPTY, "lang", msg));
     }
     let modules = namespaces.iter().map(Namespace::emit);
     let variants = namespaces.iter().map(|n| {

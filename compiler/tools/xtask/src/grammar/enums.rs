@@ -45,27 +45,31 @@ impl Enum<'_> {
     }
 }
 
-/// A kind's entry: `.name`, a spelling `"text"` named after itself, `.{ .name, .text }`, or
-/// `.name(.count(.field), ...)` with the kind's children.
-pub(super) fn entry_variant<'s>(entry: &Literal<'s>) -> Option<Variant<'s>> {
-    let (name, text) = match entry {
-        Literal::Name(name) => (*name, None),
-        Literal::Tagged(name, payload) => {
-            let slots = payload.iter().map(slot).collect::<Option<_>>()?;
-            return Some(Variant { name, doc: Vec::new(), text: None, slots });
-        }
-        Literal::String(Cow::Borrowed(text)) => (*text, Some(*text)),
-        Literal::Record(_) => match (entry.get(ENTRY_NAME)?, entry.get(ENTRY_TEXT)?) {
-            (Literal::Name(name), Literal::String(Cow::Borrowed(text))) => (*name, Some(*text)),
+impl<'s> Variant<'s> {
+    /// A kind's entry: `.name`, a spelling `"text"` named after itself, `.{ .name, .text }`, or
+    /// `.name(.count(.field), ...)` with the kind's children.
+    pub(super) fn entry(entry: &Literal<'s>) -> Option<Self> {
+        let (name, text) = match entry {
+            Literal::Name(name) => (*name, None),
+            Literal::Tagged(name, payload) => {
+                let slots = payload.iter().map(Slot::of).collect::<Option<_>>()?;
+                return Some(Self { name, doc: Vec::new(), text: None, slots });
+            }
+            Literal::String(Cow::Borrowed(text)) => (*text, Some(*text)),
+            Literal::Record(_) => match (entry.get(ENTRY_NAME)?, entry.get(ENTRY_TEXT)?) {
+                (Literal::Name(name), Literal::String(Cow::Borrowed(text))) => (*name, Some(*text)),
+                _ => return None,
+            },
             _ => return None,
-        },
-        _ => return None,
-    };
-    Some(Variant { name, doc: Vec::new(), text, slots: Vec::new() })
+        };
+        Some(Self { name, doc: Vec::new(), text, slots: Vec::new() })
+    }
 }
 
-/// `.count(.field)`.
-fn slot<'s>(value: &Literal<'s>) -> Option<Slot<'s>> {
-    let (count, [Literal::Name(field)]) = value.as_tagged()? else { return None };
-    Some(Slot { count, field })
+impl<'s> Slot<'s> {
+    /// `.count(.field)`.
+    fn of(value: &Literal<'s>) -> Option<Self> {
+        let (count, [Literal::Name(field)]) = value.as_tagged()? else { return None };
+        Some(Self { count, field })
+    }
 }

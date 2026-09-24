@@ -44,9 +44,9 @@ pub const FORMAT: Param = Param {
     kind: ParamKind::Option,
 };
 
-#[must_use]
-pub fn default() -> &'static Format {
-    &FORMATS[0]
+impl Format {
+    /// The format used without `--format`: the first.
+    pub const DEFAULT: &'static Self = &FORMATS[0];
 }
 
 /// Applies `--format` to the session.

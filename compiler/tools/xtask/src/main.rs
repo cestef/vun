@@ -21,6 +21,9 @@ use overt_origin::OriginTable;
 use overt_render_short::ShortRenderer;
 use overt_span::SourceFiles;
 
+use corpus::Corpus;
+use lines::Oversized;
+
 /// What tasks report to.
 #[derive(Default)]
 struct Cx {
@@ -96,7 +99,7 @@ fn generate_all(cx: &mut Cx, args: &Args, out: &mut dyn Write) -> io::Result<Out
 }
 
 fn run_corpus(_: &mut Cx, _: &Args, out: &mut dyn Write) -> io::Result<Outcome> {
-    let outcomes = corpus::run(&repo_root())?;
+    let outcomes = Corpus { root: &repo_root() }.outcomes()?;
     let (mut passed, mut pending, mut shown, mut failed) = (0, 0, 0, 0);
     for o in &outcomes {
         match &o.verdict {
@@ -149,12 +152,12 @@ fn run_corpus(_: &mut Cx, _: &Args, out: &mut dyn Write) -> io::Result<Outcome> 
         }
     }
     writeln!(out, "{passed} passed, {pending} pending, {shown} shown, {failed} failed")?;
-    writeln!(out, "corpus/accept: {}", corpus::coverage(&repo_root())?)?;
+    writeln!(out, "corpus/accept: {}", Corpus { root: &repo_root() }.coverage()?)?;
     Ok(if failed == 0 { Outcome::Success } else { Outcome::Failure })
 }
 
 fn check_lines(cx: &mut Cx, _: &Args, out: &mut dyn Write) -> io::Result<Outcome> {
-    let oversized = lines::oversized(&repo_root())?;
+    let oversized = Oversized::all(&repo_root())?;
     for o in &oversized {
         let msg = Msg::new()
             .code(o.path.display().to_string())

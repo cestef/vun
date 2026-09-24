@@ -12,7 +12,7 @@ use overt_fs::Scratch;
 use overt_harness::{Block, Expected, Page};
 use overt_span::EXTENSION;
 
-use crate::corpus::{self, Expect, Outcome, Verdict};
+use crate::corpus::{Corpus, Expect, Outcome, Verdict};
 
 /// Where the library lives, relative to the repository root; page paths are relative to it.
 const LIBRARY: &str = "lib";
@@ -41,59 +41,61 @@ impl fmt::Display for Unexplained {
     }
 }
 
-/// Checks the page of every diagnostic.
-///
-/// # Errors
-/// Returns an error if a page or a scratch file cannot be read or written.
-pub(crate) fn run(root: &Path) -> std::io::Result<Vec<Outcome>> {
-    let mut outcomes = Vec::new();
-    for (id, page) in errors::EXPLANATIONS {
-        let path = Path::new(LIBRARY).join(page);
-        for (suffix, verdict) in check(root, id, &path)? {
-            let mut shown = path.clone().into_os_string();
-            shown.push(suffix);
-            outcomes.push(Outcome { path: shown.into(), verdict });
+impl Corpus<'_> {
+    /// Checks the page of every diagnostic.
+    ///
+    /// # Errors
+    /// Returns an error if a page or a scratch file cannot be read or written.
+    pub(crate) fn explanations(&self) -> std::io::Result<Vec<Outcome>> {
+        let mut outcomes = Vec::new();
+        for (id, page) in errors::EXPLANATIONS {
+            let path = Path::new(LIBRARY).join(page);
+            for (suffix, verdict) in self.page(id, &path)? {
+                let mut shown = path.clone().into_os_string();
+                shown.push(suffix);
+                outcomes.push(Outcome { path: shown.into(), verdict });
+            }
         }
+        Ok(outcomes)
     }
-    Ok(outcomes)
-}
 
-/// The verdicts of the page at `path`, each for a section: `#Example`, `#Fix`.
-fn check(root: &Path, id: &DiagId, path: &Path) -> std::io::Result<Vec<(String, Verdict)>> {
-    let Ok(text) = std::fs::read_to_string(root.join(path)) else {
-        return Ok(vec![(String::new(), Verdict::Unexplained(Unexplained::Missing))]);
-    };
-    let page = Page::parse(&text);
-    let (example, fix) = (page.section(EXAMPLE), page.section(FIX));
-    if example.is_empty() || fix.is_empty() {
-        return Ok(vec![(String::new(), Verdict::Unexplained(Unexplained::Sections))]);
-    }
-    let sources = |blocks: &[Block]| -> Vec<(String, String)> {
-        let source = blocks.iter().filter(|b| b.lang == EXTENSION);
-        source
-            .map(|b| (b.file.clone().unwrap_or_else(|| format!("{UNNAMED}.{EXTENSION}")), b.text.clone()))
-            .collect()
-    };
-    let (example, fix) = (sources(example), sources(fix));
-    if example.is_empty() {
-        return Ok(vec![(String::new(), Verdict::Shown)]);
-    }
-    let relative = id.to_string();
-    let annotated = example.iter().find(|(_, text)| {
-        Expected::all(text).is_ok_and(|expected| expected.iter().any(|e| e.at.id == relative))
-    });
-    let Some((checked, _)) = annotated.cloned() else {
-        return Ok(vec![(String::new(), Verdict::Unexplained(Unexplained::NotShown))]);
-    };
-    let mut verdicts = Vec::new();
-    for (section, files, expect) in [(EXAMPLE, &example, Expect::Annotated), (FIX, &fix, Expect::Clean)] {
-        let scratch = Scratch::new(&format!("{relative}-{section}"));
-        for (file, text) in files {
-            scratch.write(file, text);
+    /// The verdicts of the page at `path`, each for a section: `#Example`, `#Fix`.
+    fn page(&self, id: &DiagId, path: &Path) -> std::io::Result<Vec<(String, Verdict)>> {
+        let Ok(text) = std::fs::read_to_string(self.root.join(path)) else {
+            return Ok(vec![(String::new(), Verdict::Unexplained(Unexplained::Missing))]);
+        };
+        let page = Page::parse(&text);
+        let (example, fix) = (page.section(EXAMPLE), page.section(FIX));
+        if example.is_empty() || fix.is_empty() {
+            return Ok(vec![(String::new(), Verdict::Unexplained(Unexplained::Sections))]);
         }
-        let target: PathBuf = scratch.join(&checked);
-        let verdict = if target.exists() { corpus::check(&target, expect)? } else { Verdict::Shown };
-        verdicts.push((format!("#{section}"), verdict));
+        let sources = |blocks: &[Block]| -> Vec<(String, String)> {
+            let source = blocks.iter().filter(|b| b.lang == EXTENSION);
+            source
+                .map(|b| (b.file.clone().unwrap_or_else(|| format!("{UNNAMED}.{EXTENSION}")), b.text.clone()))
+                .collect()
+        };
+        let (example, fix) = (sources(example), sources(fix));
+        if example.is_empty() {
+            return Ok(vec![(String::new(), Verdict::Shown)]);
+        }
+        let relative = id.to_string();
+        let annotated = example.iter().find(|(_, text)| {
+            Expected::all(text).is_ok_and(|expected| expected.iter().any(|e| e.at.id == relative))
+        });
+        let Some((checked, _)) = annotated.cloned() else {
+            return Ok(vec![(String::new(), Verdict::Unexplained(Unexplained::NotShown))]);
+        };
+        let mut verdicts = Vec::new();
+        for (section, files, expect) in [(EXAMPLE, &example, Expect::Annotated), (FIX, &fix, Expect::Clean)] {
+            let scratch = Scratch::new(&format!("{relative}-{section}"));
+            for (file, text) in files {
+                scratch.write(file, text);
+            }
+            let target: PathBuf = scratch.join(&checked);
+            let verdict = if target.exists() { Verdict::of(&target, expect)? } else { Verdict::Shown };
+            verdicts.push((format!("#{section}"), verdict));
+        }
+        Ok(verdicts)
     }
-    Ok(verdicts)
 }

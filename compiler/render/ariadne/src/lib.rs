@@ -25,6 +25,6 @@ impl<W: Write> AriadneRenderer<W> {
 impl<W: Write> DiagSink for AriadneRenderer<W> {
     fn emit(&mut self, d: &Diagnostic, origins: &OriginTable, sources: &dyn SourceMap) {
         // Best-effort output: a closed stream must not abort compilation.
-        let _ = report::write(d, origins, sources, self.color, &mut self.out);
+        let _ = self.report(d, origins, sources);
     }
 }

@@ -51,6 +51,18 @@ pub enum Action<Cx: 'static> {
 pub type Run<Cx> = fn(&mut Cx, &Args, &mut dyn Write) -> io::Result<Outcome>;
 
 impl<Cx> Command<Cx> {
+    /// A command declared for help, not implemented yet.
+    #[must_use]
+    pub const fn planned(name: &'static str, about: &'static str) -> Self {
+        Self { name, about, params: &[], action: Action::Planned }
+    }
+
+    /// A command grouping `children`, without parameters of its own.
+    #[must_use]
+    pub const fn group(name: &'static str, about: &'static str, children: &'static [Self]) -> Self {
+        Self { name, about, params: &[], action: Action::Group(children) }
+    }
+
     #[must_use]
     pub fn children(&self) -> &'static [Self] {
         match self.action {

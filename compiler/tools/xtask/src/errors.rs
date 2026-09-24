@@ -32,14 +32,9 @@ fn emit(sources: &[Source<'_>]) -> Read<TokenStream> {
     let source = &sources[0];
     let namespace = source.namespace_text();
     let mut ids = Vec::new();
-    collect(&mut Vec::new(), &source.decls, &mut ids);
+    Id::collect(&mut Vec::new(), &source.decls, &mut ids);
     if ids.is_empty() {
-        return Err(generate::error(
-            EMPTY,
-            &source.path,
-            &namespace,
-            Msg::new().text("declares no diagnostics"),
-        ));
+        return Err(GENERATOR.error(EMPTY, &namespace, Msg::new().text("declares no diagnostics")));
     }
     let consts = ids.iter().map(|id| {
         let (name, doc) = (id.constant(), &id.doc);
@@ -59,7 +54,7 @@ fn emit(sources: &[Source<'_>]) -> Read<TokenStream> {
             let name = id.within.join(&DiagId::SEPARATOR.to_string());
             let msg =
                 Msg::new().text("has no ").code(format!(".{EXPLANATION} = {}(\"...\")", EMBED.join(".")));
-            return Err(generate::error(UNEXPLAINED, &source.path, &name, msg));
+            return Err(GENERATOR.error(UNEXPLAINED, &name, msg));
         };
         let (name, path) = (id.constant(), dir.join(page).display().to_string());
         pages.push(quote! { (#name, #path) });
@@ -97,22 +92,22 @@ impl Id<'_> {
     }
 }
 
-fn collect<'a, 's>(within: &mut Vec<&'s str>, decls: &'a [Decl<'s>], ids: &mut Vec<Id<'a>>)
-where
-    's: 'a,
-{
-    for d in decls {
-        within.push(d.name);
-        let doc = docs(&d.doc);
-        if let Literal::Namespace(members) = &d.value {
-            ids.push(Id { entry: Entry::Group, within: within.clone(), doc, page: None });
-            collect(within, members, ids);
-        } else {
-            let embed =
-                d.value.get(EXPLANATION).and_then(Literal::as_call).filter(|(path, _)| *path == EMBED);
-            let page = embed.and_then(|(_, args)| args.first()).and_then(Literal::as_str);
-            ids.push(Id { entry: Entry::Diagnostic, within: within.clone(), doc, page });
+impl<'a, 's: 'a> Id<'a> {
+    /// The ids declared by `decls`, in the groups `within`, depth first.
+    fn collect(within: &mut Vec<&'s str>, decls: &'a [Decl<'s>], ids: &mut Vec<Self>) {
+        for d in decls {
+            within.push(d.name);
+            let doc = docs(&d.doc);
+            if let Literal::Namespace(members) = &d.value {
+                ids.push(Self { entry: Entry::Group, within: within.clone(), doc, page: None });
+                Self::collect(within, members, ids);
+            } else {
+                let embed =
+                    d.value.get(EXPLANATION).and_then(Literal::as_call).filter(|(path, _)| *path == EMBED);
+                let page = embed.and_then(|(_, args)| args.first()).and_then(Literal::as_str);
+                ids.push(Self { entry: Entry::Diagnostic, within: within.clone(), doc, page });
+            }
+            within.pop();
         }
-        within.pop();
     }
 }

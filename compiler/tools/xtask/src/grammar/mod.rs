@@ -6,18 +6,17 @@
 //! the token set, generate twice: the parser that reads the grammar is built from the previous
 //! output.
 
-use overt_diag::{DiagId, Diagnostic, Msg};
+use overt_diag::{DiagId, Msg};
 use overt_syntax::literal::{Decl, Literal};
 use proc_macro2::TokenStream;
 
-use crate::generate::{self, Generator, Read, Source};
+use crate::generate::{Generator, Read, Source};
 
 mod enums;
 mod slots;
 mod tables;
 
 use crate::names::{docs, is_type_name};
-use enums::entry_variant;
 
 pub(crate) const GENERATOR: Generator =
     Generator { source: "lib/lang/lang/syntax", output: "compiler/front/grammar/src/generated.rs", emit };
@@ -33,10 +32,6 @@ fn emit(sources: &[Source<'_>]) -> Read<TokenStream> {
     let decls = sources.iter().flat_map(|s| s.decls.iter().cloned()).collect();
     let source = Source { path: GENERATOR.source.to_owned(), decls };
     Grammar::read(&source)?.emit(&source)
-}
-
-fn error_at(id: DiagId, decl: &str, msg: Msg) -> Box<Diagnostic> {
-    generate::error(id, GENERATOR.source, decl, msg)
 }
 
 /// An enum to generate: a kind, whose variants come from its lists, or a plain enum.
@@ -104,15 +99,15 @@ impl<'s> Grammar<'s> {
             let entries = list.value.as_list().ok_or_else(|| {
                 let msg =
                     Msg::new().text("each field of a kind is a list, but ").code(list.name).text(" is not");
-                error_at(SHAPE, d.name, msg)
+                GENERATOR.error(SHAPE, d.name, msg)
             })?;
             let mut names = Vec::new();
             for entry in entries {
-                let variant = entry_variant(entry).ok_or_else(|| {
+                let variant = Variant::entry(entry).ok_or_else(|| {
                     let record = format!(".{{ .{ENTRY_NAME} = .x, .{ENTRY_TEXT} = \"...\" }}");
                     let msg = Msg::new().text("entries are ").code(".name").text(", ").code("\"text\"");
                     let msg = msg.text(", ").code(record).text(" or ").code(".name(.count(.field), ...)");
-                    error_at(SHAPE, d.name, msg)
+                    GENERATOR.error(SHAPE, d.name, msg)
                 })?;
                 names.push(variant.name);
                 kind.variants.push(variant);

@@ -30,7 +30,7 @@ impl<W: Write> AnnotateRenderer<W> {
 
 impl<W: Write> DiagSink for AnnotateRenderer<W> {
     fn emit(&mut self, d: &Diagnostic, origins: &OriginTable, sources: &dyn SourceMap) {
-        let report = report::groups(d, origins, sources);
+        let report = report::Cx { origins, sources }.groups(d);
         // Best-effort output: a closed stream must not abort compilation.
         let _ = writeln!(self.out, "{}\n", self.renderer.render(&report));
     }
