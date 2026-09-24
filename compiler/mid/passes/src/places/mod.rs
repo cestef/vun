@@ -12,7 +12,7 @@ mod transfer;
 
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
-use overt_diag::{DiagCtxt, DiagId, Diagnostic, Msg, errors};
+use overt_diag::{ChildKind, DiagCtxt, DiagId, Diagnostic, Msg, errors};
 use overt_grammar::BORROWS;
 use overt_index::{Idx, IndexVec};
 use overt_intern::Symbol;
@@ -135,7 +135,11 @@ impl<'b> Analysis<'b> {
         for (local, origin) in std::mem::take(&mut self.moved) {
             if self.linear.remove(&local) {
                 let msg = Msg::new().text("this moves a linear value out of a borrow, which does not own it");
-                self.report(errors::PLACE_MOVE_OUT_OF_BORROW, origin, msg);
+                let help = Msg::new()
+                    .text("match or read through the borrow itself, without ")
+                    .code(".*")
+                    .text(", to bind by borrow");
+                self.advise(errors::PLACE_MOVE_OUT_OF_BORROW, origin, msg, Some(help));
                 self.derived(local);
             }
         }
@@ -209,7 +213,11 @@ impl<'b> Analysis<'b> {
                 .name
                 .map_or_else(|| Msg::new().text("a linear value"), |n| Msg::new().code(n.as_str()));
             let msg = what.text(" is still held here, and linear values must be consumed before returning");
-            self.report(errors::PLACE_LINEAR_LEAK, origin, msg);
+            let help = Msg::new()
+                .text("pass it to what consumes it, such as a close or a free, or ")
+                .code("defer")
+                .text(" that call where the value is made");
+            self.advise(errors::PLACE_LINEAR_LEAK, origin, msg, Some(help));
         }
         let unwritten: Vec<Local> = self
             .targets
@@ -228,8 +236,17 @@ impl<'b> Analysis<'b> {
     }
 
     fn report(&mut self, id: DiagId, origin: OriginId, msg: Msg) {
+        self.advise(id, origin, msg, None);
+    }
+
+    /// Reports, with `help` on what to do when given.
+    fn advise(&mut self, id: DiagId, origin: OriginId, msg: Msg, help: Option<Msg>) {
         if self.reporting && self.reported.insert((id.clone(), origin)) {
-            self.diag.error(Diagnostic::error(id, msg).at(origin, None));
+            let mut d = Diagnostic::error(id, msg).at(origin, None);
+            if let Some(help) = help {
+                d = d.child(ChildKind::Help, help);
+            }
+            self.diag.error(d);
         }
     }
 }

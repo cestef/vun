@@ -2,7 +2,7 @@
 //! signature. A signature whose types name `$` parameters, such as `($T: type, x: u8) -> T`, is
 //! typed per call, inside the callee with those parameters bound to the call's arguments.
 
-use overt_diag::{Diagnostic, Msg, TraceFrame, errors};
+use overt_diag::{ChildKind, Diagnostic, Msg, TraceFrame, errors};
 use overt_hir::tree::{Arg, Entry, ExprId, ExprKind};
 use overt_hir::visit::Visitor;
 use overt_query::Cx;
@@ -124,9 +124,21 @@ impl Typer<'_, '_, '_> {
                     .text("cannot infer ")
                     .code_list(names.iter().map(|n| n.as_str()))
                     .text(" from the arguments; write them");
+                let note = Msg::new()
+                    .text("a ")
+                    .code("$")
+                    .text(" parameter may be left out when a later parameter's type names it, and is found from the types of the arguments; a form typed by its context, such as ")
+                    .code(".none")
+                    .text(", gives none");
+                let help = Msg::new()
+                    .text("write every such ")
+                    .code("$")
+                    .text(" argument, in order, before the others");
                 self.diag.error(
                     Diagnostic::error(errors::TYPES_CANNOT_INFER, msg)
-                        .at(self.hir().exprs[call].origin, None),
+                        .at(self.hir().exprs[call].origin, None)
+                        .child(ChildKind::Note, note)
+                        .child(ChildKind::Help, help),
                 );
             }
             return None;

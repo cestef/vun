@@ -2,6 +2,7 @@
 //! width cap, and a member its type does not have.
 
 use overt_diag::{ChildKind, Diagnostic, Msg, errors};
+use overt_grammar::{COMPOUND, Narrowing};
 use overt_hir::tree::ExprId;
 use overt_intern::Symbol;
 use overt_origin::OriginId;
@@ -27,7 +28,23 @@ impl Typer<'_, '_, '_> {
             let msg = Msg::new().text("value does not fit the type ").code(&written);
             let note = Msg::new().text("the value is ").ty(found.ty.to_string()).text(", and ");
             let note = note.code(&written).text(" is ").ty(expected.to_string());
-            Diagnostic::error(errors::INT_DOES_NOT_FIT, msg).child(ChildKind::Note, note)
+            // A run-time value can be narrowed; a constant only fits a wider type.
+            let help = if found.stage == Stage::Run {
+                // The compound assignments that narrow without trapping, from the table `compound`.
+                let operators = [Narrowing::Wrap, Narrowing::Sat].map(|n| {
+                    COMPOUND.iter().find(|(.., m)| *m == n).and_then(|(t, ..)| t.text()).unwrap_or_default()
+                });
+                Msg::new()
+                    .text("widen ")
+                    .code(&written)
+                    .text(" to hold the whole range, or narrow the value explicitly; counters can narrow as they update, with ")
+                    .code_list(operators)
+            } else {
+                Msg::new().text("widen ").code(&written).text(" to hold the value")
+            };
+            Diagnostic::error(errors::INT_DOES_NOT_FIT, msg)
+                .child(ChildKind::Note, note)
+                .child(ChildKind::Help, help)
         } else {
             let msg = Msg::new().text("expected ").code(&written).text(", found ").ty(found.ty.to_string());
             Diagnostic::error(errors::TYPES_MISMATCH, msg)

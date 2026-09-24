@@ -13,8 +13,8 @@ mod free;
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use overt_diag::{DiagCtxt, DiagId, Diagnostic, Msg};
-use overt_grammar::{Access, BORROWS};
+use overt_diag::{ChildKind, DiagCtxt, DiagId, Diagnostic, Msg};
+use overt_grammar::{Access, BORROWS, TokenKind};
 use overt_index::{IndexVec, index};
 use overt_intern::Symbol;
 use overt_mir::{BlockId, Body, Local, Mir, Place, Rvalue};
@@ -47,6 +47,8 @@ impl Query for BorrowChecks {
 /// A borrow taken in the body.
 struct Loan {
     place: Place,
+    /// The word after `&` (the table `borrows`), empty for a shared borrow.
+    mode: Option<Symbol>,
     access: Access,
     origin: OriginId,
 }
@@ -73,6 +75,7 @@ impl<'b> Checker<'b> {
                 let Rvalue::Ref { mode, place } = &stmt.value else { continue };
                 let loan = loans.push(Loan {
                     place: place.clone(),
+                    mode: *mode,
                     access: Self::access(*mode),
                     origin: stmt.origin,
                 });
@@ -101,12 +104,18 @@ impl<'b> Checker<'b> {
     }
 
     /// Reports at `origin`, pointing at where `loan` was taken when given.
-    fn report(&mut self, id: DiagId, origin: OriginId, msg: Msg, loan: Option<LoanId>) {
+    fn report(&mut self, id: DiagId, origin: OriginId, msg: Msg, loan: Option<LoanId>, help: Option<Msg>) {
         if self.reported.insert((id.clone(), origin)) {
             let mut diagnostic = Diagnostic::error(id, msg).at(origin, None);
+            if let Some(help) = help {
+                diagnostic = diagnostic.child(ChildKind::Help, help);
+            }
             if let Some(loan) = loan {
-                diagnostic =
-                    diagnostic.label(self.loans[loan].origin, Some(Msg::new().text("borrowed here")));
+                let l = &self.loans[loan];
+                let spelled =
+                    [TokenKind::Amp.text().unwrap_or_default(), l.mode.map_or("", Symbol::as_str)].concat();
+                let label = Msg::new().text("borrowed as ").code(spelled).text(" here");
+                diagnostic = diagnostic.label(l.origin, Some(label));
             }
             self.diag.error(diagnostic);
         }

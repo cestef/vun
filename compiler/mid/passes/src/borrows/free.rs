@@ -20,7 +20,8 @@ impl Checker<'_> {
                 if built && self.misplaced.contains(&stmt.place.local) && !from_misplaced {
                     let msg = Msg::new()
                         .text("this value holds a borrow inside a type that must stay free of them");
-                    self.report(errors::BORROW_IN_FREE_VALUE, stmt.origin, msg, None);
+                    let help = Msg::new().text("keep the scoped value in a local or a scoped type, or hold an index or an owned copy");
+                    self.report(errors::BORROW_IN_FREE_VALUE, stmt.origin, msg, None, Some(help));
                 }
             }
         }

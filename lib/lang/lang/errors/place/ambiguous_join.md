@@ -6,6 +6,11 @@ Place states are checked on the control-flow graph: a place that is `init` on on
 and `uninit` on another cannot be used after the join (spec 05, section 2). No run-time flag
 records which path was taken.
 
+The same holds for `defer` (spec 05, section 3): a deferred statement consuming a linear value runs
+on the exits where the value is still held and is skipped where it was moved, decided when
+compiling. At an exit reached with the value moved on some paths and held on others, neither
+choice is right, and this error names the value.
+
 ## Example
 
 ```ov

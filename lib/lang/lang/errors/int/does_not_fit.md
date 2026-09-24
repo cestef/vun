@@ -29,3 +29,19 @@ norm1 := (p: Point) -> u64 {
     p.x.abs() + p.y.abs()
 };
 ```
+
+Or narrow where the value is known to fit, and let compound assignments narrow for you:
+
+```ov
+Point := struct { x: i32, y: i32 };
+
+norm1 := (p: Point) -> u32 {
+    (p.x.abs() + p.y.abs()).sat(u32)
+};
+
+count := (xs: &[u8]) -> u16 {
+    mut n: u16 = 0;
+    for x in xs { n +|= 1; }
+    n
+};
+```

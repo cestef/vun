@@ -128,7 +128,11 @@ impl Analysis<'_> {
                 .text(" is moved on some paths to this exit and not on others, so whether its ")
                 .code("defer")
                 .text(" runs here is unknown");
-            self.report(errors::PLACE_AMBIGUOUS_JOIN, origin, msg);
+            let help = Msg::new()
+                .text("consume it on every path to this exit or on none, so that the ")
+                .code("defer")
+                .text(" runs on all of them or is skipped on all");
+            self.advise(errors::PLACE_AMBIGUOUS_JOIN, origin, msg, Some(help));
         }
         vec![skip]
     }

@@ -31,8 +31,15 @@ impl Resolver<'_, '_> {
                 .text("each ")
                 .code("$")
                 .text(" escapes one quote, and the last one runs at compile time");
+            let count = |n: usize| i128::try_from(n).unwrap_or(i128::MAX);
+            let note = Msg::new()
+                .text("this chain escapes ")
+                .num(count(levels))
+                .text(" levels, and ")
+                .num(count(self.quotes + 1))
+                .text(" exist here: one per quote around it, then compile time");
             let d = Diagnostic::error(errors::META_ESCAPE, msg).at(hir.exprs[expr].origin, None);
-            self.cx.diag.error(d.child(ChildKind::Help, help));
+            self.cx.diag.error(d.child(ChildKind::Note, note).child(ChildKind::Help, help));
         }
         let quotes = self.quotes;
         self.quotes = quotes.saturating_sub(levels);

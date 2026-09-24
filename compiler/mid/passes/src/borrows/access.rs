@@ -74,7 +74,12 @@ impl Checker<'_> {
             if l.place.overlaps(place) && (l.access == Access::Exclusive || access == Access::Exclusive) {
                 let what = self.name(&l.place);
                 let msg = what.text(" is reached here while a borrow of it is still used later");
-                self.report(errors::BORROW_CONFLICT, origin, msg, Some(loan));
+                let help = if l.access == Access::Exclusive {
+                    Msg::new().text("an exclusive borrow is the only way to the place while it is used; finish with it before this")
+                } else {
+                    Msg::new().text("a shared borrow keeps the place from changing while it is used; write it after the borrow's last use")
+                };
+                self.report(errors::BORROW_CONFLICT, origin, msg, Some(loan), Some(help));
             }
         }
     }
@@ -87,7 +92,9 @@ impl Checker<'_> {
                 let msg = self
                     .name(&self.loans[loan].place)
                     .text(" is local to this function, and a borrow of it is returned");
-                self.report(errors::BORROW_ESCAPE, origin, msg, None);
+                let help =
+                    Msg::new().text("return the value itself, or a borrow of something a parameter lends");
+                self.report(errors::BORROW_ESCAPE, origin, msg, None, Some(help));
             }
         }
     }
