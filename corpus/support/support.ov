@@ -3,7 +3,8 @@
 //! are visible in every corpus file; its children (`serde`, `svd`, ...) stand for packages.
 
 /// Memory and files.
-Own := ($T: type) -> type { struct { ptr: *T } };
+/// An owning pointer: linear, free, and read through with `.*` (spec 05, section 5).
+Own := #[kind.linear] #[kind.free] ($T: type) -> type { struct { #[kind.owns] ptr: *T } };
 Alloc := struct {
     create := (self: &mut Alloc, $T: type) -> Result(Own(T), Error) { .err(.oom) };
 };

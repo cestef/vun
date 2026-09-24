@@ -9,10 +9,12 @@ use overt_hir::tree::{Entry, ExprKind, List, Member, Name, NsId, PatKind, Staged
 use overt_intern::Symbol;
 use overt_query::{Cx, Cycle, Query};
 
+use crate::Primitive;
 use crate::decl::TypedDecl;
 use crate::env::{Env, Unevaluated};
 use crate::eval::Staging;
 use crate::item::{DeclRef, ExprRef, Node};
+use crate::primitives::kind::Kind;
 use crate::ty::{Nominal, Ty, TyKind, Value};
 use crate::typeck::Known;
 use crate::visible::{Home, Visible};
@@ -27,6 +29,18 @@ pub struct MemberTable {
     /// Whether every member is written literally, with no `$for`, `$if`, computed name or
     /// spread: only then is a name missing from the table no member at all.
     pub complete: bool,
+    /// The pointer field `#[kind.owns]` marks, which `.*` reads through.
+    pub deref: Option<Symbol>,
+}
+
+impl MemberTable {
+    /// The field `.*` reads through and the type it points to, for a struct owning its target.
+    #[must_use]
+    pub fn deref(&self) -> Option<(Symbol, Ty)> {
+        let name = self.deref?;
+        let field = self.fields.iter().find(|f| f.name == name)?;
+        Some((name, field.ty.as_ref().ok()?.pointee()?))
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, Hash)]
@@ -159,6 +173,9 @@ impl MemberTable {
                     return;
                 };
                 let (visible, _) = env.visible(name, &field.attrs, home.clone());
+                if env.attribute(&field.attrs, Primitive::Kind(Kind::owns)).is_some() {
+                    self.deref = Some(name);
+                }
                 let default = field.default.map(|d| ExprRef::new(env.file.clone(), hir, d));
                 self.fields.push(Field { name, ty: env.ty(field.ty), visible, default });
             }

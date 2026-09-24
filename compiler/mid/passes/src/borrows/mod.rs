@@ -4,10 +4,12 @@
 //! local holding it is live, not to the end of a block. While it lives, an access to a place
 //! overlapping its place conflicts when either is exclusive: the table `borrows` says which modes
 //! are, a write is, a read is not. A loan of the function's own storage, a place not reached
-//! through `.*`, that reaches the return escapes.
+//! through `.*`, that reaches the return escapes, and a value holding a borrow inside a type
+//! marked `#[kind.free]` is reported where it is built.
 
 mod access;
 mod flow;
+mod free;
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -19,7 +21,7 @@ use overt_mir::{BlockId, Body, Local, Mir, Place, Rvalue};
 use overt_origin::OriginId;
 use overt_query::{Cx, Query};
 use overt_sema::eval::Instantiation;
-use overt_sema::kinds::Kinds;
+use overt_sema::kinds::{Kind, Kinds};
 
 index! {
     struct LoanId;
@@ -35,9 +37,10 @@ impl Query for BorrowChecks {
 
     fn compute(cx: &Cx<'_>, i: &Instantiation) -> Self::Value {
         let body = cx.get::<Mir>(i).ok()?;
-        let scoped =
-            body.locals.iter().filter(|(_, d)| d.ty.is_some_and(|t| cx.get::<Kinds>(&t).is_scoped()));
-        Some(Checker::new(&body, scoped.map(|(local, _)| local).collect()).run())
+        let kinds: BTreeMap<Local, Kind> =
+            body.locals.iter().filter_map(|(local, d)| Some((local, cx.get::<Kinds>(&d.ty?)))).collect();
+        let having = |f: fn(&Kind) -> bool| kinds.iter().filter(|(_, k)| f(k)).map(|(&l, _)| l).collect();
+        Some(Checker::new(&body, having(|k| k.is_scoped()), having(|k| k.misplaced)).run())
     }
 }
 
@@ -55,12 +58,14 @@ struct Checker<'b> {
     taken: BTreeMap<(BlockId, usize), LoanId>,
     /// The locals holding scoped values, which the loans of what they are built from flow into.
     scoped: BTreeSet<Local>,
+    /// The locals whose type holds a scoped value inside a free one.
+    misplaced: BTreeSet<Local>,
     diag: DiagCtxt,
     reported: BTreeSet<(DiagId, OriginId)>,
 }
 
 impl<'b> Checker<'b> {
-    fn new(body: &'b Body, scoped: BTreeSet<Local>) -> Self {
+    fn new(body: &'b Body, scoped: BTreeSet<Local>, misplaced: BTreeSet<Local>) -> Self {
         let mut loans = IndexVec::new();
         let mut taken = BTreeMap::new();
         for (block, b) in body.blocks.iter() {
@@ -74,12 +79,13 @@ impl<'b> Checker<'b> {
                 taken.insert((block, index), loan);
             }
         }
-        Self { body, loans, taken, scoped, diag: DiagCtxt::new(), reported: BTreeSet::new() }
+        Self { body, loans, taken, scoped, misplaced, diag: DiagCtxt::new(), reported: BTreeSet::new() }
     }
 
     fn run(mut self) -> DiagCtxt {
         let holding = self.holding();
         let live = self.liveness();
+        self.free_values();
         for (block, holds) in holding.iter() {
             if let Some(holds) = holds {
                 self.check(block, holds.clone(), &live);

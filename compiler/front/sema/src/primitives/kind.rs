@@ -4,17 +4,24 @@
 #[allow(non_camel_case_types, reason = "variants are named as their declarations")]
 pub enum Kind {
     linear,
+    /// Values of the type never hold a borrow, even through its type arguments: `Own`, heap nodes.
+    free,
     fixed,
+    /// Marks the pointer field of a struct that owns what it points to, such as `Own`: `.*` on the
+    /// struct reads through that field (spec 05, section 5).
+    owns,
 }
 impl Kind {
     pub const NAMESPACE: &str = "lang.kind";
-    pub const ALL: &[Self] = &[Self::linear, Self::fixed];
+    pub const ALL: &[Self] = &[Self::linear, Self::free, Self::fixed, Self::owns];
     /// The declaration's name.
     #[must_use]
     pub const fn name(self) -> &'static str {
         match self {
             Self::linear => "linear",
+            Self::free => "free",
             Self::fixed => "fixed",
+            Self::owns => "owns",
         }
     }
 }

@@ -3,7 +3,8 @@
 ## 1. Kinds
 
 Every type has three properties, computed structurally from its members. A declaration may make a
-type more restrictive (`#[kind.linear]`, `#[kind.fixed]`), never less.
+type more restrictive (`#[kind.linear]`, `#[kind.fixed]`, `#[kind.free]`), never less. The
+attributes go on the type's literal or on the type constructor that makes it.
 
 | Property | Values | Meaning |
 |----------|--------|---------|
@@ -91,7 +92,9 @@ only: the result is not tied to it, and the function may not return it or put it
 returns. So `find := (hay: &[u8], needle: &temp [u8]) -> &[u8]` returns a borrow tied to `hay`
 alone, and a caller may pass a short-lived `needle`.
 
-A borrow cannot be stored in a free value: a top-level binding, an `Own`, a heap node. Long-lived
+A borrow cannot be stored in a free value: a top-level binding, an `Own`, a heap node. A type is
+made free by `#[kind.free]`: neither its parts nor its type arguments may then be scoped, so
+`Own(Parser)` for a scoped `Parser` is an error where such a value is built. Long-lived
 structures use ownership, indices into pools and arenas, or raw pointers in `unsafe` code.
 
 **Trees in arenas.** Because scoped values may live in fields of other scoped types, a tree can be
@@ -110,8 +113,11 @@ tied to arguments, so no interprocedural analysis is needed.
 
 ## 5. Pointers
 
-- `Own(T)`: unique owning pointer, linear, safe to dereference. It comes from an allocator and goes
-  back to one; freeing it requires holding the allocator.
+- `Own(T)`: unique owning pointer, linear, free, safe to dereference. It comes from an allocator
+  and goes back to one; freeing it requires holding the allocator. It is a library struct whose
+  pointer field is marked `#[kind.owns]`: `.*` on a struct reads through the field so marked,
+  as it does on a borrow or pointer, so `cfg.*.name` reaches a field of what an `Own(Config)`
+  owns. There is no other dereference: `.` looks through borrows only.
 - `*T`: raw pointer; copy, free, non-null. Creating one is safe. Dereferencing, offsetting and
   casting are `unsafe`.
 - Volatile and atomic access are operations in `lang.mem`, not type qualifiers.

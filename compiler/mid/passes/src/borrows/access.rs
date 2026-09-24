@@ -22,6 +22,11 @@ impl Checker<'_> {
             for (place, access) in Self::accesses(stmt) {
                 self.conflicts(&loans, place, access, stmt.origin);
             }
+            // Writing a place replaces its own storage: a borrow reached through a `.*` inside
+            // it, such as the target of a borrow being reassigned, is not touched.
+            let overwritten: BTreeSet<LoanId> =
+                loans.iter().copied().filter(|&l| !self.loans[l].place.beyond(&stmt.place)).collect();
+            self.conflicts(&overwritten, &stmt.place, Access::Exclusive, stmt.origin);
             self.hold(block, index, stmt, &mut holds);
         }
         let loans = Self::live_loans(&holds, &live[block][b.stmts.len()], None);
@@ -40,8 +45,8 @@ impl Checker<'_> {
         live.iter().flat_map(|&l| holds[l].iter().copied()).filter(|&loan| Some(loan) != own).collect()
     }
 
-    /// The places `stmt` reaches and how: operands and tests read, borrows access as their mode
-    /// says, resuming a frame and writing are exclusive.
+    /// The places `stmt` reaches before writing its place, and how: operands and tests read,
+    /// borrows access as their mode says, resuming a frame is exclusive.
     fn accesses(stmt: &Stmt) -> Vec<(&Place, Access)> {
         let mut accesses: Vec<(&Place, Access)> = stmt
             .value
@@ -58,7 +63,6 @@ impl Checker<'_> {
             Rvalue::Resume { frame, .. } => accesses.push((frame, Access::Exclusive)),
             _ => {}
         }
-        accesses.push((&stmt.place, Access::Exclusive));
         accesses
     }
 

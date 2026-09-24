@@ -3,6 +3,6 @@
 
 Parser := struct { input: &[u8] };
 
-boxed := (a: &mut Alloc, input: &[u8]) -> Result(Own(Parser), Alloc.Error) {
-    a.create(Parser{ .input = input }) //~ borrow.in_free_value
+boxed := (a: &mut Alloc) -> Result(Own(Parser), Error) {
+    a.create(Parser) //~ borrow.in_free_value
 };

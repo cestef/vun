@@ -1,4 +1,9 @@
 //! Kind restrictions (spec 05, section 1).
 
 linear: Attribute = _;
+/// Values of the type never hold a borrow, even through its type arguments: `Own`, heap nodes.
+free: Attribute = _;
 fixed: Attribute = _;
+/// Marks the pointer field of a struct that owns what it points to, such as `Own`: `.*` on the
+/// struct reads through that field (spec 05, section 5).
+owns: Attribute = _;

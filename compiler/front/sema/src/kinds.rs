@@ -3,7 +3,9 @@
 //! type linear, and so are coroutine frames; everything built only from copy parts is copy.
 //! Borrows are copy here: that a `&mut` is exclusive is the borrow rules' concern (section 8),
 //! not a kind. A borrow type is scoped, and so is anything with a scoped part; a raw pointer is
-//! free whatever it points to. A frame is free until its parameters are read here.
+//! free whatever it points to. A frame is free until its parameters are read here. A type marked
+//! `#[kind.free]` is free, and holding a scoped value in it, even through a type argument, is an
+//! error its kind records.
 
 use overt_query::{Cx, Cycle, Query};
 
@@ -33,20 +35,21 @@ pub enum Region {
 pub struct Kind {
     pub duplication: Duplication,
     pub region: Region,
+    /// Whether some type in it marked `#[kind.free]` holds a scoped value, in a part or a type
+    /// argument (`borrow.in_free_value`).
+    pub misplaced: bool,
 }
 
 impl Kind {
-    const COPY_FREE: Self = Self { duplication: Duplication::Copy, region: Region::Free };
+    const COPY_FREE: Self = Self { duplication: Duplication::Copy, region: Region::Free, misplaced: false };
 
-    /// A value made of parts of these kinds: linear if one is, scoped if one is.
+    /// A value made of parts of these kinds: linear if one is, scoped if one is, misplaced if one
+    /// is.
     fn of_parts(parts: impl IntoIterator<Item = Self>) -> Self {
         parts.into_iter().fold(Self::COPY_FREE, |kind, part| Self {
-            duplication: if part.duplication == Duplication::Linear {
-                part.duplication
-            } else {
-                kind.duplication
-            },
-            region: if part.region == Region::Scoped { part.region } else { kind.region },
+            duplication: if part.is_linear() { part.duplication } else { kind.duplication },
+            region: if part.is_scoped() { part.region } else { kind.region },
+            misplaced: kind.misplaced || part.misplaced,
         })
     }
 
@@ -73,7 +76,7 @@ impl Query for Kinds {
     fn compute(cx: &Cx<'_>, ty: &Ty) -> Self::Value {
         let of = |ty: &Ty| cx.get::<Self>(ty);
         if ty.borrowing().is_some() {
-            return Kind { duplication: Duplication::Copy, region: Region::Scoped };
+            return Kind { region: Region::Scoped, ..Kind::COPY_FREE };
         }
         match &**ty {
             TyKind::Primitive(Primitive::Mem(Mem::Array | Mem::Slice | Mem::Cell), args) => {
@@ -82,7 +85,7 @@ impl Query for Kinds {
             TyKind::Primitive(..) => Kind::COPY_FREE,
             TyKind::Tuple(items) => Kind::of_parts(items.iter().map(of)),
             TyKind::Closure(Closure { captures, .. }) => Kind::of_parts(captures.iter().map(|(_, t)| of(t))),
-            TyKind::Frame(_) => Kind { duplication: Duplication::Linear, region: Region::Free },
+            TyKind::Frame(_) => Kind { duplication: Duplication::Linear, ..Kind::COPY_FREE },
             TyKind::Nominal(nominal) => Self::nominal(cx, *ty, nominal),
         }
     }
@@ -94,20 +97,37 @@ impl Query for Kinds {
 }
 
 impl Kinds {
+    /// A struct or enum: as its parts make it, then as `#[kind.linear]` and `#[kind.free]` mark
+    /// it, on its literal or on the type constructor it is made by.
     fn nominal(cx: &Cx<'_>, ty: Ty, nominal: &Nominal) -> Kind {
-        let marked = Env::defining(cx, &nominal.literal, nominal.instance.as_ref()).is_some_and(|env| {
-            let attrs = env.attrs_of(nominal.literal.expr.id);
-            env.attribute(&attrs, Primitive::Kind(KindAttr::linear)).is_some()
+        let marked = |attr| Self::marked(cx, nominal, Primitive::Kind(attr));
+        let parts = cx.get::<Members>(&ty).map_or(Kind::COPY_FREE, |members| {
+            let fields = members.fields.iter().filter_map(|f| f.ty.as_ref().ok());
+            let payloads =
+                members.variants.iter().flat_map(|v| v.payload.iter().filter_map(|p| p.as_ref().ok()));
+            Kind::of_parts(fields.chain(payloads).map(|t| cx.get::<Self>(t)))
         });
-        let Some(members) = cx.get::<Members>(&ty) else {
-            return Kind {
-                duplication: if marked { Duplication::Linear } else { Duplication::Copy },
-                ..Kind::COPY_FREE
-            };
-        };
-        let fields = members.fields.iter().filter_map(|f| f.ty.as_ref().ok());
-        let payloads = members.variants.iter().flat_map(|v| v.payload.iter().filter_map(|p| p.as_ref().ok()));
-        let kind = Kind::of_parts(fields.chain(payloads).map(|t| cx.get::<Self>(t)));
-        if marked { Kind { duplication: Duplication::Linear, ..kind } } else { kind }
+        let mut kind = parts;
+        if marked(KindAttr::linear) {
+            kind.duplication = Duplication::Linear;
+        }
+        if marked(KindAttr::free) {
+            let args = nominal.instance.iter().flat_map(|i| i.args.iter().filter_map(Value::as_type));
+            let args = Kind::of_parts(args.map(|t| cx.get::<Self>(&t)));
+            kind.misplaced |= parts.is_scoped() || args.is_scoped() || args.misplaced;
+            kind.region = Region::Free;
+        }
+        kind
+    }
+
+    /// Whether `attr` marks the literal of `nominal`, or the function whose call made it.
+    fn marked(cx: &Cx<'_>, nominal: &Nominal, attr: Primitive) -> bool {
+        let on_literal = Env::defining(cx, &nominal.literal, nominal.instance.as_ref())
+            .is_some_and(|env| env.attribute(&env.attrs_of(nominal.literal.expr.id), attr).is_some());
+        let on_constructor = nominal.instance.as_ref().is_some_and(|i| {
+            Env::inside(cx, &i.f, [])
+                .is_some_and(|env| env.attribute(&env.attrs_of(i.f.literal.expr.id), attr).is_some())
+        });
+        on_literal || on_constructor
     }
 }

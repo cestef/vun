@@ -15,7 +15,7 @@ declaration whose value is `_`.
 | `lang.diag` | `Diag`, `Severity`, `Safety`, reporting primitives |
 | `lang.errors` | every compiler diagnostic, as `Diag` values |
 | `lang.lint` | `Lint`, `Cx`, `pattern`, `define` |
-| `lang.kind` | `linear`, `fixed` |
+| `lang.kind` | `linear`, `free`, `fixed`, `owns` |
 | `lang.layout` | `bits`, `c`, `tag`, `align`, `offset` |
 | `lang.link` | `section`, `keep`, `export`, `symbol`, `weak` |
 | `lang.abi` | `native`, `c`, `interrupt`, `naked` |

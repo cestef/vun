@@ -39,3 +39,28 @@ param := (x: u8) -> &u8 { &x };
     let ids: Vec<_> = fixture.reported(&file).into_iter().map(|(id, _)| id).collect();
     assert_eq!(ids, [errors::BORROW_ESCAPE, errors::BORROW_ESCAPE]);
 }
+
+#[test]
+fn free_types_hold_no_borrows_and_owners_deref() {
+    let fixture = Fixture::new("borrows-free");
+    let file = fixture.root.write(
+        "free.ov",
+        "\
+Node := struct { value: u8, next: ?Own(Node) };
+Own := #[kind.linear] #[kind.free] ($T: type) -> type { struct { #[kind.owns] ptr: *T } };
+Parser := struct { input: &[u8] };
+Boxed := #[kind.free] struct { parser: Parser };
+boxed := (p: Parser) -> Boxed { .{ .parser = p } };
+owned := (p: *Parser) -> Own(Parser) { .{ .ptr = p } };
+value := (o: &Own(Node)) -> u8 { o.*.*.value };
+walk := (head: &?Own(Node)) -> u8 {
+    mut cur := head;
+    mut last: u8 = 0;
+    for .some(node) = cur { last = node.*.*.value; cur = &node.*.*.next; }
+    last
+};
+",
+    );
+    let ids: Vec<_> = fixture.reported(&file).into_iter().map(|(id, _)| id).collect();
+    assert_eq!(ids, [errors::BORROW_IN_FREE_VALUE, errors::BORROW_IN_FREE_VALUE]);
+}

@@ -74,7 +74,8 @@ impl Typer<'_, '_, '_> {
             ExprKind::Postfix { op: TokenKind::Question, operand } => self.early_return(expr, *operand),
             ExprKind::Postfix { op: TokenKind::DotStar, operand } => {
                 let known = self.typed(*operand)?;
-                Some(Known { ty: known.ty.pointee()?, ..known })
+                let owned = || self.env().cx.get::<Members>(&known.ty)?.deref().map(|(_, ty)| ty);
+                Some(Known { ty: known.ty.pointee().or_else(owned)?, ..known })
             }
             ExprKind::Break { label, value } => {
                 self.leave(expr, *label, *value);

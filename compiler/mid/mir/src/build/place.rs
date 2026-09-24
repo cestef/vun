@@ -7,6 +7,7 @@ use overt_hir::resolve::Res;
 use overt_hir::tree::{ExprId, ExprKind};
 use overt_intern::Symbol;
 use overt_origin::OriginId;
+use overt_sema::member::Members;
 
 use super::{Builder, Unbuilt};
 use crate::body::{Operand, Rvalue};
@@ -43,8 +44,16 @@ impl Builder<'_, '_, '_> {
                 };
                 Ok(place.project(Projection::Index(index)))
             }
+            // Through a struct owning its target, `.*` goes through its `#[kind.owns]` field.
             ExprKind::Postfix { op: TokenKind::DotStar, operand } => {
-                Ok(self.place(*operand)?.project(Projection::Deref))
+                let ty = self.typed().and_then(|t| t.types.get(operand).map(|k| k.ty));
+                let owner = ty.and_then(|t| self.env.cx.get::<Members>(&t)?.deref());
+                let place = self.place(*operand)?;
+                let place = match owner {
+                    Some((field, _)) => place.project(Projection::Field(field)),
+                    None => place,
+                };
+                Ok(place.project(Projection::Deref))
             }
             _ => self.held(expr, origin),
         }

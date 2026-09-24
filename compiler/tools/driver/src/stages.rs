@@ -58,7 +58,7 @@ pub const STAGES: &[Stage] = &[
         input: Input::Source,
     },
     Stage { name: "places", reports: &[errors::PLACE], input: Input::Mir },
-    Stage { name: "borrows", reports: &[errors::BORROW_CONFLICT, errors::BORROW_ESCAPE], input: Input::Mir },
+    Stage { name: "borrows", reports: &[errors::BORROW], input: Input::Mir },
 ];
 
 impl Stage {

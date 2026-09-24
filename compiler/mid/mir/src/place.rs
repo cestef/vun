@@ -53,6 +53,15 @@ impl Place {
             })
     }
 
+    /// Whether this place lies within `outer` but past a `.*` below it: in storage `outer`
+    /// points to, not in its own.
+    #[must_use]
+    pub fn beyond(&self, outer: &Self) -> bool {
+        self.local == outer.local
+            && self.projection.starts_with(&outer.projection)
+            && self.projection[outer.projection.len()..].contains(&Projection::Deref)
+    }
+
     /// Whether this place is reached through a borrow or pointer: storage outside its local.
     #[must_use]
     pub fn is_indirect(&self) -> bool {
