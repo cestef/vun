@@ -21,13 +21,13 @@ impl Marker {
     /// The marker the prefix `token` puts on a function type (the table `markers`).
     #[must_use]
     pub fn of_prefix(token: TokenKind) -> Option<Self> {
-        let (_, item) = MARKERS.iter().find(|(t, _)| *t == token)?;
-        Some(Self { item: Primitive::at(*item)?, args: Vec::new() })
+        let row = MARKERS.iter().find(|row| row.token == token)?;
+        Some(Self { item: Primitive::at(row.item)?, args: Vec::new() })
     }
 
     /// The attributes that are markers, with their relations (the table `fn_markers`).
     pub fn kinds() -> impl Iterator<Item = (Primitive, Relation)> {
-        FN_MARKERS.iter().filter_map(|(item, relation)| Some((Primitive::at(*item)?, *relation)))
+        FN_MARKERS.iter().filter_map(|row| Some((Primitive::at(row.item)?, row.relation)))
     }
 
     /// Whether `markers` promise that the function never traps (`#[panic.never]`).

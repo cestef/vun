@@ -11,11 +11,28 @@ use super::*;
     reason = "tables name the grammar's kinds"
 )]
 use vun_grammar::*;
-/// What `for p in e` drives (appendix B): the witness of `interface` for the type of `e` gives
-/// the iterator through `function` and names its coroutine interface `iterator`; each item is
+/// A row of [`ITERATION`].
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct IterationRow {
+    pub function: vun_items::Item,
+    pub iterator: vun_items::Item,
+    pub resume: vun_items::Item,
+    pub end: vun_items::Item,
+    pub each: vun_items::Item,
+    pub done: vun_items::Item,
+}
+/// What `for p in e` drives (appendix B): the witness of the interface of `function` for the type
+/// of `e` gives the iterator through it and names its coroutine interface `iterator`; each item is
 /// the payload of the variant `each` of what the interface's `resume` returns, and the variant
 /// `done` carries what the coroutine returns. A frame answers the interface's `resume` and `end`
 /// itself (spec 06, section 1).
-pub const ITERATION: &[(vun_items::Item, &str, &str, &str, &str, &str, &str)] = &[
-    (vun_items::lang::ops::Iterate, "iter", "Iter", "resume", "end", "yielded", "done"),
+pub const ITERATION: &[IterationRow] = &[
+    IterationRow {
+        function: vun_items::lang::ops_Iterate::iter,
+        iterator: vun_items::lang::ops_Iterate::Iter,
+        resume: vun_items::lang::Coroutine::resume,
+        end: vun_items::lang::Coroutine::end,
+        each: vun_items::lang::Step::yielded,
+        done: vun_items::lang::Step::done,
+    },
 ];

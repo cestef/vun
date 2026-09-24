@@ -23,7 +23,7 @@ impl Builder<'_, '_, '_> {
     ) -> Result<(), Unbuilt> {
         let unbuilt = Unbuilt { at: origin };
         let target = self.place(place)?;
-        let Some(&(_, _, narrowing)) = COMPOUND.iter().find(|(token, ..)| *token == op) else {
+        let Some(narrowing) = COMPOUND.iter().find(|row| row.token == op).map(|row| row.narrowing) else {
             let value = self.operand(value)?;
             self.assign(target, Rvalue::Use(value), origin);
             return Ok(());

@@ -46,7 +46,7 @@ impl Context {
     /// Whether `word` is a keyword in this context.
     #[must_use]
     pub fn keyword(self, word: &str) -> bool {
-        CONTEXTUAL.contains(&(word, self))
+        CONTEXTUAL.iter().any(|row| row.text == word && row.context == self)
     }
 }
 
@@ -77,15 +77,15 @@ impl TokenKind {
 
     #[must_use]
     pub fn infix(self) -> Option<Infix> {
-        INFIX.iter().zip(0..).find_map(|(&(assoc, kinds), level)| {
-            kinds.contains(&self).then_some(Infix { prec: Prec(level), assoc })
+        INFIX.iter().zip(0..).find_map(|(row, level)| {
+            row.tokens.contains(&self).then_some(Infix { prec: Prec(level), assoc: row.assoc })
         })
     }
 
     /// The token closing a group this token opens.
     #[must_use]
     pub fn closer(self) -> Option<Self> {
-        DELIMITERS.iter().find_map(|&(open, close)| (open == self).then_some(close))
+        DELIMITERS.iter().find_map(|row| (row.open == self).then_some(row.close))
     }
 
     #[must_use]
@@ -95,7 +95,7 @@ impl TokenKind {
 
     #[must_use]
     pub fn closes(self) -> bool {
-        DELIMITERS.iter().any(|&(_, close)| close == self)
+        DELIMITERS.iter().any(|row| row.close == self)
     }
 }
 

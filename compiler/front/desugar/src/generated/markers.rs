@@ -11,8 +11,17 @@ use super::*;
     reason = "tables name the grammar's kinds"
 )]
 use vun_grammar::*;
+/// A row of [`MARKERS`].
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct MarkersRow {
+    pub token: TokenKind,
+    pub item: vun_items::Item,
+}
 /// Prefixes that mark what they apply to with a `lang` item: `unsafe (...) -> T` carries
 /// `lang.safety.unsafe` in its type, as a property calls are checked against (spec 07, section 4).
-pub const MARKERS: &[(TokenKind, vun_items::Item)] = &[
-    (TokenKind::Unsafe, vun_items::lang::safety::r#unsafe),
+pub const MARKERS: &[MarkersRow] = &[
+    MarkersRow {
+        token: TokenKind::Unsafe,
+        item: vun_items::lang::safety::r#unsafe,
+    },
 ];

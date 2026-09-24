@@ -4,7 +4,7 @@
 //! `lang.ops.Iterate` for the type of `e` names the coroutine interface of its iterator, whose
 //! `resume` result carries each item in its variant `yielded`.
 
-use vun_desugar::ITERATION;
+use vun_desugar::{ITERATION, IterationRow};
 use vun_hir::tree::{BlockId, Cond, ExprId, ExprKind, ForHead};
 use vun_intern::Symbol;
 
@@ -105,11 +105,11 @@ impl Typer<'_, '_, '_> {
     /// How `for p in e` drives `e` of type `ty`, and the type of the items it binds, looking
     /// through a borrow when the borrow itself is not iterated.
     pub(super) fn iteration(&self, ty: Ty) -> Option<(Iteration, Ty)> {
-        let &(interface, _, iterator, resume, ..) = ITERATION.first()?;
-        let &(.., item, _) = ITERATION.first()?;
+        let &IterationRow { function, iterator, resume, each: item, .. } = ITERATION.first()?;
+        let interface = function.parent()?;
         let witness =
             self.witness_of(interface, ty).or_else(|| self.witness_of(interface, ty.borrowed()?))?;
-        let member = (witness, Symbol::intern(iterator));
+        let member = (witness, iterator.symbol());
         let Ok(Value::Interface(coroutine)) = self.env().cx.get::<MemberValue>(&member) else { return None };
         let requirements = self
             .env()
@@ -117,9 +117,9 @@ impl Typer<'_, '_, '_> {
             .get::<Call>(&Instance { f: coroutine, args: vec![Value::Type(ty)] })
             .ok()?
             .as_type()?;
-        let resumed = self.env().cx.get::<MemberType>(&(requirements, Symbol::intern(resume))).ok()?;
+        let resumed = self.env().cx.get::<MemberType>(&(requirements, resume.symbol())).ok()?;
         let step = resumed.ty.signature()?.result;
-        let item = match self.env().cx.get::<Members>(&step)?.find(Symbol::intern(item)) {
+        let item = match self.env().cx.get::<Members>(&step)?.find(item.symbol()) {
             Found::Variant(v) => v.payload.first()?.as_ref().ok().copied()?,
             _ => return None,
         };

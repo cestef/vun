@@ -3,8 +3,8 @@
 //! same mode (decision 31), as the typer types them. `match`, `if p = e`, `for p = e` and
 //! declarations with a pattern are built on tests.
 
+use vun_desugar::Borrow;
 use vun_hir::tree::{Arm, BinderId, Entry, ExprId, Name, PatId, PatKind};
-use vun_intern::Symbol;
 use vun_origin::OriginId;
 use vun_sema::member::{Found, Members};
 use vun_sema::ty::{Ty, TyKind};
@@ -20,8 +20,8 @@ use crate::{BlockId, Operand, Role, Rvalue, TerminatorKind};
 #[derive(Clone, Copy)]
 enum Binding {
     Copy,
-    /// A borrow in the mode the word after `&` names, `None` for a shared one.
-    Borrow(Option<Symbol>),
+    /// A borrow in the mode of the borrow matched through.
+    Borrow(Borrow),
 }
 
 /// A value being matched: where it is, its type when the typed body knows it, and how binders
@@ -52,7 +52,7 @@ impl Builder<'_, '_, '_> {
         let ty = self.type_of(expr);
         if let Some((mode, _, inner)) = ty.and_then(|t| t.borrowing()) {
             let place = self.place(expr)?.project(Projection::Deref);
-            let binding = Binding::Borrow((!mode.is_empty()).then(|| Symbol::intern(mode)));
+            let binding = Binding::Borrow(mode);
             return Ok(Matched { place, ty: Some(inner), binding });
         }
         self.declared(expr)

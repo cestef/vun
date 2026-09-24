@@ -50,6 +50,9 @@ pub enum Literal<'s> {
     Enum(Vec<Decl<'s>>),
     /// `struct { name := value; }`; fields are skipped.
     Namespace(Vec<Decl<'s>>),
+    /// `($T: type) -> type { struct { ... } }`: a function whose body is only the value it
+    /// makes, read as that value: a type constructor.
+    Made(Box<Literal<'s>>),
     /// `_`: provided from outside (spec 01, section 3).
     Hole,
     Opaque,
@@ -121,6 +124,22 @@ impl<'s> Literal<'s> {
     pub fn as_str(&self) -> Option<&str> {
         match self {
             Self::String(text) => Some(text),
+            _ => None,
+        }
+    }
+
+    /// The members of the type this makes: those of an `enum` or `struct` literal, of the type a
+    /// constructor makes, or of the type made by the constructor a call wraps, as
+    /// `interface(($Self: type) -> type { struct { ... } })` does.
+    #[must_use]
+    pub fn members(&self) -> Option<&[Decl<'s>]> {
+        match self {
+            Self::Enum(decls) | Self::Namespace(decls) => Some(decls),
+            Self::Made(made) => made.members(),
+            Self::Call(_, args) => match args.as_slice() {
+                [made @ Self::Made(_)] => made.members(),
+                _ => None,
+            },
             _ => None,
         }
     }

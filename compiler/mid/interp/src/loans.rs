@@ -6,9 +6,8 @@
 //! borrow a call returns into a parameter comes back as a loan of that parameter, which the
 //! caller rebases on its own.
 
-use vun_desugar::{Access, BORROWS};
+use vun_desugar::{Access, Borrow};
 use vun_index::Idx;
-use vun_intern::Symbol;
 use vun_mir::{Local, Operand, Place};
 use vun_sema::env::Unevaluated;
 use vun_sema::eval::{Instance, Metered, MeteredCall};
@@ -22,11 +21,6 @@ struct Lent {
     position: usize,
     local: Local,
     parts: Vec<Part>,
-}
-
-/// Whether a borrow of `mode`, the words after `&`, is exclusive (the table `borrows`).
-fn exclusive(mode: &str) -> bool {
-    BORROWS.iter().any(|&(m, _, _, _, access, _)| m == mode && access == Access::Exclusive)
 }
 
 /// Whether `value` holds a loan inside it, where a call could not give it back.
@@ -45,13 +39,16 @@ impl Frame<'_, '_, '_> {
     /// Whether `local` is typed as an exclusive borrow. One holding a value rather than a loan is
     /// a parameter lent to this call, which holds what its caller's loan reaches.
     pub(crate) fn exclusive(&self, local: Local) -> bool {
-        self.body.locals[local].ty.and_then(|t| t.borrowing()).is_some_and(|(mode, ..)| exclusive(mode))
+        self.body.locals[local]
+            .ty
+            .and_then(|t| t.borrowing())
+            .is_some_and(|(mode, ..)| mode.access() == Access::Exclusive)
     }
 
     /// `&mode place`: a loan of the place for an exclusive mode; the value for a shared one,
     /// which a shared borrow of a compile-time value reads as.
-    pub(crate) fn borrow(&self, mode: Option<Symbol>, place: &Place) -> Result<Value, Unevaluated> {
-        if !exclusive(mode.map_or("", Symbol::as_str)) {
+    pub(crate) fn borrow(&self, mode: Borrow, place: &Place) -> Result<Value, Unevaluated> {
+        if mode.access() != Access::Exclusive {
             return self.read(place);
         }
         let (local, parts) = self.resolve(place)?;

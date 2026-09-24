@@ -15,8 +15,8 @@ pub(crate) fn ident(name: &str) -> Ident {
     Ident::new(name, Span::call_site())
 }
 
-/// A module named `name`, raw when the name is a Rust keyword: the group `impl` is `r#impl`.
-pub(crate) fn module(name: &str) -> Ident {
+/// A name as a Rust identifier, raw when it is a Rust keyword: the group `impl` is `r#impl`.
+pub(crate) fn raw(name: &str) -> Ident {
     match syn::parse_str::<Ident>(name) {
         Ok(ident) => ident,
         Err(_) => Ident::new_raw(name, Span::call_site()),

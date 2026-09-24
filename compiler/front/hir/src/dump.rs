@@ -56,6 +56,8 @@ impl Printer<'_> {
             ExprKind::Lit(Lit::String(s)) => format!("String {s:?}"),
             ExprKind::DotName(n) => format!("DotName .{n}"),
             ExprKind::Member { name, .. } => format!("Member .{name}"),
+            ExprKind::Borrow { mode: Some(mode), .. } => format!("Borrow &{mode}"),
+            ExprKind::Borrow { mode: None, .. } => "Borrow &?".to_owned(),
             ExprKind::Prefix { op, .. } | ExprKind::Postfix { op, .. } | ExprKind::Infix { op, .. } => {
                 format!("{} {}", hir.exprs[expr].kind.name(), op.text().unwrap_or_default())
             }

@@ -11,9 +11,20 @@ use super::*;
     reason = "tables name the grammar's kinds"
 )]
 use vun_grammar::*;
-/// What `e?` means (appendix B): the witness of `interface` for the type of `e` gives
-/// `function`, whose result carries the value in the variant `go` and what the function returns
+/// A row of [`EARLY_RETURN`].
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct EarlyReturnRow {
+    pub function: vun_items::Item,
+    pub go: vun_items::Item,
+    pub stop: vun_items::Item,
+}
+/// What `e?` means (appendix B): the witness of the interface of `function` for the type of `e`
+/// gives it, and its result carries the value in the variant `go` and what the function returns
 /// in the variant `stop`.
-pub const EARLY_RETURN: &[(vun_items::Item, &str, &str, &str)] = &[
-    (vun_items::lang::ops::Try, "branch", "go", "stop"),
+pub const EARLY_RETURN: &[EarlyReturnRow] = &[
+    EarlyReturnRow {
+        function: vun_items::lang::ops_Try::branch,
+        go: vun_items::lang::Branch::go,
+        stop: vun_items::lang::Branch::stop,
+    },
 ];

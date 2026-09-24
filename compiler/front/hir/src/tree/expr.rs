@@ -1,5 +1,6 @@
 //! Expressions, including types, which are compile-time values (spec 02).
 
+use vun_desugar::Borrow;
 use vun_grammar::TokenKind;
 use vun_intern::Symbol;
 use vun_origin::OriginId;
@@ -71,10 +72,15 @@ pub enum ExprKind {
         len: ExprId,
         elem: ExprId,
     },
-    /// `op operand`; after `&`, `mode` is the borrow mode's words (`mut`, `out`, `temp mut`, ...).
+    /// `op operand`, but for `&`.
     Prefix {
         op: TokenKind,
-        mode: Option<Symbol>,
+        operand: ExprId,
+    },
+    /// `&mode operand`: a borrow in the mode its words name (the table `borrows`); `None` for
+    /// words naming no mode, which resolution reports.
+    Borrow {
+        mode: Option<Borrow>,
         operand: ExprId,
     },
     Postfix {
@@ -160,6 +166,7 @@ impl ExprKind {
             ExprKind::Repeat { .. } => "Repeat",
             ExprKind::ArrayType { .. } => "ArrayType",
             ExprKind::Prefix { .. } => "Prefix",
+            ExprKind::Borrow { .. } => "Borrow",
             ExprKind::Postfix { .. } => "Postfix",
             ExprKind::Infix { .. } => "Infix",
             ExprKind::Block(_) => "Block",

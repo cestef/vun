@@ -2,6 +2,7 @@
 //! `.` and indexing look through borrows (spec 01, section 4), so the typed body decides where a
 //! dereference goes.
 
+use vun_desugar::Borrow;
 use vun_grammar::TokenKind;
 use vun_hir::resolve::Res;
 use vun_hir::tree::{ExprId, ExprKind};
@@ -100,21 +101,13 @@ impl Builder<'_, '_, '_> {
         let run = matches!(self.env.parsed.hir.exprs[expr].kind, ExprKind::Index { .. });
         let borrow = self.type_of(expr).and_then(|t| t.borrowing());
         match borrow {
-            Some((mode, ..)) if run => {
-                let mode = (!mode.is_empty()).then(|| Symbol::intern(mode));
-                Ok(self.temp(Rvalue::Ref { mode, place }, origin))
-            }
+            Some((mode, ..)) if run => Ok(self.temp(Rvalue::Ref { mode, place }, origin)),
             _ => Ok(self.temp(Rvalue::Use(Operand::Place(place)), origin)),
         }
     }
 
     /// `&mode operand`: a borrow of the place `operand`, or, for a type, the borrow type.
-    pub(super) fn borrow(
-        &mut self,
-        expr: ExprId,
-        mode: Option<Symbol>,
-        operand: ExprId,
-    ) -> Result<Operand, Unbuilt> {
+    pub(super) fn borrow(&mut self, expr: ExprId, mode: Borrow, operand: ExprId) -> Result<Operand, Unbuilt> {
         if let Ok(value) = self.env().eval(expr) {
             return Ok(Operand::Const(value));
         }

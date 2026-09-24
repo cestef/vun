@@ -116,6 +116,12 @@ impl<'s> Reader<'_, 's> {
             }
             NodeKind::Enum => Literal::Enum(items().filter_map(|c| self.variant(c, Vec::new())).collect()),
             NodeKind::Struct => Literal::Namespace(self.decls(items())),
+            NodeKind::Fn => {
+                let body = self.cst.fields(n)?.one(NodeField::Block)?;
+                let statements = self.cst.fields(body)?;
+                let [made] = statements.get(NodeField::Statements) else { return None };
+                Literal::Made(Box::new(self.read(*made)?))
+            }
             _ => return None,
         })
     }

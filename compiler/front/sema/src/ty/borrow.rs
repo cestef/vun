@@ -1,7 +1,7 @@
 //! Borrow types (appendix B, the table `borrows`): `&T` and the other modes, each a `lang.mem`
-//! constructor named by the words after `&`, with the transition, access and extent its row gives.
+//! constructor, with the transition, access and extent its row gives.
 
-use vun_desugar::{BORROWS, Extent};
+use vun_desugar::{Borrow, Extent};
 
 use super::{Ty, TyKind, Value};
 use crate::Primitive;
@@ -21,20 +21,18 @@ impl TyKind {
         self.borrowing().map(|(_, p, ty)| (p, ty))
     }
 
-    /// For a borrow type: the word after `&` that writes it (the table `borrows`), its
-    /// constructor and the type borrowed.
+    /// For a borrow type: its mode, its constructor and the type borrowed.
     #[must_use]
-    pub fn borrowing(&self) -> Option<(&'static str, Primitive, Ty)> {
+    pub fn borrowing(&self) -> Option<(Borrow, Primitive, Ty)> {
         let Self::Primitive(p, args) = self else { return None };
         let [Value::Type(ty)] = args.as_slice() else { return None };
         Some((p.borrow_mode()?, *p, *ty))
     }
 
-    /// `&mode pointee`: the borrow type written with the words `mode` after `&`.
+    /// `&mode pointee`.
     #[must_use]
-    pub fn borrowed_as(mode: &str, pointee: Ty) -> Option<Ty> {
-        let &(_, item, ..) = BORROWS.iter().find(|(m, ..)| *m == mode)?;
-        Some(Self::Primitive(Primitive::at(item)?, vec![Value::Type(pointee)]).intern())
+    pub fn borrowed_as(mode: Borrow, pointee: Ty) -> Option<Ty> {
+        Some(Self::Primitive(Primitive::at(mode.item())?, vec![Value::Type(pointee)]).intern())
     }
 
     /// The type reached through every borrow this type is, as `.` reaches it (spec 01,
@@ -48,33 +46,18 @@ impl TyKind {
         ty
     }
 
-    /// Whether the borrow modes `a` and `b` perform one transition and leave one access (the
-    /// table `borrows`), differing at most in how long a call holds them.
-    #[must_use]
-    pub fn alike(a: &str, b: &str) -> bool {
-        let row = |mode: &str| {
-            BORROWS
-                .iter()
-                .find(|(m, ..)| *m == mode)
-                .map(|&(_, _, before, after, access, _)| (before, after, access))
-        };
-        row(a).is_some() && row(a) == row(b)
-    }
-
     /// How long a call holds a borrow of this type (the table `borrows`).
     #[must_use]
     pub fn extent(&self) -> Option<Extent> {
-        let (mode, ..) = self.borrowing()?;
-        BORROWS.iter().find(|(m, ..)| *m == mode).map(|&(.., extent)| extent)
+        self.borrowing().map(|(mode, ..)| mode.extent())
     }
 
     /// `&static [len]u8`: the type of a string literal of `len` bytes (spec 01, section 7).
     #[must_use]
     pub fn string(len: usize) -> Option<Ty> {
-        let (_, item, ..) = BORROWS.iter().find(|&&(.., extent)| extent == Extent::Static)?;
         let byte = Self::int(&Interval::closed(Integer::from(0), Integer::from(i128::from(u8::MAX)))?);
         let bytes = Self::array(Integer::from(i128::try_from(len).ok()?), byte);
-        Some(Self::Primitive(Primitive::at(*item)?, vec![Value::Type(bytes)]).intern())
+        Self::borrowed_as(Borrow::plain().lasting()?, bytes)
     }
 }
 
@@ -85,9 +68,9 @@ impl Primitive {
         Self::all().find(|p| p.item() == item)
     }
 
-    /// The words after `&` that write this borrow type constructor (the table `borrows`).
+    /// The borrow mode whose type constructor this is (the table `borrows`).
     #[must_use]
-    pub fn borrow_mode(self) -> Option<&'static str> {
-        BORROWS.iter().find_map(|&(mode, item, ..)| (Self::at(item) == Some(self)).then_some(mode))
+    pub fn borrow_mode(self) -> Option<Borrow> {
+        Borrow::of(self.item())
     }
 }

@@ -4,7 +4,6 @@
 
 use vun_desugar::{OPERATORS, PREFIX_OPERATORS};
 use vun_grammar::TokenKind;
-use vun_intern::Symbol;
 use vun_items::Item;
 
 use super::{Env, Unevaluated};
@@ -20,9 +19,8 @@ impl Env<'_, '_> {
     /// Returns why it has no value here: an operator without an interface, operands whose type
     /// has no impl of it, or what the function called returns.
     pub fn binary(&self, op: TokenKind, left: Value, right: Value) -> Result<Value, Unevaluated> {
-        let &(_, interface, function) =
-            OPERATORS.iter().find(|(token, ..)| *token == op).ok_or(Unevaluated::Unsupported)?;
-        self.operate(interface, function, vec![left, right])
+        let row = OPERATORS.iter().find(|row| row.token == op).ok_or(Unevaluated::Unsupported)?;
+        self.operate(row.function, vec![left, right])
     }
 
     /// `op operand` at compile time, for an operator of the table `prefix_operators`.
@@ -30,16 +28,15 @@ impl Env<'_, '_> {
     /// # Errors
     /// As [`Self::binary`].
     pub fn prefix(&self, op: TokenKind, operand: Value) -> Result<Value, Unevaluated> {
-        let &(_, interface, function) =
-            PREFIX_OPERATORS.iter().find(|(token, ..)| *token == op).ok_or(Unevaluated::Unsupported)?;
-        self.operate(interface, function, vec![operand])
+        let row = PREFIX_OPERATORS.iter().find(|row| row.token == op).ok_or(Unevaluated::Unsupported)?;
+        self.operate(row.function, vec![operand])
     }
 
-    /// The call of `function` of `interface` for the type of the first of `operands`, the
-    /// others after it, each passed as its parameter asks.
-    fn operate(&self, interface: Item, function: &str, operands: Vec<Value>) -> Result<Value, Unevaluated> {
+    /// The call of `function`, a requirement of an interface, for the type of the first of
+    /// `operands`, the others after it, each passed as its parameter asks.
+    fn operate(&self, function: Item, operands: Vec<Value>) -> Result<Value, Unevaluated> {
         let ty = operands.first().and_then(Value::ty).ok_or(Unevaluated::Unsupported)?;
-        let name = Symbol::intern(function);
+        let (interface, name) = (function.parent().ok_or(Unevaluated::Absent)?, function.symbol());
         let method = self.implemented_by(ty, interface, name).ok_or(Unevaluated::Unsupported)?;
         let f = Callable::of(self.cx.get::<MemberValue>(&(method.owner, name))?)
             .ok_or(Unevaluated::Unsupported)?;

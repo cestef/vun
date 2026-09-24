@@ -25,10 +25,7 @@ impl fmt::Display for TyKind {
         }
         // Borrows and sequences as written: `&mut T`, `[4]u8`, `[u8]`.
         if let Some((mode, _, ty)) = self.borrowing() {
-            return match mode {
-                "" => write!(f, "&{ty}"),
-                mode => write!(f, "&{mode} {ty}"),
-            };
+            return if mode.is_plain() { write!(f, "&{ty}") } else { write!(f, "&{mode} {ty}") };
         }
         if let Some((len, elem)) = self.as_array() {
             return write!(f, "[{len}]{elem}");

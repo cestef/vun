@@ -11,25 +11,82 @@ use super::*;
     reason = "tables name the grammar's kinds"
 )]
 use vun_grammar::*;
-/// What infix operators desugar to (appendix B): `a op b` is `function(a, b)` of the interface at
-/// `interface`, for the type of `a`, the operands passed as the function's parameters ask. `and`,
-/// `or` and ranges are not interfaces.
-pub const OPERATORS: &[(TokenKind, vun_items::Item, &str)] = &[
-    (TokenKind::Plus, vun_items::lang::ops::Add, "add"),
-    (TokenKind::Minus, vun_items::lang::ops::Sub, "sub"),
-    (TokenKind::Star, vun_items::lang::ops::Mul, "mul"),
-    (TokenKind::Slash, vun_items::lang::ops::Div, "div"),
-    (TokenKind::Percent, vun_items::lang::ops::Rem, "rem"),
-    (TokenKind::Amp, vun_items::lang::ops::BitAnd, "bit_and"),
-    (TokenKind::Pipe, vun_items::lang::ops::BitOr, "bit_or"),
-    (TokenKind::Caret, vun_items::lang::ops::BitXor, "bit_xor"),
-    (TokenKind::Shl, vun_items::lang::ops::Shl, "shl"),
-    (TokenKind::Shr, vun_items::lang::ops::Shr, "shr"),
-    (TokenKind::PlusPlus, vun_items::lang::ops::Concat, "concat"),
-    (TokenKind::EqEq, vun_items::lang::ops::Eq, "eq"),
-    (TokenKind::BangEq, vun_items::lang::ops::Eq, "ne"),
-    (TokenKind::Lt, vun_items::lang::ops::Ord, "lt"),
-    (TokenKind::Le, vun_items::lang::ops::Ord, "le"),
-    (TokenKind::Gt, vun_items::lang::ops::Ord, "gt"),
-    (TokenKind::Ge, vun_items::lang::ops::Ord, "ge"),
+/// A row of [`OPERATORS`].
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct OperatorsRow {
+    pub token: TokenKind,
+    pub function: vun_items::Item,
+}
+/// What infix operators desugar to (appendix B): `a op b` calls `function`, a requirement of an
+/// interface, in the witness of that interface for the type of `a`, the operands passed as the
+/// function's parameters ask. `and`, `or` and ranges are not interfaces.
+pub const OPERATORS: &[OperatorsRow] = &[
+    OperatorsRow {
+        token: TokenKind::Plus,
+        function: vun_items::lang::ops_Add::add,
+    },
+    OperatorsRow {
+        token: TokenKind::Minus,
+        function: vun_items::lang::ops_Sub::sub,
+    },
+    OperatorsRow {
+        token: TokenKind::Star,
+        function: vun_items::lang::ops_Mul::mul,
+    },
+    OperatorsRow {
+        token: TokenKind::Slash,
+        function: vun_items::lang::ops_Div::div,
+    },
+    OperatorsRow {
+        token: TokenKind::Percent,
+        function: vun_items::lang::ops_Rem::rem,
+    },
+    OperatorsRow {
+        token: TokenKind::Amp,
+        function: vun_items::lang::ops_BitAnd::bit_and,
+    },
+    OperatorsRow {
+        token: TokenKind::Pipe,
+        function: vun_items::lang::ops_BitOr::bit_or,
+    },
+    OperatorsRow {
+        token: TokenKind::Caret,
+        function: vun_items::lang::ops_BitXor::bit_xor,
+    },
+    OperatorsRow {
+        token: TokenKind::Shl,
+        function: vun_items::lang::ops_Shl::shl,
+    },
+    OperatorsRow {
+        token: TokenKind::Shr,
+        function: vun_items::lang::ops_Shr::shr,
+    },
+    OperatorsRow {
+        token: TokenKind::PlusPlus,
+        function: vun_items::lang::ops_Concat::concat,
+    },
+    OperatorsRow {
+        token: TokenKind::EqEq,
+        function: vun_items::lang::ops_Eq::eq,
+    },
+    OperatorsRow {
+        token: TokenKind::BangEq,
+        function: vun_items::lang::ops_Eq::ne,
+    },
+    OperatorsRow {
+        token: TokenKind::Lt,
+        function: vun_items::lang::ops_Ord::lt,
+    },
+    OperatorsRow {
+        token: TokenKind::Le,
+        function: vun_items::lang::ops_Ord::le,
+    },
+    OperatorsRow {
+        token: TokenKind::Gt,
+        function: vun_items::lang::ops_Ord::gt,
+    },
+    OperatorsRow {
+        token: TokenKind::Ge,
+        function: vun_items::lang::ops_Ord::ge,
+    },
 ];

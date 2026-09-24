@@ -3,7 +3,7 @@
 //! that interface's `resume` (the table `iteration`). Also the signatures of function literals
 //! and how long a call holds each parameter's borrow.
 
-use vun_desugar::{BORROWS, Extent, ITERATION};
+use vun_desugar::{Borrow, Extent, ITERATION};
 use vun_hir::tree::{Arg, Entry, ExprId, ExprKind, Param, PatKind};
 use vun_intern::Symbol;
 use vun_origin::OriginTable;
@@ -98,8 +98,7 @@ impl Env<'_, '_> {
     /// as `lang.Step(u32, ())`.
     #[must_use]
     pub fn resumed(&self, frame: Ty) -> Option<Ty> {
-        let &(_, _, _, resume, ..) = ITERATION.first()?;
-        Some(self.frame_member(frame, Symbol::intern(resume))?.signature()?.result)
+        Some(self.frame_member(frame, ITERATION.first()?.resume.symbol())?.signature()?.result)
     }
 
     /// The type of the member `name` a frame of type `frame` answers itself: a requirement of
@@ -117,13 +116,13 @@ impl Env<'_, '_> {
     /// `done` of what resuming them gives.
     #[must_use]
     pub fn frame_step(&self, frame: Ty) -> Option<(Ty, Ty)> {
-        let &(.., item, done) = ITERATION.first()?;
+        let row = ITERATION.first()?;
         let members = self.cx.get::<Members>(&self.resumed(frame)?)?;
-        let payload = |variant: &str| match members.find(Symbol::intern(variant)) {
+        let payload = |variant: vun_items::Item| match members.find(variant.symbol()) {
             Found::Variant(v) => v.payload.first()?.as_ref().ok().copied(),
             _ => None,
         };
-        Some((payload(item)?, payload(done)?))
+        Some((payload(row.each)?, payload(row.done)?))
     }
 }
 
@@ -150,9 +149,6 @@ impl Func {
     /// (`&temp T`); `tied` for a parameter that is not a borrow. `None` when its file is not read.
     #[must_use]
     pub fn extents(&self, cx: &Cx<'_>) -> Option<Vec<Extent>> {
-        let extent = |mode: Option<&str>| {
-            mode.and_then(|word| BORROWS.iter().find(|(m, ..)| *m == word)).map_or(Extent::Tied, |&(.., e)| e)
-        };
-        Some(self.modes(cx)?.into_iter().map(extent).collect())
+        Some(self.modes(cx)?.into_iter().map(|mode| mode.map_or(Extent::Tied, Borrow::extent)).collect())
     }
 }

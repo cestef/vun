@@ -33,7 +33,11 @@ impl<'a, 'db> Typer<'_, 'a, 'db> {
             let help = if found.stage == Stage::Run {
                 // The compound assignments that narrow without trapping, from the table `compound`.
                 let operators = [Narrowing::Wrap, Narrowing::Sat].map(|n| {
-                    COMPOUND.iter().find(|(.., m)| *m == n).and_then(|(t, ..)| t.text()).unwrap_or_default()
+                    COMPOUND
+                        .iter()
+                        .find(|row| row.narrowing == n)
+                        .and_then(|row| row.token.text())
+                        .unwrap_or_default()
                 });
                 Msg::new()
                     .text("widen ")

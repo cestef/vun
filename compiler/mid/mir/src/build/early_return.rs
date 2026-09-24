@@ -3,7 +3,6 @@
 
 use vun_desugar::EARLY_RETURN;
 use vun_hir::tree::ExprId;
-use vun_intern::Symbol;
 use vun_origin::OriginId;
 use vun_sema::member::MemberValue;
 
@@ -21,7 +20,7 @@ impl Builder<'_, '_, '_> {
     ) -> Result<Operand, Unbuilt> {
         let unbuilt = Unbuilt { at: origin };
         // The variant `stop` is the other one, so a failed test of `go` is a stop.
-        let &(_, _, go, _) = EARLY_RETURN.first().ok_or(unbuilt)?;
+        let go = EARLY_RETURN.first().ok_or(unbuilt)?.go;
         let typed = self.typed().ok_or(unbuilt)?;
         let method = typed.methods.get(&expr).ok_or(unbuilt)?;
         let branch = self.env.cx.get::<MemberValue>(method).map_err(|_| unbuilt)?;
@@ -32,8 +31,7 @@ impl Builder<'_, '_, '_> {
         self.locals[branched].role = Role::Unpacked;
         let branched = Place::of(branched);
         let stopped = self.fresh(origin);
-        let going =
-            self.temp(Rvalue::IsVariant { place: branched.clone(), variant: Symbol::intern(go) }, origin);
+        let going = self.temp(Rvalue::IsVariant { place: branched.clone(), variant: go.symbol() }, origin);
         self.guard(going, stopped, origin);
         let carried = |p: &Place| Rvalue::Use(Operand::Place(p.clone().project(Projection::Payload(0))));
         let result = self.temp(carried(&branched), origin);

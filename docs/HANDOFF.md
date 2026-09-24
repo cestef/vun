@@ -137,6 +137,14 @@ formats, `Format::PUBLISHED` is `.tar.zst`), `vun-http`, `vun-hash`, `vun-fs` (`
 - Traps (`trap.rs`): `Reason` includes `Reported { message, at }` (`lang.diag.error`), shown as
   `comptime.reported` with the library's message.
 
+**Typed tables** (decision 149): borrow modes are `vun_desugar::Borrow` (a row of `BORROWS`:
+`written`, `of`, `plain`, `lasting`, `item`, `before`, `after`, `access`, `extent`, `alike`);
+HIR `ExprKind::Borrow { mode: Option<Borrow> }` (`None` is reported as `syntax.unknown_borrow` by
+resolution); generated tables of several columns are row structs read by field
+(`ITERATION.first()?.resume`); `lang` members in tables are handles (`vun_items::lang::Step::yielded`,
+`lang::ops_Try::branch`), with `Item::parent` and `Item::symbol`. The literal reader reads a type
+constructor as `Literal::Made`, so handles exist for its members.
+
 **Operators** (decision 144): no operator rule in the compiler. `typeck/operator.rs` finds the
 function of the operator's interface for the left operand's type (`Env::implemented_by`) and
 types it as a call through `typeck/apply.rs` (shared with written calls: `Callee`, `Passing`,
@@ -222,7 +230,7 @@ statics at compile time), 138 (targets and lint groups as data, member handles),
 budget), 140 (`std` iterators, arguments, `Fixed` as an `Allocator`), 141 (values' types, members
 of types without a namespace, requirements through witnesses), 143 (receivers after inferred
 `$` arguments, lent parameters lent on), 145 (layout placement), 146 (`yield` as an exit, cancel
-paths), 148 (`Programs`, `Concrete`); accepted: 142 (the `lang.lint` view), 147 (namespace
+paths), 148 (`Programs`, `Concrete`), 149 (typed borrow modes and tables); accepted: 142 (the `lang.lint` view), 147 (namespace
 members reported, `corpus/planned`). New language
 rules go to `decisions.md` as proposed unless the user approves them.
 

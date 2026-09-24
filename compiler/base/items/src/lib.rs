@@ -43,6 +43,21 @@ impl Item {
     pub fn name(self) -> &'static str {
         self.path.last().copied().unwrap_or_default()
     }
+
+    /// What declares it: the namespace or type it is a member of, such as the interface
+    /// `lang.ops.Try` of its requirement `lang.ops.Try.branch`; `None` for a package.
+    #[must_use]
+    pub fn parent(self) -> Option<Self> {
+        let (_, parent) = self.path.split_last()?;
+        (!parent.is_empty()).then_some(Self { path: parent })
+    }
+
+    /// Its own name as a symbol: how a member of a type made by a constructor, such as the
+    /// variant `lang.Step.yielded` of `lang.Step(u32, ())`, is found in each type it makes.
+    #[must_use]
+    pub fn symbol(self) -> vun_intern::Symbol {
+        vun_intern::Symbol::intern(self.name())
+    }
 }
 
 impl fmt::Display for Item {

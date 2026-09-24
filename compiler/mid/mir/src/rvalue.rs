@@ -1,6 +1,6 @@
 //! What a statement computes: the operands it reads and the value it builds from them.
 
-use vun_desugar::Narrowing;
+use vun_desugar::{Borrow, Narrowing};
 use vun_grammar::TokenKind;
 use vun_hir::tree::ExprId;
 use vun_intern::Symbol;
@@ -28,10 +28,9 @@ pub enum Rvalue {
         kind: Aggregate,
         parts: Vec<Operand>,
     },
-    /// `&mode place`: a borrow of the place in the mode the word after `&` names (the table
-    /// `borrows`), `None` for a shared one.
+    /// `&mode place`: a borrow of the place in the mode `mode` (the table `borrows`).
     Ref {
-        mode: Option<Symbol>,
+        mode: Borrow,
         place: Place,
     },
     /// Resumes the frame at `frame` until it yields or returns, giving a value of the type

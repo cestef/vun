@@ -1,6 +1,5 @@
 //! Temporaries: locals holding what a form computes, typed from what they hold.
 
-use vun_intern::Symbol;
 use vun_origin::OriginId;
 use vun_sema::eval::Instantiation;
 use vun_sema::ty::{Ty, TyKind, Value};
@@ -33,9 +32,7 @@ impl Builder<'_, '_, '_> {
         match value {
             Rvalue::Use(o) => operand(o),
             Rvalue::Not { .. } | Rvalue::IsVariant { .. } => self.env.condition().ok(),
-            Rvalue::Ref { mode, place } => {
-                TyKind::borrowed_as(mode.map_or("", Symbol::as_str), place.ty(self.env.cx, &self.locals)?)
-            }
+            Rvalue::Ref { mode, place } => TyKind::borrowed_as(*mode, place.ty(self.env.cx, &self.locals)?),
             Rvalue::Aggregate {
                 kind: Aggregate::Struct { ty, .. } | Aggregate::Variant { ty, .. }, ..
             } => Some(*ty),

@@ -5,14 +5,26 @@
     reason = "generated modules share one namespace"
 )]
 use super::*;
+/// A row of [`INFIX`].
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct InfixRow {
+    pub assoc: Assoc,
+    pub tokens: &'static [TokenKind],
+}
 /// Infix operator levels, loosest first (spec 01, section 6). Each level lists its tokens by
 /// borrow, so that levels of different sizes share one type.
-pub const INFIX: &[(Assoc, &[TokenKind])] = &[
-    (Assoc::Left, &[TokenKind::Or]),
-    (Assoc::Left, &[TokenKind::And]),
-    (
-        Assoc::None,
-        &[
+pub const INFIX: &[InfixRow] = &[
+    InfixRow {
+        assoc: Assoc::Left,
+        tokens: &[TokenKind::Or],
+    },
+    InfixRow {
+        assoc: Assoc::Left,
+        tokens: &[TokenKind::And],
+    },
+    InfixRow {
+        assoc: Assoc::None,
+        tokens: &[
             TokenKind::EqEq,
             TokenKind::BangEq,
             TokenKind::Lt,
@@ -20,13 +32,37 @@ pub const INFIX: &[(Assoc, &[TokenKind])] = &[
             TokenKind::Gt,
             TokenKind::Ge,
         ],
-    ),
-    (Assoc::None, &[TokenKind::DotDot, TokenKind::DotDotEq]),
-    (Assoc::Left, &[TokenKind::Pipe]),
-    (Assoc::Left, &[TokenKind::Caret]),
-    (Assoc::Left, &[TokenKind::Amp]),
-    (Assoc::Left, &[TokenKind::Shl, TokenKind::Shr]),
-    (Assoc::Left, &[TokenKind::PlusPlus]),
-    (Assoc::Left, &[TokenKind::Plus, TokenKind::Minus]),
-    (Assoc::Left, &[TokenKind::Star, TokenKind::Slash, TokenKind::Percent]),
+    },
+    InfixRow {
+        assoc: Assoc::None,
+        tokens: &[TokenKind::DotDot, TokenKind::DotDotEq],
+    },
+    InfixRow {
+        assoc: Assoc::Left,
+        tokens: &[TokenKind::Pipe],
+    },
+    InfixRow {
+        assoc: Assoc::Left,
+        tokens: &[TokenKind::Caret],
+    },
+    InfixRow {
+        assoc: Assoc::Left,
+        tokens: &[TokenKind::Amp],
+    },
+    InfixRow {
+        assoc: Assoc::Left,
+        tokens: &[TokenKind::Shl, TokenKind::Shr],
+    },
+    InfixRow {
+        assoc: Assoc::Left,
+        tokens: &[TokenKind::PlusPlus],
+    },
+    InfixRow {
+        assoc: Assoc::Left,
+        tokens: &[TokenKind::Plus, TokenKind::Minus],
+    },
+    InfixRow {
+        assoc: Assoc::Left,
+        tokens: &[TokenKind::Star, TokenKind::Slash, TokenKind::Percent],
+    },
 ];

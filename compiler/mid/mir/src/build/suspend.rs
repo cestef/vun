@@ -6,7 +6,6 @@
 use vun_desugar::ITERATION;
 use vun_grammar::TokenKind;
 use vun_hir::tree::{ExprId, ExprKind};
-use vun_intern::Symbol;
 use vun_origin::OriginId;
 use vun_sema::ty::Ty;
 
@@ -58,7 +57,7 @@ impl Builder<'_, '_, '_> {
         mut each: impl FnMut(&mut Self, Place) -> Result<(), Unbuilt>,
     ) -> Result<Operand, Unbuilt> {
         let unbuilt = Unbuilt { at: origin };
-        let &(.., item, _) = ITERATION.first().ok_or(unbuilt)?;
+        let item = ITERATION.first().ok_or(unbuilt)?.each;
         let head = self.fresh(origin);
         self.terminate(TerminatorKind::Goto(head), origin);
         self.current = head;
@@ -67,7 +66,7 @@ impl Builder<'_, '_, '_> {
         self.locals[resumed].role = Role::Unpacked;
         let resumed = Place::of(resumed);
         let returned = self.fresh(origin);
-        let yielded = Rvalue::IsVariant { place: resumed.clone(), variant: Symbol::intern(item) };
+        let yielded = Rvalue::IsVariant { place: resumed.clone(), variant: item.symbol() };
         let cond = self.temp(yielded, origin);
         self.guard(cond, returned, origin);
         each(self, resumed.clone().project(Projection::Payload(0)))?;

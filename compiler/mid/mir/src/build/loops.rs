@@ -67,13 +67,13 @@ impl Builder<'_, '_, '_> {
             }
             ForHead::In { pat, .. } => {
                 let (frame, step) = iterator.ok_or(Unbuilt { at: origin })?;
-                let &(.., item, _) = ITERATION.first().ok_or(Unbuilt { at: origin })?;
+                let item = ITERATION.first().ok_or(Unbuilt { at: origin })?.each;
                 // Each step is taken apart: the item it carries is bound.
                 let resumed = self.temp_local(Rvalue::Resume { frame: Place::of(frame), step }, origin);
                 self.locals[resumed].role = Role::Unpacked;
                 let resumed = Place::of(resumed);
                 let done = self.fresh(origin);
-                let yielded = Rvalue::IsVariant { place: resumed.clone(), variant: Symbol::intern(item) };
+                let yielded = Rvalue::IsVariant { place: resumed.clone(), variant: item.symbol() };
                 let cond = self.temp(yielded, origin);
                 self.guard(cond, done, origin);
                 let never = self.fresh(origin);
@@ -102,9 +102,9 @@ impl Builder<'_, '_, '_> {
     /// by the `iter` of the witness the typer found.
     fn iterator(&mut self, iter: ExprId, origin: OriginId) -> Result<(Local, Ty), Unbuilt> {
         let unbuilt = Unbuilt { at: origin };
-        let &(_, function, ..) = ITERATION.first().ok_or(unbuilt)?;
+        let function = ITERATION.first().ok_or(unbuilt)?.function;
         let iteration = *self.typed().ok_or(unbuilt)?.iterations.get(&iter).ok_or(unbuilt)?;
-        let make = self.env.cx.get::<MemberValue>(&(iteration.witness, Symbol::intern(function)));
+        let make = self.env.cx.get::<MemberValue>(&(iteration.witness, function.symbol()));
         let make = make.map_err(|_| unbuilt)?;
         let value = self.operand(iter)?;
         let call = Rvalue::Call { callee: Operand::Const(make), args: vec![value] };

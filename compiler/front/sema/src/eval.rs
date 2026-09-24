@@ -9,7 +9,6 @@ use std::sync::{Arc, OnceLock};
 
 use vun_desugar::ITERATION;
 use vun_hir::tree::BinderId;
-use vun_intern::Symbol;
 use vun_query::{Cx, Cycle, Query};
 
 use crate::env::{Env, Unevaluated};
@@ -66,12 +65,12 @@ impl Resumed {
     /// (the table `iteration`).
     #[must_use]
     pub fn value(self, step: Ty) -> Option<Value> {
-        let &(.., item, done) = ITERATION.first()?;
+        let row = ITERATION.first()?;
         let (name, value) = match self {
-            Self::Yielded(value) => (item, value),
-            Self::Returned(value) => (done, value),
+            Self::Yielded(value) => (row.each, value),
+            Self::Returned(value) => (row.done, value),
         };
-        Some(Value::Variant { ty: step, name: Symbol::intern(name), payload: vec![value] })
+        Some(Value::Variant { ty: step, name: name.symbol(), payload: vec![value] })
     }
 }
 

@@ -3,7 +3,6 @@
 //! its borrows, then borrowed in the mode its parameter is written with, or read.
 
 use vun_hir::tree::ExprId;
-use vun_intern::Symbol;
 use vun_origin::OriginId;
 use vun_sema::callable::Callable;
 use vun_sema::member::MemberValue;
@@ -57,10 +56,7 @@ impl Builder<'_, '_, '_> {
                 Side::Matched(place, ty) => Self::reach(place, ty),
             };
             let value = match mode {
-                Some(mode) => {
-                    let mode = (!mode.is_empty()).then(|| Symbol::intern(mode));
-                    self.temp(Rvalue::Ref { mode, place }, origin)
-                }
+                Some(mode) => self.temp(Rvalue::Ref { mode, place }, origin),
                 None => self.temp(Rvalue::Use(Operand::Place(place)), origin),
             };
             values.push(value);

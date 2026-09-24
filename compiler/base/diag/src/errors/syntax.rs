@@ -37,3 +37,6 @@ pub const SYNTAX_CHAINED_OPERATOR: DiagId = DiagId::new(
 pub const SYNTAX_NESTING_TOO_DEEP: DiagId = DiagId::new(
     "lang.errors.syntax.nesting_too_deep",
 );
+pub const SYNTAX_UNKNOWN_BORROW: DiagId = DiagId::new(
+    "lang.errors.syntax.unknown_borrow",
+);

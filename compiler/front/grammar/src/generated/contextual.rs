@@ -5,11 +5,32 @@
     reason = "generated modules share one namespace"
 )]
 use super::*;
+/// A row of [`CONTEXTUAL`].
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ContextualRow {
+    pub text: &'static str,
+    pub context: Context,
+}
 /// Words that are keywords only in one context.
-pub const CONTEXTUAL: &[(&str, Context)] = &[
-    ("in", Context::ForPattern),
-    ("out", Context::AfterAmp),
-    ("take", Context::AfterAmp),
-    ("static", Context::AfterAmp),
-    ("temp", Context::BorrowQualifier),
+pub const CONTEXTUAL: &[ContextualRow] = &[
+    ContextualRow {
+        text: "in",
+        context: Context::ForPattern,
+    },
+    ContextualRow {
+        text: "out",
+        context: Context::AfterAmp,
+    },
+    ContextualRow {
+        text: "take",
+        context: Context::AfterAmp,
+    },
+    ContextualRow {
+        text: "static",
+        context: Context::AfterAmp,
+    },
+    ContextualRow {
+        text: "temp",
+        context: Context::BorrowQualifier,
+    },
 ];

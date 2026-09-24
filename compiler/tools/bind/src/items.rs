@@ -24,23 +24,23 @@ pub(crate) fn float(bits: u64) -> Option<Expr> {
 
 /// The type of conditions, C's `_Bool`.
 pub(crate) fn condition() -> Expr {
-    let (_, item) = FORMS.iter().find(|(f, _)| *f == Form::Condition).expect("the table names conditions");
-    Expr::decl(*item)
+    let row = FORMS.iter().find(|row| row.form == Form::Condition).expect("the table names conditions");
+    Expr::decl(row.item)
 }
 
 /// `?inner`
 pub(crate) fn option(inner: Expr) -> Expr {
-    Expr::prefix(token(TYPE_PREFIXES, lang::Option), inner)
+    Expr::prefix(token(TYPE_PREFIXES.iter().map(|row| (row.token, row.item)), lang::Option), inner)
 }
 
 /// `*inner`
 pub(crate) fn pointer(inner: Expr) -> Expr {
-    Expr::prefix(token(TYPE_PREFIXES, lang::mem::Ptr), inner)
+    Expr::prefix(token(TYPE_PREFIXES.iter().map(|row| (row.token, row.item)), lang::mem::Ptr), inner)
 }
 
 /// `unsafe inner`
 pub(crate) fn unchecked(inner: Expr) -> Expr {
-    Expr::prefix(token(MARKERS, lang::safety::r#unsafe), inner)
+    Expr::prefix(token(MARKERS.iter().map(|row| (row.token, row.item)), lang::safety::r#unsafe), inner)
 }
 
 /// `#[lang.abi.c] inner`
@@ -66,7 +66,7 @@ pub(crate) fn align(bytes: u64) -> Expr {
     Expr::call(Expr::decl(lang::layout::align), vec![Expr::Int(i128::from(bytes))])
 }
 
-/// The token `table` writes `item` with.
-fn token(table: &[(TokenKind, Item)], item: Item) -> TokenKind {
-    table.iter().find(|(_, i)| *i == item).map(|(t, _)| *t).expect("the table writes the item")
+/// The token a table's `rows` write `item` with.
+fn token(mut rows: impl Iterator<Item = (TokenKind, Item)>, item: Item) -> TokenKind {
+    rows.find(|&(_, i)| i == item).map(|(t, _)| t).expect("the table writes the item")
 }

@@ -11,66 +11,76 @@ use super::*;
     reason = "tables name the grammar's kinds"
 )]
 use vun_grammar::*;
+/// A row of [`BORROWS`].
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct BorrowsRow {
+    pub mode: &'static str,
+    pub item: vun_items::Item,
+    pub before: PlaceState,
+    pub after: PlaceState,
+    pub access: Access,
+    pub extent: Extent,
+}
 /// Borrow types by the words after `&` (appendix B): `&T` is `lang.mem.Ref(T)`. Each mode is named
 /// by the transition it performs on the place it borrows (spec 05, section 2): the state it
 /// needs before, and the state the place has after; by the access it leaves others; and by how
 /// long a call holds it. Borrows of one transition and access are accepted for each other, but
 /// where `&static` is written.
-pub const BORROWS: &[(&str, vun_items::Item, PlaceState, PlaceState, Access, Extent)] = &[
-    (
-        "",
-        vun_items::lang::mem::Ref,
-        PlaceState::Init,
-        PlaceState::Init,
-        Access::Shared,
-        Extent::Tied,
-    ),
-    (
-        "mut",
-        vun_items::lang::mem::RefMut,
-        PlaceState::Init,
-        PlaceState::Init,
-        Access::Exclusive,
-        Extent::Tied,
-    ),
-    (
-        "out",
-        vun_items::lang::mem::RefOut,
-        PlaceState::Uninit,
-        PlaceState::Init,
-        Access::Exclusive,
-        Extent::Tied,
-    ),
-    (
-        "take",
-        vun_items::lang::mem::RefTake,
-        PlaceState::Init,
-        PlaceState::Uninit,
-        Access::Exclusive,
-        Extent::Tied,
-    ),
-    (
-        "temp",
-        vun_items::lang::mem::RefTemp,
-        PlaceState::Init,
-        PlaceState::Init,
-        Access::Shared,
-        Extent::Temp,
-    ),
-    (
-        "temp mut",
-        vun_items::lang::mem::RefTempMut,
-        PlaceState::Init,
-        PlaceState::Init,
-        Access::Exclusive,
-        Extent::Temp,
-    ),
-    (
-        "static",
-        vun_items::lang::mem::RefStatic,
-        PlaceState::Init,
-        PlaceState::Init,
-        Access::Shared,
-        Extent::Static,
-    ),
+pub const BORROWS: &[BorrowsRow] = &[
+    BorrowsRow {
+        mode: "",
+        item: vun_items::lang::mem::Ref,
+        before: PlaceState::Init,
+        after: PlaceState::Init,
+        access: Access::Shared,
+        extent: Extent::Tied,
+    },
+    BorrowsRow {
+        mode: "mut",
+        item: vun_items::lang::mem::RefMut,
+        before: PlaceState::Init,
+        after: PlaceState::Init,
+        access: Access::Exclusive,
+        extent: Extent::Tied,
+    },
+    BorrowsRow {
+        mode: "out",
+        item: vun_items::lang::mem::RefOut,
+        before: PlaceState::Uninit,
+        after: PlaceState::Init,
+        access: Access::Exclusive,
+        extent: Extent::Tied,
+    },
+    BorrowsRow {
+        mode: "take",
+        item: vun_items::lang::mem::RefTake,
+        before: PlaceState::Init,
+        after: PlaceState::Uninit,
+        access: Access::Exclusive,
+        extent: Extent::Tied,
+    },
+    BorrowsRow {
+        mode: "temp",
+        item: vun_items::lang::mem::RefTemp,
+        before: PlaceState::Init,
+        after: PlaceState::Init,
+        access: Access::Shared,
+        extent: Extent::Temp,
+    },
+    BorrowsRow {
+        mode: "temp mut",
+        item: vun_items::lang::mem::RefTempMut,
+        before: PlaceState::Init,
+        after: PlaceState::Init,
+        access: Access::Exclusive,
+        extent: Extent::Temp,
+    },
+    BorrowsRow {
+        mode: "static",
+        item: vun_items::lang::mem::RefStatic,
+        before: PlaceState::Init,
+        after: PlaceState::Init,
+        access: Access::Shared,
+        extent: Extent::Static,
+    },
 ];

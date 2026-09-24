@@ -147,7 +147,7 @@ impl Writer {
                 self.token(TokenKind::Underscore);
                 Ok(())
             }
-            Literal::Enum(_) | Literal::Namespace(_) => Err(Unwritable::Type),
+            Literal::Enum(_) | Literal::Namespace(_) | Literal::Made(_) => Err(Unwritable::Type),
             Literal::Opaque => Err(Unwritable::Opaque),
         }
     }

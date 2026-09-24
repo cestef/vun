@@ -11,12 +11,36 @@ use super::*;
     reason = "tables name the grammar's kinds"
 )]
 use vun_grammar::*;
+/// A row of [`FORMS`].
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct FormsRow {
+    pub form: Form,
+    pub item: vun_items::Item,
+}
 /// The item each form means.
-pub const FORMS: &[(Form, vun_items::Item)] = &[
-    (Form::Condition, vun_items::lang::bool),
-    (Form::Truth, vun_items::lang::r#true),
-    (Form::Range, vun_items::lang::Range),
-    (Form::Bounds, vun_items::lang::Bounds),
-    (Form::Array, vun_items::lang::mem::Array),
-    (Form::Slice, vun_items::lang::mem::Slice),
+pub const FORMS: &[FormsRow] = &[
+    FormsRow {
+        form: Form::Condition,
+        item: vun_items::lang::bool,
+    },
+    FormsRow {
+        form: Form::Truth,
+        item: vun_items::lang::r#true,
+    },
+    FormsRow {
+        form: Form::Range,
+        item: vun_items::lang::Range,
+    },
+    FormsRow {
+        form: Form::Bounds,
+        item: vun_items::lang::Bounds,
+    },
+    FormsRow {
+        form: Form::Array,
+        item: vun_items::lang::mem::Array,
+    },
+    FormsRow {
+        form: Form::Slice,
+        item: vun_items::lang::mem::Slice,
+    },
 ];

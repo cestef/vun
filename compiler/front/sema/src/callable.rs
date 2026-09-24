@@ -3,10 +3,8 @@
 //! included, so a call reads from where they are written which arguments are known at compile
 //! time, which a call may leave out, and in which mode each is borrowed.
 
-use vun_desugar::MARKERS;
-use vun_grammar::TokenKind;
+use vun_desugar::{Borrow, MARKERS};
 use vun_hir::tree::{BinderId, Entry, ExprId, ExprKind, Param, PatKind};
-use vun_intern::Symbol;
 use vun_query::Cx;
 
 use crate::Primitive;
@@ -60,7 +58,7 @@ impl Callable {
                 let mut expr = hir.decls[decl.decl.id].ty?;
                 // `unsafe (...) -> T`: the prefixes mark the signature (the table `markers`).
                 while let ExprKind::Prefix { op, operand, .. } = &hir.exprs[expr].kind
-                    && MARKERS.iter().any(|(t, _)| t == op)
+                    && MARKERS.iter().any(|row| row.token == *op)
                 {
                     expr = *operand;
                 }
@@ -77,7 +75,7 @@ impl Callable {
 
     /// The borrow mode each parameter's annotation writes: see [`Written::modes`].
     #[must_use]
-    pub fn modes(&self, env: &Env<'_, '_>) -> Option<Vec<Option<&'static str>>> {
+    pub fn modes(&self, env: &Env<'_, '_>) -> Option<Vec<Option<Borrow>>> {
         self.written(env)?.modes()
     }
 }
@@ -97,7 +95,7 @@ impl Func {
 
     /// The borrow mode each parameter's annotation writes: see [`Written::modes`].
     #[must_use]
-    pub fn modes(&self, cx: &Cx<'_>) -> Option<Vec<Option<&'static str>>> {
+    pub fn modes(&self, cx: &Cx<'_>) -> Option<Vec<Option<Borrow>>> {
         self.written(cx)?.modes()
     }
 }
@@ -133,14 +131,13 @@ impl Written<'_, '_> {
         Some(self.params()?.iter().map(|(b, _)| b.is_some_and(|b| hir.binders[b].comptime)).collect())
     }
 
-    /// The borrow mode each parameter's annotation writes, the words after `&` (`""` for `&T`),
-    /// whatever the `$` parameters: known before a call is instantiated. `None` for a parameter
-    /// not written as a borrow.
+    /// The borrow mode each parameter's annotation writes, whatever the `$` parameters: known
+    /// before a call is instantiated. `None` for a parameter not written as a borrow.
     #[must_use]
-    pub fn modes(&self) -> Option<Vec<Option<&'static str>>> {
+    pub fn modes(&self) -> Option<Vec<Option<Borrow>>> {
         let hir = &self.env.parsed.hir;
         let mode = |(_, ty): &(Option<BinderId>, Option<ExprId>)| match hir.exprs[(*ty)?].kind {
-            ExprKind::Prefix { op: TokenKind::Amp, mode, .. } => Some(mode.map_or("", Symbol::as_str)),
+            ExprKind::Borrow { mode, .. } => mode,
             _ => None,
         };
         Some(self.params()?.iter().map(mode).collect())

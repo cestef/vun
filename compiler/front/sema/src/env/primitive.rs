@@ -46,7 +46,7 @@ impl Env<'_, '_> {
         // `unsafe (...) -> T`: the prefixes mark the signature (the table `markers`).
         let mut markers = Vec::new();
         while let ExprKind::Prefix { op, operand, .. } = &hir.exprs[annotation].kind
-            && MARKERS.iter().any(|(t, _)| t == op)
+            && MARKERS.iter().any(|row| row.token == *op)
         {
             markers.push(*op);
             annotation = *operand;

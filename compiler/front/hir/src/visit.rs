@@ -168,7 +168,11 @@ pub fn walk_expr<V: Visitor + ?Sized>(v: &mut V, hir: &Hir, expr: ExprId) {
             v.expr(hir, *a);
             v.expr(hir, *b);
         }
-        ExprKind::Prefix { operand, .. } | ExprKind::Postfix { operand, .. } => v.expr(hir, *operand),
+        ExprKind::Prefix { operand, .. }
+        | ExprKind::Borrow { operand, .. }
+        | ExprKind::Postfix { operand, .. } => {
+            v.expr(hir, *operand);
+        }
         ExprKind::Infix { left, right, .. } => {
             v.expr(hir, *left);
             each(v, hir, right);

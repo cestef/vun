@@ -40,8 +40,8 @@ impl Typer<'_, '_, '_> {
             // `x op= y` narrows back to the type of `x` (spec 04, rule 9): a trap site, not a
             // type error.
             Stmt::Assign { op, place, value, .. } => {
-                if let Some(&(_, binary, _)) = COMPOUND.iter().find(|(token, ..)| token == op) {
-                    self.compound(*place, binary, *value);
+                if let Some(row) = COMPOUND.iter().find(|row| row.token == *op) {
+                    self.compound(*place, row.op, *value);
                 } else {
                     let place_known = self.typed(*place);
                     let found = self.typed_as(*value, place_known.map(|k| k.ty));

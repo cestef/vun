@@ -15,11 +15,10 @@ mod free;
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use vun_desugar::{Access, BORROWS, Extent};
+use vun_desugar::{Borrow, Extent};
 use vun_diag::{ChildKind, DiagCtxt, DiagId, Diagnostic, Msg};
 use vun_grammar::TokenKind;
 use vun_index::{IndexVec, index};
-use vun_intern::Symbol;
 use vun_mir::{BlockId, Body, Local, Mir, Operand, Place, Projection, Rvalue};
 use vun_origin::OriginId;
 use vun_query::{Cx, Query};
@@ -85,9 +84,7 @@ enum Source {
 /// A borrow taken in the body.
 struct Loan {
     place: Place,
-    /// The word after `&` (the table `borrows`), empty for a shared borrow.
-    mode: Option<Symbol>,
-    access: Access,
+    mode: Borrow,
     source: Source,
     origin: OriginId,
 }
@@ -124,7 +121,6 @@ impl<'b> Checker<'b> {
                 let loan = loans.push(Loan {
                     place: place.clone(),
                     mode: *mode,
-                    access: Self::access(*mode),
                     source: Source::Taken,
                     origin: stmt.origin,
                 });
@@ -136,13 +132,8 @@ impl<'b> Checker<'b> {
             let d = &body.locals[param];
             let Some((mode, ..)) = d.ty.and_then(|t| t.borrowing()) else { continue };
             if d.ty.and_then(|t| t.extent()) == Some(Extent::Temp) {
-                let mode = (!mode.is_empty()).then(|| Symbol::intern(mode));
                 let place = Place::of(param).project(Projection::Deref);
-                let access = Self::access(mode);
-                lent.push((
-                    param,
-                    loans.push(Loan { place, mode, access, source: Source::Lent, origin: d.origin }),
-                ));
+                lent.push((param, loans.push(Loan { place, mode, source: Source::Lent, origin: d.origin })));
             }
         }
         let diag = DiagCtxt::new();
@@ -161,12 +152,6 @@ impl<'b> Checker<'b> {
         self.diag
     }
 
-    /// What others may do with a place borrowed in `mode` (the table `borrows`).
-    fn access(mode: Option<Symbol>) -> Access {
-        let word = mode.map_or("", Symbol::as_str);
-        BORROWS.iter().find(|(m, ..)| *m == word).map_or(Access::Shared, |&(_, _, _, _, access, ..)| access)
-    }
-
     /// Reports at `origin`, pointing at where `loan` was taken when given.
     fn report(&mut self, id: DiagId, origin: OriginId, msg: Msg, loan: Option<LoanId>, help: Option<Msg>) {
         if self.reported.insert((id.clone(), origin)) {
@@ -176,8 +161,7 @@ impl<'b> Checker<'b> {
             }
             if let Some(loan) = loan {
                 let l = &self.loans[loan];
-                let spelled =
-                    [TokenKind::Amp.text().unwrap_or_default(), l.mode.map_or("", Symbol::as_str)].concat();
+                let spelled = [TokenKind::Amp.text().unwrap_or_default(), &l.mode.to_string()].concat();
                 let verb = match l.source {
                     Source::Taken => "borrowed as ",
                     Source::Lent => "lent as ",

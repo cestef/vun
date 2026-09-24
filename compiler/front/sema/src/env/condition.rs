@@ -15,8 +15,8 @@ impl Env<'_, '_> {
     /// # Errors
     /// Returns why the item has no value here.
     pub fn form(&self, form: Form) -> Result<Value, Unevaluated> {
-        let (_, item) = FORMS.iter().find(|(f, _)| *f == form).ok_or(Unevaluated::Absent)?;
-        self.item(*item)
+        let row = FORMS.iter().find(|row| row.form == form).ok_or(Unevaluated::Absent)?;
+        self.item(row.item)
     }
 
     /// The type of conditions.

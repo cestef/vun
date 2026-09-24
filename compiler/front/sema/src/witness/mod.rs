@@ -101,8 +101,8 @@ impl Env<'_, '_> {
         if let Some(args) = ty.implements(constructor) {
             return Some(args);
         }
-        let (interface, _) = CALLS.first()?;
-        if self.item(*interface).ok()? != *constructor {
+        let interface = CALLS.first()?.parent()?;
+        if self.item(interface).ok()? != *constructor {
             return None;
         }
         let signature = ty.callable()?;

@@ -11,9 +11,21 @@ use super::*;
     reason = "tables name the grammar's kinds"
 )]
 use vun_grammar::*;
-/// What prefix operators desugar to (appendix B): `op a` is `function(a)` of the interface at
-/// `interface`, for the type of `a`. `!` is not an interface: it negates a condition (`forms`).
-pub const PREFIX_OPERATORS: &[(TokenKind, vun_items::Item, &str)] = &[
-    (TokenKind::Minus, vun_items::lang::ops::Neg, "neg"),
-    (TokenKind::Tilde, vun_items::lang::ops::Not, "not"),
+/// A row of [`PREFIX_OPERATORS`].
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct PrefixOperatorsRow {
+    pub token: TokenKind,
+    pub function: vun_items::Item,
+}
+/// What prefix operators desugar to (appendix B): `op a` calls `function` in the witness of its
+/// interface for the type of `a`. `!` is not an interface: it negates a condition (`forms`).
+pub const PREFIX_OPERATORS: &[PrefixOperatorsRow] = &[
+    PrefixOperatorsRow {
+        token: TokenKind::Minus,
+        function: vun_items::lang::ops_Neg::neg,
+    },
+    PrefixOperatorsRow {
+        token: TokenKind::Tilde,
+        function: vun_items::lang::ops_Not::not,
+    },
 ];

@@ -60,7 +60,7 @@ impl Typer<'_, '_, '_> {
             ExprKind::Block(block) => self.block_value(*block, self.expected(expr)),
             ExprKind::Prefix { op: TokenKind::Dollar, operand, .. } => self.comptime(expr, *operand),
             ExprKind::Prefix { op: TokenKind::Bang, operand, .. } => self.logic(&[*operand]),
-            ExprKind::Prefix { op: TokenKind::Amp, mode, operand } => self.borrow(expr, *mode, *operand),
+            ExprKind::Borrow { mode: Some(mode), operand } => self.borrow(expr, *mode, *operand),
             ExprKind::Prefix { op: TokenKind::Unsafe, operand, .. } => self.vouching(expr, *operand),
             ExprKind::Attributed { attrs, inner } => self.attributed(expr, attrs, *inner),
             ExprKind::Infix { op: TokenKind::And | TokenKind::Or, left, right: Some(right) } => {

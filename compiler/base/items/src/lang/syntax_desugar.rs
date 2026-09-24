@@ -6,12 +6,12 @@
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
 use crate::Item;
-/// What infix operators desugar to (appendix B): `a op b` is `function(a, b)` of the interface at
-/// `interface`, for the type of `a`, the operands passed as the function's parameters ask. `and`,
-/// `or` and ranges are not interfaces.
+/// What infix operators desugar to (appendix B): `a op b` calls `function`, a requirement of an
+/// interface, in the witness of that interface for the type of `a`, the operands passed as the
+/// function's parameters ask. `and`, `or` and ranges are not interfaces.
 pub const operators: Item = Item::new(&["lang", "syntax", "desugar", "operators"]);
-/// What prefix operators desugar to (appendix B): `op a` is `function(a)` of the interface at
-/// `interface`, for the type of `a`. `!` is not an interface: it negates a condition (`forms`).
+/// What prefix operators desugar to (appendix B): `op a` calls `function` in the witness of its
+/// interface for the type of `a`. `!` is not an interface: it negates a condition (`forms`).
 pub const prefix_operators: Item = Item::new(
     &["lang", "syntax", "desugar", "prefix_operators"],
 );
@@ -49,15 +49,15 @@ pub const Relation: Item = Item::new(&["lang", "syntax", "desugar", "Relation"])
 /// function literal, a function type or a declaration, and the prefixes of the table `markers`.
 pub const fn_markers: Item = Item::new(&["lang", "syntax", "desugar", "fn_markers"]);
 /// What calling a value that is not a function literal means (spec 01, section 4): `f(a, b)` is
-/// `function(&mut f, (a, b))` of `interface`, which function values and closures implement, so a
-/// parameter `$F: Call((T), U)` takes either.
+/// `function(&mut f, (a, b))` of the witness of its interface, which function values and closures
+/// implement, so a parameter `$F: Call((T), U)` takes either.
 pub const calls: Item = Item::new(&["lang", "syntax", "desugar", "calls"]);
-/// What `e?` means (appendix B): the witness of `interface` for the type of `e` gives
-/// `function`, whose result carries the value in the variant `go` and what the function returns
+/// What `e?` means (appendix B): the witness of the interface of `function` for the type of `e`
+/// gives it, and its result carries the value in the variant `go` and what the function returns
 /// in the variant `stop`.
 pub const early_return: Item = Item::new(&["lang", "syntax", "desugar", "early_return"]);
-/// What `for p in e` drives (appendix B): the witness of `interface` for the type of `e` gives
-/// the iterator through `function` and names its coroutine interface `iterator`; each item is
+/// What `for p in e` drives (appendix B): the witness of the interface of `function` for the type
+/// of `e` gives the iterator through it and names its coroutine interface `iterator`; each item is
 /// the payload of the variant `each` of what the interface's `resume` returns, and the variant
 /// `done` carries what the coroutine returns. A frame answers the interface's `resume` and `end`
 /// itself (spec 06, section 1).

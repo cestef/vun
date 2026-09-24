@@ -12,7 +12,6 @@ mod transfer;
 
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
-use vun_desugar::BORROWS;
 use vun_diag::{ChildKind, DiagCtxt, DiagId, Diagnostic, Msg, errors};
 use vun_index::{Idx, IndexVec};
 use vun_intern::Symbol;
@@ -68,8 +67,7 @@ impl<'b> Analysis<'b> {
             .iter()
             .filter_map(|&p| {
                 let (mode, ..) = body.locals[p].ty?.borrowing()?;
-                let &(_, _, before, after, ..) = BORROWS.iter().find(|(m, ..)| *m == mode)?;
-                Some((p, (State::from(before), State::from(after))))
+                Some((p, (State::from(mode.before()), State::from(mode.after()))))
             })
             .collect();
         Self {

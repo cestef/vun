@@ -124,8 +124,12 @@ defined in exactly one place and cannot drift.
 `cargo gen` reads the grammar with the compiler's own parser as literal data (the
 reader of `build.vun` manifests, spec 12) and translates each declaration by the shape of its
 value: a `PascalCase` record of lists is a kind, an `enum` an enum, any other list a table whose
-element type is inferred; a table's `item` and `interface` columns name declarations of `lang`,
-and are generated as their handles. `grammar.vun` goes to `vun-grammar`, which the parser is built
+element type is inferred; a table whose rows are records of several fields is a list of a row
+struct named after it (`iteration` holds `IterationRow`s), read by field name, and a column of
+paths into `lang` (`"lang.ops.Try.branch"`) is generated as their handles, members of type
+constructors and interface requirements included. Rust reads what a handle declares through it
+(`Item::parent`, `Item::symbol`), and a borrow mode is a row of the table `borrows`
+(`vun_desugar::Borrow`), never its words. `grammar.vun` goes to `vun-grammar`, which the parser is built
 from, and `desugar.vun` to `vun-desugar`, which only later stages read. The same task generates the
 diagnostic ids of `vun-diag` from `lang/errors.vun`, a typed handle (`vun_items::Item`) for every
 public declaration and namespace of `lang` and `std` (`vun_items::lang::int::unsigned`), through

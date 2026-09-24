@@ -11,14 +11,41 @@ use super::*;
     reason = "tables name the grammar's kinds"
 )]
 use vun_grammar::*;
+/// A row of [`FN_MARKERS`].
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct FnMarkersRow {
+    pub item: vun_items::Item,
+    pub relation: Relation,
+}
 /// The properties a function type carries as markers (spec 07, section 4): attributes on a
 /// function literal, a function type or a declaration, and the prefixes of the table `markers`.
-pub const FN_MARKERS: &[(vun_items::Item, Relation)] = &[
-    (vun_items::lang::safety::r#unsafe, Relation::Duty),
-    (vun_items::lang::target::require, Relation::Duty),
-    (vun_items::lang::panic::never, Relation::Guarantee),
-    (vun_items::lang::stack::max, Relation::Bound),
-    (vun_items::lang::abi::c, Relation::Identity),
-    (vun_items::lang::abi::interrupt, Relation::Identity),
-    (vun_items::lang::abi::naked, Relation::Identity),
+pub const FN_MARKERS: &[FnMarkersRow] = &[
+    FnMarkersRow {
+        item: vun_items::lang::safety::r#unsafe,
+        relation: Relation::Duty,
+    },
+    FnMarkersRow {
+        item: vun_items::lang::target::require,
+        relation: Relation::Duty,
+    },
+    FnMarkersRow {
+        item: vun_items::lang::panic::never,
+        relation: Relation::Guarantee,
+    },
+    FnMarkersRow {
+        item: vun_items::lang::stack::max,
+        relation: Relation::Bound,
+    },
+    FnMarkersRow {
+        item: vun_items::lang::abi::c,
+        relation: Relation::Identity,
+    },
+    FnMarkersRow {
+        item: vun_items::lang::abi::interrupt,
+        relation: Relation::Identity,
+    },
+    FnMarkersRow {
+        item: vun_items::lang::abi::naked,
+        relation: Relation::Identity,
+    },
 ];

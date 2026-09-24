@@ -2,10 +2,9 @@
 
 use std::sync::Arc;
 
-use vun_desugar::{BORROWS, Form, MARKERS, TYPE_PREFIXES};
+use vun_desugar::{Borrow, Form, MARKERS, TYPE_PREFIXES};
 use vun_grammar::TokenKind;
 use vun_hir::tree::{BlockId, Cond, Entry, ExprId, ExprKind, List, Lit, Param};
-use vun_intern::Symbol;
 use vun_origin::OriginTable;
 
 use super::{Env, Unevaluated};
@@ -41,14 +40,16 @@ impl Env<'_, '_> {
             }
             ExprKind::Enum { .. } => Ok(self.nominal(expr, NominalKind::Enum)),
             ExprKind::Struct(_) => Ok(self.nominal(expr, NominalKind::Struct)),
-            ExprKind::Prefix { op: TokenKind::Amp, mode, operand } => self.borrow(expr, *mode, *operand),
+            ExprKind::Borrow { mode, operand } => {
+                self.borrow(expr, mode.ok_or(Unevaluated::Unsupported)?, *operand)
+            }
             ExprKind::Prefix { op, operand, .. }
-                if let Some((_, item)) = TYPE_PREFIXES.iter().find(|(t, _)| t == op) =>
+                if let Some(row) = TYPE_PREFIXES.iter().find(|row| row.token == *op) =>
             {
                 let ty = self.ty(*operand)?;
-                self.apply(self.item(*item)?, vec![Value::Type(ty)])
+                self.apply(self.item(row.item)?, vec![Value::Type(ty)])
             }
-            ExprKind::Prefix { op, operand, .. } if MARKERS.iter().any(|(t, _)| t == op) => {
+            ExprKind::Prefix { op, operand, .. } if MARKERS.iter().any(|row| row.token == *op) => {
                 self.marked(*op, *operand)
             }
             ExprKind::ArrayType { len, elem } => {
@@ -144,16 +145,14 @@ impl Env<'_, '_> {
         }
     }
 
-    /// `&T`, `&mut T`, ...: the borrow type the word after `&` names (appendix B), applied to the
-    /// type `operand`. A borrow of a value exists at run time only.
-    fn borrow(&self, expr: ExprId, mode: Option<Symbol>, operand: ExprId) -> Result<Value, Unevaluated> {
-        let word = mode.map_or("", Symbol::as_str);
-        let (_, item, ..) = BORROWS.iter().find(|(m, ..)| *m == word).ok_or(Unevaluated::Unsupported)?;
+    /// `&T`, `&mut T`, ...: the borrow type of the mode (appendix B), applied to the type
+    /// `operand`. A borrow of a value exists at run time only.
+    fn borrow(&self, expr: ExprId, mode: Borrow, operand: ExprId) -> Result<Value, Unevaluated> {
         let value = self.eval_as(operand, self.type_of(expr).and_then(|t| t.pointee()))?;
         match value.as_type() {
-            Some(ty) => self.apply(self.item(*item)?, vec![Value::Type(ty)]),
+            Some(ty) => self.apply(self.item(mode.item())?, vec![Value::Type(ty)]),
             // A shared borrow of a compile-time value reads the value, which never changes.
-            None if word.is_empty() => Ok(value),
+            None if mode.is_plain() => Ok(value),
             None => Err(Unevaluated::Runtime),
         }
     }

@@ -1,7 +1,7 @@
 //! How statements change and check place states: reads need `init`, writes make it, borrows
 //! need and leave the states their mode names (the table `borrows`).
 
-use vun_desugar::BORROWS;
+use vun_desugar::Borrow;
 use vun_diag::{Msg, errors};
 use vun_intern::Symbol;
 use vun_mir::{BlockId, Local, Operand, Place, Projection, Rvalue};
@@ -85,9 +85,8 @@ impl Analysis<'_> {
 
     /// `&mode place`: the place must be in the state the mode needs, and is left in the state
     /// the mode gives.
-    fn borrow(&mut self, mode: Option<Symbol>, place: &Place, states: &mut States, origin: OriginId) {
-        let word = mode.map_or("", Symbol::as_str);
-        let Some(&(_, _, before, after, ..)) = BORROWS.iter().find(|(m, ..)| *m == word) else { return };
+    fn borrow(&mut self, mode: Borrow, place: &Place, states: &mut States, origin: OriginId) {
+        let (before, after) = (mode.before(), mode.after());
         if State::from(before) == State::Init {
             self.read(place, states, origin);
         }

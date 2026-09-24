@@ -43,3 +43,6 @@ pub const chained_operator: Item = Item::new(
 pub const nesting_too_deep: Item = Item::new(
     &["lang", "errors", "syntax", "nesting_too_deep"],
 );
+pub const unknown_borrow: Item = Item::new(
+    &["lang", "errors", "syntax", "unknown_borrow"],
+);

@@ -7,7 +7,7 @@
 #[rustfmt::skip]
 mod generated;
 
-pub use generated::*;
+mod borrow;
 
-/// Separates the words of a borrow mode in the table `borrows`: `temp mut`.
-pub const MODE_SEPARATOR: &str = " ";
+pub use borrow::{Borrow, MODE_SEPARATOR};
+pub use generated::*;

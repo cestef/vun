@@ -11,3 +11,4 @@ workspace = true
 
 [dependencies]
 vun-grammar.workspace = true
+vun-intern.workspace = true

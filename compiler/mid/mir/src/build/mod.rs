@@ -210,7 +210,9 @@ impl<'a, 'db> Builder<'_, 'a, 'db> {
             ExprKind::Member { .. }
             | ExprKind::Index { .. }
             | ExprKind::Postfix { op: TokenKind::DotStar, .. } => self.read(expr),
-            ExprKind::Prefix { op: TokenKind::Amp, mode, operand } => self.borrow(expr, *mode, *operand),
+            ExprKind::Borrow { mode, operand } => {
+                self.borrow(expr, mode.ok_or(Unbuilt { at: origin })?, *operand)
+            }
             // `unsafe e` runs `e`; what it permits is checked, not lowered.
             ExprKind::Prefix { op: TokenKind::Unsafe, operand, .. } => self.operand(*operand),
             ExprKind::Prefix { op: TokenKind::Dollar, operand, .. }

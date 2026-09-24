@@ -50,20 +50,20 @@ impl Typer<'_, '_, '_> {
         left: ExprId,
         right: ExprId,
     ) -> Option<Known> {
-        let &(_, interface, function) = OPERATORS.iter().find(|(token, ..)| *token == op)?;
-        self.operator(Operation::Expr(expr), expr, (interface, function), left, &[Argument::Expr(right)])
+        let function = OPERATORS.iter().find(|row| row.token == op)?.function;
+        self.operator(Operation::Expr(expr), expr, function, left, &[Argument::Expr(right)])
     }
 
     /// `op operand`, written at `expr`, for an operator of the table `prefix_operators`.
     pub(super) fn prefix(&mut self, expr: ExprId, op: TokenKind, operand: ExprId) -> Option<Known> {
-        let &(_, interface, function) = PREFIX_OPERATORS.iter().find(|(token, ..)| *token == op)?;
-        self.operator(Operation::Expr(expr), expr, (interface, function), operand, &[])
+        let function = PREFIX_OPERATORS.iter().find(|row| row.token == op)?.function;
+        self.operator(Operation::Expr(expr), expr, function, operand, &[])
     }
 
     /// `x op= y`, whose operation belongs to the place `x` (spec 04, rule 9).
     pub(super) fn compound(&mut self, place: ExprId, op: TokenKind, value: ExprId) -> Option<Known> {
-        let &(_, interface, function) = OPERATORS.iter().find(|(token, ..)| *token == op)?;
-        self.operator(Operation::Assign(place), value, (interface, function), place, &[Argument::Expr(value)])
+        let function = OPERATORS.iter().find(|row| row.token == op)?.function;
+        self.operator(Operation::Assign(place), value, function, place, &[Argument::Expr(value)])
     }
 
     /// The test `at` of a pattern, `receiver op` the value matched, of type `matched`: a value
@@ -75,23 +75,23 @@ impl Typer<'_, '_, '_> {
         receiver: ExprId,
         matched: Ty,
     ) -> Option<Known> {
-        let &(_, interface, function) = OPERATORS.iter().find(|(token, ..)| *token == op)?;
-        self.operator(at, receiver, (interface, function), receiver, &[Argument::Matched(matched)])
+        let function = OPERATORS.iter().find(|row| row.token == op)?.function;
+        self.operator(at, receiver, function, receiver, &[Argument::Matched(matched)])
     }
 
-    /// The call of `function` of `interface` for the type of `receiver`, with the operands
-    /// `args` after it. Its value is known when its operands are.
+    /// The call of `function`, a requirement of an interface, for the type of `receiver`, with
+    /// the operands `args` after it. Its value is known when its operands are.
     fn operator(
         &mut self,
         at: Operation,
         site: ExprId,
-        (interface, function): (Item, &str),
+        function: Item,
         receiver: ExprId,
         args: &[Argument],
     ) -> Option<Known> {
         let left = self.typed(receiver)?;
         let ty = left.ty.through_borrows();
-        let function = Symbol::intern(function);
+        let (interface, function) = (function.parent()?, function.symbol());
         let owner = if matches!(&*ty, TyKind::Param(_) | TyKind::Frame(_)) {
             // In a generic body, what the interface requires of its parameter.
             let Ok(Value::Interface(f)) = self.env().item(interface) else { return None };

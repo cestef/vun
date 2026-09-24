@@ -19,7 +19,7 @@ use vun_syntax::cst::Cst;
 use vun_syntax::literal::Decl;
 use vun_syntax::tokens::Tokens;
 
-use crate::names::module;
+use crate::names::raw;
 use crate::{errors, grammar, items, primitives};
 
 pub(crate) struct Generator {
@@ -144,7 +144,7 @@ impl Generator {
             prettyplease::unparse(&file)
         };
         let declared = modules.iter().map(|m| {
-            let name = module(&m.name);
+            let name = raw(&m.name);
             match m.access {
                 Access::Glob => quote! { mod #name; pub use #name::*; },
                 Access::Path => quote! { pub mod #name; },

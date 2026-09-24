@@ -39,7 +39,7 @@ impl TyKind {
         // borrow does; only where `&static` is written is it required (spec 05, section 4).
         if let (Some((mode, p, _)), Some((found_mode, _, pointee))) = (self.borrowing(), found.borrowing())
             && mode != found_mode
-            && Self::alike(mode, found_mode)
+            && mode.alike(found_mode)
             && self.extent() != Some(Extent::Static)
         {
             return self.accepts(&Self::Primitive(p, vec![Value::Type(pointee)]).intern());
@@ -101,7 +101,7 @@ impl TyKind {
         // Borrows of one transition and access meet in the shorter extent, a `&static` one as
         // the other; borrows of arrays of one item type meet as a borrow of a slice.
         if let (Some((mode, p, a)), Some((other_mode, q, b))) = (self.borrowing(), other.borrowing())
-            && Self::alike(mode, other_mode)
+            && mode.alike(other_mode)
             && (a != b || mode != other_mode)
         {
             let p = if self.extent() == Some(Extent::Static) { q } else { p };

@@ -12,6 +12,6 @@ use super::*;
 )]
 use vun_grammar::*;
 /// What calling a value that is not a function literal means (spec 01, section 4): `f(a, b)` is
-/// `function(&mut f, (a, b))` of `interface`, which function values and closures implement, so a
-/// parameter `$F: Call((T), U)` takes either.
-pub const CALLS: &[(vun_items::Item, &str)] = &[(vun_items::lang::ops::Call, "call")];
+/// `function(&mut f, (a, b))` of the witness of its interface, which function values and closures
+/// implement, so a parameter `$F: Call((T), U)` takes either.
+pub const CALLS: &[vun_items::Item] = &[vun_items::lang::ops_Call::call];

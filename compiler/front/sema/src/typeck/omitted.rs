@@ -5,7 +5,6 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use vun_desugar::{Form, TYPE_PREFIXES};
-use vun_grammar::TokenKind;
 use vun_hir::resolve::Res;
 
 use vun_hir::tree::{BinderId, Entry, ExprId, ExprKind, Hir, Param};
@@ -153,17 +152,16 @@ impl Unifier<'_, '_, '_> {
                     self.bind(b, value);
                 }
             }
-            ExprKind::Prefix { op: TokenKind::Amp, mode, operand } => {
-                let word = mode.map_or("", Symbol::as_str);
+            ExprKind::Borrow { mode, operand } => {
                 if let Some((m, _, pointee)) = ty.and_then(|t| t.borrowing())
-                    && m == word
+                    && Some(m) == *mode
                 {
                     self.unify(*operand, &Value::Type(pointee));
                 }
             }
             ExprKind::Prefix { op, operand, .. } => {
-                if let Some((_, item)) = TYPE_PREFIXES.iter().find(|(t, _)| t == op)
-                    && let Ok(constructor) = env.item(*item)
+                if let Some(row) = TYPE_PREFIXES.iter().find(|row| row.token == *op)
+                    && let Ok(constructor) = env.item(row.item)
                 {
                     self.parts(&constructor, ty, &[*operand]);
                 }

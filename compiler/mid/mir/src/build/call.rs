@@ -2,7 +2,7 @@
 //! impls (spec 01, section 4), and an argument for a `Code(T)` parameter is passed as code
 //! (spec 03, section 4).
 
-use vun_desugar::ITERATION;
+use vun_desugar::{Borrow, ITERATION, IterationRow};
 use vun_hir::tree::{Arg, Entry, ExprId, ExprKind, Name};
 use vun_intern::Symbol;
 use vun_origin::OriginId;
@@ -19,7 +19,7 @@ type Method = (Ty, Symbol);
 /// How a method's receiver is passed: borrowed in a mode, from a place computed before the
 /// arguments, or as a value.
 enum Receiver {
-    Borrowed { mode: Option<Symbol>, place: Place, origin: OriginId },
+    Borrowed { mode: Borrow, place: Place, origin: OriginId },
     Value(Operand),
 }
 
@@ -120,14 +120,14 @@ impl Builder<'_, '_, '_> {
         };
         let ty = self.type_of(object);
         let framed = std::iter::successors(ty, |t| t.borrowed()).any(|t| matches!(&*t, TyKind::Frame(_)));
-        let Some(&(_, _, _, resume, end, ..)) = ITERATION.first() else { return Ok(None) };
+        let Some(&IterationRow { resume, end, .. }) = ITERATION.first() else { return Ok(None) };
         if !framed || !args.is_empty() {
             return Ok(None);
         }
-        let rvalue = if name.as_str() == resume {
+        let rvalue = if name == resume.symbol() {
             let step = self.type_of(call).ok_or(Unbuilt { at: origin })?;
             Rvalue::Resume { frame: self.through_borrows(object)?, step }
-        } else if name.as_str() == end {
+        } else if name == end.symbol() {
             Rvalue::End { frame: self.through_borrows(object)? }
         } else {
             return Ok(None);
@@ -169,7 +169,6 @@ impl Builder<'_, '_, '_> {
             Some(mode) => {
                 let origin = self.env.parsed.hir.exprs[receiver].origin;
                 let place = self.reached(receiver, name)?;
-                let mode = (!mode.is_empty()).then(|| Symbol::intern(mode));
                 Ok(Receiver::Borrowed { mode, place, origin })
             }
             None => self.operand(receiver).map(Receiver::Value),

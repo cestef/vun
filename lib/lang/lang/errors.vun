@@ -16,6 +16,7 @@ syntax := struct {
     unclosed_delimiter := diag.Diag{ .explanation = meta.embed("errors/syntax/unclosed_delimiter.md") };
     chained_operator := diag.Diag{ .explanation = meta.embed("errors/syntax/chained_operator.md") };
     nesting_too_deep := diag.Diag{ .explanation = meta.embed("errors/syntax/nesting_too_deep.md") };
+    unknown_borrow := diag.Diag{ .explanation = meta.embed("errors/syntax/unknown_borrow.md") };
 };
 
 /// Range integers (spec 04).

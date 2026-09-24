@@ -5,12 +5,36 @@
     reason = "generated modules share one namespace"
 )]
 use super::*;
+/// A row of [`DELIMITERS`].
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct DelimitersRow {
+    pub open: TokenKind,
+    pub close: TokenKind,
+}
 /// Opening delimiters and the tokens that close them.
-pub const DELIMITERS: &[(TokenKind, TokenKind)] = &[
-    (TokenKind::LParen, TokenKind::RParen),
-    (TokenKind::LBracket, TokenKind::RBracket),
-    (TokenKind::HashLBracket, TokenKind::RBracket),
-    (TokenKind::LBrace, TokenKind::RBrace),
-    (TokenKind::HashLBrace, TokenKind::RBrace),
-    (TokenKind::DotLBrace, TokenKind::RBrace),
+pub const DELIMITERS: &[DelimitersRow] = &[
+    DelimitersRow {
+        open: TokenKind::LParen,
+        close: TokenKind::RParen,
+    },
+    DelimitersRow {
+        open: TokenKind::LBracket,
+        close: TokenKind::RBracket,
+    },
+    DelimitersRow {
+        open: TokenKind::HashLBracket,
+        close: TokenKind::RBracket,
+    },
+    DelimitersRow {
+        open: TokenKind::LBrace,
+        close: TokenKind::RBrace,
+    },
+    DelimitersRow {
+        open: TokenKind::HashLBrace,
+        close: TokenKind::RBrace,
+    },
+    DelimitersRow {
+        open: TokenKind::DotLBrace,
+        close: TokenKind::RBrace,
+    },
 ];

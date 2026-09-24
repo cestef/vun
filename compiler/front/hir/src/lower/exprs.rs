@@ -1,8 +1,7 @@
 //! Expressions and types.
 
-use vun_desugar::MODE_SEPARATOR;
+use vun_desugar::Borrow;
 use vun_grammar::{NodeField, NodeKind, TokenKind};
-use vun_intern::Symbol;
 use vun_syntax::cst::{Fields, NodeId};
 use vun_syntax::lexer;
 
@@ -100,12 +99,16 @@ impl Lower<'_, '_> {
                 elem: self.operand(&f, n, NodeField::Element),
             },
             NodeKind::Prefix => {
-                // The words after `&`, as the table `borrows` spells them: `temp mut`.
-                let words: Vec<&str> =
-                    f.get(NodeField::Mode).iter().map(|&m| self.symbol(m).as_str()).collect();
-                let mode = (!words.is_empty()).then(|| Symbol::intern(&words.join(MODE_SEPARATOR)));
                 let operand = self.operand(&f, n, NodeField::Operand);
-                self.token(n).map_or(ExprKind::Error, |op| ExprKind::Prefix { op, mode, operand })
+                match self.token(n) {
+                    // The words after `&` name a row of the table `borrows`: `temp mut`.
+                    Some(TokenKind::Amp) => {
+                        let words = f.get(NodeField::Mode).iter().map(|&m| self.symbol(m).as_str());
+                        ExprKind::Borrow { mode: Borrow::written(words), operand }
+                    }
+                    Some(op) => ExprKind::Prefix { op, operand },
+                    None => ExprKind::Error,
+                }
             }
             NodeKind::Postfix => {
                 let operand = self.operand(&f, n, NodeField::Operand);

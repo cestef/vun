@@ -11,22 +11,93 @@ use super::*;
     reason = "tables name the grammar's kinds"
 )]
 use vun_grammar::*;
+/// A row of [`COMPOUND`].
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct CompoundRow {
+    pub token: TokenKind,
+    pub op: TokenKind,
+    pub narrowing: Narrowing,
+}
 /// Compound assignments: `x op= y` is `x = (x op y)` narrowed back to the type of `x`.
-pub const COMPOUND: &[(TokenKind, TokenKind, Narrowing)] = &[
-    (TokenKind::PlusEq, TokenKind::Plus, Narrowing::To),
-    (TokenKind::MinusEq, TokenKind::Minus, Narrowing::To),
-    (TokenKind::StarEq, TokenKind::Star, Narrowing::To),
-    (TokenKind::SlashEq, TokenKind::Slash, Narrowing::To),
-    (TokenKind::PercentEq, TokenKind::Percent, Narrowing::To),
-    (TokenKind::AmpEq, TokenKind::Amp, Narrowing::To),
-    (TokenKind::PipeEq, TokenKind::Pipe, Narrowing::To),
-    (TokenKind::CaretEq, TokenKind::Caret, Narrowing::To),
-    (TokenKind::ShlEq, TokenKind::Shl, Narrowing::To),
-    (TokenKind::ShrEq, TokenKind::Shr, Narrowing::To),
-    (TokenKind::PlusPercentEq, TokenKind::Plus, Narrowing::Wrap),
-    (TokenKind::MinusPercentEq, TokenKind::Minus, Narrowing::Wrap),
-    (TokenKind::StarPercentEq, TokenKind::Star, Narrowing::Wrap),
-    (TokenKind::PlusPipeEq, TokenKind::Plus, Narrowing::Sat),
-    (TokenKind::MinusPipeEq, TokenKind::Minus, Narrowing::Sat),
-    (TokenKind::StarPipeEq, TokenKind::Star, Narrowing::Sat),
+pub const COMPOUND: &[CompoundRow] = &[
+    CompoundRow {
+        token: TokenKind::PlusEq,
+        op: TokenKind::Plus,
+        narrowing: Narrowing::To,
+    },
+    CompoundRow {
+        token: TokenKind::MinusEq,
+        op: TokenKind::Minus,
+        narrowing: Narrowing::To,
+    },
+    CompoundRow {
+        token: TokenKind::StarEq,
+        op: TokenKind::Star,
+        narrowing: Narrowing::To,
+    },
+    CompoundRow {
+        token: TokenKind::SlashEq,
+        op: TokenKind::Slash,
+        narrowing: Narrowing::To,
+    },
+    CompoundRow {
+        token: TokenKind::PercentEq,
+        op: TokenKind::Percent,
+        narrowing: Narrowing::To,
+    },
+    CompoundRow {
+        token: TokenKind::AmpEq,
+        op: TokenKind::Amp,
+        narrowing: Narrowing::To,
+    },
+    CompoundRow {
+        token: TokenKind::PipeEq,
+        op: TokenKind::Pipe,
+        narrowing: Narrowing::To,
+    },
+    CompoundRow {
+        token: TokenKind::CaretEq,
+        op: TokenKind::Caret,
+        narrowing: Narrowing::To,
+    },
+    CompoundRow {
+        token: TokenKind::ShlEq,
+        op: TokenKind::Shl,
+        narrowing: Narrowing::To,
+    },
+    CompoundRow {
+        token: TokenKind::ShrEq,
+        op: TokenKind::Shr,
+        narrowing: Narrowing::To,
+    },
+    CompoundRow {
+        token: TokenKind::PlusPercentEq,
+        op: TokenKind::Plus,
+        narrowing: Narrowing::Wrap,
+    },
+    CompoundRow {
+        token: TokenKind::MinusPercentEq,
+        op: TokenKind::Minus,
+        narrowing: Narrowing::Wrap,
+    },
+    CompoundRow {
+        token: TokenKind::StarPercentEq,
+        op: TokenKind::Star,
+        narrowing: Narrowing::Wrap,
+    },
+    CompoundRow {
+        token: TokenKind::PlusPipeEq,
+        op: TokenKind::Plus,
+        narrowing: Narrowing::Sat,
+    },
+    CompoundRow {
+        token: TokenKind::MinusPipeEq,
+        op: TokenKind::Minus,
+        narrowing: Narrowing::Sat,
+    },
+    CompoundRow {
+        token: TokenKind::StarPipeEq,
+        op: TokenKind::Star,
+        narrowing: Narrowing::Sat,
+    },
 ];

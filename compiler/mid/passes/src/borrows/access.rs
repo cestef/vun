@@ -63,7 +63,7 @@ impl Checker<'_> {
             })
             .collect();
         match &stmt.value {
-            Rvalue::Ref { mode, place } => accesses.push((place, Self::access(*mode))),
+            Rvalue::Ref { mode, place } => accesses.push((place, mode.access())),
             Rvalue::IsVariant { place, .. } => accesses.push((place, Access::Shared)),
             Rvalue::Resume { frame, .. } | Rvalue::End { frame } => accesses.push((frame, Access::Exclusive)),
             _ => {}
@@ -78,11 +78,11 @@ impl Checker<'_> {
             let l = &self.loans[loan];
             if l.source == Source::Taken
                 && l.place.overlaps(place)
-                && (l.access == Access::Exclusive || access == Access::Exclusive)
+                && (l.mode.access() == Access::Exclusive || access == Access::Exclusive)
             {
                 let what = self.name(&l.place);
                 let msg = what.text(" is reached here while a borrow of it is still used later");
-                let help = if l.access == Access::Exclusive {
+                let help = if l.mode.access() == Access::Exclusive {
                     Msg::new().text("an exclusive borrow is the only way to the place while it is used; finish with it before this")
                 } else {
                     Msg::new().text("a shared borrow keeps the place from changing while it is used; write it after the borrow's last use")

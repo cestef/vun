@@ -6,19 +6,20 @@
 //! declaration, raw where it is a Rust keyword: `lang.int.unsigned` is `lang::int::unsigned`,
 //! `lang.type` is `lang::r#type`. Vun names are unique in a namespace, so handles are too. A
 //! package's root namespace is its module itself. The public members of a `struct` literal and
-//! the variants of an `enum` literal have handles too, in a module of their type's path as a
-//! nested namespace's is: `std.os.libc.start` is `std::os_libc::start`, `std.build.Build.new` is
-//! `std::build_Build::new`.
+//! the variants of an `enum` literal have handles too, and so do those of the literal a type
+//! constructor makes (`lang.Step.yielded`) and of an interface's requirements
+//! (`lang.ops.Try.branch`), in a module of their type's path as a nested namespace's is:
+//! `std.os.libc.start` is `std::os_libc::start`, `std.build.Build.new` is `std::build_Build::new`.
 
 use std::collections::BTreeMap;
 
 use proc_macro2::TokenStream;
 use quote::quote;
 use vun_build::layout::SEPARATOR;
-use vun_syntax::literal::{Decl, Literal};
+use vun_syntax::literal::Decl;
 
 use crate::generate::{Access, Generator, Module, Read, Source};
-use crate::names::{docs, module};
+use crate::names::{docs, raw};
 
 pub(crate) const LANG: Generator =
     Generator { source: "lib/lang", output: "compiler/base/items/src/lang", emit };
@@ -66,7 +67,7 @@ impl Handles {
     /// The handle of `decl`, declared in `namespace`, and those of its members.
     fn declare(&mut self, namespace: &[String], decl: &Decl<'_>) {
         self.push(namespace, decl.name, &docs(&decl.doc));
-        if let Literal::Namespace(members) | Literal::Enum(members) = &decl.value {
+        if let Some(members) = decl.value.members() {
             let path: Vec<String> = namespace.iter().cloned().chain([decl.name.to_owned()]).collect();
             for member in members.iter().filter(|m| !m.name.starts_with(PRIVATE)) {
                 self.declare(&path, member);
@@ -76,7 +77,7 @@ impl Handles {
 
     /// `pub const name: Item`, the handle of the declaration `name` of `namespace`.
     fn push(&mut self, namespace: &[String], name: &str, doc: &[String]) {
-        let ident = module(name);
+        let ident = raw(name);
         let segments = namespace.iter().map(String::as_str).chain([name]);
         let handle = quote! { #(#[doc = #doc])* pub const #ident: Item = Item::new(&[#(#segments),*]); };
         self.0.entry(namespace.to_vec()).or_default().push(handle);
@@ -113,18 +114,18 @@ impl Handles {
     /// `vun_items::lang::Option`, a package `lang` is `vun_items::lang`.
     pub(crate) fn rust_path(path: &str) -> TokenStream {
         let segments: Vec<&str> = path.split(SEPARATOR).collect();
-        let krate = module(CRATE);
+        let krate = raw(CRATE);
         match segments.as_slice() {
             [package] => {
-                let package = module(package);
+                let package = raw(package);
                 quote! { #krate::#package }
             }
             [package, namespaces @ .., name] => {
-                let (package, name) = (module(package), module(name));
+                let (package, name) = (raw(package), raw(name));
                 if namespaces.is_empty() {
                     quote! { #krate::#package::#name }
                 } else {
-                    let inner = module(&namespaces.join(JOIN));
+                    let inner = raw(&namespaces.join(JOIN));
                     quote! { #krate::#package::#inner::#name }
                 }
             }

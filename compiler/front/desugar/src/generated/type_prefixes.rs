@@ -11,8 +11,20 @@ use super::*;
     reason = "tables name the grammar's kinds"
 )]
 use vun_grammar::*;
+/// A row of [`TYPE_PREFIXES`].
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct TypePrefixesRow {
+    pub token: TokenKind,
+    pub item: vun_items::Item,
+}
 /// Prefix operators on types (appendix B): `?T` is `lang.Option(T)`, `*T` is `lang.mem.Ptr(T)`.
-pub const TYPE_PREFIXES: &[(TokenKind, vun_items::Item)] = &[
-    (TokenKind::Question, vun_items::lang::Option),
-    (TokenKind::Star, vun_items::lang::mem::Ptr),
+pub const TYPE_PREFIXES: &[TypePrefixesRow] = &[
+    TypePrefixesRow {
+        token: TokenKind::Question,
+        item: vun_items::lang::Option,
+    },
+    TypePrefixesRow {
+        token: TokenKind::Star,
+        item: vun_items::lang::mem::Ptr,
+    },
 ];

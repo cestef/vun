@@ -26,8 +26,8 @@ fn punctuation_takes_the_longest_match() {
 
 #[test]
 fn operator_tables_are_disjoint_where_they_must_be() {
-    for &(_, kinds) in INFIX {
-        for k in kinds {
+    for row in INFIX {
+        for k in row.tokens {
             assert!(!ASSIGN.contains(k), "{k:?}");
         }
     }

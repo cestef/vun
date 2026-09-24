@@ -4,6 +4,7 @@ use std::collections::HashSet;
 
 use proc_macro2::TokenStream;
 use quote::{ToTokens, quote};
+use vun_build::layout::SEPARATOR;
 use vun_diag::Msg;
 use vun_syntax::literal::{Decl, Literal};
 
@@ -11,10 +12,14 @@ use super::{Enum, GENERATOR, Grammar, SHAPE, Ty, UNRESOLVED};
 use crate::generate::{Module, Read, Source};
 use crate::items;
 
-/// The columns of a table that name a declaration of `lang` by its path, typed as its handle so
-/// that a table naming a declaration that does not exist does not compile.
-const DECLARATION_COLUMNS: [&str; 2] = ["item", "interface"];
-use crate::names::{constant, docs, ident, pascal, snake};
+/// The package whose declarations a table names by their paths (`"lang.ops.Try"`): a column of
+/// such paths is typed as their handles, so that a table naming a declaration that does not exist
+/// does not compile.
+const DECLARING: &str = "lang";
+use crate::names::{constant, docs, ident, pascal, raw, snake};
+
+/// Ends the name of a table's row struct: `iteration` holds `IterationRow`s.
+const ROW: &str = "_row";
 
 impl<'s> Grammar<'s> {
     /// A module per enum, per kind's children and per table declared in `own`, named after the
@@ -40,11 +45,31 @@ impl<'s> Grammar<'s> {
         Ok(modules)
     }
 
+    /// A table: a list of rows. Rows that are records of several fields are values of a struct
+    /// named after the table (`iteration` holds `IterationRow`s), read by field name.
     pub(super) fn table(&self, d: &Decl<'s>, items: &[Literal<'s>]) -> Read<TokenStream> {
         let ty = self.infer(d.name, &items.iter().collect::<Vec<_>>())?;
+        let (name, doc) = (constant(d.name), docs(&d.doc));
+        if let Ty::Tuple(fields) = &ty
+            && fields.len() > 1
+        {
+            let row = pascal(&[d.name, ROW].concat());
+            let names: Vec<_> = fields.iter().map(|(field, _)| raw(field)).collect();
+            let types = fields.iter().map(|(_, t)| self.rust_type(t));
+            let rows = items.iter().map(|item| {
+                let values = fields.iter().filter_map(|(field, t)| Some(self.value(item.get(field)?, t)));
+                quote! { #row { #(#names: #values),* } }
+            });
+            let row_doc = docs(&[&format!("A row of [`{name}`].")]);
+            return Ok(quote! {
+                #(#[doc = #row_doc])*
+                #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+                pub struct #row { #(pub #names: #types),* }
+                #(#[doc = #doc])* pub const #name: &[#row] = &[#(#rows),*];
+            });
+        }
         let rust_ty = self.rust_type(&ty);
         let values = items.iter().map(|item| self.value(item, &ty));
-        let (name, doc) = (constant(d.name), docs(&d.doc));
         Ok(quote! { #(#[doc = #doc])* pub const #name: &[#rust_ty] = &[#(#values),*]; })
     }
 
@@ -75,11 +100,10 @@ impl<'s> Grammar<'s> {
                         .collect::<Option<Vec<_>>>()
                         .ok_or_else(mismatch)?;
                     let ty = self.infer(decl, &column)?;
-                    let ty = if matches!(ty, Ty::Str) && DECLARATION_COLUMNS.contains(&field.name) {
-                        Ty::Item
-                    } else {
-                        ty
+                    let declares = |v: &&Literal<'_>| {
+                        v.as_str().and_then(|p| p.split(SEPARATOR).next()) == Some(DECLARING)
                     };
+                    let ty = if matches!(ty, Ty::Str) && column.iter().all(declares) { Ty::Item } else { ty };
                     Ok((field.name.to_owned(), ty))
                 })
                 .collect::<Read<_>>()
@@ -115,13 +139,15 @@ impl<'s> Grammar<'s> {
 
     pub(super) fn rust_type(&self, ty: &Ty) -> TokenStream {
         match ty {
-            Ty::Str => quote! { &str },
+            Ty::Str => quote! { &'static str },
             Ty::Item => quote! { vun_items::Item },
             Ty::Enum(i) => ident(self.enums[*i].name).into_token_stream(),
             Ty::List(item) => {
                 let item = self.rust_type(item);
-                quote! { &[#item] }
+                quote! { &'static [#item] }
             }
+            // A record of one field is the field.
+            Ty::Tuple(fields) if let [(_, field)] = fields.as_slice() => self.rust_type(field),
             Ty::Tuple(fields) => {
                 let fields = fields.iter().map(|(_, t)| self.rust_type(t));
                 quote! { (#(#fields),*) }
@@ -141,6 +167,10 @@ impl<'s> Grammar<'s> {
             (Ty::List(item), Literal::List(items)) => {
                 let items = items.iter().map(|v| self.value(v, item));
                 quote! { &[#(#items),*] }
+            }
+            // A record of one field is the field.
+            (Ty::Tuple(fields), Literal::Record(_)) if let [(name, t)] = fields.as_slice() => {
+                value.get(name).map(|v| self.value(v, t)).unwrap_or_default()
             }
             (Ty::Tuple(fields), Literal::Record(_)) => {
                 let values = fields.iter().filter_map(|(name, t)| Some(self.value(value.get(name)?, t)));

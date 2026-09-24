@@ -184,6 +184,10 @@ impl Visitor for Resolver<'_, '_> {
         match &hir.exprs[expr].kind {
             ExprKind::Quote(block) => self.quoted(hir, *block),
             ExprKind::Prefix { op: TokenKind::Dollar, .. } => self.escape(hir, expr),
+            ExprKind::Borrow { mode: None, .. } => {
+                self.unknown_borrow(hir, expr);
+                visit::walk_expr(self, hir, expr);
+            }
             ExprKind::Name(name) => {
                 let ns = *self.namespaces.last().expect("every expression is inside the file's namespace");
                 let res = self.scopes.lookup(hir, *name).map_or(Res::Outer { name: *name, ns }, Res::Binder);
@@ -251,7 +255,7 @@ impl Resolver<'_, '_> {
     fn captured(&self, hir: &Hir, capture: ExprId) -> Option<Res> {
         match &hir.exprs[capture].kind {
             ExprKind::Name(_) => self.names[capture],
-            ExprKind::Prefix { operand, .. } => self.captured(hir, *operand),
+            ExprKind::Borrow { operand, .. } => self.captured(hir, *operand),
             _ => None,
         }
     }
