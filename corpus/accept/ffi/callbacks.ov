@@ -17,5 +17,5 @@ by_value := (a: *u8, b: *u8) -> i32 {
 };
 
 sort := (xs: &mut [u32]) {
-    unsafe { qsort(xs.ptr().cast(u8), xs.len, std.meta.size(u32), by_value); }
+    unsafe { qsort(xs.ptr().cast(u8), xs.len(), std.meta.size(u32), by_value); }
 };

@@ -10,6 +10,7 @@ use overt_query::{Cx, Cycle, Query};
 use crate::Primitive;
 use crate::env::{Env, Unevaluated};
 use crate::item::DeclRef;
+use crate::target::Target;
 use crate::ty::Value;
 use crate::typeck::{Known, Stage, Typer};
 
@@ -37,7 +38,8 @@ impl Query for DeclValue {
         let name = binders.first().map(|&b| hir.binders[b].name).ok_or(Unevaluated::Provided)?;
         let primitive =
             Primitive::ALL.iter().find(|p| p.namespace() == namespace && p.name() == name.as_str());
-        primitive.map(|&p| Value::Primitive(p)).ok_or(Unevaluated::Provided)
+        let primitive = *primitive.ok_or(Unevaluated::Provided)?;
+        Ok(primitive.constant(&cx.db().resource::<Target>()).unwrap_or(Value::Primitive(primitive)))
     }
 
     fn cycle(_: &Cx<'_>, _: &DeclRef, _: &Cycle) -> Self::Value {

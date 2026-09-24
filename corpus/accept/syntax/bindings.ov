@@ -3,7 +3,7 @@
 limit := 64;
 mut count: u32 = 0;
 
-bounds := (xs: &[u32]) -> (u32, u32) { (xs[0], xs[xs.len - 1]) };
+bounds := (xs: &[u32]) -> (u32, u32) { (xs[0], xs[xs.len() - 1]) };
 
 spread := (xs: &[u32]) -> u32 {
     mut buf: [4096]u8;

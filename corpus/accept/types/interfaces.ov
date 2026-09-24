@@ -5,7 +5,7 @@ Writer := interface(($Self: type) -> type { struct {
     write: (self: &mut Self, bytes: &[u8]) -> Result(usize, Error) = _;
     write_all := (self: &mut Self, bytes: &[u8]) -> Result((), Error) {
         mut rest := bytes;
-        for rest.len > 0 { rest = rest[self.write(rest)?..]; }
+        for rest.len() > 0 { rest = rest[self.write(rest)?..]; }
         .ok(())
     };
 }});

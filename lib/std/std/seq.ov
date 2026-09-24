@@ -1,0 +1,18 @@
+//! Arrays and slices (spec 05): what every `[n]T` and `[T]` answers, by impls for
+//! `lang.mem.Array` and `lang.mem.Slice` over the primitives of `lang.mem`.
+
+/// A run of items.
+Sequence := interface(($Self: type) -> type { struct {
+    /// The number of items.
+    len: (xs: &Self) -> usize = _;
+}});
+
+#[impl(Sequence(lang.mem.Slice))]
+SliceSequence := ($T: type) -> type { struct {
+    len := (xs: &[T]) -> usize { lang.mem.len(T, xs) };
+} };
+
+#[impl(Sequence(lang.mem.Array))]
+ArraySequence := ($n: Int(0..), $T: type) -> type { struct {
+    len := (xs: &[n]T) -> usize { n };
+} };

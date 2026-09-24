@@ -9,8 +9,8 @@ write: unsafe (fd: i32, buf: *u8, len: usize) -> isize = _;
 
 /// A safe wrapper: the audit boundary is this one block.
 say := (msg: &[u8]) -> bool {
-    written := unsafe { write(1, msg.ptr(), msg.len) };
-    written == msg.len.to(isize)
+    written := unsafe { write(1, msg.ptr(), msg.len()) };
+    written == msg.len().to(isize)
 };
 
 c_len := (s: &static [_]u8) -> usize { unsafe { strlen(s.ptr()) } };

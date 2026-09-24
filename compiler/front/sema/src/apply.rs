@@ -30,9 +30,15 @@ impl Primitive {
             }
             // `lang.interface(f)` wraps `f` so that it can constrain `$` parameters.
             (Self::Lang(Lang::interface), [Value::Fn(f)]) => Ok(Value::Interface(f.clone())),
-            // Borrow, pointer and cell types have no structure beyond their argument.
+            // `lang.mem.Array(n, T)`: `[n]T`.
+            (Self::Mem(Mem::Array), [Value::Int(len), elem]) => {
+                Ok(Value::Type(TyKind::array(len.clone(), elem.as_type().ok_or(Unevaluated::Unsupported)?)))
+            }
+            // Borrow, pointer, cell and slice types have no structure beyond their argument.
             (
-                Self::Mem(Mem::Ref | Mem::RefMut | Mem::RefOut | Mem::RefTake | Mem::Ptr | Mem::Cell),
+                Self::Mem(
+                    Mem::Ref | Mem::RefMut | Mem::RefOut | Mem::RefTake | Mem::Ptr | Mem::Cell | Mem::Slice,
+                ),
                 [arg],
             ) => {
                 let arg = arg.as_type().ok_or(Unevaluated::Unsupported)?;

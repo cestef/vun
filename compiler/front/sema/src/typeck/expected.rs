@@ -41,7 +41,7 @@ impl Typer<'_, '_, '_> {
                 };
                 self.site(site)
             }
-            _ => None,
+            TyKind::Tuple(_) => None,
         }
     }
 }

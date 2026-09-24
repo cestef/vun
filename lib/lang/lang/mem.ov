@@ -5,6 +5,13 @@ RefMut: ($T: type) -> type = _;
 RefOut: ($T: type) -> type = _;
 RefTake: ($T: type) -> type = _;
 Ptr: ($T: type) -> type = _;
+/// `[T]`: the items of an array of any length, reached through a borrow (`&[T]`).
+Slice: ($T: type) -> type = _;
+/// `[n]T`: `n` items of type `T`, a value.
+Array: ($n: Int(0..), $T: type) -> type = _;
+
+/// The number of items `xs` borrows.
+len: ($T: type, xs: &[T]) -> usize = _;
 
 /// Unsynchronized interior mutability. Only usable in `unsafe` code (spec 07, section 2).
 Cell: ($T: type) -> type = _;

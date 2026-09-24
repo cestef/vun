@@ -195,7 +195,7 @@ if .some(v) = cache.get(key) { use(v); }          // `=` in a head is a pattern 
 
 match cmd {
     .read(r) => handle_read(r),
-    .write(w) if w.len > 0 => handle_write(w),
+    .write(w) if w.len() > 0 => handle_write(w),
     .write(_) => {},
     .reset => reset(),
 }

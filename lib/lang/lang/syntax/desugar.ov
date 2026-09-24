@@ -33,6 +33,10 @@ Form := enum {
     truth,
     /// The values `a..b` and `a..=b`.
     range,
+    /// The type `[n]T`.
+    array,
+    /// The type `[T]`.
+    slice,
 };
 
 /// The item each form means.
@@ -40,6 +44,8 @@ forms := [
     .{ .form = .condition, .item = "lang.bool" },
     .{ .form = .truth, .item = "lang.bool.true" },
     .{ .form = .range, .item = "lang.Range" },
+    .{ .form = .array, .item = "lang.mem.Array" },
+    .{ .form = .slice, .item = "lang.mem.Slice" },
 ];
 
 /// Prefix operators on types (appendix B): `?T` is `lang.Option(T)`, `*T` is `lang.mem.Ptr(T)`.

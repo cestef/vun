@@ -37,6 +37,6 @@ Sink := struct {};
 #[impl(Writer(Sink))]
 SinkWriter := struct {
     Error := ();
-    write := (self: &mut Sink, bytes: &[u8]) -> Result(usize, Error) { .ok(bytes.len) };
+    write := (self: &mut Sink, bytes: &[u8]) -> Result(usize, Error) { .ok(bytes.len()) };
 };
 ```

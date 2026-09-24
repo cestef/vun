@@ -17,6 +17,13 @@ impl fmt::Display for TyKind {
         if let Some(sig) = self.signature() {
             return write!(f, "{} -> {}", Self::Tuple(sig.params), sig.result);
         }
+        // Sequences as written: `[4]u8`, `[u8]`.
+        if let Some((len, elem)) = self.as_array() {
+            return write!(f, "[{len}]{elem}");
+        }
+        if let Some(elem) = self.items() {
+            return write!(f, "[{elem}]");
+        }
         match self {
             Self::Primitive(p, args) => Applied(p.name(), args).fmt(f),
             Self::Nominal(Nominal { name: Some(name), instance, .. }) => {
@@ -33,8 +40,6 @@ impl fmt::Display for TyKind {
                 }
                 f.write_str(")")
             }
-            Self::Array { len, elem } => write!(f, "[{len}]{elem}"),
-            Self::Slice(elem) => write!(f, "[{elem}]"),
         }
     }
 }

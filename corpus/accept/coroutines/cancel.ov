@@ -4,7 +4,7 @@ lines := (port: &mut Serial, buf: &mut [128]u8) -> Async(usize) {
     port.enable();
     defer port.disable();
     mut n: usize = 0;
-    for n < buf.len {
+    for n < buf.len() {
         b := yield ..port.read_byte();
         if b == '\n' { break; }
         buf[n] = b;

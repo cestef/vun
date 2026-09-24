@@ -45,6 +45,10 @@ compilation is therefore an ordinary `$if`, never a file-name convention or a pr
 | `(A) -> R` | function type |
 | `?T` | `lang.Option(T)` |
 
+Arrays and slices are `lang.mem.Array(N, T)` and `lang.mem.Slice(T)`, primitive type constructors
+like `lang.Int`, so impls target them: `xs.len()` is the impl `std.seq.Sequence` over the
+primitive `lang.mem.len`.
+
 **Identity.** Every `struct` and `enum` literal is a new, nominal type, identified by where it is
 written and by the compile-time arguments of the evaluation that produced it. Two identical
 literals in different declarations are different types, so `NodeId := struct { raw: u32 }` and
@@ -67,7 +71,7 @@ Writer := interface(($Self: type) -> type { struct {
     write: (self: &mut Self, bytes: &[u8]) -> Result(usize, Error) = _;
     write_all := (self: &mut Self, bytes: &[u8]) -> Result((), Error) {  // provided default
         mut rest := bytes;
-        for rest.len > 0 { rest = rest[self.write(rest)?..]; }
+        for rest.len() > 0 { rest = rest[self.write(rest)?..]; }
         .ok(())
     };
 }});

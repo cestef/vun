@@ -267,6 +267,12 @@ pub mod mem {
         RefOut,
         RefTake,
         Ptr,
+        /// `[T]`: the items of an array of any length, reached through a borrow (`&[T]`).
+        Slice,
+        /// `[n]T`: `n` items of type `T`, a value.
+        Array,
+        /// The number of items `xs` borrows.
+        len,
         /// Unsynchronized interior mutability. Only usable in `unsafe` code (spec 07, section 2).
         Cell,
         volatile_load,
@@ -280,6 +286,9 @@ pub mod mem {
             Self::RefOut,
             Self::RefTake,
             Self::Ptr,
+            Self::Slice,
+            Self::Array,
+            Self::len,
             Self::Cell,
             Self::volatile_load,
             Self::volatile_store,
@@ -293,6 +302,9 @@ pub mod mem {
                 Self::RefOut => "RefOut",
                 Self::RefTake => "RefTake",
                 Self::Ptr => "Ptr",
+                Self::Slice => "Slice",
+                Self::Array => "Array",
+                Self::len => "len",
                 Self::Cell => "Cell",
                 Self::volatile_load => "volatile_load",
                 Self::volatile_store => "volatile_store",
@@ -634,6 +646,9 @@ impl Primitive {
         Self::Mem(mem::Mem::RefOut),
         Self::Mem(mem::Mem::RefTake),
         Self::Mem(mem::Mem::Ptr),
+        Self::Mem(mem::Mem::Slice),
+        Self::Mem(mem::Mem::Array),
+        Self::Mem(mem::Mem::len),
         Self::Mem(mem::Mem::Cell),
         Self::Mem(mem::Mem::volatile_load),
         Self::Mem(mem::Mem::volatile_store),

@@ -27,7 +27,7 @@ use overt_query::{Cx, Cycle, Query};
 
 use crate::env::Env;
 use crate::eval::Instantiation;
-use crate::ty::{Ty, TyKind};
+use crate::ty::{Ty, TyKind, Value};
 
 /// When a value is known: at compile time, or only at run time. Only run-time integers are
 /// capped at 128 bits (spec 04, rule 5).
@@ -87,10 +87,13 @@ impl Query for Typed {
             return None;
         };
         let mut typer = Typer::new(&env, Stage::Run);
-        for param in params {
+        for (index, param) in params.iter().enumerate() {
             let Entry::One(param) = param else { continue };
             let (Some(pat), Some(ty)) = (param.pat, param.ty) else { continue };
-            let (PatKind::Bind(binder), Some(ty)) = (&hir.pats[pat].kind, typer.ty(ty)) else { continue };
+            let PatKind::Bind(binder) = &hir.pats[pat].kind else { continue };
+            // A `$` parameter bound by the instantiation has the type of its value alone.
+            let bound = i.args.get(index).and_then(Option::as_ref).and_then(Value::ty);
+            let Some(ty) = bound.or_else(|| typer.ty(ty)) else { continue };
             typer.bind(*binder, ty);
         }
         let result = match returns {

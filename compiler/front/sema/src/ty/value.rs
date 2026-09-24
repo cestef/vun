@@ -65,7 +65,7 @@ impl Value {
                 Some(TyKind::Tuple(items.iter().map(Self::as_type).collect::<Option<_>>()?).intern())
             }
             Self::Array(items) => match items.as_slice() {
-                [item] => Some(TyKind::Slice(item.as_type()?).intern()),
+                [item] => Some(TyKind::slice(item.as_type()?)),
                 _ => None,
             },
             _ => None,

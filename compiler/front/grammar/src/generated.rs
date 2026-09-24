@@ -9,6 +9,10 @@ pub enum Form {
     Truth,
     /// The values `a..b` and `a..=b`.
     Range,
+    /// The type `[n]T`.
+    Array,
+    /// The type `[T]`.
+    Slice,
 }
 /// How a compound assignment brings its result back to the place's type (spec 04, rule 9).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -1192,6 +1196,8 @@ pub const FORMS: &[(Form, &str)] = &[
     (Form::Condition, "lang.bool"),
     (Form::Truth, "lang.bool.true"),
     (Form::Range, "lang.Range"),
+    (Form::Array, "lang.mem.Array"),
+    (Form::Slice, "lang.mem.Slice"),
 ];
 /// Prefix operators on types (appendix B): `?T` is `lang.Option(T)`, `*T` is `lang.mem.Ptr(T)`.
 pub const TYPE_PREFIXES: &[(TokenKind, &str)] = &[

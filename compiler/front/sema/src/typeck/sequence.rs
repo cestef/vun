@@ -6,7 +6,7 @@ use overt_hir::tree::{Entry, ExprId};
 
 use super::{Known, Stage, Typer};
 use crate::int::Integer;
-use crate::ty::{Ty, TyKind, Value};
+use crate::ty::{TyKind, Value};
 
 impl Typer<'_, '_, '_> {
     /// `(a, b)`: a tuple of its items' types, each typed as and checked against the expected
@@ -41,10 +41,7 @@ impl Typer<'_, '_, '_> {
 
     /// `[a, b, c]`: an array of the join of its items, each typed as the expected item.
     pub(super) fn array(&mut self, expr: ExprId, items: &[Entry<ExprId>]) -> Option<Known> {
-        let expected = self.expected(expr).and_then(|t| match &*t {
-            TyKind::Array { elem, .. } => Some(*elem),
-            _ => None,
-        });
+        let expected = self.expected(expr).and_then(|t| t.as_array().map(|(_, elem)| elem));
         let mut joined: Option<Option<Known>> = None;
         for item in items {
             let Entry::One(item) = item else {
@@ -70,27 +67,22 @@ impl Typer<'_, '_, '_> {
         let len = Integer::from(i128::try_from(items.len()).ok()?);
         match joined {
             // `[]` has the expected item type, if any.
-            None => {
-                Some(Known { ty: TyKind::Array { len, elem: expected? }.intern(), stage: Stage::Compile })
-            }
+            None => Some(Known { ty: TyKind::array(len, expected?), stage: Stage::Compile }),
             Some(joined) => {
                 let joined = joined?;
-                Some(Known { ty: TyKind::Array { len, elem: joined.ty }.intern(), stage: joined.stage })
+                Some(Known { ty: TyKind::array(len, joined.ty), stage: joined.stage })
             }
         }
     }
 
     /// `[value; count]`: `count` copies of `value`, `count` known at compile time.
     pub(super) fn repeat(&mut self, expr: ExprId, value: ExprId, count: ExprId) -> Option<Known> {
-        let expected = self.expected(expr).and_then(|t| match &*t {
-            TyKind::Array { elem, .. } => Some(*elem),
-            _ => None,
-        });
+        let expected = self.expected(expr).and_then(|t| t.as_array().map(|(_, elem)| elem));
         let item = self.typed_as(value, expected);
         self.typed(count);
         let Ok(Value::Int(len)) = self.env.eval(count) else { return None };
         let item = item?;
-        Some(Known { ty: TyKind::Array { len, elem: item.ty }.intern(), stage: item.stage })
+        Some(Known { ty: TyKind::array(len, item.ty), stage: item.stage })
     }
 
     /// `object[index]` with an integer index: the item of an array or a slice, looking through a
@@ -100,10 +92,7 @@ impl Typer<'_, '_, '_> {
         let index = self.typed(index).filter(|k| k.ty.interval().is_some())?;
         let object = object?;
         let ty = object.ty.borrowed().unwrap_or(object.ty);
-        let elem: Ty = match &*ty {
-            TyKind::Array { elem, .. } | TyKind::Slice(elem) => *elem,
-            _ => return None,
-        };
+        let elem = ty.items()?;
         Some(Known { ty: elem, stage: object.stage.max(index.stage) })
     }
 

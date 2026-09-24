@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use overt_grammar::{BORROWS, TYPE_PREFIXES, TokenKind};
+use overt_grammar::{BORROWS, Form, TYPE_PREFIXES, TokenKind};
 use overt_hir::resolve::Res;
 use overt_hir::tree::{Arg, BlockId, Cond, Entry, ExprId, ExprKind, List, Lit, Name, Param};
 use overt_intern::Symbol;
@@ -39,8 +39,8 @@ impl Env<'_, '_> {
                 self.apply(self.item(item)?, vec![Value::Type(ty)])
             }
             ExprKind::ArrayType { len, elem } => {
-                let Value::Int(len) = self.eval(*len)? else { return Err(Unevaluated::Unsupported) };
-                Ok(Value::Type(TyKind::Array { len, elem: self.ty(*elem)? }.intern()))
+                let (len, elem) = (self.eval(*len)?, self.ty(*elem)?);
+                self.apply(self.form(Form::Array)?, vec![len, Value::Type(elem)])
             }
             ExprKind::Array(items) => items
                 .iter()

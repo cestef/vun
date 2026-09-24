@@ -32,7 +32,7 @@ start := std.os.start(main);
 
 main := (sys: &mut std.os.System) -> std.os.Exit {
     mut out := sys.stdout();
-    std.fmt.print(&mut out, "{} args\n", .{ sys.args().len });
+    std.fmt.print(&mut out, "{} args\n", .{ sys.args().len() });
     .ok
 };
 ```

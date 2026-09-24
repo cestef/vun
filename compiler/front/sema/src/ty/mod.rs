@@ -20,6 +20,7 @@ use crate::eval::Instance;
 use crate::int::{Integer, Interval};
 use crate::item::ExprRef;
 use crate::primitives::lang::Lang;
+use crate::primitives::mem::Mem;
 
 pub use signature::Signature;
 pub use value::Value;
@@ -38,12 +39,6 @@ pub enum TyKind {
     /// A `struct` or `enum` literal (decision 28).
     Nominal(Nominal),
     Tuple(Vec<Ty>),
-    Array {
-        len: Integer,
-        elem: Ty,
-    },
-    /// `[T]`: the items of an array of any length, reached through a borrow (`&[T]`).
-    Slice(Ty),
 }
 
 /// The identity of a `struct` or `enum` literal: where it is written and the compile-time call
@@ -76,6 +71,42 @@ impl TyKind {
         Self::Primitive(primitive, Vec::new()).intern()
     }
 
+    /// `lang.mem.Array(len, elem)`: `[len]elem`.
+    #[must_use]
+    pub fn array(len: Integer, elem: Ty) -> Ty {
+        Self::Primitive(Primitive::Mem(Mem::Array), vec![Value::Int(len), Value::Type(elem)]).intern()
+    }
+
+    /// `lang.mem.Slice(elem)`: `[elem]`.
+    #[must_use]
+    pub fn slice(elem: Ty) -> Ty {
+        Self::Primitive(Primitive::Mem(Mem::Slice), vec![Value::Type(elem)]).intern()
+    }
+
+    /// The length and item type of an array type.
+    #[must_use]
+    pub fn as_array(&self) -> Option<(&Integer, Ty)> {
+        match self {
+            Self::Primitive(Primitive::Mem(Mem::Array), args) => match args.as_slice() {
+                [Value::Int(len), Value::Type(elem)] => Some((len, *elem)),
+                _ => None,
+            },
+            _ => None,
+        }
+    }
+
+    /// The item type of an array or slice type.
+    #[must_use]
+    pub fn items(&self) -> Option<Ty> {
+        match self {
+            Self::Primitive(Primitive::Mem(Mem::Slice), args) => match args.as_slice() {
+                [Value::Type(elem)] => Some(*elem),
+                _ => None,
+            },
+            _ => self.as_array().map(|(_, elem)| elem),
+        }
+    }
+
     /// `lang.Int(range)`.
     #[must_use]
     pub fn int(range: &Interval) -> Ty {
@@ -93,10 +124,12 @@ impl TyKind {
             (Self::Tuple(expected), Self::Tuple(found)) => {
                 expected.len() == found.len() && expected.iter().zip(found).all(|(e, f)| e.accepts(f))
             }
-            (Self::Array { len, elem }, Self::Array { len: found_len, elem: found_elem }) => {
-                len == found_len && elem.accepts(found_elem)
-            }
-            _ => self == found,
+            _ => match (self.as_array(), found.as_array()) {
+                (Some((len, elem)), Some((found_len, found_elem))) => {
+                    len == found_len && elem.accepts(&found_elem)
+                }
+                _ => self == found,
+            },
         }
     }
 
@@ -128,12 +161,12 @@ impl TyKind {
                 let items = a.iter().zip(b).map(|(a, b)| a.join(b)).collect::<Option<_>>()?;
                 Some(Self::Tuple(items).intern())
             }
-            (Self::Array { len, elem }, Self::Array { len: other_len, elem: other_elem })
-                if len == other_len =>
-            {
-                Some(Self::Array { len: len.clone(), elem: elem.join(other_elem)? }.intern())
-            }
-            _ => (self == other).then(|| self.clone().intern()),
+            _ => match (self.as_array(), other.as_array()) {
+                (Some((len, elem)), Some((other_len, other_elem))) if len == other_len => {
+                    Some(Self::array(len.clone(), elem.join(&other_elem)?))
+                }
+                _ => (self == other).then(|| self.clone().intern()),
+            },
         }
     }
 

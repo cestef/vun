@@ -75,7 +75,7 @@ other scoped types. It may be returned only from a function taking at least one 
 then tied to **all** of that call's borrowed arguments. That rule replaces lifetime annotations.
 
 ```ov
-longest := (a: &[u8], b: &[u8]) -> &[u8] { if a.len >= b.len { a } else { b } };
+longest := (a: &[u8], b: &[u8]) -> &[u8] { if a.len() >= b.len() { a } else { b } };
 
 Parser := struct { input: &[u8], pos: usize };           // scoped
 parser := (input: &[u8]) -> Parser { .{ .input = input, .pos = 0 } };

@@ -1,6 +1,6 @@
 //! A returned borrow is tied to all borrowed arguments (spec 05, section 4).
 
-longest := (a: &[u8], b: &[u8]) -> &[u8] { if a.len >= b.len { a } else { b } };
+longest := (a: &[u8], b: &[u8]) -> &[u8] { if a.len() >= b.len() { a } else { b } };
 
 Parser := struct { input: &[u8], pos: usize };
 parser := (input: &[u8]) -> Parser { .{ .input = input, .pos = 0 } };
