@@ -38,7 +38,7 @@ echo := (s: &mut Serial) -> Async(never) {
     mut buf: [64]u8;
     for {
         n := yield ..s.read(&out buf);
-        yield ..s.write(buf[0..n]);
+        yield ..s.write(&buf[0..n]);
     }
 };
 ```

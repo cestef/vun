@@ -75,7 +75,7 @@ echo := (s: &mut Serial) -> Async(never) {
     mut buf: [64]u8;
     for {
         n := yield ..s.read(&out buf);   // a borrow of a frame local, held across suspension
-        yield ..s.write(buf[0..n]);
+        yield ..s.write(&buf[0..n]);
     }
 };
 ```

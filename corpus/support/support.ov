@@ -4,18 +4,49 @@
 
 /// Memory and files.
 Own := ($T: type) -> type { struct { ptr: *T } };
-Alloc := struct {};
-Fs := struct {};
-Config := struct {};
+Alloc := struct {
+    create := (self: &mut Alloc, $T: type) -> Result(Own(T), Error) { .err(.oom) };
+};
+/// An open file, which must be closed.
+File := #[kind.linear] struct {
+    fd: u32,
+    size := (self: &File) -> u64 { 0 };
+};
+Fs := struct {
+    open := (self: &mut Fs, path: &[u8]) -> Result(File, Error) { .err(.fs) };
+    close := (self: &mut Fs, f: File) { .{ .fd = _ } := f; };
+};
+Config := struct {
+    done := (self: &Config) -> bool { .true };
+};
 Error := enum { fs, oom, parse };
-parse := (f: &Fs, cfg: &out Config) -> Result((), Error) { .ok(()) };
+parse := (f: &File, cfg: &out Config) -> Result((), Error) {
+    cfg.* = .{};
+    .ok(())
+};
 
-/// Capabilities and devices.
+/// Capabilities and devices. Asynchronous stand-ins wait on `ready` once.
+ready: std.task.Event = _;
+Duration := enum { ms(u32) };
 Critical := struct {};
 Dma := struct {};
-Led := struct {};
-Timer := struct {};
-Serial := struct {};
+Led := struct {
+    toggle := (self: &mut Led) {};
+};
+Timer := struct {
+    after := (self: &Timer, d: Duration) -> Async(()) { yield .{ .event = &ready }; };
+};
+Serial := struct {
+    enable := (self: &mut Serial) {};
+    disable := (self: &mut Serial) {};
+    read_byte := (self: &mut Serial) -> Async(u8) { yield .{ .event = &ready }; 0 };
+    read := (self: &mut Serial, buf: &out [64]u8) -> Async(usize) {
+        buf.* = [0; 64];
+        yield .{ .event = &ready };
+        0
+    };
+    write := (self: &mut Serial, bytes: &[u8]) -> Async(()) { yield .{ .event = &ready }; };
+};
 Uart := struct {};
 Point := struct { x: i32, y: i32 };
 Reg := ($T: type) -> type { struct { raw: T } };
@@ -32,9 +63,20 @@ Serialize := ($T: type) -> lang.Interface {
 };
 
 /// Program pieces the examples call.
-Cache := struct {};
-Queue := struct {};
-Packet := struct { bytes: [16]u8 };
+Cache := struct {
+    get := (self: &Cache, key: u32) -> ?u32 { .none };
+};
+Job := struct {
+    run := (self: &Job) {};
+};
+Queue := struct {
+    pop := (self: &mut Queue) -> ?Job { .none };
+};
+Packet := struct {
+    bytes: [16]u8,
+    encode := (self: &Packet) -> [16]u8 { self.bytes };
+    decode := (bytes: &[u8]) -> Result(Packet, Error) { .err(.parse) };
+};
 use := ($T: type, v: T) {};
 handle_read := (r: u8) {};
 handle_write := (w: u8) {};

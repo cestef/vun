@@ -347,9 +347,12 @@ In order:
      apart), `Builder::receiver` borrows receivers per the method's first parameter, final
      returns point at the body's tail. Next: `defer` (lower per exit, then drop the deferred
      statements on exits where their linear operand is `uninit`; ambiguous is an error),
-     `fixed` and `scoped` kinds, scope exits inside a body (leaks are found at the return),
-     corpus stand-ins (`Fs.open`, a linear `File`) so `linear_leak.ov` and `use_after_move.ov`
-     lower.
+     `fixed` and `scoped` kinds, scope exits inside a body (leaks are found at the return).
+     Corpus stand-ins now declare the methods programs call (`Fs.open`/`close` over a linear
+     `File`, `Serial`, `Timer`, `Led`, `Cache`, `Queue`, `Job`, `Packet`, `Config.done`,
+     `Alloc.create`); `types.no_member` on values still waits for `Own` field access,
+     `std.Dyn`, `Result.map_err` (with `$` inference and variant constructors as values),
+     `Alloc.destroy`, and stand-ins tied to program types (`Dma`, `Uart`, `System`, `svd`).
    - `types.no_member` on values stays off: turning it on (tried) reports members the corpus
      stand-ins lack. Needed first: stand-in methods for `Timer`, `Serial`, `Led`, `Dma`, `Fs`,
      `Alloc`, `Device`, `System`, `Cache`, `Queue`, `Packet`, `Uart` in `corpus/support`,
