@@ -5,7 +5,7 @@ use overt_grammar::Narrowing;
 
 use crate::Primitive;
 use crate::env::{Env, Unevaluated};
-use crate::int::Integer;
+use crate::int::{Integer, Interval};
 use crate::layout::Layouts;
 use crate::primitives::bounds::Bounds;
 use crate::primitives::int::Int;
@@ -61,6 +61,13 @@ impl Primitive {
             }
             // `lang.mem.len(T, xs)`: the number of items `xs` borrows.
             (Self::Mem(Mem::len), [_, Value::Array(items)]) => Ok(Value::Int(Integer::from(items.len()))),
+            (Self::Int(Int::magnitude), [Value::Range(range)]) => {
+                Ok(Value::Range(range.as_ref().map(Interval::magnitude)))
+            }
+            (Self::Int(Int::abs), [Value::Range(_), Value::Int(x)]) => {
+                let magnitude = Interval::singleton(x.clone()).magnitude();
+                Ok(Value::Int(magnitude.lo().finite().ok_or(Unevaluated::Unsupported)?.clone()))
+            }
             // Narrowing an integer to the integer type `T` (spec 04, rule 3).
             (Self::Int(int), [Value::Range(_), x, Value::Type(ty)]) => {
                 let range = ty.interval().ok_or(Unevaluated::Unsupported)?;
@@ -69,6 +76,7 @@ impl Primitive {
                     Int::wrap => x.narrow(&range, Narrowing::Wrap),
                     Int::sat => x.narrow(&range, Narrowing::Sat),
                     Int::fits => env.decide(x.narrow(&range, Narrowing::To).is_ok()),
+                    Int::magnitude | Int::abs => Err(Unevaluated::Unsupported),
                 }
             }
             // Reflection (spec 03, section 6).

@@ -73,6 +73,8 @@ impl Primitive {
         Self::Int(int::Int::wrap),
         Self::Int(int::Int::sat),
         Self::Int(int::Int::fits),
+        Self::Int(int::Int::magnitude),
+        Self::Int(int::Int::abs),
         Self::Kind(kind::Kind::linear),
         Self::Kind(kind::Kind::free),
         Self::Kind(kind::Kind::fixed),

@@ -101,6 +101,20 @@ impl Interval {
         self.lo <= other.lo && other.hi <= self.hi
     }
 
+    /// The absolute values of these: `0..=5` for `-5..=3`.
+    #[must_use]
+    pub fn magnitude(&self) -> Self {
+        let zero = Extended::Finite(Integer::from(0));
+        if self.lo >= zero {
+            return self.clone();
+        }
+        let negated = self.neg();
+        if self.hi <= zero {
+            return negated;
+        }
+        Self { lo: zero, hi: negated.hi.max(self.hi.clone()) }
+    }
+
     /// The smallest range holding both, where two branches meet.
     #[must_use]
     pub fn hull(&self, other: &Self) -> Self {

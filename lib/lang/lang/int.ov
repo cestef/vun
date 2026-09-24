@@ -33,3 +33,8 @@ sat: ($r: Range, x: Int(r), $T: type) -> T = _;
 /// Whether `x` is a value of `T`.
 #[panic.never]
 fits: ($r: Range, x: Int(r), $T: type) -> bool = _;
+/// The absolute values of the integers of `r`: `0..=5` for `-5..=3`.
+magnitude: ($r: Range) -> Range = _;
+/// The absolute value of `x`, whose range is the magnitude of `x`'s.
+#[panic.never]
+abs: ($r: Range, x: Int(r)) -> Int(magnitude(r)) = _;

@@ -11,10 +11,21 @@ pub enum Int {
     sat,
     /// Whether `x` is a value of `T`.
     fits,
+    /// The absolute values of the integers of `r`: `0..=5` for `-5..=3`.
+    magnitude,
+    /// The absolute value of `x`, whose range is the magnitude of `x`'s.
+    abs,
 }
 impl Int {
     pub const NAMESPACE: &str = "lang.int";
-    pub const ALL: &[Self] = &[Self::to, Self::wrap, Self::sat, Self::fits];
+    pub const ALL: &[Self] = &[
+        Self::to,
+        Self::wrap,
+        Self::sat,
+        Self::fits,
+        Self::magnitude,
+        Self::abs,
+    ];
     /// The declaration's name.
     #[must_use]
     pub const fn name(self) -> &'static str {
@@ -23,6 +34,8 @@ impl Int {
             Self::wrap => "wrap",
             Self::sat => "sat",
             Self::fits => "fits",
+            Self::magnitude => "magnitude",
+            Self::abs => "abs",
         }
     }
 }
