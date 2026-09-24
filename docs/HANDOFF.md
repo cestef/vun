@@ -202,9 +202,9 @@ patterns and typed annotations (89), linked values and repeats (90), layout (93)
 
 - The project was renamed from Overt to Vun (crates `vun-*`, CLI `vun`, sources `.vun`, `VUN_*`
   variables); the extension comes from `vun_span::extension!`, file names from `source_file!`.
-- The target directory is shared (`~/.cargo/target`) and crates bake in `env!("CARGO_MANIFEST_DIR")`
-  (`vun_harness::repo_root`): after moving the repository, clean this workspace's packages only
-  (`cargo clean -p <each>`), never the whole target directory.
+- Crates bake in `env!("CARGO_MANIFEST_DIR")` (`vun_harness::repo_root`), and cargo does not
+  rebuild them when the repository moves: run `cargo clean` after a move. The target directory is
+  the repository's own `target/`.
 - `cargo xtask generate` is built from the crates it regenerates: when a change breaks the
   generated code or a caller of a changed table shape, make callers tolerant first (tuple
   patterns with `..`), or hand-patch the generated files to the new shape, build, regenerate. A
