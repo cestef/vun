@@ -8,9 +8,8 @@
 
 use overt_diag::{DiagId, Msg};
 use overt_syntax::literal::{Decl, Literal};
-use proc_macro2::TokenStream;
 
-use crate::generate::{Generator, Read, Source};
+use crate::generate::{Generator, Module, Read, Source};
 
 mod enums;
 mod slots;
@@ -19,7 +18,7 @@ mod tables;
 use crate::names::{docs, is_type_name};
 
 pub(crate) const GENERATOR: Generator =
-    Generator { source: "lib/lang/lang/syntax", output: "compiler/front/grammar/src/generated.rs", emit };
+    Generator { source: "lib/lang/lang/syntax", output: "compiler/front/grammar/src/generated", emit };
 
 const SHAPE: DiagId = DiagId::new("xtask.grammar.shape");
 const UNRESOLVED: DiagId = DiagId::new("xtask.grammar.unresolved");
@@ -28,7 +27,7 @@ const UNRESOLVED: DiagId = DiagId::new("xtask.grammar.unresolved");
 const ENTRY_NAME: &str = "name";
 const ENTRY_TEXT: &str = "text";
 
-fn emit(sources: &[Source<'_>]) -> Read<TokenStream> {
+fn emit(sources: &[Source<'_>]) -> Read<Vec<Module>> {
     let decls = sources.iter().flat_map(|s| s.decls.iter().cloned()).collect();
     let source = Source { path: GENERATOR.source.to_owned(), decls };
     Grammar::read(&source)?.emit(&source)

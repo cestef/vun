@@ -15,6 +15,14 @@ pub(crate) fn ident(name: &str) -> Ident {
     Ident::new(name, Span::call_site())
 }
 
+/// A module named `name`, raw when the name is a Rust keyword: the group `impl` is `r#impl`.
+pub(crate) fn module(name: &str) -> Ident {
+    match syn::parse_str::<Ident>(name) {
+        Ok(ident) => ident,
+        Err(_) => Ident::new_raw(name, Span::call_site()),
+    }
+}
+
 /// The Rust spelling of a `snake_case` grammar name: `colon_eq` is `ColonEq`.
 pub(crate) fn pascal(name: &str) -> Ident {
     let word: String = name
@@ -30,4 +38,20 @@ pub(crate) fn pascal(name: &str) -> Ident {
 /// The Rust constant for a table: `element_types` is `ELEMENT_TYPES`.
 pub(crate) fn constant(name: &str) -> Ident {
     ident(&name.to_ascii_uppercase())
+}
+
+/// The module for a type name: `TokenKind` is `token_kind`.
+pub(crate) fn snake(name: &str) -> String {
+    let mut out = String::new();
+    for (i, c) in name.chars().enumerate() {
+        if c.is_ascii_uppercase() {
+            if i > 0 {
+                out.push('_');
+            }
+            out.push(c.to_ascii_lowercase());
+        } else {
+            out.push(c);
+        }
+    }
+    out
 }

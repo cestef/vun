@@ -6,19 +6,23 @@ use proc_macro2::TokenStream;
 use quote::{ToTokens, quote};
 
 use super::{Enum, GENERATOR, Grammar, SHAPE, Ty, UNRESOLVED};
-use crate::generate::{Read, Source};
-use crate::names::{constant, docs, ident, pascal};
+use crate::generate::{Module, Read, Source};
+use crate::names::{constant, docs, ident, pascal, snake};
 
 impl<'s> Grammar<'s> {
-    pub(super) fn emit(&self, source: &Source<'s>) -> Read<TokenStream> {
-        let enums = self.enums.iter().map(Enum::emit);
-        let slots = self.enums.iter().map(|e| self.slots(e)).collect::<Read<Vec<_>>>()?;
-        let tables = source
-            .decls
-            .iter()
-            .filter_map(|d| d.value.as_list().map(|items| self.table(d, items)))
-            .collect::<Read<Vec<_>>>()?;
-        Ok(quote! { #(#enums)* #(#slots)* #(#tables)* })
+    /// A module per enum, per kind's children and per table, named after the declaration.
+    pub(super) fn emit(&self, source: &Source<'s>) -> Read<Vec<Module>> {
+        let mut modules = Vec::new();
+        for e in &self.enums {
+            modules.push(Module::sibling(snake(e.name), &e.emit()));
+            modules.extend(self.slots(e)?);
+        }
+        for d in &source.decls {
+            if let Some(items) = d.value.as_list() {
+                modules.push(Module::sibling(d.name.to_owned(), &self.table(d, items)?));
+            }
+        }
+        Ok(modules)
     }
 
     pub(super) fn table(&self, d: &Decl<'s>, items: &[Literal<'s>]) -> Read<TokenStream> {

@@ -16,6 +16,7 @@ use std::process::ExitCode;
 
 use overt_command::{Action, Args, Command, Outcome, Param, ParamKind, Program};
 use overt_diag::{ChildKind, DiagCtxt, DiagId, DiagSink, Diagnostic, Msg};
+use overt_fs::Edit;
 use overt_harness::repo_root;
 use overt_origin::OriginTable;
 use overt_render_short::ShortRenderer;
@@ -82,8 +83,8 @@ fn generate_all(cx: &mut Cx, args: &Args, out: &mut dyn Write) -> io::Result<Out
                 continue;
             }
         };
-        let path = root.join(generator.output);
-        if std::fs::read_to_string(&path).is_ok_and(|current| current == generated) {
+        let changes = generator.changes(&root, &generated)?;
+        if changes.is_empty() {
             writeln!(out, "{} is up to date", generator.output)?;
         } else if args.flag(&CHECK) {
             let msg = Msg::new().code(generator.output).text(" is out of date with ").code(generator.source);
@@ -91,7 +92,13 @@ fn generate_all(cx: &mut Cx, args: &Args, out: &mut dyn Write) -> io::Result<Out
             cx.diag.error(Diagnostic::error(STALE, msg).child(ChildKind::Help, help));
             outcome = Outcome::Failure;
         } else {
-            std::fs::write(&path, generated)?;
+            let dir = root.join(generator.output);
+            for name in &changes.differing {
+                dir.join(name).put(&generated[name])?;
+            }
+            for path in &changes.stale {
+                std::fs::remove_file(path)?;
+            }
             writeln!(out, "wrote {}", generator.output)?;
         }
     }

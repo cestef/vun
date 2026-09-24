@@ -1,13 +1,11 @@
 //! `cargo xtask lines`: no source file is monolithic. A file past [`MAX_LINES`] is split into a
-//! directory module by concern (`CLAUDE.md`, code rules). Generated files are exempt: their size
-//! follows their source.
+//! directory module by concern (`CLAUDE.md`, code rules). Generated files are held to it too:
+//! generators emit one module per declaration or group.
 
 use overt_fs::Tree;
 use std::path::{Path, PathBuf};
 
 use overt_span::EXTENSION;
-
-use crate::generate;
 
 pub(crate) const MAX_LINES: u32 = 300;
 
@@ -26,13 +24,9 @@ impl Oversized {
     /// # Errors
     /// Returns an error if a checked directory or file cannot be read.
     pub(crate) fn all(root: &Path) -> std::io::Result<Vec<Self>> {
-        let generated: Vec<PathBuf> = generate::ALL.iter().map(|g| root.join(g.output)).collect();
         let mut found = Vec::new();
         for &(dir, ext) in CHECKED {
             for path in root.join(dir).files_with(ext)? {
-                if generated.contains(&path) {
-                    continue;
-                }
                 let count = std::fs::read_to_string(&path)?.lines().count();
                 let lines = u32::try_from(count).unwrap_or(u32::MAX);
                 if lines > MAX_LINES {

@@ -87,9 +87,14 @@ corpus/reject             must-fail programs with `//~ id` annotations (`cargo x
 fuzz/                     cargo-fuzz crate (outside the workspace): targets `lex`, `parse`
 ```
 
-Generated files (never edit; edit the `.ov` source and run `cargo xtask generate`):
-`compiler/front/grammar/src/generated.rs` (from `lib/lang/lang/syntax/`: `grammar.ov` and
-`desugar.ov`, read as one set of declarations) and `compiler/base/diag/src/errors.rs`.
+Generated directories (never edit; edit the `.ov` source and run `cargo xtask generate`):
+`compiler/front/grammar/src/generated/` (from `lib/lang/lang/syntax/`: `grammar.ov` and
+`desugar.ov`, read as one set of declarations; a module per enum, per table, and the node slots
+in `node_field`, `node_slot`, `node_kind_slots`), `compiler/base/diag/src/errors/` (a module per
+error group, `all` for `ALL` and `EXPLANATIONS`) and `compiler/front/sema/src/primitives/` (a
+module per `lang` namespace, `primitive` for `Primitive`). Generators emit `generate::Module`s
+(`Access::{Glob, Path, Impl}`); `Generator::changes` compares the whole directory, stale files
+included; generated files are held to the 300-line limit.
 
 ## 4. Language design in brief
 
@@ -134,7 +139,7 @@ tested (the rest are stubs):
 | `overt-graph` | `Requirements<K>` (`add`, `order`, `OrderError`): the pass manager's ordering. |
 | `overt-fs` | `Tree` on `Path`: `files` (recursive, sorted), `entries`. `Modes` on `Path` (`mode`, `set_mode`: `Mode::{Regular, Executable}`); `Relative` (`relative_to`). `Edit` on `Path`: `put` (creates parents), `remove` (absent is removed), `fresh` (empty directory), `replace_with` (move a directory in whole). `Scratch`: a test directory removed on drop. Every filesystem write in the compiler and its tests goes through them. |
 | `overt-outline` | `Outline` + `Outlined::node`: indented tree text for the CST and HIR dumps. |
-| `overt-grammar` | `generated.rs`: `NodeField`, `NodeSlot`, `Count`, `NodeKind::slots` (children per kind, from tagged entries), `TokenKind` (+ `TRIVIA`, `ATOMS`, `KEYWORDS`, `PUNCTUATION`, `END`, `text()`), `NodeKind` (`LEAVES`, `BRANCHES`), `Context`, `Assoc`, tables `CONTEXTUAL`, `DELIMITERS`, `INFIX`, `PREFIX`, `POSTFIX`, `ASSIGN`, `OPERANDS`, `ELEMENT_TYPES`, `LITERAL_TYPES`. `lib.rs` derives lookups: `punctuation`, `keyword`, `is_trivia`, `infix` (`Prec`, `Infix`), `closer`/`opens`/`closes`, `is_leaf`, `contextual`. |
+| `overt-grammar` | `generated/`: `NodeField`, `NodeSlot`, `Count`, `NodeKind::slots` (children per kind, from tagged entries), `TokenKind` (+ `TRIVIA`, `ATOMS`, `KEYWORDS`, `PUNCTUATION`, `END`, `text()`), `NodeKind` (`LEAVES`, `BRANCHES`), `Context`, `Assoc`, tables `CONTEXTUAL`, `DELIMITERS`, `INFIX`, `PREFIX`, `POSTFIX`, `ASSIGN`, `OPERANDS`, `ELEMENT_TYPES`, `LITERAL_TYPES`. `lib.rs` derives lookups: `punctuation`, `keyword`, `is_trivia`, `infix` (`Prec`, `Infix`), `closer`/`opens`/`closes`, `is_leaf`, `contextual`. |
 | `overt-syntax` | `tokens` (SoA tokens + trivia side table, `verify`); `lexer` (`Tokens::lex`, recovery, `literal(kind, text)` for string values, backslash escapes); `cst` (postorder `(kind, Anchor, size)`, `Anchor::{Token, Missing}`, `children`, `span`, `dump`, `verify` -> `Malformed`); `parser` (`Cst::parse`); `literal` (`Cst::declarations` -> `Decl { name, doc, value: Literal, span }`, `Literal::Tagged`); `literal::{print, insert}` write values back (`Literal::source`, `Literal::laid_out` within `WIDTH`, `Decl::insert` -> `overt_diag::Edit`); `Cst::fields(n)` -> `Fields` (`get`, `one`, `assigned`), matched against the kind's slots; `children_rev` walks without allocating. |
 | `overt-hir` | `tree` (arenas: namespaces, decls, blocks, exprs, pats, binders; `List`/`Entry::Staged` for `$for`/`$if`), `lower` (`Hir::lower`, one `Cst::fields` per node), `visit` (`Visitor` + `walk_*`), `verify` (`Hir::verify`: tree property, origins), `resolve` (`Hir::resolve`; scopes: namespace, local, function, signature; `Res::{Binder, Outer { name, ns }}`, `Resolution::parents`; the checks; `Resolution::check_outer` over the `Outside` trait reports `names.unresolved`), `dump` (`Hir::dump`, `ExprKind::name`). `Member::Spread` (`..path`, `..path.{ a, b }`; selected names are binders). `Hir::members`, `Hir::binders`, `Hir::path`, `tree::each_entry`. |
 | `overt-hir::db` | The front end as queries. Inputs set by the driver: `Package(PackageId) -> PackageData` (name, dir, key, deps as `Result<PackageId, Unloaded>`, prelude, files) and `FileText(FileRef)`. Queries: `Parsed(FileRef)` (tokens, CST, HIR, resolution, reports), `NamespaceAt`, `Members`, `Exports` (cycles give nothing more), `Scope(PackageId)` (names, `poisoned`, reports), `FileNames(FileRef)` (spreads, file/directory duplicates, `check_outer`). Reports are data (`DiagCtxt` in values); an absent dependency carries its prepared diagnostic, returned only where it is needed; the driver absorbs reports, deduplicated. Namespace layout is read from `PackageData::files` (`file_of`, `children`, `holds`, `namespace_of`, `directory`). |

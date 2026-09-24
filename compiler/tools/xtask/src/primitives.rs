@@ -14,14 +14,17 @@
 use overt_build::layout::SEPARATOR;
 use overt_diag::{DiagId, Msg};
 use overt_syntax::literal::Literal;
-use proc_macro2::{Ident, Span, TokenStream};
+use proc_macro2::{Ident, Span};
 use quote::quote;
 
-use crate::generate::{Generator, Read, Source};
+use crate::generate::{Access, Generator, Module, Read, Source};
 use crate::names::{docs, ident, pascal};
 
 pub(crate) const GENERATOR: Generator =
-    Generator { source: "lib/lang", output: "compiler/front/sema/src/primitives.rs", emit };
+    Generator { source: "lib/lang", output: "compiler/front/sema/src/primitives", emit };
+
+/// The module of the enum over every namespace's primitives.
+const PRIMITIVE_MODULE: &str = "primitive";
 
 const EMPTY: DiagId = DiagId::new("xtask.primitives.empty");
 
@@ -61,7 +64,7 @@ impl Namespace {
     }
 
     /// Its module: the enum, its namespace, its list and each variant's name.
-    fn emit(&self) -> TokenStream {
+    fn emit(&self) -> Module {
         let (module, name, path) = (self.module(), self.name(), &self.path);
         let doc = format!(" The primitives declared in `{path}`.");
         let variants = self.items.iter().map(|(item, doc)| {
@@ -73,8 +76,7 @@ impl Namespace {
             let variant = variant(item);
             quote! { Self::#variant => #item }
         });
-        quote! {
-            pub mod #module {
+        let items = quote! {
                 #[doc = #doc]
                 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
                 #[allow(non_camel_case_types, reason = "variants are named as their declarations")]
@@ -90,18 +92,18 @@ impl Namespace {
                         match self { #(#names),* }
                     }
                 }
-            }
-        }
+        };
+        Module { name: module.to_string(), access: Access::Path, items }
     }
 }
 
-fn emit(sources: &[Source<'_>]) -> Read<TokenStream> {
+fn emit(sources: &[Source<'_>]) -> Read<Vec<Module>> {
     let namespaces: Vec<Namespace> = sources.iter().filter_map(Namespace::of).collect();
     if namespaces.is_empty() {
         let msg = Msg::new().text("declares no primitive: no declaration's value is ").code("_");
         return Err(GENERATOR.error(EMPTY, "lang", msg));
     }
-    let modules = namespaces.iter().map(Namespace::emit);
+    let mut modules: Vec<Module> = namespaces.iter().map(Namespace::emit).collect();
     let variants = namespaces.iter().map(|n| {
         let (module, name, doc) = (n.module(), n.name(), format!(" `{}`", n.path));
         quote! { #[doc = #doc] #name(#module::#name) }
@@ -121,9 +123,7 @@ fn emit(sources: &[Source<'_>]) -> Read<TokenStream> {
         let name = n.name();
         quote! { Self::#name(p) => p.name() }
     });
-    Ok(quote! {
-        #(#modules)*
-
+    let primitive = quote! {
         /// A declaration of `lang` whose value is `_`, provided by the compiler, by namespace.
         #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
         pub enum Primitive { #(#variants),* }
@@ -143,5 +143,7 @@ fn emit(sources: &[Source<'_>]) -> Read<TokenStream> {
                 match self { #(#names),* }
             }
         }
-    })
+    };
+    modules.push(Module::sibling(PRIMITIVE_MODULE.to_owned(), &primitive));
+    Ok(modules)
 }

@@ -1,7 +1,8 @@
 //! Token kinds, node kinds and operator tables, generated from `lib/lang/lang/syntax/grammar.ov`.
 //!
-//! The grammar is defined once, as Overt data (spec 13, section 5). `cargo xtask grammar` writes
-//! the kinds and tables into `generated.rs`; this file derives lookups from them.
+//! The grammar is defined once, as Overt data (spec 13, section 5). `cargo xtask generate` writes
+//! the kinds and tables into `generated/`, a module per declaration; this file derives lookups
+//! from them.
 
 use std::sync::LazyLock;
 
