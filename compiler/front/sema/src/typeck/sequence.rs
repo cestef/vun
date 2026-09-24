@@ -1,0 +1,119 @@
+//! Sequences: tuples, arrays and indexing (spec 02, section 2). Items are typed as the expected
+//! items; an array literal has the join of its items (`[1, 2, 3]` is `[3]Int(1..=3)`, widened on
+//! use), and indexing an array or a slice, directly or through a borrow, gives its item.
+
+use overt_hir::tree::{Entry, ExprId};
+
+use super::{Known, Stage, Typer};
+use crate::int::Integer;
+use crate::ty::{Ty, TyKind, Value};
+
+impl Typer<'_, '_, '_> {
+    /// `(a, b)`: a tuple of its items' types, each typed as and checked against the expected
+    /// tuple's item.
+    pub(super) fn tuple(&mut self, expr: ExprId, items: &[Entry<ExprId>]) -> Option<Known> {
+        let expected = self.expected(expr).and_then(|t| match &*t {
+            TyKind::Tuple(parts) if parts.len() == items.len() => Some(parts.clone()),
+            _ => None,
+        });
+        let mut parts = Vec::new();
+        let mut stage = Stage::Compile;
+        for (i, item) in items.iter().enumerate() {
+            let Entry::One(item) = item else { return None };
+            let part = expected.as_ref().map(|p| p[i]);
+            let known = self.typed_as(*item, part);
+            if let Some(known) = known {
+                stage = stage.max(known.stage);
+            }
+            // An item that does not fit is reported on its own, and the tuple has no type.
+            if let (Some(known), Some(part)) = (known, part)
+                && !part.accepts(&known.ty)
+            {
+                self.expect(self.hir().exprs[*item].origin, known, part, None);
+                parts.push(None);
+                continue;
+            }
+            parts.push(known.map(|k| k.ty));
+        }
+        let parts = parts.into_iter().collect::<Option<_>>()?;
+        Some(Known { ty: TyKind::Tuple(parts).intern(), stage })
+    }
+
+    /// `[a, b, c]`: an array of the join of its items, each typed as the expected item.
+    pub(super) fn array(&mut self, expr: ExprId, items: &[Entry<ExprId>]) -> Option<Known> {
+        let expected = self.expected(expr).and_then(|t| match &*t {
+            TyKind::Array { elem, .. } => Some(*elem),
+            _ => None,
+        });
+        let mut joined: Option<Option<Known>> = None;
+        for item in items {
+            let Entry::One(item) = item else {
+                self.walk_entry(item);
+                joined = Some(None);
+                continue;
+            };
+            let found = self.typed_as(*item, expected);
+            // An item that does not fit the expected item is reported on its own.
+            if let (Some(found), Some(expected)) = (found, expected)
+                && !expected.accepts(&found.ty)
+            {
+                self.expect(self.hir().exprs[*item].origin, found, expected, None);
+                joined = Some(None);
+                continue;
+            }
+            joined = Some(match (joined, found) {
+                (None, found) => found,
+                (Some(Some(sofar)), Some(found)) => self.join(*item, sofar, found),
+                _ => None,
+            });
+        }
+        let len = Integer::from(i128::try_from(items.len()).ok()?);
+        match joined {
+            // `[]` has the expected item type, if any.
+            None => {
+                Some(Known { ty: TyKind::Array { len, elem: expected? }.intern(), stage: Stage::Compile })
+            }
+            Some(joined) => {
+                let joined = joined?;
+                Some(Known { ty: TyKind::Array { len, elem: joined.ty }.intern(), stage: joined.stage })
+            }
+        }
+    }
+
+    /// `[value; count]`: `count` copies of `value`, `count` known at compile time.
+    pub(super) fn repeat(&mut self, expr: ExprId, value: ExprId, count: ExprId) -> Option<Known> {
+        let expected = self.expected(expr).and_then(|t| match &*t {
+            TyKind::Array { elem, .. } => Some(*elem),
+            _ => None,
+        });
+        let item = self.typed_as(value, expected);
+        self.typed(count);
+        let Ok(Value::Int(len)) = self.env.eval(count) else { return None };
+        let item = item?;
+        Some(Known { ty: TyKind::Array { len, elem: item.ty }.intern(), stage: item.stage })
+    }
+
+    /// `object[index]` with an integer index: the item of an array or a slice, looking through a
+    /// borrow. A range index takes a part, which is not typed yet.
+    pub(super) fn index(&mut self, object: ExprId, index: ExprId) -> Option<Known> {
+        let object = self.typed(object);
+        let index = self.typed(index).filter(|k| k.ty.interval().is_some())?;
+        let object = object?;
+        let ty = object.ty.borrowed().unwrap_or(object.ty);
+        let elem: Ty = match &*ty {
+            TyKind::Array { elem, .. } | TyKind::Slice(elem) => *elem,
+            _ => return None,
+        };
+        Some(Known { ty: elem, stage: object.stage.max(index.stage) })
+    }
+
+    /// An entry generated by `$for` or `$if`, whose items are typed without a known count.
+    fn walk_entry(&mut self, entry: &Entry<ExprId>) {
+        let hir = self.hir();
+        if let Entry::Staged(staged) = entry {
+            overt_hir::visit::Visitor::staged(self, hir, staged, &mut |v, e: &ExprId| {
+                v.typed(*e);
+            });
+        }
+    }
+}

@@ -1,6 +1,6 @@
 //! Evaluating constant forms, and the types annotations denote.
 
-use overt_grammar::{BORROWS, TokenKind};
+use overt_grammar::{BORROWS, TYPE_PREFIXES, TokenKind};
 use overt_hir::resolve::Res;
 use overt_hir::tree::{Arg, BlockId, Cond, Entry, ExprId, ExprKind, List, Lit, Name, Param};
 use overt_intern::Symbol;
@@ -30,6 +30,24 @@ impl Env<'_, '_> {
             ExprKind::Enum(_) => Ok(self.nominal(expr, NominalKind::Enum)),
             ExprKind::Struct(_) => Ok(self.nominal(expr, NominalKind::Struct)),
             ExprKind::Prefix { op: TokenKind::Amp, mode, operand } => self.borrow(*mode, *operand),
+            ExprKind::Prefix { op, operand, .. }
+                if let Some((_, item)) = TYPE_PREFIXES.iter().find(|(t, _)| t == op) =>
+            {
+                let ty = self.ty(*operand)?;
+                self.apply(self.item(item)?, vec![Value::Type(ty)])
+            }
+            ExprKind::ArrayType { len, elem } => {
+                let Value::Int(len) = self.eval(*len)? else { return Err(Unevaluated::Unsupported) };
+                Ok(Value::Type(TyKind::Array { len, elem: self.ty(*elem)? }.intern()))
+            }
+            ExprKind::Array(items) => items
+                .iter()
+                .map(|item| match item {
+                    Entry::One(item) => self.eval(*item),
+                    Entry::Staged(_) => Err(Unevaluated::Unsupported),
+                })
+                .collect::<Result<_, _>>()
+                .map(Value::Array),
             ExprKind::Prefix { op, operand, .. } => self.unary(*op, &self.eval(*operand)?),
             ExprKind::Infix { op: op @ (TokenKind::DotDot | TokenKind::DotDotEq), left, right } => {
                 let hi = right.map(|r| self.eval(r)).transpose()?;
@@ -86,6 +104,15 @@ impl Env<'_, '_> {
                 _ => Err(Unevaluated::Unsupported),
             })
             .collect::<Result<Vec<_>, _>>()?;
+        self.apply(callee, args)
+    }
+
+    /// `callee(args)` at compile time: a function value, which the evaluator runs, or a
+    /// primitive.
+    ///
+    /// # Errors
+    /// Returns why the call has no value.
+    pub fn apply(&self, callee: Value, args: Vec<Value>) -> Result<Value, Unevaluated> {
         match callee {
             Value::Fn(f) => self.cx.get::<Call>(&Instance { f, args }),
             Value::Primitive(p) => p.apply(&args),
@@ -99,10 +126,7 @@ impl Env<'_, '_> {
         let word = mode.map_or("", Symbol::as_str);
         let (_, item) = BORROWS.iter().find(|(m, _)| *m == word).ok_or(Unevaluated::Unsupported)?;
         let ty = self.eval(operand)?.as_type().ok_or(Unevaluated::Runtime)?;
-        match self.item(item)? {
-            Value::Primitive(p) => p.apply(&[Value::Type(ty)]),
-            _ => Err(Unevaluated::Unsupported),
-        }
+        self.apply(self.item(item)?, vec![Value::Type(ty)])
     }
 
     /// The type `expr` denotes, evaluated where a type is expected.

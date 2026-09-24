@@ -35,6 +35,14 @@ impl Typer<'_, '_, '_> {
             ExprKind::StructLit { ty: None, fields } => self.struct_lit(self.expected(expr), fields),
             ExprKind::DotName(Name::Plain(name)) => self.dot(expr, *name),
             ExprKind::Tuple(items) => self.tuple(expr, items),
+            ExprKind::Array(items) => self.array(expr, items),
+            ExprKind::Repeat { value, count } => self.repeat(expr, *value, *count),
+            ExprKind::Index { object, index } => self.index(*object, *index),
+            // A type written in an expression, such as the argument of `Pair(u8)` or `[4]u8`.
+            ExprKind::ArrayType { .. } => {
+                visit::walk_expr(self, hir, expr);
+                compile(TyKind::primitive(Primitive::Lang(Lang::r#type)))
+            }
             ExprKind::Match { scrutinee, arms } => self.matching(expr, *scrutinee, arms),
             ExprKind::Return(value) => {
                 if let Some(value) = value {

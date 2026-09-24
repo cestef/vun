@@ -78,6 +78,7 @@
 | 72 | Compound assignments are data: the table `compound` of `lang.syntax.desugar` gives each `op=`'s operator and narrowing (`to`, `wrap`, `sat`). The evaluator's step budget counts each compile-time call's own steps (the calls it makes have their own), so a memoized call's outcome does not depend on which evaluation root reached it first; this departs from spec 03's budget per evaluation root, and `#[comptime.fuel]` is not read yet | proposed | 03, 04, appendix B |
 | 73 | Compile-time traps are diagnostics: `comptime.trap` and `comptime.exhausted`, at the evaluation root (a top-level value or a type annotation), labeling the trap site with one "while evaluating" frame per call; the checker computes every top-level value | proposed | 03 |
 | 74 | Typing uses the expected type where the context gives one: annotations, parameters, the result (tails and `return`), fields, assignments, a binary operator's right operand (the left's type), branches; `.name` is a variant, a variant constructor or a declaration of the expected type; tuples and arrays widen item by item; `match` and `if` take the join of their branches | proposed | 01, 04 |
+| 75 | Type syntax is complete in evaluation: `[N]T` arrays, `[T]` slices (an array value holding one type, mirroring tuples of types), `?T` and `*T` through the table `type_prefixes`; array literals have the join of their items, `[v; n]` repeats, and an integer index gives the item of an array or slice, through a borrow | proposed | 02, appendix B |
 
 ## Questions, with how they were settled
 

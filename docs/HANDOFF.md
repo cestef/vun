@@ -163,7 +163,7 @@ bodies, so `$for`/`$if` work in every list context; node kinds are chosen after 
 (postorder). One report per position; missing things are reported at the end of the previous
 token; nesting capped at 256; the keyword hint suggests `\keyword`.
 
-Tests: 156, including unit tests per crate, `tests/lexer.rs`, `tests/parser.rs` (all of `lib/` and
+Tests: 157, including unit tests per crate, `tests/lexer.rs`, `tests/parser.rs` (all of `lib/` and
 `corpus/accept` parse clean and verify, CST and token snapshots mirroring the corpus tree), CLI parsing tests, the
 generated-files-current test and the corpus test (no failing corpus file). Fuzz: `parse` ran 600k inputs in 4 minutes
 without a failure. clippy pedantic is clean.
@@ -226,6 +226,8 @@ In order:
      `typeck/{block,expected,pattern}.rs`: statements and assignments, `.name` (`dot`), tuples,
      patterns against types (`pattern`, `test` through borrows), `match` (`matching`),
      `if p = e`; `Typer::join` for branches; `TyKind::{accepts, join}` item by item.
+     Sequences (decision 75): `TyKind::Slice`, `Value::Array`, `Env::apply`, `TYPE_PREFIXES`;
+     `typeck/sequence.rs` (tuples, arrays, repeats, integer indexing).
      Next: values of these forms at compile time (`Env` evaluating with an expected type, MIR
      aggregates and `match` lowering), exhaustiveness (decision 29), narrowing by comparisons
      (decision 35), `for p in e`, `#[comptime.fuel]`.
@@ -255,7 +257,7 @@ In order:
    declaration's members needs sema.
 4. Fuzz the parser longer (120 s runs are clean).
 
-`cargo xtask corpus` ends with the phase 1 progress measure (`overt_driver::Coverage`, `Session::coverage`): the share of function-body expressions sema types and of functions MIR lowers in `corpus/accept` (26% and 14 of 102 at the end of the sixth session). The corpus has 40 accept and 55 reject programs plus 63 explanation pages (`cargo xtask corpus`:
+`cargo xtask corpus` ends with the phase 1 progress measure (`overt_driver::Coverage`, `Session::coverage`): the share of function-body expressions sema types and of functions MIR lowers in `corpus/accept` (26% before decision 75, 32% after). The corpus has 40 accept and 55 reject programs plus 63 explanation pages (`cargo xtask corpus`:
 145 passed, 42 pending on later stages, 20 shown as transcripts, 0 failed), plus
 `corpus/build.ov` (prelude `std.prelude` then `support`) and `corpus/support`, stand-ins for what
 programs take from drivers, other libraries and unwritten parts of `std`.

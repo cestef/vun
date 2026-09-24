@@ -34,6 +34,7 @@ impl fmt::Display for TyKind {
                 f.write_str(")")
             }
             Self::Array { len, elem } => write!(f, "[{len}]{elem}"),
+            Self::Slice(elem) => write!(f, "[{elem}]"),
         }
     }
 }
@@ -52,6 +53,13 @@ impl fmt::Display for Value {
                     write!(f, "{}{item}", if i > 0 { ", " } else { "" })?;
                 }
                 f.write_str(")")
+            }
+            Self::Array(items) => {
+                f.write_str("[")?;
+                for (i, item) in items.iter().enumerate() {
+                    write!(f, "{}{item}", if i > 0 { ", " } else { "" })?;
+                }
+                f.write_str("]")
             }
             Self::Variant { name, .. } => write!(f, ".{name}"),
             Self::Struct { ty, .. } => write!(f, "{ty}{{ .. }}"),

@@ -18,6 +18,7 @@ pub enum Value {
     Range(Option<Interval>),
     Type(Ty),
     Tuple(Vec<Value>),
+    Array(Vec<Value>),
     /// A variant of an enum type, with its payload.
     Variant {
         ty: Ty,
@@ -42,7 +43,8 @@ pub enum Value {
 
 impl Value {
     /// The type this value denotes where a type is expected: a type, a primitive that takes no
-    /// arguments, such as `lang.f32`, or a tuple of types, such as `(u8, bool)` or `()`.
+    /// arguments, such as `lang.f32`, a tuple of types, such as `(u8, bool)` or `()`, or an array
+    /// holding one type, the slice type `[T]`: type syntax mirrors value syntax (spec 01).
     #[must_use]
     pub fn as_type(&self) -> Option<Ty> {
         match self {
@@ -51,6 +53,10 @@ impl Value {
             Self::Tuple(items) => {
                 Some(TyKind::Tuple(items.iter().map(Self::as_type).collect::<Option<_>>()?).intern())
             }
+            Self::Array(items) => match items.as_slice() {
+                [item] => Some(TyKind::Slice(item.as_type()?).intern()),
+                _ => None,
+            },
             _ => None,
         }
     }

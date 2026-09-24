@@ -132,3 +132,30 @@ Small := Int(0..=twice(0));
     assert_eq!(trap.labels.iter().map(|l| line(l.origin)).collect::<Vec<_>>(), [1]);
     assert_eq!(trap.trace.iter().map(|t| line(t.origin)).collect::<Vec<_>>(), [2, 3]);
 }
+
+#[test]
+fn type_syntax_and_sequences_are_typed() {
+    let fixture = Fixture::new("comptime-sequences");
+    let file = fixture.root.write(
+        "sequences.ov",
+        "\
+first := (xs: [4]u8) -> u8 { xs[0] };
+slice := (xs: &[u8]) -> u8 { xs[1] };
+wide := (xs: [2]u16) -> u8 { xs[0] };
+literal := () -> [3]u8 { [1, 2, 300] };
+zeros := () -> [4]u8 { [0; 4] };
+maybe := (x: ?u8) -> ?u8 { x };
+other := (x: ?u8) -> ?u16 { x };
+pointer := (p: *u8) -> *u8 { p };
+",
+    );
+    let messages: Vec<String> = fixture.reported(&file).into_iter().map(|(_, m)| m).collect();
+    assert_eq!(
+        messages,
+        [
+            "value does not fit the type `u8`",
+            "value does not fit the type `Int(0..=255)`",
+            "expected `?u16`, found `Option(Int(0..=255))`",
+        ]
+    );
+}

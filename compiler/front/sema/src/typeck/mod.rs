@@ -11,6 +11,7 @@ mod expect;
 mod expected;
 mod infer;
 mod pattern;
+mod sequence;
 #[cfg(test)]
 mod tests;
 

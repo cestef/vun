@@ -9,7 +9,7 @@ spread := (xs: &[u32]) -> u32 {
     mut buf: [4096]u8;
     buf[0] = 1;
     (lo, hi) := bounds(xs);
-    hi - lo + buf[0]
+    (hi - lo + buf[0]).to(u32)
 };
 
 uart := mydrivers.serial.uart;

@@ -35,7 +35,7 @@ declaration whose value is `_`.
 
 | Syntax | Meaning |
 |--------|---------|
-| `?T` | `lang.Option(T)` |
+| `?T`, `*T` | `lang.Option(T)`, `lang.mem.Ptr(T)` (the table `type_prefixes`) |
 | `&T`, `&mut T`, `&out T`, `&take T` | `lang.mem.Ref(T)`, `RefMut(T)`, `RefOut(T)`, `RefTake(T)` (the table `borrows`) |
 | `if c`, `for c`, `a and b`, `!c` | `c` has the type `lang.bool` and holds when it is `lang.bool.true` (the table `forms`) |
 | `(A, B) -> R` | `lang.Fn((A, B), R)` with the attributes of the literal |

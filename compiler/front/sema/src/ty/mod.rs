@@ -42,6 +42,8 @@ pub enum TyKind {
         len: Integer,
         elem: Ty,
     },
+    /// `[T]`: the items of an array of any length, reached through a borrow (`&[T]`).
+    Slice(Ty),
 }
 
 /// The identity of a `struct` or `enum` literal: where it is written and the compile-time call

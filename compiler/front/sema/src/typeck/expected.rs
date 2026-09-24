@@ -1,9 +1,8 @@
 //! Forms typed by what their context expects (spec 01, section 2): `.name` is a member of the
 //! expected type (a variant, a variant's constructor, or a declaration of its namespace, or for
-//! a type provided from outside, of the namespace declaring it), and a tuple's items take the
-//! expected items' types.
+//! a type provided from outside, of the namespace declaring it).
 
-use overt_hir::tree::{Entry, ExprId};
+use overt_hir::tree::ExprId;
 use overt_intern::Symbol;
 
 use super::{Known, Stage, Typer};
@@ -44,35 +43,5 @@ impl Typer<'_, '_, '_> {
             }
             _ => None,
         }
-    }
-
-    /// `(a, b)`: a tuple of its items' types, each typed as and checked against the expected
-    /// tuple's item.
-    pub(super) fn tuple(&mut self, expr: ExprId, items: &[Entry<ExprId>]) -> Option<Known> {
-        let expected = self.expected(expr).and_then(|t| match &*t {
-            TyKind::Tuple(parts) if parts.len() == items.len() => Some(parts.clone()),
-            _ => None,
-        });
-        let mut parts = Vec::new();
-        let mut stage = Stage::Compile;
-        for (i, item) in items.iter().enumerate() {
-            let Entry::One(item) = item else { return None };
-            let part = expected.as_ref().map(|p| p[i]);
-            let known = self.typed_as(*item, part);
-            if let Some(known) = known {
-                stage = stage.max(known.stage);
-            }
-            // An item that does not fit is reported on its own, and the tuple has no type.
-            if let (Some(known), Some(part)) = (known, part)
-                && !part.accepts(&known.ty)
-            {
-                self.expect(self.hir().exprs[*item].origin, known, part, None);
-                parts.push(None);
-                continue;
-            }
-            parts.push(known.map(|k| k.ty));
-        }
-        let parts = parts.into_iter().collect::<Option<_>>()?;
-        Some(Known { ty: TyKind::Tuple(parts).intern(), stage })
     }
 }

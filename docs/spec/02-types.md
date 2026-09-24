@@ -39,6 +39,7 @@ compilation is therefore an ordinary `$if`, never a file-name convention or a pr
 | `enum { none, some(T) }` | sum type with payloads |
 | `(A, B)` | tuple |
 | `[N]T` | array, a value |
+| `[T]` | a slice: the items of an array of any length, reached through a borrow |
 | `&[T]`, `&mut [T]` | slice borrows |
 | `*T`, `?*T` | raw pointer, non-null / nullable |
 | `(A) -> R` | function type |
