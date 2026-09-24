@@ -1,9 +1,7 @@
-use std::io::Read;
-
 use overt_fs::{Mode, Modes, Scratch};
 use overt_hash::Snapshot;
 
-use super::{Archive, FORMATS, Failure, Mirror, Scheme, Schemes, Zstd};
+use super::{FORMATS, Failure, Mirror, Scheme, Schemes};
 
 /// A package tree with a nested file, an executable one and a path past the ustar name field.
 fn tree(dir: &Scratch) -> Vec<String> {
@@ -43,18 +41,4 @@ fn unknown_schemes_and_formats_are_named() {
     assert_eq!(unknown.to_string(), "no supported scheme; supported: file://, https://");
     assert!(matches!(Mirror::parse("https://x/a.rar", &schemes), Err(Failure::Format)));
     assert!(Mirror::parse("https://x/a.tar.gz?download=1", &schemes).is_ok());
-}
-
-#[test]
-fn package_archives_verify_every_file() {
-    let dir = Scratch::new("ovpkg");
-    let include = tree(&dir);
-    let (bytes, _) = Archive::FORMAT.pack(&dir.join("src"), &include, "demo-1.0.0").unwrap();
-    // A file whose bytes differ from the index is refused.
-    let mut raw = Vec::new();
-    Zstd::reader(&bytes).unwrap().read_to_end(&mut raw).unwrap();
-    let at = raw.windows(7).position(|w| w == b"a := 1;").unwrap();
-    raw[at + 5] = b'2';
-    let err = Archive::unpack(&Zstd::compress(&raw), &dir.join("bad")).unwrap_err();
-    assert!(err.to_string().contains("demo/a.ov"), "{err}");
 }

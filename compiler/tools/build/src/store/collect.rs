@@ -93,7 +93,7 @@ impl Store {
         for root in roots.entries().unwrap_or_default() {
             let project = std::fs::read_to_string(&root)?;
             let lock = std::fs::read_to_string(Path::new(&project).join(lock::FILE)).ok();
-            match lock.and_then(|text| Lock::parse(&text).ok()) {
+            match lock.and_then(|text| Lock::parse(&text)) {
                 Some(lock) => live.extend(lock.entries().iter().map(|e| e.hash)),
                 None => std::fs::remove_file(&root)?,
             }

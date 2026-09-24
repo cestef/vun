@@ -39,6 +39,10 @@ impl std::error::Error for Unwritable {}
 pub const WIDTH: usize = 100;
 pub(super) const INDENT: &str = "    ";
 
+mod layout;
+
+pub(super) use layout::Item;
+
 impl Literal<'_> {
     /// The source that reads back as this value, on one line.
     ///
@@ -57,20 +61,6 @@ impl Literal<'_> {
     /// Returns why the value has no literal source.
     pub fn laid_out(&self, indent: &str, column: usize) -> Result<String, Unwritable> {
         Item::Value(self).laid_out(indent, column)
-    }
-}
-
-impl Decl<'_> {
-    /// The declaration `name := value;`, its value laid out within [`WIDTH`].
-    ///
-    /// # Errors
-    /// Returns why the value or the name has no source.
-    pub fn source(&self) -> Result<String, Unwritable> {
-        let mut w = Writer::default();
-        w.binder(self.name)?.text(" ").token(TokenKind::ColonEq).text(" ");
-        let value = self.value.laid_out("", w.out.len())?;
-        w.text(&value).token(TokenKind::Semi).text("\n");
-        Ok(w.out)
     }
 }
 
@@ -226,47 +216,5 @@ impl Writer {
             }
         }
         self.out.push(QUOTE);
-    }
-}
-
-/// What is laid out on a line of its own: a value, or a record's field.
-pub(super) enum Item<'a, 's> {
-    Value(&'a Literal<'s>),
-    Field(&'a str, &'a Literal<'s>),
-}
-
-impl Item<'_, '_> {
-    /// Its source starting `column` characters into a line indented by `indent`, on one line when
-    /// it fits within [`WIDTH`].
-    pub(super) fn laid_out(&self, indent: &str, column: usize) -> Result<String, Unwritable> {
-        let value = match *self {
-            Self::Field(name, value) => {
-                let mut w = Writer::default();
-                w.field(name)?;
-                let value = Item::Value(value).laid_out(indent, column + w.out.len())?;
-                return Ok(w.text(&value).out.clone());
-            }
-            Self::Value(value) => value,
-        };
-        let flat = value.source()?;
-        let items: Vec<Item<'_, '_>> = match value {
-            Literal::List(items) => items.iter().map(Item::Value).collect(),
-            Literal::Record(fields) => fields.iter().map(|d| Item::Field(d.name, &d.value)).collect(),
-            _ => Vec::new(),
-        };
-        if items.is_empty() || column + flat.len() <= WIDTH {
-            return Ok(flat);
-        }
-        let inner = format!("{indent}{INDENT}");
-        // The comma after each item counts toward the width.
-        let column = inner.len() + Writer::spelling(TokenKind::Comma).len();
-        let mut w = Writer::default();
-        w.token(TokenKind::DotLBrace);
-        for item in items {
-            let item = item.laid_out(&inner, column)?;
-            w.line(&inner).text(&item).token(TokenKind::Comma);
-        }
-        w.line(indent).token(TokenKind::RBrace);
-        Ok(w.out)
     }
 }

@@ -29,7 +29,7 @@ impl Version {
         parts.next().is_none().then_some(version)
     }
 
-    pub(super) fn read(decl: &Decl<'_>, cx: &mut DiagCx<'_>) -> Option<Self> {
+    pub(crate) fn read(decl: &Decl<'_>, cx: &mut DiagCx<'_>) -> Option<Self> {
         match &decl.value {
             Literal::String(text) => Self::parse(text),
             _ => None,

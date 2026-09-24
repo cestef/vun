@@ -12,7 +12,7 @@ use overt_diag::DiagId;
 use overt_driver::Session;
 use overt_fs::Scratch;
 use overt_hash::Hash;
-use overt_pkg::{Archive, Scheme};
+use overt_pkg::{Format, Scheme};
 use overt_span::{EXTENSION, SourceFiles, Span};
 
 /// A scratch directory of packages.
@@ -88,8 +88,8 @@ impl Fixture {
     /// URL, returning the URL and the tree hash.
     pub(crate) fn publish(&self, dir: &str, manifest: &Manifest) -> (String, Hash) {
         let (bytes, snapshot) =
-            Archive::FORMAT.pack(&self.root.join(dir), &manifest.include, &manifest.release()).unwrap();
-        let path = self.root.write(format!("{dir}{}", Archive::SUFFIX), bytes);
+            Format::PUBLISHED.pack(&self.root.join(dir), &manifest.include, &manifest.release()).unwrap();
+        let path = self.root.write(format!("{dir}{}", Format::PUBLISHED.suffix()), bytes);
         (Scheme::file_url(&path), snapshot.root())
     }
 

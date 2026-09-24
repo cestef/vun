@@ -6,7 +6,7 @@ use overt_suggest::{Lookup, closest};
 use overt_syntax::literal::{Decl, Literal};
 
 /// The fields of a record literal, checked against the names a reader knows.
-pub(super) struct Fields<'a, 's> {
+pub(crate) struct Fields<'a, 's> {
     record: &'a Decl<'s>,
     decls: &'a [Decl<'s>],
     known: &'static [&'static str],
@@ -15,7 +15,7 @@ pub(super) struct Fields<'a, 's> {
 
 impl<'a, 's> Fields<'a, 's> {
     /// The fields of `record`, which must be a record literal; an empty `.{}` has no fields.
-    pub(super) fn new(
+    pub(crate) fn new(
         record: &'a Decl<'s>,
         known: &'static [&'static str],
         cx: &mut DiagCx<'_>,
@@ -28,13 +28,13 @@ impl<'a, 's> Fields<'a, 's> {
         Some(Self { record, decls, known, missing: Vec::new() })
     }
 
-    pub(super) fn get(&self, name: &str) -> Option<&'a Decl<'s>> {
+    pub(crate) fn get(&self, name: &str) -> Option<&'a Decl<'s>> {
         debug_assert!(self.known.contains(&name), "{name} is declared in the reader's field list");
         self.decls.iter().find(|d| d.name == name)
     }
 
     /// The field `name`; its absence is reported by [`Self::finish`].
-    pub(super) fn require(&mut self, name: &'static str) -> Option<&'a Decl<'s>> {
+    pub(crate) fn require(&mut self, name: &'static str) -> Option<&'a Decl<'s>> {
         let found = self.get(name);
         if found.is_none() {
             self.missing.push(name);
@@ -44,7 +44,7 @@ impl<'a, 's> Fields<'a, 's> {
 
     /// Reports the required fields that are missing, in one diagnostic at the record, and every
     /// field the reader does not know, with the closest known name.
-    pub(super) fn finish(self, cx: &mut DiagCx<'_>) {
+    pub(crate) fn finish(self, cx: &mut DiagCx<'_>) {
         if !self.missing.is_empty() {
             let names = self.missing.iter().map(|n| format!(".{n}"));
             let msg = Msg::new().code(self.record.name).text(" is missing ").code_list(names);
@@ -66,7 +66,7 @@ impl<'a, 's> Fields<'a, 's> {
 }
 
 /// Reading a declaration's literal as a typed value, reporting when it does not fit.
-pub(super) trait Record {
+pub(crate) trait Record {
     /// Reports that this declaration is not `expected`.
     fn invalid<T>(&self, expected: Msg, cx: &mut DiagCx<'_>) -> Option<T>;
     /// Reports that this declaration is not `expected`, with a help.

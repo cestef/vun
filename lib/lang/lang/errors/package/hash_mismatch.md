@@ -20,7 +20,7 @@ error[package.hash_mismatch]: the stored contents of `hal` do not match its hash
    │ ┏━━━━━━━━━━━━━━━━┛
  9 │ ┃             .version = "1.0.0",
 10 │ ┃             .hash = "blake3:zfydsfjcithfeney4uucojbfrxp4azcrmyw3j3fdtkmwsm6cnptq",
-11 │ ┃             .urls = .{ "file://hal-1.0.0.ovpkg" },
+11 │ ┃             .urls = .{ "file://hal-1.0.0.tar.zst" },
 12 │ ┃         },
    │ ┗━━━━━━━━━┛
    │
@@ -35,6 +35,6 @@ Changes meant to last belong in a `.path` dependency or a new release, not in th
 
 ```console
 $ overt pkg fetch
-stored  hal blake3:zfydsfjcithfeney4uucojbfrxp4azcrmyw3j3fdtkmwsm6cnptq from file://hal-1.0.0.ovpkg
+stored  hal blake3:zfydsfjcithfeney4uucojbfrxp4azcrmyw3j3fdtkmwsm6cnptq from file://hal-1.0.0.tar.zst
 $ overt check app.ov
 ```

@@ -1,5 +1,6 @@
-//! Archive formats, by the suffix of the URL or file: Overt's own, and the ones forges and vendors
-//! publish. Each reads and writes, so that `overt pkg pack` can publish in any of them.
+//! Archive formats, by the suffix of the URL or file: the ones forges and vendors publish, one of
+//! which packages are published in. Each reads and writes, so that `overt pkg pack` can publish
+//! in any of them. Every format writes fixed metadata, so identical trees give identical archives.
 
 use std::io::{self, BufReader, Write};
 use std::path::Path;
@@ -9,7 +10,7 @@ use flate2::read::GzDecoder;
 use flate2::write::GzEncoder;
 use overt_hash::Snapshot;
 
-use crate::{Archive, Contents, Tar, Zip, Zstd};
+use crate::{Contents, Tar, Zip, Zstd};
 
 pub struct Format {
     /// The first is what `overt pkg pack` names the archives it writes.
@@ -23,13 +24,7 @@ pub struct Format {
 }
 
 pub const FORMATS: &[Format] = &[
-    Archive::FORMAT,
-    Format {
-        suffixes: &[".tar.zst", ".tzst"],
-        unpack: |bytes, dir| Tar::unpack(Zstd::reader(bytes)?, dir),
-        pack: |contents| Ok(Zstd::compress(&Tar::pack(contents)?)),
-        strip: true,
-    },
+    Format::PUBLISHED,
     Format {
         suffixes: &[".tar.xz", ".txz"],
         unpack: |bytes, dir| {
@@ -65,6 +60,14 @@ pub const FORMATS: &[Format] = &[
 ];
 
 impl Format {
+    /// What packages are published in, and indexes serve: a zstd-compressed tar.
+    pub const PUBLISHED: Self = Self {
+        suffixes: &[".tar.zst", ".tzst"],
+        unpack: |bytes, dir| Tar::unpack(Zstd::reader(bytes)?, dir),
+        pack: |contents| Ok(Zstd::compress(&Tar::pack(contents)?)),
+        strip: true,
+    };
+
     /// The format whose suffix ends `path`.
     #[must_use]
     pub fn of(path: &str) -> Option<&'static Self> {

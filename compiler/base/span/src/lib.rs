@@ -5,8 +5,24 @@
 
 use std::hash::{Hash, Hasher};
 
+/// The extension of Overt source files, as a literal for [`source_file!`].
+#[macro_export]
+macro_rules! extension {
+    () => {
+        "ov"
+    };
+}
+
 /// The extension of Overt source files.
-pub const EXTENSION: &str = "ov";
+pub const EXTENSION: &str = extension!();
+
+/// The name of the source file `stem` with the extension: `source_file!("build")` is `build.ov`.
+#[macro_export]
+macro_rules! source_file {
+    ($stem:literal) => {
+        concat!($stem, ".", $crate::extension!())
+    };
+}
 
 /// A source file within one compilation session. It hashes by its key, which names the file the
 /// same way in every process (its package and its path inside it), so that hashes of spans and of

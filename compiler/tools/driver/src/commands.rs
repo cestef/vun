@@ -53,7 +53,7 @@ pub const PROGRAM: Program<Session> = Program {
                     Command::planned("vendor", "copy dependencies into vendor/"),
                     Command {
                         name: "pack",
-                        about: "write the package's .ovpkg archive",
+                        about: "write the package's archive",
                         params: &[pkg::OUT],
                         action: Action::Run(pkg::pack),
                     },

@@ -9,8 +9,7 @@ use overt_hash::Snapshot;
 pub struct Contents<'a> {
     pub dir: &'a Path,
     pub snapshot: &'a Snapshot,
-    /// The directory foreign formats put every file in, as forges do (`hal-1.0.0`), which
-    /// fetching strips; `.ovpkg` records paths from the snapshot instead.
+    /// The directory every file is put in, as forges do (`hal-1.0.0`), which fetching strips.
     pub top: &'a str,
 }
 

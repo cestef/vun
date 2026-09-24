@@ -3,7 +3,7 @@
 use overt_grammar::{NodeField, NodeKind, TokenKind};
 use overt_span::Span;
 
-use super::{Decl, Literal};
+use super::{DOC, Decl, Literal};
 use crate::cst::{Anchor, Cst, NodeId};
 use crate::lexer;
 use crate::tokens::Tokens;
@@ -13,9 +13,6 @@ pub(super) struct Reader<'a, 's> {
     pub(super) tokens: &'a Tokens,
     pub(super) source: &'s str,
 }
-
-/// Doc comment prefix, with the space that conventionally follows it.
-const DOC: &str = "/// ";
 
 impl<'s> Reader<'_, 's> {
     fn text(&self, n: NodeId) -> Option<&'s str> {

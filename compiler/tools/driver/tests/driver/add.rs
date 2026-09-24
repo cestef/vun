@@ -7,7 +7,7 @@ use overt_build::manifest::{DepKind, Source, Version};
 use overt_diag::errors;
 use overt_driver::Session;
 use overt_driver::packages::{Addition, Unstated};
-use overt_pkg::{Archive, Scheme};
+use overt_pkg::{Format, Scheme};
 
 #[test]
 fn added_dependencies_are_declared_and_resolve() {
@@ -42,8 +42,8 @@ fn foreign_archives_need_a_name_and_a_version() {
     let fx = Fixture::new("foreign");
     let dir = fx.write("app", &Fixture::manifest("app", 1, "0.1.0"), "");
     fx.root.write("sdk/x.c", "int x;\n");
-    let (bytes, _) = Archive::FORMAT.pack(&fx.root.join("sdk"), &["x.c".into()], "sdk").unwrap();
-    let archive = fx.root.write(format!("sdk{}", Archive::SUFFIX), bytes);
+    let (bytes, _) = Format::PUBLISHED.pack(&fx.root.join("sdk"), &["x.c".into()], "sdk").unwrap();
+    let archive = fx.root.write(format!("sdk{}", Format::PUBLISHED.suffix()), bytes);
     let url = Scheme::file_url(&archive);
     let mut session = fx.session();
     let unnamed = Addition { source: &url, name: None, version: None };

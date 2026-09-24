@@ -19,6 +19,6 @@ Run the command from the package's directory or one below it:
 
 ```console
 $ cd blinky
-$ overt pkg pack -o blinky-0.1.0.ovpkg
-packed blinky 0.1.0 blake3:ssrso2qndj3bifvxixdmnulaam6j7xeus7zu4d6dl72gv2troica blinky-0.1.0.ovpkg
+$ overt pkg pack -o blinky-0.1.0.tar.zst
+packed blinky 0.1.0 blake3:ssrso2qndj3bifvxixdmnulaam6j7xeus7zu4d6dl72gv2troica blinky-0.1.0.tar.zst
 ```

@@ -53,8 +53,9 @@ fn the_largest_required_version_is_selected_everywhere() {
 
     // A lockfile recording something else is stale, reported at the line it should not hold.
     let stale = Lock::new(vec![Locked { hash: old, ..selected.clone() }]);
-    let stale_line = stale.entries()[0].to_string();
-    fx.root.write(dir.join(lock::FILE), stale.to_string());
+    let stale_text = stale.to_string();
+    let stale_line = stale_text.lines().find(|l| l.contains(&old.to_string())).unwrap().trim_start();
+    fx.root.write(dir.join(lock::FILE), &stale_text);
     let mut check = fx.session();
     let loaded = check.load(&app_file).unwrap();
     check.check(loaded);

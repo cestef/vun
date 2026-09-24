@@ -1,4 +1,4 @@
-//! The project's `overt.lock` (spec 12, section 4): written from the selection, and checked
+//! The project's lockfile (spec 12, section 4): written from the selection, and checked
 //! against it, pointing at each line that records something else.
 
 use std::collections::HashSet;
@@ -40,11 +40,12 @@ impl Session {
     /// The lockfile of `root`, if it reads.
     pub(super) fn recorded_lock(&self, root: PackageKey) -> Option<Lock> {
         let path = self.packages.list[&root].dir.join(lock::FILE);
-        Lock::parse(&std::fs::read_to_string(path).ok()?).ok()
+        Lock::parse(&std::fs::read_to_string(path).ok()?)
     }
 
-    /// Reports a lockfile of `root` that does not record `selection`, at its first line the
-    /// selection does not have, labeling the others and noting each line it lacks.
+    /// Reports a lockfile of `root` that does not read, at what does not, or that does not record
+    /// `selection`, at its first line the selection does not have, labeling the others and noting
+    /// each line it lacks.
     pub(super) fn check_lock(&mut self, root: PackageKey, selection: &Lock) {
         let path = self.packages.list[&root].dir.join(lock::FILE);
         if !path.is_file() {
@@ -52,8 +53,8 @@ impl Session {
         }
         let Some(file) = self.load(&path) else { return };
         let text = self.text(file).to_owned();
-        let recorded = Lock::parse(&text);
-        if recorded.as_ref().is_ok_and(|r| r == selection) {
+        let recorded = self.declarations(file, |decls, cx| Lock::read(decls, file, cx));
+        if recorded.as_ref().is_none_or(|r| r == selection) {
             return;
         }
         let expected = selection.to_string();
@@ -63,7 +64,11 @@ impl Session {
         let stale: Vec<ByteRange> = source
             .lines()
             .filter(|(line, _)| !line.trim().is_empty() && !wanted.contains(line))
-            .map(|(_, range)| range)
+            .map(|(line, range)| {
+                // An entry is labeled from its first character, past the indentation.
+                let indent = u32::try_from(line.len() - line.trim_start().len()).unwrap_or_default();
+                ByteRange::new(range.lo + indent, range.hi)
+            })
             .collect();
         let end = u32::try_from(text.len()).expect("source files are smaller than 4 GiB");
         let mut stale = stale.into_iter().map(|range| Span { file, range });
@@ -79,9 +84,6 @@ impl Session {
         }
         let fetch = PROGRAM.invocation(&FETCH_PATH).expect("fetch is a command");
         d = d.child(ChildKind::Help, Msg::new().text("rewrite it with ").code(fetch));
-        if let Err(e) = &recorded {
-            d = d.caused_by(e);
-        }
         self.report(Some(first), d);
     }
 }

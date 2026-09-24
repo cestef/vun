@@ -28,7 +28,7 @@ Research notes, section 2, has the survey. The short version of what is copied a
 ```
 blinky/
   build.ov              manifest and build graph (section 2)
-  overt.lock            generated, committed (section 4)
+  lock.ov               generated, committed (section 4)
   blinky.ov             the package namespace: doc comment, re-exports, top-level declarations
   blinky/               its children (spec 01, section 8)
     app.ov              root file of the firmware program
@@ -155,26 +155,24 @@ build := (b: &mut std.build.Build) {
   manifest; an archive without one is foreign and takes them from `--name` and `--version`. The
   entry is written as a literal (the reader's inverse), into `.deps` or a new `.deps`, keeping the
   manifest's layout.
-- **Archives.** Overt packages are published as `.ovpkg`: one zstd frame (written by the pure-Rust
-  encoder at its fastest level, about zstd's level 1; any zstd decoder reads it) holding a header, the snapshot, then each file's bytes in snapshot order. It carries no
-  timestamps, owners or modes other than the executable bit of the snapshot, so identical trees
-  give identical archives, and unpacking checks
-  each file against the snapshot as it is written. Snapshot paths are plain components (no `..`,
-  no separators, no characters special on some platform), so an archive cannot write outside its
-  tree. Foreign archives are read as `.tar.zst`, `.tar.xz`, `.tar.gz`, `.tar` and `.zip`; their
-  single top-level directory, as forges produce, is dropped. A tar archive may name paths through
+- **Archives.** There is no bespoke archive format: packages are published as `.tar.zst` (a
+  ustar archive in one zstd frame, written by the pure-Rust encoder at its fastest level, about
+  zstd's level 1), the files under one `<name>-<version>/` directory, in snapshot order, with no
+  timestamps, owners or modes other than the executable bit, so identical trees give identical
+  archives. What is unpacked is checked against the tree hash before it is stored. Snapshot paths
+  are plain components (no `..`, no separators, no characters special on some platform), so an
+  archive cannot write outside its tree. Archives are read as `.tar.zst`, `.tar.xz`, `.tar.gz`,
+  `.tar` and `.zip`; their single top-level directory, as forges produce, is dropped. A tar archive may name paths through
   ustar, GNU long-name or PAX `path` records; it holds files and directories only, since a
   package tree has no links, and a link is refused. Schemes (`https`, `http`, `file`) and
   formats are tables, so another is one entry, and every format both reads and writes. `overt pkg
-  pack` writes the project's `<name>-<version>.ovpkg` and prints its hash; `--out` ending in
-  another format's suffix writes that format instead, with the files under one
-  `<name>-<version>/` directory as forges publish them, and with fixed metadata (no timestamps or
-  owners, only the executable bit), so every format is reproducible and unpacks to the same tree
-  hash.
+  pack` writes the project's `<name>-<version>.tar.zst` and prints its hash; `--out` ending in
+  another format's suffix writes that format instead, with the same fixed metadata, so every
+  format is reproducible and unpacks to the same tree hash.
 - **Updating.** `overt pkg update` raises each stored dependency to the newest release of its major
   that the root manifest's indexes list (`.index = .{ "https://index.example" }`, tried in order).
   An index speaks a protocol in the style of Go's module proxy: `<index>/<id>/<major>/list` holds
-  one `version hash` line per release and `<index>/<id>/<major>/<version>.ovpkg` the archive, the
+  one `version hash` line per release and `<index>/<id>/<major>/<version>.tar.zst` the archive, the
   identity written as in the lockfile. The release is verified against the listed hash before it
   is stored, its `.deps` entry is rewritten through the literal writer, and the lockfile follows.
 - **Sources.** URLs are a mirror list. Any mirror, the local store, or a vendor directory serving the
@@ -188,7 +186,7 @@ build := (b: &mut std.build.Build) {
   a vendor fix: `.replace = .{ .hal = .{ .id = 0xc0ffee01, .major = 2, .path = "../hal" } }`, or
   `.version`, `.hash` and `.urls` for a stored package. Every dependency on that identity resolves
   to the replacement, its own dependencies are walked instead of the replaced ones, and the
-  lockfile records it on a `replace` line. Only the project's replacements apply, so a
+  lockfile records it in `replace`. Only the project's replacements apply, so a
   dependency's cannot change another's build.
 - **Parameters, not features.** `b.dep(.x, params)` instantiates a dependency with compile-time
   parameters. Each distinct parameter set is a distinct instantiation. Nothing unifies behind a
@@ -198,34 +196,40 @@ build := (b: &mut std.build.Build) {
 
 ## 4. The lockfile
 
-`overt.lock` records every version the graph requires and the hash it was verified against, one
-independent line per entry, sorted, with no whole-file hash, so merges never conflict. The selected
-version of an identity is the largest recorded; recording the others too keeps in the store what
-reading the graph needs, as `go.sum` does:
+`lock.ov`, beside `build.ov`, records every version the graph requires and the hash it was
+verified against. It is an Overt literal file, read without evaluation and written by the literal
+writer as manifests are (there is no second data format), and it is no source namespace. Each entry
+is one line, sorted, with no whole-file hash, so merges never conflict. The selected version of an
+identity is the largest recorded; recording the others too keeps in the store what reading the
+graph needs, as `go.sum` does:
 
-```
-# overt.lock 1 (written by `overt pkg`; do not edit)
-dep cmsis 5.9.0 foreign blake3:cbvh...
-dep hal 2.1.4 00000000c0ffee01/2 blake3:k2mq... via stm32f4
-dep stm32f4 1.3.0 6a8091f57c7f07ff/1 blake3:x7fa...
+```ov
+/// Written by `overt pkg` from the selected versions; do not edit.
+version := 1;
+deps := .{
+    .{ .name = "cmsis", .version = "5.9.0", .id = .foreign, .hash = "blake3:cbvh..." },
+    .{ .name = "hal", .version = "2.1.4", .id = .{ .id = 3237998081, .major = 2 }, .hash = "blake3:k2mq...", .via = "stm32f4" },
+    .{ .name = "stm32f4", .version = "1.3.0", .id = .{ .id = 7674294248581040127, .major = 1 }, .hash = "blake3:x7fa..." },
+};
 ```
 
-An entry is the name its first dependent binds, the selected version, the identity (the id in 16
-hex digits and the major version, or `foreign`), the tree hash, and the dependent that requires it
-when that is not the project. `overt pkg fetch` and `overt pkg add` rewrite it when the selection
-changes. Every dependency of every package resolves to the version selected for its identity, so a
-dependent declaring `1.0.0` sees `1.2.0` when another requires it; a lockfile that does not record
-the selection is `package.stale_lock`, reported at each line it should not hold, and one version
-required with two hashes is `package.version_conflict`, reported at both dependents; a conflict
-writes no lockfile.
+`version` is the layout of the file. An entry is the name its first dependent binds, the selected
+version, the identity (`.foreign`, or the id and the major version), the tree hash, and the
+dependent that requires it when that is not the project. `overt pkg fetch` and `overt pkg add`
+rewrite it when the selection changes. Every dependency of every package resolves to the version
+selected for its identity, so a dependent declaring `1.0.0` sees `1.2.0` when another requires it;
+a lockfile that does not record the selection is `package.stale_lock`, reported at each entry it
+should not hold, and one version required with two hashes is `package.version_conflict`, reported
+at both dependents; a conflict writes no lockfile.
 
 Selection runs over the packages present. While some are absent (not fetched, or changed in the
 store), the lockfile is neither judged nor written, and dependencies resolve through it, since it
 recorded the whole graph: an absent package is then reported where it is needed, once, and never
 silently replaced by another version. Without a lockfile, the present packages decide. `overt pkg
 fetch` walks the graph as declared rather than as selected, so it fills the store and rewrites a
-stale lockfile without consulting it. Replacements are `replace name id/major hash`, or
-`replace name id/major path <path>`. A pinned toolchain will add a `toolchain` line (section 6).
+stale lockfile without consulting it. Replacements are listed in `replace`, one per line:
+`.{ .name, .id, .hash }` for a stored package or `.{ .name, .id, .path }` for a directory. A pinned
+toolchain will add a `toolchain` declaration (section 6).
 
 ## 5. Workspaces
 

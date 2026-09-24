@@ -21,7 +21,7 @@ error[package.version_conflict]: `hal` `1.0.0` is required with two hashes
    │ ┏━━━━━━━━━━━━━━━━┛
  9 │ ┃             .version = "1.0.0",
 10 │ ┃             .hash = "blake3:i2awm7xqhnlzsujcu5ukmn2owcntcqyycpr2d4kuhqquxzgxkz6q",
-11 │ ┃             .urls = .{ "file://hal-1.0.0-fork.ovpkg" },
+11 │ ┃             .urls = .{ "file://hal-1.0.0-fork.tar.zst" },
 12 │ ┃         },
    │ ┗━━━━━━━━━┛
    │
@@ -31,7 +31,7 @@ error[package.version_conflict]: `hal` `1.0.0` is required with two hashes
    │ ┌────────────────┘
  9 │ │             .version = "1.0.0",
 10 │ │             .hash = "blake3:zfydsfjcithfeney4uucojbfrxp4azcrmyw3j3fdtkmwsm6cnptq",
-11 │ │             .urls = .{ "file://hal-1.0.0.ovpkg" },
+11 │ │             .urls = .{ "file://hal-1.0.0.tar.zst" },
 12 │ │         },
    │ └─────────┘ also required with `blake3:zfydsfjcithfeney4uucojbfrxp4azcrmyw3j3fdtkmwsm6cnptq`
    │

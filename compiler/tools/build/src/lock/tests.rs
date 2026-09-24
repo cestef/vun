@@ -1,6 +1,6 @@
 use overt_hash::Hash;
 
-use super::{Lock, Locked, Malformed};
+use super::{Lock, Locked, Replaced, Replacing};
 use crate::manifest::{Identity, Version};
 
 fn entry(name: &str, version: &str, identity: Option<Identity>, via: Option<&str>) -> Locked {
@@ -14,7 +14,7 @@ fn entry(name: &str, version: &str, identity: Option<Identity>, via: Option<&str
 }
 
 #[test]
-fn locks_round_trip_in_canonical_order() {
+fn locks_round_trip_one_entry_per_line() {
     let hal = Identity { id: 0xc0ff_ee01, major: 2 };
     let lock = Lock::new(vec![
         entry("stm32f4", "1.3.0", Some(Identity { id: 0x6a80_91f5_7c7f_07ff, major: 1 }), None),
@@ -24,26 +24,29 @@ fn locks_round_trip_in_canonical_order() {
     let text = lock.to_string();
     let names: Vec<_> = lock.entries().iter().map(|e| e.name.as_str()).collect();
     assert_eq!(names, ["cmsis", "hal", "stm32f4"]);
-    assert!(text.contains(" 00000000c0ffee01/2 "), "{text}");
-    assert!(text.lines().nth(2).unwrap().ends_with(" via stm32f4"), "{text}");
-    assert_eq!(Lock::parse(&text), Ok(lock.clone()));
+    let lines: Vec<&str> = text.lines().collect();
+    assert_eq!(lines[1], "version := 1;", "{text}");
+    assert!(lines[3].contains(".id = .foreign"), "{text}");
+    assert!(lines[4].contains(".id = .{ .id = 3237998081, .major = 2 }"), "{text}");
+    assert!(lines[4].ends_with(r#".via = "stm32f4" },"#), "{text}");
+    assert_eq!(Lock::parse(&text), Some(lock.clone()));
     assert_eq!(lock.selected(hal).map(|e| e.version), Version::parse("2.1.4"));
     let older = Lock::new([lock.entries(), &[entry("hal", "2.0.0", Some(hal), None)]].concat());
     assert_eq!(older.selected(hal).map(|e| e.version), Version::parse("2.1.4"), "the largest is selected");
 }
 
 #[test]
-fn malformed_locks_name_the_line() {
-    assert_eq!(Lock::parse("dep a 1.0.0 foreign x"), Err(Malformed::Header));
+fn malformed_locks_do_not_read() {
     let lock = Lock::new(vec![entry("a", "1.0.0", None, None)]).to_string();
-    assert_eq!(Lock::parse(&format!("{lock}dep b 1.0 foreign x\n")), Err(Malformed::Line(3)));
-    assert_eq!(Identity::parse("c0ffee01/2"), None, "ids are written in full");
-    assert_eq!(Identity::parse("00000000c0ffee01/02"), None);
+    assert_eq!(Lock::parse(&lock.replace("version := 1", "version := 2")), None, "another layout");
+    assert_eq!(Lock::parse(&lock.replace("1.0.0", "1.0")), None);
+    assert_eq!(Lock::parse(&lock.replace(".name", ".nmae")), None);
+    assert_eq!(Lock::parse("deps := .{};"), None, "the layout is required");
+    assert_eq!(Lock::parse("version := 1;\ndeps := .{};"), Some(Lock::default()));
 }
 
 #[test]
 fn replacements_round_trip() {
-    use super::{Replaced, Replacing};
     let hal = Identity { id: 0xc0ff_ee01, major: 2 };
     let lock = Lock::new(vec![entry("hal", "2.1.4", Some(hal), None)]).replacing(vec![
         Replaced { name: "hal".into(), identity: hal, with: Replacing::Path("../hal fork".into()) },
@@ -54,7 +57,12 @@ fn replacements_round_trip() {
         },
     ]);
     let text = lock.to_string();
-    assert!(text.contains("replace hal 00000000c0ffee01/2 path ../hal fork\n"), "{text}");
-    assert_eq!(Lock::parse(&text), Ok(lock.clone()));
+    assert!(
+        text.contains(
+            r#".{ .name = "hal", .id = .{ .id = 3237998081, .major = 2 }, .path = "../hal fork" },"#
+        ),
+        "{text}"
+    );
+    assert_eq!(Lock::parse(&text), Some(lock.clone()));
     assert_eq!(lock.replacement(hal).map(|r| &r.with), Some(&Replacing::Path("../hal fork".into())));
 }

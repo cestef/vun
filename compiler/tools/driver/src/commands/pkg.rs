@@ -8,7 +8,7 @@ use overt_build::manifest::{Source, Version};
 use overt_command::{Action, Args, Command, Outcome, Param, ParamKind};
 use overt_diag::{ChildKind, Diagnostic, Msg, errors};
 use overt_fs::Edit;
-use overt_pkg::{Archive, FORMATS, Format};
+use overt_pkg::{FORMATS, Format};
 
 use crate::Session;
 use crate::packages::{Addition, Fetched, Unstated};
@@ -127,15 +127,15 @@ pub(super) fn update(session: &mut Session, _: &Args, out: &mut dyn Write) -> io
     Ok(session.outcome())
 }
 
-/// `overt pkg pack`: writes the project's archive, named after its release, in `.ovpkg` unless
-/// `--out` names another format by its suffix.
+/// `overt pkg pack`: writes the project's archive, named after its release, in the published
+/// format unless `--out` names another format by its suffix.
 pub(super) fn pack(session: &mut Session, args: &Args, out: &mut dyn Write) -> io::Result<Outcome> {
     let Some((dir, _)) = session.project()? else { return Ok(Outcome::Failure) };
     let Some(manifest) = session.manifest_at(&dir.join(MANIFEST)) else { return Ok(Outcome::Failure) };
     let release = manifest.release();
     let path = args
         .value(&OUT)
-        .map_or_else(|| dir.join([release.as_str(), Archive::SUFFIX].concat()), PathBuf::from);
+        .map_or_else(|| dir.join([release.as_str(), Format::PUBLISHED.suffix()].concat()), PathBuf::from);
     let Some(format) = Format::of(&path.to_string_lossy()) else {
         let suffixes = FORMATS.iter().flat_map(|f| f.suffixes.iter().copied());
         let msg = Msg::new().code(path.display().to_string()).text(" names no archive format; end it in ");

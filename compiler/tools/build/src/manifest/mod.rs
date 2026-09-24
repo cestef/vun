@@ -5,7 +5,7 @@
 
 mod deps;
 mod identity;
-mod record;
+pub(crate) mod record;
 #[cfg(test)]
 mod tests;
 mod version;

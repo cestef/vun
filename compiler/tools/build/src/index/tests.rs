@@ -10,7 +10,7 @@ fn urls_follow_the_identity() {
     assert_eq!(index.listing(hal), "https://index.example/00000000c0ffee01/2/list");
     assert_eq!(
         index.archive(hal, Version::parse("2.1.4").unwrap()),
-        "https://index.example/00000000c0ffee01/2/2.1.4.ovpkg"
+        "https://index.example/00000000c0ffee01/2/2.1.4.tar.zst"
     );
 }
 

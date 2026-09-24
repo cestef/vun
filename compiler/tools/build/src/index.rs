@@ -3,10 +3,10 @@
 //! what it serves is verified against the hash its listing states.
 //!
 //! Under a base URL, `<identity>/list` holds one `version hash` line per release, and
-//! `<identity>/<version>.ovpkg` the archive; `<identity>` is written `id/major`.
+//! `<identity>/<version>.tar.zst` the archive; `<identity>` is written `id/major`.
 
 use overt_hash::Hash;
-use overt_pkg::Archive;
+use overt_pkg::Format;
 
 use crate::manifest::{Identity, Version};
 
@@ -38,7 +38,7 @@ impl Index<'_> {
     #[must_use]
     pub fn archive(&self, identity: Identity, version: Version) -> String {
         let base = self.base.trim_end_matches(SEPARATOR);
-        format!("{base}{SEPARATOR}{identity}{SEPARATOR}{version}{}", Archive::SUFFIX)
+        format!("{base}{SEPARATOR}{identity}{SEPARATOR}{version}{}", Format::PUBLISHED.suffix())
     }
 }
 

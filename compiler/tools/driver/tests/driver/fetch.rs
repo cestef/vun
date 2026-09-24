@@ -4,7 +4,7 @@
 use crate::common::Fixture;
 use overt_diag::errors;
 use overt_driver::packages::Fetched;
-use overt_pkg::{Archive, Scheme};
+use overt_pkg::{Format, Scheme};
 
 #[test]
 fn fetched_packages_are_stored_verified_and_checked() {
@@ -42,7 +42,7 @@ fn fetched_packages_are_stored_verified_and_checked() {
 #[test]
 fn failing_mirrors_are_reported_with_their_causes() {
     let fx = Fixture::new("fail");
-    let url = Scheme::file_url(&fx.root.join(format!("absent{}", Archive::SUFFIX)));
+    let url = Scheme::file_url(&fx.root.join(format!("absent{}", Format::PUBLISHED.suffix())));
     let mut app = Fixture::manifest("app", 1, "0.1.0");
     app.deps.push(Fixture::stored("hal", "1.0.0", &url, overt_hash::Hash::of(b"none")));
     let dir = fx.write("app", &app, "");

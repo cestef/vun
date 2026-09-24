@@ -19,11 +19,11 @@ error[package.fetch_failed]: cannot fetch `hal` (`blake3:i2awm7xqhnlzsujcu5ukmn2
    │ ┏━━━━━━━━━━━━━━━━┛
  9 │ ┃             .version = "1.0.0",
 10 │ ┃             .hash = "blake3:i2awm7xqhnlzsujcu5ukmn2owcntcqyycpr2d4kuhqquxzgxkz6q",
-11 │ ┃             .urls = .{ "https://example.invalid/hal-1.0.0.ovpkg" },
+11 │ ┃             .urls = .{ "https://example.invalid/hal-1.0.0.tar.zst" },
 12 │ ┃         },
    │ ┗━━━━━━━━━┛
    │
-   ├ note: from `https://example.invalid/hal-1.0.0.ovpkg`
+   ├ note: from `https://example.invalid/hal-1.0.0.tar.zst`
    ├ caused by: cannot download the archive
    ╰ caused by: io: failed to lookup address information: Name or service not known
 ```
@@ -35,7 +35,7 @@ checked:
 
 ```console
 $ grep urls build.ov
-            .urls = .{ "https://example.invalid/hal-1.0.0.ovpkg", "file://hal-1.0.0.ovpkg" },
+            .urls = .{ "https://example.invalid/hal-1.0.0.tar.zst", "file://hal-1.0.0.tar.zst" },
 $ overt pkg fetch
-stored  hal blake3:i2awm7xqhnlzsujcu5ukmn2owcntcqyycpr2d4kuhqquxzgxkz6q from file://hal-1.0.0.ovpkg
+stored  hal blake3:i2awm7xqhnlzsujcu5ukmn2owcntcqyycpr2d4kuhqquxzgxkz6q from file://hal-1.0.0.tar.zst
 ```

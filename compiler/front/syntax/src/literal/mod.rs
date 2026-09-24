@@ -24,6 +24,9 @@ pub use print::{Unwritable, WIDTH};
 use read::Reader;
 pub use read::integer;
 
+/// Starts a doc comment line, with the space after it.
+const DOC: &str = "/// ";
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Literal<'s> {
     /// `.name`

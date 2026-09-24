@@ -14,8 +14,8 @@ write. Spec in `docs/spec/` (draft 2), Typst whitepaper in `whitepaper/`, Overt 
 test programs in `corpus/`.
 
 Built so far: lexer, postorder CST with a verifier, error-recovering parser, literal reader, HIR
-with resolution, package system (manifests, BLAKE3 Merkle hashes, `.ovpkg`, user store, MVS,
-`overt.lock`, `.replace`, indexes, `overt pkg add|fetch|update|pack`, `overt cache list|gc`), a
+with resolution, package system (manifests, BLAKE3 Merkle hashes, `.tar.zst` releases, user store,
+MVS, `lock.ov`, `.replace`, indexes, `overt pkg add|fetch|update|pack`, `overt cache list|gc`), a
 query engine, sema (types as values, compile-time evaluation through MIR and an interpreter, impls,
 reflection, code values, coroutines, closures, layout, kinds), MIR with the place-state pass, three
 diagnostic renderers, explanation pages for every diagnostic (`overt explain`).
@@ -144,6 +144,13 @@ one marker (`typeck/safety.rs`, `safety.requires_unsafe`), `#[panic.never]` on M
 (`passes/panics.rs`), `binding.hole_value` (`check/holes.rs`), `lang.int.abs`/`magnitude`, bit
 operations on `uN` only (`types.no_impl`). `passes/types.rs` types places along projections.
 
+Since then (decisions 118, 119): no bespoke formats. The lockfile is `lock.ov`, an Overt literal
+file read by `Lock::read` (through `manifest::record`) and written by `Decl::listed` (one entry per
+line); packages are published as `.tar.zst` (`Format::PUBLISHED`), the `.ovpkg` code is gone; file
+names derive from `overt_span::source_file!`. `&temp` borrows are rows of `borrows` with the column
+`extent` (`Primitive::borrow_mode`, `TyKind::{alike, extent}`, `Func::extents`); in `borrows/` a
+`&temp` parameter is a `Source::Lent` loan, and call results are not tied to `&temp` arguments.
+
 Language surface since the review (decisions 99 to 105): omitted `$` arguments inferred
 (`typeck/omitted.rs`, `TypedBody::inferred`, `types.cannot_infer`, `types.arity`); variant
 constructors as values (`Value::Constructor`); `.` through owners (`Env::reach`, `Hop`);
@@ -166,24 +173,18 @@ patterns and typed annotations (89), linked values and repeats (90), layout (93)
 
 ## 7. Next steps, in order
 
-1. No bespoke formats in the ecosystem (the user's request, accepted; add it to `decisions.md`).
-   The lockfile becomes an Overt literal file, `lock.ov` beside `build.ov`, read by
-   `overt_syntax::literal` and written by its printer like manifests; its name derives from
-   `overt_span::EXTENSION` as `MANIFEST` should. Declarations `version`, `deps` (one sorted entry
-   per line: `.name`, `.version`, `.id` as `.foreign` or `.{ id, major }`, `.hash`, `.via`) and
-   `replace`; same semantics, spans on entries for `package.stale_lock`. `lock.ov` is no source
-   namespace. `.ovpkg` is dropped: packages are published as `.tar.zst` (`pkg pack` writes
-   `<name>-<version>.tar.zst`, indexes serve `<version>.tar.zst`), the custom format's code removed.
-   Update spec 12 and every mention (`rg 'overt\.lock|ovpkg'`). The project is renamed to Vun
-   right after (crates `vun-*`, CLI `vun`, `.vun`, `VUN_*`), so derive names from constants.
+1. The project is renamed to Vun (crates `vun-*`, CLI `vun`, `.vun`, `VUN_*`); names derive from
+   constants where they can (`overt_span::extension!`, `source_file!`).
 2. `std` next: output symbols (`std.fmt.print`), executors over frames (`std.task.run`,
    `select`), `std.iter` adapters as coroutine functions, `std.os` entry points, `Allocator`
    impls for `Fixed`, text (`Str`) and collections. Pointer primitives, `Own`, `Fixed`, `fail`,
    `expect`, `ptr`, `option`, `result`, `cmp` exist (decision 107).
 3. Leaks at scope exits inside a body (found at the function's return only today), `fixed` and
    `scoped` kinds, frames' `end` running their defers.
-4. Borrow rules left: `&temp` parameters, `&static`, top-level bindings as free values, frames'
-   region from their parameters, `critical_escape.ov` (needs `std.sync`), a label where a
+4. Borrow rules left: `&static`, top-level bindings as free values, frames'
+   region from their parameters, `critical_escape.ov` (needs `std.sync`: `critical` takes
+   `$F: Call((&temp Critical), R)`, so the corpus program and spec 07 write `cs: &temp Critical`;
+   `Shared` over `lang.mem.Cell`, `Atomic` over new atomic primitives), a label where a
    conflicting borrow is used later.
 5. The driver side of `std.build`: run `build` (needs `&mut` at compile time, step 8) and read
    the recorded plan; `lib/targets` as a typed package so `.target = targets...` types.

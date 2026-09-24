@@ -24,7 +24,8 @@ fn replacements_apply_everywhere_and_are_locked() {
     session.fetch(project);
     let lock = session.write_lock(&dir, project).unwrap();
     assert!(!session.failed(), "{:?}", session.diag.sorted());
-    assert!(lock.to_string().contains("replace hal 0000000000000007/1 path ../hal-fork\n"), "{lock}");
+    let replaced = r#".{ .name = "hal", .id = .{ .id = 7, .major = 1 }, .path = "../hal-fork" },"#;
+    assert!(lock.to_string().contains(replaced), "{lock}");
     // `b` exists only in the fork.
     assert_eq!(fx.check(&Fixture::file(&dir, &app)), []);
 }

@@ -8,7 +8,7 @@ use overt_fs::Tree;
 use overt_span::EXTENSION;
 
 /// The file holding a package's manifest (spec 12, section 2).
-pub const MANIFEST: &str = "build.ov";
+pub const MANIFEST: &str = overt_span::source_file!("build");
 
 /// Separates the members of a namespace path: `std.prelude`.
 pub const SEPARATOR: &str = overt_grammar::PATH_SEPARATOR;

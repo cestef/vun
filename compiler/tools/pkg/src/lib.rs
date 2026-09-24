@@ -1,7 +1,6 @@
 //! Fetching package archives (spec 12, section 3). A mirror URL names a scheme and an archive
 //! format, both looked up in tables, so that another scheme or format is one entry.
 
-mod archive;
 mod contents;
 mod format;
 mod mirror;
@@ -12,7 +11,6 @@ mod zstd;
 use std::error::Error;
 use std::{fmt, io};
 
-pub use archive::{Archive, Malformed};
 pub use contents::{Contents, Packed};
 pub use format::{FORMATS, Format};
 pub use mirror::{Mirror, Scheme, Schemes};
