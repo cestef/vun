@@ -7,7 +7,6 @@ use overt_hir::tree::{Arg, Entry, ExprId, ExprKind, List, Name};
 use overt_intern::Symbol;
 
 use super::{Env, Unevaluated};
-use crate::int::Integer;
 use crate::member::{Found, Members};
 use crate::ty::{Nominal, Ty, TyKind, Value};
 
@@ -85,11 +84,6 @@ impl Env<'_, '_> {
             })
             .collect::<Result<_, _>>()?;
         Ok(Value::Variant { ty, name, payload })
-    }
-
-    /// A string literal at compile time: its bytes.
-    pub(super) fn string(text: &str) -> Value {
-        Value::Array(text.bytes().map(|b| Value::Int(Integer::from(i128::from(b)))).collect())
     }
 
     /// `object[index]`.

@@ -325,6 +325,11 @@ pub mod meta {
         TypeOf,
         origin,
         embed,
+        /// The fields of the struct type `T` in declaration order, generated ones included.
+        fields,
+        /// The name of `T` as diagnostics show it: a `struct` or `enum` literal by the declaration it is
+        /// written in, with its compile-time arguments.
+        name_of,
     }
     impl Meta {
         pub const NAMESPACE: &str = "lang.meta";
@@ -336,6 +341,8 @@ pub mod meta {
             Self::TypeOf,
             Self::origin,
             Self::embed,
+            Self::fields,
+            Self::name_of,
         ];
         /// The declaration's name.
         #[must_use]
@@ -348,6 +355,8 @@ pub mod meta {
                 Self::TypeOf => "TypeOf",
                 Self::origin => "origin",
                 Self::embed => "embed",
+                Self::fields => "fields",
+                Self::name_of => "name_of",
             }
         }
     }
@@ -665,6 +674,8 @@ impl Primitive {
         Self::Meta(meta::Meta::TypeOf),
         Self::Meta(meta::Meta::origin),
         Self::Meta(meta::Meta::embed),
+        Self::Meta(meta::Meta::fields),
+        Self::Meta(meta::Meta::name_of),
         Self::Opt(opt::Opt::cold),
         Self::Opt(opt::Opt::inline),
         Self::Opt(opt::Opt::level),

@@ -9,11 +9,11 @@
 mod aggregate;
 mod condition;
 mod eval;
+mod path;
 
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use overt_grammar::PATH_SEPARATOR;
 use overt_hir::db::{CheckedNames, FileNames, FileRef, Namespace, Outer, Package, Parsed, ParsedFile, Scope};
 use overt_hir::resolve::Res;
 use overt_hir::tree::{BinderId, Entry, ExprId, ExprKind, Name, Param, PatKind};
@@ -218,20 +218,6 @@ impl<'a, 'db> Env<'a, 'db> {
             }
             None => Err(Unevaluated::Absent),
         }
-    }
-
-    /// The value of the item at `path`, such as `lang.ops.Eq`, which syntax desugars into
-    /// (appendix B): its first name is looked up outside the file, the rest as members.
-    ///
-    /// # Errors
-    /// Returns why the item has no value here, such as a replaced `lang` that lacks it.
-    pub fn item(&self, path: &str) -> Result<Value, Unevaluated> {
-        let mut names = path.split(PATH_SEPARATOR).map(Symbol::intern);
-        let mut value = self.value_of(self.outer(names.next().ok_or(Unevaluated::Absent)?)?)?;
-        for name in names {
-            value = self.member(value, name)?;
-        }
-        Ok(value)
     }
 
     /// The member `name` of `value` at compile time: a member of a namespace, a declaration of a

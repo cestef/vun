@@ -9,3 +9,15 @@ Origin: type = _;
 TypeOf: ($e: Code(type)) -> type = _;
 origin: ($T: type) -> Origin = _;
 embed: ($path: &[u8]) -> &static [_]u8 = _;
+
+/// A field of a struct type, as reflection gives it (spec 03, section 6).
+Field := struct {
+    name: &[u8],
+    type: type,
+};
+
+/// The fields of the struct type `T` in declaration order, generated ones included.
+fields: ($T: type) -> &[Field] = _;
+/// The name of `T` as diagnostics show it: a `struct` or `enum` literal by the declaration it is
+/// written in, with its compile-time arguments.
+name_of: ($T: type) -> &[u8] = _;

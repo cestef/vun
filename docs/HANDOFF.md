@@ -263,8 +263,13 @@ In order:
      `Func::staged` carry them; `TypedDecl` is keyed by `(decl, instance, staged)`;
      `Env::name` resolves `$(e)`; typer, evaluator and MIR read members by computed names; `$`
      locals evaluate from their declaration (`Hir::decl_of`). Test: `driver/tests/driver/staged.rs`.
-   - Metaprogramming plan, remaining: (3) reflection primitives in `lang.meta` and `std.meta`
-     (`fields`, `decls`, `size`, `name_of`, `attrs`; `std/meta.ov` is empty), (4) `$for`/`$if`
+   - Decision 84 (batch 3, reflection): `lang.meta.{Field, fields, name_of}`, spread by
+     `std.meta`; `sema/src/reflect.rs` fills a descriptor's fields by name (table `FIELD`), the
+     descriptor type read from the primitive's declared result (`Env::result_of`, `Env::site` in
+     `env/path.rs`); `Value::string`. Test: `driver/tests/driver/reflection.rs`. Remaining:
+     `decls`, `size` and `offset` (need `layout`), `attrs`/`attr` (need attribute values),
+     `meta.frozen` (a cycle through `Members` becomes `Unevaluated::Cycle`, never reported yet).
+   - Metaprogramming plan, remaining: (4) `$for`/`$if`
      in function bodies (unrolled typing and MIR), (5) quotes and `Code` values (`#{ }`, `$`
      splices, `Code` parameters, `std.meta.source`/`span`), plus duplicate computed names.
    - `types.no_member` on values stays off: turning it on (tried) reports members the corpus
@@ -324,7 +329,7 @@ In order:
    declaration's members needs sema.
 4. Fuzz the parser longer (120 s runs are clean).
 
-`cargo xtask corpus` ends with the phase 1 progress measure (`overt_driver::Coverage`, `Session::coverage`): the share of function-body expressions sema types and of functions MIR lowers in `corpus/accept` (26% before decision 75, 32% after, 33% and 17 functions after 77, 41% after 80, 42% after 81, 43% and 34 lowered after 82, 44% after 83). The corpus has 40 accept and 55 reject programs plus 63 explanation pages (`cargo xtask corpus`:
+`cargo xtask corpus` ends with the phase 1 progress measure (`overt_driver::Coverage`, `Session::coverage`): the share of function-body expressions sema types and of functions MIR lowers in `corpus/accept` (26% before decision 75, 32% after, 33% and 17 functions after 77, 41% after 80, 42% after 81, 43% and 34 lowered after 82, 44% after 83 and 84). The corpus has 40 accept and 55 reject programs plus 63 explanation pages (`cargo xtask corpus`:
 149 passed, 38 pending on later stages, 20 shown as transcripts, 0 failed), plus
 `corpus/build.ov` (prelude `std.prelude` then `support`) and `corpus/support`, stand-ins for what
 programs take from drivers, other libraries and unwritten parts of `std`.

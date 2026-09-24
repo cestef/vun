@@ -8,6 +8,7 @@ use crate::env::{Env, Unevaluated};
 use crate::primitives::int::Int;
 use crate::primitives::lang::Lang;
 use crate::primitives::mem::Mem;
+use crate::primitives::meta::Meta;
 use crate::ty::{Signature, TyKind, Value};
 
 impl Primitive {
@@ -54,6 +55,13 @@ impl Primitive {
                     Int::sat => x.narrow(&range, Narrowing::Sat),
                     Int::fits => env.decide(x.narrow(&range, Narrowing::To).is_ok()),
                 }
+            }
+            // Reflection (spec 03, section 6).
+            (Self::Meta(Meta::fields), [ty]) => {
+                env.fields(self, ty.as_type().ok_or(Unevaluated::Unsupported)?)
+            }
+            (Self::Meta(Meta::name_of), [ty]) => {
+                Ok(Value::string(&ty.as_type().ok_or(Unevaluated::Unsupported)?.to_string()))
             }
             _ => Err(Unevaluated::Unsupported),
         }

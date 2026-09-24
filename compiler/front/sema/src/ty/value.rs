@@ -42,6 +42,12 @@ pub enum Value {
 }
 
 impl Value {
+    /// A string at compile time: its bytes (decision 82).
+    #[must_use]
+    pub fn string(text: &str) -> Self {
+        Self::Array(text.bytes().map(|b| Self::Int(Integer::from(i128::from(b)))).collect())
+    }
+
     /// The items a `$for` steps through: those of an array, or the integers of a finite range.
     #[must_use]
     pub fn items(self) -> Option<Vec<Self>> {

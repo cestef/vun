@@ -156,6 +156,12 @@ std.meta.name_of(Point)       // "Point"
 std.meta.origin(Point)        // the origin chain (spec 10)
 ```
 
+The descriptors are ordinary structs declared in `lang.meta` (`lang.meta.Field`), and each
+reflection primitive's declared result type names its descriptor: the compiler fills the fields a
+descriptor declares, by name, and a descriptor field it has no fact for leaves the call without a
+value. `std.meta` re-exports them. A type's name is the one diagnostics show: a `struct` or `enum`
+literal by the declaration it is written in, with its compile-time arguments.
+
 Reflection is read-only. Types are created by writing type literals (with L0 and L1), never by
 assembling descriptor structs.
 

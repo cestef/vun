@@ -25,7 +25,7 @@ impl Env<'_, '_> {
         match &e.kind {
             ExprKind::Lit(Lit::Int(n)) => Ok(Value::Int(Integer::from(*n))),
             ExprKind::Lit(Lit::Char(c)) => Ok(Value::Int(Integer::from(i128::from(u32::from(*c))))),
-            ExprKind::Lit(Lit::String(text)) => Ok(Self::string(text)),
+            ExprKind::Lit(Lit::String(text)) => Ok(Value::string(text)),
             ExprKind::StructLit { ty: Some(ty), fields } => self.record(self.ty(*ty)?, fields),
             ExprKind::StructLit { ty: None, .. } | ExprKind::DotName(_) => self.eval_as(expr, None),
             ExprKind::Index { object, index } => self.index(*object, *index),
