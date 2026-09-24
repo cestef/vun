@@ -58,6 +58,8 @@ pub struct Known {
 #[derive(Debug, Default, PartialEq, Eq, Hash)]
 pub struct TypedBody {
     pub types: BTreeMap<ExprId, Known>,
+    /// The type each local of the body holds, steps' included.
+    pub binders: BTreeMap<BinderId, Ty>,
     /// Each method named through a value, with the struct declaring it and its name.
     pub methods: BTreeMap<ExprId, (Ty, Symbol)>,
     /// The body of each step of a `$for`, typed with its binder bound (spec 03, section 1).
@@ -199,6 +201,7 @@ impl<'e, 'a, 'db> Typer<'e, 'a, 'db> {
     pub fn finish(self, exprs: usize) -> TypedBody {
         TypedBody {
             types: self.types.into_iter().collect(),
+            binders: self.locals.into_iter().map(|(b, k)| (b, k.ty)).collect(),
             methods: self.methods.into_iter().collect(),
             steps: self.steps,
             iterations: self.iterations,

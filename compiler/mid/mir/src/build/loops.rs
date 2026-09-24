@@ -22,6 +22,8 @@ pub(super) struct Loop {
     exit: BlockId,
     /// Where `break` writes the loop's value.
     result: Local,
+    /// The deferred statements in scope outside the loop, which leaving it keeps.
+    depth: usize,
 }
 
 impl Builder<'_, '_, '_> {
@@ -74,7 +76,7 @@ impl Builder<'_, '_, '_> {
                 self.current = run;
             }
         }
-        self.loops.push(Loop { label, head: start, exit, result });
+        self.loops.push(Loop { label, head: start, exit, result, depth: self.defers.len() });
         let lowered = self.block(body);
         self.loops.pop();
         lowered?;
@@ -104,14 +106,16 @@ impl Builder<'_, '_, '_> {
         origin: OriginId,
     ) -> Result<Operand, Unbuilt> {
         let value = value.map(|v| self.operand(v)).transpose()?.unwrap_or_else(Self::unit);
-        let (exit, result) = self.target(label, origin).map(|l| (l.exit, l.result))?;
+        let (exit, result, depth) = self.target(label, origin).map(|l| (l.exit, l.result, l.depth))?;
         self.assign(Place::of(result), Rvalue::Use(value), origin);
+        self.unwind(depth, origin)?;
         Ok(self.jump(TerminatorKind::Goto(exit), origin))
     }
 
     /// `continue 'label`.
     pub(super) fn again(&mut self, label: Option<Symbol>, origin: OriginId) -> Result<Operand, Unbuilt> {
-        let head = self.target(label, origin)?.head;
+        let (head, depth) = self.target(label, origin).map(|l| (l.head, l.depth))?;
+        self.unwind(depth, origin)?;
         Ok(self.jump(TerminatorKind::Goto(head), origin))
     }
 
@@ -119,6 +123,7 @@ impl Builder<'_, '_, '_> {
     pub(super) fn exit(&mut self, value: Option<ExprId>, origin: OriginId) -> Result<Operand, Unbuilt> {
         let value = value.map(|v| self.operand(v)).transpose()?.unwrap_or_else(Self::unit);
         self.assign(Place::of(self.ret), Rvalue::Use(value), origin);
+        self.unwind(0, origin)?;
         Ok(self.jump(TerminatorKind::Return, origin))
     }
 

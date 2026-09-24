@@ -58,7 +58,9 @@ Rules, all checked on the control-flow graph:
 place, it runs on exactly the exits where that place is still `init` and is skipped on exits where
 the value was already moved. Which exits those are is known statically, so there is no runtime flag.
 A place whose state is ambiguous at an exit is a compile error. This removes the need for
-`errdefer`.
+`errdefer`. A statement consuming several linear places runs only on exits where all of them are
+held; on the others the ones still held must be consumed some other way. An exit inside a deferred
+statement (a `?` in it) runs only the statements deferred before it.
 
 ```ov
 load := (fs: &mut Fs, a: &mut Alloc, path: &[u8]) -> Result(Own(Config), Error) {

@@ -3,6 +3,7 @@
 //! bound, each step's types kept apart ([`Step`]). Otherwise the entries are typed once, with
 //! nothing bound.
 
+use std::collections::BTreeMap;
 use std::mem::take;
 use std::sync::Arc;
 
@@ -89,6 +90,7 @@ impl<'a, 'db> Typer<'_, 'a, 'db> {
         f(self);
         let typed = TypedBody {
             types: take(&mut self.types).into_iter().collect(),
+            binders: BTreeMap::new(),
             methods: take(&mut self.methods).into_iter().collect(),
             steps: take(&mut self.steps),
             iterations: take(&mut self.iterations),

@@ -1,4 +1,5 @@
-//! Place states (spec 05, section 2): reads need `init`, `&out` initializes, parts are tracked.
+//! Place states (spec 05, sections 2 and 3): reads need `init`, `&out` initializes, parts are
+//! tracked, linear values move, and `defer` runs where its operand is still held.
 
 use crate::common::Fixture;
 use overt_diag::errors;
@@ -39,4 +40,26 @@ dropped := () { open(); };
     );
     let ids: Vec<_> = fixture.reported(&file).into_iter().map(|(id, _)| id).collect();
     assert_eq!(ids, [errors::PLACE_READ_UNINIT, errors::PLACE_LINEAR_LEAK, errors::PLACE_LINEAR_LEAK]);
+}
+
+#[test]
+fn deferred_statements_run_on_the_exits_still_holding_their_operand() {
+    let fixture = Fixture::new("places-defer");
+    let file = fixture.root.write(
+        "defer.ov",
+        "\
+File := #[kind.linear] struct { fd: u32 };
+open := () -> File { .{ .fd = 3 } };
+close := (f: File) { .{ .fd = _ } := f; };
+size := (f: &File) -> u32 { f.fd };
+closed := () { f := open(); defer close(f); };
+early := (flag: bool) -> u32 { f := open(); defer close(f); if flag { return 1; } 2 };
+handed := () -> File { f := open(); defer close(f); f };
+looped := () { for { f := open(); defer close(f); break; } };
+either := (flag: bool) { f := open(); defer close(f); if flag { close(f); } };
+inner := () -> u32 { f := open(); { defer close(f); } size(&f) };
+",
+    );
+    let ids: Vec<_> = fixture.reported(&file).into_iter().map(|(id, _)| id).collect();
+    assert_eq!(ids, [errors::PLACE_AMBIGUOUS_JOIN, errors::PLACE_READ_UNINIT]);
 }

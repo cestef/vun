@@ -8,14 +8,21 @@ use crate::body::{Operand, Rvalue, TerminatorKind};
 use crate::place::Place;
 
 impl Builder<'_, '_, '_> {
-    /// The statements of `block`, then the value of its tail, or `()` without one.
+    /// The statements of `block`, then the value of its tail, or `()` without one; the
+    /// statements it deferred run after the value.
     pub(super) fn block(&mut self, block: HirBlock) -> Result<Operand, Unbuilt> {
         let hir = &self.env.parsed.hir;
+        let depth = self.defers.len();
         self.stmts(&hir.blocks[block].stmts)?;
-        match hir.blocks[block].tail {
-            Some(tail) => self.operand(tail),
-            None => Ok(Self::unit()),
-        }
+        let value = match hir.blocks[block].tail {
+            Some(tail) => self.operand(tail)?,
+            None => Self::unit(),
+        };
+        // The block ends where its value is written, or at the block.
+        let end = hir.blocks[block].tail.map_or(hir.blocks[block].origin, |t| hir.exprs[t].origin);
+        self.unwind(depth, end)?;
+        self.defers.truncate(depth);
+        Ok(value)
     }
 
     pub(super) fn stmt(&mut self, stmt: &HirStmt) -> Result<(), Unbuilt> {

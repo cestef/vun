@@ -106,6 +106,13 @@ impl Body {
                     self.block(at, *then)?;
                     self.block(at, *otherwise)?;
                 }
+                TerminatorKind::Defer { consumes, run, skip } => {
+                    for &local in consumes {
+                        self.local(at, local)?;
+                    }
+                    self.block(at, *run)?;
+                    self.block(at, *skip)?;
+                }
             }
         }
         Ok(())

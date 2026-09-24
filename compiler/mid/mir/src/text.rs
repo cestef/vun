@@ -141,6 +141,13 @@ impl fmt::Display for Text<'_> {
                 TerminatorKind::Branch { cond, then, otherwise } => {
                     write!(f, "    if {cond} goto bb{} else bb{}", then.index(), otherwise.index())?;
                 }
+                TerminatorKind::Defer { consumes, run, skip } => {
+                    f.write_str("    defer")?;
+                    for &local in consumes {
+                        write!(f, " {}", Place::of(local))?;
+                    }
+                    write!(f, " goto bb{} else bb{}", run.index(), skip.index())?;
+                }
             }
             self.end(f, block.term.origin)?;
         }

@@ -8,6 +8,7 @@ mod block;
 mod call;
 mod closure;
 mod control;
+mod defer;
 mod early_return;
 mod loops;
 mod pattern;
@@ -74,6 +75,8 @@ struct Builder<'e, 'a, 'db> {
     ret: Local,
     /// The loops around the code lowered, innermost last.
     loops: Vec<loops::Loop>,
+    /// The deferred statements in scope, latest last.
+    defers: Vec<ExprId>,
     /// The instantiation lowered, whose typed body gives the types of places.
     f: Instantiation,
     /// The environment of the `$for` step lowered, if any: `env` under its bindings.
@@ -101,6 +104,7 @@ impl<'a, 'db> Builder<'_, 'a, 'db> {
             through: HashSet::new(),
             ret,
             loops: Vec::new(),
+            defers: Vec::new(),
             f: f.clone(),
             step: None,
             path: Vec::new(),
@@ -153,11 +157,13 @@ impl<'a, 'db> Builder<'_, 'a, 'db> {
         Some(typed)
     }
 
-    /// A local for `binder`, which names in the body read from now on.
+    /// A local for `binder`, of the type the typer found, which names in the body read from now
+    /// on.
     fn bind(&mut self, binder: BinderId) -> Local {
         let b = &self.env.parsed.hir.binders[binder];
+        let ty = self.env.cx.get::<Typed>(&self.f).and_then(|t| t.binders.get(&binder).copied());
         let local =
-            self.locals.push(LocalDecl { name: Some(b.name), ty: None, role: Role::Held, origin: b.origin });
+            self.locals.push(LocalDecl { name: Some(b.name), ty, role: Role::Held, origin: b.origin });
         self.bound.insert(binder, local);
         local
     }
@@ -249,6 +255,7 @@ impl<'a, 'db> Builder<'_, 'a, 'db> {
             ExprKind::Break { label, value } => self.leave(*label, *value, origin),
             ExprKind::Continue { label } => self.again(*label, origin),
             ExprKind::Return(value) => self.exit(*value, origin),
+            ExprKind::Defer(statement) => Ok(self.deferred(*statement)),
             ExprKind::Infix { op, left, right: Some(right) } => {
                 let (left, right) = (self.operand(*left)?, self.operand(*right)?);
                 Ok(self.temp(Rvalue::Binary { op: *op, left, right }, origin))

@@ -36,6 +36,7 @@ impl Builder<'_, '_, '_> {
         let on = self.current;
         self.current = stopped;
         self.assign(Place::of(self.ret), carried(&branched), origin);
+        self.unwind(0, origin)?;
         self.terminate(TerminatorKind::Return, origin);
         self.current = on;
         Ok(result)

@@ -1,0 +1,9 @@
+//! A deferred statement runs on the exits where its linear operand is still held; one moved on
+//! some paths to an exit and not on others leaves it undecided (spec 05, section 3).
+
+size := (fs: &mut Fs, path: &[u8], early: bool) -> Result(u64, Error) {
+    f := fs.open(path)?;
+    defer fs.close(f);
+    if early { fs.close(f); }
+    .ok(0) //~ place.ambiguous_join
+};

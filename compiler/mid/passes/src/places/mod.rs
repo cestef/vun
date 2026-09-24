@@ -157,6 +157,9 @@ impl<'b> Analysis<'b> {
                 self.operand(value, states, origin);
                 vec![*resume]
             }
+            TerminatorKind::Defer { consumes, run, skip } => {
+                self.deferred(consumes, *run, *skip, states, origin)
+            }
         }
     }
 

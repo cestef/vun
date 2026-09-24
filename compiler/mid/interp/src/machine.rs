@@ -80,11 +80,18 @@ impl<'b, 'a, 'db> Frame<'b, 'a, 'db> {
                 TerminatorKind::Yield { value, resume } => {
                     return Ok(Exit::Yielded { value: self.operand(value)?, resume: *resume });
                 }
-                TerminatorKind::Unreachable => return Err(Unevaluated::Unsupported),
                 TerminatorKind::Goto(to) => block = &self.body.blocks[*to],
                 TerminatorKind::Branch { cond, then, otherwise } => {
                     let next = if self.env.holds(&self.operand(cond)?)? { then } else { otherwise };
                     block = &self.body.blocks[*next];
+                }
+                // Linear values are not tracked at compile time, so only a deferred statement
+                // consuming none is known to run.
+                TerminatorKind::Defer { consumes, run, .. } if consumes.is_empty() => {
+                    block = &self.body.blocks[*run];
+                }
+                TerminatorKind::Unreachable | TerminatorKind::Defer { .. } => {
+                    return Err(Unevaluated::Unsupported);
                 }
             }
         }

@@ -143,6 +143,30 @@ pub enum Rvalue {
     },
 }
 
+impl Rvalue {
+    /// The operands this reads, in order.
+    #[must_use]
+    pub fn operands(&self) -> Vec<&Operand> {
+        match self {
+            Self::Use(o)
+            | Self::Unary { operand: o, .. }
+            | Self::Narrow { operand: o, .. }
+            | Self::Repeat { operand: o, .. } => {
+                vec![o]
+            }
+            Self::Binary { left, right, .. } => vec![left, right],
+            Self::Range { lo, hi, .. } => std::iter::once(lo).chain(hi).collect(),
+            Self::Aggregate { parts, .. } => parts.iter().collect(),
+            Self::Call { callee, args } => std::iter::once(callee).chain(args).collect(),
+            Self::Ref { .. }
+            | Self::Resume { .. }
+            | Self::IsVariant { .. }
+            | Self::Comptime { .. }
+            | Self::Quote { .. } => Vec::new(),
+        }
+    }
+}
+
 /// What an [`Rvalue::Aggregate`] builds.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Aggregate {
@@ -194,5 +218,13 @@ pub enum TerminatorKind {
         cond: Operand,
         then: BlockId,
         otherwise: BlockId,
+    },
+    /// A deferred statement at an exit (spec 05, section 3): to `run`, which lowers it, when
+    /// every linear local it consumes is `init` here, to `skip` when they were moved. The
+    /// place states decide which, statically.
+    Defer {
+        consumes: Vec<Local>,
+        run: BlockId,
+        skip: BlockId,
     },
 }

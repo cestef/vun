@@ -4,7 +4,7 @@
 use overt_diag::{Msg, errors};
 use overt_grammar::BORROWS;
 use overt_intern::Symbol;
-use overt_mir::{Local, Operand, Place, Projection, Rvalue};
+use overt_mir::{BlockId, Local, Operand, Place, Projection, Rvalue};
 use overt_origin::OriginId;
 
 use super::Analysis;
@@ -93,12 +93,44 @@ impl Analysis<'_> {
         if State::from(before) == State::Init {
             self.read(place, states, origin);
         }
-        if place.projection.is_empty() {
+        // A mode that leaves the state it needs changes nothing: a borrow of an `uninit` place
+        // is reported, not initialized.
+        if place.projection.is_empty() && before != after {
             match State::from(after) {
                 State::Init => states.write(place.local),
                 state => states.locals[place.local] = state,
             }
         }
+    }
+
+    /// A deferred statement at an exit runs when every linear local it consumes is `init`, and
+    /// is skipped when one was moved; one moved on some paths here and not on others leaves it
+    /// undecided (spec 05, section 3), which is reported once.
+    pub(super) fn deferred(
+        &mut self,
+        consumes: &[Local],
+        run: BlockId,
+        skip: BlockId,
+        states: &mut States,
+        origin: OriginId,
+    ) -> Vec<BlockId> {
+        if consumes.iter().all(|&l| states.locals[l] == State::Init) {
+            return vec![run];
+        }
+        // Reported once here, not again as a leak at the return.
+        let ambiguous: Vec<Local> =
+            consumes.iter().copied().filter(|&l| states.locals[l] == State::Ambiguous).collect();
+        for local in ambiguous {
+            states.locals[local] = State::Uninit;
+            let name = self.body.locals[local].name.map_or("", Symbol::as_str);
+            let msg = Msg::new()
+                .code(name)
+                .text(" is moved on some paths to this exit and not on others, so whether its ")
+                .code("defer")
+                .text(" runs here is unknown");
+            self.report(errors::PLACE_AMBIGUOUS_JOIN, origin, msg);
+        }
+        vec![skip]
     }
 
     /// The locals the indices of `place` read must be `init`.

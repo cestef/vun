@@ -1,0 +1,33 @@
+//! A deferred statement runs at every exit of its block, the latest first, and is skipped on the
+//! exits where the linear value it consumes was moved (spec 05, section 3).
+
+size := (fs: &mut Fs, path: &[u8]) -> Result(u64, Error) {
+    f := fs.open(path)?;
+    defer fs.close(f);
+    n := f.size();
+    if n == 0 { return .err(.fs); }
+    .ok(n)
+};
+
+handed := (fs: &mut Fs, path: &[u8]) -> Result(File, Error) {
+    f := fs.open(path)?;
+    defer fs.close(f);
+    .ok(f)
+};
+
+total := (fs: &mut Fs, path: &[u8], rounds: u32) -> u64 {
+    mut sum: u64 = 0;
+    mut i: u32 = 0;
+    for i < rounds {
+        i += 1;
+        match fs.open(path) {
+            .ok(f) => {
+                defer fs.close(f);
+                if f.size() > 1000 { continue; }
+                sum +|= f.size();
+            },
+            .err(_) => break,
+        }
+    }
+    sum
+};
