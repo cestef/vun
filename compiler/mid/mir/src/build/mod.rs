@@ -6,6 +6,7 @@ mod aggregate;
 mod assign;
 mod call;
 mod control;
+mod early_return;
 mod loops;
 mod pattern;
 mod place;
@@ -250,6 +251,9 @@ impl<'a, 'db> Builder<'_, 'a, 'db> {
             }
             ExprKind::Infix { op: op @ (TokenKind::And | TokenKind::Or), left, right: Some(right) } => {
                 self.logic(*op, *left, *right, origin)
+            }
+            ExprKind::Postfix { op: TokenKind::Question, operand } => {
+                self.early_return(expr, *operand, origin)
             }
             ExprKind::Match { scrutinee, arms } => self.matching(*scrutinee, arms, origin),
             ExprKind::If { cond, then, otherwise } => self.branch(cond, *then, *otherwise, origin),

@@ -95,8 +95,30 @@ Index := interface(($Self: type) -> type { struct {
 Try := interface(($Self: type) -> type { struct {
     Value: type = _;
     Stop: type = _;
-    branch: (self: Self) -> enum { go(Value), stop(Stop) } = _;
+    branch: (self: Self) -> Branch(Value, Stop) = _;
 }});
+
+/// `o?` gives the value of `.some`, or returns `.none`, an `Option(never)`, which every option
+/// type accepts.
+#[impl(Try(Option))]
+OptionTry := ($T: type) -> type { struct {
+    Value := T;
+    Stop := Option(never);
+    branch := (self: Option(T)) -> Branch(T, Option(never)) {
+        match self { .some(v) => .go(v), .none => .stop(.none) }
+    };
+} };
+
+/// `r?` gives the value of `.ok`, or returns the error as a `Result(never, E)`, which every
+/// result type with errors `E` accepts.
+#[impl(Try(Result))]
+ResultTry := ($T: type, $E: type) -> type { struct {
+    Value := T;
+    Stop := Result(never, E);
+    branch := (self: Result(T, E)) -> Branch(T, Result(never, E)) {
+        match self { .ok(v) => .go(v), .err(e) => .stop(.err(e)) }
+    };
+} };
 
 /// What `for p in e` iterates.
 Iterate := interface(($Self: type) -> type { struct {

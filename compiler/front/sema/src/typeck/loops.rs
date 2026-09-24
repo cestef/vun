@@ -89,16 +89,19 @@ impl Typer<'_, '_, '_> {
         self.loops[target].value = joined.map_or(Ends::Unknown, Ends::With);
     }
 
+    /// The witness of the interface at `path`, such as `lang.ops.Iterate`, for `ty`.
+    pub(super) fn witness_of(&self, path: &str, ty: Ty) -> Option<Ty> {
+        let Ok(Value::Interface(interface)) = self.env().item(path) else { return None };
+        let witnesses = self.env().cx.get::<Witnesses>(&(self.env().file.clone(), ty));
+        witnesses.iter().find(|w| w.decl.interface == interface).map(|w| w.ty)
+    }
+
     /// The type of the items `for p in e` binds for `e` of type `ty`, looking through a borrow
     /// when the borrow itself is not iterated.
     pub(super) fn item(&self, ty: Ty) -> Option<Ty> {
         let &(interface, _, iterator, resume, item) = ITERATION.first()?;
-        let Ok(Value::Interface(iterate)) = self.env().item(interface) else { return None };
-        let witness = |ty: Ty| {
-            let witnesses = self.env().cx.get::<Witnesses>(&(self.env().file.clone(), ty));
-            witnesses.iter().find(|w| w.decl.interface == iterate).map(|w| w.ty)
-        };
-        let witness = witness(ty).or_else(|| witness(ty.borrowed()?))?;
+        let witness =
+            self.witness_of(interface, ty).or_else(|| self.witness_of(interface, ty.borrowed()?))?;
         let member = (witness, Symbol::intern(iterator));
         let Ok(Value::Interface(coroutine)) = self.env().cx.get::<MemberValue>(&member) else { return None };
         let requirements = self

@@ -220,7 +220,10 @@ config := load(path)?;                             // propagate .err / .none to 
   items, and a slice reached through a borrow a borrow of each item: `for c in t.children` binds
   `c: &Tree`, and `for b in bytes { sum +%= b.*; }` reads each byte.
 - `e?` on `Result(T, E)` returns `.err(x)` from the enclosing function; on `?T` it returns `.none`.
-  It never converts error types; `e.map_err(f)?` converts explicitly.
+  It never converts error types; `e.map_err(f)?` converts explicitly. Both come from impls of
+  `lang.ops.Try` in `lang` (the table `early_return`): `branch` gives `.go(value)` or
+  `.stop(r)`, `r` a `Result(never, E)` or an `Option(never)`, which the function's result type
+  must accept.
 - `and`, `or` short-circuit; `!` negates.
 - `if p = e` and `for p = e` with an irrefutable `p` are errors: use a binding.
 - `match` is exhaustive: its arms cover every value of the scrutinee's type (enums by variant,

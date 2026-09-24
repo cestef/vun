@@ -247,3 +247,24 @@ kinded: Int(0..=kind(11)) = 3;
     let reported: Vec<_> = fixture.reported(&file).into_iter().map(|(id, _)| id).collect();
     assert_eq!(reported, [errors::INT_DOES_NOT_FIT; 5]);
 }
+
+#[test]
+fn early_returns_go_on_or_stop() {
+    let fixture = Fixture::new("comptime-try");
+    let file = fixture.root.write(
+        "try.ov",
+        "\
+parse := ($x: u8) -> Result(u8, u8) { if x > 9 { .err(x) } else { .ok(x) } };
+double := ($x: u8) -> Result(u16, u8) { v := parse(x)?; .ok(v + v) };
+got := ($r: Result(u16, u8)) -> u16 { match r { .ok(v) => v, .err(e) => 1000 + e } };
+eight: Int(0..=got(double(4))) = 9;
+stopped: Int(0..=got(double(12))) = 1013;
+some := ($o: ?u8) -> ?u8 { v := o?; .some(v) };
+wrong := ($x: u8) -> Result(u16, u16) { v := parse(x)?; .ok(v) };
+",
+    );
+    let found = fixture.reported(&file);
+    let ids: Vec<_> = found.iter().map(|(id, _)| id.clone()).collect();
+    assert_eq!(ids, [errors::INT_DOES_NOT_FIT, errors::INT_DOES_NOT_FIT, errors::TYPES_MISMATCH]);
+    assert_eq!(found[2].1, "expected `Result(u16, u16)`, found `Result(never, Int(0..=255))`");
+}

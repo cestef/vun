@@ -8,6 +8,7 @@
 mod block;
 mod call;
 mod control;
+mod early_return;
 mod expect;
 mod expected;
 mod infer;

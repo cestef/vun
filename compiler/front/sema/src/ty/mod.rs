@@ -58,6 +58,8 @@ pub struct Nominal {
 pub enum NominalKind {
     Struct,
     Enum,
+    /// An enum without variants, such as `lang.never`: no value has this type.
+    Empty,
 }
 
 impl TyKind {
@@ -159,7 +161,8 @@ impl TyKind {
     /// Whether a value of type `found` is accepted where this type is expected: integers whose
     /// range lies within (spec 04, rule 2), tuples, arrays and bounds whose items are, bounds
     /// where a `lang.Range` is expected, a borrow of an array where a borrow of a slice of its
-    /// items is (spec 02), code of an accepted value, or the type itself.
+    /// items is (spec 02), code of an accepted value, a type made with `never` where the same
+    /// constructor is expected, or the type itself.
     #[must_use]
     pub fn accepts(&self, found: &Self) -> bool {
         if let (Some(expected), Some(found)) = (self.interval(), found.interval()) {
@@ -191,9 +194,25 @@ impl TyKind {
                 (Some((len, elem)), Some((found_len, found_elem))) => {
                     len == found_len && elem.accepts(&found_elem)
                 }
-                _ => self == found,
+                _ => self == found || self.made_with_empty(found),
             },
         }
+    }
+
+    /// Whether `found` is made by the same constructor as this type with an empty type, such as
+    /// `lang.never`, in place of some arguments: `Result(never, E)` where `Result(T, E)` is
+    /// expected. Its only values are those whose payloads avoid the empty type, which are values
+    /// of this type too.
+    fn made_with_empty(&self, found: &Self) -> bool {
+        let (Self::Nominal(expected), Self::Nominal(found)) = (self, found) else { return false };
+        let (Some(call), Some(found_call)) = (&expected.instance, &found.instance) else { return false };
+        let empty = |v: &Value| {
+            v.as_type().is_some_and(|t| matches!(&*t, Self::Nominal(n) if n.kind == NominalKind::Empty))
+        };
+        expected.literal == found.literal
+            && call.f == found_call.f
+            && call.args.len() == found_call.args.len()
+            && call.args.iter().zip(&found_call.args).all(|(a, b)| a == b || empty(b))
     }
 
     /// The type a borrow type borrows: `T` for `&T`, `&mut T` and the other modes of the table
@@ -234,7 +253,7 @@ impl TyKind {
     }
 
     /// The type values of both `self` and `other` have: the hull of two integer ranges, item by
-    /// item for tuples and arrays, or the type itself; `None` when they have none in common.
+    /// item for tuples and arrays, or the one that accepts the other; `None` when they have none in common.
     #[must_use]
     pub fn join(&self, other: &Self) -> Option<Ty> {
         if let (Some(a), Some(b)) = (self.interval(), other.interval()) {
@@ -249,7 +268,8 @@ impl TyKind {
                 (Some((len, elem)), Some((other_len, other_elem))) if len == other_len => {
                     Some(Self::array(len.clone(), elem.join(&other_elem)?))
                 }
-                _ => (self == other).then(|| self.clone().intern()),
+                _ if self.accepts(other) => Some(self.clone().intern()),
+                _ => other.accepts(self).then(|| other.clone().intern()),
             },
         }
     }

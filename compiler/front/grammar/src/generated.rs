@@ -1233,6 +1233,12 @@ pub const COMPOUND: &[(TokenKind, TokenKind, Narrowing)] = &[
     (TokenKind::MinusPipeEq, TokenKind::Minus, Narrowing::Sat),
     (TokenKind::StarPipeEq, TokenKind::Star, Narrowing::Sat),
 ];
+/// What `e?` means (appendix B): the witness of `interface` for the type of `e` gives
+/// `function`, whose result carries the value in the variant `go` and what the function returns
+/// in the variant `stop`.
+pub const EARLY_RETURN: &[(&str, &str, &str, &str)] = &[
+    ("lang.ops.Try", "branch", "go", "stop"),
+];
 /// What `for p in e` drives (appendix B): the witness of `interface` for the type of `e` gives
 /// the iterator through `function` and names its coroutine interface `iterator`; each item is
 /// the payload of the variant `item` of what the interface's `resume` returns.

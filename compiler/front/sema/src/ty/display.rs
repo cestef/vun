@@ -38,6 +38,7 @@ impl fmt::Display for TyKind {
             Self::Nominal(n) => f.write_str(match n.kind {
                 NominalKind::Struct => "struct { .. }",
                 NominalKind::Enum => "enum { .. }",
+                NominalKind::Empty => "enum {}",
             }),
             Self::Tuple(items) => {
                 f.write_str("(")?;

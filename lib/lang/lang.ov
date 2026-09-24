@@ -29,6 +29,8 @@ Ordering := enum { less, equal, greater };
 Option := ($T: type) -> type { enum { none, some(T) } };
 Result := ($T: type, $E: type) -> type { enum { ok(T), err(E) } };
 Step := ($Y: type, $R: type) -> type { enum { yielded(Y), done(R) } };
+/// What `lang.ops.Try.branch` gives: go on with a value, or stop with what the function returns.
+Branch := ($V: type, $S: type) -> type { enum { go(V), stop(S) } };
 
 Interface: type = _;
 /// Wraps a function from a type to its requirement struct, so it can constrain `$` parameters.

@@ -71,6 +71,7 @@ impl Typer<'_, '_, '_> {
             ExprKind::If { cond, then, otherwise } => self.branch(expr, cond, *then, *otherwise),
             ExprKind::For { head, body } => self.looping(None, head, *body),
             ExprKind::Labeled { label, body } => self.labeled(expr, *label, *body),
+            ExprKind::Postfix { op: TokenKind::Question, operand } => self.early_return(expr, *operand),
             ExprKind::Postfix { op: TokenKind::DotStar, operand } => {
                 let known = self.typed(*operand)?;
                 Some(Known { ty: known.ty.pointee()?, ..known })

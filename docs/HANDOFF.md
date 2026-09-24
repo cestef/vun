@@ -308,11 +308,11 @@ In order:
      types; `TyKind::of_types`. Decision 90: `Value::Linked(DeclRef)` for linker-provided
      declarations (`DeclValue::primitive` decides), `Value::repeat` and `Rvalue::Repeat`.
      Next blockers (`cargo xtask corpus`): `for p in e` (coroutine frames: `iter`/`resume` are
-     compiler-provided members of the `lang.ops` impls, no frame model yet), closures (spec 01
-     says an anonymous struct of captures plus an impl of `lang.ops.Call`, which `lang.ops`
-     does not declare yet), `?` (no `Try` impls for `Option`/`Result`; `return r` needs `Stop`
-     accepted where the result type is), `$` splices of run-time code, `.{ }` without a known
-     type, or-patterns that bind.
+     compiler-provided members of the `lang.ops` impls, no frame model yet), closures (decision 91: `lang.ops.Call` with `call: (self: &mut Self, args: Params) -> R`,
+     the user's choice, not built yet), `$` splices of run-time code, `.{ }` without a known
+     type, or-patterns that bind. Decision 91 (`?`): `typeck/early_return.rs`
+     (`Typer::witness_of` shared with loops), `build/early_return.rs`; MIR returns the stop value
+     as is (a backend widens `Result(never, E)` into the result layout, as with integers).
    - `types.no_member` on values stays off: turning it on (tried) reports members the corpus
      stand-ins lack. Needed first: stand-in methods for `Timer`, `Serial`, `Led`, `Dma`, `Fs`,
      `Alloc`, `Device`, `System`, `Cache`, `Queue`, `Packet`, `Uart` in `corpus/support`,

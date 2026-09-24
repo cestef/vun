@@ -95,6 +95,13 @@ compound := [
     .{ .token = .star_pipe_eq, .op = .star, .narrowing = .sat },
 ];
 
+/// What `e?` means (appendix B): the witness of `interface` for the type of `e` gives
+/// `function`, whose result carries the value in the variant `go` and what the function returns
+/// in the variant `stop`.
+early_return := [
+    .{ .interface = "lang.ops.Try", .function = "branch", .go = "go", .stop = "stop" },
+];
+
 /// What `for p in e` drives (appendix B): the witness of `interface` for the type of `e` gives
 /// the iterator through `function` and names its coroutine interface `iterator`; each item is
 /// the payload of the variant `item` of what the interface's `resume` returns.
