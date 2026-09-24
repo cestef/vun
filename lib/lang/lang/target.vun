@@ -6,6 +6,22 @@ Endian := enum { little, big };
 /// A C integer type of a target: its width in bits and its alignment in bytes.
 CInt := struct { bits: u8, align: u8 };
 
+/// What a C compiler offers beyond C99 for atomic memory access.
+Atomics := enum {
+    /// Nothing: atomic access is refused.
+    none,
+    /// The `__atomic_*` builtins of GCC and Clang.
+    gnu,
+};
+
+/// The C compiler building a target's C: its command, the flags that give the C backend's rules
+/// (strict C99, memory without type-based aliasing), and what it offers beyond C99.
+CCompiler := struct {
+    command: &[u8],
+    flags: &[&[u8]],
+    atomics: Atomics,
+};
+
 /// The C types of a target as its C compiler lays them out: the C backend declares its own
 /// fixed-width types from them, and checks each while compiling (spec 13, section 8.2). A `char`
 /// is 8 bits everywhere Vun runs.
@@ -16,6 +32,7 @@ C := struct {
     long_long: CInt,
     /// The alignment of an address.
     pointer_align: u8,
+    compiler: CCompiler,
 };
 
 /// A target, as data (spec 13, section 7): the package `targets` declares one per system and CPU

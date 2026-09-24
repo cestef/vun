@@ -12,4 +12,5 @@ workspace = true
 [dependencies]
 vun-target.workspace = true
 vun-diag.workspace = true
+vun-intern.workspace = true
 vun-origin.workspace = true

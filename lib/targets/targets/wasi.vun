@@ -18,5 +18,10 @@ wasm32 := lang.target.Spec{
         .long = .{ .bits = 32, .align = 4 },
         .long_long = .{ .bits = 64, .align = 8 },
         .pointer_align = 4,
+        .compiler = .{
+            .command = "clang",
+            .flags = &["-std=c99", "-fno-strict-aliasing"],
+            .atomics = .gnu,
+        },
     },
 };

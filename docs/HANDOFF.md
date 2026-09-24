@@ -1,6 +1,6 @@
 # Handoff
 
-State of Vun as of 2026-09-24 (end of the seventh session), for the next agent. Read this, then
+State of Vun as of 2026-09-25 (end of the eighth session), for the next agent. Read this, then
 `CLAUDE.md` (rules and the agent procedure; on disk but ignored by the user's global gitignore, so
 `jj st` never shows it), then `docs/spec/00-principles.md`, `docs/spec/decisions.md` and the spec
 files of the area you touch.
@@ -198,6 +198,34 @@ imports, `lang` primitives with link symbols), primitives (`lang.int` arithmetic
 narrowings, `lang.mem`), bounds and runs, traps. hello.vun lowers to LIR that verifies;
 coroutine frames (export.vun's `for` over a slice) are not lowered yet (`Form::Frame`).
 
+**LIR analyses** (`vun_lir::analysis`, spec 13 section 8.1, after TPDE): `Cfg`, `Loops` (Wei et
+al., irreducible loops included), `Order` (reverse postorder, loops contiguous, `span`, `next`),
+`Liveness` (per value: first and last position, `through`, uses), `Moves` (parallel copies with a
+typed temporary per cycle). Operation facts (`facts.rs`): `reads()` and `domain()` of `BinOp`,
+`Cond`, `CastOp`, `Cond::unsigned`. Signatures pass integers as `AbiType::Int(Scalar, Ext)` (the
+verifier rejects an integer as a bare `Scalar`); a terminator never jumps to one block twice with
+different arguments (`Reason::Edge`). A link symbol the program exports is called directly
+(`Lowering::linked`). Comparisons lower in the narrowest storage holding both ranges, narrowings
+test only the bounds that cut the source's range: 64-bit code never widens to `i128`.
+
+**Targets** (decision 154): `targets.<system>.<cpu>` (`linux.x86_64`, `bare.cortex_m4f`,
+`wasi.wasm32`, `macos.arm64`); `lang.target.Spec` has `arch`, `cpu`, `os`, `abi`, and `c`, the C
+model with its `compiler` (`CCompiler`: command, flags, `Atomics`). `vun_target::TargetSpec` is
+read from the value (`vun_sema::target::Read`, through handles); `Chosen` (query) picks it by
+`Choice::Path` (`--target`) or `Choice::Host` (the row of `targets.hosts` for Rust's
+`std::env::consts`); the driver sets the input `TargetOf`, which has no default: widths and byte
+order are unknown until it is set (`Unevaluated::Untargeted`, `Why::Untargeted`). Handles exist
+for the root file of `targets` only (`vun_items::targets::hosts`). Components name what they
+handle with `vun_target::Name`, compared to the target's `Symbol`s.
+
+**C backend** (`compiler/back/c`, decision 153): `ast/` (C99 as data: `Ty`, `Expr`, `Stmt`,
+`Item`, typed `Ident`s with `Own` and `Builtin`, `Names` spelling them), `ast/print` (the one
+printer), `emit/` (`ints.rs` integer types from the C model with `sizeof` checks, `signature.rs`,
+`data.rs`, `func/` with `inline.rs`, `arith.rs`, `inst.rs`, `term.rs`), `lack.rs` (`Missing`, as
+`backend.lacks`). Driver: `vun dump code <file> [--backend]`, `vun build <file> [--backend] [-o]`,
+`vun run` (`codegen.rs`, `program.rs`); the `gnu` linker adapter links through the target's C
+compiler. `vun run corpus/accept/programs/hello.vun --backend c` prints `hello` (a driver test).
+
 **Interpreter** (`compiler/mid/interp`): runs MIR on compile-time values; shared borrows read as
 values; exclusive borrows are loans (`Value::Loan`) that `.*` follows (`places.rs`), passed to
 calls as what they reach and written back from `Metered::written` (`loans.rs`, decision 135);
@@ -234,6 +262,8 @@ every `lang` and `std` file cleanly.
 
 ## 6. Decisions
 
+Accepted (the user's choices, details proposed): 152 (backends after TPDE, baseline backend
+started after C), 153 (the C backend), 154 (targets named by system and CPU, chosen per session).
 Accepted: 1 to 84, 91, 92, 98 to 106, 109, 111, 116, 118 (no bespoke formats: `lock.vun`,
 `.tar.zst`), 120 (the rename to Vun), 131 to 133, 136 (plans with `lang.meta.Any`), 142, 144
 (every operator through impls, integers included). Proposed, awaiting the user: 85 to 90, 93 to 97, 107, 108,
@@ -251,6 +281,12 @@ rules go to `decisions.md` as proposed unless the user approves them.
 
 ## 7. Next steps, in order
 
+0. Backends: the baseline backend (spec 13 section 8.3: x86_64, own encoder and ELF writer, over
+   `vun_lir::analysis`); in the C backend, shards by function hash, `restrict` from aliasing facts,
+   frame sizes (`-fstack-usage`), bare-metal links (linker scripts from `LinkPlan` regions), and
+   coroutine frames in lowering (`Form::Frame`, which stops `ffi/export.vun`). `LinkPlan` and
+   `vun-tool` still carry paths and arguments as `String`s. `Outcome` has no exit status, so
+   `vun run` reports failure, not the program's code.
 1. `std`: `std.task.Pool`, `std.testing.Sim`; a Linux runtime without the C library; text
    (`Str`) and collections; `print`'s `.fixes`. Generic bodies
    over a constrained `$A: Allocator` are neither typed nor lowered (`a.alloc(...)`), see 5 and 6.
@@ -276,6 +312,10 @@ rules go to `decisions.md` as proposed unless the user approves them.
    `vun pkg why`; `.workspace` visibility.
 
 ## 8. Pitfalls
+
+- Nothing has a target until the driver chooses one (`Session::target_for`, on the first
+  `file_ref`); code outside the driver that queries layouts sets `TargetOf` itself.
+- Run light checks while working (`-p <crate>`, one test); the full check line once per batch.
 
 - The project was renamed from Overt to Vun (crates `vun-*`, CLI `vun`, sources `.vun`, `VUN_*`
   variables); the extension comes from `vun_span::extension!`, file names from `source_file!`.

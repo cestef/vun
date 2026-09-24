@@ -70,6 +70,12 @@ pub(super) const DUMPS: &[Command<Session>] = &[
         params: &[FILE],
         action: Action::Run(|s, args, out| Stage::Lir.dump(s, args, out)),
     },
+    Command {
+        name: "code",
+        about: "what a backend generates for the program a root file exports, when it is text",
+        params: &[FILE, crate::codegen::BACKEND],
+        action: Action::Run(|s, args, out| Stage::Code.dump(s, args, out)),
+    },
     Command::planned("link", "the link plan"),
 ];
 
@@ -82,6 +88,7 @@ enum Stage {
     Mir,
     Program,
     Lir,
+    Code,
     Layout,
     Manifest,
     Plan,
@@ -156,6 +163,7 @@ impl Stage {
                     }
                 }
             }
+            Self::Code => session.dump_code(file, args.value(&crate::codegen::BACKEND), out)?,
             Self::Program => {
                 let program = session.program(file);
                 for &(at, symbol) in &program.exports {

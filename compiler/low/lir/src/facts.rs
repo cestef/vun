@@ -28,6 +28,20 @@ pub enum Domain {
     Fits,
 }
 
+impl Cond {
+    /// The comparison reading its operands as unsigned, for an integer one.
+    #[must_use]
+    pub const fn unsigned(self) -> Self {
+        match self {
+            Self::SLt => Self::ULt,
+            Self::SLe => Self::ULe,
+            Self::SGt => Self::UGt,
+            Self::SGe => Self::UGe,
+            other => other,
+        }
+    }
+}
+
 macro_rules! facts {
     ($($ty:ident { $($variant:ident => ($reads:ident, $domain:ident)),* $(,)? })*) => {$(
         impl $ty {

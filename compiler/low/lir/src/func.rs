@@ -27,9 +27,23 @@ pub enum Conv {
 /// reaching them by address.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum AbiType {
+    /// A float or an address.
     Scalar(Scalar),
+    /// An integer, and how it extends to a wider register, as its range reads it: C declares it
+    /// signed or unsigned by that.
+    Int(Scalar, Ext),
     Record(Record),
-    Memory { size: u64, align: u64 },
+    Memory {
+        size: u64,
+        align: u64,
+    },
+}
+
+/// How an integer extends to a wider register: with zeros, or copies of its sign bit.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum Ext {
+    Zero,
+    Sign,
 }
 
 /// A record as C lays it out: its size, alignment and the scalars at their offsets.
@@ -45,7 +59,7 @@ impl AbiType {
     #[must_use]
     pub fn value(&self) -> Scalar {
         match self {
-            Self::Scalar(s) => *s,
+            Self::Scalar(s) | Self::Int(s, _) => *s,
             Self::Record(_) | Self::Memory { .. } => Scalar::Ptr,
         }
     }
@@ -69,6 +83,16 @@ impl Signature {
         self.params.iter().map(AbiType::value).chain(out).collect()
     }
 
+    /// Whether every integer it passes says how it extends, and nothing else does.
+    #[must_use]
+    pub fn well_formed(&self) -> bool {
+        self.params.iter().chain(&self.result).all(|p| match p {
+            AbiType::Scalar(s) => !s.is_int(),
+            AbiType::Int(s, _) => s.is_int(),
+            AbiType::Record(_) | AbiType::Memory { .. } => true,
+        })
+    }
+
     /// Whether the result is written through an address rather than returned.
     #[must_use]
     pub fn through(&self) -> bool {
@@ -79,7 +103,7 @@ impl Signature {
     #[must_use]
     pub fn returns(&self) -> Option<Scalar> {
         match &self.result {
-            Some(AbiType::Scalar(s)) => Some(*s),
+            Some(AbiType::Scalar(s) | AbiType::Int(s, _)) => Some(*s),
             Some(AbiType::Record(_) | AbiType::Memory { .. }) | None => None,
         }
     }

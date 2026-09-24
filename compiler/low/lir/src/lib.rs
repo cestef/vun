@@ -16,7 +16,7 @@ pub mod verify;
 pub use build::Builder;
 pub use entity::{Block, DataId, FuncId, ImportId, Inst, Slot, Value};
 pub use facts::{Domain, Reads};
-pub use func::{AbiType, Conv, Function, Linkage, Record, Signature};
+pub use func::{AbiType, Conv, Ext, Function, Linkage, Record, Signature};
 pub use inst::{Access, Address, BinOp, Callee, CastOp, Cond, InstKind, Order, RmwOp, Target, Terminator};
 pub use ty::Scalar;
 pub use unit::{Data, Import, ImportKind, Reloc, Unit};

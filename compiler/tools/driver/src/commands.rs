@@ -16,8 +16,18 @@ pub const PROGRAM: Program<Session> = Program {
         params: &[formats::FORMAT, target::TARGET],
         action: Action::Group(&[
             Command::planned("new", "create a package"),
-            Command::planned("build", "build the package"),
-            Command::planned("run", "build and run a program"),
+            Command {
+                name: "build",
+                about: "build the program a root file exports",
+                params: &[FILE, crate::codegen::BACKEND, crate::program::OUTPUT],
+                action: Action::Run(build),
+            },
+            Command {
+                name: "run",
+                about: "build the program a root file exports and run it",
+                params: &[FILE, crate::codegen::BACKEND, crate::program::OUTPUT],
+                action: Action::Run(run),
+            },
             Command {
                 name: "check",
                 about: "analyze without generating code",
@@ -99,6 +109,26 @@ pub const PROGRAM: Program<Session> = Program {
         ]),
     },
 };
+
+/// Builds the program `args` names, or reports why it cannot.
+fn built(session: &mut Session, args: &Args) -> Option<std::path::PathBuf> {
+    let path = args.value(&FILE).expect("positional parameters are present when a command runs");
+    let file = session.load(Path::new(path))?;
+    let backend = args.value(&crate::codegen::BACKEND);
+    session.build(file, backend, args.value(&crate::program::OUTPUT).map(Path::new)).ok()
+}
+
+#[expect(clippy::unnecessary_wraps, reason = "every command has the `Run` signature")]
+fn build(session: &mut Session, args: &Args, _: &mut dyn Write) -> io::Result<Outcome> {
+    built(session, args);
+    Ok(session.outcome())
+}
+
+fn run(session: &mut Session, args: &Args, _: &mut dyn Write) -> io::Result<Outcome> {
+    let Some(program) = built(session, args) else { return Ok(session.outcome()) };
+    let status = std::process::Command::new(&program).status()?;
+    Ok(if status.success() { Outcome::Success } else { Outcome::Failure })
+}
 
 /// Applies the options every command takes.
 fn configure(session: &mut Session, args: &Args) -> Result<(), Box<vun_diag::Diagnostic>> {

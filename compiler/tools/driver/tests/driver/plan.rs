@@ -52,7 +52,9 @@ build := (b: &mut std.build.Build) {
                   .object_format = .elf, .entry_symbol = .some(\"Reset\"), .default_backend = .c, \
                   .default_linker = .lld, .c = .{ .short = .{ .bits = 16, .align = 2 }, \
                   .int = .{ .bits = 32, .align = 4 }, .long = .{ .bits = 32, .align = 4 }, \
-                  .long_long = .{ .bits = 64, .align = 8 }, .pointer_align = 4 } }";
+                  .long_long = .{ .bits = 64, .align = 8 }, .pointer_align = 4, \
+                  .compiler = .{ .command = \"arm-none-eabi-gcc\", \
+                  .flags = .{ \"-std=c99\", \"-fno-strict-aliasing\" }, .atomics = .gnu } } }";
     assert_eq!(
         actions,
         [

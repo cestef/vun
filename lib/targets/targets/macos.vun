@@ -18,5 +18,10 @@ arm64 := lang.target.Spec{
         .long = .{ .bits = 64, .align = 8 },
         .long_long = .{ .bits = 64, .align = 8 },
         .pointer_align = 8,
+        .compiler = .{
+            .command = "clang",
+            .flags = &["-std=c99", "-fno-strict-aliasing"],
+            .atomics = .gnu,
+        },
     },
 };

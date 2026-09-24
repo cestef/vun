@@ -15,7 +15,7 @@ use crate::entity::{Block, FuncId, Inst, Value};
 use crate::func::{Def, Function};
 use crate::inst::{Address, Callee, InstKind, Target};
 use crate::ty::Scalar;
-use crate::unit::Unit;
+use crate::unit::{ImportKind, Unit};
 use dominance::Dominators;
 
 /// Where in a unit something is malformed.
@@ -62,6 +62,8 @@ pub enum Reason {
     Arity,
     /// A return whose value does not match the signature's result.
     Return,
+    /// A signature passing an integer without how it extends, or anything else with it.
+    Passing,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -101,6 +103,11 @@ impl Unit {
         };
         for (i, import) in self.imports.iter() {
             has(Entity::Import(i.index()), import.origin)?;
+            if let ImportKind::Func(signature) = &import.kind
+                && !signature.well_formed()
+            {
+                return Err(Malformed { at: Entity::Import(i.index()), reason: Reason::Passing });
+            }
         }
         for (i, data) in self.data.iter() {
             has(Entity::Data(i.index()), data.origin)?;
@@ -140,6 +147,9 @@ impl Checker<'_> {
     fn run(&self) -> Result<(), Malformed> {
         let (id, func) = (self.id, self.func);
         self.origin(Entity::Func(id), func.origin)?;
+        if !func.signature.well_formed() {
+            return Self::fail(Entity::Func(id), Reason::Passing);
+        }
         let Some(entry) = func.entry() else { return Self::fail(Entity::Func(id), Reason::Empty) };
         let params: Vec<Scalar> = func.blocks[entry].params.iter().map(|&v| func.ty(v)).collect();
         if params != func.signature.values() {

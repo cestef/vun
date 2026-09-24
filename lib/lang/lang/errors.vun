@@ -111,6 +111,7 @@ backend := struct {
     unavailable := diag.Diag{ .explanation = meta.embed("errors/backend/unavailable.md") };
     lacks := diag.Diag{ .explanation = meta.embed("errors/backend/lacks.md") };
     tool := diag.Diag{ .explanation = meta.embed("errors/backend/tool.md") };
+    unlowered := diag.Diag{ .explanation = meta.embed("errors/backend/unlowered.md") };
 };
 
 /// Targets (spec 13, section 7).

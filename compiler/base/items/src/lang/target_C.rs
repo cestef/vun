@@ -12,3 +12,4 @@ pub const long: Item = Item::new(&["lang", "target", "C", "long"]);
 pub const long_long: Item = Item::new(&["lang", "target", "C", "long_long"]);
 /// The alignment of an address.
 pub const pointer_align: Item = Item::new(&["lang", "target", "C", "pointer_align"]);
+pub const compiler: Item = Item::new(&["lang", "target", "C", "compiler"]);

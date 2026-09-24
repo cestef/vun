@@ -2,7 +2,7 @@
 //! value in memory is passed by address, a result in memory written through an address; under
 //! the C convention (`#[abi.c]`) such a value is a record of the scalars C sees in it.
 
-use vun_lir::{AbiType, Conv, Record, Scalar, Signature};
+use vun_lir::{AbiType, Conv, Ext, Record, Scalar, Signature};
 use vun_origin::OriginId;
 use vun_sema::layout::Parts;
 use vun_sema::member::Members;
@@ -40,6 +40,12 @@ impl Lowering<'_, '_> {
         let passed = |ty: Ty| -> Result<Option<AbiType>, Unlowered> {
             Ok(match self.types.repr(ty, at)? {
                 Repr::Zero => None,
+                // An integer extends by its range's sign; a tag or a truth value stored as one is
+                // bits, read unsigned.
+                Repr::Scalar(s) if s.is_int() => {
+                    let signed = self.types.int(ty).is_some_and(|(_, signed)| signed);
+                    Some(AbiType::Int(s, if signed { Ext::Sign } else { Ext::Zero }))
+                }
                 Repr::Scalar(s) => Some(AbiType::Scalar(s)),
                 Repr::Memory(_) if conv == Conv::C => Some(AbiType::Record(self.types.record(ty, at)?)),
                 Repr::Memory(layout) => Some(AbiType::Memory { size: layout.size, align: layout.align }),

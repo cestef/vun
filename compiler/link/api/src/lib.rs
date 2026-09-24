@@ -47,7 +47,7 @@ pub struct LinkPlan {
     pub output: PathBuf,
     pub kind: OutputKind,
     /// From the target (spec 08, rule 2).
-    pub entry: Option<String>,
+    pub entry: Option<vun_intern::Symbol>,
     pub regions: Vec<MemoryRegion>,
     pub sections: Vec<SectionPlacement>,
 }

@@ -67,7 +67,15 @@ impl FnLower<'_, '_, '_> {
             _ => None,
         };
         if let Some(cond) = cond {
-            let (x, y) = (self.through(arg(0)?)?, self.through(arg(1)?)?);
+            // Compared in the narrowest integer storing both ranges.
+            let (lhs, rhs) = (arg(0)?, arg(1)?);
+            let pointee = |operand: &Operand| {
+                self.operand_ty(operand).and_then(|t| t.pointee()).ok_or_else(unsupported)
+            };
+            let (left, right) = (pointee(lhs)?, pointee(rhs)?);
+            let (common, signed) = self.l.types.common(left, right).ok_or_else(unsupported)?;
+            let (x, y) = (self.through(lhs, common)?, self.through(rhs, common)?);
+            let cond = if signed { cond } else { cond.unsigned() };
             let holds = self.b.compare(cond, x, y, self.at);
             return self.condition(holds, dest, ty);
         }
@@ -223,14 +231,14 @@ impl FnLower<'_, '_, '_> {
     }
 
     /// The integer a borrow `operand` reaches, as a signed 128-bit integer, so any two compare.
-    fn through(&mut self, operand: &Operand) -> Result<Value, Unlowered> {
+    fn through(&mut self, operand: &Operand, to: Scalar) -> Result<Value, Unlowered> {
         let at = self.at;
         let unsupported = move || Unlowered::unsupported(at, Form::Primitive);
         let ty = self.operand_ty(operand).and_then(|t| t.pointee()).ok_or_else(unsupported)?;
         let (int, signed) = self.l.types.int(ty).ok_or_else(unsupported)?;
         let addr = self.scalar_operand(operand)?;
         let value = self.b.load(int, addr, Access::Plain, self.at);
-        Ok(self.resize(value, int, signed, Scalar::I128))
+        Ok(self.resize(value, int, signed, to))
     }
 
     /// The scalar `operand` holds.

@@ -20,7 +20,8 @@ fn analyse(func: &Function) -> (Loops, Order) {
 /// A function of one `i8` parameter whose blocks end as `ends` gives, each block `b1` onward
 /// made first.
 fn shaped(origin: OriginId, blocks: usize, ends: &dyn Fn(crate::Value) -> Vec<Terminator>) -> Function {
-    let signature = Signature { conv: Conv::Vun, params: vec![AbiType::Scalar(Scalar::I8)], result: None };
+    let signature =
+        Signature { conv: Conv::Vun, params: vec![AbiType::Int(Scalar::I8, crate::Ext::Zero)], result: None };
     let mut builder = Builder::new(Linkage::Export(Symbol::intern("f")), signature, origin);
     let cond = builder.params(builder.current())[0];
     for _ in 1..blocks {

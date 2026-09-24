@@ -4,6 +4,7 @@
 mod common;
 
 mod add;
+mod backend;
 mod bind;
 mod borrows;
 mod comptime;

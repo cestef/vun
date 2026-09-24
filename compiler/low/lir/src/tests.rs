@@ -14,7 +14,7 @@ pub(crate) fn origin(origins: &OriginTable) -> OriginId {
 
 /// `sum(n)`: adds `0..n` in a loop whose counter and total are block parameters.
 pub(crate) fn sum(origin: OriginId) -> Unit {
-    let int = AbiType::Scalar(Scalar::I64);
+    let int = AbiType::Int(Scalar::I64, crate::Ext::Zero);
     let signature = Signature { conv: Conv::C, params: vec![int.clone()], result: Some(int) };
     let mut b = Builder::new(Linkage::Export(Symbol::intern("sum")), signature, origin);
     let n = b.params(b.current())[0];
@@ -44,7 +44,7 @@ fn the_verifier_accepts_a_loop_and_prints_it() {
     let unit = sum(origin(&origins));
     assert_eq!(unit.verify(&origins), Ok(()));
     let text = unit.to_string();
-    assert!(text.contains("fn f0 export \"sum\": c(i64) -> i64 {"), "{text}");
+    assert!(text.contains("fn f0 export \"sum\": c(i64 zext) -> i64 zext {"), "{text}");
     assert!(text.contains("b1(v2: i64, v3: i64):"), "{text}");
     assert!(text.contains("  br v4, b2, b3"), "{text}");
 }

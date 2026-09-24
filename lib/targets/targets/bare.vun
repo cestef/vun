@@ -18,6 +18,11 @@ cortex_m4f := lang.target.Spec{
         .long = .{ .bits = 32, .align = 4 },
         .long_long = .{ .bits = 64, .align = 8 },
         .pointer_align = 4,
+        .compiler = .{
+            .command = "arm-none-eabi-gcc",
+            .flags = &["-std=c99", "-fno-strict-aliasing"],
+            .atomics = .gnu,
+        },
     },
 };
 
@@ -39,5 +44,10 @@ rv32imc := lang.target.Spec{
         .long = .{ .bits = 32, .align = 4 },
         .long_long = .{ .bits = 64, .align = 8 },
         .pointer_align = 4,
+        .compiler = .{
+            .command = "riscv32-unknown-elf-gcc",
+            .flags = &["-std=c99", "-fno-strict-aliasing"],
+            .atomics = .gnu,
+        },
     },
 };

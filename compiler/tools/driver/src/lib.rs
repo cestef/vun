@@ -4,11 +4,13 @@
 //! and linkers are registered statically through Cargo features; external ones are reached
 //! through the `process` adapters.
 
+pub mod codegen;
 pub mod commands;
 mod coverage;
 pub mod formats;
 pub mod packages;
 mod plan;
+pub mod program;
 mod registry;
 mod session;
 pub mod stages;

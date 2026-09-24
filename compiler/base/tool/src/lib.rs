@@ -32,6 +32,34 @@ impl Output {
     }
 }
 
+/// Why a run of a tool did not succeed.
+#[derive(Debug)]
+pub enum Failure {
+    /// It could not be started.
+    Start(std::io::Error),
+    /// It ended with this status, `None` when a signal ended it, having printed this.
+    Exit { code: Option<i32>, stderr: String },
+}
+
+impl std::fmt::Display for Failure {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Start(_) => f.write_str("it could not be started"),
+            Self::Exit { code: Some(code), stderr } => write!(f, "it exited with status {code}:\n{stderr}"),
+            Self::Exit { code: None, stderr } => write!(f, "a signal ended it:\n{stderr}"),
+        }
+    }
+}
+
+impl std::error::Error for Failure {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Self::Start(e) => Some(e),
+            Self::Exit { .. } => None,
+        }
+    }
+}
+
 pub trait Tool {
     /// Stable identifier, such as `cc` or `qbe`.
     fn id(&self) -> &str;
@@ -39,6 +67,18 @@ pub trait Tool {
     /// # Errors
     /// Returns an error if the tool could not be started.
     fn run(&self, inv: &Invocation) -> std::io::Result<Output>;
+
+    /// Runs, and fails unless the run succeeds.
+    ///
+    /// # Errors
+    /// Returns why the run did not succeed.
+    fn check(&self, inv: &Invocation) -> Result<Output, Failure> {
+        let out = self.run(inv).map_err(Failure::Start)?;
+        if out.success() {
+            return Ok(out);
+        }
+        Err(Failure::Exit { code: out.code, stderr: String::from_utf8_lossy(&out.stderr).into_owned() })
+    }
 }
 
 /// A tool found on the system as an executable.

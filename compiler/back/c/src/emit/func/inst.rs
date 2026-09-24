@@ -1,0 +1,201 @@
+//! Instructions: a value's expression is kept for its one use or assigned to its local; memory is
+//! reached by typed access through `u8 *` addresses, which `-fno-strict-aliasing` defines.
+
+use vun_lir::func::Def;
+use vun_lir::{AbiType, Access, Callee, Conv, Ext, ImportKind, Inst, InstKind, Order, RmwOp, Value};
+use vun_target::Atomics;
+
+use super::FnEmit;
+use crate::ast::{Binary, Builtin, Expr, Ident, Own, Stmt, Ty, Unary};
+use crate::lack::{Lack, Missing};
+
+impl FnEmit<'_, '_> {
+    pub(super) fn inst(&mut self, inst: Inst) -> Result<(), Lack> {
+        let func = self.func;
+        let data = &func.insts[inst];
+        let at = data.origin;
+        self.at(at);
+        let value = match &data.kind {
+            &InstKind::Const { ty, bits } => self.e.constant(ty, bits, at)?,
+            &InstKind::Binary { op, a, b } => self.binary(op, a, b)?,
+            &InstKind::Compare { cond, a, b } => self.compare(cond, a, b),
+            &InstKind::Cast { op, value, to } => self.cast(op, value, to)?,
+            &InstKind::Select { cond, then, otherwise } => {
+                let c = self.operand(cond).truth();
+                Expr::Select(Box::new(c), Box::new(self.operand(then)), Box::new(self.operand(otherwise)))
+            }
+            &InstKind::Load { ty, addr, access } => {
+                let ty = self.e.scalar(ty, at)?;
+                match access {
+                    Access::Plain => self.operand(addr).at(ty),
+                    Access::Volatile => self.operand(addr).at(Ty::Volatile(Box::new(ty))),
+                    Access::Atomic(order) => {
+                        let place = self.operand(addr).cast(ty.pointer());
+                        self.atomic(Builtin::Load, vec![place], &[order], at)?
+                    }
+                }
+            }
+            &InstKind::Store { value, addr, access } => {
+                let ty = self.e.scalar(func.ty(value), at)?;
+                let stored = self.operand(value);
+                let stmt = match access {
+                    Access::Plain => Stmt::Assign(self.operand(addr).at(ty), stored),
+                    Access::Volatile => {
+                        Stmt::Assign(self.operand(addr).at(Ty::Volatile(Box::new(ty))), stored)
+                    }
+                    Access::Atomic(order) => {
+                        let place = self.operand(addr).cast(ty.pointer());
+                        Stmt::Expr(self.atomic(Builtin::Store, vec![place, stored], &[order], at)?)
+                    }
+                };
+                self.body.push(stmt);
+                return Ok(());
+            }
+            &InstKind::Rmw { op, addr, value, order } => {
+                let ty = self.e.scalar(func.ty(value), at)?;
+                let builtin = match op {
+                    RmwOp::Swap => Builtin::Exchange,
+                    RmwOp::Add => Builtin::FetchAdd,
+                    RmwOp::Sub => Builtin::FetchSub,
+                    RmwOp::And => Builtin::FetchAnd,
+                    RmwOp::Or => Builtin::FetchOr,
+                    RmwOp::Xor => Builtin::FetchXor,
+                };
+                let place = self.operand(addr).cast(ty.pointer());
+                let value = self.operand(value);
+                self.atomic(builtin, vec![place, value], &[order], at)?
+            }
+            // The builtin writes what the place held into the expected value's place when they
+            // differ: the result's local, which holds the value held before either way.
+            &InstKind::CompareExchange { addr, expected, new, success, failure } => {
+                let result = data.result.expect("a compare-exchange has a value");
+                let ty = self.e.scalar(func.ty(new), at)?;
+                let place = self.operand(addr).cast(ty.pointer());
+                let expected = self.operand(expected);
+                self.assign(result, expected);
+                let held = Expr::unary(Unary::Address, Expr::Name(Ident::value(result)));
+                let (new, strong) = (self.operand(new), Expr::Small(0));
+                let call = self.atomic(
+                    Builtin::CompareExchange,
+                    vec![place, held, new, strong],
+                    &[success, failure],
+                    at,
+                )?;
+                self.body.push(Stmt::Expr(call));
+                return Ok(());
+            }
+            &InstKind::Offset { base, offset } => {
+                let base = self.operand(base);
+                let offset = self.offset(offset);
+                Expr::binary(Binary::Add, base, offset)
+            }
+            &InstKind::SlotAddr(slot) => Expr::Name(Ident::slot(slot)).cast(Ty::address()),
+            &InstKind::Addr(address) => self.e.address(address),
+            &InstKind::Copy { to, from, bytes } => {
+                self.e.copies.insert(bytes);
+                let ty = Ty::Struct(Ident::Own(Own::Copy(bytes)));
+                let (to, from) = (self.operand(to).at(ty.clone()), self.operand(from).at(ty));
+                self.body.push(Stmt::Assign(to, from));
+                return Ok(());
+            }
+            InstKind::Call { callee, args } => return self.call(callee, args, data.result),
+        };
+        if let Some(result) = data.result {
+            self.define(result, value);
+        }
+        Ok(())
+    }
+
+    /// A call of the atomic `builtin` with `args` then `orders`, when the target's C compiler
+    /// has the builtins.
+    fn atomic(
+        &mut self,
+        builtin: Builtin,
+        args: Vec<Expr>,
+        orders: &[Order],
+        at: vun_origin::OriginId,
+    ) -> Result<Expr, Lack> {
+        if self.e.target.c.compiler.atomics != Atomics::Gnu {
+            return Err(Missing::Atomic.at(at));
+        }
+        let orders = orders.iter().map(|&o| {
+            self.e.builtins.insert(Builtin::Order(o));
+            Expr::Name(Ident::Builtin(Builtin::Order(o)))
+        });
+        let args = args.into_iter().chain(orders.collect::<Vec<_>>()).collect();
+        self.e.builtins.insert(builtin);
+        Ok(Expr::Call(Box::new(Expr::Name(Ident::Builtin(builtin))), args))
+    }
+
+    /// An offset added to an address, read as signed: a constant one as a plain literal.
+    fn offset(&mut self, offset: Value) -> Expr {
+        let bits = self.e.unit.pointer_bits;
+        if let Def::Inst(def) = self.func.values[offset].def
+            && let InstKind::Const { bits: raw, .. } = self.func.insts[def].kind
+        {
+            let shift = 128 - bits;
+            #[expect(clippy::cast_possible_wrap, reason = "the offset's bits read as signed")]
+            let signed = ((raw << shift) as i128) >> shift;
+            if let Ok(small) = i64::try_from(signed) {
+                self.exprs[offset] = None;
+                return Expr::Small(small);
+            }
+        }
+        self.operand(offset).cast(Ty::int(bits))
+    }
+
+    /// A call, its arguments and result converted as the callee's convention passes them.
+    fn call(&mut self, callee: &Callee, args: &[Value], result: Option<Value>) -> Result<(), Lack> {
+        let unit = self.e.unit;
+        let at = self.func.origin;
+        let (name, signature) = match callee {
+            &Callee::Func(f) => (Expr::Name(self.e.func(f)), unit.functions[f].signature.clone()),
+            &Callee::Import(i) => {
+                let import = &unit.imports[i];
+                let ImportKind::Func(signature) = &import.kind else {
+                    unreachable!("the verifier checks callees")
+                };
+                (Expr::Name(Ident::Symbol(import.symbol)), signature.clone())
+            }
+            Callee::Indirect(f, signature) => {
+                let c = self.e.signature(signature, at)?;
+                let ty = Ty::Function { result: Box::new(c.result), params: c.params };
+                (self.operand(*f).cast(self.e.word()).cast(ty), (**signature).clone())
+            }
+        };
+        let c = self.e.signature(&signature, at)?;
+        let mut passed = Vec::new();
+        for ((abi, ty), &arg) in signature.params.iter().zip(&c.params).zip(args) {
+            let arg = self.operand(arg);
+            passed.push(match abi {
+                AbiType::Record(_) => arg.at(ty.clone()),
+                AbiType::Int(_, Ext::Sign) if signature.conv == Conv::C => arg.cast(ty.clone()),
+                _ => arg,
+            });
+        }
+        let out = args.get(signature.params.len()).copied();
+        let call = |passed| Expr::Call(Box::new(name), passed);
+        match &signature.result {
+            Some(AbiType::Memory { .. }) => {
+                passed.push(self.operand(out.expect("a result in memory has an address")));
+                self.body.push(Stmt::Expr(call(passed)));
+            }
+            Some(AbiType::Record(_)) => {
+                let place = self.operand(out.expect("a record result has an address")).at(c.result.clone());
+                self.body.push(Stmt::Assign(place, call(passed)));
+            }
+            Some(AbiType::Scalar(s) | AbiType::Int(s, _)) => {
+                let s = *s;
+                let signed =
+                    matches!(signature.result, Some(AbiType::Int(_, Ext::Sign))) && signature.conv == Conv::C;
+                let value = if signed { call(passed).cast(self.e.scalar(s, at)?) } else { call(passed) };
+                match result {
+                    Some(v) if self.live.range(v).is_some_and(|r| r.uses > 0) => self.assign(v, value),
+                    _ => self.body.push(Stmt::Expr(value)),
+                }
+            }
+            None => self.body.push(Stmt::Expr(call(passed))),
+        }
+        Ok(())
+    }
+}

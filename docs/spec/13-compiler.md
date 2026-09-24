@@ -311,44 +311,57 @@ representation before emitting:
 
 ### 8.2 The C backend
 
-The C backend writes one translation unit per shard of functions, in strict C99, and never relies
-on behavior C leaves undefined:
+The C backend writes a translation unit in strict C99 and never relies on behavior C leaves
+undefined. It builds C as data (`vun_backend_c::ast`) and prints it once; `vun dump code --backend
+c` shows it, and `vun build` and `vun run` compile and link it.
 
-- **Integers** are the unsigned `uintN_t`: unsigned arithmetic wraps, as LIR's does. An operation
-  reading signed operands (`SDiv`, `AShr`, `SLt`, ...) converts them to `intN_t`, which is
-  two's complement on every target C reaches. An operand narrower than `int` is converted to
-  `unsigned` first, so promotion never turns unsigned arithmetic into signed overflow.
-- **Memory** is reached by typed access, `*(uint32_t *)p`, through `uint8_t *` addresses; LIR's
-  accesses are aligned by their layouts, and the toolchain profile passes `-fno-strict-aliasing`,
-  since LIR memory has no types. `Volatile` access goes through a `volatile` pointer. C99 has no
-  atomics, so a unit with atomic accesses needs a backend that has them (a diagnostic says which).
-- **Stack slots** are arrays of the unsigned integer whose alignment is the slot's, **data objects**
-  a union of the bytes, as byte runs and the addresses the relocations write (address constants,
-  `(uint8_t *)&d5 + 16`), with a member giving the alignment. Sizes and offsets are checked by
-  C99's negative-array idiom, since `_Static_assert` is C11. An alignment no integer type has is
-  a diagnostic.
-- **Functions.** Vun's convention passes values in memory as `uint8_t *` and a result in memory
-  through an address after the parameters. The C convention passes records as `struct`s declared
-  from `Record::fields`, copied between the parameter and the memory the body reads. Every function
-  is declared before any is defined, `static` unless exported.
+- **No header, no assumed type.** The file declares its own integers, `u8` to `u64` and `i8` to
+  `i64`, from the target's C model (`lang.target.C`: the width and alignment of `short`, `int`,
+  `long` and `long long`, and of an address), and checks while compiling everything it relies on
+  of them: that `char` is 8 bits, and the size and alignment of each type and of an address, by
+  C99's negative-array idiom on `sizeof` (a `struct` of a byte then the type is its alignment plus
+  its size). With no header, the only names C reserves are its keywords.
+- **Integers** are `uN`: unsigned arithmetic wraps, as LIR's does. An operation reading signed
+  operands (`Reads::Signed`: `SDiv`, `AShr`, `SLt`, ...) converts them to `iN`. An operand
+  narrower than the target's `int` is converted to `unsigned` first, so promotion never turns
+  unsigned arithmetic into signed overflow. Constants carry the suffix of the C type their width
+  is (`5u`, `5ul`, `5ull`).
+- **Memory** is reached by typed access, `*(u32 *)p`, through `u8 *` addresses; LIR's accesses
+  are aligned by their layouts, and the C compiler's flags include `-fno-strict-aliasing`, since
+  LIR memory has no types. `Volatile` access goes through a `volatile` pointer. Atomic access uses
+  what the target's C compiler offers beyond C99, as its profile declares
+  (`lang.target.Atomics`): the `__atomic_*` builtins of GCC and Clang, or nothing, and then it is
+  refused. A link symbol spelling a builtin the file uses is refused too.
+- **Stack slots** are arrays of the integer whose alignment is the slot's. **Data objects** are a
+  union of a `struct` of their bytes, as runs of `u8` between the addresses their relocations write
+  (address constants, `(u8 *)&d5 + 16`), and of the integer giving their alignment. An address in
+  data sits at an offset the target aligns addresses to, so C places every field where the bytes
+  say, and each `struct`'s size is checked. Objects are defined so that what one points to comes
+  first; objects pointing to each other in a cycle are declared before, as C99 allows (6.9.2).
+- **Functions.** Vun's convention passes integers as `uN`, values in memory as `u8 *`, and a
+  result in memory through an address after the parameters. The C convention passes each integer
+  as `iN` or `uN` as its LIR extension says (`AbiType::Int(_, Ext)`, from its range), and records
+  as `struct`s of their fields, their size checked, copied between the parameter and the memory
+  the body reads. Every function is declared before any is defined, `static` unless exported.
 - **Control flow.** Blocks are labels, emitted in `Order` so that a jump to the next block is no
   `goto`; block parameters are locals assigned by `Moves` before the jump; `Branch` is an `if`,
   `Switch` a `switch`, `Unreachable` an empty infinite loop. A value used once, in its own block,
   with nothing writing memory or calling between its definition and its use, is written inline as
   an expression, so compare and branch read `if (v3 < v4)`, as TPDE fuses them.
-- **Names.** Link symbols are written as they are and must be C identifiers (a diagnostic
-  otherwise); internal functions and data are named by their ids, avoiding every link symbol of
-  the unit and C's keywords. Only freestanding headers are included (`stdint.h`, `stddef.h`), so an
-  import named like a C library function never meets a second declaration.
+- **Names.** Link symbols are written as they are and must be C identifiers that are not keywords
+  (a diagnostic otherwise). The backend's own names are typed (`Own::Value(3)`), spelled in one
+  place (`v3`), and one a link symbol already spells gets underscores appended until it is free.
 - **Origins** become `#line` directives, so the C compiler's diagnostics and debug information
   point at Vun source.
-- **What C99 lacks is refused, never approximated**: 128-bit integers, `f16`, atomics, guaranteed
-  tail calls, naked functions and link sections each need a backend with the capability.
+- **What C99 lacks is refused, never approximated**: 128-bit integers, `f16`, guaranteed tail
+  calls, naked functions, link sections, and atomics where the compiler has no builtins
+  (`backend.lacks`).
 
-The C compiler is a toolchain profile, data naming its command and the flags the rules above need
-(`-std=c99 -fno-strict-aliasing`), run through `vun-tool` once per shard; for hosted targets the
-same compiler drives the link (the `gnu` linker adapter), which brings the C runtime's start
-files and libraries.
+The C compiler is target data (`lang.target.CCompiler`): its command, the flags the rules above
+need (`-std=c99 -fno-strict-aliasing`), and its atomics. `vun build` writes the backend's
+artifacts under `.vun/build/<content hash>/` next to the root file, compiles each source with it
+through `vun-tool`, and links with the target's linker; the `gnu` adapter drives GNU ld through
+the same compiler, which brings the C runtime's start files and libraries.
 
 ### 8.3 The baseline backend
 

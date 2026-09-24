@@ -485,7 +485,11 @@ version = "0.0.0"
 dependencies = [
  "vun-backend",
  "vun-diag",
+ "vun-index",
+ "vun-intern",
  "vun-lir",
+ "vun-origin",
+ "vun-span",
  "vun-target",
 ]
 
@@ -780,6 +784,7 @@ name = "vun-link"
 version = "0.0.0"
 dependencies = [
  "vun-diag",
+ "vun-intern",
  "vun-origin",
  "vun-target",
 ]
@@ -791,6 +796,7 @@ dependencies = [
  "vun-diag",
  "vun-link",
  "vun-target",
+ "vun-tool",
 ]
 
 [[package]]

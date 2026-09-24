@@ -44,14 +44,31 @@ pub struct CInt {
     pub align: u32,
 }
 
-/// `lang.target.C`: the C types of a target.
+/// `lang.target.Atomics`: what a C compiler offers beyond C99 for atomic access.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum Atomics {
+    None,
+    /// The `__atomic_*` builtins of GCC and Clang.
+    Gnu,
+}
+
+/// `lang.target.CCompiler`: the C compiler building a target's C.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct CCompiler {
+    pub command: Symbol,
+    pub flags: Vec<Symbol>,
+    pub atomics: Atomics,
+}
+
+/// `lang.target.C`: the C types of a target, and its C compiler.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct CTypes {
     pub short: CInt,
     pub int: CInt,
     pub long: CInt,
     pub long_long: CInt,
     pub pointer_align: u32,
+    pub compiler: CCompiler,
 }
 
 /// `lang.target.Spec`.

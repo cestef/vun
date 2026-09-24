@@ -7,8 +7,9 @@ use std::fmt;
 use vun_intern::Symbol;
 use vun_items::Item;
 use vun_items::lang::{Option as option, target_C as c, target_CInt as cint, target_Endian as endian};
+use vun_items::lang::{target_Atomics as atomics, target_CCompiler as compiler};
 use vun_items::lang::{target_Host as host, target_Spec as spec};
-use vun_target::{CInt, CTypes, Endian, Host, TargetSpec};
+use vun_target::{Atomics, CCompiler, CInt, CTypes, Endian, Host, TargetSpec};
 
 use crate::ty::Value;
 
@@ -78,23 +79,44 @@ impl<'v> Members<'v> {
 
     /// A `?&[u8]` naming a symbol.
     fn symbol(&self, member: Item) -> Result<Option<Symbol>, Unread> {
-        let wrong = Unread::Member(member);
         match self.get(member)? {
             Value::Variant { name, .. } if *name == option::none.symbol() => Ok(None),
             Value::Variant { name, payload, .. } if *name == option::some.symbol() => {
-                let [Value::Array(bytes)] = payload.as_slice() else { return Err(wrong) };
-                let bytes = bytes
-                    .iter()
-                    .map(|b| match b {
-                        Value::Int(n) => n.to_u128().and_then(|n| u8::try_from(n).ok()),
-                        _ => None,
-                    })
-                    .collect::<Option<Vec<u8>>>()
-                    .ok_or(wrong)?;
-                String::from_utf8(bytes).map(|s| Some(Symbol::intern(&s))).map_err(|_| wrong)
+                match payload.as_slice() {
+                    [text] => Self::text(text).map(Some).ok_or(Unread::Member(member)),
+                    _ => Err(Unread::Member(member)),
+                }
             }
-            _ => Err(wrong),
+            _ => Err(Unread::Member(member)),
         }
+    }
+
+    /// A `&[u8]` as the text it holds.
+    fn string(&self, member: Item) -> Result<Symbol, Unread> {
+        Self::text(self.get(member)?).ok_or(Unread::Member(member))
+    }
+
+    /// A `&[&[u8]]` as the texts it holds.
+    fn strings(&self, member: Item) -> Result<Vec<Symbol>, Unread> {
+        match self.get(member)? {
+            Value::Array(items) | Value::Tuple(items) => {
+                items.iter().map(|t| Self::text(t).ok_or(Unread::Member(member))).collect()
+            }
+            _ => Err(Unread::Member(member)),
+        }
+    }
+
+    /// The UTF-8 text a byte array holds.
+    fn text(value: &Value) -> Option<Symbol> {
+        let Value::Array(bytes) = value else { return None };
+        let bytes = bytes
+            .iter()
+            .map(|b| match b {
+                Value::Int(n) => n.to_u128().and_then(|n| u8::try_from(n).ok()),
+                _ => None,
+            })
+            .collect::<Option<Vec<u8>>>()?;
+        String::from_utf8(bytes).ok().map(|s| Symbol::intern(&s))
     }
 }
 
@@ -115,6 +137,27 @@ impl Read for CInt {
     }
 }
 
+impl Read for Atomics {
+    fn read(value: &Value) -> Result<Self, Unread> {
+        match value {
+            Value::Variant { name, .. } if *name == atomics::none.symbol() => Ok(Self::None),
+            Value::Variant { name, .. } if *name == atomics::gnu.symbol() => Ok(Self::Gnu),
+            _ => Err(Unread::Record),
+        }
+    }
+}
+
+impl Read for CCompiler {
+    fn read(value: &Value) -> Result<Self, Unread> {
+        let m = Members::of(value)?;
+        Ok(Self {
+            command: m.string(compiler::command)?,
+            flags: m.strings(compiler::flags)?,
+            atomics: m.read(compiler::atomics)?,
+        })
+    }
+}
+
 impl Read for CTypes {
     fn read(value: &Value) -> Result<Self, Unread> {
         let m = Members::of(value)?;
@@ -124,6 +167,7 @@ impl Read for CTypes {
             long: m.read(c::long)?,
             long_long: m.read(c::long_long)?,
             pointer_align: m.int(c::pointer_align)?,
+            compiler: m.read(c::compiler)?,
         })
     }
 }

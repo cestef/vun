@@ -1,0 +1,85 @@
+//! C types, as the backend writes them.
+
+use super::Ident;
+
+/// A C integer type by its keywords.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum Base {
+    Char,
+    Short,
+    Int,
+    Long,
+    LongLong,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Ty {
+    Void,
+    /// A C integer type by its keywords, `unsigned long`.
+    Base {
+        base: Base,
+        signed: bool,
+    },
+    /// `uN` or `iN`, declared from the target's C types.
+    Int {
+        bits: u32,
+        signed: bool,
+    },
+    Float,
+    Double,
+    Pointer(Box<Ty>),
+    Volatile(Box<Ty>),
+    Struct(Ident),
+    Union(Ident),
+    /// A pointer to a function taking `params` and giving `result`.
+    Function {
+        result: Box<Ty>,
+        params: Vec<Ty>,
+    },
+}
+
+impl Ty {
+    pub const BYTE: Self = Self::Int { bits: 8, signed: false };
+
+    #[must_use]
+    pub fn uint(bits: u32) -> Self {
+        Self::Int { bits, signed: false }
+    }
+
+    #[must_use]
+    pub fn int(bits: u32) -> Self {
+        Self::Int { bits, signed: true }
+    }
+
+    /// `unsigned`: operands narrower than `int` become it before arithmetic, so promotion never
+    /// makes unsigned arithmetic signed.
+    #[must_use]
+    pub fn unsigned() -> Self {
+        Self::Base { base: Base::Int, signed: false }
+    }
+
+    #[must_use]
+    pub fn pointer(self) -> Self {
+        Self::Pointer(Box::new(self))
+    }
+
+    /// `u8 *`: an address.
+    #[must_use]
+    pub fn address() -> Self {
+        Self::BYTE.pointer()
+    }
+
+    /// `void (*)(void)`: a function's address held in data.
+    #[must_use]
+    pub fn code() -> Self {
+        Self::Function { result: Box::new(Self::Void), params: Vec::new() }
+    }
+}
+
+/// The suffix giving an unsigned integer constant the C type it needs.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Suffix {
+    Unsigned,
+    Long,
+    LongLong,
+}

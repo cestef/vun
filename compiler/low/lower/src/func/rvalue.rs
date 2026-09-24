@@ -203,55 +203,70 @@ impl FnLower<'_, '_, '_> {
         self.write(operand, Some(temp), from)?;
         let (source, signed) = self.l.types.int(from).ok_or_else(unsupported)?;
         let (target, _) = self.l.types.int(ty).ok_or_else(unsupported)?;
-        let range = ty.interval().ok_or_else(unsupported)?;
+        let (range, own) = (ty.interval().ok_or_else(unsupported)?, from.interval().ok_or_else(unsupported)?);
         let bound = |e: &vun_sema::int::Extended| e.finite().and_then(Integer::to_i128);
         let (lo, hi) =
             (bound(range.lo()).ok_or_else(unsupported)?, bound(range.hi()).ok_or_else(unsupported)?);
-        // Modular reduction masks: the range must hold a power of two of integers.
-        let size = hi.checked_sub(lo).and_then(|d| d.checked_add(1)).and_then(|n| u128::try_from(n).ok());
-        if narrowing == Narrowing::Wrap && !size.is_some_and(u128::is_power_of_two) {
-            return Err(unsupported());
-        }
+        // Only a bound inside the source's range cuts it, and such a bound fits the source's
+        // storage: checks and clamps compare there, and nothing widens past both storages.
+        let (cuts_lo, cuts_hi) = (range.lo() > own.lo(), range.hi() < own.hi());
+        let (ge, le, lt, gt) = if signed {
+            (Cond::SGe, Cond::SLe, Cond::SLt, Cond::SGt)
+        } else {
+            (Cond::UGe, Cond::ULe, Cond::ULt, Cond::UGt)
+        };
         let x = self.b.load(source, temp, Access::Plain, self.at);
-        let x = self.resize(x, source, signed, Scalar::I128);
-        #[expect(clippy::cast_sign_loss, reason = "constants are two's complement bits")]
-        let (lo, hi) = (
-            self.b.constant(Scalar::I128, lo as u128, self.at),
-            self.b.constant(Scalar::I128, hi as u128, self.at),
-        );
         let value = match narrowing {
             Narrowing::To => {
-                let above = self.b.compare(Cond::SGe, x, lo, self.at);
-                let below = self.b.compare(Cond::SLe, x, hi, self.at);
-                let inside = self.b.binary(BinOp::And, above, below, self.at);
-                self.check(inside)?;
-                x
+                let mut inside = None;
+                for (cuts, cond, n) in [(cuts_lo, ge, lo), (cuts_hi, le, hi)] {
+                    if cuts {
+                        let n = self.b.constant(source, source.truncate(n), self.at);
+                        let holds = self.b.compare(cond, x, n, self.at);
+                        inside = Some(match inside {
+                            Some(both) => self.b.binary(BinOp::And, both, holds, self.at),
+                            None => holds,
+                        });
+                    }
+                }
+                if let Some(inside) = inside {
+                    self.check(inside)?;
+                }
+                self.resize(x, source, signed, target)
             }
             Narrowing::Sat => {
-                let low = self.b.compare(Cond::SLt, x, lo, self.at);
-                let x = self.b.push(
-                    vun_lir::InstKind::Select { cond: low, then: lo, otherwise: x },
-                    Some(Scalar::I128),
-                    self.at,
-                );
-                let x = x.expect("a select has a value");
-                let high = self.b.compare(Cond::SGt, x, hi, self.at);
-                let x = self.b.push(
-                    vun_lir::InstKind::Select { cond: high, then: hi, otherwise: x },
-                    Some(Scalar::I128),
-                    self.at,
-                );
-                x.expect("a select has a value")
+                let mut x = x;
+                for (cuts, cond, n) in [(cuts_lo, lt, lo), (cuts_hi, gt, hi)] {
+                    if cuts {
+                        let n = self.b.constant(source, source.truncate(n), self.at);
+                        let past = self.b.compare(cond, x, n, self.at);
+                        let kind = vun_lir::InstKind::Select { cond: past, then: n, otherwise: x };
+                        x = self.b.push(kind, Some(source), self.at).expect("a select has a value");
+                    }
+                }
+                self.resize(x, source, signed, target)
             }
-            // Modular reduction into a range whose size is a power of two, from its low bound.
+            // Modular reduction into a range whose size is a power of two, from its low bound,
+            // in the wider of both storages, whose wrapping keeps the low bits exact.
             Narrowing::Wrap => {
-                let size = self.b.binary(BinOp::Sub, hi, lo, self.at);
-                let shifted = self.b.binary(BinOp::Sub, x, lo, self.at);
-                let reduced = self.b.binary(BinOp::And, shifted, size, self.at);
-                self.b.binary(BinOp::Add, reduced, lo, self.at)
+                let size =
+                    hi.checked_sub(lo).and_then(|d| d.checked_add(1)).and_then(|n| u128::try_from(n).ok());
+                if !size.is_some_and(u128::is_power_of_two) {
+                    return Err(unsupported());
+                }
+                let bits = |s: Scalar| s.bits(self.l.types.pointer_bits());
+                let wide = if bits(target) > bits(source) { target } else { source };
+                let x = self.resize(x, source, signed, wide);
+                let (low, mask) = (
+                    self.b.constant(wide, wide.truncate(lo), self.at),
+                    self.b.constant(wide, wide.truncate(hi - lo), self.at),
+                );
+                let shifted = self.b.binary(BinOp::Sub, x, low, self.at);
+                let reduced = self.b.binary(BinOp::And, shifted, mask, self.at);
+                let value = self.b.binary(BinOp::Add, reduced, low, self.at);
+                self.resize(value, wide, signed, target)
             }
         };
-        let value = self.resize(value, Scalar::I128, true, target);
         self.b.store(value, dest, Access::Plain, self.at);
         Ok(())
     }

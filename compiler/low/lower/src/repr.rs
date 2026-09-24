@@ -7,6 +7,7 @@ use vun_lir::Scalar;
 use vun_origin::OriginId;
 use vun_query::Cx;
 use vun_sema::Primitive;
+use vun_sema::int::Interval;
 use vun_sema::layout::{Layout, Parts, Shape, Shapes, Tag};
 use vun_sema::member::Members;
 use vun_sema::primitives::lang::Lang;
@@ -61,7 +62,17 @@ impl<'a, 'db> Types<'a, 'db> {
     /// The integer storing values of the range type `ty`, and whether it is signed.
     #[must_use]
     pub fn int(self, ty: Ty) -> Option<(Scalar, bool)> {
-        let range = ty.interval()?;
+        Self::storing(&ty.interval()?)
+    }
+
+    /// The integer storing both the values of `a` and those of `b`, and whether it is signed:
+    /// where two integers are compared.
+    #[must_use]
+    pub fn common(self, a: Ty, b: Ty) -> Option<(Scalar, bool)> {
+        Self::storing(&a.interval()?.hull(&b.interval()?))
+    }
+
+    fn storing(range: &Interval) -> Option<(Scalar, bool)> {
         let bits = u32::try_from(range.storage()?.bits()).ok()?;
         Some((Scalar::int(bits)?, range.is_signed()))
     }

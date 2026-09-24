@@ -10,6 +10,11 @@ use crate::Item;
 pub const Endian: Item = Item::new(&["lang", "target", "Endian"]);
 /// A C integer type of a target: its width in bits and its alignment in bytes.
 pub const CInt: Item = Item::new(&["lang", "target", "CInt"]);
+/// What a C compiler offers beyond C99 for atomic memory access.
+pub const Atomics: Item = Item::new(&["lang", "target", "Atomics"]);
+/// The C compiler building a target's C: its command, the flags that give the C backend's rules
+/// (strict C99, memory without type-based aliasing), and what it offers beyond C99.
+pub const CCompiler: Item = Item::new(&["lang", "target", "CCompiler"]);
 /// The C types of a target as its C compiler lays them out: the C backend declares its own
 /// fixed-width types from them, and checks each while compiling (spec 13, section 8.2). A `char`
 /// is 8 bits everywhere Vun runs.

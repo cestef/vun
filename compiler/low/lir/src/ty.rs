@@ -36,6 +36,18 @@ impl Scalar {
         }
     }
 
+    /// The bits of the integer `n` as a constant of this integer type: its two's complement,
+    /// truncated to the width.
+    #[must_use]
+    pub fn truncate(self, n: i128) -> u128 {
+        #[expect(clippy::cast_sign_loss, reason = "two's complement bits")]
+        let bits = n as u128;
+        match self.bits(0) {
+            128 => bits,
+            width => bits & ((1 << width) - 1),
+        }
+    }
+
     /// Its width in bytes.
     #[must_use]
     pub const fn bytes(self, pointer_bits: u32) -> u64 {
