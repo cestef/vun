@@ -108,6 +108,11 @@ UartWriter := struct {
   constructor's arguments that gives the witness of each. `#[impl(Narrow(Int))]` on
   `IntNarrow := ($r: Range) -> type { struct { ... } }` makes `IntNarrow(r)` the witness for
   `Int(r)`; an impl for `Pair` covers `Pair(u8)`, and a second impl for `Pair(u8)` is a duplicate.
+- `T` may also be an interface constructor, a function returning an interface such as
+  `lang.Coroutine`: the impl covers every type implementing an interface it makes, and its value
+  takes that type first, then the interface's arguments. `#[impl(Iterate(Coroutine))]` on
+  `CoroutineIterate := ($Self: type, $Y: type, $R: type) -> type { ... }` makes every coroutine
+  frame its own iterator.
 - The impls a file sees are those of its package and of the packages it depends on, directly or
   not; the orphan rule places every impl of a pair in one of them.
 

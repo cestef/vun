@@ -47,6 +47,10 @@ impl fmt::Display for TyKind {
                 }
                 f.write_str(")")
             }
+            Self::Frame(frame) => match frame.name {
+                Some(name) => write!(f, "{name}.Frame"),
+                None => f.write_str("Frame"),
+            },
             // `[x: u32, n: &mut u32] (u8) -> ()`: the captures, then the function.
             Self::Closure(closure) => {
                 f.write_str("[")?;
@@ -93,6 +97,7 @@ impl fmt::Display for Value {
             Self::Closure { .. } => f.write_str("closure"),
             Self::Code(_) => f.write_str("#{ .. }"),
             Self::Linked(_) => f.write_str("linked"),
+            Self::Frame(_) => f.write_str("frame"),
             Self::Interface(_) => f.write_str("interface"),
         }
     }

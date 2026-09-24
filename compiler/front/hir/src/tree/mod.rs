@@ -10,6 +10,7 @@ mod expr;
 mod items;
 mod pat;
 mod path;
+mod suspends;
 
 use overt_index::{IndexVec, index};
 use overt_intern::Symbol;

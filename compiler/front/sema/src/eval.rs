@@ -7,13 +7,15 @@
 
 use std::sync::{Arc, OnceLock};
 
+use overt_grammar::ITERATION;
 use overt_hir::db::Parsed;
 use overt_hir::tree::{BinderId, Entry, ExprKind, Param, PatKind};
+use overt_intern::Symbol;
 use overt_query::{Cx, Cycle, Query};
 
 use crate::env::Unevaluated;
 use crate::item::{ExprRef, Node};
-use crate::ty::Value;
+use crate::ty::{Ty, Value};
 
 /// A compile-time call: a function value and its arguments. Types built during the call are
 /// identified by it (decision 28), and its body sees its parameters bound to the arguments.
@@ -41,6 +43,36 @@ pub struct Code {
     pub expr: ExprRef,
     pub within: Option<Arc<Instance>>,
     pub bound: Arc<[Staging]>,
+}
+
+/// A coroutine's frame at compile time (spec 06): its call, the block of its body it resumes at
+/// (`None` once it returned), and its locals.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct Suspended {
+    pub call: Instance,
+    pub at: Option<usize>,
+    pub locals: Vec<Option<Value>>,
+}
+
+/// What resuming a frame gives: an item it yields, or what it returns.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub enum Resumed {
+    Yielded(Value),
+    Returned(Value),
+}
+
+impl Resumed {
+    /// This outcome as a value of `step`, the type resuming gives: its variant `item` or `done`
+    /// (the table `iteration`).
+    #[must_use]
+    pub fn value(self, step: Ty) -> Option<Value> {
+        let &(.., item, done) = ITERATION.first()?;
+        let (name, value) = match self {
+            Self::Yielded(value) => (item, value),
+            Self::Returned(value) => (done, value),
+        };
+        Some(Value::Variant { ty: step, name: Symbol::intern(name), payload: vec![value] })
+    }
 }
 
 /// A `$for` binder bound to one item of its iteration (spec 03, section 2): what that step

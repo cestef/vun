@@ -1,0 +1,8 @@
+//! What bounds hold (spec 04): the iterator of `lang.Bounds` in `lang.ops` reads them.
+
+/// Whether `b` holds no item, such as `3..3`.
+empty: ($T: type, b: Bounds(T)) -> bool = _;
+/// The least item of `b`, which is not empty.
+first: ($T: type, b: Bounds(T)) -> T = _;
+/// Whether `x` is the greatest item of `b`; never for bounds without an end, such as `a..`.
+ends: ($T: type, b: Bounds(T), x: T) -> bool = _;

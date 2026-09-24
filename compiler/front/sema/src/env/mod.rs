@@ -10,7 +10,9 @@ mod aggregate;
 mod code;
 mod condition;
 mod eval;
+mod frame;
 mod path;
+mod primitive;
 
 pub use condition::Selected;
 

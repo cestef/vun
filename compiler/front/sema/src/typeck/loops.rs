@@ -45,8 +45,11 @@ impl Typer<'_, '_, '_> {
                 ends
             }
             ForHead::In { pat, iter } => {
-                let item = self.typed(*iter).and_then(|k| self.item(k.ty));
-                self.pattern(*pat, item, None);
+                let driven = self.typed(*iter).and_then(|k| self.iteration(k.ty));
+                if let Some((iteration, _)) = driven {
+                    self.iterations.insert(*iter, iteration);
+                }
+                self.pattern(*pat, driven.map(|(_, item)| item), None);
                 ends
             }
         };
@@ -96,25 +99,34 @@ impl Typer<'_, '_, '_> {
         witnesses.iter().find(|w| w.decl.interface == interface).map(|w| w.ty)
     }
 
-    /// The type of the items `for p in e` binds for `e` of type `ty`, looking through a borrow
-    /// when the borrow itself is not iterated.
-    pub(super) fn item(&self, ty: Ty) -> Option<Ty> {
-        let &(interface, _, iterator, resume, item) = ITERATION.first()?;
+    /// How `for p in e` drives `e` of type `ty`, and the type of the items it binds, looking
+    /// through a borrow when the borrow itself is not iterated.
+    pub(super) fn iteration(&self, ty: Ty) -> Option<(Iteration, Ty)> {
+        let &(interface, _, iterator, resume, item, _) = ITERATION.first()?;
         let witness =
             self.witness_of(interface, ty).or_else(|| self.witness_of(interface, ty.borrowed()?))?;
         let member = (witness, Symbol::intern(iterator));
         let Ok(Value::Interface(coroutine)) = self.env().cx.get::<MemberValue>(&member) else { return None };
         let requirements = self
-            .env
+            .env()
             .cx
             .get::<Call>(&Instance { f: coroutine, args: vec![Value::Type(ty)] })
             .ok()?
             .as_type()?;
         let resumed = self.env().cx.get::<MemberType>(&(requirements, Symbol::intern(resume))).ok()?;
         let step = resumed.ty.signature()?.result;
-        match self.env().cx.get::<Members>(&step)?.find(Symbol::intern(item)) {
-            Found::Variant(v) => v.payload.first()?.as_ref().ok().copied(),
-            _ => None,
-        }
+        let item = match self.env().cx.get::<Members>(&step)?.find(Symbol::intern(item)) {
+            Found::Variant(v) => v.payload.first()?.as_ref().ok().copied()?,
+            _ => return None,
+        };
+        Some((Iteration { witness, step }, item))
     }
+}
+
+/// How `for p in e` drives `e` (the table `iteration`): the witness of `lang.ops.Iterate` whose
+/// `iter` makes the iterator, and the type its `resume` gives.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct Iteration {
+    pub witness: Ty,
+    pub step: Ty,
 }

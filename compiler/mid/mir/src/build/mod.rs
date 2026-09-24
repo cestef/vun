@@ -4,6 +4,7 @@
 
 mod aggregate;
 mod assign;
+mod block;
 mod call;
 mod closure;
 mod control;
@@ -12,15 +13,14 @@ mod loops;
 mod pattern;
 mod place;
 mod staged;
+mod suspend;
 
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 use overt_grammar::TokenKind;
 use overt_hir::resolve::Res;
-use overt_hir::tree::{
-    BinderId, BlockId as HirBlock, Entry, ExprId, ExprKind, Lit, PatKind, Stmt as HirStmt,
-};
+use overt_hir::tree::{BinderId, Entry, ExprId, ExprKind, Lit, PatKind};
 use overt_index::{Idx, IndexVec};
 use overt_origin::OriginId;
 use overt_query::{Cx, Cycle, Query};
@@ -172,51 +172,6 @@ impl<'a, 'db> Builder<'_, 'a, 'db> {
         local
     }
 
-    /// The statements of `block`, then the value of its tail, or `()` without one.
-    fn block(&mut self, block: HirBlock) -> Result<Operand, Unbuilt> {
-        let hir = &self.env.parsed.hir;
-        self.stmts(&hir.blocks[block].stmts)?;
-        match hir.blocks[block].tail {
-            Some(tail) => self.operand(tail),
-            None => Ok(Operand::Const(Value::Tuple(Vec::new()))),
-        }
-    }
-
-    fn stmt(&mut self, stmt: &HirStmt) -> Result<(), Unbuilt> {
-        let hir = &self.env.parsed.hir;
-        match stmt {
-            HirStmt::Decl(d) => {
-                let decl = &hir.decls[*d];
-                match (&hir.pats[decl.pat].kind, decl.value) {
-                    (PatKind::Bind(binder), value) => {
-                        // Without a value, the local starts uninitialized.
-                        let value = value.map(|v| self.operand(v)).transpose()?;
-                        let local = self.bind(*binder);
-                        if let Some(value) = value {
-                            self.assign(Place::of(local), Rvalue::Use(value), decl.origin);
-                        }
-                    }
-                    // A pattern that always matches, such as `(a, b) := pair`.
-                    (_, Some(value)) => {
-                        let matched = self.declared(value)?;
-                        let never = self.fresh(decl.origin);
-                        self.test(decl.pat, &matched, never)?;
-                        self.blocks[never].term.kind = TerminatorKind::Unreachable;
-                    }
-                    (_, None) => return Err(Unbuilt { at: decl.origin }),
-                }
-            }
-            HirStmt::Expr(e) => {
-                self.operand(*e)?;
-            }
-            HirStmt::Block(inner) => {
-                self.block(*inner)?;
-            }
-            HirStmt::Assign { op, place, value, origin } => self.store(*op, *place, *value, *origin)?,
-        }
-        Ok(())
-    }
-
     fn operand(&mut self, expr: ExprId) -> Result<Operand, Unbuilt> {
         let hir = &self.env.parsed.hir;
         let origin = hir.exprs[expr].origin;
@@ -259,6 +214,7 @@ impl<'a, 'db> Builder<'_, 'a, 'db> {
             ExprKind::Postfix { op: TokenKind::Question, operand } => {
                 self.early_return(expr, *operand, origin)
             }
+            ExprKind::Yield(value) => self.yielded(*value, origin),
             ExprKind::Closure { captures, func } => self.closure(captures, *func, origin),
             ExprKind::Match { scrutinee, arms } => self.matching(*scrutinee, arms, origin),
             ExprKind::If { cond, then, otherwise } => self.branch(cond, *then, *otherwise, origin),

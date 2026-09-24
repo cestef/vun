@@ -41,7 +41,7 @@ impl Typer<'_, '_, '_> {
                 };
                 self.site(site)
             }
-            TyKind::Tuple(_) | TyKind::Closure(_) => None,
+            TyKind::Tuple(_) | TyKind::Closure(_) | TyKind::Frame(_) => None,
         }
     }
 }

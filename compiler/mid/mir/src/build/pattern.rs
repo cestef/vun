@@ -31,6 +31,11 @@ pub(super) struct Matched {
 }
 
 impl Matched {
+    /// The value at `place`, of a type not known here, whose binders take copies.
+    pub(super) fn copied(place: Place) -> Self {
+        Self { place, ty: None, binding: Binding::Copy }
+    }
+
     /// The part of this value `projection` reaches, of type `ty`.
     fn part(&self, projection: Projection, ty: Option<Ty>) -> Self {
         Self { place: self.place.clone().project(projection), ty, binding: self.binding }

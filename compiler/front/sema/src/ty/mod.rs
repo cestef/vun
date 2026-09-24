@@ -17,7 +17,7 @@ use overt_grammar::{BORROWS, PATH_SEPARATOR};
 use overt_intern::{Interned, Pool, Symbol};
 
 use crate::Primitive;
-use crate::eval::Instance;
+use crate::eval::{Func, Instance};
 use crate::int::{Integer, Interval};
 use crate::item::ExprRef;
 use crate::primitives::lang::Lang;
@@ -44,6 +44,20 @@ pub enum TyKind {
     /// A closure (spec 01, section 4): an anonymous struct of its captures, called through
     /// `lang.ops.Call`.
     Closure(Closure),
+    /// The frame a call of a coroutine function returns (spec 06, section 1).
+    Frame(Frame),
+}
+
+/// The type of the frames of one coroutine function: its literal, the call it was evaluated in,
+/// the values of its `$` parameters, and the interface it declares, such as `Iter(u32)`, which
+/// the frame implements. Named `f.Frame` after the declaration of the function.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct Frame {
+    pub literal: ExprRef,
+    pub within: Option<Instance>,
+    pub args: Vec<Option<Value>>,
+    pub interface: Func,
+    pub name: Option<Symbol>,
 }
 
 /// The type of a closure literal: where it is written, the call it was evaluated in, the type of

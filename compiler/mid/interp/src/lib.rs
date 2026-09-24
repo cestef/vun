@@ -5,6 +5,7 @@
 //! bytecode comes with run-time values.
 
 pub mod bytecode;
+mod frames;
 pub mod machine;
 pub mod memory;
 
@@ -24,6 +25,8 @@ impl Evaluator for Interpreter {
         let Some(instantiation) = Instantiation::of(cx, call) else { return unrun(Unevaluated::Absent) };
         let Ok(body) = cx.get::<Mir>(&instantiation) else { return unrun(Unevaluated::Unsupported) };
         match Frame::new(cx, &body, call) {
+            // A call of a coroutine function gives its frame (spec 06, section 1).
+            Ok(frame) if body.suspends() => Metered { value: Ok(frame.suspend(call)), steps: 1 },
             Ok(frame) => frame.run(),
             Err(e) => unrun(e),
         }

@@ -94,6 +94,12 @@ impl<I: Idx, T> IndexVec<I, T> {
         self.raw.last()
     }
 
+    /// The values, in index order.
+    #[must_use]
+    pub fn into_vec(self) -> Vec<T> {
+        self.raw
+    }
+
     pub fn iter(&self) -> impl Iterator<Item = (I, &T)> {
         self.raw.iter().enumerate().map(|(i, v)| (I::new(i), v))
     }
@@ -115,3 +121,9 @@ impl<I: Idx, T> ops::IndexMut<I> for IndexVec<I, T> {
 
 #[cfg(test)]
 mod tests;
+
+impl<I: Idx, T> From<Vec<T>> for IndexVec<I, T> {
+    fn from(raw: Vec<T>) -> Self {
+        Self { raw, _index: PhantomData }
+    }
+}

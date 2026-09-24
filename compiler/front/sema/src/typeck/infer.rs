@@ -103,9 +103,8 @@ impl Typer<'_, '_, '_> {
             }
             // A function literal is a value; its body is typed on its own.
             ExprKind::Closure { captures, func } => self.closure(expr, captures, *func),
-            ExprKind::Fn { params, returns, .. } => {
-                compile(self.env().signature(params, *returns).ok()?.ty())
-            }
+            ExprKind::Fn { .. } => compile(self.env().literal_signature(expr, &[]).ok()?.ty()),
+            ExprKind::Yield(value) => self.yielded(*value),
             ExprKind::FnType { .. } | ExprKind::Struct(_) | ExprKind::Enum(_) => compile(TyKind::of_types()),
             // `#{ e }` is code of the type of `e` (spec 03, section 4).
             ExprKind::Quote(block) => {

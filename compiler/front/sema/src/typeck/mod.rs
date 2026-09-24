@@ -14,11 +14,14 @@ mod expect;
 mod expected;
 mod infer;
 mod loops;
+
+pub use loops::Iteration;
 mod pattern;
 mod prefix;
 mod range;
 mod sequence;
 mod staged;
+mod suspend;
 #[cfg(test)]
 mod tests;
 
@@ -59,6 +62,8 @@ pub struct TypedBody {
     pub methods: BTreeMap<ExprId, (Ty, Symbol)>,
     /// The body of each step of a `$for`, typed with its binder bound (spec 03, section 1).
     pub steps: BTreeMap<Step, Arc<TypedBody>>,
+    /// How each `for p in e` drives `e`, by `e`.
+    pub iterations: BTreeMap<ExprId, Iteration>,
     pub diag: DiagCtxt,
     pub exprs: usize,
 }
@@ -123,11 +128,9 @@ impl Query for Typed {
         }
         let env = Env::inside(cx, &i.f, i.args.iter().cloned())?;
         let hir = &env.parsed.hir;
-        let ExprKind::Fn { params, returns, body } = &hir.exprs[i.f.literal.expr.id].kind else {
-            return None;
-        };
+        let ExprKind::Fn { body, .. } = &hir.exprs[i.f.literal.expr.id].kind else { return None };
         let mut typer = Typer::new(&env, Stage::Run);
-        typer.function(params, *returns, *body, &i.args);
+        typer.function(i.f.literal.expr.id, &i.args);
         let mut exprs = Exprs(0);
         exprs.block(hir, *body);
         Some(Arc::new(typer.finish(exprs.0)))
@@ -155,6 +158,7 @@ pub struct Typer<'e, 'a, 'db> {
     methods: HashMap<ExprId, (Ty, Symbol)>,
     /// The typed steps of the `$for`s typed so far.
     steps: BTreeMap<Step, Arc<TypedBody>>,
+    iterations: BTreeMap<ExprId, Iteration>,
     /// The type expected of an expression where its context says, for forms typed by it:
     /// `.name`, `.{ }` (spec 01, section 2).
     expected: HashMap<ExprId, Ty>,
@@ -164,6 +168,8 @@ pub struct Typer<'e, 'a, 'db> {
     written: Option<ExprId>,
     /// The loops around the expression typed, innermost last, which `break` values join.
     loops: Vec<loops::Loop>,
+    /// What the coroutine function typed yields, which `yield` values are checked against.
+    yields: Option<Ty>,
     pub diag: DiagCtxt,
 }
 
@@ -178,10 +184,12 @@ impl<'e, 'a, 'db> Typer<'e, 'a, 'db> {
             locals: HashMap::new(),
             methods: HashMap::new(),
             steps: BTreeMap::new(),
+            iterations: BTreeMap::new(),
             expected: HashMap::new(),
             result: None,
             written: None,
             loops: Vec::new(),
+            yields: None,
             diag: DiagCtxt::new(),
         }
     }
@@ -193,6 +201,7 @@ impl<'e, 'a, 'db> Typer<'e, 'a, 'db> {
             types: self.types.into_iter().collect(),
             methods: self.methods.into_iter().collect(),
             steps: self.steps,
+            iterations: self.iterations,
             diag: self.diag,
             exprs,
         }

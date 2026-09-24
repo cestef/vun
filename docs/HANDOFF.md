@@ -307,8 +307,7 @@ In order:
      rebuilt. `Typer::ty` types an annotation it cannot evaluate, then evaluates it with those
      types; `TyKind::of_types`. Decision 90: `Value::Linked(DeclRef)` for linker-provided
      declarations (`DeclValue::primitive` decides), `Value::repeat` and `Rvalue::Repeat`.
-     Next blockers (`cargo xtask corpus`): `for p in e` (coroutine frames: `iter`/`resume` are
-     compiler-provided members of the `lang.ops` impls, no frame model yet), closures in the capability programs (they wait for `std.sync`, which is empty), `$` splices of run-time code, `.{ }` without a known
+     Next blockers (`cargo xtask corpus`): closures in the capability programs (they wait for `std.sync`, which is empty), `$` splices of run-time code, `.{ }` without a known
      type, or-patterns that bind. Decision 91 (`?`): `typeck/early_return.rs`
      (`Typer::witness_of` shared with loops), `build/early_return.rs`; MIR returns the stop value
      as is (a backend widens `Result(never, E)` into the result layout, as with integers).
@@ -320,6 +319,17 @@ In order:
      `.*`); calls pass captures first. Not done: witnesses of `lang.ops.Call` for closure types
      (constrained `$F: Call(P, R)` parameters), `&mut` captures at compile time. `ty/relate.rs`
      holds `accepts` and `join`.
+   - Decision 92, coroutines: `TyKind::Frame`, `Env::{literal_signature, resumed, frame_step}`
+     (`env/frame.rs`), `Hir::suspends`, `Typer::function` for coroutine bodies (`yields`),
+     `typeck/suspend.rs` (`yield`, `yield ..e`), `Iteration { witness, step }` recorded per
+     `for p in e` (`TypedBody::iterations`), `TyKind::implements` for impls over interface
+     constructors (`Witness::of` passes the type first), `Env::primitive_signature`
+     (`env/primitive.rs`) types `$`-dependent primitive calls. MIR `build/suspend.rs`
+     (`yielded`, `drive`), `for p in e` in `build/loops.rs` (`iterator`), `build/block.rs`.
+     Interpreter `frames.rs` (`Frame::{suspend, resume}`, `Exit`), `eval::{Suspended,
+     Resumed}`, `Body::suspends`. Not done: `end` of frames (defers), a `for`'s value from
+     `done`, frames at run time (state machines, spec 06 section 5), `f.Frame` as a written
+     name, coroutine recursion checks.
    - `types.no_member` on values stays off: turning it on (tried) reports members the corpus
      stand-ins lack. Needed first: stand-in methods for `Timer`, `Serial`, `Led`, `Dma`, `Fs`,
      `Alloc`, `Device`, `System`, `Cache`, `Queue`, `Packet`, `Uart` in `corpus/support`,

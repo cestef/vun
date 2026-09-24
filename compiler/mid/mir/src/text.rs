@@ -69,6 +69,7 @@ impl fmt::Display for Rvalue {
                 f.write_str(close)
             }
             Self::Ref { mode: None, place } => write!(f, "&{place}"),
+            Self::Resume { frame, .. } => write!(f, "resume {frame}"),
             Self::Repeat { operand, count } => write!(f, "[{operand}; {count}]"),
             Self::IsVariant { place, variant } => write!(f, "{place} is .{variant}"),
             Self::Ref { mode: Some(mode), place } => write!(f, "&{mode} {place}"),
@@ -133,6 +134,9 @@ impl fmt::Display for Text<'_> {
             match &block.term.kind {
                 TerminatorKind::Return => write!(f, "    return")?,
                 TerminatorKind::Unreachable => write!(f, "    unreachable")?,
+                TerminatorKind::Yield { value, resume } => {
+                    write!(f, "    yield {value} -> bb{}", resume.index())?;
+                }
                 TerminatorKind::Goto(to) => write!(f, "    goto bb{}", to.index())?,
                 TerminatorKind::Branch { cond, then, otherwise } => {
                     write!(f, "    if {cond} goto bb{} else bb{}", then.index(), otherwise.index())?;

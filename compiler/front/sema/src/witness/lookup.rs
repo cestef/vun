@@ -58,7 +58,10 @@ impl Query for Witnesses {
 impl Witness {
     /// The witness `decl` gives for `ty`, if it covers `ty`.
     fn of(cx: &Cx<'_>, decl: ImplDecl, ty: Ty) -> Option<Self> {
-        let args = ty.made_by(&decl.target)?;
+        let args = ty.made_by(&decl.target).or_else(|| {
+            let args = ty.implements(&decl.target)?;
+            Some(std::iter::once(Value::Type(ty)).chain(args).collect())
+        })?;
         let value = cx.get::<DeclValue>(&decl.decl).ok()?;
         let (witness, requirements) = if let Value::Type(_) = decl.target {
             (value.as_type()?, decl.requirements)

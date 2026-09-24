@@ -5,6 +5,7 @@ mod common;
 
 mod add;
 mod comptime;
+mod coroutines;
 mod fetch;
 mod forms;
 mod generics;

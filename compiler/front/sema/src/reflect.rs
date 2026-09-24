@@ -2,12 +2,8 @@
 //! by its declaration in `lang.meta`, so the descriptor structs are ordinary `lang` declarations
 //! whose fields the compiler fills by name.
 
-use overt_intern::Symbol;
-
 use crate::Primitive;
-use crate::decl::DeclType;
 use crate::env::{Env, Unevaluated};
-use crate::item::{Declared, Site};
 use crate::member::{Field, Members};
 use crate::ty::{Ty, Value};
 
@@ -21,13 +17,7 @@ const FIELD: &[(&str, Fact<Field>)] =
 impl Env<'_, '_> {
     /// The type of what `primitive` gives, as its declaration in `lang` states it.
     fn result_of(&self, primitive: Primitive) -> Result<Ty, Unevaluated> {
-        let Site::Namespace(ns) = self.site(primitive.namespace())? else {
-            return Err(Unevaluated::Unsupported);
-        };
-        let site = self.cx.get::<Declared>(&(ns, Symbol::intern(primitive.name())));
-        let Some(Site::Decl(decl)) = site else { return Err(Unevaluated::Absent) };
-        let ty = self.cx.get::<DeclType>(&decl)?.ty;
-        Ok(ty.signature().ok_or(Unevaluated::Unsupported)?.result)
+        Ok(self.primitive_signature(primitive, &[])?.result)
     }
 
     /// `lang.meta.fields(ty)`: a descriptor of each field of the struct type `ty`, of the item

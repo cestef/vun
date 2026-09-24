@@ -1,8 +1,8 @@
 //! Running a MIR body on compile-time values: locals hold values, statements compute them, and
 //! calls go through sema's memoized `Call` query, so recursion and repeated calls are shared.
 
-use overt_index::IndexVec;
-use overt_mir::{Aggregate, Body, Local, Operand, Place, Projection, Rvalue, TerminatorKind};
+use overt_index::{Idx, IndexVec};
+use overt_mir::{Aggregate, BlockId, Body, Local, Operand, Place, Projection, Rvalue, TerminatorKind};
 use overt_query::Cx;
 use overt_sema::env::{Env, Unevaluated};
 use overt_sema::eval::{Instance, Metered, MeteredCall};
@@ -12,15 +12,25 @@ use overt_sema::ty::Value;
 
 /// One call's locals.
 pub struct Frame<'b, 'a, 'db> {
-    body: &'b Body,
+    pub(crate) body: &'b Body,
     /// The environment of the call, which identifies the types its literals evaluate to.
-    env: Env<'a, 'db>,
-    locals: IndexVec<Local, Option<Value>>,
+    pub(crate) env: Env<'a, 'db>,
+    pub(crate) locals: IndexVec<Local, Option<Value>>,
     /// The steps taken so far: statements and terminators of this body, and the steps of the
     /// calls it made.
-    steps: u64,
+    pub(crate) steps: u64,
     /// The steps the call may take.
-    fuel: u64,
+    pub(crate) fuel: u64,
+}
+
+/// How a run of a body stops.
+pub(crate) enum Exit {
+    Returned(Value),
+    /// At a `yield`, to go on at `resume`.
+    Yielded {
+        value: Value,
+        resume: BlockId,
+    },
 }
 
 impl<'b, 'a, 'db> Frame<'b, 'a, 'db> {
@@ -43,12 +53,18 @@ impl<'b, 'a, 'db> Frame<'b, 'a, 'db> {
     /// Runs the body to its return, and gives the result with the steps taken.
     #[must_use]
     pub fn run(mut self) -> Metered {
-        let value = self.execute();
+        let value = match self.execute(Idx::new(0)) {
+            Ok(Exit::Returned(value)) => Ok(value),
+            // A body that suspends is a coroutine's, whose calls give frames instead.
+            Ok(Exit::Yielded { .. }) => Err(Unevaluated::Unsupported),
+            Err(e) => Err(e),
+        };
         Metered { value, steps: self.steps }
     }
 
-    fn execute(&mut self) -> Result<Value, Unevaluated> {
-        let mut block = &self.body.blocks[overt_index::Idx::new(0)];
+    /// Runs the body from `start` until it returns or yields.
+    pub(crate) fn execute(&mut self, start: BlockId) -> Result<Exit, Unevaluated> {
+        let mut block = &self.body.blocks[start];
         loop {
             self.spend(1)?;
             for stmt in &block.stmts {
@@ -58,7 +74,11 @@ impl<'b, 'a, 'db> Frame<'b, 'a, 'db> {
             }
             match &block.term.kind {
                 TerminatorKind::Return => {
-                    return self.locals[self.body.ret].take().ok_or(Unevaluated::Unsupported);
+                    let value = self.locals[self.body.ret].take().ok_or(Unevaluated::Unsupported)?;
+                    return Ok(Exit::Returned(value));
+                }
+                TerminatorKind::Yield { value, resume } => {
+                    return Ok(Exit::Yielded { value: self.operand(value)?, resume: *resume });
                 }
                 TerminatorKind::Unreachable => return Err(Unevaluated::Unsupported),
                 TerminatorKind::Goto(to) => block = &self.body.blocks[*to],
@@ -71,7 +91,7 @@ impl<'b, 'a, 'db> Frame<'b, 'a, 'db> {
     }
 
     /// Counts `steps` more, trapping past the call's budget.
-    fn spend(&mut self, steps: u64) -> Result<(), Unevaluated> {
+    pub(crate) fn spend(&mut self, steps: u64) -> Result<(), Unevaluated> {
         self.steps = self.steps.saturating_add(steps);
         if self.steps > self.fuel {
             return Err(Unevaluated::trap(Reason::Budget).through(self.body.origin));
@@ -92,7 +112,7 @@ impl<'b, 'a, 'db> Frame<'b, 'a, 'db> {
 
     /// The value at `place`. A borrow at compile time is shared, and a shared borrow of a
     /// compile-time value is the value, so `.*` reads it.
-    fn read(&self, place: &Place) -> Result<Value, Unevaluated> {
+    pub(crate) fn read(&self, place: &Place) -> Result<Value, Unevaluated> {
         let mut value = self.local(place.local)?;
         for projection in &place.projection {
             value = match self.part(projection)? {
@@ -104,7 +124,7 @@ impl<'b, 'a, 'db> Frame<'b, 'a, 'db> {
     }
 
     /// Stores `value` at `place`: a whole local, or a part of one, rebuilt around it.
-    fn write(&mut self, place: &Place, value: Value) -> Result<(), Unevaluated> {
+    pub(crate) fn write(&mut self, place: &Place, value: Value) -> Result<(), Unevaluated> {
         let value = if place.projection.is_empty() {
             value
         } else {
@@ -167,6 +187,7 @@ impl<'b, 'a, 'db> Frame<'b, 'a, 'db> {
                 })
             }
             Rvalue::Ref { mode: None, place } => self.read(place),
+            Rvalue::Resume { frame, step } => self.resume(frame, *step),
             Rvalue::Repeat { operand, count } => Value::repeat(self.operand(operand)?, count),
             Rvalue::IsVariant { place, variant } => match self.read(place)? {
                 Value::Variant { name, .. } => self.env.decide(name == *variant),

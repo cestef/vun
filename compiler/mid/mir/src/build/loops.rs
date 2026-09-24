@@ -3,14 +3,17 @@
 //! back to the head, and `return v` leaves the function. Code after them is unreachable, lowered
 //! into a fresh block nothing enters.
 
+use overt_grammar::ITERATION;
 use overt_hir::tree::{BlockId as HirBlock, ExprId, ForHead};
 use overt_intern::Symbol;
 use overt_origin::OriginId;
-use overt_sema::ty::Value;
+use overt_sema::member::MemberValue;
+use overt_sema::ty::{Ty, Value};
 
+use super::pattern::Matched;
 use super::{Builder, Unbuilt};
 use crate::body::{BlockId, Local, Operand, Rvalue, TerminatorKind};
-use crate::place::Place;
+use crate::place::{Place, Projection};
 
 /// A loop being lowered.
 pub(super) struct Loop {
@@ -22,7 +25,8 @@ pub(super) struct Loop {
 }
 
 impl Builder<'_, '_, '_> {
-    /// `for { body }` or `for cond { body }`; a loop whose condition fails has the value `()`.
+    /// `for { body }`, `for cond { body }`, `for p = e { body }` or `for p in e { body }`; a loop
+    /// whose head ends it has the value `()`.
     pub(super) fn repeat(
         &mut self,
         label: Option<Symbol>,
@@ -30,6 +34,11 @@ impl Builder<'_, '_, '_> {
         body: HirBlock,
         origin: OriginId,
     ) -> Result<Operand, Unbuilt> {
+        // `for p in e` makes its iterator once, before the loop.
+        let iterator = match head {
+            ForHead::In { iter, .. } => Some(self.iterator(*iter, origin)?),
+            _ => None,
+        };
         let result = self.result(origin);
         let (start, exit) = (self.fresh(origin), self.fresh(origin));
         self.terminate(TerminatorKind::Goto(start), origin);
@@ -45,7 +54,25 @@ impl Builder<'_, '_, '_> {
                 self.terminate(TerminatorKind::Goto(exit), origin);
                 self.current = run;
             }
-            ForHead::In { .. } => return Err(Unbuilt { at: origin }),
+            ForHead::In { pat, .. } => {
+                let (frame, step) = iterator.ok_or(Unbuilt { at: origin })?;
+                let &(.., item, _) = ITERATION.first().ok_or(Unbuilt { at: origin })?;
+                let resumed =
+                    Place::of(self.temp_local(Rvalue::Resume { frame: Place::of(frame), step }, origin));
+                let done = self.fresh(origin);
+                let yielded = Rvalue::IsVariant { place: resumed.clone(), variant: Symbol::intern(item) };
+                let cond = self.temp(yielded, origin);
+                self.guard(cond, done, origin);
+                let never = self.fresh(origin);
+                self.blocks[never].term.kind = TerminatorKind::Unreachable;
+                let matched = Matched::copied(resumed.project(Projection::Payload(0)));
+                self.test(*pat, &matched, never)?;
+                let run = self.current;
+                self.current = done;
+                self.assign(Place::of(result), Rvalue::Use(Self::unit()), origin);
+                self.terminate(TerminatorKind::Goto(exit), origin);
+                self.current = run;
+            }
         }
         self.loops.push(Loop { label, head: start, exit, result });
         let lowered = self.block(body);
@@ -54,6 +81,19 @@ impl Builder<'_, '_, '_> {
         self.terminate(TerminatorKind::Goto(start), origin);
         self.current = exit;
         Ok(Operand::Place(Place::of(result)))
+    }
+
+    /// The iterator `for p in e` drives, in a new local, and the type resuming it gives: made
+    /// by the `iter` of the witness the typer found.
+    fn iterator(&mut self, iter: ExprId, origin: OriginId) -> Result<(Local, Ty), Unbuilt> {
+        let unbuilt = Unbuilt { at: origin };
+        let &(_, function, ..) = ITERATION.first().ok_or(unbuilt)?;
+        let iteration = *self.typed().ok_or(unbuilt)?.iterations.get(&iter).ok_or(unbuilt)?;
+        let make = self.env.cx.get::<MemberValue>(&(iteration.witness, Symbol::intern(function)));
+        let make = make.map_err(|_| unbuilt)?;
+        let value = self.operand(iter)?;
+        let call = Rvalue::Call { callee: Operand::Const(make), args: vec![value] };
+        Ok((self.temp_local(call, origin), iteration.step))
     }
 
     /// `break 'label value`.

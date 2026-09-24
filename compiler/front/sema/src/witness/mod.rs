@@ -3,6 +3,9 @@
 //! defaults of `I(T)`, join `T`'s method lookup. `T` may be a type constructor, such as `lang.Int`
 //! or a function returning a type: the impl then covers every type the constructor makes, and its
 //! value is a function of the constructor's arguments giving the witness of each (decision 76).
+//! `T` may also be an interface constructor, such as `lang.Coroutine`: the impl covers every type
+//! implementing an interface it makes, and its value takes that type, then the interface's
+//! arguments (decision 92).
 
 mod lookup;
 
@@ -63,6 +66,15 @@ impl TyKind {
             }
             _ => None,
         }
+    }
+
+    /// The arguments of the interface made by `constructor` that this type implements: a
+    /// frame implements the interface its function declares, such as `Coroutine(u32, ())`.
+    #[must_use]
+    pub fn implements(&self, constructor: &Value) -> Option<Vec<Value>> {
+        let (Value::Fn(f), Self::Frame(frame)) = (constructor, self) else { return None };
+        let made = frame.interface.within.as_ref()?;
+        (made.f == *f).then(|| made.args.clone())
     }
 }
 

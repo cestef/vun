@@ -134,24 +134,51 @@ Iterate := interface(($Self: type) -> type { struct {
     iter: (self: Self) -> Iter = _;
 }});
 
-/// Bounds give their items from the start up (spec 04); the compiler provides the iterator.
+/// A coroutine is its own iterator (spec 06, section 2). The impl's target is an interface
+/// constructor: it covers every type implementing a `Coroutine(Y, R)`, which it takes first.
+#[impl(Iterate(Coroutine))]
+CoroutineIterate := ($Self: type, $Y: type, $R: type) -> type { struct {
+    Iter := Coroutine(Y, R);
+    iter := (self: Self) -> Self { self };
+} };
+
+/// Bounds give their items from the start up (spec 04).
 #[impl(Iterate(Bounds))]
 BoundsIterate := ($T: type) -> type { struct {
     Iter := Coroutine(T, ());
-    iter: (self: Bounds(T)) -> Iter = _;
+    iter := (self: Bounds(T)) -> Iter {
+        if bounds.empty(T, self) { return; }
+        mut i := bounds.first(T, self);
+        for {
+            yield i;
+            if bounds.ends(T, self, i) { break; }
+            i += 1;
+        }
+    };
 } };
 
-/// A slice, through a borrow, gives a borrow of each of its items in order; the compiler provides
-/// the iterator.
+/// A slice, through a borrow, gives a borrow of each of its items in order.
 #[impl(Iterate(mem.Slice))]
 SliceIterate := ($T: type) -> type { struct {
     Iter := Coroutine(&T, ());
-    iter: (self: &[T]) -> Iter = _;
+    iter := (self: &[T]) -> Iter {
+        mut i: usize = 0;
+        for i < mem.len(T, self) {
+            yield &self[i];
+            i += 1;
+        }
+    };
 } };
 
-/// An array value gives each of its items in order; the compiler provides the iterator.
+/// An array value gives each of its items in order.
 #[impl(Iterate(mem.Array))]
 ArrayIterate := ($n: Int(0..), $T: type) -> type { struct {
     Iter := Coroutine(T, ());
-    iter: (self: [n]T) -> Iter = _;
+    iter := (self: [n]T) -> Iter {
+        mut i: usize = 0;
+        for i < n {
+            yield self[i];
+            i += 1;
+        }
+    };
 } };

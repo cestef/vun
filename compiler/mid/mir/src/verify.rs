@@ -97,6 +97,10 @@ impl Body {
             match &b.term.kind {
                 TerminatorKind::Return | TerminatorKind::Unreachable => {}
                 TerminatorKind::Goto(to) => self.block(at, *to)?,
+                TerminatorKind::Yield { value, resume } => {
+                    self.operand(at, value)?;
+                    self.block(at, *resume)?;
+                }
                 TerminatorKind::Branch { cond, then, otherwise } => {
                     self.operand(at, cond)?;
                     self.block(at, *then)?;
@@ -139,7 +143,11 @@ impl Body {
             | Rvalue::Unary { operand: o, .. }
             | Rvalue::Narrow { operand: o, .. }
             | Rvalue::Repeat { operand: o, .. } => vec![o],
-            Rvalue::Ref { place, .. } | Rvalue::IsVariant { place, .. } => return self.place(at, place),
+            Rvalue::Ref { place, .. }
+            | Rvalue::IsVariant { place, .. }
+            | Rvalue::Resume { frame: place, .. } => {
+                return self.place(at, place);
+            }
             Rvalue::Aggregate { parts, .. } => parts.iter().collect(),
             Rvalue::Binary { left, right, .. } => vec![left, right],
             Rvalue::Range { lo, hi, .. } => [lo].into_iter().chain(hi).collect(),

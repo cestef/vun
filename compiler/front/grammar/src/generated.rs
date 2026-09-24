@@ -1241,9 +1241,10 @@ pub const EARLY_RETURN: &[(&str, &str, &str, &str)] = &[
 ];
 /// What `for p in e` drives (appendix B): the witness of `interface` for the type of `e` gives
 /// the iterator through `function` and names its coroutine interface `iterator`; each item is
-/// the payload of the variant `item` of what the interface's `resume` returns.
-pub const ITERATION: &[(&str, &str, &str, &str, &str)] = &[
-    ("lang.ops.Iterate", "iter", "Iter", "resume", "yielded"),
+/// the payload of the variant `item` of what the interface's `resume` returns, and the variant
+/// `done` carries what the coroutine returns.
+pub const ITERATION: &[(&str, &str, &str, &str, &str, &str)] = &[
+    ("lang.ops.Iterate", "iter", "Iter", "resume", "yielded", "done"),
 ];
 /// Words that are keywords only in one context.
 pub const CONTEXTUAL: &[(&str, Context)] = &[

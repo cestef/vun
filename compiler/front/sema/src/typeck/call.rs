@@ -3,7 +3,7 @@
 //! typed per call, inside the callee with those parameters bound to the call's arguments.
 
 use overt_diag::TraceFrame;
-use overt_hir::tree::{Arg, Entry, ExprId, ExprKind};
+use overt_hir::tree::{Arg, Entry, ExprId};
 use overt_hir::visit::Visitor;
 use overt_query::Cx;
 
@@ -30,7 +30,9 @@ impl Typer<'_, '_, '_> {
             };
             self.diag.absorb_through(&typed.diag, &frame);
         }
-        let signature = known.or_else(|| instantiation?.signature(self.env().cx));
+        let signature = known
+            .or_else(|| instantiation?.signature(self.env().cx))
+            .or_else(|| self.primitive_signature(callee, args));
         let hir = self.hir();
         let (mut found, mut positional) = (Vec::new(), true);
         for arg in args {
@@ -94,6 +96,22 @@ impl Typer<'_, '_, '_> {
     }
 }
 
+impl Typer<'_, '_, '_> {
+    /// The signature of a call of a primitive whose types name its `$` parameters, typed with
+    /// them bound to the call's arguments, such as `lang.bounds.first(T, b) -> T`.
+    fn primitive_signature(&self, callee: ExprId, args: &[Entry<Arg>]) -> Option<Signature> {
+        let Ok(Value::Primitive(primitive)) = self.env().eval(callee) else { return None };
+        let values: Vec<_> = args
+            .iter()
+            .map(|arg| match arg {
+                Entry::One(Arg { name: None, value }) => self.env().eval(*value).ok(),
+                _ => None,
+            })
+            .collect();
+        self.env().primitive_signature(primitive, &values).ok()
+    }
+}
+
 impl Instantiation {
     /// Whether this is an instantiation of generic code: a function built in a compile-time
     /// call, or one with `$` parameters, all bound.
@@ -106,10 +124,6 @@ impl Instantiation {
     /// The signature of this instantiation, its types evaluated with its `$` parameters bound.
     fn signature(&self, cx: &Cx<'_>) -> Option<Signature> {
         let inside = Env::inside(cx, &self.f, self.args.iter().cloned())?;
-        let ExprKind::Fn { params, returns, .. } = &inside.parsed.hir.exprs[self.f.literal.expr.id].kind
-        else {
-            return None;
-        };
-        inside.signature(params, *returns).ok()
+        inside.literal_signature(self.f.literal.expr.id, &self.args).ok()
     }
 }

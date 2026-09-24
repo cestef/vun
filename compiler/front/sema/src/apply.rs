@@ -6,6 +6,7 @@ use overt_grammar::Narrowing;
 use crate::Primitive;
 use crate::env::{Env, Unevaluated};
 use crate::int::Integer;
+use crate::primitives::bounds::Bounds;
 use crate::primitives::int::Int;
 use crate::primitives::lang::Lang;
 use crate::primitives::mem::Mem;
@@ -48,6 +49,14 @@ impl Primitive {
             ) => {
                 let arg = arg.as_type().ok_or(Unevaluated::Unsupported)?;
                 Ok(Value::Type(TyKind::Primitive(self, vec![Value::Type(arg)]).intern()))
+            }
+            // What bounds hold: a compile-time range is the set of its items.
+            (Self::Bounds(Bounds::empty), [_, Value::Range(items)]) => env.decide(items.is_none()),
+            (Self::Bounds(Bounds::first), [_, Value::Range(Some(items))]) => {
+                Ok(Value::Int(items.lo().finite().ok_or(Unevaluated::Unsupported)?.clone()))
+            }
+            (Self::Bounds(Bounds::ends), [_, Value::Range(Some(items)), Value::Int(x)]) => {
+                env.decide(items.hi().finite() == Some(x))
             }
             // `lang.mem.len(T, xs)`: the number of items `xs` borrows.
             (Self::Mem(Mem::len), [_, Value::Array(items)]) => Ok(Value::Int(Integer::from(items.len()))),

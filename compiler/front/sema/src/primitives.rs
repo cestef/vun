@@ -45,6 +45,32 @@ pub mod arch {
         }
     }
 }
+pub mod bounds {
+    /// The primitives declared in `lang.bounds`.
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+    #[allow(non_camel_case_types, reason = "variants are named as their declarations")]
+    pub enum Bounds {
+        /// Whether `b` holds no item, such as `3..3`.
+        empty,
+        /// The least item of `b`, which is not empty.
+        first,
+        /// Whether `x` is the greatest item of `b`; never for bounds without an end, such as `a..`.
+        ends,
+    }
+    impl Bounds {
+        pub const NAMESPACE: &str = "lang.bounds";
+        pub const ALL: &[Self] = &[Self::empty, Self::first, Self::ends];
+        /// The declaration's name.
+        #[must_use]
+        pub const fn name(self) -> &'static str {
+            match self {
+                Self::empty => "empty",
+                Self::first => "first",
+                Self::ends => "ends",
+            }
+        }
+    }
+}
 pub mod comptime {
     /// The primitives declared in `lang.comptime`.
     #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -593,6 +619,8 @@ pub enum Primitive {
     Abi(abi::Abi),
     /// `lang.arch`
     Arch(arch::Arch),
+    /// `lang.bounds`
+    Bounds(bounds::Bounds),
     /// `lang.comptime`
     Comptime(comptime::Comptime),
     /// `lang.float`
@@ -638,6 +666,9 @@ impl Primitive {
         Self::Abi(abi::Abi::naked),
         Self::Arch(arch::Arch::Operands),
         Self::Arch(arch::Arch::asm),
+        Self::Bounds(bounds::Bounds::empty),
+        Self::Bounds(bounds::Bounds::first),
+        Self::Bounds(bounds::Bounds::ends),
         Self::Comptime(comptime::Comptime::fuel),
         Self::Float(float::Float::mul_add),
         Self::Flow(flow::Flow::tail),
@@ -718,6 +749,7 @@ impl Primitive {
         match self {
             Self::Abi(_) => abi::Abi::NAMESPACE,
             Self::Arch(_) => arch::Arch::NAMESPACE,
+            Self::Bounds(_) => bounds::Bounds::NAMESPACE,
             Self::Comptime(_) => comptime::Comptime::NAMESPACE,
             Self::Float(_) => float::Float::NAMESPACE,
             Self::Flow(_) => flow::Flow::NAMESPACE,
@@ -744,6 +776,7 @@ impl Primitive {
         match self {
             Self::Abi(p) => p.name(),
             Self::Arch(p) => p.name(),
+            Self::Bounds(p) => p.name(),
             Self::Comptime(p) => p.name(),
             Self::Float(p) => p.name(),
             Self::Flow(p) => p.name(),

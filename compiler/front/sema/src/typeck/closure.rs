@@ -6,7 +6,7 @@ use std::mem::{replace, take};
 
 use overt_hir::db::Parsed;
 use overt_hir::resolve::Res;
-use overt_hir::tree::{BlockId, Entry, ExprId, ExprKind, List, Param, PatKind};
+use overt_hir::tree::{Entry, ExprId, ExprKind, List, Param, PatKind};
 use overt_intern::Symbol;
 use overt_query::Cx;
 
@@ -16,17 +16,14 @@ use crate::item::ExprRef;
 use crate::ty::{Closure, Signature, TyKind, Value};
 
 impl Typer<'_, '_, '_> {
-    /// Types a function literal's parameters and body, `bound` giving the value of each `$`
-    /// parameter an instantiation binds, and gives its signature when every type is known. A
-    /// `return` or a loop inside belongs to the function.
-    pub(super) fn function(
-        &mut self,
-        params: &List<Param>,
-        returns: Option<ExprId>,
-        body: BlockId,
-        bound: &[Option<Value>],
-    ) -> Option<Signature> {
+    /// Types the function literal `literal`'s parameters and body, `bound` giving the value of
+    /// each `$` parameter an instantiation binds, and gives its signature when every type is
+    /// known. A `return` or a loop inside belongs to the function; a coroutine function's body
+    /// yields what its frame yields and ends with what it returns.
+    pub(super) fn function(&mut self, literal: ExprId, bound: &[Option<Value>]) -> Option<Signature> {
         let hir = self.hir();
+        let ExprKind::Fn { params, returns, body } = &hir.exprs[literal].kind else { return None };
+        let (returns, body) = (*returns, *body);
         let mut types = Some(Vec::new());
         for (index, param) in params.iter().enumerate() {
             let ty = match param {
@@ -46,19 +43,33 @@ impl Typer<'_, '_, '_> {
                 _ => types = None,
             }
         }
-        let result = match returns {
-            Some(r) => self.ty(r),
-            None => Some(TyKind::unit()),
+        let frame =
+            hir.suspends(literal).then(|| self.env().literal_signature(literal, bound).ok()).flatten();
+        // A coroutine's annotation names its interface, not the type its body ends with.
+        let written = if frame.is_some() { None } else { returns };
+        let (signature_result, result, yields) = if let Some(frame) = frame.map(|s| s.result) {
+            let step = self.env().frame_step(frame);
+            (Some(frame), step.map(|(_, r)| r), step.map(|(y, _)| y))
+        } else {
+            let result = match returns {
+                Some(r) => self.ty(r),
+                None => Some(TyKind::unit()),
+            };
+            (result, result, None)
         };
-        let outer =
-            (replace(&mut self.result, result), replace(&mut self.written, returns), take(&mut self.loops));
+        let outer = (
+            replace(&mut self.result, result),
+            replace(&mut self.written, written),
+            take(&mut self.loops),
+            replace(&mut self.yields, yields),
+        );
         let found = self.block_value(body, result);
         if let (Some(found), Some(result)) = (found, result) {
             let at = hir.blocks[body].tail.map_or(hir.blocks[body].origin, |t| hir.exprs[t].origin);
-            self.expect(at, found, result, returns);
+            self.expect(at, found, result, written);
         }
-        (self.result, self.written, self.loops) = outer;
-        Some(Signature { params: types?, result: result? })
+        (self.result, self.written, self.loops, self.yields) = outer;
+        Some(Signature { params: types?, result: signature_result? })
     }
 
     /// `[captures] (params) -> R { body }`: each capture typed here, the body typed as part of
@@ -76,8 +87,7 @@ impl Typer<'_, '_, '_> {
                 _ => typed = None,
             }
         }
-        let ExprKind::Fn { params, returns, body } = &hir.exprs[func].kind else { return None };
-        let signature = self.function(params, *returns, *body, &[])?;
+        let signature = self.function(func, &[])?;
         self.types.insert(func, Known { ty: signature.ty(), stage: self.stage });
         let closure = Closure {
             literal: ExprRef::new(self.env().file.clone(), hir, expr),

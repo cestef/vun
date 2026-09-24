@@ -7,7 +7,7 @@ use overt_hir::db::Namespace;
 
 use super::{Ty, TyKind};
 use crate::Primitive;
-use crate::eval::{Code, Func};
+use crate::eval::{Code, Func, Suspended};
 use crate::int::{Extended, Integer, Interval};
 use crate::item::DeclRef;
 
@@ -46,6 +46,8 @@ pub enum Value {
     /// A declaration the linker provides (`name: T = _;` outside `lang`): its link symbol, whose
     /// value exists at run time only.
     Linked(DeclRef),
+    /// A coroutine's frame (spec 06).
+    Frame(Box<Suspended>),
     /// Code, not its value (spec 03, section 4).
     Code(Code),
     /// `lang.interface(f)`: the function `f` from a type to its requirement struct (spec 02,

@@ -27,6 +27,14 @@ pub struct Body {
     pub origin: OriginId,
 }
 
+impl Body {
+    /// Whether this is a coroutine function's body: one that yields.
+    #[must_use]
+    pub fn suspends(&self) -> bool {
+        self.blocks.iter().any(|(_, b)| matches!(b.term.kind, TerminatorKind::Yield { .. }))
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct LocalDecl {
     /// `None` for a temporary.
@@ -78,6 +86,12 @@ pub enum Rvalue {
     Ref {
         mode: Option<Symbol>,
         place: Place,
+    },
+    /// Resumes the frame at `frame` until it yields or returns, giving a value of the type
+    /// `step` its interface's `resume` gives (spec 06).
+    Resume {
+        frame: Place,
+        step: Ty,
     },
     /// `[operand; count]`: an array of `count` copies, `count` known at compile time.
     Repeat {
@@ -157,6 +171,11 @@ pub enum TerminatorKind {
     Return,
     /// Control never gets here, such as past the arms of an exhaustive `match`.
     Unreachable,
+    /// `yield value`: suspends the coroutine with `value`; resuming it goes on at `resume`.
+    Yield {
+        value: Operand,
+        resume: BlockId,
+    },
     Goto(BlockId),
     /// To `then` when the condition `cond` holds, to `otherwise` when it does not.
     Branch {

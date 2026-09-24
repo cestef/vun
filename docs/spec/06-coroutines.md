@@ -18,6 +18,8 @@ Coroutine := ($Y: type, $R: type) -> Interface {
 
 - A function whose body contains `yield` is a coroutine function. Its result type is a `Coroutine`
   interface (or an alias). Calling it runs nothing: it constructs the frame in place and returns it.
+  The call's type is the frame type, `f.Frame`; the body yields what the interface's `resume`
+  carries in `yielded` and ends with what it carries in `done`.
 - The frame is a value of an anonymous type, named `f.Frame`. Its size is known at compile time
   (`std.meta.size(blink.Frame)`), so frames can live on the stack, in a static, in a pool or in an
   `Own`, and none of these needs a heap.
@@ -32,7 +34,10 @@ Coroutine := ($Y: type, $R: type) -> Interface {
 
 ## 2. Consuming coroutines
 
-`for p in e { body }` drives any coroutine (appendix B):
+`for p in e { body }` drives any coroutine (appendix B), through `lang.ops.Iterate`: a frame is
+its own iterator (`CoroutineIterate`, an impl over the interface constructor `Coroutine`), and
+bounds, slices and arrays have iterators written in `lang.ops` as coroutine functions, over the
+primitives `lang.bounds.{empty, first, ends}` and `lang.mem.len`:
 
 - each `.yielded(v)` is matched against `p` and runs `body`;
 - the `for` expression's value is the coroutine's `.done` value, unless `break v` supplies another;
