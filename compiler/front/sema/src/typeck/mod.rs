@@ -6,6 +6,7 @@
 //! is typed where it is checked, and by [`crate::decl::DeclType`] where it is named.
 
 mod block;
+mod call;
 mod control;
 mod expect;
 mod expected;
@@ -15,12 +16,13 @@ mod sequence;
 #[cfg(test)]
 mod tests;
 
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
 
 use overt_diag::DiagCtxt;
 use overt_hir::tree::{BinderId, BlockId, DeclId, Entry, ExprId, ExprKind, Hir, NsId, PatKind};
 use overt_hir::visit::Visitor;
+use overt_intern::Symbol;
 use overt_query::{Cx, Query};
 
 use crate::env::Env;
@@ -47,6 +49,8 @@ pub struct Known {
 #[derive(Debug, Default, PartialEq, Eq, Hash)]
 pub struct TypedBody {
     pub types: BTreeMap<ExprId, Known>,
+    /// Each method named through a value, with the struct declaring it and its name.
+    pub methods: BTreeMap<ExprId, (Ty, Symbol)>,
     pub diag: DiagCtxt,
     pub exprs: usize,
 }
@@ -99,6 +103,7 @@ impl Query for Typed {
         exprs.block(hir, *body);
         Some(Arc::new(TypedBody {
             types: typer.types.into_iter().collect(),
+            methods: typer.methods.into_iter().collect(),
             diag: typer.diag,
             exprs: exprs.0,
         }))
@@ -113,8 +118,9 @@ pub struct Typer<'e, 'a, 'db> {
     types: HashMap<ExprId, Known>,
     locals: HashMap<BinderId, Known>,
     /// Member expressions naming a declaration through a value: `p.norm` in `p.norm()`, whose
-    /// call passes `p` first (spec 01, section 4).
-    methods: HashSet<ExprId>,
+    /// call passes `p` first (spec 01, section 4); each with the struct declaring it, the type's
+    /// own or a witness, and its name.
+    methods: HashMap<ExprId, (Ty, Symbol)>,
     /// The type expected of an expression where its context says, for forms typed by it:
     /// `.name`, `.{ }` (spec 01, section 2).
     expected: HashMap<ExprId, Ty>,
@@ -131,7 +137,7 @@ impl<'e, 'a, 'db> Typer<'e, 'a, 'db> {
             stage,
             types: HashMap::new(),
             locals: HashMap::new(),
-            methods: HashSet::new(),
+            methods: HashMap::new(),
             expected: HashMap::new(),
             result: None,
             diag: DiagCtxt::new(),

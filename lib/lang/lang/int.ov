@@ -21,3 +21,12 @@ i128 := signed(128);
 /// Sizes and indices: as wide as an address on the target.
 usize := Int(0..=target.usize_max);
 isize := Int(-(target.usize_max + 1) / 2..(target.usize_max + 1) / 2);
+
+/// `x` as a value of `T`, trapping when it is outside `T` (spec 04, rule 3).
+to: ($r: Range, x: Int(r), $T: type) -> T = _;
+/// `x` reduced modulo the size of `T` into its range.
+wrap: ($r: Range, x: Int(r), $T: type) -> T = _;
+/// `x` clamped to the bounds of `T`.
+sat: ($r: Range, x: Int(r), $T: type) -> T = _;
+/// Whether `x` is a value of `T`.
+fits: ($r: Range, x: Int(r), $T: type) -> bool = _;

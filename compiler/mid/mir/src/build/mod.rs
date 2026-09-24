@@ -5,6 +5,7 @@
 mod assign;
 mod control;
 mod loops;
+mod method;
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -20,7 +21,7 @@ use overt_query::{Cx, Cycle, Query};
 use overt_sema::env::Env;
 use overt_sema::int::Integer;
 use overt_sema::item::ExprRef;
-use overt_sema::ty::{NominalKind, Value};
+use overt_sema::ty::Value;
 
 use crate::body::{
     Block, BlockId, Body, Local, LocalDecl, Operand, Rvalue, Stmt, Terminator, TerminatorKind,
@@ -164,6 +165,10 @@ impl Builder<'_, '_, '_> {
                 Some(Res::Binder(b)) if self.bound.contains_key(&b) => {
                     Ok(Operand::Place(Place { local: self.bound[&b] }))
                 }
+                // A `$` parameter of an enclosing function, bound by the call running the body.
+                Some(Res::Binder(b)) if hir.binders[b].comptime => {
+                    Ok(self.temp(Rvalue::Comptime(expr), origin))
+                }
                 _ => self.env.eval(expr).map(Operand::Const).map_err(|_| unbuilt),
             },
             ExprKind::Block(block) => self.block(*block),
@@ -197,21 +202,21 @@ impl Builder<'_, '_, '_> {
                 Ok(self.temp(Rvalue::Unary { op: *op, operand }, origin))
             }
             ExprKind::Call { callee, args } => {
-                let callee = self.operand(*callee)?;
-                let args = args
-                    .iter()
-                    .map(|arg| match arg {
-                        Entry::One(Arg { name: None, value }) => self.operand(*value),
-                        _ => Err(unbuilt),
-                    })
-                    .collect::<Result<Vec<_>, _>>()?;
-                Ok(self.temp(Rvalue::Call { callee, args }, origin))
+                // `a.f(b)` is `T.f(a, b)`, `f` the method the typer found (spec 01, section 4).
+                let (callee, mut values) = match self.method(*callee)? {
+                    Some((f, receiver)) => (f, vec![self.operand(receiver)?]),
+                    None => (self.operand(*callee)?, Vec::new()),
+                };
+                for arg in args {
+                    match arg {
+                        Entry::One(Arg { name: None, value }) => values.push(self.operand(*value)?),
+                        _ => return Err(unbuilt),
+                    }
+                }
+                Ok(self.temp(Rvalue::Call { callee, args: values }, origin))
             }
-            ExprKind::Struct(_) => {
-                Ok(self.temp(Rvalue::Nominal { literal: expr, kind: NominalKind::Struct }, origin))
-            }
-            ExprKind::Enum(_) => {
-                Ok(self.temp(Rvalue::Nominal { literal: expr, kind: NominalKind::Enum }, origin))
+            ExprKind::Struct(_) | ExprKind::Enum(_) | ExprKind::Fn { .. } => {
+                Ok(self.temp(Rvalue::Comptime(expr), origin))
             }
             // Anything else only as a constant sema can compute, such as `lang.int.u8`.
             _ => self.env.eval(expr).map(Operand::Const).map_err(|_| unbuilt),

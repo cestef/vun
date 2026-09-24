@@ -121,6 +121,35 @@ pub mod hint {
         }
     }
 }
+pub mod int {
+    /// The primitives declared in `lang.int`.
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+    #[allow(non_camel_case_types, reason = "variants are named as their declarations")]
+    pub enum Int {
+        /// `x` as a value of `T`, trapping when it is outside `T` (spec 04, rule 3).
+        to,
+        /// `x` reduced modulo the size of `T` into its range.
+        wrap,
+        /// `x` clamped to the bounds of `T`.
+        sat,
+        /// Whether `x` is a value of `T`.
+        fits,
+    }
+    impl Int {
+        pub const NAMESPACE: &str = "lang.int";
+        pub const ALL: &[Self] = &[Self::to, Self::wrap, Self::sat, Self::fits];
+        /// The declaration's name.
+        #[must_use]
+        pub const fn name(self) -> &'static str {
+            match self {
+                Self::to => "to",
+                Self::wrap => "wrap",
+                Self::sat => "sat",
+                Self::fits => "fits",
+            }
+        }
+    }
+}
 pub mod kind {
     /// The primitives declared in `lang.kind`.
     #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -541,6 +570,8 @@ pub enum Primitive {
     Flow(flow::Flow),
     /// `lang.hint`
     Hint(hint::Hint),
+    /// `lang.int`
+    Int(int::Int),
     /// `lang.kind`
     Kind(kind::Kind),
     /// `lang.layout`
@@ -580,6 +611,10 @@ impl Primitive {
         Self::Float(float::Float::mul_add),
         Self::Flow(flow::Flow::tail),
         Self::Hint(hint::Hint::cold),
+        Self::Int(int::Int::to),
+        Self::Int(int::Int::wrap),
+        Self::Int(int::Int::sat),
+        Self::Int(int::Int::fits),
         Self::Kind(kind::Kind::linear),
         Self::Kind(kind::Kind::fixed),
         Self::Layout(layout::Layout::bits),
@@ -649,6 +684,7 @@ impl Primitive {
             Self::Float(_) => float::Float::NAMESPACE,
             Self::Flow(_) => flow::Flow::NAMESPACE,
             Self::Hint(_) => hint::Hint::NAMESPACE,
+            Self::Int(_) => int::Int::NAMESPACE,
             Self::Kind(_) => kind::Kind::NAMESPACE,
             Self::Layout(_) => layout::Layout::NAMESPACE,
             Self::Link(_) => link::Link::NAMESPACE,
@@ -674,6 +710,7 @@ impl Primitive {
             Self::Float(p) => p.name(),
             Self::Flow(p) => p.name(),
             Self::Hint(p) => p.name(),
+            Self::Int(p) => p.name(),
             Self::Kind(p) => p.name(),
             Self::Layout(p) => p.name(),
             Self::Link(p) => p.name(),

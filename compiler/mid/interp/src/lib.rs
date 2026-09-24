@@ -21,7 +21,7 @@ pub struct Interpreter;
 
 impl Evaluator for Interpreter {
     fn call(&self, cx: &Cx<'_>, call: &Instance) -> Result<Value, Unevaluated> {
-        let body = cx.get::<Mir>(&call.f).map_err(|_| Unevaluated::Unsupported)?;
+        let body = cx.get::<Mir>(&call.f.literal).map_err(|_| Unevaluated::Unsupported)?;
         Frame::new(cx, &body, call)?.run()
     }
 }

@@ -180,6 +180,11 @@ generators that observe their own output, which is what makes impls and memoizat
   recorded dependency. Tasks that need I/O are build steps (spec 12).
 - **Purity.** As a consequence, every compile-time call is a pure function of its arguments. Calls
   are memoized by content hash, which also defines type identity: `Pair(u16)` is one type.
+- **Function values.** A function literal evaluated inside a compile-time call sees that call's
+  parameters, as the types it builds do: a method of `Pair(u8)` sees `T` bound to `u8`. A
+  signature whose types name `$` parameters is typed per call, with those bound to the call's
+  arguments: `x.to(u8)` has type `u8`. `a.f(b)` evaluates as `T.f(a, b)` for the type `T` of the
+  value `a`.
 - **Target semantics.** Compile-time code uses the target's layout, word size and endianness
   (guarantee 4).
 - **Traps.** A trap that fires during evaluation (a division by zero, a failed `.to`, spec 04) is

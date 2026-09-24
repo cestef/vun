@@ -7,8 +7,8 @@ use overt_hir::db::Namespace;
 
 use super::{Ty, TyKind};
 use crate::Primitive;
+use crate::eval::Func;
 use crate::int::{Integer, Interval};
-use crate::item::ExprRef;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Value {
@@ -35,13 +35,24 @@ pub enum Value {
     /// A file or directory: a struct whose members are its declarations (spec 01, section 8).
     Namespace(Namespace),
     /// A function literal.
-    Fn(ExprRef),
+    Fn(Func),
     /// `lang.interface(f)`: the function `f` from a type to its requirement struct (spec 02,
     /// section 3).
-    Interface(ExprRef),
+    Interface(Func),
 }
 
 impl Value {
+    /// The type of this value, for a value of a type with methods: an integer's is the type of
+    /// that integer alone, since every integer type holding it has the same impls.
+    #[must_use]
+    pub fn ty(&self) -> Option<Ty> {
+        match self {
+            Self::Int(n) => Some(TyKind::int(&Interval::singleton(n.clone()))),
+            Self::Struct { ty, .. } | Self::Variant { ty, .. } => Some(*ty),
+            _ => None,
+        }
+    }
+
     /// The type this value denotes where a type is expected: a type, a primitive that takes no
     /// arguments, such as `lang.f32`, a tuple of types, such as `(u8, bool)` or `()`, or an array
     /// holding one type, the slice type `[T]`: type syntax mirrors value syntax (spec 01).

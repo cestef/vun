@@ -10,7 +10,7 @@ use overt_query::{Cx, Cycle, Query};
 
 use crate::env::{Env, Unevaluated};
 use crate::item::{DeclRef, ExprRef};
-use crate::ty::{Nominal, Ty, TyKind};
+use crate::ty::{Nominal, Ty, TyKind, Value};
 use crate::typeck::Known;
 use crate::visible::{Home, Visible};
 
@@ -158,6 +158,35 @@ impl Query for MemberType {
         let members = cx.get::<Members>(ty).ok_or(Unevaluated::Unsupported)?;
         let Found::Decl(decl) = members.find(*name) else { return Err(Unevaluated::Absent) };
         Env::defining(cx, literal, instance.as_ref()).ok_or(Unevaluated::Absent)?.decl_type(decl.decl.decl.id)
+    }
+
+    fn cycle(_: &Cx<'_>, _: &Self::Key, _: &Cycle) -> Self::Value {
+        Err(Unevaluated::Cycle)
+    }
+}
+
+/// The value of the declaration `name` among a struct type's members, evaluated where the struct
+/// was built: a method of `Pair(u8)` is a function value that sees `T` bound to `u8`.
+pub struct MemberValue;
+
+impl Query for MemberValue {
+    const NAME: &'static str = "member_value";
+    type Key = (Ty, Symbol);
+    type Value = Result<Value, Unevaluated>;
+
+    fn compute(cx: &Cx<'_>, (ty, name): &Self::Key) -> Self::Value {
+        let TyKind::Nominal(Nominal { literal, instance, .. }) = &**ty else {
+            return Err(Unevaluated::Unsupported);
+        };
+        let members = cx.get::<Members>(ty).ok_or(Unevaluated::Unsupported)?;
+        let Found::Decl(decl) = members.find(*name) else { return Err(Unevaluated::Absent) };
+        let env = Env::defining(cx, literal, instance.as_ref()).ok_or(Unevaluated::Absent)?;
+        let value = env.parsed.hir.decls[decl.decl.decl.id].value.ok_or(Unevaluated::Runtime)?;
+        match env.parsed.hir.exprs[value].kind {
+            // A requirement of an interface, which an impl provides.
+            ExprKind::Hole => Err(Unevaluated::Provided),
+            _ => env.eval(value),
+        }
     }
 
     fn cycle(_: &Cx<'_>, _: &Self::Key, _: &Cycle) -> Self::Value {

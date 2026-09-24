@@ -22,9 +22,9 @@ use overt_query::Cx;
 use overt_span::{SourceFiles, SourceMap};
 
 use crate::decl::DeclValue;
-use crate::eval::Instance;
+use crate::eval::{Func, Instance};
 use crate::item::{DeclRef, Declared, ExprRef, Site};
-use crate::member::{Found, Members};
+use crate::member::{Found, MemberValue, Members};
 use crate::trap::Trap;
 use crate::ty::Value;
 
@@ -77,9 +77,21 @@ impl<'a, 'db> Env<'a, 'db> {
     /// types of a `struct` it returns.
     #[must_use]
     pub fn within(cx: &'a Cx<'db>, instance: &Instance) -> Option<Self> {
-        let mut env = Self::of(cx, &instance.f.file)?;
+        let mut env = Self::inside(cx, &instance.f, instance.args.iter().cloned().map(Some))?;
+        env.instance = Some(instance.clone());
+        Some(env)
+    }
+
+    /// The environment of the function value `f`'s literal, with its parameters bound to `args`
+    /// by position, those given: a signature whose types name `$` parameters is typed here.
+    #[must_use]
+    pub fn inside(cx: &'a Cx<'db>, f: &Func, args: impl IntoIterator<Item = Option<Value>>) -> Option<Self> {
+        let mut env = match &f.within {
+            Some(outer) => Self::within(cx, outer)?,
+            None => Self::of(cx, &f.literal.file)?,
+        };
         let hir = &env.parsed.hir;
-        let ExprKind::Fn { params, .. } = &hir.exprs[instance.f.expr.id].kind else { return None };
+        let ExprKind::Fn { params, .. } = &hir.exprs[f.literal.expr.id].kind else { return None };
         let binders = params.iter().map(|p| match p {
             Entry::One(Param { pat: Some(pat), .. }) => match hir.pats[*pat].kind {
                 PatKind::Bind(b) => Some(b),
@@ -87,9 +99,8 @@ impl<'a, 'db> Env<'a, 'db> {
             },
             _ => None,
         });
-        let bindings = binders.zip(&instance.args).filter_map(|(b, arg)| Some((b?, arg.clone()))).collect();
-        env.bindings = bindings;
-        env.instance = Some(instance.clone());
+        let bound: Vec<_> = binders.zip(args).filter_map(|(b, arg)| Some((b?, arg?))).collect();
+        env.bindings.extend(bound);
         Some(env)
     }
 
@@ -169,13 +180,13 @@ impl<'a, 'db> Env<'a, 'db> {
             Value::Type(ty) => {
                 let members = self.cx.get::<Members>(&ty);
                 match members.as_deref().map_or(Found::Unknown, |m| m.find(name)) {
-                    Found::Decl(decl) => self.cx.get::<DeclValue>(&decl.decl),
+                    Found::Decl(_) => self.cx.get::<MemberValue>(&(ty, name)),
                     Found::Variant(v) if v.payload.is_empty() => {
                         Ok(Value::Variant { ty, name, payload: Vec::new() })
                     }
                     // Then the type's impls (spec 01, section 4).
                     found @ (Found::Absent | Found::Unknown) => match self.method(ty, name) {
-                        Some(method) => self.cx.get::<DeclValue>(&method.decl),
+                        Some(method) => self.cx.get::<MemberValue>(&(method.owner, name)),
                         None if found == Found::Absent => Err(Unevaluated::Absent),
                         None => Err(Unevaluated::Unsupported),
                     },

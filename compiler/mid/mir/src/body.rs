@@ -6,7 +6,7 @@ use overt_hir::tree::ExprId;
 use overt_index::{IndexVec, index};
 use overt_intern::Symbol;
 use overt_origin::OriginId;
-use overt_sema::ty::{NominalKind, Ty, Value};
+use overt_sema::ty::{Ty, Value};
 
 use crate::place::Place;
 
@@ -78,12 +78,11 @@ pub enum Rvalue {
         ty: Ty,
         narrowing: Narrowing,
     },
-    /// The type a `struct` or `enum` literal of the body's file evaluates to, identified by the
-    /// literal and the call running the body (decision 28).
-    Nominal {
-        literal: ExprId,
-        kind: NominalKind,
-    },
+    /// A compile-time value that depends on the call running the body, evaluated in its
+    /// environment: a `struct` or `enum` literal, identified by the call (decision 28), a
+    /// function literal, which sees the call's parameters, or such a parameter of an enclosing
+    /// function.
+    Comptime(ExprId),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]

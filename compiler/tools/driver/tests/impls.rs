@@ -58,3 +58,31 @@ Again := struct {};
         ]
     );
 }
+
+#[test]
+fn integer_methods_come_from_the_std_impl_for_lang_int() {
+    let fixture = Fixture::new("impls-integers");
+    let file = fixture.root.write(
+        "narrow.ov",
+        "\
+narrow := (x: u32) -> (u8, u16, u8, ?u8) { (x.to(u8), x.wrap(u16), x.sat(u8), x.try_to(u8)) };
+wrong := (x: u32) -> u8 { x.wrap(u16) };
+half := ($x: u32) -> u8 { (x / 2).to(u8) };
+low: u8 = half(100);
+high: u8 = half(1000);
+Wrapped := Int(0..=300.wrap(u8));
+wrapped: Wrapped = 45;
+",
+    );
+    assert_eq!(
+        fixture.reported(&file),
+        [
+            (errors::INT_DOES_NOT_FIT, "value does not fit the type `u8`".to_owned()),
+            (
+                errors::COMPTIME_TRAP,
+                "compile-time evaluation failed: value outside the type it is narrowed to".to_owned()
+            ),
+            (errors::INT_DOES_NOT_FIT, "value does not fit the type `Wrapped`".to_owned()),
+        ]
+    );
+}

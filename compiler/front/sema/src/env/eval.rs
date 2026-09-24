@@ -1,5 +1,7 @@
 //! Evaluating constant forms, and the types annotations denote.
 
+use std::sync::Arc;
+
 use overt_grammar::{BORROWS, TYPE_PREFIXES, TokenKind};
 use overt_hir::resolve::Res;
 use overt_hir::tree::{Arg, BlockId, Cond, Entry, ExprId, ExprKind, List, Lit, Name, Param};
@@ -7,7 +9,7 @@ use overt_intern::Symbol;
 use overt_origin::OriginTable;
 
 use super::{Env, Unevaluated};
-use crate::eval::{Call, Instance};
+use crate::eval::{Call, Func, Instance};
 use crate::int::Integer;
 use crate::item::ExprRef;
 use crate::ty::{Nominal, NominalKind, Signature, Ty, TyKind, Value};
@@ -70,7 +72,7 @@ impl Env<'_, '_> {
             }
             ExprKind::Block(block) => self.block(*block),
             ExprKind::Call { callee, args } => self.call(*callee, args).map_err(|u| u.through(e.origin)),
-            ExprKind::Fn { .. } => Ok(Value::Fn(ExprRef::new(self.file.clone(), hir, expr))),
+            ExprKind::Fn { .. } => Ok(Value::Fn(self.func(expr))),
             ExprKind::FnType { params, returns } => Ok(Value::Type(self.signature(params, *returns)?.ty())),
             ExprKind::Tuple(items) => items
                 .iter()
@@ -94,17 +96,30 @@ impl Env<'_, '_> {
         block.tail.map_or_else(|| Ok(Value::Tuple(Vec::new())), |t| self.eval(t))
     }
 
-    /// A call of a function value, which the evaluator runs, or of a primitive.
+    /// A call of a function value, which the evaluator runs, or of a primitive. `a.f(b)` on a
+    /// value `a` of type `T` is `T.f(a, b)` (spec 01, section 4).
     fn call(&self, callee: ExprId, args: &[Entry<Arg>]) -> Result<Value, Unevaluated> {
-        let callee = self.eval(callee)?;
-        let args = args
-            .iter()
-            .map(|arg| match arg {
-                Entry::One(Arg { name: None, value }) => self.eval(*value),
-                _ => Err(Unevaluated::Unsupported),
-            })
-            .collect::<Result<Vec<_>, _>>()?;
-        self.apply(callee, args)
+        let mut values = Vec::new();
+        let callee = match &self.parsed.hir.exprs[callee].kind {
+            ExprKind::Member { object, name: Name::Plain(name) } => {
+                let object = self.eval(*object)?;
+                match object.ty() {
+                    Some(ty) => {
+                        values.push(object);
+                        self.member(Value::Type(ty), *name)?
+                    }
+                    None => self.member(object, *name)?,
+                }
+            }
+            _ => self.eval(callee)?,
+        };
+        for arg in args {
+            match arg {
+                Entry::One(Arg { name: None, value }) => values.push(self.eval(*value)?),
+                _ => return Err(Unevaluated::Unsupported),
+            }
+        }
+        self.apply(callee, values)
     }
 
     /// `callee(args)` at compile time: a function value, which the evaluator runs, or a
@@ -116,7 +131,7 @@ impl Env<'_, '_> {
         match callee {
             // An interface applied to a type is its requirement struct (spec 02, section 3).
             Value::Fn(f) | Value::Interface(f) => self.cx.get::<Call>(&Instance { f, args }),
-            Value::Primitive(p) => p.apply(&args),
+            Value::Primitive(p) => p.apply(self, &args),
             _ => Err(Unevaluated::Unsupported),
         }
     }
@@ -161,6 +176,14 @@ impl Env<'_, '_> {
             })
             .collect::<Result<_, _>>()?;
         Ok(Signature { params, result: self.result(returns)? })
+    }
+
+    /// The function value the function literal `literal` evaluates to here, inside the call
+    /// evaluated in, if any.
+    #[must_use]
+    pub fn func(&self, literal: ExprId) -> Func {
+        let within = self.instance.clone().map(Arc::new);
+        Func { literal: ExprRef::new(self.file.clone(), &self.parsed.hir, literal), within }
     }
 
     /// The type the `struct` or `enum` literal `literal` evaluates to here, identified by the

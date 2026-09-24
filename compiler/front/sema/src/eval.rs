@@ -13,12 +13,20 @@ use crate::env::Unevaluated;
 use crate::item::ExprRef;
 use crate::ty::Value;
 
-/// A compile-time call: a function literal and its arguments. Types built during the call are
+/// A compile-time call: a function value and its arguments. Types built during the call are
 /// identified by it (decision 28), and its body sees its parameters bound to the arguments.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Instance {
-    pub f: ExprRef,
+    pub f: Func,
     pub args: Vec<Value>,
+}
+
+/// A function value: a function literal, and the compile-time call it was evaluated in, whose
+/// parameters its body sees too: a method of `Pair(u8)` sees `T` bound to `u8`.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct Func {
+    pub literal: ExprRef,
+    pub within: Option<Arc<Instance>>,
 }
 
 pub trait Evaluator: Send + Sync {

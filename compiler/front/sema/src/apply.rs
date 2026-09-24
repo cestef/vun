@@ -1,8 +1,11 @@
 //! What primitives do when applied at compile time. Sema and the interpreter both apply them
 //! through here, so each primitive has one definition.
 
+use overt_grammar::Narrowing;
+
 use crate::Primitive;
-use crate::env::Unevaluated;
+use crate::env::{Env, Unevaluated};
+use crate::primitives::int::Int;
 use crate::primitives::lang::Lang;
 use crate::primitives::mem::Mem;
 use crate::ty::{Signature, TyKind, Value};
@@ -13,7 +16,7 @@ impl Primitive {
     /// # Errors
     /// Returns why the application has no value: arguments of the wrong shape, or a primitive
     /// not applied at compile time yet.
-    pub fn apply(self, args: &[Value]) -> Result<Value, Unevaluated> {
+    pub fn apply(self, env: &Env<'_, '_>, args: &[Value]) -> Result<Value, Unevaluated> {
         match (self, args) {
             // `lang.Int(range)`: the integers of the range (spec 04, section 1).
             (Self::Lang(Lang::Int), [Value::Range(Some(range))]) => Ok(Value::Type(TyKind::int(range))),
@@ -34,6 +37,16 @@ impl Primitive {
             ) => {
                 let arg = arg.as_type().ok_or(Unevaluated::Unsupported)?;
                 Ok(Value::Type(TyKind::Primitive(self, vec![Value::Type(arg)]).intern()))
+            }
+            // Narrowing an integer to the integer type `T` (spec 04, rule 3).
+            (Self::Int(int), [Value::Range(_), x, Value::Type(ty)]) => {
+                let range = ty.interval().ok_or(Unevaluated::Unsupported)?;
+                match int {
+                    Int::to => x.narrow(&range, Narrowing::To),
+                    Int::wrap => x.narrow(&range, Narrowing::Wrap),
+                    Int::sat => x.narrow(&range, Narrowing::Sat),
+                    Int::fits => env.decide(x.narrow(&range, Narrowing::To).is_ok()),
+                }
             }
             _ => Err(Unevaluated::Unsupported),
         }

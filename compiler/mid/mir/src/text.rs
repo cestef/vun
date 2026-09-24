@@ -5,7 +5,6 @@ use std::fmt;
 
 use overt_index::Idx;
 use overt_origin::OriginId;
-use overt_sema::ty::NominalKind;
 use overt_span::LineCol;
 
 use crate::body::{Body, Operand, Rvalue, TerminatorKind};
@@ -35,8 +34,7 @@ impl fmt::Display for Rvalue {
             Self::Unary { op, operand } => write!(f, "{}{operand}", text(*op)),
             Self::Range { op, lo, hi: Some(hi) } => write!(f, "{lo}{}{hi}", text(*op)),
             Self::Range { op, lo, hi: None } => write!(f, "{lo}{}", text(*op)),
-            Self::Nominal { kind: NominalKind::Struct, .. } => f.write_str("struct { .. }"),
-            Self::Nominal { kind: NominalKind::Enum, .. } => f.write_str("enum { .. }"),
+            Self::Comptime(expr) => write!(f, "comptime e{}", expr.index()),
             Self::Narrow { operand, ty, narrowing } => {
                 write!(f, "{operand} narrowed to {ty} ({narrowing:?})")
             }

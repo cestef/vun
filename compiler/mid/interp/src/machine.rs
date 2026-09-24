@@ -5,7 +5,7 @@ use overt_index::IndexVec;
 use overt_mir::{Body, Local, Operand, Rvalue, TerminatorKind};
 use overt_query::Cx;
 use overt_sema::env::{Env, Unevaluated};
-use overt_sema::eval::{Call, Instance};
+use overt_sema::eval::Instance;
 use overt_sema::trap::Reason;
 use overt_sema::ty::Value;
 
@@ -89,14 +89,10 @@ impl<'b, 'a, 'db> Frame<'b, 'a, 'db> {
             Rvalue::Narrow { operand, ty, narrowing } => {
                 self.operand(operand)?.narrow(&ty.interval().ok_or(Unevaluated::Unsupported)?, *narrowing)
             }
-            Rvalue::Nominal { literal, kind } => Ok(self.env.nominal(*literal, *kind)),
+            Rvalue::Comptime(expr) => self.env.eval(*expr),
             Rvalue::Call { callee, args } => {
                 let args = args.iter().map(|a| self.operand(a)).collect::<Result<Vec<_>, _>>()?;
-                match self.operand(callee)? {
-                    Value::Fn(f) => self.env.cx.get::<Call>(&Instance { f, args }),
-                    Value::Primitive(p) => p.apply(&args),
-                    _ => Err(Unevaluated::Unsupported),
-                }
+                self.env.apply(self.operand(callee)?, args)
             }
         }
     }

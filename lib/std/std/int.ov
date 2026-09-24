@@ -1,0 +1,24 @@
+//! Integer methods (spec 04, section 3): narrowing to another integer type, an impl for every
+//! `Int(r)` over the primitives of `lang.int`.
+
+/// Bringing a value into a narrower type.
+Narrow := interface(($Self: type) -> type { struct {
+    /// Traps when the value is outside `T`.
+    to: (x: Self, $T: type) -> T = _;
+    /// Reduces the value modulo the size of `T`.
+    wrap: (x: Self, $T: type) -> T = _;
+    /// Clamps the value to the bounds of `T`.
+    sat: (x: Self, $T: type) -> T = _;
+    /// `.none` when the value is outside `T`.
+    try_to: (x: Self, $T: type) -> ?T = _;
+}});
+
+#[impl(Narrow(Int))]
+IntNarrow := ($r: Range) -> type { struct {
+    to := (x: Int(r), $T: type) -> T { lang.int.to(r, x, T) };
+    wrap := (x: Int(r), $T: type) -> T { lang.int.wrap(r, x, T) };
+    sat := (x: Int(r), $T: type) -> T { lang.int.sat(r, x, T) };
+    try_to := (x: Int(r), $T: type) -> ?T {
+        if lang.int.fits(r, x, T) { .some(lang.int.to(r, x, T)) } else { .none }
+    };
+} };

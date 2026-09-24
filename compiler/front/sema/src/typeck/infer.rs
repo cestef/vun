@@ -3,7 +3,7 @@
 use overt_grammar::{OPERATORS, TokenKind};
 use overt_hir::resolve::Res;
 use overt_hir::tree::{Arg, Entry, ExprId, ExprKind, Hir, Lit, Name};
-use overt_hir::visit::{self, Visitor};
+use overt_hir::visit;
 use overt_intern::Symbol;
 
 use super::{Known, Stage, Typer};
@@ -135,7 +135,10 @@ impl Typer<'_, '_, '_> {
                             Some(Known { ty, stage: Stage::Compile })
                         }
                         Found::Variant(_) | Found::Field(_) => None,
-                        Found::Absent | Found::Unknown => self.method(expr, ty, name),
+                        Found::Absent | Found::Unknown => {
+                            let owner = self.method(expr, ty, name)?;
+                            self.env.cx.get::<MemberType>(&(owner, name)).ok()
+                        }
                     };
                 }
                 _ => {}
@@ -151,25 +154,23 @@ impl Typer<'_, '_, '_> {
             }
             Found::Decl(decl) => {
                 self.check_visible(expr, name, &decl.visible);
-                self.methods.insert(expr);
+                self.methods.insert(expr, (known.ty, name));
                 self.env.cx.get::<MemberType>(&(known.ty, name)).ok()
             }
             Found::Variant(_) => None,
             Found::Absent | Found::Unknown => {
-                let method = self.method(expr, known.ty, name);
-                if method.is_some() {
-                    self.methods.insert(expr);
-                }
-                method
+                let owner = self.method(expr, known.ty, name)?;
+                self.methods.insert(expr, (owner, name));
+                self.env.cx.get::<MemberType>(&(owner, name)).ok()
             }
         }
     }
 
-    /// The type of the method `name` that `ty` has through an impl (spec 02, section 3).
-    fn method(&mut self, expr: ExprId, ty: Ty, name: Symbol) -> Option<Known> {
+    /// The struct declaring the method `name` that `ty` has through an impl (spec 02, section 3).
+    fn method(&mut self, expr: ExprId, ty: Ty, name: Symbol) -> Option<Ty> {
         let method = self.env.method(ty, name)?;
         self.check_visible(expr, name, &method.visible);
-        self.env.cx.get::<MemberType>(&(method.owner, name)).ok()
+        Some(method.owner)
     }
 
     /// `T{ .name = value, ... }`, or `.{ ... }` of the expected type: each field's value is
@@ -235,45 +236,5 @@ impl Typer<'_, '_, '_> {
         let key = (requirements.ok()?.as_type()?, Symbol::intern(function));
         let function = self.env.cx.get::<MemberType>(&key).ok()?;
         Some(Known { ty: function.ty.signature()?.result, stage })
-    }
-
-    /// A call of a value of function type: its arguments are checked against the parameters, and
-    /// it has the result type.
-    fn call(&mut self, callee: ExprId, args: &[Entry<Arg>]) -> Option<Known> {
-        let signature = self.typed(callee).and_then(|k| k.ty.signature());
-        // A method's receiver is passed in the mode its first parameter asks for.
-        let receiver = usize::from(self.methods.contains(&callee));
-        let hir = self.hir();
-        let (mut found, mut positional) = (Vec::new(), true);
-        for arg in args {
-            match arg {
-                Entry::One(Arg { name: None, value }) => {
-                    let param =
-                        signature.as_ref().and_then(|s| s.params.get(receiver + found.len()).copied());
-                    found.push((*value, self.typed_as(*value, param)));
-                }
-                Entry::One(Arg { value, .. }) => {
-                    positional = false;
-                    self.typed(*value);
-                }
-                Entry::Staged(staged) => {
-                    positional = false;
-                    self.staged(hir, staged, &mut |v, a: &Arg| {
-                        v.typed(a.value);
-                    });
-                }
-            }
-        }
-        let signature = signature.filter(|_| positional)?;
-        let params = signature.params.get(receiver..)?;
-        if params.len() != found.len() {
-            return None;
-        }
-        for (&param, (value, known)) in params.iter().zip(found) {
-            if let Some(known) = known {
-                self.expect(self.hir().exprs[value].origin, known, param, None);
-            }
-        }
-        Some(Known { ty: signature.result, stage: self.stage })
     }
 }

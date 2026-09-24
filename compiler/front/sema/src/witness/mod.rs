@@ -15,8 +15,8 @@ use overt_query::{Cx, Cycle, Query};
 
 use crate::Primitive;
 use crate::env::Env;
-use crate::eval::Instance;
-use crate::item::{DeclRef, ExprRef};
+use crate::eval::{Func, Instance};
+use crate::item::DeclRef;
 use crate::primitives::lang::Lang;
 use crate::ty::{Nominal, Ty, TyKind, Value};
 
@@ -29,7 +29,7 @@ pub struct ImplDecl {
     /// The attribute, where the impl is reported.
     pub attr: OriginId,
     /// `I`: its function from a type to the requirement struct.
-    pub interface: ExprRef,
+    pub interface: Func,
     /// `T`: a type, or a type constructor for every type it makes.
     pub target: Value,
     /// `I(T)` as the attribute wrote it, whose declarations are the requirements.
@@ -103,7 +103,7 @@ impl Env<'_, '_> {
     /// The interface, the target and the requirement struct of `#[impl(I(T))]` at `attr`;
     /// `None` for any other attribute. The attribute is the primitive `lang.impl`, and `I(T)`
     /// the struct its interface's function built for `T`, which records both.
-    fn impl_attr(&self, attr: ExprId) -> Option<(ExprRef, Value, Ty)> {
+    fn impl_attr(&self, attr: ExprId) -> Option<(Func, Value, Ty)> {
         let ExprKind::Call { callee, args } = &self.parsed.hir.exprs[attr].kind else { return None };
         let Ok(Value::Primitive(Primitive::Lang(Lang::r#impl))) = self.eval(*callee) else { return None };
         let [Entry::One(Arg { name: None, value })] = args.as_slice() else { return None };
