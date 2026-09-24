@@ -151,6 +151,14 @@ names derive from `vun_span::source_file!`. `&temp` borrows are rows of `borrows
 `extent` (`Primitive::borrow_mode`, `TyKind::{alike, extent}`, `Func::extents`); in `borrows/` a
 `&temp` parameter is a `Source::Lent` loan, and call results are not tied to `&temp` arguments.
 
+Since then (decisions 121, 122): `std.sync` (`critical` lending `&temp Critical`, `Shared`,
+`Atomic`, `Mutex` with a nested linear `Guard`) over `lang.mem.{cell, cell_pointer, atomic_*}`;
+`std.os` (`System`, `Stream`, `Exit`, `start` = `std.os.libc.start`). MIR: top-level bindings are
+`Role::Static` places; receivers take their mode from `MemberType`. Sema: `.name(args)` calls a
+constructor function at compile time (`Env::constructed`); `env/named.rs` gives a member of a
+`struct` literal inside a call the instance that call made (`Env::made_member`). Corpus: 202
+passed, 0 pending; MIR lowers 89 of 115 functions.
+
 Language surface since the review (decisions 99 to 105): omitted `$` arguments inferred
 (`typeck/omitted.rs`, `TypedBody::inferred`, `types.cannot_infer`, `types.arity`); variant
 constructors as values (`Value::Constructor`); `.` through owners (`Env::reach`, `Hop`);
@@ -173,16 +181,15 @@ patterns and typed annotations (89), linked values and repeats (90), layout (93)
 
 ## 7. Next steps, in order
 
-1. `std` next: output symbols (`std.fmt.print`), executors over frames (`std.task.run`,
-   `select`), `std.iter` adapters as coroutine functions, `std.os` entry points, `Allocator`
+1. `std` next: `std.fmt.print` (a `Writer` and `Format` interface, the format string parsed at
+   compile time), executors over frames (`std.task.run`, `select`), `std.iter` adapters as
+   coroutine functions, `System.args`, a Linux runtime without the C library, `Allocator`
    impls for `Fixed`, text (`Str`) and collections. Pointer primitives, `Own`, `Fixed`, `fail`,
    `expect`, `ptr`, `option`, `result`, `cmp` exist (decision 107).
 2. Leaks at scope exits inside a body (found at the function's return only today), `fixed` and
    `scoped` kinds, frames' `end` running their defers.
 3. Borrow rules left: `&static`, top-level bindings as free values, frames'
-   region from their parameters, `critical_escape.vun` (needs `std.sync`: `critical` takes
-   `$F: Call((&temp Critical), R)`, so the corpus program and spec 07 write `cs: &temp Critical`;
-   `Shared` over `lang.mem.Cell`, `Atomic` over new atomic primitives), a label where a
+   region from their parameters, a label where a
    conflicting borrow is used later.
 4. The driver side of `std.build`: run `build` (needs `&mut` at compile time, step 8) and read
    the recorded plan; `lib/targets` as a typed package so `.target = targets...` types.
