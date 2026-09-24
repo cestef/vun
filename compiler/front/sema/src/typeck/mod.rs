@@ -184,6 +184,9 @@ pub struct Typer<'e, 'a, 'db> {
     /// How many `unsafe` expressions enclose the expression typed: where unchecked operations
     /// are vouched for (spec 07, section 4).
     vouched: usize,
+    /// How many `$if` and `$for` whose condition or items are not known here enclose the
+    /// expression typed: code that may never run, whose `$e` is typed but not run.
+    undecided: usize,
     pub diag: DiagCtxt,
 }
 
@@ -207,6 +210,7 @@ impl<'e, 'a, 'db> Typer<'e, 'a, 'db> {
             yields: None,
             framing: None,
             vouched: 0,
+            undecided: 0,
             diag: DiagCtxt::new(),
         }
     }

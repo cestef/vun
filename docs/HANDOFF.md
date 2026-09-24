@@ -164,7 +164,9 @@ free), tuple positions (`Env::position`, typed in `typeck/record.rs`, MIR `Proje
 range slices lowered as borrows of item runs (`Part::run` at compile time), witnesses also looked
 up in the type's own package (`Env::impl_files(home)`), and `std.fmt` (`Writer`, `Format`,
 `print` splitting the format at compile time; impls for integers, byte slices and arrays).
-Missing: a count check of `print`'s arguments needs library diagnostics (`std.diag.error`).
+Library diagnostics (decision 125): `lang.diag.error`, `std.diag.error`, `comptime.reported`
+moved to the caller (`Typer::absorb`), `$e` run while typing (`Typer::undecided` counts undecided
+`$if`/`$for`), `Typer::evaluating` (evaluation with the types found so far).
 
 Language surface since the review (decisions 99 to 105): omitted `$` arguments inferred
 (`typeck/omitted.rs`, `TypedBody::inferred`, `types.cannot_infer`, `types.arity`); variant
@@ -188,8 +190,7 @@ patterns and typed annotations (89), linked values and repeats (90), layout (93)
 
 ## 7. Next steps, in order
 
-1. `std` next: library diagnostics (`std.diag.error` over `lang.diag`, so `print` reports a
-   format that does not match its arguments where it is written), executors over frames (`std.task.run`, `select`), `std.iter` adapters as
+1. `std` next: executors over frames (`std.task.run`, `select`), `std.iter` adapters as
    coroutine functions, `System.args`, a Linux runtime without the C library, `Allocator`
    impls for `Fixed`, text (`Str`) and collections. Pointer primitives, `Own`, `Fixed`, `fail`,
    `expect`, `ptr`, `option`, `result`, `cmp` exist (decision 107).

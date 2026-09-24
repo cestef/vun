@@ -74,6 +74,17 @@ impl Value {
         Self::Array(text.bytes().map(|b| Self::Int(Integer::from(i128::from(b)))).collect())
     }
 
+    /// The text an array of bytes holds, as `Self::string` makes it.
+    #[must_use]
+    pub fn text(&self) -> Option<String> {
+        let Self::Array(bytes) = self else { return None };
+        let bytes = bytes.iter().map(|b| match b {
+            Self::Int(n) => n.to_i128().and_then(|n| u8::try_from(n).ok()),
+            _ => None,
+        });
+        String::from_utf8(bytes.collect::<Option<_>>()?).ok()
+    }
+
     /// The items a `$for` steps through: those of an array, or the integers of a finite range.
     #[must_use]
     pub fn items(self) -> Option<Vec<Self>> {

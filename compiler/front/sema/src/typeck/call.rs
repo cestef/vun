@@ -2,14 +2,15 @@
 //! signature. A signature whose types name `$` parameters, such as `($T: type, x: u8) -> T`, is
 //! typed per call, inside the callee with those parameters bound to the call's arguments.
 
-use vun_diag::{ChildKind, Diagnostic, Msg, TraceFrame, errors};
+use vun_diag::{ChildKind, DiagCtxt, Diagnostic, Msg, TraceFrame, errors};
 use vun_hir::tree::{Arg, Entry, ExprId, ExprKind};
 use vun_hir::visit::Visitor;
+use vun_origin::OriginTable;
 use vun_query::Cx;
 
 use super::omitted::{Plan, Unifier};
 use super::{Known, Typed, Typer};
-use crate::env::Env;
+use crate::env::{Env, Unevaluated};
 use crate::eval::{Func, Instantiation};
 use crate::member::MemberValue;
 use crate::ty::{Signature, Ty, Value};
@@ -49,15 +50,14 @@ impl Typer<'_, '_, '_> {
         if let Some(i) = instantiation.as_ref().filter(|i| i.generic(self.env().cx))
             && let Some(typed) = self.env().cx.get::<Typed>(i)
         {
-            let frame = TraceFrame {
-                msg: "in the instantiation this call reaches".into(),
-                origin: self.hir().exprs[call].origin,
-            };
-            self.diag.absorb_through(&typed.diag, &frame);
+            self.absorb(call, i, &typed.diag);
         }
         let signature = known
             .filter(|_| inferred.is_none())
-            .or_else(|| instantiation?.signature(self.env().cx))
+            .or_else(|| {
+                let signature = instantiation?.signature(self.env().cx);
+                self.reported(call, signature).ok()
+            })
             .or_else(|| self.primitive_signature(callee, args));
         let hir = self.hir();
         let (mut found, mut positional) = (Vec::new(), true);
@@ -243,6 +243,28 @@ impl Typer<'_, '_, '_> {
     }
 }
 
+impl Typer<'_, '_, '_> {
+    /// Takes the reports of the instantiation `i` that `call` reaches, each traced through the
+    /// call. A library's report that points into the function reporting it is shown at the call,
+    /// which led to it (spec 10, section 3).
+    fn absorb(&mut self, call: ExprId, i: &Instantiation, reports: &DiagCtxt) {
+        let origin = self.hir().exprs[call].origin;
+        let origins = self.env().cx.db().resource::<OriginTable>();
+        let callee = origins.source_span(i.f.literal.expr.origin).file;
+        let mut placed = DiagCtxt::new();
+        for d in reports.sorted() {
+            let inside = d.primary.as_ref().is_some_and(|p| origins.source_span(p.origin).file == callee);
+            placed.report(if d.id == errors::COMPTIME_REPORTED && inside {
+                d.clone().moved(origin, Msg::new().text("reported here"))
+            } else {
+                d.clone()
+            });
+        }
+        let frame = TraceFrame { msg: "in the instantiation this call reaches".into(), origin };
+        self.diag.absorb_through(&placed, &frame);
+    }
+}
+
 impl Instantiation {
     /// Whether this is an instantiation of generic code: a function built in a compile-time
     /// call, or one with `$` parameters, all bound.
@@ -253,8 +275,8 @@ impl Instantiation {
     }
 
     /// The signature of this instantiation, its types evaluated with its `$` parameters bound.
-    fn signature(&self, cx: &Cx<'_>) -> Option<Signature> {
-        let inside = Env::inside(cx, &self.f, self.args.iter().cloned())?;
-        inside.literal_signature(self.f.literal.expr.id, &self.args).ok()
+    fn signature(&self, cx: &Cx<'_>) -> Result<Signature, Unevaluated> {
+        let inside = Env::inside(cx, &self.f, self.args.iter().cloned()).ok_or(Unevaluated::Absent)?;
+        inside.literal_signature(self.f.literal.expr.id, &self.args)
     }
 }

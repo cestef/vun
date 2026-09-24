@@ -16,6 +16,8 @@ pub enum Primitive {
     Bounds(bounds::Bounds),
     /// `lang.comptime`
     Comptime(comptime::Comptime),
+    /// `lang.diag`
+    Diag(diag::Diag),
     /// `lang.float`
     Float(float::Float),
     /// `lang.flow`
@@ -65,6 +67,7 @@ impl Primitive {
         Self::Bounds(bounds::Bounds::first),
         Self::Bounds(bounds::Bounds::ends),
         Self::Comptime(comptime::Comptime::fuel),
+        Self::Diag(diag::Diag::error),
         Self::Float(float::Float::mul_add),
         Self::Flow(flow::Flow::tail),
         Self::Hint(hint::Hint::cold),
@@ -130,6 +133,7 @@ impl Primitive {
         Self::Meta(meta::Meta::origin),
         Self::Meta(meta::Meta::embed),
         Self::Meta(meta::Meta::fields),
+        Self::Meta(meta::Meta::items),
         Self::Meta(meta::Meta::name_of),
         Self::Meta(meta::Meta::size),
         Self::Meta(meta::Meta::align),
@@ -176,6 +180,7 @@ impl Primitive {
             Self::Arch(_) => arch::Arch::NAMESPACE,
             Self::Bounds(_) => bounds::Bounds::NAMESPACE,
             Self::Comptime(_) => comptime::Comptime::NAMESPACE,
+            Self::Diag(_) => diag::Diag::NAMESPACE,
             Self::Float(_) => float::Float::NAMESPACE,
             Self::Flow(_) => flow::Flow::NAMESPACE,
             Self::Hint(_) => hint::Hint::NAMESPACE,
@@ -204,6 +209,7 @@ impl Primitive {
             Self::Arch(p) => p.name(),
             Self::Bounds(p) => p.name(),
             Self::Comptime(p) => p.name(),
+            Self::Diag(p) => p.name(),
             Self::Float(p) => p.name(),
             Self::Flow(p) => p.name(),
             Self::Hint(p) => p.name(),

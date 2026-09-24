@@ -61,11 +61,16 @@ pieces := ($format: &[u8]) -> [holes(format) + 1]Piece {
     out
 };
 
-/// Writes `format` to `w`, each `{}` replaced by the next item of `args`.
+/// Writes `format` to `w`, each `{}` replaced by the next item of `args`, which must have one item
+/// for each `{}`.
 print := ($W: Writer, w: &mut W, $format: &[u8], $A: type, args: A) -> Result((), W.Error) {
-    $for piece in pieces(format) {
-        w.write_all(piece.text)?;
-        $if piece.arg < holes(format) { args.$(piece.arg).format(w)?; }
+    $if holes(format) != lang.meta.items(A).len() {
+        $std.diag.error(.{ .msg = "the format string takes one argument for each `{}`" });
+    } else {
+        $for piece in pieces(format) {
+            w.write_all(piece.text)?;
+            $if piece.arg < holes(format) { args.$(piece.arg).format(w)?; }
+        }
     }
     .ok(())
 };

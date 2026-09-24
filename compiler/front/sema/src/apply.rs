@@ -8,10 +8,12 @@ use crate::env::{Env, Unevaluated};
 use crate::int::{Integer, Interval};
 use crate::layout::Layouts;
 use crate::primitives::bounds::Bounds;
+use crate::primitives::diag::Diag;
 use crate::primitives::int::Int;
 use crate::primitives::lang::Lang;
 use crate::primitives::mem::Mem;
 use crate::primitives::meta::Meta;
+use crate::trap::Reason;
 use crate::ty::{Signature, TyKind, Value};
 
 impl Primitive {
@@ -82,6 +84,23 @@ impl Primitive {
                     Int::magnitude | Int::abs => Err(Unevaluated::Unsupported),
                 }
             }
+            // Library diagnostics (spec 10, section 3).
+            (Self::Diag(Diag::error), [message, at]) => {
+                let message = message.text().ok_or(Unevaluated::Unsupported)?;
+                // An optional place: the origin a variant's payload holds, if it holds one.
+                let at = match at {
+                    Value::Variant { payload, .. } => match payload.as_slice() {
+                        [Value::Origin(origin)] => Some(*origin),
+                        _ => None,
+                    },
+                    _ => None,
+                };
+                Err(Unevaluated::trap(Reason::Reported { message, at }))
+            }
+            (Self::Meta(Meta::items), [ty]) => match &*ty.as_type().ok_or(Unevaluated::Unsupported)? {
+                TyKind::Tuple(items) => Ok(Value::Array(items.iter().map(|&t| Value::Type(t)).collect())),
+                _ => Err(Unevaluated::Unsupported),
+            },
             // Reflection (spec 03, section 6).
             (Self::Meta(Meta::fields), [ty]) => {
                 env.fields(self, ty.as_type().ok_or(Unevaluated::Unsupported)?)

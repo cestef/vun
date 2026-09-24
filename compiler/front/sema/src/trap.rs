@@ -8,7 +8,7 @@ use vun_origin::OriginId;
 use crate::env::Unevaluated;
 
 /// Why a trap fired.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Reason {
     DivisionByZero,
     /// A shift by more than any width can hold.
@@ -19,6 +19,12 @@ pub enum Reason {
     Budget,
     /// An index outside the items indexed.
     Bounds,
+    /// Library code reported an error (`lang.diag.error`): its message, and where it points
+    /// when it names a place.
+    Reported {
+        message: String,
+        at: Option<OriginId>,
+    },
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -31,13 +37,14 @@ pub struct Trap {
 }
 
 impl Reason {
-    fn msg(self) -> Msg {
+    fn msg(&self) -> Msg {
         Msg::new().text(match self {
             Self::DivisionByZero => "division by zero",
             Self::Shift => "shift past any width",
             Self::Narrowing => "value outside the type it is narrowed to",
             Self::Budget => "the call ran out of its step budget",
             Self::Bounds => "index outside the items",
+            Self::Reported { message, .. } => return Msg::new().text(message.clone()),
         })
     }
 }
@@ -70,13 +77,23 @@ impl Trap {
     /// The report of this trap, fired while evaluating the expression at `root`.
     #[must_use]
     pub fn report(&self, root: OriginId) -> Diagnostic {
-        let id = match self.reason {
-            Reason::Budget => errors::COMPTIME_EXHAUSTED,
-            _ => errors::COMPTIME_TRAP,
+        // A library's report is its own message; a trap says evaluation failed, and why.
+        let (id, failed) = match &self.reason {
+            Reason::Reported { .. } => (errors::COMPTIME_REPORTED, false),
+            Reason::Budget => (errors::COMPTIME_EXHAUSTED, true),
+            _ => (errors::COMPTIME_TRAP, true),
         };
-        let msg = Msg::new().text("compile-time evaluation failed: ").append(self.reason.msg());
-        let mut d = Diagnostic::error(id, msg).at(root, None);
-        if let Some(at) = self.at.filter(|&at| at != root) {
+        let msg = if failed { Msg::new().text("compile-time evaluation failed: ") } else { Msg::new() };
+        // A report naming a place is shown there, the value that needed it labeled.
+        let mut d = match self.reason {
+            Reason::Reported { at: Some(at), .. } => Diagnostic::error(id, msg.append(self.reason.msg()))
+                .at(at, None)
+                .label(root, Some(Msg::new().text("while computing this"))),
+            _ => Diagnostic::error(id, msg.append(self.reason.msg())).at(root, None),
+        };
+        // Where a library's report fires is always its call of `lang.diag.error`: not shown.
+        if let Some(at) = self.at.filter(|&at| at != root && !matches!(self.reason, Reason::Reported { .. }))
+        {
             d = d.label(at, Some(Msg::new().text("it fires here")));
         }
         d.trace = self

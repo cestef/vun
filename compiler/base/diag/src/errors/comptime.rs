@@ -4,3 +4,4 @@ use crate::DiagId;
 pub const COMPTIME: DiagId = DiagId::new("lang.errors.comptime");
 pub const COMPTIME_TRAP: DiagId = DiagId::new("lang.errors.comptime.trap");
 pub const COMPTIME_EXHAUSTED: DiagId = DiagId::new("lang.errors.comptime.exhausted");
+pub const COMPTIME_REPORTED: DiagId = DiagId::new("lang.errors.comptime.reported");

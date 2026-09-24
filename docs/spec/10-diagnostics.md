@@ -146,7 +146,11 @@ $if !fmt.valid(spec) {
 }
 ```
 
-- `std.diag.error` stops evaluation with a real diagnostic; `warn` and `note` do not.
+- `std.diag.error` stops evaluation with a real diagnostic (`comptime.reported`, over
+  `lang.diag.error($message, $at)`); `warn` and `note` do not. A report without `.at` is shown at
+  the call that led to it from outside the reporting code, the place it was reported labeled; a
+  `$e` is run while typing wherever it surely runs and all it reads is known, and a `$if` or
+  `$for` not decided there runs none of its `$e`. `.fixes` are carried, not shown yet.
 - Spans come from `std.meta.caller()` (the call site), `std.meta.span(arg)` (a compile-time argument,
   including substrings of literals), and `std.meta.origin(x)`.
 - `#[deprecated(.{ .note = "...", .use = new_fn })]` generates a `Safe` fix that rewrites calls,

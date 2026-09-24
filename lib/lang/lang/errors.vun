@@ -80,6 +80,7 @@ meta := struct {
 comptime := struct {
     trap := diag.Diag{ .explanation = meta.embed("errors/comptime/trap.md") };
     exhausted := diag.Diag{ .explanation = meta.embed("errors/comptime/exhausted.md") };
+    reported := diag.Diag{ .explanation = meta.embed("errors/comptime/reported.md") };
 };
 
 /// Place states (spec 05, section 2).

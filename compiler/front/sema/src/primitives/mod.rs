@@ -3,6 +3,7 @@ pub mod abi;
 pub mod arch;
 pub mod bounds;
 pub mod comptime;
+pub mod diag;
 pub mod float;
 pub mod flow;
 pub mod hint;

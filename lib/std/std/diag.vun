@@ -1,1 +1,20 @@
 //! Diagnostics from compile-time code (spec 10, section 3).
+
+/// What library code reports.
+Report := struct {
+    /// Where the problem is written; by default, the call that led to the report.
+    at: ?lang.meta.Origin = .none,
+    msg: &[u8],
+    /// Edits that would fix it. Carried, not shown yet.
+    fixes: &[Fix] = &[],
+};
+
+/// An edit fixing a reported problem, and how safe applying it is.
+Fix := struct {
+    msg: &[u8],
+    safety: lang.diag.Safety,
+    text: &[u8],
+};
+
+/// Stops compile-time evaluation with `report` as an error.
+error := ($report: Report) -> lang.never { lang.diag.error(report.msg, report.at) };

@@ -13,6 +13,8 @@ pub enum Meta {
     embed,
     /// The fields of the struct type `T` in declaration order, generated ones included.
     fields,
+    /// The item types of the tuple type `T`, in order.
+    items,
     /// The name of `T` as diagnostics show it: a `struct` or `enum` literal by the declaration it is
     /// written in, with its compile-time arguments.
     name_of,
@@ -36,6 +38,7 @@ impl Meta {
         Self::origin,
         Self::embed,
         Self::fields,
+        Self::items,
         Self::name_of,
         Self::size,
         Self::align,
@@ -54,6 +57,7 @@ impl Meta {
             Self::origin => "origin",
             Self::embed => "embed",
             Self::fields => "fields",
+            Self::items => "items",
             Self::name_of => "name_of",
             Self::size => "size",
             Self::align => "align",

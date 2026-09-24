@@ -10,12 +10,12 @@ use vun_origin::OriginId;
 use std::sync::Arc;
 
 use super::{Known, Stage, TypedBody, Typer};
-use crate::env::Unevaluated;
+use crate::env::{Env, Unevaluated};
 use crate::int::{Interval, Storage};
 use crate::ty::{Ty, TyKind};
 use crate::visible::Visible;
 
-impl Typer<'_, '_, '_> {
+impl<'a, 'db> Typer<'_, 'a, 'db> {
     /// Checks that a value of `found`, written at `at`, is accepted where `expected` is, the type
     /// written at `because` when it is written.
     pub(super) fn expect(&mut self, at: OriginId, found: Known, expected: Ty, because: Option<ExprId>) {
@@ -66,22 +66,33 @@ impl Typer<'_, '_, '_> {
                 let outer = std::mem::replace(&mut self.stage, Stage::Compile);
                 self.typed(expr);
                 self.stage = outer;
-                let types = TypedBody {
-                    types: self.types.iter().map(|(&e, &k)| (e, k)).collect(),
-                    ..TypedBody::default()
-                };
-                self.env().clone().typed_by(Some(Arc::new(types))).ty(expr)
+                self.evaluating().ty(expr)
             }
             evaluated => evaluated,
         };
-        match evaluated {
-            Ok(ty) => Some(ty),
-            Err(Unevaluated::Trapped(trap)) => {
-                self.diag.error(trap.report(self.hir().exprs[expr].origin));
-                None
-            }
-            Err(_) => None,
+        self.reported(expr, evaluated).ok()
+    }
+
+    /// The environment evaluating what is typed so far, with the types found for it: forms
+    /// typed by their context, and methods called on values of no type of their own, such as
+    /// arrays, dispatch by them.
+    pub(super) fn evaluating(&self) -> Env<'a, 'db> {
+        let types =
+            TypedBody { types: self.types.iter().map(|(&e, &k)| (e, k)).collect(), ..TypedBody::default() };
+        self.env().clone().typed_by(Some(Arc::new(types)))
+    }
+
+    /// What evaluating at compile time for `expr` gave, a trap that fired in it reported at
+    /// `expr`, the root that needed the value.
+    pub(super) fn reported<T>(
+        &mut self,
+        expr: ExprId,
+        evaluated: Result<T, Unevaluated>,
+    ) -> Result<T, Unevaluated> {
+        if let Err(Unevaluated::Trapped(trap)) = &evaluated {
+            self.diag.error(trap.report(self.hir().exprs[expr].origin));
         }
+        evaluated
     }
 
     /// Reports the run-time intermediate `expr`, of range `range`, as needing more bits than the

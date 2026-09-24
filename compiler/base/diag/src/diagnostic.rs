@@ -65,6 +65,16 @@ pub struct Diagnostic {
 }
 
 impl Diagnostic {
+    /// This diagnostic shown at `origin` instead, where it was shown becoming a label saying
+    /// `msg`.
+    #[must_use]
+    pub fn moved(mut self, origin: OriginId, msg: Msg) -> Self {
+        if let Some(old) = self.primary.replace(Label { origin, msg: None }) {
+            self.labels.insert(0, Label { origin: old.origin, msg: Some(msg) });
+        }
+        self
+    }
+
     #[must_use]
     pub fn new(id: DiagId, severity: Severity, message: impl Into<Msg>) -> Self {
         Self {

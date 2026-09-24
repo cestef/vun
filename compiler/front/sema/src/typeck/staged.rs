@@ -22,15 +22,18 @@ impl<'a, 'db> Typer<'_, 'a, 'db> {
         match staged {
             Staged::If { cond, then, otherwise, .. } => {
                 self.typed(*cond);
-                match self.env().eval(*cond).and_then(|c| self.env().holds(&c)) {
+                let env = self.evaluating();
+                let holds = env.eval(*cond).and_then(|c| env.holds(&c));
+                match self.reported(*cond, holds) {
                     Ok(holds) => walk_list(self, hir, if holds { then } else { otherwise }, entry),
-                    Err(_) => walk_staged(self, hir, staged, entry),
+                    Err(_) => self.undecided(|t| walk_staged(t, hir, staged, entry)),
                 }
             }
             Staged::For { pat, iter, body, .. } => {
-                let items = self.env().eval(*iter).ok().and_then(Value::items);
+                let items = self.evaluating().eval(*iter);
+                let items = self.reported(*iter, items).ok().and_then(Value::items);
                 let (Some(items), PatKind::Bind(binder)) = (items, &hir.pats[*pat].kind) else {
-                    walk_staged(self, hir, staged, entry);
+                    self.undecided(|t| walk_staged(t, hir, staged, entry));
                     return;
                 };
                 let item = self.typed(*iter).and_then(|k| self.iteration(k.ty)).map(|(_, item)| item);
@@ -60,6 +63,12 @@ impl<'a, 'db> Typer<'_, 'a, 'db> {
         let outer = std::mem::replace(&mut self.stage, Stage::Compile);
         let known = self.typed(operand);
         self.stage = outer;
+        // Where it surely runs and everything it reads is known, it runs now, and what it
+        // reports is reported here.
+        if self.undecided == 0 {
+            let value = self.evaluating().eval(operand);
+            let _ = self.reported(expr, value);
+        }
         match known.and_then(|k| k.ty.quoted()) {
             Some(ty) => Some(Known { ty, stage: self.stage }),
             None => known,
@@ -70,12 +79,21 @@ impl<'a, 'db> Typer<'_, 'a, 'db> {
     /// condition not known here, the `if` is typed as a plain one.
     fn selected(&mut self, expr: ExprId, branch: ExprId) -> Option<Known> {
         let expected = self.expected(expr);
-        match self.env().select(branch) {
+        let selected = self.env().select(branch);
+        match self.reported(branch, selected) {
             Ok(Selected::Block(block)) => self.block_value(block, expected),
             Ok(Selected::Expr(otherwise)) => self.typed_as(otherwise, expected),
             Ok(Selected::Unit) => Some(Known { ty: TyKind::unit(), stage: Stage::Compile }),
-            Err(_) => self.typed_as(branch, expected),
+            Err(_) => self.undecided(|t| t.typed_as(branch, expected)),
         }
+    }
+
+    /// `f` run on code that may never run, under a `$if` or `$for` not decided here.
+    fn undecided<R>(&mut self, f: impl FnOnce(&mut Self) -> R) -> R {
+        self.undecided += 1;
+        let result = f(self);
+        self.undecided -= 1;
+        result
     }
 
     /// Types what `f` types in `env`, apart from the rest of the body; reports stay with it.

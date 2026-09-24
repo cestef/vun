@@ -47,3 +47,28 @@ main := (sys: &mut std.os.System) -> std.os.Exit {
     let ids: Vec<_> = fixture.reported(&file).into_iter().map(|(id, _)| id).collect();
     assert_eq!(ids, [errors::TYPES_NO_MEMBER], "`P` has no `Format` impl");
 }
+
+#[test]
+fn library_reports_are_shown_at_the_call_that_led_to_them() {
+    let fixture = Fixture::new("std-reports");
+    let file = fixture.root.write(
+        "reports.vun",
+        "\
+checked := ($n: u8) -> u8 {
+    $if n > 9 { $std.diag.error(.{ .msg = \"one digit at most\" }); }
+    n
+};
+digit := () -> u8 { checked(12) };
+fine := () -> u8 { checked(7) };
+main := (sys: &mut std.os.System) -> std.os.Exit {
+    mut out := sys.stdout();
+    std.fmt.print(&mut out, \"{} {}\\n\", .{ 1 });
+    std.fmt.print(&mut out, \"{}\\n\", .{ 1 });
+    .ok
+};
+",
+    );
+    let lines: Vec<_> = fixture.reported(&file);
+    let ids: Vec<_> = lines.iter().map(|(id, _)| id.clone()).collect();
+    assert_eq!(ids, [errors::COMPTIME_REPORTED, errors::COMPTIME_REPORTED], "{lines:?}");
+}

@@ -6,3 +6,8 @@ Safety := enum { safe, \unsafe, placeholder, display_only };
 Diag := struct {
     explanation: &static [_]u8,
 };
+
+/// Stops compile-time evaluation with an error saying `message`, shown at `at`, or else at the
+/// call that led to it from outside the reporting code, with the calls it was reported in
+/// (spec 10, section 3).
+error: ($message: &[u8], $at: ?lang.meta.Origin) -> lang.never = _;

@@ -18,6 +18,8 @@ Field := struct {
 
 /// The fields of the struct type `T` in declaration order, generated ones included.
 fields: ($T: type) -> &[Field] = _;
+/// The item types of the tuple type `T`, in order.
+items: ($T: type) -> &[type] = _;
 /// The name of `T` as diagnostics show it: a `struct` or `enum` literal by the declaration it is
 /// written in, with its compile-time arguments.
 name_of: ($T: type) -> &[u8] = _;
