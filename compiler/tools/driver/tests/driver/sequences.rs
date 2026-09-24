@@ -24,8 +24,8 @@ digit: Digit = 9;
     assert_eq!(
         fixture.reported(&file),
         [
-            found("Int(0..=18446744073709551615)"),
-            found("Int(0..=18446744073709551615)"),
+            found("Int(0..2^64)"),
+            found("Int(0..2^64)"),
             (errors::TYPES_MISMATCH, "expected `u8`, found `&[Int(0..=255)]`".to_owned()),
             found("Bounds(Int(0..=254))"),
         ]

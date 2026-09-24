@@ -25,7 +25,7 @@ argument := () -> u8 { pick(3) };
         [
             fit("Int(0..=$square(3))"),
             fit("Int(0..=pick(2 > 1))"),
-            found("bool", "Int(0..=18446744073709551615)"),
+            found("bool", "Int(0..2^64)"),
             found("bool", "Int(3..=3)"),
         ]
     );

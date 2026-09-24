@@ -106,11 +106,11 @@ error[int.does_not_fit]: value does not fit the result type
  --> src/geom.vun:2:5
   |
 1 | norm1 := (p: Point) -> u32 {
-  |                        --- result type is u32 = Int(0..=4294967295)
+  |                        --- result type is u32 = Int(0..2^32)
 2 |     p.x.abs() + p.y.abs()
-  |     ^^^^^^^^^^^^^^^^^^^^^ this is Int(0..=4294967296)
+  |     ^^^^^^^^^^^^^^^^^^^^^ this is Int(0..=2^32)
   |
-  = note: i32.abs() is Int(0..=2147483648), so the sum reaches 2^32
+  = note: i32.abs() is Int(0..=2^31), so the sum reaches 2^32
 help: widen the result type [safe]
   |
 1 | norm1 := (p: Point) -> u64 {
@@ -121,6 +121,10 @@ help: or narrow, choosing what happens at the limit [placeholder]
   |
   = explain: vun explain lang.errors.int.does_not_fit
 ```
+
+Types are shown as their values: an integer type by its range, whose bounds of more than 17 bits
+are written by the power of two they lie within 16 of (`2^64 - 1`), and a range ending just below
+a power of two as the half-open range to it, so `u64` reads `Int(0..2^64)`.
 
 Errors in generated code show the chain:
 

@@ -45,6 +45,12 @@ impl Integer {
         Self(BigInt::from(1) << exponent)
     }
 
+    /// The number of bits of the magnitude: 0 for zero, `k + 1` for `2^k`.
+    #[must_use]
+    pub fn bits(&self) -> u64 {
+        self.0.magnitude().bits()
+    }
+
     /// The quotient rounded toward zero, or `None` for a zero divisor.
     #[must_use]
     pub fn checked_div(&self, divisor: &Self) -> Option<Self> {

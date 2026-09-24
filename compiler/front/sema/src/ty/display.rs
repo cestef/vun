@@ -4,14 +4,20 @@
 use std::fmt;
 
 use super::{Nominal, NominalKind, TyKind, Value};
-use crate::int::Extended;
+use crate::int::{Extended, Integer};
 
 impl fmt::Display for TyKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if let Some(range) = self.interval() {
-            return match range.hi() {
-                Extended::PosInf => write!(f, "Int({}..)", Bound(range.lo())),
-                hi => write!(f, "Int({}..={})", Bound(range.lo()), Bound(hi)),
+            // A range ending just below a power of two reads as the half-open range to it:
+            // `Int(0..2^64)`.
+            let past = range.hi().finite().map(|hi| hi + &Integer::from(1));
+            return match (range.hi(), past) {
+                (Extended::PosInf, _) => write!(f, "Int({}..)", Bound(range.lo())),
+                (_, Some(past)) if Power::of(&past).is_some_and(|p| p.offset == 0) => {
+                    write!(f, "Int({}..{})", Bound(range.lo()), Bound(&Extended::Finite(past)))
+                }
+                (hi, _) => write!(f, "Int({}..={})", Bound(range.lo()), Bound(hi)),
             };
         }
         if let Some(sig) = self.signature() {
@@ -139,8 +145,53 @@ struct Bound<'a>(&'a Extended);
 impl fmt::Display for Bound<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.0 {
-            Extended::Finite(n) => write!(f, "{n}"),
+            Extended::Finite(n) => match Power::of(n) {
+                Some(power) => power.fmt(f),
+                None => write!(f, "{n}"),
+            },
             Extended::NegInf | Extended::PosInf => f.write_str("_"),
+        }
+    }
+}
+
+/// A large integer written by the power of two it lies near: `2^64 - 1`, `-2^31`.
+struct Power {
+    negative: bool,
+    exponent: u64,
+    /// What is added to `±2^exponent`, small.
+    offset: i128,
+}
+
+impl Power {
+    /// Integers of at most this many bits are written in decimal: up to `2^16`, so that `u16`
+    /// reads `Int(0..=65535)`.
+    const DECIMAL_BITS: u64 = 17;
+    /// How far from the power an integer may lie and still be written by it.
+    const NEAR: u128 = 16;
+
+    fn of(n: &Integer) -> Option<Self> {
+        let negative = n.is_negative();
+        let magnitude = n.abs();
+        if magnitude.bits() <= Self::DECIMAL_BITS {
+            return None;
+        }
+        // The power just above the magnitude, or the one it is at or just past.
+        [magnitude.bits(), magnitude.bits() - 1].into_iter().find_map(|exponent| {
+            let power = Integer::power_of_two(u32::try_from(exponent).ok()?);
+            let offset = (&magnitude - &power).to_i128().filter(|d| d.unsigned_abs() <= Self::NEAR)?;
+            Some(Self { negative, exponent, offset: if negative { -offset } else { offset } })
+        })
+    }
+}
+
+impl fmt::Display for Power {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let sign = if self.negative { "-" } else { "" };
+        write!(f, "{sign}2^{}", self.exponent)?;
+        match self.offset {
+            0 => Ok(()),
+            d if d > 0 => write!(f, " + {d}"),
+            d => write!(f, " - {}", -d),
         }
     }
 }

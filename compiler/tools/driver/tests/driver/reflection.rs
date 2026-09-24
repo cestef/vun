@@ -23,7 +23,7 @@ named := (n: Named) -> bool { n.Config };
     let found =
         |expected: &str, ty: &str| (errors::TYPES_MISMATCH, format!("expected `{expected}`, found `{ty}`"));
     let reported = [
-        found("u32", "Option(Int(0..=4294967295))"),
+        found("u32", "Option(Int(0..2^32))"),
         found("u32", "Option(bool)"),
         found("u8", "&[Int(0..=255)]"),
         found("bool", "Int(0..=255)"),
