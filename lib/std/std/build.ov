@@ -6,5 +6,7 @@ Package := lang.interface(($Self: type) -> type { struct {
     build: (b: &mut Build) = _;
 }});
 
-Manifest: type = _;
-Build: type = _;
+/// A package's description, as `build.ov` states it (spec 12, section 2).
+Manifest := struct { name: &[u8], version: &[u8] };
+/// The build being planned, which `build` adds steps to; the driver makes it.
+Build := struct { _plan: u32 };

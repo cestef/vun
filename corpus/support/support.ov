@@ -27,7 +27,7 @@ parse := (f: &File, cfg: &out Config) -> Result((), Error) {
 };
 
 /// Capabilities and devices. Asynchronous stand-ins wait on `ready` once.
-ready: std.task.Event = _;
+ready := std.task.Event{ .id = 0 };
 Duration := enum { ms(u32) };
 Critical := struct {};
 Dma := struct {};

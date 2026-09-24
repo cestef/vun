@@ -17,7 +17,7 @@ Narrow := interface(($Self: type) -> type { struct {
 }});
 
 #[impl(Narrow(Int))]
-IntNarrow := ($r: Range) -> type { struct {
+IntNarrow := ($r: lang.Range) -> type { struct {
     to := (x: Int(r), $T: type) -> T { lang.int.to(r, x, T) };
     wrap := (x: Int(r), $T: type) -> T { lang.int.wrap(r, x, T) };
     sat := (x: Int(r), $T: type) -> T { lang.int.sat(r, x, T) };

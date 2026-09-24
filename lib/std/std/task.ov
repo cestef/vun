@@ -5,6 +5,7 @@ Wait := struct {
     event: &Event,
 };
 
-Event: type = _;
+/// Something that happens, which an executor watches: an interrupt, a timer, a device.
+Event := struct { id: u32 };
 
 Async := ($R: type) -> lang.Interface { lang.Coroutine(Wait, R) };

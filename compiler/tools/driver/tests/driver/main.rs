@@ -12,6 +12,7 @@ mod forms;
 mod generics;
 mod impls;
 mod layout;
+mod library;
 mod loops;
 mod markers;
 mod mir;

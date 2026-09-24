@@ -1,6 +1,7 @@
 //! Checking a file (spec 01, 02 and 04): each namespace member's value against its annotation,
 //! each function body, wherever the types are known, and where restricted names are visible.
 
+mod holes;
 mod impls;
 mod layout;
 mod visible;
@@ -31,7 +32,8 @@ impl Query for Checked {
 
     fn compute(cx: &Cx<'_>, key: &FileRef) -> Self::Value {
         let env = Env::of(cx, key)?;
-        let mut checker = Checker { env: &env, diag: DiagCtxt::new(), homes: vec![env.home()] };
+        let mut checker =
+            Checker { env: &env, diag: DiagCtxt::new(), homes: vec![env.home()], interfaces: 0 };
         if let Some(root) = env.parsed.hir.root {
             checker.namespace(&env.parsed.hir, root);
         }
@@ -58,6 +60,8 @@ struct Checker<'e, 'a, 'db> {
     diag: DiagCtxt,
     /// The namespaces around the members visited, innermost last.
     homes: Vec<Home>,
+    /// How many `lang.interface(...)` calls enclose what is visited: requirements may be `_`.
+    interfaces: usize,
 }
 
 impl Visitor for Checker<'_, '_, '_> {
@@ -66,6 +70,7 @@ impl Visitor for Checker<'_, '_, '_> {
             self.visibility(hir, m);
             if let Member::Decl(d) = m {
                 self.evaluate(hir, *d);
+                self.hole(hir, *d);
                 self.bit_layout(hir, *d);
                 let key = (DeclRef::new(self.env.file.clone(), hir, *d), None, Vec::new());
                 if let Some(typed) = self.env.cx.get::<TypedDecl>(&key) {
@@ -82,6 +87,14 @@ impl Visitor for Checker<'_, '_, '_> {
             if let Some(typed) = self.env.cx.get::<Typed>(&Instantiation::plain(f)) {
                 self.diag.absorb(&typed.diag);
             }
+        }
+        if let ExprKind::Call { callee, .. } = hir.exprs[expr].kind
+            && self.is_interface(callee)
+        {
+            self.interfaces += 1;
+            visit::walk_expr(self, hir, expr);
+            self.interfaces -= 1;
+            return;
         }
         if let ExprKind::Struct(_) = hir.exprs[expr].kind {
             self.homes.push(Home::Struct(ExprRef::new(self.env.file.clone(), hir, expr)));
