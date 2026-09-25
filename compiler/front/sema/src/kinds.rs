@@ -11,7 +11,6 @@ use vun_desugar::Extent;
 use vun_query::{Cx, Cycle, Query};
 
 use crate::Primitive;
-use crate::env::Env;
 use crate::member::Members;
 use crate::primitives::kind::Kind as KindAttr;
 use crate::primitives::mem::Mem;
@@ -128,7 +127,6 @@ impl Kinds {
 
     /// Whether `attr` marks the literal of `nominal`.
     fn marked(cx: &Cx<'_>, nominal: &Nominal, attr: Primitive) -> bool {
-        Env::defining(cx, &nominal.literal, nominal.instance.as_ref())
-            .is_some_and(|env| env.attribute(&env.attrs_of(nominal.literal.expr.id), attr).is_some())
+        nominal.attributes(cx).is_some_and(|a| a.get(attr).is_some())
     }
 }

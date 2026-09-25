@@ -1,4 +1,4 @@
 //! Stack bounds (spec 07, section 4).
 
-max: ($bytes: usize) -> Attribute = _;
-depth: ($frames: usize) -> Attribute = _;
+max: ($bytes: usize) -> Attribute(&[Place.functions]) = _;
+depth: ($frames: usize) -> Attribute(&[Place.functions]) = _;

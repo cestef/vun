@@ -1,6 +1,6 @@
 //! Calling conventions (spec 07, section 4).
 
-native: Attribute = _;
-c: Attribute = _;
-interrupt: Attribute = _;
-naked: Attribute = _;
+native: Attribute(&[Place.functions]) = _;
+c: Attribute(&[Place.functions]) = _;
+interrupt: Attribute(&[Place.functions]) = _;
+naked: Attribute(&[Place.functions]) = _;

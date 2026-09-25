@@ -155,7 +155,7 @@ impl<'a, 'db> Lowering<'a, 'db> {
             Some(signature) => ImportKind::Func(self.signature_of(&signature, abi, at)?),
             None => ImportKind::Data,
         };
-        let stack_max = decl.stack_max(cx);
+        let stack_max = decl.attributes(cx).and_then(|a| a.stack_max());
         let id = self.unit.imports.push(Import { symbol, kind, origin: decl.decl.origin, stack_max });
         self.imports.insert(symbol, id);
         Ok(id)

@@ -19,6 +19,11 @@ syntax := struct {
     unknown_borrow := diag.Diag{ .explanation = meta.embed("errors/syntax/unknown_borrow.md") };
 };
 
+/// Attributes (spec 02, section 5).
+attr := struct {
+    misplaced := diag.Diag{ .explanation = meta.embed("errors/attr/misplaced.md") };
+};
+
 /// Range integers (spec 04).
 int := struct {
     does_not_fit := diag.Diag{ .explanation = meta.embed("errors/int/does_not_fit.md") };

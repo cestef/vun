@@ -4,6 +4,7 @@
 //! evaluating it may require checking more declarations. Both happen on demand, through queries.
 
 mod apply;
+pub mod attributes;
 pub mod callable;
 pub mod check;
 pub mod decl;

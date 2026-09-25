@@ -242,6 +242,11 @@ object). Compares fuse into their branch (`FnCompiler::fused`), registers carry 
 single-predecessor block emitted next (`kept`), frames are reported while emitting
 (`ArtifactSink::frames`, `Emitted`, `Compiled::stack`).
 
+**Attributes** (decision 163): `lang.Attribute(on)` with `lang.Place`; `check/placed.rs` types
+each attribute (`Typer::typed`) and reports `attr.misplaced`; `sema/src/attributes.rs`
+(`Attributes` of `Func`, `Nominal`, `DeclRef`: `get`, `count`, `text`, `markers`, `abi`,
+`stack_max`) is how items' attributes are read.
+
 **Stack bounds** (decision 162): `Func::stack_max` and `DeclRef::stack_max` (through `Env::count`)
 set `Function::stack_max` and `Import::stack_max` in LIR; `vun_lir::analysis::StackUse` walks the
 call graph; the driver checks after compiling (`driver/src/stack.rs`). Open: the trap handler
@@ -311,7 +316,7 @@ every `lang` and `std` file cleanly.
 Proposed also: 155 (frame layout), 156 (narrowing, runtime bounds, frame layouts in sema), 157
 (the baseline backend). Proposed: 159 (trap sites at compile time), 160 (calls read one way, expansion, run-time `fail`),
 161 (baseline fusion, fall-through registers, frames reported). Accepted: 162 (stack bounds, imports
-declaring theirs). Accepted: 139 (the size budget, now 10 MiB), 158 (`meta.Frame`, `TypeOf`
+declaring theirs), 163 (attribute places, one reading of attributes). Accepted: 139 (the size budget, now 10 MiB), 158 (`meta.Frame`, `TypeOf`
 over code; details proposed).
 Accepted (the user's choices, details proposed): 152 (backends after TPDE, baseline backend
 started after C), 153 (the C backend), 154 (targets named by system and CPU, chosen per session).

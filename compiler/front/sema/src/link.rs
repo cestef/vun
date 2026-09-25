@@ -22,36 +22,23 @@ impl Func {
     /// The symbol this function is exported under (`#[link.export(s)]`), if any.
     #[must_use]
     pub fn export(&self, cx: &Cx<'_>) -> Option<Symbol> {
-        let env = Env::defining(cx, &self.literal, self.within.as_deref())?;
-        let attrs = env.attrs_of(self.literal.expr.id);
-        let args = env.attribute(&attrs, Primitive::Link(Link::export))?;
-        Some(Symbol::intern(&args.first()?.text()?))
+        self.attributes(cx)?.text(Primitive::Link(Link::export))
     }
 
-    /// The calling convention its attributes name (`#[abi.c]`), if any (spec 07, section 4).
+    /// The calling convention its markers name (`#[abi.c]`), if any (spec 07, section 4).
     #[must_use]
     pub fn abi(&self, cx: &Cx<'_>) -> Option<Abi> {
-        let env = Env::defining(cx, &self.literal, self.within.as_deref())?;
-        Abi::of(&env, &env.attrs_of(self.literal.expr.id))
+        self.attributes(cx)?.abi()
     }
 }
 
 impl DeclRef {
     /// The symbol the linker provides this declaration under (`#[link.symbol(s)]`), and the
-    /// calling convention its attributes name.
+    /// calling convention its markers name.
     #[must_use]
     pub fn linked(&self, cx: &Cx<'_>) -> Option<(Symbol, Option<Abi>)> {
-        let env = Env::of(cx, &self.file)?;
-        let attrs = &env.parsed.hir.decls[self.decl.id].attrs;
-        let args = env.attribute(attrs, Primitive::Link(Link::symbol))?;
-        Some((Symbol::intern(&args.first()?.text()?), Abi::of(&env, attrs)))
-    }
-}
-
-impl Abi {
-    /// The first convention among `attrs`.
-    fn of(env: &Env<'_, '_>, attrs: &[vun_hir::tree::ExprId]) -> Option<Self> {
-        Self::ALL.iter().copied().find(|&abi| env.attribute(attrs, Primitive::Abi(abi)).is_some())
+        let attributes = self.attributes(cx)?;
+        Some((attributes.text(Primitive::Link(Link::symbol))?, attributes.abi()))
     }
 }
 

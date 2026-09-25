@@ -80,10 +80,7 @@ impl Checker<'_, '_, '_> {
             }
             TyKind::Primitive(Primitive::Mem(Mem::Array), _) => self.c_type(ty.as_array()?.1),
             TyKind::Nominal(nominal) if nominal.kind == NominalKind::Struct => {
-                let env =
-                    crate::env::Env::defining(self.env.cx, &nominal.literal, nominal.instance.as_ref())?;
-                let attrs = env.attrs_of(nominal.literal.expr.id);
-                Some(env.attribute(&attrs, Primitive::Layout(Layout::c)).is_some())
+                Some(nominal.attributes(self.env.cx)?.get(Primitive::Layout(Layout::c)).is_some())
             }
             // `?*T`: one pointer, null for `.none` (the niche rule).
             TyKind::Nominal(nominal) if nominal.kind == NominalKind::Enum => {

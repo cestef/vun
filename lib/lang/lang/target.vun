@@ -77,7 +77,7 @@ Host := struct {
     os: lang.meta.Name,
     target: Spec,
 };
-require: ($features: Features) -> Attribute = _;
+require: ($features: Features) -> Attribute(&[Place.functions]) = _;
 Features: type = _;
 
 /// The largest address of the target: `usize` is `Int(0..=usize_max)`.

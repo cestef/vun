@@ -208,5 +208,16 @@ puts: unsafe (s: *u8) -> i32 = _;       // provided by the linker
 
 - Attributes from `lang` (`layout`, `link`, `abi`, `impl`, `opt`, `panic`, `stack`, `lint`,
   `target`) are acted on by the compiler; each is a documented `lang` declaration.
-- Every other attribute is plain data. Compile-time code reads it with `std.meta.attrs(x)`.
+- An attribute's type says where it applies: `lang.Attribute(on)`, for `on` a list of
+  `lang.Place` (`decls`, `functions`, `types`, `fields`, `params`), is the type of an attribute
+  written only there, as `c: Attribute(&[Place.types]) = _;` of `lang.layout`. A declaration is
+  at `decls`, and also at `functions` or `types` when its value is a function or a type literal
+  (or it provides a function from outside); an attributed function or type expression is at
+  `functions` or `types`. One written elsewhere is `attr.misplaced`. Every `lang` attribute
+  declares its places; a library attribute may, by the same type.
+- Every other attribute is plain data, written anywhere. Compile-time code reads it with
+  `std.meta.attrs(x)`.
+- The compiler reads an item's attributes one way (`Attributes` of a function, type or
+  declaration: where they are written and the environment evaluating them), and markers
+  (spec 07, section 4) only as markers.
 - One mechanism serves layout, linking, ABIs, lints, derives, tests and serialization options.

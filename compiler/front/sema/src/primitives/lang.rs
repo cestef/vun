@@ -20,8 +20,6 @@ pub enum Lang {
     Interface,
     /// Wraps a function from a type to its requirement struct, so it can constrain `$` parameters.
     interface,
-    /// The type of the attributes the compiler acts on (spec 02, section 5).
-    Attribute,
     /// `#[impl(I(T))]`: checks and registers a witness of the interface `I` for `T` (spec 02,
     /// section 3).
     r#impl,
@@ -42,7 +40,6 @@ impl Lang {
         Self::f64,
         Self::Interface,
         Self::interface,
-        Self::Attribute,
         Self::r#impl,
         Self::visible,
     ];
@@ -60,7 +57,6 @@ impl Lang {
             Self::f64 => "f64",
             Self::Interface => "Interface",
             Self::interface => "interface",
-            Self::Attribute => "Attribute",
             Self::r#impl => "impl",
             Self::visible => "visible",
         }
@@ -79,7 +75,6 @@ impl Lang {
             Self::f64 => vun_items::lang::f64,
             Self::Interface => vun_items::lang::Interface,
             Self::interface => vun_items::lang::interface,
-            Self::Attribute => vun_items::lang::Attribute,
             Self::r#impl => vun_items::lang::r#impl,
             Self::visible => vun_items::lang::visible,
         }

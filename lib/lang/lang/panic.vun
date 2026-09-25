@@ -21,4 +21,4 @@ Reason := enum {
 fail: ($reason: Reason) -> lang.never = _;
 
 /// Attribute: the function contains no undischarged trap site and calls only such functions.
-never: Attribute = _;
+never: Attribute(&[Place.functions]) = _;

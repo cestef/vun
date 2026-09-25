@@ -80,7 +80,7 @@ impl<'l, 'a, 'db> FnLower<'l, 'a, 'db> {
         this.b.terminate(Terminator::Jump(Target { block: first, args: Vec::new() }));
         this.lower_blocks()?;
         let mut function = this.b.finish();
-        function.stack_max = f.f.stack_max(cx);
+        function.stack_max = f.f.attributes(cx).and_then(|a| a.stack_max());
         Ok(function)
     }
 

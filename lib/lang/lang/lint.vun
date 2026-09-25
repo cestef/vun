@@ -4,7 +4,7 @@
 
 Level := enum { allow, warn, deny, forbid, expect };
 Lint: type = _;
-define: Attribute = _;
+define: Attribute(&[Place.decls]) = _;
 
 /// What a lint's check sees of the code it checks.
 Cx: type = _;

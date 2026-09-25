@@ -130,8 +130,10 @@ interfaces and dispatch statically.
 An attribute is any compile-time value attached with `#[...]` to the next declaration, field,
 parameter, type expression or expression. Attributes from `lang` namespaces (`layout`, `link`,
 `abi`, `impl`, `kind`, `opt`, `panic`, `stack`, `target`, `comptime`) are acted on by the compiler,
-and each is a documented `lang` declaration. Every other attribute is plain data that
-compile-time code reads through reflection. One mechanism thus serves layout, linking, calling
+and each is a documented `lang` declaration whose type, `lang.Attribute(on)`, lists the places it
+applies to (declarations, functions, types, fields, parameters); one written elsewhere is an error
+rather than ignored, and a library attribute may declare its places the same way. Every other
+attribute is plain data that compile-time code reads through reflection. One mechanism thus serves layout, linking, calling
 conventions, lints, derivation, tests and serialization options.
 
 ```vun

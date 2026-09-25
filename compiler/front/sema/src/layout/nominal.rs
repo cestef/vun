@@ -5,7 +5,6 @@ use vun_query::Cx;
 
 use super::{Layout, Niche, Parts, Shape, Shapes, Tag};
 use crate::Primitive;
-use crate::env::Env;
 use crate::int::{Integer, Interval};
 use crate::member::Members;
 use crate::primitives::layout::Layout as Attr;
@@ -17,9 +16,8 @@ impl Shapes {
         if !members.complete {
             return None;
         }
-        let env = Env::defining(cx, &nominal.literal, nominal.instance.as_ref())?;
-        let attrs = env.attrs_of(nominal.literal.expr.id);
-        let attr = |a: Attr| env.attribute(&attrs, Primitive::Layout(a));
+        let attributes = nominal.attributes(cx)?;
+        let attr = |a: Attr| attributes.get(Primitive::Layout(a));
         let layout = |ty: &Ty| Self::layout(cx, ty);
         let whole = match nominal.kind {
             NominalKind::Empty => Shape::whole(Layout::EMPTY),
@@ -108,9 +106,7 @@ impl Shapes {
         }
         if let crate::ty::TyKind::Nominal(nominal) = &*ty {
             let members = cx.get::<Members>(&ty)?;
-            let env = Env::defining(cx, &nominal.literal, nominal.instance.as_ref())?;
-            let attrs = env.attrs_of(nominal.literal.expr.id);
-            if let Some([backing]) = env.attribute(&attrs, Primitive::Layout(Attr::bits)).as_deref() {
+            if let Some([backing]) = nominal.attributes(cx)?.get(Primitive::Layout(Attr::bits)).as_deref() {
                 return Self::bits(cx, backing.as_type()?);
             }
             if nominal.kind == NominalKind::Enum && members.variants.iter().all(|v| v.payload.is_empty()) {

@@ -7,6 +7,7 @@ mod holes;
 mod impls;
 mod layout;
 mod link;
+mod placed;
 mod visible;
 
 use std::sync::Arc;
@@ -40,6 +41,7 @@ impl Query for Checked {
         if let Some(root) = env.parsed.hir.root {
             checker.namespace(&env.parsed.hir, root);
         }
+        checker.placement(&env.parsed.hir);
         checker.impls();
         checker.exports();
         Some(Arc::new(checker.diag))

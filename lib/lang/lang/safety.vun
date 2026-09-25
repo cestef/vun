@@ -2,4 +2,4 @@
 //! facts the compiler cannot check. A block or expression is vouched for where it is written;
 //! a function, or a function type, at each call.
 
-\unsafe: Attribute = _;
+\unsafe: Attribute(&[Place.functions]) = _;

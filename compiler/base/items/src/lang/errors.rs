@@ -8,6 +8,8 @@
 use crate::Item;
 /// Tokens and syntax trees (spec 01).
 pub const syntax: Item = Item::new(&["lang", "errors", "syntax"]);
+/// Attributes (spec 02, section 5).
+pub const attr: Item = Item::new(&["lang", "errors", "attr"]);
 /// Range integers (spec 04).
 pub const int: Item = Item::new(&["lang", "errors", "int"]);
 /// Type checking (spec 02).

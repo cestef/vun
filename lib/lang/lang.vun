@@ -47,11 +47,26 @@ Coroutine := ($Y: type, $R: type) -> Interface {
     }})
 };
 
-/// The type of the attributes the compiler acts on (spec 02, section 5).
-Attribute: type = _;
+/// Where an attribute is written (spec 02, section 5).
+Place := enum {
+    /// A declaration, whatever its value, a local one included.
+    decls,
+    /// A function: a function literal or function type, or a declaration of one.
+    functions,
+    /// A type: a `struct` or `enum` literal, or a declaration of one.
+    types,
+    /// A field of a `struct` literal.
+    fields,
+    /// A parameter of a function literal.
+    params,
+};
+
+/// The type of an attribute written only at the places `on`; the compiler reports one written
+/// elsewhere. An attribute of any other type is plain data, written anywhere.
+Attribute := ($on: &[Place]) -> type { struct {} };
 /// `#[impl(I(T))]`: checks and registers a witness of the interface `I` for `T` (spec 02,
 /// section 3).
-impl: ($witness: type) -> Attribute = _;
+impl: ($witness: type) -> Attribute(&[Place.decls]) = _;
 /// `#[visible(scope)]`: widens where a name starting with `_` is visible from its namespace to
 /// `scope` (spec 01, section 7).
-visible: ($scope: scope.Scope) -> Attribute = _;
+visible: ($scope: scope.Scope) -> Attribute(&[Place.decls, Place.fields]) = _;

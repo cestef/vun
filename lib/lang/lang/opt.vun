@@ -3,6 +3,6 @@
 Inline := enum { always, never };
 Level := enum { speed, size };
 
-cold: Attribute = _;
-inline: ($mode: Inline) -> Attribute = _;
-level: ($level: Level) -> Attribute = _;
+cold: Attribute(&[Place.functions]) = _;
+inline: ($mode: Inline) -> Attribute(&[Place.functions]) = _;
+level: ($level: Level) -> Attribute(&[Place.functions]) = _;

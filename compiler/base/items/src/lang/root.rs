@@ -87,7 +87,10 @@ pub const Interface: Item = Item::new(&["lang", "Interface"]);
 pub const interface: Item = Item::new(&["lang", "interface"]);
 /// The suspension protocol (spec 06).
 pub const Coroutine: Item = Item::new(&["lang", "Coroutine"]);
-/// The type of the attributes the compiler acts on (spec 02, section 5).
+/// Where an attribute is written (spec 02, section 5).
+pub const Place: Item = Item::new(&["lang", "Place"]);
+/// The type of an attribute written only at the places `on`; the compiler reports one written
+/// elsewhere. An attribute of any other type is plain data, written anywhere.
 pub const Attribute: Item = Item::new(&["lang", "Attribute"]);
 /// `#[impl(I(T))]`: checks and registers a witness of the interface `I` for `T` (spec 02,
 /// section 3).
