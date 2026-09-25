@@ -18,6 +18,7 @@ compiler/      the compiler, a Rust workspace
   tools/       driver, CLI, LSP, formatter, build, bindings, probe, harness, xtask
 lib/           Vun sources: lang, std, targets, boards
 corpus/        programs that must compile, and programs that must be rejected
+design/        visual identity: palette, type, mascot, logo (see design/README.md)
 ```
 
 ```sh

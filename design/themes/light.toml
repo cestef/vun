@@ -1,0 +1,48 @@
+# Roles for light backgrounds. Every value names a `ramp.step` of tokens/palette.toml.
+#
+# [art]   paints of the figures: a part's `f-<role>` fills, `s-<role>` strokes
+# [ui]    surfaces and text for sites, docs and tools
+# [diag]  diagnostic severities, shared by every renderer that shows color
+# [code]  syntax colors for code samples and editor themes
+
+[art]
+shell-top = "stone.100"
+shell-hi = "stone.200"
+shell = "stone.300"
+shell-lo = "stone.400"
+shell-deep = "stone.500"
+hollow = "stone.900"
+fleck = "tide.300"
+body = "violet.500"
+body-lo = "violet.700"
+ink = "violet.900"
+glint = "stone.50"
+mouth = "coral.700"
+cheek = "coral.300"
+word = "stone.900"
+word-accent = "violet.500"
+
+[ui]
+bg = "stone.50"
+surface = "stone.100"
+border = "stone.200"
+text = "stone.900"
+muted = "stone.600"
+accent = "violet.500"
+link = "violet.600"
+code-bg = "stone.100"
+
+[diag]
+error = "coral.700"
+warning = "sun.700"
+note = "tide.700"
+help = "violet.600"
+
+[code]
+text = "stone.900"
+comment = "stone.500"
+keyword = "violet.600"
+name = "stone.900"
+string = "tide.700"
+literal = "coral.700"
+punct = "stone.600"

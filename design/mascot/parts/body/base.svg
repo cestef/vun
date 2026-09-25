@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <style id="theme">
+    .f-shell-top { fill: #ECE8E2 }
+    .s-shell-top { stroke: #ECE8E2 }
+    .f-shell-hi { fill: #D9D3CA }
+    .s-shell-hi { stroke: #D9D3CA }
+    .f-shell { fill: #BFB7AB }
+    .s-shell { stroke: #BFB7AB }
+    .f-shell-lo { fill: #A2988A }
+    .s-shell-lo { stroke: #A2988A }
+    .f-shell-deep { fill: #857B6E }
+    .s-shell-deep { stroke: #857B6E }
+    .f-hollow { fill: #221F1C }
+    .s-hollow { stroke: #221F1C }
+    .f-fleck { fill: #7FCFC4 }
+    .s-fleck { stroke: #7FCFC4 }
+    .f-body { fill: #7752D4 }
+    .s-body { stroke: #7752D4 }
+    .f-body-lo { fill: #4B3290 }
+    .s-body-lo { stroke: #4B3290 }
+    .f-ink { fill: #241846 }
+    .s-ink { stroke: #241846 }
+    .f-glint { fill: #F7F5F2 }
+    .s-glint { stroke: #F7F5F2 }
+    .f-mouth { fill: #B04230 }
+    .s-mouth { stroke: #B04230 }
+    .f-cheek { fill: #F7A391 }
+    .s-cheek { stroke: #F7A391 }
+    .f-word { fill: #221F1C }
+    .s-word { stroke: #221F1C }
+    .f-word-accent { fill: #7752D4 }
+    .s-word-accent { stroke: #7752D4 }
+  </style>
+  <ellipse class="f-body" cx="256" cy="326" rx="76" ry="54" />
+  <path class="f-body-lo" d="M180,326 A76,54 0 0 0 332,326 A76,36 0 0 1 180,326 Z" />
+</svg>

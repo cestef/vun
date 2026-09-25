@@ -1,6 +1,7 @@
 //! What primitives do when applied at compile time. Sema and the interpreter both apply them
 //! through here, so each primitive has one definition.
 
+mod float;
 mod int;
 mod meta;
 mod report;
@@ -83,6 +84,7 @@ impl Primitive {
             (Self::Mem(Mem::len), [_, Value::Array(items)]) => Ok(Value::Int(Integer::from(items.len()))),
             (Self::Int(int), args) => int.apply(env, args),
             (Self::Meta(meta), args) => meta.apply(env, args),
+            (Self::Float(float), args) => float.apply(env, args),
             (Self::Diag(diag), args) => diag.apply(args),
             (Self::Panic(panic), args) => panic.apply(args),
             _ => Err(Unevaluated::Unsupported),

@@ -1,0 +1,3 @@
+# The mascot's default pose, as the square mark for avatars and favicons.
+view = [54, 40, 420, 420]
+layers = [{ figure = "mascot/poses/default" }]

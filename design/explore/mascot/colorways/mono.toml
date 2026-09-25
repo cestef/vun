@@ -1,0 +1,9 @@
+order = 11
+note = "Stone only, for print and single-ink use."
+[art]
+body = "stone.700"
+body-lo = "stone.800"
+ink = "stone.950"
+fleck = "stone.500"
+cheek = "stone.500"
+mouth = "stone.950"

@@ -83,6 +83,58 @@ impl Reg {
     }
 }
 
+/// An SSE register, by its encoding: floats are computed in them, and conventions pass them there.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct Xmm(pub u8);
+
+impl Xmm {
+    /// The registers floats are passed in, in order.
+    pub const ARGS: [Self; 8] = [Self(0), Self(1), Self(2), Self(3), Self(4), Self(5), Self(6), Self(7)];
+    /// The registers a record's float eightbytes are returned in.
+    pub const RETURNS: [Self; 2] = [Self(0), Self(1)];
+    /// The registers float operations run in, their operands moved there from where they are held.
+    pub const OPERANDS: [Self; 2] = [Self(0), Self(1)];
+
+    #[must_use]
+    pub const fn low(self) -> u8 {
+        self.0 & 7
+    }
+
+    #[must_use]
+    pub const fn high(self) -> bool {
+        self.0 >= 8
+    }
+}
+
+/// The precision of a float operation.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Precision {
+    Single,
+    Double,
+}
+
+impl Precision {
+    /// The precision of a float scalar; `None` for an integer, and for `f16`, which x86-64 has
+    /// no arithmetic for.
+    #[must_use]
+    pub const fn of(scalar: Scalar) -> Option<Self> {
+        match scalar {
+            Scalar::F32 => Some(Self::Single),
+            Scalar::F64 => Some(Self::Double),
+            _ => None,
+        }
+    }
+
+    /// The size of the bits of a float of this precision.
+    #[must_use]
+    pub const fn size(self) -> Size {
+        match self {
+            Self::Single => Size::B32,
+            Self::Double => Size::B64,
+        }
+    }
+}
+
 /// The width of an operation.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Size {
@@ -93,15 +145,16 @@ pub enum Size {
 }
 
 impl Size {
-    /// The size of an integer or address; `None` for a float or a 128-bit integer.
+    /// The size of an integer, an address or the bits of a float, as a general register holds
+    /// them; `None` for a 128-bit integer and for `f16`.
     #[must_use]
     pub const fn of(scalar: Scalar) -> Option<Self> {
         match scalar {
             Scalar::I8 => Some(Self::B8),
             Scalar::I16 => Some(Self::B16),
-            Scalar::I32 => Some(Self::B32),
-            Scalar::I64 | Scalar::Ptr => Some(Self::B64),
-            Scalar::I128 | Scalar::F16 | Scalar::F32 | Scalar::F64 => None,
+            Scalar::I32 | Scalar::F32 => Some(Self::B32),
+            Scalar::I64 | Scalar::Ptr | Scalar::F64 => Some(Self::B64),
+            Scalar::I128 | Scalar::F16 => None,
         }
     }
 
@@ -147,6 +200,9 @@ pub enum Cc {
     Ne = 0x5,
     Be = 0x6,
     A = 0x7,
+    /// Parity: after `ucomis`, the operands are unordered (a NaN among them).
+    P = 0xa,
+    Np = 0xb,
     L = 0xc,
     Ge = 0xd,
     Le = 0xe,
@@ -181,6 +237,8 @@ impl Cc {
             Self::Ne => Self::E,
             Self::Be => Self::A,
             Self::A => Self::Be,
+            Self::P => Self::Np,
+            Self::Np => Self::P,
             Self::L => Self::Ge,
             Self::Ge => Self::L,
             Self::Le => Self::G,
@@ -229,5 +287,6 @@ impl Mem {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Rm {
     Reg(Reg),
+    Xmm(Xmm),
     Mem(Mem),
 }

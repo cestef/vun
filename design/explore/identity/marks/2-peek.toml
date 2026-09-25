@@ -1,0 +1,7 @@
+title = "Peek: only the eyes leave the shell"
+view = [76, 30, 380, 380]
+layers = [
+  "mascot/parts/shell/stone",
+  "mascot/parts/stalks/up",
+  "mascot/parts/eyes/open",
+]

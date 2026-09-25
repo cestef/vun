@@ -6,6 +6,7 @@ use vun_desugar::{Borrow, ITERATION, IterationRow};
 use vun_hir::tree::{Arg, Entry, ExprId, ExprKind, Name};
 use vun_intern::Symbol;
 use vun_origin::OriginId;
+use vun_sema::callable::Callable;
 use vun_sema::env::Passed;
 use vun_sema::member::{MemberType, MemberValue};
 use vun_sema::ty::{Ty, TyKind, Value};
@@ -174,8 +175,10 @@ impl Builder<'_, '_, '_> {
         let first = known.and_then(|k| k.ty.callable()).and_then(|s| s.params.get(at).copied());
         // A method whose type depends on its `$` parameters has a receiver written all the same.
         let written = || match f {
-            Operand::Const(Value::Fn(f)) => f.modes(self.env.cx)?.get(at).copied().flatten(),
-            _ => None,
+            Operand::Const(value) => {
+                Callable::of(value.clone())?.modes(self.env())?.get(at).copied().flatten()
+            }
+            Operand::Place(_) => None,
         };
         match first.and_then(|t| t.borrowing()).map(|(mode, ..)| mode).or_else(written) {
             Some(mode) => {

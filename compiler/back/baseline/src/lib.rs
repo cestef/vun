@@ -8,7 +8,9 @@ pub mod x86_64;
 
 use std::path::PathBuf;
 
-use vun_backend::{Artifact, ArtifactSink, Backend, BackendCaps, BackendInfo, Emits, Emitted, Lack, Lines};
+use vun_backend::{
+    Artifact, ArtifactSink, Backend, BackendCaps, BackendInfo, Emits, Emitted, Lack, Lines, Readiness,
+};
 use vun_diag::{DiagCtxt, ErrorGuaranteed};
 use vun_index::IndexVec;
 use vun_lir::unit::Unit;
@@ -29,6 +31,7 @@ pub const INFO: BackendInfo = BackendInfo {
         frame_sizes: true,
         debug_info: false,
     },
+    readiness: Readiness::Generates,
 };
 
 /// The object's name among the build's artifacts.

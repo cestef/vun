@@ -9,6 +9,7 @@ use vun_hir::db::Namespace;
 use super::{Ty, TyKind};
 use crate::Primitive;
 use crate::eval::{Code, Func, Suspended};
+use crate::float::{Binary, Format};
 use crate::int::{Extended, Integer, Interval};
 use crate::item::DeclRef;
 use crate::ops::Part;
@@ -17,6 +18,8 @@ use crate::primitives::meta::Meta;
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Value {
     Int(Integer),
+    /// A float of a binary format (spec 04, section 2).
+    Float(Binary),
     /// A `lang.Range`: the integers it holds, `None` when it holds none. `a..b` and `a..=b - 1`
     /// are one value.
     Range(Option<Interval>),
@@ -123,6 +126,7 @@ impl Value {
     pub fn ty(&self) -> Option<Ty> {
         match self {
             Self::Int(n) => Some(TyKind::int(&Interval::singleton(n.clone()))),
+            Self::Float(x) => Some(Format::ty(x.format)),
             Self::Struct { ty, .. } | Self::Variant { ty, .. } => Some(*ty),
             Self::Name(_) => Some(TyKind::primitive(Primitive::Meta(Meta::Name))),
             Self::Any { .. } => Some(TyKind::primitive(Primitive::Meta(Meta::Any))),

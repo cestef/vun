@@ -1,0 +1,7 @@
+order = 4
+note = "Tide-pool teal body."
+[art]
+body = "tide.500"
+body-lo = "tide.700"
+ink = "tide.900"
+fleck = "coral.300"

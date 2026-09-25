@@ -71,7 +71,7 @@ can be traced to the source. @fig-dump shows the MIR of the midpoint function of
 
 #figure(
   ```term
-  $ vun dump mir mid.vun
+  $ vun debug mir mid.vun
   fn(_1: a, _2: b) -> _0 { @1:8
     bb0:
       _3 = _1 @2:6

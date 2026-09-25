@@ -81,6 +81,7 @@ impl fmt::Display for Value {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Int(n) => n.fmt(f),
+            Self::Float(x) => x.fmt(f),
             Self::Range(Some(range)) => write!(f, "{}..={}", Bound(range.lo()), Bound(range.hi())),
             Self::Range(None) => f.write_str("0..0"),
             Self::Type(ty) => ty.fmt(f),

@@ -1,0 +1,27 @@
+start := std.os.start(main);
+
+#[layout.c]
+V := struct { x: f32, y: f32, z: f64 };
+
+#[abi.c]
+scale := (v: V, k: f64) -> V { V{ .x = v.x * 2.0, .y = v.y, .z = v.z * k } };
+#[abi.c]
+half := (x: f64) -> f64 { x / 2.0 };
+
+main := (sys: &mut std.os.System) -> std.os.Exit {
+    n: f64 = if sys.args().len() == 1 { 3.0 } else { 5.0 };
+    zero := n - n;
+    nan := zero / zero;
+    single: f32 = 1.5;
+    v := scale(V{ .x = single, .y = 0.25, .z = n }, 0.5);
+    mut code: u8 = 0;
+    if half(n) == 1.5 { code = code | 1; }
+    if nan != nan { code = code | 2; }
+    if !(nan < n) and !(nan >= n) { code = code | 4; }
+    if -n < zero { code = code | 8; }
+    if single * 2.0 > 2.9 { code = code | 16; }
+    if n * 0.1 + 0.2 > 0.49 { code = code | 32; }
+    if v.x == 3.0 and v.y == 0.25 and v.z == 1.5 { code = code | 64; }
+    match n.cmp(&zero) { .greater => { code = code | 128; }, _ => {} }
+    .code(code)
+};

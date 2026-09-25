@@ -1,0 +1,57 @@
+# Display faces for the wordmark, all on Google Fonts.
+[[face]]
+family = "Bricolage Grotesque"
+weight = 800
+note = "Quirky grotesque, current display face."
+[[face]]
+family = "Fraunces"
+weight = 700
+note = "Soft, wonky serif."
+[[face]]
+family = "Space Grotesk"
+weight = 700
+note = "Engineered, slightly odd."
+[[face]]
+family = "Unbounded"
+weight = 700
+note = "Wide, geometric."
+[[face]]
+family = "Syne"
+weight = 800
+note = "Wide, loud, art-school."
+[[face]]
+family = "Archivo Black"
+weight = 400
+note = "Heavy, blunt."
+[[face]]
+family = "Baloo 2"
+weight = 800
+note = "Round and friendly."
+[[face]]
+family = "Geist"
+weight = 700
+note = "Neutral, precise."
+[[face]]
+family = "JetBrains Mono"
+weight = 800
+note = "A programming font as the logo."
+[[face]]
+family = "Instrument Serif"
+weight = 400
+note = "Editorial serif."
+[[face]]
+family = "DM Serif Display"
+weight = 400
+note = "High contrast, classic."
+[[face]]
+family = "Recursive"
+weight = 900
+note = "Casual, code-rooted."
+[[face]]
+family = "Righteous"
+weight = 400
+note = "Retro, rounded."
+[[face]]
+family = "Major Mono Display"
+weight = 400
+note = "Odd mono caps, very distinctive."

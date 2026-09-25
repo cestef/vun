@@ -1,0 +1,5 @@
+title = "Badge"
+layers = [
+  "explore/identity/marks/parts/disc",
+  { figure = "mascot/poses/default", transform = "translate(256,262) scale(0.78) translate(-256,-250)" },
+]

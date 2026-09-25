@@ -49,6 +49,12 @@ impl Integer {
         Self(BigInt::from(1) << exponent)
     }
 
+    /// `self^exponent`.
+    #[must_use]
+    pub fn pow(&self, exponent: u32) -> Self {
+        Self(self.0.pow(exponent))
+    }
+
     /// The number of bits of the magnitude: 0 for zero, `k + 1` for `2^k`.
     #[must_use]
     pub fn bits(&self) -> u64 {

@@ -1,0 +1,30 @@
+title = "Forge"
+note = "Charcoal and ember, hot coral on near-black ink. Space Grotesk throughout: engineered, blunt."
+[type]
+display = { family = "Space Grotesk", fallback = ["system-ui", "sans-serif"], weights = [700] }
+text = { family = "Space Grotesk", fallback = ["system-ui", "sans-serif"], weights = [400] }
+mono = { family = "Space Mono", fallback = ["monospace"], weights = [400] }
+[mascot]
+swap = { shell = "explore/mascot/parts/shell/nut", eyes = "explore/mascot/parts/eyes/big" }
+[art]
+body = "coral.500"
+body-lo = "coral.700"
+ink = "stone.950"
+cheek = "sun.300"
+[ui]
+bg = "stone.100"
+surface = "stone.50"
+border = "stone.300"
+text = "stone.950"
+muted = "stone.600"
+accent = "coral.500"
+link = "coral.700"
+code-bg = "stone.900"
+[code]
+text = "stone.100"
+name = "stone.100"
+comment = "stone.500"
+keyword = "coral.300"
+string = "sun.300"
+literal = "tide.300"
+punct = "stone.400"

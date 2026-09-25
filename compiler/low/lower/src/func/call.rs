@@ -72,7 +72,9 @@ impl FnLower<'_, '_, '_> {
                 let [Operand::Const(reason)] = args else { return Err(unsupported()) };
                 self.site(Some(Failure::of(reason).ok_or_else(unsupported)?.msg()))
             }
-            Operand::Const(Constant::Primitive(p)) => self.primitive(*p, args, dest, ty),
+            Operand::Const(Constant::Primitive(p)) => {
+                self.primitive(*p, args, dest, ty).map_err(|u| u.naming(*p))
+            }
             _ => Err(unsupported()),
         }
     }

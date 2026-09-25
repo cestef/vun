@@ -1,0 +1,52 @@
+start := std.os.start(main);
+
+mix := (a: u8, b: u16, c: u32, d: u64, e: i8, f: i16, g: i32, h: u8, k: Int(1..=255)) -> u64 {
+    q := d / 7;
+    r := d % 10;
+    s := g / 3;
+    t := g % 5;
+    u := (c >> 3) ^ (c << 2);
+    v := (a & 0x0f) | (b.wrap(u8) ^ h);
+    w := d / k;
+    neg: u8 = if e < 0 { 1 } else { 2 };
+    sign: u8 = if f <= -2 { 4 } else { 8 };
+    base := q.wrap(u8) + r.wrap(u8) + u.wrap(u8) + v + w.wrap(u8) + neg + sign;
+    base + (s + t + 1000).sat(u16)
+};
+
+#[layout.c]
+Pair := struct { x: u32, y: u64 };
+#[layout.c]
+Big := struct { a: u64, b: u64, c: u64 };
+
+#[abi.c]
+swap := (p: Pair) -> Pair { Pair{ .x = p.y.wrap(u32), .y = p.x } };
+#[abi.c]
+spin := (b: Big) -> Big { Big{ .a = b.c, .b = b.a, .c = b.b } };
+
+pick := (x: u8) -> u8 {
+    match x {
+        0 => 10,
+        1 => 20,
+        7 => 30,
+        _ => 40,
+    }
+};
+
+main := (sys: &mut std.os.System) -> std.os.Exit {
+    n := sys.args().len();
+    n8: u8 = n.sat(u8);
+    m := mix(n8, 700, 123456, 99999999999, -3, -2, -77, 5, 3);
+    p := swap(Pair{ .x = 1, .y = 2 });
+    big := spin(Big{ .a = 1, .b = 2, .c = 3 });
+    counter := std.sync.Atomic(u32).init(5);
+    old := counter.add(3, .seq_cst);
+    was := counter.swap(10, .seq_cst);
+    cas := counter.compare_swap(10, 11, .seq_cst);
+    now := counter.load(.acquire);
+    arr: [40]u64 = [7; 40];
+    copy := arr;
+    x := (m.wrap(u8) + p.y.wrap(u8) + p.x.wrap(u8) + (big.a.wrap(u8) * 3 + big.b.wrap(u8) * 5 + big.c.wrap(u8) * 7).wrap(u8)
+        + pick(n8) + pick((n8 + 6).wrap(u8)) + old.wrap(u8) + was.wrap(u8) + cas.wrap(u8) + now.wrap(u8) + copy[39].wrap(u8)).wrap(u8);
+    .code(x)
+};

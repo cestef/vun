@@ -20,11 +20,11 @@ error[backend.unavailable]: backend `cranelift` cannot generate code yet
 
 ## Fix
 
-Select a backend that generates code for the target; `vun components` lists the backends
+Select a backend that generates code for the target; `vun toolchain components` lists the backends
 compiled into this toolchain, none of which generates code yet:
 
 ```console
-$ vun components
+$ vun toolchain components
 backends: c, cranelift, qbe, llvm, process
 linkers:  wild, mold, lld, gnu, msvc, process
 ```

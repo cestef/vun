@@ -29,6 +29,9 @@ impl FnCompiler<'_> {
         let out = || result.expect("the instruction defines a value");
         match kind {
             InstKind::Binary { op, a, b } => self.binary(*op, *a, *b, out()),
+            InstKind::Compare { cond, a, b } if Cc::of(*cond).is_none() => {
+                self.float_compare(*cond, *a, *b, out())
+            }
             InstKind::Compare { cond, a, b } => {
                 let cc = self.compare(*cond, *a, *b)?;
                 let d = self.def(out());
@@ -75,6 +78,9 @@ impl FnCompiler<'_> {
     }
 
     fn binary(&mut self, op: BinOp, a: Value, b: Value, out: Value) -> Result<(), Lack> {
+        if op.reads() == Reads::Float {
+            return self.float_binary(op, a, b, out);
+        }
         let size = self.size(out)?;
         let alu = match op {
             BinOp::Add => Some(Alu::Add),
@@ -167,6 +173,9 @@ impl FnCompiler<'_> {
     }
 
     fn cast(&mut self, op: CastOp, value: Value, to: Scalar, out: Value) -> Result<(), Lack> {
+        if matches!(op, CastOp::FConvert | CastOp::SToF | CastOp::UToF | CastOp::FToS | CastOp::FToU) {
+            return self.float_cast(op, value, to, out);
+        }
         let from = self.size(value)?;
         self.size_of(to)?;
         let x = self.get(value);
@@ -174,10 +183,7 @@ impl FnCompiler<'_> {
         match op {
             CastOp::ZExt => self.asm.zero_extend(from, d, x),
             CastOp::SExt => self.asm.sign_extend(from, d, x),
-            CastOp::Trunc | CastOp::PtrToInt | CastOp::IntToPtr | CastOp::Bitcast => self.asm.mov_rr(d, x),
-            CastOp::FConvert | CastOp::SToF | CastOp::UToF | CastOp::FToS | CastOp::FToU => {
-                return Err(self.lack(Missing::Float));
-            }
+            _ => self.asm.mov_rr(d, x),
         }
         Ok(())
     }

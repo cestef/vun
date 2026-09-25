@@ -125,7 +125,7 @@ impl Cst {
         Span { file: tokens.file(), range }
     }
 
-    /// An indented line per node, for `vun dump cst` and snapshots.
+    /// An indented line per node, for `vun debug cst` and snapshots.
     #[must_use]
     pub fn dump<'a>(&'a self, tokens: &'a Tokens, source: &'a str) -> Dump<'a> {
         Dump { cst: self, tokens, source }

@@ -1,0 +1,9 @@
+start := std.os.start(main);
+main := (sys: &mut std.os.System) -> std.os.Exit {
+    mut total: u8 = 0;
+    $for k in [3, 5] {
+        gen := () -> std.iter.Iter(u8) { yield k; yield k; };
+        for x in gen() { total = (total + x).wrap(u8); }
+    }
+    .code(total)
+};

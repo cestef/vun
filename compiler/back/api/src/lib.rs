@@ -46,12 +46,21 @@ pub struct BackendCaps {
     pub debug_info: bool,
 }
 
+/// Whether a backend generates code yet.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Readiness {
+    Generates,
+    /// Registered, reporting `backend.unavailable`.
+    Planned,
+}
+
 /// Everything known about a backend without running it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct BackendInfo {
     pub id: Name,
     pub arches: Arches,
     pub caps: BackendCaps,
+    pub readiness: Readiness,
 }
 
 impl BackendInfo {

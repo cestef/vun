@@ -3,9 +3,9 @@
 //! in registers or through memory.
 
 use vun_backend::Lack;
-use vun_lir::{AbiType, Address, Callee, Ext, Signature, Value};
+use vun_lir::{AbiType, Address, Callee, Conv, Ext, Signature, Value};
 
-use super::super::abi::{Frame, Loc, Ret};
+use super::super::abi::{Carrier, Frame, Loc, Ret};
 use super::super::encode::{Alu, Shift};
 use super::super::{Mem, Reg, Size};
 use super::FnCompiler;
@@ -49,21 +49,28 @@ impl FnCompiler<'_> {
         }
         for (i, (&a, loc)) in args.iter().zip(&frame.params).enumerate() {
             match loc {
-                Loc::Reg(r) => {
-                    self.get_into(a, *r);
-                    if let Some(AbiType::Int(scalar, ext)) = signature.params.get(i) {
+                Loc::Reg(carrier) => {
+                    let bytes = u64::from(self.size(a)?.bytes());
+                    self.pass(a, *carrier, bytes);
+                    if let (Some(AbiType::Int(scalar, ext)), Carrier::Int(r)) =
+                        (signature.params.get(i), carrier)
+                    {
                         self.extend_int(*r, self.size_of(*scalar)?, *ext);
                     }
                 }
                 Loc::Split(parts) => {
                     self.get_into(a, Reg::SCRATCH);
-                    for (k, &(r, bytes)) in parts.iter().enumerate() {
+                    for (k, &(carrier, bytes)) in parts.iter().enumerate() {
                         let at = Mem::at(Reg::SCRATCH, i32::try_from(k * 8).expect("two eightbytes"));
-                        self.load_bytes(r, at, bytes);
+                        self.load_part(carrier, at, bytes);
                     }
                 }
                 Loc::Stack(_) | Loc::Copied { .. } | Loc::Returned => {}
             }
+        }
+        // A variadic C function reads how many SSE registers carry arguments from `al`.
+        if signature.conv == Conv::C {
+            self.asm.mov_ri(Reg::Rax, u64::from(frame.sse));
         }
         match callee {
             Callee::Func(f) => self.asm.call(Address::Func(*f)),
@@ -74,17 +81,18 @@ impl FnCompiler<'_> {
             }
         }
         match &frame.ret {
-            Ret::Reg => {
+            Ret::Reg(carrier) => {
                 if let Some(out) = result {
-                    self.bind(out, Reg::Rax, false);
+                    let bytes = u64::from(self.size(out)?.bytes());
+                    self.receive(out, *carrier, bytes);
                 }
             }
             Ret::Split(parts) => {
                 let out = *args.last().expect("the address of the result is passed last");
                 self.get_into(out, Reg::SCRATCH);
-                for (k, &(r, bytes)) in parts.iter().enumerate() {
+                for (k, &(carrier, bytes)) in parts.iter().enumerate() {
                     let at = Mem::at(Reg::SCRATCH, i32::try_from(k * 8).expect("two eightbytes"));
-                    self.store_bytes(at, r, bytes);
+                    self.store_part(at, carrier, bytes);
                 }
             }
             Ret::None | Ret::Hidden => {}

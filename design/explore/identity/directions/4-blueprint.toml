@@ -1,0 +1,52 @@
+title = "Blueprint"
+note = "Navy ground, cyan lines, amber marks. Technical-drawing energy; wide display, Fira Code."
+backdrop = "navy.900"
+[type]
+display = { family = "Unbounded", fallback = ["system-ui", "sans-serif"], weights = [700] }
+text = { family = "Archivo", fallback = ["system-ui", "sans-serif"], weights = [400] }
+mono = { family = "Fira Code", fallback = ["monospace"], weights = [400] }
+[mascot]
+swap = { shell = "explore/mascot/parts/shell/cube", eyes = "explore/mascot/parts/eyes/big" }
+[ramps.navy]
+100 = "#DCE3EC"
+200 = "#BAC6D6"
+300 = "#95A6BD"
+400 = "#7288A3"
+500 = "#566C88"
+700 = "#223556"
+800 = "#182845"
+900 = "#12203A"
+[art]
+shell-top = "navy.100"
+shell-hi = "navy.200"
+shell = "navy.300"
+shell-lo = "navy.400"
+shell-deep = "navy.500"
+hollow = "navy.900"
+fleck = "sun.300"
+body = "tide.300"
+body-lo = "tide.500"
+ink = "navy.900"
+cheek = "coral.300"
+[ui]
+bg = "navy.900"
+surface = "navy.800"
+border = "navy.700"
+text = "navy.100"
+muted = "navy.300"
+accent = "tide.300"
+link = "sun.300"
+code-bg = "navy.800"
+[diag]
+error = "coral.300"
+warning = "sun.300"
+note = "tide.300"
+help = "navy.200"
+[code]
+text = "navy.100"
+name = "navy.100"
+comment = "navy.400"
+keyword = "tide.300"
+string = "sun.300"
+literal = "coral.300"
+punct = "navy.300"

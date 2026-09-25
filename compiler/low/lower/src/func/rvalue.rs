@@ -1,9 +1,8 @@
 //! What a statement computes into its place: a copy or conversion, a condition, a borrow, an
 //! aggregate built part by part, a call, or an integer brought into the place's type.
 
-use vun_desugar::{Form as Syntax, Narrowing};
-use vun_intern::Symbol;
-use vun_lir::{Access, BinOp, Cond, Scalar, Target, Terminator, Value};
+use vun_desugar::Narrowing;
+use vun_lir::{Access, BinOp, Cond, Scalar, Value};
 use vun_mir::{Aggregate, Operand, Place, Rvalue};
 use vun_sema::int::Integer;
 use vun_sema::layout::Parts;
@@ -74,37 +73,6 @@ impl FnLower<'_, '_, '_> {
         };
         let addr = addr.ok_or(Unlowered::unsupported(self.at, Form::Conversion))?;
         self.is_variant(addr, ty, truth)
-    }
-
-    /// The type of conditions, the variant holding, and the other one (the table `forms`).
-    fn truth(&self) -> Result<(Ty, Symbol, Symbol), Unlowered> {
-        let at = self.at;
-        let unsupported = move || Unlowered::unsupported(at, Form::Constant);
-        let condition =
-            self.l.env.form(Syntax::Condition).ok().and_then(|v| v.as_type()).ok_or_else(unsupported)?;
-        let Ok(Constant::Variant { name: truth, .. }) = self.l.env.form(Syntax::Truth) else {
-            return Err(unsupported());
-        };
-        let members = self.l.types.cx.get::<Members>(&condition).ok_or_else(unsupported)?;
-        let other = members.variants.iter().find(|v| v.name != truth).ok_or_else(unsupported)?.name;
-        Ok((condition, truth, other))
-    }
-
-    /// Writes into `dest`, a condition, whether `holds` is not 0.
-    pub(crate) fn condition(&mut self, holds: Value, dest: Option<Value>, ty: Ty) -> Result<(), Unlowered> {
-        let Some(dest) = dest else { return Ok(()) };
-        let (_, truth, other) = self.truth()?;
-        let (yes, no, join) =
-            (self.b.block(&[], self.at), self.b.block(&[], self.at), self.b.block(&[], self.at));
-        let to = |block| Target { block, args: Vec::new() };
-        self.b.terminate(Terminator::Branch { cond: holds, then: to(yes), otherwise: to(no) });
-        for (block, variant) in [(yes, truth), (no, other)] {
-            self.b.switch_to(block);
-            self.set_variant(dest, ty, variant)?;
-            self.b.terminate(Terminator::Jump(to(join)));
-        }
-        self.b.switch_to(join);
-        Ok(())
     }
 
     /// `&place` into `dest`: its address, and for a borrow of a slice the count of its items.

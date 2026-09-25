@@ -1,6 +1,7 @@
 //! Why a program does not lower to LIR, and where.
 
 use std::fmt;
+use vun_sema::Primitive;
 
 use vun_mir::Unready;
 use vun_origin::OriginId;
@@ -20,6 +21,8 @@ pub enum Why {
     NoLayout(Ty),
     /// A form lowering does not handle yet.
     Unsupported(Form),
+    /// A primitive lowering has no instructions for at run time yet.
+    Primitive(Primitive),
     /// No target is chosen.
     Untargeted,
     /// The target's addresses are as wide as no integer of LIR.
@@ -55,6 +58,7 @@ impl fmt::Display for Unlowered {
             Why::Unready(unready) => unready.fmt(f),
             Why::NoLayout(ty) => write!(f, "the type `{ty}` has no layout at run time"),
             Why::Unsupported(form) => write!(f, "lowering to LIR does not handle {} yet", form.what()),
+            Why::Primitive(p) => write!(f, "lowering to LIR does not handle `{}` at run time yet", p.item()),
             Why::Untargeted => f.write_str("no target is chosen"),
             Why::Address(bits) => write!(f, "addresses of {bits} bits are as wide as no integer of LIR"),
             Why::Recursive => f.write_str("the coroutine's frame would hold itself"),
@@ -84,5 +88,14 @@ impl Unlowered {
     #[must_use]
     pub fn unsupported(at: OriginId, form: Form) -> Self {
         Self { at, why: Why::Unsupported(form) }
+    }
+
+    /// This failure, where a primitive is what is not handled, naming it.
+    #[must_use]
+    pub fn naming(self, primitive: Primitive) -> Self {
+        match self.why {
+            Why::Unsupported(Form::Primitive) => Self { why: Why::Primitive(primitive), ..self },
+            _ => self,
+        }
     }
 }

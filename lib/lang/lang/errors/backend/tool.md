@@ -17,9 +17,9 @@ error[backend.tool]: `cc` could not be started
 ## Fix
 
 Install the tool, or make it reachable on `PATH`. When the C compiler rejects the code the C
-backend wrote, that is a bug in the backend: report it with the output of `vun dump c`.
+backend wrote, that is a bug in the backend: report it with the output of `vun debug c`.
 
 ```console
-$ vun dump c hello.vun > hello.c
+$ vun debug c hello.vun > hello.c
 $ cc -std=c99 -fno-strict-aliasing -c hello.c
 ```

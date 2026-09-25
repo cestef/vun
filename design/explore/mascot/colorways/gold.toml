@@ -1,0 +1,6 @@
+order = 5
+note = "Sunny body, deep violet eyes."
+[art]
+body = "sun.500"
+body-lo = "sun.700"
+cheek = "coral.300"

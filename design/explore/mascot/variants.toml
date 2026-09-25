@@ -1,0 +1,189 @@
+# Mascot variants for the gallery. Ids are the group id and the item's position.
+# An item swaps slots of `base` (default mascot/poses/default); `""` drops a slot.
+# `look` names a colorway under colorways/ (default pincher).
+
+[[group]]
+id = "S"
+title = "Shells"
+note = "What the crab lives in. Everything else is the default pose."
+
+[[group.item]]
+label = "Faceted stone"
+note = "Dwebble's rock, low-poly."
+
+[[group.item]]
+label = "Pebble"
+note = "Smooth, soft, friendliest."
+swap = { shell = "explore/mascot/parts/shell/pebble" }
+
+[[group.item]]
+label = "Spiral"
+note = "The classic snail shell."
+swap = { shell = "explore/mascot/parts/shell/spiral" }
+
+[[group.item]]
+label = "Whelk"
+note = "Pointed spire, most 'hermit crab'."
+swap = { shell = "explore/mascot/parts/shell/whelk" }
+
+[[group.item]]
+label = "Hex nut"
+note = "Systems pun: lives in hardware."
+swap = { shell = "explore/mascot/parts/shell/nut" }
+
+[[group.item]]
+label = "Crate"
+note = "Lives in a package."
+swap = { shell = "explore/mascot/parts/shell/cube" }
+
+[[group.item]]
+label = "Crystal"
+note = "A gem instead of a rock."
+swap = { shell = "explore/mascot/parts/shell/crystal" }
+
+[[group.item]]
+label = "Terminal"
+note = "A shell, literally."
+swap = { shell = "explore/mascot/parts/shell/terminal" }
+
+[[group]]
+id = "E"
+title = "Faces"
+note = "Eyes and mouth on the faceted stone."
+
+[[group.item]]
+label = "Open, smile"
+
+[[group.item]]
+label = "Big, smile"
+note = "Gopher-style whites."
+swap = { eyes = "explore/mascot/parts/eyes/big" }
+
+[[group.item]]
+label = "Dot, cat mouth"
+swap = { eyes = "explore/mascot/parts/eyes/dot", mouth = "explore/mascot/parts/mouth/cat" }
+
+[[group.item]]
+label = "Half-lidded"
+note = "Deadpan, unimpressed by magic."
+swap = { eyes = "explore/mascot/parts/eyes/half" }
+
+[[group.item]]
+label = "Happy, grin"
+swap = { eyes = "mascot/parts/eyes/happy", mouth = "explore/mascot/parts/mouth/grin" }
+
+[[group.item]]
+label = "Big, cat mouth, no cheeks"
+swap = { eyes = "explore/mascot/parts/eyes/big", mouth = "explore/mascot/parts/mouth/cat", cheeks = "" }
+
+[[group.item]]
+label = "Open, no mouth, no cheeks"
+note = "Most minimal."
+swap = { mouth = "", cheeks = "" }
+
+[[group.item]]
+label = "Asleep"
+swap = { eyes = "mascot/parts/eyes/closed", mouth = "" }
+
+[[group]]
+id = "A"
+title = "Arms and body"
+note = "Claw poses, body size, stalks, legs."
+
+[[group.item]]
+label = "Claws at rest"
+note = "One big, one small, like real hermit crabs."
+
+[[group.item]]
+label = "Both claws up"
+swap = { claws = "mascot/parts/claws/raised" }
+
+[[group.item]]
+label = "Big claw waving"
+swap = { claws = "explore/mascot/parts/claws/wave" }
+
+[[group.item]]
+label = "Even claws"
+note = "Symmetric, Ferris-like."
+swap = { claws = "explore/mascot/parts/claws/even" }
+
+[[group.item]]
+label = "Claws crossed"
+swap = { claws = "explore/mascot/parts/claws/hug" }
+
+[[group.item]]
+label = "Big body"
+swap = { body = "explore/mascot/parts/body/big" }
+
+[[group.item]]
+label = "Wavy stalks"
+swap = { stalks = "explore/mascot/parts/stalks/bent" }
+
+[[group.item]]
+label = "No legs"
+note = "Simpler silhouette for small sizes."
+swap = { legs = "" }
+
+[[group]]
+id = "X"
+title = "Combinations"
+note = "Whole characters: shell, face, arms and colorway picked together."
+
+[[group.item]]
+label = "Nut, big eyes, ember"
+look = "ember"
+swap = { shell = "explore/mascot/parts/shell/nut", eyes = "explore/mascot/parts/eyes/big" }
+
+[[group.item]]
+label = "Crate, dot eyes, lagoon"
+look = "lagoon"
+swap = { shell = "explore/mascot/parts/shell/cube", eyes = "explore/mascot/parts/eyes/dot", mouth = "explore/mascot/parts/mouth/cat" }
+
+[[group.item]]
+label = "Terminal, deadpan, midnight"
+look = "midnight"
+swap = { shell = "explore/mascot/parts/shell/terminal", eyes = "explore/mascot/parts/eyes/half", claws = "explore/mascot/parts/claws/wave" }
+
+[[group.item]]
+label = "Spiral, happy, amethyst"
+look = "amethyst"
+swap = { shell = "explore/mascot/parts/shell/spiral", eyes = "mascot/parts/eyes/happy", claws = "mascot/parts/claws/raised" }
+
+[[group.item]]
+label = "Crystal, big eyes, gold"
+look = "gold"
+swap = { shell = "explore/mascot/parts/shell/crystal", eyes = "explore/mascot/parts/eyes/big" }
+
+[[group.item]]
+label = "Pebble, dot eyes, ghost"
+look = "ghost"
+swap = { shell = "explore/mascot/parts/shell/pebble", eyes = "explore/mascot/parts/eyes/dot", claws = "explore/mascot/parts/claws/hug" }
+
+[[group.item]]
+label = "Whelk, grin, sea glass"
+look = "seaglass"
+swap = { shell = "explore/mascot/parts/shell/whelk", mouth = "explore/mascot/parts/mouth/grin" }
+
+[[group.item]]
+label = "Stone, big eyes, blueprint"
+look = "blueprint"
+swap = { eyes = "explore/mascot/parts/eyes/big", claws = "explore/mascot/parts/claws/wave" }
+
+[[group.item]]
+label = "Nut, deadpan, mono"
+look = "mono"
+swap = { shell = "explore/mascot/parts/shell/nut", eyes = "explore/mascot/parts/eyes/half", cheeks = "" }
+
+[[group.item]]
+label = "Stone, happy, ferrous"
+look = "ferrous"
+swap = { eyes = "mascot/parts/eyes/happy", claws = "mascot/parts/claws/raised" }
+
+[[group.item]]
+label = "Pebble, big body, wavy, lagoon"
+look = "lagoon"
+swap = { shell = "explore/mascot/parts/shell/pebble", body = "explore/mascot/parts/body/big", stalks = "explore/mascot/parts/stalks/bent", claws = "explore/mascot/parts/claws/even" }
+
+[[group.item]]
+label = "Terminal, happy, pincher"
+swap = { shell = "explore/mascot/parts/shell/terminal", eyes = "mascot/parts/eyes/happy", claws = "mascot/parts/claws/raised", mouth = "explore/mascot/parts/mouth/grin" }

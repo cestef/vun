@@ -1,0 +1,23 @@
+order = 9
+note = "Cool slate shell on navy, tide crab: technical drawing."
+backdrop = "slate.900"
+[ramps.slate]
+100 = "#DCE3EC"
+200 = "#BAC6D6"
+300 = "#95A6BD"
+400 = "#7288A3"
+500 = "#566C88"
+900 = "#12203A"
+[art]
+shell-top = "slate.100"
+shell-hi = "slate.200"
+shell = "slate.300"
+shell-lo = "slate.400"
+shell-deep = "slate.500"
+hollow = "slate.900"
+fleck = "sun.300"
+body = "tide.300"
+body-lo = "tide.500"
+ink = "slate.900"
+mouth = "slate.900"
+cheek = "coral.300"

@@ -1,4 +1,4 @@
-//! The indented text form of a tree, for `vun dump cst` and snapshots.
+//! The indented text form of a tree, for `vun debug cst` and snapshots.
 
 use std::fmt;
 

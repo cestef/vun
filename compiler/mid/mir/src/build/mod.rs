@@ -59,7 +59,14 @@ impl Query for Mir {
         // What is evaluated while lowering, `$if` conditions and `$for` items, is typed as the
         // body is.
         let env = i.env(cx).expect("a function value's file is read");
-        Builder::lower(&env, i).map(Arc::new)
+        let name = cx.db().resource::<vun_origin::OriginTable>().declaration_name(i.f.literal.expr.origin);
+        let _span =
+            vun_trace::tracing::debug_span!("mir", f = name.as_ref().map_or("", |n| n.as_str())).entered();
+        let built = Builder::lower(&env, i);
+        if let Err(unbuilt) = &built {
+            vun_trace::tracing::debug!(at = ?unbuilt.at, "unbuilt");
+        }
+        built.map(Arc::new)
     }
 
     fn cycle(_: &Cx<'_>, i: &Instantiation, _: &Cycle) -> Self::Value {

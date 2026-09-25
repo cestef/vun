@@ -4,7 +4,7 @@
 pub mod ast;
 mod emit;
 
-pub use vun_backend::{Lack, Missing};
+pub use vun_backend::{Lack, Missing, Readiness};
 
 use std::collections::HashMap;
 use vun_backend::{Artifact, ArtifactSink, Backend, BackendCaps, BackendInfo, Emits, Lines};
@@ -28,6 +28,7 @@ pub const INFO: BackendInfo = BackendInfo {
         frame_sizes: true,
         debug_info: true,
     },
+    readiness: Readiness::Generates,
 };
 
 /// The functions a shard of a program holds at most (spec 13, section 2).

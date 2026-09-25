@@ -39,6 +39,9 @@ impl FnLower<'_, '_, '_> {
         let runtime: Vec<&Operand> =
             args.iter().zip(&comptime).filter(|&(_, &c)| !c).map(|(a, _)| a).collect();
         let arg = |i: usize| runtime.get(i).copied().ok_or_else(unsupported);
+        if let Primitive::Float(f) = p {
+            return self.float(f, &runtime, dest, ty);
+        }
         let binary = |op| match p {
             Primitive::Int(_) => Some(op),
             _ => None,
@@ -70,17 +73,16 @@ impl FnLower<'_, '_, '_> {
             _ => None,
         };
         if let Some(cond) = cond {
-            // Compared in the narrowest integer storing both ranges.
-            let (lhs, rhs) = (arg(0)?, arg(1)?);
-            let pointee = |operand: &Operand| {
-                self.operand_ty(operand).and_then(|t| t.pointee()).ok_or_else(unsupported)
-            };
-            let (left, right) = (pointee(lhs)?, pointee(rhs)?);
-            let (common, signed) = self.l.types.common(left, right).ok_or_else(unsupported)?;
-            let (x, y) = (self.through(lhs, common)?, self.through(rhs, common)?);
+            let (x, y, signed) = self.compared(arg(0)?, arg(1)?)?;
             let cond = if signed { cond } else { cond.unsigned() };
             let holds = self.b.compare(cond, x, y, self.at);
             return self.condition(holds, dest, ty);
+        }
+        if p == Primitive::Int(Int::compare) {
+            let (x, y, signed) = self.compared(arg(0)?, arg(1)?)?;
+            let less = self.b.compare(if signed { Cond::SLt } else { Cond::ULt }, x, y, self.at);
+            let equal = self.b.compare(Cond::Eq, x, y, self.at);
+            return self.ordering(less, equal, dest, ty);
         }
         if let Primitive::Bounds(b) = p {
             return self.bounded(b, &runtime, dest, ty);
@@ -223,6 +225,19 @@ impl FnLower<'_, '_, '_> {
     }
 
     /// The integer a borrow `operand` reaches, as a signed 128-bit integer, so any two compare.
+    /// The integers the borrows `lhs` and `rhs` reach, in the narrowest integer storing both
+    /// ranges, and whether it is signed.
+    fn compared(&mut self, lhs: &Operand, rhs: &Operand) -> Result<(Value, Value, bool), Unlowered> {
+        let at = self.at;
+        let unsupported = move || Unlowered::unsupported(at, Form::Primitive);
+        let pointee = |this: &Self, operand: &Operand| {
+            this.operand_ty(operand).and_then(|t| t.pointee()).ok_or_else(unsupported)
+        };
+        let (left, right) = (pointee(self, lhs)?, pointee(self, rhs)?);
+        let (common, signed) = self.l.types.common(left, right).ok_or_else(unsupported)?;
+        Ok((self.through(lhs, common)?, self.through(rhs, common)?, signed))
+    }
+
     fn through(&mut self, operand: &Operand, to: Scalar) -> Result<Value, Unlowered> {
         let at = self.at;
         let unsupported = move || Unlowered::unsupported(at, Form::Primitive);

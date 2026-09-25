@@ -1,10 +1,10 @@
-//! `vun dump`: each representation of a file as text, with origins.
+//! `vun debug <stage>`: each representation of a file as text, with origins.
 
 use std::io::{self, Write};
 use std::path::Path;
 use std::sync::Arc;
 
-use vun_command::{Action, Args, Command, Outcome};
+use vun_command::{Args, Outcome};
 use vun_hir::db::Package;
 use vun_mir::{Body, Concrete, Mir, Unbuilt};
 use vun_origin::OriginId;
@@ -12,82 +12,12 @@ use vun_sema::layout::Shapes;
 use vun_sema::member::Members;
 use vun_span::SourceMap;
 
-use super::FILE;
+use super::super::FILE;
 use crate::Session;
 
-pub(super) const DUMPS: &[Command<Session>] = &[
-    Command {
-        name: "tokens",
-        about: "tokens and trivia with byte ranges",
-        params: &[FILE],
-        action: Action::Run(|s, args, out| Stage::Tokens.dump(s, args, out)),
-    },
-    Command {
-        name: "cst",
-        about: "the concrete syntax tree, one node per line",
-        params: &[FILE],
-        action: Action::Run(|s, args, out| Stage::Cst.dump(s, args, out)),
-    },
-    Command {
-        name: "manifest",
-        about: "the package manifest read from a build.vun",
-        params: &[FILE],
-        action: Action::Run(|s, args, out| Stage::Manifest.dump(s, args, out)),
-    },
-    Command {
-        name: "plan",
-        about: "the steps a build.vun's build records, one per line",
-        params: &[FILE],
-        action: Action::Run(|s, args, out| Stage::Plan.dump(s, args, out)),
-    },
-    Command {
-        name: "hir",
-        about: "the high-level representation, names resolved, with origins",
-        params: &[FILE],
-        action: Action::Run(|s, args, out| Stage::Hir.dump(s, args, out)),
-    },
-    Command {
-        name: "mir",
-        about: "the mid-level representation of each function, with origins",
-        params: &[FILE],
-        action: Action::Run(|s, args, out| Stage::Mir.dump(s, args, out)),
-    },
-    Command {
-        name: "layout",
-        about: "the layout of each type the file declares: sizes, offsets, tags and niches",
-        params: &[FILE],
-        action: Action::Run(|s, args, out| Stage::Layout.dump(s, args, out)),
-    },
-    Command {
-        name: "program",
-        about: "the exports of a root file and the MIR of every function they reach",
-        params: &[FILE],
-        action: Action::Run(|s, args, out| Stage::Program.dump(s, args, out)),
-    },
-    Command {
-        name: "lir",
-        about: "the low-level representation of the program a root file exports, with origins",
-        params: &[FILE],
-        action: Action::Run(|s, args, out| Stage::Lir.dump(s, args, out)),
-    },
-    Command {
-        name: "code",
-        about: "what a backend generates for the program a root file exports, when it is text",
-        params: &[FILE, crate::codegen::BACKEND],
-        action: Action::Run(|s, args, out| Stage::Code.dump(s, args, out)),
-    },
-    Command {
-        name: "frames",
-        about: "the frame size of each function of the program a root file exports, as its tools report them",
-        params: &[FILE, crate::codegen::BACKEND],
-        action: Action::Run(|s, args, out| Stage::Frames.dump(s, args, out)),
-    },
-    Command::planned("link", "the link plan"),
-];
-
-/// What `vun dump` prints.
+/// What `vun debug <stage>` prints.
 #[derive(Clone, Copy)]
-enum Stage {
+pub(super) enum Stage {
     Tokens,
     Cst,
     Hir,
@@ -103,7 +33,7 @@ enum Stage {
 
 impl Stage {
     /// Prints this stage of the file `args` names.
-    fn dump(self, session: &mut Session, args: &Args, out: &mut dyn Write) -> io::Result<Outcome> {
+    pub(super) fn dump(self, session: &mut Session, args: &Args, out: &mut dyn Write) -> io::Result<Outcome> {
         let path = args.value(&FILE).expect("positional parameters are present when a command runs");
         let Some(file) = session.load(Path::new(path)) else { return Ok(Outcome::Failure) };
         if let Self::Manifest = self {

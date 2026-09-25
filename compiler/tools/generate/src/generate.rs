@@ -210,7 +210,7 @@ impl Generator {
         let tokens = Tokens::lex(file, text, &mut cx);
         let cst = Cst::parse(&tokens, text, &mut cx);
         if diag.error_count() > 0 {
-            let run = format!("vun dump cst {path}");
+            let run = format!("vun debug cst {path}");
             let msg = Msg::new().code(path).text(" does not parse; run ").code(run);
             return Err(Box::new(Diagnostic::error(SYNTAX, msg)));
         }

@@ -128,7 +128,7 @@ formats, `Format::PUBLISHED` is `.tar.zst`), `vun-http`, `vun-hash`, `vun-fs` (`
 - Layout (`layout/`): the query `Shapes` gives each type's `Shape` (`Layout` with its `Niche`,
   and `Parts`: sequence offsets, array stride, bit offsets, or an enum's `Tag` (`Alone`, `Index`,
   `Niche`) and payload offsets); `Shapes::layout` for size and alignment; `Shape::text` is the
-  `vun dump layout` format.
+  `vun debug layout` format.
 - Items: `Declared`, `DeclValue`, `DeclType`, `TypedDecl`, `Members`, `MemberType`,
   `MemberValue`, impls and witnesses (`witness/`: targets are types, type constructors or
   interface constructors; a type's witnesses also come from the package declaring it,
@@ -176,7 +176,7 @@ from what they hold (`build/temp.rs`); place types along projections are `Place:
 `Concrete` (query): a body for code generation, compile-time values as constants propagated into
 operands, every local typed, else `Unready` (`Unbuilt`, `Unevaluated`, `Untyped`). `Programs`
 (query, `program.rs`): the exports of a root file (`Func::export`, members of the struct types
-its bindings evaluate to) and every instantiation and link symbol they reach; `vun dump program`.
+its bindings evaluate to) and every instantiation and link symbol they reach; `vun debug program`.
 `hello.vun` reaches 27 functions and `ffi/export.vun` 4, all concrete (a driver test holds every
 corpus program to it). Operators record their result type (`Operator::result`); a coroutine's
 result local has its `done` type; `$for _ in ...` unrolls without a binder.
@@ -196,7 +196,7 @@ Memory}`, slots, blocks with parameters, instructions, values), `Builder`, `Unit
 (dominance, types, targets, origins), the text format (`Unit::dump`).
 
 **Lowering** (`compiler/low/lower`, decision 151): query `Lowered` (root file to
-`Result<Unit, Unlowered>`), `vun dump lir`. `Types::repr` (zero, scalar, memory), signatures,
+`Result<Unit, Unlowered>`), `vun debug lir`. `Types::repr` (zero, scalar, memory), signatures,
 `func/` per concern: places (`Reached` with a slice's length), constants (`Lowering::encode`),
 conversions (ranges, arrays item by item, enums variant by variant), rvalues, calls (functions,
 imports, `lang` primitives with link symbols), primitives (`lang.int` arithmetic and comparisons,
@@ -229,7 +229,7 @@ handle with `vun_target::Name`, compared to the target's `Symbol`s.
 `Item`, typed `Ident`s with `Own` and `Builtin`, `Names` spelling them), `ast/print` (the one
 printer), `emit/` (`ints.rs` integer types from the C model with `sizeof` checks, `signature.rs`,
 `data.rs`, `func/` with `inline.rs`, `arith.rs`, `inst.rs`, `term.rs`), `lack.rs` (`Missing`, as
-`backend.lacks`). Driver: `vun dump code <file> [--backend]`, `vun build <file> [--backend] [-o]`,
+`backend.lacks`). Driver: `vun debug code <file> [--backend]`, `vun build <file> [--backend] [-o]`,
 `vun run` (`codegen.rs`, `program.rs`); the `gnu` linker adapter links through the target's C
 compiler. `vun run corpus/accept/programs/hello.vun --backend c` prints `hello` (a driver test).
 
@@ -247,6 +247,20 @@ registers of their own (`func/fixed.rs`, decision 166).
 each attribute (`Typer::typed`) and reports `attr.misplaced`; `sema/src/attributes.rs`
 (`Attributes` of `Func`, `Nominal`, `DeclRef`: `get`, `count`, `text`, `markers`, `abi`,
 `stack_max`) is how items' attributes are read.
+
+**Floats** (decision 167): `vun_sema::float::{Binary, Format}` (exact IEEE arithmetic over
+`Integer`, one rounding routine for every format, decimal parsing); `Value::Float`; literals typed
+by the expected float type (`typeck/infer.rs`); `apply/float.rs`; lowering `func/float.rs`
+(`!=` as `==` negated, `total_order` keys) and `func/verdict.rs` (`condition`, `ordering`, which
+`Int::compare` uses too); baseline `func/float.rs`, `encode/sse.rs`, ABI carriers (`abi.rs`
+`Carrier`, eightbyte classes), `func/carry.rs`, `func/entry.rs`.
+
+**Developer tooling** (decision 168): commands organized as jj's (`vun debug ...` for every dump
+and `compare`, `vun util`, `vun toolchain components`); `Session::run_each` and
+`compare::Ran::agree` (the backend tests use them; their programs are files in
+`compiler/tools/driver/tests/driver/programs/`, runnable with `vun debug compare`);
+`BackendInfo.readiness`; `Why::Primitive` names an unlowered primitive; `VUN_LOG` traces `mir`,
+`lower` (per statement), `baseline` (per instruction) and `c` per function.
 
 **Stack bounds** (decision 162): `Func::stack_max` and `DeclRef::stack_max` (through `Env::count`)
 set `Function::stack_max` and `Import::stack_max` in LIR; `vun_lir::analysis::StackUse` walks the
@@ -283,7 +297,7 @@ declares one per target.
 
 **Plans** (`sema/src/plan.rs`, driver `plan.rs`): the `Planned` query takes the declaration to
 run from the requirements of `std.build.Package` and calls `std.build.plan` with it; checking a
-package's `build.vun` runs it (stage `plan`), `vun dump plan` prints its actions as literals
+package's `build.vun` runs it (stage `plan`), `vun debug plan` prints its actions as literals
 (`Value::literal`). Nothing carries the actions out yet.
 
 **Naming types** (decision 158): `lang.meta.Frame(f)` is a coroutine function's frame type (the
@@ -307,8 +321,8 @@ arguments as `Rvalue::Comptime { expected }`, `Rvalue::compile_time` evaluating 
 `lang.panic.fail` lowers to a trap site with its message (`vun_lir::Site { at, msg }`). `_ = e` is
 lowered (`build/assign.rs`).
 
-Progress: corpus 211 passed, 0 pending, 9 planned, 27 shown, 0 failed; 83% of accepted body
-expressions typed; MIR lowers 85 of 97 accepted functions. 272 tests, including one that checks
+Progress: corpus 213 passed, 0 pending, 9 planned, 27 shown, 0 failed; 83% of accepted body
+expressions typed; MIR lowers 85 of 97 accepted functions. 277 tests, including one that checks
 every `lang` and `std` file cleanly.
 
 ## 6. Decisions
@@ -318,7 +332,7 @@ Proposed also: 155 (frame layout), 156 (narrowing, runtime bounds, frame layouts
 161 (baseline fusion, fall-through registers, frames reported). Accepted: 162 (stack bounds, imports
 declaring theirs), 163 (attribute places, one reading of attributes),
 164 (an import's bound from the program's declarations), 165 (`symbols` structs); proposed: 166
-(callee-saved registers for loops). Accepted: 139 (the size budget, now 10 MiB), 158 (`meta.Frame`, `TypeOf`
+(callee-saved registers for loops), 167 (floats); accepted: 168 (commands as jj's, debug tools). Accepted: 139 (the size budget, now 10 MiB), 158 (`meta.Frame`, `TypeOf`
 over code; details proposed).
 Accepted (the user's choices, details proposed): 152 (backends after TPDE, baseline backend
 started after C), 153 (the C backend), 154 (targets named by system and CPU, chosen per session).
@@ -339,7 +353,8 @@ rules go to `decisions.md` as proposed unless the user approves them.
 
 ## 7. Next steps, in order
 
-0. Baseline backend next: floats (SSE) and
+0. Baseline backend next: `lang.float.rem` and `mul_add` at run time (helpers written in Vun,
+   compiled through the same pipeline), `f16` arithmetic (the same), and
    128-bit integers (pairs, helpers in Vun), DWARF lines, arm64. Backends: memory regions from a program's build options into `LinkPlan` (the `gnu`
    adapter writes scripts from them), and a bare-metal runtime to link against. A slice value (`xs[a..b]` not borrowed)
    reaches lowering as `backend.unlowered` ("no layout") instead of a sema error.

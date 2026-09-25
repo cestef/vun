@@ -9,6 +9,7 @@ use vun_origin::OriginTable;
 
 use super::{Env, Unevaluated};
 use crate::eval::Func;
+use crate::float::{Binary, Format};
 use crate::int::Integer;
 use crate::item::ExprRef;
 use crate::ops::Part;
@@ -23,9 +24,7 @@ impl Env<'_, '_> {
         let hir = &self.parsed.hir;
         let e = &hir.exprs[expr];
         match &e.kind {
-            ExprKind::Lit(Lit::Int(n)) => Ok(Value::Int(Integer::from(*n))),
-            ExprKind::Lit(Lit::Char(c)) => Ok(Value::Int(Integer::from(i128::from(u32::from(*c))))),
-            ExprKind::Lit(Lit::String(text)) => Ok(Value::string(text)),
+            ExprKind::Lit(lit) => self.literal(expr, lit),
             ExprKind::StructLit { ty: Some(ty), fields } => self.record(self.ty(*ty)?, fields),
             ExprKind::StructLit { ty: None, .. } | ExprKind::DotName(_) => self.eval_as(expr, None),
             ExprKind::Index { object, index } => self.index(*object, *index),
@@ -216,5 +215,19 @@ impl Env<'_, '_> {
         Value::Type(
             TyKind::Nominal(Nominal { literal, instance: self.instance.clone(), kind, name }).intern(),
         )
+    }
+
+    /// The literal `lit` at `expr`; a float rounded to the float type typing gave it.
+    fn literal(&self, expr: ExprId, lit: &Lit) -> Result<Value, Unevaluated> {
+        match lit {
+            Lit::Int(n) => Ok(Value::Int(Integer::from(*n))),
+            Lit::Char(c) => Ok(Value::Int(Integer::from(i128::from(u32::from(*c))))),
+            Lit::String(text) => Ok(Value::string(text)),
+            Lit::Float(text) => {
+                let format =
+                    self.type_of(expr).and_then(|t| Format::of(&t)).ok_or(Unevaluated::Unsupported)?;
+                Binary::parse(text, format).map(Value::Float).ok_or(Unevaluated::Unsupported)
+            }
+        }
     }
 }

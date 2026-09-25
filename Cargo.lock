@@ -492,6 +492,7 @@ dependencies = [
  "vun-origin",
  "vun-span",
  "vun-target",
+ "vun-trace",
 ]
 
 [[package]]
@@ -507,6 +508,7 @@ dependencies = [
  "vun-origin",
  "vun-span",
  "vun-target",
+ "vun-trace",
 ]
 
 [[package]]
@@ -903,6 +905,7 @@ dependencies = [
  "vun-query",
  "vun-sema",
  "vun-target",
+ "vun-trace",
 ]
 
 [[package]]
@@ -927,6 +930,7 @@ dependencies = [
  "vun-query",
  "vun-sema",
  "vun-span",
+ "vun-trace",
 ]
 
 [[package]]

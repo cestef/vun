@@ -1,6 +1,6 @@
 //! QBE as a subprocess on IL text: small and simple, no vectors, no 32-bit targets.
 
-use vun_backend::{ArtifactSink, Backend, BackendCaps, BackendInfo, Emits, Lines};
+use vun_backend::{ArtifactSink, Backend, BackendCaps, BackendInfo, Emits, Lines, Readiness};
 use vun_diag::{DiagCtxt, ErrorGuaranteed};
 use vun_lir::unit::Unit;
 use vun_target::{Arches, Name, TargetSpec};
@@ -17,6 +17,7 @@ pub const INFO: BackendInfo = BackendInfo {
         frame_sizes: false,
         debug_info: false,
     },
+    readiness: Readiness::Planned,
 };
 
 #[derive(Default)]

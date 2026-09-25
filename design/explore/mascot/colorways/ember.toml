@@ -1,0 +1,8 @@
+order = 3
+note = "Dwebble-warm: coral body, stone shell."
+[art]
+body = "coral.500"
+body-lo = "coral.700"
+ink = "stone.950"
+mouth = "violet.900"
+cheek = "sun.300"

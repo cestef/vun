@@ -1,0 +1,11 @@
+view = [54, 40, 404, 420]
+layers = [
+  "mascot/parts/shell/stone",
+  "mascot/parts/legs/stand",
+  "mascot/parts/body/base",
+  "mascot/parts/stalks/up",
+  "mascot/parts/eyes/happy",
+  "mascot/parts/cheeks/blush",
+  "mascot/parts/mouth/smile",
+  "mascot/parts/claws/raised",
+]

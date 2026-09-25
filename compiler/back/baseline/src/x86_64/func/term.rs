@@ -6,7 +6,7 @@ use vun_backend::Lack;
 use vun_lir::analysis::{Location, Moves};
 use vun_lir::{Block, Target, Terminator};
 
-use super::super::abi::Ret;
+use super::super::abi::{Carrier, Ret};
 use super::super::encode::Alu;
 use super::super::{Cc, Mem, Reg, Rm, Size};
 use super::FnCompiler;
@@ -135,26 +135,29 @@ impl FnCompiler<'_> {
     }
 
     fn ret(&mut self, value: Option<vun_lir::Value>) -> Result<(), Lack> {
-        if let Some(v) = value {
-            self.get_into(v, Reg::Rax);
-            if let Some(vun_lir::AbiType::Int(scalar, ext)) = self.f.signature.result.clone() {
+        if let (Some(v), Ret::Reg(carrier)) = (value, self.abi.ret.clone()) {
+            let bytes = u64::from(self.size(v)?.bytes());
+            self.pass(v, carrier, bytes);
+            if let (Some(vun_lir::AbiType::Int(scalar, ext)), Carrier::Int(r)) =
+                (self.f.signature.result.clone(), carrier)
+            {
                 let size = self.size_of(scalar)?;
-                self.extend_int(Reg::Rax, size, ext);
+                self.extend_int(r, size, ext);
             }
         }
         match &self.abi.ret {
             Ret::Split(parts) => {
                 let at = self.gathered.expect("gathered where the entry receives the address");
-                for (k, &(r, _)) in parts.clone().iter().enumerate() {
+                for (k, &(carrier, _)) in parts.clone().iter().enumerate() {
                     let offset = at + i32::try_from(k * 8).expect("two eightbytes");
-                    self.asm.load(Size::B64, r, Mem::at(Reg::Rbp, offset));
+                    self.load_part(carrier, Mem::at(Reg::Rbp, offset), 8);
                 }
             }
             Ret::Hidden => {
                 let home = self.hidden.expect("kept where the entry receives it");
                 self.asm.load(Size::B64, Reg::Rax, Mem::at(Reg::Rbp, home));
             }
-            Ret::Reg | Ret::None => {}
+            Ret::Reg(_) | Ret::None => {}
         }
         self.restore();
         self.asm.epilogue();

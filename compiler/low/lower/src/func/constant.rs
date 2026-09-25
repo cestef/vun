@@ -60,6 +60,16 @@ impl Lowering<'_, '_> {
             self.int(n, int.bytes(0), &mut out.bytes, base);
             return Ok(());
         }
+        // A float is its bits, in the target's byte order.
+        if let Constant::Float(x) = value {
+            self.int(
+                &Integer::from(u128::from(x.bits)),
+                u64::from(x.format.bits() / 8),
+                &mut out.bytes,
+                base,
+            );
+            return Ok(());
+        }
         // A cell holds its value at compile time (`lang.mem.cell`).
         if let TyKind::Primitive(Primitive::Mem(Mem::Cell), args) = &*ty {
             let inner = args.first().and_then(Constant::as_type).ok_or_else(unsupported)?;

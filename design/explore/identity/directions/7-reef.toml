@@ -1,0 +1,23 @@
+title = "Reef pop"
+note = "Playful and round like the Go gopher: sunny ground, violet and coral, rounded type."
+[type]
+display = { family = "Baloo 2", fallback = ["system-ui", "sans-serif"], weights = [800] }
+text = { family = "Nunito", fallback = ["system-ui", "sans-serif"], weights = [400, 700] }
+mono = { family = "Recursive", fallback = ["monospace"], weights = [400] }
+[mascot]
+swap = { shell = "explore/mascot/parts/shell/pebble", eyes = "explore/mascot/parts/eyes/big", claws = "explore/mascot/parts/claws/wave" }
+[art]
+fleck = "coral.500"
+[ui]
+bg = "sun.100"
+surface = "stone.50"
+border = "sun.300"
+text = "violet.900"
+muted = "violet.700"
+accent = "violet.500"
+link = "coral.700"
+code-bg = "stone.50"
+[code]
+keyword = "violet.600"
+string = "coral.700"
+literal = "tide.700"

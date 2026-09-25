@@ -1,4 +1,4 @@
-//! The text form of a HIR for `vun dump hir`: one node per line, indented by depth, with the
+//! The text form of a HIR for `vun debug hir`: one node per line, indented by depth, with the
 //! source position of its origin and, for names, what they resolve to.
 
 use vun_origin::{OriginId, OriginTable};

@@ -76,7 +76,7 @@ pub struct Text<'u> {
 }
 
 impl Unit {
-    /// This unit's text with the origin of each line, found by `locate`, as `vun dump lir`
+    /// This unit's text with the origin of each line, found by `locate`, as `vun debug lir`
     /// prints it.
     #[must_use]
     pub fn dump<'u>(&'u self, locate: &'u dyn Fn(OriginId) -> LineCol) -> Text<'u> {

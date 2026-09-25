@@ -1,0 +1,52 @@
+# Color ramps. The only file where a color value is written: themes, parts and every
+# generated output name a color as `ramp.step`.
+#
+# violet  the purple pincher's claws; the brand color
+# stone   the shell; warm neutrals for surfaces and text
+# tide    rock pools; secondary accent, notes
+# coral   warm accent, errors, the mascot's cheeks
+# sun     warnings
+
+[violet]
+50 = "#F4F0FD"
+100 = "#E6DDFB"
+200 = "#CDBBF6"
+300 = "#AE93EE"
+400 = "#9170E3"
+500 = "#7752D4"
+600 = "#6040B5"
+700 = "#4B3290"
+800 = "#37256A"
+900 = "#241846"
+
+[stone]
+50 = "#F7F5F2"
+100 = "#ECE8E2"
+200 = "#D9D3CA"
+300 = "#BFB7AB"
+400 = "#A2988A"
+500 = "#857B6E"
+600 = "#6A6157"
+700 = "#514A42"
+800 = "#38332E"
+900 = "#221F1C"
+950 = "#161412"
+
+[tide]
+100 = "#D5F0EC"
+300 = "#7FCFC4"
+500 = "#2FA595"
+700 = "#1D6F65"
+900 = "#0F3A35"
+
+[coral]
+100 = "#FDE1DA"
+300 = "#F7A391"
+500 = "#EC6A4F"
+700 = "#B04230"
+
+[sun]
+100 = "#FDF0CF"
+300 = "#F6CD6B"
+500 = "#E0A21B"
+700 = "#9C6C0A"

@@ -6,6 +6,7 @@
 
 pub mod codegen;
 pub mod commands;
+pub mod compare;
 mod coverage;
 pub mod formats;
 pub mod packages;

@@ -10,6 +10,7 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
+vun-trace.workspace = true
 vun-diag.workspace = true
 vun-desugar.workspace = true
 vun-grammar.workspace = true

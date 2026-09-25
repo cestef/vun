@@ -53,7 +53,7 @@ impl<'p, Cx> Selected<'p, Cx> {
         declared.filter(|p| p.kind != ParamKind::Positional).chain(builtins)
     }
 
-    /// The command line selecting these commands: `vun dump cst`.
+    /// The command line selecting these commands: `vun debug cst`.
     #[must_use]
     pub fn invocation(&self) -> String {
         self.iter().map(|c| c.name).collect::<Vec<_>>().join(" ")

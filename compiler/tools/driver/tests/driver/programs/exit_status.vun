@@ -1,0 +1,2 @@
+start := std.os.start(main);
+main := (sys: &mut std.os.System) -> std.os.Exit { .code(3) };

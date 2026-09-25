@@ -3,10 +3,13 @@
 //! places are relocations. Moves, arithmetic and memory operations are in `ops`.
 
 mod ops;
+mod sse;
+
+pub use sse::Arith;
 
 use vun_lir::Address;
 
-use super::{Base, Cc, Mem, Reg, Rm, Size, Via};
+use super::{Base, Cc, Mem, Reg, Rm, Size, Via, Xmm};
 use crate::elf::RelocKind;
 
 /// A place in a function's code that jumps name.
@@ -26,6 +29,7 @@ pub struct CodeReloc {
 #[derive(Clone, Copy)]
 pub(super) enum Field {
     Reg(Reg),
+    Xmm(Xmm),
     Digit(u8),
 }
 
@@ -136,10 +140,12 @@ impl Asm {
         }
         let (reg, reg_high, reg_byte) = match field {
             Field::Reg(r) => (r.low(), r.high(), bytes.field && r.byte_needs_rex()),
+            Field::Xmm(x) => (x.low(), x.high(), false),
             Field::Digit(d) => (d, false, false),
         };
         let (base_high, rm_byte) = match rm {
             Rm::Reg(r) => (r.high(), bytes.rm && r.byte_needs_rex()),
+            Rm::Xmm(x) => (x.high(), false),
             Rm::Mem(Mem { base: Base::Reg(r), .. }) => (r.high(), false),
             Rm::Mem(Mem { base: Base::Rip(..), .. }) => (false, false),
         };
@@ -150,6 +156,7 @@ impl Asm {
         self.bytes(opcode);
         match rm {
             Rm::Reg(r) => self.bytes(&[0xc0 | reg << 3 | r.low()]),
+            Rm::Xmm(x) => self.bytes(&[0xc0 | reg << 3 | x.low()]),
             Rm::Mem(Mem { base: Base::Reg(b), disp }) => {
                 let sib = b.low() == Reg::Rsp.low();
                 let (mode, wide) = match disp {

@@ -78,7 +78,7 @@ contexts:
     - match: '─+.*$'
       scope: markup.secondary.term
 
-  # `vun dump mir`: locals, blocks, keywords, and the origin of every statement.
+  # `vun debug mir`: locals, blocks, keywords, and the origin of every statement.
   dump:
     - match: '@\d+:\d+'
       scope: comment.origin.term

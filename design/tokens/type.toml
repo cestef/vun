@@ -1,0 +1,23 @@
+# Typefaces, all under the SIL Open Font License, served by Google Fonts.
+# `weights` lists the weights the identity uses; nothing else is loaded.
+
+[display]
+family = "Bricolage Grotesque"
+fallback = ["system-ui", "sans-serif"]
+weights = [600, 800]
+
+[text]
+family = "IBM Plex Sans"
+fallback = ["system-ui", "sans-serif"]
+weights = [400, 600]
+
+[mono]
+family = "IBM Plex Mono"
+fallback = ["ui-monospace", "monospace"]
+weights = [400, 600]
+
+# Modular scale: step n is base * ratio^n, in px.
+[scale]
+base = 16
+ratio = 1.25
+steps = [-1, 0, 1, 2, 3, 4, 5]

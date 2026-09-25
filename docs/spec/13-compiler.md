@@ -108,10 +108,10 @@ per second per stage and fails on regressions.
   generation reads each reached instantiation *concrete* (query `Concrete`): its compile-time
   values evaluated into constants that flow into the operands reading them, and every local
   typed. A function that is not concrete stops the program's code generation with the reason
-  (`vun dump program` lists them).
+  (`vun debug program` lists them).
 - **Layouts.** Every type with a run-time layout has a shape (query `Shapes`): its size and
   alignment, the offset of each part, how an enum tells its variants (an index, or a niche
-  pattern), and its unused patterns (spec 05, section 6). `vun dump layout` prints them.
+  pattern), and its unused patterns (spec 05, section 6). `vun debug layout` prints them.
 - **LIR** is what every backend has in common: SSA values of scalar and vector types, memory
   operations, calls, branches. Range types, enums and aggregates are lowered before it. A new backend
   translates LIR and nothing else. Values are scalars (`i8` to `i128`, `f16` to `f64`, `ptr`) in
@@ -121,7 +121,7 @@ per second per stage and fails on regressions.
   through an address passed after the parameters; under the C convention (`#[abi.c]`) such values
   are records passed by value, their scalars given for the backend's classification. A trap site
   calls `lang.panic.trap` with a `lang.panic.Trap` whose `site` indexes the unit's message table.
-- **Lowering** (`vun-lower`, query `Lowered`, `vun dump lir`) turns a program's concrete MIR into
+- **Lowering** (`vun-lower`, query `Lowered`, `vun debug lir`) turns a program's concrete MIR into
   LIR: every local a stack slot of its layout, a top-level binding one data object, statements the
   instructions computing into their place; integers in their range's storage, converted where a
   value moves between ranges; enums by their shapes; checks of indices and narrowings as trap
@@ -324,7 +324,7 @@ representation before emitting:
 ### 8.2 The C backend
 
 The C backend writes a translation unit in strict C99 and never relies on behavior C leaves
-undefined. It builds C as data (`vun_backend_c::ast`) and prints it once; `vun dump code --backend
+undefined. It builds C as data (`vun_backend_c::ast`) and prints it once; `vun debug code --backend
 c` shows it, and `vun build` and `vun run` compile and link it.
 
 - **No header, no assumed type.** The file declares its own integers, `u8` to `u64` and `i8` to
@@ -384,7 +384,7 @@ it uses, so no function name means anything to the compiler), the flags its link
 metal: `-nostdlib -nostartfiles`), its atomics, and how it reports frame sizes
 (`lang.target.FrameSizes`). `vun build` writes the backend's artifacts under
 `.vun/build/<content hash>/` next to the root file, compiles each source with it through
-`vun-tool`, in parallel, with `-fstack-usage` where it has it (`vun dump frames` prints the sizes
+`vun-tool`, in parallel, with `-fstack-usage` where it has it (`vun debug frames` prints the sizes
 read back, `Backend::frame_sizes`), and links with the target's linker. The `gnu` adapter drives
 GNU ld through the same compiler; a plan's memory regions and section placement become a linker
 script, built as data (`Script`) and printed once. Tool arguments are typed (`vun_tool::Arg`:
@@ -436,7 +436,14 @@ an address passed first). Narrow integers are held with undefined upper bits and
 operation reads them (division, right shifts, conversions, C arguments). Values live across the
 blocks of a loop, deepest loops and most uses first, each hold one of `rbx` and `r12` to `r15`
 from definition to last use, never stored home; the prologue saves the registers taken and each
-return restores them. Not yet: floats and 128-bit integers, which are refused (`backend.lacks`).
+return restores them. A float is held as its bits in a general register, like an integer, so moves,
+spills and selects need nothing of their own; arithmetic, comparisons and conversions move the
+bits through `xmm0` and `xmm1`. Conventions pass floats in SSE registers, and a small record's
+eightbytes in general or SSE registers by their class (System V: SSE when every field in it is a
+float); a C call sets `al` to the SSE registers used. LIR's float comparisons are ordered (false
+where either operand is a NaN); lowering gives IEEE `!=` as `==` negated. Not yet: `f16`
+arithmetic, 128-bit integers (`backend.lacks`), and `lang.float.rem` and `mul_add` at run time,
+which wait for helpers written in Vun.
 `vun build --backend baseline` links the object with the target's linker; the backend tests run
 every program through both backends and require the same result.
 
@@ -486,6 +493,6 @@ Rules:
 - Command lines are declared, never matched by hand: `vun-command` holds command trees (names,
   typed parameters, subcommands, actions) as data, and parses, renders help and reports usage
   errors as diagnostics, with suggestions, from them. Options declared on a group apply to every
-  command below it (`vun --format short dump cst f.vun` and `vun dump cst f.vun --format short`
+  command below it (`vun --format short debug cst f.vun` and `vun debug cst f.vun --format short`
   are one request), and a program's `configure` step applies them before the command runs. `vun-driver` declares the `vun` tree;
   `xtask` declares its own with the same crate.

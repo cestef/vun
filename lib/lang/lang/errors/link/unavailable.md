@@ -21,11 +21,11 @@ error[link.unavailable]: linker `mold` cannot link yet
 
 ## Fix
 
-Select a linker that can link for the target; `vun components` lists the adapters compiled into
+Select a linker that can link for the target; `vun toolchain components` lists the adapters compiled into
 this toolchain, none of which links yet:
 
 ```console
-$ vun components
+$ vun toolchain components
 backends: c, cranelift, qbe, llvm, process
 linkers:  wild, mold, lld, gnu, msvc, process
 ```

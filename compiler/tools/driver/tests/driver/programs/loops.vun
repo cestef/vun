@@ -1,0 +1,13 @@
+start := std.os.start(main);
+main := (sys: &mut std.os.System) -> std.os.Exit {
+    xs: [5]u8 = [1, 2, 4, 8, 16];
+    mut total: u8 = 0;
+    for x in &xs { total = (total + x.*).wrap(u8); }
+    for x in &xs[1..=2] { total = (total + x.*).wrap(u8); }
+    n: u8 = sys.args().len().sat(u8);
+    last: u8 = (n + 254).sat(u8);
+    mut count: u8 = 0;
+    for _ in 0..=last { count = (count + 1).sat(u8); }
+    for _ in n..n { count = 0; }
+    .code((total + count).wrap(u8))
+};

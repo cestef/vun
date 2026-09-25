@@ -1,0 +1,15 @@
+order = 6
+note = "Swapped roles: a violet geode shell, a coral crab."
+[art]
+shell-top = "violet.50"
+shell-hi = "violet.100"
+shell = "violet.200"
+shell-lo = "violet.300"
+shell-deep = "violet.400"
+hollow = "violet.900"
+fleck = "sun.300"
+body = "coral.500"
+body-lo = "coral.700"
+ink = "stone.950"
+mouth = "violet.900"
+cheek = "sun.300"

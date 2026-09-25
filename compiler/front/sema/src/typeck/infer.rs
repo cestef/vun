@@ -7,6 +7,7 @@ use vun_hir::visit;
 use super::{Known, Stage, Typer};
 use crate::Primitive;
 use crate::decl::DeclType;
+use crate::float::Format;
 use crate::int::{Integer, Interval};
 use crate::item::Site;
 use crate::member::{Found, Members};
@@ -19,6 +20,8 @@ impl Typer<'_, '_, '_> {
         match &hir.exprs[expr].kind {
             ExprKind::Lit(Lit::Int(n)) => compile(TyKind::int(&Interval::singleton(Integer::from(*n)))),
             ExprKind::Lit(Lit::String(text)) => compile(TyKind::string(text.len())?),
+            // A float literal has the float type expected of it (spec 04, section 2).
+            ExprKind::Lit(Lit::Float(_)) => compile(self.expected(expr).filter(|t| Format::of(t).is_some())?),
             ExprKind::Lit(Lit::Char(c)) => {
                 compile(TyKind::int(&Interval::singleton(Integer::from(i128::from(u32::from(*c))))))
             }

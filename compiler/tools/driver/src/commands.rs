@@ -5,7 +5,7 @@ use std::path::Path;
 
 use vun_command::{Action, Args, Command, Outcome, Param, ParamKind, Program};
 
-use crate::{Registry, Session, VERSION, formats, target};
+use crate::{Session, VERSION, formats, target};
 
 pub const PROGRAM: Program<Session> = Program {
     version: VERSION,
@@ -41,7 +41,6 @@ pub const PROGRAM: Program<Session> = Program {
             Command::planned("fix", "apply fixes from diagnostics"),
             Command::planned("doc", "generate documentation"),
             explain::EXPLAIN,
-            Command::group("dump", "print an intermediate representation with origins", dump::DUMPS),
             Command::group(
                 pkg::GROUP,
                 "dependencies, releases and API diffs",
@@ -90,22 +89,20 @@ pub const PROGRAM: Program<Session> = Program {
                 ],
             ),
             Command::group(
-                "toolchain",
-                "manage installed toolchains",
-                &[
-                    Command::planned("list", "list installed toolchains"),
-                    Command::planned("install", "install a toolchain"),
-                    Command::planned("prune", "remove unused toolchains"),
-                ],
+                toolchain::GROUP,
+                "installed toolchains, and this one's backends and linkers",
+                toolchain::COMMANDS,
             ),
             Command::group(cache::GROUP, "the shared store of fetched packages", cache::COMMANDS),
-            Command::planned("lsp", "run the language server"),
-            Command {
-                name: "components",
-                about: "list the backends and linkers in this toolchain",
-                params: &[],
-                action: Action::Run(components),
-            },
+            Command::group(
+                "util",
+                "infrequently used commands",
+                &[
+                    Command::planned("lsp", "run the language server"),
+                    Command::planned("completion", "print a completion script for a shell"),
+                ],
+            ),
+            Command::group(debug::GROUP, "low-level commands for developing the compiler", debug::COMMANDS),
         ]),
     },
 };
@@ -149,20 +146,12 @@ fn check(session: &mut Session, args: &Args, _: &mut dyn Write) -> io::Result<Ou
     Ok(session.outcome())
 }
 
-fn components(_: &mut Session, _: &Args, out: &mut dyn Write) -> io::Result<Outcome> {
-    let r = Registry::with_defaults();
-    let backends: Vec<_> = r.backends().map(|b| b.info().id.0).collect();
-    let linkers: Vec<_> = r.linkers().map(|l| l.info().id.0).collect();
-    writeln!(out, "backends: {}", backends.join(", "))?;
-    writeln!(out, "linkers:  {}", linkers.join(", "))?;
-    Ok(Outcome::Success)
-}
-
 mod cache;
-mod dump;
+mod debug;
 mod explain;
 mod pkg;
 mod tool;
+mod toolchain;
 
 pub(crate) use pkg::FETCH_PATH;
 #[cfg(test)]

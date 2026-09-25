@@ -1,0 +1,43 @@
+# Roles for dark backgrounds. Same keys as light.toml; see there for the sections.
+
+[art]
+shell-top = "stone.200"
+shell-hi = "stone.300"
+shell = "stone.400"
+shell-lo = "stone.500"
+shell-deep = "stone.600"
+hollow = "stone.950"
+fleck = "tide.300"
+body = "violet.400"
+body-lo = "violet.600"
+ink = "violet.900"
+glint = "stone.50"
+mouth = "coral.700"
+cheek = "coral.300"
+word = "stone.50"
+word-accent = "violet.300"
+
+[ui]
+bg = "stone.950"
+surface = "stone.900"
+border = "stone.800"
+text = "stone.100"
+muted = "stone.400"
+accent = "violet.300"
+link = "violet.200"
+code-bg = "stone.900"
+
+[diag]
+error = "coral.300"
+warning = "sun.300"
+note = "tide.300"
+help = "violet.300"
+
+[code]
+text = "stone.100"
+comment = "stone.500"
+keyword = "violet.300"
+name = "stone.100"
+string = "tide.300"
+literal = "coral.300"
+punct = "stone.400"

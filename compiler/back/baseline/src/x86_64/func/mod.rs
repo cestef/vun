@@ -11,7 +11,10 @@
 //! across a loop may instead hold a callee-saved register of its own (`fixed`).
 
 mod call;
+mod carry;
+mod entry;
 mod fixed;
+mod float;
 mod inst;
 mod memory;
 mod term;
@@ -25,9 +28,9 @@ use vun_lir::analysis::{Cfg, Liveness, Loops, Order};
 use vun_lir::{Block, Conv, Function, Inst, Slot, Unit, Value};
 use vun_origin::OriginId;
 
-use super::abi::{Frame, Loc, Ret};
+use super::Reg;
+use super::abi::Frame;
 use super::encode::{Asm, CodeReloc, Label};
-use super::{Mem, Reg};
 
 /// A function's machine code.
 pub struct Compiled {
@@ -104,6 +107,7 @@ struct FnCompiler<'a> {
 /// # Panics
 /// Never for a function whose frame fits the 32-bit offsets x86-64 addresses it with.
 pub fn compile(unit: &Unit, f: &Function) -> Result<Compiled, Lack> {
+    let _span = vun_trace::tracing::debug_span!("baseline", f = %f.linkage).entered();
     if f.signature.conv == Conv::Naked {
         return Err(Missing::Naked.at(f.origin));
     }
@@ -167,53 +171,6 @@ impl FnCompiler<'_> {
         -i32::try_from(self.depth).expect("frames fit 2 GiB")
     }
 
-    /// Receives the signature's values where the convention passes them.
-    fn entry(&mut self) {
-        let Some(entry) = self.f.entry() else { return };
-        let params = self.f.blocks[entry].params.clone();
-        let locs = self.abi.params.clone();
-        for (&v, loc) in params.iter().zip(&locs) {
-            match loc {
-                Loc::Reg(r) => self.bind(v, *r, false),
-                Loc::Stack(offset) => {
-                    self.home[v] = Some(CALLER_ARGS + i32::try_from(*offset).expect("fits"));
-                    self.saved[v] = true;
-                    if let Some(r) = self.fixed[v] {
-                        let home = self.home(v);
-                        self.asm.load(super::Size::B64, r, home);
-                    }
-                }
-                Loc::Copied { offset, .. } => {
-                    self.frame_addr.insert(v, CALLER_ARGS + i32::try_from(*offset).expect("fits"));
-                }
-                Loc::Split(parts) => {
-                    let buffer = self.reserve(parts.len() as u64 * HOME, HOME);
-                    for (i, &(r, _)) in parts.iter().enumerate() {
-                        let at = Mem::at(Reg::Rbp, buffer + i32::try_from(i as u64 * HOME).expect("fits"));
-                        self.asm.store(super::Size::B64, at, r);
-                    }
-                    self.frame_addr.insert(v, buffer);
-                }
-                Loc::Returned => {
-                    let Ret::Split(parts) = &self.abi.ret else { continue };
-                    let buffer = self.reserve(parts.len() as u64 * HOME, HOME);
-                    self.frame_addr.insert(v, buffer);
-                    self.gathered = Some(buffer);
-                }
-            }
-        }
-        if self.abi.ret == Ret::Hidden {
-            let home = self.reserve(HOME, HOME);
-            self.asm.store(super::Size::B64, Mem::at(Reg::Rbp, home), super::abi::ARGS[0]);
-            self.hidden = Some(home);
-        }
-        // An entry that is also jumped to receives its parameters in their homes.
-        if !self.cfg.preds[entry].is_empty() {
-            self.spill_live();
-            self.clear();
-        }
-    }
-
     fn block(&mut self, block: Block) -> Result<(), Lack> {
         let label = self.labels[block];
         self.asm.bind(label);
@@ -235,6 +192,7 @@ impl FnCompiler<'_> {
     fn inst(&mut self, inst: Inst) -> Result<(), Lack> {
         let data = &self.f.insts[inst];
         self.at = data.origin;
+        vun_trace::tracing::trace!(inst = %data.kind, at = self.asm.here(), "select");
         if data.result.is_some_and(|v| self.remat(v)) {
             return Ok(());
         }

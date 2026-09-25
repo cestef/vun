@@ -4,7 +4,7 @@ A file read as a manifest does not declare `package`.
 
 A directory holds a package when its `build.vun` declares `package` (spec 12, section 2); any
 other `build.vun` is an ordinary source file, so checking it reports nothing. A command that reads
-a given file as a manifest, such as `vun dump manifest`, needs the declaration under that exact
+a given file as a manifest, such as `vun debug manifest`, needs the declaration under that exact
 name.
 
 ## Example
@@ -18,7 +18,7 @@ pkg := .{
     .edition = 2026,
     .include = .{ "build.vun", "blinky.vun" },
 };
-$ vun dump manifest build.vun
+$ vun debug manifest build.vun
 error[manifest.missing_package]: no `package` declaration
   ╭▸ build.vun:1:1
   │
@@ -41,7 +41,7 @@ package := .{
     .edition = 2026,
     .include = .{ "build.vun", "blinky.vun" },
 };
-$ vun dump manifest build.vun
+$ vun debug manifest build.vun
 Manifest {
     name: "blinky",
     id: 1,

@@ -8,17 +8,20 @@ mod call;
 mod constant;
 mod convert;
 mod coroutine;
+mod float;
 mod int;
 mod place;
 mod primitive;
 mod rvalue;
+mod term;
 mod trap;
+mod verdict;
 
 pub(crate) use coroutine::Mode;
 
 use vun_index::{Idx, IndexVec};
 use vun_lir::{Builder, Function, Linkage, Scalar, Slot, Target, Terminator, Value};
-use vun_mir::{BlockId, Body, Local, Operand, Role, Rvalue, TerminatorKind, Unready};
+use vun_mir::{BlockId, Body, Local, Operand, Role, Rvalue, Unready};
 use vun_origin::OriginId;
 use vun_sema::eval::Instantiation;
 use vun_sema::ty::Ty;
@@ -64,6 +67,9 @@ impl<'l, 'a, 'db> FnLower<'l, 'a, 'db> {
         linkage: Linkage,
     ) -> Result<Function, Unlowered> {
         let at = body.origin;
+        let name = l.types.cx.db().resource::<vun_origin::OriginTable>().declaration_name(at);
+        let _span =
+            vun_trace::tracing::debug_span!("lower", f = name.as_ref().map_or("", |n| n.as_str())).entered();
         if body.suspends() {
             return Err(Unlowered::unsupported(at, Form::Frame));
         }
@@ -172,8 +178,11 @@ impl<'l, 'a, 'db> FnLower<'l, 'a, 'db> {
                 if stmt.value == Rvalue::Dead {
                     continue;
                 }
+                vun_trace::tracing::trace!(value = %stmt.value, "statement");
                 let (dest, dest_ty) = self.place(&stmt.place)?;
-                self.rvalue(&stmt.value, dest, dest_ty)?;
+                self.rvalue(&stmt.value, dest, dest_ty).inspect_err(|u| {
+                    vun_trace::tracing::debug!(value = %stmt.value, why = %u, "unlowered");
+                })?;
             }
             self.at = block.term.origin;
             self.term(id, &block.term.kind)?;
@@ -222,56 +231,6 @@ impl<'l, 'a, 'db> FnLower<'l, 'a, 'db> {
 
     pub(crate) fn body(&self) -> &Body {
         self.body
-    }
-
-    fn term(&mut self, id: BlockId, kind: &TerminatorKind) -> Result<(), Unlowered> {
-        let jump = |block: vun_lir::Block| Target { block, args: Vec::new() };
-        if self.coroutine.is_some()
-            && let Some(term) = self.suspension(id, kind)?
-        {
-            self.b.terminate(term);
-            return Ok(());
-        }
-        let term = match kind {
-            TerminatorKind::Return => self.ret()?,
-            TerminatorKind::Unreachable => Terminator::Unreachable,
-            TerminatorKind::Goto(to) => Terminator::Jump(jump(self.blocks[*to])),
-            TerminatorKind::Branch { cond, then, otherwise } => {
-                let holds = self.holds(cond)?;
-                Terminator::Branch {
-                    cond: holds,
-                    then: jump(self.blocks[*then]),
-                    otherwise: jump(self.blocks[*otherwise]),
-                }
-            }
-            // Only a deferred statement consuming nothing is known to run without the place states.
-            TerminatorKind::Defer { consumes, run, .. } if consumes.is_empty() => {
-                Terminator::Jump(jump(self.blocks[*run]))
-            }
-            TerminatorKind::Defer { .. } => return Err(Unlowered::unsupported(self.at, Form::Defer)),
-            TerminatorKind::Yield { .. } | TerminatorKind::Ended => {
-                return Err(Unlowered::unsupported(self.at, Form::Frame));
-            }
-        };
-        self.b.terminate(term);
-        Ok(())
-    }
-
-    /// Returns the result local: a scalar as the value, one in memory through the address the
-    /// caller passed.
-    fn ret(&mut self) -> Result<Terminator, Unlowered> {
-        let ty = self.ty(self.body.ret)?;
-        let Some(addr) = self.local(self.body.ret) else { return Ok(Terminator::Return(None)) };
-        match (self.l.types.repr(ty, self.at)?, self.out) {
-            (Repr::Scalar(s), _) => {
-                Ok(Terminator::Return(Some(self.b.load(s, addr, vun_lir::Access::Plain, self.at))))
-            }
-            (Repr::Memory(layout), Some(out)) => {
-                self.b.copy(out, addr, layout.size, self.at);
-                Ok(Terminator::Return(None))
-            }
-            _ => Ok(Terminator::Return(None)),
-        }
     }
 
     /// A new stack slot for a value of type `ty`, and its address; `None` for size 0.

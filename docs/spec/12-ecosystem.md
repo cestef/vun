@@ -109,7 +109,7 @@ build := (b: &mut std.build.Build) {
   `lints`. The compiler knows neither the name `build`, which it takes from the requirements of
   `std.build.Package`, nor the shape of an action. Records whose types each call infers are kept
   as `lang.meta.Any`. Checking a package's `build.vun` runs its plan, so a trap in `build` is an
-  error there; `vun dump plan build.vun` prints the actions, one literal per line.
+  error there; `vun debug plan build.vun` prints the actions, one literal per line.
 - `std.build.Build` records a plan of steps, which the driver carries out once `build` returns:
   `b.dep($name, params) -> Dep` names a dependency of `package.deps` (a `lang.meta.Name`, so
   `.stm32f4`) with the parameters its own `build.vun` declares; `b.program(options) -> Program`
@@ -264,14 +264,18 @@ One binary, subcommands grouped by what they act on. The CLI is a thin shell ove
 | `vun fix [--unsafe] [--edition]` | apply fixes (spec 10) |
 | `vun doc` | HTML and JSON API docs; doc code blocks run as tests |
 | `vun explain <diagnostic>` | offline explanation pages |
-| `vun dump cst\|hir\|mir\|lir\|link <decl>` | IR with origins (spec 10) |
 | `vun pkg add\|update\|fetch\|pack\|vendor\|why\|tag` | dependencies and releases |
 | `vun pkg api [diff <old>]` | public API and the version bump it requires |
 | `vun tool bind <header>`, `vun tool header`, `vun tool svd <file>` | C bindings, C headers, register packages |
 | `vun target flash\|attach\|debug` | flash, stream logs, GDB server (section 9) |
-| `vun toolchain ...` | toolchains |
+| `vun toolchain list\|install\|prune\|components` | toolchains, and this one's backends and linkers |
 | `vun cache list\|gc` | the shared store: entries, sizes, labels; collection by lockfile roots |
-| `vun lsp` | language server |
+| `vun util lsp\|completion` | infrequently used: the language server, shell completions |
+| `vun debug tokens\|cst\|hir\|mir\|layout\|program\|lir\|code\|frames\|link <file>` | every representation with origins (spec 10) |
+| `vun debug compare <file>` | build and run through every backend that generates code; report whether they agree |
+
+Commands are organized as jj's are: everyday verbs at the root, each noun a group of verbs,
+infrequent commands under `util`, and commands for developing the compiler under `debug`.
 
 ### Conventions enforced by tools
 

@@ -1,4 +1,4 @@
-//! The layout text format, as `vun dump layout` prints it: a type's size and alignment, how an
+//! The layout text format, as `vun debug layout` prints it: a type's size and alignment, how an
 //! enum tells its variants, where each part is, and its unused patterns.
 
 use std::fmt;

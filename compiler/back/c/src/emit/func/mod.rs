@@ -40,6 +40,7 @@ impl Emitter<'_> {
     pub(super) fn define(&mut self, id: FuncId, storage: Storage) -> Result<Item, Lack> {
         let unit = self.unit;
         let func = &unit.functions[id];
+        let _span = vun_trace::tracing::debug_span!("c", f = %func.linkage).entered();
         let c = self.signature(&func.signature, func.origin)?;
         let loops = Loops::of(func, &Cfg::of(func));
         let order = Order::of(func, &loops);

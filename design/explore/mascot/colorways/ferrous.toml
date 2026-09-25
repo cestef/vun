@@ -1,0 +1,17 @@
+order = 8
+note = "Rusted-iron shell, violet crab: a nod to a neighbour."
+[ramps.iron]
+100 = "#E9C9B4"
+200 = "#D69E7E"
+300 = "#BC7753"
+400 = "#9A5A3A"
+500 = "#6F3F28"
+900 = "#2A1810"
+[art]
+shell-top = "iron.100"
+shell-hi = "iron.200"
+shell = "iron.300"
+shell-lo = "iron.400"
+shell-deep = "iron.500"
+hollow = "iron.900"
+fleck = "tide.300"

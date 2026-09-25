@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 200" width="520" height="200">
+  <g id="parts-wordmark">
+    <g fill="none" stroke-width="40" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M40,40 L90,160 L140,40" stroke="#7752D4" />
+      <path d="M210,40 V110 A50,50 0 0 0 310,110 V40" stroke="#221F1C" />
+      <path d="M380,160 V90 A50,50 0 0 1 480,90 V160" stroke="#221F1C" />
+    </g>
+  </g>
+</svg>
