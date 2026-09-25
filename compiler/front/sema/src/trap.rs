@@ -6,6 +6,7 @@ use vun_diag::{Diagnostic, Msg, TraceFrame, errors};
 use vun_origin::OriginId;
 
 use crate::env::Unevaluated;
+use crate::ty::Value;
 
 /// Why a trap fired.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -47,6 +48,32 @@ pub enum Failure {
     },
 }
 
+impl Failure {
+    /// The failure a value of `lang.panic.Reason` names.
+    #[must_use]
+    pub fn of(reason: &Value) -> Option<Self> {
+        let Value::Variant { name, payload, .. } = reason else { return None };
+        match payload.as_slice() {
+            [message] if *name == vun_items::lang::panic_Reason::message.symbol() => {
+                Some(Self::Message(message.text()?))
+            }
+            [source, Value::Origin(at)] if *name == vun_items::lang::panic_Reason::assertion.symbol() => {
+                Some(Self::Assertion { source: source.text()?, at: *at })
+            }
+            _ => None,
+        }
+    }
+
+    /// What it says.
+    #[must_use]
+    pub fn msg(&self) -> Msg {
+        match self {
+            Self::Message(message) => Msg::new().text(message.clone()),
+            Self::Assertion { source, .. } => Msg::new().text("assertion failed: ").code(source.clone()),
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Trap {
     pub reason: Reason,
@@ -66,13 +93,9 @@ impl Reason {
             Self::Bounds => "index outside the items",
             Self::Argument => "argument outside the type of its parameter",
             Self::Trap => "a trap site was reached",
-            Self::Failed(Failure::Assertion { source, .. }) => {
-                return Msg::new().text("assertion failed: ").code(source.clone());
-            }
             Self::NoFrame => "the function does not suspend, so it makes no frame",
-            Self::Reported { message, .. } | Self::Failed(Failure::Message(message)) => {
-                return Msg::new().text(message.clone());
-            }
+            Self::Reported { message, .. } => return Msg::new().text(message.clone()),
+            Self::Failed(failure) => return failure.msg(),
         })
     }
 

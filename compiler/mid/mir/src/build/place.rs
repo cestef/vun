@@ -173,7 +173,7 @@ impl Builder<'_, '_, '_> {
             // A `$for` binder, or one bound by the instantiation, is a constant.
             Some(Res::Binder(b)) if hir.binders[b].comptime => match self.env().bound(b) {
                 Some(value) => Ok(Operand::Const(value.clone())),
-                None => Ok(self.temp(self.comptime(expr), origin)),
+                None => Ok(self.temp(self.comptime(expr, None), origin)),
             },
             // A constant is its value; a `mut` binding's is read from its storage.
             _ => match self.env().eval(expr) {

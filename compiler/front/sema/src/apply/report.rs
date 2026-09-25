@@ -33,18 +33,8 @@ impl Panic {
     pub(crate) fn apply(self, args: &[Value]) -> Result<Value, Unevaluated> {
         match (self, args) {
             (Self::trap, [_]) => Err(Unevaluated::trap(Reason::Trap)),
-            (Self::fail, [Value::Variant { name, payload, .. }]) => {
-                let failure = match payload.as_slice() {
-                    [message] if *name == vun_items::lang::panic_Reason::message.symbol() => {
-                        Failure::Message(message.text().ok_or(Unevaluated::Unsupported)?)
-                    }
-                    [source, Value::Origin(at)]
-                        if *name == vun_items::lang::panic_Reason::assertion.symbol() =>
-                    {
-                        Failure::Assertion { source: source.text().ok_or(Unevaluated::Unsupported)?, at: *at }
-                    }
-                    _ => return Err(Unevaluated::Unsupported),
-                };
+            (Self::fail, [reason]) => {
+                let failure = Failure::of(reason).ok_or(Unevaluated::Unsupported)?;
                 Err(Unevaluated::trap(Reason::Failed(failure)))
             }
             _ => Err(Unevaluated::Unsupported),

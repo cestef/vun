@@ -40,7 +40,7 @@ impl Analysis<'_> {
             Rvalue::Ref { mode, place } => self.borrow(*mode, place, states, origin),
             // Ending a frame consumes it.
             Rvalue::End { frame } => self.operand(&Operand::Place(frame.clone()), states, origin),
-            Rvalue::Comptime { .. } | Rvalue::Quote { .. } | Rvalue::Dead => {}
+            Rvalue::Comptime { .. } | Rvalue::Quote { .. } | Rvalue::Splice { .. } | Rvalue::Dead => {}
         }
     }
 

@@ -1,0 +1,6 @@
+//! `_ = e` discards a value: a linear one is still held, and leaks (spec 05, section 2).
+
+drop := (fs: &mut Fs, path: &[u8]) -> Result((), Error) {
+    _ = fs.open(path)?;
+    .ok(()) //~ place.linear_leak
+};

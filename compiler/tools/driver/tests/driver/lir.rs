@@ -4,6 +4,7 @@
 use vun_driver::Session;
 use vun_harness::{ACCEPT, repo_root};
 use vun_lir::{Conv, Linkage};
+use vun_sema::trap::Failure;
 
 use crate::common::Fixture;
 
@@ -74,4 +75,26 @@ main := (sys: &mut std.os.System) -> std.os.Exit {
     offsets.sort_unstable();
     assert_eq!(offsets, [1, 2]);
     assert_eq!((shape.layout.size, shape.layout.align), (3, 1));
+}
+
+#[test]
+fn an_assertion_expands_at_its_call_and_its_site_says_what_failed() {
+    let fixture = Fixture::new("lir-assert");
+    let path = fixture.root.write(
+        "p.vun",
+        "\
+#[link.export(\"small\"), abi.c]
+small := (x: u8) -> u8 { assert(x < 10); x };
+",
+    );
+    let mut session = fixture.session();
+    let file = session.load(&path).unwrap();
+    let lowered = session.lir(file);
+    let unit = lowered.as_ref().as_ref().unwrap();
+    assert_eq!(unit.verify(&session.origins), Ok(()));
+    // The assertion is built into `small`, which alone calls the trap handler.
+    assert_eq!(unit.functions.len(), 1);
+    let [site] = unit.sites.as_slice() else { panic!("{:?}", unit.sites) };
+    let failure = Failure::Assertion { source: "x < 10".into(), at: site.at };
+    assert_eq!(site.msg, Some(failure.msg()));
 }

@@ -188,6 +188,14 @@ impl Instantiation {
         Some(Self::new(call.f.clone(), args.collect()))
     }
 
+    /// The environment the call `call` runs its body in: its parameters bound, its identity the
+    /// call (decision 28), and the types typing found for the instantiation it runs.
+    #[must_use]
+    pub fn running<'a, 'db>(cx: &'a Cx<'db>, call: &Instance) -> Option<Env<'a, 'db>> {
+        let types = cx.get::<crate::typeck::Typed>(&Self::of(cx, call)?);
+        Some(Env::within(cx, call)?.typed_by(types))
+    }
+
     /// `f` with its `$` parameters bound to `args`, by parameter: a function with none bound
     /// has one instantiation, however it is reached.
     #[must_use]

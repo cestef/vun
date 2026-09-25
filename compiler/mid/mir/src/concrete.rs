@@ -61,6 +61,12 @@ impl Query for Concrete {
 
     fn compute(cx: &Cx<'_>, i: &Instantiation) -> Self::Value {
         let mut body = Body::clone(&*cx.get::<Mir>(i)?);
+        // Only a call site expanding the body builds the code it splices.
+        let splice =
+            body.blocks.iter().flat_map(|(_, b)| &b.stmts).find(|s| matches!(s.value, Rvalue::Splice { .. }));
+        if let Some(stmt) = splice {
+            return Err(Unready::Unbuilt(Unbuilt { at: stmt.origin }));
+        }
         let env = i
             .env(cx)
             .ok_or(Unready::Unevaluated { at: i.f.literal.expr.origin, why: Unevaluated::Absent })?;
@@ -104,16 +110,10 @@ impl Lowered for Instantiation {
 impl Body {
     /// Evaluates each compile-time value in `env`: a `Comptime` value becomes a constant, a
     /// quote the code it holds.
-    fn evaluate(&mut self, env: &Env<'_, '_>) -> Result<(), Unready> {
+    pub(crate) fn evaluate(&mut self, env: &Env<'_, '_>) -> Result<(), Unready> {
         for (_, block) in self.blocks.iter_mut() {
             for stmt in &mut block.stmts {
-                let value = match &stmt.value {
-                    Rvalue::Comptime { expr, staged } => env.clone().staging(staged).eval(*expr),
-                    Rvalue::Quote { expr, staged } => {
-                        Ok(Value::Code(env.clone().staging(staged).code(*expr)))
-                    }
-                    _ => continue,
-                };
+                let Some(value) = stmt.value.compile_time(env) else { continue };
                 let value = value.map_err(|why| Unready::Unevaluated { at: stmt.origin, why })?;
                 stmt.value = Rvalue::Use(Operand::Const(value));
             }

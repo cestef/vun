@@ -6,6 +6,7 @@ use vun_desugar::{Borrow, ITERATION, IterationRow};
 use vun_hir::tree::{Arg, Entry, ExprId, ExprKind, Name};
 use vun_intern::Symbol;
 use vun_origin::OriginId;
+use vun_sema::env::Passed;
 use vun_sema::member::{MemberType, MemberValue};
 use vun_sema::ty::{Ty, TyKind, Value};
 
@@ -37,27 +38,12 @@ impl Builder<'_, '_, '_> {
         }
         // The `$` arguments the call leaves out, as the typer inferred them.
         let inferred = self.typed().and_then(|t| t.inferred.get(&call).cloned()).unwrap_or_default();
-        let fill = |values: &mut Vec<Operand>| {
-            while let Some((_, value)) = inferred.iter().find(|(slot, _)| *slot == values.len()) {
-                values.push(Operand::Const(value.clone()));
-            }
+        // `a.f(b)` is `T.f(a, b)`, `f` the method the typer found (spec 01, section 4).
+        let method = self.method(callee)?;
+        let callee = match &method {
+            Some((f, ..)) => f.clone(),
+            None => self.operand(callee)?,
         };
-        let mut values: Vec<Operand> = Vec::new();
-        fill(&mut values);
-        // `a.f(b)` is `T.f(a, b)`, `f` the method the typer found (spec 01, section 4): the
-        // receiver is the first written argument, after the `$` arguments inferred before it.
-        let at = values.len();
-        let (callee, receiver) = match self.method(callee)? {
-            Some((f, receiver, method)) => {
-                let receiver = self.receiver(&f, &method, receiver, at)?;
-                (f, Some(receiver))
-            }
-            None => (self.operand(callee)?, None),
-        };
-        // The receiver's slot, filled once the arguments are evaluated.
-        if receiver.is_some() {
-            values.push(Self::unit());
-        }
         // A variant's constructor builds the variant.
         if let Operand::Const(Value::Constructor { ty, name }) = &callee {
             let kind = Aggregate::Variant { ty: *ty, name: *name };
@@ -70,39 +56,65 @@ impl Builder<'_, '_, '_> {
                 .collect::<Result<_, _>>()?;
             return Ok(self.temp(Rvalue::Aggregate { kind, parts }, origin));
         }
-        // A `Code(T)` parameter receives its argument as code.
-        let quotes = match &callee {
-            Operand::Const(Value::Fn(f)) => f.quotes(self.env.cx).unwrap_or_default(),
-            _ => Vec::new(),
+        let known = match &callee {
+            Operand::Const(value) => Some(value),
+            Operand::Place(_) => None,
         };
-        fill(&mut values);
-        for arg in args {
-            match arg {
-                Entry::One(Arg { name: None, value }) if quotes.get(values.len()) == Some(&true) => {
-                    let code = self.quote(*value, origin);
-                    values.push(code);
-                }
-                Entry::One(Arg { name: None, value }) => values.push(self.operand(*value)?),
-                _ => return Err(unbuilt),
+        let passing = self.env().passing(known, method.is_some(), args, &inferred).map_err(|_| unbuilt)?;
+        let at = passing.iter().position(|p| *p == Passed::Receiver);
+        let receiver = match (method, at) {
+            (Some((f, receiver, method)), Some(at)) => Some((at, self.receiver(&f, &method, receiver, at)?)),
+            _ => None,
+        };
+        let expansion = match &callee {
+            Operand::Const(Value::Fn(f)) if passing.iter().any(|p| matches!(p, Passed::Code(_))) => {
+                self.expansion(f, &passing)
             }
-            fill(&mut values);
+            _ => None,
+        };
+        let mut values = Vec::new();
+        for passed in passing {
+            let value = self.passed(passed, origin)?;
+            values.push(value);
         }
         // A borrowed receiver is borrowed after the arguments are evaluated, its place computed
         // before them: `v.push(v.len())` reads `v` before `&mut v` is taken (two-phase).
         match receiver {
-            Some(Receiver::Borrowed { mode, place, origin }) => {
+            Some((at, Receiver::Borrowed { mode, place, origin })) => {
                 values[at] = self.temp(Rvalue::Ref { mode, place }, origin);
             }
-            Some(Receiver::Value(operand)) => values[at] = operand,
+            Some((at, Receiver::Value(operand))) => values[at] = operand,
             None => {}
         }
-        let result = self.temp(Rvalue::Call { callee, args: values }, origin);
+        let result = match expansion {
+            Some(body) => self.expand(body, values, origin)?,
+            None => self.temp(Rvalue::Call { callee, args: values }, origin),
+        };
         // A call of an empty type, such as `never`, does not come back.
         if self.type_of(call).is_some_and(|t| t.is_empty()) {
             self.terminate(TerminatorKind::Unreachable, origin);
             self.current = self.fresh(origin);
         }
         Ok(result)
+    }
+
+    /// What is passed to one parameter (see [`vun_sema::env::Env::passing`]), the receiver's
+    /// slot filled later: code and `$` arguments are compile-time values of the call running the
+    /// body.
+    fn passed(&mut self, passed: Passed, origin: OriginId) -> Result<Operand, Unbuilt> {
+        Ok(match passed {
+            Passed::Receiver => Self::unit(),
+            Passed::Inferred(value) => Operand::Const(value),
+            // Code of a `T` is a `Code(T)`.
+            Passed::Code(expr) => {
+                let quote = Rvalue::Quote { expr, staged: self.stepped() };
+                self.typed_temp(quote, self.type_of(expr).map(TyKind::code), origin)
+            }
+            Passed::Known { expr, ty } => {
+                self.typed_temp(self.comptime(expr, ty), self.type_of(expr).or(ty), origin)
+            }
+            Passed::Run { expr, .. } => self.operand(expr)?,
+        })
     }
 
     /// `frame.resume()` or `frame.end()` on a frame, which answers its interface's `resume` and

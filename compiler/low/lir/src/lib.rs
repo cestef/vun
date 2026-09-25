@@ -19,7 +19,7 @@ pub use facts::{Domain, Reads};
 pub use func::{AbiType, Alias, Conv, Ext, Function, Linkage, Record, Signature};
 pub use inst::{Access, Address, BinOp, Callee, CastOp, Cond, InstKind, Order, RmwOp, Target, Terminator};
 pub use ty::Scalar;
-pub use unit::{Data, Import, ImportKind, Reloc, Unit};
+pub use unit::{Data, Import, ImportKind, Reloc, Site, Unit};
 pub use verify::Malformed;
 
 #[cfg(test)]

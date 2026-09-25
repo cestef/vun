@@ -1,6 +1,8 @@
 //! Trap sites (spec 07, section 3): a call of the link symbol `lang.panic.trap` with the site's
-//! `lang.panic.Trap`, whose id indexes the unit's message table, where the site is written.
+//! `lang.panic.Trap`, whose id indexes the unit's message table, where the site is written; a
+//! call of `lang.panic.fail` is one, saying its reason.
 
+use vun_diag::Msg;
 use vun_lir::{Address, InstKind, Target, Terminator, Value};
 use vun_sema::int::Integer;
 use vun_sema::item::Site;
@@ -23,10 +25,17 @@ impl FnLower<'_, '_, '_> {
 
     /// Ends the current block with a trap at the origin lowered.
     pub(crate) fn trap(&mut self) -> Result<(), Unlowered> {
+        self.site(None)?;
+        self.b.terminate(Terminator::Unreachable);
+        Ok(())
+    }
+
+    /// Calls the trap handler for a new site at the origin lowered, saying `msg`.
+    pub(crate) fn site(&mut self, msg: Option<Msg>) -> Result<(), Unlowered> {
         let at = self.at;
         let unsupported = move || Unlowered::unsupported(at, Form::Callee);
         let site = u32::try_from(self.l.unit.sites.len()).map_err(|_| unsupported())?;
-        self.l.unit.sites.push(self.at);
+        self.l.unit.sites.push(vun_lir::Site { at: self.at, msg });
         let Constant::Type(ty) = self.l.item(vun_items::lang::panic::Trap, self.at)? else {
             return Err(unsupported());
         };
@@ -41,7 +50,6 @@ impl FnLower<'_, '_, '_> {
         let callee = self.l.linked(&handler, self.at)?.callee().ok_or_else(unsupported)?;
         let addr = self.b.addr(Address::Data(data), self.at);
         self.b.push(InstKind::Call { callee, args: vec![addr] }, None, self.at);
-        self.b.terminate(Terminator::Unreachable);
         Ok(())
     }
 }

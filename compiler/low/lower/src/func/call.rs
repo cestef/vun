@@ -5,9 +5,12 @@
 
 use vun_lir::{Callee, InstKind, Signature, Value};
 use vun_mir::{Concrete, Lowered as _, Operand};
+use vun_sema::Primitive;
 use vun_sema::decl::DeclType;
 use vun_sema::eval::Instantiation;
 use vun_sema::primitives::abi::Abi;
+use vun_sema::primitives::panic::Panic;
+use vun_sema::trap::Failure;
 use vun_sema::ty::{Ty, Value as Constant};
 
 use super::FnLower;
@@ -63,6 +66,11 @@ impl FnLower<'_, '_, '_> {
                 let abi = decl.linked(cx).and_then(|(_, abi)| abi);
                 let args: Vec<&Operand> = args.iter().collect();
                 self.invoke(callee, &signature.params, signature.result, abi, &args, dest, ty)
+            }
+            // `lang.panic.fail(reason)` is a trap site saying its reason, known when compiling.
+            Operand::Const(Constant::Primitive(Primitive::Panic(Panic::fail))) => {
+                let [Operand::Const(reason)] = args else { return Err(unsupported()) };
+                self.site(Some(Failure::of(reason).ok_or_else(unsupported)?.msg()))
             }
             Operand::Const(Constant::Primitive(p)) => self.primitive(*p, args, dest, ty),
             _ => Err(unsupported()),

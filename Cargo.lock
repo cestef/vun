@@ -868,6 +868,7 @@ dependencies = [
 name = "vun-lir"
 version = "0.0.0"
 dependencies = [
+ "vun-diag",
  "vun-index",
  "vun-intern",
  "vun-origin",
@@ -889,6 +890,7 @@ name = "vun-lower"
 version = "0.0.0"
 dependencies = [
  "vun-desugar",
+ "vun-diag",
  "vun-grammar",
  "vun-hir",
  "vun-index",

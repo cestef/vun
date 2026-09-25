@@ -90,6 +90,18 @@ per second per stage and fails on regressions.
   non-lexical and treat every kind of control flow the same way (`defer` and `yield` become explicit
   edges before checking). A `yield` has two successors: where resuming goes on, and a cancel path
   running what is pending there, which ending the suspended frame takes (terminator `Ended`).
+- **Calls** pass their arguments as one reading of the callee's parameters says (`Env::passing`),
+  shared by compile-time evaluation and MIR: the receiver, `$` arguments inferred by typing, code
+  for a `Code(T)` parameter, a compile-time value for another `$` parameter, evaluated as the
+  parameter's type by the call running the body (it may be a literal, whose identity is that
+  call), and run-time values. Every body, interpreted or compiled, runs in the environment of its
+  call with the types typing found. A call passing code **expands** at the call site (spec 03,
+  section 4): the callee's body, instantiated with the code, is built into the caller's, and a
+  `$c` whose code reads what only the caller holds (MIR `Splice`) is built there, where the code
+  is written; a body with a splice left is not concrete. `_ = e` evaluates `e` into a temporary
+  nothing consumes, so a linear value discarded leaks.
+- **Trap sites** are calls of `lang.panic.trap` with the site's id; `lang.panic.fail(reason)` is
+  one whose message table entry says its reason, and at compile time a trap site traps.
 - **Programs.** A program is what its root file's exports reach (spec 08, section 1): from each
   `#[link.export]` function, every function a body calls, with the `$` arguments of the call, or
   takes as a value, and every declaration the linker provides (query `Programs`). Code

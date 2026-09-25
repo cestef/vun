@@ -3,14 +3,12 @@
 
 use std::sync::Arc;
 
-use vun_hir::tree::{Entry, ExprId, ExprKind, Param};
+use vun_hir::tree::{ExprId, ExprKind};
 use vun_query::Cx;
 
 use super::{Env, Unevaluated};
-use crate::Primitive;
 use crate::eval::{Code, Func, Staging};
 use crate::item::{ExprRef, Node};
-use crate::primitives::meta::Meta;
 use crate::ty::Value;
 
 impl<'a, 'db> Env<'a, 'db> {
@@ -61,18 +59,10 @@ impl<'a, 'db> Env<'a, 'db> {
 }
 
 impl Func {
-    /// Whether each parameter of this function receives its argument as code: those of type
-    /// `lang.meta.Code(T)`, whatever `T` (spec 03, section 4). `None` when its file is not read.
+    /// Whether each parameter of this function receives its argument as code: see
+    /// [`crate::callable::Written::quotes`]. `None` when its file is not read.
     #[must_use]
     pub fn quotes(&self, cx: &Cx<'_>) -> Option<Vec<bool>> {
-        let env = Env::inside(cx, self, [])?;
-        let hir = &env.parsed.hir;
-        let ExprKind::Fn { params, .. } = &hir.exprs[self.literal.expr.id].kind else { return None };
-        let quotes = params.iter().map(|p| {
-            let Entry::One(Param { ty: Some(ty), .. }) = p else { return false };
-            let ExprKind::Call { callee, .. } = &hir.exprs[*ty].kind else { return false };
-            matches!(env.eval(*callee), Ok(Value::Primitive(Primitive::Meta(Meta::Code))))
-        });
-        Some(quotes.collect())
+        self.written(cx)?.quotes()
     }
 }

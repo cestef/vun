@@ -63,7 +63,7 @@ impl Builder<'_, '_, '_> {
             fill(&mut values);
         }
         let call = Rvalue::Call { callee: Operand::Const(f.value()), args: values };
-        Ok(self.typed_temp(call, operator.result, origin))
+        Ok(self.typed_temp(call, Some(operator.result), origin))
     }
 
     /// `place`, of type `ty`, followed through each borrow its type is.

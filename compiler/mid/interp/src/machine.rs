@@ -6,7 +6,7 @@ use vun_index::{Idx, IndexVec};
 use vun_mir::{Aggregate, BlockId, Body, Local, Operand, Rvalue, TerminatorKind};
 use vun_query::Cx;
 use vun_sema::env::{Env, Unevaluated};
-use vun_sema::eval::{Instance, Metered};
+use vun_sema::eval::{Instance, Instantiation, Metered};
 use vun_sema::trap::Reason;
 use vun_sema::ty::Value;
 
@@ -44,7 +44,7 @@ impl<'b, 'a, 'db> Frame<'b, 'a, 'db> {
         if call.args.len() != body.params.len() {
             return Err(Unevaluated::Unsupported);
         }
-        let env = Env::within(cx, call).ok_or(Unevaluated::Absent)?;
+        let env = Instantiation::running(cx, call).ok_or(Unevaluated::Absent)?;
         let mut locals = IndexVec::filled(None, body.locals.len());
         for (&param, arg) in body.params.iter().zip(&call.args) {
             locals[param] = Some(arg.clone());
@@ -132,8 +132,9 @@ impl<'b, 'a, 'db> Frame<'b, 'a, 'db> {
             Rvalue::Narrow { operand, ty, narrowing } => {
                 self.operand(operand)?.narrow(&ty.interval().ok_or(Unevaluated::Unsupported)?, *narrowing)
             }
-            Rvalue::Comptime { expr, staged } => self.env.clone().staging(staged).eval(*expr),
-            Rvalue::Quote { expr, staged } => Ok(Value::Code(self.env.clone().staging(staged).code(*expr))),
+            Rvalue::Comptime { .. } | Rvalue::Quote { .. } => {
+                rvalue.compile_time(&self.env).unwrap_or(Err(Unevaluated::Unsupported))
+            }
             Rvalue::Aggregate { kind, parts } => {
                 let parts = parts.iter().map(|p| self.operand(p)).collect::<Result<Vec<_>, _>>()?;
                 Ok(match kind {
@@ -161,6 +162,8 @@ impl<'b, 'a, 'db> Frame<'b, 'a, 'db> {
                 _ => Err(Unevaluated::Unsupported),
             },
             // `execute` ends a binding's scope without a value.
+            // Code spliced at run time reads what only a call site holds.
+            Rvalue::Splice { .. } => Err(Unevaluated::Runtime),
             Rvalue::Dead => Err(Unevaluated::Unsupported),
             Rvalue::Call { callee, args } => self.call(callee, args),
         }

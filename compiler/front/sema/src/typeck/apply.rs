@@ -143,7 +143,7 @@ impl Typer<'_, '_, '_> {
         args: &[Argument],
     ) -> Option<Vec<(usize, Value)>> {
         let modes = f.modes(self.env()).unwrap_or_default();
-        let quotes = f.quotes(self.env());
+        let quotes = f.quotes(self.env()).unwrap_or_default();
         let receiver = callee.receiver.map(|r| (r, Passing::Asked));
         let receiver = receiver.map(|(r, passing)| (Argument::Expr(r), passing));
         let arguments = receiver.into_iter().chain(args.iter().map(|&a| (a, callee.passing)));

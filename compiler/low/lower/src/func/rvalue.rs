@@ -52,7 +52,9 @@ impl FnLower<'_, '_, '_> {
             Rvalue::Range { op, lo, hi } => self.range(*op, lo, hi.as_ref(), dest, ty),
             Rvalue::Resume { frame, .. } => self.drive(frame, dest, super::coroutine::Mode::Resume),
             Rvalue::End { frame } => self.drive(frame, None, super::coroutine::Mode::End),
-            Rvalue::Comptime { .. } | Rvalue::Quote { .. } => Err(unsupported(Form::Quote)),
+            Rvalue::Comptime { .. } | Rvalue::Quote { .. } | Rvalue::Splice { .. } => {
+                Err(unsupported(Form::Quote))
+            }
             Rvalue::Dead => Ok(()),
         }
     }

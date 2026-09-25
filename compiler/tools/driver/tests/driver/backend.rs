@@ -188,3 +188,28 @@ main := (sys: &mut std.os.System) -> std.os.Exit {
 ";
     assert_eq!(status("backend-mix", source), Some(24));
 }
+
+/// The status the C library runtime exits with when a program traps (`std.os.libc.trapped`).
+const TRAPPED: i32 = 101;
+
+/// A program checking the number of its arguments, one here, with `check`.
+fn checking(check: &str) -> String {
+    format!(
+        "\
+start := std.os.start(main);
+main := (sys: &mut std.os.System) -> std.os.Exit {{
+    n := sys.args().len();
+    {check}
+    .code(7)
+}};
+"
+    )
+}
+
+#[test]
+fn assertions_and_failures_trap_at_run_time() {
+    assert_eq!(status("backend-assert-holds", &checking("assert(n == 1);")), Some(7));
+    assert_eq!(status("backend-assert-fails", &checking("assert(n > 1);")), Some(TRAPPED));
+    let expect = "o: ?usize = if n > 1 { .some(n) } else { .none }; _ = o.expect(\"one argument\");";
+    assert_eq!(status("backend-expect", &checking(expect)), Some(TRAPPED));
+}

@@ -10,6 +10,7 @@ mod closure;
 mod control;
 mod defer;
 mod early_return;
+mod expand;
 mod loops;
 mod operator;
 mod pattern;
@@ -29,7 +30,7 @@ use vun_query::{Cx, Cycle, Query};
 use vun_sema::env::{Env, Unevaluated};
 use vun_sema::eval::{Instantiation, Staging};
 use vun_sema::int::Integer;
-use vun_sema::ty::Value;
+use vun_sema::ty::{Ty, Value};
 use vun_sema::typeck::{Operation, Step, Typed, TypedBody};
 
 use crate::Lowered;
@@ -148,8 +149,8 @@ impl<'a, 'db> Builder<'_, 'a, 'db> {
     }
 
     /// `expr`, evaluated by the call running the body, under the bindings of the step lowered.
-    fn comptime(&self, expr: ExprId) -> Rvalue {
-        Rvalue::Comptime { expr, staged: self.stepped() }
+    fn comptime(&self, expr: ExprId, expected: Option<Ty>) -> Rvalue {
+        Rvalue::Comptime { expr, staged: self.stepped(), expected }
     }
 
     /// The code `expr`, written in the call running the body.
@@ -223,6 +224,11 @@ impl<'a, 'db> Builder<'_, 'a, 'db> {
             {
                 self.selected(*operand, origin)
             }
+            ExprKind::Prefix { op: TokenKind::Dollar, operand, .. }
+                if let Ok(Value::Code(code)) = self.env().eval(*operand) =>
+            {
+                Ok(self.spliced(expr, code, origin))
+            }
             ExprKind::Infix { op: op @ (TokenKind::DotDot | TokenKind::DotDotEq), left, right } => {
                 let lo = self.operand(*left)?;
                 let hi = right.map(|r| self.operand(r)).transpose()?;
@@ -262,7 +268,7 @@ impl<'a, 'db> Builder<'_, 'a, 'db> {
             }
             ExprKind::Call { callee, args } => self.call(expr, *callee, args, origin),
             ExprKind::Struct(_) | ExprKind::Enum { .. } | ExprKind::Fn { .. } => {
-                Ok(self.temp(self.comptime(expr), origin))
+                Ok(self.temp(self.comptime(expr, None), origin))
             }
             // Anything else only as a constant sema can compute, such as `lang.int.u8`; one whose
             // evaluation traps is evaluated by the call running the body, where the trap fires.
@@ -270,7 +276,7 @@ impl<'a, 'db> Builder<'_, 'a, 'db> {
                 Some(built) => built,
                 None => match self.env().eval(expr) {
                     Ok(value) => Ok(Operand::Const(value)),
-                    Err(Unevaluated::Trapped(_)) => Ok(self.temp(self.comptime(expr), origin)),
+                    Err(Unevaluated::Trapped(_)) => Ok(self.temp(self.comptime(expr, None), origin)),
                     Err(_) => Err(unbuilt),
                 },
             },

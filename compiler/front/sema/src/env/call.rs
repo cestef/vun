@@ -1,6 +1,7 @@
 //! Calls at compile time: a function value, which the evaluator runs, or a primitive; `a.f(b)`
 //! on a value `a` of type `T` is `T.f(a, b)` (spec 01, section 4).
 
+use super::passing::Passed;
 use super::{Env, Unevaluated};
 use crate::eval::{Call, Instance};
 use crate::ty::Value;
@@ -26,7 +27,7 @@ impl Env<'_, '_> {
         args: &[Entry<Arg>],
         inferred: &[(usize, Value)],
     ) -> Result<Value, Unevaluated> {
-        let mut values = Vec::new();
+        let mut receiver = None;
         let callee = match &self.parsed.hir.exprs[callee].kind {
             ExprKind::Member { object, name: Name::Plain(name) } => {
                 let ty = self.type_of(*object);
@@ -38,7 +39,7 @@ impl Env<'_, '_> {
                 match ty {
                     // Through borrows, as `.` goes: a compile-time borrow is its value.
                     Some(ty) => {
-                        values.push(object);
+                        receiver = Some(object);
                         let mut types = std::iter::successors(Some(ty), |t| t.borrowed());
                         types
                             .find_map(|t| self.member(Value::Type(t), *name).ok())
@@ -49,46 +50,28 @@ impl Env<'_, '_> {
             }
             _ => self.eval(callee)?,
         };
-        self.call_value(callee, values, args, inferred)
+        self.call_value(callee, receiver, args, inferred)
     }
 
-    /// `callee(values..., args)`: the arguments evaluated after `values`, which a receiver fills,
-    /// and the `$` arguments left out, `inferred` by parameter, in their places.
+    /// `callee(args)`, passed as [`Self::passing`] reads them: the receiver `receiver` of
+    /// `a.f(b)` when there is one, and the `$` arguments left out, `inferred` by parameter.
     pub(super) fn call_value(
         &self,
         callee: Value,
-        mut values: Vec<Value>,
+        mut receiver: Option<Value>,
         args: &[Entry<Arg>],
         inferred: &[(usize, Value)],
     ) -> Result<Value, Unevaluated> {
-        let fill = |values: &mut Vec<Value>| {
-            while let Some((_, value)) = inferred.iter().find(|(slot, _)| *slot == values.len()) {
-                values.push(value.clone());
-            }
-        };
-        // A `Code(T)` parameter receives its argument as code; an argument typed by its context,
-        // such as `.{ ... }`, is evaluated as its parameter's type where that type is known.
-        let (quotes, params) = match &callee {
-            Value::Fn(f) => {
-                let signature = Env::inside(self.cx, f, [])
-                    .and_then(|env| env.literal_signature(f.literal.expr.id, &[]).ok());
-                (f.quotes(self.cx).unwrap_or_default(), signature.map(|s| s.params).unwrap_or_default())
-            }
-            _ => (Vec::new(), Vec::new()),
-        };
-        for arg in args {
-            fill(&mut values);
-            match arg {
-                Entry::One(Arg { name: None, value }) if quotes.get(values.len()) == Some(&true) => {
-                    values.push(Value::Code(self.code(*value)));
-                }
-                Entry::One(Arg { name: None, value }) => {
-                    values.push(self.eval_as(*value, params.get(values.len()).copied())?);
-                }
-                _ => return Err(Unevaluated::Unsupported),
-            }
-        }
-        fill(&mut values);
+        let passing = self.passing(Some(&callee), receiver.is_some(), args, inferred)?;
+        let values = passing
+            .into_iter()
+            .map(|passed| match passed {
+                Passed::Receiver => receiver.take().ok_or(Unevaluated::Unsupported),
+                Passed::Inferred(value) => Ok(value),
+                Passed::Code(expr) => Ok(Value::Code(self.code(expr))),
+                Passed::Known { expr, ty } | Passed::Run { expr, ty } => self.eval_as(expr, ty),
+            })
+            .collect::<Result<_, _>>()?;
         self.apply(callee, values)
     }
 

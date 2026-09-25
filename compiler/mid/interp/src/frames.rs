@@ -7,7 +7,7 @@ use vun_index::{Idx, IndexVec};
 
 use vun_mir::{BlockId, Body, Mir, Place};
 use vun_query::Cx;
-use vun_sema::env::{Env, Unevaluated};
+use vun_sema::env::Unevaluated;
 use vun_sema::eval::{Instance, Instantiation, Resumed, Suspended};
 use vun_sema::ty::{Ty, Value};
 
@@ -23,7 +23,7 @@ impl<'b, 'a, 'db> Frame<'b, 'a, 'db> {
 
     /// A frame going on with `suspended`, a call of `body`.
     fn resuming(cx: &'a Cx<'db>, body: &'b Body, suspended: &Suspended) -> Result<Self, Unevaluated> {
-        let env = Env::within(cx, &suspended.call).ok_or(Unevaluated::Absent)?;
+        let env = Instantiation::running(cx, &suspended.call).ok_or(Unevaluated::Absent)?;
         let locals = IndexVec::from(suspended.locals.clone());
         Ok(Self { body, env, locals, steps: 0, fuel: suspended.call.f.fuel(cx) })
     }

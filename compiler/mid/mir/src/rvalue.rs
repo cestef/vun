@@ -4,7 +4,8 @@ use vun_desugar::{Borrow, Narrowing};
 use vun_grammar::TokenKind;
 use vun_hir::tree::ExprId;
 use vun_intern::Symbol;
-use vun_sema::eval::Staging;
+use vun_sema::env::{Env, Unevaluated};
+use vun_sema::eval::{Code, Staging};
 use vun_sema::ty::{Ty, Value};
 
 use crate::place::Place;
@@ -77,12 +78,20 @@ pub enum Rvalue {
     Comptime {
         expr: ExprId,
         staged: Vec<Staging>,
+        /// The type a value is wanted of, which forms typed by their context read: the type of
+        /// the `$` parameter the value is passed to.
+        expected: Option<Ty>,
     },
     /// The code `expr`, written in the call running the body under the bindings `staged`: a
     /// quote, or an argument for a `Code(T)` parameter (spec 03, section 4).
     Quote {
         expr: ExprId,
         staged: Vec<Staging>,
+    },
+    /// `$c` at run time, for code `c` that reads what only its call site holds: the value of the
+    /// code, built where it is written by the call site expanding this body (spec 03, section 4).
+    Splice {
+        code: Code,
     },
 }
 
@@ -105,6 +114,7 @@ impl Rvalue {
             | Self::IsVariant { .. }
             | Self::Comptime { .. }
             | Self::Quote { .. }
+            | Self::Splice { .. }
             | Self::Dead => Vec::new(),
         }
     }
@@ -128,7 +138,23 @@ impl Rvalue {
             | Self::IsVariant { .. }
             | Self::Comptime { .. }
             | Self::Quote { .. }
+            | Self::Splice { .. }
             | Self::Dead => Vec::new(),
+        }
+    }
+}
+
+impl Rvalue {
+    /// The value of a compile-time rvalue, `Comptime` or `Quote`, in `env`, the environment of
+    /// the call running the body; `None` for any other.
+    #[must_use]
+    pub fn compile_time(&self, env: &Env<'_, '_>) -> Option<Result<Value, Unevaluated>> {
+        match self {
+            Self::Comptime { expr, staged, expected } => {
+                Some(env.clone().staging(staged).eval_as(*expr, *expected))
+            }
+            Self::Quote { expr, staged } => Some(Ok(Value::Code(env.clone().staging(staged).code(*expr)))),
+            _ => None,
         }
     }
 }

@@ -10,7 +10,8 @@ use vun_query::Cx;
 use crate::Primitive;
 use crate::env::Env;
 use crate::eval::Func;
-use crate::ty::Value;
+use crate::primitives::meta::Meta;
+use crate::ty::{Ty, Value};
 
 /// A function a call runs.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -79,14 +80,16 @@ impl Callable {
         self.written(env)?.modes()
     }
 
-    /// Whether each parameter receives its argument as code: see [`Func::quotes`]. No primitive
-    /// quotes.
+    /// Whether each parameter receives its argument as code: see [`Written::quotes`].
     #[must_use]
-    pub fn quotes(&self, env: &Env<'_, '_>) -> Vec<bool> {
-        match self {
-            Self::Fn(f) => f.quotes(env.cx).unwrap_or_default(),
-            Self::Primitive(_) => Vec::new(),
-        }
+    pub fn quotes(&self, env: &Env<'_, '_>) -> Option<Vec<bool>> {
+        self.written(env)?.quotes()
+    }
+
+    /// Each parameter's type, where known before a call: see [`Written::types`].
+    #[must_use]
+    pub fn types(&self, env: &Env<'_, '_>) -> Option<Vec<Option<Ty>>> {
+        self.written(env)?.types()
     }
 }
 
@@ -139,6 +142,26 @@ impl Written<'_, '_> {
     pub fn comptime(&self) -> Option<Vec<bool>> {
         let hir = &self.env.parsed.hir;
         Some(self.params()?.iter().map(|(b, _)| b.is_some_and(|b| hir.binders[b].comptime)).collect())
+    }
+
+    /// Each parameter's type, where its annotation names no `$` parameter: known before a call
+    /// is instantiated.
+    #[must_use]
+    pub fn types(&self) -> Option<Vec<Option<Ty>>> {
+        let ty = |(_, ty): &(Option<BinderId>, Option<ExprId>)| self.env.eval((*ty)?).ok()?.as_type();
+        Some(self.params()?.iter().map(ty).collect())
+    }
+
+    /// Whether each parameter receives its argument as code: those of type `lang.meta.Code(T)`,
+    /// whatever `T` (spec 03, section 4).
+    #[must_use]
+    pub fn quotes(&self) -> Option<Vec<bool>> {
+        let hir = &self.env.parsed.hir;
+        let quotes = |(_, ty): &(Option<BinderId>, Option<ExprId>)| {
+            let Some(ExprKind::Call { callee, .. }) = ty.map(|t| &hir.exprs[t].kind) else { return false };
+            matches!(self.env.eval(*callee), Ok(Value::Primitive(Primitive::Meta(Meta::Code))))
+        };
+        Some(self.params()?.iter().map(quotes).collect())
     }
 
     /// The borrow mode each parameter's annotation writes, whatever the `$` parameters: known

@@ -5,6 +5,7 @@ pub mod build;
 pub mod concrete;
 pub mod place;
 pub mod program;
+mod remap;
 pub mod rvalue;
 pub mod text;
 mod types;

@@ -16,10 +16,12 @@ mod frame;
 mod lasting;
 mod named;
 mod operator;
+mod passing;
 mod path;
 mod primitive;
 mod reach;
 
+pub use passing::Passed;
 pub use reach::Hop;
 
 pub use condition::Selected;
