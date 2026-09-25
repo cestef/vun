@@ -433,8 +433,10 @@ address and the saved frame pointer) are reported as the object is emitted
 passes integers in, then on the stack; the C convention classifies records as System V does
 (integer records of up to 16 bytes in registers, larger ones in memory, a result in memory through
 an address passed first). Narrow integers are held with undefined upper bits and extended where an
-operation reads them (division, right shifts, conversions, C arguments). Not yet: callee-saved
-registers for loops, and floats and 128-bit integers, which are refused (`backend.lacks`).
+operation reads them (division, right shifts, conversions, C arguments). Values live across the
+blocks of a loop, deepest loops and most uses first, each hold one of `rbx` and `r12` to `r15`
+from definition to last use, never stored home; the prologue saves the registers taken and each
+return restores them. Not yet: floats and 128-bit integers, which are refused (`backend.lacks`).
 `vun build --backend baseline` links the object with the target's linker; the backend tests run
 every program through both backends and require the same result.
 

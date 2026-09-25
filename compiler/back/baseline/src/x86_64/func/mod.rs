@@ -7,9 +7,11 @@
 //! recomputed where used, never kept. Only the state at the current point is tracked: at the
 //! end of a block, and before a call, every value still used is stored home, so each block
 //! starts with every value in its home and every register free, but a block emitted next that
-//! only the last one reaches, which starts with the registers as it left them.
+//! only the last one reaches, which starts with the registers as it left them. A value live
+//! across a loop may instead hold a callee-saved register of its own (`fixed`).
 
 mod call;
+mod fixed;
 mod inst;
 mod memory;
 mod term;
@@ -88,6 +90,10 @@ struct FnCompiler<'a> {
     at: OriginId,
     /// The block emitted next when it starts with the registers as the last one left them.
     kept: Option<Block>,
+    /// The callee-saved register each value live across a loop is held in, if it has one.
+    fixed: IndexVec<Value, Option<Reg>>,
+    /// The callee-saved registers taken, with where the prologue saved each.
+    saves: Vec<(Reg, i32)>,
 }
 
 /// Compiles `f` of `unit`.
@@ -132,6 +138,8 @@ pub fn compile(unit: &Unit, f: &Function) -> Result<Compiled, Lack> {
         gathered: None,
         at: f.origin,
         kept: None,
+        fixed: IndexVec::filled(None, values),
+        saves: Vec::new(),
     };
     let size_at = c.asm.prologue();
     for (_, slot) in f.slots.iter() {
@@ -141,6 +149,7 @@ pub fn compile(unit: &Unit, f: &Function) -> Result<Compiled, Lack> {
         let offset = c.reserve(slot.size, slot.align);
         c.slots.push(offset);
     }
+    c.fix(&live, &loops);
     c.entry();
     for &block in &c.order.blocks().to_vec() {
         c.block(block)?;
@@ -169,6 +178,10 @@ impl FnCompiler<'_> {
                 Loc::Stack(offset) => {
                     self.home[v] = Some(CALLER_ARGS + i32::try_from(*offset).expect("fits"));
                     self.saved[v] = true;
+                    if let Some(r) = self.fixed[v] {
+                        let home = self.home(v);
+                        self.asm.load(super::Size::B64, r, home);
+                    }
                 }
                 Loc::Copied { offset, .. } => {
                     self.frame_addr.insert(v, CALLER_ARGS + i32::try_from(*offset).expect("fits"));

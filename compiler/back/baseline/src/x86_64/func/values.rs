@@ -87,6 +87,13 @@ impl FnCompiler<'_> {
     }
 
     pub(super) fn bind(&mut self, v: Value, r: Reg, saved: bool) {
+        // A value with a register of its own is moved there.
+        if let Some(fixed) = self.fixed[v]
+            && fixed != r
+        {
+            self.asm.mov_rr(fixed, r);
+            return self.bind(v, fixed, saved);
+        }
         self.holds[r.number() as usize] = Some(v);
         self.reg[v] = Some(r);
         self.saved[v] = saved;
@@ -108,7 +115,7 @@ impl FnCompiler<'_> {
 
     /// Stores `v`, held in `r`, home when it is used later and its home does not hold it.
     fn store_home(&mut self, v: Value, r: Reg) {
-        if !self.remat(v) && !self.saved[v] && self.left[v] > 0 {
+        if !self.remat(v) && !self.saved[v] && self.left[v] > 0 && self.fixed[v].is_none() {
             let home = self.home(v);
             self.asm.store(Size::B64, home, r);
             self.saved[v] = true;
@@ -167,7 +174,7 @@ impl FnCompiler<'_> {
 
     /// A register for the value `v` defines.
     pub(super) fn def(&mut self, v: Value) -> Reg {
-        let r = self.alloc();
+        let r = self.fixed[v].unwrap_or_else(|| self.alloc());
         self.bind(v, r, false);
         self.locked.push(r);
         r
@@ -198,10 +205,12 @@ impl FnCompiler<'_> {
         }
     }
 
-    /// Forgets what every register holds.
+    /// Forgets what every register holds, but the values held in registers of their own.
     pub(super) fn clear(&mut self) {
         for r in Reg::ALL {
-            self.unbind(r);
+            if !self.is_fixed(r) {
+                self.unbind(r);
+            }
         }
     }
 }

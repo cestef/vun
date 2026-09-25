@@ -240,7 +240,8 @@ single-pass compiler: `values.rs` assignments, homes, recomputed values and evic
 `memory.rs`, `call.rs`, `term.rs`), `elf/` (`Object` as data, `write`), `object.rs` (a unit as one
 object). Compares fuse into their branch (`FnCompiler::fused`), registers carry into a
 single-predecessor block emitted next (`kept`), frames are reported while emitting
-(`ArtifactSink::frames`, `Emitted`, `Compiled::stack`).
+(`ArtifactSink::frames`, `Emitted`, `Compiled::stack`); values live across loops hold callee-saved
+registers of their own (`func/fixed.rs`, decision 166).
 
 **Attributes** (decision 163): `lang.Attribute(on)` with `lang.Place`; `check/placed.rs` types
 each attribute (`Typer::typed`) and reports `attr.misplaced`; `sema/src/attributes.rs`
@@ -316,7 +317,8 @@ Proposed also: 155 (frame layout), 156 (narrowing, runtime bounds, frame layouts
 (the baseline backend). Proposed: 159 (trap sites at compile time), 160 (calls read one way, expansion, run-time `fail`),
 161 (baseline fusion, fall-through registers, frames reported). Accepted: 162 (stack bounds, imports
 declaring theirs), 163 (attribute places, one reading of attributes),
-164 (an import's bound from the program's declarations). Accepted: 139 (the size budget, now 10 MiB), 158 (`meta.Frame`, `TypeOf`
+164 (an import's bound from the program's declarations), 165 (`symbols` structs); proposed: 166
+(callee-saved registers for loops). Accepted: 139 (the size budget, now 10 MiB), 158 (`meta.Frame`, `TypeOf`
 over code; details proposed).
 Accepted (the user's choices, details proposed): 152 (backends after TPDE, baseline backend
 started after C), 153 (the C backend), 154 (targets named by system and CPU, chosen per session).
@@ -337,8 +339,7 @@ rules go to `decisions.md` as proposed unless the user approves them.
 
 ## 7. Next steps, in order
 
-0. Baseline backend next: callee-saved registers for values used across a loop (the prologue
-   reserving their saves, patched), floats (SSE) and
+0. Baseline backend next: floats (SSE) and
    128-bit integers (pairs, helpers in Vun), DWARF lines, arm64. Backends: memory regions from a program's build options into `LinkPlan` (the `gnu`
    adapter writes scripts from them), and a bare-metal runtime to link against. A slice value (`xs[a..b]` not borrowed)
    reaches lowering as `backend.unlowered` ("no layout") instead of a sema error.

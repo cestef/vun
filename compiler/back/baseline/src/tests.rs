@@ -1,5 +1,11 @@
 //! The encoder against the bytes the architecture manual gives.
 
+use vun_intern::Symbol;
+use vun_lir::func::{Conv, Linkage, Signature};
+use vun_lir::{AbiType, BinOp, Block, Builder, Cond, Ext, Scalar, Target, Terminator, Unit, Value};
+use vun_origin::{OriginId, OriginTable};
+use vun_span::{SourceFiles, Span};
+
 use crate::x86_64::encode::{Alu, Asm};
 use crate::x86_64::{Mem, Reg, Rm, Size};
 
@@ -36,33 +42,37 @@ fn immediates_take_the_shortest_move() {
     assert_eq!(encoded(|a| a.mov_ri(Reg::Rcx, 1 << 40)), [0x48, 0xb9, 0, 0, 0, 0, 0, 1, 0, 0]);
 }
 
-/// `(n) -> i64 { if n < 10 { 1 } else { 2 } }`, compiled.
-fn branching() -> Vec<u8> {
-    use vun_intern::Symbol;
-    use vun_lir::func::{Conv, Linkage, Signature};
-    use vun_lir::{AbiType, Builder, Cond, Ext, Scalar, Target, Terminator, Unit};
-    use vun_origin::OriginTable;
-    use vun_span::{SourceFiles, Span};
-
+/// The code of `f(n: i64) -> i64`, its body built by `build` from `n`.
+fn compiled(build: impl FnOnce(&mut Builder, Value, OriginId)) -> Vec<u8> {
     let origins = OriginTable::new();
     let origin = origins.source(Span::new(SourceFiles::new().add("a.vun", "n"), 0, 1));
     let int = AbiType::Int(Scalar::I64, Ext::Sign);
     let signature = Signature { conv: Conv::C, params: vec![int.clone()], result: Some(int) };
     let mut b = Builder::new(Linkage::Export(Symbol::intern("f")), signature, origin);
     let n = b.params(b.current())[0];
-    let ten = b.constant(Scalar::I64, 10, origin);
-    let less = b.compare(Cond::SLt, n, ten, origin);
-    let (small, large) = (b.block(&[], origin), b.block(&[], origin));
-    let to = |block| Target { block, args: Vec::new() };
-    b.terminate(Terminator::Branch { cond: less, then: to(small), otherwise: to(large) });
-    for (block, value) in [(small, 1), (large, 2)] {
-        b.switch_to(block);
-        let v = b.constant(Scalar::I64, value, origin);
-        b.terminate(Terminator::Return(Some(v)));
-    }
+    build(&mut b, n, origin);
     let mut unit = Unit { pointer_bits: 64, ..Unit::default() };
     let f = unit.functions.push(b.finish());
     crate::x86_64::func::compile(&unit, &unit.functions[f]).unwrap().code
+}
+
+fn to(block: Block) -> Target {
+    Target { block, args: Vec::new() }
+}
+
+/// `if n < 10 { 1 } else { 2 }`.
+fn branching() -> Vec<u8> {
+    compiled(|b, n, origin| {
+        let ten = b.constant(Scalar::I64, 10, origin);
+        let less = b.compare(Cond::SLt, n, ten, origin);
+        let (small, large) = (b.block(&[], origin), b.block(&[], origin));
+        b.terminate(Terminator::Branch { cond: less, then: to(small), otherwise: to(large) });
+        for (block, value) in [(small, 1), (large, 2)] {
+            b.switch_to(block);
+            let v = b.constant(Scalar::I64, value, origin);
+            b.terminate(Terminator::Return(Some(v)));
+        }
+    })
 }
 
 #[test]
@@ -72,4 +82,33 @@ fn a_branch_on_a_comparison_jumps_on_its_flags() {
     // `jl` on the flags of `cmp`, no `setl` materializing the condition, no `test` of it.
     assert!(has([0x0f, 0x8c]), "{code:02x?}");
     assert!(!has([0x0f, 0x9c]), "{code:02x?}");
+}
+
+/// The sum of `0..n`, in a loop whose counter and total are block parameters.
+fn summing() -> Vec<u8> {
+    compiled(|b, n, origin| {
+        let zero = b.constant(Scalar::I64, 0, origin);
+        let head = b.block(&[Scalar::I64, Scalar::I64], origin);
+        let (body, exit) = (b.block(&[], origin), b.block(&[], origin));
+        b.terminate(Terminator::Jump(Target { block: head, args: vec![zero, zero] }));
+        b.switch_to(head);
+        let [i, total] = [b.params(head)[0], b.params(head)[1]];
+        let more = b.compare(Cond::ULt, i, n, origin);
+        b.terminate(Terminator::Branch { cond: more, then: to(body), otherwise: to(exit) });
+        b.switch_to(body);
+        let one = b.constant(Scalar::I64, 1, origin);
+        let (next, added) = (b.binary(BinOp::Add, i, one, origin), b.binary(BinOp::Add, total, i, origin));
+        b.terminate(Terminator::Jump(Target { block: head, args: vec![next, added] }));
+        b.switch_to(exit);
+        b.terminate(Terminator::Return(Some(total)));
+    })
+}
+
+#[test]
+fn values_live_across_a_loop_take_callee_saved_registers() {
+    let code = summing();
+    let has = |bytes: &[u8]| code.windows(bytes.len()).any(|w| w == bytes);
+    // `rbx` saved below the frame pointer and restored, `mov [rbp + d8], rbx` and back.
+    assert!(has(&[0x48, 0x89, 0x5d]), "{code:02x?}");
+    assert!(has(&[0x48, 0x8b, 0x5d]), "{code:02x?}");
 }

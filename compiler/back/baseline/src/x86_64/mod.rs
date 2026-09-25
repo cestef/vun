@@ -51,6 +51,8 @@ impl Reg {
     /// kept for the compiler's own moves.
     pub const ALLOCATABLE: [Self; 7] =
         [Self::Rax, Self::Rcx, Self::Rdx, Self::Rsi, Self::Rdi, Self::R8, Self::R9];
+    /// The registers a call preserves, which hold values live across loops.
+    pub const CALLEE_SAVED: [Self; 5] = [Self::Rbx, Self::R12, Self::R13, Self::R14, Self::R15];
     /// Carries a value between two memory places, or an operand an instruction needs apart.
     pub const SCRATCH: Self = Self::R11;
     /// Holds a second operand apart, or the temporary of a cycle of moves.

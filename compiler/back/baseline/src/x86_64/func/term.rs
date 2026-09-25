@@ -121,8 +121,12 @@ impl FnCompiler<'_> {
                 Location::Temp(_) => Reg::TEMP,
             };
             if let Location::Value(p) = m.to {
-                let home = self.home(p);
-                self.asm.store(Size::B64, home, from);
+                if let Some(r) = self.fixed[p] {
+                    self.asm.mov_rr(r, from);
+                } else {
+                    let home = self.home(p);
+                    self.asm.store(Size::B64, home, from);
+                }
             }
         }
         if next != Some(target.block) {
@@ -152,6 +156,7 @@ impl FnCompiler<'_> {
             }
             Ret::Reg | Ret::None => {}
         }
+        self.restore();
         self.asm.epilogue();
         Ok(())
     }
