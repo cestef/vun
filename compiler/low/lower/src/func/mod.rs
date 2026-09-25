@@ -79,7 +79,9 @@ impl<'l, 'a, 'db> FnLower<'l, 'a, 'db> {
         let first = this.blocks[Idx::new(0)];
         this.b.terminate(Terminator::Jump(Target { block: first, args: Vec::new() }));
         this.lower_blocks()?;
-        Ok(this.b.finish())
+        let mut function = this.b.finish();
+        function.stack_max = f.f.stack_max(cx);
+        Ok(function)
     }
 
     fn new(l: &'l mut Lowering<'a, 'db>, body: &'l Body, b: Builder, at: OriginId) -> Self {

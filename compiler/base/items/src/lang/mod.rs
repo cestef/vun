@@ -36,6 +36,7 @@ pub mod errors_panic;
 pub mod errors_place;
 pub mod errors_plan;
 pub mod errors_safety;
+pub mod errors_stack;
 pub mod errors_syntax;
 pub mod errors_target;
 pub mod errors_tool;

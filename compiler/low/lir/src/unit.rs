@@ -45,6 +45,8 @@ pub struct Import {
     pub symbol: Symbol,
     pub kind: ImportKind,
     pub origin: OriginId,
+    /// The most bytes of stack a call of it takes, as its declaration states (`#[stack.max(n)]`).
+    pub stack_max: Option<u64>,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]

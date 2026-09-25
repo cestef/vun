@@ -85,7 +85,10 @@ whether it may trap (`panic.never`), a stack bound (`stack.max(n)`), required ta
 its calling convention. Function pointers carry the same markers, so the analyses survive indirect
 calls. A table in `lang` gives each marker a relation, which decides where a function is accepted
 in place of an expected function type (@tab-markers). Acceptance is computed generically from the
-table, so adding a marker adds a row rather than a rule.
+table, so adding a marker adds a row rather than a rule. A stack bound is checked when the program
+is built, over the whole call graph and the frame sizes the backend reports; a function another
+program provides states its stack use with the same marker on its declaration, trusted as its
+signature is.
 
 #figure(
   table(

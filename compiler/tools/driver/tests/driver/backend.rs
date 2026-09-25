@@ -227,3 +227,40 @@ fn assertions_and_failures_trap_at_run_time() {
     let expect = "o: ?usize = if n > 1 { .some(n) } else { .none }; _ = o.expect(\"one argument\");";
     assert_eq!(status("backend-expect", &checking(expect)), Some(TRAPPED));
 }
+
+/// The ids of what building `source` through `backend` reports.
+fn reported(name: &str, source: &str, backend: &str) -> Vec<vun_diag::DiagId> {
+    let fixture = Fixture::new(&format!("{name}-{backend}"));
+    let path = fixture.root.write("main.vun", source);
+    let mut session = fixture.session();
+    let file = session.load(&path).unwrap();
+    let _ = session.compile(file, Some(backend));
+    session.diag.sorted().into_iter().map(|d| d.id.clone()).collect()
+}
+
+#[test]
+fn stack_bounds_hold_over_the_frames_each_backend_reports() {
+    use vun_diag::errors;
+    let source = "\
+#[link.export(\"fill\"), abi.c, stack.max(64)]
+fill := (seed: u8) -> u8 { buf: [256]u8 = [seed; 256]; copy := buf; seed };
+#[link.export(\"small\"), abi.c, stack.max(512)]
+small := (x: u8) -> u8 { x };
+count := (n: u32) -> u32 { if n == 0 { 0 } else { (1 + count(n - 1)).sat(u32) } };
+#[link.export(\"depth\"), abi.c, stack.max(512)]
+depth := (n: u32) -> u32 { count(n) };
+#[link.symbol(\"tick\"), abi.c, stack.max(32)]
+tick: (x: u8) -> u8 = _;
+#[link.symbol(\"tock\"), abi.c]
+tock: (x: u8) -> u8 = _;
+#[link.export(\"declared\"), abi.c, stack.max(4096)]
+declared := (x: u8) -> u8 { tick(x) };
+#[link.export(\"undeclared\"), abi.c, stack.max(4096)]
+undeclared := (x: u8) -> u8 { tock(x) };
+";
+    for backend in BACKENDS {
+        let ids = reported("backend-stack", source, backend);
+        let expected = [errors::STACK_EXCEEDED, errors::STACK_UNBOUNDED, errors::STACK_UNBOUNDED];
+        assert_eq!(ids, expected, "{backend}");
+    }
+}

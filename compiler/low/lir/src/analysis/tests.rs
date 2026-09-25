@@ -2,7 +2,7 @@ use vun_index::Idx;
 use vun_intern::Symbol;
 use vun_origin::{OriginId, OriginTable};
 
-use super::{Cfg, Liveness, Location, Loops, Move, Moves, Order, Range};
+use super::{Cfg, Liveness, Location, Loops, Move, Moves, Order, Range, StackUse, Unbounded};
 use crate::func::{Conv, Linkage, Signature};
 use crate::tests::{origin, sum};
 use crate::{AbiType, Block, Builder, Function, Scalar, Target, Terminator};
@@ -103,4 +103,44 @@ fn swapped_parameters_move_through_a_temporary() {
     );
     let same = Target { block: b(1), args: vec![i, total] };
     assert_eq!(Moves::of(func, &same), Moves::default());
+}
+
+/// A unit of functions that each call those `calls` lists for it, by index.
+fn calling(origin: OriginId, calls: &[&[usize]]) -> crate::Unit {
+    let mut unit = crate::Unit { pointer_bits: 64, ..crate::Unit::default() };
+    for callees in calls {
+        let signature = Signature { conv: Conv::Vun, params: Vec::new(), result: None };
+        let mut builder = Builder::new(Linkage::Internal, signature, origin);
+        for &callee in *callees {
+            let call = crate::InstKind::Call {
+                callee: crate::Callee::Func(crate::FuncId::new(callee)),
+                args: Vec::new(),
+            };
+            builder.push(call, None, origin);
+        }
+        builder.terminate(Terminator::Return(None));
+        unit.functions.push(builder.finish());
+    }
+    unit
+}
+
+#[test]
+fn stack_use_is_a_frame_and_its_deepest_call() {
+    let origin = origin(&OriginTable::new());
+    let f = crate::FuncId::new;
+    let unit = calling(origin, &[&[1, 2], &[2], &[]]);
+    let uses = StackUse::of(&unit, &[(f(0), 16), (f(1), 32), (f(2), 48)]);
+    assert_eq!([0, 1, 2].map(|i| uses.of_function(f(i))), [Ok(96), Ok(80), Ok(48)]);
+    let unreported = StackUse::of(&unit, &[(f(0), 16), (f(2), 48)]);
+    assert_eq!(unreported.of_function(f(0)), Err(Unbounded::Unreported(f(1))));
+}
+
+#[test]
+fn recursion_leaves_stack_use_unbounded() {
+    let origin = origin(&OriginTable::new());
+    let f = crate::FuncId::new;
+    let unit = calling(origin, &[&[1], &[0], &[]]);
+    let uses = StackUse::of(&unit, &[(f(0), 16), (f(1), 16), (f(2), 16)]);
+    assert_eq!(uses.of_function(f(0)), Err(Unbounded::Recursive(f(0))));
+    assert_eq!(uses.of_function(f(2)), Ok(16));
 }

@@ -177,6 +177,9 @@ pub struct Function {
     pub insts: IndexVec<Inst, InstData>,
     pub values: IndexVec<Value, ValueData>,
     pub origin: OriginId,
+    /// The most bytes of stack a call of the function may take, with the calls it makes, when
+    /// the function is bound (`#[stack.max(n)]`, spec 07, section 4).
+    pub stack_max: Option<u64>,
 }
 
 impl Function {

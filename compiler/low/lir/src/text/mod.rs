@@ -85,6 +85,14 @@ impl Unit {
 }
 
 impl Text<'_> {
+    /// ` stack.max(n)` for a function or import bound to `n` bytes of stack, else nothing.
+    fn stack(f: &mut fmt::Formatter<'_>, stack_max: Option<u64>) -> fmt::Result {
+        match stack_max {
+            Some(bytes) => write!(f, " stack.max({bytes})"),
+            None => Ok(()),
+        }
+    }
+
     /// Ends a line with the position of `origin`, when locating.
     fn end(&self, f: &mut fmt::Formatter<'_>, origin: OriginId) -> fmt::Result {
         match self.locate {
@@ -138,6 +146,7 @@ impl fmt::Display for Text<'_> {
                 ImportKind::Func(signature) => write!(f, ": {signature}")?,
                 ImportKind::Data => f.write_str(": data")?,
             }
+            Self::stack(f, import.stack_max)?;
             self.end(f, import.origin)?;
         }
         for (id, data) in unit.data.iter() {
@@ -153,7 +162,9 @@ impl fmt::Display for Text<'_> {
             self.end(f, data.origin)?;
         }
         for (id, func) in unit.functions.iter() {
-            write!(f, "fn {id}{}: {} {{", func.linkage, func.signature)?;
+            write!(f, "fn {id}{}: {}", func.linkage, func.signature)?;
+            Self::stack(f, func.stack_max)?;
+            write!(f, " {{")?;
             self.end(f, func.origin)?;
             self.function(f, func)?;
             writeln!(f, "}}")?;

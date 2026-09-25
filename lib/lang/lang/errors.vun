@@ -114,6 +114,13 @@ backend := struct {
     unlowered := diag.Diag{ .explanation = meta.embed("errors/backend/unlowered.md") };
 };
 
+/// Stack bounds (spec 07, section 4).
+stack := struct {
+    exceeded := diag.Diag{ .explanation = meta.embed("errors/stack/exceeded.md") };
+    unbounded := diag.Diag{ .explanation = meta.embed("errors/stack/unbounded.md") };
+    unreported := diag.Diag{ .explanation = meta.embed("errors/stack/unreported.md") };
+};
+
 /// Targets (spec 13, section 7).
 target := struct {
     unchosen := diag.Diag{ .explanation = meta.embed("errors/target/unchosen.md") };

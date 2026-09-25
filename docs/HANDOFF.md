@@ -240,7 +240,14 @@ single-pass compiler: `values.rs` assignments, homes, recomputed values and evic
 `memory.rs`, `call.rs`, `term.rs`), `elf/` (`Object` as data, `write`), `object.rs` (a unit as one
 object). Compares fuse into their branch (`FnCompiler::fused`), registers carry into a
 single-predecessor block emitted next (`kept`), frames are reported while emitting
-(`ArtifactSink::frames`, `Emitted`, `Compiled::stack`). `vun run <file> --backend baseline` runs hello.vun; the driver's backend tests build every
+(`ArtifactSink::frames`, `Emitted`, `Compiled::stack`).
+
+**Stack bounds** (decision 162): `Func::stack_max` and `DeclRef::stack_max` (through `Env::count`)
+set `Function::stack_max` and `Import::stack_max` in LIR; `vun_lir::analysis::StackUse` walks the
+call graph; the driver checks after compiling (`driver/src/stack.rs`). Open: the trap handler
+`lang.panic.trap` is imported by programs without a Vun runtime and its `lang` declaration states
+no bound, so any bounded function with a trap site is unbounded there (a bound on the `lang`
+declaration, or one from the target, is the user's call); `stack.depth(k)` for bounded recursion. `vun run <file> --backend baseline` runs hello.vun; the driver's backend tests build every
 program through `BACKENDS` (C and baseline) and require equal results. `Lack`/`Missing` live in
 `vun-backend`.
 
@@ -296,14 +303,15 @@ arguments as `Rvalue::Comptime { expected }`, `Rvalue::compile_time` evaluating 
 lowered (`build/assign.rs`).
 
 Progress: corpus 211 passed, 0 pending, 9 planned, 27 shown, 0 failed; 83% of accepted body
-expressions typed; MIR lowers 85 of 97 accepted functions. 269 tests, including one that checks
+expressions typed; MIR lowers 85 of 97 accepted functions. 272 tests, including one that checks
 every `lang` and `std` file cleanly.
 
 ## 6. Decisions
 
 Proposed also: 155 (frame layout), 156 (narrowing, runtime bounds, frame layouts in sema), 157
 (the baseline backend). Proposed: 159 (trap sites at compile time), 160 (calls read one way, expansion, run-time `fail`),
-161 (baseline fusion, fall-through registers, frames reported). Accepted: 139 (the size budget, now 10 MiB), 158 (`meta.Frame`, `TypeOf`
+161 (baseline fusion, fall-through registers, frames reported). Accepted: 162 (stack bounds, imports
+declaring theirs). Accepted: 139 (the size budget, now 10 MiB), 158 (`meta.Frame`, `TypeOf`
 over code; details proposed).
 Accepted (the user's choices, details proposed): 152 (backends after TPDE, baseline backend
 started after C), 153 (the C backend), 154 (targets named by system and CPU, chosen per session).
@@ -325,7 +333,7 @@ rules go to `decisions.md` as proposed unless the user approves them.
 ## 7. Next steps, in order
 
 0. Baseline backend next: callee-saved registers for values used across a loop (the prologue
-   reserving their saves, patched), `stack.max` checked against the reported frames, floats (SSE) and
+   reserving their saves, patched), floats (SSE) and
    128-bit integers (pairs, helpers in Vun), DWARF lines, arm64. Backends: memory regions from a program's build options into `LinkPlan` (the `gnu`
    adapter writes scripts from them), and a bare-metal runtime to link against. A slice value (`xs[a..b]` not borrowed)
    reaches lowering as `backend.unlowered` ("no layout") instead of a sema error.

@@ -13,6 +13,7 @@ mod plan;
 pub mod program;
 mod registry;
 mod session;
+mod stack;
 pub mod stages;
 pub mod target;
 

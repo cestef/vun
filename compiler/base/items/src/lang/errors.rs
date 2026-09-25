@@ -36,6 +36,8 @@ pub const borrow: Item = Item::new(&["lang", "errors", "borrow"]);
 pub const panic: Item = Item::new(&["lang", "errors", "panic"]);
 /// Code generation backends (spec 13).
 pub const backend: Item = Item::new(&["lang", "errors", "backend"]);
+/// Stack bounds (spec 07, section 4).
+pub const stack: Item = Item::new(&["lang", "errors", "stack"]);
 /// Targets (spec 13, section 7).
 pub const target: Item = Item::new(&["lang", "errors", "target"]);
 /// Linking (spec 13).

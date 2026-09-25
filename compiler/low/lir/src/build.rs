@@ -27,6 +27,7 @@ impl Builder {
             insts: IndexVec::new(),
             values: IndexVec::new(),
             origin,
+            stack_max: None,
         };
         let mut b = Self { func, current: Idx::new(0) };
         b.current = b.block(&params, origin);

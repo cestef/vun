@@ -95,9 +95,13 @@ a top-level `mut` binding (`safety.requires_unsafe`). A `lang.mem.Cell` is reach
 ### Stack bounds
 
 The compiler computes the worst-case stack use of every function from the whole-program call graph
-and the frame sizes the backend reports. Recursion is rejected under a `stack.max` bound unless its
-depth is compile-time-bounded (`#[stack.depth(k)]`) or it is a guaranteed tail call (spec 09). A
-backend that cannot report frame sizes cannot build a program that uses `stack.max`.
+and the frame sizes the backend reports: a function's frame and the most any call it makes takes.
+Recursion is rejected under a `stack.max` bound unless its depth is compile-time-bounded
+(`#[stack.depth(k)]`) or it is a guaranteed tail call (spec 09); so is a call through an address. A
+declaration provided from outside (an import, `= _` with `link.symbol`) states the stack a call of
+it takes with `#[stack.max(n)]`, trusted as its signature is; one that states none is unbounded. A
+backend that cannot report frame sizes cannot build a program that uses `stack.max`
+(`stack.exceeded`, `stack.unbounded`, `stack.unreported`, checked when the program is built).
 
 ## 5. Foreign code
 

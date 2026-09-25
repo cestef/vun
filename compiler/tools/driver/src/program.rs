@@ -108,6 +108,9 @@ impl Session {
             }
             FrameSizes::None => Vec::new(),
         };
+        let backend =
+            self.registry.backends().nth(coded.backend).expect("the backend that coded it").info().id.0;
+        self.check_stacks(coded.unit(), &frames, backend)?;
         Ok(Compiled { coded, objects, frames, builds })
     }
 

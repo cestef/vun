@@ -56,6 +56,14 @@ impl Env<'_, '_> {
         })
     }
 
+    /// The count the attribute `primitive` gives among `attrs`, as `n` of `#[stack.max(n)]`.
+    #[must_use]
+    pub fn count(&self, attrs: &[ExprId], primitive: Primitive) -> Option<u64> {
+        let args = self.attribute(attrs, primitive)?;
+        let [Value::Int(n)] = args.as_slice() else { return None };
+        u64::try_from(n.to_i128()?).ok()
+    }
+
     /// The markers among `attrs`: those the table `fn_markers` names, with their arguments.
     #[must_use]
     pub fn markers(&self, attrs: &[ExprId]) -> Vec<Marker> {
