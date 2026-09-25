@@ -169,6 +169,22 @@ impl Cc {
             Cond::FEq | Cond::FNe | Cond::FLt | Cond::FLe | Cond::FGt | Cond::FGe => return None,
         })
     }
+    /// The condition that holds where this one does not.
+    #[must_use]
+    pub const fn not(self) -> Self {
+        match self {
+            Self::B => Self::Ae,
+            Self::Ae => Self::B,
+            Self::E => Self::Ne,
+            Self::Ne => Self::E,
+            Self::Be => Self::A,
+            Self::A => Self::Be,
+            Self::L => Self::Ge,
+            Self::Ge => Self::L,
+            Self::Le => Self::G,
+            Self::G => Self::Le,
+        }
+    }
 }
 
 /// What a memory operand's address is relative to.

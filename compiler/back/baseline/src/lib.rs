@@ -8,7 +8,7 @@ pub mod x86_64;
 
 use std::path::PathBuf;
 
-use vun_backend::{Artifact, ArtifactSink, Backend, BackendCaps, BackendInfo, Emits, Lack, Lines};
+use vun_backend::{Artifact, ArtifactSink, Backend, BackendCaps, BackendInfo, Emits, Emitted, Lack, Lines};
 use vun_diag::{DiagCtxt, ErrorGuaranteed};
 use vun_index::IndexVec;
 use vun_lir::unit::Unit;
@@ -26,7 +26,7 @@ pub const INFO: BackendInfo = BackendInfo {
         vectors: false,
         tail_calls: false,
         noalias: false,
-        frame_sizes: false,
+        frame_sizes: true,
         debug_info: false,
     },
 };
@@ -63,13 +63,17 @@ impl BaselineBackend {
         Ok(all.into())
     }
 
-    /// The relocatable object of `unit`.
+    /// The relocatable object of `unit`, with each function's frame size in bytes.
     ///
     /// # Errors
     /// As [`Self::compile`].
-    pub fn object(unit: &Unit) -> Result<Vec<u8>, Lack> {
+    pub fn object(unit: &Unit) -> Result<Emitted, Lack> {
         let code = Self::compile(unit)?;
-        Ok(object::assemble(unit, &code).write())
+        let bytes = object::assemble(unit, &code).write();
+        Ok(Emitted {
+            artifacts: vec![Artifact { name: PathBuf::from(OBJECT), kind: Emits::Object, bytes }],
+            frames: code.iter().map(|(id, c)| (id, c.stack())).collect(),
+        })
     }
 }
 
@@ -86,8 +90,11 @@ impl Backend for BaselineBackend {
         out: &mut dyn ArtifactSink,
         diag: &mut DiagCtxt,
     ) -> Result<(), ErrorGuaranteed> {
-        let bytes = Self::object(unit).map_err(|lack| diag.error(lack.diagnostic(INFO.id.0)))?;
-        out.put(Artifact { name: PathBuf::from(OBJECT), kind: Emits::Object, bytes });
+        let emitted = Self::object(unit).map_err(|lack| diag.error(lack.diagnostic(INFO.id.0)))?;
+        for artifact in emitted.artifacts {
+            out.put(artifact);
+        }
+        out.frames(emitted.frames);
         Ok(())
     }
 }

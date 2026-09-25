@@ -35,3 +35,41 @@ fn immediates_take_the_shortest_move() {
     assert_eq!(encoded(|a| a.mov_ri(Reg::R8, u64::MAX)), [0x49, 0xc7, 0xc0, 0xff, 0xff, 0xff, 0xff]);
     assert_eq!(encoded(|a| a.mov_ri(Reg::Rcx, 1 << 40)), [0x48, 0xb9, 0, 0, 0, 0, 0, 1, 0, 0]);
 }
+
+/// `(n) -> i64 { if n < 10 { 1 } else { 2 } }`, compiled.
+fn branching() -> Vec<u8> {
+    use vun_intern::Symbol;
+    use vun_lir::func::{Conv, Linkage, Signature};
+    use vun_lir::{AbiType, Builder, Cond, Ext, Scalar, Target, Terminator, Unit};
+    use vun_origin::OriginTable;
+    use vun_span::{SourceFiles, Span};
+
+    let origins = OriginTable::new();
+    let origin = origins.source(Span::new(SourceFiles::new().add("a.vun", "n"), 0, 1));
+    let int = AbiType::Int(Scalar::I64, Ext::Sign);
+    let signature = Signature { conv: Conv::C, params: vec![int.clone()], result: Some(int) };
+    let mut b = Builder::new(Linkage::Export(Symbol::intern("f")), signature, origin);
+    let n = b.params(b.current())[0];
+    let ten = b.constant(Scalar::I64, 10, origin);
+    let less = b.compare(Cond::SLt, n, ten, origin);
+    let (small, large) = (b.block(&[], origin), b.block(&[], origin));
+    let to = |block| Target { block, args: Vec::new() };
+    b.terminate(Terminator::Branch { cond: less, then: to(small), otherwise: to(large) });
+    for (block, value) in [(small, 1), (large, 2)] {
+        b.switch_to(block);
+        let v = b.constant(Scalar::I64, value, origin);
+        b.terminate(Terminator::Return(Some(v)));
+    }
+    let mut unit = Unit { pointer_bits: 64, ..Unit::default() };
+    let f = unit.functions.push(b.finish());
+    crate::x86_64::func::compile(&unit, &unit.functions[f]).unwrap().code
+}
+
+#[test]
+fn a_branch_on_a_comparison_jumps_on_its_flags() {
+    let code = branching();
+    let has = |bytes: [u8; 2]| code.windows(2).any(|w| w == bytes);
+    // `jl` on the flags of `cmp`, no `setl` materializing the condition, no `test` of it.
+    assert!(has([0x0f, 0x8c]), "{code:02x?}");
+    assert!(!has([0x0f, 0x9c]), "{code:02x?}");
+}

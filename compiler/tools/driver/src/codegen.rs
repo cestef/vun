@@ -4,7 +4,7 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use vun_backend::{Artifact, Backend, Line, Lines};
+use vun_backend::{Artifact, Backend, Emitted, Line, Lines};
 use vun_command::{Param, ParamKind};
 use vun_diag::{ChildKind, Diagnostic, ErrorGuaranteed, Msg, errors};
 use vun_lower::Unlowered;
@@ -12,7 +12,7 @@ use vun_origin::{OriginId, OriginTable};
 use vun_span::{FileId, SourceFiles, SourceMap};
 use vun_suggest::Lookup;
 
-use vun_lir::Unit;
+use vun_lir::{FuncId, Unit};
 use vun_target::TargetSpec;
 
 use crate::Session;
@@ -99,17 +99,19 @@ impl Session {
         };
         let lines = SourceLines { sources: Arc::clone(&self.sources), origins: Arc::clone(&self.origins) };
         let unit = lowered.as_ref().as_ref().expect("checked above");
-        let mut artifacts = Vec::new();
+        let mut emitted = Emitted::default();
         backends[index]
-            .emit(unit, &target, &lines, &mut artifacts, &mut self.diag)
+            .emit(unit, &target, &lines, &mut emitted, &mut self.diag)
             .map_err(Uncoded::Reported)?;
-        Ok(Coded { artifacts, backend: index, lowered, target })
+        Ok(Coded { artifacts: emitted.artifacts, frames: emitted.frames, backend: index, lowered, target })
     }
 }
 
 /// What a backend made of a program, and what made it.
 pub struct Coded {
     pub artifacts: Vec<Artifact>,
+    /// Each function's frame size in bytes, when the backend reported them.
+    pub frames: Vec<(FuncId, u64)>,
     /// The backend, by its position in the session's registry.
     pub backend: usize,
     pub lowered: Arc<Result<Unit, Unlowered>>,

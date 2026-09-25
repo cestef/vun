@@ -17,3 +17,6 @@ vun-intern.workspace = true
 vun-lir.workspace = true
 vun-origin.workspace = true
 vun-target.workspace = true
+
+[dev-dependencies]
+vun-span.workspace = true

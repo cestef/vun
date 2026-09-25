@@ -490,6 +490,7 @@ dependencies = [
  "vun-intern",
  "vun-lir",
  "vun-origin",
+ "vun-span",
  "vun-target",
 ]
 

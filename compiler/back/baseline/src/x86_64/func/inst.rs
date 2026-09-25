@@ -2,7 +2,8 @@
 //! (`Reads`): arithmetic, comparisons, conversions and selects here, memory and calls apart.
 
 use vun_backend::{Lack, Missing};
-use vun_lir::{BinOp, CastOp, InstKind, Reads, Scalar, Value};
+use vun_lir::func::Def;
+use vun_lir::{BinOp, Block, CastOp, Cond, InstKind, Reads, Scalar, Terminator, Value};
 
 use super::super::encode::{Alu, Shift, Unary};
 use super::super::{Cc, Reg, Rm, Size};
@@ -29,15 +30,7 @@ impl FnCompiler<'_> {
         match kind {
             InstKind::Binary { op, a, b } => self.binary(*op, *a, *b, out()),
             InstKind::Compare { cond, a, b } => {
-                let cc = Cc::of(*cond).ok_or_else(|| self.lack(Missing::Float))?;
-                let size = self.size(*a)?;
-                let x = self.get(*a);
-                if let Some(imm) = self.constant(*b) {
-                    self.asm.alu_imm(Alu::Cmp, size, Rm::Reg(x), imm);
-                } else {
-                    let y = self.get(*b);
-                    self.asm.alu(Alu::Cmp, size, x, y);
-                }
+                let cc = self.compare(*cond, *a, *b)?;
                 let d = self.def(out());
                 self.asm.setcc(cc, d);
                 Ok(())
@@ -55,6 +48,30 @@ impl FnCompiler<'_> {
             InstKind::Call { callee, args } => self.call(callee, args, result),
             _ => self.memory(kind, result),
         }
+    }
+
+    /// `cmp a, b`: the flags, and the condition code that holds where `cond` does.
+    pub(super) fn compare(&mut self, cond: Cond, a: Value, b: Value) -> Result<Cc, Lack> {
+        let cc = Cc::of(cond).ok_or_else(|| self.lack(Missing::Float))?;
+        let size = self.size(a)?;
+        let x = self.get(a);
+        if let Some(imm) = self.constant(b) {
+            self.asm.alu_imm(Alu::Cmp, size, Rm::Reg(x), imm);
+        } else {
+            let y = self.get(b);
+            self.asm.alu(Alu::Cmp, size, x, y);
+        }
+        Ok(cc)
+    }
+
+    /// The comparison `block` branches on, when nothing else uses its result and it is made in
+    /// `block`: the branch compares and jumps on the flags, the condition never materialized.
+    pub(super) fn fused(&self, block: Block) -> Option<(Value, Cond, Value, Value)> {
+        let Terminator::Branch { cond: v, .. } = self.f.blocks[block].term else { return None };
+        let Def::Inst(inst) = self.f.values[v].def else { return None };
+        let InstKind::Compare { cond, a, b } = self.f.insts[inst].kind else { return None };
+        let made_here = self.f.blocks[block].insts.contains(&inst);
+        (made_here && self.left[v] == 1 && Cc::of(cond).is_some()).then_some((v, cond, a, b))
     }
 
     fn binary(&mut self, op: BinOp, a: Value, b: Value, out: Value) -> Result<(), Lack> {

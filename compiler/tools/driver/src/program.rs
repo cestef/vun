@@ -37,7 +37,7 @@ const STACK_USAGE: &str = "su";
 pub struct Compiled {
     pub coded: Coded,
     pub objects: Vec<PathBuf>,
-    /// Each function's frame size in bytes, when the tools report them.
+    /// Each function's frame size in bytes, when the backend or its tools report them.
     pub frames: Vec<(FuncId, u64)>,
     /// Where the build keeps its files.
     pub builds: PathBuf,
@@ -94,7 +94,9 @@ impl Session {
             let msg = Msg::new().text("building from assembly or code in memory is not supported yet");
             return Err(self.diag.error(Diagnostic::error(errors::BACKEND_UNAVAILABLE, msg)));
         }
+        // Frame sizes from the backend, else from what the tools building its artifacts report.
         let frames = match compiler.frame_sizes {
+            _ if !coded.frames.is_empty() => coded.frames.clone(),
             FrameSizes::StackUsage => {
                 let report: Vec<u8> = objects
                     .iter()

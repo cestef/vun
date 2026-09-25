@@ -6,7 +6,8 @@
 //! uses; at zero the register is free. Constants and addresses of slots and data are
 //! recomputed where used, never kept. Only the state at the current point is tracked: at the
 //! end of a block, and before a call, every value still used is stored home, so each block
-//! starts with every value in its home and every register free.
+//! starts with every value in its home and every register free, but a block emitted next that
+//! only the last one reaches, which starts with the registers as it left them.
 
 mod call;
 mod inst;
@@ -34,12 +35,23 @@ pub struct Compiled {
     pub frame: u64,
 }
 
+impl Compiled {
+    /// The bytes of stack a call of the function takes: its frame, the return address and the
+    /// saved frame pointer, as C compilers count them.
+    #[must_use]
+    pub fn stack(&self) -> u64 {
+        self.frame + u64::from(LINKAGE)
+    }
+}
+
 /// Bytes a home takes: a register's.
 const HOME: u64 = 8;
+/// Bytes a call pushes above a frame: the return address and the saved frame pointer.
+const LINKAGE: u32 = 16;
 /// The alignment of the stack at a call.
 const STACK_ALIGN: u64 = 16;
 /// Where the caller's stack arguments start, above the saved frame pointer and return address.
-const CALLER_ARGS: i32 = 16;
+const CALLER_ARGS: i32 = LINKAGE.cast_signed();
 
 struct FnCompiler<'a> {
     unit: &'a Unit,
@@ -74,6 +86,8 @@ struct FnCompiler<'a> {
     gathered: Option<i32>,
     /// Where the instruction compiled comes from.
     at: OriginId,
+    /// The block emitted next when it starts with the registers as the last one left them.
+    kept: Option<Block>,
 }
 
 /// Compiles `f` of `unit`.
@@ -117,6 +131,7 @@ pub fn compile(unit: &Unit, f: &Function) -> Result<Compiled, Lack> {
         hidden: None,
         gathered: None,
         at: f.origin,
+        kept: None,
     };
     let size_at = c.asm.prologue();
     for (_, slot) in f.slots.iter() {
@@ -189,10 +204,15 @@ impl FnCompiler<'_> {
     fn block(&mut self, block: Block) -> Result<(), Lack> {
         let label = self.labels[block];
         self.asm.bind(label);
-        if Some(block) != self.f.entry() {
+        if Some(block) != self.f.entry() && self.kept.take() != Some(block) {
             self.clear();
         }
+        let fused = self.fused(block).map(|(v, ..)| v);
         for &inst in &self.f.blocks[block].insts {
+            // The comparison the branch fuses is made by the branch.
+            if fused.is_some() && self.f.insts[inst].result == fused {
+                continue;
+            }
             self.inst(inst)?;
         }
         self.at = self.f.blocks[block].origin;

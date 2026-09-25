@@ -57,6 +57,20 @@ fn a_program_split_into_shards_runs_and_reports_its_frames() {
 }
 
 #[test]
+fn the_baseline_backend_reports_each_frame_it_lays_out() {
+    let fixture = Fixture::new("backend-baseline-frames");
+    let text = std::fs::read_to_string(repo_root().join(ACCEPT).join("programs/hello.vun")).unwrap();
+    let path = fixture.root.write("hello.vun", text);
+    let mut session = fixture.session();
+    let file = session.load(&path).unwrap();
+    let compiled = session.compile(file, Some(vun_backend_baseline::INFO.id.0));
+    let compiled = compiled.unwrap_or_else(|_| panic!("{:#?}", session.diag));
+    assert_eq!(compiled.frames.len(), compiled.coded.unit().functions.len());
+    // Every frame holds at least the return address and the saved frame pointer.
+    assert!(compiled.frames.iter().all(|&(_, bytes)| bytes >= 16), "{:?}", compiled.frames);
+}
+
+#[test]
 fn a_program_exits_with_the_status_it_returns() {
     let source = "\
 start := std.os.start(main);

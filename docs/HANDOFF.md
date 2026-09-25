@@ -238,7 +238,9 @@ compiler. `vun run corpus/accept/programs/hello.vun --backend c` prints `hello` 
 (`Frame::of`: where a signature passes each value, System V records), `x86_64/func/` (the
 single-pass compiler: `values.rs` assignments, homes, recomputed values and eviction; `inst.rs`,
 `memory.rs`, `call.rs`, `term.rs`), `elf/` (`Object` as data, `write`), `object.rs` (a unit as one
-object). `vun run <file> --backend baseline` runs hello.vun; the driver's backend tests build every
+object). Compares fuse into their branch (`FnCompiler::fused`), registers carry into a
+single-predecessor block emitted next (`kept`), frames are reported while emitting
+(`ArtifactSink::frames`, `Emitted`, `Compiled::stack`). `vun run <file> --backend baseline` runs hello.vun; the driver's backend tests build every
 program through `BACKENDS` (C and baseline) and require equal results. `Lack`/`Missing` live in
 `vun-backend`.
 
@@ -294,13 +296,14 @@ arguments as `Rvalue::Comptime { expected }`, `Rvalue::compile_time` evaluating 
 lowered (`build/assign.rs`).
 
 Progress: corpus 211 passed, 0 pending, 9 planned, 27 shown, 0 failed; 83% of accepted body
-expressions typed; MIR lowers 85 of 97 accepted functions. 267 tests, including one that checks
+expressions typed; MIR lowers 85 of 97 accepted functions. 269 tests, including one that checks
 every `lang` and `std` file cleanly.
 
 ## 6. Decisions
 
 Proposed also: 155 (frame layout), 156 (narrowing, runtime bounds, frame layouts in sema), 157
-(the baseline backend). Proposed: 159 (trap sites at compile time), 160 (calls read one way, expansion, run-time `fail`). Accepted: 139 (the size budget, now 10 MiB), 158 (`meta.Frame`, `TypeOf`
+(the baseline backend). Proposed: 159 (trap sites at compile time), 160 (calls read one way, expansion, run-time `fail`),
+161 (baseline fusion, fall-through registers, frames reported). Accepted: 139 (the size budget, now 10 MiB), 158 (`meta.Frame`, `TypeOf`
 over code; details proposed).
 Accepted (the user's choices, details proposed): 152 (backends after TPDE, baseline backend
 started after C), 153 (the C backend), 154 (targets named by system and CPU, chosen per session).
@@ -322,8 +325,7 @@ rules go to `decisions.md` as proposed unless the user approves them.
 ## 7. Next steps, in order
 
 0. Baseline backend next: callee-saved registers for values used across a loop (the prologue
-   reserving their saves, patched), keeping registers across a fall-through to a block with one
-   predecessor, compare and branch fused, frame sizes reported (`stack.max`), floats (SSE) and
+   reserving their saves, patched), `stack.max` checked against the reported frames, floats (SSE) and
    128-bit integers (pairs, helpers in Vun), DWARF lines, arm64. Backends: memory regions from a program's build options into `LinkPlan` (the `gnu`
    adapter writes scripts from them), and a bare-metal runtime to link against. A slice value (`xs[a..b]` not borrowed)
    reaches lowering as `backend.unlowered` ("no layout") instead of a sema error.
@@ -338,7 +340,7 @@ rules go to `decisions.md` as proposed unless the user approves them.
    `std.build.Action`'s variants), starting with `program` once a backend exists; a program's
    options as a typed record (`root`, `target: lang.target.Spec`, `deps`, `memory`).
 5. MIR gaps (`cargo xtask corpus` lists them): `==` in two corpus functions whose operands are
-   not typed, run-time splices of code, `.{ }` and `.name` in
+   not typed, `.{ }` and `.name` in
    plain instantiations of generic bodies, or-patterns that bind, `lang.simd.chunks`.
 6. Sema gaps: a library report from a range primitive (rule 8) carries a "while evaluating"
    frame inside `lang.int`; traps inside a callee's instantiated signature are not reported; impl

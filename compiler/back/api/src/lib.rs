@@ -79,13 +79,29 @@ pub struct Artifact {
     pub bytes: Vec<u8>,
 }
 
+/// What a backend emits into: its artifacts and, from a backend that knows them while
+/// generating code, each function's frame size in bytes.
 pub trait ArtifactSink {
     fn put(&mut self, artifact: Artifact);
+
+    fn frames(&mut self, sizes: Vec<(FuncId, u64)>);
 }
 
-impl ArtifactSink for Vec<Artifact> {
+/// What a backend emitted.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct Emitted {
+    pub artifacts: Vec<Artifact>,
+    /// Each function's frame size in bytes, when the backend reports them itself.
+    pub frames: Vec<(FuncId, u64)>,
+}
+
+impl ArtifactSink for Emitted {
     fn put(&mut self, artifact: Artifact) {
-        self.push(artifact);
+        self.artifacts.push(artifact);
+    }
+
+    fn frames(&mut self, sizes: Vec<(FuncId, u64)>) {
+        self.frames = sizes;
     }
 }
 
@@ -120,7 +136,8 @@ pub trait Backend {
     ) -> Result<(), ErrorGuaranteed>;
 
     /// The frame size of each function of `unit`, in bytes, from what the tools building its
-    /// artifacts reported (`report`); none for a backend that reads no report.
+    /// artifacts reported (`report`); none for a backend that reads no report, such as one
+    /// reporting them while it emits ([`ArtifactSink::frames`]).
     fn frame_sizes(&self, unit: &Unit, report: &[u8]) -> Vec<(FuncId, u64)> {
         let _ = (unit, report);
         Vec::new()

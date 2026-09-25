@@ -14,9 +14,19 @@ use super::FnCompiler;
 impl FnCompiler<'_> {
     pub(super) fn terminate(&mut self, block: Block) -> Result<(), Lack> {
         let term = self.f.blocks[block].term.clone();
+        // A fused comparison sets the flags here; the stores and moves up to the jump keep them.
+        let flags = match self.fused(block) {
+            Some((_, cond, a, b)) => {
+                let cc = self.compare(cond, a, b)?;
+                self.release(&[a, b], None);
+                Some(cc)
+            }
+            None => None,
+        };
         // The terminator's operands are read from where they are now; nothing after it uses
         // them but through their homes.
         let operand = match &term {
+            _ if flags.is_some() => None,
             Terminator::Branch { cond: v, .. } | Terminator::Switch { value: v, .. } => Some(self.get(*v)),
             _ => None,
         };
@@ -27,18 +37,31 @@ impl FnCompiler<'_> {
         for v in term.operands() {
             self.left[v] = self.left[v].saturating_sub(1);
         }
-        self.spill_live();
+        // A block emitted next that only this one reaches starts with the registers as they are
+        // here; only a target entered otherwise needs every value home.
         let next = self.order.next(block);
+        let falls = |t: &Target| next == Some(t.block) && self.cfg.preds[t.block].len() == 1;
+        let (keep, only) = match &term {
+            Terminator::Jump(t) => (falls(t), falls(t)),
+            Terminator::Branch { otherwise, .. } => (falls(otherwise), false),
+            _ => (false, false),
+        };
+        if !only {
+            self.spill_live();
+        }
         match &term {
             Terminator::Jump(target) => self.jump(target, next),
             Terminator::Branch { then, otherwise, .. } => {
-                let c = operand.expect("a branch reads its condition");
-                self.asm.test(Size::B8, c, c);
+                let holds = flags.unwrap_or_else(|| {
+                    let c = operand.expect("a branch reads its condition");
+                    self.asm.test(Size::B8, c, c);
+                    Cc::Ne
+                });
                 if then.args.is_empty() {
-                    self.asm.jcc(Cc::Ne, self.labels[then.block]);
+                    self.asm.jcc(holds, self.labels[then.block]);
                 } else {
                     let skip = self.asm.label();
-                    self.asm.jcc(Cc::E, skip);
+                    self.asm.jcc(holds.not(), skip);
                     self.jump(then, None);
                     self.asm.bind(skip);
                 }
@@ -63,7 +86,11 @@ impl FnCompiler<'_> {
             Terminator::Unreachable => self.asm.ud2(),
         }
         self.locked.clear();
-        self.clear();
+        if keep {
+            self.kept = next;
+        } else {
+            self.clear();
+        }
         Ok(())
     }
 
