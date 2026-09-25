@@ -5,7 +5,7 @@ use vun_diag::{Diagnostic, Msg, errors};
 
 use super::Checker;
 use crate::decl::DeclType;
-use crate::link::{LinkDecl, Links};
+use crate::link::Links;
 use crate::primitives::link::Link;
 
 impl Checker<'_, '_, '_> {
@@ -13,8 +13,7 @@ impl Checker<'_, '_, '_> {
         let cx = self.env.cx;
         let links = cx.get::<Links>(&self.env.file);
         let exports = links.iter().filter(|l| l.side == Link::export);
-        let seen: Vec<LinkDecl> =
-            self.env.impl_files(None).into_iter().flat_map(|f| cx.get::<Links>(&f).to_vec()).collect();
+        let seen = self.env.links_seen();
         for export in exports {
             let Ok(found) = cx.get::<DeclType>(&export.decl) else { continue };
             let symbols = seen.iter().filter(|l| l.side == Link::symbol && l.symbol == export.symbol);
@@ -25,7 +24,7 @@ impl Checker<'_, '_, '_> {
                 }
                 let msg = Msg::new()
                     .text("this export of ")
-                    .code(export.symbol.clone())
+                    .code(export.symbol.as_str())
                     .text(" has type ")
                     .code(found.ty.to_string())
                     .text(", and the symbol is declared ")

@@ -36,4 +36,14 @@ step := (x: u8) -> u8 { tick(x) };
 $ vun build --backend baseline tick.vun
 ```
 
-Recursion has no such fix: write it as a loop, whose frame is fixed.
+Every trap site calls the trap handler, `lang.panic.trap`; a program without a runtime exporting
+it imports it, so it declares the handler itself the same way:
+
+```console
+$ cat handler.vun
+#[link.symbol(lang.panic.trap_symbol), stack.max(128)]
+trap: (t: &lang.panic.Trap) -> lang.never = _;
+```
+
+Declarations of one link symbol are one import, whose bound is the largest they state. Recursion
+has no such fix: write it as a loop, whose frame is fixed.

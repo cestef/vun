@@ -249,10 +249,9 @@ each attribute (`Typer::typed`) and reports `attr.misplaced`; `sema/src/attribut
 
 **Stack bounds** (decision 162): `Func::stack_max` and `DeclRef::stack_max` (through `Env::count`)
 set `Function::stack_max` and `Import::stack_max` in LIR; `vun_lir::analysis::StackUse` walks the
-call graph; the driver checks after compiling (`driver/src/stack.rs`). Open: the trap handler
-`lang.panic.trap` is imported by programs without a Vun runtime and its `lang` declaration states
-no bound, so any bounded function with a trap site is unbounded there (a bound on the `lang`
-declaration, or one from the target, is the user's call); `stack.depth(k)` for bounded recursion. `vun run <file> --backend baseline` runs hello.vun; the driver's backend tests build every
+call graph; the driver checks after compiling (`driver/src/stack.rs`). An import's bound is the
+largest its declarations in the program state (`Env::linked_stack`, decision 164), so a program
+declares its trap handler's. Open: `stack.depth(k)` for bounded recursion. `vun run <file> --backend baseline` runs hello.vun; the driver's backend tests build every
 program through `BACKENDS` (C and baseline) and require equal results. `Lack`/`Missing` live in
 `vun-backend`.
 
@@ -316,7 +315,8 @@ every `lang` and `std` file cleanly.
 Proposed also: 155 (frame layout), 156 (narrowing, runtime bounds, frame layouts in sema), 157
 (the baseline backend). Proposed: 159 (trap sites at compile time), 160 (calls read one way, expansion, run-time `fail`),
 161 (baseline fusion, fall-through registers, frames reported). Accepted: 162 (stack bounds, imports
-declaring theirs), 163 (attribute places, one reading of attributes). Accepted: 139 (the size budget, now 10 MiB), 158 (`meta.Frame`, `TypeOf`
+declaring theirs), 163 (attribute places, one reading of attributes),
+164 (an import's bound from the program's declarations). Accepted: 139 (the size budget, now 10 MiB), 158 (`meta.Frame`, `TypeOf`
 over code; details proposed).
 Accepted (the user's choices, details proposed): 152 (backends after TPDE, baseline backend
 started after C), 153 (the C backend), 154 (targets named by system and CPU, chosen per session).

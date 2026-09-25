@@ -50,7 +50,25 @@ pub struct LinkDecl {
     pub attr: OriginId,
     /// `lang.link.symbol` or `lang.link.export`.
     pub side: Link,
-    pub symbol: String,
+    pub symbol: Symbol,
+}
+
+impl Env<'_, '_> {
+    /// The declarations naming link symbols that this file sees: those of every file of its
+    /// package and of the packages it depends on.
+    #[must_use]
+    pub fn links_seen(&self) -> Vec<LinkDecl> {
+        self.impl_files(None).into_iter().flat_map(|f| self.cx.get::<Links>(&f).to_vec()).collect()
+    }
+
+    /// The most bytes of stack a call of the link symbol `symbol` takes, as the declarations of
+    /// it this file sees state (`#[stack.max(n)]`): the largest, since each states it of the one
+    /// function the linker provides.
+    #[must_use]
+    pub fn linked_stack(&self, symbol: Symbol) -> Option<u64> {
+        let declared = self.links_seen().into_iter().filter(|l| l.side == Link::symbol && l.symbol == symbol);
+        declared.filter_map(|l| l.decl.attributes(self.cx)?.stack_max()).max()
+    }
 }
 
 /// The declarations of a file naming link symbols, in source order: in any namespace of it,
@@ -72,8 +90,9 @@ impl Query for Links {
                 for &attr in &hir.decls[*decl].attrs {
                     for side in [Link::symbol, Link::export] {
                         let named = env.attribute(&[attr], Primitive::Link(side));
-                        if let Some(symbol) = named.as_deref().and_then(|args| args.first()?.text()) {
-                            let decl = DeclRef::new(file.clone(), hir, *decl);
+                        if let Some(text) = named.as_deref().and_then(|args| args.first()?.text()) {
+                            let (decl, symbol) =
+                                (DeclRef::new(file.clone(), hir, *decl), Symbol::intern(&text));
                             links.push(LinkDecl { decl, attr: hir.exprs[attr].origin, side, symbol });
                         }
                     }

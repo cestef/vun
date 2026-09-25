@@ -155,7 +155,9 @@ impl<'a, 'db> Lowering<'a, 'db> {
             Some(signature) => ImportKind::Func(self.signature_of(&signature, abi, at)?),
             None => ImportKind::Data,
         };
-        let stack_max = decl.attributes(cx).and_then(|a| a.stack_max());
+        // The largest bound the program's declarations of the symbol state, the handler of
+        // traps included, which a program declares itself (decision 164).
+        let stack_max = self.env.linked_stack(symbol);
         let id = self.unit.imports.push(Import { symbol, kind, origin: decl.decl.origin, stack_max });
         self.imports.insert(symbol, id);
         Ok(id)

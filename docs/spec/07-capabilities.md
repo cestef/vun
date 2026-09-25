@@ -99,7 +99,10 @@ and the frame sizes the backend reports: a function's frame and the most any cal
 Recursion is rejected under a `stack.max` bound unless its depth is compile-time-bounded
 (`#[stack.depth(k)]`) or it is a guaranteed tail call (spec 09); so is a call through an address. A
 declaration provided from outside (an import, `= _` with `link.symbol`) states the stack a call of
-it takes with `#[stack.max(n)]`, trusted as its signature is; one that states none is unbounded. A
+it takes with `#[stack.max(n)]`, trusted as its signature is; one that states none is unbounded.
+The declarations of one symbol that the program sees are one import, bound by the largest they
+state, so a program declares the stack of what it imports itself, the trap handler
+`lang.panic.trap` included. A
 backend that cannot report frame sizes cannot build a program that uses `stack.max`
 (`stack.exceeded`, `stack.unbounded`, `stack.unreported`, checked when the program is built).
 
