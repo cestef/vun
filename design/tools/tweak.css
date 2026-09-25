@@ -21,8 +21,9 @@ main { padding: 20px; display: grid; gap: 16px; align-content: start; }
 .strip { display: flex; align-items: flex-end; justify-content: center; gap: 20px; padding: 16px; border-radius: 12px; }
 #wordmarks { display: flex; align-items: center; gap: 32px; background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 24px; flex-wrap: wrap; }
 #wordmarks svg { height: 90px; width: auto; }
-#typeset { font-size: 96px; line-height: 1; color: var(--word); }
-#typeset .accent { color: var(--word-accent); }
+#specimen { flex: 1 1 320px; color: var(--word); }
+#specimen h3 { font-size: 40px; line-height: 1.1; margin: 0 0 8px; letter-spacing: -0.01em; }
+#specimen p { font-size: 17px; line-height: 1.5; margin: 0; opacity: .75; }
 #export { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 @media (max-width: 1100px) { #export { grid-template-columns: 1fr; } }
 #export section { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px; }

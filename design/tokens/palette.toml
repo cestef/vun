@@ -1,12 +1,38 @@
 # Color ramps. The only file where a color value is written: themes, parts and every
 # generated output name a color as `ramp.step`. Pastel at the light end, usable ink at the dark.
 #
-# peach   the crab; the brand color
-# sea     seafoam, the shell; secondary accent, notes
+# blush   dusty rose, the crab; the brand color
+# quartz  rose-grey, the shell
+# peach   warm accent, the shell's fleck
+# sea     seafoam; secondary accent, notes
 # sky     pale blue; links and help in some directions
 # butter  warm yellow; warnings, highlights
 # rose    pink; errors, cheeks
 # stone   warm neutrals for surfaces and text
+
+[blush]
+50 = "#FCF1F4"
+100 = "#F8E0E7"
+200 = "#F0BDCC"
+300 = "#E89BB1"
+400 = "#DF7999"
+500 = "#D46287"
+600 = "#B75777"
+700 = "#924F69"
+800 = "#6B4956"
+900 = "#3A2530"
+
+[quartz]
+50 = "#EEE4E3"
+100 = "#D9C8C7"
+200 = "#D0BEBD"
+300 = "#BFADAC"
+400 = "#A99695"
+500 = "#8A7C7B"
+600 = "#736564"
+700 = "#5B504F"
+800 = "#433A39"
+900 = "#2B2424"
 
 [peach]
 50 = "#FFF4F0"

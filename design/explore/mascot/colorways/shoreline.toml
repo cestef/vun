@@ -1,2 +1,16 @@
-order = 1
-note = "Brand: peach crab, seafoam shell."
+order = 2
+note = "Peach crab, seafoam shell."
+[art]
+shell-top = "sea.50"
+shell-hi = "sea.100"
+shell = "sea.200"
+shell-lo = "sea.300"
+shell-deep = "sea.400"
+hollow = "sea.900"
+fleck = "butter.300"
+body = "peach.300"
+body-lo = "peach.500"
+glint = "stone.50"
+mouth = "peach.700"
+cheek = "rose.300"
+word-accent = "peach.400"

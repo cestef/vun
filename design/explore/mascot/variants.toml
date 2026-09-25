@@ -1,6 +1,62 @@
 # Mascot variants for the gallery. Ids are the group id and the item's position.
 # An item swaps slots of `base` (default mascot/poses/default); `""` drops a slot.
-# `look` names a colorway under colorways/ (default shoreline).
+# `look` names a colorway under colorways/ (default quartz).
+
+[[group]]
+id = "L"
+title = "Legs"
+note = "The new base (big body, wavy stalks, cat mouth, claws up) with every leg option."
+
+[[group.item]]
+label = "Sticks (current)"
+
+[[group.item]]
+label = "No legs"
+swap = { legs = "" }
+
+[[group.item]]
+label = "Spikes"
+note = "Tapered cones, like Dwebble's feet."
+swap = { legs = "explore/mascot/parts/legs/spikes" }
+
+[[group.item]]
+label = "One pair"
+swap = { legs = "explore/mascot/parts/legs/pair" }
+
+[[group.item]]
+label = "Nubs"
+note = "Round feet under the body."
+swap = { legs = "explore/mascot/parts/legs/nubs" }
+
+[[group.item]]
+label = "Stubs"
+swap = { legs = "explore/mascot/parts/legs/stubs" }
+
+[[group.item]]
+label = "Arched"
+note = "Ferris-like, bent out and pointed."
+swap = { legs = "explore/mascot/parts/legs/arched" }
+
+[[group.item]]
+label = "Tucked"
+note = "Folded away; only tips beside the body."
+swap = { legs = "explore/mascot/parts/legs/tucked" }
+
+[[group.item]]
+label = "Spikes, claws at rest"
+swap = { legs = "explore/mascot/parts/legs/spikes", claws = "mascot/parts/claws/rest" }
+
+[[group.item]]
+label = "Nubs, claws at rest"
+swap = { legs = "explore/mascot/parts/legs/nubs", claws = "mascot/parts/claws/rest" }
+
+[[group.item]]
+label = "No legs, claws at rest"
+swap = { legs = "", claws = "mascot/parts/claws/rest" }
+
+[[group.item]]
+label = "Tucked, small body"
+swap = { legs = "explore/mascot/parts/legs/tucked", body = "mascot/parts/body/base" }
 
 [[group]]
 id = "S"
@@ -49,19 +105,19 @@ swap = { shell = "explore/mascot/parts/shell/terminal" }
 [[group]]
 id = "E"
 title = "Faces"
-note = "Eyes and mouth on the faceted stone."
+note = "Eyes, mouth and cheeks on the new base."
 
 [[group.item]]
-label = "Open, smile"
+label = "Open, cat mouth (current)"
 
 [[group.item]]
-label = "Big, smile"
+label = "Big, cat mouth"
 note = "Gopher-style whites."
 swap = { eyes = "explore/mascot/parts/eyes/big" }
 
 [[group.item]]
 label = "Dot, cat mouth"
-swap = { eyes = "explore/mascot/parts/eyes/dot", mouth = "explore/mascot/parts/mouth/cat" }
+swap = { eyes = "explore/mascot/parts/eyes/dot" }
 
 [[group.item]]
 label = "Half-lidded"
@@ -69,17 +125,24 @@ note = "Deadpan, unimpressed by magic."
 swap = { eyes = "explore/mascot/parts/eyes/half" }
 
 [[group.item]]
-label = "Happy, grin"
-swap = { eyes = "mascot/parts/eyes/happy", mouth = "explore/mascot/parts/mouth/grin" }
+label = "Happy"
+swap = { eyes = "mascot/parts/eyes/happy" }
 
 [[group.item]]
-label = "Big, cat mouth, no cheeks"
-swap = { eyes = "explore/mascot/parts/eyes/big", mouth = "explore/mascot/parts/mouth/cat", cheeks = "" }
+label = "Open, smile"
+swap = { mouth = "mascot/parts/mouth/smile" }
 
 [[group.item]]
-label = "Open, no mouth, no cheeks"
-note = "Most minimal."
-swap = { mouth = "", cheeks = "" }
+label = "Open, grin"
+swap = { mouth = "explore/mascot/parts/mouth/grin" }
+
+[[group.item]]
+label = "With cheeks"
+swap = { cheeks = "mascot/parts/cheeks/blush" }
+
+[[group.item]]
+label = "No mouth"
+swap = { mouth = "" }
 
 [[group.item]]
 label = "Asleep"
@@ -87,16 +150,15 @@ swap = { eyes = "mascot/parts/eyes/closed", mouth = "" }
 
 [[group]]
 id = "A"
-title = "Arms and body"
-note = "Claw poses, body size, stalks, legs."
+title = "Arms, body, stalks"
+note = "Claw poses, body size and stalks on the new base."
+
+[[group.item]]
+label = "Claws up (current)"
 
 [[group.item]]
 label = "Claws at rest"
-note = "One big, one small, like real hermit crabs."
-
-[[group.item]]
-label = "Both claws up"
-swap = { claws = "mascot/parts/claws/raised" }
+swap = { claws = "mascot/parts/claws/rest" }
 
 [[group.item]]
 label = "Big claw waving"
@@ -104,7 +166,6 @@ swap = { claws = "explore/mascot/parts/claws/wave" }
 
 [[group.item]]
 label = "Even claws"
-note = "Symmetric, Ferris-like."
 swap = { claws = "explore/mascot/parts/claws/even" }
 
 [[group.item]]
@@ -112,17 +173,12 @@ label = "Claws crossed"
 swap = { claws = "explore/mascot/parts/claws/hug" }
 
 [[group.item]]
-label = "Big body"
-swap = { body = "explore/mascot/parts/body/big" }
+label = "Small body"
+swap = { body = "mascot/parts/body/base" }
 
 [[group.item]]
-label = "Wavy stalks"
-swap = { stalks = "explore/mascot/parts/stalks/bent" }
-
-[[group.item]]
-label = "No legs"
-note = "Simpler silhouette for small sizes."
-swap = { legs = "" }
+label = "Straight stalks"
+swap = { stalks = "mascot/parts/stalks/up" }
 
 [[group]]
 id = "X"
@@ -137,7 +193,7 @@ swap = { shell = "explore/mascot/parts/shell/nut", eyes = "explore/mascot/parts/
 [[group.item]]
 label = "Crate, dot eyes, lagoon"
 look = "lagoon"
-swap = { shell = "explore/mascot/parts/shell/cube", eyes = "explore/mascot/parts/eyes/dot", mouth = "explore/mascot/parts/mouth/cat" }
+swap = { shell = "explore/mascot/parts/shell/cube", eyes = "explore/mascot/parts/eyes/dot", mouth = "mascot/parts/mouth/cat" }
 
 [[group.item]]
 label = "Terminal, deadpan, night"
@@ -182,7 +238,7 @@ swap = { eyes = "mascot/parts/eyes/happy", claws = "mascot/parts/claws/raised" }
 [[group.item]]
 label = "Pebble, big body, wavy, lagoon"
 look = "lagoon"
-swap = { shell = "explore/mascot/parts/shell/pebble", body = "explore/mascot/parts/body/big", stalks = "explore/mascot/parts/stalks/bent", claws = "explore/mascot/parts/claws/even" }
+swap = { shell = "explore/mascot/parts/shell/pebble", body = "mascot/parts/body/big", stalks = "mascot/parts/stalks/bent", claws = "explore/mascot/parts/claws/even" }
 
 [[group.item]]
 label = "Terminal, happy, shoreline"

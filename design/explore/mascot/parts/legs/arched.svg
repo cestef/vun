@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <style id="theme">
+    .f-shell-top { fill: #D9C8C7 }
+    .s-shell-top { stroke: #D9C8C7 }
+    .f-shell-hi { fill: #D0BEBD }
+    .s-shell-hi { stroke: #D0BEBD }
+    .f-shell { fill: #BFADAC }
+    .s-shell { stroke: #BFADAC }
+    .f-shell-lo { fill: #A99695 }
+    .s-shell-lo { stroke: #A99695 }
+    .f-shell-deep { fill: #8A7C7B }
+    .s-shell-deep { stroke: #8A7C7B }
+    .f-hollow { fill: #24211D }
+    .s-hollow { stroke: #24211D }
+    .f-fleck { fill: #E57B5E }
+    .s-fleck { stroke: #E57B5E }
+    .f-body { fill: #DF7999 }
+    .s-body { stroke: #DF7999 }
+    .f-body-lo { fill: #B75777 }
+    .s-body-lo { stroke: #B75777 }
+    .f-ink { fill: #24211D }
+    .s-ink { stroke: #24211D }
+    .f-glint { fill: #D9C8C7 }
+    .s-glint { stroke: #D9C8C7 }
+    .f-mouth { fill: #6B4956 }
+    .s-mouth { stroke: #6B4956 }
+    .f-cheek { fill: #E89BB1 }
+    .s-cheek { stroke: #E89BB1 }
+    .f-word { fill: #24211D }
+    .s-word { stroke: #24211D }
+    .f-word-accent { fill: #D46287 }
+    .s-word-accent { stroke: #D46287 }
+  </style>
+  <!-- Ferris-like: bent out, then down to a point. -->
+  <path class="f-body-lo" d="M196,356 Q156,364 148,396 L140,432 Q162,400 170,386 Q184,374 214,370 Z" />
+  <path class="f-body-lo" d="M218,372 Q192,384 190,412 L190,446 Q204,416 208,404 Q218,390 236,382 Z" />
+  <path class="f-body-lo" d="M316,356 Q356,364 364,396 L372,432 Q350,400 342,386 Q328,374 298,370 Z" />
+  <path class="f-body-lo" d="M294,372 Q320,384 322,412 L322,446 Q308,416 304,404 Q294,390 276,382 Z" />
+</svg>

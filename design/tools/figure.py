@@ -122,19 +122,24 @@ class Figure:
             raise TokenError(path, f"layer {entry} names neither a `part` nor a `figure`")
         return Layer(source, entry.get("transform"))
 
-    def swapped(self, root: Path, swaps: dict[str, str]) -> "Figure":
-        """This figure with the part in each named slot replaced; an empty path drops the slot."""
-        layers = []
-        for layer in self.layers:
-            slot = layer.source.slot() if isinstance(layer.source, Part) else None
-            if slot not in swaps:
-                layers.append(layer)
-            elif swaps[slot]:
-                layers.append(Layer(Part.read(root / f"{swaps[slot]}.svg"), layer.transform))
-        known = {layer.source.slot() for layer in self.layers if isinstance(layer.source, Part)}
-        for slot in swaps.keys() - known:
-            raise TokenError(self.path, f"no `{slot}` slot to swap")
-        return Figure(self.name, self.view, layers, self.path)
+    def swapped(self, root: Path, swaps: dict[str, str], order: list[str]) -> "Figure":
+        """This figure with the part in each named slot replaced; an empty path drops the slot.
+
+        A slot the figure lacks is inserted where `order` places it among the figure's slots.
+        """
+        rank = {slot: index for index, slot in enumerate(order)}
+        for slot in swaps.keys() - rank.keys():
+            raise TokenError(self.path, f"`{slot}` is not a slot of {order}")
+        by_slot = {layer.source.slot(): layer for layer in self.layers if isinstance(layer.source, Part)}
+        for slot, part in swaps.items():
+            if part:
+                replaced = by_slot.get(slot)
+                by_slot[slot] = Layer(Part.read(root / f"{part}.svg"), replaced.transform if replaced else None)
+            else:
+                by_slot.pop(slot, None)
+        others = [layer for layer in self.layers if not isinstance(layer.source, Part)]
+        layers = [by_slot[slot] for slot in sorted(by_slot, key=lambda slot: rank.get(slot, len(order)))]
+        return Figure(self.name, self.view, layers + others, self.path)
 
     def group(self, theme: Theme, palette: Palette) -> list[ET.Element]:
         groups = []

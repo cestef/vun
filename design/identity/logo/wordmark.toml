@@ -1,2 +1,2 @@
-view = [0, 0, 520, 200]
+view = [0, 0, 380, 200]
 layers = ["identity/logo/parts/wordmark"]

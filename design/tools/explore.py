@@ -12,7 +12,9 @@ from tokens import Face, Section, Tokens
 
 STYLE = Path(__file__).with_name("gallery.css")
 DEFAULT_POSE = "mascot/poses/default"
-DEFAULT_LOOK = "shoreline"
+SLOTS = "mascot/slots.toml"
+WORDMARK = "identity/logo/wordmark"
+DEFAULT_LOOK = "quartz"
 SPECIMEN = "vun"
 ORDER_LAST = 1 << 16
 ICON_SIZES = (16, 24, 32, 48, 64)
@@ -24,12 +26,14 @@ class Gallery:
         self.explore = root / "explore"
         self.tokens = tokens
         self.faces: list[Face] = list(tokens.type.faces.values())
+        self.order = tomllib.loads((root / SLOTS).read_text())["order"]
 
     def look(self, name: str) -> Look:
         return Look.read(self.tokens, self.explore / "mascot" / "colorways" / f"{name}.toml")
 
     def mascot(self, spec: dict, look: Look) -> ET.Element:
-        figure = Figure.read(self.root, spec.get("base", DEFAULT_POSE)).swapped(self.root, spec.get("swap", {}))
+        figure = Figure.read(self.root, spec.get("base", DEFAULT_POSE))
+        figure = figure.swapped(self.root, spec.get("swap", {}), self.order)
         return figure.element(look.theme, look.palette)
 
     def mascots(self) -> list[ET.Element]:
@@ -91,20 +95,27 @@ class Gallery:
 
     def type(self) -> ET.Element:
         table = tomllib.loads((self.explore / "identity" / "type.toml").read_text())
+        wordmark = Figure.read(self.root, WORDMARK)
+        light = Look.of(self.tokens, self.tokens.theme("light"))
         cards = []
         for index, entry in enumerate(table["face"], 1):
-            face = Face(entry["family"], ["sans-serif"], [entry["weight"]])
+            face = Face(entry["family"], ["sans-serif"], [entry["weight"], entry["text"]])
             self.faces.append(face)
-            style = f"font-family:{face.stack()};font-weight:{entry['weight']}"
             cards.append(
                 node(
                     "figure",
                     {"class": "card type", "id": f"T{index}"},
-                    node("div", {"class": "specimen", "style": style}, SPECIMEN),
-                    node("figcaption", None, node("span", {"class": "id"}, f"T{index}"), f" {face.family} {entry['weight']}", node("small", None, entry["note"])),
+                    node(
+                        "div",
+                        {"class": "specimen", "style": f"font-family:{face.stack()}"},
+                        node("div", {"class": "lockup"}, fluid(wordmark.element(light.theme, light.palette))),
+                        node("h3", {"style": f"font-weight:{entry['weight']}"}, table["headline"]),
+                        node("p", {"style": f"font-weight:{entry['text']}"}, table["body"]),
+                    ),
+                    node("figcaption", None, node("span", {"class": "id"}, f"T{index}"), f" {face.family}", node("small", None, entry["note"])),
                 )
             )
-        return section("T", "Typeset wordmarks", "The name set in candidate display faces.", cards, "grid wide")
+        return section("T", "Typefaces", "Candidate faces next to the ligature wordmark: headline and body text.", cards, "grid wide")
 
     def directions(self) -> ET.Element:
         sample = Sample.read(self.root / "identity" / "sample.toml")

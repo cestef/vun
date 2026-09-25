@@ -1,9 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 200" width="520" height="200">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 380 200" width="380" height="200">
   <g id="parts-wordmark">
     <g fill="none" stroke-width="40" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M40,40 L90,160 L140,40" stroke="#FBB49E" />
-      <path d="M210,40 V110 A50,50 0 0 0 310,110 V40" stroke="#F9F7F4" />
-      <path d="M380,160 V90 A50,50 0 0 1 480,90 V160" stroke="#F9F7F4" />
+      <path d="M40,40 L90,160 L140,40" stroke="#DF7999" />
+      <path d="M140,40 V110 A50,50 0 0 0 240,110 V40 M240,40 V160 M240,90 A50,50 0 0 1 340,90 V160" stroke="#F9F7F4" />
     </g>
   </g>
 </svg>

@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <style id="theme">
+    .f-shell-top { fill: #D9C8C7 }
+    .s-shell-top { stroke: #D9C8C7 }
+    .f-shell-hi { fill: #D0BEBD }
+    .s-shell-hi { stroke: #D0BEBD }
+    .f-shell { fill: #BFADAC }
+    .s-shell { stroke: #BFADAC }
+    .f-shell-lo { fill: #A99695 }
+    .s-shell-lo { stroke: #A99695 }
+    .f-shell-deep { fill: #8A7C7B }
+    .s-shell-deep { stroke: #8A7C7B }
+    .f-hollow { fill: #24211D }
+    .s-hollow { stroke: #24211D }
+    .f-fleck { fill: #E57B5E }
+    .s-fleck { stroke: #E57B5E }
+    .f-body { fill: #DF7999 }
+    .s-body { stroke: #DF7999 }
+    .f-body-lo { fill: #B75777 }
+    .s-body-lo { stroke: #B75777 }
+    .f-ink { fill: #24211D }
+    .s-ink { stroke: #24211D }
+    .f-glint { fill: #D9C8C7 }
+    .s-glint { stroke: #D9C8C7 }
+    .f-mouth { fill: #6B4956 }
+    .s-mouth { stroke: #6B4956 }
+    .f-cheek { fill: #E89BB1 }
+    .s-cheek { stroke: #E89BB1 }
+    .f-word { fill: #24211D }
+    .s-word { stroke: #24211D }
+    .f-word-accent { fill: #D46287 }
+    .s-word-accent { stroke: #D46287 }
+  </style>
+  <!-- Tapered cones, Dwebble's pointed feet: two per side. -->
+  <path class="f-body-lo" d="M200,360 Q180,396 172,432 Q196,404 226,372 Z" />
+  <path class="f-body-lo" d="M226,372 Q214,410 212,446 Q228,416 248,380 Z" />
+  <path class="f-body-lo" d="M312,360 Q332,396 340,432 Q316,404 286,372 Z" />
+  <path class="f-body-lo" d="M286,372 Q298,410 300,446 Q284,416 264,380 Z" />
+</svg>

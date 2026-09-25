@@ -17,6 +17,7 @@ from tokens import Face, Section, Tokens
 
 HERE = Path(__file__).parent
 POSE = "mascot/poses/default"
+SLOTS = "mascot/slots.toml"
 PART_DIRS = ("mascot/parts", "explore/mascot/parts")
 WORDMARK_PARTS = ("identity/logo/parts/wordmark.svg", "explore/identity/wordmarks/parts/*.svg")
 STAGE_ID = "mascot"
@@ -33,7 +34,7 @@ class Tweaker:
         return str(path.relative_to(self.root).with_suffix(""))
 
     def slots(self) -> dict[str, list[Part]]:
-        order = [layer.source.slot() for layer in self.pose.layers if isinstance(layer.source, Part)]
+        order = tomllib.loads((self.root / SLOTS).read_text())["order"]
         slots: dict[str, list[Part]] = {slot: [] for slot in order}
         for dir in PART_DIRS:
             for path in sorted((self.root / dir).glob("*/*.svg")):
@@ -81,9 +82,8 @@ class Tweaker:
         root.extend(copy.deepcopy(shape) for shape in part.shapes())
         return root
 
-    def fonts(self) -> list[Face]:
-        table = tomllib.loads((self.root / "explore/identity/type.toml").read_text())
-        return [Face(entry["family"], ["sans-serif"], [entry["weight"]]) for entry in table["face"]]
+    def type(self) -> dict:
+        return tomllib.loads((self.root / "explore/identity/type.toml").read_text())
 
     def style(self, roles: list[str]) -> str:
         rules = [paint.rule(role, f"var(--{role})") for role in roles for paint in Paint]
@@ -92,7 +92,8 @@ class Tweaker:
     def render(self) -> bytes:
         slots = self.slots()
         wordmarks = self.wordmarks()
-        fonts = self.fonts()
+        type = self.type()
+        fonts = [Face(entry["family"], ["sans-serif"], [entry["weight"], entry["text"]]) for entry in type["face"]]
         roles = list(self.base.colors(Section.ART))
         defaults = {layer.source.slot(): self.name(layer.source.path) for layer in self.pose.layers if isinstance(layer.source, Part)}
         data = {
@@ -102,7 +103,8 @@ class Tweaker:
             "presets": self.presets(),
             "ramps": self.tokens.palette.ramps,
             "wordmarks": [self.name(part.path) for part in wordmarks],
-            "fonts": [{"family": face.family, "weight": face.weights[0]} for face in fonts],
+            "fonts": [{key: entry[key] for key in ("family", "weight", "text")} for entry in type["face"]],
+            "specimen": {"headline": type["headline"], "body": type["body"]},
             "view": list(self.pose.view),
             "stage": STAGE_ID,
         }
@@ -113,7 +115,7 @@ class Tweaker:
                 None,
                 node("div", {"id": "backdrop"}, self.stage(slots)),
                 node("div", {"id": "minis"}),
-                node("div", {"id": "wordmarks"}, *(self.wordmark(part) for part in wordmarks), node("div", {"id": "typeset"})),
+                node("div", {"id": "wordmarks"}, *(self.wordmark(part) for part in wordmarks), node("div", {"id": "specimen"})),
                 node("div", {"id": "export"}),
             ),
             node("script", {"type": "application/json", "id": "data"}, json.dumps(data)),

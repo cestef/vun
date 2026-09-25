@@ -68,7 +68,8 @@ function initial(preset) {
     slots: { ...data.defaults, ...preset.slots },
     adjust: Object.fromEntries(ADJUST.map((a) => [a.key, a.neutral])),
     wordmark: data.wordmarks[0],
-    font: data.fonts[0].family,
+    display: data.fonts[0].family,
+    text: data.fonts[0].family,
   };
 }
 function load() {
@@ -83,11 +84,18 @@ function restore(saved) {
   const base = initial(data.presets.find((p) => p.name === saved?.preset));
   if (!saved) return base;
   const known = (table, keys) => Object.fromEntries(Object.entries(table || {}).filter(([key]) => keys.includes(key)));
+  const valid = (table, allowed) => Object.fromEntries(Object.entries(table || {}).filter(([key, value]) => allowed[key]?.(value)));
+  const families = data.fonts.map((f) => f.family);
   return {
     ...base,
-    ...known(saved, ["backdrop", "wordmark", "font"]),
+    ...valid(saved, {
+      backdrop: (v) => /^#[0-9A-F]{6}$/i.test(v),
+      wordmark: (v) => data.wordmarks.includes(v),
+      display: (v) => families.includes(v),
+      text: (v) => families.includes(v),
+    }),
     colors: { ...base.colors, ...known(saved.colors, data.roles) },
-    slots: { ...base.slots, ...known(saved.slots, Object.keys(data.slots)) },
+    slots: { ...base.slots, ...valid(saved.slots, Object.fromEntries(Object.entries(data.slots).map(([slot, parts]) => [slot, (v) => v === NONE || parts.includes(v)]))) },
     adjust: { ...base.adjust, ...known(saved.adjust, ADJUST.map((a) => a.key)) },
   };
 }
@@ -102,8 +110,10 @@ function apply() {
     layer.style.display = state.slots[layer.dataset.slot] === layer.dataset.part ? "" : "none";
   for (const mark of document.querySelectorAll("[data-wordmark]"))
     mark.style.display = mark.dataset.wordmark === state.wordmark ? "" : "none";
-  const face = data.fonts.find((f) => f.family === state.font);
-  Object.assign(document.getElementById("typeset").style, { fontFamily: `"${face.family}"`, fontWeight: face.weight });
+  const face = (family) => data.fonts.find((f) => f.family === family) || data.fonts[0];
+  const display = face(state.display), text = face(state.text);
+  Object.assign(document.querySelector("#specimen h3").style, { fontFamily: `"${display.family}"`, fontWeight: display.weight });
+  Object.assign(document.querySelector("#specimen p").style, { fontFamily: `"${text.family}"`, fontWeight: text.text });
   for (const input of document.querySelectorAll("[data-role]")) {
     const color = final(input.dataset.role);
     if (input.type === "color") input.value = state.colors[input.dataset.role].toLowerCase();
@@ -112,6 +122,9 @@ function apply() {
   history.replaceState(null, "", "#" + btoa(unescape(encodeURIComponent(JSON.stringify(state)))));
   exports();
 }
+
+// Name choices survive a preset change: presets carry colors and parts only.
+const keptType = () => ({ wordmark: state.wordmark, display: state.display, text: state.text });
 
 function select(label, options, value, onchange) {
   const input = el("select", { onchange: (e) => onchange(e.target.value) });
@@ -132,7 +145,7 @@ function controls() {
     el("h1", {}, "vun tweaker"),
     el("p", { class: "hint" }, "Tweak, then copy the TOML or the link and send it back."),
     select("Preset", Object.entries(groups), state.preset, (name) => {
-      state = { ...initial(data.presets.find((p) => p.name === name)), wordmark: state.wordmark, font: state.font };
+      state = { ...initial(data.presets.find((p) => p.name === name)), ...keptType() };
       controls();
       apply();
     }),
@@ -185,8 +198,9 @@ function controls() {
     ),
     el("h2", {}, "Name"),
     select("Wordmark", [[null, data.wordmarks.map((w) => [w, w.split("/").pop()])]], state.wordmark, (w) => { state.wordmark = w; apply(); }),
-    select("Typeface", [[null, data.fonts.map((f) => [f.family, f.family])]], state.font, (f) => { state.font = f; apply(); }),
-    el("button", { onclick: () => { state = initial(data.presets.find((p) => p.name === state.preset)); controls(); apply(); } }, "Reset to preset")
+    select("Display face", [[null, data.fonts.map((f) => [f.family, f.family])]], state.display, (f) => { state.display = f; apply(); }),
+    select("Text face", [[null, data.fonts.map((f) => [f.family, f.family])]], state.text, (f) => { state.text = f; apply(); }),
+    el("button", { onclick: () => { state = { ...initial(data.presets.find((p) => p.name === state.preset)), ...keptType() }; controls(); apply(); } }, "Reset to preset")
   );
 }
 
@@ -205,14 +219,14 @@ function minis() {
     }));
   const light = data.presets[0].backdrop;
   document.getElementById("minis").append(strip(light), strip(data.ramps.stone["950"]));
-  document.getElementById("typeset").append(el("span", { class: "accent" }, "v"), "un");
+  document.getElementById("specimen").append(el("h3", {}, data.specimen.headline), el("p", {}, data.specimen.body));
 }
 
 function exports() {
   const art = data.roles.map((role) => `${role} = "tweak.${role}"`).join("\n");
   const ramp = data.roles.map((role) => `${role} = "${final(role)}"`).join("\n");
   const colorway = `note = "Tweaked from ${state.preset}."\nbackdrop = "tweak.backdrop"\n\n[ramps.tweak]\n${ramp}\nbackdrop = "${state.backdrop}"\n\n[art]\n${art}\n`;
-  const layers = Object.values(state.slots).filter((part) => part !== NONE).map((part) => `  "${part}",`).join("\n");
+  const layers = Object.keys(data.slots).map((slot) => state.slots[slot]).filter(Boolean).map((part) => `  "${part}",`).join("\n");
   const pose = `view = [${data.view.join(", ")}]\nlayers = [\n${layers}\n]\n`;
   const box = (title, file, text) =>
     el("section", {}, el("h2", {}, title, " ", el("small", {}, file)),
