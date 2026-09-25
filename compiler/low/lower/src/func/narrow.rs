@@ -29,7 +29,6 @@ impl FnLower<'_, '_, '_> {
     ) -> Result<(), Unlowered> {
         let at = self.at;
         let unsupported = move || Unlowered::unsupported(at, Form::Conversion);
-        let Some(dest) = dest else { return Ok(()) };
         let (target, _) = self.l.types.int(ty).ok_or_else(unsupported)?;
         let (x, source, signed, cuts) = self.cut(operand, ty)?;
         let value = match narrowing {
@@ -74,7 +73,7 @@ impl FnLower<'_, '_, '_> {
                 self.resize(value, wide, signed, target)
             }
         };
-        self.b.store(value, dest, Access::Plain, self.at);
+        self.keep(value, dest);
         Ok(())
     }
 

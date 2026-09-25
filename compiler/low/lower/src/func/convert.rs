@@ -78,6 +78,7 @@ impl FnLower<'_, '_, '_> {
                 .to_u128()
                 .and_then(|n| u64::try_from(n).ok())
                 .ok_or(Unlowered::unsupported(self.at, Form::Conversion))?;
+            let len = self.b.constant(self.l.types.word, u128::from(len), self.at);
             return self.each(len, |this, i| {
                 let (at_a, at_b) = (this.scaled(src, i, sa), this.scaled(dest, i, sb));
                 this.convert(at_a, a, at_b, b)
@@ -98,7 +99,7 @@ impl FnLower<'_, '_, '_> {
     /// Runs `body` for each index below `len`, a word, in a loop.
     pub(crate) fn each(
         &mut self,
-        len: u64,
+        len: Value,
         mut body: impl FnMut(&mut Self, Value) -> Result<(), Unlowered>,
     ) -> Result<(), Unlowered> {
         let word = self.l.types.word;
@@ -108,8 +109,7 @@ impl FnLower<'_, '_, '_> {
         self.b.terminate(Terminator::Jump(Target { block: head, args: vec![zero] }));
         self.b.switch_to(head);
         let i = self.b.params(head)[0];
-        let end = self.b.constant(word, u128::from(len), self.at);
-        let more = self.b.compare(Cond::ULt, i, end, self.at);
+        let more = self.b.compare(Cond::ULt, i, len, self.at);
         let to = |block| Target { block, args: Vec::new() };
         self.b.terminate(Terminator::Branch { cond: more, then: to(run), otherwise: to(done) });
         self.b.switch_to(run);

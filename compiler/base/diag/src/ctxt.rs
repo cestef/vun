@@ -91,6 +91,12 @@ impl DiagCtxt {
         self.diagnostics.push(d);
     }
 
+    /// The guarantee that an error was reported, if one was.
+    #[must_use]
+    pub fn failed(&self) -> Option<ErrorGuaranteed> {
+        (self.error_count() > 0).then_some(ErrorGuaranteed(()))
+    }
+
     #[must_use]
     pub fn error_count(&self) -> usize {
         self.diagnostics.iter().filter(|d| d.severity == Severity::Error).count()

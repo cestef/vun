@@ -1,0 +1,31 @@
+start := std.os.start(main);
+
+main := (sys: &mut std.os.System) -> std.os.Exit {
+    n: u8 = sys.args().len().sat(u8);
+    mut code: u8 = 0;
+    // A register written and read back through volatile accesses.
+    mut word: u32 = 0;
+    reg := unsafe &lang.mem.cast(u32, std.hw.Reg(u32), lang.mem.pointer_to(u32, &word)).*;
+    reg.write(0x1234 * n);
+    if reg.read() == 0x1234 and word == 0x1234 { code = code | 1; }
+    // A write through a pointer, whose result is `()`, still writes.
+    mut x: u16 = 0;
+    unsafe lang.mem.write(u16, lang.mem.pointer_to(u16, &x), 700);
+    if x == 700 { code = code | 2; }
+    // Overlapping copies, forward and backward.
+    mut xs: [5]u8 = [1, 2, 3, 4, 5];
+    base := lang.mem.pointer_to([5]u8, &xs);
+    items := unsafe lang.mem.cast([5]u8, u8, base);
+    unsafe lang.mem.copy(u8, lang.mem.offset(u8, items, 1), items, 3);
+    if xs == [1, 1, 2, 3, 5] { code = code | 4; }
+    unsafe lang.mem.copy(u8, items, lang.mem.offset(u8, items, 2), 3);
+    if xs == [2, 3, 5, 3, 5] { code = code | 8; }
+    // A fill of items wider than a byte.
+    mut ws: [3]u32 = [0, 0, 0];
+    unsafe lang.mem.fill(u32, lang.mem.cast([3]u32, u32, lang.mem.pointer_to([3]u32, &ws)), 70000 + n, 2);
+    if ws == [70001, 70001, 0] { code = code | 16; }
+    // An unused narrowing still checks: this one holds.
+    _ = (n * 200).to(u8);
+    code = code | 32 | 64 | 128;
+    .code(code)
+};

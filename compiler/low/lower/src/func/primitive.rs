@@ -78,7 +78,6 @@ impl FnLower<'_, '_, '_> {
         if let Primitive::Bounds(b) = p {
             return self.bounded(b, &runtime, dest, ty);
         }
-        let Some(dest) = dest else { return Ok(()) };
         match p {
             Primitive::Int(i) => self.int_unary(i, args, &runtime, dest, ty),
             Primitive::Meta(Meta::variant) => {
@@ -86,7 +85,7 @@ impl FnLower<'_, '_, '_> {
                 let of = of.as_type().ok_or_else(unsupported)?;
                 let addr = self.pointed(arg(0)?)?;
                 let index = self.variant_index(addr, of)?;
-                self.b.store(index, dest, Access::Plain, self.at);
+                self.keep(index, dest);
                 Ok(())
             }
             Primitive::Meta(Meta::part) => {
@@ -97,6 +96,7 @@ impl FnLower<'_, '_, '_> {
                 let (variant, index) =
                     (variant.as_usize().ok_or_else(unsupported)?, index.as_usize().ok_or_else(unsupported)?);
                 let addr = self.pointed(arg(0)?)?;
+                let Some(dest) = dest else { return Ok(()) };
                 let (holds, part) = self.part_at(addr, of, variant, index)?;
                 self.optional(holds, part, dest, ty)
             }

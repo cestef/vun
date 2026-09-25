@@ -82,7 +82,7 @@ impl FnLower<'_, '_, '_> {
         i: Int,
         args: &[Operand],
         runtime: &[&Operand],
-        dest: Value,
+        dest: Option<Value>,
         ty: Ty,
     ) -> Result<(), Unlowered> {
         let at = self.at;
@@ -95,7 +95,7 @@ impl FnLower<'_, '_, '_> {
             _ => None,
         };
         if let Some(narrowing) = narrowing {
-            return self.narrow(x, narrowing, Some(dest), ty);
+            return self.narrow(x, narrowing, dest, ty);
         }
         if i == Int::fits {
             let [_, _, Operand::Const(target)] = args else { return Err(unsupported()) };
@@ -104,7 +104,7 @@ impl FnLower<'_, '_, '_> {
                 Some(holds) => holds,
                 None => self.b.constant(Scalar::I8, 1, self.at),
             };
-            return self.condition(holds, Some(dest), ty);
+            return self.condition(holds, dest, ty);
         }
         let (int, _) = self.l.types.int(ty).ok_or_else(unsupported)?;
         let value = self.int_operand(x, int)?;
@@ -136,7 +136,7 @@ impl FnLower<'_, '_, '_> {
             }
             _ => return Err(unsupported()),
         };
-        self.b.store(value, dest, Access::Plain, self.at);
+        self.keep(value, dest);
         Ok(())
     }
 }

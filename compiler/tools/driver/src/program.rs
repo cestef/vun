@@ -52,6 +52,11 @@ impl Session {
     /// # Panics
     /// Never: a compile step does not panic, and the backend that coded it is registered.
     pub fn compile(&mut self, file: FileId, backend: Option<&str>) -> Result<Compiled, ErrorGuaranteed> {
+        // Only a program its checks accept is built.
+        self.check(file);
+        if let Some(failed) = self.diag.failed() {
+            return Err(failed);
+        }
         let coded = self.code(file, backend).map_err(|uncoded| match uncoded {
             Uncoded::Reported(guar) => guar,
             Uncoded::Unlowered(unlowered) => {

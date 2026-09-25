@@ -216,3 +216,8 @@ fn integers_wider_than_the_backend_run_as_pairs_of_halves() {
 fn closures_function_values_defers_and_primitives_lower_and_run() {
     assert_eq!(status("backend-lowered", &program("lowered.vun")), Some(255));
 }
+
+#[test]
+fn memory_operations_run_whether_their_value_is_kept_or_not() {
+    assert_eq!(status("backend-memory", &program("memory.vun")), Some(255));
+}

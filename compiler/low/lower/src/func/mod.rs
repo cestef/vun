@@ -278,6 +278,14 @@ impl<'l, 'a, 'db> FnLower<'l, 'a, 'db> {
         Ok(Some(self.b.slot_addr(slot, self.at)))
     }
 
+    /// Stores `value` into `dest`, the place of what computed it, when it has one: the
+    /// computation runs, for its effects and traps, whether its value is kept or not.
+    pub(crate) fn keep(&mut self, value: Value, dest: Option<Value>) {
+        if let Some(dest) = dest {
+            self.b.store(value, dest, vun_lir::Access::Plain, self.at);
+        }
+    }
+
     /// The type of `operand`: a place's, or a constant's own.
     pub(crate) fn operand_ty(&self, operand: &Operand) -> Option<Ty> {
         match operand {
