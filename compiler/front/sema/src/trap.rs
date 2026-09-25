@@ -24,11 +24,26 @@ pub enum Reason {
     Argument,
     /// A frame asked of a function that does not suspend (`lang.meta.Frame`).
     NoFrame,
+    /// A trap site of the program was reached: `lang.panic.trap`.
+    Trap,
+    /// `lang.panic.fail` was reached, for its `lang.panic.Reason`.
+    Failed(Failure),
     /// Library code reported an error (`lang.diag.error`): its message, and where it points
     /// when it names a place.
     Reported {
         message: String,
         at: Option<OriginId>,
+    },
+}
+
+/// What a reached `lang.panic.fail` says: a variant of `lang.panic.Reason`.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub enum Failure {
+    Message(String),
+    /// A condition that did not hold: its source, and where it is written.
+    Assertion {
+        source: String,
+        at: OriginId,
     },
 }
 
@@ -50,9 +65,25 @@ impl Reason {
             Self::Budget => "the call ran out of its step budget",
             Self::Bounds => "index outside the items",
             Self::Argument => "argument outside the type of its parameter",
+            Self::Trap => "a trap site was reached",
+            Self::Failed(Failure::Assertion { source, .. }) => {
+                return Msg::new().text("assertion failed: ").code(source.clone());
+            }
             Self::NoFrame => "the function does not suspend, so it makes no frame",
-            Self::Reported { message, .. } => return Msg::new().text(message.clone()),
+            Self::Reported { message, .. } | Self::Failed(Failure::Message(message)) => {
+                return Msg::new().text(message.clone());
+            }
         })
+    }
+
+    /// Where the reason itself points, when it names a place: the report is shown there, not
+    /// where the library code reached it.
+    fn place(&self) -> Option<OriginId> {
+        match self {
+            Self::Reported { at, .. } => *at,
+            Self::Failed(Failure::Assertion { at, .. }) => Some(*at),
+            _ => None,
+        }
     }
 }
 
@@ -107,15 +138,16 @@ impl Trap {
         };
         let msg = if failed { Msg::new().text("compile-time evaluation failed: ") } else { Msg::new() };
         // A report naming a place is shown there, the value that needed it labeled.
-        let mut d = match self.reason {
-            Reason::Reported { at: Some(at), .. } => Diagnostic::error(id, msg.append(self.reason.msg()))
+        let mut d = match self.reason.place() {
+            Some(at) => Diagnostic::error(id, msg.append(self.reason.msg()))
                 .at(at, None)
                 .label(root, Some(Msg::new().text("while computing this"))),
-            _ => Diagnostic::error(id, msg.append(self.reason.msg())).at(root, None),
+            None => Diagnostic::error(id, msg.append(self.reason.msg())).at(root, None),
         };
-        // Where a library's report fires is always its call of `lang.diag.error`: not shown.
-        if let Some(at) = self.at.filter(|&at| at != root && !matches!(self.reason, Reason::Reported { .. }))
-        {
+        // Where a library's report or a failed assertion fires is always the library's call of
+        // the primitive: not shown.
+        let shown = !matches!(self.reason, Reason::Reported { .. }) && self.reason.place().is_none();
+        if let Some(at) = self.at.filter(|&at| at != root && shown) {
             d = d.label(at, Some(Msg::new().text("it fires here")));
         }
         d.trace = self

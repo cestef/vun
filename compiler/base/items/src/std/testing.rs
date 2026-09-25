@@ -8,4 +8,5 @@
 use crate::Item;
 /// Marks a binding as a test. Plain data: the runner finds tests by reflection.
 pub const test: Item = Item::new(&["std", "testing", "test"]);
+/// Traps unless `cond` holds, the failure quoting it with where it is written.
 pub const assert: Item = Item::new(&["std", "testing", "assert"]);

@@ -3,6 +3,7 @@
 /// Marks a binding as a test. Plain data: the runner finds tests by reflection.
 test := struct {};
 
+/// Traps unless `cond` holds, the failure quoting it with where it is written.
 assert := ($cond: lang.meta.Code(bool)) {
-    if !$cond { lang.panic.trap(&.{ .site = 0 }); }
+    if !$cond { lang.panic.fail(.assertion(cond.source(), cond.span())); }
 };

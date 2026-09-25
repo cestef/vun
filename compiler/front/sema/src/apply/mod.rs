@@ -3,16 +3,15 @@
 
 mod int;
 mod meta;
+mod report;
 
 use crate::Primitive;
 use crate::env::{Env, Unevaluated};
 use crate::int::Integer;
 use crate::primitives::bounds::Bounds;
-use crate::primitives::diag::Diag;
 use crate::primitives::lang::Lang;
 use crate::primitives::mem::Mem;
 use crate::primitives::meta::Meta;
-use crate::trap::Reason;
 use crate::ty::{Signature, TyKind, Value};
 
 impl Primitive {
@@ -84,19 +83,8 @@ impl Primitive {
             (Self::Mem(Mem::len), [_, Value::Array(items)]) => Ok(Value::Int(Integer::from(items.len()))),
             (Self::Int(int), args) => int.apply(env, args),
             (Self::Meta(meta), args) => meta.apply(env, args),
-            // Library diagnostics (spec 10, section 3).
-            (Self::Diag(Diag::error), [message, at]) => {
-                let message = message.text().ok_or(Unevaluated::Unsupported)?;
-                // An optional place: the origin a variant's payload holds, if it holds one.
-                let at = match at {
-                    Value::Variant { payload, .. } => match payload.as_slice() {
-                        [Value::Origin(origin)] => Some(*origin),
-                        _ => None,
-                    },
-                    _ => None,
-                };
-                Err(Unevaluated::trap(Reason::Reported { message, at }))
-            }
+            (Self::Diag(diag), args) => diag.apply(args),
+            (Self::Panic(panic), args) => panic.apply(args),
             _ => Err(Unevaluated::Unsupported),
         }
     }

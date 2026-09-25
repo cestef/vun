@@ -279,6 +279,11 @@ parameters as `Code` of its type (`Callable::quotes`); compile-time calls take t
 typing inferred (`TypedBody.inferred`, `Env::inferred`, `Env::call_value`). Meta primitives apply in
 `apply/meta.rs`.
 
+**Trap sites at compile time** (decision 159, `apply/report.rs`): `lang.panic.fail` traps with
+`Reason::Failed(Failure::{Message, Assertion})`, `lang.panic.trap` with `Reason::Trap`; a reason
+naming a place (`Reason::place`) is reported there. `std.testing.assert` fails with
+`.assertion(cond.source(), cond.span())`, so `$assert` is checked.
+
 Progress: corpus 209 passed, 0 pending, 9 planned, 27 shown, 0 failed; 83% of accepted body
 expressions typed; MIR lowers 85 of 97 accepted functions. 265 tests, including one that checks
 every `lang` and `std` file cleanly.
@@ -286,7 +291,7 @@ every `lang` and `std` file cleanly.
 ## 6. Decisions
 
 Proposed also: 155 (frame layout), 156 (narrowing, runtime bounds, frame layouts in sema), 157
-(the baseline backend). Accepted: 139 (the size budget, now 10 MiB), 158 (`meta.Frame`, `TypeOf`
+(the baseline backend). Proposed: 159 (trap sites at compile time). Accepted: 139 (the size budget, now 10 MiB), 158 (`meta.Frame`, `TypeOf`
 over code; details proposed).
 Accepted (the user's choices, details proposed): 152 (backends after TPDE, baseline backend
 started after C), 153 (the C backend), 154 (targets named by system and CPU, chosen per session).
@@ -307,11 +312,10 @@ rules go to `decisions.md` as proposed unless the user approves them.
 
 ## 7. Next steps, in order
 
-0. `$assert(false)` reports nothing: `std.testing.assert` reaches `lang.panic.trap`, which
-   compile time does not run (silence), so every `$assert` in the corpus is unchecked. Make a trap
-   primitive reached at compile time a trap (`Reason`), then fix what the corpus asserts wrongly.
-   Until then corpus checks use `$if !ok { std.diag.error(...) }` (`coroutines/frames.vun`).
-   Baseline backend next: callee-saved registers for values used across a loop (the prologue
+0. Run-time `lang.panic.fail` is not lowered (its `$reason` reaches lowering as a value: "the
+   type `Reason` has no layout at run time"); it should be a trap site per distinct reason, its
+   text in the message table, so `expect` lowers. A run-time `assert(c)` stops earlier, at the
+   splice of its code parameter in MIR ("a local has no type"). Baseline backend next: callee-saved registers for values used across a loop (the prologue
    reserving their saves, patched), keeping registers across a fall-through to a block with one
    predecessor, compare and branch fused, frame sizes reported (`stack.max`), floats (SSE) and
    128-bit integers (pairs, helpers in Vun), DWARF lines, arm64. Backends: memory regions from a program's build options into `LinkPlan` (the `gnu`

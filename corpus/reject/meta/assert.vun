@@ -1,0 +1,7 @@
+//! A trap site reached at compile time is an error there: a failed assertion quotes its
+//! condition, `fail` its message (spec 03, section 7; spec 07, section 3).
+
+wide := () { $assert(std.meta.size(u16) == 1); }; //~ comptime.trap
+
+empty: ?u8 = .none;
+first := empty.expect("nothing to take"); //~ comptime.trap

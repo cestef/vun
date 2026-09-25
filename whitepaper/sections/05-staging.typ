@@ -47,8 +47,8 @@ coroutines. Four properties constrain it.
   the call's own steps and those of the calls it makes, so a call's cost, like its value, is a
   function of the call alone, and a memoized call costs the same wherever it is reached.
 
-A trap during evaluation, such as a division by zero or a failed narrowing, is a diagnostic at the
-value being computed, with the trap site labeled and one "while evaluating" frame for each call in
+A trap during evaluation, such as a division by zero, a failed narrowing or a failed assertion, is
+a diagnostic at the value being computed, with the trap site labeled and one "while evaluating" frame for each call in
 between (@fig-trap).
 
 #figure(
