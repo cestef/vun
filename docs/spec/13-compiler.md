@@ -442,8 +442,18 @@ bits through `xmm0` and `xmm1`. Conventions pass floats in SSE registers, and a 
 eightbytes in general or SSE registers by their class (System V: SSE when every field in it is a
 float); a C call sets `al` to the SSE registers used. LIR's float comparisons are ordered (false
 where either operand is a NaN); lowering gives IEEE `!=` as `==` negated. Not yet: `f16`
-arithmetic, 128-bit integers (`backend.lacks`), and `lang.float.rem` and `mul_add` at run time,
-which wait for helpers written in Vun.
+arithmetic, and `lang.float.rem` and `mul_add` at run time, which wait for helpers written in Vun.
+
+**Legalization.** Each backend declares the widest integer it computes with
+(`BackendCaps::int_bits`); before it reads a unit, `Unit::legalize` splits every integer twice as
+wide into halves (low first, placed in memory by the target's byte order): add and subtract with
+carries, multiply through quarter-width partial products, shifts by any amount below the width,
+comparisons by the high halves then the low ones, extensions, truncations, selects, loads,
+stores, block parameters, switches, and calls, a wide parameter passed as its halves and a wide
+result as a record of them (returned in registers under the C convention, as C returns its
+128-bit integers, through memory under Vun's). Division and remainder call a helper function the
+pass adds (restoring division over pairs, signs put back around it). Atomic accesses of wide
+integers and conversions between them and floats are refused (`backend.lacks`).
 `vun build --backend baseline` links the object with the target's linker; the backend tests run
 every program through both backends and require the same result.
 

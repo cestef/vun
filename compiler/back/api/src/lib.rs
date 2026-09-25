@@ -43,6 +43,9 @@ pub struct BackendCaps {
     pub noalias: bool,
     /// Reports frame sizes, which `stack.max` requires.
     pub frame_sizes: bool,
+    /// The widest integer it computes with, in bits: wider ones are split into halves before it
+    /// reads the unit (`Unit::legalize`).
+    pub int_bits: u32,
     pub debug_info: bool,
 }
 

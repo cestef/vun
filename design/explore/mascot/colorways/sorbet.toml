@@ -1,0 +1,14 @@
+order = 5
+note = "Rose crab, butter shell."
+[art]
+shell-top = "butter.50"
+shell-hi = "butter.100"
+shell = "butter.200"
+shell-lo = "butter.300"
+shell-deep = "butter.400"
+hollow = "butter.900"
+fleck = "sky.300"
+body = "rose.300"
+body-lo = "rose.500"
+cheek = "peach.300"
+mouth = "rose.700"

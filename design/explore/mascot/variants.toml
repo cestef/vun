@@ -1,6 +1,6 @@
 # Mascot variants for the gallery. Ids are the group id and the item's position.
 # An item swaps slots of `base` (default mascot/poses/default); `""` drops a slot.
-# `look` names a colorway under colorways/ (default pincher).
+# `look` names a colorway under colorways/ (default shoreline).
 
 [[group]]
 id = "S"
@@ -130,8 +130,8 @@ title = "Combinations"
 note = "Whole characters: shell, face, arms and colorway picked together."
 
 [[group.item]]
-label = "Nut, big eyes, ember"
-look = "ember"
+label = "Nut, big eyes, apricot"
+look = "apricot"
 swap = { shell = "explore/mascot/parts/shell/nut", eyes = "explore/mascot/parts/eyes/big" }
 
 [[group.item]]
@@ -140,43 +140,43 @@ look = "lagoon"
 swap = { shell = "explore/mascot/parts/shell/cube", eyes = "explore/mascot/parts/eyes/dot", mouth = "explore/mascot/parts/mouth/cat" }
 
 [[group.item]]
-label = "Terminal, deadpan, midnight"
-look = "midnight"
+label = "Terminal, deadpan, night"
+look = "night"
 swap = { shell = "explore/mascot/parts/shell/terminal", eyes = "explore/mascot/parts/eyes/half", claws = "explore/mascot/parts/claws/wave" }
 
 [[group.item]]
-label = "Spiral, happy, amethyst"
-look = "amethyst"
+label = "Spiral, happy, mint"
+look = "mint"
 swap = { shell = "explore/mascot/parts/shell/spiral", eyes = "mascot/parts/eyes/happy", claws = "mascot/parts/claws/raised" }
 
 [[group.item]]
-label = "Crystal, big eyes, gold"
-look = "gold"
+label = "Crystal, big eyes, cloud"
+look = "cloud"
 swap = { shell = "explore/mascot/parts/shell/crystal", eyes = "explore/mascot/parts/eyes/big" }
 
 [[group.item]]
-label = "Pebble, dot eyes, ghost"
-look = "ghost"
+label = "Pebble, dot eyes, chalk"
+look = "chalk"
 swap = { shell = "explore/mascot/parts/shell/pebble", eyes = "explore/mascot/parts/eyes/dot", claws = "explore/mascot/parts/claws/hug" }
 
 [[group.item]]
-label = "Whelk, grin, sea glass"
-look = "seaglass"
+label = "Whelk, grin, sorbet"
+look = "sorbet"
 swap = { shell = "explore/mascot/parts/shell/whelk", mouth = "explore/mascot/parts/mouth/grin" }
 
 [[group.item]]
-label = "Stone, big eyes, blueprint"
-look = "blueprint"
+label = "Stone, big eyes, dusk"
+look = "dusk"
 swap = { eyes = "explore/mascot/parts/eyes/big", claws = "explore/mascot/parts/claws/wave" }
 
 [[group.item]]
-label = "Nut, deadpan, mono"
-look = "mono"
+label = "Nut, deadpan, sandbar"
+look = "sandbar"
 swap = { shell = "explore/mascot/parts/shell/nut", eyes = "explore/mascot/parts/eyes/half", cheeks = "" }
 
 [[group.item]]
-label = "Stone, happy, ferrous"
-look = "ferrous"
+label = "Stone, happy, blossom"
+look = "blossom"
 swap = { eyes = "mascot/parts/eyes/happy", claws = "mascot/parts/claws/raised" }
 
 [[group.item]]
@@ -185,5 +185,5 @@ look = "lagoon"
 swap = { shell = "explore/mascot/parts/shell/pebble", body = "explore/mascot/parts/body/big", stalks = "explore/mascot/parts/stalks/bent", claws = "explore/mascot/parts/claws/even" }
 
 [[group.item]]
-label = "Terminal, happy, pincher"
+label = "Terminal, happy, shoreline"
 swap = { shell = "explore/mascot/parts/shell/terminal", eyes = "mascot/parts/eyes/happy", claws = "mascot/parts/claws/raised", mouth = "explore/mascot/parts/mouth/grin" }

@@ -12,7 +12,7 @@ from tokens import Face, Section, Tokens
 
 STYLE = Path(__file__).with_name("gallery.css")
 DEFAULT_POSE = "mascot/poses/default"
-DEFAULT_LOOK = "pincher"
+DEFAULT_LOOK = "shoreline"
 SPECIMEN = "vun"
 ORDER_LAST = 1 << 16
 ICON_SIZES = (16, 24, 32, 48, 64)

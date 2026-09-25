@@ -1,7 +1,7 @@
 # Mascot
 
-A purple pincher hermit crab (*Coenobita clypeatus*) in a faceted stone, after Dwebble; flat
-color, no outlines, in the manner of Ferris and the Go gopher.
+A hermit crab in a faceted stone, after Dwebble: pastel peach crab, seafoam shell; flat color,
+no outlines, in the manner of Ferris and the Go gopher.
 
 ## Anatomy
 

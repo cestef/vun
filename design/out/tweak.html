@@ -1,0 +1,512 @@
+<!doctype html>
+<html xmlns="http://www.w3.org/2000/svg" lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Vun tweaker</title><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo+Black:wght@400&amp;family=Baloo+2:wght@800&amp;family=Bricolage+Grotesque:wght@800&amp;family=DM+Serif+Display:wght@400&amp;family=Fraunces:wght@700&amp;family=Geist:wght@700&amp;family=Instrument+Serif:wght@400&amp;family=JetBrains+Mono:wght@800&amp;family=Major+Mono+Display:wght@400&amp;family=Recursive:wght@900&amp;family=Righteous:wght@400&amp;family=Space+Grotesk:wght@700&amp;family=Syne:wght@800&amp;family=Unbounded:wght@700&amp;display=swap"><style>:root { --page: #F9F7F4; --ink: #24211D; --muted: #6D645A; --line: #DFD9D0; }
+* { box-sizing: border-box; }
+body { margin: 0; display: grid; grid-template-columns: 340px 1fr; min-height: 100vh; background: var(--page); color: var(--ink); font: 14px/1.4 "IBM Plex Sans", system-ui, sans-serif; }
+@media (max-width: 800px) { body { grid-template-columns: 1fr; } }
+aside { padding: 20px; border-right: 1px solid var(--line); overflow-y: auto; max-height: 100vh; position: sticky; top: 0; }
+h1 { font: 800 24px/1.1 "Bricolage Grotesque", system-ui, sans-serif; margin: 0 0 4px; }
+h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 18px 0 8px; }
+h2 small { text-transform: none; letter-spacing: 0; font-family: "IBM Plex Mono", monospace; }
+.hint { color: var(--muted); margin: 0 0 12px; }
+.row { display: grid; grid-template-columns: 96px 1fr auto; align-items: center; gap: 8px; margin: 4px 0; }
+.row span { color: var(--muted); font-size: 13px; }
+.row select { grid-column: 2 / 4; }
+.row code, .row output { font: 12px "IBM Plex Mono", monospace; min-width: 62px; text-align: right; }
+select, button { font: inherit; padding: 4px 6px; border: 1px solid var(--line); border-radius: 6px; background: #fff; }
+button { cursor: pointer; margin: 10px 0 0; }
+input[type=color] { width: 100%; height: 26px; border: 1px solid var(--line); border-radius: 6px; padding: 0; background: none; }
+main { padding: 20px; display: grid; gap: 16px; align-content: start; }
+#backdrop { border-radius: 16px; display: grid; place-items: center; padding: 16px; }
+.stage { width: min(520px, 100%); height: auto; aspect-ratio: 1; }
+#minis { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.strip { display: flex; align-items: flex-end; justify-content: center; gap: 20px; padding: 16px; border-radius: 12px; }
+#wordmarks { display: flex; align-items: center; gap: 32px; background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 24px; flex-wrap: wrap; }
+#wordmarks svg { height: 90px; width: auto; }
+#typeset { font-size: 96px; line-height: 1; color: var(--word); }
+#typeset .accent { color: var(--word-accent); }
+#export { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 1100px) { #export { grid-template-columns: 1fr; } }
+#export section { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px; }
+#export h2 { margin-top: 4px; }
+#export pre { font: 12px/1.45 "IBM Plex Mono", monospace; white-space: pre-wrap; max-height: 280px; overflow: auto; }
+.f-shell-top { fill: var(--shell-top) }
+.s-shell-top { stroke: var(--shell-top) }
+.f-shell-hi { fill: var(--shell-hi) }
+.s-shell-hi { stroke: var(--shell-hi) }
+.f-shell { fill: var(--shell) }
+.s-shell { stroke: var(--shell) }
+.f-shell-lo { fill: var(--shell-lo) }
+.s-shell-lo { stroke: var(--shell-lo) }
+.f-shell-deep { fill: var(--shell-deep) }
+.s-shell-deep { stroke: var(--shell-deep) }
+.f-hollow { fill: var(--hollow) }
+.s-hollow { stroke: var(--hollow) }
+.f-fleck { fill: var(--fleck) }
+.s-fleck { stroke: var(--fleck) }
+.f-body { fill: var(--body) }
+.s-body { stroke: var(--body) }
+.f-body-lo { fill: var(--body-lo) }
+.s-body-lo { stroke: var(--body-lo) }
+.f-ink { fill: var(--ink) }
+.s-ink { stroke: var(--ink) }
+.f-glint { fill: var(--glint) }
+.s-glint { stroke: var(--glint) }
+.f-mouth { fill: var(--mouth) }
+.s-mouth { stroke: var(--mouth) }
+.f-cheek { fill: var(--cheek) }
+.s-cheek { stroke: var(--cheek) }
+.f-word { fill: var(--word) }
+.s-word { stroke: var(--word) }
+.f-word-accent { fill: var(--word-accent) }
+.s-word-accent { stroke: var(--word-accent) }
+</style></head><body><aside id="controls"></aside><main><div id="backdrop"><svg viewBox="54 40 404 420" class="stage"><g id="mascot"><g data-slot="shell" data-part="mascot/parts/shell/stone"><polygon class="f-shell-top" points="104,150 170,78 262,52 258,126 172,168"></polygon>
+  <polygon class="f-shell" points="262,52 352,72 420,140 342,166 258,126"></polygon>
+  <polygon class="f-shell" points="96,250 104,150 172,168 156,258"></polygon>
+  <polygon class="f-shell-lo" points="420,140 432,240 356,256 342,166"></polygon>
+  <polygon class="f-shell-deep" points="432,240 396,316 256,344 256,300 356,256"></polygon>
+  <polygon class="f-shell-lo" points="256,344 122,318 96,250 156,258 256,300"></polygon>
+  <polygon class="f-shell-hi" points="172,168 258,126 342,166 356,256 256,300 156,258"></polygon>
+  <polygon class="f-fleck" points="318,98 336,92 342,108 324,114"></polygon>
+  <ellipse class="f-hollow" cx="256" cy="312" rx="104" ry="34"></ellipse>
+</g><g data-slot="shell" data-part="explore/mascot/parts/shell/crystal"><polygon class="f-shell-top" points="250,30 150,110 270,170"></polygon>
+  <polygon class="f-shell-hi" points="250,30 360,70 270,170"></polygon>
+  <polygon class="f-shell" points="150,110 110,260 270,170"></polygon>
+  <polygon class="f-shell-lo" points="360,70 420,200 270,170"></polygon>
+  <polygon class="f-shell-deep" points="420,200 380,320 270,170"></polygon>
+  <polygon class="f-shell" points="110,260 150,330 256,350 270,170"></polygon>
+  <polygon class="f-shell-lo" points="256,350 380,320 270,170"></polygon>
+  <ellipse class="f-hollow" cx="256" cy="316" rx="100" ry="32"></ellipse>
+</g><g data-slot="shell" data-part="explore/mascot/parts/shell/cube"><polygon class="f-shell-top" points="256,58 412,138 256,218 100,138"></polygon>
+  <polygon class="f-shell" points="100,138 256,218 256,366 100,286"></polygon>
+  <polygon class="f-shell-lo" points="256,218 412,138 412,286 256,366"></polygon>
+  <polygon class="f-fleck" points="164,105 192,91 348,171 320,185"></polygon>
+  <polygon class="f-fleck" points="320,185 348,171 348,219 320,233"></polygon>
+  <ellipse class="f-hollow" cx="256" cy="320" rx="96" ry="30"></ellipse>
+</g><g data-slot="shell" data-part="explore/mascot/parts/shell/nut"><polygon class="f-shell" points="100,110 180,90 180,340 100,320"></polygon>
+  <polygon class="f-shell-hi" points="180,90 332,90 332,340 180,340"></polygon>
+  <polygon class="f-shell-lo" points="332,90 412,110 412,320 332,340"></polygon>
+  <polygon class="f-shell-top" points="100,110 180,90 332,90 412,110 412,128 332,110 180,110 100,128"></polygon>
+  <polygon class="f-shell-deep" points="100,302 180,320 332,320 412,302 412,320 332,340 180,340 100,320"></polygon>
+  <ellipse class="f-hollow" cx="256" cy="316" rx="96" ry="30"></ellipse>
+</g><g data-slot="shell" data-part="explore/mascot/parts/shell/pebble"><ellipse class="f-shell-lo" cx="262" cy="196" rx="172" ry="150"></ellipse>
+  <ellipse class="f-shell" cx="248" cy="182" rx="158" ry="136"></ellipse>
+  <ellipse class="f-shell-top" cx="180" cy="104" rx="46" ry="22" transform="rotate(-28 180 104)"></ellipse>
+  <circle class="f-fleck" cx="336" cy="120" r="8"></circle>
+  <circle class="f-fleck" cx="360" cy="150" r="5"></circle>
+  <circle class="f-shell-lo" cx="130" cy="220" r="6"></circle>
+  <ellipse class="f-hollow" cx="256" cy="312" rx="104" ry="34"></ellipse>
+</g><g data-slot="shell" data-part="explore/mascot/parts/shell/spiral"><circle class="f-shell-lo" cx="272" cy="190" r="152"></circle>
+  <circle class="f-shell" cx="264" cy="182" r="142"></circle>
+  <path class="s-shell-hi" fill="none" stroke-width="14" stroke-linecap="round" d="M272,190 a20,20 0 0 1 40,0 a40,40 0 0 1 -80,0 a60,60 0 0 1 120,0 a80,80 0 0 1 -160,0 a100,100 0 0 1 200,0 a120,120 0 0 1 -240,0"></path>
+  <ellipse class="f-hollow" cx="256" cy="316" rx="100" ry="32"></ellipse>
+</g><g data-slot="shell" data-part="explore/mascot/parts/shell/terminal"><rect class="f-shell-lo" x="100" y="58" width="320" height="276" rx="40"></rect>
+  <rect class="f-shell" x="100" y="50" width="312" height="268" rx="38"></rect>
+  <rect class="f-hollow" x="136" y="80" width="240" height="72" rx="14"></rect>
+  <g class="s-fleck" fill="none" stroke-width="9" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M160,100 L178,116 L160,132"></path>
+    <path d="M194,132 H222"></path>
+  </g>
+  <ellipse class="f-hollow" cx="256" cy="314" rx="100" ry="32"></ellipse>
+</g><g data-slot="shell" data-part="explore/mascot/parts/shell/whelk"><polygon class="f-shell-hi" points="174,151 396,52 346,289"></polygon>
+  <g class="s-shell-lo" fill="none" stroke-width="10" stroke-linecap="round">
+    <path d="M252,116 L363,206"></path>
+    <path d="M307,92 L376,147"></path>
+    <path d="M352,72 L386,100"></path>
+  </g>
+  <ellipse class="f-shell" cx="250" cy="260" rx="160" ry="95"></ellipse>
+  <path class="f-shell-lo" d="M90,260 A160,95 0 0 0 410,260 A160,60 0 0 1 90,260 Z"></path>
+  <ellipse class="f-shell-top" cx="170" cy="214" rx="40" ry="16" transform="rotate(-20 170 214)"></ellipse>
+  <ellipse class="f-hollow" cx="256" cy="318" rx="100" ry="32"></ellipse>
+</g><g data-slot="legs" data-part="mascot/parts/legs/stand"><g class="s-body-lo" fill="none" stroke-width="12" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M214,352 L178,378 L162,418"></path>
+    <path d="M226,364 L200,396 L194,436"></path>
+    <path d="M298,352 L334,378 L350,418"></path>
+    <path d="M286,364 L312,396 L318,436"></path>
+  </g>
+</g><g data-slot="body" data-part="mascot/parts/body/base"><ellipse class="f-body" cx="256" cy="326" rx="76" ry="54"></ellipse>
+  <path class="f-body-lo" d="M180,326 A76,54 0 0 0 332,326 A76,36 0 0 1 180,326 Z"></path>
+</g><g data-slot="body" data-part="explore/mascot/parts/body/big"><ellipse class="f-body" cx="256" cy="322" rx="90" ry="62"></ellipse>
+  <path class="f-body-lo" d="M166,322 A90,62 0 0 0 346,322 A90,42 0 0 1 166,322 Z"></path>
+</g><g data-slot="stalks" data-part="mascot/parts/stalks/up"><g class="s-body" fill="none" stroke-width="14" stroke-linecap="round">
+    <path d="M238,292 Q228,240 216,196"></path>
+    <path d="M274,292 Q284,240 296,196"></path>
+  </g>
+</g><g data-slot="stalks" data-part="explore/mascot/parts/stalks/bent"><g class="s-body" fill="none" stroke-width="14" stroke-linecap="round">
+    <path d="M238,292 C218,262 244,230 216,196"></path>
+    <path d="M274,292 C294,262 268,230 296,196"></path>
+  </g>
+</g><g data-slot="eyes" data-part="mascot/parts/eyes/closed"><circle class="f-body" cx="215" cy="190" r="17"></circle>
+  <circle class="f-body" cx="297" cy="190" r="17"></circle>
+  <g class="s-ink" fill="none" stroke-width="7" stroke-linecap="round">
+    <path d="M202,188 Q215,200 228,188"></path>
+    <path d="M284,188 Q297,200 310,188"></path>
+  </g>
+</g><g data-slot="eyes" data-part="mascot/parts/eyes/happy"><circle class="f-body" cx="215" cy="190" r="17"></circle>
+  <circle class="f-body" cx="297" cy="190" r="17"></circle>
+  <g class="s-ink" fill="none" stroke-width="7" stroke-linecap="round">
+    <path d="M202,194 Q215,174 228,194"></path>
+    <path d="M284,194 Q297,174 310,194"></path>
+  </g>
+</g><g data-slot="eyes" data-part="mascot/parts/eyes/open"><ellipse class="f-ink" cx="214" cy="184" rx="21" ry="25"></ellipse>
+  <ellipse class="f-ink" cx="298" cy="184" rx="21" ry="25"></ellipse>
+  <circle class="f-glint" cx="207" cy="174" r="7"></circle>
+  <circle class="f-glint" cx="291" cy="174" r="7"></circle>
+</g><g data-slot="eyes" data-part="explore/mascot/parts/eyes/big"><ellipse class="f-glint" cx="210" cy="182" rx="28" ry="31"></ellipse>
+  <ellipse class="f-glint" cx="302" cy="182" rx="28" ry="31"></ellipse>
+  <circle class="f-ink" cx="216" cy="186" r="12"></circle>
+  <circle class="f-ink" cx="308" cy="186" r="12"></circle>
+</g><g data-slot="eyes" data-part="explore/mascot/parts/eyes/dot"><circle class="f-body" cx="215" cy="190" r="15"></circle>
+  <circle class="f-body" cx="297" cy="190" r="15"></circle>
+  <circle class="f-ink" cx="215" cy="188" r="8"></circle>
+  <circle class="f-ink" cx="297" cy="188" r="8"></circle>
+</g><g data-slot="eyes" data-part="explore/mascot/parts/eyes/half"><ellipse class="f-ink" cx="214" cy="184" rx="21" ry="25"></ellipse>
+  <ellipse class="f-ink" cx="298" cy="184" rx="21" ry="25"></ellipse>
+  <circle class="f-glint" cx="210" cy="192" r="6"></circle>
+  <circle class="f-glint" cx="294" cy="192" r="6"></circle>
+  <path class="f-body" d="M191,182 A23,27 0 0 1 237,182 Z"></path>
+  <path class="f-body" d="M275,182 A23,27 0 0 1 321,182 Z"></path>
+</g><g data-slot="cheeks" data-part="mascot/parts/cheeks/blush"><ellipse class="f-cheek" cx="220" cy="318" rx="11" ry="6"></ellipse>
+  <ellipse class="f-cheek" cx="292" cy="318" rx="11" ry="6"></ellipse>
+</g><g data-slot="mouth" data-part="mascot/parts/mouth/open"><ellipse class="f-mouth" cx="256" cy="326" rx="9" ry="11"></ellipse>
+</g><g data-slot="mouth" data-part="mascot/parts/mouth/smile"><path class="s-ink" fill="none" stroke-width="6" stroke-linecap="round" d="M246,320 Q256,331 266,320"></path>
+</g><g data-slot="mouth" data-part="explore/mascot/parts/mouth/cat"><path class="s-ink" fill="none" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" d="M240,320 Q248,330 256,320 Q264,330 272,320"></path>
+</g><g data-slot="mouth" data-part="explore/mascot/parts/mouth/grin"><path class="f-mouth" d="M238,318 H274 A18,16 0 0 1 238,318 Z"></path>
+</g><g data-slot="claws" data-part="mascot/parts/claws/raised"><g class="s-body-lo" fill="none" stroke-width="16" stroke-linecap="round">
+    <path d="M200,318 Q150,306 128,268"></path>
+    <path d="M312,318 Q360,306 384,274"></path>
+  </g>
+  <path class="f-body" transform="translate(124,244) rotate(-24) scale(1.1)" d="M-30,16 C-42,-12 -38,-48 -18,-70 L2,-22 L36,-58 C46,-28 40,8 22,26 C6,40 -20,38 -30,16 Z"></path>
+  <path class="f-body" transform="translate(388,252) rotate(24) scale(-0.85,0.85)" d="M-30,16 C-42,-12 -38,-48 -18,-70 L2,-22 L36,-58 C46,-28 40,8 22,26 C6,40 -20,38 -30,16 Z"></path>
+</g><g data-slot="claws" data-part="mascot/parts/claws/rest"><g class="s-body-lo" fill="none" stroke-width="16" stroke-linecap="round">
+    <path d="M204,340 Q186,354 178,368"></path>
+    <path d="M308,340 Q324,354 332,370"></path>
+  </g>
+  <path class="f-body" transform="translate(174,374) rotate(-14) scale(1.05)" d="M-30,16 C-42,-12 -38,-48 -18,-70 L2,-22 L36,-58 C46,-28 40,8 22,26 C6,40 -20,38 -30,16 Z"></path>
+  <path class="f-body" transform="translate(338,378) rotate(14) scale(-0.8,0.8)" d="M-30,16 C-42,-12 -38,-48 -18,-70 L2,-22 L36,-58 C46,-28 40,8 22,26 C6,40 -20,38 -30,16 Z"></path>
+</g><g data-slot="claws" data-part="explore/mascot/parts/claws/even"><g class="s-body-lo" fill="none" stroke-width="16" stroke-linecap="round">
+    <path d="M204,340 Q186,354 178,368"></path>
+    <path d="M308,340 Q326,354 334,368"></path>
+  </g>
+  <path class="f-body" transform="translate(176,376) rotate(-12) scale(0.95)" d="M-30,16 C-42,-12 -38,-48 -18,-70 L2,-22 L36,-58 C46,-28 40,8 22,26 C6,40 -20,38 -30,16 Z"></path>
+  <path class="f-body" transform="translate(336,376) rotate(12) scale(-0.95,0.95)" d="M-30,16 C-42,-12 -38,-48 -18,-70 L2,-22 L36,-58 C46,-28 40,8 22,26 C6,40 -20,38 -30,16 Z"></path>
+</g><g data-slot="claws" data-part="explore/mascot/parts/claws/hug"><path class="f-body" transform="translate(232,356) rotate(40) scale(0.9)" d="M-30,16 C-42,-12 -38,-48 -18,-70 L2,-22 L36,-58 C46,-28 40,8 22,26 C6,40 -20,38 -30,16 Z"></path>
+  <path class="f-body" transform="translate(282,358) rotate(-40) scale(-0.8,0.8)" d="M-30,16 C-42,-12 -38,-48 -18,-70 L2,-22 L36,-58 C46,-28 40,8 22,26 C6,40 -20,38 -30,16 Z"></path>
+</g><g data-slot="claws" data-part="explore/mascot/parts/claws/wave"><g class="s-body-lo" fill="none" stroke-width="16" stroke-linecap="round">
+    <path d="M200,318 Q150,306 128,268"></path>
+    <path d="M308,340 Q324,354 332,370"></path>
+  </g>
+  <path class="f-body" transform="translate(124,244) rotate(-24) scale(1.1)" d="M-30,16 C-42,-12 -38,-48 -18,-70 L2,-22 L36,-58 C46,-28 40,8 22,26 C6,40 -20,38 -30,16 Z"></path>
+  <path class="f-body" transform="translate(338,378) rotate(14) scale(-0.8,0.8)" d="M-30,16 C-42,-12 -38,-48 -18,-70 L2,-22 L36,-58 C46,-28 40,8 22,26 C6,40 -20,38 -30,16 Z"></path>
+</g></g></svg></div><div id="minis"></div><div id="wordmarks"><svg viewBox="0.0 0.0 520.0 200.0" data-wordmark="identity/logo/parts/wordmark"><g fill="none" stroke-width="40" stroke-linecap="round" stroke-linejoin="round">
+    <path class="s-word-accent" d="M40,40 L90,160 L140,40"></path>
+    <path class="s-word" d="M210,40 V110 A50,50 0 0 0 310,110 V40"></path>
+    <path class="s-word" d="M380,160 V90 A50,50 0 0 1 480,90 V160"></path>
+  </g>
+</svg><svg viewBox="0.0 0.0 520.0 200.0" data-wordmark="explore/identity/wordmarks/parts/1-round"><g fill="none" stroke-width="40" stroke-linecap="round" stroke-linejoin="round">
+    <path class="s-word-accent" d="M40,40 L90,160 L140,40"></path>
+    <path class="s-word" d="M210,40 V110 A50,50 0 0 0 310,110 V40"></path>
+    <path class="s-word" d="M380,160 V90 A50,50 0 0 1 480,90 V160"></path>
+  </g>
+</svg><svg viewBox="0.0 0.0 520.0 200.0" data-wordmark="explore/identity/wordmarks/parts/2-heavy"><g fill="none" stroke-width="58" stroke-linecap="round" stroke-linejoin="round">
+    <path class="s-word-accent" d="M40,40 L90,160 L140,40"></path>
+    <path class="s-word" d="M210,40 V110 A50,50 0 0 0 310,110 V40"></path>
+    <path class="s-word" d="M380,160 V90 A50,50 0 0 1 480,90 V160"></path>
+  </g>
+</svg><svg viewBox="0.0 0.0 520.0 200.0" data-wordmark="explore/identity/wordmarks/parts/3-light"><g fill="none" stroke-width="20" stroke-linecap="round" stroke-linejoin="round">
+    <path class="s-word-accent" d="M40,40 L90,160 L140,40"></path>
+    <path class="s-word" d="M210,40 V110 A50,50 0 0 0 310,110 V40"></path>
+    <path class="s-word" d="M380,160 V90 A50,50 0 0 1 480,90 V160"></path>
+  </g>
+</svg><svg viewBox="0.0 0.0 520.0 200.0" data-wordmark="explore/identity/wordmarks/parts/4-square"><g fill="none" stroke-width="40" stroke-linecap="butt" stroke-linejoin="miter">
+    <path class="s-word-accent" d="M40,20 L90,160 L140,20"></path>
+    <path class="s-word" d="M210,20 V110 A50,50 0 0 0 310,110 V20"></path>
+    <path class="s-word" d="M380,180 V90 A50,50 0 0 1 480,90 V180"></path>
+  </g>
+</svg><svg viewBox="-30.0 0.0 560.0 200.0" data-wordmark="explore/identity/wordmarks/parts/5-slant"><g fill="none" stroke-width="44" stroke-linecap="round" stroke-linejoin="round" transform="skewX(-12) translate(20,0)">
+    <path class="s-word-accent" d="M40,40 L90,160 L140,40"></path>
+    <path class="s-word" d="M210,40 V110 A50,50 0 0 0 310,110 V40"></path>
+    <path class="s-word" d="M380,160 V90 A50,50 0 0 1 480,90 V160"></path>
+  </g>
+</svg><svg viewBox="0.0 0.0 380.0 200.0" data-wordmark="explore/identity/wordmarks/parts/6-ligature"><g fill="none" stroke-width="40" stroke-linecap="round" stroke-linejoin="round">
+    <path class="s-word-accent" d="M40,40 L90,160 L140,40"></path>
+    <path class="s-word" d="M140,40 V110 A50,50 0 0 0 240,110 V40 M240,40 V160 M240,90 A50,50 0 0 1 340,90 V160"></path>
+  </g>
+</svg><svg viewBox="0.0 0.0 520.0 200.0" data-wordmark="explore/identity/wordmarks/parts/7-claw"><path class="f-word-accent" d="M90,176 C58,164 26,112 30,28 C54,68 74,108 90,120 C106,108 126,68 150,28 C154,112 122,164 90,176 Z"></path>
+  <g fill="none" stroke-width="40" stroke-linecap="round" stroke-linejoin="round">
+    <path class="s-word" d="M210,40 V110 A50,50 0 0 0 310,110 V40"></path>
+    <path class="s-word" d="M380,160 V90 A50,50 0 0 1 480,90 V160"></path>
+  </g>
+</svg><svg viewBox="0.0 0.0 520.0 200.0" data-wordmark="explore/identity/wordmarks/parts/8-stencil"><g fill="none" stroke-width="40" stroke-linecap="round">
+    <path class="s-word-accent" d="M40,40 L80,136 M100,136 L140,40"></path>
+    <path class="s-word" d="M210,40 V104 M310,40 V110 A50,50 0 0 1 227.9,148.3"></path>
+    <path class="s-word" transform="rotate(180 430 100)" d="M380,40 V104 M480,40 V110 A50,50 0 0 1 397.9,148.3"></path>
+  </g>
+</svg><svg viewBox="0.0 0.0 512.0 200.0" data-wordmark="explore/identity/wordmarks/parts/9-pixel"><g>
+    <rect class="f-word-accent" x="40" y="28" width="24" height="24"></rect>
+    <rect class="f-word-accent" x="136" y="28" width="24" height="24"></rect>
+    <rect class="f-word-accent" x="40" y="52" width="24" height="24"></rect>
+    <rect class="f-word-accent" x="136" y="52" width="24" height="24"></rect>
+    <rect class="f-word-accent" x="40" y="76" width="24" height="24"></rect>
+    <rect class="f-word-accent" x="136" y="76" width="24" height="24"></rect>
+    <rect class="f-word-accent" x="64" y="100" width="24" height="24"></rect>
+    <rect class="f-word-accent" x="112" y="100" width="24" height="24"></rect>
+    <rect class="f-word-accent" x="64" y="124" width="24" height="24"></rect>
+    <rect class="f-word-accent" x="112" y="124" width="24" height="24"></rect>
+    <rect class="f-word-accent" x="88" y="148" width="24" height="24"></rect>
+    <rect class="f-word" x="196" y="28" width="24" height="24"></rect>
+    <rect class="f-word" x="292" y="28" width="24" height="24"></rect>
+    <rect class="f-word" x="196" y="52" width="24" height="24"></rect>
+    <rect class="f-word" x="292" y="52" width="24" height="24"></rect>
+    <rect class="f-word" x="196" y="76" width="24" height="24"></rect>
+    <rect class="f-word" x="292" y="76" width="24" height="24"></rect>
+    <rect class="f-word" x="196" y="100" width="24" height="24"></rect>
+    <rect class="f-word" x="292" y="100" width="24" height="24"></rect>
+    <rect class="f-word" x="196" y="124" width="24" height="24"></rect>
+    <rect class="f-word" x="292" y="124" width="24" height="24"></rect>
+    <rect class="f-word" x="220" y="148" width="24" height="24"></rect>
+    <rect class="f-word" x="244" y="148" width="24" height="24"></rect>
+    <rect class="f-word" x="268" y="148" width="24" height="24"></rect>
+    <rect class="f-word" x="376" y="28" width="24" height="24"></rect>
+    <rect class="f-word" x="400" y="28" width="24" height="24"></rect>
+    <rect class="f-word" x="424" y="28" width="24" height="24"></rect>
+    <rect class="f-word" x="352" y="52" width="24" height="24"></rect>
+    <rect class="f-word" x="448" y="52" width="24" height="24"></rect>
+    <rect class="f-word" x="352" y="76" width="24" height="24"></rect>
+    <rect class="f-word" x="448" y="76" width="24" height="24"></rect>
+    <rect class="f-word" x="352" y="100" width="24" height="24"></rect>
+    <rect class="f-word" x="448" y="100" width="24" height="24"></rect>
+    <rect class="f-word" x="352" y="124" width="24" height="24"></rect>
+    <rect class="f-word" x="448" y="124" width="24" height="24"></rect>
+    <rect class="f-word" x="352" y="148" width="24" height="24"></rect>
+    <rect class="f-word" x="448" y="148" width="24" height="24"></rect>
+  </g>
+</svg><div id="typeset"></div></div><div id="export"></div></main><script type="application/json" id="data">{"roles": ["shell-top", "shell-hi", "shell", "shell-lo", "shell-deep", "hollow", "fleck", "body", "body-lo", "ink", "glint", "mouth", "cheek", "word", "word-accent"], "slots": {"shell": ["mascot/parts/shell/stone", "explore/mascot/parts/shell/crystal", "explore/mascot/parts/shell/cube", "explore/mascot/parts/shell/nut", "explore/mascot/parts/shell/pebble", "explore/mascot/parts/shell/spiral", "explore/mascot/parts/shell/terminal", "explore/mascot/parts/shell/whelk"], "legs": ["mascot/parts/legs/stand"], "body": ["mascot/parts/body/base", "explore/mascot/parts/body/big"], "stalks": ["mascot/parts/stalks/up", "explore/mascot/parts/stalks/bent"], "eyes": ["mascot/parts/eyes/closed", "mascot/parts/eyes/happy", "mascot/parts/eyes/open", "explore/mascot/parts/eyes/big", "explore/mascot/parts/eyes/dot", "explore/mascot/parts/eyes/half"], "cheeks": ["mascot/parts/cheeks/blush"], "mouth": ["mascot/parts/mouth/open", "mascot/parts/mouth/smile", "explore/mascot/parts/mouth/cat", "explore/mascot/parts/mouth/grin"], "claws": ["mascot/parts/claws/raised", "mascot/parts/claws/rest", "explore/mascot/parts/claws/even", "explore/mascot/parts/claws/hug", "explore/mascot/parts/claws/wave"]}, "defaults": {"shell": "mascot/parts/shell/stone", "legs": "mascot/parts/legs/stand", "body": "mascot/parts/body/base", "stalks": "mascot/parts/stalks/up", "eyes": "mascot/parts/eyes/open", "cheeks": "mascot/parts/cheeks/blush", "mouth": "mascot/parts/mouth/smile", "claws": "mascot/parts/claws/rest"}, "presets": [{"group": "Colorways", "name": "shoreline", "colors": {"shell-top": "#F0FAF7", "shell-hi": "#DDF3EC", "shell": "#C0E8DC", "shell-lo": "#9ADAC8", "shell-deep": "#72C5AF", "hollow": "#15302B", "fleck": "#FBD878", "body": "#FBB49E", "body-lo": "#E57B5E", "ink": "#24211D", "glint": "#F9F7F4", "mouth": "#A04A3A", "cheek": "#F9A5BC", "word": "#24211D", "word-accent": "#F4987D"}, "backdrop": "#F9F7F4", "slots": {}}, {"group": "Colorways", "name": "night", "colors": {"shell-top": "#DDF3EC", "shell-hi": "#C0E8DC", "shell": "#9ADAC8", "shell-lo": "#72C5AF", "shell-deep": "#4FAA93", "hollow": "#171513", "fleck": "#FBD878", "body": "#FBB49E", "body-lo": "#E57B5E", "ink": "#24211D", "glint": "#F9F7F4", "mouth": "#A04A3A", "cheek": "#F9A5BC", "word": "#F9F7F4", "word-accent": "#FBB49E"}, "backdrop": "#171513", "slots": {}}, {"group": "Colorways", "name": "sandbar", "colors": {"shell-top": "#F9F7F4", "shell-hi": "#F0ECE6", "shell": "#DFD9D0", "shell-lo": "#C7BFB3", "shell-deep": "#A89E91", "hollow": "#3A352F", "fleck": "#9ADAC8", "body": "#FBB49E", "body-lo": "#E57B5E", "ink": "#24211D", "glint": "#F9F7F4", "mouth": "#A04A3A", "cheek": "#F9A5BC", "word": "#24211D", "word-accent": "#F4987D"}, "backdrop": "#F9F7F4", "slots": {}}, {"group": "Colorways", "name": "mint", "colors": {"shell-top": "#FFF4F0", "shell-hi": "#FFE6DD", "shell": "#FFD0C0", "shell-lo": "#FBB49E", "shell-deep": "#F4987D", "hollow": "#72362C", "fleck": "#A2C3EC", "body": "#9ADAC8", "body-lo": "#4FAA93", "ink": "#24211D", "glint": "#F9F7F4", "mouth": "#214D44", "cheek": "#F9A5BC", "word": "#24211D", "word-accent": "#F4987D"}, "backdrop": "#F9F7F4", "slots": {}}, {"group": "Colorways", "name": "sorbet", "colors": {"shell-top": "#FFFBEF", "shell-hi": "#FFF4D4", "shell": "#FFE8A8", "shell-lo": "#FBD878", "shell-deep": "#F2C24D", "hollow": "#3A2A0E", "fleck": "#A2C3EC", "body": "#F9A5BC", "body-lo": "#D96486", "ink": "#24211D", "glint": "#F9F7F4", "mouth": "#8E3A53", "cheek": "#FBB49E", "word": "#24211D", "word-accent": "#F4987D"}, "backdrop": "#F9F7F4", "slots": {}}, {"group": "Colorways", "name": "cloud", "colors": {"shell-top": "#F2F7FD", "shell-hi": "#E1ECFA", "shell": "#C6DBF4", "shell-lo": "#A2C3EC", "shell-deep": "#7DA8E0", "hollow": "#1A283F", "fleck": "#F9A5BC", "body": "#FBD878", "body-lo": "#DDA52E", "ink": "#24211D", "glint": "#F9F7F4", "mouth": "#5F4414", "cheek": "#FBB49E", "word": "#24211D", "word-accent": "#F4987D"}, "backdrop": "#F9F7F4", "slots": {}}, {"group": "Colorways", "name": "blossom", "colors": {"shell-top": "#FFF3F6", "shell-hi": "#FFE2EA", "shell": "#FFC7D5", "shell-lo": "#F9A5BC", "shell-deep": "#EE83A1", "hollow": "#3C1924", "fleck": "#9ADAC8", "body": "#FBB49E", "body-lo": "#E57B5E", "ink": "#24211D", "glint": "#F9F7F4", "mouth": "#A04A3A", "cheek": "#EE83A1", "word": "#24211D", "word-accent": "#F4987D"}, "backdrop": "#F9F7F4", "slots": {}}, {"group": "Colorways", "name": "lagoon", "colors": {"shell-top": "#F0FAF7", "shell-hi": "#DDF3EC", "shell": "#C0E8DC", "shell-lo": "#9ADAC8", "shell-deep": "#72C5AF", "hollow": "#15302B", "fleck": "#FBD878", "body": "#A2C3EC", "body-lo": "#5A8BCF", "ink": "#24211D", "glint": "#F9F7F4", "mouth": "#283F63", "cheek": "#FFC7D5", "word": "#24211D", "word-accent": "#F4987D"}, "backdrop": "#F9F7F4", "slots": {}}, {"group": "Colorways", "name": "apricot", "colors": {"shell-top": "#DDF3EC", "shell-hi": "#C0E8DC", "shell": "#9ADAC8", "shell-lo": "#72C5AF", "shell-deep": "#4FAA93", "hollow": "#15302B", "fleck": "#FBD878", "body": "#F4987D", "body-lo": "#C9604A", "ink": "#24211D", "glint": "#F9F7F4", "mouth": "#A04A3A", "cheek": "#F9A5BC", "word": "#24211D", "word-accent": "#F4987D"}, "backdrop": "#F9F7F4", "slots": {}}, {"group": "Colorways", "name": "chalk", "colors": {"shell-top": "#F9F7F4", "shell-hi": "#F9F7F4", "shell": "#F0ECE6", "shell-lo": "#DFD9D0", "shell-deep": "#C7BFB3", "hollow": "#6D645A", "fleck": "#FFD0C0", "body": "#FFD0C0", "body-lo": "#FBB49E", "ink": "#534C44", "glint": "#F9F7F4", "mouth": "#A04A3A", "cheek": "#FFC7D5", "word": "#24211D", "word-accent": "#F4987D"}, "backdrop": "#F9F7F4", "slots": {}}, {"group": "Colorways", "name": "dusk", "colors": {"shell-top": "#F0FAF7", "shell-hi": "#DDF3EC", "shell": "#C0E8DC", "shell-lo": "#9ADAC8", "shell-deep": "#72C5AF", "hollow": "#15302B", "fleck": "#FBD878", "body": "#FBB49E", "body-lo": "#E57B5E", "ink": "#24211D", "glint": "#F9F7F4", "mouth": "#A04A3A", "cheek": "#F9A5BC", "word": "#24211D", "word-accent": "#F4987D"}, "backdrop": "#15302B", "slots": {}}, {"group": "Colorways", "name": "mono", "colors": {"shell-top": "#F0ECE6", "shell-hi": "#DFD9D0", "shell": "#C7BFB3", "shell-lo": "#A89E91", "shell-deep": "#8A8074", "hollow": "#24211D", "fleck": "#A89E91", "body": "#6D645A", "body-lo": "#534C44", "ink": "#24211D", "glint": "#F9F7F4", "mouth": "#24211D", "cheek": "#A89E91", "word": "#24211D", "word-accent": "#F4987D"}, "backdrop": "#F9F7F4", "slots": {}}, {"group": "Directions", "name": "Shoreline", "colors": {"shell-top": "#F0FAF7", "shell-hi": "#DDF3EC", "shell": "#C0E8DC", "shell-lo": "#9ADAC8", "shell-deep": "#72C5AF", "hollow": "#15302B", "fleck": "#FBD878", "body": "#FBB49E", "body-lo": "#E57B5E", "ink": "#24211D", "glint": "#F9F7F4", "mouth": "#A04A3A", "cheek": "#F9A5BC", "word": "#24211D", "word-accent": "#F4987D"}, "backdrop": "#F9F7F4", "slots": {}}, {"group": "Directions", "name": "Shoreline, dark", "colors": {"shell-top": "#DDF3EC", "shell-hi": "#C0E8DC", "shell": "#9ADAC8", "shell-lo": "#72C5AF", "shell-deep": "#4FAA93", "hollow": "#171513", "fleck": "#FBD878", "body": "#FBB49E", "body-lo": "#E57B5E", "ink": "#24211D", "glint": "#F9F7F4", "mouth": "#A04A3A", "cheek": "#F9A5BC", "word": "#F9F7F4", "word-accent": "#FBB49E"}, "backdrop": "#171513", "slots": {}}, {"group": "Directions", "name": "Tidepool", "colors": {"shell-top": "#F0FAF7", "shell-hi": "#DDF3EC", "shell": "#C0E8DC", "shell-lo": "#9ADAC8", "shell-deep": "#72C5AF", "hollow": "#15302B", "fleck": "#FBD878", "body": "#FBB49E", "body-lo": "#E57B5E", "ink": "#24211D", "glint": "#F9F7F4", "mouth": "#A04A3A", "cheek": "#F9A5BC", "word": "#24211D", "word-accent": "#F4987D"}, "backdrop": "#F0FAF7", "slots": {"shell": "explore/mascot/parts/shell/whelk"}}, {"group": "Directions", "name": "Sorbet", "colors": {"shell-top": "#FFFBEF", "shell-hi": "#FFF4D4", "shell": "#FFE8A8", "shell-lo": "#FBD878", "shell-deep": "#F2C24D", "hollow": "#3A2A0E", "fleck": "#FBD878", "body": "#F9A5BC", "body-lo": "#D96486", "ink": "#24211D", "glint": "#F9F7F4", "mouth": "#A04A3A", "cheek": "#F9A5BC", "word": "#24211D", "word-accent": "#EE83A1"}, "backdrop": "#FFFBEF", "slots": {"shell": "explore/mascot/parts/shell/pebble", "eyes": "explore/mascot/parts/eyes/big", "claws": "explore/mascot/parts/claws/wave"}}, {"group": "Directions", "name": "Paper and ink", "colors": {"shell-top": "#F9F7F4", "shell-hi": "#F0ECE6", "shell": "#DFD9D0", "shell-lo": "#C7BFB3", "shell-deep": "#A89E91", "hollow": "#24211D", "fleck": "#FBD878", "body": "#FBB49E", "body-lo": "#E57B5E", "ink": "#24211D", "glint": "#F9F7F4", "mouth": "#A04A3A", "cheek": "#F9A5BC", "word": "#24211D", "word-accent": "#F4987D"}, "backdrop": "#F9F7F4", "slots": {"eyes": "explore/mascot/parts/eyes/dot", "cheeks": "", "mouth": ""}}, {"group": "Directions", "name": "Harbor", "colors": {"shell-top": "#F0FAF7", "shell-hi": "#DDF3EC", "shell": "#C0E8DC", "shell-lo": "#9ADAC8", "shell-deep": "#72C5AF", "hollow": "#15302B", "fleck": "#FBD878", "body": "#FBB49E", "body-lo": "#E57B5E", "ink": "#24211D", "glint": "#F9F7F4", "mouth": "#A04A3A", "cheek": "#F9A5BC", "word": "#F0FAF7", "word-accent": "#F4987D"}, "backdrop": "#15302B", "slots": {"shell": "explore/mascot/parts/shell/cube", "eyes": "explore/mascot/parts/eyes/big"}}, {"group": "Directions", "name": "Quarry", "colors": {"shell-top": "#F9F7F4", "shell-hi": "#F0ECE6", "shell": "#DFD9D0", "shell-lo": "#C7BFB3", "shell-deep": "#A89E91", "hollow": "#3A352F", "fleck": "#FBD878", "body": "#FBB49E", "body-lo": "#E57B5E", "ink": "#24211D", "glint": "#F9F7F4", "mouth": "#A04A3A", "cheek": "#F9A5BC", "word": "#24211D", "word-accent": "#F4987D"}, "backdrop": "#F9F7F4", "slots": {"cheeks": "", "legs": ""}}, {"group": "Directions", "name": "Afterglow", "colors": {"shell-top": "#DDF3EC", "shell-hi": "#C0E8DC", "shell": "#9ADAC8", "shell-lo": "#72C5AF", "shell-deep": "#4FAA93", "hollow": "#171513", "fleck": "#FBD878", "body": "#F9A5BC", "body-lo": "#D96486", "ink": "#24211D", "glint": "#F9F7F4", "mouth": "#A04A3A", "cheek": "#F9A5BC", "word": "#F9F7F4", "word-accent": "#9ADAC8"}, "backdrop": "#171513", "slots": {"shell": "explore/mascot/parts/shell/crystal", "claws": "mascot/parts/claws/raised", "eyes": "mascot/parts/eyes/happy"}}, {"group": "Directions", "name": "Forge", "colors": {"shell-top": "#F0FAF7", "shell-hi": "#DDF3EC", "shell": "#C0E8DC", "shell-lo": "#9ADAC8", "shell-deep": "#72C5AF", "hollow": "#15302B", "fleck": "#FBD878", "body": "#F4987D", "body-lo": "#C9604A", "ink": "#24211D", "glint": "#F9F7F4", "mouth": "#A04A3A", "cheek": "#F9A5BC", "word": "#24211D", "word-accent": "#F4987D"}, "backdrop": "#F0ECE6", "slots": {"shell": "explore/mascot/parts/shell/nut", "eyes": "explore/mascot/parts/eyes/big"}}], "ramps": {"peach": {"50": "#FFF4F0", "100": "#FFE6DD", "200": "#FFD0C0", "300": "#FBB49E", "400": "#F4987D", "500": "#E57B5E", "600": "#C9604A", "700": "#A04A3A", "800": "#72362C", "900": "#45221C"}, "sea": {"50": "#F0FAF7", "100": "#DDF3EC", "200": "#C0E8DC", "300": "#9ADAC8", "400": "#72C5AF", "500": "#4FAA93", "600": "#3B8B78", "700": "#2D6C5E", "800": "#214D44", "900": "#15302B"}, "sky": {"50": "#F2F7FD", "100": "#E1ECFA", "200": "#C6DBF4", "300": "#A2C3EC", "400": "#7DA8E0", "500": "#5A8BCF", "600": "#4570B0", "700": "#36578A", "800": "#283F63", "900": "#1A283F"}, "butter": {"50": "#FFFBEF", "100": "#FFF4D4", "200": "#FFE8A8", "300": "#FBD878", "400": "#F2C24D", "500": "#DDA52E", "600": "#B98521", "700": "#8C641A", "800": "#5F4414", "900": "#3A2A0E"}, "rose": {"50": "#FFF3F6", "100": "#FFE2EA", "200": "#FFC7D5", "300": "#F9A5BC", "400": "#EE83A1", "500": "#D96486", "600": "#B84C6C", "700": "#8E3A53", "800": "#62293A", "900": "#3C1924"}, "stone": {"50": "#F9F7F4", "100": "#F0ECE6", "200": "#DFD9D0", "300": "#C7BFB3", "400": "#A89E91", "500": "#8A8074", "600": "#6D645A", "700": "#534C44", "800": "#3A352F", "900": "#24211D", "950": "#171513"}}, "wordmarks": ["identity/logo/parts/wordmark", "explore/identity/wordmarks/parts/1-round", "explore/identity/wordmarks/parts/2-heavy", "explore/identity/wordmarks/parts/3-light", "explore/identity/wordmarks/parts/4-square", "explore/identity/wordmarks/parts/5-slant", "explore/identity/wordmarks/parts/6-ligature", "explore/identity/wordmarks/parts/7-claw", "explore/identity/wordmarks/parts/8-stencil", "explore/identity/wordmarks/parts/9-pixel"], "fonts": [{"family": "Bricolage Grotesque", "weight": 800}, {"family": "Fraunces", "weight": 700}, {"family": "Space Grotesk", "weight": 700}, {"family": "Unbounded", "weight": 700}, {"family": "Syne", "weight": 800}, {"family": "Archivo Black", "weight": 400}, {"family": "Baloo 2", "weight": 800}, {"family": "Geist", "weight": 700}, {"family": "JetBrains Mono", "weight": 800}, {"family": "Instrument Serif", "weight": 400}, {"family": "DM Serif Display", "weight": 400}, {"family": "Recursive", "weight": 900}, {"family": "Righteous", "weight": 400}, {"family": "Major Mono Display", "weight": 400}], "view": [54, 40, 404, 420], "stage": "mascot"}</script><script>// The tweaker's behavior. Data comes from #data (built by tweak.py); state lives in the URL hash,
+// so a link reproduces exactly what is on screen.
+const data = JSON.parse(document.getElementById("data").textContent);
+const root = document.documentElement;
+const SVG = "http://www.w3.org/2000/svg";
+const NONE = "";
+const MINI_SIZES = [16, 32, 64, 128];
+const ADJUST = [
+  { key: "hue", label: "Hue shift", min: -180, max: 180, unit: "deg", neutral: 0 },
+  { key: "sat", label: "Saturation", min: 0, max: 200, unit: "%", neutral: 100 },
+  { key: "light", label: "Lightness", min: -40, max: 40, unit: "", neutral: 0 },
+  { key: "pastel", label: "Pastel (mix white)", min: 0, max: 80, unit: "%", neutral: 0 },
+];
+
+function el(tag, attrs = {}, ...children) {
+  const node = document.createElement(tag);
+  for (const [key, value] of Object.entries(attrs)) {
+    if (key.startsWith("on")) node.addEventListener(key.slice(2), value);
+    else node.setAttribute(key, value);
+  }
+  node.append(...children.filter((child) => child !== null));
+  return node;
+}
+
+// Color math: hex <-> rgb <-> hsl, all channels in 0..1.
+const clamp = (x, lo = 0, hi = 1) => Math.min(hi, Math.max(lo, x));
+function rgb(hex) {
+  const n = parseInt(hex.slice(1), 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((c) => c / 255);
+}
+function hex([r, g, b]) {
+  return "#" + [r, g, b].map((c) => Math.round(clamp(c) * 255).toString(16).padStart(2, "0")).join("").toUpperCase();
+}
+function hsl([r, g, b]) {
+  const max = Math.max(r, g, b), min = Math.min(r, g, b), l = (max + min) / 2;
+  if (max === min) return [0, 0, l];
+  const d = max - min, s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+  const h = max === r ? (g - b) / d + (g < b ? 6 : 0) : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+  return [h / 6, s, l];
+}
+function fromHsl([h, s, l]) {
+  if (s === 0) return [l, l, l];
+  const q = l < 0.5 ? l * (1 + s) : l + s - l * s, p = 2 * l - q;
+  const channel = (t) => {
+    t = (t + 1) % 1;
+    if (t < 1 / 6) return p + (q - p) * 6 * t;
+    if (t < 1 / 2) return q;
+    if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+    return p;
+  };
+  return [channel(h + 1 / 3), channel(h), channel(h - 1 / 3)];
+}
+function adjusted(color, adjust) {
+  let [h, s, l] = hsl(rgb(color));
+  h = (h + adjust.hue / 360 + 1) % 1;
+  s = clamp(s * adjust.sat / 100);
+  l = clamp(l + adjust.light / 100);
+  const mixed = fromHsl([h, s, l]).map((c) => c + (1 - c) * adjust.pastel / 100);
+  return hex(mixed);
+}
+
+function initial(preset) {
+  preset ||= data.presets[0];
+  return {
+    preset: preset.name,
+    colors: { ...preset.colors },
+    backdrop: preset.backdrop,
+    slots: { ...data.defaults, ...preset.slots },
+    adjust: Object.fromEntries(ADJUST.map((a) => [a.key, a.neutral])),
+    wordmark: data.wordmarks[0],
+    font: data.fonts[0].family,
+  };
+}
+function load() {
+  try {
+    return JSON.parse(decodeURIComponent(escape(atob(location.hash.slice(1)))));
+  } catch {
+    return null;
+  }
+}
+// A saved state overlays its preset, so a link from an older build still opens.
+function restore(saved) {
+  const base = initial(data.presets.find((p) => p.name === saved?.preset));
+  if (!saved) return base;
+  const known = (table, keys) => Object.fromEntries(Object.entries(table || {}).filter(([key]) => keys.includes(key)));
+  return {
+    ...base,
+    ...known(saved, ["backdrop", "wordmark", "font"]),
+    colors: { ...base.colors, ...known(saved.colors, data.roles) },
+    slots: { ...base.slots, ...known(saved.slots, Object.keys(data.slots)) },
+    adjust: { ...base.adjust, ...known(saved.adjust, ADJUST.map((a) => a.key)) },
+  };
+}
+let state = restore(load());
+
+const final = (role) => adjusted(state.colors[role], state.adjust);
+
+function apply() {
+  for (const role of data.roles) root.style.setProperty(`--${role}`, final(role));
+  document.getElementById("backdrop").style.background = state.backdrop;
+  for (const layer of document.querySelectorAll("[data-slot]"))
+    layer.style.display = state.slots[layer.dataset.slot] === layer.dataset.part ? "" : "none";
+  for (const mark of document.querySelectorAll("[data-wordmark]"))
+    mark.style.display = mark.dataset.wordmark === state.wordmark ? "" : "none";
+  const face = data.fonts.find((f) => f.family === state.font);
+  Object.assign(document.getElementById("typeset").style, { fontFamily: `"${face.family}"`, fontWeight: face.weight });
+  for (const input of document.querySelectorAll("[data-role]")) {
+    const color = final(input.dataset.role);
+    if (input.type === "color") input.value = state.colors[input.dataset.role].toLowerCase();
+    else input.textContent = color;
+  }
+  history.replaceState(null, "", "#" + btoa(unescape(encodeURIComponent(JSON.stringify(state)))));
+  exports();
+}
+
+function select(label, options, value, onchange) {
+  const input = el("select", { onchange: (e) => onchange(e.target.value) });
+  for (const [group, items] of options) {
+    const parent = group ? input.appendChild(el("optgroup", { label: group })) : input;
+    for (const [key, text] of items) parent.append(el("option", { value: key }, text));
+  }
+  input.value = value;
+  return el("label", { class: "row" }, el("span", {}, label), input);
+}
+
+function controls() {
+  const panel = document.getElementById("controls");
+  panel.replaceChildren();
+  const groups = {};
+  for (const preset of data.presets) (groups[preset.group] ||= []).push([preset.name, preset.name]);
+  panel.append(
+    el("h1", {}, "vun tweaker"),
+    el("p", { class: "hint" }, "Tweak, then copy the TOML or the link and send it back."),
+    select("Preset", Object.entries(groups), state.preset, (name) => {
+      state = { ...initial(data.presets.find((p) => p.name === name)), wordmark: state.wordmark, font: state.font };
+      controls();
+      apply();
+    }),
+    el("h2", {}, "Parts"),
+    ...Object.entries(data.slots).map(([slot, parts]) =>
+      select(slot, [[null, [[NONE, "none"], ...parts.map((p) => [p, p.split("/").pop() + (p.startsWith("explore") ? " *" : "")])]]], state.slots[slot] ?? NONE, (part) => {
+        state.slots[slot] = part;
+        apply();
+      })
+    ),
+    el("h2", {}, "Adjust all colors"),
+    ...ADJUST.map((a) => {
+      const out = el("output", {}, `${state.adjust[a.key]}${a.unit}`);
+      const input = el("input", {
+        type: "range", min: a.min, max: a.max, value: state.adjust[a.key],
+        oninput: (e) => {
+          state.adjust[a.key] = Number(e.target.value);
+          out.textContent = `${e.target.value}${a.unit}`;
+          apply();
+        },
+        ondblclick: (e) => {
+          e.target.value = a.neutral;
+          e.target.dispatchEvent(new Event("input"));
+        },
+      });
+      return el("label", { class: "row" }, el("span", {}, a.label), input, out);
+    }),
+    el("h2", {}, "Roles"),
+    el("datalist", { id: "ramps" }, ...Object.values(data.ramps).flatMap((steps) => Object.values(steps).map((c) => el("option", { value: c.toLowerCase() })))),
+    ...data.roles.map((role) =>
+      el(
+        "label",
+        { class: "row" },
+        el("span", {}, role),
+        el("input", {
+          type: "color", list: "ramps", "data-role": role,
+          oninput: (e) => {
+            state.colors[role] = e.target.value.toUpperCase();
+            apply();
+          },
+        }),
+        el("code", { "data-role": role })
+      )
+    ),
+    el(
+      "label",
+      { class: "row" },
+      el("span", {}, "backdrop"),
+      el("input", { type: "color", list: "ramps", value: state.backdrop.toLowerCase(), oninput: (e) => { state.backdrop = e.target.value.toUpperCase(); apply(); } })
+    ),
+    el("h2", {}, "Name"),
+    select("Wordmark", [[null, data.wordmarks.map((w) => [w, w.split("/").pop()])]], state.wordmark, (w) => { state.wordmark = w; apply(); }),
+    select("Typeface", [[null, data.fonts.map((f) => [f.family, f.family])]], state.font, (f) => { state.font = f; apply(); }),
+    el("button", { onclick: () => { state = initial(data.presets.find((p) => p.name === state.preset)); controls(); apply(); } }, "Reset to preset")
+  );
+}
+
+function minis() {
+  const [x, y, w, h] = data.view;
+  const strip = (background) =>
+    el("div", { class: "strip", style: `background:${background}` }, ...MINI_SIZES.map((size) => {
+      const mini = document.createElementNS(SVG, "svg");
+      mini.setAttribute("viewBox", `${x} ${y} ${w} ${h}`);
+      mini.setAttribute("width", size);
+      mini.setAttribute("height", size);
+      const use = document.createElementNS(SVG, "use");
+      use.setAttribute("href", `#${data.stage}`);
+      mini.append(use);
+      return mini;
+    }));
+  const light = data.presets[0].backdrop;
+  document.getElementById("minis").append(strip(light), strip(data.ramps.stone["950"]));
+  document.getElementById("typeset").append(el("span", { class: "accent" }, "v"), "un");
+}
+
+function exports() {
+  const art = data.roles.map((role) => `${role} = "tweak.${role}"`).join("\n");
+  const ramp = data.roles.map((role) => `${role} = "${final(role)}"`).join("\n");
+  const colorway = `note = "Tweaked from ${state.preset}."\nbackdrop = "tweak.backdrop"\n\n[ramps.tweak]\n${ramp}\nbackdrop = "${state.backdrop}"\n\n[art]\n${art}\n`;
+  const layers = Object.values(state.slots).filter((part) => part !== NONE).map((part) => `  "${part}",`).join("\n");
+  const pose = `view = [${data.view.join(", ")}]\nlayers = [\n${layers}\n]\n`;
+  const box = (title, file, text) =>
+    el("section", {}, el("h2", {}, title, " ", el("small", {}, file)),
+      el("button", { onclick: () => navigator.clipboard.writeText(text) }, "Copy"), el("pre", {}, text));
+  document.getElementById("export").replaceChildren(
+    box("Colorway", "explore/mascot/colorways/<name>.toml", colorway),
+    box("Pose", "mascot/poses/<name>.toml", pose),
+    el("section", {}, el("h2", {}, "Link"), el("button", { onclick: () => navigator.clipboard.writeText(location.href) }, "Copy link"))
+  );
+}
+
+controls();
+minis();
+apply();
+</script></body></html>

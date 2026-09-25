@@ -1,0 +1,30 @@
+:root { --page: #F9F7F4; --ink: #24211D; --muted: #6D645A; --line: #DFD9D0; }
+* { box-sizing: border-box; }
+body { margin: 0; display: grid; grid-template-columns: 340px 1fr; min-height: 100vh; background: var(--page); color: var(--ink); font: 14px/1.4 "IBM Plex Sans", system-ui, sans-serif; }
+@media (max-width: 800px) { body { grid-template-columns: 1fr; } }
+aside { padding: 20px; border-right: 1px solid var(--line); overflow-y: auto; max-height: 100vh; position: sticky; top: 0; }
+h1 { font: 800 24px/1.1 "Bricolage Grotesque", system-ui, sans-serif; margin: 0 0 4px; }
+h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 18px 0 8px; }
+h2 small { text-transform: none; letter-spacing: 0; font-family: "IBM Plex Mono", monospace; }
+.hint { color: var(--muted); margin: 0 0 12px; }
+.row { display: grid; grid-template-columns: 96px 1fr auto; align-items: center; gap: 8px; margin: 4px 0; }
+.row span { color: var(--muted); font-size: 13px; }
+.row select { grid-column: 2 / 4; }
+.row code, .row output { font: 12px "IBM Plex Mono", monospace; min-width: 62px; text-align: right; }
+select, button { font: inherit; padding: 4px 6px; border: 1px solid var(--line); border-radius: 6px; background: #fff; }
+button { cursor: pointer; margin: 10px 0 0; }
+input[type=color] { width: 100%; height: 26px; border: 1px solid var(--line); border-radius: 6px; padding: 0; background: none; }
+main { padding: 20px; display: grid; gap: 16px; align-content: start; }
+#backdrop { border-radius: 16px; display: grid; place-items: center; padding: 16px; }
+.stage { width: min(520px, 100%); height: auto; aspect-ratio: 1; }
+#minis { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.strip { display: flex; align-items: flex-end; justify-content: center; gap: 20px; padding: 16px; border-radius: 12px; }
+#wordmarks { display: flex; align-items: center; gap: 32px; background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 24px; flex-wrap: wrap; }
+#wordmarks svg { height: 90px; width: auto; }
+#typeset { font-size: 96px; line-height: 1; color: var(--word); }
+#typeset .accent { color: var(--word-accent); }
+#export { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 1100px) { #export { grid-template-columns: 1fr; } }
+#export section { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px; }
+#export h2 { margin-top: 4px; }
+#export pre { font: 12px/1.45 "IBM Plex Mono", monospace; white-space: pre-wrap; max-height: 280px; overflow: auto; }

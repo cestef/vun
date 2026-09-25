@@ -1,7 +1,7 @@
-order = 4
-note = "Tide-pool teal body."
+order = 8
+note = "Sky crab, seafoam shell: cool only."
 [art]
-body = "tide.500"
-body-lo = "tide.700"
-ink = "tide.900"
-fleck = "coral.300"
+body = "sky.300"
+body-lo = "sky.500"
+mouth = "sky.800"
+cheek = "rose.200"

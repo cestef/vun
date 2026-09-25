@@ -12,7 +12,8 @@ use vun_origin::{OriginId, OriginTable};
 use vun_span::{FileId, SourceFiles, SourceMap};
 use vun_suggest::Lookup;
 
-use vun_lir::{FuncId, Unit};
+use vun_lir::legalize::Legalize;
+use vun_lir::{FuncId, Scalar, Unit};
 use vun_target::TargetSpec;
 
 use crate::Session;
@@ -98,12 +99,24 @@ impl Session {
             return Err(Uncoded::Reported(self.diag.error(d)));
         };
         let lines = SourceLines { sources: Arc::clone(&self.sources), origins: Arc::clone(&self.origins) };
-        let unit = lowered.as_ref().as_ref().expect("checked above");
+        // Integers wider than the backend's are split into halves first.
+        let mut unit = lowered.as_ref().as_ref().expect("checked above").clone();
+        let info = backends[index].info();
+        let widest = Scalar::int(info.caps.int_bits).expect("a backend computes with an integer width");
+        if let Err(unlegal) = unit.legalize(Legalize { widest, endian: target.endian }) {
+            let msg = Msg::new()
+                .text("backend ")
+                .code(info.id.0)
+                .text(" cannot express ")
+                .text(unlegal.to_string());
+            let d = Diagnostic::error(errors::BACKEND_LACKS, msg).at(unlegal.at, None);
+            return Err(Uncoded::Reported(self.diag.error(d)));
+        }
         let mut emitted = Emitted::default();
         backends[index]
-            .emit(unit, &target, &lines, &mut emitted, &mut self.diag)
+            .emit(&unit, &target, &lines, &mut emitted, &mut self.diag)
             .map_err(Uncoded::Reported)?;
-        Ok(Coded { artifacts: emitted.artifacts, frames: emitted.frames, backend: index, lowered, target })
+        Ok(Coded { artifacts: emitted.artifacts, frames: emitted.frames, backend: index, unit, target })
     }
 }
 
@@ -114,17 +127,15 @@ pub struct Coded {
     pub frames: Vec<(FuncId, u64)>,
     /// The backend, by its position in the session's registry.
     pub backend: usize,
-    pub lowered: Arc<Result<Unit, Unlowered>>,
+    /// The unit the artifacts are made of: the program lowered, legalized for the backend.
+    pub unit: Unit,
     pub target: TargetSpec,
 }
 
 impl Coded {
     /// The unit the artifacts are made of.
-    ///
-    /// # Panics
-    /// Never: only lowered programs are coded.
     #[must_use]
     pub fn unit(&self) -> &Unit {
-        self.lowered.as_ref().as_ref().expect("coded programs are lowered")
+        &self.unit
     }
 }

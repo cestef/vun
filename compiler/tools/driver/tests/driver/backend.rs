@@ -206,3 +206,8 @@ fn floats_compute_compare_and_pass_as_ieee_754_says() {
     // Each check that holds adds its bit: 255 when every one does.
     assert_eq!(status("backend-floats", &program("floats.vun")), Some(255));
 }
+
+#[test]
+fn integers_wider_than_the_backend_run_as_pairs_of_halves() {
+    assert_eq!(status("backend-wide", &program("wide.vun")), Some(255));
+}

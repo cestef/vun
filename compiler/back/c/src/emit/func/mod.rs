@@ -16,7 +16,7 @@ use vun_origin::OriginId;
 
 use super::Emitter;
 use super::signature::CSignature;
-use crate::ast::{Decl, Expr, Ident, Item, Own, Proto, Stmt, Storage, Ty};
+use crate::ast::{Binary, Decl, Expr, Ident, Item, Own, Proto, Stmt, Storage, Ty};
 use inline::Inlined;
 use vun_backend::Lack;
 
@@ -159,14 +159,36 @@ impl FnEmit<'_, '_> {
         for &s in &self.temps {
             out.push(Stmt::Local(Decl::new(e.scalar(s, func.origin)?, Ident::Own(Own::Temp(s)))));
         }
+        let mut aligning = Vec::new();
         for (slot, data) in func.slots.iter() {
-            let (ty, bytes) = e.aligned(data.align, data.origin)?;
-            let len = data.size.div_ceil(bytes).max(1);
-            out.push(Stmt::Local(Decl { ty, name: Ident::slot(slot), len: Some(len) }));
+            if let Ok((ty, bytes)) = e.aligned(data.align, data.origin) {
+                let len = data.size.div_ceil(bytes).max(1);
+                out.push(Stmt::Local(Decl { ty, name: Ident::slot(slot), len: Some(len) }));
+                continue;
+            }
+            // Aligned past every C type: the aligned address inside an array large enough for any
+            // placement, rounded up at entry.
+            let (ty, bytes) = e.most_aligned();
+            let len = (data.size + data.align).div_ceil(bytes);
+            out.push(Stmt::Local(Decl { ty, name: Ident::backing(slot), len: Some(len) }));
+            out.push(Stmt::Local(Decl::new(Ty::address(), Ident::slot(slot))));
+            let word = e.word();
+            let mask = data.align - 1;
+            let pointer_bits = e.unit.pointer_bits;
+            let high =
+                e.literal(!u128::from(mask) & ((1u128 << pointer_bits) - 1), pointer_bits, data.origin)?;
+            let raised = Expr::binary(
+                Binary::Add,
+                Expr::Name(Ident::backing(slot)).cast(word.clone()),
+                Expr::small(mask),
+            );
+            let aligned = Expr::binary(Binary::And, raised, high);
+            aligning.push(Stmt::Assign(Expr::Name(Ident::slot(slot)), aligned.cast(Ty::address())));
         }
         if let Some(ty) = self.result {
             out.push(Stmt::Local(Decl::new(ty, Ident::Own(Own::Result))));
         }
+        out.extend(aligning);
         let mut targets = BTreeSet::new();
         Stmt::targets(&self.body, &mut targets);
         out.extend(self.body.into_iter().filter(|s| !matches!(s, Stmt::Label(l) if !targets.contains(l))));

@@ -876,6 +876,7 @@ dependencies = [
  "vun-intern",
  "vun-origin",
  "vun-span",
+ "vun-target",
 ]
 
 [[package]]

@@ -102,6 +102,14 @@ impl Emitter<'_> {
         Ok((Ty::uint(c.bits), u64::from(c.bits / u8::BITS)))
     }
 
+    /// The unsigned integer aligned the most, which a slot aligned past every C type lies in an
+    /// array of, and its size in bytes.
+    pub(super) fn most_aligned(&self) -> (Ty, u64) {
+        let widths = self.bases().into_iter().filter(|(_, c)| WIDTHS.contains(&c.bits));
+        let c = widths.map(|(_, c)| c).max_by_key(|c| c.align).expect("`char` is one");
+        (Ty::uint(c.bits), u64::from(c.bits / u8::BITS))
+    }
+
     /// The integer constant `value` of `bits` bits, of type `uN`.
     pub(super) fn literal(&self, value: u128, bits: u32, at: OriginId) -> Result<Expr, Lack> {
         let (base, _) = self.base(bits).ok_or(Missing::Width(bits).at(at))?;

@@ -1,4 +1,4 @@
-:root { --page: #EFECE7; --ink: #221F1C; --muted: #6A6157; --line: #D9D3CA; --id: #7752D4; }
+:root { --page: #EFECE7; --ink: #221F1C; --muted: #6A6157; --line: #D9D3CA; --id: #C9604A; }
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--page); color: var(--ink); font: 15px/1.5 "IBM Plex Sans", system-ui, sans-serif; }
 .top { padding: 40px 24px 8px; max-width: 1400px; margin: 0 auto; }

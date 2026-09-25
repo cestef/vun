@@ -1,0 +1,20 @@
+title = "Afterglow"
+note = "Warm near-black, pastel rose and seafoam turned up. Loud and modern; Syne display, Manrope text."
+base = "dark"
+[type]
+display = { family = "Syne", fallback = ["system-ui", "sans-serif"], weights = [800] }
+text = { family = "Manrope", fallback = ["system-ui", "sans-serif"], weights = [400, 600] }
+mono = { family = "JetBrains Mono", fallback = ["monospace"], weights = [400] }
+[mascot]
+swap = { shell = "explore/mascot/parts/shell/crystal", claws = "mascot/parts/claws/raised", eyes = "mascot/parts/eyes/happy" }
+[art]
+body = "rose.300"
+body-lo = "rose.500"
+word-accent = "sea.300"
+[ui]
+accent = "sea.300"
+link = "rose.300"
+[code]
+keyword = "rose.300"
+string = "sea.300"
+literal = "butter.300"

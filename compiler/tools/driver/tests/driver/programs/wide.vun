@@ -1,0 +1,19 @@
+start := std.os.start(main);
+
+main := (sys: &mut std.os.System) -> std.os.Exit {
+    n: u64 = sys.args().len();
+    k: u8 = n.sat(u8);
+    big: u64 = 0xffff_ffff_ffff_fff0;
+    wide: u128 = 0x1_0000_0000_0000_0000 * k + 7;
+    signed: i128 = 7 - 0x2_0000_0000_0000_0000 * k;
+    mut code: u8 = 0;
+    if (big + n * 20).wrap(u64) == 4 { code = code | 1; }
+    if wide / 3 == 0x5555_5555_5555_5557 { code = code | 2; }
+    if wide % 3 == 2 { code = code | 4; }
+    if (wide >> 64).wrap(u8) == 1 { code = code | 8; }
+    if wide > 0xffff_ffff_ffff_ffff { code = code | 16; }
+    if signed / 3 == -0xaaaa_aaaa_aaaa_aaa8 { code = code | 32; }
+    if signed % 3 == -1 { code = code | 64; }
+    if (big + big).wrap(u64) == 0xffff_ffff_ffff_ffe0 { code = code | 128; }
+    .code(code)
+};

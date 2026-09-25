@@ -1,6 +1,6 @@
 # Handoff
 
-State of Vun as of 2026-09-25 (end of the tenth session), for the next agent. Read this, then
+State of Vun as of 2026-09-25 (end of the eleventh session), for the next agent. Read this, then
 `CLAUDE.md` (rules and the agent procedure; on disk but ignored by the user's global gitignore, so
 `jj st` never shows it), then `docs/spec/00-principles.md`, `docs/spec/decisions.md` and the spec
 files of the area you touch.
@@ -262,6 +262,11 @@ and `compare`, `vun util`, `vun toolchain components`); `Session::run_each` and
 `BackendInfo.readiness`; `Why::Primitive` names an unlowered primitive; `VUN_LOG` traces `mir`,
 `lower` (per statement), `baseline` (per instruction) and `c` per function.
 
+**Legalization** (decision 169): `vun_lir::legalize` (`Unit::legalize(Legalize { widest,
+endian })`, `halves.rs` pair arithmetic, `rewrite/` per function (instructions, calls, terminators), `divide.rs` the division
+helper); the driver legalizes a copy of the unit per backend in `Session::code` (`Coded.unit`),
+from `BackendCaps::int_bits`. `programs/wide.vun` checks it through both backends.
+
 **Stack bounds** (decision 162): `Func::stack_max` and `DeclRef::stack_max` (through `Env::count`)
 set `Function::stack_max` and `Import::stack_max` in LIR; `vun_lir::analysis::StackUse` walks the
 call graph; the driver checks after compiling (`driver/src/stack.rs`). An import's bound is the
@@ -322,7 +327,7 @@ arguments as `Rvalue::Comptime { expected }`, `Rvalue::compile_time` evaluating 
 lowered (`build/assign.rs`).
 
 Progress: corpus 213 passed, 0 pending, 9 planned, 27 shown, 0 failed; 83% of accepted body
-expressions typed; MIR lowers 85 of 97 accepted functions. 277 tests, including one that checks
+expressions typed; MIR lowers 85 of 97 accepted functions. 279 tests, including one that checks
 every `lang` and `std` file cleanly.
 
 ## 6. Decisions
@@ -332,7 +337,7 @@ Proposed also: 155 (frame layout), 156 (narrowing, runtime bounds, frame layouts
 161 (baseline fusion, fall-through registers, frames reported). Accepted: 162 (stack bounds, imports
 declaring theirs), 163 (attribute places, one reading of attributes),
 164 (an import's bound from the program's declarations), 165 (`symbols` structs); proposed: 166
-(callee-saved registers for loops), 167 (floats); accepted: 168 (commands as jj's, debug tools). Accepted: 139 (the size budget, now 10 MiB), 158 (`meta.Frame`, `TypeOf`
+(callee-saved registers for loops), 167 (floats), 169 (legalization of wide integers); accepted: 168 (commands as jj's, debug tools). Accepted: 139 (the size budget, now 10 MiB), 158 (`meta.Frame`, `TypeOf`
 over code; details proposed).
 Accepted (the user's choices, details proposed): 152 (backends after TPDE, baseline backend
 started after C), 153 (the C backend), 154 (targets named by system and CPU, chosen per session).
@@ -354,7 +359,10 @@ rules go to `decisions.md` as proposed unless the user approves them.
 ## 7. Next steps, in order
 
 0. Baseline backend next: `lang.float.rem` and `mul_add` at run time (helpers written in Vun,
-   compiled through the same pipeline), `f16` arithmetic (the same), and
+   compiled through the same pipeline; `mul_add` needs the exact product), `f16` arithmetic (the
+   same), a `.wrap`/`.to` between two types stored in 128 bits (lowering: "does not handle this
+   conversion"), MIR's `unbuilt` trace naming the source position instead of an `OriginId`, data
+   objects aligned past every C type in the C backend (only slots are handled), and
    128-bit integers (pairs, helpers in Vun), DWARF lines, arm64. Backends: memory regions from a program's build options into `LinkPlan` (the `gnu`
    adapter writes scripts from them), and a bare-metal runtime to link against. A slice value (`xs[a..b]` not borrowed)
    reaches lowering as `backend.unlowered` ("no layout") instead of a sema error.

@@ -65,6 +65,8 @@ pub enum Own {
     Parts(u32),
     Value(u32),
     Slot(u32),
+    /// The array a slot aligned past every C type lies in.
+    Backing(u32),
     Block(u32),
     Param(u32),
     /// A record passed by value under the C convention.
@@ -116,6 +118,12 @@ impl Ident {
         Self::Own(Own::Slot(Own::number(s.index())))
     }
 
+    /// The array the slot `s` lies in, when it is aligned past every C type.
+    #[must_use]
+    pub fn backing(s: Slot) -> Self {
+        Self::Own(Own::Backing(Own::number(s.index())))
+    }
+
     #[must_use]
     pub fn block(b: Block) -> Self {
         Self::Own(Own::Block(Own::number(b.index())))
@@ -156,6 +164,7 @@ impl Own {
             Self::Parts(n) => format!("dp{n}"),
             Self::Value(n) => format!("v{n}"),
             Self::Slot(n) => format!("s{n}"),
+            Self::Backing(n) => format!("sb{n}"),
             Self::Block(n) => format!("b{n}"),
             Self::Param(n) => format!("p{n}"),
             Self::Record(n) => format!("r{n}"),

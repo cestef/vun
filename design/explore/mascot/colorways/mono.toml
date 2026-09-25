@@ -1,9 +1,14 @@
-order = 11
+order = 12
 note = "Stone only, for print and single-ink use."
 [art]
-body = "stone.700"
-body-lo = "stone.800"
-ink = "stone.950"
-fleck = "stone.500"
-cheek = "stone.500"
-mouth = "stone.950"
+shell-top = "stone.100"
+shell-hi = "stone.200"
+shell = "stone.300"
+shell-lo = "stone.400"
+shell-deep = "stone.500"
+hollow = "stone.900"
+body = "stone.600"
+body-lo = "stone.700"
+fleck = "stone.400"
+cheek = "stone.400"
+mouth = "stone.900"

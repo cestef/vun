@@ -26,6 +26,7 @@ pub const INFO: BackendInfo = BackendInfo {
         tail_calls: false,
         noalias: true,
         frame_sizes: true,
+        int_bits: 64,
         debug_info: true,
     },
     readiness: Readiness::Generates,

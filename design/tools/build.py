@@ -13,6 +13,7 @@ from pathlib import Path
 
 import emit
 import sheet
+import tweak
 import tomllib
 from figure import Figure, Paint, Part
 from outputs import Outputs
@@ -61,6 +62,7 @@ def collect(tokens: Tokens, outputs: Outputs) -> list[Figure]:
             outputs.add(OUT / figure.name / f"{theme.name}.svg", figure.render(theme, tokens.palette))
     outputs.add(OUT / "identity.html", sheet.identity(ROOT, tokens, found))
     outputs.add(OUT / "explore.html", explore.gallery(ROOT, tokens))
+    outputs.add(OUT / "tweak.html", tweak.tweaker(ROOT, tokens))
     return found
 
 

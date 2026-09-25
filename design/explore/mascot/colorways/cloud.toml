@@ -1,0 +1,14 @@
+order = 6
+note = "Sky shell, butter crab."
+[art]
+shell-top = "sky.50"
+shell-hi = "sky.100"
+shell = "sky.200"
+shell-lo = "sky.300"
+shell-deep = "sky.400"
+hollow = "sky.900"
+fleck = "rose.300"
+body = "butter.300"
+body-lo = "butter.500"
+mouth = "butter.800"
+cheek = "peach.300"

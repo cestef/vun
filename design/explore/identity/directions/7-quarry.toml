@@ -1,22 +1,23 @@
 title = "Quarry"
-note = "Almost no color: stone greys, the crab the only violet on the page. Geist, quiet and precise."
+note = "Almost no color: stone greys, the peach crab the only warmth. Geist, quiet and precise."
 [type]
 display = { family = "Geist", fallback = ["system-ui", "sans-serif"], weights = [700] }
 text = { family = "Geist", fallback = ["system-ui", "sans-serif"], weights = [400] }
 mono = { family = "Geist Mono", fallback = ["monospace"], weights = [400] }
 [mascot]
 swap = { cheeks = "", legs = "" }
+[art]
+shell-top = "stone.50"
+shell-hi = "stone.100"
+shell = "stone.200"
+shell-lo = "stone.300"
+shell-deep = "stone.400"
+hollow = "stone.800"
 [ui]
-bg = "stone.50"
-surface = "stone.100"
-border = "stone.200"
-text = "stone.900"
-muted = "stone.500"
-accent = "violet.500"
+accent = "peach.500"
 link = "stone.900"
-code-bg = "stone.100"
 [code]
 keyword = "stone.900"
 string = "stone.600"
-literal = "violet.600"
+literal = "peach.600"
 comment = "stone.400"

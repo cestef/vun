@@ -21,7 +21,16 @@ python3 design/tools/build.py --png     # also rasterize every figure (ImageMagi
 
 Outputs: `out/<figure>/<theme>.svg` for every figure in every theme (colors inlined, no CSS, so
 they render anywhere), `out/tokens/tokens.{css,typ,json}`, `out/identity.html` (the adopted
-identity) and `out/explore.html` (the exploration gallery).
+identity), `out/explore.html` (the exploration gallery) and `out/tweak.html` (the live tweaker).
+
+## Tweaker
+
+`out/tweak.html` holds every part, preset and wordmark. Pick a preset (colorway or direction),
+swap parts per slot, shift hue, saturation, lightness and pastel over all colors at once, or set
+each role. The URL hash holds the whole state, so a copied link reproduces the view. The page
+exports a colorway TOML (drop it in `explore/mascot/colorways/`) and a pose TOML (drop it in
+`mascot/poses/`). Color pickers show the preset color; the hex beside each is the adjusted result
+that gets exported.
 
 ## Model
 
