@@ -31,4 +31,15 @@ IntMethods := ($r: lang.Range) -> type { struct {
     /// The absolute value, whose range is the magnitude of `r`: `i32` gives `Int(0..=2^31)`.
     #[panic.never]
     abs := (x: Int(r)) -> Int(lang.int.magnitude(r)) { lang.int.abs(r, x) };
+    /// The integer whose storage holds `bytes`, least significant first: its first
+    /// `lang.meta.size(Int(r))` bytes, which it must have.
+    from_le := (bytes: &[u8]) -> Int(r) {
+        mut v: Int(r) = 0;
+        mut i: usize = lang.meta.size(Int(r));
+        for i > 0 {
+            i -= 1;
+            v = (v * 256 + bytes[i]).wrap(Int(r));
+        }
+        v
+    };
 } };

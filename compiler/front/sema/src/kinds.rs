@@ -38,18 +38,23 @@ pub struct Kind {
     /// Whether some type in it marked `#[kind.free]` holds a scoped value, in a part or a type
     /// argument (`borrow.in_free_value`).
     pub misplaced: bool,
+    /// Whether a part is a cell (`lang.mem.Cell`), which changes through shared borrows: its
+    /// storage is written even where it is bound immutably.
+    pub interior: bool,
 }
 
 impl Kind {
-    const COPY_FREE: Self = Self { duplication: Duplication::Copy, region: Region::Free, misplaced: false };
+    const COPY_FREE: Self =
+        Self { duplication: Duplication::Copy, region: Region::Free, misplaced: false, interior: false };
 
     /// A value made of parts of these kinds: linear if one is, scoped if one is, misplaced if one
-    /// is.
+    /// is, with a cell if one has.
     fn of_parts(parts: impl IntoIterator<Item = Self>) -> Self {
         parts.into_iter().fold(Self::COPY_FREE, |kind, part| Self {
             duplication: if part.is_linear() { part.duplication } else { kind.duplication },
             region: if part.is_scoped() { part.region } else { kind.region },
             misplaced: kind.misplaced || part.misplaced,
+            interior: kind.interior || part.interior,
         })
     }
 
@@ -81,9 +86,10 @@ impl Query for Kinds {
             return Kind { region, ..Kind::COPY_FREE };
         }
         match &**ty {
-            TyKind::Primitive(Primitive::Mem(Mem::Array | Mem::Slice | Mem::Cell), args) => {
-                Kind::of_parts(args.iter().filter_map(Value::as_type).map(|t| of(&t)))
-            }
+            TyKind::Primitive(Primitive::Mem(m @ (Mem::Array | Mem::Slice | Mem::Cell)), args) => Kind {
+                interior: *m == Mem::Cell,
+                ..Kind::of_parts(args.iter().filter_map(Value::as_type).map(|t| of(&t)))
+            },
             // A constrained `$` parameter is unknown until an instantiation binds it, so checks
             // built on it stay silent.
             TyKind::Primitive(..) | TyKind::Param(_) => Kind::COPY_FREE,

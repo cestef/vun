@@ -62,7 +62,7 @@ impl Builder<'_, '_, '_> {
                         self.test(decl.pat, &matched, never)?;
                         self.blocks[never].term.kind = TerminatorKind::Unreachable;
                     }
-                    (_, None) => return Err(Unbuilt { at: decl.origin }),
+                    (_, None) => return Err(Unbuilt::at(decl.origin)),
                 }
             }
             HirStmt::Expr(e) => {

@@ -8,8 +8,8 @@ use std::sync::Arc;
 use vun_hir::db::FileRef;
 use vun_index::Idx;
 use vun_intern::Symbol;
-use vun_lir::{Address, Data, DataId, FuncId, Import, ImportId, ImportKind, Linkage, Reloc, Unit};
-use vun_mir::{Concrete, Programs};
+use vun_lir::{Address, Data, DataId, FuncId, Function, Import, ImportId, ImportKind, Linkage, Reloc, Unit};
+use vun_mir::{Concrete, Program, Programs, Roots};
 use vun_origin::OriginId;
 use vun_query::{Cx, Query};
 use vun_sema::env::Env;
@@ -35,6 +35,20 @@ impl Query for Lowered {
     }
 }
 
+/// Each function a file's functions reach (`Roots::Functions`), lowered on its own, and why it
+/// does not lower if it does not: what coverage measures.
+pub struct EachLowered;
+
+impl Query for EachLowered {
+    const NAME: &'static str = "each_lowered";
+    type Key = FileRef;
+    type Value = Arc<Vec<(Instantiation, Result<(), Unlowered>)>>;
+
+    fn compute(cx: &Cx<'_>, root: &FileRef) -> Self::Value {
+        Arc::new(Lowering::each(cx, root))
+    }
+}
+
 /// What lowering a program keeps across its functions.
 pub(crate) struct Lowering<'a, 'db> {
     pub(crate) types: Types<'a, 'db>,
@@ -53,7 +67,42 @@ pub(crate) struct Lowering<'a, 'db> {
 
 impl<'a, 'db> Lowering<'a, 'db> {
     fn program(cx: &'a Cx<'db>, root: &FileRef) -> Result<Unit, Unlowered> {
-        let program = cx.get::<Programs>(root);
+        let program = cx.get::<Programs>(&(root.clone(), Roots::Exports));
+        let mut l = Self::new(cx, root, &program)?;
+        if let Some((i, unready)) = program.unready.first() {
+            return Err(Unlowered { at: i.f.literal.expr.origin, why: Why::Unready(unready.clone()) });
+        }
+        let mut ends = Vec::new();
+        for f in 0..program.functions.len() {
+            let (resume, end) = l.lower_at(&program, f)?;
+            l.unit.functions.push(resume);
+            ends.extend(end);
+        }
+        for end in ends {
+            l.unit.functions.push(end);
+        }
+        Ok(l.unit)
+    }
+
+    /// Each function the root file's functions reach, and why it does not lower if it does not.
+    fn each(cx: &'a Cx<'db>, root: &FileRef) -> Vec<(Instantiation, Result<(), Unlowered>)> {
+        let program = cx.get::<Programs>(&(root.clone(), Roots::Functions));
+        let mut l = Self::new(cx, root, &program);
+        let functions = program.functions.iter().enumerate();
+        functions
+            .map(|(i, f)| {
+                let lowered = match &mut l {
+                    Ok(l) => l.lower_at(&program, i).map(drop),
+                    Err(unlowered) => Err(unlowered.clone()),
+                };
+                (f.clone(), lowered)
+            })
+            .collect()
+    }
+
+    /// The lowering of `program`: each function's id is its position, and each coroutine's
+    /// `end` comes after every function.
+    fn new(cx: &'a Cx<'db>, root: &FileRef, program: &Program) -> Result<Self, Unlowered> {
         let env = Env::of(cx, root).expect("the root file is read");
         // Reported at the root file's namespace, the program as a whole.
         let hir = &env.parsed.hir;
@@ -63,23 +112,13 @@ impl<'a, 'db> Lowering<'a, 'db> {
         let unit = Unit { pointer_bits: types.pointer_bits(), ..Unit::default() };
         let functions =
             program.functions.iter().enumerate().map(|(i, f)| (f.clone(), FuncId::new(i))).collect();
-        let mut bodies = Vec::new();
-        for f in &program.functions {
-            bodies.push(cx.get::<Concrete>(f).map_err(|u| Unlowered { at: u.at(), why: Why::Unready(u) }));
-        }
-        let coroutines: Vec<&Instantiation> = program
-            .functions
-            .iter()
-            .zip(&bodies)
-            .filter(|(_, b)| b.as_ref().is_ok_and(|b| b.suspends()))
-            .map(|(f, _)| f)
-            .collect();
+        let suspends = |f: &&Instantiation| cx.get::<Concrete>(f).is_ok_and(|b| b.suspends());
+        let coroutines = program.functions.iter().filter(suspends);
         let ends = coroutines
-            .iter()
             .enumerate()
-            .map(|(k, &f)| (f.clone(), FuncId::new(program.functions.len() + k)))
+            .map(|(k, f)| (f.clone(), FuncId::new(program.functions.len() + k)))
             .collect();
-        let mut l = Self {
+        Ok(Self {
             types,
             env,
             unit,
@@ -89,29 +128,23 @@ impl<'a, 'db> Lowering<'a, 'db> {
             exports: program.exports.iter().map(|&(i, symbol)| (symbol, FuncId::new(i))).collect(),
             data: HashMap::new(),
             globals: HashMap::new(),
+        })
+    }
+
+    /// The function at position `i` of `program`, and its `end` when it is a coroutine.
+    fn lower_at(&mut self, program: &Program, i: usize) -> Result<(Function, Option<Function>), Unlowered> {
+        let f = &program.functions[i];
+        let body =
+            self.types.cx.get::<Concrete>(f).map_err(|u| Unlowered { at: u.at(), why: Why::Unready(u) })?;
+        let export = program.exports.iter().find(|(at, _)| *at == i).map(|&(_, symbol)| symbol);
+        let resume = match export {
+            None if body.suspends() => FnLower::coroutine(self, f, &body, Mode::Resume)?,
+            // A coroutine function's frames are built where it is called: it has no symbol.
+            Some(_) if body.suspends() => return Err(Unlowered::unsupported(body.origin, Form::Frame)),
+            export => FnLower::lower(self, f, &body, export.map_or(Linkage::Internal, Linkage::Export))?,
         };
-        if let Some((i, unready)) = program.unready.first() {
-            return Err(Unlowered { at: i.f.literal.expr.origin, why: Why::Unready(unready.clone()) });
-        }
-        for (i, (f, body)) in program.functions.iter().zip(bodies).enumerate() {
-            let body = body?;
-            let export = program.exports.iter().find(|(at, _)| *at == i).map(|&(_, symbol)| symbol);
-            let func = match export {
-                None if body.suspends() => FnLower::coroutine(&mut l, f, &body, Mode::Resume)?,
-                // A coroutine function's frames are built where it is called: it has no symbol.
-                Some(_) if body.suspends() => return Err(Unlowered::unsupported(body.origin, Form::Frame)),
-                export => {
-                    FnLower::lower(&mut l, f, &body, export.map_or(Linkage::Internal, Linkage::Export))?
-                }
-            };
-            l.unit.functions.push(func);
-        }
-        for f in coroutines {
-            let body = cx.get::<Concrete>(f).map_err(|u| Unlowered { at: u.at(), why: Why::Unready(u) })?;
-            let end = FnLower::coroutine(&mut l, f, &body, Mode::End)?;
-            l.unit.functions.push(end);
-        }
-        Ok(l.unit)
+        let end = if body.suspends() { Some(FnLower::coroutine(self, f, &body, Mode::End)?) } else { None };
+        Ok((resume, end))
     }
 
     /// The id of the function `f` lowers to.

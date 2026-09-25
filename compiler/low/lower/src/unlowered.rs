@@ -68,7 +68,37 @@ impl fmt::Display for Unlowered {
 
 impl std::error::Error for Unlowered {}
 
+impl Why {
+    /// A short name of the kind of failure, which summaries count by.
+    #[must_use]
+    pub const fn name(&self) -> &'static str {
+        match self {
+            Self::Unready(_) => "unready",
+            Self::NoLayout(_) => "no layout",
+            Self::Unsupported(form) => form.name(),
+            Self::Primitive(_) => "primitive",
+            Self::Untargeted => "untargeted",
+            Self::Address(_) => "address",
+            Self::Recursive => "recursive frame",
+        }
+    }
+}
+
 impl Form {
+    #[must_use]
+    pub const fn name(self) -> &'static str {
+        match self {
+            Self::Primitive => "primitive",
+            Self::Conversion => "conversion",
+            Self::Constant => "constant",
+            Self::Callee => "callee",
+            Self::Defer => "defer",
+            Self::Projection => "projection",
+            Self::Frame => "frame",
+            Self::Quote => "quote",
+        }
+    }
+
     #[must_use]
     pub const fn what(self) -> &'static str {
         match self {

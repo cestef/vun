@@ -1,1 +1,16 @@
 //! Hardware access: memory-mapped registers over volatile operations.
+
+/// A memory-mapped register holding a `T`: each read and write reaches the device, exactly as
+/// written, in the order written.
+Reg := ($T: type) -> type { struct {
+    _value: lang.mem.Cell(T),
+
+    /// What the device holds now.
+    #[panic.never]
+    read := (self: &Reg(T)) -> T { unsafe lang.mem.volatile_load(T, self._at()) };
+    /// Hands `value` to the device.
+    #[panic.never]
+    write := (self: &Reg(T), value: T) { unsafe lang.mem.volatile_store(T, self._at(), value) };
+
+    _at := (self: &Reg(T)) -> *T { unsafe lang.mem.cell_pointer(T, &self._value) };
+} };

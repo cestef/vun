@@ -1,5 +1,8 @@
 //! How much of a program the stages that exist understand: the share of function-body
-//! expressions sema types and of bodies MIR lowers, the progress measure of roadmap phase 1.
+//! expressions sema types, of function literals whose run-time instantiations MIR builds, and of
+//! the functions reached that lower to LIR, the progress measure of roadmap phase 1. Functions
+//! are reached from every function of the file that depends on no compile-time binding
+//! (`Roots::Functions`); a generic one counts by the instantiations reached.
 
 use std::collections::BTreeMap;
 use std::fmt;
@@ -7,7 +10,10 @@ use std::ops::AddAssign;
 
 use vun_hir::db::{FileRef, Parsed};
 use vun_hir::tree::ExprKind;
-use vun_mir::{Mir, Unbuilt};
+use vun_lower::{EachLowered, Unlowered, Why};
+use vun_mir::{Programs, Roots, Unready};
+use vun_origin::OriginId;
+use vun_query::Cx;
 use vun_sema::eval::Instantiation;
 use vun_sema::typeck::Typed;
 use vun_span::FileId;
@@ -16,48 +22,96 @@ use crate::Session;
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Coverage {
-    pub bodies: usize,
-    pub lowered: usize,
     pub exprs: usize,
     pub typed: usize,
-    /// The bodies MIR does not lower, by the kind of the form that stopped it.
-    pub unbuilt: BTreeMap<&'static str, usize>,
+    /// The function literals that run at run time, and those whose every instantiation reached
+    /// MIR builds; the others run only at compile time.
+    pub bodies: usize,
+    pub compile_time: usize,
+    pub built: usize,
+    /// The functions reached at run time, and those that lower to LIR.
+    pub reached: usize,
+    pub lowered: usize,
+    /// What stops each literal or function short.
+    pub gaps: Vec<Gap>,
 }
 
-/// How many kinds of unbuilt forms the summary names.
-const UNBUILT_SHOWN: usize = 6;
+/// A function literal or a function reached that a stage stops at.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Gap {
+    /// The function literal.
+    pub function: OriginId,
+    pub kind: GapKind,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum GapKind {
+    /// No function of the file reaches the literal at run time: it is generic and never
+    /// instantiated, runs only at compile time, or sits in a body that stops short.
+    Unreached,
+    /// MIR does not build an instantiation of it, stopped at a form of this kind.
+    Unready { unready: Unready, form: &'static str },
+    /// It does not lower to LIR.
+    Unlowered(Unlowered),
+}
+
+/// How many kinds of gaps the summary names per stage.
+const GAPS_SHOWN: usize = 6;
 
 impl Session {
     /// The coverage of the functions of `file`.
     pub fn coverage(&mut self, file: FileId) -> Coverage {
         let mut coverage = Coverage::default();
+        let key = self.file_ref(file);
+        let program = self.db.get::<Programs>(&(key.clone(), Roots::Functions));
         for f in self.functions(file) {
-            coverage.bodies += 1;
-            let file = f.file.clone();
-            let f = Instantiation::plain(f);
-            match self.db.get::<Mir>(&f) {
-                Ok(_) => coverage.lowered += 1,
-                Err(unbuilt) => *coverage.unbuilt.entry(self.form_at(&file, unbuilt)).or_default() += 1,
-            }
+            let origin = f.expr.origin;
+            let plain = Instantiation::plain(f.clone());
+            let closure = self.db.get::<Parsed>(&key).is_some_and(|p| p.hir.closure_of(f.expr.id).is_some());
             // A closure's body is typed, and counted, with the body it is written in.
-            let closure =
-                self.db.get::<Parsed>(&file).is_some_and(|p| p.hir.closure_of(f.f.literal.expr.id).is_some());
-            if !closure && let Some(typed) = self.db.get::<Typed>(&f) {
+            if !closure && let Some(typed) = self.db.get::<Typed>(&plain) {
                 coverage.exprs += typed.exprs;
                 coverage.typed += typed.typed_count();
+            }
+            if plain.compile_time(&Cx::new(&self.db)) {
+                coverage.compile_time += 1;
+                continue;
+            }
+            coverage.bodies += 1;
+            let instantiations: Vec<&Instantiation> =
+                program.functions.iter().filter(|i| i.f.literal == f).collect();
+            let unready = program.unready.iter().find(|(i, _)| i.f.literal == f).map(|(_, u)| u.clone());
+            let kind = match unready {
+                _ if instantiations.is_empty() => Some(GapKind::Unreached),
+                Some(unready) => Some(GapKind::Unready { form: self.form_at(&key, unready.at()), unready }),
+                None => None,
+            };
+            match kind {
+                Some(kind) => coverage.gaps.push(Gap { function: origin, kind }),
+                None => coverage.built += 1,
+            }
+        }
+        for (i, lowered) in self.db.get::<EachLowered>(&key).iter() {
+            coverage.reached += 1;
+            match lowered {
+                Ok(()) => coverage.lowered += 1,
+                // Counted where MIR stops, above.
+                Err(Unlowered { why: Why::Unready(_), .. }) => {}
+                Err(unlowered) => coverage.gaps.push(Gap {
+                    function: i.f.literal.expr.origin,
+                    kind: GapKind::Unlowered(unlowered.clone()),
+                }),
             }
         }
         coverage
     }
-}
 
-impl Session {
-    /// The kind of the form MIR stopped at: an operator by its text, another expression by its
-    /// kind, or what else it is.
-    fn form_at(&self, file: &FileRef, unbuilt: Unbuilt) -> &'static str {
+    /// The kind of the form at `at`: an operator by its text, another expression by its kind,
+    /// or what else it is.
+    fn form_at(&self, file: &FileRef, at: OriginId) -> &'static str {
         let Some(parsed) = self.db.get::<Parsed>(file) else { return "unread" };
         let hir = &parsed.hir;
-        if let Some((_, e)) = hir.exprs.iter().find(|(_, e)| e.origin == unbuilt.at) {
+        if let Some((_, e)) = hir.exprs.iter().find(|(_, e)| e.origin == at) {
             return match &e.kind {
                 ExprKind::Prefix { op, .. } | ExprKind::Postfix { op, .. } | ExprKind::Infix { op, .. } => {
                     op.text().unwrap_or(e.kind.name())
@@ -65,42 +119,61 @@ impl Session {
                 kind => kind.name(),
             };
         }
-        if hir.decls.iter().any(|(_, d)| d.origin == unbuilt.at) {
+        if hir.decls.iter().any(|(_, d)| d.origin == at) {
             return "declaration";
         }
         "statement"
     }
 }
 
+impl GapKind {
+    /// The stage that stops, and the kind of what stops it.
+    #[must_use]
+    pub fn stage(&self) -> (&'static str, &'static str) {
+        match self {
+            Self::Unreached => ("reach", "unreached"),
+            Self::Unready { form, .. } => ("mir", form),
+            Self::Unlowered(unlowered) => ("lir", unlowered.why.name()),
+        }
+    }
+}
+
 impl AddAssign for Coverage {
     fn add_assign(&mut self, other: Self) {
-        self.bodies += other.bodies;
-        self.lowered += other.lowered;
         self.exprs += other.exprs;
         self.typed += other.typed;
-        for (form, n) in other.unbuilt {
-            *self.unbuilt.entry(form).or_default() += n;
-        }
+        self.bodies += other.bodies;
+        self.compile_time += other.compile_time;
+        self.built += other.built;
+        self.reached += other.reached;
+        self.lowered += other.lowered;
+        self.gaps.extend(other.gaps);
     }
 }
 
 impl fmt::Display for Coverage {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let percent = |part: usize, whole: usize| (part * 100).checked_div(whole).unwrap_or(0);
+        let percent = |part: usize, whole: usize| (part * 100).checked_div(whole).unwrap_or(100);
+        let (typed, exprs, built, bodies) = (self.typed, self.exprs, self.built, self.bodies);
+        let (lowered, reached) = (self.lowered, self.reached);
         write!(
             f,
-            "sema types {} of {} function-body expressions ({}%); MIR lowers {} of {} functions ({}%)",
-            self.typed,
-            self.exprs,
-            percent(self.typed, self.exprs),
-            self.lowered,
-            self.bodies,
-            percent(self.lowered, self.bodies),
+            "sema types {typed} of {exprs} function-body expressions ({}%); MIR builds {built} of {bodies} \
+             run-time function literals ({}%, {} more run at compile time); LIR lowers {lowered} of \
+             {reached} functions reached ({}%)",
+            percent(typed, exprs),
+            percent(built, bodies),
+            self.compile_time,
+            percent(lowered, reached),
         )?;
-        let mut unbuilt: Vec<_> = self.unbuilt.iter().collect();
-        unbuilt.sort_by(|a, b| b.1.cmp(a.1).then(a.0.cmp(b.0)));
-        for (i, (form, n)) in unbuilt.into_iter().take(UNBUILT_SHOWN).enumerate() {
-            write!(f, "{}{form} {n}", if i == 0 { "; stopped at " } else { ", " })?;
+        let mut kinds: BTreeMap<(&str, &str), usize> = BTreeMap::new();
+        for gap in &self.gaps {
+            *kinds.entry(gap.kind.stage()).or_default() += 1;
+        }
+        let mut kinds: Vec<_> = kinds.into_iter().collect();
+        kinds.sort_by(|a, b| b.1.cmp(&a.1).then(a.0.cmp(&b.0)));
+        for (i, ((stage, kind), n)) in kinds.into_iter().take(GAPS_SHOWN).enumerate() {
+            write!(f, "{}{stage} {kind} {n}", if i == 0 { "; stopped at " } else { ", " })?;
         }
         Ok(())
     }

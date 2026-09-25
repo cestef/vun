@@ -143,7 +143,12 @@ impl Session {
             Ok(body) => writeln!(out, "{}", body.dump(&locate)),
             Err(unbuilt) => {
                 let (at, form) = (locate(origin), locate(unbuilt.at));
-                writeln!(out, "fn @{}:{}: not lowered yet, at @{}:{}", at.line, at.col, form.line, form.col)
+                let (line, col) = (form.line, form.col);
+                writeln!(
+                    out,
+                    "fn @{}:{}: not lowered yet, at @{line}:{col}, by {}",
+                    at.line, at.col, unbuilt.by
+                )
             }
         }
     }

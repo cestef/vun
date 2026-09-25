@@ -1,0 +1,161 @@
+//! The memory operations of `lang.mem` at run time: cells, addresses and pointers, the parts of
+//! a slice, reads, writes and atomics.
+
+use vun_lir::{Access, BinOp, CastOp, InstKind, Order, RmwOp, Scalar, Value};
+use vun_mir::Operand;
+use vun_sema::Primitive;
+use vun_sema::primitives::mem::Mem;
+use vun_sema::ty::{Ty, Value as Constant};
+
+use super::FnLower;
+use crate::unlowered::{Form, Unlowered};
+
+/// The orderings of `lang.mem.Ordering`, as LIR's.
+const ORDERS: [(vun_items::Item, Order); 5] = [
+    (vun_items::lang::mem_Ordering::relaxed, Order::Relaxed),
+    (vun_items::lang::mem_Ordering::acquire, Order::Acquire),
+    (vun_items::lang::mem_Ordering::release, Order::Release),
+    (vun_items::lang::mem_Ordering::acq_rel, Order::AcqRel),
+    (vun_items::lang::mem_Ordering::seq_cst, Order::SeqCst),
+];
+
+impl FnLower<'_, '_, '_> {
+    /// The primitives of `lang.mem`, `runtime` their run-time arguments.
+    pub(super) fn memory(
+        &mut self,
+        m: Mem,
+        runtime: &[&Operand],
+        dest: Value,
+        ty: Ty,
+    ) -> Result<(), Unlowered> {
+        let at = self.at;
+        let unsupported = move || Unlowered::unsupported(at, Form::Primitive);
+        let arg = |i: usize| runtime.get(i).copied().ok_or_else(unsupported);
+        match m {
+            // A cell holds its value in place.
+            Mem::cell => {
+                let vun_sema::ty::TyKind::Primitive(_, args) = &*ty else { return Err(unsupported()) };
+                let inner = args.first().and_then(Constant::as_type).ok_or_else(unsupported)?;
+                self.write(arg(0)?, Some(dest), inner)
+            }
+            // An address as another kind of address: a borrow's or a cell's as a pointer, or a
+            // pointer to another type.
+            Mem::pointer_to | Mem::cell_pointer | Mem::cast => {
+                let addr = self.scalar_operand(arg(0)?)?;
+                self.b.store(addr, dest, Access::Plain, self.at);
+                Ok(())
+            }
+            part @ (Mem::len | Mem::items_pointer) => {
+                let from = self.operand_addr(arg(0)?)?;
+                let (scalar, offset) = match part {
+                    Mem::len => (self.l.types.word, self.l.types.word.bytes(self.l.types.pointer_bits())),
+                    _ => (Scalar::Ptr, 0),
+                };
+                let at = self.at_offset(from, offset);
+                let value = self.b.load(scalar, at, Access::Plain, self.at);
+                self.b.store(value, dest, Access::Plain, self.at);
+                Ok(())
+            }
+            Mem::items_at => {
+                let (addr, len) = (self.scalar_operand(arg(0)?)?, self.scalar_operand(arg(1)?)?);
+                self.b.store(addr, dest, Access::Plain, self.at);
+                let at = self.at_offset(dest, self.l.types.word.bytes(self.l.types.pointer_bits()));
+                self.b.store(len, at, Access::Plain, self.at);
+                Ok(())
+            }
+            Mem::address => {
+                let addr = self.scalar_operand(arg(0)?)?;
+                let word = self.l.types.word;
+                let value = self.b.cast(CastOp::PtrToInt, addr, word, self.at);
+                self.b.store(value, dest, Access::Plain, self.at);
+                Ok(())
+            }
+            // `n` items of the pointee past the address, `n` signed.
+            Mem::offset => {
+                let item = ty.pointee().ok_or_else(unsupported)?;
+                let stride = self.l.types.shape(item, self.at)?.layout.size;
+                let word = self.l.types.word;
+                let (addr, n) = (self.scalar_operand(arg(0)?)?, self.int_operand(arg(1)?, word)?);
+                let stride = self.b.constant(word, u128::from(stride), self.at);
+                let bytes = self.b.binary(BinOp::Mul, n, stride, self.at);
+                let value = self.b.offset(addr, bytes, self.at);
+                self.b.store(value, dest, Access::Plain, self.at);
+                Ok(())
+            }
+            Mem::read => {
+                let from = self.scalar_operand(arg(0)?)?;
+                self.copy_value(from, dest, ty)
+            }
+            Mem::atomic_load => {
+                let order = self.order(arg(1)?)?;
+                let from = self.scalar_operand(arg(0)?)?;
+                let scalar = self.scalar_of(ty)?;
+                let value = self.b.load(scalar, from, Access::Atomic(order), self.at);
+                self.b.store(value, dest, Access::Plain, self.at);
+                Ok(())
+            }
+            rmw @ (Mem::atomic_swap | Mem::atomic_add | Mem::atomic_sub) => {
+                let op = match rmw {
+                    Mem::atomic_swap => RmwOp::Swap,
+                    Mem::atomic_add => RmwOp::Add,
+                    _ => RmwOp::Sub,
+                };
+                let (addr, value) = (self.scalar_operand(arg(0)?)?, self.scalar_operand(arg(1)?)?);
+                let order = self.order(arg(2)?)?;
+                let scalar = self.scalar_of(ty)?;
+                let kind = InstKind::Rmw { op, addr, value, order };
+                let held = self.b.push(kind, Some(scalar), self.at).expect("an exchange gives what was held");
+                self.b.store(held, dest, Access::Plain, self.at);
+                Ok(())
+            }
+            Mem::atomic_compare_swap => {
+                let (expected, new) = (self.scalar_operand(arg(1)?)?, self.scalar_operand(arg(2)?)?);
+                let order = self.order(arg(3)?)?;
+                let failure = match order {
+                    Order::AcqRel | Order::Acquire => Order::Acquire,
+                    Order::SeqCst => Order::SeqCst,
+                    Order::Relaxed | Order::Release => Order::Relaxed,
+                };
+                let addr = self.scalar_operand(arg(0)?)?;
+                let kind = InstKind::CompareExchange { addr, expected, new, success: order, failure };
+                let scalar = self.scalar_of(ty)?;
+                let held = self.b.push(kind, Some(scalar), self.at).expect("an exchange gives what was held");
+                self.b.store(held, dest, Access::Plain, self.at);
+                Ok(())
+            }
+            _ => self.effect(Primitive::Mem(m), runtime),
+        }
+    }
+
+    /// Primitives run for what they do, with no value: writes.
+    fn effect(&mut self, p: Primitive, runtime: &[&Operand]) -> Result<(), Unlowered> {
+        let at = self.at;
+        let unsupported = move || Unlowered::unsupported(at, Form::Primitive);
+        let arg = |i: usize| runtime.get(i).copied().ok_or_else(unsupported);
+        match p {
+            Primitive::Mem(Mem::write) => {
+                let to = self.scalar_operand(arg(0)?)?;
+                let ty = self.operand_ty(arg(1)?).ok_or_else(unsupported)?;
+                self.write(arg(1)?, Some(to), ty)
+            }
+            Primitive::Mem(Mem::atomic_store) => {
+                let order = self.order(arg(2)?)?;
+                let (to, value) = (self.scalar_operand(arg(0)?)?, self.scalar_operand(arg(1)?)?);
+                self.b.store(value, to, Access::Atomic(order), self.at);
+                Ok(())
+            }
+            _ => Err(unsupported()),
+        }
+    }
+
+    /// The memory ordering `operand` names; one known only at run time is the strongest, which
+    /// every other allows.
+    fn order(&self, operand: &Operand) -> Result<Order, Unlowered> {
+        let Operand::Const(Constant::Variant { name, .. }) = operand else { return Ok(Order::SeqCst) };
+        ORDERS
+            .iter()
+            .find(|(item, _)| item.symbol() == *name)
+            .map(|&(_, order)| order)
+            .ok_or(Unlowered::unsupported(self.at, Form::Primitive))
+    }
+}

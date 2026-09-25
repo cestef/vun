@@ -12,7 +12,7 @@ use vun_hir::tree::{ExprKind, Hir};
 use vun_intern::Symbol;
 use vun_interp::Interpreter;
 use vun_lower::{Lowered, Unlowered};
-use vun_mir::{Body, Mir, Program, Programs, Unbuilt};
+use vun_mir::{Body, Mir, Program, Programs, Roots, Unbuilt};
 use vun_origin::OriginTable;
 use vun_pkg::Schemes;
 use vun_query::Db;
@@ -164,7 +164,7 @@ impl Session {
     /// The program whose root is `file`: its exports and the functions they reach.
     pub fn program(&mut self, file: FileId) -> Arc<Program> {
         let key = self.file_ref(file);
-        self.db.get::<Programs>(&key)
+        self.db.get::<Programs>(&(key, Roots::Exports))
     }
 
     /// The LIR of the program whose root is `file`, or why it does not lower.

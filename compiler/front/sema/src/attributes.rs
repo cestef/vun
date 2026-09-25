@@ -11,7 +11,6 @@ use crate::env::Env;
 use crate::eval::Func;
 use crate::item::DeclRef;
 use crate::primitives::abi::Abi;
-use crate::primitives::stack::Stack;
 use crate::ty::{Marker, Nominal, Value};
 
 /// The attributes written on one item.
@@ -49,18 +48,13 @@ impl Attributes<'_, '_> {
     /// The calling convention its markers name (`#[abi.c]`), if any.
     #[must_use]
     pub fn abi(&self) -> Option<Abi> {
-        self.markers.iter().find_map(|m| match m.item {
-            Primitive::Abi(abi) => Some(abi),
-            _ => None,
-        })
+        Marker::abi(&self.markers)
     }
 
     /// The most bytes of stack a call takes, `#[stack.max(n)]`, if bound.
     #[must_use]
     pub fn stack_max(&self) -> Option<u64> {
-        let marker = self.markers.iter().find(|m| m.item == Primitive::Stack(Stack::max))?;
-        let [Value::Int(n)] = marker.args.as_slice() else { return None };
-        u64::try_from(n.to_i128()?).ok()
+        Marker::stack_max(&self.markers)
     }
 }
 

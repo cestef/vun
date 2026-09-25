@@ -1,18 +1,15 @@
 //! Names and members: a local, a declaration, a namespace, a member of a type's namespace or of
 //! a value.
 
-use vun_diag::{ChildKind, Diagnostic, Msg, errors};
-use vun_hir::db::{Exports, Namespace};
 use vun_hir::resolve::Res;
 use vun_hir::tree::{ExprId, ExprKind};
 use vun_intern::Symbol;
-use vun_suggest::closest;
 
 use super::{Known, Stage, Typer};
 use crate::env::Env;
 use crate::item::{Declared, Site};
 use crate::member::{Found, MemberType, Members};
-use crate::ty::{Signature, TyKind, Value};
+use crate::ty::{Signature, Ty, TyKind, Value};
 
 impl Typer<'_, '_, '_> {
     /// A local by the type it was bound with; any other name by its declaration's type.
@@ -37,11 +34,10 @@ impl Typer<'_, '_, '_> {
         // Only a path names a namespace or a type, so nothing else is evaluated here.
         if matches!(self.hir().exprs[object].kind, ExprKind::Name(_) | ExprKind::Member { .. }) {
             match self.env().eval(object) {
+                // A member missing from a namespace is reported by the check of the file, which
+                // reads every path, typed or not.
                 Ok(Value::Namespace(ns)) => {
-                    let Some(site) = self.env().cx.get::<Declared>(&(ns.clone(), name)) else {
-                        self.absent(expr, object, &ns, name);
-                        return None;
-                    };
+                    let site = self.env().cx.get::<Declared>(&(ns.clone(), name))?;
                     if let Site::Decl(decl) = &site
                         && let Some(visible) =
                             Env::of(self.env().cx, &decl.file).map(|e| e.decl_visible(decl.decl.id, name))
@@ -67,8 +63,13 @@ impl Typer<'_, '_, '_> {
                             Some(Known { ty: Signature::new(params, ty).ty(), stage: Stage::Compile })
                         }
                         Found::Field(_) => None,
-                        Found::Absent | Found::Unknown => {
-                            let owner = self.method(expr, ty, name)?;
+                        found @ (Found::Absent | Found::Unknown) => {
+                            let Some(owner) = self.method(expr, ty, name) else {
+                                if !matches!(found, Found::Unknown) || !Self::declares(ty) {
+                                    self.no_member(self.hir().exprs[expr].origin, ty, name);
+                                }
+                                return None;
+                            };
                             self.env().cx.get::<MemberType>(&(owner, name)).ok()
                         }
                     };
@@ -88,11 +89,7 @@ impl Typer<'_, '_, '_> {
         // borrow, has only its impls' members. They are unknown for a nominal type whose members
         // are, and for a value declaring its own, a type or an interface not known here.
         let members = self.env().cx.get::<Members>(&known.ty);
-        let unknown = if matches!(&*known.ty, TyKind::Nominal(_)) || known.ty.declares_members() {
-            Found::Unknown
-        } else {
-            Found::Absent
-        };
+        let unknown = if Self::declares(known.ty) { Found::Unknown } else { Found::Absent };
         match members.as_deref().map_or(unknown, |m| m.find(name)) {
             Found::Field(field) => {
                 self.check_visible(expr, name, &field.visible);
@@ -125,21 +122,10 @@ impl Typer<'_, '_, '_> {
         }
     }
 
-    /// Reports `name`, used at `expr` on the namespace `ns` written as `object`, as no member of
-    /// it, when all its members are known.
-    fn absent(&mut self, expr: ExprId, object: ExprId, ns: &Namespace, name: Symbol) {
-        let cx = self.env().cx;
-        let Some((_, path)) = self.hir().path(object) else { return };
-        if !Declared::complete(cx, ns) {
-            return;
-        }
-        let msg =
-            Msg::new().path(path.iter().map(|s| s.as_str())).text(" has no member ").code(name.as_str());
-        let mut d = Diagnostic::error(errors::NAMES_UNRESOLVED, msg).at(self.hir().exprs[expr].origin, None);
-        let exports = cx.get::<Exports>(ns);
-        if let Some(near) = closest(name.as_str(), exports.iter().map(|s| s.as_str())) {
-            d = d.child(ChildKind::Help, Msg::did_you_mean(near));
-        }
-        self.diag.error(d);
+    /// Whether members of `ty` may be declared where they are not known here: a nominal type, a
+    /// type, an interface or a value declaring its own, or a parameter or frame, whose members
+    /// its interface requires.
+    fn declares(ty: Ty) -> bool {
+        matches!(&*ty, TyKind::Nominal(_) | TyKind::Param(_) | TyKind::Frame(_)) || ty.declares_members()
     }
 }

@@ -8,7 +8,9 @@ use vun_grammar::TokenKind;
 
 use super::Value;
 use crate::Primitive;
+use crate::primitives::abi::Abi;
 use crate::primitives::panic::Panic;
+use crate::primitives::stack::Stack;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Marker {
@@ -28,6 +30,23 @@ impl Marker {
     /// The attributes that are markers, with their relations (the table `fn_markers`).
     pub fn kinds() -> impl Iterator<Item = (Primitive, Relation)> {
         FN_MARKERS.iter().filter_map(|row| Some((Primitive::at(row.item)?, row.relation)))
+    }
+
+    /// The calling convention `markers` name (`#[abi.c]`), if any.
+    #[must_use]
+    pub fn abi(markers: &[Self]) -> Option<Abi> {
+        markers.iter().find_map(|m| match m.item {
+            Primitive::Abi(abi) => Some(abi),
+            _ => None,
+        })
+    }
+
+    /// The most bytes of stack a call takes, as `markers` bound it (`#[stack.max(n)]`).
+    #[must_use]
+    pub fn stack_max(markers: &[Self]) -> Option<u64> {
+        let marker = markers.iter().find(|m| m.item == Primitive::Stack(Stack::max))?;
+        let [Value::Int(n)] = marker.args.as_slice() else { return None };
+        u64::try_from(n.to_i128()?).ok()
     }
 
     /// Whether `markers` promise that the function never traps (`#[panic.never]`).

@@ -78,7 +78,7 @@ pub enum Safety  { Safe, Unsafe, Placeholder, DisplayOnly }
   `mydrivers.lints.raw_mmio`. Compiler errors are shown relative to `lang.errors`
   (`int.does_not_fit`). A renamed id keeps its old path as an alias.
 - **Explanations.** Every id has a page, the file its `Diag` value embeds
-  (`.explanation = meta.embed("errors/names/duplicate.md")`, next to `lang/errors.vun` for the
+  (`.explanation = lang.meta.embed("errors/names/duplicate.md")`, next to `lang/errors.vun` for the
   compiler's own). A page has an `Example` section, whose annotated file reports exactly its `//~`
   annotations, and a `Fix` section, whose version of that file reports nothing; blocks may name
   their file (```` ```vun build.vun ````), so an example can be a package. Both are checked with the

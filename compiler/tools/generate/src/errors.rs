@@ -3,7 +3,7 @@
 //! Every declaration of the file is a diagnostic, grouped in namespaces; its id is its binding
 //! path, derived from where the file sits in its package (spec 01, section 8). Each namespace also
 //! becomes an id, the group that stages declare they report (`DiagId::within`). A diagnostic's
-//! explanation page is the file its `.explanation = meta.embed("...")` names, relative to the
+//! explanation page is the file its `.explanation = lang.meta.embed("...")` names, relative to the
 //! source; `EXPLANATIONS` gives each page's path in the library.
 
 use std::path::Path;
@@ -28,7 +28,7 @@ const UNEXPLAINED: DiagId = DiagId::new("generate.errors.unexplained");
 
 /// The field of `lang.diag.Diag` naming the explanation, and the call that embeds a file.
 const EXPLANATION: &str = "explanation";
-const EMBED: [&str; 2] = ["meta", "embed"];
+const EMBED: [&str; 3] = ["lang", "meta", "embed"];
 
 fn emit(sources: &[Source<'_>]) -> Read<Vec<Module>> {
     // The source is one file.

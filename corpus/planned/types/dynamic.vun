@@ -1,0 +1,15 @@
+//! Dynamic dispatch is a library: `std.Dyn(I)` holds a value of any type implementing `I`
+//! (spec 02, section 3).
+
+Shape := interface(($Self: type) -> type { struct {
+    area: (self: &Self) -> u64 = _;
+}});
+
+largest := (shapes: &[std.Dyn(Shape)]) -> ?&std.Dyn(Shape) {
+    mut best: ?&std.Dyn(Shape) = .none;
+    for s in shapes {
+        if .some(b) = best { if s.area() <= b.area() { continue; } }
+        best = .some(s);
+    }
+    best
+};

@@ -63,7 +63,7 @@ impl<'l, 'a, 'db> FnLower<'l, 'a, 'db> {
         let step = l.env.resumed(frame).ok_or_else(unsupported)?;
         let signature = l.frame_signature((mode == Mode::Resume).then_some(step), at)?;
         let through = signature.through();
-        let mut this = Self::new(l, body, Builder::new(Linkage::Internal, signature, at), at);
+        let mut this = Self::new(l, f, body, Builder::new(Linkage::Internal, signature, at), at);
         let values = this.b.params(this.b.current()).to_vec();
         this.frame = values.first().copied();
         if through {

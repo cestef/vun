@@ -12,6 +12,7 @@ mod states;
 mod transfer;
 
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
+use std::sync::Arc;
 
 use vun_diag::{ChildKind, DiagCtxt, DiagId, Diagnostic, Msg, errors};
 use vun_index::{Idx, IndexVec};
@@ -27,6 +28,33 @@ use leak::Stop;
 use moved::Moved;
 use states::{State, States};
 
+/// What the place states find in an instantiation's body: the reports, and where each deferred
+/// statement at an exit goes (`TerminatorKind::Defer`), by the block it ends; `None` when the
+/// body has no MIR yet.
+pub struct Placed;
+
+#[derive(Debug, Default, PartialEq, Eq, Hash)]
+pub struct Found {
+    pub diag: DiagCtxt,
+    pub defers: BTreeMap<BlockId, BlockId>,
+}
+
+impl Query for Placed {
+    const NAME: &'static str = "placed";
+    type Key = Instantiation;
+    type Value = Option<Arc<Found>>;
+
+    fn compute(cx: &Cx<'_>, i: &Instantiation) -> Self::Value {
+        let body = cx.get::<Mir>(i).ok()?;
+        let linear =
+            body.locals.iter().filter(|(_, d)| d.ty.is_some_and(|t| cx.get::<Kinds>(&t).is_linear()));
+        let linear = linear.filter(|(_, d)| d.role == Role::Held).map(|(local, _)| local);
+        let linear: BTreeSet<Local> = linear.filter(|&l| l != body.ret).collect();
+        let moved = Moved::find(cx, &body, |l| linear.contains(&l));
+        Some(Arc::new(Analysis::new(&body, linear, moved).run()))
+    }
+}
+
 /// The place-state reports of an instantiation's body; `None` when it has no MIR yet.
 pub struct PlaceStates;
 
@@ -36,13 +64,7 @@ impl Query for PlaceStates {
     type Value = Option<DiagCtxt>;
 
     fn compute(cx: &Cx<'_>, i: &Instantiation) -> Self::Value {
-        let body = cx.get::<Mir>(i).ok()?;
-        let linear =
-            body.locals.iter().filter(|(_, d)| d.ty.is_some_and(|t| cx.get::<Kinds>(&t).is_linear()));
-        let linear = linear.filter(|(_, d)| d.role == Role::Held).map(|(local, _)| local);
-        let linear: BTreeSet<Local> = linear.filter(|&l| l != body.ret).collect();
-        let moved = Moved::find(cx, &body, |l| linear.contains(&l));
-        Some(Analysis::new(&body, linear, moved).run())
+        cx.get::<Placed>(i).map(|found| found.diag.clone())
     }
 }
 
@@ -57,6 +79,8 @@ struct Analysis<'b> {
     /// The linear values moved out of borrows, by the local they land in.
     moved: Vec<(Local, OriginId)>,
     diag: DiagCtxt,
+    /// Where each deferred statement at an exit goes, once the states are fixed.
+    defers: BTreeMap<BlockId, BlockId>,
     reported: BTreeSet<(DiagId, OriginId)>,
     /// Whether transfers report what they find: only once the states are fixed.
     reporting: bool,
@@ -79,6 +103,7 @@ impl<'b> Analysis<'b> {
             linear,
             moved,
             diag: DiagCtxt::new(),
+            defers: BTreeMap::new(),
             reported: BTreeSet::new(),
             reporting: false,
         }
@@ -99,7 +124,7 @@ impl<'b> Analysis<'b> {
         assigned.into_iter().filter_map(|(local, value)| Some((local, value?))).collect()
     }
 
-    fn run(mut self) -> DiagCtxt {
+    fn run(mut self) -> Found {
         let mut at: IndexVec<BlockId, Option<States>> = IndexVec::filled(None, self.body.blocks.len());
         at[BlockId::new(0)] = Some(self.entry());
         let mut work = VecDeque::from([BlockId::new(0)]);
@@ -125,7 +150,7 @@ impl<'b> Analysis<'b> {
                 self.block(block, &mut states.clone());
             }
         }
-        self.diag
+        Found { diag: self.diag, defers: self.defers }
     }
 
     /// Each linear value read whole out of a place reached through `.*` is moved out of a
@@ -211,7 +236,11 @@ impl<'b> Analysis<'b> {
                 Vec::new()
             }
             TerminatorKind::Defer { consumes, run, skip } => {
-                self.deferred(consumes, *run, *skip, states, origin)
+                let next = self.deferred(consumes, *run, *skip, states, origin);
+                if self.reporting {
+                    self.defers.insert(block, next);
+                }
+                vec![next]
             }
         }
     }

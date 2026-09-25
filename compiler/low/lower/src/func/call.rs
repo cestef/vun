@@ -1,17 +1,18 @@
-//! Calls: of a function reached by the program, of a link symbol, or of a primitive. Each run-time
+//! Calls: of a function reached by the program, of a closure, of a function value, of a link
+//! symbol, or of a primitive. Each run-time
 //! argument is written into a temporary of its parameter's type, passed as its scalar or by its
 //! address; a result in memory is written through an address, converted into the place if its
 //! type differs.
 
 use vun_lir::{Callee, InstKind, Signature, Value};
-use vun_mir::{Concrete, Lowered as _, Operand};
+use vun_mir::{Concrete, Lowered as _, Operand, Projection};
 use vun_sema::Primitive;
 use vun_sema::decl::DeclType;
 use vun_sema::eval::Instantiation;
 use vun_sema::primitives::abi::Abi;
 use vun_sema::primitives::panic::Panic;
 use vun_sema::trap::Failure;
-use vun_sema::ty::{Ty, Value as Constant};
+use vun_sema::ty::{Marker, Ty, TyKind, Value as Constant};
 
 use super::FnLower;
 use crate::repr::Repr;
@@ -75,7 +76,30 @@ impl FnLower<'_, '_, '_> {
             Operand::Const(Constant::Primitive(p)) => {
                 self.primitive(*p, args, dest, ty).map_err(|u| u.naming(*p))
             }
-            _ => Err(unsupported()),
+            // A closure runs its function, which takes the captures before the arguments.
+            Operand::Const(Constant::Closure { f, captures }) => {
+                let captured = captures.iter().cloned().map(Operand::Const);
+                let args: Vec<Operand> = captured.chain(args.iter().cloned()).collect();
+                self.call(&Operand::Const(Constant::Fn(f.clone())), &args, dest, ty)
+            }
+            Operand::Place(place) => {
+                let callee_ty = self.operand_ty(callee).ok_or_else(unsupported)?;
+                if let TyKind::Closure(closure) = &*callee_ty {
+                    let captured = (0..closure.captures.len())
+                        .map(|i| Operand::Place(place.clone().project(Projection::Position(i))));
+                    let args: Vec<Operand> = captured.chain(args.iter().cloned()).collect();
+                    return self.call(&Operand::Const(Constant::Fn(closure.f.clone())), &args, dest, ty);
+                }
+                // A function value is its address, called with its type's signature.
+                let signature = callee_ty.signature().ok_or_else(unsupported)?;
+                let abi = Marker::abi(&signature.markers);
+                let pointer = self.scalar_operand(callee)?;
+                let lowered = self.l.signature(&signature.params, signature.result, abi, self.at)?;
+                let callee = Callee::Indirect(pointer, Box::new(lowered));
+                let args: Vec<&Operand> = args.iter().collect();
+                self.invoke(callee, &signature.params, signature.result, abi, &args, dest, ty)
+            }
+            Operand::Const(_) => Err(unsupported()),
         }
     }
 

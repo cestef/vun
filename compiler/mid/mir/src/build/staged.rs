@@ -27,7 +27,7 @@ impl Builder<'_, '_, '_> {
 
     /// `$if` as a value: the branch its conditions take, known here.
     pub(super) fn selected(&mut self, branch: ExprId, origin: OriginId) -> Result<Operand, Unbuilt> {
-        match self.env().select(branch).map_err(|_| Unbuilt { at: origin })? {
+        match self.env().select(branch).map_err(|_| Unbuilt::at(origin))? {
             Selected::Block(block) => self.block(block),
             Selected::Expr(otherwise) => self.operand(otherwise),
             Selected::Unit => Ok(Self::unit()),
@@ -39,10 +39,10 @@ impl Builder<'_, '_, '_> {
         match staged {
             Staged::If { cond, then, otherwise, origin } => {
                 let holds = self.env().eval(*cond).and_then(|c| self.env().holds(&c));
-                self.stmts(if holds.map_err(|_| Unbuilt { at: *origin })? { then } else { otherwise })
+                self.stmts(if holds.map_err(|_| Unbuilt::at(*origin))? { then } else { otherwise })
             }
             Staged::For { pat, iter, body, origin } => {
-                let unbuilt = Unbuilt { at: *origin };
+                let unbuilt = Unbuilt::at(*origin);
                 let items = self.env().eval(*iter).ok().and_then(Value::items).ok_or(unbuilt)?;
                 // `_` binds nothing: the body is repeated as written.
                 let binder = match hir.pats[*pat].kind {

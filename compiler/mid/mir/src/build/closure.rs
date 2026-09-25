@@ -2,9 +2,9 @@
 //! function takes the captures before its parameters. A capture by borrow (`[&mut n]`) holds the
 //! borrow, so the body reaches `n` through it.
 
-use vun_hir::resolve::Res;
 use vun_hir::tree::{BinderId, Entry, ExprId, ExprKind, List};
 use vun_origin::OriginId;
+use vun_sema::ty::TyKind;
 
 use super::{Builder, Unbuilt};
 use crate::place::{Place, Projection};
@@ -22,7 +22,7 @@ impl Builder<'_, '_, '_> {
             .iter()
             .map(|c| match c {
                 Entry::One(c) => self.operand(*c),
-                Entry::Staged(_) => Err(Unbuilt { at: origin }),
+                Entry::Staged(_) => Err(Unbuilt::at(origin)),
             })
             .collect::<Result<_, _>>()?;
         let kind = Aggregate::Closure { literal: func, staged: self.stepped() };
@@ -36,12 +36,15 @@ impl Builder<'_, '_, '_> {
         let ExprKind::Closure { captures, .. } = &hir.exprs[closure].kind else { return Ok(Vec::new()) };
         let mut params = Vec::new();
         for capture in captures {
-            let Entry::One(capture) = capture else { return Err(Unbuilt { at: origin }) };
-            let binder = self.captured(*capture).ok_or(Unbuilt { at: origin })?;
-            if matches!(hir.exprs[*capture].kind, ExprKind::Prefix { .. }) {
+            let Entry::One(capture) = capture else { return Err(Unbuilt::at(origin)) };
+            let (binder, borrow) = self.env.parsed.captured(*capture).ok_or(Unbuilt::at(origin))?;
+            let local = self.bind(binder);
+            // A capture by borrow holds the borrow, through which the body reaches the binder.
+            if let Some(mode) = borrow {
                 self.through.insert(binder);
+                self.locals[local].ty = self.locals[local].ty.and_then(|t| TyKind::borrowed_as(mode, t));
             }
-            params.push(self.bind(binder));
+            params.push(local);
         }
         Ok(params)
     }
@@ -50,17 +53,5 @@ impl Builder<'_, '_, '_> {
     pub(super) fn binder_place(&self, binder: BinderId) -> Place {
         let place = Place::of(self.bound[&binder]);
         if self.through.contains(&binder) { place.project(Projection::Deref) } else { place }
-    }
-
-    /// The binder the capture `capture` (`x`, `&mut x`) captures.
-    fn captured(&self, capture: ExprId) -> Option<BinderId> {
-        match &self.env.parsed.hir.exprs[capture].kind {
-            ExprKind::Prefix { operand, .. } => self.captured(*operand),
-            ExprKind::Name(_) => match self.env.parsed.resolution.names[capture] {
-                Some(Res::Binder(b)) => Some(b),
-                _ => None,
-            },
-            _ => None,
-        }
     }
 }

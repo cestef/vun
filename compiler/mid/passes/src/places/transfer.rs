@@ -110,9 +110,9 @@ impl Analysis<'_> {
         skip: BlockId,
         states: &mut States,
         origin: OriginId,
-    ) -> Vec<BlockId> {
+    ) -> BlockId {
         if consumes.iter().all(|&l| states.locals[l] == State::Init) {
-            return vec![run];
+            return run;
         }
         // Reported once here, not again as a leak at the return.
         let ambiguous: Vec<Local> =
@@ -131,7 +131,7 @@ impl Analysis<'_> {
                 .text(" runs on all of them or is skipped on all");
             self.advise(errors::PLACE_AMBIGUOUS_JOIN, origin, msg, Some(help));
         }
-        vec![skip]
+        skip
     }
 
     /// The locals the indices of `place` read must be `init`.

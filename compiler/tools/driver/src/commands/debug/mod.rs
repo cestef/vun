@@ -1,7 +1,8 @@
 //! `vun debug`: low-level commands for developing the compiler: each representation of a file
-//! with origins, and how the backends agree on a program.
+//! with origins, how far the stages take a file, and how the backends agree on a program.
 
 mod compare;
+mod coverage;
 mod dump;
 
 use vun_command::{Action, Command};
@@ -80,6 +81,12 @@ pub(super) const COMMANDS: &[Command<Session>] = &[
         action: Action::Run(|s, args, out| Stage::Frames.dump(s, args, out)),
     },
     Command::planned("link", "the link plan"),
+    Command {
+        name: "coverage",
+        about: "how far MIR and LIR take the functions of a file, and where each stops",
+        params: &[FILE],
+        action: Action::Run(coverage::coverage),
+    },
     Command {
         name: "compare",
         about: "build and run a program through every backend that generates code, and compare",

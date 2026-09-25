@@ -18,7 +18,7 @@ impl Builder<'_, '_, '_> {
         operand: ExprId,
         origin: OriginId,
     ) -> Result<Operand, Unbuilt> {
-        let unbuilt = Unbuilt { at: origin };
+        let unbuilt = Unbuilt::at(origin);
         // The variant `stop` is the other one, so a failed test of `go` is a stop.
         let row = EARLY_RETURN.first().ok_or(unbuilt)?;
         let typed = self.typed().ok_or(unbuilt)?;

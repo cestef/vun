@@ -18,32 +18,42 @@ mod place;
 mod staged;
 mod suspend;
 mod temp;
+mod value;
 
 use std::collections::{HashMap, HashSet};
+use std::panic::Location;
 use std::sync::Arc;
 
-use vun_grammar::TokenKind;
-use vun_hir::tree::{BinderId, Entry, ExprId, ExprKind, Lit, PatKind};
+use vun_hir::tree::{BinderId, Entry, ExprId, ExprKind, PatKind};
 use vun_index::{Idx, IndexVec};
-use vun_origin::OriginId;
+use vun_origin::{OriginId, OriginTable};
 use vun_query::{Cx, Cycle, Query};
-use vun_sema::env::{Env, Unevaluated};
+use vun_sema::env::Env;
 use vun_sema::eval::{Instantiation, Staging};
-use vun_sema::int::Integer;
-use vun_sema::ty::{Ty, Value};
-use vun_sema::typeck::{Operation, Step, Typed, TypedBody};
+use vun_sema::ty::Ty;
+use vun_sema::typeck::{Step, Typed, TypedBody};
+use vun_span::{SourceFiles, SourceMap};
 
 use crate::Lowered;
 use crate::place::Place;
 use crate::{
     Block, BlockId, Body, Local, LocalDecl, Operand, Role, Rvalue, Stmt, Terminator, TerminatorKind,
 };
-use operator::Side;
 
 /// A form MIR does not lower yet, by where it is written.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Unbuilt {
     pub at: OriginId,
+    /// The check of the builder that stopped, which `vun debug mir` names.
+    pub by: &'static Location<'static>,
+}
+
+impl Unbuilt {
+    #[must_use]
+    #[track_caller]
+    pub fn at(at: OriginId) -> Self {
+        Self { at, by: Location::caller() }
+    }
 }
 
 /// The MIR of an instantiation of a function literal: generic code is lowered per
@@ -59,18 +69,20 @@ impl Query for Mir {
         // What is evaluated while lowering, `$if` conditions and `$for` items, is typed as the
         // body is.
         let env = i.env(cx).expect("a function value's file is read");
-        let name = cx.db().resource::<vun_origin::OriginTable>().declaration_name(i.f.literal.expr.origin);
+        let name = cx.db().resource::<OriginTable>().declaration_name(i.f.literal.expr.origin);
         let _span =
             vun_trace::tracing::debug_span!("mir", f = name.as_ref().map_or("", |n| n.as_str())).entered();
         let built = Builder::lower(&env, i);
         if let Err(unbuilt) = &built {
-            vun_trace::tracing::debug!(at = ?unbuilt.at, "unbuilt");
+            let (origins, sources) = (cx.db().resource::<OriginTable>(), cx.db().resource::<SourceFiles>());
+            let at = sources.locate(origins.source_span(unbuilt.at)).to_string();
+            vun_trace::tracing::debug!(%at, by = %unbuilt.by, "unbuilt");
         }
         built.map(Arc::new)
     }
 
     fn cycle(_: &Cx<'_>, i: &Instantiation, _: &Cycle) -> Self::Value {
-        Err(Unbuilt { at: i.f.literal.expr.origin })
+        Err(Unbuilt::at(i.f.literal.expr.origin))
     }
 }
 
@@ -104,7 +116,7 @@ impl<'a, 'db> Builder<'_, 'a, 'db> {
         let literal = f.f.literal.expr.id;
         let origin = hir.exprs[literal].origin;
         let ExprKind::Fn { params, body, .. } = &hir.exprs[literal].kind else {
-            return Err(Unbuilt { at: origin });
+            return Err(Unbuilt::at(origin));
         };
         let mut locals = IndexVec::new();
         let ret = locals.push(LocalDecl { name: None, ty: None, role: Role::Held, origin });
@@ -127,9 +139,9 @@ impl<'a, 'db> Builder<'_, 'a, 'db> {
         let signature = env.literal_signature(literal, &f.args).ok();
         let types = signature.as_ref().map(|s| s.params.clone()).unwrap_or_default();
         for (index, param) in params.iter().enumerate() {
-            let Entry::One(param) = param else { return Err(Unbuilt { at: origin }) };
-            let pat = param.pat.ok_or(Unbuilt { at: param.origin })?;
-            let PatKind::Bind(binder) = hir.pats[pat].kind else { return Err(Unbuilt { at: param.origin }) };
+            let Entry::One(param) = param else { return Err(Unbuilt::at(origin)) };
+            let pat = param.pat.ok_or(Unbuilt::at(param.origin))?;
+            let PatKind::Bind(binder) = hir.pats[pat].kind else { return Err(Unbuilt::at(param.origin)) };
             let local = b.bind(binder);
             b.locals[local].ty = types.get(index).copied();
             args.push(local);
@@ -183,7 +195,9 @@ impl<'a, 'db> Builder<'_, 'a, 'db> {
     /// on.
     fn bind(&mut self, binder: BinderId) -> Local {
         let b = &self.env.parsed.hir.binders[binder];
-        let ty = self.env.cx.get::<Typed>(&self.f).and_then(|t| t.binders.get(&binder).copied());
+        let ty = self.typed().and_then(|t| t.binders.get(&binder).copied());
+        let ty =
+            ty.or_else(|| self.env.cx.get::<Typed>(&self.f).and_then(|t| t.binders.get(&binder).copied()));
         let local =
             self.locals.push(LocalDecl { name: Some(b.name), ty, role: Role::Held, origin: b.origin });
         self.bound.insert(binder, local);
@@ -205,88 +219,5 @@ impl<'a, 'db> Builder<'_, 'a, 'db> {
             self.locals[*local].ty = Some(ty);
         }
         Ok(operand)
-    }
-
-    fn value(&mut self, expr: ExprId) -> Result<Operand, Unbuilt> {
-        let hir = &self.env.parsed.hir;
-        let origin = hir.exprs[expr].origin;
-        let unbuilt = Unbuilt { at: origin };
-        match &hir.exprs[expr].kind {
-            ExprKind::Lit(Lit::Int(n)) => Ok(Operand::Const(Value::Int(Integer::from(*n)))),
-            ExprKind::Name(_) => self.named(expr, origin),
-            ExprKind::Block(block) => self.block(*block),
-            // Attributes are read where they apply, from the expression they mark.
-            ExprKind::Attributed { inner, .. } => self.operand(*inner),
-            ExprKind::Quote(_) => Ok(self.quote(expr, origin)),
-            ExprKind::Member { .. }
-            | ExprKind::Index { .. }
-            | ExprKind::Postfix { op: TokenKind::DotStar, .. } => self.read(expr),
-            ExprKind::Borrow { mode, operand } => {
-                self.borrow(expr, mode.ok_or(Unbuilt { at: origin })?, *operand)
-            }
-            // `unsafe e` runs `e`; what it permits is checked, not lowered.
-            ExprKind::Prefix { op: TokenKind::Unsafe, operand, .. } => self.operand(*operand),
-            ExprKind::Prefix { op: TokenKind::Dollar, operand, .. }
-                if matches!(hir.exprs[*operand].kind, ExprKind::If { .. }) =>
-            {
-                self.selected(*operand, origin)
-            }
-            ExprKind::Prefix { op: TokenKind::Dollar, operand, .. }
-                if let Ok(Value::Code(code)) = self.env().eval(*operand) =>
-            {
-                Ok(self.spliced(expr, code, origin))
-            }
-            ExprKind::Infix { op: op @ (TokenKind::DotDot | TokenKind::DotDotEq), left, right } => {
-                let lo = self.operand(*left)?;
-                let hi = right.map(|r| self.operand(r)).transpose()?;
-                Ok(self.temp(Rvalue::Range { op: *op, lo, hi }, origin))
-            }
-            ExprKind::Infix { op: op @ (TokenKind::And | TokenKind::Or), left, right: Some(right) } => {
-                self.logic(*op, *left, *right, origin)
-            }
-            ExprKind::Postfix { op: TokenKind::Question, operand } => {
-                self.early_return(expr, *operand, origin)
-            }
-            ExprKind::Yield(value) => self.yielded(*value, origin),
-            ExprKind::Closure { captures, func } => self.closure(captures, *func, origin),
-            ExprKind::Match { scrutinee, arms } => self.matching(*scrutinee, arms, origin),
-            ExprKind::If { cond, then, otherwise } => self.branch(cond, *then, *otherwise, origin),
-            ExprKind::For { head, body } => self.repeat(None, head, *body, origin),
-            ExprKind::Labeled { label, body } => match &hir.exprs[*body].kind {
-                ExprKind::For { head, body } => self.repeat(Some(*label), head, *body, origin),
-                _ => Err(unbuilt),
-            },
-            ExprKind::Break { label, value } => self.leave(*label, *value, origin),
-            ExprKind::Continue { label } => self.again(*label, origin),
-            ExprKind::Return(value) => self.exit(*value, origin),
-            ExprKind::Defer(statement) => Ok(self.deferred(*statement)),
-            ExprKind::Infix { left, right: Some(right), .. } => {
-                self.operator(Operation::Expr(expr), *left, vec![Side::Expr(*right)], origin)
-            }
-            ExprKind::Prefix { op: TokenKind::Minus | TokenKind::Tilde, operand, .. } => {
-                self.operator(Operation::Expr(expr), *operand, Vec::new(), origin)
-            }
-            ExprKind::Prefix { op: TokenKind::Bang, operand, .. } => {
-                let operand = self.operand(*operand)?;
-                Ok(self.temp(Rvalue::Not { operand }, origin))
-            }
-            ExprKind::Call { callee, .. } if matches!(hir.exprs[*callee].kind, ExprKind::DotName(_)) => {
-                self.aggregate(expr).unwrap_or(Err(unbuilt))
-            }
-            ExprKind::Call { callee, args } => self.call(expr, *callee, args, origin),
-            ExprKind::Struct(_) | ExprKind::Enum { .. } | ExprKind::Fn { .. } => {
-                Ok(self.temp(self.comptime(expr, None), origin))
-            }
-            // Anything else only as a constant sema can compute, such as `lang.int.u8`; one whose
-            // evaluation traps is evaluated by the call running the body, where the trap fires.
-            _ => match self.aggregate(expr) {
-                Some(built) => built,
-                None => match self.env().eval(expr) {
-                    Ok(value) => Ok(Operand::Const(value)),
-                    Err(Unevaluated::Trapped(_)) => Ok(self.temp(self.comptime(expr, None), origin)),
-                    Err(_) => Err(unbuilt),
-                },
-            },
-        }
     }
 }

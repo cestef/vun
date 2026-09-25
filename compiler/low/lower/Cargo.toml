@@ -20,6 +20,7 @@ vun-intern.workspace = true
 vun-items.workspace = true
 vun-lir.workspace = true
 vun-mir.workspace = true
+vun-mir-passes.workspace = true
 vun-origin.workspace = true
 vun-query.workspace = true
 vun-sema.workspace = true

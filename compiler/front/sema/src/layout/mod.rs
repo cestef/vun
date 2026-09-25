@@ -4,6 +4,7 @@
 //! variant and one payload variant whose payload has unused patterns keeps its tag in one of them
 //! (the niche rule).
 
+mod exists;
 mod frame;
 mod nominal;
 mod shape;
@@ -13,6 +14,7 @@ use std::sync::Arc;
 
 use vun_query::{Cx, Cycle, Query};
 
+pub use exists::Exists;
 pub use frame::{Framer, Framers};
 pub use shape::{Layout, Niche, Parts, Shape, Tag};
 pub use text::Text;

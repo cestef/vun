@@ -10,6 +10,8 @@ mod convert;
 mod coroutine;
 mod float;
 mod int;
+mod memory;
+mod narrow;
 mod place;
 mod primitive;
 mod rvalue;
@@ -19,11 +21,15 @@ mod verdict;
 
 pub(crate) use coroutine::Mode;
 
+use std::sync::Arc;
 use vun_index::{Idx, IndexVec};
 use vun_lir::{Builder, Function, Linkage, Scalar, Slot, Target, Terminator, Value};
+
 use vun_mir::{BlockId, Body, Local, Operand, Role, Rvalue, Unready};
+use vun_mir_passes::places::{Found, Placed};
 use vun_origin::OriginId;
 use vun_sema::eval::Instantiation;
+use vun_sema::kinds::Kinds;
 use vun_sema::ty::Ty;
 
 use crate::frame::FrameShape;
@@ -55,6 +61,8 @@ pub(crate) struct FnLower<'l, 'a, 'db> {
     frame: Option<Value>,
     /// What a coroutine's `resume` or `end` lowers the body as.
     coroutine: Option<coroutine::Coroutine>,
+    /// Where each deferred statement at an exit goes, as the place states decide.
+    defers: Arc<Found>,
     /// The origin of what is being lowered.
     pub(crate) at: OriginId,
 }
@@ -78,7 +86,7 @@ impl<'l, 'a, 'db> FnLower<'l, 'a, 'db> {
         let param_types = params.iter().map(|&p| Self::typed(body, p, at)).collect::<Result<Vec<_>, _>>()?;
         let signature = l.signature(&param_types, Self::typed(body, body.ret, at)?, f.f.abi(cx), at)?;
         let through = signature.through();
-        let mut this = Self::new(l, body, Builder::new(linkage, signature, at), at);
+        let mut this = Self::new(l, f, body, Builder::new(linkage, signature, at), at);
         this.storage(&params, None)?;
         this.entry(&params, through)?;
         this.create_blocks();
@@ -90,8 +98,16 @@ impl<'l, 'a, 'db> FnLower<'l, 'a, 'db> {
         Ok(function)
     }
 
-    fn new(l: &'l mut Lowering<'a, 'db>, body: &'l Body, b: Builder, at: OriginId) -> Self {
+    fn new(
+        l: &'l mut Lowering<'a, 'db>,
+        f: &Instantiation,
+        body: &'l Body,
+        b: Builder,
+        at: OriginId,
+    ) -> Self {
+        let defers = l.types.cx.get::<Placed>(f).unwrap_or_default();
         Self {
+            defers,
             b,
             l,
             body,
@@ -140,8 +156,10 @@ impl<'l, 'a, 'db> FnLower<'l, 'a, 'db> {
             }
             let storage = match (self.l.types.repr(ty, decl.origin)?, &decl.role) {
                 (Repr::Zero, _) => Storage::None,
+                // Immutable storage holding a cell is written through it all the same.
                 (_, Role::Static(global)) => {
-                    Storage::Global(self.l.global(global, ty, false, decl.origin)?)
+                    let interior = self.l.types.cx.get::<Kinds>(&ty).interior;
+                    Storage::Global(self.l.global(global, ty, interior, decl.origin)?)
                 }
                 (_, Role::StaticMut(global)) => {
                     Storage::Global(self.l.global(global, ty, true, decl.origin)?)

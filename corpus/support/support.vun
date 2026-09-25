@@ -49,7 +49,7 @@ Serial := struct {
     write := (self: &mut Serial, bytes: &[u8]) -> Async(()) { yield .{ .event = &ready }; };
 };
 Uart := struct {
-    send := (self: &mut Uart, bytes: &[u8]) -> Result(usize, uart.Error) { .ok(bytes.len()) };
+    send := (self: &mut Uart, bytes: &[u8]) -> Result(usize, support.uart.Error) { .ok(bytes.len()) };
 };
 Point := struct { x: i32, y: i32 };
 Reg := ($T: type) -> type { struct { raw: T } };
@@ -98,7 +98,10 @@ leaders := ($S: type, s: &S) -> u32 { 0 };
 blink := (led: &mut Led, timer: &Timer) -> Async(never) { for {} };
 
 /// A hosted runtime's system capability.
-System := struct {};
+System := struct {
+    /// The capability, from what the system left on the stack at the entry point.
+    from_stack := unsafe (sp: *usize) -> System { .{} };
+};
 Exit := enum { code(u8) };
 exit := (e: Exit) -> never { for {} };
 report := (t: &lang.panic.Trap) {};

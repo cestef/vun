@@ -66,8 +66,8 @@ impl Builder<'_, '_, '_> {
                 self.current = run;
             }
             ForHead::In { pat, .. } => {
-                let (frame, step) = iterator.ok_or(Unbuilt { at: origin })?;
-                let item = ITERATION.first().ok_or(Unbuilt { at: origin })?.each;
+                let (frame, step) = iterator.ok_or(Unbuilt::at(origin))?;
+                let item = ITERATION.first().ok_or(Unbuilt::at(origin))?.each;
                 // Each step is taken apart: the item it carries is bound.
                 let resumed = self.temp_local(Rvalue::Resume { frame: Place::of(frame), step }, origin);
                 self.locals[resumed].role = Role::Unpacked;
@@ -102,7 +102,7 @@ impl Builder<'_, '_, '_> {
     /// The iterator `for p in e` drives, in a new local, and the type resuming it gives: made
     /// by the `iter` of the witness the typer found.
     fn iterator(&mut self, iter: ExprId, origin: OriginId) -> Result<(Local, Ty), Unbuilt> {
-        let unbuilt = Unbuilt { at: origin };
+        let unbuilt = Unbuilt::at(origin);
         let function = ITERATION.first().ok_or(unbuilt)?.function;
         let iteration = *self.typed().ok_or(unbuilt)?.iterations.get(&iter).ok_or(unbuilt)?;
         let make = self.env.cx.get::<MemberValue>(&(iteration.witness, function.symbol()));
@@ -148,7 +148,7 @@ impl Builder<'_, '_, '_> {
             Some(label) => loops.find(|l| l.label == Some(label)),
             None => loops.next(),
         }
-        .ok_or(Unbuilt { at: origin })
+        .ok_or(Unbuilt::at(origin))
     }
 
     /// Ends the current block with `kind`, and continues in an unreachable block.

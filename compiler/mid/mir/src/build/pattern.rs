@@ -73,7 +73,7 @@ impl Builder<'_, '_, '_> {
     pub(super) fn test(&mut self, pat: PatId, matched: &Matched, fail: BlockId) -> Result<(), Unbuilt> {
         let hir = &self.env.parsed.hir;
         let origin = hir.pats[pat].origin;
-        let unbuilt = Unbuilt { at: origin };
+        let unbuilt = Unbuilt::at(origin);
         match &hir.pats[pat].kind {
             PatKind::Hole | PatKind::Rest(None) => Ok(()),
             PatKind::Bind(binder) => {
@@ -178,7 +178,7 @@ impl Builder<'_, '_, '_> {
             !binders.is_empty()
         });
         if binds {
-            return Err(Unbuilt { at: origin });
+            return Err(Unbuilt::at(origin));
         }
         let success = self.fresh(origin);
         for (i, &alternative) in alternatives.iter().enumerate() {
@@ -220,7 +220,7 @@ impl Builder<'_, '_, '_> {
         let matched = self.scrutinee(scrutinee)?;
         let (result, join) = (self.result(origin), self.fresh(origin));
         for arm in arms {
-            let Entry::One(arm) = arm else { return Err(Unbuilt { at: origin }) };
+            let Entry::One(arm) = arm else { return Err(Unbuilt::at(origin)) };
             let next = self.fresh(arm.origin);
             self.test(arm.pat, &matched, next)?;
             if let Some(guard) = arm.guard {

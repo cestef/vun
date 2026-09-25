@@ -3,188 +3,188 @@
 
 /// Tokens and syntax trees (spec 01).
 syntax := struct {
-    unknown_character := diag.Diag{ .explanation = meta.embed("errors/syntax/unknown_character.md") };
-    unterminated_string := diag.Diag{ .explanation = meta.embed("errors/syntax/unterminated_string.md") };
-    unterminated_char := diag.Diag{ .explanation = meta.embed("errors/syntax/unterminated_char.md") };
-    invalid_escape := diag.Diag{ .explanation = meta.embed("errors/syntax/invalid_escape.md") };
-    malformed_number := diag.Diag{ .explanation = meta.embed("errors/syntax/malformed_number.md") };
-    stray_escape := diag.Diag{ .explanation = meta.embed("errors/syntax/stray_escape.md") };
-    expected_token := diag.Diag{ .explanation = meta.embed("errors/syntax/expected_token.md") };
-    expected_expression := diag.Diag{ .explanation = meta.embed("errors/syntax/expected_expression.md") };
-    expected_declaration := diag.Diag{ .explanation = meta.embed("errors/syntax/expected_declaration.md") };
-    expected_name := diag.Diag{ .explanation = meta.embed("errors/syntax/expected_name.md") };
-    unclosed_delimiter := diag.Diag{ .explanation = meta.embed("errors/syntax/unclosed_delimiter.md") };
-    chained_operator := diag.Diag{ .explanation = meta.embed("errors/syntax/chained_operator.md") };
-    nesting_too_deep := diag.Diag{ .explanation = meta.embed("errors/syntax/nesting_too_deep.md") };
-    unknown_borrow := diag.Diag{ .explanation = meta.embed("errors/syntax/unknown_borrow.md") };
+    unknown_character := diag.Diag{ .explanation = lang.meta.embed("errors/syntax/unknown_character.md") };
+    unterminated_string := diag.Diag{ .explanation = lang.meta.embed("errors/syntax/unterminated_string.md") };
+    unterminated_char := diag.Diag{ .explanation = lang.meta.embed("errors/syntax/unterminated_char.md") };
+    invalid_escape := diag.Diag{ .explanation = lang.meta.embed("errors/syntax/invalid_escape.md") };
+    malformed_number := diag.Diag{ .explanation = lang.meta.embed("errors/syntax/malformed_number.md") };
+    stray_escape := diag.Diag{ .explanation = lang.meta.embed("errors/syntax/stray_escape.md") };
+    expected_token := diag.Diag{ .explanation = lang.meta.embed("errors/syntax/expected_token.md") };
+    expected_expression := diag.Diag{ .explanation = lang.meta.embed("errors/syntax/expected_expression.md") };
+    expected_declaration := diag.Diag{ .explanation = lang.meta.embed("errors/syntax/expected_declaration.md") };
+    expected_name := diag.Diag{ .explanation = lang.meta.embed("errors/syntax/expected_name.md") };
+    unclosed_delimiter := diag.Diag{ .explanation = lang.meta.embed("errors/syntax/unclosed_delimiter.md") };
+    chained_operator := diag.Diag{ .explanation = lang.meta.embed("errors/syntax/chained_operator.md") };
+    nesting_too_deep := diag.Diag{ .explanation = lang.meta.embed("errors/syntax/nesting_too_deep.md") };
+    unknown_borrow := diag.Diag{ .explanation = lang.meta.embed("errors/syntax/unknown_borrow.md") };
 };
 
 /// Attributes (spec 02, section 5).
 attr := struct {
-    misplaced := diag.Diag{ .explanation = meta.embed("errors/attr/misplaced.md") };
+    misplaced := diag.Diag{ .explanation = lang.meta.embed("errors/attr/misplaced.md") };
 };
 
 /// Range integers (spec 04).
 int := struct {
-    does_not_fit := diag.Diag{ .explanation = meta.embed("errors/int/does_not_fit.md") };
-    width_cap := diag.Diag{ .explanation = meta.embed("errors/int/width_cap.md") };
+    does_not_fit := diag.Diag{ .explanation = lang.meta.embed("errors/int/does_not_fit.md") };
+    width_cap := diag.Diag{ .explanation = lang.meta.embed("errors/int/width_cap.md") };
 };
 
 /// Type checking (spec 02).
 types := struct {
-    mismatch := diag.Diag{ .explanation = meta.embed("errors/types/mismatch.md") };
-    no_member := diag.Diag{ .explanation = meta.embed("errors/types/no_member.md") };
-    no_impl := diag.Diag{ .explanation = meta.embed("errors/types/no_impl.md") };
-    cannot_infer := diag.Diag{ .explanation = meta.embed("errors/types/cannot_infer.md") };
-    arity := diag.Diag{ .explanation = meta.embed("errors/types/arity.md") };
+    mismatch := diag.Diag{ .explanation = lang.meta.embed("errors/types/mismatch.md") };
+    no_member := diag.Diag{ .explanation = lang.meta.embed("errors/types/no_member.md") };
+    no_impl := diag.Diag{ .explanation = lang.meta.embed("errors/types/no_impl.md") };
+    cannot_infer := diag.Diag{ .explanation = lang.meta.embed("errors/types/cannot_infer.md") };
+    arity := diag.Diag{ .explanation = lang.meta.embed("errors/types/arity.md") };
 };
 
 /// Name resolution and visibility (spec 01, sections 3, 7 and 8).
 names := struct {
-    unresolved := diag.Diag{ .explanation = meta.embed("errors/names/unresolved.md") };
-    shadowed := diag.Diag{ .explanation = meta.embed("errors/names/shadowed.md") };
-    private := diag.Diag{ .explanation = meta.embed("errors/names/private.md") };
-    visibility := diag.Diag{ .explanation = meta.embed("errors/names/visibility.md") };
-    duplicate := diag.Diag{ .explanation = meta.embed("errors/names/duplicate.md") };
+    unresolved := diag.Diag{ .explanation = lang.meta.embed("errors/names/unresolved.md") };
+    shadowed := diag.Diag{ .explanation = lang.meta.embed("errors/names/shadowed.md") };
+    private := diag.Diag{ .explanation = lang.meta.embed("errors/names/private.md") };
+    visibility := diag.Diag{ .explanation = lang.meta.embed("errors/names/visibility.md") };
+    duplicate := diag.Diag{ .explanation = lang.meta.embed("errors/names/duplicate.md") };
 };
 
 /// Bindings and patterns (spec 01, sections 3 and 6).
 binding := struct {
-    hole_value := diag.Diag{ .explanation = meta.embed("errors/binding/hole_value.md") };
-    irrefutable_test := diag.Diag{ .explanation = meta.embed("errors/binding/irrefutable_test.md") };
+    hole_value := diag.Diag{ .explanation = lang.meta.embed("errors/binding/hole_value.md") };
+    irrefutable_test := diag.Diag{ .explanation = lang.meta.embed("errors/binding/irrefutable_test.md") };
 };
 
 /// The `unsafe` boundary (spec 01, section 3; spec 05, section 5).
 safety := struct {
-    requires_unsafe := diag.Diag{ .explanation = meta.embed("errors/safety/requires_unsafe.md") };
+    requires_unsafe := diag.Diag{ .explanation = lang.meta.embed("errors/safety/requires_unsafe.md") };
 };
 
 /// Interface conformance (spec 02, section 3).
 impl := struct {
-    missing_requirement := diag.Diag{ .explanation = meta.embed("errors/impl/missing_requirement.md") };
-    duplicate := diag.Diag{ .explanation = meta.embed("errors/impl/duplicate.md") };
-    collision := diag.Diag{ .explanation = meta.embed("errors/impl/collision.md") };
+    missing_requirement := diag.Diag{ .explanation = lang.meta.embed("errors/impl/missing_requirement.md") };
+    duplicate := diag.Diag{ .explanation = lang.meta.embed("errors/impl/duplicate.md") };
+    collision := diag.Diag{ .explanation = lang.meta.embed("errors/impl/collision.md") };
 };
 
 /// Coroutine frames (spec 06, section 1).
 coroutine := struct {
-    recursive_frame := diag.Diag{ .explanation = meta.embed("errors/coroutine/recursive_frame.md") };
+    recursive_frame := diag.Diag{ .explanation = lang.meta.embed("errors/coroutine/recursive_frame.md") };
 };
 
 /// Layout attributes (spec 05, section 6).
 layout := struct {
-    bits_width := diag.Diag{ .explanation = meta.embed("errors/layout/bits_width.md") };
-    not_c := diag.Diag{ .explanation = meta.embed("errors/layout/not_c.md") };
+    bits_width := diag.Diag{ .explanation = lang.meta.embed("errors/layout/bits_width.md") };
+    not_c := diag.Diag{ .explanation = lang.meta.embed("errors/layout/not_c.md") };
 };
 
 /// Compile-time evaluation and reflection (spec 03).
 meta := struct {
-    frozen := diag.Diag{ .explanation = meta.embed("errors/meta/frozen.md") };
-    escape := diag.Diag{ .explanation = meta.embed("errors/meta/escape.md") };
+    frozen := diag.Diag{ .explanation = lang.meta.embed("errors/meta/frozen.md") };
+    escape := diag.Diag{ .explanation = lang.meta.embed("errors/meta/escape.md") };
 };
 
 /// Compile-time evaluation (spec 03, section 7).
 comptime := struct {
-    trap := diag.Diag{ .explanation = meta.embed("errors/comptime/trap.md") };
-    exhausted := diag.Diag{ .explanation = meta.embed("errors/comptime/exhausted.md") };
-    reported := diag.Diag{ .explanation = meta.embed("errors/comptime/reported.md") };
+    trap := diag.Diag{ .explanation = lang.meta.embed("errors/comptime/trap.md") };
+    exhausted := diag.Diag{ .explanation = lang.meta.embed("errors/comptime/exhausted.md") };
+    reported := diag.Diag{ .explanation = lang.meta.embed("errors/comptime/reported.md") };
 };
 
 /// Place states (spec 05, section 2).
 place := struct {
-    read_uninit := diag.Diag{ .explanation = meta.embed("errors/place/read_uninit.md") };
-    linear_leak := diag.Diag{ .explanation = meta.embed("errors/place/linear_leak.md") };
-    ambiguous_join := diag.Diag{ .explanation = meta.embed("errors/place/ambiguous_join.md") };
-    out_unwritten := diag.Diag{ .explanation = meta.embed("errors/place/out_unwritten.md") };
-    move_out_of_borrow := diag.Diag{ .explanation = meta.embed("errors/place/move_out_of_borrow.md") };
+    read_uninit := diag.Diag{ .explanation = lang.meta.embed("errors/place/read_uninit.md") };
+    linear_leak := diag.Diag{ .explanation = lang.meta.embed("errors/place/linear_leak.md") };
+    ambiguous_join := diag.Diag{ .explanation = lang.meta.embed("errors/place/ambiguous_join.md") };
+    out_unwritten := diag.Diag{ .explanation = lang.meta.embed("errors/place/out_unwritten.md") };
+    move_out_of_borrow := diag.Diag{ .explanation = lang.meta.embed("errors/place/move_out_of_borrow.md") };
 };
 
 /// Scoped borrows and exclusivity (spec 05, sections 4 and 8).
 borrow := struct {
-    conflict := diag.Diag{ .explanation = meta.embed("errors/borrow/conflict.md") };
-    escape := diag.Diag{ .explanation = meta.embed("errors/borrow/escape.md") };
-    in_free_value := diag.Diag{ .explanation = meta.embed("errors/borrow/in_free_value.md") };
+    conflict := diag.Diag{ .explanation = lang.meta.embed("errors/borrow/conflict.md") };
+    escape := diag.Diag{ .explanation = lang.meta.embed("errors/borrow/escape.md") };
+    in_free_value := diag.Diag{ .explanation = lang.meta.embed("errors/borrow/in_free_value.md") };
 };
 
 /// Trap freedom (spec 07, section 3).
 panic := struct {
-    never_violated := diag.Diag{ .explanation = meta.embed("errors/panic/never_violated.md") };
+    never_violated := diag.Diag{ .explanation = lang.meta.embed("errors/panic/never_violated.md") };
 };
 
 /// Code generation backends (spec 13).
 backend := struct {
-    unavailable := diag.Diag{ .explanation = meta.embed("errors/backend/unavailable.md") };
-    lacks := diag.Diag{ .explanation = meta.embed("errors/backend/lacks.md") };
-    tool := diag.Diag{ .explanation = meta.embed("errors/backend/tool.md") };
-    unlowered := diag.Diag{ .explanation = meta.embed("errors/backend/unlowered.md") };
+    unavailable := diag.Diag{ .explanation = lang.meta.embed("errors/backend/unavailable.md") };
+    lacks := diag.Diag{ .explanation = lang.meta.embed("errors/backend/lacks.md") };
+    tool := diag.Diag{ .explanation = lang.meta.embed("errors/backend/tool.md") };
+    unlowered := diag.Diag{ .explanation = lang.meta.embed("errors/backend/unlowered.md") };
 };
 
 /// Stack bounds (spec 07, section 4).
 stack := struct {
-    exceeded := diag.Diag{ .explanation = meta.embed("errors/stack/exceeded.md") };
-    unbounded := diag.Diag{ .explanation = meta.embed("errors/stack/unbounded.md") };
-    unreported := diag.Diag{ .explanation = meta.embed("errors/stack/unreported.md") };
+    exceeded := diag.Diag{ .explanation = lang.meta.embed("errors/stack/exceeded.md") };
+    unbounded := diag.Diag{ .explanation = lang.meta.embed("errors/stack/unbounded.md") };
+    unreported := diag.Diag{ .explanation = lang.meta.embed("errors/stack/unreported.md") };
 };
 
 /// Targets (spec 13, section 7).
 target := struct {
-    unchosen := diag.Diag{ .explanation = meta.embed("errors/target/unchosen.md") };
+    unchosen := diag.Diag{ .explanation = lang.meta.embed("errors/target/unchosen.md") };
 };
 
 /// Linking (spec 13).
 link := struct {
-    unavailable := diag.Diag{ .explanation = meta.embed("errors/link/unavailable.md") };
-    export_mismatch := diag.Diag{ .explanation = meta.embed("errors/link/export_mismatch.md") };
+    unavailable := diag.Diag{ .explanation = lang.meta.embed("errors/link/unavailable.md") };
+    export_mismatch := diag.Diag{ .explanation = lang.meta.embed("errors/link/export_mismatch.md") };
 };
 
 /// Package manifests: the `package` literal of `build.vun` (spec 12, section 2).
 manifest := struct {
-    missing_package := diag.Diag{ .explanation = meta.embed("errors/manifest/missing_package.md") };
-    missing_field := diag.Diag{ .explanation = meta.embed("errors/manifest/missing_field.md") };
-    unknown_field := diag.Diag{ .explanation = meta.embed("errors/manifest/unknown_field.md") };
-    invalid_field := diag.Diag{ .explanation = meta.embed("errors/manifest/invalid_field.md") };
-    uneditable := diag.Diag{ .explanation = meta.embed("errors/manifest/uneditable.md") };
+    missing_package := diag.Diag{ .explanation = lang.meta.embed("errors/manifest/missing_package.md") };
+    missing_field := diag.Diag{ .explanation = lang.meta.embed("errors/manifest/missing_field.md") };
+    unknown_field := diag.Diag{ .explanation = lang.meta.embed("errors/manifest/unknown_field.md") };
+    invalid_field := diag.Diag{ .explanation = lang.meta.embed("errors/manifest/invalid_field.md") };
+    uneditable := diag.Diag{ .explanation = lang.meta.embed("errors/manifest/uneditable.md") };
 };
 
 /// Packages and their namespaces on disk (spec 01, section 8, and spec 12, section 3).
 package := struct {
-    missing_dep := diag.Diag{ .explanation = meta.embed("errors/package/missing_dep.md") };
-    missing_namespace := diag.Diag{ .explanation = meta.embed("errors/package/missing_namespace.md") };
-    hash_mismatch := diag.Diag{ .explanation = meta.embed("errors/package/hash_mismatch.md") };
-    fetch_failed := diag.Diag{ .explanation = meta.embed("errors/package/fetch_failed.md") };
-    no_project := diag.Diag{ .explanation = meta.embed("errors/package/no_project.md") };
-    duplicate_dep := diag.Diag{ .explanation = meta.embed("errors/package/duplicate_dep.md") };
-    unnamed := diag.Diag{ .explanation = meta.embed("errors/package/unnamed.md") };
-    version_conflict := diag.Diag{ .explanation = meta.embed("errors/package/version_conflict.md") };
-    stale_lock := diag.Diag{ .explanation = meta.embed("errors/package/stale_lock.md") };
+    missing_dep := diag.Diag{ .explanation = lang.meta.embed("errors/package/missing_dep.md") };
+    missing_namespace := diag.Diag{ .explanation = lang.meta.embed("errors/package/missing_namespace.md") };
+    hash_mismatch := diag.Diag{ .explanation = lang.meta.embed("errors/package/hash_mismatch.md") };
+    fetch_failed := diag.Diag{ .explanation = lang.meta.embed("errors/package/fetch_failed.md") };
+    no_project := diag.Diag{ .explanation = lang.meta.embed("errors/package/no_project.md") };
+    duplicate_dep := diag.Diag{ .explanation = lang.meta.embed("errors/package/duplicate_dep.md") };
+    unnamed := diag.Diag{ .explanation = lang.meta.embed("errors/package/unnamed.md") };
+    version_conflict := diag.Diag{ .explanation = lang.meta.embed("errors/package/version_conflict.md") };
+    stale_lock := diag.Diag{ .explanation = lang.meta.embed("errors/package/stale_lock.md") };
 };
 
 /// A package's plan, which its `build` records (spec 12, section 2).
 plan := struct {
-    missing_build := diag.Diag{ .explanation = meta.embed("errors/plan/missing_build.md") };
-    stopped := diag.Diag{ .explanation = meta.embed("errors/plan/stopped.md") };
+    missing_build := diag.Diag{ .explanation = lang.meta.embed("errors/plan/missing_build.md") };
+    stopped := diag.Diag{ .explanation = lang.meta.embed("errors/plan/stopped.md") };
 };
 
 /// The toolchain's tools and the native libraries they load (decision 131).
 tool := struct {
-    missing_library := diag.Diag{ .explanation = meta.embed("errors/tool/missing_library.md") };
-    bind_failed := diag.Diag{ .explanation = meta.embed("errors/tool/bind_failed.md") };
-    bind_skipped := diag.Diag{ .explanation = meta.embed("errors/tool/bind_skipped.md") };
+    missing_library := diag.Diag{ .explanation = lang.meta.embed("errors/tool/missing_library.md") };
+    bind_failed := diag.Diag{ .explanation = lang.meta.embed("errors/tool/bind_failed.md") };
+    bind_skipped := diag.Diag{ .explanation = lang.meta.embed("errors/tool/bind_skipped.md") };
 };
 
 /// Reading and writing files.
 io := struct {
-    unreadable_file := diag.Diag{ .explanation = meta.embed("errors/io/unreadable_file.md") };
-    unwritable_file := diag.Diag{ .explanation = meta.embed("errors/io/unwritable_file.md") };
+    unreadable_file := diag.Diag{ .explanation = lang.meta.embed("errors/io/unreadable_file.md") };
+    unwritable_file := diag.Diag{ .explanation = lang.meta.embed("errors/io/unwritable_file.md") };
 };
 
 /// The command line (spec 12, section 7).
 cli := struct {
-    unknown_command := diag.Diag{ .explanation = meta.embed("errors/cli/unknown_command.md") };
-    missing_argument := diag.Diag{ .explanation = meta.embed("errors/cli/missing_argument.md") };
-    unexpected_argument := diag.Diag{ .explanation = meta.embed("errors/cli/unexpected_argument.md") };
-    unknown_option := diag.Diag{ .explanation = meta.embed("errors/cli/unknown_option.md") };
-    missing_value := diag.Diag{ .explanation = meta.embed("errors/cli/missing_value.md") };
-    invalid_value := diag.Diag{ .explanation = meta.embed("errors/cli/invalid_value.md") };
-    unavailable_command := diag.Diag{ .explanation = meta.embed("errors/cli/unavailable_command.md") };
+    unknown_command := diag.Diag{ .explanation = lang.meta.embed("errors/cli/unknown_command.md") };
+    missing_argument := diag.Diag{ .explanation = lang.meta.embed("errors/cli/missing_argument.md") };
+    unexpected_argument := diag.Diag{ .explanation = lang.meta.embed("errors/cli/unexpected_argument.md") };
+    unknown_option := diag.Diag{ .explanation = lang.meta.embed("errors/cli/unknown_option.md") };
+    missing_value := diag.Diag{ .explanation = lang.meta.embed("errors/cli/missing_value.md") };
+    invalid_value := diag.Diag{ .explanation = lang.meta.embed("errors/cli/invalid_value.md") };
+    unavailable_command := diag.Diag{ .explanation = lang.meta.embed("errors/cli/unavailable_command.md") };
 };

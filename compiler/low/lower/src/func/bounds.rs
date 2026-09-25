@@ -4,7 +4,7 @@
 //! checked to lie within it.
 
 use vun_grammar::TokenKind;
-use vun_lir::{Access, BinOp, Cond, InstKind, Scalar, Value};
+use vun_lir::{Access, BinOp, Cond, Scalar, Value};
 use vun_mir::Operand;
 use vun_sema::layout::{BoundsEnd, Parts};
 use vun_sema::primitives::bounds::Bounds;
@@ -142,8 +142,7 @@ impl FnLower<'_, '_, '_> {
             return self.condition(last, dest, ty);
         }
         let Some(dest) = dest else { return Ok(()) };
-        let kind = InstKind::Select { cond: last, then: item, otherwise: next };
-        let after = self.b.push(kind, Some(bounds.scalar), self.at).expect("a select has a value");
+        let after = self.b.select(last, item, next, self.at);
         self.b.store(after, dest, Access::Plain, self.at);
         Ok(())
     }
@@ -167,12 +166,7 @@ impl FnLower<'_, '_, '_> {
         // which the test of the last item against the length catches.
         let one = self.b.constant(word, 1, self.at);
         let past = self.b.binary(BinOp::Add, second, one, self.at);
-        let end = self.b.push(
-            InstKind::Select { cond: b.through, then: past, otherwise: second },
-            Some(word),
-            self.at,
-        );
-        let end = end.expect("a select has a value");
+        let end = self.b.select(b.through, past, second, self.at);
         let (at_most, below) = (
             self.b.compare(Cond::ULe, second, len, self.at),
             self.b.compare(Cond::ULt, second, len, self.at),
@@ -180,9 +174,7 @@ impl FnLower<'_, '_, '_> {
         let bounded = self.by_end(&b, at_most, below);
         // Without an end, the run goes to the last item.
         let inside = self.b.binary(BinOp::Or, bounded, b.open, self.at);
-        let end =
-            self.b.push(InstKind::Select { cond: b.open, then: len, otherwise: end }, Some(word), self.at);
-        let end = end.expect("a select has a value");
+        let end = self.b.select(b.open, len, end, self.at);
         let ordered = self.b.compare(Cond::ULe, lo, end, self.at);
         let valid = self.b.binary(BinOp::And, ordered, inside, self.at);
         self.check(valid)?;

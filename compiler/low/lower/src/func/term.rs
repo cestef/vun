@@ -29,11 +29,15 @@ impl FnLower<'_, '_, '_> {
                     otherwise: jump(self.blocks[*otherwise]),
                 }
             }
-            // Only a deferred statement consuming nothing is known to run without the place states.
-            TerminatorKind::Defer { consumes, run, .. } if consumes.is_empty() => {
-                Terminator::Jump(jump(self.blocks[*run]))
+            // The place states decide, statically, whether a deferred statement runs.
+            TerminatorKind::Defer { consumes, run, .. } => {
+                let next = match self.defers.defers.get(&id) {
+                    Some(next) => *next,
+                    None if consumes.is_empty() => *run,
+                    None => return Err(Unlowered::unsupported(self.at, Form::Defer)),
+                };
+                Terminator::Jump(jump(self.blocks[next]))
             }
-            TerminatorKind::Defer { .. } => return Err(Unlowered::unsupported(self.at, Form::Defer)),
             TerminatorKind::Yield { .. } | TerminatorKind::Ended => {
                 return Err(Unlowered::unsupported(self.at, Form::Frame));
             }

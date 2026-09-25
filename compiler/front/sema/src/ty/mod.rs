@@ -52,7 +52,7 @@ pub enum TyKind {
     /// `lang.ops.Call`.
     Closure(Closure),
     /// The frame a call of a coroutine function returns (spec 06, section 1).
-    Frame(Frame),
+    Frame(Box<Frame>),
     /// A `$` parameter constrained by an interface, as the generic body sees it before an
     /// instantiation binds it: its members are the interface's requirements for it (spec 02,
     /// section 3).
@@ -99,12 +99,12 @@ impl Frame {
     }
 }
 
-/// The type of a closure literal: where it is written, the call it was evaluated in, the type of
-/// each capture by the name of the binder captured, and the signature of its function.
+/// The type of a closure literal: its function, which takes the captures before its parameters,
+/// the type of each capture by the name of the binder captured, and the signature of the function
+/// without them.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Closure {
-    pub literal: ExprRef,
-    pub instance: Option<Instance>,
+    pub f: crate::eval::Func,
     pub captures: Vec<(Symbol, Ty)>,
     pub signature: Signature,
 }

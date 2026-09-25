@@ -95,7 +95,7 @@ impl Typer<'_, '_, '_> {
             }
             ExprKind::Call { callee, args } => self.call(expr, *callee, args),
             // A function literal is a value; its body is typed on its own.
-            ExprKind::Closure { captures, func } => self.closure(expr, captures, *func),
+            ExprKind::Closure { captures, func } => self.closure(captures, *func),
             ExprKind::Fn { .. } => compile(self.env().literal_signature(expr, &[]).ok()?.ty()),
             ExprKind::Yield(value) => self.yielded(*value),
             ExprKind::FnType { .. } | ExprKind::Struct(_) | ExprKind::Enum { .. } => {

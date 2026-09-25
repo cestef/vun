@@ -10,6 +10,6 @@ mod signature;
 mod unlowered;
 
 pub use frame::{FrameShape, FrameState, Frames, Framing};
-pub use program::Lowered;
+pub use program::{EachLowered, Lowered};
 pub use repr::{Repr, Types};
 pub use unlowered::{Form, Unlowered, Why};

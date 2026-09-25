@@ -7,12 +7,14 @@ use std::sync::Arc;
 use vun_index::IndexVec;
 use vun_origin::OriginId;
 use vun_query::{Cx, Cycle, Query};
+use vun_sema::Primitive;
+use vun_sema::callable::Callable;
 use vun_sema::env::{Env, Unevaluated};
 use vun_sema::eval::{Func, Instantiation};
 use vun_sema::ty::Value;
 use vun_sema::typeck::Typed;
 
-use crate::{Body, Local, Mir, Operand, Rvalue, Unbuilt};
+use crate::{Aggregate, Body, Local, Mir, Operand, Rvalue, Unbuilt};
 
 /// Why an instantiation's body is not ready for code generation.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -46,7 +48,7 @@ impl Unready {
     #[must_use]
     pub fn at(&self) -> OriginId {
         match self {
-            Self::Unbuilt(Unbuilt { at }) | Self::Unevaluated { at, .. } | Self::Untyped { at } => *at,
+            Self::Unbuilt(Unbuilt { at, .. }) | Self::Unevaluated { at, .. } | Self::Untyped { at } => *at,
         }
     }
 }
@@ -65,13 +67,13 @@ impl Query for Concrete {
         let splice =
             body.blocks.iter().flat_map(|(_, b)| &b.stmts).find(|s| matches!(s.value, Rvalue::Splice { .. }));
         if let Some(stmt) = splice {
-            return Err(Unready::Unbuilt(Unbuilt { at: stmt.origin }));
+            return Err(Unready::Unbuilt(Unbuilt::at(stmt.origin)));
         }
         let env = i
             .env(cx)
             .ok_or(Unready::Unevaluated { at: i.f.literal.expr.origin, why: Unevaluated::Absent })?;
         body.evaluate(&env)?;
-        body.propagate(&i.args);
+        body.propagate(&env, &i.args);
         body.typed()?;
         Ok(Arc::new(body))
     }
@@ -123,8 +125,8 @@ impl Body {
 
     /// Replaces each read of a local holding a constant by that constant: a `$` parameter bound
     /// to `bound`'s value, or a local written once, whole, with a constant, and never borrowed;
-    /// until no read changes. A constant written into a local nothing reads is dropped.
-    fn propagate(&mut self, bound: &[Option<Value>]) {
+    /// and folds the calls known when compiling; until nothing changes. A constant written into a local nothing reads is dropped.
+    fn propagate(&mut self, env: &Env<'_, '_>, bound: &[Option<Value>]) {
         loop {
             let (writes, mut constants) = self.writes();
             for (&param, value) in self.params.iter().zip(bound) {
@@ -148,7 +150,7 @@ impl Body {
                     }
                 }
             }
-            if !changed {
+            if !self.fold(env) && !changed {
                 break;
             }
         }
@@ -160,6 +162,45 @@ impl Body {
                     && matches!(s.value, Rvalue::Use(Operand::Const(_))))
             });
         }
+    }
+
+    /// Rewrites the calls known when compiling: a variant's constructor builds the variant, and
+    /// a primitive whose parameters are all `$` ones, given constants, is its value, which
+    /// nothing at run time changes. Gives whether any changed.
+    fn fold(&mut self, env: &Env<'_, '_>) -> bool {
+        let mut changed = false;
+        for (_, block) in self.blocks.iter_mut() {
+            for stmt in &mut block.stmts {
+                let Rvalue::Call { callee: Operand::Const(callee), args } = &stmt.value else { continue };
+                let folded = match callee {
+                    Value::Constructor { ty, name } => Some(Rvalue::Aggregate {
+                        kind: Aggregate::Variant { ty: *ty, name: *name },
+                        parts: args.clone(),
+                    }),
+                    Value::Primitive(p) => Self::known(env, *p, args).map(|v| Rvalue::Use(Operand::Const(v))),
+                    _ => None,
+                };
+                if let Some(folded) = folded {
+                    stmt.value = folded;
+                    changed = true;
+                }
+            }
+        }
+        changed
+    }
+
+    /// The value of the primitive `p` applied to `args`, when every parameter of it is a `$` one
+    /// and every argument a constant.
+    fn known(env: &Env<'_, '_>, p: Primitive, args: &[Operand]) -> Option<Value> {
+        let comptime = Callable::Primitive(p).comptime(env)?;
+        if !comptime.iter().all(|&c| c) {
+            return None;
+        }
+        let args = args.iter().map(|a| match a {
+            Operand::Const(v) => Some(v.clone()),
+            Operand::Place(_) => None,
+        });
+        env.apply(Value::Primitive(p), args.collect::<Option<_>>()?).ok()
     }
 
     /// How many statements write each local, parameters and the result counting once more, and

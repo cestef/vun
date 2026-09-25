@@ -33,7 +33,7 @@ impl Builder<'_, '_, '_> {
         args: &[Entry<Arg>],
         origin: OriginId,
     ) -> Result<Operand, Unbuilt> {
-        let unbuilt = Unbuilt { at: origin };
+        let unbuilt = Unbuilt::at(origin);
         if let Some(value) = self.frame_call(call, callee, args, origin)? {
             return Ok(value);
         }
@@ -138,7 +138,7 @@ impl Builder<'_, '_, '_> {
             return Ok(None);
         }
         let rvalue = if name == resume.symbol() {
-            let step = self.type_of(call).ok_or(Unbuilt { at: origin })?;
+            let step = self.type_of(call).ok_or(Unbuilt::at(origin))?;
             Rvalue::Resume { frame: self.through_borrows(object)?, step }
         } else if name == end.symbol() {
             Rvalue::End { frame: self.through_borrows(object)? }
@@ -153,7 +153,7 @@ impl Builder<'_, '_, '_> {
     fn method(&self, callee: ExprId) -> Result<Option<(Operand, ExprId, Method)>, Unbuilt> {
         let e = &self.env.parsed.hir.exprs[callee];
         let ExprKind::Member { object, .. } = e.kind else { return Ok(None) };
-        let unbuilt = Unbuilt { at: e.origin };
+        let unbuilt = Unbuilt::at(e.origin);
         let typed = self.typed().ok_or(unbuilt)?;
         let Some(method) = typed.methods.get(&callee) else { return Ok(None) };
         let f = self.env.cx.get::<MemberValue>(method).map_err(|_| unbuilt)?;

@@ -7,6 +7,7 @@ mod holes;
 mod impls;
 mod layout;
 mod link;
+mod members;
 mod placed;
 mod visible;
 
@@ -71,6 +72,9 @@ struct Checker<'e, 'a, 'db> {
 }
 
 impl Visitor for Checker<'_, '_, '_> {
+    /// A spread's path starts at a package, which the check of names resolves.
+    fn spread(&mut self, _: &Hir, _: &vun_hir::tree::Spread) {}
+
     fn namespace(&mut self, hir: &Hir, ns: NsId) {
         each_entry(&hir.namespaces[ns].members, &mut |m| {
             self.visibility(hir, m);
@@ -90,6 +94,7 @@ impl Visitor for Checker<'_, '_, '_> {
     }
 
     fn expr(&mut self, hir: &Hir, expr: ExprId) {
+        self.member(hir, expr);
         if let ExprKind::Fn { .. } = hir.exprs[expr].kind {
             let f = ExprRef::new(self.env.file.clone(), hir, expr);
             if let Some(typed) = self.env.cx.get::<Typed>(&Instantiation::plain(f)) {

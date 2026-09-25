@@ -25,6 +25,8 @@ pub mod fmt_IntFormat;
 pub mod fmt_Piece;
 pub mod fmt_SliceFormat;
 pub mod fmt_Writer;
+pub mod hw;
+pub mod hw_Reg;
 pub mod int;
 pub mod int_IntMethods;
 pub mod int_IntNarrow;

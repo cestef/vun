@@ -69,7 +69,7 @@ impl Env<'_, '_> {
                     written: returns.and_then(|r| self.written_call(r)),
                     name,
                 };
-                Value::Type(TyKind::Frame(frame).intern())
+                Value::Type(TyKind::Frame(Box::new(frame)).intern())
             }
             Some(value) => value,
             None => Value::Type(TyKind::unit()),
@@ -106,7 +106,8 @@ impl Env<'_, '_> {
     /// the interface it implements, such as `resume`.
     #[must_use]
     pub fn frame_member(&self, frame: Ty, name: Symbol) -> Option<Ty> {
-        let TyKind::Frame(Frame { interface, .. }) = &*frame else { return None };
+        let TyKind::Frame(shaped) = &*frame else { return None };
+        let interface = &shaped.interface;
         let requirements =
             self.cx.get::<Call>(&Instance { f: interface.clone(), args: vec![Value::Type(frame)] });
         let requirements = requirements.ok()?.as_type()?;

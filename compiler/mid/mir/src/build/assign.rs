@@ -21,7 +21,7 @@ impl Builder<'_, '_, '_> {
         value: ExprId,
         origin: OriginId,
     ) -> Result<(), Unbuilt> {
-        let unbuilt = Unbuilt { at: origin };
+        let unbuilt = Unbuilt::at(origin);
         // `_ = e` evaluates `e` and discards it, into a temporary nothing consumes: a linear
         // value discarded is a leak the place checks find (spec 05, section 2).
         if op == TokenKind::Eq && matches!(self.env.parsed.hir.exprs[place].kind, ExprKind::Hole) {

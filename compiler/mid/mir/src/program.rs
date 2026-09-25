@@ -7,11 +7,12 @@ use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 use vun_hir::db::{FileRef, Parsed};
+use vun_hir::tree::ExprKind;
 use vun_intern::Symbol;
 use vun_query::{Cx, Cycle, Query};
 use vun_sema::decl::DeclValue;
 use vun_sema::eval::Instantiation;
-use vun_sema::item::DeclRef;
+use vun_sema::item::{DeclRef, ExprRef};
 use vun_sema::member::{MemberValue, Members};
 use vun_sema::ty::{Ty, TyKind, Value};
 
@@ -29,23 +30,50 @@ pub struct Program {
     pub unready: Vec<(Instantiation, Unready)>,
 }
 
-/// The program whose root is a file.
+/// Where the reach of a program starts.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum Roots {
+    /// The root file's exports: the program as built.
+    Exports,
+    /// The exports and every function of the root file that depends on no compile-time
+    /// binding and runs at run time: what coverage measures.
+    Functions,
+}
+
+/// The program whose root is a file, reached from its roots.
 pub struct Programs;
 
 impl Query for Programs {
     const NAME: &'static str = "programs";
-    type Key = FileRef;
+    type Key = (FileRef, Roots);
     type Value = Arc<Program>;
 
-    fn compute(cx: &Cx<'_>, root: &FileRef) -> Self::Value {
+    fn compute(cx: &Cx<'_>, (root, roots): &(FileRef, Roots)) -> Self::Value {
         let mut reach =
             Reach { cx, program: Program::default(), seen: HashMap::new(), types: HashSet::new() };
         if let Some(parsed) = cx.get::<Parsed>(root)
             && let Some(ns) = parsed.hir.root
         {
-            for decl in parsed.hir.member_decls(ns) {
-                if let Ok(value) = cx.get::<DeclValue>(&DeclRef::new(root.clone(), &parsed.hir, decl)) {
+            let hir = &parsed.hir;
+            for decl in hir.member_decls(ns) {
+                if let Ok(value) = cx.get::<DeclValue>(&DeclRef::new(root.clone(), hir, decl)) {
                     reach.export(&value);
+                }
+            }
+            if *roots == Roots::Functions {
+                // A closure is reached from the body that makes it, with its captures.
+                let open = hir.open_functions();
+                for (id, e) in hir.exprs.iter() {
+                    if !matches!(e.kind, ExprKind::Fn { .. })
+                        || open.contains(&id)
+                        || hir.closure_of(id).is_some()
+                    {
+                        continue;
+                    }
+                    let f = Instantiation::plain(ExprRef::new(root.clone(), hir, id));
+                    if !f.compile_time(cx) {
+                        reach.function(f);
+                    }
                 }
             }
         }
@@ -57,7 +85,7 @@ impl Query for Programs {
         Arc::new(reach.program)
     }
 
-    fn cycle(_: &Cx<'_>, _: &FileRef, _: &Cycle) -> Self::Value {
+    fn cycle(_: &Cx<'_>, _: &(FileRef, Roots), _: &Cycle) -> Self::Value {
         Arc::default()
     }
 }

@@ -228,6 +228,29 @@ impl FnLower<'_, '_, '_> {
         Ok(self.b.compare(cond, found, pattern, self.at))
     }
 
+    /// The position of the variant the enum of type `ty` at `addr` is, a word.
+    pub(crate) fn variant_index(&mut self, addr: Value, ty: Ty) -> Result<Value, Unlowered> {
+        let unsupported = || Unlowered::unsupported(self.at, Form::Projection);
+        let shape = self.l.types.shape(ty, self.at)?;
+        let Parts::Enum { tag, .. } = &shape.parts else { return Err(unsupported()) };
+        let word = self.l.types.word;
+        let (offset, bytes, niche) = match *tag {
+            Tag::Alone => return Ok(self.b.constant(word, 0, self.at)),
+            Tag::Index { bytes } => (0, bytes, None),
+            Tag::Niche { empty, offset, bytes, value } => (offset, bytes, Some((empty, value))),
+        };
+        let int = Scalar::int(u32::try_from(bytes * 8).unwrap_or_default()).ok_or_else(unsupported)?;
+        let at = self.at_offset(addr, offset);
+        let found = self.b.load(int, at, Access::Plain, self.at);
+        let Some((empty, pattern)) = niche else { return Ok(self.resize(found, int, false, word)) };
+        // Of the two variants a niche tells apart, the empty one holds the pattern.
+        let pattern = self.b.constant(int, pattern, self.at);
+        let is_empty = self.b.compare(Cond::Eq, found, pattern, self.at);
+        let other = self.b.constant(word, u128::from(empty == 0), self.at);
+        let empty = self.b.constant(word, empty as u128, self.at);
+        Ok(self.b.select(is_empty, empty, other, self.at))
+    }
+
     /// Makes the enum of type `ty` at `addr` the variant `variant`, its payload written apart.
     pub(crate) fn set_variant(&mut self, addr: Value, ty: Ty, variant: Symbol) -> Result<(), Unlowered> {
         let (index, shape) = self.variant(ty, variant)?;

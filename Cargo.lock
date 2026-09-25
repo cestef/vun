@@ -902,6 +902,7 @@ dependencies = [
  "vun-items",
  "vun-lir",
  "vun-mir",
+ "vun-mir-passes",
  "vun-origin",
  "vun-query",
  "vun-sema",

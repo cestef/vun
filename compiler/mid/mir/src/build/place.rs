@@ -43,15 +43,15 @@ impl Builder<'_, '_, '_> {
                 if let Some(at) = self.env().position(name) {
                     return Ok(self.through_borrows(*object)?.project(Projection::Position(at)));
                 }
-                let name = self.env().name(name).ok_or(Unbuilt { at: origin })?;
+                let name = self.env().name(name).ok_or(Unbuilt::at(origin))?;
                 Ok(self.reached(*object, name)?.project(Projection::Field(name)))
             }
             ExprKind::Index { object, index } => {
                 // An integer index names one item; bounds name the run of items they cover.
-                let typed = self.typed().ok_or(Unbuilt { at: origin })?;
+                let typed = self.typed().ok_or(Unbuilt::at(origin))?;
                 let known = typed.types.get(index).map(|k| k.ty);
                 if !known.is_some_and(|t| t.interval().is_some() || t.bounds().is_some()) {
-                    return Err(Unbuilt { at: origin });
+                    return Err(Unbuilt::at(origin));
                 }
                 let place = self.through_borrows(*object)?;
                 let constant = self.env().eval(*index);
@@ -101,9 +101,13 @@ impl Builder<'_, '_, '_> {
         }
     }
 
-    /// `&mode operand`: a borrow of the place `operand`, or, for a type, the borrow type.
+    /// `&mode operand`: a borrow of the place `operand`, or, for a type, the borrow type. A
+    /// borrow of a top-level binding reaches its one storage; a borrow of another constant holds
+    /// the value.
     pub(super) fn borrow(&mut self, expr: ExprId, mode: Borrow, operand: ExprId) -> Result<Operand, Unbuilt> {
-        if let Ok(value) = self.env().eval(expr) {
+        let binding = matches!(self.env().resolve(operand), Ok(Site::Decl(_)))
+            && self.type_of(expr).is_some_and(|t| t.borrowing().is_some());
+        if !binding && let Ok(value) = self.env().eval(expr) {
             return Ok(Operand::Const(value));
         }
         let origin = self.env.parsed.hir.exprs[expr].origin;
@@ -160,7 +164,7 @@ impl Builder<'_, '_, '_> {
     /// constant, or what a `mut` top-level binding's storage holds.
     pub(super) fn named(&mut self, expr: ExprId, origin: OriginId) -> Result<Operand, Unbuilt> {
         let hir = &self.env.parsed.hir;
-        let unbuilt = Unbuilt { at: origin };
+        let unbuilt = Unbuilt::at(origin);
         match self.env.parsed.resolution.names[expr] {
             // A read of a local is a statement where it is written, which checks point at; a
             // read of a linear value moves it, so the temporary has the value's type.

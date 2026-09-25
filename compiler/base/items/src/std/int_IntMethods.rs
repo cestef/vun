@@ -8,3 +8,6 @@
 use crate::Item;
 /// The absolute value, whose range is the magnitude of `r`: `i32` gives `Int(0..=2^31)`.
 pub const abs: Item = Item::new(&["std", "int", "IntMethods", "abs"]);
+/// The integer whose storage holds `bytes`, least significant first: its first
+/// `lang.meta.size(Int(r))` bytes, which it must have.
+pub const from_le: Item = Item::new(&["std", "int", "IntMethods", "from_le"]);

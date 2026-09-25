@@ -13,6 +13,7 @@ use vun_query::{Cx, Cycle, Query};
 
 use crate::env::{Env, Unevaluated};
 use crate::item::{ExprRef, Node};
+use crate::layout::Exists;
 use crate::trap::Reason;
 use crate::ty::{Signature, Ty, Value};
 
@@ -211,6 +212,15 @@ impl Instantiation {
     pub fn signature(&self, cx: &Cx<'_>) -> Result<Signature, Unevaluated> {
         let inside = Env::inside(cx, &self.f, self.args.iter().cloned()).ok_or(Unevaluated::Absent)?;
         inside.literal_signature(self.f.literal.expr.id, &self.args)
+    }
+
+    /// Whether this instantiation runs only at compile time: its result or a parameter is of a
+    /// type whose values do not exist at run time, such as `type`, code, an unbounded integer or
+    /// a borrow of a plan.
+    #[must_use]
+    pub fn compile_time(&self, cx: &Cx<'_>) -> bool {
+        let Ok(signature) = self.signature(cx) else { return false };
+        signature.params.iter().chain([&signature.result]).any(|ty| !cx.get::<Exists>(ty))
     }
 }
 

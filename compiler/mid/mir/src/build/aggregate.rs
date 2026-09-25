@@ -17,7 +17,7 @@ impl Builder<'_, '_, '_> {
     pub(super) fn aggregate(&mut self, expr: ExprId) -> Option<Result<Operand, Unbuilt>> {
         let hir = &self.env.parsed.hir;
         let origin = hir.exprs[expr].origin;
-        let unbuilt = Unbuilt { at: origin };
+        let unbuilt = Unbuilt::at(origin);
         Some(match &hir.exprs[expr].kind {
             ExprKind::Tuple(items) => self.parts(items, Aggregate::Tuple, origin),
             ExprKind::Array(items) => self.parts(items, Aggregate::Array, origin),
@@ -60,7 +60,7 @@ impl Builder<'_, '_, '_> {
             .iter()
             .map(|item| match item {
                 Entry::One(item) => self.operand(*item),
-                Entry::Staged(_) => Err(Unbuilt { at: origin }),
+                Entry::Staged(_) => Err(Unbuilt::at(origin)),
             })
             .collect::<Result<_, _>>()?;
         Ok(self.temp(Rvalue::Aggregate { kind, parts }, origin))
@@ -69,7 +69,7 @@ impl Builder<'_, '_, '_> {
     /// A value of the struct type `ty`: the fields written, in the order written, then the whole
     /// in declaration order, a missing field from its default.
     fn record(&mut self, ty: Ty, fields: &List<Arg>, origin: OriginId) -> Result<Operand, Unbuilt> {
-        let unbuilt = Unbuilt { at: origin };
+        let unbuilt = Unbuilt::at(origin);
         // A structural literal: a tuple of its items, or a record of its fields by name.
         if let TyKind::Tuple(_) | TyKind::Record(_) = &*ty {
             let mut written = Vec::new();
@@ -122,7 +122,7 @@ impl Builder<'_, '_, '_> {
         args: &List<Arg>,
         origin: OriginId,
     ) -> Result<Operand, Unbuilt> {
-        let unbuilt = Unbuilt { at: origin };
+        let unbuilt = Unbuilt::at(origin);
         let members = self.env.cx.get::<Members>(&ty).ok_or(unbuilt)?;
         let Found::Variant(_) = members.find(name) else { return Err(unbuilt) };
         let parts = args

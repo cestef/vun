@@ -5,9 +5,7 @@
 use std::mem::{replace, take};
 
 use vun_hir::db::Parsed;
-use vun_hir::resolve::Res;
 use vun_hir::tree::{Entry, ExprId, ExprKind, List, Param, PatKind};
-use vun_intern::Symbol;
 use vun_query::Cx;
 
 use super::{Known, Typer};
@@ -80,12 +78,15 @@ impl Typer<'_, '_, '_> {
 
     /// `[captures] (params) -> R { body }`: each capture typed here, the body typed as part of
     /// this one, and the closure's type.
-    pub(super) fn closure(&mut self, expr: ExprId, captures: &List<ExprId>, func: ExprId) -> Option<Known> {
+    pub(super) fn closure(&mut self, captures: &List<ExprId>, func: ExprId) -> Option<Known> {
         let hir = self.hir();
         let mut typed = Some(Vec::new());
         for capture in captures {
             let known = match capture {
-                Entry::One(c) => self.typed(*c).zip(self.captured(*c)),
+                Entry::One(c) => {
+                    let name = self.env().parsed.captured(*c).map(|(b, _)| hir.binders[b].name);
+                    self.typed(*c).zip(name)
+                }
                 Entry::Staged(_) => None,
             };
             match (&mut typed, known) {
@@ -95,26 +96,8 @@ impl Typer<'_, '_, '_> {
         }
         let signature = self.function(func, &[])?;
         self.types.insert(func, Known { ty: signature.ty(), stage: self.stage });
-        let closure = Closure {
-            literal: ExprRef::new(self.env().file.clone(), hir, expr),
-            instance: self.env().instance.clone(),
-            captures: typed?,
-            signature,
-        };
+        let closure = Closure { f: self.env().func(func), captures: typed?, signature };
         Some(Known { ty: TyKind::Closure(closure).intern(), stage: self.stage })
-    }
-
-    /// The name of the binder the capture `capture` (`x`, `&mut x`) captures.
-    fn captured(&self, capture: ExprId) -> Option<Symbol> {
-        let hir = self.hir();
-        match &hir.exprs[capture].kind {
-            ExprKind::Prefix { operand, .. } => self.captured(*operand),
-            ExprKind::Name(_) => match self.env().parsed.resolution.names[capture] {
-                Some(Res::Binder(b)) => Some(hir.binders[b].name),
-                _ => None,
-            },
-            _ => None,
-        }
     }
 }
 

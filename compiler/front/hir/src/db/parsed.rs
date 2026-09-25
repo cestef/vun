@@ -3,6 +3,7 @@
 use std::hash::Hasher;
 use std::sync::Arc;
 
+use vun_desugar::Borrow;
 use vun_diag::{DiagCtxt, DiagCx};
 use vun_hash::Hash;
 use vun_origin::OriginTable;
@@ -13,8 +14,8 @@ use vun_syntax::tokens::Tokens;
 
 use super::input::{FileRef, FileText, Package};
 use crate::lower;
-use crate::resolve::Resolution;
-use crate::tree::Hir;
+use crate::resolve::{Res, Resolution};
+use crate::tree::{BinderId, ExprId, ExprKind, Hir};
 
 pub struct ParsedFile {
     pub file: FileId,
@@ -26,6 +27,22 @@ pub struct ParsedFile {
     pub diag: DiagCtxt,
     /// The hash of the text, which determines everything else.
     text: Hash,
+}
+
+impl ParsedFile {
+    /// The binder the capture `capture` of a closure captures (`x`, `&mut x`), and the mode of
+    /// the borrow of it the closure holds, if it holds one.
+    #[must_use]
+    pub fn captured(&self, capture: ExprId) -> Option<(BinderId, Option<Borrow>)> {
+        match &self.hir.exprs[capture].kind {
+            ExprKind::Borrow { mode, operand } => Some((self.captured(*operand)?.0, Some((*mode)?))),
+            ExprKind::Name(_) => match self.resolution.names[capture] {
+                Some(Res::Binder(b)) => Some((b, None)),
+                _ => None,
+            },
+            _ => None,
+        }
+    }
 }
 
 /// A file is identified by its text: equal texts give equal results.

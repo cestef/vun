@@ -1,5 +1,4 @@
-//! A constrained parameter may use only its interface's members; dynamic dispatch is a library
-//! (spec 02, section 3).
+//! A constrained parameter may use only its interface's members (spec 02, section 3).
 
 Shape := interface(($Self: type) -> type { struct {
     area: (self: &Self) -> u64 = _;
@@ -17,15 +16,6 @@ total := ($S: Shape, shapes: &[S]) -> u64 {
     mut acc: u64 = 0;
     for s in shapes { acc += s.area(); }
     acc
-};
-
-largest := (shapes: &[std.Dyn(Shape)]) -> ?&std.Dyn(Shape) {
-    mut best: ?&std.Dyn(Shape) = .none;
-    for s in shapes {
-        if .some(b) = best { if s.area() <= b.area() { continue; } }
-        best = .some(s);
-    }
-    best
 };
 
 squares := [Square{ .side = 2 }, Square{ .side = 3 }];

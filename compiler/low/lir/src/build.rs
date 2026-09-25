@@ -102,6 +102,12 @@ impl Builder {
         self.value(InstKind::Compare { cond, a, b }, Scalar::I8, origin)
     }
 
+    /// `then` where `cond` is not 0, `otherwise` where it is; both of one type.
+    pub fn select(&mut self, cond: Value, then: Value, otherwise: Value, origin: OriginId) -> Value {
+        let ty = self.ty(then);
+        self.value(InstKind::Select { cond, then, otherwise }, ty, origin)
+    }
+
     pub fn cast(&mut self, op: CastOp, value: Value, to: Scalar, origin: OriginId) -> Value {
         self.value(InstKind::Cast { op, value, to }, to, origin)
     }
