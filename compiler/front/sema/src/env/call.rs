@@ -7,9 +7,25 @@ use crate::ty::Value;
 use vun_hir::tree::{Arg, Entry, ExprId, ExprKind, Name};
 
 impl Env<'_, '_> {
-    /// A call of a function value, which the evaluator runs, or of a primitive. `a.f(b)` on a
-    /// value `a` of type `T` is `T.f(a, b)` (spec 01, section 4).
-    pub(super) fn call(&self, callee: ExprId, args: &[Entry<Arg>]) -> Result<Value, Unevaluated> {
+    /// The call `call` of a function value, which the evaluator runs, or of a primitive. `a.f(b)`
+    /// on a value `a` of type `T` is `T.f(a, b)` (spec 01, section 4).
+    pub(super) fn call(
+        &self,
+        call: ExprId,
+        callee: ExprId,
+        args: &[Entry<Arg>],
+    ) -> Result<Value, Unevaluated> {
+        let origin = self.parsed.hir.exprs[call].origin;
+        self.called(callee, args, self.inferred(call)).map_err(|u| u.through(origin))
+    }
+
+    /// `callee(args)`, the `$` arguments left out `inferred`.
+    fn called(
+        &self,
+        callee: ExprId,
+        args: &[Entry<Arg>],
+        inferred: &[(usize, Value)],
+    ) -> Result<Value, Unevaluated> {
         let mut values = Vec::new();
         let callee = match &self.parsed.hir.exprs[callee].kind {
             ExprKind::Member { object, name: Name::Plain(name) } => {
@@ -33,16 +49,23 @@ impl Env<'_, '_> {
             }
             _ => self.eval(callee)?,
         };
-        self.call_value(callee, values, args)
+        self.call_value(callee, values, args, inferred)
     }
 
-    /// `callee(values..., args)`: the arguments evaluated after `values`, which a receiver fills.
+    /// `callee(values..., args)`: the arguments evaluated after `values`, which a receiver fills,
+    /// and the `$` arguments left out, `inferred` by parameter, in their places.
     pub(super) fn call_value(
         &self,
         callee: Value,
         mut values: Vec<Value>,
         args: &[Entry<Arg>],
+        inferred: &[(usize, Value)],
     ) -> Result<Value, Unevaluated> {
+        let fill = |values: &mut Vec<Value>| {
+            while let Some((_, value)) = inferred.iter().find(|(slot, _)| *slot == values.len()) {
+                values.push(value.clone());
+            }
+        };
         // A `Code(T)` parameter receives its argument as code; an argument typed by its context,
         // such as `.{ ... }`, is evaluated as its parameter's type where that type is known.
         let (quotes, params) = match &callee {
@@ -54,6 +77,7 @@ impl Env<'_, '_> {
             _ => (Vec::new(), Vec::new()),
         };
         for arg in args {
+            fill(&mut values);
             match arg {
                 Entry::One(Arg { name: None, value }) if quotes.get(values.len()) == Some(&true) => {
                     values.push(Value::Code(self.code(*value)));
@@ -64,6 +88,7 @@ impl Env<'_, '_> {
                 _ => return Err(Unevaluated::Unsupported),
             }
         }
+        fill(&mut values);
         self.apply(callee, values)
     }
 

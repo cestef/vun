@@ -18,11 +18,12 @@ Coroutine := ($Y: type, $R: type) -> Interface {
 
 - A function whose body contains `yield` is a coroutine function. Its result type is a `Coroutine`
   interface (or an alias). Calling it runs nothing: it constructs the frame in place and returns it.
-  The call's type is the frame type, `f.Frame`; the body yields what the interface's `resume`
-  carries in `yielded` and ends with what it carries in `done`.
-- The frame is a value of an anonymous type, named `f.Frame`. Its size is known at compile time
-  (`std.meta.size(blink.Frame)`), so frames can live on the stack, in a static, in a pool or in an
-  `Own`, and none of these needs a heap.
+  The call's type is the frame type, `std.meta.Frame(f)`; the body yields what the interface's
+  `resume` carries in `yielded` and ends with what it carries in `done`.
+- The frame is a value of an anonymous type, named `std.meta.Frame(f)` (diagnostics show it as
+  `f.Frame`). Its size is known at compile time (`std.meta.size(std.meta.Frame(blink))`), so
+  frames can live on the stack, in a static, in a pool or in an `Own`, and none of these needs a
+  heap.
 - Frames are **linear**: you must `end` them, which runs the defers of the current suspension point.
   Cancellation is explicit and structured. Each `yield` is therefore an exit of the function, the
   one ending the frame takes: every linear local held there must be consumed by a statement
@@ -108,7 +109,7 @@ resumed before its event fires finds no mark and yields again.
 - `std.testing.Sim`: deterministic, seeded, virtual time (spec 11).
 
 Since frames have static sizes, a program's total task memory is known at build time:
-`$assert(std.meta.size(main.Frame) <= 4096)`.
+`$assert(std.meta.size(std.meta.Frame(main)) <= 4096)`.
 
 ## 5. Frame layout
 

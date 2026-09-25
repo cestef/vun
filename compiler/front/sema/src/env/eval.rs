@@ -100,7 +100,7 @@ impl Env<'_, '_> {
             ExprKind::Call { callee, .. } if matches!(hir.exprs[*callee].kind, ExprKind::DotName(_)) => {
                 self.eval_as(expr, None)
             }
-            ExprKind::Call { callee, args } => self.call(*callee, args).map_err(|u| u.through(e.origin)),
+            ExprKind::Call { callee, args } => self.call(expr, *callee, args),
             ExprKind::Fn { .. } => Ok(Value::Fn(self.func(expr))),
             ExprKind::Closure { captures, func } => {
                 let captures = captures

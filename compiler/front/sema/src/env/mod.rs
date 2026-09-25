@@ -187,6 +187,12 @@ impl<'a, 'db> Env<'a, 'db> {
         self.types.as_ref()?.types.get(&expr).map(|k| k.ty)
     }
 
+    /// The `$` arguments the call `expr` leaves out, by parameter, as typing inferred them.
+    #[must_use]
+    pub fn inferred(&self, expr: ExprId) -> &[(usize, Value)] {
+        self.types.as_ref().and_then(|t| t.inferred.get(&expr)).map_or(&[], Vec::as_slice)
+    }
+
     /// The environment the literal `literal` was evaluated in: inside `instance`, or in its file.
     #[must_use]
     pub fn defining(cx: &'a Cx<'db>, literal: &ExprRef, instance: Option<&Instance>) -> Option<Self> {

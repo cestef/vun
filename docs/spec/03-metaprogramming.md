@@ -172,6 +172,8 @@ std.meta.size(Point)          // 8
 std.meta.attrs(f)             // attributes of a field or declaration
 std.meta.name_of(Point)       // "Point"
 std.meta.origin(Point)        // the origin chain (spec 10)
+std.meta.TypeOf(p.x + 1)      // the type of an expression, typed and never run
+std.meta.Frame(blink)         // the frame type of a coroutine function (spec 06)
 ```
 
 The descriptors are ordinary structs declared in `lang.meta` (`lang.meta.Field`), and each
@@ -179,6 +181,11 @@ reflection primitive's declared result type names its descriptor: the compiler f
 descriptor declares, by name, and a descriptor field it has no fact for leaves the call without a
 value. `std.meta` re-exports them. A type's name is the one diagnostics show: a `struct` or `enum`
 literal by the declaration it is written in, with its compile-time arguments.
+
+`TypeOf` is ordinary `lang` source, `($T: type, $e: Code(T)) -> type { T }`: its parameter quotes
+the argument, so any expression, run-time ones included, is typed and never evaluated, and `T` is
+inferred from it. `Frame(f)` is the result type of a coroutine function's signature, so it names
+the frames of a function without writing a call; for a function that does not suspend it traps.
 
 Reflection is read-only. Types are created by writing type literals (with L0 and L1), never by
 assembling descriptor structs.

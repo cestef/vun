@@ -78,6 +78,16 @@ impl Callable {
     pub fn modes(&self, env: &Env<'_, '_>) -> Option<Vec<Option<Borrow>>> {
         self.written(env)?.modes()
     }
+
+    /// Whether each parameter receives its argument as code: see [`Func::quotes`]. No primitive
+    /// quotes.
+    #[must_use]
+    pub fn quotes(&self, env: &Env<'_, '_>) -> Vec<bool> {
+        match self {
+            Self::Fn(f) => f.quotes(env.cx).unwrap_or_default(),
+            Self::Primitive(_) => Vec::new(),
+        }
+    }
 }
 
 impl Func {

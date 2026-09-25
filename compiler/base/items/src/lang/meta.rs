@@ -11,6 +11,8 @@ pub const Name: Item = Item::new(&["lang", "meta", "Name"]);
 /// The type of files, directories and packages as values (spec 01, section 8).
 pub const Namespace: Item = Item::new(&["lang", "meta", "Namespace"]);
 pub const Origin: Item = Item::new(&["lang", "meta", "Origin"]);
+/// The type of the expression `e`, which is typed and never run: a `Code` parameter quotes its
+/// argument (spec 03, section 4), so `TypeOf(x)` works on run-time expressions too.
 pub const TypeOf: Item = Item::new(&["lang", "meta", "TypeOf"]);
 pub const origin: Item = Item::new(&["lang", "meta", "origin"]);
 pub const embed: Item = Item::new(&["lang", "meta", "embed"]);
@@ -46,6 +48,9 @@ pub const items: Item = Item::new(&["lang", "meta", "items"]);
 /// The name of `T` as diagnostics show it: a `struct` or `enum` literal by the declaration it is
 /// written in, with its compile-time arguments.
 pub const name_of: Item = Item::new(&["lang", "meta", "name_of"]);
+/// The type of the frames the coroutine function `f` makes (spec 06, section 1): the result of
+/// its signature.
+pub const Frame: Item = Item::new(&["lang", "meta", "Frame"]);
 /// The size of `T` in bytes under the target (spec 05, section 6).
 pub const size: Item = Item::new(&["lang", "meta", "size"]);
 /// The alignment of `T` in bytes under the target (spec 05, section 6).

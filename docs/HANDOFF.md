@@ -1,6 +1,6 @@
 # Handoff
 
-State of Vun as of 2026-09-25 (end of the ninth session), for the next agent. Read this, then
+State of Vun as of 2026-09-25 (end of the tenth session), for the next agent. Read this, then
 `CLAUDE.md` (rules and the agent procedure; on disk but ignored by the user's global gitignore, so
 `jj st` never shows it), then `docs/spec/00-principles.md`, `docs/spec/decisions.md` and the spec
 files of the area you touch.
@@ -249,7 +249,7 @@ frames suspend and resume; `End` of a suspended frame runs its cancel path (`Bod
 
 **Driver and tools**: `Session::check` runs names, types, places, borrows, panics;
 `stages::STAGES`; `Coverage`; `cargo gen`, `cargo xtask {corpus, lines, size}` (the budget in `xtask/src/size.rs`,
-6,422,528 bytes; the dist build measured 6,382,768).
+10 MiB since decision 139 was accepted; the dist build measured 7,660,256).
 
 **Libraries**: `lang` (primitives: `lang.mem` borrows `Ref`..`RefStatic`, pointers, `Cell`,
 `cell`, `cell_pointer`, `atomic_*` with `Ordering`, `items_pointer`; `lang.diag.error`;
@@ -272,14 +272,22 @@ run from the requirements of `std.build.Package` and calls `std.build.plan` with
 package's `build.vun` runs it (stage `plan`), `vun dump plan` prints its actions as literals
 (`Value::literal`). Nothing carries the actions out yet.
 
-Progress: corpus 207 passed, 0 pending, 9 planned, 27 shown, 0 failed; 82% of accepted body
-expressions typed; MIR lowers 83 of 94 accepted functions. 265 tests, including one that checks
+**Naming types** (decision 158): `lang.meta.Frame(f)` is a coroutine function's frame type (the
+result of its signature; `Reason::NoFrame` otherwise); `lang.meta.TypeOf` is `lang` source over a
+`Code(T)` parameter, so it types any expression without running it. A quoted argument infers `$`
+parameters as `Code` of its type (`Callable::quotes`); compile-time calls take the `$` arguments
+typing inferred (`TypedBody.inferred`, `Env::inferred`, `Env::call_value`). Meta primitives apply in
+`apply/meta.rs`.
+
+Progress: corpus 209 passed, 0 pending, 9 planned, 27 shown, 0 failed; 83% of accepted body
+expressions typed; MIR lowers 85 of 97 accepted functions. 265 tests, including one that checks
 every `lang` and `std` file cleanly.
 
 ## 6. Decisions
 
 Proposed also: 155 (frame layout), 156 (narrowing, runtime bounds, frame layouts in sema), 157
-(the baseline backend).
+(the baseline backend). Accepted: 139 (the size budget, now 10 MiB), 158 (`meta.Frame`, `TypeOf`
+over code; details proposed).
 Accepted (the user's choices, details proposed): 152 (backends after TPDE, baseline backend
 started after C), 153 (the C backend), 154 (targets named by system and CPU, chosen per session).
 Accepted: 1 to 84, 91, 92, 98 to 106, 109, 111, 116, 118 (no bespoke formats: `lock.vun`,
@@ -299,20 +307,15 @@ rules go to `decisions.md` as proposed unless the user approves them.
 
 ## 7. Next steps, in order
 
-0. The size budget: the distributed `vun` is 7,658,304 bytes, over the 6,422,528 of
-   `xtask/src/size.rs` (the commit before this session was already 7,510,528; the baseline
-   backend adds about 73 KiB of code). Raising it or cutting is the user's decision (139).
+0. `$assert(false)` reports nothing: `std.testing.assert` reaches `lang.panic.trap`, which
+   compile time does not run (silence), so every `$assert` in the corpus is unchecked. Make a trap
+   primitive reached at compile time a trap (`Reason`), then fix what the corpus asserts wrongly.
+   Until then corpus checks use `$if !ok { std.diag.error(...) }` (`coroutines/frames.vun`).
    Baseline backend next: callee-saved registers for values used across a loop (the prologue
    reserving their saves, patched), keeping registers across a fall-through to a block with one
    predecessor, compare and branch fused, frame sizes reported (`stack.max`), floats (SSE) and
    128-bit integers (pairs, helpers in Vun), DWARF lines, arm64. Backends: memory regions from a program's build options into `LinkPlan` (the `gnu`
-   adapter writes scripts from them), and a bare-metal runtime to link against. Frames: sema's
-   `Shapes` has no layout for frame types (only lowering's `Frames` query does), so
-   `std.meta.size(f.Frame)` and types holding frames are unknown; frames of coroutines generated
-   inside `$for` do not map back to their instantiation (`Frame::instantiation` drops `staged`).
-   `f.Frame` (spec 06) is not implemented: no function value has a member `Frame`, and
-   `lang.meta.TypeOf` takes `Code(type)`, not a value, so a frame type is named only through an
-   inferred `$F` (the surface is the user's to choose). A slice value (`xs[a..b]` not borrowed)
+   adapter writes scripts from them), and a bare-metal runtime to link against. A slice value (`xs[a..b]` not borrowed)
    reaches lowering as `backend.unlowered` ("no layout") instead of a sema error.
 1. `std`: `std.task.Pool`, `std.testing.Sim`; a Linux runtime without the C library; text
    (`Str`) and collections; `print`'s `.fixes`. Generic bodies

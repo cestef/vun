@@ -22,6 +22,8 @@ pub enum Reason {
     /// An argument of a compile-time call that is not a value of its parameter's type, such as
     /// a negative length for `lang.mem.Array`.
     Argument,
+    /// A frame asked of a function that does not suspend (`lang.meta.Frame`).
+    NoFrame,
     /// Library code reported an error (`lang.diag.error`): its message, and where it points
     /// when it names a place.
     Reported {
@@ -48,6 +50,7 @@ impl Reason {
             Self::Budget => "the call ran out of its step budget",
             Self::Bounds => "index outside the items",
             Self::Argument => "argument outside the type of its parameter",
+            Self::NoFrame => "the function does not suspend, so it makes no frame",
             Self::Reported { message, .. } => return Msg::new().text(message.clone()),
         })
     }

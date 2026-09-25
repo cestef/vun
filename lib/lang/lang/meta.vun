@@ -6,7 +6,9 @@ Name: type = _;
 Namespace: type = _;
 Origin: type = _;
 
-TypeOf: ($e: Code(type)) -> type = _;
+/// The type of the expression `e`, which is typed and never run: a `Code` parameter quotes its
+/// argument (spec 03, section 4), so `TypeOf(x)` works on run-time expressions too.
+TypeOf := ($T: type, $e: Code(T)) -> type { T };
 origin: ($T: type) -> Origin = _;
 embed: ($path: &[u8]) -> &static [_]u8 = _;
 
@@ -68,6 +70,10 @@ items: ($T: type) -> &[type] = _;
 /// The name of `T` as diagnostics show it: a `struct` or `enum` literal by the declaration it is
 /// written in, with its compile-time arguments.
 name_of: ($T: type) -> &[u8] = _;
+
+/// The type of the frames the coroutine function `f` makes (spec 06, section 1): the result of
+/// its signature.
+Frame: ($F: type, $f: F) -> type = _;
 
 /// The size of `T` in bytes under the target (spec 05, section 6).
 size: ($T: type) -> usize = _;

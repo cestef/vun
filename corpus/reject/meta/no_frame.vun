@@ -1,0 +1,5 @@
+//! `std.meta.Frame` names the frames of a function that suspends; others make none.
+
+plain := (x: u8) -> u8 { x };
+
+size := std.meta.size(std.meta.Frame(plain)); //~ comptime.trap

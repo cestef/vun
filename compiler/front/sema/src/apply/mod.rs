@@ -2,11 +2,11 @@
 //! through here, so each primitive has one definition.
 
 mod int;
+mod meta;
 
 use crate::Primitive;
 use crate::env::{Env, Unevaluated};
 use crate::int::Integer;
-use crate::layout::Shapes;
 use crate::primitives::bounds::Bounds;
 use crate::primitives::diag::Diag;
 use crate::primitives::lang::Lang;
@@ -83,6 +83,7 @@ impl Primitive {
             // `lang.mem.len(T, xs)`: the number of items `xs` borrows.
             (Self::Mem(Mem::len), [_, Value::Array(items)]) => Ok(Value::Int(Integer::from(items.len()))),
             (Self::Int(int), args) => int.apply(env, args),
+            (Self::Meta(meta), args) => meta.apply(env, args),
             // Library diagnostics (spec 10, section 3).
             (Self::Diag(Diag::error), [message, at]) => {
                 let message = message.text().ok_or(Unevaluated::Unsupported)?;
@@ -95,49 +96,6 @@ impl Primitive {
                     _ => None,
                 };
                 Err(Unevaluated::trap(Reason::Reported { message, at }))
-            }
-            (Self::Meta(Meta::items), [ty]) => match &*ty.as_type().ok_or(Unevaluated::Unsupported)? {
-                TyKind::Tuple(items) => Ok(Value::Array(items.iter().map(|&t| Value::Type(t)).collect())),
-                _ => Err(Unevaluated::Unsupported),
-            },
-            // Reflection (spec 03, section 6).
-            (Self::Meta(Meta::variants), [ty]) => {
-                env.variants(self, ty.as_type().ok_or(Unevaluated::Unsupported)?)
-            }
-            (Self::Meta(Meta::variant), [_, value]) => env.variant_index(value),
-            (Self::Meta(Meta::fields), [ty]) => {
-                env.fields(self, ty.as_type().ok_or(Unevaluated::Unsupported)?)
-            }
-            (Self::Meta(Meta::name_of), [ty]) => {
-                Ok(Value::string(&ty.as_type().ok_or(Unevaluated::Unsupported)?.to_string()))
-            }
-            (Self::Meta(meta @ (Meta::size | Meta::align)), [ty]) => {
-                let ty = ty.as_type().ok_or(Unevaluated::Unsupported)?;
-                let layout = Shapes::layout(env.cx, &ty).ok_or(Unevaluated::Unsupported)?;
-                let bytes = if meta == Meta::size { layout.size } else { layout.align };
-                Ok(Value::Int(Integer::from(u128::from(bytes))))
-            }
-            (Self::Meta(Meta::same), [a, b]) => {
-                let (a, b) = (
-                    a.as_type().ok_or(Unevaluated::Unsupported)?,
-                    b.as_type().ok_or(Unevaluated::Unsupported)?,
-                );
-                env.decide(a == b)
-            }
-            (Self::Meta(Meta::any), [ty, value]) => {
-                let ty = ty.as_type().ok_or(Unevaluated::Unsupported)?;
-                Ok(Value::Any { ty, value: Box::new(value.clone()) })
-            }
-            (Self::Meta(Meta::concat), [_, Value::Array(a), Value::Array(b)]) => {
-                Ok(Value::Array(a.iter().chain(b).cloned().collect()))
-            }
-            (Self::Meta(Meta::append), [_, Value::Array(items), item]) => {
-                Ok(Value::Array(items.iter().chain([item]).cloned().collect()))
-            }
-            (Self::Meta(Meta::span), [_, Value::Code(code)]) => Ok(Value::Origin(code.expr.expr.origin)),
-            (Self::Meta(Meta::source), [_, Value::Code(code)]) => {
-                let env = Env::quoted(env.cx, code).ok_or(Unevaluated::Absent)?;
-                Ok(Value::string(&env.source(code.expr.expr.id)))
             }
             _ => Err(Unevaluated::Unsupported),
         }

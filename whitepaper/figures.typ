@@ -94,7 +94,7 @@
     draw.content(((x0 + x1) / 2, y), anchor: anchor, padding: 0.1, text(7.8pt, fill: muted-ink, body))
   }
   brace(6.4, 13.2, 1.6, [one slot, reused by both delegations], "south")
-  brace(0, 13.2, -0.2, [`echo.Frame`, whose size is known at compile time], "north")
+  brace(0, 13.2, -0.2, [`std.meta.Frame(echo)`, whose size is known at compile time], "north")
 })
 
 // The compiler pipeline; planned stages are dashed.

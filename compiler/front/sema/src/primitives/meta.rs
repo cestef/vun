@@ -8,7 +8,6 @@ pub enum Meta {
     /// The type of files, directories and packages as values (spec 01, section 8).
     Namespace,
     Origin,
-    TypeOf,
     origin,
     embed,
     /// Whether `A` and `B` are one type: made by the same constructor from the same arguments.
@@ -33,6 +32,9 @@ pub enum Meta {
     /// The name of `T` as diagnostics show it: a `struct` or `enum` literal by the declaration it is
     /// written in, with its compile-time arguments.
     name_of,
+    /// The type of the frames the coroutine function `f` makes (spec 06, section 1): the result of
+    /// its signature.
+    Frame,
     /// The size of `T` in bytes under the target (spec 05, section 6).
     size,
     /// The alignment of `T` in bytes under the target (spec 05, section 6).
@@ -49,7 +51,6 @@ impl Meta {
         Self::Name,
         Self::Namespace,
         Self::Origin,
-        Self::TypeOf,
         Self::origin,
         Self::embed,
         Self::same,
@@ -62,6 +63,7 @@ impl Meta {
         Self::variant,
         Self::items,
         Self::name_of,
+        Self::Frame,
         Self::size,
         Self::align,
         Self::source,
@@ -75,7 +77,6 @@ impl Meta {
             Self::Name => "Name",
             Self::Namespace => "Namespace",
             Self::Origin => "Origin",
-            Self::TypeOf => "TypeOf",
             Self::origin => "origin",
             Self::embed => "embed",
             Self::same => "same",
@@ -88,6 +89,7 @@ impl Meta {
             Self::variant => "variant",
             Self::items => "items",
             Self::name_of => "name_of",
+            Self::Frame => "Frame",
             Self::size => "size",
             Self::align => "align",
             Self::source => "source",
@@ -102,7 +104,6 @@ impl Meta {
             Self::Name => vun_items::lang::meta::Name,
             Self::Namespace => vun_items::lang::meta::Namespace,
             Self::Origin => vun_items::lang::meta::Origin,
-            Self::TypeOf => vun_items::lang::meta::TypeOf,
             Self::origin => vun_items::lang::meta::origin,
             Self::embed => vun_items::lang::meta::embed,
             Self::same => vun_items::lang::meta::same,
@@ -115,6 +116,7 @@ impl Meta {
             Self::variant => vun_items::lang::meta::variant,
             Self::items => vun_items::lang::meta::items,
             Self::name_of => vun_items::lang::meta::name_of,
+            Self::Frame => vun_items::lang::meta::Frame,
             Self::size => vun_items::lang::meta::size,
             Self::align => vun_items::lang::meta::align,
             Self::source => vun_items::lang::meta::source,

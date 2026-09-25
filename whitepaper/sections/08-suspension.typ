@@ -28,7 +28,7 @@ programming.
 
 - *Sized.* The frame type and its size are known at compile time, so frames may live on a stack,
   in a static, in a pool or behind an owning pointer, and a program's total task memory is known at
-  build time: `$assert(std.meta.size(main.Frame) <= 4096)` is an ordinary compile-time check.
+  build time: `$assert(std.meta.size(std.meta.Frame(main)) <= 4096)` is an ordinary compile-time check.
 - *Linear.* A frame must be ended, and ending a suspended frame runs the deferred statements
   pending at its current suspension point, which makes cancellation explicit and structured.
 - *Fixed.* Locals may be borrowed across a suspension point, so a frame never moves after

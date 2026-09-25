@@ -1,14 +1,14 @@
 //! `cargo xtask size`: the distributed `vun` stays within its budget (decision 131). The budget
-//! was set from the first `dist` build with the libclang adapter, 6,382,768 bytes on
-//! `x86_64-unknown-linux-gnu`, rounded up to 64 KiB; raising it takes a decision, as a new
-//! external crate does.
+//! is 10 MiB (decision 139), raised from the first `dist` build with the libclang adapter once the
+//! C and baseline backends reached 7,658,304 bytes on `x86_64-unknown-linux-gnu`; raising it
+//! takes a decision, as a new external crate does.
 
 use std::io;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
 /// The most bytes the stripped `dist` build of `vun` may take on the host.
-pub(crate) const BUDGET: u64 = 6_422_528;
+pub(crate) const BUDGET: u64 = 10 * 1024 * 1024;
 
 /// The package whose binary is measured.
 const PACKAGE: &str = "vun-cli";

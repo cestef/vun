@@ -143,6 +143,7 @@ impl Typer<'_, '_, '_> {
         args: &[Argument],
     ) -> Option<Vec<(usize, Value)>> {
         let modes = f.modes(self.env()).unwrap_or_default();
+        let quotes = f.quotes(self.env());
         let receiver = callee.receiver.map(|r| (r, Passing::Asked));
         let receiver = receiver.map(|(r, passing)| (Argument::Expr(r), passing));
         let arguments = receiver.into_iter().chain(args.iter().map(|&a| (a, callee.passing)));
@@ -153,7 +154,7 @@ impl Typer<'_, '_, '_> {
                     Argument::Expr(arg) => self.typed(arg)?.ty,
                     Argument::Matched(ty) => ty,
                 };
-                match passing {
+                let ty = match passing {
                     Passing::Written => Some(ty),
                     Passing::Asked => {
                         let reached = ty.through_borrows();
@@ -162,7 +163,9 @@ impl Typer<'_, '_, '_> {
                             None => Some(reached),
                         }
                     }
-                }
+                };
+                // An argument for a `Code(T)` parameter is passed as code of its type.
+                if quotes.get(slot) == Some(&true) { ty.map(TyKind::code) } else { ty }
             })
             .collect();
         let values = Unifier::infer(self.env(), f, plan, &types)?;
