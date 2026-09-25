@@ -3,7 +3,7 @@
 //! made; and tuple positions written in a name position.
 
 use vun_hir::resolve::Res;
-use vun_hir::tree::{BinderId, ExprId, Name};
+use vun_hir::tree::{BinderId, ExprId, Name, PatKind};
 use vun_origin::OriginTable;
 
 use super::{Env, Unevaluated};
@@ -19,11 +19,15 @@ impl Env<'_, '_> {
         match self.parsed.resolution.names[expr] {
             Some(Res::Binder(b)) if let Some(bound) = self.bindings.get(&b) => Ok(bound.clone()),
             // A `$` local that is never assigned has the value of its declaration, fixed by
-            // the call evaluated in, such as `$Regs := struct { ... }`.
+            // the call evaluated in, such as `$Regs := struct { ... }`; only a declaration
+            // binding the name alone holds the whole value.
             Some(Res::Binder(b))
                 if hir.binders[b].comptime && !hir.binders[b].mutable && hir.member_decl(b).is_none() =>
             {
                 let decl = hir.decl_of(b).ok_or(Unevaluated::Runtime)?;
+                if !matches!(hir.pats[hir.decls[decl].pat].kind, PatKind::Bind(whole) if whole == b) {
+                    return Err(Unevaluated::Runtime);
+                }
                 self.eval(hir.decls[decl].value.ok_or(Unevaluated::Runtime)?)
             }
             Some(Res::Binder(b)) if let Some(member) = self.made_member(b) => member,

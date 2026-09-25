@@ -70,7 +70,7 @@ impl Typer<'_, '_, '_> {
                 self.connective(*op, *left, *right)
             }
             ExprKind::If { cond, then, otherwise } => self.branch(expr, cond, *then, *otherwise),
-            ExprKind::For { head, body } => self.looping(None, head, *body),
+            ExprKind::For { head, body } => self.looping(None, head, *body, self.expected(expr)),
             ExprKind::Labeled { label, body } => self.labeled(expr, *label, *body),
             ExprKind::Postfix { op: TokenKind::Question, operand } => self.early_return(expr, *operand),
             ExprKind::Postfix { op: TokenKind::DotStar, operand } => {

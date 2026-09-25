@@ -5,3 +5,5 @@ dot := ($N: usize, a: &[N]f32, b: &[N]f32) -> f32 {
     $for i in 0..N { acc += a[i] * b[i]; }
     acc
 };
+
+length_squared := (v: &[3]f32) -> f32 { dot(3, v, v) };

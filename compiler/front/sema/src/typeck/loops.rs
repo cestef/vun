@@ -14,9 +14,11 @@ use crate::member::{Found, MemberType, MemberValue, Members};
 use crate::ty::{Ty, TyKind, Value};
 use crate::witness::Witnesses;
 
-/// A loop being typed: its label, and the join of the values it ends with so far.
+/// A loop being typed: its label, the type expected of its value, and the join of the values it
+/// ends with so far.
 pub(super) struct Loop {
     label: Option<Symbol>,
+    expected: Option<Ty>,
     value: Ends,
 }
 
@@ -30,8 +32,15 @@ enum Ends {
 }
 
 impl Typer<'_, '_, '_> {
-    /// `label: for head { body }`, its label `None` when it has none.
-    pub(super) fn looping(&mut self, label: Option<Symbol>, head: &ForHead, body: BlockId) -> Option<Known> {
+    /// `label: for head { body }`, its label `None` when it has none, `expected` the type
+    /// expected of its value, which `break` values are typed as.
+    pub(super) fn looping(
+        &mut self,
+        label: Option<Symbol>,
+        head: &ForHead,
+        body: BlockId,
+        expected: Option<Ty>,
+    ) -> Option<Known> {
         let ends = Ends::With(Known { ty: TyKind::unit(), stage: Stage::Compile });
         let mut holds = Vec::new();
         let value = match head {
@@ -55,7 +64,7 @@ impl Typer<'_, '_, '_> {
                 ends
             }
         };
-        self.loops.push(Loop { label, value });
+        self.loops.push(Loop { label, expected, value });
         self.narrowing(&holds, |t| t.block_value(body, None));
         match self.loops.pop()?.value {
             Ends::With(known) => Some(known),
@@ -75,7 +84,7 @@ impl Typer<'_, '_, '_> {
             vun_hir::visit::walk_expr(self, hir, expr);
             return None;
         };
-        let known = self.looping(Some(label), head, *block);
+        let known = self.looping(Some(label), head, *block, self.expected(expr));
         if let Some(known) = known {
             self.types.insert(body, known);
         }
@@ -84,11 +93,12 @@ impl Typer<'_, '_, '_> {
 
     /// `break label value`: the value joins those of the loop it leaves.
     pub(super) fn leave(&mut self, at: ExprId, label: Option<Symbol>, value: Option<ExprId>) {
+        let target = self.loops.iter().rposition(|l| label.is_none() || l.label == label);
+        let expected = target.and_then(|t| self.loops[t].expected);
         let found = match value {
-            Some(value) => self.typed(value),
+            Some(value) => self.typed_as(value, expected),
             None => Some(Known { ty: TyKind::unit(), stage: Stage::Compile }),
         };
-        let target = self.loops.iter().rposition(|l| label.is_none() || l.label == label);
         let Some(target) = target else { return };
         let sofar = std::mem::replace(&mut self.loops[target].value, Ends::Unknown);
         let joined = match (sofar, found) {

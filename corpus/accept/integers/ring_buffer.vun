@@ -1,7 +1,7 @@
 //! A fixed-capacity ring buffer whose indexing needs no checks (spec 04).
 
 RingBuffer := ($T: type, $N: Int(1..=65536)) -> type {
-    Index := Int(0..N);
+    $Index := Int(0..N);
     $Ring := struct {
         buf: [N]T,
         head: Index = 0,
@@ -23,4 +23,12 @@ RingBuffer := ($T: type, $N: Int(1..=65536)) -> type {
         };
     };
     Ring
+};
+
+/// Two pushes and a pop through a buffer of four.
+oldest := (a: u8, b: u8) -> ?u8 {
+    mut ring: RingBuffer(u8, 4) = .{ .buf = [0; 4] };
+    _ = ring.push(a);
+    _ = ring.push(b);
+    ring.pop()
 };

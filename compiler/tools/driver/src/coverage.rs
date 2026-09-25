@@ -11,7 +11,7 @@ use std::ops::AddAssign;
 use vun_hir::db::{FileRef, Parsed};
 use vun_hir::tree::ExprKind;
 use vun_lower::{EachLowered, Unlowered, Why};
-use vun_mir::{Programs, Roots, Unready};
+use vun_mir::{Mir, Programs, Roots, Unbuilt, Unready};
 use vun_origin::OriginId;
 use vun_query::Cx;
 use vun_sema::eval::Instantiation;
@@ -46,8 +46,8 @@ pub struct Gap {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum GapKind {
-    /// No function of the file reaches the literal at run time: it is generic and never
-    /// instantiated, runs only at compile time, or sits in a body that stops short.
+    /// No function of the file reaches the literal at run time and no compile-time code runs it:
+    /// it is generic and never instantiated, or sits in a body that stops short.
     Unreached,
     /// MIR does not build an instantiation of it, stopped at a form of this kind.
     Unready { unready: Unready, form: &'static str },
@@ -64,6 +64,13 @@ impl Session {
         let mut coverage = Coverage::default();
         let key = self.file_ref(file);
         let program = self.db.get::<Programs>(&(key.clone(), Roots::Functions));
+        // What the checks ran at compile time: calls in declarations' values, `$` code.
+        let ran: Vec<(Instantiation, Result<_, Unbuilt>)> = self
+            .db
+            .computed::<Mir>()
+            .into_iter()
+            .filter(|(i, _)| i.f.literal.file == key && *i != Instantiation::plain(i.f.literal.clone()))
+            .collect();
         for f in self.functions(file) {
             let origin = f.expr.origin;
             let plain = Instantiation::plain(f.clone());
@@ -81,10 +88,19 @@ impl Session {
             let instantiations: Vec<&Instantiation> =
                 program.functions.iter().filter(|i| i.f.literal == f).collect();
             let unready = program.unready.iter().find(|(i, _)| i.f.literal == f).map(|(_, u)| u.clone());
-            let kind = match unready {
-                _ if instantiations.is_empty() => Some(GapKind::Unreached),
-                Some(unready) => Some(GapKind::Unready { form: self.form_at(&key, unready.at()), unready }),
-                None => None,
+            // A literal only compile-time code calls is covered by the bodies built for it.
+            let at_compile_time = ran.iter().filter(|(i, _)| i.f.literal == f).map(|(_, built)| built);
+            let unbuilt = at_compile_time.clone().find_map(|built| built.as_ref().err().copied());
+            let kind = match (unready, unbuilt) {
+                (_, Some(unbuilt)) if instantiations.is_empty() => {
+                    let form = self.form_at(&key, unbuilt.at);
+                    Some(GapKind::Unready { unready: Unready::Unbuilt(unbuilt), form })
+                }
+                _ if instantiations.is_empty() && at_compile_time.count() == 0 => Some(GapKind::Unreached),
+                (Some(unready), _) => {
+                    Some(GapKind::Unready { form: self.form_at(&key, unready.at()), unready })
+                }
+                (None, _) => None,
             };
             match kind {
                 Some(kind) => coverage.gaps.push(Gap { function: origin, kind }),

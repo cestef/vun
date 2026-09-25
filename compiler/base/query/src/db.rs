@@ -94,6 +94,16 @@ impl Db {
         Cx::new(self).get::<Q>(key)
     }
 
+    /// Every key of `Q` computed or set so far, with its value: what inspection tools read,
+    /// such as coverage, never a query, whose results must not depend on what ran before.
+    ///
+    /// # Panics
+    /// Panics if the tables were poisoned by a panicking query.
+    #[must_use]
+    pub fn computed<Q: Query>(&self) -> Vec<(Q::Key, Q::Value)> {
+        self.memos::<Q>().into_iter().map(|(key, memo)| (key, memo.value)).collect()
+    }
+
     pub(crate) fn memo<Q: Query>(&self, key: &Q::Key) -> Option<Memo<Q>> {
         let tables = self.tables.read().expect("query tables");
         let table = tables.get(&TypeId::of::<Q>())?.downcast_ref::<Table<Q>>()?;

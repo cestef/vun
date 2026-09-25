@@ -2,7 +2,7 @@
 
 Shape := interface(($Self: type) -> type { struct {
     area: (self: &Self) -> u64 = _;
-    name := (self: &Self) -> &static [_]u8 { std.meta.name_of(Self) };
+    name := (self: &Self) -> &[u8] { std.meta.name_of(Self) };
 }});
 
 Square := struct { side: u16 };
@@ -20,3 +20,8 @@ total := ($S: Shape, shapes: &[S]) -> u64 {
 
 squares := [Square{ .side = 2 }, Square{ .side = 3 }];
 sum := total(Square, &squares);
+
+/// The total area of squares, dispatched statically.
+area_of := (shapes: &[Square]) -> u64 { total(Square, shapes) };
+/// A default member of the interface, reached through the witness.
+label := (s: &Square) -> &[u8] { s.name() };

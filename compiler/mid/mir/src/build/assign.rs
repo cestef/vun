@@ -35,11 +35,15 @@ impl Builder<'_, '_, '_> {
             self.assign(target, Rvalue::Use(value), origin);
             return Ok(());
         };
-        // `x op= y` is `x = (x op y)` narrowed back to the type of `x` (spec 04, rule 9).
+        // `x op= y` is `x = (x op y)`, an integer narrowed back to the type of `x` (spec 04,
+        // rule 9); a result of that type already, such as a float's, is written as it is.
         let typed = self.typed().ok_or(unbuilt)?;
         let ty = typed.types.get(&place).ok_or(unbuilt)?.ty;
+        let result = typed.operators.get(&Operation::Assign(place)).map(|o| o.result);
         let operand = self.operator(Operation::Assign(place), place, vec![Side::Expr(value)], origin)?;
-        self.assign(target, Rvalue::Narrow { operand, ty, narrowing }, origin);
+        let value =
+            if result == Some(ty) { Rvalue::Use(operand) } else { Rvalue::Narrow { operand, ty, narrowing } };
+        self.assign(target, value, origin);
         Ok(())
     }
 }
