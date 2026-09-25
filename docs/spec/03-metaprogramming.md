@@ -176,9 +176,18 @@ std.meta.TypeOf(p.x + 1)      // the type of an expression, typed and never run
 std.meta.Frame(blink)         // the frame type of a coroutine function (spec 06)
 ```
 
-The descriptors are ordinary structs declared in `lang.meta` (`lang.meta.Field`), and each
-reflection primitive's declared result type names its descriptor: the compiler fills the fields a
-descriptor declares, by name, and a descriptor field it has no fact for leaves the call without a
+**One shape.** Every value of a `struct` or `enum` type is one variant of its type and the parts
+that variant holds; a struct is one variant, named by nothing, whose parts are its fields, and an
+enum variant's parts are its payload's items, named by position. `lang.meta.variants(T)` gives
+each variant with its parts (`name`, `index`, `type`), `lang.meta.variant(T, v)` the position of
+the variant `v` is (0 for a struct), and `lang.meta.part(T, v, $variant, $index)` a borrow of that
+part, `.none` when `v` is another variant, of type `lang.meta.Part(T, variant, index)`. A derive
+is written once for every type over that shape: `std.cmp.derive_eq(T)` compares the variants,
+then each part of the same one by its own `Eq`.
+
+The descriptors are ordinary structs declared in `lang.meta` (`lang.meta.Field`,
+`lang.meta.Variant`), and each reflection primitive's declared result type names its descriptor:
+the compiler fills the fields a descriptor declares, by their handles, and a descriptor field it has no fact for leaves the call without a
 value. `std.meta` re-exports them. A type's name is the one diagnostics show: a `struct` or `enum`
 literal by the declaration it is written in, with its compile-time arguments.
 

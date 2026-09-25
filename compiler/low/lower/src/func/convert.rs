@@ -1,12 +1,9 @@
 //! Moving values between places of related types: an integer into a wider or narrower storage
 //! of a range holding it, a borrow of an array into a borrow of a slice, and a variant into an
-//! enum of the same constructor laid out apart (`Result(never, E)` into `Result(u64, E)`); and
-//! telling and writing the variant of an enum.
+//! enum of the same constructor laid out apart (`Result(never, E)` into `Result(u64, E)`).
 
-use vun_intern::Symbol;
 use vun_lir::{Access, Cond, Scalar, Target, Terminator, Value};
 use vun_mir::Operand;
-use vun_sema::layout::{Parts, Tag};
 use vun_sema::member::Members;
 use vun_sema::ty::{Ty, TyKind};
 
@@ -181,92 +178,6 @@ impl FnLower<'_, '_, '_> {
         }
         self.b.terminate(Terminator::Unreachable);
         self.b.switch_to(join);
-        Ok(())
-    }
-
-    /// The index of `variant` among those of the enum `ty`, and the enum's shape.
-    fn variant(
-        &self,
-        ty: Ty,
-        variant: Symbol,
-    ) -> Result<(usize, std::sync::Arc<vun_sema::layout::Shape>), Unlowered> {
-        let at = self.at;
-        let unsupported = move || Unlowered::unsupported(at, Form::Projection);
-        let members = self.l.types.cx.get::<Members>(&ty).ok_or_else(unsupported)?;
-        let index = members.variants.iter().position(|v| v.name == variant).ok_or_else(unsupported)?;
-        Ok((index, self.l.types.shape(ty, self.at)?))
-    }
-
-    /// The address of the payload item `at` of `variant` of the enum of type `ty` at `addr`.
-    fn payload(&mut self, addr: Value, ty: Ty, variant: Symbol, at: usize) -> Result<Value, Unlowered> {
-        let (index, shape) = self.variant(ty, variant)?;
-        let Parts::Enum { payloads, .. } = &shape.parts else {
-            return Err(Unlowered::unsupported(self.at, Form::Projection));
-        };
-        let offset = *payloads[index].get(at).ok_or(Unlowered::unsupported(self.at, Form::Projection))?;
-        Ok(self.at_offset(addr, offset))
-    }
-
-    /// Whether the enum of type `ty` at `addr` is `variant`: 1 or 0, an `i8`.
-    pub(crate) fn is_variant(&mut self, addr: Value, ty: Ty, variant: Symbol) -> Result<Value, Unlowered> {
-        let (index, shape) = self.variant(ty, variant)?;
-        let Parts::Enum { tag, .. } = &shape.parts else {
-            return Err(Unlowered::unsupported(self.at, Form::Projection));
-        };
-        let (offset, bytes, pattern, cond) = match *tag {
-            Tag::Alone => return Ok(self.b.constant(Scalar::I8, 1, self.at)),
-            Tag::Index { bytes } => (0, bytes, index as u128, Cond::Eq),
-            Tag::Niche { empty, offset, bytes, value } => {
-                (offset, bytes, value, if empty == index { Cond::Eq } else { Cond::Ne })
-            }
-        };
-        let int = Scalar::int(u32::try_from(bytes * 8).unwrap_or_default())
-            .ok_or(Unlowered::unsupported(self.at, Form::Projection))?;
-        let at = self.at_offset(addr, offset);
-        let found = self.b.load(int, at, Access::Plain, self.at);
-        let pattern = self.b.constant(int, pattern, self.at);
-        Ok(self.b.compare(cond, found, pattern, self.at))
-    }
-
-    /// The position of the variant the enum of type `ty` at `addr` is, a word.
-    pub(crate) fn variant_index(&mut self, addr: Value, ty: Ty) -> Result<Value, Unlowered> {
-        let unsupported = || Unlowered::unsupported(self.at, Form::Projection);
-        let shape = self.l.types.shape(ty, self.at)?;
-        let Parts::Enum { tag, .. } = &shape.parts else { return Err(unsupported()) };
-        let word = self.l.types.word;
-        let (offset, bytes, niche) = match *tag {
-            Tag::Alone => return Ok(self.b.constant(word, 0, self.at)),
-            Tag::Index { bytes } => (0, bytes, None),
-            Tag::Niche { empty, offset, bytes, value } => (offset, bytes, Some((empty, value))),
-        };
-        let int = Scalar::int(u32::try_from(bytes * 8).unwrap_or_default()).ok_or_else(unsupported)?;
-        let at = self.at_offset(addr, offset);
-        let found = self.b.load(int, at, Access::Plain, self.at);
-        let Some((empty, pattern)) = niche else { return Ok(self.resize(found, int, false, word)) };
-        // Of the two variants a niche tells apart, the empty one holds the pattern.
-        let pattern = self.b.constant(int, pattern, self.at);
-        let is_empty = self.b.compare(Cond::Eq, found, pattern, self.at);
-        let other = self.b.constant(word, u128::from(empty == 0), self.at);
-        let empty = self.b.constant(word, empty as u128, self.at);
-        Ok(self.b.select(is_empty, empty, other, self.at))
-    }
-
-    /// Makes the enum of type `ty` at `addr` the variant `variant`, its payload written apart.
-    pub(crate) fn set_variant(&mut self, addr: Value, ty: Ty, variant: Symbol) -> Result<(), Unlowered> {
-        let (index, shape) = self.variant(ty, variant)?;
-        let Parts::Enum { tag, .. } = &shape.parts else {
-            return Err(Unlowered::unsupported(self.at, Form::Projection));
-        };
-        let (offset, bytes, pattern) = match *tag {
-            Tag::Index { bytes } => (0, bytes, index as u128),
-            Tag::Niche { empty, offset, bytes, value } if empty == index => (offset, bytes, value),
-            Tag::Alone | Tag::Niche { .. } => return Ok(()),
-        };
-        let int = Scalar::int(u32::try_from(bytes * 8).unwrap_or_default())
-            .ok_or(Unlowered::unsupported(self.at, Form::Projection))?;
-        let at = self.at_offset(addr, offset);
-        let pattern = self.b.constant(int, pattern, self.at);
-        self.b.store(pattern, at, Access::Plain, self.at);
         Ok(())
     }
 }

@@ -18,12 +18,16 @@ impl Meta {
                 _ => Err(Unevaluated::Unsupported),
             },
             // Reflection (spec 03, section 6).
-            (Self::variants, [ty]) => {
-                env.variants(Primitive::Meta(self), ty.as_type().ok_or(Unevaluated::Unsupported)?)
-            }
+            (Self::variants, [ty]) => env.variants(ty.as_type().ok_or(Unevaluated::Unsupported)?),
             (Self::variant, [_, value]) => env.variant_index(value),
-            (Self::fields, [ty]) => {
-                env.fields(Primitive::Meta(self), ty.as_type().ok_or(Unevaluated::Unsupported)?)
+            (Self::fields, [ty]) => env.fields(ty.as_type().ok_or(Unevaluated::Unsupported)?),
+            (Self::Part, [ty, variant, index]) => {
+                env.part_type(ty.as_type().ok_or(Unevaluated::Unsupported)?, variant, index)
+            }
+            (Self::part, [ty, value, variant, index]) => {
+                let args = [Some(ty.clone()), None, Some(variant.clone()), Some(index.clone())];
+                let option = env.primitive_signature(Primitive::Meta(self), &args)?.result;
+                env.part(option, value, variant, index)
             }
             (Self::name_of, [ty]) => {
                 Ok(Value::string(&ty.as_type().ok_or(Unevaluated::Unsupported)?.to_string()))

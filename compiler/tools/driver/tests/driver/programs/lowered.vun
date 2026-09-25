@@ -14,14 +14,12 @@ kept := (keep: bool, log: &mut u8) -> ?Handle {
 
 Fault := enum { io(u8), other };
 #[impl(lang.ops.Eq(Fault))]
-FaultEq := struct {
-    eq := (a: &Fault, b: &Fault) -> bool {
-        match a {
-            .io(x) => match b { .io(y) => x == y, .other => false },
-            .other => match b { .io(_) => false, .other => true },
-        }
-    };
-};
+FaultEq := std.cmp.derive_eq(Fault);
+
+Point := struct { x: u16, y: i8 };
+#[impl(lang.ops.Eq(Point))]
+PointEq := std.cmp.derive_eq(Point);
+
 failing := (n: u8) -> Result(u8, u8) { if n > 0 { .err(n) } else { .ok(0) } };
 
 twice := ($F: lang.ops.Call((u8), u8), f: F, x: u8) -> u8 { f(f(x)) };
@@ -52,7 +50,9 @@ main := (sys: &mut std.os.System) -> std.os.Exit {
     bytes: [4]u8 = [0x78, 0x56, 0x34, n];
     if u32.from_le(&bytes) == 0x0134_5678 { code = code | 32; }
     // The variant of an enum value, and sizes.
-    if lang.meta.variant(Fault, &Fault.other) == 1 and std.meta.size(u64) == 8 { code = code | 64; }
+    pt: Point = .{ .x = 300, .y = -1 };
+    same := pt == Point{ .x = 300, .y = -1 } and pt != Point{ .x = 300, .y = n.wrap(i8) };
+    if lang.meta.variant(Fault, &Fault.other) == 1 and std.meta.size(u64) == 8 and same { code = code | 64; }
     // Pointers: offset, cast and address.
     items: [2]u16 = [7, 9];
     p := lang.mem.pointer_to([2]u16, &items);

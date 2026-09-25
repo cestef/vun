@@ -7,5 +7,6 @@
 )]
 use crate::Item;
 pub const name: Item = Item::new(&["lang", "meta", "Variant", "name"]);
-/// The types its payload holds, in order; none for a variant without one.
-pub const payload: Item = Item::new(&["lang", "meta", "Variant", "payload"]);
+/// Its position among the variants of its type.
+pub const index: Item = Item::new(&["lang", "meta", "Variant", "index"]);
+pub const parts: Item = Item::new(&["lang", "meta", "Variant", "parts"]);

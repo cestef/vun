@@ -89,6 +89,17 @@ impl FnLower<'_, '_, '_> {
                 self.b.store(index, dest, Access::Plain, self.at);
                 Ok(())
             }
+            Primitive::Meta(Meta::part) => {
+                let [Operand::Const(of), _, Operand::Const(variant), Operand::Const(index)] = args else {
+                    return Err(unsupported());
+                };
+                let of = of.as_type().ok_or_else(unsupported)?;
+                let (variant, index) =
+                    (variant.as_usize().ok_or_else(unsupported)?, index.as_usize().ok_or_else(unsupported)?);
+                let addr = self.pointed(arg(0)?)?;
+                let (holds, part) = self.part_at(addr, of, variant, index)?;
+                self.optional(holds, part, dest, ty)
+            }
             Primitive::Mem(m) => self.memory(m, &runtime, dest, ty),
             _ => Err(unsupported()),
         }

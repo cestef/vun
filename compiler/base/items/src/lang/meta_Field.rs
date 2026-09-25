@@ -7,4 +7,6 @@
 )]
 use crate::Item;
 pub const name: Item = Item::new(&["lang", "meta", "Field", "name"]);
+/// Its position among the parts of its variant.
+pub const index: Item = Item::new(&["lang", "meta", "Field", "index"]);
 pub const r#type: Item = Item::new(&["lang", "meta", "Field", "type"]);

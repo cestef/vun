@@ -71,4 +71,36 @@ impl FnLower<'_, '_, '_> {
         self.b.switch_to(join);
         Ok(())
     }
+
+    /// Writes into `dest`, an option of an address, `.some(addr)` where `holds` is not 0, or
+    /// always when there is no `holds`, and `.none` otherwise.
+    pub(crate) fn optional(
+        &mut self,
+        holds: Option<Value>,
+        addr: Value,
+        dest: Value,
+        ty: Ty,
+    ) -> Result<(), Unlowered> {
+        let (some, none) = (vun_items::lang::Option::some.symbol(), vun_items::lang::Option::none.symbol());
+        let Some(holds) = holds else { return self.some(addr, dest, ty, some) };
+        let (yes, no, join) =
+            (self.b.block(&[], self.at), self.b.block(&[], self.at), self.b.block(&[], self.at));
+        let to = |block| Target { block, args: Vec::new() };
+        self.b.terminate(Terminator::Branch { cond: holds, then: to(yes), otherwise: to(no) });
+        self.b.switch_to(yes);
+        self.some(addr, dest, ty, some)?;
+        self.b.terminate(Terminator::Jump(to(join)));
+        self.b.switch_to(no);
+        self.set_variant(dest, ty, none)?;
+        self.b.terminate(Terminator::Jump(to(join)));
+        self.b.switch_to(join);
+        Ok(())
+    }
+
+    fn some(&mut self, addr: Value, dest: Value, ty: Ty, some: Symbol) -> Result<(), Unlowered> {
+        self.set_variant(dest, ty, some)?;
+        let at = self.payload(dest, ty, some, 0)?;
+        self.b.store(addr, at, vun_lir::Access::Plain, self.at);
+        Ok(())
+    }
 }

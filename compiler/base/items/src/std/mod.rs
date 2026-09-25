@@ -15,6 +15,7 @@ pub mod build_Runner;
 pub mod build_Step;
 pub mod build_Tested;
 pub mod cmp;
+pub mod cmp_derive_eq;
 pub mod diag;
 pub mod diag_Fix;
 pub mod diag_Report;

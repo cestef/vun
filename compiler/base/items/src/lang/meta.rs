@@ -33,16 +33,24 @@ pub const concat: Item = Item::new(&["lang", "meta", "concat"]);
 pub const SliceConcat: Item = Item::new(&["lang", "meta", "SliceConcat"]);
 /// `a ++ b` on an array, as on the slice of its items: a string literal is a borrow of one.
 pub const ArrayConcat: Item = Item::new(&["lang", "meta", "ArrayConcat"]);
-/// A field of a struct type, as reflection gives it (spec 03, section 6).
+/// A part of a value, as reflection gives it (spec 03, section 6): a field of a struct, or an
+/// item of a variant's payload, named by its position (`0`, `1`, ...).
 pub const Field: Item = Item::new(&["lang", "meta", "Field"]);
 /// The fields of the struct type `T` in declaration order, generated ones included.
 pub const fields: Item = Item::new(&["lang", "meta", "fields"]);
-/// A variant of an enum type, as reflection gives it.
+/// A variant of a type, as reflection gives it: every value of a `struct` or `enum` type is one
+/// of its type's variants and the parts that variant holds. A struct is one variant, named by
+/// nothing, whose parts are its fields.
 pub const Variant: Item = Item::new(&["lang", "meta", "Variant"]);
-/// The variants of the enum type `T` in declaration order; none for another type.
+/// The variants of `T` in declaration order: an enum's, the one a struct is, none for another
+/// type.
 pub const variants: Item = Item::new(&["lang", "meta", "variants"]);
-/// The position of the variant `v` is among the variants of its enum type `T`.
+/// The position among the variants of `T` of the variant `v` is: 0 for a struct.
 pub const variant: Item = Item::new(&["lang", "meta", "variant"]);
+/// The type of the part `index` of the variant `variant` of `T`.
+pub const Part: Item = Item::new(&["lang", "meta", "Part"]);
+/// The part `index` of `v`, when `v` is the variant `variant` of `T`.
+pub const part: Item = Item::new(&["lang", "meta", "part"]);
 /// The item types of the tuple type `T`, in order.
 pub const items: Item = Item::new(&["lang", "meta", "items"]);
 /// The name of `T` as diagnostics show it: a `struct` or `enum` literal by the declaration it is

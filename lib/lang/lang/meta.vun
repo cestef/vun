@@ -45,26 +45,38 @@ ArrayConcat := ($n: Int(0..), $T: type) -> type { struct {
     concat := (a: &[T], b: &[T]) -> &static [T] { lang.meta.concat(T, a, b) };
 } };
 
-/// A field of a struct type, as reflection gives it (spec 03, section 6).
+/// A part of a value, as reflection gives it (spec 03, section 6): a field of a struct, or an
+/// item of a variant's payload, named by its position (`0`, `1`, ...).
 Field := struct {
     name: &[u8],
+    /// Its position among the parts of its variant.
+    index: usize,
     type: type,
 };
 
 /// The fields of the struct type `T` in declaration order, generated ones included.
 fields: ($T: type) -> &[Field] = _;
-/// A variant of an enum type, as reflection gives it.
+/// A variant of a type, as reflection gives it: every value of a `struct` or `enum` type is one
+/// of its type's variants and the parts that variant holds. A struct is one variant, named by
+/// nothing, whose parts are its fields.
 Variant := struct {
     name: &[u8],
-    /// The types its payload holds, in order; none for a variant without one.
-    payload: &[type],
+    /// Its position among the variants of its type.
+    index: usize,
+    parts: &[Field],
 };
 
-/// The variants of the enum type `T` in declaration order; none for another type.
+/// The variants of `T` in declaration order: an enum's, the one a struct is, none for another
+/// type.
 variants: ($T: type) -> &[Variant] = _;
-/// The position of the variant `v` is among the variants of its enum type `T`.
+/// The position among the variants of `T` of the variant `v` is: 0 for a struct.
 #[panic.never]
 variant: ($T: type, v: &T) -> usize = _;
+/// The type of the part `index` of the variant `variant` of `T`.
+Part: ($T: type, $variant: usize, $index: usize) -> type = _;
+/// The part `index` of `v`, when `v` is the variant `variant` of `T`.
+#[panic.never]
+part: ($T: type, v: &T, $variant: usize, $index: usize) -> ?&Part(T, variant, index) = _;
 /// The item types of the tuple type `T`, in order.
 items: ($T: type) -> &[type] = _;
 /// The name of `T` as diagnostics show it: a `struct` or `enum` literal by the declaration it is

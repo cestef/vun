@@ -10,27 +10,22 @@ max := ($T: type, a: T, b: T) -> T { if b > a { b } else { a } };
 #[panic.never]
 clamp := ($T: type, x: T, lo: T, hi: T) -> T { if x < lo { lo } else if x > hi { hi } else { x } };
 
-/// An `Eq` witness for `T` by reflection (spec 03, section 3): a struct is equal field by field,
-/// each by its own `Eq`, and an enum without payloads variant by variant.
-/// `#[impl(lang.ops.Eq(Point))] PointEq := std.cmp.derive_eq(Point);`
-derive_eq := ($T: type) -> type {
-    $if lang.meta.variants(T).len() > 0 {
+/// An `Eq` witness for `T` by reflection (spec 03, section 6): two values are equal when they are
+/// the same variant and each part of it is equal, by its own `Eq`. A struct is one variant, its
+/// fields its parts. `#[impl(lang.ops.Eq(Point))] PointEq := std.cmp.derive_eq(Point);`
+derive_eq := ($T: type) -> type { struct {
+    eq := (a: &T, b: &T) -> bool {
+        at := lang.meta.variant(T, a);
+        if at != lang.meta.variant(T, b) { return false; }
         $for v in lang.meta.variants(T) {
-            $if v.payload.len() > 0 {
-                $std.diag.error(.{ .msg = "`derive_eq` compares the variants of enums without payloads: write this `Eq` impl" });
+            if at == v.index {
+                $for p in v.parts {
+                    if lang.meta.part(T, a, v.index, p.index) != lang.meta.part(T, b, v.index, p.index) {
+                        return false;
+                    }
+                }
             }
         }
-        struct {
-            eq := (a: &T, b: &T) -> bool { lang.meta.variant(T, a) == lang.meta.variant(T, b) };
-        }
-    } else {
-        struct {
-            eq := (a: &T, b: &T) -> bool {
-                $for f in lang.meta.fields(T) {
-                    if a.$(f.name) != b.$(f.name) { return false; }
-                }
-                true
-            };
-        }
-    }
-};
+        true
+    };
+} };

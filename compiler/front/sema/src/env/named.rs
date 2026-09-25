@@ -36,10 +36,7 @@ impl Env<'_, '_> {
     pub fn position(&self, name: &Name) -> Option<usize> {
         match name {
             Name::Index(at) => usize::try_from(*at).ok(),
-            Name::Computed(expr) => match self.eval(*expr) {
-                Ok(Value::Int(at)) => at.to_i128().and_then(|at| usize::try_from(at).ok()),
-                _ => None,
-            },
+            Name::Computed(expr) => self.eval(*expr).ok()?.as_usize(),
             Name::Plain(_) | Name::Hole => None,
         }
     }

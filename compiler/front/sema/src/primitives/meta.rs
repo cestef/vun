@@ -23,10 +23,15 @@ pub enum Meta {
     concat,
     /// The fields of the struct type `T` in declaration order, generated ones included.
     fields,
-    /// The variants of the enum type `T` in declaration order; none for another type.
+    /// The variants of `T` in declaration order: an enum's, the one a struct is, none for another
+    /// type.
     variants,
-    /// The position of the variant `v` is among the variants of its enum type `T`.
+    /// The position among the variants of `T` of the variant `v` is: 0 for a struct.
     variant,
+    /// The type of the part `index` of the variant `variant` of `T`.
+    Part,
+    /// The part `index` of `v`, when `v` is the variant `variant` of `T`.
+    part,
     /// The item types of the tuple type `T`, in order.
     items,
     /// The name of `T` as diagnostics show it: a `struct` or `enum` literal by the declaration it is
@@ -61,6 +66,8 @@ impl Meta {
         Self::fields,
         Self::variants,
         Self::variant,
+        Self::Part,
+        Self::part,
         Self::items,
         Self::name_of,
         Self::Frame,
@@ -87,6 +94,8 @@ impl Meta {
             Self::fields => "fields",
             Self::variants => "variants",
             Self::variant => "variant",
+            Self::Part => "Part",
+            Self::part => "part",
             Self::items => "items",
             Self::name_of => "name_of",
             Self::Frame => "Frame",
@@ -114,6 +123,8 @@ impl Meta {
             Self::fields => vun_items::lang::meta::fields,
             Self::variants => vun_items::lang::meta::variants,
             Self::variant => vun_items::lang::meta::variant,
+            Self::Part => vun_items::lang::meta::Part,
+            Self::part => vun_items::lang::meta::part,
             Self::items => vun_items::lang::meta::items,
             Self::name_of => vun_items::lang::meta::name_of,
             Self::Frame => vun_items::lang::meta::Frame,

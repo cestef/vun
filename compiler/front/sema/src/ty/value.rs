@@ -85,6 +85,13 @@ pub enum Value {
 }
 
 impl Value {
+    /// The integer this is, as a position or count.
+    #[must_use]
+    pub fn as_usize(&self) -> Option<usize> {
+        let Self::Int(n) = self else { return None };
+        usize::try_from(n.to_i128()?).ok()
+    }
+
     /// A string at compile time: its bytes (decision 82).
     #[must_use]
     pub fn string(text: &str) -> Self {

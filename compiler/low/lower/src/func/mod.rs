@@ -17,6 +17,7 @@ mod primitive;
 mod rvalue;
 mod term;
 mod trap;
+mod variant;
 mod verdict;
 
 pub(crate) use coroutine::Mode;
