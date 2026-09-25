@@ -84,7 +84,7 @@ impl FnLower<'_, '_, '_> {
             Primitive::Meta(Meta::variant) => {
                 let [Operand::Const(of), _] = args else { return Err(unsupported()) };
                 let of = of.as_type().ok_or_else(unsupported)?;
-                let addr = self.scalar_operand(arg(0)?)?;
+                let addr = self.pointed(arg(0)?)?;
                 let index = self.variant_index(addr, of)?;
                 self.b.store(index, dest, Access::Plain, self.at);
                 Ok(())
@@ -113,9 +113,19 @@ impl FnLower<'_, '_, '_> {
         let unsupported = move || Unlowered::unsupported(at, Form::Primitive);
         let ty = self.operand_ty(operand).and_then(|t| t.pointee()).ok_or_else(unsupported)?;
         let (int, signed) = self.l.types.int(ty).ok_or_else(unsupported)?;
-        let addr = self.scalar_operand(operand)?;
+        let addr = self.pointed(operand)?;
         let value = self.b.load(int, addr, Access::Plain, self.at);
         Ok(self.resize(value, int, signed, to))
+    }
+
+    /// The address the borrow or pointer `operand` points to. A shared borrow of a compile-time
+    /// value holds the value, so a constant one points to storage holding it.
+    pub(crate) fn pointed(&mut self, operand: &Operand) -> Result<Value, Unlowered> {
+        let is_address = self.operand_ty(operand).is_some_and(|t| t.pointee().is_some());
+        match operand {
+            Operand::Const(_) if !is_address => self.operand_addr(operand),
+            _ => self.scalar_operand(operand),
+        }
     }
 
     /// The scalar `operand` holds.

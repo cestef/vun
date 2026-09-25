@@ -81,7 +81,7 @@ impl FnLower<'_, '_, '_> {
             .operand_ty(operand)
             .and_then(|t| t.pointee())
             .ok_or(Unlowered::unsupported(at, Form::Primitive))?;
-        let addr = self.scalar_operand(operand)?;
+        let addr = self.pointed(operand)?;
         self.load_scalar(addr, ty)
     }
 

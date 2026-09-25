@@ -95,7 +95,15 @@ impl Session {
             coverage.reached += 1;
             match lowered {
                 Ok(()) => coverage.lowered += 1,
-                // Counted where MIR stops, above.
+                // A literal of this file is counted where MIR stops, above; one of another file
+                // is counted here.
+                Err(Unlowered { why: Why::Unready(unready), .. }) if i.f.literal.file != key => {
+                    let (function, form) =
+                        (i.f.literal.expr.origin, self.form_at(&i.f.literal.file, unready.at()));
+                    coverage
+                        .gaps
+                        .push(Gap { function, kind: GapKind::Unready { unready: unready.clone(), form } });
+                }
                 Err(Unlowered { why: Why::Unready(_), .. }) => {}
                 Err(unlowered) => coverage.gaps.push(Gap {
                     function: i.f.literal.expr.origin,

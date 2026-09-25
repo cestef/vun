@@ -1,5 +1,5 @@
 //! Layouts of `struct` and `enum` literals, with their layout attributes: `#[layout.bits(uN)]`,
-//! `#[layout.tag(uN)]` and `#[layout.align(N)]`.
+//! `#[layout.tag(uN)]`, `#[layout.align(N)]` and a field's `#[layout.offset(N)]`.
 
 use vun_query::Cx;
 
@@ -33,9 +33,12 @@ impl Shapes {
                 let layout = Layout { niche: None, ..layout(&backing.as_type()?)? };
                 Shape { layout, parts: Parts::Bits(offsets) }
             }
-            NominalKind::Struct => Shape::sequence(
-                members.fields.iter().map(|f| layout(f.ty.as_ref().ok()?)).collect::<Option<Vec<_>>>()?,
-            ),
+            // `#[layout.offset(n)]` places a field at `n`.
+            NominalKind::Struct => {
+                let parts = members.fields.iter().map(|f| Some((layout(f.ty.as_ref().ok()?)?, f.offset)));
+                let (layout, offsets) = Layout::placed(parts.collect::<Option<Vec<_>>>()?)?;
+                Shape { layout, parts: Parts::Sequence(offsets) }
+            }
             NominalKind::Enum => {
                 let payloads = members.variants.iter().map(|v| {
                     Some(Layout::sequence(

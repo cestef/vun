@@ -4,11 +4,13 @@
 use vun_index::{IndexVec, index};
 use vun_intern::Symbol;
 use vun_origin::OriginId;
+use vun_query::Cx;
 use vun_sema::item::DeclRef;
-use vun_sema::ty::Ty;
+use vun_sema::member::Members;
+use vun_sema::ty::{Ty, TyKind};
 
 use crate::place::Place;
-use crate::rvalue::{Operand, Rvalue};
+use crate::rvalue::{Aggregate, Operand, Rvalue};
 
 index! {
     pub struct Local;
@@ -34,6 +36,29 @@ impl Body {
             TerminatorKind::Yield { resume: r, cancel, .. } if r == resume => Some(cancel),
             _ => None,
         })
+    }
+
+    /// The body of the function a variant's constructor is as a value, `E.fs`: its payload as
+    /// parameters, the variant as the result. `None` when the payload's types are not known.
+    #[must_use]
+    pub fn constructor(cx: &Cx<'_>, ty: Ty, name: Symbol) -> Option<Self> {
+        let TyKind::Nominal(nominal) = &*ty else { return None };
+        let origin = nominal.literal.expr.origin;
+        let members = cx.get::<Members>(&ty)?;
+        let variant = members.variants.iter().find(|v| v.name == name)?;
+        let local = |ty| LocalDecl { name: None, ty: Some(ty), role: Role::Held, origin };
+        let mut locals = IndexVec::new();
+        let ret = locals.push(local(ty));
+        let params: Vec<Local> = variant
+            .payload
+            .iter()
+            .map(|p| Some(locals.push(local(*p.as_ref().ok()?))))
+            .collect::<Option<_>>()?;
+        let parts = params.iter().map(|&p| Operand::Place(Place::of(p))).collect();
+        let value = Rvalue::Aggregate { kind: Aggregate::Variant { ty, name }, parts };
+        let stmts = vec![Stmt { place: Place::of(ret), value, origin }];
+        let block = Block { stmts, term: Terminator { kind: TerminatorKind::Return, origin } };
+        Some(Self { locals, params, ret, blocks: IndexVec::from(vec![block]), origin })
     }
 
     /// Whether this is a coroutine function's body: one that yields.

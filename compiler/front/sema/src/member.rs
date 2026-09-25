@@ -15,6 +15,7 @@ use crate::env::{Env, Unevaluated};
 use crate::eval::Staging;
 use crate::item::{DeclRef, ExprRef, Node};
 use crate::primitives::kind::Kind;
+use crate::primitives::layout::Layout;
 use crate::ty::{Nominal, Ty, TyKind, Value};
 use crate::typeck::Known;
 use crate::visible::{Home, Visible};
@@ -50,6 +51,8 @@ pub struct Field {
     pub visible: Visible,
     /// The value a literal that omits the field gives it, evaluated where the struct was built.
     pub default: Option<ExprRef>,
+    /// The offset `#[layout.offset(n)]` places it at, in bytes.
+    pub offset: Option<u64>,
 }
 
 #[derive(Debug, PartialEq, Eq, Hash)]
@@ -180,7 +183,8 @@ impl MemberTable {
                     self.deref = Some(name);
                 }
                 let default = field.default.map(|d| ExprRef::new(env.file.clone(), hir, d));
-                self.fields.push(Field { name, ty: env.ty(field.ty), visible, default });
+                let offset = env.count(&field.attrs, Primitive::Layout(Layout::offset));
+                self.fields.push(Field { name, ty: env.ty(field.ty), visible, default, offset });
             }
             Member::Decl(decl) => {
                 let d = &hir.decls[*decl];

@@ -82,6 +82,9 @@ impl Lowering<'_, '_> {
                 let id = self.function(&Instantiation::new(f.clone(), Vec::new()), at)?;
                 out.relocs.push(address(Address::Func(id)));
             }
+            Constant::Constructor { ty: of, name } if matches!(&*ty, TyKind::Primitive(..)) => {
+                out.relocs.push(address(Address::Func(self.constructor(*of, *name, at)?)));
+            }
             Constant::Linked(decl) => {
                 let target = self.linked(decl, at)?;
                 out.relocs.push(address(target));

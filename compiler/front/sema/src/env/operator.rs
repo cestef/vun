@@ -4,6 +4,7 @@
 
 use vun_desugar::{OPERATORS, PREFIX_OPERATORS};
 use vun_grammar::TokenKind;
+use vun_hir::tree::ExprId;
 use vun_items::Item;
 
 use super::{Env, Unevaluated};
@@ -12,13 +13,27 @@ use crate::member::MemberValue;
 use crate::ty::{Ty, TyKind, Value};
 use crate::typeck::omitted::{Plan, Unifier};
 
+/// An operand at compile time: its value, of the type typing found for it where it did, which a
+/// string literal's value does not tell (`"ab"` is a `&static [2]u8`, not of its bytes alone).
+pub struct Operand {
+    pub value: Value,
+    pub ty: Option<Ty>,
+}
+
+impl Operand {
+    /// The type passed: the one typing found, reached through its borrows, or else the value's.
+    fn ty(&self) -> Option<Ty> {
+        self.ty.map(|t| t.through_borrows()).or_else(|| self.value.ty())
+    }
+}
+
 impl Env<'_, '_> {
     /// `left op right` at compile time.
     ///
     /// # Errors
     /// Returns why it has no value here: an operator without an interface, operands whose type
     /// has no impl of it, or what the function called returns.
-    pub fn binary(&self, op: TokenKind, left: Value, right: Value) -> Result<Value, Unevaluated> {
+    pub fn binary(&self, op: TokenKind, left: Operand, right: Operand) -> Result<Value, Unevaluated> {
         let row = OPERATORS.iter().find(|row| row.token == op).ok_or(Unevaluated::Unsupported)?;
         self.operate(row.function, vec![left, right])
     }
@@ -27,15 +42,23 @@ impl Env<'_, '_> {
     ///
     /// # Errors
     /// As [`Self::binary`].
-    pub fn prefix(&self, op: TokenKind, operand: Value) -> Result<Value, Unevaluated> {
+    pub fn prefix(&self, op: TokenKind, operand: Operand) -> Result<Value, Unevaluated> {
         let row = PREFIX_OPERATORS.iter().find(|row| row.token == op).ok_or(Unevaluated::Unsupported)?;
         self.operate(row.function, vec![operand])
     }
 
     /// The call of `function`, a requirement of an interface, for the type of the first of
     /// `operands`, the others after it, each passed as its parameter asks.
-    fn operate(&self, function: Item, operands: Vec<Value>) -> Result<Value, Unevaluated> {
-        let ty = operands.first().and_then(Value::ty).ok_or(Unevaluated::Unsupported)?;
+    fn operate(&self, function: Item, operands: Vec<Operand>) -> Result<Value, Unevaluated> {
+        let mut ty = operands.first().and_then(Operand::ty).ok_or(Unevaluated::Unsupported)?;
+        // Operands typing found no types for hold what their values show: the left one's type is
+        // widened to hold the others, as an array's items are: `"reset_" ++ name` operates on
+        // bytes, not on the letters of `reset_`.
+        if operands.iter().all(|o| o.ty.is_none()) {
+            for other in operands.iter().skip(1).filter_map(Operand::ty) {
+                ty = Self::widened(ty, other);
+            }
+        }
         let (interface, name) = (function.parent().ok_or(Unevaluated::Absent)?, function.symbol());
         let method = self.implemented_by(ty, interface, name).ok_or(Unevaluated::Unsupported)?;
         let f = Callable::of(self.cx.get::<MemberValue>(&(method.owner, name))?)
@@ -47,20 +70,35 @@ impl Env<'_, '_> {
         let types: Vec<Option<Ty>> = operands
             .iter()
             .zip(&plan.slots)
-            .map(|(v, &slot)| match modes.get(slot).copied().flatten() {
-                Some(mode) => TyKind::borrowed_as(mode, v.ty()?),
-                None => v.ty(),
+            .map(|(o, &slot)| match modes.get(slot).copied().flatten() {
+                Some(mode) => TyKind::borrowed_as(mode, o.ty()?),
+                None => o.ty(),
             })
             .collect();
         let inferred = Unifier::infer(self, &f, &plan, &types).ok_or(Unevaluated::Unsupported)?;
         let mut args: Vec<Option<Value>> = vec![None; plan.slots.len() + plan.omitted.len()];
-        for (&slot, value) in plan.slots.iter().zip(operands) {
-            args[slot] = Some(value);
+        for (&slot, operand) in plan.slots.iter().zip(operands) {
+            args[slot] = Some(operand.value);
         }
         for (&slot, value) in plan.omitted.iter().zip(inferred) {
             args[slot] = value;
         }
         let args = args.into_iter().collect::<Option<Vec<_>>>().ok_or(Unevaluated::Unsupported)?;
         self.apply(f.value(), args)
+    }
+
+    /// `expr` as an operand: its value, of the type typing found.
+    pub(super) fn operand(&self, expr: ExprId) -> Result<Operand, Unevaluated> {
+        Ok(Operand { value: self.eval(expr)?, ty: self.type_of(expr) })
+    }
+
+    /// `ty` widened to hold the values of `other`: their join, or for a sequence, the same
+    /// sequence of the items of both; `ty` itself when they have nothing in common.
+    fn widened(ty: Ty, other: Ty) -> Ty {
+        let items = || {
+            let (len, item) = ty.as_array()?;
+            Some(TyKind::array(len.clone(), item.join(&*other.items()?)?))
+        };
+        ty.join(&other).or_else(items).unwrap_or(ty)
     }
 }

@@ -41,7 +41,7 @@ impl FnLower<'_, '_, '_> {
             // An address as another kind of address: a borrow's or a cell's as a pointer, or a
             // pointer to another type.
             Mem::pointer_to | Mem::cell_pointer | Mem::cast => {
-                let addr = self.scalar_operand(arg(0)?)?;
+                let addr = self.pointed(arg(0)?)?;
                 self.b.store(addr, dest, Access::Plain, self.at);
                 Ok(())
             }

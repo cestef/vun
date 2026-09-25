@@ -124,8 +124,8 @@ impl Typer<'_, '_, '_> {
         for (&slot, (value, known)) in slots[receiver..].iter().zip(found) {
             if let Some(known) = known {
                 let param = signature.params[slot];
-                let param = callee.passing.expected(param.quoted().unwrap_or(param));
-                let known = Known { ty: callee.passing.passed(known.ty), ..known };
+                let param = param.quoted().unwrap_or(param);
+                let known = Known { ty: callee.passing.passed(known.ty, param), ..known };
                 self.expect(self.hir().exprs[value].origin, known, param, None);
             }
         }
@@ -249,11 +249,16 @@ impl Passing {
         }
     }
 
-    /// The type an argument of type `ty` is passed as, before any borrow its parameter asks for.
-    fn passed(self, ty: Ty) -> Ty {
+    /// The type an argument of type `ty` is passed as for a parameter of type `param`: an
+    /// operand passed as asked is reached through its borrows, then borrowed in the parameter's
+    /// mode, so that a borrow of an array passes where one of a slice is asked, as in any call.
+    fn passed(self, ty: Ty, param: Ty) -> Ty {
         match self {
             Self::Written => ty,
-            Self::Asked => ty.through_borrows(),
+            Self::Asked => {
+                let reached = ty.through_borrows();
+                param.borrowing().and_then(|(mode, ..)| TyKind::borrowed_as(mode, reached)).unwrap_or(reached)
+            }
         }
     }
 }

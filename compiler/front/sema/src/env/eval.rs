@@ -72,7 +72,7 @@ impl Env<'_, '_> {
             ExprKind::Prefix { op: TokenKind::Bang, operand, .. } => {
                 self.decide(!self.holds(&self.eval(*operand)?)?)
             }
-            ExprKind::Prefix { op, operand, .. } => self.prefix(*op, self.eval(*operand)?),
+            ExprKind::Prefix { op, operand, .. } => self.prefix(*op, self.operand(*operand)?),
             ExprKind::Infix { op: op @ (TokenKind::DotDot | TokenKind::DotDotEq), left, right } => {
                 let hi = right.map(|r| self.eval(r)).transpose()?;
                 Value::range(*op, &self.eval(*left)?, hi.as_ref())
@@ -83,7 +83,7 @@ impl Env<'_, '_> {
                 if self.holds(&left)? == (*op == TokenKind::Or) { Ok(left) } else { self.eval(*right) }
             }
             ExprKind::Infix { op, left, right: Some(right) } => {
-                self.binary(*op, self.eval(*left)?, self.eval(*right)?)
+                self.binary(*op, self.operand(*left)?, self.operand(*right)?)
             }
             ExprKind::If { cond: Cond::Expr(cond), then, otherwise } => {
                 if self.holds(&self.eval(*cond)?)? {

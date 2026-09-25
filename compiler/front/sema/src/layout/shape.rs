@@ -76,10 +76,22 @@ impl Layout {
     /// largest: a struct or a tuple, and the offset of each part. Its unused patterns are the
     /// largest run of a part's, the first one on a tie.
     pub(crate) fn sequence(parts: impl IntoIterator<Item = Self>) -> (Self, Vec<u64>) {
+        Self::placed(parts.into_iter().map(|p| (p, None))).expect("parts placed in order fit")
+    }
+
+    /// The parts in order, each at the offset given, or else at the first offset its alignment
+    /// allows after the one before; `None` when a given offset overlaps the part before or
+    /// misaligns the part.
+    pub(crate) fn placed(parts: impl IntoIterator<Item = (Self, Option<u64>)>) -> Option<(Self, Vec<u64>)> {
         let mut whole = Self::EMPTY;
         let mut offsets = Vec::new();
-        for part in parts {
-            let offset = whole.size.next_multiple_of(part.align);
+        for (part, at) in parts {
+            let next = whole.size.next_multiple_of(part.align);
+            let offset = match at {
+                Some(at) if at < whole.size || at % part.align != 0 => return None,
+                Some(at) => at,
+                None => next,
+            };
             offsets.push(offset);
             whole.size = offset + part.size;
             whole.align = whole.align.max(part.align);
@@ -90,7 +102,7 @@ impl Layout {
             }
         }
         whole.size = whole.size.next_multiple_of(whole.align);
-        (whole, offsets)
+        Some((whole, offsets))
     }
 }
 

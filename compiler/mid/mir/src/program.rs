@@ -28,6 +28,9 @@ pub struct Program {
     pub imports: Vec<DeclRef>,
     /// The functions reached whose bodies are not ready, and why.
     pub unready: Vec<(Instantiation, Unready)>,
+    /// The variants whose constructors are taken as values, each a function (`Body::constructor`),
+    /// by its enum type and name.
+    pub constructors: Vec<(Ty, Symbol)>,
 }
 
 /// Where the reach of a program starts.
@@ -178,6 +181,9 @@ impl Reach<'_, '_> {
             }
             Value::Linked(decl) if !self.program.imports.contains(decl) => {
                 self.program.imports.push(decl.clone());
+            }
+            Value::Constructor { ty, name } if !self.program.constructors.contains(&(*ty, *name)) => {
+                self.program.constructors.push((*ty, *name));
             }
             _ => {}
         }
