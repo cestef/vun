@@ -41,7 +41,7 @@ it imports it, so it declares the handler itself the same way:
 
 ```console
 $ cat handler.vun
-#[link.symbol(lang.panic.trap_symbol), stack.max(128)]
+#[link.symbol(lang.panic.symbols.trap), stack.max(128)]
 trap: (t: &lang.panic.Trap) -> lang.never = _;
 ```
 

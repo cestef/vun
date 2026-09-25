@@ -119,6 +119,7 @@ pub mod opt_Level;
 pub mod panic;
 pub mod panic_Reason;
 pub mod panic_Trap;
+pub mod panic_symbols;
 pub mod safety;
 pub mod scope;
 pub mod simd;

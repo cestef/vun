@@ -12,7 +12,7 @@ section 1, rule 3). Otherwise the program would call the export with arguments i
 
 ```vun
 Runtime := struct {
-    #[link.export(std.task.sleep_symbol)] //~ link.export_mismatch
+    #[link.export(std.task.symbols.sleep)] //~ link.export_mismatch
     sleep := (ticks: u32) { };
 };
 ```
@@ -23,7 +23,7 @@ Give the export the declared type, here `() -> ()`:
 
 ```vun
 Runtime := struct {
-    #[link.export(std.task.sleep_symbol)]
+    #[link.export(std.task.symbols.sleep)]
     sleep := () { };
 };
 ```

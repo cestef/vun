@@ -7,7 +7,8 @@
 )]
 use crate::Item;
 pub const Trap: Item = Item::new(&["lang", "panic", "Trap"]);
-pub const trap_symbol: Item = Item::new(&["lang", "panic", "trap_symbol"]);
+/// The link symbols of this namespace's declarations, which a runtime exports.
+pub const symbols: Item = Item::new(&["lang", "panic", "symbols"]);
 pub const trap: Item = Item::new(&["lang", "panic", "trap"]);
 /// Why a trap site fails, known when compiling, so the message table records it.
 pub const Reason: Item = Item::new(&["lang", "panic", "Reason"]);

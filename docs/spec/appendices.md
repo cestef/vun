@@ -19,7 +19,7 @@ declaration whose value is `_`.
 | `lang.layout` | `bits`, `c`, `tag`, `align`, `offset` |
 | `lang.link` | `section`, `keep`, `export`, `symbol`, `weak` |
 | `lang.abi` | `native`, `c`, `interrupt`, `naked` |
-| `lang.panic` | `Trap`, `trap`, `trap_symbol`, `never`, `unreachable` |
+| `lang.panic` | `Trap`, `trap`, `symbols`, `never`, `unreachable` |
 | `lang.stack` | `max`, `depth` |
 | `lang.opt` | `cold`, `inline`, `level` |
 | `lang.hint` | `cold` |

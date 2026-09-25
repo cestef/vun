@@ -4,9 +4,12 @@ Trap := struct {
     site: u32,
 };
 
-trap_symbol := "vun_trap";
+/// The link symbols of this namespace's declarations, which a runtime exports.
+symbols := struct {
+    trap := "vun_trap";
+};
 
-#[link.symbol(trap_symbol)]
+#[link.symbol(symbols.trap)]
 trap: (t: &Trap) -> lang.never = _;
 
 /// Why a trap site fails, known when compiling, so the message table records it.

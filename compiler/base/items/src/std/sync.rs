@@ -11,8 +11,7 @@ use crate::Item;
 pub const Mask: Item = Item::new(&["std", "sync", "Mask"]);
 /// The runtime's critical section, typed link symbols it exports (spec 08, section 1): `enter`
 /// masks interrupts and, on multi-core targets, takes the global lock; `leave` undoes it.
-pub const enter_symbol: Item = Item::new(&["std", "sync", "enter_symbol"]);
-pub const leave_symbol: Item = Item::new(&["std", "sync", "leave_symbol"]);
+pub const symbols: Item = Item::new(&["std", "sync", "symbols"]);
 pub const enter: Item = Item::new(&["std", "sync", "enter"]);
 pub const leave: Item = Item::new(&["std", "sync", "leave"]);
 /// Holding the critical section. Only `critical` makes one, and it lends it for the call only,

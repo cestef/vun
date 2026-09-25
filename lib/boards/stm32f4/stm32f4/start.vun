@@ -30,19 +30,19 @@ start := ($config: Config) -> type { struct {
         config.main(unsafe { Peripherals.claim() })
     };
 
-    #[link.export(lang.panic.trap_symbol)]
+    #[link.export(lang.panic.symbols.trap)]
     trap := config.trap;
 
     /// Masks interrupts, keeping `PRIMASK` as it was: one core, so the section is never
     /// contended and nests by restoring the mask.
-    #[link.export(std.sync.enter_symbol), panic.never]
+    #[link.export(std.sync.symbols.enter), panic.never]
     enter := () -> std.sync.Mask {
         mut primask: usize = 0;
         unsafe { lang.arch.asm("mrs {mask}, PRIMASK\ncpsid i", .{ .mask = &out primask }); }
         unsafe std.sync.Mask.of(primask, true)
     };
 
-    #[link.export(std.sync.leave_symbol), panic.never]
+    #[link.export(std.sync.symbols.leave), panic.never]
     leave := (mask: std.sync.Mask) {
         if mask.bits() & 1 == 0 {
             unsafe { lang.arch.asm("cpsie i", .{}); }
@@ -50,6 +50,6 @@ start := ($config: Config) -> type { struct {
     };
 
     /// Waits for an interrupt.
-    #[link.export(std.task.sleep_symbol)]
+    #[link.export(std.task.symbols.sleep)]
     sleep := () { unsafe { lang.arch.asm("wfi", .{}); } };
 }};

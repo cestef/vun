@@ -14,6 +14,6 @@ start := ($main: (&mut System) -> Exit) -> type { struct {
         exit(main(&mut sys))
     };
 
-    #[link.export(lang.panic.trap_symbol)]
+    #[link.export(lang.panic.symbols.trap)]
     trap := (t: &lang.panic.Trap) -> never { report(t); exit(.code(101)) };
 }};

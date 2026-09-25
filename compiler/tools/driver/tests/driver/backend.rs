@@ -257,7 +257,7 @@ tock: (x: u8) -> u8 = _;
 declared := (x: u8) -> u8 { tick(x) };
 #[link.export(\"undeclared\"), abi.c, stack.max(4096)]
 undeclared := (x: u8) -> u8 { tock(x) };
-#[link.symbol(lang.panic.trap_symbol), stack.max(128)]
+#[link.symbol(lang.panic.symbols.trap), stack.max(128)]
 trap: (t: &lang.panic.Trap) -> lang.never = _;
 #[link.export(\"trapping\"), abi.c, stack.max(4096)]
 trapping := (n: u32) -> u32 { mut total: u32 = 0; for _ in 0..n { total += 1; } total };

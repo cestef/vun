@@ -15,7 +15,7 @@ pub const Wait: Item = Item::new(&["std", "task", "Wait"]);
 pub const Async: Item = Item::new(&["std", "task", "Async"]);
 /// Waits for the next event: sleeps the core until an interrupt, or parks a hosted thread. A
 /// typed link symbol the runtime exports (spec 08, section 1).
-pub const sleep_symbol: Item = Item::new(&["std", "task", "sleep_symbol"]);
+pub const symbols: Item = Item::new(&["std", "task", "symbols"]);
 pub const sleep: Item = Item::new(&["std", "task", "sleep"]);
 /// Which of two tasks finished first, with its result.
 pub const Either: Item = Item::new(&["std", "task", "Either"]);

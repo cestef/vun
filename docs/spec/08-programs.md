@@ -50,7 +50,7 @@ start := ($main: (&mut System) -> Exit) -> type { struct {
         exit(main(&mut sys))
     };
 
-    #[link.export(lang.panic.trap_symbol)]
+    #[link.export(lang.panic.symbols.trap)]
     trap := (t: &lang.panic.Trap) -> never { report(t); exit(.code(101)) };
 }};
 ```
@@ -96,10 +96,16 @@ A library is a root file with `#[link.export]` declarations and no runtime.
 
 ```vun
 // lang/panic.vun
-trap_symbol := "vun_trap";
-#[link.symbol(trap_symbol)]
+symbols := struct {
+    trap := "vun_trap";
+};
+#[link.symbol(symbols.trap)]
 trap: (t: &Trap) -> never = _;
 ```
+
+- A namespace's link symbol names are the members of its `symbols` struct, beside the
+  declarations naming them (`lang.panic.symbols.trap`, `std.sync.symbols.enter`); a runtime
+  exports under the same names.
 
 - Every trap site calls `lang.panic.trap`. The runtime's export satisfies it.
 - A program with no provider fails to link with a diagnostic that names the missing symbol, its

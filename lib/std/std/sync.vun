@@ -19,11 +19,13 @@ Mask := struct {
 
 /// The runtime's critical section, typed link symbols it exports (spec 08, section 1): `enter`
 /// masks interrupts and, on multi-core targets, takes the global lock; `leave` undoes it.
-enter_symbol := "vun_critical_enter";
-leave_symbol := "vun_critical_leave";
-#[link.symbol(enter_symbol), panic.never]
+symbols := struct {
+    enter := "vun_critical_enter";
+    leave := "vun_critical_leave";
+};
+#[link.symbol(symbols.enter), panic.never]
 enter: () -> Mask = _;
-#[link.symbol(leave_symbol), panic.never]
+#[link.symbol(symbols.leave), panic.never]
 leave: (mask: Mask) = _;
 
 /// Holding the critical section. Only `critical` makes one, and it lends it for the call only,

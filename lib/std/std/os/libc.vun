@@ -42,12 +42,12 @@ start := ($main: (&mut std.os.System) -> std.os.Exit) -> type { struct {
         }
     };
 
-    #[link.export(lang.panic.trap_symbol)]
+    #[link.export(lang.panic.symbols.trap)]
     trap := (t: &lang.panic.Trap) -> lang.never { unsafe exit(trapped) };
 
     /// Blocks the thread's signals, the interrupts of a hosted program, and takes the section
     /// from other threads.
-    #[link.export(std.sync.enter_symbol), panic.never]
+    #[link.export(std.sync.symbols.enter), panic.never]
     enter := () -> std.sync.Mask {
         mut all: Sigset = [0; 16];
         mut old: Sigset = [0; 16];
@@ -63,7 +63,7 @@ start := ($main: (&mut std.os.System) -> std.os.Exit) -> type { struct {
         unsafe std.sync.Mask.of(old[0], outer)
     };
 
-    #[link.export(std.sync.leave_symbol), panic.never]
+    #[link.export(std.sync.symbols.leave), panic.never]
     leave := (mask: std.sync.Mask) {
         if mask.outer() {
             owner.store(0, .release);
@@ -78,6 +78,6 @@ start := ($main: (&mut std.os.System) -> std.os.Exit) -> type { struct {
 
     /// Gives the core to other threads: what fires an event runs on one of them, or in a
     /// signal handler, and nothing is missed between an executor's check and its sleep.
-    #[link.export(std.task.sleep_symbol)]
+    #[link.export(std.task.symbols.sleep)]
     sleep := () { unsafe { sched_yield(); } };
 }};
