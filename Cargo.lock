@@ -653,6 +653,7 @@ dependencies = [
  "vun-backend",
  "vun-codegen",
  "vun-diag",
+ "vun-dwarf",
  "vun-index",
  "vun-intern",
  "vun-lir",
@@ -838,6 +839,13 @@ dependencies = [
  "vun-term",
  "vun-tool",
  "vun-trace",
+]
+
+[[package]]
+name = "vun-dwarf"
+version = "0.0.0"
+dependencies = [
+ "vun-object",
 ]
 
 [[package]]

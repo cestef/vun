@@ -118,7 +118,7 @@ impl NativeBackend {
         <A::Isa as Isa>::Inst<Address>: Display,
     {
         let code = Self::compile::<A>(request.unit, request.listing)?;
-        let bytes = object::assemble(request.unit, &code, machine).write();
+        let bytes = object::assemble(request.unit, &code, machine, request.lines).write();
         let mut artifacts = vec![Artifact { name: PathBuf::from(OBJECT), kind: Emits::Object, bytes }];
         if request.listing {
             let text = Listing { unit: request.unit, code: &code, lines: request.lines }.to_string();

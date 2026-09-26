@@ -40,7 +40,7 @@ pub struct Cx<'a, A: Arch> {
     kept: Option<Block>,
     /// The callee-saved registers taken, with where the prologue saved each.
     saves: Vec<(A::Reg, i32)>,
-    /// Where each instruction's code starts, with its origin, when the code is listed.
+    /// Where each instruction's code starts, with its origin.
     marks: Vec<(u64, OriginId)>,
 }
 
@@ -49,7 +49,8 @@ pub struct Compiled<T> {
     pub code: vun_asm::Code<T, Address>,
     /// The bytes its frame takes below the frame pointer.
     pub frame: u64,
-    /// Where the code of each instruction starts, with its origin; empty unless listed.
+    /// Where the code of each instruction and terminator starts, with its origin: what line
+    /// tables and listings read.
     pub marks: Vec<(u64, OriginId)>,
 }
 
@@ -98,7 +99,8 @@ pub fn compile<A: Isel>(
         slots,
         kept: None,
         saves: Vec::new(),
-        marks: Vec::new(),
+        // The prologue comes from the function itself.
+        marks: vec![(0, f.origin)],
     };
     A::prologue(&mut cx)?;
     cx.fix(&live, &loops);
@@ -127,9 +129,7 @@ impl<A: Isel> Cx<'_, A> {
                 continue;
             }
             self.at = data.origin;
-            if self.asm.lists() {
-                self.marks.push((self.asm.here(), data.origin));
-            }
+            self.marks.push((self.asm.here(), data.origin));
             vun_trace::tracing::trace!(inst = %data.kind, at = self.asm.here(), "select");
             // A value recomputed where used reads nothing where it is defined.
             if data.result.is_none_or(|v| self.values[v].recompute.is_none()) {
@@ -138,9 +138,7 @@ impl<A: Isel> Cx<'_, A> {
             self.release(|| data.kind.operands(), data.result);
         }
         self.at = self.f.blocks[block].origin;
-        if self.asm.lists() {
-            self.marks.push((self.asm.here(), self.at));
-        }
+        self.marks.push((self.asm.here(), self.at));
         A::terminate(self, block)
     }
 }

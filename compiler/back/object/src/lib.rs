@@ -16,6 +16,8 @@ index! {
 pub enum RelocKind {
     /// The symbol's address, 64 bits.
     Abs64,
+    /// The symbol's address, 32 bits: an offset into a section of debugging information.
+    Abs32,
     /// The symbol's address relative to the field, 32 bits.
     Pc32,
     /// A call's target relative to the field, through the procedure linkage table if needed.
@@ -58,6 +60,8 @@ pub enum Contents {
     Writable,
     /// The mark that the stack need not be executable.
     StackNote,
+    /// Information for debuggers, which the program does not load.
+    Debug,
 }
 
 pub struct Section {
@@ -81,6 +85,8 @@ pub struct Reloc {
 pub enum SymbolKind {
     Func,
     Object,
+    /// A section itself, which relocations into it name.
+    Section,
     /// Defined elsewhere, of a kind not said.
     Unknown,
 }
@@ -125,7 +131,9 @@ impl Machine {
             (Self::X86_64, RelocKind::Pc32) => 2,
             (Self::X86_64, RelocKind::Call32) => 4,
             (Self::X86_64, RelocKind::GotPc32) => 9,
+            (Self::X86_64, RelocKind::Abs32) => 10,
             (Self::Aarch64, RelocKind::Abs64) => 257,
+            (Self::Aarch64, RelocKind::Abs32) => 258,
             (Self::Aarch64, RelocKind::Pc32) => 261,
             (Self::Aarch64, RelocKind::Page21) => 275,
             (Self::Aarch64, RelocKind::PageOffset12) => 277,
@@ -153,6 +161,34 @@ impl Object {
     #[must_use]
     pub fn new(machine: Machine) -> Self {
         Self { machine, sections: IndexVec::new(), symbols: IndexVec::new() }
+    }
+
+    /// Adds a section holding `contents`, empty.
+    pub fn section(&mut self, name: &[u8], contents: Contents) -> SectionId {
+        self.sections.push(Section {
+            name: name.to_vec(),
+            contents,
+            bytes: Vec::new(),
+            align: 1,
+            relocs: Vec::new(),
+        })
+    }
+
+    /// The symbol standing for `section`, made the first time it is asked for.
+    pub fn section_symbol(&mut self, section: SectionId) -> SymbolId {
+        let found =
+            self.symbols.iter().find(|(_, s)| s.kind == SymbolKind::Section && s.section == Some(section));
+        if let Some((id, _)) = found {
+            return id;
+        }
+        self.symbols.push(Symbol {
+            name: Vec::new(),
+            section: Some(section),
+            value: 0,
+            size: 0,
+            kind: SymbolKind::Section,
+            binding: Binding::Local,
+        })
     }
 
     /// Appends `bytes` to `section` at `align`: the offset they start at.

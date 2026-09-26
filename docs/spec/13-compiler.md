@@ -473,6 +473,12 @@ assembler and its instruction compilers and nothing else:
   decoder (yaxpeax) and compares both.
 - **`vun-object`**: relocatable objects as data, written once (ELF first); relocation kinds are
   the framework's, each machine numbers them.
+- **`vun-dwarf`**: debugging information (DWARF 4) as sections of an object: one compilation
+  unit and the line table of every function, a row per instruction whose line changes, from the
+  marks the framework records (`Compiled.marks`: each instruction's and terminator's code with
+  its origin, the prologue with the function's), addresses as relocations against the
+  functions' symbols. Debuggers break on and step through Vun lines; `addr2line` and profilers
+  map code to them.
 - **`vun-codegen`**: the framework, which knows no architecture: value assignments, register
   allocation, the frame, homes, values recomputed where used, callee-saved registers for loops,
   jumps filling their targets' parameters, compare and branch fusion, and the snippet encoder.

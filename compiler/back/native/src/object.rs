@@ -1,10 +1,13 @@
 //! A unit as one relocatable object: functions in `.text`, data by what the program does with
-//! it, a symbol per function, datum and import, and the relocations of both.
+//! it, a symbol per function, datum and import, the relocations of both, and the line table of
+//! the functions' code.
 
 use vun_index::IndexVec;
 use vun_lir::{Address, DataId, FuncId, ImportKind, Linkage, Unit};
 
+use vun_backend::Lines;
 use vun_codegen::Compiled;
+use vun_dwarf::{Row, Sequence};
 use vun_object::{
     Binding, Contents, Machine, Object, Reloc, RelocKind, Section, SectionId, Symbol, SymbolId, SymbolKind,
 };
@@ -45,9 +48,18 @@ impl Builder {
     }
 }
 
-/// The object for `machine` holding `unit`, its functions compiled as `code`.
+/// What names the producer in debugging information.
+const PRODUCER: &str = "vun";
+
+/// The object for `machine` holding `unit`, its functions compiled as `code`, their lines found
+/// by `lines`.
 #[must_use]
-pub(crate) fn assemble<T>(unit: &Unit, code: &IndexVec<FuncId, Compiled<T>>, machine: Machine) -> Object {
+pub(crate) fn assemble<T>(
+    unit: &Unit,
+    code: &IndexVec<FuncId, Compiled<T>>,
+    machine: Machine,
+    lines: &dyn Lines,
+) -> Object {
     let mut b = Builder { object: Object::new(machine), sections: Vec::new() };
     for (contents, name) in SECTIONS {
         b.section(contents, name);
@@ -118,6 +130,17 @@ pub(crate) fn assemble<T>(unit: &Unit, code: &IndexVec<FuncId, Compiled<T>>, mac
             b.object.sections[text].relocs.push(reloc);
         }
     }
+    let mut table = vun_dwarf::Lines::default();
+    let mut name = None;
+    for (id, compiled) in code.iter() {
+        let rows = compiled.marks.iter().filter_map(|&(offset, origin)| {
+            let line = lines.line(origin)?;
+            name.get_or_insert_with(|| line.file.display().to_string());
+            Some(Row { offset, file: table.file(line.file), line: line.line })
+        });
+        let rows = rows.collect();
+        table.sequence(Sequence { symbol: funcs[id], size: compiled.code.bytes.len() as u64, rows });
+    }
     for ((_, d), (section, start)) in unit.data.iter().zip(placed) {
         for r in &d.relocs {
             let reloc = Reloc {
@@ -129,5 +152,7 @@ pub(crate) fn assemble<T>(unit: &Unit, code: &IndexVec<FuncId, Compiled<T>>, mac
             b.object.sections[section].relocs.push(reloc);
         }
     }
+    let name = name.unwrap_or_default();
+    table.write(&mut b.object, text, &name, PRODUCER);
     b.object
 }

@@ -63,7 +63,7 @@ impl Contents {
             Self::Code => ALLOC | EXEC,
             Self::ReadOnly | Self::Relocated => ALLOC,
             Self::Writable => ALLOC | WRITE,
-            Self::StackNote => 0,
+            Self::StackNote | Self::Debug => 0,
         }
     }
 }
@@ -165,6 +165,7 @@ impl Object {
                 SymbolKind::Unknown => 0,
                 SymbolKind::Object => 1,
                 SymbolKind::Func => 2,
+                SymbolKind::Section => 3,
             };
             let bind: u8 = match s.binding {
                 Binding::Local => 0,
