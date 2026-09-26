@@ -5,9 +5,9 @@
 use std::hash::{BuildHasher, Hash, Hasher};
 
 use foldhash::quality::{FixedState, FoldHasher};
-use vun_codec::{Decode, Encode, Malformed};
+use vun_codec::{Decode, Encode};
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct Fingerprint(u128);
 
 /// The seeds of the two halves.
@@ -44,17 +44,5 @@ impl Hasher for Halves {
 
     fn finish(&self) -> u64 {
         self.0[0].finish()
-    }
-}
-
-impl Encode for Fingerprint {
-    fn encode(&self, out: &mut Vec<u8>) {
-        self.0.encode(out);
-    }
-}
-
-impl Decode for Fingerprint {
-    fn decode(input: &mut &[u8]) -> Result<Self, Malformed> {
-        u128::decode(input).map(Self)
     }
 }

@@ -513,8 +513,13 @@ Rules:
 - Components declare their facts once (`BackendInfo`, `LinkerInfo`); support checks derive from
   them. Tables declared once generate their enums and lookups (tokens, diagnostic ids, commands).
 - Every arena is an `IndexVec` addressed by its own index newtype (`vun-index`).
-- Logging goes through `vun-trace` (`VUN_LOG`, `VUN_LOG_FORMAT`, `VUN_TIMINGS`); corpus
-  and snapshot tests go through `vun-harness` (`VUN_BLESS`).
+- Logging goes through `vun-trace` (`VUN_LOG`, `VUN_LOG_FORMAT`); corpus and snapshot tests
+  go through `vun-harness` (`VUN_BLESS`).
+- Timings are activities timed where they run: the query engine times every computation by its
+  query's name, and the driver each stage of its table and each build step. Each activity sums
+  its runs, its own time (without the activities run inside it) and its total time over every
+  thread. `VUN_TIMINGS=1` or `--timings` reports the table at exit, the most own time first;
+  when off, timing an activity costs one relaxed load.
 - There is one frontend: the LSP runs on the same query engine as the compiler.
 - Command lines are declared, never matched by hand: `vun-command` holds command trees (names,
   typed parameters, subcommands, actions) as data, and parses, renders help and reports usage

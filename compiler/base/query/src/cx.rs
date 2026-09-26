@@ -6,6 +6,8 @@ use std::collections::HashSet;
 use std::fmt;
 use std::sync::Arc;
 
+use vun_trace::Activity;
+
 use super::claim::Claim;
 use super::db::Db;
 use super::fingerprint::Fingerprint;
@@ -78,20 +80,47 @@ impl<'db> Cx<'db> {
             let revision = self.db.revision();
             if let Some(memo) = &*entry.memo.load()
                 && memo.current(revision)
+                && let Some(value) = &memo.value
             {
-                return (memo.value.clone(), memo.fingerprint);
+                return (value.clone(), memo.fingerprint);
             }
-            // Verifying reads other memos, which may take long: the memo is held on its own.
-            if let Some(memo) = entry.memo.load_full()
-                && memo.deps.iter().all(|&dep| self.unchanged(dep))
+            if let Some(memo) = self.verified(table, slot, revision)
+                && let Some(value) = &memo.value
             {
-                memo.verified.set(revision);
-                return (memo.value.clone(), memo.fingerprint);
+                return (value.clone(), memo.fingerprint);
             }
             if let Some(found) = self.computed(table, slot, revision) {
                 return found;
             }
         }
+    }
+
+    /// The current fingerprint at `slot`: a memo whose reads still hold stands for its value,
+    /// which is not computed when it was not loaded.
+    pub(crate) fn fingerprint<Q: Query>(&self, table: &Table<Q>, slot: Slot) -> Fingerprint {
+        loop {
+            let revision = self.db.revision();
+            if let Some(memo) = self.verified(table, slot, revision) {
+                return memo.fingerprint;
+            }
+            if let Some((_, fingerprint)) = self.computed(table, slot, revision) {
+                return fingerprint;
+            }
+        }
+    }
+
+    /// The memo at `slot` if it holds in `revision`: current, or everything it read unchanged.
+    /// Verifying reads other memos, which may take long: the memo is held on its own meanwhile.
+    fn verified<Q: Query>(&self, table: &Table<Q>, slot: Slot, revision: Revision) -> Option<Arc<Memo<Q>>> {
+        let memo = table.entry(slot).memo.load_full()?;
+        if memo.current(revision) {
+            return Some(memo);
+        }
+        if !memo.deps.iter().all(|&dep| self.unchanged(dep)) {
+            return None;
+        }
+        memo.verified.set(revision);
+        Some(memo)
     }
 
     fn unchanged(&self, dep: Dep) -> bool {
@@ -127,10 +156,13 @@ impl<'db> Cx<'db> {
             Claim::Alone => None,
         };
         self.stack.borrow_mut().push(Frame { table: table.id, slot, reads: Vec::new() });
+        let timer = Activity::query(Q::NAME).start();
         let value = Q::compute(self, &entry.key);
+        drop(timer);
         let reads = self.stack.borrow_mut().pop().expect("the frame pushed above").reads;
         let fingerprint = Q::interface(&value);
-        let memo = Memo::computed(value.clone(), fingerprint, Self::once(reads), Verified::at(revision));
+        let memo =
+            Memo::computed(Some(value.clone()), fingerprint, Self::once(reads), Verified::at(revision));
         entry.memo.store(Some(Arc::new(memo)));
         drop(owned);
         Some((value, fingerprint))

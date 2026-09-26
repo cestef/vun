@@ -10,5 +10,6 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
+vun-codec.workspace = true
 vun-hash.workspace = true
 vun-par.workspace = true

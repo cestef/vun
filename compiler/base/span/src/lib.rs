@@ -5,6 +5,10 @@
 
 use std::hash::{Hash, Hasher};
 
+use vun_codec::{Decode, Encode};
+
+mod codec;
+
 /// The extension of Vun source files, as a literal for [`source_file!`].
 #[macro_export]
 macro_rules! extension {
@@ -40,7 +44,7 @@ impl Hash for FileId {
 }
 
 /// A half-open byte range `lo..hi`, relative to some text.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct ByteRange {
     pub lo: u32,
     pub hi: u32,
@@ -85,7 +89,7 @@ impl ByteRange {
 }
 
 /// A byte range in one file.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct Span {
     pub file: FileId,
     pub range: ByteRange,
@@ -193,7 +197,8 @@ impl std::fmt::Display for Location<'_> {
 /// query of a compilation adds to one table.
 #[derive(Default)]
 pub struct SourceFiles {
-    files: boxcar::Vec<SourceFile>,
+    /// Each file, with the key naming it.
+    files: boxcar::Vec<(String, SourceFile)>,
     /// Each file by its key and the hash of its text, so that adding it again returns it.
     added: std::sync::RwLock<std::collections::HashMap<(u64, vun_hash::Hash), FileId>>,
 }
@@ -217,7 +222,7 @@ impl SourceFiles {
     /// # Panics
     /// Panics past `u32::MAX` files, or if a thread panicked while adding.
     pub fn add_as(&self, key: &str, path: impl Into<String>, text: impl Into<String>) -> FileId {
-        let key = vun_hash::Hash::of(key.as_bytes()).short();
+        let (named, key) = (key, vun_hash::Hash::of(key.as_bytes()).short());
         let text = text.into();
         let identity = (key, vun_hash::Hash::of(text.as_bytes()));
         if let Some(&file) = self.added.read().expect("source files").get(&identity) {
@@ -225,15 +230,23 @@ impl SourceFiles {
         }
         let mut added = self.added.write().expect("source files");
         *added.entry(identity).or_insert_with(|| {
-            let index = self.files.push(SourceFile::new(path.into(), text));
+            let index = self.files.push((named.to_owned(), SourceFile::new(path.into(), text)));
             FileId { index: u32::try_from(index).expect("fewer than 2^32 files"), key }
         })
     }
 }
 
+impl SourceFiles {
+    /// The key naming `id` in every process.
+    #[must_use]
+    pub fn key(&self, id: FileId) -> &str {
+        &self.files[id.index as usize].0
+    }
+}
+
 impl SourceMap for SourceFiles {
     fn file(&self, id: FileId) -> &SourceFile {
-        &self.files[id.index as usize]
+        &self.files[id.index as usize].1
     }
 }
 

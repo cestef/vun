@@ -1,6 +1,6 @@
 [package]
 name = "vun-codec"
-description = "A compact binary encoding for persisted data, without dependencies."
+description = "A compact binary encoding for persisted data."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -8,3 +8,6 @@ publish.workspace = true
 
 [lints]
 workspace = true
+
+[dependencies]
+vun-codec-derive.workspace = true

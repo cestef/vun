@@ -1,0 +1,13 @@
+[package]
+name = "vun-codec-derive"
+description = "#[derive(Encode, Decode)] for vun-codec, on the compiler's proc_macro API alone."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lib]
+proc-macro = true
+
+[lints]
+workspace = true

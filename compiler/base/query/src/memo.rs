@@ -8,7 +8,9 @@ use super::table::{Slot, TableId};
 use super::{Query, Revision};
 
 pub(crate) struct Memo<Q: Query> {
-    pub(crate) value: Q::Value,
+    /// `None` for a memo loaded without its value: it stands for its fingerprint, and the value
+    /// is computed again when read.
+    pub(crate) value: Option<Q::Value>,
     pub(crate) fingerprint: Fingerprint,
     /// Each memo read, once, in the order of the first reads.
     pub(crate) deps: Box<[Dep]>,
@@ -28,11 +30,17 @@ pub(crate) struct Dep {
 
 impl<Q: Query> Memo<Q> {
     pub(crate) fn input(value: Q::Value, fingerprint: Fingerprint, revision: Revision) -> Self {
-        Self { value, fingerprint, deps: Box::new([]), verified: Verified::at(revision), input: true }
+        Self {
+            value: Some(value),
+            fingerprint,
+            deps: Box::new([]),
+            verified: Verified::at(revision),
+            input: true,
+        }
     }
 
     pub(crate) fn computed(
-        value: Q::Value,
+        value: Option<Q::Value>,
         fingerprint: Fingerprint,
         deps: Box<[Dep]>,
         verified: Verified,

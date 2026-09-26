@@ -22,8 +22,10 @@ struct Entry {
     text: &'static str,
 }
 
+mod codec;
 mod pool;
 
+pub use codec::Symbols;
 pub use pool::{Interned, Pool};
 
 /// Every symbol by its text, looked up without locks by a fast hash.

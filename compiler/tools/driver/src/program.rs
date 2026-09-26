@@ -16,6 +16,7 @@ use vun_par::Parallel;
 use vun_span::{FileId, SourceMap};
 use vun_target::{CCompiler, FrameSizes};
 use vun_tool::{Arg, Executable, Failure, Invocation, Tool, gcc};
+use vun_trace::Activity;
 
 use crate::Session;
 use crate::codegen::{Coded, Uncoded};
@@ -33,6 +34,11 @@ const BUILDS: &str = ".vun/build";
 const OBJECT: &str = "o";
 /// The extension of the frame sizes `-fstack-usage` writes beside an object.
 const STACK_USAGE: &str = "su";
+
+/// The steps of a build past the checks, as timed.
+const CODE: Activity = Activity::stage("code");
+const COMPILE: Activity = Activity::stage("compile");
+const LINK: Activity = Activity::stage("link");
 
 /// A program compiled to objects.
 pub struct Compiled {
@@ -58,6 +64,7 @@ impl Session {
         if let Some(failed) = self.diag.failed() {
             return Err(failed);
         }
+        let timer = CODE.start();
         let coded = self.code(file, backend).map_err(|uncoded| match uncoded {
             Uncoded::Reported(guar) => guar,
             Uncoded::Unlowered(unlowered) => {
@@ -65,6 +72,8 @@ impl Session {
                 self.diag.error(Diagnostic::error(errors::BACKEND_UNLOWERED, msg).at(unlowered.at, None))
             }
         })?;
+        drop(timer);
+        let _timer = COMPILE.start();
         let root = PathBuf::from(&self.sources.file(file).path);
         let builds = root.parent().unwrap_or(Path::new("")).join(BUILDS);
         let all: Vec<u8> = coded.artifacts.iter().flat_map(|a| a.bytes.iter().copied()).collect();
@@ -188,6 +197,7 @@ impl Session {
                 .text(" is in this toolchain");
             return Err(self.diag.error(Diagnostic::error(errors::LINK_UNAVAILABLE, msg)));
         };
+        let _timer = LINK.start();
         linker.link(&plan, target, &mut self.diag)?;
         Ok(output)
     }

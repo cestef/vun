@@ -1,41 +1,53 @@
 //! A compact binary encoding for persisted data, such as query memos (decision 61): integers as
-//! LEB128 varints, sequences prefixed by their length, fields in declaration order. There is no
-//! self-description; a reader knows the shape it reads.
+//! LEB128 varints, sequences prefixed by their length, fields in declaration order, variants by
+//! their position. There is no self-description; a reader knows the shape it reads.
 //!
-//! A type encodes itself: interned values say how they persist (a symbol by its text), so decoding
-//! re-interns them in the reading process. A record type implements both traits with [`record!`].
+//! A type encodes itself, most by `#[derive(Encode, Decode)]`. Values persist by content: an
+//! interned value by what it holds, re-interned when read. A handle into a process's own table,
+//! such as a file or an origin, is [`Pooled`]: written once per stream into its pool and
+//! referenced by number, then recorded again in the reading process's table when first read.
 
 mod impls;
+mod pool;
+mod reader;
 #[cfg(test)]
 mod tests;
+mod writer;
 
 use std::fmt;
 
-pub trait Encode {
-    fn encode(&self, out: &mut Vec<u8>);
+pub use pool::{Pool, Pooled, Pools, Resources, Tables};
+pub use reader::{Context, Reader};
+pub use vun_codec_derive::{Decode, Encode};
+pub use writer::Writer;
 
-    /// The encoding of `self` alone.
+// The derives name this crate by its path, here as anywhere else.
+extern crate self as vun_codec;
+
+pub trait Encode {
+    fn encode(&self, w: &mut Writer<'_>);
+
+    /// The encoding of `self` alone, which holds no pooled handle.
     fn encoded(&self) -> Vec<u8> {
-        let mut out = Vec::new();
-        self.encode(&mut out);
-        out
+        let mut w = Writer::new();
+        self.encode(&mut w);
+        w.into_bytes()
     }
 }
 
 pub trait Decode: Sized {
-    /// Reads a value from the front of `input`, advancing it.
+    /// Reads a value from the front of `r`, advancing it.
     ///
     /// # Errors
     /// Returns why the bytes are not a value of this type.
-    fn decode(input: &mut &[u8]) -> Result<Self, Malformed>;
+    fn decode(r: &mut Reader<'_>) -> Result<Self, Malformed>;
 
-    /// Reads a value that is the whole of `bytes`.
+    /// Reads a value that is the whole of `bytes`, which hold no pooled handle.
     ///
     /// # Errors
     /// Returns why the bytes are not exactly one value of this type.
-    fn decoded(mut bytes: &[u8]) -> Result<Self, Malformed> {
-        let value = Self::decode(&mut bytes)?;
-        if bytes.is_empty() { Ok(value) } else { Err(Malformed::Trailing) }
+    fn decoded(bytes: &[u8]) -> Result<Self, Malformed> {
+        Context::default().read(bytes)
     }
 }
 
@@ -52,6 +64,8 @@ pub enum Malformed {
     Tag(u64),
     /// Bytes remain after the value.
     Trailing,
+    /// A pooled handle numbers no entry of its pool.
+    Unpooled { pool: &'static str, number: usize },
 }
 
 impl fmt::Display for Malformed {
@@ -62,46 +76,9 @@ impl fmt::Display for Malformed {
             Self::Text => f.write_str("text is not UTF-8"),
             Self::Tag(tag) => write!(f, "tag {tag} names no variant"),
             Self::Trailing => f.write_str("bytes remain after the value"),
+            Self::Unpooled { pool, number } => write!(f, "{pool} {number} is not in the stream"),
         }
     }
 }
 
 impl std::error::Error for Malformed {}
-
-/// The bytes a value is decoded from, consumed from the front.
-pub trait Input<'a> {
-    /// Takes `n` bytes from the front.
-    ///
-    /// # Errors
-    /// Returns [`Malformed::Truncated`] if fewer remain.
-    fn front(&mut self, n: usize) -> Result<&'a [u8], Malformed>;
-}
-
-impl<'a> Input<'a> for &'a [u8] {
-    fn front(&mut self, n: usize) -> Result<&'a [u8], Malformed> {
-        if self.len() < n {
-            return Err(Malformed::Truncated);
-        }
-        let (taken, rest) = self.split_at(n);
-        *self = rest;
-        Ok(taken)
-    }
-}
-
-/// Implements [`Encode`] and [`Decode`] for a struct, field by field in the order listed.
-#[macro_export]
-macro_rules! record {
-    ($ty:ident { $($field:ident),* $(,)? }) => {
-        impl $crate::Encode for $ty {
-            fn encode(&self, out: &mut Vec<u8>) {
-                $($crate::Encode::encode(&self.$field, out);)*
-            }
-        }
-
-        impl $crate::Decode for $ty {
-            fn decode(input: &mut &[u8]) -> Result<Self, $crate::Malformed> {
-                Ok(Self { $($field: $crate::Decode::decode(input)?),* })
-            }
-        }
-    };
-}

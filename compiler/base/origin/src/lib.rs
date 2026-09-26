@@ -16,6 +16,9 @@
 
 use std::hash::{Hash, Hasher};
 
+mod codec;
+
+use vun_codec::{Decode, Encode};
 use vun_intern::Symbol;
 use vun_span::Span;
 
@@ -34,7 +37,7 @@ impl Hash for OriginId {
 }
 
 /// What an origin's span is identified relative to.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub enum Anchor {
     /// The file: tokens and syntax, before declarations exist.
     File,
@@ -45,14 +48,14 @@ pub enum Anchor {
 }
 
 /// Identifies one rewrite of the desugaring table (spec appendix B).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct DesugarRule(pub u16);
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct PassId(pub u16);
 
 /// How an entity came to exist.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub enum Via {
     Source,
     /// Produced by a desugaring rewrite.
@@ -72,7 +75,7 @@ pub enum Via {
     Lower(PassId),
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Encode, Decode)]
 pub struct Origin {
     /// The source range most directly responsible for the entity.
     pub span: Span,

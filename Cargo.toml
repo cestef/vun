@@ -14,6 +14,7 @@ vun-index = { path = "compiler/base/index" }
 vun-suggest = { path = "compiler/base/suggest" }
 vun-par = { path = "compiler/base/par" }
 vun-codec = { path = "compiler/base/codec" }
+vun-codec-derive = { path = "compiler/base/codec-derive" }
 vun-json = { path = "compiler/base/json" }
 vun-items = { path = "compiler/base/items" }
 vun-hash = { path = "compiler/base/hash" }

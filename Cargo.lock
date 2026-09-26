@@ -645,6 +645,13 @@ dependencies = [
 [[package]]
 name = "vun-codec"
 version = "0.0.0"
+dependencies = [
+ "vun-codec-derive",
+]
+
+[[package]]
+name = "vun-codec-derive"
+version = "0.0.0"
 
 [[package]]
 name = "vun-command"
@@ -813,6 +820,7 @@ version = "0.0.0"
 name = "vun-intern"
 version = "0.0.0"
 dependencies = [
+ "vun-codec",
  "vun-hash",
  "vun-par",
 ]
@@ -1000,6 +1008,7 @@ name = "vun-origin"
 version = "0.0.0"
 dependencies = [
  "boxcar",
+ "vun-codec",
  "vun-hash",
  "vun-intern",
  "vun-span",
@@ -1055,6 +1064,7 @@ dependencies = [
  "foldhash",
  "vun-codec",
  "vun-par",
+ "vun-trace",
 ]
 
 [[package]]
@@ -1129,6 +1139,7 @@ name = "vun-span"
 version = "0.0.0"
 dependencies = [
  "boxcar",
+ "vun-codec",
  "vun-hash",
 ]
 
@@ -1171,6 +1182,7 @@ name = "vun-trace"
 version = "0.0.0"
 dependencies = [
  "tracing",
+ "vun-par",
 ]
 
 [[package]]

@@ -6,6 +6,7 @@
 use vun_diag::{DiagCtxt, DiagId, errors};
 use vun_query::Query;
 use vun_span::{FileId, SourceMap};
+use vun_trace::{Activity, Timer};
 
 use vun_mir_passes::borrows::BorrowChecks;
 use vun_mir_passes::panics::PanicChecks;
@@ -18,6 +19,8 @@ pub struct Stage {
     pub name: &'static str,
     pub reports: &'static [DiagId],
     pub input: Input,
+    /// Runs it on a file loaded; `None` for loading itself.
+    pub run: Option<fn(&mut Session, FileId)>,
 }
 
 /// What a stage reads.
@@ -30,9 +33,17 @@ pub enum Input {
     Mir,
 }
 
+/// Reading the sources.
+pub const LOAD: Stage = Stage { name: "load", reports: &[errors::IO], input: Input::Source, run: None };
+
 pub const STAGES: &[Stage] = &[
-    Stage { name: "load", reports: &[errors::IO], input: Input::Source },
-    Stage { name: "syntax", reports: &[errors::SYNTAX], input: Input::Source },
+    LOAD,
+    Stage {
+        name: "syntax",
+        reports: &[errors::SYNTAX],
+        input: Input::Source,
+        run: Some(|session, file| drop(session.parsed(file))),
+    },
     Stage {
         name: "names",
         reports: &[
@@ -44,6 +55,7 @@ pub const STAGES: &[Stage] = &[
             errors::PACKAGE,
         ],
         input: Input::Source,
+        run: Some(Session::check_names),
     },
     Stage {
         name: "types",
@@ -65,11 +77,27 @@ pub const STAGES: &[Stage] = &[
             errors::META_FROZEN,
         ],
         input: Input::Source,
+        run: Some(Session::check_types),
     },
-    Stage { name: "plan", reports: &[errors::PLAN], input: Input::Source },
-    Stage { name: "places", reports: &[errors::PLACE], input: Input::Mir },
-    Stage { name: "borrows", reports: &[errors::BORROW], input: Input::Mir },
-    Stage { name: "panics", reports: &[errors::PANIC], input: Input::Mir },
+    Stage { name: "plan", reports: &[errors::PLAN], input: Input::Source, run: Some(Session::check_plan) },
+    Stage {
+        name: "places",
+        reports: &[errors::PLACE],
+        input: Input::Mir,
+        run: Some(Session::check_bodies::<PlaceStates>),
+    },
+    Stage {
+        name: "borrows",
+        reports: &[errors::BORROW],
+        input: Input::Mir,
+        run: Some(Session::check_bodies::<BorrowChecks>),
+    },
+    Stage {
+        name: "panics",
+        reports: &[errors::PANIC],
+        input: Input::Mir,
+        run: Some(Session::check_bodies::<PanicChecks>),
+    },
 ];
 
 impl Stage {
@@ -84,18 +112,22 @@ impl Stage {
     pub fn of(id: &DiagId) -> Option<&'static Self> {
         STAGES.iter().find(|s| s.reports.iter().any(|group| id.within(group)))
     }
+
+    /// Times the stage until the timer is dropped.
+    pub fn time(&self) -> Timer {
+        Activity::stage(self.name).start()
+    }
 }
 
 impl Session {
     /// Runs every stage that exists on `file`.
     pub fn check(&mut self, file: FileId) {
-        self.parsed(file);
-        self.check_names(file);
-        self.check_types(file);
-        self.check_plan(file);
-        self.check_places(file);
-        self.check_borrows(file);
-        self.check_bodies::<PanicChecks>(file);
+        for stage in STAGES {
+            if let Some(run) = stage.run {
+                let _timer = stage.time();
+                run(self, file);
+            }
+        }
     }
 
     /// The lines, first and last, of each function of `file` that MIR does not lower yet.
@@ -111,18 +143,11 @@ impl Session {
             .collect()
     }
 
-    /// Checks the place states of every function body of `file` (spec 05, section 2).
-    pub fn check_places(&mut self, file: FileId) {
-        self.check_bodies::<PlaceStates>(file);
-    }
-
-    /// Checks the borrow rules in every function body of `file` (spec 05, sections 4 and 8).
-    pub fn check_borrows(&mut self, file: FileId) {
-        self.check_bodies::<BorrowChecks>(file);
-    }
-
     /// Runs the MIR check `Q` on every function body of `file`.
-    fn check_bodies<Q: Query<Key = Instantiation, Value = Option<DiagCtxt>>>(&mut self, file: FileId) {
+    pub(crate) fn check_bodies<Q: Query<Key = Instantiation, Value = Option<DiagCtxt>>>(
+        &mut self,
+        file: FileId,
+    ) {
         for f in self.functions(file) {
             if let Some(reports) = self.db.get::<Q>(&Instantiation::plain(f)) {
                 self.diag.absorb(&reports);

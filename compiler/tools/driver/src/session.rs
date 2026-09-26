@@ -97,6 +97,7 @@ impl Session {
 
     /// Reads a source file; a read failure becomes a diagnostic.
     pub fn load(&mut self, path: &Path) -> Option<FileId> {
+        let _timer = crate::stages::LOAD.time();
         let text = self.read(path)?;
         let key = self.file_key(path);
         Some(self.sources.add_as(&key, path.display().to_string(), text))

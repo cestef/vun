@@ -13,7 +13,7 @@ pub const PROGRAM: Program<Session> = Program {
     root: Command {
         name: "vun",
         about: "The Vun toolchain.",
-        params: &[formats::FORMAT, target::TARGET],
+        params: &[formats::FORMAT, target::TARGET, TIMINGS],
         action: Action::Group(&[
             Command::planned("new", "create a package"),
             Command {
@@ -128,8 +128,19 @@ fn run(session: &mut Session, args: &Args, _: &mut dyn Write) -> io::Result<Outc
     Ok(status.code().and_then(|c| u8::try_from(c).ok()).map_or(Outcome::Failure, Outcome::Exited))
 }
 
+/// Reports at exit where the time went, as `VUN_TIMINGS=1` does.
+const TIMINGS: Param = Param {
+    name: "timings",
+    short: None,
+    about: "report the time of each stage and query at exit",
+    kind: ParamKind::Flag,
+};
+
 /// Applies the options every command takes.
 fn configure(session: &mut Session, args: &Args) -> Result<(), Box<vun_diag::Diagnostic>> {
+    if args.flag(&TIMINGS) {
+        vun_trace::Timings::enable();
+    }
     formats::configure(session, args)?;
     target::configure(session, args)
 }

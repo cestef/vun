@@ -5,16 +5,18 @@
 //!
 //! - `VUN_LOG` takes directives, such as `vun_sema=debug,vun_mir_passes=trace` or `info`;
 //! - `VUN_LOG_FORMAT` is `compact` (default) or `tree`;
-//! - `VUN_TIMINGS=1` reports the duration of every closed span, which gives per-stage timings.
+//! - `VUN_TIMINGS=1` times every stage and query, reported at exit ([`Timings`]).
 
 mod filter;
 mod subscriber;
 #[cfg(test)]
 mod tests;
+mod timings;
 
 pub use tracing;
 
 pub use filter::Filter;
+pub use timings::{Activity, Kind, Report, Row, Timer, Timings};
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum Format {
@@ -51,8 +53,12 @@ impl Config {
         }
     }
 
-    /// Installs the global subscriber. Without a filter, only warnings and errors are shown.
+    /// Installs the global subscriber, and starts timing if asked. Without a filter, only
+    /// warnings and errors are shown.
     pub fn install(&self) {
+        if self.timings {
+            Timings::enable();
+        }
         // A subscriber may already be installed by an embedding tool; keep that one.
         let _ = tracing::subscriber::set_global_default(subscriber::Writer::new(self));
     }

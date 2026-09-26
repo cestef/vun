@@ -25,5 +25,8 @@ fn main() -> ExitCode {
         Color::Never
     };
     session.emit(&mut *(session.format.sink)(Box::new(io::stderr()), color));
+    if let Some(report) = vun_trace::Timings::report() {
+        eprint!("{report}");
+    }
     outcome.into()
 }

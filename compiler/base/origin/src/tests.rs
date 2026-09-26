@@ -67,3 +67,38 @@ fn nodes_know_the_declaration_they_are_written_in() {
     assert_eq!([decl, literal, lowered].map(|o| t.declaration_name(o)), [Some(name); 3]);
     assert_eq!(t.declaration_name(t.source(Span::new(f, 0, 1))), None);
 }
+
+#[test]
+fn origins_persist_by_content_and_keep_their_identity() {
+    use vun_codec::{Context, Resources, Tables, Writer};
+    use vun_span::SourceMap;
+
+    let writing = Tables::default();
+    let (files, origins) = {
+        let resources: &dyn Resources = &writing;
+        (resources.get::<SourceFiles>(), resources.get::<OriginTable>())
+    };
+    let f = files.add_as("pkg/a.vun", "a.vun", "f := 1;");
+    let decl = origins.declaration(Span::new(f, 0, 7), None, Symbol::intern("f"));
+    let lowered =
+        origins.derive(origins.inside(decl, Span::new(f, 5, 6)), Span::new(f, 5, 6), Via::Lower(PassId(2)));
+    let mut w = Writer::pooling(&writing);
+    let bytes = w.encode(&lowered);
+    let pools = w.into_pools();
+
+    // Another process, whose tables already hold other entries.
+    let reading = Tables::default();
+    let (files, origins) = {
+        let resources: &dyn Resources = &reading;
+        (resources.get::<SourceFiles>(), resources.get::<OriginTable>())
+    };
+    files.add("other.vun", "");
+    origins.source(Span::new(files.add("other.vun", ""), 0, 0));
+    let read: OriginId = Context::new(&pools, &reading).read(&bytes).unwrap();
+    let hash = |id: OriginId| vun_hash::Hash::of_value(&id);
+    assert_eq!(hash(read), hash(lowered), "the same identity");
+    assert_ne!(read, lowered, "recorded anew");
+    let span = origins.source_span(read);
+    assert_eq!(span.range.of(&files.file(span.file).text), "1");
+    assert_eq!(origins.declaration_name(read), Some(Symbol::intern("f")));
+}

@@ -2,7 +2,7 @@
 //! memo from then on. A read looks the key up once, lock-free; what it read is then recorded,
 //! verified and compared by table and slot, two integers.
 
-use std::any::{Any, TypeId};
+use std::any::Any;
 
 use arc_swap::ArcSwapOption;
 use vun_par::Map;
@@ -20,6 +20,16 @@ pub(crate) struct TableId(pub(crate) u32);
 /// A key of a table, by the order it was first asked for in.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub(crate) struct Slot(u32);
+
+impl Slot {
+    pub(crate) fn at(index: usize) -> Self {
+        Self(u32::try_from(index).expect("fewer than 2^32 keys per query"))
+    }
+
+    pub(crate) fn index(self) -> usize {
+        self.0 as usize
+    }
+}
 
 pub(crate) struct Table<Q: Query> {
     pub(crate) id: TableId,
@@ -48,12 +58,17 @@ impl<Q: Query> Table<Q> {
         // Another thread may add the same key meanwhile: the first slot stored stands for both.
         *slots.get_or_insert_with(key.clone(), || {
             let entry = Entry { key: key.clone(), memo: ArcSwapOption::empty(), claims: Claims::default() };
-            Slot(u32::try_from(self.entries.push(entry)).expect("fewer than 2^32 keys per query"))
+            Slot::at(self.entries.push(entry))
         })
     }
 
     pub(crate) fn entry(&self, slot: Slot) -> &Entry<Q> {
-        &self.entries[slot.0 as usize]
+        &self.entries[slot.index()]
+    }
+
+    /// Every entry, by slot.
+    pub(crate) fn entries(&self) -> impl Iterator<Item = (Slot, &Entry<Q>)> {
+        self.entries.iter().map(|(index, entry)| (Slot::at(index), entry))
     }
 
     /// Every entry with a memo.
@@ -65,7 +80,6 @@ impl<Q: Query> Table<Q> {
 /// A table whatever its query: what reads recorded by table and slot are verified and shown
 /// through.
 pub(crate) trait AnyTable: Send + Sync {
-    fn query(&self) -> TypeId;
     fn name(&self) -> &'static str;
     fn as_any(&self) -> &dyn Any;
     /// Whether the memo at `slot`, brought up to date, still has `fingerprint`.
@@ -75,10 +89,6 @@ pub(crate) trait AnyTable: Send + Sync {
 }
 
 impl<Q: Query> AnyTable for Table<Q> {
-    fn query(&self) -> TypeId {
-        TypeId::of::<Q>()
-    }
-
     fn name(&self) -> &'static str {
         Q::NAME
     }
@@ -88,7 +98,7 @@ impl<Q: Query> AnyTable for Table<Q> {
     }
 
     fn unchanged(&self, cx: &Cx<'_>, slot: Slot, fingerprint: Fingerprint) -> bool {
-        cx.fetch(self, slot).1 == fingerprint
+        cx.fingerprint(self, slot) == fingerprint
     }
 
     fn show(&self, slot: Slot) -> String {

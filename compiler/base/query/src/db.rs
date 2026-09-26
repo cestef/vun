@@ -1,16 +1,16 @@
 //! The database: a table per query, the current revision, and the resources queries share.
 
 use std::any::{Any, TypeId};
-use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, RwLock};
 
+use vun_codec::Resources;
 use vun_par::Map;
 
 use super::claim::Waits;
 use super::cx::Cx;
 use super::memo::Memo;
-use super::persist::Codec;
+use super::persist::Persisted;
 use super::table::{AnyTable, Table, TableId};
 use super::{Query, Revision};
 
@@ -23,8 +23,8 @@ pub struct Db {
     /// Each query's table, by the query's type.
     ids: Map<TypeId, TableId>,
     pub(crate) waits: Waits,
-    /// The persisted queries.
-    pub(crate) codecs: RwLock<HashMap<TypeId, Codec>>,
+    /// The persisted queries, in the order registered.
+    pub(crate) persisted: RwLock<Vec<Arc<dyn Persisted>>>,
     resources: Map<TypeId, Arc<dyn Any + Send + Sync>>,
 }
 
@@ -66,16 +66,14 @@ impl Db {
     /// Never: each type holds one resource of that type.
     #[must_use]
     pub fn resource<T: Default + Send + Sync + 'static>(&self) -> Arc<T> {
-        let resources = self.resources.pin();
-        let resource = resources.get_or_insert_with(TypeId::of::<T>(), || Arc::new(T::default()));
-        Arc::clone(resource).downcast::<T>().expect("one resource per type")
+        (self as &dyn Resources).get()
     }
 
     /// Every key of `Q` computed or set so far, with its value: what inspection tools read,
     /// such as coverage, never a query, whose results must not depend on what ran before.
     #[must_use]
     pub fn computed<Q: Query>(&self) -> Vec<(Q::Key, Q::Value)> {
-        self.table::<Q>().memos().map(|(key, memo)| (key.clone(), memo.value.clone())).collect()
+        self.table::<Q>().memos().filter_map(|(key, memo)| Some((key.clone(), memo.value.clone()?))).collect()
     }
 
     /// The table of `Q`, made on first use.
@@ -91,5 +89,12 @@ impl Db {
 
     pub(crate) fn any_table(&self, id: TableId) -> &dyn AnyTable {
         &*self.tables[id.0 as usize]
+    }
+}
+
+/// Resources are the tables persisted handles are into.
+impl Resources for Db {
+    fn resource(&self, ty: TypeId, make: fn() -> Arc<dyn Any + Send + Sync>) -> Arc<dyn Any + Send + Sync> {
+        Arc::clone(self.resources.pin().get_or_insert_with(ty, make))
     }
 }

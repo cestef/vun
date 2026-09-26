@@ -1,6 +1,5 @@
 //! The subscriber writing events to standard error: one line each, prefixed by the spans they
-//! occur in (compact), or indented under them (tree); with timings, each closed span reports how
-//! long it was open.
+//! occur in (compact), or indented under them (tree).
 
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -8,7 +7,6 @@ use std::fmt::Write as _;
 use std::io::Write as _;
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::time::Instant;
 
 use tracing::field::{Field, Visit};
 use tracing::span::{Attributes, Id, Record};
@@ -24,7 +22,6 @@ const INDENT: &str = "  ";
 struct Span {
     name: &'static str,
     fields: String,
-    opened: Instant,
     /// Handles to the span; it closes when the last is dropped.
     handles: usize,
 }
@@ -32,7 +29,6 @@ struct Span {
 pub(crate) struct Writer {
     filter: Filter,
     format: Format,
-    timings: bool,
     next: AtomicU64,
     spans: Mutex<HashMap<u64, Span>>,
 }
@@ -62,13 +58,7 @@ impl Visit for Fields {
 impl Writer {
     pub(crate) fn new(config: &Config) -> Self {
         let filter = config.filter.as_deref().map(Filter::parse).unwrap_or_default();
-        Self {
-            filter,
-            format: config.format,
-            timings: config.timings,
-            next: AtomicU64::new(1),
-            spans: Mutex::default(),
-        }
+        Self { filter, format: config.format, next: AtomicU64::new(1), spans: Mutex::default() }
     }
 
     fn line(text: &str) {
@@ -97,12 +87,7 @@ impl Subscriber for Writer {
         let mut fields = Fields::default();
         attributes.record(&mut fields);
         let id = self.next.fetch_add(1, Ordering::Relaxed);
-        let span = Span {
-            name: attributes.metadata().name(),
-            fields: fields.rest,
-            opened: Instant::now(),
-            handles: 1,
-        };
+        let span = Span { name: attributes.metadata().name(), fields: fields.rest, handles: 1 };
         self.spans.lock().expect("trace spans").insert(id, span);
         Id::from_u64(id)
     }
@@ -161,11 +146,7 @@ impl Subscriber for Writer {
         if s.handles > 0 {
             return false;
         }
-        let closed = spans.remove(&span.into_u64());
-        drop(spans);
-        if let (Some(s), true) = (closed, self.timings) {
-            Self::line(&format!("{}{{{}}}: {:?}", s.name, s.fields.trim_start(), s.opened.elapsed()));
-        }
+        spans.remove(&span.into_u64());
         true
     }
 }

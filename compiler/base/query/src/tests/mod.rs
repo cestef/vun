@@ -1,9 +1,11 @@
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-use super::{Cx, Cycle, Db, Persist, Query, Revision, Unloaded};
+mod persist;
+
+use super::{Cx, Cycle, Db, Query, Revision};
 
 /// Counts how many times a query ran.
-struct Runs(AtomicUsize);
+pub(super) struct Runs(AtomicUsize);
 
 impl Runs {
     const fn new() -> Self {
@@ -108,77 +110,6 @@ fn cycles_are_named_and_recovered() {
     assert_eq!(path, ["0", "1", "2", "0"]);
     let cycle = Cycle { path: vec![("ring", "0".into()), ("ring", "1".into())] };
     assert_eq!(cycle.to_string(), "query cycle: ring(0) then ring(1)");
-}
-
-static WORDS: Runs = Runs::new();
-
-/// A persisted input: a file's text by path.
-struct Source;
-impl Query for Source {
-    const NAME: &'static str = "source";
-    type Key = String;
-    type Value = String;
-    fn compute(_: &Cx<'_>, _: &String) -> String {
-        String::new()
-    }
-}
-impl Persist for Source {}
-
-struct Words;
-impl Query for Words {
-    const NAME: &'static str = "words";
-    type Key = String;
-    type Value = Vec<String>;
-    fn compute(cx: &Cx<'_>, key: &String) -> Vec<String> {
-        WORDS.tick();
-        cx.get::<Source>(key).split_whitespace().map(str::to_owned).collect()
-    }
-}
-impl Persist for Words {}
-
-/// A database with the persisted queries registered and `text` set as the source of `a`.
-fn persisting(text: &str) -> Db {
-    let db = Db::new();
-    db.persist::<Source>();
-    db.persist::<Words>();
-    db.set::<Source>(&"a".into(), text.into());
-    db
-}
-
-#[test]
-fn saved_memos_are_reused_until_their_trace_changes() {
-    let first = persisting("one two");
-    assert_eq!(first.get::<Words>(&"a".into()), ["one", "two"]);
-    let saved = first.save();
-    assert_eq!(saved, first.save(), "the saved form is deterministic");
-    assert_eq!(WORDS.count(), 1);
-
-    // Another process with the same input reuses the memo.
-    let second = persisting("one two");
-    assert_eq!(second.load(&saved).unwrap(), 1, "only computed memos are saved");
-    assert_eq!(second.get::<Words>(&"a".into()), ["one", "two"]);
-    assert_eq!(WORDS.count(), 1);
-
-    // A changed input fails the trace, so the loaded memo is recomputed.
-    let third = persisting("three");
-    third.load(&saved).unwrap();
-    assert_eq!(third.get::<Words>(&"a".into()), ["three"]);
-    assert_eq!(WORDS.count(), 2);
-}
-
-#[test]
-fn memos_of_unregistered_queries_and_other_formats_are_not_loaded() {
-    let first = persisting("x");
-    first.get::<Words>(&"a".into());
-    let saved = first.save();
-    let bare = Db::new();
-    bare.persist::<Words>();
-    assert_eq!(bare.load(&saved).unwrap(), 0, "a trace reading an unregistered query is skipped");
-    // The format is the leading varint.
-    let mut other = saved.clone();
-    other[0] = 1;
-    assert!(matches!(Db::new().load(&other), Err(Unloaded::Format { found: 1 })));
-    assert!(matches!(Db::new().load(&[]), Err(Unloaded::Decode(_))));
 }
 
 #[test]
