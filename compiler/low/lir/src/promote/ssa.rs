@@ -11,20 +11,7 @@ use crate::analysis::Cfg;
 use crate::entity::{Block, Inst, Slot, Value};
 use crate::func::{Def, Function, InstData, ValueData};
 use crate::inst::InstKind;
-
-/// Loads and trivial parameters, by what stands for them.
-#[derive(Default)]
-struct Replaced(HashMap<Value, Value>);
-
-impl Replaced {
-    /// What stands for `value` in the end.
-    fn resolve(&self, mut value: Value) -> Value {
-        while let Some(&next) = self.0.get(&value) {
-            value = next;
-        }
-        value
-    }
-}
+use crate::replaced::Replaced;
 
 /// What a promoted instruction does to its slot.
 enum Step {
@@ -112,7 +99,7 @@ impl<'f> Promotion<'f> {
                             Some(&value) => value,
                             None => self.start(block, slot),
                         };
-                        self.replaced.0.insert(load, reaching);
+                        self.replaced.insert(load, reaching);
                     }
                     Step::Address => {}
                 }
@@ -169,7 +156,7 @@ impl<'f> Promotion<'f> {
         while changed {
             changed = false;
             for &(slot, param) in &params {
-                if self.replaced.0.contains_key(&param) {
+                if self.replaced.contains(param) {
                     continue;
                 }
                 let passed: HashSet<Value> = self.incoming[&param]
@@ -182,7 +169,7 @@ impl<'f> Promotion<'f> {
                     1 => *passed.iter().next().expect("one"),
                     _ => continue,
                 };
-                self.replaced.0.insert(param, one);
+                self.replaced.insert(param, one);
                 changed = true;
             }
         }
@@ -197,7 +184,7 @@ impl<'f> Promotion<'f> {
         blocks.sort_unstable_by_key(|&(block, _)| block);
         for (block, params) in blocks {
             let kept: Vec<Value> =
-                params.into_iter().map(|(_, p)| p).filter(|p| !replaced.0.contains_key(p)).collect();
+                params.into_iter().map(|(_, p)| p).filter(|p| !replaced.contains(*p)).collect();
             for &pred in &self.preds[block] {
                 let passed: Vec<Value> = kept
                     .iter()

@@ -165,7 +165,7 @@ per second per stage and fails on regressions.
   concrete rewrites each call of it into a call of `f`, a Vun function of the same parameters
   (`lang.float.rem` runs as `lang.float.soft.rem`), compiled like any other. A slot only plain
   loads and stores of one scalar as wide as it reach, by its address alone, is then promoted
-  (`Unit::promote`): its stores become definitions, its loads the definition reaching them,
+  (`Function::promote`): its stores become definitions, its loads the definition reaching them,
   through block parameters where definitions meet (as Braun et al. build SSA, every predecessor
   known), parameters passed one value are that value, and the slot goes (`Function::compact`
   renumbers what remains). A read before any store reads zero, as a constant at the entry. Every
@@ -174,7 +174,9 @@ per second per stage and fails on regressions.
   integer operation, comparison or conversion of constants is the constant it gives where the
   operation is defined on them (`Domain`), a select on a constant is the value it picks, and an
   identity on the right (`x * 1`, `x + 0`) is the left operand; floats are left to the machine.
-  Jumps are then threaded (`Unit::thread`): a predecessor passing a constant to a block that
+  After promotion the same folds run over each function (`Function::fold`), since a load
+  promoted may now be the constant stored, and a branch or switch on a constant becomes a jump.
+  Jumps are then threaded (`Function::thread`; `Unit::simplify` runs the three in turn): a predecessor passing a constant to a block that
   only compares that parameter with a constant and branches, nothing it defines read beyond it,
   jumps where the branch sends that constant, as the join of `if c { true } else { false }`
   would; and a jump to a block holding only constants and jumping on is moved to where it jumps.

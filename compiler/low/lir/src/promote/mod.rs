@@ -14,18 +14,7 @@ use crate::entity::{Slot, Value};
 use crate::func::Function;
 use crate::inst::{Access, InstKind};
 use crate::ty::Scalar;
-use crate::unit::Unit;
 use ssa::Promotion;
-
-impl Unit {
-    /// Promotes the slots of every function that are values in disguise; see [`Function::promote`].
-    pub fn promote(&mut self) {
-        let bits = self.pointer_bits;
-        for (_, function) in self.functions.iter_mut() {
-            function.promote(bits);
-        }
-    }
-}
 
 impl Function {
     /// Promotes each slot that only plain loads and stores of one scalar as wide as it reach, by

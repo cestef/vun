@@ -12,6 +12,8 @@ pub mod func;
 pub mod inst;
 pub mod legalize;
 pub mod promote;
+mod replaced;
+mod simplify;
 pub mod text;
 pub mod thread;
 pub mod ty;

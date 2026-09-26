@@ -13,16 +13,6 @@ use crate::analysis::Cfg;
 use crate::entity::{Block, Value};
 use crate::func::{Def, Function};
 use crate::inst::{InstKind, Target, Terminator};
-use crate::unit::Unit;
-
-impl Unit {
-    /// Threads the jumps of every function; see [`Function::thread`].
-    pub fn thread(&mut self) {
-        for (_, function) in self.functions.iter_mut() {
-            function.thread();
-        }
-    }
-}
 
 impl Function {
     /// Threads jumps through blocks deciding on a constant and blocks only jumping, until none

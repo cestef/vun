@@ -6,6 +6,7 @@ use crate::facts::{Domain, Reads};
 use crate::inst::{BinOp, CastOp, Cond};
 use crate::ty::Scalar;
 
+mod function;
 #[cfg(test)]
 mod tests;
 
