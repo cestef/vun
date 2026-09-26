@@ -14,12 +14,14 @@ use std::sync::atomic::Ordering;
 
 use vun_codec::{Blob, Context, Decode, Encode, Writer};
 use vun_par::Parallel;
-use vun_trace::Activity;
+use vun_trace::{Activity, tracing};
 
 pub(crate) use self::query::Persisted;
 use self::query::{Persisting, Reads};
+pub(crate) use self::saved::Growth;
+pub(crate) use self::saved::Saved;
 pub use self::saved::Unloaded;
-use self::saved::{FORMAT, Loaded, Saved};
+use self::saved::{Body, FORMAT, Loaded};
 use super::Query;
 use super::db::Db;
 
@@ -62,7 +64,8 @@ impl Db {
 
     /// The computed memos of every persisted query whose reads are all of persisted queries. The
     /// stream extends the one loaded, if any, so that values never read are written as they
-    /// were read.
+    /// were read; once the body loaded has outgrown its size when last written whole, it is
+    /// written whole, its values read to be written anew.
     ///
     /// # Panics
     /// If the registry was poisoned by a panicking query.
@@ -70,9 +73,15 @@ impl Db {
     pub fn save(&self) -> Vec<u8> {
         let persisted = self.persisted.read().expect("persisted queries").clone();
         let positions = (0..).zip(&persisted).map(|(at, p)| (p.table(self), at)).collect();
-        let mut w = self.stream.get().map_or_else(Writer::new, Writer::extending);
-        let queries = persisted.iter().map(|p| p.save(self, &mut w, &positions)).collect();
-        Saved { format: FORMAT, pools: w.into_pools(), queries }.encoded()
+        let growth = self.growth.get().copied().filter(|growth| !growth.outgrown());
+        let extends = growth.and(self.stream.get());
+        let mut w = extends.map_or_else(Writer::new, Writer::extending);
+        let queries = persisted.iter().map(|p| p.save(self, &mut w, &positions, extends)).collect();
+        let body = Body { pools: w.into_pools(), queries }.encoded();
+        let size = u64::try_from(body.len()).expect("a body fits in 64 bits");
+        let compacted = growth.map_or(size, |growth| growth.compacted);
+        tracing::debug!(size, compacted, whole = extends.is_none(), "memos saved");
+        Saved { format: FORMAT, compacted, body }.encoded()
     }
 
     /// Whether a memo was computed that the memos loaded did not hold, or none were: what
@@ -97,10 +106,14 @@ impl Db {
             return Err(Unloaded::Format { found: format });
         }
         let timer = DECODE.start();
-        let saved = Loaded::decoded(&bytes).map_err(Unloaded::Decode)?;
+        let header = Saved::<Blob>::decoded(&bytes).map_err(Unloaded::Decode)?;
+        let saved: Loaded = header.body.read(&bytes).map_err(Unloaded::Decode)?;
+        let size = u64::try_from(header.body.len).expect("a body fits in 64 bits");
+        let growth = Growth { size, compacted: header.compacted };
         drop(timer);
         let stream = Context::within(bytes.into_boxed_slice(), saved.pools);
         self.stream.set(stream).map_err(|_| Unloaded::Again)?;
+        self.growth.set(growth).expect("set with the stream");
         let stream = self.stream.get().expect("set above");
         let persisted = self.persisted.read().expect("persisted queries").clone();
         let by_name: HashMap<_, _> = persisted.iter().map(|p| (p.name(), p)).collect();

@@ -20,6 +20,15 @@ impl Blob {
     pub fn of(self, input: &[u8]) -> &[u8] {
         &input[self.at..self.at + self.len]
     }
+
+    /// Reads a value that is the whole of these bytes of `input`, holding no pooled handle, so that
+    /// the places it holds are places in `input`.
+    ///
+    /// # Errors
+    /// Returns why the bytes are not exactly one value of this type.
+    pub fn read<T: Decode>(self, input: &[u8]) -> Result<T, Malformed> {
+        Reader::plain_at(self.of(input), self.at)
+    }
 }
 
 impl Decode for Blob {

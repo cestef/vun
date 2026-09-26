@@ -22,8 +22,15 @@ pub(crate) trait Persisted: Send + Sync {
     fn table(&self, db: &Db) -> TableId;
 
     /// Every key with a slot, and the computed memos whose reads are all of persisted tables,
-    /// given by their positions in the file.
-    fn save(&self, db: &Db, w: &mut Writer<'_>, positions: &HashMap<TableId, u32>) -> SavedQuery;
+    /// given by their positions in the file, into a stream that `extends` the one loaded or
+    /// starts anew.
+    fn save(
+        &self,
+        db: &Db,
+        w: &mut Writer<'_>,
+        positions: &HashMap<TableId, u32>,
+        extends: Option<&Context>,
+    ) -> SavedQuery;
 
     /// The slot of a saved key; `None` for one that does not decode.
     fn slot(&self, db: &Db, stream: &Context, key: Blob) -> Option<Slot>;
@@ -82,7 +89,13 @@ impl<Q: Query<Key: Encode + Decode>> Persisted for Persisting<Q> {
         db.table::<Q>().id
     }
 
-    fn save(&self, db: &Db, w: &mut Writer<'_>, positions: &HashMap<TableId, u32>) -> SavedQuery {
+    fn save(
+        &self,
+        db: &Db,
+        w: &mut Writer<'_>,
+        positions: &HashMap<TableId, u32>,
+        extends: Option<&Context>,
+    ) -> SavedQuery {
         let table = db.table::<Q>();
         let keys = table.entries().map(|(_, entry)| w.encode(&entry.key)).collect();
         let saved_dep = |dep: &Dep| {
@@ -99,11 +112,12 @@ impl<Q: Query<Key: Encode + Decode>> Persisted for Persisting<Q> {
             .filter_map(|(slot, entry)| {
                 let memo = entry.memo.load_full().filter(|memo| !memo.input)?;
                 let deps = memo.deps.iter().map(saved_dep).collect::<Option<_>>()?;
-                // A value never read in this process is written as it was read: the stream
-                // written extends the one loaded.
-                let value = self.values.as_ref().and_then(|values| match memo.known() {
-                    Some(value) => Some((values.write)(w, value)),
-                    None => Some(db.stream.get()?.bytes(memo.saved.as_ref()?.at).to_vec()),
+                // A value never read in this process is written as it was read into a stream
+                // extending the one loaded, and read to be written anew into a new one.
+                let value = self.values.as_ref().and_then(|values| match (memo.known(), extends) {
+                    (Some(value), _) => Some((values.write)(w, value)),
+                    (None, Some(stream)) => Some(stream.bytes(memo.saved.as_ref()?.at).to_vec()),
+                    (None, None) => memo.value(db).map(|value| (values.write)(w, value)),
                 });
                 let key = u32::try_from(slot.index()).expect("fewer than 2^32 keys per query");
                 Some(SavedMemo { key, value, fingerprint: memo.fingerprint, deps })

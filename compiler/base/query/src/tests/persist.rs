@@ -1,6 +1,9 @@
 //! Memos saved by one database and loaded by another.
 
+use vun_codec::{Blob, Decode};
+
 use super::Runs;
+use crate::persist::Saved;
 use crate::{Cx, Db, Query, Unloaded};
 
 static WORDS: Runs = Runs::new();
@@ -82,6 +85,48 @@ fn values_never_read_are_saved_again_as_they_were() {
     let runs = WORDS.count();
     assert_eq!(third.get::<Words>(&"b".into()), ["z"]);
     assert_eq!(WORDS.count(), runs, "read from the bytes carried over");
+}
+
+/// The size a saved file's body had when last written whole, and its size.
+fn growth(saved: &[u8]) -> (u64, usize) {
+    let header = Saved::<Blob>::decoded(saved).unwrap();
+    (header.compacted, header.body.len)
+}
+
+#[test]
+fn a_body_is_written_whole_once_it_outgrows_its_last_whole_size() {
+    let first = persisting("p");
+    first.get::<Words>(&"a".into());
+    let saved = first.save();
+    let (compacted, size) = growth(&saved);
+    assert_eq!(compacted, size as u64, "a first save is whole");
+
+    // A new memo past the last whole size extends the body and keeps that size.
+    let second = persisting("p");
+    let long = "word ".repeat(64);
+    second.set::<Source>(&"b".into(), long.clone());
+    second.load(saved).unwrap();
+    second.get::<Words>(&"b".into());
+    let grown = second.save();
+    let (kept, size) = growth(&grown);
+    assert_eq!(kept, compacted);
+    assert!(size as u64 > 2 * compacted);
+
+    // The next save writes it whole, reading the value never read to write it anew.
+    let third = persisting("p");
+    third.set::<Source>(&"b".into(), long.clone());
+    third.load(grown).unwrap();
+    let whole = third.save();
+    let (compacted, size) = growth(&whole);
+    assert_eq!(compacted, size as u64);
+
+    let fourth = persisting("p");
+    fourth.set::<Source>(&"b".into(), long);
+    fourth.load(whole).unwrap();
+    let runs = WORDS.count();
+    assert_eq!(fourth.get::<Words>(&"a".into()), ["p"]);
+    assert_eq!(fourth.get::<Words>(&"b".into()).len(), 64);
+    assert_eq!(WORDS.count(), runs, "both read from the body written whole");
 }
 
 #[test]

@@ -10,7 +10,7 @@ use vun_par::Map;
 use super::claim::Waits;
 use super::cx::Cx;
 use super::memo::Memo;
-use super::persist::Persisted;
+use super::persist::{Growth, Persisted};
 use super::table::{AnyTable, Table, TableId};
 use super::{Query, Revision};
 
@@ -25,6 +25,8 @@ pub struct Db {
     pub(crate) waits: Waits,
     /// The saved memos loaded, whose values are read from it when first needed.
     pub(crate) stream: OnceLock<Context>,
+    /// How the stream loaded has grown since last written whole.
+    pub(crate) growth: OnceLock<Growth>,
     /// Whether a memo was computed that the saved ones did not already hold.
     pub(crate) changed: AtomicBool,
     /// The persisted queries, in the order registered.

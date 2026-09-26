@@ -78,7 +78,11 @@ years (rustc's parallel front end). So both are designed in from phase 1.
   that holds stands for its value, which is computed only if read (red-green, as rustc's
   dependency graph). Loading reads keys in parallel and values when first needed, in place in
   the file; saving happens only when a memo was computed that the file did not hold, and
-  extends the loaded stream, so values never read are copied, not decoded again.
+  extends the loaded stream, so values never read are copied, not decoded again. Since an
+  extended stream keeps every pool entry of the one it extends, the file records its body's size
+  when last written whole, and a body grown past twice that size is written whole on the next
+  save, its unread values decoded to be written anew. Files are written beside their place and
+  renamed over it, so a reader or a crash sees the old file or the new, never a part.
 
 **Parallelism.**
 - Sema claims declarations on worker threads. Code generation is per function, with one thread

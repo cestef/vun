@@ -69,3 +69,13 @@ fn walks_leave_out_the_toolchain_directory() {
     dir.path().join(WORK).join("queries").join("x").put("").unwrap();
     assert_eq!(dir.path().files().unwrap(), [dir.path().join("a.vun")]);
 }
+
+#[test]
+fn a_file_put_replaces_the_old_whole_and_leaves_no_part() {
+    let dir = Scratch::new("put");
+    let path = dir.path().join("a").join("b");
+    path.put("old").unwrap();
+    path.put("new").unwrap();
+    assert_eq!(std::fs::read(&path).unwrap(), b"new");
+    assert_eq!(dir.path().files().unwrap(), [path]);
+}

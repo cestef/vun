@@ -119,7 +119,12 @@ pub struct Reader<'a> {
 impl<'a> Reader<'a> {
     /// Reads a value holding no handle from the whole of `bytes`.
     pub(crate) fn plain<T: Decode>(bytes: &'a [u8]) -> Result<T, Malformed> {
-        Reader { bytes, at: 0, context: &Context::default() }.whole()
+        Self::plain_at(bytes, 0)
+    }
+
+    /// As [`Reader::plain`], for `bytes` starting at `at` in the input.
+    pub(crate) fn plain_at<T: Decode>(bytes: &'a [u8], at: usize) -> Result<T, Malformed> {
+        Reader { bytes, at, context: &Context::default() }.whole()
     }
 
     fn whole<T: Decode>(mut self) -> Result<T, Malformed> {
