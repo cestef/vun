@@ -1,6 +1,7 @@
-//! Rewriting one function: each old value is itself or a pair in the new function, each block a
-//! block whose wide parameters are pairs, and each operation on a wide integer a sequence over
-//! halves (`Halves`).
+//! Rewriting one function: each old value is itself, its bits for a promoted `f16`, or a pair in
+//! the new function, each block a block whose wide parameters are pairs, each operation on a wide
+//! integer a sequence over halves (`Halves`) and each on a promoted `f16` one in `f32`
+//! (`Float16`).
 
 use std::collections::HashMap;
 
@@ -10,6 +11,7 @@ use vun_origin::OriginId;
 use super::halves::{Halves, Pair};
 
 mod call;
+mod half;
 mod inst;
 mod term;
 use super::{Helpers, Legalize, Unlegal};
@@ -25,7 +27,7 @@ pub(super) enum Parts {
 pub(super) struct Rewrite<'u> {
     unit: &'u Unit,
     legalize: Legalize,
-    wide: Scalar,
+    wide: Option<Scalar>,
     old: &'u Function,
     b: Builder,
     parts: HashMap<Value, Parts>,
@@ -40,10 +42,11 @@ impl<'u> Rewrite<'u> {
         unit: &'u Unit,
         old: &'u Function,
         legalize: Legalize,
-        wide: Scalar,
+        wide: Option<Scalar>,
         helpers: &'u mut Helpers,
     ) -> Result<Function, Unlegal> {
-        let signature = legalize.signature(&old.signature, wide);
+        let signature =
+            legalize.signature(&old.signature, wide).map_err(|why| Unlegal { at: old.origin, why })?;
         let mut b = Builder::new(old.linkage, signature, old.origin);
         for (_, slot) in old.slots.iter() {
             b.slot(slot.size, slot.align, slot.origin);
@@ -70,7 +73,7 @@ impl<'u> Rewrite<'u> {
             rw.blocks.push(new);
             let mut received = rw.b.params(new).to_vec().into_iter();
             for &p in &data.params {
-                let parts = if old.ty(p) == wide {
+                let parts = if Some(old.ty(p)) == wide {
                     Parts::Pair(Pair {
                         lo: received.next().expect("counted"),
                         hi: received.next().expect("counted"),
@@ -99,11 +102,11 @@ impl<'u> Rewrite<'u> {
 
     /// The types a value of `ty` becomes.
     fn split(&self, ty: Scalar) -> Vec<Scalar> {
-        if ty == self.wide { vec![self.legalize.widest; 2] } else { vec![ty] }
+        if Some(ty) == self.wide { vec![self.legalize.widest; 2] } else { vec![self.legalize.scalar(ty)] }
     }
 
     fn is_wide(&self, v: Value) -> bool {
-        self.old.ty(v) == self.wide
+        Some(self.old.ty(v)) == self.wide
     }
 
     fn one(&self, v: Value) -> Value {

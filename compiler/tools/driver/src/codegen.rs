@@ -103,7 +103,8 @@ impl Session {
         let mut unit = lowered.as_ref().as_ref().expect("checked above").clone();
         let info = backends[index].info();
         let widest = Scalar::int(info.caps.int_bits).expect("a backend computes with an integer width");
-        if let Err(unlegal) = unit.legalize(Legalize { widest, endian: target.endian }) {
+        if let Err(unlegal) = unit.legalize(Legalize { widest, endian: target.endian, half: info.caps.half })
+        {
             let msg = Msg::new()
                 .text("backend ")
                 .code(info.id.0)

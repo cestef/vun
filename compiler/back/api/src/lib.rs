@@ -11,6 +11,7 @@ use std::path::PathBuf;
 
 use vun_diag::{DiagCtxt, Diagnostic, ErrorGuaranteed, Msg, errors};
 use vun_lir::FuncId;
+use vun_lir::legalize::Half;
 use vun_lir::unit::Unit;
 use vun_origin::OriginId;
 use vun_target::{Arches, Name, Support, TargetSpec, Unsupported};
@@ -46,6 +47,8 @@ pub struct BackendCaps {
     /// The widest integer it computes with, in bits: wider ones are split into halves before it
     /// reads the unit (`Unit::legalize`).
     pub int_bits: u32,
+    /// Whether it computes `f16`, or holds it as bits and computes in `f32` (`Unit::legalize`).
+    pub half: Half,
     pub debug_info: bool,
 }
 

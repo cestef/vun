@@ -1,11 +1,17 @@
-//! Legalizing integers too wide for a backend (spec 13, section 8.1): each value of twice the
-//! widest width a backend computes with becomes a pair of halves, low first, and every operation
-//! on it a sequence over the halves, before the backend reads the unit. A wide parameter is
-//! passed as its two halves; a wide result is a record of them, which the C convention returns
-//! in registers as C returns its 128-bit integers, and Vun's through memory. Division calls a
-//! helper function the pass adds. Afterwards no value is wider than the widest width.
+//! Legalizing the scalars a backend does not compute with (spec 13, section 8.1), before it reads
+//! the unit.
+//!
+//! An integer of twice the widest width a backend computes with becomes a pair of halves, low
+//! first, and every operation on it a sequence over the halves. A wide parameter is passed as its
+//! two halves; a wide result is a record of them, which the C convention returns in registers as
+//! C returns its 128-bit integers, and Vun's through memory. Division calls a helper function the
+//! pass adds. Afterwards no value is wider than the widest width.
+//!
+//! An `f16`, for a backend that does not compute it, becomes its bits, an `i16`, and every
+//! operation on it one in `f32` between an exact widening and a rounding back (`float16`).
 
 mod divide;
+mod float16;
 mod halves;
 mod rewrite;
 #[cfg(test)]
@@ -18,7 +24,7 @@ use vun_origin::OriginId;
 use vun_target::Endian;
 
 use crate::func::Record;
-use crate::{AbiType, Ext, FuncId, ImportKind, Scalar, Signature, Unit};
+use crate::{AbiType, Conv, Ext, FuncId, ImportKind, Scalar, Signature, Unit};
 use rewrite::Rewrite;
 
 /// How a unit is legalized for a backend.
@@ -28,6 +34,16 @@ pub struct Legalize {
     pub widest: Scalar,
     /// Where the halves of a wide integer are in memory.
     pub endian: Endian,
+    pub half: Half,
+}
+
+/// How a backend holds `f16`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Half {
+    /// As a float it computes with.
+    Computed,
+    /// As its bits, each operation computed in `f32`.
+    Promoted,
 }
 
 /// Why an operation on a wide integer has no sequence over halves.
@@ -37,6 +53,10 @@ pub enum Unlegalized {
     Atomic,
     /// A conversion between a wide integer and a float.
     Float,
+    /// A conversion of a promoted `f16` from or to anything but `f32`, `f64` and its bits.
+    HalfConversion,
+    /// A promoted `f16` passed under the C convention, which passes it as a float.
+    HalfAbi,
     /// An integer wider than two halves.
     Wider,
 }
@@ -53,6 +73,8 @@ impl fmt::Display for Unlegal {
         f.write_str(match self.why {
             Unlegalized::Atomic => "an atomic access of an integer wider than the backend's",
             Unlegalized::Float => "a conversion between a float and an integer wider than the backend's",
+            Unlegalized::HalfConversion => "a conversion to `f16` from a type other than `f32`",
+            Unlegalized::HalfAbi => "an `f16` passed under the C convention",
             Unlegalized::Wider => "an integer more than twice as wide as the backend's",
         })
     }
@@ -88,6 +110,16 @@ impl Legalize {
         Scalar::int(self.widest.bits(0) * 2)
     }
 
+    /// Whether a value of `ty` is an `f16` held as its bits.
+    fn promoted(self, ty: Scalar) -> bool {
+        ty == Scalar::F16 && self.half == Half::Promoted
+    }
+
+    /// The scalar a value of `ty`, not a wide integer, becomes.
+    fn scalar(self, ty: Scalar) -> Scalar {
+        if self.promoted(ty) { Scalar::I16 } else { ty }
+    }
+
     fn half_bytes(self) -> u64 {
         self.widest.bytes(0)
     }
@@ -101,23 +133,36 @@ impl Legalize {
     }
 
     /// `signature` with each wide integer passed as its halves and a wide result as a record of
-    /// them.
-    fn signature(self, signature: &Signature, wide: Scalar) -> Signature {
+    /// them, and each promoted `f16` as its bits.
+    fn signature(self, signature: &Signature, wide: Option<Scalar>) -> Result<Signature, Unlegalized> {
+        let half = |t: &AbiType| match t {
+            AbiType::Scalar(s) => self.promoted(*s),
+            AbiType::Record(r) => r.fields.iter().any(|&(_, s)| self.promoted(s)),
+            _ => false,
+        };
+        let passed = signature.params.iter().chain(&signature.result);
+        if signature.conv == Conv::C && passed.clone().any(half) {
+            return Err(Unlegalized::HalfAbi);
+        }
+        let promoted = |t: AbiType| match t {
+            AbiType::Scalar(s) if self.promoted(s) => AbiType::Int(Scalar::I16, Ext::Zero),
+            other => other,
+        };
         let params = signature.params.iter().flat_map(|p| match p {
-            AbiType::Int(s, ext) if *s == wide => {
+            AbiType::Int(s, ext) if Some(*s) == wide => {
                 vec![AbiType::Int(self.widest, Ext::Zero), AbiType::Int(self.widest, *ext)]
             }
-            other => vec![other.clone()],
+            other => vec![promoted(other.clone())],
         });
         let result = signature.result.clone().map(|r| match r {
-            AbiType::Int(s, _) if s == wide => {
+            AbiType::Int(s, _) if Some(s) == wide => {
                 let (lo, hi) = self.offsets();
                 let fields = vec![(lo.min(hi), self.widest), (lo.max(hi), self.widest)];
                 AbiType::Record(Record { size: 2 * self.half_bytes(), align: self.half_bytes(), fields })
             }
-            other => other,
+            other => promoted(other),
         });
-        Signature { conv: signature.conv, params: params.collect(), result }
+        Ok(Signature { conv: signature.conv, params: params.collect(), result })
     }
 }
 
@@ -127,10 +172,13 @@ impl Unit {
     /// # Errors
     /// Returns the first operation on a wide integer that has no sequence over halves.
     pub fn legalize(&mut self, legalize: Legalize) -> Result<(), Unlegal> {
-        let Some(wide) = legalize.wide() else { return Ok(()) };
+        let wide = legalize.wide();
+        if wide.is_none() && legalize.half == Half::Computed {
+            return Ok(());
+        }
         let width = |s: Scalar| s.is_int() && s.bits(0) > legalize.widest.bits(0);
         for (_, f) in self.functions.iter() {
-            if let Some((_, v)) = f.values.iter().find(|(_, v)| width(v.ty) && v.ty != wide) {
+            if let Some((_, v)) = f.values.iter().find(|(_, v)| width(v.ty) && Some(v.ty) != wide) {
                 let at = match v.def {
                     crate::func::Def::Inst(inst) => f.insts[inst].origin,
                     crate::func::Def::Param(block, _) => f.blocks[block].origin,
@@ -149,7 +197,9 @@ impl Unit {
         }
         for (_, import) in self.imports.iter_mut() {
             if let ImportKind::Func(signature) = &import.kind {
-                import.kind = ImportKind::Func(legalize.signature(signature, wide));
+                let signature =
+                    legalize.signature(signature, wide).map_err(|why| Unlegal { at: import.origin, why })?;
+                import.kind = ImportKind::Func(signature);
             }
         }
         if let Some((_, at)) = helpers.divide {

@@ -274,7 +274,10 @@ untyped expressions and operators without a function; `VUN_LOG` traces `mir`,
 **Legalization** (decision 169): `vun_lir::legalize` (`Unit::legalize(Legalize { widest,
 endian })`, `halves.rs` pair arithmetic, `rewrite/` per function (instructions, calls, terminators), `divide.rs` the division
 helper); the driver legalizes a copy of the unit per backend in `Session::code` (`Coded.unit`),
-from `BackendCaps::int_bits`. `programs/wide.vun` checks it through both backends.
+from `BackendCaps::int_bits`. `programs/wide.vun` checks it through both backends. `f16` is
+promoted there too (decision 175, `BackendCaps::half`): held as `i16` bits, computed in `f32`
+between `legalize/float16.rs`'s exact widening and rounding (`rewrite/half.rs`);
+`programs/half.vun` checks every operation against sema bit for bit.
 
 **Stack bounds** (decision 162): `Func::stack_max` and `DeclRef::stack_max` (through `Env::count`)
 set `Function::stack_max` and `Import::stack_max` in LIR; `vun_lir::analysis::StackUse` walks the
@@ -348,7 +351,8 @@ Proposed also: 155 (frame layout), 156 (narrowing, runtime bounds, frame layouts
 declaring theirs), 163 (attribute places, one reading of attributes),
 164 (an import's bound from the program's declarations), 165 (`symbols` structs); proposed: 166
 (callee-saved registers for loops), 167 (floats), 169 (legalization of wide integers), 174
-(`lower.by`, the float encoding, folding primitive calls typed by value); accepted: 173 (canonical
+(`lower.by`, the float encoding, folding primitive calls typed by value), 175 (`f16` promoted in
+legalization); accepted: 173 (canonical
 NaN, the user's request); accepted: 168 (commands as jj's, debug tools). Accepted: 139 (the size budget, now 10 MiB), 158 (`meta.Frame`, `TypeOf`
 over code; details proposed).
 Accepted (the user's choices, details proposed): 152 (backends after TPDE, baseline backend
@@ -370,8 +374,8 @@ rules go to `decisions.md` as proposed unless the user approves them.
 
 ## 7. Next steps, in order
 
-0. Baseline backend next: `f16` arithmetic (as `lang.float.soft` functions over the encoding,
-   through `lower.by`), float conversions (they must give the canonical NaN, decision 173), data
+0. Baseline backend next: float conversions (they must give the canonical NaN, decision 173;
+   to `f16` only from `f32`, decision 175), data
    objects aligned past every C type in the C backend (only slots are handled), and
    128-bit integers (pairs, helpers in Vun), DWARF lines, arm64. Backends: memory regions from a program's build options into `LinkPlan` (the `gnu`
    adapter writes scripts from them), and a bare-metal runtime to link against. A slice value (`xs[a..b]` not borrowed)

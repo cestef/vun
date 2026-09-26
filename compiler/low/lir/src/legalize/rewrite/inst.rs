@@ -1,5 +1,5 @@
-//! Instructions: each on a wide integer rewritten into a sequence over halves, any other copied
-//! over the new values.
+//! Instructions: each on a wide integer rewritten into a sequence over halves, each on a promoted
+//! `f16` into one in `f32`, any other copied over the new values.
 
 use super::super::{Unlegal, Unlegalized};
 use super::{Parts, Rewrite};
@@ -10,8 +10,16 @@ impl Rewrite<'_> {
         let data = &self.old.insts[inst];
         let (at, result) = (data.origin, data.result);
         let unlegal = |why| Unlegal { at, why };
+        if let Some(parts) = self.half(&data.kind, at).map_err(unlegal)? {
+            if let Some(v) = result {
+                self.parts.insert(v, parts);
+            }
+            return Ok(());
+        }
         let parts = match &data.kind {
-            InstKind::Const { ty, bits } if *ty == self.wide => Parts::Pair(self.halves(at).pair(*bits)),
+            InstKind::Const { ty, bits } if Some(*ty) == self.wide => {
+                Parts::Pair(self.halves(at).pair(*bits))
+            }
             InstKind::Binary { op, a, b } if self.is_wide(*a) => {
                 let (x, y) = (self.pair(*a), self.pair(*b));
                 Parts::Pair(match op {
@@ -27,7 +35,7 @@ impl Rewrite<'_> {
                 let (x, y) = (self.pair(*a), self.pair(*b));
                 Parts::One(self.halves(at).compared(*cond, x, y))
             }
-            InstKind::Cast { op, value, to } if self.is_wide(*value) || *to == self.wide => match op {
+            InstKind::Cast { op, value, to } if self.is_wide(*value) || Some(*to) == self.wide => match op {
                 CastOp::ZExt | CastOp::SExt => {
                     let v = self.one(*value);
                     Parts::Pair(self.halves(at).extended(v, *op == CastOp::SExt))
@@ -46,7 +54,7 @@ impl Rewrite<'_> {
                 let (c, t, o) = (self.one(*cond), self.pair(*then), self.pair(*otherwise));
                 Parts::Pair(self.halves(at).select_pair(c, t, o))
             }
-            InstKind::Load { ty, addr, access } if *ty == self.wide => {
+            InstKind::Load { ty, addr, access } if Some(*ty) == self.wide => {
                 if matches!(access, Access::Atomic(_)) {
                     return Err(unlegal(Unlegalized::Atomic));
                 }
@@ -66,13 +74,13 @@ impl Rewrite<'_> {
             {
                 return Err(unlegal(Unlegalized::Atomic));
             }
-            InstKind::Call { callee, args } => match self.call(callee, args, result, at) {
+            InstKind::Call { callee, args } => match self.call(callee, args, result, at).map_err(unlegal)? {
                 Some(parts) => parts,
                 None => return Ok(()),
             },
             kind => {
                 let kind = self.remapped(kind);
-                let ty = result.map(|v| self.old.ty(v));
+                let ty = result.map(|v| self.legalize.scalar(self.old.ty(v)));
                 match self.b.push(kind, ty, at) {
                     Some(v) => Parts::One(v),
                     None => return Ok(()),
@@ -89,7 +97,7 @@ impl Rewrite<'_> {
     pub(super) fn remapped(&self, kind: &InstKind) -> InstKind {
         let one = |v: &Value| self.one(*v);
         match kind {
-            InstKind::Const { ty, bits } => InstKind::Const { ty: *ty, bits: *bits },
+            InstKind::Const { ty, bits } => InstKind::Const { ty: self.legalize.scalar(*ty), bits: *bits },
             InstKind::Binary { op, a, b } => InstKind::Binary { op: *op, a: one(a), b: one(b) },
             InstKind::Compare { cond, a, b } => InstKind::Compare { cond: *cond, a: one(a), b: one(b) },
             InstKind::Cast { op, value, to } => InstKind::Cast { op: *op, value: one(value), to: *to },
@@ -97,7 +105,7 @@ impl Rewrite<'_> {
                 InstKind::Select { cond: one(cond), then: one(then), otherwise: one(otherwise) }
             }
             InstKind::Load { ty, addr, access } => {
-                InstKind::Load { ty: *ty, addr: one(addr), access: *access }
+                InstKind::Load { ty: self.legalize.scalar(*ty), addr: one(addr), access: *access }
             }
             InstKind::Store { value, addr, access } => {
                 InstKind::Store { value: one(value), addr: one(addr), access: *access }

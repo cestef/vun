@@ -3,6 +3,7 @@
 
 use vun_origin::OriginId;
 
+use super::super::Unlegalized;
 use super::super::halves::Pair;
 use super::{Parts, Rewrite};
 use crate::{Access, BinOp, Callee, InstKind, Value};
@@ -16,7 +17,7 @@ impl Rewrite<'_> {
         args: &[Value],
         result: Option<Value>,
         at: OriginId,
-    ) -> Option<Parts> {
+    ) -> Result<Option<Parts>, Unlegalized> {
         let signature = match callee {
             Callee::Func(f) => &self.unit.functions[*f].signature,
             Callee::Import(i) => match &self.unit.imports[*i].kind {
@@ -25,10 +26,10 @@ impl Rewrite<'_> {
             },
             Callee::Indirect(_, s) => s,
         };
-        let wide_result = signature.returns() == Some(self.wide);
+        let wide_result = signature.returns().is_some_and(|r| Some(r) == self.wide);
         let callee = match callee {
             Callee::Indirect(v, s) => {
-                Callee::Indirect(self.one(*v), Box::new(self.legalize.signature(s, self.wide)))
+                Callee::Indirect(self.one(*v), Box::new(self.legalize.signature(s, self.wide)?))
             }
             other => other.clone(),
         };
@@ -39,10 +40,10 @@ impl Rewrite<'_> {
             let addr = self.b.slot_addr(slot, at);
             args.push(addr);
             self.b.push(InstKind::Call { callee, args }, None, at);
-            return Some(Parts::Pair(self.load_pair(addr, Access::Plain, at)));
+            return Ok(Some(Parts::Pair(self.load_pair(addr, Access::Plain, at))));
         }
-        let ty = result.map(|v| self.old.ty(v));
-        self.b.push(InstKind::Call { callee, args }, ty, at).map(Parts::One)
+        let ty = result.map(|v| self.legalize.scalar(self.old.ty(v)));
+        Ok(self.b.push(InstKind::Call { callee, args }, ty, at).map(Parts::One))
     }
 
     /// `a op b` for a division or remainder, through the helper on magnitudes, the signs put

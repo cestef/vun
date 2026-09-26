@@ -5,6 +5,7 @@ pub mod ast;
 mod emit;
 
 pub use vun_backend::{Lack, Missing, Readiness};
+use vun_lir::legalize::Half;
 
 use std::collections::HashMap;
 use vun_backend::{Artifact, ArtifactSink, Backend, BackendCaps, BackendInfo, Emits, Lines};
@@ -27,6 +28,7 @@ pub const INFO: BackendInfo = BackendInfo {
         noalias: true,
         frame_sizes: true,
         int_bits: 64,
+        half: Half::Promoted,
         debug_info: true,
     },
     readiness: Readiness::Generates,

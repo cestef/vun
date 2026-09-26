@@ -13,6 +13,7 @@ use vun_backend::{
 };
 use vun_diag::{DiagCtxt, ErrorGuaranteed};
 use vun_index::IndexVec;
+use vun_lir::legalize::Half;
 use vun_lir::unit::Unit;
 use vun_lir::{FuncId, Function};
 use vun_target::{Arches, Name, TargetSpec};
@@ -30,6 +31,7 @@ pub const INFO: BackendInfo = BackendInfo {
         noalias: false,
         frame_sizes: true,
         int_bits: 64,
+        half: Half::Promoted,
         debug_info: false,
     },
     readiness: Readiness::Generates,

@@ -445,7 +445,7 @@ eightbytes in general or SSE registers by their class (System V: SSE when every 
 float); a C call sets `al` to the SSE registers used. LIR's float comparisons are ordered (false
 where either operand is a NaN); lowering gives IEEE `!=` as `==` negated, and follows each float
 operation with a select of the canonical NaN where its result is unequal to itself. `rem` and
-`mul_add` run as `lang.float.soft`'s functions (`#[lower.by]`). Not yet: `f16` arithmetic.
+`mul_add` run as `lang.float.soft`'s functions (`#[lower.by]`).
 
 **Legalization.** Each backend declares the widest integer it computes with
 (`BackendCaps::int_bits`); before it reads a unit, `Unit::legalize` splits every integer twice as
@@ -456,7 +456,14 @@ stores, block parameters, switches, and calls, a wide parameter passed as its ha
 result as a record of them (returned in registers under the C convention, as C returns its
 128-bit integers, through memory under Vun's). Division and remainder call a helper function the
 pass adds (restoring division over pairs, signs put back around it). Atomic accesses of wide
-integers and conversions between them and floats are refused (`backend.lacks`).
+integers and conversions between them and floats are refused (`backend.lacks`). A backend that
+does not compute `f16` (`BackendCaps::half` is `Half::Promoted`; both the C and the baseline
+backend) receives each `f16` as its bits, an `i16`: every operation on it widens its operands to
+`f32` exactly, computes there and rounds back once to nearest even, which gives the `f16` result
+since `f32`'s 24 bits of significand are at least twice `f16`'s 11 plus 2; comparisons compare
+the widened values. Both sequences are straight-line integer and `f32` operations. A promoted
+`f16` passed under the C convention, and a conversion to `f16` from anything but `f32`, which
+would round twice, are refused.
 `vun build --backend baseline` links the object with the target's linker; the backend tests run
 every program through both backends and require the same result.
 

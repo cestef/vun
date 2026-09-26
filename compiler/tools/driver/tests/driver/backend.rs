@@ -227,3 +227,9 @@ fn float_rem_and_mul_add_run_as_vun_and_agree_with_compile_time_bit_for_bit() {
     // The number of cases whose run-time result differs from the compile-time one.
     assert_eq!(status("backend-soft-float", &program("soft_float.vun")), Some(0));
 }
+
+#[test]
+fn f16_runs_as_bits_computed_in_f32_and_agrees_with_compile_time_bit_for_bit() {
+    // The number of checks whose run-time result differs from the compile-time one.
+    assert_eq!(status("backend-half", &program("half.vun")), Some(0));
+}
