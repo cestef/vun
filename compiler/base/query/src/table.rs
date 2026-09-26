@@ -86,6 +86,8 @@ pub(crate) trait AnyTable: Send + Sync {
     fn unchanged(&self, cx: &Cx<'_>, slot: Slot, fingerprint: Fingerprint) -> bool;
     /// The key at `slot`, as a cycle names it.
     fn show(&self, slot: Slot) -> String;
+    /// The fingerprint of the memo at `slot`, as it is.
+    fn fingerprint(&self, slot: Slot) -> Option<Fingerprint>;
 }
 
 impl<Q: Query> AnyTable for Table<Q> {
@@ -103,5 +105,9 @@ impl<Q: Query> AnyTable for Table<Q> {
 
     fn show(&self, slot: Slot) -> String {
         format!("{:?}", self.entry(slot).key)
+    }
+
+    fn fingerprint(&self, slot: Slot) -> Option<Fingerprint> {
+        self.entry(slot).memo.load().as_ref().map(|memo| memo.fingerprint)
     }
 }

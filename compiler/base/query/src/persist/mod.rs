@@ -5,6 +5,7 @@
 //! still saves its memos' reads and fingerprints: a loaded one whose reads hold stands for its
 //! value in verifying its dependents, and the value is computed only if it is read.
 
+mod census;
 mod query;
 mod saved;
 
@@ -16,12 +17,13 @@ use vun_codec::{Blob, Context, Decode, Encode, Writer};
 use vun_par::Parallel;
 use vun_trace::{Activity, tracing};
 
+pub use self::census::{Census, Counted};
 pub(crate) use self::query::Persisted;
-use self::query::{Persisting, Reads};
+use self::query::{Keys, Persisting, Reads};
 pub(crate) use self::saved::Growth;
 pub(crate) use self::saved::Saved;
 pub use self::saved::Unloaded;
-use self::saved::{Body, FORMAT, Loaded};
+use self::saved::{Body, FORMAT, Loaded, SavedQuery};
 use super::Query;
 use super::db::Db;
 
@@ -76,7 +78,7 @@ impl Db {
         let growth = self.growth.get().copied().filter(|growth| !growth.outgrown());
         let extends = growth.and(self.stream.get());
         let mut w = extends.map_or_else(Writer::new, Writer::extending);
-        let queries = persisted.iter().map(|p| p.save(self, &mut w, &positions, extends)).collect();
+        let queries = persisted.iter().map(|p| p.save(self, &mut w, &positions, extends).encoded()).collect();
         let body = Body { pools: w.into_pools(), queries }.encoded();
         let size = u64::try_from(body.len()).expect("a body fits in 64 bits");
         let compacted = growth.map_or(size, |growth| growth.compacted);
@@ -108,6 +110,8 @@ impl Db {
         let timer = DECODE.start();
         let header = Saved::<Blob>::decoded(&bytes).map_err(Unloaded::Decode)?;
         let saved: Loaded = header.body.read(&bytes).map_err(Unloaded::Decode)?;
+        let queries = saved.queries.par_map(|q| q.read::<SavedQuery<Blob>>(&bytes));
+        let queries = queries.into_iter().collect::<Result<Vec<_>, _>>().map_err(Unloaded::Decode)?;
         let size = u64::try_from(header.body.len).expect("a body fits in 64 bits");
         let growth = Growth { size, compacted: header.compacted };
         drop(timer);
@@ -118,7 +122,7 @@ impl Db {
         let persisted = self.persisted.read().expect("persisted queries").clone();
         let by_name: HashMap<_, _> = persisted.iter().map(|p| (p.name(), p)).collect();
         let queries: Vec<_> =
-            saved.queries.into_iter().map(|q| (by_name.get(q.name.as_str()).copied(), q)).collect();
+            queries.into_iter().map(|q| (by_name.get(q.name.as_str()).copied(), q)).collect();
         // Every key is read on its own, in parallel, so that a large table is spread too: the
         // stream's pools and the tables are shared.
         let timer = KEYS.start();
@@ -126,20 +130,26 @@ impl Db {
             .iter()
             .enumerate()
             .filter(|(_, (p, _))| p.is_some())
-            .flat_map(|(at, (_, q))| q.keys.iter().map(move |&key| (at, key)))
+            .flat_map(|(at, (_, q))| q.keys.iter().map(move |key| (at, key.key)))
             .collect();
         let slots = keys.par_map(|&(at, key)| queries[at].0.and_then(|p| p.slot(self, stream, key)));
-        let mut reads: Vec<_> = queries.iter().map(|(p, _)| p.map(|p| (p.table(self), Vec::new()))).collect();
-        for (&(at, _), slot) in keys.iter().zip(slots) {
-            reads[at].as_mut().expect("a registered query").1.push(slot);
-        }
-        let reads = Reads(reads);
+        let mut slots = slots.into_iter();
+        let reads = queries.iter().map(|(p, q)| {
+            let fingerprints = q.keys.iter().map(|key| key.fingerprint).collect();
+            let slots = slots.by_ref().take(q.keys.len()).collect();
+            p.map(|p| Keys { table: p.table(self), slots, fingerprints })
+        });
+        let reads = Reads(reads.collect());
         drop(timer);
         let _timer = RESTORE.start();
-        let restored = queries.into_iter().zip(&reads.0).filter_map(|((p, q), read)| {
-            let (_, slots) = read.as_ref()?;
-            Some(p?.restore(self, q.memos, slots, &reads))
-        });
-        Ok(restored.sum())
+        // On one thread: storing a memo pays the debts of every thread reading memos, and threads
+        // storing at once contend for them.
+        let reads = &reads;
+        let restored = queries
+            .iter()
+            .zip(&reads.0)
+            .filter_map(|((p, q), keys)| Some((p.as_ref()?, q, keys.as_ref()?)))
+            .flat_map(|(p, q, keys)| q.memos.iter().map(move |memo| p.restore(self, memo, keys, reads)));
+        Ok(restored.filter(|&restored| restored).count())
     }
 }

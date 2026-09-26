@@ -8,9 +8,10 @@ use std::sync::Arc;
 use vun_codec::{Blob, Context, Decode, Encode, Writer};
 use vun_trace::tracing;
 
-use super::saved::{SavedDep, SavedMemo, SavedQuery};
+use super::saved::{SavedDep, SavedKey, SavedMemo, SavedQuery};
 use crate::Query;
 use crate::db::Db;
+use crate::fingerprint::Fingerprint;
 use crate::memo::{Dep, Memo, ReadValue, Saved};
 use crate::table::{Slot, TableId};
 
@@ -35,8 +36,9 @@ pub(crate) trait Persisted: Send + Sync {
     /// The slot of a saved key; `None` for one that does not decode.
     fn slot(&self, db: &Db, stream: &Context, key: Blob) -> Option<Slot>;
 
-    /// Stores `memos`, whose keys are at `slots`, as never verified, returning how many.
-    fn restore(&self, db: &Db, memos: Vec<SavedMemo<Blob>>, slots: &[Option<Slot>], reads: &Reads) -> usize;
+    /// Stores `memo`, one of the query whose keys are `keys`, as never verified, returning
+    /// whether it was.
+    fn restore(&self, db: &Db, memo: &SavedMemo<Blob>, keys: &Keys, reads: &Reads) -> bool;
 }
 
 /// The persisted query `Q`, with its values or without.
@@ -51,14 +53,30 @@ struct Values<Q: Query> {
     read: ReadValue<Q::Value>,
 }
 
-/// The table and slots of each query of a file, by the query's position.
-pub(crate) struct Reads(pub(super) Vec<Option<(TableId, Vec<Option<Slot>>)>>);
+/// The keys of one query of a file as loaded: its table, and each key's slot, `None` for one
+/// that does not decode, and fingerprint.
+pub(crate) struct Keys {
+    pub(super) table: TableId,
+    pub(super) slots: Vec<Option<Slot>>,
+    pub(super) fingerprints: Vec<Option<Fingerprint>>,
+}
+
+impl Keys {
+    /// The slot and fingerprint of the key at `at`.
+    fn at(&self, at: u32) -> Option<(Slot, Option<Fingerprint>)> {
+        let at = at as usize;
+        Some(((*self.slots.get(at)?)?, *self.fingerprints.get(at)?))
+    }
+}
+
+/// The keys of each query of a file, by the query's position; `None` for one not registered.
+pub(crate) struct Reads(pub(super) Vec<Option<Keys>>);
 
 impl Reads {
     fn dep(&self, saved: SavedDep) -> Option<Dep> {
-        let (table, slots) = self.0.get(saved.query as usize)?.as_ref()?;
-        let slot = (*slots.get(saved.key as usize)?)?;
-        Some(Dep { table: *table, slot, fingerprint: saved.fingerprint })
+        let keys = self.0.get(saved.query as usize)?.as_ref()?;
+        let (slot, fingerprint) = keys.at(saved.key)?;
+        Some(Dep { table: keys.table, slot, fingerprint: saved.fingerprint.or(fingerprint)? })
     }
 }
 
@@ -97,7 +115,6 @@ impl<Q: Query<Key: Encode + Decode>> Persisted for Persisting<Q> {
         extends: Option<&Context>,
     ) -> SavedQuery {
         let table = db.table::<Q>();
-        let keys = table.entries().map(|(_, entry)| w.encode(&entry.key)).collect();
         let saved_dep = |dep: &Dep| {
             let Some(&query) = positions.get(&dep.table) else {
                 let read = db.any_table(dep.table).name();
@@ -105,12 +122,23 @@ impl<Q: Query<Key: Encode + Decode>> Persisted for Persisting<Q> {
                 return None;
             };
             let key = u32::try_from(dep.slot.index()).expect("fewer than 2^32 keys per query");
-            Some(SavedDep { query, key, fingerprint: dep.fingerprint })
+            let seen = db.any_table(dep.table).fingerprint(dep.slot);
+            Some(SavedDep {
+                query,
+                key,
+                fingerprint: (seen != Some(dep.fingerprint)).then_some(dep.fingerprint),
+            })
         };
+        let mut keys = Vec::new();
         let memos = table
             .entries()
             .filter_map(|(slot, entry)| {
-                let memo = entry.memo.load_full().filter(|memo| !memo.input)?;
+                let memo = entry.memo.load_full();
+                keys.push(SavedKey {
+                    key: w.encode(&entry.key),
+                    fingerprint: memo.as_ref().map(|m| m.fingerprint),
+                });
+                let memo = memo.filter(|memo| !memo.input)?;
                 let deps = memo.deps.iter().map(saved_dep).collect::<Option<_>>()?;
                 // A value never read in this process is written as it was read into a stream
                 // extending the one loaded, and read to be written anew into a new one.
@@ -120,7 +148,7 @@ impl<Q: Query<Key: Encode + Decode>> Persisted for Persisting<Q> {
                     (None, None) => memo.value(db).map(|value| (values.write)(w, value)),
                 });
                 let key = u32::try_from(slot.index()).expect("fewer than 2^32 keys per query");
-                Some(SavedMemo { key, value, fingerprint: memo.fingerprint, deps })
+                Some(SavedMemo { key, value, deps })
             })
             .collect();
         SavedQuery { name: Q::NAME.to_owned(), keys, memos }
@@ -136,20 +164,19 @@ impl<Q: Query<Key: Encode + Decode>> Persisted for Persisting<Q> {
         }
     }
 
-    fn restore(&self, db: &Db, memos: Vec<SavedMemo<Blob>>, slots: &[Option<Slot>], reads: &Reads) -> usize {
-        let table = db.table::<Q>();
-        let restored = memos.into_iter().filter_map(|memo| {
-            let slot = (*slots.get(memo.key as usize)?)?;
+    fn restore(&self, db: &Db, memo: &SavedMemo<Blob>, keys: &Keys, reads: &Reads) -> bool {
+        let restored = || {
+            let (slot, fingerprint) = keys.at(memo.key)?;
             let deps = memo.deps.iter().map(|&dep| reads.dep(dep)).collect::<Option<_>>()?;
             let saved =
                 self.values.as_ref().zip(memo.value).map(|(values, at)| Saved { at, read: values.read });
-            let entry = table.entry(slot);
+            let entry = db.table::<Q>().entry(slot);
             // A memo of this process stands: it is at least as recent.
             if entry.memo.load().is_none() {
-                entry.memo.store(Some(Arc::new(Memo::loaded(saved, memo.fingerprint, deps))));
+                entry.memo.store(Some(Arc::new(Memo::loaded(saved, fingerprint?, deps))));
             }
             Some(())
-        });
-        restored.count()
+        };
+        restored().is_some()
     }
 }

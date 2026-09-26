@@ -13,7 +13,7 @@ use vun_codec::{Blob, Decode, Encode, Malformed, Pools};
 use crate::fingerprint::Fingerprint;
 
 /// The version of the saved form; a file of another version is not read.
-pub(super) const FORMAT: u32 = 5;
+pub(super) const FORMAT: u32 = 7;
 
 /// How many times its size when last written whole a body grows to before it is written whole.
 const GROWTH: u64 = 2;
@@ -27,10 +27,11 @@ pub(crate) struct Saved<B = Vec<u8>> {
     pub(crate) body: B,
 }
 
+/// The pools, then each query encoded on its own, so that queries are read in parallel.
 #[derive(Encode, Decode)]
 pub(super) struct Body<B = Vec<u8>> {
     pub(super) pools: Pools<B>,
-    pub(super) queries: Vec<SavedQuery<B>>,
+    pub(super) queries: Vec<B>,
 }
 
 /// The body as read, in place.
@@ -54,8 +55,16 @@ impl Growth {
 #[derive(Encode, Decode)]
 pub(crate) struct SavedQuery<B = Vec<u8>> {
     pub(super) name: String,
-    pub(super) keys: Vec<B>,
+    pub(super) keys: Vec<SavedKey<B>>,
     pub(super) memos: Vec<SavedMemo<B>>,
+}
+
+/// A key, and the fingerprint of its memo if it had one: its saved memo's, and the one reads of
+/// it saw unless they record their own.
+#[derive(Encode, Decode)]
+pub(crate) struct SavedKey<B = Vec<u8>> {
+    pub(super) key: B,
+    pub(super) fingerprint: Option<Fingerprint>,
 }
 
 #[derive(Encode, Decode)]
@@ -64,17 +73,17 @@ pub(crate) struct SavedMemo<B = Vec<u8>> {
     pub(super) key: u32,
     /// `None` for a query persisted without its values.
     pub(super) value: Option<B>,
-    pub(super) fingerprint: Fingerprint,
     pub(super) deps: Vec<SavedDep>,
 }
 
 /// A read: its query's position in the file, its key's among the query's keys, and the
-/// fingerprint it had.
+/// fingerprint it had when that is not its key's: most reads saw the memo saved, and sixteen
+/// bytes a read would be most of the file.
 #[derive(Clone, Copy, Encode, Decode)]
 pub(crate) struct SavedDep {
     pub(super) query: u32,
     pub(super) key: u32,
-    pub(super) fingerprint: Fingerprint,
+    pub(super) fingerprint: Option<Fingerprint>,
 }
 
 /// Why saved memos could not be loaded.

@@ -4,6 +4,7 @@
 mod compare;
 mod coverage;
 mod dump;
+mod queries;
 mod types;
 
 use vun_command::Command;
@@ -85,6 +86,12 @@ pub(super) const COMMANDS: &[Command<Session>] = &[
         "coverage",
         "how far MIR and LIR take the functions of a file, and where each stops",
         |s, args, shell| shell.document(DUMP, "coverage".to_owned(), |out| coverage::coverage(s, args, out)),
+    )
+    .params(&[FILE]),
+    Command::run(
+        "queries",
+        "what the queries saved beside a root file hold, largest first",
+        queries::queries,
     )
     .params(&[FILE]),
     Command::run(

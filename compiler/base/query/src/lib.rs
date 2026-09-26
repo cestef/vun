@@ -30,7 +30,7 @@ use std::fmt;
 pub use cx::{Cx, Cycle};
 pub use db::Db;
 pub use fingerprint::Fingerprint;
-pub use persist::Unloaded;
+pub use persist::{Census, Counted, Unloaded};
 
 /// A point in the history of inputs.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]

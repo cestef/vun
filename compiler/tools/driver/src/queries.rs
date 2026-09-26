@@ -76,7 +76,7 @@ impl Session {
 
     /// The file queries are saved in for `root`, named by the running toolchain: its path, size
     /// and time of change, which every build changes.
-    fn saved_at(root: &Path) -> Option<PathBuf> {
+    pub(crate) fn saved_at(root: &Path) -> Option<PathBuf> {
         let exe = std::env::current_exe().ok()?;
         let meta = exe.metadata().ok()?;
         let mut hasher = Hasher::default();

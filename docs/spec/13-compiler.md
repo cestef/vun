@@ -85,7 +85,11 @@ years (rustc's parallel front end). So both are designed in from phase 1.
   extended stream keeps every pool entry of the one it extends, the file records its body's size
   when last written whole, and a body grown past twice that size is written whole on the next
   save, its unread values decoded to be written anew. Files are written beside their place and
-  renamed over it, so a reader or a crash sees the old file or the new, never a part.
+  renamed over it, so a reader or a crash sees the old file or the new, never a part. Each key
+  is saved with its memo's fingerprint, and a read with its own only when it differs, since
+  reads outnumber memos ten to one; each query is encoded on its own, so queries decode in
+  parallel. `vun debug queries <file>` counts what the file beside a root file holds, per query
+  and per pool.
 
 **Parallelism.**
 - Sema claims declarations on worker threads. Code generation is per function, with one thread
