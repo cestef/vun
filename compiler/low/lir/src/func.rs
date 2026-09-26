@@ -214,6 +214,19 @@ impl Function {
         (inst, result)
     }
 
+    /// A new instruction of `kind` appended to `insts`, a block's being built; gives its value.
+    pub fn emit(
+        &mut self,
+        kind: InstKind,
+        ty: Option<Scalar>,
+        origin: OriginId,
+        insts: &mut Vec<Inst>,
+    ) -> Option<Value> {
+        let (inst, value) = self.define(kind, ty, origin);
+        insts.push(inst);
+        value
+    }
+
     /// The type and bits of `value` when a constant defines it.
     #[must_use]
     pub fn constant(&self, value: Value) -> Option<(Scalar, u128)> {

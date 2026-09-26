@@ -95,8 +95,15 @@ impl Function {
         }
     }
 
-    /// The jump a branch or switch on a constant takes.
+    /// The jump a branch or switch on a constant takes, or one whose targets are all one.
     fn decided(&self, term: &Terminator) -> Option<Terminator> {
+        let mut targets = term.targets();
+        if let Some(first) = targets.next()
+            && matches!(term, Terminator::Branch { .. } | Terminator::Switch { .. })
+            && targets.all(|t| t == first)
+        {
+            return Some(Terminator::Jump(first.clone()));
+        }
         let taken = match term {
             Terminator::Branch { cond, then, otherwise } => {
                 let (_, bits) = self.constant(*cond)?;

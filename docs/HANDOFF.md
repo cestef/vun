@@ -153,10 +153,18 @@ in as proposed unless the user approves them.
    function (`Function::fold`) and jump threading (`Function::thread`, which removes the
    `if c { true } else { false }` joins); constant call arguments are written already
    extended; a value displaced from a fixed register moves to a free one (frame accesses down
-   by up to 40 percent). Left: values live across blocks are still homed at every block end (a
-   callee-saved register only for loops), and aggregates are copied between slots (a scalar
-   replacement of slots accessed at constant offsets would split them); unreached blocks stay
-   in LIR (backends skip them). (c) DWARF line tables and symbol names done (decisions 204, 205:
+   by up to 40 percent). Eighteenth session (decisions 226 to 228): `Unit::simplify` works
+   callees first, in rounds of scalarize (aggregate slots cut into tiles, copies expanded),
+   promote, fold, reuse (dominator-scoped value numbering), thread, narrow (truncations of wide
+   arithmetic computed narrow) and sweep (unreached blocks, parameters only passed back, unread
+   pure instructions), then inlines callees of any shape up to 96 non-constant instructions and
+   runs the rounds again. A `for` over a range now runs in registers: a 50M-step LCG loop takes
+   109 ms natively (C `-O2`: 116), `half.vun` shrinks from 22,917 to 13,773 instructions.
+   Left: values live across blocks are still homed at every block end (a callee-saved
+   register only for loops); a loop header dispatching on a state enum is not specialized per
+   predecessor (jump threading through a block whose parameters are read beyond it would copy
+   the block); padding tiles are copied as zeros (LIR has no undefined value); a condition
+   known on one edge of a branch is not propagated into the blocks it dominates. (c) DWARF line tables and symbol names done (decisions 204, 205:
    `vun-dwarf`; `gdb` breaks on Vun lines); the unit is named by the first file with a row;
    unwind information done (decision 215, `.eh_frame` on ELF; Mach-O's compact unwind is
    left); next `DW_TAG_subprogram`s; (d) done in the seventeenth session: data aligned past every C type or in a

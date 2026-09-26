@@ -238,6 +238,40 @@ impl Address {
 }
 
 impl InstKind {
+    /// Whether the value follows from the operands alone, so computing it again gives it again:
+    /// no memory is read or written and nothing is called.
+    #[must_use]
+    pub fn pure(&self) -> bool {
+        matches!(
+            self,
+            Self::Const { .. }
+                | Self::Binary { .. }
+                | Self::Compare { .. }
+                | Self::Cast { .. }
+                | Self::Select { .. }
+                | Self::Offset { .. }
+                | Self::SlotAddr(_)
+                | Self::Addr(_)
+        )
+    }
+
+    /// The same computation with the operands of a commutative integer operation in one order,
+    /// so equal computations are equal kinds.
+    #[must_use]
+    pub fn ordered(&self) -> Self {
+        let mut kind = self.clone();
+        match &mut kind {
+            Self::Binary { op: BinOp::Add | BinOp::Mul | BinOp::And | BinOp::Or | BinOp::Xor, a, b }
+            | Self::Compare { cond: Cond::Eq | Cond::Ne, a, b }
+                if *b < *a =>
+            {
+                std::mem::swap(a, b);
+            }
+            _ => {}
+        }
+        kind
+    }
+
     /// Whether the instruction does more than define its value: it writes memory, calls, or
     /// reads memory as written. One that does not, and whose value nothing reads, can go.
     #[must_use]

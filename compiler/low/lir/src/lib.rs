@@ -15,6 +15,8 @@ pub mod legalize;
 mod narrow;
 pub mod promote;
 mod replaced;
+mod reuse;
+pub mod scalarize;
 mod simplify;
 mod sweep;
 pub mod text;

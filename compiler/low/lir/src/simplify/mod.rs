@@ -1,42 +1,48 @@
-//! Simplifying a unit after lowering, one function at a time, callees first: locals promoted to
-//! values, operations on the constants that makes folded, jumps threaded through the decisions
-//! that folds; then the small functions it calls inlined, simplified already, and it simplified
-//! again; truncations narrowed; and what nothing reads swept. A function is done before any
-//! caller decides whether it is small.
+//! Simplifying a unit after lowering, one function at a time, callees first: slots of
+//! aggregates cut into scalars, locals promoted to values, operations on the constants that
+//! makes folded, computations repeated reused, jumps threaded through the decisions that
+//! folds, truncations narrowed, and what nothing reads swept, round after round while a round
+//! changes something; then the small functions it calls inlined, simplified already, and the
+//! rounds run again. A function is done before any caller decides whether it is small.
 
 #[cfg(test)]
 mod tests;
 
-use crate::entity::FuncId;
+use crate::func::Function;
 use crate::unit::Unit;
+
+/// The most rounds of the passes over one function: each round mostly finishes what the one
+/// before exposed, and few are left after three.
+const ROUNDS: usize = 4;
 
 impl Unit {
     /// Simplifies every function (see the module).
     pub fn simplify(&mut self) {
         for f in self.callees_first() {
-            self.simplify_function(f);
-        }
-    }
-
-    fn simplify_function(&mut self, f: FuncId) {
-        let bits = self.pointer_bits;
-        self.functions[f].tidy(bits);
-        if self.inline_into(f) > 0 {
+            let bits = self.pointer_bits;
             self.functions[f].tidy(bits);
+            if self.inline_into(f) > 0 {
+                self.functions[f].tidy(bits);
+            }
         }
-        let function = &mut self.functions[f];
-        if function.narrow(bits) > 0 {
-            function.fold();
-        }
-        function.sweep();
     }
 }
 
-impl crate::func::Function {
-    /// Promotes, folds and threads (`Function::promote`, `Function::fold`, `Function::thread`).
+impl Function {
+    /// Runs `Function::scalarize`, `promote`, `fold`, `reuse`, `thread`, `narrow` and `sweep` in
+    /// rounds until one changes nothing.
     fn tidy(&mut self, pointer_bits: u32) {
-        self.promote(pointer_bits);
-        self.fold();
-        self.thread();
+        for _ in 0..ROUNDS {
+            let changed = self.scalarize(pointer_bits)
+                + self.promote(pointer_bits)
+                + self.fold()
+                + self.reuse()
+                + self.thread()
+                + self.narrow(pointer_bits)
+                + self.sweep();
+            if changed == 0 {
+                return;
+            }
+        }
     }
 }

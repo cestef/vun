@@ -41,11 +41,15 @@ fn unit() -> (Unit, OriginTable) {
 }
 
 #[test]
-fn a_small_function_merged_to_one_block_is_inlined_and_left_unreached() {
+fn a_small_function_of_two_blocks_is_inlined_and_left_unreached() {
     let (mut unit, origins) = unit();
-    assert_eq!(unit.inline(), 0, "two blocks, not small yet");
-    assert!(unit.functions[FuncId::new(0)].thread() > 0, "the entry and its body merge");
     assert_eq!(unit.inline(), 2);
+    assert_eq!(unit.verify(&origins), Ok(()));
+    let twice = &mut unit.functions[FuncId::new(1)];
+    // The caller's block, then for each call the entry, the body and what followed the call.
+    assert_eq!(twice.blocks.len(), 7);
+    assert!(twice.thread() > 0);
+    assert_eq!(twice.blocks.iter().filter(|(_, b)| b.term != Terminator::Unreachable).count(), 1);
     assert_eq!(unit.verify(&origins), Ok(()));
     let twice = &unit.functions[FuncId::new(1)];
     let calls = twice.insts.iter().filter(|(_, i)| matches!(i.kind, InstKind::Call { .. })).count();

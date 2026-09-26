@@ -267,7 +267,7 @@ fn f16_runs_as_bits_computed_in_f32_and_agrees_with_compile_time_bit_for_bit() {
 #[test]
 fn the_native_backend_lists_its_code_under_the_source_lines() {
     let fixture = Fixture::new("backend-native-listing");
-    let path = fixture.root.write("main.vun", program("exit_status.vun"));
+    let path = fixture.root.write("main.vun", program("loops.vun"));
     let mut session = fixture.session();
     let file = session.load(&path).unwrap();
     session.codegen = Codegen::through(vun_backend_native::INFO.id);

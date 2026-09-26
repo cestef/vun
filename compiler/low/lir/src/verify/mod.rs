@@ -2,7 +2,6 @@
 //! and callees exist, values are defined where their uses see them (dominance), and operands
 //! have the types their instructions need.
 
-mod dominance;
 mod types;
 
 use std::collections::HashSet;
@@ -12,12 +11,12 @@ use vun_codec::{Decode, Encode};
 use vun_index::Idx;
 use vun_origin::{OriginId, OriginTable};
 
+use crate::analysis::{Cfg, Dominators};
 use crate::entity::{Block, FuncId, Inst, Value};
 use crate::func::{Def, Function};
 use crate::inst::{Address, Callee, InstKind, Target};
 use crate::ty::Scalar;
 use crate::unit::{ImportKind, Unit};
-use dominance::Dominators;
 
 /// Where in a unit something is malformed.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Encode, Decode)]
@@ -157,7 +156,7 @@ impl Checker<'_> {
             return Self::fail(Entity::Block(id, entry), Reason::EntryParams);
         }
         self.placement()?;
-        let dominators = Dominators::of(func, entry);
+        let dominators = Dominators::of(func, &Cfg::of(func));
         for (block, data) in func.blocks.iter() {
             self.origin(Entity::Block(id, block), data.origin)?;
             for (position, &inst) in data.insts.iter().enumerate() {

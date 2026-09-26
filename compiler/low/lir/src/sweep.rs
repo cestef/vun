@@ -1,27 +1,35 @@
 //! Sweeping what a function no longer needs after its other passes: the blocks control never
-//! reaches are emptied, then every instruction that only defines a value nothing reads goes,
-//! with what only it read. Lowering guarantees each operation's domain (`facts`), so dropping
+//! reaches go, then every parameter only passed back to itself and every instruction that
+//! only defines a value nothing reads, with what only they read. Lowering guarantees each operation's domain (`facts`), so dropping
 //! one never drops a trap.
 
-use crate::entity::Inst;
+use vun_index::{Idx, IndexVec};
+
+use crate::entity::{Block, Inst, Value};
 use crate::func::{Def, Function};
-use crate::inst::Terminator;
 
 impl Function {
-    /// Empties the unreached blocks and removes the instructions that do nothing but define an
-    /// unread value (`InstKind::acts`), returning how many instructions went.
+    /// Drops the unreached blocks, then until none is left the parameters nothing reads but the
+    /// jumps passing them back, and the instructions that do nothing but define an unread value
+    /// (`InstKind::acts`); returns how many blocks, parameters and instructions went.
     pub fn sweep(&mut self) -> usize {
-        let reached = self.reached();
-        let mut count = 0;
-        for (block, data) in self.blocks.iter_mut() {
-            if !reached[block] && (!data.insts.is_empty() || data.term != Terminator::Unreachable) {
-                count += data.insts.len();
-                data.insts.clear();
-                data.term = Terminator::Unreachable;
+        let mut count = self.drop_unreached();
+        loop {
+            let now = self.drop_unread_params() + self.drop_unread_insts();
+            if now == 0 {
+                break;
             }
+            count += now;
         }
+        if count > 0 {
+            self.compact();
+        }
+        count
+    }
+
+    fn drop_unread_insts(&mut self) -> usize {
         let mut uses = self.uses();
-        let unread = |f: &Self, inst: Inst, uses: &vun_index::IndexVec<_, u32>| {
+        let unread = |f: &Self, inst: Inst, uses: &IndexVec<_, u32>| {
             let data = &f.insts[inst];
             !data.kind.acts() && data.result.is_none_or(|v| uses[v] == 0)
         };
@@ -49,10 +57,68 @@ impl Function {
         for (_, data) in self.blocks.iter_mut() {
             data.insts.retain(|inst| !dropped.contains(inst));
         }
-        let count = count + dropped.len();
+        dropped.len()
+    }
+
+    /// Drops each parameter of a block other than the entry read only by jumps to that block
+    /// passing it in its own place, as a loop passes on what it never uses, with the arguments
+    /// passed for it.
+    fn drop_unread_params(&mut self) -> usize {
+        let uses = self.uses();
+        let mut passed_back: IndexVec<Value, u32> = IndexVec::filled(0, self.values.len());
+        for (_, data) in self.blocks.iter() {
+            for target in data.term.targets() {
+                let params = &self.blocks[target.block].params;
+                for (&arg, _) in target.args.iter().zip(params).filter(|(a, p)| a == p) {
+                    passed_back[arg] += 1;
+                }
+            }
+        }
+        let entry = self.entry();
+        let unread: IndexVec<Block, Vec<bool>> = self
+            .blocks
+            .iter()
+            .map(|(block, data)| {
+                data.params.iter().map(|&p| Some(block) != entry && uses[p] == passed_back[p]).collect()
+            })
+            .collect::<Vec<_>>()
+            .into();
+        let count = unread.iter().map(|(_, u)| u.iter().filter(|&&u| u).count()).sum();
         if count > 0 {
-            self.compact();
+            for (block, data) in self.blocks.iter_mut() {
+                let mut unread_param = unread[block].iter();
+                data.params.retain(|_| !unread_param.next().copied().unwrap_or(false));
+                for target in data.term.targets_mut() {
+                    let mut unread_arg = unread[target.block].iter();
+                    target.args.retain(|_| !unread_arg.next().copied().unwrap_or(false));
+                }
+            }
         }
         count
+    }
+
+    /// Drops the blocks control never reaches, renumbering the rest in their order, returning
+    /// how many went. What they defined goes when the function is compacted.
+    fn drop_unreached(&mut self) -> usize {
+        let reached = self.reached();
+        let unreached = reached.iter().filter(|(_, r)| !**r).count();
+        if unreached == 0 {
+            return 0;
+        }
+        let mut renumbered: IndexVec<Block, Option<Block>> = IndexVec::filled(None, self.blocks.len());
+        let mut blocks = IndexVec::with_capacity(self.blocks.len() - unreached);
+        for (block, data) in std::mem::take(&mut self.blocks).into_vec().into_iter().enumerate() {
+            let block = Block::new(block);
+            if reached[block] {
+                renumbered[block] = Some(blocks.push(data));
+            }
+        }
+        for (_, data) in blocks.iter_mut() {
+            for target in data.term.targets_mut() {
+                target.block = renumbered[target.block].expect("a reached block jumps to reached ones");
+            }
+        }
+        self.blocks = blocks;
+        unreached
     }
 }

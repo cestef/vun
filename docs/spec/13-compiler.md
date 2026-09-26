@@ -181,19 +181,29 @@ per second per stage and fails on regressions.
   only compares that parameter with a constant and branches, nothing it defines read beyond it,
   jumps where the branch sends that constant, as the join of `if c { true } else { false }`
   would; a jump to a block holding only constants and jumping on is moved to where it jumps;
-  and a block whose only predecessor jumps to it is merged into it. `Unit::simplify` takes the
-  functions callees first (`Unit::callees_first`), so each is done before a caller inlines it:
-  its small callees are inlined (`Unit::inline_into`: internal, of Vun's convention, an entry
-  that returns after at most eight instructions), their instructions keeping their origins, and
-  the passes run again. Truncations are then narrowed (`Function::narrow`): the low bits of a
-  sum, difference, product or bitwise operation are that operation on its operands' low bits,
-  so a truncation of one read nowhere else computes it at the narrow width, when the operation
-  is wider than the target's addresses or an operand narrows without a truncation of its own
-  (a constant, a widened value); `(x * k).wrap(u64)` of a `u64` is one 64-bit product. Last,
-  what nothing needs is swept (`Function::sweep`): unreached blocks are emptied, and an
-  instruction that neither writes memory, calls nor reads memory as written (`InstKind::acts`)
-  goes when nothing reads its value; lowering guarantees each operation's domain, so no trap
-  goes with it. A backend emits no code for a function nothing reaches (`analysis::Reached`: exports, addresses
+  and a block whose only predecessor jumps to it is merged into it. A slot of an aggregate
+  reached only by plain loads and stores at constant offsets and by copies is scalarized
+  (`Function::scalarize`): cut into tiles, one per scalar read or written in it and the widest
+  aligned integers between, agreeing with the slots it is copied to or from (at most 16), each
+  copy touching it a load and a store per tile, and each tile a slot promotion then takes. A
+  pure instruction (`InstKind::pure`: no memory read or written, nothing called) equal to one
+  dominating it reuses that one's value (`Function::reuse`, walking the dominator tree of
+  `analysis::Dominators`, commutative operands in one order). Truncations are narrowed
+  (`Function::narrow`): the low bits of a sum, difference, product or bitwise operation are
+  that operation on its operands' low bits, so a truncation of one read nowhere else computes
+  it at the narrow width, when the operation is wider than the target's addresses or an
+  operand narrows without a truncation of its own (a constant, a widened value);
+  `(x * k).wrap(u64)` of a `u64` is one 64-bit product. What nothing needs is swept
+  (`Function::sweep`): unreached blocks go, a parameter only passed back to itself goes with
+  its arguments, and an instruction that neither writes memory, calls nor reads memory as
+  written (`InstKind::acts`) goes when nothing reads its value; lowering guarantees each
+  operation's domain, so no trap goes with it. These passes run in rounds, at most four, until
+  one changes nothing. `Unit::simplify` takes the functions callees first
+  (`Unit::callees_first`), so each is done before a caller inlines it: after its rounds, its
+  small callees (internal, of Vun's convention, at most 96 instructions besides constants,
+  which code generation computes where used) are inlined (`Unit::inline_into`), the call's
+  block ending in a jump to a copy of the callee's blocks whose returns jump to what followed
+  the call, instructions keeping their origins, and the rounds run again. A backend emits no code for a function nothing reaches (`analysis::Reached`: exports, addresses
   taken, and what they call), as one inlined everywhere is.
 - Both have **stable text formats**. Tests are written against them, dumps are readable and carry
   origins, and an external backend is any executable reading LIR text on standard input.

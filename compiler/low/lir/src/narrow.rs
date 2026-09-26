@@ -132,8 +132,6 @@ impl Narrowing {
     }
 
     fn define(&mut self, f: &mut Function, kind: InstKind, ty: Scalar, origin: OriginId) -> Value {
-        let (inst, value) = f.define(kind, Some(ty), origin);
-        self.insts.push(inst);
-        value.expect("a typed instruction defines its value")
+        f.emit(kind, Some(ty), origin, &mut self.insts).expect("a typed instruction defines its value")
     }
 }

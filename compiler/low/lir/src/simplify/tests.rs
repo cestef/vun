@@ -75,7 +75,7 @@ fn a_callee_inlined_brings_its_callees_inlined_and_a_truncated_product_is_narrow
 }
 
 #[test]
-fn an_unreached_block_is_emptied_and_an_unread_value_swept() {
+fn an_unreached_block_is_dropped_and_an_unread_value_swept() {
     let origins = OriginTable::new();
     let at = origin(&origins);
     let mut unit = unit(at);
@@ -83,9 +83,63 @@ fn an_unreached_block_is_emptied_and_an_unread_value_swept() {
     let entry = run.entry().unwrap();
     let (unread, _) = run.define(InstKind::Const { ty: Scalar::I32, bits: 7 }, Some(Scalar::I32), at);
     run.blocks[entry].insts.insert(0, unread);
-    assert_eq!(run.sweep(), 1);
-    let unreached = run.blocks.iter().nth(1).unwrap().1;
-    assert_eq!(unreached.term, Terminator::Unreachable);
+    assert_eq!(run.sweep(), 2, "the block and the constant");
+    assert_eq!(run.blocks.len(), 1);
     assert_eq!(kinds(run).len(), 1, "the call stays: it acts");
+    assert_eq!(unit.verify(&origins), Ok(()));
+}
+
+#[test]
+fn a_computation_dominated_by_an_equal_one_reuses_its_value() {
+    let origins = OriginTable::new();
+    let at = origin(&origins);
+    let signature = signature(Conv::C, Scalar::I64, Scalar::I64);
+    let mut b = Builder::new(Linkage::Export(Symbol::intern("f")), signature, at);
+    let x = b.params(b.current())[0];
+    let k = b.constant(Scalar::I64, 3, at);
+    let first = b.binary(BinOp::Mul, x, k, at);
+    let next = b.block(&[], at);
+    b.terminate(Terminator::Jump(crate::Target { block: next, args: Vec::new() }));
+    b.switch_to(next);
+    let k = b.constant(Scalar::I64, 3, at);
+    // The same product, its operands the other way round.
+    let again = b.binary(BinOp::Mul, k, x, at);
+    let sum = b.binary(BinOp::Add, first, again, at);
+    b.terminate(Terminator::Return(Some(sum)));
+    let mut f = b.finish();
+    assert_eq!(f.reuse(), 2, "the constant and the product");
+    let mut unit = Unit { pointer_bits: 64, ..Unit::default() };
+    unit.functions.push(f);
+    assert_eq!(unit.verify(&origins), Ok(()));
+}
+
+#[test]
+fn a_loop_parameter_only_passed_back_is_swept() {
+    let origins = OriginTable::new();
+    let at = origin(&origins);
+    let signature = signature(Conv::C, Scalar::I64, Scalar::I64);
+    let mut b = Builder::new(Linkage::Export(Symbol::intern("f")), signature, at);
+    let x = b.params(b.current())[0];
+    let head = b.block(&[Scalar::I64, Scalar::I64], at);
+    let exit = b.block(&[], at);
+    let to = |block, args| crate::Target { block, args };
+    b.terminate(Terminator::Jump(to(head, vec![x, x])));
+    b.switch_to(head);
+    let [used, carried] = [b.params(head)[0], b.params(head)[1]];
+    let one = b.constant(Scalar::I64, 1, at);
+    let next = b.binary(BinOp::Sub, used, one, at);
+    let more = b.compare(crate::Cond::Ne, next, one, at);
+    b.terminate(Terminator::Branch {
+        cond: more,
+        then: to(head, vec![next, carried]),
+        otherwise: to(exit, Vec::new()),
+    });
+    b.switch_to(exit);
+    b.terminate(Terminator::Return(Some(next)));
+    let mut f = b.finish();
+    assert_eq!(f.sweep(), 1);
+    assert_eq!(f.blocks.iter().nth(1).unwrap().1.params.len(), 1);
+    let mut unit = Unit { pointer_bits: 64, ..Unit::default() };
+    unit.functions.push(f);
     assert_eq!(unit.verify(&origins), Ok(()));
 }

@@ -1,9 +1,11 @@
 //! Inlining small functions (spec 13, section 3): a call of an internal function of Vun's
-//! convention whose entry block returns, after few instructions, is replaced by
-//! those instructions, its parameters the call's arguments and its result the value returned.
-//! What a call costs a function this small, its arguments, frame and the values stored around
-//! it, is most of what it does. The instructions keep their origins, so line tables still name
-//! the callee's lines.
+//! convention of few instructions, constants aside, is replaced by a copy of its blocks. The block calling ends in
+//! a jump to the copy of the entry, passing the call's arguments, and what followed the call
+//! moves to a block of its own that each return jumps to, passing the value returned, which is
+//! the call's value. What a call costs a function this small, its arguments, frame and the
+//! values stored around it, is most of what it does, and its body then simplifies with what the
+//! caller knows. The instructions keep their origins, so line tables still name the callee's
+//! lines.
 
 #[cfg(test)]
 mod tests;
@@ -11,14 +13,13 @@ mod tests;
 use vun_hash::Map;
 use vun_index::Idx;
 
-use crate::entity::{FuncId, Inst, Slot, Value};
-use crate::func::{Conv, Function, Linkage};
-use crate::inst::{Callee, InstKind, Terminator};
-use crate::replaced::Replaced;
+use crate::entity::{Block, FuncId, Slot, Value};
+use crate::func::{BlockData, Conv, Def, Function, Linkage, ValueData};
+use crate::inst::{Callee, InstKind, Target, Terminator};
 use crate::unit::Unit;
 
-/// The most instructions a function inlined may have.
-const SMALL: usize = 8;
+/// The most instructions a function inlined may have, constants aside.
+const SMALL: usize = 96;
 
 impl Unit {
     /// Inlines every call of a small function (see the module), callees first so a function
@@ -45,22 +46,26 @@ impl Unit {
 impl Function {
     /// Whether calls of this function are replaced by its body.
     fn small(&self) -> bool {
-        let Some(entry) = self.entry() else { return false };
-        // An entry that returns is the whole function: any other block is unreached.
-        self.linkage == Linkage::Internal
-            && self.signature.conv == Conv::Vun
-            && matches!(self.blocks[entry].term, Terminator::Return(_))
-            && self.blocks[entry].insts.len() <= SMALL
+        self.linkage == Linkage::Internal && self.signature.conv == Conv::Vun && self.cost() <= SMALL
     }
 
-    /// Replaces each call of a function of `small` by its body.
+    /// The instructions of the body but its constants, which code generation computes where
+    /// they are used.
+    fn cost(&self) -> usize {
+        let insts = self.blocks.iter().flat_map(|(_, b)| &b.insts);
+        insts.filter(|&&i| !matches!(self.insts[i].kind, InstKind::Const { .. })).count()
+    }
+
+    /// Replaces each call of a function of `small` by its body, in the blocks this has now and
+    /// those holding what followed a call; not in the bodies inlined, so a function calling
+    /// itself is inlined once.
     fn inline_calls(&mut self, small: &Map<FuncId, Function>) -> usize {
-        let mut replaced = Replaced::default();
         let mut count = 0;
-        let blocks: Vec<_> = self.blocks.iter().map(|(b, _)| b).collect();
-        for block in blocks {
-            let mut insts = Vec::with_capacity(self.blocks[block].insts.len());
-            for inst in std::mem::take(&mut self.blocks[block].insts) {
+        let mut pending: Vec<Block> = self.blocks.iter().map(|(b, _)| b).collect();
+        while let Some(block) = pending.pop() {
+            let mut insts = std::mem::take(&mut self.blocks[block].insts).into_iter();
+            let mut kept = Vec::with_capacity(insts.len());
+            while let Some(inst) = insts.next() {
                 let callee = match &self.insts[inst].kind {
                     InstKind::Call { callee: Callee::Func(f), args } => {
                         small.get(f).map(|s| (s, args.clone()))
@@ -68,55 +73,97 @@ impl Function {
                     _ => None,
                 };
                 let Some((body, args)) = callee else {
-                    insts.push(inst);
+                    kept.push(inst);
                     continue;
                 };
-                let args: Vec<Value> = args.iter().map(|&a| replaced.resolve(a)).collect();
-                let returned = self.splice(body, &args, &mut insts);
-                if let (Some(result), Some(value)) = (self.insts[inst].result, returned) {
-                    replaced.insert(result, value);
+                let data = &self.blocks[block];
+                let rest = BlockData {
+                    params: Vec::new(),
+                    insts: insts.collect(),
+                    term: data.term.clone(),
+                    origin: data.origin,
+                };
+                let after = self.blocks.push(rest);
+                if let Some(result) = self.insts[inst].result {
+                    self.blocks[after].params.push(result);
+                    self.values[result].def = Def::Param(after, 0);
                 }
+                let entry = self.splice(body, after);
+                self.blocks[block].term = Terminator::Jump(Target { block: entry, args });
+                pending.push(after);
                 count += 1;
+                break;
             }
-            self.blocks[block].insts = insts;
+            self.blocks[block].insts = kept;
         }
         if count > 0 {
-            for (_, data) in self.blocks.iter_mut() {
-                for &inst in &data.insts {
-                    self.insts[inst].kind.map_values(|v| replaced.resolve(v));
-                }
-                data.term.map_values(|v| replaced.resolve(v));
-            }
             self.compact();
         }
         count
     }
 
-    /// Appends the instructions of `body`'s one block to `insts`, its parameters `args`, its
-    /// slots new ones; gives the value it returns.
-    fn splice(&mut self, body: &Function, args: &[Value], insts: &mut Vec<Inst>) -> Option<Value> {
-        let entry = body.entry().expect("a small function has its block");
-        let mut values: Vec<Option<Value>> = vec![None; body.values.len()];
-        for (&param, &arg) in body.blocks[entry].params.iter().zip(args) {
-            values[param.index()] = Some(arg);
-        }
+    /// Copies the blocks of `body` into this function, its slots new ones, each return a jump to
+    /// `after` passing the value returned; gives the copy of its entry.
+    fn splice(&mut self, body: &Function, after: Block) -> Block {
+        let blocks: Vec<Block> = body
+            .blocks
+            .iter()
+            .map(|(_, data)| {
+                let copy = BlockData {
+                    params: Vec::new(),
+                    insts: Vec::new(),
+                    term: Terminator::Unreachable,
+                    origin: data.origin,
+                };
+                self.blocks.push(copy)
+            })
+            .collect();
         let slots: Vec<Slot> = body.slots.iter().map(|(_, slot)| self.slots.push(*slot)).collect();
-        for &old in &body.blocks[entry].insts {
-            let data = &body.insts[old];
-            let mut kind = data.kind.clone();
-            kind.map_values(|v| values[v.index()].expect("defined before it is read"));
-            if let InstKind::SlotAddr(slot) = &mut kind {
-                *slot = slots[slot.index()];
+        let mut values: Vec<Option<Value>> = vec![None; body.values.len()];
+        // Every value first, so each operand has its copy whatever order the blocks are in.
+        for (old, data) in body.blocks.iter() {
+            let new = blocks[old.index()];
+            for (i, &param) in data.params.iter().enumerate() {
+                let value = self.values.push(ValueData { ty: body.ty(param), def: Def::Param(new, i) });
+                self.blocks[new].params.push(value);
+                values[param.index()] = Some(value);
             }
-            let (new, value) = self.define(kind, data.result.map(|r| body.ty(r)), data.origin);
-            if let Some(result) = data.result {
-                values[result.index()] = value;
+            for &inst in &data.insts {
+                let data = &body.insts[inst];
+                let (copy, value) =
+                    self.define(data.kind.clone(), data.result.map(|r| body.ty(r)), data.origin);
+                if let Some(result) = data.result {
+                    values[result.index()] = value;
+                }
+                self.blocks[new].insts.push(copy);
             }
-            insts.push(new);
         }
-        match body.blocks[entry].term {
-            Terminator::Return(Some(v)) => values[v.index()],
-            _ => None,
+        let copied = |v: Value| values[v.index()].expect("every value of the body is copied");
+        for (old, data) in body.blocks.iter() {
+            let new = blocks[old.index()];
+            for &inst in &self.blocks[new].insts {
+                let kind = &mut self.insts[inst].kind;
+                kind.map_values(copied);
+                if let InstKind::SlotAddr(slot) = kind {
+                    *slot = slots[slot.index()];
+                }
+            }
+            let term = match &data.term {
+                Terminator::Return(value) => Terminator::Jump(Target {
+                    block: after,
+                    args: value.iter().map(|&v| copied(v)).collect(),
+                }),
+                term => {
+                    let mut term = term.clone();
+                    term.map_values(copied);
+                    for target in term.targets_mut() {
+                        target.block = blocks[target.block.index()];
+                    }
+                    term
+                }
+            };
+            self.blocks[new].term = term;
         }
+        blocks[body.entry().expect("a function inlined has a body").index()]
     }
 }
