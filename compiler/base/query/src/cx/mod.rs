@@ -252,8 +252,25 @@ impl<'db> Cx<'db> {
     /// `reads` with each memo once, in the order it was first read: verifying follows it, since a
     /// later read may be of a key an earlier one's value named.
     fn once(mut reads: Vec<Dep>) -> Box<[Dep]> {
-        let mut seen = HashSet::with_capacity_and_hasher(reads.len(), foldhash::fast::RandomState::default());
-        reads.retain(|dep| seen.insert((dep.table, dep.slot)));
+        let same = |a: &Dep, b: &Dep| (a.table, a.slot) == (b.table, b.slot);
+        if reads.len() <= Self::SCANNED {
+            // Few reads are compared with those kept, faster than hashing them.
+            let mut kept = 0;
+            for at in 0..reads.len() {
+                if !reads[..kept].iter().any(|k| same(k, &reads[at])) {
+                    reads.swap(kept, at);
+                    kept += 1;
+                }
+            }
+            reads.truncate(kept);
+        } else {
+            let mut seen =
+                HashSet::with_capacity_and_hasher(reads.len(), foldhash::fast::RandomState::default());
+            reads.retain(|dep| seen.insert((dep.table, dep.slot)));
+        }
         reads.into_boxed_slice()
     }
+
+    /// How many reads are deduplicated by comparing them, past which they are hashed.
+    const SCANNED: usize = 32;
 }

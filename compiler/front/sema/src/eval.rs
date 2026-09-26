@@ -127,6 +127,25 @@ const RED_ZONE: usize = 1 << 20;
 /// The stack the evaluator adds when less is left, on which calls go on nesting.
 const SEGMENT: usize = 16 << 20;
 
+/// The signature of an instantiation: its parameter and result types with its `$` parameters
+/// bound. Every call of it reads it, so it is computed once.
+pub struct Signed;
+
+impl Query for Signed {
+    const NAME: &'static str = "signed";
+    type Key = Instantiation;
+    type Value = Result<Signature, Unevaluated>;
+
+    fn compute(cx: &Cx<'_>, i: &Instantiation) -> Self::Value {
+        let inside = Env::inside(cx, &i.f, i.args.iter().cloned()).ok_or(Unevaluated::Absent)?;
+        inside.literal_signature(i.f.literal.expr.id, &i.args)
+    }
+
+    fn cycle(_: &Cx<'_>, _: &Instantiation, _: &Cycle) -> Self::Value {
+        Err(Unevaluated::Cycle)
+    }
+}
+
 /// A compile-time call, memoized on its function and arguments, with the steps it took. Calls
 /// nest as deep as their budget lets them: they run on stack the evaluator adds in segments
 /// once the thread's own runs low, never overflowing it (spec 03, section 7).
@@ -219,8 +238,7 @@ impl Instantiation {
     /// # Errors
     /// Returns why a parameter or result type has no value.
     pub fn signature(&self, cx: &Cx<'_>) -> Result<Signature, Unevaluated> {
-        let inside = Env::inside(cx, &self.f, self.args.iter().cloned()).ok_or(Unevaluated::Absent)?;
-        inside.literal_signature(self.f.literal.expr.id, &self.args)
+        cx.get::<Signed>(self)
     }
 
     /// Whether this instantiation runs only at compile time: its result or a parameter passed at

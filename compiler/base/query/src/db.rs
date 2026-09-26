@@ -1,6 +1,8 @@
 //! The database: a table per query, the current revision, and the resources queries share.
 
 use std::any::{Any, TypeId};
+use std::cell::RefCell;
+use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, OnceLock, RwLock};
 
@@ -13,10 +15,30 @@ use super::persist::{Persisted, Store};
 use super::table::{AnyTable, Table, TableId};
 use super::{Query, Revision};
 
+/// A database's number, unique in the process.
+struct DbId(u64);
+
+impl Default for DbId {
+    fn default() -> Self {
+        static NEXT: AtomicU64 = AtomicU64::new(0);
+        Self(NEXT.fetch_add(1, Ordering::Relaxed))
+    }
+}
+
+thread_local! {
+    /// The table of each query in each database this thread has read, found without the shared
+    /// map every thread reads.
+    static TABLES: RefCell<HashMap<(u64, TypeId), TableId, foldhash::fast::RandomState>> =
+        RefCell::default();
+}
+
 /// Every query's memos, and the current revision. Threads share it, each through its own
 /// [`Cx`]; reading a memo takes no lock.
 #[derive(Default)]
 pub struct Db {
+    /// Distinguishes it from every other database of the process, for the tables each thread
+    /// remembers.
+    id: DbId,
     revision: AtomicU64,
     tables: boxcar::Vec<Box<dyn AnyTable>>,
     /// Each query's table, by the query's type.
@@ -94,11 +116,17 @@ impl Db {
     /// on the query is kept out of the code made for each one.
     #[inline(never)]
     fn table_of(&self, query: TypeId, make: fn(TableId) -> Box<dyn AnyTable>) -> TableId {
-        *self.ids.pin().get_or_insert_with(query, || {
+        let key = (self.id.0, query);
+        if let Some(id) = TABLES.with(|tables| tables.borrow().get(&key).copied()) {
+            return id;
+        }
+        let id = *self.ids.pin().get_or_insert_with(query, || {
             let index =
                 self.tables.push_with(|index| make(TableId(u32::try_from(index).expect("few queries"))));
             TableId(u32::try_from(index).expect("few queries"))
-        })
+        });
+        TABLES.with(|tables| tables.borrow_mut().insert(key, id));
+        id
     }
 
     pub(crate) fn any_table(&self, id: TableId) -> &dyn AnyTable {

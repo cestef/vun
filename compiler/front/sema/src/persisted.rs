@@ -6,7 +6,8 @@ use vun_query::Db;
 use crate::check::Checked;
 use crate::decl::{DeclType, DeclValue, TypedDecl};
 use crate::env::{ItemSite, PrimitiveComptime, PrimitiveDecl, PrimitiveSignature};
-use crate::eval::{Call, MeteredCall};
+use crate::eval::{Call, MeteredCall, Signed};
+use crate::fuel::Callee;
 use crate::item::Declared;
 use crate::kinds::Kinds;
 use crate::layout::{Exists, Shapes};
@@ -31,6 +32,8 @@ pub const PERSISTED: &[fn(&Db)] = &[
     Db::persist::<PrimitiveSignature>,
     Db::persist::<Call>,
     Db::persist::<MeteredCall>,
+    Db::persist::<Signed>,
+    Db::persist::<Callee>,
     Db::persist::<Declared>,
     Db::persist::<Kinds>,
     Db::persist::<Exists>,

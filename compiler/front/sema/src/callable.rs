@@ -111,7 +111,7 @@ impl Func {
     /// Whether each parameter is a `$` parameter; `None` when its file is not read.
     #[must_use]
     pub fn comptime(&self, cx: &Cx<'_>) -> Option<Vec<bool>> {
-        self.written(cx)?.comptime()
+        cx.get::<crate::fuel::Callee>(self).comptime
     }
 
     /// The borrow mode each parameter's annotation writes: see [`Written::modes`].
