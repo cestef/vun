@@ -162,6 +162,7 @@ impl Typer<'_, '_, '_> {
                 _ => None,
             });
         }
+        self.exhaustive(hir.exprs[expr].origin, matched, arms);
         joined.flatten()
     }
 }

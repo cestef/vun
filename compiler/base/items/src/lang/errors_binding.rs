@@ -13,3 +13,4 @@ pub const irrefutable_test: Item = Item::new(
 pub const unequal_alternatives: Item = Item::new(
     &["lang", "errors", "binding", "unequal_alternatives"],
 );
+pub const missing_case: Item = Item::new(&["lang", "errors", "binding", "missing_case"]);

@@ -11,6 +11,7 @@ mod call;
 mod closure;
 mod control;
 mod early_return;
+mod exhaust;
 mod expect;
 mod expected;
 mod infer;

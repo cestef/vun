@@ -76,7 +76,7 @@ fn expected_types_type_dot_names_literals_tuples_and_matches() {
 Color := enum { red, green, blue(u8) };
 Point := struct { x: u8, y: u8 };
 pick := (c: Color) -> u8 { match c { .red => 1, .green => 2, .blue(n) => n } };
-bad := (c: Color) -> u8 { match c { .red => 1, .purple => 2, .blue(n) => n + 300 } };
+bad := (c: Color) -> u8 { match c { .red => 1, .purple => 2, .green => 3, .blue(n) => n + 300 } };
 make := () -> Color { .blue(3) };
 wrong := () -> Color { .blue(300) };
 unknown := () -> Color { .yellow };

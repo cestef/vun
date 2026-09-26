@@ -1,0 +1,54 @@
+//! `match` covers every value of its scrutinee's type (spec 01, section 6; decision 29).
+
+Light := enum { red, amber, green };
+Reading := enum { none, one(u8), pair(bool, Light) };
+
+wait := (l: Light) -> u8 {
+    match l { //~ binding.missing_case "`.amber`"
+        .red => 30,
+        .green => 0,
+    }
+};
+
+guarded := (r: Reading) -> u8 {
+    match r { //~ binding.missing_case "`.one(_)`"
+        .none => 0,
+        .one(n) if n > 3 => n,
+        .pair(_, _) => 1,
+    }
+};
+
+nested := (r: &Reading) -> u8 {
+    match r.* { //~ binding.missing_case "`.pair(.true, .amber)`"
+        .none | .one(_) => 0,
+        .pair(.false, _) => 1,
+        .pair(.true, .red | .green) => 2,
+    }
+};
+
+digits := (n: u8) -> u8 {
+    match n { //~ binding.missing_case "`10..=255`"
+        0..=9 => n,
+    }
+};
+
+pairs := (p: (bool, bool)) -> u8 {
+    match p { //~ binding.missing_case "`(.false, .true)`"
+        (.true, _) => 1,
+        (_, .false) => 2,
+    }
+};
+
+covered := (p: (bool, Light), n: u8) -> u8 {
+    a := match p {
+        (.true, _) => 1,
+        (.false, .red | .amber) => 2,
+        (.false, .green) => 3,
+    };
+    b := match n {
+        0 => 0,
+        1..=200 => 1,
+        201.. => 2,
+    };
+    a + b
+};

@@ -9,3 +9,4 @@ pub const BINDING_IRREFUTABLE_TEST: DiagId = DiagId::new(
 pub const BINDING_UNEQUAL_ALTERNATIVES: DiagId = DiagId::new(
     "lang.errors.binding.unequal_alternatives",
 );
+pub const BINDING_MISSING_CASE: DiagId = DiagId::new("lang.errors.binding.missing_case");
