@@ -133,10 +133,9 @@ x86-64 and (when the machine runs it) linux.arm64, and require equal results on 
 
 ## 6. Decisions
 
-Every decision in `decisions.md` is accepted, 1 to 214 but 209 (the user asked in the sixteenth
-session that all that make sense be accepted; 138, 157, 161 and 166 are amended by 182 and 183).
-209 (`lang.target.Attributes`, a new field of `lang.target.CCompiler`) is proposed. New language
-rules go in as proposed unless the user approves them.
+Every decision in `decisions.md` is accepted, 1 to 215 (the user approved all of the seventeenth
+session's, 209 included; 138, 157, 161 and 166 are amended by 182 and 183). New language rules go
+in as proposed unless the user approves them.
 
 ## 7. Next steps, in order
 
@@ -161,7 +160,7 @@ rules go in as proposed unless the user approves them.
    `vun-dwarf`; `gdb` breaks on Vun lines); the unit is named by the first file with a row;
    unwind information done (decision 215, `.eh_frame` on ELF; Mach-O's compact unwind is
    left); next `DW_TAG_subprogram`s; (d) done in the seventeenth session: data aligned past every C type or in a
-   link section through GNU attributes (decision 209, proposed: `lang.target.Attributes`), a
+   link section through GNU attributes (decision 209: `lang.target.Attributes`), a
    slice bound by value is `types.slice_value` (decision 210); left: memory regions into
    `LinkPlan` and a bare-metal runtime, which wait for item 5 (plans declare the regions); (e)
    done: mold and wild link through the C compiler (`vun_link_gnu::Ld`), `--linker` names one
