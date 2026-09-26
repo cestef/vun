@@ -58,7 +58,8 @@ compilation is therefore an ordinary `$if`, never a file-name convention or a pr
 
 Arrays and slices are `lang.mem.Array(N, T)` and `lang.mem.Slice(T)`, primitive type constructors
 like `lang.Int`, so impls target them: `xs.len()` is the impl `std.seq.Sequence` over the
-primitive `lang.mem.len`.
+primitive `lang.mem.len`. A slice's size is known only at run time, so a binding holding one by
+value, as `ys := xs[1..3]`, is `types.slice_value`, whose fix borrows it (`&xs[1..3]`).
 
 **Identity.** Every `struct` and `enum` literal is a new, nominal type, identified by where it is
 written and by the compile-time arguments of the evaluation that produced it. Two identical

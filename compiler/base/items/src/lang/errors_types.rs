@@ -11,3 +11,4 @@ pub const no_member: Item = Item::new(&["lang", "errors", "types", "no_member"])
 pub const no_impl: Item = Item::new(&["lang", "errors", "types", "no_impl"]);
 pub const cannot_infer: Item = Item::new(&["lang", "errors", "types", "cannot_infer"]);
 pub const arity: Item = Item::new(&["lang", "errors", "types", "arity"]);
+pub const slice_value: Item = Item::new(&["lang", "errors", "types", "slice_value"]);

@@ -14,6 +14,7 @@ mod early_return;
 mod exhaust;
 mod expect;
 mod expected;
+mod held;
 mod infer;
 mod loops;
 mod methods;
@@ -207,6 +208,7 @@ impl Visitor for Typer<'_, '_, '_> {
         }
         // A local annotated with a type not known here has no type, not its value's.
         let ty = if d.ty.is_some() { annotated } else { found.map(|k| k.ty) };
+        self.held(d, ty, found);
         self.pattern(d.pat, ty, None);
     }
 
