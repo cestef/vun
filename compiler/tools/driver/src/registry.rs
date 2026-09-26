@@ -1,3 +1,7 @@
+mod choose;
+
+pub use choose::{Codegen, Unchosen, Unfit};
+
 use vun_backend::Backend;
 use vun_intern::Symbol;
 use vun_link::Linker;
@@ -25,11 +29,11 @@ impl Registry {
         let mut r = Self::default();
         register!(r.add_backend {
             "backend-c" => vun_backend_c::CBackend::default(),
-            "backend-baseline" => vun_backend_baseline::BaselineBackend,
+            "backend-native" => vun_backend_native::NativeBackend,
             "backend-cranelift" => vun_backend_cranelift::CraneliftBackend,
             "backend-qbe" => vun_backend_qbe::QbeBackend,
             "backend-llvm" => vun_backend_llvm::LlvmBackend,
-            "backend-process" => vun_backend_process::ProcessBackend,
+            "backend-external" => vun_backend_external::ExternalBackend,
         });
         register!(r.add_linker {
             "link-wild" => vun_link_wild::WildLinker,
@@ -37,7 +41,7 @@ impl Registry {
             "link-lld" => vun_link_lld::LldLinker,
             "link-gnu" => vun_link_gnu::GnuLinker,
             "link-msvc" => vun_link_msvc::MsvcLinker,
-            "link-process" => vun_link_process::ProcessLinker,
+            "link-external" => vun_link_external::ExternalLinker,
         });
         r
     }

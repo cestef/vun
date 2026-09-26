@@ -143,6 +143,7 @@ pub mod syntax_grammar_Context;
 pub mod syntax_grammar_Count;
 pub mod target;
 pub mod target_Atomics;
+pub mod target_Backends;
 pub mod target_C;
 pub mod target_CCompiler;
 pub mod target_CInt;

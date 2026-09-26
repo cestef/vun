@@ -20,10 +20,6 @@ pub const endian: Item = Item::new(&["lang", "target", "Spec", "endian"]);
 pub const object_format: Item = Item::new(&["lang", "target", "Spec", "object_format"]);
 /// The symbol a program starts at, when the target has one.
 pub const entry_symbol: Item = Item::new(&["lang", "target", "Spec", "entry_symbol"]);
-pub const default_backend: Item = Item::new(
-    &["lang", "target", "Spec", "default_backend"],
-);
-pub const default_linker: Item = Item::new(
-    &["lang", "target", "Spec", "default_linker"],
-);
+pub const backends: Item = Item::new(&["lang", "target", "Spec", "backends"]);
+pub const linker: Item = Item::new(&["lang", "target", "Spec", "linker"]);
 pub const c: Item = Item::new(&["lang", "target", "Spec", "c"]);

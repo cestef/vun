@@ -22,7 +22,7 @@ pub mod target;
 
 pub use coverage::Coverage;
 pub use queries::Persistence;
-pub use registry::Registry;
+pub use registry::{Codegen, Registry, Unchosen, Unfit};
 pub use session::Session;
 pub use shared::Shared;
 

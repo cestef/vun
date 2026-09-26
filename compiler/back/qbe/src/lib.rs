@@ -1,10 +1,9 @@
 //! QBE as a subprocess on IL text: small and simple, no vectors, no 32-bit targets.
 
-use vun_backend::{ArtifactSink, Backend, BackendCaps, BackendInfo, Emits, Lines, Readiness};
+use vun_backend::{ArtifactSink, Backend, BackendCaps, BackendInfo, Emits, Readiness, Request};
 use vun_diag::{DiagCtxt, ErrorGuaranteed};
 use vun_lir::legalize::Half;
-use vun_lir::unit::Unit;
-use vun_target::{Arches, Name, TargetSpec};
+use vun_target::{Arches, Name};
 
 pub const INFO: BackendInfo = BackendInfo {
     id: Name("qbe"),
@@ -33,9 +32,7 @@ impl Backend for QbeBackend {
 
     fn emit(
         &self,
-        _unit: &Unit,
-        _target: &TargetSpec,
-        _lines: &dyn Lines,
+        _request: &Request<'_>,
         _out: &mut dyn ArtifactSink,
         diag: &mut DiagCtxt,
     ) -> Result<(), ErrorGuaranteed> {

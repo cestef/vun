@@ -9,8 +9,8 @@ use vun_intern::Symbol;
 use vun_items::Item;
 use vun_items::lang::{Option as option, target_C as c, target_CInt as cint, target_Endian as endian};
 use vun_items::lang::{target_Atomics as atomics, target_CCompiler as compiler, target_FrameSizes as frames};
-use vun_items::lang::{target_Host as host, target_Spec as spec};
-use vun_target::{Atomics, CCompiler, CInt, CTypes, Endian, FrameSizes, Host, TargetSpec};
+use vun_items::lang::{target_Backends as backends, target_Host as host, target_Spec as spec};
+use vun_target::{Atomics, Backends, CCompiler, CInt, CTypes, Endian, FrameSizes, Host, TargetSpec};
 
 use crate::ty::Value;
 
@@ -76,6 +76,20 @@ impl<'v> Members<'v> {
 
     fn read<T: Read>(&self, member: Item) -> Result<T, Unread> {
         T::read(self.get(member)?).map_err(|_| Unread::Member(member))
+    }
+
+    /// A `&[lang.meta.Name]`.
+    fn names(&self, member: Item) -> Result<Vec<Symbol>, Unread> {
+        match self.get(member)? {
+            Value::Array(items) | Value::Tuple(items) => items
+                .iter()
+                .map(|n| match n {
+                    Value::Name(name) => Ok(*name),
+                    _ => Err(Unread::Member(member)),
+                })
+                .collect(),
+            _ => Err(Unread::Member(member)),
+        }
     }
 
     /// A `?&[u8]` naming a symbol.
@@ -164,10 +178,18 @@ impl Read for CCompiler {
         Ok(Self {
             command: m.string(compiler::command)?,
             flags: m.strings(compiler::flags)?,
+            optimize: m.strings(compiler::optimize)?,
             link_flags: m.strings(compiler::link_flags)?,
             atomics: m.read(compiler::atomics)?,
             frame_sizes: m.read(compiler::frame_sizes)?,
         })
+    }
+}
+
+impl Read for Backends {
+    fn read(value: &Value) -> Result<Self, Unread> {
+        let m = Members::of(value)?;
+        Ok(Self { debug: m.names(backends::debug)?, release: m.names(backends::release)? })
     }
 }
 
@@ -197,8 +219,8 @@ impl Read for TargetSpec {
             endian: m.read(spec::endian)?,
             object_format: m.name(spec::object_format)?,
             entry_symbol: m.symbol(spec::entry_symbol)?,
-            default_backend: m.name(spec::default_backend)?,
-            default_linker: m.name(spec::default_linker)?,
+            backends: m.read(spec::backends)?,
+            linker: m.name(spec::linker)?,
             c: m.read(spec::c)?,
         })
     }

@@ -14,7 +14,8 @@ use vun_lir::FuncId;
 use vun_lir::legalize::Half;
 use vun_lir::unit::Unit;
 use vun_origin::OriginId;
-use vun_target::{Arches, Name, Support, TargetSpec, Unsupported};
+pub use vun_target::Readiness;
+use vun_target::{Arches, Name, Profile, Support, TargetSpec, Unsupported};
 
 /// What a backend produces.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -28,6 +29,8 @@ pub enum Emits {
     Header,
     /// Code in memory.
     Jit,
+    /// The code as text for people, with where each part comes from (`vun debug code`).
+    Listing,
 }
 
 /// Capabilities a program may require of its backend.
@@ -50,14 +53,6 @@ pub struct BackendCaps {
     /// Whether it computes `f16`, or holds it as bits and computes in `f32` (`Unit::legalize`).
     pub half: Half,
     pub debug_info: bool,
-}
-
-/// Whether a backend generates code yet.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Readiness {
-    Generates,
-    /// Registered, reporting `backend.unavailable`.
-    Planned,
 }
 
 /// Everything known about a backend without running it.
@@ -133,6 +128,17 @@ pub trait Lines {
     fn line(&self, origin: OriginId) -> Option<Line>;
 }
 
+/// What a backend is asked to generate code for.
+pub struct Request<'a> {
+    /// The program, legalized for the backend.
+    pub unit: &'a Unit,
+    pub target: &'a TargetSpec,
+    pub lines: &'a dyn Lines,
+    pub profile: Profile,
+    /// Whether to add a listing of the code to the artifacts ([`Emits::Listing`]).
+    pub listing: bool,
+}
+
 /// Code generation from LIR.
 pub trait Backend {
     fn info(&self) -> &BackendInfo;
@@ -143,9 +149,7 @@ pub trait Backend {
     /// Returns once an error has been reported to `diag`.
     fn emit(
         &self,
-        unit: &Unit,
-        target: &TargetSpec,
-        lines: &dyn Lines,
+        request: &Request<'_>,
         out: &mut dyn ArtifactSink,
         diag: &mut DiagCtxt,
     ) -> Result<(), ErrorGuaranteed>;

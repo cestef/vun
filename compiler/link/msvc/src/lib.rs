@@ -2,9 +2,10 @@
 
 use vun_diag::{DiagCtxt, ErrorGuaranteed};
 use vun_link::{LinkPlan, Linker, LinkerInfo};
-use vun_target::{Name, TargetSpec};
+use vun_target::{Name, Readiness, TargetSpec};
 
-pub const INFO: LinkerInfo = LinkerInfo { id: Name("msvc"), formats: &[Name("coff")], regions: false };
+pub const INFO: LinkerInfo =
+    LinkerInfo { id: Name("msvc"), formats: &[Name("coff")], regions: false, readiness: Readiness::Planned };
 
 #[derive(Default)]
 pub struct MsvcLinker;

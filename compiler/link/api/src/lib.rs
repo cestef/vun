@@ -9,7 +9,7 @@ use std::path::PathBuf;
 use vun_diag::{DiagCtxt, Diagnostic, ErrorGuaranteed, Msg, errors};
 use vun_intern::Symbol;
 use vun_origin::OriginId;
-use vun_target::{Name, Support, TargetSpec, Unsupported};
+use vun_target::{Name, Readiness, Support, TargetSpec, Unsupported};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum OutputKind {
@@ -61,6 +61,7 @@ pub struct LinkerInfo {
     pub formats: &'static [Name],
     /// Whether memory regions and section placement can be expressed (linker scripts).
     pub regions: bool,
+    pub readiness: Readiness,
 }
 
 impl LinkerInfo {

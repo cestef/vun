@@ -12,8 +12,8 @@ _on := ($arch: lang.meta.Name, $cpu: lang.meta.Name, $abi: lang.meta.Name, $comm
         .endian = .little,
         .object_format = .elf,
         .entry_symbol = .some("Reset"),
-        .default_backend = .c,
-        .default_linker = .lld,
+        .backends = targets.through_c,
+        .linker = .lld,
         .c = targets.ilp32(targets.gnu(command, &["-nostdlib", "-nostartfiles"])),
     }
 };

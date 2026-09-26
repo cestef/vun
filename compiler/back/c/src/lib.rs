@@ -8,7 +8,7 @@ pub use vun_backend::{Lack, Missing, Readiness};
 use vun_lir::legalize::Half;
 
 use std::collections::HashMap;
-use vun_backend::{Artifact, ArtifactSink, Backend, BackendCaps, BackendInfo, Emits, Lines};
+use vun_backend::{Artifact, ArtifactSink, Backend, BackendCaps, BackendInfo, Emits, Lines, Request};
 use vun_diag::{DiagCtxt, ErrorGuaranteed};
 
 use vun_lir::FuncId;
@@ -31,7 +31,7 @@ pub const INFO: BackendInfo = BackendInfo {
         half: Half::Promoted,
         debug_info: true,
     },
-    readiness: Readiness::Generates,
+    readiness: Readiness::Ready,
 };
 
 /// The functions a shard of a program holds at most (spec 13, section 2).
@@ -79,14 +79,13 @@ impl Backend for CBackend {
 
     fn emit(
         &self,
-        unit: &Unit,
-        target: &TargetSpec,
-        lines: &dyn Lines,
+        request: &Request<'_>,
         out: &mut dyn ArtifactSink,
         diag: &mut DiagCtxt,
     ) -> Result<(), ErrorGuaranteed> {
-        let artifacts =
-            self.sources(unit, target, lines).map_err(|lack| diag.error(lack.diagnostic(INFO.id.0)))?;
+        let artifacts = self
+            .sources(request.unit, request.target, request.lines)
+            .map_err(|lack| diag.error(lack.diagnostic(INFO.id.0)))?;
         for artifact in artifacts {
             out.put(artifact);
         }

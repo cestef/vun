@@ -1,0 +1,170 @@
+//! Relocatable objects as data: sections of bytes, symbols and relocations, built by a backend
+//! and written once in the target's object format (`Object::write`: ELF-64, little-endian).
+
+mod write;
+
+use vun_index::{IndexVec, index};
+
+index! {
+    pub struct SectionId;
+    pub struct SymbolId;
+}
+
+/// What the linker writes at a relocation, whatever the machine; each machine numbers the kinds
+/// it has (`Machine::relocation`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum RelocKind {
+    /// The symbol's address, 64 bits.
+    Abs64,
+    /// The symbol's address relative to the field, 32 bits.
+    Pc32,
+    /// A call's target relative to the field, through the procedure linkage table if needed.
+    Call32,
+    /// The address of the symbol's entry in the global offset table, relative to the field.
+    GotPc32,
+    /// The 4 KiB page of the symbol's address relative to the field's page, 21 bits (`adrp`).
+    Page21,
+    /// The symbol's address within its page, 12 bits, as an `add` reads them.
+    PageOffset12,
+    /// The symbol's address within its page, as a load or store of a byte reads it.
+    PageOffset8,
+    /// The same, scaled by 2 for a load or store of 16 bits.
+    PageOffset16,
+    /// The same, scaled by 4 for a load or store of 32 bits.
+    PageOffset32,
+    /// The same, scaled by 8 for a load or store of 64 bits.
+    PageOffset64,
+    /// The page of the symbol's entry in the global offset table relative to the field's page.
+    GotPage21,
+    /// The address of the symbol's entry within its page, as a 64-bit load reads it.
+    GotPageOffset64,
+    /// A jump's target relative to the field, 26 bits counting instructions.
+    Jump26,
+    /// A call's target relative to the field, 26 bits counting instructions, through the
+    /// procedure linkage table if needed.
+    Call26,
+    /// A conditional branch's target relative to the field, 19 bits counting instructions.
+    Branch19,
+}
+
+/// What a section holds.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Contents {
+    Code,
+    /// Data the program only reads.
+    ReadOnly,
+    /// Data only read once the loader has written the addresses in it.
+    Relocated,
+    Writable,
+    /// The mark that the stack need not be executable.
+    StackNote,
+}
+
+pub struct Section {
+    pub name: Vec<u8>,
+    pub contents: Contents,
+    pub bytes: Vec<u8>,
+    pub align: u64,
+    pub relocs: Vec<Reloc>,
+}
+
+/// The address of `symbol` plus `addend`, written at `offset` of a section as `kind` says.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Reloc {
+    pub offset: u64,
+    pub symbol: SymbolId,
+    pub kind: RelocKind,
+    pub addend: i64,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum SymbolKind {
+    Func,
+    Object,
+    /// Defined elsewhere, of a kind not said.
+    Unknown,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Binding {
+    /// Seen by this object only.
+    Local,
+    Global,
+}
+
+pub struct Symbol {
+    pub name: Vec<u8>,
+    /// Where it is defined; `None` for one defined elsewhere.
+    pub section: Option<SectionId>,
+    pub value: u64,
+    pub size: u64,
+    pub kind: SymbolKind,
+    pub binding: Binding,
+}
+
+/// The machine an object is for.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Machine {
+    X86_64,
+    Aarch64,
+}
+
+impl Machine {
+    /// Its `EM_*` number.
+    const fn number(self) -> u16 {
+        match self {
+            Self::X86_64 => 62,
+            Self::Aarch64 => 183,
+        }
+    }
+
+    /// The number of a relocation kind (`R_X86_64_*`, `R_AARCH64_*`), if the machine has it.
+    const fn relocation(self, kind: RelocKind) -> Option<u32> {
+        Some(match (self, kind) {
+            (Self::X86_64, RelocKind::Abs64) => 1,
+            (Self::X86_64, RelocKind::Pc32) => 2,
+            (Self::X86_64, RelocKind::Call32) => 4,
+            (Self::X86_64, RelocKind::GotPc32) => 9,
+            (Self::Aarch64, RelocKind::Abs64) => 257,
+            (Self::Aarch64, RelocKind::Pc32) => 261,
+            (Self::Aarch64, RelocKind::Page21) => 275,
+            (Self::Aarch64, RelocKind::PageOffset12) => 277,
+            (Self::Aarch64, RelocKind::PageOffset8) => 278,
+            (Self::Aarch64, RelocKind::Branch19) => 280,
+            (Self::Aarch64, RelocKind::Jump26) => 282,
+            (Self::Aarch64, RelocKind::Call26) => 283,
+            (Self::Aarch64, RelocKind::PageOffset16) => 284,
+            (Self::Aarch64, RelocKind::PageOffset32) => 285,
+            (Self::Aarch64, RelocKind::PageOffset64) => 286,
+            (Self::Aarch64, RelocKind::GotPage21) => 311,
+            (Self::Aarch64, RelocKind::GotPageOffset64) => 312,
+            _ => return None,
+        })
+    }
+}
+
+pub struct Object {
+    pub machine: Machine,
+    pub sections: IndexVec<SectionId, Section>,
+    pub symbols: IndexVec<SymbolId, Symbol>,
+}
+
+impl Object {
+    #[must_use]
+    pub fn new(machine: Machine) -> Self {
+        Self { machine, sections: IndexVec::new(), symbols: IndexVec::new() }
+    }
+
+    /// Appends `bytes` to `section` at `align`: the offset they start at.
+    ///
+    /// # Panics
+    /// Panics if the section outgrows memory.
+    pub fn append(&mut self, section: SectionId, bytes: &[u8], align: u64) -> u64 {
+        let s = &mut self.sections[section];
+        let offset = (s.bytes.len() as u64).next_multiple_of(align.max(1));
+        s.bytes.resize(usize::try_from(offset).expect("sections fit memory"), 0);
+        s.bytes.extend_from_slice(bytes);
+        s.align = s.align.max(align);
+        offset
+    }
+}

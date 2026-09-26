@@ -1,10 +1,9 @@
 //! LLVM code generation: optimized builds and the widest native reach.
 
-use vun_backend::{ArtifactSink, Backend, BackendCaps, BackendInfo, Emits, Lines, Readiness};
+use vun_backend::{ArtifactSink, Backend, BackendCaps, BackendInfo, Emits, Readiness, Request};
 use vun_diag::{DiagCtxt, ErrorGuaranteed};
 use vun_lir::legalize::Half;
-use vun_lir::unit::Unit;
-use vun_target::{Arches, Name, TargetSpec};
+use vun_target::{Arches, Name};
 
 pub const INFO: BackendInfo = BackendInfo {
     id: Name("llvm"),
@@ -33,9 +32,7 @@ impl Backend for LlvmBackend {
 
     fn emit(
         &self,
-        _unit: &Unit,
-        _target: &TargetSpec,
-        _lines: &dyn Lines,
+        _request: &Request<'_>,
         _out: &mut dyn ArtifactSink,
         diag: &mut DiagCtxt,
     ) -> Result<(), ErrorGuaranteed> {

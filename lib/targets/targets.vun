@@ -1,6 +1,7 @@
 //! Target descriptions, a namespace per system and a target per CPU: `targets.<system>.<cpu>`,
 //! such as `targets.linux.x86_64` or `targets.bare.cortex_m4f`. What targets share is declared
-//! here once: the C backend's flags, the C compilers, and the C models.
+//! here once: the backends each builds with, the C backend's flags, the C compilers, and the
+//! C models.
 
 /// The machines the toolchain runs on, named as the toolchain names them (the architecture and
 /// system Rust's `std::env::consts` report), and the target each builds for unless told otherwise.
@@ -15,10 +16,27 @@ hosts := .{
 /// memory without type-based aliasing.
 c_flags: &[&[u8]] = &["-std=c99", "-ffreestanding", "-fno-strict-aliasing"];
 
+/// The flags a release build adds for a GCC or Clang driver.
+c_optimize: &[&[u8]] = &["-O2"];
+
 /// A GCC or Clang driver, run as `command`, its links taking `link_flags`.
 gnu := ($command: &[u8], $link_flags: &[&[u8]]) -> lang.target.CCompiler {
-    .{ .command = command, .flags = c_flags, .link_flags = link_flags, .atomics = .gnu, .frame_sizes = .stack_usage }
+    .{
+        .command = command,
+        .flags = c_flags,
+        .optimize = c_optimize,
+        .link_flags = link_flags,
+        .atomics = .gnu,
+        .frame_sizes = .stack_usage,
+    }
 };
+
+/// The backends of a target the native backend generates code for: it for debug builds, and C
+/// wherever the others are missing.
+native_first: lang.target.Backends = .{ .debug = &[.native, .cranelift, .c], .release = &[.llvm, .c] };
+
+/// The backends of a target reached through C: C for both, LLVM first for release builds.
+through_c: lang.target.Backends = .{ .debug = &[.cranelift, .c], .release = &[.llvm, .c] };
 
 /// The C types where `long` and addresses are 64 bits (LP64), built by `compiler`.
 lp64 := ($compiler: lang.target.CCompiler) -> lang.target.C {

@@ -11,8 +11,8 @@ _on := ($arch: lang.meta.Name) -> lang.target.Spec {
         .endian = .little,
         .object_format = .elf,
         .entry_symbol = .some("_start"),
-        .default_backend = .cranelift,
-        .default_linker = .gnu,
+        .backends = targets.native_first,
+        .linker = .gnu,
         .c = targets.lp64(targets.gnu("cc", &[])),
     }
 };

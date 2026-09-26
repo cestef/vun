@@ -49,13 +49,13 @@ build := (b: &mut std.build.Build) {
     .expect("the plan runs");
     let target = ".{ .arch = .arm, .cpu = .cortex_m4f, .os = .bare, .abi = .eabihf, .pointer_bits = 32, \
                   .endian = .little, \
-                  .object_format = .elf, .entry_symbol = .some(\"Reset\"), .default_backend = .c, \
-                  .default_linker = .lld, .c = .{ .short = .{ .bits = 16, .align = 2 }, \
+                  .object_format = .elf, .entry_symbol = .some(\"Reset\"), .backends = .{ .debug = .{ .cranelift, .c }, \
+                  .release = .{ .llvm, .c } }, .linker = .lld, .c = .{ .short = .{ .bits = 16, .align = 2 }, \
                   .int = .{ .bits = 32, .align = 4 }, .long = .{ .bits = 32, .align = 4 }, \
                   .long_long = .{ .bits = 64, .align = 8 }, .pointer_align = 4, \
                   .compiler = .{ .command = \"arm-none-eabi-gcc\", \
                   .flags = .{ \"-std=c99\", \"-ffreestanding\", \"-fno-strict-aliasing\" }, \
-                  .link_flags = .{ \"-nostdlib\", \"-nostartfiles\" }, .atomics = .gnu, \
+                  .optimize = .{ \"-O2\" }, .link_flags = .{ \"-nostdlib\", \"-nostartfiles\" }, .atomics = .gnu, \
                   .frame_sizes = .stack_usage } } }";
     assert_eq!(
         actions,

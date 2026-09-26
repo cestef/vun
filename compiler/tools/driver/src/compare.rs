@@ -4,10 +4,9 @@
 
 use std::process::Output;
 
-use vun_backend::Readiness;
 use vun_diag::{Diagnostic, ErrorGuaranteed, Msg, errors};
+use vun_intern::Symbol;
 use vun_span::FileId;
-use vun_target::Support;
 
 use crate::Session;
 
@@ -39,16 +38,14 @@ impl Session {
     pub fn run_each(&mut self, file: FileId) -> Result<Vec<Ran>, ErrorGuaranteed> {
         let _ = self.lir(file);
         let target = self.target.clone().expect("naming a file chooses the target")?;
-        let backends: Vec<&'static str> = self
-            .registry
-            .backends()
-            .map(vun_backend::Backend::info)
-            .filter(|i| i.readiness == Readiness::Generates && i.supports(&target) == Support::Yes)
-            .map(|i| i.id.0)
-            .collect();
+        let backends: Vec<&'static str> = self.registry.fitting(&target).map(|b| b.info().id.0).collect();
+        let asked = self.codegen;
         let mut runs = Vec::new();
         for backend in backends {
-            let program = self.build(file, Some(backend), None)?;
+            self.codegen.backend = Some(Symbol::intern(backend));
+            let program = self.build(file, None);
+            self.codegen = asked;
+            let program = program?;
             let output = std::process::Command::new(&program).output().map_err(|e| {
                 let msg = Msg::new().text("cannot run ").code(program.display().to_string());
                 self.diag.error(Diagnostic::error(errors::BACKEND_TOOL, msg).caused_by(&e))

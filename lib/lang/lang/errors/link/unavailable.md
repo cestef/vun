@@ -1,31 +1,26 @@
 # link.unavailable
 
-The selected linker adapter cannot link yet.
+The target's linker adapter cannot link yet, or is not in this toolchain.
 
 Linkers are components registered with the toolchain behind adapters, each declaring its facts once
 in a `LinkerInfo`; an adapter turns the target-independent `LinkPlan` into a linker script or flags
-(spec 13, sections 7 and 8). A target names its default linker (`.default_linker` in
-`lib/targets`: `mold` for x86_64, `lld` for bare metal). An adapter that is registered but cannot
-link yet reports this diagnostic instead of producing an output. In this toolchain every adapter is
-still a stub, and `vun build`, the command that runs them, is planned: today it reports
-`cli.unavailable_command`.
+(spec 13, sections 7 and 8). A target names its linker (`.linker` in `lib/targets`: `gnu` for
+Linux, `lld` for bare metal). An adapter that is registered but cannot link yet reports this
+diagnostic instead of producing an output; today the `gnu` adapter links, through the target's C
+compiler.
 
 ## Example
 
-Once `vun build` exists, building for x86_64 reaches the mold adapter:
-
 ```console
-$ vun build
-error[link.unavailable]: linker `mold` cannot link yet
+$ vun build --target bare.cortex_m4f main.vun
+error[link.unavailable]: linker `lld` cannot link yet
 ```
 
 ## Fix
 
-Select a linker that can link for the target; `vun toolchain components` lists the adapters compiled into
-this toolchain, none of which links yet:
+Build for a target whose linker links, or change the target's `.linker` to one that does. `vun
+toolchain components` lists the adapters compiled into this toolchain.
 
 ```console
 $ vun toolchain components
-backends: c, cranelift, qbe, llvm, process
-linkers:  wild, mold, lld, gnu, msvc, process
 ```

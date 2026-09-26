@@ -28,6 +28,8 @@ FrameSizes := enum {
 CCompiler := struct {
     command: &[u8],
     flags: &[&[u8]],
+    /// The flags a release build adds to `flags`.
+    optimize: &[&[u8]],
     link_flags: &[&[u8]],
     atomics: Atomics,
     frame_sizes: FrameSizes,
@@ -44,6 +46,15 @@ C := struct {
     /// The alignment of an address.
     pointer_align: u8,
     compiler: CCompiler,
+};
+
+/// The backends a target builds with under each profile, most preferred first: a build takes
+/// the first the toolchain has that generates code for the target (spec 13, section 8).
+Backends := struct {
+    /// Fast to build, easy to debug: what `vun build` uses.
+    debug: &[lang.meta.Name],
+    /// Fast to run: `vun build --release`.
+    release: &[lang.meta.Name],
 };
 
 /// A target, as data (spec 13, section 7): the package `targets` declares one per system and CPU
@@ -65,8 +76,8 @@ Spec := struct {
     object_format: lang.meta.Name,
     /// The symbol a program starts at, when the target has one.
     entry_symbol: ?&[u8],
-    default_backend: lang.meta.Name,
-    default_linker: lang.meta.Name,
+    backends: Backends,
+    linker: lang.meta.Name,
     c: C,
 };
 

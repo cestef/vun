@@ -1,0 +1,13 @@
+[package]
+name = "vun-object"
+description = "Relocatable object files as data: sections, symbols and relocations, written once (ELF first)."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+vun-index.workspace = true

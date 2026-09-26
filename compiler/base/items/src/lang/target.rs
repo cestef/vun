@@ -22,6 +22,9 @@ pub const CCompiler: Item = Item::new(&["lang", "target", "CCompiler"]);
 /// fixed-width types from them, and checks each while compiling (spec 13, section 8.2). A `char`
 /// is 8 bits everywhere Vun runs.
 pub const C: Item = Item::new(&["lang", "target", "C"]);
+/// The backends a target builds with under each profile, most preferred first: a build takes
+/// the first the toolchain has that generates code for the target (spec 13, section 8).
+pub const Backends: Item = Item::new(&["lang", "target", "Backends"]);
 /// A target, as data (spec 13, section 7): the package `targets` declares one per system and CPU
 /// (`targets.linux.x86_64`), so adding a target rebuilds nothing. Architectures, CPUs, systems,
 /// ABIs, object formats, backends and linkers are names, the sets of them open to what the

@@ -1,30 +1,27 @@
 # backend.unavailable
 
-The selected backend cannot generate code yet.
+The backend named cannot generate code yet.
 
 Backends are components registered with the toolchain, each declaring its facts once in a
-`BackendInfo`; nothing above LIR knows which one runs (spec 13, sections 7 and 8). A target names
-its default backend (`.default_backend` in `lib/targets`: `cranelift` for x86_64, `c` for
-bare-metal targets). A backend that is registered but cannot generate code yet reports this diagnostic
-instead of emitting anything. In this toolchain every backend is still a stub, and `vun build`,
-the command that runs them, is planned: today it reports `cli.unavailable_command`.
+`BackendInfo`, among them whether it generates code (spec 13, sections 7 and 8). Some are
+registered before they generate anything (Cranelift, QBE, LLVM, external backends), so that
+targets can already name them among their preferences; a build that names one with `--backend`
+reports this diagnostic instead of emitting anything. A build that names none skips them and
+takes the next backend its target prefers.
 
 ## Example
 
-Once `vun build` exists, building for x86_64 reaches the Cranelift backend:
-
 ```console
-$ vun build
+$ vun build --backend cranelift main.vun
 error[backend.unavailable]: backend `cranelift` cannot generate code yet
 ```
 
 ## Fix
 
-Select a backend that generates code for the target; `vun toolchain components` lists the backends
-compiled into this toolchain, none of which generates code yet:
+Name a backend that generates code for the target, or none: the target's preferences for the
+profile then choose. `vun toolchain components` lists the backends of this toolchain and which
+generate code.
 
 ```console
-$ vun toolchain components
-backends: c, cranelift, qbe, llvm, process
-linkers:  wild, mold, lld, gnu, msvc, process
+$ vun build main.vun
 ```

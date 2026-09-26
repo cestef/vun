@@ -80,6 +80,8 @@ pub struct CCompiler {
     pub command: Symbol,
     pub flags: Vec<Symbol>,
     pub link_flags: Vec<Symbol>,
+    /// The flags a release build adds to `flags`.
+    pub optimize: Vec<Symbol>,
     pub atomics: Atomics,
     pub frame_sizes: FrameSizes,
 }
@@ -95,6 +97,35 @@ pub struct CTypes {
     pub compiler: CCompiler,
 }
 
+/// How a build trades compile time for run time.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Encode, Decode)]
+pub enum Profile {
+    /// Fast to build, easy to debug: the default.
+    #[default]
+    Debug,
+    /// Fast to run.
+    Release,
+}
+
+/// `lang.target.Backends`: the backends a target builds with under each profile, most preferred
+/// first.
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
+pub struct Backends {
+    pub debug: Vec<Symbol>,
+    pub release: Vec<Symbol>,
+}
+
+impl Backends {
+    /// The backends preferred under `profile`, in order.
+    #[must_use]
+    pub fn of(&self, profile: Profile) -> &[Symbol] {
+        match profile {
+            Profile::Debug => &self.debug,
+            Profile::Release => &self.release,
+        }
+    }
+}
+
 /// `lang.target.Spec`.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct TargetSpec {
@@ -107,8 +138,8 @@ pub struct TargetSpec {
     pub object_format: Symbol,
     /// The linker's entry symbol; `None` for libraries (spec 08, rule 2).
     pub entry_symbol: Option<Symbol>,
-    pub default_backend: Symbol,
-    pub default_linker: Symbol,
+    pub backends: Backends,
+    pub linker: Symbol,
     pub c: CTypes,
 }
 
@@ -119,6 +150,15 @@ pub struct Host {
     pub arch: Symbol,
     pub os: Symbol,
     pub target: TargetSpec,
+}
+
+/// Whether a component does its work yet.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Readiness {
+    /// It generates code, or links.
+    Ready,
+    /// Registered so that targets can name it, reporting that it is unavailable.
+    Planned,
 }
 
 /// The architectures a component handles.

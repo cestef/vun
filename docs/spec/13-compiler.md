@@ -21,7 +21,7 @@ knows about any backend; nothing above the linker adapter knows about any linker
  LIR                   type-erased SSA: i8..i128, f16..f64, ptr, vectors; loads, stores, calls
    |  LIR passes         ABI lowering per backend capabilities, identical-body merging
    v
- Backend (trait)       C | QBE | Cranelift | LLVM | external process
+ Backend (trait)       native | C | Cranelift | QBE | LLVM | external
    v
  Artifacts             objects, assembly, C source, in-memory code
    |  Tool steps        assembler, C compiler, when a backend emits text
@@ -228,8 +228,10 @@ randomly generated programs in the style of Csmith. That is what keeps guarantee
 ```rust
 /// Code generation. Backends declare capabilities; the driver adapts LIR to them.
 pub trait Backend {
-    fn info(&self) -> &BackendInfo;   // id, supported arches, capabilities; support derives from it
-    fn emit(&self, unit: &Unit, target: &TargetSpec, out: &mut dyn ArtifactSink, diag: &mut DiagCtxt)
+    fn info(&self) -> &BackendInfo;   // id, supported arches, capabilities, readiness
+    /// `Request`: the unit legalized for it, the target, where origins are in source, the
+    /// profile, and whether to add a listing of the code (`Emits::Listing`).
+    fn emit(&self, request: &Request, out: &mut dyn ArtifactSink, diag: &mut DiagCtxt)
         -> Result<(), ErrorGuaranteed>;
 }
 
@@ -264,7 +266,7 @@ pub trait DiagSink {
 ```
 
 - **Targets are data written in Vun.** A `TargetSpec` (word size, endianness, alignments, ABIs,
-  features, object format, entry symbol, default backend and linker) is a compile-time value from
+  features, object format, entry symbol, backends by profile and linker) is a compile-time value from
   the `targets` package, a `lang.target.Spec`: architectures, object formats, backends and linkers
   are `lang.meta.Name`s, sets the registries extend, and endianness is `lang.target.Endian`. Targets
   are named by system, then CPU: `targets.linux.x86_64`, `targets.bare.cortex_m4f`; the
@@ -291,7 +293,7 @@ pub trait DiagSink {
     input would then be another program's output.
 - **The binary has a size budget.** `cargo xtask size` builds the `dist` profile and fails past the
   budget, a constant of the task (`BUDGET`, bytes of the stripped binary on the host), 10 MiB,
-  raised from the first measured build (6,382,768 bytes) once the C and baseline backends took it
+  raised from the first measured build (6,382,768 bytes) once the C and native backends took it
   to 7,658,304; raising it, like a new external crate, is a decision stating the cost.
 - **The link plan is abstract.** Memory regions and sections from the build go into `LinkPlan`; the
   lld and GNU ld adapters turn them into linker scripts, others into flags.
@@ -306,7 +308,21 @@ pub trait DiagSink {
 | Cranelift | default debug backend | x86_64, arm64, riscv64, s390x | in process; roughly 20% less codegen time than LLVM for rustc, code about 14% slower |
 | QBE | small and simple | amd64, arm64, rv64 | subprocess on IL text; no vectors (lowered), no tail calls, no 32-bit targets |
 | LLVM | optimized builds, widest native reach | ARM32/Thumb, RV32, AVR, wasm, ... | optional; `noalias`, `musttail`, stack-size sections |
-| baseline | fastest debug builds | x86_64, then arm64 | a single-pass LIR backend in the style of TPDE (8x to 24x faster than LLVM -O0), section 8.3 |
+| native | fastest debug builds | x86_64, then arm64 | the toolchain's own: a single-pass LIR backend in the style of TPDE (8x to 24x faster than LLVM -O0), section 8.3 |
+| external | anything | any | a process reading LIR text |
+
+**Choosing a backend.** A target lists the backends it builds with under each profile, most
+preferred first (`lang.target.Backends`: `debug`, what `vun build` uses, and `release`, what
+`vun build --release` uses): `linux.x86_64` debug builds prefer `native`, then `cranelift`, then
+`c`, and release builds `llvm`, then `c`. A build takes the first that the toolchain has (its
+Cargo feature built in), that generates code (`BackendInfo.readiness`) and that generates it for
+the target's architecture (`BackendInfo.arches`); that is `Registry::choose`, its reasons typed
+(`Unfit::{Absent, Planned, Arch}`). `--backend` (or `VUN_BACKEND`) names one instead, which must
+fit; otherwise the build is refused with `backend.unavailable` or `backend.unsupported`, naming the
+backends that could, and a target none of whose preferences fit reports `backend.unchosen` with
+each one's reason. The profile also reaches the tools: a release build adds the target C
+compiler's `optimize` flags. `vun toolchain components` lists each backend with whether it
+generates code and for which architectures. Linkers are named by the target (`linker`).
 
 ### 8.1 What every backend shares
 
@@ -405,60 +421,93 @@ GNU ld through the same compiler; a plan's memory regions and section placement 
 script, built as data (`Script`) and printed once. Tool arguments are typed (`vun_tool::Arg`:
 text or a path), and `vun run` passes the program's exit status on.
 
-### 8.3 The baseline backend
+### 8.3 The native backend
 
-A native backend for debug builds, in TPDE's design, reading LIR through the shared analyses:
+The toolchain's own backend for debug builds, in TPDE's design, reading LIR through the shared
+analyses. It is layered as TPDE is, one crate per layer, so that a new architecture adds an
+assembler and its instruction compilers and nothing else:
+
+- **`vun-asm`**: what every assembler shares: a code buffer (`Buffer`), labels and the references
+  to them patched when the function ends (each architecture says how, `Isa::patch`),
+  relocations, the arithmetic of immediates, and listings.
+- **`vun-asm-x86_64`**, **`vun-asm-arm64`**: each architecture's instructions, declared once as a
+  table of forms: the kinds of operands a form takes (a register of some width, memory, an
+  immediate of some width, a condition, a label), the widths it is defined at, and its encoding.
+  The encoder emits an instruction by the first form its operands fit, the printer writes the
+  same form's text, and callers ask which forms fit before choosing operands. So an instruction's
+  encoding and its text cannot disagree, and a test decodes every form with an independent
+  decoder (yaxpeax) and compares both.
+- **`vun-object`**: relocatable objects as data, written once (ELF first); relocation kinds are
+  the framework's, each machine numbers them.
+- **`vun-codegen`**: the framework, which knows no architecture: value assignments, register
+  allocation, the frame, homes, values recomputed where used, callee-saved registers for loops,
+  jumps filling their targets' parameters, compare and branch fusion, and the snippet encoder.
+  An architecture gives it its registers and its own moves (`Arch`) and its instruction compilers
+  (`Isel`).
+- **`vun-backend-native`**: per architecture, the calling conventions, the snippets and the
+  instruction compilers; the unit assembled as one object; listings.
+
+The framework:
 
 - **One pass per function.** Blocks in `Order`, instructions in program order; instruction
   selection, register allocation and encoding happen together into a code buffer that later
-  steps only patch (jumps to later blocks).
-- **Values.** Each value has an assignment, indexed by its id: its register, if any, its spill
-  slot, whether the slot holds it, and its remaining uses from `Liveness`. A use decrements the
-  count; at zero, with the live range ending in the block, the register is free at once. Stack
-  slot addresses are recomputed from the frame pointer rather than spilled.
-- **Registers.** The lowest free register is taken; when none is, one is evicted round-robin. A
-  value used in several blocks of its innermost loop gets a callee-saved register for the loop.
-  Only the state at the current point is tracked: at a jump to a block with several
-  predecessors, or not next in `Order`, every live value without a fixed register is spilled, so
-  it has one known place, and `Moves` fills the target's parameters.
-- **Frames.** Always a frame pointer; the prologue reserves room for saving every callee-saved
-  register, and its frame size and saves are patched when the function ends. The frame size is
-  known exactly, so the baseline reports frame sizes (`stack.max`, spec 07).
-- **Instruction compilers** are a table from `InstKind` to a function per architecture. Fusion
-  looks only forward within a block: a compare whose one use is the branch ending it, an `Offset`
-  folded into a load's or store's address, a constant into an immediate.
-- **Semantics once.** TPDE derives its instruction sequences from C compiled by LLVM; the
-  baseline's are the operation facts of section 8.1 and small encoders per architecture, and an
-  operation an architecture cannot do in a few instructions (128-bit division, `f16`) calls a
-  helper written in Vun and compiled through the same pipeline.
+  steps only patch (jumps to later blocks, the frame size).
+- **Values.** Each value has an assignment, indexed by its id: its register, if any, its home in
+  the frame, whether the home holds it, and its remaining uses from `Liveness`. A use decrements
+  the count; at zero the register is free once the instruction is done. Constants and addresses
+  known while compiling (a slot's, a datum's, a function's, at constant offsets) are recomputed
+  where used, never kept: `Recompute`, found once per function.
+- **Registers.** The lowest free register is taken; when none is, one is evicted round-robin,
+  stored home if still used there only. Registers an instruction uses are locked until it is
+  done. Values live across the blocks of a loop, deepest loops and most uses first, each hold a
+  callee-saved register from definition to last use. Only the state at the current point is
+  tracked: before a call and at a jump to a block entered from elsewhere every value still used
+  is stored home, so each block starts with every value in its home or its own register, but a
+  block emitted next that only the block before reaches, which keeps the registers.
+- **Instruction compilers** ask the framework for operands (`Cx::reg`), results (`Cx::def`), a
+  result overwriting a dying operand (`Cx::reuse`: no copy where the operand is used no more),
+  scratch registers, and fixed registers freed (`Cx::take`).
+- **Snippets** (TPDE, section 4): most operations are instruction sequences as data, over slots
+  for the operation's operands (`In`, and memory at an operand's address, `At`), its result
+  (`Out`), scratch registers (`Temp`), registers an instruction requires (`Fixed`, freed before
+  the snippet starts) and operands taken as an immediate where a form takes one, else through the
+  register the instruction requires (`Through`: a shift's count, in `cl` unless constant). The
+  snippet encoder places each operand as the forms allow: an operand in a register as it is, a
+  constant as an immediate, a value in its home as memory, a known address folded into a memory
+  operand, else brought into a register; and a move of a dying operand into the result is no
+  instruction, the result taking its register. Where TPDE derives snippets from C through LLVM,
+  they are written against the instruction table: `add` is a move of the first operand into the
+  result then `add` of the second, and the encoder turns that into `add rdi, 0x1` where the first
+  operand dies in `rdi` and the second is 1.
+- **Fusion** looks only forward within a block: a compare whose one use is the branch ending it
+  is made by the branch, which jumps on the flags.
+- **Frames.** Always a frame pointer; the prologue reserves the frame with the widest immediate,
+  its size written when the function ends, and the callee-saved registers taken are saved below
+  the frame pointer. The frame size is known exactly, so the backend reports frame sizes
+  (`stack.max`, spec 07).
+- **Semantics once.** Instruction sequences come from the operation facts of section 8.1 and the
+  snippets; an operation an architecture cannot do in a few instructions (128-bit division,
+  `f16`) calls a helper written in Vun and compiled through the same pipeline.
 - **Output.** Functions are compiled in parallel into their own buffers; one thread assembles the
-  object (ELF first), with relocations for calls, data and imports. Encoders and the object writer
-  are part of the toolchain (no external crate).
+  object, with relocations for calls, data and imports. `vun debug code --backend native` prints
+  each function's listing: its instructions with their offsets and bytes, under the line of
+  source each LIR instruction comes from.
 
-As built (`compiler/back/baseline`, x86-64 System V, ELF): every value has a home in the frame,
-allocated when first stored; constants and addresses of slots, data and functions (at constant
-offsets) are recomputed where used and fold into memory operands. Values are held in the
-registers a call may overwrite, but `r10` and `r11`, kept for the backend's own moves; before a
-call and at the end of every block each value still used is stored home, and each block starts
-with every register free, but a block emitted next that only the block before reaches, which keeps
-its registers (a plain jump into it stores nothing). A compare whose one use is the branch ending
-its block is made by the branch, which jumps on the flags. Frame sizes (the frame, the return
-address and the saved frame pointer) are reported as the object is emitted
-(`ArtifactSink::frames`); a backend without them leaves them to its tools' report. Vun's convention passes the signature's values in the registers C
-passes integers in, then on the stack; the C convention classifies records as System V does
-(integer records of up to 16 bytes in registers, larger ones in memory, a result in memory through
-an address passed first). Narrow integers are held with undefined upper bits and extended where an
-operation reads them (division, right shifts, conversions, C arguments). Values live across the
-blocks of a loop, deepest loops and most uses first, each hold one of `rbx` and `r12` to `r15`
-from definition to last use, never stored home; the prologue saves the registers taken and each
-return restores them. A float is held as its bits in a general register, like an integer, so moves,
-spills and selects need nothing of their own; arithmetic, comparisons and conversions move the
-bits through `xmm0` and `xmm1`. Conventions pass floats in SSE registers, and a small record's
-eightbytes in general or SSE registers by their class (System V: SSE when every field in it is a
-float); a C call sets `al` to the SSE registers used. LIR's float comparisons are ordered (false
-where either operand is a NaN); lowering gives IEEE `!=` as `==` negated, and follows each float
-operation with a select of the canonical NaN where its result is unequal to itself. `rem` and
-`mul_add` run as `lang.float.soft`'s functions (`#[lower.by]`).
+As built (x86-64 System V, ELF): values are held in the registers a call may overwrite but
+`r10` and `r11`, which the framework keeps for its own moves, and those of loops in `rbx` and
+`r12` to `r15`. Vun's convention passes the signature's values in the registers C passes
+integers in, then on the stack; the C convention classifies records as System V does (integer
+records of up to 16 bytes in registers, larger ones in memory, a result in memory through an
+address passed first). Narrow integers are held with undefined upper bits and extended where an
+operation reads them (division, right shifts, conversions, C arguments). A float is held as its
+bits in a general register, like an integer, so moves, spills and selects need nothing of their
+own; arithmetic, comparisons and conversions move the bits through `xmm0` and `xmm1`.
+Conventions pass floats in SSE registers, and a small record's eightbytes in general or SSE
+registers by their class (System V: SSE when every field in it is a float); a C call sets `al`
+to the SSE registers used. LIR's float comparisons are ordered (false where either operand is a
+NaN); lowering gives IEEE `!=` as `==` negated, and follows each float operation with a select of
+the canonical NaN where its result is unequal to itself. `rem` and `mul_add` run as
+`lang.float.soft`'s functions (`#[lower.by]`).
 
 **Legalization.** Each backend declares the widest integer it computes with
 (`BackendCaps::int_bits`); before it reads a unit, `Unit::legalize` splits every integer twice as
@@ -470,14 +519,14 @@ result as a record of them (returned in registers under the C convention, as C r
 128-bit integers, through memory under Vun's). Division and remainder call a helper function the
 pass adds (restoring division over pairs, signs put back around it). Atomic accesses of wide
 integers and conversions between them and floats are refused (`backend.lacks`). A backend that
-does not compute `f16` (`BackendCaps::half` is `Half::Promoted`; both the C and the baseline
+does not compute `f16` (`BackendCaps::half` is `Half::Promoted`; both the C and the native
 backend) receives each `f16` as its bits, an `i16`: every operation on it widens its operands to
 `f32` exactly, computes there and rounds back once to nearest even, which gives the `f16` result
 since `f32`'s 24 bits of significand are at least twice `f16`'s 11 plus 2; comparisons compare
 the widened values. Both sequences are straight-line integer and `f32` operations. A promoted
 `f16` passed under the C convention, and a conversion to `f16` from anything but `f32`, which
 would round twice, are refused.
-`vun build --backend baseline` links the object with the target's linker; the backend tests run
+`vun build --backend native` links the object with the target's linker; the backend tests run
 every program through both backends and require the same result.
 
 | Linker | Use |
@@ -496,8 +545,8 @@ compiler/
   front/   grammar  desugar  syntax  hir  sema
   mid/     mir  passes  interp
   low/     lir  abi  passes
-  back/    api  c  baseline  cranelift  qbe  llvm  process
-  link/    api  wild  mold  lld  gnu  msvc  process
+  back/    api  asm  x86_64  arm64  object  codegen  native  c  cranelift  qbe  llvm  external
+  link/    api  wild  mold  lld  gnu  msvc  external
   render/  short  annotate  ariadne  json  sarif
   tools/   build  fmt  bind  clang  probe  harness  driver  lsp  cli  generate  xtask
 lib/

@@ -3,20 +3,23 @@
 
 use vun_harness::{ACCEPT, repo_root};
 
+use vun_driver::Codegen;
 use vun_driver::compare::Ran;
+use vun_target::Name;
 
 use crate::common::Fixture;
 
 /// The backends every program here is built through, which must agree.
-const BACKENDS: [&str; 2] = [vun_backend_c::INFO.id.0, vun_backend_baseline::INFO.id.0];
+const BACKENDS: [Name; 2] = [vun_backend_c::INFO.id, vun_backend_native::INFO.id];
 
 /// Builds `source` through `backend` and runs it.
-fn run(name: &str, source: &str, backend: &str) -> std::process::Output {
+fn run(name: &str, source: &str, backend: Name) -> std::process::Output {
     let fixture = Fixture::new(&format!("{name}-{backend}"));
     let path = fixture.root.write("main.vun", source);
     let mut session = fixture.session();
     let file = session.load(&path).unwrap();
-    let program = session.build(file, Some(backend), None);
+    session.codegen = Codegen::through(backend);
+    let program = session.build(file, None);
     let program = program.unwrap_or_else(|_| panic!("{:#?}", session.diag));
     std::process::Command::new(program).output().unwrap()
 }
@@ -62,26 +65,28 @@ fn a_program_split_into_shards_runs_and_reports_its_frames() {
     session.registry.add_backend(Box::new(vun_backend_c::CBackend { shard: 4 }));
     session.registry.add_linker(Box::new(vun_link_gnu::GnuLinker));
     let file = session.load(&path).unwrap();
-    let compiled = session.compile(file, Some(vun_backend_c::INFO.id.0));
+    session.codegen = Codegen::through(vun_backend_c::INFO.id);
+    let compiled = session.compile(file);
     let compiled = compiled.unwrap_or_else(|_| panic!("{:#?}", session.diag));
     assert!(compiled.objects.len() > 2, "{:?}", compiled.objects);
-    assert_eq!(compiled.frames.len(), compiled.coded.unit().functions.len());
-    let program = session.build(file, Some(vun_backend_c::INFO.id.0), None);
+    assert_eq!(compiled.frames.len(), compiled.coded.unit.functions.len());
+    let program = session.build(file, None);
     let program = program.unwrap_or_else(|_| panic!("{:#?}", session.diag));
     let run = std::process::Command::new(program).output().unwrap();
     assert_eq!(run.stdout, b"hello\n");
 }
 
 #[test]
-fn the_baseline_backend_reports_each_frame_it_lays_out() {
-    let fixture = Fixture::new("backend-baseline-frames");
+fn the_native_backend_reports_each_frame_it_lays_out() {
+    let fixture = Fixture::new("backend-native-frames");
     let text = std::fs::read_to_string(repo_root().join(ACCEPT).join("programs/hello.vun")).unwrap();
     let path = fixture.root.write("hello.vun", text);
     let mut session = fixture.session();
     let file = session.load(&path).unwrap();
-    let compiled = session.compile(file, Some(vun_backend_baseline::INFO.id.0));
+    session.codegen = Codegen::through(vun_backend_native::INFO.id);
+    let compiled = session.compile(file);
     let compiled = compiled.unwrap_or_else(|_| panic!("{:#?}", session.diag));
-    assert_eq!(compiled.frames.len(), compiled.coded.unit().functions.len());
+    assert_eq!(compiled.frames.len(), compiled.coded.unit.functions.len());
     // Every frame holds at least the return address and the saved frame pointer.
     assert!(compiled.frames.iter().all(|&(_, bytes)| bytes >= 16), "{:?}", compiled.frames);
 }
@@ -161,12 +166,13 @@ fn assertions_and_failures_trap_at_run_time() {
 }
 
 /// The ids of what building `source` through `backend` reports.
-fn reported(name: &str, source: &str, backend: &str) -> Vec<vun_diag::DiagId> {
+fn reported(name: &str, source: &str, backend: Name) -> Vec<vun_diag::DiagId> {
     let fixture = Fixture::new(&format!("{name}-{backend}"));
     let path = fixture.root.write("main.vun", source);
     let mut session = fixture.session();
     let file = session.load(&path).unwrap();
-    let _ = session.compile(file, Some(backend));
+    session.codegen = Codegen::through(backend);
+    let _ = session.compile(file);
     session.diag.sorted(session.origins).into_iter().map(|d| d.id.clone()).collect()
 }
 
@@ -232,4 +238,18 @@ fn float_rem_and_mul_add_run_as_vun_and_agree_with_compile_time_bit_for_bit() {
 fn f16_runs_as_bits_computed_in_f32_and_agrees_with_compile_time_bit_for_bit() {
     // The number of checks whose run-time result differs from the compile-time one.
     assert_eq!(status("backend-half", &program("half.vun")), Some(0));
+}
+
+#[test]
+fn the_native_backend_lists_its_code_under_the_source_lines() {
+    let fixture = Fixture::new("backend-native-listing");
+    let path = fixture.root.write("main.vun", program("exit_status.vun"));
+    let mut session = fixture.session();
+    let file = session.load(&path).unwrap();
+    session.codegen = Codegen::through(vun_backend_native::INFO.id);
+    let mut out = Vec::new();
+    session.dump_code(file, &mut out).unwrap();
+    let text = String::from_utf8(out).unwrap();
+    assert!(text.lines().any(|l| l.ends_with("push rbp")), "{text}");
+    assert!(text.lines().any(|l| l.starts_with("  ; ") && l.contains("main.vun:")), "{text}");
 }

@@ -7,12 +7,13 @@ mod script;
 use vun_diag::{DiagCtxt, Diagnostic, ErrorGuaranteed, Msg, errors};
 use vun_fs::Edit;
 use vun_link::{LinkPlan, Linker, LinkerInfo, OutputKind};
-use vun_target::{Name, TargetSpec};
+use vun_target::{Name, Readiness, TargetSpec};
 use vun_tool::{Arg, Executable, Invocation, Tool, gcc};
 
 pub use script::Script;
 
-pub const INFO: LinkerInfo = LinkerInfo { id: Name("gnu"), formats: &[Name("elf")], regions: true };
+pub const INFO: LinkerInfo =
+    LinkerInfo { id: Name("gnu"), formats: &[Name("elf")], regions: true, readiness: Readiness::Ready };
 
 /// The extension of a linker script written beside the output.
 const SCRIPT: &str = "ld";

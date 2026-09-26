@@ -12,8 +12,15 @@ pub const hosts: Item = Item::new(&["targets", "hosts"]);
 /// The flags giving the C backend's rules (spec 13, section 8.2): strict C99, freestanding C,
 /// memory without type-based aliasing.
 pub const c_flags: Item = Item::new(&["targets", "c_flags"]);
+/// The flags a release build adds for a GCC or Clang driver.
+pub const c_optimize: Item = Item::new(&["targets", "c_optimize"]);
 /// A GCC or Clang driver, run as `command`, its links taking `link_flags`.
 pub const gnu: Item = Item::new(&["targets", "gnu"]);
+/// The backends of a target the native backend generates code for: it for debug builds, and C
+/// wherever the others are missing.
+pub const native_first: Item = Item::new(&["targets", "native_first"]);
+/// The backends of a target reached through C: C for both, LLVM first for release builds.
+pub const through_c: Item = Item::new(&["targets", "through_c"]);
 /// The C types where `long` and addresses are 64 bits (LP64), built by `compiler`.
 pub const lp64: Item = Item::new(&["targets", "lp64"]);
 /// The C types where `int`, `long` and addresses are 32 bits (ILP32), built by `compiler`.

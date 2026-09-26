@@ -4,7 +4,7 @@ use vun_intern::Symbol;
 use vun_lir::{AbiType, Builder, Conv, Ext, FuncId, Linkage, Scalar, Signature, Terminator, Unit, Value};
 use vun_origin::{OriginId, OriginTable};
 use vun_span::{SourceFiles, Span};
-use vun_target::{Atomics, CCompiler, CInt, CTypes, Endian, FrameSizes, TargetSpec};
+use vun_target::{Atomics, Backends, CCompiler, CInt, CTypes, Endian, FrameSizes, TargetSpec};
 
 use crate::ast::{Ident, Names};
 use crate::{CBackend, Lack};
@@ -28,8 +28,8 @@ fn target() -> TargetSpec {
         endian: Endian::Little,
         object_format: name("elf"),
         entry_symbol: None,
-        default_backend: name("c"),
-        default_linker: name("gnu"),
+        backends: Backends { debug: vec![name("c")], release: vec![name("c")] },
+        linker: name("gnu"),
         c: CTypes {
             short: int(16, 2),
             int: int(32, 4),
@@ -39,6 +39,7 @@ fn target() -> TargetSpec {
             compiler: CCompiler {
                 command: name("cc"),
                 flags: Vec::new(),
+                optimize: Vec::new(),
                 link_flags: Vec::new(),
                 atomics: Atomics::None,
                 frame_sizes: FrameSizes::StackUsage,

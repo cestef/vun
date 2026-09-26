@@ -1,0 +1,19 @@
+[package]
+name = "vun-asm-arm64"
+description = "The AArch64 assembler: instruction forms as one table, read by the encoder, the printer and form selection."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+vun-asm.workspace = true
+vun-object.workspace = true
+
+[dev-dependencies]
+# An independent decoder checks every form of the table; never shipped.
+yaxpeax-arm = { workspace = true }
+yaxpeax-arch = { workspace = true }

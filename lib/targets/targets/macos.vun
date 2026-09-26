@@ -10,7 +10,7 @@ arm64 := lang.target.Spec{
     .endian = .little,
     .object_format = .macho,
     .entry_symbol = .some("_main"),
-    .default_backend = .cranelift,
-    .default_linker = .lld,
+    .backends = targets.native_first,
+    .linker = .lld,
     .c = targets.lp64(targets.gnu("clang", &[])),
 };

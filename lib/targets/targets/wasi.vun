@@ -10,7 +10,7 @@ wasm32 := lang.target.Spec{
     .endian = .little,
     .object_format = .wasm,
     .entry_symbol = .some("_start"),
-    .default_backend = .llvm,
-    .default_linker = .lld,
+    .backends = .{ .debug = &[.llvm], .release = &[.llvm] },
+    .linker = .lld,
     .c = targets.ilp32(targets.gnu("clang", &[])),
 };
