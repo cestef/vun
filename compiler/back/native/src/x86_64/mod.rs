@@ -11,6 +11,7 @@ use vun_asm_x86_64::{Asm, Cc, Emit, Mem, Op, Operand, Reg, Size, X86_64};
 use vun_codegen::snippet::{Emits, Width};
 use vun_codegen::{Anchor, Arch, Place, Recompute};
 use vun_lir::{Address, Cond, Scalar};
+use vun_target::TargetSpec;
 
 /// x86-64, as the framework drives it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -168,4 +169,9 @@ pub const fn condition(cond: Cond) -> Option<Cc> {
         Cond::UGe => Cc::Ae,
         Cond::FEq | Cond::FNe | Cond::FLt | Cond::FLe | Cond::FGt | Cond::FGe => return None,
     })
+}
+
+/// System V is the one convention of x86-64 targets yet.
+impl crate::Native for X86 {
+    fn convention(_: &TargetSpec) {}
 }

@@ -28,7 +28,7 @@ impl Sel<'_, '_> {
             },
             Callee::Indirect(_, s) => s,
         };
-        let passing = Passing::of(signature).map_err(|m| self.lack(m))?;
+        let passing = Passing::of(signature, self.state.convention).map_err(|m| self.lack(m))?;
         for &a in args {
             self.size(a)?;
         }
@@ -40,7 +40,7 @@ impl Sel<'_, '_> {
         let mut copies = Vec::new();
         for (&a, loc) in args.iter().zip(&passing.params) {
             match loc {
-                Loc::Stack(offset) => self.outgoing(a, *offset),
+                Loc::Stack { offset, bytes } => self.outgoing(a, *offset, *bytes),
                 Loc::Copied { offset: at, size } => {
                     self.reg_to(a, Arm::CARRIER);
                     offset(&mut self.asm, Arm::TEMP, Reg::Sp, disp(*at));
@@ -51,8 +51,8 @@ impl Sel<'_, '_> {
                     self.reg_to(a, Arm::CARRIER);
                     offset(&mut self.asm, Arm::TEMP, FP, i64::from(copy));
                     self.copy_bytes(Arm::TEMP, Arm::CARRIER, *size, FAR);
-                    if let Loc::Stack(at) = **at {
-                        self.store_outgoing(Arm::TEMP, at);
+                    if let Loc::Stack { offset, bytes } = **at {
+                        self.store_outgoing(Arm::TEMP, offset, bytes);
                     }
                     copies.push(copy);
                 }
@@ -87,7 +87,7 @@ impl Sel<'_, '_> {
                         offset(&mut self.asm, r, FP, i64::from(copy));
                     }
                 }
-                Loc::Stack(_) | Loc::Copied { .. } | Loc::Returned => {}
+                Loc::Stack { .. } | Loc::Copied { .. } | Loc::Returned => {}
             }
         }
         if passing.ret == Ret::Indirect {
@@ -121,13 +121,15 @@ impl Sel<'_, '_> {
     }
 
     /// Writes `a` at `offset` of the outgoing arguments.
-    fn outgoing(&mut self, a: Value, offset: u64) {
+    fn outgoing(&mut self, a: Value, offset: u64, bytes: u64) {
         self.reg_to(a, Arm::CARRIER);
-        self.store_outgoing(Arm::CARRIER, offset);
+        self.store_outgoing(Arm::CARRIER, offset, bytes);
     }
 
-    fn store_outgoing(&mut self, r: Reg, offset: u64) {
-        access(&mut self.asm, Op::Str, Size::B64, r.into(), Reg::Sp, disp(offset), FAR);
+    /// Stores the `bytes` low bytes of `r` where the stack argument at `offset` goes.
+    fn store_outgoing(&mut self, r: Reg, offset: u64, bytes: u64) {
+        let size = Size::of_bytes(bytes).expect("stack arguments are scalars or addresses");
+        access(&mut self.asm, Op::Str, size, r.into(), Reg::Sp, disp(offset), FAR);
     }
 
     /// Extends an integer of `size` in `r` to 32 bits, as the C convention expects of callers

@@ -12,6 +12,9 @@ use vun_asm_arm64::{Arm64, Asm, Cc, Emit, Mem, Op, Operand, Reg, Size};
 use vun_codegen::snippet::{Emits, Width};
 use vun_codegen::{Anchor, Arch, Place, Recompute};
 use vun_lir::{Address, Cond, Scalar};
+use vun_target::{Name, TargetSpec};
+
+use self::abi::Convention;
 
 /// arm64, as the framework drives it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -258,4 +261,13 @@ pub const fn condition(cond: Cond) -> Option<Cc> {
         Cond::FLt => Cc::Mi,
         Cond::FNe => return None,
     })
+}
+
+/// The target ABI following Apple's variant of the call standard.
+const DARWIN: Name = Name("darwin");
+
+impl crate::Native for Arm {
+    fn convention(target: &TargetSpec) -> Convention {
+        if DARWIN.is(target.abi) { Convention::Darwin } else { Convention::Aapcs64 }
+    }
 }

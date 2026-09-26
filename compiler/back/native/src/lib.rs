@@ -28,7 +28,7 @@ use vun_lir::unit::Unit;
 use vun_lir::{Address, FuncId, Function};
 use vun_object::{Format, Machine};
 use vun_par::Parallel;
-use vun_target::{Arches, Name};
+use vun_target::{Arches, Name, TargetSpec};
 
 pub use listing::Listing;
 
@@ -38,6 +38,11 @@ struct Arch {
     name: Name,
     machine: Machine,
     object: fn(&Request<'_>, Machine, Format) -> Result<Emitted, Lack>,
+}
+
+/// An architecture's instruction compilers, with the calling convention a target follows.
+pub trait Native: Isel {
+    fn convention(target: &TargetSpec) -> Self::Convention;
 }
 
 /// The object formats the backend writes, by their names among targets', and the machines it
@@ -98,14 +103,18 @@ impl NativeBackend {
     ///
     /// # Errors
     /// Returns the first thing a function needs that the backend cannot compile yet.
-    pub fn compile<A: Isel>(unit: &Unit, listed: bool) -> Result<IndexVec<FuncId, Code<A>>, Lack>
+    pub fn compile<A: Isel>(
+        unit: &Unit,
+        convention: A::Convention,
+        listed: bool,
+    ) -> Result<IndexVec<FuncId, Code<A>>, Lack>
     where
         Code<A>: Send,
     {
         let functions: Vec<&Function> = unit.functions.iter().map(|(_, f)| f).collect();
         let compiled = functions.par_map(|f| {
             let _span = vun_trace::tracing::debug_span!("native", f = %f.linkage).entered();
-            let compiled = vun_codegen::compile::<A>(unit, f, listed);
+            let compiled = vun_codegen::compile::<A>(unit, f, convention, listed);
             if let Ok(c) = &compiled {
                 vun_trace::tracing::debug!(bytes = c.code.bytes.len(), frame = c.frame, "compiled");
             }
@@ -120,12 +129,12 @@ impl NativeBackend {
     ///
     /// # Errors
     /// As [`Self::compile`].
-    pub fn object<A: Isel>(request: &Request<'_>, machine: Machine, format: Format) -> Result<Emitted, Lack>
+    pub fn object<A: Native>(request: &Request<'_>, machine: Machine, format: Format) -> Result<Emitted, Lack>
     where
         Code<A>: Send,
         <A::Isa as Isa>::Inst<Address>: Display,
     {
-        let code = Self::compile::<A>(request.unit, request.listing)?;
+        let code = Self::compile::<A>(request.unit, A::convention(request.target), request.listing)?;
         let bytes = object::assemble(request.unit, &code, (machine, format), request.lines).write();
         let mut artifacts = vec![Artifact { name: PathBuf::from(OBJECT), kind: Emits::Object, bytes }];
         if request.listing {

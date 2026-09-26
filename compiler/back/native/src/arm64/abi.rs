@@ -3,7 +3,8 @@
 //! stack. Integers and addresses travel in general registers, floats in floating-point ones; a
 //! record of up to four floats of one type (a homogeneous aggregate) travels a field per
 //! floating-point register, another record of up to 16 bytes in up to two general registers, and
-//! a larger one as the address of a copy the caller makes.
+//! a larger one as the address of a copy the caller makes. Apple's variant (`Convention::Darwin`)
+//! gives a C call's scalars on the stack their own size at their own alignment, not a word each.
 
 use vun_backend::Missing;
 use vun_lir::{AbiType, Conv, Record, Scalar, Signature, Value};
@@ -17,6 +18,7 @@ pub const FP_ARGS: [V; 8] = [V(0), V(1), V(2), V(3), V(4), V(5), V(6), V(7)];
 /// The register the address a result is written through is passed in.
 pub const INDIRECT: Reg = Reg::X8;
 const WORD: u64 = 8;
+const POINTER_BITS: u32 = 64;
 /// The size up to which a record travels in general registers.
 const IN_REGISTERS: u64 = 16;
 /// The most fields of a homogeneous aggregate.
@@ -37,12 +39,24 @@ pub struct Part {
     pub bytes: u64,
 }
 
+/// The variant of AAPCS64 a target follows.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum Convention {
+    #[default]
+    Aapcs64,
+    /// Apple's, on macOS and iOS.
+    Darwin,
+}
+
 /// Where one LIR value of a signature travels.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Loc {
     Reg(Carrier),
-    /// At this offset of the arguments on the stack.
-    Stack(u64),
+    /// At this offset of the arguments on the stack, taking these bytes.
+    Stack {
+        offset: u64,
+        bytes: u64,
+    },
     /// The address of a record whose parts travel in registers.
     Split(Vec<Part>),
     /// The address of a record copied onto the stack at this offset, of this size.
@@ -154,6 +168,8 @@ struct Free {
     ints: &'static [Reg],
     fps: &'static [V],
     stack: u64,
+    /// Whether a scalar on the stack takes its own size rather than a word.
+    packed: bool,
 }
 
 impl Free {
@@ -163,7 +179,9 @@ impl Free {
         at
     }
 
-    fn word(&mut self, float: bool) -> Loc {
+    /// The next register of the class, else the stack: a word, or `bytes` at their own
+    /// alignment where arguments are packed.
+    fn word(&mut self, float: bool, bytes: u64) -> Loc {
         let next = if float {
             self.fps.split_first().map(|(&v, rest)| {
                 self.fps = rest;
@@ -175,7 +193,18 @@ impl Free {
                 Carrier::Int(r)
             })
         };
-        next.map_or_else(|| Loc::Stack(self.stack(WORD)), Loc::Reg)
+        next.map_or_else(
+            || {
+                if self.packed {
+                    let offset = self.stack.next_multiple_of(bytes);
+                    self.stack = offset + bytes;
+                    Loc::Stack { offset, bytes }
+                } else {
+                    Loc::Stack { offset: self.stack(WORD), bytes: WORD }
+                }
+            },
+            Loc::Reg,
+        )
     }
 }
 
@@ -195,7 +224,7 @@ impl Passing {
     ///
     /// # Errors
     /// Returns what the backend cannot pass yet: `f16` and 128-bit integers.
-    pub fn of(signature: &Signature) -> Result<Self, Missing> {
+    pub fn of(signature: &Signature, convention: Convention) -> Result<Self, Missing> {
         let c = signature.conv == Conv::C;
         let ret = match &signature.result {
             Some(AbiType::Scalar(s)) => {
@@ -209,7 +238,8 @@ impl Passing {
             // Vun's convention passes the result's address as its last value.
             None | Some(AbiType::Record(_) | AbiType::Memory { .. }) => Ret::None,
         };
-        let mut free = Free { ints: &ARGS, fps: &FP_ARGS, stack: 0 };
+        let packed = c && convention == Convention::Darwin;
+        let mut free = Free { ints: &ARGS, fps: &FP_ARGS, stack: 0, packed };
         let mut params = Vec::new();
         for param in &signature.params {
             let loc = match param {
@@ -218,7 +248,7 @@ impl Passing {
                     match shape.parts(r, &mut free.ints, &mut free.fps) {
                         Some(parts) => Loc::Split(parts),
                         None if matches!(shape, Shape::Large) => {
-                            Loc::Indirect { size: r.size, at: Box::new(free.word(false)) }
+                            Loc::Indirect { size: r.size, at: Box::new(free.word(false, WORD)) }
                         }
                         // Too few registers left: none of the class is used after it.
                         None => {
@@ -230,10 +260,9 @@ impl Passing {
                         }
                     }
                 }
-                AbiType::Scalar(s) => free.word(is_float(*s)?),
-                AbiType::Int(..) | AbiType::Address(_) | AbiType::Record(_) | AbiType::Memory { .. } => {
-                    free.word(false)
-                }
+                AbiType::Scalar(s) => free.word(is_float(*s)?, s.bytes(POINTER_BITS)),
+                AbiType::Int(s, _) => free.word(false, s.bytes(POINTER_BITS)),
+                AbiType::Address(_) | AbiType::Record(_) | AbiType::Memory { .. } => free.word(false, WORD),
             };
             params.push(loc);
         }
@@ -241,7 +270,7 @@ impl Passing {
             params.push(match ret {
                 Ret::Indirect => Loc::Reg(Carrier::Int(INDIRECT)),
                 Ret::Split(_) => Loc::Returned,
-                _ => free.word(false),
+                _ => free.word(false, WORD),
             });
         }
         Ok(Self { params, ret, stack: free.stack.next_multiple_of(2 * WORD) })

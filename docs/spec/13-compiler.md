@@ -476,7 +476,9 @@ assembler and its instruction compilers and nothing else:
   underscore, whose relocations keep a word's addend in place and an instruction's in an
   `ARM64_RELOC_ADDEND` before it, and whose debugging sections are `__DWARF` ones; relocation
   kinds are the framework's, each format and machine numbers them. A target whose format the
-  native backend does not write for its machine is refused (`backend.lacks`).
+  native backend does not write for its machine is refused (`backend.lacks`). Each
+  architecture's instruction compilers take the target's variant of the C calling convention:
+  on arm64, AAPCS64 or Apple's, whose C calls pack scalars on the stack at their own size.
 - **`vun-dwarf`**: debugging information (DWARF 4) as sections of an object: one compilation
   unit and the line table of every function, a row per instruction whose line changes, from the
   marks the framework records (`Compiled.marks`: each instruction's and terminator's code with

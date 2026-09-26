@@ -26,7 +26,7 @@ fn compiled<A: Isel>(build: impl FnOnce(&mut Builder, Value, OriginId)) -> Code<
     build(&mut b, n, origin);
     let mut unit = Unit { pointer_bits: 64, ..Unit::default() };
     let f = unit.functions.push(b.finish());
-    vun_codegen::compile::<A>(&unit, &unit.functions[f], true).unwrap()
+    vun_codegen::compile::<A>(&unit, &unit.functions[f], A::Convention::default(), true).unwrap()
 }
 
 /// The instructions of `code`, as the listing prints them.

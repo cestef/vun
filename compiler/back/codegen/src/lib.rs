@@ -67,11 +67,14 @@ pub trait Arch: Sized + 'static {
 /// The instruction compilers of an architecture: what the framework calls as it walks a
 /// function.
 pub trait Isel: Arch {
-    /// The state of the instruction compilers for `f`.
+    /// The variant of the architecture's C calling convention a target follows.
+    type Convention: Copy + Default + Send + Sync;
+
+    /// The state of the instruction compilers for `f`, under `convention`.
     ///
     /// # Errors
     /// Returns what the backend cannot compile in `f`'s signature.
-    fn state(f: &Function) -> Result<Self::State, Lack>;
+    fn state(f: &Function, convention: Self::Convention) -> Result<Self::State, Lack>;
 
     /// Whether a branch on the comparison `cond` jumps on the flags it sets.
     fn fuses(cond: Cond) -> bool;

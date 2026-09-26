@@ -1,13 +1,14 @@
 //! arm64: fusion, callee-saved registers for loops, results in dying operands' registers, each
 //! instruction decoded by an independent decoder to the text the listing shows.
 
-use vun_lir::{BinOp, Cond, Scalar, Target, Terminator};
+use vun_lir::{BinOp, Cond, Conv, Ext, Scalar, Signature, Target, Terminator};
 use yaxpeax_arch::{Decoder, U8Reader};
 use yaxpeax_arm::armv8::a64::InstDecoder;
 
 use super::{compiled, text, to};
 use crate::Code;
 use crate::arm64::Arm;
+use crate::arm64::abi::{Convention, Loc, Passing};
 
 /// The listing of `code`, each instruction checked against the decoder's reading of its word.
 fn checked(code: &Code<Arm>) -> Vec<String> {
@@ -97,4 +98,22 @@ fn a_dying_operand_s_register_holds_the_result() {
             "ret"
         ]
     );
+}
+
+#[test]
+fn apple_packs_a_c_calls_stack_arguments_by_their_own_size() {
+    let int = |s| vun_lir::AbiType::Int(s, Ext::Zero);
+    let mut params = vec![int(Scalar::I32); 8];
+    params.extend([int(Scalar::I8), int(Scalar::I8), int(Scalar::I16), int(Scalar::I32)]);
+    let signature = Signature { conv: Conv::C, params, result: None };
+    let stacked = |convention| {
+        let passing = Passing::of(&signature, convention).unwrap();
+        let at = passing.params.iter().filter_map(|loc| match *loc {
+            Loc::Stack { offset, bytes } => Some((offset, bytes)),
+            _ => None,
+        });
+        (at.collect::<Vec<_>>(), passing.stack)
+    };
+    assert_eq!(stacked(Convention::Darwin), (vec![(0, 1), (1, 1), (2, 2), (4, 4)], 16));
+    assert_eq!(stacked(Convention::Aapcs64), (vec![(0, 8), (8, 8), (16, 8), (24, 8)], 32));
 }

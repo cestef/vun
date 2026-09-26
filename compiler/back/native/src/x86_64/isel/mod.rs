@@ -52,7 +52,9 @@ impl std::ops::DerefMut for Sel<'_, '_> {
 }
 
 impl Isel for X86 {
-    fn state(f: &Function) -> Result<State, Lack> {
+    type Convention = ();
+
+    fn state(f: &Function, (): ()) -> Result<State, Lack> {
         let passing = Passing::of(&f.signature).map_err(|m| m.at(f.origin))?;
         Ok(State { passing, frame_at: 0, frame_imm: 0, hidden: None, gathered: None })
     }

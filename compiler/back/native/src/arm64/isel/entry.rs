@@ -41,7 +41,7 @@ impl Sel<'_, '_> {
                     self.state.gathered = Some(buffer);
                     Place::frame(buffer)
                 }
-                Loc::Reg(_) | Loc::Stack(_) | Loc::Indirect { .. } => continue,
+                Loc::Reg(_) | Loc::Stack { .. } | Loc::Indirect { .. } => continue,
             };
             self.recompute_as(v, place);
         }
@@ -78,7 +78,7 @@ impl Sel<'_, '_> {
             };
             match loc {
                 Loc::Reg(carrier) => self.receive(v, *carrier),
-                Loc::Stack(offset) => self.home_at(v, CALLER_ARGS + offset_of(*offset)),
+                Loc::Stack { offset, .. } => self.home_at(v, CALLER_ARGS + offset_of(*offset)),
                 Loc::Split(parts) => {
                     let buffer = self.place(v).expect("placed by the prologue");
                     for part in parts {

@@ -64,6 +64,7 @@ pub struct Compiled<T> {
 pub fn compile<A: Isel>(
     unit: &Unit,
     f: &Function,
+    convention: A::Convention,
     listed: bool,
 ) -> Result<Compiled<<A::Isa as Isa>::Inst<Address>>, Lack> {
     if f.signature.conv == Conv::Naked {
@@ -87,7 +88,7 @@ pub fn compile<A: Isel>(
     let mut cx = Cx {
         unit,
         f,
-        state: A::state(f)?,
+        state: A::state(f, convention)?,
         order,
         cfg,
         asm,
