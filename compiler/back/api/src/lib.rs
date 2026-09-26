@@ -10,6 +10,7 @@ pub use lack::{Lack, Missing};
 use std::path::PathBuf;
 
 use vun_diag::{DiagCtxt, Diagnostic, ErrorGuaranteed, Msg, errors};
+use vun_intern::Symbol;
 use vun_lir::FuncId;
 use vun_lir::legalize::Half;
 use vun_lir::unit::Unit;
@@ -126,6 +127,13 @@ pub struct Line {
 /// Where origins are in source (spec 10, section 1).
 pub trait Lines {
     fn line(&self, origin: OriginId) -> Option<Line>;
+
+    /// The declaration `origin` is in, and those around it, outermost first: what names an
+    /// internal function's symbol for debuggers and profilers.
+    fn declaration(&self, origin: OriginId) -> Vec<Symbol> {
+        let _ = origin;
+        Vec::new()
+    }
 }
 
 /// What a backend is asked to generate code for.

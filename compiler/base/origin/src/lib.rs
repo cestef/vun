@@ -204,6 +204,26 @@ impl OriginTable {
         }
     }
 
+    /// The names of the declaration `id` declares or is written inside and of those around it,
+    /// outermost first: `Pair.swap` for a function `swap` declared in the struct `Pair`.
+    #[must_use]
+    pub fn declaration_path(&self, id: OriginId) -> Vec<Symbol> {
+        let mut path = Vec::new();
+        let mut at = Some(id);
+        while let Some(id) = at {
+            at = match self.get(id).anchor {
+                Anchor::Declaration { within, name } => {
+                    path.push(name);
+                    within
+                }
+                Anchor::Within(declaration) => Some(declaration),
+                Anchor::File => None,
+            };
+        }
+        path.reverse();
+        path
+    }
+
     /// Walks from `id` towards user code, starting with `id` itself.
     #[must_use]
     pub fn chain(&self, id: OriginId) -> Chain<'_> {

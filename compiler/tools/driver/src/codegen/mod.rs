@@ -41,6 +41,10 @@ impl Lines for SourceLines {
         let at = SourceFiles::global().locate(OriginTable::global().source_span(origin));
         Some(Line { file: PathBuf::from(at.path), line: at.at.line })
     }
+
+    fn declaration(&self, origin: OriginId) -> Vec<Symbol> {
+        OriginTable::global().declaration_path(origin)
+    }
 }
 
 /// Why a program has no code.

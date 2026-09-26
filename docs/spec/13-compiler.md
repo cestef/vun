@@ -478,7 +478,8 @@ assembler and its instruction compilers and nothing else:
   marks the framework records (`Compiled.marks`: each instruction's and terminator's code with
   its origin, the prologue with the function's), addresses as relocations against the
   functions' symbols. Debuggers break on and step through Vun lines; `addr2line` and profilers
-  map code to them.
+  map code to them. An internal function's local symbol is named by its declaration path
+  (`Pair.swap`), which instantiations share.
 - **`vun-codegen`**: the framework, which knows no architecture: value assignments, register
   allocation, the frame, homes, values recomputed where used, callee-saved registers for loops,
   jumps filling their targets' parameters, compare and branch fusion, and the snippet encoder.

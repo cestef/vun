@@ -72,7 +72,15 @@ pub(crate) fn assemble<T>(
     let mut funcs: IndexVec<FuncId, SymbolId> = IndexVec::new();
     for (id, f) in unit.functions.iter() {
         let value = b.object.append(text, &code[id].code.bytes, FUNCTION_ALIGN);
-        let (name, binding) = named(f.linkage, id.to_string());
+        // An internal function is named by its declaration, as debuggers show it; local symbols
+        // may share a name, as instantiations of one declaration do.
+        let path = lines.declaration(f.origin);
+        let own = if path.is_empty() {
+            id.to_string()
+        } else {
+            path.iter().map(|name| name.as_str()).collect::<Vec<_>>().join(".")
+        };
+        let (name, binding) = named(f.linkage, own);
         let size = code[id].code.bytes.len() as u64;
         let symbol = Symbol { name, section: Some(text), value, size, kind: SymbolKind::Func, binding };
         funcs.push(b.object.symbols.push(symbol));
@@ -130,17 +138,6 @@ pub(crate) fn assemble<T>(
             b.object.sections[text].relocs.push(reloc);
         }
     }
-    let mut table = vun_dwarf::Lines::default();
-    let mut name = None;
-    for (id, compiled) in code.iter() {
-        let rows = compiled.marks.iter().filter_map(|&(offset, origin)| {
-            let line = lines.line(origin)?;
-            name.get_or_insert_with(|| line.file.display().to_string());
-            Some(Row { offset, file: table.file(line.file), line: line.line })
-        });
-        let rows = rows.collect();
-        table.sequence(Sequence { symbol: funcs[id], size: compiled.code.bytes.len() as u64, rows });
-    }
     for ((_, d), (section, start)) in unit.data.iter().zip(placed) {
         for r in &d.relocs {
             let reloc = Reloc {
@@ -152,7 +149,29 @@ pub(crate) fn assemble<T>(
             b.object.sections[section].relocs.push(reloc);
         }
     }
-    let name = name.unwrap_or_default();
-    table.write(&mut b.object, text, &name, PRODUCER);
+    line_table(code, lines, &funcs, &mut b.object, text);
     b.object
+}
+
+/// Adds the line table of the functions compiled as `code`, at `funcs`, to `object`: the unit
+/// named by the first file it reads.
+fn line_table<T>(
+    code: &IndexVec<FuncId, Compiled<T>>,
+    lines: &dyn Lines,
+    funcs: &IndexVec<FuncId, SymbolId>,
+    object: &mut Object,
+    text: SectionId,
+) {
+    let mut table = vun_dwarf::Lines::default();
+    let mut name = None;
+    for (id, compiled) in code.iter() {
+        let rows = compiled.marks.iter().filter_map(|&(offset, origin)| {
+            let line = lines.line(origin)?;
+            name.get_or_insert_with(|| line.file.display().to_string());
+            Some(Row { offset, file: table.file(line.file), line: line.line })
+        });
+        let rows = rows.collect();
+        table.sequence(Sequence { symbol: funcs[id], size: compiled.code.bytes.len() as u64, rows });
+    }
+    table.write(object, text, &name.unwrap_or_default(), PRODUCER);
 }
