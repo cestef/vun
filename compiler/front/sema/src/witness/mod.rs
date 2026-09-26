@@ -16,6 +16,7 @@ use vun_codec::{Decode, Encode};
 use vun_desugar::CALLS;
 use vun_hir::db::{FileRef, Package, PackageId};
 use vun_hir::tree::{Arg, Entry, ExprId, ExprKind, Member, each_entry};
+use vun_intern::Symbol;
 use vun_origin::OriginId;
 use vun_query::{Cx, Cycle, Query};
 
@@ -195,7 +196,7 @@ impl Env<'_, '_> {
         for package in packages {
             let data = self.cx.get::<Package>(&package);
             let namespaces = data.files.iter().filter(|path| data.namespace_of(path).is_some());
-            let paths = namespaces.map(|path| FileRef { package, path: path.clone() });
+            let paths = namespaces.map(|path| FileRef { package, path: Symbol::intern(path) });
             files.extend(paths.filter(|f| *f != self.file && Some(f) != home));
         }
         files

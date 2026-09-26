@@ -69,7 +69,7 @@ impl Query for Members {
         let package = cx.get::<Package>(&ns.package);
         let mut names = Vec::new();
         let file =
-            package.file_of(&ns.path).map(|path| FileRef { package: ns.package, path: path.to_owned() });
+            package.file_of(&ns.path).map(|path| FileRef { package: ns.package, path: Symbol::intern(path) });
         if let Some(parsed) = file.and_then(|f| cx.get::<Parsed>(&f)) {
             let hir = &parsed.hir;
             if let Some(root) = hir.root {

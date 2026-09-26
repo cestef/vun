@@ -210,7 +210,8 @@ impl Session {
         let path = PathBuf::from(&self.sources.file(file).path);
         let package = self.package_of(file);
         let id = self.publish(package);
-        let key = FileRef { package: id, path: self.packages.list[&package].relative(&path) };
+        let key =
+            FileRef { package: id, path: Symbol::intern(&self.packages.list[&package].relative(&path)) };
         // The file as loaded, which its package's files do not include when it is loose.
         self.db.set::<FileText>(&key, Some(Arc::from(self.text(file))));
         // Reported once when none is; what needs it then stays unknown.

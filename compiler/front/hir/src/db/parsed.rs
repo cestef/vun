@@ -66,7 +66,8 @@ impl Query for Parsed {
         let text = cx.get::<FileText>(key)?;
         let package = cx.get::<Package>(&key.package);
         let (sources, origins) = (SourceFiles::global(), OriginTable::global());
-        let file = sources.add_as(&package.file_key(&key.path), package.display(&key.path), &*text);
+        let file =
+            sources.add_as(&package.file_key(key.path.as_str()), package.display(key.path.as_str()), &*text);
         let mut diag = DiagCtxt::new();
         let mut dcx = DiagCx { diag: &mut diag, origins };
         let tokens = Tokens::lex(file, &text, &mut dcx);

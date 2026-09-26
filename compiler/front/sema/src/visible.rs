@@ -57,7 +57,7 @@ impl Env<'_, '_> {
     /// The home of this file's top-level declarations: the file's namespace, or the file.
     #[must_use]
     pub fn home(&self) -> Home {
-        match self.cx.get::<Package>(&self.file.package).namespace_of(&self.file.path) {
+        match self.cx.get::<Package>(&self.file.package).namespace_of(self.file.path.as_str()) {
             Some(path) => Home::Namespace(Namespace { package: self.file.package, path }),
             None => Home::File(self.file.clone()),
         }
@@ -129,7 +129,7 @@ impl Env<'_, '_> {
             Home::File(file) | Home::Struct(ExprRef { file, .. }) => {
                 let package = self.cx.get::<Package>(&file.package);
                 file.package == ns.package
-                    && package.namespace_of(&file.path).is_some_and(|path| path.starts_with(&ns.path))
+                    && package.namespace_of(file.path.as_str()).is_some_and(|path| path.starts_with(&ns.path))
             }
         }
     }

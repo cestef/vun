@@ -104,7 +104,7 @@ impl Query for Declared {
     fn compute(cx: &Cx<'_>, (ns, name): &Self::Key) -> Self::Value {
         let package = cx.get::<Package>(&ns.package);
         let file =
-            package.file_of(&ns.path).map(|path| FileRef { package: ns.package, path: path.to_owned() });
+            package.file_of(&ns.path).map(|path| FileRef { package: ns.package, path: Symbol::intern(path) });
         if let Some((file, parsed)) = file.and_then(|f| Some((f.clone(), cx.get::<Parsed>(&f)?))) {
             let hir = &parsed.hir;
             let root = hir.root?;
@@ -140,7 +140,7 @@ impl Declared {
     pub fn complete(cx: &Cx<'_>, ns: &Namespace) -> bool {
         let package = cx.get::<Package>(&ns.package);
         let file =
-            package.file_of(&ns.path).map(|path| FileRef { package: ns.package, path: path.to_owned() });
+            package.file_of(&ns.path).map(|path| FileRef { package: ns.package, path: Symbol::intern(path) });
         let Some(parsed) = file.and_then(|f| cx.get::<Parsed>(&f)) else { return true };
         let hir = &parsed.hir;
         let Some(root) = hir.root else { return true };

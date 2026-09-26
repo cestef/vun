@@ -19,7 +19,7 @@ pub struct PackageId(pub Hash);
 #[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Encode, Decode)]
 pub struct FileRef {
     pub package: PackageId,
-    pub path: String,
+    pub path: Symbol,
 }
 
 /// A package as the driver loaded it.

@@ -56,7 +56,7 @@ impl DeclValue {
     /// namespace and its name.
     fn primitive(cx: &Cx<'_>, key: &DeclRef, hir: &Hir) -> Option<Primitive> {
         let package = cx.get::<Package>(&key.file.package);
-        let path = package.namespace_of(&key.file.path)?;
+        let path = package.namespace_of(key.file.path.as_str())?;
         let mut binders = Vec::new();
         hir.binders(hir.decls[key.decl.id].pat, &mut binders);
         let name = hir.binders[*binders.first()?].name;

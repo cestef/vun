@@ -203,7 +203,9 @@ impl Check<'_, '_> {
     /// of one namespace.
     fn children(&mut self) {
         let (hir, package) = (&self.parsed.hir, &self.package);
-        let (Some(root), Some(path)) = (hir.root, package.namespace_of(&self.key.path)) else { return };
+        let (Some(root), Some(path)) = (hir.root, package.namespace_of(self.key.path.as_str())) else {
+            return;
+        };
         let children = package.children(&path);
         for b in hir.members(root) {
             let name = hir.binders[b].name;
