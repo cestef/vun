@@ -31,6 +31,8 @@ use super::db::Db;
 
 /// Loading saved memos, as timed: the rest is read as it is used.
 const LOAD: Activity = Activity::stage("load memos");
+/// Saving memos, as timed.
+const SAVE: Activity = Activity::stage("save memos");
 
 impl Db {
     /// Registers `Q` as persisted with its values.
@@ -73,6 +75,7 @@ impl Db {
     /// If the registry was poisoned by a panicking query.
     #[must_use]
     pub fn save(&self) -> Vec<u8> {
+        let _timer = SAVE.start();
         let persisted = self.persisted.read().expect("persisted queries").clone();
         let store = self.store.get().map(Arc::as_ref);
         let growth = store.map(|store| store.growth).filter(|growth| !growth.outgrown());

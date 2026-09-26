@@ -10,5 +10,6 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
+foldhash.workspace = true
 vun-par.workspace = true
 vun-codec-derive.workspace = true

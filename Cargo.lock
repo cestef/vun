@@ -773,6 +773,7 @@ dependencies = [
 name = "vun-codec"
 version = "0.0.0"
 dependencies = [
+ "foldhash",
  "vun-codec-derive",
  "vun-par",
 ]
@@ -1253,6 +1254,7 @@ dependencies = [
  "arc-swap",
  "boxcar",
  "foldhash",
+ "papaya",
  "vun-codec",
  "vun-hash",
  "vun-par",

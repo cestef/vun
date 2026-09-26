@@ -21,7 +21,7 @@ pub struct Writer<'r> {
 
 /// The entries written so far of one pool.
 struct PoolWriter<T: Pooled> {
-    numbers: HashMap<T, usize>,
+    numbers: HashMap<T, usize, foldhash::fast::RandomState>,
     entries: Vec<Vec<u8>>,
 }
 

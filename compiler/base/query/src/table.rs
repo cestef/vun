@@ -12,6 +12,7 @@ use super::Query;
 use super::claim::Claims;
 use super::cx::Cx;
 use super::fingerprint::Fingerprint;
+use super::hashed::{Hashed, Probe};
 use super::memo::Memo;
 use super::persist::Attached;
 
@@ -35,7 +36,7 @@ impl Slot {
 
 pub(crate) struct Table<Q: Query> {
     pub(crate) id: TableId,
-    slots: Map<Q::Key, Slot>,
+    slots: Map<Hashed<Q::Key>, Slot>,
     entries: boxcar::Vec<Entry<Q>>,
     /// The query's part of the saved memos loaded, whose memos are restored as their keys are
     /// first asked for.
@@ -59,11 +60,12 @@ impl<Q: Query> Table<Q> {
     /// The slot of `key`, made the first time it is asked for, holding the memo saved for it if
     /// there is one.
     pub(crate) fn slot(&self, key: &Q::Key) -> Slot {
-        if let Some(&slot) = self.slots.pin().get(key) {
+        let probe = Probe::of(key);
+        if let Some(&slot) = self.slots.pin().get(&probe) {
             return slot;
         }
         let at = self.attached.get().and_then(|attached| attached.find(key));
-        self.insert(key, at)
+        self.insert(&probe, at)
     }
 
     /// The slot of the key saved at `at`, made the first time it is asked for.
@@ -72,13 +74,15 @@ impl<Q: Query> Table<Q> {
         if let Some(slot) = attached.linked(at) {
             return Some(slot);
         }
-        Some(self.insert(&attached.key(at)?, Some(at)))
+        let key = attached.key(at)?;
+        Some(self.insert(&Probe::of(&key), Some(at)))
     }
 
     /// The slot of `key`, saved at `at` if anywhere, made with its saved memo if it has none.
-    fn insert(&self, key: &Q::Key, at: Option<u32>) -> Slot {
+    fn insert(&self, probe: &Probe<'_, Q::Key>, at: Option<u32>) -> Slot {
+        let key = probe.key;
         // Another thread may add the same key meanwhile: the first slot stored stands for both.
-        let slot = *self.slots.pin().get_or_insert_with(key.clone(), || {
+        let slot = *self.slots.pin().get_or_insert_with(probe.stored(), || {
             let memo = at.and_then(|at| self.attached.get()?.memo(at)).map(Arc::new);
             let entry = Entry {
                 key: key.clone(),

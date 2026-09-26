@@ -48,9 +48,9 @@ pub(crate) struct Number {
 /// Where each persisted table's keys go in the file saved.
 pub(crate) struct Layout {
     /// Each table's query's position among the queries.
-    pub(super) positions: HashMap<TableId, u32>,
+    pub(super) positions: HashMap<TableId, u32, foldhash::fast::RandomState>,
     /// Each table's keys, by slot.
-    pub(super) numbers: HashMap<TableId, Vec<Number>>,
+    pub(super) numbers: HashMap<TableId, Vec<Number>, foldhash::fast::RandomState>,
 }
 
 impl Layout {

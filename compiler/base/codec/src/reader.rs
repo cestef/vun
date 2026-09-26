@@ -87,8 +87,8 @@ impl Context {
     }
 
     /// The handles of type `T` read so far, with their numbers in the stream.
-    pub(crate) fn numbers<T: Pooled>(&self) -> HashMap<T, usize> {
-        let Some(pool) = self.read.pin().get(&TypeId::of::<T>()).cloned() else { return HashMap::new() };
+    pub(crate) fn numbers<T: Pooled>(&self) -> HashMap<T, usize, foldhash::fast::RandomState> {
+        let Some(pool) = self.read.pin().get(&TypeId::of::<T>()).cloned() else { return HashMap::default() };
         let pool = pool.downcast::<PoolReader<T>>().expect("one pool per handle type");
         pool.handles
             .iter()

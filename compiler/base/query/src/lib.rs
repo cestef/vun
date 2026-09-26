@@ -19,6 +19,7 @@ mod claim;
 mod cx;
 mod db;
 mod fingerprint;
+mod hashed;
 mod memo;
 mod persist;
 mod table;
