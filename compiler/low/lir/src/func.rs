@@ -194,4 +194,14 @@ impl Function {
     pub fn ty(&self, value: Value) -> Scalar {
         self.values[value].ty
     }
+
+    /// The type and bits of `value` when a constant defines it.
+    #[must_use]
+    pub fn constant(&self, value: Value) -> Option<(Scalar, u128)> {
+        let Def::Inst(inst) = self.values[value].def else { return None };
+        match self.insts[inst].kind {
+            InstKind::Const { ty, bits } => Some((ty, bits)),
+            _ => None,
+        }
+    }
 }

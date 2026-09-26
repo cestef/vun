@@ -90,6 +90,8 @@ impl<'a, 'db> Lowering<'a, 'db> {
         // Locals are given slots as they are lowered; those only loaded and stored whole are
         // values, which every backend then keeps in registers.
         l.unit.promote();
+        // Promoted, the joins of `if c { true } else { false }` receive constants to decide on.
+        l.unit.thread();
         Ok(l.unit)
     }
 

@@ -174,6 +174,10 @@ per second per stage and fails on regressions.
   integer operation, comparison or conversion of constants is the constant it gives where the
   operation is defined on them (`Domain`), a select on a constant is the value it picks, and an
   identity on the right (`x * 1`, `x + 0`) is the left operand; floats are left to the machine.
+  Jumps are then threaded (`Unit::thread`): a predecessor passing a constant to a block that
+  only compares that parameter with a constant and branches, nothing it defines read beyond it,
+  jumps where the branch sends that constant, as the join of `if c { true } else { false }`
+  would; and a jump to a block holding only constants and jumping on is moved to where it jumps.
 - Both have **stable text formats**. Tests are written against them, dumps are readable and carry
   origins, and an external backend is any executable reading LIR text on standard input.
 

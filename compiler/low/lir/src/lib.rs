@@ -13,6 +13,7 @@ pub mod inst;
 pub mod legalize;
 pub mod promote;
 pub mod text;
+pub mod thread;
 pub mod ty;
 pub mod unit;
 pub mod verify;

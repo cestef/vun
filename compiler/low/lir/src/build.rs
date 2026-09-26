@@ -110,11 +110,7 @@ impl Builder {
 
     /// The bits of `value` when a constant defines it.
     fn constant_bits(&self, value: Value) -> Option<u128> {
-        let Def::Inst(inst) = self.func.values[value].def else { return None };
-        match self.func.insts[inst].kind {
-            InstKind::Const { bits, .. } => Some(bits),
-            _ => None,
-        }
+        self.func.constant(value).map(|(_, bits)| bits)
     }
 
     pub fn compare(&mut self, cond: Cond, a: Value, b: Value, origin: OriginId) -> Value {
