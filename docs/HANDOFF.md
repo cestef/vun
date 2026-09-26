@@ -60,7 +60,7 @@ Generated, never edited (edit the `.vun` source, run `cargo gen`): `front/gramma
 ```sh
 cargo fmt && cargo clippy --all-targets && cargo nextest run && cargo gen --check && cargo xtask lines
 cargo xtask corpus            # verdicts, coverage, what stops MIR most
-cargo xtask size              # the distributed binary against its budget (10 MiB)
+cargo xtask size              # the distributed binary against its budget (12 MiB)
 cargo run -q -p vun-cli -- run|build [--release] [--backend b] [--target t] <file>
 cargo run -q -p vun-cli -- debug tokens|cst|hir|mir|layout|program|lir|code|frames|compare <file>
 cargo run -q -p vun-cli -- debug queries <file>   # what the saved queries hold, per query and pool
@@ -145,10 +145,9 @@ in as proposed unless the user approves them.
    instead of BLAKE3 for symbols, interned values and origins, token and item lookups by table
    (10% more); `FileRef.path` a `Symbol`; the query engine's code shared across queries (the
    binary 470 KB smaller). `par_map`'s spawns measured: about 1 ms a run, not worth a pool.
-   Left: (a) `cargo xtask size` fails: the dist binary is 11.17 MB against 10 MiB, over since
-   the native backend landed (11.64 MB then); the rest is `std` (1.7 MiB of text), rustls and
-   ring (640 KiB, for `vun-http`) and per-query code (`Cx::get`, `Table::slot`, about 400 KiB):
-   trimming TLS or raising the budget is the user's decision (decision 131). (b) Loading saved
+   The size budget is 12 MiB (decision 193, the user's choice): the dist binary is 11.17 MB;
+   the largest parts are `std` (1.7 MiB of text), rustls and ring (640 KiB, for `vun-http`) and
+   per-query code (`Cx::get`, `Table::slot`, about 400 KiB). Left: (b) Loading saved
    queries is eager: a warm run of one program takes 14 ms, all of it loading; ten programs
    sharing a file pay for all of them (38 ms). Loading a memo when its key is first asked for
    (keys indexed by `Stable` hash, as rustc's on-disk cache) would make it proportional to what

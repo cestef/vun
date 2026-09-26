@@ -303,9 +303,10 @@ pub trait DiagSink {
     stable dylib ABI, and processes isolate failures. Never the toolchain's own features, whose
     input would then be another program's output.
 - **The binary has a size budget.** `cargo xtask size` builds the `dist` profile and fails past the
-  budget, a constant of the task (`BUDGET`, bytes of the stripped binary on the host), 10 MiB,
+  budget, a constant of the task (`BUDGET`, bytes of the stripped binary on the host), 12 MiB,
   raised from the first measured build (6,382,768 bytes) once the C and native backends took it
-  to 7,658,304; raising it, like a new external crate, is a decision stating the cost.
+  to 7,658,304, and from 10 MiB once the native backend in TPDE's layers took it to 11,172,560;
+  raising it, like a new external crate, is a decision stating the cost.
 - **The link plan is abstract.** Memory regions and sections from the build go into `LinkPlan`; the
   lld and GNU ld adapters turn them into linker scripts, others into flags.
 - **Capabilities are checked, never faked.** A program needing guaranteed tail calls, frame sizes or
