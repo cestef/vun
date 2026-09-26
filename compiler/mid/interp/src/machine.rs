@@ -76,7 +76,13 @@ impl<'b, 'a, 'db> Frame<'b, 'a, 'db> {
                     self.locals[stmt.place.local] = None;
                     continue;
                 }
-                let value = self.rvalue(&stmt.value).map_err(|e| e.through(stmt.origin))?;
+                // Calls nest: their path keeps to the frames of `execute` and `call`, apart from
+                // what the other forms need.
+                let value = match &stmt.value {
+                    Rvalue::Call { callee, args } => self.call(callee, args),
+                    other => self.rvalue(other),
+                };
+                let value = value.map_err(|e| e.through(stmt.origin))?;
                 self.write(&stmt.place, value).map_err(|e| e.through(stmt.origin))?;
             }
             match &block.term.kind {
@@ -121,6 +127,7 @@ impl<'b, 'a, 'db> Frame<'b, 'a, 'db> {
         }
     }
 
+    #[inline(never)]
     fn rvalue(&mut self, rvalue: &Rvalue) -> Result<Value, Unevaluated> {
         match rvalue {
             Rvalue::Use(operand) => self.operand(operand),

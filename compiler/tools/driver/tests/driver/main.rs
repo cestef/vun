@@ -9,6 +9,7 @@ mod bind;
 mod borrows;
 mod comptime;
 mod coroutines;
+mod evaluator;
 mod fetch;
 mod forms;
 mod generics;

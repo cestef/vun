@@ -57,6 +57,7 @@ impl Frame<'_, '_, '_> {
 
     /// `callee(args)`: loans are passed as what they reach, and get back what the callee's
     /// exclusive parameters hold when it returns.
+    #[inline(never)]
     pub(crate) fn call(&mut self, callee: &Operand, args: &[Operand]) -> Result<Value, Unevaluated> {
         let mut lent = Vec::new();
         let mut values = Vec::with_capacity(args.len());
