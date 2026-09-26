@@ -3,8 +3,8 @@
 //! types they evaluate to; from each, every function a body calls or takes as a value is reached,
 //! with the `$` arguments of its call.
 
-use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
+use vun_hash::{Map, Set};
 
 use vun_codec::{Decode, Encode};
 use vun_hir::db::{FileRef, Parsed};
@@ -54,7 +54,7 @@ impl Query for Programs {
 
     fn compute(cx: &Cx<'_>, (root, roots): &(FileRef, Roots)) -> Self::Value {
         let mut reach =
-            Reach { cx, program: Program::default(), seen: HashMap::new(), types: HashSet::new() };
+            Reach { cx, program: Program::default(), seen: Map::default(), types: Set::default() };
         if let Some(parsed) = cx.get::<Parsed>(root)
             && let Some(ns) = parsed.hir.root
         {
@@ -98,8 +98,8 @@ struct Reach<'a, 'db> {
     cx: &'a Cx<'db>,
     program: Program,
     /// The position of each function reached.
-    seen: HashMap<Instantiation, usize>,
-    types: HashSet<Ty>,
+    seen: Map<Instantiation, usize>,
+    types: Set<Ty>,
 }
 
 impl Reach<'_, '_> {

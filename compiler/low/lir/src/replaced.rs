@@ -1,12 +1,12 @@
 //! Values a pass replaced, by what stands for them: a load by the value stored, a folded
 //! operation by its operand. Chains resolve to their end.
 
-use std::collections::HashMap;
+use vun_hash::Map;
 
 use crate::entity::Value;
 
 #[derive(Default)]
-pub(crate) struct Replaced(HashMap<Value, Value>);
+pub(crate) struct Replaced(Map<Value, Value>);
 
 impl Replaced {
     pub(crate) fn insert(&mut self, value: Value, by: Value) {

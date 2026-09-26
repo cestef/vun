@@ -147,3 +147,9 @@ impl fmt::Display for Hash {
 
 #[cfg(test)]
 mod tests;
+
+/// A map of in-memory keys hashed with foldhash, faster than the standard hasher for the small
+/// keys of compiler tables; its order is never relied on, and it is never persisted as it is.
+pub type Map<K, V> = std::collections::HashMap<K, V, foldhash::fast::RandomState>;
+/// A set of in-memory values hashed as [`Map`] hashes its keys.
+pub type Set<T> = std::collections::HashSet<T, foldhash::fast::RandomState>;

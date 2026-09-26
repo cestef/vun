@@ -2,7 +2,7 @@
 //! takes, over the unit's call graph, from the frame size of each function and the bound each
 //! import's declaration states.
 
-use std::collections::HashMap;
+use vun_hash::Map;
 
 use vun_codec::{Decode, Encode};
 use vun_diag::Msg;
@@ -66,7 +66,7 @@ impl StackUse {
     /// The stack use of every function of `unit`, whose frame sizes `frames` gives.
     #[must_use]
     pub fn of(unit: &Unit, frames: &[(FuncId, u64)]) -> Self {
-        let frames: HashMap<FuncId, u64> = frames.iter().copied().collect();
+        let frames: Map<FuncId, u64> = frames.iter().copied().collect();
         let count = unit.functions.len();
         let mut walk = Walker { unit, frames, state: IndexVec::filled(Walk::Unseen, count) };
         let uses: Vec<_> = unit.functions.iter().map(|(f, _)| walk.visit(f)).collect();
@@ -84,7 +84,7 @@ impl StackUse {
 
 struct Walker<'u> {
     unit: &'u Unit,
-    frames: HashMap<FuncId, u64>,
+    frames: Map<FuncId, u64>,
     state: IndexVec<FuncId, Walk>,
 }
 

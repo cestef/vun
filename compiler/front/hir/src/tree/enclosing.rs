@@ -1,7 +1,7 @@
 //! What encloses an expression: the closure a function literal belongs to, the function
 //! literal whose body holds an expression, and the literals that depend on compile-time bindings.
 
-use std::collections::HashSet;
+use vun_hash::Set;
 
 use super::{DeclId, Entry, ExprId, ExprKind, Hir, Staged};
 use crate::visit::{self, Visitor};
@@ -35,8 +35,8 @@ impl Hir {
     /// `$` parameter or a hole in a parameter's type, those inside them, and those a `$for`
     /// generates.
     #[must_use]
-    pub fn open_functions(&self) -> HashSet<ExprId> {
-        let mut opener = Opener { depth: 0, open: HashSet::new() };
+    pub fn open_functions(&self) -> Set<ExprId> {
+        let mut opener = Opener { depth: 0, open: Set::default() };
         if let Some(root) = self.root {
             opener.namespace(self, root);
         }
@@ -65,7 +65,7 @@ impl Visitor for Holes {
 /// Walks the tree, counting the open function literals and `$for` entries around the node.
 struct Opener {
     depth: usize,
-    open: HashSet<ExprId>,
+    open: Set<ExprId>,
 }
 
 impl Visitor for Opener {

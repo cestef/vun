@@ -2,7 +2,7 @@
 //! when a load becomes the constant stored: what the builder folds as it builds, and a branch on
 //! a constant becomes a jump.
 
-use std::collections::HashSet;
+use vun_hash::Set;
 
 use crate::analysis::{Cfg, Loops};
 use crate::entity::{Block, Inst, Value};
@@ -20,7 +20,7 @@ impl Function {
     /// Never: an operation folding to one of its operands defines a value.
     pub fn fold(&mut self) -> usize {
         let mut replaced = Replaced::default();
-        let mut dropped: HashSet<Inst> = HashSet::new();
+        let mut dropped: Set<Inst> = Set::default();
         for block in self.definitions_first() {
             for inst in self.blocks[block].insts.clone() {
                 let mut kind = self.insts[inst].kind.clone();
@@ -59,7 +59,7 @@ impl Function {
     /// its uses, then the others.
     fn definitions_first(&self) -> Vec<Block> {
         let loops = Loops::of(self, &Cfg::of(self));
-        let reached: HashSet<Block> = loops.rpo().iter().copied().collect();
+        let reached: Set<Block> = loops.rpo().iter().copied().collect();
         let rest = self.blocks.iter().map(|(b, _)| b).filter(|b| !reached.contains(b));
         loops.rpo().iter().copied().chain(rest).collect()
     }

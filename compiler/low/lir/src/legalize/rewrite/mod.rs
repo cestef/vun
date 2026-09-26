@@ -3,7 +3,7 @@
 //! integer a sequence over halves (`Halves`) and each on a promoted `f16` one in `f32`
 //! (`Float16`).
 
-use std::collections::{HashMap, HashSet};
+use vun_hash::{Map, Set};
 
 use vun_codec::{Decode, Encode};
 use vun_index::Idx;
@@ -32,7 +32,7 @@ pub(super) struct Rewrite<'u> {
     wide: Option<Scalar>,
     old: &'u Function,
     b: Builder,
-    parts: HashMap<Value, Parts>,
+    parts: Map<Value, Parts>,
     blocks: Vec<Block>,
     /// Where a wide result is written: the address the function receives last.
     result: Option<Value>,
@@ -60,7 +60,7 @@ impl<'u> Rewrite<'u> {
             wide,
             old,
             b,
-            parts: HashMap::new(),
+            parts: Map::default(),
             blocks: Vec::new(),
             result: None,
             helpers,
@@ -93,7 +93,7 @@ impl<'u> Rewrite<'u> {
         // Definitions are rewritten before their uses: reachable blocks in reverse postorder,
         // which visits a block's dominators first, then the others.
         let loops = Loops::of(old, &Cfg::of(old));
-        let reached: HashSet<Block> = loops.rpo().iter().copied().collect();
+        let reached: Set<Block> = loops.rpo().iter().copied().collect();
         let rest = old.blocks.iter().map(|(b, _)| b).filter(|b| !reached.contains(b));
         for block in loops.rpo().iter().copied().chain(rest) {
             let data = &old.blocks[block];

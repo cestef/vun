@@ -28,8 +28,8 @@ pub use reach::Hop;
 
 pub use condition::Selected;
 
-use std::collections::HashMap;
 use std::sync::Arc;
+use vun_hash::Map;
 
 use vun_codec::{Decode, Encode};
 use vun_hir::db::{CheckedNames, FileNames, FileRef, Parsed, ParsedFile};
@@ -79,7 +79,7 @@ pub struct Env<'a, 'db> {
     /// The compile-time call evaluated in, if any: types built here are identified by it.
     pub instance: Option<Instance>,
     /// The parameters of that call, bound to its arguments.
-    pub(super) bindings: HashMap<BinderId, Value>,
+    pub(super) bindings: Map<BinderId, Value>,
     /// The `$for` bindings evaluated under, also among `bindings`.
     staged: Vec<Staging>,
     /// The types of the expressions evaluated, where typing found them: forms typed by their
@@ -97,7 +97,7 @@ impl<'a, 'db> Env<'a, 'db> {
             parsed: cx.get::<Parsed>(file)?,
             names: cx.get::<FileNames>(file)?,
             instance: None,
-            bindings: HashMap::new(),
+            bindings: Map::default(),
             staged: Vec::new(),
             types: None,
         })

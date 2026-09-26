@@ -8,7 +8,7 @@ mod ssa;
 #[cfg(test)]
 mod tests;
 
-use std::collections::HashMap;
+use vun_hash::Map;
 
 use crate::entity::{Slot, Value};
 use crate::func::Function;
@@ -47,20 +47,20 @@ enum Use {
 
 /// The slots of a function to promote, with their scalars, and the addresses of them.
 struct Uses {
-    promoted: HashMap<Slot, Scalar>,
-    addresses: HashMap<Value, Slot>,
+    promoted: Map<Slot, Scalar>,
+    addresses: Map<Value, Slot>,
 }
 
 impl Uses {
     fn of(func: &Function, pointer_bits: u32) -> Self {
         let insts = || func.blocks.iter().flat_map(|(_, b)| &b.insts).map(|&i| &func.insts[i]);
-        let addresses: HashMap<Value, Slot> = insts()
+        let addresses: Map<Value, Slot> = insts()
             .filter_map(|inst| match inst.kind {
                 InstKind::SlotAddr(slot) => Some((inst.result?, slot)),
                 _ => None,
             })
             .collect();
-        let mut uses: HashMap<Slot, Use> = HashMap::new();
+        let mut uses: Map<Slot, Use> = Map::default();
         let mut reach = |slot: Slot, ty: Option<Scalar>| {
             let fits = ty.filter(|ty| ty.bytes(pointer_bits) == func.slots[slot].size);
             let seen = uses.entry(slot).or_insert(fits.map_or(Use::Escaped, Use::Scalar));

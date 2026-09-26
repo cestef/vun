@@ -2,7 +2,7 @@
 //! them: what no block holds goes, with the values it defined and the slots nothing addresses,
 //! and every handle is renumbered in the order of what remains.
 
-use std::collections::{HashMap, HashSet};
+use vun_hash::{Map, Set};
 
 use vun_index::IndexVec;
 
@@ -17,12 +17,12 @@ impl Function {
     /// # Panics
     /// If a kept operand is a value no longer defined: a pass removed a definition it left uses of.
     pub fn compact(&mut self) {
-        let mut slots: HashMap<Slot, Slot> = HashMap::new();
+        let mut slots: Map<Slot, Slot> = Map::default();
         let mut kept_slots = IndexVec::<Slot, SlotData>::new();
         let mut insts = IndexVec::<Inst, InstData>::new();
         let mut values = IndexVec::<Value, ValueData>::new();
-        let mut renamed: HashMap<Value, Value> = HashMap::new();
-        let addressed: HashSet<Slot> = self
+        let mut renamed: Map<Value, Value> = Map::default();
+        let addressed: Set<Slot> = self
             .blocks
             .iter()
             .flat_map(|(_, b)| &b.insts)

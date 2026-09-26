@@ -4,7 +4,7 @@
 //! distinct from each other.
 
 use std::borrow::Cow;
-use std::collections::HashSet;
+use vun_hash::Set;
 
 use vun_index::Idx;
 use vun_intern::Symbol;
@@ -226,7 +226,7 @@ const KEYWORDS: [&str; 37] = [
 /// The spellings of the names of one program.
 #[derive(Clone)]
 pub struct Names {
-    taken: HashSet<&'static str>,
+    taken: Set<&'static str>,
     /// Marks the functions and data of a program spanning several files, which the linker then
     /// sees: `p1f3a_f3`, the program's own, never another's.
     tag: Option<u32>,

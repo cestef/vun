@@ -2,7 +2,7 @@
 //! gets a parameter, filled by each predecessor with the definition at its end, and parameters
 //! every predecessor fills with one value (or with themselves) are that value.
 
-use std::collections::{HashMap, HashSet};
+use vun_hash::{Map, Set};
 
 use vun_index::IndexVec;
 
@@ -26,18 +26,18 @@ pub(super) struct Promotion<'f> {
     uses: Uses,
     preds: IndexVec<Block, Vec<Block>>,
     /// The last store of each slot in each block.
-    ends: HashMap<(Block, Slot), Value>,
+    ends: Map<(Block, Slot), Value>,
     /// The definition of each slot reaching the start of each block, once asked for.
-    starts: HashMap<(Block, Slot), Value>,
+    starts: Map<(Block, Slot), Value>,
     /// The parameters added to each block, in order, with their slots.
-    params: HashMap<Block, Vec<(Slot, Value)>>,
+    params: Map<Block, Vec<(Slot, Value)>>,
     /// Parameters whose predecessors' definitions are not asked for yet.
     pending: Vec<(Block, Slot, Value)>,
     /// What each predecessor passes each parameter.
-    incoming: HashMap<Value, Vec<(Block, Value)>>,
+    incoming: Map<Value, Vec<(Block, Value)>>,
     replaced: Replaced,
     /// The value of a slot read before any store, a constant at the entry, once asked for.
-    unset: HashMap<Slot, (Inst, Value)>,
+    unset: Map<Slot, (Inst, Value)>,
 }
 
 impl<'f> Promotion<'f> {
@@ -47,13 +47,13 @@ impl<'f> Promotion<'f> {
             func,
             uses,
             preds,
-            ends: HashMap::new(),
-            starts: HashMap::new(),
-            params: HashMap::new(),
+            ends: Map::default(),
+            starts: Map::default(),
+            params: Map::default(),
             pending: Vec::new(),
-            incoming: HashMap::new(),
+            incoming: Map::default(),
             replaced: Replaced::default(),
-            unset: HashMap::new(),
+            unset: Map::default(),
         }
     }
 
@@ -78,9 +78,9 @@ impl<'f> Promotion<'f> {
                 }
             }
         }
-        let mut removed = HashSet::new();
+        let mut removed = Set::default();
         for &block in &blocks {
-            let mut defined: HashMap<Slot, Value> = HashMap::new();
+            let mut defined: Map<Slot, Value> = Map::default();
             for inst in self.func.blocks[block].insts.clone() {
                 let data = &self.func.insts[inst];
                 let Some(slot) = self.promoted(&data.kind) else { continue };
@@ -159,7 +159,7 @@ impl<'f> Promotion<'f> {
                 if self.replaced.contains(param) {
                     continue;
                 }
-                let passed: HashSet<Value> = self.incoming[&param]
+                let passed: Set<Value> = self.incoming[&param]
                     .iter()
                     .map(|&(_, v)| self.replaced.resolve(v))
                     .filter(|&v| v != param)
@@ -177,7 +177,7 @@ impl<'f> Promotion<'f> {
 
     /// Adds the parameters kept to their blocks and their values to the jumps to them, removes
     /// the promoted instructions, and replaces what was replaced everywhere.
-    fn rewrite(mut self, removed: &HashSet<Inst>) {
+    fn rewrite(mut self, removed: &Set<Inst>) {
         let replaced = std::mem::take(&mut self.replaced);
         let mut blocks: Vec<(Block, Vec<(Slot, Value)>)> =
             std::mem::take(&mut self.params).into_iter().collect();

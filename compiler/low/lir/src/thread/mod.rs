@@ -7,7 +7,7 @@
 #[cfg(test)]
 mod tests;
 
-use std::collections::HashSet;
+use vun_hash::Set;
 
 use crate::analysis::Cfg;
 use crate::entity::{Block, Value};
@@ -97,8 +97,8 @@ impl Function {
 
     /// The values read outside the block defining them: what a block jumped over must not
     /// define, since the blocks after it would read what no longer is.
-    fn read_outside(&self) -> HashSet<Value> {
-        let mut outside = HashSet::new();
+    fn read_outside(&self) -> Set<Value> {
+        let mut outside = Set::default();
         for (block, data) in self.blocks.iter() {
             let here = |v: Value| match self.values[v].def {
                 Def::Param(b, _) => b == block,
@@ -114,7 +114,7 @@ impl Function {
     /// How `block` decides, when it only compares a parameter with a constant and branches on
     /// that, nothing it defines read `outside` it, and its targets reading nothing it defines
     /// but its parameters.
-    fn decides(&self, block: Block, outside: &HashSet<Value>) -> Option<Decided> {
+    fn decides(&self, block: Block, outside: &Set<Value>) -> Option<Decided> {
         let data = &self.blocks[block];
         let defined = data.insts.iter().filter_map(|&i| self.insts[i].result);
         if data.params.iter().copied().chain(defined).any(|v| outside.contains(&v)) {

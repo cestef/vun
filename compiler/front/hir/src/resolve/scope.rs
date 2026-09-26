@@ -1,6 +1,6 @@
 //! The stack of scopes during resolution.
 
-use std::collections::HashMap;
+use vun_hash::Map;
 
 use vun_intern::Symbol;
 
@@ -32,7 +32,7 @@ impl Kind {
 
 struct Scope {
     kind: Kind,
-    names: HashMap<Symbol, BinderId>,
+    names: Map<Symbol, BinderId>,
 }
 
 #[derive(Default)]
@@ -42,7 +42,7 @@ pub(super) struct Scopes {
 
 impl Scopes {
     pub(super) fn push(&mut self, kind: Kind) {
-        self.stack.push(Scope { kind, names: HashMap::new() });
+        self.stack.push(Scope { kind, names: Map::default() });
     }
 
     pub(super) fn pop(&mut self) {

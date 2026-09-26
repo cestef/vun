@@ -38,8 +38,9 @@ mod suspend;
 mod tests;
 mod typed;
 
-use std::collections::{BTreeMap, HashMap};
+use std::collections::BTreeMap;
 use std::sync::Arc;
+use vun_hash::Map;
 
 use vun_codec::{Decode, Encode};
 use vun_diag::DiagCtxt;
@@ -72,15 +73,15 @@ pub struct Typer<'e, 'a, 'db> {
     step: Option<Env<'a, 'db>>,
     /// When the code typed runs: at compile time outside a body, or under `$`.
     stage: Stage,
-    types: HashMap<ExprId, Known>,
-    locals: HashMap<BinderId, Known>,
+    types: Map<ExprId, Known>,
+    locals: Map<BinderId, Known>,
     /// The ranges immutable integer bindings are narrowed to where the expression typed is
     /// (spec 04, rule 4).
-    narrowed: HashMap<BinderId, Ty>,
+    narrowed: Map<BinderId, Ty>,
     /// Member expressions naming a declaration through a value: `p.norm` in `p.norm()`, whose
     /// call passes `p` first (spec 01, section 4); each with the struct declaring it, the type's
     /// own or a witness, and its name.
-    methods: HashMap<ExprId, (Ty, Symbol)>,
+    methods: Map<ExprId, (Ty, Symbol)>,
     operators: BTreeMap<Operation, Operator>,
     /// The typed steps of the `$for`s typed so far.
     steps: BTreeMap<Step, Arc<TypedBody>>,
@@ -88,7 +89,7 @@ pub struct Typer<'e, 'a, 'db> {
     inferred: BTreeMap<ExprId, Vec<(usize, Value)>>,
     /// The type expected of an expression where its context says, for forms typed by it:
     /// `.name`, `.{ }` (spec 01, section 2).
-    expected: HashMap<ExprId, Ty>,
+    expected: Map<ExprId, Ty>,
     /// The result type of the function typed, which `return` values are checked against.
     result: Option<Ty>,
     /// The annotation the result type is written as, which reports name it by.
@@ -115,15 +116,15 @@ impl<'e, 'a, 'db> Typer<'e, 'a, 'db> {
             env,
             step: None,
             stage,
-            types: HashMap::new(),
-            locals: HashMap::new(),
-            narrowed: HashMap::new(),
-            methods: HashMap::new(),
+            types: Map::default(),
+            locals: Map::default(),
+            narrowed: Map::default(),
+            methods: Map::default(),
             operators: BTreeMap::new(),
             steps: BTreeMap::new(),
             iterations: BTreeMap::new(),
             inferred: BTreeMap::new(),
-            expected: HashMap::new(),
+            expected: Map::default(),
             result: None,
             written: None,
             loops: Vec::new(),

@@ -1104,6 +1104,7 @@ version = "0.0.0"
 dependencies = [
  "vun-codec",
  "vun-diag",
+ "vun-hash",
  "vun-index",
  "vun-intern",
  "vun-origin",
@@ -1130,6 +1131,7 @@ dependencies = [
  "vun-desugar",
  "vun-diag",
  "vun-grammar",
+ "vun-hash",
  "vun-hir",
  "vun-index",
  "vun-intern",
@@ -1159,6 +1161,7 @@ dependencies = [
  "vun-desugar",
  "vun-diag",
  "vun-grammar",
+ "vun-hash",
  "vun-hir",
  "vun-index",
  "vun-intern",

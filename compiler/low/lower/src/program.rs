@@ -2,8 +2,8 @@
 //! in the order `Programs` found them, so a function's id is its position; link symbols become
 //! imports, and constants that live in memory become data objects, each made once.
 
-use std::collections::HashMap;
 use std::sync::Arc;
+use vun_hash::Map;
 
 use vun_hir::db::FileRef;
 use vun_index::Idx;
@@ -54,17 +54,17 @@ pub(crate) struct Lowering<'a, 'db> {
     pub(crate) types: Types<'a, 'db>,
     pub(crate) env: Env<'a, 'db>,
     pub(crate) unit: Unit,
-    functions: HashMap<Instantiation, FuncId>,
+    functions: Map<Instantiation, FuncId>,
     /// The `end` of each coroutine function, after every function; its `resume` is at the
     /// coroutine's own position.
-    ends: HashMap<Instantiation, FuncId>,
+    ends: Map<Instantiation, FuncId>,
     /// The function of each variant's constructor taken as a value, after the `end`s.
-    constructors: HashMap<(Ty, Symbol), FuncId>,
-    imports: HashMap<Symbol, ImportId>,
+    constructors: Map<(Ty, Symbol), FuncId>,
+    imports: Map<Symbol, ImportId>,
     /// The functions the program exports, by symbol: what a link symbol of the program names.
-    exports: HashMap<Symbol, FuncId>,
-    data: HashMap<(Vec<u8>, Vec<Reloc>, u64), DataId>,
-    globals: HashMap<DeclRef, DataId>,
+    exports: Map<Symbol, FuncId>,
+    data: Map<(Vec<u8>, Vec<Reloc>, u64), DataId>,
+    globals: Map<DeclRef, DataId>,
 }
 
 impl<'a, 'db> Lowering<'a, 'db> {
@@ -121,7 +121,7 @@ impl<'a, 'db> Lowering<'a, 'db> {
             program.functions.iter().enumerate().map(|(i, f)| (f.clone(), FuncId::new(i))).collect();
         let suspends = |f: &&Instantiation| cx.get::<Concrete>(f).is_ok_and(|b| b.suspends());
         let coroutines = program.functions.iter().filter(suspends);
-        let ends: HashMap<Instantiation, FuncId> = coroutines
+        let ends: Map<Instantiation, FuncId> = coroutines
             .enumerate()
             .map(|(k, f)| (f.clone(), FuncId::new(program.functions.len() + k)))
             .collect();
@@ -135,10 +135,10 @@ impl<'a, 'db> Lowering<'a, 'db> {
             functions,
             ends,
             constructors,
-            imports: HashMap::new(),
+            imports: Map::default(),
             exports: program.exports.iter().map(|&(i, symbol)| (symbol, FuncId::new(i))).collect(),
-            data: HashMap::new(),
-            globals: HashMap::new(),
+            data: Map::default(),
+            globals: Map::default(),
         })
     }
 

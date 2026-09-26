@@ -20,9 +20,9 @@ mod suspend;
 mod temp;
 mod value;
 
-use std::collections::{HashMap, HashSet};
 use std::panic::Location;
 use std::sync::Arc;
+use vun_hash::{Map, Set};
 
 use vun_codec::{Decode, Encode};
 use vun_hir::tree::{BinderId, Entry, ExprId, ExprKind, PatKind};
@@ -116,11 +116,11 @@ struct Builder<'e, 'a, 'db> {
     /// The block statements are appended to.
     current: BlockId,
     /// The local each binder of the body is stored in.
-    bound: HashMap<BinderId, Local>,
+    bound: Map<BinderId, Local>,
     /// The binders of or-patterns' alternatives, stored in the locals of the first's.
-    shared: HashMap<BinderId, Local>,
+    shared: Map<BinderId, Local>,
     /// The captured binders whose local holds a borrow of them.
-    through: HashSet<BinderId>,
+    through: Set<BinderId>,
     /// Where the result is written before returning.
     ret: Local,
     /// The loops around the code lowered, innermost last.
@@ -150,9 +150,9 @@ impl<'a, 'db> Builder<'_, 'a, 'db> {
             locals,
             blocks: IndexVec::new(),
             current: Idx::new(0),
-            bound: HashMap::new(),
-            shared: HashMap::new(),
-            through: HashSet::new(),
+            bound: Map::default(),
+            shared: Map::default(),
+            through: Set::default(),
             ret,
             loops: Vec::new(),
             pending: Vec::new(),

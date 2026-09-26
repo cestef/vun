@@ -243,8 +243,8 @@ impl Body {
     /// The locals some statement or terminator reads (`Stmt::reads`, `TerminatorKind::reads`);
     /// the result is read by the return.
     #[must_use]
-    pub fn read(&self) -> std::collections::HashSet<Local> {
-        let mut read = std::collections::HashSet::from([self.ret]);
+    pub fn read(&self) -> vun_hash::Set<Local> {
+        let mut read = vun_hash::Set::from_iter([self.ret]);
         for (_, block) in self.blocks.iter() {
             read.extend(block.stmts.iter().flat_map(crate::Stmt::reads));
             read.extend(block.term.kind.reads());
