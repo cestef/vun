@@ -23,6 +23,8 @@ pub enum Missing {
     Symbol(Symbol),
     /// An address past the start of a function.
     FunctionOffset,
+    /// An object format the backend does not write.
+    Format(Symbol),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -41,7 +43,15 @@ impl Missing {
 impl Lack {
     #[must_use]
     pub fn diagnostic(self, backend: &str) -> Diagnostic {
-        let what = match self.missing {
+        self.missing.diagnostic(backend).at(self.at, None)
+    }
+}
+
+impl Missing {
+    /// What the backend cannot express, where no one place asks for it.
+    #[must_use]
+    pub fn diagnostic(self, backend: &str) -> Diagnostic {
+        let what = match self {
             Missing::Int128 => Msg::new().text("128-bit integers"),
             Missing::Half => Msg::new().code("f16"),
             Missing::Float => Msg::new().text("floating-point values"),
@@ -53,8 +63,9 @@ impl Lack {
             Missing::Unaligned(n) => Msg::new().text("an address at offset ").num(n).text(" of data"),
             Missing::Symbol(s) => Msg::new().text("the link symbol ").code(s.as_str()),
             Missing::FunctionOffset => Msg::new().text("an address inside a function"),
+            Missing::Format(f) => Msg::new().text("objects of format ").code(f.as_str()),
         };
         let msg = Msg::new().text("backend ").code(backend).text(" cannot express ").append(what);
-        Diagnostic::error(errors::BACKEND_LACKS, msg).at(self.at, None)
+        Diagnostic::error(errors::BACKEND_LACKS, msg)
     }
 }

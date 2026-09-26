@@ -3,7 +3,8 @@
 
 use vun_index::{Idx, IndexVec};
 
-use super::{Binding, Contents, Object, SectionId, SymbolId, SymbolKind};
+use super::Strings;
+use crate::{Binding, Contents, Machine, Object, RelocKind, SectionId, SymbolId, SymbolKind};
 
 const HEADER: u64 = 64;
 const SECTION_HEADER: u16 = 64;
@@ -39,22 +40,6 @@ struct Header {
     info: u32,
     align: u64,
     entsize: u64,
-}
-
-/// A string table under construction.
-#[derive(Default)]
-struct Strings(Vec<u8>);
-
-impl Strings {
-    fn add(&mut self, s: &[u8]) -> u32 {
-        if self.0.is_empty() {
-            self.0.push(0);
-        }
-        let at = u32::try_from(self.0.len()).expect("string tables fit 4 GiB");
-        self.0.extend_from_slice(s);
-        self.0.push(0);
-        at
-    }
 }
 
 impl Contents {
@@ -133,8 +118,8 @@ impl Object {
             let offset = w.at(8);
             for r in &s.relocs {
                 w.out.extend_from_slice(&r.offset.to_le_bytes());
-                let kind =
-                    self.machine.relocation(r.kind).expect("backends emit the relocations their machine has");
+                let kind = elf_relocation(self.machine, r.kind)
+                    .expect("backends emit the relocations their machine has");
                 let info = u64::from(number[r.symbol]) << 32 | u64::from(kind);
                 w.out.extend_from_slice(&info.to_le_bytes());
                 w.out.extend_from_slice(&r.addend.to_le_bytes());
@@ -203,13 +188,8 @@ impl Object {
         w.out.extend_from_slice(&strings);
     }
 
-    /// The object file.
-    ///
-    /// # Panics
-    /// Panics on a relocation of a kind the machine does not have, or on an object past the
-    /// format's 32-bit counts.
-    #[must_use]
-    pub fn write(&self) -> Vec<u8> {
+    /// The object as an ELF file.
+    pub(super) fn elf(&self) -> Vec<u8> {
         let mut w = Writer {
             out: vec![0; usize::try_from(HEADER).expect("fits")],
             headers: vec![Header::default()],
@@ -261,7 +241,7 @@ impl Object {
         header.extend_from_slice(&MAGIC);
         header.extend_from_slice(&[CLASS64, LITTLE, CURRENT, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
         header.extend_from_slice(&RELOCATABLE.to_le_bytes());
-        header.extend_from_slice(&self.machine.number().to_le_bytes());
+        header.extend_from_slice(&elf_machine(self.machine).to_le_bytes());
         header.extend_from_slice(&u32::from(CURRENT).to_le_bytes());
         for word in [0, 0, shoff] {
             header.extend_from_slice(&u64::to_le_bytes(word));
@@ -272,5 +252,39 @@ impl Object {
             header.extend_from_slice(&half.to_le_bytes());
         }
         header
+    }
+}
+
+/// The number of a relocation kind (`R_X86_64_*`, `R_AARCH64_*`), if the machine has it.
+const fn elf_relocation(machine: Machine, kind: RelocKind) -> Option<u32> {
+    Some(match (machine, kind) {
+        (Machine::X86_64, RelocKind::Abs64) => 1,
+        (Machine::X86_64, RelocKind::Pc32) => 2,
+        (Machine::X86_64, RelocKind::Call32) => 4,
+        (Machine::X86_64, RelocKind::GotPc32) => 9,
+        (Machine::X86_64, RelocKind::Abs32) => 10,
+        (Machine::Aarch64, RelocKind::Abs64) => 257,
+        (Machine::Aarch64, RelocKind::Abs32) => 258,
+        (Machine::Aarch64, RelocKind::Pc32) => 261,
+        (Machine::Aarch64, RelocKind::Page21) => 275,
+        (Machine::Aarch64, RelocKind::PageOffset12) => 277,
+        (Machine::Aarch64, RelocKind::PageOffset8) => 278,
+        (Machine::Aarch64, RelocKind::Branch19) => 280,
+        (Machine::Aarch64, RelocKind::Jump26) => 282,
+        (Machine::Aarch64, RelocKind::Call26) => 283,
+        (Machine::Aarch64, RelocKind::PageOffset16) => 284,
+        (Machine::Aarch64, RelocKind::PageOffset32) => 285,
+        (Machine::Aarch64, RelocKind::PageOffset64) => 286,
+        (Machine::Aarch64, RelocKind::GotPage21) => 311,
+        (Machine::Aarch64, RelocKind::GotPageOffset64) => 312,
+        _ => return None,
+    })
+}
+
+/// The `EM_*` number of `machine`.
+const fn elf_machine(machine: Machine) -> u16 {
+    match machine {
+        Machine::X86_64 => 62,
+        Machine::Aarch64 => 183,
     }
 }

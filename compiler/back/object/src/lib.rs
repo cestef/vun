@@ -1,6 +1,9 @@
 //! Relocatable objects as data: sections of bytes, symbols and relocations, built by a backend
-//! and written once in the target's object format (`Object::write`: ELF-64, little-endian).
+//! and written once in the target's object format (`Object::write`: ELF-64 or Mach-O 64-bit,
+//! little-endian).
 
+#[cfg(test)]
+mod tests;
 mod write;
 
 use vun_index::{IndexVec, index};
@@ -115,52 +118,24 @@ pub enum Machine {
     Aarch64,
 }
 
-impl Machine {
-    /// Its `EM_*` number.
-    const fn number(self) -> u16 {
-        match self {
-            Self::X86_64 => 62,
-            Self::Aarch64 => 183,
-        }
-    }
-
-    /// The number of a relocation kind (`R_X86_64_*`, `R_AARCH64_*`), if the machine has it.
-    const fn relocation(self, kind: RelocKind) -> Option<u32> {
-        Some(match (self, kind) {
-            (Self::X86_64, RelocKind::Abs64) => 1,
-            (Self::X86_64, RelocKind::Pc32) => 2,
-            (Self::X86_64, RelocKind::Call32) => 4,
-            (Self::X86_64, RelocKind::GotPc32) => 9,
-            (Self::X86_64, RelocKind::Abs32) => 10,
-            (Self::Aarch64, RelocKind::Abs64) => 257,
-            (Self::Aarch64, RelocKind::Abs32) => 258,
-            (Self::Aarch64, RelocKind::Pc32) => 261,
-            (Self::Aarch64, RelocKind::Page21) => 275,
-            (Self::Aarch64, RelocKind::PageOffset12) => 277,
-            (Self::Aarch64, RelocKind::PageOffset8) => 278,
-            (Self::Aarch64, RelocKind::Branch19) => 280,
-            (Self::Aarch64, RelocKind::Jump26) => 282,
-            (Self::Aarch64, RelocKind::Call26) => 283,
-            (Self::Aarch64, RelocKind::PageOffset16) => 284,
-            (Self::Aarch64, RelocKind::PageOffset32) => 285,
-            (Self::Aarch64, RelocKind::PageOffset64) => 286,
-            (Self::Aarch64, RelocKind::GotPage21) => 311,
-            (Self::Aarch64, RelocKind::GotPageOffset64) => 312,
-            _ => return None,
-        })
-    }
+/// The file format an object is written in.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Format {
+    Elf,
+    MachO,
 }
 
 pub struct Object {
     pub machine: Machine,
+    pub format: Format,
     pub sections: IndexVec<SectionId, Section>,
     pub symbols: IndexVec<SymbolId, Symbol>,
 }
 
 impl Object {
     #[must_use]
-    pub fn new(machine: Machine) -> Self {
-        Self { machine, sections: IndexVec::new(), symbols: IndexVec::new() }
+    pub fn new(machine: Machine, format: Format) -> Self {
+        Self { machine, format, sections: IndexVec::new(), symbols: IndexVec::new() }
     }
 
     /// Adds a section holding `contents`, empty.

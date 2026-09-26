@@ -9,7 +9,8 @@ use vun_backend::Lines;
 use vun_codegen::Compiled;
 use vun_dwarf::{Row, Sequence};
 use vun_object::{
-    Binding, Contents, Machine, Object, Reloc, RelocKind, Section, SectionId, Symbol, SymbolId, SymbolKind,
+    Binding, Contents, Format, Machine, Object, Reloc, RelocKind, Section, SectionId, Symbol, SymbolId,
+    SymbolKind,
 };
 
 /// The alignment functions start at.
@@ -57,10 +58,10 @@ const PRODUCER: &str = "vun";
 pub(crate) fn assemble<T>(
     unit: &Unit,
     code: &IndexVec<FuncId, Compiled<T>>,
-    machine: Machine,
+    (machine, format): (Machine, Format),
     lines: &dyn Lines,
 ) -> Object {
-    let mut b = Builder { object: Object::new(machine), sections: Vec::new() };
+    let mut b = Builder { object: Object::new(machine, format), sections: Vec::new() };
     for (contents, name) in SECTIONS {
         b.section(contents, name);
     }

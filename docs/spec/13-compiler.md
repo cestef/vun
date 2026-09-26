@@ -471,8 +471,12 @@ assembler and its instruction compilers and nothing else:
   same form's text, and callers ask which forms fit before choosing operands. So an instruction's
   encoding and its text cannot disagree, and a test decodes every form with an independent
   decoder (yaxpeax) and compares both.
-- **`vun-object`**: relocatable objects as data, written once (ELF first); relocation kinds are
-  the framework's, each machine numbers them.
+- **`vun-object`**: relocatable objects as data, written once in the target's format: ELF-64,
+  or Mach-O 64-bit for arm64 (`macos.arm64`), whose symbols are C names with a leading
+  underscore, whose relocations keep a word's addend in place and an instruction's in an
+  `ARM64_RELOC_ADDEND` before it, and whose debugging sections are `__DWARF` ones; relocation
+  kinds are the framework's, each format and machine numbers them. A target whose format the
+  native backend does not write for its machine is refused (`backend.lacks`).
 - **`vun-dwarf`**: debugging information (DWARF 4) as sections of an object: one compilation
   unit and the line table of every function, a row per instruction whose line changes, from the
   marks the framework records (`Compiled.marks`: each instruction's and terminator's code with

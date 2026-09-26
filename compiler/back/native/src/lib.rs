@@ -2,7 +2,7 @@
 //! function over LIR and its shared analyses, in the design of TPDE. The framework is
 //! `vun-codegen`, the assemblers `vun-asm-*`, the object writer `vun-object`; this crate holds
 //! what is particular to each architecture: calling conventions, snippets and instruction
-//! compilers. x86-64 and arm64, in ELF objects.
+//! compilers. x86-64 and arm64, in ELF objects, and arm64 in Mach-O objects.
 
 pub mod arm64;
 mod listing;
@@ -17,7 +17,8 @@ use std::path::PathBuf;
 
 use vun_asm::Isa;
 use vun_backend::{
-    Artifact, ArtifactSink, Backend, BackendCaps, BackendInfo, Emits, Emitted, Lack, Readiness, Request,
+    Artifact, ArtifactSink, Backend, BackendCaps, BackendInfo, Emits, Emitted, Lack, Missing, Readiness,
+    Request,
 };
 use vun_codegen::{Compiled, Isel};
 use vun_diag::{DiagCtxt, ErrorGuaranteed};
@@ -25,7 +26,7 @@ use vun_index::IndexVec;
 use vun_lir::legalize::Half;
 use vun_lir::unit::Unit;
 use vun_lir::{Address, FuncId, Function};
-use vun_object::Machine;
+use vun_object::{Format, Machine};
 use vun_par::Parallel;
 use vun_target::{Arches, Name};
 
@@ -36,8 +37,15 @@ pub use listing::Listing;
 struct Arch {
     name: Name,
     machine: Machine,
-    object: fn(&Request<'_>, Machine) -> Result<Emitted, Lack>,
+    object: fn(&Request<'_>, Machine, Format) -> Result<Emitted, Lack>,
 }
+
+/// The object formats the backend writes, by their names among targets', and the machines it
+/// writes each for.
+const FORMATS: [(Name, Format, &[Machine]); 2] = [
+    (Name("elf"), Format::Elf, &[Machine::X86_64, Machine::Aarch64]),
+    (Name("macho"), Format::MachO, &[Machine::Aarch64]),
+];
 
 const ARCHES: [Arch; 2] = [
     Arch { name: Name("x86_64"), machine: Machine::X86_64, object: NativeBackend::object::<x86_64::X86> },
@@ -66,7 +74,7 @@ pub const INFO: BackendInfo = BackendInfo {
         frame_sizes: true,
         int_bits: 64,
         half: Half::Promoted,
-        debug_info: false,
+        debug_info: true,
     },
     readiness: Readiness::Ready,
 };
@@ -112,13 +120,13 @@ impl NativeBackend {
     ///
     /// # Errors
     /// As [`Self::compile`].
-    pub fn object<A: Isel>(request: &Request<'_>, machine: Machine) -> Result<Emitted, Lack>
+    pub fn object<A: Isel>(request: &Request<'_>, machine: Machine, format: Format) -> Result<Emitted, Lack>
     where
         Code<A>: Send,
         <A::Isa as Isa>::Inst<Address>: Display,
     {
         let code = Self::compile::<A>(request.unit, request.listing)?;
-        let bytes = object::assemble(request.unit, &code, machine, request.lines).write();
+        let bytes = object::assemble(request.unit, &code, (machine, format), request.lines).write();
         let mut artifacts = vec![Artifact { name: PathBuf::from(OBJECT), kind: Emits::Object, bytes }];
         if request.listing {
             let text = Listing { unit: request.unit, code: &code, lines: request.lines }.to_string();
@@ -132,6 +140,25 @@ impl NativeBackend {
         Ok(Emitted { artifacts, frames })
     }
 
+    /// The format of the objects of `request`'s target, if the backend writes it for `machine`.
+    fn format(request: &Request<'_>, machine: Machine) -> Option<Format> {
+        let found = FORMATS
+            .iter()
+            .find(|(name, _, machines)| name.is(request.target.object_format) && machines.contains(&machine));
+        found.map(|&(_, format, _)| format)
+    }
+
+    /// The architecture of `request`'s target.
+    ///
+    /// # Panics
+    /// For an architecture [`INFO`] does not list, which no build chooses the backend for.
+    fn arch(request: &Request<'_>) -> &'static Arch {
+        ARCHES
+            .iter()
+            .find(|a| a.name.is(request.target.arch))
+            .expect("the backend is chosen only for the architectures it lists")
+    }
+
     /// The object of `request`'s unit for its target's architecture.
     ///
     /// # Errors
@@ -139,12 +166,10 @@ impl NativeBackend {
     ///
     /// # Panics
     /// Panics for an architecture [`INFO`] does not list, which no build chooses the backend for.
-    pub fn emitted(request: &Request<'_>) -> Result<Emitted, Lack> {
-        let arch = ARCHES
-            .iter()
-            .find(|a| a.name.is(request.target.arch))
-            .expect("the backend is chosen only for the architectures it lists");
-        (arch.object)(request, arch.machine)
+    fn emitted(request: &Request<'_>) -> Result<Emitted, Lack> {
+        let arch = Self::arch(request);
+        let format = Self::format(request, arch.machine).expect("checked before emitting");
+        (arch.object)(request, arch.machine, format)
     }
 }
 
@@ -159,6 +184,9 @@ impl Backend for NativeBackend {
         out: &mut dyn ArtifactSink,
         diag: &mut DiagCtxt,
     ) -> Result<(), ErrorGuaranteed> {
+        if Self::format(request, Self::arch(request).machine).is_none() {
+            return Err(diag.error(Missing::Format(request.target.object_format).diagnostic(INFO.id.0)));
+        }
         let emitted = Self::emitted(request).map_err(|lack| diag.error(lack.diagnostic(INFO.id.0)))?;
         for artifact in emitted.artifacts {
             out.put(artifact);

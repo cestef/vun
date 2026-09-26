@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use vun_object::{Binding, Contents, Machine, Object, RelocKind, Symbol, SymbolId, SymbolKind};
+use vun_object::{Binding, Contents, Format, Machine, Object, RelocKind, Symbol, SymbolId, SymbolKind};
 
 use super::encode::Out;
 use super::{Lines, Row, Sequence};
@@ -18,7 +18,7 @@ fn leb128_encodes_as_dwarf_reads_it() {
 
 /// An object with a `.text` of two functions, of 16 and 8 bytes.
 fn object() -> (Object, [SymbolId; 2]) {
-    let mut object = Object::new(Machine::X86_64);
+    let mut object = Object::new(Machine::X86_64, Format::Elf);
     let text = object.section(b".text", Contents::Code);
     let mut symbol = |name: &[u8], bytes: &[u8]| {
         let value = object.append(text, bytes, 1);
