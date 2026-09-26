@@ -21,17 +21,22 @@ pub const PROGRAM: Program<Session> = Program {
         "vun",
         "The Vun toolchain.",
         &[
-            Command::run("build", "build the program a root file exports", build)
-                .aliases(&["b"])
-                .params(&[FILE, crate::codegen::BACKEND, crate::codegen::LINKER, crate::program::OUTPUT])
-                .sets(&[COMPILE])
-                .examples(&[
-                    Example { line: "main.vun", about: "build the program, named after its file" },
-                    Example {
-                        line: "main.vun -o hello --target linux.x86_64",
-                        about: "cross-compile to a path",
-                    },
-                ]),
+            Command::run(
+                "build",
+                "build the program a root file exports, or the programs a package's build.vun plans",
+                build,
+            )
+            .aliases(&["b"])
+            .params(&[FILE, crate::codegen::BACKEND, crate::codegen::LINKER, crate::program::OUTPUT])
+            .sets(&[COMPILE])
+            .examples(&[
+                Example { line: "main.vun", about: "build the program, named after its file" },
+                Example { line: "main.vun -o hello --target linux.x86_64", about: "cross-compile to a path" },
+                Example {
+                    line: "build.vun",
+                    about: "carry out the package's plan: build each program it records",
+                },
+            ]),
             Command::run("run", "build the program a root file exports and run it", run)
                 .aliases(&["r"])
                 .params(&[
