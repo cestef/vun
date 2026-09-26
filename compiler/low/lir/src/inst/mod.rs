@@ -66,16 +66,46 @@ pub enum BinOp {
 }
 
 impl BinOp {
-    /// The right operand leaving the left unchanged, for an integer operation that has one.
-    /// Floats have none: `-0.0 + 0.0` is `0.0`.
+    /// The right operand leaving the left unchanged, for an integer operation of type `ty` that
+    /// has one. Floats have none: `-0.0 + 0.0` is `0.0`.
     #[must_use]
-    pub const fn identity(self) -> Option<u128> {
+    pub fn identity(self, ty: Scalar) -> Option<u128> {
         match self {
             Self::Add | Self::Sub | Self::Or | Self::Xor | Self::Shl | Self::LShr | Self::AShr => Some(0),
             Self::Mul | Self::SDiv | Self::UDiv => Some(1),
-            Self::SRem | Self::URem | Self::And | Self::FAdd | Self::FSub | Self::FMul | Self::FDiv => None,
+            Self::And => ty.is_int().then(|| ty.truncate(-1)),
+            Self::SRem | Self::URem | Self::FAdd | Self::FSub | Self::FMul | Self::FDiv => None,
         }
     }
+
+    /// The right operand making the result itself whatever the left is, as 0 does of `x * 0`.
+    #[must_use]
+    pub fn absorbing(self, ty: Scalar) -> Option<u128> {
+        match self {
+            Self::Mul | Self::And => ty.is_int().then_some(0),
+            Self::Or => ty.is_int().then(|| ty.truncate(-1)),
+            _ => None,
+        }
+    }
+
+    /// What `a op b` is where only `b`, of type `ty`, is known.
+    #[must_use]
+    pub fn with_right(self, ty: Scalar, b: u128) -> Option<Right> {
+        if self.identity(ty) == Some(b) {
+            Some(Right::Left)
+        } else {
+            (self.absorbing(ty) == Some(b)).then_some(Right::Constant(b))
+        }
+    }
+}
+
+/// What an operation gives where its right operand alone is known.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Right {
+    /// Its left operand, as `x * 1` does.
+    Left,
+    /// This constant, as `x * 0` does.
+    Constant(u128),
 }
 
 /// A comparison: integers as signed or unsigned, floats ordered.
@@ -203,6 +233,30 @@ impl Address {
             Self::Func(f) => Some(Callee::Func(f)),
             Self::Import(i) => Some(Callee::Import(i)),
             Self::Data(_) => None,
+        }
+    }
+}
+
+impl InstKind {
+    /// Whether the instruction does more than define its value: it writes memory, calls, or
+    /// reads memory as written. One that does not, and whose value nothing reads, can go.
+    #[must_use]
+    pub fn acts(&self) -> bool {
+        match self {
+            Self::Store { .. }
+            | Self::Rmw { .. }
+            | Self::CompareExchange { .. }
+            | Self::Copy { .. }
+            | Self::Call { .. } => true,
+            Self::Load { access, .. } => *access != Access::Plain,
+            Self::Const { .. }
+            | Self::Binary { .. }
+            | Self::Compare { .. }
+            | Self::Cast { .. }
+            | Self::Select { .. }
+            | Self::Offset { .. }
+            | Self::SlotAddr(_)
+            | Self::Addr(_) => false,
         }
     }
 }

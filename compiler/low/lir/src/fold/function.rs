@@ -7,7 +7,7 @@ use vun_hash::Set;
 use crate::analysis::{Cfg, Loops};
 use crate::entity::{Block, Inst, Value};
 use crate::func::Function;
-use crate::inst::{InstKind, Terminator};
+use crate::inst::{InstKind, Right, Terminator};
 use crate::replaced::Replaced;
 use crate::ty::Scalar;
 
@@ -74,7 +74,10 @@ impl Function {
                 {
                     return Some(Folded::Constant(ty, bits));
                 }
-                (kb.is_some() && kb == op.identity()).then_some(Folded::Value(a))
+                match op.with_right(ty, kb?)? {
+                    Right::Left => Some(Folded::Value(a)),
+                    Right::Constant(bits) => Some(Folded::Constant(ty, bits)),
+                }
             }
             InstKind::Compare { cond, a, b } => {
                 let ((ty, ka), (_, kb)) = (self.constant(a)?, self.constant(b)?);

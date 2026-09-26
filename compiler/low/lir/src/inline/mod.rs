@@ -8,10 +8,11 @@
 #[cfg(test)]
 mod tests;
 
+use vun_hash::Map;
 use vun_index::Idx;
 
 use crate::entity::{FuncId, Inst, Slot, Value};
-use crate::func::{Conv, Def, Function, InstData, Linkage, ValueData};
+use crate::func::{Conv, Function, Linkage};
 use crate::inst::{Callee, InstKind, Terminator};
 use crate::replaced::Replaced;
 use crate::unit::Unit;
@@ -19,21 +20,25 @@ use crate::unit::Unit;
 /// The most instructions a function inlined may have.
 const SMALL: usize = 8;
 
-/// A function a call of which is replaced by its body.
-struct Inlined {
-    body: Function,
-}
-
 impl Unit {
-    /// Inlines every call of a small function (see the module), returning how many were.
+    /// Inlines every call of a small function (see the module), callees first so a function
+    /// inlined has its own small callees inlined already, returning how many were.
     pub fn inline(&mut self) -> usize {
-        let small: Vec<Option<Inlined>> =
-            self.functions.iter().map(|(_, f)| f.small().then(|| Inlined { body: f.clone() })).collect();
-        let mut count = 0;
-        for (id, function) in self.functions.iter_mut() {
-            count += function.inline_calls(id, &small);
+        self.callees_first().into_iter().map(|f| self.inline_into(f)).sum()
+    }
+
+    /// Inlines the calls `f` makes of small functions, as they are now, returning how many were.
+    pub fn inline_into(&mut self, f: FuncId) -> usize {
+        let mut small: Map<FuncId, Function> = Map::default();
+        for g in self.functions[f].callees() {
+            if g != f && !small.contains_key(&g) && self.functions[g].small() {
+                small.insert(g, self.functions[g].clone());
+            }
         }
-        count
+        if small.is_empty() {
+            return 0;
+        }
+        self.functions[f].inline_calls(&small)
     }
 }
 
@@ -48,9 +53,8 @@ impl Function {
             && self.blocks[entry].insts.len() <= SMALL
     }
 
-    /// Replaces each call of a function of `small` by its body; `id` is this function, never
-    /// inlined into itself.
-    fn inline_calls(&mut self, id: FuncId, small: &[Option<Inlined>]) -> usize {
+    /// Replaces each call of a function of `small` by its body.
+    fn inline_calls(&mut self, small: &Map<FuncId, Function>) -> usize {
         let mut replaced = Replaced::default();
         let mut count = 0;
         let blocks: Vec<_> = self.blocks.iter().map(|(b, _)| b).collect();
@@ -58,17 +62,17 @@ impl Function {
             let mut insts = Vec::with_capacity(self.blocks[block].insts.len());
             for inst in std::mem::take(&mut self.blocks[block].insts) {
                 let callee = match &self.insts[inst].kind {
-                    InstKind::Call { callee: Callee::Func(f), args } if *f != id => {
-                        small.get(f.index()).and_then(Option::as_ref).map(|s| (s, args.clone()))
+                    InstKind::Call { callee: Callee::Func(f), args } => {
+                        small.get(f).map(|s| (s, args.clone()))
                     }
                     _ => None,
                 };
-                let Some((inlined, args)) = callee else {
+                let Some((body, args)) = callee else {
                     insts.push(inst);
                     continue;
                 };
                 let args: Vec<Value> = args.iter().map(|&a| replaced.resolve(a)).collect();
-                let returned = self.splice(&inlined.body, &args, &mut insts);
+                let returned = self.splice(body, &args, &mut insts);
                 if let (Some(result), Some(value)) = (self.insts[inst].result, returned) {
                     replaced.insert(result, value);
                 }
@@ -104,11 +108,9 @@ impl Function {
             if let InstKind::SlotAddr(slot) = &mut kind {
                 *slot = slots[slot.index()];
             }
-            let new = self.insts.push(InstData { kind, result: None, origin: data.origin });
+            let (new, value) = self.define(kind, data.result.map(|r| body.ty(r)), data.origin);
             if let Some(result) = data.result {
-                let value = self.values.push(ValueData { ty: body.ty(result), def: Def::Inst(new) });
-                self.insts[new].result = Some(value);
-                values[result.index()] = Some(value);
+                values[result.index()] = value;
             }
             insts.push(new);
         }

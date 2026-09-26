@@ -206,6 +206,14 @@ impl Function {
         self.values[value].ty
     }
 
+    /// A new instruction of `kind`, in no block yet, defining a value of type `ty` if it has one.
+    pub fn define(&mut self, kind: InstKind, ty: Option<Scalar>, origin: OriginId) -> (Inst, Option<Value>) {
+        let inst = self.insts.push(InstData { kind, result: None, origin });
+        let result = ty.map(|ty| self.values.push(ValueData { ty, def: Def::Inst(inst) }));
+        self.insts[inst].result = result;
+        (inst, result)
+    }
+
     /// The type and bits of `value` when a constant defines it.
     #[must_use]
     pub fn constant(&self, value: Value) -> Option<(Scalar, u128)> {

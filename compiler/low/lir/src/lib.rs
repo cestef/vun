@@ -12,20 +12,25 @@ pub mod func;
 pub mod inline;
 pub mod inst;
 pub mod legalize;
+mod narrow;
 pub mod promote;
 mod replaced;
 mod simplify;
+mod sweep;
 pub mod text;
 pub mod thread;
 pub mod ty;
 pub mod unit;
+mod uses;
 pub mod verify;
 
 pub use build::Builder;
 pub use entity::{Block, DataId, FuncId, ImportId, Inst, Slot, Value};
 pub use facts::{Domain, Reads};
 pub use func::{AbiType, Alias, Conv, Ext, Function, Linkage, Record, Signature};
-pub use inst::{Access, Address, BinOp, Callee, CastOp, Cond, InstKind, Order, RmwOp, Target, Terminator};
+pub use inst::{
+    Access, Address, BinOp, Callee, CastOp, Cond, InstKind, Order, Right, RmwOp, Target, Terminator,
+};
 pub use ty::Scalar;
 pub use unit::{Data, Import, ImportKind, Reloc, Site, Unit};
 pub use verify::Malformed;

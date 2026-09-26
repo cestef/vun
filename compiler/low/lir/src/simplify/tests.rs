@@ -1,0 +1,91 @@
+use vun_index::Idx;
+use vun_intern::Symbol;
+use vun_origin::{OriginId, OriginTable};
+
+use crate::func::{Conv, Linkage, Signature};
+use crate::tests::origin;
+use crate::{
+    AbiType, BinOp, Builder, Callee, CastOp, Ext, FuncId, Function, InstKind, Scalar, Terminator, Unit,
+};
+
+fn signature(conv: Conv, param: Scalar, result: Scalar) -> Signature {
+    let int = |ty| AbiType::Int(ty, Ext::Zero);
+    Signature { conv, params: vec![int(param)], result: Some(int(result)) }
+}
+
+fn call(b: &mut Builder, f: usize, arg: crate::Value, ty: Scalar, at: OriginId) -> crate::Value {
+    let kind = InstKind::Call { callee: Callee::Func(FuncId::new(f)), args: vec![arg] };
+    b.push(kind, Some(ty), at).unwrap()
+}
+
+/// `wrap(x: i128) -> i64`, `step(x: i64) = wrap(x * k + c)` computed in `i128`, both internal,
+/// and an exported `run(x) = step(x)`, with a block nothing jumps to.
+fn unit(at: OriginId) -> Unit {
+    let mut wrap = Builder::new(Linkage::Internal, signature(Conv::Vun, Scalar::I128, Scalar::I64), at);
+    let x = wrap.params(wrap.current())[0];
+    let mask = wrap.constant(Scalar::I128, u128::from(u64::MAX), at);
+    let low = wrap.binary(BinOp::And, x, mask, at);
+    let low = wrap.cast(CastOp::Trunc, low, Scalar::I64, at);
+    wrap.terminate(Terminator::Return(Some(low)));
+    let mut step = Builder::new(Linkage::Internal, signature(Conv::Vun, Scalar::I64, Scalar::I64), at);
+    let x = step.params(step.current())[0];
+    let wide = step.cast(CastOp::ZExt, x, Scalar::I128, at);
+    let k = step.constant(Scalar::I128, 6_364_136_223_846_793_005, at);
+    let product = step.binary(BinOp::Mul, wide, k, at);
+    let c = step.constant(Scalar::I128, 1_442_695_040_888_963_407, at);
+    let sum = step.binary(BinOp::Add, product, c, at);
+    let wrapped = call(&mut step, 0, sum, Scalar::I64, at);
+    step.terminate(Terminator::Return(Some(wrapped)));
+    let signature = signature(Conv::C, Scalar::I64, Scalar::I64);
+    let mut run = Builder::new(Linkage::Export(Symbol::intern("run")), signature, at);
+    let x = run.params(run.current())[0];
+    let stepped = call(&mut run, 1, x, Scalar::I64, at);
+    run.terminate(Terminator::Return(Some(stepped)));
+    let unreached = run.block(&[], at);
+    run.switch_to(unreached);
+    run.terminate(Terminator::Return(Some(x)));
+    let mut unit = Unit { pointer_bits: 64, ..Unit::default() };
+    for function in [wrap.finish(), step.finish(), run.finish()] {
+        unit.functions.push(function);
+    }
+    unit
+}
+
+fn kinds(f: &Function) -> Vec<&InstKind> {
+    f.blocks.iter().flat_map(|(_, b)| &b.insts).map(|&i| &f.insts[i].kind).collect()
+}
+
+#[test]
+fn a_callee_inlined_brings_its_callees_inlined_and_a_truncated_product_is_narrow() {
+    let origins = OriginTable::new();
+    let mut unit = unit(origin(&origins));
+    unit.simplify();
+    assert_eq!(unit.verify(&origins), Ok(()));
+    let run = &unit.functions[FuncId::new(2)];
+    let binaries: Vec<BinOp> = kinds(run)
+        .into_iter()
+        .filter_map(|kind| match kind {
+            InstKind::Binary { op, .. } => Some(*op),
+            InstKind::Call { .. } => panic!("every call is inlined"),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(binaries, [BinOp::Mul, BinOp::Add]);
+    assert!(run.values.iter().all(|(_, v)| v.ty == Scalar::I64), "nothing is computed in i128");
+}
+
+#[test]
+fn an_unreached_block_is_emptied_and_an_unread_value_swept() {
+    let origins = OriginTable::new();
+    let at = origin(&origins);
+    let mut unit = unit(at);
+    let run = &mut unit.functions[FuncId::new(2)];
+    let entry = run.entry().unwrap();
+    let (unread, _) = run.define(InstKind::Const { ty: Scalar::I32, bits: 7 }, Some(Scalar::I32), at);
+    run.blocks[entry].insts.insert(0, unread);
+    assert_eq!(run.sweep(), 1);
+    let unreached = run.blocks.iter().nth(1).unwrap().1;
+    assert_eq!(unreached.term, Terminator::Unreachable);
+    assert_eq!(kinds(run).len(), 1, "the call stays: it acts");
+    assert_eq!(unit.verify(&origins), Ok(()));
+}

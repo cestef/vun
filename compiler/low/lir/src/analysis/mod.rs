@@ -1,8 +1,9 @@
 //! Analyses every backend reads (spec 13, section 8.1), computed once per function: the control
 //! flow graph, the loop forest, the order blocks are emitted in, the live range of each value and
-//! the moves filling a jump's target parameters; over a whole unit, the worst-case stack use of
-//! each function.
+//! the moves filling a jump's target parameters; over a whole unit, the functions reached, the
+//! call graph callees first and the worst-case stack use of each function.
 
+mod calls;
 mod cfg;
 mod liveness;
 mod loops;

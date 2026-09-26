@@ -6,7 +6,7 @@ use vun_origin::OriginId;
 
 use crate::entity::{Block, Slot, Value};
 use crate::func::{BlockData, Def, Function, InstData, Linkage, Signature, SlotData, ValueData};
-use crate::inst::{Access, Address, BinOp, CastOp, Cond, InstKind, Terminator};
+use crate::inst::{Access, Address, BinOp, CastOp, Cond, InstKind, Right, Terminator};
 use crate::ty::Scalar;
 
 pub struct Builder {
@@ -95,15 +95,17 @@ impl Builder {
     }
 
     /// `a op b`: a constant where both are and the operation folds, `a` itself where `b` is
-    /// the constant leaving it unchanged, as `x * 1` is.
+    /// the constant leaving it unchanged, as `x * 1` is, a constant where `b` decides it, as `x * 0`.
     pub fn binary(&mut self, op: BinOp, a: Value, b: Value, origin: OriginId) -> Value {
         let ty = self.ty(a);
         let (ka, kb) = (self.constant_bits(a), self.constant_bits(b));
         if let Some(bits) = ka.zip(kb).and_then(|(ka, kb)| op.fold(ty, ka, kb)) {
             return self.constant(ty, bits, origin);
         }
-        if op.identity().is_some_and(|identity| kb == Some(identity)) {
-            return a;
+        match kb.and_then(|kb| op.with_right(ty, kb)) {
+            Some(Right::Left) => return a,
+            Some(Right::Constant(bits)) => return self.constant(ty, bits, origin),
+            None => {}
         }
         self.value(InstKind::Binary { op, a, b }, ty, origin)
     }
