@@ -31,8 +31,8 @@ fn unit() -> (Unit, OriginTable) {
             at,
         )
     };
-    let once = call(&mut twice, x).unwrap();
-    let again = call(&mut twice, once).unwrap();
+    let first = call(&mut twice, x).unwrap();
+    let again = call(&mut twice, first).unwrap();
     twice.terminate(Terminator::Return(Some(again)));
     let mut unit = Unit { pointer_bits: 64, ..Unit::default() };
     unit.functions.push(inc.finish());
