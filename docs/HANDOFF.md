@@ -63,6 +63,7 @@ cargo xtask corpus            # verdicts, coverage, what stops MIR most
 cargo xtask size              # the distributed binary against its budget (10 MiB)
 cargo run -q -p vun-cli -- run|build [--release] [--backend b] [--target t] <file>
 cargo run -q -p vun-cli -- debug tokens|cst|hir|mir|layout|program|lir|code|frames|compare <file>
+cargo run -q -p vun-cli -- debug queries <file>   # what the saved queries hold, per query and pool
 cargo run -q -p vun-cli -- toolchain components
 VUN_BLESS=1 cargo nextest run -p vun-syntax    # snapshots, only after reading the diff
 cd fuzz && cargo +nightly fuzz run parse -- -max_total_time=120
@@ -137,10 +138,24 @@ in as proposed unless the user approves them.
    then unwind info; (d) data objects aligned past every C type in the C backend, memory regions
    into `LinkPlan`, a bare-metal runtime, a slice value (`xs[a..b]` not borrowed) reported by
    sema rather than as `backend.unlowered`; (e) linkers other than `gnu`.
-2. Performance and persistence: compact the saved-query file past twice its live size; write it
-   atomically; the rest of the audit (fingerprints for large values, `FileRef.path` as a
-   `Symbol`, hashing keys once, the interpreter copying whole values, small `Integer`s, linear
-   scans in `Primitive::at` and `Borrow::of`); try mimalloc; measure `par_map`'s thread spawns.
+2. Performance and persistence. Done in the sixteenth session (decision 191): saved queries
+   written whole past twice their compacted size, atomic `Edit::put`, reads saved without their
+   key's fingerprint (11.4 to 6.8 MB on ten programs sharing a directory), queries decoded in
+   parallel, `vun debug queries`; mimalloc (cold compiles 19% faster); `vun_hash::Stable`
+   instead of BLAKE3 for symbols, interned values and origins, token and item lookups by table
+   (10% more); `FileRef.path` a `Symbol`; the query engine's code shared across queries (the
+   binary 470 KB smaller). `par_map`'s spawns measured: about 1 ms a run, not worth a pool.
+   Left: (a) `cargo xtask size` fails: the dist binary is 11.17 MB against 10 MiB, over since
+   the native backend landed (11.64 MB then); the rest is `std` (1.7 MiB of text), rustls and
+   ring (640 KiB, for `vun-http`) and per-query code (`Cx::get`, `Table::slot`, about 400 KiB):
+   trimming TLS or raising the budget is the user's decision (decision 131). (b) Loading saved
+   queries is eager: a warm run of one program takes 14 ms, all of it loading; ten programs
+   sharing a file pay for all of them (38 ms). Loading a memo when its key is first asked for
+   (keys indexed by `Stable` hash, as rustc's on-disk cache) would make it proportional to what
+   is used. Storing a memo pays `arc_swap`'s debts of every thread, so stores must not run in
+   parallel (restore is one thread for that reason). (c) The audit items with no workload to
+   measure yet: fingerprints of large values, the interpreter copying whole values, small
+   `Integer`s; the corpus has no program past 70 ms, so a comptime-heavy benchmark comes first.
 3. `std`: `task.Pool`, `testing.Sim`, a Linux runtime without libc, `Str` and collections,
    `print`'s `.fixes`; generic bodies over a constrained `$A: Allocator`.
 4. Checks: leaks at scope exits inside a body, `fixed` and `scoped` kinds, frames' `end` running
