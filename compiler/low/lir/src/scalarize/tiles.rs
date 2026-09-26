@@ -138,7 +138,7 @@ impl Reach {
                 .iter()
                 .filter_map(|c| Some((c.to?, c.from?, c.bytes)))
                 .filter(|&(to, from, bytes)| match (tilings.get(&to.slot), tilings.get(&from.slot)) {
-                    (Some(a), Some(b)) => !Self::alike(a, to.offset, b, from.offset, bytes),
+                    (Some(a), Some(b)) => !Self::alike(a, to.offset, b, from.offset, bytes, pointer_bits),
                     _ => false,
                 })
                 .flat_map(|(to, from, _)| [to.slot, from.slot])
@@ -152,15 +152,16 @@ impl Reach {
         }
     }
 
-    /// Whether `a` from `at` and `b` from `bt` have the same tiles over `bytes` bytes.
-    fn alike(a: &Tiles, at: u64, b: &Tiles, bt: u64, bytes: u64) -> bool {
-        let a = a.range(at..at + bytes).map(|(&o, &ty)| (o - at, ty));
-        a.eq(b.range(bt..bt + bytes).map(|(&o, &ty)| (o - bt, ty)))
+    /// Whether `a` from `at` and `b` from `bt` have tiles of the same sizes over `bytes` bytes:
+    /// a copy between them moves each tile whole, whatever its scalar.
+    fn alike(a: &Tiles, at: u64, b: &Tiles, bt: u64, bytes: u64, pointer_bits: u32) -> bool {
+        let a = a.range(at..at + bytes).map(|(&o, &ty)| (o - at, ty.bytes(pointer_bits)));
+        a.eq(b.range(bt..bt + bytes).map(|(&o, &ty)| (o - bt, ty.bytes(pointer_bits))))
     }
 
     /// The tiles of `slot`: bounds where its scalars and copies start and end, and where those
     /// of the slots it is copied to or from do; each stretch between split into the widest
-    /// aligned integers, or the scalar read or written there. A slot already one scalar, never
+    /// aligned integers, or the scalar read or written there or in a slot copied there. A slot already one scalar, never
     /// copied, is left as it is.
     fn tiles(&self, f: &Function, slot: Slot, pointer_bits: u32) -> Option<Tiles> {
         let data = f.slots[slot];
@@ -169,6 +170,8 @@ impl Reach {
         for &(offset, ty) in own {
             bounds.extend([offset, offset + ty.bytes(pointer_bits)]);
         }
+        // The scalars of the slots copied to or from, where they fall in this one.
+        let mut copied: Map<u64, Scalar> = Map::default();
         for copy in &self.copies {
             let (here, there) = match (copy.to, copy.from) {
                 (Some(p), other) if p.slot == slot => (p, other),
@@ -182,7 +185,11 @@ impl Reach {
                     scalars.iter().filter(|(o, _)| (there.offset..there.offset + copy.bytes).contains(o));
                 for &(offset, ty) in inside {
                     let start = here.offset + offset - there.offset;
-                    bounds.extend([start, (start + ty.bytes(pointer_bits)).min(here.offset + copy.bytes)]);
+                    let end = start + ty.bytes(pointer_bits);
+                    bounds.extend([start, end.min(here.offset + copy.bytes)]);
+                    if end <= here.offset + copy.bytes {
+                        copied.insert(start, ty);
+                    }
                 }
             }
         }
@@ -203,11 +210,14 @@ impl Reach {
                 let ty = match typed.get(&at) {
                     Some(&ty) if at + ty.bytes(pointer_bits) == stretch[1] => ty,
                     Some(_) => return None,
-                    None => {
-                        let fits = |&n: &u64| n <= data.align && at % n == 0 && at + n <= stretch[1];
-                        let bytes = [8, 4, 2, 1].into_iter().find(fits)?;
-                        Scalar::int(u32::try_from(bytes * 8).ok()?)?
-                    }
+                    None => match copied.get(&at) {
+                        Some(&ty) if at + ty.bytes(pointer_bits) == stretch[1] => ty,
+                        _ => {
+                            let fits = |&n: &u64| n <= data.align && at % n == 0 && at + n <= stretch[1];
+                            let bytes = [8, 4, 2, 1].into_iter().find(fits)?;
+                            Scalar::int(u32::try_from(bytes * 8).ok()?)?
+                        }
+                    },
                 };
                 tiles.insert(at, ty);
                 at += ty.bytes(pointer_bits);

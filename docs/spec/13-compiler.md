@@ -189,7 +189,8 @@ per second per stage and fails on regressions.
   and a block whose only predecessor jumps to it is merged into it. A slot of an aggregate
   reached only by plain loads and stores at constant offsets and by copies is scalarized
   (`Function::scalarize`): cut into tiles, one per scalar read or written in it and the widest
-  aligned integers between, agreeing with the slots it is copied to or from (at most 16), each
+  aligned integers between (or the scalar a slot copied to or from has there), agreeing in
+  size with the slots it is copied to or from (at most 16 tiles), each
   copy touching it a load and a store per tile, and each tile a slot promotion then takes. A
   pure instruction (`InstKind::pure`: no memory read or written, nothing called) equal to one
   dominating it reuses that one's value (`Function::reuse`, walking the dominator tree of
