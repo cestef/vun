@@ -6,6 +6,11 @@
 use std::marker::PhantomData;
 use std::ops;
 
+mod bits;
+mod matrix;
+
+pub use bits::BitSet;
+pub use matrix::BitMatrix;
 pub use vun_codec as codec;
 use vun_codec::{Decode, Encode};
 

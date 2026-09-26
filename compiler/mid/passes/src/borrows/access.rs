@@ -1,10 +1,9 @@
 //! The accesses each statement makes, checked against the loans live there, and the loans the
 //! result carries out at a return.
 
-use std::collections::BTreeSet;
-
 use vun_desugar::Access;
 use vun_diag::{Msg, errors};
+use vun_index::BitSet;
 use vun_mir::{BlockId, Operand, Place, Rvalue, Stmt, TerminatorKind};
 use vun_origin::OriginId;
 
@@ -16,7 +15,7 @@ struct Here<'h> {
     block: BlockId,
     index: usize,
     holds: &'h Holds,
-    live: &'h BTreeSet<vun_mir::Local>,
+    live: &'h BitSet<vun_mir::Local>,
 }
 
 impl Checker<'_> {
@@ -38,8 +37,8 @@ impl Checker<'_> {
             }
             // Writing a place replaces its own storage: a borrow reached through a `.*` inside
             // it, such as the target of a borrow being reassigned, is not touched.
-            let overwritten: BTreeSet<LoanId> =
-                loans.iter().copied().filter(|&l| !self.loans[l].place.beyond(&stmt.place)).collect();
+            let overwritten: BitSet<LoanId> =
+                loans.iter().filter(|&l| !self.loans[l].place.beyond(&stmt.place)).collect();
             self.conflicts(&overwritten, &stmt.place, Access::Exclusive, stmt.origin, &here);
             self.hold(block, index, stmt, &mut holds);
         }
@@ -51,13 +50,17 @@ impl Checker<'_> {
             }
         }
         if b.term.kind == TerminatorKind::Return {
-            self.escapes(&holds[body.ret], b.term.origin);
+            self.escapes(&holds.iter_row(body.ret).collect(), b.term.origin);
         }
     }
 
     /// The loans some live local holds, but `own`, the one being taken.
-    fn live_loans(holds: &Holds, live: &BTreeSet<vun_mir::Local>, own: Option<LoanId>) -> BTreeSet<LoanId> {
-        live.iter().flat_map(|&l| holds[l].iter().copied()).filter(|&loan| Some(loan) != own).collect()
+    fn live_loans(holds: &Holds, live: &BitSet<vun_mir::Local>, own: Option<LoanId>) -> BitSet<LoanId> {
+        let mut loans: BitSet<LoanId> = live.iter().flat_map(|local| holds.iter_row(local)).collect();
+        if let Some(own) = own {
+            loans.remove(own);
+        }
+        loans
     }
 
     /// The places `stmt` reaches before writing its place, and how: operands and tests read,
@@ -85,13 +88,13 @@ impl Checker<'_> {
     /// exclusive.
     fn conflicts(
         &mut self,
-        loans: &BTreeSet<LoanId>,
+        loans: &BitSet<LoanId>,
         place: &Place,
         access: Access,
         origin: OriginId,
         here: &Here<'_>,
     ) {
-        for &loan in loans {
+        for loan in loans.iter() {
             let l = &self.loans[loan];
             if l.source == Source::Taken
                 && l.place.overlaps(place)
@@ -104,7 +107,7 @@ impl Checker<'_> {
                 } else {
                     Msg::new().text("a shared borrow keeps the place from changing while it is used; write it after the borrow's last use")
                 };
-                let holders = here.live.iter().copied().filter(|&l| here.holds[l].contains(&loan)).collect();
+                let holders = here.live.iter().filter(|&l| here.holds.contains(l, loan)).collect();
                 let later = self.later_use(here.block, here.index, &holders);
                 if let Some(d) = self.reporting(errors::BORROW_CONFLICT, origin, msg, Some(loan), Some(help))
                 {
@@ -120,8 +123,8 @@ impl Checker<'_> {
 
     /// The loans of the function's own storage in its result, and those its `&temp` parameters
     /// lend.
-    fn escapes(&mut self, loans: &BTreeSet<LoanId>, returned: OriginId) {
-        for &loan in loans {
+    fn escapes(&mut self, loans: &BitSet<LoanId>, returned: OriginId) {
+        for loan in loans.iter() {
             if self.loans[loan].source == Source::Lent {
                 let msg = self
                     .name(&self.loans[loan].place)
@@ -147,8 +150,8 @@ impl Checker<'_> {
 
     /// The scope of the binding in `local` ends at `origin`: a live loan of its own storage
     /// would outlive it (spec 05, section 4).
-    fn outlived(&mut self, loans: &BTreeSet<LoanId>, local: vun_mir::Local, origin: OriginId) {
-        for &loan in loans {
+    fn outlived(&mut self, loans: &BitSet<LoanId>, local: vun_mir::Local, origin: OriginId) {
+        for loan in loans.iter() {
             let l = &self.loans[loan];
             if l.source == Source::Taken && l.place.local == local && !l.place.is_indirect() {
                 let msg =

@@ -143,9 +143,13 @@ impl<'b> Checker<'b> {
     }
 
     fn run(mut self) -> DiagCtxt {
+        self.free_values();
+        // With no loan, nothing conflicts, escapes or is outlived.
+        if self.loans.is_empty() {
+            return self.diag;
+        }
         let holding = self.holding();
         let live = self.liveness();
-        self.free_values();
         for (block, holds) in holding.iter() {
             if let Some(holds) = holds {
                 self.check(block, holds.clone(), &live);

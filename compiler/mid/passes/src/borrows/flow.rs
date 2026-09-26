@@ -1,27 +1,27 @@
 //! The two flows the rules read: which loans each local may hold, forward from the entry, and
 //! which locals are live, backward from each use.
 
-use std::collections::{BTreeSet, VecDeque};
+use std::collections::VecDeque;
 
 use vun_desugar::Extent;
-use vun_index::{Idx, IndexVec};
+use vun_index::{BitMatrix, BitSet, Idx, IndexVec};
 use vun_mir::{BlockId, Local, Operand, Rvalue, Stmt, Terminator, TerminatorKind};
 
 use super::{Checker, LoanId};
 
 /// The loans each local may hold.
-pub(super) type Holds = IndexVec<Local, BTreeSet<LoanId>>;
+pub(super) type Holds = BitMatrix<Local, LoanId>;
 
 /// The locals live before each statement of a block, and before its terminator last.
-pub(super) type Live = IndexVec<BlockId, Vec<BTreeSet<Local>>>;
+pub(super) type Live = IndexVec<BlockId, Vec<BitSet<Local>>>;
 
 impl Checker<'_> {
     /// The loans each local may hold at the entry of each block reached.
     pub(super) fn holding(&self) -> IndexVec<BlockId, Option<Holds>> {
         let mut at: IndexVec<BlockId, Option<Holds>> = IndexVec::filled(None, self.body.blocks.len());
-        let mut entry = IndexVec::filled(BTreeSet::new(), self.body.locals.len());
+        let mut entry = Holds::new(self.body.locals.len(), self.loans.len());
         for &(param, loan) in &self.lent {
-            entry[param].insert(loan);
+            entry.insert(param, loan);
         }
         at[BlockId::new(0)] = Some(entry);
         let mut work = VecDeque::from([BlockId::new(0)]);
@@ -32,15 +32,7 @@ impl Checker<'_> {
             }
             for next in self.body.blocks[block].term.kind.successors() {
                 let changed = match &mut at[next] {
-                    Some(there) => {
-                        let mut changed = false;
-                        for (local, loans) in holds.iter() {
-                            let before = there[local].len();
-                            there[local].extend(loans.iter().copied());
-                            changed |= there[local].len() != before;
-                        }
-                        changed
-                    }
+                    Some(there) => there.union(&holds),
                     slot @ None => {
                         *slot = Some(holds.clone());
                         true
@@ -58,12 +50,12 @@ impl Checker<'_> {
     /// through; or, for a scoped value, the loans of everything it is built from but the
     /// arguments a call holds for itself only (`&temp`).
     pub(super) fn hold(&self, block: BlockId, index: usize, stmt: &Stmt, holds: &mut Holds) {
-        let flows: BTreeSet<LoanId> = match &stmt.value {
+        let flows: BitSet<LoanId> = match &stmt.value {
             Rvalue::Ref { place, .. } => {
-                let mut flows: BTreeSet<LoanId> =
+                let mut flows: BitSet<LoanId> =
                     self.taken.get(&(block, index)).copied().into_iter().collect();
                 if place.is_indirect() {
-                    flows.extend(holds[place.local].iter().copied());
+                    flows.extend(holds.iter_row(place.local));
                 }
                 flows
             }
@@ -75,15 +67,15 @@ impl Checker<'_> {
                         Operand::Place(p) => Some(p.local),
                         Operand::Const(_) => None,
                     })
-                    .flat_map(|l| holds[l].iter().copied())
+                    .flat_map(|l| holds.iter_row(l))
                     .collect()
             }
-            _ => BTreeSet::new(),
+            _ => BitSet::new(),
         };
         if stmt.place.projection.is_empty() {
-            holds[stmt.place.local] = flows;
+            holds.set_row(stmt.place.local, &flows);
         } else {
-            holds[stmt.place.local].extend(flows);
+            holds.union_row(stmt.place.local, &flows);
         }
     }
 
@@ -113,7 +105,7 @@ impl Checker<'_> {
                 predecessors[next].push(block);
             }
         }
-        let mut entry: IndexVec<BlockId, BTreeSet<Local>> = IndexVec::filled(BTreeSet::new(), blocks.len());
+        let mut entry: IndexVec<BlockId, BitSet<Local>> = IndexVec::filled(BitSet::new(), blocks.len());
         let mut work: VecDeque<BlockId> = blocks.iter().map(|(block, _)| block).collect();
         while let Some(block) = work.pop_front() {
             let live = self.live_in(block, &entry).swap_remove(0);
@@ -127,15 +119,17 @@ impl Checker<'_> {
 
     /// The locals live before each statement of `block` and its terminator, given those live at
     /// the entry of each block.
-    fn live_in(&self, block: BlockId, entry: &IndexVec<BlockId, BTreeSet<Local>>) -> Vec<BTreeSet<Local>> {
+    fn live_in(&self, block: BlockId, entry: &IndexVec<BlockId, BitSet<Local>>) -> Vec<BitSet<Local>> {
         let b = &self.body.blocks[block];
-        let mut live: BTreeSet<Local> =
-            b.term.kind.successors().into_iter().flat_map(|next| entry[next].iter().copied()).collect();
+        let mut live = BitSet::new();
+        for next in b.term.kind.successors() {
+            live.union(&entry[next]);
+        }
         live.extend(self.terminator_uses(&b.term));
         let mut before = vec![live.clone()];
         for stmt in b.stmts.iter().rev() {
             if stmt.place.projection.is_empty() {
-                live.remove(&stmt.place.local);
+                live.remove(stmt.place.local);
             }
             live.extend(Self::uses(stmt));
             before.push(live.clone());
