@@ -174,9 +174,10 @@ in as proposed unless the user approves them.
 5. `vun build` carries out a plan's actions (`std.build.Action` by handles), with a program's
    options as a typed record.
 6. MIR and sema gaps (`cargo xtask corpus` lists them): `.{ }` and `.name` in plain
-   instantiations, or-patterns that bind, `lang.simd.chunks`, exhaustiveness (decision 29), impl
-   member types against requirements, `#[layout.offset]`, traps in a callee's instantiated
-   signature.
+   instantiations, `lang.simd.chunks`, exhaustiveness (decision 29), impl member types against
+   requirements, `#[layout.offset]`, traps in a callee's instantiated signature; `&.word(3)` (a
+   borrow of a compile-time enum value) at run time stops at `backend.unlowered`. Or-patterns
+   that bind are done (decision 194).
 7. Evaluator: its own stack; loans inside aggregate arguments. Packaging: signed caches, planned
    builds, `vun pkg why`, `.workspace` visibility.
 
@@ -184,6 +185,9 @@ in as proposed unless the user approves them.
 
 - Origins are equal by identity: lowering that makes two entities from one piece of syntax gives
   each its own origin (`Lower::own`); `Hir::verify` catches it. `OriginId` has no order.
+- A query key must equal another only when computing either gives the same value: a key equal by
+  origin alone kept the index a node had before an edit, so a saved memo was computed at the
+  wrong node (decision 195). A key carrying anything `compute` reads must compare it.
 - Process-wide tables (`SourceFiles::global()`, `OriginTable::global()`, interners) are shared by
   every session in the process.
 - Persisted queries need unique `Query::NAME`s and codecs; set queries are `INPUT`. Delete
