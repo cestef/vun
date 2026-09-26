@@ -154,7 +154,7 @@ pub(crate) fn assemble<T>(
     line_table(code, lines, &funcs, &mut b.object, text);
     // Mach-O describes frames otherwise (compact unwind information), which is left for later.
     if format == Format::Elf {
-        let fdes = code.iter().map(|(id, c)| Fde {
+        let fdes = code.iter().filter(|(_, c)| !c.code.bytes.is_empty()).map(|(id, c)| Fde {
             symbol: funcs[id],
             size: c.code.bytes.len() as u64,
             steps: c.unwind.clone(),

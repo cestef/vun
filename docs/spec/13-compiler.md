@@ -179,7 +179,12 @@ per second per stage and fails on regressions.
   Jumps are then threaded (`Function::thread`; `Unit::simplify` runs the three in turn): a predecessor passing a constant to a block that
   only compares that parameter with a constant and branches, nothing it defines read beyond it,
   jumps where the branch sends that constant, as the join of `if c { true } else { false }`
-  would; and a jump to a block holding only constants and jumping on is moved to where it jumps.
+  would; a jump to a block holding only constants and jumping on is moved to where it jumps;
+  and a block whose only predecessor jumps to it is merged into it. Small functions are then
+  inlined (`Unit::inline`: internal, of Vun's convention, an entry that returns after at most
+  eight instructions), their instructions keeping their origins, and the passes run again; a
+  backend emits no code for a function nothing reaches (`analysis::Reached`: exports, addresses
+  taken, and what they call), as one inlined everywhere is.
 - Both have **stable text formats**. Tests are written against them, dumps are readable and carry
   origins, and an external backend is any executable reading LIR text on standard input.
 

@@ -9,6 +9,7 @@ pub mod entity;
 pub mod facts;
 mod fold;
 pub mod func;
+pub mod inline;
 pub mod inst;
 pub mod legalize;
 pub mod promote;

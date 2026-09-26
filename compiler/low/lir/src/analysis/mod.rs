@@ -8,6 +8,7 @@ mod liveness;
 mod loops;
 mod moves;
 mod order;
+mod reach;
 mod stack;
 
 pub use cfg::Cfg;
@@ -15,6 +16,7 @@ pub use liveness::{Liveness, Range};
 pub use loops::Loops;
 pub use moves::{Location, Move, Moves};
 pub use order::Order;
+pub use reach::Reached;
 pub use stack::{StackUse, Unbounded};
 
 #[cfg(test)]

@@ -4,6 +4,7 @@
 //! block that only jumps is jumped over by its predecessors. Blocks no longer reached stay, and
 //! backends leave them out.
 
+mod merge;
 #[cfg(test)]
 mod tests;
 
@@ -20,7 +21,7 @@ impl Function {
     pub fn thread(&mut self) -> usize {
         let mut moved = 0;
         loop {
-            let now = self.thread_constants() + self.forward();
+            let now = self.thread_constants() + self.forward() + self.merge();
             if now == 0 {
                 return moved;
             }

@@ -59,6 +59,15 @@ pub struct Compiled<T> {
     pub unwind: Vec<(u64, Step)>,
 }
 
+impl<T> Compiled<T> {
+    /// The code of a function nothing reaches: none.
+    #[must_use]
+    pub fn unreached() -> Self {
+        let code = vun_asm::Code { bytes: Vec::new(), relocs: Vec::new(), listing: Vec::new() };
+        Self { code, frame: 0, marks: Vec::new(), unwind: Vec::new() }
+    }
+}
+
 /// Compiles `f` of `unit`, listing its code when `listed`.
 ///
 /// # Errors

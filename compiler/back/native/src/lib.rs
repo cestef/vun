@@ -23,6 +23,7 @@ use vun_backend::{
 use vun_codegen::{Compiled, Isel};
 use vun_diag::{DiagCtxt, ErrorGuaranteed};
 use vun_index::IndexVec;
+use vun_lir::analysis::Reached;
 use vun_lir::legalize::Half;
 use vun_lir::unit::Unit;
 use vun_lir::{Address, FuncId, Function};
@@ -114,8 +115,13 @@ impl NativeBackend {
     where
         Code<A>: Send,
     {
-        let functions: Vec<&Function> = unit.functions.iter().map(|(_, f)| f).collect();
-        let compiled = functions.par_map(|f| {
+        // A function inlined everywhere it was called is left to nothing: it has no code.
+        let reached = Reached::of(unit);
+        let functions: Vec<(FuncId, &Function)> = unit.functions.iter().collect();
+        let compiled = functions.par_map(|&(id, f)| {
+            if !reached.contains(id) {
+                return Ok(Compiled::unreached());
+            }
             let _span = vun_trace::tracing::debug_span!("native", f = %f.linkage).entered();
             let compiled = vun_codegen::compile::<A>(unit, f, convention, listed);
             if let Ok(c) = &compiled {
