@@ -161,3 +161,24 @@ conflict := () -> u8 {
     // Where the borrow is taken, then where it is used after the conflicting access.
     assert_eq!(lines, [4, 6]);
 }
+
+#[test]
+fn parts_of_immutable_top_level_bindings_are_borrowed_for_the_program() {
+    let fixture = Fixture::new("borrows-static");
+    let file = fixture.root.write(
+        "statics.vun",
+        "\
+table: [4]u8 = [1, 2, 3, 4];
+Config := struct { limit: u8, name: [3]u8 };
+config: Config = .{ .limit = 9, .name = [5, 6, 7] };
+mut counter: u8 = 0;
+item := () -> &static u8 { t := &table[2]; t };
+field := () -> &static u8 { l := &config.limit; l };
+nested := () -> &static u8 { n := &config.name[2]; n };
+local := () -> &static u8 { xs: [2]u8 = [1, 2]; p := &xs[0]; p };
+changing := () -> &static u8 { c := unsafe { &counter }; c };
+",
+    );
+    // A local's storage and a `mut` static's are not the program's to lend.
+    assert_eq!(fixture.check(&file), [errors::TYPES_MISMATCH, errors::TYPES_MISMATCH]);
+}

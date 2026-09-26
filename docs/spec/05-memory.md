@@ -113,8 +113,9 @@ graphs with cycles, `std.collections.Handle(T)` gives typed indices into a pool,
 structs (spec 02), with checked indexing whose checks range analysis removes when it can.
 
 **Static region.** Shared borrows of what lives as long as the program have type `&static T`, which
-is free and copy and is accepted wherever `&T` is expected: an immutable top-level binding, and a
-literal, or a tuple, array or record of literals (`&[]`, `&.{ 1, 2 }`). It is the only subtyping
+is free and copy and is accepted wherever `&T` is expected: an immutable top-level binding or a
+part of one reached by fields and indices (`&table[i]`, `&config.name`), and a literal, or a
+tuple, array or record of literals (`&[]`, `&.{ 1, 2 }`). It is the only subtyping
 rule. A borrow of a top-level binding reaches its one storage, never a copy of its value; one
 holding a cell (not cell-free) is written through it, so its storage is writable. String literals
 are `&static [N]u8`. A `mut` top-level binding is a static that can change,

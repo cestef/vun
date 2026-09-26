@@ -9,7 +9,8 @@ use crate::item::Site;
 
 impl Env<'_, '_> {
     /// Whether what `expr` denotes lives as long as the program: a literal, a tuple, array or
-    /// record made of such, or an immutable top-level binding.
+    /// record made of such, an immutable top-level binding, or a part of one of these reached by
+    /// a field or an index, which is in the same storage.
     #[must_use]
     pub fn lasting(&self, expr: ExprId) -> bool {
         let hir = &self.parsed.hir;
@@ -22,6 +23,8 @@ impl Env<'_, '_> {
                 fields.iter().all(|f| matches!(f, Entry::One(arg) if self.lasting(arg.value)))
             }
             ExprKind::Name(_) => self.immutable_member(expr),
+            ExprKind::Member { object, .. } => self.immutable_member(expr) || self.lasting(*object),
+            ExprKind::Index { object, .. } => self.lasting(*object),
             _ => false,
         }
     }
