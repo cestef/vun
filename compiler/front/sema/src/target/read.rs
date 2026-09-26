@@ -8,9 +8,14 @@ use vun_codec::{Decode, Encode};
 use vun_intern::Symbol;
 use vun_items::Item;
 use vun_items::lang::{Option as option, target_C as c, target_CInt as cint, target_Endian as endian};
-use vun_items::lang::{target_Atomics as atomics, target_CCompiler as compiler, target_FrameSizes as frames};
+use vun_items::lang::{
+    target_Atomics as atomics, target_Attributes as attributes, target_CCompiler as compiler,
+    target_FrameSizes as frames,
+};
 use vun_items::lang::{target_Backends as backends, target_Host as host, target_Spec as spec};
-use vun_target::{Atomics, Backends, CCompiler, CInt, CTypes, Endian, FrameSizes, Host, TargetSpec};
+use vun_target::{
+    Atomics, Attributes, Backends, CCompiler, CInt, CTypes, Endian, FrameSizes, Host, TargetSpec,
+};
 
 use crate::ty::Value;
 
@@ -162,6 +167,16 @@ impl Read for Atomics {
     }
 }
 
+impl Read for Attributes {
+    fn read(value: &Value) -> Result<Self, Unread> {
+        match value {
+            Value::Variant { name, .. } if *name == attributes::none.symbol() => Ok(Self::None),
+            Value::Variant { name, .. } if *name == attributes::gnu.symbol() => Ok(Self::Gnu),
+            _ => Err(Unread::Record),
+        }
+    }
+}
+
 impl Read for FrameSizes {
     fn read(value: &Value) -> Result<Self, Unread> {
         match value {
@@ -181,6 +196,7 @@ impl Read for CCompiler {
             optimize: m.strings(compiler::optimize)?,
             link_flags: m.strings(compiler::link_flags)?,
             atomics: m.read(compiler::atomics)?,
+            attributes: m.read(compiler::attributes)?,
             frame_sizes: m.read(compiler::frame_sizes)?,
         })
     }

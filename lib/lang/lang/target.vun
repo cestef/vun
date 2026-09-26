@@ -14,6 +14,15 @@ Atomics := enum {
     gnu,
 };
 
+/// What a C compiler offers beyond C99 for placing data: alignments past every C type's, and
+/// link sections.
+Attributes := enum {
+    /// Nothing: such data is refused.
+    none,
+    /// `__attribute__((aligned(n), section(name)))` of GCC and Clang.
+    gnu,
+};
+
 /// How a C compiler reports the size of each function's frame.
 FrameSizes := enum {
     /// It does not.
@@ -32,6 +41,7 @@ CCompiler := struct {
     optimize: &[&[u8]],
     link_flags: &[&[u8]],
     atomics: Atomics,
+    attributes: Attributes,
     frame_sizes: FrameSizes,
 };
 

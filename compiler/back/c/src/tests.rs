@@ -4,7 +4,7 @@ use vun_intern::Symbol;
 use vun_lir::{AbiType, Builder, Conv, Ext, FuncId, Linkage, Scalar, Signature, Terminator, Unit, Value};
 use vun_origin::{OriginId, OriginTable};
 use vun_span::{SourceFiles, Span};
-use vun_target::{Atomics, Backends, CCompiler, CInt, CTypes, Endian, FrameSizes, TargetSpec};
+use vun_target::{Atomics, Attributes, Backends, CCompiler, CInt, CTypes, Endian, FrameSizes, TargetSpec};
 
 use crate::ast::{Ident, Names};
 use crate::{CBackend, Lack};
@@ -42,6 +42,7 @@ fn target() -> TargetSpec {
                 optimize: Vec::new(),
                 link_flags: Vec::new(),
                 atomics: Atomics::None,
+                attributes: Attributes::None,
                 frame_sizes: FrameSizes::StackUsage,
             },
         },
@@ -117,4 +118,36 @@ fn frame_sizes_are_read_by_function() {
         b"program.c:3:5:seven\t16\tstatic\nprogram.c:9:12:f1\t48\tstatic\nother.c:1:1:elsewhere\t8\tstatic\n";
     let sizes = CBackend::default().frame_sizes(&unit, report);
     assert_eq!(sizes, [(FuncId::new(0), 16), (FuncId::new(1), 48)]);
+}
+
+#[test]
+fn data_aligned_past_c_or_placed_in_a_section_needs_gnu_attributes() {
+    use crate::ast::{Attribute, Item};
+    use crate::emit::Emitter;
+    let origins = OriginTable::new();
+    let at = origin(&origins);
+    let mut unit = constant("seven", Scalar::I32, at);
+    let data = |section| vun_lir::Data {
+        linkage: Linkage::Internal,
+        bytes: vec![1; 64],
+        relocs: Vec::new(),
+        align: 64,
+        writable: false,
+        section,
+        origin: at,
+    };
+    unit.data.push(data(None));
+    let lacks = |unit: &Unit, target: &TargetSpec| Emitter::sources(unit, target, &NoLines, usize::MAX).err();
+    assert_eq!(lacks(&unit, &target()), Some(Lack { missing: Missing::Align(64), at }));
+    let vectors = Symbol::intern(".vectors");
+    unit.data[vun_lir::DataId::new(0)] = data(Some(vectors));
+    assert_eq!(lacks(&unit, &target()), Some(Lack { missing: Missing::Section, at }));
+    let mut gnu = target();
+    gnu.c.compiler.attributes = Attributes::Gnu;
+    let sources = Emitter::sources(&unit, &gnu, &NoLines, usize::MAX).unwrap();
+    let placed = sources.iter().flat_map(|s| &s.file.items).find_map(|item| match item {
+        Item::Object { attributes, .. } if !attributes.is_empty() => Some(attributes.clone()),
+        _ => None,
+    });
+    assert_eq!(placed, Some(vec![Attribute::Section(vectors), Attribute::Aligned(64)]));
 }

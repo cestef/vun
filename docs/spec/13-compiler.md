@@ -431,8 +431,10 @@ c` shows it, and `vun build` and `vun run` compile and link it.
 - **Origins** become `#line` directives, so the C compiler's diagnostics and debug information
   point at Vun source.
 - **What C99 lacks is refused, never approximated**: 128-bit integers, `f16`, guaranteed tail
-  calls, naked functions, link sections, and atomics where the compiler has no builtins
-  (`backend.lacks`).
+  calls, naked functions, and, where the compiler offers nothing for them, atomics (without its
+  builtins, `lang.target.Atomics`) and data aligned past every C type or placed in a link section
+  (without GNU attributes, `lang.target.Attributes`: `__attribute__((aligned(n),
+  section("name")))` on the object) (`backend.lacks`).
 
 - **Aliasing.** An address a signature passes says what else reaches what it reaches
   (`AbiType::Address(Alias)`): an exclusive borrow is `Alias::Exclusive` (spec 05, section 8), and

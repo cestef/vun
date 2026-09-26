@@ -27,6 +27,7 @@ gnu := ($command: &[u8], $link_flags: &[&[u8]]) -> lang.target.CCompiler {
         .optimize = c_optimize,
         .link_flags = link_flags,
         .atomics = .gnu,
+        .attributes = .gnu,
         .frame_sizes = .stack_usage,
     }
 };

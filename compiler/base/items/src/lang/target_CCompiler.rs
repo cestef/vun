@@ -12,4 +12,5 @@ pub const flags: Item = Item::new(&["lang", "target", "CCompiler", "flags"]);
 pub const optimize: Item = Item::new(&["lang", "target", "CCompiler", "optimize"]);
 pub const link_flags: Item = Item::new(&["lang", "target", "CCompiler", "link_flags"]);
 pub const atomics: Item = Item::new(&["lang", "target", "CCompiler", "atomics"]);
+pub const attributes: Item = Item::new(&["lang", "target", "CCompiler", "attributes"]);
 pub const frame_sizes: Item = Item::new(&["lang", "target", "CCompiler", "frame_sizes"]);

@@ -1,0 +1,14 @@
+//! A global of a type aligned past every C type: at an address a multiple of 64, holding its
+//! bytes. Exits with the remainder of its address by 64 plus a byte of it: 7.
+
+start := std.os.start(main);
+
+#[layout.align(64)]
+Line := struct { bytes: [64]u8 };
+
+line: Line = .{ .bytes = [7; 64] };
+
+main := (sys: &mut std.os.System) -> std.os.Exit {
+    at := lang.mem.address(Line, lang.mem.pointer_to(Line, &line));
+    .code(((at % 64).wrap(u8) + line.bytes[3]).wrap(u8))
+};

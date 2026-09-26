@@ -66,6 +66,14 @@ pub enum Atomics {
     Gnu,
 }
 
+/// `lang.target.Attributes`: what a C compiler offers beyond C99 for placing data.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encode, Decode)]
+pub enum Attributes {
+    None,
+    /// `__attribute__((aligned(n), section(name)))` of GCC and Clang.
+    Gnu,
+}
+
 /// `lang.target.FrameSizes`: how a C compiler reports frame sizes.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub enum FrameSizes {
@@ -83,6 +91,7 @@ pub struct CCompiler {
     /// The flags a release build adds to `flags`.
     pub optimize: Vec<Symbol>,
     pub atomics: Atomics,
+    pub attributes: Attributes,
     pub frame_sizes: FrameSizes,
 }
 

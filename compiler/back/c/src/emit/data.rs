@@ -3,7 +3,8 @@
 //! an offset the target aligns addresses to, so C places every field where the bytes say; the
 //! size of every `struct` is checked. Objects are defined so that what one points to comes
 //! first; objects pointing to each other in a cycle are declared before, as C99 allows for
-//! exactly that (6.9.2).
+//! exactly that (6.9.2). An object aligned past every C type, or placed in a link section, needs
+//! what a GNU C compiler offers (`lang.target.Attributes`), and is refused without it.
 
 use std::collections::BTreeSet;
 
@@ -11,8 +12,9 @@ use vun_index::IndexVec;
 use vun_lir::{Address, DataId};
 
 use super::Emitter;
-use crate::ast::{Aggregate, Binary, Decl, Expr, Ident, Item, Storage, Ty};
+use crate::ast::{Aggregate, Attribute, Binary, Decl, Expr, Ident, Item, Storage, Ty};
 use vun_backend::{Lack, Missing};
+use vun_target::Attributes;
 
 /// The items of the unit's data.
 pub(super) struct Objects {
@@ -39,12 +41,17 @@ impl Emitter<'_> {
         let mut declared = Vec::new();
         let mut defined = Vec::new();
         for id in order {
-            let (aggregates, decl, init) = self.object(id)?;
+            let (aggregates, decl, init, attributes) = self.object(id)?;
             types.extend(aggregates);
             let data = &self.unit.data[id];
             let storage = self.storage(data.linkage);
-            let object =
-                |storage, init| Item::Object { storage, constant: !data.writable, decl: decl.clone(), init };
+            let object = |storage, init| Item::Object {
+                storage,
+                constant: !data.writable,
+                decl: decl.clone(),
+                attributes: attributes.clone(),
+                init,
+            };
             if self.shared {
                 declared.push(object(Storage::Extern, None));
             } else if cyclic.contains(&id) {
@@ -95,15 +102,28 @@ impl Emitter<'_> {
         (order, cyclic)
     }
 
-    /// The types of object `id`, its declaration and its initializer.
-    fn object(&mut self, id: DataId) -> Result<(Vec<Item>, Decl, Expr), Lack> {
+    /// The types of object `id`, its declaration, its initializer and its attributes.
+    fn object(&mut self, id: DataId) -> Result<(Vec<Item>, Decl, Expr, Vec<Attribute>), Lack> {
         let unit = self.unit;
         let data = &unit.data[id];
         let at = data.origin;
-        if data.section.is_some() {
-            return Err(Missing::Section.at(at));
+        let gnu = self.target.c.compiler.attributes == Attributes::Gnu;
+        let mut attributes = Vec::new();
+        if let Some(section) = data.section {
+            // The name is written as a string literal, with nothing to escape.
+            let plain = section.as_str().bytes().all(|b| b.is_ascii_graphic() && b != b'"' && b != b'\\');
+            if !gnu || !plain {
+                return Err(Missing::Section.at(at));
+            }
+            attributes.push(Attribute::Section(section));
         }
-        let (align, _) = self.aligned(data.align, at)?;
+        let (align, _) = match self.aligned(data.align, at) {
+            Err(_) if gnu => {
+                attributes.push(Attribute::Aligned(data.align));
+                self.most_aligned()
+            }
+            found => found?,
+        };
         let word = u64::from(unit.pointer_bits / u8::BITS);
         let pointer_align = u64::from(self.target.c.pointer_align);
         let mut relocs = data.relocs.clone();
@@ -148,7 +168,7 @@ impl Emitter<'_> {
             Item::Aggregate { kind: Aggregate::Union, tag: whole, fields: members },
         ];
         let decl = Decl::new(Ty::Union(whole), self.data_name(id));
-        Ok((types, decl, Expr::Init(vec![Expr::Init(inits)])))
+        Ok((types, decl, Expr::Init(vec![Expr::Init(inits)]), attributes))
     }
 
     /// The field holding an address in data, and its initializer: a function's as `void

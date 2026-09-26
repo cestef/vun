@@ -193,6 +193,7 @@ impl<'u> Emitter<'u> {
                 storage: Storage::Extern,
                 constant: false,
                 decl: Decl::new(Ty::BYTE, name),
+                attributes: Vec::new(),
                 init: None,
             },
         })

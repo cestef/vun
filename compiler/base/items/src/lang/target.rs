@@ -12,6 +12,9 @@ pub const Endian: Item = Item::new(&["lang", "target", "Endian"]);
 pub const CInt: Item = Item::new(&["lang", "target", "CInt"]);
 /// What a C compiler offers beyond C99 for atomic memory access.
 pub const Atomics: Item = Item::new(&["lang", "target", "Atomics"]);
+/// What a C compiler offers beyond C99 for placing data: alignments past every C type's, and
+/// link sections.
+pub const Attributes: Item = Item::new(&["lang", "target", "Attributes"]);
 /// How a C compiler reports the size of each function's frame.
 pub const FrameSizes: Item = Item::new(&["lang", "target", "FrameSizes"]);
 /// The C compiler building a target's C, and driving its link: its command, the flags that give

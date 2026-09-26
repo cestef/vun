@@ -6,7 +6,7 @@ mod stmt;
 
 use std::fmt::{self, Write};
 
-use super::{Aggregate, Base, Decl, File, Ident, Item, Names, Own, Proto, Storage, Ty};
+use super::{Aggregate, Attribute, Base, Decl, File, Ident, Item, Names, Own, Proto, Storage, Ty};
 
 struct Printer<'f, 'a, 'n> {
     f: &'f mut fmt::Formatter<'a>,
@@ -116,6 +116,24 @@ impl Printer<'_, '_, '_> {
         }
     }
 
+    /// ` __attribute__((aligned(16), section(".vectors")))`, or nothing without attributes.
+    fn attributes(&mut self, attributes: &[Attribute]) -> fmt::Result {
+        if attributes.is_empty() {
+            return Ok(());
+        }
+        self.f.write_str(" __attribute__((")?;
+        for (k, attribute) in attributes.iter().enumerate() {
+            if k > 0 {
+                self.f.write_str(", ")?;
+            }
+            match attribute {
+                Attribute::Aligned(bytes) => write!(self.f, "aligned({bytes})")?,
+                Attribute::Section(name) => write!(self.f, "section(\"{}\")", name.as_str())?,
+            }
+        }
+        self.f.write_str("))")
+    }
+
     fn storage(&mut self, storage: Storage) -> fmt::Result {
         self.f.write_str(match storage {
             Storage::Static => "static ",
@@ -170,12 +188,13 @@ impl Printer<'_, '_, '_> {
                 self.depth = 0;
                 self.f.write_str("}\n")
             }
-            Item::Object { storage, constant, decl, init } => {
+            Item::Object { storage, constant, decl, attributes, init } => {
                 self.storage(*storage)?;
                 if *constant {
                     self.f.write_str("const ")?;
                 }
                 self.decl(decl)?;
+                self.attributes(attributes)?;
                 if let Some(init) = init {
                     self.f.write_str(" = ")?;
                     self.expr(init)?;

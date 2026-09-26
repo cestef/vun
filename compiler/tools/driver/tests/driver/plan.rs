@@ -55,7 +55,7 @@ build := (b: &mut std.build.Build) {
                   .long_long = .{ .bits = 64, .align = 8 }, .pointer_align = 4, \
                   .compiler = .{ .command = \"arm-none-eabi-gcc\", \
                   .flags = .{ \"-std=c99\", \"-ffreestanding\", \"-fno-strict-aliasing\" }, \
-                  .optimize = .{ \"-O2\" }, .link_flags = .{ \"-nostdlib\", \"-nostartfiles\" }, .atomics = .gnu, \
+                  .optimize = .{ \"-O2\" }, .link_flags = .{ \"-nostdlib\", \"-nostartfiles\" }, .atomics = .gnu, .attributes = .gnu, \
                   .frame_sizes = .stack_usage } } }";
     assert_eq!(
         actions,

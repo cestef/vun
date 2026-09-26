@@ -10,6 +10,7 @@ pub use ident::{Builtin, Ident, Names, Own};
 pub use ty::{Base, Suffix, Ty};
 
 use vun_backend::Line;
+use vun_intern::Symbol;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Expr {
@@ -204,6 +205,15 @@ pub struct Proto {
     pub params: Vec<Decl>,
 }
 
+/// Where GNU C places an object beyond what C99 says (`__attribute__`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Attribute {
+    /// At an address a multiple of these bytes.
+    Aligned(u64),
+    /// In the link section of this name.
+    Section(Symbol),
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Item {
     /// `#include "name"`: a header of the same program.
@@ -225,6 +235,7 @@ pub enum Item {
         storage: Storage,
         constant: bool,
         decl: Decl,
+        attributes: Vec<Attribute>,
         init: Option<Expr>,
     },
 }
