@@ -51,12 +51,18 @@ years (rustc's parallel front end). So both are designed in from phase 1.
 
 **Queries.**
 - The unit of incremental work is a declaration or a function body, never an expression.
-- Every query result has an interface hash; dependents are re-run only when the interface changed
+- Every query result has an interface fingerprint (128 bits, two fixed-seed foldhash passes,
+  deterministic within a toolchain build); dependents are re-run only when the interface changed
   (early cutoff, as Go does per package). A memo keeps a verifying trace (Mokhov, Mitchell and
-  Peyton Jones, *Build systems à la carte*): the interface hash of each query it read. In a later
-  revision it is reused when every dependency, brought up to date, hashes as recorded, and it is
-  checked at most once per revision, as Salsa's memos are. Traces hold content hashes rather than
-  revision numbers, so they stay valid in the next process. Inputs are set, and a set that leaves
+  Peyton Jones, *Build systems à la carte*): the fingerprint of each memo it read, once each, in
+  the order first read. In a later revision it is reused when every dependency, brought up to
+  date, has the fingerprint recorded, and it is checked at most once per revision, as Salsa's
+  memos are. Traces hold fingerprints rather than revision numbers, so they stay valid in the
+  next process. Each key gets a slot in its query's table when first asked for; reads are
+  recorded, verified and compared by table and slot. Threads share a database without locks on
+  the way to a memo, one computes each memo while the others needing it wait, and a thread that
+  would wait on a thread waiting for it computes the memo itself. Sessions compiling for one
+  target share a database, so each library is checked once per process. Inputs are set, and a set that leaves
   an input's interface unchanged starts no revision. A query that reaches itself gets the value
   its `cycle` rule gives, with the path of queries, instead of looping.
 - The query database is persisted to disk from phase 1, with a bounded cache for bodies (new Salsa

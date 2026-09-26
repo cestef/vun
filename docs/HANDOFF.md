@@ -1,6 +1,6 @@
 # Handoff
 
-State of Vun as of 2026-09-26 (end of the twelfth session), for the next agent. Read this, then
+State of Vun as of 2026-09-26 (end of the thirteenth session), for the next agent. Read this, then
 `CLAUDE.md` (rules and the agent procedure; on disk but ignored by the user's global gitignore, so
 `jj st` never shows it), then `docs/spec/00-principles.md`, `docs/spec/decisions.md` and the spec
 files of the area you touch.
@@ -87,8 +87,9 @@ typst compile whitepaper/main.typ whitepaper/vun.pdf
 Front end and infrastructure (stable; see the code for detail): `vun-index` (`IndexVec`,
 `into_vec`, `From<Vec>`), `vun-intern` (process-wide `Symbol`), `vun-origin` (stable
 `OriginId`s anchored to declarations), `vun-span` (`extension!`, `source_file!`), `vun-diag`
-(`Msg` parts, `Diagnostic`, `DiagCtxt`, `Diagnostic::moved`), `vun-query` (verifying traces;
-persistence built but not wired), `vun-syntax` (the literal printer writes `Decl::source` and
+(`Msg` parts, `Diagnostic`, `DiagCtxt`, `Diagnostic::moved`), `vun-query` (decision 176: slot
+tables, `Fingerprint`s, lock-free reads, threads sharing a `Db` and waiting on each other's
+computations; `query!` declares a query in one block; persistence built but not wired), `vun-syntax` (the literal printer writes `Decl::source` and
 `Decl::listed`, one item per line), `vun-hir` (+ `db`: the front end as queries), `vun-command`
 (declarative CLI), `vun-build` (manifests, `lock.vun` via `Lock::read`), `vun-pkg` (archive
 formats, `Format::PUBLISHED` is `.tar.zst`), `vun-http`, `vun-hash`, `vun-fs` (`Tree`, `Edit`,
@@ -376,34 +377,51 @@ rules go to `decisions.md` as proposed unless the user approves them.
 
 ## 7. Next steps, in order
 
-0. Baseline backend next: float conversions (they must give the canonical NaN, decision 173;
+0. Performance and persistence (the user's current focus). Done: `vun-par`, per-package
+   `Shared` databases (the corpus runs in about 4 s), packages read once per session, lock-free
+   interners (BLAKE3 only on insert), the HIR index (`tree/index.rs`: binders, spreads, struct
+   literals, closures, enclosing functions, attribute wrappers), `ItemSite`, `PrimitiveDecl`,
+   `PrimitiveSignature` queries. `vun check hello.vun` went from 230 ms to 103 ms (release), an
+   empty file costs 58 ms (the library). Next, in order: (a) persist the front-end queries: the
+   user chose an own derive crate, `vun-codec-derive`, on the compiler's `proc_macro` API without
+   syn/quote (note: `syn`/`quote` are already workspace dependencies, of the generator; raise it
+   if the own parser grows), then `#[derive(Encode, Decode)]` on the query keys and values,
+   `Db::persist` registration, save and load under `.vun/queries/<toolchain hash>`; interned
+   values persist by content. (b) The rest of the performance audit: cheap interfaces for large
+   values (typed bodies, MIR, shapes: store a fingerprint when built), `FileRef.path` as a
+   `Symbol`, `Instance` keys hashed once, `Call`/`MeteredCall` hashing the value twice, the
+   interpreter copying whole values per projection (`interp/src/places.rs`), `Integer` small-int
+   form and `Value::Bytes`, witnesses computed per (file, type) over every file, `Primitive::at`
+   and `Borrow::of` linear scans, SipHash maps in the typer (`IndexVec` by `ExprId`), `Attrs` as
+   a query. (c) An allocator (mimalloc) was not tried: allocation is ~20% of a check.
+1. Baseline backend next: float conversions (they must give the canonical NaN, decision 173;
    to `f16` only from `f32`, decision 175), data
    objects aligned past every C type in the C backend (only slots are handled), and
    128-bit integers (pairs, helpers in Vun), DWARF lines, arm64. Backends: memory regions from a program's build options into `LinkPlan` (the `gnu`
    adapter writes scripts from them), and a bare-metal runtime to link against. A slice value (`xs[a..b]` not borrowed)
    reaches lowering as `backend.unlowered` ("no layout") instead of a sema error.
-1. `std`: `std.task.Pool`, `std.testing.Sim`; a Linux runtime without the C library; text
+2. `std`: `std.task.Pool`, `std.testing.Sim`; a Linux runtime without the C library; text
    (`Str`) and collections; `print`'s `.fixes`. Generic bodies
    over a constrained `$A: Allocator` are neither typed nor lowered (`a.alloc(...)`), see 5 and 6.
-2. Leaks at scope exits inside a body (found at the function's return only today), `fixed` and
+3. Leaks at scope exits inside a body (found at the function's return only today), `fixed` and
    `scoped` kinds, frames' `end` running their defers (MIR `End`, the interpreter).
-3. Borrow rules left: top-level bindings as free values, frames' region from their parameters, a label where a conflicting borrow is
+4. Borrow rules left: top-level bindings as free values, frames' region from their parameters, a label where a conflicting borrow is
    used later.
-4. `vun build`: carry out a plan's actions in order (decode them by the `vun_items` handles of
+5. `vun build`: carry out a plan's actions in order (decode them by the `vun_items` handles of
    `std.build.Action`'s variants), starting with `program` once a backend exists; a program's
    options as a typed record (`root`, `target: lang.target.Spec`, `deps`, `memory`).
-5. MIR gaps (`cargo xtask corpus` lists them): `==` in two corpus functions whose operands are
+6. MIR gaps (`cargo xtask corpus` lists them): `==` in two corpus functions whose operands are
    not typed, `.{ }` and `.name` in
    plain instantiations of generic bodies, or-patterns that bind, `lang.simd.chunks`.
-6. Sema gaps: a library report from a range primitive (rule 8) carries a "while evaluating"
+7. Sema gaps: a library report from a range primitive (rule 8) carries a "while evaluating"
    frame inside `lang.int`; traps inside a callee's instantiated signature are not reported; impl
    member types
    against requirements; exhaustiveness (decision 29),
    `#[layout.offset]`/`#[layout.c]`, frame layouts, markers checked beyond `unsafe` and
    `panic.never`.
-7. Evaluator: its own stack (deep chains of compile-time calls overflow the host stack); loans
+8. Evaluator: its own stack (deep chains of compile-time calls overflow the host stack); loans
    inside aggregate arguments (`select`'s tuple of `&mut`) and frames holding what they were lent.
-8. Persist the front-end queries; packaging: signed caches (decision 63), planned builds,
+9. Persist the front-end queries; packaging: signed caches (decision 63), planned builds,
    `vun pkg why`; `.workspace` visibility.
 
 ## 8. Pitfalls
