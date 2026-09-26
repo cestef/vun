@@ -9,8 +9,6 @@ mod exprs;
 mod members;
 mod pats;
 
-use std::collections::HashMap;
-
 use vun_grammar::{NodeField, NodeKind, TokenKind};
 use vun_intern::Symbol;
 use vun_origin::{OriginId, OriginTable, Via};
@@ -32,8 +30,13 @@ impl Hir {
     /// Lowers the file `source` into HIR.
     #[must_use]
     pub fn lower(source: Source<'_>, origins: &OriginTable) -> Self {
-        let mut lower =
-            Lower { source, origins, hir: Self::default(), declaration: None, made: HashMap::new() };
+        let mut lower = Lower {
+            source,
+            origins,
+            hir: Self::default(),
+            declaration: None,
+            made: foldhash::HashMap::default(),
+        };
         let root = source.cst.root();
         let members = lower.members(source.cst.children(root));
         let origin = lower.origin(root);
@@ -49,7 +52,7 @@ struct Lower<'a, 'i> {
     /// The origin of the declaration being lowered, which the origins inside it are anchored to.
     declaration: Option<OriginId>,
     /// How many entities have each origin so far: a further one gets its own.
-    made: HashMap<OriginId, u16>,
+    made: foldhash::HashMap<OriginId, u16>,
 }
 
 /// Escape that makes a keyword a name: `\unsafe`.

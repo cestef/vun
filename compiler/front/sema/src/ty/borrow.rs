@@ -1,7 +1,6 @@
 //! Borrow types (appendix B, the table `borrows`): `&T` and the other modes, each a `lang.mem`
 //! constructor, with the transition, access and extent its row gives.
 
-use std::collections::HashMap;
 use std::sync::LazyLock;
 
 use vun_desugar::{Borrow, Extent};
@@ -68,7 +67,7 @@ impl Primitive {
     /// The primitive `item` is, as tables name them: `lang.mem.Ref`.
     #[must_use]
     pub fn at(item: vun_items::Item) -> Option<Self> {
-        static BY_ITEM: LazyLock<HashMap<vun_items::Item, Primitive>> =
+        static BY_ITEM: LazyLock<foldhash::HashMap<vun_items::Item, Primitive>> =
             LazyLock::new(|| Primitive::all().map(|p| (p.item(), p)).collect());
         BY_ITEM.get(&item).copied()
     }

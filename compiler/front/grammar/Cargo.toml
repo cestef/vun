@@ -11,4 +11,5 @@ workspace = true
 
 
 [dependencies]
+foldhash.workspace = true
 vun-codec.workspace = true

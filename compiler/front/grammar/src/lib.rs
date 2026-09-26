@@ -4,7 +4,6 @@
 //! the kinds and tables into `generated/`, a module per declaration; this file derives lookups
 //! from them.
 
-use std::collections::HashMap;
 use std::sync::LazyLock;
 
 #[rustfmt::skip]
@@ -17,20 +16,20 @@ pub const PATH_SEPARATOR: &str = TokenKind::Dot.text().unwrap();
 
 /// Punctuation by its first byte, longest spelling first, so the first prefix match is the
 /// longest one.
-static PUNCTUATION_BY_FIRST: LazyLock<HashMap<u8, Vec<TokenKind>>> = LazyLock::new(|| {
+static PUNCTUATION_BY_FIRST: LazyLock<Vec<Vec<TokenKind>>> = LazyLock::new(|| {
     let mut kinds = TokenKind::PUNCTUATION.to_vec();
     kinds.sort_by_key(|k| std::cmp::Reverse(k.text().map_or(0, str::len)));
-    let mut by_first: HashMap<u8, Vec<TokenKind>> = HashMap::new();
+    let mut by_first = vec![Vec::new(); usize::from(u8::MAX) + 1];
     for kind in kinds {
         if let Some(&first) = kind.text().and_then(|t| t.as_bytes().first()) {
-            by_first.entry(first).or_default().push(kind);
+            by_first[usize::from(first)].push(kind);
         }
     }
     by_first
 });
 
 /// Keywords by their spelling.
-static KEYWORDS_BY_TEXT: LazyLock<HashMap<&'static str, TokenKind>> =
+static KEYWORDS_BY_TEXT: LazyLock<foldhash::HashMap<&'static str, TokenKind>> =
     LazyLock::new(|| TokenKind::KEYWORDS.iter().filter_map(|&k| Some((k.text()?, k))).collect());
 
 /// Binding strength of an infix operator; higher binds tighter.
@@ -73,7 +72,7 @@ impl TokenKind {
     /// The punctuation spelled by the longest prefix of `rest`.
     #[must_use]
     pub fn punctuation(rest: &str) -> Option<Self> {
-        let candidates = PUNCTUATION_BY_FIRST.get(rest.as_bytes().first()?)?;
+        let candidates = &PUNCTUATION_BY_FIRST[usize::from(*rest.as_bytes().first()?)];
         candidates.iter().copied().find(|k| k.text().is_some_and(|t| rest.starts_with(t)))
     }
 

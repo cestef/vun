@@ -768,6 +768,7 @@ dependencies = [
 name = "vun-desugar"
 version = "0.0.0"
 dependencies = [
+ "foldhash",
  "vun-codec",
  "vun-grammar",
  "vun-items",
@@ -873,6 +874,7 @@ dependencies = [
 name = "vun-grammar"
 version = "0.0.0"
 dependencies = [
+ "foldhash",
  "vun-codec",
 ]
 
@@ -901,6 +903,7 @@ dependencies = [
 name = "vun-hir"
 version = "0.0.0"
 dependencies = [
+ "foldhash",
  "vun-codec",
  "vun-desugar",
  "vun-diag",
@@ -1253,6 +1256,7 @@ dependencies = [
 name = "vun-sema"
 version = "0.0.0"
 dependencies = [
+ "foldhash",
  "num-bigint",
  "vun-codec",
  "vun-desugar",

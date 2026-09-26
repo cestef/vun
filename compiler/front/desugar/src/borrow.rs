@@ -1,7 +1,6 @@
 //! Borrow modes (appendix B, the table `borrows`): each mode is a row of the table, and every fact
 //! about it is read from its columns.
 
-use std::collections::HashMap;
 use std::fmt;
 use std::sync::LazyLock;
 
@@ -34,7 +33,7 @@ impl Borrow {
     /// The mode whose type is the `lang` item `item`.
     #[must_use]
     pub fn of(item: Item) -> Option<Self> {
-        static BY_ITEM: LazyLock<HashMap<Item, Borrow>> =
+        static BY_ITEM: LazyLock<foldhash::HashMap<Item, Borrow>> =
             LazyLock::new(|| Borrow::all().map(|b| (b.item(), b)).collect());
         BY_ITEM.get(&item).copied()
     }
