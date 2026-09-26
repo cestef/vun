@@ -7,7 +7,6 @@
 )]
 use crate::Item;
 pub const dep: Item = Item::new(&["std", "build", "Action", "dep"]);
-/// The options of a program.
 pub const program: Item = Item::new(&["std", "build", "Action", "program"]);
 pub const flash: Item = Item::new(&["std", "build", "Action", "flash"]);
 pub const test_on: Item = Item::new(&["std", "build", "Action", "test_on"]);

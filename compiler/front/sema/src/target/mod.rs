@@ -5,6 +5,7 @@ mod choose;
 mod read;
 
 pub use choose::{Choice, Chosen, Unchosen};
+pub(crate) use read::Members;
 pub use read::{Read, Unread};
 
 use std::sync::Arc;

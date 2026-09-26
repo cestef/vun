@@ -70,6 +70,9 @@ pub struct Session {
     /// The command programs built for the target run through, from the toolchain file; empty
     /// where they run as they are.
     pub runner: Vec<Symbol>,
+    /// The memory map of the program built, from its package's plan; empty for a program an
+    /// operating system loads.
+    pub memory: Vec<vun_link::MemoryRegion>,
     /// The errors already shown and taken out of `diag`.
     shown_errors: usize,
 }
@@ -107,6 +110,7 @@ impl Session {
             persistence: Persistence::Off,
             toolchain: vun_build::toolchain::Toolchain::path(),
             runner: Vec::new(),
+            memory: Vec::new(),
             shown_errors: 0,
         }
     }

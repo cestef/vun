@@ -16,10 +16,15 @@ impl Session {
     /// Runs the plan of `file` when it is a package's `build.vun`: checking the package's
     /// manifest runs its `build`, as building it would.
     pub fn check_plan(&mut self, file: FileId) {
-        let manifest = Path::new(&self.sources.file(file).path).file_name() == Some(OsStr::new(MANIFEST));
-        if manifest && self.declarations(file, |decls, _| decls.iter().any(|d| d.name == PACKAGE)) {
+        if self.is_package(file) {
             self.plan(file);
         }
+    }
+
+    /// Whether `file` is a package's `build.vun`: one declaring `package` (spec 12, section 2).
+    pub fn is_package(&mut self, file: FileId) -> bool {
+        let manifest = Path::new(&self.sources.file(file).path).file_name() == Some(OsStr::new(MANIFEST));
+        manifest && self.declarations(file, |decls, _| decls.iter().any(|d| d.name == PACKAGE))
     }
 
     /// The plan of the `build.vun` loaded as `file`, reporting why it has none.

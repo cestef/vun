@@ -3,6 +3,10 @@
 //! `build` nor the shape of a step: the declarations run are those `std.build.Package` requires,
 //! and the steps are the values `std.build.plan` gives, which the driver reads by reflection.
 
+mod action;
+
+pub use action::{Action, Options, Region, Use};
+
 use vun_codec::{Decode, Encode};
 use vun_hir::db::FileRef;
 use vun_intern::Symbol;
@@ -15,15 +19,28 @@ use crate::env::{Env, Unevaluated};
 use crate::eval::{Call, Instance, MeteredCall};
 use crate::item::DeclRef;
 use crate::member::Members;
+use crate::target::{Read, Unread};
 use crate::ty::{TyKind, Value};
 
 /// The plan of the `build.vun` a key names, in the order its steps were recorded.
 pub struct Planned;
 
-/// The steps of a plan: each a value of `std.build.Action`.
+/// The steps of a plan: each a value of `std.build.Action`, and where the `build` that recorded
+/// them is.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct Plan {
     pub actions: Vec<Value>,
+    pub at: OriginId,
+}
+
+impl Plan {
+    /// What each step does.
+    ///
+    /// # Errors
+    /// Returns the step at which a value is not an action as `std.build` declares it, and why.
+    pub fn steps(&self) -> Result<Vec<Action>, (usize, Unread)> {
+        self.actions.iter().enumerate().map(|(at, a)| Action::read(a).map_err(|why| (at, why))).collect()
+    }
 }
 
 /// Why a file has no plan.
@@ -67,7 +84,7 @@ impl Planned {
         };
         let called = cx.get::<MeteredCall>(&Instance { f: plan, args: vec![build] });
         match called.value.map_err(|why| stopped(why, at))? {
-            Value::Array(actions) => Ok(Plan { actions }),
+            Value::Array(actions) => Ok(Plan { actions, at }),
             _ => Err(stopped(Unevaluated::Unsupported, at)),
         }
     }

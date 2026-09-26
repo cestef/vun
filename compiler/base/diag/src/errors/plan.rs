@@ -4,3 +4,5 @@ use crate::DiagId;
 pub const PLAN: DiagId = DiagId::new("lang.errors.plan");
 pub const PLAN_MISSING_BUILD: DiagId = DiagId::new("lang.errors.plan.missing_build");
 pub const PLAN_STOPPED: DiagId = DiagId::new("lang.errors.plan.stopped");
+pub const PLAN_UNREAD: DiagId = DiagId::new("lang.errors.plan.unread");
+pub const PLAN_UNSUPPORTED: DiagId = DiagId::new("lang.errors.plan.unsupported");

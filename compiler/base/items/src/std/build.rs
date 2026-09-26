@@ -21,6 +21,12 @@ pub const Probe: Item = Item::new(&["std", "build", "Probe"]);
 pub const Flash: Item = Item::new(&["std", "build", "Flash"]);
 /// Where a program's tests run.
 pub const Runner: Item = Item::new(&["std", "build", "Runner"]);
+/// What a program is built from.
+pub const Options: Item = Item::new(&["std", "build", "Options"]);
+/// A dependency a program uses: its name in `package.deps`, as a step builds it.
+pub const Use: Item = Item::new(&["std", "build", "Use"]);
+/// A region of a program's memory, such as `.flash`, and where it lies.
+pub const Region: Item = Item::new(&["std", "build", "Region"]);
 /// What a step of the plan does. Records whose types each call infers are kept with their type,
 /// as `lang.meta.Any`.
 pub const Action: Item = Item::new(&["std", "build", "Action"]);

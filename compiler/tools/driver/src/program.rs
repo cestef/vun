@@ -184,7 +184,7 @@ impl Session {
             output: output.clone(),
             kind: OutputKind::Executable,
             entry: target.entry_symbol,
-            regions: Vec::new(),
+            regions: self.memory.clone(),
             sections: Vec::new(),
         };
         let named = self.codegen.linker.unwrap_or(target.linker);

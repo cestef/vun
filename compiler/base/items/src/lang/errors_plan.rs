@@ -8,3 +8,5 @@
 use crate::Item;
 pub const missing_build: Item = Item::new(&["lang", "errors", "plan", "missing_build"]);
 pub const stopped: Item = Item::new(&["lang", "errors", "plan", "stopped"]);
+pub const unread: Item = Item::new(&["lang", "errors", "plan", "unread"]);
+pub const unsupported: Item = Item::new(&["lang", "errors", "plan", "unsupported"]);

@@ -24,7 +24,7 @@ package := .{
 mut boards: u8 = 1;
 
 build := (b: &mut std.build.Build) { //~ plan.stopped "it reads a value known only at run time"
-    b.program(.{ .boards = unsafe { boards } });
+    b.lints(.{ .boards = unsafe { boards } });
 };
 ```
 
@@ -44,6 +44,6 @@ package := .{
 boards: u8 = 1;
 
 build := (b: &mut std.build.Build) {
-    b.program(.{ .boards = boards });
+    b.lints(.{ .boards = boards });
 };
 ```

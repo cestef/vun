@@ -24,12 +24,26 @@ Flash := enum { probe(Probe), uf2, dfu };
 /// Where a program's tests run.
 Runner := enum { host, qemu(&[u8]), probe(Probe) };
 
+/// What a program is built from.
+Options := struct {
+    /// Its root file, relative to the directory of the `build.vun`.
+    root: &static [_]u8,
+    target: lang.target.Spec,
+    /// The dependencies it uses, each by its name in `package.deps`.
+    deps: &[Use] = &[],
+    /// Its memory map, empty for a program an operating system loads.
+    memory: &[Region] = &[],
+};
+/// A dependency a program uses: its name in `package.deps`, as a step builds it.
+Use := struct { name: lang.meta.Name, dep: Dep };
+/// A region of a program's memory, such as `.flash`, and where it lies.
+Region := struct { name: lang.meta.Name, origin: u64, len: u64 };
+
 /// What a step of the plan does. Records whose types each call infers are kept with their type,
 /// as `lang.meta.Any`.
 Action := enum {
     dep(Needed),
-    /// The options of a program.
-    program(lang.meta.Any),
+    program(Options),
     flash(Flashed),
     test_on(Tested),
     /// The lint levels.
@@ -58,10 +72,9 @@ Build := struct {
         .{ .step = self._record(.dep(.{ .name = name, .params = lang.meta.any(P, params) })) }
     };
 
-    /// A program built from `options`: a record with its `root` file, its `target`, its `deps` by
-    /// name and its `memory` map.
-    program := (self: &mut Build, $O: type, options: O) -> Program {
-        .{ .step = self._record(.program(lang.meta.any(O, options))) }
+    /// A program built from `options`.
+    program := (self: &mut Build, options: Options) -> Program {
+        .{ .step = self._record(.program(options)) }
     };
 
     /// Writes the program `built` to its device by `method`.

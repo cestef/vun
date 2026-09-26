@@ -13,8 +13,7 @@ pub const actions: Item = Item::new(&["std", "build", "Build", "actions"]);
 /// The dependency `name` of `package.deps`, built with `params`: a record of the parameters
 /// its own `build.vun` declares, such as `.{ .variant = .f407 }`.
 pub const dep: Item = Item::new(&["std", "build", "Build", "dep"]);
-/// A program built from `options`: a record with its `root` file, its `target`, its `deps` by
-/// name and its `memory` map.
+/// A program built from `options`.
 pub const program: Item = Item::new(&["std", "build", "Build", "program"]);
 /// Writes the program `built` to its device by `method`.
 pub const flash: Item = Item::new(&["std", "build", "Build", "flash"]);

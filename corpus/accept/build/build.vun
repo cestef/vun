@@ -18,11 +18,11 @@ build := (b: &mut std.build.Build) {
     fw := b.program(.{
         .root = "blinky/app.vun",
         .target = targets.bare.cortex_m4f,
-        .deps = .{ .stm32f4 = chip },
-        .memory = .{
-            .flash = .{ .origin = 0x0800_0000, .len = 512 * 1024 },
-            .ram = .{ .origin = 0x2000_0000, .len = 128 * 1024 },
-        },
+        .deps = &[.{ .name = .stm32f4, .dep = chip }],
+        .memory = &[
+            .{ .name = .flash, .origin = 0x0800_0000, .len = 512 * 1024 },
+            .{ .name = .ram, .origin = 0x2000_0000, .len = 128 * 1024 },
+        ],
     });
     b.flash(fw, .probe(.{ .chip = "STM32F407VGTx" }));
     b.lints(.{ .{ std.lints.pedantic, .warn } });

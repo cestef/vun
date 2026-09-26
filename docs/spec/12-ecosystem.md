@@ -80,11 +80,11 @@ build := (b: &mut std.build.Build) {
     fw := b.program(.{
         .root = "blinky/app.vun",
         .target = targets.bare.cortex_m4f,
-        .deps = .{ .stm32f4 = chip },
-        .memory = .{
-            .flash = .{ .origin = 0x0800_0000, .len = 512 * 1024 },
-            .ram   = .{ .origin = 0x2000_0000, .len = 128 * 1024 },
-        },
+        .deps = &[.{ .name = .stm32f4, .dep = chip }],
+        .memory = &[
+            .{ .name = .flash, .origin = 0x0800_0000, .len = 512 * 1024 },
+            .{ .name = .ram,   .origin = 0x2000_0000, .len = 128 * 1024 },
+        ],
     });
     b.flash(fw, .probe(.{ .chip = "STM32F407VGTx" }));
     b.test_on(fw, .qemu("lm3s6965"));
@@ -106,18 +106,27 @@ build := (b: &mut std.build.Build) {
   evaluator: no I/O, no processes (spec 03, section 7).
 - The driver runs `build` through `std.build.plan`, which lends it a `Build` without steps and
   returns the `std.build.Action`s recorded, one per step: `dep`, `program`, `flash`, `test_on`,
-  `lints`. The compiler knows neither the name `build`, which it takes from the requirements of
-  `std.build.Package`, nor the shape of an action. Records whose types each call infers are kept
+  `lints`. The compiler does not know the name `build`, which it takes from the requirements of
+  `std.build.Package`, and reads each action member by member through the generated handles of
+  `std.build`'s declarations, never a name written as text. Records whose types each call infers are kept
   as `lang.meta.Any`. Checking a package's `build.vun` runs its plan, so a trap in `build` is an
   error there; `vun debug plan build.vun` prints the actions, one literal per line.
 - `std.build.Build` records a plan of steps, which the driver carries out once `build` returns:
   `b.dep($name, params) -> Dep` names a dependency of `package.deps` (a `lang.meta.Name`, so
   `.stm32f4`) with the parameters its own `build.vun` declares; `b.program(options) -> Program`
-  takes a record with `root`, `target`, `deps` and `memory`; `b.flash(program, method)` with a
+  takes a `std.build.Options`: its `root` file, its `target` (a `lang.target.Spec`), the `deps`
+  it uses (`std.build.Use`: a name and the `Dep` a step built) and its `memory` map
+  (`std.build.Region`: a name, an origin and a length), the last two empty unless given;
+  `b.flash(program, method)` with a
   `std.build.Flash` (`.probe(.{ .chip = ... })`, `.uf2`, `.dfu`); `b.test_on(program, runner)`
   with a `std.build.Runner`; `b.lints(levels)` with pairs of a lint and a level. What only the
   package knows, names and parameters, is written as records (spec 02, section 2), whose types
   are inferred and which the driver reads by reflection.
+- `vun build build.vun` carries out the plan in order: each program is built in a session for its
+  own target, its root relative to the `build.vun`, its memory map placed by the link plan. Steps
+  the toolchain does not carry out yet (`flash`, `test_on`, dependency parameters, lint levels)
+  are warnings (`plan.unsupported`); a step that is not a `std.build.Action` as `std.build`
+  declares it is `plan.unread`.
 - Everything configurable in a project is configured here, in Vun: dependencies, targets, memory
   maps, lints, profiles, flash methods, test targets. There is no second configuration format.
 

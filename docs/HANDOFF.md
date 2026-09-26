@@ -193,8 +193,11 @@ in as proposed unless the user approves them.
 4. Checks: leaks at scope exits inside a body, `fixed` and `scoped` kinds, frames' `end` running
    their defers; borrows of top-level bindings as free values, frames' regions, a label at the
    later conflicting use.
-5. `vun build` carries out a plan's actions (`std.build.Action` by handles), with a program's
-   options as a typed record.
+5. `vun build build.vun` carries out a plan (decision 216, `driver/src/steps.rs`): programs from
+   the typed `std.build.Options`, each in its own session, memory regions into the link plan.
+   Left: carry out `flash` (a probe tool), `test_on` (needs a test command and runners),
+   dependency parameters (packages parameterized by a record their `build.vun` declares), lint
+   levels (a lint configuration the checks read); `vun run build.vun` runs the first program.
 6. MIR and sema gaps (`cargo xtask corpus` lists them): `.{ }` and `.name` in plain
    instantiations, `lang.simd.chunks`, `#[layout.offset]`, traps in a callee's instantiated signature; `&.word(3)` (a
    borrow of a compile-time enum value) at run time stops at `backend.unlowered`. Or-patterns

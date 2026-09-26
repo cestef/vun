@@ -151,6 +151,17 @@ impl Value {
         }
     }
 
+    /// Whether this is a record with no member, as a plan keeps it or as written: `.{}`.
+    #[must_use]
+    pub fn is_empty_record(&self) -> bool {
+        match self {
+            Self::Any { value, .. } => value.is_empty_record(),
+            Self::Struct { fields, .. } => fields.is_empty(),
+            Self::Tuple(items) => items.is_empty(),
+            _ => false,
+        }
+    }
+
     /// The type this value denotes where a type is expected: a type, a primitive that takes no
     /// arguments, such as `lang.f32`, a tuple of types, such as `(u8, bool)` or `()`, or an array
     /// holding one type, the slice type `[T]`: type syntax mirrors value syntax (spec 01).

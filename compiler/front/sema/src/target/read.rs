@@ -50,36 +50,36 @@ pub trait Read: Sized {
 }
 
 /// The members of a `struct` value.
-struct Members<'v>(&'v [(Symbol, Value)]);
+pub(crate) struct Members<'v>(&'v [(Symbol, Value)]);
 
 impl<'v> Members<'v> {
-    fn of(value: &'v Value) -> Result<Self, Unread> {
+    pub(crate) fn of(value: &'v Value) -> Result<Self, Unread> {
         match value {
             Value::Struct { fields, .. } => Ok(Self(fields)),
             _ => Err(Unread::Record),
         }
     }
 
-    fn get(&self, member: Item) -> Result<&'v Value, Unread> {
+    pub(crate) fn get(&self, member: Item) -> Result<&'v Value, Unread> {
         let symbol = member.symbol();
         self.0.iter().find(|(name, _)| *name == symbol).map(|(_, v)| v).ok_or(Unread::Member(member))
     }
 
-    fn name(&self, member: Item) -> Result<Symbol, Unread> {
+    pub(crate) fn name(&self, member: Item) -> Result<Symbol, Unread> {
         match self.get(member)? {
             Value::Name(name) => Ok(*name),
             _ => Err(Unread::Member(member)),
         }
     }
 
-    fn int(&self, member: Item) -> Result<u32, Unread> {
+    pub(crate) fn int<N: TryFrom<u128>>(&self, member: Item) -> Result<N, Unread> {
         match self.get(member)? {
-            Value::Int(n) => n.to_u128().and_then(|n| u32::try_from(n).ok()).ok_or(Unread::Member(member)),
+            Value::Int(n) => n.to_u128().and_then(|n| N::try_from(n).ok()).ok_or(Unread::Member(member)),
             _ => Err(Unread::Member(member)),
         }
     }
 
-    fn read<T: Read>(&self, member: Item) -> Result<T, Unread> {
+    pub(crate) fn read<T: Read>(&self, member: Item) -> Result<T, Unread> {
         T::read(self.get(member)?).map_err(|_| Unread::Member(member))
     }
 
@@ -111,8 +111,18 @@ impl<'v> Members<'v> {
         }
     }
 
+    /// The items of a `&[T]`, each read.
+    pub(crate) fn list<T: Read>(&self, member: Item) -> Result<Vec<T>, Unread> {
+        match self.get(member)? {
+            Value::Array(items) | Value::Tuple(items) => {
+                items.iter().map(|item| T::read(item).map_err(|_| Unread::Member(member))).collect()
+            }
+            _ => Err(Unread::Member(member)),
+        }
+    }
+
     /// A `&[u8]` as the text it holds.
-    fn string(&self, member: Item) -> Result<Symbol, Unread> {
+    pub(crate) fn string(&self, member: Item) -> Result<Symbol, Unread> {
         Self::text(self.get(member)?).ok_or(Unread::Member(member))
     }
 

@@ -21,6 +21,8 @@ pub enum Choice {
     Path(Vec<Symbol>),
     /// The row of `targets.hosts` for the machine of these names.
     Host { arch: Symbol, os: Symbol },
+    /// A target read already, such as a program's in a package's plan.
+    Given(Box<TargetSpec>),
 }
 
 impl Choice {
@@ -90,6 +92,7 @@ impl Query for Chosen {
                 }
                 Err(Unchosen::Unhosted { arch, os })
             }
+            Choice::Given(spec) => Ok((**spec).clone()),
         }
     }
 }

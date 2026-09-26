@@ -170,6 +170,8 @@ package := struct {
 plan := struct {
     missing_build := diag.Diag{ .explanation = lang.meta.embed("errors/plan/missing_build.md") };
     stopped := diag.Diag{ .explanation = lang.meta.embed("errors/plan/stopped.md") };
+    unread := diag.Diag{ .explanation = lang.meta.embed("errors/plan/unread.md") };
+    unsupported := diag.Diag{ .explanation = lang.meta.embed("errors/plan/unsupported.md") };
 };
 
 /// The toolchain's tools and the native libraries they load (decision 131).

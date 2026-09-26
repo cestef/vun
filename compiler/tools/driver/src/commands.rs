@@ -109,7 +109,14 @@ impl Session {
         let path = args.value(&FILE).expect("positional parameters are present when a command runs");
         shell.status(&Started { step: Step::Build, subject: path.to_owned() });
         let output = args.value(&crate::program::OUTPUT).map(Path::new);
-        let built = self.root(args, shell).and_then(|file| self.build(file, output).ok());
+        let built = self.root(args, shell).and_then(|file| {
+            if self.is_package(file) {
+                // A package's `build.vun` builds the programs its plan records.
+                self.carry_out(file).ok().and_then(|built| built.into_iter().next())
+            } else {
+                self.build(file, output).ok()
+            }
+        });
         let subject = built.as_ref().map_or_else(|| path.to_owned(), |p| p.display().to_string());
         self.conclude(shell, subject, started);
         built
