@@ -1,7 +1,7 @@
 //! Functions, brackets, block-like expressions and jumps: the forms chosen after their children.
 
 use vun_diag::{ChildKind, Diagnostic, Msg, errors};
-use vun_grammar::{Context, ELEMENT_TYPES, NodeKind, TokenKind};
+use vun_grammar::{ASSIGN, Context, ELEMENT_TYPES, NodeKind, TokenKind};
 
 use super::{Brace, Form, Item, List, MAX_NESTING, Operand, Parser};
 use crate::cst::{Anchor, Mark};
@@ -174,11 +174,24 @@ impl Parser<'_, '_, '_> {
             self.leaf(NodeKind::Label);
         }
         match operand {
+            Operand::Required if kind == NodeKind::Defer => self.deferred(brace),
             Operand::Required => self.expr(brace),
             Operand::Optional if self.starts_expr() => self.expr(brace),
             Operand::Optional | Operand::Never => {}
         }
         self.out.node(kind, Anchor::Token(token), mark);
+    }
+
+    /// The statement `defer` runs: an expression, or an assignment, which binds looser than any
+    /// operator, so `defer x.* = 0` defers the whole assignment (spec 05, section 3).
+    fn deferred(&mut self, brace: Brace) {
+        let mark = self.out.mark();
+        self.expr(brace);
+        if ASSIGN.contains(&self.peek()) {
+            let op = self.bump();
+            self.expr(brace);
+            self.out.node(NodeKind::Assign, Anchor::Token(op), mark);
+        }
     }
 
     /// Runs `body` one level deeper, or skips the operand at the current token when nesting is

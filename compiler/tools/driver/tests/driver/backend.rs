@@ -40,7 +40,7 @@ const CROSS: [&[&str]; 1] = [&["linux", "arm64"]];
 /// Builds `source` through each backend that generates code and runs it, for the machine's
 /// target and each of `CROSS` the machine runs programs of: its exit status, the same through
 /// each (what `vun debug compare` shows).
-fn status(name: &str, source: &str) -> Option<i32> {
+pub(crate) fn status(name: &str, source: &str) -> Option<i32> {
     let cross = CROSS.iter().map(|path| Choice::Path(path.iter().map(|&n| Symbol::intern(n)).collect()));
     let mut statuses: Vec<(String, Option<i32>)> = Vec::new();
     for (i, choice) in std::iter::once(Choice::host()).chain(cross).enumerate() {

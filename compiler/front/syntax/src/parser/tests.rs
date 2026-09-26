@@ -150,6 +150,11 @@ fn statements() {
         first("f := () { _ = g(&out b); defer h(); };"),
         "(Binding':= f (Fn'( ) (Block'{ (Assign'= _ (Call'( g (Prefix'& out b) ))) ; (Defer'defer (Call'( h ))) ; })))"
     );
+    // `defer` runs a whole statement: an assignment binds looser than the operand it defers.
+    assert_eq!(
+        first("f := () { defer x.* += 1; };"),
+        "(Binding':= f (Fn'( ) (Block'{ (Defer'defer (Assign'+= (Postfix'.* x) 1)) ; })))"
+    );
     assert_eq!(
         first("f := () { n := yield ..s.read(); unsafe { g(); } };"),
         "(Binding':= f (Fn'( ) (Block'{ (Binding':= n (Yield'yield (Prefix'.. (Call'( (Member'. s read) ))))) ; (Prefix'unsafe (Block'{ (Call'( g )) ; })) })))"

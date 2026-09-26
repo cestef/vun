@@ -158,3 +158,25 @@ deferred := (e: &std.task.Event) -> std.task.Async(u32) {
     assert_eq!(found.len(), 1, "{found:?}");
     assert_eq!(found[0].0, errors::PLACE_LINEAR_LEAK);
 }
+
+#[test]
+fn a_frame_ended_at_a_yield_runs_its_pending_defers() {
+    let source = "\
+start := std.os.start(main);
+count := (hits: &mut u8) -> Iter(u8) {
+    defer hits.* = 7;
+    yield 1;
+    yield 2;
+};
+main := (sys: &mut std.os.System) -> std.os.Exit {
+    mut hits: u8 = 0;
+    {
+        mut f := count(&mut hits);
+        _ := f.resume();
+        f.end();
+    }
+    .code(hits)
+};
+";
+    assert_eq!(crate::backend::status("coroutines-frame-end", source), Some(7));
+}

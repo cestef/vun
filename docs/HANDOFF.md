@@ -191,8 +191,9 @@ in as proposed unless the user approves them.
 3. `std`: `task.Pool`, `testing.Sim`, a Linux runtime without libc, `Str` and collections,
    `print`'s `.fixes`; generic bodies over a constrained `$A: Allocator`.
 4. Checks: `fixed` kinds (never moved; needs a spec rule for construction in place first, since
-   MIR moves values through temporaries for declarations and call results), frames' `end` running
-   their defers; frames' regions. Done: borrows of parts of immutable top-level bindings are
+   MIR moves values through temporaries for declarations and call results); frames' regions.
+   Frames' `end` runs the pending defers (a `defer x = e` parsed as `(defer x) = e` made it look
+   otherwise; `defer` now takes an assignment whole). Done: borrows of parts of immutable top-level bindings are
    `&static` (`Env::lasting`), leaks at
    every scope exit, scoped kinds, and `borrow.conflict` labels the later use keeping the loan
    live (`borrows/later.rs`).
