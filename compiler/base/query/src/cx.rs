@@ -7,7 +7,7 @@ use std::fmt;
 use std::sync::Arc;
 use std::sync::atomic::Ordering;
 
-use vun_trace::{Activity, tracing};
+use vun_trace::{Activity, Timer, tracing};
 
 use super::claim::Claim;
 use super::db::Db;
@@ -90,10 +90,15 @@ impl<'db> Cx<'db> {
         let table = self.db.table::<Q>();
         let slot = table.slot(key);
         let (value, fingerprint) = self.fetch(table, slot);
-        if let Some(top) = self.stack.borrow_mut().last_mut() {
-            top.reads.push(Dep { table: table.id, slot, fingerprint });
-        }
+        self.record(Dep { table: table.id, slot, fingerprint });
         value
+    }
+
+    /// Records `read` as read by the query being computed.
+    fn record(&self, read: Dep) {
+        if let Some(top) = self.stack.borrow_mut().last_mut() {
+            top.reads.push(read);
+        }
     }
 
     /// The current value at `slot` and its fingerprint: the memo when it is current or what it
@@ -149,15 +154,20 @@ impl<'db> Cx<'db> {
         if memo.current(revision) {
             return Ok(memo);
         }
-        if let Some(&read) = memo.deps.iter().find(|&&dep| !self.unchanged(dep)) {
+        if let Some(read) = self.stale(&memo.deps) {
             return Err(Why::Stale(read));
         }
         memo.verified.set(revision);
         Ok(memo)
     }
 
-    fn unchanged(&self, dep: Dep) -> bool {
-        self.db.any_table(dep.table).unchanged(self, dep.slot, dep.fingerprint)
+    /// The first of `reads` that changed, each brought up to date in turn.
+    #[inline(never)]
+    fn stale(&self, reads: &[Dep]) -> Option<Dep> {
+        reads
+            .iter()
+            .copied()
+            .find(|dep| !self.db.any_table(dep.table).unchanged(self, dep.slot, dep.fingerprint))
     }
 
     /// The value at `slot` computed on this thread, or the value of the cycle it closes; `None`
@@ -170,18 +180,7 @@ impl<'db> Cx<'db> {
         why: Why,
     ) -> Option<(Q::Value, Fingerprint)> {
         let entry = table.entry(slot);
-        let reached = self.stack.borrow().iter().position(|f| f.table == table.id && f.slot == slot);
-        if let Some(from) = reached {
-            let path = self.stack.borrow()[from..]
-                .iter()
-                .map(|f| {
-                    let frame = self.db.any_table(f.table);
-                    (frame.name(), frame.show(f.slot))
-                })
-                .chain([(Q::NAME, format!("{:?}", entry.key))])
-                .collect();
-            let cycle = Cycle { path };
-            tracing::debug!(%cycle, "cycle recovered");
+        if let Some(cycle) = self.cycle(table.id, slot) {
             let value = Q::cycle(self, &entry.key, &cycle);
             let fingerprint = Q::interface(&value);
             return Some((value, fingerprint));
@@ -191,29 +190,66 @@ impl<'db> Cx<'db> {
             Claim::Owner(owned) => Some(owned),
             Claim::Alone => None,
         };
-        tracing::debug!(query = Q::NAME, why = %why.show(self.db), "computing");
-        tracing::trace!(query = Q::NAME, key = ?entry.key, "key");
-        self.stack.borrow_mut().push(Frame { table: table.id, slot, reads: Vec::new() });
-        let timer = Activity::query(Q::NAME).start();
+        let timer = self.enter(table.id, slot, why);
         let value = Q::compute(self, &entry.key);
         drop(timer);
-        let reads = self.stack.borrow_mut().pop().expect("the frame pushed above").reads;
+        let reads = self.leave();
         let fingerprint = Q::interface(&value);
         let memo = if Q::INPUT {
             // An input not set holds what it computes until it is.
             Memo::input(value.clone(), fingerprint, revision)
         } else {
-            // What was loaded already, computed again for its value, changes nothing saved.
-            let loaded = matches!(why, Why::Unloaded)
-                && entry.memo.load().as_ref().is_some_and(|m| m.fingerprint == fingerprint);
-            if !loaded {
-                self.db.changed.store(true, Ordering::Relaxed);
-            }
-            Memo::computed(value.clone(), fingerprint, Self::once(reads), revision)
+            let loaded = entry.memo.load().as_ref().map(|m| m.fingerprint);
+            self.computing(why, loaded, fingerprint);
+            Memo::computed(value.clone(), fingerprint, reads, revision)
         };
         entry.memo.store(Some(Arc::new(memo)));
         drop(owned);
         Some((value, fingerprint))
+    }
+
+    /// What the stack reaches again by computing `slot` of `table`, if it computes it already.
+    /// What does not depend on the query is kept out of the code made for each one.
+    #[inline(never)]
+    fn cycle(&self, table: TableId, slot: Slot) -> Option<Cycle> {
+        let stack = self.stack.borrow();
+        let from = stack.iter().position(|f| f.table == table && f.slot == slot)?;
+        let path = stack[from..]
+            .iter()
+            .map(|f| (f.table, f.slot))
+            .chain([(table, slot)])
+            .map(|(table, slot)| {
+                let table = self.db.any_table(table);
+                (table.name(), table.show(slot))
+            })
+            .collect();
+        let cycle = Cycle { path };
+        tracing::debug!(%cycle, "cycle recovered");
+        Some(cycle)
+    }
+
+    /// Starts computing `slot` of `table`, timed until the timer returned is dropped.
+    #[inline(never)]
+    fn enter(&self, table: TableId, slot: Slot, why: Why) -> Timer {
+        let any = self.db.any_table(table);
+        tracing::debug!(query = any.name(), why = %why.show(self.db), "computing");
+        tracing::trace!(query = any.name(), key = any.show(slot), "key");
+        self.stack.borrow_mut().push(Frame { table, slot, reads: Vec::new() });
+        Activity::query(any.name()).start()
+    }
+
+    /// Ends the computation [`Cx::enter`] started, returning what it read.
+    #[inline(never)]
+    fn leave(&self) -> Box<[Dep]> {
+        Self::once(self.stack.borrow_mut().pop().expect("a frame entered").reads)
+    }
+
+    /// Records a memo computed with `fingerprint`, where the one `loaded` had its own: what was
+    /// loaded already, computed again for its value, changes nothing saved.
+    fn computing(&self, why: Why, loaded: Option<Fingerprint>, fingerprint: Fingerprint) {
+        if !(matches!(why, Why::Unloaded) && loaded == Some(fingerprint)) {
+            self.db.changed.store(true, Ordering::Relaxed);
+        }
     }
 
     /// `reads` with each memo once, in the order it was first read: verifying follows it, since a

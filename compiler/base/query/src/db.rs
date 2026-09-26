@@ -89,13 +89,19 @@ impl Db {
 
     /// The table of `Q`, made on first use.
     pub(crate) fn table<Q: Query>(&self) -> &Table<Q> {
-        let id = *self.ids.pin().get_or_insert_with(TypeId::of::<Q>(), || {
-            let index = self.tables.push_with(|index| {
-                Box::new(Table::<Q>::new(TableId(u32::try_from(index).expect("few queries"))))
-            });
-            TableId(u32::try_from(index).expect("few queries"))
-        });
+        let id = self.table_of(TypeId::of::<Q>(), |id| Box::new(Table::<Q>::new(id)));
         self.any_table(id).as_any().downcast_ref().expect("one table type per query")
+    }
+
+    /// The table of the query of type `query`, made by `make` on first use. What does not depend
+    /// on the query is kept out of the code made for each one.
+    #[inline(never)]
+    fn table_of(&self, query: TypeId, make: fn(TableId) -> Box<dyn AnyTable>) -> TableId {
+        *self.ids.pin().get_or_insert_with(query, || {
+            let index =
+                self.tables.push_with(|index| make(TableId(u32::try_from(index).expect("few queries"))));
+            TableId(u32::try_from(index).expect("few queries"))
+        })
     }
 
     pub(crate) fn any_table(&self, id: TableId) -> &dyn AnyTable {

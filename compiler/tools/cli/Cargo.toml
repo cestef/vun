@@ -19,3 +19,4 @@ vun-http.workspace = true
 vun-command.workspace = true
 vun-trace.workspace = true
 vun-diag.workspace = true
+mimalloc.workspace = true
