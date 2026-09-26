@@ -3,6 +3,7 @@
 //! verified and compared by table and slot, two integers.
 
 use std::any::Any;
+use std::sync::{Arc, OnceLock};
 
 use arc_swap::ArcSwapOption;
 use vun_par::Map;
@@ -12,6 +13,7 @@ use super::claim::Claims;
 use super::cx::Cx;
 use super::fingerprint::Fingerprint;
 use super::memo::Memo;
+use super::persist::Attached;
 
 /// A table of a database, by the order it was made in.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -35,6 +37,9 @@ pub(crate) struct Table<Q: Query> {
     pub(crate) id: TableId,
     slots: Map<Q::Key, Slot>,
     entries: boxcar::Vec<Entry<Q>>,
+    /// The query's part of the saved memos loaded, whose memos are restored as their keys are
+    /// first asked for.
+    pub(crate) attached: OnceLock<Attached<Q>>,
 }
 
 /// A key, its memo once there is one, and the claim of whoever computes it.
@@ -42,24 +47,76 @@ pub(crate) struct Entry<Q: Query> {
     pub(crate) key: Q::Key,
     pub(crate) memo: ArcSwapOption<Memo<Q>>,
     pub(crate) claims: Claims,
+    /// Its key's position among the query's keys in the saved memos loaded.
+    pub(crate) at: OnceLock<u32>,
 }
 
 impl<Q: Query> Table<Q> {
     pub(crate) fn new(id: TableId) -> Self {
-        Self { id, slots: Map::default(), entries: boxcar::Vec::new() }
+        Self { id, slots: Map::default(), entries: boxcar::Vec::new(), attached: OnceLock::new() }
     }
 
-    /// The slot of `key`, made the first time it is asked for.
+    /// The slot of `key`, made the first time it is asked for, holding the memo saved for it if
+    /// there is one.
     pub(crate) fn slot(&self, key: &Q::Key) -> Slot {
-        let slots = self.slots.pin();
-        if let Some(&slot) = slots.get(key) {
+        if let Some(&slot) = self.slots.pin().get(key) {
             return slot;
         }
+        let at = self.attached.get().and_then(|attached| attached.find(key));
+        self.insert(key, at)
+    }
+
+    /// The slot of the key saved at `at`, made the first time it is asked for.
+    pub(crate) fn saved_slot(&self, at: u32) -> Option<Slot> {
+        let attached = self.attached.get()?;
+        if let Some(slot) = attached.linked(at) {
+            return Some(slot);
+        }
+        Some(self.insert(&attached.key(at)?, Some(at)))
+    }
+
+    /// The slot of `key`, saved at `at` if anywhere, made with its saved memo if it has none.
+    fn insert(&self, key: &Q::Key, at: Option<u32>) -> Slot {
         // Another thread may add the same key meanwhile: the first slot stored stands for both.
-        *slots.get_or_insert_with(key.clone(), || {
-            let entry = Entry { key: key.clone(), memo: ArcSwapOption::empty(), claims: Claims::default() };
+        let slot = *self.slots.pin().get_or_insert_with(key.clone(), || {
+            let memo = at.and_then(|at| self.attached.get()?.memo(at)).map(Arc::new);
+            let entry = Entry {
+                key: key.clone(),
+                memo: ArcSwapOption::new(memo),
+                claims: Claims::default(),
+                at: OnceLock::new(),
+            };
             Slot::at(self.entries.push(entry))
-        })
+        });
+        if let Some(at) = at {
+            self.link(slot, at);
+        }
+        slot
+    }
+
+    /// Records the key at `slot` as the one saved at `at`.
+    fn link(&self, slot: Slot, at: u32) {
+        let entry = self.entry(slot);
+        entry.at.get_or_init(|| at);
+        if let Some(attached) = self.attached.get() {
+            attached.link(at, slot);
+        }
+    }
+
+    /// Attaches the query's part of the saved memos loaded: keys asked for already are linked to
+    /// theirs, and given their memos if they have none.
+    pub(crate) fn attach(&self, attached: Attached<Q>) {
+        if self.attached.set(attached).is_err() {
+            return;
+        }
+        let attached = self.attached.get().expect("set above");
+        for (slot, entry) in self.entries() {
+            let Some(at) = attached.find(&entry.key) else { continue };
+            self.link(slot, at);
+            if entry.memo.load().is_none() {
+                entry.memo.store(attached.memo(at).map(Arc::new));
+            }
+        }
     }
 
     pub(crate) fn entry(&self, slot: Slot) -> &Entry<Q> {
@@ -86,8 +143,8 @@ pub(crate) trait AnyTable: Send + Sync {
     fn unchanged(&self, cx: &Cx<'_>, slot: Slot, fingerprint: Fingerprint) -> bool;
     /// The key at `slot`, as a cycle names it.
     fn show(&self, slot: Slot) -> String;
-    /// The fingerprint of the memo at `slot`, as it is.
-    fn fingerprint(&self, slot: Slot) -> Option<Fingerprint>;
+    /// The slot of the key saved at `at` among the query's keys in the memos loaded.
+    fn saved_slot(&self, at: u32) -> Option<Slot>;
 }
 
 impl<Q: Query> AnyTable for Table<Q> {
@@ -107,7 +164,7 @@ impl<Q: Query> AnyTable for Table<Q> {
         format!("{:?}", self.entry(slot).key)
     }
 
-    fn fingerprint(&self, slot: Slot) -> Option<Fingerprint> {
-        self.entry(slot).memo.load().as_ref().map(|memo| memo.fingerprint)
+    fn saved_slot(&self, at: u32) -> Option<Slot> {
+        Table::saved_slot(self, at)
     }
 }

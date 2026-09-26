@@ -9,6 +9,7 @@ use vun_trace::tracing;
 
 use super::db::Db;
 use super::fingerprint::Fingerprint;
+use super::persist::SavedDep;
 use super::table::{Slot, TableId};
 use super::{Query, Revision};
 
@@ -19,7 +20,7 @@ pub(crate) struct Memo<Q: Query> {
     pub(crate) saved: Option<Saved<Q>>,
     pub(crate) fingerprint: Fingerprint,
     /// Each memo read, once, in the order of the first reads.
-    pub(crate) deps: Box<[Dep]>,
+    pub(crate) deps: Deps,
     /// None for a loaded memo until it is verified.
     pub(crate) verified: Verified,
     /// Set with [`Db::set`], or an input's value while unset, rather than computed.
@@ -50,7 +51,7 @@ impl<Q: Query> Memo<Q> {
             value: OnceLock::from(value),
             saved: None,
             fingerprint,
-            deps: Box::new([]),
+            deps: Deps::Read(Box::new([])),
             verified,
             input: true,
         }
@@ -63,12 +64,14 @@ impl<Q: Query> Memo<Q> {
         revision: Revision,
     ) -> Self {
         let verified = Verified::at(revision);
+        let deps = Deps::Read(deps);
         Self { value: OnceLock::from(value), saved: None, fingerprint, deps, verified, input: false }
     }
 
     /// A memo of another process, never verified in this one.
-    pub(crate) fn loaded(saved: Option<Saved<Q>>, fingerprint: Fingerprint, deps: Box<[Dep]>) -> Self {
+    pub(crate) fn loaded(saved: Option<Saved<Q>>, fingerprint: Fingerprint, deps: Box<[SavedDep]>) -> Self {
         let verified = Verified::default();
+        let deps = Deps::Saved { saved: deps, read: OnceLock::new() };
         Self { value: OnceLock::new(), saved, fingerprint, deps, verified, input: false }
     }
 
@@ -84,7 +87,7 @@ impl<Q: Query> Memo<Q> {
             return Some(value);
         }
         let saved = self.saved.as_ref()?;
-        match (saved.read)(db.stream.get()?, saved.at) {
+        match (saved.read)(&db.store.get()?.stream, saved.at) {
             Ok(value) => Some(self.value.get_or_init(|| value)),
             Err(malformed) => {
                 tracing::debug!(query = Q::NAME, %malformed, "saved value not read");
@@ -96,6 +99,28 @@ impl<Q: Query> Memo<Q> {
     /// Its value if computed or read already, without reading it.
     pub(crate) fn known(&self) -> Option<&Q::Value> {
         self.value.get()
+    }
+}
+
+/// What a memo read: as recorded, or as saved, positions in the file loaded that are brought to
+/// slots of this process when first needed.
+pub(crate) enum Deps {
+    Read(Box<[Dep]>),
+    Saved { saved: Box<[SavedDep]>, read: OnceLock<Option<Box<[Dep]>>> },
+}
+
+impl Deps {
+    /// The memos read, by slot; `None` when one of them is not held by this process's queries.
+    pub(crate) fn get(&self, db: &Db) -> Option<&[Dep]> {
+        match self {
+            Self::Read(deps) => Some(deps),
+            Self::Saved { saved, read } => read
+                .get_or_init(|| {
+                    let store = db.store.get()?;
+                    saved.iter().map(|&dep| store.dep(db, dep)).collect()
+                })
+                .as_deref(),
+        }
     }
 }
 

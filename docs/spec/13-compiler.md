@@ -79,16 +79,20 @@ years (rustc's parallel front end). So both are designed in from phase 1.
   (`Query::INPUT`) never are. A loaded memo is verified before its first use like any memo of an
   earlier revision, so a stale file costs recomputation, never a wrong result; a traced memo
   that holds stands for its value, which is computed only if read (red-green, as rustc's
-  dependency graph). Loading reads keys in parallel and values when first needed, in place in
-  the file; saving happens only when a memo was computed that the file did not hold, and
-  extends the loaded stream, so values never read are copied, not decoded again. Since an
-  extended stream keeps every pool entry of the one it extends, the file records its body's size
-  when last written whole, and a body grown past twice that size is written whole on the next
-  save, its unread values decoded to be written anew. Files are written beside their place and
-  renamed over it, so a reader or a crash sees the old file or the new, never a part. Each key
-  is saved with its memo's fingerprint, and a read with its own only when it differs, since
-  reads outnumber memos ten to one; each query is encoded on its own, so queries decode in
-  parallel. `vun debug queries <file>` counts what the file beside a root file holds, per query
+  dependency graph). Loading reads what is used, in place in the file: a query's keys when one
+  of them is first looked for, found by the stable hash of the key's value (`vun_hash::Stable`,
+  which symbols, interned values and origins hash by), a key's memo when that key is first asked
+  for, a memo's reads when it is first verified and its value when first needed; so a run pays
+  for the memos it uses, not for those of other programs sharing the file. Saving happens only
+  when a memo was computed that the file did not hold, and extends the loaded stream: every key
+  keeps its position, and keys and memos never asked for are copied, not decoded again. Since an
+  extended stream keeps every entry of the one it extends, the file records its body's size when
+  last written whole, and a body grown past twice that size is written whole on the next save,
+  every saved memo read to be written anew. Files are written beside their place and renamed
+  over it, so a reader or a crash sees the old file or the new, never a part. Each key is saved
+  with the fingerprint its memo had when the key was first saved, and a memo or a read records
+  its own only when it differs, since reads outnumber memos ten to one: a memo copied unread
+  keeps meaning what it read. `vun debug queries <file>` counts what the file beside a root file holds, per query
   and per pool. A key naming a HIR node is equal to another only when both the node's place and
   its origin are: a memo is computed from its key, and a key equal by origin alone would keep the
   place a node had before an edit moved it.

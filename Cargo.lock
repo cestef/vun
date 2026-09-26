@@ -1199,6 +1199,7 @@ dependencies = [
  "boxcar",
  "foldhash",
  "vun-codec",
+ "vun-hash",
  "vun-par",
  "vun-trace",
 ]

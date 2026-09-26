@@ -1,10 +1,13 @@
 //! The saved form: a header, then the body: the pools of the handles values hold, then each
-//! persisted query's keys and memos. A read is saved as the position of its query and of its key
-//! in the file, since slots and tables are the process's own. Written with bytes, `B` is read as
-//! [`Blob`]s: keys, values and pool entries are places in the file loaded, never copied out of it.
+//! persisted query's keys, each with its memo. A read is saved as the position of its query and
+//! of its key in the file, since slots and tables are the process's own. Written with bytes, `B`
+//! is read as [`Blob`]s: queries, keys, memos, values and pool entries are places in the file
+//! loaded, never copied out of it, and each is read when first needed: a key by the stable hash
+//! of its value, a memo when its key is.
 //!
-//! A body extends the one loaded, whose pool entries it keeps whether still referenced or not, so
-//! it is written whole again once it outgrows its size when last written whole.
+//! A body extends the one loaded, keeping every position in it and every entry it holds whether
+//! still referenced or not, so it is written whole again once it outgrows its size when last
+//! written whole.
 
 use std::fmt;
 
@@ -13,7 +16,7 @@ use vun_codec::{Blob, Decode, Encode, Malformed, Pools};
 use crate::fingerprint::Fingerprint;
 
 /// The version of the saved form; a file of another version is not read.
-pub(super) const FORMAT: u32 = 7;
+pub(super) const FORMAT: u32 = 8;
 
 /// How many times its size when last written whole a body grows to before it is written whole.
 const GROWTH: u64 = 2;
@@ -27,11 +30,18 @@ pub(crate) struct Saved<B = Vec<u8>> {
     pub(crate) body: B,
 }
 
-/// The pools, then each query encoded on its own, so that queries are read in parallel.
+/// The pools, then each query by name, encoded on its own so that it is read when first needed.
 #[derive(Encode, Decode)]
 pub(super) struct Body<B = Vec<u8>> {
     pub(super) pools: Pools<B>,
-    pub(super) queries: Vec<B>,
+    pub(super) queries: Vec<Named<B>>,
+}
+
+#[derive(Encode, Decode)]
+pub(super) struct Named<B = Vec<u8>> {
+    pub(super) name: String,
+    /// A [`SavedQuery`].
+    pub(super) query: B,
 }
 
 /// The body as read, in place.
@@ -51,26 +61,28 @@ impl Growth {
     }
 }
 
-/// One query: every key it had a slot for, and its computed memos.
+/// One query: every key it had a slot for, each with its memo if it was computed.
 #[derive(Encode, Decode)]
 pub(crate) struct SavedQuery<B = Vec<u8>> {
-    pub(super) name: String,
     pub(super) keys: Vec<SavedKey<B>>,
-    pub(super) memos: Vec<SavedMemo<B>>,
 }
 
-/// A key, and the fingerprint of its memo if it had one: its saved memo's, and the one reads of
-/// it saw unless they record their own.
-#[derive(Encode, Decode)]
+/// A key, the stable hash of its value, by which it is found, and the fingerprint of its memo if
+/// it had one when first saved: the one its memo and reads of it saw unless they record their
+/// own.
+#[derive(Clone, Encode, Decode)]
 pub(crate) struct SavedKey<B = Vec<u8>> {
     pub(super) key: B,
+    pub(super) hash: u64,
     pub(super) fingerprint: Option<Fingerprint>,
+    /// A [`SavedMemo`].
+    pub(super) memo: Option<B>,
 }
 
 #[derive(Encode, Decode)]
 pub(crate) struct SavedMemo<B = Vec<u8>> {
-    /// Its position among the query's keys.
-    pub(super) key: u32,
+    /// Its fingerprint when it is not its key's.
+    pub(super) fingerprint: Option<Fingerprint>,
     /// `None` for a query persisted without its values.
     pub(super) value: Option<B>,
     pub(super) deps: Vec<SavedDep>,
@@ -79,7 +91,7 @@ pub(crate) struct SavedMemo<B = Vec<u8>> {
 /// A read: its query's position in the file, its key's among the query's keys, and the
 /// fingerprint it had when that is not its key's: most reads saw the memo saved, and sixteen
 /// bytes a read would be most of the file.
-#[derive(Clone, Copy, Encode, Decode)]
+#[derive(Clone, Copy, Debug, Encode, Decode)]
 pub(crate) struct SavedDep {
     pub(super) query: u32,
     pub(super) key: u32,

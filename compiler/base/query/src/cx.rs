@@ -32,6 +32,8 @@ enum Why {
     Stale(Dep),
     /// It holds, but was loaded without its value.
     Unloaded,
+    /// It was loaded, reading a memo no query of this process holds.
+    Unresolved,
 }
 
 impl Why {
@@ -43,6 +45,7 @@ impl Why {
                 format!("read {}({}) changed", table.name(), table.show(read.slot))
             }
             Self::Unloaded => "loaded without its value".to_owned(),
+            Self::Unresolved => "loaded reading a query not held".to_owned(),
         }
     }
 }
@@ -154,7 +157,8 @@ impl<'db> Cx<'db> {
         if memo.current(revision) {
             return Ok(memo);
         }
-        if let Some(read) = self.stale(&memo.deps) {
+        let deps = memo.deps.get(self.db).ok_or(Why::Unresolved)?;
+        if let Some(read) = self.stale(deps) {
             return Err(Why::Stale(read));
         }
         memo.verified.set(revision);

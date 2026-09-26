@@ -4,7 +4,7 @@
 use vun_codec::{Blob, Context, Decode};
 
 use super::Unloaded;
-use super::saved::{FORMAT, Loaded, Saved, SavedQuery};
+use super::saved::{FORMAT, Loaded, Saved, SavedMemo, SavedQuery};
 
 /// The counts of a saved file.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -39,15 +39,19 @@ impl Census {
         let header = Saved::<Blob>::decoded(bytes).map_err(Unloaded::Decode)?;
         let body: Loaded = header.body.read(bytes).map_err(Unloaded::Decode)?;
         let sum = |blobs: &mut dyn Iterator<Item = Blob>| blobs.map(|b| b.len).sum::<usize>();
-        let queries = body.queries.iter().map(|q| q.read::<SavedQuery<Blob>>(bytes));
-        let queries = queries.collect::<Result<Vec<_>, _>>().map_err(Unloaded::Decode)?;
-        let queries = queries.iter().map(|q| Counted {
-            name: q.name.clone(),
-            entries: q.keys.len(),
-            memos: q.memos.len(),
-            reads: q.memos.iter().map(|m| m.deps.len()).sum(),
-            bytes: sum(&mut q.keys.iter().map(|k| k.key)) + sum(&mut q.memos.iter().filter_map(|m| m.value)),
+        let queries = body.queries.iter().map(|q| {
+            let keys = q.query.read::<SavedQuery<Blob>>(bytes)?.keys;
+            let memos = keys.iter().filter_map(|k| k.memo).map(|m| m.read::<SavedMemo<Blob>>(bytes));
+            let memos = memos.collect::<Result<Vec<_>, _>>()?;
+            Ok(Counted {
+                name: q.name.clone(),
+                entries: keys.len(),
+                memos: memos.len(),
+                reads: memos.iter().map(|m| m.deps.len()).sum(),
+                bytes: sum(&mut keys.iter().map(|k| k.key)) + sum(&mut memos.iter().filter_map(|m| m.value)),
+            })
         });
+        let queries = queries.collect::<Result<Vec<_>, _>>().map_err(Unloaded::Decode)?;
         let pools = body.pools.0.iter().map(|p| Counted {
             name: p.name.clone(),
             entries: p.entries.len(),
@@ -55,11 +59,6 @@ impl Census {
             reads: 0,
             bytes: sum(&mut p.entries.iter().copied()),
         });
-        Ok(Self {
-            bytes: bytes.len(),
-            compacted: header.compacted,
-            queries: queries.collect(),
-            pools: pools.collect(),
-        })
+        Ok(Self { bytes: bytes.len(), compacted: header.compacted, queries, pools: pools.collect() })
     }
 }

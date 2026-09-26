@@ -16,3 +16,4 @@ boxcar.workspace = true
 foldhash.workspace = true
 vun-par.workspace = true
 vun-codec.workspace = true
+vun-hash.workspace = true

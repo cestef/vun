@@ -4,7 +4,7 @@ use vun_codec::{Blob, Decode};
 
 use super::Runs;
 use crate::persist::Saved;
-use crate::{Cx, Db, Query, Unloaded};
+use crate::{Census, Cx, Db, Query, Unloaded};
 
 static WORDS: Runs = Runs::new();
 
@@ -50,7 +50,9 @@ fn saved_memos_are_reused_until_their_trace_changes() {
 
     // Another process with the same input reuses the memo.
     let second = persisting("one two");
-    assert_eq!(second.load(saved.clone()).unwrap(), 1, "only computed memos are saved");
+    let memos = Census::of(&saved).unwrap().queries.iter().map(|q| q.memos).collect::<Vec<_>>();
+    assert_eq!(memos, [0, 1], "only computed memos are saved");
+    assert_eq!(second.load(saved.clone()).unwrap(), 2, "both queries are registered");
     assert_eq!(second.get::<Words>(&"a".into()), ["one", "two"]);
     assert_eq!(WORDS.count(), 1);
 
@@ -136,7 +138,10 @@ fn memos_of_unregistered_queries_and_other_formats_are_not_loaded() {
     let saved = first.save();
     let bare = Db::new();
     bare.persist::<Words>();
-    assert_eq!(bare.load(saved.clone()).unwrap(), 0, "a trace reading an unregistered query is skipped");
+    assert_eq!(bare.load(saved.clone()).unwrap(), 1);
+    let runs = WORDS.count();
+    assert!(bare.get::<Words>(&"a".into()).is_empty(), "a memo reading an unregistered query is computed");
+    assert_eq!(WORDS.count(), runs + 1);
     // The format is the leading varint.
     let mut other = saved.clone();
     other[0] = 1;
@@ -188,9 +193,43 @@ fn a_traced_memo_stands_for_its_value_until_it_is_read() {
     assert_eq!((TOKENS.count(), COUNTS.count()), (1, 1));
 
     let second = counting("x y");
-    assert_eq!(second.load(saved.clone()).unwrap(), 2);
+    assert_eq!(second.load(saved.clone()).unwrap(), 3);
     assert_eq!(second.get::<Count>(&"b".into()), 2);
     assert_eq!((TOKENS.count(), COUNTS.count()), (1, 1), "verified through the traced memo");
     assert_eq!(second.get::<Tokens>(&"b".into()), ["x", "y"]);
     assert_eq!(TOKENS.count(), 2, "its value is computed once read");
+}
+
+#[test]
+fn a_memo_carried_over_unread_sees_the_reads_it_saw() {
+    let first = counting("x y");
+    first.get::<Count>(&"b".into());
+    let saved = first.save();
+
+    // The next process recomputes the tokens alone; the count it never asked for is carried over.
+    let second = counting("x y z");
+    second.load(saved).unwrap();
+    assert_eq!(second.get::<Tokens>(&"b".into()).len(), 3);
+    let carried = second.save();
+
+    // Its read of the tokens still names the ones it saw, so it is recomputed.
+    let third = counting("x y z");
+    third.load(carried).unwrap();
+    let runs = COUNTS.count();
+    assert_eq!(third.get::<Count>(&"b".into()), 3);
+    assert_eq!(COUNTS.count(), runs + 1);
+}
+
+#[test]
+fn only_the_memos_asked_for_are_restored() {
+    let first = persisting("x");
+    first.set::<Source>(&"b".into(), "y".into());
+    first.get::<Words>(&"a".into());
+    first.get::<Words>(&"b".into());
+    let saved = first.save();
+
+    let second = persisting("x");
+    second.load(saved).unwrap();
+    assert_eq!(second.get::<Words>(&"a".into()), ["x"]);
+    assert_eq!(second.computed::<Words>().len(), 1, "the memo of b is never restored");
 }

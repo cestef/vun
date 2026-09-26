@@ -4,13 +4,12 @@ use std::any::{Any, TypeId};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, OnceLock, RwLock};
 
-use vun_codec::Context;
 use vun_par::Map;
 
 use super::claim::Waits;
 use super::cx::Cx;
 use super::memo::Memo;
-use super::persist::{Growth, Persisted};
+use super::persist::{Persisted, Store};
 use super::table::{AnyTable, Table, TableId};
 use super::{Query, Revision};
 
@@ -23,10 +22,8 @@ pub struct Db {
     /// Each query's table, by the query's type.
     ids: Map<TypeId, TableId>,
     pub(crate) waits: Waits,
-    /// The saved memos loaded, whose values are read from it when first needed.
-    pub(crate) stream: OnceLock<Context>,
-    /// How the stream loaded has grown since last written whole.
-    pub(crate) growth: OnceLock<Growth>,
+    /// The saved memos loaded, restored as their keys are first asked for.
+    pub(crate) store: OnceLock<Arc<Store>>,
     /// Whether a memo was computed that the saved ones did not already hold.
     pub(crate) changed: AtomicBool,
     /// The persisted queries, in the order registered.
