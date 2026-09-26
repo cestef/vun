@@ -178,6 +178,7 @@ impl Emits for Arm {
     type Cond = Cc;
 
     const MOV: Op = Op::Mov;
+    const WHOLE: Size = Size::B64;
 
     fn reg(r: Reg) -> Opnd {
         r.into()

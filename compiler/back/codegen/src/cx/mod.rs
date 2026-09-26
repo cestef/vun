@@ -5,7 +5,7 @@ mod exit;
 mod fixed;
 mod values;
 
-pub use exit::Fused;
+pub use exit::{Fused, Layout};
 
 use vun_asm::{Isa, Label};
 use vun_backend::{Lack, Missing};

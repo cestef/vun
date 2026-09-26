@@ -42,7 +42,7 @@ pub(super) const MOV: [Form; 5] = [
     Form::new(&[R, RM], Sizes::ALL, Opcode::one(0x8b), SRC_DST).byte(0x8a),
     // Writing a 32-bit register clears the upper half.
     Form::new(&[Rn(Size::B32), U32], Sizes::WIDE, Opcode::one(0xb8), Layout::PlusReg(0)).w(W::Never),
-    Form::new(&[RM, Iz], Sizes::WIDE, Opcode::one(0xc7), Layout::Digit { digit: 0, rm: 0 }),
+    Form::new(&[RM, Iz], Sizes::ALL, Opcode::one(0xc7), Layout::Digit { digit: 0, rm: 0 }).byte(0xc6),
     Form::new(&[R, I64], Sizes::of(&[Size::B64]), Opcode::one(0xb8), Layout::PlusReg(0)),
 ];
 

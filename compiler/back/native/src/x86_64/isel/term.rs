@@ -5,7 +5,7 @@
 
 use vun_asm_x86_64::{Cc, Emit, Mem, Op, Operand, Reg, Size};
 use vun_backend::Lack;
-use vun_codegen::Arch;
+use vun_codegen::{Arch, Layout};
 use vun_lir::{AbiType, Address, Block, Target, Terminator, Value};
 
 use super::Sel;
@@ -44,8 +44,9 @@ impl Sel<'_, '_> {
                     self.asm.emit(Op::Test, Size::B8, &[c.into(), c.into()]);
                     Cc::Ne
                 });
-                self.jump_if(holds, then);
-                self.jump(otherwise, next);
+                let layout = Layout::of(then, otherwise, next);
+                self.jump_if(if layout.inverted { holds.not() } else { holds }, layout.taken);
+                self.jump(layout.fall, next);
             }
             Terminator::Switch { cases, default, .. } => {
                 let (v, size) = operand.expect("a switch reads its value");

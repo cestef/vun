@@ -94,9 +94,22 @@ impl Builder {
         self.value(InstKind::Const { ty, bits }, ty, origin)
     }
 
+    /// `a op b`; `a` itself where `b` is the constant leaving it unchanged, as `x * 1` is.
     pub fn binary(&mut self, op: BinOp, a: Value, b: Value, origin: OriginId) -> Value {
+        if op.identity().is_some_and(|identity| self.constant_bits(b) == Some(identity)) {
+            return a;
+        }
         let ty = self.ty(a);
         self.value(InstKind::Binary { op, a, b }, ty, origin)
+    }
+
+    /// The bits of `value` when a constant defines it.
+    fn constant_bits(&self, value: Value) -> Option<u128> {
+        let Def::Inst(inst) = self.func.values[value].def else { return None };
+        match self.func.insts[inst].kind {
+            InstKind::Const { bits, .. } => Some(bits),
+            _ => None,
+        }
     }
 
     pub fn compare(&mut self, cond: Cond, a: Value, b: Value, origin: OriginId) -> Value {

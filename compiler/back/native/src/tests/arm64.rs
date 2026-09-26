@@ -42,7 +42,9 @@ fn a_branch_on_a_comparison_jumps_on_its_flags() {
     let text = checked(&code);
     // The constant is an immediate, the condition never materialized.
     assert!(text.iter().any(|i| i == "cmp x0, #0xa"), "{text:#?}");
-    assert!(text.iter().any(|i| i.starts_with("b.lt ")), "{text:#?}");
+    // The block taken where it holds is emitted next: the branch jumps where it does not.
+    assert!(text.iter().any(|i| i.starts_with("b.ge ")), "{text:#?}");
+    assert!(!text.iter().any(|i| i.starts_with("b ")), "{text:#?}");
     assert!(!text.iter().any(|i| i.starts_with("cset")), "{text:#?}");
 }
 

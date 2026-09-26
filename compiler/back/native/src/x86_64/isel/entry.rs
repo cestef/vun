@@ -2,7 +2,7 @@
 //! function ends; parameters passed in memory are addresses recomputed where used, the others
 //! are received where the convention passes them once the callee-saved registers are chosen.
 
-use vun_asm_x86_64::{Emit, Mem, Op, Operand, Reg, Size};
+use vun_asm_x86_64::{Emit, Inst, Mem, Op, Operand, Reg, Size};
 use vun_codegen::{Arch, Place};
 
 use super::Sel;
@@ -21,8 +21,9 @@ impl Sel<'_, '_> {
     pub(super) fn prologue(&mut self) {
         self.asm.emit(Op::Push, Size::B64, &[Reg::Rbp.into()]);
         self.asm.emit(Op::Mov, Size::B64, &[Reg::Rbp.into(), Reg::Rsp.into()]);
+        self.state.frame_at = self.asm.here();
         self.asm.emit(Op::Sub, Size::B64, &[Reg::Rsp.into(), Operand::Imm(FRAME_PLACEHOLDER)]);
-        self.state.frame_at = self.asm.here() - IMM32;
+        self.state.frame_imm = self.asm.here() - IMM32;
         let f = self.f;
         let Some(entry) = f.entry() else { return };
         for (i, &v) in f.blocks[entry].params.iter().enumerate() {
@@ -39,6 +40,15 @@ impl Sel<'_, '_> {
             };
             self.recompute_as(v, place);
         }
+    }
+
+    /// Writes the frame's size into the prologue's immediate, the last field of its `sub`.
+    pub(super) fn frame(&mut self, frame: u64) {
+        let (at, imm) = (self.state.frame_at, self.state.frame_imm);
+        let size = u32::try_from(frame).expect("frames fit 4 GiB");
+        self.asm.overwrite(imm, &size.to_le_bytes());
+        let sub = Inst::new(Op::Sub, Size::B64, &[Reg::Rsp.into(), Operand::Imm(i64::from(size))]);
+        self.asm.relist(at, sub);
     }
 
     /// Receives the parameters passed in registers and on the stack.

@@ -18,7 +18,7 @@ mod regs;
 pub mod snippet;
 mod values;
 
-pub use cx::{Compiled, Cx, Fused, compile};
+pub use cx::{Compiled, Cx, Fused, Layout, compile};
 pub use frame::Frame;
 pub use pieces::pieces;
 pub use values::{Anchor, Place, Recompute};

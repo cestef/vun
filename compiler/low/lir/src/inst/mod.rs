@@ -65,6 +65,19 @@ pub enum BinOp {
     FDiv,
 }
 
+impl BinOp {
+    /// The right operand leaving the left unchanged, for an integer operation that has one.
+    /// Floats have none: `-0.0 + 0.0` is `0.0`.
+    #[must_use]
+    pub const fn identity(self) -> Option<u128> {
+        match self {
+            Self::Add | Self::Sub | Self::Or | Self::Xor | Self::Shl | Self::LShr | Self::AShr => Some(0),
+            Self::Mul | Self::SDiv | Self::UDiv => Some(1),
+            Self::SRem | Self::URem | Self::And | Self::FAdd | Self::FSub | Self::FMul | Self::FDiv => None,
+        }
+    }
+}
+
 /// A comparison: integers as signed or unsigned, floats ordered.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub enum Cond {

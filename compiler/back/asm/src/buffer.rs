@@ -157,16 +157,23 @@ impl<I: Isa, S: Copy> Buffer<I, S> {
     pub fn replace(&mut self, at: u64, code: Code<I::Inst<S>, S>) {
         assert!(code.relocs.is_empty(), "a replacement links nothing");
         self.overwrite(at, &code.bytes);
-        let Some(listing) = &mut self.listing else { return };
         for line in code.listing {
-            let Line::Inst { at: offset, inst, .. } = line else { continue };
-            let listed = listing.iter_mut().find_map(|l| match l {
-                Line::Inst { at: here, inst, .. } if *here == at + offset => Some(inst),
-                _ => None,
-            });
-            if let Some(listed) = listed {
-                *listed = inst;
+            if let Line::Inst { at: offset, inst, .. } = line {
+                self.relist(at + offset, inst);
             }
+        }
+    }
+
+    /// Lists the instruction at `at` as `inst`, where the code is listed: what its bytes, patched
+    /// since it was emitted, now encode.
+    pub fn relist(&mut self, at: u64, inst: I::Inst<S>) {
+        let Some(listing) = &mut self.listing else { return };
+        let listed = listing.iter_mut().find_map(|l| match l {
+            Line::Inst { at: here, inst, .. } if *here == at => Some(inst),
+            _ => None,
+        });
+        if let Some(listed) = listed {
+            *listed = inst;
         }
     }
 

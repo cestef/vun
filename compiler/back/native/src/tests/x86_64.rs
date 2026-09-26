@@ -22,7 +22,9 @@ fn a_branch_on_a_comparison_jumps_on_its_flags() {
     let text = text(&code);
     // The constant is an immediate, the condition never materialized.
     assert!(text.iter().any(|i| i == "cmp rdi, 0xa"), "{text:#?}");
-    assert!(text.iter().any(|i| i.starts_with("jl ")), "{text:#?}");
+    // The block taken where it holds is emitted next: the branch jumps where it does not.
+    assert!(text.iter().any(|i| i.starts_with("jge ")), "{text:#?}");
+    assert!(!text.iter().any(|i| i.starts_with("jmp ")), "{text:#?}");
     assert!(!text.iter().any(|i| i.starts_with("set")), "{text:#?}");
 }
 

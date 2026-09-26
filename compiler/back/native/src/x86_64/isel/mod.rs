@@ -25,8 +25,9 @@ use vun_asm_x86_64::{Cc, Size};
 pub struct State {
     /// Where the function's own signature passes each value.
     passing: Passing,
-    /// Where the prologue's frame size is written once known.
+    /// Where the prologue's `sub rsp, frame` is, and its immediate, written once the size is known.
     frame_at: u64,
+    frame_imm: u64,
     /// The home of the address a result is written through, which is given back.
     hidden: Option<i32>,
     /// Where a result returned in registers is gathered.
@@ -53,7 +54,7 @@ impl std::ops::DerefMut for Sel<'_, '_> {
 impl Isel for X86 {
     fn state(f: &Function) -> Result<State, Lack> {
         let passing = Passing::of(&f.signature).map_err(|m| m.at(f.origin))?;
-        Ok(State { passing, frame_at: 0, hidden: None, gathered: None })
+        Ok(State { passing, frame_at: 0, frame_imm: 0, hidden: None, gathered: None })
     }
 
     fn fuses(cond: Cond) -> bool {
@@ -79,8 +80,7 @@ impl Isel for X86 {
     }
 
     fn finish(cx: &mut Cx<'_, Self>, frame: u64) {
-        let at = cx.state.frame_at;
-        cx.asm.overwrite(at, &u32::try_from(frame).expect("frames fit 4 GiB").to_le_bytes());
+        Sel(cx).frame(frame);
     }
 }
 

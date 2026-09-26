@@ -25,6 +25,9 @@ pub trait Emits: Arch {
 
     /// The move whose copy of a dying operand into the result the encoder omits.
     const MOV: Self::Op;
+    /// The size a move of a register to itself changes nothing at; narrower ones clear the
+    /// bits above.
+    const WHOLE: Self::Size;
 
     fn reg(r: Self::Reg) -> Self::Operand;
     fn imm(value: i64) -> Self::Operand;

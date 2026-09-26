@@ -506,14 +506,17 @@ The framework:
   snippet encoder places each operand as the forms allow: an operand in a register as it is, a
   constant as an immediate, a value in its home as memory, a known address folded into a memory
   operand, else brought into a register; and a move of a dying operand into the result is no
-  instruction, the result taking its register. Where TPDE derives snippets from C through LLVM,
+  instruction, the result taking its register, as is a move of a register to itself at the
+  full width (narrower ones clear the bits above). Where TPDE derives snippets from C through LLVM,
   they are written against the instruction table: `add` is a move of the first operand into the
   result then `add` of the second, and the encoder turns that into `add rdi, 0x1` where the first
   operand dies in `rdi` and the second is 1.
 - **Fusion** looks only forward within a block: a compare whose one use is the branch ending it
-  is made by the branch, which jumps on the flags.
+  is made by the branch, which jumps on the flags. A branch whose `then` block is emitted next
+  jumps where the condition does not hold and falls into it (`Layout`), so a branch takes one
+  jump and never jumps over the block after it.
 - **Frames.** Always a frame pointer; the prologue reserves the frame with the widest immediate,
-  its size written when the function ends, and the callee-saved registers taken are saved below
+  its size written, and listed, when the function ends, and the callee-saved registers taken are saved below
   the frame pointer. The frame size is known exactly, so the backend reports frame sizes
   (`stack.max`, spec 07).
 - **Semantics once.** Instruction sequences come from the operation facts of section 8.1 and the

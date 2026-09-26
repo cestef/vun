@@ -19,6 +19,28 @@ pub struct Fused {
     pub b: Value,
 }
 
+/// How a branch is laid out: the target it jumps to where its condition holds, or where it does
+/// not when inverted, and the one it reaches otherwise, emitted next when it can be.
+pub struct Layout<'t> {
+    pub taken: &'t Target,
+    pub fall: &'t Target,
+    /// Whether it jumps where the condition does not hold: `then` is emitted next.
+    pub inverted: bool,
+}
+
+impl<'t> Layout<'t> {
+    /// Falls into `then` when it is emitted next and `otherwise` is not, into `otherwise` else.
+    #[must_use]
+    pub fn of(then: &'t Target, otherwise: &'t Target, next: Option<Block>) -> Self {
+        let inverted = next == Some(then.block) && next != Some(otherwise.block);
+        if inverted {
+            Self { taken: otherwise, fall: then, inverted }
+        } else {
+            Self { taken: then, fall: otherwise, inverted }
+        }
+    }
+}
+
 impl<A: Isel> Cx<'_, A> {
     /// The comparison `block` branches on, when it is made in `block`, the branch is its one
     /// use and the architecture branches on its flags.
@@ -44,7 +66,9 @@ impl<A: Arch> Cx<'_, A> {
         let falls = |t: &Target| next == Some(t.block) && self.cfg.preds[t.block].len() == 1;
         let (keep, only) = match term {
             Terminator::Jump(t) => (falls(t), falls(t)),
-            Terminator::Branch { otherwise, .. } => (falls(otherwise), false),
+            Terminator::Branch { then, otherwise, .. } => {
+                (falls(Layout::of(then, otherwise, next).fall), false)
+            }
             _ => (false, false),
         };
         if !only {

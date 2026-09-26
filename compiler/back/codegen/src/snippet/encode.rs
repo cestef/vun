@@ -166,6 +166,9 @@ impl<A: Emits> Cx<'_, A> {
                     }
                 };
             }
+            if step.op == A::MOV && size == A::WHOLE && ops.all()[0] == ops.all()[1] {
+                continue;
+            }
             A::emit(&mut self.asm, step.op, size, ops.all());
         }
     }
