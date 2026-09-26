@@ -456,9 +456,13 @@ need (`-std=c99 -ffreestanding -fno-strict-aliasing`: the output is freestanding
 it uses, so no function name means anything to the compiler), the flags its links take (bare
 metal: `-nostdlib -nostartfiles`), its atomics, and how it reports frame sizes
 (`lang.target.FrameSizes`). `vun build` writes the backend's artifacts under
-`.vun/build/<content hash>/` next to the root file, compiles each source with it through
-`vun-tool`, in parallel, with `-fstack-usage` where it has it (`vun debug frames` prints the sizes
-read back, `Backend::frame_sizes`), and links with the target's linker. The `gnu` adapter drives
+`.vun/build/<content hash>/` next to the root file, the hash of the artifacts, the C compiler
+and the profile, compiles each source with it through `vun-tool`, in parallel, with
+`-fstack-usage` where it has it (`vun debug frames` prints the sizes read back,
+`Backend::frame_sizes`), and links with the target's linker. What the directory holds is kept:
+an object is made under another name and renamed once whole, so a build finding it compiles
+nothing; a link leaves a stamp named by the hash of the linker, the target and the plan, holding
+the hash of the output it wrote, so a build finding the output unchanged links nothing. The `gnu` adapter drives
 GNU ld through the same compiler; a plan's memory regions and section placement become a linker
 script, built as data (`Script`) and printed once. Tool arguments are typed (`vun_tool::Arg`:
 text or a path), and `vun run` passes the program's exit status on.

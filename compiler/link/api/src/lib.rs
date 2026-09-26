@@ -11,7 +11,7 @@ use vun_intern::Symbol;
 use vun_origin::OriginId;
 use vun_target::{Name, Readiness, Support, TargetSpec, Unsupported};
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum OutputKind {
     Executable,
     SharedLibrary,
@@ -20,7 +20,7 @@ pub enum OutputKind {
 }
 
 /// A region of target memory, such as flash or RAM.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct MemoryRegion {
     pub name: Symbol,
     pub origin: u64,
@@ -29,7 +29,7 @@ pub struct MemoryRegion {
     pub declared: OriginId,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct SectionPlacement {
     pub name: Symbol,
     /// Region holding the contents at run time.
@@ -41,7 +41,7 @@ pub struct SectionPlacement {
 }
 
 /// Everything a linker needs, independent of any linker's syntax.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct LinkPlan {
     /// Objects and archives, in order.
     pub inputs: Vec<PathBuf>,

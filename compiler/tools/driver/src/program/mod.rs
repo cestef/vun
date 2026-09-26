@@ -1,7 +1,9 @@
 //! Building a program from a root file (spec 13, section 1): the chosen backend's artifacts,
 //! written under `.vun/build/` next to the root file, by their content; each source compiled by
 //! the target's C compiler, in parallel, with the frame sizes it reports; then the target's
-//! linker.
+//! linker. What is built is kept by its content (`cache`): a build finding it skips the step.
+
+mod cache;
 
 use std::path::{Path, PathBuf};
 
@@ -9,7 +11,6 @@ use vun_backend::{Artifact, Emits};
 use vun_command::{Param, PathKind, Values};
 use vun_diag::{Diagnostic, ErrorGuaranteed, Msg, errors};
 use vun_fs::Edit;
-use vun_hash::Hash;
 use vun_link::{LinkPlan, OutputKind};
 use vun_lir::FuncId;
 use vun_par::Parallel;
@@ -75,18 +76,18 @@ impl Session {
         let _timer = COMPILE.start();
         let root = PathBuf::from(&self.sources.file(file).path);
         let builds = root.parent().unwrap_or(Path::new("")).join(vun_fs::WORK).join(BUILDS);
-        let all: Vec<u8> = coded.artifacts.iter().flat_map(|a| a.bytes.iter().copied()).collect();
-        let dir = builds.join(Hash::of(&all).digest());
-        for artifact in &coded.artifacts {
+        let compiler = &coded.target.c.compiler;
+        let profile = self.codegen.profile;
+        let dir = builds.join(cache::Objects::key(&coded.artifacts, compiler, profile).digest());
+        // A directory of this key holds these artifacts already.
+        for artifact in coded.artifacts.iter().filter(|a| !dir.join(&a.name).exists()) {
             let path = dir.join(&artifact.name);
             path.put(&artifact.bytes).map_err(|e| {
                 let msg = Msg::new().text("cannot write ").code(path.display().to_string());
                 self.diag.error(Diagnostic::error(errors::IO_UNWRITABLE_FILE, msg).caused_by(&e))
             })?;
         }
-        let compiler = &coded.target.c.compiler;
         let sources: Vec<&Artifact> = coded.artifacts.iter().filter(|a| a.kind == Emits::Source).collect();
-        let profile = self.codegen.profile;
         let results = sources.par_map(|a| {
             tracing::debug!(source = %a.name.display(), compiler = compiler.command.as_str(), "compiling");
             Self::compile_source(compiler, profile, &dir.join(&a.name))
@@ -141,9 +142,14 @@ impl Session {
     }
 
     /// The object `compiler` makes of the source at `path`, beside it, with the flags of
-    /// `profile`.
+    /// `profile`: made under another name and renamed, so an object there was made whole, and
+    /// kept by the next build of the same key.
     fn compile_source(compiler: &CCompiler, profile: Profile, path: &Path) -> Result<PathBuf, Failure> {
         let object = path.with_extension(OBJECT);
+        if object.exists() {
+            return Ok(object);
+        }
+        let part = cache::Objects::part(path).with_extension(OBJECT);
         let optimize = match profile {
             Profile::Debug => &[][..],
             Profile::Release => &compiler.optimize,
@@ -156,16 +162,21 @@ impl Session {
             gcc::COMPILE.into(),
             Arg::Path(path.to_path_buf()),
             gcc::OUTPUT.into(),
-            Arg::Path(object.clone()),
+            Arg::Path(part.clone()),
         ]);
         let inv = Invocation {
             args,
             inputs: vec![path.to_path_buf()],
-            outputs: vec![object.clone()],
+            outputs: vec![part.clone()],
             ..Invocation::default()
         };
         let command = compiler.command.as_str();
         Executable::new(command, command).check(&inv)?;
+        if compiler.frame_sizes == FrameSizes::StackUsage {
+            std::fs::rename(part.with_extension(STACK_USAGE), object.with_extension(STACK_USAGE))
+                .map_err(Failure::Start)?;
+        }
+        std::fs::rename(&part, &object).map_err(Failure::Start)?;
         Ok(object)
     }
 
@@ -202,7 +213,13 @@ impl Session {
             return Err(self.diag.error(Diagnostic::error(errors::LINK_UNSUPPORTED, msg)));
         }
         let _timer = LINK.start();
+        let stamp = cache::Stamp::of(&compiled.builds, linker.info().id, target, &plan);
+        if stamp.holds() {
+            tracing::info!(output = %output.display(), "linked already");
+            return Ok(output);
+        }
         linker.link(&plan, target, &mut self.diag)?;
+        stamp.record();
         tracing::info!(output = %output.display(), objects = plan.inputs.len(), "linked");
         Ok(output)
     }
