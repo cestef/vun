@@ -41,6 +41,7 @@ impl Session {
             self.diag.error(Diagnostic::error(errors::IO_UNWRITABLE_FILE, msg).caused_by(&e));
             return false;
         }
+        self.packages.wrote(path);
         true
     }
 }

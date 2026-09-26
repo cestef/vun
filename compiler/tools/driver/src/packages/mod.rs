@@ -116,10 +116,22 @@ pub struct Packages {
     pub root: Option<PackageKey>,
     /// Dependency directories whose package is not there as declared, with why.
     absent: HashMap<PathBuf, Diagnostic>,
+    /// The package each directory looked at holds, if any: a session reads a directory's tree
+    /// once, and again only after writing into it (`Packages::wrote`).
+    seen: HashMap<PathBuf, Option<PackageKey>>,
     /// Packages whose query inputs are set.
     published: HashSet<PackageKey>,
     /// What selection chose for the project's graph, computed once.
     selection: Option<Result<Lock, ErrorGuaranteed>>,
+}
+
+impl Packages {
+    /// Forgets what the directory holding `path` held, now that the session wrote `path`.
+    pub(crate) fn wrote(&mut self, path: &Path) {
+        if let Some(dir) = path.parent() {
+            self.seen.remove(dir);
+        }
+    }
 }
 
 impl Package {
@@ -147,6 +159,16 @@ impl Session {
 
     /// The package whose manifest is in `dir`, if there is one.
     pub fn package_at(&mut self, dir: &Path) -> Option<PackageKey> {
+        if let Some(&seen) = self.packages.seen.get(dir) {
+            return seen;
+        }
+        let found = self.read_package(dir);
+        self.packages.seen.insert(dir.to_path_buf(), found);
+        found
+    }
+
+    /// The package whose manifest is in `dir`, read from the disk.
+    fn read_package(&mut self, dir: &Path) -> Option<PackageKey> {
         let path = dir.join(MANIFEST);
         let manifest = self.manifest_at(&path.is_file().then_some(path)?)?;
         let snapshot = Snapshot::of(dir, &manifest.include);

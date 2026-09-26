@@ -42,11 +42,13 @@ impl<Q: Query> Edge for Read<Q> {
     }
 }
 
-/// A query being computed.
+/// A query being computed: its key is compared when a query is reached again, and shown only in
+/// a cycle.
 struct Frame {
-    id: (TypeId, Hash),
+    query: TypeId,
     name: &'static str,
-    key: String,
+    key: Box<dyn Any>,
+    show: fn(&dyn Any) -> String,
     reads: Vec<Arc<dyn Edge>>,
 }
 
@@ -110,17 +112,28 @@ impl<'db> Cx<'db> {
                 return (memo.value, memo.hash);
             }
         }
-        let id = (TypeId::of::<Q>(), Hash::of_value(key));
-        let reached = self.stack.borrow().iter().position(|f| f.id == id);
+        let query = TypeId::of::<Q>();
+        let reached = self
+            .stack
+            .borrow()
+            .iter()
+            .position(|f| f.query == query && f.key.downcast_ref::<Q::Key>() == Some(key));
         if let Some(from) = reached {
             let stack = self.stack.borrow();
-            let mut path: Vec<_> = stack[from..].iter().map(|f| (f.name, f.key.clone())).collect();
+            let mut path: Vec<_> = stack[from..].iter().map(|f| (f.name, (f.show)(&*f.key))).collect();
             path.push((Q::NAME, format!("{key:?}")));
             let value = Q::cycle(self, key, &Cycle { path });
             let hash = Q::interface(&value);
             return (value, hash);
         }
-        self.stack.borrow_mut().push(Frame { id, name: Q::NAME, key: format!("{key:?}"), reads: Vec::new() });
+        let frame = Frame {
+            query,
+            name: Q::NAME,
+            key: Box::new(key.clone()),
+            show: |key| format!("{:?}", key.downcast_ref::<Q::Key>().expect("a frame's key is its query's")),
+            reads: Vec::new(),
+        };
+        self.stack.borrow_mut().push(frame);
         let value = Q::compute(self, key);
         let frame = self.stack.borrow_mut().pop().expect("the frame pushed above");
         let hash = Q::interface(&value);

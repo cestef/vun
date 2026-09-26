@@ -30,6 +30,7 @@ impl Session {
         let unchanged = std::fs::read_to_string(&path).ok().as_deref() == Some(text.as_str());
         // The lockfile is what keeps the project's entries in the shared store.
         let written = if unchanged { Ok(()) } else { path.put(&text) };
+        self.packages.wrote(&path);
         if let Err(e) = written.and_then(|()| self.store.register(dir)) {
             let msg = Msg::new().text("cannot write ").code(path.display().to_string());
             self.diag.error(Diagnostic::error(errors::IO_UNWRITABLE_FILE, msg).caused_by(&e));

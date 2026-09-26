@@ -77,15 +77,38 @@ impl Hash {
     }
 }
 
+/// How many bytes a [`Hasher`] gathers before BLAKE3 reads them: `Hash` implementations write a
+/// few bytes at a time, and BLAKE3 is fast on whole chunks of 1 KiB, several at once.
+const GATHERED: usize = 4096;
+
 /// A [`std::hash::Hasher`] over BLAKE3, so that any `std::hash::Hash` value has a content hash:
 /// what query results are compared by. The encoding is Rust's, stable within one build of the
-/// toolchain, which is what every cache is keyed by as well.
-#[derive(Default)]
-pub struct Hasher(blake3::Hasher);
+/// toolchain, which is what every cache is keyed by as well. Writes are gathered and given to
+/// BLAKE3 in runs, which changes nothing of the digest: it depends on the bytes alone.
+pub struct Hasher {
+    blake3: blake3::Hasher,
+    gathered: [u8; GATHERED],
+    len: usize,
+}
+
+impl Default for Hasher {
+    fn default() -> Self {
+        Self { blake3: blake3::Hasher::new(), gathered: [0; GATHERED], len: 0 }
+    }
+}
 
 impl std::hash::Hasher for Hasher {
     fn write(&mut self, bytes: &[u8]) {
-        self.0.update(bytes);
+        if self.len + bytes.len() > GATHERED {
+            self.blake3.update(&self.gathered[..self.len]);
+            self.len = 0;
+            if bytes.len() > GATHERED {
+                self.blake3.update(bytes);
+                return;
+            }
+        }
+        self.gathered[self.len..self.len + bytes.len()].copy_from_slice(bytes);
+        self.len += bytes.len();
     }
 
     /// The first 8 bytes of the digest; [`Hasher::finish_hash`] gives the whole.
@@ -97,7 +120,9 @@ impl std::hash::Hasher for Hasher {
 impl Hasher {
     #[must_use]
     pub fn finish_hash(&self) -> Hash {
-        Hash { algorithm: Algorithm::Blake3, digest: *self.0.finalize().as_bytes() }
+        let mut blake3 = self.blake3.clone();
+        blake3.update(&self.gathered[..self.len]);
+        Hash { algorithm: Algorithm::Blake3, digest: *blake3.finalize().as_bytes() }
     }
 }
 

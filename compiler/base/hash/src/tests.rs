@@ -71,3 +71,16 @@ fn the_executable_bit_is_part_of_the_tree() {
         assert_eq!(regular.changes(&executable), [("configure".to_owned(), Change::Mode)]);
     }
 }
+
+#[test]
+fn a_value_hashes_as_its_bytes_however_they_are_written() {
+    use std::hash::Hasher as _;
+    let bytes: Vec<u8> = (0..20_000u32).map(|n| (n % 251) as u8).collect();
+    for step in [1, 7, 1000, 5000, 20_000] {
+        let mut hasher = super::Hasher::default();
+        for part in bytes.chunks(step) {
+            hasher.write(part);
+        }
+        assert_eq!(hasher.finish_hash(), Hash::of(&bytes), "{step}");
+    }
+}
