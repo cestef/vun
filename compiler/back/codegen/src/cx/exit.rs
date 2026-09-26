@@ -92,6 +92,13 @@ impl<A: Arch> Cx<'_, A> {
     /// Fills `target`'s parameters, then jumps unless it is `next`.
     pub fn jump(&mut self, target: &Target, next: Option<Block>) {
         for m in Moves::of(self.f, target).0 {
+            // A parameter in its own register is written there directly.
+            if let (Location::Value(v), Location::Value(p)) = (m.from, m.to)
+                && let Some(r) = self.values[p].fixed
+            {
+                self.reg_to(v, r);
+                continue;
+            }
             let carrier = match m.to {
                 Location::Temp(_) => A::TEMP,
                 Location::Value(_) => A::CARRIER,

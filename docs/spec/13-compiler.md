@@ -170,7 +170,10 @@ per second per stage and fails on regressions.
   known), parameters passed one value are that value, and the slot goes (`Function::compact`
   renumbers what remains). A read before any store reads zero, as a constant at the entry. Every
   backend then holds those locals as values; passes over LIR rewrite blocks in reverse
-  postorder, so a definition is seen before its uses.
+  postorder, so a definition is seen before its uses. The builder folds as it builds: an
+  integer operation, comparison or conversion of constants is the constant it gives where the
+  operation is defined on them (`Domain`), a select on a constant is the value it picks, and an
+  identity on the right (`x * 1`, `x + 0`) is the left operand; floats are left to the machine.
 - Both have **stable text formats**. Tests are written against them, dumps are readable and carry
   origins, and an external backend is any executable reading LIR text on standard input.
 

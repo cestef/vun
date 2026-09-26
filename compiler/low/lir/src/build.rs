@@ -94,12 +94,17 @@ impl Builder {
         self.value(InstKind::Const { ty, bits }, ty, origin)
     }
 
-    /// `a op b`; `a` itself where `b` is the constant leaving it unchanged, as `x * 1` is.
+    /// `a op b`: a constant where both are and the operation folds, `a` itself where `b` is
+    /// the constant leaving it unchanged, as `x * 1` is.
     pub fn binary(&mut self, op: BinOp, a: Value, b: Value, origin: OriginId) -> Value {
-        if op.identity().is_some_and(|identity| self.constant_bits(b) == Some(identity)) {
+        let ty = self.ty(a);
+        let (ka, kb) = (self.constant_bits(a), self.constant_bits(b));
+        if let Some(bits) = ka.zip(kb).and_then(|(ka, kb)| op.fold(ty, ka, kb)) {
+            return self.constant(ty, bits, origin);
+        }
+        if op.identity().is_some_and(|identity| kb == Some(identity)) {
             return a;
         }
-        let ty = self.ty(a);
         self.value(InstKind::Binary { op, a, b }, ty, origin)
     }
 
@@ -113,16 +118,30 @@ impl Builder {
     }
 
     pub fn compare(&mut self, cond: Cond, a: Value, b: Value, origin: OriginId) -> Value {
+        let ty = self.ty(a);
+        let known = self.constant_bits(a).zip(self.constant_bits(b));
+        if let Some(holds) = known.and_then(|(ka, kb)| cond.fold(ty, ka, kb)) {
+            return self.constant(Scalar::I8, u128::from(holds), origin);
+        }
         self.value(InstKind::Compare { cond, a, b }, Scalar::I8, origin)
     }
 
     /// `then` where `cond` is not 0, `otherwise` where it is; both of one type.
     pub fn select(&mut self, cond: Value, then: Value, otherwise: Value, origin: OriginId) -> Value {
+        match self.constant_bits(cond) {
+            Some(0) => return otherwise,
+            Some(_) => return then,
+            None => {}
+        }
         let ty = self.ty(then);
         self.value(InstKind::Select { cond, then, otherwise }, ty, origin)
     }
 
     pub fn cast(&mut self, op: CastOp, value: Value, to: Scalar, origin: OriginId) -> Value {
+        let from = self.ty(value);
+        if let Some(bits) = self.constant_bits(value).and_then(|bits| op.fold(from, to, bits)) {
+            return self.constant(to, bits, origin);
+        }
         self.value(InstKind::Cast { op, value, to }, to, origin)
     }
 

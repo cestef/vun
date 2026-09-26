@@ -7,6 +7,7 @@ pub mod build;
 mod compact;
 pub mod entity;
 pub mod facts;
+mod fold;
 pub mod func;
 pub mod inst;
 pub mod legalize;
