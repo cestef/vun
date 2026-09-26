@@ -22,6 +22,11 @@ impl<A: Arch> Cx<'_, A> {
         }
     }
 
+    /// Writes the constant `bits` into `dst`.
+    pub fn constant_to(&mut self, dst: A::Reg, bits: u128) {
+        A::recompute(&mut self.asm, dst, crate::Recompute::Const(bits));
+    }
+
     /// Writes each value of `passed` into its register, as one parallel move: a register is
     /// written once no value still to be passed is in it, and a cycle is broken by storing one
     /// of its values home.

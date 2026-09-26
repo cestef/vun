@@ -210,6 +210,7 @@
 | 210 | A run-time binding holding a slice `[T]` by value is reported by the typer as `types.slice_value`, with a fix inserting the borrow, instead of reaching lowering as `backend.unlowered` (the slice has no layout); the rule restates spec 02's "reached through a borrow" for bindings | accepted | 02 |
 | 211 | After promotion, lowering threads jumps (`Function::thread`): through a block deciding on a constant its predecessor passes (a comparison of a parameter with a constant, then a branch, nothing it defines read outside it) and through blocks that only jump; blocks left unreached stay for backends to leave out. The backend test programs lose a further 5 to 19 percent of their native instructions | accepted | 13 |
 | 212 | Lowering simplifies each function once built (`Unit::simplify`): promotion, then the builder's folds over the whole function (`Function::fold`: operations on constants, identities, selects and branches or switches on constants), then threading; the values replaced share one map (`Replaced`) | accepted | 13 |
+| 213 | A constant passed in a general register is written there already extended as the callee's C signature says (`Ext::widen`, `Cx::constant_to`), outside the parallel move of the other register arguments, rather than materialized and then extended | accepted | 13 |
 
 ## Questions, with how they were settled
 

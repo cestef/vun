@@ -19,7 +19,7 @@ impl Sel<'_, '_> {
         args: &[Value],
         result: Option<Value>,
     ) -> Result<(), Lack> {
-        let unit = self.unit;
+        let (unit, f) = (self.unit, self.f);
         let signature: &Signature = match callee {
             Callee::Func(f) => &unit.functions[*f].signature,
             Callee::Import(i) => match &unit.imports[*i].kind {
@@ -32,7 +32,9 @@ impl Sel<'_, '_> {
         for &a in args {
             self.size(a)?;
         }
-        let passed = passing.in_regs(args);
+        // Constants are written where they go once the others are, already extended.
+        let passed: Vec<_> =
+            passing.in_regs(args).into_iter().filter(|&(a, _)| f.constant(a).is_none()).collect();
         self.spill_for_call(&passed);
         self.frame.outgoing(passing.stack);
         // What goes through memory first, through the framework's registers: arguments on the
@@ -64,17 +66,18 @@ impl Sel<'_, '_> {
         let mut copies = copies.into_iter();
         for (i, (&a, loc)) in args.iter().zip(&passing.params).enumerate() {
             match loc {
-                Loc::Reg(carrier) => {
-                    if let Carrier::Fp(_) = carrier {
-                        self.pass(a, *carrier);
+                Loc::Reg(carrier @ Carrier::Fp(_)) => self.pass(a, *carrier),
+                Loc::Reg(Carrier::Int(r)) => match (signature.params.get(i), f.constant(a)) {
+                    (Some(AbiType::Int(scalar, ext)), Some((_, bits))) => {
+                        self.constant_to(*r, ext.widen(*scalar, bits));
                     }
-                    if let (Some(AbiType::Int(scalar, ext)), Carrier::Int(r)) =
-                        (signature.params.get(i), carrier)
-                    {
+                    (_, Some((_, bits))) => self.constant_to(*r, bits),
+                    (Some(AbiType::Int(scalar, ext)), None) => {
                         let size = self.size_of(*scalar)?;
                         self.extend(*r, size, *ext);
                     }
-                }
+                    (_, None) => {}
+                },
                 Loc::Split(parts) => {
                     self.reg_to(a, Arm::CARRIER);
                     for part in parts {

@@ -58,6 +58,17 @@ pub enum Ext {
     Sign,
 }
 
+impl Ext {
+    /// The bits of the integer `bits` of type `from`, extended this way to 64 bits.
+    #[must_use]
+    pub fn widen(self, from: Scalar, bits: u128) -> u128 {
+        match self {
+            Self::Zero => bits,
+            Self::Sign => Scalar::I64.truncate(from.signed(bits)),
+        }
+    }
+}
+
 /// A record as C lays it out: its size, alignment and the scalars at their offsets.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct Record {
