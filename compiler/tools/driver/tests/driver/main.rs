@@ -22,6 +22,7 @@ mod mir;
 mod mutation;
 mod namespaces;
 mod narrowing;
+mod persist;
 mod places;
 mod plan;
 mod quotes;

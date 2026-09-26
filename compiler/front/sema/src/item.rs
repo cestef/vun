@@ -10,8 +10,10 @@ use vun_origin::OriginId;
 use vun_query::{Cx, Cycle, Query};
 
 /// A node of a file's HIR: `id` finds it in the file, and its origin identifies it, so that it
-/// hashes the same in every process and after edits elsewhere in the file (decision 59). Nodes
-/// order by their place in the file: in one file's HIR, each node has its own origin.
+/// hashes the same in every process and after edits elsewhere in the file (decision 59). Two
+/// nodes are equal when both agree: in one file's HIR each node has its own origin, and after an
+/// edit that moved a node, its place differs, so a query keyed by it is another key rather than
+/// one computed with the place the node had before. Nodes order by their place in the file.
 #[derive(Clone, Copy, Debug, Encode, Decode)]
 pub struct Node<Id> {
     pub id: Id,
@@ -58,13 +60,13 @@ impl ExprRef {
     }
 }
 
-impl<Id> PartialEq for Node<Id> {
+impl<Id: PartialEq> PartialEq for Node<Id> {
     fn eq(&self, other: &Self) -> bool {
-        self.origin == other.origin
+        self.id == other.id && self.origin == other.origin
     }
 }
 
-impl<Id> Eq for Node<Id> {}
+impl<Id: Eq> Eq for Node<Id> {}
 
 impl<Id> std::hash::Hash for Node<Id> {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
