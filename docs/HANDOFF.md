@@ -127,13 +127,13 @@ Logging: `VUN_LOG=<filter>` (`info` steps, `debug` units of work, `trace` elemen
   `std` (`option`, `result`, `cmp`, `mem`, `seq`, `iter`, `sync`, `os`, `fmt`, `diag`, `task`,
   `build`, `lints`, `panic`, `testing`).
 
-Progress: corpus 225 passed, 10 planned, 32 shown, 0 failed; 352 tests; the backend tests build
+Progress: corpus 225 passed, 10 planned, 32 shown, 0 failed; 355 tests; the backend tests build
 every program in `compiler/tools/driver/tests/driver/programs/` through C and native, for
 x86-64 and (when the machine runs it) linux.arm64, and require equal results on all four.
 
 ## 6. Decisions
 
-Every decision in `decisions.md` is accepted, 1 to 210 but 209 (the user asked in the sixteenth
+Every decision in `decisions.md` is accepted, 1 to 214 but 209 (the user asked in the sixteenth
 session that all that make sense be accepted; 138, 157, 161 and 166 are amended by 182 and 183).
 209 (`lang.target.Attributes`, a new field of `lang.target.CCompiler`) is proposed. New language
 rules go in as proposed unless the user approves them.
@@ -150,10 +150,14 @@ rules go in as proposed unless the user approves them.
    values after lowering (`Unit::promote`), constants folded by the builder, branches falling
    into the next block, no self moves, `mov r/m8, imm8`, parameters and call arguments moved
    straight into their registers: 13 to 49 percent fewer instructions on the backend test
-   programs. Left: values live across blocks are still homed at every block end (a
-   callee-saved register only for loops), aggregates copied between slots (SROA would split
-   them), `if c { 1 } else { 0 }` diamonds from MIR, a snippet's operand moved into a fixed
-   register it takes. (c) DWARF line tables and symbol names done (decisions 204, 205:
+   programs. Then (decisions 211 to 214): `Unit::simplify` runs promotion, a fold of each
+   function (`Function::fold`) and jump threading (`Function::thread`, which removes the
+   `if c { true } else { false }` joins); constant call arguments are written already
+   extended; a value displaced from a fixed register moves to a free one (frame accesses down
+   by up to 40 percent). Left: values live across blocks are still homed at every block end (a
+   callee-saved register only for loops), and aggregates are copied between slots (a scalar
+   replacement of slots accessed at constant offsets would split them); unreached blocks stay
+   in LIR (backends skip them). (c) DWARF line tables and symbol names done (decisions 204, 205:
    `vun-dwarf`; `gdb` breaks on Vun lines); the unit is named by the first file with a row;
    next unwind information (`.eh_frame`) and `DW_TAG_subprogram`s; (d) done in the seventeenth session: data aligned past every C type or in a
    link section through GNU attributes (decision 209, proposed: `lang.target.Attributes`), a
