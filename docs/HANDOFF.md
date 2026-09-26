@@ -160,11 +160,11 @@ in as proposed unless the user approves them.
    pure instructions), then inlines callees of any shape up to 96 non-constant instructions and
    runs the rounds again. A `for` over a range now runs in registers: a 50M-step LCG loop takes
    109 ms natively (C `-O2`: 116), `half.vun` shrinks from 22,917 to 13,773 instructions.
-   Left: values live across blocks are still homed at every block end (a callee-saved
-   register only for loops); a loop header dispatching on a state enum is not specialized per
-   predecessor (jump threading through a block whose parameters are read beyond it would copy
-   the block); padding tiles are copied as zeros (LIR has no undefined value); a condition
-   known on one edge of a branch is not propagated into the blocks it dominates. (c) DWARF line tables and symbol names done (decisions 204, 205:
+   Then (decision 229) threading through loop heads deciding on a state (parameters demoted
+   to slots, then promoted), edge facts in `reuse`, more folds: a `for` over a range is a
+   one-block loop (103 ms). Left: values live across blocks are still homed at every block end
+   (a callee-saved register only for loops); padding tiles are copied as zeros (LIR has no
+   undefined value). (c) DWARF line tables and symbol names done (decisions 204, 205:
    `vun-dwarf`; `gdb` breaks on Vun lines); the unit is named by the first file with a row;
    unwind information done (decision 215, `.eh_frame` on ELF; Mach-O's compact unwind is
    left); next `DW_TAG_subprogram`s; (d) done in the seventeenth session: data aligned past every C type or in a

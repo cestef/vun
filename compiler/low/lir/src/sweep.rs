@@ -1,12 +1,14 @@
 //! Sweeping what a function no longer needs after its other passes: the blocks control never
-//! reaches go, then every parameter only passed back to itself and every instruction that
-//! only defines a value nothing reads, with what only they read. Lowering guarantees each operation's domain (`facts`), so dropping
-//! one never drops a trap.
+//! reaches go, then every parameter only passed back to itself or passed one value, and every
+//! instruction that only defines a value nothing reads, with what only they read. Lowering
+//! guarantees each operation's domain (`facts`), so dropping one never drops a trap.
 
+use vun_hash::{Map, Set};
 use vun_index::{Idx, IndexVec};
 
 use crate::entity::{Block, Inst, Value};
 use crate::func::{Def, Function};
+use crate::replaced::Replaced;
 
 impl Function {
     /// Drops the unreached blocks, then until none is left the parameters nothing reads but the
@@ -15,7 +17,7 @@ impl Function {
     pub fn sweep(&mut self) -> usize {
         let mut count = self.drop_unreached();
         loop {
-            let now = self.drop_unread_params() + self.drop_unread_insts();
+            let now = self.drop_unread_params() + self.drop_passed_params() + self.drop_unread_insts();
             if now == 0 {
                 break;
             }
@@ -39,7 +41,7 @@ impl Function {
             .flat_map(|(_, b)| b.insts.iter().copied())
             .filter(|&i| unread(self, i, &uses))
             .collect();
-        let mut dropped = vun_hash::Set::default();
+        let mut dropped = Set::default();
         while let Some(inst) = pending.pop() {
             if !dropped.insert(inst) {
                 continue;
@@ -95,6 +97,54 @@ impl Function {
             }
         }
         count
+    }
+
+    /// Replaces each parameter of a block other than the entry to which every jump passes one
+    /// value, or the parameter itself, by that value, dropping it with the arguments passed.
+    fn drop_passed_params(&mut self) -> usize {
+        let entry = self.entry();
+        let mut passed: Map<(Block, usize), Value> = Map::default();
+        let mut several: Set<(Block, usize)> = Set::default();
+        for (_, data) in self.blocks.iter() {
+            for target in data.term.targets() {
+                let params = &self.blocks[target.block].params;
+                for (at, (&arg, &param)) in target.args.iter().zip(params).enumerate() {
+                    let key = (target.block, at);
+                    if arg != param && *passed.entry(key).or_insert(arg) != arg {
+                        several.insert(key);
+                    }
+                }
+            }
+        }
+        let mut replaced = Replaced::default();
+        let mut dropped: Map<Block, Vec<bool>> = Map::default();
+        for ((block, at), value) in passed {
+            if Some(block) == entry || several.contains(&(block, at)) {
+                continue;
+            }
+            replaced.insert(self.blocks[block].params[at], value);
+            dropped.entry(block).or_insert_with(|| vec![false; self.blocks[block].params.len()])[at] = true;
+        }
+        if dropped.is_empty() {
+            return 0;
+        }
+        for (block, data) in self.blocks.iter_mut() {
+            if let Some(gone) = dropped.get(&block) {
+                let mut gone = gone.iter();
+                data.params.retain(|_| !gone.next().copied().unwrap_or(false));
+            }
+            for target in data.term.targets_mut() {
+                if let Some(gone) = dropped.get(&target.block) {
+                    let mut gone = gone.iter();
+                    target.args.retain(|_| !gone.next().copied().unwrap_or(false));
+                }
+            }
+            for &inst in &data.insts {
+                self.insts[inst].kind.map_values(|v| replaced.resolve(v));
+            }
+            data.term.map_values(|v| replaced.resolve(v));
+        }
+        replaced.len()
     }
 
     /// Drops the blocks control never reaches, renumbering the rest in their order, returning

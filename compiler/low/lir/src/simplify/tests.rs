@@ -143,3 +143,32 @@ fn a_loop_parameter_only_passed_back_is_swept() {
     unit.functions.push(f);
     assert_eq!(unit.verify(&origins), Ok(()));
 }
+
+#[test]
+fn a_block_past_an_equality_reads_the_constant_compared() {
+    let origins = OriginTable::new();
+    let at = origin(&origins);
+    let signature = signature(Conv::C, Scalar::I64, Scalar::I64);
+    let mut b = Builder::new(Linkage::Export(Symbol::intern("f")), signature, at);
+    let x = b.params(b.current())[0];
+    let five = b.constant(Scalar::I64, 5, at);
+    let equal = b.compare(crate::Cond::Eq, x, five, at);
+    let (then, otherwise) = (b.block(&[], at), b.block(&[], at));
+    let to = |block| crate::Target { block, args: Vec::new() };
+    b.terminate(Terminator::Branch { cond: equal, then: to(then), otherwise: to(otherwise) });
+    b.switch_to(then);
+    let one = b.constant(Scalar::I64, 1, at);
+    let next = b.binary(BinOp::Add, x, one, at);
+    b.terminate(Terminator::Return(Some(next)));
+    b.switch_to(otherwise);
+    b.terminate(Terminator::Return(Some(x)));
+    let mut f = b.finish();
+    assert_eq!(f.reuse(), 1, "the sum reads 5");
+    f.fold();
+    let then = f.blocks.iter().nth(1).unwrap().1;
+    let Terminator::Return(Some(returned)) = then.term else { panic!("it returns") };
+    assert_eq!(f.constant(returned), Some((Scalar::I64, 6)));
+    let mut unit = Unit { pointer_bits: 64, ..Unit::default() };
+    unit.functions.push(f);
+    assert_eq!(unit.verify(&origins), Ok(()));
+}

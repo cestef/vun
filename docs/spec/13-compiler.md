@@ -174,13 +174,18 @@ per second per stage and fails on regressions.
   integer operation, comparison or conversion of constants is the constant it gives where the
   operation is defined on them (`Domain`), a select on a constant is the value it picks, and an
   identity on the right (`x * 1`, `x + 0`, `x & ~0`) is the left operand and an absorbing one
-  (`x * 0`, `x & 0`, `x | ~0`) the constant; floats are left to the machine.
+  (`x * 0`, `x & 0`, `x | ~0`) the constant, a constant operand of a commutative operation
+  goes right, and a comparison, 0 or 1, masked by a constant is itself or 0 by the constant's
+  low bit; floats are left to the machine.
   After promotion the same folds run over each function (`Function::fold`), since a load
   promoted may now be the constant stored, and a branch or switch on a constant becomes a jump.
-  Jumps are then threaded (`Function::thread`; `Unit::simplify` runs the three in turn): a predecessor passing a constant to a block that
-  only compares that parameter with a constant and branches, nothing it defines read beyond it,
-  jumps where the branch sends that constant, as the join of `if c { true } else { false }`
-  would; a jump to a block holding only constants and jumping on is moved to where it jumps;
+  Jumps are then threaded (`Function::thread`): a predecessor passing a constant to a block
+  deciding on that parameter, by branching or switching on it or on its comparison with a
+  constant, nothing else it computes read beyond it, jumps where the block would send that
+  constant, as the join of `if c { true } else { false }` or the head of a loop over a state
+  enum would; when blocks after it read its parameters, they are demoted to slots first, each
+  jump to it storing its arguments and each read loading, for promotion to rebuild; a jump to a
+  block holding only constants read nowhere else and jumping on is moved to where it jumps;
   and a block whose only predecessor jumps to it is merged into it. A slot of an aggregate
   reached only by plain loads and stores at constant offsets and by copies is scalarized
   (`Function::scalarize`): cut into tiles, one per scalar read or written in it and the widest
@@ -188,14 +193,16 @@ per second per stage and fails on regressions.
   copy touching it a load and a store per tile, and each tile a slot promotion then takes. A
   pure instruction (`InstKind::pure`: no memory read or written, nothing called) equal to one
   dominating it reuses that one's value (`Function::reuse`, walking the dominator tree of
-  `analysis::Dominators`, commutative operands in one order). Truncations are narrowed
+  `analysis::Dominators`, commutative operands in one order), and a block entered by one edge
+  of a branch or switch reads what the edge implies: the condition 0 past `else`, a comparison
+  1 past `then`, `x` the constant `k` past `x == k`, a switch's value its case. Truncations are narrowed
   (`Function::narrow`): the low bits of a sum, difference, product or bitwise operation are
   that operation on its operands' low bits, so a truncation of one read nowhere else computes
   it at the narrow width, when the operation is wider than the target's addresses or an
   operand narrows without a truncation of its own (a constant, a widened value);
   `(x * k).wrap(u64)` of a `u64` is one 64-bit product. What nothing needs is swept
   (`Function::sweep`): unreached blocks go, a parameter only passed back to itself goes with
-  its arguments, and an instruction that neither writes memory, calls nor reads memory as
+  its arguments, one passed a single value is that value, and an instruction that neither writes memory, calls nor reads memory as
   written (`InstKind::acts`) goes when nothing reads its value; lowering guarantees each
   operation's domain, so no trap goes with it. These passes run in rounds, at most four, until
   one changes nothing. `Unit::simplify` takes the functions callees first

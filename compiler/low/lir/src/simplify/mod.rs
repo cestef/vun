@@ -37,7 +37,7 @@ impl Function {
                 + self.promote(pointer_bits)
                 + self.fold()
                 + self.reuse()
-                + self.thread()
+                + self.thread(pointer_bits)
                 + self.narrow(pointer_bits)
                 + self.sweep();
             if changed == 0 {

@@ -48,7 +48,7 @@ fn a_small_function_of_two_blocks_is_inlined_and_left_unreached() {
     let twice = &mut unit.functions[FuncId::new(1)];
     // The caller's block, then for each call the entry, the body and what followed the call.
     assert_eq!(twice.blocks.len(), 7);
-    assert!(twice.thread() > 0);
+    assert!(twice.thread(64) > 0);
     assert_eq!(twice.blocks.iter().filter(|(_, b)| b.term != Terminator::Unreachable).count(), 1);
     assert_eq!(unit.verify(&origins), Ok(()));
     let twice = &unit.functions[FuncId::new(1)];

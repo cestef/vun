@@ -7,7 +7,7 @@ use vun_hash::Set;
 use crate::analysis::{Cfg, Loops};
 use crate::entity::{Block, Inst, Value};
 use crate::func::Function;
-use crate::inst::{InstKind, Right, Terminator};
+use crate::inst::{BinOp, InstKind, Right, Terminator};
 use crate::replaced::Replaced;
 use crate::ty::Scalar;
 
@@ -25,6 +25,15 @@ impl Function {
             for inst in self.blocks[block].insts.clone() {
                 let mut kind = self.insts[inst].kind.clone();
                 kind.map_values(|v| replaced.resolve(v));
+                // A constant operand of a commutative operation goes right, where folds and
+                // instructions taking an immediate read it.
+                if let InstKind::Binary { op, a, b } = &mut kind
+                    && op.commutes()
+                    && self.constant(*a).is_some()
+                    && self.constant(*b).is_none()
+                {
+                    std::mem::swap(a, b);
+                }
                 let result = self.insts[inst].result;
                 match self.folded(&kind) {
                     Some(Folded::Constant(ty, bits)) => kind = InstKind::Const { ty, bits },
@@ -74,6 +83,13 @@ impl Function {
                 {
                     return Some(Folded::Constant(ty, bits));
                 }
+                // A comparison is 0 or 1: its low bit decides a mask.
+                if op == BinOp::And
+                    && self.compared(a)
+                    && let Some(kb) = kb
+                {
+                    return Some(if kb & 1 == 1 { Folded::Value(a) } else { Folded::Constant(ty, 0) });
+                }
                 match op.with_right(ty, kb?)? {
                     Right::Left => Some(Folded::Value(a)),
                     Right::Constant(bits) => Some(Folded::Constant(ty, bits)),
@@ -93,6 +109,11 @@ impl Function {
             }
             _ => None,
         }
+    }
+
+    /// Whether a comparison defines `value`.
+    fn compared(&self, value: Value) -> bool {
+        matches!(self.values[value].def, crate::func::Def::Inst(i) if matches!(self.insts[i].kind, InstKind::Compare { .. }))
     }
 
     /// The jump a branch or switch on a constant takes, or one whose targets are all one.

@@ -78,6 +78,12 @@ impl BinOp {
         }
     }
 
+    /// Whether the operands may be swapped: an integer sum, product or bitwise operation.
+    #[must_use]
+    pub const fn commutes(self) -> bool {
+        matches!(self, Self::Add | Self::Mul | Self::And | Self::Or | Self::Xor)
+    }
+
     /// The right operand making the result itself whatever the left is, as 0 does of `x * 0`.
     #[must_use]
     pub fn absorbing(self, ty: Scalar) -> Option<u128> {
@@ -261,10 +267,8 @@ impl InstKind {
     pub fn ordered(&self) -> Self {
         let mut kind = self.clone();
         match &mut kind {
-            Self::Binary { op: BinOp::Add | BinOp::Mul | BinOp::And | BinOp::Or | BinOp::Xor, a, b }
-            | Self::Compare { cond: Cond::Eq | Cond::Ne, a, b }
-                if *b < *a =>
-            {
+            Self::Binary { op, a, b } if op.commutes() && *b < *a => std::mem::swap(a, b),
+            Self::Compare { cond: Cond::Eq | Cond::Ne, a, b } if *b < *a => {
                 std::mem::swap(a, b);
             }
             _ => {}
