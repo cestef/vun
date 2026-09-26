@@ -194,6 +194,7 @@ dependencies = [
 name = "vun-codec"
 version = "0.0.0"
 dependencies = [
+ "foldhash",
  "vun-codec-derive",
  "vun-par",
 ]
@@ -231,6 +232,7 @@ dependencies = [
 name = "vun-grammar"
 version = "0.0.0"
 dependencies = [
+ "foldhash",
  "vun-codec",
 ]
 
