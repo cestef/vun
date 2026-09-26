@@ -92,7 +92,9 @@ persistence built but not wired), `vun-syntax` (the literal printer writes `Decl
 `Decl::listed`, one item per line), `vun-hir` (+ `db`: the front end as queries), `vun-command`
 (declarative CLI), `vun-build` (manifests, `lock.vun` via `Lock::read`), `vun-pkg` (archive
 formats, `Format::PUBLISHED` is `.tar.zst`), `vun-http`, `vun-hash`, `vun-fs` (`Tree`, `Edit`,
-`Scratch`), `vun-harness`, `vun-trace`, three renderers.
+`Scratch`), `vun-par` (`Parallel::par_map`: the caller and a thread per core claim guided
+runs of items, nested calls run inline; the corpus, the repository sweeps, baseline compilation
+and C compiles use it), `vun-harness`, `vun-trace`, three renderers.
 
 **Sema** (`compiler/front/sema`):
 - Types (`ty/`): `TyKind::{Primitive, Nominal, Tuple, Record, Closure, Frame, Param}`; `Nominal`

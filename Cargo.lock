@@ -490,6 +490,7 @@ dependencies = [
  "vun-intern",
  "vun-lir",
  "vun-origin",
+ "vun-par",
  "vun-span",
  "vun-target",
  "vun-trace",
@@ -666,6 +667,7 @@ dependencies = [
  "vun-mir",
  "vun-mir-passes",
  "vun-origin",
+ "vun-par",
  "vun-pkg",
  "vun-query",
  "vun-render-annotate",
@@ -966,6 +968,10 @@ name = "vun-outline"
 version = "0.0.0"
 
 [[package]]
+name = "vun-par"
+version = "0.0.0"
+
+[[package]]
 name = "vun-pass"
 version = "0.0.0"
 dependencies = [
@@ -1129,6 +1135,7 @@ dependencies = [
  "vun-harness",
  "vun-json",
  "vun-origin",
+ "vun-par",
  "vun-render-short",
  "vun-span",
 ]

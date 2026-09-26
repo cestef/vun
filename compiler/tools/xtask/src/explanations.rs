@@ -6,6 +6,7 @@
 
 use std::fmt;
 use std::path::{Path, PathBuf};
+use vun_par::Parallel;
 
 use vun_diag::{DiagId, errors};
 use vun_fs::Scratch;
@@ -47,16 +48,16 @@ impl Corpus<'_> {
     /// # Errors
     /// Returns an error if a page or a scratch file cannot be read or written.
     pub(crate) fn explanations(&self) -> std::io::Result<Vec<Outcome>> {
-        let mut outcomes = Vec::new();
-        for (id, page) in errors::EXPLANATIONS {
+        let pages = errors::EXPLANATIONS.par_map(|(id, page)| {
             let path = Path::new(LIBRARY).join(page);
-            for (suffix, verdict) in self.page(id, &path)? {
+            let verdicts = self.page(id, &path)?;
+            Ok(verdicts.into_iter().map(move |(suffix, verdict)| {
                 let mut shown = path.clone().into_os_string();
                 shown.push(suffix);
-                outcomes.push(Outcome { path: shown.into(), verdict });
-            }
-        }
-        Ok(outcomes)
+                Outcome { path: shown.into(), verdict }
+            }))
+        });
+        pages.into_iter().collect::<std::io::Result<Vec<_>>>().map(|p| p.into_iter().flatten().collect())
     }
 
     /// The verdicts of the page at `path`, each for a section: `#Example`, `#Fix`.

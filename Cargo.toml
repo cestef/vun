@@ -12,6 +12,7 @@ publish = false
 [workspace.dependencies]
 vun-index = { path = "compiler/base/index" }
 vun-suggest = { path = "compiler/base/suggest" }
+vun-par = { path = "compiler/base/par" }
 vun-codec = { path = "compiler/base/codec" }
 vun-json = { path = "compiler/base/json" }
 vun-items = { path = "compiler/base/items" }

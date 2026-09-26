@@ -9,6 +9,7 @@ use std::collections::BTreeSet;
 use std::fmt::Write;
 use std::path::{Path, PathBuf};
 use vun_fs::Tree;
+use vun_par::Parallel;
 
 use vun_diag::{ChildKind, DiagId, Diagnostic, errors};
 use vun_driver::stages::{Input, Stage};
@@ -65,16 +66,22 @@ impl Corpus<'_> {
     /// Returns an error if a corpus directory or file cannot be read.
     pub(crate) fn outcomes(&self) -> std::io::Result<Vec<Outcome>> {
         let mut outcomes = self.explanations()?;
-        for &(dir, expect) in SUITES {
-            for path in self.root.join(dir).files_with(EXTENSION)? {
-                let verdict = Verdict::of(&path, expect)?;
-                outcomes.push(Outcome {
-                    path: path.strip_prefix(self.root).unwrap_or(&path).to_path_buf(),
-                    verdict,
-                });
-            }
-        }
+        let files = self.files(|_| true)?;
+        let verdicts = files.par_map(|(path, expect)| {
+            let verdict = Verdict::of(path, *expect)?;
+            Ok(Outcome { path: path.strip_prefix(self.root).unwrap_or(path).to_path_buf(), verdict })
+        });
+        outcomes.extend(verdicts.into_iter().collect::<std::io::Result<Vec<_>>>()?);
         Ok(outcomes)
+    }
+
+    /// Every corpus file of the suites `wanted` keeps, with what it expects.
+    fn files(&self, wanted: impl Fn(Expect) -> bool) -> std::io::Result<Vec<(PathBuf, Expect)>> {
+        let mut files = Vec::new();
+        for &(dir, expect) in SUITES.iter().filter(|(_, e)| wanted(*e)) {
+            files.extend(self.root.join(dir).files_with(EXTENSION)?.into_iter().map(|p| (p, expect)));
+        }
+        Ok(files)
     }
 
     /// How much of the programs that must compile the stages that exist understand.
@@ -82,18 +89,16 @@ impl Corpus<'_> {
     /// # Errors
     /// Returns an error if the directory cannot be read.
     pub(crate) fn coverage(&self) -> std::io::Result<Coverage> {
+        let files = self.files(|e| e == Expect::Clean)?;
+        let covered = files.par_map(|(path, _)| {
+            let mut session = Session::new();
+            let file = session.load(path)?;
+            session.check(file);
+            Some(session.coverage(file))
+        });
         let mut total = Coverage::default();
-        for &(dir, expect) in SUITES {
-            if expect != Expect::Clean {
-                continue;
-            }
-            for path in self.root.join(dir).files_with(EXTENSION)? {
-                let mut session = Session::new();
-                if let Some(file) = session.load(&path) {
-                    session.check(file);
-                    total += session.coverage(file);
-                }
-            }
+        for coverage in covered.into_iter().flatten() {
+            total += coverage;
         }
         Ok(total)
     }

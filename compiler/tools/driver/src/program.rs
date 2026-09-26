@@ -12,6 +12,7 @@ use vun_fs::Edit;
 use vun_hash::Hash;
 use vun_link::{LinkPlan, OutputKind};
 use vun_lir::FuncId;
+use vun_par::Parallel;
 use vun_span::{FileId, SourceMap};
 use vun_target::{CCompiler, FrameSizes};
 use vun_tool::{Arg, Executable, Failure, Invocation, Tool, gcc};
@@ -77,13 +78,7 @@ impl Session {
         }
         let compiler = &coded.target.c.compiler;
         let sources: Vec<&Artifact> = coded.artifacts.iter().filter(|a| a.kind == Emits::Source).collect();
-        let results: Vec<Result<PathBuf, Failure>> = std::thread::scope(|scope| {
-            let runs: Vec<_> = sources
-                .iter()
-                .map(|a| scope.spawn(|| Self::compile_source(compiler, &dir.join(&a.name))))
-                .collect();
-            runs.into_iter().map(|run| run.join().expect("a compile step does not panic")).collect()
-        });
+        let results = sources.par_map(|a| Self::compile_source(compiler, &dir.join(&a.name)));
         let mut objects = Vec::new();
         for (artifact, result) in sources.iter().zip(results) {
             objects.push(result.map_err(|failure| {

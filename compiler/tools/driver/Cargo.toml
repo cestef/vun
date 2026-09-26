@@ -29,6 +29,7 @@ vun-pkg.workspace = true
 vun-bind.workspace = true
 vun-clang.workspace = true
 vun-fs.workspace = true
+vun-par.workspace = true
 vun-suggest.workspace = true
 vun-hash.workspace = true
 vun-command.workspace = true

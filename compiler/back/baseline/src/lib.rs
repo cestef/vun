@@ -16,6 +16,7 @@ use vun_index::IndexVec;
 use vun_lir::legalize::Half;
 use vun_lir::unit::Unit;
 use vun_lir::{FuncId, Function};
+use vun_par::Parallel;
 use vun_target::{Arches, Name, TargetSpec};
 
 use x86_64::func::Compiled;
@@ -53,20 +54,8 @@ impl BaselineBackend {
     /// Never: compiling a function does not panic.
     pub fn compile(unit: &Unit) -> Result<IndexVec<FuncId, Compiled>, Lack> {
         let functions: Vec<&Function> = unit.functions.iter().map(|(_, f)| f).collect();
-        let threads = std::thread::available_parallelism().map_or(1, std::num::NonZero::get);
-        let chunk = functions.len().div_ceil(threads).max(1);
-        let compiled: Vec<Result<Vec<Compiled>, Lack>> = std::thread::scope(|scope| {
-            let runs: Vec<_> = functions
-                .chunks(chunk)
-                .map(|fs| scope.spawn(move || fs.iter().map(|f| x86_64::func::compile(unit, f)).collect()))
-                .collect();
-            runs.into_iter().map(|run| run.join().expect("compiling a function does not panic")).collect()
-        });
-        let mut all = Vec::with_capacity(functions.len());
-        for part in compiled {
-            all.extend(part?);
-        }
-        Ok(all.into())
+        let compiled = functions.par_map(|f| x86_64::func::compile(unit, f));
+        Ok(compiled.into_iter().collect::<Result<Vec<_>, _>>()?.into())
     }
 
     /// The relocatable object of `unit`, with each function's frame size in bytes.

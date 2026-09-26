@@ -4,19 +4,27 @@
 use vun_driver::Session;
 use vun_fs::Tree;
 use vun_harness::repo_root;
+use vun_par::Parallel;
 use vun_span::EXTENSION;
 
 #[test]
 fn library_sources_check_cleanly() {
     let root = repo_root();
-    let mut reports = Vec::new();
-    for path in root.join("lib").files_with(EXTENSION).unwrap() {
-        let mut session = Session::new();
-        let Some(file) = session.load(&path) else { continue };
-        session.check(file);
-        for d in session.diag.sorted() {
-            reports.push(format!("{}: {} {}", path.display(), d.id, d.message));
-        }
-    }
+    let paths = root.join("lib").files_with(EXTENSION).unwrap();
+    let reports: Vec<String> = paths
+        .par_map(|path| {
+            let mut session = Session::new();
+            let Some(file) = session.load(path) else { return Vec::new() };
+            session.check(file);
+            let reports = session
+                .diag
+                .sorted()
+                .into_iter()
+                .map(|d| format!("{}: {} {}", path.display(), d.id, d.message));
+            reports.collect::<Vec<_>>()
+        })
+        .into_iter()
+        .flatten()
+        .collect();
     assert!(reports.is_empty(), "{reports:#?}");
 }

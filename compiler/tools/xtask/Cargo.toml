@@ -17,6 +17,7 @@ workspace = true
 vun-command.workspace = true
 vun-diag.workspace = true
 vun-fs.workspace = true
+vun-par.workspace = true
 vun-origin.workspace = true
 vun-render-short.workspace = true
 vun-span.workspace = true
