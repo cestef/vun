@@ -6,7 +6,7 @@ mod frame;
 mod why;
 
 use std::cell::RefCell;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use std::sync::atomic::Ordering;
 
@@ -26,14 +26,17 @@ use super::{Query, Revision};
 pub struct Cx<'db> {
     db: &'db Db,
     stack: RefCell<Vec<Frame>>,
-    /// The memos being verified on this thread, innermost last.
-    verifying: RefCell<Vec<(TableId, Slot)>>,
+    /// Where each memo computed on the stack is on it, so that reaching one again is found at
+    /// once however deep the stack is.
+    computing: RefCell<HashMap<(TableId, Slot), usize>>,
+    /// The memos being verified on this thread.
+    verifying: RefCell<HashSet<(TableId, Slot)>>,
 }
 
 impl<'db> Cx<'db> {
     #[must_use]
     pub fn new(db: &'db Db) -> Self {
-        Self { db, stack: RefCell::default(), verifying: RefCell::default() }
+        Self { db, stack: RefCell::default(), computing: RefCell::default(), verifying: RefCell::default() }
     }
 
     #[must_use]
@@ -114,9 +117,9 @@ impl<'db> Cx<'db> {
         if self.verifying.borrow().contains(&(table.id, slot)) {
             return Err(Why::Cycle);
         }
-        self.verifying.borrow_mut().push((table.id, slot));
+        self.verifying.borrow_mut().insert((table.id, slot));
         let stale = self.stale(deps);
-        self.verifying.borrow_mut().pop();
+        self.verifying.borrow_mut().remove(&(table.id, slot));
         if let Some(read) = stale {
             return Err(Why::Stale(read));
         }
@@ -186,7 +189,7 @@ impl<'db> Cx<'db> {
     #[inline(never)]
     fn cycle(&self, table: TableId, slot: Slot) -> Option<Cycle> {
         let mut stack = self.stack.borrow_mut();
-        let from = stack.iter().position(|f| f.table == table && f.slot == slot)?;
+        let from = *self.computing.borrow().get(&(table, slot))?;
         let top = stack.last_mut().expect("the frame reaching it");
         top.head = Some(top.head.map_or(from, |head| head.min(from)));
         let path = stack[from..]
@@ -209,7 +212,9 @@ impl<'db> Cx<'db> {
         let any = self.db.any_table(table);
         tracing::debug!(query = any.name(), why = %why.show(self.db), "computing");
         tracing::trace!(query = any.name(), key = any.show(slot), "key");
-        self.stack.borrow_mut().push(Frame { table, slot, reads: Vec::new(), head: None });
+        let mut stack = self.stack.borrow_mut();
+        self.computing.borrow_mut().insert((table, slot), stack.len());
+        stack.push(Frame { table, slot, reads: Vec::new(), head: None });
         Activity::query(any.name()).start()
     }
 
@@ -219,6 +224,7 @@ impl<'db> Cx<'db> {
     fn leave(&self) -> (Box<[Dep]>, Standing) {
         let mut stack = self.stack.borrow_mut();
         let frame = stack.pop().expect("a frame entered");
+        self.computing.borrow_mut().remove(&(frame.table, frame.slot));
         let at = stack.len();
         let standing = match frame.head {
             Some(head) if head < at => {

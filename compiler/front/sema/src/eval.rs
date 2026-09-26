@@ -121,7 +121,15 @@ impl Evaluators {
     }
 }
 
-/// A compile-time call, memoized on its function and arguments, with the steps it took.
+/// The stack a compile-time call must have left to start on the one it runs on: enough for
+/// what one call computes before it calls another, its body typed and built included.
+const RED_ZONE: usize = 1 << 20;
+/// The stack the evaluator adds when less is left, on which calls go on nesting.
+const SEGMENT: usize = 16 << 20;
+
+/// A compile-time call, memoized on its function and arguments, with the steps it took. Calls
+/// nest as deep as their budget lets them: they run on stack the evaluator adds in segments
+/// once the thread's own runs low, never overflowing it (spec 03, section 7).
 pub struct MeteredCall;
 
 impl Query for MeteredCall {
@@ -137,7 +145,7 @@ impl Query for MeteredCall {
         }
         let evaluators = cx.db().resource::<Evaluators>();
         match evaluators.0.get() {
-            Some(evaluator) => evaluator.call(cx, call),
+            Some(evaluator) => stacker::maybe_grow(RED_ZONE, SEGMENT, || evaluator.call(cx, call)),
             None => Metered::unrun(Unevaluated::Interpreter),
         }
     }

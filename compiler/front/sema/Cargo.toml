@@ -26,3 +26,4 @@ vun-desugar.workspace = true
 vun-items.workspace = true
 vun-syntax.workspace = true
 num-bigint.workspace = true
+stacker.workspace = true

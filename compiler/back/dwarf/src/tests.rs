@@ -147,6 +147,7 @@ fn call_frames_are_one_common_record_then_one_per_function() {
     }
     assert_eq!(starts.len(), 3, "the common record and one per function");
     // Each function's start is relative to where its record names it.
-    let relocs: Vec<_> = frames.relocs.iter().map(|r| (usize::try_from(r.offset).unwrap(), r.symbol, r.kind)).collect();
+    let relocs: Vec<_> =
+        frames.relocs.iter().map(|r| (usize::try_from(r.offset).unwrap(), r.symbol, r.kind)).collect();
     assert_eq!(relocs, [(starts[1] + 8, f, RelocKind::Pc32), (starts[2] + 8, g, RelocKind::Pc32)]);
 }

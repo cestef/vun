@@ -285,3 +285,20 @@ seven: Int(0..=apply()) = 8;
     let reported: Vec<_> = fixture.reported(&file).into_iter().map(|(id, _)| id).collect();
     assert_eq!(reported, [errors::INT_DOES_NOT_FIT]);
 }
+
+#[test]
+fn compile_time_calls_nest_past_the_host_stack() {
+    let fixture = Fixture::new("comptime-deep");
+    // Twelve thousand calls deep overflow a thread's own 8 MiB, not the evaluator's stack.
+    let file = fixture.root.write(
+        "deep.vun",
+        "\
+count := (n: u32) -> u32 { if n == 0 { 0 } else { (count(n - 1) + 1).wrap(u32) } };
+Deep := Int(0..=count(12000));
+fits: Deep = 12000;
+over: Deep = 12001;
+",
+    );
+    let reported = fixture.reported(&file);
+    assert_eq!(reported, [(errors::INT_DOES_NOT_FIT, "value does not fit the type `Deep`".to_owned())]);
+}

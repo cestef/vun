@@ -203,7 +203,8 @@ in as proposed unless the user approves them.
    done. Every
    typer diagnostic in a generic body is reported once per instantiation plus once plain
    (`int.does_not_fit` three times for two instantiations): dedup them by origin in `Checked`.
-7. Evaluator: its own stack; loans inside aggregate arguments. Packaging: signed caches, planned
+7. Evaluator: its own stack done (decision 221: stack segments added as calls nest); left: loans
+   inside aggregate arguments, and memory per nesting level (about 10 KiB). Packaging: signed caches, planned
    builds, `vun pkg why`, `.workspace` visibility.
 
 ## 8. Pitfalls
