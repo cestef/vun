@@ -127,15 +127,16 @@ Logging: `VUN_LOG=<filter>` (`info` steps, `debug` units of work, `trace` elemen
   `std` (`option`, `result`, `cmp`, `mem`, `seq`, `iter`, `sync`, `os`, `fmt`, `diag`, `task`,
   `build`, `lints`, `panic`, `testing`).
 
-Progress: corpus 213 passed, 10 planned, 31 shown, 0 failed; 326 tests; the backend tests build
+Progress: corpus 225 passed, 10 planned, 32 shown, 0 failed; 352 tests; the backend tests build
 every program in `compiler/tools/driver/tests/driver/programs/` through C and native, for
 x86-64 and (when the machine runs it) linux.arm64, and require equal results on all four.
 
 ## 6. Decisions
 
-Every decision in `decisions.md` is accepted, 1 to 193 (the user asked this session that all that
-make sense be accepted; 138, 157, 161 and 166 are amended by 182 and 183). New language rules go
-in as proposed unless the user approves them.
+Every decision in `decisions.md` is accepted, 1 to 210 but 209 (the user asked in the sixteenth
+session that all that make sense be accepted; 138, 157, 161 and 166 are amended by 182 and 183).
+209 (`lang.target.Attributes`, a new field of `lang.target.CCompiler`) is proposed. New language
+rules go in as proposed unless the user approves them.
 
 ## 7. Next steps, in order
 
@@ -154,9 +155,14 @@ in as proposed unless the user approves them.
    them), `if c { 1 } else { 0 }` diamonds from MIR, a snippet's operand moved into a fixed
    register it takes. (c) DWARF line tables and symbol names done (decisions 204, 205:
    `vun-dwarf`; `gdb` breaks on Vun lines); the unit is named by the first file with a row;
-   next unwind information (`.eh_frame`) and `DW_TAG_subprogram`s; (d) data objects aligned past every C type in the C backend, memory regions
-   into `LinkPlan`, a bare-metal runtime, a slice value (`xs[a..b]` not borrowed) reported by
-   sema rather than as `backend.unlowered`; (e) linkers other than `gnu`.
+   next unwind information (`.eh_frame`) and `DW_TAG_subprogram`s; (d) done in the seventeenth session: data aligned past every C type or in a
+   link section through GNU attributes (decision 209, proposed: `lang.target.Attributes`), a
+   slice bound by value is `types.slice_value` (decision 210); left: memory regions into
+   `LinkPlan` and a bare-metal runtime, which wait for item 5 (plans declare the regions); (e)
+   done: mold and wild link through the C compiler (`vun_link_gnu::Ld`), `--linker` names one
+   (decision 208); lld waits for `ld.lld` on the machine. macOS (decisions 206, 207): Mach-O
+   objects for arm64 and Apple's call convention (packed stack arguments) are written and
+   checked with `llvm-objdump` and against clang's objects; linking waits for lld and an SDK.
 2. Performance and persistence. Done in the sixteenth session (decision 191): saved queries
    written whole past twice their compacted size, atomic `Edit::put`, reads saved without their
    key's fingerprint (11.4 to 6.8 MB on ten programs sharing a directory), queries decoded in
