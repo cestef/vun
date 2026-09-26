@@ -156,11 +156,20 @@ impl<A: Arch> Cx<'_, A> {
         r
     }
 
-    /// Frees `r` for an instruction that writes it, storing what it holds home if needed.
+    /// Frees `r` for an instruction that writes it: what it holds, is still used and is not
+    /// home already moves to a free register, or is stored home when none is.
     pub fn take(&mut self, r: A::Reg) {
         if let Some(v) = self.regs.holds(r) {
-            self.store_home(v, r);
-            self.unbind(r);
+            let a = self.values[v];
+            let moved = a.left > 0 && !a.saved && a.fixed.is_none() && a.recompute.is_none();
+            if let Some(to) = self.regs.free().filter(|_| moved) {
+                A::copy(&mut self.asm, to, r);
+                self.unbind(r);
+                self.bind(v, to, a.saved);
+            } else {
+                self.store_home(v, r);
+                self.unbind(r);
+            }
         }
         self.regs.lock(r);
     }

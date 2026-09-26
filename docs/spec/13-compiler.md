@@ -522,7 +522,8 @@ The framework:
   block emitted next that only the block before reaches, which keeps the registers.
 - **Instruction compilers** ask the framework for operands (`Cx::reg`), results (`Cx::def`), a
   result overwriting a dying operand (`Cx::reuse`: no copy where the operand is used no more),
-  scratch registers, and fixed registers freed (`Cx::take`).
+  scratch registers, and fixed registers freed (`Cx::take`: a value there still used and not
+  home yet moves to a free register rather than through memory, as TPDE moves it).
 - **Snippets** (TPDE, section 4): most operations are instruction sequences as data, over slots
   for the operation's operands (`In`, and memory at an operand's address, `At`), its result
   (`Out`), scratch registers (`Temp`), registers an instruction requires (`Fixed`, freed before
