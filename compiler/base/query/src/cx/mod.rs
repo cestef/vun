@@ -28,9 +28,9 @@ pub struct Cx<'db> {
     stack: RefCell<Vec<Frame>>,
     /// Where each memo computed on the stack is on it, so that reaching one again is found at
     /// once however deep the stack is.
-    computing: RefCell<HashMap<(TableId, Slot), usize>>,
+    computing: RefCell<HashMap<(TableId, Slot), usize, foldhash::fast::RandomState>>,
     /// The memos being verified on this thread.
-    verifying: RefCell<HashSet<(TableId, Slot)>>,
+    verifying: RefCell<HashSet<(TableId, Slot), foldhash::fast::RandomState>>,
 }
 
 impl<'db> Cx<'db> {
