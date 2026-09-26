@@ -13,4 +13,5 @@ workspace = true
 vun-diag.workspace = true
 vun-origin.workspace = true
 vun-span.workspace = true
+vun-term.workspace = true
 annotate-snippets.workspace = true

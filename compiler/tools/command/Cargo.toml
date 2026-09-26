@@ -12,3 +12,7 @@ workspace = true
 [dependencies]
 vun-suggest.workspace = true
 vun-diag.workspace = true
+vun-term.workspace = true
+vun-origin.workspace = true
+vun-span.workspace = true
+vun-render-short.workspace = true

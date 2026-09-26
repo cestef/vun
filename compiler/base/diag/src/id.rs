@@ -51,6 +51,19 @@ pub enum Severity {
     Error,
 }
 
+impl Severity {
+    /// How renderers style its title.
+    #[must_use]
+    pub const fn style(self) -> vun_term::Style {
+        match self {
+            Self::Hint => vun_term::Style::Help,
+            Self::Info => vun_term::Style::Accent,
+            Self::Warning => vun_term::Style::Warning,
+            Self::Error => vun_term::Style::Error,
+        }
+    }
+}
+
 impl fmt::Display for Severity {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(match self {

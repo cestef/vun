@@ -4,13 +4,13 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fmt::Write as _;
-use std::io::Write as _;
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use tracing::field::{Field, Visit};
 use tracing::span::{Attributes, Id, Record};
-use tracing::{Event, Metadata, Subscriber};
+use tracing::{Event, Level, Metadata, Subscriber};
+use vun_term::{Color, Out, Style, Text};
 
 use crate::{Config, Filter, Format};
 
@@ -21,7 +21,7 @@ const INDENT: &str = "  ";
 
 struct Span {
     name: &'static str,
-    fields: String,
+    fields: Pairs,
     /// Handles to the span; it closes when the last is dropped.
     handles: usize,
 }
@@ -29,6 +29,7 @@ struct Span {
 pub(crate) struct Writer {
     filter: Filter,
     format: Format,
+    color: Color,
     next: AtomicU64,
     spans: Mutex<HashMap<u64, Span>>,
 }
@@ -38,11 +39,24 @@ thread_local! {
     static ENTERED: RefCell<Vec<u64>> = const { RefCell::new(Vec::new()) };
 }
 
-/// Collects fields as `name=value`, the message apart.
+/// Collects fields, the message apart.
 #[derive(Default)]
 struct Fields {
     message: String,
-    rest: String,
+    rest: Pairs,
+}
+
+/// Fields as names and values.
+#[derive(Default)]
+struct Pairs(Vec<(&'static str, String)>);
+
+impl Pairs {
+    /// ` name=value` each, the name as a key, the value as written.
+    fn text(&self) -> Text {
+        self.0.iter().fold(Text::new(), |text, (name, value)| {
+            text.plain(" ").styled(Style::Key, *name).styled(Style::Dim, "=").plain(value.clone())
+        })
+    }
 }
 
 impl Visit for Fields {
@@ -50,7 +64,7 @@ impl Visit for Fields {
         if field.name() == MESSAGE {
             let _ = write!(self.message, "{value:?}");
         } else {
-            let _ = write!(self.rest, " {}={value:?}", field.name());
+            self.rest.0.push((field.name(), format!("{value:?}")));
         }
     }
 }
@@ -58,23 +72,53 @@ impl Visit for Fields {
 impl Writer {
     pub(crate) fn new(config: &Config) -> Self {
         let filter = config.filter.as_deref().map(Filter::parse).unwrap_or_default();
-        Self { filter, format: config.format, next: AtomicU64::new(1), spans: Mutex::default() }
+        Self {
+            filter,
+            format: config.format,
+            color: config.color,
+            next: AtomicU64::new(1),
+            spans: Mutex::default(),
+        }
     }
 
-    fn line(text: &str) {
-        let _ = writeln!(std::io::stderr().lock(), "{text}");
+    fn line(&self, text: &Text) {
+        let _ = Out::colored(&mut std::io::stderr().lock(), self.color).line(text);
     }
 
     /// The spans this thread is in, outermost first, as `name{fields}`.
-    fn context(&self) -> Vec<String> {
+    fn context(&self) -> Vec<Text> {
         let spans = self.spans.lock().expect("trace spans");
         ENTERED.with_borrow(|entered| {
             entered
                 .iter()
                 .filter_map(|id| spans.get(id))
-                .map(|s| format!("{}{{{}}}", s.name, s.fields.trim_start()))
+                .map(|s| {
+                    let name = Text::of(Style::Scope, s.name);
+                    if s.fields.0.is_empty() {
+                        name
+                    } else {
+                        name.styled(Style::Dim, "{").append(s.fields.text()).styled(Style::Dim, " }")
+                    }
+                })
                 .collect()
         })
+    }
+}
+
+/// How log lines style a level, as `tracing-subscriber` colors them.
+trait LevelStyle {
+    fn style(&self) -> Style;
+}
+
+impl LevelStyle for Level {
+    fn style(&self) -> Style {
+        match *self {
+            Level::ERROR => Style::Error,
+            Level::WARN => Style::Warning,
+            Level::INFO => Style::Good,
+            Level::DEBUG => Style::Accent,
+            Level::TRACE => Style::Id,
+        }
     }
 }
 
@@ -96,7 +140,7 @@ impl Subscriber for Writer {
         let mut fields = Fields::default();
         values.record(&mut fields);
         if let Some(s) = self.spans.lock().expect("trace spans").get_mut(&span.into_u64()) {
-            s.fields.push_str(&fields.rest);
+            s.fields.0.extend(fields.rest.0);
         }
     }
 
@@ -106,16 +150,22 @@ impl Subscriber for Writer {
         let mut fields = Fields::default();
         event.record(&mut fields);
         let meta = event.metadata();
-        let what = format!("{} {}: {}{}", meta.level(), meta.target(), fields.message, fields.rest);
+        let level = Text::of(meta.level().style(), format!("{:>5}", meta.level())).plain(" ");
+        let what = Text::of(Style::Scope, meta.target()).styled(Style::Dim, ": ");
+        let what = what.plain(fields.message).append(fields.rest.text());
         let context = self.context();
         match self.format {
-            Format::Compact if context.is_empty() => Self::line(&what),
-            Format::Compact => Self::line(&format!("{} {what}", context.join(":"))),
+            Format::Compact if context.is_empty() => self.line(&level.append(what)),
+            Format::Compact => {
+                let spans = Text::join(context, " > ").styled(Style::Dim, ": ");
+                self.line(&level.append(spans).append(what));
+            }
             Format::Tree => {
-                for (depth, span) in context.iter().enumerate() {
-                    Self::line(&format!("{}{span}", INDENT.repeat(depth)));
+                let depth = context.len();
+                for (at, span) in context.into_iter().enumerate() {
+                    self.line(&Text::new().plain(INDENT.repeat(at)).append(span));
                 }
-                Self::line(&format!("{}{what}", INDENT.repeat(context.len())));
+                self.line(&Text::new().plain(INDENT.repeat(depth)).append(level).append(what));
             }
         }
     }

@@ -1,30 +1,25 @@
-//! `vun toolchain`: installed toolchains, and what this one is made of.
+//! `vun toolchain`: what this toolchain is made of.
 
-use std::io::{self, Write};
+use std::io;
 
-use vun_command::{Action, Args, Command, Outcome};
+use vun_command::{Args, Command, Outcome};
+use vun_term::{Column, Shell, Style, Table, Text};
 
 use crate::{Registry, Session};
 
 pub(super) const GROUP: &str = "toolchain";
 
-pub(super) const COMMANDS: &[Command<Session>] = &[
-    Command::planned("list", "list installed toolchains"),
-    Command::planned("install", "install a toolchain"),
-    Command::planned("prune", "remove unused toolchains"),
-    Command {
-        name: "components",
-        about: "list the backends and linkers in this toolchain",
-        params: &[],
-        action: Action::Run(components),
-    },
-];
+pub(super) const COMMANDS: &[Command<Session>] =
+    &[Command::run("components", "list the backends and linkers in this toolchain", components)];
 
-fn components(_: &mut Session, _: &Args, out: &mut dyn Write) -> io::Result<Outcome> {
+const COLUMNS: [Column; 2] = [Column::left("kind"), Column::left("name")];
+
+fn components(_: &mut Session, _: &Args, shell: &mut Shell<'_>) -> io::Result<Outcome> {
     let r = Registry::with_defaults();
-    let backends: Vec<_> = r.backends().map(|b| b.info().id.0).collect();
-    let linkers: Vec<_> = r.linkers().map(|l| l.info().id.0).collect();
-    writeln!(out, "backends: {}", backends.join(", "))?;
-    writeln!(out, "linkers:  {}", linkers.join(", "))?;
+    let backends =
+        r.backends().map(|b| [Text::of(Style::Dim, "backend"), Text::of(Style::Literal, b.info().id.0)]);
+    let linkers =
+        r.linkers().map(|l| [Text::of(Style::Dim, "linker"), Text::of(Style::Literal, l.info().id.0)]);
+    shell.out.print(&Table::new(&COLUMNS).rows(backends.chain(linkers)).text())?;
     Ok(Outcome::Success)
 }

@@ -12,6 +12,7 @@ use annotate_snippets::renderer::DecorStyle;
 use vun_diag::{Color, DiagSink, Diagnostic};
 use vun_origin::OriginTable;
 use vun_span::SourceMap;
+use vun_term::Style;
 
 pub struct AnnotateRenderer<W: Write> {
     out: W,
@@ -22,7 +23,15 @@ impl<W: Write> AnnotateRenderer<W> {
     pub fn new(out: W, color: Color) -> Self {
         let renderer = match color {
             Color::Never => Renderer::plain(),
-            Color::Always => Renderer::styled(),
+            Color::Always => Renderer::styled()
+                .error(Style::Error.ansi())
+                .warning(Style::Warning.ansi())
+                .info(Style::Accent.ansi())
+                .note(Style::Note.ansi())
+                .help(Style::Help.ansi())
+                .line_num(Style::Accent.ansi())
+                .context(Style::Accent.ansi())
+                .emphasis(Style::Strong.ansi()),
         };
         Self { out, renderer: renderer.decor_style(DecorStyle::Unicode) }
     }

@@ -6,7 +6,7 @@
 use std::path::{Path, PathBuf};
 
 use vun_backend::{Artifact, Emits};
-use vun_command::{Param, ParamKind};
+use vun_command::{Param, PathKind, Values};
 use vun_diag::{Diagnostic, ErrorGuaranteed, Msg, errors};
 use vun_fs::Edit;
 use vun_hash::Hash;
@@ -14,19 +14,17 @@ use vun_link::{LinkPlan, OutputKind};
 use vun_lir::FuncId;
 use vun_par::Parallel;
 use vun_span::{FileId, SourceMap};
-use vun_target::{CCompiler, FrameSizes};
+use vun_target::{CCompiler, FrameSizes, Profile};
 use vun_tool::{Arg, Executable, Failure, Invocation, Tool, gcc};
 use vun_trace::{Activity, tracing};
 
 use crate::Session;
-use crate::codegen::{Coded, Uncoded};
+use crate::codegen::{Coded, Listed, Uncoded};
 
-pub const OUTPUT: Param = Param {
-    name: "output",
-    short: Some('o'),
-    about: "where the program is written",
-    kind: ParamKind::Option,
-};
+pub const OUTPUT: Param = Param::option("output")
+    .short('o')
+    .about("where the program is written")
+    .values(Values::Path(PathKind::File));
 
 /// Where builds keep their files, under the root file's directory (spec 12, section 1).
 const BUILDS: &str = "build";
@@ -58,14 +56,14 @@ impl Session {
     ///
     /// # Panics
     /// Never: a compile step does not panic, and the backend that coded it is registered.
-    pub fn compile(&mut self, file: FileId, backend: Option<&str>) -> Result<Compiled, ErrorGuaranteed> {
+    pub fn compile(&mut self, file: FileId) -> Result<Compiled, ErrorGuaranteed> {
         // Only a program its checks accept is built.
         self.check(file);
         if let Some(failed) = self.diag.failed() {
             return Err(failed);
         }
         let timer = CODE.start();
-        let coded = self.code(file, backend).map_err(|uncoded| match uncoded {
+        let coded = self.code(file, Listed::No).map_err(|uncoded| match uncoded {
             Uncoded::Reported(guar) => guar,
             Uncoded::Unlowered(unlowered) => {
                 let msg = Msg::new().text("the program does not lower to LIR: ").text(unlowered.to_string());
@@ -73,9 +71,7 @@ impl Session {
             }
         })?;
         drop(timer);
-        let backend =
-            self.registry.backends().nth(coded.backend).expect("the backend that coded it").info().id.0;
-        tracing::info!(backend, artifacts = coded.artifacts.len(), "coded");
+        tracing::info!(backend = coded.backend.0, artifacts = coded.artifacts.len(), "coded");
         let _timer = COMPILE.start();
         let root = PathBuf::from(&self.sources.file(file).path);
         let builds = root.parent().unwrap_or(Path::new("")).join(vun_fs::WORK).join(BUILDS);
@@ -90,9 +86,10 @@ impl Session {
         }
         let compiler = &coded.target.c.compiler;
         let sources: Vec<&Artifact> = coded.artifacts.iter().filter(|a| a.kind == Emits::Source).collect();
+        let profile = self.codegen.profile;
         let results = sources.par_map(|a| {
             tracing::debug!(source = %a.name.display(), compiler = compiler.command.as_str(), "compiling");
-            Self::compile_source(compiler, &dir.join(&a.name))
+            Self::compile_source(compiler, profile, &dir.join(&a.name))
         });
         let mut objects = Vec::new();
         for (artifact, result) in sources.iter().zip(results) {
@@ -118,14 +115,13 @@ impl Session {
                     .filter_map(|o| std::fs::read(o.with_extension(STACK_USAGE)).ok())
                     .flatten()
                     .collect();
-                let backend = self.registry.backends().nth(coded.backend).expect("the backend that coded it");
-                backend.frame_sizes(coded.unit(), &report)
+                let backend =
+                    self.registry.backend(coded.backend.symbol()).expect("the backend that coded it");
+                backend.frame_sizes(&coded.unit, &report)
             }
             FrameSizes::None => Vec::new(),
         };
-        let backend =
-            self.registry.backends().nth(coded.backend).expect("the backend that coded it").info().id.0;
-        self.check_stacks(coded.unit(), &frames, backend)?;
+        self.check_stacks(&coded.unit, &frames, coded.backend.0)?;
         Ok(Compiled { coded, objects, frames, builds })
     }
 
@@ -134,25 +130,25 @@ impl Session {
     ///
     /// # Errors
     /// Returns an error if `out` cannot be written.
-    pub fn dump_frames(
-        &mut self,
-        file: FileId,
-        backend: Option<&str>,
-        out: &mut dyn std::io::Write,
-    ) -> std::io::Result<()> {
-        let Ok(compiled) = self.compile(file, backend) else { return Ok(()) };
+    pub fn dump_frames(&mut self, file: FileId, out: &mut dyn std::io::Write) -> std::io::Result<()> {
+        let Ok(compiled) = self.compile(file) else { return Ok(()) };
         for (id, bytes) in compiled.frames {
-            let origin = compiled.coded.unit().functions[id].origin;
+            let origin = compiled.coded.unit.functions[id].origin;
             let at = self.sources.locate(self.origins.source_span(origin));
             writeln!(out, "{id} at {at}: {bytes} bytes")?;
         }
         Ok(())
     }
 
-    /// The object `compiler` makes of the source at `path`, beside it.
-    fn compile_source(compiler: &CCompiler, path: &Path) -> Result<PathBuf, Failure> {
+    /// The object `compiler` makes of the source at `path`, beside it, with the flags of
+    /// `profile`.
+    fn compile_source(compiler: &CCompiler, profile: Profile, path: &Path) -> Result<PathBuf, Failure> {
         let object = path.with_extension(OBJECT);
-        let mut args: Vec<Arg> = compiler.flags.iter().map(|&f| Arg::Text(f)).collect();
+        let optimize = match profile {
+            Profile::Debug => &[][..],
+            Profile::Release => &compiler.optimize,
+        };
+        let mut args: Vec<Arg> = compiler.flags.iter().chain(optimize).map(|&f| Arg::Text(f)).collect();
         if compiler.frame_sizes == FrameSizes::StackUsage {
             args.push(gcc::STACK_USAGE.into());
         }
@@ -177,13 +173,8 @@ impl Session {
     ///
     /// # Errors
     /// Returns once what stopped the build is reported.
-    pub fn build(
-        &mut self,
-        file: FileId,
-        backend: Option<&str>,
-        output: Option<&Path>,
-    ) -> Result<PathBuf, ErrorGuaranteed> {
-        let compiled = self.compile(file, backend)?;
+    pub fn build(&mut self, file: FileId, output: Option<&Path>) -> Result<PathBuf, ErrorGuaranteed> {
+        let compiled = self.compile(file)?;
         let target = &compiled.coded.target;
         let root = PathBuf::from(&self.sources.file(file).path);
         let stem = root.file_stem().map(PathBuf::from).unwrap_or_default();
@@ -196,11 +187,9 @@ impl Session {
             regions: Vec::new(),
             sections: Vec::new(),
         };
-        let Some(linker) = self.registry.linker(target.default_linker) else {
-            let msg = Msg::new()
-                .text("no linker ")
-                .code(target.default_linker.as_str())
-                .text(" is in this toolchain");
+        let Some(linker) = self.registry.linker(target.linker) else {
+            let msg =
+                Msg::new().text("no linker ").code(target.linker.as_str()).text(" is in this toolchain");
             return Err(self.diag.error(Diagnostic::error(errors::LINK_UNAVAILABLE, msg)));
         };
         let _timer = LINK.start();

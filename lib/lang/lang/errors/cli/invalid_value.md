@@ -2,15 +2,16 @@
 
 An argument or an option's value is not one the command accepts.
 
-Some values are checked against what they name (spec 12, section 7): `--format` takes one of the
-diagnostic formats, `vun explain` a declared diagnostic, `--version` of `vun pkg add` a version
-`major.minor.patch`. The help suggests the closest accepted value, or lists them.
+Parameters declare the values they take (spec 12, section 7): `--diagnostics` takes one of the
+diagnostic formats, `--color` one of `auto`, `always` and `never`, `vun explain` a declared
+diagnostic, `--version` of `vun pkg add` a version `major.minor.patch`. Declared choices are
+checked while the command line is read; the help suggests the closest, or lists them.
 
 ## Example
 
 ```console
-$ vun check blinky.vun --format=shrt
-error[cli.invalid_value]: unknown format `shrt`
+$ vun check blinky.vun --diagnostics=shrt
+error[cli.invalid_value]: `shrt` is not a value of `--diagnostics`
   │
   ╰ help: did you mean `short`?
 ```
@@ -18,5 +19,5 @@ error[cli.invalid_value]: unknown format `shrt`
 ## Fix
 
 ```console
-$ vun check blinky.vun --format=short
+$ vun check blinky.vun --diagnostics=short
 ```

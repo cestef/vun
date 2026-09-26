@@ -1,177 +1,167 @@
 //! The `vun` command tree (spec 12, section 7), shared by every front end of the driver.
 
-use std::io::{self, Write};
-use std::path::Path;
+use std::io;
+use std::path::{Path, PathBuf};
+use std::time::Instant;
 
-use vun_command::{Action, Args, Command, Outcome, Param, ParamKind, Program};
+use vun_command::{
+    Args, Arity, Command, Context, Example, OptionSet, Outcome, Param, PathKind, Program, Values,
+};
+use vun_span::FileId;
+use vun_term::{Shell, Style, Text};
 
-use crate::{Session, VERSION, formats, target};
+use crate::{Session, VERSION, codegen, formats, target};
 
 pub const PROGRAM: Program<Session> = Program {
     version: VERSION,
     configure,
-    root: Command {
-        name: "vun",
-        about: "The Vun toolchain.",
-        params: &[formats::FORMAT, target::TARGET, TIMINGS],
-        action: Action::Group(&[
-            Command::planned("new", "create a package"),
-            Command {
-                name: "build",
-                about: "build the program a root file exports",
-                params: &[FILE, crate::codegen::BACKEND, crate::program::OUTPUT],
-                action: Action::Run(build),
-            },
-            Command {
-                name: "run",
-                about: "build the program a root file exports and run it",
-                params: &[FILE, crate::codegen::BACKEND, crate::program::OUTPUT],
-                action: Action::Run(run),
-            },
-            Command {
-                name: "check",
-                about: "analyze without generating code",
-                params: &[FILE],
-                action: Action::Run(check),
-            },
-            Command::planned("test", "run tests, properties and simulations"),
-            Command::planned("bench", "run benchmarks"),
-            Command::planned("fuzz", "fuzz a test with coverage guidance"),
-            Command::planned("fmt", "format source files"),
-            Command::planned("fix", "apply fixes from diagnostics"),
-            Command::planned("doc", "generate documentation"),
+    root: Command::group(
+        "vun",
+        "The Vun toolchain.",
+        &[
+            Command::run("build", "build the program a root file exports", build)
+                .aliases(&["b"])
+                .params(&[FILE, crate::codegen::BACKEND, crate::program::OUTPUT])
+                .sets(&[COMPILE])
+                .examples(&[
+                    Example { line: "main.vun", about: "build the program, named after its file" },
+                    Example {
+                        line: "main.vun -o hello --target linux.x86_64",
+                        about: "cross-compile to a path",
+                    },
+                ]),
+            Command::run("run", "build the program a root file exports and run it", run)
+                .aliases(&["r"])
+                .params(&[FILE, ARGS, crate::codegen::BACKEND, crate::program::OUTPUT])
+                .sets(&[COMPILE])
+                .examples(&[Example {
+                    line: "main.vun -- --verbose input.txt",
+                    about: "pass arguments to the program",
+                }]),
+            CHECK,
             explain::EXPLAIN,
-            Command::group(
-                pkg::GROUP,
-                "dependencies, releases and API diffs",
-                &[
-                    Command {
-                        name: "add",
-                        about: "declare a dependency, fetching an archive to learn its hash",
-                        params: &[pkg::SOURCE, pkg::NAME, pkg::VERSION],
-                        action: Action::Run(pkg::add),
-                    },
-                    Command {
-                        name: "update",
-                        about: "raise dependencies to the newest release their indexes list",
-                        params: &[],
-                        action: Action::Run(pkg::update),
-                    },
-                    pkg::FETCH,
-                    Command::planned("vendor", "copy dependencies into vendor/"),
-                    Command {
-                        name: "pack",
-                        about: "write the package's archive",
-                        params: &[pkg::OUT],
-                        action: Action::Run(pkg::pack),
-                    },
-                    Command::planned("why", "explain why a package is in the graph"),
-                    Command::planned("tag", "release workspace members"),
-                    Command::planned("api", "print the public API, or diff it against a release"),
-                ],
-            ),
-            Command::group(
-                "tool",
-                "C bindings, C headers, register packages",
-                &[
-                    tool::BIND,
-                    Command::planned("header", "emit a C header for a library"),
-                    Command::planned("svd", "generate a register package from an SVD file"),
-                ],
-            ),
-            Command::group(
-                "target",
-                "flash, attach to and debug devices",
-                &[
-                    Command::planned("flash", "write a program to a device"),
-                    Command::planned("attach", "stream logs from a device"),
-                    Command::planned("debug", "run a GDB server for a device"),
-                ],
-            ),
-            Command::group(
-                toolchain::GROUP,
-                "installed toolchains, and this one's backends and linkers",
-                toolchain::COMMANDS,
-            ),
+            Command::group(pkg::GROUP, "dependencies and releases", pkg::COMMANDS),
+            Command::group("tool", "bindings to other languages", &[tool::BIND]),
+            Command::group(toolchain::GROUP, "this toolchain's backends and linkers", toolchain::COMMANDS),
             Command::group(cache::GROUP, "the shared store of fetched packages", cache::COMMANDS),
-            Command::group(
-                "util",
-                "infrequently used commands",
-                &[
-                    Command::planned("lsp", "run the language server"),
-                    Command::planned("completion", "print a completion script for a shell"),
-                ],
-            ),
-            Command::group(debug::GROUP, "low-level commands for developing the compiler", debug::COMMANDS),
-        ]),
-    },
+            Command::group("util", "infrequently used commands", &[util::COMPLETION]),
+            Command::group(debug::GROUP, "low-level commands for developing the compiler", debug::COMMANDS)
+                .sets(&[COMPILE]),
+        ],
+    ),
 };
 
-/// Builds the program `args` names, or reports why it cannot.
-fn built(session: &mut Session, args: &Args) -> Option<std::path::PathBuf> {
-    let path = args.value(&FILE).expect("positional parameters are present when a command runs");
-    let file = session.load(Path::new(path))?;
-    let backend = args.value(&crate::codegen::BACKEND);
-    session.build(file, backend, args.value(&crate::program::OUTPUT).map(Path::new)).ok()
-}
+const CHECK: Command<Session> = Command::run("check", "analyze without generating code", check)
+    .aliases(&["c"])
+    .params(&[FILE])
+    .sets(&[COMPILE]);
+/// Where `vun check` is below the root, for messages that suggest it.
+pub(crate) const CHECK_PATH: [&str; 1] = [CHECK.name];
 
-#[expect(clippy::unnecessary_wraps, reason = "every command has the `Run` signature")]
-fn build(session: &mut Session, args: &Args, _: &mut dyn Write) -> io::Result<Outcome> {
-    built(session, args);
-    Ok(session.outcome())
-}
+/// The options of every command that compiles a file.
+pub(crate) const COMPILE: OptionSet = OptionSet {
+    title: "Compile options",
+    params: &[target::TARGET, codegen::RELEASE, formats::DIAGNOSTICS, TIMINGS],
+};
 
-fn run(session: &mut Session, args: &Args, _: &mut dyn Write) -> io::Result<Outcome> {
-    let Some(program) = built(session, args) else { return Ok(session.outcome()) };
-    let status = std::process::Command::new(&program).status()?;
-    // A program ended by a signal has no status to pass on.
-    Ok(status.code().and_then(|c| u8::try_from(c).ok()).map_or(Outcome::Failure, Outcome::Exited))
-}
-
+pub(crate) const FILE: Param =
+    Param::positional("file").about("the root source file").values(Values::Path(PathKind::File));
+const ARGS: Param = Param::positional("args").arity(Arity::Many).about("arguments passed to the program");
 /// Reports at exit where the time went, as `VUN_TIMINGS=1` does.
-const TIMINGS: Param = Param {
-    name: "timings",
-    short: None,
-    about: "report the time of each stage and query at exit",
-    kind: ParamKind::Flag,
-};
+const TIMINGS: Param = Param::flag("timings").about("report the time of each stage and query at exit");
 
-/// Applies the options every command takes.
+/// Applies the options of the command.
 fn configure(session: &mut Session, args: &Args) -> Result<(), Box<vun_diag::Diagnostic>> {
     if args.flag(&TIMINGS) {
         vun_trace::Timings::enable();
     }
     formats::configure(session, args)?;
+    codegen::configure(session, args);
     target::configure(session, args)
 }
 
-pub(crate) const FILE: Param =
-    Param { name: "file", short: None, about: "the source file to read", kind: ParamKind::Positional };
-
-#[expect(clippy::unnecessary_wraps, reason = "every command has the `Run` signature")]
-fn check(session: &mut Session, args: &Args, _: &mut dyn Write) -> io::Result<Outcome> {
-    let path = args.value(&FILE).expect("positional parameters are present when a command runs");
-    if let Some(file) = session.load(Path::new(path)) {
-        session.check(file);
-    }
-    Ok(session.outcome())
-}
-
-mod cache;
-mod debug;
-mod explain;
-mod pkg;
-mod tool;
-mod toolchain;
-
-pub(crate) use pkg::FETCH_PATH;
-#[cfg(test)]
-mod tests;
-
 impl Session {
+    /// Reads the file `args` names, once its project is ready: dependencies fetched and the
+    /// lockfile written, as cargo does before compiling.
+    fn root(&mut self, args: &Args, shell: &mut Shell<'_>) -> Option<FileId> {
+        let path =
+            Path::new(args.value(&FILE).expect("positional parameters are present when a command runs"));
+        for (name, hash, fetched) in self.prepare(path) {
+            fetched.report(name, hash, shell);
+        }
+        if self.failed() {
+            return None;
+        }
+        self.load(path)
+    }
+
+    /// Builds the program `args` names, reporting how it went.
+    fn built(&mut self, args: &Args, shell: &mut Shell<'_>) -> Option<PathBuf> {
+        let started = Instant::now();
+        let path = args.value(&FILE).expect("positional parameters are present when a command runs");
+        shell.status(status::BUILDING, Text::of(Style::Strong, path.to_owned()));
+        let output = args.value(&crate::program::OUTPUT).map(Path::new);
+        let built = self.root(args, shell).and_then(|file| self.build(file, output).ok());
+        let subject = built.as_ref().map_or_else(|| path.to_owned(), |p| p.display().to_string());
+        self.conclude(shell, Text::of(Style::Strong, subject), started);
+        built
+    }
+
     /// How a command that reported its failures as diagnostics ends.
     #[must_use]
     pub fn outcome(&self) -> Outcome {
         if self.failed() { Outcome::Failure } else { Outcome::Success }
     }
 }
+
+#[expect(clippy::unnecessary_wraps, reason = "every command has the `Run` signature")]
+fn build(session: &mut Session, args: &Args, shell: &mut Shell<'_>) -> io::Result<Outcome> {
+    session.built(args, shell);
+    Ok(session.outcome())
+}
+
+fn run(session: &mut Session, args: &Args, shell: &mut Shell<'_>) -> io::Result<Outcome> {
+    let Some(program) = session.built(args, shell) else { return Ok(session.outcome()) };
+    shell.status(status::RUNNING, Text::of(Style::Strong, program.display().to_string()));
+    let status = std::process::Command::new(&program).args(args.values(&ARGS)).status()?;
+    // A program ended by a signal has no status to pass on.
+    Ok(status.code().and_then(|c| u8::try_from(c).ok()).map_or(Outcome::Failure, Outcome::Exited))
+}
+
+#[expect(clippy::unnecessary_wraps, reason = "every command has the `Run` signature")]
+fn check(session: &mut Session, args: &Args, shell: &mut Shell<'_>) -> io::Result<Outcome> {
+    let started = Instant::now();
+    let path = args.value(&FILE).expect("positional parameters are present when a command runs");
+    shell.status(status::CHECKING, Text::of(Style::Strong, path.to_owned()));
+    if let Some(file) = session.root(args, shell) {
+        session.check(file);
+    }
+    session.conclude(shell, Text::of(Style::Strong, path.to_owned()), started);
+    Ok(session.outcome())
+}
+
+impl Context for Session {
+    fn refused(&mut self, diagnostic: vun_diag::Diagnostic) {
+        self.diag.error(diagnostic);
+    }
+
+    fn finish(&mut self, shell: &mut Shell<'_>) {
+        self.emit(shell);
+        self.save();
+        if let Some(report) = vun_trace::Timings::report() {
+            let _ = shell.err.print(&report.text());
+        }
+    }
+}
+
+mod cache;
+mod debug;
+mod explain;
+mod pkg;
+mod status;
+mod tool;
+mod toolchain;
+mod util;
+
+#[cfg(test)]
+mod tests;

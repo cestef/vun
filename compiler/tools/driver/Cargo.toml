@@ -10,19 +10,19 @@ publish.workspace = true
 workspace = true
 
 [features]
-default = ["backend-c", "backend-baseline", "backend-cranelift", "backend-qbe", "backend-llvm", "backend-process", "link-wild", "link-mold", "link-lld", "link-gnu", "link-msvc", "link-process"]
+default = ["backend-c", "backend-native", "backend-cranelift", "backend-qbe", "backend-llvm", "backend-external", "link-wild", "link-mold", "link-lld", "link-gnu", "link-msvc", "link-external"]
 backend-c = ["dep:vun-backend-c"]
-backend-baseline = ["dep:vun-backend-baseline"]
+backend-native = ["dep:vun-backend-native"]
 backend-cranelift = ["dep:vun-backend-cranelift"]
 backend-qbe = ["dep:vun-backend-qbe"]
 backend-llvm = ["dep:vun-backend-llvm"]
-backend-process = ["dep:vun-backend-process"]
+backend-external = ["dep:vun-backend-external"]
 link-wild = ["dep:vun-link-wild"]
 link-mold = ["dep:vun-link-mold"]
 link-lld = ["dep:vun-link-lld"]
 link-gnu = ["dep:vun-link-gnu"]
 link-msvc = ["dep:vun-link-msvc"]
-link-process = ["dep:vun-link-process"]
+link-external = ["dep:vun-link-external"]
 
 [dependencies]
 vun-pkg.workspace = true
@@ -33,6 +33,7 @@ vun-par.workspace = true
 vun-suggest.workspace = true
 vun-hash.workspace = true
 vun-command.workspace = true
+vun-term.workspace = true
 vun-trace.workspace = true
 vun-span.workspace = true
 vun-origin.workspace = true
@@ -60,17 +61,17 @@ vun-render-short.workspace = true
 vun-render-annotate.workspace = true
 vun-render-ariadne.workspace = true
 vun-backend-c = { workspace = true, optional = true }
-vun-backend-baseline = { workspace = true, optional = true }
+vun-backend-native = { workspace = true, optional = true }
 vun-backend-cranelift = { workspace = true, optional = true }
 vun-backend-qbe = { workspace = true, optional = true }
 vun-backend-llvm = { workspace = true, optional = true }
-vun-backend-process = { workspace = true, optional = true }
+vun-backend-external = { workspace = true, optional = true }
 vun-link-wild = { workspace = true, optional = true }
 vun-link-mold = { workspace = true, optional = true }
 vun-link-lld = { workspace = true, optional = true }
 vun-link-gnu = { workspace = true, optional = true }
 vun-link-msvc = { workspace = true, optional = true }
-vun-link-process = { workspace = true, optional = true }
+vun-link-external = { workspace = true, optional = true }
 
 [dev-dependencies]
 vun-harness.workspace = true

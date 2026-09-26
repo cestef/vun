@@ -68,6 +68,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "bitvec"
+version = "1.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ddcec3d12c579d40898fe0a9a358a803c23e9c52ca3c425707f81c9436211837"
+dependencies = [
+ "funty",
+ "radium",
+ "tap",
+ "wyz",
+]
+
+[[package]]
 name = "blake3"
 version = "1.8.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -197,6 +209,12 @@ name = "foldhash"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "77ce24cb58228fbb8aa041425bb1050850ac19177686ea6e0f41a70416f56fdb"
+
+[[package]]
+name = "funty"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e6d5a32815ae3f33302d95fdcb2ce17862f8c65363dcfd29360480ba1001fc9c"
 
 [[package]]
 name = "getrandom"
@@ -361,6 +379,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "radium"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dc33ff2d4973d518d823d61aa239014831e521c75da58e3df4840d3f47749d09"
+
+[[package]]
 name = "ring"
 version = "0.17.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -460,6 +484,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "tap"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "55937e1799185b12863d447f42597ed69d9928686b8d88a1df17376a097d8369"
+
+[[package]]
 name = "tracing"
 version = "0.1.44"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -511,6 +541,33 @@ dependencies = [
 ]
 
 [[package]]
+name = "vun-asm"
+version = "0.0.0"
+dependencies = [
+ "vun-object",
+]
+
+[[package]]
+name = "vun-asm-arm64"
+version = "0.0.0"
+dependencies = [
+ "vun-asm",
+ "vun-object",
+ "yaxpeax-arch",
+ "yaxpeax-arm",
+]
+
+[[package]]
+name = "vun-asm-x86_64"
+version = "0.0.0"
+dependencies = [
+ "vun-asm",
+ "vun-object",
+ "yaxpeax-arch",
+ "yaxpeax-x86",
+]
+
+[[package]]
 name = "vun-backend"
 version = "0.0.0"
 dependencies = [
@@ -530,6 +587,7 @@ dependencies = [
  "vun-index",
  "vun-intern",
  "vun-lir",
+ "vun-object",
  "vun-origin",
  "vun-par",
  "vun-span",
@@ -564,6 +622,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "vun-backend-external"
+version = "0.0.0"
+dependencies = [
+ "vun-backend",
+ "vun-diag",
+ "vun-lir",
+ "vun-target",
+]
+
+[[package]]
 name = "vun-backend-llvm"
 version = "0.0.0"
 dependencies = [
@@ -574,13 +642,23 @@ dependencies = [
 ]
 
 [[package]]
-name = "vun-backend-process"
+name = "vun-backend-native"
 version = "0.0.0"
 dependencies = [
+ "vun-asm",
+ "vun-asm-x86_64",
  "vun-backend",
+ "vun-codegen",
  "vun-diag",
+ "vun-index",
+ "vun-intern",
  "vun-lir",
+ "vun-object",
+ "vun-origin",
+ "vun-par",
+ "vun-span",
  "vun-target",
+ "vun-trace",
 ]
 
 [[package]]
@@ -655,11 +733,27 @@ name = "vun-codec-derive"
 version = "0.0.0"
 
 [[package]]
+name = "vun-codegen"
+version = "0.0.0"
+dependencies = [
+ "vun-asm",
+ "vun-backend",
+ "vun-index",
+ "vun-lir",
+ "vun-origin",
+ "vun-trace",
+]
+
+[[package]]
 name = "vun-command"
 version = "0.0.0"
 dependencies = [
  "vun-diag",
+ "vun-origin",
+ "vun-render-short",
+ "vun-span",
  "vun-suggest",
+ "vun-term",
 ]
 
 [[package]]
@@ -678,6 +772,7 @@ dependencies = [
  "vun-codec",
  "vun-origin",
  "vun-span",
+ "vun-term",
 ]
 
 [[package]]
@@ -688,8 +783,8 @@ dependencies = [
  "vun-backend-baseline",
  "vun-backend-c",
  "vun-backend-cranelift",
+ "vun-backend-external",
  "vun-backend-llvm",
- "vun-backend-process",
  "vun-backend-qbe",
  "vun-bind",
  "vun-build",
@@ -706,11 +801,11 @@ dependencies = [
  "vun-interp",
  "vun-items",
  "vun-link",
+ "vun-link-external",
  "vun-link-gnu",
  "vun-link-lld",
  "vun-link-mold",
  "vun-link-msvc",
- "vun-link-process",
  "vun-link-wild",
  "vun-lir",
  "vun-lir-passes",
@@ -729,6 +824,7 @@ dependencies = [
  "vun-suggest",
  "vun-syntax",
  "vun-target",
+ "vun-term",
  "vun-tool",
  "vun-trace",
 ]
@@ -758,9 +854,9 @@ dependencies = [
  "vun-fs",
  "vun-harness",
  "vun-origin",
- "vun-render-short",
  "vun-span",
  "vun-syntax",
+ "vun-term",
 ]
 
 [[package]]
@@ -873,6 +969,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "vun-link-external"
+version = "0.0.0"
+dependencies = [
+ "vun-diag",
+ "vun-link",
+ "vun-target",
+]
+
+[[package]]
 name = "vun-link-gnu"
 version = "0.0.0"
 dependencies = [
@@ -906,15 +1011,6 @@ dependencies = [
 
 [[package]]
 name = "vun-link-msvc"
-version = "0.0.0"
-dependencies = [
- "vun-diag",
- "vun-link",
- "vun-target",
-]
-
-[[package]]
-name = "vun-link-process"
 version = "0.0.0"
 dependencies = [
  "vun-diag",
@@ -1021,6 +1117,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "vun-object"
+version = "0.0.0"
+dependencies = [
+ "vun-index",
+]
+
+[[package]]
 name = "vun-origin"
 version = "0.0.0"
 dependencies = [
@@ -1093,6 +1196,7 @@ dependencies = [
  "vun-diag",
  "vun-origin",
  "vun-span",
+ "vun-term",
 ]
 
 [[package]]
@@ -1130,6 +1234,7 @@ dependencies = [
  "vun-diag",
  "vun-origin",
  "vun-span",
+ "vun-term",
 ]
 
 [[package]]
@@ -1191,6 +1296,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "vun-term"
+version = "0.0.0"
+dependencies = [
+ "anstyle",
+]
+
+[[package]]
 name = "vun-tool"
 version = "0.0.0"
 dependencies = [
@@ -1203,6 +1315,7 @@ version = "0.0.0"
 dependencies = [
  "tracing",
  "vun-par",
+ "vun-term",
 ]
 
 [[package]]
@@ -1215,10 +1328,9 @@ dependencies = [
  "vun-fs",
  "vun-harness",
  "vun-json",
- "vun-origin",
  "vun-par",
- "vun-render-short",
  "vun-span",
+ "vun-term",
 ]
 
 [[package]]
@@ -1334,10 +1446,49 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "589f6da84c646204747d1270a2a5661ea66ed1cced2631d546fdfb155959f9ec"
 
 [[package]]
+name = "wyz"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "05f360fc0b24296329c78fda852a1e9ae82de9cf7b27dae4b7f62f118f77b9ed"
+dependencies = [
+ "tap",
+]
+
+[[package]]
 name = "yansi"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cfe53a6657fd280eaa890a3bc59152892ffa3e30101319d168b781ed6529b049"
+
+[[package]]
+name = "yaxpeax-arch"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "36274fcc5403da2a7636ffda4d02eca12a1b2b8267b9d2e04447bd2ccfc72082"
+dependencies = [
+ "num-traits",
+]
+
+[[package]]
+name = "yaxpeax-arm"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "79f8d9808ad0b7e434882c66e50704138e7c0bdf3408a9f3159c50603dc3168c"
+dependencies = [
+ "bitvec",
+ "yaxpeax-arch",
+]
+
+[[package]]
+name = "yaxpeax-x86"
+version = "2.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c06364048cba946919eb6019ce69d6f7f9ded54a9554fc73521d77bd3abd9a85"
+dependencies = [
+ "cfg-if",
+ "num-traits",
+ "yaxpeax-arch",
+]
 
 [[package]]
 name = "zeroize"

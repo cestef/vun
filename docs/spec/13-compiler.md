@@ -531,8 +531,13 @@ Rules:
   when off, timing an activity costs one relaxed load.
 - There is one frontend: the LSP runs on the same query engine as the compiler.
 - Command lines are declared, never matched by hand: `vun-command` holds command trees (names,
-  typed parameters, subcommands, actions) as data, and parses, renders help and reports usage
-  errors as diagnostics, with suggestions, from them. Options declared on a group apply to every
-  command below it (`vun --format short debug cst f.vun` and `vun debug cst f.vun --format short`
-  are one request), and a program's `configure` step applies them before the command runs. `vun-driver` declares the `vun` tree;
-  `xtask` declares its own with the same crate.
+  aliases, typed parameters with their values and variables, shared option sets, examples,
+  subcommands, actions) as data, and parses, validates, renders help and completion scripts, and
+  reports usage errors as diagnostics with suggestions, from them. Options declared on a group
+  or in a set apply to every command below it (`vun debug --diagnostics short cst f.vun` and `vun
+  debug cst f.vun --diagnostics short` are one request), and a program's `configure` step applies
+  them before the command runs. `vun-driver` declares the `vun` tree; `xtask` and `generate`
+  declare their own with the same crate, and each binary's `main` is `Program::main`.
+- Terminal output goes through `vun-term`: text is built from pieces naming their `Style`, one
+  palette maps styles to colors, tables align columns, and a `Shell` holds standard output
+  (results) and standard error (status lines, diagnostics), each colored as `--color` decides.

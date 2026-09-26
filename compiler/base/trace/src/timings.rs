@@ -13,6 +13,7 @@ use std::sync::{Arc, LazyLock, OnceLock};
 use std::time::{Duration, Instant};
 
 use vun_par::Map;
+use vun_term::{Column, Style, Table, Text};
 
 /// What is timed: its kind, and its name among those of its kind.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -161,8 +162,7 @@ struct Millis(Duration);
 
 impl fmt::Display for Millis {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let text = format!("{:.2} ms", self.0.as_secs_f64() * 1e3);
-        f.pad(&text)
+        write!(f, "{:.2} ms", self.0.as_secs_f64() * 1e3)
     }
 }
 
@@ -175,22 +175,39 @@ impl fmt::Display for Kind {
     }
 }
 
+/// The columns of the report.
+const COLUMNS: [Column; 4] =
+    [Column::right("own"), Column::right("total"), Column::right("runs"), Column::left("activity")];
+
+impl Report {
+    /// The report: the wall time and the work, then a row per activity, most own time first.
+    #[must_use]
+    pub fn text(&self) -> Text {
+        let work: Duration = self.rows.iter().map(|r| r.own).sum();
+        let title = Text::of(Style::Heading, "Timings:")
+            .plain(" ")
+            .styled(Style::Strong, Millis(self.wall).to_string());
+        let title = title
+            .plain(" wall, ")
+            .styled(Style::Strong, Millis(work).to_string())
+            .plain(" of work over every thread");
+        let rows = self.rows.iter().map(|row| {
+            let Row { activity, runs, own, total } = row;
+            let name =
+                Text::of(Style::Dim, format!("{} ", activity.kind)).styled(Style::Literal, activity.name);
+            [
+                Text::from(Millis(*own).to_string()),
+                Text::from(Millis(*total).to_string()),
+                Text::from(runs.to_string()),
+                name,
+            ]
+        });
+        title.newline().append(Table::new(&COLUMNS).rows(rows).text())
+    }
+}
+
 impl fmt::Display for Report {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let work: Duration = self.rows.iter().map(|r| r.own).sum();
-        writeln!(f, "timings: {} wall, {} of work over every thread", Millis(self.wall), Millis(work))?;
-        writeln!(f, "{:>11} {:>11} {:>8}  activity", "own", "total", "runs")?;
-        for row in &self.rows {
-            let Row { activity, runs, own, total } = row;
-            writeln!(
-                f,
-                "{:>11} {:>11} {runs:>8}  {} {}",
-                Millis(*own),
-                Millis(*total),
-                activity.kind,
-                activity.name
-            )?;
-        }
-        Ok(())
+        self.text().fmt(f)
     }
 }

@@ -1,83 +1,121 @@
-//! Help pages generated from the command tree.
+//! Help pages generated from the command tree, laid out and styled as cargo's.
 
-use std::fmt::Write;
+use vun_term::{Column, Style, Table, Text};
 
 use crate::parse::LONG;
-use crate::{Action, HELP_COMMAND, Param, ParamKind, Program, Selected};
+use crate::{Arity, Detail, HELP_COMMAND, Param, ParamKind, Selected};
 
-/// Marks commands that are declared but not implemented.
-const PLANNED: &str = "(planned)";
+/// The two columns of a help section: what to write, and what it does.
+const SECTION: [Column; 2] = [Column::left(""), Column::left("")];
+/// The title of the usage lines, which the lines below it are aligned past.
+const USAGE: &str = "Usage: ";
+/// The indentation of a section's rows.
+const INDENT: usize = 2;
 
 impl<Cx> Selected<'_, Cx> {
-    /// The help page of the last selected command.
+    /// The help page of the last selected command; the long page adds aliases, the values and
+    /// environment variables of parameters, and examples.
     #[must_use]
-    pub fn help(&self, program: &Program<Cx>) -> String {
+    pub fn help(&self, detail: Detail) -> Text {
         let command = self.last();
-        let mut page = Page(String::new());
-        if self.is_root() {
-            let _ = writeln!(page.0, "{} {}", command.name, program.version);
-        }
-        let _ = writeln!(page.0, "{}\n\nusage: {}", command.about, self.usage());
+        let usage = Text::of(Style::Heading, USAGE);
+        let mut page =
+            Text::new().plain(command.about).newline().newline().append(usage).append(self.usage());
         if !command.children().is_empty() {
-            let _ = writeln!(page.0, "       {} {HELP_COMMAND} <command>", self.invocation());
+            let also = Text::of(Style::Literal, format!("{} {HELP_COMMAND}", self.invocation()));
+            page = page
+                .newline()
+                .pad(USAGE.len())
+                .append(also)
+                .plain(" ")
+                .styled(Style::Placeholder, "<command>");
         }
+        page = page.newline();
 
+        let long = detail == Detail::Long;
         let children = command.children().iter().map(|c| {
-            let about = match c.action {
-                Action::Planned => format!("{} {PLANNED}", c.about),
-                Action::Run(_) | Action::Group(_) => c.about.to_owned(),
-            };
-            (c.name.to_owned(), about)
+            let shown = if long { c.aliases } else { &[] };
+            let names =
+                std::iter::once(c.name).chain(shown.iter().copied()).map(|n| Text::of(Style::Literal, n));
+            [Text::join(names, ", "), Text::from(c.about)]
         });
-        page.section("commands", children);
-        let arguments = command.positionals().map(|p| (format!("<{}>", p.name), p.about.to_owned()));
-        page.section("arguments", arguments);
-        let options = self.options().map(|p| (p.spelling(), p.about.to_owned()));
-        page.section("options", options);
-        page.0
+        let arguments = command.positionals().flat_map(|p| p.rows(p.placeholder(), detail));
+        let options = self.sections().into_iter().map(|(title, params)| {
+            (title, params.into_iter().flat_map(|p| p.rows(p.spelling(), detail)).collect())
+        });
+        let examples = command.examples.iter().filter(|_| long).map(|e| {
+            [
+                Text::of(Style::Literal, format!("{} {}", self.invocation(), e.line)),
+                Text::of(Style::Dim, e.about),
+            ]
+        });
+        let sections: Vec<(&str, Vec<[Text; 2]>)> =
+            [("Commands", children.collect()), ("Arguments", arguments.collect())]
+                .into_iter()
+                .chain(options)
+                .chain([("Examples", examples.collect())])
+                .collect();
+        sections.into_iter().filter(|(_, rows)| !rows.is_empty()).fold(page, |page, (title, rows)| {
+            let table = Table::new(&SECTION).indent(INDENT).rows(rows);
+            page.newline().styled(Style::Heading, format!("{title}:")).newline().append(table.text())
+        })
     }
 
-    /// The usage line of the last selected command.
-    pub(crate) fn usage(&self) -> String {
+    /// The usage line of the last selected command: `vun build [options] <file>`.
+    #[must_use]
+    pub fn usage(&self) -> Text {
         let command = self.last();
-        let mut line = self.invocation();
+        let mut line = Text::of(Style::Literal, self.invocation());
         if !command.children().is_empty() {
-            line.push_str(" <command>");
+            line = line.plain(" ").styled(Style::Placeholder, "<command>");
         }
-        line.push_str(" [options]");
-        for p in command.positionals() {
-            let _ = write!(line, " <{}>", p.name);
-        }
-        line
+        line = line.plain(" ").styled(Style::Placeholder, "[options]");
+        command.positionals().fold(line, |line, p| line.plain(" ").append(p.placeholder()))
     }
 }
 
 impl Param {
     /// How it is written in help: its short form, if any, then its long form.
-    fn spelling(&self) -> String {
-        let short = self.short.map(|c| format!("-{c}, ")).unwrap_or_default();
-        format!("{short}{}", self.long())
+    fn spelling(&self) -> Text {
+        let short = self.short.map(|c| Text::of(Style::Literal, format!("-{c}")).plain(", "));
+        let long = Text::of(Style::Literal, format!("{LONG}{}", self.name));
+        let value = self.takes_value().then(|| Text::new().plain(" ").append(self.placeholder()));
+        short.unwrap_or_default().append(long).append(value.unwrap_or_default())
+    }
+
+    /// What stands for its values: `<name>`, `[name]` when optional, `[name]...` when many.
+    fn placeholder(&self) -> Text {
+        let written = match self.kind {
+            ParamKind::Positional(Arity::Optional) => format!("[{}]", self.name),
+            ParamKind::Positional(Arity::Many) => format!("[{}]...", self.name),
+            _ => format!("<{}>", self.name),
+        };
+        Text::of(Style::Placeholder, written)
+    }
+
+    /// Its rows in a section: how it is written and what it does, then in the long page a row
+    /// under the description for its values and environment variable.
+    fn rows(&self, written: Text, detail: Detail) -> Vec<[Text; 2]> {
+        let row = [written, Text::from(self.about)];
+        let values = self.choices().map(|names| format!("[values: {}]", names.join(", ")));
+        let env = self.env.map(|name| format!("[env: {name}]"));
+        let extras: Vec<String> = [values, env].into_iter().flatten().collect();
+        if detail == Detail::Short || extras.is_empty() {
+            return vec![row];
+        }
+        vec![row, [Text::new(), Text::of(Style::Dim, extras.join(" "))]]
+    }
+
+    /// How messages name it: `--name`, or `<name>` for a positional.
+    #[must_use]
+    pub fn written(&self) -> String {
+        if self.is_positional() { format!("<{}>", self.name) } else { format!("{LONG}{}", self.name) }
     }
 
     /// How it is written in full: `--name`, and `--name <name>` when it takes a value.
     #[must_use]
     pub fn long(&self) -> String {
-        let value = if self.kind == ParamKind::Option { format!(" <{}>", self.name) } else { String::new() };
+        let value = if self.takes_value() { format!(" <{}>", self.name) } else { String::new() };
         format!("{LONG}{}{value}", self.name)
-    }
-}
-
-/// A help page being written.
-struct Page(String);
-
-impl Page {
-    /// A titled two-column table, omitted when empty.
-    fn section(&mut self, title: &str, rows: impl Iterator<Item = (String, String)>) {
-        let rows: Vec<_> = rows.collect();
-        let Some(width) = rows.iter().map(|(left, _)| left.len()).max() else { return };
-        let _ = writeln!(self.0, "\n{title}:");
-        for (left, right) in rows {
-            let _ = writeln!(self.0, "  {left:<width$}  {right}");
-        }
     }
 }

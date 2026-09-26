@@ -11,6 +11,7 @@ use vun_origin::OriginId;
 use vun_sema::layout::Shapes;
 use vun_sema::member::Members;
 use vun_span::SourceMap;
+use vun_term::Shell;
 
 use super::super::FILE;
 use crate::Session;
@@ -33,7 +34,13 @@ pub(super) enum Stage {
 
 impl Stage {
     /// Prints this stage of the file `args` names.
-    pub(super) fn dump(self, session: &mut Session, args: &Args, out: &mut dyn Write) -> io::Result<Outcome> {
+    pub(super) fn dump(
+        self,
+        session: &mut Session,
+        args: &Args,
+        shell: &mut Shell<'_>,
+    ) -> io::Result<Outcome> {
+        let out = &mut shell.out;
         let path = args.value(&FILE).expect("positional parameters are present when a command runs");
         let Some(file) = session.load(Path::new(path)) else { return Ok(Outcome::Failure) };
         if let Self::Manifest = self {
@@ -100,8 +107,8 @@ impl Stage {
                     }
                 }
             }
-            Self::Code => session.dump_code(file, args.value(&crate::codegen::BACKEND), out)?,
-            Self::Frames => session.dump_frames(file, args.value(&crate::codegen::BACKEND), out)?,
+            Self::Code => session.dump_code(file, out)?,
+            Self::Frames => session.dump_frames(file, out)?,
             Self::Program => {
                 let program = session.program(file);
                 for &(at, symbol) in &program.exports {

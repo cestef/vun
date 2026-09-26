@@ -78,6 +78,12 @@ mod field {
 }
 
 impl Lock {
+    /// Whether it records nothing: no version selected, nothing replaced.
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.entries.is_empty() && self.replaced.is_empty()
+    }
+
     /// The lock of `entries`, in their canonical order.
     #[must_use]
     pub fn new(mut entries: Vec<Locked>) -> Self {

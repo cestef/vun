@@ -9,7 +9,7 @@ describes each argument.
 
 ```console
 $ vun check
-error[cli.missing_argument]: `vun check` needs `<file>`: the source file to read
+error[cli.missing_argument]: `vun check` needs `<file>`: the root source file
   │
   ╰ help: usage: `vun check [options] <file>`
 ```

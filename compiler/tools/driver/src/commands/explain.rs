@@ -1,26 +1,24 @@
 //! `vun explain <id>`: the explanation page of a diagnostic, offline (spec 10, section 1).
 
-use std::io::{self, Write};
+use std::io;
 use std::path::Path;
 
-use vun_command::{Action, Args, Command, Outcome, Param, ParamKind};
+use vun_command::{Args, Command, Example, Outcome, Param};
 use vun_diag::{ChildKind, Diagnostic, Msg, errors};
 use vun_suggest::closest;
+use vun_term::{Shell, Text};
 
 use crate::Session;
 use crate::packages::LIBRARY;
 
-const ID: Param = Param {
-    name: "id",
-    short: None,
-    about: "a diagnostic, such as names.duplicate or lang.errors.names.duplicate",
-    kind: ParamKind::Positional,
-};
+const ID: Param =
+    Param::positional("id").about("a diagnostic, such as names.duplicate or lang.errors.names.duplicate");
 
-pub(super) const EXPLAIN: Command<Session> =
-    Command { name: "explain", about: "explain a diagnostic", params: &[ID], action: Action::Run(explain) };
+pub(super) const EXPLAIN: Command<Session> = Command::run("explain", "explain a diagnostic", explain)
+    .params(&[ID])
+    .examples(&[Example { line: "int.does_not_fit", about: "the page of a diagnostic, by its id" }]);
 
-fn explain(session: &mut Session, args: &Args, out: &mut dyn Write) -> io::Result<Outcome> {
+fn explain(session: &mut Session, args: &Args, shell: &mut Shell<'_>) -> io::Result<Outcome> {
     let id = args.value(&ID).expect("positional parameters are present when a command runs");
     let found = errors::EXPLANATIONS.iter().find(|(d, _)| d.to_string() == id || d.0 == id);
     let Some((_, page)) = found else {
@@ -35,6 +33,6 @@ fn explain(session: &mut Session, args: &Args, out: &mut dyn Write) -> io::Resul
         return Ok(Outcome::Usage);
     };
     let Some(text) = session.read(&Path::new(LIBRARY).join(page)) else { return Ok(Outcome::Failure) };
-    out.write_all(text.as_bytes())?;
+    shell.page(&Text::markdown(&text))?;
     Ok(Outcome::Success)
 }

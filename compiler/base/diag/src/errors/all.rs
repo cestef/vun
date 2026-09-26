@@ -59,6 +59,8 @@ pub const ALL: &[DiagId] = &[
     BORROW_IN_FREE_VALUE,
     PANIC_NEVER_VIOLATED,
     BACKEND_UNAVAILABLE,
+    BACKEND_UNSUPPORTED,
+    BACKEND_UNCHOSEN,
     BACKEND_LACKS,
     BACKEND_TOOL,
     BACKEND_UNLOWERED,
@@ -95,7 +97,6 @@ pub const ALL: &[DiagId] = &[
     CLI_UNKNOWN_OPTION,
     CLI_MISSING_VALUE,
     CLI_INVALID_VALUE,
-    CLI_UNAVAILABLE_COMMAND,
 ];
 /// The explanation page of each diagnostic, relative to the library.
 pub const EXPLANATIONS: &[(DiagId, &str)] = &[
@@ -150,6 +151,8 @@ pub const EXPLANATIONS: &[(DiagId, &str)] = &[
     (BORROW_IN_FREE_VALUE, "lang/lang/errors/borrow/in_free_value.md"),
     (PANIC_NEVER_VIOLATED, "lang/lang/errors/panic/never_violated.md"),
     (BACKEND_UNAVAILABLE, "lang/lang/errors/backend/unavailable.md"),
+    (BACKEND_UNSUPPORTED, "lang/lang/errors/backend/unsupported.md"),
+    (BACKEND_UNCHOSEN, "lang/lang/errors/backend/unchosen.md"),
     (BACKEND_LACKS, "lang/lang/errors/backend/lacks.md"),
     (BACKEND_TOOL, "lang/lang/errors/backend/tool.md"),
     (BACKEND_UNLOWERED, "lang/lang/errors/backend/unlowered.md"),
@@ -186,5 +189,4 @@ pub const EXPLANATIONS: &[(DiagId, &str)] = &[
     (CLI_UNKNOWN_OPTION, "lang/lang/errors/cli/unknown_option.md"),
     (CLI_MISSING_VALUE, "lang/lang/errors/cli/missing_value.md"),
     (CLI_INVALID_VALUE, "lang/lang/errors/cli/invalid_value.md"),
-    (CLI_UNAVAILABLE_COMMAND, "lang/lang/errors/cli/unavailable_command.md"),
 ];

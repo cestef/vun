@@ -149,8 +149,9 @@ build := (b: &mut std.build.Build) {
   cache gc` keeps every entry a registered lockfile records, removes the rest and all staging, and
   forgets projects whose lockfile is gone; `vun cache list` shows each entry's size, label and
   whether a lockfile keeps it.
-- **Fetching.** `vun pkg fetch` walks the dependency graph from the project and stores every
-  archive dependency the store lacks. Mirrors are tried in order; an archive is unpacked under
+- **Fetching** is implicit: before compiling (`vun build`, `vun run`, `vun check`) and after
+  `vun pkg update`, the dependency graph is walked from the project and every archive dependency
+  the store lacks is stored, each download shown as a `Downloaded` status line. Mirrors are tried in order; an archive is unpacked under
   `<store>/staging/`, verified against the declared hash, and moved into its entry only then,
   so the store never holds unverified contents. When every mirror fails, `package.fetch_failed`
   lists each mirror with the chain of causes (spec 10).
@@ -221,8 +222,8 @@ deps := .{
 
 `version` is the layout of the file. An entry is the name its first dependent binds, the selected
 version, the identity (`.foreign`, or the id and the major version), the tree hash, and the
-dependent that requires it when that is not the project. `vun pkg fetch` and `vun pkg add`
-rewrite it when the selection changes. Every dependency of every package resolves to the version
+dependent that requires it when that is not the project. Compiling, `vun pkg add` and `vun pkg
+update` rewrite it when the selection changes. Every dependency of every package resolves to the version
 selected for its identity, so a dependent declaring `1.0.0` sees `1.2.0` when another requires it;
 a lockfile that does not record the selection is `package.stale_lock`, reported at each entry it
 should not hold, and one version required with two hashes is `package.version_conflict`, reported
@@ -251,31 +252,51 @@ toolchain (hash-checked and recorded in the lock) into `~/.cache/vun/toolchains`
 
 ## 7. The command line
 
-One binary, subcommands grouped by what they act on. The CLI is a thin shell over `vun-driver`
-(spec 13).
+One binary, `vun`, a thin shell over `vun-driver` (spec 13). Commands are organized as jj's are:
+everyday verbs at the root, each noun a group of verbs, infrequent commands under `util`, and
+commands for developing the compiler under `debug`. A command exists in the tree once it is
+implemented; nothing is listed that does not run.
 
 | Command | Does |
 |---------|------|
-| `vun new <name> [--lib] [--board <b>]` | create a package |
-| `vun build`, `vun run` | build, build and run |
-| `vun check [--traps] [--widen] [--meta-stats]` | analyze without code generation |
-| `vun test [--on interp\|native\|qemu\|probe]`, `vun bench`, `vun fuzz <test>`, `vun sim` | spec 11 |
-| `vun fmt [--check]` | format; no options |
-| `vun fix [--unsafe] [--edition]` | apply fixes (spec 10) |
-| `vun doc` | HTML and JSON API docs; doc code blocks run as tests |
-| `vun explain <diagnostic>` | offline explanation pages |
-| `vun pkg add\|update\|fetch\|pack\|vendor\|why\|tag` | dependencies and releases |
-| `vun pkg api [diff <old>]` | public API and the version bump it requires |
-| `vun tool bind <header>`, `vun tool header`, `vun tool svd <file>` | C bindings, C headers, register packages |
-| `vun target flash\|attach\|debug` | flash, stream logs, GDB server (section 9) |
-| `vun toolchain list\|install\|prune\|components` | toolchains, and this one's backends and linkers |
+| `vun build <file>` (`b`) | build the program a root file exports |
+| `vun run <file> [args]...` (`r`) | build and run it; words after `--` go to the program |
+| `vun check <file>` (`c`) | analyze without generating code |
+| `vun explain <id>` | the explanation page of a diagnostic, offline, paged |
+| `vun pkg add <source>`, `update`, `pack` | declare a dependency, raise versions, write the archive |
+| `vun tool bind <header>` | C declarations as Vun |
+| `vun toolchain components` | the backends and linkers of this toolchain |
 | `vun cache list\|gc` | the shared store: entries, sizes, labels; collection by lockfile roots |
-| `vun util lsp\|completion` | infrequently used: the language server, shell completions |
-| `vun debug tokens\|cst\|hir\|mir\|layout\|program\|lir\|code\|frames\|link <file>` | every representation with origins (spec 10) |
-| `vun debug compare <file>` | build and run through every backend that generates code; report whether they agree |
+| `vun util completion <shell>` | the completion script of bash, zsh, fish or nushell |
+| `vun debug tokens\|cst\|hir\|types\|mir\|layout\|program\|lir\|code\|frames <file>` | every representation with origins (spec 10) |
+| `vun debug coverage\|compare <file>` | how far the stages reach; every backend run and compared |
 
-Commands are organized as jj's are: everyday verbs at the root, each noun a group of verbs,
-infrequent commands under `util`, and commands for developing the compiler under `debug`.
+Still to come, each as a verb or a group verb: `new`, `test`, `bench`, `fuzz`, `fmt`, `fix`, `doc`,
+`pkg vendor|why|tag|api`, `tool header|svd`, `target flash|attach|debug`, `toolchain
+list|install|prune`, `util lsp`.
+
+Options:
+
+- **Global**, on every command: `--color <auto|always|never>` (or `VUN_COLOR`), `-q`/`--quiet`
+  (results and diagnostics only, no status lines), `-h` (help) and `--help` (the long page,
+  through the pager on a terminal: aliases, the values and variables of options, examples),
+  and `-V`/`--version` on the root.
+- **Compile options**, a set shared by every command that compiles (`build`, `run`, `check`,
+  `debug`): `--target <path>` (`VUN_TARGET`), `--diagnostics <format>` (`VUN_DIAGNOSTICS`),
+  `--timings`.
+- A command's own options, such as `--backend` and `-o`.
+
+Output follows cargo's shell: results go to standard output, progress to standard error as status
+lines whose verb is right-aligned in a column (`Checking`, `Building`, `Running`, `Downloaded`,
+`Finished` with the time taken, `Failed` with the errors), after the diagnostics of the step.
+Colors are decided per stream: `auto` shows them on a terminal unless `NO_COLOR` is set, or
+`CLICOLOR_FORCE` forces them, or `CLICOLOR=0` or `TERM=dumb` turns them off.
+
+The framework, `vun-command`, declares a tree as data: commands (name, aliases, parameters, the
+option sets they share, examples) and parameters (a flag, an option or a positional; how many
+values; what a value may be: text, a path, or a choice among a table's names; the variable
+giving a default). Parsing, validation with suggestions, help, and the completion scripts all
+read that declaration.
 
 ### Conventions enforced by tools
 

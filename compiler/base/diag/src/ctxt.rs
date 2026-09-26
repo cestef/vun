@@ -12,13 +12,6 @@ use crate::{Diagnostic, Severity, TraceFrame};
 pub struct ErrorGuaranteed(());
 
 /// Output for diagnostics: terminal, short, JSON, SARIF, LSP.
-/// Whether a sink writes terminal colors.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Color {
-    Never,
-    Always,
-}
-
 pub trait DiagSink {
     fn emit(&mut self, d: &Diagnostic, origins: &OriginTable, sources: &dyn SourceMap);
 }
@@ -100,7 +93,13 @@ impl DiagCtxt {
 
     #[must_use]
     pub fn error_count(&self) -> usize {
-        self.diagnostics.iter().filter(|d| d.severity == Severity::Error).count()
+        self.count(Severity::Error)
+    }
+
+    /// The diagnostics of `severity`.
+    #[must_use]
+    pub fn count(&self, severity: Severity) -> usize {
+        self.diagnostics.iter().filter(|d| d.severity == severity).count()
     }
 
     /// All diagnostics in source order: by the file and place of their primary label's source,

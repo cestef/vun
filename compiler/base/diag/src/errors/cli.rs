@@ -10,6 +10,3 @@ pub const CLI_UNEXPECTED_ARGUMENT: DiagId = DiagId::new(
 pub const CLI_UNKNOWN_OPTION: DiagId = DiagId::new("lang.errors.cli.unknown_option");
 pub const CLI_MISSING_VALUE: DiagId = DiagId::new("lang.errors.cli.missing_value");
 pub const CLI_INVALID_VALUE: DiagId = DiagId::new("lang.errors.cli.invalid_value");
-pub const CLI_UNAVAILABLE_COMMAND: DiagId = DiagId::new(
-    "lang.errors.cli.unavailable_command",
-);

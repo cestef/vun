@@ -9,14 +9,18 @@ use vun_diag::{ChildKind, Diagnostic, Msg, errors};
 use vun_fs::Edit;
 use vun_span::{ByteRange, SourceMap, Span};
 
-use super::{PackageKey, Selection};
+use vun_hash::Hash;
+use vun_intern::Symbol;
+
+use super::{Fetched, PackageKey, Selection};
 use crate::Session;
-use crate::commands::{FETCH_PATH, PROGRAM};
+use crate::commands::{CHECK_PATH, PROGRAM};
 
 impl Session {
     /// Writes the lockfile of the project in `dir` when its selection differs from it, registers
     /// the project as a root of the store, and returns the selection. A partial or conflicting
-    /// selection writes nothing; each absent package is reported.
+    /// selection writes nothing; each absent package is reported. A project without a lockfile
+    /// gets one once it selects something.
     pub fn write_lock(&mut self, dir: &Path, project: PackageKey) -> Option<Lock> {
         let Selection { lock: selection, absent } = self.select(project).ok()?;
         if !absent.is_empty() {
@@ -26,6 +30,9 @@ impl Session {
             return None;
         }
         let path = dir.join(lock::FILE);
+        if selection.is_empty() && !path.exists() {
+            return Some(selection);
+        }
         let text = selection.to_string();
         let unchanged = std::fs::read_to_string(&path).ok().as_deref() == Some(text.as_str());
         // The lockfile is what keeps the project's entries in the shared store.
@@ -36,6 +43,20 @@ impl Session {
             self.diag.error(Diagnostic::error(errors::IO_UNWRITABLE_FILE, msg).caused_by(&e));
         }
         Some(selection)
+    }
+
+    /// Makes the project around the file at `path` ready to compile, as cargo does before
+    /// building: fetches the dependencies the store lacks and records the selection in the
+    /// lockfile. Returns what each fetch did; nothing for a file outside a project.
+    pub fn prepare(&mut self, path: &Path) -> Vec<(Symbol, Hash, Fetched)> {
+        let Some((dir, project)) = path.parent().and_then(|dir| self.package_around(dir)) else {
+            return Vec::new();
+        };
+        let fetched = self.fetch(project);
+        if !self.failed() {
+            self.write_lock(&dir, project);
+        }
+        fetched
     }
 
     /// The lockfile of `root`, if it reads.
@@ -83,8 +104,8 @@ impl Session {
         for line in expected.lines().filter(|line| !present.contains(line)) {
             d = d.child(ChildKind::Note, Msg::new().text("the selection requires ").code(line));
         }
-        let fetch = PROGRAM.invocation(&FETCH_PATH).expect("fetch is a command");
-        d = d.child(ChildKind::Help, Msg::new().text("rewrite it with ").code(fetch));
+        let check = PROGRAM.invocation(&CHECK_PATH).expect("check is a command");
+        d = d.child(ChildKind::Help, Msg::new().text("rewrite it with ").code(check));
         self.report(Some(first), d);
     }
 }

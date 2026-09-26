@@ -11,4 +11,5 @@ workspace = true
 
 [dependencies]
 vun-par.workspace = true
+vun-term.workspace = true
 tracing.workspace = true

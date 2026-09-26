@@ -6,7 +6,7 @@ mod coverage;
 mod dump;
 mod types;
 
-use vun_command::{Action, Command};
+use vun_command::Command;
 
 use super::FILE;
 use crate::Session;
@@ -15,89 +15,76 @@ use dump::Stage;
 pub(super) const GROUP: &str = "debug";
 
 pub(super) const COMMANDS: &[Command<Session>] = &[
-    Command {
-        name: "tokens",
-        about: "tokens and trivia with byte ranges",
-        params: &[FILE],
-        action: Action::Run(|s, args, out| Stage::Tokens.dump(s, args, out)),
-    },
-    Command {
-        name: "cst",
-        about: "the concrete syntax tree, one node per line",
-        params: &[FILE],
-        action: Action::Run(|s, args, out| Stage::Cst.dump(s, args, out)),
-    },
-    Command {
-        name: "manifest",
-        about: "the package manifest read from a build.vun",
-        params: &[FILE],
-        action: Action::Run(|s, args, out| Stage::Manifest.dump(s, args, out)),
-    },
-    Command {
-        name: "plan",
-        about: "the steps a build.vun's build records, one per line",
-        params: &[FILE],
-        action: Action::Run(|s, args, out| Stage::Plan.dump(s, args, out)),
-    },
-    Command {
-        name: "hir",
-        about: "the high-level representation, names resolved, with origins",
-        params: &[FILE],
-        action: Action::Run(|s, args, out| Stage::Hir.dump(s, args, out)),
-    },
-    Command {
-        name: "types",
-        about: "what typing found in each function, plain and in each instantiation reached",
-        params: &[FILE],
-        action: Action::Run(types::types),
-    },
-    Command {
-        name: "mir",
-        about: "the mid-level representation of each function, with origins",
-        params: &[FILE],
-        action: Action::Run(|s, args, out| Stage::Mir.dump(s, args, out)),
-    },
-    Command {
-        name: "layout",
-        about: "the layout of each type the file declares: sizes, offsets, tags and niches",
-        params: &[FILE],
-        action: Action::Run(|s, args, out| Stage::Layout.dump(s, args, out)),
-    },
-    Command {
-        name: "program",
-        about: "the exports of a root file and the MIR of every function they reach",
-        params: &[FILE],
-        action: Action::Run(|s, args, out| Stage::Program.dump(s, args, out)),
-    },
-    Command {
-        name: "lir",
-        about: "the low-level representation of the program a root file exports, with origins",
-        params: &[FILE],
-        action: Action::Run(|s, args, out| Stage::Lir.dump(s, args, out)),
-    },
-    Command {
-        name: "code",
-        about: "what a backend generates for the program a root file exports, when it is text",
-        params: &[FILE, crate::codegen::BACKEND],
-        action: Action::Run(|s, args, out| Stage::Code.dump(s, args, out)),
-    },
-    Command {
-        name: "frames",
-        about: "the frame size of each function of the program a root file exports, as its tools report them",
-        params: &[FILE, crate::codegen::BACKEND],
-        action: Action::Run(|s, args, out| Stage::Frames.dump(s, args, out)),
-    },
-    Command::planned("link", "the link plan"),
-    Command {
-        name: "coverage",
-        about: "how far MIR and LIR take the functions of a file, and where each stops",
-        params: &[FILE],
-        action: Action::Run(coverage::coverage),
-    },
-    Command {
-        name: "compare",
-        about: "build and run a program through every backend that generates code, and compare",
-        params: &[FILE],
-        action: Action::Run(compare::compare),
-    },
+    Command::run("tokens", "tokens and trivia with byte ranges", |s, args, shell| {
+        Stage::Tokens.dump(s, args, shell)
+    })
+    .params(&[FILE]),
+    Command::run("cst", "the concrete syntax tree, one node per line", |s, args, shell| {
+        Stage::Cst.dump(s, args, shell)
+    })
+    .params(&[FILE]),
+    Command::run("manifest", "the package manifest read from a build.vun", |s, args, shell| {
+        Stage::Manifest.dump(s, args, shell)
+    })
+    .params(&[FILE]),
+    Command::run("plan", "the steps a build.vun's build records, one per line", |s, args, shell| {
+        Stage::Plan.dump(s, args, shell)
+    })
+    .params(&[FILE]),
+    Command::run("hir", "the high-level representation, names resolved, with origins", |s, args, shell| {
+        Stage::Hir.dump(s, args, shell)
+    })
+    .params(&[FILE]),
+    Command::run(
+        "types",
+        "what typing found in each function, plain and in each instantiation reached",
+        types::types,
+    )
+    .params(&[FILE]),
+    Command::run("mir", "the mid-level representation of each function, with origins", |s, args, shell| {
+        Stage::Mir.dump(s, args, shell)
+    })
+    .params(&[FILE]),
+    Command::run(
+        "layout",
+        "the layout of each type the file declares: sizes, offsets, tags and niches",
+        |s, args, shell| Stage::Layout.dump(s, args, shell),
+    )
+    .params(&[FILE]),
+    Command::run(
+        "program",
+        "the exports of a root file and the MIR of every function they reach",
+        |s, args, shell| Stage::Program.dump(s, args, shell),
+    )
+    .params(&[FILE]),
+    Command::run(
+        "lir",
+        "the low-level representation of the program a root file exports, with origins",
+        |s, args, shell| Stage::Lir.dump(s, args, shell),
+    )
+    .params(&[FILE]),
+    Command::run(
+        "code",
+        "what a backend generates for the program a root file exports, when it is text",
+        |s, args, shell| Stage::Code.dump(s, args, shell),
+    )
+    .params(&[FILE, crate::codegen::BACKEND]),
+    Command::run(
+        "frames",
+        "the frame size of each function of the program a root file exports, as its tools report them",
+        |s, args, shell| Stage::Frames.dump(s, args, shell),
+    )
+    .params(&[FILE, crate::codegen::BACKEND]),
+    Command::run(
+        "coverage",
+        "how far MIR and LIR take the functions of a file, and where each stops",
+        coverage::coverage,
+    )
+    .params(&[FILE]),
+    Command::run(
+        "compare",
+        "build and run a program through every backend that generates code, and compare",
+        compare::compare,
+    )
+    .params(&[FILE]),
 ];

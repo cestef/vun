@@ -5,7 +5,7 @@
 
 use std::sync::Arc;
 
-use vun_command::{Args, Param, ParamKind};
+use vun_command::{Args, Param};
 use vun_diag::{Diagnostic, ErrorGuaranteed, Msg, errors};
 use vun_grammar::PATH_SEPARATOR;
 use vun_hir::db::FileRef;
@@ -16,12 +16,9 @@ use vun_trace::tracing;
 
 use crate::Session;
 
-pub const TARGET: Param = Param {
-    name: "target",
-    short: None,
-    about: "the target to compile for: a path in the package `targets`, such as `linux.x86_64`",
-    kind: ParamKind::Option,
-};
+pub const TARGET: Param = Param::option("target")
+    .about("the target to compile for: a path in the package `targets`, such as `linux.x86_64`")
+    .env("VUN_TARGET");
 
 /// Applies `--target` to the session.
 ///

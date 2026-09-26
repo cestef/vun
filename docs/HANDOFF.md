@@ -76,7 +76,8 @@ Rust names a `lang` or `std` declaration only through `vun_items`). Generators e
 cargo fmt && cargo clippy --all-targets && cargo nextest run && cargo gen --check && cargo xtask lines
 cargo xtask corpus            # verdicts, then coverage and what stops MIR most
 cargo xtask size              # builds `vun` as distributed; fails past its budget
-cargo run -q -p vun-cli -- check|dump tokens|cst|hir|mir|layout|program <file>
+cargo run -q -p vun-cli -- check|debug tokens|cst|hir|mir|layout|program <file>
+cargo run -q -p vun-cli -- util completion nu      # completions: bash, zsh, fish, nu
 VUN_BLESS=1 cargo nextest run -p vun-syntax    # snapshots, only after reading the diff
 cd fuzz && cargo +nightly fuzz run parse -- -max_total_time=120
 typst compile whitepaper/main.typ whitepaper/vun.pdf
@@ -264,6 +265,24 @@ float operation (`FnLower::canonical`); `neg`, `bits`, `from_bits` keep bits. Th
 call), checked bit for bit against sema by `programs/soft_float.vun`. A call of a primitive whose
 parameters are all `$` ones is compile-stage and, for an integer, typed by its value alone
 (`Callable::folds`, `typeck/apply.rs`); a `$` binder's place is a copy of its value.
+
+**Terminal output and the command line** (decision 181): `vun-term` (base) holds output:
+`Text` (pieces naming a `Style`; `Text::of`, `Text::markdown` for explanation pages), the one
+palette (`Style::ansi`, cargo's), `Table` (`Column::left|right`), `Verb` status lines
+(right-aligned in 12 columns; `Verb::under` for lines beneath), units (`Elapsed`, `Bytes`,
+`Noun::count`), `ColorChoice`/`Env`/`Stream`, `Shell { out, err, verbosity }` with `status` and
+`page` (the pager, `$PAGER` or `less -FRX`). Nothing writes ANSI by hand. `vun-command`:
+`Command::run|group` builders with `.params`, `.sets(&[OptionSet])`, `.aliases`, `.examples`;
+`Param::flag|option|positional` with `.short`, `.about`, `.values(Values::{Text, Path, Choice})`,
+`.arity(Arity::{One, Optional, Many})`, `.env`; parsing validates choices, fills variables, and
+takes words after `--` as positionals; `-h` short help, `--help` long help, paged;
+`Program::completion(Dialect)`; `Program::main` over a `Context` (`Session`, or `DiagCtxt` for
+xtask and generate). Global options `--color`, `-q`, `-h`, `-V`; the driver's `COMPILE` set
+(`--target`, `--diagnostics`, `--timings`) on build, run, check and debug. `Session::emit` shows
+and drains diagnostics (`shown_errors` keeps `failed`); `Session::conclude` ends a compiling
+command with `Finished`/`Failed`; `Session::prepare` fetches and locks before compiling (no `vun
+pkg fetch`); `commands/status.rs` holds the verbs and `HashText` (hashes as jj ids). Logs are
+styled per level, under `VUN_COLOR`.
 
 **Developer tooling** (decision 168): commands organized as jj's (`vun debug ...` for every dump
 and `compare`, `vun util`, `vun toolchain components`); `Session::run_each` and

@@ -18,6 +18,3 @@ pub const unexpected_argument: Item = Item::new(
 pub const unknown_option: Item = Item::new(&["lang", "errors", "cli", "unknown_option"]);
 pub const missing_value: Item = Item::new(&["lang", "errors", "cli", "missing_value"]);
 pub const invalid_value: Item = Item::new(&["lang", "errors", "cli", "invalid_value"]);
-pub const unavailable_command: Item = Item::new(
-    &["lang", "errors", "cli", "unavailable_command"],
-);

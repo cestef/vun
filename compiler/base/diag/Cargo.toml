@@ -13,3 +13,4 @@ workspace = true
 vun-codec.workspace = true
 vun-span.workspace = true
 vun-origin.workspace = true
+vun-term.workspace = true

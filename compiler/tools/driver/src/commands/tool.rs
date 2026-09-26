@@ -5,41 +5,36 @@ use std::path::{Path, PathBuf};
 
 use vun_bind::{Bytes, Failure, Reason, Skipped, Unsupported};
 use vun_clang::Missing;
-use vun_command::{Action, Args, Command, Outcome, Param, ParamKind};
+use vun_command::{Args, Arity, Command, Example, Outcome, Param, PathKind, Values};
 use vun_diag::{ChildKind, Diagnostic, Msg, Severity, errors};
 use vun_fs::Edit;
+use vun_term::Shell;
 
 use crate::Session;
 
 const HEADER: Param =
-    Param { name: "header", short: None, about: "the C header to bind", kind: ParamKind::Positional };
-const OUT: Param = Param {
-    name: "out",
-    short: Some('o'),
-    about: "the Vun file to write; standard output without it",
-    kind: ParamKind::Option,
-};
-const CFLAGS: Param = Param {
-    name: "cflags",
-    short: None,
-    about: "the flags the build compiles the header with, such as \"-Iinclude -DREV=2 --target=...\"",
-    kind: ParamKind::Option,
-};
+    Param::positional("header").about("the C header to bind").values(Values::Path(PathKind::File));
+const OUT: Param = Param::option("out")
+    .short('o')
+    .about("the Vun file to write; standard output without it")
+    .values(Values::Path(PathKind::File));
+const CFLAGS: Param = Param::option("cflag")
+    .arity(Arity::Many)
+    .about("a flag the build compiles the header with, such as -Iinclude; repeat it for each");
 
-pub(super) const BIND: Command<Session> = Command {
-    name: "bind",
-    about: "generate declarations from a C header",
-    params: &[HEADER, OUT, CFLAGS],
-    action: Action::Run(bind),
-};
+pub(super) const BIND: Command<Session> = Command::run("bind", "generate declarations from a C header", bind)
+    .params(&[HEADER, OUT, CFLAGS])
+    .examples(&[Example {
+        line: "board.h --cflag -Iinclude --cflag -DREV=2 -o board.vun",
+        about: "bind a header",
+    }]);
 
 /// `vun tool bind <header>`: the header's declarations as Vun, through libclang loaded now.
-fn bind(session: &mut Session, args: &Args, out: &mut dyn Write) -> io::Result<Outcome> {
+fn bind(session: &mut Session, args: &Args, shell: &mut Shell<'_>) -> io::Result<Outcome> {
     let header =
         PathBuf::from(args.value(&HEADER).expect("positional parameters are present when a command runs"));
     let target = args.value(&OUT).map(PathBuf::from);
-    let flags: Vec<String> =
-        args.value(&CFLAGS).map(|f| f.split_whitespace().map(str::to_owned).collect()).unwrap_or_default();
+    let flags: Vec<String> = args.values(&CFLAGS).map(str::to_owned).collect();
     // The bindings avoid the names the file they are written to sees already.
     let place = target.as_deref().unwrap_or(&header);
     let dir = place.parent().filter(|d| !d.as_os_str().is_empty()).unwrap_or(Path::new("."));
@@ -62,7 +57,7 @@ fn bind(session: &mut Session, args: &Args, out: &mut dyn Write) -> io::Result<O
                 return Ok(Outcome::Failure);
             }
         }
-        None => out.write_all(bindings.source.as_bytes())?,
+        None => shell.out.write_all(bindings.source.as_bytes())?,
     }
     Ok(Outcome::Success)
 }
@@ -98,7 +93,7 @@ fn failed(header: &Path, failure: Failure) -> Diagnostic {
                 errors::TOOL_BIND_FAILED,
                 Msg::new().text("clang could not read ").code(name),
             );
-            let help = Msg::new().text("pass the build's compile flags with ").code("--cflags");
+            let help = Msg::new().text("pass the build's compile flags with ").code(CFLAGS.long());
             reports
                 .into_iter()
                 .fold(d, |d, r| d.child(ChildKind::Note, Msg::new().text(r.text)))

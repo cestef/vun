@@ -12,8 +12,9 @@ mod msg;
 #[cfg(test)]
 mod tests;
 
-pub use ctxt::{Color, DiagCtxt, DiagCx, DiagSink, ErrorGuaranteed};
+pub use ctxt::{DiagCtxt, DiagCx, DiagSink, ErrorGuaranteed};
 pub use diagnostic::{Child, ChildKind, Diagnostic, TraceFrame};
 pub use fix::{Edit, Fix, Hole, Label, Safety};
 pub use id::{DiagId, DiagSource, Severity};
 pub use msg::{Msg, MsgPart};
+pub use vun_term::Color;

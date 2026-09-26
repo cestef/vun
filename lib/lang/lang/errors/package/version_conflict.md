@@ -11,9 +11,8 @@ give each hash and who requires it.
 ## Example
 
 ```console
-$ vun pkg fetch
-present hal blake3:zfydsfjcithfeney4uucojbfrxp4azcrmyw3j3fdtkmwsm6cnptq
-present hal blake3:i2awm7xqhnlzsujcu5ukmn2owcntcqyycpr2d4kuhqquxzgxkz6q
+$ vun check app.vun
+    Checking app.vun
 error[package.version_conflict]: `hal` `1.0.0` is required with two hashes
    ╭▸ ../drv/build.vun:8:16
    │
@@ -49,6 +48,7 @@ project's:
 ```console
 $ grep hash build.vun
             .hash = "blake3:i2awm7xqhnlzsujcu5ukmn2owcntcqyycpr2d4kuhqquxzgxkz6q",
-$ vun pkg fetch
-present hal blake3:i2awm7xqhnlzsujcu5ukmn2owcntcqyycpr2d4kuhqquxzgxkz6q
+$ vun check app.vun
+    Checking app.vun
+    Finished app.vun in 0.08s
 ```

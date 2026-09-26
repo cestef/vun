@@ -22,14 +22,6 @@ pub struct Listed {
     pub rooted: bool,
 }
 
-/// One line: the hash, the size in bytes, `kept` when a lockfile records it, and the label.
-impl std::fmt::Display for Listed {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let rooted = if self.rooted { "kept" } else { "-" };
-        write!(f, "{} {:>12} {rooted:<4} {}", self.hash, self.bytes, self.label.as_deref().unwrap_or("-"))
-    }
-}
-
 /// What collection removed, and how many entries it kept.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Collected {

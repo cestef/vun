@@ -27,6 +27,15 @@ impl ChildKind {
             Self::Cause => "caused by",
         }
     }
+
+    /// How renderers style its title.
+    #[must_use]
+    pub const fn style(self) -> vun_term::Style {
+        match self {
+            Self::Note | Self::Cause => vun_term::Style::Note,
+            Self::Help => vun_term::Style::Help,
+        }
+    }
 }
 
 impl fmt::Display for ChildKind {

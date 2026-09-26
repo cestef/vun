@@ -1,31 +1,42 @@
-//! Declarative command trees: argument parsing, generated help and usage errors as diagnostics.
+//! Declarative command trees: argument parsing, help pages, completions and usage errors as
+//! diagnostics.
 //!
 //! A program is a tree of [`Command`]s declared as data. Parsing walks the tree, so names,
-//! parameters and help are declared once, and every front end (`vun`, `cargo xtask`) accepts
-//! the same syntax: `<command>... [--flag] [--option value] <argument>...`, with `-h`/`--help`
-//! everywhere, `help <command>...` in groups, and `-V`/`--version` on the root.
+//! parameters, values and help are declared once, and every front end (`vun`, `cargo xtask`)
+//! accepts the same syntax: `<command>... [--flag] [--option value] <argument>... [-- <word>...]`,
+//! with `-h` (short help) and `--help` (long help, paged) everywhere, `help <command>...` in
+//! groups, `-V`/`--version` on the root, and the global options of [`GLOBAL`].
 
+mod complete;
 mod help;
+mod param;
 mod parse;
+mod run;
 
-use std::io::{self, Write};
+use std::io;
 use std::process::ExitCode;
 
-use vun_diag::{Diagnostic, Msg, errors};
+use vun_diag::Diagnostic;
+pub use vun_term::Shell;
 
-pub use parse::{Request, Selected};
+pub use complete::Dialect;
+pub use param::{
+    Args, Arity, COLOR, GLOBAL, HELP, OptionSet, Param, ParamKind, PathKind, QUIET, VERSION, Values,
+};
+pub use parse::{Detail, Request, Selected};
+pub use run::Context;
 
 pub struct Program<Cx: 'static> {
     pub version: &'static str,
     pub root: Command<Cx>,
-    /// Applies the options a command inherits to the context, before the command runs.
+    /// Applies the options a command takes to the context, before the command runs.
     pub configure: Configure<Cx>,
 }
 
-/// Reads inherited options into the context; an invalid value is a usage error.
+/// Reads options into the context; an invalid value is a usage error.
 pub type Configure<Cx> = fn(&mut Cx, &Args) -> Result<(), Box<Diagnostic>>;
 
-/// A [`Configure`] for programs whose groups declare no options.
+/// A [`Configure`] for programs whose commands read their options themselves.
 ///
 /// # Errors
 /// Never.
@@ -33,54 +44,106 @@ pub fn unconfigured<Cx>(_: &mut Cx, _: &Args) -> Result<(), Box<Diagnostic>> {
     Ok(())
 }
 
+/// A command, declared as a constant: `Command::run("build", "build a program", build)
+/// .params(&[FILE]).aliases(&["b"])`.
 pub struct Command<Cx: 'static> {
     pub name: &'static str,
     pub about: &'static str,
+    /// Other names it answers to, shown in help.
+    pub aliases: &'static [&'static str],
     pub params: &'static [Param],
+    /// Options it shares with other commands.
+    pub sets: &'static [OptionSet],
+    /// Command lines shown in long help.
+    pub examples: &'static [Example],
     pub action: Action<Cx>,
 }
 
 pub enum Action<Cx: 'static> {
     Run(Run<Cx>),
     Group(&'static [Command<Cx>]),
-    /// Declared, so that help lists it, but not implemented yet.
-    Planned,
 }
 
-/// A command's implementation. Output goes to `out`; diagnostics go through `Cx`.
-pub type Run<Cx> = fn(&mut Cx, &Args, &mut dyn Write) -> io::Result<Outcome>;
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Example {
+    /// The words after the program's name.
+    pub line: &'static str,
+    pub about: &'static str,
+}
+
+/// A command's implementation. Results go to the shell's standard output, status lines to its
+/// standard error; diagnostics go through `Cx`.
+pub type Run<Cx> = fn(&mut Cx, &Args, &mut Shell<'_>) -> io::Result<Outcome>;
 
 impl<Cx> Command<Cx> {
-    /// A command declared for help, not implemented yet.
-    #[must_use]
-    pub const fn planned(name: &'static str, about: &'static str) -> Self {
-        Self { name, about, params: &[], action: Action::Planned }
+    const fn new(name: &'static str, about: &'static str, action: Action<Cx>) -> Self {
+        Self { name, about, aliases: &[], params: &[], sets: &[], examples: &[], action }
     }
 
-    /// A command grouping `children`, without parameters of its own.
+    #[must_use]
+    pub const fn run(name: &'static str, about: &'static str, run: Run<Cx>) -> Self {
+        Self::new(name, about, Action::Run(run))
+    }
+
     #[must_use]
     pub const fn group(name: &'static str, about: &'static str, children: &'static [Self]) -> Self {
-        Self { name, about, params: &[], action: Action::Group(children) }
+        Self::new(name, about, Action::Group(children))
+    }
+
+    #[must_use]
+    pub const fn params(self, params: &'static [Param]) -> Self {
+        Self { params, ..self }
+    }
+
+    #[must_use]
+    pub const fn sets(self, sets: &'static [OptionSet]) -> Self {
+        Self { sets, ..self }
+    }
+
+    #[must_use]
+    pub const fn aliases(self, aliases: &'static [&'static str]) -> Self {
+        Self { aliases, ..self }
+    }
+
+    #[must_use]
+    pub const fn examples(self, examples: &'static [Example]) -> Self {
+        Self { examples, ..self }
     }
 
     #[must_use]
     pub fn children(&self) -> &'static [Self] {
         match self.action {
             Action::Group(children) => children,
-            Action::Run(_) | Action::Planned => &[],
+            Action::Run(_) => &[],
         }
+    }
+
+    /// Whether `word` names it.
+    #[must_use]
+    pub fn answers(&self, word: &str) -> bool {
+        self.name == word || self.aliases.contains(&word)
+    }
+
+    /// The child `word` names.
+    #[must_use]
+    pub fn child(&self, word: &str) -> Option<&'static Self> {
+        self.children().iter().find(|c| c.answers(word))
+    }
+
+    pub(crate) fn positionals(&self) -> impl Iterator<Item = &Param> {
+        self.params.iter().filter(|p| p.is_positional())
     }
 }
 
 impl<Cx> Program<Cx> {
     /// The command line selecting the command at `path` below the root, such as `vun pkg
-    /// fetch`, for messages that suggest it; `None` if no command is there.
+    /// add`, for messages that suggest it; `None` if no command is there.
     #[must_use]
     pub fn invocation(&self, path: &[&str]) -> Option<String> {
         let mut command = &self.root;
         let mut line = command.name.to_owned();
         for name in path {
-            command = command.children().iter().find(|c| c.name == *name)?;
+            command = command.child(name)?;
             line.push(' ');
             line.push_str(command.name);
         }
@@ -88,53 +151,8 @@ impl<Cx> Program<Cx> {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
-pub struct Param {
-    pub name: &'static str,
-    pub short: Option<char>,
-    pub about: &'static str,
-    pub kind: ParamKind,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum ParamKind {
-    /// A required argument, in declaration order: `<name>`.
-    Positional,
-    /// A switch: `--name`.
-    Flag,
-    /// A named value: `--name <value>` or `--name=value`.
-    Option,
-}
-
-/// Options every command accepts.
-pub const HELP: Param =
-    Param { name: "help", short: Some('h'), about: "show this help", kind: ParamKind::Flag };
-/// Options the root command accepts.
-pub const VERSION: Param =
-    Param { name: "version", short: Some('V'), about: "show the version", kind: ParamKind::Flag };
 /// The group command that shows help for the commands after it.
 pub const HELP_COMMAND: &str = "help";
-
-/// The values given to a command's parameters.
-#[derive(Debug, Default, PartialEq, Eq)]
-pub struct Args {
-    values: Vec<(&'static str, String)>,
-    flags: Vec<&'static str>,
-}
-
-impl Args {
-    /// The value of a positional or option parameter. Positional parameters are always present
-    /// when a command runs.
-    #[must_use]
-    pub fn value(&self, param: &Param) -> Option<&str> {
-        self.values.iter().find(|(name, _)| *name == param.name).map(|(_, v)| v.as_str())
-    }
-
-    #[must_use]
-    pub fn flag(&self, param: &Param) -> bool {
-        self.flags.contains(&param.name)
-    }
-}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Outcome {
@@ -174,35 +192,3 @@ impl std::fmt::Display for Refusal {
 }
 
 impl std::error::Error for Refusal {}
-
-impl<Cx> Program<Cx> {
-    /// Parses `words` against this program and runs the selected command, or prints help or the version.
-    ///
-    /// # Errors
-    /// Returns a refusal for usage errors and for commands that are not implemented yet.
-    pub fn run(&self, words: &[String], cx: &mut Cx, out: &mut dyn Write) -> Result<Outcome, Refusal> {
-        let request =
-            self.parse(words).map_err(|diagnostic| Refusal { outcome: Outcome::Usage, diagnostic })?;
-        let written = match request {
-            Request::Help(selected) => write!(out, "{}", selected.help(self)).map(|()| Outcome::Success),
-            Request::Version => {
-                writeln!(out, "{} {}", self.root.name, self.version).map(|()| Outcome::Success)
-            }
-            Request::Run(selected, args) => match selected.last().action {
-                Action::Run(run) => {
-                    (self.configure)(cx, &args)
-                        .map_err(|diagnostic| Refusal { outcome: Outcome::Usage, diagnostic })?;
-                    run(cx, &args, out)
-                }
-                Action::Planned => {
-                    let msg = Msg::new().code(selected.invocation()).text(" is not available yet");
-                    let diagnostic = Box::new(Diagnostic::error(errors::CLI_UNAVAILABLE_COMMAND, msg));
-                    return Err(Refusal { outcome: Outcome::Failure, diagnostic });
-                }
-                Action::Group(_) => unreachable!("parse turns a bare group into a help request"),
-            },
-        };
-        // Output that cannot be written, such as a closed pipe, fails the command without a report.
-        Ok(written.unwrap_or(Outcome::Failure))
-    }
-}

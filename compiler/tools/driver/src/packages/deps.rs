@@ -8,7 +8,7 @@ use vun_hash::{Change, Hash, Snapshot};
 
 use super::{Dep, DepSource, PackageKey};
 use crate::Session;
-use crate::commands::{FETCH_PATH, PROGRAM};
+use crate::commands::{CHECK_PATH, PROGRAM};
 
 /// Why the package of a dependency is not there as declared.
 #[derive(Clone, Copy, Debug)]
@@ -126,8 +126,8 @@ impl Session {
         match dep.source {
             DepSource::Dir(_) => d,
             DepSource::Stored { hash, .. } => {
-                let fetch = PROGRAM.invocation(&FETCH_PATH).expect("fetch is a command");
-                let help = Msg::new().code(hash.to_string()).text(" is fetched by ").code(fetch);
+                let check = PROGRAM.invocation(&CHECK_PATH).expect("check is a command");
+                let help = Msg::new().code(hash.to_string()).text(" is fetched by ").code(check);
                 d.child(ChildKind::Help, help)
             }
         }

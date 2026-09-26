@@ -34,7 +34,8 @@ Fetch the package again; an entry that differs from its snapshot is replaced by 
 Changes meant to last belong in a `.path` dependency or a new release, not in the store:
 
 ```console
-$ vun pkg fetch
-stored  hal blake3:zfydsfjcithfeney4uucojbfrxp4azcrmyw3j3fdtkmwsm6cnptq from file://hal-1.0.0.tar.zst
 $ vun check app.vun
+    Checking app.vun
+  Downloaded hal blake3:zfydsfjcithf from file://hal-1.0.0.tar.zst
+    Finished app.vun in 0.21s
 ```

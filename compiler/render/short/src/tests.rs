@@ -14,7 +14,7 @@ fn renders_location_and_relative_id() {
     let d = Diagnostic::error(errors::INT_DOES_NOT_FIT, "value does not fit the result type").at(at, None);
 
     let mut out = Vec::new();
-    ShortRenderer::new(&mut out).emit(&d, &origins, &files);
+    ShortRenderer::new(&mut out, Color::Never).emit(&d, &origins, &files);
     assert_eq!(
         String::from_utf8(out).unwrap(),
         "src/geom.vun:2:5: error[int.does_not_fit]: value does not fit the result type\n"

@@ -8,14 +8,14 @@ follows it here.
 ## Example
 
 ```console
-$ vun check blinky.vun --format
-error[cli.missing_value]: option `--format` needs a value
+$ vun check blinky.vun --diagnostics
+error[cli.missing_value]: option `--diagnostics` needs a value
   │
-  ╰ help: write `--format <format>`
+  ╰ help: write `--diagnostics <diagnostics>`
 ```
 
 ## Fix
 
 ```console
-$ vun check blinky.vun --format short
+$ vun check blinky.vun --diagnostics short
 ```

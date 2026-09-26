@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 use vun_build::manifest::Manifest;
 use vun_build::store::Store;
-use vun_diag::{DiagCtxt, DiagCx, DiagSink, Diagnostic, ErrorGuaranteed, Msg, errors};
+use vun_diag::{DiagCtxt, DiagCx, Diagnostic, ErrorGuaranteed, Msg, errors};
 use vun_hir::db::{FileNames, FileRef, FileText, Parsed, ParsedFile};
 use vun_hir::lower;
 use vun_hir::tree::{ExprKind, Hir};
@@ -29,10 +29,12 @@ use vun_syntax::cst::Cst;
 use vun_syntax::literal::Decl;
 use vun_syntax::tokens::Tokens;
 use vun_target::TargetSpec;
+use vun_term::Shell;
 use vun_trace::tracing;
 
 use crate::formats::Format;
 use crate::packages::{LIBRARY, Packages};
+use crate::registry::Codegen;
 use crate::{Persistence, Registry};
 
 pub struct Session {
@@ -58,8 +60,12 @@ pub struct Session {
     pub target: Option<Result<TargetSpec, ErrorGuaranteed>>,
     /// The backends and linkers compiled into this toolchain.
     pub registry: Registry,
+    /// Which backend builds: the target's preferences for the profile unless one is named.
+    pub codegen: Codegen,
     /// Whether the queries are saved between runs; off unless the program turns it on.
     pub persistence: Persistence,
+    /// The errors already shown and taken out of `diag`.
+    shown_errors: usize,
 }
 
 impl Default for Session {
@@ -91,7 +97,9 @@ impl Session {
             choice: Choice::host(),
             target: None,
             registry: Registry::with_defaults(),
+            codegen: Codegen::default(),
             persistence: Persistence::Off,
+            shown_errors: 0,
         }
     }
 
@@ -244,14 +252,20 @@ impl Session {
     }
 
     /// Emits every diagnostic in deterministic order.
-    pub fn emit(&self, sink: &mut dyn DiagSink) {
-        for d in self.diag.sorted(self.origins) {
+    /// Shows the diagnostics collected so far on the shell's standard error, in the session's
+    /// format, and takes them out; the session stays failed if one was an error.
+    pub fn emit(&mut self, shell: &mut Shell<'_>) {
+        let diag = std::mem::take(&mut self.diag);
+        let color = shell.err.color();
+        let mut sink = (self.format.sink)(shell.err.writer(), color);
+        for d in diag.sorted(self.origins) {
             sink.emit(d, self.origins, self.sources);
         }
+        self.shown_errors += diag.error_count();
     }
 
     #[must_use]
     pub fn failed(&self) -> bool {
-        self.diag.error_count() > 0
+        self.diag.error_count() + self.shown_errors > 0
     }
 }

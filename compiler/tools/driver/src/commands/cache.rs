@@ -1,28 +1,30 @@
 //! `vun cache`: the user's store of fetched packages (spec 12, section 3).
 
-use std::io::{self, Write};
+use std::io;
 
-use vun_command::{Action, Args, Command, Outcome};
+use vun_build::store::Listed;
+use vun_command::{Args, Command, Outcome};
 use vun_diag::{Diagnostic, Msg, errors};
+use vun_term::{Bytes, Column, Noun, Shell, Style, Table, Text};
 
+use super::status::{HashText, REMOVED, Shown};
 use crate::Session;
 
 pub(super) const GROUP: &str = "cache";
 
 pub(super) const COMMANDS: &[Command<Session>] = &[
-    Command {
-        name: "list",
-        about: "list stored packages, their sizes, and whether a project's lockfile keeps them",
-        params: &[],
-        action: Action::Run(list),
-    },
-    Command {
-        name: "gc",
-        about: "remove stored packages no registered lockfile records",
-        params: &[],
-        action: Action::Run(gc),
-    },
+    Command::run(
+        "list",
+        "list stored packages, their sizes, and whether a project's lockfile keeps them",
+        list,
+    ),
+    Command::run("gc", "remove stored packages no registered lockfile records", gc),
 ];
+
+/// The columns of a listing of stored packages.
+const COLUMNS: [Column; 4] =
+    [Column::left("hash"), Column::right("size"), Column::left("kept"), Column::left("package")];
+const PACKAGE: Noun = Noun { one: "package", many: "packages" };
 
 impl Session {
     /// Reports that the store cannot be read or changed.
@@ -33,27 +35,40 @@ impl Session {
     }
 }
 
-fn list(session: &mut Session, _: &Args, out: &mut dyn Write) -> io::Result<Outcome> {
+/// Stored packages as a table.
+trait Listing {
+    fn table(&self) -> Table<'static>;
+}
+
+impl Listing for [Listed] {
+    fn table(&self) -> Table<'static> {
+        Table::new(&COLUMNS).rows(self.iter().map(|entry| {
+            let kept = if entry.rooted { Text::of(Style::Good, "yes") } else { Text::of(Style::Dim, "no") };
+            let label = entry.label.clone().map_or_else(|| Text::of(Style::Dim, "-"), Text::from);
+            [entry.hash.text(Shown::Full), Text::from(Bytes(entry.bytes).to_string()), kept, label]
+        }))
+    }
+}
+
+fn list(session: &mut Session, _: &Args, shell: &mut Shell<'_>) -> io::Result<Outcome> {
     match session.store.list() {
-        Ok(listed) => {
-            for entry in &listed {
-                writeln!(out, "{entry}")?;
-            }
-            Ok(Outcome::Success)
-        }
+        Ok(listed) => shell.out.print(&listed.table().text()).map(|()| Outcome::Success),
         Err(e) => Ok(session.store_failed(&e)),
     }
 }
 
-fn gc(session: &mut Session, _: &Args, out: &mut dyn Write) -> io::Result<Outcome> {
+fn gc(session: &mut Session, _: &Args, shell: &mut Shell<'_>) -> io::Result<Outcome> {
     match session.store.collect() {
         Ok(collected) => {
-            for entry in &collected.removed {
-                writeln!(out, "{entry}")?;
-            }
+            shell.out.print(&collected.removed.table().text())?;
             let freed: u64 = collected.removed.iter().map(|e| e.bytes).sum();
-            let removed = collected.removed.len();
-            writeln!(out, "removed {removed} packages ({freed} bytes), kept {}", collected.kept)?;
+            let what = format!(
+                "{}, {}; kept {}",
+                PACKAGE.count(collected.removed.len()),
+                Bytes(freed),
+                collected.kept
+            );
+            shell.status(REMOVED, Text::from(what));
             Ok(Outcome::Success)
         }
         Err(e) => Ok(session.store_failed(&e)),

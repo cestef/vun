@@ -97,13 +97,18 @@ pub enum Safety  { Safe, Unsafe, Placeholder, DisplayOnly }
 
 - **terminal**: an adapter over `annotate-snippets`, which renders labels, notes, and fixes as
   diffs, with ASCII or Unicode decoration and hyperlinked ids. It is rustc's renderer since 2025;
-- `--format=ariadne`: an adapter over `ariadne`, for its style of one color per label role. It has
-  no patch view, so each fix is a help line naming where its edits apply. The model depends on
-  neither renderer;
-- `--format=short`: `file:line:col: severity[id]: message`;
-- `--format=json`: one schema-versioned diagnostic per line;
-- `--format=sarif`: for CI and code-scanning services;
+- `--diagnostics=ariadne`: an adapter over `ariadne`, for its style of one color per label role.
+  It has no patch view, so each fix is a help line naming where its edits apply. The model depends
+  on neither renderer;
+- `--diagnostics=short`: `file:line:col: severity[id]: message`;
+- `--diagnostics=json`: one schema-versioned diagnostic per line;
+- `--diagnostics=sarif`: for CI and code-scanning services;
 - the LSP, section 6.
+
+Terminal renderers style what each part is, never how it looks: a severity and a child kind name
+their style (`Severity::style`, `ChildKind::style`), and one palette (`vun_term::Style`, cargo's)
+maps styles to colors for diagnostics, help, status lines, tables and logs alike. Colors follow
+`--color` (spec 12, section 7).
 
 ```
 error[int.does_not_fit]: value does not fit the result type
