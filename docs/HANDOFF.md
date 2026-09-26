@@ -177,10 +177,11 @@ in as proposed unless the user approves them.
 5. `vun build` carries out a plan's actions (`std.build.Action` by handles), with a program's
    options as a typed record.
 6. MIR and sema gaps (`cargo xtask corpus` lists them): `.{ }` and `.name` in plain
-   instantiations, `lang.simd.chunks`, impl member types against
-   requirements, `#[layout.offset]`, traps in a callee's instantiated signature; `&.word(3)` (a
+   instantiations, `lang.simd.chunks`, `#[layout.offset]`, traps in a callee's instantiated signature; `&.word(3)` (a
    borrow of a compile-time enum value) at run time stops at `backend.unlowered`. Or-patterns
-   that bind (decision 194) and exhaustiveness (decision 196, `typeck/exhaust/`) are done. Every
+   that bind (decision 194), exhaustiveness (decision 196, `typeck/exhaust/`) and impl member
+   types (decision 199; a requirement type naming another requirement is not compared yet) are
+   done. Every
    typer diagnostic in a generic body is reported once per instantiation plus once plain
    (`int.does_not_fit` three times for two instantiations): dedup them by origin in `Checked`.
 7. Evaluator: its own stack; loans inside aggregate arguments. Packaging: signed caches, planned

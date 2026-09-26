@@ -64,6 +64,7 @@ safety := struct {
 /// Interface conformance (spec 02, section 3).
 impl := struct {
     missing_requirement := diag.Diag{ .explanation = lang.meta.embed("errors/impl/missing_requirement.md") };
+    requirement_type := diag.Diag{ .explanation = lang.meta.embed("errors/impl/requirement_type.md") };
     duplicate := diag.Diag{ .explanation = lang.meta.embed("errors/impl/duplicate.md") };
     collision := diag.Diag{ .explanation = lang.meta.embed("errors/impl/collision.md") };
 };

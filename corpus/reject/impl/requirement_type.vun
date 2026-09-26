@@ -1,0 +1,28 @@
+//! An impl provides each requirement with a type the requirement accepts (spec 02, section 3).
+
+Shape := interface(($Self: type) -> type { struct {
+    area: (self: &Self) -> u64 = _;
+    scale: (self: &mut Self, by: u8) = _;
+}});
+
+Square := struct { side: u32 };
+
+#[impl(Shape(Square))] //~ impl.requirement_type "`scale` is"
+SquareShape := struct {
+    area := (self: &Square) -> u64 { self.side * self.side };
+    scale := (self: &mut Square, by: u32) { };
+};
+
+Writer := interface(($Self: type) -> type { struct {
+    Error: type = _;
+    write: (self: &mut Self, bytes: &[u8]) -> Result(usize, Error) = _;
+}});
+
+Sink := struct {};
+
+/// A requirement whose type names another requirement is compared where it evaluates.
+#[impl(Writer(Sink))]
+SinkWriter := struct {
+    Error := ();
+    write := (self: &mut Sink, bytes: &[u8]) -> Result(usize, ()) { .ok(bytes.len()) };
+};

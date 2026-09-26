@@ -15,7 +15,7 @@ Shape := interface(($Self: type) -> type { struct {
 }});
 Square := struct { side: u16 };
 #[impl(Shape(Square))]
-SquareShape := struct { area := (self: &Square) -> u16 { self.side }; };
+SquareShape := struct { area := (self: &Square) -> u64 { self.side }; };
 area := (s: Square) -> bool { s.area() };
 sides := (s: Square) -> bool { s.sides() };
 ",
@@ -23,7 +23,7 @@ sides := (s: Square) -> bool { s.sides() };
     assert_eq!(
         fixture.reported(&file),
         [
-            (errors::TYPES_MISMATCH, "expected `bool`, found `Int(0..=65535)`".to_owned()),
+            (errors::TYPES_MISMATCH, "expected `bool`, found `Int(0..2^64)`".to_owned()),
             (errors::TYPES_MISMATCH, "expected `bool`, found `Int(0..=255)`".to_owned()),
         ]
     );

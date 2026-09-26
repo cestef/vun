@@ -9,5 +9,8 @@ use crate::Item;
 pub const missing_requirement: Item = Item::new(
     &["lang", "errors", "impl", "missing_requirement"],
 );
+pub const requirement_type: Item = Item::new(
+    &["lang", "errors", "impl", "requirement_type"],
+);
 pub const duplicate: Item = Item::new(&["lang", "errors", "impl", "duplicate"]);
 pub const collision: Item = Item::new(&["lang", "errors", "impl", "collision"]);

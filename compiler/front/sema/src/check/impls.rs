@@ -1,12 +1,14 @@
-//! Impls in a file (spec 02, section 3): each provides the requirements of its interface, and no
+//! Impls in a file (spec 02, section 3): each provides the requirements of its interface, with
+//! types the requirements accept, and no
 //! two impls the file sees register a witness for the same interface and type.
 
 use vun_diag::{Diagnostic, Msg, errors};
+use vun_intern::Symbol;
 
 use super::Checker;
 use crate::decl::DeclValue;
-use crate::member::{Found, Members};
-use crate::ty::Value;
+use crate::member::{Found, MemberType, MemberValue, Members};
+use crate::ty::{Ty, TyKind, Value};
 use crate::witness::{ImplDecl, Impls};
 
 impl Checker<'_, '_, '_> {
@@ -17,8 +19,9 @@ impl Checker<'_, '_, '_> {
         }
     }
 
-    /// Reports each requirement of `I(T)` that the witness of `decl` does not provide. The
-    /// witness of a type constructor is checked per type it is used for.
+    /// Reports each requirement of `I(T)` that the witness of `decl` does not provide, or provides
+    /// with a type the requirement does not accept. The witness of a type constructor is checked
+    /// per type it is used for.
     fn requirements(&mut self, decl: &ImplDecl) {
         let (Value::Type(_), Some(contract)) = (&decl.target, &decl.contract) else { return };
         let cx = self.env.cx;
@@ -29,15 +32,46 @@ impl Checker<'_, '_, '_> {
             return;
         };
         for requirement in required.decls.iter().filter(|d| d.decl.required(cx)) {
-            if provided.find(requirement.name) == Found::Absent {
+            let d = if provided.find(requirement.name) == Found::Absent {
                 let msg = Msg::new().text("the impl does not provide ").code(requirement.name.as_str());
                 let label = Msg::new().code(contract.requirements.to_string()).text(" requires it");
-                let d = Diagnostic::error(errors::IMPL_MISSING_REQUIREMENT, msg)
-                    .at(decl.attr, None)
-                    .label(requirement.decl.decl.origin, Some(label));
-                self.diag.error(d);
+                Diagnostic::error(errors::IMPL_MISSING_REQUIREMENT, msg)
+                    .label(requirement.decl.decl.origin, Some(label))
+            } else if let Some(msg) = self.mistyped(contract.requirements, witness, requirement.name) {
+                let label = Msg::new().text("required here");
+                Diagnostic::error(errors::IMPL_REQUIREMENT_TYPE, msg)
+                    .label(requirement.decl.decl.origin, Some(label))
+            } else {
+                continue;
+            };
+            self.diag.error(d.at(decl.attr, None));
+        }
+    }
+
+    /// Why the witness's `name` does not have a type the requirement `name` of `requirements`
+    /// accepts. What a requirement's type names that the witness decides (another requirement,
+    /// such as `Error`) does not evaluate there, so only a type that does is compared. Where
+    /// `type` is required, a value that is a type is accepted, as a tuple of types is (decision 89).
+    fn mistyped(&self, requirements: Ty, witness: Ty, name: Symbol) -> Option<Msg> {
+        let cx = self.env.cx;
+        let expected = cx.get::<MemberType>(&(requirements, name)).ok()?.ty;
+        if expected == TyKind::of_types() {
+            let value = cx.get::<MemberValue>(&(witness, name)).ok()?;
+            if value.as_type().is_some() {
+                return None;
             }
         }
+        let found = cx.get::<MemberType>(&(witness, name)).ok()?.ty;
+        (!expected.accepts(&found)).then(|| {
+            Msg::new()
+                .code(name.as_str())
+                .text(" is ")
+                .ty(found.to_string())
+                .text(", but ")
+                .code(requirements.to_string())
+                .text(" requires ")
+                .ty(expected.to_string())
+        })
     }
 
     /// Reports `decl` when an impl before it registers a witness for a pair it covers too.
