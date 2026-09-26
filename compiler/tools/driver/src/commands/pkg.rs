@@ -9,9 +9,9 @@ use vun_command::{Args, Command, Example, Outcome, Param, PathKind, Values};
 use vun_diag::{ChildKind, Diagnostic, Msg, errors};
 use vun_fs::Edit;
 use vun_pkg::{FORMATS, Format};
-use vun_term::{Shell, Style, Text};
+use vun_term::Shell;
 
-use super::status::{ADDED, FRESH, HashText, PACKED, Shown, UPDATED};
+use super::status::{self, Source as Added};
 use crate::Session;
 use crate::packages::{Addition, Unstated};
 
@@ -52,14 +52,11 @@ fn add(session: &mut Session, args: &Args, shell: &mut Shell<'_>) -> io::Result<
     let addition = Addition { source, name: args.value(&NAME), version };
     match session.add(&dir, &addition) {
         Ok(Some(dep)) => {
-            let name = Text::of(Style::Strong, dep.name.clone());
-            let what = match &dep.source {
-                Source::Path(path) => name.plain(" at ").plain(path.clone()),
-                Source::Archive { version, hash, .. } => {
-                    name.plain(format!(" {version} ")).append(hash.text(Shown::Short))
-                }
+            let source = match &dep.source {
+                Source::Path(path) => Added::Path(path.clone()),
+                Source::Archive { version, hash, .. } => Added::Archive { version: *version, hash: *hash },
             };
-            shell.status(ADDED, what);
+            shell.status(&status::Added { name: dep.name.clone(), source });
             if let Some(project) = session.package_at(&dir) {
                 session.write_lock(&dir, project);
             }
@@ -85,11 +82,10 @@ fn update(session: &mut Session, _: &Args, shell: &mut Shell<'_>) -> io::Result<
     let Some((dir, _)) = session.project()? else { return Ok(Outcome::Failure) };
     let updated = session.update(&dir);
     for u in &updated {
-        let what = Text::of(Style::Strong, u.name.clone()).plain(format!(" {} to {} ", u.from, u.to));
-        shell.status(UPDATED, what.append(u.hash.text(Shown::Short)));
+        shell.status(&status::Updated { name: u.name.clone(), from: u.from, to: u.to, hash: u.hash });
     }
     if updated.is_empty() && !session.failed() {
-        shell.status(FRESH, Text::from("every dependency is at the newest release its indexes list"));
+        shell.status(&status::UpToDate);
     }
     if let Some(project) = session.package_at(&dir) {
         for (name, hash, fetched) in session.fetch(project) {
@@ -130,10 +126,8 @@ fn pack(session: &mut Session, args: &Args, shell: &mut Shell<'_>) -> io::Result
         session.diag.error(Diagnostic::error(errors::IO_UNWRITABLE_FILE, msg).caused_by(&e));
         return Ok(Outcome::Failure);
     }
-    let what = Text::of(Style::Strong, format!("{} {}", manifest.name, manifest.version)).plain(" ");
-    shell.status(
-        PACKED,
-        what.append(snapshot.root().text(Shown::Short)).plain(" to ").plain(path.display().to_string()),
-    );
+    let path = path.display().to_string();
+    let hash = snapshot.root();
+    shell.status(&status::Packed { name: manifest.name.clone(), version: manifest.version, hash, path });
     Ok(session.outcome())
 }

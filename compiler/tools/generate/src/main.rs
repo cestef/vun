@@ -18,13 +18,37 @@ use vun_command::{Args, Command, Outcome, Param, Program, Shell};
 use vun_diag::{ChildKind, DiagCtxt, DiagId, Diagnostic, Msg};
 use vun_fs::Edit;
 use vun_harness::repo_root;
-use vun_term::{Style, Text, Verb};
+use vun_json::Object;
+use vun_term::{Record, Status, Style, Text, Verb};
 
 /// How the generator is run, which messages suggest.
 pub(crate) const RUN: &str = "cargo gen";
 
-const FRESH: Verb = Verb::good("Fresh");
-const WROTE: Verb = Verb::good("Wrote");
+/// A generated directory, and whether it was rewritten.
+struct Generated {
+    output: &'static str,
+    wrote: bool,
+}
+
+impl Record for Generated {
+    fn kind(&self) -> &'static str {
+        "generated"
+    }
+
+    fn text(&self) -> Text {
+        Text::of(Style::Strong, self.output)
+    }
+
+    fn fields(&self) -> Object<'static> {
+        Object::new().with("output", self.output).with("wrote", self.wrote)
+    }
+}
+
+impl Status for Generated {
+    fn verb(&self) -> Verb {
+        Verb::good(if self.wrote { "Wrote" } else { "Fresh" })
+    }
+}
 
 const STALE: DiagId = DiagId::new("generate.stale");
 
@@ -51,7 +75,7 @@ fn generate_all(diag: &mut DiagCtxt, args: &Args, shell: &mut Shell<'_>) -> io::
         };
         let changes = generator.changes(&root, &generated)?;
         if changes.is_empty() {
-            shell.status(FRESH, Text::of(Style::Strong, generator.output));
+            shell.status(&Generated { output: generator.output, wrote: false });
         } else if args.flag(&CHECK) {
             let msg = Msg::new().code(generator.output).text(" is out of date with ").code(generator.source);
             let help = Msg::new().text("run ").code(RUN);
@@ -65,7 +89,7 @@ fn generate_all(diag: &mut DiagCtxt, args: &Args, shell: &mut Shell<'_>) -> io::
             for path in &changes.stale {
                 std::fs::remove_file(path)?;
             }
-            shell.status(WROTE, Text::of(Style::Strong, generator.output));
+            shell.status(&Generated { output: generator.output, wrote: true });
         }
     }
     Ok(outcome)

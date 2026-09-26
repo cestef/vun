@@ -16,6 +16,9 @@ use vun_term::Shell;
 use super::super::FILE;
 use crate::Session;
 
+/// What debug commands report.
+pub(super) const DUMP: &str = "dump";
+
 /// What `vun debug <stage>` prints.
 #[derive(Clone, Copy)]
 pub(super) enum Stage {
@@ -33,14 +36,35 @@ pub(super) enum Stage {
 }
 
 impl Stage {
-    /// Prints this stage of the file `args` names.
-    pub(super) fn dump(
+    /// Its command's name.
+    pub(super) const fn name(self) -> &'static str {
+        match self {
+            Self::Tokens => "tokens",
+            Self::Cst => "cst",
+            Self::Hir => "hir",
+            Self::Mir => "mir",
+            Self::Program => "program",
+            Self::Lir => "lir",
+            Self::Code => "code",
+            Self::Frames => "frames",
+            Self::Layout => "layout",
+            Self::Manifest => "manifest",
+            Self::Plan => "plan",
+        }
+    }
+
+    /// Reports this stage of the file `args` names as a dump.
+    pub(super) fn show(
         self,
         session: &mut Session,
         args: &Args,
         shell: &mut Shell<'_>,
     ) -> io::Result<Outcome> {
-        let out = &mut shell.out;
+        shell.document(DUMP, self.name().to_owned(), |out| self.dump(session, args, out))
+    }
+
+    /// Prints this stage of the file `args` names.
+    pub(super) fn dump(self, session: &mut Session, args: &Args, out: &mut dyn Write) -> io::Result<Outcome> {
         let path = args.value(&FILE).expect("positional parameters are present when a command runs");
         let Some(file) = session.load(Path::new(path)) else { return Ok(Outcome::Failure) };
         if let Self::Manifest = self {

@@ -2,11 +2,12 @@
 //! simply pass, the reasons under it, and a tally.
 
 use vun_harness::At;
-use vun_term::{Style, Text, Verb};
+use vun_json::Object;
+use vun_term::{Bytes, Record, Status, Style, Text, Verb};
 
 use crate::corpus::Verdict;
 
-pub(crate) const PASSED: Verb = Verb::good("Passed");
+const PASSED: Verb = Verb::good("Passed");
 const PENDING: Verb = Verb::warned("Pending");
 const PLANNED: Verb = Verb { word: "Planned", style: Style::Note };
 const FAILED: Verb = Verb::failed("Failed");
@@ -40,14 +41,97 @@ impl Tally {
         };
         *count += 1;
     }
+}
 
-    pub(crate) fn text(&self) -> Text {
+impl Record for Tally {
+    fn kind(&self) -> &'static str {
+        "tally"
+    }
+
+    fn text(&self) -> Text {
         let failed = if self.failed == 0 { Style::Good } else { Style::Error };
         let text = Text::of(Style::Good, format!("{} passed", self.passed)).plain(", ");
         let text = text.styled(Style::Warning, format!("{} pending", self.pending));
         let text = text.plain(format!(", {} planned, {} shown, ", self.planned, self.shown));
         let verb = if self.failed == 0 { PASSED } else { FAILED };
         verb.line(text.styled(failed, format!("{} failed", self.failed)))
+    }
+
+    fn fields(&self) -> Object<'static> {
+        let Self { passed, pending, planned, shown, failed } = *self;
+        let counts = Object::new().with("passed", passed).with("pending", pending).with("planned", planned);
+        counts.with("shown", shown).with("failed", failed)
+    }
+}
+
+/// A program of the corpus and its verdict.
+pub(crate) struct Judged<'v> {
+    pub(crate) path: String,
+    pub(crate) verdict: &'v Verdict,
+}
+
+impl Record for Judged<'_> {
+    fn kind(&self) -> &'static str {
+        "program"
+    }
+
+    fn text(&self) -> Text {
+        Text::join(self.verdict.lines(Text::of(Style::Strong, self.path.clone())), "\n")
+    }
+
+    /// Its path, its verdict, and the reasons shown under it.
+    fn fields(&self) -> Object<'static> {
+        let lines = self.verdict.lines(Text::new());
+        let details: Vec<String> = lines.iter().skip(1).map(|l| l.to_string().trim().to_owned()).collect();
+        Object::new()
+            .with("path", self.path.clone())
+            .with("verdict", self.verdict.name())
+            .with("details", details)
+    }
+}
+
+/// A check of the repository that passed, and what it measured.
+pub(crate) enum Passed {
+    Lines { max: u32 },
+    Size { path: String, bytes: u64, budget: u64 },
+}
+
+impl Record for Passed {
+    fn kind(&self) -> &'static str {
+        match self {
+            Self::Lines { .. } => "lines",
+            Self::Size { .. } => "size",
+        }
+    }
+
+    fn text(&self) -> Text {
+        match self {
+            Self::Lines { max } => Text::from(format!("every source file has at most {max} lines")),
+            Self::Size { path, bytes, budget } => {
+                let under = format!(
+                    " is {}, {} under the budget of {}",
+                    Bytes(*bytes),
+                    Bytes(budget - bytes),
+                    Bytes(*budget)
+                );
+                Text::of(Style::Strong, path.clone()).plain(under)
+            }
+        }
+    }
+
+    fn fields(&self) -> Object<'static> {
+        match self {
+            Self::Lines { max } => Object::new().with("max", *max),
+            Self::Size { path, bytes, budget } => {
+                Object::new().with("path", path.clone()).with("bytes", *bytes).with("budget", *budget)
+            }
+        }
+    }
+}
+
+impl Status for Passed {
+    fn verb(&self) -> Verb {
+        PASSED
     }
 }
 
@@ -68,6 +152,21 @@ fn tagged(tag: &'static str, text: Text) -> Text {
 }
 
 impl Verdict {
+    /// How JSON names it.
+    pub(crate) const fn name(&self) -> &'static str {
+        match self {
+            Self::Pass => "pass",
+            Self::Pending(_) => "pending",
+            Self::Fail(_) => "fail",
+            Self::Undeclared(_) => "undeclared",
+            Self::Malformed(_) => "malformed",
+            Self::Shown => "shown",
+            Self::Unexplained(_) => "unexplained",
+            Self::Planned(_) => "planned",
+            Self::Ready => "ready",
+        }
+    }
+
     /// The lines reporting this verdict on the program at `path`; none for a pass.
     pub(crate) fn lines(&self, path: Text) -> Vec<Text> {
         let reason = |text: Text| vec![FAILED.line(path.clone()), Verb::under(text)];

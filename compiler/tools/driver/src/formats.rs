@@ -1,10 +1,8 @@
 //! Diagnostic output formats, chosen with `--diagnostics` (spec 10, section 2). Each is a
 //! renderer behind `DiagSink`; adding one is adding an entry to [`FORMATS`].
 
-use std::io::Write;
-
-use vun_command::{Args, Param, Values};
-use vun_diag::{Color, DiagSink, Diagnostic};
+use vun_command::{Args, HumanSink, Param, Values};
+use vun_diag::Diagnostic;
 use vun_render_annotate::AnnotateRenderer;
 use vun_render_ariadne::AriadneRenderer;
 use vun_render_short::ShortRenderer;
@@ -14,7 +12,7 @@ use crate::Session;
 pub struct Format {
     pub name: &'static str,
     pub about: &'static str,
-    pub sink: for<'w> fn(&'w mut dyn Write, Color) -> Box<dyn DiagSink + 'w>,
+    pub sink: HumanSink,
 }
 
 /// The first entry is the default.

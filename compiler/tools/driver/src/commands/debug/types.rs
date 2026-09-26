@@ -12,7 +12,6 @@ use vun_mir::{Programs, Roots};
 use vun_sema::eval::Instantiation;
 use vun_sema::typeck::{Operation, Stage, Typed};
 use vun_span::SourceMap;
-use vun_term::Shell;
 
 use super::FILE;
 use crate::Session;
@@ -20,8 +19,7 @@ use crate::Session;
 /// How much of an expression's source a line shows.
 const SHOWN: usize = 48;
 
-pub(super) fn types(session: &mut Session, args: &Args, shell: &mut Shell<'_>) -> io::Result<Outcome> {
-    let out = &mut shell.out;
+pub(super) fn types(session: &mut Session, args: &Args, out: &mut dyn Write) -> io::Result<Outcome> {
     let path = args.value(&FILE).expect("positional parameters are present when a command runs");
     let Some(file) = session.load(Path::new(path)) else { return Ok(session.outcome()) };
     let key = session.file_ref(file);

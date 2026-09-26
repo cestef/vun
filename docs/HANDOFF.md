@@ -95,7 +95,7 @@ computations; `query!` declares a query in one block; persistence built but not 
 (declarative CLI), `vun-build` (manifests, `lock.vun` via `Lock::read`), `vun-pkg` (archive
 formats, `Format::PUBLISHED` is `.tar.zst`), `vun-http`, `vun-hash`, `vun-fs` (`Tree`, `Edit`,
 `Scratch`), `vun-par` (`Parallel::par_map`: the caller and a thread per core claim guided
-runs of items, nested calls run inline; the corpus, the repository sweeps, baseline compilation
+runs of items, nested calls run inline; the corpus, the repository sweeps, native compilation
 and C compiles use it), `vun-harness`, `vun-trace`, three renderers.
 
 **Sema** (`compiler/front/sema`):
@@ -237,15 +237,28 @@ printer), `emit/` (`ints.rs` integer types from the C model with `sizeof` checks
 `vun run` (`codegen.rs`, `program.rs`); the `gnu` linker adapter links through the target's C
 compiler. `vun run corpus/accept/programs/hello.vun --backend c` prints `hello` (a driver test).
 
-**Baseline backend** (`compiler/back/baseline`, decision 157, spec 13 section 8.3): `x86_64/encode`
-(`Asm`: typed instructions to bytes, labels patched at the end, `CodeReloc`s), `x86_64/abi.rs`
-(`Frame::of`: where a signature passes each value, System V records), `x86_64/func/` (the
-single-pass compiler: `values.rs` assignments, homes, recomputed values and eviction; `inst.rs`,
-`memory.rs`, `call.rs`, `term.rs`), `elf/` (`Object` as data, `write`), `object.rs` (a unit as one
-object). Compares fuse into their branch (`FnCompiler::fused`), registers carry into a
-single-predecessor block emitted next (`kept`), frames are reported while emitting
-(`ArtifactSink::frames`, `Emitted`, `Compiled::stack`); values live across loops hold callee-saved
-registers of their own (`func/fixed.rs`, decision 166).
+**Native backend** (decisions 183, 157, 161, 166; spec 13 section 8.3), TPDE's layers as crates:
+`vun-asm` (`compiler/back/asm`: `Buffer<I, S>` code buffers, `Label`s and fixups patched by
+`Isa::patch`, `Reloc`s, `imm` fit arithmetic, `Line`/`Listing`), `vun-asm-x86_64`
+(`compiler/back/x86_64`: `table/` declares every instruction once as `Form`s: operand `Kind`s,
+`Sizes`, prefix, opcode, `Layout`, name, `implicit` registers; `Op::form` picks the first form the
+operands fit; `Emit` encodes it into an `Asm<S>`; `Inst`'s `Display` prints the same form in
+yaxpeax's syntax; `tests.rs` decodes every form with yaxpeax-x86 and compares text),
+`vun-asm-arm64` (`compiler/back/arm64`, written by an agent to the same idiom: bitmask
+immediates, register 31 by operand kind, addressing modes as forms, yaxpeax-arm checks; not used
+by the backend yet), `vun-object` (`Object` as data, ELF `write`, arch-neutral `RelocKind`
+numbered by `Machine::relocation`), `vun-codegen` (`compiler/back/codegen`: the framework over
+`Arch` (registers, the framework's own moves through `CARRIER`/`TEMP`) and `Isel` (instruction
+compilers): `Cx` with `values.rs` (`Assignment`, `Recompute` found once per function), `regs.rs`
+(`RegFile`, a 64-bit lock set), `frame.rs`, `cx/values.rs` (`reg`, `reg_to`, `def`, `def_at`,
+`reuse`, `inherit`, `scratch`, `take`, `release`), `cx/exit.rs` (`fused`, `leave`, `jump`,
+`left`), `cx/fixed.rs` (callee-saved registers for loops), `snippet/` (`Slot::{In, At, Out, Temp,
+Fixed, Through, Cond, Is}`, `Step`, the encoder choosing operands by forms and omitting moves of
+dying operands, `Emits`)), and `vun-backend-native` (`compiler/back/native`: `x86_64/mod.rs` the
+`Arch`/`Emits` impls, `abi.rs` (`Passing::of`), `snippets.rs` (every operation as data),
+`isel/` (`Sel` over `Cx<X86>`: dispatch, `entry.rs` prologue and parameters, `call.rs`,
+`carry.rs`, `memory.rs`, `float.rs`, `term.rs`), `object.rs`, `listing.rs`). `vun debug code
+--backend native <file>` prints each function's listing under its source lines.
 
 **Attributes** (decision 163): `lang.Attribute(on)` with `lang.Place`; `check/placed.rs` types
 each attribute (`Typer::typed`) and reports `attr.misplaced`; `sema/src/attributes.rs`
@@ -256,8 +269,8 @@ each attribute (`Typer::typed`) and reports `attr.misplaced`; `sema/src/attribut
 `Integer`, one rounding routine for every format, decimal parsing); `Value::Float`; literals typed
 by the expected float type (`typeck/infer.rs`); `apply/float.rs`; lowering `func/float.rs`
 (`!=` as `==` negated, `total_order` keys) and `func/verdict.rs` (`condition`, `ordering`, which
-`Int::compare` uses too); baseline `func/float.rs`, `encode/sse.rs`, ABI carriers (`abi.rs`
-`Carrier`, eightbyte classes), `func/carry.rs`, `func/entry.rs`. NaN is canonical (decision 173):
+`Int::compare` uses too); native `isel/float.rs` and the float snippets, ABI carriers (`abi.rs`
+`Carrier`, eightbyte classes), `isel/carry.rs`, `isel/entry.rs`. NaN is canonical (decision 173):
 every NaN result is `Binary::nan` (sign clear, quiet bit only); lowering selects it after each
 float operation (`FnLower::canonical`); `neg`, `bits`, `from_bits` keep bits. The encoding is
 `lang.float.{Bits, bits, from_bits, fraction_bits}`; `rem` and `mul_add` run as Vun functions of
@@ -282,7 +295,11 @@ xtask and generate). Global options `--color`, `-q`, `-h`, `-V`; the driver's `C
 and drains diagnostics (`shown_errors` keeps `failed`); `Session::conclude` ends a compiling
 command with `Finished`/`Failed`; `Session::prepare` fetches and locks before compiling (no `vun
 pkg fetch`); `commands/status.rs` holds the verbs and `HashText` (hashes as jj ids). Logs are
-styled per level, under `VUN_COLOR`.
+styled per level, under `VUN_COLOR`. Machine output (decision 190): `--format json`; commands
+report `Record`s through `Shell::{result, status, table, document}`, never text; `Session::emit`
+and `DiagCtxt`'s `Context` pick the sink through `Diagnostics::diagnostics` (JSON lines from
+`vun-render-json` on stdout, or the human renderer on stderr); `Program::globals` reads the global
+options before parsing.
 
 **Developer tooling** (decision 168): commands organized as jj's (`vun debug ...` for every dump
 and `compare`, `vun util`, `vun toolchain components`); `Session::run_each` and
@@ -291,7 +308,7 @@ and `compare`, `vun util`, `vun toolchain components`); `Session::run_each` and
 `BackendInfo.readiness`; `Why::Primitive` names an unlowered primitive; `vun debug types <file>`
 prints each expression's type and stage in every reached instantiation, from any file, marking
 untyped expressions and operators without a function; `VUN_LOG` traces `mir`,
-`lower` (per statement), `baseline` (per instruction) and `c` per function.
+`lower` (per statement), `vun_codegen` (per instruction selected) and `c` per function.
 
 **Legalization** (decision 169): `vun_lir::legalize` (`Unit::legalize(Legalize { widest,
 endian })`, `halves.rs` pair arithmetic, `rewrite/` per function (instructions, calls, terminators), `divide.rs` the division
@@ -305,8 +322,8 @@ between `legalize/float16.rs`'s exact widening and rounding (`rewrite/half.rs`);
 set `Function::stack_max` and `Import::stack_max` in LIR; `vun_lir::analysis::StackUse` walks the
 call graph; the driver checks after compiling (`driver/src/stack.rs`). An import's bound is the
 largest its declarations in the program state (`Env::linked_stack`, decision 164), so a program
-declares its trap handler's. Open: `stack.depth(k)` for bounded recursion. `vun run <file> --backend baseline` runs hello.vun; the driver's backend tests build every
-program through `BACKENDS` (C and baseline) and require equal results. `Lack`/`Missing` live in
+declares its trap handler's. Open: `stack.depth(k)` for bounded recursion. `vun run <file> --backend native` runs hello.vun; the driver's backend tests build every
+program through `BACKENDS` (C and native) and require equal results. `Lack`/`Missing` live in
 `vun-backend`.
 
 **Interpreter** (`compiler/mid/interp`): runs MIR on compile-time values; shared borrows read as
@@ -367,6 +384,11 @@ every `lang` and `std` file cleanly.
 
 ## 6. Decisions
 
+Accepted this session (the user's choices, details proposed): 182 (backends chosen by profile from
+the target's preferences, `--release`, `Request`, `native` and `external` renamed), 183 (the native
+backend as TPDE's layers: `vun-asm`, `vun-asm-{x86_64,arm64}`, `vun-object`, `vun-codegen`,
+snippets; yaxpeax decoders in tests). Decisions 157, 161, 166 name the native backend by its old
+name, baseline.
 Proposed also: 155 (frame layout), 156 (narrowing, runtime bounds, frame layouts in sema), 157
 (the baseline backend). Proposed: 159 (trap sites at compile time), 160 (calls read one way, expansion, run-time `fail`),
 161 (baseline fusion, fall-through registers, frames reported). Accepted: 162 (stack bounds, imports
@@ -423,12 +445,21 @@ rules go to `decisions.md` as proposed unless the user approves them.
    `Borrow::of` linear scans, SipHash maps in the typer, `Attrs` as a query; (e) mimalloc was
    not tried (allocation is about 20% of a cold check); (f) `par_map` spawns scoped threads per
    call (no `unsafe` is allowed for a persistent pool); measure whether that matters.
-1. Baseline backend next: float conversions (they must give the canonical NaN, decision 173;
-   to `f16` only from `f32`, decision 175), data
-   objects aligned past every C type in the C backend (only slots are handled), and
-   128-bit integers (pairs, helpers in Vun), DWARF lines, arm64. Backends: memory regions from a program's build options into `LinkPlan` (the `gnu`
-   adapter writes scripts from them), and a bare-metal runtime to link against. A slice value (`xs[a..b]` not borrowed)
-   reaches lowering as `backend.unlowered` ("no layout") instead of a sema error.
+1. Backends (the user's current focus; decisions 182, 183 done this session: profiles and
+   preferences, `Registry::choose`, `Request`, renames, the TPDE layering). Next, in order: (a)
+   arm64 through the native backend: an `Arch`/`Emits`/`Isel` for `vun-asm-arm64` (constants
+   by `movz`/`movk` around `Op::Mov.form`, AAPCS64 in its `abi.rs`, snippets in its own table's
+   ops), then `targets.linux.arm64` and `macos.arm64` build natively (Mach-O in `vun-object`);
+   (b) native code quality where the framework is the limit: a value brought into a register
+   the snippet takes (`take`) is stored and reloaded (TPDE moves it instead), constants of
+   narrow types are materialized before an extension, and MIR's locals in slots give pairs of
+   store and reload that a slot-to-register promotion in lowering would remove; (c) DWARF line
+   tables from the listing marks (`Compiled.marks`), then frame unwind info; (d) the gaps left
+   before: data objects aligned past every C type in the C backend (only slots are handled),
+   memory regions from a program's build options into `LinkPlan` (the `gnu` adapter writes
+   scripts from them), a bare-metal runtime to link against, and a slice value (`xs[a..b]` not
+   borrowed) reaching lowering as `backend.unlowered` ("no layout") instead of a sema error;
+   (e) linkers other than `gnu` (all `Readiness::Planned`).
 2. `std`: `std.task.Pool`, `std.testing.Sim`; a Linux runtime without the C library; text
    (`Str`) and collections; `print`'s `.fixes`. Generic bodies
    over a constrained `$A: Allocator` are neither typed nor lowered (`a.alloc(...)`), see 5 and 6.

@@ -139,11 +139,15 @@ pub const COLOR: Param = Param::option("color")
     .about("when to show colors")
     .values(Values::Choice(|| vun_term::ColorChoice::ALL.iter().map(|c| c.name()).collect()))
     .env("VUN_COLOR");
+pub const FORMAT: Param = Param::option("format")
+    .about("how output is shown: for people, or JSON lines for programs")
+    .values(Values::Choice(|| vun_term::Format::ALL.iter().map(|f| f.name()).collect()))
+    .env("VUN_FORMAT");
 pub const QUIET: Param =
     Param::flag("quiet").short('q').about("show results and diagnostics, without status lines");
 /// Options every command accepts, applied by the program before the command runs; the root
 /// accepts `VERSION` besides.
-pub const GLOBAL: OptionSet = OptionSet { title: "Global options", params: &[COLOR, QUIET, HELP] };
+pub const GLOBAL: OptionSet = OptionSet { title: "Global options", params: &[COLOR, FORMAT, QUIET, HELP] };
 
 /// Options several commands take, shown in help under their own title, as cargo's
 /// `Compilation Options`.

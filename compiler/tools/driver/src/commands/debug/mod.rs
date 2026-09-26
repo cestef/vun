@@ -10,81 +10,87 @@ use vun_command::Command;
 
 use super::FILE;
 use crate::Session;
-use dump::Stage;
+use dump::{DUMP, Stage};
 
 pub(super) const GROUP: &str = "debug";
 
 pub(super) const COMMANDS: &[Command<Session>] = &[
-    Command::run("tokens", "tokens and trivia with byte ranges", |s, args, shell| {
-        Stage::Tokens.dump(s, args, shell)
+    Command::run(Stage::Tokens.name(), "tokens and trivia with byte ranges", |s, args, shell| {
+        Stage::Tokens.show(s, args, shell)
     })
     .params(&[FILE]),
-    Command::run("cst", "the concrete syntax tree, one node per line", |s, args, shell| {
-        Stage::Cst.dump(s, args, shell)
+    Command::run(Stage::Cst.name(), "the concrete syntax tree, one node per line", |s, args, shell| {
+        Stage::Cst.show(s, args, shell)
     })
     .params(&[FILE]),
-    Command::run("manifest", "the package manifest read from a build.vun", |s, args, shell| {
-        Stage::Manifest.dump(s, args, shell)
+    Command::run(Stage::Manifest.name(), "the package manifest read from a build.vun", |s, args, shell| {
+        Stage::Manifest.show(s, args, shell)
     })
     .params(&[FILE]),
-    Command::run("plan", "the steps a build.vun's build records, one per line", |s, args, shell| {
-        Stage::Plan.dump(s, args, shell)
-    })
+    Command::run(
+        Stage::Plan.name(),
+        "the steps a build.vun's build records, one per line",
+        |s, args, shell| Stage::Plan.show(s, args, shell),
+    )
     .params(&[FILE]),
-    Command::run("hir", "the high-level representation, names resolved, with origins", |s, args, shell| {
-        Stage::Hir.dump(s, args, shell)
-    })
+    Command::run(
+        Stage::Hir.name(),
+        "the high-level representation, names resolved, with origins",
+        |s, args, shell| Stage::Hir.show(s, args, shell),
+    )
     .params(&[FILE]),
     Command::run(
         "types",
         "what typing found in each function, plain and in each instantiation reached",
-        types::types,
+        |s, args, shell| shell.document(DUMP, "types".to_owned(), |out| types::types(s, args, out)),
     )
     .params(&[FILE]),
-    Command::run("mir", "the mid-level representation of each function, with origins", |s, args, shell| {
-        Stage::Mir.dump(s, args, shell)
-    })
+    Command::run(
+        Stage::Mir.name(),
+        "the mid-level representation of each function, with origins",
+        |s, args, shell| Stage::Mir.show(s, args, shell),
+    )
     .params(&[FILE]),
     Command::run(
-        "layout",
+        Stage::Layout.name(),
         "the layout of each type the file declares: sizes, offsets, tags and niches",
-        |s, args, shell| Stage::Layout.dump(s, args, shell),
+        |s, args, shell| Stage::Layout.show(s, args, shell),
     )
     .params(&[FILE]),
     Command::run(
-        "program",
+        Stage::Program.name(),
         "the exports of a root file and the MIR of every function they reach",
-        |s, args, shell| Stage::Program.dump(s, args, shell),
+        |s, args, shell| Stage::Program.show(s, args, shell),
     )
     .params(&[FILE]),
     Command::run(
-        "lir",
+        Stage::Lir.name(),
         "the low-level representation of the program a root file exports, with origins",
-        |s, args, shell| Stage::Lir.dump(s, args, shell),
+        |s, args, shell| Stage::Lir.show(s, args, shell),
     )
     .params(&[FILE]),
     Command::run(
-        "code",
+        Stage::Code.name(),
         "what a backend generates for the program a root file exports, when it is text",
-        |s, args, shell| Stage::Code.dump(s, args, shell),
+        |s, args, shell| Stage::Code.show(s, args, shell),
     )
     .params(&[FILE, crate::codegen::BACKEND]),
     Command::run(
-        "frames",
+        Stage::Frames.name(),
         "the frame size of each function of the program a root file exports, as its tools report them",
-        |s, args, shell| Stage::Frames.dump(s, args, shell),
+        |s, args, shell| Stage::Frames.show(s, args, shell),
     )
     .params(&[FILE, crate::codegen::BACKEND]),
     Command::run(
         "coverage",
         "how far MIR and LIR take the functions of a file, and where each stops",
-        coverage::coverage,
+        |s, args, shell| shell.document(DUMP, "coverage".to_owned(), |out| coverage::coverage(s, args, out)),
     )
     .params(&[FILE]),
     Command::run(
         "compare",
         "build and run a program through every backend that generates code, and compare",
-        compare::compare,
+        |s, args, shell| shell.document(DUMP, "compare".to_owned(), |out| compare::compare(s, args, out)),
     )
     .params(&[FILE]),
 ];

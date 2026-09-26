@@ -277,7 +277,8 @@ list|install|prune`, `util lsp`.
 
 Options:
 
-- **Global**, on every command: `--color <auto|always|never>` (or `VUN_COLOR`), `-q`/`--quiet`
+- **Global**, on every command: `--color <auto|always|never>` (or `VUN_COLOR`), `--format
+  <human|json>` (or `VUN_FORMAT`; below), `-q`/`--quiet`
   (results and diagnostics only, no status lines), `-h` (help) and `--help` (the long page,
   through the pager on a terminal: aliases, the values and variables of options, examples),
   and `-V`/`--version` on the root.
@@ -291,6 +292,14 @@ lines whose verb is right-aligned in a column (`Checking`, `Building`, `Running`
 `Finished` with the time taken, `Failed` with the errors), after the diagnostics of the step.
 Colors are decided per stream: `auto` shows them on a terminal unless `NO_COLOR` is set, or
 `CLICOLOR_FORCE` forces them, or `CLICOLOR=0` or `TERM=dumb` turns them off.
+
+Output is machine-readable with `--format json`: every line of standard output is then one JSON
+object naming its `type`, for results (`component`, `stored`, `dump`, `explanation`, ...), progress
+(`started`, `finished` with `success`, `errors`, `warnings` and the time, `downloaded`, ...) and
+diagnostics (`diagnostic`, schema in spec 10) alike; logs stay on standard error. Commands report
+typed records, each shown both ways, so a command has one output and two views of it. Global
+options are read before the rest of the command line, so a usage error follows them too. A
+program that `vun run` starts writes its own output as it pleases.
 
 The framework, `vun-command`, declares a tree as data: commands (name, aliases, parameters, the
 option sets they share, examples) and parameters (a flag, an option or a positional; how many

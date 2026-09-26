@@ -6,7 +6,7 @@ use std::path::Path;
 use vun_command::{Args, Command, Example, Outcome, Param};
 use vun_diag::{ChildKind, Diagnostic, Msg, errors};
 use vun_suggest::closest;
-use vun_term::{Shell, Text};
+use vun_term::{Document, Format, Shell, Text};
 
 use crate::Session;
 use crate::packages::LIBRARY;
@@ -33,6 +33,9 @@ fn explain(session: &mut Session, args: &Args, shell: &mut Shell<'_>) -> io::Res
         return Ok(Outcome::Usage);
     };
     let Some(text) = session.read(&Path::new(LIBRARY).join(page)) else { return Ok(Outcome::Failure) };
-    shell.page(&Text::markdown(&text))?;
+    match shell.format {
+        Format::Human => shell.page(&Text::markdown(&text))?,
+        Format::Json => shell.result(&Document { kind: "explanation", name: id.to_owned(), text })?,
+    }
     Ok(Outcome::Success)
 }

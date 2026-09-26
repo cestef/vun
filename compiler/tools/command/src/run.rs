@@ -3,13 +3,15 @@
 use std::io::{self, Write};
 use std::process::ExitCode;
 
-use vun_diag::{DiagCtxt, DiagSink, Diagnostic};
+use vun_diag::{Color, DiagCtxt, DiagSink, Diagnostic};
+use vun_json::Object;
 use vun_origin::OriginTable;
+use vun_render_json::JsonRenderer;
 use vun_render_short::ShortRenderer;
 use vun_span::SourceFiles;
-use vun_term::{ColorChoice, Env, Out, Shell, Stream, Verbosity};
+use vun_term::{ColorChoice, Env, Format, Out, Record, Shell, Stream, Text, Verbosity};
 
-use crate::{Action, Args, COLOR, Detail, Outcome, Program, QUIET, Refusal, Request};
+use crate::{Action, Args, COLOR, Detail, FORMAT, Outcome, Program, QUIET, Refusal, Request};
 
 /// What a program's context does around a command: collect a refusal as a diagnostic, and
 /// report what was collected once the command is done.
@@ -28,11 +30,51 @@ impl Context for DiagCtxt {
 
     fn finish(&mut self, shell: &mut Shell<'_>) {
         let (origins, sources) = (OriginTable::new(), SourceFiles::new());
-        let color = shell.err.color();
-        let mut renderer = ShortRenderer::new(shell.err.writer(), color);
+        let mut sink = shell.diagnostics(|out, color| Box::new(ShortRenderer::new(out, color)));
         for d in self.sorted(&origins) {
-            renderer.emit(d, &origins, &sources);
+            sink.emit(d, &origins, &sources);
         }
+    }
+}
+
+/// A renderer of diagnostics for people, writing to a stream in its colors.
+pub type HumanSink = for<'w> fn(&'w mut dyn Write, Color) -> Box<dyn DiagSink + 'w>;
+
+/// Where a shell shows diagnostics.
+pub trait Diagnostics {
+    /// The sink for diagnostics: `human` on standard error, or JSON lines on standard output.
+    fn diagnostics(&mut self, human: HumanSink) -> Box<dyn DiagSink + '_>;
+}
+
+impl Diagnostics for Shell<'_> {
+    fn diagnostics(&mut self, human: HumanSink) -> Box<dyn DiagSink + '_> {
+        match self.format {
+            Format::Human => {
+                let color = self.err.color();
+                human(self.err.writer(), color)
+            }
+            Format::Json => Box::new(JsonRenderer::new(self.out.writer())),
+        }
+    }
+}
+
+/// The version, as `--version` reports it.
+struct Version {
+    name: &'static str,
+    version: &'static str,
+}
+
+impl Record for Version {
+    fn kind(&self) -> &'static str {
+        "version"
+    }
+
+    fn text(&self) -> Text {
+        Text::from(format!("{} {}", self.name, self.version))
+    }
+
+    fn fields(&self) -> Object<'static> {
+        Object::new().with("name", self.name).with("version", self.version)
     }
 }
 
@@ -43,10 +85,10 @@ impl<Cx> Program<Cx> {
     /// Returns a refusal for usage errors and for commands that are not implemented yet.
     pub fn run(&self, words: &[String], cx: &mut Cx, shell: &mut Shell<'_>) -> Result<Outcome, Refusal> {
         let usage = |diagnostic| Refusal { outcome: Outcome::Usage, diagnostic };
+        Self::apply(&self.globals(words), shell);
         let request = self.parse(words).map_err(usage)?;
         let written = match request {
-            Request::Help(selected, args, detail) => {
-                Self::apply(&args, shell);
+            Request::Help(selected, _, detail) => {
                 let page = selected.help(detail);
                 match detail {
                     Detail::Short => shell.out.print(&page),
@@ -54,12 +96,11 @@ impl<Cx> Program<Cx> {
                 }
                 .map(|()| Outcome::Success)
             }
-            Request::Version => {
-                writeln!(shell.out, "{} {}", self.root.name, self.version).map(|()| Outcome::Success)
-            }
+            Request::Version => shell
+                .result(&Version { name: self.root.name, version: self.version })
+                .map(|()| Outcome::Success),
             Request::Run(selected, args) => match selected.last().action {
                 Action::Run(run) => {
-                    Self::apply(&args, shell);
                     (self.configure)(cx, &args).map_err(usage)?;
                     run(cx, &args, shell)
                 }
@@ -89,10 +130,13 @@ impl<Cx> Program<Cx> {
         outcome.into()
     }
 
-    /// Applies the global options to the shell; parsing checked their values.
+    /// Applies the global options to the shell.
     fn apply(args: &Args, shell: &mut Shell<'_>) {
         if let Some(choice) = args.choice(&COLOR, &ColorChoice::ALL, |c| c.name()) {
             shell.choose(*choice);
+        }
+        if let Some(format) = args.choice(&FORMAT, &Format::ALL, |f| f.name()) {
+            shell.format = *format;
         }
         if args.flag(&QUIET) {
             shell.verbosity = Verbosity::Quiet;

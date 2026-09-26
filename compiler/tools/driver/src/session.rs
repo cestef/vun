@@ -5,6 +5,7 @@ use std::sync::Arc;
 
 use vun_build::manifest::Manifest;
 use vun_build::store::Store;
+use vun_command::Diagnostics;
 use vun_diag::{DiagCtxt, DiagCx, Diagnostic, ErrorGuaranteed, Msg, errors};
 use vun_hir::db::{FileNames, FileRef, FileText, Parsed, ParsedFile};
 use vun_hir::lower;
@@ -256,8 +257,7 @@ impl Session {
     /// format, and takes them out; the session stays failed if one was an error.
     pub fn emit(&mut self, shell: &mut Shell<'_>) {
         let diag = std::mem::take(&mut self.diag);
-        let color = shell.err.color();
-        let mut sink = (self.format.sink)(shell.err.writer(), color);
+        let mut sink = shell.diagnostics(self.format.sink);
         for d in diag.sorted(self.origins) {
             sink.emit(d, self.origins, self.sources);
         }

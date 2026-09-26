@@ -101,7 +101,11 @@ pub enum Safety  { Safe, Unsafe, Placeholder, DisplayOnly }
   It has no patch view, so each fix is a help line naming where its edits apply. The model depends
   on neither renderer;
 - `--diagnostics=short`: `file:line:col: severity[id]: message`;
-- `--diagnostics=json`: one schema-versioned diagnostic per line;
+- `--format=json` (the output format of every command, spec 12, section 7): one diagnostic per
+  line, `"type": "diagnostic"`, with a `schema` version; ids (relative and full), severity,
+  messages as text and as typed parts (`text`, `code`, `type`, `number`), every label, child, fix
+  (edits with their holes) and trace frame with its location resolved to file, start and end
+  line and column, and bytes;
 - `--diagnostics=sarif`: for CI and code-scanning services;
 - the LSP, section 6.
 

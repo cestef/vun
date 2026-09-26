@@ -21,10 +21,10 @@ pub use vun_term::Shell;
 
 pub use complete::Dialect;
 pub use param::{
-    Args, Arity, COLOR, GLOBAL, HELP, OptionSet, Param, ParamKind, PathKind, QUIET, VERSION, Values,
+    Args, Arity, COLOR, FORMAT, GLOBAL, HELP, OptionSet, Param, ParamKind, PathKind, QUIET, VERSION, Values,
 };
 pub use parse::{Detail, Request, Selected};
-pub use run::Context;
+pub use run::{Context, Diagnostics, HumanSink};
 
 pub struct Program<Cx: 'static> {
     pub version: &'static str,

@@ -3,18 +3,16 @@
 use vun_diag::{ChildKind, DiagId, Diagnostic, Msg, errors};
 use vun_suggest::closest;
 
+use given::{Given, SHORT};
+
 use crate::{Args, Arity, Command, GLOBAL, HELP, HELP_COMMAND, Param, ParamKind, Program, VERSION};
 
 /// Prefix of long options.
 pub(crate) const LONG: &str = "--";
-/// Prefix of short options.
-const SHORT: char = '-';
-/// Separates a long option from its value in one argument.
-const VALUE_SEPARATOR: char = '=';
 /// The title of a command's own options in help.
 pub(crate) const OWN: &str = "Options";
 /// Ends the options: every word after it is positional.
-const OPTIONS_END: &str = "--";
+pub(crate) const OPTIONS_END: &str = "--";
 
 /// How much help was asked for: `-h` shows the page, `--help` and `help` show everything.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -163,51 +161,6 @@ impl<Cx> Program<Cx> {
     }
 }
 
-impl Args {
-    /// Records `value` for `param`, checking it against the parameter's choices. A parameter
-    /// taking one value keeps the last given.
-    fn give(&mut self, param: &Param, value: &str) -> Result<(), Box<Diagnostic>> {
-        if let Some(names) = param.choices()
-            && !names.contains(&value)
-        {
-            return Err(param.invalid_value(value, &names));
-        }
-        if matches!(param.kind, ParamKind::Option(Arity::One | Arity::Optional)) {
-            self.values.retain(|(name, _)| *name != param.name);
-        }
-        self.values.push((param.name, value.to_owned()));
-        Ok(())
-    }
-}
-
-/// An option as written.
-#[derive(Clone, Copy)]
-enum Given<'a> {
-    Long(&'a str, Option<&'a str>),
-    Short(char),
-}
-
-impl<'a> Given<'a> {
-    /// The option `arg` writes, if it is one.
-    fn of(arg: &'a str) -> Option<Self> {
-        if let Some(long) = arg.strip_prefix(LONG) {
-            let (name, value) = match long.split_once(VALUE_SEPARATOR) {
-                Some((name, value)) => (name, Some(value)),
-                None => (long, None),
-            };
-            return Some(Self::Long(name, value));
-        }
-        // A single dash with several letters is read as a long option, so `-help` still resolves.
-        let short = arg.strip_prefix(SHORT)?;
-        let mut chars = short.chars();
-        match (chars.next(), chars.next()) {
-            (Some(c), None) => Some(Self::Short(c)),
-            (Some(_), Some(_)) => Some(Self::Long(short, None)),
-            (None, _) => None,
-        }
-    }
-}
-
 impl Param {
     fn invalid_value(&self, value: &str, names: &[&str]) -> Box<Diagnostic> {
         let msg = Msg::new().code(value).text(" is not a value of ").code(self.written());
@@ -226,10 +179,7 @@ impl Param {
 impl<'p, Cx> Selected<'p, Cx> {
     /// The option or flag `given` names, among those of the selected commands.
     fn option(&self, given: &Given<'_>) -> Option<&'p Param> {
-        self.options().find(|p| match *given {
-            Given::Long(name, _) => p.name == name,
-            Given::Short(c) => p.short == Some(c),
-        })
+        self.options().find(|p| given.names(p))
     }
 
     /// Fills the options the command line left out from their environment variables.
@@ -295,5 +245,6 @@ fn usage_error(id: DiagId, msg: Msg, help: Msg) -> Box<Diagnostic> {
     Box::new(Diagnostic::error(id, msg).child(ChildKind::Help, help))
 }
 
+mod given;
 #[cfg(test)]
 mod tests;

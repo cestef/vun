@@ -579,23 +579,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "vun-backend-baseline"
-version = "0.0.0"
-dependencies = [
- "vun-backend",
- "vun-diag",
- "vun-index",
- "vun-intern",
- "vun-lir",
- "vun-object",
- "vun-origin",
- "vun-par",
- "vun-span",
- "vun-target",
- "vun-trace",
-]
-
-[[package]]
 name = "vun-backend-c"
 version = "0.0.0"
 dependencies = [
@@ -749,7 +732,9 @@ name = "vun-command"
 version = "0.0.0"
 dependencies = [
  "vun-diag",
+ "vun-json",
  "vun-origin",
+ "vun-render-json",
  "vun-render-short",
  "vun-span",
  "vun-suggest",
@@ -780,11 +765,11 @@ name = "vun-driver"
 version = "0.0.0"
 dependencies = [
  "vun-backend",
- "vun-backend-baseline",
  "vun-backend-c",
  "vun-backend-cranelift",
  "vun-backend-external",
  "vun-backend-llvm",
+ "vun-backend-native",
  "vun-backend-qbe",
  "vun-bind",
  "vun-build",
@@ -800,6 +785,7 @@ dependencies = [
  "vun-intern",
  "vun-interp",
  "vun-items",
+ "vun-json",
  "vun-link",
  "vun-link-external",
  "vun-link-gnu",
@@ -853,6 +839,7 @@ dependencies = [
  "vun-diag",
  "vun-fs",
  "vun-harness",
+ "vun-json",
  "vun-origin",
  "vun-span",
  "vun-syntax",
@@ -1214,6 +1201,7 @@ name = "vun-render-json"
 version = "0.0.0"
 dependencies = [
  "vun-diag",
+ "vun-json",
  "vun-origin",
  "vun-span",
 ]
@@ -1300,6 +1288,7 @@ name = "vun-term"
 version = "0.0.0"
 dependencies = [
  "anstyle",
+ "vun-json",
 ]
 
 [[package]]
@@ -1314,6 +1303,7 @@ name = "vun-trace"
 version = "0.0.0"
 dependencies = [
  "tracing",
+ "vun-json",
  "vun-par",
  "vun-term",
 ]

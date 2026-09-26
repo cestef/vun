@@ -14,11 +14,11 @@ use std::process::ExitCode;
 use vun_command::{Args, Command, Outcome, Program, Shell};
 use vun_diag::{ChildKind, DiagCtxt, DiagId, Diagnostic, Msg};
 use vun_harness::repo_root;
-use vun_term::{Bytes, Style, Text, Verb};
+use vun_term::Document;
 
 use corpus::Corpus;
 use lines::Oversized;
-use report::{PASSED, Tally};
+use report::{Judged, Passed, Tally};
 use size::Measured;
 
 const OVERSIZED: DiagId = DiagId::new("xtask.lines.oversized");
@@ -47,15 +47,15 @@ fn run_corpus(_: &mut DiagCtxt, _: &Args, shell: &mut Shell<'_>) -> io::Result<O
     let mut tally = Tally::default();
     for o in &outcomes {
         tally.count(&o.verdict);
-        for line in o.verdict.lines(Text::of(Style::Strong, o.path.display().to_string())) {
-            shell.out.line(&line)?;
-        }
+        shell.result(&Judged { path: o.path.display().to_string(), verdict: &o.verdict })?;
     }
-    shell.out.line(&tally.text())?;
+    shell.result(&tally)?;
     let coverage = Corpus::at(&repo_root()).coverage()?;
-    shell
-        .out
-        .line(&Verb::under(Text::of(Style::Strong, vun_harness::ACCEPT).plain(format!(": {coverage}"))))?;
+    shell.result(&Document {
+        kind: "coverage",
+        name: vun_harness::ACCEPT.to_owned(),
+        text: coverage.to_string(),
+    })?;
     Ok(if tally.failed == 0 { Outcome::Success } else { Outcome::Failure })
 }
 
@@ -72,7 +72,7 @@ fn check_lines(diag: &mut DiagCtxt, _: &Args, shell: &mut Shell<'_>) -> io::Resu
         diag.error(Diagnostic::error(OVERSIZED, msg).child(ChildKind::Help, help));
     }
     if oversized.is_empty() {
-        shell.status(PASSED, Text::from(format!("every source file has at most {} lines", lines::MAX_LINES)));
+        shell.status(&Passed::Lines { max: lines::MAX_LINES });
     }
     Ok(if oversized.is_empty() { Outcome::Success } else { Outcome::Failure })
 }
@@ -81,14 +81,8 @@ fn check_size(diag: &mut DiagCtxt, _: &Args, shell: &mut Shell<'_>) -> io::Resul
     let measured = Measured::build(&repo_root())?;
     let within = measured.bytes <= size::BUDGET;
     if within {
-        let what = Text::of(Style::Strong, measured.path.display().to_string());
-        let under = format!(
-            " is {}, {} under the budget of {}",
-            Bytes(measured.bytes),
-            Bytes(size::BUDGET - measured.bytes),
-            Bytes(size::BUDGET)
-        );
-        shell.status(PASSED, what.plain(under));
+        let path = measured.path.display().to_string();
+        shell.status(&Passed::Size { path, bytes: measured.bytes, budget: size::BUDGET });
     } else {
         let msg = Msg::new()
             .code(measured.path.display().to_string())

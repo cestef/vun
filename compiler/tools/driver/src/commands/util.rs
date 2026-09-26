@@ -1,9 +1,9 @@
 //! `vun util`: infrequently used commands.
 
-use std::io::{self, Write};
+use std::io;
 
 use vun_command::{Args, Command, Dialect, Example, Outcome, Param, Values};
-use vun_term::Shell;
+use vun_term::{Document, Shell};
 
 use super::PROGRAM;
 use crate::Session;
@@ -25,6 +25,8 @@ pub(super) const COMPLETION: Command<Session> =
 
 fn completion(_: &mut Session, args: &Args, shell: &mut Shell<'_>) -> io::Result<Outcome> {
     let dialect = args.choice(&SHELL, &Dialect::ALL, |d| d.name()).expect("parsing checks the shell");
-    shell.out.write_all(PROGRAM.completion(*dialect).as_bytes())?;
+    let script =
+        Document { kind: "completion", name: dialect.name().to_owned(), text: PROGRAM.completion(*dialect) };
+    shell.result(&script)?;
     Ok(Outcome::Success)
 }

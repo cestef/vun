@@ -7,14 +7,12 @@ use std::path::Path;
 use vun_command::{Args, Outcome};
 use vun_mir::Unready;
 use vun_span::SourceMap;
-use vun_term::Shell;
 
 use super::FILE;
 use crate::Session;
 use crate::coverage::GapKind;
 
-pub(super) fn coverage(session: &mut Session, args: &Args, shell: &mut Shell<'_>) -> io::Result<Outcome> {
-    let out = &mut shell.out;
+pub(super) fn coverage(session: &mut Session, args: &Args, out: &mut dyn Write) -> io::Result<Outcome> {
     let path = args.value(&FILE).expect("positional parameters are present when a command runs");
     let Some(file) = session.load(Path::new(path)) else { return Ok(session.outcome()) };
     session.check(file);

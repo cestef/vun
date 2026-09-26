@@ -59,16 +59,47 @@ fn tables_align_columns_and_show_heads() {
     assert_eq!(table.text().to_string(), "x  last\n");
 }
 
-#[test]
-fn status_verbs_are_right_aligned() {
+/// A status as tests report it.
+struct Done(u64);
+
+impl Record for Done {
+    fn kind(&self) -> &'static str {
+        "done"
+    }
+
+    fn text(&self) -> Text {
+        Text::from(format!("in {}s", self.0))
+    }
+
+    fn fields(&self) -> vun_json::Object<'static> {
+        vun_json::Object::new().with("seconds", self.0)
+    }
+}
+
+impl Status for Done {
+    fn verb(&self) -> Verb {
+        Verb::good("Finished")
+    }
+}
+
+/// What a shell in `format` writes on each stream for a status, then for it quiet.
+fn reported(format: Format) -> (String, String) {
     let (mut out, mut err) = (Vec::new(), Vec::new());
     {
         let mut shell = Shell::plain(&mut out, &mut err);
-        shell.status(Verb::good("Finished"), Text::from("in 1s"));
+        shell.format = format;
+        shell.status(&Done(1));
         shell.verbosity = Verbosity::Quiet;
-        shell.status(Verb::good("Hidden"), Text::new());
+        shell.status(&Done(2));
     }
-    assert_eq!(String::from_utf8(err).unwrap(), "    Finished in 1s\n");
+    (String::from_utf8(out).unwrap(), String::from_utf8(err).unwrap())
+}
+
+#[test]
+fn statuses_are_lines_for_people_and_json_for_programs() {
+    assert_eq!(reported(Format::Human), (String::new(), "    Finished in 1s\n".to_owned()));
+    let (out, err) = reported(Format::Json);
+    assert_eq!((vun_json::parse(out.trim()).unwrap(), err), (Done(1).json(), String::new()));
 }
 
 #[test]

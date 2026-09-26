@@ -5,9 +5,10 @@ use std::io;
 use vun_build::store::Listed;
 use vun_command::{Args, Command, Outcome};
 use vun_diag::{Diagnostic, Msg, errors};
-use vun_term::{Bytes, Column, Noun, Shell, Style, Table, Text};
+use vun_json::Object;
+use vun_term::{Bytes, Column, Record, Row, Shell, Style, Text};
 
-use super::status::{HashText, REMOVED, Shown};
+use super::status::{Collected, HashText, Shown};
 use crate::Session;
 
 pub(super) const GROUP: &str = "cache";
@@ -21,11 +22,6 @@ pub(super) const COMMANDS: &[Command<Session>] = &[
     Command::run("gc", "remove stored packages no registered lockfile records", gc),
 ];
 
-/// The columns of a listing of stored packages.
-const COLUMNS: [Column; 4] =
-    [Column::left("hash"), Column::right("size"), Column::left("kept"), Column::left("package")];
-const PACKAGE: Noun = Noun { one: "package", many: "packages" };
-
 impl Session {
     /// Reports that the store cannot be read or changed.
     fn store_failed(&mut self, e: &io::Error) -> Outcome {
@@ -35,24 +31,40 @@ impl Session {
     }
 }
 
-/// Stored packages as a table.
-trait Listing {
-    fn table(&self) -> Table<'static>;
+/// A stored package, as listings show it.
+struct Stored<'a>(&'a Listed);
+
+impl Record for Stored<'_> {
+    fn kind(&self) -> &'static str {
+        "stored"
+    }
+
+    fn text(&self) -> Text {
+        Text::join(self.cells(), "  ")
+    }
+
+    fn fields(&self) -> Object<'static> {
+        let Listed { hash, label, bytes, rooted } = self.0;
+        let object = Object::new().with("hash", hash.to_string()).with("bytes", *bytes);
+        object.with("kept", *rooted).with("package", label.clone())
+    }
 }
 
-impl Listing for [Listed] {
-    fn table(&self) -> Table<'static> {
-        Table::new(&COLUMNS).rows(self.iter().map(|entry| {
-            let kept = if entry.rooted { Text::of(Style::Good, "yes") } else { Text::of(Style::Dim, "no") };
-            let label = entry.label.clone().map_or_else(|| Text::of(Style::Dim, "-"), Text::from);
-            [entry.hash.text(Shown::Full), Text::from(Bytes(entry.bytes).to_string()), kept, label]
-        }))
+impl Row for Stored<'_> {
+    const COLUMNS: &'static [Column] =
+        &[Column::left("hash"), Column::right("size"), Column::left("kept"), Column::left("package")];
+
+    fn cells(&self) -> Vec<Text> {
+        let Listed { hash, label, bytes, rooted } = self.0;
+        let kept = if *rooted { Text::of(Style::Good, "yes") } else { Text::of(Style::Dim, "no") };
+        let label = label.clone().map_or_else(|| Text::of(Style::Dim, "-"), Text::from);
+        vec![hash.text(Shown::Full), Text::from(Bytes(*bytes).to_string()), kept, label]
     }
 }
 
 fn list(session: &mut Session, _: &Args, shell: &mut Shell<'_>) -> io::Result<Outcome> {
     match session.store.list() {
-        Ok(listed) => shell.out.print(&listed.table().text()).map(|()| Outcome::Success),
+        Ok(listed) => shell.table(&listed.iter().map(Stored).collect::<Vec<_>>()).map(|()| Outcome::Success),
         Err(e) => Ok(session.store_failed(&e)),
     }
 }
@@ -60,15 +72,9 @@ fn list(session: &mut Session, _: &Args, shell: &mut Shell<'_>) -> io::Result<Ou
 fn gc(session: &mut Session, _: &Args, shell: &mut Shell<'_>) -> io::Result<Outcome> {
     match session.store.collect() {
         Ok(collected) => {
-            shell.out.print(&collected.removed.table().text())?;
-            let freed: u64 = collected.removed.iter().map(|e| e.bytes).sum();
-            let what = format!(
-                "{}, {}; kept {}",
-                PACKAGE.count(collected.removed.len()),
-                Bytes(freed),
-                collected.kept
-            );
-            shell.status(REMOVED, Text::from(what));
+            shell.table(&collected.removed.iter().map(Stored).collect::<Vec<_>>())?;
+            let bytes: u64 = collected.removed.iter().map(|e| e.bytes).sum();
+            shell.status(&Collected { removed: collected.removed.len(), bytes, kept: collected.kept });
             Ok(Outcome::Success)
         }
         Err(e) => Ok(session.store_failed(&e)),

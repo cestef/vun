@@ -18,6 +18,7 @@ vun-diag.workspace = true
 vun-fs.workspace = true
 vun-origin.workspace = true
 vun-term.workspace = true
+vun-json.workspace = true
 vun-span.workspace = true
 vun-syntax.workspace = true
 vun-harness.workspace = true

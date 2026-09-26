@@ -129,3 +129,10 @@ fn group_options_apply_below() {
         assert!(args.flag(&DEEP), "{line:?}");
     }
 }
+
+#[test]
+fn globals_are_read_ahead_of_parsing_up_to_the_end_of_options() {
+    let args = PROGRAM.globals(&argv("dmp --color never x -- --format json"));
+    assert_eq!((args.value(&crate::COLOR), args.value(&crate::FORMAT)), (Some("never"), None));
+    assert_eq!(PROGRAM.globals(&argv("--color=nevr")).value(&crate::COLOR), None);
+}

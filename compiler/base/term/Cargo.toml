@@ -11,3 +11,4 @@ workspace = true
 
 [dependencies]
 anstyle.workspace = true
+vun-json.workspace = true

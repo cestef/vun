@@ -1,6 +1,6 @@
 //! `vun tool`: C bindings, C headers and register packages (spec 12, section 7).
 
-use std::io::{self, Write};
+use std::io;
 use std::path::{Path, PathBuf};
 
 use vun_bind::{Bytes, Failure, Reason, Skipped, Unsupported};
@@ -8,7 +8,7 @@ use vun_clang::Missing;
 use vun_command::{Args, Arity, Command, Example, Outcome, Param, PathKind, Values};
 use vun_diag::{ChildKind, Diagnostic, Msg, Severity, errors};
 use vun_fs::Edit;
-use vun_term::Shell;
+use vun_term::{Document, Shell};
 
 use crate::Session;
 
@@ -49,15 +49,15 @@ fn bind(session: &mut Session, args: &Args, shell: &mut Shell<'_>) -> io::Result
     for skipped in &bindings.skipped {
         session.diag.report(skip(skipped));
     }
-    match target {
-        Some(path) => {
-            if let Err(e) = path.put(bindings.source.as_bytes()) {
-                let msg = Msg::new().text("cannot write ").code(path.display().to_string());
-                session.diag.error(Diagnostic::error(errors::IO_UNWRITABLE_FILE, msg).caused_by(&e));
-                return Ok(Outcome::Failure);
-            }
-        }
-        None => shell.out.write_all(bindings.source.as_bytes())?,
+    let Some(path) = target else {
+        let name = header.display().to_string();
+        shell.result(&Document { kind: "bindings", name, text: bindings.source })?;
+        return Ok(Outcome::Success);
+    };
+    if let Err(e) = path.put(bindings.source.as_bytes()) {
+        let msg = Msg::new().text("cannot write ").code(path.display().to_string());
+        session.diag.error(Diagnostic::error(errors::IO_UNWRITABLE_FILE, msg).caused_by(&e));
+        return Ok(Outcome::Failure);
     }
     Ok(Outcome::Success)
 }

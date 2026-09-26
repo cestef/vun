@@ -3,7 +3,7 @@
 
 use std::io::{self, Write};
 
-use crate::{Color, ColorChoice, Env, Style, Text};
+use crate::{Color, ColorChoice, Env, Format, Style, Text};
 
 /// A stream and whether it shows colors. Plain writes pass through; [`Out::print`] styles.
 pub struct Out<'a> {
@@ -138,6 +138,7 @@ pub struct Shell<'a> {
     pub out: Out<'a>,
     pub err: Out<'a>,
     pub verbosity: Verbosity,
+    pub format: Format,
     env: Env,
 }
 
@@ -145,27 +146,25 @@ impl<'a> Shell<'a> {
     /// A shell over `out` and `err`, colored as `auto` decides for each.
     #[must_use]
     pub fn new(out: Out<'a>, err: Out<'a>, env: Env) -> Self {
-        let mut shell = Self { out, err, verbosity: Verbosity::Normal, env };
+        let mut shell = Self { out, err, verbosity: Verbosity::Normal, format: Format::Human, env };
         shell.choose(ColorChoice::Auto);
         shell
     }
 
     /// A shell writing plain text to `out` and `err`, as tests read it.
     pub fn plain(out: &'a mut dyn Write, err: &'a mut dyn Write) -> Self {
-        Self { out: Out::plain(out), err: Out::plain(err), verbosity: Verbosity::Normal, env: Env::default() }
+        Self {
+            out: Out::plain(out),
+            err: Out::plain(err),
+            verbosity: Verbosity::Normal,
+            format: Format::Human,
+            env: Env::default(),
+        }
     }
 
     /// Applies a `--color` choice to both streams.
     pub fn choose(&mut self, choice: ColorChoice) {
         self.out.choose(choice, self.env);
         self.err.choose(choice, self.env);
-    }
-
-    /// Reports progress on standard error, unless quiet. Best-effort: a closed stream does not
-    /// fail the command.
-    pub fn status(&mut self, verb: Verb, what: Text) {
-        if self.verbosity == Verbosity::Normal {
-            let _ = self.err.line(&verb.line(what));
-        }
     }
 }

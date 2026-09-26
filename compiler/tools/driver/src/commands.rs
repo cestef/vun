@@ -8,7 +8,9 @@ use vun_command::{
     Args, Arity, Command, Context, Example, OptionSet, Outcome, Param, PathKind, Program, Values,
 };
 use vun_span::FileId;
-use vun_term::{Shell, Style, Text};
+use vun_term::Shell;
+
+use status::{Started, Step};
 
 use crate::{Session, VERSION, codegen, formats, target};
 
@@ -99,11 +101,11 @@ impl Session {
     fn built(&mut self, args: &Args, shell: &mut Shell<'_>) -> Option<PathBuf> {
         let started = Instant::now();
         let path = args.value(&FILE).expect("positional parameters are present when a command runs");
-        shell.status(status::BUILDING, Text::of(Style::Strong, path.to_owned()));
+        shell.status(&Started { step: Step::Build, subject: path.to_owned() });
         let output = args.value(&crate::program::OUTPUT).map(Path::new);
         let built = self.root(args, shell).and_then(|file| self.build(file, output).ok());
         let subject = built.as_ref().map_or_else(|| path.to_owned(), |p| p.display().to_string());
-        self.conclude(shell, Text::of(Style::Strong, subject), started);
+        self.conclude(shell, subject, started);
         built
     }
 
@@ -122,7 +124,7 @@ fn build(session: &mut Session, args: &Args, shell: &mut Shell<'_>) -> io::Resul
 
 fn run(session: &mut Session, args: &Args, shell: &mut Shell<'_>) -> io::Result<Outcome> {
     let Some(program) = session.built(args, shell) else { return Ok(session.outcome()) };
-    shell.status(status::RUNNING, Text::of(Style::Strong, program.display().to_string()));
+    shell.status(&Started { step: Step::Run, subject: program.display().to_string() });
     let status = std::process::Command::new(&program).args(args.values(&ARGS)).status()?;
     // A program ended by a signal has no status to pass on.
     Ok(status.code().and_then(|c| u8::try_from(c).ok()).map_or(Outcome::Failure, Outcome::Exited))
@@ -132,11 +134,11 @@ fn run(session: &mut Session, args: &Args, shell: &mut Shell<'_>) -> io::Result<
 fn check(session: &mut Session, args: &Args, shell: &mut Shell<'_>) -> io::Result<Outcome> {
     let started = Instant::now();
     let path = args.value(&FILE).expect("positional parameters are present when a command runs");
-    shell.status(status::CHECKING, Text::of(Style::Strong, path.to_owned()));
+    shell.status(&Started { step: Step::Check, subject: path.to_owned() });
     if let Some(file) = session.root(args, shell) {
         session.check(file);
     }
-    session.conclude(shell, Text::of(Style::Strong, path.to_owned()), started);
+    session.conclude(shell, path.to_owned(), started);
     Ok(session.outcome())
 }
 
@@ -149,7 +151,7 @@ impl Context for Session {
         self.emit(shell);
         self.save();
         if let Some(report) = vun_trace::Timings::report() {
-            let _ = shell.err.print(&report.text());
+            shell.status(&report);
         }
     }
 }

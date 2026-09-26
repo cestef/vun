@@ -12,8 +12,9 @@ use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, LazyLock, OnceLock};
 use std::time::{Duration, Instant};
 
+use vun_json::{Object, Value};
 use vun_par::Map;
-use vun_term::{Column, Style, Table, Text};
+use vun_term::{Column, Record, Status, Style, Table, Text, Verb};
 
 /// What is timed: its kind, and its name among those of its kind.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -180,17 +181,22 @@ const COLUMNS: [Column; 4] =
     [Column::right("own"), Column::right("total"), Column::right("runs"), Column::left("activity")];
 
 impl Report {
-    /// The report: the wall time and the work, then a row per activity, most own time first.
-    #[must_use]
-    pub fn text(&self) -> Text {
-        let work: Duration = self.rows.iter().map(|r| r.own).sum();
-        let title = Text::of(Style::Heading, "Timings:")
-            .plain(" ")
-            .styled(Style::Strong, Millis(self.wall).to_string());
-        let title = title
-            .plain(" wall, ")
-            .styled(Style::Strong, Millis(work).to_string())
-            .plain(" of work over every thread");
+    /// The work done: own times summed over every activity.
+    fn work(&self) -> Duration {
+        self.rows.iter().map(|r| r.own).sum()
+    }
+}
+
+impl Record for Report {
+    fn kind(&self) -> &'static str {
+        "timings"
+    }
+
+    /// The wall time and the work, then a row per activity, most own time first.
+    fn text(&self) -> Text {
+        let title = Text::of(Style::Strong, Millis(self.wall).to_string()).plain(" wall, ");
+        let title =
+            title.styled(Style::Strong, Millis(self.work()).to_string()).plain(" of work over every thread");
         let rows = self.rows.iter().map(|row| {
             let Row { activity, runs, own, total } = row;
             let name =
@@ -203,6 +209,33 @@ impl Report {
             ]
         });
         title.newline().append(Table::new(&COLUMNS).rows(rows).text())
+    }
+
+    fn fields(&self) -> Object<'static> {
+        let micros = |d: Duration| u64::try_from(d.as_micros()).unwrap_or(u64::MAX);
+        let rows: Vec<Value<'static>> = self
+            .rows
+            .iter()
+            .map(|r| {
+                let activity =
+                    Object::new().with("kind", r.activity.kind.to_string()).with("name", r.activity.name);
+                let row = activity
+                    .with("runs", r.runs)
+                    .with("own_us", micros(r.own))
+                    .with("total_us", micros(r.total));
+                Value::Object(row)
+            })
+            .collect();
+        Object::new()
+            .with("wall_us", micros(self.wall))
+            .with("work_us", micros(self.work()))
+            .with("activities", rows)
+    }
+}
+
+impl Status for Report {
+    fn verb(&self) -> Verb {
+        Verb::good("Timings")
     }
 }
 
