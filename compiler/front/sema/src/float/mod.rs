@@ -12,12 +12,14 @@ mod tests;
 
 use std::fmt;
 
+use vun_codec::{Decode, Encode};
+
 pub use format::Format;
 
 use crate::int::Integer;
 
 /// A float of `format`, by its bits.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct Binary {
     pub format: Format,
     pub bits: u64,
@@ -25,7 +27,7 @@ pub struct Binary {
 
 /// What a float is: a NaN, an infinity, or a finite number `±mantissa·2^exponent` (zero among
 /// them, with its sign).
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Encode, Decode)]
 pub(crate) enum Class {
     Nan,
     Infinite { negative: bool },

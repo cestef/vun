@@ -12,7 +12,7 @@ use super::*;
 )]
 use vun_grammar::*;
 /// What else may reach a borrowed place while the borrow lives (spec 05, section 8).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, vun_codec::Encode, vun_codec::Decode)]
 pub enum Access {
     /// Reads, and other shared borrows; nothing writes.
     Shared,

@@ -2,6 +2,7 @@
 
 use std::fmt;
 
+use vun_codec::{Decode, Encode};
 use vun_origin::OriginId;
 use vun_span::Span;
 
@@ -9,14 +10,14 @@ use crate::Msg;
 
 /// A location, optionally annotated. Renderers follow the origin chain to show generated code
 /// together with its generator.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct Label {
     pub origin: OriginId,
     pub msg: Option<Msg>,
 }
 
 /// How safe it is to apply a fix without review.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub enum Safety {
     /// Preserves meaning and compiles; the only kind applied automatically.
     Safe,
@@ -40,13 +41,13 @@ impl fmt::Display for Safety {
 }
 
 /// A hole in a placeholder edit: a byte range of the edit text and the choices to offer.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct Hole {
     pub range: (u32, u32),
     pub choices: Vec<String>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct Edit {
     pub span: Span,
     pub text: String,
@@ -73,7 +74,7 @@ impl Edit {
 }
 
 /// A proposed change; its edits never overlap.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct Fix {
     pub msg: Msg,
     pub safety: Safety,

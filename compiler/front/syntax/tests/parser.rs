@@ -15,6 +15,7 @@ struct Parsed {
     tokens: Tokens,
     cst: Cst,
     diag: DiagCtxt,
+    origins: OriginTable,
 }
 
 fn parse_text(text: &str) -> Parsed {
@@ -23,7 +24,7 @@ fn parse_text(text: &str) -> Parsed {
     let mut cx = DiagCx { diag: &mut diag, origins: &origins };
     let tokens = Tokens::lex(file, text, &mut cx);
     let cst = Cst::parse(&tokens, text, &mut cx);
-    Parsed { tokens, cst, diag }
+    Parsed { tokens, cst, diag, origins }
 }
 
 fn read(path: &Path) -> String {
@@ -43,7 +44,7 @@ fn repository_sources_parse_cleanly_and_verify() {
     for path in files {
         let text = read(&path);
         let parsed = parse_text(&text);
-        for d in parsed.diag.sorted() {
+        for d in parsed.diag.sorted(&parsed.origins) {
             failures.push(format!("{}: {}", path.display(), d.message));
         }
         if let Err(malformed) = parsed.cst.verify(&parsed.tokens) {

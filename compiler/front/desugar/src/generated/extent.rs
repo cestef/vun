@@ -12,7 +12,7 @@ use super::*;
 )]
 use vun_grammar::*;
 /// How long a borrow passed to a call is held (spec 05, section 4).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, vun_codec::Encode, vun_codec::Decode)]
 pub enum Extent {
     /// As long as the call's result: a scoped result is tied to it.
     Tied,

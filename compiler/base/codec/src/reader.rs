@@ -1,61 +1,138 @@
 //! Reading a stream: its bytes, and the pools its handles are read from.
 
 use std::any::{Any, TypeId};
-use std::cell::RefCell;
 use std::collections::HashMap;
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 
-use crate::{Decode, Malformed, Pooled, Pools, Resources};
+use vun_par::Map;
 
-/// What the values of one stream are read against: its pools, and the handles already read from
-/// them, so that each entry is recorded once however often it is referenced.
+use crate::{Blob, Decode, Malformed, Pooled, Pools};
+
+/// What the values of one stream are read against: its input, its pools as places in the input,
+/// and the handles already read from them, so that each entry is recorded once however often it
+/// is referenced. Threads share it without locks, so values can be read when first needed, in
+/// any order, on any thread.
 #[derive(Default)]
-pub struct Context<'a> {
-    entries: HashMap<&'a str, &'a [Vec<u8>]>,
-    read: RefCell<HashMap<TypeId, Box<dyn Any>>>,
-    resources: Option<&'a dyn Resources>,
+pub struct Context {
+    input: Box<[u8]>,
+    pools: HashMap<String, Vec<Blob>>,
+    /// The handles read from each pool, by the handle's type.
+    read: Map<TypeId, Arc<dyn Any + Send + Sync>>,
 }
 
-/// The handles read so far from one pool, by number.
+/// Each entry of one pool's handle, once read.
 struct PoolReader<T: Pooled> {
-    table: Arc<T::Table>,
-    handles: Vec<Option<T>>,
+    handles: Box<[OnceLock<T>]>,
 }
 
-impl<'a> Context<'a> {
-    /// A stream with `pools`, whose entries are recorded in the tables of `resources`.
+impl Context {
+    /// A stream of `input`, whose pools are the places `pools` give in it.
     #[must_use]
-    pub fn new(pools: &'a Pools, resources: &'a dyn Resources) -> Self {
-        let entries = pools.0.iter().map(|pool| (pool.name.as_str(), pool.entries.as_slice())).collect();
-        Self { entries, read: RefCell::default(), resources: Some(resources) }
+    pub fn within(input: Box<[u8]>, pools: Pools<Blob>) -> Self {
+        let pools = pools.0.into_iter().map(|pool| (pool.name, pool.entries)).collect();
+        Self { input, pools, read: Map::default() }
     }
 
-    /// Reads a value from the front of `bytes`, as a header leading them.
+    /// A stream with `pools`, as written.
+    #[must_use]
+    pub fn new(pools: Pools) -> Self {
+        let mut input = Vec::new();
+        let pools = pools.0.into_iter().map(|pool| {
+            let entries = pool.entries.iter().map(|entry| {
+                let at = input.len();
+                input.extend_from_slice(entry);
+                Blob { at, len: entry.len() }
+            });
+            crate::Pool { name: pool.name, entries: entries.collect() }
+        });
+        let pools = Pools(pools.collect());
+        Self::within(input.into_boxed_slice(), pools)
+    }
+
+    /// The bytes of `blob`, read from this stream's input.
+    #[must_use]
+    pub fn bytes(&self, blob: Blob) -> &[u8] {
+        blob.of(&self.input)
+    }
+
+    /// Reads a value from the front of `bytes`, as a header leading them, which holds no handle.
     ///
     /// # Errors
     /// Returns why the front of the bytes is not a value of this type.
     pub fn front<T: Decode>(&self, bytes: &[u8]) -> Result<T, Malformed> {
-        T::decode(&mut Reader { bytes, context: self })
+        T::decode(&mut Reader { bytes, at: 0, context: self })
     }
 
-    /// Reads a value that is the whole of `bytes`.
+    /// Reads a value that is the whole of `bytes`, recording the entries its handles stand for in
+    /// the process's tables.
     ///
     /// # Errors
     /// Returns why the bytes are not exactly one value of this type.
     pub fn read<T: Decode>(&self, bytes: &[u8]) -> Result<T, Malformed> {
-        let mut r = Reader { bytes, context: self };
-        let value = T::decode(&mut r)?;
-        if r.bytes.is_empty() { Ok(value) } else { Err(Malformed::Trailing) }
+        Reader { bytes, at: 0, context: self }.whole()
+    }
+
+    /// Reads a value that is the whole of `blob`, a place in this stream's input.
+    ///
+    /// # Errors
+    /// As [`Context::read`].
+    pub fn read_blob<T: Decode>(&self, blob: Blob) -> Result<T, Malformed> {
+        Reader { bytes: self.bytes(blob), at: blob.at, context: self }.whole()
+    }
+
+    /// The entries of each pool, as bytes.
+    pub(crate) fn entries(&self) -> HashMap<String, Vec<Vec<u8>>> {
+        let entries = |blobs: &Vec<Blob>| blobs.iter().map(|&blob| self.bytes(blob).to_vec()).collect();
+        self.pools.iter().map(|(name, blobs)| (name.clone(), entries(blobs))).collect()
+    }
+
+    /// The handles of type `T` read so far, with their numbers in the stream.
+    pub(crate) fn numbers<T: Pooled>(&self) -> HashMap<T, usize> {
+        let Some(pool) = self.read.pin().get(&TypeId::of::<T>()).cloned() else { return HashMap::new() };
+        let pool = pool.downcast::<PoolReader<T>>().expect("one pool per handle type");
+        pool.handles
+            .iter()
+            .enumerate()
+            .filter_map(|(number, handle)| Some((*handle.get()?, number)))
+            .collect()
+    }
+
+    /// The handles read from the pool of `T`, made the first time.
+    fn pool<T: Pooled>(&self) -> Arc<PoolReader<T>> {
+        let read = self.read.pin();
+        let pool = read.get_or_insert_with(TypeId::of::<T>(), || {
+            let count = self.pools.get(T::POOL).map_or(0, Vec::len);
+            Arc::new(PoolReader::<T> { handles: std::iter::repeat_with(OnceLock::new).take(count).collect() })
+        });
+        Arc::clone(pool).downcast().expect("one pool per handle type")
     }
 }
 
 /// The bytes of a value being read, consumed from the front.
 pub struct Reader<'a> {
     bytes: &'a [u8],
-    context: &'a Context<'a>,
+    /// Where `bytes` starts in the input.
+    at: usize,
+    context: &'a Context,
 }
 
 impl<'a> Reader<'a> {
+    /// Reads a value holding no handle from the whole of `bytes`.
+    pub(crate) fn plain<T: Decode>(bytes: &'a [u8]) -> Result<T, Malformed> {
+        Reader { bytes, at: 0, context: &Context::default() }.whole()
+    }
+
+    fn whole<T: Decode>(mut self) -> Result<T, Malformed> {
+        let value = T::decode(&mut self)?;
+        if self.bytes.is_empty() { Ok(value) } else { Err(Malformed::Trailing) }
+    }
+
+    /// Where the next byte is in the input.
+    #[must_use]
+    pub fn offset(&self) -> usize {
+        self.at
+    }
+
     /// Takes `n` bytes from the front.
     ///
     /// # Errors
@@ -63,6 +140,7 @@ impl<'a> Reader<'a> {
     pub fn take(&mut self, n: usize) -> Result<&'a [u8], Malformed> {
         let (taken, rest) = self.bytes.split_at_checked(n).ok_or(Malformed::Truncated)?;
         self.bytes = rest;
+        self.at += n;
         Ok(taken)
     }
 
@@ -71,9 +149,7 @@ impl<'a> Reader<'a> {
     /// # Errors
     /// Returns [`Malformed::Truncated`] at the end of the input.
     pub fn byte(&mut self) -> Result<u8, Malformed> {
-        let (&byte, rest) = self.bytes.split_first().ok_or(Malformed::Truncated)?;
-        self.bytes = rest;
-        Ok(byte)
+        Ok(self.take(1)?[0])
     }
 
     /// How many bytes remain.
@@ -87,42 +163,22 @@ impl<'a> Reader<'a> {
     ///
     /// # Errors
     /// Returns why the number or its entry is malformed.
-    ///
-    /// # Panics
-    /// If the stream has pools but no resources to record their entries in.
     pub fn pooled<T: Pooled>(&mut self) -> Result<T, Malformed> {
         let number = usize::decode(self)?;
         let context = self.context;
-        let table = {
-            let mut read = context.read.borrow_mut();
-            let pool = read
-                .entry(TypeId::of::<T>())
-                .or_insert_with(|| {
-                    let resources = context.resources.expect("a stream with pools has resources");
-                    Box::new(PoolReader::<T> { table: resources.get(), handles: Vec::new() })
-                })
-                .downcast_mut::<PoolReader<T>>()
-                .expect("one pool per handle type");
-            if let Some(&Some(handle)) = pool.handles.get(number) {
-                return Ok(handle);
-            }
-            Arc::clone(&pool.table)
-        };
-        let unpooled = Malformed::Unpooled { pool: T::POOL, number };
-        let entry = context.entries.get(T::POOL).and_then(|entries| entries.get(number)).ok_or(unpooled)?;
-        // Reading the entry may read other handles, so the pools are not borrowed meanwhile.
-        let mut r = Reader { bytes: entry, context };
-        let handle = T::read(&table, &mut r)?;
+        let pool = context.pool::<T>();
+        let slot = pool.handles.get(number).ok_or(Malformed::Unpooled { pool: T::POOL, number })?;
+        if let Some(&handle) = slot.get() {
+            return Ok(handle);
+        }
+        let entry = context.pools[T::POOL][number];
+        // Reading the entry may read other entries, so the slot is set after: two threads may
+        // both record it, which gives equal handles, and the first stands.
+        let mut r = Reader { bytes: context.bytes(entry), at: entry.at, context };
+        let handle = T::read(&mut r)?;
         if r.remaining() != 0 {
             return Err(Malformed::Trailing);
         }
-        let mut read = context.read.borrow_mut();
-        let pool = read.get_mut(&TypeId::of::<T>()).and_then(|p| p.downcast_mut::<PoolReader<T>>());
-        let handles = &mut pool.expect("made above").handles;
-        if handles.len() <= number {
-            handles.resize(number + 1, None);
-        }
-        handles[number] = Some(handle);
-        Ok(handle)
+        Ok(*slot.get_or_init(|| handle))
     }
 }

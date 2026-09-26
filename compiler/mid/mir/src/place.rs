@@ -1,18 +1,19 @@
 //! Places: what statements write, operands read and borrows take. A place is a local and the
 //! projections applied to it in order: through a borrow or pointer, into a field, or to an item.
 
+use vun_codec::{Decode, Encode};
 use vun_intern::Symbol;
 
 use crate::body::Local;
 
 /// A storage location.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct Place {
     pub local: Local,
     pub projection: Vec<Projection>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub enum Projection {
     /// `.*`: what a borrow or pointer points to.
     Deref,

@@ -3,12 +3,13 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
+use vun_codec::{Decode, Encode};
 use vun_desugar::PlaceState;
 use vun_index::IndexVec;
 use vun_intern::Symbol;
 use vun_mir::Local;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Encode, Decode)]
 pub(super) enum State {
     Uninit,
     Init,
@@ -33,7 +34,7 @@ impl From<PlaceState> for State {
 
 /// One step into a part of a local, known without running the body: a field, a tuple position,
 /// a payload item, or an item at a constant index.
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Encode, Decode)]
 pub(super) enum Key {
     Field(Symbol),
     Position(usize),
@@ -41,7 +42,7 @@ pub(super) enum Key {
     Item(i128),
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Encode, Decode)]
 pub(super) struct States {
     pub(super) locals: IndexVec<Local, State>,
     /// Parts written on their own, by local and path.

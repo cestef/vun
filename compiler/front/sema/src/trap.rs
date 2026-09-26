@@ -2,6 +2,7 @@
 //! is reported once, at the evaluation root that needed the value, with the trap site labeled
 //! and a "while evaluating" frame for each call between them.
 
+use vun_codec::{Decode, Encode};
 use vun_diag::{Diagnostic, Msg, TraceFrame, errors};
 use vun_origin::OriginId;
 
@@ -9,7 +10,7 @@ use crate::env::Unevaluated;
 use crate::ty::Value;
 
 /// Why a trap fired.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub enum Reason {
     DivisionByZero,
     /// A shift by more than any width can hold.
@@ -38,7 +39,7 @@ pub enum Reason {
 }
 
 /// What a reached `lang.panic.fail` says: a variant of `lang.panic.Reason`.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub enum Failure {
     Message(String),
     /// A condition that did not hold: its source, and where it is written.
@@ -74,7 +75,7 @@ impl Failure {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct Trap {
     pub reason: Reason,
     /// Where it fired; `None` until the evaluator attaches the statement.

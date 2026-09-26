@@ -6,6 +6,7 @@ mod live;
 
 use std::sync::Arc;
 
+use vun_codec::{Decode, Encode};
 use vun_index::IndexVec;
 use vun_lir::Scalar;
 use vun_mir::{BlockId, Concrete, Local};
@@ -18,7 +19,7 @@ use crate::repr::Types;
 use crate::unlowered::{Unlowered, Why};
 
 /// Where a frame keeps what it holds.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct FrameShape {
     /// The integer at offset 0 telling where the frame is: not started, suspended at a
     /// `yield`, or done.
@@ -31,7 +32,7 @@ pub struct FrameShape {
 }
 
 /// Where a frame is.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Encode, Decode)]
 pub enum FrameState {
     Start,
     /// Suspended at its `k`-th `yield`.
@@ -46,7 +47,7 @@ impl FrameShape {
     /// # Panics
     /// Never: a body has fewer `yield`s than `u128` has values.
     #[must_use]
-    pub fn encode(&self, state: FrameState) -> u128 {
+    pub fn stored(&self, state: FrameState) -> u128 {
         let index = match state {
             FrameState::Start => 0,
             FrameState::Suspended(k) => k + 1,

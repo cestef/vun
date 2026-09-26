@@ -1,6 +1,7 @@
 //! Where `.name` finds `name` (spec 01, section 4): through borrows, which have no members, and
 //! through owners that lack it, to what they own.
 
+use vun_codec::{Decode, Encode};
 use vun_intern::Symbol;
 
 use super::Env;
@@ -9,7 +10,7 @@ use crate::ty::Ty;
 
 /// A step `.` takes before reaching a member (spec 01, section 4): `.*` of a borrow, which has
 /// no members of its own, or of an owner lacking the member, through its `#[kind.owns]` field.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Encode, Decode)]
 pub enum Hop {
     Borrow,
     Owner(Symbol),

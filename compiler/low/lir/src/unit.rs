@@ -1,6 +1,7 @@
 //! Compilation units: what a backend receives to emit one object. Functions, data and imports are
 //! addressed by their ids; only exports and imports carry link symbols.
 
+use vun_codec::{Decode, Encode};
 use vun_index::IndexVec;
 use vun_intern::Symbol;
 use vun_origin::OriginId;
@@ -10,7 +11,7 @@ use crate::func::{Function, Linkage, Signature};
 use crate::inst::Address;
 
 /// Initialized memory: bytes, with the addresses written into them at link time.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct Data {
     pub linkage: Linkage,
     pub bytes: Vec<u8>,
@@ -25,7 +26,7 @@ pub struct Data {
 }
 
 /// The address of `target`, plus `addend` bytes, written at `offset` of a data object.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct Reloc {
     pub offset: u64,
     pub target: Address,
@@ -33,14 +34,14 @@ pub struct Reloc {
 }
 
 /// What a linked symbol is.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub enum ImportKind {
     Func(Signature),
     Data,
 }
 
 /// A symbol the unit uses and something else defines (`name: T = _;` with `#[link.symbol]`).
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct Import {
     pub symbol: Symbol,
     pub kind: ImportKind,
@@ -49,7 +50,7 @@ pub struct Import {
     pub stack_max: Option<u64>,
 }
 
-#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct Unit {
     pub functions: IndexVec<FuncId, Function>,
     pub data: IndexVec<DataId, Data>,
@@ -63,7 +64,7 @@ pub struct Unit {
 
 /// A trap site: where it is written, and what it says when its reason is known when compiling
 /// (`lang.panic.fail`).
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct Site {
     pub at: OriginId,
     pub msg: Option<vun_diag::Msg>,

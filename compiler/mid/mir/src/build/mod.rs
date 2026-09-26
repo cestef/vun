@@ -24,8 +24,10 @@ use std::collections::{HashMap, HashSet};
 use std::panic::Location;
 use std::sync::Arc;
 
+use vun_codec::{Decode, Encode};
 use vun_hir::tree::{BinderId, Entry, ExprId, ExprKind, PatKind};
 use vun_index::{Idx, IndexVec};
+use vun_intern::Symbol;
 use vun_origin::{OriginId, OriginTable};
 use vun_query::{Cx, Cycle, Query};
 use vun_sema::env::Env;
@@ -41,18 +43,34 @@ use crate::{
 };
 
 /// A form MIR does not lower yet, by where it is written.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct Unbuilt {
     pub at: OriginId,
     /// The check of the builder that stopped, which `vun debug mir` names.
-    pub by: &'static Location<'static>,
+    pub by: Check,
+}
+
+/// Where in the builder a check is, as `file:line:column`: the caller of [`Unbuilt::at`].
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encode, Decode)]
+pub struct Check {
+    pub file: Symbol,
+    pub line: u32,
+    pub column: u32,
+}
+
+impl std::fmt::Display for Check {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}:{}:{}", self.file, self.line, self.column)
+    }
 }
 
 impl Unbuilt {
     #[must_use]
     #[track_caller]
     pub fn at(at: OriginId) -> Self {
-        Self { at, by: Location::caller() }
+        let caller = Location::caller();
+        let by = Check { file: Symbol::intern(caller.file()), line: caller.line(), column: caller.column() };
+        Self { at, by }
     }
 }
 
@@ -69,12 +87,12 @@ impl Query for Mir {
         // What is evaluated while lowering, `$if` conditions and `$for` items, is typed as the
         // body is.
         let env = i.env(cx).expect("a function value's file is read");
-        let name = cx.db().resource::<OriginTable>().declaration_name(i.f.literal.expr.origin);
+        let name = OriginTable::global().declaration_name(i.f.literal.expr.origin);
         let _span =
             vun_trace::tracing::debug_span!("mir", f = name.as_ref().map_or("", |n| n.as_str())).entered();
         let built = Builder::lower(&env, i);
         if let Err(unbuilt) = &built {
-            let (origins, sources) = (cx.db().resource::<OriginTable>(), cx.db().resource::<SourceFiles>());
+            let (origins, sources) = (OriginTable::global(), SourceFiles::global());
             let at = sources.locate(origins.source_span(unbuilt.at)).to_string();
             vun_trace::tracing::debug!(%at, by = %unbuilt.by, "unbuilt");
         }

@@ -7,14 +7,13 @@ use crate::{Origin, OriginId, OriginTable};
 
 impl Pooled for OriginId {
     const POOL: &'static str = "origin";
-    type Table = OriginTable;
 
-    fn write(self, origins: &OriginTable, w: &mut Writer<'_>) {
-        origins.get(self).encode(w);
+    fn write(self, w: &mut Writer<'_>) {
+        OriginTable::global().get(self).encode(w);
     }
 
-    fn read(origins: &OriginTable, r: &mut Reader<'_>) -> Result<Self, Malformed> {
-        Ok(origins.push(Origin::decode(r)?))
+    fn read(r: &mut Reader<'_>) -> Result<Self, Malformed> {
+        Ok(OriginTable::global().push(Origin::decode(r)?))
     }
 }
 

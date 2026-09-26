@@ -4,8 +4,8 @@ use std::io::{self, IsTerminal};
 use std::process::ExitCode;
 
 use vun_diag::Color;
-use vun_driver::Session;
 use vun_driver::commands::PROGRAM;
+use vun_driver::{Persistence, Session};
 
 /// Disables colors when set, per <https://no-color.org>.
 const NO_COLOR: &str = "NO_COLOR";
@@ -14,6 +14,7 @@ fn main() -> ExitCode {
     vun_trace::Config::from_env().install();
     let argv: Vec<String> = std::env::args().skip(1).collect();
     let mut session = Session::new();
+    session.persistence = Persistence::On;
     session.schemes.install(vun_http::SCHEMES);
     let outcome = PROGRAM.run(&argv, &mut session, &mut io::stdout().lock()).unwrap_or_else(|refusal| {
         session.diag.error(*refusal.diagnostic);
@@ -25,6 +26,7 @@ fn main() -> ExitCode {
         Color::Never
     };
     session.emit(&mut *(session.format.sink)(Box::new(io::stderr()), color));
+    session.save();
     if let Some(report) = vun_trace::Timings::report() {
         eprint!("{report}");
     }

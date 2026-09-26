@@ -1,6 +1,7 @@
 //! Function bodies: locals, and basic blocks of statements ending in a terminator (spec 13,
 //! section 3). Every local, statement and terminator carries the origin that produced it.
 
+use vun_codec::{Decode, Encode};
 use vun_index::{IndexVec, index};
 use vun_intern::Symbol;
 use vun_origin::OriginId;
@@ -17,7 +18,7 @@ index! {
     pub struct BlockId;
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct Body {
     pub locals: IndexVec<Local, LocalDecl>,
     /// The first locals, in order.
@@ -68,7 +69,7 @@ impl Body {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct LocalDecl {
     /// `None` for a temporary.
     pub name: Option<Symbol>,
@@ -79,7 +80,7 @@ pub struct LocalDecl {
 }
 
 /// What a local holds for the checks, and for code generation where it lives.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub enum Role {
     /// A value, which is consumed as a whole.
     Held,
@@ -110,14 +111,14 @@ impl Role {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct Block {
     pub stmts: Vec<Stmt>,
     pub term: Terminator,
 }
 
 /// `place = value`.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct Stmt {
     pub place: Place,
     pub value: Rvalue,
@@ -163,7 +164,7 @@ impl Stmt {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct Terminator {
     pub kind: TerminatorKind,
     pub origin: OriginId,
@@ -215,7 +216,7 @@ impl TerminatorKind {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub enum TerminatorKind {
     Return,
     /// Control never gets here, such as past the arms of an exhaustive `match`.

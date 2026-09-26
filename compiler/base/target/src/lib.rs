@@ -3,6 +3,7 @@
 
 use std::fmt;
 
+use vun_codec::{Decode, Encode};
 use vun_intern::Symbol;
 
 /// A name of one of the open sets targets draw from (decision 138): architectures, systems,
@@ -10,6 +11,19 @@ use vun_intern::Symbol;
 /// components declare theirs statically.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Name(pub &'static str);
+
+/// A name persists as a symbol, whose text lives as long as the process.
+impl Encode for Name {
+    fn encode(&self, w: &mut vun_codec::Writer<'_>) {
+        vun_intern::Symbol::intern(self.0).encode(w);
+    }
+}
+
+impl Decode for Name {
+    fn decode(r: &mut vun_codec::Reader<'_>) -> Result<Self, vun_codec::Malformed> {
+        vun_intern::Symbol::decode(r).map(|name| Self(name.as_str()))
+    }
+}
 
 impl Name {
     /// Whether a target's name is this one.
@@ -31,21 +45,21 @@ impl fmt::Display for Name {
 }
 
 /// `lang.target.Endian`.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub enum Endian {
     Little,
     Big,
 }
 
 /// `lang.target.CInt`: a C integer type, its width in bits and alignment in bytes.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct CInt {
     pub bits: u32,
     pub align: u32,
 }
 
 /// `lang.target.Atomics`: what a C compiler offers beyond C99 for atomic access.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub enum Atomics {
     None,
     /// The `__atomic_*` builtins of GCC and Clang.
@@ -53,7 +67,7 @@ pub enum Atomics {
 }
 
 /// `lang.target.FrameSizes`: how a C compiler reports frame sizes.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub enum FrameSizes {
     None,
     /// `-fstack-usage`, a `.su` file beside each object.
@@ -61,7 +75,7 @@ pub enum FrameSizes {
 }
 
 /// `lang.target.CCompiler`: the C compiler building a target's C, and driving its link.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct CCompiler {
     pub command: Symbol,
     pub flags: Vec<Symbol>,
@@ -71,7 +85,7 @@ pub struct CCompiler {
 }
 
 /// `lang.target.C`: the C types of a target, and its C compiler.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct CTypes {
     pub short: CInt,
     pub int: CInt,
@@ -82,7 +96,7 @@ pub struct CTypes {
 }
 
 /// `lang.target.Spec`.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct TargetSpec {
     pub arch: Symbol,
     pub cpu: Symbol,

@@ -647,6 +647,7 @@ name = "vun-codec"
 version = "0.0.0"
 dependencies = [
  "vun-codec-derive",
+ "vun-par",
 ]
 
 [[package]]
@@ -665,6 +666,7 @@ dependencies = [
 name = "vun-desugar"
 version = "0.0.0"
 dependencies = [
+ "vun-codec",
  "vun-grammar",
  "vun-items",
 ]
@@ -673,6 +675,7 @@ dependencies = [
 name = "vun-diag"
 version = "0.0.0"
 dependencies = [
+ "vun-codec",
  "vun-origin",
  "vun-span",
 ]
@@ -763,6 +766,9 @@ dependencies = [
 [[package]]
 name = "vun-grammar"
 version = "0.0.0"
+dependencies = [
+ "vun-codec",
+]
 
 [[package]]
 name = "vun-graph"
@@ -788,6 +794,7 @@ dependencies = [
 name = "vun-hir"
 version = "0.0.0"
 dependencies = [
+ "vun-codec",
  "vun-desugar",
  "vun-diag",
  "vun-fs",
@@ -815,6 +822,9 @@ dependencies = [
 [[package]]
 name = "vun-index"
 version = "0.0.0"
+dependencies = [
+ "vun-codec",
+]
 
 [[package]]
 name = "vun-intern"
@@ -842,6 +852,7 @@ dependencies = [
 name = "vun-items"
 version = "0.0.0"
 dependencies = [
+ "vun-codec",
  "vun-grammar",
  "vun-intern",
 ]
@@ -923,6 +934,7 @@ dependencies = [
 name = "vun-lir"
 version = "0.0.0"
 dependencies = [
+ "vun-codec",
  "vun-diag",
  "vun-index",
  "vun-intern",
@@ -945,6 +957,7 @@ dependencies = [
 name = "vun-lower"
 version = "0.0.0"
 dependencies = [
+ "vun-codec",
  "vun-desugar",
  "vun-diag",
  "vun-grammar",
@@ -973,6 +986,7 @@ dependencies = [
 name = "vun-mir"
 version = "0.0.0"
 dependencies = [
+ "vun-codec",
  "vun-desugar",
  "vun-diag",
  "vun-grammar",
@@ -991,6 +1005,7 @@ dependencies = [
 name = "vun-mir-passes"
 version = "0.0.0"
 dependencies = [
+ "vun-codec",
  "vun-desugar",
  "vun-diag",
  "vun-grammar",
@@ -1012,6 +1027,7 @@ dependencies = [
  "vun-hash",
  "vun-intern",
  "vun-span",
+ "vun-trace",
 ]
 
 [[package]]
@@ -1119,6 +1135,7 @@ name = "vun-sema"
 version = "0.0.0"
 dependencies = [
  "num-bigint",
+ "vun-codec",
  "vun-desugar",
  "vun-diag",
  "vun-grammar",
@@ -1167,6 +1184,7 @@ dependencies = [
 name = "vun-target"
 version = "0.0.0"
 dependencies = [
+ "vun-codec",
  "vun-intern",
 ]
 

@@ -1,6 +1,6 @@
 # Handoff
 
-State of Vun as of 2026-09-26 (end of the thirteenth session), for the next agent. Read this, then
+State of Vun as of 2026-09-26 (end of the fourteenth session), for the next agent. Read this, then
 `CLAUDE.md` (rules and the agent procedure; on disk but ignored by the user's global gitignore, so
 `jj st` never shows it), then `docs/spec/00-principles.md`, `docs/spec/decisions.md` and the spec
 files of the area you touch.
@@ -355,7 +355,9 @@ declaring theirs), 163 (attribute places, one reading of attributes),
 164 (an import's bound from the program's declarations), 165 (`symbols` structs); proposed: 166
 (callee-saved registers for loops), 167 (floats), 169 (legalization of wide integers), 174
 (`lower.by`, the float encoding, folding primitive calls typed by value), 175 (`f16` promoted in
-legalization); accepted: 173 (canonical
+legalization), 176 (query engine), 178 (origins equal by identity, process-wide handle tables),
+179 (`.vun` never package content); accepted, details proposed: 177 (query persistence), 180
+(timings); accepted: 173 (canonical
 NaN, the user's request); accepted: 168 (commands as jj's, debug tools). Accepted: 139 (the size budget, now 10 MiB), 158 (`meta.Frame`, `TypeOf`
 over code; details proposed).
 Accepted (the user's choices, details proposed): 152 (backends after TPDE, baseline backend
@@ -378,22 +380,28 @@ rules go to `decisions.md` as proposed unless the user approves them.
 ## 7. Next steps, in order
 
 0. Performance and persistence (the user's current focus). Done: `vun-par`, per-package
-   `Shared` databases (the corpus runs in about 4 s), packages read once per session, lock-free
-   interners (BLAKE3 only on insert), the HIR index (`tree/index.rs`: binders, spreads, struct
-   literals, closures, enclosing functions, attribute wrappers), `ItemSite`, `PrimitiveDecl`,
-   `PrimitiveSignature` queries. `vun check hello.vun` went from 230 ms to 103 ms (release), an
-   empty file costs 58 ms (the library). Next, in order: (a) persist the front-end queries: the
-   user chose an own derive crate, `vun-codec-derive`, on the compiler's `proc_macro` API without
-   syn/quote (note: `syn`/`quote` are already workspace dependencies, of the generator; raise it
-   if the own parser grows), then `#[derive(Encode, Decode)]` on the query keys and values,
-   `Db::persist` registration, save and load under `.vun/queries/<toolchain hash>`; interned
-   values persist by content. (b) The rest of the performance audit: cheap interfaces for large
-   values (typed bodies, MIR, shapes: store a fingerprint when built), `FileRef.path` as a
-   `Symbol`, `Instance` keys hashed once, `Call`/`MeteredCall` hashing the value twice, the
-   interpreter copying whole values per projection (`interp/src/places.rs`), `Integer` small-int
-   form and `Value::Bytes`, witnesses computed per (file, type) over every file, `Primitive::at`
-   and `Borrow::of` linear scans, SipHash maps in the typer (`IndexVec` by `ExprId`), `Attrs` as
-   a query. (c) An allocator (mimalloc) was not tried: allocation is ~20% of a check.
+   `Shared` databases, lock-free interners, the HIR index, and persisted queries (decision 177):
+   `vun-codec` with `Writer`/`Reader`, `Blob`s read in place, `Pooled` handles (symbols,
+   interned values, files, origins) written once per file; `vun-codec-derive`; every query of
+   hir, sema, mir, passes and lower registered in a `PERSISTED` table per crate
+   (`driver/src/queries.rs` lists them), `Parsed` and the inputs by trace. The CLI turns it on
+   (`Persistence::On`); tests never read or write saved queries. `vun check hello.vun`: 66 ms
+   cold, about 11 ms warm (release, `--timings`), where loading takes about 6 ms (decode 1.3,
+   keys 2, restore 1). Timings: `--timings`/`VUN_TIMINGS=1` (decision 180);
+   `VUN_LOG=vun_query=debug` names why each memo is computed (absent, a changed read, loaded
+   without its value) and which memos are not saved; `vun_origin=trace` lists every origin.
+   Next, in order: (a) logging off by default and more `info`/`debug`/`trace` logs across the
+   stages (the user's request, not started); (b) the file never shrinks: memos of deleted
+   files and stale keys stay until the file is removed; compact it when it grows past twice its
+   live size; (c) writes are not atomic (two `vun` runs at once can leave a truncated file,
+   which is then skipped); write a temporary file and rename; (d) the rest of the performance
+   audit: cheap interfaces for large values (typed bodies, MIR, shapes: store a fingerprint
+   when built), `FileRef.path` as a `Symbol`, `Instance` keys hashed once, `Call`/`MeteredCall`
+   hashing the value twice, the interpreter copying whole values per projection, `Integer`
+   small-int form and `Value::Bytes`, witnesses per (file, type), `Primitive::at` and
+   `Borrow::of` linear scans, SipHash maps in the typer, `Attrs` as a query; (e) mimalloc was
+   not tried (allocation is about 20% of a cold check); (f) `par_map` spawns scoped threads per
+   call (no `unsafe` is allowed for a persistent pool); measure whether that matters.
 1. Baseline backend next: float conversions (they must give the canonical NaN, decision 173;
    to `f16` only from `f32`, decision 175), data
    objects aligned past every C type in the C backend (only slots are handled), and
@@ -421,10 +429,20 @@ rules go to `decisions.md` as proposed unless the user approves them.
    `panic.never`.
 8. Evaluator: its own stack (deep chains of compile-time calls overflow the host stack); loans
    inside aggregate arguments (`select`'s tuple of `&mut`) and frames holding what they were lent.
-9. Persist the front-end queries; packaging: signed caches (decision 63), planned builds,
+9. Packaging: signed caches (decision 63), planned builds,
    `vun pkg why`; `.workspace` visibility.
 
 ## 8. Pitfalls
+
+- Origins are equal by identity (decision 178): a new way of lowering that makes two entities
+  from one piece of syntax must give each its own origin (`Lower::own`), or two nodes become
+  one key; `Hir::verify` catches it. Do not order by `OriginId` (it has no order); syntax nodes
+  order by place.
+- Tables that handles index (`SourceFiles::global()`, `OriginTable::global()`) are the process's.
+  Anything interned that holds a handle is shared by every session in the process.
+- Persisted queries need unique `Query::NAME`s (registering two panics) and codecs on their key
+  (and value, with `Db::persist`). A query whose values are set is `INPUT`. Saved queries live in
+  `.vun/queries/` beside the root file: delete it to start cold.
 
 - The shell may inherit `CARGO_TARGET_DIR` from an old environment: then `cargo build` writes
   elsewhere and `./target/debug/vun` is stale. `unset CARGO_TARGET_DIR` first.

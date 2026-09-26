@@ -85,7 +85,7 @@ impl Namespace {
         });
         let items = quote! {
                 #[doc = #doc]
-                #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+                #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, vun_codec::Encode, vun_codec::Decode)]
                 #[allow(non_camel_case_types, reason = "variants are named as their declarations")]
                 pub enum #name { #(#variants),* }
 
@@ -139,7 +139,7 @@ fn emit(sources: &[Source<'_>]) -> Read<Vec<Module>> {
     });
     let primitive = quote! {
         /// A declaration of `lang` whose value is `_`, provided by the compiler, by namespace.
-        #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+        #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, vun_codec::Encode, vun_codec::Decode)]
         pub enum Primitive { #(#variants),* }
 
         impl Primitive {

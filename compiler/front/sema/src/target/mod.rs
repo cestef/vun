@@ -9,6 +9,7 @@ pub use read::{Read, Unread};
 
 use std::sync::Arc;
 
+use vun_codec::{Decode, Encode};
 use vun_query::{Cx, Query};
 use vun_target::{Endian, TargetSpec};
 
@@ -18,7 +19,7 @@ use crate::primitives::target::Target as Constant;
 use crate::ty::Value;
 
 /// What compile-time code sees of the target.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct Target {
     /// The largest address: `usize` is `Int(0..=usize_max)`.
     pub usize_max: Integer,
@@ -48,6 +49,7 @@ pub struct TargetOf;
 
 impl Query for TargetOf {
     const NAME: &'static str = "target";
+    const INPUT: bool = true;
     type Key = ();
     type Value = Option<Arc<Target>>;
 

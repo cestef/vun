@@ -4,6 +4,7 @@
 use std::path::Path;
 use std::sync::Arc;
 
+use vun_codec::{Decode, Encode};
 use vun_diag::DiagCtxt;
 use vun_hash::{Hash, Snapshot};
 use vun_intern::Symbol;
@@ -11,11 +12,11 @@ use vun_query::{Cx, Query};
 use vun_span::Span;
 
 /// A package, by the hash of its `include` tree, or the stand-in for files outside any package.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Encode, Decode)]
 pub struct PackageId(pub Hash);
 
 /// A file of a package, by its path inside the package directory, components joined by `/`.
-#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Encode, Decode)]
 pub struct FileRef {
     pub package: PackageId,
     pub path: String,
@@ -48,7 +49,7 @@ pub struct DepData {
 }
 
 /// Why a dependency's package is not there.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub enum Unloaded {
     /// Not on disk, or not matching its hash: these reports, returned where it is needed, so that
     /// a dependency nothing uses is never reported.
@@ -79,6 +80,7 @@ pub struct Package;
 
 impl Query for Package {
     const NAME: &'static str = "package";
+    const INPUT: bool = true;
     type Key = PackageId;
     type Value = Arc<PackageData>;
 
@@ -92,6 +94,7 @@ pub struct FileText;
 
 impl Query for FileText {
     const NAME: &'static str = "file_text";
+    const INPUT: bool = true;
     type Key = FileRef;
     type Value = Option<Arc<str>>;
 

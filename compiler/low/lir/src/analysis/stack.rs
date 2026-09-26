@@ -4,6 +4,7 @@
 
 use std::collections::HashMap;
 
+use vun_codec::{Decode, Encode};
 use vun_diag::Msg;
 use vun_index::IndexVec;
 use vun_origin::OriginId;
@@ -11,7 +12,7 @@ use vun_origin::OriginId;
 use crate::{Callee, FuncId, ImportId, InstKind, Unit};
 
 /// Why a function's stack use has no bound.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub enum Unbounded {
     /// It reaches a call of this function made while a call of it runs.
     Recursive(FuncId),
@@ -50,11 +51,11 @@ impl Unbounded {
 }
 
 /// The worst-case stack use of each function of a unit, in bytes.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Encode, Decode)]
 pub struct StackUse(IndexVec<FuncId, Result<u64, Unbounded>>);
 
 /// How far the walk of one function has got.
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, Encode, Decode)]
 enum Walk {
     Unseen,
     Open,

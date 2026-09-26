@@ -3,9 +3,11 @@
 use std::borrow::Cow;
 use std::fmt;
 
+use vun_codec::{Decode, Encode};
+
 /// One part of a message. Structured parts let renderers style them and machine formats keep
 /// them apart.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub enum MsgPart {
     Text(Cow<'static, str>),
     Code(String),
@@ -14,7 +16,7 @@ pub enum MsgPart {
 }
 
 /// A message, built from typed parts rather than formatted text.
-#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct Msg(pub Vec<MsgPart>);
 
 impl Msg {

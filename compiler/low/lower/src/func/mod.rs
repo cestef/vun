@@ -26,6 +26,7 @@ use std::sync::Arc;
 use vun_index::{Idx, IndexVec};
 use vun_lir::{Builder, Function, Linkage, Scalar, Slot, Target, Terminator, Value};
 
+use vun_codec::{Decode, Encode};
 use vun_mir::{BlockId, Body, Local, Operand, Role, Rvalue, Unready};
 use vun_mir_passes::places::{Found, Placed};
 use vun_origin::OriginId;
@@ -40,7 +41,7 @@ use crate::repr::Repr;
 use crate::unlowered::{Form, Unlowered, Why};
 
 /// Where a local lives.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Encode, Decode)]
 enum Storage {
     /// Nowhere: its type has size 0.
     None,
@@ -95,7 +96,7 @@ impl<'l, 'a, 'db> FnLower<'l, 'a, 'db> {
         defers: Arc<Found>,
     ) -> Result<Function, Unlowered> {
         let at = body.origin;
-        let name = l.types.cx.db().resource::<vun_origin::OriginTable>().declaration_name(at);
+        let name = vun_origin::OriginTable::global().declaration_name(at);
         let _span =
             vun_trace::tracing::debug_span!("lower", f = name.as_ref().map_or("", |n| n.as_str())).entered();
         if body.suspends() {

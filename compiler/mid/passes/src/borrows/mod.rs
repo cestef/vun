@@ -13,8 +13,9 @@ mod access;
 mod flow;
 mod free;
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{BTreeMap, BTreeSet, HashSet};
 
+use vun_codec::{Decode, Encode};
 use vun_desugar::{Borrow, Extent};
 use vun_diag::{ChildKind, DiagCtxt, DiagId, Diagnostic, Msg};
 use vun_grammar::TokenKind;
@@ -73,7 +74,7 @@ impl BorrowChecks {
 }
 
 /// Where a loan comes from.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Encode, Decode)]
 enum Source {
     /// A borrow the body takes.
     Taken,
@@ -103,7 +104,7 @@ struct Checker<'b> {
     /// The locals whose type holds a scoped value inside a free one.
     misplaced: BTreeSet<Local>,
     diag: DiagCtxt,
-    reported: BTreeSet<(DiagId, OriginId)>,
+    reported: HashSet<(DiagId, OriginId)>,
 }
 
 impl<'b> Checker<'b> {
@@ -137,7 +138,7 @@ impl<'b> Checker<'b> {
             }
         }
         let diag = DiagCtxt::new();
-        Self { body, loans, taken, lent, calls, scoped, misplaced, diag, reported: BTreeSet::new() }
+        Self { body, loans, taken, lent, calls, scoped, misplaced, diag, reported: HashSet::new() }
     }
 
     fn run(mut self) -> DiagCtxt {

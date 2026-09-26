@@ -19,5 +19,9 @@ pub use program::{Program, Programs, Roots};
 pub use rvalue::{Aggregate, Operand, Rvalue};
 pub use verify::Malformed;
 
+/// The queries of MIR whose memos outlive the process, with their values.
+pub const PERSISTED: &[fn(&vun_query::Db)] =
+    &[vun_query::Db::persist::<Mir>, vun_query::Db::persist::<Concrete>, vun_query::Db::persist::<Programs>];
+
 #[cfg(test)]
 mod tests;

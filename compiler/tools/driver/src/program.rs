@@ -29,7 +29,7 @@ pub const OUTPUT: Param = Param {
 };
 
 /// Where builds keep their files, under the root file's directory (spec 12, section 1).
-const BUILDS: &str = ".vun/build";
+const BUILDS: &str = "build";
 /// The extension of an object file.
 const OBJECT: &str = "o";
 /// The extension of the frame sizes `-fstack-usage` writes beside an object.
@@ -75,7 +75,7 @@ impl Session {
         drop(timer);
         let _timer = COMPILE.start();
         let root = PathBuf::from(&self.sources.file(file).path);
-        let builds = root.parent().unwrap_or(Path::new("")).join(BUILDS);
+        let builds = root.parent().unwrap_or(Path::new("")).join(vun_fs::WORK).join(BUILDS);
         let all: Vec<u8> = coded.artifacts.iter().flat_map(|a| a.bytes.iter().copied()).collect();
         let dir = builds.join(Hash::of(&all).digest());
         for artifact in &coded.artifacts {

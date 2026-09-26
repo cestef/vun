@@ -3,10 +3,12 @@
 
 use std::cmp::Ordering;
 
+use vun_codec::{Decode, Encode};
+
 use super::Integer;
 
 /// An integer or an infinity, ordered as on the number line.
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Encode, Decode)]
 pub enum Extended {
     NegInf,
     Finite(Integer),

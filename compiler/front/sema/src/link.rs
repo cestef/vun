@@ -4,6 +4,7 @@
 
 use std::sync::Arc;
 
+use vun_codec::{Decode, Encode};
 use vun_hir::db::FileRef;
 use vun_hir::tree::{Member, each_entry};
 use vun_origin::OriginId;
@@ -43,7 +44,7 @@ impl DeclRef {
 }
 
 /// A declaration naming a link symbol: one the linker provides, or an export providing it.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct LinkDecl {
     pub decl: DeclRef,
     /// The attribute, where a mismatch is reported.

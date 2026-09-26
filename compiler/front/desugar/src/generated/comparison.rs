@@ -12,7 +12,7 @@ use super::*;
 )]
 use vun_grammar::*;
 /// How a comparison relates its left operand to its right.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, vun_codec::Encode, vun_codec::Decode)]
 pub enum Comparison {
     Less,
     AtMost,

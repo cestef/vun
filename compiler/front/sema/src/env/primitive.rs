@@ -75,7 +75,7 @@ impl Env<'_, '_> {
 }
 
 /// The declaration of a primitive in the `lang` the files of a package see.
-pub(super) struct PrimitiveDecl;
+pub(crate) struct PrimitiveDecl;
 
 impl Query for PrimitiveDecl {
     const NAME: &'static str = "primitive_decl";
@@ -94,7 +94,7 @@ impl Query for PrimitiveDecl {
 }
 
 /// Whether each parameter of a primitive is a `$` one: what its signature depends on.
-pub(super) struct PrimitiveComptime;
+pub(crate) struct PrimitiveComptime;
 
 impl Query for PrimitiveComptime {
     const NAME: &'static str = "primitive_comptime";
@@ -116,7 +116,7 @@ impl Query for PrimitiveComptime {
 
 /// The signature of a primitive with its `$` parameters bound to the values given, the others
 /// `None`.
-pub(super) struct PrimitiveSignature;
+pub(crate) struct PrimitiveSignature;
 
 impl Query for PrimitiveSignature {
     const NAME: &'static str = "primitive_signature";

@@ -2,12 +2,13 @@
 //! the sequences the pass rewrites wide operations into, and the division helper is made of.
 //! Every half operation wraps, as LIR's integer operations do.
 
+use vun_codec::{Decode, Encode};
 use vun_origin::OriginId;
 
 use crate::{BinOp, Builder, CastOp, Cond, InstKind, Scalar, Value};
 
 /// A wide integer as its halves.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Encode, Decode)]
 pub(super) struct Pair {
     pub(super) lo: Value,
     pub(super) hi: Value,

@@ -3,6 +3,7 @@
 
 use std::fmt;
 
+use vun_codec::{Decode, Encode};
 use vun_items::Item;
 
 use crate::{Access, BORROWS, BorrowsRow, Extent, PlaceState};
@@ -11,7 +12,7 @@ use crate::{Access, BORROWS, BorrowsRow, Extent, PlaceState};
 pub const MODE_SEPARATOR: &str = " ";
 
 /// A borrow mode: a row of the table `borrows`.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Encode, Decode)]
 pub struct Borrow(u8);
 
 impl Borrow {

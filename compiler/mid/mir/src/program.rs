@@ -6,6 +6,7 @@
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
+use vun_codec::{Decode, Encode};
 use vun_hir::db::{FileRef, Parsed};
 use vun_hir::tree::ExprKind;
 use vun_intern::Symbol;
@@ -18,7 +19,7 @@ use vun_sema::ty::{Ty, TyKind, Value};
 
 use crate::{Aggregate, Concrete, Lowered, Operand, Rvalue, Unready};
 
-#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct Program {
     /// Every function reached, in the order found: the exports first.
     pub functions: Vec<Instantiation>,
@@ -34,7 +35,7 @@ pub struct Program {
 }
 
 /// Where the reach of a program starts.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub enum Roots {
     /// The root file's exports: the program as built.
     Exports,

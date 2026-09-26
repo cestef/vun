@@ -44,7 +44,7 @@ blinky/
   fuzz/                 corpus and crash inputs, per test
   docs/                 guides; API docs come from doc comments
   vendor/               only after `vun pkg vendor`
-  .vun/               local build caches, ignored by version control
+  .vun/               the toolchain's builds and saved queries, ignored by version control and never package content
 ```
 
 No directory name is significant to the compiler except through `build.vun`, which states the roots.

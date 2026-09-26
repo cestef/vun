@@ -1,6 +1,7 @@
 //! Compile-time values (spec 03, section 7): what evaluation produces and what types are applied
 //! to. Every value hashes by content, so types built from values do too.
 
+use vun_codec::{Decode, Encode};
 use vun_intern::Symbol;
 use vun_origin::OriginId;
 
@@ -15,7 +16,7 @@ use crate::item::DeclRef;
 use crate::ops::Part;
 use crate::primitives::meta::Meta;
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub enum Value {
     Int(Integer),
     /// A float of a binary format (spec 04, section 2).

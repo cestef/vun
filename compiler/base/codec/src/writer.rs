@@ -2,9 +2,8 @@
 
 use std::any::{Any, TypeId};
 use std::collections::HashMap;
-use std::sync::Arc;
 
-use crate::{Encode, Pool, Pooled, Pools, Resources};
+use crate::{Context, Encode, Pool, Pooled, Pools};
 
 /// Where values are encoded: the bytes of the value being written, and the pools shared by every
 /// value of the stream.
@@ -14,12 +13,14 @@ pub struct Writer<'r> {
     /// The pool of each handle type, in the order first written.
     pools: Vec<Box<dyn AnyPool>>,
     by_type: HashMap<TypeId, usize>,
-    resources: Option<&'r dyn Resources>,
+    /// The stream this one extends, whose pools it starts from.
+    extends: Option<&'r Context>,
+    /// The pools of that stream not written to yet, by name.
+    carried: HashMap<String, Vec<Vec<u8>>>,
 }
 
 /// The entries written so far of one pool.
 struct PoolWriter<T: Pooled> {
-    table: Arc<T::Table>,
     numbers: HashMap<T, usize>,
     entries: Vec<Vec<u8>>,
 }
@@ -46,10 +47,11 @@ impl<'r> Writer<'r> {
         Self::default()
     }
 
-    /// A stream whose pooled handles are into the tables of `resources`.
+    /// A stream extending `stream`: its pools start as that stream's, so that the bytes of a value
+    /// of that stream are the same value in this one, and are written as they are.
     #[must_use]
-    pub fn pooling(resources: &'r dyn Resources) -> Self {
-        Self { resources: Some(resources), ..Self::default() }
+    pub fn extending(stream: &'r Context) -> Self {
+        Self { extends: Some(stream), carried: stream.entries(), ..Self::default() }
     }
 
     pub fn write(&mut self, bytes: &[u8]) {
@@ -70,23 +72,22 @@ impl<'r> Writer<'r> {
         self.bytes
     }
 
-    /// The pools written, in the order they were first written to.
+    /// The pools written, in the order they were first written to, then those carried from the
+    /// stream extended and not written to, by name.
     #[must_use]
     pub fn into_pools(self) -> Pools {
-        Pools(self.pools.into_iter().map(AnyPool::into_pool).collect())
+        let mut carried: Vec<Pool> =
+            self.carried.into_iter().map(|(name, entries)| Pool { name, entries }).collect();
+        carried.sort_by(|a, b| a.name.cmp(&b.name));
+        Pools(self.pools.into_iter().map(AnyPool::into_pool).chain(carried).collect())
     }
 
     /// Writes `handle` as its number in its pool, first writing its entry if it has none.
-    ///
-    /// # Panics
-    /// If the stream has no resources to read the entry from.
     pub fn pooled<T: Pooled>(&mut self, handle: T) {
-        let pool = self.pool::<T>();
-        let number = if let Some(&number) = pool.numbers.get(&handle) {
+        let number = if let Some(&number) = self.pool::<T>().numbers.get(&handle) {
             number
         } else {
-            let table = Arc::clone(&pool.table);
-            let entry = self.encode_with(|w| handle.write(&table, w));
+            let entry = self.encode_with(|w| handle.write(w));
             let pool = self.pool::<T>();
             pool.entries.push(entry);
             pool.numbers.insert(handle, pool.entries.len() - 1);
@@ -103,13 +104,9 @@ impl<'r> Writer<'r> {
 
     fn pool<T: Pooled>(&mut self) -> &mut PoolWriter<T> {
         let index = *self.by_type.entry(TypeId::of::<T>()).or_insert_with(|| {
-            let resources = self.resources.expect("a stream with pooled handles has resources");
-            let table = resources.get::<T::Table>();
-            self.pools.push(Box::new(PoolWriter::<T> {
-                table,
-                numbers: HashMap::new(),
-                entries: Vec::new(),
-            }));
+            let entries = self.carried.remove(T::POOL).unwrap_or_default();
+            let numbers = self.extends.map(Context::numbers).unwrap_or_default();
+            self.pools.push(Box::new(PoolWriter::<T> { numbers, entries }));
             self.pools.len() - 1
         });
         self.pools[index].as_any().downcast_mut().expect("one pool per handle type")

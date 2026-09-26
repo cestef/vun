@@ -7,6 +7,7 @@
 //! `#[kind.free]` is free, and holding a scoped value in it, even through a type argument, is an
 //! error its kind records.
 
+use vun_codec::{Decode, Encode};
 use vun_desugar::Extent;
 use vun_query::{Cx, Cycle, Query};
 
@@ -17,21 +18,21 @@ use crate::primitives::mem::Mem;
 use crate::ty::{Closure, Nominal, Ty, TyKind, Value};
 
 /// Whether values are duplicated or consumed once.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub enum Duplication {
     Copy,
     Linear,
 }
 
 /// Whether values hold a borrow, which ties them to the scope it was taken in (section 4).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub enum Region {
     Free,
     Scoped,
 }
 
 /// The properties of a type.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct Kind {
     pub duplication: Duplication,
     pub region: Region,

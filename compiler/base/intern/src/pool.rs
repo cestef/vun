@@ -54,6 +54,14 @@ impl<T: Hash + Eq + Send + Sync + 'static> Default for Pool<T> {
     }
 }
 
+impl<T> Interned<T> {
+    /// The value, stored for the rest of the process.
+    #[must_use]
+    pub fn get(self) -> &'static T {
+        &self.0.value
+    }
+}
+
 impl<T> Clone for Interned<T> {
     fn clone(&self) -> Self {
         *self

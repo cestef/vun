@@ -5,6 +5,7 @@
 //! no exception: `lang.int.ops` holds their impls. A compound assignment, a value pattern and a
 //! range pattern are operators too.
 
+use vun_codec::{Decode, Encode};
 use vun_desugar::{OPERATORS, PREFIX_OPERATORS};
 use vun_grammar::TokenKind;
 use vun_hir::tree::{ExprId, PatId};
@@ -19,7 +20,7 @@ use crate::member::{MemberType, MemberValue};
 use crate::ty::{Ty, TyKind, Value};
 
 /// Where an operator is written, by what it belongs to.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Encode, Decode)]
 pub enum Operation {
     /// `a op b` or `op a`.
     Expr(ExprId),
@@ -35,7 +36,7 @@ pub enum Operation {
 
 /// The function an operator calls: the struct declaring it and its name, and the `$` arguments
 /// inferred for the call, by parameter.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct Operator {
     pub method: (Ty, Symbol),
     pub inferred: Vec<(usize, Value)>,

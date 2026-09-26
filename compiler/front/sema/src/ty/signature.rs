@@ -2,6 +2,7 @@
 //! carries its markers (spec 07, section 4), as a third argument when there are some; calls are
 //! checked against them.
 
+use vun_codec::{Decode, Encode};
 use vun_grammar::TokenKind;
 
 use super::marker::Marker;
@@ -11,7 +12,7 @@ use crate::primitives::lang::Lang;
 use crate::primitives::safety::Safety;
 
 /// The parts of a function type.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct Signature {
     pub params: Vec<Ty>,
     pub result: Ty,

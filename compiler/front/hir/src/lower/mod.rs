@@ -9,9 +9,11 @@ mod exprs;
 mod members;
 mod pats;
 
+use std::collections::HashMap;
+
 use vun_grammar::{NodeField, NodeKind, TokenKind};
 use vun_intern::Symbol;
-use vun_origin::{OriginId, OriginTable};
+use vun_origin::{OriginId, OriginTable, Via};
 use vun_syntax::cst::{Anchor, Cst, Fields, NodeId};
 use vun_syntax::tokens::Tokens;
 
@@ -30,7 +32,8 @@ impl Hir {
     /// Lowers the file `source` into HIR.
     #[must_use]
     pub fn lower(source: Source<'_>, origins: &OriginTable) -> Self {
-        let mut lower = Lower { source, origins, hir: Self::default(), declaration: None };
+        let mut lower =
+            Lower { source, origins, hir: Self::default(), declaration: None, made: HashMap::new() };
         let root = source.cst.root();
         let members = lower.members(source.cst.children(root));
         let origin = lower.origin(root);
@@ -45,6 +48,8 @@ struct Lower<'a, 'i> {
     hir: Hir,
     /// The origin of the declaration being lowered, which the origins inside it are anchored to.
     declaration: Option<OriginId>,
+    /// How many entities have each origin so far: a further one gets its own.
+    made: HashMap<OriginId, u16>,
 }
 
 /// Escape that makes a keyword a name: `\unsafe`.
@@ -56,9 +61,22 @@ impl<'a> Lower<'a, '_> {
     /// The origin of `n`: inside the declaration being lowered, or in the file.
     fn origin(&mut self, n: NodeId) -> OriginId {
         let span = self.source.cst.span(n, self.source.tokens);
-        match self.declaration {
+        let origin = match self.declaration {
             Some(declaration) => self.origins.inside(declaration, span),
             None => self.origins.source(span),
+        };
+        self.own(origin)
+    }
+
+    /// `origin` for one more entity: itself for the first, then, since two entities made from
+    /// one piece of syntax are two, an origin derived from it for each further one, by its order.
+    fn own(&mut self, origin: OriginId) -> OriginId {
+        let made = self.made.entry(origin).or_insert(0);
+        let nth = *made;
+        *made += 1;
+        match nth {
+            0 => origin,
+            _ => self.origins.derive(origin, self.origins.get(origin).span, Via::Again(nth)),
         }
     }
 
@@ -74,7 +92,8 @@ impl<'a> Lower<'a, '_> {
         let origin = match name {
             Some(name) => {
                 let span = self.source.cst.span(n, self.source.tokens);
-                self.origins.declaration(span, self.declaration, name)
+                let origin = self.origins.declaration(span, self.declaration, name);
+                self.own(origin)
             }
             None => self.origin(n),
         };

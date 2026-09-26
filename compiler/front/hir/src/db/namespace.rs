@@ -3,6 +3,7 @@
 
 use std::sync::Arc;
 
+use vun_codec::{Decode, Encode};
 use vun_diag::{Diagnostic, Msg, errors};
 use vun_intern::Symbol;
 use vun_query::{Cx, Cycle, Query};
@@ -13,7 +14,7 @@ use super::layout::Namespace;
 use super::parsed::Parsed;
 
 /// Why a path names no namespace.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub enum Unfound {
     /// Its first name is not the package or a dependency.
     Root,
@@ -60,7 +61,7 @@ impl Query for NamespaceAt {
 pub struct Members;
 
 impl Query for Members {
-    const NAME: &'static str = "members";
+    const NAME: &'static str = "namespace_members";
     type Key = Namespace;
     type Value = Arc<[Symbol]>;
 

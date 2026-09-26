@@ -30,7 +30,7 @@ fn the_largest_required_version_is_selected_everywhere() {
     let project = session.package_at(&dir).unwrap();
     session.fetch(project);
     let selection = session.write_lock(&dir, project).unwrap();
-    assert!(!session.failed(), "{:?}", session.diag.sorted());
+    assert!(!session.failed(), "{:?}", session.diag.sorted(session.origins));
     assert_eq!(selection.entries().len(), 2, "every required version is recorded: {selection}");
     let selected = selection.selected(Identity { id: HAL_ID, major: 1 }).unwrap();
     assert_eq!(
@@ -59,7 +59,8 @@ fn the_largest_required_version_is_selected_everywhere() {
     let mut check = fx.session();
     let loaded = check.load(&app_file).unwrap();
     check.check(loaded);
-    let d = check.diag.sorted().into_iter().find(|d| d.id == errors::PACKAGE_STALE_LOCK).unwrap();
+    let d =
+        check.diag.sorted(check.origins).into_iter().find(|d| d.id == errors::PACKAGE_STALE_LOCK).unwrap();
     let span = check.origins.source_span(d.primary.as_ref().unwrap().origin);
     assert_eq!(span.range.of(check.text(span.file)), stale_line);
     assert!(d.children.iter().any(|c| c.msg.to_string().contains("blake3:")), "{:?}", d.children);
@@ -69,7 +70,7 @@ fn the_largest_required_version_is_selected_everywhere() {
     let project = session.package_at(&dir).unwrap();
     session.fetch(project);
     session.write_lock(&dir, project);
-    assert!(!session.failed(), "{:?}", session.diag.sorted());
+    assert!(!session.failed(), "{:?}", session.diag.sorted(session.origins));
     assert_eq!(fx.check(&app_file), []);
 
     // A stored package changed in place is a hash mismatch, and nothing else.
@@ -97,7 +98,12 @@ fn one_version_with_two_hashes_is_reported_at_both_dependents() {
     let project = session.package_at(&dir).unwrap();
     session.fetch(project);
     assert!(session.write_lock(&dir, project).is_none(), "a conflict writes no lockfile");
-    let d = session.diag.sorted().into_iter().find(|d| d.id == errors::PACKAGE_VERSION_CONFLICT).unwrap();
+    let d = session
+        .diag
+        .sorted(session.origins)
+        .into_iter()
+        .find(|d| d.id == errors::PACKAGE_VERSION_CONFLICT)
+        .unwrap();
     assert!(d.primary.is_some() && d.labels.len() == 1, "{d:?}");
     let notes: Vec<_> = d.children.iter().map(|c| c.msg.to_string()).collect();
     assert!(notes.iter().any(|n| n.ends_with("required by the project")), "{notes:?}");

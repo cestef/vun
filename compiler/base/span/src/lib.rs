@@ -37,6 +37,14 @@ pub struct FileId {
     key: u64,
 }
 
+impl FileId {
+    /// What names the file in every process, hashed.
+    #[must_use]
+    pub fn key(self) -> u64 {
+        self.key
+    }
+}
+
 impl Hash for FileId {
     fn hash<H: Hasher>(&self, state: &mut H) {
         state.write_u64(self.key);
@@ -199,8 +207,9 @@ impl std::fmt::Display for Location<'_> {
 pub struct SourceFiles {
     /// Each file, with the key naming it.
     files: boxcar::Vec<(String, SourceFile)>,
-    /// Each file by its key and the hash of its text, so that adding it again returns it.
-    added: std::sync::RwLock<std::collections::HashMap<(u64, vun_hash::Hash), FileId>>,
+    /// Each file by its key, the path it is shown as and the hash of its text, so that adding
+    /// it again returns it.
+    added: std::sync::RwLock<std::collections::HashMap<(u64, String, vun_hash::Hash), FileId>>,
 }
 
 impl SourceFiles {
@@ -217,26 +226,35 @@ impl SourceFiles {
     }
 
     /// Adds a file under `key`, which names it the same way in every process, shown as `path`;
-    /// the same key with the same text is the file already added.
+    /// the same key, path and text is the file already added.
     ///
     /// # Panics
     /// Panics past `u32::MAX` files, or if a thread panicked while adding.
     pub fn add_as(&self, key: &str, path: impl Into<String>, text: impl Into<String>) -> FileId {
         let (named, key) = (key, vun_hash::Hash::of(key.as_bytes()).short());
-        let text = text.into();
-        let identity = (key, vun_hash::Hash::of(text.as_bytes()));
+        let (path, text) = (path.into(), text.into());
+        let identity = (key, path, vun_hash::Hash::of(text.as_bytes()));
         if let Some(&file) = self.added.read().expect("source files").get(&identity) {
             return file;
         }
         let mut added = self.added.write().expect("source files");
+        let path = identity.1.clone();
         *added.entry(identity).or_insert_with(|| {
-            let index = self.files.push((named.to_owned(), SourceFile::new(path.into(), text)));
+            let index = self.files.push((named.to_owned(), SourceFile::new(path, text)));
             FileId { index: u32::try_from(index).expect("fewer than 2^32 files"), key }
         })
     }
 }
 
 impl SourceFiles {
+    /// The files of the process, which file handles in interned values and saved memos are
+    /// into, shared by every compilation in it.
+    #[must_use]
+    pub fn global() -> &'static Self {
+        static FILES: std::sync::LazyLock<SourceFiles> = std::sync::LazyLock::new(SourceFiles::default);
+        &FILES
+    }
+
     /// The key naming `id` in every process.
     #[must_use]
     pub fn key(&self, id: FileId) -> &str {

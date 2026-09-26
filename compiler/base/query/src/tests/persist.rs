@@ -9,6 +9,7 @@ static WORDS: Runs = Runs::new();
 struct Source;
 impl Query for Source {
     const NAME: &'static str = "source";
+    const INPUT: bool = true;
     type Key = String;
     type Value = String;
     fn compute(_: &Cx<'_>, _: &String) -> String {
@@ -46,15 +47,41 @@ fn saved_memos_are_reused_until_their_trace_changes() {
 
     // Another process with the same input reuses the memo.
     let second = persisting("one two");
-    assert_eq!(second.load(&saved).unwrap(), 1, "only computed memos are saved");
+    assert_eq!(second.load(saved.clone()).unwrap(), 1, "only computed memos are saved");
     assert_eq!(second.get::<Words>(&"a".into()), ["one", "two"]);
     assert_eq!(WORDS.count(), 1);
 
+    assert!(!second.changed(), "nothing computed that was not loaded");
+    assert!(matches!(second.load(saved.clone()), Err(Unloaded::Again)));
+
     // A changed input fails the trace, so the loaded memo is recomputed.
     let third = persisting("three");
-    third.load(&saved).unwrap();
+    third.load(saved.clone()).unwrap();
     assert_eq!(third.get::<Words>(&"a".into()), ["three"]);
     assert_eq!(WORDS.count(), 2);
+    assert!(third.changed());
+}
+
+#[test]
+fn values_never_read_are_saved_again_as_they_were() {
+    let first = persisting("x y");
+    first.set::<Source>(&"b".into(), "z".into());
+    first.get::<Words>(&"a".into());
+    first.get::<Words>(&"b".into());
+    let saved = first.save();
+
+    // The next process reads one memo's value and saves; the other's bytes are carried over.
+    let second = persisting("x y");
+    second.set::<Source>(&"b".into(), "z".into());
+    second.load(saved.clone()).unwrap();
+    assert_eq!(second.get::<Words>(&"a".into()), ["x", "y"]);
+    let again = second.save();
+    let third = persisting("x y");
+    third.set::<Source>(&"b".into(), "z".into());
+    third.load(again.clone()).unwrap();
+    let runs = WORDS.count();
+    assert_eq!(third.get::<Words>(&"b".into()), ["z"]);
+    assert_eq!(WORDS.count(), runs, "read from the bytes carried over");
 }
 
 #[test]
@@ -64,12 +91,12 @@ fn memos_of_unregistered_queries_and_other_formats_are_not_loaded() {
     let saved = first.save();
     let bare = Db::new();
     bare.persist::<Words>();
-    assert_eq!(bare.load(&saved).unwrap(), 0, "a trace reading an unregistered query is skipped");
+    assert_eq!(bare.load(saved.clone()).unwrap(), 0, "a trace reading an unregistered query is skipped");
     // The format is the leading varint.
     let mut other = saved.clone();
     other[0] = 1;
-    assert!(matches!(Db::new().load(&other), Err(Unloaded::Format { found: 1 })));
-    assert!(matches!(Db::new().load(&[]), Err(Unloaded::Decode(_))));
+    assert!(matches!(Db::new().load(other.clone()), Err(Unloaded::Format { found: 1 })));
+    assert!(matches!(Db::new().load(Vec::new()), Err(Unloaded::Decode(_))));
 }
 
 static COUNTS: Runs = Runs::new();
@@ -116,7 +143,7 @@ fn a_traced_memo_stands_for_its_value_until_it_is_read() {
     assert_eq!((TOKENS.count(), COUNTS.count()), (1, 1));
 
     let second = counting("x y");
-    assert_eq!(second.load(&saved).unwrap(), 2);
+    assert_eq!(second.load(saved.clone()).unwrap(), 2);
     assert_eq!(second.get::<Count>(&"b".into()), 2);
     assert_eq!((TOKENS.count(), COUNTS.count()), (1, 1), "verified through the traced memo");
     assert_eq!(second.get::<Tokens>(&"b".into()), ["x", "y"]);

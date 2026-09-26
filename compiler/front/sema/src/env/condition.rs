@@ -2,6 +2,7 @@
 //! a condition holds, both found through the table `forms` (appendix B). Comparisons produce
 //! conditions, so their values are built here.
 
+use vun_codec::{Decode, Encode};
 use vun_desugar::{FORMS, Form};
 use vun_hir::tree::{BlockId, Cond, ExprId, ExprKind};
 
@@ -94,7 +95,7 @@ impl Env<'_, '_> {
 }
 
 /// The branch a `$if` takes.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Encode, Decode)]
 pub enum Selected {
     Block(BlockId),
     /// An `else` that is not a block, or not a block written as one.

@@ -4,6 +4,7 @@
 //! `lang.ops.Iterate` for the type of `e` names the coroutine interface of its iterator, whose
 //! `resume` result carries each item in its variant `yielded`.
 
+use vun_codec::{Decode, Encode};
 use vun_desugar::{ITERATION, IterationRow};
 use vun_hir::tree::{BlockId, Cond, ExprId, ExprKind, ForHead};
 use vun_intern::Symbol;
@@ -151,7 +152,7 @@ impl Typer<'_, '_, '_> {
 
 /// How `for p in e` drives `e` (the table `iteration`): the witness of `lang.ops.Iterate` whose
 /// `iter` makes the iterator, and the type its `resume` gives.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct Iteration {
     pub witness: Ty,
     pub step: Ty,

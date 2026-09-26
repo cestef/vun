@@ -60,7 +60,7 @@ impl Env<'_, '_> {
 
     /// Whether the function `call` runs is written around `expr`.
     fn runs_around(&self, call: &Instance, expr: ExprId) -> bool {
-        let origins = self.cx.db().resource::<OriginTable>();
+        let origins = OriginTable::global();
         let span = |e: ExprId| origins.source_span(self.parsed.hir.exprs[e].origin);
         let (outer, inner) = (span(call.f.literal.expr.id), span(expr));
         outer.file == inner.file && outer.range.contains(inner.range)

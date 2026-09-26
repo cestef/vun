@@ -4,6 +4,7 @@
 
 use std::fmt;
 
+use vun_codec::{Decode, Encode};
 use vun_hir::db::FileRef;
 use vun_intern::Symbol;
 use vun_query::{Cx, Query};
@@ -14,7 +15,7 @@ use crate::env::{Env, Unevaluated};
 use crate::ty::Value;
 
 /// How a target is chosen.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub enum Choice {
     /// The declaration at this path inside the package `targets`, such as `linux.x86_64`.
     Path(Vec<Symbol>),
@@ -31,7 +32,7 @@ impl Choice {
 }
 
 /// Why no target is chosen.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub enum Unchosen {
     /// The path, or `targets.hosts`, has no value.
     Unevaluated(Unevaluated),

@@ -1,5 +1,6 @@
 //! What a statement computes: the operands it reads and the value it builds from them.
 
+use vun_codec::{Decode, Encode};
 use vun_desugar::{Borrow, Narrowing};
 use vun_grammar::TokenKind;
 use vun_hir::tree::ExprId;
@@ -10,7 +11,7 @@ use vun_sema::ty::{Ty, Value};
 
 use crate::place::Place;
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub enum Rvalue {
     Use(Operand),
     /// `!c`: the other condition (the table `forms`). Operators are calls of the functions of
@@ -160,7 +161,7 @@ impl Rvalue {
 }
 
 /// What an [`Rvalue::Aggregate`] builds.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub enum Aggregate {
     /// A value of the struct type `ty`: its fields `fields`, in declaration order.
     Struct {
@@ -182,7 +183,7 @@ pub enum Aggregate {
     },
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub enum Operand {
     Place(Place),
     Const(Value),

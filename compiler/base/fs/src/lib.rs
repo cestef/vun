@@ -12,7 +12,7 @@ pub use edit::Edit;
 pub use mode::{Mode, Modes};
 pub use relative::Relative;
 pub use scratch::Scratch;
-pub use walk::Tree;
+pub use walk::{Tree, WORK};
 
 #[cfg(test)]
 mod tests;

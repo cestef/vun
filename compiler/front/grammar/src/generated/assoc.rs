@@ -6,7 +6,7 @@
 )]
 use super::*;
 /// How an infix operator groups with its own level.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, vun_codec::Encode, vun_codec::Decode)]
 pub enum Assoc {
     Left,
     /// Chaining is an error: `a < b < c`.

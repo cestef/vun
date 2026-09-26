@@ -22,13 +22,22 @@ use vun_codec::{Decode, Encode};
 use vun_intern::Symbol;
 use vun_span::Span;
 
-/// An [`Origin`] in an [`OriginTable`]: equal by position in the table, hashed by the origin's
-/// anchored identity.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+/// An [`Origin`] in an [`OriginTable`], found by its position in the table, and equal and hashed
+/// by the origin's anchored identity: the origin recorded again, as when read from another
+/// process, is the same origin.
+#[derive(Clone, Copy, Debug)]
 pub struct OriginId {
     index: u32,
     identity: u64,
 }
+
+impl PartialEq for OriginId {
+    fn eq(&self, other: &Self) -> bool {
+        self.identity == other.identity
+    }
+}
+
+impl Eq for OriginId {}
 
 impl Hash for OriginId {
     fn hash<H: Hasher>(&self, state: &mut H) {
@@ -73,6 +82,9 @@ pub enum Via {
         producer: OriginId,
     },
     Lower(PassId),
+    /// A further entity made from the same source as its parent, the `n`-th: the origin of each
+    /// entity is its own, however many come from one piece of syntax.
+    Again(u16),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Encode, Decode)]
@@ -93,6 +105,14 @@ impl OriginTable {
     #[must_use]
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// The origins of the process, which origin handles in interned values and saved memos are
+    /// into, shared by every compilation in it.
+    #[must_use]
+    pub fn global() -> &'static Self {
+        static ORIGINS: std::sync::LazyLock<OriginTable> = std::sync::LazyLock::new(OriginTable::new);
+        &ORIGINS
     }
 
     /// Records an origin for user-written source identified by its place in the file.
@@ -128,6 +148,7 @@ impl OriginTable {
     /// Panics past `u32::MAX` origins.
     pub fn push(&self, origin: Origin) -> OriginId {
         let identity = self.identity(&origin);
+        vun_trace::tracing::trace!(identity, ?origin, "origin");
         let index = u32::try_from(self.origins.push(origin)).expect("fewer than 2^32 origins");
         OriginId { index, identity }
     }

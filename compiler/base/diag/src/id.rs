@@ -3,8 +3,10 @@
 use std::borrow::Cow;
 use std::fmt;
 
+use vun_codec::{Decode, Encode};
+
 /// A binding path to a `lang.diag.Diag` value, such as `lang.errors.int.does_not_fit`.
-#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Encode, Decode)]
 pub struct DiagId(pub Cow<'static, str>);
 
 impl DiagId {
@@ -41,7 +43,7 @@ impl fmt::Display for DiagId {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Encode, Decode)]
 pub enum Severity {
     Hint,
     Info,
@@ -61,7 +63,7 @@ impl fmt::Display for Severity {
 }
 
 /// What produced a diagnostic.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub enum DiagSource {
     Compiler,
     Lint { group: Cow<'static, str> },

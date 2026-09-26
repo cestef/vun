@@ -2,9 +2,10 @@
 //! tells its variants apart, and the unused bit patterns an enclosing enum can keep its tag in.
 
 use crate::int::Integer;
+use vun_codec::{Decode, Encode};
 
 /// Size and alignment in bytes, and where unused patterns are.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct Layout {
     pub size: u64,
     pub align: u64,
@@ -15,7 +16,7 @@ pub struct Layout {
 /// `count` bit patterns no value uses, from `start` on and wrapping, of the unsigned integer of
 /// `bytes` bytes at `offset`: past the range of an integer, the null pointer, the tags past an
 /// enum's variants.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct Niche {
     pub offset: u64,
     pub bytes: u64,
@@ -24,13 +25,13 @@ pub struct Niche {
 }
 
 /// A type's layout and where its parts are.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct Shape {
     pub layout: Layout,
     pub parts: Parts,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub enum Parts {
     /// A scalar, or a value without parts.
     Whole,
@@ -46,7 +47,7 @@ pub enum Parts {
 }
 
 /// How an enum's value tells which variant it is.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub enum Tag {
     /// One variant, or none: nothing is stored.
     Alone,

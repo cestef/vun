@@ -2,6 +2,7 @@
 //! spreads (selected names, or every export of a whole spread), or as a child namespace in its
 //! directory.
 
+use vun_codec::{Decode, Encode};
 use vun_hir::db::{Exports, FileRef, Namespace, NamespaceAt, Package, Parsed};
 use vun_hir::tree::{DeclId, ExprId, Hir, PatKind};
 use vun_intern::Symbol;
@@ -9,15 +10,16 @@ use vun_origin::OriginId;
 use vun_query::{Cx, Cycle, Query};
 
 /// A node of a file's HIR: `id` finds it in the file, and its origin identifies it, so that it
-/// hashes the same in every process and after edits elsewhere in the file (decision 59).
-#[derive(Clone, Copy, Debug)]
+/// hashes the same in every process and after edits elsewhere in the file (decision 59). Nodes
+/// order by their place in the file: in one file's HIR, each node has its own origin.
+#[derive(Clone, Copy, Debug, Encode, Decode)]
 pub struct Node<Id> {
     pub id: Id,
     pub origin: OriginId,
 }
 
 /// A declaration, by its file and its place in the file's HIR.
-#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Encode, Decode)]
 pub struct DeclRef {
     pub file: FileRef,
     pub decl: Node<DeclId>,
@@ -25,7 +27,7 @@ pub struct DeclRef {
 
 /// An expression, by its file and its place in the file's HIR. A function literal's is the
 /// function value's identity.
-#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Encode, Decode)]
 pub struct ExprRef {
     pub file: FileRef,
     pub expr: Node<ExprId>,
@@ -70,20 +72,20 @@ impl<Id> std::hash::Hash for Node<Id> {
     }
 }
 
-impl<Id> PartialOrd for Node<Id> {
+impl<Id: Ord> PartialOrd for Node<Id> {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         Some(self.cmp(other))
     }
 }
 
-impl<Id> Ord for Node<Id> {
+impl<Id: Ord> Ord for Node<Id> {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.origin.cmp(&other.origin)
+        self.id.cmp(&other.id)
     }
 }
 
 /// What a member name leads to.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub enum Site {
     Decl(DeclRef),
     /// A namespace, such as a file or directory below another.

@@ -3,6 +3,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 
+use vun_codec::{Decode, Encode};
 use vun_diag::DiagCtxt;
 use vun_hir::tree::{BinderId, ExprId, ExprKind, Hir, NsId, PatId};
 use vun_hir::visit::Visitor;
@@ -16,7 +17,7 @@ use crate::ty::{Ty, Value};
 
 /// A typed function body: the type of each expression typed, what typing reports, and how many
 /// expressions the body holds, nested functions and quotes apart.
-#[derive(Debug, Default, PartialEq, Eq, Hash)]
+#[derive(Debug, Default, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct TypedBody {
     pub types: BTreeMap<ExprId, Known>,
     /// The type each local of the body holds, steps' included.
@@ -53,7 +54,7 @@ impl TypedBody {
 }
 
 /// One step of a `$for` in a body: the `$for`, by its pattern, and the item bound.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Encode, Decode)]
 pub struct Step {
     pub at: PatId,
     pub index: usize,

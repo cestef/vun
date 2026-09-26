@@ -66,12 +66,19 @@ years (rustc's parallel front end). So both are designed in from phase 1.
   an input's interface unchanged starts no revision. A query that reaches itself gets the value
   its `cycle` rule gives, with the path of queries, instead of looping.
 - The query database is persisted to disk from phase 1, with a bounded cache for bodies (new Salsa
-  initially grew rust-analyzer's memory about 4x). A query opts in when its keys and values are
-  data (`Persist`, encoded by `vun-codec`, which has no dependencies; an interned value
-  persists by content and is interned again when read); its computed memos are saved with their traces, by query name,
-  in `.vun/queries/` under the toolchain's hash. A memo whose trace reads a query that is not
-  persisted is not saved, and a loaded memo is verified before its first use like any memo of an
-  earlier revision, so a stale file costs recomputation, never a wrong result.
+  initially grew rust-analyzer's memory about 4x). A query persists its memos with their values
+  (`Db::persist`) or by their traces alone (`Db::trace`); keys and values are encoded by
+  `vun-codec` (`#[derive(Encode, Decode)]`). A handle into a process table (a symbol, an
+  interned value, a file, an origin) is written once per file by content and recorded again when
+  read, and those tables are the process's, as interners are. Memos are saved by query name and
+  key position in `.vun/queries/<toolchain>` beside the root file, the toolchain named by its
+  executable. A memo whose trace reads a query that is not persisted is not saved; inputs
+  (`Query::INPUT`) never are. A loaded memo is verified before its first use like any memo of an
+  earlier revision, so a stale file costs recomputation, never a wrong result; a traced memo
+  that holds stands for its value, which is computed only if read (red-green, as rustc's
+  dependency graph). Loading reads keys in parallel and values when first needed, in place in
+  the file; saving happens only when a memo was computed that the file did not hold, and
+  extends the loaded stream, so values never read are copied, not decoded again.
 
 **Parallelism.**
 - Sema claims declarations on worker threads. Code generation is per function, with one thread

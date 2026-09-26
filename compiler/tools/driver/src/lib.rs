@@ -12,6 +12,7 @@ pub mod formats;
 pub mod packages;
 mod plan;
 pub mod program;
+mod queries;
 mod registry;
 mod session;
 mod shared;
@@ -20,6 +21,7 @@ pub mod stages;
 pub mod target;
 
 pub use coverage::Coverage;
+pub use queries::Persistence;
 pub use registry::Registry;
 pub use session::Session;
 pub use shared::Shared;

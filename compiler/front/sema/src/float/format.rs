@@ -4,8 +4,9 @@
 use crate::Primitive;
 use crate::primitives::lang::Lang;
 use crate::ty::{Ty, TyKind};
+use vun_codec::{Decode, Encode};
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub enum Format {
     F16,
     F32,

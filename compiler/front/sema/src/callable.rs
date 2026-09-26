@@ -3,6 +3,7 @@
 //! included, so a call reads from where they are written which arguments are known at compile
 //! time, which a call may leave out, and in which mode each is borrowed.
 
+use vun_codec::{Decode, Encode};
 use vun_desugar::{Borrow, MARKERS};
 use vun_hir::tree::{BinderId, Entry, ExprId, ExprKind, Param, PatKind};
 use vun_query::Cx;
@@ -14,7 +15,7 @@ use crate::primitives::meta::Meta;
 use crate::ty::{Ty, Value};
 
 /// A function a call runs.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub enum Callable {
     Fn(Func),
     Primitive(Primitive),

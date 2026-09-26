@@ -1,29 +1,26 @@
-//! Handles into a process's own tables, written by content once per stream.
+//! Handles into the process's tables, written by content once per stream.
 
-use std::any::{Any, TypeId};
-use std::collections::HashMap;
 use std::hash::Hash;
-use std::sync::{Arc, Mutex};
 
 use crate::{Decode, Encode, Malformed, Reader, Writer};
 
 /// A handle whose meaning is an entry of a table of the process, such as a file or an origin: in
 /// a stream, its first occurrence writes the entry into the pool of its type and every occurrence
-/// is the entry's number; reading it records the entry in the reader's table, once per stream.
-pub trait Pooled: Copy + Eq + Hash + 'static {
+/// is the entry's number; reading it records the entry in the process's table, once per stream.
+/// The table is the process's, shared by every database in it, as interned values are: values
+/// holding handles are interned, and must mean the same in each.
+pub trait Pooled: Copy + Eq + Hash + Send + Sync + 'static {
     /// Names the pool in the stream.
     const POOL: &'static str;
-    /// The table the handle is into, one per [`Resources`].
-    type Table: Default + Send + Sync + 'static;
 
     /// Writes the entry `self` stands for.
-    fn write(self, table: &Self::Table, w: &mut Writer<'_>);
+    fn write(self, w: &mut Writer<'_>);
 
-    /// Reads an entry and records it in `table`.
+    /// Reads an entry and records it in the process's table.
     ///
     /// # Errors
     /// Returns why the bytes are not an entry.
-    fn read(table: &Self::Table, r: &mut Reader<'_>) -> Result<Self, Malformed>;
+    fn read(r: &mut Reader<'_>) -> Result<Self, Malformed>;
 }
 
 /// Implements [`Encode`] and [`Decode`] for a [`Pooled`] handle, as its number in its pool.
@@ -44,38 +41,13 @@ macro_rules! pooled {
     };
 }
 
-/// The tables a stream's pooled handles are into: shared per process, made on first use.
-pub trait Resources {
-    fn resource(&self, ty: TypeId, make: fn() -> Arc<dyn Any + Send + Sync>) -> Arc<dyn Any + Send + Sync>;
-}
-
-impl dyn Resources + '_ {
-    /// The table of type `T`.
-    ///
-    /// # Panics
-    /// If the resources hold another type under the type of `T`.
-    #[must_use]
-    pub fn get<T: Default + Send + Sync + 'static>(&self) -> Arc<T> {
-        self.resource(TypeId::of::<T>(), || Arc::new(T::default())).downcast().expect("one resource per type")
-    }
-}
-
-/// Resources on their own, one table per type: what streams read and write outside a database.
-#[derive(Default)]
-pub struct Tables(Mutex<HashMap<TypeId, Arc<dyn Any + Send + Sync>>>);
-
-impl Resources for Tables {
-    fn resource(&self, ty: TypeId, make: fn() -> Arc<dyn Any + Send + Sync>) -> Arc<dyn Any + Send + Sync> {
-        Arc::clone(self.0.lock().expect("tables").entry(ty).or_insert_with(make))
-    }
-}
-
-/// The pools of a stream: each pool's entries, in the order they were first written.
+/// The pools of a stream: each pool's entries, in the order they were first written. Written with
+/// the entries' bytes, and read with them as bytes or, in place, as [`Blob`]s.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Encode, Decode)]
-pub struct Pools(pub Vec<Pool>);
+pub struct Pools<B = Vec<u8>>(pub Vec<Pool<B>>);
 
 #[derive(Clone, Debug, PartialEq, Eq, Encode, Decode)]
-pub struct Pool {
+pub struct Pool<B = Vec<u8>> {
     pub name: String,
-    pub entries: Vec<Vec<u8>>,
+    pub entries: Vec<B>,
 }

@@ -2,7 +2,6 @@
 //! backend `--backend` names, or else the target's default.
 
 use std::path::PathBuf;
-use std::sync::Arc;
 
 use vun_backend::{Artifact, Backend, Emitted, Line, Lines};
 use vun_command::{Param, ParamKind};
@@ -26,14 +25,11 @@ pub const BACKEND: Param = Param {
 };
 
 /// Where origins are in source, for the line information backends write.
-struct SourceLines {
-    sources: Arc<SourceFiles>,
-    origins: Arc<OriginTable>,
-}
+struct SourceLines;
 
 impl Lines for SourceLines {
     fn line(&self, origin: OriginId) -> Option<Line> {
-        let at = self.sources.locate(self.origins.source_span(origin));
+        let at = SourceFiles::global().locate(OriginTable::global().source_span(origin));
         Some(Line { file: PathBuf::from(at.path), line: at.at.line })
     }
 }
@@ -98,7 +94,7 @@ impl Session {
             let d = Diagnostic::error(errors::CLI_INVALID_VALUE, msg).child(ChildKind::Help, help);
             return Err(Uncoded::Reported(self.diag.error(d)));
         };
-        let lines = SourceLines { sources: Arc::clone(&self.sources), origins: Arc::clone(&self.origins) };
+        let lines = SourceLines;
         // Integers wider than the backend's are split into halves first.
         let mut unit = lowered.as_ref().as_ref().expect("checked above").clone();
         let info = backends[index].info();

@@ -2,17 +2,18 @@
 //! operation is monotone in each operand on the domains used, so its extremes are at the corners.
 
 use super::{Extended, Integer};
+use vun_codec::{Decode, Encode};
 
 /// The integers from `lo` to `hi`, both included: the values of `Int(lo..=hi)`, or of `Int(lo..)`
 /// with an infinite end. Never empty.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct Interval {
     lo: Extended,
     hi: Extended,
 }
 
 /// Whether a divisor's range contains zero, which makes the division a trap site (rule 6).
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Encode, Decode)]
 pub enum Divisor {
     NonZero,
     MayBeZero,
@@ -20,14 +21,14 @@ pub enum Divisor {
 
 /// The result of a division or remainder: its range over the divisors that are not zero, `None`
 /// when the divisor is always zero, and whether it is a trap site.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Encode, Decode)]
 pub struct Divided {
     pub range: Option<Interval>,
     pub divisor: Divisor,
 }
 
 /// How a range is stored (rule 7): the smallest of these that holds it directly.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Encode, Decode)]
 pub enum Storage {
     B8,
     B16,

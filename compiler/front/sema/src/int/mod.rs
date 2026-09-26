@@ -12,6 +12,7 @@ use std::fmt;
 use std::ops::{Add, Mul, Neg, Sub};
 
 use num_bigint::{BigInt, Sign};
+use vun_codec::{Decode, Encode, Malformed, Reader, Writer};
 
 pub use bits::Bitwise;
 pub use compare::Compared;
@@ -21,6 +22,19 @@ pub use interval::{Divided, Divisor, Interval, Storage};
 /// An integer of any size.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Integer(BigInt);
+
+/// Its two's complement bytes, least significant first.
+impl Encode for Integer {
+    fn encode(&self, w: &mut Writer<'_>) {
+        self.0.to_signed_bytes_le().encode(w);
+    }
+}
+
+impl Decode for Integer {
+    fn decode(r: &mut Reader<'_>) -> Result<Self, Malformed> {
+        Vec::<u8>::decode(r).map(|bytes| Self(BigInt::from_signed_bytes_le(&bytes)))
+    }
+}
 
 impl Integer {
     #[must_use]

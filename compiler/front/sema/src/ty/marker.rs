@@ -3,6 +3,7 @@
 //! The table `fn_markers` names them and says how a function carrying one is accepted where a
 //! function type is expected; the table `markers` gives the prefixes that put one.
 
+use vun_codec::{Decode, Encode};
 use vun_desugar::{FN_MARKERS, MARKERS, Relation};
 use vun_grammar::TokenKind;
 
@@ -12,7 +13,7 @@ use crate::primitives::abi::Abi;
 use crate::primitives::panic::Panic;
 use crate::primitives::stack::Stack;
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct Marker {
     pub item: Primitive,
     /// The attribute's arguments: `512` of `stack.max(512)`.

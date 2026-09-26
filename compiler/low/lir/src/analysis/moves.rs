@@ -6,21 +6,22 @@ use crate::entity::Value;
 use crate::func::Function;
 use crate::inst::Target;
 use crate::ty::Scalar;
+use vun_codec::{Decode, Encode};
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Encode, Decode)]
 pub enum Location {
     Value(Value),
     Temp(Scalar),
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Encode, Decode)]
 pub struct Move {
     pub to: Location,
     pub from: Location,
 }
 
 /// The moves of one jump, in the order they run.
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Encode, Decode)]
 pub struct Moves(pub Vec<Move>);
 
 impl Moves {

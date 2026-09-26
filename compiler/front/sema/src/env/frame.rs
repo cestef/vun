@@ -59,7 +59,7 @@ impl Env<'_, '_> {
         let declared = returns.map(|r| self.eval(r)).transpose()?;
         let result = match declared {
             Some(Value::Interface(interface)) if hir.suspends(literal) => {
-                let name = self.cx.db().resource::<OriginTable>().declaration_name(hir.exprs[literal].origin);
+                let name = OriginTable::global().declaration_name(hir.exprs[literal].origin);
                 let frame = Frame {
                     literal: ExprRef::new(self.file.clone(), hir, literal),
                     within: self.instance.clone(),

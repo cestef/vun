@@ -5,6 +5,7 @@
 
 use std::collections::HashMap;
 
+use vun_codec::{Decode, Encode};
 use vun_index::Idx;
 use vun_origin::OriginId;
 
@@ -18,7 +19,7 @@ use super::{Helpers, Legalize, Unlegal};
 use crate::{Access, Block, Builder, Function, Scalar, Unit, Value};
 
 /// An old value in the new function.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Encode, Decode)]
 pub(super) enum Parts {
     One(Value),
     Pair(Pair),

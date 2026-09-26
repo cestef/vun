@@ -8,7 +8,7 @@ use super::*;
 /// Kinds of syntax tree nodes (spec 13, section 2). A leaf never has children. A branch lists its
 /// children in source order, punctuation left out; `Cst::fields` matches them. An `error` stands for
 /// skipped or absent source; a skipped group holds the tokens after its first.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, vun_codec::Encode, vun_codec::Decode)]
 pub enum NodeKind {
     Punct,
     ModuleDoc,

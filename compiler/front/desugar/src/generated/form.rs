@@ -12,7 +12,7 @@ use super::*;
 )]
 use vun_grammar::*;
 /// Syntax whose meaning is a `lang` item, besides operators and borrows (appendix B).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, vun_codec::Encode, vun_codec::Decode)]
 pub enum Form {
     /// The type of `if` and `for` conditions and match guards, and of the operands and results
     /// of `and`, `or` and `!`.

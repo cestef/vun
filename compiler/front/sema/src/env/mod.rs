@@ -23,6 +23,7 @@ mod reach;
 
 pub use passing::Passed;
 pub use path::ItemSite;
+pub(crate) use primitive::{PrimitiveComptime, PrimitiveDecl, PrimitiveSignature};
 pub use reach::Hop;
 
 pub use condition::Selected;
@@ -30,6 +31,7 @@ pub use condition::Selected;
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use vun_codec::{Decode, Encode};
 use vun_hir::db::{CheckedNames, FileNames, FileRef, Parsed, ParsedFile};
 use vun_hir::resolve::Res;
 use vun_hir::tree::{BinderId, Entry, ExprId, ExprKind, Name, Param, PatKind};
@@ -46,7 +48,7 @@ use crate::ty::{Ty, Value};
 use crate::typeck::TypedBody;
 
 /// Why an expression has no value at compile time here.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub enum Unevaluated {
     /// It depends on run-time values, such as locals and parameters.
     Runtime,
@@ -274,8 +276,7 @@ impl<'a, 'db> Env<'a, 'db> {
     /// The source text of `expr`, as written.
     #[must_use]
     pub fn source(&self, expr: ExprId) -> String {
-        let (origins, sources) =
-            (self.cx.db().resource::<OriginTable>(), self.cx.db().resource::<SourceFiles>());
+        let (origins, sources) = (OriginTable::global(), SourceFiles::global());
         let span = origins.source_span(self.parsed.hir.exprs[expr].origin);
         span.range.of(&sources.file(span.file).text).to_owned()
     }

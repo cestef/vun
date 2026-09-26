@@ -3,6 +3,7 @@
 
 use std::sync::Arc;
 
+use vun_codec::{Decode, Encode};
 use vun_hir::db::FileRef;
 use vun_hir::tree::ExprKind;
 use vun_intern::Symbol;
@@ -19,7 +20,7 @@ use crate::ty::{Ty, TyKind, Value};
 use crate::visible::Visible;
 
 /// The witness of an impl for one type.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct Witness {
     pub decl: ImplDecl,
     /// The struct the impl gives for the type.
@@ -31,7 +32,7 @@ pub struct Witness {
 
 /// A method a type has through an impl: a declaration of the witness, or a default of the
 /// interface, which `owner` is the struct of.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct Method {
     pub owner: Ty,
     pub decl: DeclRef,

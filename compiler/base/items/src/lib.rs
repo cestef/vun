@@ -20,6 +20,8 @@ pub const std: Item = Item::new(&["std"]);
 #[allow(non_upper_case_globals, reason = "handles are spelled as their declarations")]
 pub const targets: Item = Item::new(&["targets"]);
 
+mod codec;
+
 use ::std::fmt;
 
 use vun_grammar::PATH_SEPARATOR;

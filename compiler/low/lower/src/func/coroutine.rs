@@ -7,6 +7,7 @@
 
 use std::sync::Arc;
 
+use vun_codec::{Decode, Encode};
 use vun_index::Idx;
 use vun_items::Item;
 use vun_lir::{Access, Builder, Callee, Function, InstKind, Linkage, Target, Terminator, Value};
@@ -21,7 +22,7 @@ use crate::repr::Repr;
 use crate::unlowered::{Form, Unlowered};
 
 /// What a coroutine's body is lowered as.
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, Encode, Decode)]
 pub(crate) enum Mode {
     Resume,
     End,
@@ -74,9 +75,9 @@ impl<'l, 'a, 'db> FnLower<'l, 'a, 'db> {
         this.storage(&params, Some(&shape))?;
         this.create_blocks();
         let targets: Vec<(u128, BlockId)> = match mode {
-            Mode::Resume => std::iter::once((shape.encode(FrameState::Start), BlockId::new(0)))
+            Mode::Resume => std::iter::once((shape.stored(FrameState::Start), BlockId::new(0)))
                 .chain(shape.points.iter().enumerate().filter_map(|(k, &b)| {
-                    Some((shape.encode(FrameState::Suspended(k)), Self::after(body, b, Mode::Resume)?))
+                    Some((shape.stored(FrameState::Suspended(k)), Self::after(body, b, Mode::Resume)?))
                 }))
                 .collect(),
             Mode::End => shape
@@ -84,7 +85,7 @@ impl<'l, 'a, 'db> FnLower<'l, 'a, 'db> {
                 .iter()
                 .enumerate()
                 .filter_map(|(k, &b)| {
-                    Some((shape.encode(FrameState::Suspended(k)), Self::after(body, b, Mode::End)?))
+                    Some((shape.stored(FrameState::Suspended(k)), Self::after(body, b, Mode::End)?))
                 })
                 .collect(),
         };
@@ -160,7 +161,7 @@ impl<'l, 'a, 'db> FnLower<'l, 'a, 'db> {
         let kind = Aggregate::Variant { ty: step, name: variant.symbol() };
         self.aggregate(&kind, std::slice::from_ref(value), temp, step)?;
         let frame = self.frame.ok_or(Unlowered::unsupported(self.at, Form::Frame))?;
-        let state = self.b.constant(shape.state, shape.encode(state), self.at);
+        let state = self.b.constant(shape.state, shape.stored(state), self.at);
         self.b.store(state, frame, Access::Plain, self.at);
         Ok(match (self.l.types.repr(step, self.at)?, temp) {
             (Repr::Scalar(s), Some(temp)) => {
@@ -187,7 +188,7 @@ impl<'l, 'a, 'db> FnLower<'l, 'a, 'db> {
     ) -> Result<(), Unlowered> {
         let Some(dest) = dest else { return Ok(()) };
         let shape = self.l.frame_shape(ty)?;
-        let state = self.b.constant(shape.state, shape.encode(FrameState::Start), self.at);
+        let state = self.b.constant(shape.state, shape.stored(FrameState::Start), self.at);
         self.b.store(state, dest, Access::Plain, self.at);
         let comptime = f.f.comptime(self.l.types.cx).unwrap_or_default();
         let runtime =

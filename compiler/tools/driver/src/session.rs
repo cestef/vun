@@ -30,16 +30,16 @@ use vun_syntax::literal::Decl;
 use vun_syntax::tokens::Tokens;
 use vun_target::TargetSpec;
 
-use crate::Registry;
 use crate::formats::Format;
 use crate::packages::{LIBRARY, Packages};
+use crate::{Persistence, Registry};
 
 pub struct Session {
-    /// The queries of the compilation, whose shared tables `sources` and `origins` are; other
-    /// sessions may share them (`Session::sharing`).
+    /// The queries of the compilation; other sessions may share them (`Session::sharing`).
     pub db: Arc<Db>,
-    pub sources: Arc<SourceFiles>,
-    pub origins: Arc<OriginTable>,
+    /// The process's files and origins, which every compilation in it shares.
+    pub sources: &'static SourceFiles,
+    pub origins: &'static OriginTable,
     pub diag: DiagCtxt,
     /// How diagnostics are shown.
     pub format: &'static Format,
@@ -57,6 +57,8 @@ pub struct Session {
     pub target: Option<Result<TargetSpec, ErrorGuaranteed>>,
     /// The backends and linkers compiled into this toolchain.
     pub registry: Registry,
+    /// Whether the queries are saved between runs; off unless the program turns it on.
+    pub persistence: Persistence,
 }
 
 impl Default for Session {
@@ -74,9 +76,10 @@ impl Session {
         let db = Arc::clone(db);
         db.resource::<Evaluators>().install(Arc::new(Interpreter));
         db.resource::<Framers>().install(Arc::new(vun_lower::Framing));
+        Self::register(&db);
         Self {
-            sources: db.resource(),
-            origins: db.resource(),
+            sources: SourceFiles::global(),
+            origins: OriginTable::global(),
             db,
             diag: DiagCtxt::default(),
             format: Format::DEFAULT,
@@ -87,6 +90,7 @@ impl Session {
             choice: Choice::host(),
             target: None,
             registry: Registry::with_defaults(),
+            persistence: Persistence::Off,
         }
     }
 
@@ -98,6 +102,7 @@ impl Session {
     /// Reads a source file; a read failure becomes a diagnostic.
     pub fn load(&mut self, path: &Path) -> Option<FileId> {
         let _timer = crate::stages::LOAD.time();
+        self.restore(path);
         let text = self.read(path)?;
         let key = self.file_key(path);
         Some(self.sources.add_as(&key, path.display().to_string(), text))
@@ -120,17 +125,17 @@ impl Session {
 
     pub fn lex(&mut self, file: FileId) -> Tokens {
         let text = &self.sources.file(file).text;
-        Tokens::lex(file, text, &mut DiagCx { diag: &mut self.diag, origins: &self.origins })
+        Tokens::lex(file, text, &mut DiagCx { diag: &mut self.diag, origins: self.origins })
     }
 
     pub fn parse(&mut self, tokens: &Tokens) -> Cst {
         let text = &self.sources.file(tokens.file()).text;
-        Cst::parse(tokens, text, &mut DiagCx { diag: &mut self.diag, origins: &self.origins })
+        Cst::parse(tokens, text, &mut DiagCx { diag: &mut self.diag, origins: self.origins })
     }
 
     pub fn lower(&mut self, tokens: &Tokens, cst: &Cst) -> Hir {
         let text = &self.sources.file(tokens.file()).text;
-        Hir::lower(lower::Source { cst, tokens, text }, &self.origins)
+        Hir::lower(lower::Source { cst, tokens, text }, self.origins)
     }
 
     /// The file lexed, parsed, lowered and resolved within itself, from the queries, with the
@@ -233,13 +238,13 @@ impl Session {
         let cst = self.parse(&tokens);
         let text = &self.sources.file(file).text;
         let decls = cst.declarations(&tokens, text);
-        read(&decls, &mut DiagCx { diag: &mut self.diag, origins: &self.origins })
+        read(&decls, &mut DiagCx { diag: &mut self.diag, origins: self.origins })
     }
 
     /// Emits every diagnostic in deterministic order.
     pub fn emit(&self, sink: &mut dyn DiagSink) {
-        for d in self.diag.sorted() {
-            sink.emit(d, &self.origins, &*self.sources);
+        for d in self.diag.sorted(self.origins) {
+            sink.emit(d, self.origins, self.sources);
         }
     }
 

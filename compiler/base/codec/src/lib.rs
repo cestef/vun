@@ -7,6 +7,7 @@
 //! such as a file or an origin, is [`Pooled`]: written once per stream into its pool and
 //! referenced by number, then recorded again in the reading process's table when first read.
 
+mod blob;
 mod impls;
 mod pool;
 mod reader;
@@ -16,7 +17,8 @@ mod writer;
 
 use std::fmt;
 
-pub use pool::{Pool, Pooled, Pools, Resources, Tables};
+pub use blob::Blob;
+pub use pool::{Pool, Pooled, Pools};
 pub use reader::{Context, Reader};
 pub use vun_codec_derive::{Decode, Encode};
 pub use writer::Writer;
@@ -47,7 +49,7 @@ pub trait Decode: Sized {
     /// # Errors
     /// Returns why the bytes are not exactly one value of this type.
     fn decoded(bytes: &[u8]) -> Result<Self, Malformed> {
-        Context::default().read(bytes)
+        Reader::plain(bytes)
     }
 }
 

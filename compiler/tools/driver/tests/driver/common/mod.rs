@@ -110,6 +110,11 @@ impl Fixture {
         let mut session = self.session();
         let file = session.load(file).unwrap();
         session.check(file);
-        session.diag.sorted().into_iter().map(|d| (d.id.clone(), d.message.to_string())).collect()
+        session
+            .diag
+            .sorted(session.origins)
+            .into_iter()
+            .map(|d| (d.id.clone(), d.message.to_string()))
+            .collect()
     }
 }

@@ -14,7 +14,7 @@ fn a_hosted_program_lowers_to_lir_that_verifies() {
     let file = session.load(&repo_root().join(ACCEPT).join("programs/hello.vun")).unwrap();
     let lowered = session.lir(file);
     let unit = lowered.as_ref().as_ref().unwrap();
-    assert_eq!(unit.verify(&session.origins), Ok(()));
+    assert_eq!(unit.verify(session.origins), Ok(()));
     let main =
         unit.functions.iter().find(|(_, f)| matches!(f.linkage, Linkage::Export(s) if s.as_str() == "main"));
     assert_eq!(main.map(|(_, f)| f.signature.conv), Some(Conv::C));
@@ -38,7 +38,7 @@ tail := (xs: &[u8], n: usize) -> usize { xs[n..].len() };
     let file = session.load(&path).unwrap();
     let lowered = session.lir(file);
     let unit = lowered.as_ref().as_ref().unwrap();
-    assert_eq!(unit.verify(&session.origins), Ok(()));
+    assert_eq!(unit.verify(session.origins), Ok(()));
     // Indexing and slicing are trap sites.
     assert_eq!(unit.sites.len(), 2);
 }
@@ -91,7 +91,7 @@ small := (x: u8) -> u8 { assert(x < 10); x };
     let file = session.load(&path).unwrap();
     let lowered = session.lir(file);
     let unit = lowered.as_ref().as_ref().unwrap();
-    assert_eq!(unit.verify(&session.origins), Ok(()));
+    assert_eq!(unit.verify(session.origins), Ok(()));
     // The assertion is built into `small`, which alone calls the trap handler.
     assert_eq!(unit.functions.len(), 1);
     let [site] = unit.sites.as_slice() else { panic!("{:?}", unit.sites) };

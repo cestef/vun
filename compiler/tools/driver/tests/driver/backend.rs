@@ -167,7 +167,7 @@ fn reported(name: &str, source: &str, backend: &str) -> Vec<vun_diag::DiagId> {
     let mut session = fixture.session();
     let file = session.load(&path).unwrap();
     let _ = session.compile(file, Some(backend));
-    session.diag.sorted().into_iter().map(|d| d.id.clone()).collect()
+    session.diag.sorted(session.origins).into_iter().map(|d| d.id.clone()).collect()
 }
 
 #[test]

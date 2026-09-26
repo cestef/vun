@@ -1,6 +1,6 @@
 use std::sync::{Arc, Mutex};
 
-use crate::{Context, Decode, Encode, Malformed, Pooled, Reader, Resources, Tables, Writer};
+use crate::{Context, Decode, Encode, Malformed, Pooled, Reader, Writer};
 
 fn round_trip<T: Encode + Decode + PartialEq + std::fmt::Debug>(value: &T) {
     assert_eq!(&T::decoded(&value.encoded()).unwrap(), value);
@@ -71,32 +71,34 @@ fn malformed_input_is_named() {
     assert_eq!(u128::decoded(&[0xff; 20]), Err(Malformed::Overflow));
 }
 
-/// A process's table of names, handed out as indexes.
-#[derive(Default)]
-struct Names(Mutex<Vec<String>>);
+/// The process's table of names, handed out as indexes.
+static NAMES: Mutex<Vec<String>> = Mutex::new(Vec::new());
 
-impl Names {
-    fn add(&self, name: &str) -> Name {
-        let mut names = self.0.lock().unwrap();
-        names.push(name.to_owned());
-        Name(names.len() - 1)
-    }
-}
-
-/// An index into the process's [`Names`].
+/// An index into [`NAMES`].
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 struct Name(usize);
 
-impl Pooled for Name {
-    const POOL: &'static str = "name";
-    type Table = Names;
-
-    fn write(self, table: &Names, w: &mut Writer<'_>) {
-        table.0.lock().unwrap()[self.0].encode(w);
+impl Name {
+    fn add(name: &str) -> Self {
+        let mut names = NAMES.lock().unwrap();
+        names.push(name.to_owned());
+        Self(names.len() - 1)
     }
 
-    fn read(table: &Names, r: &mut Reader<'_>) -> Result<Self, Malformed> {
-        Ok(table.add(&String::decode(r)?))
+    fn text(self) -> String {
+        NAMES.lock().unwrap()[self.0].clone()
+    }
+}
+
+impl Pooled for Name {
+    const POOL: &'static str = "name";
+
+    fn write(self, w: &mut Writer<'_>) {
+        self.text().encode(w);
+    }
+
+    fn read(r: &mut Reader<'_>) -> Result<Self, Malformed> {
+        Ok(Self::add(&String::decode(r)?))
     }
 }
 
@@ -104,21 +106,49 @@ crate::pooled!(Name);
 
 #[test]
 fn pooled_handles_are_written_once_and_recorded_once() {
-    let writing = Tables::default();
-    let names = (&writing as &dyn Resources).get::<Names>();
-    let (a, b) = (names.add("a"), names.add("b"));
-    let mut w = Writer::pooling(&writing);
+    let (a, b) = (Name::add("a"), Name::add("b"));
+    let mut w = Writer::new();
     let first = w.encode(&vec![b, a, b]);
     let second = w.encode(&a);
     let pools = w.into_pools();
     assert_eq!(pools.0[0].entries, [b"\x01b".to_vec(), b"\x01a".to_vec()], "in the order first written");
     assert_eq!(first, [3, 0, 1, 0], "by number");
 
-    // Another process's table already holds a name: the handles read are its own.
-    let reading = Tables::default();
-    (&reading as &dyn Resources).get::<Names>().add("other");
-    let context = Context::new(&pools, &reading);
-    assert_eq!(context.read::<Vec<Name>>(&first).unwrap(), [Name(1), Name(2), Name(1)]);
-    assert_eq!(context.read::<Name>(&second).unwrap(), Name(2), "recorded once per stream");
+    // Read back, each entry is recorded once, as handles of its own.
+    let context = Context::new(pools);
+    let read: Vec<Name> = context.read(&first).unwrap();
+    assert_eq!(read.iter().map(|n| n.text()).collect::<Vec<_>>(), ["b", "a", "b"]);
+    assert_eq!((read[0], read[2]), (read[2], read[0]));
+    assert_ne!(read[1], a, "recorded anew");
+    assert_eq!(context.read::<Name>(&second).unwrap(), read[1], "recorded once per stream");
     assert_eq!(context.read::<Name>(&[7]), Err(Malformed::Unpooled { pool: "name", number: 7 }));
+}
+
+#[test]
+fn a_stream_extended_keeps_the_bytes_of_its_values() {
+    let (a, b) = (Name::add("a"), Name::add("b"));
+    let mut w = Writer::new();
+    let (old_a, old_b) = (w.encode(&a), w.encode(&b));
+    let stream = Context::new(w.into_pools());
+
+    // The next process reads one value, keeps the other's bytes, and writes a value of its own.
+    let read: Name = stream.read(&old_a).unwrap();
+    let c = Name::add("c");
+    let mut w = Writer::extending(&stream);
+    let (again, new) = (w.encode(&read), w.encode(&c));
+    assert_eq!(again, old_a, "a handle read from the stream keeps its number");
+    let extended = Context::new(w.into_pools());
+    let texts: Vec<String> =
+        [&old_b, &new].iter().map(|bytes| extended.read::<Name>(bytes).unwrap().text()).collect();
+    assert_eq!(texts, ["b", "c"], "bytes of the old stream read the same in the new one");
+}
+
+#[test]
+fn blobs_are_read_in_place() {
+    use crate::Blob;
+
+    let bytes = (7_u8, vec![1_u8, 2, 3], String::from("x")).encoded();
+    let (seven, blob, x) = Context::default().read::<(u8, Blob, String)>(&bytes).unwrap();
+    assert_eq!((seven, blob, x.as_str()), (7, Blob { at: 2, len: 3 }, "x"));
+    assert_eq!(blob.of(&bytes), [1, 2, 3], "written as bytes, read as their place");
 }

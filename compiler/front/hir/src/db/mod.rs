@@ -15,3 +15,18 @@ pub use names::{CheckedNames, FileNames, FileScope, Spreads};
 pub use namespace::{Exports, Members, NamespaceAt, Unfound};
 pub use parsed::{Parsed, ParsedFile};
 pub use scope::{Outer, Scope, ScopeData};
+
+use vun_query::Db;
+
+/// The queries of the front end whose memos outlive the process: the inputs and the parsed file
+/// by their traces, since they are set or cheap to read again, and the rest with their values.
+pub const PERSISTED: &[fn(&Db)] = &[
+    Db::trace::<Package>,
+    Db::trace::<FileText>,
+    Db::trace::<Parsed>,
+    Db::persist::<FileNames>,
+    Db::persist::<Scope>,
+    Db::persist::<NamespaceAt>,
+    Db::persist::<Members>,
+    Db::persist::<Exports>,
+];

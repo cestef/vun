@@ -3,6 +3,7 @@
 //! bodies, match arms, the right operand of `and` and `or`, and after an `if` whose branch cannot
 //! fall through. Mutable bindings are never narrowed.
 
+use vun_codec::{Decode, Encode};
 use vun_desugar::COMPARISONS;
 use vun_grammar::TokenKind;
 use vun_hir::resolve::Res;
@@ -16,7 +17,7 @@ use crate::ty::TyKind;
 pub(super) type Narrowed = Vec<(BinderId, Interval)>;
 
 /// What a condition tells of immutable integer bindings.
-#[derive(Default)]
+#[derive(Default, Encode, Decode)]
 pub(super) struct Facts {
     pub holds: Narrowed,
     pub fails: Narrowed,

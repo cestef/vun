@@ -3,9 +3,10 @@
 //! it, so no backend emits a check the language does not have.
 
 use crate::inst::{BinOp, CastOp, Cond};
+use vun_codec::{Decode, Encode};
 
 /// How an operation reads its operands.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Encode, Decode)]
 pub enum Reads {
     /// As bits: the result is the same read either way.
     Bits,
@@ -15,7 +16,7 @@ pub enum Reads {
 }
 
 /// The operands an operation's result is defined on.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Encode, Decode)]
 pub enum Domain {
     Any,
     /// A shift amount below the width.

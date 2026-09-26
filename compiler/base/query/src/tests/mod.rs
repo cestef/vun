@@ -28,6 +28,7 @@ static PARITIES: Runs = Runs::new();
 struct Text;
 impl Query for Text {
     const NAME: &'static str = "text";
+    const INPUT: bool = true;
     type Key = &'static str;
     type Value = String;
     fn compute(_: &Cx<'_>, _: &Self::Key) -> String {

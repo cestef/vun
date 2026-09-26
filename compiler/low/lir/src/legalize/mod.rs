@@ -19,6 +19,7 @@ mod tests;
 
 use std::fmt;
 
+use vun_codec::{Decode, Encode};
 use vun_index::Idx;
 use vun_origin::OriginId;
 use vun_target::Endian;
@@ -28,7 +29,7 @@ use crate::{AbiType, Conv, Ext, FuncId, ImportKind, Scalar, Signature, Unit};
 use rewrite::Rewrite;
 
 /// How a unit is legalized for a backend.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Encode, Decode)]
 pub struct Legalize {
     /// The widest integer the backend computes with.
     pub widest: Scalar,
@@ -38,7 +39,7 @@ pub struct Legalize {
 }
 
 /// How a backend holds `f16`.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Encode, Decode)]
 pub enum Half {
     /// As a float it computes with.
     Computed,
@@ -47,7 +48,7 @@ pub enum Half {
 }
 
 /// Why an operation on a wide integer has no sequence over halves.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub enum Unlegalized {
     /// An atomic access of a wide integer.
     Atomic,
@@ -62,7 +63,7 @@ pub enum Unlegalized {
 }
 
 /// An operation the pass cannot legalize, where it is.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct Unlegal {
     pub at: OriginId,
     pub why: Unlegalized,

@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use super::{Edit, Mode, Modes, Relative, Scratch, Tree};
+use super::{Edit, Mode, Modes, Relative, Scratch, Tree, WORK};
 
 fn names(paths: &[PathBuf], root: &std::path::Path) -> Vec<String> {
     paths.iter().map(|p| p.strip_prefix(root).unwrap().to_string_lossy().into_owned()).collect()
@@ -60,4 +60,12 @@ fn modes_are_set_and_read_back() {
     assert_eq!(path.mode(), Mode::Executable);
     path.set_mode(Mode::Regular).unwrap();
     assert_eq!(path.mode(), Mode::Regular);
+}
+
+#[test]
+fn walks_leave_out_the_toolchain_directory() {
+    let dir = Scratch::new("work");
+    dir.path().join("a.vun").put("").unwrap();
+    dir.path().join(WORK).join("queries").join("x").put("").unwrap();
+    assert_eq!(dir.path().files().unwrap(), [dir.path().join("a.vun")]);
 }

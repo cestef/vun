@@ -1,6 +1,8 @@
 //! The verifier of the HIR: it is a tree, so every node is reached from the root exactly once,
 //! and every node has an origin in the table (spec 13, section 4).
 
+use std::collections::HashMap;
+
 use vun_index::{Idx, IndexVec};
 use vun_origin::{OriginId, OriginTable};
 
@@ -37,6 +39,13 @@ pub enum Malformed {
         arena: Arena,
         index: usize,
     },
+    /// A node with the origin of an earlier node of its arena: nodes are told apart by their
+    /// origins in every process, so each has its own.
+    SameOrigin {
+        arena: Arena,
+        index: usize,
+        first: usize,
+    },
 }
 
 impl Arena {
@@ -62,6 +71,9 @@ impl std::fmt::Display for Malformed {
             }
             Self::Shared { arena, index } => write!(f, "{} {index} is reached twice", arena.name()),
             Self::NoOrigin { arena, index } => write!(f, "{} {index} has no origin", arena.name()),
+            Self::SameOrigin { arena, index, first } => {
+                write!(f, "{} {index} has the origin of {} {first}", arena.name(), arena.name())
+            }
         }
     }
 }
@@ -138,7 +150,12 @@ impl Hir {
             (Arena::Binder, &visits.binders, Visits::origins(&self.binders, |b| b.origin)),
         ];
         for (arena, counts, node_origins) in arenas {
+            let mut seen = HashMap::with_capacity(node_origins.len());
             for (index, (&visits, origin)) in counts.iter().zip(node_origins).enumerate() {
+                if let Some(&first) = seen.get(&origin) {
+                    return Err(Malformed::SameOrigin { arena, index, first });
+                }
+                seen.insert(origin, index);
                 match visits {
                     0 => return Err(Malformed::Unreached { arena, index }),
                     1 => {}

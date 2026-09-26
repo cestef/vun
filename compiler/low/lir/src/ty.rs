@@ -2,8 +2,10 @@
 
 use std::fmt;
 
+use vun_codec::{Decode, Encode};
+
 /// A scalar: an integer of a width, a float, or an address.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Encode, Decode)]
 pub enum Scalar {
     I8,
     I16,

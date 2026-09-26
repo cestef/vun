@@ -5,6 +5,7 @@ use std::collections::BTreeMap;
 use std::collections::btree_map::Entry;
 use std::sync::Arc;
 
+use vun_codec::{Decode, Encode};
 use vun_diag::{ChildKind, DiagCtxt, DiagCx, Diagnostic, ErrorGuaranteed, Msg, errors};
 use vun_grammar::PATH_SEPARATOR;
 use vun_intern::Symbol;
@@ -22,7 +23,7 @@ use crate::resolve::{Outside, Res};
 use crate::tree::{NsId, Spread};
 
 /// What spreads bring into a file's namespaces.
-#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct Spreads {
     /// The names whole spreads bring.
     pub brought: BTreeMap<NsId, BTreeMap<Symbol, Namespace>>,
@@ -31,7 +32,7 @@ pub struct Spreads {
     pub poisoned: BTreeMap<NsId, ErrorGuaranteed>,
 }
 
-#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct CheckedNames {
     pub spreads: Spreads,
     pub diag: DiagCtxt,
@@ -54,14 +55,14 @@ impl Query for FileNames {
             parsed: &parsed,
             package: cx.get::<Package>(&key.package),
             scope: &scope,
-            origins: cx.db().resource::<OriginTable>(),
+            origins: OriginTable::global(),
             checked: CheckedNames::default(),
         };
         check.checked.diag.absorb(&scope.diag);
         check.spreads();
         check.children();
         let outside = FileScope { package: &scope, spreads: &check.checked.spreads };
-        let mut dcx = DiagCx { diag: &mut check.checked.diag, origins: &check.origins };
+        let mut dcx = DiagCx { diag: &mut check.checked.diag, origins: check.origins };
         parsed.resolution.check_outer(&parsed.hir, &outside, &mut dcx);
         Some(Arc::new(check.checked))
     }
@@ -104,7 +105,7 @@ struct Check<'a, 'db> {
     parsed: &'a ParsedFile,
     package: Arc<PackageData>,
     scope: &'a ScopeData,
-    origins: Arc<OriginTable>,
+    origins: &'static OriginTable,
     checked: CheckedNames,
 }
 

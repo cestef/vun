@@ -64,13 +64,13 @@ impl Query for Parsed {
     fn compute(cx: &Cx<'_>, key: &FileRef) -> Self::Value {
         let text = cx.get::<FileText>(key)?;
         let package = cx.get::<Package>(&key.package);
-        let (sources, origins) = (cx.db().resource::<SourceFiles>(), cx.db().resource::<OriginTable>());
+        let (sources, origins) = (SourceFiles::global(), OriginTable::global());
         let file = sources.add_as(&package.file_key(&key.path), package.display(&key.path), &*text);
         let mut diag = DiagCtxt::new();
-        let mut dcx = DiagCx { diag: &mut diag, origins: &origins };
+        let mut dcx = DiagCx { diag: &mut diag, origins };
         let tokens = Tokens::lex(file, &text, &mut dcx);
         let cst = Cst::parse(&tokens, &text, &mut dcx);
-        let hir = Hir::lower(lower::Source { cst: &cst, tokens: &tokens, text: &text }, &origins);
+        let hir = Hir::lower(lower::Source { cst: &cst, tokens: &tokens, text: &text }, origins);
         let resolution = hir.resolve(&mut dcx);
         let text = Hash::of(text.as_bytes());
         Some(Arc::new(ParsedFile { file, tokens, cst, hir, resolution, diag, text }))

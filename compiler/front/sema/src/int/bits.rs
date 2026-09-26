@@ -2,11 +2,12 @@
 //! taking its type, and on compile-time values, whose ranges hold one integer, they are exact.
 
 use num_bigint::BigInt;
+use vun_codec::{Decode, Encode};
 
 use super::{Extended, Integer, Interval};
 
 /// `&`, `|` or `^`.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Encode, Decode)]
 pub enum Bitwise {
     And,
     Or,

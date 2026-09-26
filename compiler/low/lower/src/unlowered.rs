@@ -3,17 +3,18 @@
 use std::fmt;
 use vun_sema::Primitive;
 
+use vun_codec::{Decode, Encode};
 use vun_mir::Unready;
 use vun_origin::OriginId;
 use vun_sema::ty::Ty;
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct Unlowered {
     pub at: OriginId,
     pub why: Why,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub enum Why {
     /// A function reached is not concrete MIR.
     Unready(Unready),
@@ -32,7 +33,7 @@ pub enum Why {
 }
 
 /// What lowering does not handle yet.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub enum Form {
     /// A primitive called at run time that lowering has no instructions for.
     Primitive,

@@ -4,6 +4,7 @@
 
 use std::sync::Arc;
 
+use vun_codec::{Decode, Encode};
 use vun_grammar::TokenKind;
 use vun_hir::tree::{Entry, ExprKind, List, Member, Name, NsId, PatKind, Staged, Variant};
 use vun_intern::Symbol;
@@ -20,7 +21,7 @@ use crate::ty::{Nominal, Ty, TyKind, Value};
 use crate::typeck::Known;
 use crate::visible::{Home, Visible};
 
-#[derive(Debug, Default, PartialEq, Eq, Hash)]
+#[derive(Debug, Default, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct MemberTable {
     /// Fields in declaration order.
     pub fields: Vec<Field>,
@@ -44,7 +45,7 @@ impl MemberTable {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Hash)]
+#[derive(Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct Field {
     pub name: Symbol,
     pub ty: Result<Ty, Unevaluated>,
@@ -55,7 +56,7 @@ pub struct Field {
     pub offset: Option<u64>,
 }
 
-#[derive(Debug, PartialEq, Eq, Hash)]
+#[derive(Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct MemberDecl {
     pub name: Symbol,
     pub decl: DeclRef,
@@ -64,7 +65,7 @@ pub struct MemberDecl {
     pub staged: Vec<Staging>,
 }
 
-#[derive(Debug, PartialEq, Eq, Hash)]
+#[derive(Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct VariantDef {
     pub name: Symbol,
     pub payload: Vec<Result<Ty, Unevaluated>>,
@@ -101,7 +102,7 @@ impl MemberTable {
 pub struct Members;
 
 impl Query for Members {
-    const NAME: &'static str = "members";
+    const NAME: &'static str = "type_members";
     type Key = Ty;
     type Value = Option<Arc<MemberTable>>;
 

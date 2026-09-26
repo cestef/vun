@@ -6,7 +6,7 @@
 )]
 use super::*;
 /// Where a contextual keyword is recognized; elsewhere it is a name.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, vun_codec::Encode, vun_codec::Decode)]
 pub enum Context {
     /// After the pattern of a `for`.
     ForPattern,

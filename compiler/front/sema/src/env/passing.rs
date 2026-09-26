@@ -2,6 +2,7 @@
 //! a call's written arguments against its callee's parameters, which compile-time evaluation
 //! and lowering both follow.
 
+use vun_codec::{Decode, Encode};
 use vun_hir::tree::{Arg, Entry, ExprId};
 
 use super::{Env, Unevaluated};
@@ -9,7 +10,7 @@ use crate::callable::Callable;
 use crate::ty::{Ty, Value};
 
 /// What a call passes to one parameter.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Encode, Decode)]
 pub enum Passed {
     /// The receiver of `a.f(b)`, passed as the method asks.
     Receiver,

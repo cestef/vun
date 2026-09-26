@@ -2,6 +2,7 @@
 //! that a value whose live range ends at a loop's exit is not live across unrelated blocks. A loop
 //! is therefore a span of positions.
 
+use vun_codec::{Decode, Encode};
 use vun_index::IndexVec;
 
 use crate::entity::Block;
@@ -17,7 +18,7 @@ pub struct Order {
 }
 
 /// What a loop holds, in reverse postorder: its own blocks and the loops inside it.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Encode, Decode)]
 enum Item {
     Block(Block),
     Loop(Block),

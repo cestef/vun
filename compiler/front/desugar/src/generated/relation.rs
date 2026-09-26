@@ -13,7 +13,7 @@ use super::*;
 use vun_grammar::*;
 /// How a function carrying a marker is accepted where a function type is expected (spec 07,
 /// section 4).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, vun_codec::Encode, vun_codec::Decode)]
 pub enum Relation {
     /// A duty of the callers: accepted when the function has no duty the expected type lacks.
     Duty,

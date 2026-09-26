@@ -58,7 +58,7 @@ impl Grammar<'_> {
         );
         let field = quote! {
             #[doc = #doc_field]
-            #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+            #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, vun_codec::Encode, vun_codec::Decode)]
             pub enum #field_ty { #(#field_variants),* }
 
             impl #field_ty {

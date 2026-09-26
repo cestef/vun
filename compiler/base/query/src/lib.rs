@@ -40,6 +40,9 @@ pub struct Revision(pub u64);
 pub trait Query: 'static {
     /// Names the query in cycles and traces.
     const NAME: &'static str;
+    /// Whether its values are set with [`Db::set`] rather than computed: an input's memos are
+    /// never saved, and one not set holds what it computes until it is.
+    const INPUT: bool = false;
     type Key: Clone + Eq + std::hash::Hash + fmt::Debug + Send + Sync + 'static;
     type Value: Clone + std::hash::Hash + Send + Sync + 'static;
 

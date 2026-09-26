@@ -19,6 +19,7 @@ pub mod layout;
 pub mod link;
 pub mod member;
 pub mod ops;
+mod persisted;
 pub mod plan;
 #[rustfmt::skip]
 pub mod primitives;
@@ -30,6 +31,7 @@ pub mod typeck;
 pub mod visible;
 pub mod witness;
 
+pub use persisted::PERSISTED;
 pub use primitives::Primitive;
 
 #[cfg(test)]

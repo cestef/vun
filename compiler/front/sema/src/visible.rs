@@ -2,6 +2,7 @@
 //! scope, the namespace declaring it unless `#[visible(...)]` widens it. The attribute is the
 //! primitive `lang.visible`, and its argument a value of `lang.scope`, so both are read as data.
 
+use vun_codec::{Decode, Encode};
 use vun_diag::{ChildKind, Diagnostic, Msg, errors};
 use vun_grammar::PATH_SEPARATOR;
 use vun_hir::db::{FileRef, Namespace, Package, PackageId};
@@ -18,7 +19,7 @@ use crate::primitives::scope::Scope;
 use crate::ty::Value;
 
 /// The namespace declaring a member: a file or directory, or the body of a `struct` literal.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub enum Home {
     Namespace(Namespace),
     /// A file outside its package's namespace tree, such as a test program: its own scope.
@@ -27,7 +28,7 @@ pub enum Home {
 }
 
 /// Where a name is visible, besides the namespaces nested in it.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub enum Reach {
     Public,
     /// Its home.
@@ -38,7 +39,7 @@ pub enum Reach {
 }
 
 /// A member's visibility: how far it reaches from where it is declared.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct Visible {
     pub reach: Reach,
     pub home: Home,
@@ -46,7 +47,7 @@ pub struct Visible {
 
 /// A `#[visible(...)]` that cannot apply: on a public name, or naming a namespace that does not
 /// enclose the declaration.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Encode, Decode)]
 pub enum Misplaced {
     Public,
     NotEnclosing,
@@ -159,7 +160,7 @@ impl Env<'_, '_> {
             (Reach::Home, Home::Namespace(ns)) | (Reach::Within(ns), _) => path(ns),
             (Reach::Home, Home::File(file)) => Msg::new().text("the file ").code(file.path.as_str()),
             (Reach::Home, Home::Struct(literal)) => {
-                let origins = self.cx.db().resource::<OriginTable>();
+                let origins = OriginTable::global();
                 let name = Env::of(self.cx, &literal.file)
                     .and_then(|env| origins.declaration_name(env.parsed.hir.exprs[literal.expr.id].origin));
                 name.map_or_else(|| Msg::new().text("its struct"), |n| Msg::new().code(n.as_str()))
@@ -182,7 +183,7 @@ impl Env<'_, '_> {
                 Home::Namespace(ns) => self.encloses(ns, &here),
                 Home::File(file) => *file == self.file,
                 Home::Struct(literal) => {
-                    let origins = self.cx.db().resource::<OriginTable>();
+                    let origins = OriginTable::global();
                     let span = |file: &ExprRef| {
                         let env = Env::of(self.cx, &file.file)?;
                         Some(origins.source_span(env.parsed.hir.exprs[file.expr.id].origin))

@@ -7,6 +7,7 @@
 
 use std::collections::BTreeSet;
 
+use vun_codec::{Decode, Encode};
 use vun_index::IndexVec;
 use vun_lir::Scalar;
 use vun_mir::{BlockId, Body, Local, Role, TerminatorKind};
@@ -70,7 +71,7 @@ impl Suspensions {
 }
 
 /// A local placed in a frame: where it starts and ends, and whether it shares storage with none.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Encode, Decode)]
 struct Placed {
     local: Local,
     start: u64,

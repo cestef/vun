@@ -3,6 +3,7 @@
 //! `build` nor the shape of a step: the declarations run are those `std.build.Package` requires,
 //! and the steps are the values `std.build.plan` gives, which the driver reads by reflection.
 
+use vun_codec::{Decode, Encode};
 use vun_hir::db::FileRef;
 use vun_intern::Symbol;
 use vun_items::Item;
@@ -20,13 +21,13 @@ use crate::ty::{TyKind, Value};
 pub struct Planned;
 
 /// The steps of a plan: each a value of `std.build.Action`.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct Plan {
     pub actions: Vec<Value>,
 }
 
 /// Why a file has no plan.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub enum Unplanned {
     /// The file does not declare `name`, which `std.build.Package` requires; `at` is the file.
     Missing { name: Symbol, at: OriginId },

@@ -6,7 +6,7 @@
 )]
 use super::*;
 /// A declaration of `lang` whose value is `_`, provided by the compiler, by namespace.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, vun_codec::Encode, vun_codec::Decode)]
 pub enum Primitive {
     /// `lang.abi`
     Abi(abi::Abi),

@@ -1,5 +1,6 @@
 //! Collecting diagnostics: the context, the sink interface and the error token.
 
+use vun_codec::{Decode, Encode};
 use vun_origin::OriginTable;
 use vun_span::{SourceMap, Span};
 
@@ -7,7 +8,7 @@ use crate::{Diagnostic, Severity, TraceFrame};
 
 /// Proof that an error was emitted. Only [`DiagCtxt`] creates one, so a poisoned type or value
 /// carrying it guarantees that the build fails and that later diagnostics about it can be dropped.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct ErrorGuaranteed(());
 
 /// Output for diagnostics: terminal, short, JSON, SARIF, LSP.
@@ -37,7 +38,7 @@ impl DiagCx<'_> {
 }
 
 /// Collects diagnostics: for one compilation, or as the reports of one query, which are data.
-#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct DiagCtxt {
     diagnostics: Vec<Diagnostic>,
 }
@@ -102,14 +103,18 @@ impl DiagCtxt {
         self.diagnostics.iter().filter(|d| d.severity == Severity::Error).count()
     }
 
-    /// All diagnostics in a deterministic order (by primary origin, then id), independent of the
-    /// order in which parallel work reported them.
+    /// All diagnostics in source order: by the file and place of their primary label's source,
+    /// then id. The order does not depend on the order work reported them in, nor on where
+    /// origins were recorded.
     #[must_use]
-    pub fn sorted(&self) -> Vec<&Diagnostic> {
+    pub fn sorted(&self, origins: &OriginTable) -> Vec<&Diagnostic> {
         let mut all: Vec<&Diagnostic> = self.diagnostics.iter().collect();
-        all.sort_by(|a, b| {
-            let origin = |d: &Diagnostic| d.primary.as_ref().map(|l| l.origin);
-            origin(a).cmp(&origin(b)).then_with(|| a.id.cmp(&b.id))
+        all.sort_by_cached_key(|d| {
+            let at = d.primary.as_ref().map(|l| {
+                let span = origins.source_span(l.origin);
+                (span.file.key(), span.range.lo, span.range.hi)
+            });
+            (at, d.id.clone())
         });
         all
     }

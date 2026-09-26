@@ -43,7 +43,7 @@ fn dependencies_are_raised_within_their_major() {
     let project = session.package_at(&dir).unwrap();
     session.fetch(project);
     let updated = session.update(&dir);
-    assert!(!session.failed(), "{:?}", session.diag.sorted());
+    assert!(!session.failed(), "{:?}", session.diag.sorted(session.origins));
     let raised: Vec<_> = updated.iter().map(|u| (u.from.to_string(), u.to.to_string(), u.hash)).collect();
     assert_eq!(raised, [("1.0.0".into(), "1.2.0".into(), newer)]);
     let text = std::fs::read_to_string(dir.join(MANIFEST)).unwrap();
@@ -66,6 +66,6 @@ fn a_release_not_matching_its_listing_is_refused() {
     let project = session.package_at(&dir).unwrap();
     session.fetch(project);
     assert!(session.update(&dir).is_empty());
-    let ids: Vec<_> = session.diag.sorted().into_iter().map(|d| d.id.clone()).collect();
+    let ids: Vec<_> = session.diag.sorted(session.origins).into_iter().map(|d| d.id.clone()).collect();
     assert_eq!(ids, [errors::PACKAGE_FETCH_FAILED]);
 }

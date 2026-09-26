@@ -5,6 +5,7 @@
 use std::collections::HashSet;
 use std::fmt;
 
+use vun_codec::{Decode, Encode};
 use vun_index::Idx;
 use vun_origin::{OriginId, OriginTable};
 
@@ -12,7 +13,7 @@ use crate::place::{Place, Projection};
 use crate::{BlockId, Body, Local, Operand, Rvalue, TerminatorKind};
 
 /// The entities of a body, for reporting which is malformed.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Encode, Decode)]
 pub enum Entity {
     Body,
     Local(usize),
@@ -21,7 +22,7 @@ pub enum Entity {
 }
 
 /// Why a body is malformed; see [`Body::verify`].
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Encode, Decode)]
 pub enum Malformed {
     /// A local that the body does not declare.
     UnknownLocal { at: Entity, local: usize },

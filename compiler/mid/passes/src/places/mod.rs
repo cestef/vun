@@ -11,9 +11,10 @@ mod moved;
 mod states;
 mod transfer;
 
-use std::collections::{BTreeMap, BTreeSet, VecDeque};
+use std::collections::{BTreeMap, BTreeSet, HashSet, VecDeque};
 use std::sync::Arc;
 
+use vun_codec::{Decode, Encode};
 use vun_diag::{ChildKind, DiagCtxt, DiagId, Diagnostic, Msg, errors};
 use vun_index::{Idx, IndexVec};
 use vun_intern::Symbol;
@@ -33,7 +34,7 @@ use states::{State, States};
 /// body has no MIR yet.
 pub struct Placed;
 
-#[derive(Debug, Default, PartialEq, Eq, Hash)]
+#[derive(Debug, Default, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct Found {
     pub diag: DiagCtxt,
     pub defers: BTreeMap<BlockId, BlockId>,
@@ -81,7 +82,7 @@ struct Analysis<'b> {
     diag: DiagCtxt,
     /// Where each deferred statement at an exit goes, once the states are fixed.
     defers: BTreeMap<BlockId, BlockId>,
-    reported: BTreeSet<(DiagId, OriginId)>,
+    reported: HashSet<(DiagId, OriginId)>,
     /// Whether transfers report what they find: only once the states are fixed.
     reporting: bool,
 }
@@ -104,7 +105,7 @@ impl<'b> Analysis<'b> {
             moved,
             diag: DiagCtxt::new(),
             defers: BTreeMap::new(),
-            reported: BTreeSet::new(),
+            reported: HashSet::new(),
             reporting: false,
         }
     }

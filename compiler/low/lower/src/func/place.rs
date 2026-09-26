@@ -3,6 +3,7 @@
 //! item is an offset its type's shape gives; an item at an index is checked against the count
 //! of items and scaled by their stride.
 
+use vun_codec::{Decode, Encode};
 use vun_lir::{Access, BinOp, CastOp, Cond, Scalar, Value};
 use vun_mir::{Place, Projection};
 use vun_sema::layout::Parts;
@@ -13,7 +14,7 @@ use super::FnLower;
 use crate::unlowered::{Form, Unlowered};
 
 /// A place reached: its address, its type, and for the items of a slice how many there are.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Encode, Decode)]
 pub(crate) struct Reached {
     pub(crate) addr: Value,
     pub(crate) ty: Ty,

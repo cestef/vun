@@ -12,6 +12,7 @@ mod text;
 
 use std::sync::Arc;
 
+use vun_codec::{Decode, Encode};
 use vun_query::{Cx, Cycle, Query};
 
 pub use exists::Exists;
@@ -28,7 +29,7 @@ use crate::ty::{Closure, Ty, TyKind, Value};
 
 /// How bounds at run time end, the byte after their two bounds: the second bound is the end past
 /// the last item, or the last item itself, so no bound needs a value past its items' storage.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Encode, Decode)]
 pub enum BoundsEnd {
     /// `a..`: no end.
     Open,

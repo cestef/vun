@@ -3,6 +3,7 @@
 
 use std::sync::Arc;
 
+use vun_codec::{Decode, Encode};
 use vun_lir::Scalar;
 use vun_origin::OriginId;
 use vun_query::Cx;
@@ -18,7 +19,7 @@ use vun_target::Endian;
 
 use crate::unlowered::{Unlowered, Why};
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Encode, Decode)]
 pub enum Repr {
     /// Nothing is stored.
     Zero,

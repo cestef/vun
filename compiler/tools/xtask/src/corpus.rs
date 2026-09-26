@@ -128,7 +128,8 @@ impl Verdict {
             session.check(file);
             unlowered = session.unlowered(file);
         }
-        let reported: Vec<Reported> = session.diag.sorted().iter().map(|d| reported(&session, d)).collect();
+        let reported: Vec<Reported> =
+            session.diag.sorted(session.origins).iter().map(|d| reported(&session, d)).collect();
         if expect == Expect::Planned {
             return Ok(if reported.is_empty() {
                 Self::Ready

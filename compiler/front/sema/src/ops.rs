@@ -1,6 +1,7 @@
 //! Compile-time values' parts, repetitions and ranges, and narrowing (spec 04, rule 3). Sema and
 //! the interpreter both compute through here; operators are calls (spec 02, section 4).
 
+use vun_codec::{Decode, Encode};
 use vun_desugar::Narrowing;
 use vun_grammar::TokenKind;
 use vun_intern::Symbol;
@@ -133,7 +134,7 @@ impl Interval {
 
 /// A part of a compile-time value: a struct's field, an array's item at an integer index, a
 /// tuple's item at a position, or an item of a variant's payload.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub enum Part {
     Field(Symbol),
     Item(Value),

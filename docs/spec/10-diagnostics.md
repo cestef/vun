@@ -35,7 +35,11 @@ pub enum Via {
   inside a declaration by its span relative to the declaration's start. `FileId` and `OriginId`
   hash by these identities, computed once, so a hash of anything holding them (query interfaces,
   persisted results) is the same in every process and survives edits elsewhere in the file, as
-  rustc's `DefPathHash` and item-relative spans do.
+  rustc's `DefPathHash` and item-relative spans do. Origins are equal by identity too: an origin
+  recorded again, as when read from a saved query, is the same origin. Each entity has its own:
+  a further entity lowered from the same syntax is derived from the first (`Via::Again(n)`), and
+  the HIR verifier checks that no two nodes of an arena share one. Diagnostics are sorted by the
+  source position of their primary label.
 - A generated construct points at the code that generated it, and that code at its caller, up to
   user code. Diagnostics show this as a trace; go-to-definition follows it.
 - The C backend emits `#line` directives from origins; native backends emit DWARF line tables from

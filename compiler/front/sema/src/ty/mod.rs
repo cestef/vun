@@ -17,7 +17,8 @@ mod signature;
 mod tests;
 mod value;
 
-use vun_intern::{Interned, Pool, Symbol};
+use vun_codec::{Decode, Encode};
+use vun_intern::{Internable, Interned, Pool, Symbol};
 
 use crate::Primitive;
 use crate::eval::{Func, Instance};
@@ -36,7 +37,15 @@ pub type Ty = Interned<TyKind>;
 
 static TYPES: Pool<TyKind> = Pool::new();
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+impl Internable for TyKind {
+    const POOL: &'static str = "type";
+
+    fn pool() -> &'static Pool<Self> {
+        &TYPES
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub enum TyKind {
     /// A primitive type or type constructor, applied to its compile-time arguments. An integer
     /// type's argument is the set its range holds, so `Int(0..256)` and `Int(0..=255)` are one
@@ -60,7 +69,7 @@ pub enum TyKind {
 }
 
 /// A constrained `$` parameter of a function literal, by its name.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct Param {
     pub literal: ExprRef,
     pub name: Symbol,
@@ -72,7 +81,7 @@ pub struct Param {
 /// the values of its `$` parameters, and the interface it declares, such as `Iter(u32)`, which
 /// the frame implements, with the call it is written as. Named `f.Frame` after the declaration of
 /// the function.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct Frame {
     pub literal: ExprRef,
     pub within: Option<Instance>,
@@ -102,7 +111,7 @@ impl Frame {
 /// The type of a closure literal: its function, which takes the captures before its parameters,
 /// the type of each capture by the name of the binder captured, and the signature of the function
 /// without them.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct Closure {
     pub f: crate::eval::Func,
     pub captures: Vec<(Symbol, Ty)>,
@@ -111,7 +120,7 @@ pub struct Closure {
 
 /// The identity of a `struct` or `enum` literal: where it is written and the compile-time call
 /// that evaluated it (decision 28). Its members are looked up from the literal.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct Nominal {
     pub literal: ExprRef,
     /// `None` for a literal evaluated outside any call.
@@ -121,7 +130,7 @@ pub struct Nominal {
     pub name: Option<Symbol>,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub enum NominalKind {
     Struct,
     Enum,

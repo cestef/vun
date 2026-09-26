@@ -1,6 +1,7 @@
 //! Functions: signatures, stack slots, blocks with parameters, instructions and the values they
 //! define. Every block, instruction, slot and the function itself carry an origin.
 
+use vun_codec::{Decode, Encode};
 use vun_index::IndexVec;
 use vun_intern::Symbol;
 use vun_origin::OriginId;
@@ -10,7 +11,7 @@ use crate::inst::{InstKind, Terminator};
 use crate::ty::Scalar;
 
 /// How a function is called.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub enum Conv {
     /// Vun's own: scalars as they are; aggregates by address, a result through an address
     /// passed first. Backends choose registers freely.
@@ -25,7 +26,7 @@ pub enum Conv {
 /// A value a signature passes: a scalar; a record passed by value under the C convention; or a
 /// value in memory passed by address under Vun's. The body and callers hold both in memory,
 /// reaching them by address.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub enum AbiType {
     /// A float.
     Scalar(Scalar),
@@ -42,7 +43,7 @@ pub enum AbiType {
 }
 
 /// What else reaches what an address passed to a call reaches, while the call runs.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub enum Alias {
     /// Anything may.
     Any,
@@ -51,14 +52,14 @@ pub enum Alias {
 }
 
 /// How an integer extends to a wider register: with zeros, or copies of its sign bit.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub enum Ext {
     Zero,
     Sign,
 }
 
 /// A record as C lays it out: its size, alignment and the scalars at their offsets.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct Record {
     pub size: u64,
     pub align: u64,
@@ -76,7 +77,7 @@ impl AbiType {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct Signature {
     pub conv: Conv,
     pub params: Vec<AbiType>,
@@ -122,7 +123,7 @@ impl Signature {
 }
 
 /// Who sees a definition.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub enum Linkage {
     /// The unit only; backends name it as they choose.
     Internal,
@@ -130,14 +131,14 @@ pub enum Linkage {
     Export(Symbol),
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct SlotData {
     pub size: u64,
     pub align: u64,
     pub origin: OriginId,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct BlockData {
     pub params: Vec<Value>,
     pub insts: Vec<Inst>,
@@ -145,7 +146,7 @@ pub struct BlockData {
     pub origin: OriginId,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct InstData {
     pub kind: InstKind,
     pub result: Option<Value>,
@@ -153,14 +154,14 @@ pub struct InstData {
 }
 
 /// Where a value is defined.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub enum Def {
     /// The parameter at a position of a block.
     Param(Block, usize),
     Inst(Inst),
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct ValueData {
     pub ty: Scalar,
     pub def: Def,
@@ -168,7 +169,7 @@ pub struct ValueData {
 
 /// A function with a body. The entry is the first block, whose parameters are the signature's
 /// values.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct Function {
     pub linkage: Linkage,
     pub signature: Signature,

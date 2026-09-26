@@ -5,6 +5,7 @@
 //! value it still holds (spec 05, section 2), and a `for p in e` loop ends its iterator's frame
 //! (spec 06, section 1).
 
+use vun_codec::{Decode, Encode};
 use vun_hir::tree::{BinderId, ExprId};
 use vun_index::Idx;
 use vun_origin::OriginId;
@@ -16,14 +17,14 @@ use crate::{BlockId, Local, Operand, Rvalue, TerminatorKind};
 
 /// Where an exit goes: on in the function, where the bindings whose scope it leaves end, or out
 /// of it, where the return checks what is still held.
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, Encode, Decode)]
 pub(super) enum Exit {
     Scope,
     Function,
 }
 
 /// What runs at the exits of a block.
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, Encode, Decode)]
 pub(super) enum Pending {
     Defer(ExprId),
     /// The end of the scope of the binding in the local.

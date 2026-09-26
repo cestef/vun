@@ -6,7 +6,7 @@
 )]
 use super::*;
 /// How many nodes a child position of a kind holds.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, vun_codec::Encode, vun_codec::Decode)]
 pub enum Count {
     One,
     Optional,

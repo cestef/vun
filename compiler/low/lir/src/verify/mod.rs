@@ -8,6 +8,7 @@ mod types;
 use std::collections::HashSet;
 use std::fmt;
 
+use vun_codec::{Decode, Encode};
 use vun_index::Idx;
 use vun_origin::{OriginId, OriginTable};
 
@@ -19,7 +20,7 @@ use crate::unit::{ImportKind, Unit};
 use dominance::Dominators;
 
 /// Where in a unit something is malformed.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Encode, Decode)]
 pub enum Entity {
     Func(FuncId),
     Block(FuncId, Block),
@@ -29,7 +30,7 @@ pub enum Entity {
 }
 
 /// Why; see [`Unit::verify`].
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Encode, Decode)]
 pub enum Reason {
     NoOrigin,
     /// A function without blocks.
@@ -66,7 +67,7 @@ pub enum Reason {
     Passing,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Encode, Decode)]
 pub struct Malformed {
     pub at: Entity,
     pub reason: Reason,

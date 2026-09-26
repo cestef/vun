@@ -4,6 +4,7 @@
 
 use std::fmt;
 
+use vun_codec::{Decode, Encode};
 use vun_intern::Symbol;
 use vun_items::Item;
 use vun_items::lang::{Option as option, target_C as c, target_CInt as cint, target_Endian as endian};
@@ -15,7 +16,7 @@ use crate::ty::Value;
 
 /// Why a value is not the description its type promises: it is not evaluated yet, or not a
 /// literal of its type.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub enum Unread {
     /// The member lacks, or holds another shape than its type gives.
     Member(Item),

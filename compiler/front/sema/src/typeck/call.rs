@@ -136,10 +136,10 @@ impl Typer<'_, '_, '_> {
     /// which led to it (spec 10, section 3).
     pub(super) fn absorb(&mut self, call: ExprId, i: &Instantiation, reports: &DiagCtxt) {
         let origin = self.hir().exprs[call].origin;
-        let origins = self.env().cx.db().resource::<OriginTable>();
+        let origins = OriginTable::global();
         let callee = origins.source_span(i.f.literal.expr.origin).file;
         let mut placed = DiagCtxt::new();
-        for d in reports.sorted() {
+        for d in reports.sorted(origins) {
             let inside = d.primary.as_ref().is_some_and(|p| origins.source_span(p.origin).file == callee);
             placed.report(if d.id == errors::COMPTIME_REPORTED && inside {
                 d.clone().moved(origin, Msg::new().text("reported here"))

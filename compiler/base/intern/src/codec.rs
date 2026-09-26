@@ -1,22 +1,20 @@
-//! Symbols persist by their text, written once per stream and interned again when read.
+//! Symbols and interned values persist by content, written once per stream and interned again
+//! when read.
+
+use std::hash::Hash;
 
 use vun_codec::{Decode, Encode, Malformed, Pooled, Reader, Writer};
 
-use crate::Symbol;
-
-/// The process's symbols, as the table [`Symbol`] handles are into; the pool itself is global.
-#[derive(Default)]
-pub struct Symbols;
+use crate::{Interned, Pool, Symbol};
 
 impl Pooled for Symbol {
     const POOL: &'static str = "symbol";
-    type Table = Symbols;
 
-    fn write(self, _: &Symbols, w: &mut Writer<'_>) {
+    fn write(self, w: &mut Writer<'_>) {
         self.as_str().encode(w);
     }
 
-    fn read(_: &Symbols, r: &mut Reader<'_>) -> Result<Self, Malformed> {
+    fn read(r: &mut Reader<'_>) -> Result<Self, Malformed> {
         let len = usize::decode(r)?;
         let text = std::str::from_utf8(r.take(len)?).map_err(|_| Malformed::Text)?;
         Ok(Self::intern(text))
@@ -24,3 +22,37 @@ impl Pooled for Symbol {
 }
 
 vun_codec::pooled!(Symbol);
+
+/// A type whose values are interned in one pool of the process, found by the type.
+pub trait Internable: Hash + Eq + Send + Sync + Encode + Decode + 'static {
+    /// Names the pool of its values in a stream.
+    const POOL: &'static str;
+
+    fn pool() -> &'static Pool<Self>;
+}
+
+/// An interned value persists by its content, written once per stream and interned again when
+/// read.
+impl<T: Internable> Pooled for Interned<T> {
+    const POOL: &'static str = T::POOL;
+
+    fn write(self, w: &mut Writer<'_>) {
+        (*self).encode(w);
+    }
+
+    fn read(r: &mut Reader<'_>) -> Result<Self, Malformed> {
+        Ok(T::pool().intern(T::decode(r)?))
+    }
+}
+
+impl<T: Internable> Encode for Interned<T> {
+    fn encode(&self, w: &mut Writer<'_>) {
+        w.pooled(*self);
+    }
+}
+
+impl<T: Internable> Decode for Interned<T> {
+    fn decode(r: &mut Reader<'_>) -> Result<Self, Malformed> {
+        r.pooled()
+    }
+}

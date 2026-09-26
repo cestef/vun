@@ -6,6 +6,9 @@
 use std::marker::PhantomData;
 use std::ops;
 
+pub use vun_codec as codec;
+use vun_codec::{Decode, Encode};
+
 /// A `u32` newtype usable as an index.
 pub trait Idx: Copy + Eq {
     /// # Panics
@@ -31,11 +34,23 @@ macro_rules! index {
                 self.0 as usize
             }
         }
+
+        impl $crate::codec::Encode for $name {
+            fn encode(&self, w: &mut $crate::codec::Writer<'_>) {
+                $crate::codec::Encode::encode(&self.0, w);
+            }
+        }
+
+        impl $crate::codec::Decode for $name {
+            fn decode(r: &mut $crate::codec::Reader<'_>) -> Result<Self, $crate::codec::Malformed> {
+                $crate::codec::Decode::decode(r).map(Self)
+            }
+        }
     )*};
 }
 
 /// A vector indexed by `I` instead of `usize`.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct IndexVec<I: Idx, T> {
     raw: Vec<T>,
     _index: PhantomData<fn(&I)>,

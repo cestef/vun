@@ -13,3 +13,10 @@ pub use frame::{FrameShape, FrameState, Frames, Framing};
 pub use program::{EachLowered, Lowered};
 pub use repr::{Repr, Types};
 pub use unlowered::{Form, Unlowered, Why};
+
+/// The queries of lowering whose memos outlive the process, with their values.
+pub const PERSISTED: &[fn(&vun_query::Db)] = &[
+    vun_query::Db::persist::<Lowered>,
+    vun_query::Db::persist::<EachLowered>,
+    vun_query::Db::persist::<Frames>,
+];

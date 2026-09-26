@@ -29,7 +29,7 @@ fn added_dependencies_are_declared_and_resolve() {
     let util = util.to_str().unwrap();
     assert!(add(&mut session, util).unwrap().is_some());
     assert!(add(&mut session, util).unwrap().is_none());
-    let ids: Vec<_> = session.diag.sorted().into_iter().map(|d| d.id.clone()).collect();
+    let ids: Vec<_> = session.diag.sorted(session.origins).into_iter().map(|d| d.id.clone()).collect();
     assert_eq!(ids, [errors::PACKAGE_DUPLICATE_DEP]);
 
     let text = std::fs::read_to_string(dir.join(MANIFEST)).unwrap();

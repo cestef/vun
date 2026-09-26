@@ -12,6 +12,7 @@ mod lookup;
 
 use std::sync::Arc;
 
+use vun_codec::{Decode, Encode};
 use vun_desugar::CALLS;
 use vun_hir::db::{FileRef, Package, PackageId};
 use vun_hir::tree::{Arg, Entry, ExprId, ExprKind, Member, each_entry};
@@ -28,7 +29,7 @@ use crate::ty::{Nominal, Ty, TyKind, Value};
 pub use lookup::{Method, Witness, Witnesses};
 
 /// A declaration marked `#[impl(I(T))]`, or `#[impl(T)]` for methods without an interface.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct ImplDecl {
     pub decl: DeclRef,
     /// The attribute, where the impl is reported.
@@ -41,7 +42,7 @@ pub struct ImplDecl {
 }
 
 /// The interface an impl implements.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct Contract {
     /// `I`: its function from a type to the requirement struct.
     pub interface: Func,

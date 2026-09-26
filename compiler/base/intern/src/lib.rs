@@ -25,7 +25,7 @@ struct Entry {
 mod codec;
 mod pool;
 
-pub use codec::Symbols;
+pub use codec::Internable;
 pub use pool::{Interned, Pool};
 
 /// Every symbol by its text, looked up without locks by a fast hash.

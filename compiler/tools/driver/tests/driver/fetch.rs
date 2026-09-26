@@ -34,7 +34,8 @@ fn fetched_packages_are_stored_verified_and_checked() {
     let mut check = fx.session();
     let loaded = check.load(&file).unwrap();
     check.check(loaded);
-    let mismatch = check.diag.sorted().into_iter().find(|d| d.id == errors::PACKAGE_HASH_MISMATCH).unwrap();
+    let mismatch =
+        check.diag.sorted(check.origins).into_iter().find(|d| d.id == errors::PACKAGE_HASH_MISMATCH).unwrap();
     let notes: Vec<_> = mismatch.children.iter().map(|c| c.msg.to_string()).collect();
     assert!(notes.iter().any(|n| n.contains("hal.vun") && n.contains("modified")), "{notes:?}");
 }
@@ -49,7 +50,12 @@ fn failing_mirrors_are_reported_with_their_causes() {
     let mut session = fx.session();
     let project = session.package_at(&dir).unwrap();
     assert!(matches!(session.fetch(project).as_slice(), [(_, _, Fetched::Failed)]));
-    let d = session.diag.sorted().into_iter().find(|d| d.id == errors::PACKAGE_FETCH_FAILED).unwrap();
+    let d = session
+        .diag
+        .sorted(session.origins)
+        .into_iter()
+        .find(|d| d.id == errors::PACKAGE_FETCH_FAILED)
+        .unwrap();
     let kinds: Vec<_> = d.children.iter().map(|c| c.kind.name()).collect();
     assert_eq!(kinds, ["note", "caused by", "caused by"], "{:?}", d.children);
 }

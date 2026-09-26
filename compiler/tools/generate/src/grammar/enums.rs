@@ -38,7 +38,7 @@ impl Enum<'_> {
         let body = (!self.lists.is_empty()).then(|| quote! { impl #name { #(#lists)* #text } });
         quote! {
             #(#[doc = #doc])*
-            #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+            #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, vun_codec::Encode, vun_codec::Decode)]
             pub enum #name { #(#variants),* }
             #body
         }

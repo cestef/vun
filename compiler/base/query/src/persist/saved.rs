@@ -1,38 +1,42 @@
 //! The saved form: the pools of the handles values hold, then each persisted query's keys and
 //! memos. A read is saved as the position of its query and of its key in the file, since slots and
-//! tables are the process's own.
+//! tables are the process's own. Written with bytes, `B` is read as [`Blob`]s: keys, values and
+//! pool entries are places in the file loaded, never copied out of it.
 
 use std::fmt;
 
-use vun_codec::{Decode, Encode, Malformed, Pools};
+use vun_codec::{Blob, Decode, Encode, Malformed, Pools};
 
 use crate::fingerprint::Fingerprint;
 
 /// The version of the saved form; a file of another version is not read.
-pub(super) const FORMAT: u32 = 3;
+pub(super) const FORMAT: u32 = 4;
 
 #[derive(Encode, Decode)]
-pub(super) struct Saved {
+pub(super) struct Saved<B = Vec<u8>> {
     /// Leads, so that another version is named rather than misread.
     pub(super) format: u32,
-    pub(super) pools: Pools,
-    pub(super) queries: Vec<SavedQuery>,
+    pub(super) pools: Pools<B>,
+    pub(super) queries: Vec<SavedQuery<B>>,
 }
+
+/// The saved form as read, in place.
+pub(super) type Loaded = Saved<Blob>;
 
 /// One query: every key it had a slot for, and its computed memos.
 #[derive(Encode, Decode)]
-pub(crate) struct SavedQuery {
+pub(crate) struct SavedQuery<B = Vec<u8>> {
     pub(super) name: String,
-    pub(super) keys: Vec<Vec<u8>>,
-    pub(super) memos: Vec<SavedMemo>,
+    pub(super) keys: Vec<B>,
+    pub(super) memos: Vec<SavedMemo<B>>,
 }
 
 #[derive(Encode, Decode)]
-pub(crate) struct SavedMemo {
+pub(crate) struct SavedMemo<B = Vec<u8>> {
     /// Its position among the query's keys.
     pub(super) key: u32,
     /// `None` for a query persisted without its values.
-    pub(super) value: Option<Vec<u8>>,
+    pub(super) value: Option<B>,
     pub(super) fingerprint: Fingerprint,
     pub(super) deps: Vec<SavedDep>,
 }
@@ -54,6 +58,8 @@ pub enum Unloaded {
     Format {
         found: u32,
     },
+    /// The database holds memos loaded already.
+    Again,
 }
 
 impl fmt::Display for Unloaded {
@@ -61,6 +67,7 @@ impl fmt::Display for Unloaded {
         match self {
             Self::Decode(_) => f.write_str("the saved memos do not decode"),
             Self::Format { found } => write!(f, "the saved memos are in format {found}, not {FORMAT}"),
+            Self::Again => f.write_str("memos were loaded already"),
         }
     }
 }
@@ -69,7 +76,7 @@ impl std::error::Error for Unloaded {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
             Self::Decode(e) => Some(e),
-            Self::Format { .. } => None,
+            Self::Format { .. } | Self::Again => None,
         }
     }
 }

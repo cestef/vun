@@ -9,68 +9,52 @@ use crate::{Decode, Encode, Malformed, Reader, Writer};
 const VARINT_BITS: u32 = 7;
 const VARINT_MORE: u8 = 0x80;
 
-/// LEB128: seven bits per byte, low first.
-impl Encode for u128 {
-    fn encode(&self, w: &mut Writer<'_>) {
-        let mut n = *self;
-        loop {
-            let low = u8::try_from(n & u128::from(!VARINT_MORE)).expect("masked to seven bits");
-            n >>= VARINT_BITS;
-            if n == 0 {
-                w.byte(low);
-                return;
-            }
-            w.byte(low | VARINT_MORE);
-        }
-    }
-}
-
-impl Decode for u128 {
-    fn decode(r: &mut Reader<'_>) -> Result<Self, Malformed> {
-        let mut n: u128 = 0;
-        for shift in (0..u128::BITS).step_by(VARINT_BITS as usize) {
-            let byte = r.byte()?;
-            let bits = u128::from(byte & !VARINT_MORE);
-            n |= bits
-                .checked_shl(shift)
-                .filter(|shifted| shifted >> shift == bits)
-                .ok_or(Malformed::Overflow)?;
-            if byte & VARINT_MORE == 0 {
-                return Ok(n);
-            }
-        }
-        Err(Malformed::Overflow)
-    }
-}
-
+/// LEB128: seven bits per byte, low first, each type read natively, a one-byte value at once.
 macro_rules! unsigned {
     ($($ty:ty),*) => {$(
         impl Encode for $ty {
             fn encode(&self, w: &mut Writer<'_>) {
-                u128::from(*self).encode(w);
+                let mut n = *self;
+                loop {
+                    let low = u8::try_from(n & <$ty>::from(!VARINT_MORE)).expect("masked to seven bits");
+                    n >>= VARINT_BITS;
+                    if n == 0 {
+                        w.byte(low);
+                        return;
+                    }
+                    w.byte(low | VARINT_MORE);
+                }
             }
         }
 
         impl Decode for $ty {
             fn decode(r: &mut Reader<'_>) -> Result<Self, Malformed> {
-                <$ty>::try_from(u128::decode(r)?).map_err(|_| Malformed::Overflow)
+                let first = r.byte()?;
+                if first & VARINT_MORE == 0 {
+                    return Ok(<$ty>::from(first));
+                }
+                let mut n = <$ty>::from(first & !VARINT_MORE);
+                let mut shift = VARINT_BITS;
+                loop {
+                    let byte = r.byte()?;
+                    let bits = <$ty>::from(byte & !VARINT_MORE);
+                    n |= bits
+                        .checked_shl(shift)
+                        .filter(|shifted| shifted >> shift == bits)
+                        .ok_or(Malformed::Overflow)?;
+                    if byte & VARINT_MORE == 0 {
+                        return Ok(n);
+                    }
+                    shift += VARINT_BITS;
+                    if shift >= <$ty>::BITS {
+                        return Err(Malformed::Overflow);
+                    }
+                }
             }
         }
     )*};
 }
-unsigned!(u16, u32, u64);
-
-impl Encode for usize {
-    fn encode(&self, w: &mut Writer<'_>) {
-        (*self as u128).encode(w);
-    }
-}
-
-impl Decode for usize {
-    fn decode(r: &mut Reader<'_>) -> Result<Self, Malformed> {
-        Self::try_from(u128::decode(r)?).map_err(|_| Malformed::Overflow)
-    }
-}
+unsigned!(u16, u32, u64, u128, usize);
 
 /// Zigzag: small magnitudes of either sign stay short.
 impl Encode for i128 {

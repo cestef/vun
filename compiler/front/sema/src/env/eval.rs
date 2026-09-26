@@ -209,8 +209,7 @@ impl Env<'_, '_> {
     /// call evaluated in, if any (decision 28).
     #[must_use]
     pub fn nominal(&self, literal: ExprId, kind: NominalKind) -> Value {
-        let name =
-            self.cx.db().resource::<OriginTable>().declaration_name(self.parsed.hir.exprs[literal].origin);
+        let name = OriginTable::global().declaration_name(self.parsed.hir.exprs[literal].origin);
         let literal = ExprRef::new(self.file.clone(), &self.parsed.hir, literal);
         Value::Type(
             TyKind::Nominal(Nominal { literal, instance: self.instance.clone(), kind, name }).intern(),

@@ -7,6 +7,7 @@
 
 use std::sync::{Arc, OnceLock};
 
+use vun_codec::{Decode, Encode};
 use vun_desugar::ITERATION;
 use vun_hir::tree::BinderId;
 use vun_query::{Cx, Cycle, Query};
@@ -19,7 +20,7 @@ use crate::ty::{Signature, Ty, Value};
 
 /// A compile-time call: a function value and its arguments. Types built during the call are
 /// identified by it (decision 28), and its body sees its parameters bound to the arguments.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct Instance {
     pub f: Func,
     pub args: Vec<Value>,
@@ -27,7 +28,7 @@ pub struct Instance {
 
 /// A function value: a function literal, and the compile-time call it was evaluated in, whose
 /// parameters its body sees too: a method of `Pair(u8)` sees `T` bound to `u8`.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct Func {
     pub literal: ExprRef,
     pub within: Option<Arc<Instance>>,
@@ -38,7 +39,7 @@ pub struct Func {
 /// A code value (spec 03, section 4): an expression, and what it was written under, where its
 /// names resolve (hygiene by construction): the compile-time call and every binder bound there.
 /// A quote `#{ e }` is one, and so is an argument for a `Code(T)` parameter.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct Code {
     pub expr: ExprRef,
     pub within: Option<Arc<Instance>>,
@@ -47,7 +48,7 @@ pub struct Code {
 
 /// A coroutine's frame at compile time (spec 06): its call, the block of its body it resumes at
 /// (`None` once it returned), and its locals.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct Suspended {
     pub call: Instance,
     pub at: Option<usize>,
@@ -55,7 +56,7 @@ pub struct Suspended {
 }
 
 /// What resuming a frame gives: an item it yields, or what it returns.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub enum Resumed {
     Yielded(Value),
     Returned(Value),
@@ -77,7 +78,7 @@ impl Resumed {
 
 /// A `$for` binder bound to one item of its iteration (spec 03, section 2): what that step
 /// generates sees the binder as the item.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct Staging {
     pub binder: Node<BinderId>,
     pub value: Value,
@@ -92,7 +93,7 @@ pub trait Evaluator: Send + Sync {
 /// What a compile-time call gives, and the steps it took: its own and those of the calls it
 /// made. Both are functions of the call alone, so a memoized call's outcome does not depend on
 /// which evaluation reached it first.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct Metered {
     pub value: Result<Value, Unevaluated>,
     pub steps: u64,
@@ -166,7 +167,7 @@ impl Query for Call {
 /// A function value with its `$` parameters bound to their values: what a body is typed and
 /// lowered for (spec 02, section 3: generic code is checked per instantiation). A function
 /// without `$` parameters, outside any call, has one instantiation.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct Instantiation {
     pub f: Func,
     /// By parameter: the value of each `$` parameter, `None` for the others and for unknown ones.

@@ -120,7 +120,7 @@ Small := Int(0..=twice(0));
     let mut session = fixture.session();
     let file = session.load(&file).unwrap();
     session.check(file);
-    let reported = session.diag.sorted();
+    let reported = session.diag.sorted(session.origins);
     let [trap] = reported.as_slice() else { panic!("{reported:#?}") };
     assert_eq!(trap.id, errors::COMPTIME_TRAP);
     let line = |origin| {

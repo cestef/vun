@@ -6,7 +6,7 @@
 )]
 use super::*;
 /// Kinds of tokens.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, vun_codec::Encode, vun_codec::Decode)]
 pub enum TokenKind {
     Whitespace,
     Comment,

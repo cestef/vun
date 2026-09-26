@@ -19,7 +19,7 @@ fn repository_bodies_lower_to_mir_that_verifies() {
             let bodies: Vec<_> = session.bodies(file).into_iter().filter_map(|(_, body)| body.ok()).collect();
             let failures = bodies
                 .iter()
-                .filter_map(|body| body.verify(&session.origins).err().map(|malformed| (malformed, body)))
+                .filter_map(|body| body.verify(session.origins).err().map(|malformed| (malformed, body)))
                 .map(|(malformed, body)| format!("{}: {malformed}\n{body}", path.display()));
             (failures.collect(), bodies.len())
         })

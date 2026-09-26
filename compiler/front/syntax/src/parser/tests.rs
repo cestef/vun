@@ -37,7 +37,7 @@ fn parse_text(text: &str) -> (Vec<std::string::String>, Vec<DiagId>) {
     let cst = Cst::parse(&tokens, text, &mut cx);
     assert_eq!(cst.verify(&tokens), Ok(()), "{text:?}");
     let entries = cst.children(cst.root()).map(|n| sexp(&cst, &tokens, text, n)).collect();
-    (entries, diag.sorted().into_iter().map(|d| d.id.clone()).collect())
+    (entries, diag.sorted(&origins).into_iter().map(|d| d.id.clone()).collect())
 }
 
 fn clean(text: &str) -> Vec<std::string::String> {

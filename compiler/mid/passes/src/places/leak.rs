@@ -1,6 +1,7 @@
 //! Leaks (spec 05, section 2): a linear place still `init` where it must have been consumed, at
 //! a return, at the end of a binding's scope, or where ending a suspended frame stops it.
 
+use vun_codec::{Decode, Encode};
 use vun_diag::{Msg, errors};
 use vun_origin::OriginId;
 
@@ -32,7 +33,7 @@ impl Analysis<'_> {
 }
 
 /// Where a place's value must be consumed by.
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, Encode, Decode)]
 pub(super) enum Stop {
     Return,
     /// The end of a binding's scope.

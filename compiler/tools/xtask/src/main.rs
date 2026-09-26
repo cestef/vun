@@ -186,7 +186,7 @@ fn main() -> ExitCode {
     });
     let (origins, sources) = (OriginTable::new(), SourceFiles::new());
     let mut renderer = ShortRenderer::new(io::stderr());
-    for d in cx.diag.sorted() {
+    for d in cx.diag.sorted(&origins) {
         renderer.emit(d, &origins, &sources);
     }
     outcome.into()

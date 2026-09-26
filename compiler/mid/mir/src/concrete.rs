@@ -4,6 +4,7 @@
 
 use std::sync::Arc;
 
+use vun_codec::{Decode, Encode};
 use vun_index::IndexVec;
 use vun_origin::OriginId;
 use vun_query::{Cx, Cycle, Query};
@@ -18,7 +19,7 @@ use vun_sema::typeck::Typed;
 use crate::{Aggregate, Body, Local, Mir, Operand, Rvalue, Unbuilt};
 
 /// Why an instantiation's body is not ready for code generation.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub enum Unready {
     /// A form MIR does not lower yet.
     Unbuilt(Unbuilt),

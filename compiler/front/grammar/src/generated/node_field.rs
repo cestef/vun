@@ -6,7 +6,7 @@
 )]
 use super::*;
 /// The named children of [`NodeKind`] kinds.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, vun_codec::Encode, vun_codec::Decode)]
 pub enum NodeField {
     Skipped,
     Items,

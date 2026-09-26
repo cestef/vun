@@ -3,6 +3,7 @@
 //! same mode (decision 31), as the typer types them. `match`, `if p = e`, `for p = e` and
 //! declarations with a pattern are built on tests.
 
+use vun_codec::{Decode, Encode};
 use vun_desugar::Borrow;
 use vun_hir::tree::{Arm, BinderId, Entry, ExprId, Name, PatId, PatKind};
 use vun_origin::OriginId;
@@ -17,7 +18,7 @@ use crate::place::{Place, Projection};
 use crate::{BlockId, Operand, Role, Rvalue, TerminatorKind};
 
 /// How a pattern's binders hold what they bind.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Encode, Decode)]
 enum Binding {
     Copy,
     /// A borrow in the mode of the borrow matched through.

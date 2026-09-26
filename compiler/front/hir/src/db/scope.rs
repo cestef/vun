@@ -4,6 +4,7 @@
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
+use vun_codec::{Decode, Encode};
 use vun_diag::{DiagCtxt, DiagCx, ErrorGuaranteed};
 use vun_grammar::PATH_SEPARATOR;
 use vun_intern::Symbol;
@@ -15,7 +16,7 @@ use super::layout::Namespace;
 use super::namespace::{Exports, NamespaceAt, Unfound};
 
 /// What a name from outside a file refers to.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub enum Outer {
     /// The package itself.
     Package(PackageId),
@@ -25,7 +26,7 @@ pub enum Outer {
     Prelude(Namespace),
 }
 
-#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct ScopeData {
     pub names: BTreeMap<Symbol, Outer>,
     /// Set when a prelude namespace could not be read, which is reported: a name found nowhere may
@@ -62,8 +63,8 @@ impl Query for Scope {
                     let d = Unfound::not_namespace(&text.join(PATH_SEPARATOR));
                     let reported = match data.prelude_span {
                         Some(span) => {
-                            let origins = cx.db().resource::<OriginTable>();
-                            DiagCx { diag: &mut scope.diag, origins: &origins }.error_at(span, d)
+                            let origins = OriginTable::global();
+                            DiagCx { diag: &mut scope.diag, origins }.error_at(span, d)
                         }
                         None => scope.diag.error(d),
                     };

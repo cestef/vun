@@ -2,6 +2,7 @@
 //! arguments are checked against the parameters of the callee's signature, which is typed per
 //! call when its types name `$` parameters, those left out inferred from the others' types.
 
+use vun_codec::{Decode, Encode};
 use vun_hir::tree::ExprId;
 
 use super::omitted::{Plan, Unifier};
@@ -15,7 +16,7 @@ use crate::ty::{Signature, Ty, TyKind, Value};
 use vun_diag::Msg;
 
 /// How a call's arguments are passed.
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, Encode, Decode)]
 pub(super) enum Passing {
     /// As written: each argument is its parameter's value.
     Written,

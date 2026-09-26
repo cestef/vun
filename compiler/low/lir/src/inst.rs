@@ -3,9 +3,10 @@
 use crate::entity::{Block, DataId, FuncId, ImportId, Slot, Value};
 use crate::func::Signature;
 use crate::ty::Scalar;
+use vun_codec::{Decode, Encode};
 
 /// What an instruction computes. Each defines at most one value, of the type its kind gives.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub enum InstKind {
     /// A constant of a scalar type, as its bits: a float's IEEE encoding, an integer's two's
     /// complement truncated to the type.
@@ -38,7 +39,7 @@ pub enum InstKind {
     Call { callee: Callee, args: Vec<Value> },
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub enum BinOp {
     Add,
     Sub,
@@ -63,7 +64,7 @@ pub enum BinOp {
 }
 
 /// A comparison: integers as signed or unsigned, floats ordered.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub enum Cond {
     Eq,
     Ne,
@@ -83,7 +84,7 @@ pub enum Cond {
     FGe,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub enum CastOp {
     /// Widens an integer, with zeros or copies of its sign bit.
     ZExt,
@@ -105,7 +106,7 @@ pub enum CastOp {
 }
 
 /// How a load or store touches memory.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub enum Access {
     Plain,
     /// Performed exactly as written: memory-mapped registers (`lang.mem.volatile_*`).
@@ -114,7 +115,7 @@ pub enum Access {
 }
 
 /// A memory ordering of an atomic access (`lang.mem.Ordering`).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Encode, Decode)]
 pub enum Order {
     Relaxed,
     Acquire,
@@ -123,7 +124,7 @@ pub enum Order {
     SeqCst,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub enum RmwOp {
     Swap,
     Add,
@@ -134,7 +135,7 @@ pub enum RmwOp {
 }
 
 /// Something with an address in the program.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Encode, Decode)]
 pub enum Address {
     Func(FuncId),
     Data(DataId),
@@ -142,7 +143,7 @@ pub enum Address {
 }
 
 /// What a call calls.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub enum Callee {
     Func(FuncId),
     Import(ImportId),
@@ -151,14 +152,14 @@ pub enum Callee {
 }
 
 /// A jump to a block, with the values of its parameters.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct Target {
     pub block: Block,
     pub args: Vec<Value>,
 }
 
 /// How a block ends.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub enum Terminator {
     Jump(Target),
     /// To `then` where `cond` is not 0, to `otherwise` where it is.

@@ -53,7 +53,8 @@ pub(crate) fn packages(app: &str) -> (vun_query::Db, vun_hir::db::FileRef) {
 fn values_are_checked_against_their_types_through_the_prelude() {
     let (db, file) = packages("flag: bool = 3;\nsmall: u8 = 200;\nlarge: u8 = 300;\nexact: Int(1..3) = 2;\n");
     let reports = db.get::<crate::check::Checked>(&file).unwrap();
-    let messages: Vec<String> = reports.sorted().iter().map(|d| d.message.to_string()).collect();
+    let messages: Vec<String> =
+        reports.sorted(vun_origin::OriginTable::global()).iter().map(|d| d.message.to_string()).collect();
     assert_eq!(
         messages,
         ["expected `bool`, found `Int(3..=3)`", "value does not fit the type `u8`"],

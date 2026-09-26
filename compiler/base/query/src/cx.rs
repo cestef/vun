@@ -5,13 +5,14 @@ use std::cell::RefCell;
 use std::collections::HashSet;
 use std::fmt;
 use std::sync::Arc;
+use std::sync::atomic::Ordering;
 
-use vun_trace::Activity;
+use vun_trace::{Activity, tracing};
 
 use super::claim::Claim;
 use super::db::Db;
 use super::fingerprint::Fingerprint;
-use super::memo::{Dep, Memo, Verified};
+use super::memo::{Dep, Memo};
 use super::table::{Slot, Table, TableId};
 use super::{Query, Revision};
 
@@ -20,6 +21,30 @@ struct Frame {
     table: TableId,
     slot: Slot,
     reads: Vec<Dep>,
+}
+
+/// Why a memo is computed.
+#[derive(Clone, Copy, Debug)]
+enum Why {
+    /// There is none.
+    Absent,
+    /// This read has changed since.
+    Stale(Dep),
+    /// It holds, but was loaded without its value.
+    Unloaded,
+}
+
+impl Why {
+    fn show(self, db: &Db) -> String {
+        match self {
+            Self::Absent => "absent".to_owned(),
+            Self::Stale(read) => {
+                let table = db.any_table(read.table);
+                format!("read {}({}) changed", table.name(), table.show(read.slot))
+            }
+            Self::Unloaded => "loaded without its value".to_owned(),
+        }
+    }
 }
 
 /// Queries that depend on themselves: each by name and key, from the one reached again.
@@ -80,16 +105,18 @@ impl<'db> Cx<'db> {
             let revision = self.db.revision();
             if let Some(memo) = &*entry.memo.load()
                 && memo.current(revision)
-                && let Some(value) = &memo.value
+                && let Some(value) = memo.value(self.db)
             {
                 return (value.clone(), memo.fingerprint);
             }
-            if let Some(memo) = self.verified(table, slot, revision)
-                && let Some(value) = &memo.value
-            {
-                return (value.clone(), memo.fingerprint);
-            }
-            if let Some(found) = self.computed(table, slot, revision) {
+            let why = match self.verified(table, slot, revision) {
+                Ok(memo) => match memo.value(self.db) {
+                    Some(value) => return (value.clone(), memo.fingerprint),
+                    None => Why::Unloaded,
+                },
+                Err(why) => why,
+            };
+            if let Some(found) = self.computed(table, slot, revision, why) {
                 return found;
             }
         }
@@ -100,10 +127,11 @@ impl<'db> Cx<'db> {
     pub(crate) fn fingerprint<Q: Query>(&self, table: &Table<Q>, slot: Slot) -> Fingerprint {
         loop {
             let revision = self.db.revision();
-            if let Some(memo) = self.verified(table, slot, revision) {
-                return memo.fingerprint;
-            }
-            if let Some((_, fingerprint)) = self.computed(table, slot, revision) {
+            let why = match self.verified(table, slot, revision) {
+                Ok(memo) => return memo.fingerprint,
+                Err(why) => why,
+            };
+            if let Some((_, fingerprint)) = self.computed(table, slot, revision, why) {
                 return fingerprint;
             }
         }
@@ -111,16 +139,21 @@ impl<'db> Cx<'db> {
 
     /// The memo at `slot` if it holds in `revision`: current, or everything it read unchanged.
     /// Verifying reads other memos, which may take long: the memo is held on its own meanwhile.
-    fn verified<Q: Query>(&self, table: &Table<Q>, slot: Slot, revision: Revision) -> Option<Arc<Memo<Q>>> {
-        let memo = table.entry(slot).memo.load_full()?;
+    fn verified<Q: Query>(
+        &self,
+        table: &Table<Q>,
+        slot: Slot,
+        revision: Revision,
+    ) -> Result<Arc<Memo<Q>>, Why> {
+        let memo = table.entry(slot).memo.load_full().ok_or(Why::Absent)?;
         if memo.current(revision) {
-            return Some(memo);
+            return Ok(memo);
         }
-        if !memo.deps.iter().all(|&dep| self.unchanged(dep)) {
-            return None;
+        if let Some(&read) = memo.deps.iter().find(|&&dep| !self.unchanged(dep)) {
+            return Err(Why::Stale(read));
         }
         memo.verified.set(revision);
-        Some(memo)
+        Ok(memo)
     }
 
     fn unchanged(&self, dep: Dep) -> bool {
@@ -134,6 +167,7 @@ impl<'db> Cx<'db> {
         table: &Table<Q>,
         slot: Slot,
         revision: Revision,
+        why: Why,
     ) -> Option<(Q::Value, Fingerprint)> {
         let entry = table.entry(slot);
         let reached = self.stack.borrow().iter().position(|f| f.table == table.id && f.slot == slot);
@@ -155,14 +189,25 @@ impl<'db> Cx<'db> {
             Claim::Owner(owned) => Some(owned),
             Claim::Alone => None,
         };
+        tracing::debug!(query = Q::NAME, key = ?entry.key, why = %why.show(self.db), "computing");
         self.stack.borrow_mut().push(Frame { table: table.id, slot, reads: Vec::new() });
         let timer = Activity::query(Q::NAME).start();
         let value = Q::compute(self, &entry.key);
         drop(timer);
         let reads = self.stack.borrow_mut().pop().expect("the frame pushed above").reads;
         let fingerprint = Q::interface(&value);
-        let memo =
-            Memo::computed(Some(value.clone()), fingerprint, Self::once(reads), Verified::at(revision));
+        let memo = if Q::INPUT {
+            // An input not set holds what it computes until it is.
+            Memo::input(value.clone(), fingerprint, revision)
+        } else {
+            // What was loaded already, computed again for its value, changes nothing saved.
+            let loaded = matches!(why, Why::Unloaded)
+                && entry.memo.load().as_ref().is_some_and(|m| m.fingerprint == fingerprint);
+            if !loaded {
+                self.db.changed.store(true, Ordering::Relaxed);
+            }
+            Memo::computed(value.clone(), fingerprint, Self::once(reads), revision)
+        };
         entry.memo.store(Some(Arc::new(memo)));
         drop(owned);
         Some((value, fingerprint))

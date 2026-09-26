@@ -16,7 +16,7 @@ fn library_sources_check_cleanly() {
             let mut session = shared.session(path);
             let Some(file) = session.load(path) else { return Vec::new() };
             session.check(file);
-            let sorted = session.diag.sorted();
+            let sorted = session.diag.sorted(session.origins);
             sorted.into_iter().map(|d| format!("{}: {} {}", path.display(), d.id, d.message)).collect()
         })
         .concat();

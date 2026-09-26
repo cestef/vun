@@ -43,6 +43,14 @@ fn file_ids_hash_by_key_not_by_order() {
 fn a_file_added_again_is_the_same_file() {
     let files = SourceFiles::new();
     let a = files.add_as("p@1.0.0/a.vun", "/x/a.vun", "x := 1;");
-    assert_eq!(a, files.add_as("p@1.0.0/a.vun", "/y/a.vun", "x := 1;"));
+    assert_eq!(a, files.add_as("p@1.0.0/a.vun", "/x/a.vun", "x := 1;"));
     assert_ne!(a, files.add_as("p@1.0.0/a.vun", "/x/a.vun", "x := 2;"), "an edited file is another");
+    let elsewhere = files.add_as("p@1.0.0/a.vun", "/y/a.vun", "x := 1;");
+    assert_ne!(a, elsewhere, "each shows the path it was added with");
+    assert_eq!(files.file(elsewhere).path, "/y/a.vun");
+    assert_eq!(
+        vun_hash::Hash::of_value(&a),
+        vun_hash::Hash::of_value(&elsewhere),
+        "named alike in every process"
+    );
 }

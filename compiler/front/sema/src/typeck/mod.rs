@@ -39,6 +39,7 @@ mod typed;
 use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
 
+use vun_codec::{Decode, Encode};
 use vun_diag::DiagCtxt;
 use vun_hir::tree::{BinderId, BlockId, DeclId, ExprId, Hir, NsId, Staged};
 use vun_hir::visit::Visitor;
@@ -49,14 +50,14 @@ use crate::ty::{Ty, Value};
 
 /// When a value is known: at compile time, or only at run time. Only run-time integers are
 /// capped at 128 bits (spec 04, rule 5).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Encode, Decode)]
 pub enum Stage {
     Compile,
     Run,
 }
 
 /// A typed expression.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct Known {
     pub ty: Ty,
     pub stage: Stage,

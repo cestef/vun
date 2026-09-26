@@ -31,7 +31,7 @@ fn repository_sources_lower_and_verify() {
                 failures.push(format!(
                     "{}: {:?}",
                     path.display(),
-                    diag.sorted().iter().map(|d| &d.id).collect::<Vec<_>>()
+                    diag.sorted(&origins).iter().map(|d| &d.id).collect::<Vec<_>>()
                 ));
             }
         }

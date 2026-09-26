@@ -5,7 +5,11 @@ use crate::tests::packages;
 fn reported(app: &str) -> Vec<String> {
     let (db, file) = packages(app);
     let reports = db.get::<Checked>(&file).unwrap();
-    reports.sorted().iter().map(|d| format!("{}: {}", d.id, d.message)).collect()
+    reports
+        .sorted(vun_origin::OriginTable::global())
+        .iter()
+        .map(|d| format!("{}: {}", d.id, d.message))
+        .collect()
 }
 
 #[test]

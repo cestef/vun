@@ -12,7 +12,7 @@ use super::*;
 )]
 use vun_grammar::*;
 /// How a compound assignment brings its result back to the place's type (spec 04, rule 9).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, vun_codec::Encode, vun_codec::Decode)]
 pub enum Narrowing {
     /// Traps outside the type: `x = (x op y).to(TypeOf(x))`.
     To,

@@ -12,7 +12,7 @@ use super::*;
 )]
 use vun_grammar::*;
 /// The states of a place (spec 05, section 2).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, vun_codec::Encode, vun_codec::Decode)]
 pub enum PlaceState {
     Uninit,
     Init,

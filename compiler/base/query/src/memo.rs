@@ -1,24 +1,39 @@
 //! A memoized result: the value, its fingerprint, what computing it read, and the revision it was
 //! last known current in, which any thread verifying it records.
 
+use std::sync::OnceLock;
 use std::sync::atomic::{AtomicU64, Ordering};
 
+use vun_codec::{Blob, Context, Malformed};
+use vun_trace::tracing;
+
+use super::db::Db;
 use super::fingerprint::Fingerprint;
 use super::table::{Slot, TableId};
 use super::{Query, Revision};
 
 pub(crate) struct Memo<Q: Query> {
-    /// `None` for a memo loaded without its value: it stands for its fingerprint, and the value
-    /// is computed again when read.
-    pub(crate) value: Option<Q::Value>,
+    /// Unset for a memo loaded without its value, or whose saved value is not read yet.
+    value: OnceLock<Q::Value>,
+    /// The saved value of a loaded memo, read when first needed.
+    pub(crate) saved: Option<Saved<Q>>,
     pub(crate) fingerprint: Fingerprint,
     /// Each memo read, once, in the order of the first reads.
     pub(crate) deps: Box<[Dep]>,
     /// None for a loaded memo until it is verified.
     pub(crate) verified: Verified,
-    /// Set with [`Db::set`](super::Db::set) rather than computed.
+    /// Set with [`Db::set`], or an input's value while unset, rather than computed.
     pub(crate) input: bool,
 }
+
+/// A value as saved, a place in the stream the database loaded, and how to read it.
+pub(crate) struct Saved<Q: Query> {
+    pub(crate) at: Blob,
+    pub(crate) read: ReadValue<Q::Value>,
+}
+
+/// Reads a value from its place in a stream.
+pub(crate) type ReadValue<V> = fn(&Context, Blob) -> Result<V, Malformed>;
 
 /// A memo read while another was computed, with the fingerprint it had then.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -30,27 +45,57 @@ pub(crate) struct Dep {
 
 impl<Q: Query> Memo<Q> {
     pub(crate) fn input(value: Q::Value, fingerprint: Fingerprint, revision: Revision) -> Self {
+        let verified = Verified::at(revision);
         Self {
-            value: Some(value),
+            value: OnceLock::from(value),
+            saved: None,
             fingerprint,
             deps: Box::new([]),
-            verified: Verified::at(revision),
+            verified,
             input: true,
         }
     }
 
     pub(crate) fn computed(
-        value: Option<Q::Value>,
+        value: Q::Value,
         fingerprint: Fingerprint,
         deps: Box<[Dep]>,
-        verified: Verified,
+        revision: Revision,
     ) -> Self {
-        Self { value, fingerprint, deps, verified, input: false }
+        let verified = Verified::at(revision);
+        Self { value: OnceLock::from(value), saved: None, fingerprint, deps, verified, input: false }
+    }
+
+    /// A memo of another process, never verified in this one.
+    pub(crate) fn loaded(saved: Option<Saved<Q>>, fingerprint: Fingerprint, deps: Box<[Dep]>) -> Self {
+        let verified = Verified::default();
+        Self { value: OnceLock::new(), saved, fingerprint, deps, verified, input: false }
     }
 
     /// Whether it holds in `revision` without looking at what it read.
     pub(crate) fn current(&self, revision: Revision) -> bool {
         self.input || self.verified.get() == Some(revision)
+    }
+
+    /// Its value if it has one: computed, or saved and read now the first time. `None` when it
+    /// was loaded without it, or its saved form does not read.
+    pub(crate) fn value(&self, db: &Db) -> Option<&Q::Value> {
+        if let Some(value) = self.value.get() {
+            return Some(value);
+        }
+        let saved = self.saved.as_ref()?;
+        match (saved.read)(db.stream.get()?, saved.at) {
+            Ok(value) => Some(self.value.get_or_init(|| value)),
+            Err(malformed) => {
+                tracing::debug!(query = Q::NAME, %malformed, "saved value not read");
+                None
+            }
+        }
+    }
+
+    /// Its value if computed or read already, without reading it.
+    pub(crate) fn known(&self) -> Option<&Q::Value> {
+        self.value.get()
     }
 }
 

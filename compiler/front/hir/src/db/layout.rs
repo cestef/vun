@@ -1,6 +1,7 @@
 //! Where namespaces are in a package (spec 01, section 8), read from the list of its files: the
 //! namespace `a.b` of the package `p` is the file `p/a/b.vun` merged with the directory `p/a/b/`.
 
+use vun_codec::{Decode, Encode};
 use vun_hash::Snapshot;
 use vun_intern::Symbol;
 use vun_span::EXTENSION;
@@ -8,7 +9,7 @@ use vun_span::EXTENSION;
 use super::input::{PackageData, PackageId};
 
 /// A package's root namespace, or one below it by member names.
-#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Encode, Decode)]
 pub struct Namespace {
     pub package: PackageId,
     pub path: Vec<Symbol>,

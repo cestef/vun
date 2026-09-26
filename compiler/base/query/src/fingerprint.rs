@@ -5,10 +5,23 @@
 use std::hash::{BuildHasher, Hash, Hasher};
 
 use foldhash::quality::{FixedState, FoldHasher};
-use vun_codec::{Decode, Encode};
+use vun_codec::{Decode, Encode, Malformed, Reader, Writer};
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Encode, Decode)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct Fingerprint(u128);
+
+/// Its sixteen bytes, as a hash has no short form.
+impl Encode for Fingerprint {
+    fn encode(&self, w: &mut Writer<'_>) {
+        self.0.to_le_bytes().encode(w);
+    }
+}
+
+impl Decode for Fingerprint {
+    fn decode(r: &mut Reader<'_>) -> Result<Self, Malformed> {
+        <[u8; 16]>::decode(r).map(|bytes| Self(u128::from_le_bytes(bytes)))
+    }
+}
 
 /// The seeds of the two halves.
 const SEEDS: [u64; 2] = [0x243f_6a88_85a3_08d3, 0x1319_8a2e_0370_7344];

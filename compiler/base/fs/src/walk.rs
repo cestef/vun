@@ -3,6 +3,10 @@
 use std::io;
 use std::path::{Path, PathBuf};
 
+/// The directory the toolchain keeps its own files in, beside sources: builds, saved queries.
+/// Never source, so walks leave it out, and nothing it holds changes what a package is.
+pub const WORK: &str = ".vun";
+
 /// Directory walks on paths.
 pub trait Tree {
     /// The files at or below this path, recursively, sorted; a file is its own only entry.
@@ -21,7 +25,8 @@ pub trait Tree {
         Ok(files)
     }
 
-    /// The files and directories directly in this directory, sorted.
+    /// The files and directories directly in this directory, sorted, the toolchain's [`WORK`]
+    /// directory aside.
     ///
     /// # Errors
     /// Returns an error if the directory cannot be read.
@@ -47,8 +52,10 @@ impl Tree for Path {
     }
 
     fn entries(&self) -> io::Result<Vec<PathBuf>> {
-        let mut entries =
-            std::fs::read_dir(self)?.map(|e| e.map(|e| e.path())).collect::<io::Result<Vec<_>>>()?;
+        let mut entries = std::fs::read_dir(self)?
+            .filter(|e| !matches!(e, Ok(e) if e.file_name() == WORK))
+            .map(|e| e.map(|e| e.path()))
+            .collect::<io::Result<Vec<_>>>()?;
         entries.sort();
         Ok(entries)
     }

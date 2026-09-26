@@ -75,7 +75,7 @@ impl Stage {
             Self::Hir => {
                 let parsed = session.parsed(file);
                 session.check_names(file);
-                let text = parsed.hir.dump(&parsed.resolution, &session.origins, &*session.sources);
+                let text = parsed.hir.dump(&parsed.resolution, session.origins, session.sources);
                 write!(out, "{text}")?;
             }
             Self::Mir => {
@@ -90,7 +90,7 @@ impl Stage {
                 match &*lowered {
                     Ok(unit) => {
                         write!(out, "{}", unit.dump(&locate))?;
-                        if let Err(malformed) = unit.verify(&session.origins) {
+                        if let Err(malformed) = unit.verify(session.origins) {
                             writeln!(out, "malformed: {malformed}")?;
                         }
                     }

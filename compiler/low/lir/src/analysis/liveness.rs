@@ -4,6 +4,7 @@
 //! does not hold the definition keeps the value live to the end of the outermost such loop, since
 //! the loop's back edge reaches the use again.
 
+use vun_codec::{Decode, Encode};
 use vun_index::IndexVec;
 
 use crate::entity::{Block, Value};
@@ -11,7 +12,7 @@ use crate::func::{Def, Function};
 
 use super::{Loops, Order};
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Encode, Decode)]
 pub struct Range {
     /// The position of the block defining the value.
     pub first: u32,
