@@ -149,6 +149,27 @@ impl<I: Isa, S: Copy> Buffer<I, S> {
         self.code[at..at + bytes.len()].copy_from_slice(bytes);
     }
 
+    /// Replaces the instructions at `at`, emitted earlier, by `code`, as long as them and linking
+    /// nothing: their bytes, and their lines where the code is listed.
+    ///
+    /// # Panics
+    /// Panics if `code` has relocations, or its bytes are not all in the code.
+    pub fn replace(&mut self, at: u64, code: Code<I::Inst<S>, S>) {
+        assert!(code.relocs.is_empty(), "a replacement links nothing");
+        self.overwrite(at, &code.bytes);
+        let Some(listing) = &mut self.listing else { return };
+        for line in code.listing {
+            let Line::Inst { at: offset, inst, .. } = line else { continue };
+            let listed = listing.iter_mut().find_map(|l| match l {
+                Line::Inst { at: here, inst, .. } if *here == at + offset => Some(inst),
+                _ => None,
+            });
+            if let Some(listed) = listed {
+                *listed = inst;
+            }
+        }
+    }
+
     /// The finished code, each reference to a label written.
     ///
     /// # Errors

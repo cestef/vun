@@ -17,9 +17,10 @@ Built: lexer, postorder CST, error-recovering parser, HIR, packages (manifests, 
 hashes, `.tar.zst`, store, MVS, `lock.vun`), a persisted parallel query engine, sema (types as
 values, compile-time evaluation through MIR and an interpreter, impls, reflection, code values,
 coroutines, closures, layout, kinds, narrowing), MIR with place, borrow and panic checks, LIR with
-its analyses and legalization, a C99 backend and a native x86-64 backend after TPDE, an arm64
-assembler, ELF objects, the `gnu` linker adapter, styled and JSON output, explanation pages for
-every diagnostic. `vun run` builds and runs programs through either backend.
+its analyses and legalization, a C99 backend and a native backend after TPDE for x86-64 and
+arm64, ELF objects, the `gnu` linker adapter, the machine's toolchain file (cross compilers and
+runners), styled and JSON output, explanation pages for every diagnostic. `vun run` builds and
+runs programs through either backend, for the host or (through an emulator) for linux.arm64.
 
 ## 2. How the user works (non-negotiable)
 
@@ -65,9 +66,15 @@ cargo run -q -p vun-cli -- run|build [--release] [--backend b] [--target t] <fil
 cargo run -q -p vun-cli -- debug tokens|cst|hir|mir|layout|program|lir|code|frames|compare <file>
 cargo run -q -p vun-cli -- debug queries <file>   # what the saved queries hold, per query and pool
 cargo run -q -p vun-cli -- toolchain components
+cargo run -q -p vun-cli -- debug compare --target linux.arm64 <file>   # through qemu, see below
 VUN_BLESS=1 cargo nextest run -p vun-syntax    # snapshots, only after reading the diff
 cd fuzz && cargo +nightly fuzz run parse -- -max_total_time=120
 ```
+
+Cross builds read the machine's toolchain file (spec 12 section 6, decision 192):
+`~/.config/vun/toolchain.vun` on this machine names `aarch64-linux-gnu-gcc` with Fedora's
+sysroot (`/usr/aarch64-redhat-linux/sys-root/fc43`) and `qemu-aarch64 -L <sysroot>/usr` for
+`linux.arm64`; without it, the backend tests skip arm64.
 
 Logging: `VUN_LOG=<filter>` (`info` steps, `debug` units of work, `trace` elements), timings
 `--timings`. Saved queries live in `.vun/queries/` beside the root file; builds in `.vun/build/`.
@@ -96,11 +103,13 @@ Logging: `VUN_LOG=<filter>` (`info` steps, `debug` units of work, `trace` elemen
   as TPDE's layers: `vun-asm` (code buffers, labels, fixups, relocations, listings),
   `vun-asm-x86_64` (every instruction once as a table of forms read by the encoder, the printer
   and form selection, each form checked against yaxpeax-x86 in tests), `vun-asm-arm64` (same
-  idiom, yaxpeax-arm checks, not driven yet), `vun-object` (ELF objects as data), `vun-codegen`
-  (the framework over `Arch` and `Isel`: assignments, registers, frames, jumps, fusion,
-  callee-saved registers for loops, snippets and their encoder), `vun-backend-native` (x86-64
-  conventions, `snippets.rs` with every operation as data, `isel/` for calls, copies, atomic
-  loops, unsigned float conversions, frames and terminators, listings). Stubs: cranelift, qbe,
+  idiom, yaxpeax-arm checks), `vun-object` (ELF objects as data), `vun-codegen` (the framework
+  over `Arch` and `Isel`: assignments, registers, frames, jumps, fusion, callee-saved registers
+  for loops, snippets and their encoder, `pieces`), `vun-backend-native` (a table of
+  architectures, `ARCHES`, from which `INFO.arches` derives; per architecture `abi.rs`
+  (System V, AAPCS64), `snippets.rs` with every operation as data, `isel/` for calls, copies,
+  atomics, frames and terminators; one object writer and listing for both; tests per
+  architecture, the arm64 ones decoding every word with yaxpeax-arm). Stubs: cranelift, qbe,
   llvm, external.
 - **Choosing a backend** (decision 182): targets list backends per profile
   (`lang.target.Backends`); `Registry::choose` takes the first the toolchain has that is
@@ -111,27 +120,29 @@ Logging: `VUN_LOG=<filter>` (`info` steps, `debug` units of work, `trace` elemen
 - **Linkers** (`compiler/link`): `LinkPlan`, `LinkerInfo` with readiness; only `gnu` links
   (through the target's C compiler).
 - **Tools** (`compiler/tools`): `vun-driver` (`Session`, stages, codegen, builds, stacks,
-  compare, the command tree), `vun-command` (declarative CLI, completions, JSON output), `vun-pkg`,
-  `vun-build`, `vun-harness`, `vun-generate` (`cargo gen`), `xtask`, `vun-cli`.
+  compare, the command tree, `toolchain.rs`: the chosen target equipped with the machine's tools,
+  `Session::command` running through the runner), `vun-command` (declarative CLI, completions, JSON output), `vun-pkg`,
+  `vun-build` (manifests, locks, the store, `toolchain`: the machine's file), `vun-harness`, `vun-generate` (`cargo gen`), `xtask`, `vun-cli`.
 - **Libraries**: `lang` (primitives, operator impls over primitives, float soft routines) and
   `std` (`option`, `result`, `cmp`, `mem`, `seq`, `iter`, `sync`, `os`, `fmt`, `diag`, `task`,
   `build`, `lints`, `panic`, `testing`).
 
 Progress: corpus 213 passed, 10 planned, 31 shown, 0 failed; 326 tests; the backend tests build
-every program in `compiler/tools/driver/tests/driver/programs/` through C and native and require
-equal results.
+every program in `compiler/tools/driver/tests/driver/programs/` through C and native, for
+x86-64 and (when the machine runs it) linux.arm64, and require equal results on all four.
 
 ## 6. Decisions
 
-Every decision in `decisions.md` is accepted, 1 to 190 (the user asked this session that all that
+Every decision in `decisions.md` is accepted, 1 to 193 (the user asked this session that all that
 make sense be accepted; 138, 157, 161 and 166 are amended by 182 and 183). New language rules go
 in as proposed unless the user approves them.
 
 ## 7. Next steps, in order
 
-1. Backends (the user's focus): (a) arm64 through the native backend: `Arch`, `Emits` and `Isel`
-   over `vun-asm-arm64` (constants by `movz`/`movk` around `Op::Mov.form`, AAPCS64, snippets over
-   its table), then `linux.arm64` and `macos.arm64` natively (Mach-O in `vun-object`); (b) native
+1. Backends (the user's focus): (a) arm64: done for linux.arm64 in the sixteenth session
+   (decision 192); next `macos.arm64` (Mach-O in `vun-object`, Apple's AAPCS64 variant: narrow
+   arguments extended by the caller, stack arguments packed, `x18` reserved), then riscv64 the
+   same way (an assembler after `vun-asm-arm64`, `Arch`, `Isel`); (b) native
    code quality: a value in a register a snippet takes is stored and reloaded (TPDE moves it),
    narrow constants are materialized before an extension, and MIR locals in slots give store and
    reload pairs a slot promotion in lowering would remove; (c) DWARF lines from `Compiled.marks`,
@@ -192,6 +203,16 @@ in as proposed unless the user approves them.
   namespaces.
 - Native backend: an instruction's implicit registers belong in its form (`.implicit`), or a
   snippet's scratch may land in them; a terminator's operands are read after `Cx::leave`, which
-  counts their uses but frees registers only in `Cx::left`.
+  counts their uses but frees registers only in `Cx::left`. A snippet step has at most 4
+  operands (`OPERANDS` in the encoder). A result is placed after its step's other operands, so
+  taking a dying operand's register never unbinds one the step still reads. An instruction
+  patched when the function ends is re-emitted into a listed buffer and swapped in with
+  `Buffer::replace`, so the listing shows the final value (arm64's frame size; x86-64 still
+  overwrites its immediate and lists the placeholder).
+- arm64: homes past 256 bytes below `x29` take an index built in `x15` (`FAR`); `x16`/`x17` are
+  the framework's carrier and temp, so nothing else may use them across a jump's moves.
+- The toolchain file is read by every session that chooses a target, tests included; a broken
+  `~/.config/vun/toolchain.vun` breaks them all. Its field errors reuse the `manifest.*` ids, as
+  the lock file's do: a generic id set for literal files is a small follow-up.
 - Driver integration tests are one binary (`tests/driver/main.rs`); sema unit tests run on a
   stand-in `lang` without operator impls. `VUN_BLESS` blesses whenever set.

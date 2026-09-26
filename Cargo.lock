@@ -697,6 +697,7 @@ dependencies = [
  "vun-grammar",
  "vun-harness",
  "vun-hash",
+ "vun-intern",
  "vun-origin",
  "vun-pkg",
  "vun-query",

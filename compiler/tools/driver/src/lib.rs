@@ -19,6 +19,7 @@ mod shared;
 mod stack;
 pub mod stages;
 pub mod target;
+mod toolchain;
 
 pub use coverage::Coverage;
 pub use queries::Persistence;

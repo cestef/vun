@@ -2,9 +2,10 @@
 //! (Arm A64 ISA, data processing). An alias is its own instruction, its fixed fields in the base
 //! word: `mov` is `orr` from the zero register, `cmp` is `subs` into it.
 
-use super::form::{A, Arg, D, Form, M, N};
+use super::form::{A, Arg, D, Form, M, N, Sized};
 use super::kind::{Imm, Kind};
-use super::shared::{ARITH, BITMASK, CC, COND, INVERTED, LOGIC, R, RSP, SF, SF_N, SHIFTED, W, WORDS, X64};
+use super::shared::{ARITH, BITMASK, CC, COND, INVERTED, LOGIC, R, RSP, SF, SF_N, SHIFTED, W, WORDS, X, X64};
+use crate::reg::Size::{B8, B16, B32, B64};
 
 /// Register 31 in a fixed field: the zero register, or the stack pointer.
 const ZR_D: u32 = 31;
@@ -135,6 +136,29 @@ pub(super) const SXTW: [Form; 1] = [Form::new(SBFM | 1 << 31 | 1 << 22 | 31 << I
 pub(super) const fn zero(top: u32) -> [Form; 1] {
     [Form::new(UBFM | top << IMMS, WORDS, EXTEND_W)]
 }
+
+/// The move of a register, which a 64-bit extension from 64 bits and a zero extension from 32
+/// bits are: writing a 32-bit register clears the upper half.
+const MOV_REG: u32 = 0x0a00_0000 | ORR | ZR_N;
+const SXT_SIZES: &[Sized] = &[
+    Sized::new(B8, 1 << 31 | 1 << 22 | 7 << IMMS).suffix("b"),
+    Sized::new(B16, 1 << 31 | 1 << 22 | 15 << IMMS).suffix("h"),
+    Sized::new(B32, 1 << 31 | 1 << 22 | 31 << IMMS).suffix("w"),
+];
+const UXT_SIZES: &[Sized] = &[Sized::new(B8, 7 << IMMS).suffix("b"), Sized::new(B16, 15 << IMMS).suffix("h")];
+const MOV_X: &[Sized] = &[Sized::new(B64, 1 << 31)];
+
+/// A sign extension to 64 bits from the instruction's width.
+pub(super) const SXT: [Form; 2] = [
+    Form::new(SBFM, SXT_SIZES, &[X.at(D), W.at(N)]).named("sxt"),
+    Form::new(MOV_REG, MOV_X, &[R.at(D), R.at(M)]).named("mov"),
+];
+
+/// A zero extension to 64 bits from the instruction's width.
+pub(super) const UXT: [Form; 2] = [
+    Form::new(UBFM, UXT_SIZES, EXTEND_W).named("uxt"),
+    Form::new(MOV_REG, SF, &[R.at(D), R.at(M)]).named("mov"),
+];
 
 /// A conditional select by `op`.
 pub(super) const fn select(op: u32) -> [Form; 1] {

@@ -144,6 +144,8 @@ fn decode(word: u32) -> Option<Instruction> {
 const ALIASES: &[&[Op]] = &[
     &[Op::Add, Op::Mov],
     &[Op::Orr, Op::Mov],
+    &[Op::Sxt, Op::Sxtb, Op::Sxth, Op::Sxtw, Op::Mov, Op::Orr],
+    &[Op::Uxt, Op::Uxtb, Op::Uxth, Op::Mov, Op::Orr],
     &[Op::Orn, Op::Mvn],
     &[Op::Sub, Op::Neg],
     &[Op::Subs, Op::Negs, Op::Cmp],

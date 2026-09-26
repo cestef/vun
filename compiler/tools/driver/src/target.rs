@@ -42,6 +42,7 @@ impl Session {
         let target = match chosen {
             Ok(spec) => {
                 tracing::info!(arch = %spec.arch, cpu = %spec.cpu, os = %spec.os, "target chosen");
+                let spec = self.equip(key, spec);
                 let target = Target::of(&spec);
                 let current = self.db.get::<TargetOf>(&());
                 assert!(

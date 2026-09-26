@@ -26,9 +26,8 @@ impl Lock {
                 d.invalid(Msg::new().text("the layout this toolchain writes, ").code(LAYOUT.to_string()), cx)
             })
         });
-        let entries = fields.require(field::DEPS).and_then(|d| Self::items(d, Locked::read, cx));
-        let replaced =
-            fields.get(field::REPLACE).map_or(Some(Vec::new()), |d| Self::items(d, Replaced::read, cx));
+        let entries = fields.require(field::DEPS).and_then(|d| d.items(Locked::read, cx));
+        let replaced = fields.get(field::REPLACE).map_or(Some(Vec::new()), |d| d.items(Replaced::read, cx));
         fields.finish(cx);
         layout?;
         Some(Self::new(entries?).replacing(replaced?))
@@ -44,26 +43,6 @@ impl Lock {
         let cst = Cst::parse(&tokens, text, &mut cx);
         let lock = Self::read(&cst.declarations(&tokens, text), file, &mut cx);
         lock.filter(|_| diag.error_count() == 0)
-    }
-
-    /// The items of the list `decl`, each read by `read` as a record at the list's source.
-    fn items<T>(
-        decl: &Decl<'_>,
-        read: impl Fn(&Decl<'_>, &mut DiagCx<'_>) -> Option<T>,
-        cx: &mut DiagCx<'_>,
-    ) -> Option<Vec<T>> {
-        let items: &[Literal<'_>] = match &decl.value {
-            Literal::List(items) => items,
-            Literal::Record(fields) if fields.is_empty() => &[],
-            _ => return decl.invalid(Msg::new().text("a list of records"), cx),
-        };
-        let read: Vec<Option<T>> = items
-            .iter()
-            .map(|item| {
-                read(&Decl { name: decl.name, doc: Vec::new(), value: item.clone(), span: decl.span }, cx)
-            })
-            .collect();
-        read.into_iter().collect()
     }
 }
 

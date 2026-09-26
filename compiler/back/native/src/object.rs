@@ -4,7 +4,7 @@
 use vun_index::IndexVec;
 use vun_lir::{Address, DataId, FuncId, ImportKind, Linkage, Unit};
 
-use crate::Code;
+use vun_codegen::Compiled;
 use vun_object::{
     Binding, Contents, Machine, Object, Reloc, RelocKind, Section, SectionId, Symbol, SymbolId, SymbolKind,
 };
@@ -45,10 +45,10 @@ impl Builder {
     }
 }
 
-/// The object holding `unit`, its functions compiled as `code`.
+/// The object for `machine` holding `unit`, its functions compiled as `code`.
 #[must_use]
-pub(crate) fn assemble(unit: &Unit, code: &IndexVec<FuncId, Code>) -> Object {
-    let mut b = Builder { object: Object::new(Machine::X86_64), sections: Vec::new() };
+pub(crate) fn assemble<T>(unit: &Unit, code: &IndexVec<FuncId, Compiled<T>>, machine: Machine) -> Object {
+    let mut b = Builder { object: Object::new(machine), sections: Vec::new() };
     for (contents, name) in SECTIONS {
         b.section(contents, name);
     }

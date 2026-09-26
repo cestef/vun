@@ -88,7 +88,7 @@ including the compiler's tables.
     [interpreter], [runs compile-time code on MIR, including coroutine frames; no memory model for `&mut` yet],
     [packages], [manifests, BLAKE3 tree hashes, store and collection, `.tar.zst` archives, lockfile, minimal version selection, replacement, indexes],
     [diagnostics], [84 identifiers in 23 groups, each with a checked explanation page; renderers in the annotate-snippets, ariadne and one-line styles],
-    [LIR, backends, linkers], [LIR with a verifier and the analyses backends share; lowering from MIR, coroutine frames included; a C backend writing strict C99 and a single-pass x86-64 backend writing ELF objects, which run the backend tests with identical results; linking through GNU ld],
+    [LIR, backends, linkers], [LIR with a verifier and the analyses backends share; lowering from MIR, coroutine frames included; a C backend writing strict C99 and a single-pass native backend writing ELF objects for x86-64 and arm64, which run the backend tests with identical results on both machines (arm64 through an emulator); linking through GNU ld],
     midrule,
     [corpus], [36 source files to accept and 58 to reject; the harness reports 207 passing checks and no failures],
     [test suite], [265 tests, including a check that every `lang` and `std` file is accepted],

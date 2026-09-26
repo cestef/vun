@@ -251,6 +251,31 @@ diff (section 7) first.
 toolchain (hash-checked and recorded in the lock) into `~/.cache/vun/toolchains`, and runs it.
 `vun toolchain list|install|prune` manages the cache.
 
+**The machine's toolchain file.** A target names its own tools (`lang.target.CCompiler`), which
+fit a machine of that target; building for another machine needs other tools, a cross C compiler
+and an emulator to run what it built, and where they are is a fact of the machine, not of the
+target. The file `vun/toolchain.vun` in the user's configuration directory (or the one
+`VUN_TOOLCHAIN` names) says it, read as literal data like a manifest:
+
+```vun
+toolchain := .{
+    .targets = .{
+        .{
+            .target = linux.arm64,
+            .compiler = "aarch64-linux-gnu-gcc",
+            .flags = .{ "--sysroot=/usr/aarch64-linux-gnu" },
+            .runner = .{ "qemu-aarch64", "-L", "/usr/aarch64-linux-gnu" },
+        },
+    },
+};
+```
+
+Each entry names a target by its path in the package `targets`, as `--target` does. When the
+chosen target is the one an entry names, `.compiler` replaces its C compiler, `.flags` are added
+to every run of it (compiling and linking), and `vun run`, `vun debug compare` and the backend
+tests run programs through `.runner`, the program and its arguments after it. An entry naming no
+target is an error (`target.unchosen`); a machine without the file builds with the targets' tools.
+
 ## 7. The command line
 
 One binary, `vun`, a thin shell over `vun-driver` (spec 13). Commands are organized as jj's are:

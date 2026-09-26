@@ -11,6 +11,7 @@ workspace = true
 
 [dependencies]
 vun-asm.workspace = true
+vun-asm-arm64.workspace = true
 vun-asm-x86_64.workspace = true
 vun-backend.workspace = true
 vun-codegen.workspace = true
@@ -24,5 +25,8 @@ vun-target.workspace = true
 vun-trace.workspace = true
 
 [dev-dependencies]
+# An independent decoder checks the arm64 code emitted; never shipped.
+yaxpeax-arm = { workspace = true }
+yaxpeax-arch = { workspace = true }
 vun-intern.workspace = true
 vun-span.workspace = true

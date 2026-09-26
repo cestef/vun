@@ -8,7 +8,7 @@ use crate::cx::Cx;
 use crate::values::Place;
 
 /// The most operands a step has.
-const OPERANDS: usize = 3;
+const OPERANDS: usize = 4;
 /// The most scratch registers a snippet names.
 const TEMPS: usize = 4;
 
@@ -95,12 +95,17 @@ impl<A: Emits> Cx<'_, A> {
                 continue;
             }
             let mut ops = Operands::<A>::new();
+            // The positions of the result, where this step writes it first.
+            let mut first = 0u8;
             for slot in step.slots {
                 match *slot {
+                    // A result first written here is placed once the operands are, so that it
+                    // may take the register of one read for the last time.
                     Slot::Out => {
-                        let v = args.out.expect("a snippet naming its result is given one");
-                        let r = *out.get_or_insert_with(|| self.def(v));
-                        ops.push(A::reg(r), None);
+                        if out.is_none() {
+                            first |= 1 << ops.len;
+                        }
+                        ops.push(out.map_or(A::imm(0), A::reg), None);
                     }
                     Slot::In(k) => {
                         let (operand, folded) = self.input(args.ins[k as usize]);
@@ -141,6 +146,12 @@ impl<A: Emits> Cx<'_, A> {
                     Slot::Is(operand) => ops.push(operand, None),
                 }
             }
+            if first != 0 {
+                let r = *out.insert(self.result(snippet, i, args));
+                for at in (0..ops.len).filter(|at| first & 1 << at != 0) {
+                    ops.chosen[at] = A::reg(r);
+                }
+            }
             // Folded operands go to registers, first to last, until a form takes them.
             while !A::fits(step.op, size, ops.all()) {
                 let Some(at) = ops.folded[..ops.len].iter().position(Option::is_some) else {
@@ -174,6 +185,32 @@ impl<A: Emits> Cx<'_, A> {
         (A::reg(self.reg(v)), None)
     }
 
+    /// The result's register, first written by step `i`: the register of an operand the step
+    /// reads for the last time, since an instruction reads its operands before it writes, else a
+    /// new one.
+    fn result(&mut self, snippet: Snippet<A>, i: usize, args: &Args<'_, A>) -> A::Reg {
+        let out = args.out.expect("a snippet naming its result is given one");
+        let dying = snippet[i].slots.iter().find_map(|slot| match *slot {
+            Slot::In(k) | Slot::At(k) if !Self::read_after(snippet, i, k) => {
+                let v = args.ins[k as usize];
+                (self.held(v).is_some() && self.dies(v)).then_some(v)
+            }
+            _ => None,
+        });
+        match dying.and_then(|v| self.inherit(out, v)) {
+            Some(r) => r,
+            None => self.def(out),
+        }
+    }
+
+    /// Whether a step after step `i` reads operand `k`.
+    fn read_after(snippet: Snippet<A>, i: usize, k: u8) -> bool {
+        snippet[i + 1..]
+            .iter()
+            .flat_map(|s| s.slots)
+            .any(|s| matches!(*s, Slot::In(j) | Slot::At(j) if j == k))
+    }
+
     /// The result's register where the move of step `i` into it needs no instruction: a dying
     /// operand's the snippet reads no more, a fixed register an instruction wrote, a scratch one.
     fn adopt(
@@ -187,11 +224,11 @@ impl<A: Emits> Cx<'_, A> {
         let out = args.out?;
         match from {
             Slot::In(k) => {
-                let read_later = snippet[i + 1..]
-                    .iter()
-                    .flat_map(|s| s.slots)
-                    .any(|s| matches!(*s, Slot::In(j) | Slot::At(j) if j == k));
-                if read_later { None } else { self.inherit(out, args.ins[k as usize]) }
+                if Self::read_after(snippet, i, k) {
+                    None
+                } else {
+                    self.inherit(out, args.ins[k as usize])
+                }
             }
             Slot::Fixed(r) => {
                 self.def_at(out, r);

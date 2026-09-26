@@ -65,6 +65,11 @@ pub struct Session {
     pub codegen: Codegen,
     /// Whether the queries are saved between runs; off unless the program turns it on.
     pub persistence: Persistence,
+    /// The machine's toolchain file, the user's unless set (`Toolchain::path`).
+    pub toolchain: Option<PathBuf>,
+    /// The command programs built for the target run through, from the toolchain file; empty
+    /// where they run as they are.
+    pub runner: Vec<Symbol>,
     /// The errors already shown and taken out of `diag`.
     shown_errors: usize,
 }
@@ -100,6 +105,8 @@ impl Session {
             registry: Registry::with_defaults(),
             codegen: Codegen::default(),
             persistence: Persistence::Off,
+            toolchain: vun_build::toolchain::Toolchain::path(),
+            runner: Vec::new(),
             shown_errors: 0,
         }
     }

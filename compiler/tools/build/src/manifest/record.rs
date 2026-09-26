@@ -80,6 +80,12 @@ pub(crate) trait Record {
     fn strings(&self, cx: &mut DiagCx<'_>) -> Option<Vec<String>>;
     /// One of the names in `table`, written `.name`.
     fn choice<T: Copy>(&self, table: &[(&str, T)], cx: &mut DiagCx<'_>) -> Option<T>;
+    /// The items of a list, each read by `read` as a record at the list's source.
+    fn items<T>(
+        &self,
+        read: impl Fn(&Decl<'_>, &mut DiagCx<'_>) -> Option<T>,
+        cx: &mut DiagCx<'_>,
+    ) -> Option<Vec<T>>;
 }
 
 impl Record for Decl<'_> {
@@ -140,5 +146,24 @@ impl Record for Decl<'_> {
                 self.invalid_with(Msg::new().text("one of ").code_list(names), help, cx)
             }
         }
+    }
+
+    fn items<T>(
+        &self,
+        read: impl Fn(&Decl<'_>, &mut DiagCx<'_>) -> Option<T>,
+        cx: &mut DiagCx<'_>,
+    ) -> Option<Vec<T>> {
+        let items: &[Literal<'_>] = match &self.value {
+            Literal::List(items) => items,
+            Literal::Record(fields) if fields.is_empty() => &[],
+            _ => return self.invalid(Msg::new().text("a list of records"), cx),
+        };
+        let read: Vec<Option<T>> = items
+            .iter()
+            .map(|item| {
+                read(&Decl { name: self.name, doc: Vec::new(), value: item.clone(), span: self.span }, cx)
+            })
+            .collect();
+        read.into_iter().collect()
     }
 }

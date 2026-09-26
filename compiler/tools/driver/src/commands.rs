@@ -125,7 +125,7 @@ fn build(session: &mut Session, args: &Args, shell: &mut Shell<'_>) -> io::Resul
 fn run(session: &mut Session, args: &Args, shell: &mut Shell<'_>) -> io::Result<Outcome> {
     let Some(program) = session.built(args, shell) else { return Ok(session.outcome()) };
     shell.status(&Started { step: Step::Run, subject: program.display().to_string() });
-    let status = std::process::Command::new(&program).args(args.values(&ARGS)).status()?;
+    let status = session.command(&program).args(args.values(&ARGS)).status()?;
     // A program ended by a signal has no status to pass on.
     Ok(status.code().and_then(|c| u8::try_from(c).ok()).map_or(Outcome::Failure, Outcome::Exited))
 }

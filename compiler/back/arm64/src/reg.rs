@@ -152,6 +152,8 @@ pub enum Size {
 
 impl Size {
     pub const ALL: [Self; 4] = [Self::B8, Self::B16, Self::B32, Self::B64];
+    /// Every size, widest first.
+    pub const WIDEST: [Self; 4] = [Self::B64, Self::B32, Self::B16, Self::B8];
 
     /// The log2 of its bytes, which scaled offsets shift by.
     #[must_use]

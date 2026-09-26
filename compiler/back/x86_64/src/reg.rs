@@ -144,6 +144,8 @@ pub enum Size {
 
 impl Size {
     pub const ALL: [Self; 4] = [Self::B8, Self::B16, Self::B32, Self::B64];
+    /// Every size, widest first.
+    pub const WIDEST: [Self; 4] = [Self::B64, Self::B32, Self::B16, Self::B8];
 
     #[must_use]
     pub const fn bytes(self) -> u32 {

@@ -13,6 +13,7 @@ workspace = true
 vun-pkg.workspace = true
 etcetera.workspace = true
 vun-hash.workspace = true
+vun-intern.workspace = true
 vun-fs.workspace = true
 vun-suggest.workspace = true
 vun-diag.workspace = true

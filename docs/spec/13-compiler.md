@@ -320,7 +320,7 @@ pub trait DiagSink {
 | Cranelift | default debug backend | x86_64, arm64, riscv64, s390x | in process; roughly 20% less codegen time than LLVM for rustc, code about 14% slower |
 | QBE | small and simple | amd64, arm64, rv64 | subprocess on IL text; no vectors (lowered), no tail calls, no 32-bit targets |
 | LLVM | optimized builds, widest native reach | ARM32/Thumb, RV32, AVR, wasm, ... | optional; `noalias`, `musttail`, stack-size sections |
-| native | fastest debug builds | x86_64, then arm64 | the toolchain's own: a single-pass LIR backend in the style of TPDE (8x to 24x faster than LLVM -O0), section 8.3 |
+| native | fastest debug builds | x86_64, arm64 | the toolchain's own: a single-pass LIR backend in the style of TPDE (8x to 24x faster than LLVM -O0), section 8.3 |
 | external | anything | any | a process reading LIR text |
 
 **Choosing a backend.** A target lists the backends it builds with under each profile, most
@@ -520,6 +520,28 @@ to the SSE registers used. LIR's float comparisons are ordered (false where eith
 NaN); lowering gives IEEE `!=` as `==` negated, and follows each float operation with a select of
 the canonical NaN where its result is unequal to itself. `rem` and `mul_add` run as
 `lang.float.soft`'s functions (`#[lower.by]`).
+
+As built (arm64, AAPCS64, ELF): values are held in `x0` to `x14`; `x16` and `x17` are the
+framework's own moves, `x15` builds offsets and addresses too far for one instruction, and values
+of loops take `x19` to `x28`. The prologue saves `x29` and `x30` as a pair, points `x29` at them,
+and builds the frame's size in `x16` by two moves the function's end rewrites (instruction and
+listing alike); homes are reached from `x29` by `ldur` and `stur`, or at an index past 256 bytes.
+Constants take one move where a form holds them (`movz`, `movn`, a bitmask), else a move of the
+first differing 16 bits and a `movk` of each other; a symbol's address is `adrp` and `add` of its
+low 12 bits, an import's is read from the global offset table. Snippets are three-address, so the
+encoder gives a result the register of an operand the step reads for the last time. Narrow
+integers compute at 32 bits with undefined upper bits; division, right shifts, comparisons and
+conversions of 8 and 16 bits extend their operands first (`uxt`, `sxt`, one instruction per
+source width in the table), and have snippets of their own. Floats are held as bits and computed
+in `v0` and `v1`; an ordered comparison is one condition of `fcmp` but for `!=`, which is two, so
+every other float comparison fuses with its branch. Atomic read-modify-write operations and
+compare-and-exchange are loops of `ldaxr` and `stlxr` (Armv8.0, which every arm64 processor
+runs); ordered loads and stores are `ldar` and `stlr`. The C convention passes a record of up to
+four floats of one type a field per floating-point register, another of up to 16 bytes in up to
+two general registers, a larger one as the address of a copy the caller makes, and a result in
+memory through `x8`; narrow integers are extended to 32 bits both ways. The backend tests run
+every program on linux.arm64 too, through the runner of the machine's toolchain file (spec 12,
+section 6), and require the same results as on x86-64.
 
 **Legalization.** Each backend declares the widest integer it computes with
 (`BackendCaps::int_bits`); before it reads a unit, `Unit::legalize` splits every integer twice as

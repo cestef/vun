@@ -13,12 +13,14 @@
 
 mod cx;
 mod frame;
+mod pieces;
 mod regs;
 pub mod snippet;
 mod values;
 
 pub use cx::{Compiled, Cx, Fused, compile};
 pub use frame::Frame;
+pub use pieces::pieces;
 pub use values::{Anchor, Place, Recompute};
 
 use vun_backend::Lack;

@@ -24,8 +24,8 @@ use fp::{
 };
 use int::{
     ADD_FORMS, ADDS, AND, ANDS, CSINC, CSINV, CSNEG, EOR, MADD, MNEG, MOV, MOVK, MSUB, MUL, MVN, ORR, SBFM,
-    SDIV, SHL, SHR, SMULH, SUB, SUBS, SXTW, TST, UBFM, UDIV, UMULH, arith, compare, logic, negate, negated,
-    select, set, shift, sign, unary, zero,
+    SDIV, SHL, SHR, SMULH, SUB, SUBS, SXT, SXTW, TST, UBFM, UDIV, UMULH, UXT, arith, compare, logic, negate,
+    negated, select, set, shift, sign, unary, zero,
 };
 use mem::{
     ACQUIRE, CAS, CAS_ACQUIRE, CAS_RELEASE, FP, LDADD, LDAR, LDAXR, LDXR, LOAD, LOAD_SIGNED, PAIR_LOAD,
@@ -108,6 +108,10 @@ ops! {
     /// Zero-extends the low byte to 32 bits, which clears the upper half too.
     Uxtb "uxtb" = &zero(7);
     Uxth "uxth" = &zero(15);
+    /// Sign-extends to 64 bits from the instruction's width: `sxtb`, `sxth`, `sxtw`, a `mov` from 64.
+    Sxt "sxt" = &SXT;
+    /// Zero-extends to 64 bits from the instruction's width: `uxtb`, `uxth`, a `mov` from 32 or 64.
+    Uxt "uxt" = &UXT;
     Csel "csel" = &select(0);
     Csinc "csinc" = &select(CSINC);
     Csinv "csinv" = &select(CSINV);

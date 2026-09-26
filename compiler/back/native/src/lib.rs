@@ -2,8 +2,9 @@
 //! function over LIR and its shared analyses, in the design of TPDE. The framework is
 //! `vun-codegen`, the assemblers `vun-asm-*`, the object writer `vun-object`; this crate holds
 //! what is particular to each architecture: calling conventions, snippets and instruction
-//! compilers. x86-64 and ELF first.
+//! compilers. x86-64 and arm64, in ELF objects.
 
+pub mod arm64;
 mod listing;
 mod object;
 pub mod x86_64;
@@ -11,25 +12,51 @@ pub mod x86_64;
 #[cfg(test)]
 mod tests;
 
+use std::fmt::Display;
 use std::path::PathBuf;
 
+use vun_asm::Isa;
 use vun_backend::{
     Artifact, ArtifactSink, Backend, BackendCaps, BackendInfo, Emits, Emitted, Lack, Readiness, Request,
 };
-use vun_codegen::Compiled;
+use vun_codegen::{Compiled, Isel};
 use vun_diag::{DiagCtxt, ErrorGuaranteed};
 use vun_index::IndexVec;
 use vun_lir::legalize::Half;
 use vun_lir::unit::Unit;
 use vun_lir::{Address, FuncId, Function};
+use vun_object::Machine;
 use vun_par::Parallel;
 use vun_target::{Arches, Name};
 
 pub use listing::Listing;
 
+/// An architecture the backend generates code for: its name among targets', the machine of its
+/// objects, and the compilation of a unit into one.
+struct Arch {
+    name: Name,
+    machine: Machine,
+    object: fn(&Request<'_>, Machine) -> Result<Emitted, Lack>,
+}
+
+const ARCHES: [Arch; 2] = [
+    Arch { name: Name("x86_64"), machine: Machine::X86_64, object: NativeBackend::object::<x86_64::X86> },
+    Arch { name: Name("arm64"), machine: Machine::Aarch64, object: NativeBackend::object::<arm64::Arm> },
+];
+
+const NAMES: [Name; ARCHES.len()] = {
+    let mut names = [Name(""); ARCHES.len()];
+    let mut i = 0;
+    while i < ARCHES.len() {
+        names[i] = ARCHES[i].name;
+        i += 1;
+    }
+    names
+};
+
 pub const INFO: BackendInfo = BackendInfo {
     id: Name("native"),
-    arches: Arches::Only(&[Name("x86_64")]),
+    arches: Arches::Only(&NAMES),
     caps: BackendCaps {
         emits: Emits::Object,
         c_abi: true,
@@ -48,8 +75,8 @@ pub const INFO: BackendInfo = BackendInfo {
 const OBJECT: &str = "program.o";
 const LISTING: &str = "program.lst";
 
-/// A function compiled for x86-64.
-pub type Code = Compiled<vun_asm_x86_64::Inst<Address>>;
+/// A function compiled for the architecture `A`.
+pub type Code<A> = Compiled<<<A as vun_codegen::Arch>::Isa as Isa>::Inst<Address>>;
 
 /// Bytes a call pushes above a frame: the return address and the saved frame pointer.
 const LINKAGE: u64 = 16;
@@ -58,15 +85,19 @@ const LINKAGE: u64 = 16;
 pub struct NativeBackend;
 
 impl NativeBackend {
-    /// The machine code of every function of `unit`, compiled in parallel, listed when `listed`.
+    /// The machine code of every function of `unit` for `A`, compiled in parallel, listed when
+    /// `listed`.
     ///
     /// # Errors
     /// Returns the first thing a function needs that the backend cannot compile yet.
-    pub fn compile(unit: &Unit, listed: bool) -> Result<IndexVec<FuncId, Code>, Lack> {
+    pub fn compile<A: Isel>(unit: &Unit, listed: bool) -> Result<IndexVec<FuncId, Code<A>>, Lack>
+    where
+        Code<A>: Send,
+    {
         let functions: Vec<&Function> = unit.functions.iter().map(|(_, f)| f).collect();
         let compiled = functions.par_map(|f| {
             let _span = vun_trace::tracing::debug_span!("native", f = %f.linkage).entered();
-            let compiled = vun_codegen::compile::<x86_64::X86>(unit, f, listed);
+            let compiled = vun_codegen::compile::<A>(unit, f, listed);
             if let Ok(c) = &compiled {
                 vun_trace::tracing::debug!(bytes = c.code.bytes.len(), frame = c.frame, "compiled");
             }
@@ -75,14 +106,19 @@ impl NativeBackend {
         Ok(compiled.into_iter().collect::<Result<Vec<_>, _>>()?.into())
     }
 
-    /// The relocatable object of `request`'s unit, each function's frame size (with the return
-    /// address and saved frame pointer, as C compilers count them), and its listing if asked.
+    /// The relocatable object of `request`'s unit for `A`, each function's frame size (with the
+    /// return address and saved frame pointer, as C compilers count them), and its listing if
+    /// asked.
     ///
     /// # Errors
     /// As [`Self::compile`].
-    pub fn object(request: &Request<'_>) -> Result<Emitted, Lack> {
-        let code = Self::compile(request.unit, request.listing)?;
-        let bytes = object::assemble(request.unit, &code).write();
+    pub fn object<A: Isel>(request: &Request<'_>, machine: Machine) -> Result<Emitted, Lack>
+    where
+        Code<A>: Send,
+        <A::Isa as Isa>::Inst<Address>: Display,
+    {
+        let code = Self::compile::<A>(request.unit, request.listing)?;
+        let bytes = object::assemble(request.unit, &code, machine).write();
         let mut artifacts = vec![Artifact { name: PathBuf::from(OBJECT), kind: Emits::Object, bytes }];
         if request.listing {
             let text = Listing { unit: request.unit, code: &code, lines: request.lines }.to_string();
@@ -94,6 +130,21 @@ impl NativeBackend {
         }
         let frames = code.iter().map(|(id, c)| (id, c.frame + LINKAGE)).collect();
         Ok(Emitted { artifacts, frames })
+    }
+
+    /// The object of `request`'s unit for its target's architecture.
+    ///
+    /// # Errors
+    /// As [`Self::compile`].
+    ///
+    /// # Panics
+    /// Panics for an architecture [`INFO`] does not list, which no build chooses the backend for.
+    pub fn emitted(request: &Request<'_>) -> Result<Emitted, Lack> {
+        let arch = ARCHES
+            .iter()
+            .find(|a| a.name.is(request.target.arch))
+            .expect("the backend is chosen only for the architectures it lists");
+        (arch.object)(request, arch.machine)
     }
 }
 
@@ -108,7 +159,7 @@ impl Backend for NativeBackend {
         out: &mut dyn ArtifactSink,
         diag: &mut DiagCtxt,
     ) -> Result<(), ErrorGuaranteed> {
-        let emitted = Self::object(request).map_err(|lack| diag.error(lack.diagnostic(INFO.id.0)))?;
+        let emitted = Self::emitted(request).map_err(|lack| diag.error(lack.diagnostic(INFO.id.0)))?;
         for artifact in emitted.artifacts {
             out.put(artifact);
         }

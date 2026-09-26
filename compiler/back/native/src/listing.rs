@@ -8,15 +8,15 @@ use vun_backend::Lines;
 use vun_index::IndexVec;
 use vun_lir::{FuncId, Unit};
 
-use crate::Code;
+use vun_codegen::Compiled;
 
-pub struct Listing<'a> {
+pub struct Listing<'a, T> {
     pub unit: &'a Unit,
-    pub code: &'a IndexVec<FuncId, Code>,
+    pub code: &'a IndexVec<FuncId, Compiled<T>>,
     pub lines: &'a dyn Lines,
 }
 
-impl fmt::Display for Listing<'_> {
+impl<T: fmt::Display> fmt::Display for Listing<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         for (id, compiled) in self.code.iter() {
             let function = &self.unit.functions[id];

@@ -46,7 +46,7 @@ impl Session {
             let program = self.build(file, None);
             self.codegen = asked;
             let program = program?;
-            let output = std::process::Command::new(&program).output().map_err(|e| {
+            let output = self.command(&program).output().map_err(|e| {
                 let msg = Msg::new().text("cannot run ").code(program.display().to_string());
                 self.diag.error(Diagnostic::error(errors::BACKEND_TOOL, msg).caused_by(&e))
             })?;

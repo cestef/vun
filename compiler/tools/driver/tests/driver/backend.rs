@@ -5,6 +5,8 @@ use vun_harness::{ACCEPT, repo_root};
 
 use vun_driver::Codegen;
 use vun_driver::compare::Ran;
+use vun_intern::Symbol;
+use vun_sema::target::Choice;
 use vun_target::Name;
 
 use crate::common::Fixture;
@@ -31,17 +33,34 @@ fn program(name: &str) -> String {
     std::fs::read_to_string(path).unwrap()
 }
 
-/// Builds `source` through each backend that generates code and runs it: its exit status, the
-/// same through each (what `vun toolchain compare` shows).
+/// The targets every program here runs on besides the machine's own: arm64 Linux, where the
+/// machine runs its programs, through the runner its toolchain file names.
+const CROSS: [&[&str]; 1] = [&["linux", "arm64"]];
+
+/// Builds `source` through each backend that generates code and runs it, for the machine's
+/// target and each of `CROSS` the machine runs programs of: its exit status, the same through
+/// each (what `vun debug compare` shows).
 fn status(name: &str, source: &str) -> Option<i32> {
-    let fixture = Fixture::new(name);
-    let path = fixture.root.write("main.vun", source);
-    let mut session = fixture.session();
-    let file = session.load(&path).unwrap();
-    let runs = session.run_each(file).unwrap_or_else(|_| panic!("{:#?}", session.diag));
-    let statuses: Vec<(&str, Option<i32>)> =
-        runs.iter().map(|r| (r.backend, r.output.status.code())).collect();
-    assert!(Ran::agree(&runs), "the backends disagree: {statuses:?}");
+    let cross = CROSS.iter().map(|path| Choice::Path(path.iter().map(|&n| Symbol::intern(n)).collect()));
+    let mut statuses: Vec<(String, Option<i32>)> = Vec::new();
+    for (i, choice) in std::iter::once(Choice::host()).chain(cross).enumerate() {
+        let fixture = Fixture::new(&format!("{name}-{i}"));
+        let path = fixture.root.write("main.vun", source);
+        let mut session = fixture.session();
+        session.choice = choice.clone();
+        let file = session.load(&path).unwrap();
+        // Choosing the target equips it with the machine's tools.
+        let _ = session.lir(file);
+        if choice != Choice::host() && session.runner.is_empty() {
+            continue;
+        }
+        let runs = session.run_each(file).unwrap_or_else(|_| panic!("{:#?}", session.diag));
+        let target =
+            session.target.clone().and_then(Result::ok).map(|t| t.arch.to_string()).unwrap_or_default();
+        statuses.extend(runs.iter().map(|r| (format!("{target} {}", r.backend), r.output.status.code())));
+        assert!(Ran::agree(&runs), "the backends disagree: {statuses:?}");
+    }
+    assert!(statuses.windows(2).all(|w| w[0].1 == w[1].1), "the targets disagree: {statuses:?}");
     statuses[0].1
 }
 
