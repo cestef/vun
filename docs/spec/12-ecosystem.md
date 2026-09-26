@@ -133,8 +133,9 @@ build := (b: &mut std.build.Build) {
   name as one path component, and the child's hash. Being executable is the one mode a package
   keeps, since vendor trees ship scripts such as `configure`; elsewhere than Unix no file is. Paths are components, never separators, so a tree hashes the
   same on every platform; a mismatch can name the file that differs; and a file's hash is the one
-  the compiler's caches already use, so nothing is hashed twice. BLAKE3 is also the only hash the
-  toolchain uses, for caches as well: measured at 2 to 3 GiB/s on one core and 12 GiB/s on 14,
+  the compiler's caches already use, so nothing is hashed twice. BLAKE3 is also the only content
+  hash the toolchain uses, for caches as well (in-memory identities and query fingerprints use a
+  fixed-seed fast hash, stable within one toolchain build, spec 13): measured at 2 to 3 GiB/s on one core and 12 GiB/s on 14,
   against 1.4 GiB/s for SHA-256 with hardware support.
 - **Store.** Fetched packages are kept in one store per user, shared by every project:
   `vun/store` in the user's cache directory (`~/.cache` on Unix, including macOS, as command-line

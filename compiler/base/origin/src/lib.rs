@@ -156,7 +156,7 @@ impl OriginTable {
     /// The hash identifying `origin` in every process: how it came to exist, and its span relative
     /// to its anchor.
     fn identity(&self, origin: &Origin) -> u64 {
-        let mut hasher = vun_hash::Hasher::default();
+        let mut hasher = vun_hash::Stable::hasher();
         origin.via.hash(&mut hasher);
         origin.parent.hash(&mut hasher);
         origin.anchor.hash(&mut hasher);
@@ -168,7 +168,7 @@ impl OriginTable {
                 (origin.span.range.lo - start, origin.span.range.len()).hash(&mut hasher);
             }
         }
-        hasher.finish_hash().short()
+        hasher.finish()
     }
 
     #[must_use]

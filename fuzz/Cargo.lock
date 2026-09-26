@@ -3,6 +3,12 @@
 version = 4
 
 [[package]]
+name = "anstyle"
+version = "1.0.14"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "940b3a0ca603d1eade50a4846a2afffd5ef57a9feac2c0e2ec2e14f9ead76000"
+
+[[package]]
 name = "arbitrary"
 version = "1.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -67,10 +73,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "equivalent"
+version = "1.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "877a4ace8713b0bcf2a4e7eec82529c029f1d0619886d18145fea96c3ffe5c0f"
+
+[[package]]
 name = "find-msvc-tools"
 version = "0.1.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ef25905e51abafe4dcea6c15fec58c57b601cdbd0ee53d22ea1d3016c587d39b"
+
+[[package]]
+name = "foldhash"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "77ce24cb58228fbb8aa041425bb1050850ac19177686ea6e0f41a70416f56fdb"
 
 [[package]]
 name = "getrandom"
@@ -116,6 +134,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9f7c3e4beb33f85d45ae3e3a1792185706c8e16d043238c593331cc7cd313b50"
 
 [[package]]
+name = "papaya"
+version = "0.2.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "da2442474a9404698c42509b8967f437249dbc7b50493e83020333d3943ec0ae"
+dependencies = [
+ "equivalent",
+ "seize",
+]
+
+[[package]]
 name = "pin-project-lite"
 version = "0.2.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -126,6 +154,16 @@ name = "r-efi"
 version = "6.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f8dcc9c7d52a811697d2151c701e0d08956f92b0e24136cf4cf27b57a6a0d9bf"
+
+[[package]]
+name = "seize"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5b55fb86dfd3a2f5f76ea78310a88f96c4ea21a3031f8d212443d56123fd0521"
+dependencies = [
+ "libc",
+ "windows-sys",
+]
 
 [[package]]
 name = "shlex"
@@ -155,13 +193,23 @@ dependencies = [
 [[package]]
 name = "vun-codec"
 version = "0.0.0"
+dependencies = [
+ "vun-codec-derive",
+ "vun-par",
+]
+
+[[package]]
+name = "vun-codec-derive"
+version = "0.0.0"
 
 [[package]]
 name = "vun-diag"
 version = "0.0.0"
 dependencies = [
+ "vun-codec",
  "vun-origin",
  "vun-span",
+ "vun-term",
 ]
 
 [[package]]
@@ -182,12 +230,16 @@ dependencies = [
 [[package]]
 name = "vun-grammar"
 version = "0.0.0"
+dependencies = [
+ "vun-codec",
+]
 
 [[package]]
 name = "vun-hash"
 version = "0.0.0"
 dependencies = [
  "blake3",
+ "foldhash",
  "vun-codec",
  "vun-fs",
 ]
@@ -195,22 +247,42 @@ dependencies = [
 [[package]]
 name = "vun-index"
 version = "0.0.0"
+dependencies = [
+ "vun-codec",
+]
 
 [[package]]
 name = "vun-intern"
 version = "0.0.0"
 dependencies = [
+ "vun-codec",
  "vun-hash",
+ "vun-par",
 ]
+
+[[package]]
+name = "vun-items"
+version = "0.0.0"
+dependencies = [
+ "vun-codec",
+ "vun-grammar",
+ "vun-intern",
+]
+
+[[package]]
+name = "vun-json"
+version = "0.0.0"
 
 [[package]]
 name = "vun-origin"
 version = "0.0.0"
 dependencies = [
  "boxcar",
+ "vun-codec",
  "vun-hash",
  "vun-intern",
  "vun-span",
+ "vun-trace",
 ]
 
 [[package]]
@@ -218,10 +290,19 @@ name = "vun-outline"
 version = "0.0.0"
 
 [[package]]
+name = "vun-par"
+version = "0.0.0"
+dependencies = [
+ "foldhash",
+ "papaya",
+]
+
+[[package]]
 name = "vun-span"
 version = "0.0.0"
 dependencies = [
  "boxcar",
+ "vun-codec",
  "vun-hash",
 ]
 
@@ -232,6 +313,7 @@ dependencies = [
  "vun-diag",
  "vun-grammar",
  "vun-index",
+ "vun-items",
  "vun-origin",
  "vun-outline",
  "vun-span",
@@ -239,8 +321,34 @@ dependencies = [
 ]
 
 [[package]]
+name = "vun-term"
+version = "0.0.0"
+dependencies = [
+ "anstyle",
+ "vun-json",
+]
+
+[[package]]
 name = "vun-trace"
 version = "0.0.0"
 dependencies = [
  "tracing",
+ "vun-json",
+ "vun-par",
+ "vun-term",
+]
+
+[[package]]
+name = "windows-link"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f0805222e57f7521d6a62e36fa9163bc891acd422f971defe97d64e70d0a4fe5"
+
+[[package]]
+name = "windows-sys"
+version = "0.61.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ae137229bcbd6cdf0f7b80a31df61766145077ddf49416a728b02cb3921ff3fc"
+dependencies = [
+ "windows-link",
 ]

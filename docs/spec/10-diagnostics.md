@@ -34,7 +34,8 @@ pub enum Via {
   exist and its anchor: a declaration by its name inside the declaration around it, anything
   inside a declaration by its span relative to the declaration's start. `FileId` and `OriginId`
   hash by these identities, computed once, so a hash of anything holding them (query interfaces,
-  persisted results) is the same in every process and survives edits elsewhere in the file, as
+  persisted results) is the same in every process of one toolchain build (a fixed-seed hash,
+  as query fingerprints are) and survives edits elsewhere in the file, as
   rustc's `DefPathHash` and item-relative spans do. Origins are equal by identity too: an origin
   recorded again, as when read from a saved query, is the same origin. Each entity has its own:
   a further entity lowered from the same syntax is derived from the first (`Via::Again(n)`), and

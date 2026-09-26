@@ -1,6 +1,6 @@
 //! Interned values of any type, with the properties of [`crate::Symbol`]: stored once per process,
-//! equal by pointer, hashed by the content hash of the value. A value's `Hash` must depend on its
-//! content only (symbols, integers and other interned values qualify), so that the content hash,
+//! equal by pointer, hashed by the stable hash of the value. A value's `Hash` must depend on its
+//! content only (symbols, integers and other interned values qualify), so that the stable hash,
 //! and every hash built from interned values, is the same in every process.
 
 use std::fmt;
@@ -11,7 +11,7 @@ use std::sync::LazyLock;
 use vun_par::Map;
 
 /// The pool of one type's interned values, declared as a `static` by the type that uses it:
-/// looked up without locks, by a fast hash; the content hash is computed once, when a value is
+/// looked up without locks, by a fast hash; the stable hash is computed once, when a value is
 /// first interned.
 pub struct Pool<T: 'static> {
     values: LazyLock<Map<&'static T, Interned<T>>>,
@@ -21,7 +21,7 @@ pub struct Pool<T: 'static> {
 pub struct Interned<T: 'static>(&'static Entry<T>);
 
 struct Entry<T> {
-    /// The first bytes of the BLAKE3 hash of the value.
+    /// The [`vun_hash::Stable`] hash of the value.
     hash: u64,
     value: T,
 }
@@ -38,7 +38,7 @@ impl<T: Hash + Eq + Send + Sync + 'static> Pool<T> {
         if let Some(&interned) = values.get(&value) {
             return interned;
         }
-        let hash = vun_hash::Hash::of_value(&value).short();
+        let hash = vun_hash::Stable::of(&value);
         let entry: &'static Entry<T> = Box::leak(Box::new(Entry { hash, value }));
         // Another thread may intern an equal value meanwhile: the first stored stands for both.
         match values.try_insert(&entry.value, Interned(entry)) {

@@ -892,6 +892,7 @@ name = "vun-hash"
 version = "0.0.0"
 dependencies = [
  "blake3",
+ "foldhash",
  "vun-codec",
  "vun-fs",
 ]

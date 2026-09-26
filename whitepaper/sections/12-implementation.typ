@@ -41,8 +41,8 @@ is therefore designed for speed from the start. Syntax trees are postorder array
 Carbon @carbon-parse, and the other representations are struct-of-arrays arenas addressed by
 32-bit handles, a layout that reduced Zig's front-end time by 20 to 40 percent @zig-devlog. Names,
 types and compile-time values live in one sharded intern pool; a symbol is equal by pointer,
-hashes by the content hash of its text and orders by its text, so results do not depend on the
-process or the schedule.
+hashes by a fixed-seed hash of its text, stable within one toolchain build, and orders by its
+text, so results do not depend on the process or the schedule.
 
 == Incremental queries
 

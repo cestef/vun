@@ -2,9 +2,9 @@
 //!
 //! Names are compared constantly during resolution and checking, so each distinct string is stored
 //! once and handled as a [`Symbol`] afterwards: equality is one pointer comparison. A symbol hashes
-//! by the content hash of its text and orders by its text, so every hash and order built from
-//! symbols is the same in every process and under every schedule, which persisted query traces
-//! and deterministic output need. Interned strings live as long as the process.
+//! by the stable hash of its text and orders by its text, so every hash and order built from
+//! symbols is the same in every process of one toolchain and under every schedule, which persisted
+//! query traces and deterministic output need. Interned strings live as long as the process.
 
 use std::fmt;
 use std::hash::{Hash, Hasher};
@@ -17,7 +17,7 @@ use vun_par::Map;
 pub struct Symbol(&'static Entry);
 
 struct Entry {
-    /// The first bytes of the BLAKE3 hash of the text.
+    /// The [`vun_hash::Stable`] hash of the text.
     hash: u64,
     text: &'static str,
 }
@@ -32,7 +32,7 @@ pub use pool::{Interned, Pool};
 static POOL: LazyLock<Map<&'static str, Symbol>> = LazyLock::new(Map::default);
 
 impl Symbol {
-    /// The symbol of `text`, the same for every call with equal text; its content hash is
+    /// The symbol of `text`, the same for every call with equal text; its stable hash is
     /// computed once, when the text is first interned.
     #[must_use]
     pub fn intern(text: &str) -> Self {
@@ -40,7 +40,7 @@ impl Symbol {
         if let Some(&symbol) = symbols.get(text) {
             return symbol;
         }
-        let hash = vun_hash::Hash::of(text.as_bytes()).short();
+        let hash = vun_hash::Stable::of(text);
         let text: &'static str = Box::leak(text.into());
         let symbol = Self(Box::leak(Box::new(Entry { hash, text })));
         // Another thread may intern the same text meanwhile: the first stored stands for both.

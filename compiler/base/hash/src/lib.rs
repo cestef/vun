@@ -1,12 +1,14 @@
 //! Content hashes, of bytes and of file trees: what identifies a package (spec 12, section 3) and
-//! keys every cache.
+//! keys every cache; and the [`Stable`] hash in-memory identities hash by.
 
 mod base32;
 mod encode;
+mod stable;
 mod tree;
 
 use std::fmt;
 
+pub use stable::Stable;
 pub use tree::{Change, Entry, Snapshot};
 
 /// The hash functions a [`Hash`] can come from; the text form names it, so that another can

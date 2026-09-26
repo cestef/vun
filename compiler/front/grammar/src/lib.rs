@@ -4,6 +4,7 @@
 //! the kinds and tables into `generated/`, a module per declaration; this file derives lookups
 //! from them.
 
+use std::collections::HashMap;
 use std::sync::LazyLock;
 
 #[rustfmt::skip]
@@ -14,12 +15,23 @@ pub use generated::*;
 /// Separates the members of a path, as written: `std.prelude`.
 pub const PATH_SEPARATOR: &str = TokenKind::Dot.text().unwrap();
 
-/// Punctuation, longest spelling first, so the first prefix match is the longest one.
-static PUNCTUATION_BY_LENGTH: LazyLock<Vec<TokenKind>> = LazyLock::new(|| {
+/// Punctuation by its first byte, longest spelling first, so the first prefix match is the
+/// longest one.
+static PUNCTUATION_BY_FIRST: LazyLock<HashMap<u8, Vec<TokenKind>>> = LazyLock::new(|| {
     let mut kinds = TokenKind::PUNCTUATION.to_vec();
     kinds.sort_by_key(|k| std::cmp::Reverse(k.text().map_or(0, str::len)));
-    kinds
+    let mut by_first: HashMap<u8, Vec<TokenKind>> = HashMap::new();
+    for kind in kinds {
+        if let Some(&first) = kind.text().and_then(|t| t.as_bytes().first()) {
+            by_first.entry(first).or_default().push(kind);
+        }
+    }
+    by_first
 });
+
+/// Keywords by their spelling.
+static KEYWORDS_BY_TEXT: LazyLock<HashMap<&'static str, TokenKind>> =
+    LazyLock::new(|| TokenKind::KEYWORDS.iter().filter_map(|&k| Some((k.text()?, k))).collect());
 
 /// Binding strength of an infix operator; higher binds tighter.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -61,13 +73,14 @@ impl TokenKind {
     /// The punctuation spelled by the longest prefix of `rest`.
     #[must_use]
     pub fn punctuation(rest: &str) -> Option<Self> {
-        PUNCTUATION_BY_LENGTH.iter().copied().find(|k| k.text().is_some_and(|t| rest.starts_with(t)))
+        let candidates = PUNCTUATION_BY_FIRST.get(rest.as_bytes().first()?)?;
+        candidates.iter().copied().find(|k| k.text().is_some_and(|t| rest.starts_with(t)))
     }
 
     /// The keyword spelled `word`, if `word` is reserved.
     #[must_use]
     pub fn keyword(word: &str) -> Option<Self> {
-        Self::KEYWORDS.iter().copied().find(|k| k.text() == Some(word))
+        KEYWORDS_BY_TEXT.get(word).copied()
     }
 
     #[must_use]

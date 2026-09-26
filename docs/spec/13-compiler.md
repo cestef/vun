@@ -46,8 +46,11 @@ years (rustc's parallel front end). So both are designed in from phase 1.
 - HIR, MIR and LIR are struct-of-arrays arenas addressed by `u32` handles. Zig measured 20% to 40%
   wall-time gains from this layout alone.
 - Types, compile-time values and names live in one sharded intern pool. A symbol is equal by
-  pointer, hashes by the content hash of its text and orders by its text, so query traces and
-  output built from symbols do not depend on the process or the schedule.
+  pointer, hashes by the stable hash of its text and orders by its text, so query traces and
+  output built from symbols do not depend on the process or the schedule. The stable hash
+  (`vun_hash::Stable`, a fixed-seed foldhash) is what symbols, interned values and origins hash
+  by: the same in every process of one toolchain build, and far cheaper than BLAKE3 on the few
+  bytes each holds; what is saved by it is named by the toolchain that wrote it.
 
 **Queries.**
 - The unit of incremental work is a declaration or a function body, never an expression.
