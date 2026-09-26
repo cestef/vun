@@ -1,0 +1,5 @@
+//! How the compiler lowers what no instruction computes (spec 13, section 3).
+
+/// At run time, the primitive this marks is a call of `f`, a Vun function taking the primitive's
+/// parameters: an operation written with those instructions do compute.
+by: ($F: type, $f: F) -> Attribute(&[Place.decls]) = _;

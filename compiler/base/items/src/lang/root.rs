@@ -34,6 +34,8 @@ pub const layout: Item = Item::new(&["lang", "layout"]);
 pub const link: Item = Item::new(&["lang", "link"]);
 /// The namespace `lang.lint`.
 pub const lint: Item = Item::new(&["lang", "lint"]);
+/// The namespace `lang.lower`.
+pub const lower: Item = Item::new(&["lang", "lower"]);
 /// The namespace `lang.mem`.
 pub const mem: Item = Item::new(&["lang", "mem"]);
 /// The namespace `lang.meta`.
@@ -77,6 +79,8 @@ pub const r#false: Item = Item::new(&["lang", "false"]);
 pub const never: Item = Item::new(&["lang", "never"]);
 /// How two values compare (`lang.ops.Ord`).
 pub const Ordering: Item = Item::new(&["lang", "Ordering"]);
+/// Conditions are equal when both hold or neither does.
+pub const BoolEq: Item = Item::new(&["lang", "BoolEq"]);
 pub const Option: Item = Item::new(&["lang", "Option"]);
 pub const Result: Item = Item::new(&["lang", "Result"]);
 pub const Step: Item = Item::new(&["lang", "Step"]);

@@ -1,9 +1,10 @@
 //! Floating-point operations that are explicit about precision (spec 04, section 2).
 
+#[lower.by(lang.float.soft.mul_add)]
 mul_add: ($T: type, a: T, b: T, c: T) -> T = _;
 
 /// IEEE 754 arithmetic in the float type `T`, rounding to nearest: none traps, a division by
-/// zero giving an infinity (spec 04, section 2).
+/// zero giving an infinity, a NaN result the canonical NaN (spec 04, section 2).
 #[panic.never]
 add: ($T: type, a: T, b: T) -> T = _;
 #[panic.never]
@@ -12,7 +13,7 @@ sub: ($T: type, a: T, b: T) -> T = _;
 mul: ($T: type, a: T, b: T) -> T = _;
 #[panic.never]
 div: ($T: type, a: T, b: T) -> T = _;
-#[panic.never]
+#[panic.never, lower.by(lang.float.soft.rem)]
 rem: ($T: type, a: T, b: T) -> T = _;
 #[panic.never]
 neg: ($T: type, a: T) -> T = _;
@@ -33,3 +34,13 @@ greater_equal: ($T: type, a: &T, b: &T) -> bool = _;
 #[panic.never]
 total_order: ($T: type, a: &T, b: &T) -> Ordering = _;
 
+/// The unsigned integer type as wide as the float type `T`, which holds its IEEE 754 encoding.
+Bits: ($T: type) -> type = _;
+/// The IEEE 754 encoding of `x`.
+#[panic.never]
+bits: ($T: type, x: T) -> Bits(T) = _;
+/// The float whose IEEE 754 encoding is `b`.
+#[panic.never]
+from_bits: ($T: type, b: Bits(T)) -> T = _;
+/// How many bits of the float type `T`'s encoding hold the fraction of its significand.
+fraction_bits: ($T: type) -> usize = _;

@@ -221,3 +221,9 @@ fn closures_function_values_defers_and_primitives_lower_and_run() {
 fn memory_operations_run_whether_their_value_is_kept_or_not() {
     assert_eq!(status("backend-memory", &program("memory.vun")), Some(255));
 }
+
+#[test]
+fn float_rem_and_mul_add_run_as_vun_and_agree_with_compile_time_bit_for_bit() {
+    // The number of cases whose run-time result differs from the compile-time one.
+    assert_eq!(status("backend-soft-float", &program("soft_float.vun")), Some(0));
+}

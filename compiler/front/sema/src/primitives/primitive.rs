@@ -34,6 +34,8 @@ pub enum Primitive {
     Link(link::Link),
     /// `lang.lint`
     Lint(lint::Lint),
+    /// `lang.lower`
+    Lower(lower::Lower),
     /// `lang.mem`
     Mem(mem::Mem),
     /// `lang.meta`
@@ -72,6 +74,7 @@ impl Primitive {
             .chain(layout::Layout::ALL.iter().map(|&p| Self::Layout(p)))
             .chain(link::Link::ALL.iter().map(|&p| Self::Link(p)))
             .chain(lint::Lint::ALL.iter().map(|&p| Self::Lint(p)))
+            .chain(lower::Lower::ALL.iter().map(|&p| Self::Lower(p)))
             .chain(mem::Mem::ALL.iter().map(|&p| Self::Mem(p)))
             .chain(meta::Meta::ALL.iter().map(|&p| Self::Meta(p)))
             .chain(opt::Opt::ALL.iter().map(|&p| Self::Opt(p)))
@@ -100,6 +103,7 @@ impl Primitive {
             Self::Layout(_) => layout::Layout::NAMESPACE,
             Self::Link(_) => link::Link::NAMESPACE,
             Self::Lint(_) => lint::Lint::NAMESPACE,
+            Self::Lower(_) => lower::Lower::NAMESPACE,
             Self::Mem(_) => mem::Mem::NAMESPACE,
             Self::Meta(_) => meta::Meta::NAMESPACE,
             Self::Opt(_) => opt::Opt::NAMESPACE,
@@ -129,6 +133,7 @@ impl Primitive {
             Self::Layout(p) => p.item(),
             Self::Link(p) => p.item(),
             Self::Lint(p) => p.item(),
+            Self::Lower(p) => p.item(),
             Self::Mem(p) => p.item(),
             Self::Meta(p) => p.item(),
             Self::Opt(p) => p.item(),
@@ -158,6 +163,7 @@ impl Primitive {
             Self::Layout(p) => p.name(),
             Self::Link(p) => p.name(),
             Self::Lint(p) => p.name(),
+            Self::Lower(p) => p.name(),
             Self::Mem(p) => p.name(),
             Self::Meta(p) => p.name(),
             Self::Opt(p) => p.name(),

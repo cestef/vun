@@ -5,7 +5,7 @@
 pub enum Float {
     mul_add,
     /// IEEE 754 arithmetic in the float type `T`, rounding to nearest: none traps, a division by
-    /// zero giving an infinity (spec 04, section 2).
+    /// zero giving an infinity, a NaN result the canonical NaN (spec 04, section 2).
     add,
     sub,
     mul,
@@ -21,6 +21,14 @@ pub enum Float {
     greater_equal,
     /// IEEE 754 `totalOrder`: every float in one order, `-NaN < -inf < ... < -0 < +0 < ... < NaN`.
     total_order,
+    /// The unsigned integer type as wide as the float type `T`, which holds its IEEE 754 encoding.
+    Bits,
+    /// The IEEE 754 encoding of `x`.
+    bits,
+    /// The float whose IEEE 754 encoding is `b`.
+    from_bits,
+    /// How many bits of the float type `T`'s encoding hold the fraction of its significand.
+    fraction_bits,
 }
 impl Float {
     pub const NAMESPACE: vun_items::Item = vun_items::lang::float;
@@ -39,6 +47,10 @@ impl Float {
         Self::greater,
         Self::greater_equal,
         Self::total_order,
+        Self::Bits,
+        Self::bits,
+        Self::from_bits,
+        Self::fraction_bits,
     ];
     /// The declaration's name.
     #[must_use]
@@ -58,6 +70,10 @@ impl Float {
             Self::greater => "greater",
             Self::greater_equal => "greater_equal",
             Self::total_order => "total_order",
+            Self::Bits => "Bits",
+            Self::bits => "bits",
+            Self::from_bits => "from_bits",
+            Self::fraction_bits => "fraction_bits",
         }
     }
     /// The declaration.
@@ -78,6 +94,10 @@ impl Float {
             Self::greater => vun_items::lang::float::greater,
             Self::greater_equal => vun_items::lang::float::greater_equal,
             Self::total_order => vun_items::lang::float::total_order,
+            Self::Bits => vun_items::lang::float::Bits,
+            Self::bits => vun_items::lang::float::bits,
+            Self::from_bits => vun_items::lang::float::from_bits,
+            Self::fraction_bits => vun_items::lang::float::fraction_bits,
         }
     }
 }

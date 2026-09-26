@@ -3,10 +3,12 @@
 //! context, `.{ }` or `.name`, evaluates with the type expected of it, from its surroundings or
 //! from typing.
 
-use vun_hir::tree::{Arg, Entry, ExprId, ExprKind, List, Name};
+use vun_hir::tree::{Arg, Entry, ExprId, ExprKind, List, Lit, Name};
 use vun_intern::Symbol;
 
+use super::operator::Operand;
 use super::{Env, Unevaluated};
+use crate::float::{Binary, Format};
 use crate::member::{Found, Members};
 use crate::ops::Part;
 use crate::ty::{Nominal, Ty, TyKind, Value};
@@ -23,6 +25,17 @@ impl Env<'_, '_> {
                 self.member(Value::Type(ty), *name)
             }
             (ExprKind::StructLit { ty: None, fields }, Some(ty)) => self.record(ty, fields),
+            // Where a float type is expected, a float literal has it, and so do the operands of
+            // the operators giving it (spec 04, section 2).
+            (ExprKind::Lit(Lit::Float(text)), Some(ty)) if let Some(format) = Format::of(&ty) => {
+                Binary::parse(text, format).map(Value::Float).ok_or(Unevaluated::Unsupported)
+            }
+            (ExprKind::Prefix { op, operand, .. }, Some(ty)) if Format::of(&ty).is_some() => {
+                self.prefix(*op, self.float_operand(*operand, ty)?)
+            }
+            (ExprKind::Infix { op, left, right: Some(right) }, Some(ty)) if Format::of(&ty).is_some() => {
+                self.binary(*op, self.float_operand(*left, ty)?, self.float_operand(*right, ty)?)
+            }
             (ExprKind::Call { callee, args }, Some(ty))
                 if let ExprKind::DotName(Name::Plain(name)) = self.parsed.hir.exprs[*callee].kind =>
             {
@@ -40,6 +53,11 @@ impl Env<'_, '_> {
             }
             _ => self.eval(expr),
         }
+    }
+
+    /// `expr` as an operand of the float type `ty`.
+    fn float_operand(&self, expr: ExprId, ty: Ty) -> Result<Operand, Unevaluated> {
+        Ok(Operand { value: self.eval_as(expr, Some(ty))?, ty: Some(ty) })
     }
 
     /// `.{ .a = x, .b = y }` or `.{ x, y }` with no type expected: a record of its fields, by

@@ -214,13 +214,15 @@ impl Instantiation {
         inside.literal_signature(self.f.literal.expr.id, &self.args)
     }
 
-    /// Whether this instantiation runs only at compile time: its result or a parameter is of a
-    /// type whose values do not exist at run time, such as `type`, code, an unbounded integer or
-    /// a borrow of a plan.
+    /// Whether this instantiation runs only at compile time: its result or a parameter passed at
+    /// run time, not a `$` one, is of a type whose values do not exist at run time, such as
+    /// `type`, code, an unbounded integer or a borrow of a plan.
     #[must_use]
     pub fn compile_time(&self, cx: &Cx<'_>) -> bool {
         let Ok(signature) = self.signature(cx) else { return false };
-        signature.params.iter().chain([&signature.result]).any(|ty| !cx.get::<Exists>(ty))
+        let comptime = self.f.comptime(cx).unwrap_or_default();
+        let runtime = signature.params.iter().enumerate().filter(|(i, _)| comptime.get(*i) != Some(&true));
+        runtime.map(|(_, ty)| ty).chain([&signature.result]).any(|ty| !cx.get::<Exists>(ty))
     }
 }
 

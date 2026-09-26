@@ -1,0 +1,41 @@
+start := std.os.start(main);
+
+/// Cases of `rem` and `mul_add`: signs, exact multiples, subnormals, infinities, NaNs, rounding
+/// ties and cancellation.
+Rem64: [10](f64, f64) = [
+    .{ 5.5, 2.0 }, .{ -7.25, 0.5 }, .{ 1.0e300, 3.0 }, .{ 3.0, 1.0e300 }, .{ 5.0e-324, 2.0e-323 },
+    .{ 1.0, 0.0 }, .{ 1.0 / 0.0, 2.0 }, .{ 7.0, 1.0 / 0.0 }, .{ -0.0, 1.0 }, .{ 123456.789, 0.001 },
+];
+Rem32: [4](f32, f32) = [ .{ 5.5, 2.0 }, .{ 1.0e10, 3.0 }, .{ -1.0e-45, 3.0e-45 }, .{ 0.1, 0.03 } ];
+Fma64: [9](f64, f64, f64) = [
+    .{ 0.1, 10.0, -1.0 }, .{ 1.0e308, 10.0, -1.0e308 }, .{ 5.0e-324, 0.5, 0.0 }, .{ 2.0, 3.0, 4.0 },
+    .{ 1.0 + 2.0e-16, 1.0 - 2.0e-16, -1.0 }, .{ -3.0, 0.0, 0.0 }, .{ 1.0 / 0.0, 0.0, 1.0 },
+    .{ 1.0e308, 1.0e308, -1.0 / 0.0 }, .{ 3.0e-300, 3.0e-300, 1.0e-310 },
+];
+Fma32: [3](f32, f32, f32) = [ .{ 0.1, 10.0, -1.0 }, .{ 16777217.0, 3.0, 0.5 }, .{ 1.0e-40, 1.0e-5, 0.0 } ];
+
+/// The same float, bit for bit: NaNs included, which are canonical.
+same := ($T: type, a: T, b: T) -> bool { lang.float.bits(T, a) == lang.float.bits(T, b) };
+
+main := (sys: &mut std.os.System) -> std.os.Exit {
+    one: f64 = if sys.args().len() == 1 { 1.0 } else { 2.0 };
+    small: f32 = if sys.args().len() == 1 { 1.0 } else { 2.0 };
+    mut failed: u8 = 0;
+    $for c in Rem64 {
+        if !same(f64, (c.0 * one) % c.1, $(c.0 % c.1)) { failed +|= 1; }
+    }
+    $for c in Rem32 {
+        if !same(f32, (c.0 * small) % c.1, $(c.0 % c.1)) { failed +|= 1; }
+    }
+    $for c in Fma64 {
+        if !same(f64, lang.float.mul_add(f64, c.0 * one, c.1, c.2), $(lang.float.mul_add(f64, c.0, c.1, c.2))) {
+            failed +|= 1;
+        }
+    }
+    $for c in Fma32 {
+        if !same(f32, lang.float.mul_add(f32, c.0 * small, c.1, c.2), $(lang.float.mul_add(f32, c.0, c.1, c.2))) {
+            failed +|= 1;
+        }
+    }
+    .code(failed)
+};

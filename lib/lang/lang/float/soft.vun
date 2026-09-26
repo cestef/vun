@@ -1,0 +1,200 @@
+//! Float operations no instruction computes, written with those that do (spec 13, section 3):
+//! each takes its operands' encodings apart through `lang.float.bits`, computes on integers, and
+//! assembles the result as IEEE 754 gives it. `lang.float.rem` and `mul_add` run as these.
+
+/// `a` less `b` as many whole times as it goes, the quotient rounded toward zero: IEEE 754
+/// `fmod`, which is exact. A NaN when `b` is zero or a NaN, or `a` an infinity or a NaN.
+rem := ($T: type, a: T, b: T) -> T {
+    $U := lang.float.Bits(T);
+    $W := lang.meta.size(T) * 8;
+    $M := lang.float.fraction_bits(T);
+    // The exponent field all ones, of infinities and NaNs, and the fraction's bits.
+    $Top := (1 << (W - M - 1)) - 1;
+    $Fraction := (1 << M) - 1;
+    $Lead := 1 << M;
+    $Sign := 1 << (W - 1);
+    zero := lang.float.mul(T, lang.float.from_bits(T, 0), a);
+    mut x: U = lang.float.bits(T, a);
+    y: U = lang.float.bits(T, b);
+    mut ex: i32 = ((x >> M) & Top).to(i32);
+    mut ey: i32 = ((y >> M) & Top).to(i32);
+    sign: U = x & Sign;
+    // The magnitudes, shifted over the sign.
+    x2: U = (x << 1).wrap(U);
+    y2: U = (y << 1).wrap(U);
+    if y2 == 0 or (ey == Top and (y & Fraction) != 0) or ex == Top {
+        p := lang.float.mul(T, a, b);
+        return lang.float.div(T, p, p);
+    }
+    if x2 <= y2 {
+        if x2 == y2 { return zero; }
+        return a;
+    }
+    // Each significand with its leading one, a subnormal's shifted up to it.
+    x = soft_significand(U, W, M, x, &mut ex);
+    mut sy: U = soft_significand(U, W, M, y, &mut ey);
+    // Long division: the divisor taken off wherever it goes, one exponent step at a time.
+    for ex > ey {
+        d := (x - sy).wrap(U);
+        if d & Sign == 0 {
+            if d == 0 { return zero; }
+            x = d;
+        }
+        x = (x << 1).wrap(U);
+        ex -= 1;
+    }
+    d := (x - sy).wrap(U);
+    if d & Sign == 0 {
+        if d == 0 { return zero; }
+        x = d;
+    }
+    for x & Lead == 0 {
+        x = (x << 1).wrap(U);
+        ex -= 1;
+    }
+    // Back into an encoding: a normal number's exponent, or a subnormal's significand.
+    x = if ex > 0 {
+        ((x & Fraction) | (ex.wrap(U) << M).wrap(U)).wrap(U)
+    } else {
+        x >> (1 - ex).wrap(Int(0..W))
+    };
+    lang.float.from_bits(T, (x | sign).wrap(U))
+};
+
+/// The significand of the encoding `x`, of `W` bits with `M` of fraction, with its leading one at
+/// bit `M`; a subnormal's is shifted up to there, `e` lowered to match.
+soft_significand := ($U: type, $W: usize, $M: usize, x: U, e: &mut i32) -> U {
+    $Fraction := (1 << M) - 1;
+    if e.* != 0 { return ((x & Fraction) | (1 << M)).wrap(U); }
+    mut i: U = (x << (W - M)).wrap(U);
+    for i >> (W - 1) == 0 {
+        e.* -= 1;
+        i = (i << 1).wrap(U);
+    }
+    (x << (1 - e.*).wrap(Int(0..W))).wrap(U)
+};
+
+/// `a * b + c` rounded once, as IEEE 754 `fusedMultiplyAdd`: the product and the sum are exact,
+/// in integers twice as wide as `T`, and only the result is rounded, to nearest, ties to even.
+mul_add := ($T: type, a: T, b: T, c: T) -> T {
+    $U := lang.float.Bits(T);
+    $W := lang.meta.size(T) * 8;
+    $M := lang.float.fraction_bits(T);
+    $Top := (1 << (W - M - 1)) - 1;
+    // A significand, its leading one included, and the integers holding a product of two with a
+    // bit to spare, so that sums of two stay within twice the width.
+    $S := Int(0..(1 << (M + 1)));
+    $D := Int(0..(1 << (2 * W - 1)));
+    // Where a normalized value's leading one sits, two bits below the top for carries.
+    $L := 2 * W - 3;
+    (xa, xb, xc): (U, U, U) = (lang.float.bits(T, a), lang.float.bits(T, b), lang.float.bits(T, c));
+    (ea, eb, ec) := (soft_field(U, M, Top, xa), soft_field(U, M, Top, xb), soft_field(U, M, Top, xc));
+    // What the product's exact value does not change: a NaN or an infinity among the factors,
+    // a NaN added, or a zero factor, whose product is exact.
+    zero_factor := (xa << 1).wrap(U) == 0 or (xb << 1).wrap(U) == 0;
+    if ea == Top or eb == Top or zero_factor or (ec == Top and (xc & ((1 << M) - 1)) != 0) {
+        return lang.float.add(T, lang.float.mul(T, a, b), c);
+    }
+    // A finite product and an infinity: the infinity.
+    if ec == Top { return c; }
+    (ma, pa): (S, i32) = soft_parts(U, M, Top, xa);
+    (mb, pb): (S, i32) = soft_parts(U, M, Top, xb);
+    (mc, pc): (S, i32) = soft_parts(U, M, Top, xc);
+    product_negative := ((xa ^ xb) >> (W - 1)) == 1;
+    mut big: Soft(D) = Soft(D).normalized(ma * mb, (pa + pb).to(i32), product_negative, L);
+    if mc == 0 { return big.rounded(T, U, M, Top, L); }
+    mut small: Soft(D) = Soft(D).normalized(mc, pc, (xc >> (W - 1)) == 1, L);
+    // The larger magnitude first; equal exponents compare significands.
+    if small.e > big.e or (small.e == big.e and small.m > big.m) {
+        swapped := big;
+        big = small;
+        small = swapped;
+    }
+    small.m = small.shifted((big.e - small.e).sat(i32), W);
+    mut m: D = if big.negative == small.negative {
+        (big.m + small.m).wrap(D)
+    } else {
+        (big.m - small.m).wrap(D)
+    };
+    // Exact cancellation gives a positive zero, rounding to nearest.
+    if m == 0 { return lang.float.from_bits(T, 0); }
+    mut e := big.e;
+    // A carry past the leading position goes back down, its bit kept sticky.
+    if m >> (L + 1) != 0 {
+        m = ((m >> 1) | (m & 1)).wrap(D);
+        e += 1;
+    }
+    for m >> L == 0 {
+        m = (m << 1).wrap(D);
+        e -= 1;
+    }
+    Soft(D){ .m = m, .e = e, .negative = big.negative }.rounded(T, U, M, Top, L)
+};
+
+/// The exponent field of the encoding `x`, of `M` bits of fraction.
+soft_field := ($U: type, $M: usize, $Top: Int(0..), x: U) -> i32 { ((x >> M) & Top).to(i32) };
+
+/// The significand of the finite encoding `x`, its leading one included for a normal number,
+/// and the exponent of its last bit.
+soft_parts := ($U: type, $M: usize, $Top: Int(0..), x: U) -> (Int(0..(1 << (M + 1))), i32) {
+    $Bias := Top / 2;
+    field := soft_field(U, M, Top, x);
+    fraction := (x & ((1 << M) - 1)).to(Int(0..(1 << (M + 1))));
+    if field == 0 {
+        (fraction, (1 - Bias - M).to(i32))
+    } else {
+        ((fraction | (1 << M)).to(Int(0..(1 << (M + 1)))), (field - Bias - M).to(i32))
+    }
+};
+
+/// A value `m · 2^e` with its sign, `m` held in the integers `D`.
+Soft := ($D: type) -> type { struct {
+    m: D,
+    e: i32,
+    negative: bool,
+
+    /// `m · 2^e`, `m` shifted so that its leading one sits at bit `L`.
+    normalized := (significand: D, exponent: i32, negative: bool, $L: usize) -> Soft(D) {
+        mut m: D = significand;
+        mut e: i32 = exponent;
+        for m >> L == 0 {
+            m = (m << 1).wrap(D);
+            e -= 1;
+        }
+        .{ .m = m, .e = e, .negative = negative }
+    };
+
+    /// The significand shifted down by `d` bits, those shifted out kept as one sticky bit.
+    shifted := (self: &Soft(D), by: i32, $W: usize) -> D {
+        if by >= 2 * W { return if self.m != 0 { 1 } else { 0 }; }
+        d := by.wrap(Int(0..(2 * W)));
+        lost: D = if (self.m & ((1 << d) - 1).wrap(D)) != 0 { 1 } else { 0 };
+        ((self.m >> d) | lost).wrap(D)
+    };
+
+    /// The float of type `T` nearest this value, ties to even: `M` bits of fraction, `Top` the
+    /// exponent field of infinities, the leading one at bit `L`.
+    rounded := (self: &Soft(D), $T: type, $U: type, $M: usize, $Top: Int(0..), $L: usize) -> T {
+        $Bias := Top / 2;
+        sign: U = if self.negative { 1 << (8 * lang.meta.size(T) - 1) } else { 0 };
+        unbounded := self.e + L + Bias;
+        // A subnormal result drops the bits below the smallest exponent too.
+        extra: i32 = if unbounded >= 1 { 0 } else { (1 - unbounded).sat(i32) };
+        if L - M + extra > L + 1 { return lang.float.from_bits(T, sign); }
+        shift := (L - M + extra).to(Int(1..=(L + 1)));
+        mut q: D = self.m >> shift;
+        rest := (self.m & ((1 << shift) - 1).wrap(D)).wrap(D);
+        half: D = (1 << (shift - 1)).wrap(D);
+        if rest > half or (rest == half and (q & 1) == 1) { q = (q + 1).wrap(D); }
+        mut field: i32 = if extra > 0 { 0 } else { unbounded.sat(i32) };
+        // Rounding up to the next power of two raises the exponent.
+        if q >> (M + 1) != 0 {
+            q = q >> 1;
+            field += 1;
+        }
+        if field >= Top { return lang.float.from_bits(T, (sign | (Top << M)).wrap(U)); }
+        // A normal number's leading one is its exponent's lowest bit, dropped as it adds in.
+        bits := if field == 0 { q } else { ((q & ((1 << M) - 1)) | (field.wrap(D) << M)).wrap(D) };
+        lang.float.from_bits(T, (sign | bits.wrap(U)).wrap(U))
+    };
+} };

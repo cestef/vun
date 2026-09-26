@@ -26,7 +26,11 @@ impl Builder<'_, '_, '_> {
         let origin = hir.exprs[expr].origin;
         match &hir.exprs[expr].kind {
             ExprKind::Name(_) => match self.env.parsed.resolution.names[expr] {
-                Some(Res::Binder(b)) if self.bound.contains_key(&b) => Ok(self.binder_place(b)),
+                // A `$` binder is a value, not storage: its place holds a copy, of the type of
+                // that value alone.
+                Some(Res::Binder(b)) if self.bound.contains_key(&b) && !hir.binders[b].comptime => {
+                    Ok(self.binder_place(b))
+                }
                 // A `mut` top-level binding is a static, starting as its initial value.
                 _ if let Ok(Site::Decl(decl)) = self.env().resolve(expr)
                     && decl.mutable(self.env.cx) =>
@@ -157,6 +161,13 @@ impl Builder<'_, '_, '_> {
     /// A temporary holding the value of `expr`.
     fn held(&mut self, expr: ExprId, origin: OriginId) -> Result<Place, Unbuilt> {
         let value = self.operand(expr)?;
+        // A temporary holding the value already is its place.
+        if let Operand::Place(place) = &value
+            && place.projection.is_empty()
+            && self.locals[place.local].name.is_none()
+        {
+            return Ok(place.clone());
+        }
         Ok(Place::of(self.temp_local(Rvalue::Use(value), origin)))
     }
 

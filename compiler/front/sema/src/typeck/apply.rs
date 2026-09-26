@@ -5,11 +5,12 @@
 use vun_hir::tree::ExprId;
 
 use super::omitted::{Plan, Unifier};
-use super::{Known, Typed, Typer};
+use super::{Known, Stage, Typed, Typer};
 use crate::Primitive;
 use crate::callable::Callable;
 use crate::env::Unevaluated;
 use crate::eval::{Func, Instantiation};
+use crate::int::Interval;
 use crate::ty::{Signature, Ty, TyKind, Value};
 use vun_diag::Msg;
 
@@ -128,6 +129,17 @@ impl Typer<'_, '_, '_> {
                 let known = Known { ty: callee.passing.passed(known.ty, param), ..known };
                 self.expect(self.hir().exprs[value].origin, known, param, None);
             }
+        }
+        // A call that folds is known when compiling, and an integer it gives has the type of its
+        // value alone, as a literal does (spec 04): `size(T) * 8` is `64` for `f64`.
+        if callee.f.as_ref().is_some_and(|f| f.folds(self.env())) {
+            let ty = match self.env().eval(call) {
+                Ok(Value::Int(n)) if signature.result.interval().is_some() => {
+                    TyKind::int(&Interval::singleton(n))
+                }
+                _ => signature.result,
+            };
+            return Some(Applied { known: Known { ty, stage: Stage::Compile }, inferred });
         }
         Some(Applied { known: Known { ty: signature.result, stage: self.stage }, inferred })
     }

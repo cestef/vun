@@ -55,9 +55,10 @@ impl FnLower<'_, '_, '_> {
                 let range = ty.interval().ok_or_else(unsupported)?;
                 let bound = |e: &Extended| e.finite().and_then(Integer::to_i128).ok_or_else(unsupported);
                 let (lo, hi) = (bound(range.lo())?, bound(range.hi())?);
-                let size =
-                    hi.checked_sub(lo).and_then(|d| d.checked_add(1)).and_then(|n| u128::try_from(n).ok());
-                if !size.is_some_and(u128::is_power_of_two) {
+                // The size less one, a mask of low bits when the size is a power of two, 2^128
+                // included.
+                let span = hi.abs_diff(lo);
+                if span & span.wrapping_add(1) != 0 {
                     return Err(unsupported());
                 }
                 let bits = |s: Scalar| s.bits(self.l.types.pointer_bits());
@@ -65,7 +66,7 @@ impl FnLower<'_, '_, '_> {
                 let x = self.resize(x, source, signed, wide);
                 let (low, mask) = (
                     self.b.constant(wide, wide.truncate(lo), self.at),
-                    self.b.constant(wide, wide.truncate(hi - lo), self.at),
+                    self.b.constant(wide, wide.truncate(hi.wrapping_sub(lo)), self.at),
                 );
                 let shifted = self.b.binary(BinOp::Sub, x, low, self.at);
                 let reduced = self.b.binary(BinOp::And, shifted, mask, self.at);

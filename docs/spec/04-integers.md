@@ -104,8 +104,21 @@ are vectorizable and reproducible at once. There are no implicit int/float conve
 A float literal has the float type expected of it. At compile time a float is its format and its
 bits, and every operation computes its exact result and rounds it once, to nearest even, as the
 hardware does, for every format alike (`f16` included): compile time and run time agree
-(guarantee 4). A NaN result's sign and payload are not part of the semantics; `!=` is true where
-either operand is a NaN, every other comparison false.
+(guarantee 4), bit for bit.
+
+**NaN.** Every operation whose result is a NaN (arithmetic, `rem`, `mul_add`) gives the
+*canonical NaN* of its format: sign clear, exponent all ones, only the top fraction bit set
+(`0x7e00` for `f16`, `0x7fc0_0000` for `f32`, `0x7ff8_0000_0000_0000` for `f64`), whatever NaN the
+operands held and whatever NaN the hardware produces. Operations on the sign (`neg`) and on the
+encoding (`lang.float.bits`, `from_bits`), moves and copies keep every bit, a NaN's payload
+included. Every float result is thus one encoding on every target and at compile time;
+lowering replaces a NaN the hardware gives by the canonical one. `!=` is true where either
+operand is a NaN, every other comparison false.
+
+`lang.float.bits(T, x)` is `x`'s encoding, an integer of `lang.float.Bits(T)` (unsigned, as wide
+as `T`), and `from_bits` the float of an encoding. Operations no instruction computes are written
+in Vun over the encoding (`lang.float.soft`); a primitive marked `#[lower.by(f)]` runs as a call of
+`f` at run time (spec 13, section 3).
 
 ## 3. Vectors
 

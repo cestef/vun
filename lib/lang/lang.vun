@@ -29,6 +29,17 @@ never := enum {};
 /// How two values compare (`lang.ops.Ord`).
 Ordering := enum { less, equal, greater };
 
+/// Conditions are equal when both hold or neither does.
+#[impl(lang.ops.Eq(bool))]
+BoolEq := struct {
+    eq := (a: &bool, b: &bool) -> bool {
+        match a.* {
+            .true => b.*,
+            .false => match b.* { .true => .false, .false => .true },
+        }
+    };
+};
+
 Option := ($T: type) -> type { enum { none, some(T) } };
 Result := ($T: type, $E: type) -> type { enum { ok(T), err(E) } };
 Step := ($Y: type, $R: type) -> type { enum { yielded(Y), done(R) } };

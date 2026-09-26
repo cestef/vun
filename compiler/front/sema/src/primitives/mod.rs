@@ -12,6 +12,7 @@ pub mod kind;
 pub mod layout;
 pub mod link;
 pub mod lint;
+pub mod lower;
 pub mod mem;
 pub mod meta;
 pub mod opt;

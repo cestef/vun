@@ -74,6 +74,13 @@ impl Callable {
         self.written(env)?.comptime()
     }
 
+    /// Whether a call of it is known when compiling, whatever runs: a primitive whose parameters
+    /// are all `$` ones, whose value nothing at run time changes.
+    #[must_use]
+    pub fn folds(&self, env: &Env<'_, '_>) -> bool {
+        matches!(self, Self::Primitive(_)) && self.comptime(env).is_some_and(|c| c.iter().all(|&c| c))
+    }
+
     /// The borrow mode each parameter's annotation writes: see [`Written::modes`].
     #[must_use]
     pub fn modes(&self, env: &Env<'_, '_>) -> Option<Vec<Option<Borrow>>> {

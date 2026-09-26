@@ -125,7 +125,9 @@ per second per stage and fails on regressions.
   LIR: every local a stack slot of its layout, a top-level binding one data object, statements the
   instructions computing into their place; integers in their range's storage, converted where a
   value moves between ranges; enums by their shapes; checks of indices and narrowings as trap
-  sites.
+  sites. A primitive no instruction computes is marked `#[lang.lower.by(f)]`: making its caller
+  concrete rewrites each call of it into a call of `f`, a Vun function of the same parameters
+  (`lang.float.rem` runs as `lang.float.soft.rem`), compiled like any other.
 - Both have **stable text formats**. Tests are written against them, dumps are readable and carry
   origins, and an external backend is any executable reading LIR text on standard input.
 
@@ -441,8 +443,9 @@ spills and selects need nothing of their own; arithmetic, comparisons and conver
 bits through `xmm0` and `xmm1`. Conventions pass floats in SSE registers, and a small record's
 eightbytes in general or SSE registers by their class (System V: SSE when every field in it is a
 float); a C call sets `al` to the SSE registers used. LIR's float comparisons are ordered (false
-where either operand is a NaN); lowering gives IEEE `!=` as `==` negated. Not yet: `f16`
-arithmetic, and `lang.float.rem` and `mul_add` at run time, which wait for helpers written in Vun.
+where either operand is a NaN); lowering gives IEEE `!=` as `==` negated, and follows each float
+operation with a select of the canonical NaN where its result is unequal to itself. `rem` and
+`mul_add` run as `lang.float.soft`'s functions (`#[lower.by]`). Not yet: `f16` arithmetic.
 
 **Legalization.** Each backend declares the widest integer it computes with
 (`BackendCaps::int_bits`); before it reads a unit, `Unit::legalize` splits every integer twice as

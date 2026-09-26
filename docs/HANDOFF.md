@@ -1,6 +1,6 @@
 # Handoff
 
-State of Vun as of 2026-09-25 (end of the eleventh session), for the next agent. Read this, then
+State of Vun as of 2026-09-26 (end of the twelfth session), for the next agent. Read this, then
 `CLAUDE.md` (rules and the agent procedure; on disk but ignored by the user's global gitignore, so
 `jj st` never shows it), then `docs/spec/00-principles.md`, `docs/spec/decisions.md` and the spec
 files of the area you touch.
@@ -253,13 +253,22 @@ each attribute (`Typer::typed`) and reports `attr.misplaced`; `sema/src/attribut
 by the expected float type (`typeck/infer.rs`); `apply/float.rs`; lowering `func/float.rs`
 (`!=` as `==` negated, `total_order` keys) and `func/verdict.rs` (`condition`, `ordering`, which
 `Int::compare` uses too); baseline `func/float.rs`, `encode/sse.rs`, ABI carriers (`abi.rs`
-`Carrier`, eightbyte classes), `func/carry.rs`, `func/entry.rs`.
+`Carrier`, eightbyte classes), `func/carry.rs`, `func/entry.rs`. NaN is canonical (decision 173):
+every NaN result is `Binary::nan` (sign clear, quiet bit only); lowering selects it after each
+float operation (`FnLower::canonical`); `neg`, `bits`, `from_bits` keep bits. The encoding is
+`lang.float.{Bits, bits, from_bits, fraction_bits}`; `rem` and `mul_add` run as Vun functions of
+`lang.float.soft` through `#[lang.lower.by(f)]` (decision 174: `Concrete::fold` rewrites the
+call), checked bit for bit against sema by `programs/soft_float.vun`. A call of a primitive whose
+parameters are all `$` ones is compile-stage and, for an integer, typed by its value alone
+(`Callable::folds`, `typeck/apply.rs`); a `$` binder's place is a copy of its value.
 
 **Developer tooling** (decision 168): commands organized as jj's (`vun debug ...` for every dump
 and `compare`, `vun util`, `vun toolchain components`); `Session::run_each` and
 `compare::Ran::agree` (the backend tests use them; their programs are files in
 `compiler/tools/driver/tests/driver/programs/`, runnable with `vun debug compare`);
-`BackendInfo.readiness`; `Why::Primitive` names an unlowered primitive; `VUN_LOG` traces `mir`,
+`BackendInfo.readiness`; `Why::Primitive` names an unlowered primitive; `vun debug types <file>`
+prints each expression's type and stage in every reached instantiation, from any file, marking
+untyped expressions and operators without a function; `VUN_LOG` traces `mir`,
 `lower` (per statement), `baseline` (per instruction) and `c` per function.
 
 **Legalization** (decision 169): `vun_lir::legalize` (`Unit::legalize(Legalize { widest,
@@ -326,8 +335,9 @@ arguments as `Rvalue::Comptime { expected }`, `Rvalue::compile_time` evaluating 
 `lang.panic.fail` lowers to a trap site with its message (`vun_lir::Site { at, msg }`). `_ = e` is
 lowered (`build/assign.rs`).
 
-Progress: corpus 213 passed, 0 pending, 9 planned, 27 shown, 0 failed; 83% of accepted body
-expressions typed; MIR lowers 85 of 97 accepted functions. 279 tests, including one that checks
+Progress: corpus 213 passed, 0 pending, 10 planned, 30 shown, 0 failed; 85% of accepted body
+expressions typed; MIR builds 87 of 91 run-time function literals, LIR lowers 254 of 254 reached.
+282 tests, including one that checks
 every `lang` and `std` file cleanly.
 
 ## 6. Decisions
@@ -337,7 +347,9 @@ Proposed also: 155 (frame layout), 156 (narrowing, runtime bounds, frame layouts
 161 (baseline fusion, fall-through registers, frames reported). Accepted: 162 (stack bounds, imports
 declaring theirs), 163 (attribute places, one reading of attributes),
 164 (an import's bound from the program's declarations), 165 (`symbols` structs); proposed: 166
-(callee-saved registers for loops), 167 (floats), 169 (legalization of wide integers); accepted: 168 (commands as jj's, debug tools). Accepted: 139 (the size budget, now 10 MiB), 158 (`meta.Frame`, `TypeOf`
+(callee-saved registers for loops), 167 (floats), 169 (legalization of wide integers), 174
+(`lower.by`, the float encoding, folding primitive calls typed by value); accepted: 173 (canonical
+NaN, the user's request); accepted: 168 (commands as jj's, debug tools). Accepted: 139 (the size budget, now 10 MiB), 158 (`meta.Frame`, `TypeOf`
 over code; details proposed).
 Accepted (the user's choices, details proposed): 152 (backends after TPDE, baseline backend
 started after C), 153 (the C backend), 154 (targets named by system and CPU, chosen per session).
@@ -358,10 +370,8 @@ rules go to `decisions.md` as proposed unless the user approves them.
 
 ## 7. Next steps, in order
 
-0. Baseline backend next: `lang.float.rem` and `mul_add` at run time (helpers written in Vun,
-   compiled through the same pipeline; `mul_add` needs the exact product), `f16` arithmetic (the
-   same), a `.wrap`/`.to` between two types stored in 128 bits (lowering: "does not handle this
-   conversion"), MIR's `unbuilt` trace naming the source position instead of an `OriginId`, data
+0. Baseline backend next: `f16` arithmetic (as `lang.float.soft` functions over the encoding,
+   through `lower.by`), float conversions (they must give the canonical NaN, decision 173), data
    objects aligned past every C type in the C backend (only slots are handled), and
    128-bit integers (pairs, helpers in Vun), DWARF lines, arm64. Backends: memory regions from a program's build options into `LinkPlan` (the `gnu`
    adapter writes scripts from them), and a bare-metal runtime to link against. A slice value (`xs[a..b]` not borrowed)

@@ -4,6 +4,7 @@
 mod compare;
 mod coverage;
 mod dump;
+mod types;
 
 use vun_command::{Action, Command};
 
@@ -43,6 +44,12 @@ pub(super) const COMMANDS: &[Command<Session>] = &[
         about: "the high-level representation, names resolved, with origins",
         params: &[FILE],
         action: Action::Run(|s, args, out| Stage::Hir.dump(s, args, out)),
+    },
+    Command {
+        name: "types",
+        about: "what typing found in each function, plain and in each instantiation reached",
+        params: &[FILE],
+        action: Action::Run(types::types),
     },
     Command {
         name: "mir",

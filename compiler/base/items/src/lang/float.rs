@@ -8,9 +8,11 @@
 use crate::Item;
 /// The namespace `lang.float.ops`.
 pub const ops: Item = Item::new(&["lang", "float", "ops"]);
+/// The namespace `lang.float.soft`.
+pub const soft: Item = Item::new(&["lang", "float", "soft"]);
 pub const mul_add: Item = Item::new(&["lang", "float", "mul_add"]);
 /// IEEE 754 arithmetic in the float type `T`, rounding to nearest: none traps, a division by
-/// zero giving an infinity (spec 04, section 2).
+/// zero giving an infinity, a NaN result the canonical NaN (spec 04, section 2).
 pub const add: Item = Item::new(&["lang", "float", "add"]);
 pub const sub: Item = Item::new(&["lang", "float", "sub"]);
 pub const mul: Item = Item::new(&["lang", "float", "mul"]);
@@ -26,3 +28,11 @@ pub const greater: Item = Item::new(&["lang", "float", "greater"]);
 pub const greater_equal: Item = Item::new(&["lang", "float", "greater_equal"]);
 /// IEEE 754 `totalOrder`: every float in one order, `-NaN < -inf < ... < -0 < +0 < ... < NaN`.
 pub const total_order: Item = Item::new(&["lang", "float", "total_order"]);
+/// The unsigned integer type as wide as the float type `T`, which holds its IEEE 754 encoding.
+pub const Bits: Item = Item::new(&["lang", "float", "Bits"]);
+/// The IEEE 754 encoding of `x`.
+pub const bits: Item = Item::new(&["lang", "float", "bits"]);
+/// The float whose IEEE 754 encoding is `b`.
+pub const from_bits: Item = Item::new(&["lang", "float", "from_bits"]);
+/// How many bits of the float type `T`'s encoding hold the fraction of its significand.
+pub const fraction_bits: Item = Item::new(&["lang", "float", "fraction_bits"]);

@@ -192,7 +192,7 @@ fn a_call_spends_the_steps_of_the_calls_it_makes() {
         "fuel.vun",
         "\
 count := ($n: u32) -> u32 { mut i: u32 = 0; for i < n { i += 1; } i };
-#[comptime.fuel(40)]
+#[comptime.fuel(50)]
 small := ($n: u32) -> u32 { count(n) };
 #[comptime.fuel(1000)]
 large := ($n: u32) -> u32 { count(n) };

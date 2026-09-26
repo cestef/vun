@@ -1,7 +1,7 @@
 //! IEEE 754 binary floats at compile time (spec 04, section 2). A value is a format and its bits;
 //! every operation computes its exact result and rounds it once, to nearest even, as the
 //! hardware does at run time, so compile time and run time agree, for every format alike. A NaN
-//! result is the format's quiet NaN: its sign and payload are not part of the semantics.
+//! result is the format's canonical NaN, which lowering gives at run time too.
 
 mod format;
 mod ops;
@@ -33,7 +33,8 @@ pub(crate) enum Class {
 }
 
 impl Binary {
-    /// The quiet NaN of `format`: exponent all ones, the top fraction bit set.
+    /// The canonical NaN of `format`, every NaN result: sign clear, exponent all ones, only the
+    /// top fraction bit set.
     #[must_use]
     pub fn nan(format: Format) -> Self {
         let bits = format.exponent_all() << format.fraction() | 1 << (format.fraction() - 1);

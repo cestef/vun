@@ -1,10 +1,12 @@
-//! The primitives of `lang.float` at run time (spec 04, section 2): arithmetic and comparisons as
-//! LIR's float operations (`!=` as `==` negated, since LIR's comparisons are ordered), negation as the sign bit flipped, and `totalOrder` as a signed
-//! comparison of the bits with the order of negative values reversed. `rem` and `mul_add` wait
-//! for helpers written in Vun (spec 13, section 8.3).
+//! The primitives of `lang.float` at run time (spec 04, section 2): arithmetic as LIR's float
+//! operations, a NaN result replaced by the canonical NaN; comparisons (`!=` as `==` negated,
+//! since LIR's comparisons are ordered); negation as the sign bit flipped; `totalOrder` as a
+//! signed comparison of the bits with the order of negative values reversed; and the encoding
+//! through `bits` and `from_bits`. `rem` and `mul_add` run as their `lower.by` functions.
 
 use vun_lir::{Access, BinOp, CastOp, Cond, Scalar, Value};
 use vun_mir::Operand;
+use vun_sema::float::{Binary, Format};
 use vun_sema::primitives::float::Float;
 use vun_sema::ty::Ty;
 
@@ -50,6 +52,14 @@ impl FnLower<'_, '_, '_> {
             let equal = self.b.compare(Cond::Eq, x, y, self.at);
             return self.ordering(less, equal, dest, ty);
         }
+        // The encoding: the same bits as the other scalar.
+        if let Float::bits | Float::from_bits = f {
+            let x = self.scalar_operand(arg(0)?)?;
+            let to = self.scalar_of(ty)?;
+            let value = self.b.cast(CastOp::Bitcast, x, to, self.at);
+            self.keep(value, dest);
+            return Ok(());
+        }
         let Some(dest) = dest else { return Ok(()) };
         let op = match f {
             Float::add => BinOp::FAdd,
@@ -70,8 +80,18 @@ impl FnLower<'_, '_, '_> {
         };
         let (x, y) = (self.scalar_operand(arg(0)?)?, self.scalar_operand(arg(1)?)?);
         let value = self.b.binary(op, x, y, self.at);
+        let format = Format::of(&ty).ok_or_else(unsupported)?;
+        let value = self.canonical(value, format);
         self.b.store(value, dest, Access::Plain, self.at);
         Ok(())
+    }
+
+    /// `x`, or the canonical NaN of `format` where `x` is a NaN, whatever NaN the hardware gave
+    /// (spec 04, section 2): only a NaN is unequal to itself.
+    fn canonical(&mut self, x: Value, format: Format) -> Value {
+        let ordered = self.b.compare(Cond::FEq, x, x, self.at);
+        let nan = self.b.constant(self.b.ty(x), u128::from(Binary::nan(format).bits), self.at);
+        self.b.select(ordered, x, nan, self.at)
     }
 
     /// The float a borrow `operand` reaches.

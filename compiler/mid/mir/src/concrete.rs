@@ -11,6 +11,7 @@ use vun_sema::Primitive;
 use vun_sema::callable::Callable;
 use vun_sema::env::{Env, Unevaluated};
 use vun_sema::eval::{Func, Instantiation};
+use vun_sema::primitives::lower::Lower;
 use vun_sema::ty::Value;
 use vun_sema::typeck::Typed;
 
@@ -164,9 +165,10 @@ impl Body {
         }
     }
 
-    /// Rewrites the calls known when compiling: a variant's constructor builds the variant, and
-    /// a primitive whose parameters are all `$` ones, given constants, is its value, which
-    /// nothing at run time changes. Gives whether any changed.
+    /// Rewrites the calls known when compiling: a variant's constructor builds the variant, a
+    /// primitive whose parameters are all `$` ones, given constants, is its value, which nothing
+    /// at run time changes, and a primitive marked `lower.by(f)` is a call of `f`. Gives whether
+    /// any changed.
     fn fold(&mut self, env: &Env<'_, '_>) -> bool {
         let mut changed = false;
         for (_, block) in self.blocks.iter_mut() {
@@ -177,7 +179,12 @@ impl Body {
                         kind: Aggregate::Variant { ty: *ty, name: *name },
                         parts: args.clone(),
                     }),
-                    Value::Primitive(p) => Self::known(env, *p, args).map(|v| Rvalue::Use(Operand::Const(v))),
+                    Value::Primitive(p) => {
+                        Self::known(env, *p, args).map(|v| Rvalue::Use(Operand::Const(v))).or_else(|| {
+                            let f = Self::lowered_by(env, *p)?;
+                            Some(Rvalue::Call { callee: Operand::Const(f), args: args.clone() })
+                        })
+                    }
                     _ => None,
                 };
                 if let Some(folded) = folded {
@@ -189,11 +196,16 @@ impl Body {
         changed
     }
 
+    /// The function the primitive `p` runs as where no instruction computes it (`lower.by`).
+    fn lowered_by(env: &Env<'_, '_>, p: Primitive) -> Option<Value> {
+        let attributes = env.primitive_decl(p).ok()?.attributes(env.cx)?;
+        attributes.get(Primitive::Lower(Lower::by))?.pop()
+    }
+
     /// The value of the primitive `p` applied to `args`, when every parameter of it is a `$` one
     /// and every argument a constant.
     fn known(env: &Env<'_, '_>, p: Primitive, args: &[Operand]) -> Option<Value> {
-        let comptime = Callable::Primitive(p).comptime(env)?;
-        if !comptime.iter().all(|&c| c) {
+        if !Callable::Primitive(p).folds(env) {
             return None;
         }
         let args = args.iter().map(|a| match a {

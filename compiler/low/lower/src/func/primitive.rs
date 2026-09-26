@@ -7,6 +7,7 @@ use vun_lir::{Access, BinOp, Cond, Scalar, Value};
 use vun_mir::Operand;
 use vun_sema::Primitive;
 use vun_sema::callable::Callable;
+use vun_sema::primitives::hint::Hint;
 use vun_sema::primitives::int::Int;
 use vun_sema::primitives::meta::Meta;
 use vun_sema::ty::{Ty, Value as Constant};
@@ -101,6 +102,9 @@ impl FnLower<'_, '_, '_> {
                 self.optional(holds, part, dest, ty)
             }
             Primitive::Mem(m) => self.memory(m, &runtime, dest, ty),
+            // A hint changes nothing the program does; after `unreachable`, the block MIR ends
+            // there says so.
+            Primitive::Hint(Hint::cold | Hint::unreachable) => Ok(()),
             _ => Err(unsupported()),
         }
     }

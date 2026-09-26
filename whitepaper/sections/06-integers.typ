@@ -156,7 +156,10 @@ The floating-point types `f16`, `f32` and `f64` follow IEEE 754 with rounding to
 There is no fast-math mode and no flag that changes floating-point semantics; operations that trade
 precision for speed are explicit functions, such as `lang.float.mul_add` and reductions with a
 specified tree (`v.reduce_add(.pairwise(8))`), which are both vectorizable and reproducible. There
-are no implicit conversions between integers and floating-point values.
+are no implicit conversions between integers and floating-point values. Every operation whose
+result is a NaN gives one canonical NaN (sign clear, only the quiet bit set in the fraction), so a
+float result has a single encoding on every target and at compile time, where the compiler
+computes floats exactly and rounds once.
 
 Vectors are a type rather than a mode. `lang.simd.Vector(N, T)` implements the operator interfaces
 lane by lane under the same range rules as scalars, so the lanes of a sum of two `u8` vectors have
