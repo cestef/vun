@@ -809,6 +809,7 @@ dependencies = [
  "vun-span",
  "vun-suggest",
  "vun-syntax",
+ "vun-trace",
 ]
 
 [[package]]
@@ -941,6 +942,7 @@ dependencies = [
  "vun-origin",
  "vun-span",
  "vun-target",
+ "vun-trace",
 ]
 
 [[package]]

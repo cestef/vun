@@ -16,7 +16,7 @@ use vun_par::Parallel;
 use vun_span::{FileId, SourceMap};
 use vun_target::{CCompiler, FrameSizes};
 use vun_tool::{Arg, Executable, Failure, Invocation, Tool, gcc};
-use vun_trace::Activity;
+use vun_trace::{Activity, tracing};
 
 use crate::Session;
 use crate::codegen::{Coded, Uncoded};
@@ -73,6 +73,9 @@ impl Session {
             }
         })?;
         drop(timer);
+        let backend =
+            self.registry.backends().nth(coded.backend).expect("the backend that coded it").info().id.0;
+        tracing::info!(backend, artifacts = coded.artifacts.len(), "coded");
         let _timer = COMPILE.start();
         let root = PathBuf::from(&self.sources.file(file).path);
         let builds = root.parent().unwrap_or(Path::new("")).join(vun_fs::WORK).join(BUILDS);
@@ -87,7 +90,10 @@ impl Session {
         }
         let compiler = &coded.target.c.compiler;
         let sources: Vec<&Artifact> = coded.artifacts.iter().filter(|a| a.kind == Emits::Source).collect();
-        let results = sources.par_map(|a| Self::compile_source(compiler, &dir.join(&a.name)));
+        let results = sources.par_map(|a| {
+            tracing::debug!(source = %a.name.display(), compiler = compiler.command.as_str(), "compiling");
+            Self::compile_source(compiler, &dir.join(&a.name))
+        });
         let mut objects = Vec::new();
         for (artifact, result) in sources.iter().zip(results) {
             objects.push(result.map_err(|failure| {
@@ -199,6 +205,7 @@ impl Session {
         };
         let _timer = LINK.start();
         linker.link(&plan, target, &mut self.diag)?;
+        tracing::info!(output = %output.display(), objects = plan.inputs.len(), "linked");
         Ok(output)
     }
 }

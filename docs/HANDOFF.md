@@ -390,8 +390,10 @@ rules go to `decisions.md` as proposed unless the user approves them.
    keys 2, restore 1). Timings: `--timings`/`VUN_TIMINGS=1` (decision 180);
    `VUN_LOG=vun_query=debug` names why each memo is computed (absent, a changed read, loaded
    without its value) and which memos are not saved; `vun_origin=trace` lists every origin.
-   Next, in order: (a) logging off by default and more `info`/`debug`/`trace` logs across the
-   stages (the user's request, not started); (b) the file never shrinks: memos of deleted
+   Logging is off unless `VUN_LOG` asks; `info` tells a run step by step (loading, saved
+   queries, target, checked, coded, linked), `debug` each query computed and why, packages read,
+   files lowered, functions built, lowered and compiled, `trace` MIR statements, LIR
+   instructions, selected instructions, origins and query keys. Next, in order: (b) the file never shrinks: memos of deleted
    files and stale keys stay until the file is removed; compact it when it grows past twice its
    live size; (c) writes are not atomic (two `vun` runs at once can leave a truncated file,
    which is then skipped); write a temporary file and rename; (d) the rest of the performance

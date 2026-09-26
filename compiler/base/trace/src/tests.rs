@@ -9,8 +9,7 @@ fn the_most_specific_directive_decides() {
     assert!(!filter.enabled("vun_sema::int", Level::WARN));
     assert!(filter.enabled("vun_syntax", Level::INFO));
     assert!(!filter.enabled("vun_syntax", Level::DEBUG));
-    assert!(Filter::default().enabled("anything", Level::WARN));
-    assert!(!Filter::default().enabled("anything", Level::INFO));
+    assert!(!Filter::default().enabled("anything", Level::ERROR), "nothing without a filter");
     assert!(
         Filter::parse("debug,warn").enabled("x", Level::WARN)
             && !Filter::parse("debug,warn").enabled("x", Level::INFO),

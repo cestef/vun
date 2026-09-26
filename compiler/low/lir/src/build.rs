@@ -77,6 +77,7 @@ impl Builder {
 
     /// Appends `kind`, defining a value of type `ty` when it has one.
     pub fn push(&mut self, kind: InstKind, ty: Option<Scalar>, origin: OriginId) -> Option<Value> {
+        vun_trace::tracing::trace!(block = ?self.current, ?kind, ?ty, "instruction");
         let inst = self.func.insts.push(InstData { kind, result: None, origin });
         let result = ty.map(|ty| self.func.values.push(ValueData { ty, def: Def::Inst(inst) }));
         self.func.insts[inst].result = result;
@@ -138,6 +139,7 @@ impl Builder {
 
     /// Ends the current block.
     pub fn terminate(&mut self, term: Terminator) {
+        vun_trace::tracing::trace!(block = ?self.current, ?term, "terminator");
         self.func.blocks[self.current].term = term;
     }
 

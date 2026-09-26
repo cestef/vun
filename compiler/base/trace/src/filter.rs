@@ -1,11 +1,10 @@
 //! `VUN_LOG` filters: comma-separated directives, each a level (`debug`) or a target and a
 //! level (`vun_sema=trace`). The directive with the longest target that prefixes an event's
-//! target decides; a directive without a target applies everywhere.
+//! target decides; a directive without a target applies everywhere, and without any, nothing is
+//! shown.
 
 use tracing::Level;
 
-/// The level shown without a filter.
-const DEFAULT: Level = Level::WARN;
 /// Separates directives, and a target from its level.
 const DIRECTIVES: char = ',';
 const TARGET: char = '=';
@@ -22,9 +21,10 @@ pub struct Filter {
     directives: Vec<Directive>,
 }
 
+/// Shows nothing.
 impl Default for Filter {
     fn default() -> Self {
-        Self { directives: vec![Directive { target: None, level: DEFAULT }] }
+        Self { directives: Vec::new() }
     }
 }
 

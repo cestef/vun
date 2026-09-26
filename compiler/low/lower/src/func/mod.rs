@@ -112,7 +112,9 @@ impl<'l, 'a, 'db> FnLower<'l, 'a, 'db> {
         let first = this.blocks[Idx::new(0)];
         this.b.terminate(Terminator::Jump(Target { block: first, args: Vec::new() }));
         this.lower_blocks()?;
-        Ok(this.b.finish())
+        let function = this.b.finish();
+        vun_trace::tracing::debug!(blocks = function.blocks.len(), insts = function.insts.len(), "lowered");
+        Ok(function)
     }
 
     fn new(

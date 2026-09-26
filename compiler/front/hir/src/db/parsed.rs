@@ -11,6 +11,7 @@ use vun_query::{Cx, Query};
 use vun_span::{FileId, SourceFiles};
 use vun_syntax::cst::Cst;
 use vun_syntax::tokens::Tokens;
+use vun_trace::tracing;
 
 use super::input::{FileRef, FileText, Package};
 use crate::lower;
@@ -72,6 +73,7 @@ impl Query for Parsed {
         let cst = Cst::parse(&tokens, &text, &mut dcx);
         let hir = Hir::lower(lower::Source { cst: &cst, tokens: &tokens, text: &text }, origins);
         let resolution = hir.resolve(&mut dcx);
+        tracing::debug!(path = %key.path, decls = hir.decls.len(), exprs = hir.exprs.len(), "lowered to HIR");
         let text = Hash::of(text.as_bytes());
         Some(Arc::new(ParsedFile { file, tokens, cst, hir, resolution, diag, text }))
     }

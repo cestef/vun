@@ -29,6 +29,7 @@ use vun_diag::{Diagnostic, ErrorGuaranteed};
 use vun_hash::{Hash, Snapshot};
 use vun_intern::Symbol;
 use vun_span::{FileId, Span};
+use vun_trace::tracing;
 
 pub use add::{Addition, Unstated};
 pub use fetch::Fetched;
@@ -173,6 +174,7 @@ impl Session {
         let manifest = self.manifest_at(&path.is_file().then_some(path)?)?;
         let snapshot = Snapshot::of(dir, &manifest.include);
         let key = PackageKey::Content(snapshot.root());
+        tracing::debug!(dir = %dir.display(), name = %manifest.name, files = snapshot.files().count(), "package read");
         if !self.packages.list.contains_key(&key) {
             let name = Some(Symbol::intern(&manifest.name));
             let replace = manifest.replace.iter().map(|r| Replace {

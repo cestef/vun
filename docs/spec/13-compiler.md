@@ -520,8 +520,10 @@ Rules:
 - Components declare their facts once (`BackendInfo`, `LinkerInfo`); support checks derive from
   them. Tables declared once generate their enums and lookups (tokens, diagnostic ids, commands).
 - Every arena is an `IndexVec` addressed by its own index newtype (`vun-index`).
-- Logging goes through `vun-trace` (`VUN_LOG`, `VUN_LOG_FORMAT`); corpus and snapshot tests
-  go through `vun-harness` (`VUN_BLESS`).
+- Logging goes through `vun-trace` and is off unless `VUN_LOG` asks for it (`VUN_LOG_FORMAT`
+  chooses the layout); a level says how much a line stands for in every crate: `info` a step of
+  a run, `debug` a unit of work, `trace` an element such as a statement or an instruction.
+  Corpus and snapshot tests go through `vun-harness` (`VUN_BLESS`).
 - Timings are activities timed where they run: the query engine times every computation by its
   query's name, and the driver each stage of its table and each build step. Each activity sums
   its runs, its own time (without the activities run inside it) and its total time over every

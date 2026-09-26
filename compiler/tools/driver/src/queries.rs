@@ -53,8 +53,8 @@ impl Session {
         let Some(path) = Self::saved_at(root) else { return };
         if let Ok(bytes) = std::fs::read(&path) {
             match self.db.load(bytes) {
-                Ok(restored) => tracing::debug!(restored, path = %path.display(), "loaded saved queries"),
-                Err(unloaded) => tracing::debug!(%unloaded, "saved queries skipped"),
+                Ok(restored) => tracing::info!(restored, path = %path.display(), "saved queries loaded"),
+                Err(unloaded) => tracing::info!(%unloaded, path = %path.display(), "saved queries skipped"),
             }
         }
         self.persistence = Persistence::At(path);
@@ -64,10 +64,13 @@ impl Session {
     pub fn save(&self) {
         let Persistence::At(path) = &self.persistence else { return };
         if !self.db.changed() {
+            tracing::debug!(path = %path.display(), "queries unchanged");
             return;
         }
-        if let Err(error) = path.put(self.db.save()) {
-            tracing::warn!(%error, path = %path.display(), "cannot save the queries");
+        let bytes = self.db.save();
+        match path.put(&bytes) {
+            Ok(()) => tracing::info!(bytes = bytes.len(), path = %path.display(), "queries saved"),
+            Err(error) => tracing::warn!(%error, path = %path.display(), "cannot save the queries"),
         }
     }
 

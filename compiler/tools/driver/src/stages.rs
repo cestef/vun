@@ -6,7 +6,7 @@
 use vun_diag::{DiagCtxt, DiagId, errors};
 use vun_query::Query;
 use vun_span::{FileId, SourceMap};
-use vun_trace::{Activity, Timer};
+use vun_trace::{Activity, Timer, tracing};
 
 use vun_mir_passes::borrows::BorrowChecks;
 use vun_mir_passes::panics::PanicChecks;
@@ -126,8 +126,10 @@ impl Session {
             if let Some(run) = stage.run {
                 let _timer = stage.time();
                 run(self, file);
+                tracing::debug!(stage = stage.name, errors = self.diag.error_count(), "stage done");
             }
         }
+        tracing::info!(file = %self.sources.file(file).path, errors = self.diag.error_count(), "checked");
     }
 
     /// The lines, first and last, of each function of `file` that MIR does not lower yet.

@@ -91,10 +91,15 @@ impl Query for Mir {
         let _span =
             vun_trace::tracing::debug_span!("mir", f = name.as_ref().map_or("", |n| n.as_str())).entered();
         let built = Builder::lower(&env, i);
-        if let Err(unbuilt) = &built {
-            let (origins, sources) = (OriginTable::global(), SourceFiles::global());
-            let at = sources.locate(origins.source_span(unbuilt.at)).to_string();
-            vun_trace::tracing::debug!(%at, by = %unbuilt.by, "unbuilt");
+        match &built {
+            Ok(body) => {
+                vun_trace::tracing::debug!(blocks = body.blocks.len(), locals = body.locals.len(), "built");
+            }
+            Err(unbuilt) => {
+                let (origins, sources) = (OriginTable::global(), SourceFiles::global());
+                let at = sources.locate(origins.source_span(unbuilt.at)).to_string();
+                vun_trace::tracing::debug!(%at, by = %unbuilt.by, "unbuilt");
+            }
         }
         built.map(Arc::new)
     }
@@ -223,6 +228,7 @@ impl<'a, 'db> Builder<'_, 'a, 'db> {
     }
 
     fn assign(&mut self, place: Place, value: Rvalue, origin: OriginId) {
+        vun_trace::tracing::trace!(block = ?self.current, ?place, ?value, "statement");
         self.blocks[self.current].stmts.push(Stmt { place, value, origin });
     }
 

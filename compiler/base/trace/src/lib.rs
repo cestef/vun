@@ -4,8 +4,19 @@
 //! shown is chosen at run time:
 //!
 //! - `VUN_LOG` takes directives, such as `vun_sema=debug,vun_mir_passes=trace` or `info`;
+//!   without it nothing is logged;
 //! - `VUN_LOG_FORMAT` is `compact` (default) or `tree`;
 //! - `VUN_TIMINGS=1` times every stage and query, reported at exit ([`Timings`]).
+//!
+//! Levels say how much a log line stands for, the same in every crate:
+//!
+//! - `error` and `warn`: something went wrong that the compiler went on past, not a diagnostic
+//!   (a cache that cannot be written);
+//! - `info`: one line per step of a run: a file loaded, a stage done, queries loaded or saved,
+//!   a program built or linked;
+//! - `debug`: one line per unit of work: a query computed and why, a package read, a function
+//!   built, lowered or generated, a tool run;
+//! - `trace`: one line per element: a statement, an instruction, an origin.
 
 mod filter;
 mod subscriber;
@@ -53,11 +64,14 @@ impl Config {
         }
     }
 
-    /// Installs the global subscriber, and starts timing if asked. Without a filter, only
-    /// warnings and errors are shown.
+    /// Starts timing if asked, and installs the global subscriber if a filter asks for logs:
+    /// logging is opt-in, and without a subscriber a log costs one check.
     pub fn install(&self) {
         if self.timings {
             Timings::enable();
+        }
+        if self.filter.is_none() {
+            return;
         }
         // A subscriber may already be installed by an embedding tool; keep that one.
         let _ = tracing::subscriber::set_global_default(subscriber::Writer::new(self));

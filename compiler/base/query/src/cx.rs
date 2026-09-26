@@ -180,7 +180,9 @@ impl<'db> Cx<'db> {
                 })
                 .chain([(Q::NAME, format!("{:?}", entry.key))])
                 .collect();
-            let value = Q::cycle(self, &entry.key, &Cycle { path });
+            let cycle = Cycle { path };
+            tracing::debug!(%cycle, "cycle recovered");
+            let value = Q::cycle(self, &entry.key, &cycle);
             let fingerprint = Q::interface(&value);
             return Some((value, fingerprint));
         }
@@ -189,7 +191,8 @@ impl<'db> Cx<'db> {
             Claim::Owner(owned) => Some(owned),
             Claim::Alone => None,
         };
-        tracing::debug!(query = Q::NAME, key = ?entry.key, why = %why.show(self.db), "computing");
+        tracing::debug!(query = Q::NAME, why = %why.show(self.db), "computing");
+        tracing::trace!(query = Q::NAME, key = ?entry.key, "key");
         self.stack.borrow_mut().push(Frame { table: table.id, slot, reads: Vec::new() });
         let timer = Activity::query(Q::NAME).start();
         let value = Q::compute(self, &entry.key);

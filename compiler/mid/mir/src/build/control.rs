@@ -18,6 +18,7 @@ impl Builder<'_, '_, '_> {
 
     /// Ends the current block with `kind`.
     pub(super) fn terminate(&mut self, kind: TerminatorKind, origin: OriginId) {
+        vun_trace::tracing::trace!(block = ?self.current, ?kind, "terminator");
         self.blocks[self.current].term = Terminator { kind, origin };
     }
 

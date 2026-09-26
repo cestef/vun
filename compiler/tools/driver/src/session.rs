@@ -29,6 +29,7 @@ use vun_syntax::cst::Cst;
 use vun_syntax::literal::Decl;
 use vun_syntax::tokens::Tokens;
 use vun_target::TargetSpec;
+use vun_trace::tracing;
 
 use crate::formats::Format;
 use crate::packages::{LIBRARY, Packages};
@@ -102,6 +103,7 @@ impl Session {
     /// Reads a source file; a read failure becomes a diagnostic.
     pub fn load(&mut self, path: &Path) -> Option<FileId> {
         let _timer = crate::stages::LOAD.time();
+        tracing::info!(path = %path.display(), "loading");
         self.restore(path);
         let text = self.read(path)?;
         let key = self.file_key(path);

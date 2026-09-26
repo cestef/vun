@@ -88,6 +88,7 @@ impl<'u> Emitter<'u> {
             protos.push(Item::Declare(e.proto(storage, e.func(id), &func.signature, func.origin)?));
             let at = usize::try_from(Hash::of_value(func).short()).unwrap_or_default() % shards;
             bodies.push((at, e.define(id, storage)?));
+            vun_trace::tracing::debug!(f = %func.linkage, shard = at, "emitted");
         }
         let data = e.objects()?;
         // A link symbol spelling a builtin the file uses would hide it.

@@ -12,6 +12,7 @@ use vun_hir::db::FileRef;
 use vun_intern::Symbol;
 use vun_sema::target::{Choice, Chosen, Target, TargetOf};
 use vun_target::TargetSpec;
+use vun_trace::tracing;
 
 use crate::Session;
 
@@ -43,6 +44,7 @@ impl Session {
         let chosen = self.db.get::<Chosen>(&(key.clone(), self.choice.clone()));
         let target = match chosen {
             Ok(spec) => {
+                tracing::info!(arch = %spec.arch, cpu = %spec.cpu, os = %spec.os, "target chosen");
                 let target = Target::of(&spec);
                 let current = self.db.get::<TargetOf>(&());
                 assert!(

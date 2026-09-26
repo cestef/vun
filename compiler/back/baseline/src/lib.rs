@@ -54,7 +54,13 @@ impl BaselineBackend {
     /// Never: compiling a function does not panic.
     pub fn compile(unit: &Unit) -> Result<IndexVec<FuncId, Compiled>, Lack> {
         let functions: Vec<&Function> = unit.functions.iter().map(|(_, f)| f).collect();
-        let compiled = functions.par_map(|f| x86_64::func::compile(unit, f));
+        let compiled = functions.par_map(|f| {
+            let compiled = x86_64::func::compile(unit, f);
+            if let Ok(c) = &compiled {
+                vun_trace::tracing::debug!(f = %f.linkage, bytes = c.code.len(), frame = c.frame, "compiled");
+            }
+            compiled
+        });
         Ok(compiled.into_iter().collect::<Result<Vec<_>, _>>()?.into())
     }
 
