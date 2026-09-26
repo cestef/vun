@@ -42,7 +42,10 @@ pub const STAGES: &[Stage] = &[
         name: "syntax",
         reports: &[errors::SYNTAX],
         input: Input::Source,
-        run: Some(|session, file| drop(session.parsed(file))),
+        run: Some(|session, file| {
+            session.parse_ahead();
+            drop(session.parsed(file));
+        }),
     },
     Stage {
         name: "names",

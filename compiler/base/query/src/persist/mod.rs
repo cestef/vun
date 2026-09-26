@@ -100,6 +100,12 @@ impl Db {
         Saved { format: FORMAT, compacted, body }.encoded()
     }
 
+    /// Whether saved memos were loaded.
+    #[must_use]
+    pub fn restored(&self) -> bool {
+        self.store.get().is_some()
+    }
+
     /// Whether a memo was computed that the memos loaded did not hold, or none were: what
     /// [`Db::save`] would write differs from what was loaded.
     #[must_use]

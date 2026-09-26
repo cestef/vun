@@ -7,8 +7,11 @@ use std::sync::Arc;
 use vun_build::layout::SEPARATOR;
 use vun_diag::DiagCtxt;
 use vun_hash::{Hash, Snapshot};
-use vun_hir::db::{DepData, FileRef, FileText, Package as PackageInput, PackageData, PackageId, Unloaded};
+use vun_hir::db::{
+    DepData, FileRef, FileText, Package as PackageInput, PackageData, PackageId, Parsed, Unloaded,
+};
 use vun_intern::Symbol;
+use vun_par::Parallel;
 use vun_span::EXTENSION;
 
 use super::deps::Unfetched;
@@ -57,6 +60,30 @@ impl Package {
 }
 
 impl Session {
+    /// Parses every file of every package published, in parallel, when no saved memos were
+    /// loaded: a first compile reads most of them, and one at a time as names reach them
+    /// otherwise. With memos loaded, only the files a check reaches are parsed.
+    pub(crate) fn parse_ahead(&self) {
+        if self.db.restored() {
+            return;
+        }
+        let files: Vec<FileRef> = self
+            .packages
+            .published
+            .iter()
+            .flat_map(|package| {
+                let id = package.id();
+                let data = self.db.get::<PackageInput>(&id);
+                data.files
+                    .iter()
+                    .map(move |path| FileRef { package: id, path: Symbol::intern(path) })
+                    .collect::<Vec<_>>()
+            })
+            .collect();
+        let db = &self.db;
+        files.par_map(|file| drop(db.get::<Parsed>(file)));
+    }
+
     /// Sets the inputs of `package` and of every package it depends on, once each, and returns its
     /// id. Dependencies are resolved without reporting: a missing one carries its diagnostic, which
     /// the queries return where it is needed.
@@ -91,8 +118,8 @@ impl Session {
             prelude_span: p.prelude_span,
             files: p.sources(),
         };
-        for path in &data.files {
-            let text = std::fs::read_to_string(p.dir.join(path)).ok();
+        let texts = data.files.par_map(|path| std::fs::read_to_string(p.dir.join(path)).ok());
+        for (path, text) in data.files.iter().zip(texts) {
             self.db
                 .set::<FileText>(&FileRef { package: id, path: Symbol::intern(path) }, text.map(Arc::from));
         }
