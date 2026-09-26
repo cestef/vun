@@ -87,6 +87,9 @@ impl<'a, 'db> Lowering<'a, 'db> {
             let constructor = l.lower_constructor(ty, name)?;
             l.unit.functions.push(constructor);
         }
+        // Locals are given slots as they are lowered; those only loaded and stored whole are
+        // values, which every backend then keeps in registers.
+        l.unit.promote();
         Ok(l.unit)
     }
 

@@ -3,7 +3,7 @@
 //! integer a sequence over halves (`Halves`) and each on a promoted `f16` one in `f32`
 //! (`Float16`).
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use vun_codec::{Decode, Encode};
 use vun_index::Idx;
@@ -16,6 +16,7 @@ mod half;
 mod inst;
 mod term;
 use super::{Helpers, Legalize, Unlegal};
+use crate::analysis::{Cfg, Loops};
 use crate::{Access, Block, Builder, Function, Scalar, Unit, Value};
 
 /// An old value in the new function.
@@ -89,7 +90,13 @@ impl<'u> Rewrite<'u> {
                 rw.result = received.next();
             }
         }
-        for (block, data) in old.blocks.iter() {
+        // Definitions are rewritten before their uses: reachable blocks in reverse postorder,
+        // which visits a block's dominators first, then the others.
+        let loops = Loops::of(old, &Cfg::of(old));
+        let reached: HashSet<Block> = loops.rpo().iter().copied().collect();
+        let rest = old.blocks.iter().map(|(b, _)| b).filter(|b| !reached.contains(b));
+        for block in loops.rpo().iter().copied().chain(rest) {
+            let data = &old.blocks[block];
             rw.b.switch_to(rw.blocks[block.index()]);
             for &inst in &data.insts {
                 rw.inst(inst)?;

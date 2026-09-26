@@ -163,7 +163,14 @@ per second per stage and fails on regressions.
   value moves between ranges; enums by their shapes; checks of indices and narrowings as trap
   sites. A primitive no instruction computes is marked `#[lang.lower.by(f)]`: making its caller
   concrete rewrites each call of it into a call of `f`, a Vun function of the same parameters
-  (`lang.float.rem` runs as `lang.float.soft.rem`), compiled like any other.
+  (`lang.float.rem` runs as `lang.float.soft.rem`), compiled like any other. A slot only plain
+  loads and stores of one scalar as wide as it reach, by its address alone, is then promoted
+  (`Unit::promote`): its stores become definitions, its loads the definition reaching them,
+  through block parameters where definitions meet (as Braun et al. build SSA, every predecessor
+  known), parameters passed one value are that value, and the slot goes (`Function::compact`
+  renumbers what remains). A read before any store reads zero, as a constant at the entry. Every
+  backend then holds those locals as values; passes over LIR rewrite blocks in reverse
+  postorder, so a definition is seen before its uses.
 - Both have **stable text formats**. Tests are written against them, dumps are readable and carry
   origins, and an external backend is any executable reading LIR text on standard input.
 

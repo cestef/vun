@@ -1,5 +1,7 @@
 //! Instructions over scalar values, and the terminators ending blocks.
 
+mod operands;
+
 use crate::entity::{Block, DataId, FuncId, ImportId, Slot, Value};
 use crate::func::Signature;
 use crate::ty::Scalar;
@@ -178,54 +180,6 @@ pub enum Terminator {
     Return(Option<Value>),
     /// Control never gets here.
     Unreachable,
-}
-
-impl Terminator {
-    /// The jumps this may take: a switch's cases, then its default.
-    pub fn targets(&self) -> impl Iterator<Item = &Target> {
-        let (cases, rest): (&[(u128, Target)], [Option<&Target>; 2]) = match self {
-            Self::Jump(t) => (&[], [Some(t), None]),
-            Self::Branch { then, otherwise, .. } => (&[], [Some(then), Some(otherwise)]),
-            Self::Switch { cases, default, .. } => (cases, [Some(default), None]),
-            Self::Return(_) | Self::Unreachable => (&[], [None, None]),
-        };
-        cases.iter().map(|(_, t)| t).chain(rest.into_iter().flatten())
-    }
-
-    /// The values this reads, jump arguments included.
-    pub fn operands(&self) -> impl Iterator<Item = Value> {
-        let own = match self {
-            Self::Branch { cond, .. } => Some(*cond),
-            Self::Switch { value, .. } => Some(*value),
-            Self::Return(value) => *value,
-            Self::Jump(_) | Self::Unreachable => None,
-        };
-        own.into_iter().chain(self.targets().flat_map(|t| t.args.iter().copied()))
-    }
-}
-
-impl InstKind {
-    /// The values this reads.
-    pub fn operands(&self) -> impl Iterator<Item = Value> {
-        let (own, args): ([Option<Value>; 3], &[Value]) = match self {
-            Self::Const { .. } | Self::SlotAddr(_) | Self::Addr(_) => ([None; 3], &[]),
-            Self::Binary { a, b, .. } | Self::Compare { a, b, .. } => ([Some(*a), Some(*b), None], &[]),
-            Self::Cast { value, .. } => ([Some(*value), None, None], &[]),
-            Self::Select { cond, then, otherwise } => ([Some(*cond), Some(*then), Some(*otherwise)], &[]),
-            Self::Load { addr, .. } => ([Some(*addr), None, None], &[]),
-            Self::Store { value, addr, .. } | Self::Rmw { addr, value, .. } => {
-                ([Some(*value), Some(*addr), None], &[])
-            }
-            Self::CompareExchange { addr, expected, new, .. } => {
-                ([Some(*addr), Some(*expected), Some(*new)], &[])
-            }
-            Self::Offset { base, offset } => ([Some(*base), Some(*offset), None], &[]),
-            Self::Copy { to, from, .. } => ([Some(*to), Some(*from), None], &[]),
-            Self::Call { callee: Callee::Indirect(f, _), args } => ([Some(*f), None, None], args),
-            Self::Call { args, .. } => ([None; 3], args),
-        };
-        own.into_iter().flatten().chain(args.iter().copied())
-    }
 }
 
 impl Address {

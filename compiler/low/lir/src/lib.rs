@@ -4,11 +4,13 @@
 
 pub mod analysis;
 pub mod build;
+mod compact;
 pub mod entity;
 pub mod facts;
 pub mod func;
 pub mod inst;
 pub mod legalize;
+pub mod promote;
 pub mod text;
 pub mod ty;
 pub mod unit;
