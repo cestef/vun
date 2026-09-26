@@ -158,12 +158,15 @@ in as proposed unless the user approves them.
    binary 470 KB smaller). `par_map`'s spawns measured: about 1 ms a run, not worth a pool.
    The size budget is 12 MiB (decision 193, the user's choice): the dist binary is 11.17 MB;
    the largest parts are `std` (1.7 MiB of text), rustls and ring (640 KiB, for `vun-http`) and
-   per-query code (`Cx::get`, `Table::slot`, about 400 KiB). Left: (b) Loading saved
-   queries is eager: a warm run of one program takes 14 ms, all of it loading; ten programs
-   sharing a file pay for all of them (38 ms). Loading a memo when its key is first asked for
-   (keys indexed by `Stable` hash, as rustc's on-disk cache) would make it proportional to what
-   is used. Storing a memo pays `arc_swap`'s debts of every thread, so stores must not run in
-   parallel (restore is one thread for that reason). (c) The audit items with no workload to
+   per-query code (`Cx::get`, `Table::slot`, about 400 KiB). (b) Done in the
+   seventeenth session (decision 197): saved queries load as used (`persist/store.rs`: a
+   query's keys when one is looked for, by `Stable` hash; a memo when its key gets a slot, placed
+   in the entry before it is published, so no `arc_swap` store; reads resolved on first verify);
+   a save extending the file keeps every key's position and copies what was never asked for.
+   Load went from 7.5 to 0.4 ms; a warm check sharing a file with ten programs 15.1 to 11.1 ms
+   (45 to 11 ms of CPU). What is left of a warm run is reading packages (`stage syntax`, about
+   4 ms: 168 files read and hashed) and process start. Decision 198 fixed cycles found on the
+   way (see pitfalls). Left: (c) The audit items with no workload to
    measure yet: fingerprints of large values, the interpreter copying whole values, small
    `Integer`s; the corpus has no program past 70 ms, so a comptime-heavy benchmark comes first.
 3. `std`: `task.Pool`, `testing.Sim`, a Linux runtime without libc, `Str` and collections,
@@ -190,6 +193,11 @@ in as proposed unless the user approves them.
 - A query key must equal another only when computing either gives the same value: a key equal by
   origin alone kept the index a node had before an edit, so a saved memo was computed at the
   wrong node (decision 195). A key carrying anything `compute` reads must compare it.
+- Query cycles (decision 198): a value computed from a `cycle` value is provisional and never
+  memoized, only the query reached again keeps its memo; verification treats a memo reached
+  again through its reads as `Why::Cycle`. Programs with cycles (recursive types through
+  `kinds`) still re-save their queries on every warm run: the recomputed memos' reads differ in
+  order from the saved ones. Cheap, but a fixpoint-style cycle (salsa's) would remove it.
 - Process-wide tables (`SourceFiles::global()`, `OriginTable::global()`, interners) are shared by
   every session in the process.
 - Persisted queries need unique `Query::NAME`s and codecs; set queries are `INPUT`. Delete
