@@ -1,8 +1,11 @@
 //! GNU ld, driven by the target's C compiler (`lang.target.CCompiler`), which passes it the C
 //! runtime's start files and libraries on hosted targets; on bare metal the compiler's link flags
-//! leave them out. Memory regions and section placement become a linker script.
+//! leave them out. Memory regions and section placement become a linker script. The driving is
+//! shared with the linkers that stand in for GNU ld (`Ld`).
 
 mod script;
+
+use std::path::Path;
 
 use vun_diag::{DiagCtxt, Diagnostic, ErrorGuaranteed, Msg, errors};
 use vun_fs::Edit;
@@ -27,11 +30,44 @@ impl Linker for GnuLinker {
     }
 
     fn link(&self, plan: &LinkPlan, target: &TargetSpec, diag: &mut DiagCtxt) -> Result<(), ErrorGuaranteed> {
+        Ld::Own.link(&INFO, plan, target, diag)
+    }
+}
+
+/// The linker a GCC-style compiler driver runs: its own, one a flag names, or the `ld` of a
+/// directory it looks in first. Linkers that stand in for GNU ld (mold, wild) are driven so, the
+/// driver passing the C runtime's start files and libraries as it does to GNU ld.
+#[derive(Clone, Copy, Debug)]
+pub enum Ld<'a> {
+    Own,
+    Flag(&'static str),
+    In(&'a Path),
+}
+
+impl Ld<'_> {
+    /// Links `plan` through the target's C compiler, running this linker; memory regions and
+    /// section placement become a linker script.
+    ///
+    /// # Errors
+    /// Returns once an error has been reported to `diag`: an output other than an executable,
+    /// a script not written, or a link that failed.
+    pub fn link(
+        self,
+        info: &LinkerInfo,
+        plan: &LinkPlan,
+        target: &TargetSpec,
+        diag: &mut DiagCtxt,
+    ) -> Result<(), ErrorGuaranteed> {
         if plan.kind != OutputKind::Executable {
-            return Err(INFO.unavailable(diag));
+            return Err(info.unavailable(diag));
         }
         let compiler = &target.c.compiler;
         let mut args: Vec<Arg> = compiler.link_flags.iter().map(|&f| Arg::Text(f)).collect();
+        match self {
+            Self::Own => {}
+            Self::Flag(flag) => args.push(flag.into()),
+            Self::In(dir) => args.extend([gcc::PROGRAMS.into(), Arg::Path(dir.to_path_buf())]),
+        }
         args.extend([gcc::OUTPUT.into(), Arg::Path(plan.output.clone())]);
         if let Some(entry) = plan.entry {
             args.extend([gcc::ENTRY.into(), Arg::Text(entry)]);

@@ -120,6 +120,13 @@ impl Executable {
     pub fn new(id: impl Into<String>, program: impl Into<PathBuf>) -> Self {
         Self { id: id.into(), program: program.into() }
     }
+
+    /// Where the program `name` is on the search path (`PATH`), if it is.
+    #[must_use]
+    pub fn search(name: &str) -> Option<PathBuf> {
+        let paths = std::env::var_os("PATH")?;
+        std::env::split_paths(&paths).map(|dir| dir.join(name)).find(|path| path.is_file())
+    }
 }
 
 impl Tool for Executable {

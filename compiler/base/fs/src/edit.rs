@@ -31,6 +31,14 @@ pub trait Edit {
     /// # Errors
     /// Returns an error if the old directory cannot be removed or `from` cannot be moved.
     fn replace_with(&self, from: &Path) -> io::Result<()>;
+
+    /// Makes this a symbolic link to `target`, creating its parents; like [`Edit::put`], the link
+    /// is made beside and renamed over what was here.
+    ///
+    /// # Errors
+    /// Returns an error if a directory or the link cannot be written, or the system has no
+    /// symbolic links.
+    fn link_to(&self, target: &Path) -> io::Result<()>;
 }
 
 /// A file being written by [`Edit::put`] ends with this, after the writing process's id, so that
@@ -82,5 +90,19 @@ impl Edit for Path {
         }
         self.remove()?;
         fs::rename(from, self)
+    }
+
+    fn link_to(&self, target: &Path) -> io::Result<()> {
+        if let Some(parent) = self.parent() {
+            fs::create_dir_all(parent)?;
+        }
+        let part = self.with_file_name(Self::part_name(self));
+        #[cfg(unix)]
+        let linked = std::os::unix::fs::symlink(target, &part);
+        #[cfg(not(unix))]
+        let linked = Err(io::Error::from(io::ErrorKind::Unsupported));
+        linked.and_then(|()| fs::rename(&part, self)).inspect_err(|_| {
+            let _ = fs::remove_file(&part);
+        })
     }
 }

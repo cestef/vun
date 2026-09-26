@@ -23,7 +23,7 @@ pub const PROGRAM: Program<Session> = Program {
         &[
             Command::run("build", "build the program a root file exports", build)
                 .aliases(&["b"])
-                .params(&[FILE, crate::codegen::BACKEND, crate::program::OUTPUT])
+                .params(&[FILE, crate::codegen::BACKEND, crate::codegen::LINKER, crate::program::OUTPUT])
                 .sets(&[COMPILE])
                 .examples(&[
                     Example { line: "main.vun", about: "build the program, named after its file" },
@@ -34,7 +34,13 @@ pub const PROGRAM: Program<Session> = Program {
                 ]),
             Command::run("run", "build the program a root file exports and run it", run)
                 .aliases(&["r"])
-                .params(&[FILE, ARGS, crate::codegen::BACKEND, crate::program::OUTPUT])
+                .params(&[
+                    FILE,
+                    ARGS,
+                    crate::codegen::BACKEND,
+                    crate::codegen::LINKER,
+                    crate::program::OUTPUT,
+                ])
                 .sets(&[COMPILE])
                 .examples(&[Example {
                     line: "main.vun -- --verbose input.txt",

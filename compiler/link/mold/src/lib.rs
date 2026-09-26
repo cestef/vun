@@ -1,11 +1,13 @@
-//! mold: fast, mature ELF linking.
+//! mold: fast, mature ELF linking, run by the target's C compiler in place of GNU ld.
 
 use vun_diag::{DiagCtxt, ErrorGuaranteed};
 use vun_link::{LinkPlan, Linker, LinkerInfo};
+use vun_link_gnu::Ld;
 use vun_target::{Name, Readiness, TargetSpec};
+use vun_tool::gcc;
 
 pub const INFO: LinkerInfo =
-    LinkerInfo { id: Name("mold"), formats: &[Name("elf")], regions: false, readiness: Readiness::Planned };
+    LinkerInfo { id: Name("mold"), formats: &[Name("elf")], regions: false, readiness: Readiness::Ready };
 
 #[derive(Default)]
 pub struct MoldLinker;
@@ -15,12 +17,7 @@ impl Linker for MoldLinker {
         &INFO
     }
 
-    fn link(
-        &self,
-        _plan: &LinkPlan,
-        _target: &TargetSpec,
-        diag: &mut DiagCtxt,
-    ) -> Result<(), ErrorGuaranteed> {
-        Err(INFO.unavailable(diag))
+    fn link(&self, plan: &LinkPlan, target: &TargetSpec, diag: &mut DiagCtxt) -> Result<(), ErrorGuaranteed> {
+        Ld::Flag(gcc::USE_MOLD).link(&INFO, plan, target, diag)
     }
 }

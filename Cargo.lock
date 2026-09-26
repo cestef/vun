@@ -1029,7 +1029,9 @@ version = "0.0.0"
 dependencies = [
  "vun-diag",
  "vun-link",
+ "vun-link-gnu",
  "vun-target",
+ "vun-tool",
 ]
 
 [[package]]
@@ -1046,8 +1048,11 @@ name = "vun-link-wild"
 version = "0.0.0"
 dependencies = [
  "vun-diag",
+ "vun-fs",
  "vun-link",
+ "vun-link-gnu",
  "vun-target",
+ "vun-tool",
 ]
 
 [[package]]

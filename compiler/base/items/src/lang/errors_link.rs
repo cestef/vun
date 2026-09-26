@@ -7,6 +7,7 @@
 )]
 use crate::Item;
 pub const unavailable: Item = Item::new(&["lang", "errors", "link", "unavailable"]);
+pub const unsupported: Item = Item::new(&["lang", "errors", "link", "unsupported"]);
 pub const export_mismatch: Item = Item::new(
     &["lang", "errors", "link", "export_mismatch"],
 );

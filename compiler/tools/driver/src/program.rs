@@ -14,7 +14,7 @@ use vun_link::{LinkPlan, OutputKind};
 use vun_lir::FuncId;
 use vun_par::Parallel;
 use vun_span::{FileId, SourceMap};
-use vun_target::{CCompiler, FrameSizes, Profile};
+use vun_target::{CCompiler, FrameSizes, Profile, Support, Unsupported};
 use vun_tool::{Arg, Executable, Failure, Invocation, Tool, gcc};
 use vun_trace::{Activity, tracing};
 
@@ -187,11 +187,20 @@ impl Session {
             regions: Vec::new(),
             sections: Vec::new(),
         };
-        let Some(linker) = self.registry.linker(target.linker) else {
-            let msg =
-                Msg::new().text("no linker ").code(target.linker.as_str()).text(" is in this toolchain");
+        let named = self.codegen.linker.unwrap_or(target.linker);
+        let Some(linker) = self.registry.linker(named) else {
+            let msg = Msg::new().text("no linker ").code(named.as_str()).text(" is in this toolchain");
             return Err(self.diag.error(Diagnostic::error(errors::LINK_UNAVAILABLE, msg)));
         };
+        if let Support::No(unsupported) = linker.info().supports(target, &plan) {
+            let msg = Msg::new().text("linker ").code(named.as_str()).text(" does not link ");
+            let msg = match unsupported {
+                Unsupported::ObjectFormat(format) => msg.text("objects of format ").code(format.as_str()),
+                Unsupported::MemoryRegions => msg.text("the placement of sections in memory regions"),
+                Unsupported::Arch(arch) => msg.text("code for ").code(arch.as_str()),
+            };
+            return Err(self.diag.error(Diagnostic::error(errors::LINK_UNSUPPORTED, msg)));
+        }
         let _timer = LINK.start();
         linker.link(&plan, target, &mut self.diag)?;
         tracing::info!(output = %output.display(), objects = plan.inputs.len(), "linked");

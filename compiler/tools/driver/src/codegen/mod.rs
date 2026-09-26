@@ -25,12 +25,21 @@ pub const BACKEND: Param = Param::option("backend")
     .values(Values::Choice(|| crate::Registry::with_defaults().backends().map(|b| b.info().id.0).collect()))
     .env("VUN_BACKEND");
 
+pub const LINKER: Param = Param::option("linker")
+    .about("the linker, instead of the target's")
+    .values(Values::Choice(|| crate::Registry::with_defaults().linkers().map(|l| l.info().id.0).collect()))
+    .env("VUN_LINKER");
+
 pub const RELEASE: Param = Param::flag("release").short('r').about("build fast code rather than build fast");
 
-/// Applies `--release` and `--backend` to the session.
+/// Applies `--release`, `--backend` and `--linker` to the session.
 pub fn configure(session: &mut Session, args: &Args) {
     let profile = if args.flag(&RELEASE) { Profile::Release } else { Profile::Debug };
-    session.codegen = Codegen { profile, backend: args.value(&BACKEND).map(Symbol::intern) };
+    session.codegen = Codegen {
+        profile,
+        backend: args.value(&BACKEND).map(Symbol::intern),
+        linker: args.value(&LINKER).map(Symbol::intern),
+    };
 }
 
 /// Where origins are in source, for the line information backends write.

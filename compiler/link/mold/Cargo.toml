@@ -13,3 +13,5 @@ workspace = true
 vun-diag.workspace = true
 vun-link.workspace = true
 vun-target.workspace = true
+vun-link-gnu.workspace = true
+vun-tool.workspace = true

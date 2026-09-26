@@ -15,6 +15,7 @@ mod generics;
 mod impls;
 mod layout;
 mod library;
+mod link;
 mod lir;
 mod loops;
 mod markers;

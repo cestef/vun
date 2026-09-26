@@ -599,8 +599,12 @@ since `f32`'s 24 bits of significand are at least twice `f16`'s 11 plus 2; compa
 the widened values. Both sequences are straight-line integer and `f32` operations. A promoted
 `f16` passed under the C convention, and a conversion to `f16` from anything but `f32`, which
 would round twice, are refused.
-`vun build --backend native` links the object with the target's linker; the backend tests run
-every program through both backends and require the same result.
+`vun build --backend native` links the object with the target's linker, or the one `--linker`
+(`VUN_LINKER`) names, refused with `link.unsupported` when it does not link the target's format
+or regions; the backend tests run every program through both backends and require the same
+result. GNU ld, mold and wild link, all through the target's C compiler, which passes the C
+runtime's start files and libraries (`vun_link_gnu::Ld`): its own `ld`, `-fuse-ld=mold`, or wild
+as the `ld` of a directory beside the output that the compiler looks in first (`-B`).
 
 | Linker | Use |
 |--------|-----|

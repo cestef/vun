@@ -6,8 +6,8 @@ Linkers are components registered with the toolchain behind adapters, each decla
 in a `LinkerInfo`; an adapter turns the target-independent `LinkPlan` into a linker script or flags
 (spec 13, sections 7 and 8). A target names its linker (`.linker` in `lib/targets`: `gnu` for
 Linux, `lld` for bare metal). An adapter that is registered but cannot link yet reports this
-diagnostic instead of producing an output; today the `gnu` adapter links, through the target's C
-compiler.
+diagnostic instead of producing an output; today `gnu`, `mold` and `wild` link, through the
+target's C compiler.
 
 ## Example
 
