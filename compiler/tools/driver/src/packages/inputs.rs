@@ -93,9 +93,9 @@ impl Session {
         };
         for path in &data.files {
             let text = std::fs::read_to_string(p.dir.join(path)).ok();
-            self.db.set::<FileText>(FileRef { package: id, path: path.clone() }, text.map(Arc::from));
+            self.db.set::<FileText>(&FileRef { package: id, path: path.clone() }, text.map(Arc::from));
         }
-        self.db.set::<PackageInput>(id, Arc::new(data));
+        self.db.set::<PackageInput>(&id, Arc::new(data));
         id
     }
 }

@@ -10,7 +10,8 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
+arc-swap.workspace = true
+boxcar.workspace = true
 foldhash.workspace = true
-papaya.workspace = true
-vun-hash.workspace = true
+vun-par.workspace = true
 vun-codec.workspace = true

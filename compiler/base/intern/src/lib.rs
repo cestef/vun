@@ -6,10 +6,11 @@
 //! symbols is the same in every process and under every schedule, which persisted query traces
 //! and deterministic output need. Interned strings live as long as the process.
 
-use std::collections::HashMap;
 use std::fmt;
 use std::hash::{Hash, Hasher};
-use std::sync::{LazyLock, RwLock};
+use std::sync::LazyLock;
+
+use vun_par::Map;
 
 /// An interned string.
 #[derive(Clone, Copy)]
@@ -25,34 +26,26 @@ mod pool;
 
 pub use pool::{Interned, Pool};
 
-/// Shards of a pool, chosen by hash, so that threads interning different values rarely wait.
-const SHARDS: usize = 16;
-
-type Shard = RwLock<HashMap<&'static str, Symbol>>;
-
-static POOL: LazyLock<[Shard; SHARDS]> = LazyLock::new(|| std::array::from_fn(|_| RwLock::default()));
+/// Every symbol by its text, looked up without locks by a fast hash.
+static POOL: LazyLock<Map<&'static str, Symbol>> = LazyLock::new(Map::default);
 
 impl Symbol {
-    /// The symbol of `text`, the same for every call with equal text.
-    ///
-    /// # Panics
-    /// Panics if a thread panicked while interning.
+    /// The symbol of `text`, the same for every call with equal text; its content hash is
+    /// computed once, when the text is first interned.
     #[must_use]
     pub fn intern(text: &str) -> Self {
+        let symbols = POOL.pin();
+        if let Some(&symbol) = symbols.get(text) {
+            return symbol;
+        }
         let hash = vun_hash::Hash::of(text.as_bytes()).short();
-        let shard = &POOL[usize::try_from(hash % SHARDS as u64).expect("fits")];
-        if let Some(&symbol) = shard.read().expect("interner").get(text) {
-            return symbol;
-        }
-        let mut shard = shard.write().expect("interner");
-        // Another thread may have interned it between the two locks.
-        if let Some(&symbol) = shard.get(text) {
-            return symbol;
-        }
         let text: &'static str = Box::leak(text.into());
         let symbol = Self(Box::leak(Box::new(Entry { hash, text })));
-        shard.insert(text, symbol);
-        symbol
+        // Another thread may intern the same text meanwhile: the first stored stands for both.
+        match symbols.try_insert(text, symbol) {
+            Ok(&symbol) => symbol,
+            Err(occupied) => *occupied.current,
+        }
     }
 
     #[must_use]

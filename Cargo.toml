@@ -76,6 +76,7 @@ vun-xtask = { path = "compiler/tools/xtask" }
 vun-generate = { path = "compiler/tools/generate" }
 
 # external
+arc-swap = "1"
 boxcar = "0.2"
 foldhash = "0.2"
 papaya = "0.2"

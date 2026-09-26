@@ -11,3 +11,4 @@ workspace = true
 
 [dependencies]
 vun-hash.workspace = true
+vun-par.workspace = true

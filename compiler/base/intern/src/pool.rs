@@ -3,19 +3,18 @@
 //! content only (symbols, integers and other interned values qualify), so that the content hash,
 //! and every hash built from interned values, is the same in every process.
 
-use std::collections::HashMap;
 use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::ops::Deref;
-use std::sync::{LazyLock, RwLock};
+use std::sync::LazyLock;
 
-use crate::SHARDS;
+use vun_par::Map;
 
-type Shard<T> = RwLock<HashMap<&'static T, Interned<T>>>;
-
-/// The pool of one type's interned values, declared as a `static` by the type that uses it.
+/// The pool of one type's interned values, declared as a `static` by the type that uses it:
+/// looked up without locks, by a fast hash; the content hash is computed once, when a value is
+/// first interned.
 pub struct Pool<T: 'static> {
-    shards: LazyLock<[Shard<T>; SHARDS]>,
+    values: LazyLock<Map<&'static T, Interned<T>>>,
 }
 
 /// A value stored in a [`Pool`].
@@ -30,31 +29,22 @@ struct Entry<T> {
 impl<T: Hash + Eq + Send + Sync + 'static> Pool<T> {
     #[must_use]
     pub const fn new() -> Self {
-        Self { shards: LazyLock::new(Self::shards) }
-    }
-
-    fn shards() -> [Shard<T>; SHARDS] {
-        std::array::from_fn(|_| RwLock::default())
+        Self { values: LazyLock::new(Map::default) }
     }
 
     /// The interned `value`, the same for every call with an equal value.
-    ///
-    /// # Panics
-    /// Panics if a thread panicked while interning.
     pub fn intern(&'static self, value: T) -> Interned<T> {
+        let values = self.values.pin();
+        if let Some(&interned) = values.get(&value) {
+            return interned;
+        }
         let hash = vun_hash::Hash::of_value(&value).short();
-        let shard = &self.shards[usize::try_from(hash % SHARDS as u64).expect("fits")];
-        if let Some(&interned) = shard.read().expect("pool").get(&value) {
-            return interned;
-        }
-        let mut shard = shard.write().expect("pool");
-        // Another thread may have interned it between the two locks.
-        if let Some(&interned) = shard.get(&value) {
-            return interned;
-        }
         let entry: &'static Entry<T> = Box::leak(Box::new(Entry { hash, value }));
-        shard.insert(&entry.value, Interned(entry));
-        Interned(entry)
+        // Another thread may intern an equal value meanwhile: the first stored stands for both.
+        match values.try_insert(&entry.value, Interned(entry)) {
+            Ok(&interned) => interned,
+            Err(occupied) => *occupied.current,
+        }
     }
 }
 

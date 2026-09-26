@@ -1,8 +1,10 @@
 //! Items reached by their path, such as `lang.ops.Eq`, which syntax desugars into (appendix B)
 //! and primitives are declared at.
 
+use vun_hir::db::{Namespace, Outer, Package, PackageId, Scope};
 use vun_intern::Symbol;
 use vun_items::Item;
+use vun_query::{Cx, Query};
 
 use super::{Env, Unevaluated};
 use crate::decl::DeclValue;
@@ -16,7 +18,10 @@ impl Env<'_, '_> {
     /// # Errors
     /// Returns why the item has no value here, such as a replaced `lang` that lacks it.
     pub fn item(&self, item: Item) -> Result<Value, Unevaluated> {
-        self.path(item.path().iter().map(|n| Symbol::intern(n)))
+        match self.site(item) {
+            Ok(site) => self.value_of(site),
+            Err(_) => self.path(item.path().iter().map(|n| Symbol::intern(n))),
+        }
     }
 
     /// The value at the binding path `names`, its first name looked up outside the file, the
@@ -39,13 +44,26 @@ impl Env<'_, '_> {
     /// # Errors
     /// Returns why it leads nowhere here.
     pub fn site(&self, item: Item) -> Result<Site, Unevaluated> {
-        let mut names = item.path().iter().map(|n| Symbol::intern(n));
-        let mut site = self.outer(names.next().ok_or(Unevaluated::Absent)?)?;
-        for name in names {
-            let Site::Namespace(ns) = site else { return Err(Unevaluated::Unsupported) };
-            site = self.cx.get::<Declared>(&(ns, name)).ok_or(Unevaluated::Absent)?;
+        self.cx.get::<ItemSite>(&(self.file.package, item))
+    }
+
+    /// Where `name` leads outside the file: the package, a dependency, or the prelude.
+    pub(super) fn outer(&self, name: Symbol) -> Result<Site, Unevaluated> {
+        Self::outer_in(self.cx, &self.file.package, name)
+    }
+
+    /// Where `name` is declared as the files of `package` see it from outside themselves.
+    fn outer_in(cx: &Cx<'_>, package: &PackageId, name: Symbol) -> Result<Site, Unevaluated> {
+        let root = |package| Ok(Site::Namespace(Namespace { package, path: Vec::new() }));
+        match cx.get::<Scope>(package).names.get(&name) {
+            Some(Outer::Prelude(ns)) => cx.get::<Declared>(&(ns.clone(), name)).ok_or(Unevaluated::Absent),
+            Some(Outer::Package(package)) => root(*package),
+            Some(Outer::Dep(index)) => {
+                let dep = &cx.get::<Package>(package).deps[*index];
+                root(dep.package.clone().map_err(|_| Unevaluated::Absent)?)
+            }
+            None => Err(Unevaluated::Absent),
         }
-        Ok(site)
     }
 
     /// The value of `site`.
@@ -62,5 +80,26 @@ impl Env<'_, '_> {
             },
             Site::Namespace(ns) => Ok(Value::Namespace(ns)),
         }
+    }
+}
+
+/// Where an item is declared as the files of a package see it: its first name looked up outside
+/// them, the rest in namespaces. Found once per package, since syntax desugars into the same few
+/// items everywhere.
+pub struct ItemSite;
+
+impl Query for ItemSite {
+    const NAME: &'static str = "item_site";
+    type Key = (PackageId, Item);
+    type Value = Result<Site, Unevaluated>;
+
+    fn compute(cx: &Cx<'_>, (package, item): &Self::Key) -> Self::Value {
+        let mut names = item.path().iter().map(|n| Symbol::intern(n));
+        let mut site = Env::outer_in(cx, package, names.next().ok_or(Unevaluated::Absent)?)?;
+        for name in names {
+            let Site::Namespace(ns) = site else { return Err(Unevaluated::Unsupported) };
+            site = cx.get::<Declared>(&(ns, name)).ok_or(Unevaluated::Absent)?;
+        }
+        Ok(site)
     }
 }

@@ -195,7 +195,7 @@ impl Session {
         let id = self.publish(package);
         let key = FileRef { package: id, path: self.packages.list[&package].relative(&path) };
         // The file as loaded, which its package's files do not include when it is loose.
-        self.db.set::<FileText>(key.clone(), Some(Arc::from(self.text(file))));
+        self.db.set::<FileText>(&key, Some(Arc::from(self.text(file))));
         // Reported once when none is; what needs it then stays unknown.
         let _ = self.target_for(&key);
         key

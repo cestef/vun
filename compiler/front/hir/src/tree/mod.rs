@@ -7,6 +7,7 @@
 mod binders;
 mod enclosing;
 mod expr;
+mod index;
 mod items;
 mod pat;
 mod path;
@@ -40,6 +41,14 @@ pub struct Hir {
     pub pats: IndexVec<PatId, Pat>,
     pub blocks: IndexVec<BlockId, Block>,
     pub binders: IndexVec<BinderId, Binder>,
+    /// What each node relates to, found once, when first asked.
+    index: std::sync::OnceLock<index::Index>,
+}
+
+impl Hir {
+    fn index(&self) -> &index::Index {
+        self.index.get_or_init(|| index::Index::of(self))
+    }
 }
 
 /// A name as written: literal, computed by `$(...)`, or the positional `_`.

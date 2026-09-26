@@ -1,57 +1,23 @@
-//! Computing queries: the stack of queries being computed, what each reads, and cycles.
+//! Computing queries: the stack of queries being computed on one thread, what each has read, and
+//! cycles.
 
-use std::any::{Any, TypeId};
 use std::cell::RefCell;
+use std::collections::HashSet;
 use std::fmt;
 use std::sync::Arc;
 
-use vun_hash::Hash;
-
+use super::claim::Claim;
 use super::db::Db;
-use super::memo::{Memo, Verified};
-use super::table::Lookup;
+use super::fingerprint::Fingerprint;
+use super::memo::{Dep, Memo, Verified};
+use super::table::{Slot, Table, TableId};
 use super::{Query, Revision};
 
-/// A query read while another was computed, with the interface hash it had then.
-pub(crate) trait Edge: Send + Sync {
-    /// Whether the dependency, brought up to date, still has the recorded interface.
-    fn unchanged(&self, cx: &Cx<'_>) -> bool;
-    fn query(&self) -> TypeId;
-    fn key(&self) -> &dyn Any;
-    fn hash(&self) -> Hash;
-}
-
-pub(crate) struct Read<Q: Query> {
-    pub(crate) key: Q::Key,
-    pub(crate) hash: Hash,
-}
-
-impl<Q: Query> Edge for Read<Q> {
-    fn unchanged(&self, cx: &Cx<'_>) -> bool {
-        cx.fetch::<Q>(&self.key).1 == self.hash
-    }
-
-    fn query(&self) -> TypeId {
-        TypeId::of::<Q>()
-    }
-
-    fn key(&self) -> &dyn Any {
-        &self.key
-    }
-
-    fn hash(&self) -> Hash {
-        self.hash
-    }
-}
-
-/// A query being computed: its key is compared when a query is reached again, and shown only in
-/// a cycle.
+/// A query being computed, and each memo it read.
 struct Frame {
-    query: TypeId,
-    name: &'static str,
-    key: Box<dyn Any>,
-    show: fn(&dyn Any) -> String,
-    reads: Vec<Arc<dyn Edge>>,
+    table: TableId,
+    slot: Slot,
+    reads: Vec<Dep>,
 }
 
 /// Queries that depend on themselves: each by name and key, from the one reached again.
@@ -84,7 +50,7 @@ pub struct Cx<'db> {
 impl<'db> Cx<'db> {
     #[must_use]
     pub fn new(db: &'db Db) -> Self {
-        Self { db, stack: RefCell::new(Vec::new()) }
+        Self { db, stack: RefCell::default() }
     }
 
     #[must_use]
@@ -94,66 +60,87 @@ impl<'db> Cx<'db> {
 
     /// The value of `Q` at `key`, recorded as read by the query being computed.
     pub fn get<Q: Query>(&self, key: &Q::Key) -> Q::Value {
-        let (value, hash) = self.fetch::<Q>(key);
+        let table = self.db.table::<Q>();
+        let slot = table.slot(key);
+        let (value, fingerprint) = self.fetch(table, slot);
         if let Some(top) = self.stack.borrow_mut().last_mut() {
-            top.reads.push(Arc::new(Read::<Q> { key: key.clone(), hash }));
+            top.reads.push(Dep { table: table.id, slot, fingerprint });
         }
         value
     }
 
-    /// The current value of `Q` at `key` and its interface: the memo when it is current or its
-    /// trace still holds, otherwise computed again, by this thread or, when another is computing
+    /// The current value at `slot` and its fingerprint: the memo when it is current or what it
+    /// read still holds, otherwise computed again, by this thread or, when another is computing
     /// it already, by that one.
-    fn fetch<Q: Query>(&self, key: &Q::Key) -> (Q::Value, Hash) {
+    pub(crate) fn fetch<Q: Query>(&self, table: &Table<Q>, slot: Slot) -> (Q::Value, Fingerprint) {
+        let entry = table.entry(slot);
         loop {
             let revision = self.db.revision();
-            match self.db.lookup::<Q>(key, revision) {
-                Some(Lookup::Current(value, hash)) => return (value, hash),
-                Some(Lookup::Stale(memo)) if memo.deps.iter().all(|d| d.unchanged(self)) => {
-                    memo.verified.set(revision);
-                    return (memo.value.clone(), memo.hash);
-                }
-                _ => {}
+            if let Some(memo) = &*entry.memo.load()
+                && memo.current(revision)
+            {
+                return (memo.value.clone(), memo.fingerprint);
             }
-            if let Some(found) = self.computed::<Q>(key, revision) {
+            // Verifying reads other memos, which may take long: the memo is held on its own.
+            if let Some(memo) = entry.memo.load_full()
+                && memo.deps.iter().all(|&dep| self.unchanged(dep))
+            {
+                memo.verified.set(revision);
+                return (memo.value.clone(), memo.fingerprint);
+            }
+            if let Some(found) = self.computed(table, slot, revision) {
                 return found;
             }
         }
     }
 
-    /// `Q` at `key` computed on this thread, or the value of the cycle it closes; `None` when
-    /// another thread computed it meanwhile.
-    fn computed<Q: Query>(&self, key: &Q::Key, revision: Revision) -> Option<(Q::Value, Hash)> {
-        let query = TypeId::of::<Q>();
-        let reached = self
-            .stack
-            .borrow()
-            .iter()
-            .position(|f| f.query == query && f.key.downcast_ref::<Q::Key>() == Some(key));
+    fn unchanged(&self, dep: Dep) -> bool {
+        self.db.any_table(dep.table).unchanged(self, dep.slot, dep.fingerprint)
+    }
+
+    /// The value at `slot` computed on this thread, or the value of the cycle it closes; `None`
+    /// when another thread computed it meanwhile.
+    fn computed<Q: Query>(
+        &self,
+        table: &Table<Q>,
+        slot: Slot,
+        revision: Revision,
+    ) -> Option<(Q::Value, Fingerprint)> {
+        let entry = table.entry(slot);
+        let reached = self.stack.borrow().iter().position(|f| f.table == table.id && f.slot == slot);
         if let Some(from) = reached {
-            let stack = self.stack.borrow();
-            let mut path: Vec<_> = stack[from..].iter().map(|f| (f.name, (f.show)(&*f.key))).collect();
-            path.push((Q::NAME, format!("{key:?}")));
-            let value = Q::cycle(self, key, &Cycle { path });
-            let hash = Q::interface(&value);
-            return Some((value, hash));
+            let path = self.stack.borrow()[from..]
+                .iter()
+                .map(|f| {
+                    let frame = self.db.any_table(f.table);
+                    (frame.name(), frame.show(f.slot))
+                })
+                .chain([(Q::NAME, format!("{:?}", entry.key))])
+                .collect();
+            let value = Q::cycle(self, &entry.key, &Cycle { path });
+            let fingerprint = Q::interface(&value);
+            return Some((value, fingerprint));
         }
-        let memo = self.db.computed_once::<Q>(key, || {
-            let frame = Frame {
-                query,
-                name: Q::NAME,
-                key: Box::new(key.clone()),
-                show: |key| {
-                    format!("{:?}", key.downcast_ref::<Q::Key>().expect("a frame's key is its query's"))
-                },
-                reads: Vec::new(),
-            };
-            self.stack.borrow_mut().push(frame);
-            let value = Q::compute(self, key);
-            let frame = self.stack.borrow_mut().pop().expect("the frame pushed above");
-            let hash = Q::interface(&value);
-            Memo::computed(value, hash, frame.reads.into(), Verified::at(revision))
-        })?;
-        Some((memo.value.clone(), memo.hash))
+        let owned = match entry.claims.claim(&self.db.waits) {
+            Claim::Waited => return None,
+            Claim::Owner(owned) => Some(owned),
+            Claim::Alone => None,
+        };
+        self.stack.borrow_mut().push(Frame { table: table.id, slot, reads: Vec::new() });
+        let value = Q::compute(self, &entry.key);
+        let reads = self.stack.borrow_mut().pop().expect("the frame pushed above").reads;
+        let fingerprint = Q::interface(&value);
+        let memo = Memo::computed(value.clone(), fingerprint, Self::once(reads), Verified::at(revision));
+        entry.memo.store(Some(Arc::new(memo)));
+        drop(owned);
+        Some((value, fingerprint))
+    }
+
+    /// `reads` with each memo once, in the order it was first read: verifying follows it, since a
+    /// later read may be of a key an earlier one's value named.
+    fn once(mut reads: Vec<Dep>) -> Box<[Dep]> {
+        let mut seen = HashSet::with_capacity_and_hasher(reads.len(), foldhash::fast::RandomState::default());
+        reads.retain(|dep| seen.insert((dep.table, dep.slot)));
+        reads.into_boxed_slice()
     }
 }

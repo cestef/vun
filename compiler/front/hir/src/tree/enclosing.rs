@@ -3,25 +3,32 @@
 
 use std::collections::HashSet;
 
-use super::{Entry, ExprId, ExprKind, Hir, Staged};
+use super::{DeclId, Entry, ExprId, ExprKind, Hir, Staged};
 use crate::visit::{self, Visitor};
 
 impl Hir {
     /// The closure whose function is the literal `func`, if it is one.
     #[must_use]
     pub fn closure_of(&self, func: ExprId) -> Option<ExprId> {
-        self.exprs.iter().find_map(|(e, expr)| match expr.kind {
-            ExprKind::Closure { func: f, .. } if f == func => Some(e),
-            _ => None,
-        })
+        self.index().closure[func]
     }
 
     /// The innermost function literal whose body holds `expr`, closures included.
     #[must_use]
     pub fn enclosing_function(&self, expr: ExprId) -> Option<ExprId> {
-        let mut finder = Finder { target: expr, functions: Vec::new(), found: None };
-        finder.namespace(self, self.root?);
-        finder.found
+        self.index().function[expr]
+    }
+
+    /// The attributes `#[...] expr` or the prefix operator applied to `expr`, if any.
+    #[must_use]
+    pub fn wrapper_of(&self, expr: ExprId) -> Option<ExprId> {
+        self.index().wrapper[expr]
+    }
+
+    /// The declaration `expr` is the value of, if any.
+    #[must_use]
+    pub fn decl_valued(&self, expr: ExprId) -> Option<DeclId> {
+        self.index().valued[expr]
     }
 
     /// The function literals whose code depends on bindings known only at a call: those with a
@@ -95,32 +102,5 @@ impl Visitor for Opener {
         self.depth += usize::from(binds);
         visit::walk_staged(self, hir, staged, entry);
         self.depth -= usize::from(binds);
-    }
-}
-
-/// Walks the tree, keeping the function literals around the current node.
-struct Finder {
-    target: ExprId,
-    functions: Vec<ExprId>,
-    found: Option<ExprId>,
-}
-
-impl Visitor for Finder {
-    fn expr(&mut self, hir: &Hir, expr: ExprId) {
-        if self.found.is_some() {
-            return;
-        }
-        if expr == self.target {
-            self.found = self.functions.last().copied();
-            return;
-        }
-        let function = matches!(hir.exprs[expr].kind, ExprKind::Fn { .. });
-        if function {
-            self.functions.push(expr);
-        }
-        visit::walk_expr(self, hir, expr);
-        if function {
-            self.functions.pop();
-        }
     }
 }

@@ -22,6 +22,7 @@ mod primitive;
 mod reach;
 
 pub use passing::Passed;
+pub use path::ItemSite;
 pub use reach::Hop;
 
 pub use condition::Selected;
@@ -29,7 +30,7 @@ pub use condition::Selected;
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use vun_hir::db::{CheckedNames, FileNames, FileRef, Namespace, Outer, Package, Parsed, ParsedFile, Scope};
+use vun_hir::db::{CheckedNames, FileNames, FileRef, Parsed, ParsedFile};
 use vun_hir::resolve::Res;
 use vun_hir::tree::{BinderId, Entry, ExprId, ExprKind, Name, Param, PatKind};
 use vun_intern::Symbol;
@@ -231,22 +232,6 @@ impl<'a, 'db> Env<'a, 'db> {
                 }
             }
             None => Err(Unevaluated::Unsupported),
-        }
-    }
-
-    /// Where `name` leads outside the file: the package, a dependency, or the prelude.
-    fn outer(&self, name: Symbol) -> Result<Site, Unevaluated> {
-        let root = |package| Ok(Site::Namespace(Namespace { package, path: Vec::new() }));
-        match self.cx.get::<Scope>(&self.file.package).names.get(&name) {
-            Some(Outer::Prelude(ns)) => {
-                self.cx.get::<Declared>(&(ns.clone(), name)).ok_or(Unevaluated::Absent)
-            }
-            Some(Outer::Package(package)) => root(*package),
-            Some(Outer::Dep(index)) => {
-                let dep = &self.cx.get::<Package>(&self.file.package).deps[*index];
-                root(dep.package.clone().map_err(|_| Unevaluated::Absent)?)
-            }
-            None => Err(Unevaluated::Absent),
         }
     }
 

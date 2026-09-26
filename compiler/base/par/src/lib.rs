@@ -1,4 +1,5 @@
-//! Independent work spread over threads, results in the items' order.
+//! Independent work spread over threads, results in the items' order, and the map threads share
+//! state in.
 //!
 //! The caller works alongside the threads it starts. Items are claimed in runs from one shared
 //! counter, guided: a run is a share of what is left, so early claims are long and cheap to
@@ -45,6 +46,10 @@ impl Drop for Working {
         WORKING.set(false);
     }
 }
+
+/// A map every thread reads and writes at once without locks, hashed fast: what state shared by
+/// threads is kept in.
+pub type Map<K, V> = papaya::HashMap<K, V, foldhash::fast::RandomState>;
 
 /// Items a function maps in parallel.
 pub trait Parallel<T> {

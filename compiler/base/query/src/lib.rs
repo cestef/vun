@@ -1,17 +1,24 @@
 //! The demand-driven, incremental query engine (spec 13, section 2).
 //!
 //! A query maps a key to a value; the unit of work is a declaration or a function body, never an
-//! expression. Each result is memoized with a verifying trace: the interface hash of every query
-//! it read. In a later revision a memo is reused when every dependency, brought up to date, still
-//! has the interface hash it had, so a dependency recomputed to an equal interface leaves its
-//! dependents untouched (early cutoff). Traces hold content hashes, not revisions, so they stay
-//! valid across processes once persisted. A memo is verified at most once per revision.
+//! expression. Each result is memoized with what computing it read: every memo, with the
+//! fingerprint of its value then. In a later revision a memo is reused when everything it read,
+//! brought up to date, still has the fingerprint it had, so a dependency recomputed to an equal
+//! interface leaves its dependents untouched (early cutoff). A memo is verified at most once per
+//! revision. Fingerprints depend on values alone, not on revisions, so memos stay valid across
+//! processes once persisted.
+//!
+//! Each key gets a slot in its query's table the first time it is asked for; reads are recorded,
+//! verified and compared by table and slot. Threads share a database without locks on the way to
+//! a memo, and one computes each memo while the others needing it wait for it.
 //!
 //! Inputs are queries whose values are set with [`Db::set`]; every change of an input's
 //! interface starts a new revision.
 
+mod claim;
 mod cx;
 mod db;
+mod fingerprint;
 mod memo;
 mod persist;
 mod table;
@@ -20,12 +27,10 @@ mod tests;
 
 use std::fmt;
 
-use vun_hash::Hash;
-
 pub use cx::{Cx, Cycle};
 pub use db::Db;
+pub use fingerprint::Fingerprint;
 pub use persist::{Persist, Unloaded};
-pub use table::Map;
 
 /// A point in the history of inputs.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -43,9 +48,9 @@ pub trait Query: 'static {
     fn compute(cx: &Cx<'_>, key: &Self::Key) -> Self::Value;
 
     /// What dependents see of the value; they re-run only when it changes. The whole value by
-    /// default; a query whose dependents read part of it hashes that part.
-    fn interface(value: &Self::Value) -> Hash {
-        Hash::of_value(value)
+    /// default; a query whose dependents read part of it fingerprints that part.
+    fn interface(value: &Self::Value) -> Fingerprint {
+        Fingerprint::of(value)
     }
 
     /// The value of a query that depends on itself.
@@ -56,4 +61,31 @@ pub trait Query: 'static {
     fn cycle(_: &Cx<'_>, _: &Self::Key, cycle: &Cycle) -> Self::Value {
         panic!("{cycle}")
     }
+}
+
+/// Declares a query: its documentation, visibility and name, then its context, key and value,
+/// then the body computing it, as a function would be written.
+///
+/// ```ignore
+/// query! {
+///     /// The length of a file's text.
+///     pub Length(cx, file: FileRef) -> usize {
+///         cx.get::<FileText>(file).len()
+///     }
+/// }
+/// ```
+#[macro_export]
+macro_rules! query {
+    ($(#[$attr:meta])* $vis:vis $name:ident($cx:ident, $key:ident: $Key:ty) -> $Value:ty $body:block) => {
+        $(#[$attr])*
+        $vis struct $name;
+
+        impl $crate::Query for $name {
+            const NAME: &'static str = stringify!($name);
+            type Key = $Key;
+            type Value = $Value;
+
+            fn compute($cx: &$crate::Cx<'_>, $key: &$Key) -> $Value $body
+        }
+    };
 }

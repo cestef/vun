@@ -58,18 +58,18 @@ impl Query for Parity {
 #[test]
 fn results_are_memoized_and_cut_off_early() {
     let db = Db::new();
-    db.set::<Text>("a", "four".into());
+    db.set::<Text>(&"a", "four".into());
     assert!(db.get::<Parity>(&"a"));
     assert!(db.get::<Parity>(&"a"));
     assert_eq!((LENGTHS.count(), PARITIES.count()), (1, 1), "memoized");
 
     // Same length: the length is recomputed, the parity is not.
-    db.set::<Text>("a", "five".into());
+    db.set::<Text>(&"a", "five".into());
     assert!(db.get::<Parity>(&"a"));
     assert_eq!((LENGTHS.count(), PARITIES.count()), (2, 1), "cut off at an unchanged interface");
 
     // A different length reaches the parity.
-    db.set::<Text>("a", "three".into());
+    db.set::<Text>(&"a", "three".into());
     assert!(!db.get::<Parity>(&"a"));
     assert_eq!((LENGTHS.count(), PARITIES.count()), (3, 2));
 }
@@ -77,11 +77,11 @@ fn results_are_memoized_and_cut_off_early() {
 #[test]
 fn setting_an_equal_input_starts_no_revision() {
     let db = Db::new();
-    db.set::<Text>("b", "x".into());
+    db.set::<Text>(&"b", "x".into());
     let revision = db.revision();
-    db.set::<Text>("b", "x".into());
+    db.set::<Text>(&"b", "x".into());
     assert_eq!(db.revision(), revision);
-    db.set::<Text>("b", "y".into());
+    db.set::<Text>(&"b", "y".into());
     assert_eq!(db.revision(), Revision(revision.0 + 1));
     assert_eq!(db.get::<Text>(&"b"), "y");
     assert_eq!(db.get::<Text>(&"unset"), "", "an unset input is computed");
@@ -141,7 +141,7 @@ fn persisting(text: &str) -> Db {
     let db = Db::new();
     db.persist::<Source>();
     db.persist::<Words>();
-    db.set::<Source>("a".into(), text.into());
+    db.set::<Source>(&"a".into(), text.into());
     db
 }
 
@@ -176,8 +176,8 @@ fn memos_of_unregistered_queries_and_other_formats_are_not_loaded() {
     assert_eq!(bare.load(&saved).unwrap(), 0, "a trace reading an unregistered query is skipped");
     // The format is the leading varint.
     let mut other = saved.clone();
-    other[0] = 2;
-    assert!(matches!(Db::new().load(&other), Err(Unloaded::Format { found: 2 })));
+    other[0] = 1;
+    assert!(matches!(Db::new().load(&other), Err(Unloaded::Format { found: 1 })));
     assert!(matches!(Db::new().load(&[]), Err(Unloaded::Decode(_))));
 }
 

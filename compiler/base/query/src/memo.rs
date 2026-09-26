@@ -1,40 +1,46 @@
-//! A memoized result: the value, its interface hash, the trace of what computing it read, and the
-//! revision it was last known current in, which any thread verifying it records.
+//! A memoized result: the value, its fingerprint, what computing it read, and the revision it was
+//! last known current in, which any thread verifying it records.
 
-use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use vun_hash::Hash;
-
-use super::cx::Edge;
+use super::fingerprint::Fingerprint;
+use super::table::{Slot, TableId};
 use super::{Query, Revision};
 
 pub(crate) struct Memo<Q: Query> {
     pub(crate) value: Q::Value,
-    pub(crate) hash: Hash,
-    pub(crate) deps: Box<[Arc<dyn Edge>]>,
+    pub(crate) fingerprint: Fingerprint,
+    /// Each memo read, once, in the order of the first reads.
+    pub(crate) deps: Box<[Dep]>,
     /// None for a loaded memo until it is verified.
     pub(crate) verified: Verified,
     /// Set with [`Db::set`](super::Db::set) rather than computed.
     pub(crate) input: bool,
 }
 
+/// A memo read while another was computed, with the fingerprint it had then.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) struct Dep {
+    pub(crate) table: TableId,
+    pub(crate) slot: Slot,
+    pub(crate) fingerprint: Fingerprint,
+}
+
 impl<Q: Query> Memo<Q> {
-    pub(crate) fn input(value: Q::Value, hash: Hash, revision: Revision) -> Self {
-        Self { value, hash, deps: Box::new([]), verified: Verified::at(revision), input: true }
+    pub(crate) fn input(value: Q::Value, fingerprint: Fingerprint, revision: Revision) -> Self {
+        Self { value, fingerprint, deps: Box::new([]), verified: Verified::at(revision), input: true }
     }
 
-    /// A memo computed, reading `deps`; known current in `revision`, or in none when loaded.
     pub(crate) fn computed(
         value: Q::Value,
-        hash: Hash,
-        deps: Box<[Arc<dyn Edge>]>,
+        fingerprint: Fingerprint,
+        deps: Box<[Dep]>,
         verified: Verified,
     ) -> Self {
-        Self { value, hash, deps, verified, input: false }
+        Self { value, fingerprint, deps, verified, input: false }
     }
 
-    /// Whether it holds in `revision` without looking at its trace.
+    /// Whether it holds in `revision` without looking at what it read.
     pub(crate) fn current(&self, revision: Revision) -> bool {
         self.input || self.verified.get() == Some(revision)
     }

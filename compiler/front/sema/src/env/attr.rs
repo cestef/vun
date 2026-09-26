@@ -17,18 +17,16 @@ impl Env<'_, '_> {
         // Up through the attributes and marker prefixes around it, as in
         // `#[panic.never] of := unsafe (...) { ... }`, to the declaration it is the value of.
         let mut value = literal;
-        while let Some((id, e)) = hir.exprs.iter().find(|(_, e)| match &e.kind {
-            ExprKind::Attributed { inner, .. } => *inner == value,
-            ExprKind::Prefix { op, operand, .. } => *operand == value && Marker::of_prefix(*op).is_some(),
-            _ => false,
-        }) {
-            if let ExprKind::Attributed { attrs: on, .. } = &e.kind {
-                attrs.extend(on);
+        while let Some(wrapper) = hir.wrapper_of(value) {
+            match &hir.exprs[wrapper].kind {
+                ExprKind::Attributed { attrs: on, .. } => attrs.extend(on),
+                ExprKind::Prefix { op, .. } if Marker::of_prefix(*op).is_some() => {}
+                _ => break,
             }
-            value = id;
+            value = wrapper;
         }
-        if let Some((_, decl)) = hir.decls.iter().find(|(_, d)| d.value == Some(value)) {
-            attrs.extend(&decl.attrs);
+        if let Some(decl) = hir.decl_valued(value) {
+            attrs.extend(&hir.decls[decl].attrs);
         }
         attrs
     }

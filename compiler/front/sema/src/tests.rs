@@ -40,12 +40,12 @@ pub(crate) fn packages(app: &str) -> (vun_query::Db, vun_hir::db::FileRef) {
         files: files(name),
         ..PackageData::default()
     };
-    db.set::<Package>(lang, Arc::new(data("lang", Vec::new(), Vec::new())));
+    db.set::<Package>(&lang, Arc::new(data("lang", Vec::new(), Vec::new())));
     let dep = DepData { name: Symbol::intern("lang"), package: Ok(lang) };
-    db.set::<Package>(user, Arc::new(data("app", vec![dep], vec![vec![Symbol::intern("lang")]])));
-    db.set::<FileText>(FileRef { package: lang, path: "lang.vun".into() }, Some(text.into()));
+    db.set::<Package>(&user, Arc::new(data("app", vec![dep], vec![vec![Symbol::intern("lang")]])));
+    db.set::<FileText>(&FileRef { package: lang, path: "lang.vun".into() }, Some(text.into()));
     let file = FileRef { package: user, path: "app.vun".into() };
-    db.set::<FileText>(file.clone(), Some(app.into()));
+    db.set::<FileText>(&file, Some(app.into()));
     (db, file)
 }
 

@@ -1,27 +1,27 @@
 //! Memos that outlive the process (spec 13, section 2): computed memos of the queries registered
-//! with [`Db::persist`], with their traces, in the encoding of `vun-codec`. A loaded memo is verified
+//! with [`Db::persist`], with what they read, in the encoding of `vun-codec`. A read is saved by
+//! query name and encoded key, since slots are the process's own. A loaded memo is verified
 //! before its first use, like any memo from an earlier revision, so a stale one is recomputed and
-//! never trusted. Traces hold interface hashes, which do not depend on the process, so they stay
-//! valid across processes.
+//! never trusted.
 
-use std::any::{Any, TypeId};
+use std::any::TypeId;
 use std::collections::HashMap;
 use std::fmt;
 use std::sync::Arc;
 
 use vun_codec::{Decode, Encode, Malformed, record};
-use vun_hash::Hash;
 
 use super::Query;
-use super::cx::{Edge, Read};
 use super::db::Db;
-use super::memo::{Memo, Verified};
+use super::fingerprint::Fingerprint;
+use super::memo::{Dep, Memo, Verified};
+use super::table::{AnyTable, Slot, Table};
 
 /// A query whose memos are saved: its keys and values are data.
 pub trait Persist: Query<Key: Encode + Decode, Value: Encode + Decode> {}
 
 /// The version of the saved form; a file of another version is not read.
-const FORMAT: u32 = 1;
+const FORMAT: u32 = 2;
 
 struct Saved {
     format: u32,
@@ -39,18 +39,18 @@ record!(SavedQuery { name, memos });
 struct SavedMemo {
     key: Vec<u8>,
     value: Vec<u8>,
-    hash: Hash,
-    deps: Vec<SavedEdge>,
+    fingerprint: Fingerprint,
+    deps: Vec<SavedDep>,
 }
-record!(SavedMemo { key, value, hash, deps });
+record!(SavedMemo { key, value, fingerprint, deps });
 
-/// A read in a trace: the query by name, its key and the interface hash it had.
-struct SavedEdge {
+/// A read: the query by name, its key and the fingerprint it had.
+struct SavedDep {
     query: String,
     key: Vec<u8>,
-    hash: Hash,
+    fingerprint: Fingerprint,
 }
-record!(SavedEdge { query, key, hash });
+record!(SavedDep { query, key, fingerprint });
 
 /// How the memos of one persisted query are written and read back.
 #[derive(Clone, Copy)]
@@ -58,8 +58,8 @@ pub(crate) struct Codec {
     name: &'static str,
     save: fn(&Db) -> Vec<SavedMemo>,
     load: fn(&Db, &[SavedMemo]) -> usize,
-    key: fn(&dyn Any) -> Vec<u8>,
-    edge: fn(&SavedEdge) -> Option<Arc<dyn Edge>>,
+    key: fn(&dyn AnyTable, Slot) -> Vec<u8>,
+    dep: fn(&Db, &SavedDep) -> Option<Dep>,
 }
 
 /// Why saved memos could not be loaded.
@@ -94,19 +94,23 @@ impl Codec {
     fn of<Q: Persist>() -> Self {
         Self {
             name: Q::NAME,
-            save: |db| db.saved::<Q>(),
-            load: |db, memos| db.restored::<Q>(memos),
-            key: |key| key.downcast_ref::<Q::Key>().expect("an edge's key is its query's").encoded(),
-            edge: |saved| {
-                let key = Q::Key::decoded(&saved.key).ok()?;
-                Some(Arc::new(Read::<Q> { key, hash: saved.hash }))
+            save: Db::saved::<Q>,
+            load: Db::restored::<Q>,
+            key: |table, slot| {
+                let table: &Table<Q> = table.as_any().downcast_ref().expect("a table of its query");
+                table.entry(slot).key.encoded()
+            },
+            dep: |db, saved| {
+                let table = db.table::<Q>();
+                let slot = table.slot(&Q::Key::decoded(&saved.key).ok()?);
+                Some(Dep { table: table.id, slot, fingerprint: saved.fingerprint })
             },
         }
     }
 }
 
 impl Db {
-    /// Registers `Q` as persisted: its computed memos are saved, and traces reading it can be.
+    /// Registers `Q` as persisted: its computed memos are saved, and memos reading it can be.
     ///
     /// # Panics
     /// Panics if the registry was poisoned by a panicking query.
@@ -114,7 +118,7 @@ impl Db {
         self.codecs.write().expect("query codecs").insert(TypeId::of::<Q>(), Codec::of::<Q>());
     }
 
-    /// The computed memos of every persisted query whose traces read only persisted queries.
+    /// The computed memos of every persisted query that read only persisted queries.
     ///
     /// # Panics
     /// Panics if the registry was poisoned by a panicking query.
@@ -128,7 +132,7 @@ impl Db {
     }
 
     /// Loads saved memos as unverified, returning how many were restored. Memos of queries not
-    /// registered, or whose traces read one, are skipped.
+    /// registered, or that read one, are skipped.
     ///
     /// # Errors
     /// Returns an error if the bytes are not saved memos of this format.
@@ -152,26 +156,32 @@ impl Db {
         self.codecs.read().expect("query codecs").values().map(|c| (c.name, *c)).collect()
     }
 
-    /// The saved form of the computed memos of `Q` whose reads are all of persisted queries.
+    /// The saved form of the computed memos of `Q` that read only persisted queries.
     fn saved<Q: Persist>(&self) -> Vec<SavedMemo> {
         let codecs = self.codecs.read().expect("query codecs").clone();
-        let mut saved = Vec::new();
-        for (key, memo) in self.memos::<Q>().into_iter().filter(|(_, m)| !m.input) {
-            let deps: Option<Vec<_>> = memo.deps.iter().map(|d| Some((codecs.get(&d.query())?, d))).collect();
-            let Some(deps) = deps else { continue };
-            let deps = deps.into_iter().map(|(codec, d)| SavedEdge {
+        let saved_dep = |dep: &Dep| {
+            let table = self.any_table(dep.table);
+            let codec = codecs.get(&table.query())?;
+            Some(SavedDep {
                 query: codec.name.to_owned(),
-                key: (codec.key)(d.key()),
-                hash: d.hash(),
-            });
-            saved.push(SavedMemo {
-                key: key.encoded(),
-                value: memo.value.encoded(),
-                hash: memo.hash,
-                deps: deps.collect(),
-            });
-        }
-        // Tables are hash maps; the saved form does not depend on their order.
+                key: (codec.key)(table, dep.slot),
+                fingerprint: dep.fingerprint,
+            })
+        };
+        let mut saved: Vec<_> = self
+            .table::<Q>()
+            .memos()
+            .filter(|(_, memo)| !memo.input)
+            .filter_map(|(key, memo)| {
+                Some(SavedMemo {
+                    key: key.encoded(),
+                    value: memo.value.encoded(),
+                    fingerprint: memo.fingerprint,
+                    deps: memo.deps.iter().map(saved_dep).collect::<Option<_>>()?,
+                })
+            })
+            .collect();
+        // Slots are in the order keys were asked for; the saved form does not depend on it.
         saved.sort_by(|a, b| a.key.cmp(&b.key));
         saved
     }
@@ -179,17 +189,19 @@ impl Db {
     /// Stores `memos` of `Q` as never verified, returning how many decoded.
     fn restored<Q: Persist>(&self, memos: &[SavedMemo]) -> usize {
         let by_name = self.codecs_by_name();
-        let mut restored = 0;
-        for saved in memos {
-            let key = Q::Key::decoded(&saved.key).ok();
-            let value = Q::Value::decoded(&saved.value).ok();
-            let deps: Option<Vec<_>> =
-                saved.deps.iter().map(|e| (by_name.get(e.query.as_str())?.edge)(e)).collect();
-            let (Some(key), Some(value), Some(deps)) = (key, value, deps) else { continue };
-            let memo = Memo::<Q>::computed(value, saved.hash, deps.into(), Verified::default());
-            self.store(key, memo);
-            restored += 1;
-        }
-        restored
+        let table = self.table::<Q>();
+        let restored = memos.iter().filter_map(|saved| {
+            let key = Q::Key::decoded(&saved.key).ok()?;
+            let value = Q::Value::decoded(&saved.value).ok()?;
+            let deps: Box<[Dep]> = saved
+                .deps
+                .iter()
+                .map(|d| (by_name.get(d.query.as_str())?.dep)(self, d))
+                .collect::<Option<_>>()?;
+            let memo = Memo::<Q>::computed(value, saved.fingerprint, deps, Verified::default());
+            table.entry(table.slot(&key)).memo.store(Some(Arc::new(memo)));
+            Some(())
+        });
+        restored.count()
     }
 }

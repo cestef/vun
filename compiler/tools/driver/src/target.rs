@@ -49,7 +49,7 @@ impl Session {
                     current.as_deref().is_none_or(|t| *t == target),
                     "sessions sharing queries compile for one target (`Shared` gives one database per package)"
                 );
-                self.db.set::<TargetOf>((), Some(Arc::new(target)));
+                self.db.set::<TargetOf>(&(), Some(Arc::new(target)));
                 Ok(spec)
             }
             Err(why) => {

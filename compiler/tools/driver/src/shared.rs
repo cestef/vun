@@ -6,7 +6,8 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use vun_build::layout::MANIFEST;
-use vun_query::{Db, Map};
+use vun_par::Map;
+use vun_query::Db;
 
 use crate::Session;
 
