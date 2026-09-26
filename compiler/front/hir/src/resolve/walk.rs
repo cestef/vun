@@ -142,6 +142,9 @@ impl Visitor for Resolver<'_, '_> {
     }
 
     fn pat(&mut self, hir: &Hir, pat: PatId) {
+        if let PatKind::Or(alternatives) = &hir.pats[pat].kind {
+            self.alternatives(hir, alternatives);
+        }
         if self.declaring {
             match &hir.pats[pat].kind {
                 PatKind::Bind(b) | PatKind::Rest(Some(b)) | PatKind::At { binder: b, .. } => {

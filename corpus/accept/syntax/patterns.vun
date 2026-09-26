@@ -27,3 +27,13 @@ swap := (pair: (u8, u8)) -> (u8, u8) {
     (a, b) := pair;
     (b, a)
 };
+
+Token := enum { word(u16), number(u16), space, end };
+
+/// Alternatives bind the same names, which what follows uses whichever matched.
+length := (t: &Token) -> u16 {
+    match t.* {
+        .word(n) | .number(n) => n,
+        .space | .end => 0,
+    }
+};

@@ -117,6 +117,8 @@ struct Builder<'e, 'a, 'db> {
     current: BlockId,
     /// The local each binder of the body is stored in.
     bound: HashMap<BinderId, Local>,
+    /// The binders of or-patterns' alternatives, stored in the locals of the first's.
+    shared: HashMap<BinderId, Local>,
     /// The captured binders whose local holds a borrow of them.
     through: HashSet<BinderId>,
     /// Where the result is written before returning.
@@ -149,6 +151,7 @@ impl<'a, 'db> Builder<'_, 'a, 'db> {
             blocks: IndexVec::new(),
             current: Idx::new(0),
             bound: HashMap::new(),
+            shared: HashMap::new(),
             through: HashSet::new(),
             ret,
             loops: Vec::new(),

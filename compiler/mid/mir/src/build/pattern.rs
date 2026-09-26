@@ -5,7 +5,7 @@
 
 use vun_codec::{Decode, Encode};
 use vun_desugar::Borrow;
-use vun_hir::tree::{Arm, BinderId, Entry, ExprId, Name, PatId, PatKind};
+use vun_hir::tree::{Arm, BinderId, Entry, ExprId, Joined, Name, PatId, PatKind};
 use vun_origin::OriginId;
 use vun_sema::member::{Found, Members};
 use vun_sema::ty::{Ty, TyKind};
@@ -163,8 +163,8 @@ impl Builder<'_, '_, '_> {
         }
     }
 
-    /// `p | q`: each alternative in turn, the next tried when one fails. Alternatives that bind
-    /// are not lowered yet: each binds its own binders, which names after it do not all reach.
+    /// `p | q`: each alternative in turn, the next tried when one fails. Every alternative
+    /// binds into the locals of the first's binders, which the names after it resolve to.
     fn either(
         &mut self,
         alternatives: &[PatId],
@@ -173,13 +173,25 @@ impl Builder<'_, '_, '_> {
         origin: OriginId,
     ) -> Result<(), Unbuilt> {
         let hir = &self.env.parsed.hir;
-        let binds = alternatives.iter().any(|&p| {
-            let mut binders = Vec::new();
-            hir.binders(p, &mut binders);
-            !binders.is_empty()
-        });
-        if binds {
-            return Err(Unbuilt::at(origin));
+        let mut firsts = Vec::new();
+        if let Some(&first) = alternatives.first() {
+            hir.binders(first, &mut firsts);
+        }
+        let mut shared: Vec<(BinderId, BinderId)> = firsts.iter().map(|&b| (b, b)).collect();
+        for joined in hir.joined(alternatives) {
+            match joined {
+                Joined::Paired { first, other } => shared.push((other, first)),
+                // The resolver reported it.
+                Joined::Extra { .. } | Joined::Missing { .. } => return Err(Unbuilt::at(origin)),
+            }
+        }
+        for &first in &firsts {
+            let local = self.bind_scoped(first);
+            self.shared.insert(first, local);
+        }
+        for &(binder, first) in &shared {
+            let local = self.shared[&first];
+            self.shared.insert(binder, local);
         }
         let success = self.fresh(origin);
         for (i, &alternative) in alternatives.iter().enumerate() {
@@ -199,7 +211,10 @@ impl Builder<'_, '_, '_> {
             Binding::Copy => Rvalue::Use(Operand::Place(place)),
             Binding::Borrow(mode) => Rvalue::Ref { mode, place },
         };
-        let local = self.bind_scoped(binder);
+        let local = match self.shared.get(&binder) {
+            Some(&local) => local,
+            None => self.bind_scoped(binder),
+        };
         self.assign(Place::of(local), value, origin);
     }
 

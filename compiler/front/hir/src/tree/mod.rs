@@ -4,6 +4,7 @@
 //! declarations name their binders, and `$for`/`$if` in a list are [`Entry::Staged`]. Every node
 //! carries the origin of the source that produced it (spec 10, section 1).
 
+mod alternatives;
 mod binders;
 mod enclosing;
 mod expr;
@@ -17,6 +18,7 @@ use vun_index::{IndexVec, index};
 use vun_intern::Symbol;
 use vun_origin::OriginId;
 
+pub use alternatives::Joined;
 pub use binders::each_entry;
 pub use expr::{Arg, Cond, Expr, ExprKind, ForHead, Lit};
 pub use items::{Arm, Entry, FieldDef, List, Member, Param, Spread, Staged, Stmt, Variant};

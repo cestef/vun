@@ -89,7 +89,9 @@ years (rustc's parallel front end). So both are designed in from phase 1.
   is saved with its memo's fingerprint, and a read with its own only when it differs, since
   reads outnumber memos ten to one; each query is encoded on its own, so queries decode in
   parallel. `vun debug queries <file>` counts what the file beside a root file holds, per query
-  and per pool.
+  and per pool. A key naming a HIR node is equal to another only when both the node's place and
+  its origin are: a memo is computed from its key, and a key equal by origin alone would keep the
+  place a node had before an edit moved it.
 
 **Parallelism.**
 - Sema claims declarations on worker threads. Code generation is per function, with one thread

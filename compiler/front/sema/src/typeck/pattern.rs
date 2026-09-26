@@ -2,7 +2,8 @@
 //! and gives its binders the types of the parts they bind. Through a borrow, binders borrow the
 //! parts in the same mode (decision 31). A `match` has the type all its arms can take.
 
-use vun_hir::tree::{Arm, Entry, ExprId, ExprKind, Name, PatId, PatKind};
+use vun_diag::{Diagnostic, Msg, errors};
+use vun_hir::tree::{Arm, Entry, ExprId, ExprKind, Joined, Name, PatId, PatKind};
 
 use vun_grammar::TokenKind;
 
@@ -67,6 +68,7 @@ impl Typer<'_, '_, '_> {
                 for &alternative in alternatives {
                     self.pattern(alternative, ty, borrow);
                 }
+                self.alternatives(alternatives);
             }
             // A computed name is known at compile time; what it binds is the declaration's.
             PatKind::Computed(name) => {
@@ -178,6 +180,31 @@ impl From<Found<'_>> for Lookup {
             Found::Variant(v) => Self::Variant(v.payload.iter().map(|p| p.as_ref().ok().copied()).collect()),
             Found::Absent | Found::Field(_) | Found::Decl(_) => Self::Absent,
             Found::Unknown => Self::Other,
+        }
+    }
+}
+
+impl Typer<'_, '_, '_> {
+    /// Reports each name an alternative binds with another type than the first alternative;
+    /// names bound in one alternative only are the resolver's to report.
+    fn alternatives(&mut self, alternatives: &[PatId]) {
+        let hir = self.hir();
+        for joined in hir.joined(alternatives) {
+            let Joined::Paired { first, other } = joined else { continue };
+            let (Some(expected), Some(found)) = (self.locals.get(&first), self.locals.get(&other)) else {
+                continue;
+            };
+            if expected.ty != found.ty {
+                let msg = Msg::new()
+                    .code(hir.binders[other].name.as_str())
+                    .text(" is ")
+                    .ty(found.ty.to_string())
+                    .text(" here but ")
+                    .ty(expected.ty.to_string())
+                    .text(" in the first alternative");
+                let d = Diagnostic::error(errors::BINDING_UNEQUAL_ALTERNATIVES, msg);
+                self.diag.error(d.at(hir.binders[other].origin, None));
+            }
         }
     }
 }

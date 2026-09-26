@@ -10,3 +10,6 @@ pub const hole_value: Item = Item::new(&["lang", "errors", "binding", "hole_valu
 pub const irrefutable_test: Item = Item::new(
     &["lang", "errors", "binding", "irrefutable_test"],
 );
+pub const unequal_alternatives: Item = Item::new(
+    &["lang", "errors", "binding", "unequal_alternatives"],
+);

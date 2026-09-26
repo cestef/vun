@@ -6,3 +6,6 @@ pub const BINDING_HOLE_VALUE: DiagId = DiagId::new("lang.errors.binding.hole_val
 pub const BINDING_IRREFUTABLE_TEST: DiagId = DiagId::new(
     "lang.errors.binding.irrefutable_test",
 );
+pub const BINDING_UNEQUAL_ALTERNATIVES: DiagId = DiagId::new(
+    "lang.errors.binding.unequal_alternatives",
+);

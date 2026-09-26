@@ -52,6 +52,7 @@ names := struct {
 binding := struct {
     hole_value := diag.Diag{ .explanation = lang.meta.embed("errors/binding/hole_value.md") };
     irrefutable_test := diag.Diag{ .explanation = lang.meta.embed("errors/binding/irrefutable_test.md") };
+    unequal_alternatives := diag.Diag{ .explanation = lang.meta.embed("errors/binding/unequal_alternatives.md") };
 };
 
 /// The `unsafe` boundary (spec 01, section 3; spec 05, section 5).

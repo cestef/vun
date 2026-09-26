@@ -8,6 +8,7 @@
 //! nowhere in the file is [`Res::Outer`], looked up among the package's names by
 //! [`Resolution::check_outer`].
 
+mod alternatives;
 mod borrow;
 mod declare;
 mod outer;
