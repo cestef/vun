@@ -77,6 +77,8 @@ vun-generate = { path = "compiler/tools/generate" }
 
 # external
 boxcar = "0.2"
+foldhash = "0.2"
+papaya = "0.2"
 etcetera = "0.10"
 tracing = { version = "0.1", default-features = false, features = ["std"] }
 proc-macro2 = { version = "1", default-features = false }

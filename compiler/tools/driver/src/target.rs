@@ -43,7 +43,13 @@ impl Session {
         let chosen = self.db.get::<Chosen>(&(key.clone(), self.choice.clone()));
         let target = match chosen {
             Ok(spec) => {
-                self.db.set::<TargetOf>((), Some(Arc::new(Target::of(&spec))));
+                let target = Target::of(&spec);
+                let current = self.db.get::<TargetOf>(&());
+                assert!(
+                    current.as_deref().is_none_or(|t| *t == target),
+                    "sessions sharing queries compile for one target (`Shared` gives one database per package)"
+                );
+                self.db.set::<TargetOf>((), Some(Arc::new(target)));
                 Ok(spec)
             }
             Err(why) => {

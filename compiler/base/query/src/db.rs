@@ -5,45 +5,22 @@ use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, RwLock};
 
-use vun_hash::Hash;
-
-use super::cx::{Cx, Edge};
+use super::cx::Cx;
+use super::memo::Memo;
 use super::persist::Codec;
+use super::table::{Claim, Lookup, Map, Table, Waits};
 use super::{Query, Revision};
 
-/// A memoized result: the value, its interface hash, the trace of what computing it read, and
-/// the revision it was last known current in, if any: a loaded memo has none until verified.
-pub(crate) struct Memo<Q: Query> {
-    pub(crate) value: Q::Value,
-    pub(crate) hash: Hash,
-    pub(crate) deps: Arc<[Arc<dyn Edge>]>,
-    pub(crate) verified: Option<Revision>,
-    /// Set with [`Db::set`] rather than computed.
-    pub(crate) input: bool,
-}
-
-impl<Q: Query> Clone for Memo<Q> {
-    fn clone(&self) -> Self {
-        Self {
-            value: self.value.clone(),
-            hash: self.hash,
-            deps: Arc::clone(&self.deps),
-            verified: self.verified,
-            input: self.input,
-        }
-    }
-}
-
-type Table<Q> = HashMap<<Q as Query>::Key, Memo<Q>>;
-
-/// Every query's memos, and the current revision.
+/// Every query's memos, and the current revision. Threads share it, each through its own
+/// [`Cx`]; reading a memo takes no lock.
 #[derive(Default)]
 pub struct Db {
     revision: AtomicU64,
-    tables: RwLock<HashMap<TypeId, Box<dyn Any + Send + Sync>>>,
+    tables: Map<TypeId, Arc<dyn Any + Send + Sync>>,
+    waits: Waits,
     /// The persisted queries.
     pub(crate) codecs: RwLock<HashMap<TypeId, Codec>>,
-    resources: RwLock<HashMap<TypeId, Arc<dyn Any + Send + Sync>>>,
+    resources: Map<TypeId, Arc<dyn Any + Send + Sync>>,
 }
 
 impl Db {
@@ -58,18 +35,15 @@ impl Db {
     }
 
     /// Sets the input `key` of `Q`. A value whose interface differs from the current one starts
-    /// a new revision; an equal one changes nothing.
-    ///
-    /// # Panics
-    /// Panics if the tables were poisoned by a panicking query.
+    /// a new revision; an equal one changes nothing, and neither does a key nothing has read.
     pub fn set<Q: Query>(&self, key: Q::Key, value: Q::Value) {
         let hash = Q::interface(&value);
-        if self.memo::<Q>(&key).is_some_and(|m| m.input && m.hash == hash) {
-            return;
-        }
-        let revision = Revision(self.revision.fetch_add(1, Ordering::AcqRel) + 1);
-        let memo = Memo::<Q> { value, hash, deps: Arc::new([]), verified: Some(revision), input: true };
-        self.store(key, memo);
+        let revision = match self.memo::<Q>(&key) {
+            Some(current) if current.input && current.hash == hash => return,
+            Some(_) => Revision(self.revision.fetch_add(1, Ordering::AcqRel) + 1),
+            None => self.revision(),
+        };
+        self.store::<Q>(key, Memo::input(value, hash, revision));
     }
 
     /// The shared table of type `T`, created empty on first use. Resources are append-only tables
@@ -77,16 +51,12 @@ impl Db {
     /// reading them records no dependency.
     ///
     /// # Panics
-    /// Panics if the resources were poisoned by a panicking query.
+    /// Never: each type holds one resource of that type.
     #[must_use]
     pub fn resource<T: Default + Send + Sync + 'static>(&self) -> Arc<T> {
-        let found = self.resources.read().expect("query resources").get(&TypeId::of::<T>()).cloned();
-        let resource = found.unwrap_or_else(|| {
-            let mut resources = self.resources.write().expect("query resources");
-            let entry = resources.entry(TypeId::of::<T>()).or_insert_with(|| Arc::new(T::default()));
-            Arc::clone(entry)
-        });
-        resource.downcast::<T>().expect("one resource per type")
+        let resources = self.resources.pin();
+        let resource = resources.get_or_insert_with(TypeId::of::<T>(), || Arc::new(T::default()));
+        Arc::clone(resource).downcast::<T>().expect("one resource per type")
     }
 
     /// The value of `Q` at `key`, from a fresh context.
@@ -96,38 +66,54 @@ impl Db {
 
     /// Every key of `Q` computed or set so far, with its value: what inspection tools read,
     /// such as coverage, never a query, whose results must not depend on what ran before.
-    ///
-    /// # Panics
-    /// Panics if the tables were poisoned by a panicking query.
     #[must_use]
     pub fn computed<Q: Query>(&self) -> Vec<(Q::Key, Q::Value)> {
-        self.memos::<Q>().into_iter().map(|(key, memo)| (key, memo.value)).collect()
+        self.memos::<Q>().into_iter().map(|(key, memo)| (key, memo.value.clone())).collect()
     }
 
-    pub(crate) fn memo<Q: Query>(&self, key: &Q::Key) -> Option<Memo<Q>> {
-        let tables = self.tables.read().expect("query tables");
-        let table = tables.get(&TypeId::of::<Q>())?.downcast_ref::<Table<Q>>()?;
-        table.get(key).cloned()
+    /// `f` of the table of `Q`, created empty on first use. Tables are never removed, so `f` may
+    /// run as long as it takes, a whole computation included.
+    fn with_table<Q: Query, R>(&self, f: impl FnOnce(&Table<Q>) -> R) -> R {
+        let tables = self.tables.pin();
+        let table = tables.get_or_insert_with(TypeId::of::<Q>(), || Arc::new(Table::<Q>::default()));
+        f(table.downcast_ref().expect("one table type per query"))
+    }
+
+    pub(crate) fn memo<Q: Query>(&self, key: &Q::Key) -> Option<Arc<Memo<Q>>> {
+        self.with_table::<Q, _>(|table| table.get(key))
+    }
+
+    /// The memo of `Q` at `key` as `revision` finds it.
+    pub(crate) fn lookup<Q: Query>(&self, key: &Q::Key, revision: Revision) -> Option<Lookup<Q>> {
+        self.with_table::<Q, _>(|table| table.lookup(key, revision))
     }
 
     /// Every memo of `Q`.
-    pub(crate) fn memos<Q: Query>(&self) -> Vec<(Q::Key, Memo<Q>)> {
-        let tables = self.tables.read().expect("query tables");
-        let table = tables.get(&TypeId::of::<Q>()).and_then(|t| t.downcast_ref::<Table<Q>>());
-        table.map(|t| t.iter().map(|(k, m)| (k.clone(), m.clone())).collect()).unwrap_or_default()
+    pub(crate) fn memos<Q: Query>(&self) -> Vec<(Q::Key, Arc<Memo<Q>>)> {
+        self.with_table::<Q, _>(Table::all)
     }
 
     pub(crate) fn store<Q: Query>(&self, key: Q::Key, memo: Memo<Q>) {
-        let mut tables = self.tables.write().expect("query tables");
-        let table = tables.entry(TypeId::of::<Q>()).or_insert_with(|| Box::new(Table::<Q>::new()));
-        table.downcast_mut::<Table<Q>>().expect("one table type per query").insert(key, memo);
+        self.with_table::<Q, _>(|table| table.insert(key, Arc::new(memo)));
     }
 
-    pub(crate) fn verified<Q: Query>(&self, key: &Q::Key, revision: Revision) {
-        let mut tables = self.tables.write().expect("query tables");
-        let table = tables.get_mut(&TypeId::of::<Q>()).and_then(|t| t.downcast_mut::<Table<Q>>());
-        if let Some(memo) = table.and_then(|t| t.get_mut(key)) {
-            memo.verified = Some(revision);
-        }
+    /// Computes the memo of `Q` at `key` with `compute`, unless another thread is computing it:
+    /// then waits for it and gives `None`, to be looked up again.
+    pub(crate) fn computed_once<Q: Query>(
+        &self,
+        key: &Q::Key,
+        compute: impl FnOnce() -> Memo<Q>,
+    ) -> Option<Arc<Memo<Q>>> {
+        self.with_table::<Q, _>(|table| {
+            let owned = match table.claim(key, &self.waits) {
+                Claim::Waited => return None,
+                Claim::Owner(owned) => Some(owned),
+                Claim::Alone => None,
+            };
+            let memo = Arc::new(compute());
+            table.insert(key.clone(), Arc::clone(&memo));
+            drop(owned);
+            Some(memo)
+        })
     }
 }

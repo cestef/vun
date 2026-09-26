@@ -78,8 +78,9 @@ impl Hash {
 }
 
 /// How many bytes a [`Hasher`] gathers before BLAKE3 reads them: `Hash` implementations write a
-/// few bytes at a time, and BLAKE3 is fast on whole chunks of 1 KiB, several at once.
-const GATHERED: usize = 4096;
+/// few bytes at a time, each of which BLAKE3 would take on its own, and most values hashed are
+/// small, so the buffer, made anew for each, stays small too.
+const GATHERED: usize = 256;
 
 /// A [`std::hash::Hasher`] over BLAKE3, so that any `std::hash::Hash` value has a content hash:
 /// what query results are compared by. The encoding is Rust's, stable within one build of the

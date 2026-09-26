@@ -94,7 +94,11 @@ impl Corpus<'_> {
                 scratch.write(file, text);
             }
             let target: PathBuf = scratch.join(&checked);
-            let verdict = if target.exists() { Verdict::of(&target, expect)? } else { Verdict::Shown };
+            let verdict = if target.exists() {
+                Verdict::of(self.session(&target), &target, expect)?
+            } else {
+                Verdict::Shown
+            };
             verdicts.push((format!("#{section}"), verdict));
         }
         Ok(verdicts)

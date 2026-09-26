@@ -14,7 +14,8 @@ use vun_hash::Hash;
 
 use super::Query;
 use super::cx::{Edge, Read};
-use super::db::{Db, Memo};
+use super::db::Db;
+use super::memo::{Memo, Verified};
 
 /// A query whose memos are saved: its keys and values are data.
 pub trait Persist: Query<Key: Encode + Decode, Value: Encode + Decode> {}
@@ -185,7 +186,7 @@ impl Db {
             let deps: Option<Vec<_>> =
                 saved.deps.iter().map(|e| (by_name.get(e.query.as_str())?.edge)(e)).collect();
             let (Some(key), Some(value), Some(deps)) = (key, value, deps) else { continue };
-            let memo = Memo::<Q> { value, hash: saved.hash, deps: deps.into(), verified: None, input: false };
+            let memo = Memo::<Q>::computed(value, saved.hash, deps.into(), Verified::default());
             self.store(key, memo);
             restored += 1;
         }

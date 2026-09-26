@@ -35,8 +35,9 @@ use crate::formats::Format;
 use crate::packages::{LIBRARY, Packages};
 
 pub struct Session {
-    /// The queries of the compilation, whose shared tables `sources` and `origins` are.
-    pub db: Db,
+    /// The queries of the compilation, whose shared tables `sources` and `origins` are; other
+    /// sessions may share them (`Session::sharing`).
+    pub db: Arc<Db>,
     pub sources: Arc<SourceFiles>,
     pub origins: Arc<OriginTable>,
     pub diag: DiagCtxt,
@@ -60,7 +61,17 @@ pub struct Session {
 
 impl Default for Session {
     fn default() -> Self {
-        let db = Db::new();
+        Self::sharing(&Arc::new(Db::new()))
+    }
+}
+
+impl Session {
+    /// A session over the queries `db`, which other sessions may compute in at the same time:
+    /// what each computes, every other reuses. Its diagnostics and packages are its own; all
+    /// compile for one target, which `Shared` ensures.
+    #[must_use]
+    pub fn sharing(db: &Arc<Db>) -> Self {
+        let db = Arc::clone(db);
         db.resource::<Evaluators>().install(Arc::new(Interpreter));
         db.resource::<Framers>().install(Arc::new(vun_lower::Framing));
         Self {
@@ -78,9 +89,7 @@ impl Default for Session {
             registry: Registry::with_defaults(),
         }
     }
-}
 
-impl Session {
     #[must_use]
     pub fn new() -> Self {
         Self::default()

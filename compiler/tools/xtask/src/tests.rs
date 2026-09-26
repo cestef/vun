@@ -5,7 +5,7 @@ use crate::lines::{self, Oversized};
 
 #[test]
 fn corpus_has_no_failures() {
-    let outcomes = Corpus { root: &repo_root() }.outcomes().expect("readable corpus");
+    let outcomes = Corpus::at(&repo_root()).outcomes().expect("readable corpus");
     let failed: Vec<_> = outcomes
         .iter()
         .filter(|o| {

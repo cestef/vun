@@ -188,3 +188,78 @@ fn resources_are_shared_per_type() {
     first.lock().unwrap().push(1);
     assert_eq!(*db.resource::<std::sync::Mutex<Vec<u8>>>().lock().unwrap(), [1]);
 }
+
+static SLOW: Runs = Runs::new();
+
+/// A query slow enough that threads asking for it meet while it runs.
+struct Slow;
+impl Query for Slow {
+    const NAME: &'static str = "slow";
+    type Key = u8;
+    type Value = u8;
+    fn compute(_: &Cx<'_>, key: &u8) -> u8 {
+        SLOW.tick();
+        std::thread::sleep(std::time::Duration::from_millis(50));
+        key + 1
+    }
+}
+
+#[test]
+fn threads_needing_one_memo_compute_it_once() {
+    let db = Db::new();
+    std::thread::scope(|s| {
+        for _ in 0..8 {
+            s.spawn(|| assert_eq!(db.get::<Slow>(&1), 2));
+        }
+    });
+    assert_eq!(SLOW.count(), 1);
+}
+
+/// Where both threads of the cycle below meet before reading the other half.
+static MEET: std::sync::Barrier = std::sync::Barrier::new(2);
+static MET: std::sync::Once = std::sync::Once::new();
+
+/// Meets the other thread the first time, then reads `Q`.
+fn meet_then<Q: Query<Key = u8, Value = u8>>(cx: &Cx<'_>, key: u8) -> u8 {
+    if !MET.is_completed() {
+        MEET.wait();
+        MET.call_once(|| {});
+    }
+    cx.get::<Q>(&key)
+}
+
+/// A cycle through two queries, each thread starting from one of them.
+struct Ping;
+struct Pong;
+impl Query for Ping {
+    const NAME: &'static str = "ping";
+    type Key = u8;
+    type Value = u8;
+    fn compute(cx: &Cx<'_>, key: &u8) -> u8 {
+        meet_then::<Pong>(cx, *key)
+    }
+    fn cycle(_: &Cx<'_>, _: &u8, _: &Cycle) -> u8 {
+        0
+    }
+}
+impl Query for Pong {
+    const NAME: &'static str = "pong";
+    type Key = u8;
+    type Value = u8;
+    fn compute(cx: &Cx<'_>, key: &u8) -> u8 {
+        meet_then::<Ping>(cx, *key)
+    }
+    fn cycle(_: &Cx<'_>, _: &u8, _: &Cycle) -> u8 {
+        0
+    }
+}
+
+#[test]
+fn a_cycle_across_threads_ends_without_waiting_forever() {
+    let db = Db::new();
+    std::thread::scope(|s| {
+        s.spawn(|| db.get::<Ping>(&1));
+        s.spawn(|| db.get::<Pong>(&1));
+    });
+    assert_eq!(db.get::<Ping>(&1), 0);
+}

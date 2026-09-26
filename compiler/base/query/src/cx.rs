@@ -7,8 +7,10 @@ use std::sync::Arc;
 
 use vun_hash::Hash;
 
-use super::Query;
-use super::db::{Db, Memo};
+use super::db::Db;
+use super::memo::{Memo, Verified};
+use super::table::Lookup;
+use super::{Query, Revision};
 
 /// A query read while another was computed, with the interface hash it had then.
 pub(crate) trait Edge: Send + Sync {
@@ -100,18 +102,28 @@ impl<'db> Cx<'db> {
     }
 
     /// The current value of `Q` at `key` and its interface: the memo when it is current or its
-    /// trace still holds, otherwise computed again.
+    /// trace still holds, otherwise computed again, by this thread or, when another is computing
+    /// it already, by that one.
     fn fetch<Q: Query>(&self, key: &Q::Key) -> (Q::Value, Hash) {
-        let revision = self.db.revision();
-        if let Some(memo) = self.db.memo::<Q>(key) {
-            if memo.input || memo.verified == Some(revision) {
-                return (memo.value, memo.hash);
+        loop {
+            let revision = self.db.revision();
+            match self.db.lookup::<Q>(key, revision) {
+                Some(Lookup::Current(value, hash)) => return (value, hash),
+                Some(Lookup::Stale(memo)) if memo.deps.iter().all(|d| d.unchanged(self)) => {
+                    memo.verified.set(revision);
+                    return (memo.value.clone(), memo.hash);
+                }
+                _ => {}
             }
-            if memo.deps.iter().all(|d| d.unchanged(self)) {
-                self.db.verified::<Q>(key, revision);
-                return (memo.value, memo.hash);
+            if let Some(found) = self.computed::<Q>(key, revision) {
+                return found;
             }
         }
+    }
+
+    /// `Q` at `key` computed on this thread, or the value of the cycle it closes; `None` when
+    /// another thread computed it meanwhile.
+    fn computed<Q: Query>(&self, key: &Q::Key, revision: Revision) -> Option<(Q::Value, Hash)> {
         let query = TypeId::of::<Q>();
         let reached = self
             .stack
@@ -124,27 +136,24 @@ impl<'db> Cx<'db> {
             path.push((Q::NAME, format!("{key:?}")));
             let value = Q::cycle(self, key, &Cycle { path });
             let hash = Q::interface(&value);
-            return (value, hash);
+            return Some((value, hash));
         }
-        let frame = Frame {
-            query,
-            name: Q::NAME,
-            key: Box::new(key.clone()),
-            show: |key| format!("{:?}", key.downcast_ref::<Q::Key>().expect("a frame's key is its query's")),
-            reads: Vec::new(),
-        };
-        self.stack.borrow_mut().push(frame);
-        let value = Q::compute(self, key);
-        let frame = self.stack.borrow_mut().pop().expect("the frame pushed above");
-        let hash = Q::interface(&value);
-        let memo = Memo::<Q> {
-            value: value.clone(),
-            hash,
-            deps: frame.reads.into(),
-            verified: Some(revision),
-            input: false,
-        };
-        self.db.store(key.clone(), memo);
-        (value, hash)
+        let memo = self.db.computed_once::<Q>(key, || {
+            let frame = Frame {
+                query,
+                name: Q::NAME,
+                key: Box::new(key.clone()),
+                show: |key| {
+                    format!("{:?}", key.downcast_ref::<Q::Key>().expect("a frame's key is its query's"))
+                },
+                reads: Vec::new(),
+            };
+            self.stack.borrow_mut().push(frame);
+            let value = Q::compute(self, key);
+            let frame = self.stack.borrow_mut().pop().expect("the frame pushed above");
+            let hash = Q::interface(&value);
+            Memo::computed(value, hash, frame.reads.into(), Verified::at(revision))
+        })?;
+        Some((memo.value.clone(), memo.hash))
     }
 }

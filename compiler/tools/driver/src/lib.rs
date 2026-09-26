@@ -14,6 +14,7 @@ mod plan;
 pub mod program;
 mod registry;
 mod session;
+mod shared;
 mod stack;
 pub mod stages;
 pub mod target;
@@ -21,5 +22,6 @@ pub mod target;
 pub use coverage::Coverage;
 pub use registry::Registry;
 pub use session::Session;
+pub use shared::Shared;
 
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");

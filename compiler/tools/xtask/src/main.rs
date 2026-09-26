@@ -61,7 +61,7 @@ const PROGRAM: Program<Cx> = Program {
 };
 
 fn run_corpus(_: &mut Cx, _: &Args, out: &mut dyn Write) -> io::Result<Outcome> {
-    let outcomes = Corpus { root: &repo_root() }.outcomes()?;
+    let outcomes = Corpus::at(&repo_root()).outcomes()?;
     let (mut passed, mut pending, mut planned, mut shown, mut failed) = (0, 0, 0, 0, 0);
     for o in &outcomes {
         match &o.verdict {
@@ -130,7 +130,7 @@ fn run_corpus(_: &mut Cx, _: &Args, out: &mut dyn Write) -> io::Result<Outcome> 
         }
     }
     writeln!(out, "{passed} passed, {pending} pending, {planned} planned, {shown} shown, {failed} failed")?;
-    writeln!(out, "corpus/accept: {}", Corpus { root: &repo_root() }.coverage()?)?;
+    writeln!(out, "corpus/accept: {}", Corpus::at(&repo_root()).coverage()?)?;
     Ok(if failed == 0 { Outcome::Success } else { Outcome::Failure })
 }
 

@@ -8,13 +8,13 @@
 use std::collections::BTreeSet;
 use std::fmt::Write;
 use std::path::{Path, PathBuf};
-use vun_fs::Tree;
-use vun_par::Parallel;
 
 use vun_diag::{ChildKind, DiagId, Diagnostic, errors};
 use vun_driver::stages::{Input, Stage};
-use vun_driver::{Coverage, Session};
+use vun_driver::{Coverage, Session, Shared};
+use vun_fs::Tree;
 use vun_harness::{self as harness, ACCEPT, At, Expected, Mismatch, PLANNED, REJECT, Reported};
+use vun_par::Parallel;
 use vun_span::{EXTENSION, SourceMap};
 
 /// Where the corpus lives, relative to the repository root, and what its files expect.
@@ -57,9 +57,20 @@ pub(crate) struct Outcome {
 /// The corpus and the explanation pages of the repository at `root`.
 pub(crate) struct Corpus<'r> {
     pub(crate) root: &'r Path,
+    /// The queries files are checked in: what one computes, the others of its package reuse.
+    shared: Shared,
 }
 
-impl Corpus<'_> {
+impl<'r> Corpus<'r> {
+    pub(crate) fn at(root: &'r Path) -> Self {
+        Self { root, shared: Shared::default() }
+    }
+
+    /// A session of its own for the file at `path`, over the queries of its package.
+    pub(crate) fn session(&self, path: &Path) -> Session {
+        self.shared.session(path)
+    }
+
     /// Runs every corpus file, and the examples of the explanation pages.
     ///
     /// # Errors
@@ -68,7 +79,7 @@ impl Corpus<'_> {
         let mut outcomes = self.explanations()?;
         let files = self.files(|_| true)?;
         let verdicts = files.par_map(|(path, expect)| {
-            let verdict = Verdict::of(path, *expect)?;
+            let verdict = Verdict::of(self.session(path), path, *expect)?;
             Ok(Outcome { path: path.strip_prefix(self.root).unwrap_or(path).to_path_buf(), verdict })
         });
         outcomes.extend(verdicts.into_iter().collect::<std::io::Result<Vec<_>>>()?);
@@ -91,7 +102,7 @@ impl Corpus<'_> {
     pub(crate) fn coverage(&self) -> std::io::Result<Coverage> {
         let files = self.files(|e| e == Expect::Clean)?;
         let covered = files.par_map(|(path, _)| {
-            let mut session = Session::new();
+            let mut session = self.session(path);
             let file = session.load(path)?;
             session.check(file);
             Some(session.coverage(file))
@@ -105,13 +116,13 @@ impl Corpus<'_> {
 }
 
 impl Verdict {
-    /// The verdict of the file at `path`, expected to report nothing or exactly its annotations.
+    /// The verdict of the file at `path` checked in `session`, expected to report nothing or
+    /// exactly its annotations.
     ///
     /// # Errors
     /// Returns an error if the file cannot be read.
-    pub(crate) fn of(path: &Path, expect: Expect) -> std::io::Result<Self> {
+    pub(crate) fn of(mut session: Session, path: &Path, expect: Expect) -> std::io::Result<Self> {
         let text = std::fs::read_to_string(path)?;
-        let mut session = Session::new();
         let mut unlowered = Vec::new();
         if let Some(file) = session.load(path) {
             session.check(file);
