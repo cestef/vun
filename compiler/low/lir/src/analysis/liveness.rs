@@ -29,12 +29,7 @@ pub struct Liveness(IndexVec<Value, Option<Range>>);
 impl Liveness {
     #[must_use]
     pub fn of(func: &Function, loops: &Loops, order: &Order) -> Self {
-        let mut home: IndexVec<crate::entity::Inst, Option<Block>> = IndexVec::filled(None, func.insts.len());
-        for (block, data) in func.blocks.iter() {
-            for &inst in &data.insts {
-                home[inst] = Some(block);
-            }
-        }
+        let home = func.homes();
         let ranges = func
             .values
             .iter()

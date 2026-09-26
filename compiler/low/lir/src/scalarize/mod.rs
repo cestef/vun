@@ -23,6 +23,9 @@ impl Function {
     /// Splits every slot reached only by plain scalars at constant offsets and by copies into
     /// its tiles (see the module), returning how many were.
     pub fn scalarize(&mut self, pointer_bits: u32) -> usize {
+        if self.slots.is_empty() {
+            return 0;
+        }
         let reach = Reach::of(self);
         let tilings = reach.tilings(self, pointer_bits);
         if tilings.is_empty() {

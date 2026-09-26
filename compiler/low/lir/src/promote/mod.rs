@@ -22,7 +22,9 @@ impl Function {
     /// slots, since its entry's parameters are its signature's.
     pub fn promote(&mut self, pointer_bits: u32) -> usize {
         let Some(entry) = self.entry() else { return 0 };
-        if self.blocks.iter().any(|(_, b)| b.term.targets().any(|t| t.block == entry)) {
+        if self.slots.is_empty()
+            || self.blocks.iter().any(|(_, b)| b.term.targets().any(|t| t.block == entry))
+        {
             return 0;
         }
         let uses = Uses::of(self, pointer_bits);

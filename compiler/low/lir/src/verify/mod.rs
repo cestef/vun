@@ -8,7 +8,7 @@ use std::collections::HashSet;
 use std::fmt;
 
 use vun_codec::{Decode, Encode};
-use vun_index::Idx;
+use vun_index::{Idx, IndexVec};
 use vun_origin::{OriginId, OriginTable};
 
 use crate::analysis::{Cfg, Dominators};
@@ -116,7 +116,7 @@ impl Unit {
             }
         }
         for (id, func) in self.functions.iter() {
-            Checker { unit: self, id, func, origins }.run()?;
+            Checker { unit: self, id, func, origins, homes: func.homes() }.run()?;
         }
         Ok(())
     }
@@ -137,6 +137,8 @@ struct Checker<'u> {
     id: FuncId,
     func: &'u Function,
     origins: &'u OriginTable,
+    /// The block holding each instruction, read once placement is checked.
+    homes: IndexVec<Inst, Option<Block>>,
 }
 
 impl Checker<'_> {
@@ -218,7 +220,7 @@ impl Checker<'_> {
         let seen = match data.def {
             Def::Param(def, _) => dominators.dominates(def, block),
             Def::Inst(inst) => {
-                let def = self.func.blocks.iter().find(|(_, d)| d.insts.contains(&inst)).map(|(b, _)| b);
+                let def = self.homes.get(inst).copied().flatten();
                 match def {
                     Some(def) if def == block => {
                         let index = self.func.blocks[block].insts.iter().position(|&i| i == inst);

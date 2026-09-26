@@ -1,6 +1,8 @@
 //! How a block decides where to go from one of its parameters: branching or switching on it, or
 //! branching on its comparison with a constant.
 
+use vun_index::IndexVec;
+
 use crate::entity::{Block, Inst};
 use crate::func::{Def, Function};
 use crate::inst::{Cond, InstKind, Target, Terminator};
@@ -20,9 +22,9 @@ enum How {
 }
 
 impl Function {
-    /// How `block` decides, when all it computes is constants and at most the comparison it
+    /// How `block` decides, `homes` placing the instructions, when all it computes is constants and at most the comparison it
     /// branches on, and its targets read nothing it computes.
-    pub(super) fn decides(&self, block: Block) -> Option<Decided> {
+    pub(super) fn decides(&self, block: Block, homes: &IndexVec<Inst, Option<Block>>) -> Option<Decided> {
         let data = &self.blocks[block];
         let computed: Vec<Inst> = data
             .insts
@@ -51,7 +53,7 @@ impl Function {
             }
             _ => return None,
         };
-        let computed_here = |v| matches!(self.values[v].def, Def::Inst(i) if data.insts.contains(&i));
+        let computed_here = |v| matches!(self.values[v].def, Def::Inst(i) if homes[i] == Some(block));
         if data.term.targets().flat_map(|t| &t.args).any(|&v| computed_here(v)) {
             return None;
         }

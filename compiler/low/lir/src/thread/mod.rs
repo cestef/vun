@@ -15,7 +15,9 @@ mod tests;
 use vun_hash::Set;
 
 use crate::analysis::Cfg;
-use crate::entity::{Block, Value};
+use vun_index::IndexVec;
+
+use crate::entity::{Block, Inst, Value};
 use crate::func::{Def, Function};
 use crate::inst::{InstKind, Target, Terminator};
 
@@ -39,12 +41,13 @@ impl Function {
     /// to the block being a `Jump`, and the pass stops there for promotion to rebuild them.
     fn thread_constants(&mut self, pointer_bits: u32) -> usize {
         let preds = Cfg::of(self).preds;
-        let outside = self.read_outside();
+        let homes = self.homes();
+        let outside = self.read_outside(&homes);
         let entry = self.entry();
         let mut count = 0;
         let joins: Vec<Block> = self.blocks.iter().map(|(b, _)| b).filter(|&b| Some(b) != entry).collect();
         for join in joins {
-            let Some(decided) = self.decides(join) else { continue };
+            let Some(decided) = self.decides(join, &homes) else { continue };
             let data = &self.blocks[join];
             let (term, params) = (data.term.clone(), data.params.clone());
             let passing: Vec<(Block, Vec<Value>, Target)> = preds[join]
@@ -93,7 +96,8 @@ impl Function {
     /// without arguments to where that block jumps.
     fn forward(&mut self) -> usize {
         let preds = Cfg::of(self).preds;
-        let outside = self.read_outside();
+        let homes = self.homes();
+        let outside = self.read_outside(&homes);
         let mut count = 0;
         let entry = self.entry();
         let blocks: Vec<Block> = self.blocks.iter().map(|(b, _)| b).filter(|&b| Some(b) != entry).collect();
@@ -105,7 +109,7 @@ impl Function {
                 matches!(inst.kind, InstKind::Const { .. })
                     && inst.result.is_none_or(|v| !outside.contains(&v))
             });
-            let local = |v: Value| matches!(self.values[v].def, Def::Inst(i) if data.insts.contains(&i));
+            let local = |v: Value| matches!(self.values[v].def, Def::Inst(i) if homes[i] == Some(through));
             if !data.params.is_empty()
                 || !only_constants
                 || onward.block == through
@@ -131,12 +135,12 @@ impl Function {
 
     /// The values read outside the block defining them: what a block jumped over must not
     /// define, since the blocks after it would read what no longer is.
-    fn read_outside(&self) -> Set<Value> {
+    fn read_outside(&self, homes: &IndexVec<Inst, Option<Block>>) -> Set<Value> {
         let mut outside = Set::default();
         for (block, data) in self.blocks.iter() {
             let here = |v: Value| match self.values[v].def {
                 Def::Param(b, _) => b == block,
-                Def::Inst(i) => data.insts.contains(&i),
+                Def::Inst(i) => homes[i] == Some(block),
             };
             let reads =
                 data.insts.iter().flat_map(|&i| self.insts[i].kind.operands()).chain(data.term.operands());

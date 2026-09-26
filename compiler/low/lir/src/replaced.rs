@@ -1,29 +1,39 @@
 //! Values a pass replaced, by what stands for them: a load by the value stored, a folded
-//! operation by its operand. Chains resolve to their end.
+//! operation by its operand. Chains resolve to their end. Values are dense, so they index a
+//! table rather than hash.
 
-use vun_hash::Map;
+use vun_index::Idx;
 
 use crate::entity::Value;
 
 #[derive(Default)]
-pub(crate) struct Replaced(Map<Value, Value>);
+pub(crate) struct Replaced {
+    by: Vec<Option<Value>>,
+    count: usize,
+}
 
 impl Replaced {
     pub(crate) fn insert(&mut self, value: Value, by: Value) {
-        self.0.insert(value, by);
+        if self.by.len() <= value.index() {
+            self.by.resize(value.index() + 1, None);
+        }
+        if self.by[value.index()].replace(by).is_none() {
+            self.count += 1;
+        }
     }
 
     pub(crate) fn contains(&self, value: Value) -> bool {
-        self.0.contains_key(&value)
+        self.by.get(value.index()).is_some_and(Option::is_some)
     }
 
+    /// How many values are replaced.
     pub(crate) fn len(&self) -> usize {
-        self.0.len()
+        self.count
     }
 
     /// What stands for `value` in the end.
     pub(crate) fn resolve(&self, mut value: Value) -> Value {
-        while let Some(&next) = self.0.get(&value) {
+        while let Some(&Some(next)) = self.by.get(value.index()) {
             value = next;
         }
         value

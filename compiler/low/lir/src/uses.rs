@@ -1,12 +1,24 @@
-//! How many times each value of a function is read, by the instructions and terminators of the
-//! blocks its entry reaches.
+//! Where a function's instructions are and how often its values are read: the block holding
+//! each instruction, the blocks the entry reaches, and the reads each value has there.
 
 use vun_index::IndexVec;
 
-use crate::entity::{Block, Value};
+use crate::entity::{Block, Inst, Value};
 use crate::func::Function;
 
 impl Function {
+    /// The block holding each instruction; `None` for one no block holds.
+    #[must_use]
+    pub fn homes(&self) -> IndexVec<Inst, Option<Block>> {
+        let mut homes = IndexVec::filled(None, self.insts.len());
+        for (block, data) in self.blocks.iter() {
+            for &inst in &data.insts {
+                homes[inst] = Some(block);
+            }
+        }
+        homes
+    }
+
     /// The blocks control reaches from the entry, as a set indexed by block.
     #[must_use]
     pub fn reached(&self) -> IndexVec<Block, bool> {

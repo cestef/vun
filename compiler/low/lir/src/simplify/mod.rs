@@ -8,8 +8,12 @@
 #[cfg(test)]
 mod tests;
 
+use vun_trace::Activity;
+
 use crate::func::Function;
 use crate::unit::Unit;
+
+const SIMPLIFY: Activity = Activity::stage("simplify");
 
 /// The most rounds of the passes over one function: each round mostly finishes what the one
 /// before exposed, and few are left after three.
@@ -18,6 +22,7 @@ const ROUNDS: usize = 4;
 impl Unit {
     /// Simplifies every function (see the module).
     pub fn simplify(&mut self) {
+        let _timer = SIMPLIFY.start();
         for f in self.callees_first() {
             let bits = self.pointer_bits;
             self.functions[f].tidy(bits);
