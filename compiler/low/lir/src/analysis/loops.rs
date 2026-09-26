@@ -135,6 +135,8 @@ impl Walk<'_> {
     /// far, ordered by their headers' depth on the path.
     fn tag(&mut self, block: Block, header: Block) {
         if block == header {
+            // A block jumping to itself is a loop of its own.
+            self.loops.is_header[header] = true;
             return;
         }
         let (mut inner, mut outer) = (block, header);

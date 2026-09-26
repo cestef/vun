@@ -162,7 +162,7 @@ in as proposed unless the user approves them.
    109 ms natively (C `-O2`: 116), `half.vun` shrinks from 22,917 to 13,773 instructions.
    Then (decision 229) threading through loop heads deciding on a state (parameters demoted
    to slots, then promoted), edge facts in `reuse`, more folds: a `for` over a range is a
-   one-block loop (103 ms). Left: values live across blocks are still homed at every block end
+   one-block loop, its state in callee-saved registers (decision 230: 56 ms; C `-O2` 51). Left: values live across blocks are still homed at every block end
    (a callee-saved register only for loops); padding tiles are copied as zeros (LIR has no
    undefined value). (c) DWARF line tables and symbol names done (decisions 204, 205:
    `vun-dwarf`; `gdb` breaks on Vun lines); the unit is named by the first file with a row;

@@ -1,11 +1,12 @@
 //! Callee-saved registers for loops (spec 13, section 8.3): the values live across the blocks of a
-//! loop, deepest loops and most uses first, are each held in a callee-saved register of their own
+//! loop, and the parameters of a loop's head, deepest loops and most uses first, are each held in a callee-saved register of their own
 //! from their definition to their last use. Calls preserve them and block ends keep them, so a
 //! loop runs without storing them home; the prologue saves the registers taken, and each return
 //! restores them.
 
 use vun_lir::Value;
 use vun_lir::analysis::{Liveness, Loops};
+use vun_lir::func::Def;
 
 use vun_dwarf::Step;
 
@@ -23,7 +24,9 @@ impl<A: Arch> Cx<'_, A> {
             .iter()
             .filter_map(|(v, _)| {
                 let range = live.range(v)?;
-                let spans = range.last > range.first || range.through;
+                // A loop head's parameter is carried around the loop, even one ending there.
+                let carried = matches!(self.f.values[v].def, Def::Param(b, _) if loops.is_header(b));
+                let spans = range.last > range.first || range.through || carried;
                 if !spans
                     || self.values[v].recompute.is_some()
                     || self.f.ty(v).bits(self.unit.pointer_bits) > 64

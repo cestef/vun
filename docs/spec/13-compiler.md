@@ -555,7 +555,8 @@ The framework:
   where used, never kept: `Recompute`, found once per function.
 - **Registers.** The lowest free register is taken; when none is, one is evicted round-robin,
   stored home if still used there only. Registers an instruction uses are locked until it is
-  done. Values live across the blocks of a loop, deepest loops and most uses first, each hold a
+  done. Values live across the blocks of a loop and the parameters of a loop's head (a block
+  jumping to itself heads a loop of its own), deepest loops and most uses first, each hold a
   callee-saved register from definition to last use. Only the state at the current point is
   tracked: before a call every value used after it, and at a jump to a block entered from
   elsewhere every value still used, is stored home (a call's arguments in general registers

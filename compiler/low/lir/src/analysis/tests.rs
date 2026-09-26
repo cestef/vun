@@ -60,6 +60,21 @@ fn a_counting_loop_is_one_span_and_its_bound_lives_through_it() {
 }
 
 #[test]
+fn a_block_jumping_to_itself_heads_its_own_loop() {
+    let origins = OriginTable::new();
+    let func = shaped(origin(&origins), 3, &|c| {
+        vec![Terminator::Jump(to(1)), branch(c, 1, 2), Terminator::Return(None)]
+    });
+    let (loops, order) = analyse(&func);
+    assert!(loops.is_header(b(1)));
+    assert_eq!(loops.innermost(b(1)), Some(b(1)));
+    assert_eq!(order.span(b(1)), (1, 1));
+    // The condition, used in the loop but defined before it, lives to the loop's end.
+    let live = Liveness::of(&func, &loops, &order);
+    assert_eq!(live.range(crate::Value::new(0)), Some(Range { first: 0, last: 1, through: true, uses: 1 }));
+}
+
+#[test]
 fn a_loop_is_emitted_before_what_follows_it() {
     let origins = OriginTable::new();
     // b1 tests, exiting to b3 before its body b2, which jumps back.
