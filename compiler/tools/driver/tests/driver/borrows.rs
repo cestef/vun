@@ -3,6 +3,7 @@
 
 use crate::common::Fixture;
 use vun_diag::errors;
+use vun_span::SourceMap;
 
 #[test]
 fn exclusive_loans_conflict_only_while_used() {
@@ -132,4 +133,31 @@ counted := () -> &static u8 { unsafe { &count } };
     // A literal and an immutable top-level binding live as long as the program; a local does
     // not, and a `mut` binding may change while borrowed.
     assert_eq!(fixture.check(&file), [errors::TYPES_MISMATCH, errors::TYPES_MISMATCH]);
+}
+
+#[test]
+fn a_conflict_names_where_the_borrow_is_used_later() {
+    let fixture = Fixture::new("borrows-later");
+    let file = fixture.root.write(
+        "later.vun",
+        "\
+bump := (x: &mut u8) { x.* = 1; };
+conflict := () -> u8 {
+    mut n: u8 = 1;
+    r := &n;
+    bump(&mut n);
+    r.*
+};
+",
+    );
+    let mut session = fixture.session();
+    let file = session.load(&file).unwrap();
+    session.check(file);
+    let reports = session.diag.sorted(session.origins);
+    let [conflict] = reports.as_slice() else { panic!("one report: {reports:?}") };
+    assert_eq!(conflict.id, errors::BORROW_CONFLICT);
+    let line = |origin| session.sources.locate(session.origins.source_span(origin)).at.line;
+    let lines: Vec<_> = conflict.labels.iter().map(|l| line(l.origin)).collect();
+    // Where the borrow is taken, then where it is used after the conflicting access.
+    assert_eq!(lines, [4, 6]);
 }

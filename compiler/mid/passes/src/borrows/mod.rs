@@ -12,6 +12,7 @@
 mod access;
 mod flow;
 mod free;
+mod later;
 
 use std::collections::{BTreeMap, BTreeSet, HashSet};
 
@@ -155,7 +156,21 @@ impl<'b> Checker<'b> {
 
     /// Reports at `origin`, pointing at where `loan` was taken when given.
     fn report(&mut self, id: DiagId, origin: OriginId, msg: Msg, loan: Option<LoanId>, help: Option<Msg>) {
-        if self.reported.insert((id.clone(), origin)) {
+        if let Some(diagnostic) = self.reporting(id, origin, msg, loan, help) {
+            self.diag.error(diagnostic);
+        }
+    }
+
+    /// The report of `id` at `origin`, labeling where `loan` was taken, unless one was made.
+    fn reporting(
+        &mut self,
+        id: DiagId,
+        origin: OriginId,
+        msg: Msg,
+        loan: Option<LoanId>,
+        help: Option<Msg>,
+    ) -> Option<Diagnostic> {
+        self.reported.insert((id.clone(), origin)).then(|| {
             let mut diagnostic = Diagnostic::error(id, msg).at(origin, None);
             if let Some(help) = help {
                 diagnostic = diagnostic.child(ChildKind::Help, help);
@@ -170,7 +185,7 @@ impl<'b> Checker<'b> {
                 let label = Msg::new().text(verb).code(spelled).text(" here");
                 diagnostic = diagnostic.label(l.origin, Some(label));
             }
-            self.diag.error(diagnostic);
-        }
+            diagnostic
+        })
     }
 }

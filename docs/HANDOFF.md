@@ -190,9 +190,11 @@ in as proposed unless the user approves them.
    `Integer`s; the corpus has no program past 70 ms, so a comptime-heavy benchmark comes first.
 3. `std`: `task.Pool`, `testing.Sim`, a Linux runtime without libc, `Str` and collections,
    `print`'s `.fixes`; generic bodies over a constrained `$A: Allocator`.
-4. Checks: leaks at scope exits inside a body, `fixed` and `scoped` kinds, frames' `end` running
-   their defers; borrows of top-level bindings as free values, frames' regions, a label at the
-   later conflicting use.
+4. Checks: `fixed` kinds (never moved; needs a spec rule for construction in place first, since
+   MIR moves values through temporaries for declarations and call results), frames' `end` running
+   their defers; borrows of top-level bindings as free values, frames' regions. Done: leaks at
+   every scope exit, scoped kinds, and `borrow.conflict` labels the later use keeping the loan
+   live (`borrows/later.rs`).
 5. `vun build build.vun` carries out a plan (decision 216, `driver/src/steps.rs`): programs from
    the typed `std.build.Options`, each in its own session, memory regions into the link plan.
    Left: carry out `flash` (a probe tool), `test_on` (needs a test command and runners),
