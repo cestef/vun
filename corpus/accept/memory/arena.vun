@@ -3,9 +3,17 @@
 Node := struct { value: u32, next: ?Own(Node) };
 
 push := (a: &mut std.mem.alloc.Fixed, head: ?Own(Node), value: u32) -> Result(Own(Node), std.mem.alloc.Error) {
-    node := a.create(Node)?;
-    node.* = .{ .value = value, .next = head };
-    .ok(node)
+    // The list is linear: when no node fits, it is freed rather than left behind.
+    match a.create(Node) {
+        .ok(node) => {
+            node.* = .{ .value = value, .next = head };
+            .ok(node)
+        },
+        .err(e) => {
+            free_all(a, head);
+            .err(e)
+        },
+    }
 };
 
 free_all := (a: &mut std.mem.alloc.Fixed, head: ?Own(Node)) {

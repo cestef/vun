@@ -67,7 +67,13 @@ years (rustc's parallel front end). So both are designed in from phase 1.
   would wait on a thread waiting for it computes the memo itself. Sessions compiling for one
   target share a database, so each library is checked once per process. Inputs are set, and a set that leaves
   an input's interface unchanged starts no revision. A query that reaches itself gets the value
-  its `cycle` rule gives, with the path of queries, instead of looping.
+  its `cycle` rule gives, with the path of queries, instead of looping. A value computed from
+  that cycle value, directly or through what it read, is provisional: it serves the computation
+  that asked for it and is not kept, since the query reached again may have another value once
+  computed, and which query of a cycle is asked for first must not change what the others are;
+  only the first query of the cycle, the one reached again, keeps its memo. Verifying a memo
+  that reaches itself again through its reads recomputes it, recovering from the cycle as
+  computing does.
 - The query database is persisted to disk from phase 1, with a bounded cache for bodies (new Salsa
   initially grew rust-analyzer's memory about 4x). A query persists its memos with their values
   (`Db::persist`) or by their traces alone (`Db::trace`); keys and values are encoded by

@@ -114,6 +114,58 @@ fn cycles_are_named_and_recovered() {
 }
 
 #[test]
+fn memos_reading_a_cycle_are_verified_in_a_later_revision() {
+    let db = Db::new();
+    db.get::<Ring>(&0);
+    // A new revision: verifying the ring reaches its first memo again, and recovers as computing.
+    db.set::<Text>(&"c", "x".into());
+    db.set::<Text>(&"c", "y".into());
+    let path = db.get::<Ring>(&0);
+    assert_eq!(path.len(), 4);
+    assert_eq!(path.first(), path.last(), "a cycle");
+}
+
+static PARTS: Runs = Runs::new();
+
+/// The parts a type reaches, itself included: a join over what it holds, where a type reached
+/// again adds nothing, as the kinds of recursive types are computed.
+struct Parts;
+impl Query for Parts {
+    const NAME: &'static str = "parts";
+    type Key = u8;
+    type Value = Vec<u8>;
+    fn compute(cx: &Cx<'_>, key: &u8) -> Vec<u8> {
+        PARTS.tick();
+        // 0 holds 1, 1 holds 0 and 2.
+        let holds: &[u8] = match key {
+            0 => &[1],
+            1 => &[0, 2],
+            _ => &[],
+        };
+        let mut parts = vec![*key];
+        parts.extend(holds.iter().flat_map(|part| cx.get::<Self>(part)));
+        parts.sort_unstable();
+        parts.dedup();
+        parts
+    }
+    fn cycle(_: &Cx<'_>, _: &u8, _: &Cycle) -> Vec<u8> {
+        Vec::new()
+    }
+}
+
+#[test]
+fn a_value_computed_from_a_cycle_value_is_not_kept() {
+    let db = Db::new();
+    assert_eq!(db.get::<Parts>(&0), [0, 1, 2]);
+    // Computing 0 read 1 through 0's cycle value, which lacked 0: 1 is computed again on its own.
+    let runs = PARTS.count();
+    assert_eq!(db.get::<Parts>(&1), [0, 1, 2]);
+    assert!(PARTS.count() > runs);
+    assert_eq!(db.get::<Parts>(&1), [0, 1, 2]);
+    assert_eq!(db.get::<Parts>(&2), [2]);
+}
+
+#[test]
 fn resources_are_shared_per_type() {
     let db = Db::new();
     let first = db.resource::<std::sync::Mutex<Vec<u8>>>();

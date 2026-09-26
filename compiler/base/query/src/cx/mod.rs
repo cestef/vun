@@ -1,14 +1,20 @@
 //! Computing queries: the stack of queries being computed on one thread, what each has read, and
 //! cycles.
 
+mod cycle;
+mod frame;
+mod why;
+
 use std::cell::RefCell;
 use std::collections::HashSet;
-use std::fmt;
 use std::sync::Arc;
 use std::sync::atomic::Ordering;
 
 use vun_trace::{Activity, Timer, tracing};
 
+pub use self::cycle::Cycle;
+use self::frame::{Frame, Standing};
+use self::why::Why;
 use super::claim::Claim;
 use super::db::Db;
 use super::fingerprint::Fingerprint;
@@ -16,71 +22,18 @@ use super::memo::{Dep, Memo};
 use super::table::{Slot, Table, TableId};
 use super::{Query, Revision};
 
-/// A query being computed, and each memo it read.
-struct Frame {
-    table: TableId,
-    slot: Slot,
-    reads: Vec<Dep>,
-}
-
-/// Why a memo is computed.
-#[derive(Clone, Copy, Debug)]
-enum Why {
-    /// There is none.
-    Absent,
-    /// This read has changed since.
-    Stale(Dep),
-    /// It holds, but was loaded without its value.
-    Unloaded,
-    /// It was loaded, reading a memo no query of this process holds.
-    Unresolved,
-}
-
-impl Why {
-    fn show(self, db: &Db) -> String {
-        match self {
-            Self::Absent => "absent".to_owned(),
-            Self::Stale(read) => {
-                let table = db.any_table(read.table);
-                format!("read {}({}) changed", table.name(), table.show(read.slot))
-            }
-            Self::Unloaded => "loaded without its value".to_owned(),
-            Self::Unresolved => "loaded reading a query not held".to_owned(),
-        }
-    }
-}
-
-/// Queries that depend on themselves: each by name and key, from the one reached again.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Cycle {
-    pub path: Vec<(&'static str, String)>,
-}
-
-impl fmt::Display for Cycle {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str("query cycle: ")?;
-        for (i, (name, key)) in self.path.iter().enumerate() {
-            if i > 0 {
-                f.write_str(" then ")?;
-            }
-            write!(f, "{name}({key})")?;
-        }
-        Ok(())
-    }
-}
-
-impl std::error::Error for Cycle {}
-
 /// The queries being computed on one thread, and what each has read so far.
 pub struct Cx<'db> {
     db: &'db Db,
     stack: RefCell<Vec<Frame>>,
+    /// The memos being verified on this thread, innermost last.
+    verifying: RefCell<Vec<(TableId, Slot)>>,
 }
 
 impl<'db> Cx<'db> {
     #[must_use]
     pub fn new(db: &'db Db) -> Self {
-        Self { db, stack: RefCell::default() }
+        Self { db, stack: RefCell::default(), verifying: RefCell::default() }
     }
 
     #[must_use]
@@ -158,8 +111,21 @@ impl<'db> Cx<'db> {
             return Ok(memo);
         }
         let deps = memo.deps.get(self.db).ok_or(Why::Unresolved)?;
-        if let Some(read) = self.stale(deps) {
+        if self.verifying.borrow().contains(&(table.id, slot)) {
+            return Err(Why::Cycle);
+        }
+        self.verifying.borrow_mut().push((table.id, slot));
+        let stale = self.stale(deps);
+        self.verifying.borrow_mut().pop();
+        if let Some(read) = stale {
             return Err(Why::Stale(read));
+        }
+        // Recovering from a cycle among its reads may have computed it meanwhile.
+        if let Some(computed) = table.entry(slot).memo.load_full()
+            && !Arc::ptr_eq(&computed, &memo)
+            && computed.current(revision)
+        {
+            return Ok(computed);
         }
         memo.verified.set(revision);
         Ok(memo)
@@ -197,14 +163,17 @@ impl<'db> Cx<'db> {
         let timer = self.enter(table.id, slot, why);
         let value = Q::compute(self, &entry.key);
         drop(timer);
-        let reads = self.leave();
+        let (reads, standing) = self.leave();
         let fingerprint = Q::interface(&value);
+        if standing == Standing::Provisional {
+            tracing::debug!(query = Q::NAME, "not kept: computed from a cycle value");
+            return Some((value, fingerprint));
+        }
         let memo = if Q::INPUT {
             // An input not set holds what it computes until it is.
             Memo::input(value.clone(), fingerprint, revision)
         } else {
-            let loaded = entry.memo.load().as_ref().map(|m| m.fingerprint);
-            self.computing(why, loaded, fingerprint);
+            self.computing(entry.memo.load().as_deref(), fingerprint, &reads);
             Memo::computed(value.clone(), fingerprint, reads, revision)
         };
         entry.memo.store(Some(Arc::new(memo)));
@@ -216,8 +185,10 @@ impl<'db> Cx<'db> {
     /// What does not depend on the query is kept out of the code made for each one.
     #[inline(never)]
     fn cycle(&self, table: TableId, slot: Slot) -> Option<Cycle> {
-        let stack = self.stack.borrow();
+        let mut stack = self.stack.borrow_mut();
         let from = stack.iter().position(|f| f.table == table && f.slot == slot)?;
+        let top = stack.last_mut().expect("the frame reaching it");
+        top.head = Some(top.head.map_or(from, |head| head.min(from)));
         let path = stack[from..]
             .iter()
             .map(|f| (f.table, f.slot))
@@ -238,20 +209,36 @@ impl<'db> Cx<'db> {
         let any = self.db.any_table(table);
         tracing::debug!(query = any.name(), why = %why.show(self.db), "computing");
         tracing::trace!(query = any.name(), key = any.show(slot), "key");
-        self.stack.borrow_mut().push(Frame { table, slot, reads: Vec::new() });
+        self.stack.borrow_mut().push(Frame { table, slot, reads: Vec::new(), head: None });
         Activity::query(any.name()).start()
     }
 
-    /// Ends the computation [`Cx::enter`] started, returning what it read.
+    /// Ends the computation [`Cx::enter`] started, returning what it read and whether its value
+    /// stands: a cycle value read of a frame below it makes the frame reading it provisional too.
     #[inline(never)]
-    fn leave(&self) -> Box<[Dep]> {
-        Self::once(self.stack.borrow_mut().pop().expect("a frame entered").reads)
+    fn leave(&self) -> (Box<[Dep]>, Standing) {
+        let mut stack = self.stack.borrow_mut();
+        let frame = stack.pop().expect("a frame entered");
+        let at = stack.len();
+        let standing = match frame.head {
+            Some(head) if head < at => {
+                let parent = stack.last_mut().expect("a frame below the head");
+                parent.head = Some(parent.head.map_or(head, |h| h.min(head)));
+                Standing::Provisional
+            }
+            _ => Standing::Final,
+        };
+        (Self::once(frame.reads), standing)
     }
 
-    /// Records a memo computed with `fingerprint`, where the one `loaded` had its own: what was
-    /// loaded already, computed again for its value, changes nothing saved.
-    fn computing(&self, why: Why, loaded: Option<Fingerprint>, fingerprint: Fingerprint) {
-        if !(matches!(why, Why::Unloaded) && loaded == Some(fingerprint)) {
+    /// Records a memo computed with `fingerprint` from `reads` in place of `replaced`: one equal
+    /// to it, as one loaded computed again for its value or out of a cycle among its reads,
+    /// changes nothing saved.
+    fn computing<Q: Query>(&self, replaced: Option<&Memo<Q>>, fingerprint: Fingerprint, reads: &[Dep]) {
+        let equal = replaced
+            .is_some_and(|memo| memo.fingerprint == fingerprint && memo.deps.get(self.db) == Some(reads));
+        if !equal {
+            tracing::trace!(query = Q::NAME, replaced = replaced.is_some(), "a memo changed");
             self.db.changed.store(true, Ordering::Relaxed);
         }
     }
