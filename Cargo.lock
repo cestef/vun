@@ -746,6 +746,7 @@ version = "0.0.0"
 dependencies = [
  "vun-asm",
  "vun-backend",
+ "vun-dwarf",
  "vun-index",
  "vun-lir",
  "vun-origin",

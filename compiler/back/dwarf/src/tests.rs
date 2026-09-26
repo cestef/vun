@@ -120,3 +120,33 @@ fn nothing_is_written_without_rows() {
     lines.write(&mut object, text, "a.vun", "vun");
     assert_eq!(object.sections.len(), 1);
 }
+
+#[test]
+fn call_frames_are_one_common_record_then_one_per_function() {
+    use super::{CallFrame, Fde, Step};
+    let (mut object, [f, g]) = object();
+    let x86 = CallFrame {
+        code_align: 1,
+        stack_pointer: 7,
+        frame_pointer: 6,
+        return_address: 16,
+        return_pushed: true,
+    };
+    let steps = vec![(1, Step::Pushed), (4, Step::Framed), (8, Step::Saved { reg: 3, offset: -24 })];
+    let fdes = [Fde { symbol: f, size: 16, steps }, Fde { symbol: g, size: 8, steps: vec![] }];
+    x86.write(&mut object, &fdes);
+    let (_, frames) = object.sections.iter().find(|(_, s)| s.name == b".eh_frame").unwrap();
+    // Each record is its length, then that many bytes, words apart.
+    let mut starts = Vec::new();
+    let mut at = 0;
+    while at < frames.bytes.len() {
+        starts.push(at);
+        let length = u32::from_le_bytes(frames.bytes[at..at + 4].try_into().unwrap()) as usize;
+        assert_eq!((4 + length) % 8, 0);
+        at += 4 + length;
+    }
+    assert_eq!(starts.len(), 3, "the common record and one per function");
+    // Each function's start is relative to where its record names it.
+    let relocs: Vec<_> = frames.relocs.iter().map(|r| (usize::try_from(r.offset).unwrap(), r.symbol, r.kind)).collect();
+    assert_eq!(relocs, [(starts[1] + 8, f, RelocKind::Pc32), (starts[2] + 8, g, RelocKind::Pc32)]);
+}

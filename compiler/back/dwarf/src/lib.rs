@@ -1,9 +1,11 @@
 //! DWARF debugging information (version 4), written as sections of a relocatable object: the
 //! line table of each function, which debuggers, profilers and `addr2line` read to map
-//! addresses to source lines, and the one compilation unit naming it. Addresses are relocations
+//! addresses to source lines, the one compilation unit naming it, and the call frame
+//! information unwinders read (`.eh_frame`). Addresses are relocations
 //! against the functions' symbols, so the linker places them.
 
 mod encode;
+mod frame;
 mod info;
 mod line;
 #[cfg(test)]
@@ -12,6 +14,8 @@ mod tests;
 use std::path::PathBuf;
 
 use vun_object::{Object, SectionId, SymbolId};
+
+pub use frame::{CallFrame, Fde, Step};
 
 /// A file of the line table, by its position there.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]

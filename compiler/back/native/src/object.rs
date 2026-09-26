@@ -7,7 +7,7 @@ use vun_lir::{Address, DataId, FuncId, ImportKind, Linkage, Unit};
 
 use vun_backend::Lines;
 use vun_codegen::Compiled;
-use vun_dwarf::{Row, Sequence};
+use vun_dwarf::{CallFrame, Fde, Row, Sequence};
 use vun_object::{
     Binding, Contents, Format, Machine, Object, Reloc, RelocKind, Section, SectionId, Symbol, SymbolId,
     SymbolKind,
@@ -60,6 +60,7 @@ pub(crate) fn assemble<T>(
     code: &IndexVec<FuncId, Compiled<T>>,
     (machine, format): (Machine, Format),
     lines: &dyn Lines,
+    frames: &CallFrame,
 ) -> Object {
     let mut b = Builder { object: Object::new(machine, format), sections: Vec::new() };
     for (contents, name) in SECTIONS {
@@ -151,6 +152,15 @@ pub(crate) fn assemble<T>(
         }
     }
     line_table(code, lines, &funcs, &mut b.object, text);
+    // Mach-O describes frames otherwise (compact unwind information), which is left for later.
+    if format == Format::Elf {
+        let fdes = code.iter().map(|(id, c)| Fde {
+            symbol: funcs[id],
+            size: c.code.bytes.len() as u64,
+            steps: c.unwind.clone(),
+        });
+        frames.write(&mut b.object, &fdes.collect::<Vec<_>>());
+    }
     b.object
 }
 

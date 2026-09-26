@@ -493,7 +493,12 @@ assembler and its instruction compilers and nothing else:
   its origin, the prologue with the function's), addresses as relocations against the
   functions' symbols. Debuggers break on and step through Vun lines; `addr2line` and profilers
   map code to them. An internal function's local symbol is named by its declaration path
-  (`Pair.swap`), which instantiations share.
+  (`Pair.swap`), which instantiations share. Call frame information (`.eh_frame`, ELF objects)
+  describes each function by the steps the framework records (`Compiled.unwind`: frame pointer
+  and return address stored, frame pointer set, callee-saved registers saved, and around each
+  return the frame torn down), each machine giving its registers' DWARF numbers (`Arch::dwarf`)
+  and where its calls leave the return address (`CallFrame`); unwinders and profilers walk
+  through Vun frames at every instruction.
 - **`vun-codegen`**: the framework, which knows no architecture: value assignments, register
   allocation, the frame, homes, values recomputed where used, callee-saved registers for loops,
   jumps filling their targets' parameters, compare and branch fusion, and the snippet encoder.

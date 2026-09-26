@@ -42,6 +42,9 @@ struct Arch {
 
 /// An architecture's instruction compilers, with the calling convention a target follows.
 pub trait Native: Isel {
+    /// How its call frames are described to unwinders.
+    const CALL_FRAME: vun_dwarf::CallFrame;
+
     fn convention(target: &TargetSpec) -> Self::Convention;
 }
 
@@ -135,7 +138,8 @@ impl NativeBackend {
         <A::Isa as Isa>::Inst<Address>: Display,
     {
         let code = Self::compile::<A>(request.unit, A::convention(request.target), request.listing)?;
-        let bytes = object::assemble(request.unit, &code, (machine, format), request.lines).write();
+        let bytes =
+            object::assemble(request.unit, &code, (machine, format), request.lines, &A::CALL_FRAME).write();
         let mut artifacts = vec![Artifact { name: PathBuf::from(OBJECT), kind: Emits::Object, bytes }];
         if request.listing {
             let text = Listing { unit: request.unit, code: &code, lines: request.lines }.to_string();

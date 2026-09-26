@@ -4,6 +4,7 @@
 
 use vun_asm_x86_64::{Emit, Inst, Mem, Op, Operand, Reg, Size};
 use vun_codegen::{Arch, Place};
+use vun_dwarf::Step;
 
 use super::Sel;
 use crate::x86_64::X86;
@@ -20,7 +21,9 @@ impl Sel<'_, '_> {
     /// `push rbp; mov rbp, rsp; sub rsp, frame`, and where each parameter passed in memory is.
     pub(super) fn prologue(&mut self) {
         self.asm.emit(Op::Push, Size::B64, &[Reg::Rbp.into()]);
+        self.unwound(Step::Pushed);
         self.asm.emit(Op::Mov, Size::B64, &[Reg::Rbp.into(), Reg::Rsp.into()]);
+        self.unwound(Step::Framed);
         self.state.frame_at = self.asm.here();
         self.asm.emit(Op::Sub, Size::B64, &[Reg::Rsp.into(), Operand::Imm(FRAME_PLACEHOLDER)]);
         self.state.frame_imm = self.asm.here() - IMM32;

@@ -10,6 +10,7 @@ pub use exit::{Fused, Layout};
 
 use vun_asm::{Isa, Label};
 use vun_backend::{Lack, Missing};
+use vun_dwarf::Step;
 use vun_index::IndexVec;
 use vun_lir::analysis::{Cfg, Liveness, Loops, Order};
 use vun_lir::{Address, Block, Conv, Function, Slot, Unit, Value};
@@ -42,6 +43,8 @@ pub struct Cx<'a, A: Arch> {
     saves: Vec<(A::Reg, i32)>,
     /// Where each instruction's code starts, with its origin.
     marks: Vec<(u64, OriginId)>,
+    /// The steps of the frame, where each takes effect.
+    unwind: Vec<(u64, Step)>,
 }
 
 /// A function's machine code.
@@ -52,6 +55,8 @@ pub struct Compiled<T> {
     /// Where the code of each instruction and terminator starts, with its origin: what line
     /// tables and listings read.
     pub marks: Vec<(u64, OriginId)>,
+    /// The steps of its frame, where each takes effect: what unwinders read.
+    pub unwind: Vec<(u64, Step)>,
 }
 
 /// Compiles `f` of `unit`, listing its code when `listed`.
@@ -102,6 +107,7 @@ pub fn compile<A: Isel>(
         saves: Vec::new(),
         // The prologue comes from the function itself.
         marks: vec![(0, f.origin)],
+        unwind: Vec::new(),
     };
     A::prologue(&mut cx)?;
     cx.fix(&live, &loops);
@@ -113,7 +119,7 @@ pub fn compile<A: Isel>(
     let size = cx.frame.size(A::STACK_ALIGN);
     A::finish(&mut cx, size);
     let code = cx.asm.finish().expect("every block is bound, and a function's jumps reach across it");
-    Ok(Compiled { code, frame: size, marks: cx.marks })
+    Ok(Compiled { code, frame: size, marks: cx.marks, unwind: cx.unwind })
 }
 
 impl<A: Isel> Cx<'_, A> {
@@ -146,6 +152,11 @@ impl<A: Isel> Cx<'_, A> {
 
 impl<A: Arch> Cx<'_, A> {
     /// The label of `block`.
+    /// Records that the frame takes `step` here, after the code emitted so far.
+    pub fn unwound(&mut self, step: Step) {
+        self.unwind.push((self.asm.here(), step));
+    }
+
     #[must_use]
     pub fn label(&self, block: Block) -> Label {
         self.labels[block]

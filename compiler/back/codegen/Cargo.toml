@@ -12,6 +12,7 @@ workspace = true
 [dependencies]
 vun-asm.workspace = true
 vun-backend.workspace = true
+vun-dwarf.workspace = true
 vun-index.workspace = true
 vun-lir.workspace = true
 vun-origin.workspace = true

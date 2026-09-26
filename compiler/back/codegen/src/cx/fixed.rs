@@ -7,6 +7,8 @@
 use vun_lir::Value;
 use vun_lir::analysis::{Liveness, Loops};
 
+use vun_dwarf::Step;
+
 use super::Cx;
 use crate::Arch;
 
@@ -33,9 +35,13 @@ impl<A: Arch> Cx<'_, A> {
             })
             .collect();
         candidates.sort_unstable_by(|a, b| b.0.cmp(&a.0).then(b.1.cmp(&a.1)).then(a.2.cmp(&b.2)));
+        // The caller's frame starts two words above the frame pointer, past the frame pointer
+        // and the return address saved.
+        let above = 2 * i64::try_from(A::WORD).expect("a word fits");
         for (&(_, _, v), &r) in candidates.iter().zip(A::CALLEE_SAVED) {
             let save = self.frame.reserve(A::WORD, A::WORD);
             A::store(&mut self.asm, save, r);
+            self.unwound(Step::Saved { reg: A::dwarf(r), offset: i64::from(save) - above });
             self.saves.push((r, save));
             self.values[v].fixed = Some(r);
             self.values[v].reg = Some(r);

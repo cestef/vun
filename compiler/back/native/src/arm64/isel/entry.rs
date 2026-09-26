@@ -5,6 +5,7 @@
 
 use vun_asm_arm64::{Emit, Mem, Op, Operand, Reg, Size};
 use vun_codegen::{Arch, Place};
+use vun_dwarf::Step;
 
 use super::Sel;
 use crate::arm64::abi::{Carrier, Loc, Ret};
@@ -25,7 +26,9 @@ impl Sel<'_, '_> {
     pub(super) fn prologue(&mut self) {
         let pushed = Mem::Pre { base: Reg::Sp, offset: -PAIR };
         self.asm.emit(Op::Stp, Size::B64, &[FP.into(), LR.into(), pushed.into()]);
+        self.unwound(Step::Pushed);
         self.asm.emit(Op::Mov, Size::B64, &[FP.into(), Reg::Sp.into()]);
+        self.unwound(Step::Framed);
         self.state.frame_at = self.asm.here();
         frame_size(&mut self.asm, 0);
         self.asm.emit(Op::Sub, Size::B64, &[Reg::Sp.into(), Reg::Sp.into(), SIZE.into()]);

@@ -6,6 +6,7 @@
 use vun_asm_x86_64::{Cc, Emit, Mem, Op, Operand, Reg, Size};
 use vun_backend::Lack;
 use vun_codegen::{Arch, Layout};
+use vun_dwarf::Step;
 use vun_lir::{AbiType, Address, Block, Target, Terminator, Value};
 
 use super::Sel;
@@ -115,8 +116,11 @@ impl Sel<'_, '_> {
             _ => {}
         }
         self.restore();
+        self.unwound(Step::Leaving);
         self.asm.emit(Op::Leave, Size::B64, &[]);
+        self.unwound(Step::Popped);
         self.asm.emit(Op::Ret, Size::B64, &[]);
+        self.unwound(Step::Returned);
         Ok(())
     }
 }

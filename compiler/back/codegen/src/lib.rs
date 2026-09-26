@@ -54,6 +54,8 @@ pub trait Arch: Sized + 'static {
     const STACK_ALIGN: u64;
 
     fn index(r: Self::Reg) -> usize;
+    /// The number DWARF gives `r` in call frame information.
+    fn dwarf(r: Self::Reg) -> u16;
 
     fn copy(code: &mut Code<Self>, dst: Self::Reg, src: Self::Reg);
     /// Loads the home at `offset` from the frame pointer.

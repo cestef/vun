@@ -212,6 +212,7 @@
 | 212 | Lowering simplifies each function once built (`Unit::simplify`): promotion, then the builder's folds over the whole function (`Function::fold`: operations on constants, identities, selects and branches or switches on constants), then threading; the values replaced share one map (`Replaced`) | accepted | 13 |
 | 213 | A constant passed in a general register is written there already extended as the callee's C signature says (`Ext::widen`, `Cx::constant_to`), outside the parallel move of the other register arguments, rather than materialized and then extended | accepted | 13 |
 | 214 | Freeing a fixed register an instruction needs (`Cx::take`) moves the value there to a free register when it is still used and not home yet, and stores it home only when no register is free; frame accesses in the backend test programs drop by up to 40 percent (`half.vun`) | accepted | 13 |
+| 215 | The native backend writes `.eh_frame` for ELF objects (`vun_dwarf::CallFrame`: one CIE per object, one FDE per function, PC-relative starts, rows from the unwinding steps codegen records at the prologue, callee-saved saves and each epilogue, with `DW_CFA_remember_state`/`restore_state` around returns); Mach-O's compact unwind information is left | accepted | 13 |
 
 ## Questions, with how they were settled
 

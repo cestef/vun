@@ -6,6 +6,7 @@
 use vun_asm_arm64::{Cc, Emit, Op, Operand, Reg, Size};
 use vun_backend::Lack;
 use vun_codegen::{Arch, Layout};
+use vun_dwarf::Step;
 use vun_lir::{AbiType, Block, Target, Terminator, Value};
 
 use super::{Sel, narrow};
@@ -120,10 +121,13 @@ impl Sel<'_, '_> {
             _ => {}
         }
         self.restore();
+        self.unwound(Step::Leaving);
         self.asm.emit(Op::Mov, Size::B64, &[Reg::Sp.into(), FP.into()]);
         let popped = vun_asm_arm64::Mem::Post { base: Reg::Sp, offset: PAIR };
         self.asm.emit(Op::Ldp, Size::B64, &[FP.into(), LR.into(), popped.into()]);
+        self.unwound(Step::Popped);
         self.asm.emit(Op::Ret, Size::B64, &[]);
+        self.unwound(Step::Returned);
         Ok(())
     }
 }

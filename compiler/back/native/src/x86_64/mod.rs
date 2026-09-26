@@ -10,6 +10,7 @@ use vun_asm::Via;
 use vun_asm_x86_64::{Asm, Cc, Emit, Mem, Op, Operand, Reg, Size, X86_64};
 use vun_codegen::snippet::{Emits, Width};
 use vun_codegen::{Anchor, Arch, Place, Recompute};
+use vun_dwarf::CallFrame;
 use vun_lir::{Address, Cond, Scalar};
 use vun_target::TargetSpec;
 
@@ -36,6 +37,10 @@ impl Arch for X86 {
 
     fn index(r: Reg) -> usize {
         r.number() as usize
+    }
+
+    fn dwarf(r: Reg) -> u16 {
+        DWARF[r.number() as usize]
     }
 
     fn copy(code: &mut Asm<Address>, dst: Reg, src: Reg) {
@@ -171,7 +176,20 @@ pub const fn condition(cond: Cond) -> Option<Cc> {
     })
 }
 
+/// The number the System V psABI gives each register in DWARF, by its encoding: `rdx` and `rcx`,
+/// `rsi`, `rdi`, `rbp` and `rsp` are numbered in another order.
+const DWARF: [u16; 16] = [0, 2, 1, 3, 7, 6, 4, 5, 8, 9, 10, 11, 12, 13, 14, 15];
+
 /// System V is the one convention of x86-64 targets yet.
 impl crate::Native for X86 {
+    /// The call pushes the return address, `rip`'s column.
+    const CALL_FRAME: CallFrame = CallFrame {
+        code_align: 1,
+        stack_pointer: 7,
+        frame_pointer: 6,
+        return_address: 16,
+        return_pushed: true,
+    };
+
     fn convention(_: &TargetSpec) {}
 }

@@ -11,6 +11,7 @@ use vun_asm::Via;
 use vun_asm_arm64::{Arm64, Asm, Cc, Emit, Mem, Op, Operand, Reg, Size};
 use vun_codegen::snippet::{Emits, Width};
 use vun_codegen::{Anchor, Arch, Place, Recompute};
+use vun_dwarf::CallFrame;
 use vun_lir::{Address, Cond, Scalar};
 use vun_target::{Name, TargetSpec};
 
@@ -64,6 +65,11 @@ impl Arch for Arm {
 
     fn index(r: Reg) -> usize {
         r as usize
+    }
+
+    /// `xN` is `N`, the stack pointer 31.
+    fn dwarf(r: Reg) -> u16 {
+        r as u16
     }
 
     fn copy(code: &mut Asm<Address>, dst: Reg, src: Reg) {
@@ -267,6 +273,15 @@ pub const fn condition(cond: Cond) -> Option<Cc> {
 const DARWIN: Name = Name("darwin");
 
 impl crate::Native for Arm {
+    /// Instructions are 4 bytes; the return address is in the link register, `x30`.
+    const CALL_FRAME: CallFrame = CallFrame {
+        code_align: 4,
+        stack_pointer: 31,
+        frame_pointer: 29,
+        return_address: 30,
+        return_pushed: false,
+    };
+
     fn convention(target: &TargetSpec) -> Convention {
         if DARWIN.is(target.abi) { Convention::Darwin } else { Convention::Aapcs64 }
     }

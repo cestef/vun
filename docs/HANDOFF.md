@@ -159,7 +159,8 @@ rules go in as proposed unless the user approves them.
    replacement of slots accessed at constant offsets would split them); unreached blocks stay
    in LIR (backends skip them). (c) DWARF line tables and symbol names done (decisions 204, 205:
    `vun-dwarf`; `gdb` breaks on Vun lines); the unit is named by the first file with a row;
-   next unwind information (`.eh_frame`) and `DW_TAG_subprogram`s; (d) done in the seventeenth session: data aligned past every C type or in a
+   unwind information done (decision 215, `.eh_frame` on ELF; Mach-O's compact unwind is
+   left); next `DW_TAG_subprogram`s; (d) done in the seventeenth session: data aligned past every C type or in a
    link section through GNU attributes (decision 209, proposed: `lang.target.Attributes`), a
    slice bound by value is `types.slice_value` (decision 210); left: memory regions into
    `LinkPlan` and a bare-metal runtime, which wait for item 5 (plans declare the regions); (e)
