@@ -495,8 +495,9 @@ The framework:
   stored home if still used there only. Registers an instruction uses are locked until it is
   done. Values live across the blocks of a loop, deepest loops and most uses first, each hold a
   callee-saved register from definition to last use. Only the state at the current point is
-  tracked: before a call and at a jump to a block entered from elsewhere every value still used
-  is stored home, so each block starts with every value in its home or its own register, but a
+  tracked: before a call every value used after it, and at a jump to a block entered from
+  elsewhere every value still used, is stored home (a call's arguments in general registers
+  are moved there together from where they are, as one parallel move), so each block starts with every value in its home or its own register, but a
   block emitted next that only the block before reaches, which keeps the registers.
 - **Instruction compilers** ask the framework for operands (`Cx::reg`), results (`Cx::def`), a
   result overwriting a dying operand (`Cx::reuse`: no copy where the operand is used no more),

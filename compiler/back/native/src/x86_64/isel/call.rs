@@ -1,6 +1,7 @@
-//! Calls: every value still used is stored home, since a call may write any register values are
-//! held in but the callee-saved ones; arguments go where the callee's convention passes them,
-//! and a result comes back in registers or through memory.
+//! Calls: every value used after the call is stored home, since a call may write any register
+//! values are held in but the callee-saved ones; arguments go where the callee's convention
+//! passes them, those in general registers straight from where they are, and a result comes
+//! back in registers or through memory.
 
 use vun_asm_x86_64::{Emit, Mem, Op, Reg, Size};
 use vun_backend::Lack;
@@ -32,8 +33,8 @@ impl Sel<'_, '_> {
         for &a in args {
             self.size(a)?;
         }
-        self.spill_live();
-        self.clear();
+        let passed = passing.in_regs(args);
+        self.spill_for_call(&passed);
         self.frame.outgoing(passing.stack);
         // Arguments on the stack and records copied there go through the carrier, before those
         // passed in registers.
@@ -50,10 +51,14 @@ impl Sel<'_, '_> {
                 Loc::Reg(_) | Loc::Split(_) | Loc::Returned => {}
             }
         }
+        self.pass_in_regs(&passed);
+        self.clear();
         for (i, (&a, loc)) in args.iter().zip(&passing.params).enumerate() {
             match loc {
                 Loc::Reg(carrier) => {
-                    self.pass(a, *carrier);
+                    if let Carrier::Sse(_) = carrier {
+                        self.pass(a, *carrier);
+                    }
                     if let (Some(AbiType::Int(scalar, ext)), Carrier::Int(r)) =
                         (signature.params.get(i), carrier)
                     {

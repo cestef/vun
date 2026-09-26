@@ -1,6 +1,7 @@
 //! The compilation of one function: the state the framework keeps as it walks the blocks, and
 //! the walk.
 
+mod call;
 mod exit;
 mod fixed;
 mod values;

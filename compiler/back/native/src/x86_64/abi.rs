@@ -6,7 +6,7 @@
 use std::collections::VecDeque;
 
 use vun_backend::Missing;
-use vun_lir::{AbiType, Conv, Record, Scalar, Signature};
+use vun_lir::{AbiType, Conv, Record, Scalar, Signature, Value};
 
 use vun_asm_x86_64::{Reg, Xmm};
 
@@ -127,6 +127,17 @@ impl Free {
 }
 
 impl Passing {
+    /// The arguments of `args` passed in general registers, with their registers.
+    #[must_use]
+    pub fn in_regs(&self, args: &[Value]) -> Vec<(Value, Reg)> {
+        let locs = args.iter().zip(&self.params);
+        locs.filter_map(|(&a, loc)| match loc {
+            Loc::Reg(Carrier::Int(r)) => Some((a, *r)),
+            _ => None,
+        })
+        .collect()
+    }
+
     /// Where `signature` passes its values.
     ///
     /// # Errors

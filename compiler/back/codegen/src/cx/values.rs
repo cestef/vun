@@ -190,7 +190,7 @@ impl<A: Arch> Cx<'_, A> {
         self.values[v].saved = saved;
     }
 
-    fn unbind(&mut self, r: A::Reg) {
+    pub(super) fn unbind(&mut self, r: A::Reg) {
         if let Some(v) = self.regs.holds(r) {
             self.values[v].reg = None;
             self.regs.set(r, None);
@@ -198,7 +198,7 @@ impl<A: Arch> Cx<'_, A> {
     }
 
     /// Stores `v`, held in `r`, home when it is used later and its home does not hold it.
-    fn store_home(&mut self, v: Value, r: A::Reg) {
+    pub(super) fn store_home(&mut self, v: Value, r: A::Reg) {
         let a = self.values[v];
         if a.recompute.is_none() && !a.saved && a.left > 0 && a.fixed.is_none() {
             let home = self.home(v);
