@@ -142,11 +142,19 @@ in as proposed unless the user approves them.
 1. Backends (the user's focus): (a) arm64: done for linux.arm64 in the sixteenth session
    (decision 192); next `macos.arm64` (Mach-O in `vun-object`, Apple's AAPCS64 variant: narrow
    arguments extended by the caller, stack arguments packed, `x18` reserved), then riscv64 the
-   same way (an assembler after `vun-asm-arm64`, `Arch`, `Isel`); (b) native
-   code quality: a value in a register a snippet takes is stored and reloaded (TPDE moves it),
-   narrow constants are materialized before an extension, and MIR locals in slots give store and
-   reload pairs a slot promotion in lowering would remove; (c) DWARF lines from `Compiled.marks`,
-   then unwind info; (d) data objects aligned past every C type in the C backend, memory regions
+   same way (an assembler after `vun-asm-arm64`, `Arch`, `Isel`). This machine has
+   `qemu-riscv64` but no riscv64 linker or sysroot (Fedora packages none; `lld` or
+   `gcc-riscv64-linux-gnu` need the user to install them), and nothing to link or run Mach-O.
+   (b) Native code quality, seventeenth session (decisions 200 to 203): slots promoted to SSA
+   values after lowering (`Unit::promote`), constants folded by the builder, branches falling
+   into the next block, no self moves, `mov r/m8, imm8`, parameters and call arguments moved
+   straight into their registers: 13 to 49 percent fewer instructions on the backend test
+   programs. Left: values live across blocks are still homed at every block end (a
+   callee-saved register only for loops), aggregates copied between slots (SROA would split
+   them), `if c { 1 } else { 0 }` diamonds from MIR, a snippet's operand moved into a fixed
+   register it takes. (c) DWARF line tables and symbol names done (decisions 204, 205:
+   `vun-dwarf`; `gdb` breaks on Vun lines); the unit is named by the first file with a row;
+   next unwind information (`.eh_frame`) and `DW_TAG_subprogram`s; (d) data objects aligned past every C type in the C backend, memory regions
    into `LinkPlan`, a bare-metal runtime, a slice value (`xs[a..b]` not borrowed) reported by
    sema rather than as `backend.unlowered`; (e) linkers other than `gnu`.
 2. Performance and persistence. Done in the sixteenth session (decision 191): saved queries
@@ -156,7 +164,8 @@ in as proposed unless the user approves them.
    instead of BLAKE3 for symbols, interned values and origins, token and item lookups by table
    (10% more); `FileRef.path` a `Symbol`; the query engine's code shared across queries (the
    binary 470 KB smaller). `par_map`'s spawns measured: about 1 ms a run, not worth a pool.
-   The size budget is 12 MiB (decision 193, the user's choice): the dist binary is 11.17 MB;
+   The size budget is 12 MiB (decision 193, the user's choice): the dist binary is 11.7 MiB
+   at the end of the seventeenth session (316 KiB left);
    the largest parts are `std` (1.7 MiB of text), rustls and ring (640 KiB, for `vun-http`) and
    per-query code (`Cx::get`, `Table::slot`, about 400 KiB). (b) Done in the
    seventeenth session (decision 197): saved queries load as used (`persist/store.rs`: a
