@@ -1,6 +1,6 @@
 //! x86-64 (spec 07, section 6): its registers, and each instruction with its forms as the
 //! toolchain's assembler encodes them (Intel SDM volume 2), with what each form reads and writes.
-//! The instructions are declared in `control`, `int` and `sse`; `vun-asm-x86_64`'s tables are
+//! The instructions are declared in `control`, `int` and `sse`; `vun-isa-x86_64`'s tables are
 //! generated from these declarations, so the language, the assembler and its listings share one
 //! table.
 

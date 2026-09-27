@@ -1,0 +1,13 @@
+[package]
+name = "vun-isa"
+description = "What an instruction set is, whatever the architecture: labels, how operands reach what the linker places, immediates, and what it reads of blocks of inline assembly."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+vun-inline.workspace = true

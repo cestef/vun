@@ -3,7 +3,7 @@
 //! `N` and the high bits of `imms` give the element's size, the rest of `imms` the run's length
 //! less one, `immr` its rotation to the right.
 
-use vun_asm::imm::truncate;
+use vun_isa::imm::truncate;
 
 /// The six bits of `imms`.
 const IMMS: u32 = 0x3f;

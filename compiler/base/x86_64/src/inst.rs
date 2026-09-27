@@ -2,7 +2,7 @@
 
 use std::fmt;
 
-use vun_asm::imm::{sign_extend, truncate};
+use vun_isa::imm::{sign_extend, truncate};
 
 use crate::operand::{Base, Mem, Operand};
 use crate::reg::Size;
@@ -121,7 +121,7 @@ fn write_mem<S: fmt::Display>(f: &mut fmt::Formatter<'_>, mem: &Mem<S>) -> fmt::
     match &mem.base {
         Base::Reg(r) => write!(f, "[{}", r.name(Size::B64))?,
         Base::Rip(target, via) => {
-            write!(f, "[rip + {target}{}", if *via == vun_asm::Via::Got { "@got" } else { "" })?;
+            write!(f, "[rip + {target}{}", if *via == vun_isa::Via::Got { "@got" } else { "" })?;
         }
     }
     match mem.disp {

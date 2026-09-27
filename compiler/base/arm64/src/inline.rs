@@ -3,7 +3,7 @@
 //! table, whose declaration order `generated` keeps. Bindings are general registers; memory is in
 //! the addressing mode its form names, and a symbol a branch's target, a page or its low bits.
 
-use vun_asm::{AsmOperand, Blocks, Label, Place};
+use vun_isa::{AsmOperand, Blocks, Label, Place};
 use vun_inline::{Disp, FormId, Inst, OpId, RegRef, SizeId};
 
 use crate::{Arm64, Barrier, Cc, Class, Extend, Form, Kind, Mem, Mode, Op, Operand, Reg, Scale, Size, V};

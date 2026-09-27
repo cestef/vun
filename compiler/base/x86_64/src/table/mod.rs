@@ -7,8 +7,7 @@
 mod form;
 
 pub use crate::generated::Op;
-pub use form::{Access, Form, Kind, Layout, Prefix, Slot, W};
-pub(crate) use form::{Opcode, Sizes};
+pub use form::{Access, Form, Kind, Layout, Opcode, Prefix, Sizes, Slot, W};
 
 use crate::operand::Operand;
 use crate::reg::{Reg, Size};

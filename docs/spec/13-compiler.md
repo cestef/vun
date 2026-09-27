@@ -560,8 +560,11 @@ assembler and its instruction compilers and nothing else:
 - **`vun-asm`**: what every assembler shares: a code buffer (`Buffer`), labels and the references
   to them patched when the function ends (each architecture says how, `Isa::patch`),
   relocations, the arithmetic of immediates, and listings.
-- **`vun-asm-x86_64`**, **`vun-asm-arm64`**: each architecture's instructions, declared once as a
-  table of forms: the kinds of operands a form takes (a register of some width, memory, an
+- **`vun-isa`**, **`vun-isa-x86_64`**, **`vun-isa-arm64`** (base layer, so sema checks inline
+  assembly against them): what an instruction set is (labels, `Isa`, immediates, `Blocks`), and
+  each architecture's instructions, operands and listings; **`vun-asm-x86_64`**,
+  **`vun-asm-arm64`** encode them into buffers and hold the calling conventions' registers. The
+  instructions are declared once as a table of forms: the kinds of operands a form takes (a register of some width, memory, an
   immediate of some width, a condition, a label), the widths it is defined at, and its encoding.
   The encoder emits an instruction by the first form its operands fit, the printer writes the
   same form's text, and callers ask which forms fit before choosing operands. So an instruction's

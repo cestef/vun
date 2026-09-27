@@ -3,7 +3,7 @@
 //! table, whose declaration order `generated` keeps. Bindings are general registers, a shift's
 //! count `cl`; memory is off a base register or a symbol, never indexed.
 
-use vun_asm::{AsmOperand, Blocks, Label, Place};
+use vun_isa::{AsmOperand, Blocks, Label, Place};
 use vun_inline::{Disp, FormId, Inst, OpId, RegRef, SizeId};
 
 use crate::{Base, Cc, Class, Form, Kind, Mem, Op, Operand, Reg, Size, X86_64, Xmm};

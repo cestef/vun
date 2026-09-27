@@ -9,7 +9,7 @@ use super::{ARCH, Table};
 use crate::generate::{Generator, Module, Read, Source};
 
 pub(crate) const ARM64: Generator =
-    Generator { source: ARCH, output: "compiler/back/arm64/src/generated", emit };
+    Generator { source: ARCH, output: "compiler/base/arm64/src/generated", emit };
 
 const CRATE: Crate = Crate {
     generator: &ARM64,

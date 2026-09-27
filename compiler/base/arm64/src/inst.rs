@@ -3,8 +3,8 @@
 
 use std::fmt;
 
-use vun_asm::Via;
-use vun_asm::imm::truncate;
+use vun_isa::Via;
+use vun_isa::imm::truncate;
 
 use crate::operand::{Extend, Mem, Operand, Scale};
 use crate::reg::Size;

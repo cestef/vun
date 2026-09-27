@@ -1,29 +1,10 @@
 //! The code of one function: bytes appended in order, labels, the references to labels patched
 //! when the function ends, and relocations.
 
-use std::fmt;
-
 use vun_object::RelocKind;
 
-use crate::Isa;
+use crate::{Isa, Label, Unpatched};
 use crate::listing::Line;
-
-/// A place in a function's code that jumps name.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct Label(u32);
-
-impl Label {
-    #[must_use]
-    pub const fn number(self) -> u32 {
-        self.0
-    }
-}
-
-impl fmt::Display for Label {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, ".L{}", self.0)
-    }
-}
 
 /// An address the linker writes into the code: `target` plus `addend`, at `offset`, as `kind`
 /// says.
@@ -34,28 +15,6 @@ pub struct Reloc<S> {
     pub kind: RelocKind,
     pub addend: i64,
 }
-
-/// Why a reference to a label could not be written.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Unpatched {
-    /// The label is never bound.
-    Unbound(Label),
-    /// The label is further than the field reaches.
-    Range { at: u64, distance: i64 },
-}
-
-impl fmt::Display for Unpatched {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Unbound(label) => write!(f, "the label {label} is never bound"),
-            Self::Range { at, distance } => {
-                write!(f, "the jump at {at:#x} spans {distance} bytes, further than it reaches")
-            }
-        }
-    }
-}
-
-impl std::error::Error for Unpatched {}
 
 /// A function's code as it is emitted.
 pub struct Buffer<I: Isa, S: Copy> {
@@ -102,12 +61,12 @@ impl<I: Isa, S: Copy> Buffer<I, S> {
     #[must_use]
     pub fn label(&mut self) -> Label {
         self.labels.push(None);
-        Label(u32::try_from(self.labels.len() - 1).expect("labels fit 32 bits"))
+        Label::new(u32::try_from(self.labels.len() - 1).expect("labels fit 32 bits"))
     }
 
     /// Binds `label` to where the next instruction goes.
     pub fn bind(&mut self, label: Label) {
-        self.labels[label.0 as usize] = Some(self.here());
+        self.labels[label.number() as usize] = Some(self.here());
         if let Some(listing) = &mut self.listing {
             listing.push(Line::Label(label));
         }
@@ -183,7 +142,7 @@ impl<I: Isa, S: Copy> Buffer<I, S> {
     /// Returns a label never bound, or one further than a reference to it reaches.
     pub fn finish(mut self) -> Result<Code<I::Inst<S>, S>, Unpatched> {
         for &(at, label, fixup) in &self.fixups {
-            let target = self.labels[label.0 as usize].ok_or(Unpatched::Unbound(label))?;
+            let target = self.labels[label.number() as usize].ok_or(Unpatched::Unbound(label))?;
             I::patch(fixup, &mut self.code, at, target)?;
         }
         Ok(Code { bytes: self.code, relocs: self.relocs, listing: self.listing.unwrap_or_default() })

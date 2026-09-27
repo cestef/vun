@@ -1,6 +1,6 @@
 //! 64-bit ARM (spec 07, section 6): its registers, and each instruction with its forms as the
 //! toolchain's assembler encodes them (Arm A64 ISA), with what each form reads and writes. The
-//! instructions are declared in `control`, `fp`, `int` and `mem`; `vun-asm-arm64`'s tables are
+//! instructions are declared in `control`, `fp`, `int` and `mem`; `vun-isa-arm64`'s tables are
 //! generated from these declarations. An alias is an instruction of its own, its fixed fields in
 //! its base word: `mov` is `orr` from the zero register, `cmp` is `subs` into it.
 

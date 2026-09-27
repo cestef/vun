@@ -1,6 +1,6 @@
 [package]
 name = "vun-asm-x86_64"
-description = "The x86-64 assembler: instruction forms as one table, read by the encoder, the printer and form selection."
+description = "The x86-64 assembler: the instruction set's forms encoded into code buffers, and its calling conventions' registers."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -12,7 +12,7 @@ workspace = true
 [dependencies]
 vun-abi.workspace = true
 vun-asm.workspace = true
-vun-inline.workspace = true
+vun-isa-x86_64.workspace = true
 vun-object.workspace = true
 vun-target.workspace = true
 

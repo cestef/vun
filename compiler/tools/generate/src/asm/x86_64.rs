@@ -10,7 +10,7 @@ use crate::generate::{Generator, Module, Read, Source};
 use crate::names::pascal;
 
 pub(crate) const X86_64: Generator =
-    Generator { source: ARCH, output: "compiler/back/x86_64/src/generated", emit };
+    Generator { source: ARCH, output: "compiler/base/x86_64/src/generated", emit };
 
 const CRATE: Crate = Crate {
     generator: &X86_64,

@@ -750,7 +750,7 @@ dependencies = [
 name = "vun-asm"
 version = "0.0.0"
 dependencies = [
- "vun-inline",
+ "vun-isa",
  "vun-object",
 ]
 
@@ -760,7 +760,7 @@ version = "0.0.0"
 dependencies = [
  "vun-abi",
  "vun-asm",
- "vun-inline",
+ "vun-isa-arm64",
  "vun-object",
  "vun-target",
  "yaxpeax-arch",
@@ -773,7 +773,7 @@ version = "0.0.0"
 dependencies = [
  "vun-abi",
  "vun-asm",
- "vun-inline",
+ "vun-isa-x86_64",
  "vun-object",
  "vun-target",
  "yaxpeax-arch",
@@ -1255,6 +1255,29 @@ dependencies = [
  "vun-mir",
  "vun-query",
  "vun-sema",
+]
+
+[[package]]
+name = "vun-isa"
+version = "0.0.0"
+dependencies = [
+ "vun-inline",
+]
+
+[[package]]
+name = "vun-isa-arm64"
+version = "0.0.0"
+dependencies = [
+ "vun-inline",
+ "vun-isa",
+]
+
+[[package]]
+name = "vun-isa-x86_64"
+version = "0.0.0"
+dependencies = [
+ "vun-inline",
+ "vun-isa",
 ]
 
 [[package]]

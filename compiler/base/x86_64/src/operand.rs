@@ -1,7 +1,7 @@
 //! Operands: registers, memory, immediates, labels and the symbols the linker places. `S` is
 //! whatever the caller names linked things by; relocations carry it back.
 
-use vun_asm::{Label, Via};
+use vun_isa::{Label, Via};
 
 use crate::reg::{Cc, Reg, Xmm};
 

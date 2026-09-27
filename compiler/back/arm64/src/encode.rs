@@ -3,11 +3,9 @@
 
 use vun_asm::{Label, RelocKind, Untaken, Via};
 
-use crate::inst::Inst;
-use crate::operand::{Mem, Operand};
-use crate::reg::Size;
-use crate::table::{Form, Kind, Op};
-use crate::{Asm, Fixup};
+use vun_isa_arm64::{Branch, Fixup, Form, Inst, Kind, Mem, Op, Operand, Size};
+
+use crate::Asm;
 
 /// Emitting instructions into a function's code.
 pub trait Emit<S: Copy> {
@@ -57,7 +55,7 @@ impl<S: Copy> Emit<S> for Asm<S> {
 fn put<S: Copy>(asm: &mut Asm<S>, op: Op, form: &Form, word: u32, size: Size, operands: &[Operand<S>]) {
     let at = asm.here();
     for (arg, operand) in form.args.iter().zip(operands) {
-        match arg.kind.link(operand, size) {
+        match Link::of(arg.kind, operand, size) {
             Some(Link::Label(label, fixup)) => asm.refer(at, label, fixup),
             Some(Link::Reloc(target, kind)) => asm.relocate(at, target, kind, 0),
             None => {}
@@ -69,25 +67,34 @@ fn put<S: Copy>(asm: &mut Asm<S>, op: Op, form: &Form, word: u32, size: Size, op
     }
 }
 
+/// The relocation filling a branch's field with a symbol's address.
+const fn reloc(branch: Branch) -> RelocKind {
+    match branch {
+        Branch::Jump26 => RelocKind::Jump26,
+        Branch::Call26 => RelocKind::Call26,
+        Branch::Cond19 => RelocKind::Branch19,
+    }
+}
+
 /// A field written after the instruction: when its function ends, or by the linker.
 enum Link<S> {
     Label(Label, Fixup),
     Reloc(S, RelocKind),
 }
 
-impl Kind {
+impl<S: Copy> Link<S> {
     /// What fills the field of `operand` at this position, when it is not known yet.
-    fn link<S: Copy>(self, operand: &Operand<S>, size: Size) -> Option<Link<S>> {
-        Some(match (self, operand) {
-            (Self::Target(branch), Operand::Label(label)) => Link::Label(*label, branch.fixup()),
-            (Self::Target(branch), Operand::Sym(target)) => Link::Reloc(*target, branch.reloc()),
-            (Self::Page, Operand::Page(target, Via::Direct)) => Link::Reloc(*target, RelocKind::Page21),
-            (Self::Page, Operand::Page(target, Via::Got)) => Link::Reloc(*target, RelocKind::GotPage21),
-            (Self::Lo12, Operand::Lo12(target)) => Link::Reloc(*target, RelocKind::PageOffset12),
-            (Self::Mem(_, _), Operand::Mem(Mem::Lo12 { target, via: Via::Got, .. })) => {
+    fn of(kind: Kind, operand: &Operand<S>, size: Size) -> Option<Self> {
+        Some(match (kind, operand) {
+            (Kind::Target(branch), Operand::Label(label)) => Link::Label(*label, branch.fixup()),
+            (Kind::Target(branch), Operand::Sym(target)) => Link::Reloc(*target, reloc(branch)),
+            (Kind::Page, Operand::Page(target, Via::Direct)) => Link::Reloc(*target, RelocKind::Page21),
+            (Kind::Page, Operand::Page(target, Via::Got)) => Link::Reloc(*target, RelocKind::GotPage21),
+            (Kind::Lo12, Operand::Lo12(target)) => Link::Reloc(*target, RelocKind::PageOffset12),
+            (Kind::Mem(_, _), Operand::Mem(Mem::Lo12 { target, via: Via::Got, .. })) => {
                 Link::Reloc(*target, RelocKind::GotPageOffset64)
             }
-            (Self::Mem(_, width), Operand::Mem(Mem::Lo12 { target, via: Via::Direct, .. })) => {
+            (Kind::Mem(_, width), Operand::Mem(Mem::Lo12 { target, via: Via::Direct, .. })) => {
                 let kind = match width.at(size) {
                     Size::B8 => RelocKind::PageOffset8,
                     Size::B16 => RelocKind::PageOffset16,

@@ -3,7 +3,8 @@
 
 use std::fmt;
 
-use crate::buffer::{Code, Label};
+use crate::Label;
+use crate::buffer::Code;
 
 /// A line of a listing.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

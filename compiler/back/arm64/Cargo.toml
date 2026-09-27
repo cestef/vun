@@ -12,7 +12,7 @@ workspace = true
 [dependencies]
 vun-abi.workspace = true
 vun-asm.workspace = true
-vun-inline.workspace = true
+vun-isa-arm64.workspace = true
 vun-object.workspace = true
 vun-target.workspace = true
 

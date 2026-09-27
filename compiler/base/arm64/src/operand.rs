@@ -4,7 +4,7 @@
 
 use std::fmt;
 
-use vun_asm::{Label, Via};
+use vun_isa::{Label, Via};
 
 use crate::reg::{Cc, Reg, Size, V};
 

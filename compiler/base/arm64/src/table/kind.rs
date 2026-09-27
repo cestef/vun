@@ -2,8 +2,8 @@
 //! bit its argument starts at. Whether an operand fits is whether it encodes: one function
 //! answers both, so a form never takes what it cannot encode.
 
-use vun_asm::imm::{fits_signed, truncate};
-use vun_asm::{RelocKind, Via};
+use vun_isa::imm::{fits_signed, truncate};
+use vun_isa::Via;
 
 use crate::Fixup;
 use crate::bitmask::Bitmask;
@@ -213,15 +213,6 @@ impl Branch {
         match self {
             Self::Jump26 | Self::Call26 => Fixup::Imm26,
             Self::Cond19 => Fixup::Imm19,
-        }
-    }
-
-    #[must_use]
-    pub const fn reloc(self) -> RelocKind {
-        match self {
-            Self::Jump26 => RelocKind::Jump26,
-            Self::Call26 => RelocKind::Call26,
-            Self::Cond19 => RelocKind::Branch19,
         }
     }
 }

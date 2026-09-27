@@ -1,7 +1,7 @@
 //! A form of an instruction: the kinds of operands it takes, the widths it is defined at, and its
 //! encoding.
 
-use vun_asm::imm::{fits_signed, fits_unsigned};
+use vun_isa::imm::{fits_signed, fits_unsigned};
 
 use crate::operand::Operand;
 use crate::reg::{Reg, Size};

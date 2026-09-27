@@ -3,10 +3,7 @@
 
 use vun_asm::{RelocKind, Untaken, Via};
 
-use crate::inst::Inst;
-use crate::operand::{Base, Mem, Operand};
-use crate::reg::{Reg, Size};
-use crate::table::{Form, Layout, Op, Prefix, W};
+use vun_isa_x86_64::{Base, Form, Inst, Layout, Mem, Op, Operand, Prefix, Reg, Size, W};
 use crate::{Asm, Rel32};
 
 const REX: u8 = 0x40;
