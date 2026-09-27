@@ -1,5 +1,5 @@
-//! The formatter on the repository's own sources: it changes whitespace only, and formatting
-//! twice changes nothing.
+//! The formatter on the repository's own sources, which it lays out already: it changes
+//! whitespace only, and formatting twice changes nothing.
 
 use std::path::{Path, PathBuf};
 
@@ -42,11 +42,15 @@ fn sources() -> Vec<PathBuf> {
 }
 
 #[test]
-fn formatting_keeps_every_token_and_is_stable() {
+fn repository_sources_are_laid_out_and_keep_their_tokens() {
     let mut failures = Vec::new();
     for path in sources() {
         let text = std::fs::read_to_string(&path).expect("readable source");
         let Some(once) = formatted(&text) else { continue };
+        // The repository keeps one house style: `vun fmt` lays every source out.
+        if once != text {
+            failures.push(format!("{}: not laid out; run `vun fmt` on it", path.display()));
+        }
         if words(&once) != words(&text) {
             failures.push(format!("{}: tokens changed", path.display()));
         }
