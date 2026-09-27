@@ -1,7 +1,7 @@
 //! Collecting diagnostics: the context, the sink interface and the error token.
 
 use vun_codec::{Decode, Encode};
-use vun_origin::OriginTable;
+use vun_origin::{OriginTable, Resolve};
 use vun_span::{SourceMap, Span};
 
 use crate::{Diagnostic, Severity, TraceFrame};
@@ -13,7 +13,8 @@ pub struct ErrorGuaranteed(());
 
 /// Output for diagnostics: terminal, short, JSON, SARIF, LSP.
 pub trait DiagSink {
-    fn emit(&mut self, d: &Diagnostic, origins: &OriginTable, sources: &dyn SourceMap);
+    /// Shows `d`, its positions where `origins` finds them.
+    fn emit(&mut self, d: &Diagnostic, origins: &dyn Resolve, sources: &dyn SourceMap);
 }
 
 /// Where a stage reports: the diagnostics, and the origins their labels point to.
@@ -106,7 +107,7 @@ impl DiagCtxt {
     /// then id. The order does not depend on the order work reported them in, nor on where
     /// origins were recorded.
     #[must_use]
-    pub fn sorted(&self, origins: &OriginTable) -> Vec<&Diagnostic> {
+    pub fn sorted(&self, origins: &dyn Resolve) -> Vec<&Diagnostic> {
         let mut all: Vec<&Diagnostic> = self.diagnostics.iter().collect();
         all.sort_by_cached_key(|d| {
             let at = d.primary.as_ref().map(|l| {

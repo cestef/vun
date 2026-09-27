@@ -9,6 +9,7 @@ use vun_command::{Args, Outcome};
 use vun_hir::db::Parsed;
 use vun_hir::tree::ExprKind;
 use vun_mir::{Programs, Roots};
+use vun_origin::Resolve;
 use vun_sema::eval::Instantiation;
 use vun_sema::typeck::{Operation, Stage, Typed};
 use vun_span::SourceMap;
@@ -31,15 +32,10 @@ pub(super) fn types(session: &mut Session, args: &Args, out: &mut dyn Write) -> 
         let Some(parsed) = session.db.get::<Parsed>(&i.f.literal.file) else { continue };
         let hir = &parsed.hir;
         let f = &i.f.literal;
-        writeln!(
-            out,
-            "fn {} {:?}",
-            session.sources.locate(session.origins.source_span(f.expr.origin)),
-            i.args
-        )?;
+        writeln!(out, "fn {} {:?}", session.sources.locate(session.source_span(f.expr.origin)), i.args)?;
         let body = hir.exprs.iter().filter(|(e, _)| hir.enclosing_function(*e) == Some(f.expr.id));
         for (e, expr) in body {
-            let span = session.origins.source_span(expr.origin);
+            let span = session.source_span(expr.origin);
             let at = session.sources.locate(span).at;
             let source: String =
                 span.range.of(&session.sources.file(span.file).text).chars().take(SHOWN).collect();

@@ -4,6 +4,7 @@
 //! does not exist yet.
 
 use vun_diag::{DiagCtxt, DiagId, errors};
+use vun_origin::Resolve;
 use vun_query::Query;
 use vun_span::{FileId, SourceMap};
 use vun_trace::{Activity, Timer, tracing};
@@ -142,7 +143,7 @@ impl Session {
         let unlowered = bodies.into_iter().filter(|(_, body)| body.is_err());
         unlowered
             .map(|(f, _)| {
-                let span = self.origins.source_span(f.expr.origin);
+                let span = self.source_span(f.expr.origin);
                 let source = self.sources.file(span.file);
                 (source.line_col(span.range.lo).line, source.line_col(span.range.hi).line)
             })

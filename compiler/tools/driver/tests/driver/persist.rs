@@ -3,7 +3,7 @@
 
 use std::path::Path;
 
-use vun_diag::DiagId;
+use vun_diag::{DiagId, errors};
 use vun_driver::Persistence;
 
 use crate::common::Fixture;
@@ -35,4 +35,33 @@ main := (sys: &mut std.os.System) -> std.os.Exit { x: u8 = 1; .code(x) };
     assert_eq!(persisted(&fixture, &path), []);
     fixture.root.write("app.vun", after);
     assert_eq!(persisted(&fixture, &path), []);
+}
+
+#[test]
+fn a_saved_report_is_shown_where_an_edit_above_moved_it() {
+    use vun_origin::Resolve;
+    use vun_span::SourceMap;
+    let fixture = Fixture::new("persist-moved");
+    let body = "\
+unread := () -> u8 {
+    mut x: u8;
+    x
+};
+";
+    let path = fixture.root.write("app.vun", body);
+    // The line of the read in each text, as the session shows it.
+    let shown = |text: &str| {
+        fixture.root.write("app.vun", text);
+        let mut session = fixture.session();
+        session.persistence = Persistence::On;
+        let file = session.load(&path).unwrap();
+        session.check(file);
+        session.save();
+        let reports = session.diag.sorted(&session);
+        let read = reports.iter().find(|d| d.id == errors::PLACE_READ_UNINIT).expect("the read is reported");
+        let origin = read.primary.as_ref().unwrap().origin;
+        session.sources.locate(session.source_span(origin)).at.line
+    };
+    assert_eq!(shown(body), 3);
+    assert_eq!(shown(&format!("\n\n\n{body}")), 6);
 }

@@ -2,14 +2,14 @@
 
 use vun_diag::{Child, Diagnostic, Edit, Fix, Label, Msg, MsgPart, TraceFrame};
 use vun_json::{Object, Value};
-use vun_origin::{OriginId, OriginTable};
+use vun_origin::{OriginId, Resolve};
 use vun_span::{SourceMap, Span};
 
 use crate::SCHEMA;
 
 /// What the renderer needs to resolve locations.
 pub(crate) struct Cx<'a> {
-    pub(crate) origins: &'a OriginTable,
+    pub(crate) origins: &'a dyn Resolve,
     pub(crate) sources: &'a dyn SourceMap,
 }
 

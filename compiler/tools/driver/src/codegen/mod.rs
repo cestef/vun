@@ -13,7 +13,7 @@ use vun_intern::Symbol;
 use vun_lir::legalize::Legalize;
 use vun_lir::{FuncId, Scalar, Unit};
 use vun_lower::Unlowered;
-use vun_origin::{OriginId, OriginTable};
+use vun_origin::{OriginId, OriginTable, Resolve};
 use vun_span::{FileId, SourceFiles, SourceMap};
 use vun_target::{Name, Profile, TargetSpec};
 
@@ -88,7 +88,7 @@ impl Session {
                 }
             }
             Err(Uncoded::Unlowered(unlowered)) => {
-                let at = self.sources.locate(self.origins.source_span(unlowered.at));
+                let at = self.sources.locate(self.source_span(unlowered.at));
                 writeln!(out, "not lowered at {at}: {unlowered}")?;
             }
             Err(Uncoded::Reported(_)) => {}

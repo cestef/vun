@@ -9,7 +9,7 @@ mod value;
 use std::io::Write;
 
 use vun_diag::{DiagSink, Diagnostic};
-use vun_origin::OriginTable;
+use vun_origin::Resolve;
 use vun_span::SourceMap;
 
 /// The version of the schema; it changes when a field changes meaning or goes away.
@@ -26,7 +26,7 @@ impl<W: Write> JsonRenderer<W> {
 }
 
 impl<W: Write> DiagSink for JsonRenderer<W> {
-    fn emit(&mut self, d: &Diagnostic, origins: &OriginTable, sources: &dyn SourceMap) {
+    fn emit(&mut self, d: &Diagnostic, origins: &dyn Resolve, sources: &dyn SourceMap) {
         let value = value::Cx { origins, sources }.diagnostic(d);
         // Best-effort output: a closed stream must not abort compilation.
         let _ = writeln!(self.out, "{value}");

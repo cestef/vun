@@ -3,12 +3,12 @@
 
 use annotate_snippets::{AnnotationKind, Group, Level, Patch, Snippet};
 use vun_diag::{Child, ChildKind, Diagnostic, Fix, Label, Severity};
-use vun_origin::OriginTable;
+use vun_origin::Resolve;
 use vun_span::{FileId, SourceMap, Span};
 
 /// What the renderer needs to place labels and patches.
 pub(crate) struct Cx<'a> {
-    pub(crate) origins: &'a OriginTable,
+    pub(crate) origins: &'a dyn Resolve,
     pub(crate) sources: &'a dyn SourceMap,
 }
 

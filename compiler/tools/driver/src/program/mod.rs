@@ -13,6 +13,7 @@ use vun_diag::{Diagnostic, ErrorGuaranteed, Msg, errors};
 use vun_fs::{Edit, Part};
 use vun_link::{LinkPlan, OutputKind};
 use vun_lir::FuncId;
+use vun_origin::Resolve;
 use vun_par::Parallel;
 use vun_span::{FileId, SourceMap};
 use vun_target::{CCompiler, FrameSizes, Profile, Support, Unsupported};
@@ -132,7 +133,7 @@ impl Session {
         let Ok(compiled) = self.compile(file) else { return Ok(()) };
         for (id, bytes) in compiled.frames {
             let origin = compiled.coded.unit.functions[id].origin;
-            let at = self.sources.locate(self.origins.source_span(origin));
+            let at = self.sources.locate(self.source_span(origin));
             writeln!(out, "{id} at {at}: {bytes} bytes")?;
         }
         Ok(())

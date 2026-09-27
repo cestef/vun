@@ -44,6 +44,13 @@ pub enum Via {
   a further entity lowered from the same syntax is derived from the first (`Via::Again(n)`), and
   the HIR verifier checks that no two nodes of an arena share one. Diagnostics are sorted by the
   source position of their primary label.
+- **Positions now.** A result reused after an edit elsewhere in its file, as a saved query is,
+  holds origins recorded in the earlier text. A compilation shows positions through its view of
+  the files it reads (`vun_origin::Resolve`): an origin whose file it now reads in another text is
+  found at the same place relative to its declaration as that text declares it, and a
+  declaration where that text declares it. The process's tables hold every text read, since
+  compilations in one process may read two texts of one file at once; the view, not the table,
+  says which is current (decision 255).
 - A generated construct points at the code that generated it, and that code at its caller, up to
   user code. Diagnostics show this as a trace; go-to-definition follows it.
 - The C backend emits `#line` directives from origins; native backends emit DWARF line tables from

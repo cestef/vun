@@ -8,7 +8,7 @@ mod tests;
 use std::io::Write;
 
 use vun_diag::{Color, DiagSink, Diagnostic};
-use vun_origin::OriginTable;
+use vun_origin::Resolve;
 use vun_span::SourceMap;
 
 pub struct AriadneRenderer<W: Write> {
@@ -23,7 +23,7 @@ impl<W: Write> AriadneRenderer<W> {
 }
 
 impl<W: Write> DiagSink for AriadneRenderer<W> {
-    fn emit(&mut self, d: &Diagnostic, origins: &OriginTable, sources: &dyn SourceMap) {
+    fn emit(&mut self, d: &Diagnostic, origins: &dyn Resolve, sources: &dyn SourceMap) {
         // Best-effort output: a closed stream must not abort compilation.
         let _ = self.report(d, origins, sources);
     }

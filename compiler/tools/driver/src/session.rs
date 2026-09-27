@@ -268,8 +268,8 @@ impl Session {
     pub fn emit(&mut self, shell: &mut Shell<'_>) {
         let diag = std::mem::take(&mut self.diag);
         let mut sink = shell.diagnostics(self.format.sink);
-        for d in diag.sorted(self.origins) {
-            sink.emit(d, self.origins, self.sources);
+        for d in diag.sorted(self) {
+            sink.emit(d, self, self.sources);
         }
         self.shown_errors += diag.error_count();
     }

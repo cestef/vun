@@ -217,6 +217,8 @@ pub struct SourceFiles {
     /// Each file by its key, the path it is shown as and the hash of its text, so that adding
     /// it again returns it.
     added: std::sync::RwLock<std::collections::HashMap<(FileRef, String, vun_hash::Hash), FileId>>,
+    /// The first file added under each key with each text, whatever its path.
+    texts: std::sync::RwLock<std::collections::HashMap<(FileRef, vun_hash::Hash), FileId>>,
 }
 
 impl SourceFiles {
@@ -244,11 +246,23 @@ impl SourceFiles {
             return file;
         }
         let mut added = self.added.write().expect("source files");
-        let path = identity.1.clone();
-        *added.entry(identity).or_insert_with(|| {
-            let index = self.files.push((named, SourceFile::new(path, text)));
+        let (path, hash) = (identity.1.clone(), identity.2);
+        let file = *added.entry(identity).or_insert_with(|| {
+            let index = self.files.push((named.clone(), SourceFile::new(path, text)));
             FileId { index: u32::try_from(index).expect("fewer than 2^32 files"), key: short }
-        })
+        });
+        self.texts.write().expect("source files").entry((named, hash)).or_insert(file);
+        file
+    }
+
+    /// The file added under `key` with `text`, if one was.
+    ///
+    /// # Panics
+    /// Panics if a thread panicked while adding.
+    #[must_use]
+    pub fn read(&self, key: &FileRef, text: &str) -> Option<FileId> {
+        let texts = self.texts.read().expect("source files");
+        texts.get(&(key.clone(), vun_hash::Hash::of(text.as_bytes()))).copied()
     }
 }
 

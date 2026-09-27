@@ -1,5 +1,6 @@
 use super::*;
 use vun_diag::{ChildKind, Msg, errors};
+use vun_origin::OriginTable;
 use vun_span::{SourceFiles, Span};
 
 #[test]

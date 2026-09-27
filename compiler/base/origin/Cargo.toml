@@ -15,4 +15,5 @@ vun-codec.workspace = true
 vun-hash.workspace = true
 vun-intern.workspace = true
 boxcar.workspace = true
+papaya.workspace = true
 vun-span.workspace = true

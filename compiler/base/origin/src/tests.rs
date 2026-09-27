@@ -74,7 +74,7 @@ fn origins_persist_by_content_and_keep_their_identity() {
     use vun_span::SourceMap;
 
     let (files, origins) = (SourceFiles::global(), OriginTable::global());
-    let f = files.add_as("pkg/a.vun", "a.vun", "f := 1;");
+    let f = files.add_as(vun_span::FileRef::loose("pkg/a.vun"), "a.vun", "f := 1;");
     let decl = origins.declaration(Span::new(f, 0, 7), None, Symbol::intern("f"));
     let lowered =
         origins.derive(origins.inside(decl, Span::new(f, 5, 6)), Span::new(f, 5, 6), Via::Lower(PassId(2)));
@@ -90,4 +90,42 @@ fn origins_persist_by_content_and_keep_their_identity() {
     let span = origins.source_span(read);
     assert_eq!(span.range.of(&files.file(span.file).text), "1");
     assert_eq!(origins.declaration_name(read), Some(Symbol::intern("f")));
+}
+
+/// A compilation reading `now` wherever `then` was read.
+struct Reading<'t> {
+    origins: &'t OriginTable,
+    then: vun_span::FileId,
+    now: vun_span::FileId,
+}
+
+impl Resolve for Reading<'_> {
+    fn origins(&self) -> &OriginTable {
+        self.origins
+    }
+
+    fn current(&self, file: vun_span::FileId) -> vun_span::FileId {
+        if file == self.then { self.now } else { file }
+    }
+}
+
+#[test]
+fn an_origin_recorded_in_an_earlier_text_is_found_where_it_is_now() {
+    use vun_intern::Symbol;
+    let files = SourceFiles::new();
+    let key = vun_span::FileRef::loose("a.vun");
+    let (then, now) = (files.add_as(key.clone(), "a.vun", "then"), files.add_as(key, "a.vun", "now"));
+    let t = OriginTable::new();
+    let name = Symbol::intern("limit");
+    let before = t.declaration(Span::new(then, 10, 40), None, name);
+    let body = t.inside(before, Span::new(then, 20, 25));
+    let lowered = t.derive(body, Span::new(then, 20, 25), Via::Lower(PassId(1)));
+    // The text read again with 30 bytes more above the declaration.
+    let after = t.declaration(Span::new(now, 40, 70), None, name);
+    assert_eq!(before, after);
+    let reading = Reading { origins: &t, then, now };
+    assert_eq!(reading.span(before), Span::new(now, 40, 70));
+    assert_eq!(reading.source_span(lowered), Span::new(now, 50, 55));
+    // Read as recorded, as a compilation reading the earlier text does.
+    assert_eq!(Resolve::source_span(&t, lowered), Span::new(then, 20, 25));
 }

@@ -12,15 +12,20 @@
 //! elsewhere in its file: a declaration by its name inside the declaration around it, a node inside
 //! a declaration by its span relative to the declaration, and what precedes declarations (tokens,
 //! syntax errors) by its span in the file. [`OriginId`] hashes by that identity, computed once
-//! when the origin is recorded, so hashes of anything holding origins survive both.
+//! when the origin is recorded, so hashes of anything holding origins survive both. A result
+//! reused across such an edit holds origins recorded in the earlier text; [`Resolve`] finds them
+//! in the text a compilation reads now.
 
 use std::hash::{Hash, Hasher};
 
 mod codec;
+mod resolve;
+
+pub use resolve::Resolve;
 
 use vun_codec::{Decode, Encode};
 use vun_intern::Symbol;
-use vun_span::Span;
+use vun_span::{FileId, Span};
 
 /// An [`Origin`] in an [`OriginTable`], found by its position in the table, and equal and hashed
 /// by the origin's anchored identity: the origin recorded again, as when read from another
@@ -99,6 +104,8 @@ pub struct Origin {
 #[derive(Default)]
 pub struct OriginTable {
     origins: boxcar::Vec<Origin>,
+    /// Each declaration read from source, by its identity and the file text it was read in.
+    declared: papaya::HashMap<(u64, FileId), u32>,
 }
 
 impl OriginTable {
@@ -122,12 +129,14 @@ impl OriginTable {
 
     /// Records the origin of the declaration `name`, inside the declaration `within` if any.
     pub fn declaration(&self, span: Span, within: Option<OriginId>, name: Symbol) -> OriginId {
-        self.push(Origin {
+        let id = self.push(Origin {
             span,
             via: Via::Source,
             parent: None,
             anchor: Anchor::Declaration { within, name },
-        })
+        });
+        self.declared.pin().insert((id.identity, span.file), id.index);
+        id
     }
 
     /// Records the origin of user-written source inside the declaration `declaration`.
@@ -235,15 +244,22 @@ impl OriginTable {
         Chain { table: self, next: Some(id) }
     }
 
-    /// The first user-written span in the chain of `id`, or the last span if there is none.
+    /// The first user-written span in the chain of `id`, or the last span if there is none, as
+    /// recorded; [`Resolve::source_span`] finds it in the text read now.
     #[must_use]
     pub fn source_span(&self, id: OriginId) -> Span {
-        let mut last = self.get(id).span;
-        for (_, origin) in self.chain(id) {
+        self.get(self.written(id)).span
+    }
+
+    /// The first user-written origin in the chain of `id`, or the last one if there is none.
+    #[must_use]
+    pub fn written(&self, id: OriginId) -> OriginId {
+        let mut last = id;
+        for (at, origin) in self.chain(id) {
             if origin.via == Via::Source {
-                return origin.span;
+                return at;
             }
-            last = origin.span;
+            last = at;
         }
         last
     }

@@ -6,7 +6,7 @@ use std::ops::Range;
 
 use ariadne::{CharSet, Config, IndexType, Label, Report, ReportKind, sources};
 use vun_diag::{ChildKind, Color, DiagSink, Diagnostic, Fix, Severity};
-use vun_origin::{OriginId, OriginTable};
+use vun_origin::{OriginId, Resolve};
 use vun_render_short::ShortRenderer;
 use vun_span::{FileId, SourceMap, Span};
 
@@ -38,7 +38,7 @@ impl<W: Write> AriadneRenderer<W> {
     pub(crate) fn report(
         &mut self,
         d: &Diagnostic,
-        origins: &OriginTable,
+        origins: &dyn Resolve,
         sources_: &dyn SourceMap,
     ) -> io::Result<()> {
         let (color, out) = (self.color, &mut self.out);

@@ -6,6 +6,7 @@ use std::path::Path;
 
 use vun_command::{Args, Outcome};
 use vun_mir::Unready;
+use vun_origin::Resolve;
 use vun_span::SourceMap;
 
 use super::FILE;
@@ -18,7 +19,7 @@ pub(super) fn coverage(session: &mut Session, args: &Args, out: &mut dyn Write) 
     session.check(file);
     let coverage = session.coverage(file);
     writeln!(out, "{coverage}")?;
-    let locate = |o| session.sources.locate(session.origins.source_span(o)).to_string();
+    let locate = |o| session.sources.locate(session.source_span(o)).to_string();
     for gap in &coverage.gaps {
         let (stage, kind) = gap.kind.stage();
         write!(out, "{}: {stage} {kind}", locate(gap.function))?;

@@ -1,10 +1,10 @@
 use vun_diag::{ChildKind, Color, DiagSink, Diagnostic, Edit, Fix, Label, Msg, Safety, errors};
-use vun_origin::OriginTable;
+use vun_origin::{OriginTable, Resolve};
 use vun_span::{SourceFiles, Span};
 
 use crate::AnnotateRenderer;
 
-fn render(d: &Diagnostic, origins: &OriginTable, files: &SourceFiles) -> String {
+fn render(d: &Diagnostic, origins: &dyn Resolve, files: &SourceFiles) -> String {
     let mut out = Vec::new();
     AnnotateRenderer::new(&mut out, Color::Never).emit(d, origins, files);
     String::from_utf8(out).unwrap()

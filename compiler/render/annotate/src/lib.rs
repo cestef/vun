@@ -10,7 +10,7 @@ use std::io::Write;
 use annotate_snippets::Renderer;
 use annotate_snippets::renderer::DecorStyle;
 use vun_diag::{Color, DiagSink, Diagnostic};
-use vun_origin::OriginTable;
+use vun_origin::Resolve;
 use vun_span::SourceMap;
 use vun_term::Style;
 
@@ -38,7 +38,7 @@ impl<W: Write> AnnotateRenderer<W> {
 }
 
 impl<W: Write> DiagSink for AnnotateRenderer<W> {
-    fn emit(&mut self, d: &Diagnostic, origins: &OriginTable, sources: &dyn SourceMap) {
+    fn emit(&mut self, d: &Diagnostic, origins: &dyn Resolve, sources: &dyn SourceMap) {
         let report = report::Cx { origins, sources }.groups(d);
         // Best-effort output: a closed stream must not abort compilation.
         let _ = writeln!(self.out, "{}\n", self.renderer.render(&report));

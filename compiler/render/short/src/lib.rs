@@ -4,7 +4,7 @@
 use std::io::Write;
 
 use vun_diag::{ChildKind, Color, DiagSink, Diagnostic};
-use vun_origin::OriginTable;
+use vun_origin::Resolve;
 use vun_span::SourceMap;
 use vun_term::{Out, Style, Text};
 
@@ -32,7 +32,7 @@ impl ChildLine for ChildKind {
 }
 
 impl<W: Write> DiagSink for ShortRenderer<W> {
-    fn emit(&mut self, d: &Diagnostic, origins: &OriginTable, sources: &dyn SourceMap) {
+    fn emit(&mut self, d: &Diagnostic, origins: &dyn Resolve, sources: &dyn SourceMap) {
         let at = d.primary.as_ref().map(|label| {
             Text::new()
                 .styled(Style::Strong, sources.locate(origins.source_span(label.origin)).to_string())

@@ -7,7 +7,7 @@ use std::sync::Arc;
 use vun_command::{Args, Outcome};
 use vun_hir::db::Package;
 use vun_mir::{Body, Concrete, Mir, Unbuilt};
-use vun_origin::OriginId;
+use vun_origin::{OriginId, Resolve};
 use vun_sema::layout::Shapes;
 use vun_sema::member::Members;
 use vun_span::SourceMap;
@@ -117,7 +117,7 @@ impl Stage {
             }
             Self::Lir => {
                 let lowered = session.lir(file);
-                let locate = |o| session.sources.locate(session.origins.source_span(o)).at;
+                let locate = |o| session.sources.locate(session.source_span(o)).at;
                 match &*lowered {
                     Ok(unit) => {
                         write!(out, "{}", unit.dump(&locate))?;
@@ -126,7 +126,7 @@ impl Stage {
                         }
                     }
                     Err(unlowered) => {
-                        let at = session.sources.locate(session.origins.source_span(unlowered.at));
+                        let at = session.sources.locate(session.source_span(unlowered.at));
                         writeln!(out, "not lowered at {at}: {unlowered}")?;
                     }
                 }
@@ -140,15 +140,11 @@ impl Stage {
                 }
                 for (at, i) in program.functions.iter().enumerate() {
                     let origin = i.f.literal.expr.origin;
-                    writeln!(
-                        out,
-                        "fn {at} at {}",
-                        session.sources.locate(session.origins.source_span(origin))
-                    )?;
+                    writeln!(out, "fn {at} at {}", session.sources.locate(session.source_span(origin)))?;
                     match session.db.get::<Concrete>(i) {
                         Ok(body) => session.dump_body(origin, Ok(body), out)?,
                         Err(unready) => {
-                            let at = session.sources.locate(session.origins.source_span(unready.at()));
+                            let at = session.sources.locate(session.source_span(unready.at()));
                             writeln!(out, "not ready at {at}: {unready}")?;
                             session.dump_body(origin, session.db.get::<Mir>(i), out)?;
                         }
@@ -169,7 +165,7 @@ impl Session {
         body: Result<Arc<Body>, Unbuilt>,
         out: &mut dyn Write,
     ) -> io::Result<()> {
-        let locate = |o| self.sources.locate(self.origins.source_span(o)).at;
+        let locate = |o| self.sources.locate(self.source_span(o)).at;
         match body {
             Ok(body) => writeln!(out, "{}", body.dump(&locate)),
             Err(unbuilt) => {

@@ -11,6 +11,7 @@ mod coverage;
 pub mod formats;
 pub mod packages;
 mod plan;
+mod positions;
 pub mod program;
 mod queries;
 mod registry;
