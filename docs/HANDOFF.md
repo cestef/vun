@@ -164,7 +164,12 @@ language rules go in as proposed unless the user approves them.
    first form fitting as the assembler would and reports `asm.*`; `TypedBody.asm` holding
    `vun_inline::Block`s, which MIR rebinds into `Rvalue::Asm`. Left: arm64 in sema (only
    `Arch::X86_64` is registered), and the string `lang.arch.asm` primitive, which
-   `stm32f4/start.vun` still uses for Thumb. `vun-fmt` is done; `vun-lsp` comes next. Left, most severe first:
+   `stm32f4/start.vun` still uses for Thumb; both wait for b4's `vun-isa-*` crates (tables and
+   matchers shared by sema and the backends), then a data-only `lang.arch.thumb`. `vun-fmt` is
+   done. `vun-lsp` (decision 269, proposed; `vun util lsp`, installed by the `vun` binary):
+   documents read as versions of their files (`Session::open`), diagnostics per version, hover
+   and definition through `vun_driver::editor` and sema's `NameSite`; next, code actions from
+   fixes and completion. Left, most severe first:
    - A Linux runtime calling the kernel (static programs without libc), which needs inline
      assembly for `syscall`.
    - `stm32f4` has an empty vector table and no `init_memory` (waits for plans declaring memory

@@ -107,12 +107,13 @@ impl<'a> Lower<'a, '_> {
         (lowered, origin)
     }
 
-    /// The text of the doc comment `n` without `///` and the space after it.
+    /// The text of the doc comment `n`, as every reader of doc comments reads it.
     fn doc_line(&self, n: NodeId) -> String {
-        const DOC: &str = "///";
-        let text = self.text(n);
-        let line = text.strip_prefix(DOC).unwrap_or(text);
-        line.strip_prefix(' ').unwrap_or(line).to_owned()
+        let text = match self.source.cst.anchor(n) {
+            Anchor::Token(t) => self.source.tokens.doc_text(t, self.source.text),
+            Anchor::Missing(_) => None,
+        };
+        text.unwrap_or_default().to_owned()
     }
 
     /// Whether `n` stands for nothing in a list: a separator or a module doc.

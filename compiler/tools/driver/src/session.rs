@@ -73,6 +73,8 @@ pub struct Session {
     /// The memory map of the program built, from its package's plan; empty for a program an
     /// operating system loads.
     pub memory: Vec<vun_link::MemoryRegion>,
+    /// What `vun util lsp` runs: the language server the program installs, as `vun` does.
+    pub language_server: Option<fn(&mut Session) -> std::io::Result<vun_command::Outcome>>,
     /// The errors already shown and taken out of `diag`.
     shown_errors: usize,
 }
@@ -111,6 +113,7 @@ impl Session {
             toolchain: vun_build::toolchain::Toolchain::path(),
             runner: Vec::new(),
             memory: Vec::new(),
+            language_server: None,
             shown_errors: 0,
         }
     }
@@ -124,10 +127,16 @@ impl Session {
     pub fn load(&mut self, path: &Path) -> Option<FileId> {
         let _timer = crate::stages::LOAD.time();
         tracing::info!(path = %path.display(), "loading");
-        self.restore(path);
         let text = self.read(path)?;
+        Some(self.open(path, text))
+    }
+
+    /// Reads `text` as the file at `path`, saved or not: a new version of it, which the queries
+    /// read from now on, and in which what they computed from an earlier one is shown.
+    pub fn open(&mut self, path: &Path, text: String) -> FileId {
+        self.restore(path);
         let key = self.file_key(path);
-        Some(self.sources.add_as(key, path.display().to_string(), text))
+        self.sources.add_as(key, path.display().to_string(), text)
     }
 
     /// Reads a file's text; a read failure becomes a diagnostic.

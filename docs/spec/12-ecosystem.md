@@ -318,12 +318,13 @@ implemented; nothing is listed that does not run.
 | `vun toolchain components` | the backends and linkers of this toolchain |
 | `vun cache list\|gc` | the shared store: entries, sizes, labels; collection by lockfile roots |
 | `vun util completion <shell>` | the completion script of bash, zsh, fish or nushell |
+| `vun util lsp` | serve the language server over standard input and output (spec 13, section 11) |
 | `vun debug tokens\|cst\|manifest\|plan\|hir\|types\|mir\|layout\|program\|lir\|code\|frames <file>` | every representation with origins (spec 10) |
 | `vun debug coverage\|queries\|compare\|reduce <file>` | how far the stages reach; what the saved queries hold; every backend run and compared; a failing file reduced (spec 13, section 10) |
 
 Still to come, each as a verb or a group verb: `new`, `test`, `bench`, `fuzz`, `fix`,
 `pkg vendor|why|tag|api`, `tool header|svd`, `target flash|attach|debug`, `toolchain
-list|install|prune`, `util lsp`.
+list|install|prune`.
 
 Options:
 

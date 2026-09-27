@@ -8,6 +8,7 @@ pub mod codegen;
 pub mod commands;
 pub mod compare;
 mod coverage;
+pub mod editor;
 pub mod formats;
 pub mod packages;
 mod plan;

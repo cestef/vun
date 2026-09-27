@@ -11,7 +11,7 @@ use vun_hir::tree::ExprKind;
 use vun_mir::{Programs, Roots};
 use vun_origin::Resolve;
 use vun_sema::eval::Instantiation;
-use vun_sema::typeck::{Operation, Stage, Typed};
+use vun_sema::typeck::{Operation, Typed};
 use vun_span::SourceMap;
 
 use super::FILE;
@@ -41,9 +41,7 @@ pub(super) fn types(session: &mut Session, args: &Args, out: &mut dyn Write) -> 
                 span.range.of(&session.sources.file(span.file).text).chars().take(SHOWN).collect();
             let source = source.replace('\n', " ");
             let known = match typed.types.get(&e) {
-                Some(k) => {
-                    format!("{} ({})", k.ty, if k.stage == Stage::Compile { "compile" } else { "run" })
-                }
+                Some(k) => format!("{} ({})", k.ty, k.stage.name()),
                 None => "untyped".to_owned(),
             };
             let operator = matches!(expr.kind, ExprKind::Infix { .. } | ExprKind::Prefix { .. })

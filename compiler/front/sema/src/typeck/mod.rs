@@ -60,6 +60,17 @@ pub enum Stage {
     Run,
 }
 
+impl Stage {
+    /// When it runs, as dumps and editors show it.
+    #[must_use]
+    pub const fn name(self) -> &'static str {
+        match self {
+            Self::Compile => "compile",
+            Self::Run => "run",
+        }
+    }
+}
+
 /// A typed expression.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct Known {

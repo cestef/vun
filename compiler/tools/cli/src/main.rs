@@ -15,5 +15,6 @@ fn main() -> ExitCode {
     let mut session = Session::new();
     session.persistence = Persistence::On;
     session.schemes.install(vun_http::SCHEMES);
+    session.language_server = Some(vun_lsp::serve);
     PROGRAM.main(&mut session)
 }

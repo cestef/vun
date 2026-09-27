@@ -214,4 +214,5 @@ cli := struct {
     unknown_option := diag.Diag{ .explanation = lang.meta.embed("errors/cli/unknown_option.md") };
     missing_value := diag.Diag{ .explanation = lang.meta.embed("errors/cli/missing_value.md") };
     invalid_value := diag.Diag{ .explanation = lang.meta.embed("errors/cli/invalid_value.md") };
+    unavailable := diag.Diag{ .explanation = lang.meta.embed("errors/cli/unavailable.md") };
 };

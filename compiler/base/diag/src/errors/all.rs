@@ -117,6 +117,7 @@ pub const ALL: &[DiagId] = &[
     CLI_UNKNOWN_OPTION,
     CLI_MISSING_VALUE,
     CLI_INVALID_VALUE,
+    CLI_UNAVAILABLE,
 ];
 /// The explanation page of each diagnostic, relative to the library.
 pub const EXPLANATIONS: &[(DiagId, &str)] = &[
@@ -227,4 +228,5 @@ pub const EXPLANATIONS: &[(DiagId, &str)] = &[
     (CLI_UNKNOWN_OPTION, "lang/lang/errors/cli/unknown_option.md"),
     (CLI_MISSING_VALUE, "lang/lang/errors/cli/missing_value.md"),
     (CLI_INVALID_VALUE, "lang/lang/errors/cli/invalid_value.md"),
+    (CLI_UNAVAILABLE, "lang/lang/errors/cli/unavailable.md"),
 ];

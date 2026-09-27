@@ -972,3 +972,35 @@ edits is kept, and the passes repeat until none is. A candidate that parses with
 the text it came from is dropped before it is compiled, and no text is compiled twice. The result
 is laid out by the formatter when that keeps the failure. It is what a fuzz target's crash becomes
 before it is added to the corpus.
+
+## 11. The language server
+
+`vun util lsp` (`vun-lsp`) serves an editor over standard input and output with the Language
+Server Protocol: JSON-RPC messages framed by `Content-Length` headers. It is a thin shell over
+`vun-driver`: one session, whose query engine is the compiler's, so what the editor shows is what
+`vun check` reports, computed by the same queries, and each answer reuses what the last computed.
+
+- *Documents.* The text the editor holds of an open file is the file's text, whether saved or not:
+  opening it and each change (the whole text) read it as a new version of the file, a file of its
+  own (`FileId`) under the file's key, which the `FileText` input is set to; a file not open is
+  read from disk, and closing one reads it from disk again. What a query computed from an earlier
+  version is shown in the latest (`vun_origin::Resolve`): each origin is anchored to its
+  declaration, so what an edit leaves alone keeps its results, placed where the new text holds
+  them, and only what depends on the edit is computed again.
+- *Diagnostics.* After a change, the server checks the open files as `vun check` checks each, and
+  publishes each file's diagnostics with the version of the document they were computed for,
+  mapped as spec 10, section 6 says. A check runs to its end; the changes that arrive meanwhile
+  are applied together before the next, so a burst of typing costs one check.
+- *Definition.* At a name, where it is declared: the binder of the file it resolves to, or the
+  declaration an outer name, a member or a path reaches, as resolution and sema find them.
+- *Hover.* At an expression, the innermost one holding the position: its type and stage as
+  `vun debug types` prints them, and the doc comment of the declaration it names, if any.
+- *Positions* are counted in the encoding the client and the server agree on at initialization:
+  UTF-8 when the client offers it, else UTF-16, converted through each version's line index.
+- *The protocol is data.* Each method is a row of one table (its name, whether it is a request or
+  a notification, its handler), and the capabilities announced at initialization are derived
+  from the rows. Messages are typed structs read and written through `vun-json`. An unknown
+  method is answered `MethodNotFound`, a malformed message `ParseError` or `InvalidParams`, never
+  with a crash; logs go to standard error through `vun-trace`. The lifecycle is the protocol's:
+  `initialize`, `initialized`, the session, `shutdown`, then `exit`, whose status is 1 without a
+  `shutdown` before it.

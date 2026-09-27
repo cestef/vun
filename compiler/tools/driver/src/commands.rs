@@ -65,7 +65,7 @@ pub const PROGRAM: Program<Session> = Program {
             Command::group(tool::GROUP, "bindings to other languages", &[tool::BIND]),
             Command::group(toolchain::GROUP, "this toolchain's backends and linkers", toolchain::COMMANDS),
             Command::group(cache::GROUP, "the shared store of fetched packages", cache::COMMANDS),
-            Command::group("util", "infrequently used commands", &[util::COMPLETION]),
+            Command::group("util", "infrequently used commands", &[util::COMPLETION, util::LSP]),
             Command::group(debug::GROUP, "low-level commands for developing the compiler", debug::COMMANDS)
                 .sets(&[COMPILE]),
         ],
