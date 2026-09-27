@@ -152,7 +152,7 @@ impl Builder<'_, '_, '_> {
     }
 
     /// Ends the current block with `kind`, and continues in an unreachable block.
-    fn jump(&mut self, kind: TerminatorKind, origin: OriginId) -> Operand {
+    pub(super) fn jump(&mut self, kind: TerminatorKind, origin: OriginId) -> Operand {
         self.terminate(kind, origin);
         self.current = self.fresh(origin);
         Self::unit()

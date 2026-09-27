@@ -157,10 +157,14 @@ language rules go in as proposed unless the user approves them.
    facts; `std.mem.alloc.Fixed` borrowing its buffer; `lang.link.keep` removed. This machine
    runs WASI programs through `wasmtime` (its toolchain file names it), and every backend test
    program runs on linux.x86_64, linux.arm64 and wasi.wasm32.
-   In progress: typed inline assembly (decision 258: the x86-64 table is data in
-   `lang.arch.x86_64` and generates the assembler's; arm64 next, then the block syntax, the MIR/LIR
-   instruction and the backends); `vun-fmt` (then the repository reformatted, and a check keeping it so);
-   `vun-lsp` after it. Left, most severe first:
+   In progress: typed inline assembly (decision 258). Done: the tables in `lang.arch.x86_64` and
+   `lang.arch.arm64`, generating the assemblers'; the block syntax (`asm` contextual, `Flow`
+   words, `]!`, `'label:`, `b.eq`); HIR `ExprKind::Asm`; sema's `asm` module, which reads
+   `ArchTable` in the assemblers' order (a driver test compares it with `Op::ALL`), picks the
+   first form fitting as the assembler would and reports `asm.*`; `TypedBody.asm` holding
+   `vun_inline::Block`s, which MIR rebinds into `Rvalue::Asm`. Left: arm64 in sema (only
+   `Arch::X86_64` is registered), and the string `lang.arch.asm` primitive, which
+   `stm32f4/start.vun` still uses for Thumb. `vun-fmt` is done; `vun-lsp` comes next. Left, most severe first:
    - A Linux runtime calling the kernel (static programs without libc), which needs inline
      assembly for `syscall`.
    - `stm32f4` has an empty vector table and no `init_memory` (waits for plans declaring memory

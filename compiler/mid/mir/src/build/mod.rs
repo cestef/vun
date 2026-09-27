@@ -3,6 +3,7 @@
 //! yet is [`Unbuilt`], at its origin, so that evaluation stops rather than guesses.
 
 mod aggregate;
+mod asm;
 mod assign;
 mod block;
 mod call;
