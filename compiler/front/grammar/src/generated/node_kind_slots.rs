@@ -33,6 +33,7 @@ impl NodeKind {
             Self::Quote => QUOTE,
             Self::Struct => STRUCT,
             Self::Enum => ENUM,
+            Self::Namespace => NAMESPACE,
             Self::Paren => PAREN,
             Self::Tuple => TUPLE,
             Self::Array => ARRAY,
@@ -117,7 +118,11 @@ const CLOSURE: &[NodeSlot] = &[
 const BLOCK: &[NodeSlot] = &[NodeSlot::new(NodeField::Statements, Count::Many, None)];
 const QUOTE: &[NodeSlot] = &[NodeSlot::new(NodeField::Statements, Count::Many, None)];
 const STRUCT: &[NodeSlot] = &[NodeSlot::new(NodeField::Members, Count::Many, None)];
-const ENUM: &[NodeSlot] = &[NodeSlot::new(NodeField::Members, Count::Many, None)];
+const ENUM: &[NodeSlot] = &[
+    NodeSlot::new(NodeField::Variants, Count::Many, None),
+    NodeSlot::new(NodeField::Namespace, Count::Optional, Some(NodeKind::Namespace)),
+];
+const NAMESPACE: &[NodeSlot] = &[NodeSlot::new(NodeField::Members, Count::Many, None)];
 const PAREN: &[NodeSlot] = &[NodeSlot::new(NodeField::Inner, Count::One, None)];
 const TUPLE: &[NodeSlot] = &[NodeSlot::new(NodeField::Items, Count::Many, None)];
 const ARRAY: &[NodeSlot] = &[NodeSlot::new(NodeField::Items, Count::Many, None)];

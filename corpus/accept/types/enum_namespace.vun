@@ -1,0 +1,17 @@
+//! The declarations after `;` in an enum are its namespace, apart from its variants: a `$if` or
+//! `$for` there generates declarations, not variants (spec 02, section 2).
+
+fast_first := true;
+
+Speed := enum {
+    slow,
+    fast;
+    $if fast_first { preferred := Speed.fast; }
+};
+
+chosen: Speed = Speed.preferred;
+
+/// Two variants cover every speed.
+rank := (s: Speed) -> u8 {
+    match s { .slow => 0, .fast => 1 }
+};

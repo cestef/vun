@@ -36,22 +36,13 @@ impl Lower<'_, '_> {
     /// The members of an `enum` literal: its variants, then the declarations after `;`, which are
     /// its namespace.
     pub(super) fn enum_body(&mut self, f: &Fields, n: NodeId) -> (List<Variant>, NsId) {
-        let (variants, members): (Vec<NodeId>, Vec<NodeId>) =
-            f.get(NodeField::Members).iter().partition(|&&c| self.is_variant(c));
-        let variants = self.variants(variants);
-        let members = self.members(members);
+        let variants = self.variants(f.get(NodeField::Variants).to_vec());
+        let members = match f.one(NodeField::Namespace) {
+            Some(ns) => self.members(self.fields(ns).get(NodeField::Members).to_vec()),
+            None => Vec::new(),
+        };
         let origin = self.origin(n);
         (variants, self.hir.namespaces.push(Namespace { members, origin }))
-    }
-
-    /// Whether a member node of an `enum` is a variant, `name` or `name(T)`, through its docs.
-    fn is_variant(&self, n: NodeId) -> bool {
-        let mut inner = n;
-        while matches!(self.kind(inner), NodeKind::Doc | NodeKind::Attr) {
-            let Some(target) = self.fields(inner).one(NodeField::Target) else { return false };
-            inner = target;
-        }
-        matches!(self.kind(inner), NodeKind::Name | NodeKind::Call) || self.staged_control(inner).is_some()
     }
 
     pub(super) fn decl(&mut self, n: NodeId, doc: Vec<String>, attrs: Vec<ExprId>) -> DeclId {

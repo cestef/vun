@@ -56,8 +56,12 @@ impl Parser<'_, '_, '_> {
             return;
         }
         self.list(List::Items(Item::Value), TokenKind::RBrace);
-        if self.eat(TokenKind::Semi) {
+        // The declarations after `;` are the enum's namespace, apart from its variants.
+        if self.at(TokenKind::Semi) {
+            let mark = self.out.mark();
+            let semi = self.bump();
             self.list(List::Members, TokenKind::RBrace);
+            self.out.node(NodeKind::Namespace, Anchor::Token(semi), mark);
         }
         self.close(TokenKind::RBrace, open);
     }
