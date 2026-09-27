@@ -6,6 +6,8 @@
 //! forms hold holes the member fills. A form's absent fields take the defaults `Form` declares, and
 //! a name starting with `_` is a shorthand of its file, read as the value it names.
 
+mod arm64;
+mod emit;
 mod x86_64;
 
 use std::collections::BTreeMap;
@@ -16,6 +18,7 @@ use vun_syntax::literal::{Decl, Literal};
 use crate::generate::{Generator, Read, Source};
 use crate::names::docs;
 
+pub(crate) use arm64::ARM64;
 pub(crate) use x86_64::X86_64;
 
 /// Where the architectures are declared, relative to the repository root.
@@ -31,15 +34,21 @@ const MEMBER: &str = "Member";
 const FORMS: &str = "forms";
 const MEMBERS: &str = "members";
 const NAME: &str = "name";
+/// The fields of a form holding lists of records, and the type of those records, whose defaults
+/// they take too.
+const NESTED: [(&str, &str); 3] = [("operands", "Operand"), ("sizes", "Sized"), ("args", "Arg")];
+const MNEMONIC: &str = "mnemonic";
 
 /// A name that is a shorthand of its file rather than a declaration of the architecture.
 const PRIVATE: char = '_';
 
 const UNREAD: DiagId = DiagId::new("generate.asm.unread");
 
-/// An instruction: its name, its doc lines, and its forms, each field present.
+/// An instruction: its name, its mnemonic where it is not its name, its doc lines, and its forms,
+/// each field present.
 pub(crate) struct Instruction<'s> {
     pub(crate) name: &'s str,
+    pub(crate) mnemonic: Option<String>,
     pub(crate) doc: Vec<String>,
     pub(crate) forms: Vec<Literal<'s>>,
 }
@@ -70,6 +79,7 @@ impl<'a, 's> Table<'a, 's> {
             fields.iter().filter(|f| f.value != Literal::Opaque).cloned().collect::<Vec<_>>()
         };
         let (form_defaults, member_defaults) = (defaults(FORM), defaults(MEMBER));
+        let nested: Vec<_> = NESTED.iter().map(|&(field, ty)| (field, defaults(ty))).collect();
         let dir = format!("{ARCH}/{arch}/");
         let mut instructions = Vec::new();
         for source in sources.iter().filter(|s| s.path.starts_with(&dir)) {
@@ -85,15 +95,17 @@ impl<'a, 's> Table<'a, 's> {
                 let forms = |record: &Literal<'s>| -> Read<Vec<Literal<'s>>> {
                     let forms = record.get(FORMS).map(resolve).and_then(|f| f.as_list().map(<[_]>::to_vec));
                     let forms = forms.ok_or_else(|| unread("declares an instruction without forms"))?;
-                    Ok(forms.iter().map(|f| with_defaults(f, &form_defaults)).collect())
+                    Ok(forms
+                        .iter()
+                        .map(|f| with_nested(&with_defaults(f, &form_defaults), &nested))
+                        .collect())
                 };
                 match ty.last().copied() {
                     Some(INSTRUCTION) => {
-                        instructions.push(Instruction {
-                            name: decl.name,
-                            doc: docs(&decl.doc),
-                            forms: forms(record)?,
-                        });
+                        let mnemonic = record.get(MNEMONIC).and_then(Literal::as_tagged);
+                        let mnemonic = mnemonic.and_then(|(_, p)| p.first()?.as_str().map(str::to_owned));
+                        let (name, doc) = (decl.name, docs(&decl.doc));
+                        instructions.push(Instruction { name, mnemonic, doc, forms: forms(record)? });
                     }
                     Some(FAMILY) => {
                         let shared = forms(record)?;
@@ -103,7 +115,12 @@ impl<'a, 's> Table<'a, 's> {
                             let name = member.get(NAME).and_then(Literal::as_name);
                             let name = name.ok_or_else(|| unread("declares a member without a name"))?;
                             let forms = shared.iter().map(|f| filled(f, &member, fill)).collect();
-                            instructions.push(Instruction { name, doc: docs(&decl.doc), forms });
+                            instructions.push(Instruction {
+                                name,
+                                mnemonic: None,
+                                doc: docs(&decl.doc),
+                                forms,
+                            });
                         }
                     }
                     _ => {}
@@ -148,6 +165,24 @@ fn with_defaults<'s>(record: &Literal<'s>, defaults: &[Decl<'s>]) -> Literal<'s>
         }
     }
     Literal::Record(fields)
+}
+
+/// `form` with the records of its lists given their types' defaults: `nested` has each field's.
+fn with_nested<'s>(form: &Literal<'s>, nested: &[(&str, Vec<Decl<'s>>)]) -> Literal<'s> {
+    let fields = form.decls().unwrap_or_default().iter().map(|f| {
+        let defaults = nested.iter().find(|(name, _)| *name == f.name).map(|(_, d)| d);
+        let value = match (defaults, &f.value) {
+            (Some(defaults), Literal::List(items)) => Literal::List(
+                items
+                    .iter()
+                    .map(|i| if i.decls().is_some() { with_defaults(i, defaults) } else { i.clone() })
+                    .collect(),
+            ),
+            _ => f.value.clone(),
+        };
+        Decl { value, ..f.clone() }
+    });
+    Literal::Record(fields.collect())
 }
 
 /// `form` with each hole filled as `member` gives it.

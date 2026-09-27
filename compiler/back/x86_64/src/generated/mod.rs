@@ -50,3 +50,5 @@ mod cvttss2si;
 mod cvttsd2si;
 mod ops;
 pub use ops::*;
+mod mnemonics;
+mod forms;

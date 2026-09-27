@@ -39,8 +39,8 @@ impl Reg {
         Self::R15,
     ];
 }
-/// Each register's name at each width, as Intel syntax writes it.
-pub(crate) const NAMES: [[&str; 4]; 16usize] = [
+/// Each register's name at each width, narrowest first.
+pub(crate) const NAMES: [[&str; 4usize]; 16usize] = [
     ["al", "ax", "eax", "rax"],
     ["cl", "cx", "ecx", "rcx"],
     ["dl", "dx", "edx", "rdx"],

@@ -2,87 +2,16 @@
 
 use std::fmt;
 
+use crate::generated::NAMES;
 /// A general-purpose register. Register 31 is the stack pointer in some operands and the zero
 /// register in others: the two are distinct registers here, and each operand kind takes the one
 /// its field means (`Kind::Gpr`), so neither is ever guessed.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub enum Reg {
-    X0,
-    X1,
-    X2,
-    X3,
-    X4,
-    X5,
-    X6,
-    X7,
-    X8,
-    X9,
-    X10,
-    X11,
-    X12,
-    X13,
-    X14,
-    X15,
-    X16,
-    X17,
-    X18,
-    X19,
-    X20,
-    X21,
-    X22,
-    X23,
-    X24,
-    X25,
-    X26,
-    X27,
-    X28,
-    /// The frame pointer.
-    X29,
-    /// The link register.
-    X30,
-    Sp,
-    Zr,
-}
+pub use crate::generated::Reg;
 
 /// The encoding the stack pointer and the zero register share.
 const SP_ZR: u8 = 31;
 
 impl Reg {
-    /// The registers numbered 0 to 30.
-    pub const NUMBERED: [Self; 31] = [
-        Self::X0,
-        Self::X1,
-        Self::X2,
-        Self::X3,
-        Self::X4,
-        Self::X5,
-        Self::X6,
-        Self::X7,
-        Self::X8,
-        Self::X9,
-        Self::X10,
-        Self::X11,
-        Self::X12,
-        Self::X13,
-        Self::X14,
-        Self::X15,
-        Self::X16,
-        Self::X17,
-        Self::X18,
-        Self::X19,
-        Self::X20,
-        Self::X21,
-        Self::X22,
-        Self::X23,
-        Self::X24,
-        Self::X25,
-        Self::X26,
-        Self::X27,
-        Self::X28,
-        Self::X29,
-        Self::X30,
-    ];
-
     /// Its encoding, 0 to 31.
     #[must_use]
     pub const fn number(self) -> u8 {
@@ -106,12 +35,8 @@ pub struct Name {
 
 impl fmt::Display for Name {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let wide = self.size == Size::B64;
-        match self.reg {
-            Reg::Sp => f.write_str(if wide { "sp" } else { "wsp" }),
-            Reg::Zr => f.write_str(if wide { "xzr" } else { "wzr" }),
-            r => write!(f, "{}{}", if wide { 'x' } else { 'w' }, r.number()),
-        }
+        let [w, x] = NAMES[self.reg as usize];
+        f.write_str(if self.size == Size::B64 { x } else { w })
     }
 }
 

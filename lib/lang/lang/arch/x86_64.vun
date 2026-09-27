@@ -93,9 +93,9 @@ W := enum {
     never,
 };
 
-/// A byte of the forms of a family: its own, or its member's opcode with these bits set, or its
+/// A byte of the forms of a family: fixed, or its member's opcode with these bits set, or its
 /// member's opcode extension.
-Byte := enum { is(u8), opcode(u8), digit };
+Byte := enum { fixed(u8), opcode(u8), digit };
 
 /// `ModRM` with a register in `reg` and a register or memory in `rm`, by operand position.
 RegRm := struct { reg: u8, rm: u8 };

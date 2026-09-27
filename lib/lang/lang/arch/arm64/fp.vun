@@ -1,0 +1,96 @@
+//! Scalar floating-point instructions (Arm A64 ISA, scalar floating-point data processing): the
+//! instruction's width is the precision, or for a conversion the integer's width.
+
+_a := lang.arch.arm64;
+
+_ftype: &[_a.Sized] = &[.{ .size = .b32 }, .{ .size = .b64, .bits = 0x400000 }];
+_sf_ftype: &[_a.Sized] = &[.{ .size = .b32 }, .{ .size = .b64, .bits = 0x80400000 }];
+_x64: &[_a.Sized] = &[.{ .size = .b64 }];
+_b32: &[_a.Sized] = &[.{ .size = .b32 }];
+_sf: &[_a.Sized] = &[.{ .size = .b32 }, .{ .size = .b64, .bits = 0x80000000 }];
+
+_f_d_w: _a.Arg = .{ .kind = .fpr(.inst), .at = 0, .access = .write };
+_f_m: _a.Arg = .{ .kind = .fpr(.inst), .at = 16, .access = .read };
+_f_n: _a.Arg = .{ .kind = .fpr(.inst), .at = 5, .access = .read };
+_fd_d_w: _a.Arg = .{ .kind = .fpr(.is(.b64)), .at = 0, .access = .write };
+_fd_n: _a.Arg = .{ .kind = .fpr(.is(.b64)), .at = 5, .access = .read };
+_fs_d_w: _a.Arg = .{ .kind = .fpr(.is(.b32)), .at = 0, .access = .write };
+_fs_n: _a.Arg = .{ .kind = .fpr(.is(.b32)), .at = 5, .access = .read };
+_r_d_w: _a.Arg = .{ .kind = .gpr(.zr, .inst), .at = 0, .access = .write };
+_r_n: _a.Arg = .{ .kind = .gpr(.zr, .inst), .at = 5, .access = .read };
+_zero_m: _a.Arg = .{ .kind = .imm(.zero), .at = 16, .access = .read };
+
+fmov := _a.Instruction{ .forms = &[
+        .{ .base = 0x1e204000, .sizes = _ftype, .args = &[_f_d_w, _f_n] },
+        .{ .base = 0x1e270000, .sizes = _sf_ftype, .args = &[_f_d_w, _r_n] },
+        .{ .base = 0x1e260000, .sizes = _sf_ftype, .args = &[_r_d_w, _f_n] },
+    ] };
+
+/// Two operands into a third.
+binaries := _a.Family{
+    .members = &[
+        .{ .name = .fadd, .bits = 0x1e202800 },
+        .{ .name = .fsub, .bits = 0x1e203800 },
+        .{ .name = .fmul, .bits = 0x1e200800 },
+        .{ .name = .fdiv, .bits = 0x1e201800 },
+    ],
+    .forms = &[
+        .{ .base = .\or(0x0), .sizes = _ftype, .args = &[_f_d_w, _f_n, _f_m] },
+    ],
+};
+
+/// One operand into another.
+unaries := _a.Family{
+    .members = &[
+        .{ .name = .fneg, .bits = 0x1e214000 },
+        .{ .name = .fabs, .bits = 0x1e20c000 },
+        .{ .name = .fsqrt, .bits = 0x1e21c000 },
+    ],
+    .forms = &[
+        .{ .base = .\or(0x0), .sizes = _ftype, .args = &[_f_d_w, _f_n] },
+    ],
+};
+
+fcmp := _a.Instruction{ .forms = &[
+        .{ .base = 0x1e202000, .sizes = _ftype, .args = &[_f_n, _f_m], .flags = .some(.write) },
+        .{ .base = 0x1e202008, .sizes = _ftype, .args = &[_f_n, _zero_m], .flags = .some(.write) },
+    ] };
+
+fcvt := _a.Instruction{ .forms = &[
+        .{ .base = 0x1e22c000, .sizes = _x64, .args = &[_f_d_w, _fs_n] },
+        .{ .base = 0x1e624000, .sizes = _b32, .args = &[_f_d_w, _fd_n] },
+    ] };
+
+/// A signed integer of the instruction's width to single precision.
+scvtf_s := _a.Instruction{ .mnemonic = .some("scvtf"), .forms = &[
+        .{ .base = 0x1e220000, .sizes = _sf, .args = &[_fs_d_w, _r_n] },
+    ] };
+
+scvtf_d := _a.Instruction{ .mnemonic = .some("scvtf"), .forms = &[
+        .{ .base = 0x1e620000, .sizes = _sf, .args = &[_fd_d_w, _r_n] },
+    ] };
+
+ucvtf_s := _a.Instruction{ .mnemonic = .some("ucvtf"), .forms = &[
+        .{ .base = 0x1e230000, .sizes = _sf, .args = &[_fs_d_w, _r_n] },
+    ] };
+
+ucvtf_d := _a.Instruction{ .mnemonic = .some("ucvtf"), .forms = &[
+        .{ .base = 0x1e630000, .sizes = _sf, .args = &[_fd_d_w, _r_n] },
+    ] };
+
+/// Single precision to a signed integer of the instruction's width, rounded toward zero.
+fcvtzs_s := _a.Instruction{ .mnemonic = .some("fcvtzs"), .forms = &[
+        .{ .base = 0x1e380000, .sizes = _sf, .args = &[_r_d_w, _fs_n] },
+    ] };
+
+fcvtzs_d := _a.Instruction{ .mnemonic = .some("fcvtzs"), .forms = &[
+        .{ .base = 0x1e780000, .sizes = _sf, .args = &[_r_d_w, _fd_n] },
+    ] };
+
+fcvtzu_s := _a.Instruction{ .mnemonic = .some("fcvtzu"), .forms = &[
+        .{ .base = 0x1e390000, .sizes = _sf, .args = &[_r_d_w, _fs_n] },
+    ] };
+
+fcvtzu_d := _a.Instruction{ .mnemonic = .some("fcvtzu"), .forms = &[
+        .{ .base = 0x1e790000, .sizes = _sf, .args = &[_r_d_w, _fd_n] },
+    ] };

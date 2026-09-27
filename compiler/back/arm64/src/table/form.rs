@@ -1,34 +1,38 @@
 //! A form of an instruction: its base word, the widths it is defined at with the bits each sets,
-//! and its operands, each a kind and the bit its field starts at.
+//! its operands, each a kind, the bit its field starts at and what the form does with it, and the
+//! registers and flags it reads and writes beyond them.
 
 use super::kind::Kind;
 use crate::operand::Operand;
-use crate::reg::Size;
+use crate::reg::{Reg, Size};
 
-/// Where registers go: the destination or transferred register, the first source or base, the
-/// second source, and the third (the addend, or a pair's second register).
-pub(super) const D: u8 = 0;
-pub(super) const N: u8 = 5;
-pub(super) const M: u8 = 16;
-pub(super) const A: u8 = 10;
+/// What a form does with an operand, or with the flags.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Access {
+    Read,
+    Write,
+    ReadWrite,
+    /// Nothing but compute its address.
+    Address,
+}
 
-/// An operand position: what it takes and where its field goes.
+/// An operand position: what it takes, where its field goes, and what the form does with it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Arg {
     pub kind: Kind,
     pub at: u8,
-    /// Where the same field goes again, for an alias reading one register twice (`cneg`).
+    /// Where the same field goes again, for an alias reading one register in two fields (`cneg`
+    /// is `csneg` of a register and itself).
     pub again: Option<u8>,
-}
-
-impl Kind {
-    #[must_use]
-    pub const fn at(self, at: u8) -> Arg {
-        Arg { kind: self, at, again: None }
-    }
+    pub access: Access,
 }
 
 impl Arg {
+    #[must_use]
+    pub const fn new(kind: Kind, at: u8, access: Access) -> Self {
+        Self { kind, at, again: None, access }
+    }
+
     #[must_use]
     pub const fn again(self, at: u8) -> Self {
         Self { again: Some(at), ..self }
@@ -63,17 +67,37 @@ pub struct Form {
     pub args: &'static [Arg],
     /// The mnemonic, where it is not the instruction's (`ldur`).
     pub name: Option<&'static str>,
+    /// The general registers it reads and writes without naming them (the link register of `bl`).
+    pub reads: &'static [Reg],
+    pub writes: &'static [Reg],
+    /// What it does with the flags, if anything.
+    pub flags: Option<Access>,
 }
 
 impl Form {
     #[must_use]
     pub const fn new(base: u32, sizes: &'static [Sized], args: &'static [Arg]) -> Self {
-        Self { base, sizes, args, name: None }
+        Self { base, sizes, args, name: None, reads: &[], writes: &[], flags: None }
     }
 
     #[must_use]
     pub const fn named(self, name: &'static str) -> Self {
         Self { name: Some(name), ..self }
+    }
+
+    #[must_use]
+    pub const fn reads(self, reads: &'static [Reg]) -> Self {
+        Self { reads, ..self }
+    }
+
+    #[must_use]
+    pub const fn writes(self, writes: &'static [Reg]) -> Self {
+        Self { writes, ..self }
+    }
+
+    #[must_use]
+    pub const fn flags(self, flags: Access) -> Self {
+        Self { flags: Some(flags), ..self }
     }
 
     /// Its definition at `size`.

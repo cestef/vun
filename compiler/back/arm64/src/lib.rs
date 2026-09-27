@@ -1,5 +1,5 @@
-//! The 64-bit Arm (A64) assembler. Every instruction the toolchain emits is declared once in `table`, as
-//! its forms: a base word, the widths it is defined at with the bits each sets, and the operand
+//! The 64-bit Arm (A64) assembler. Every instruction is declared once, in `lang.arch.arm64`, as its
+//! forms, from which `generated` is made: a base word, the widths it is defined at with the bits each sets, and the operand
 //! kinds with the bit each operand's field starts at. The encoder picks the first form an
 //! instruction's operands fit, the printer writes the same form's text, and callers ask which
 //! forms fit before choosing operands (an immediate or a register, an offset or an address), as
@@ -7,6 +7,8 @@
 
 mod bitmask;
 mod encode;
+#[rustfmt::skip]
+mod generated;
 mod inst;
 mod operand;
 mod reg;
@@ -23,7 +25,7 @@ pub use encode::Emit;
 pub use inst::Inst;
 pub use operand::{Extend, Mem, Operand, Scale, Shift, ShiftKind};
 pub use reg::{Cc, Reg, Size, V};
-pub use table::{Arg, Branch, Cond, Form, Imm, Kind, Mode, Op, R31, Shifts, Sized, Width};
+pub use table::{Access, Arg, Branch, Cond, Form, Imm, Kind, Mode, Op, R31, Shifts, Sized, Width};
 
 /// The instruction set, as `vun-asm` knows it.
 #[derive(Clone, Copy, Debug)]
