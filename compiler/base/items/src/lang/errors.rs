@@ -38,6 +38,8 @@ pub const place: Item = Item::new(&["lang", "errors", "place"]);
 pub const borrow: Item = Item::new(&["lang", "errors", "borrow"]);
 /// Trap freedom (spec 07, section 3).
 pub const panic: Item = Item::new(&["lang", "errors", "panic"]);
+/// Checks of unsafe code at run time (spec 07, section 7).
+pub const check: Item = Item::new(&["lang", "errors", "check"]);
 /// Code generation backends (spec 13).
 pub const backend: Item = Item::new(&["lang", "errors", "backend"]);
 /// Stack bounds (spec 07, section 4).

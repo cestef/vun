@@ -31,6 +31,8 @@ mod borrow;
 pub use borrow::*;
 mod panic;
 pub use panic::*;
+mod check;
+pub use check::*;
 mod backend;
 pub use backend::*;
 mod stack;

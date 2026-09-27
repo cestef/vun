@@ -1,0 +1,85 @@
+//! Checks of unsafe code at run time (spec 07, section 7; spec 13, section 8.7): what a program
+//! may be built to check, the operations its runtime provides for the checks, and how a failed
+//! one is reported.
+
+/// What a program may be built to check (`std.build.Options.checks`).
+Kind := enum {
+    /// Reads and writes through raw pointers.
+    pointers,
+    /// What allocators hand out and are given back.
+    allocations,
+    /// The memory assembly blocks write, and the stack pointer they return with.
+    asm,
+};
+
+/// At run time, in a program built with `kind` checked, each call of the declaration this marks
+/// is a call of `f`: its arguments, then the call's origin as a `$` `lang.meta.Origin`.
+by: ($kind: Kind, $F: type, $f: F) -> Attribute(&[Place.decls]) = _;
+
+/// The bytes poisoned past a stack slot whose address becomes a raw pointer.
+redzone := 16;
+/// The bytes of freed memory kept poisoned before an allocator may hand them out again.
+quarantine := 1 << 20;
+
+/// Why a check fails, or why memory is poisoned.
+Violation := enum {
+    /// Bytes no object holds: past an allocation, a slot or a datum.
+    outside,
+    /// Memory an allocator was given back.
+    freed,
+    /// A slot of a function that has returned.
+    returned,
+    /// Memory given back twice.
+    double_free,
+    /// Memory given back that the allocator did not hand out.
+    foreign_free,
+    /// Memory given back with another size than it was handed out with.
+    size_mismatch,
+    /// An assembly block returning with the stack pointer moved.
+    stack_moved,
+};
+
+/// How an access touches memory.
+Access := enum { read, write };
+
+/// A failed check: its site in the message table, why it failed, and the address it failed at.
+Failure := struct {
+    site: u32,
+    violation: Violation,
+    address: usize,
+};
+
+/// The link symbols of this namespace's declarations, which a runtime exports.
+symbols := struct {
+    access := "vun_check_access";
+    poison := "vun_check_poison";
+    unpoison := "vun_check_unpoison";
+    allocated := "vun_check_allocated";
+    freed := "vun_check_freed";
+    fail := "vun_check_fail";
+};
+
+/// Why the `bytes` at `address` may not be accessed, if they may not.
+#[link.symbol(symbols.access)]
+access: (address: usize, bytes: usize, access: Access) -> ?Violation = _;
+
+/// Marks the `bytes` at `address` as held by no object, for `why`.
+#[link.symbol(symbols.poison)]
+poison: (address: usize, bytes: usize, why: Violation) = _;
+
+/// Marks the `bytes` at `address` as held by an object.
+#[link.symbol(symbols.unpoison)]
+unpoison: (address: usize, bytes: usize) = _;
+
+/// Records that an allocator handed out the `bytes` at `address`.
+#[link.symbol(symbols.allocated)]
+allocated: (address: usize, bytes: usize) = _;
+
+/// Records that an allocator was given back the `bytes` at `address`; why it may not be, if it
+/// may not.
+#[link.symbol(symbols.freed)]
+freed: (address: usize, bytes: usize) -> ?Violation = _;
+
+/// Reports `f` and ends the program, as a trap does.
+#[link.symbol(symbols.fail)]
+fail: (f: &Failure) -> lang.never = _;

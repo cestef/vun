@@ -14,3 +14,5 @@ pub const deps: Item = Item::new(&["std", "build", "Options", "deps"]);
 /// Its memory map, empty for a program an operating system loads.
 pub const memory: Item = Item::new(&["std", "build", "Options", "memory"]);
 pub const output: Item = Item::new(&["std", "build", "Options", "output"]);
+/// What its unsafe code is checked for at run time (spec 07, section 7).
+pub const checks: Item = Item::new(&["std", "build", "Options", "checks"]);

@@ -14,6 +14,8 @@ pub enum Primitive {
     Arch(arch::Arch),
     /// `lang.bounds`
     Bounds(bounds::Bounds),
+    /// `lang.check`
+    Check(check::Check),
     /// `lang.comptime`
     Comptime(comptime::Comptime),
     /// `lang.diag`
@@ -64,6 +66,7 @@ impl Primitive {
             .chain(abi::Abi::ALL.iter().map(|&p| Self::Abi(p)))
             .chain(arch::Arch::ALL.iter().map(|&p| Self::Arch(p)))
             .chain(bounds::Bounds::ALL.iter().map(|&p| Self::Bounds(p)))
+            .chain(check::Check::ALL.iter().map(|&p| Self::Check(p)))
             .chain(comptime::Comptime::ALL.iter().map(|&p| Self::Comptime(p)))
             .chain(diag::Diag::ALL.iter().map(|&p| Self::Diag(p)))
             .chain(float::Float::ALL.iter().map(|&p| Self::Float(p)))
@@ -93,6 +96,7 @@ impl Primitive {
             Self::Abi(_) => abi::Abi::NAMESPACE,
             Self::Arch(_) => arch::Arch::NAMESPACE,
             Self::Bounds(_) => bounds::Bounds::NAMESPACE,
+            Self::Check(_) => check::Check::NAMESPACE,
             Self::Comptime(_) => comptime::Comptime::NAMESPACE,
             Self::Diag(_) => diag::Diag::NAMESPACE,
             Self::Float(_) => float::Float::NAMESPACE,
@@ -123,6 +127,7 @@ impl Primitive {
             Self::Abi(p) => p.item(),
             Self::Arch(p) => p.item(),
             Self::Bounds(p) => p.item(),
+            Self::Check(p) => p.item(),
             Self::Comptime(p) => p.item(),
             Self::Diag(p) => p.item(),
             Self::Float(p) => p.item(),
@@ -153,6 +158,7 @@ impl Primitive {
             Self::Abi(p) => p.name(),
             Self::Arch(p) => p.name(),
             Self::Bounds(p) => p.name(),
+            Self::Check(p) => p.name(),
             Self::Comptime(p) => p.name(),
             Self::Diag(p) => p.name(),
             Self::Float(p) => p.name(),

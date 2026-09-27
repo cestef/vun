@@ -12,6 +12,8 @@ pub const abi: Item = Item::new(&["lang", "abi"]);
 pub const arch: Item = Item::new(&["lang", "arch"]);
 /// The namespace `lang.bounds`.
 pub const bounds: Item = Item::new(&["lang", "bounds"]);
+/// The namespace `lang.check`.
+pub const check: Item = Item::new(&["lang", "check"]);
 /// The namespace `lang.comptime`.
 pub const comptime: Item = Item::new(&["lang", "comptime"]);
 /// The namespace `lang.diag`.

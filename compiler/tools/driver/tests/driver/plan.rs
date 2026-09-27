@@ -67,7 +67,8 @@ build := (b: &mut std.build.Build) {
             ".dep(.{ .name = .stm32f4, .params = .{ .variant = .f407 } })".to_owned(),
             format!(
                 ".program(.{{ .root = \"app.vun\", .target = {target}, \
-                 .deps = .{{ .{{ .name = .stm32f4, .dep = .{{ .step = .{{ .index = 0 }} }} }} }}, .memory = .{{}}, .output = .executable }})"
+                 .deps = .{{ .{{ .name = .stm32f4, .dep = .{{ .step = .{{ .index = 0 }} }} }} }}, .memory = .{{}}, .output = .executable, \
+                 .checks = .{{}} }})"
             ),
             ".flash(.{ .program = .{ .step = .{ .index = 1 } }, .method = .probe(.{ .chip = \"STM32F407VGTx\" }) })".to_owned(),
             ".test_on(.{ .program = .{ .step = .{ .index = 1 } }, .runner = .qemu(\"lm3s6965\") })".to_owned(),
