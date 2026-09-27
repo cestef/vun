@@ -3,21 +3,19 @@
 
 use std::fmt;
 
-use vun_grammar::{DelimitersRow, NodeKind, SEPARATORS, TokenKind};
+use vun_grammar::{NodeKind, SEPARATORS, TokenKind};
 use vun_syntax::lexer::TO_LINE_END;
 use vun_syntax::tokens::{TokenId, Tokens};
 
 use crate::Layout;
-use crate::spacing::{Between, Tok};
+use crate::spacing::{Between, Group, Tok};
 
 /// One level of indentation.
 const INDENT: &str = "    ";
 
-/// A group still open: its row of `delimiters`, the kind of node its opener anchors, and the
-/// indent of the line holding the opener.
+/// A group still open, and the indent of the line holding its opener.
 struct Open {
-    row: DelimitersRow,
-    anchor: Option<NodeKind>,
+    group: Group,
     indent: usize,
 }
 
@@ -114,9 +112,9 @@ impl<'l, 'a, 'f, 'o> Writer<'l, 'a, 'f, 'o> {
         }
         self.put(text)?;
         self.started = true;
-        let closed = if closing.is_some() { self.groups.pop().and_then(|g| g.anchor) } else { None };
+        let closed = if closing.is_some() { self.groups.pop().and_then(|g| g.group.anchor) } else { None };
         if let Some(row) = tok.kind.delimiter() {
-            self.groups.push(Open { row, anchor: tok.anchor, indent: self.indent });
+            self.groups.push(Open { group: Group { row, anchor: tok.anchor }, indent: self.indent });
         }
         self.last = Some(Last { tok, closed });
         Ok(())
@@ -138,10 +136,10 @@ impl<'l, 'a, 'f, 'o> Writer<'l, 'a, 'f, 'o> {
         Ok(())
     }
 
-    /// The row of the group `t` closes, if it closes the innermost one open.
-    fn closing(&self, t: TokenId) -> Option<DelimitersRow> {
+    /// The group `t` closes, if it closes the innermost one open.
+    fn closing(&self, t: TokenId) -> Option<Group> {
         let kind = self.layout.tokens.kind(t);
-        self.groups.last().map(|g| g.row).filter(|row| row.close == kind)
+        self.groups.last().map(|g| g.group).filter(|g| g.row.close == kind)
     }
 
     /// The indent of a line starting with `t`: its group's closer is at the opener's line, an
@@ -150,7 +148,7 @@ impl<'l, 'a, 'f, 'o> Writer<'l, 'a, 'f, 'o> {
     fn line_indent(&self, t: TokenId) -> usize {
         let kind = self.layout.tokens.kind(t);
         let top = self.groups.last();
-        if let Some(open) = top.filter(|g| g.row.close == kind) {
+        if let Some(open) = top.filter(|g| g.group.row.close == kind) {
             return open.indent;
         }
         let last = self.last.as_ref().map(|l| l.tok.kind);

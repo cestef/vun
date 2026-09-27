@@ -10,3 +10,7 @@ use crate::Item;
 pub const for_pattern: Item = Item::new(
     &["lang", "syntax", "grammar", "Context", "for_pattern"],
 );
+/// After a `.` and before `{`: a block of an architecture's instructions (spec 07, section 6).
+pub const asm_block: Item = Item::new(
+    &["lang", "syntax", "grammar", "Context", "asm_block"],
+);

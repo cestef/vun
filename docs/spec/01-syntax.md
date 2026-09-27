@@ -11,8 +11,9 @@ struct enum                            type literals
 unsafe                                 the audit boundary
 ```
 
-**15 reserved words**, plus **5 contextual** ones: `in` (only after `for <pattern>`), `out`,
-`take`, `static` and `temp` (only after `&`). Lua has 22, Go 25, Rust 39, C 44, Zig 49.
+**15 reserved words**, plus **7 contextual** ones: `in` (only after `for <pattern>`), `out`,
+`take`, `static` and `temp` (only after `&`), `asm` (only between `.` and `{`), and `in`, `out` and
+`inout` opening a value bound to an instruction's operand (spec 07, section 6). Lua has 22, Go 25, Rust 39, C 44, Zig 49.
 
 A reserved word becomes an ordinary name when escaped with a backslash: `\unsafe` is the name
 `unsafe`. The escape is how a declaration mirrors a foreign or domain name that collides with a

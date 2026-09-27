@@ -70,6 +70,13 @@ impl Parser<'_, '_, '_> {
         let mut chain = Chain::new(mark);
         loop {
             let (kind, token) = match self.peek() {
+                TokenKind::Dot if brace == Brace::Continues && self.asm_at() => {
+                    self.asm(mark);
+                    if !self.link(&mut chain) {
+                        return;
+                    }
+                    continue;
+                }
                 TokenKind::Dot => {
                     let token = self.bump();
                     self.member_name();
@@ -147,6 +154,9 @@ impl Parser<'_, '_, '_> {
             }
             TokenKind::DotLBrace => (NodeKind::StructLit, self.group_of(List::Items(Item::Value)).0),
             TokenKind::HashLBrace => (NodeKind::Quote, self.group_of(List::Statements).0),
+            TokenKind::LBrace if brace == Brace::Hole => return self.bound(),
+            TokenKind::Label if brace == Brace::Hole => return self.leaf(NodeKind::Label),
+            TokenKind::LBracket if brace == Brace::Hole => return self.memory(),
             TokenKind::LParen => return self.function_or_tuple(brace),
             TokenKind::LBracket => return self.bracket(brace),
             TokenKind::LBrace | TokenKind::If | TokenKind::For | TokenKind::Match | TokenKind::Label => {

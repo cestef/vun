@@ -1,3 +1,5 @@
+mod asm;
+
 use vun_diag::{DiagCx, DiagId, errors};
 
 use super::MAX_NESTING;

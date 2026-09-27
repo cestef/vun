@@ -12,10 +12,25 @@ pub(crate) struct Tok {
     pub(crate) open: bool,
 }
 
+/// A delimited group: its row of `delimiters`, and the kind of node its opener anchors.
+#[derive(Clone, Copy)]
+pub(crate) struct Group {
+    pub(crate) row: DelimitersRow,
+    pub(crate) anchor: Option<NodeKind>,
+}
+
+impl Group {
+    /// The spacing inside the group: its row's, except that a value bound to an instruction's
+    /// operand is tight, `{in a}`.
+    fn inside(self) -> Spacing {
+        if self.anchor == Some(NodeKind::Bound) { Spacing::Tight } else { self.row.inside }
+    }
+}
+
 /// Where two tokens stand towards the groups around them.
 pub(crate) struct Between {
     /// The group `next` closes, if it closes one.
-    pub(crate) closing: Option<DelimitersRow>,
+    pub(crate) closing: Option<Group>,
     /// The kind of node the opener of the group `prev` closes anchors, if `prev` closes one:
     /// `[4]u8` is an array type.
     pub(crate) closed: Option<NodeKind>,
@@ -26,10 +41,11 @@ impl Tok {
     pub(crate) fn spaced(self, next: Self, between: &Between) -> bool {
         if let Some(row) = self.kind.delimiter() {
             // An empty group is tight: `()`, `.{}`.
-            return next.kind != row.close && row.inside == Spacing::Spaced;
+            let group = Group { row, anchor: self.anchor };
+            return next.kind != row.close && group.inside() == Spacing::Spaced;
         }
-        if let Some(row) = between.closing {
-            return row.inside == Spacing::Spaced;
+        if let Some(group) = between.closing {
+            return group.inside() == Spacing::Spaced;
         }
         if SEPARATORS.contains(&next.kind) || between.closed == Some(NodeKind::ArrayType) {
             return false;
@@ -38,21 +54,25 @@ impl Tok {
         let prefix =
             matches!(self.anchor, Some(NodeKind::Prefix | NodeKind::Spread)) && !self.kind.is_keyword();
         let dot = |t: Self| {
-            t.kind == TokenKind::Dot && matches!(t.anchor, Some(NodeKind::Member | NodeKind::DotName))
+            t.kind == TokenKind::Dot
+                && matches!(
+                    t.anchor,
+                    Some(NodeKind::Member | NodeKind::DotName | NodeKind::Asm | NodeKind::Suffix)
+                )
         };
         if prefix
             || dot(self)
-            || next.anchor == Some(NodeKind::Postfix)
-            || (dot(next) && next.anchor == Some(NodeKind::Member))
+            || matches!(next.anchor, Some(NodeKind::Postfix | NodeKind::Writeback))
+            || (dot(next) && matches!(next.anchor, Some(NodeKind::Member | NodeKind::Asm | NodeKind::Suffix)))
         {
             return false;
         }
-        // A call, an index, a typed literal and a selection open right after what they apply
-        // to: `f(x)`, `a[i]`, `Point{ }`, `..std.{ fmt }`.
+        // A call, an index, a typed literal, a selection and a flow's register open right after
+        // what they apply to: `f(x)`, `a[i]`, `Point{ }`, `..std.{ fmt }`, `{in(rdi) p}`.
         let applied = matches!(
             next.anchor,
             Some(NodeKind::Call | NodeKind::Index | NodeKind::TypedLit | NodeKind::Select)
-        );
+        ) || self.anchor == Some(NodeKind::Flow);
         if next.kind.opens() && applied {
             return false;
         }

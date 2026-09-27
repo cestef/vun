@@ -20,6 +20,9 @@ pub const Context: Item = Item::new(&["lang", "syntax", "grammar", "Context"]);
 /// of how long a call holds the borrow, then a word of what it does to the place. `mut` is a
 /// keyword; the others are words only there.
 pub const BorrowWord: Item = Item::new(&["lang", "syntax", "grammar", "BorrowWord"]);
+/// The words opening a value bound to an instruction's operand (spec 07, section 6): whether the
+/// instruction reads it, writes it, or both. They are words only there.
+pub const Flow: Item = Item::new(&["lang", "syntax", "grammar", "Flow"]);
 /// How an infix operator groups with its own level.
 pub const Assoc: Item = Item::new(&["lang", "syntax", "grammar", "Assoc"]);
 /// Words that are keywords only in one context.

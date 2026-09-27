@@ -64,6 +64,11 @@ impl NodeKind {
             Self::Yield => YIELD,
             Self::Defer => DEFER,
             Self::MultilineString => MULTILINE_STRING,
+            Self::Asm => ASM,
+            Self::Line => LINE,
+            Self::Suffix => SUFFIX,
+            Self::Bound => BOUND,
+            Self::Memory => MEMORY,
             _ => &[],
         }
     }
@@ -209,4 +214,24 @@ const YIELD: &[NodeSlot] = &[NodeSlot::new(NodeField::Value, Count::One, None)];
 const DEFER: &[NodeSlot] = &[NodeSlot::new(NodeField::Body, Count::One, None)];
 const MULTILINE_STRING: &[NodeSlot] = &[
     NodeSlot::new(NodeField::Lines, Count::Many, None),
+];
+const ASM: &[NodeSlot] = &[
+    NodeSlot::new(NodeField::Target, Count::One, None),
+    NodeSlot::new(NodeField::Lines, Count::Many, None),
+];
+const LINE: &[NodeSlot] = &[
+    NodeSlot::new(NodeField::Suffix, Count::Optional, Some(NodeKind::Suffix)),
+    NodeSlot::new(NodeField::Operands, Count::Many, None),
+];
+const SUFFIX: &[NodeSlot] = &[
+    NodeSlot::new(NodeField::Name, Count::One, Some(NodeKind::Name)),
+];
+const BOUND: &[NodeSlot] = &[
+    NodeSlot::new(NodeField::Flow, Count::Optional, Some(NodeKind::Flow)),
+    NodeSlot::new(NodeField::Register, Count::Optional, None),
+    NodeSlot::new(NodeField::Value, Count::One, None),
+];
+const MEMORY: &[NodeSlot] = &[
+    NodeSlot::new(NodeField::Parts, Count::Many, None),
+    NodeSlot::new(NodeField::Writeback, Count::Optional, Some(NodeKind::Writeback)),
 ];

@@ -23,6 +23,8 @@ pub enum NodeKind {
     RawStringLine,
     Label,
     Rest,
+    Flow,
+    Writeback,
     Error,
     File,
     Doc,
@@ -72,6 +74,11 @@ pub enum NodeKind {
     Yield,
     Defer,
     MultilineString,
+    Asm,
+    Line,
+    Suffix,
+    Bound,
+    Memory,
 }
 impl NodeKind {
     pub const LEAVES: &[Self] = &[
@@ -88,6 +95,8 @@ impl NodeKind {
         Self::RawStringLine,
         Self::Label,
         Self::Rest,
+        Self::Flow,
+        Self::Writeback,
     ];
     pub const BRANCHES: &[Self] = &[
         Self::Error,
@@ -139,5 +148,10 @@ impl NodeKind {
         Self::Yield,
         Self::Defer,
         Self::MultilineString,
+        Self::Asm,
+        Self::Line,
+        Self::Suffix,
+        Self::Bound,
+        Self::Memory,
     ];
 }

@@ -17,4 +17,8 @@ pub const CONTEXTUAL: &[ContextualRow] = &[
         text: "in",
         context: Context::ForPattern,
     },
+    ContextualRow {
+        text: "asm",
+        context: Context::AsmBlock,
+    },
 ];

@@ -149,10 +149,13 @@ add3 := (a: u64) -> u64 {
 };
 ```
 
-- **A block of instructions.** `lang.arch.<arch>.asm { ... }` holds one instruction per line in
-  the architecture's usual syntax. It is read at compile time against the architecture's table,
-  into typed values of it; the block is an expression of type `()`, or `never` when its last
-  instruction does not return. It is `unsafe`.
+- **A block of instructions.** `lang.arch.<arch>.asm { ... }` holds one instruction per line in the
+  architecture's usual syntax: the mnemonic, then operands separated by `,` up to the line's end,
+  `[...]` holding a memory operand's parts. `asm` is a contextual word, the block's only when `{`
+  follows it where a brace continues an expression, so `if c.asm { }` reads the member `asm`.
+  Immediates are plain integers on every architecture (`add x0, x0, 1`, no `#`). It is read at
+  compile time against the architecture's table, into typed values of it; the block is an expression
+  of type `()`, or `never` when its last instruction does not return. It is `unsafe`.
 - **Operands are Vun.** A register is named as the table names it. An immediate is an integer
   expression the form's width must hold. `{name}` is a declaration's address, relocated when
   linking. `{in e}` passes the value of `e` in a register the backend picks, `{out p}` writes a

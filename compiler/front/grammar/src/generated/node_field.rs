@@ -52,6 +52,13 @@ pub enum NodeField {
     Body,
     Label,
     Lines,
+    Suffix,
+    Operands,
+    Name,
+    Flow,
+    Register,
+    Parts,
+    Writeback,
 }
 impl NodeField {
     /// The name of this field in `grammar.vun`.
@@ -102,6 +109,13 @@ impl NodeField {
             Self::Body => "body",
             Self::Label => "label",
             Self::Lines => "lines",
+            Self::Suffix => "suffix",
+            Self::Operands => "operands",
+            Self::Name => "name",
+            Self::Flow => "flow",
+            Self::Register => "register",
+            Self::Parts => "parts",
+            Self::Writeback => "writeback",
         }
     }
 }

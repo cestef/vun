@@ -94,3 +94,11 @@ fn raw_string_lines_keep_one_indent() {
 fn line_breaks_are_normalized_to_newlines() {
     check("x := 1;\r\ny := 2;\r\n", "x := 1;\ny := 2;\n");
 }
+
+#[test]
+fn bound_operands_are_tight() {
+    check(
+        "f := () {\n    a.asm {\n'top :\n        lea { out r } , [ { in(rsi) p } + 3 ] !\n    b . ne 'top\n    }\n};\n",
+        "f := () {\n    a.asm {\n        'top:\n        lea {out r}, [{in(rsi) p} + 3]!\n        b.ne 'top\n    }\n};\n",
+    );
+}

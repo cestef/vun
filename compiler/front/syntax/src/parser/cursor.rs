@@ -12,6 +12,11 @@ impl Parser<'_, '_, '_> {
         TokenId::new(self.pos)
     }
 
+    /// The token `ahead` of the current one, the last when past the end.
+    pub(super) fn current_plus(&self, ahead: usize) -> TokenId {
+        TokenId::new((self.pos + ahead).min(self.tokens.len() - 1))
+    }
+
     pub(super) fn nth(&self, ahead: usize) -> TokenKind {
         let last = self.tokens.len() - 1;
         self.tokens.kind(TokenId::new((self.pos + ahead).min(last)))

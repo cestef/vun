@@ -15,6 +15,7 @@ use vun_trace::tracing;
 use crate::cst::{Builder, Cst};
 use crate::tokens::Tokens;
 
+mod asm;
 mod control;
 mod cursor;
 mod entries;
@@ -43,11 +44,13 @@ impl Cst {
 }
 
 /// Whether a `{` after an operand continues the expression. In the head of `if`, `for` and
-/// `match`, and in a result type, it opens the body instead.
+/// `match`, and in a result type, it opens the body instead. Among an instruction's operands, it
+/// opens a Vun value bound to one (`{in e}`), and `[` a memory operand.
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Brace {
     Continues,
     Ends,
+    Hole,
 }
 
 /// What a list holds.
