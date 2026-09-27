@@ -24,7 +24,7 @@ pub use bitmask::Bitmask;
 pub use encode::Emit;
 pub use inst::Inst;
 pub use operand::{Barrier, Extend, Mem, Operand, Scale, Shift, ShiftKind};
-pub use reg::{Cc, Reg, Size, V};
+pub use reg::{Cc, Class, Reg, Size, V};
 pub use table::{Access, Arg, Branch, Cond, Form, Imm, Kind, Mode, Op, R31, Shifts, Sized, Width};
 
 /// The instruction set, as `vun-asm` knows it.

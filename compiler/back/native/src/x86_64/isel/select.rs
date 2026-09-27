@@ -8,6 +8,7 @@ use vun_codegen::Cx;
 use vun_codegen::snippet::Snippet;
 use vun_lir::{Access, BinOp, Callee, CastOp, Cond, Inst, InstKind, Order, Reads, RmwOp, Scalar, Value};
 
+use super::asm::Encoded;
 use crate::width::size_of;
 use crate::x86_64::snippets::{
     ADD, AND, COMPARE_EXCHANGE, DOUBLE_TO_INT, FADD, FCOMPARE, FDIV, FEQUAL, FETCH_ADD, FETCH_SUB, FMUL,
@@ -50,6 +51,7 @@ pub(super) enum Selection<'f> {
         value: Value,
         precision: Size,
     },
+    Asm(&'f vun_lir::Asm),
 }
 
 /// The function compiled, read without emitting.
@@ -154,7 +156,10 @@ impl<'a> Look<'_, 'a> {
             }
             &InstKind::Offset { base, offset } => snippet(ADD, &[base, offset], Size::B64, None),
             &InstKind::Copy { to, from, bytes } => Selection::Copy { to, from, bytes },
-            InstKind::Asm(_) => return Err(self.0.lack(Missing::Asm)),
+            InstKind::Asm(asm) => {
+                asm.check()?;
+                Selection::Asm(asm)
+            }
             InstKind::Const { .. } | InstKind::SlotAddr(_) | InstKind::Addr(_) => {
                 unreachable!("recomputed where used")
             }

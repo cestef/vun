@@ -19,6 +19,13 @@ pub trait Emit<S: Copy> {
     /// # Panics
     /// Panics if no form takes them: callers choose operands a form takes (`Op::form`).
     fn emit(&mut self, op: Op, size: Size, operands: &[Operand<S>]);
+
+    /// Emits `op` at `size` over `operands` by its form `form`, the one a block of inline
+    /// assembly was checked against.
+    ///
+    /// # Panics
+    /// Panics if `form` does not take them.
+    fn emit_by(&mut self, op: Op, form: &'static Form, size: Size, operands: &[Operand<S>]);
 }
 
 impl<S: Copy> Emit<S> for Asm<S> {
@@ -26,11 +33,21 @@ impl<S: Copy> Emit<S> for Asm<S> {
         let Some(form) = op.form(size, operands) else {
             panic!("no form of `{}` at {size:?} takes these {} operands", op.mnemonic(), operands.len())
         };
-        let at = self.here();
-        encode(self, form, size, operands);
-        if self.lists() {
-            self.list(at, Inst::new(op, size, operands));
-        }
+        put(self, op, form, size, operands);
+    }
+
+    fn emit_by(&mut self, op: Op, form: &'static Form, size: Size, operands: &[Operand<S>]) {
+        assert!(form.takes(size, operands), "the form of `{}` does not take these operands", op.mnemonic());
+        put(self, op, form, size, operands);
+    }
+}
+
+/// Encodes `op` by `form`, listing it where the code is listed.
+fn put<S: Copy>(asm: &mut Asm<S>, op: Op, form: &Form, size: Size, operands: &[Operand<S>]) {
+    let at = asm.here();
+    encode(asm, form, size, operands);
+    if asm.lists() {
+        asm.list(at, Inst::new(op, size, operands));
     }
 }
 

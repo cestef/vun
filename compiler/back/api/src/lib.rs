@@ -5,7 +5,7 @@
 
 mod lack;
 
-pub use lack::{Lack, Missing};
+pub use lack::{AsmOperand, Lack, Missing};
 
 use std::path::PathBuf;
 

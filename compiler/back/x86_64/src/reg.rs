@@ -3,7 +3,7 @@
 use std::fmt;
 
 use crate::generated::NAMES;
-pub use crate::generated::Reg;
+pub use crate::generated::{Class, Reg};
 
 impl Reg {
     /// Its number, 0 to 15.

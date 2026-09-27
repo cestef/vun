@@ -18,7 +18,7 @@ mod tests;
 pub use encode::Emit;
 pub use inst::Inst;
 pub use operand::{Base, Mem, Operand};
-pub use reg::{Cc, Reg, Size, Xmm};
+pub use reg::{Cc, Class, Reg, Size, Xmm};
 pub use table::{Access, Form, Kind, Layout, Op, Prefix, Slot, W};
 
 /// The instruction set, as `vun-asm` knows it.

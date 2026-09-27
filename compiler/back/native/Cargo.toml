@@ -18,6 +18,7 @@ vun-backend.workspace = true
 vun-codegen.workspace = true
 vun-diag.workspace = true
 vun-index.workspace = true
+vun-inline.workspace = true
 vun-lir.workspace = true
 vun-object.workspace = true
 vun-dwarf.workspace = true
@@ -31,4 +32,5 @@ vun-trace.workspace = true
 yaxpeax-arm = { workspace = true }
 yaxpeax-arch = { workspace = true }
 vun-intern.workspace = true
+vun-items.workspace = true
 vun-span.workspace = true

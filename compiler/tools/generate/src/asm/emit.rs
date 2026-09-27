@@ -16,6 +16,8 @@ const REG: &str = "Reg";
 const NAMES: &str = "names";
 /// The conditions, in encoding order.
 const COND: &str = "Cond";
+/// The classes of registers an operand names.
+const CLASS: &str = "Class";
 /// The modules of the `Op` enum, its mnemonics and its forms.
 const OPS: &str = "ops";
 const MNEMONICS: &str = "mnemonics";
@@ -45,9 +47,11 @@ impl Crate {
         let shape = |what: Msg| self.generator.error(SHAPE, self.arch, what);
         let registers = self.registers(table);
         let conditions = Self::conditions(table);
+        let classes = Self::classes(table);
         let mut modules = vec![
             registers.ok_or_else(|| shape(Msg::new().text("declares its registers unreadably")))?,
             conditions.ok_or_else(|| shape(Msg::new().text("declares its conditions unreadably")))?,
+            classes.ok_or_else(|| shape(Msg::new().text("declares its register classes unreadably")))?,
         ];
         for inst in &table.instructions {
             let forms = inst.forms.iter().map(|f| form(self, f)).collect::<Option<Vec<_>>>();
@@ -148,21 +152,41 @@ impl Crate {
     /// it.
     fn conditions(table: &Table<'_, '_>) -> Option<Module> {
         let conds = table.own(COND)?.value.members()?;
-        let variants: Vec<_> = conds.iter().map(|c| pascal(c.name)).collect();
         let names = conds.iter().map(|c| c.name);
-        let docs = conds.iter().map(|c| crate::names::docs(&c.doc));
         let count = conds.len();
+        let enumeration = Self::enumeration(table, COND, &quote! { Cc })?;
         let items = quote! {
             /// A condition, by its encoding.
-            #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-            pub enum Cc { #(#(#[doc = #docs])* #variants,)* }
-            impl Cc {
-                pub const ALL: [Self; #count] = [#(Self::#variants),*];
-            }
+            #enumeration
             /// Each condition's name, in encoding order.
             pub(crate) const CONDITIONS: [&str; #count] = [#(#names),*];
         };
         Some(Module { name: COND.to_ascii_lowercase(), access: Access::Glob, items })
+    }
+
+    /// The `Class` enum of the register classes, in the order an operand's class is numbered.
+    fn classes(table: &Table<'_, '_>) -> Option<Module> {
+        let enumeration = Self::enumeration(table, CLASS, &quote! { Class })?;
+        let items = quote! {
+            /// A class of registers.
+            #enumeration
+        };
+        Some(Module { name: CLASS.to_ascii_lowercase(), access: Access::Glob, items })
+    }
+
+    /// The enum `rust` of the variants of the table's enum `name`, in their order, with `ALL`.
+    fn enumeration(table: &Table<'_, '_>, name: &str, rust: &TokenStream) -> Option<TokenStream> {
+        let members = table.own(name)?.value.members()?;
+        let variants: Vec<_> = members.iter().map(|m| pascal(m.name)).collect();
+        let docs = members.iter().map(|m| crate::names::docs(&m.doc));
+        let count = members.len();
+        Some(quote! {
+            #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+            pub enum #rust { #(#(#[doc = #docs])* #variants,)* }
+            impl #rust {
+                pub const ALL: [Self; #count] = [#(Self::#variants),*];
+            }
+        })
     }
 
     /// The variant a `.name` value names of the Vun type `ty`, by its path from the crate root.

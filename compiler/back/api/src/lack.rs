@@ -33,6 +33,24 @@ pub enum Missing {
     FloatPart(u64),
     /// A block of inline assembly.
     Asm,
+    /// An operand of inline assembly the backend cannot place.
+    AsmOperand(AsmOperand),
+}
+
+/// Operands of inline assembly a backend may have no encoding or no register for.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum AsmOperand {
+    /// Memory with an index register.
+    Indexed,
+    /// Memory at a symbol's address past a register.
+    SymbolOffRegister,
+    /// Memory at a fixed address, with no register or symbol.
+    Absolute,
+    /// Memory at the address of something another module defines, which only its entry in the
+    /// global offset table holds.
+    Imported,
+    /// A value bound in a register of a class no value is allocated to.
+    Unallocated,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -85,6 +103,16 @@ impl Missing {
             Missing::Format(f) => Msg::new().text("objects of format ").code(f.as_str()),
             Missing::Convention => Msg::new().text("the calling convention of this target"),
             Missing::Asm => Msg::new().text("inline assembly"),
+            Missing::AsmOperand(operand) => {
+                let what = match operand {
+                    AsmOperand::Indexed => "memory with an index register",
+                    AsmOperand::SymbolOffRegister => "memory at a symbol's address past a register",
+                    AsmOperand::Absolute => "memory at a fixed address",
+                    AsmOperand::Imported => "memory at a symbol another module defines",
+                    AsmOperand::Unallocated => "a value bound to a register of this class",
+                };
+                Msg::new().text(what).text(" in inline assembly")
+            }
             Missing::FloatPart(n) => {
                 Msg::new().text("a C record passing ").num(n).text(" bytes of floats in a register")
             }

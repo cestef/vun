@@ -22,7 +22,7 @@ pub use cx::{Compiled, Cx, Fused, Layout, compile};
 pub use frame::Frame;
 pub use pieces::pieces;
 pub use values::{Anchor, Place, Recompute};
-pub use vun_regalloc::{Bank, Need, Needs, Out, PReg, Read};
+pub use vun_regalloc::{Bank, Need, Needs, Out, PReg, Read, RegSet};
 
 use vun_backend::Lack;
 use vun_lir::{Address, Block, Cond, Function, Inst};

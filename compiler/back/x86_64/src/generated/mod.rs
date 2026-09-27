@@ -3,6 +3,8 @@ mod reg;
 pub use reg::*;
 mod cond;
 pub use cond::*;
+mod class;
+pub use class::*;
 mod add;
 mod or;
 mod and;

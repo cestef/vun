@@ -6,7 +6,7 @@ use crate::generated::NAMES;
 /// A general-purpose register. Register 31 is the stack pointer in some operands and the zero
 /// register in others: the two are distinct registers here, and each operand kind takes the one
 /// its field means (`Kind::Gpr`), so neither is ever guessed.
-pub use crate::generated::Reg;
+pub use crate::generated::{Class, Reg};
 
 /// The encoding the stack pointer and the zero register share.
 const SP_ZR: u8 = 31;
