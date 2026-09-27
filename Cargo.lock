@@ -1065,6 +1065,7 @@ dependencies = [
  "vun-grammar",
  "vun-hir",
  "vun-origin",
+ "vun-query",
  "vun-regalloc",
  "vun-render-annotate",
  "vun-render-ariadne",
@@ -1160,6 +1161,16 @@ name = "vun-index"
 version = "0.0.0"
 dependencies = [
  "vun-codec",
+]
+
+[[package]]
+name = "vun-inline"
+version = "0.0.0"
+dependencies = [
+ "vun-codec",
+ "vun-items",
+ "vun-origin",
+ "vun-span",
 ]
 
 [[package]]
@@ -1290,7 +1301,9 @@ dependencies = [
  "vun-diag",
  "vun-hash",
  "vun-index",
+ "vun-inline",
  "vun-intern",
+ "vun-items",
  "vun-origin",
  "vun-span",
  "vun-target",
@@ -1318,6 +1331,7 @@ dependencies = [
  "vun-hash",
  "vun-hir",
  "vun-index",
+ "vun-inline",
  "vun-intern",
  "vun-items",
  "vun-lir",
@@ -1348,6 +1362,7 @@ dependencies = [
  "vun-hash",
  "vun-hir",
  "vun-index",
+ "vun-inline",
  "vun-intern",
  "vun-items",
  "vun-origin",

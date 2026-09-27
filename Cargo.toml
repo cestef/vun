@@ -23,6 +23,7 @@ vun-bytes = { path = "compiler/base/bytes" }
 vun-fs = { path = "compiler/base/fs" }
 vun-outline = { path = "compiler/base/outline" }
 vun-span = { path = "compiler/base/span" }
+vun-inline = { path = "compiler/base/inline" }
 vun-intern = { path = "compiler/base/intern" }
 vun-origin = { path = "compiler/base/origin" }
 vun-diag = { path = "compiler/base/diag" }
