@@ -195,6 +195,7 @@ fn the_verifier_checks_what_an_assembly_block_binds_and_where_it_ends() {
         let mut b = Builder::new(Linkage::Internal, signature, o);
         let slot = b.slot(8, 8, o);
         let place = if bind_slot { b.slot_addr(slot, o) } else { b.constant(Scalar::I64, 8, o) };
+        let place = crate::Output { addr: place, ty: Scalar::I64 };
         let operands = vec![Operand::Bound(Bound::Out { place, reg: None })];
         let inst = Inst { op: OpId(0), form: FormId(0), size: SizeId(3), operands, origin: o };
         let arch = vun_items::lang::arch_x86_64::arith.parent().expect("a namespace");

@@ -250,8 +250,8 @@ impl Checker<'_> {
     /// does not return ends its block, as unreachable.
     fn asm(&self, inst: Inst, asm: &Asm) -> Result<(), Malformed> {
         let at = Entity::Inst(self.id, inst);
-        for (&address, _) in asm.outputs() {
-            self.expect(at, address, Scalar::Ptr)?;
+        for (output, _) in asm.outputs() {
+            self.expect(at, output.addr, Scalar::Ptr)?;
         }
         for read in asm.reads() {
             if let vun_inline::Read::Symbol(&address) = read {

@@ -152,12 +152,15 @@ impl fmt::Display for InstKind {
             Self::Asm(asm) => {
                 write!(f, "asm {} ({} instructions)", asm.arch, asm.insts.len())?;
                 for bound in asm.bindings() {
-                    let binding = match bound {
-                        vun_inline::Bound::In { .. } => "in",
-                        vun_inline::Bound::Out { .. } => "out",
-                        vun_inline::Bound::InOut { .. } => "inout",
+                    let (kind, place) = match bound {
+                        vun_inline::Bound::In { value, .. } => {
+                            write!(f, " in {value}")?;
+                            continue;
+                        }
+                        vun_inline::Bound::Out { place, .. } => ("out", place),
+                        vun_inline::Bound::InOut { place, .. } => ("inout", place),
                     };
-                    write!(f, " {binding} {}", bound.bound())?;
+                    write!(f, " {kind} {} {}", place.ty, place.addr)?;
                 }
                 Ok(())
             }

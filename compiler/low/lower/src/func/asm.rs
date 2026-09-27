@@ -1,8 +1,8 @@
-//! Assembly blocks: an input binds the value it holds, an output the address of its place, and a
-//! symbol the address of the function, link symbol or static it names.
+//! Assembly blocks: an input binds the value it holds, an output the address and scalar type of
+//! its place, and a symbol the address of the function, link symbol or static it names.
 
 use vun_inline::Rebind;
-use vun_lir::{Address, InstKind, Value};
+use vun_lir::{Address, InstKind, Output, Value};
 use vun_mir::{Asm, Operand, Place};
 
 use super::{FnLower, Storage};
@@ -19,7 +19,7 @@ impl Binder<'_, '_, '_, '_> {
 
 impl Rebind<Operand, Place, Operand> for Binder<'_, '_, '_, '_> {
     type Value = Value;
-    type Place = Value;
+    type Place = Output;
     type Symbol = Address;
     type Error = Unlowered;
 
@@ -27,8 +27,9 @@ impl Rebind<Operand, Place, Operand> for Binder<'_, '_, '_, '_> {
         self.0.scalar_operand(&value)
     }
 
-    fn place(&mut self, place: Place) -> Result<Value, Unlowered> {
-        self.0.reach(&place)?.map(|r| r.addr).ok_or_else(|| self.unsupported())
+    fn place(&mut self, place: Place) -> Result<Output, Unlowered> {
+        let reached = self.0.reach(&place)?.ok_or_else(|| self.unsupported())?;
+        Ok(Output { addr: reached.addr, ty: self.0.scalar_of(reached.ty)? })
     }
 
     fn symbol(&mut self, symbol: Operand) -> Result<Address, Unlowered> {

@@ -91,17 +91,20 @@ impl<V, P, S> Block<V, P, S> {
     }
 }
 
-impl<T> Bound<T, T> {
-    /// What it binds, where values and places are of one kind.
-    pub fn bound(&self) -> &T {
+impl<V, P: AsRef<V> + AsMut<V>> Bound<V, P> {
+    /// The value it binds, where a place is reached through one: an input's own, an output's
+    /// address.
+    pub fn bound(&self) -> &V {
         match self {
-            Self::In { value: t, .. } | Self::Out { place: t, .. } | Self::InOut { place: t, .. } => t,
+            Self::In { value, .. } => value,
+            Self::Out { place, .. } | Self::InOut { place, .. } => place.as_ref(),
         }
     }
 
-    pub fn bound_mut(&mut self) -> &mut T {
+    pub fn bound_mut(&mut self) -> &mut V {
         match self {
-            Self::In { value: t, .. } | Self::Out { place: t, .. } | Self::InOut { place: t, .. } => t,
+            Self::In { value, .. } => value,
+            Self::Out { place, .. } | Self::InOut { place, .. } => place.as_mut(),
         }
     }
 }

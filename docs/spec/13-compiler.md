@@ -164,11 +164,11 @@ per second per stage and fails on regressions.
   An inline assembly block (spec 07, decision 258) is one MIR statement (`Rvalue::Asm`) and one
   LIR instruction (`InstKind::Asm`), both carrying the block's typed instructions
   (`vun_inline::Block`) over its bindings: in MIR the operands it reads and the places it
-  writes, in LIR the values it reads and the addresses of the places it writes, and in both the
-  addresses of the declarations it names. It defines no value. The place checks read its inputs
-  and in-out places, then write its outputs; the borrow check takes an output as an exclusive
-  access; passes take it as acting and impure (`InstKind::acts`, `InstKind::pure`), so nothing
-  moves across it and it is never swept. A block that does not return is the last statement of
+  writes, in LIR the values it reads and the addresses and scalar types of the places it
+  writes, and in both the addresses of the declarations it names. It defines no value. The
+  place checks read its inputs and in-out places, then write its outputs; the borrow check
+  takes an output as an exclusive access; passes take it as acting and impure
+  (`InstKind::acts`, `InstKind::pure`), so nothing moves across it and it is never swept. A block that does not return is the last statement of
   its block, whose terminator is unreachable, and both verifiers check it; LIR's also checks that
   outputs are addresses. Clobbers are not carried: the backend derives them from the forms.
   Functions, data and imports are named by id, and only exports and imports carry link symbols.

@@ -48,7 +48,26 @@ pub enum InstKind {
 }
 
 /// An assembly block binding values, and the addresses of what it writes.
-pub type Asm = vun_inline::Block<Value, Value, Address>;
+pub type Asm = vun_inline::Block<Value, Output, Address>;
+
+/// What an assembly block writes: the scalar of type `ty` at `addr`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encode, Decode)]
+pub struct Output {
+    pub addr: Value,
+    pub ty: Scalar,
+}
+
+impl AsRef<Value> for Output {
+    fn as_ref(&self) -> &Value {
+        &self.addr
+    }
+}
+
+impl AsMut<Value> for Output {
+    fn as_mut(&mut self) -> &mut Value {
+        &mut self.addr
+    }
+}
 
 /// A comparison: integers as signed or unsigned, floats ordered.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encode, Decode)]
