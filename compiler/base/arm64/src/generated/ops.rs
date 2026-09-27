@@ -18,6 +18,10 @@ pub enum Op {
     /// A data memory barrier: accesses the barrier orders complete, as its operand says, before any
     /// after it.
     Dmb,
+    /// Reads a system register.
+    Mrs,
+    /// Writes a system register.
+    Msr,
     Fmov,
     /// Two operands into a third.
     Fadd,
@@ -193,6 +197,8 @@ impl Op {
         Self::Brk,
         Self::Adrp,
         Self::Dmb,
+        Self::Mrs,
+        Self::Msr,
         Self::Fmov,
         Self::Fadd,
         Self::Fsub,

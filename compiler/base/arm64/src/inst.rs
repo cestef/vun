@@ -96,6 +96,7 @@ impl Kind {
             (Self::Mem(_, width), Operand::Mem(mem)) => mem.write(f, width.at(size)),
             (_, Operand::Cond(cc)) => write!(f, "{cc}"),
             (_, Operand::Barrier(b)) => f.write_str(b.name()),
+            (_, Operand::Sys(r)) => f.write_str(r.name()),
             (_, Operand::Label(label)) => write!(f, "{label}"),
             (_, Operand::Sym(target) | Operand::Page(target, Via::Direct)) => write!(f, "{target}"),
             (_, Operand::Page(target, Via::Got)) => write!(f, ":got:{target}"),

@@ -42,15 +42,7 @@ pub(crate) trait Inline: Isel {
 
     /// Checks through `check.write` the `bytes` the next instruction writes at `at`, keeping every
     /// register and the flags as they were.
-    ///
-    /// # Errors
-    /// What the architecture lacks for it.
-    fn check_write(
-        code: &mut Code<Self>,
-        at: &Encoded<Self>,
-        bytes: u32,
-        check: &AsmCheck,
-    ) -> Result<(), Missing>;
+    fn check_write(code: &mut Code<Self>, at: &Encoded<Self>, bytes: u32, check: &AsmCheck);
 
     /// Writes the stack pointer into `dst`.
     fn stack(code: &mut Code<Self>, dst: Self::Reg);
@@ -207,7 +199,7 @@ impl Inlined for Asm {
                 .map(|(kind, o)| A::Table::operand(o, kind, &mut placed));
             let operands: Vec<_> = operands.collect();
             if let (Some(check), Some((at, bytes))) = (check, A::Table::written(inst)) {
-                A::check_write(&mut cx.asm, &operands[at], bytes, check).map_err(|m| m.at(inst.origin))?;
+                A::check_write(&mut cx.asm, &operands[at], bytes, check);
             }
             A::emit(&mut cx.asm, inst, &operands)
                 .map_err(|Untaken| Missing::AsmOperand(AsmOperand::Unencodable).at(inst.origin))?;

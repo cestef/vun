@@ -5,7 +5,6 @@
 
 use vun_asm::{AsmOperand, Blocks, Untaken};
 use vun_asm_x86_64::{Base, Cc, Emit, Kind, Mem, Op, Operand, Reg, Size, X86_64};
-use vun_backend::Missing;
 use vun_codegen::Code;
 use vun_inline::Disp;
 use vun_lir::{Address, AsmCheck};
@@ -37,12 +36,7 @@ impl Inline for X86 {
         code.emit_by(op, form, Size::of(inst.size), operands)
     }
 
-    fn check_write(
-        code: &mut Code<Self>,
-        at: &Operand<Address>,
-        bytes: u32,
-        check: &AsmCheck,
-    ) -> Result<(), Missing> {
+    fn check_write(code: &mut Code<Self>, at: &Operand<Address>, bytes: u32, check: &AsmCheck) {
         code.emit(Op::Pushf, Size::B64, &[]);
         for r in KEPT {
             code.emit(Op::Push, Size::B64, &[r.into()]);
@@ -66,7 +60,6 @@ impl Inline for X86 {
             code.emit(Op::Pop, Size::B64, &[r.into()]);
         }
         code.emit(Op::Popf, Size::B64, &[]);
-        Ok(())
     }
 
     fn stack(code: &mut Code<Self>, dst: Reg) {

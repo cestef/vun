@@ -34,6 +34,7 @@ pub mod arch_arm64_Reg;
 pub mod arch_arm64_Shifts;
 pub mod arch_arm64_Size;
 pub mod arch_arm64_Sized;
+pub mod arch_arm64_SysReg;
 pub mod arch_arm64_V;
 pub mod arch_arm64_Width;
 pub mod arch_arm64_Word;

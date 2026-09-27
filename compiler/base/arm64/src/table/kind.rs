@@ -2,8 +2,8 @@
 //! bit its argument starts at. Whether an operand fits is whether it encodes: one function
 //! answers both, so a form never takes what it cannot encode.
 
-use vun_isa::imm::{fits_signed, truncate};
 use vun_isa::Via;
+use vun_isa::imm::{fits_signed, truncate};
 
 use crate::Fixup;
 use crate::bitmask::Bitmask;
@@ -238,6 +238,8 @@ pub enum Kind {
     Lo12,
     /// What a barrier orders (`dmb`).
     Barrier,
+    /// A system register (`mrs`, `msr`).
+    Sys,
 }
 
 impl Kind {
@@ -265,6 +267,7 @@ impl Kind {
             (Self::Cond(Cond::Inverted), Operand::Cond(cc)) => Some(u32::from(cc.not().number())),
             (Self::Cond(_), Operand::Cond(cc)) => Some(u32::from(cc.number())),
             (Self::Barrier, Operand::Barrier(b)) => Some(b.field()),
+            (Self::Sys, Operand::Sys(r)) => Some(r.field()),
             (Self::Target(_), Operand::Label(_) | Operand::Sym(_))
             | (Self::Page, Operand::Page(..))
             | (Self::Lo12, Operand::Lo12(_)) => Some(0),

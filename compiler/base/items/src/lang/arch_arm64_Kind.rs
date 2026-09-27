@@ -24,3 +24,5 @@ pub const page: Item = Item::new(&["lang", "arch", "arm64", "Kind", "page"]);
 pub const lo12: Item = Item::new(&["lang", "arch", "arm64", "Kind", "lo12"]);
 /// What a barrier orders (`dmb`).
 pub const barrier: Item = Item::new(&["lang", "arch", "arm64", "Kind", "barrier"]);
+/// A system register (`mrs`, `msr`).
+pub const sys: Item = Item::new(&["lang", "arch", "arm64", "Kind", "sys"]);

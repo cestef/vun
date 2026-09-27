@@ -22,3 +22,7 @@ pub const adrp: Item = Item::new(&["lang", "arch", "arm64", "control", "adrp"]);
 /// A data memory barrier: accesses the barrier orders complete, as its operand says, before any
 /// after it.
 pub const dmb: Item = Item::new(&["lang", "arch", "arm64", "control", "dmb"]);
+/// Reads a system register.
+pub const mrs: Item = Item::new(&["lang", "arch", "arm64", "control", "mrs"]);
+/// Writes a system register.
+pub const msr: Item = Item::new(&["lang", "arch", "arm64", "control", "msr"]);

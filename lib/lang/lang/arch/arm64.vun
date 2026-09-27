@@ -132,6 +132,9 @@ fp_names := .{
 /// stores (`st`) or both.
 Barrier := enum { oshld, oshst, osh, nshld, nshst, nsh, ishld, ishst, ish, ld, st, sy };
 
+/// A system register `mrs` reads and `msr` writes: the condition flags (`nzcv`).
+SysReg := enum { nzcv };
+
 /// What register 31 is at a position.
 R31 := enum { zr, sp };
 
@@ -218,6 +221,8 @@ Kind := enum {
     lo12,
     /// What a barrier orders (`dmb`).
     barrier,
+    /// A system register (`mrs`, `msr`).
+    sys,
 };
 
 /// What a form does with an operand, or with the flags.

@@ -17,6 +17,8 @@ mod udf;
 mod brk;
 mod adrp;
 mod dmb;
+mod mrs;
+mod msr;
 mod fmov;
 mod fadd;
 mod fsub;

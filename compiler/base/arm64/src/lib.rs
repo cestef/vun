@@ -24,7 +24,7 @@ use vun_isa::imm::{fits_signed, truncate};
 
 pub use bitmask::Bitmask;
 pub use inst::Inst;
-pub use operand::{Barrier, Extend, Mem, Operand, Scale, Shift, ShiftKind};
+pub use operand::{Barrier, Extend, Mem, Operand, Scale, Shift, ShiftKind, SysReg};
 pub use reg::{Cc, Class, Reg, Size, V};
 pub use table::{Access, Arg, Branch, Cond, Form, Imm, Kind, Mode, Op, R31, Shifts, Sized, Width};
 

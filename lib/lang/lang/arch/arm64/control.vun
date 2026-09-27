@@ -14,6 +14,7 @@ _page_d: _a.Arg = .{ .kind = .page, .at = 0, .access = .read };
 _r_d: _a.Arg = .{ .kind = .gpr(.zr, .inst), .at = 0, .access = .read };
 _u16_d: _a.Arg = .{ .kind = .imm(.u16), .at = 0, .access = .read };
 _u16_n: _a.Arg = .{ .kind = .imm(.u16), .at = 5, .access = .read };
+_x_d: _a.Arg = .{ .kind = .gpr(.zr, .is(.b64)), .at = 0, .access = .read };
 _x_d_w: _a.Arg = .{ .kind = .gpr(.zr, .is(.b64)), .at = 0, .access = .write };
 _x_n: _a.Arg = .{ .kind = .gpr(.zr, .is(.b64)), .at = 5, .access = .read };
 
@@ -67,4 +68,24 @@ adrp := _a.Instruction{ .forms = &[
 /// after it.
 dmb := _a.Instruction{ .forms = &[
     .{ .base = 0xd50330bf, .sizes = _any, .args = &[.{ .kind = .barrier, .at = 8, .access = .read }] },
+] };
+
+/// Reads a system register.
+mrs := _a.Instruction{ .forms = &[
+    .{
+        .base = 0xd5300000,
+        .sizes = _any,
+        .args = &[_x_d_w, .{ .kind = .sys, .at = 5, .access = .read }],
+        .flags = .some(.read),
+    },
+] };
+
+/// Writes a system register.
+msr := _a.Instruction{ .forms = &[
+    .{
+        .base = 0xd5100000,
+        .sizes = _any,
+        .args = &[.{ .kind = .sys, .at = 5, .access = .write }, _x_d],
+        .flags = .some(.write),
+    },
 ] };

@@ -4,7 +4,8 @@
 //!   Arm prefers `movz` or `movn` for it (`MoveWidePreferred`), which the table writes `mov` too;
 //! - a 32-bit register zero-extended by a 64-bit `add` or `sub` (`uxtw`) is decoded as unshifted;
 //! - a register index keeps its shift amount but not its `S` bit: the index of a byte access,
-//!   scaled by 1, loses its `#0`, and an unscaled `sxtw` or `sxtx` gains one.
+//!   scaled by 1, loses its `#0`, and an unscaled `sxtw` or `sxtx` gains one;
+//! - a system register is written by its fields (`s3_3_c4_c2_0`), not its name (`nzcv`).
 
 use yaxpeax_arm::armv8::a64::{Instruction, Operand as Decoded, ShiftStyle, SizeCode};
 
@@ -40,6 +41,11 @@ impl Emitted {
                     Decoded::RegRegOffset(base.number().into(), index.number().into(), size, style, amount);
                 let before = |text: &str| text.split('[').next().map(str::to_owned);
                 decoded.operands.contains(&read) && ours.iter().any(|t| before(theirs) == before(t))
+            }
+            [.., Operand::Sys(r)] | [Operand::Sys(r), ..] => {
+                let read = Decoded::SystemReg(u16::try_from(r.field()).expect("15 bits"));
+                let mnemonic = |text: &str| text.split(' ').next().map(str::to_owned);
+                decoded.operands.contains(&read) && ours.iter().any(|t| mnemonic(theirs) == mnemonic(t))
             }
             _ => false,
         }

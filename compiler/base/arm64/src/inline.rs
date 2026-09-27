@@ -7,7 +7,8 @@ use vun_inline::{Disp, FormId, Inst, OpId, RegRef, SizeId};
 use vun_isa::{AsmOperand, Blocks, Fit, Fixed, Given, Label, Misfit, Place};
 
 use crate::{
-    Access, Arm64, Barrier, Cc, Class, Extend, Form, Kind, Mem, Mode, Op, Operand, Reg, Scale, Size, V,
+    Access, Arm64, Barrier, Cc, Class, Extend, Form, Kind, Mem, Mode, Op, Operand, Reg, Scale, Size, SysReg,
+    V,
 };
 
 impl Op {
@@ -106,7 +107,10 @@ impl Blocks for Arm64 {
             vun_inline::Operand::Reg(r) => Self::general(*r).map_or(Operand::V(V(r.number)), Operand::Reg),
             vun_inline::Operand::Imm(n) => Operand::Imm(*n),
             vun_inline::Operand::Cond(c) => Operand::Cond(Cc::ALL[usize::from(c.0)]),
-            vun_inline::Operand::Choice(k) => Operand::Barrier(Barrier::ALL[usize::from(*k)]),
+            vun_inline::Operand::Choice(k) => match kind {
+                Kind::Sys => Operand::Sys(SysReg::ALL[usize::from(*k)]),
+                _ => Operand::Barrier(Barrier::ALL[usize::from(*k)]),
+            },
             vun_inline::Operand::Label(line) => place.line(*line),
             vun_inline::Operand::Symbol(s) => match kind {
                 Kind::Page => Operand::Page(*s, place.via(*s)),

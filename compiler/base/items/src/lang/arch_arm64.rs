@@ -39,6 +39,8 @@ pub const fp_names: Item = Item::new(&["lang", "arch", "arm64", "fp_names"]);
 /// or inner (`ish`) shareability domain, or the full system (`sy`), each for loads (`ld`),
 /// stores (`st`) or both.
 pub const Barrier: Item = Item::new(&["lang", "arch", "arm64", "Barrier"]);
+/// A system register `mrs` reads and `msr` writes: the condition flags (`nzcv`).
+pub const SysReg: Item = Item::new(&["lang", "arch", "arm64", "SysReg"]);
 /// What register 31 is at a position.
 pub const R31: Item = Item::new(&["lang", "arch", "arm64", "R31"]);
 /// The width of an operand: the instruction's, or its own.

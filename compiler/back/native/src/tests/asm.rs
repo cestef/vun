@@ -138,8 +138,9 @@ fn a_checked_write_calls_the_runtime_between_saved_flags_and_registers() {
     use vun_asm_x86_64::{Kind, Op, Operand, Size};
     let form = Op::Mov.forms().iter().position(|f| f.kinds().eq([Kind::Rm, Kind::R]));
     let entry = [index(Op::ALL, &Op::Mov), form.expect("mov to memory"), index(&Size::ALL, &Size::B64)];
-    let code =
-        compiled::<X86>(|b, n, origin| store(b, n, origin, vun_items::lang::arch::x86_64, entry, Some(checked())));
+    let code = compiled::<X86>(|b, n, origin| {
+        store(b, n, origin, vun_items::lang::arch::x86_64, entry, Some(checked()));
+    });
     let insts = insts(&code.code.listing);
     let ops: Vec<Op> = insts.iter().map(|i| i.op).collect();
     let at = |op| ops.iter().position(|&o| o == op).unwrap_or_else(|| panic!("{op:?} in {insts:#?}"));
@@ -153,13 +154,16 @@ fn a_checked_write_calls_the_runtime_between_saved_flags_and_registers() {
 }
 
 #[test]
-fn arm64_refuses_to_check_what_a_block_writes() {
+fn arm64_keeps_the_flags_around_a_checked_write() {
     use vun_asm_arm64::{Op, Size};
     let entry = [index(Op::ALL, &Op::Str), 0, index(&Size::ALL, &Size::B64)];
-    let Err(lack) =
-        compile::<Arm>(|b, n, origin| store(b, n, origin, vun_items::lang::arch::arm64, entry, Some(checked())))
-    else {
-        panic!("a checked write compiled")
-    };
-    assert_eq!(lack.missing, Missing::AsmWriteCheck);
+    let code = compiled::<Arm>(|b, n, origin| {
+        store(b, n, origin, vun_items::lang::arch::arm64, entry, Some(checked()));
+    });
+    let insts = insts(&code.code.listing);
+    let ops: Vec<Op> = insts.iter().map(|i| i.op).collect();
+    let at = |op| ops.iter().position(|&o| o == op).unwrap_or_else(|| panic!("{op:?} in {insts:#?}"));
+    assert!(at(Op::Stp) < at(Op::Mrs) && at(Op::Mrs) < at(Op::Bl) && at(Op::Bl) < at(Op::Msr), "{insts:#?}");
+    let stored = ops.iter().rposition(|&o| o == Op::Str).expect("the store");
+    assert!(stored > at(Op::Msr), "{insts:#?}");
 }

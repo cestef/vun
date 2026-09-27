@@ -170,6 +170,33 @@ pub enum Operand<S> {
     Lo12(S),
     /// The domain and the accesses a barrier orders.
     Barrier(Barrier),
+    /// A system register.
+    Sys(SysReg),
+}
+
+/// A system register `mrs` reads and `msr` writes, by its encoding: `o0`, `op1`, `CRn`, `CRm` and
+/// `op2` from bit 5 of the word, less the leading bit of `op0`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum SysReg {
+    /// The condition flags.
+    Nzcv = 0x5a10,
+}
+
+impl SysReg {
+    pub const ALL: [Self; 1] = [Self::Nzcv];
+
+    /// Its field, from bit 5.
+    #[must_use]
+    pub const fn field(self) -> u32 {
+        self as u32
+    }
+
+    #[must_use]
+    pub const fn name(self) -> &'static str {
+        match self {
+            Self::Nzcv => "nzcv",
+        }
+    }
 }
 
 /// What a memory barrier orders (`dmb`): accesses within a shareability domain, by its encoding
