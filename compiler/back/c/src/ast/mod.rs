@@ -154,6 +154,35 @@ pub enum Stmt {
     Return(Option<Expr>),
     /// `for (;;) {}`: control never gets here.
     Halt,
+    Asm(Box<Asm>),
+}
+
+/// A block of inline assembly as GNU C writes it: each binding a local register variable in the
+/// register it takes, the block's lines as the target's assembler reads them, the registers it
+/// overwrites beyond its bindings, and what is done with its outputs once it ends.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Asm {
+    pub bindings: Vec<Binding>,
+    pub lines: Vec<String>,
+    pub clobbers: Vec<String>,
+    pub after: Vec<Stmt>,
+}
+
+/// A binding's register variable: its register, by the name the assembler reads, and what the
+/// block does with it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Binding {
+    pub decl: Decl,
+    pub reg: String,
+    pub flow: Flow,
+}
+
+/// What a block does with a binding: reads it, from this value; writes it; or both.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Flow {
+    In(Expr),
+    Out,
+    InOut(Expr),
 }
 
 impl Stmt {

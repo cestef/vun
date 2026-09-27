@@ -11,7 +11,12 @@ workspace = true
 
 [dependencies]
 vun-trace.workspace = true
+vun-asm.workspace = true
+vun-asm-arm64.workspace = true
+vun-asm-x86_64.workspace = true
 vun-backend.workspace = true
+vun-inline.workspace = true
+vun-items.workspace = true
 vun-diag.workspace = true
 vun-lir.workspace = true
 vun-target.workspace = true
@@ -21,4 +26,5 @@ vun-intern.workspace = true
 vun-origin.workspace = true
 
 [dev-dependencies]
+vun-fs.workspace = true
 vun-span.workspace = true

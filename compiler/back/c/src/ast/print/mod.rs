@@ -1,6 +1,7 @@
 //! The one writer of C text: types, declarators, expressions and statements, with every nested
 //! compound expression parenthesized so no precedence rule decides a meaning.
 
+mod asm;
 mod expr;
 mod stmt;
 

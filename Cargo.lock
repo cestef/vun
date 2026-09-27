@@ -797,11 +797,17 @@ dependencies = [
 name = "vun-backend-c"
 version = "0.0.0"
 dependencies = [
+ "vun-asm",
+ "vun-asm-arm64",
+ "vun-asm-x86_64",
  "vun-backend",
  "vun-diag",
+ "vun-fs",
  "vun-hash",
  "vun-index",
+ "vun-inline",
  "vun-intern",
+ "vun-items",
  "vun-lir",
  "vun-origin",
  "vun-span",

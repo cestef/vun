@@ -2,6 +2,7 @@
 //! written only where a `goto` names it.
 
 mod arith;
+mod asm;
 mod inline;
 mod inst;
 mod term;

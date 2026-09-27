@@ -96,6 +96,8 @@ impl Missing {
                     AsmOperand::Imported => "memory at a symbol another module defines",
                     AsmOperand::Unallocated => "a value bound to a register of this class",
                     AsmOperand::Unencodable => "operands the instruction's form does not encode",
+                    AsmOperand::Symbol => "a symbol",
+                    AsmOperand::Crowded => "more bindings than free registers",
                 };
                 Msg::new().text(what).text(" in inline assembly")
             }

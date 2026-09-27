@@ -23,6 +23,10 @@ pub enum AsmOperand {
     /// Operands the instruction's form does not encode, such as an immediate none of its
     /// encodings holds.
     Unencodable,
+    /// A symbol, in text a C compiler assembles, where its assembly name is the object format's.
+    Symbol,
+    /// More bindings than registers the block leaves them.
+    Crowded,
 }
 
 /// An instruction set's facts about blocks of inline assembly.

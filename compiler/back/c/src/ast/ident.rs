@@ -80,6 +80,8 @@ pub enum Own {
     Result,
     /// The temporary breaking cycles of moves of a type.
     Temp(Scalar),
+    /// The register variable of a binding of a block of inline assembly, by its place in it.
+    Bound(u32),
     /// `uN` or `iN`: the integer of `bits` bits, declared from the target's C types.
     Int {
         bits: u32,
@@ -150,6 +152,11 @@ impl Ident {
     pub fn field(i: usize) -> Self {
         Self::Own(Own::Field(Own::number(i)))
     }
+
+    #[must_use]
+    pub fn bound(i: usize) -> Self {
+        Self::Own(Own::Bound(Own::number(i)))
+    }
 }
 
 impl Own {
@@ -180,6 +187,7 @@ impl Own {
             Self::Check(n) => format!("check{n}"),
             Self::Result => "result".to_owned(),
             Self::Temp(s) => format!("temp_{s}"),
+            Self::Bound(n) => format!("asm{n}"),
             Self::Int { bits, signed } => format!("{}{bits}", if signed { "i" } else { "u" }),
             Self::Aligned(0) => "aligned_ptr".to_owned(),
             Self::Aligned(bits) => format!("aligned_u{bits}"),
