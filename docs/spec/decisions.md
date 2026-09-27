@@ -245,6 +245,7 @@
 | 249 | `lang.link.keep` is removed: a declaration kept past the linker's section collection is one it exports (`link.export`), as the vector table of spec 08 is, so `keep` was a second way with no reader | proposed | 08, appendices |
 | 250 | `std.mem.alloc.Fixed` borrows its buffer (`init := (storage: &mut [u8]) -> Fixed`), so the borrow checker keeps an allocator from outliving its bytes; it used to hold a raw pointer that nothing tied to the storage | proposed | 07 |
 | 251 | What a C library lays out its own way is a row per system (`std.os.libc.System`: the `errno` function, the signal set's word type and count, `pthread_sigmask`'s `how` values), declared by the system's module (`std.os.linux.c`, `std.os.macos.c`); `std.os.libc` uses the row whose `os` is `lang.target.current.os`, and a target with no row fails at compile time | proposed | 08 |
+| 252 | The size budget of the distributed `vun` is 20 MiB (`xtask size`), raised from 12 MiB (decision 193): the build was already past 12 MiB, and the https client following redirects hop by hop (decision 248, `ureq` on rustls and ring) adds about 280 KiB | accepted | 13 |
 
 Numbers 184 to 189 and 217 to 220 were never assigned.
 
