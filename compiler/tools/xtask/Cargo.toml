@@ -21,5 +21,6 @@ vun-par.workspace = true
 vun-term.workspace = true
 vun-span.workspace = true
 vun-harness.workspace = true
+vun-hash.workspace = true
 vun-driver.workspace = true
 vun-json.workspace = true

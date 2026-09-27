@@ -43,14 +43,16 @@ const PROGRAM: Program<DiagCtxt> = Program {
 };
 
 fn run_corpus(_: &mut DiagCtxt, _: &Args, shell: &mut Shell<'_>) -> io::Result<Outcome> {
-    let outcomes = Corpus::at(&repo_root()).outcomes()?;
+    let root = repo_root();
+    let corpus = Corpus::at(&root);
+    let outcomes = corpus.outcomes()?;
     let mut tally = Tally::default();
     for o in &outcomes {
         tally.count(&o.verdict);
         shell.result(&Judged { path: o.path.display().to_string(), verdict: &o.verdict })?;
     }
     shell.result(&tally)?;
-    let coverage = Corpus::at(&repo_root()).coverage()?;
+    let coverage = corpus.coverage()?;
     shell.result(&Document {
         kind: "coverage",
         name: vun_harness::ACCEPT.to_owned(),

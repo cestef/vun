@@ -129,7 +129,7 @@ impl Verdict {
             unlowered = session.unlowered(file);
         }
         let reported: Vec<Reported> =
-            session.diag.sorted(session.origins).iter().map(|d| reported(&session, d)).collect();
+            session.diag.sorted(session.origins).iter().map(|d| reported(&session, d, path)).collect();
         if expect == Expect::Planned {
             return Ok(if reported.is_empty() {
                 Self::Ready
@@ -171,6 +171,16 @@ impl Verdict {
 }
 
 impl Verdict {
+    /// Whether it fails the corpus.
+    pub(crate) const fn is_failure(&self) -> bool {
+        match self {
+            Self::Pass | Self::Pending(_) | Self::Planned(_) | Self::Shown => false,
+            Self::Fail(_) | Self::Undeclared(_) | Self::Malformed(_) | Self::Unexplained(_) | Self::Ready => {
+                true
+            }
+        }
+    }
+
     /// Whether the diagnostic expected at `at` belongs to a stage that does not exist yet, or to
     /// one reading MIR in a function MIR does not lower yet (lines `unlowered`).
     fn later(at: &At, unlowered: &[(u32, u32)]) -> bool {
@@ -183,13 +193,20 @@ impl Verdict {
     }
 }
 
-/// A diagnostic as the harness compares it: position, id, and message with its children.
-fn reported(session: &Session, d: &Diagnostic) -> Reported {
-    let (line, col) = d.primary.as_ref().map_or((0, 0), |label| {
-        let span = session.origins.source_span(label.origin);
-        let at = session.sources.file(span.file).line_col(span.range.lo);
-        (at.line, at.col)
-    });
+/// Where a diagnostic stands that has no place in the checked file: before its first line, where
+/// no annotation is, so it is always unexpected.
+const ELSEWHERE: (u32, u32) = (0, 0);
+
+/// A diagnostic as the harness compares it: position in the file at `checked`, id, and message
+/// with its children. A file is known by its path, as each reading of it adds it anew.
+fn reported(session: &Session, d: &Diagnostic, checked: &Path) -> Reported {
+    let place = d.primary.as_ref().map(|label| session.origins.source_span(label.origin));
+    let file = place.map(|span| (span, session.sources.file(span.file)));
+    let (line, col) =
+        file.filter(|(_, file)| Path::new(&file.path) == checked).map_or(ELSEWHERE, |(span, file)| {
+            let at = file.line_col(span.range.lo);
+            (at.line, at.col)
+        });
     let mut text = d.message.to_string();
     for child in &d.children {
         let _ = write!(text, "\n{}: {}", child.kind, child.msg);

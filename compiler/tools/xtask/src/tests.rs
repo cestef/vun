@@ -1,21 +1,12 @@
 use vun_harness::repo_root;
 
-use crate::corpus::{self, Corpus};
+use crate::corpus::Corpus;
 use crate::lines::{self, Oversized};
 
 #[test]
 fn corpus_has_no_failures() {
     let outcomes = Corpus::at(&repo_root()).outcomes().expect("readable corpus");
-    let failed: Vec<_> = outcomes
-        .iter()
-        .filter(|o| {
-            matches!(
-                o.verdict,
-                corpus::Verdict::Fail(_) | corpus::Verdict::Unexplained(_) | corpus::Verdict::Ready
-            )
-        })
-        .map(|o| &o.path)
-        .collect();
+    let failed: Vec<_> = outcomes.iter().filter(|o| o.verdict.is_failure()).map(|o| &o.path).collect();
     assert!(failed.is_empty(), "failing corpus files: {failed:?}; run `cargo xtask corpus`");
 }
 

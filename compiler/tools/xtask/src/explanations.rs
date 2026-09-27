@@ -11,6 +11,7 @@ use vun_par::Parallel;
 use vun_diag::{DiagId, errors};
 use vun_fs::Scratch;
 use vun_harness::{Block, Expected, Page};
+use vun_hash::Snapshot;
 use vun_span::EXTENSION;
 
 use crate::corpus::{Corpus, Expect, Outcome, Verdict};
@@ -30,6 +31,10 @@ pub(crate) enum Unexplained {
     Sections,
     /// The example annotates no file with the page's diagnostic.
     NotShown,
+    /// The fix has no version of the annotated file.
+    NotFixed,
+    /// A block names a file outside the example's directory.
+    Outside,
 }
 
 impl fmt::Display for Unexplained {
@@ -38,6 +43,8 @@ impl fmt::Display for Unexplained {
             Self::Missing => f.write_str("no page"),
             Self::Sections => write!(f, "a page needs `## {EXAMPLE}` and `## {FIX}` sections with examples"),
             Self::NotShown => f.write_str("no example file annotates the page's diagnostic"),
+            Self::NotFixed => f.write_str("the fix does not show the annotated file"),
+            Self::Outside => f.write_str("a block names a file outside its example"),
         }
     }
 }
@@ -77,6 +84,9 @@ impl Corpus<'_> {
                 .collect()
         };
         let (example, fix) = (sources(example), sources(fix));
+        if example.iter().chain(&fix).any(|(file, _)| Snapshot::components(file).is_none()) {
+            return Ok(vec![(String::new(), Verdict::Unexplained(Unexplained::Outside))]);
+        }
         if example.is_empty() {
             return Ok(vec![(String::new(), Verdict::Shown)]);
         }
@@ -97,7 +107,7 @@ impl Corpus<'_> {
             let verdict = if target.exists() {
                 Verdict::of(self.session(&target), &target, expect)?
             } else {
-                Verdict::Shown
+                Verdict::Unexplained(Unexplained::NotFixed)
             };
             verdicts.push((format!("#{section}"), verdict));
         }

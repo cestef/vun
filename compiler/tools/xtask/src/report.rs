@@ -1,6 +1,7 @@
 //! The corpus run as `cargo xtask corpus` shows it: a verdict line per program that did not
 //! simply pass, the reasons under it, and a tally.
 
+use vun_diag::errors::DECLARED_IN;
 use vun_harness::At;
 use vun_json::Object;
 use vun_term::{Bytes, Record, Status, Style, Text, Verb};
@@ -13,8 +14,6 @@ const PLANNED: Verb = Verb { word: "Planned", style: Style::Note };
 const FAILED: Verb = Verb::failed("Failed");
 /// The width of the tags of a failure's lines: `unexpected`.
 const TAG: usize = 11;
-/// Where annotations are declared, which an undeclared one points at.
-const DECLARED_IN: &str = "lib/lang/lang/errors.vun";
 
 /// How many programs got each verdict.
 #[derive(Default)]
@@ -33,11 +32,10 @@ impl Tally {
             Verdict::Pending(_) => &mut self.pending,
             Verdict::Planned(_) => &mut self.planned,
             Verdict::Shown => &mut self.shown,
-            Verdict::Fail(_)
-            | Verdict::Undeclared(_)
-            | Verdict::Malformed(_)
-            | Verdict::Unexplained(_)
-            | Verdict::Ready => &mut self.failed,
+            failed => {
+                debug_assert!(failed.is_failure());
+                &mut self.failed
+            }
         };
         *count += 1;
     }
@@ -81,12 +79,10 @@ impl Record for Judged<'_> {
 
     /// Its path, its verdict, and the reasons shown under it.
     fn fields(&self) -> Object<'static> {
-        let lines = self.verdict.lines(Text::new());
-        let details: Vec<String> = lines.iter().skip(1).map(|l| l.to_string().trim().to_owned()).collect();
         Object::new()
             .with("path", self.path.clone())
             .with("verdict", self.verdict.name())
-            .with("details", details)
+            .with("details", self.verdict.details())
     }
 }
 
@@ -135,15 +131,25 @@ impl Status for Passed {
     }
 }
 
-/// Annotations as reports show them: `12:names.duplicate`.
-trait AtText {
+/// Annotations as reports show them: `12:names.duplicate`, or `{ "line": 12, "id": ... }`.
+trait Shown {
     fn text(&self) -> Text;
+    fn json(&self) -> Object<'static>;
 }
 
-impl AtText for At {
+impl Shown for At {
     fn text(&self) -> Text {
         Text::of(Style::Accent, format!("{}:", self.line)).styled(Style::Literal, self.id.clone())
     }
+
+    fn json(&self) -> Object<'static> {
+        Object::new().with("line", self.line).with("id", self.id.clone())
+    }
+}
+
+/// Places as JSON, in order.
+fn json<'a>(ats: impl IntoIterator<Item = &'a At>) -> Vec<Object<'static>> {
+    ats.into_iter().map(At::json).collect()
 }
 
 /// A line of a failure: its tag, then what it is about.
@@ -164,6 +170,38 @@ impl Verdict {
             Self::Unexplained(_) => "unexplained",
             Self::Planned(_) => "planned",
             Self::Ready => "ready",
+        }
+    }
+
+    /// What JSON says of it beside its name: the reasons its lines show, as fields.
+    fn details(&self) -> Object<'static> {
+        let details = Object::new();
+        match self {
+            Self::Pass | Self::Shown | Self::Ready => details,
+            Self::Pending(later) => details.with("awaits", json(later)),
+            Self::Undeclared(ids) => details.with("undeclared", json(ids)),
+            Self::Malformed(malformed) => details.with("malformed", malformed.to_string()),
+            Self::Unexplained(why) => details.with("unexplained", why.to_string()),
+            Self::Planned(waits) => {
+                let waits = waits.iter().map(|r| r.at.json().with("text", r.text.clone()));
+                details.with("waits", waits.collect::<Vec<_>>())
+            }
+            Self::Fail(mismatch) => {
+                let differing = mismatch.differing.iter().map(|(expected, found)| {
+                    let found =
+                        found.iter().map(|r| Object::new().with("col", r.col).with("text", r.text.clone()));
+                    expected
+                        .at
+                        .json()
+                        .with("col", expected.col)
+                        .with("fragments", expected.fragments.clone())
+                        .with("found", found.collect::<Vec<_>>())
+                });
+                details
+                    .with("missing", json(&mismatch.missing))
+                    .with("unexpected", json(&mismatch.unexpected))
+                    .with("differing", differing.collect::<Vec<_>>())
+            }
         }
     }
 
@@ -198,9 +236,20 @@ impl Verdict {
                 let missing = mismatch.missing.iter().map(|a| tagged("missing", a.text()));
                 let unexpected = mismatch.unexpected.iter().map(|a| tagged("unexpected", a.text()));
                 let differing = mismatch.differing.iter().flat_map(|(expected, found)| {
+                    let col =
+                        expected.col.map(|c| Text::from(" at col ").styled(Style::Accent, c.to_string()));
+                    let fragments =
+                        expected.fragments.iter().map(|f| Text::of(Style::Literal, format!("\"{f}\"")));
+                    let wanted = Text::join(fragments, ", ");
                     let head = tagged(
                         "differing",
-                        expected.at.text().plain(format!(" expected {expected:?}, found:")),
+                        expected
+                            .at
+                            .text()
+                            .append(col.unwrap_or_default())
+                            .plain(" with ")
+                            .append(wanted)
+                            .plain(", found:"),
                     );
                     let cols = found.iter().map(|r| {
                         Verb::under(
