@@ -110,19 +110,13 @@ impl<'b> Analysis<'b> {
         }
     }
 
-    /// The locals of `body` assigned exactly once, and to a constant integer.
+    /// The locals of `body` holding one constant integer throughout ([`Body::constants`]).
     fn constants(body: &Body) -> BTreeMap<Local, i128> {
-        let mut assigned: BTreeMap<Local, Option<i128>> = BTreeMap::new();
-        for (_, block) in body.blocks.iter() {
-            for stmt in block.stmts.iter().filter(|s| s.value != Rvalue::Dead) {
-                let value = match (&stmt.value, stmt.place.projection.is_empty()) {
-                    (Rvalue::Use(Operand::Const(Value::Int(n))), true) => n.to_i128(),
-                    _ => None,
-                };
-                assigned.entry(stmt.place.local).and_modify(|v| *v = None).or_insert(value);
-            }
-        }
-        assigned.into_iter().filter_map(|(local, value)| Some((local, value?))).collect()
+        let int = |value: &Option<Value>| match value.as_ref()? {
+            Value::Int(n) => n.to_i128(),
+            _ => None,
+        };
+        body.constants().iter().filter_map(|(local, value)| Some((local, int(value)?))).collect()
     }
 
     fn run(mut self) -> Found {

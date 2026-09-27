@@ -1,0 +1,9 @@
+//! Moving a linear value takes it away from every borrow of it, so none may be used after
+//! (spec 05, section 4).
+
+size := (fs: &mut Fs, path: &[u8]) -> Result(u64, Error) {
+    f := fs.open(path)?;
+    r := &f;
+    fs.close(f); //~ borrow.conflict
+    .ok(r.size())
+};

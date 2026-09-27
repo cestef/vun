@@ -46,7 +46,12 @@ impl Query for BorrowChecks {
         let kinds: BTreeMap<Local, Kind> =
             body.locals.iter().filter_map(|(local, d)| Some((local, cx.get::<Kinds>(&d.ty?)))).collect();
         let having = |f: fn(&Kind) -> bool| kinds.iter().filter(|(_, k)| f(k)).map(|(&l, _)| l).collect();
-        Some(Checker::new(&body, calls, having(|k| k.is_scoped()), having(|k| k.misplaced)).run())
+        let locals = Locals {
+            scoped: having(|k| k.is_scoped()),
+            misplaced: having(|k| k.misplaced),
+            linear: having(|k| k.is_linear()),
+        };
+        Some(Checker::new(&body, calls, locals).run())
     }
 }
 
@@ -91,6 +96,16 @@ struct Loan {
     origin: OriginId,
 }
 
+/// The locals of each kind the checks treat apart.
+struct Locals {
+    /// Holding scoped values, which the loans of what they are built from flow into.
+    scoped: BTreeSet<Local>,
+    /// Whose type holds a scoped value inside a free one.
+    misplaced: BTreeSet<Local>,
+    /// Holding linear values, which a read of the whole moves.
+    linear: BTreeSet<Local>,
+}
+
 struct Checker<'b> {
     body: &'b Body,
     loans: IndexVec<LoanId, Loan>,
@@ -100,21 +115,13 @@ struct Checker<'b> {
     lent: Vec<(Local, LoanId)>,
     /// How long each call's callee holds each argument, where it is known.
     calls: BTreeMap<(BlockId, usize), Vec<Extent>>,
-    /// The locals holding scoped values, which the loans of what they are built from flow into.
-    scoped: BTreeSet<Local>,
-    /// The locals whose type holds a scoped value inside a free one.
-    misplaced: BTreeSet<Local>,
+    locals: Locals,
     diag: DiagCtxt,
     reported: HashSet<(DiagId, OriginId)>,
 }
 
 impl<'b> Checker<'b> {
-    fn new(
-        body: &'b Body,
-        calls: BTreeMap<(BlockId, usize), Vec<Extent>>,
-        scoped: BTreeSet<Local>,
-        misplaced: BTreeSet<Local>,
-    ) -> Self {
+    fn new(body: &'b Body, calls: BTreeMap<(BlockId, usize), Vec<Extent>>, locals: Locals) -> Self {
         let mut loans = IndexVec::new();
         let mut taken = BTreeMap::new();
         for (block, b) in body.blocks.iter() {
@@ -139,7 +146,7 @@ impl<'b> Checker<'b> {
             }
         }
         let diag = DiagCtxt::new();
-        Self { body, loans, taken, lent, calls, scoped, misplaced, diag, reported: HashSet::new() }
+        Self { body, loans, taken, lent, calls, locals, diag, reported: HashSet::new() }
     }
 
     fn run(mut self) -> DiagCtxt {

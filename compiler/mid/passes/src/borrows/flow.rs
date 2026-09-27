@@ -59,7 +59,7 @@ impl Checker<'_> {
                 }
                 flows
             }
-            value if self.scoped.contains(&stmt.place.local) => {
+            value if self.locals.scoped.contains(&stmt.place.local) => {
                 let temp = self.calls.get(&(block, index));
                 Self::built_from(value, temp)
                     .into_iter()

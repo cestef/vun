@@ -14,10 +14,10 @@ impl Checker<'_> {
             for stmt in &block.stmts {
                 let built = matches!(stmt.value, Rvalue::Call { .. } | Rvalue::Aggregate { .. });
                 let from_misplaced = stmt.value.operands().into_iter().any(|o| match o {
-                    Operand::Place(p) => self.misplaced.contains(&p.local),
+                    Operand::Place(p) => self.locals.misplaced.contains(&p.local),
                     Operand::Const(_) => false,
                 });
-                if built && self.misplaced.contains(&stmt.place.local) && !from_misplaced {
+                if built && self.locals.misplaced.contains(&stmt.place.local) && !from_misplaced {
                     let msg = Msg::new()
                         .text("this value holds a borrow inside a type that must stay free of them");
                     let help = Msg::new().text("keep the scoped value in a local or a scoped type, or hold an index or an owned copy");

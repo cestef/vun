@@ -8,6 +8,7 @@ use vun_mir::{BlockId, Local, Operand, Place, Projection, Rvalue};
 use vun_origin::OriginId;
 
 use super::Analysis;
+use super::leak::Stop;
 use super::states::{Key, State, States};
 
 impl Analysis<'_> {
@@ -68,11 +69,16 @@ impl Analysis<'_> {
     }
 
     /// A write to `place`: a whole local, a part named without running the body, or a borrow
-    /// parameter's whole target becomes `init`.
+    /// parameter's whole target becomes `init`. A linear value it may still hold leaks.
     pub(super) fn write(&mut self, place: &Place, states: &mut States, origin: OriginId) {
         self.indices(place, states, origin);
         match (place.projection.as_slice(), self.path(place)) {
-            ([], _) => states.write(place.local),
+            ([], _) => {
+                if self.linear.contains(&place.local) && states.locals[place.local] != State::Uninit {
+                    self.leak(place.local, origin, Stop::Overwritten);
+                }
+                states.write(place.local);
+            }
             ([Projection::Deref], _) if states.targets.contains_key(&place.local) => {
                 states.targets.insert(place.local, State::Init);
             }

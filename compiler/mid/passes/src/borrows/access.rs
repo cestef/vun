@@ -32,7 +32,7 @@ impl Checker<'_> {
                 continue;
             }
             let here = Here { block, index, holds: &holds, live: &live[block][index] };
-            for (place, access) in Self::accesses(stmt) {
+            for (place, access) in self.accesses(stmt) {
                 self.conflicts(&loans, place, access, stmt.origin, &here);
             }
             // Writing a place replaces its own storage: a borrow reached through a `.*` inside
@@ -46,11 +46,23 @@ impl Checker<'_> {
         let here = Here { block, index: b.stmts.len(), holds: &holds, live: &live[block][b.stmts.len()] };
         for operand in b.term.kind.operands() {
             if let Operand::Place(place) = operand {
-                self.conflicts(&loans, place, Access::Shared, b.term.origin, &here);
+                self.conflicts(&loans, place, self.read(place), b.term.origin, &here);
             }
         }
         if b.term.kind == TerminatorKind::Return {
-            self.escapes(&holds.iter_row(body.ret).collect(), b.term.origin);
+            self.escapes(&holds.iter_row(body.ret).collect(), b.term.origin, Exit::Result);
+            // What is written through an exclusive borrow parameter outlives the call too.
+            for &param in &body.params {
+                let exclusive = body.locals[param].ty.and_then(|t| t.borrowing());
+                if exclusive.is_some_and(|(mode, ..)| mode.access() == Access::Exclusive) {
+                    let own = self.lent.iter().filter(|&&(p, _)| p == param).map(|&(_, l)| l);
+                    let mut stored: BitSet<LoanId> = holds.iter_row(param).collect();
+                    own.for_each(|l| {
+                        stored.remove(l);
+                    });
+                    self.escapes(&stored, b.term.origin, Exit::Param);
+                }
+            }
         }
     }
 
@@ -65,13 +77,13 @@ impl Checker<'_> {
 
     /// The places `stmt` reaches before writing its place, and how: operands and tests read,
     /// borrows access as their mode says, resuming a frame is exclusive.
-    pub(super) fn accesses(stmt: &Stmt) -> Vec<(&Place, Access)> {
+    pub(super) fn accesses<'s>(&self, stmt: &'s Stmt) -> Vec<(&'s Place, Access)> {
         let mut accesses: Vec<(&Place, Access)> = stmt
             .value
             .operands()
             .into_iter()
             .filter_map(|o| match o {
-                Operand::Place(p) => Some((p, Access::Shared)),
+                Operand::Place(p) => Some((p, self.read(p))),
                 Operand::Const(_) => None,
             })
             .collect();
@@ -82,6 +94,16 @@ impl Checker<'_> {
             _ => {}
         }
         accesses
+    }
+
+    /// How reading `place` as an operand reaches it: moving a whole linear value takes it away,
+    /// as exclusively as a write; any other read is shared.
+    fn read(&self, place: &Place) -> Access {
+        if place.projection.is_empty() && self.locals.linear.contains(&place.local) {
+            Access::Exclusive
+        } else {
+            Access::Shared
+        }
     }
 
     /// An access to `place` conflicts with a live loan of an overlapping place when either is
@@ -121,14 +143,15 @@ impl Checker<'_> {
         }
     }
 
-    /// The loans of the function's own storage in its result, and those its `&temp` parameters
-    /// lend.
-    fn escapes(&mut self, loans: &BitSet<LoanId>, returned: OriginId) {
+    /// The loans of the function's own storage leaving it by `exit`, and those its `&temp`
+    /// parameters lend.
+    fn escapes(&mut self, loans: &BitSet<LoanId>, returned: OriginId, exit: Exit) {
         for loan in loans.iter() {
             if self.loans[loan].source == Source::Lent {
                 let msg = self
                     .name(&self.loans[loan].place)
-                    .text(" is lent for the call only, and a borrow tied to it is returned");
+                    .text(" is lent for the call only, and a borrow tied to it ")
+                    .text(exit.how());
                 let help = Msg::new()
                     .text("a ")
                     .code("&temp")
@@ -140,7 +163,8 @@ impl Checker<'_> {
                 let origin = self.loans[loan].origin;
                 let msg = self
                     .name(&self.loans[loan].place)
-                    .text(" is local to this function, and a borrow of it is returned");
+                    .text(" is local to this function, and a borrow of it ")
+                    .text(exit.how());
                 let help =
                     Msg::new().text("return the value itself, or a borrow of something a parameter lends");
                 self.report(errors::BORROW_ESCAPE, origin, msg, None, Some(help));
@@ -167,5 +191,22 @@ impl Checker<'_> {
         self.body.locals[place.local]
             .name
             .map_or_else(|| Msg::new().text("this value"), |n| Msg::new().code(n.as_str()))
+    }
+}
+
+/// How a borrow leaves the function.
+#[derive(Clone, Copy)]
+enum Exit {
+    Result,
+    /// Written through an exclusive borrow parameter, into its caller's place.
+    Param,
+}
+
+impl Exit {
+    const fn how(self) -> &'static str {
+        match self {
+            Self::Result => "is returned",
+            Self::Param => "is stored through a parameter, outliving the call",
+        }
     }
 }

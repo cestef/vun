@@ -24,7 +24,7 @@ impl Checker<'_> {
         while let Some((at, from)) = work.pop_front() {
             let b = &blocks[at];
             for stmt in b.stmts.iter().skip(from) {
-                let reads = Self::accesses(stmt).into_iter().any(|(place, _)| holders.contains(place.local));
+                let reads = self.accesses(stmt).into_iter().any(|(place, _)| holders.contains(place.local));
                 let through = !stmt.place.projection.is_empty() && holders.contains(stmt.place.local);
                 if reads || through {
                     return Some(stmt.origin);

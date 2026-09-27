@@ -40,6 +40,8 @@ pub(super) enum Stop {
     Scope,
     /// The end of the frame while suspended at a `yield`, which runs only what is pending there.
     Ended,
+    /// A write of the whole place, which would drop what it holds.
+    Overwritten,
 }
 
 impl Stop {
@@ -48,6 +50,7 @@ impl Stop {
             Self::Return => "before returning",
             Self::Scope => "before its scope ends",
             Self::Ended => "or deferred before a `yield`, where ending the frame stops it",
+            Self::Overwritten => "before their place is written again",
         }
     }
 }

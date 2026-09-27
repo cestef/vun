@@ -126,23 +126,15 @@ impl Body {
     }
 
     /// Replaces each read of a local holding a constant by that constant: a `$` parameter bound
-    /// to `bound`'s value, or a local written once, whole, with a constant, never borrowed and no
-    /// static; and folds the calls known when compiling; until nothing changes. A constant written
+    /// to `bound`'s value, or one of [`Body::constants`]; and folds the calls known when compiling; until nothing changes. A constant written
     /// into a local nothing reads, and no static, is dropped.
     fn propagate(&mut self, env: &Env<'_, '_>, bound: &[Option<Value>]) {
         loop {
-            let (writes, mut constants) = self.writes();
+            let mut constants = self.constants();
             for (&param, value) in self.params.iter().zip(bound) {
                 constants[param].clone_from(value);
             }
-            let is_bound =
-                |local: Local| self.params.iter().zip(bound).any(|(&p, v)| p == local && v.is_some());
-            // A static's value is seen, and changed, by every call: it is never a constant here.
-            let locals = &self.locals;
-            let constant = |local: Local| {
-                let known = is_bound(local) || (writes[local] == 1 && !locals[local].role.is_static());
-                known.then(|| constants[local].clone()).flatten()
-            };
+            let constant = |local: Local| constants[local].clone();
             let mut changed = false;
             for (_, block) in self.blocks.iter_mut() {
                 let operands = block.stmts.iter_mut().flat_map(|s| s.value.operands_mut());
@@ -221,28 +213,34 @@ impl Body {
         env.apply(Value::Primitive(p), args.collect::<Option<_>>()?).ok()
     }
 
-    /// How many statements write each local, parameters and the result counting once more, and
-    /// the constant each is written with whole, if any.
-    fn writes(&self) -> (IndexVec<Local, u32>, IndexVec<Local, Option<Value>>) {
+    /// The constant each local holds throughout the body: written once, whole, with a constant,
+    /// never borrowed, and no parameter, result or static. Ending a local's scope is no write.
+    #[must_use]
+    pub fn constants(&self) -> IndexVec<Local, Option<Value>> {
         let mut writes: IndexVec<Local, u32> = IndexVec::filled(0, self.locals.len());
         let mut constants: IndexVec<Local, Option<Value>> = IndexVec::filled(None, self.locals.len());
-        for (_, block) in self.blocks.iter() {
-            for stmt in &block.stmts {
-                writes[stmt.place.local] += 1;
-                if let Rvalue::Ref { place, .. } = &stmt.value {
-                    writes[place.local] += 1;
-                }
-                if let (true, Rvalue::Use(Operand::Const(value))) =
-                    (stmt.place.projection.is_empty(), &stmt.value)
-                {
-                    constants[stmt.place.local] = Some(value.clone());
-                }
+        let stmts = self.blocks.iter().flat_map(|(_, b)| &b.stmts);
+        for stmt in stmts.filter(|s| !matches!(s.value, Rvalue::Dead)) {
+            writes[stmt.place.local] += 1;
+            // A borrow may write through.
+            if let Rvalue::Ref { place, .. } = &stmt.value {
+                writes[place.local] += 1;
+            }
+            if let (true, Rvalue::Use(Operand::Const(value))) =
+                (stmt.place.projection.is_empty(), &stmt.value)
+            {
+                constants[stmt.place.local] = Some(value.clone());
             }
         }
         for &local in self.params.iter().chain([&self.ret]) {
             writes[local] += 1;
         }
-        (writes, constants)
+        for (local, constant) in constants.iter_mut() {
+            if writes[local] != 1 || self.locals[local].role.is_static() {
+                *constant = None;
+            }
+        }
+        constants
     }
 
     /// The locals some statement or terminator reads (`Stmt::reads`, `TerminatorKind::reads`);

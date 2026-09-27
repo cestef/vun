@@ -1,0 +1,12 @@
+//! An index lent to a call may change there, so it names no known item (spec 05, section 2).
+
+bump := (i: &mut usize) { i.* = 1; };
+
+first := () -> u8 {
+    mut buf: [2]u8;
+    buf[1] = 1;
+    mut i: usize = 0;
+    bump(&mut i);
+    buf[i] = 1;
+    buf[0] //~ place.read_uninit
+};

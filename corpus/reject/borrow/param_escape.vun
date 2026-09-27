@@ -1,0 +1,11 @@
+//! A borrow written through an exclusive borrow parameter reaches the caller, so it may not be
+//! of the function's own storage (spec 05, section 4).
+
+set := (p: &mut &u8) {
+    x: u8 = 5;
+    p.* = &x; //~ borrow.escape
+};
+
+forward := (p: &mut &u8, q: &u8) {
+    p.* = q;
+};
