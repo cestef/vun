@@ -149,6 +149,15 @@ impl Object {
         })
     }
 
+    /// The section named `name` holding `contents`, added the first time it is asked for.
+    pub fn section_named(&mut self, name: &[u8], contents: Contents) -> SectionId {
+        let found = self.sections.iter().find(|(_, s)| s.contents == contents && s.name == name);
+        match found.map(|(id, _)| id) {
+            Some(id) => id,
+            None => self.section(name, contents),
+        }
+    }
+
     /// The symbol standing for `section`, made the first time it is asked for.
     pub fn section_symbol(&mut self, section: SectionId) -> SymbolId {
         let found =

@@ -3,14 +3,13 @@
 //! the functions' code.
 
 use vun_index::IndexVec;
-use vun_lir::{Address, DataId, FuncId, ImportKind, Linkage, Unit};
+use vun_lir::{Address, DataId, FuncId, ImportId, ImportKind, Linkage, Unit};
 
 use vun_backend::Lines;
 use vun_codegen::Compiled;
 use vun_dwarf::{CallFrame, Fde, Row, Sequence};
 use vun_object::{
-    Binding, Contents, Format, Machine, Object, Reloc, RelocKind, Section, SectionId, Symbol, SymbolId,
-    SymbolKind,
+    Binding, Contents, Format, Machine, Object, Reloc, RelocKind, SectionId, Symbol, SymbolId, SymbolKind,
 };
 
 /// The alignment functions start at.
@@ -25,98 +24,133 @@ const SECTIONS: [(Contents, &[u8]); 5] = [
     (Contents::StackNote, b".note.GNU-stack"),
 ];
 
-struct Builder {
-    object: Object,
-    sections: Vec<(Contents, SectionId)>,
-}
-
-impl Builder {
-    fn section(&mut self, contents: Contents, name: &[u8]) -> SectionId {
-        if let Some(&(_, id)) =
-            self.sections.iter().find(|(c, id)| *c == contents && self.object.sections[*id].name == name)
-        {
-            return id;
-        }
-        let id = self.object.sections.push(Section {
-            name: name.to_vec(),
-            contents,
-            bytes: Vec::new(),
-            align: 1,
-            relocs: Vec::new(),
-        });
-        self.sections.push((contents, id));
-        id
-    }
-}
-
 /// What names the producer in debugging information.
 const PRODUCER: &str = "vun";
 
-/// The object for `machine` holding `unit`, its functions compiled as `code`, their lines found
-/// by `lines`.
-#[must_use]
-pub(crate) fn assemble<T>(
-    unit: &Unit,
-    code: &IndexVec<FuncId, Compiled<T>>,
-    (machine, format): (Machine, Format),
-    lines: &dyn Lines,
-    frames: &CallFrame,
-) -> Object {
-    let mut b = Builder { object: Object::new(machine, format), sections: Vec::new() };
-    for (contents, name) in SECTIONS {
-        b.section(contents, name);
-    }
-    let text = b.section(Contents::Code, b".text");
-    let named = |linkage: Linkage, own: String| match linkage {
-        Linkage::Export(symbol) => (symbol.as_str().as_bytes().to_vec(), Binding::Global),
-        Linkage::Internal => (own.into_bytes(), Binding::Local),
-    };
-    let mut funcs: IndexVec<FuncId, SymbolId> = IndexVec::new();
-    for (id, f) in unit.functions.iter() {
-        let value = b.object.append(text, &code[id].code.bytes, FUNCTION_ALIGN);
-        // An internal function is named by its declaration, as debuggers show it; local symbols
-        // may share a name, as instantiations of one declaration do.
-        let path = lines.declaration(f.origin);
-        let own = if path.is_empty() {
-            id.to_string()
-        } else {
-            path.iter().map(|name| name.as_str()).collect::<Vec<_>>().join(".")
+/// What a unit's object is made of: the unit, its functions compiled as `code`, where their
+/// lines are, and how their frames unwind.
+pub(crate) struct Assembly<'a, T> {
+    pub(crate) unit: &'a Unit,
+    pub(crate) code: &'a IndexVec<FuncId, Compiled<T>>,
+    pub(crate) lines: &'a dyn Lines,
+    pub(crate) frames: &'a CallFrame,
+}
+
+impl<T> Assembly<'_, T> {
+    /// The object for `machine` in `format`.
+    #[must_use]
+    pub(crate) fn object(&self, (machine, format): (Machine, Format)) -> Object {
+        let mut object = Object::new(machine, format);
+        for (contents, name) in SECTIONS {
+            object.section_named(name, contents);
+        }
+        let text = object.section_named(b".text", Contents::Code);
+        let funcs = self.functions(&mut object, text);
+        let (data, placed) = self.data(&mut object);
+        let imports = self.imports(&mut object);
+        let symbol = |a: Address| match a {
+            Address::Func(f) => funcs[f],
+            Address::Data(d) => data[d],
+            Address::Import(i) => imports[i],
         };
-        let (name, binding) = named(f.linkage, own);
-        let size = code[id].code.bytes.len() as u64;
-        let symbol = Symbol { name, section: Some(text), value, size, kind: SymbolKind::Func, binding };
-        funcs.push(b.object.symbols.push(symbol));
+        for (id, _) in self.unit.functions.iter() {
+            let start = object.symbols[funcs[id]].value;
+            for r in &self.code[id].code.relocs {
+                let reloc = Reloc {
+                    offset: start + r.offset,
+                    symbol: symbol(r.target),
+                    kind: r.kind,
+                    addend: r.addend,
+                };
+                object.sections[text].relocs.push(reloc);
+            }
+        }
+        for ((_, d), (section, start)) in self.unit.data.iter().zip(placed) {
+            for r in &d.relocs {
+                let (symbol, addend) = (symbol(r.target), r.addend);
+                let reloc = Reloc { offset: start + r.offset, symbol, kind: RelocKind::Abs64, addend };
+                object.sections[section].relocs.push(reloc);
+            }
+        }
+        self.line_table(&funcs, &mut object, text);
+        // Mach-O describes frames otherwise (compact unwind information), which is left for later.
+        if format == Format::Elf {
+            let fdes = self.code.iter().filter(|(_, c)| !c.code.bytes.is_empty()).map(|(id, c)| Fde {
+                symbol: funcs[id],
+                size: c.code.bytes.len() as u64,
+                steps: c.unwind.clone(),
+            });
+            self.frames.write(&mut object, &fdes.collect::<Vec<_>>());
+        }
+        object
     }
-    let mut data: IndexVec<DataId, SymbolId> = IndexVec::new();
-    let mut placed = Vec::new();
-    for (id, d) in unit.data.iter() {
-        let contents = match (d.writable, d.relocs.is_empty()) {
-            (true, _) => Contents::Writable,
-            (false, true) => Contents::ReadOnly,
-            (false, false) => Contents::Relocated,
-        };
-        let name = d.section.map_or_else(
-            || SECTIONS.iter().find(|(c, _)| *c == contents).expect("listed").1.to_vec(),
-            |s| s.as_str().as_bytes().to_vec(),
-        );
-        let section = b.section(contents, &name);
-        let value = b.object.append(section, &d.bytes, d.align);
-        placed.push((section, value));
-        let (name, binding) = named(d.linkage, id.to_string());
-        let size = d.bytes.len() as u64;
-        let symbol = Symbol { name, section: Some(section), value, size, kind: SymbolKind::Object, binding };
-        data.push(b.object.symbols.push(symbol));
+
+    /// The name and binding of a symbol of `linkage`, named `own` when the unit keeps it.
+    fn named(linkage: Linkage, own: String) -> (Vec<u8>, Binding) {
+        match linkage {
+            Linkage::Export(symbol) => (symbol.as_str().as_bytes().to_vec(), Binding::Global),
+            Linkage::Internal => (own.into_bytes(), Binding::Local),
+        }
     }
-    let imports: IndexVec<_, SymbolId> = unit
-        .imports
-        .iter()
-        .map(|(_, i)| {
+
+    /// Appends the functions' code to `text`, a symbol for each.
+    fn functions(&self, object: &mut Object, text: SectionId) -> IndexVec<FuncId, SymbolId> {
+        let mut funcs = IndexVec::new();
+        for (id, f) in self.unit.functions.iter() {
+            let bytes = &self.code[id].code.bytes;
+            let value = object.append(text, bytes, FUNCTION_ALIGN);
+            // An internal function is named by its declaration, as debuggers show it; local symbols
+            // may share a name, as instantiations of one declaration do.
+            let path = self.lines.declaration(f.origin);
+            let own = if path.is_empty() {
+                id.to_string()
+            } else {
+                path.iter().map(|name| name.as_str()).collect::<Vec<_>>().join(".")
+            };
+            let (name, binding) = Self::named(f.linkage, own);
+            let size = bytes.len() as u64;
+            let symbol = Symbol { name, section: Some(text), value, size, kind: SymbolKind::Func, binding };
+            funcs.push(object.symbols.push(symbol));
+        }
+        funcs
+    }
+
+    /// Appends each datum to the section of what the program does with it, a symbol for each;
+    /// with where each was placed.
+    fn data(&self, object: &mut Object) -> (IndexVec<DataId, SymbolId>, Vec<(SectionId, u64)>) {
+        let mut data = IndexVec::new();
+        let mut placed = Vec::new();
+        for (id, d) in self.unit.data.iter() {
+            let contents = match (d.writable, d.relocs.is_empty()) {
+                (true, _) => Contents::Writable,
+                (false, true) => Contents::ReadOnly,
+                (false, false) => Contents::Relocated,
+            };
+            let name = d.section.map_or_else(
+                || SECTIONS.iter().find(|(c, _)| *c == contents).expect("listed").1.to_vec(),
+                |s| s.as_str().as_bytes().to_vec(),
+            );
+            let section = object.section_named(&name, contents);
+            let value = object.append(section, &d.bytes, d.align);
+            placed.push((section, value));
+            let (name, binding) = Self::named(d.linkage, id.to_string());
+            let size = d.bytes.len() as u64;
+            let symbol =
+                Symbol { name, section: Some(section), value, size, kind: SymbolKind::Object, binding };
+            data.push(object.symbols.push(symbol));
+        }
+        (data, placed)
+    }
+
+    /// A symbol for each import, defined elsewhere.
+    fn imports(&self, object: &mut Object) -> IndexVec<ImportId, SymbolId> {
+        let imports = self.unit.imports.iter().map(|(_, i)| {
             let kind = match i.kind {
                 ImportKind::Func(_) => SymbolKind::Func,
                 ImportKind::Data => SymbolKind::Unknown,
             };
             let name = i.symbol.as_str().as_bytes().to_vec();
-            b.object.symbols.push(Symbol {
+            object.symbols.push(Symbol {
                 name,
                 section: None,
                 value: 0,
@@ -124,65 +158,25 @@ pub(crate) fn assemble<T>(
                 kind,
                 binding: Binding::Global,
             })
-        })
-        .collect::<Vec<_>>()
-        .into();
-    let symbol = |a: Address| match a {
-        Address::Func(f) => funcs[f],
-        Address::Data(d) => data[d],
-        Address::Import(i) => imports[i],
-    };
-    for (id, _) in unit.functions.iter() {
-        let start = b.object.symbols[funcs[id]].value;
-        for r in &code[id].code.relocs {
-            let reloc =
-                Reloc { offset: start + r.offset, symbol: symbol(r.target), kind: r.kind, addend: r.addend };
-            b.object.sections[text].relocs.push(reloc);
-        }
-    }
-    for ((_, d), (section, start)) in unit.data.iter().zip(placed) {
-        for r in &d.relocs {
-            let reloc = Reloc {
-                offset: start + r.offset,
-                symbol: symbol(r.target),
-                kind: RelocKind::Abs64,
-                addend: r.addend,
-            };
-            b.object.sections[section].relocs.push(reloc);
-        }
-    }
-    line_table(code, lines, &funcs, &mut b.object, text);
-    // Mach-O describes frames otherwise (compact unwind information), which is left for later.
-    if format == Format::Elf {
-        let fdes = code.iter().filter(|(_, c)| !c.code.bytes.is_empty()).map(|(id, c)| Fde {
-            symbol: funcs[id],
-            size: c.code.bytes.len() as u64,
-            steps: c.unwind.clone(),
         });
-        frames.write(&mut b.object, &fdes.collect::<Vec<_>>());
+        imports.collect::<Vec<_>>().into()
     }
-    b.object
-}
 
-/// Adds the line table of the functions compiled as `code`, at `funcs`, to `object`: the unit
-/// named by the first file it reads.
-fn line_table<T>(
-    code: &IndexVec<FuncId, Compiled<T>>,
-    lines: &dyn Lines,
-    funcs: &IndexVec<FuncId, SymbolId>,
-    object: &mut Object,
-    text: SectionId,
-) {
-    let mut table = vun_dwarf::Lines::default();
-    let mut name = None;
-    for (id, compiled) in code.iter() {
-        let rows = compiled.marks.iter().filter_map(|&(offset, origin)| {
-            let line = lines.line(origin)?;
-            name.get_or_insert_with(|| line.file.display().to_string());
-            Some(Row { offset, file: table.file(line.file), line: line.line })
-        });
-        let rows = rows.collect();
-        table.sequence(Sequence { symbol: funcs[id], size: compiled.code.bytes.len() as u64, rows });
+    /// Adds the line table of the functions, at `funcs`, to `object`: the unit named by the first
+    /// file it reads.
+    fn line_table(&self, funcs: &IndexVec<FuncId, SymbolId>, object: &mut Object, text: SectionId) {
+        let (code, lines) = (self.code, self.lines);
+        let mut table = vun_dwarf::Lines::default();
+        let mut name = None;
+        for (id, compiled) in code.iter() {
+            let rows = compiled.marks.iter().filter_map(|&(offset, origin)| {
+                let line = lines.line(origin)?;
+                name.get_or_insert_with(|| line.file.display().to_string());
+                Some(Row { offset, file: table.file(line.file), line: line.line })
+            });
+            let rows = rows.collect();
+            table.sequence(Sequence { symbol: funcs[id], size: compiled.code.bytes.len() as u64, rows });
+        }
+        table.write(object, text, &name.unwrap_or_default(), PRODUCER);
     }
-    table.write(object, text, &name.unwrap_or_default(), PRODUCER);
 }

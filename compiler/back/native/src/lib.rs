@@ -28,6 +28,8 @@ use vun_lir::legalize::Half;
 use vun_lir::unit::Unit;
 use vun_lir::{Address, FuncId, Function};
 use vun_object::{Format, Machine};
+
+use object::Assembly;
 use vun_par::Parallel;
 use vun_target::{Arches, Name, TargetSpec};
 
@@ -140,7 +142,9 @@ impl NativeBackend {
     {
         let code = Self::compile::<A>(request.unit, A::convention(request.target), request.listing)?;
         let bytes =
-            object::assemble(request.unit, &code, (machine, format), request.lines, &A::CALL_FRAME).write();
+            Assembly { unit: request.unit, code: &code, lines: request.lines, frames: &A::CALL_FRAME }
+                .object((machine, format))
+                .write();
         let mut artifacts = vec![Artifact { name: PathBuf::from(OBJECT), kind: Emits::Object, bytes }];
         if request.listing {
             let text = Listing { unit: request.unit, code: &code, lines: request.lines }.to_string();

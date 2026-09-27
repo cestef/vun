@@ -99,9 +99,9 @@ impl Corpus<'_> {
         };
         let mut verdicts = Vec::new();
         for (section, files, expect) in [(EXAMPLE, &example, Expect::Annotated), (FIX, &fix, Expect::Clean)] {
-            let scratch = Scratch::new(&format!("{relative}-{section}"));
+            let scratch = Scratch::create(&format!("{relative}-{section}"))?;
             for (file, text) in files {
-                scratch.write(file, text);
+                scratch.put(file, text)?;
             }
             let target: PathBuf = scratch.join(&checked);
             let verdict = if target.exists() {
