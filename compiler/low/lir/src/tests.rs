@@ -199,7 +199,7 @@ fn the_verifier_checks_what_an_assembly_block_binds_and_where_it_ends() {
         let operands = vec![Operand::Bound(Bound::Out { place, reg: None })];
         let inst = Inst { op: OpId(0), form: FormId(0), size: SizeId(3), operands, origin: o };
         let arch = vun_items::lang::arch_x86_64::arith.parent().expect("a namespace");
-        b.push(InstKind::Asm(Box::new(Block { arch, insts: vec![inst], returns })), None, o);
+        b.push(InstKind::Asm(Box::new(Block { arch, insts: vec![inst], returns }), None), None, o);
         b.terminate(term);
         let mut unit = Unit { pointer_bits: 64, ..Unit::default() };
         unit.functions.push(b.finish());

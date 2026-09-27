@@ -44,6 +44,12 @@ pub const allocated: Item = Item::new(&["lang", "check", "allocated"]);
 pub const freed: Item = Item::new(&["lang", "check", "freed"]);
 /// Reports `f` and ends the program, as a trap does.
 pub const fail: Item = Item::new(&["lang", "check", "fail"]);
+/// Fails at the site `site` unless the `bytes` at `address` may be written: what a backend calls
+/// before an instruction of an assembly block writing memory, from machine code, with scalars.
+pub const asm_write: Item = Item::new(&["lang", "check", "asm_write"]);
+/// Fails at the site `site` for an assembly block returning with the stack pointer moved from
+/// `before` to `after`.
+pub const asm_stack: Item = Item::new(&["lang", "check", "asm_stack"]);
 /// The id of a new trap site at `at`, which a check made there fails at: the message table
 /// records it as it records a trap site.
 pub const site: Item = Item::new(&["lang", "check", "site"]);

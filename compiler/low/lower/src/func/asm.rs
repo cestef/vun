@@ -2,8 +2,10 @@
 //! its place, and a symbol the address of the function, link symbol or static it names.
 
 use vun_inline::Rebind;
-use vun_lir::{Address, InstKind, Output, Value};
+use vun_items::lang::check as operations;
+use vun_lir::{Address, AsmCheck, InstKind, Output, Value};
 use vun_mir::{Asm, Operand, Place};
+use vun_target::Check;
 
 use super::{FnLower, Storage};
 use crate::unlowered::{Form, Unlowered};
@@ -52,7 +54,19 @@ impl FnLower<'_, '_, '_> {
     /// ends its block, whose terminator is then unreachable.
     pub(super) fn asm(&mut self, asm: &Asm) -> Result<(), Unlowered> {
         let block = asm.clone().rebind(&mut Binder(self))?;
-        self.b.push(InstKind::Asm(Box::new(block)), None, self.at);
+        let checked = if self.l.unit.checks.contains(Check::Asm) { Some(self.asm_check()?) } else { None };
+        self.b.push(InstKind::Asm(Box::new(block), checked), None, self.at);
         Ok(())
+    }
+
+    /// How the block lowered is checked under the `asm` checks: at a site of its own, through
+    /// the helpers of `lang.check` the runtime provides.
+    fn asm_check(&mut self) -> Result<AsmCheck, Unlowered> {
+        let site = self.new_site(self.at, None)?;
+        Ok(AsmCheck {
+            site,
+            write: self.provided(operations::asm_write)?,
+            stack: self.provided(operations::asm_stack)?,
+        })
     }
 }

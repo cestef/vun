@@ -64,6 +64,8 @@ symbols := struct {
     allocated := "vun_check_allocated";
     freed := "vun_check_freed";
     fail := "vun_check_fail";
+    asm_write := "vun_check_asm_write";
+    asm_stack := "vun_check_asm_stack";
 };
 
 /// Why the `bytes` at `address` may not be accessed, if they may not.
@@ -90,6 +92,16 @@ freed: (address: usize, bytes: usize) -> ?Violation = _;
 /// Reports `f` and ends the program, as a trap does.
 #[link.symbol(symbols.fail)]
 fail: (f: &Failure) -> lang.never = _;
+
+/// Fails at the site `site` unless the `bytes` at `address` may be written: what a backend calls
+/// before an instruction of an assembly block writing memory, from machine code, with scalars.
+#[link.symbol(symbols.asm_write), abi.c]
+asm_write: (address: usize, bytes: usize, site: u32) = _;
+
+/// Fails at the site `site` for an assembly block returning with the stack pointer moved from
+/// `before` to `after`.
+#[link.symbol(symbols.asm_stack), abi.c]
+asm_stack: (site: u32, before: usize, after: usize) -> lang.never = _;
 
 /// The id of a new trap site at `at`, which a check made there fails at: the message table
 /// records it as it records a trap site.

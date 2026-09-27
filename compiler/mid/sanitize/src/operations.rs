@@ -12,8 +12,16 @@ use vun_sema::env::ItemSite;
 use vun_sema::item::Site;
 
 /// Each operation of `lang.check` a runtime exports.
-const PROVIDED: [Item; 6] =
-    [check::access, check::poison, check::unpoison, check::allocated, check::freed, check::fail];
+const PROVIDED: [Item; 8] = [
+    check::access,
+    check::poison,
+    check::unpoison,
+    check::allocated,
+    check::freed,
+    check::fail,
+    check::asm_write,
+    check::asm_stack,
+];
 
 /// The operations of `lang.check` as the files of a package see them, each with its link symbol.
 pub struct Operations;

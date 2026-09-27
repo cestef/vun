@@ -6,7 +6,7 @@
 use vun_hash::Set;
 use vun_items::Item;
 use vun_items::lang::{check, check_Violation as violation};
-use vun_lir::{BinOp, CastOp, InstKind, Slot, Value};
+use vun_lir::{Address, BinOp, CastOp, InstKind, Slot, Value};
 use vun_mir::{Local, Operand, Projection, Rvalue};
 use vun_sema::checks::ChecksOf;
 use vun_sema::item::Site;
@@ -102,11 +102,16 @@ impl FnLower<'_, '_, '_> {
 
     /// Calls the operation `item` of `lang.check`, which the runtime provides, with `args`.
     fn runtime(&mut self, item: Item, args: Vec<Value>) -> Result<(), Unlowered> {
-        let at = self.at;
-        let unsupported = move || Unlowered::unsupported(at, Form::Callee);
-        let Ok(Site::Decl(decl)) = self.l.env.site(item) else { return Err(unsupported()) };
-        let callee = self.l.linked(&decl, at)?.callee().ok_or_else(unsupported)?;
-        self.b.push(InstKind::Call { callee, args }, None, at);
+        let callee = self.provided(item)?.callee().ok_or(Unlowered::unsupported(self.at, Form::Callee))?;
+        self.b.push(InstKind::Call { callee, args }, None, self.at);
         Ok(())
+    }
+
+    /// The address of the operation `item` of `lang.check`, which the runtime provides.
+    pub(super) fn provided(&mut self, item: Item) -> Result<Address, Unlowered> {
+        let Ok(Site::Decl(decl)) = self.l.env.site(item) else {
+            return Err(Unlowered::unsupported(self.at, Form::Callee));
+        };
+        self.l.linked(&decl, self.at)
     }
 }

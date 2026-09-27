@@ -12,3 +12,5 @@ pub const unpoison: Item = Item::new(&["lang", "check", "symbols", "unpoison"]);
 pub const allocated: Item = Item::new(&["lang", "check", "symbols", "allocated"]);
 pub const freed: Item = Item::new(&["lang", "check", "symbols", "freed"]);
 pub const fail: Item = Item::new(&["lang", "check", "symbols", "fail"]);
+pub const asm_write: Item = Item::new(&["lang", "check", "symbols", "asm_write"]);
+pub const asm_stack: Item = Item::new(&["lang", "check", "symbols", "asm_stack"]);

@@ -32,7 +32,7 @@ macro_rules! inst_operands {
                 ([Some(f), None, None], Some(args), None)
             }
             InstKind::Call { args, .. } => ([None, None, None], Some(args), None),
-            InstKind::Asm(asm) => ([None, None, None], None, Some(asm)),
+            InstKind::Asm(asm, _) => ([None, None, None], None, Some(asm)),
         }
     };
 }

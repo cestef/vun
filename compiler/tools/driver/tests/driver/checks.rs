@@ -125,3 +125,46 @@ fn memory_given_back_twice_or_read_once_given_back_traps_through_each_backend() 
     // Without the pointer checks, the read goes through.
     assert!(checked_statuses("checks-unread", &after, &[Check::Allocations]).iter().all(|&s| s == Some(5)));
 }
+
+#[test]
+fn an_assembly_block_under_the_asm_checks_carries_its_site_and_the_runtime_helpers() {
+    let fixture = Fixture::new("checks-asm");
+    let path = fixture.root.write(
+        "main.vun",
+        "\
+start := std.os.start(main);
+main := (sys: &mut std.os.System) -> std.os.Exit {
+    mut r: u64 = 0;
+    unsafe lang.arch.x86_64.asm {
+        mov {out r}, 7
+    };
+    std.os.Exit.of((r % 100).to(Int(0..=125)))
+};
+",
+    );
+    let checks = |kinds: &[Check]| {
+        let mut session = fixture.session();
+        session.choice = Choice::Path(vec![Symbol::intern("linux"), Symbol::intern("x86_64")]);
+        session.add_checks(kinds.iter().copied());
+        let file = session.load(&path).unwrap();
+        let unit = session.lir(file).as_ref().clone().unwrap();
+        assert_eq!(unit.verify(session.origins), Ok(()));
+        let insts = unit.functions.iter().flat_map(|(_, f)| f.insts.iter().map(|(_, i)| i.kind.clone()));
+        let checks: Vec<Option<vun_lir::AsmCheck>> = insts
+            .filter_map(|kind| match kind {
+                vun_lir::InstKind::Asm(_, check) => Some(check),
+                _ => None,
+            })
+            .collect();
+        (checks, unit.sites.len())
+    };
+    let (unchecked, _) = checks(&[]);
+    assert!(!unchecked.is_empty() && unchecked.iter().all(Option::is_none));
+    let (checked, sites) = checks(&[Check::Asm]);
+    let exported = |a: vun_lir::Address| matches!(a, vun_lir::Address::Func(_));
+    assert!(!checked.is_empty());
+    for check in &checked {
+        let check = check.expect("each block is checked");
+        assert!((check.site as usize) < sites && exported(check.write) && exported(check.stack));
+    }
+}

@@ -33,7 +33,7 @@ fn block(
     let (op, form) = (OpId(u16::try_from(op).expect("few")), FormId(u16::try_from(form).expect("few")));
     let size = SizeId(u8::try_from(size).expect("few"));
     let inst = Inst { op, form, size, operands: [out].into_iter().chain(operands).collect(), origin };
-    b.push(InstKind::Asm(Box::new(Block { arch, insts: vec![inst], returns: true })), None, origin);
+    b.push(InstKind::Asm(Box::new(Block { arch, insts: vec![inst], returns: true }), None), None, origin);
     let r = b.load(Scalar::I64, addr, Access::Plain, origin);
     b.terminate(Terminator::Return(Some(r)));
 }

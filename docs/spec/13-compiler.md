@@ -878,14 +878,17 @@ in registers a call may overwrite, none saved.
     the stack past a frame is the next call's. The checks do not apply in the functions they
     run in: each function the runtime exports for an operation of `lang.check`, and every
     function one calls, or an operation would check itself.
-  - The native backend checks assembly blocks when the unit's checks include `asm` (a field of
-    `vun_lir::Unit`, as `pointer_bits` is). Before each instruction whose form writes memory, it
-    checks the address that operand computes. Around a block that returns, it compares the
-    stack pointer before and after.
-  - The C backend writes the same checks around `__asm__`, except the per-instruction one, which
-    needs the encoder.
-  `vun-sanitize` (`compiler/mid/sanitize`) holds the rewrite and the slot policy (which slots
-  get redzones, and their size), so lowering and concreteness only call it.
+  - Under the `asm` checks (`vun_lir::Unit.checks`), lowering gives each assembly block its
+    check (`InstKind::Asm`'s `AsmCheck`): a site of its own, and the runtime's helpers machine
+    code calls with scalars only, under the C convention, `lang.check.asm_write(address, bytes,
+    site)` and `asm_stack(site, before, after)`. The native backend calls `asm_write` before
+    each instruction whose form writes memory, with the address that operand computes, and
+    `asm_stack` where a block that returns moved the stack pointer. The C backend checks the
+    stack pointer only, which needs no encoder.
+  Sema holds the checks (`vun_sema::checks::ChecksOf`, an input as the target is) and what an
+  operation runs as under them (`Attributes::checked`); `vun-sanitize` holds the link symbols of
+  the operations a runtime provides (`Operations`), which the driver reads to report
+  `check.unsupported`.
 - **Runtime state is shadow memory**, one byte per 8 bytes of address space, as AddressSanitizer
   encodes it: 0 for eight addressable bytes, `k` for the first `k`, and a negative value per
   reason (`lang.check.Violation`) otherwise. `std.check` holds the shadow's logic, reading and

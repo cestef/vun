@@ -149,7 +149,7 @@ impl fmt::Display for InstKind {
                 }
                 write!(f, "({})", List(args))
             }
-            Self::Asm(asm) => {
+            Self::Asm(asm, check) => {
                 write!(f, "asm {} ({} instructions)", asm.arch, asm.insts.len())?;
                 for bound in asm.bindings() {
                     let (kind, place) = match bound {
@@ -161,6 +161,9 @@ impl fmt::Display for InstKind {
                         vun_inline::Bound::InOut { place, .. } => ("inout", place),
                     };
                     write!(f, " {kind} {} {}", place.ty, place.addr)?;
+                }
+                if let Some(check) = check {
+                    write!(f, " checked at site {} by {}, {}", check.site, check.write, check.stack)?;
                 }
                 Ok(())
             }

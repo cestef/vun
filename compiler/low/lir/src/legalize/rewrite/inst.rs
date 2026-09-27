@@ -128,7 +128,7 @@ impl Rewrite<'_> {
             InstKind::Copy { to, from, bytes } => {
                 InstKind::Copy { to: one(to), from: one(from), bytes: *bytes }
             }
-            InstKind::Asm(_) => {
+            InstKind::Asm(..) => {
                 let mut kind = kind.clone();
                 kind.map_values(|v| self.one(v));
                 kind

@@ -71,7 +71,7 @@ impl Lower<'_> {
                 self.op(Op::MemoryCopy);
             }
             InstKind::Call { callee, args } => return self.call(&callee, &args, result, at),
-            InstKind::Asm(_) => return Err(Missing::Asm.at(at)),
+            InstKind::Asm(..) => return Err(Missing::Asm.at(at)),
         }
         if let Some(r) = result {
             self.set(r);

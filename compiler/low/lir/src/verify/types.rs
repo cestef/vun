@@ -105,8 +105,8 @@ impl Checker<'_> {
                 gives(None)
             }
             InstKind::Call { .. } => self.call(inst),
-            InstKind::Asm(asm) => {
-                self.asm(inst, asm)?;
+            InstKind::Asm(asm, check) => {
+                self.asm(inst, asm, check.as_ref())?;
                 gives(None)
             }
         }

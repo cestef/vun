@@ -12,3 +12,5 @@ pub const unpoison: Item = Item::new(&["std", "check", "exports", "unpoison"]);
 pub const allocated: Item = Item::new(&["std", "check", "exports", "allocated"]);
 pub const freed: Item = Item::new(&["std", "check", "exports", "freed"]);
 pub const fail: Item = Item::new(&["std", "check", "exports", "fail"]);
+pub const asm_write: Item = Item::new(&["std", "check", "exports", "asm_write"]);
+pub const asm_stack: Item = Item::new(&["std", "check", "exports", "asm_stack"]);

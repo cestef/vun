@@ -22,6 +22,12 @@ pub enum Check {
     freed,
     /// Reports `f` and ends the program, as a trap does.
     fail,
+    /// Fails at the site `site` unless the `bytes` at `address` may be written: what a backend calls
+    /// before an instruction of an assembly block writing memory, from machine code, with scalars.
+    asm_write,
+    /// Fails at the site `site` for an assembly block returning with the stack pointer moved from
+    /// `before` to `after`.
+    asm_stack,
     /// The id of a new trap site at `at`, which a check made there fails at: the message table
     /// records it as it records a trap site.
     site,
@@ -37,6 +43,8 @@ impl Check {
         Self::allocated,
         Self::freed,
         Self::fail,
+        Self::asm_write,
+        Self::asm_stack,
         Self::site,
     ];
     /// The declaration's name.
@@ -51,6 +59,8 @@ impl Check {
             Self::allocated => "allocated",
             Self::freed => "freed",
             Self::fail => "fail",
+            Self::asm_write => "asm_write",
+            Self::asm_stack => "asm_stack",
             Self::site => "site",
         }
     }
@@ -66,6 +76,8 @@ impl Check {
             Self::allocated => vun_items::lang::check::allocated,
             Self::freed => vun_items::lang::check::freed,
             Self::fail => vun_items::lang::check::fail,
+            Self::asm_write => vun_items::lang::check::asm_write,
+            Self::asm_stack => vun_items::lang::check::asm_stack,
             Self::site => vun_items::lang::check::site,
         }
     }

@@ -43,8 +43,21 @@ pub enum InstKind {
     /// A call; its result, if the signature has one, is the instruction's value.
     Call { callee: Callee, args: Vec<Value> },
     /// A block of inline assembly, reading its inputs and writing its outputs at the addresses
-    /// bound. It may touch any memory and register besides.
-    Asm(Box<Asm>),
+    /// bound. It may touch any memory and register besides. Under the `asm` checks, how it is
+    /// checked.
+    Asm(Box<Asm>, Option<AsmCheck>),
+}
+
+/// How an assembly block is checked under the `asm` checks (spec 13, section 8.7): its site in
+/// the message table, and the runtime's helpers machine code calls with scalars only.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encode, Decode)]
+pub struct AsmCheck {
+    pub site: u32,
+    /// `lang.check.asm_write(address, bytes, site)`, before each instruction writing memory.
+    pub write: Address,
+    /// `lang.check.asm_stack(site, before, after)`, where the block returns with the stack pointer
+    /// moved.
+    pub stack: Address,
 }
 
 /// An assembly block binding values, and the addresses of what it writes.
@@ -241,7 +254,7 @@ impl InstKind {
             | Self::CompareExchange { .. }
             | Self::Copy { .. }
             | Self::Call { .. }
-            | Self::Asm(_) => true,
+            | Self::Asm(..) => true,
             Self::Load { access, .. } => *access != Access::Plain,
             Self::Const { .. }
             | Self::Binary { .. }

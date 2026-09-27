@@ -130,4 +130,14 @@ exports := ($shadow: () -> Shadow, $end: (status: std.os.Status) -> lang.never) 
 
     #[link.export(lang.check.symbols.fail)]
     fail := (f: &lang.check.Failure) -> lang.never { end(std.os.trapped) };
+
+    #[link.export(lang.check.symbols.asm_write), abi.c]
+    asm_write := (address: usize, bytes: usize, site: u32) {
+        if shadow().access(address, bytes).is_some() {
+            end(std.os.trapped)
+        }
+    };
+
+    #[link.export(lang.check.symbols.asm_stack), abi.c]
+    asm_stack := (site: u32, before: usize, after: usize) -> lang.never { end(std.os.trapped) };
 } };

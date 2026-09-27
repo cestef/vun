@@ -17,7 +17,7 @@ use vun_origin::{OriginId, OriginTable};
 use crate::analysis::{Cfg, Dominators};
 use crate::entity::{Block, FuncId, Inst, Value};
 use crate::func::{Def, Function};
-use crate::inst::{Address, Asm, Callee, InstKind, Target, Terminator};
+use crate::inst::{Address, Asm, AsmCheck, Callee, InstKind, Target, Terminator};
 use crate::ty::Scalar;
 use crate::unit::{ImportKind, Unit};
 
@@ -248,8 +248,11 @@ impl Checker<'_> {
 
     /// What an assembly block writes is at addresses, the symbols it names exist, and one that
     /// does not return ends its block, as unreachable.
-    fn asm(&self, inst: Inst, asm: &Asm) -> Result<(), Malformed> {
+    fn asm(&self, inst: Inst, asm: &Asm, check: Option<&AsmCheck>) -> Result<(), Malformed> {
         let at = Entity::Inst(self.id, inst);
+        for &address in check.iter().flat_map(|c| [&c.write, &c.stack]) {
+            self.unit.address(at, address)?;
+        }
         for (output, _) in asm.outputs() {
             self.expect(at, output.addr, Scalar::Ptr)?;
         }

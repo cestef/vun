@@ -198,7 +198,7 @@ fn lea(origin: OriginId) -> Unit {
         origin,
     };
     let block = Block { arch: vun_items::lang::arch::x86_64, insts: vec![inst], returns: true };
-    b.push(vun_lir::InstKind::Asm(Box::new(block)), None, origin);
+    b.push(vun_lir::InstKind::Asm(Box::new(block), None), None, origin);
     let r = b.load(Scalar::I64, addr, vun_lir::Access::Plain, origin);
     b.terminate(Terminator::Return(Some(r)));
     let mut unit = Unit { pointer_bits: 64, ..Unit::default() };
