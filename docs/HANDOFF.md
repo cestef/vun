@@ -140,17 +140,14 @@ language rules go in as proposed unless the user approves them.
 ## 7. Next steps, in order
 
 0. **Review follow-ups (2026-09-27).** Four sessions reviewed the whole tree and fixed what
-   mattered (decisions 232 to 244; commits from `chore: fuzz joins the workspace` on). What is
+   mattered (decisions 232 to 248; commits from `chore: fuzz joins the workspace` on). What is
    left, most severe first:
-   - Decisions for the user: (a) the C backend lowers LIR `Offset` to `u8*` arithmetic while LIR
-     states no in-bounds rule, so GCC may fold wrapping checks (`back/c/src/emit/func/inst.rs:87`):
-     address-wide integer arithmetic, or an in-bounds rule for `Offset` in spec 13; (b) a `u128`
-     parameter under `Conv::C` is split into two `I64`s (`low/lir/src/legalize/mod.rs:153`),
-     wrong for AAPCS64 (even pair) and SysV: a typed wide `AbiType` for the backends'
-     classifiers; (c) file keys are `name@version/path` text
-     (`driver/src/packages/locate.rs:49`), so a fork of one release shares keys: a typed key;
-     (d) `http://` sources stay allowed for `pkg add`, and bitreq follows redirects itself, so a
-     downgrade is refused only after the request (`tools/http/src/lib.rs:44`).
+   - Settled by the user, to implement (decisions 245 to 248): an in-bounds rule for LIR
+     `Offset` in spec 13, which the C backend's pointer arithmetic
+     (`back/c/src/emit/func/inst.rs:87`) relies on; a typed wide `AbiType` instead of splitting
+     `u128` into `I64`s (`low/lir/src/legalize/mod.rs:153`); typed package file keys
+     (`driver/src/packages/locate.rs:49`); `https://` only, redirects followed hop by hop with
+     each scheme checked before the request (`tools/http/src/lib.rs`).
    - Bugs: `==` through an `Eq` witness in a compile-time call reached from MIR does not
      evaluate (`t == u8` in a `$t: type` function, read by a run-time constant), while
      `lang.meta.same` does (sema `Env::binary`, TypeEq taking `&type`). It blocks the per-system
