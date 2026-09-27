@@ -2,6 +2,7 @@
 
 use vun_diag::{ChildKind, DiagCx, Diagnostic, Msg, errors};
 use vun_hash::{Algorithm, Hash, Snapshot};
+use vun_intern::Symbol;
 use vun_suggest::{Lookup, closest};
 use vun_syntax::literal::{Decl, Literal};
 
@@ -78,6 +79,8 @@ pub(crate) trait Record {
     fn int<T: TryFrom<i128>>(&self, cx: &mut DiagCx<'_>) -> Option<T>;
     /// A list of strings: `.{ "a", "b" }` or `[ "a", "b" ]`.
     fn strings(&self, cx: &mut DiagCx<'_>) -> Option<Vec<String>>;
+    /// A list of strings, as symbols.
+    fn symbols(&self, cx: &mut DiagCx<'_>) -> Option<Vec<Symbol>>;
     /// A list of paths inside a directory, as snapshots name them: no root, no `..`.
     fn paths(&self, cx: &mut DiagCx<'_>) -> Option<Vec<String>>;
     /// One of the names in `table`, written `.name`.
@@ -137,6 +140,10 @@ impl Record for Decl<'_> {
         };
         let texts: Option<Vec<String>> = items.iter().map(|i| i.as_str().map(str::to_owned)).collect();
         texts.or_else(|| self.invalid(Msg::new().text("a list of strings"), cx))
+    }
+
+    fn symbols(&self, cx: &mut DiagCx<'_>) -> Option<Vec<Symbol>> {
+        self.strings(cx).map(|all| all.iter().map(|s| Symbol::intern(s)).collect())
     }
 
     fn paths(&self, cx: &mut DiagCx<'_>) -> Option<Vec<String>> {

@@ -103,8 +103,8 @@ impl Tools {
         let compiler = fields
             .get(field::COMPILER)
             .map_or(Some(None), |d| d.string(cx).map(|s| Some(Symbol::intern(&s))));
-        let flags = fields.get(field::FLAGS).map_or(Some(Vec::new()), |d| symbols(d, cx));
-        let runner = fields.get(field::RUNNER).map_or(Some(Vec::new()), |d| symbols(d, cx));
+        let flags = fields.get(field::FLAGS).map_or(Some(Vec::new()), |d| d.symbols(cx));
+        let runner = fields.get(field::RUNNER).map_or(Some(Vec::new()), |d| d.symbols(cx));
         fields.finish(cx);
         Some(Self { target: target?, compiler: compiler?, flags: flags?, runner: runner?, span: decl.span })
     }
@@ -126,9 +126,4 @@ impl Tools {
         let msg = Msg::new().text("the toolchain names no target ").code(path);
         cx.error_at(self.span, Diagnostic::error(errors::TARGET_UNCHOSEN, msg).caused_by(why));
     }
-}
-
-/// A list of strings, as symbols.
-fn symbols(decl: &Decl<'_>, cx: &mut DiagCx<'_>) -> Option<Vec<Symbol>> {
-    decl.strings(cx).map(|all| all.iter().map(|s| Symbol::intern(s)).collect())
 }

@@ -16,7 +16,7 @@ use crate::items;
 /// such paths is typed as their handles, so that a table naming a declaration that does not exist
 /// does not compile.
 const DECLARING: &str = "lang";
-use crate::names::{constant, docs, ident, pascal, raw, snake};
+use crate::names::{Name, constant, docs, ident, pascal, raw};
 
 /// Ends the name of a table's row struct: `iteration` holds `IterationRow`s.
 const ROW: &str = "_row";
@@ -33,7 +33,7 @@ impl<'s> Grammar<'s> {
         let mut modules = Vec::new();
         for e in self.enums.iter().filter(|e| own.contains(e.name)) {
             let items = e.emit();
-            modules.push(Module::sibling(snake(e.name), &quote! { #uses #items }));
+            modules.push(Module::sibling(e.name.snake(), &quote! { #uses #items }));
             modules.extend(self.slots(e)?);
         }
         for d in source.decls.iter().filter(|d| own.contains(d.name)) {

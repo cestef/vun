@@ -25,7 +25,7 @@ mod enums;
 mod slots;
 mod tables;
 
-use crate::names::{docs, is_type_name};
+use crate::names::{Name, docs};
 
 /// The directory both files are in.
 const SYNTAX: &str = "lib/lang/lang/syntax";
@@ -114,7 +114,7 @@ impl<'s> Grammar<'s> {
         let mut enums = Vec::new();
         for d in &source.decls {
             match &d.value {
-                Literal::Record(lists) if is_type_name(d.name) => enums.push(Self::kind(d, lists)?),
+                Literal::Record(lists) if d.name.is_type_name() => enums.push(Self::kind(d, lists)?),
                 Literal::Enum(variants) => enums.push(Enum {
                     name: d.name,
                     doc: docs(&d.doc),

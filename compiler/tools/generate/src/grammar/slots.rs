@@ -9,7 +9,7 @@ use quote::quote;
 
 use super::{Enum, Grammar};
 use crate::generate::{Access, Module, Read};
-use crate::names::{constant, ident, pascal, snake};
+use crate::names::{Name, constant, ident, pascal};
 
 /// Suffix removed from a kind's name to name its field and slot types.
 const KIND_SUFFIX: &str = "Kind";
@@ -103,9 +103,12 @@ impl Grammar<'_> {
             #(#tables)*
         };
         Ok(vec![
-            Module::sibling(snake(&field_ty.to_string()), &field),
-            Module::sibling(snake(&slot_ty.to_string()), &slot),
-            Module { access: Access::Impl, ..Module::sibling(format!("{}_slots", snake(kind.name)), &slots) },
+            Module::sibling(field_ty.to_string().snake(), &field),
+            Module::sibling(slot_ty.to_string().snake(), &slot),
+            Module {
+                access: Access::Impl,
+                ..Module::sibling(format!("{}_slots", kind.name.snake()), &slots)
+            },
         ])
     }
 }

@@ -23,6 +23,7 @@ use size::Measured;
 
 const OVERSIZED: DiagId = DiagId::new("xtask.lines.oversized");
 const OVER_BUDGET: DiagId = DiagId::new("xtask.size.over_budget");
+const UNMEASURED: DiagId = DiagId::new("xtask.size.unmeasured");
 
 const PROGRAM: Program<DiagCtxt> = Program {
     configure: vun_command::unconfigured,
@@ -79,8 +80,16 @@ fn check_lines(diag: &mut DiagCtxt, _: &Args, shell: &mut Shell<'_>) -> io::Resu
     Ok(if oversized.is_empty() { Outcome::Success } else { Outcome::Failure })
 }
 
+#[expect(clippy::unnecessary_wraps, reason = "every command has the `Run` signature")]
 fn check_size(diag: &mut DiagCtxt, _: &Args, shell: &mut Shell<'_>) -> io::Result<Outcome> {
-    let measured = Measured::build(&repo_root())?;
+    let measured = match Measured::build(&repo_root()) {
+        Ok(measured) => measured,
+        Err(why) => {
+            let msg = Msg::new().text("cannot measure the distributed ").code("vun");
+            diag.error(Diagnostic::error(UNMEASURED, msg).caused_by(&why));
+            return Ok(Outcome::Failure);
+        }
+    };
     let within = measured.bytes <= size::BUDGET;
     if within {
         let path = measured.path.display().to_string();
