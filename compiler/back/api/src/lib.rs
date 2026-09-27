@@ -35,6 +35,19 @@ pub enum Emits {
 }
 
 impl Emits {
+    /// Its name, as `vun toolchain components` shows it.
+    #[must_use]
+    pub const fn name(self) -> &'static str {
+        match self {
+            Self::Object => "object",
+            Self::Assembly => "assembly",
+            Self::Source => "source",
+            Self::Header => "header",
+            Self::Jit => "jit",
+            Self::Listing => "listing",
+        }
+    }
+
     /// The extension of a file of this kind.
     #[must_use]
     pub const fn extension(self) -> &'static str {

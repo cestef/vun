@@ -23,6 +23,8 @@ struct Component {
     /// The architectures a backend generates code for, or the object formats a linker links;
     /// `None` for any.
     handles: Option<Vec<&'static str>>,
+    /// What a backend emits, or what a linker builds programs as.
+    outputs: Vec<&'static str>,
 }
 
 impl Component {
@@ -53,12 +55,18 @@ impl Record for Component {
             .with("name", self.name)
             .with("status", self.status())
             .with("handles", self.handles.clone())
+            .with("outputs", self.outputs.clone())
     }
 }
 
 impl Row for Component {
-    const COLUMNS: &'static [Column] =
-        &[Column::left("kind"), Column::left("name"), Column::left("status"), Column::left("handles")];
+    const COLUMNS: &'static [Column] = &[
+        Column::left("kind"),
+        Column::left("name"),
+        Column::left("status"),
+        Column::left("handles"),
+        Column::left("outputs"),
+    ];
 
     fn cells(&self) -> Vec<Text> {
         let status = match self.readiness {
@@ -70,6 +78,7 @@ impl Row for Component {
             Text::of(Style::Literal, self.name),
             Text::of(status, self.status()),
             Text::of(Style::Dim, self.handles()),
+            Text::of(Style::Dim, self.outputs.join(", ")),
         ]
     }
 }
@@ -85,12 +94,14 @@ fn components(_: &mut Session, _: &Args, shell: &mut Shell<'_>) -> io::Result<Ou
             Arches::Any => None,
             Arches::Only(list) => Some(names(list)),
         },
+        outputs: vec![i.caps.emits.name()],
     });
     let linkers = r.linkers().map(vun_link::Linker::info).map(|i| Component {
         kind: "linker",
         name: i.id.0,
         readiness: i.readiness,
         handles: Some(names(i.formats)),
+        outputs: i.outputs.iter().map(|o| o.name()).collect(),
     });
     shell.table(&backends.chain(linkers).collect::<Vec<_>>())?;
     Ok(Outcome::Success)
