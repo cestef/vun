@@ -109,4 +109,4 @@ start := ($main: std.os.Main) -> type { struct {
     /// signal handler, and nothing is missed between an executor's check and its sleep.
     #[link.export(std.task.symbols.sleep)]
     sleep := () { unsafe { sched_yield(); } };
-}};
+} };

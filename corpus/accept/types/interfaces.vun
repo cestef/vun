@@ -8,7 +8,7 @@ Writer := interface(($Self: type) -> type { struct {
         for rest.len() > 0 { rest = rest[self.write(rest)?..]; }
         .ok(())
     };
-}});
+} });
 
 #[impl(Writer(Uart))]
 UartWriter := struct {

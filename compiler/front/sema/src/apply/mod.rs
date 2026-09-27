@@ -6,15 +6,15 @@ mod int;
 mod meta;
 mod report;
 
-use crate::trap::Reason;
-use crate::float::Format;
 use crate::Primitive;
 use crate::env::{Env, Unevaluated};
+use crate::float::Format;
 use crate::int::Integer;
 use crate::primitives::bounds::Bounds;
 use crate::primitives::lang::Lang;
 use crate::primitives::mem::Mem;
 use crate::primitives::meta::Meta;
+use crate::trap::Reason;
 use crate::ty::{Signature, TyKind, Value};
 
 impl Primitive {

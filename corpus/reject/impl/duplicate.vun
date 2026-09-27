@@ -2,7 +2,7 @@
 
 Shape := interface(($Self: type) -> type { struct {
     area: (self: &Self) -> u64 = _;
-}});
+} });
 
 Square := struct { side: u16 };
 

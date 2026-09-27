@@ -1,6 +1,6 @@
-use crate::float::Format;
 use super::{TyKind, Value};
 use crate::Primitive;
+use crate::float::Format;
 use crate::int::{Integer, Interval};
 use crate::primitives::mem::Mem;
 

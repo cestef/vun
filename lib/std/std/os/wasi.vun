@@ -64,4 +64,4 @@ start := ($main: std.os.Main) -> type { struct {
     /// Nothing else runs in the module, so there is nothing to wait for.
     #[link.export(std.task.symbols.sleep)]
     sleep := () {};
-}};
+} };

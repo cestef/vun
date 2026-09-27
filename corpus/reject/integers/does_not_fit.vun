@@ -3,5 +3,5 @@
 Point := struct { x: i32, y: i32 };
 
 norm1 := (p: Point) -> u32 {
-    p.x.abs() + p.y.abs()   //~ int.does_not_fit
+    p.x.abs() + p.y.abs() //~ int.does_not_fit
 };

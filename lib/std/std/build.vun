@@ -8,7 +8,7 @@
 /// `build`.
 Package := lang.interface(($Self: type) -> type { struct {
     build: (b: &mut Build) = _;
-}});
+} });
 
 /// A step of the plan, by its position: later steps name it.
 Step := struct { index: usize };

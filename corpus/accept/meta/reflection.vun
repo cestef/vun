@@ -6,7 +6,7 @@ Partial := ($T: type) -> type { struct {
     $for f in std.meta.fields(T) {
         $(f.name): ?f.type = .none,
     }
-}};
+} };
 
 Config := struct { baud: u32, parity: bool };
 

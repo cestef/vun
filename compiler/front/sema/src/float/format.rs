@@ -2,8 +2,8 @@
 //! which every other fact of the format is derived.
 
 use crate::Primitive;
-use crate::primitives::lang::Lang;
 use crate::int::Integer;
+use crate::primitives::lang::Lang;
 use crate::ty::{Ty, TyKind, Value};
 use vun_codec::{Decode, Encode};
 

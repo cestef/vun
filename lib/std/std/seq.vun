@@ -5,7 +5,7 @@
 Sequence := interface(($Self: type) -> type { struct {
     /// The number of items.
     len: (xs: &Self) -> usize = _;
-}});
+} });
 
 #[impl(Sequence(lang.mem.Slice))]
 SliceSequence := ($T: type) -> type { struct {

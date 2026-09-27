@@ -52,4 +52,4 @@ start := ($config: Config) -> type { struct {
     /// Waits for an interrupt.
     #[link.export(std.task.symbols.sleep)]
     sleep := () { unsafe { lang.arch.asm("wfi", .{}); } };
-}};
+} };

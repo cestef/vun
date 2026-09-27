@@ -14,7 +14,7 @@ Narrow := interface(($Self: type) -> type { struct {
     /// `.none` when the value is outside `T`.
     #[panic.never]
     try_to: (x: Self, $T: type) -> ?T = _;
-}});
+} });
 
 #[impl(Narrow(Int))]
 IntNarrow := ($r: lang.Range) -> type { struct {

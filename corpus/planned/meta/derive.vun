@@ -10,4 +10,4 @@ derive := ($T: type) -> type { struct {
         }
         w.end_struct()
     };
-}};
+} };

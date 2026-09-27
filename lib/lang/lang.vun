@@ -57,7 +57,7 @@ Coroutine := ($Y: type, $R: type) -> Interface {
     interface(($Self: type) -> type { struct {
         resume: (self: &mut Self) -> Step(Y, R) = _;
         end: (self: &take Self) = _;
-    }})
+    } })
 };
 
 /// Where an attribute is written (spec 02, section 5).

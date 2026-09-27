@@ -20,8 +20,8 @@ pub use frame::{Framer, Framers};
 pub use shape::{Layout, Niche, Parts, Shape, Tag};
 pub use text::Text;
 
-use crate::float::Format;
 use crate::Primitive;
+use crate::float::Format;
 use crate::int::{Integer, Interval};
 use crate::primitives::lang::Lang;
 use crate::primitives::mem::Mem;

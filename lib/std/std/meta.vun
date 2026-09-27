@@ -10,7 +10,7 @@ Quoted := interface(($Self: type) -> type { struct {
     source: (c: &Self) -> &[u8] = _;
     /// Where the code is written.
     span: (c: &Self) -> lang.meta.Origin = _;
-}});
+} });
 
 #[impl(Quoted(lang.meta.Code))]
 CodeQuoted := ($T: type) -> type { struct {

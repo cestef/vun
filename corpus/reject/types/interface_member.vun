@@ -3,7 +3,7 @@
 
 Shape := interface(($Self: type) -> type { struct {
     area: (self: &Self) -> u64 = _;
-}});
+} });
 
 describe := ($S: Shape, s: &S) -> u64 {
     s.area() + s.perimeter() //~ types.no_member

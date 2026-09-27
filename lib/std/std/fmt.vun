@@ -19,12 +19,12 @@ Writer := interface(($Self: type) -> type { struct {
         }
         .ok(())
     };
-}});
+} });
 
 /// How a value is written as text.
 Format := interface(($Self: type) -> type { struct {
     format: ($W: Writer, value: &Self, w: &mut W) -> Result((), W.Error) = _;
-}});
+} });
 
 /// A run of text of a format string, and the argument written after it.
 Piece := struct {

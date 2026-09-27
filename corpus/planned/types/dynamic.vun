@@ -3,7 +3,7 @@
 
 Shape := interface(($Self: type) -> type { struct {
     area: (self: &Self) -> u64 = _;
-}});
+} });
 
 largest := (shapes: &[std.Dyn(Shape)]) -> ?&std.Dyn(Shape) {
     mut best: ?&std.Dyn(Shape) = .none;

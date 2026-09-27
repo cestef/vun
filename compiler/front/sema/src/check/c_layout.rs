@@ -5,9 +5,9 @@
 use vun_diag::{Diagnostic, Msg, errors};
 use vun_hir::tree::{DeclId, ExprKind, Hir, Member, each_entry};
 
-use crate::float::Format;
 use super::Checker;
 use crate::Primitive;
+use crate::float::Format;
 use crate::int::Integer;
 use crate::member::Members;
 use crate::primitives::abi::Abi;
