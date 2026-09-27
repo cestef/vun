@@ -77,7 +77,6 @@ vun-http = { path = "compiler/tools/http" }
 vun-fmt = { path = "compiler/tools/fmt" }
 vun-bind = { path = "compiler/tools/bind" }
 vun-clang = { path = "compiler/tools/clang" }
-vun-probe = { path = "compiler/tools/probe" }
 vun-command = { path = "compiler/tools/command" }
 vun-harness = { path = "compiler/tools/harness" }
 vun-driver = { path = "compiler/tools/driver" }
