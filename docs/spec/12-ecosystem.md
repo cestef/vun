@@ -312,15 +312,16 @@ implemented; nothing is listed that does not run.
 | `vun check <file>` (`c`) | analyze without generating code |
 | `vun explain <id>` | the explanation page of a diagnostic, offline, paged |
 | `vun fmt [--check] <files>...` | lay out source files as the formatter does (spec 13, section 5); `--check` changes nothing and fails when a file would change |
+| `vun doc [<packages>...] [--library] [-o <dir>]` | the API documentation of packages: a page per namespace and the JSON beside them, under `.vun/doc` of the first package (section 7) |
 | `vun pkg add <source>`, `update`, `pack` | declare a dependency, raise versions, write the archive |
 | `vun tool bind <header>` | C declarations as Vun |
 | `vun toolchain components` | the backends and linkers of this toolchain |
 | `vun cache list\|gc` | the shared store: entries, sizes, labels; collection by lockfile roots |
 | `vun util completion <shell>` | the completion script of bash, zsh, fish or nushell |
 | `vun debug tokens\|cst\|manifest\|plan\|hir\|types\|mir\|layout\|program\|lir\|code\|frames <file>` | every representation with origins (spec 10) |
-| `vun debug coverage\|queries\|compare <file>` | how far the stages reach; what the saved queries hold; every backend run and compared |
+| `vun debug coverage\|queries\|compare\|reduce <file>` | how far the stages reach; what the saved queries hold; every backend run and compared; a failing file reduced (spec 13, section 10) |
 
-Still to come, each as a verb or a group verb: `new`, `test`, `bench`, `fuzz`, `fix`, `doc`,
+Still to come, each as a verb or a group verb: `new`, `test`, `bench`, `fuzz`, `fix`,
 `pkg vendor|why|tag|api`, `tool header|svd`, `target flash|attach|debug`, `toolchain
 list|install|prune`, `util lsp`.
 
