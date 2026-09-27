@@ -11,6 +11,7 @@ use vun_build::store::{Label, Staging};
 use vun_diag::{Diagnostic, Msg, errors};
 use vun_fs::Relative;
 use vun_hash::{Hash, Snapshot};
+use vun_pkg::Mirror;
 use vun_span::Span;
 
 use super::fetch::Rejected;
@@ -130,11 +131,12 @@ impl Session {
     }
 
     /// The archive at `url`, unpacked under staging; an archive without a manifest is foreign.
+    /// A URL no scheme reads, such as `http://`, is refused before anything is staged.
     fn archive(&mut self, url: &str) -> Option<Found> {
-        // Its contents, and so its hash, are unknown until it is unpacked.
-        let staged = self.store.stage(Hash::of(url.as_bytes())).map_err(Rejected::Store);
-        let fetched = staged.and_then(|staging| {
-            let unpacked = self.unpack(&staging, url)?;
+        let fetched = Mirror::parse(url, &self.schemes).map_err(Rejected::Mirror).and_then(|mirror| {
+            // Its contents, and so its hash, are unknown until it is unpacked.
+            let staging = self.store.stage(Hash::of(url.as_bytes())).map_err(Rejected::Store)?;
+            let unpacked = Self::unpack(&staging, &mirror)?;
             let manifest_path = unpacked.join(MANIFEST);
             let manifest = manifest_path.is_file().then(|| self.manifest_at(&manifest_path)).flatten();
             let kind = if manifest.is_some() { DepKind::Vun } else { DepKind::Foreign };

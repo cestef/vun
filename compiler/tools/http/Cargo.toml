@@ -1,6 +1,6 @@
 [package]
 name = "vun-http"
-description = "The network schemes of package downloads: http and https, over bitreq and rustls."
+description = "The network scheme of package downloads: https, over ureq and rustls."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -11,4 +11,4 @@ workspace = true
 
 [dependencies]
 vun-pkg.workspace = true
-bitreq.workspace = true
+ureq.workspace = true

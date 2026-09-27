@@ -150,8 +150,11 @@ build := (b: &mut std.build.Build) {
   manifest. Include entries are paths inside the package, with no root and no `..`
   (`manifest.invalid_field`). A stored package names its dependencies and replacements by hash;
   a path is refused. An archive holds at most 65536 entries and 512 MiB of files, and is read up
-  to 1 GiB; links and other non-regular entries are refused. Downloads take at most 10 minutes
-  and 8 redirects, never from `https://` to another scheme. `vun pkg update` takes the newest
+  to 1 GiB; links and other non-regular entries are refused. Network sources are `https://`
+  only: another scheme is refused when the source is read, before any request, and a local
+  mirror is a `file://` source. A download takes at most 10 minutes and follows at most 8
+  redirects itself, one hop at a time, each target read against the URL it leaves and requested
+  only if it is `https://` (decision 248). `vun pkg update` takes the newest
   release of the dependency's major and checks that it declares the identity and version it is
   listed under.
 - **Store.** A fetch stages in a directory of its own process under `staging/`, holding the
@@ -191,7 +194,7 @@ build := (b: &mut std.build.Build) {
   archive cannot write outside its tree. Archives are read as `.tar.zst`, `.tar.xz`, `.tar.gz`,
   `.tar` and `.zip`; their single top-level directory, as forges produce, is dropped. A tar archive may name paths through
   ustar, GNU long-name or PAX `path` records; it holds files and directories only, since a
-  package tree has no links, and a link is refused. Schemes (`https`, `http`, `file`) and
+  package tree has no links, and a link is refused. Schemes (`https`, `file`) and
   formats are tables, so another is one entry, and every format both reads and writes. `vun pkg
   pack` writes the project's `<name>-<version>.tar.zst` and prints its hash; `--out` ending in
   another format's suffix writes that format instead, with the same fixed metadata, so every

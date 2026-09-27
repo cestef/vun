@@ -165,7 +165,8 @@ impl Session {
         url: &str,
         label: Label<'_>,
     ) -> Result<(), Rejected> {
-        let unpacked = self.unpack(staging, url)?;
+        let mirror = Mirror::parse(url, &self.schemes).map_err(Rejected::Mirror)?;
+        let unpacked = Self::unpack(staging, &mirror)?;
         let snapshot = Snapshot::of(&unpacked, &self.include(kind, &unpacked)).map_err(Rejected::Unpacked)?;
         if snapshot.root() != hash {
             return Err(Rejected::Hash { found: snapshot.root() });
@@ -173,11 +174,12 @@ impl Session {
         Self::commit(store, staging, &snapshot, label)
     }
 
-    /// Downloads and unpacks `url` into a fresh `staging` entry, returning where the package is.
-    pub(super) fn unpack(&self, staging: &Path, url: &str) -> Result<PathBuf, Rejected> {
+    /// Downloads and unpacks `mirror` into a fresh `staging` entry, returning where the package
+    /// is.
+    pub(super) fn unpack(staging: &Path, mirror: &Mirror<'_>) -> Result<PathBuf, Rejected> {
         staging.fresh().map_err(Rejected::Store)?;
         let unpacked = staging.join(Store::PACKAGE);
-        Mirror::parse(url, &self.schemes).and_then(|m| m.fetch(&unpacked)).map_err(Rejected::Mirror)?;
+        mirror.fetch(&unpacked).map_err(Rejected::Mirror)?;
         Ok(unpacked)
     }
 

@@ -98,7 +98,7 @@ annotate-snippets = "0.12"
 anstyle = "1"
 ariadne = "0.6"
 blake3 = { version = "1", default-features = false, features = ["std", "pure"] }
-bitreq = { version = "0.3", features = ["https"] }
+ureq = { version = "3", default-features = false, features = ["rustls"] }
 flate2 = "1"
 zip = { version = "8", default-features = false, features = ["deflate-flate2"] }
 ruzstd = { version = "0.9", default-features = false, features = ["std"] }
