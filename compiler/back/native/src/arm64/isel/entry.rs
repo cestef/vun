@@ -3,6 +3,7 @@
 //! parameters passed in memory are addresses recomputed where used, the others are received
 //! where the convention passes them once the callee-saved registers are chosen.
 
+use crate::width::offset_of;
 use vun_asm_arm64::{Emit, Mem, Op, Operand, Reg, Size};
 use vun_codegen::{Arch, Place};
 use vun_dwarf::Step;
@@ -113,9 +114,4 @@ fn frame_size(code: &mut vun_asm_arm64::Asm<vun_lir::Address>, size: u64) {
     let (high, low) = (size >> HALF << HALF, size & 0xffff);
     code.emit(Op::Mov, Size::B64, &[SIZE.into(), Operand::Imm(high.cast_signed())]);
     code.emit(Op::Movk, Size::B64, &[SIZE.into(), Operand::Imm(low.cast_signed())]);
-}
-
-/// An offset of the frame or of the arguments, which fit 2 GiB.
-pub(super) fn offset_of(bytes: u64) -> i32 {
-    i32::try_from(bytes).expect("frames and arguments fit 2 GiB")
 }

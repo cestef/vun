@@ -9,7 +9,7 @@ use vun_codegen::Arch;
 use vun_lir::{AbiType, Address, Callee, Conv, Ext, ImportKind, Signature, Value};
 
 use super::Sel;
-use super::entry::offset_of;
+use crate::width::offset_of;
 use crate::x86_64::X86;
 use crate::x86_64::abi::{Carrier, Loc, Passing, Ret};
 

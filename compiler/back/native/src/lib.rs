@@ -7,6 +7,7 @@
 pub mod arm64;
 mod listing;
 mod object;
+pub mod width;
 pub mod x86_64;
 
 #[cfg(test)]

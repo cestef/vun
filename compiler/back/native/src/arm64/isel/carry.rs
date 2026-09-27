@@ -7,12 +7,8 @@ use vun_lir::Value;
 
 use super::Sel;
 use crate::arm64::abi::Carrier;
-use crate::arm64::{Arm, FAR, Opnd, access, offset, reaches, size_of};
-
-/// The size of a float's bits of `bytes` bytes.
-fn bits(bytes: u64) -> Size {
-    if bytes > 4 { Size::B64 } else { Size::B32 }
-}
+use crate::arm64::{Arm, FAR, Opnd, access, offset, reaches};
+use crate::width::{part, size_of};
 
 impl Sel<'_, '_> {
     /// The bytes of `v` in a register.
@@ -26,7 +22,7 @@ impl Sel<'_, '_> {
             Carrier::Int(r) => self.reg_to(v, r),
             Carrier::Fp(x) => {
                 self.reg_to(v, Arm::CARRIER);
-                let size = bits(self.bytes(v));
+                let size = part(self.bytes(v));
                 self.asm.emit(Op::Fmov, size, &[x.into(), Arm::CARRIER.into()]);
             }
         }
@@ -37,7 +33,7 @@ impl Sel<'_, '_> {
         match carrier {
             Carrier::Int(r) => self.def_at(v, r),
             Carrier::Fp(x) => {
-                let (d, size) = (self.def(v), bits(self.bytes(v)));
+                let (d, size) = (self.def(v), part(self.bytes(v)));
                 self.asm.emit(Op::Fmov, size, &[d.into(), x.into()]);
             }
         }
@@ -47,7 +43,7 @@ impl Sel<'_, '_> {
     pub(super) fn load_part(&mut self, carrier: Carrier, base: Reg, disp: i64, bytes: u64) {
         match carrier {
             Carrier::Int(r) => self.load_bytes(r, base, disp, bytes),
-            Carrier::Fp(x) => access(&mut self.asm, Op::Ldr, bits(bytes), x.into(), base, disp, FAR),
+            Carrier::Fp(x) => access(&mut self.asm, Op::Ldr, part(bytes), x.into(), base, disp, FAR),
         }
     }
 
@@ -55,7 +51,7 @@ impl Sel<'_, '_> {
     pub(super) fn store_part(&mut self, base: Reg, disp: i64, carrier: Carrier, bytes: u64) {
         match carrier {
             Carrier::Int(r) => self.store_bytes(base, disp, r, bytes),
-            Carrier::Fp(x) => access(&mut self.asm, Op::Str, bits(bytes), x.into(), base, disp, FAR),
+            Carrier::Fp(x) => access(&mut self.asm, Op::Str, part(bytes), x.into(), base, disp, FAR),
         }
     }
 

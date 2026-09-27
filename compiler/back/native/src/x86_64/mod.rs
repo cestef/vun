@@ -12,7 +12,7 @@ use vun_asm_x86_64::{Asm, Cc, Emit, Mem, Op, Operand, Reg, Size, X86_64};
 use vun_codegen::snippet::{Emits, Width};
 use vun_codegen::{Anchor, Arch, Place, Recompute};
 use vun_dwarf::CallFrame;
-use vun_lir::{Address, Cond, Scalar};
+use vun_lir::{Address, Cond};
 use vun_target::TargetSpec;
 
 /// x86-64, as the framework drives it.
@@ -142,19 +142,6 @@ impl Emits for X86 {
 
     fn emit(code: &mut Asm<Address>, op: Op, size: Size, operands: &[Opnd]) {
         code.emit(op, size, operands);
-    }
-}
-
-/// The size of an integer, an address or the bits of a float as a general register holds them;
-/// `None` for a 128-bit integer and for `f16`, which legalization removes.
-#[must_use]
-pub fn size_of(scalar: Scalar) -> Option<Size> {
-    match scalar {
-        Scalar::I8 => Some(Size::B8),
-        Scalar::I16 => Some(Size::B16),
-        Scalar::I32 | Scalar::F32 => Some(Size::B32),
-        Scalar::I64 | Scalar::Ptr | Scalar::F64 => Some(Size::B64),
-        Scalar::I128 | Scalar::F16 => None,
     }
 }
 

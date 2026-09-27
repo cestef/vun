@@ -2,6 +2,7 @@
 //! function ends; parameters passed in memory are addresses recomputed where used, the others
 //! are received where the convention passes them once the callee-saved registers are chosen.
 
+use crate::width::offset_of;
 use vun_asm_x86_64::{Emit, Inst, Mem, Op, Operand, Reg, Size};
 use vun_codegen::{Arch, Place};
 use vun_dwarf::Step;
@@ -100,11 +101,6 @@ impl Sel<'_, '_> {
     fn buffer(&mut self, eightbytes: usize) -> i32 {
         self.frame.reserve(eightbytes as u64 * X86::WORD, X86::WORD)
     }
-}
-
-/// An offset of the frame or of the arguments, which fit 2 GiB.
-pub(super) fn offset_of(bytes: u64) -> i32 {
-    i32::try_from(bytes).expect("frames and arguments fit 2 GiB")
 }
 
 /// The offset from the frame pointer of a place in the frame.

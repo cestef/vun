@@ -18,7 +18,8 @@ use super::abi::Passing;
 use super::snippets::{
     ADD, AND, KEEP, MUL, OR, SAR, SDIV, SELECT, SET, SEXT, SHL, SHR, SREM, SUB, UDIV, UREM, XOR, ZEXT,
 };
-use super::{X86, condition, size_of};
+use super::{X86, condition};
+use crate::width::size_of;
 use vun_asm_x86_64::{Cc, Size};
 
 /// What the instruction compilers keep for one function.

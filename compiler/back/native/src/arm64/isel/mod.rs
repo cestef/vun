@@ -21,7 +21,8 @@ use super::snippets::{
     SET_SIGNED, SET_UNSIGNED, SEXT, SHL, SHR, SHR_NARROW, SREM, SREM_NARROW, SUB, UDIV, UDIV_NARROW, UREM,
     UREM_NARROW, XOR, ZEXT,
 };
-use super::{Arm, condition, size_of};
+use super::{Arm, condition};
+use crate::width::size_of;
 
 /// What the instruction compilers keep for one function.
 pub struct State {

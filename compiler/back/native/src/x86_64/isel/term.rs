@@ -102,7 +102,7 @@ impl Sel<'_, '_> {
             (_, Ret::Split(parts)) => {
                 let at = self.state.gathered.expect("gathered where the entry receives the address");
                 for (k, &(carrier, _)) in parts.iter().enumerate() {
-                    let offset = at + super::entry::offset_of(k as u64 * X86::WORD);
+                    let offset = at + crate::width::offset_of(k as u64 * X86::WORD);
                     self.load_part(carrier, Mem::at(Reg::Rbp, offset), X86::WORD);
                 }
             }
