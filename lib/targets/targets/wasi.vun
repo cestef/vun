@@ -12,5 +12,5 @@ wasm32 := lang.target.Spec{
     .entry_symbol = .some("_start"),
     .backends = .{ .debug = &[.llvm], .release = &[.llvm] },
     .linker = .lld,
-    .c = targets.ilp32(targets.gnu("clang", &[])),
+    .c = targets.ilp32(targets.gnu("clang", &["--target=wasm32-wasi"], &[])),
 };

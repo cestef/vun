@@ -151,8 +151,10 @@ Defined, never left to the implementation:
   described, and a promise that each field is of a type C reads the same way: full-width
   integers, `bool`, `f32`, `f64`, `*T`, `?*T`, `#[abi.c]` functions and `?` of them, arrays of
   these and other `#[layout.c]` structs (`layout.not_c`).
-- `#[layout.tag(uN)] enum`: explicit tag representation.
-- `#[layout.align(N)]`, `#[layout.offset(N)]`: raise alignment, place a field at an offset.
+- `#[layout.tag(uN)] enum`: explicit tag representation; `uN` has a pattern for each variant
+  (`layout.tag`).
+- `#[layout.align(N)]`, `#[layout.offset(N)]`: raise alignment, `N` a power of two
+  (`layout.align`); place a field at an offset.
 - **Niches (one rule).** An enum with one payload-free variant and one payload variant whose type has
   unused bit patterns stores the tag in an unused pattern. Unused patterns are: the null pointer,
   out-of-range values of range integers (`Int(0..200)` in 8 bits has 56), and unused enum tags.

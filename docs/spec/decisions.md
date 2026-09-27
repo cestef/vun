@@ -229,6 +229,8 @@
 | 233 | The order of an atomic access is `lang.mem.Order` (`std.sync.Order`), renamed from `lang.mem.Ordering`, which named a second concept with the name of `lang.Ordering`, a comparison's result | accepted (the user's choice) | 05, 07 |
 | 234 | `std.fmt.Writer` requires `closed: Error`, the error of a writer that took none of the bytes it was given; `write_all` returns it on a write of zero bytes instead of looping forever. `std.os.Error` is `enum { number(i32), closed }` | accepted (the user's choice) | 02 |
 | 235 | `std.sync.Shared(T)` is reached only by value under a `&Critical`: `get` (a copy), `set`, `replace` and `update`. It used to lend `&mut T`, which two calls or two nested sections could hold at once, aliasing in safe code | accepted (the user's choice) | 07 |
+| 236 | `targets.gnu` takes the flags selecting a target's machine (`-mcpu`, `-mthumb`, `-mfloat-abi`, `-march`/`-mabi`, `--target`), given to every compile and every link so the driver picks the libraries built for it: `bare.cortex_m4f` builds Thumb-2 hard-float code, `bare.rv32imc` RV32IMC/ilp32, `wasi.wasm32` wasm | accepted (a review finding) | 13 |
+| 237 | Compile-time values are bounded: shifts to 2^24 bits and arrays to 2^20 items, past which evaluation traps, so no program makes the compiler allocate without bound | proposed | 03 |
 
 Numbers 184 to 189 and 217 to 220 were never assigned.
 

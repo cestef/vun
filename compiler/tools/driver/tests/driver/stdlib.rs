@@ -162,6 +162,7 @@ Count := struct { n: usize };
 #[impl(std.fmt.Writer(Count))]
 CountWriter := struct {
     Error := ();
+    closed: () = ();
     write := (self: &mut Count, bytes: &[u8]) -> Result(usize, ()) {
         self.n = (self.n + bytes.len()).sat(usize);
         .ok(bytes.len())

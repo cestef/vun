@@ -250,7 +250,12 @@ generators that observe their own output, which is what makes impls and memoizat
   those of the calls it makes, 2^24 unless `#[comptime.fuel(n)]` on the declaration of the
   function called sets another. A call's steps, like its value, are a function of the call alone,
   so a memoized call spends the same wherever it is reached. Exhausting a budget is
-  `comptime.exhausted`, with a full "while evaluating" trace. Compile-time calls run on the evaluator's own stack, never the host's.
+  `comptime.exhausted`, with a full "while evaluating" trace. Compile-time calls run on the
+  evaluator's own stack, never the host's.
+- **Size.** A compile-time value is bounded apart from its budget: a shift that makes an integer
+  need more than 2^24 bits traps (`shift past any width`), and an array of more than 2^20 items,
+  by repetition or as the integers a `$for` steps through, traps (`a value too large for
+  compile-time evaluation`).
 - **Traceability.** Every generated declaration, expression and name carries an origin chain: the
   quote or template span, then each generator call site up to user code (spec 10). Errors in
   generated code point at both the generated construct and the code that generated it, and

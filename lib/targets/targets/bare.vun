@@ -1,8 +1,15 @@
 //! Bare metal: no system; a program brings its own runtime (spec 08), links without the C
 //! runtime, and starts at its reset handler.
 
-/// A 32-bit bare-metal target of `arch` and `cpu`, following `abi`, built with `command`.
-_on := ($arch: lang.meta.Name, $cpu: lang.meta.Name, $abi: lang.meta.Name, $command: &[u8]) -> lang.target.Spec {
+/// A 32-bit bare-metal target of `arch` and `cpu`, following `abi`, built with `command` for the
+/// machine its `machine` flags select.
+_on := (
+    $arch: lang.meta.Name,
+    $cpu: lang.meta.Name,
+    $abi: lang.meta.Name,
+    $command: &[u8],
+    $machine: &[&[u8]],
+) -> lang.target.Spec {
     .{
         .arch = arch,
         .cpu = cpu,
@@ -14,11 +21,17 @@ _on := ($arch: lang.meta.Name, $cpu: lang.meta.Name, $abi: lang.meta.Name, $comm
         .entry_symbol = .some("Reset"),
         .backends = targets.through_c,
         .linker = .lld,
-        .c = targets.ilp32(targets.gnu(command, &["-nostdlib", "-nostartfiles"])),
+        .c = targets.ilp32(targets.gnu(command, machine, &["-nostdlib", "-nostartfiles"])),
     }
 };
 
 /// ARM Cortex-M4 with its floating-point unit (Thumb-2, hard-float EABI).
-cortex_m4f := _on(.arm, .cortex_m4f, .eabihf, "arm-none-eabi-gcc");
+cortex_m4f := _on(
+    .arm,
+    .cortex_m4f,
+    .eabihf,
+    "arm-none-eabi-gcc",
+    &["-mcpu=cortex-m4", "-mthumb", "-mfloat-abi=hard", "-mfpu=fpv4-sp-d16"],
+);
 /// 32-bit RISC-V with multiplication and compressed instructions (RV32IMC).
-rv32imc := _on(.riscv32, .rv32imc, .ilp32, "riscv32-unknown-elf-gcc");
+rv32imc := _on(.riscv32, .rv32imc, .ilp32, "riscv32-unknown-elf-gcc", &["-march=rv32imc", "-mabi=ilp32"]);
