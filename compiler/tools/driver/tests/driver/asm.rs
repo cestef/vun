@@ -11,9 +11,14 @@ fn tables_number_instructions_and_forms_as_the_assemblers_do() {
     let mut session = Session::new();
     let file = session.load(&repo_root().join(ACCEPT).join("capabilities/asm.vun")).unwrap();
     let package = session.file_ref(file).package;
-    let table = session.db.get::<ArchTable>(&(package, Arch::X86_64)).unwrap();
-    let read: Vec<_> = table.ops.iter().map(|op| (op.name.as_str().to_owned(), op.forms.len())).collect();
-    let generated: Vec<_> =
-        vun_asm_x86_64::Op::ALL.iter().map(|op| (op.mnemonic().to_owned(), op.forms().len())).collect();
-    assert_eq!(read, generated);
+    let read = |arch| {
+        let table = session.db.get::<ArchTable>(&(package, arch)).unwrap();
+        table.ops.iter().map(|op| (op.name.as_str().to_owned(), op.forms.len())).collect::<Vec<_>>()
+    };
+    let x86_64: Vec<_> =
+        vun_isa_x86_64::Op::ALL.iter().map(|op| (op.mnemonic().to_owned(), op.forms().len())).collect();
+    let arm64: Vec<_> =
+        vun_isa_arm64::Op::ALL.iter().map(|op| (op.mnemonic().to_owned(), op.forms().len())).collect();
+    assert_eq!(read(Arch::X86_64), x86_64);
+    assert_eq!(read(Arch::Arm64), arm64);
 }

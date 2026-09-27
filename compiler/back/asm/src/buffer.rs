@@ -3,8 +3,8 @@
 
 use vun_object::RelocKind;
 
-use crate::{Isa, Label, Unpatched};
 use crate::listing::Line;
+use crate::{Isa, Label, Unpatched};
 
 /// An address the linker writes into the code: `target` plus `addend`, at `offset`, as `kind`
 /// says.

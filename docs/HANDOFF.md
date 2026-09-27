@@ -49,7 +49,14 @@ corpus/{accept,reject,planned,support}       programs; `//~ id` annotations; wai
 compiler/<stage>/<crate>                     base < front < mid < low < back, link, render < tools
 fuzz/                                        cargo-fuzz targets `lex`, `parse` (outside the workspace)
 whitepaper/                                  Typst paper; it quotes real numbers and `vun` output
+README.md                                    for people: pitch, status, how to try; contributor detail stays here
 ```
+
+The whitepaper was last refreshed on 2026-09-27: its numbers (the state table and the code-size
+figure of section 12, the pipeline figure), the proposed rules of section 14 and the diagnostic of
+section 11 are measured from the repository and go stale; refresh them when an area lands. The
+title page and the README carry a notice on AI use (the design is the user's, most code and prose
+written by agents under their direction); keep it when rewriting either.
 
 Generated, never edited (edit the `.vun` source, run `cargo gen`): `front/grammar/src/generated/`,
 `front/desugar/src/generated/`, `base/diag/src/errors/`, `front/sema/src/primitives/`,
@@ -170,8 +177,11 @@ language rules go in as proposed unless the user approves them.
    `vun-reduce` (`vun debug reduce`, 267); `vun-html` and `vun-doc` (`vun doc`, 270); `vun-lsp`
    (`vun util lsp`, 269, proposed); `vun-sanitize` steps 1 to 4 (268, proposed: `lang.check`,
    `check.by` rewrites at concreteness, `--checks`); a fuzz target for saved memos.
-   In progress: arm64 and Thumb in sema, waiting for the `fit` API in `vun-isa` (then the string
-   `lang.arch.asm` primitive removed, and x86-64 sema on the shared matcher); vun-sanitize step 5
+   Sema now checks x86-64 and arm64 blocks through the shared `Blocks::fit` of the `vun-isa`
+   crates (one matcher, the encoders' predicates; `Given::Mem` carries its writeback, and
+   `[x1], 8` is tried as a post-index access); a driver test compares both `ArchTable`s with
+   `Op::ALL`. In progress: Thumb (a `lang.arch.thumb` table and `vun-isa-thumb` for stm32f4's
+   `mrs`/`cpsid`/`wfi`, then the string `lang.arch.asm` primitive removed); vun-sanitize step 5
    (runtime hooks over shadow memory, `check.unsupported` at link time), then redzones, the
    `Allocator`'s `check.by`, assembly checks and a native-versus-C trap test. Left, most severe
    first:

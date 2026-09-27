@@ -6,11 +6,20 @@
 
 use vun_inline::{FormId, Line, OpId, SizeId};
 use vun_isa::imm::held;
-use vun_isa::{Blocks, Fit, Fixed, Given, Label, Misfit, Place, Via, Why, positions};
+use vun_isa::{Blocks, Fit, Fixed, Given, Label, Misfit, Place, Via, Why, Writeback, positions};
 
-use crate::{Arm64, Barrier, Class, Kind, Op, Operand, Reg, Size, Width};
+use crate::{Arm64, Barrier, Choice, Class, Kind, Mode, Op, Operand, Reg, Size, SysReg, Width};
 
 impl Size {
+    /// The width a general register holding a value of this width is named at: 32 or 64 bits,
+    /// so `ldrb w0` reads a byte into `w0`.
+    const fn named(self) -> Self {
+        match self {
+            Self::B8 | Self::B16 | Self::B32 => Self::B32,
+            Self::B64 => Self::B64,
+        }
+    }
+
     /// Its index in the table, as a block names it.
     #[must_use]
     pub const fn id(self) -> SizeId {
@@ -18,7 +27,38 @@ impl Size {
     }
 }
 
+impl Mode {
+    /// How an access in this mode updates its base.
+    const fn writeback(self) -> Writeback {
+        match self {
+            Self::Pre | Self::PairPre => Writeback::Pre,
+            Self::Post | Self::PairPost => Writeback::Post,
+            _ => Writeback::No,
+        }
+    }
+}
+
+impl Choice {
+    /// How many choices of this kind there are.
+    const fn count(self) -> usize {
+        match self {
+            Self::Barrier => Barrier::ALL.len(),
+            Self::Sys => SysReg::ALL.len(),
+        }
+    }
+}
+
 impl Kind {
+    /// The kind of named choice this position takes, if it takes one.
+    #[must_use]
+    pub const fn choice(self) -> Option<Choice> {
+        match self {
+            Self::Barrier => Some(Choice::Barrier),
+            Self::Sys => Some(Choice::Sys),
+            _ => None,
+        }
+    }
+
     /// Whether a register at this position has the instruction's width.
     const fn sized(self) -> bool {
         matches!(self, Self::Gpr(_, Width::Inst) | Self::Fpr(Width::Inst) | Self::Shifted(_))
@@ -28,8 +68,8 @@ impl Kind {
     /// in an instruction of `size`, if a fixed one.
     const fn register(self, size: Size) -> Option<(Class, Option<Size>)> {
         match self {
-            Self::Gpr(_, width) => Some((Class::General, Some(width.at(size)))),
-            Self::Shifted(_) => Some((Class::General, Some(size))),
+            Self::Gpr(_, width) => Some((Class::General, Some(width.at(size).named()))),
+            Self::Shifted(_) => Some((Class::General, Some(size.named()))),
             Self::Extended => Some((Class::General, None)),
             Self::Fpr(width) => Some((Class::Fp, Some(width.at(size)))),
             _ => None,
@@ -52,9 +92,12 @@ impl Kind {
             (_, Given::Imm(None)) => {
                 return Err(if matches!(self, Self::Imm(_)) { Why::Wide } else { Why::Kind });
             }
-            (Self::Barrier, Given::Choice(k)) if usize::from(*k) < Barrier::ALL.len() => {}
-            (Self::Mem(..), Given::Mem(mem)) => Arm64::addressable(mem, self).map_err(|_| Why::Kind)?,
-            (_, Given::Choice(_) | Given::Mem(_)) => return Err(Why::Kind),
+            (_, Given::Choice { of, index })
+                if self.choice().is_some_and(|c| c as u8 == of.0 && usize::from(*index) < c.count()) => {}
+            (Self::Mem(mode, _), Given::Mem { mem, writeback }) if mode.writeback() == *writeback => {
+                Arm64::addressable(mem, self).map_err(|_| Why::Kind)?;
+            }
+            (_, Given::Choice { .. } | Given::Mem { .. }) => return Err(Why::Kind),
             _ => {}
         }
         let operand = Arm64::operand(&given.clone().operand(), self, &mut Representative);
@@ -95,8 +138,9 @@ pub(crate) fn fit<V: Clone, P: Clone, S: Copy>(
     let form = Op::entry(op, form).1;
     let kinds = form.args.iter().map(|arg| arg.kind);
     let positions = positions(kinds, fixed, |k| matches!(k, Kind::Cond(_)), givens)?;
+    // A width the spelling gives is the instruction's; its registers are checked against it.
     let mut known = fixed.size;
-    for p in positions.iter().filter(|p| p.kind.sized()) {
+    for p in positions.iter().filter(|p| fixed.size.is_none() && p.kind.sized()) {
         let Some(width) = p.given.size() else { continue };
         if known.is_some_and(|k| k != width) {
             return Err(p.misfit(Why::Kind));

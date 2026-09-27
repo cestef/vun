@@ -6,7 +6,7 @@ use std::collections::BTreeMap;
 
 use vun_diag::{ChildKind, Diagnostic, Msg, errors};
 use vun_grammar::{Flow as Binding, TokenKind};
-use vun_hir::tree::{ExprId, Operand, OperandKind};
+use vun_hir::tree::{ExprId, Operand, OperandKind, Writeback};
 use vun_inline::{Bound, Line};
 use vun_intern::Symbol;
 use vun_origin::OriginId;
@@ -29,15 +29,14 @@ impl Checker<'_> {
     pub(super) fn given(&mut self, operand: &Operand, labels: &BTreeMap<Symbol, Line>) -> Option<Given> {
         match &operand.kind {
             OperandKind::Error => None,
-            OperandKind::Word(word) => match self.table.words.get(word) {
-                Some(&Word::Reg { reg, size }) => Some(Given::Reg { reg, size }),
-                None => {
-                    let near =
-                        vun_suggest::closest(word.as_str(), self.table.words.keys().map(|w| w.as_str()));
-                    let msg = Msg::new().code(word.as_str()).text(" is no register of the architecture");
-                    self.unknown(operand.origin, msg, near.map(str::to_owned))
+            OperandKind::Word(word) => {
+                if let Some(&known) = self.table.words.get(word) {
+                    return Some(known.given());
                 }
-            },
+                let near = vun_suggest::closest(word.as_str(), self.table.words.keys().map(|w| w.as_str()));
+                let msg = Msg::new().code(word.as_str()).text(" is no word of the architecture");
+                self.unknown(operand.origin, msg, near.map(str::to_owned))
+            }
             OperandKind::Int(n) => Some(Given::Imm(i64::try_from(n).ok())),
             OperandKind::Prefix { op: TokenKind::Minus, operand: inner } => match &inner.kind {
                 OperandKind::Int(n) => Some(Given::Imm(i64::try_from(-n).ok())),
@@ -62,7 +61,11 @@ impl Checker<'_> {
                     terms.push(out);
                 }
                 if let Some(mem) = self.arch.memory(terms, *writeback) {
-                    return Some(Given::Mem(mem));
+                    let writeback = match writeback {
+                        Writeback::No => vun_isa::Writeback::No,
+                        Writeback::Yes => vun_isa::Writeback::Pre,
+                    };
+                    return Some(Given::Mem { mem, writeback });
                 }
                 let msg = Msg::new().text("the architecture has no memory operand of this shape");
                 self.unknown(operand.origin, msg, None)
@@ -93,13 +96,13 @@ impl Checker<'_> {
         value: ExprId,
     ) -> Option<Given> {
         let named = match register {
-            Some(name) => match self.table.words.get(&name) {
-                Some(&Word::Reg { reg, size }) => Some((reg, size)),
-                None => {
+            Some(name) => {
+                let Some(&Word::Reg { reg, size }) = self.table.words.get(&name) else {
                     let msg = Msg::new().code(name.as_str()).text(" is no register of the architecture");
                     return self.unknown(operand.origin, msg, None);
-                }
-            },
+                };
+                Some((reg, size))
+            }
             None => None,
         };
         let reg = named.map(|(reg, _)| reg);

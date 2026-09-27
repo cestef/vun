@@ -135,6 +135,10 @@ Barrier := enum { oshld, oshst, osh, nshld, nshst, nsh, ishld, ishst, ish, ld, s
 /// A system register `mrs` reads and `msr` writes: the condition flags (`nzcv`).
 SysReg := enum { nzcv };
 
+/// The kinds of named choice a position takes, each an enum of its own: a barrier's domain
+/// (`ish`), a system register (`nzcv`).
+Choice := enum { barrier, sys };
+
 /// What register 31 is at a position.
 R31 := enum { zr, sp };
 

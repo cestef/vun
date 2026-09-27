@@ -41,6 +41,9 @@ pub const fp_names: Item = Item::new(&["lang", "arch", "arm64", "fp_names"]);
 pub const Barrier: Item = Item::new(&["lang", "arch", "arm64", "Barrier"]);
 /// A system register `mrs` reads and `msr` writes: the condition flags (`nzcv`).
 pub const SysReg: Item = Item::new(&["lang", "arch", "arm64", "SysReg"]);
+/// The kinds of named choice a position takes, each an enum of its own: a barrier's domain
+/// (`ish`), a system register (`nzcv`).
+pub const Choice: Item = Item::new(&["lang", "arch", "arm64", "Choice"]);
 /// What register 31 is at a position.
 pub const R31: Item = Item::new(&["lang", "arch", "arm64", "R31"]);
 /// The width of an operand: the instruction's, or its own.

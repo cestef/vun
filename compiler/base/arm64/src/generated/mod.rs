@@ -5,6 +5,8 @@ mod cond;
 pub use cond::*;
 mod class;
 pub use class::*;
+mod choice;
+pub use choice::*;
 mod b;
 mod bcond;
 mod bl;

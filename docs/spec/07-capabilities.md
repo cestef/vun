@@ -159,14 +159,16 @@ add3 := (a: u64) -> u64 {
 - **Operands are Vun.** A register is named as the table names it, at a width where its name
   gives one (`eax`). An immediate is an integer the operation's width holds, signed or unsigned,
   and the form's immediate holds as it extends it; a constant is never cut to the bits read.
-  Memory is `[...]` (`[base + index * 8 + 16]` on x86-64). `'name` is the instruction a label
+  Memory is `[...]`: one sum on x86-64 (`[base + index * 8 + 16]`), parts on arm64 (`[x1, 8]`,
+  `[x1, x2]`), where `[x1, 8]!` writes the address back before the access and `[x1], 8` after it. `'name` is the instruction a label
   `'name:` marks. `{name}` is a declaration's address, relocated when linking. `{in e}` passes
   the value of `e` in a register the backend picks, of the class and width its type needs (a
   float in a floating-point register); `{out p}` writes a register into the place `p`, `{inout
   p}` both, and each takes a place; `{in(rdi) e}` names the register.
 - **Forms are chosen as the assembler chooses.** A mnemonic spells the forms of its
   instructions, in the table's order, with a condition as its suffix where a form takes one
-  (`jz`); the instruction's width is the one its registers of that width give, and the first form
+  (`jz`), or after a `.` (`b.eq`), and an access width as a suffix (`ldrb`, whose register is
+  `w0`: general registers are named at 32 or 64 bits); the instruction's width is the one its registers of that width give, and the first form
   taking the operands at that width is the instruction's. Where no operand gives the width and
   the form has several (`mov [rax], 1`), none is chosen.
 - **Clobbers are derived.** Each form declares what it writes, so the registers and flags a block

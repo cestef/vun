@@ -5,7 +5,7 @@
 
 use vun_inline::{FormId, OpId, SizeId};
 use vun_isa::imm::held;
-use vun_isa::{Blocks, Fit, Fixed, Given, Label, Misfit, Why, positions};
+use vun_isa::{Blocks, Fit, Fixed, Given, Label, Misfit, Why, Writeback, positions};
 
 use crate::{Base, Cc, Class, Kind, Mem, Op, Operand, Reg, Size, X86_64, Xmm};
 
@@ -57,10 +57,13 @@ impl Kind {
             Given::Imm(Some(v)) => Operand::Imm(*v),
             Given::Imm(None) => return Err(if self.is_imm() { Why::Wide } else { Why::Kind }),
             Given::Cond(c) => Operand::Cond(Cc::ALL[usize::from(c.0)]),
-            Given::Mem(_) => Operand::Mem(Mem { base: Base::Reg(Reg::Rax), disp: 0 }),
+            Given::Mem { writeback: Writeback::No, .. } => {
+                Operand::Mem(Mem { base: Base::Reg(Reg::Rax), disp: 0 })
+            }
             Given::Label(_) => Operand::Label(Label::new(0)),
             Given::Symbol(s) => Operand::Sym(*s),
-            Given::Choice(_) => return Err(Why::Kind),
+            // Nothing writes an address back, and no position names a choice.
+            Given::Mem { .. } | Given::Choice { .. } => return Err(Why::Kind),
         };
         match operand {
             _ if !self.takes(size, &operand) => {

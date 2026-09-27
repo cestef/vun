@@ -1030,7 +1030,6 @@ dependencies = [
 name = "vun-driver"
 version = "0.0.0"
 dependencies = [
- "vun-asm-x86_64",
  "vun-backend",
  "vun-backend-c",
  "vun-backend-cranelift",
@@ -1054,6 +1053,8 @@ dependencies = [
  "vun-index",
  "vun-intern",
  "vun-interp",
+ "vun-isa-arm64",
+ "vun-isa-x86_64",
  "vun-items",
  "vun-json",
  "vun-link",
@@ -1120,6 +1121,7 @@ version = "0.0.0"
 dependencies = [
  "libfuzzer-sys",
  "vun-diag",
+ "vun-driver",
  "vun-fmt",
  "vun-grammar",
  "vun-hir",
@@ -1653,6 +1655,9 @@ dependencies = [
  "vun-hir",
  "vun-inline",
  "vun-intern",
+ "vun-isa",
+ "vun-isa-arm64",
+ "vun-isa-x86_64",
  "vun-items",
  "vun-origin",
  "vun-query",

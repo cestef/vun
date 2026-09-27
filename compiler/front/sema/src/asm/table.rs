@@ -7,7 +7,7 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use vun_hir::db::{Exports, FileRef, Namespace, Package, PackageId};
-use vun_inline::{ClassId, CondId, FormId, OpId, RegRef, SizeId};
+use vun_inline::{ClassId, FormId, OpId, SizeId};
 use vun_intern::Symbol;
 use vun_items::Item;
 use vun_query::{Cx, Query};
@@ -31,20 +31,12 @@ pub enum Flow {
     Ends,
 }
 
-/// What a spelling of an instruction fixes beyond its forms: a condition written as a suffix of
-/// the mnemonic (`jz`).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum Fixed {
-    Nothing,
-    Cond(CondId),
-}
-
 /// A form an instruction is spelled with.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Spelling {
     pub op: OpId,
     pub form: FormId,
-    pub fixed: Fixed,
+    pub fixed: vun_isa::Fixed,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -58,6 +50,8 @@ pub struct Op {
 pub(super) struct Shape {
     pub(super) instruction: Item,
     pub(super) instruction_forms: Item,
+    /// The field of an instruction naming its mnemonic, where it is not its name.
+    pub(super) instruction_mnemonic: Option<Item>,
     pub(super) family: Item,
     pub(super) family_forms: Item,
     pub(super) members: Item,
@@ -70,26 +64,29 @@ pub(super) struct Shape {
     pub(super) size: Item,
     pub(super) cond: Item,
     pub(super) class: Item,
-    /// Reads the architecture's registers into the table's `words` and `registers`.
+    /// Reads the architecture's words into the table.
     pub(super) registers: fn(&Env<'_, '_>, &mut Table) -> Result<(), Unevaluated>,
     /// The mnemonics a form of an instruction is spelled with, and what each fixes.
-    pub(super) spellings: fn(&Table, Symbol, &Value) -> Vec<(Mnemonic, Fixed)>,
+    pub(super) spellings: fn(&Table, Symbol, &Value) -> Vec<(Mnemonic, vun_isa::Fixed)>,
+    /// The bits of each width.
+    pub(super) bits: &'static [(Item, u32)],
 }
 
 /// A mnemonic as a line writes it: a word, and the suffix after a `.` (`b.eq`).
 pub type Mnemonic = (Symbol, Option<Symbol>);
 
 /// An architecture's table: its instructions in order, the names of its widths, conditions and
-/// register classes in declaration order, its registers by each name a line writes and by the
-/// name of their encoding, and the forms each mnemonic spells.
+/// register classes in declaration order, its words by the name a line writes, and the forms each
+/// mnemonic spells.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct Table {
     pub ops: Vec<Op>,
     pub sizes: Vec<Symbol>,
+    /// The bits of each width, in the order of `sizes`.
+    pub bits: Vec<Option<u32>>,
     pub conds: Vec<Symbol>,
     pub classes: Vec<Symbol>,
     pub words: BTreeMap<Symbol, Word>,
-    pub registers: BTreeMap<Symbol, RegRef>,
     pub spellings: BTreeMap<Mnemonic, Vec<Spelling>>,
 }
 
@@ -104,6 +101,19 @@ impl Table {
     #[must_use]
     pub fn size(&self, item: Symbol) -> Option<SizeId> {
         position(&self.sizes, item).map(SizeId)
+    }
+
+    /// The width of a value of `bytes` bytes held in a register.
+    #[must_use]
+    pub fn width(&self, bytes: u64) -> Option<SizeId> {
+        let bits = u32::try_from(bytes.checked_mul(8)?).ok()?;
+        self.bits.iter().position(|&b| b == Some(bits)).and_then(|i| u8::try_from(i).ok()).map(SizeId)
+    }
+
+    /// The bits of the width `size`.
+    #[must_use]
+    pub fn bits(&self, size: SizeId) -> Option<u32> {
+        *self.bits.get(usize::from(size.0))?
     }
 
     /// The register class `item` names, a variant of the architecture's `Class`.
@@ -159,8 +169,14 @@ impl Query for ArchTable {
         let file = FileRef { package: ns.package, path: Symbol::intern(path) };
         let env = Env::of(cx, &file).ok_or(Unevaluated::Absent)?;
         let shape = arch.shape();
+        let sizes = variants(&env, shape.size)?;
+        let bits = sizes
+            .iter()
+            .map(|&s| shape.bits.iter().find(|(i, _)| i.symbol() == s).map(|&(_, b)| b))
+            .collect();
         let mut table = Table {
-            sizes: variants(&env, shape.size)?,
+            sizes,
+            bits,
             conds: variants(&env, shape.cond)?,
             classes: variants(&env, shape.class)?,
             ..Table::default()
@@ -174,7 +190,9 @@ impl Query for ArchTable {
                 let members = Members::of(&value).map_err(|_| Unevaluated::Unsupported)?;
                 let forms = |field| members.get(field).ok().and_then(|f| f.clone().items());
                 if *ty == instruction {
-                    table.ops.push(Op { name, forms: forms(shape.instruction_forms).unwrap_or_default() });
+                    let named = shape.instruction_mnemonic.and_then(|m| members.symbol(m).ok().flatten());
+                    let forms = forms(shape.instruction_forms).unwrap_or_default();
+                    table.ops.push(Op { name: named.unwrap_or(name), forms });
                 } else if *ty == family {
                     let shared = forms(shape.family_forms).unwrap_or_default();
                     let family = members.get(shape.members).ok().and_then(|m| m.clone().items());

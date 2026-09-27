@@ -1,0 +1,13 @@
+//! What a block of arm64 instructions reports (spec 07, section 6).
+
+lines := () {
+    unsafe lang.arch.arm64.asm {
+        mov x0, rax //~ asm.unknown_operand
+        b.zz 'end //~ asm.unknown_mnemonic
+        add x0, x1, 5000 //~ asm.immediate_too_wide
+        add x0, w1, 3 //~ asm.no_form
+        ldr x0, [x1, 1048576] //~ asm.no_form
+        dmb nzcv //~ asm.no_form
+        'end:
+    };
+};

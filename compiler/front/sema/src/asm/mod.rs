@@ -3,6 +3,7 @@
 //! whose operands fit is the instruction's, as the native assemblers choose. What the table does
 //! not say, how an operand of each kind is written, each architecture tells here.
 
+mod arm64;
 mod check;
 mod given;
 mod read;
@@ -15,7 +16,7 @@ use vun_items::{Item, lang};
 
 pub(crate) use check::Checker;
 pub use given::Word;
-pub use table::{ArchTable, Fixed, Flow, Mnemonic, Op, Spelling, Table};
+pub use table::{ArchTable, Flow, Mnemonic, Op, Spelling, Table};
 
 /// A block as sema checked it: each operand's binding is the expression it binds.
 pub type Block = vun_inline::Block<ExprId, ExprId, ExprId>;
@@ -24,16 +25,18 @@ pub type Block = vun_inline::Block<ExprId, ExprId, ExprId>;
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub enum Arch {
     X86_64,
+    Arm64,
 }
 
 impl Arch {
-    pub const ALL: &[Self] = &[Self::X86_64];
+    pub const ALL: &[Self] = &[Self::X86_64, Self::Arm64];
 
     /// The namespace declaring its table.
     #[must_use]
     pub const fn namespace(self) -> Item {
         match self {
             Self::X86_64 => lang::arch::x86_64,
+            Self::Arm64 => lang::arch::arm64,
         }
     }
 
@@ -41,6 +44,7 @@ impl Arch {
     const fn shape(self) -> &'static table::Shape {
         match self {
             Self::X86_64 => &x86_64::SHAPE,
+            Self::Arm64 => &arm64::SHAPE,
         }
     }
 }

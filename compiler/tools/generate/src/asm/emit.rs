@@ -18,6 +18,8 @@ const NAMES: &str = "names";
 const COND: &str = "Cond";
 /// The classes of registers an operand names.
 const CLASS: &str = "Class";
+/// The enum of the kinds of named choice, which an architecture declares where it has any.
+const CHOICE: &str = "Choice";
 /// The modules of the `Op` enum, its mnemonics and its forms.
 const OPS: &str = "ops";
 const MNEMONICS: &str = "mnemonics";
@@ -53,6 +55,7 @@ impl Crate {
             conditions.ok_or_else(|| shape(Msg::new().text("declares its conditions unreadably")))?,
             classes.ok_or_else(|| shape(Msg::new().text("declares its register classes unreadably")))?,
         ];
+        modules.extend(Self::choices(table));
         for inst in &table.instructions {
             let forms = inst.forms.iter().map(|f| form(self, f)).collect::<Option<Vec<_>>>();
             let forms = forms.ok_or_else(|| {
@@ -172,6 +175,17 @@ impl Crate {
             #enumeration
         };
         Some(Module { name: CLASS.to_ascii_lowercase(), access: Access::Glob, items })
+    }
+
+    /// The `Choice` enum of the kinds of named choice, in the order a block's choice names its
+    /// kind; none where the table declares none.
+    fn choices(table: &Table<'_, '_>) -> Option<Module> {
+        let enumeration = Self::enumeration(table, CHOICE, &quote! { Choice })?;
+        let items = quote! {
+            /// A kind of named choice a position takes.
+            #enumeration
+        };
+        Some(Module { name: CHOICE.to_ascii_lowercase(), access: Access::Glob, items })
     }
 
     /// The enum `rust` of the variants of the table's enum `name`, in their order, with `ALL`.

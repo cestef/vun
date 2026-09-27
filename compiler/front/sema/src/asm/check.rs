@@ -6,44 +6,14 @@ use std::collections::BTreeMap;
 
 use vun_diag::{ChildKind, DiagCtxt, DiagId, Diagnostic, Msg, errors};
 use vun_hir::tree::{Asm, AsmEntry, ExprId, Inst, Writeback};
-use vun_inline::{ClassId, Line, Mem, SizeId};
+use vun_inline::{ClassId, Disp, FormId, Line, Mem, OpId, SizeId};
 use vun_intern::Symbol;
+use vun_isa::{Blocks, Fit, Fixed, Misfit, Why};
 use vun_origin::OriginId;
 
 use super::given::Given;
-use super::table::{Fixed, Flow, Table};
-use super::{Arch, Block, x86_64};
-use crate::ty::Value;
-
-/// A form taking a line's operands: the instruction's width, and the operands as it takes them.
-pub(super) struct Fit {
-    pub(super) size: SizeId,
-    pub(super) operands: Vec<vun_inline::Operand<ExprId, ExprId, ExprId>>,
-}
-
-/// Why a form does not take a line's operands.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(super) enum Misfit {
-    /// It takes another number of operands.
-    Count,
-    /// No operand gives the instruction's width, and the form has several.
-    Unsized,
-    /// It is not defined at the width its operands give.
-    Width,
-    /// The operand at `at` does not fit its position.
-    Operand { at: usize, why: Why },
-}
-
-/// Why an operand does not fit a position, the nearest miss first.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub(super) enum Why {
-    /// An immediate the position's bits do not hold.
-    Wide,
-    /// A register of another class than the position's.
-    Class,
-    /// An operand of another kind, or width.
-    Kind,
-}
+use super::table::{Flow, Table};
+use super::{Arch, Block, arm64, x86_64};
 
 /// A term of an address: a register, one times a scale, bytes, or a declaration's address.
 pub(super) enum Term {
@@ -54,9 +24,17 @@ pub(super) enum Term {
 }
 
 impl Arch {
-    fn fit(self, table: &Table, form: &Value, fixed: Fixed, givens: &[Given]) -> Result<Fit, Misfit> {
+    /// How the form `form` of `op` takes `givens`, as the architecture's assembler would.
+    fn fit(
+        self,
+        op: OpId,
+        form: FormId,
+        fixed: Fixed,
+        givens: &[Given],
+    ) -> Result<Fit<ExprId, ExprId, ExprId>, Misfit> {
         match self {
-            Self::X86_64 => x86_64::fit(table, form, fixed, givens),
+            Self::X86_64 => <vun_isa_x86_64::X86_64 as Blocks>::fit(op, form, fixed, givens),
+            Self::Arm64 => <vun_isa_arm64::Arm64 as Blocks>::fit(op, form, fixed, givens),
         }
     }
 
@@ -71,6 +49,7 @@ impl Arch {
                 (Ok([terms]), Writeback::No) => x86_64::memory(terms),
                 _ => None,
             },
+            Self::Arm64 => arm64::memory(parts),
         }
     }
 
@@ -81,8 +60,10 @@ impl Arch {
         bytes: Option<u64>,
         float: bool,
     ) -> Option<(ClassId, Option<SizeId>)> {
+        let width = bytes.and_then(|b| table.width(b));
         match self {
-            Self::X86_64 => Some((x86_64::class(table, float)?, bytes.and_then(|b| x86_64::width(table, b)))),
+            Self::X86_64 => Some((x86_64::class(table, float)?, width)),
+            Self::Arm64 => Some((arm64::class(table, float)?, width)),
         }
     }
 }
@@ -132,7 +113,11 @@ impl Checker<'_> {
         let Some(spellings) = self.table.spellings.get(&(inst.mnemonic, inst.suffix)) else {
             let known = self.table.spellings.keys().filter(|(_, s)| s.is_none()).map(|(m, _)| m.as_str());
             let near = vun_suggest::closest(inst.mnemonic.as_str(), known);
-            let msg = Msg::new().text("the architecture has no instruction ").code(inst.mnemonic.as_str());
+            let written = match inst.suffix {
+                Some(suffix) => [inst.mnemonic.as_str(), suffix.as_str()].join("."),
+                None => inst.mnemonic.as_str().to_owned(),
+            };
+            let msg = Msg::new().text("the architecture has no instruction ").code(written);
             let mut d = Diagnostic::error(errors::ASM_UNKNOWN_MNEMONIC, msg).at(inst.origin, None);
             if let Some(near) = near {
                 d = d.child(ChildKind::Help, Msg::did_you_mean(near));
@@ -140,18 +125,60 @@ impl Checker<'_> {
             self.diag.error(d);
             return None;
         };
+        // A post-index access is written as its memory, then the bytes it moves by: `[x1], 8`.
+        let (folded, written) = Self::post_indexed(&givens);
+        let mut tries: Vec<(&[Given], Option<&[usize]>)> = vec![(&givens, None)];
+        if !folded.is_empty() {
+            tries.push((&folded, Some(&written)));
+        }
         let mut nearest: Option<Misfit> = None;
         for &spelling in spellings {
-            match self.arch.fit(self.table, self.table.form(spelling), spelling.fixed, &givens) {
-                Ok(fit) => {
-                    let (op, form, size, operands) = (spelling.op, spelling.form, fit.size, fit.operands);
-                    return Some(vun_inline::Inst { op, form, size, operands, origin: inst.origin });
-                }
-                Err(misfit) => nearest = Some(nearest.map_or(misfit, |n| n.nearer(misfit))),
+            for &(givens, written) in &tries {
+                let misfit = match self.arch.fit(spelling.op, spelling.form, spelling.fixed, givens) {
+                    Ok(fit) => {
+                        let (op, form, size, operands) = (spelling.op, spelling.form, fit.size, fit.operands);
+                        return Some(vun_inline::Inst { op, form, size, operands, origin: inst.origin });
+                    }
+                    // Named by its place among the operands written.
+                    Err(Misfit::Operand { at, why }) => {
+                        Misfit::Operand { at: written.map_or(at, |w| w[at]), why }
+                    }
+                    Err(misfit) => misfit,
+                };
+                nearest = Some(nearest.map_or(misfit, |n| n.nearer(misfit)));
             }
         }
         self.misfit(inst, nearest.unwrap_or(Misfit::Count));
         None
+    }
+
+    /// `givens` with each memory operand followed by bytes taken as a post-index access, and the
+    /// place among those written of each; empty when none is.
+    fn post_indexed(givens: &[Given]) -> (Vec<Given>, Vec<usize>) {
+        let (mut folded, mut written) = (Vec::new(), Vec::new());
+        let mut at = 0;
+        while at < givens.len() {
+            match (&givens[at], givens.get(at + 1)) {
+                (
+                    Given::Mem {
+                        mem: Mem { base, index: None, disp: Disp::Bytes(0) },
+                        writeback: vun_isa::Writeback::No,
+                    },
+                    Some(Given::Imm(Some(bytes))),
+                ) => {
+                    let mem = Mem { base: base.clone(), index: None, disp: Disp::Bytes(*bytes) };
+                    folded.push(Given::Mem { mem, writeback: vun_isa::Writeback::Post });
+                    written.push(at);
+                    at += 2;
+                }
+                (given, _) => {
+                    folded.push(given.clone());
+                    written.push(at);
+                    at += 1;
+                }
+            }
+        }
+        if folded.len() == givens.len() { (Vec::new(), Vec::new()) } else { (folded, written) }
     }
 
     /// Reports why the nearest form does not take the operands of `inst`.
@@ -207,15 +234,21 @@ impl Checker<'_> {
     }
 }
 
-impl Misfit {
-    /// The nearer miss of two: one at an operand, the nearest reason first.
+/// The nearer of two misses.
+trait Nearer {
+    fn nearer(self, other: Self) -> Self;
+}
+
+impl Nearer for Misfit {
+    /// One at an operand, of the form taking the most operands before it, then the nearest
+    /// reason; then one whose width is unknown.
     fn nearer(self, other: Self) -> Self {
         match (self, other) {
-            (Self::Operand { why: a, .. }, Self::Operand { why: b, .. }) if b < a => other,
-            (Self::Operand { .. }, _) => self,
-            (_, Self::Operand { why: Why::Wide | Why::Class, .. }) | (Self::Count, Self::Unsized) => other,
-            (Self::Unsized, _) => self,
-            (_, Self::Operand { .. }) => other,
+            (Self::Operand { at: a, why: wa }, Self::Operand { at: b, why: wb }) => {
+                if (b, std::cmp::Reverse(wb)) > (a, std::cmp::Reverse(wa)) { other } else { self }
+            }
+            (Self::Operand { .. } | Self::Unsized, _) => self,
+            (_, Self::Operand { .. } | Self::Unsized) => other,
             _ => self,
         }
     }

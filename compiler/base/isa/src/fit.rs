@@ -21,9 +21,16 @@ pub enum Given<V, P, S> {
     /// An integer; `None` when no 64 bits hold it.
     Imm(Option<i64>),
     Cond(CondId),
-    /// One of the choices a position names, by its index (`ish` of a barrier).
-    Choice(u8),
-    Mem(Mem<V, P, S>),
+    /// One of the choices a position names: the kind of choice, in the order of the table's
+    /// `Choice`, and its index among that kind's (`ish` of a barrier).
+    Choice {
+        of: ChoiceId,
+        index: u8,
+    },
+    Mem {
+        mem: Mem<V, P, S>,
+        writeback: Writeback,
+    },
     Label(Line),
     /// The address of something the linker places.
     Symbol(S),
@@ -57,12 +64,26 @@ impl<V, P, S> Given<V, P, S> {
             Self::Bound { bound, .. } => Operand::Bound(bound),
             Self::Imm(imm) => Operand::Imm(imm.unwrap_or_default()),
             Self::Cond(cond) => Operand::Cond(cond),
-            Self::Choice(k) => Operand::Choice(k),
-            Self::Mem(mem) => Operand::Mem(mem),
+            Self::Choice { index, .. } => Operand::Choice(index),
+            Self::Mem { mem, .. } => Operand::Mem(mem),
             Self::Label(line) => Operand::Label(line),
             Self::Symbol(symbol) => Operand::Symbol(symbol),
         }
     }
+}
+
+/// A kind of named choice, by its place in the table's `Choice`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct ChoiceId(pub u8);
+
+/// Whether a memory access writes the address it reached back to its base: not at all, before
+/// the access (`[x1, 8]!`), or after it (`[x1], 8`).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub enum Writeback {
+    #[default]
+    No,
+    Pre,
+    Post,
 }
 
 /// What a mnemonic's spelling supplies: a condition as its suffix (`jz`, `b.eq`), or the width

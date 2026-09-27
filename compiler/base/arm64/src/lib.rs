@@ -23,6 +23,7 @@ use vun_isa::Unpatched;
 use vun_isa::imm::{fits_signed, truncate};
 
 pub use bitmask::Bitmask;
+pub use generated::Choice;
 pub use inst::Inst;
 pub use operand::{Barrier, Extend, Mem, Operand, Scale, Shift, ShiftKind, SysReg};
 pub use reg::{Cc, Class, Reg, Size, V};

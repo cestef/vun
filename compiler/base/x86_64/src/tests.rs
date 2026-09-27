@@ -1,5 +1,5 @@
 use vun_inline::{Base, ClassId, Disp, FormId, Mem, OpId, RegRef};
-use vun_isa::{Blocks, Fixed, Given, Misfit, Why};
+use vun_isa::{Blocks, Fixed, Given, Misfit, Why, Writeback};
 
 use crate::{Class, Op, Reg, Size, X86_64};
 
@@ -34,7 +34,10 @@ fn registers_give_the_instruction_its_width() {
 #[test]
 fn memory_and_an_immediate_give_no_width() {
     let base = Some(Base::Reg(RegRef { class: ClassId(Class::General as u8), number: Reg::Rax as u8 }));
-    let givens: [G; 2] = [Given::Mem(Mem { base, index: None, disp: Disp::Bytes(0) }), Given::Imm(Some(1))];
+    let givens: [G; 2] = [
+        Given::Mem { mem: Mem { base, index: None, disp: Disp::Bytes(0) }, writeback: Writeback::No },
+        Given::Imm(Some(1)),
+    ];
     let mov = OpId(u16::try_from(Op::ALL.iter().position(|&o| o == Op::Mov).expect("mov")).expect("few"));
     let misses: Vec<_> = (0..Op::Mov.forms().len())
         .map(|f| X86_64::fit(mov, FormId(u16::try_from(f).expect("few")), Fixed::default(), &givens))
