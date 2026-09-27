@@ -61,11 +61,7 @@ impl CBackend {
         let sources = Emitter::sources(unit, target, lines, self.shard)?;
         Ok(sources
             .into_iter()
-            .map(|s| Artifact {
-                name: s.name,
-                kind: if s.header { Emits::Header } else { Emits::Source },
-                bytes: s.file.to_string().into_bytes(),
-            })
+            .map(|s| Artifact { part: s.part, kind: s.kind(), bytes: s.file.to_string().into_bytes() })
             .collect())
     }
 }

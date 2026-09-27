@@ -34,6 +34,44 @@ pub enum Emits {
     Listing,
 }
 
+impl Emits {
+    /// The extension of a file of this kind.
+    #[must_use]
+    pub const fn extension(self) -> &'static str {
+        match self {
+            Self::Object => "o",
+            Self::Assembly => "s",
+            Self::Source => "c",
+            Self::Header => "h",
+            Self::Jit => "bin",
+            Self::Listing => "lst",
+        }
+    }
+}
+
+/// Which part of a program an artifact holds: all of it, or, for a program a backend splits, what
+/// the other parts share, its data, or one shard of its functions.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum Part {
+    Whole,
+    Shared,
+    Data,
+    Shard(u32),
+}
+
+impl Part {
+    /// The file holding this part as `kind`: every artifact is named here, by what it is.
+    #[must_use]
+    pub fn file(self, kind: Emits) -> PathBuf {
+        let stem = match self {
+            Self::Whole | Self::Shared => "program".to_owned(),
+            Self::Data => "data".to_owned(),
+            Self::Shard(n) => format!("shard{n}"),
+        };
+        PathBuf::from(stem).with_extension(kind.extension())
+    }
+}
+
 /// What a backend does that a program may require of it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Feature {
@@ -96,10 +134,17 @@ impl BackendInfo {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Artifact {
-    /// Relative to the output directory.
-    pub name: PathBuf,
+    pub part: Part,
     pub kind: Emits,
     pub bytes: Vec<u8>,
+}
+
+impl Artifact {
+    /// Its file, relative to the output directory.
+    #[must_use]
+    pub fn file(&self) -> PathBuf {
+        self.part.file(self.kind)
+    }
 }
 
 /// What a backend emits into: its artifacts and, from a backend that knows them while

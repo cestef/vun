@@ -30,8 +30,6 @@ pub const OUTPUT: Param = Param::option("output")
 
 /// Where builds keep their files, under the root file's directory (spec 12, section 1).
 const BUILDS: &str = "build";
-/// The extension of an object file.
-const OBJECT: &str = "o";
 /// The extension of the frame sizes `-fstack-usage` writes beside an object.
 const STACK_USAGE: &str = "su";
 
@@ -81,14 +79,14 @@ impl Session {
         let profile = self.codegen.profile;
         let dir = builds.join(cache::Objects::key(&coded.artifacts, compiler, profile).digest());
         // A directory of this key holds these artifacts already.
-        for artifact in coded.artifacts.iter().filter(|a| !dir.join(&a.name).exists()) {
-            let path = dir.join(&artifact.name);
+        for artifact in coded.artifacts.iter().filter(|a| !dir.join(a.file()).exists()) {
+            let path = dir.join(artifact.file());
             path.put(&artifact.bytes).map_err(|e| self.diag.error(Diagnostic::unwritable(&path, &e)))?;
         }
         let sources: Vec<&Artifact> = coded.artifacts.iter().filter(|a| a.kind == Emits::Source).collect();
         let results = sources.par_map(|a| {
-            tracing::debug!(source = %a.name.display(), compiler = compiler.command.as_str(), "compiling");
-            Self::compile_source(compiler, profile, &dir.join(&a.name))
+            tracing::debug!(source = %a.file().display(), compiler = compiler.command.as_str(), "compiling");
+            Self::compile_source(compiler, profile, &dir, a.part)
         });
         let mut objects = Vec::new();
         for (artifact, result) in sources.iter().zip(results) {
@@ -96,11 +94,12 @@ impl Session {
                 let msg = Msg::new()
                     .code(compiler.command.as_str())
                     .text(" could not compile ")
-                    .code(artifact.name.display().to_string());
+                    .code(artifact.file().display().to_string());
                 self.diag.error(Diagnostic::error(errors::BACKEND_TOOL, msg).caused_by(&failure))
             })?);
         }
-        objects.extend(coded.artifacts.iter().filter(|a| a.kind == Emits::Object).map(|a| dir.join(&a.name)));
+        objects
+            .extend(coded.artifacts.iter().filter(|a| a.kind == Emits::Object).map(|a| dir.join(a.file())));
         if coded.artifacts.iter().any(|a| matches!(a.kind, Emits::Assembly | Emits::Jit)) {
             let msg = Msg::new().text("building from assembly or code in memory is not supported yet");
             return Err(self.diag.error(Diagnostic::error(errors::BACKEND_UNAVAILABLE, msg)));
@@ -139,16 +138,22 @@ impl Session {
         Ok(())
     }
 
-    /// The object `compiler` makes of the source at `path`, beside it, with the flags of
-    /// `profile`: made under another name and renamed, so an object there was made whole, and
+    /// The object `compiler` makes of the source of `part` in `dir`, beside it, with the flags
+    /// of `profile`: made under another name and renamed, so an object there was made whole, and
     /// kept by the next build of the same key.
-    fn compile_source(compiler: &CCompiler, profile: Profile, path: &Path) -> Result<PathBuf, Failure> {
-        let object = path.with_extension(OBJECT);
+    fn compile_source(
+        compiler: &CCompiler,
+        profile: Profile,
+        dir: &Path,
+        part: vun_backend::Part,
+    ) -> Result<PathBuf, Failure> {
+        let path = dir.join(part.file(Emits::Source));
+        let object = dir.join(part.file(Emits::Object));
         if object.exists() {
             return Ok(object);
         }
         // Made under this process's own name, so builds of one key at once never meet.
-        let part = path.part().with_extension(OBJECT);
+        let made = object.part();
         let optimize = match profile {
             Profile::Debug => &[][..],
             Profile::Release => &compiler.optimize,
@@ -159,23 +164,19 @@ impl Session {
         }
         args.extend([
             gcc::COMPILE.into(),
-            Arg::Path(path.to_path_buf()),
+            Arg::Path(path.clone()),
             gcc::OUTPUT.into(),
-            Arg::Path(part.clone()),
+            Arg::Path(made.clone()),
         ]);
-        let inv = Invocation {
-            args,
-            inputs: vec![path.to_path_buf()],
-            outputs: vec![part.clone()],
-            ..Invocation::default()
-        };
+        let inv =
+            Invocation { args, inputs: vec![path], outputs: vec![made.clone()], ..Invocation::default() };
         let command = compiler.command.as_str();
         Executable::new(command, command).check(&inv)?;
         if compiler.frame_sizes == FrameSizes::StackUsage {
-            std::fs::rename(part.with_extension(STACK_USAGE), object.with_extension(STACK_USAGE))
+            std::fs::rename(made.with_extension(STACK_USAGE), object.with_extension(STACK_USAGE))
                 .map_err(Failure::Start)?;
         }
-        std::fs::rename(&part, &object).map_err(Failure::Start)?;
+        std::fs::rename(&made, &object).map_err(Failure::Start)?;
         Ok(object)
     }
 

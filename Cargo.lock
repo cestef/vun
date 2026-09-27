@@ -1223,6 +1223,7 @@ dependencies = [
  "vun-link",
  "vun-target",
  "vun-tool",
+ "vun-trace",
 ]
 
 [[package]]

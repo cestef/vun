@@ -9,9 +9,8 @@ mod ints;
 mod signature;
 
 use std::collections::BTreeSet;
-use std::path::PathBuf;
 
-use vun_backend::Lines;
+use vun_backend::{Emits, Lines, Part};
 use vun_hash::Hash;
 use vun_intern::Symbol;
 use vun_lir::{Address, DataId, FuncId, ImportKind, Linkage, Record, Unit};
@@ -42,19 +41,18 @@ pub(crate) struct Emitter<'u> {
     checks: Vec<Item>,
 }
 
-/// A file the backend writes: its name, whether other files include it, and its C.
+/// A file the backend writes: the part of the program it holds, and its C. The shared part of a
+/// program spanning several files is a header, which each of the others includes.
 pub(crate) struct Source {
-    pub(crate) name: PathBuf,
-    pub(crate) header: bool,
+    pub(crate) part: Part,
     pub(crate) file: File,
 }
 
-/// The header of a program spanning several files, which each of them includes.
-pub(crate) const HEADER: &str = "program.h";
-/// The file of a program in one file.
-const PROGRAM: &str = "program.c";
-/// The file defining the data of a program spanning several.
-const DATA: &str = "data.c";
+impl Source {
+    pub(crate) fn kind(&self) -> Emits {
+        if self.part == Part::Shared { Emits::Header } else { Emits::Source }
+    }
+}
 
 impl<'u> Emitter<'u> {
     /// The C of `unit` for `target`: one file, or, past `shard` functions, a header, the data and
@@ -113,27 +111,19 @@ impl<'u> Emitter<'u> {
         if !e.shared {
             common.extend(data.defined);
             common.extend(bodies.into_iter().map(|(_, body)| body));
-            return Ok(vec![Source { name: PathBuf::from(PROGRAM), header: false, file: file(common) }]);
+            return Ok(vec![Source { part: Part::Whole, file: file(common) }]);
         }
-        let include = || Item::Include(HEADER);
+        let include = || Item::Include(Part::Shared);
         let mut sources = vec![
-            Source { name: PathBuf::from(HEADER), header: true, file: file(common) },
-            Source {
-                name: PathBuf::from(DATA),
-                header: false,
-                file: file([include()].into_iter().chain(data.defined).collect()),
-            },
+            Source { part: Part::Shared, file: file(common) },
+            Source { part: Part::Data, file: file([include()].into_iter().chain(data.defined).collect()) },
         ];
         let mut shard_items: Vec<Vec<Item>> = (0..shards).map(|_| vec![include()]).collect();
         for (at, body) in bodies {
             shard_items[at].push(body);
         }
-        for (i, items) in shard_items.into_iter().enumerate() {
-            sources.push(Source {
-                name: PathBuf::from(format!("shard{i}.c")),
-                header: false,
-                file: file(items),
-            });
+        for (i, items) in (0..).zip(shard_items) {
+            sources.push(Source { part: Part::Shard(i), file: file(items) });
         }
         Ok(sources)
     }

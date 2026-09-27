@@ -118,7 +118,10 @@ pub(super) fn module(unit: &Unit, lines: &dyn Lines) -> Result<Module, Lack> {
         let mut lower = Lower::new(&cx, f, cx.passing(id))?;
         let shape = Shape::of(&mut lower);
         Emit::new(&mut lower, &shape).body(f.entry().expect("a function has a body"))?;
-        Ok(lower.finish())
+        let func = lower.finish();
+        let dispatches = shape.dispatches();
+        vun_trace::tracing::debug!(ops = func.body.len(), locals = func.locals.len(), dispatches, "lowered");
+        Ok(func)
     });
     let funcs = lowered.into_iter().collect::<Result<Vec<Func>, Lack>>()?;
     let mut module = cx.module;

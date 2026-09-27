@@ -14,7 +14,7 @@ fn module(ty: FuncType, locals: Vec<ValType>, body: Vec<Op>) -> Module {
     let ty = m.ty(ty);
     let kind = Kind::Func { ty, def: Def::Here(0) };
     m.symbols.push(Sym { name: Symbol::intern("f"), kind, binding: Binding::Exported });
-    m.funcs.push(Func { ty, locals, body });
+    m.funcs.push(Func { ty, locals, body, marks: Vec::new() });
     m
 }
 

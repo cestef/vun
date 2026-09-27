@@ -53,6 +53,7 @@ impl Linker for LldLinker {
             None => args.push(NO_ENTRY.into()),
         }
         args.extend(plan.inputs.iter().cloned().map(Arg::Path));
+        vun_trace::tracing::debug!(program, output = %plan.output.display(), inputs = plan.inputs.len(), "linking");
         let inv = Invocation {
             args,
             inputs: plan.inputs.clone(),

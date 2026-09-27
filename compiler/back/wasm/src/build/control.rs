@@ -64,8 +64,10 @@ impl Shape {
             rpo[b] = i;
         }
         let irreducible = dominators.rpo().iter().any(|&b| loops.is_header(b) && loops.is_irreducible(b));
-        let dispatch = irreducible
-            .then(|| Dispatch { next: lower.temp(crate::module::ValType::I32), blocks: dominators.rpo().to_vec() });
+        let dispatch = irreducible.then(|| Dispatch {
+            next: lower.temp(crate::module::ValType::I32),
+            blocks: dominators.rpo().to_vec(),
+        });
         let mut merge = IndexVec::filled(false, count);
         let mut forward: IndexVec<Block, u32> = IndexVec::filled(0, count);
         let mut head = IndexVec::filled(false, count);
@@ -80,6 +82,13 @@ impl Shape {
             }
         }
         Self { rpo, children: dominators.children(), merge, head, dispatch }
+    }
+}
+
+impl Shape {
+    /// Whether the function runs as a loop dispatching on the next block.
+    pub(super) fn dispatches(&self) -> bool {
+        self.dispatch.is_some()
     }
 }
 
@@ -150,6 +159,7 @@ impl<'s, 'l, 'a> Emit<'s, 'l, 'a> {
 
     fn terminator(&mut self, block: Block) -> Result<(), Lack> {
         let at = self.lower.f.blocks[block].origin;
+        self.lower.mark(at);
         match &self.lower.f.blocks[block].term {
             Terminator::Jump(t) => self.jump(block, t),
             Terminator::Branch { cond, then, otherwise } => {
@@ -181,7 +191,8 @@ impl<'s, 'l, 'a> Emit<'s, 'l, 'a> {
             self.lower.set(p);
         }
         if let Some(dispatch) = &self.shape.dispatch {
-            let place = dispatch.blocks.iter().position(|&b| b == t.block).expect("a jump's target is reached");
+            let place =
+                dispatch.blocks.iter().position(|&b| b == t.block).expect("a jump's target is reached");
             self.lower.op(Op::I32Const(i32::try_from(place).expect("blocks fit i32")));
             self.lower.op(Op::LocalSet(dispatch.next));
             let depth = self.depth(Label::Dispatch);

@@ -28,6 +28,8 @@ pub(super) struct Lower<'a> {
     frame: Frame,
     /// The address a result is written through, a parameter or a place in the frame.
     pub(super) out: Option<u32>,
+    /// Where the code of each LIR instruction and terminator starts, with its origin.
+    marks: Vec<(usize, vun_origin::OriginId)>,
 }
 
 /// The frame's layout, and where its size and alignment go once known.
@@ -63,6 +65,7 @@ impl<'a> Lower<'a> {
                 patch: (0, 0),
             },
             out: None,
+            marks: Vec::new(),
         };
         for (_, v) in f.values.iter() {
             let held = val(v.ty).map_err(|m| m.at(at))?;
@@ -78,6 +81,11 @@ impl<'a> Lower<'a> {
     pub(super) fn temp(&mut self, ty: ValType) -> u32 {
         self.locals.push(ty);
         self.params + u32::try_from(self.locals.len() - 1).expect("locals fit u32")
+    }
+
+    /// Marks where the code of what `origin` names starts.
+    pub(super) fn mark(&mut self, origin: vun_origin::OriginId) {
+        self.marks.push((self.body.len(), origin));
     }
 
     pub(super) fn op(&mut self, op: Op) {
@@ -230,6 +238,6 @@ impl<'a> Lower<'a> {
         self.body[self.frame.patch.1] = Op::I32Const(-Self::i32(self.frame.align));
         self.op(Op::Unreachable);
         let ty = self.cx.module.type_of(&self.passing.ty).expect("signatures are listed first");
-        Func { ty, locals: self.locals, body: self.body }
+        Func { ty, locals: self.locals, body: self.body, marks: self.marks }
     }
 }

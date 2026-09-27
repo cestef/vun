@@ -6,14 +6,17 @@ mod code;
 mod invalid;
 mod link;
 pub mod op;
+mod text;
 mod verify;
 mod write;
 
 pub use invalid::{Invalid, Why};
+pub use text::Text;
 
 use vun_hash::Map;
 use vun_index::{IndexVec, index};
 use vun_intern::Symbol;
+use vun_origin::OriginId;
 
 use op::Op;
 
@@ -39,13 +42,15 @@ pub struct FuncType {
     pub results: Vec<ValType>,
 }
 
-/// A defined function: its type, the locals past its parameters, and its body up to the `end`
-/// closing it, which the writer adds.
+/// A defined function: its type, the locals past its parameters, its body up to the `end`
+/// closing it, which the writer adds, and where the code of each instruction it was made from
+/// starts in the body, with that instruction's origin.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Func {
     pub ty: TypeId,
     pub locals: Vec<ValType>,
     pub body: Vec<Op>,
+    pub marks: Vec<(usize, OriginId)>,
 }
 
 /// What a symbol names.

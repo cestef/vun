@@ -3,17 +3,18 @@
 //! before it is written; `build` makes it from a unit.
 
 mod build;
+mod listing;
 pub mod module;
 
 #[cfg(test)]
 mod tests;
 
-use std::path::PathBuf;
-
 use vun_backend::{
-    Artifact, ArtifactSink, Backend, BackendCaps, BackendInfo, Emits, Missing, Readiness, Request,
+    Artifact, ArtifactSink, Backend, BackendCaps, BackendInfo, Emits, Missing, Part, Readiness, Request,
 };
 use vun_diag::{DiagCtxt, ErrorGuaranteed};
+
+pub use listing::Listing;
 use vun_lir::legalize::Half;
 use vun_target::{Arches, Name};
 
@@ -26,9 +27,6 @@ pub const INFO: BackendInfo = BackendInfo {
 
 /// The object format the backend writes, as targets name it.
 const FORMAT: Name = Name("wasm");
-
-/// The object's name among the build's artifacts.
-const OBJECT: &str = "program.o";
 
 #[derive(Default)]
 pub struct WasmBackend;
@@ -52,7 +50,11 @@ impl Backend for WasmBackend {
         if let Err(invalid) = module.verify() {
             panic!("the wasm backend made an invalid module: {invalid}");
         }
-        out.put(Artifact { name: PathBuf::from(OBJECT), kind: Emits::Object, bytes: module.write() });
+        out.put(Artifact { part: Part::Whole, kind: Emits::Object, bytes: module.write() });
+        if request.listing {
+            let text = Listing { module: &module, lines: request.lines }.to_string();
+            out.put(Artifact { part: Part::Whole, kind: Emits::Listing, bytes: text.into_bytes() });
+        }
         Ok(())
     }
 }

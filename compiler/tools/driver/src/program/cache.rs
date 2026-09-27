@@ -21,8 +21,8 @@ impl Objects {
     /// The key of the directory holding `artifacts` and the objects `compiler` makes of them
     /// under `profile`.
     pub(super) fn key(artifacts: &[Artifact], compiler: &CCompiler, profile: Profile) -> Hash {
-        let contents: Vec<(&Path, &[u8])> =
-            artifacts.iter().map(|a| (a.name.as_path(), a.bytes.as_slice())).collect();
+        let contents: Vec<(PathBuf, &[u8])> =
+            artifacts.iter().map(|a| (a.file(), a.bytes.as_slice())).collect();
         Hash::of_value(&(contents, compiler, profile))
     }
 }

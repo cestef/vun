@@ -184,12 +184,12 @@ impl Check<'_> {
                 self.pop(ValType::I32)?;
             }
             Op::Load(mem) => {
-                mem.codes().ok_or(Why::Access(*mem))?;
+                mem.accesses().ok_or(Why::Access(*mem))?;
                 self.pop(ValType::I32)?;
                 self.push(mem.ty);
             }
             Op::Store(mem) => {
-                mem.codes().ok_or(Why::Access(*mem))?;
+                mem.accesses().ok_or(Why::Access(*mem))?;
                 self.pop_all(&[ValType::I32, mem.ty])?;
             }
             Op::MemoryCopy => self.pop_all(&[ValType::I32; 3])?,

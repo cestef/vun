@@ -14,11 +14,10 @@ pub mod x86_64;
 mod tests;
 
 use std::fmt::Display;
-use std::path::PathBuf;
 
 use vun_asm::Isa;
 use vun_backend::{
-    Artifact, ArtifactSink, Backend, BackendCaps, BackendInfo, Emits, Emitted, Feature, Lack, Missing,
+    Artifact, ArtifactSink, Backend, BackendCaps, BackendInfo, Emits, Emitted, Feature, Lack, Missing, Part,
     Readiness, Request,
 };
 use vun_codegen::{Compiled, Isel};
@@ -103,10 +102,6 @@ pub const INFO: BackendInfo = BackendInfo {
     readiness: Readiness::Ready,
 };
 
-/// The object's name among the build's artifacts, and its listing's.
-const OBJECT: &str = "program.o";
-const LISTING: &str = "program.lst";
-
 /// A function compiled for the architecture `A`.
 pub type Code<A> = Compiled<<<A as vun_codegen::Arch>::Isa as Isa>::Inst<Address>>;
 
@@ -167,14 +162,10 @@ impl NativeBackend {
             Assembly { unit: request.unit, code: &code, lines: request.lines, frames: &A::CALL_FRAME }
                 .object((machine, format))
                 .write();
-        let mut artifacts = vec![Artifact { name: PathBuf::from(OBJECT), kind: Emits::Object, bytes }];
+        let mut artifacts = vec![Artifact { part: Part::Whole, kind: Emits::Object, bytes }];
         if request.listing {
             let text = Listing { unit: request.unit, code: &code, lines: request.lines }.to_string();
-            artifacts.push(Artifact {
-                name: PathBuf::from(LISTING),
-                kind: Emits::Listing,
-                bytes: text.into_bytes(),
-            });
+            artifacts.push(Artifact { part: Part::Whole, kind: Emits::Listing, bytes: text.into_bytes() });
         }
         let frames = code.iter().map(|(id, c)| (id, c.frame + LINKAGE)).collect();
         Ok(Emitted { artifacts, frames })

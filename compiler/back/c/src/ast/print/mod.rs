@@ -6,6 +6,8 @@ mod stmt;
 
 use std::fmt::{self, Write};
 
+use vun_backend::Emits;
+
 use super::{Aggregate, Attribute, Base, Decl, File, Ident, Item, Names, Own, Proto, Storage, Ty};
 
 struct Printer<'f, 'a, 'n> {
@@ -178,7 +180,7 @@ impl Printer<'_, '_, '_> {
 
     fn item(&mut self, item: &Item) -> fmt::Result {
         match item {
-            Item::Include(header) => writeln!(self.f, "#include \"{header}\""),
+            Item::Include(part) => writeln!(self.f, "#include \"{}\"", part.file(Emits::Header).display()),
             Item::Typedef(decl) => {
                 self.f.write_str("typedef ")?;
                 self.decl(decl)?;

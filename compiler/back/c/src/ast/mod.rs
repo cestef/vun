@@ -9,7 +9,7 @@ mod ty;
 pub use ident::{Builtin, Helper, Ident, Names, Own};
 pub use ty::{Base, Suffix, Ty};
 
-use vun_backend::Line;
+use vun_backend::{Line, Part};
 use vun_intern::Symbol;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -218,8 +218,8 @@ pub enum Attribute {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Item {
-    /// `#include "name"`: a header of the same program.
-    Include(&'static str),
+    /// `#include "program.h"`: the header of the same program's shared part.
+    Include(Part),
     Typedef(Decl),
     Aggregate {
         kind: Aggregate,

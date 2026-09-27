@@ -19,7 +19,15 @@ impl Lower<'_> {
         let data = &self.f.insts[inst];
         let at = data.origin;
         let result = data.result;
-        match data.kind.clone() {
+        self.mark(at);
+        let start = self.body.len();
+        let emitted = self.emit(data.kind.clone(), result, at);
+        vun_trace::tracing::trace!(inst = %data.kind, ops = self.body.len() - start, "select");
+        emitted
+    }
+
+    fn emit(&mut self, kind: InstKind, result: Option<Value>, at: vun_origin::OriginId) -> Result<(), Lack> {
+        match kind {
             InstKind::Const { ty, bits } => self.constant(ty, bits).map_err(|m| m.at(at))?,
             InstKind::Binary { op, a, b } => self.binary(op, a, b).map_err(|m| m.at(at))?,
             InstKind::Compare { cond, a, b } => self.compare(cond, a, b).map_err(|m| m.at(at))?,
