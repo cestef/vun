@@ -27,12 +27,17 @@ struct PoolWriter<T: Pooled> {
 
 trait AnyPool {
     fn as_any(&mut self) -> &mut dyn Any;
+    fn name(&self) -> &'static str;
     fn into_pool(self: Box<Self>) -> Pool;
 }
 
 impl<T: Pooled> AnyPool for PoolWriter<T> {
     fn as_any(&mut self) -> &mut dyn Any {
         self
+    }
+
+    fn name(&self) -> &'static str {
+        T::POOL
     }
 
     fn into_pool(self: Box<Self>) -> Pool {
@@ -104,6 +109,12 @@ impl<'r> Writer<'r> {
 
     fn pool<T: Pooled>(&mut self) -> &mut PoolWriter<T> {
         let index = *self.by_type.entry(TypeId::of::<T>()).or_insert_with(|| {
+            // Pools are read back by name: two handle types sharing one would read each other's.
+            assert!(
+                self.pools.iter().all(|p| p.name() != T::POOL),
+                "two handle types share the pool name `{}`",
+                T::POOL
+            );
             let entries = self.carried.remove(T::POOL).unwrap_or_default();
             let numbers = self.extends.map(Context::numbers).unwrap_or_default();
             self.pools.push(Box::new(PoolWriter::<T> { numbers, entries }));

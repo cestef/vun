@@ -10,6 +10,8 @@ pub enum OrderError<K> {
     Missing { node: K, requires: K },
     /// The requirements form a cycle through this node.
     Cycle(K),
+    /// Two nodes have this key.
+    Duplicate(K),
 }
 
 impl<K: std::fmt::Display> std::fmt::Display for OrderError<K> {
@@ -19,6 +21,7 @@ impl<K: std::fmt::Display> std::fmt::Display for OrderError<K> {
                 write!(f, "`{node}` requires `{requires}`, which is not present")
             }
             Self::Cycle(node) => write!(f, "the requirements of `{node}` form a cycle"),
+            Self::Duplicate(node) => write!(f, "`{node}` is present twice"),
         }
     }
 }
@@ -60,9 +63,14 @@ impl<K: Clone + Eq + Hash> Requirements<K> {
     /// Node indices, each after the nodes it requires, otherwise in the order they were added.
     ///
     /// # Errors
-    /// Returns a missing requirement or a node on a cycle.
+    /// Returns a missing requirement, a node on a cycle or a key two nodes have.
     pub fn order(&self) -> Result<Vec<usize>, OrderError<K>> {
-        let index: HashMap<&K, usize> = self.keys.iter().enumerate().map(|(i, k)| (k, i)).collect();
+        let mut index: HashMap<&K, usize> = HashMap::with_capacity(self.keys.len());
+        for (i, key) in self.keys.iter().enumerate() {
+            if index.insert(key, i).is_some() {
+                return Err(OrderError::Duplicate(key.clone()));
+            }
+        }
         let mut marks = vec![Mark::New; self.keys.len()];
         let mut order = Vec::with_capacity(self.keys.len());
         for i in 0..self.keys.len() {

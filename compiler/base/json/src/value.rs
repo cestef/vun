@@ -174,8 +174,11 @@ impl<'a> Value<'a> {
             let token = token.replace("~1", "/").replace("~0", "~");
             at = match at {
                 Self::Object(o) => o.get(&token)?,
-                // An index is a canonical decimal: no sign and no leading zero.
-                Self::Array(items) if token == "0" || !token.starts_with('0') => {
+                // An index is a canonical decimal: digits only, without a leading zero.
+                Self::Array(items)
+                    if token.bytes().all(|b| b.is_ascii_digit())
+                        && (token == "0" || !token.starts_with('0')) =>
+                {
                     items.get(token.parse::<usize>().ok()?)?
                 }
                 _ => return None,

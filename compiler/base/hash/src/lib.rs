@@ -65,11 +65,12 @@ impl Hash {
         self.algorithm
     }
 
-    /// The first 8 bytes of the digest, for in-memory hashing (`std::hash::Hash` impls).
+    /// The first [`SHORT`] bytes of the digest, for in-memory hashing (`std::hash::Hash` impls).
     #[must_use]
+    #[expect(clippy::missing_panics_doc, reason = "a digest is longer than its short form")]
     pub fn short(self) -> u64 {
-        let (short, _) = self.digest.split_first_chunk::<8>().unwrap_or((&[0; 8], &[]));
-        u64::from_le_bytes(*short)
+        let (short, _) = self.digest.split_at(SHORT);
+        u64::from_le_bytes(short.try_into().expect("a digest is longer than its short form"))
     }
 
     /// The digest in its text encoding, without the algorithm.
@@ -83,6 +84,8 @@ impl Hash {
 /// few bytes at a time, each of which BLAKE3 would take on its own, and most values hashed are
 /// small, so the buffer, made anew for each, stays small too.
 const GATHERED: usize = 256;
+/// The bytes of a digest its short form takes.
+const SHORT: usize = size_of::<u64>();
 
 /// A [`std::hash::Hasher`] over BLAKE3, so that any `std::hash::Hash` value has a content hash:
 /// what query results are compared by. The encoding is Rust's, stable within one build of the

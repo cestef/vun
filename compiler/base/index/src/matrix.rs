@@ -47,6 +47,10 @@ impl<R: Idx, C: Idx> BitMatrix<R, C> {
 
     /// Adds every column of every row of `other`, returning whether any was absent.
     pub fn union(&mut self, other: &Self) -> bool {
+        debug_assert!(
+            self.stride == other.stride && self.words.len() == other.words.len(),
+            "a union of matrices of one shape"
+        );
         let mut changed = false;
         for (w, &o) in self.words.iter_mut().zip(&other.words) {
             changed |= o & !*w != 0;
