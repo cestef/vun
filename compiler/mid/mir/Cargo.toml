@@ -18,6 +18,7 @@ vun-intern.workspace = true
 vun-diag.workspace = true
 vun-sema.workspace = true
 vun-inline.workspace = true
+vun-sanitize.workspace = true
 vun-hir.workspace = true
 vun-grammar.workspace = true
 vun-desugar.workspace = true

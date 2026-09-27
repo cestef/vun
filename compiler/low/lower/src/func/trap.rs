@@ -4,6 +4,7 @@
 
 use vun_diag::Msg;
 use vun_lir::{Address, InstKind, Target, Terminator, Value};
+use vun_origin::OriginId;
 use vun_sema::int::Integer;
 use vun_sema::item::Site;
 use vun_sema::ty::Value as Constant;
@@ -30,12 +31,19 @@ impl FnLower<'_, '_, '_> {
         Ok(())
     }
 
+    /// A new site of the message table at `at`, saying `msg`: its id.
+    pub(crate) fn new_site(&mut self, at: OriginId, msg: Option<Msg>) -> Result<u32, Unlowered> {
+        let site = u32::try_from(self.l.unit.sites.len())
+            .map_err(|_| Unlowered::unsupported(self.at, Form::Callee))?;
+        self.l.unit.sites.push(vun_lir::Site { at, msg });
+        Ok(site)
+    }
+
     /// Calls the trap handler for a new site at the origin lowered, saying `msg`.
     pub(crate) fn site(&mut self, msg: Option<Msg>) -> Result<(), Unlowered> {
         let at = self.at;
         let unsupported = move || Unlowered::unsupported(at, Form::Callee);
-        let site = u32::try_from(self.l.unit.sites.len()).map_err(|_| unsupported())?;
-        self.l.unit.sites.push(vun_lir::Site { at: self.at, msg });
+        let site = self.new_site(at, msg)?;
         let Constant::Type(ty) = self.l.item(vun_items::lang::panic::Trap, self.at)? else {
             return Err(unsupported());
         };

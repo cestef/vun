@@ -8,6 +8,7 @@ mod asm;
 mod backend;
 mod bind;
 mod borrows;
+mod checks;
 mod comptime;
 mod coroutines;
 mod evaluator;

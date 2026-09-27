@@ -83,3 +83,20 @@ freed: (address: usize, bytes: usize) -> ?Violation = _;
 /// Reports `f` and ends the program, as a trap does.
 #[link.symbol(symbols.fail)]
 fail: (f: &Failure) -> lang.never = _;
+
+/// The id of a new trap site at `at`, which a check made there fails at: the message table
+/// records it as it records a trap site.
+site: ($at: lang.meta.Origin) -> u32 = _;
+
+/// Fails the check made at `at` for `violation`, at `address`.
+failed := ($at: lang.meta.Origin, violation: Violation, address: usize) -> lang.never {
+    fail(&.{ .site = site(at), .violation = violation, .address = address })
+};
+
+/// Fails the check made at `at` unless the `bytes` at `address` may be accessed as `how` says.
+accessed := ($at: lang.meta.Origin, address: usize, bytes: usize, how: Access) {
+    match access(address, bytes, how) {
+        .some(violation) => failed(at, violation, address),
+        .none => {},
+    }
+};

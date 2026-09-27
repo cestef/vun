@@ -60,8 +60,9 @@ pub trait Variants: Copy + 'static {
 }
 
 impl<T: Variants> Read for T {
+    /// A variant, or its bare `.name` where no type was expected, as an attribute's argument is.
     fn read(value: &Value) -> Result<Self, Unread> {
-        let Value::Variant { name, .. } = value else { return Err(Unread::Record) };
+        let (Value::Variant { name, .. } | Value::Name(name)) = value else { return Err(Unread::Record) };
         T::VARIANTS
             .iter()
             .find(|(variant, _)| *name == variant.symbol())

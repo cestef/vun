@@ -48,16 +48,16 @@ offset: unsafe ($T: type, p: *T, n: isize) -> *T = _;
 #[panic.never]
 cast: unsafe ($T: type, $U: type, p: *T) -> *U = _;
 /// The value at `p`, which must be `init`.
-#[panic.never]
+#[panic.never, check.by(.pointers, lang.check.mem.read)]
 read: unsafe ($T: type, p: *T) -> T = _;
 /// Stores `value` at `p`, whatever was there.
-#[panic.never]
+#[panic.never, check.by(.pointers, lang.check.mem.write)]
 write: unsafe ($T: type, p: *T, value: T) = _;
 /// Copies `n` items from `from` to `to`, which may overlap.
-#[panic.never]
+#[panic.never, check.by(.pointers, lang.check.mem.copy)]
 copy: unsafe ($T: type, to: *T, from: *T, n: usize) = _;
 /// Stores `value` in `n` items from `to`.
-#[panic.never]
+#[panic.never, check.by(.pointers, lang.check.mem.fill)]
 fill: unsafe ($T: type, to: *T, value: T, n: usize) = _;
 
 #[panic.never]

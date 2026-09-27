@@ -1,6 +1,7 @@
 //! Instantiations ready for code generation (spec 13, section 3): the MIR of a function with its
 //! `$` parameters bound, each compile-time value it reads evaluated into a constant that flows
-//! into the operands reading it, and every local typed.
+//! into the operands reading it, each operation the program's checks check running as its
+//! checked version (section 8.7), and every local typed.
 
 use std::sync::Arc;
 
@@ -8,6 +9,7 @@ use vun_codec::{Decode, Encode};
 use vun_index::IndexVec;
 use vun_origin::OriginId;
 use vun_query::{Cx, Cycle, Query};
+use vun_sanitize::ChecksOf;
 use vun_sema::Primitive;
 use vun_sema::callable::Callable;
 use vun_sema::env::{Env, Unevaluated};
@@ -79,6 +81,7 @@ impl Query for Concrete {
             .ok_or(Unready::Unevaluated { at: i.f.literal.expr.origin, why: Unevaluated::Absent })?;
         body.evaluate(&env)?;
         body.propagate(&env, &i.args);
+        body.checked(&env, &cx.get::<ChecksOf>(&()), &i.f);
         body.typed()?;
         body.verified();
         Ok(Arc::new(body))

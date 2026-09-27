@@ -2,6 +2,7 @@
 
 pub mod body;
 pub mod build;
+mod checked;
 pub mod concrete;
 pub mod place;
 pub mod program;

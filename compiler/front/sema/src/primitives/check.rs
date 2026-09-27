@@ -19,6 +19,9 @@ pub enum Check {
     freed,
     /// Reports `f` and ends the program, as a trap does.
     fail,
+    /// The id of a new trap site at `at`, which a check made there fails at: the message table
+    /// records it as it records a trap site.
+    site,
 }
 impl Check {
     pub const NAMESPACE: vun_items::Item = vun_items::lang::check;
@@ -30,6 +33,7 @@ impl Check {
         Self::allocated,
         Self::freed,
         Self::fail,
+        Self::site,
     ];
     /// The declaration's name.
     #[must_use]
@@ -42,6 +46,7 @@ impl Check {
             Self::allocated => "allocated",
             Self::freed => "freed",
             Self::fail => "fail",
+            Self::site => "site",
         }
     }
     /// The declaration.
@@ -55,6 +60,7 @@ impl Check {
             Self::allocated => vun_items::lang::check::allocated,
             Self::freed => vun_items::lang::check::freed,
             Self::fail => vun_items::lang::check::fail,
+            Self::site => vun_items::lang::check::site,
         }
     }
 }

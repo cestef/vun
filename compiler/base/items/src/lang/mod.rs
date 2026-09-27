@@ -73,6 +73,7 @@ pub mod check_Access;
 pub mod check_Failure;
 pub mod check_Kind;
 pub mod check_Violation;
+pub mod check_mem;
 pub mod check_symbols;
 pub mod comptime;
 pub mod diag;

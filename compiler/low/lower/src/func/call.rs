@@ -9,7 +9,9 @@ use vun_mir::{Concrete, Lowered as _, Operand, Projection};
 use vun_sema::Primitive;
 use vun_sema::decl::DeclType;
 use vun_sema::eval::Instantiation;
+use vun_sema::int::Integer;
 use vun_sema::primitives::abi::Abi;
+use vun_sema::primitives::check::Check;
 use vun_sema::primitives::panic::Panic;
 use vun_sema::trap::Failure;
 use vun_sema::ty::{Marker, Ty, TyKind, Value as Constant};
@@ -72,6 +74,13 @@ impl FnLower<'_, '_, '_> {
             Operand::Const(Constant::Primitive(Primitive::Panic(Panic::fail))) => {
                 let [Operand::Const(reason)] = args else { return Err(unsupported()) };
                 self.site(Some(Failure::of(reason).ok_or_else(unsupported)?.msg()))
+            }
+            // `lang.check.site(at)` is a new site at `at`, known when compiling: its id.
+            Operand::Const(Constant::Primitive(Primitive::Check(Check::site))) => {
+                let [Operand::Const(Constant::Origin(at))] = args else { return Err(unsupported()) };
+                let site = self.new_site(*at, None)?;
+                let Some(dest) = dest else { return Ok(()) };
+                self.write_const(&Constant::Int(Integer::from(site as usize)), dest, ty)
             }
             Operand::Const(Constant::Primitive(p)) => {
                 self.primitive(*p, args, dest, ty).map_err(|u| u.naming(*p))

@@ -40,6 +40,7 @@ vun-hir = { path = "compiler/front/hir" }
 vun-sema = { path = "compiler/front/sema" }
 vun-mir = { path = "compiler/mid/mir" }
 vun-mir-passes = { path = "compiler/mid/passes" }
+vun-sanitize = { path = "compiler/mid/sanitize" }
 vun-interp = { path = "compiler/mid/interp" }
 vun-lir = { path = "compiler/low/lir" }
 vun-lower = { path = "compiler/low/lower" }

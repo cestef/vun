@@ -6,6 +6,8 @@
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
 use crate::Item;
+/// The namespace `lang.check.mem`.
+pub const mem: Item = Item::new(&["lang", "check", "mem"]);
 /// What a program may be built to check (`std.build.Options.checks`).
 pub const Kind: Item = Item::new(&["lang", "check", "Kind"]);
 /// At run time, in a program built with `kind` checked, each call of the declaration this marks
@@ -36,3 +38,10 @@ pub const allocated: Item = Item::new(&["lang", "check", "allocated"]);
 pub const freed: Item = Item::new(&["lang", "check", "freed"]);
 /// Reports `f` and ends the program, as a trap does.
 pub const fail: Item = Item::new(&["lang", "check", "fail"]);
+/// The id of a new trap site at `at`, which a check made there fails at: the message table
+/// records it as it records a trap site.
+pub const site: Item = Item::new(&["lang", "check", "site"]);
+/// Fails the check made at `at` for `violation`, at `address`.
+pub const failed: Item = Item::new(&["lang", "check", "failed"]);
+/// Fails the check made at `at` unless the `bytes` at `address` may be accessed as `how` says.
+pub const accessed: Item = Item::new(&["lang", "check", "accessed"]);

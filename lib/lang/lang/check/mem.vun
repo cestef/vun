@@ -1,0 +1,25 @@
+//! The operations of `lang.mem` on raw pointers, checked (`#[check.by(.pointers, f)]`): each
+//! checks the bytes it touches, then does what it checks.
+
+read := unsafe ($T: type, p: *T, $at: lang.meta.Origin) -> T {
+    lang.check.accessed(at, lang.mem.address(T, p), lang.meta.size(T), .read);
+    unsafe lang.mem.read(T, p)
+};
+
+write := unsafe ($T: type, p: *T, value: T, $at: lang.meta.Origin) {
+    lang.check.accessed(at, lang.mem.address(T, p), lang.meta.size(T), .write);
+    unsafe lang.mem.write(T, p, value)
+};
+
+copy := unsafe ($T: type, to: *T, from: *T, n: usize, $at: lang.meta.Origin) {
+    bytes := (n * lang.meta.size(T)).sat(usize);
+    lang.check.accessed(at, lang.mem.address(T, from), bytes, .read);
+    lang.check.accessed(at, lang.mem.address(T, to), bytes, .write);
+    unsafe lang.mem.copy(T, to, from, n)
+};
+
+fill := unsafe ($T: type, to: *T, value: T, n: usize, $at: lang.meta.Origin) {
+    bytes := (n * lang.meta.size(T)).sat(usize);
+    lang.check.accessed(at, lang.mem.address(T, to), bytes, .write);
+    unsafe lang.mem.fill(T, to, value, n)
+};
