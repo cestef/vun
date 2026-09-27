@@ -119,7 +119,8 @@ impl<'a, 'db> Lowering<'a, 'db> {
         let at = Self::root_of(&env);
         let target = cx.get::<TargetOf>(&()).ok_or(Unlowered { at, why: Why::Untargeted })?;
         let types = Types::new(cx, &target).map_err(|bits| Unlowered { at, why: Why::Address(bits) })?;
-        let unit = Unit { pointer_bits: types.pointer_bits(), ..Unit::default() };
+        let checks = cx.get::<vun_sema::checks::ChecksOf>(&());
+        let unit = Unit { pointer_bits: types.pointer_bits(), checks, ..Unit::default() };
         let functions =
             program.functions.iter().enumerate().map(|(i, f)| (f.clone(), FuncId::new(i))).collect();
         let suspends = |f: &&Instantiation| cx.get::<Concrete>(f).is_ok_and(|b| b.suspends());

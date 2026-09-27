@@ -63,6 +63,9 @@ pub struct Unit {
     /// Each trap site, by its id (`lang.panic.Trap.site`): the message table that reports a
     /// trap (spec 07, section 3).
     pub sites: Vec<Site>,
+    /// The checks of unsafe code the program is built with (spec 13, section 8.7): a backend
+    /// checks the memory its assembly blocks write under `asm`.
+    pub checks: vun_target::Checks,
 }
 
 /// A trap site: where it is written, and what it says when its reason is known when compiling
