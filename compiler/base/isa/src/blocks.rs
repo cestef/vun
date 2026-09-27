@@ -2,9 +2,9 @@
 //! of its table a block names, by their index in declaration order, and its operands as the
 //! assembler takes them. Every backend emitting blocks, native code or GNU C, reads them here.
 
-use vun_inline::{Base, Block, Bound, Inst, Line, Mem, Operand, RegRef};
+use vun_inline::{Base, Block, Bound, FormId, Inst, Line, Mem, OpId, Operand, RegRef};
 
-use crate::{Isa, Label, Via};
+use crate::{Fit, Fixed, Given, Isa, Label, Misfit, Via};
 
 /// Operands of inline assembly a backend may have no encoding or no register for.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -59,6 +59,20 @@ pub trait Blocks: Isa {
     /// # Errors
     /// What it does not address.
     fn addressable<V, P, S>(mem: &Mem<V, P, S>, kind: Self::Kind) -> Result<(), AsmOperand>;
+
+    /// The width a line's operands give the form `form` of `op`, and each as the form takes it,
+    /// `fixed` what its mnemonic's spelling supplies. A form checked so is one the assembler
+    /// encodes, by the same predicates; an immediate must also be a value the operation's bits
+    /// hold.
+    ///
+    /// # Errors
+    /// Why the form does not take them.
+    fn fit<V: Clone, P: Clone, S: Copy>(
+        op: OpId,
+        form: FormId,
+        fixed: Fixed,
+        givens: &[Given<V, P, S>],
+    ) -> Result<Fit<V, P, S>, Misfit>;
 
     /// A label, as a branch's target.
     fn label<S: Copy>(label: Label) -> Self::Operand<S>;

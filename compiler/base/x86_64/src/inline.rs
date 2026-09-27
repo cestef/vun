@@ -3,8 +3,8 @@
 //! table, whose declaration order `generated` keeps. Bindings are general registers, a shift's
 //! count `cl`; memory is off a base register or a symbol, never indexed.
 
-use vun_isa::{AsmOperand, Blocks, Label, Place};
 use vun_inline::{Disp, FormId, Inst, OpId, RegRef, SizeId};
+use vun_isa::{AsmOperand, Blocks, Fit, Fixed, Given, Label, Misfit, Place};
 
 use crate::{Base, Cc, Class, Form, Kind, Mem, Op, Operand, Reg, Size, X86_64, Xmm};
 
@@ -60,6 +60,15 @@ impl Blocks for X86_64 {
             (None, None, Disp::Bytes(_)) => Err(AsmOperand::Absolute),
             (Some(_), None, Disp::Bytes(n)) | (None, None, Disp::Symbol(_, n)) => fits(*n),
         }
+    }
+
+    fn fit<V: Clone, P: Clone, S: Copy>(
+        op: OpId,
+        form: FormId,
+        fixed: Fixed,
+        givens: &[Given<V, P, S>],
+    ) -> Result<Fit<V, P, S>, Misfit> {
+        crate::fit::fit(op, form, fixed, givens)
     }
 
     fn label<S: Copy>(label: Label) -> Operand<S> {

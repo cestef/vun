@@ -7,6 +7,7 @@
 //! form's text, and sema checks blocks of inline assembly against the same forms.
 
 mod bitmask;
+mod fit;
 #[rustfmt::skip]
 mod generated;
 mod inline;
@@ -14,6 +15,9 @@ mod inst;
 mod operand;
 mod reg;
 mod table;
+
+#[cfg(test)]
+mod tests;
 
 use vun_isa::Unpatched;
 use vun_isa::imm::{fits_signed, truncate};

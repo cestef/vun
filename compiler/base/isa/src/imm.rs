@@ -42,3 +42,10 @@ pub const fn fits_signed(value: i64, imm_bits: u32, op_bits: u32) -> bool {
 pub const fn fits_unsigned(value: i64, imm_bits: u32, op_bits: u32) -> bool {
     truncate(value, op_bits) == truncate(value, if imm_bits < op_bits { imm_bits } else { op_bits })
 }
+
+/// Whether an operation of `bits` holds `value`, read as signed or as unsigned: a constant a
+/// block writes is never cut to the bits the operation reads.
+#[must_use]
+pub const fn held(value: i64, bits: u32) -> bool {
+    bits >= 64 || (value >= -(1 << (bits - 1)) && value < (1 << bits))
+}

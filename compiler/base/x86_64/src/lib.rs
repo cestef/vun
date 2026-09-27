@@ -4,6 +4,7 @@
 //! (`vun-asm-x86_64`) encodes the first form an instruction's operands fit, the listing writes
 //! the same form's text, and sema checks blocks of inline assembly against the same forms.
 
+mod fit;
 #[rustfmt::skip]
 mod generated;
 mod inline;
@@ -11,6 +12,9 @@ mod inst;
 mod operand;
 mod reg;
 mod table;
+
+#[cfg(test)]
+mod tests;
 
 pub use inst::{Inst, Syntax, Text};
 pub use operand::{Base, Mem, Operand};

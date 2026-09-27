@@ -5,11 +5,13 @@
 //! functions over it, which sema checks blocks against; the assemblers (`vun-asm`) emit them.
 
 mod blocks;
+mod fit;
 pub mod imm;
 
 use std::fmt;
 
 pub use blocks::{AsmOperand, Blocks, Place, Use};
+pub use fit::{Fit, Fixed, Given, Misfit, Position, Why, positions};
 
 /// A place in a function's code that jumps name.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
