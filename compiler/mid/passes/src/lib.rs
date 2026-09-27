@@ -2,6 +2,7 @@
 
 pub mod borrows;
 pub mod coroutines;
+mod flow;
 pub mod kinds;
 pub mod panics;
 pub mod places;

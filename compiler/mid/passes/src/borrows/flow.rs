@@ -4,10 +4,11 @@
 use std::collections::VecDeque;
 
 use vun_desugar::Extent;
-use vun_index::{BitMatrix, BitSet, Idx, IndexVec};
+use vun_index::{BitMatrix, BitSet, IndexVec};
 use vun_mir::{BlockId, Local, Operand, Rvalue, Stmt, Terminator, TerminatorKind};
 
 use super::{Checker, LoanId};
+use crate::flow::Forward;
 
 /// The loans each local may hold.
 pub(super) type Holds = BitMatrix<Local, LoanId>;
@@ -18,32 +19,12 @@ pub(super) type Live = IndexVec<BlockId, Vec<BitSet<Local>>>;
 impl Checker<'_> {
     /// The loans each local may hold at the entry of each block reached.
     pub(super) fn holding(&self) -> IndexVec<BlockId, Option<Holds>> {
-        let mut at: IndexVec<BlockId, Option<Holds>> = IndexVec::filled(None, self.body.blocks.len());
         let mut entry = Holds::new(self.body.locals.len(), self.loans.len());
         for &(param, loan) in &self.lent {
             entry.insert(param, loan);
         }
-        at[BlockId::new(0)] = Some(entry);
-        let mut work = VecDeque::from([BlockId::new(0)]);
-        while let Some(block) = work.pop_front() {
-            let Some(mut holds) = at[block].clone() else { continue };
-            for (index, stmt) in self.body.blocks[block].stmts.iter().enumerate() {
-                self.hold(block, index, stmt, &mut holds);
-            }
-            for next in self.body.blocks[block].term.kind.successors() {
-                let changed = match &mut at[next] {
-                    Some(there) => there.union(&holds),
-                    slot @ None => {
-                        *slot = Some(holds.clone());
-                        true
-                    }
-                };
-                if changed {
-                    work.push_back(next);
-                }
-            }
-        }
-        at
+        let mut this = self;
+        this.solve(self.body.blocks.len(), entry)
     }
 
     /// What `stmt` makes its place hold: the loan it takes, with those of the borrow it goes
@@ -170,5 +151,18 @@ impl Checker<'_> {
             Operand::Place(p) => std::iter::once(p.local).chain(p.indices()).collect(),
             Operand::Const(_) => Vec::new(),
         }
+    }
+}
+
+/// The loans each local may hold, forward from the entry: each statement makes its place hold
+/// what it takes or is built from.
+impl Forward for &Checker<'_> {
+    type Fact = Holds;
+
+    fn transfer(&mut self, block: BlockId, holds: &mut Holds) -> Vec<BlockId> {
+        for (index, stmt) in self.body.blocks[block].stmts.iter().enumerate() {
+            self.hold(block, index, stmt, holds);
+        }
+        self.body.blocks[block].term.kind.successors().into_iter().collect()
     }
 }

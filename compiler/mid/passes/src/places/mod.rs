@@ -12,12 +12,12 @@ mod parts;
 mod states;
 mod transfer;
 
-use std::collections::{BTreeMap, BTreeSet, HashSet, VecDeque};
+use std::collections::{BTreeMap, BTreeSet, HashSet};
 use std::sync::Arc;
 
 use vun_codec::{Decode, Encode};
 use vun_diag::{ChildKind, DiagCtxt, DiagId, Diagnostic, Msg, errors};
-use vun_index::{Idx, IndexVec};
+use vun_index::IndexVec;
 use vun_intern::Symbol;
 use vun_mir::{BlockId, Body, Local, Mir, Operand, Role, Rvalue, TerminatorKind};
 use vun_origin::OriginId;
@@ -30,6 +30,8 @@ use leak::Stop;
 use moved::Moved;
 use parts::Linear;
 use states::{State, States};
+
+use crate::flow::Forward;
 
 /// What the place states find in an instantiation's body: the reports, and where each deferred
 /// statement at an exit goes (`TerminatorKind::Defer`), by the block it ends; `None` when the
@@ -123,24 +125,8 @@ impl<'b> Analysis<'b> {
     }
 
     fn run(mut self) -> Found {
-        let mut at: IndexVec<BlockId, Option<States>> = IndexVec::filled(None, self.body.blocks.len());
-        at[BlockId::new(0)] = Some(self.entry());
-        let mut work = VecDeque::from([BlockId::new(0)]);
-        while let Some(block) = work.pop_front() {
-            let Some(mut states) = at[block].clone() else { continue };
-            for next in self.block(block, &mut states) {
-                let changed = match &mut at[next] {
-                    Some(there) => there.join(&states),
-                    slot @ None => {
-                        *slot = Some(states.clone());
-                        true
-                    }
-                };
-                if changed {
-                    work.push_back(next);
-                }
-            }
-        }
+        let entry = self.entry();
+        let at = self.solve(self.body.blocks.len(), entry);
         self.reporting = true;
         self.moved_out();
         for (block, states) in at.iter() {
@@ -286,5 +272,13 @@ impl<'b> Analysis<'b> {
             }
             self.diag.error(d);
         }
+    }
+}
+
+impl Forward for Analysis<'_> {
+    type Fact = States;
+
+    fn transfer(&mut self, block: BlockId, states: &mut States) -> Vec<BlockId> {
+        self.block(block, states)
     }
 }

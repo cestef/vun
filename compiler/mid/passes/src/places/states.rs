@@ -9,6 +9,8 @@ use vun_index::IndexVec;
 use vun_intern::Symbol;
 use vun_mir::Local;
 
+use crate::flow::Fact;
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Encode, Decode)]
 pub(super) enum State {
     Uninit,
@@ -65,25 +67,6 @@ pub(super) struct States {
 }
 
 impl States {
-    /// Joins the states of another path here; whether anything changed.
-    pub(super) fn join(&mut self, other: &Self) -> bool {
-        let before = self.clone();
-        let keys: BTreeSet<_> = self.parts.keys().chain(other.parts.keys()).cloned().collect();
-        for key in keys {
-            let (mine, theirs) = (self.enclosing(key.0, &key.1), other.enclosing(key.0, &key.1));
-            self.parts.insert(key, mine.join(theirs));
-        }
-        for (local, state) in other.locals.iter() {
-            self.locals[local] = self.locals[local].join(*state);
-        }
-        for (local, state) in &other.targets {
-            if let Some(mine) = self.targets.get_mut(local) {
-                *mine = mine.join(*state);
-            }
-        }
-        *self != before
-    }
-
     /// The state of the part `path` of `local`, the whole when not known: that of the part or of
     /// the closest part enclosing it that was written or moved on its own, else the whole's, and
     /// no better than that of any part within it.
@@ -111,5 +94,26 @@ impl States {
         } else {
             self.parts.insert((local, path.to_vec()), state);
         }
+    }
+}
+
+impl Fact for States {
+    /// Joins the states of another path here; whether anything changed.
+    fn join(&mut self, other: &Self) -> bool {
+        let before = self.clone();
+        let keys: BTreeSet<_> = self.parts.keys().chain(other.parts.keys()).cloned().collect();
+        for key in keys {
+            let (mine, theirs) = (self.enclosing(key.0, &key.1), other.enclosing(key.0, &key.1));
+            self.parts.insert(key, mine.join(theirs));
+        }
+        for (local, state) in other.locals.iter() {
+            self.locals[local] = self.locals[local].join(*state);
+        }
+        for (local, state) in &other.targets {
+            if let Some(mine) = self.targets.get_mut(local) {
+                *mine = mine.join(*state);
+            }
+        }
+        *self != before
     }
 }
