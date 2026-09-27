@@ -87,10 +87,12 @@ and 1,400 in `std`, including the compiler's tables.
     [MIR checks], [place states, moves and leaks, `defer`, borrow conflicts and escapes, free values, `panic.never`],
     [interpreter], [runs compile-time code on MIR on a stack of its own, including coroutine frames and loans for `&mut`],
     [LIR], [static single assignment with block parameters and a verifier; the analyses backends share; legalization of wide integers and `f16`; promotion, folding, value numbering, jump threading, narrowing and inlining],
+    [inline assembly], [blocks checked at compile time against the instruction tables of `lang.arch` for x86-64 and arm64; encoded by the native backend, written as GNU `__asm__` by the C backend, refused by the WebAssembly backend],
     [backends], [C99; a single-pass native backend for x86-64 and arm64 writing ELF objects with DWARF line tables and unwind information, over a shared linear-scan register allocator; WebAssembly objects for WASI],
     [linkers], [GNU ld, mold and wild through the target's C compiler; `wasm-ld`; static and shared libraries],
     [packages], [manifests, BLAKE3 tree hashes, store and collection, `.tar.zst` archives, lockfile, minimal version selection, replacement, indexes over HTTPS],
     [diagnostics], [99 identifiers in 25 groups, each with a checked explanation page; renderers in the annotate-snippets, ariadne, one-line and JSON styles],
+    [editors], [a language server over one driver session and its query engine],
     midrule,
     [corpus], [55 source files to accept and 90 to reject; the harness reports 250 passing checks and no failures, with 10 programs waiting for library surface],
     [backend tests], [every test program is built through each backend and run on Linux for x86-64 and arm64 (through an emulator) and under WASI, with identical results required],
@@ -111,10 +113,10 @@ encoder, the printer and instruction selection read. A loop of 50 million steps 
 congruential generator runs in 56 ms through it, against 51 ms for the C backend compiled with
 `-O2`. This is one small program and says little about larger ones.
 
-The main gaps, in the order in which they are planned, are: typed inline assembly, under way,
-and with it a Linux runtime that calls the kernel without a C library; runtimes for boards, which
+The main gaps, in the order in which they are planned, are: inline assembly for Thumb, which
+the microcontroller targets need; a Linux runtime that calls the kernel without a C library; runtimes for boards, which
 wait for build plans that declare memory regions; the remaining library surface (a thread pool,
-the simulator, text and collections); the `fixed` kind; the language server; and, in the native backend,
+the simulator, text and collections); the `fixed` kind; and, in the native backend,
 linking for macOS and support for RISC-V. @tab-roadmap gives the phases of the project and their exit
 criteria. The implementation has passed the exit criterion of phase 2 and meets that of phase 3
 except for running on a board.
