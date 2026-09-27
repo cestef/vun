@@ -1071,7 +1071,6 @@ version = "0.0.0"
 dependencies = [
  "libfuzzer-sys",
  "vun-diag",
- "vun-driver",
  "vun-fmt",
  "vun-grammar",
  "vun-hir",
@@ -1158,6 +1157,10 @@ dependencies = [
  "vun-syntax",
  "vun-trace",
 ]
+
+[[package]]
+name = "vun-html"
+version = "0.0.0"
 
 [[package]]
 name = "vun-http"

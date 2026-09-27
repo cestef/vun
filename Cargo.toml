@@ -18,6 +18,7 @@ vun-codec-derive = { path = "compiler/base/codec-derive" }
 vun-json = { path = "compiler/base/json" }
 vun-items = { path = "compiler/base/items" }
 vun-hash = { path = "compiler/base/hash" }
+vun-html = { path = "compiler/base/html" }
 vun-graph = { path = "compiler/base/graph" }
 vun-bytes = { path = "compiler/base/bytes" }
 vun-fs = { path = "compiler/base/fs" }
