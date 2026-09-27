@@ -1,71 +1,49 @@
-//! Floats' operators (spec 02, section 4): for each float type, the impls of `lang.ops` over
-//! the primitives of `lang.float`, made by one constructor per interface.
+//! Floats' operators (spec 02, section 4): the impls of `lang.ops` for every float type, over
+//! the constructor `lang.Float`, as the primitives of `lang.float`.
 
-/// The witness of `Add` for the float type `T`; the others alike.
-Add := ($T: type) -> type { struct { Output := ($R: type) -> type { T }; add := lang.float.add; } };
-Sub := ($T: type) -> type { struct { Output := ($R: type) -> type { T }; sub := lang.float.sub; } };
-Mul := ($T: type) -> type { struct { Output := ($R: type) -> type { T }; mul := lang.float.mul; } };
-Div := ($T: type) -> type { struct { Output := ($R: type) -> type { T }; div := lang.float.div; } };
-Rem := ($T: type) -> type { struct { Output := ($R: type) -> type { T }; rem := lang.float.rem; } };
-Neg := ($T: type) -> type { struct { Output := T; neg := lang.float.neg; } };
+#[impl(lang.ops.Add(lang.Float))]
+FloatAdd := ($bits: Int(1..)) -> type { struct {
+    Output := ($R: type) -> type { lang.Float(bits) };
+    add := lang.float.add;
+} };
+
+#[impl(lang.ops.Sub(lang.Float))]
+FloatSub := ($bits: Int(1..)) -> type { struct {
+    Output := ($R: type) -> type { lang.Float(bits) };
+    sub := lang.float.sub;
+} };
+
+#[impl(lang.ops.Mul(lang.Float))]
+FloatMul := ($bits: Int(1..)) -> type { struct {
+    Output := ($R: type) -> type { lang.Float(bits) };
+    mul := lang.float.mul;
+} };
+
+#[impl(lang.ops.Div(lang.Float))]
+FloatDiv := ($bits: Int(1..)) -> type { struct {
+    Output := ($R: type) -> type { lang.Float(bits) };
+    div := lang.float.div;
+} };
+
+#[impl(lang.ops.Rem(lang.Float))]
+FloatRem := ($bits: Int(1..)) -> type { struct {
+    Output := ($R: type) -> type { lang.Float(bits) };
+    rem := lang.float.rem;
+} };
+
+#[impl(lang.ops.Neg(lang.Float))]
+FloatNeg := ($bits: Int(1..)) -> type { struct { Output := lang.Float(bits); neg := lang.float.neg; } };
+
 /// IEEE equality: a NaN equals nothing.
-Eq := ($T: type) -> type { struct { eq := lang.float.equal; ne := lang.float.unequal; } };
+#[impl(lang.ops.Eq(lang.Float))]
+FloatEq := ($bits: Int(1..)) -> type { struct { eq := lang.float.equal; ne := lang.float.unequal; } };
+
 /// IEEE comparisons, false with a NaN: floats are ordered partially. IEEE `totalOrder` is
 /// `lang.float.total_order`, not an `Ord`, so that `<` and `cmp` never disagree.
-PartialOrd := ($T: type) -> type { struct {
+#[impl(lang.ops.PartialOrd(lang.Float))]
+FloatPartialOrd := ($bits: Int(1..)) -> type { struct {
     lt := lang.float.less;
     le := lang.float.less_equal;
     gt := lang.float.greater;
     ge := lang.float.greater_equal;
 } };
-
-#[impl(lang.ops.Add(f16))]
-F16Add := Add(f16);
-#[impl(lang.ops.Sub(f16))]
-F16Sub := Sub(f16);
-#[impl(lang.ops.Mul(f16))]
-F16Mul := Mul(f16);
-#[impl(lang.ops.Div(f16))]
-F16Div := Div(f16);
-#[impl(lang.ops.Rem(f16))]
-F16Rem := Rem(f16);
-#[impl(lang.ops.Neg(f16))]
-F16Neg := Neg(f16);
-#[impl(lang.ops.Eq(f16))]
-F16Eq := Eq(f16);
-#[impl(lang.ops.PartialOrd(f16))]
-F16PartialOrd := PartialOrd(f16);
-
-#[impl(lang.ops.Add(f32))]
-F32Add := Add(f32);
-#[impl(lang.ops.Sub(f32))]
-F32Sub := Sub(f32);
-#[impl(lang.ops.Mul(f32))]
-F32Mul := Mul(f32);
-#[impl(lang.ops.Div(f32))]
-F32Div := Div(f32);
-#[impl(lang.ops.Rem(f32))]
-F32Rem := Rem(f32);
-#[impl(lang.ops.Neg(f32))]
-F32Neg := Neg(f32);
-#[impl(lang.ops.Eq(f32))]
-F32Eq := Eq(f32);
-#[impl(lang.ops.PartialOrd(f32))]
-F32PartialOrd := PartialOrd(f32);
-
-#[impl(lang.ops.Add(f64))]
-F64Add := Add(f64);
-#[impl(lang.ops.Sub(f64))]
-F64Sub := Sub(f64);
-#[impl(lang.ops.Mul(f64))]
-F64Mul := Mul(f64);
-#[impl(lang.ops.Div(f64))]
-F64Div := Div(f64);
-#[impl(lang.ops.Rem(f64))]
-F64Rem := Rem(f64);
-#[impl(lang.ops.Neg(f64))]
-F64Neg := Neg(f64);
-#[impl(lang.ops.Eq(f64))]
-F64Eq := Eq(f64);
-#[impl(lang.ops.PartialOrd(f64))]
-F64PartialOrd := PartialOrd(f64);

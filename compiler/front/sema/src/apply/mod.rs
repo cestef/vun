@@ -6,6 +6,8 @@ mod int;
 mod meta;
 mod report;
 
+use crate::trap::Reason;
+use crate::float::Format;
 use crate::Primitive;
 use crate::env::{Env, Unevaluated};
 use crate::int::Integer;
@@ -44,6 +46,10 @@ impl Primitive {
         match (self, args) {
             // `lang.Int(range)`: the integers of the range (spec 04, section 1).
             (Self::Lang(Lang::Int), [Value::Range(Some(range))]) => Ok(Value::Type(TyKind::int(range))),
+            // `lang.Float(bits)`: the IEEE 754 binary floats of that width.
+            (Self::Lang(Lang::Float), [Value::Int(bits)]) => Format::of_bits(bits)
+                .map(|f| Value::Type(f.ty()))
+                .ok_or_else(|| Unevaluated::trap(Reason::Argument)),
             // No integer is in an empty range: the empty type, of what never gives a value.
             (Self::Lang(Lang::Int), [Value::Range(None)]) => env.item(vun_items::lang::never),
             // `lang.Fn(params, result)`: a function type (appendix B).

@@ -7,6 +7,7 @@ use vun_codec::{Decode, Encode};
 use vun_lir::Scalar;
 use vun_origin::OriginId;
 use vun_query::Cx;
+use vun_sema::float::Format;
 use vun_sema::Primitive;
 use vun_sema::int::Interval;
 use vun_sema::layout::{Layout, Parts, Shape, Shapes, Tag};
@@ -100,12 +101,11 @@ impl<'a, 'db> Types<'a, 'db> {
         if let Some((int, _)) = self.int(ty) {
             return Ok(Repr::Scalar(int));
         }
-        let float = match &*ty {
-            TyKind::Primitive(Primitive::Lang(Lang::f16), _) => Some(Scalar::F16),
-            TyKind::Primitive(Primitive::Lang(Lang::f32), _) => Some(Scalar::F32),
-            TyKind::Primitive(Primitive::Lang(Lang::f64), _) => Some(Scalar::F64),
-            _ => None,
-        };
+        let float = Format::of(&ty).map(|f| match f {
+            Format::F16 => Scalar::F16,
+            Format::F32 => Scalar::F32,
+            Format::F64 => Scalar::F64,
+        });
         if let Some(float) = float {
             return Ok(Repr::Scalar(float));
         }

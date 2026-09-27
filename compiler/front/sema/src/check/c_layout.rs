@@ -5,6 +5,7 @@
 use vun_diag::{Diagnostic, Msg, errors};
 use vun_hir::tree::{DeclId, ExprKind, Hir, Member, each_entry};
 
+use crate::float::Format;
 use super::Checker;
 use crate::Primitive;
 use crate::int::Integer;
@@ -71,10 +72,12 @@ impl Checker<'_, '_, '_> {
         if self.env.condition().ok() == Some(ty) {
             return Some(true);
         }
+        if let Some(format) = Format::of(&ty) {
+            // C has no 16-bit float type.
+            return Some(format != Format::F16);
+        }
         match &*ty {
-            TyKind::Primitive(Primitive::Lang(Lang::f32 | Lang::f64) | Primitive::Mem(Mem::Ptr), _) => {
-                Some(true)
-            }
+            TyKind::Primitive(Primitive::Mem(Mem::Ptr), _) => Some(true),
             TyKind::Primitive(Primitive::Lang(Lang::Fn), _) => {
                 Some(ty.signature()?.has(Primitive::Abi(Abi::c)))
             }

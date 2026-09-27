@@ -6,39 +6,16 @@
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
 use crate::Item;
-/// The witness of `Add` for the float type `T`; the others alike.
-pub const Add: Item = Item::new(&["lang", "float", "ops", "Add"]);
-pub const Sub: Item = Item::new(&["lang", "float", "ops", "Sub"]);
-pub const Mul: Item = Item::new(&["lang", "float", "ops", "Mul"]);
-pub const Div: Item = Item::new(&["lang", "float", "ops", "Div"]);
-pub const Rem: Item = Item::new(&["lang", "float", "ops", "Rem"]);
-pub const Neg: Item = Item::new(&["lang", "float", "ops", "Neg"]);
+pub const FloatAdd: Item = Item::new(&["lang", "float", "ops", "FloatAdd"]);
+pub const FloatSub: Item = Item::new(&["lang", "float", "ops", "FloatSub"]);
+pub const FloatMul: Item = Item::new(&["lang", "float", "ops", "FloatMul"]);
+pub const FloatDiv: Item = Item::new(&["lang", "float", "ops", "FloatDiv"]);
+pub const FloatRem: Item = Item::new(&["lang", "float", "ops", "FloatRem"]);
+pub const FloatNeg: Item = Item::new(&["lang", "float", "ops", "FloatNeg"]);
 /// IEEE equality: a NaN equals nothing.
-pub const Eq: Item = Item::new(&["lang", "float", "ops", "Eq"]);
+pub const FloatEq: Item = Item::new(&["lang", "float", "ops", "FloatEq"]);
 /// IEEE comparisons, false with a NaN: floats are ordered partially. IEEE `totalOrder` is
 /// `lang.float.total_order`, not an `Ord`, so that `<` and `cmp` never disagree.
-pub const PartialOrd: Item = Item::new(&["lang", "float", "ops", "PartialOrd"]);
-pub const F16Add: Item = Item::new(&["lang", "float", "ops", "F16Add"]);
-pub const F16Sub: Item = Item::new(&["lang", "float", "ops", "F16Sub"]);
-pub const F16Mul: Item = Item::new(&["lang", "float", "ops", "F16Mul"]);
-pub const F16Div: Item = Item::new(&["lang", "float", "ops", "F16Div"]);
-pub const F16Rem: Item = Item::new(&["lang", "float", "ops", "F16Rem"]);
-pub const F16Neg: Item = Item::new(&["lang", "float", "ops", "F16Neg"]);
-pub const F16Eq: Item = Item::new(&["lang", "float", "ops", "F16Eq"]);
-pub const F16PartialOrd: Item = Item::new(&["lang", "float", "ops", "F16PartialOrd"]);
-pub const F32Add: Item = Item::new(&["lang", "float", "ops", "F32Add"]);
-pub const F32Sub: Item = Item::new(&["lang", "float", "ops", "F32Sub"]);
-pub const F32Mul: Item = Item::new(&["lang", "float", "ops", "F32Mul"]);
-pub const F32Div: Item = Item::new(&["lang", "float", "ops", "F32Div"]);
-pub const F32Rem: Item = Item::new(&["lang", "float", "ops", "F32Rem"]);
-pub const F32Neg: Item = Item::new(&["lang", "float", "ops", "F32Neg"]);
-pub const F32Eq: Item = Item::new(&["lang", "float", "ops", "F32Eq"]);
-pub const F32PartialOrd: Item = Item::new(&["lang", "float", "ops", "F32PartialOrd"]);
-pub const F64Add: Item = Item::new(&["lang", "float", "ops", "F64Add"]);
-pub const F64Sub: Item = Item::new(&["lang", "float", "ops", "F64Sub"]);
-pub const F64Mul: Item = Item::new(&["lang", "float", "ops", "F64Mul"]);
-pub const F64Div: Item = Item::new(&["lang", "float", "ops", "F64Div"]);
-pub const F64Rem: Item = Item::new(&["lang", "float", "ops", "F64Rem"]);
-pub const F64Neg: Item = Item::new(&["lang", "float", "ops", "F64Neg"]);
-pub const F64Eq: Item = Item::new(&["lang", "float", "ops", "F64Eq"]);
-pub const F64PartialOrd: Item = Item::new(&["lang", "float", "ops", "F64PartialOrd"]);
+pub const FloatPartialOrd: Item = Item::new(
+    &["lang", "float", "ops", "FloatPartialOrd"],
+);

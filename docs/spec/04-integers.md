@@ -98,7 +98,9 @@ reported rather than hidden:
 
 ## 2. Floats
 
-`f16`, `f32`, `f64`: IEEE 754, round to nearest even, no fast-math mode and no flag that changes
+`f16`, `f32`, `f64` are `lang.Float(16)`, `Float(32)` and `Float(64)`, the IEEE 754 binary
+formats of those widths, one constructor as integers are one (`Int`), so the operator impls of
+`lang.float.ops` are one per interface, over `Float`. IEEE 754, round to nearest even, no fast-math mode and no flag that changes
 float semantics. Operations that trade precision for speed are explicit functions:
 `lang.float.mul_add(a, b, c)`, `v.reduce_add(.pairwise(8))` with a specified reduction tree. They
 are vectorizable and reproducible at once. There are no implicit int/float conversions.

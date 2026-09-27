@@ -17,9 +17,11 @@ Bounds: ($T: type) -> type = _;
 /// `Fn((A, B), R)` (appendix B).
 Fn: ($params: type, $result: type) -> type = _;
 
-f16: type = _;
-f32: type = _;
-f64: type = _;
+/// The IEEE 754 binary floats of `bits` bits: 16, 32 or 64 (spec 04, section 2).
+Float: ($bits: Int(1..)) -> type = _;
+f16 := Float(16);
+f32 := Float(32);
+f64 := Float(64);
 
 bool := enum { false, true };
 /// The two conditions by name, so that `true` reads as `.true` does where a `bool` is expected.

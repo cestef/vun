@@ -20,8 +20,9 @@ pub use frame::{Framer, Framers};
 pub use shape::{Layout, Niche, Parts, Shape, Tag};
 pub use text::Text;
 
+use crate::float::Format;
 use crate::Primitive;
-use crate::int::{Integer, Interval, Storage};
+use crate::int::{Integer, Interval};
 use crate::primitives::lang::Lang;
 use crate::primitives::mem::Mem;
 use crate::target::TargetOf;
@@ -118,12 +119,11 @@ impl Shapes {
 
     fn primitive(cx: &Cx<'_>, primitive: Primitive, args: &[Value]) -> Option<Shape> {
         let arg = |i: usize| args.get(i).and_then(Value::as_type);
-        let float =
-            |storage: Storage| Some(Shape::whole(Layout::scalar(storage.bits() / u64::from(u8::BITS), None)));
         match primitive {
-            Primitive::Lang(Lang::f16) => float(Storage::B16),
-            Primitive::Lang(Lang::f32) => float(Storage::B32),
-            Primitive::Lang(Lang::f64) => float(Storage::B64),
+            Primitive::Lang(Lang::Float) => {
+                let format = Format::of(&TyKind::Primitive(primitive, args.to_vec()))?;
+                Some(Shape::whole(Layout::scalar(u64::from(format.bits() / u8::BITS), None)))
+            }
             Primitive::Lang(Lang::Fn) | Primitive::Mem(Mem::Ptr) => Self::pointer(cx).map(Shape::whole),
             // A borrow of a slice also holds its length.
             borrow if borrow.borrow_mode().is_some() => {

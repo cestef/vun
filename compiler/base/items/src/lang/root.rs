@@ -69,6 +69,8 @@ pub const Bounds: Item = Item::new(&["lang", "Bounds"]);
 /// The type of functions from a tuple of `params` to `result`: `(A, B) -> R` is
 /// `Fn((A, B), R)` (appendix B).
 pub const Fn: Item = Item::new(&["lang", "Fn"]);
+/// The IEEE 754 binary floats of `bits` bits: 16, 32 or 64 (spec 04, section 2).
+pub const Float: Item = Item::new(&["lang", "Float"]);
 pub const f16: Item = Item::new(&["lang", "f16"]);
 pub const f32: Item = Item::new(&["lang", "f32"]);
 pub const f64: Item = Item::new(&["lang", "f64"]);

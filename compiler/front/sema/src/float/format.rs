@@ -3,7 +3,8 @@
 
 use crate::Primitive;
 use crate::primitives::lang::Lang;
-use crate::ty::{Ty, TyKind};
+use crate::int::Integer;
+use crate::ty::{Ty, TyKind, Value};
 use vun_codec::{Decode, Encode};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encode, Decode)]
@@ -16,6 +17,14 @@ pub enum Format {
 impl Format {
     /// The format of a float literal that nothing gives a float type (spec 04, section 2).
     pub const DEFAULT: Self = Self::F64;
+
+    pub const ALL: [Self; 3] = [Self::F16, Self::F32, Self::F64];
+
+    /// The format of `bits` bits, if there is one: what `lang.Float(bits)` is.
+    #[must_use]
+    pub fn of_bits(bits: &Integer) -> Option<Self> {
+        Self::ALL.into_iter().find(|f| *bits == Integer::from(i128::from(f.bits())))
+    }
 
     /// The widths of the exponent and fraction fields.
     const fn fields(self) -> (u32, u32) {
@@ -68,20 +77,18 @@ impl Format {
     #[must_use]
     pub fn of(ty: &TyKind) -> Option<Self> {
         match ty {
-            TyKind::Primitive(Primitive::Lang(Lang::f16), _) => Some(Self::F16),
-            TyKind::Primitive(Primitive::Lang(Lang::f32), _) => Some(Self::F32),
-            TyKind::Primitive(Primitive::Lang(Lang::f64), _) => Some(Self::F64),
+            TyKind::Primitive(Primitive::Lang(Lang::Float), args) => match args.as_slice() {
+                [Value::Int(bits)] => Self::of_bits(bits),
+                _ => None,
+            },
             _ => None,
         }
     }
 
-    /// The float type of this format.
+    /// The float type of this format, `lang.Float(bits)`.
     #[must_use]
     pub fn ty(self) -> Ty {
-        TyKind::primitive(Primitive::Lang(match self {
-            Self::F16 => Lang::f16,
-            Self::F32 => Lang::f32,
-            Self::F64 => Lang::f64,
-        }))
+        let bits = Value::Int(Integer::from(i128::from(self.bits())));
+        TyKind::Primitive(Primitive::Lang(Lang::Float), vec![bits]).intern()
     }
 }
