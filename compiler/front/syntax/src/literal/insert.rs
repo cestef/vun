@@ -32,8 +32,9 @@ impl Decl<'_> {
         let end = last.span.range.hi as usize;
         let close = source[..hi].rfind(Writer::spelling(TokenKind::RBrace)).unwrap_or(end).max(end);
         let between = &source[end..close];
-        // After the comma that ends the last field, if it has one.
-        let after = between.find(comma).map(|i| end + i + comma.len());
+        // After the comma that ends the last field, if it has one: the only token between it and
+        // the brace, so the first comma outside a comment.
+        let after = Self::comma(between, comma).map(|i| end + i + comma.len());
         let mut w = Writer::default();
         if between.contains('\n') {
             let inner = text.indentation(text.line_start(last.span.range.lo as usize));
@@ -73,6 +74,19 @@ impl Decl<'_> {
         let (lo, hi) = (self.span.range.lo as usize, self.span.range.hi as usize);
         let line = text.line_start(lo);
         Ok(self.edit(lo, hi, value.laid_out(text.indentation(line), lo - line)?))
+    }
+
+    /// Where `comma` is in `trivia`, text of whitespace and comments around at most one comma.
+    fn comma(trivia: &str, comma: &str) -> Option<usize> {
+        let mut at = 0;
+        for line in trivia.split_inclusive('\n') {
+            let code = line.split(crate::lexer::COMMENT).next().unwrap_or_default();
+            if let Some(i) = code.find(comma) {
+                return Some(at + i);
+            }
+            at += line.len();
+        }
+        None
     }
 
     /// An edit replacing the bytes `lo..hi` of this declaration's file with `text`.

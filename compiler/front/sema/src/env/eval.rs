@@ -219,9 +219,9 @@ impl Env<'_, '_> {
     /// The literal `lit` at `expr`; a float rounded to the float type typing gave it.
     fn literal(&self, expr: ExprId, lit: &Lit) -> Result<Value, Unevaluated> {
         match lit {
-            Lit::Int(n) => Ok(Value::Int(Integer::from(*n))),
+            Lit::Int(n) => Ok(Value::Int(Integer::from(n.clone()))),
             Lit::Char(c) => Ok(Value::Int(Integer::from(i128::from(u32::from(*c))))),
-            Lit::String(text) => Ok(Value::string(text)),
+            Lit::String(bytes) => Ok(Value::bytes(bytes)),
             Lit::Float(text) => {
                 let format =
                     self.type_of(expr).and_then(|t| Format::of(&t)).ok_or(Unevaluated::Unsupported)?;

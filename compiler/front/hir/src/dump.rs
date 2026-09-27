@@ -53,7 +53,7 @@ impl Printer<'_> {
             ExprKind::Lit(Lit::Int(i)) => format!("Int {i}"),
             ExprKind::Lit(Lit::Float(f)) => format!("Float {f}"),
             ExprKind::Lit(Lit::Char(c)) => format!("Char {c:?}"),
-            ExprKind::Lit(Lit::String(s)) => format!("String {s:?}"),
+            ExprKind::Lit(Lit::String(s)) => format!("String {:?}", String::from_utf8_lossy(s)),
             ExprKind::DotName(n) => format!("DotName .{n}"),
             ExprKind::Member { name, .. } => format!("Member .{name}"),
             ExprKind::Borrow { mode: Some(mode), .. } => format!("Borrow &{mode}"),

@@ -4,7 +4,7 @@
 //! `Pair(&u8)`, is a type.
 
 use vun_desugar::{Borrow, Extent};
-use vun_hir::tree::{ExprId, ExprKind};
+use vun_hir::tree::ExprId;
 
 use super::{Known, Typer};
 use crate::ty::{TyKind, Value};
@@ -21,10 +21,7 @@ impl Typer<'_, '_, '_> {
         }
         // A temporary, such as `7` in `&7`, holds the value as the type the borrow is expected
         // to reach when that type accepts it, as `x: u8 = 7` stores it; a place keeps its own.
-        let place = matches!(
-            self.hir().exprs[operand].kind,
-            ExprKind::Name(_) | ExprKind::Member { .. } | ExprKind::Index { .. } | ExprKind::Postfix { .. }
-        );
+        let place = self.hir().exprs[operand].kind.is_place();
         if let Some(pointee) = pointee.filter(|p| !place && p.accepts(&known.ty)) {
             known = Known { ty: pointee, ..known };
             self.types.insert(operand, known);

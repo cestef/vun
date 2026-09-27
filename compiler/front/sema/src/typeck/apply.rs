@@ -59,8 +59,10 @@ impl Typer<'_, '_, '_> {
         let receiver = usize::from(callee.receiver.is_some());
         let count = receiver + args.len();
         let plan = callee.f.as_ref().and_then(|f| Plan::of(self.env(), f, count));
-        if let (Some(f), None) = (&callee.f, &plan) {
-            let counts = Plan::counts(self.env(), f);
+        // Without a plan the call passes a count the function does not take, or its literal is
+        // not read here, and the signature alone checks it.
+        let counts = callee.f.as_ref().filter(|_| plan.is_none()).map(|f| Plan::counts(self.env(), f));
+        if let Some(counts) = counts.filter(|c| !c.is_empty()) {
             self.arity(call, &counts, receiver, count);
             for &arg in args {
                 if let Argument::Expr(arg) = arg {
@@ -108,7 +110,7 @@ impl Typer<'_, '_, '_> {
             let param = signature.as_ref().and_then(|s| s.params.get(slot).copied());
             let param = param.map(|p| callee.passing.expected(p.quoted().unwrap_or(p)));
             found.push(match arg {
-                Argument::Expr(expr) => (expr, self.typed_as(expr, param)),
+                Argument::Expr(expr) => (expr, self.retyped(expr, param, inferred.is_some())),
                 Argument::Matched(ty) => (call, Some(Known { ty, stage: self.stage })),
             });
         }
@@ -143,6 +145,16 @@ impl Typer<'_, '_, '_> {
             return Some(Applied { known: Known { ty, stage: Stage::Compile }, inferred });
         }
         Some(Applied { known: Known { ty: signature.result, stage: self.stage }, inferred })
+    }
+
+    /// `expr` typed as `param`. An argument typed already, to infer the `$` parameters left out,
+    /// keeps its type when that is the parameter's: typing it again would give the same, and
+    /// nested calls of generic functions would each type their arguments twice over.
+    fn retyped(&mut self, expr: ExprId, param: Option<Ty>, typed: bool) -> Option<Known> {
+        match self.types.get(&expr) {
+            Some(&known) if typed && param == Some(known.ty) => Some(known),
+            _ => self.typed_as(expr, param),
+        }
     }
 
     /// The values of the `$` parameters `plan` leaves out, from the types of the receiver and the

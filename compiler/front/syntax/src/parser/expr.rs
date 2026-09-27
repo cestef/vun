@@ -3,6 +3,7 @@
 use vun_diag::{Diagnostic, Msg, errors};
 use vun_grammar::{Assoc, Context, LITERAL_TYPES, NodeKind, POSTFIX, PREFIX, Prec, TokenKind};
 
+use super::nesting::Chain;
 use super::{Brace, Item, List, Parser};
 use crate::cst::Anchor;
 
@@ -15,7 +16,11 @@ impl Parser<'_, '_, '_> {
         let mark = self.out.mark();
         self.prefix(brace);
         let mut chained = None;
+        let mut chain = Chain::new(mark);
         while let Some(op) = self.peek().infix().filter(|op| op.prec >= min) {
+            if !self.link(&mut chain) {
+                return;
+            }
             let wrong = op.assoc == Assoc::None && chained == Some(op.prec);
             if wrong {
                 self.report_chained();
@@ -62,6 +67,7 @@ impl Parser<'_, '_, '_> {
     pub(super) fn postfix(&mut self, brace: Brace) {
         let mark = self.out.mark();
         self.primary(brace);
+        let mut chain = Chain::new(mark);
         loop {
             let (kind, token) = match self.peek() {
                 TokenKind::Dot => {
@@ -86,6 +92,9 @@ impl Parser<'_, '_, '_> {
                 _ => break,
             };
             self.out.node(kind, Anchor::Token(token), mark);
+            if !self.link(&mut chain) {
+                return;
+            }
         }
     }
 

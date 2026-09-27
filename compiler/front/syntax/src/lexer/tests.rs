@@ -41,6 +41,7 @@ fn quotes() {
         [String, Char, Char, Char, Label, Colon, Eof]
     );
     assert_eq!(kinds("\\\\ raw line\nx"), [RawStringLine, Ident, Eof]);
+    assert_eq!(kinds("\\\\ raw line\r\nx"), [RawStringLine, Ident, Eof]);
     assert_eq!(kinds(r#"\"C:\dir" \unsafe \x"#), [RawString, RawIdent, RawIdent, Eof]);
 }
 
@@ -49,7 +50,11 @@ fn literal_values() {
     assert_eq!(literal(String, r#""a\n\x41\u{e9}\"""#).as_deref(), Some("a\nA\u{e9}\""));
     assert_eq!(literal(RawString, r#"\"C:\dir""#).as_deref(), Some(r"C:\dir"));
     assert_eq!(literal(RawStringLine, r"\\ line").as_deref(), Some(" line"));
-    assert_eq!(literal(Char, r"'\''").as_deref(), Some("'"));
+    assert_eq!(scalar(r"'\''"), Some('\''));
+    assert_eq!(scalar(r"'\xff'"), Some('\u{ff}'));
+    assert_eq!(scalar("'ab'"), None);
+    assert_eq!(bytes(String, r#""\xff\u{e9}""#).as_deref(), Some(&[0xff, 0xc3, 0xa9][..]));
+    assert_eq!(literal(String, r#""\xff""#), None);
     assert_eq!(literal(Ident, "x"), None);
 }
 

@@ -29,15 +29,20 @@ fn sexp(cst: &Cst, tokens: &Tokens, text: &str, n: NodeId) -> std::string::Strin
 }
 
 /// The top-level entries of `text` and the diagnostic ids, after checking the verifier.
-fn parse_text(text: &str) -> (Vec<std::string::String>, Vec<DiagId>) {
+/// The verified tree of `text`, its tokens, and the ids of what parsing reported.
+fn parsed(text: &str) -> (Cst, Tokens, Vec<DiagId>) {
     let file = SourceFiles::new().add("t.vun", text);
     let (mut diag, origins) = (DiagCtxt::new(), OriginTable::new());
     let mut cx = DiagCx { diag: &mut diag, origins: &origins };
     let tokens = Tokens::lex(file, text, &mut cx);
     let cst = Cst::parse(&tokens, text, &mut cx);
     assert_eq!(cst.verify(&tokens), Ok(()), "{text:?}");
-    let entries = cst.children(cst.root()).map(|n| sexp(&cst, &tokens, text, n)).collect();
-    (entries, diag.sorted(&origins).into_iter().map(|d| d.id.clone()).collect())
+    (cst, tokens, diag.sorted(&origins).into_iter().map(|d| d.id.clone()).collect())
+}
+
+fn parse_text(text: &str) -> (Vec<std::string::String>, Vec<DiagId>) {
+    let (cst, tokens, ids) = parsed(text);
+    (cst.children(cst.root()).map(|n| sexp(&cst, &tokens, text, n)).collect(), ids)
 }
 
 fn clean(text: &str) -> Vec<std::string::String> {
@@ -205,6 +210,21 @@ fn deep_nesting_is_bounded() {
     assert_eq!(parse_text(&text).1, [errors::SYNTAX_NESTING_TOO_DEEP]);
     let text = format!("x := {}1;", "-".repeat(depth));
     assert_eq!(parse_text(&text).1, [errors::SYNTAX_NESTING_TOO_DEEP]);
+}
+
+#[test]
+fn long_chains_are_bounded() {
+    let links = MAX_NESTING as usize * 64;
+    for text in [
+        format!("x := 1{};", " + 1".repeat(links)),
+        format!("x := a{};", ".b".repeat(links)),
+        format!("x := f{};", "()".repeat(links)),
+        format!("x := if a {{}}{} else {{}};", " else if a {}".repeat(links)),
+    ] {
+        let (cst, _, ids) = parsed(&text);
+        assert_eq!(ids, [errors::SYNTAX_NESTING_TOO_DEEP], "{}", &text[..40]);
+        assert!(cst.depth() <= MAX_NESTING as usize + 8, "depth {}", cst.depth());
+    }
 }
 
 #[test]

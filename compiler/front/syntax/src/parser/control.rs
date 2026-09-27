@@ -1,9 +1,8 @@
 //! Functions, brackets, block-like expressions and jumps: the forms chosen after their children.
 
-use vun_diag::{ChildKind, Diagnostic, Msg, errors};
 use vun_grammar::{ASSIGN, Context, ELEMENT_TYPES, NodeKind, TokenKind};
 
-use super::{Brace, Form, Item, List, MAX_NESTING, Operand, Parser};
+use super::{Brace, Form, Item, List, Operand, Parser};
 use crate::cst::{Anchor, Mark};
 
 impl Parser<'_, '_, '_> {
@@ -74,8 +73,9 @@ impl Parser<'_, '_, '_> {
                 let token = self.bump();
                 self.head(TokenKind::Eq);
                 self.block(list);
+                // `else if` is one level deeper, as a link of the chain of branches.
                 if self.eat(TokenKind::Else) {
-                    if self.at(TokenKind::If) { self.control(list) } else { self.block(list) }
+                    if self.at(TokenKind::If) { self.nested(|p| p.control(list)) } else { self.block(list) }
                 }
                 (NodeKind::If, token)
             }
@@ -192,22 +192,5 @@ impl Parser<'_, '_, '_> {
             self.expr(brace);
             self.out.node(NodeKind::Assign, Anchor::Token(op), mark);
         }
-    }
-
-    /// Runs `body` one level deeper, or skips the operand at the current token when nesting is
-    /// too deep.
-    pub(super) fn nested(&mut self, body: impl FnOnce(&mut Self)) {
-        if self.depth >= MAX_NESTING {
-            let msg = Msg::new().text("nesting is deeper than ").num(MAX_NESTING).text(" levels");
-            let note = Msg::new().text("each operand and each block is one level");
-            let span = self.tokens.span(self.current());
-            let d = Diagnostic::error(errors::SYNTAX_NESTING_TOO_DEEP, msg).child(ChildKind::Note, note);
-            self.report(span, d);
-            self.skip_group();
-            return;
-        }
-        self.depth += 1;
-        body(self);
-        self.depth -= 1;
     }
 }

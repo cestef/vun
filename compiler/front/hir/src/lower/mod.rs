@@ -159,7 +159,7 @@ impl<'a> Lower<'a, '_> {
         match self.kind(n) {
             NodeKind::Name => Name::Plain(self.symbol(n)),
             NodeKind::Int => vun_syntax::literal::integer(self.text(n))
-                .and_then(|i| u32::try_from(i).ok())
+                .and_then(|i| u32::try_from(&i).ok())
                 .map_or(Name::Hole, Name::Index),
             NodeKind::Prefix if self.token(n) == Some(TokenKind::Dollar) => {
                 // Parentheses lower to their inner expression.

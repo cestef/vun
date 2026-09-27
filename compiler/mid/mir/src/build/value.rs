@@ -17,7 +17,7 @@ impl Builder<'_, '_, '_> {
         let origin = hir.exprs[expr].origin;
         let unbuilt = Unbuilt::at(origin);
         match &hir.exprs[expr].kind {
-            ExprKind::Lit(Lit::Int(n)) => Ok(Operand::Const(Value::Int(Integer::from(*n)))),
+            ExprKind::Lit(Lit::Int(n)) => Ok(Operand::Const(Value::Int(Integer::from(n.clone())))),
             ExprKind::Name(_) => self.named(expr, origin),
             ExprKind::Block(block) => self.block(*block),
             // Attributes are read where they apply, from the expression they mark.

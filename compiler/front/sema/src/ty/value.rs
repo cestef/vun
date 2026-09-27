@@ -96,7 +96,13 @@ impl Value {
     /// A string at compile time: its bytes (decision 82).
     #[must_use]
     pub fn string(text: &str) -> Self {
-        Self::Array(text.bytes().map(|b| Self::Int(Integer::from(i128::from(b)))).collect())
+        Self::bytes(text.as_bytes())
+    }
+
+    /// An array of `bytes`, as a string literal denotes them.
+    #[must_use]
+    pub fn bytes(bytes: &[u8]) -> Self {
+        Self::Array(bytes.iter().map(|&b| Self::Int(Integer::from(i128::from(b)))).collect())
     }
 
     /// The text an array of bytes holds, as `Self::string` makes it.

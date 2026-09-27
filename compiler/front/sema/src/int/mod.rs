@@ -133,6 +133,12 @@ impl Integer {
     }
 }
 
+impl From<BigInt> for Integer {
+    fn from(n: BigInt) -> Self {
+        Self(n)
+    }
+}
+
 impl From<i128> for Integer {
     fn from(n: i128) -> Self {
         Self(BigInt::from(n))

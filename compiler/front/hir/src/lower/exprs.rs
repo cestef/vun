@@ -155,14 +155,12 @@ impl Lower<'_, '_> {
             NodeKind::Int => vun_syntax::literal::integer(self.text(n))
                 .map_or(ExprKind::Error, |i| ExprKind::Lit(Lit::Int(i))),
             NodeKind::Float => ExprKind::Lit(Lit::Float(self.text(n).to_owned())),
-            NodeKind::Char => self
-                .token(n)
-                .and_then(|k| lexer::literal(k, self.text(n)))
-                .and_then(|t| t.chars().next())
-                .map_or(ExprKind::Error, |c| ExprKind::Lit(Lit::Char(c))),
+            NodeKind::Char => {
+                lexer::scalar(self.text(n)).map_or(ExprKind::Error, |c| ExprKind::Lit(Lit::Char(c)))
+            }
             NodeKind::String => self
                 .token(n)
-                .and_then(|k| lexer::literal(k, self.text(n)))
+                .and_then(|k| lexer::bytes(k, self.text(n)))
                 .map_or(ExprKind::Error, |t| ExprKind::Lit(Lit::String(t.into_owned()))),
             _ => ExprKind::Error,
         }
@@ -176,17 +174,17 @@ impl Lower<'_, '_> {
         crate::tree::Stmt::Assign { op, place, value, origin: self.origin(n) }
     }
 
-    fn multiline(&mut self, f: &Fields, n: NodeId) -> String {
+    fn multiline(&mut self, f: &Fields, n: NodeId) -> Vec<u8> {
         let mut lines = vec![self.raw_line(n)];
         for &line in f.get(NodeField::Lines) {
             lines.push(self.raw_line(line));
         }
-        lines.join("\n")
+        lines.join(&b'\n')
     }
 
-    fn raw_line(&self, n: NodeId) -> String {
+    fn raw_line(&self, n: NodeId) -> Vec<u8> {
         self.token(n)
-            .and_then(|k| lexer::literal(k, self.text(n)))
+            .and_then(|k| lexer::bytes(k, self.text(n)))
             .map(std::borrow::Cow::into_owned)
             .unwrap_or_default()
     }

@@ -26,7 +26,7 @@ mod tests;
 mod value;
 mod words;
 
-pub use value::literal;
+pub use value::{bytes, literal, scalar};
 
 /// Escapes written as a backslash and one character, with the character each denotes.
 pub(crate) const SIMPLE_ESCAPES: [(char, char); 7] =
@@ -36,9 +36,11 @@ const BYTE_ESCAPE_DIGITS: usize = 2;
 /// Maximum hex digits in a Unicode escape `\u{HHHHHH}`.
 const UNICODE_ESCAPE_DIGITS: usize = 6;
 /// Integer prefixes after a leading `0`, with their radix.
-const RADIX_PREFIXES: [(char, u32); 3] = [('x', 16), ('o', 8), ('b', 2)];
+pub(crate) const RADIX_PREFIXES: [(char, u32); 3] = [('x', 16), ('o', 8), ('b', 2)];
+/// What may stand between the digits of a number: `1_000`.
+pub(crate) const DIGIT_SEPARATOR: char = '_';
 
-const COMMENT: &str = "//";
+pub(crate) const COMMENT: &str = "//";
 pub(crate) const DOC_COMMENT: &str = "///";
 pub(crate) const MODULE_DOC_COMMENT: &str = "//!";
 const RAW_STRING_LINE: &str = "\\\\";

@@ -1,5 +1,6 @@
 //! Expressions, including types, which are compile-time values (spec 02).
 
+use num_bigint::BigInt;
 use vun_desugar::Borrow;
 use vun_grammar::TokenKind;
 use vun_intern::Symbol;
@@ -13,10 +14,11 @@ pub struct Expr {
 }
 
 pub enum Lit {
-    Int(i128),
+    Int(BigInt),
     Float(String),
     Char(char),
-    String(String),
+    /// The bytes it denotes.
+    String(Vec<u8>),
 }
 
 /// An argument or a literal field: `value`, or `.name = value`.
@@ -148,6 +150,19 @@ pub enum ExprKind {
 }
 
 impl ExprKind {
+    /// Whether it names a place, one a borrow reaches rather than a temporary: a name, a member,
+    /// an item at an index, or what a raw pointer points to.
+    #[must_use]
+    pub fn is_place(&self) -> bool {
+        matches!(
+            self,
+            Self::Name(_)
+                | Self::Member { .. }
+                | Self::Index { .. }
+                | Self::Postfix { op: TokenKind::DotStar, .. }
+        )
+    }
+
     /// The name of this kind of expression.
     #[must_use]
     pub fn name(&self) -> &'static str {

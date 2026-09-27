@@ -41,8 +41,14 @@ impl Lexer<'_, '_, '_> {
         }
     }
 
+    /// The rest of the line, without its end: `\n`, or the `\r\n` of a CRLF file.
     pub(super) fn eat_line(&mut self) {
-        self.eat_while(|c| c != '\n');
+        while let Some(c) = self.peek().filter(|&c| c != '\n') {
+            if c == '\r' && self.peek_second() == Some('\n') {
+                return;
+            }
+            self.pos += c.len_utf8();
+        }
     }
 
     /// Digits of `radix` with `_` separators; returns the number of digits.
@@ -50,7 +56,7 @@ impl Lexer<'_, '_, '_> {
         let mut digits = 0;
         self.eat_while(|c| {
             digits += usize::from(c.is_digit(radix));
-            c.is_digit(radix) || c == '_'
+            c.is_digit(radix) || c == super::DIGIT_SEPARATOR
         });
         digits
     }

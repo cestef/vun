@@ -3,7 +3,7 @@
 use vun_grammar::{NodeKind, TokenKind};
 
 use super::Parser;
-use crate::cst::Anchor;
+use crate::tokens::TokenId;
 
 impl Parser<'_, '_, '_> {
     /// Skips tokens as `Error` leaves up to one in `stops`, or a closing delimiter, outside any
@@ -24,13 +24,8 @@ impl Parser<'_, '_, '_> {
         }
     }
 
-    /// Skips the current token as an `Error` node, holding the rest of its group if it opens one.
-    pub(super) fn skip_group(&mut self) {
-        if self.at(TokenKind::Eof) {
-            self.missing(NodeKind::Error);
-            return;
-        }
-        let mark = self.out.mark();
+    /// Takes the current token, and the rest of its group, as `Error` leaves, when it opens one.
+    pub(super) fn bump_group(&mut self) -> TokenId {
         let opens = self.peek().opens();
         let token = self.bump();
         if opens {
@@ -39,6 +34,6 @@ impl Parser<'_, '_, '_> {
                 self.leaf(NodeKind::Punct);
             }
         }
-        self.out.node(NodeKind::Error, Anchor::Token(token), mark);
+        token
     }
 }

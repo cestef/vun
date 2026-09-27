@@ -1,5 +1,6 @@
 //! Reading literal values from the CST.
 
+use num_bigint::BigInt;
 use vun_grammar::{NodeField, NodeKind, TokenKind};
 use vun_span::Span;
 
@@ -84,7 +85,7 @@ impl<'s> Reader<'_, 's> {
             NodeKind::DotName => Literal::Name(self.name(*children.first()?)?),
             NodeKind::Hole => Literal::Hole,
             NodeKind::String => Literal::String(lexer::literal(self.token(n)?, self.text(n)?)?),
-            NodeKind::Int => Literal::Int(integer(self.text(n)?)?),
+            NodeKind::Int => Literal::Int(i128::try_from(integer(self.text(n)?)?).ok()?),
             NodeKind::Prefix if self.token(n)? == TokenKind::Minus => match self.read(*children.first()?)? {
                 Literal::Int(i) => Literal::Int(-i),
                 _ => return None,
@@ -174,18 +175,18 @@ impl<'s> Reader<'_, 's> {
     }
 }
 
-/// Integer prefixes after a leading `0`, with their radix.
-const RADIXES: [(&str, u32); 3] = [("0x", 16), ("0o", 8), ("0b", 2)];
-/// Digit separator in integer literals.
-const SEPARATOR: char = '_';
-
-/// The value of an integer literal: decimal, or `0x`, `0o`, `0b`, with `_` separators.
+/// The value of an integer literal, exactly: decimal, or `0x`, `0o`, `0b`, with `_` separators.
 #[must_use]
-pub fn integer(text: &str) -> Option<i128> {
-    let (digits, radix) = RADIXES
-        .iter()
-        .find_map(|&(prefix, radix)| Some((text.strip_prefix(prefix)?, radix)))
-        .unwrap_or((text, 10));
-    let digits: String = digits.chars().filter(|&c| c != SEPARATOR).collect();
-    i128::from_str_radix(&digits, radix).ok()
+pub fn integer(text: &str) -> Option<BigInt> {
+    let (digits, radix) = text.strip_prefix('0').and_then(radix).unwrap_or((text, 10));
+    let digits: Vec<u8> = digits.bytes().filter(|&b| char::from(b) != lexer::DIGIT_SEPARATOR).collect();
+    BigInt::parse_bytes(&digits, radix)
+}
+
+/// The digits after a radix prefix's letter, and the radix.
+fn radix(text: &str) -> Option<(&str, u32)> {
+    let mut chars = text.chars();
+    let prefix = chars.next()?;
+    let &(_, radix) = lexer::RADIX_PREFIXES.iter().find(|&&(c, _)| c == prefix)?;
+    Some((chars.as_str(), radix))
 }

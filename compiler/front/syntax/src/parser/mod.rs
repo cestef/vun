@@ -20,6 +20,7 @@ mod cursor;
 mod entries;
 mod expr;
 mod lists;
+mod nesting;
 mod recovery;
 mod report;
 #[cfg(test)]

@@ -3,7 +3,7 @@
 //! parts in the same mode (decision 31). A `match` has the type all its arms can take.
 
 use vun_diag::{Diagnostic, Msg, errors};
-use vun_hir::tree::{Arm, Entry, ExprId, ExprKind, Joined, Name, PatId, PatKind};
+use vun_hir::tree::{Arm, BinderId, Entry, ExprId, ExprKind, Joined, Name, PatId, PatKind};
 
 use vun_grammar::TokenKind;
 
@@ -19,27 +19,24 @@ impl Typer<'_, '_, '_> {
         let hir = self.hir();
         let origin = hir.pats[pat].origin;
         match &hir.pats[pat].kind {
-            PatKind::Bind(binder) => {
-                if let Some(ty) = ty {
-                    let ty = borrow.map_or(ty, |b| TyKind::Primitive(b, vec![Value::Type(ty)]).intern());
-                    self.bind(*binder, ty);
-                }
-            }
+            // A rest binds what its tuple pattern gives it, the items it stands for.
+            PatKind::Bind(binder) | PatKind::Rest(Some(binder)) => self.bind_matched(*binder, ty, borrow),
             PatKind::At { binder, pat } => {
-                if let Some(ty) = ty {
-                    let whole = borrow.map_or(ty, |b| TyKind::Primitive(b, vec![Value::Type(ty)]).intern());
-                    self.bind(*binder, whole);
-                }
+                self.bind_matched(*binder, ty, borrow);
                 self.pattern(*pat, ty, borrow);
             }
             PatKind::Tuple(items) => {
-                let parts = ty.and_then(|t| match &*t {
-                    TyKind::Tuple(parts) if parts.len() == items.len() => Some(parts.clone()),
+                let items_of = ty.and_then(|t| match &*t {
+                    TyKind::Tuple(parts) => Some(self.tuple_items(pat, t, items, parts)),
                     _ => None,
                 });
                 for (i, item) in items.iter().enumerate() {
                     if let Entry::One(item) = item {
-                        self.pattern(*item, parts.as_ref().map(|p| p[i]), borrow);
+                        self.pattern(
+                            *item,
+                            items_of.as_ref().and_then(|p| p.get(i).copied().flatten()),
+                            borrow,
+                        );
                     }
                 }
             }
@@ -115,8 +112,49 @@ impl Typer<'_, '_, '_> {
                     self.pattern(*field, found, borrow);
                 }
             }
-            PatKind::Hole | PatKind::Rest(_) | PatKind::Error => {}
+            PatKind::Hole | PatKind::Rest(None) | PatKind::Error => {}
         }
+    }
+
+    /// Gives `binder` the type of the values of `ty` it binds, or a borrow of them when matching
+    /// through the borrow `borrow`.
+    fn bind_matched(&mut self, binder: BinderId, ty: Option<Ty>, borrow: Option<Primitive>) {
+        if let Some(ty) = ty {
+            self.bind(binder, borrow.map_or(ty, |b| TyKind::Primitive(b, vec![Value::Type(ty)]).intern()));
+        }
+    }
+
+    /// The type each item of the tuple pattern `pat` matches in a tuple of type `ty` with the
+    /// items `parts`: in order before a `..`, from the end after it, and for the `..` the tuple
+    /// of those it stands for; a pattern with more items, or with other items and no `..`, is
+    /// reported and matches none.
+    fn tuple_items(&mut self, pat: PatId, ty: Ty, items: &[Entry<PatId>], parts: &[Ty]) -> Vec<Option<Ty>> {
+        let hir = self.hir();
+        let is_rest = |item: &Entry<PatId>| matches!(item, Entry::One(p) if matches!(hir.pats[*p].kind, PatKind::Rest(_)));
+        let rest = items.iter().position(is_rest);
+        let written = items.len() - usize::from(rest.is_some());
+        if written > parts.len() || (rest.is_none() && written != parts.len()) {
+            let msg = Msg::new()
+                .text("this pattern has ")
+                .num(u64::try_from(written).unwrap_or(u64::MAX))
+                .text(" items, and the tuple of type ")
+                .ty(ty.to_string())
+                .text(" has ")
+                .num(u64::try_from(parts.len()).unwrap_or(u64::MAX));
+            self.diag.error(Diagnostic::error(errors::TYPES_MISMATCH, msg).at(hir.pats[pat].origin, None));
+            return Vec::new();
+        }
+        let Some(rest) = rest else { return parts.iter().copied().map(Some).collect() };
+        let after = items.len() - rest - 1;
+        let skipped = TyKind::Tuple(parts[rest..parts.len() - after].to_vec()).intern();
+        let (before, tail) = (&parts[..rest], &parts[parts.len() - after..]);
+        before
+            .iter()
+            .copied()
+            .map(Some)
+            .chain([Some(skipped)])
+            .chain(tail.iter().copied().map(Some))
+            .collect()
     }
 
     /// `pat` tested against a value of type `matched`, looking through a borrow.

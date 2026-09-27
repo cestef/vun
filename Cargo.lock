@@ -704,7 +704,6 @@ name = "vun-backend-cranelift"
 version = "0.0.0"
 dependencies = [
  "vun-backend",
- "vun-diag",
  "vun-lir",
  "vun-target",
 ]
@@ -714,7 +713,6 @@ name = "vun-backend-external"
 version = "0.0.0"
 dependencies = [
  "vun-backend",
- "vun-diag",
  "vun-lir",
  "vun-target",
 ]
@@ -724,7 +722,6 @@ name = "vun-backend-llvm"
 version = "0.0.0"
 dependencies = [
  "vun-backend",
- "vun-diag",
  "vun-lir",
  "vun-target",
 ]
@@ -758,7 +755,6 @@ name = "vun-backend-qbe"
 version = "0.0.0"
 dependencies = [
  "vun-backend",
- "vun-diag",
  "vun-lir",
  "vun-target",
 ]
@@ -953,7 +949,12 @@ version = "0.0.0"
 dependencies = [
  "libfuzzer-sys",
  "vun-diag",
+ "vun-hir",
  "vun-origin",
+ "vun-render-annotate",
+ "vun-render-ariadne",
+ "vun-render-json",
+ "vun-render-short",
  "vun-span",
  "vun-syntax",
 ]
@@ -1012,6 +1013,7 @@ name = "vun-hir"
 version = "0.0.0"
 dependencies = [
  "foldhash",
+ "num-bigint",
  "vun-codec",
  "vun-desugar",
  "vun-diag",
@@ -1094,7 +1096,6 @@ dependencies = [
 name = "vun-link-external"
 version = "0.0.0"
 dependencies = [
- "vun-diag",
  "vun-link",
  "vun-target",
 ]
@@ -1117,7 +1118,6 @@ dependencies = [
 name = "vun-link-lld"
 version = "0.0.0"
 dependencies = [
- "vun-diag",
  "vun-link",
  "vun-target",
 ]
@@ -1137,7 +1137,6 @@ dependencies = [
 name = "vun-link-msvc"
 version = "0.0.0"
 dependencies = [
- "vun-diag",
  "vun-link",
  "vun-target",
 ]
@@ -1338,6 +1337,7 @@ dependencies = [
  "ariadne",
  "vun-diag",
  "vun-origin",
+ "vun-render-short",
  "vun-span",
 ]
 
@@ -1410,6 +1410,7 @@ version = "0.0.0"
 name = "vun-syntax"
 version = "0.0.0"
 dependencies = [
+ "num-bigint",
  "vun-diag",
  "vun-fs",
  "vun-grammar",
@@ -1464,6 +1465,7 @@ dependencies = [
  "vun-driver",
  "vun-fs",
  "vun-harness",
+ "vun-hash",
  "vun-json",
  "vun-par",
  "vun-span",

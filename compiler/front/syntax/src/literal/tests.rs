@@ -73,6 +73,8 @@ fn fields_are_inserted_after_the_last_one() {
         ("p := .{ .a = 1, };", "p := .{ .a = 1, .hal = .{ .path = \"../hal\" }, };"),
         ("p := .{\n    .a = 1,\n};", "p := .{\n    .a = 1,\n    .hal = .{ .path = \"../hal\" },\n};"),
         ("p := .{\n  .a = 1\n};", "p := .{\n  .a = 1,\n  .hal = .{ .path = \"../hal\" }\n};"),
+        // A comma in a comment is no field's.
+        ("p := .{\n  .a = 1 // x, y\n};", "p := .{\n  .a = 1,\n  .hal = .{ .path = \"../hal\" } // x, y\n};"),
     ];
     for (before, after) in cases {
         let edit = read(before)[0].insert(before, "hal", &dep).unwrap();
@@ -135,4 +137,15 @@ fn paths_read_and_write_back() {
     let Literal::List(pair) = &items[0] else { panic!("{items:?}") };
     assert_eq!(pair[0], Literal::Path(vec!["std", "lints", "pedantic"]));
     assert_eq!(value.source().unwrap(), ".{ .{ std.lints.pedantic, .warn } }");
+}
+
+#[test]
+fn integers_are_exact_in_every_radix() {
+    let big = num_bigint::BigInt::from(1) << 128u32;
+    assert_eq!(integer("0x1_0000_0000_0000_0000_0000_0000_0000_0000"), Some(big.clone()));
+    assert_eq!(integer("340_282_366_920_938_463_463_374_607_431_768_211_456"), Some(big));
+    assert_eq!(integer("0b1010"), Some(10.into()));
+    assert_eq!(integer("0o17"), Some(15.into()));
+    assert_eq!(integer("0"), Some(0.into()));
+    assert_eq!(integer("0x"), None);
 }

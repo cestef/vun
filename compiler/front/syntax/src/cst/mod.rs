@@ -89,6 +89,22 @@ impl Cst {
         (0..self.len()).map(NodeId::new)
     }
 
+    /// The most nodes on a path from the root to a leaf, found without recursion: in reverse
+    /// postorder every node follows its ancestors, which are those whose subtree holds it.
+    #[must_use]
+    pub fn depth(&self) -> usize {
+        let mut starts: Vec<usize> = Vec::new();
+        let mut deepest = 0;
+        for n in (0..self.len()).rev().map(NodeId::new) {
+            while starts.last().is_some_and(|&start| start > n.index()) {
+                starts.pop();
+            }
+            starts.push(n.index() + 1 - self.size(n));
+            deepest = deepest.max(starts.len());
+        }
+        deepest
+    }
+
     /// The children of `n`, last first. Postorder yields them in this order without allocating.
     pub fn children_rev(&self, n: NodeId) -> impl Iterator<Item = NodeId> + '_ {
         let first = n.index() + 1 - self.size(n);

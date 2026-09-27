@@ -1,5 +1,6 @@
 //! The type of each form typed so far. Any other form has its parts typed and no type itself.
 
+use vun_desugar::PREFIX_OPERATORS;
 use vun_grammar::TokenKind;
 use vun_hir::tree::{Arg, Entry, ExprId, ExprKind, Hir, Lit, Name};
 use vun_hir::visit;
@@ -18,7 +19,9 @@ impl Typer<'_, '_, '_> {
     pub(super) fn infer(&mut self, hir: &Hir, expr: ExprId) -> Option<Known> {
         let compile = |ty| Some(Known { ty, stage: Stage::Compile });
         match &hir.exprs[expr].kind {
-            ExprKind::Lit(Lit::Int(n)) => compile(TyKind::int(&Interval::singleton(Integer::from(*n)))),
+            ExprKind::Lit(Lit::Int(n)) => {
+                compile(TyKind::int(&Interval::singleton(Integer::from(n.clone()))))
+            }
             ExprKind::Lit(Lit::String(text)) => compile(TyKind::string(text.len())?),
             // A float literal has the float type expected of it (spec 04, section 2).
             ExprKind::Lit(Lit::Float(_)) => compile(self.expected(expr).filter(|t| Format::of(t).is_some())?),
@@ -83,7 +86,7 @@ impl Typer<'_, '_, '_> {
                 self.leave(expr, *label, *value);
                 None
             }
-            ExprKind::Prefix { op: op @ (TokenKind::Minus | TokenKind::Tilde), operand, .. } => {
+            ExprKind::Prefix { op, operand, .. } if PREFIX_OPERATORS.iter().any(|row| row.token == *op) => {
                 self.prefix(expr, *op, *operand)
             }
             ExprKind::Infix { op: op @ (TokenKind::DotDot | TokenKind::DotDotEq), left, right } => {

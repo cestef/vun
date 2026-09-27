@@ -1,8 +1,7 @@
 //! The verifier of the HIR: it is a tree, so every node is reached from the root exactly once,
 //! and every node has an origin in the table (spec 13, section 4).
 
-use std::collections::HashMap;
-
+use vun_hash::Map;
 use vun_index::{Idx, IndexVec};
 use vun_origin::{OriginId, OriginTable};
 
@@ -26,6 +25,11 @@ pub enum Malformed {
     NoRoot,
     /// A node that no path from the root reaches.
     Unreached {
+        arena: Arena,
+        index: usize,
+    },
+    /// An id that names no node of its arena.
+    Dangling {
         arena: Arena,
         index: usize,
     },
@@ -69,6 +73,7 @@ impl std::fmt::Display for Malformed {
             Self::Unreached { arena, index } => {
                 write!(f, "{} {index} is not reached from the root", arena.name())
             }
+            Self::Dangling { arena, index } => write!(f, "{} {index} does not exist", arena.name()),
             Self::Shared { arena, index } => write!(f, "{} {index} is reached twice", arena.name()),
             Self::NoOrigin { arena, index } => write!(f, "{} {index} has no origin", arena.name()),
             Self::SameOrigin { arena, index, first } => {
@@ -88,36 +93,46 @@ struct Visits {
     exprs: Vec<u32>,
     pats: Vec<u32>,
     binders: Vec<u32>,
+    /// The first id naming no node.
+    dangling: Option<(Arena, usize)>,
 }
 
 impl Visitor for Visits {
+    // A node is walked on its first visit only, so a node reached again, or through a cycle,
+    // is counted and never walked twice, and an id past its arena is recorded, not followed.
     fn namespace(&mut self, hir: &Hir, ns: NsId) {
-        Self::count(&mut self.namespaces, ns.index());
-        visit::walk_namespace(self, hir, ns);
+        if self.first(Arena::Namespace, ns.index()) {
+            visit::walk_namespace(self, hir, ns);
+        }
     }
     fn decl(&mut self, hir: &Hir, decl: DeclId) {
-        Self::count(&mut self.decls, decl.index());
-        visit::walk_decl(self, hir, decl);
+        if self.first(Arena::Decl, decl.index()) {
+            visit::walk_decl(self, hir, decl);
+        }
     }
     fn block(&mut self, hir: &Hir, block: BlockId) {
-        Self::count(&mut self.blocks, block.index());
-        visit::walk_block(self, hir, block);
+        if self.first(Arena::Block, block.index()) {
+            visit::walk_block(self, hir, block);
+        }
     }
     fn expr(&mut self, hir: &Hir, expr: ExprId) {
-        Self::count(&mut self.exprs, expr.index());
-        visit::walk_expr(self, hir, expr);
+        if self.first(Arena::Expr, expr.index()) {
+            visit::walk_expr(self, hir, expr);
+        }
     }
     fn spread(&mut self, hir: &Hir, spread: &Spread) {
         for b in spread.select.iter().flatten() {
-            Self::count(&mut self.binders, b.index());
+            self.first(Arena::Binder, b.index());
         }
         self.expr(hir, spread.path);
     }
     fn pat(&mut self, hir: &Hir, pat: PatId) {
-        Self::count(&mut self.pats, pat.index());
+        if !self.first(Arena::Pat, pat.index()) {
+            return;
+        }
         match hir.pats[pat].kind {
             PatKind::Bind(b) | PatKind::Rest(Some(b)) | PatKind::At { binder: b, .. } => {
-                Self::count(&mut self.binders, b.index());
+                self.first(Arena::Binder, b.index());
             }
             _ => {}
         }
@@ -139,8 +154,12 @@ impl Hir {
             exprs: vec![0; self.exprs.len()],
             pats: vec![0; self.pats.len()],
             binders: vec![0; self.binders.len()],
+            dangling: None,
         };
         visits.namespace(self, root);
+        if let Some((arena, index)) = visits.dangling {
+            return Err(Malformed::Dangling { arena, index });
+        }
         let arenas = [
             (Arena::Namespace, &visits.namespaces, Visits::origins(&self.namespaces, |n| n.origin)),
             (Arena::Decl, &visits.decls, Visits::origins(&self.decls, |d| d.origin)),
@@ -150,7 +169,7 @@ impl Hir {
             (Arena::Binder, &visits.binders, Visits::origins(&self.binders, |b| b.origin)),
         ];
         for (arena, counts, node_origins) in arenas {
-            let mut seen = HashMap::with_capacity(node_origins.len());
+            let mut seen = Map::default();
             for (index, (&visits, origin)) in counts.iter().zip(node_origins).enumerate() {
                 if let Some(&first) = seen.get(&origin) {
                     return Err(Malformed::SameOrigin { arena, index, first });
@@ -176,9 +195,21 @@ impl Visits {
         arena.iter().map(|(_, node)| origin(node)).collect()
     }
 
-    fn count(counts: &mut [u32], index: usize) {
-        if let Some(c) = counts.get_mut(index) {
-            *c += 1;
-        }
+    /// Counts a visit of node `index` of `arena`: whether it is the first, which is walked.
+    fn first(&mut self, arena: Arena, index: usize) -> bool {
+        let counts = match arena {
+            Arena::Namespace => &mut self.namespaces,
+            Arena::Decl => &mut self.decls,
+            Arena::Block => &mut self.blocks,
+            Arena::Expr => &mut self.exprs,
+            Arena::Pat => &mut self.pats,
+            Arena::Binder => &mut self.binders,
+        };
+        let Some(count) = counts.get_mut(index) else {
+            self.dangling.get_or_insert((arena, index));
+            return false;
+        };
+        *count += 1;
+        *count == 1
     }
 }

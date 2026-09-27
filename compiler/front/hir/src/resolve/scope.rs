@@ -68,7 +68,9 @@ impl Scopes {
         let mut crossed = self.stack.iter().rev().take(skip).any(|s| s.kind.hides_locals());
         for scope in self.stack.iter().rev().skip(skip) {
             if let Some(&b) = scope.names.get(&name) {
-                let visible = !crossed || scope.kind != Kind::Local || hir.binders[b].comptime;
+                // Past a function boundary, only namespaces' names and compile-time binders are
+                // seen: an enclosing function's run-time parameters are locals too.
+                let visible = !crossed || scope.kind == Kind::Namespace || hir.binders[b].comptime;
                 if visible {
                     return Some(b);
                 }
