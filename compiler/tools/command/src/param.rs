@@ -107,10 +107,12 @@ impl Param {
         Self { kind, ..self }
     }
 
-    /// Whether this is `other`: parameters are named uniquely in a command.
+    /// Whether this is `other`: parameters are named uniquely in a command, but a command's own
+    /// may share a name with a global one of another kind, as `pkg add --version <v>` does with
+    /// the root's `--version` flag.
     #[must_use]
     pub fn is(&self, other: &Self) -> bool {
-        self.name == other.name
+        self.name == other.name && self.kind == other.kind && self.short == other.short
     }
 
     #[must_use]

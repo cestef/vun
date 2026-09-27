@@ -10,6 +10,8 @@ const FORMAT: Param = Param::option("format")
 const FAST: Param = Param::flag("fast").short('f').about("go fast");
 const DEEP: Param = Param::flag("deep").about("look deeper");
 const REST: Param = Param::positional("rest").arity(Arity::Many);
+/// Named as the root's `--version` flag, but an option of its command.
+const RELEASE: Param = Param::option("version").about("which release");
 
 fn ok(_: &mut (), _: &Args, shell: &mut Shell<'_>) -> std::io::Result<Outcome> {
     shell.out.flush().map(|()| Outcome::Success)
@@ -27,7 +29,7 @@ const PROGRAM: Program<()> = Program {
                 "print things",
                 &[Command::run("cst", "the tree", ok).params(&[FILE, FORMAT, FAST])],
             ),
-            Command::run("exec", "run it", ok).params(&[FILE, REST]).aliases(&["x"]),
+            Command::run("exec", "run it", ok).params(&[FILE, RELEASE, REST]).aliases(&["x"]),
         ],
     )
     .params(&[DEEP]),
@@ -70,6 +72,10 @@ fn help_and_version() {
         assert!(matches!(PROGRAM.parse(&argv(line)), Ok(Request::Help(..))), "{line:?}");
     }
     assert!(matches!(PROGRAM.parse(&argv("-V")), Ok(Request::Version)));
+    let Ok(Request::Run(_, args)) = PROGRAM.parse(&argv("exec a.vun --version 2")) else {
+        panic!("a command's own `--version` is not the root's")
+    };
+    assert_eq!(args.value(&RELEASE), Some("2"));
     let detail = |line| match PROGRAM.parse(&argv(line)) {
         Ok(Request::Help(_, _, detail)) => detail,
         _ => panic!("{line:?} is not help"),
