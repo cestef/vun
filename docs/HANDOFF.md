@@ -100,14 +100,16 @@ Logging: `VUN_LOG=<filter>` (`info` steps, `debug` units of work, `trace` elemen
   integers into halves and `f16` through `f32`), `vun-lower` (MIR to LIR, frames of coroutines).
 - **Backends** (`compiler/back`, spec 13 section 8): `vun-backend` (`Backend::emit(Request)`,
   `BackendInfo`, `Lack`); `vun-backend-c` (C99 as data, one printer, shards); the native backend
-  as TPDE's layers: `vun-asm` (code buffers, labels, fixups, relocations, listings),
-  `vun-asm-x86_64` (every instruction once as a table of forms read by the encoder, the printer
-  and form selection, each form checked against yaxpeax-x86 in tests), `vun-asm-arm64` (same
-  idiom, yaxpeax-arm checks), `vun-object` (ELF objects as data), `vun-codegen` (the framework
+  as TPDE's layers: the instruction sets in the base layer, `vun-isa`, `vun-isa-x86_64` and
+  `vun-isa-arm64` (every instruction once as a table of forms generated from `lang.arch`, read by
+  the encoder, the printer, form selection and sema's check of assembly blocks); `vun-asm`
+  (code buffers, labels, fixups, relocations, listings, the `Blocks` walk of an assembly block),
+  `vun-asm-x86_64` (encoding, each form checked against yaxpeax-x86 in tests, and the calling
+  conventions' registers, `conventions`), `vun-asm-arm64` (same idiom, yaxpeax-arm checks), `vun-object` (ELF objects as data), `vun-codegen` (the framework
   over `Arch` and `Isel`: assignments, registers, frames, jumps, fusion, callee-saved registers
   for loops, snippets and their encoder, `pieces`), `vun-backend-native` (a table of
   architectures, `ARCHES`, from which `INFO.arches` derives; per architecture `abi.rs`
-  (System V, AAPCS64), `snippets.rs` with every operation as data, `isel/` for calls, copies,
+  over the assemblers' conventions, `snippets.rs` with every operation as data, `isel/` for calls, copies,
   atomics, frames and terminators; one object writer and listing for both; tests per
   architecture, the arm64 ones decoding every word with yaxpeax-arm). Stubs: cranelift, qbe,
   llvm, external.
@@ -157,34 +159,36 @@ language rules go in as proposed unless the user approves them.
    facts; `std.mem.alloc.Fixed` borrowing its buffer; `lang.link.keep` removed. This machine
    runs WASI programs through `wasmtime` (its toolchain file names it), and every backend test
    program runs on linux.x86_64, linux.arm64 and wasi.wasm32.
-   In progress: typed inline assembly (decision 258). Done: the tables in `lang.arch.x86_64` and
-   `lang.arch.arm64`, generating the assemblers'; the block syntax (`asm` contextual, `Flow`
-   words, `]!`, `'label:`, `b.eq`); HIR `ExprKind::Asm`; sema's `asm` module, which reads
-   `ArchTable` in the assemblers' order (a driver test compares it with `Op::ALL`), picks the
-   first form fitting as the assembler would and reports `asm.*`; `TypedBody.asm` holding
-   `vun_inline::Block`s, which MIR rebinds into `Rvalue::Asm`. Left: arm64 in sema (only
-   `Arch::X86_64` is registered), and the string `lang.arch.asm` primitive, which
-   `stm32f4/start.vun` still uses for Thumb; both wait for b4's `vun-isa-*` crates (tables and
-   matchers shared by sema and the backends), then a data-only `lang.arch.thumb`. `vun-fmt` is
-   done. `vun-lsp` (decision 269, proposed; `vun util lsp`, installed by the `vun` binary):
-   documents read as versions of their files (`Session::open`), diagnostics per version, hover
-   and definition through `vun_driver::editor` and sema's `NameSite`; next, code actions from
-   fixes and completion. Left, most severe first:
-   - A Linux runtime calling the kernel (static programs without libc), which needs inline
-     assembly for `syscall`.
+   Also done since (decisions 265 to 270): floats as one constructor (`lang.Float(bits)`); exit
+   statuses as `std.os.Status := Int(1..=125)` (266, proposed); typed inline assembly for x86-64
+   end to end (258): the tables in `lang.arch`, generating the instruction sets now in the base
+   layer (`vun-isa`, `vun-isa-x86_64`, `vun-isa-arm64`); the block syntax; sema checking x86-64
+   blocks against `ArchTable`; `vun-inline`'s `Block` through MIR (`Rvalue::Asm`) and LIR
+   (`InstKind::Asm`); the native backend encoding blocks on x86-64 and arm64 through one
+   `vun_asm::Blocks` walk; the C backend writing GNU `__asm__` over register variables (gcc and
+   clang); wasm refusing. Constants hoisted out of loops and held in registers by the allocator.
+   `vun-reduce` (`vun debug reduce`, 267); `vun-html` and `vun-doc` (`vun doc`, 270); `vun-lsp`
+   (`vun util lsp`, 269, proposed); `vun-sanitize` steps 1 to 4 (268, proposed: `lang.check`,
+   `check.by` rewrites at concreteness, `--checks`); a fuzz target for saved memos.
+   In progress: arm64 and Thumb in sema, waiting for the `fit` API in `vun-isa` (then the string
+   `lang.arch.asm` primitive removed, and x86-64 sema on the shared matcher); vun-sanitize step 5
+   (runtime hooks over shadow memory, `check.unsupported` at link time), then redzones, the
+   `Allocator`'s `check.by`, assembly checks and a native-versus-C trap test. Left, most severe
+   first:
+   - A Linux runtime calling the kernel (static programs without libc), now that x86-64 inline
+     assembly works end to end.
    - `stm32f4` has an empty vector table and no `init_memory` (waits for plans declaring memory
      regions); a `$` form reading a run-time local is silent (it should be an error); a staged
      `$if` with declarations in both branches reports `names.duplicate`; range patterns over a
      `$n: u8` binder report `int.does_not_fit`; an array literal of the wrong length is not
      reported; `Env::borrow` of `&mut` gives `Runtime`.
-   - Verifiers and fuzzing: persisted fingerprints use foldhash, not `vun-hash`; a panic in a
-     query's compute leaves stale stack entries (RAII guards); fuzz targets for MIR, LIR and
-     saved-query decoding.
-   - Design and refactors: floats as one constructor (`lang.float.Float($format)`), so each
-     operator interface has one impl; each `errors.vun` entry restates its page path; move
-     `vun-harness` to `compiler/base`; stub crates `render/sarif`, `tools/probe`; the worklist
-     solver written twice (places, borrows); `DiagId` and pass ids are strings; typeck's output
-     maps listed three times; exit statuses above 125 are not portable (WASI rejects them).
+   - Fuzzing: a MIR and LIR target (`fuzz/fuzz_targets/lir.rs`, written, uncommitted, not run: its
+     build under the sanitizer is heavy on this machine).
+   - Code quality: spilled operands loaded where the form takes memory (regalloc).
+   - Refactors: each `errors.vun` entry restates its page path; move `vun-harness` to
+     `compiler/base`; stub crate `render/sarif`; the worklist solver written twice (places,
+     borrows); `DiagId` and pass ids are strings; typeck's output maps listed three times;
+     `vun doc` labels type aliases as values (the reader does not type).
 
 1. Backends (the user's focus): (a) arm64: done for linux.arm64 in the sixteenth session
    (decision 192); next `macos.arm64` (Mach-O in `vun-object`, Apple's AAPCS64 variant: narrow
