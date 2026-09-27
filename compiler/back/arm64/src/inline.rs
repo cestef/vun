@@ -58,6 +58,7 @@ impl<S: Copy> Operand<S> {
             vun_inline::Operand::Reg(r) => Reg::named(*r).map_or(Self::V(V(r.number)), Self::Reg),
             vun_inline::Operand::Imm(n) => Self::Imm(*n),
             vun_inline::Operand::Cond(c) => Self::Cond(Cc::ALL[usize::from(c.0)]),
+            vun_inline::Operand::Choice(_) => unreachable!("no arm64 form takes a named choice yet"),
             vun_inline::Operand::Label(line) => place.line(*line),
             vun_inline::Operand::Symbol(s) => match kind {
                 Kind::Page => Self::Page(*s, place.via(*s)),

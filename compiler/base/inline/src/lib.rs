@@ -74,6 +74,9 @@ pub enum Operand<V, P, S> {
     Reg(RegRef),
     Imm(i64),
     Cond(CondId),
+    /// A named operand of another kind, by its index in the enum the form's position names, in
+    /// declaration order: a barrier (`dmb ish`), an interrupt mask (`cpsid i`).
+    Choice(u8),
     Mem(Mem<V, P, S>),
     Label(Line),
     /// The address of a declaration, relocated when linking.
