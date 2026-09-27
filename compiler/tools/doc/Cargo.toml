@@ -1,0 +1,20 @@
+[package]
+name = "vun-doc"
+description = "API documentation: the public declarations of packages, with their doc comments, as static HTML and JSON."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+pulldown-cmark.workspace = true
+vun-diag.workspace = true
+vun-grammar.workspace = true
+vun-html.workspace = true
+vun-json.workspace = true
+vun-origin.workspace = true
+vun-span.workspace = true
+vun-syntax.workspace = true

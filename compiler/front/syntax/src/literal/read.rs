@@ -4,7 +4,7 @@ use num_bigint::BigInt;
 use vun_grammar::{NodeField, NodeKind, TokenKind};
 use vun_span::Span;
 
-use super::{DOC, Decl, Literal};
+use super::{Decl, Literal};
 use crate::cst::{Anchor, Cst, NodeId};
 use crate::lexer;
 use crate::tokens::Tokens;
@@ -31,8 +31,10 @@ impl<'s> Reader<'_, 's> {
     }
 
     fn doc_line(&self, n: NodeId) -> Option<&'s str> {
-        let line = self.text(n)?;
-        line.strip_prefix(DOC).or_else(|| line.strip_prefix(DOC.trim_end()))
+        match self.cst.anchor(n) {
+            Anchor::Token(t) => self.tokens.doc_text(t, self.source),
+            Anchor::Missing(_) => None,
+        }
     }
 
     fn children(&self, n: NodeId) -> Vec<NodeId> {

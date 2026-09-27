@@ -58,6 +58,7 @@ pub const PROGRAM: Program<Session> = Program {
                     about: "pass arguments to the program",
                 }]),
             CHECK,
+            doc::DOC,
             explain::EXPLAIN,
             fmt::FMT,
             Command::group(pkg::GROUP, "dependencies and releases", pkg::COMMANDS),
@@ -183,6 +184,7 @@ impl Context for Session {
 
 mod cache;
 mod debug;
+mod doc;
 mod explain;
 mod fmt;
 mod pkg;

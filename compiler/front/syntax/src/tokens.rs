@@ -84,6 +84,19 @@ impl Tokens {
         (start..end).map(|i| self.trivia[TriviaId::new(i)])
     }
 
+    /// The text of the doc comment `t` of `source` (`///` or `//!`), without its marker and the
+    /// space after it; `None` when `t` is not a doc comment.
+    #[must_use]
+    pub fn doc_text<'s>(&self, t: TokenId, source: &'s str) -> Option<&'s str> {
+        let marker = match self.kinds[t] {
+            TokenKind::DocComment => crate::lexer::DOC_COMMENT,
+            TokenKind::ModuleDocComment => crate::lexer::MODULE_DOC_COMMENT,
+            _ => return None,
+        };
+        let line = self.ranges[t].of(source).strip_prefix(marker)?;
+        Some(line.strip_prefix(' ').unwrap_or(line))
+    }
+
     /// Every token and trivia run, in source order.
     pub fn lexemes(&self) -> impl Iterator<Item = Lexeme> + '_ {
         self.ids().flat_map(move |t| {
