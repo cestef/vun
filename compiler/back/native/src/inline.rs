@@ -5,7 +5,7 @@
 //! register of its own, loaded first for `inout`, and stored through its address once the block
 //! ends. What differs between architectures, their tables and operands, is [`Inline`].
 
-use vun_asm::{Label, Untaken};
+use vun_asm::{Label, Untaken, Via};
 use vun_backend::{AsmOperand, Lack, Missing};
 use vun_codegen::{Bank, Code, Cx, Isel, Need, Needs, RegSet};
 use vun_inline::{Bound, RegRef};
@@ -48,14 +48,8 @@ pub(crate) trait Inline: Isel {
     /// What it cannot address.
     fn addressing(mem: &Mem, kind: Self::Kind) -> Result<(), AsmOperand>;
 
-    /// `operand` at a position of `kind` as the assembler takes it, its bindings taking `regs`
-    /// in order and its lines `labels`.
-    fn operand(
-        operand: &Operand,
-        kind: Self::Kind,
-        regs: &mut impl Iterator<Item = Self::Reg>,
-        labels: &[Label],
-    ) -> Self::Operand;
+    /// `operand` at a position of `kind` as the assembler takes it, where `placed` says.
+    fn operand(operand: &Operand, kind: Self::Kind, placed: &mut Placed<'_, Self::Reg>) -> Self::Operand;
 
     /// Emits `inst` over `operands` by its form.
     ///
@@ -66,6 +60,32 @@ pub(crate) trait Inline: Isel {
     /// Loads `r` from `addr`, or stores it there, `size` wide.
     fn load_at(code: &mut Code<Self>, r: Self::Reg, addr: Self::Reg, size: Self::Size);
     fn store_at(code: &mut Code<Self>, addr: Self::Reg, r: Self::Reg, size: Self::Size);
+}
+
+/// Where a block's operands are in the function compiled: its bindings in the registers the
+/// plan gives them, in order, and its lines at `labels`.
+pub(crate) struct Placed<'a, R> {
+    regs: std::vec::IntoIter<R>,
+    labels: &'a [Label],
+}
+
+impl<R> Placed<'_, R> {
+    /// The register of the next binding.
+    pub(crate) fn take(&mut self) -> R {
+        self.regs.next().expect("a register for each binding")
+    }
+
+    pub(crate) fn label(&self, line: vun_inline::Line) -> Label {
+        self.labels[usize::from(line.0)]
+    }
+}
+
+/// How an address reaches `target`: an import through its entry in the global offset table.
+pub(crate) fn via(target: Address) -> Via {
+    match target {
+        Address::Import(_) => Via::Got,
+        Address::Func(_) | Address::Data(_) => Via::Direct,
+    }
 }
 
 /// A binding of a block, with its instruction and the kind of the position it is at: `None`
@@ -206,11 +226,11 @@ impl Inlined for Asm {
             regs.push(r);
         }
         let labels: Vec<Label> = (0..=self.insts.len()).map(|_| cx.asm.label()).collect();
-        let mut regs = regs.into_iter();
+        let mut placed = Placed { regs: regs.into_iter(), labels: &labels };
         for (inst, &label) in self.insts.iter().zip(&labels) {
             cx.asm.bind(label);
             let operands =
-                A::kinds(inst).zip(&inst.operands).map(|(kind, o)| A::operand(o, kind, &mut regs, &labels));
+                A::kinds(inst).zip(&inst.operands).map(|(kind, o)| A::operand(o, kind, &mut placed));
             let operands: Vec<_> = operands.collect();
             A::emit(&mut cx.asm, inst, &operands)
                 .map_err(|Untaken| Missing::AsmOperand(AsmOperand::Unencodable).at(inst.origin))?;

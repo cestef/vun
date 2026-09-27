@@ -9,6 +9,7 @@ mod bitmask;
 mod encode;
 #[rustfmt::skip]
 mod generated;
+mod inline;
 mod inst;
 mod operand;
 mod reg;
@@ -22,6 +23,7 @@ use vun_asm::imm::{fits_signed, truncate};
 
 pub use bitmask::Bitmask;
 pub use encode::Emit;
+pub use inline::Place;
 pub use inst::Inst;
 pub use operand::{Barrier, Extend, Mem, Operand, Scale, Shift, ShiftKind};
 pub use reg::{Cc, Class, Reg, Size, V};

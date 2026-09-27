@@ -11,6 +11,7 @@ workspace = true
 
 [dependencies]
 vun-asm.workspace = true
+vun-inline.workspace = true
 vun-object.workspace = true
 
 [dev-dependencies]

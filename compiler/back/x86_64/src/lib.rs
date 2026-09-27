@@ -7,6 +7,7 @@
 mod encode;
 #[rustfmt::skip]
 mod generated;
+mod inline;
 mod inst;
 mod operand;
 mod reg;
@@ -16,7 +17,8 @@ mod table;
 mod tests;
 
 pub use encode::Emit;
-pub use inst::Inst;
+pub use inline::Place;
+pub use inst::{Inst, Syntax, Text};
 pub use operand::{Base, Mem, Operand};
 pub use reg::{Cc, Class, Reg, Size, Xmm};
 pub use table::{Access, Form, Kind, Layout, Op, Prefix, Slot, W};

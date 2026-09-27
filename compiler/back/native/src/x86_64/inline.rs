@@ -1,20 +1,28 @@
 //! x86-64's table and operands for inline assembly: bindings in general registers (a shift's
 //! count in `cl`), memory off a base register or a symbol this module defines.
 
-use vun_asm::{Label, Untaken, Via};
-use vun_asm_x86_64::{Base, Cc, Class, Emit, Form, Kind, Mem, Op, Operand, Reg, Size, Xmm};
+use vun_asm::{Untaken, Via};
+use vun_asm_x86_64::{Emit, Kind, Op, Operand, Place, Reg, Size};
 use vun_backend::AsmOperand;
 use vun_codegen::Code;
-use vun_inline::{Disp, RegRef};
+use vun_inline::{Disp, Line, RegRef};
 use vun_lir::Address;
 
 use super::X86;
-use crate::inline::{self, Inline, Inst};
+use crate::inline::{self, Inline, Inst, Placed};
 
-/// The instruction `inst` is, and the form it was checked against.
-fn entry(inst: &Inst) -> (Op, &'static Form) {
-    let op = Op::ALL[usize::from(inst.op.0)];
-    (op, &op.forms()[usize::from(inst.form.0)])
+impl Place<Address> for Placed<'_, Reg> {
+    fn bound(&mut self) -> Reg {
+        self.take()
+    }
+
+    fn line(&self, line: Line) -> Operand<Address> {
+        Operand::Label(self.label(line))
+    }
+
+    fn via(&self, symbol: Address) -> Via {
+        inline::via(symbol)
+    }
 }
 
 impl Inline for X86 {
@@ -23,18 +31,15 @@ impl Inline for X86 {
     type Size = Size;
 
     fn kinds(inst: &Inst) -> impl Iterator<Item = Kind> {
-        entry(inst).1.kinds()
+        Op::entry(inst.op, inst.form).1.kinds()
     }
 
     fn implicit(inst: &Inst) -> impl Iterator<Item = Reg> {
-        entry(inst).1.implicit.iter().copied()
+        Op::entry(inst.op, inst.form).1.implicit.iter().copied()
     }
 
     fn general(r: RegRef) -> Option<Reg> {
-        match Class::ALL[usize::from(r.class.0)] {
-            Class::General => Some(Reg::ALL[usize::from(r.number)]),
-            Class::Sse => None,
-        }
+        Reg::named(r)
     }
 
     fn fixed(kind: Option<Kind>, named: Option<Reg>) -> Result<Option<Reg>, AsmOperand> {
@@ -56,46 +61,20 @@ impl Inline for X86 {
         }
     }
 
-    fn operand(
-        operand: &inline::Operand,
-        _: Kind,
-        regs: &mut impl Iterator<Item = Reg>,
-        labels: &[Label],
-    ) -> Operand<Address> {
-        let mut next = || regs.next().expect("a register for each binding");
-        match operand {
-            vun_inline::Operand::Reg(r) => {
-                Self::general(*r).map_or(Operand::Xmm(Xmm(r.number)), Operand::Reg)
-            }
-            vun_inline::Operand::Imm(n) => Operand::Imm(*n),
-            vun_inline::Operand::Cond(c) => Operand::Cond(Cc::ALL[usize::from(c.0)]),
-            vun_inline::Operand::Label(line) => Operand::Label(labels[usize::from(line.0)]),
-            vun_inline::Operand::Symbol(s) => Operand::Sym(*s),
-            vun_inline::Operand::Bound(_) => Operand::Reg(next()),
-            vun_inline::Operand::Mem(mem) => {
-                let (base, disp) = match (&mem.base, mem.disp.clone()) {
-                    (Some(vun_inline::Base::Reg(r)), Disp::Bytes(n)) => {
-                        (Base::Reg(Self::general(*r).expect("a general base")), n)
-                    }
-                    (Some(vun_inline::Base::Bound(_)), Disp::Bytes(n)) => (Base::Reg(next()), n),
-                    (None, Disp::Symbol(s, n)) => (Base::Rip(s, Via::Direct), n),
-                    _ => unreachable!("an address x86-64 encodes"),
-                };
-                Operand::Mem(Mem { base, disp: i32::try_from(disp).expect("a displacement of 32 bits") })
-            }
-        }
+    fn operand(operand: &inline::Operand, _: Kind, placed: &mut Placed<'_, Reg>) -> Operand<Address> {
+        Operand::of(operand, placed)
     }
 
     fn emit(code: &mut Code<Self>, inst: &Inst, operands: &[Operand<Address>]) -> Result<(), Untaken> {
-        let (op, form) = entry(inst);
-        code.emit_by(op, form, Size::ALL[usize::from(inst.size.0)], operands)
+        let (op, form) = Op::entry(inst.op, inst.form);
+        code.emit_by(op, form, Size::of(inst.size), operands)
     }
 
     fn load_at(code: &mut Code<Self>, r: Reg, addr: Reg, size: Size) {
-        code.emit(Op::Mov, size, &[r.into(), Mem::at(addr, 0).into()]);
+        code.emit(Op::Mov, size, &[r.into(), vun_asm_x86_64::Mem::at(addr, 0).into()]);
     }
 
     fn store_at(code: &mut Code<Self>, addr: Reg, r: Reg, size: Size) {
-        code.emit(Op::Mov, size, &[Mem::at(addr, 0).into(), r.into()]);
+        code.emit(Op::Mov, size, &[vun_asm_x86_64::Mem::at(addr, 0).into(), r.into()]);
     }
 }
