@@ -3,7 +3,7 @@
 //!
 //! An integer of twice the widest width a backend computes with becomes a pair of halves, low
 //! first, and every operation on it a sequence over the halves. A wide parameter is passed as its
-//! two halves; a wide result is a record of them, which the C convention returns in registers as
+//! two halves, one `AbiType::Wide` the backend's convention places together; a wide result is a record of them, which the C convention returns in registers as
 //! C returns its 128-bit integers, and Vun's through memory. Division calls a helper function the
 //! pass adds. Afterwards no value is wider than the widest width.
 //!
@@ -133,8 +133,8 @@ impl Legalize {
         }
     }
 
-    /// `signature` with each wide integer passed as its halves and a wide result as a record of
-    /// them, and each promoted `f16` as its bits.
+    /// `signature` with each wide integer passed as its halves, a wide result a record of them,
+    /// and each promoted `f16` as its bits.
     fn signature(self, signature: &Signature, wide: Option<Scalar>) -> Result<Signature, Unlegalized> {
         let half = |t: &AbiType| match t {
             AbiType::Scalar(s) => self.promoted(*s),
@@ -149,11 +149,9 @@ impl Legalize {
             AbiType::Scalar(s) if self.promoted(s) => AbiType::Int(Scalar::I16, Ext::Zero),
             other => other,
         };
-        let params = signature.params.iter().flat_map(|p| match p {
-            AbiType::Int(s, ext) if Some(*s) == wide => {
-                vec![AbiType::Int(self.widest, Ext::Zero), AbiType::Int(self.widest, *ext)]
-            }
-            other => vec![promoted(other.clone())],
+        let params = signature.params.iter().map(|p| match p {
+            AbiType::Int(s, ext) if Some(*s) == wide => AbiType::Wide { half: self.widest, ext: *ext },
+            other => promoted(other.clone()),
         });
         let result = signature.result.clone().map(|r| match r {
             AbiType::Int(s, _) if Some(s) == wide => {

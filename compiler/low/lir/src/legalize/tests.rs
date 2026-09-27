@@ -26,10 +26,12 @@ fn wide_integers_become_halves_and_division_a_helper() {
     assert_eq!(unit.verify(&origins), Ok(()));
     let wide_left = unit.functions.iter().any(|(_, f)| f.values.iter().any(|(_, v)| v.ty == Scalar::I128));
     assert!(!wide_left, "{unit}");
-    // The division helper was added, and the result became a record of halves.
+    // The division helper was added, each parameter became a pair of halves passed together
+    // and the result a record of them.
     assert_eq!(unit.functions.len(), 2);
     let f = &unit.functions.iter().next().unwrap().1;
-    assert_eq!(f.signature.params.len(), 4);
+    assert!(f.signature.params.iter().all(|p| matches!(p, AbiType::Wide { half: Scalar::I64, .. })));
+    assert_eq!(f.signature.values().len(), 5);
     assert!(f.signature.through());
 }
 

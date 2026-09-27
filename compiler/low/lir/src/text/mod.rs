@@ -38,6 +38,8 @@ impl fmt::Display for AbiType {
             Self::Scalar(s) => s.fmt(f),
             Self::Int(s, Ext::Zero) => write!(f, "{s} zext"),
             Self::Int(s, Ext::Sign) => write!(f, "{s} sext"),
+            Self::Wide { half, ext: Ext::Zero } => write!(f, "{half} x2 zext"),
+            Self::Wide { half, ext: Ext::Sign } => write!(f, "{half} x2 sext"),
             Self::Address(Alias::Any) => f.write_str("ptr"),
             Self::Address(Alias::Exclusive) => f.write_str("ptr noalias"),
             Self::Record(r) => r.fmt(f),

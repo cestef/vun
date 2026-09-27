@@ -1,6 +1,8 @@
 //! Functions: signatures, stack slots, blocks with parameters, instructions and the values they
 //! define. Every block, instruction, slot and the function itself carry an origin.
 
+use std::iter;
+
 use vun_codec::{Decode, Encode};
 use vun_index::IndexVec;
 use vun_intern::Symbol;
@@ -35,6 +37,12 @@ pub enum AbiType {
     /// An integer, and how it extends to a wider register, as its range reads it: C declares it
     /// signed or unsigned by that.
     Int(Scalar, Ext),
+    /// An integer twice as wide as `half`, passed as its halves, low first, which the backend's
+    /// call convention places together; `ext` is how the whole extends.
+    Wide {
+        half: Scalar,
+        ext: Ext,
+    },
     Record(Record),
     Memory {
         size: u64,
@@ -78,13 +86,15 @@ pub struct Record {
 }
 
 impl AbiType {
-    /// The type of the LIR value standing for it: the scalar, or the address of the record.
-    #[must_use]
-    pub fn value(&self) -> Scalar {
-        match self {
-            Self::Scalar(s) | Self::Int(s, _) => *s,
-            Self::Address(_) | Self::Record(_) | Self::Memory { .. } => Scalar::Ptr,
-        }
+    /// The types of the LIR values standing for it: the scalar, the halves of a wide integer,
+    /// or the address of the record.
+    pub fn values(&self) -> impl Iterator<Item = Scalar> + use<> {
+        let (scalar, count) = match self {
+            Self::Scalar(s) | Self::Int(s, _) => (*s, 1),
+            Self::Wide { half, .. } => (*half, 2),
+            Self::Address(_) | Self::Record(_) | Self::Memory { .. } => (Scalar::Ptr, 1),
+        };
+        iter::repeat_n(scalar, count)
     }
 }
 
@@ -103,17 +113,26 @@ impl Signature {
     #[must_use]
     pub fn values(&self) -> Vec<Scalar> {
         let out = self.through().then_some(Scalar::Ptr);
-        self.params.iter().map(AbiType::value).chain(out).collect()
+        self.params.iter().flat_map(AbiType::values).chain(out).collect()
     }
 
-    /// Whether every integer it passes says how it extends, and every address what aliases it.
+    /// The parameter each LIR value of [`Signature::values`] stands for, but the address of a
+    /// result in memory: a wide integer's twice.
+    pub fn passed(&self) -> impl Iterator<Item = &AbiType> {
+        self.params.iter().flat_map(|p| iter::repeat_n(p, p.values().count()))
+    }
+
+    /// Whether every integer it passes says how it extends, and every address what aliases it;
+    /// a wide integer is only passed, a wide result being the record of its halves.
     #[must_use]
     pub fn well_formed(&self) -> bool {
-        self.params.iter().chain(&self.result).all(|p| match p {
-            AbiType::Scalar(s) => s.is_float(),
-            AbiType::Int(s, _) => s.is_int(),
-            AbiType::Address(_) | AbiType::Record(_) | AbiType::Memory { .. } => true,
-        })
+        let wide = matches!(self.result, Some(AbiType::Wide { .. }));
+        !wide
+            && self.params.iter().chain(&self.result).all(|p| match p {
+                AbiType::Scalar(s) => s.is_float(),
+                AbiType::Int(s, _) | AbiType::Wide { half: s, .. } => s.is_int(),
+                AbiType::Address(_) | AbiType::Record(_) | AbiType::Memory { .. } => true,
+            })
     }
 
     /// Whether the result is written through an address rather than returned.
@@ -128,7 +147,7 @@ impl Signature {
         match &self.result {
             Some(AbiType::Scalar(s) | AbiType::Int(s, _)) => Some(*s),
             Some(AbiType::Address(_)) => Some(Scalar::Ptr),
-            Some(AbiType::Record(_) | AbiType::Memory { .. }) | None => None,
+            Some(AbiType::Wide { .. } | AbiType::Record(_) | AbiType::Memory { .. }) | None => None,
         }
     }
 }
