@@ -17,6 +17,7 @@ libfuzzer-sys.workspace = true
 vun-diag.workspace = true
 vun-hir.workspace = true
 vun-origin.workspace = true
+vun-regalloc = { workspace = true, features = ["sample"] }
 vun-render-annotate.workspace = true
 vun-render-ariadne.workspace = true
 vun-render-json.workspace = true
@@ -48,6 +49,13 @@ bench = false
 [[bin]]
 name = "render"
 path = "fuzz_targets/render.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "regalloc"
+path = "fuzz_targets/regalloc.rs"
 test = false
 doc = false
 bench = false

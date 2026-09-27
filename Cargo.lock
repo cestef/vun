@@ -926,12 +926,14 @@ version = "0.0.0"
 name = "vun-codegen"
 version = "0.0.0"
 dependencies = [
+ "vun-abi",
  "vun-asm",
  "vun-backend",
  "vun-dwarf",
  "vun-index",
  "vun-lir",
  "vun-origin",
+ "vun-regalloc",
  "vun-trace",
 ]
 
@@ -986,7 +988,6 @@ dependencies = [
  "vun-clang",
  "vun-command",
  "vun-diag",
- "vun-fmt",
  "vun-fs",
  "vun-grammar",
  "vun-harness",
@@ -1039,13 +1040,6 @@ dependencies = [
 name = "vun-fmt"
 version = "0.0.0"
 dependencies = [
- "vun-diag",
- "vun-fs",
- "vun-grammar",
- "vun-harness",
- "vun-index",
- "vun-origin",
- "vun-span",
  "vun-syntax",
 ]
 
@@ -1059,10 +1053,9 @@ version = "0.0.0"
 dependencies = [
  "libfuzzer-sys",
  "vun-diag",
- "vun-fmt",
- "vun-grammar",
  "vun-hir",
  "vun-origin",
+ "vun-regalloc",
  "vun-render-annotate",
  "vun-render-ariadne",
  "vun-render-json",
@@ -1444,6 +1437,17 @@ dependencies = [
  "vun-hash",
  "vun-par",
  "vun-trace",
+]
+
+[[package]]
+name = "vun-regalloc"
+version = "0.0.0"
+dependencies = [
+ "vun-index",
+ "vun-intern",
+ "vun-lir",
+ "vun-origin",
+ "vun-span",
 ]
 
 [[package]]

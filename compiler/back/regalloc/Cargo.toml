@@ -1,0 +1,24 @@
+[package]
+name = "vun-regalloc"
+description = "The register allocator the native backends share: linear scan on SSA over LIR, from constraints given as data, with a checker."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[features]
+# Functions and a machine to allocate them on, for tests and fuzzing.
+sample = ["dep:vun-origin"]
+
+[dependencies]
+vun-index.workspace = true
+vun-lir.workspace = true
+vun-origin = { workspace = true, optional = true }
+
+[dev-dependencies]
+vun-intern.workspace = true
+vun-origin.workspace = true
+vun-span.workspace = true

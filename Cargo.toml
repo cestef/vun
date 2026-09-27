@@ -46,6 +46,7 @@ vun-lir-passes = { path = "compiler/low/passes" }
 vun-backend = { path = "compiler/back/api" }
 vun-asm = { path = "compiler/back/asm" }
 vun-codegen = { path = "compiler/back/codegen" }
+vun-regalloc = { path = "compiler/back/regalloc" }
 vun-asm-x86_64 = { path = "compiler/back/x86_64" }
 vun-asm-arm64 = { path = "compiler/back/arm64" }
 vun-object = { path = "compiler/back/object" }
