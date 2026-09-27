@@ -3,7 +3,8 @@
 /// Linux with the GNU C library runs programs through the C library's runtime.
 runtime: std.os.Runtime = .{ .os = .linux, .abi = .gnu, .start = std.os.libc.start };
 
-/// The GNU C library's layout on Linux: 1024-bit signal sets, of which Linux uses the first 64.
+/// The GNU C library's layout on Linux: 1024-bit signal sets, of which Linux uses the first 64;
+/// memory reserved is `MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE`.
 c: std.os.libc.System = .{
     .os = .linux,
     .errno = "__errno_location",
@@ -11,4 +12,5 @@ c: std.os.libc.System = .{
     .words = 16,
     .block = 0,
     .set_mask = 2,
+    .reserve = 0x4022,
 };

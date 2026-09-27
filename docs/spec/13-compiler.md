@@ -883,13 +883,16 @@ in registers a call may overwrite, none saved.
   get redzones, and their size), so lowering and concreteness only call it.
 - **Runtime state is shadow memory**, one byte per 8 bytes of address space, as AddressSanitizer
   encodes it: 0 for eight addressable bytes, `k` for the first `k`, and a negative value per
-  reason (`lang.check.Violation`) otherwise. A hosted runtime reserves the shadow at start and
-  commits it lazily. A board runtime takes it from a `.shadow` region of `Options.memory`, one
-  eighth of the RAM it checks. A WASI runtime keeps it in linear memory: the shadow of the
-  memory the program uses is grown with it (`memory.grow` by an eighth), so `pointers` and
-  `allocations` run on wasm as on native; `asm` does not arise there. The redzone size and the
-  quarantine's bound are named data in `lang.check` (`REDZONE`, `QUARANTINE`), read by lowering
-  and the runtime. Freed memory stays poisoned in a bounded quarantine before an
+  reason (`lang.check.Violation`) otherwise. `std.check` holds the shadow's logic, reading and
+  writing it by atomic accesses, which no check rewrites, and the exports a runtime makes of
+  it (`std.check.exports`). The runtime over a C library reserves the shadow of 47 bits of
+  addresses with `mmap` the first time a check needs it, backed only where touched, and reaches
+  it through `lang.mem.pointer_at`. A board runtime is to take it from a `.shadow` region of
+  `Options.memory`, one eighth of the RAM it checks, and a WASI runtime to keep it in linear
+  memory, grown with the memory the program uses (`memory.grow` by an eighth); until they do,
+  a checked build for them stops at `check.unsupported`. `asm` does not arise on wasm. The
+  redzone size and the quarantine's bound are named data in `lang.check` (`redzone`,
+  `quarantine`), read by lowering and the runtime. Freed memory stays poisoned in a bounded quarantine before an
   allocator may reuse it, so a use after free is caught while it is in there.
 - **Why not fat pointers.** Carrying bounds in `*T` would change its size, and with it every
   layout holding one, `#[layout.c]` and the C ABI. A checked program could then no longer call

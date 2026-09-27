@@ -21,6 +21,7 @@ const QUERIES: &str = "queries";
 const PERSISTED: &[&[fn(&Db)]] = &[
     vun_hir::db::PERSISTED,
     vun_sema::PERSISTED,
+    vun_sanitize::PERSISTED,
     vun_mir::PERSISTED,
     vun_mir_passes::PERSISTED,
     vun_lower::PERSISTED,

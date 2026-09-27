@@ -3,9 +3,11 @@
 //! `Options.checks`. They are the query input `ChecksOf`, which what they change depends on.
 
 use vun_command::{Args, Arity, Param, Values};
-use vun_diag::Diagnostic;
-use vun_sanitize::{Checks, ChecksOf};
+use vun_diag::{Diagnostic, ErrorGuaranteed, Msg, errors};
+use vun_lir::Unit;
+use vun_sanitize::{Checks, ChecksOf, Operations};
 use vun_sema::target::Variants;
+use vun_span::FileId;
 use vun_target::Check;
 
 use crate::Session;
@@ -38,5 +40,31 @@ impl Session {
     #[must_use]
     pub fn checks(&self) -> Checks {
         self.db.get::<ChecksOf>(&())
+    }
+
+    /// Reports `check.unsupported` when the program rooted at `file`, built with checks, still
+    /// imports an operation of `lang.check`: its runtime does not export it.
+    pub(crate) fn provided(&mut self, file: FileId, unit: &Unit) -> Result<(), ErrorGuaranteed> {
+        let checks = self.checks();
+        if checks.is_empty() {
+            return Ok(());
+        }
+        let package = self.file_ref(file).package;
+        let operations = self.db.get::<Operations>(&package);
+        let imported = unit.imports.iter().find_map(|(_, import)| {
+            operations
+                .iter()
+                .find(|(_, symbol)| *symbol == import.symbol)
+                .map(|&(item, _)| (item, import.origin))
+        });
+        let Some((item, at)) = imported else { return Ok(()) };
+        let mut msg = Msg::new()
+            .text("the runtime of the program does not provide ")
+            .code(item.to_string())
+            .text(", which its checks need:");
+        for check in checks.iter() {
+            msg = msg.text(" ").code(check.item().name());
+        }
+        Err(self.diag.error(Diagnostic::error(errors::CHECK_UNSUPPORTED, msg).at(at, None)))
     }
 }

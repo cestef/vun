@@ -10,15 +10,15 @@ missing operation.
 ## Example
 
 ```console
-$ vun build --checks pointers blink.vun
-error[check.unsupported]: the runtime of `blink.vun` does not provide `lang.check.access`, which `pointers` needs
+$ vun build --checks pointers --target wasi.wasm32 main.vun
+error[check.unsupported]: the runtime of the program does not provide `lang.check.access`, which its checks need: `pointers`
 ```
 
 ## Fix
 
-Build without the check, or with a runtime that provides it: the hosted runtimes of `std.os`
-do, and a board runtime does once `Options.memory` gives it a `.shadow` region.
+Build without the check, or for a runtime that provides it: the runtimes of `std.os` over a C
+library do (`std.check.exports`).
 
 ```console
-$ vun build blink.vun
+$ vun build --checks pointers main.vun
 ```

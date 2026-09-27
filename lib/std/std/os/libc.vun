@@ -6,6 +6,10 @@
 write: unsafe (fd: i32, bytes: *u8, count: usize) -> isize = _;
 #[link.symbol("exit"), abi.c]
 exit: unsafe (status: i32) -> lang.never = _;
+#[link.symbol("mmap"), abi.c]
+mmap: unsafe (address: usize, bytes: usize, protection: i32, flags: i32, fd: i32, offset: isize) -> usize = _;
+#[link.symbol("munmap"), abi.c]
+munmap: unsafe (address: usize, bytes: usize) -> i32 = _;
 /// What the C library of a system lays out its own way: each system declares its row
 /// (`std.os.linux.c`), and a program uses the row of the system it is built for.
 System := struct {
@@ -18,6 +22,8 @@ System := struct {
     /// `how` for `pthread_sigmask`: add the set to the mask, or make it the mask.
     block: i32,
     set_mask: i32,
+    /// `flags` for `mmap` of private memory reserved, not backed until touched.
+    reserve: i32,
 };
 
 /// The systems whose C library the runtime knows.
@@ -50,6 +56,32 @@ pthread_self: unsafe () -> usize = _;
 #[link.symbol("sched_yield"), abi.c]
 sched_yield: unsafe () -> i32 = _;
 
+/// `protection` for `mmap` of memory read and written.
+read_write: i32 = 3;
+/// The shadow of the checks of unsafe code: a byte for each granule of 47 bits of addresses.
+shadow_bytes: usize = 1 << 44;
+/// Where the shadow is mapped, 0 until a check first needs it.
+shadow_base: std.sync.Atomic(usize) = .init(0);
+
+/// The shadow, mapped the first time a check needs it; a thread losing the race to map it
+/// unmaps its own.
+shadow := () -> std.check.Shadow {
+    mut base := shadow_base.load(.acquire);
+    if base == 0 {
+        mapped := unsafe mmap(0, shadow_bytes, read_write, system.reserve, -1, 0);
+        base = shadow_base.compare_swap(0, mapped, .acq_rel);
+        if base == 0 {
+            base = mapped;
+        } else {
+            unsafe { munmap(mapped, shadow_bytes); }
+        }
+    }
+    unsafe std.check.Shadow.of(lang.mem.pointer_at(i8, base))
+};
+
+/// Ends the process with `status`.
+end := (status: std.os.Status) -> lang.never { unsafe exit(status.to(i32)) };
+
 /// The thread holding the critical section, 0 when none: a thread entering it again nests.
 owner: std.sync.Atomic(usize) = .init(0);
 
@@ -62,7 +94,10 @@ start := ($main: std.os.Main) -> type { struct {
     };
 
     #[link.export(lang.panic.symbols.trap)]
-    trap := (t: &lang.panic.Trap) -> lang.never { unsafe exit(std.os.trapped) };
+    trap := (t: &lang.panic.Trap) -> lang.never { end(std.os.trapped) };
+
+    /// The operations of the checks of unsafe code.
+    checks := std.check.exports(shadow, end);
 
     #[link.export(std.os.symbols.write)]
     write_to := (fd: i32, bytes: &[u8]) -> Result(usize, std.os.Error) {

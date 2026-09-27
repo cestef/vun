@@ -41,6 +41,10 @@ pointer_to: ($T: type, r: &T) -> *T = _;
 /// The address `p` holds.
 #[panic.never]
 address: ($T: type, p: *T) -> usize = _;
+/// The pointer holding `address`, as code outside the language hands one over (a mapping, a
+/// device's registers): what it points to must be a `T` wherever it is used.
+#[panic.never]
+pointer_at: unsafe ($T: type, address: usize) -> *T = _;
 /// The pointer `n` items of `T` past `p`.
 #[panic.never]
 offset: unsafe ($T: type, p: *T, n: isize) -> *T = _;

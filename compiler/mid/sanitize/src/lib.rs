@@ -1,9 +1,17 @@
 //! Checks of unsafe code at run time (spec 07, section 7; spec 13, section 8.7): which checks a
 //! program is built with (`ChecksOf`, an input the driver sets from `std.build.Options.checks`),
-//! and the checked version a call runs as under them (`#[lang.check.by(kind, f)]`).
+//! the checked version a call runs as under them (`#[lang.check.by(kind, f)]`), and the link
+//! symbols of the operations a runtime provides for them (`Operations`).
 
+mod operations;
 #[cfg(test)]
 mod tests;
+
+pub use operations::Operations;
+
+/// The queries of the checks whose memos outlive the process: the checks, an input, by its trace.
+pub const PERSISTED: &[fn(&vun_query::Db)] =
+    &[vun_query::Db::trace::<ChecksOf>, vun_query::Db::persist::<Operations>];
 
 use vun_codec::{Decode, Encode};
 use vun_query::{Cx, Query};

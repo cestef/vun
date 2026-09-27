@@ -143,7 +143,9 @@ tied to arguments, so no interprocedural analysis is needed.
   lacks the member, so `cfg.name` reaches a field of what an `Own(Config)` owns.
 - `*T`: raw pointer; copy, free, non-null. Creating one (`lang.mem.pointer_to`) and reading its
   address are safe. Dereferencing, offsetting and casting (`lang.mem.read`, `write`, `offset`,
-  `cast`, `copy`, `fill`) are `unsafe`; `std.ptr` gives them as methods of `*T`.
+  `cast`, `copy`, `fill`) are `unsafe`; `std.ptr` gives them as methods of `*T`. Making one of
+  an address that code outside the language hands over (`lang.mem.pointer_at`: a mapping, a
+  device's registers) is `unsafe` too.
 - Volatile and atomic access are operations in `lang.mem`, not type qualifiers.
   `std.hw.Reg(T)` and `std.sync.Atomic(T)` wrap them.
 

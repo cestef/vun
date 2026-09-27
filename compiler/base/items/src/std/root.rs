@@ -8,6 +8,8 @@
 use crate::Item;
 /// The namespace `std.build`.
 pub const build: Item = Item::new(&["std", "build"]);
+/// The namespace `std.check`.
+pub const check: Item = Item::new(&["std", "check"]);
 /// The namespace `std.cmp`.
 pub const cmp: Item = Item::new(&["std", "cmp"]);
 /// The namespace `std.collections`.

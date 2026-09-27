@@ -55,8 +55,20 @@ pub trait Read: Sized {
 
 /// An enum read by its variant: each declares, once, the variant of its `lang` enum each of its
 /// values is.
-pub trait Variants: Copy + 'static {
+pub trait Variants: Copy + PartialEq + 'static {
     const VARIANTS: &'static [(Item, Self)];
+
+    /// The variant this value is, by its handle.
+    ///
+    /// # Panics
+    /// Never: the table lists every value.
+    fn item(self) -> Item {
+        Self::VARIANTS
+            .iter()
+            .find(|&&(_, v)| v == self)
+            .map(|&(item, _)| item)
+            .expect("every value is listed")
+    }
 }
 
 impl<T: Variants> Read for T {

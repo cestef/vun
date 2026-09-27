@@ -37,6 +37,9 @@ pub const cell_pointer: Item = Item::new(&["lang", "mem", "cell_pointer"]);
 pub const pointer_to: Item = Item::new(&["lang", "mem", "pointer_to"]);
 /// The address `p` holds.
 pub const address: Item = Item::new(&["lang", "mem", "address"]);
+/// The pointer holding `address`, as code outside the language hands one over (a mapping, a
+/// device's registers): what it points to must be a `T` wherever it is used.
+pub const pointer_at: Item = Item::new(&["lang", "mem", "pointer_at"]);
 /// The pointer `n` items of `T` past `p`.
 pub const offset: Item = Item::new(&["lang", "mem", "offset"]);
 /// `p` as a pointer to a `U`.

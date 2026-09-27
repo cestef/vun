@@ -8,5 +8,6 @@
 use crate::Item;
 /// Linux with the GNU C library runs programs through the C library's runtime.
 pub const runtime: Item = Item::new(&["std", "os", "linux", "runtime"]);
-/// The GNU C library's layout on Linux: 1024-bit signal sets, of which Linux uses the first 64.
+/// The GNU C library's layout on Linux: 1024-bit signal sets, of which Linux uses the first 64;
+/// memory reserved is `MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE`.
 pub const c: Item = Item::new(&["std", "os", "linux", "c"]);

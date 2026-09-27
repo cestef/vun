@@ -1,7 +1,9 @@
 //! Checks of unsafe code at run time (spec 07, section 7): under the program's checks, an
 //! operation marked `#[lang.check.by]` runs as its checked version, a trap site of its own.
 
+use vun_diag::{DiagId, errors};
 use vun_intern::Symbol;
+use vun_sema::target::Choice;
 use vun_target::Check;
 
 use crate::common::Fixture;
@@ -32,4 +34,39 @@ first := (xs: &[4]u8) -> u8 { unsafe lang.mem.pointer_to([4]u8, xs).cast(u8).rea
         assert!(!imports.contains(&Symbol::intern(symbol)));
         assert!(checked_imports.contains(&Symbol::intern(symbol)), "{checked_imports:?}");
     }
+}
+
+/// A program reading an item of an array through a raw pointer.
+const THIRD: &str = "\
+start := std.os.start(main);
+main := (sys: &mut std.os.System) -> std.os.Exit {
+    xs: [4]u8 = [1, 2, 3, 4];
+    third := unsafe lang.mem.pointer_to([4]u8, &xs).cast(u8).offset(2).read();
+    std.os.Exit.of((third + 7).to(Int(0..=125)))
+};
+";
+
+#[test]
+fn a_checked_program_runs_through_each_backend_over_its_runtime_shadow() {
+    let fixture = Fixture::new("checks-run");
+    let path = fixture.root.write("main.vun", THIRD);
+    let mut session = fixture.session();
+    session.add_checks([Check::Pointers]);
+    let file = session.load(&path).unwrap();
+    let runs = session.run_each(file).unwrap_or_else(|_| panic!("{:#?}", session.diag));
+    let statuses: Vec<Option<i32>> = runs.iter().map(|r| r.output.status.code()).collect();
+    assert!(statuses.len() > 1 && statuses.iter().all(|&s| s == Some(10)), "{statuses:?}");
+}
+
+#[test]
+fn a_runtime_without_the_operations_of_the_checks_is_refused() {
+    let fixture = Fixture::new("checks-unsupported");
+    let path = fixture.root.write("main.vun", THIRD);
+    let mut session = fixture.session();
+    session.choice = Choice::Path(vec![Symbol::intern("wasi"), Symbol::intern("wasm32")]);
+    session.add_checks([Check::Pointers]);
+    let file = session.load(&path).unwrap();
+    let _ = session.compile(file);
+    let ids: Vec<DiagId> = session.diag.sorted(session.origins).into_iter().map(|d| d.id.clone()).collect();
+    assert_eq!(ids, [errors::CHECK_UNSUPPORTED]);
 }

@@ -8,5 +8,6 @@
 use crate::Item;
 /// macOS runs programs through its C library's runtime.
 pub const runtime: Item = Item::new(&["std", "os", "macos", "runtime"]);
-/// The C library's layout on macOS: 32-bit signal sets.
+/// The C library's layout on macOS: 32-bit signal sets; memory reserved is
+/// `MAP_PRIVATE | MAP_ANON | MAP_NORESERVE`.
 pub const c: Item = Item::new(&["std", "os", "macos", "c"]);

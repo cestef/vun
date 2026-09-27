@@ -3,7 +3,8 @@
 /// macOS runs programs through its C library's runtime.
 runtime: std.os.Runtime = .{ .os = .macos, .abi = .darwin, .start = std.os.libc.start };
 
-/// The C library's layout on macOS: 32-bit signal sets.
+/// The C library's layout on macOS: 32-bit signal sets; memory reserved is
+/// `MAP_PRIVATE | MAP_ANON | MAP_NORESERVE`.
 c: std.os.libc.System = .{
     .os = .macos,
     .errno = "__error",
@@ -11,4 +12,5 @@ c: std.os.libc.System = .{
     .words = 1,
     .block = 1,
     .set_mask = 3,
+    .reserve = 0x1042,
 };

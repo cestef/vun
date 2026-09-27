@@ -64,6 +64,10 @@ impl FnLower<'_, '_, '_> {
                 let addr = self.scalar_operand(arg(0)?)?;
                 self.b.cast(CastOp::PtrToInt, addr, word, self.at)
             }
+            Mem::pointer_at => {
+                let address = self.int_operand(arg(0)?, word)?;
+                self.b.cast(CastOp::IntToPtr, address, Scalar::Ptr, self.at)
+            }
             // `n` items of the pointee past the address, `n` signed.
             Mem::offset => {
                 let stride = self.stride(ty.pointee().ok_or_else(unsupported)?)?;

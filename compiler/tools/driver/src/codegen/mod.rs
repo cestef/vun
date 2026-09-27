@@ -114,9 +114,11 @@ impl Session {
         let lowered = self.lir(file);
         let target =
             self.target.clone().expect("naming a file chooses the target").map_err(Uncoded::Reported)?;
-        if let Err(unlowered) = &*lowered {
-            return Err(Uncoded::Unlowered(unlowered.clone()));
-        }
+        let unit = match &*lowered {
+            Ok(unit) => unit,
+            Err(unlowered) => return Err(Uncoded::Unlowered(unlowered.clone())),
+        };
+        self.provided(file, unit).map_err(Uncoded::Reported)?;
         let backend = match self.registry.choose(self.codegen, &target) {
             Ok(backend) => backend,
             Err(unchosen) => {
@@ -126,7 +128,7 @@ impl Session {
         };
         let info = *backend.info();
         // Integers wider than the backend's are split into halves first.
-        let mut unit = lowered.as_ref().as_ref().expect("checked above").clone();
+        let mut unit = unit.clone();
         let widest = Scalar::int(info.caps.int_bits).expect("a backend computes with an integer width");
         if let Err(unlegal) = unit.legalize(Legalize { widest, endian: target.endian, half: info.caps.half })
         {

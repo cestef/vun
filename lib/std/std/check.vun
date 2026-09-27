@@ -1,0 +1,114 @@
+//! Shadow memory for the checks of unsafe code at run time (spec 07, section 7; spec 13,
+//! section 8.7): one byte for each `granule` bytes of the address space, 0 where all of them
+//! may be accessed, `k` where the first `k` may, and a negative code saying why where none may.
+//! A runtime gives where the shadow is and exports the operations of `lang.check` over it
+//! (`exports`). The shadow is read and written by atomic accesses, which no check rewrites.
+
+/// The bytes of memory one shadow byte describes.
+granule := 8;
+
+/// Why memory is poisoned, as its shadow bytes code it.
+code := (why: lang.check.Violation) -> i8 {
+    match why {
+        .freed => -2,
+        .returned => -3,
+        _ => -1,
+    }
+};
+
+/// What the shadow byte `b` of memory not all accessible says of it.
+violation := (b: i8) -> lang.check.Violation {
+    if b == -2 { .freed } else if b == -3 { .returned } else { .outside }
+};
+
+/// The shadow at `base`, a byte for each granule of the address space.
+Shadow := struct {
+    _base: *i8,
+
+    of := unsafe (base: *i8) -> Shadow { .{ ._base = base } };
+
+    /// The shadow byte of the granule holding `address`.
+    _byte := (self: Shadow, address: usize) -> *i8 {
+        unsafe self._base.offset((address / granule).to(isize))
+    };
+
+    _get := (self: Shadow, address: usize) -> i8 {
+        unsafe lang.mem.atomic_load(i8, self._byte(address), .relaxed)
+    };
+
+    _set := (self: Shadow, address: usize, b: i8) {
+        unsafe lang.mem.atomic_store(i8, self._byte(address), b, .relaxed)
+    };
+
+    /// Why the `bytes` at `address` may not be accessed, if they may not.
+    access := (self: Shadow, address: usize, bytes: usize) -> ?lang.check.Violation {
+        mut start: usize = address / granule * granule;
+        end := (address + bytes).sat(usize);
+        for start < end {
+            b := self._get(start);
+            // The bytes of this granule the access reaches, from its start.
+            left := end - start;
+            reached := if left < granule { left.sat(i8) } else { granule };
+            if b < 0 or (b > 0 and reached > b) {
+                return .some(violation(b));
+            }
+            start = (start + granule).sat(usize);
+        }
+        .none
+    };
+
+    /// Marks the granules the `bytes` at `address` cover whole as poisoned for `why`.
+    poison := (self: Shadow, address: usize, bytes: usize, why: lang.check.Violation) {
+        mut start: usize = ((address + granule - 1) / granule * granule).sat(usize);
+        for start + granule <= address + bytes {
+            self._set(start, code(why));
+            start = (start + granule).sat(usize);
+        }
+    };
+
+    /// Marks the `bytes` at `address` as accessible, the last granule as far as they reach.
+    unpoison := (self: Shadow, address: usize, bytes: usize) {
+        mut start: usize = address / granule * granule;
+        end := (address + bytes).sat(usize);
+        for start < end {
+            left := end - start;
+            self._set(start, if left >= granule { 0 } else { left.sat(i8) });
+            start = (start + granule).sat(usize);
+        }
+    };
+
+    /// Records memory given back: poisoned as freed, unless it was already.
+    freed := (self: Shadow, address: usize, bytes: usize) -> ?lang.check.Violation {
+        if self._get(address) == code(.freed) {
+            return .some(.double_free);
+        }
+        self.poison(address, bytes, .freed);
+        .none
+    };
+};
+
+/// The exports of a runtime whose shadow `shadow` gives, and which ends the program with
+/// `status` when a check fails.
+exports := ($shadow: () -> Shadow, $end: (status: std.os.Status) -> lang.never) -> type { struct {
+    #[link.export(lang.check.symbols.access)]
+    access := (address: usize, bytes: usize, how: lang.check.Access) -> ?lang.check.Violation {
+        shadow().access(address, bytes)
+    };
+
+    #[link.export(lang.check.symbols.poison)]
+    poison := (address: usize, bytes: usize, why: lang.check.Violation) {
+        shadow().poison(address, bytes, why)
+    };
+
+    #[link.export(lang.check.symbols.unpoison)]
+    unpoison := (address: usize, bytes: usize) { shadow().unpoison(address, bytes) };
+
+    #[link.export(lang.check.symbols.allocated)]
+    allocated := (address: usize, bytes: usize) { shadow().unpoison(address, bytes) };
+
+    #[link.export(lang.check.symbols.freed)]
+    freed := (address: usize, bytes: usize) -> ?lang.check.Violation { shadow().freed(address, bytes) };
+
+    #[link.export(lang.check.symbols.fail)]
+    fail := (f: &lang.check.Failure) -> lang.never { end(std.os.trapped) };
+} };

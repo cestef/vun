@@ -946,6 +946,7 @@ dependencies = [
  "mimalloc",
  "vun-driver",
  "vun-http",
+ "vun-lsp",
  "vun-trace",
 ]
 
@@ -1433,7 +1434,14 @@ dependencies = [
 name = "vun-lsp"
 version = "0.0.0"
 dependencies = [
+ "vun-command",
+ "vun-diag",
  "vun-driver",
+ "vun-fs",
+ "vun-json",
+ "vun-origin",
+ "vun-span",
+ "vun-trace",
 ]
 
 [[package]]
@@ -1623,6 +1631,9 @@ name = "vun-sanitize"
 version = "0.0.0"
 dependencies = [
  "vun-codec",
+ "vun-hir",
+ "vun-intern",
+ "vun-items",
  "vun-query",
  "vun-sema",
  "vun-target",

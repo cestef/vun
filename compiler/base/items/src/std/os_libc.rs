@@ -8,6 +8,8 @@
 use crate::Item;
 pub const write: Item = Item::new(&["std", "os", "libc", "write"]);
 pub const exit: Item = Item::new(&["std", "os", "libc", "exit"]);
+pub const mmap: Item = Item::new(&["std", "os", "libc", "mmap"]);
+pub const munmap: Item = Item::new(&["std", "os", "libc", "munmap"]);
 /// What the C library of a system lays out its own way: each system declares its row
 /// (`std.os.linux.c`), and a program uses the row of the system it is built for.
 pub const System: Item = Item::new(&["std", "os", "libc", "System"]);
@@ -26,6 +28,17 @@ pub const sigfillset: Item = Item::new(&["std", "os", "libc", "sigfillset"]);
 pub const pthread_sigmask: Item = Item::new(&["std", "os", "libc", "pthread_sigmask"]);
 pub const pthread_self: Item = Item::new(&["std", "os", "libc", "pthread_self"]);
 pub const sched_yield: Item = Item::new(&["std", "os", "libc", "sched_yield"]);
+/// `protection` for `mmap` of memory read and written.
+pub const read_write: Item = Item::new(&["std", "os", "libc", "read_write"]);
+/// The shadow of the checks of unsafe code: a byte for each granule of 47 bits of addresses.
+pub const shadow_bytes: Item = Item::new(&["std", "os", "libc", "shadow_bytes"]);
+/// Where the shadow is mapped, 0 until a check first needs it.
+pub const shadow_base: Item = Item::new(&["std", "os", "libc", "shadow_base"]);
+/// The shadow, mapped the first time a check needs it; a thread losing the race to map it
+/// unmaps its own.
+pub const shadow: Item = Item::new(&["std", "os", "libc", "shadow"]);
+/// Ends the process with `status`.
+pub const end: Item = Item::new(&["std", "os", "libc", "end"]);
 /// The thread holding the critical section, 0 when none: a thread entering it again nests.
 pub const owner: Item = Item::new(&["std", "os", "libc", "owner"]);
 /// The exports of a program whose `main` the C library calls.
