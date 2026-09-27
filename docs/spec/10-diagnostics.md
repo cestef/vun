@@ -92,10 +92,13 @@ pub enum Safety  { Safe, Unsafe, Placeholder, DisplayOnly }
   are namespaced like everything else: `lang.errors.int.does_not_fit`, `std.lints.perf.padding`,
   `mydrivers.lints.raw_mmio`. Compiler errors are shown relative to `lang.errors`
   (`int.does_not_fit`). A renamed id keeps its old path as an alias.
-- **Explanations.** Every id has a page, the file its `Diag` value embeds
-  (`.explanation = lang.meta.embed("errors/names/duplicate.md")`, next to `lang/errors.vun` for the
-  compiler's own). A page has an `Example` section, whose annotated file reports exactly its `//~`
-  annotations, and a `Fix` section, whose version of that file reports nothing; blocks may name
+- **Explanations.** Every id has a page, the file its binding path names on disk as it names a
+  namespace's source (spec 01, section 8), with the extension `md`: `lang.errors.names.duplicate`
+  is `lang/errors/names/duplicate.md` in the `lang` package, beside `lang/errors.vun`, and
+  `mydrivers.lints.raw_mmio` is `mydrivers/lints/raw_mmio.md` in its package. A `Diag` holds no
+  path (`duplicate := diag.Diag{};`), so the page cannot drift from the id (decision 272). A page
+  has an `Example` section, whose annotated file reports exactly its `//~` annotations, and a
+  `Fix` section, whose version of that file reports nothing; blocks may name
   their file (```` ```vun build.vun ````), so an example can be a package. Both are checked with the
   corpus; examples that only a command shows are `console` transcripts. `vun explain <id>` prints
   the page offline, suggesting the closest id for a misspelled one; the LSP links to the page.

@@ -38,7 +38,8 @@ that mention poisoned entities are dropped.
 Diagnostic identifiers are binding paths to values of type `lang.diag.Diag`, so they are
 namespaced like every other name: the compiler's own are declared in `lang.errors`
 (`lang.errors.int.does_not_fit`, shown as `int.does_not_fit`), and a library's lints are declared in
-the library. Every identifier has an explanation page, which the `Diag` value embeds. A page has an
+the library. Every identifier has an explanation page, found by its binding path as a namespace's
+source is, with the extension `md`. A page has an
 example that must produce exactly the diagnostics it is annotated with and a corrected version that
 must produce none; both are checked with the test corpus. `vun explain` prints a page offline.
 

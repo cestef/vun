@@ -26,6 +26,14 @@ impl Location {
         Self { base: dir.join(name) }
     }
 
+    /// The namespace at the binding `path` of the package in `dir`, whose first name is the
+    /// package's: in `lib/lang`, `lang.errors` is `lib/lang/lang/errors`. The inverse of
+    /// [`Self::path_of`].
+    #[must_use]
+    pub fn at<S: AsRef<str>>(dir: &Path, path: &[S]) -> Self {
+        Self { base: path.iter().fold(dir.to_path_buf(), |base, name| base.join(name.as_ref())) }
+    }
+
     /// The namespace whose source file is `file`.
     #[must_use]
     pub fn of(file: &Path) -> Self {
@@ -41,6 +49,13 @@ impl Location {
     #[must_use]
     pub fn file(&self) -> Option<PathBuf> {
         Some(self.base.with_extension(EXTENSION)).filter(|f| f.is_file())
+    }
+
+    /// The file its path names with `extension` in place of the source's, whether or not it
+    /// exists: `lang.errors.int.does_not_fit` with `md` is `lang/errors/int/does_not_fit.md`.
+    #[must_use]
+    pub fn with_extension(&self, extension: &str) -> PathBuf {
+        self.base.with_extension(extension)
     }
 
     /// Its directory, whether or not it exists.

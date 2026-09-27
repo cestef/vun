@@ -14,6 +14,9 @@ impl DiagId {
     pub const COMPILER: &'static str = "lang.errors.";
     /// Separates the names of a binding path.
     pub const SEPARATOR: char = '.';
+    /// The extension of explanation pages: an id's page is the file its binding path names on
+    /// disk, as a namespace's source is, with this extension (spec 10, section 1).
+    pub const PAGE: &'static str = "md";
 
     /// An id known at compile time.
     #[must_use]

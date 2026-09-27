@@ -3,9 +3,9 @@
 Severity := enum { hint, info, warning, error };
 Safety := enum { safe, \unsafe, placeholder, display_only };
 
-Diag := struct {
-    explanation: &static [_]u8,
-};
+/// A diagnostic, named by its binding path; its explanation page is the file that path names,
+/// as a namespace's source is, with the extension `md` (spec 10, section 1).
+Diag := struct {};
 
 /// Stops compile-time evaluation with an error saying `message`, shown at `at`, or else at the
 /// call that led to it from outside the reporting code, with the calls it was reported in

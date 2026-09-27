@@ -23,3 +23,16 @@ fn a_file_no_longer_generated_is_stale() {
     assert!(changes.differing.is_empty());
     assert_eq!(changes.stale, [output.join("removed.rs")]);
 }
+
+#[test]
+fn explanation_pages_are_named_by_binding_paths() {
+    use std::path::Path;
+    use vun_build::layout::Location;
+    use vun_diag::DiagId;
+
+    let page = crate::errors::Id::page(&["lang".to_owned(), "errors".to_owned()], &["int", "does_not_fit"]);
+    assert_eq!(page, Path::new("lang/lang/errors/int/does_not_fit.md"));
+    // A package's lint, `mydrivers.lints.raw_mmio`, by the same rule through its own layout.
+    let lint = Location::at(Path::new("drivers"), &["mydrivers", "lints", "raw_mmio"]);
+    assert_eq!(lint.with_extension(DiagId::PAGE), Path::new("drivers/mydrivers/lints/raw_mmio.md"));
+}
