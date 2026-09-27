@@ -38,6 +38,17 @@ fn compare_reports_missing_unexpected_and_differing() {
 }
 
 #[test]
+fn a_missing_snapshot_fails_and_a_stale_one_is_reported() {
+    let dir = vun_fs::Scratch::new("snapshots");
+    dir.write("src/a.vun", "a");
+    dir.write("snap/gone.dump", "old");
+    let changed = Snapshot::tree(&dir.join("src"), "vun", &dir.join("snap"), "dump", str::to_owned).unwrap();
+    let kinds: Vec<&Change> = changed.iter().map(|c| &c.change).collect();
+    assert_eq!(kinds, [&Change::Missing { actual: "a".into() }, &Change::Stale]);
+    assert!(!dir.join("snap/a.dump").exists(), "nothing is written unasked");
+}
+
+#[test]
 fn pages_hold_blocks_by_section() {
     let page = "# id\n\n## Example\n\n```vun build.vun\npackage := 1;\n```\n\n```vun\nx := 1; //~ a.b\n```\n\n## Fix\n\n```console\n$ vun check\n```\n";
     let page = super::Page::parse(page);

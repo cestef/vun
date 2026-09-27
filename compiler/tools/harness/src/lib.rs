@@ -9,21 +9,20 @@
 //! ```
 //!
 //! `//~ id` expects `id` on its own line; each `^` moves the expectation one line up. A run passes
-//! when the reported `(line, id)` pairs equal the expected ones exactly, so cascades fail tests.
+//! when the reported `(line, id)` pairs equal the expected ones exactly, so cascades fail tests;
+//! one annotation covers every diagnostic of its id on its line.
 //! An annotation may also pin the column, `//~ id @12`, and require fragments of the rendered
 //! diagnostic (its message, notes and help), `//~ id "escape it"`; a diagnostic that exists but
 //! fails these checks is reported as differing.
 
 use std::collections::BTreeSet;
-use std::fs;
-use std::io;
 use std::path::{Path, PathBuf};
 
-use vun_fs::{Edit, Tree};
-
 mod page;
+mod snapshot;
 
 pub use page::{Block, Page};
+pub use snapshot::{Change, Changed, Snapshot};
 
 /// The repository root, located from this crate's own place in the workspace.
 ///
@@ -54,7 +53,8 @@ pub const SOURCES: &[&str] = &["lib", ACCEPT, PLANNED];
 
 /// Marker that starts an expectation inside a line comment.
 pub const MARKER: &str = "//~";
-/// Environment variable that makes snapshot checks overwrite instead of compare.
+/// Environment variable that makes snapshot checks overwrite instead of compare, and write the
+/// snapshots of new sources: tests never write snapshots unasked.
 pub const BLESS_VAR: &str = "VUN_BLESS";
 
 /// A diagnostic expected or reported on a one-based line.
@@ -159,7 +159,8 @@ impl Expected {
     }
 }
 
-/// The difference between expected and reported diagnostics.
+/// The difference between expected and reported diagnostics, as `(line, id)` pairs: one
+/// annotation covers every diagnostic of its id on its line.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Mismatch {
     pub missing: BTreeSet<At>,
@@ -189,72 +190,6 @@ impl Mismatch {
             unexpected: reported_at.difference(&expected_at).cloned().collect(),
             differing,
         }
-    }
-}
-
-/// The outcome of a snapshot check.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum Snapshot {
-    Matches,
-    /// The snapshot was written, because blessing was requested or it did not exist.
-    Written,
-    Differs {
-        expected: String,
-        actual: String,
-    },
-}
-
-/// A snapshot that no longer matches.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Changed {
-    pub source: PathBuf,
-    pub expected: String,
-    pub actual: String,
-}
-
-impl Snapshot {
-    /// Compares `actual` with the snapshot at `path`, or writes it when blessing.
-    ///
-    /// # Errors
-    /// Returns an error if the snapshot cannot be read or written.
-    pub fn check(path: &Path, actual: &str) -> io::Result<Self> {
-        let bless = std::env::var_os(BLESS_VAR).is_some();
-        match fs::read_to_string(path) {
-            Ok(expected) if expected == actual => Ok(Self::Matches),
-            Ok(expected) if !bless => Ok(Self::Differs { expected, actual: actual.to_owned() }),
-            Ok(_) => Self::write(path, actual),
-            Err(e) if e.kind() == io::ErrorKind::NotFound => Self::write(path, actual),
-            Err(e) => Err(e),
-        }
-    }
-
-    /// Snapshots `render(text)` of every file under `dir` with extension `ext`, at the same relative
-    /// path under `snapshots` with the extension `kind`.
-    ///
-    /// # Errors
-    /// Returns an error if a source or snapshot cannot be read or written.
-    pub fn tree(
-        dir: &Path,
-        ext: &str,
-        snapshots: &Path,
-        kind: &str,
-        render: impl Fn(&str) -> String,
-    ) -> io::Result<Vec<Changed>> {
-        let mut changed = Vec::new();
-        for source in dir.files_with(ext)? {
-            let actual = render(&fs::read_to_string(&source)?);
-            let relative = source.strip_prefix(dir).unwrap_or(&source);
-            let target = snapshots.join(relative).with_extension(kind);
-            if let Self::Differs { expected, actual } = Self::check(&target, &actual)? {
-                changed.push(Changed { source, expected, actual });
-            }
-        }
-        Ok(changed)
-    }
-
-    fn write(path: &Path, contents: &str) -> io::Result<Self> {
-        path.put(contents)?;
-        Ok(Self::Written)
     }
 }
 

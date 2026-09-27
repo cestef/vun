@@ -42,7 +42,7 @@ fn corpus_token_dumps_match_snapshots() {
     })
     .expect("snapshot io");
     for c in &changed {
-        eprintln!("--- {}: expected\n{}\n--- actual\n{}", c.source.display(), c.expected, c.actual);
+        eprintln!("{c}");
     }
     assert!(changed.is_empty(), "tokens dumps changed; rerun with VUN_BLESS=1 to accept");
 }
