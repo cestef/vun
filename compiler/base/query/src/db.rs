@@ -2,7 +2,6 @@
 
 use std::any::{Any, TypeId};
 use std::cell::RefCell;
-use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, OnceLock, RwLock};
 
@@ -28,7 +27,7 @@ impl Default for DbId {
 thread_local! {
     /// The table of each query in each database this thread has read, found without the shared
     /// map every thread reads.
-    static TABLES: RefCell<HashMap<(u64, TypeId), TableId, foldhash::fast::RandomState>> =
+    static TABLES: RefCell<vun_hash::Map<(u64, TypeId), TableId>> =
         RefCell::default();
 }
 

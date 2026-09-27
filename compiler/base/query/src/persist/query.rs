@@ -1,12 +1,11 @@
 //! How the memos of one persisted query are written and read back, whatever the query.
 
 use std::any::TypeId;
-use std::collections::HashMap;
 use std::marker::PhantomData;
 use std::sync::Arc;
 
 use vun_codec::{Context, Decode, Encode, Writer};
-use vun_hash::Stable;
+use vun_hash::{Map, Stable};
 use vun_trace::tracing;
 
 use super::saved::{SavedDep, SavedKey, SavedMemo, SavedQuery};
@@ -48,9 +47,9 @@ pub(crate) struct Number {
 /// Where each persisted table's keys go in the file saved.
 pub(crate) struct Layout {
     /// Each table's query's position among the queries.
-    pub(super) positions: HashMap<TableId, u32, foldhash::fast::RandomState>,
+    pub(super) positions: Map<TableId, u32>,
     /// Each table's keys, by slot.
-    pub(super) numbers: HashMap<TableId, Vec<Number>, foldhash::fast::RandomState>,
+    pub(super) numbers: Map<TableId, Vec<Number>>,
 }
 
 impl Layout {

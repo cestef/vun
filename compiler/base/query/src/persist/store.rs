@@ -2,11 +2,10 @@
 //! looked for, a key's value and memo when that key is first asked for, and a memo's reads when
 //! it is first verified. What a run never asks for is never read, so loading costs what is used.
 
-use std::collections::HashMap;
 use std::sync::{Arc, OnceLock};
 
 use vun_codec::{Blob, Context};
-use vun_hash::Stable;
+use vun_hash::{Map, Stable};
 use vun_trace::tracing;
 
 use super::saved::{Growth, SavedDep, SavedKey, SavedMemo, SavedQuery};
@@ -35,7 +34,7 @@ pub(crate) struct StoredQuery {
 pub(crate) struct StoredKeys {
     pub(crate) saved: Vec<SavedKey<Blob>>,
     /// The first position of each hash.
-    index: HashMap<u64, u32, foldhash::fast::RandomState>,
+    index: Map<u64, u32>,
     slots: Box<[OnceLock<Slot>]>,
 }
 
@@ -83,8 +82,8 @@ impl StoredQuery {
 
 impl StoredKeys {
     fn new(saved: Vec<SavedKey<Blob>>) -> Self {
-        let mut index =
-            HashMap::with_capacity_and_hasher(saved.len(), foldhash::fast::RandomState::default());
+        let mut index = Map::default();
+        index.reserve(saved.len());
         for (at, key) in (0..).zip(&saved) {
             index.entry(key.hash).or_insert(at);
         }
