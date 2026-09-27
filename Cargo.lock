@@ -1125,6 +1125,7 @@ dependencies = [
  "vun-fmt",
  "vun-grammar",
  "vun-hir",
+ "vun-lir",
  "vun-origin",
  "vun-query",
  "vun-regalloc",
@@ -1134,6 +1135,7 @@ dependencies = [
  "vun-render-short",
  "vun-span",
  "vun-syntax",
+ "vun-target",
 ]
 
 [[package]]

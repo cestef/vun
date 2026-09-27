@@ -15,9 +15,11 @@ workspace = true
 [dependencies]
 libfuzzer-sys.workspace = true
 vun-diag.workspace = true
+vun-driver.workspace = true
 vun-fmt.workspace = true
 vun-grammar.workspace = true
 vun-hir.workspace = true
+vun-lir.workspace = true
 vun-origin.workspace = true
 vun-query.workspace = true
 vun-regalloc = { workspace = true, features = ["sample"] }
@@ -27,6 +29,7 @@ vun-render-json.workspace = true
 vun-render-short.workspace = true
 vun-span.workspace = true
 vun-syntax.workspace = true
+vun-target.workspace = true
 
 [[bin]]
 name = "lex"
@@ -73,6 +76,20 @@ bench = false
 [[bin]]
 name = "memos"
 path = "fuzz_targets/memos.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "program"
+path = "fuzz_targets/program.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "passes"
+path = "fuzz_targets/passes.rs"
 test = false
 doc = false
 bench = false
