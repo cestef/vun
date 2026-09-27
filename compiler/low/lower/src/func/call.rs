@@ -4,7 +4,7 @@
 //! address; a result in memory is written through an address, converted into the place if its
 //! type differs.
 
-use vun_lir::{Callee, InstKind, Signature, Value};
+use vun_lir::{Callee, Conv, InstKind, Signature, Value};
 use vun_mir::{Concrete, Lowered as _, Operand, Projection};
 use vun_sema::Primitive;
 use vun_sema::decl::DeclType;
@@ -127,8 +127,11 @@ impl FnLower<'_, '_, '_> {
                 Repr::Zero => {}
             }
         }
-        // The result lands in `dest` when it has the place's type, else in a temporary first.
-        let landing = if result == ty && dest.is_some() { dest } else { self.temp(result)? };
+        // The result lands in `dest` when it has the place's type, else in a temporary first. A C
+        // callee may write the result it returns through memory before reading what it is passed,
+        // which may reach `dest`, so its result lands in a temporary too.
+        let aliased = signature.through() && signature.conv == Conv::C;
+        let landing = if result == ty && dest.is_some() && !aliased { dest } else { self.temp(result)? };
         if signature.through() {
             values.extend(landing);
         }
@@ -136,10 +139,14 @@ impl FnLower<'_, '_, '_> {
         if let (Some(value), Some(landing)) = (value, landing) {
             self.b.store(value, landing, vun_lir::Access::Plain, self.at);
         }
-        if result != ty
-            && let (Some(landing), Some(dest)) = (landing, dest)
+        if let (Some(landing), Some(dest)) = (landing, dest)
+            && landing != dest
         {
-            self.convert(landing, result, dest, ty)?;
+            if result == ty {
+                self.copy_value(landing, dest, ty)?;
+            } else {
+                self.convert(landing, result, dest, ty)?;
+            }
         }
         Ok(())
     }
