@@ -7,8 +7,8 @@ use std::fmt;
 use vun_asm::{AsmOperand, Blocks, Place, Via};
 use vun_asm_arm64::Arm64;
 use vun_asm_x86_64::{Syntax, X86_64};
+use vun_isa_thumb::Thumb;
 use vun_inline::{Inst, Line, Rebind};
-use vun_items::Item;
 use vun_lir::{Address, Output, Value};
 
 /// A line of a block, as the text GNU C assembles names its label: unique to each `__asm__`
@@ -26,8 +26,6 @@ pub(super) type Block = vun_inline::Block<Value, Output, Labelled>;
 
 /// What GNU C writes of an instruction set's blocks.
 pub(super) trait Gnu: Blocks {
-    /// The namespace of the instruction set, `lang.arch.<arch>`.
-    const ARCH: Item;
     /// The lines before and after a block's, setting the assembler's syntax to the listing's and
     /// back.
     const ENTER: &'static [&'static str];
@@ -47,7 +45,6 @@ pub(super) trait Gnu: Blocks {
 }
 
 impl Gnu for X86_64 {
-    const ARCH: Item = vun_items::lang::arch::x86_64;
     const ENTER: &'static [&'static str] = &[".intel_syntax noprefix"];
     const LEAVE: &'static [&'static str] = &[".att_syntax prefix"];
 
@@ -74,7 +71,6 @@ impl Gnu for X86_64 {
 }
 
 impl Gnu for Arm64 {
-    const ARCH: Item = vun_items::lang::arch::arm64;
     const ENTER: &'static [&'static str] = &[];
     const LEAVE: &'static [&'static str] = &[];
 
@@ -138,5 +134,30 @@ impl<I: Blocks> Place<I, Labelled> for Given<I> {
     /// Never asked: a block naming a symbol is refused.
     fn via(&self, _: Labelled) -> Via {
         Via::Direct
+    }
+}
+
+impl Gnu for Thumb {
+    const ENTER: &'static [&'static str] = &[];
+    const LEAVE: &'static [&'static str] = &[];
+
+    fn free(convention: vun_target::Convention) -> &'static [vun_isa_thumb::Reg] {
+        let mut conventions = vun_isa_thumb::conventions::CONVENTIONS.iter();
+        conventions.find(|(c, _)| *c == convention).map_or(&[], |(_, args)| args)
+    }
+
+    fn name(r: vun_isa_thumb::Reg) -> String {
+        r.name().to_owned()
+    }
+
+    fn text(inst: &Inst<Value, Output, Labelled>, operands: &[vun_isa_thumb::Operand]) -> String {
+        let (op, form) = vun_isa_thumb::Op::entry(inst.op, inst.form);
+        vun_isa_thumb::Inst::new(op, form, operands).to_string()
+    }
+
+    fn read_stack(dst: vun_isa_thumb::Reg) -> String {
+        let op = vun_isa_thumb::Op::Mov;
+        let operands = [dst.into(), vun_isa_thumb::Reg::Sp.into()];
+        vun_isa_thumb::Inst::new(op, &op.forms()[0], &operands).to_string()
     }
 }

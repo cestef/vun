@@ -25,6 +25,7 @@ impl Size {
 }
 
 impl Blocks for X86_64 {
+    const ARCH: vun_items::Item = vun_items::lang::arch::x86_64;
     type Reg = Reg;
     type Kind = Kind;
     type Operand<S: Copy> = Operand<S>;

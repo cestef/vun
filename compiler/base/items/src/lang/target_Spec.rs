@@ -8,6 +8,9 @@
 use crate::Item;
 /// The instruction set: `x86_64`, `arm64`, `riscv64`, `riscv32`, `arm`, `wasm32`.
 pub const arch: Item = Item::new(&["lang", "target", "Spec", "arch"]);
+/// The instruction set its code is written in, which a block of inline assembly names as
+/// `lang.arch.<isa>` (spec 07, section 6): `thumb` for Arm's M profile, the arch otherwise.
+pub const isa: Item = Item::new(&["lang", "target", "Spec", "isa"]);
 /// The processor the code is for, `generic` for any of the architecture.
 pub const cpu: Item = Item::new(&["lang", "target", "Spec", "cpu"]);
 /// The system programs run on; `bare` on bare metal.

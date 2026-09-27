@@ -179,8 +179,12 @@ add3 := (a: u64) -> u64 {
   (`asm.no_form`), an immediate wider than the form's (`asm.immediate_too_wide`), or a register of
   another class (`asm.register_class`) is an error at the instruction or the operand.
 - **Backends.** The native backend encodes the instructions itself; the C backend writes them as
-  GNU `__asm__` from the same forms, with the constraints the bindings give; a backend for an
-  architecture without the block's (wasm) refuses it (`backend.lacks`).
+  GNU `__asm__` from the same forms, with the constraints the bindings give. A block is compiled
+  where the target's code is in its instruction set, `lang.arch.<isa>` for the target's `isa`
+  (`thumb` on Arm's M profile, whose `arch` is `arm`); sema checks a block against the table it
+  names whatever the target, so a library may hold blocks for several behind `$if`, and a backend
+  given one of another instruction set, or without the block's (wasm), refuses it
+  (`backend.lacks`).
 
 ## 7. Checked unsafe code
 

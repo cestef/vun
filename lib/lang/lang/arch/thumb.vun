@@ -1,0 +1,87 @@
+//! Thumb, the instruction set of Arm's M profile (spec 07, section 6): its registers, and the
+//! system instructions a board's runtime needs, each with its forms and what it reads and writes.
+//! The instructions are declared in `system`. No native backend generates Thumb, so its table
+//! holds no encodings: `vun-isa-thumb` checks and lists its instructions, and the C backend
+//! writes them.
+
+/// The width of an operation: every register is 32 bits.
+Size := enum { b32 };
+
+/// A general register, by its encoding.
+Reg := enum { r0, r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11, r12, sp, lr, pc };
+
+/// A special register, which `mrs` reads and `msr` writes: the interrupt masks and the control
+/// of the stack and privilege.
+Special := enum {
+    /// Masks every interrupt of configurable priority.
+    primask,
+    /// Masks the interrupts at or below a priority.
+    basepri,
+    /// Masks every interrupt and fault but the non-maskable one.
+    faultmask,
+    control,
+};
+
+/// The classes of registers an operand names: general ones (`Reg`) and special ones (`Special`).
+Class := enum { general, special };
+
+/// A condition, by its encoding.
+Cond := enum { eq, ne, cs, cc, mi, pl, vs, vc, hi, ls, ge, lt, gt, le, al };
+
+/// The interrupts `cpsid` and `cpsie` mask and unmask: those of configurable priority (`i`, the
+/// mask `primask` holds), or those and the faults (`f`, `faultmask`).
+Mask := enum { i, f };
+
+/// The domain a barrier orders: the full system.
+Barrier := enum { sy };
+
+/// The kinds of named choice a position takes, each an enum of its own.
+Choice := enum { mask, barrier };
+
+/// What an operand position takes.
+Kind := enum {
+    /// A general register.
+    r,
+    /// A special register.
+    special,
+    /// An interrupt mask (`i`).
+    mask,
+    /// A barrier's domain (`sy`).
+    barrier,
+};
+
+/// What a form does with an operand.
+Access := enum { read, write, read_write };
+
+/// Where control goes after a form.
+Flow := enum {
+    /// To the next instruction.
+    next,
+    /// To its target only.
+    jump,
+    /// Out of the code: it returns or traps.
+    ends,
+};
+
+Operand := struct { kind: Kind, access: Access };
+
+/// One form of an instruction: the operands it takes, the widths it is defined at, and what it
+/// reads and writes beyond its operands.
+Form := struct {
+    operands: &[Operand],
+    sizes: &[Size] = &[.b32],
+    /// The mnemonic, where it is not the instruction's.
+    name: ?&[u8] = .none,
+    reads: &[Special] = &[],
+    writes: &[Special] = &[],
+    flow: Flow = .next,
+};
+
+/// An instruction, named as its declaration is.
+Instruction := struct { forms: &[Form] };
+
+/// An instruction of a family.
+Member := struct { name: lang.meta.Name };
+
+/// Instructions sharing their forms.
+Family := struct { members: &[Member], forms: &[Form] };

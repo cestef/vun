@@ -158,6 +158,8 @@ impl Backends {
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct TargetSpec {
     pub arch: Symbol,
+    /// The instruction set its code is written in, which inline assembly names.
+    pub isa: Symbol,
     pub cpu: Symbol,
     pub os: Symbol,
     pub abi: Symbol,

@@ -807,6 +807,7 @@ dependencies = [
  "vun-index",
  "vun-inline",
  "vun-intern",
+ "vun-isa-thumb",
  "vun-items",
  "vun-lir",
  "vun-origin",
@@ -1267,6 +1268,7 @@ name = "vun-isa"
 version = "0.0.0"
 dependencies = [
  "vun-inline",
+ "vun-items",
 ]
 
 [[package]]
@@ -1275,6 +1277,17 @@ version = "0.0.0"
 dependencies = [
  "vun-inline",
  "vun-isa",
+ "vun-items",
+]
+
+[[package]]
+name = "vun-isa-thumb"
+version = "0.0.0"
+dependencies = [
+ "vun-inline",
+ "vun-isa",
+ "vun-items",
+ "vun-target",
 ]
 
 [[package]]
@@ -1283,6 +1296,7 @@ version = "0.0.0"
 dependencies = [
  "vun-inline",
  "vun-isa",
+ "vun-items",
 ]
 
 [[package]]

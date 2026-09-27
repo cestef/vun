@@ -113,6 +113,12 @@ pub(crate) trait Inlined {
 
 impl Inlined for Asm {
     fn check<A: Inline>(&self) -> Result<(), Lack> {
+        // A block of another instruction set than the table's.
+        if let Some(first) = self.insts.first()
+            && self.arch != A::Table::ARCH
+        {
+            return Err(Missing::Asm.at(first.origin));
+        }
         for inst in &self.insts {
             let lack = |o| Missing::AsmOperand(o).at(inst.origin);
             for (kind, operand) in A::Table::kinds(inst).zip(&inst.operands) {

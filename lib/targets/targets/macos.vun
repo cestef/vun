@@ -3,6 +3,7 @@
 /// Apple silicon (64-bit ARM).
 arm64 := lang.target.Spec{
     .arch = .arm64,
+    .isa = .arm64,
     .cpu = .generic,
     .os = .macos,
     .abi = .darwin,

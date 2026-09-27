@@ -4,7 +4,8 @@ use proc_macro2::TokenStream;
 use quote::quote;
 use vun_syntax::literal::Literal;
 
-use super::emit::{Crate, implicit, int, option};
+use super::emit::Crate;
+use super::spell::{implicit, int, option};
 use super::{ARCH, Table};
 use crate::generate::{Generator, Module, Read, Source};
 use crate::names::pascal;
@@ -24,6 +25,7 @@ const CRATE: Crate = Crate {
         ("W", "table", "W"),
     ],
     widths: &["b8", "b16", "b32", "b64"],
+    enums: &[],
     payloads: &[("Kind", "rn", &["Size"]), ("Kind", "rmn", &["Size"]), ("Kind", "xmn", &["Size"])],
 };
 

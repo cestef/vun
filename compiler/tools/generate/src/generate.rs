@@ -100,6 +100,7 @@ pub(crate) const ALL: &[Generator] = &[
     items::TARGETS,
     asm::X86_64,
     asm::ARM64,
+    asm::THUMB,
 ];
 
 const SYNTAX: DiagId = DiagId::new("generate.generate.syntax");

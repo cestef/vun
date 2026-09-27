@@ -268,6 +268,7 @@ impl Read for TargetSpec {
         let m = Members::of(value)?;
         Ok(Self {
             arch: m.name(spec::arch)?,
+            isa: m.name(spec::isa)?,
             cpu: m.name(spec::cpu)?,
             os: m.name(spec::os)?,
             abi: m.name(spec::abi)?,

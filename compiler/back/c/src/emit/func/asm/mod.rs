@@ -13,7 +13,9 @@ mod gnu;
 
 use vun_asm::AsmOperand;
 use vun_asm_arm64::Arm64;
+use vun_asm::Blocks;
 use vun_asm_x86_64::X86_64;
+use vun_isa_thumb::Thumb;
 use vun_backend::{Lack, Missing};
 use vun_inline::{Bound, Line};
 use vun_intern::Symbol;
@@ -28,20 +30,21 @@ use gnu::{Block, Given, Gnu, Labelled, Unlinked};
 const CLOBBERED: [&str; 2] = ["cc", "memory"];
 
 impl FnEmit<'_, '_> {
-    /// `asm` as a GNU C statement, if the target's architecture is the block's.
+    /// `asm` as a GNU C statement, if the target's code is in the block's instruction set.
     pub(super) fn asm(
         &mut self,
         asm: &vun_lir::Asm,
         check: Option<&AsmCheck>,
         at: OriginId,
     ) -> Result<(), Lack> {
-        if Symbol::intern(asm.arch.name()) != self.e.target.arch {
+        if Symbol::intern(asm.arch.name()) != self.e.target.isa {
             return Err(Missing::Asm.at(at));
         }
         let block = asm.clone().rebind(&mut Unlinked).map_err(|o| Missing::AsmOperand(o).at(at))?;
         match asm.arch {
             X86_64::ARCH => self.inline::<X86_64>(&block, check),
             Arm64::ARCH => self.inline::<Arm64>(&block, check),
+            Thumb::ARCH => self.inline::<Thumb>(&block, check),
             _ => Err(Missing::Asm.at(at)),
         }
     }
@@ -73,7 +76,9 @@ impl FnEmit<'_, '_> {
             Some(_) => Some([free.next().ok_or_else(crowded)?, free.next().ok_or_else(crowded)?]),
             None => None,
         };
-        let word = self.e.scalar(Scalar::I64, origin)?;
+        // A register holds an address: the bindings' variables are that wide.
+        let bits = self.e.unit.pointer_bits;
+        let word = self.e.scalar(Scalar::int(bits).expect("addresses of an integer's width"), origin)?;
         let (mut bindings, mut after) = (Vec::new(), Vec::new());
         for (k, (used, &reg)) in uses.iter().zip(&regs).enumerate() {
             let name = Ident::bound(k);

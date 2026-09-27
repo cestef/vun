@@ -12,3 +12,4 @@ workspace = true
 [dependencies]
 vun-inline.workspace = true
 vun-isa.workspace = true
+vun-items.workspace = true

@@ -3,6 +3,7 @@
 /// 32-bit WebAssembly.
 wasm32 := lang.target.Spec{
     .arch = .wasm32,
+    .isa = .wasm32,
     .cpu = .generic,
     .os = .wasi,
     .abi = .p1,

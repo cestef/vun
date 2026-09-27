@@ -12,17 +12,20 @@ use crate::ast::{Ident, Names};
 use crate::{CBackend, Lack};
 use vun_backend::Missing;
 
-fn origin(origins: &OriginTable) -> OriginId {
+mod asm;
+
+pub(crate) fn origin(origins: &OriginTable) -> OriginId {
     let file = SourceFiles::new().add("a.vun", "f := () {};");
     origins.source(Span::new(file, 0, 1))
 }
 
 /// A 64-bit target whose C compiler has no atomics.
-fn target() -> TargetSpec {
+pub(crate) fn target() -> TargetSpec {
     let int = |bits, align| CInt { bits, align };
     let name = Symbol::intern;
     TargetSpec {
         arch: name("x86_64"),
+        isa: name("x86_64"),
         cpu: name("generic"),
         os: name("linux"),
         abi: name("gnu"),
@@ -53,7 +56,7 @@ fn target() -> TargetSpec {
     }
 }
 
-struct NoLines;
+pub(crate) struct NoLines;
 
 impl vun_backend::Lines for NoLines {
     fn line(&self, _: OriginId) -> Option<vun_backend::Line> {
@@ -173,58 +176,4 @@ fn qualifiers_on_pointers_follow_their_star() {
     assert_eq!(typedef(volatile(Ty::BYTE).pointer()), "typedef volatile u8 *p;\n");
     assert_eq!(typedef(Ty::code().pointer()), "typedef void (**p)(void);\n");
     assert_eq!(typedef(volatile(Ty::code())), "typedef void (*volatile p)(void);\n");
-}
-
-/// `f(n) -> i64` exported as `f`: `lea {out r}, [{in n} + 3]` into a slot, which it returns.
-fn lea(origin: OriginId) -> Unit {
-    use vun_asm_x86_64::{Op, Size};
-    use vun_inline::{Base, Block, Bound, Disp, FormId, Inst, Mem, OpId, Operand, SizeId};
-    let word = AbiType::Int(Scalar::I64, Ext::Sign);
-    let signature = Signature { conv: Conv::C, params: vec![word.clone()], result: Some(word) };
-    let mut b = Builder::new(Linkage::Export(Symbol::intern("f")), signature, origin);
-    let n = b.params(b.current())[0];
-    let slot = b.slot(8, 8, origin);
-    let addr = b.push(vun_lir::InstKind::SlotAddr(slot), Some(Scalar::Ptr), origin).expect("an address");
-    let out = Operand::Bound(Bound::Out { place: vun_lir::Output { addr, ty: Scalar::I64 }, reg: None });
-    let base = Base::Bound(Bound::In { value: n, reg: None });
-    let address = Operand::Mem(Mem { base: Some(base), index: None, disp: Disp::Bytes(3) });
-    let index = |all: &[Op], op| u16::try_from(all.iter().position(|&o| o == op).expect("lea")).expect("few");
-    let size = u8::try_from(Size::ALL.iter().position(|&s| s == Size::B64).expect("64 bits")).expect("few");
-    let inst = Inst {
-        op: OpId(index(Op::ALL, Op::Lea)),
-        form: FormId(0),
-        size: SizeId(size),
-        operands: vec![out, address],
-        origin,
-    };
-    let block = Block { arch: vun_items::lang::arch::x86_64, insts: vec![inst], returns: true };
-    b.push(vun_lir::InstKind::Asm(Box::new(block), None), None, origin);
-    let r = b.load(Scalar::I64, addr, vun_lir::Access::Plain, origin);
-    b.terminate(Terminator::Return(Some(r)));
-    let mut unit = Unit { pointer_bits: 64, ..Unit::default() };
-    unit.functions.push(b.finish());
-    unit
-}
-
-#[test]
-fn a_block_of_inline_assembly_runs_as_gnu_c() {
-    let origins = OriginTable::new();
-    let sources = CBackend::default().sources(&lea(origin(&origins)), &target(), &NoLines).unwrap();
-    let [source] = sources.as_slice() else { panic!("one source") };
-    if !cfg!(all(target_arch = "x86_64", target_os = "linux")) {
-        return;
-    }
-    let dir = vun_fs::Scratch::new("c-asm");
-    let (program, main) = (dir.path().join("program.c"), dir.path().join("main.c"));
-    std::fs::write(&program, &source.bytes).unwrap();
-    std::fs::write(&main, "long f(long);\nint main(void) { return (int)f(4); }\n").unwrap();
-    let built = dir.path().join("program");
-    for cc in ["gcc", "clang"] {
-        let compiled =
-            std::process::Command::new(cc).arg("-O2").arg(&program).arg(&main).arg("-o").arg(&built).status();
-        let Ok(compiled) = compiled else { continue };
-        assert!(compiled.success(), "{cc} compiles:\n{}", String::from_utf8_lossy(&source.bytes));
-        let ran = std::process::Command::new(&built).status().unwrap();
-        assert_eq!(ran.code(), Some(7), "{cc}");
-    }
 }

@@ -1,10 +1,12 @@
 //! Bare metal: no system; a program brings its own runtime (spec 08), links without the C
 //! runtime, and starts at its reset handler.
 
-/// A 32-bit bare-metal target of `arch` and `cpu`, following `abi` and calling C by
-/// `convention`, built with `command` and `archiver` for the machine its `machine` flags select.
+/// A 32-bit bare-metal target of `arch` and `cpu`, its code in the instruction set `isa`,
+/// following `abi` and calling C by `convention`, built with `command` and `archiver` for the
+/// machine its `machine` flags select.
 _on := (
     $arch: lang.meta.Name,
+    $isa: lang.meta.Name,
     $cpu: lang.meta.Name,
     $abi: lang.meta.Name,
     $convention: lang.target.Convention,
@@ -14,6 +16,7 @@ _on := (
 ) -> lang.target.Spec {
     .{
         .arch = arch,
+        .isa = isa,
         .cpu = cpu,
         .os = .bare,
         .abi = abi,
@@ -31,6 +34,7 @@ _on := (
 /// ARM Cortex-M4 with its floating-point unit (Thumb-2, hard-float EABI).
 cortex_m4f := _on(
     .arm,
+    .thumb,
     .cortex_m4f,
     .eabihf,
     .aapcs_vfp,
@@ -40,6 +44,7 @@ cortex_m4f := _on(
 );
 /// 32-bit RISC-V with multiplication and compressed instructions (RV32IMC).
 rv32imc := _on(
+    .riscv32,
     .riscv32,
     .rv32imc,
     .ilp32,

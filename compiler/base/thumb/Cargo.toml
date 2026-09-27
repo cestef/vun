@@ -1,0 +1,16 @@
+[package]
+name = "vun-isa-thumb"
+description = "The Thumb instruction set of Arm's M profile: its system instructions as one table, generated from lang.arch.thumb, checked and listed for the C backend, with no encoder."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+vun-inline.workspace = true
+vun-isa.workspace = true
+vun-items.workspace = true
+vun-target.workspace = true

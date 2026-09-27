@@ -95,6 +95,9 @@ Backends := struct {
 Spec := struct {
     /// The instruction set: `x86_64`, `arm64`, `riscv64`, `riscv32`, `arm`, `wasm32`.
     arch: lang.meta.Name,
+    /// The instruction set its code is written in, which a block of inline assembly names as
+    /// `lang.arch.<isa>` (spec 07, section 6): `thumb` for Arm's M profile, the arch otherwise.
+    isa: lang.meta.Name,
     /// The processor the code is for, `generic` for any of the architecture.
     cpu: lang.meta.Name,
     /// The system programs run on; `bare` on bare metal.

@@ -5,6 +5,7 @@
 _on := ($arch: lang.meta.Name, $convention: lang.target.Convention) -> lang.target.Spec {
     .{
         .arch = arch,
+        .isa = arch,
         .cpu = .generic,
         .os = .linux,
         .abi = .gnu,

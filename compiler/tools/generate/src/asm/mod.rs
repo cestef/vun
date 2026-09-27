@@ -8,6 +8,8 @@
 
 mod arm64;
 mod emit;
+mod spell;
+mod thumb;
 mod x86_64;
 
 use std::collections::BTreeMap;
@@ -19,6 +21,7 @@ use crate::generate::{Generator, Read, Source};
 use crate::names::docs;
 
 pub(crate) use arm64::ARM64;
+pub(crate) use thumb::THUMB;
 pub(crate) use x86_64::X86_64;
 
 /// Where the architectures are declared, relative to the repository root.

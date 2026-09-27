@@ -4,7 +4,7 @@
 
 use vun_inline::{Base, Block, Bound, FormId, Inst, Line, Mem, OpId, Operand, RegRef};
 
-use crate::{Fit, Fixed, Given, Isa, Label, Misfit, Via};
+use crate::{Fit, Fixed, Given, Label, Misfit, Via};
 
 /// Operands of inline assembly a backend may have no encoding or no register for.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -30,7 +30,10 @@ pub enum AsmOperand {
 }
 
 /// An instruction set's facts about blocks of inline assembly.
-pub trait Blocks: Isa {
+pub trait Blocks {
+    /// The namespace of the instruction set, `lang.arch.<isa>`, which a block names.
+    const ARCH: vun_items::Item;
+
     /// A general register, of the class values are held in.
     type Reg: Copy + Eq + 'static;
     /// What an operand position takes.

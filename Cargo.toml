@@ -27,6 +27,7 @@ vun-span = { path = "compiler/base/span" }
 vun-inline = { path = "compiler/base/inline" }
 vun-isa = { path = "compiler/base/isa" }
 vun-isa-arm64 = { path = "compiler/base/arm64" }
+vun-isa-thumb = { path = "compiler/base/thumb" }
 vun-isa-x86_64 = { path = "compiler/base/x86_64" }
 vun-intern = { path = "compiler/base/intern" }
 vun-origin = { path = "compiler/base/origin" }

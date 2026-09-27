@@ -3,7 +3,7 @@
 //! the Rust spelling of the table's values.
 
 use proc_macro2::{Literal as Number, TokenStream};
-use quote::{ToTokens, quote};
+use quote::quote;
 use vun_diag::{DiagId, Msg};
 use vun_syntax::literal::Literal;
 
@@ -34,9 +34,14 @@ pub(super) struct Crate {
     pub(super) arch: &'static str,
     /// Each Vun type of the table, its crate module and its Rust name.
     pub(super) types: &'static [(&'static str, &'static str, &'static str)],
+    /// The widths a register's name is given at, by `names`; none where the table has no names,
+    /// each register named as its variant.
     pub(super) widths: &'static [&'static str],
     /// The payload types of the tagged variants the table uses, by type and variant.
     pub(super) payloads: &'static [(&'static str, &'static str, &'static [&'static str])],
+    /// The table's enums generated as they are, each in a module of its own, where the crate
+    /// does not write them itself.
+    pub(super) enums: &'static [&'static str],
 }
 
 impl Crate {
@@ -56,6 +61,27 @@ impl Crate {
             classes.ok_or_else(|| shape(Msg::new().text("declares its register classes unreadably")))?,
         ];
         modules.extend(Self::choices(table));
+        for &name in self.enums {
+            let rust = raw(name);
+            let enumeration = Self::enumeration(table, name, &quote! { #rust });
+            let enumeration = enumeration
+                .ok_or_else(|| shape(Msg::new().text("declares ").code(name).text(" unreadably")))?;
+            let doc = table.own(name).map(|d| crate::names::docs(&d.doc)).unwrap_or_default();
+            let members = table.own(name).and_then(|d| d.value.members()).unwrap_or_default();
+            let (names, count) = (members.iter().map(|m| m.name), members.len());
+            let items = quote! {
+                #(#[doc = #doc])* #enumeration
+                impl #rust {
+                    /// Its name, as the table writes it.
+                    #[must_use]
+                    pub const fn name(self) -> &'static str {
+                        const NAMES: [&str; #count] = [#(#names),*];
+                        NAMES[self as usize]
+                    }
+                }
+            };
+            modules.push(Module { name: name.to_ascii_lowercase(), access: Access::Glob, items });
+        }
         for inst in &table.instructions {
             let forms = inst.forms.iter().map(|f| form(self, f)).collect::<Option<Vec<_>>>();
             let forms = forms.ok_or_else(|| {
@@ -126,9 +152,13 @@ impl Crate {
     /// The `Reg` enum in encoding order, with its doc lines, and each register's names by width.
     fn registers(&self, table: &Table<'_, '_>) -> Option<Module> {
         let regs = table.own(REG)?.value.members()?;
-        let names = &table.own(NAMES)?.value;
+        let names = table.own(NAMES).map(|d| &d.value);
         let widths = self.widths;
         let rows = regs.iter().map(|r| {
+            let Some(names) = names else {
+                let name = r.name;
+                return Some(quote! { [#name] });
+            };
             let entry = names.get(r.name)?;
             let row = widths.iter().map(|w| entry.get(w)?.as_str().map(str::to_owned));
             let row = row.collect::<Option<Vec<_>>>()?;
@@ -137,7 +167,7 @@ impl Crate {
         let rows = rows.collect::<Option<Vec<_>>>()?;
         let variants: Vec<_> = regs.iter().map(|r| pascal(r.name)).collect();
         let docs = regs.iter().map(|r| crate::names::docs(&r.doc));
-        let (count, width_count) = (regs.len(), widths.len());
+        let (count, width_count) = (regs.len(), if names.is_some() { widths.len() } else { 1 });
         let items = quote! {
             /// A general register, by its encoding.
             #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -252,48 +282,4 @@ impl Crate {
     fn payloads(&self, ty: &str, tag: &str) -> Option<&'static [&'static str]> {
         self.payloads.iter().find(|(t, v, _)| *t == ty && *v == tag).map(|&(_, _, p)| p)
     }
-}
-
-/// `.some(v)` as `Some(..)` of `v` read by `read`, `.none` as `None`.
-pub(super) fn option<'s>(
-    value: &Literal<'s>,
-    read: impl Fn(&Literal<'s>) -> Option<TokenStream>,
-) -> Option<TokenStream> {
-    match value {
-        Literal::Name("none") => Some(quote! { None }),
-        Literal::Tagged("some", payload) => {
-            let inner = read(payload.first()?)?;
-            Some(quote! { Some(#inner) })
-        }
-        _ => None,
-    }
-}
-
-/// An integer that fits `T`, as an unsuffixed literal.
-pub(super) fn int<T: TryFrom<i128> + Into<u64>>(value: &Literal<'_>) -> Option<TokenStream> {
-    let Literal::Int(n) = value else { return None };
-    let n = Number::u64_unsuffixed(T::try_from(*n).ok()?.into());
-    Some(quote! { #n })
-}
-
-/// A word, written in hexadecimal as the architecture's manual writes encodings, its halves
-/// apart.
-pub(super) fn word(value: &Literal<'_>) -> Option<TokenStream> {
-    let Literal::Int(n) = value else { return None };
-    let n = u32::try_from(*n).ok()?;
-    Some(
-        syn::LitInt::new(&format!("{:#06x}_{:04x}", n >> 16, n & 0xffff), proc_macro2::Span::call_site())
-            .into_token_stream(),
-    )
-}
-
-/// The general registers a form reads or writes without naming them, each once, reads first.
-pub(super) fn implicit<'s>(reads: &[Literal<'s>], writes: &[Literal<'s>]) -> Vec<&'s str> {
-    let mut regs: Vec<&str> = Vec::new();
-    for reg in reads.iter().chain(writes).filter_map(Literal::as_name) {
-        if !regs.contains(&reg) {
-            regs.push(reg);
-        }
-    }
-    regs
 }

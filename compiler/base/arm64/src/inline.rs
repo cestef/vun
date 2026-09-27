@@ -28,6 +28,7 @@ impl Size {
 }
 
 impl Blocks for Arm64 {
+    const ARCH: vun_items::Item = vun_items::lang::arch::arm64;
     type Reg = Reg;
     type Kind = Kind;
     type Operand<S: Copy> = Operand<S>;
