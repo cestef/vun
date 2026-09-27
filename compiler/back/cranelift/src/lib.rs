@@ -1,7 +1,6 @@
 //! In-process Cranelift code generation: the default for debug builds.
 
-use vun_backend::{ArtifactSink, Backend, BackendCaps, BackendInfo, Emits, Readiness, Request};
-use vun_diag::{DiagCtxt, ErrorGuaranteed};
+use vun_backend::{BackendCaps, BackendInfo, Emits, Feature, Planned, Readiness};
 use vun_lir::legalize::Half;
 use vun_target::{Arches, Name};
 
@@ -10,32 +9,12 @@ pub const INFO: BackendInfo = BackendInfo {
     arches: Arches::Only(&[Name("x86_64"), Name("arm64"), Name("riscv64"), Name("s390x")]),
     caps: BackendCaps {
         emits: Emits::Object,
-        c_abi: false,
-        vectors: true,
-        tail_calls: true,
-        noalias: false,
-        frame_sizes: false,
+        features: &[Feature::Vectors, Feature::TailCalls, Feature::DebugInfo],
         int_bits: 128,
         half: Half::Promoted,
-        debug_info: true,
     },
     readiness: Readiness::Planned,
 };
 
-#[derive(Default)]
-pub struct CraneliftBackend;
-
-impl Backend for CraneliftBackend {
-    fn info(&self) -> &BackendInfo {
-        &INFO
-    }
-
-    fn emit(
-        &self,
-        _request: &Request<'_>,
-        _out: &mut dyn ArtifactSink,
-        diag: &mut DiagCtxt,
-    ) -> Result<(), ErrorGuaranteed> {
-        Err(INFO.unavailable(diag))
-    }
-}
+/// Declared, generating no code yet.
+pub const BACKEND: Planned = Planned(&INFO);

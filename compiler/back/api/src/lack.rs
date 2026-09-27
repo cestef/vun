@@ -4,6 +4,7 @@
 use vun_diag::{Diagnostic, Msg, errors};
 use vun_intern::Symbol;
 use vun_origin::OriginId;
+use vun_target::Name;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Missing {
@@ -25,6 +26,9 @@ pub enum Missing {
     FunctionOffset,
     /// An object format the backend does not write.
     Format(Symbol),
+    /// A C record's eightbyte of floats holding this many bytes, neither a `f32` nor two nor a
+    /// `f64`: a layout only an explicit size makes.
+    FloatPart(u64),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -42,7 +46,7 @@ impl Missing {
 
 impl Lack {
     #[must_use]
-    pub fn diagnostic(self, backend: &str) -> Diagnostic {
+    pub fn diagnostic(self, backend: Name) -> Diagnostic {
         self.missing.diagnostic(backend).at(self.at, None)
     }
 }
@@ -50,7 +54,7 @@ impl Lack {
 impl Missing {
     /// What the backend cannot express, where no one place asks for it.
     #[must_use]
-    pub fn diagnostic(self, backend: &str) -> Diagnostic {
+    pub fn diagnostic(self, backend: Name) -> Diagnostic {
         let what = match self {
             Missing::Int128 => Msg::new().text("128-bit integers"),
             Missing::Half => Msg::new().code("f16"),
@@ -64,8 +68,11 @@ impl Missing {
             Missing::Symbol(s) => Msg::new().text("the link symbol ").code(s.as_str()),
             Missing::FunctionOffset => Msg::new().text("an address inside a function"),
             Missing::Format(f) => Msg::new().text("objects of format ").code(f.as_str()),
+            Missing::FloatPart(n) => {
+                Msg::new().text("a C record passing ").num(n).text(" bytes of floats in a register")
+            }
         };
-        let msg = Msg::new().text("backend ").code(backend).text(" cannot express ").append(what);
+        let msg = Msg::new().text("backend ").code(backend.0).text(" cannot express ").append(what);
         Diagnostic::error(errors::BACKEND_LACKS, msg)
     }
 }

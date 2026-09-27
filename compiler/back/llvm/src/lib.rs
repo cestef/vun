@@ -1,7 +1,6 @@
 //! LLVM code generation: optimized builds and the widest native reach.
 
-use vun_backend::{ArtifactSink, Backend, BackendCaps, BackendInfo, Emits, Readiness, Request};
-use vun_diag::{DiagCtxt, ErrorGuaranteed};
+use vun_backend::{BackendCaps, BackendInfo, Emits, Feature, Planned, Readiness};
 use vun_lir::legalize::Half;
 use vun_target::{Arches, Name};
 
@@ -10,32 +9,18 @@ pub const INFO: BackendInfo = BackendInfo {
     arches: Arches::Any,
     caps: BackendCaps {
         emits: Emits::Object,
-        c_abi: false,
-        vectors: true,
-        tail_calls: true,
-        noalias: true,
-        frame_sizes: true,
+        features: &[
+            Feature::Vectors,
+            Feature::TailCalls,
+            Feature::NoAlias,
+            Feature::FrameSizes,
+            Feature::DebugInfo,
+        ],
         int_bits: 128,
         half: Half::Computed,
-        debug_info: true,
     },
     readiness: Readiness::Planned,
 };
 
-#[derive(Default)]
-pub struct LlvmBackend;
-
-impl Backend for LlvmBackend {
-    fn info(&self) -> &BackendInfo {
-        &INFO
-    }
-
-    fn emit(
-        &self,
-        _request: &Request<'_>,
-        _out: &mut dyn ArtifactSink,
-        diag: &mut DiagCtxt,
-    ) -> Result<(), ErrorGuaranteed> {
-        Err(INFO.unavailable(diag))
-    }
-}
+/// Declared, generating no code yet.
+pub const BACKEND: Planned = Planned(&INFO);

@@ -34,26 +34,38 @@ pub enum Emits {
     Listing,
 }
 
+/// What a backend does that a program may require of it.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Feature {
+    /// Lowers C ABI aggregates itself; otherwise the driver runs ABI lowering first.
+    CAbi,
+    /// Native vectors; otherwise vectors are lowered to scalars.
+    Vectors,
+    TailCalls,
+    /// Uses the aliasing facts of spec 05, section 8.
+    NoAlias,
+    /// Reports frame sizes, which `stack.max` requires.
+    FrameSizes,
+    DebugInfo,
+}
+
 /// Capabilities a program may require of its backend.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-#[allow(clippy::struct_excessive_bools)]
 pub struct BackendCaps {
     pub emits: Emits,
-    /// Lowers C ABI aggregates itself; otherwise the driver runs ABI lowering first.
-    pub c_abi: bool,
-    /// Native vectors; otherwise vectors are lowered to scalars.
-    pub vectors: bool,
-    pub tail_calls: bool,
-    /// Uses the aliasing facts of spec 05, section 8.
-    pub noalias: bool,
-    /// Reports frame sizes, which `stack.max` requires.
-    pub frame_sizes: bool,
+    pub features: &'static [Feature],
     /// The widest integer it computes with, in bits: wider ones are split into halves before it
     /// reads the unit (`Unit::legalize`).
     pub int_bits: u32,
     /// Whether it computes `f16`, or holds it as bits and computes in `f32` (`Unit::legalize`).
     pub half: Half,
-    pub debug_info: bool,
+}
+
+impl BackendCaps {
+    #[must_use]
+    pub fn has(&self, feature: Feature) -> bool {
+        self.features.contains(&feature)
+    }
 }
 
 /// Everything known about a backend without running it.
@@ -145,6 +157,25 @@ pub struct Request<'a> {
     pub profile: Profile,
     /// Whether to add a listing of the code to the artifacts ([`Emits::Listing`]).
     pub listing: bool,
+}
+
+/// A backend declared, which cannot generate code yet: its facts, for choosing and reporting.
+#[derive(Clone, Copy, Debug)]
+pub struct Planned(pub &'static BackendInfo);
+
+impl Backend for Planned {
+    fn info(&self) -> &BackendInfo {
+        self.0
+    }
+
+    fn emit(
+        &self,
+        _: &Request<'_>,
+        _: &mut dyn ArtifactSink,
+        diag: &mut DiagCtxt,
+    ) -> Result<(), ErrorGuaranteed> {
+        Err(self.0.unavailable(diag))
+    }
 }
 
 /// Code generation from LIR.

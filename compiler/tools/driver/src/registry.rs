@@ -30,10 +30,10 @@ impl Registry {
         register!(r.add_backend {
             "backend-c" => vun_backend_c::CBackend::default(),
             "backend-native" => vun_backend_native::NativeBackend,
-            "backend-cranelift" => vun_backend_cranelift::CraneliftBackend,
-            "backend-qbe" => vun_backend_qbe::QbeBackend,
-            "backend-llvm" => vun_backend_llvm::LlvmBackend,
-            "backend-external" => vun_backend_external::ExternalBackend,
+            "backend-cranelift" => vun_backend_cranelift::BACKEND,
+            "backend-qbe" => vun_backend_qbe::BACKEND,
+            "backend-llvm" => vun_backend_llvm::BACKEND,
+            "backend-external" => vun_backend_external::BACKEND,
         });
         register!(r.add_linker {
             "link-wild" => vun_link_wild::WildLinker,
