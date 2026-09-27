@@ -28,7 +28,7 @@ declaration whose value is `_`.
 | `lang.simd` | `Vector`, `Mask`, `chunks` |
 | `lang.target` | `require`, the `TargetSpec` shape |
 | `lang.comptime` | `fuel` |
-| `lang.arch` | `asm`, and intrinsics under `lang.arch.<arch>` |
+| `lang.arch` | per architecture (`lang.arch.x86_64`, ...): registers, instruction forms, the `asm { ... }` block, intrinsics |
 | `lang.impl` | the `impl` attribute |
 
 ## B. Desugaring table

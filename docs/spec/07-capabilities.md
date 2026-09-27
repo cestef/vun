@@ -120,5 +120,48 @@ backend that cannot report frame sizes cannot build a program that uses `stack.m
   libclang, loaded when the command runs (decision 131), with the build's real compile flags
   (decision 134). `vun tool header` emits a C header for a Vun library. Both are tools, not
   language features (spec 12).
-- Inline assembly is `lang.arch.asm(template, operands)`, a `lang` function taking compile-time
-  data. It is `unsafe`.
+- Inline assembly is an `unsafe` block of an architecture's instructions, `lang.arch.<arch>.asm
+  { ... }` (section 6).
+
+## 6. Inline assembly
+
+An architecture's instruction set is data in `lang.arch.<arch>` (`lib/lang/lang/arch/`): its
+registers by class, and each instruction's forms, as the native backend's assemblers use them
+(spec 13, section 8.3), with the registers and flags each form reads and writes. The toolchain's
+assembler tables are generated from these declarations, so the language, the assembler and the
+listings share one table.
+
+```vun
+entry := () -> never {
+    unsafe lang.arch.x86_64.asm {
+        mov rdi, rsp
+        and rsp, -16
+        call {_boot}
+    }
+};
+
+add3 := (a: u64) -> u64 {
+    mut r: u64 = 0;
+    unsafe lang.arch.x86_64.asm {
+        lea {out r}, [{in a} + 3]
+    };
+    r
+};
+```
+
+- **A block of instructions.** `lang.arch.<arch>.asm { ... }` holds one instruction per line in
+  the architecture's usual syntax. It is read at compile time against the architecture's table,
+  into typed values of it; the block is an expression of type `()`, or `never` when its last
+  instruction does not return. It is `unsafe`.
+- **Operands are Vun.** A register is named as the table names it. An immediate is an integer
+  expression the form's width must hold. `{name}` is a declaration's address, relocated when
+  linking. `{in e}` passes the value of `e` in a register the backend picks, `{out p}` writes a
+  register into the place `p`, `{inout p}` both; `{in(rdi) e}` names the register.
+- **Clobbers are derived.** Each form declares what it writes, so the registers and flags a block
+  writes, beyond its outputs, are known without being listed, and the backend saves what it must.
+- **Checked when compiling.** A mnemonic the table lacks, operands no form of it takes, an
+  immediate wider than the form's, or a register of another class is an error at the instruction.
+- **Backends.** The native backend encodes the instructions itself; the C backend writes them as
+  GNU `__asm__` from the same forms, with the constraints the bindings give; a backend for an
+  architecture without the block's (wasm) refuses it (`backend.lacks`).
+
