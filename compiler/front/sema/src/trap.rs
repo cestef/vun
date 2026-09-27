@@ -131,6 +131,22 @@ impl Unevaluated {
         }
     }
 
+    /// The report of a `$` form at `origin` that stopped this way: a trap that fired, and where
+    /// the form surely runs and is typed (`surely`), a form compile-time evaluation does not run
+    /// yet, since what `$` asks for cannot wait for run time. The other reasons are reported
+    /// where they arise, or are no error here.
+    #[must_use]
+    pub fn report(&self, origin: OriginId, surely: bool) -> Option<Diagnostic> {
+        match self {
+            Self::Trapped(trap) => Some(trap.report(origin)),
+            Self::Unsupported if surely => {
+                let msg = Msg::new().text("compile-time evaluation does not run this form yet");
+                Some(Diagnostic::error(errors::COMPTIME_UNSUPPORTED, msg).at(origin, None))
+            }
+            _ => None,
+        }
+    }
+
     /// A trap for `reason` that has not been placed yet.
     #[must_use]
     pub fn trap(reason: Reason) -> Self {

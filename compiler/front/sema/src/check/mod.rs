@@ -24,7 +24,7 @@ use crate::env::{Env, Unevaluated};
 use crate::eval::Instantiation;
 use crate::item::DeclRef;
 use crate::item::ExprRef;
-use crate::typeck::Typed;
+use crate::typeck::Reported;
 use crate::visible::Home;
 
 /// What checking a file reports; `None` for a file the driver did not read.
@@ -87,6 +87,7 @@ impl Visitor for Checker<'_, '_, '_> {
                 let key = (DeclRef::new(self.env.file.clone(), hir, *d), None, Vec::new());
                 if let Some(typed) = self.env.cx.get::<TypedDecl>(&key) {
                     self.diag.absorb(&typed.diag);
+                    typed.evaluate(self.env, &mut self.diag);
                 }
             }
         });
@@ -97,8 +98,8 @@ impl Visitor for Checker<'_, '_, '_> {
         self.member(hir, expr);
         if let ExprKind::Fn { .. } = hir.exprs[expr].kind {
             let f = ExprRef::new(self.env.file.clone(), hir, expr);
-            if let Some(typed) = self.env.cx.get::<Typed>(&Instantiation::plain(f)) {
-                self.diag.absorb(&typed.diag);
+            if let Some(reported) = self.env.cx.get::<Reported>(&Instantiation::plain(f)) {
+                self.diag.absorb(&reported);
             }
         }
         if let ExprKind::Call { callee, .. } = hir.exprs[expr].kind

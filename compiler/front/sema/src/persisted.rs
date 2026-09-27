@@ -15,7 +15,7 @@ use crate::link::Links;
 use crate::member::{MemberType, MemberValue, Members};
 use crate::plan::Planned;
 use crate::target::{Chosen, TargetOf};
-use crate::typeck::Typed;
+use crate::typeck::{Reported, Typed};
 use crate::witness::{Impls, Witnesses};
 
 pub const PERSISTED: &[fn(&Db)] = &[
@@ -26,6 +26,7 @@ pub const PERSISTED: &[fn(&Db)] = &[
     Db::persist::<DeclValue>,
     Db::persist::<TypedDecl>,
     Db::persist::<Typed>,
+    Db::persist::<Reported>,
     Db::persist::<ItemSite>,
     Db::persist::<PrimitiveComptime>,
     Db::persist::<PrimitiveDecl>,

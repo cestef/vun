@@ -7,9 +7,10 @@ use vun_hir::tree::{ExprId, ExprKind};
 use vun_query::Cx;
 
 use super::{Env, Unevaluated};
-use crate::eval::{Code, Func, Staging};
+use crate::eval::{Code, Func, Instantiation, Staging};
 use crate::item::{ExprRef, Node};
 use crate::ty::Value;
+use crate::typeck::Typed;
 
 impl<'a, 'db> Env<'a, 'db> {
     /// The code `expr`, written here: it keeps the call evaluated in and every binder bound, so
@@ -33,12 +34,20 @@ impl<'a, 'db> Env<'a, 'db> {
         }
     }
 
-    /// The environment `code` was written in.
+    /// The environment `code` was written in, with the types typing found there: the call's
+    /// instantiation, or the function literal holding it outside any call.
     #[must_use]
     pub fn quoted(cx: &'a Cx<'db>, code: &Code) -> Option<Self> {
-        let env = match &code.within {
-            Some(call) => Self::within(cx, call)?,
-            None => Self::of(cx, &code.expr.file)?,
+        let env = if let Some(call) = &code.within {
+            Instantiation::running(cx, call)?
+        } else {
+            let env = Self::of(cx, &code.expr.file)?;
+            let hir = &env.parsed.hir;
+            let site = hir
+                .enclosing_function(code.expr.expr.id)
+                .map(|f| ExprRef::new(code.expr.file.clone(), hir, f));
+            let types = site.and_then(|f| cx.get::<Typed>(&Instantiation::plain(f)));
+            env.typed_by(types)
         };
         Some(env.staging(&code.bound))
     }

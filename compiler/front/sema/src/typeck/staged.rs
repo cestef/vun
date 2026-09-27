@@ -3,14 +3,13 @@
 //! bound, each step's types kept apart ([`Step`]). Otherwise the entries are typed once, with
 //! nothing bound.
 
-use std::mem::take;
 use std::sync::Arc;
 
 use vun_diag::DiagCtxt;
 use vun_hir::tree::{ExprId, ExprKind, Hir, PatKind, Staged};
 use vun_hir::visit::{walk_list, walk_staged};
 
-use super::{Known, Stage, Step, TypedBody, Typer};
+use super::{Found, Known, Stage, Step, TypedBody, Typer};
 use crate::env::{Env, Selected};
 use crate::eval::Staging;
 use crate::item::Node;
@@ -74,11 +73,9 @@ impl<'a, 'db> Typer<'_, 'a, 'db> {
         let outer = std::mem::replace(&mut self.stage, Stage::Compile);
         let known = self.typed(operand);
         self.stage = outer;
-        // Where it surely runs and everything it reads is known, it runs now, and what it
-        // reports is reported here.
+        // Where it surely runs, it runs once the body is typed, with the body's types.
         if self.undecided == 0 {
-            let value = self.evaluating().eval(operand);
-            let _ = self.ran(expr, known, value);
+            self.found.evaluations.push(expr);
         }
         match known.and_then(|k| k.ty.quoted()) {
             Some(ty) => Some(Known { ty, stage: self.stage }),
@@ -109,8 +106,9 @@ impl<'a, 'db> Typer<'_, 'a, 'db> {
 
     /// Types what `f` types in `env`, apart from the rest of the body; reports stay with it.
     fn step(&mut self, env: Env<'a, 'db>, f: impl FnOnce(&mut Self)) -> TypedBody {
+        let staged = env.staged().to_vec();
         let outer = self.step.replace(env);
-        let found = take(&mut self.found);
+        let found = std::mem::replace(&mut self.found, Found { staged, ..Found::default() });
         // What the step binds is its own: the binders it declares have their types there.
         let locals = self.locals.clone();
         f(self);

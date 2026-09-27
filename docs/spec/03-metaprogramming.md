@@ -235,6 +235,13 @@ generators that observe their own output, which is what makes impls and memoizat
   signature whose types name `$` parameters is typed per call, with those bound to the call's
   arguments: `x.to(u8)` has type `u8`. `a.f(b)` evaluates as `T.f(a, b)` for the type `T` of the
   value `a`.
+- **Expansions and evaluations.** Compile-time work in a body is of two kinds. Expansions, `$if`
+  and `$for` generating statements or declarations, run while the body is typed, since its types
+  depend on what they generate. Evaluations, a `$e` whose value typing does not need, such as
+  `$assert(x)`, run once the body is typed, with its types: a code value they pass evaluates
+  where it is written, with the types found there. An evaluation that surely runs (outside a
+  `$if` or `$for` not decided there) and uses a form compile-time evaluation does not run yet is
+  an error, `comptime.unsupported`, since what `$` asks for cannot wait for run time.
 - **Target semantics.** Compile-time code uses the target's layout, word size and endianness
   (guarantee 4).
 - **Traps.** A trap that fires during evaluation (a division by zero, a failed `.to`, spec 04) is

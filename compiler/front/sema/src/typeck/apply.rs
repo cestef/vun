@@ -6,7 +6,7 @@ use vun_codec::{Decode, Encode};
 use vun_hir::tree::ExprId;
 
 use super::omitted::{Plan, Unifier};
-use super::{Known, Stage, Typed, Typer};
+use super::{Known, Reported, Stage, Typer};
 use crate::Primitive;
 use crate::callable::Callable;
 use crate::env::Unevaluated;
@@ -86,8 +86,8 @@ impl Typer<'_, '_, '_> {
         // A generic instantiation's typing reports a trap in its own signature, which the call
         // takes with the rest of its reports.
         let absorbed = instantiation.as_ref().filter(|i| i.generic(self.env().cx)).and_then(|i| {
-            let typed = self.env().cx.get::<Typed>(i)?;
-            self.absorb(call, i, &typed.diag);
+            let reported = self.env().cx.get::<Reported>(i)?;
+            self.absorb(call, i, &reported);
             Some(())
         });
         let signature = callee

@@ -25,12 +25,14 @@ mod operator;
 
 pub use loops::Iteration;
 pub use operator::{Operation, Operator};
+pub use reported::Reported;
 use typed::Found;
 pub use typed::{Step, Typed, TypedBody};
 mod pattern;
 mod prefix;
 mod range;
 mod record;
+mod reported;
 mod safety;
 mod sequence;
 mod staged;

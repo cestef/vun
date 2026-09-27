@@ -16,6 +16,7 @@ use super::apply::{Argument, Callee, Passing};
 use super::{Known, Stage, Typer};
 use crate::callable::Callable;
 use crate::eval::{Call, Instance};
+use crate::float::Format;
 use crate::member::{MemberType, MemberValue};
 use crate::ty::{Ty, Value};
 
@@ -114,7 +115,10 @@ impl Typer<'_, '_, '_> {
         receiver: ExprId,
         args: &[Argument],
     ) -> Option<Known> {
-        let left = self.typed(receiver)?;
+        // Where a float type is expected, the operands of the operator giving it have it, float
+        // literals included (spec 04, section 2).
+        let float = self.expected(site).filter(|t| Format::of(t).is_some());
+        let left = self.typed_as(receiver, float)?;
         let ty = left.ty.through_borrows();
         let (interface, function) = (function.parent()?, function.symbol());
         let owner = if ty.is_required() {

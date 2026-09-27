@@ -13,7 +13,7 @@ use vun_query::{Cx, Cycle, Query};
 
 use super::{Iteration, Known, Operation, Operator, Stage, Typer};
 use crate::env::Env;
-use crate::eval::Instantiation;
+use crate::eval::{Instantiation, Staging};
 use crate::ty::{Ty, Value};
 
 /// What typing finds in a body, or in one `$for` step of it, apart from its locals and reports:
@@ -30,6 +30,10 @@ pub(super) struct Found {
     pub steps: BTreeMap<Step, Arc<TypedBody>>,
     pub iterations: BTreeMap<ExprId, Iteration>,
     pub inferred: BTreeMap<ExprId, Vec<(usize, Value)>>,
+    /// The `$` evaluations that surely run, each a `$e`, run once the body is typed.
+    pub evaluations: Vec<ExprId>,
+    /// The `$for` bindings a step is typed under.
+    pub staged: Vec<Staging>,
 }
 
 impl Found {
@@ -43,6 +47,8 @@ impl Found {
             iterations: self.iterations,
             inferred: self.inferred,
             operators: self.operators,
+            evaluations: self.evaluations,
+            staged: self.staged,
             diag,
             exprs,
         }
@@ -66,6 +72,11 @@ pub struct TypedBody {
     pub inferred: BTreeMap<ExprId, Vec<(usize, Value)>>,
     /// The function each operator calls (spec 02, section 4).
     pub operators: BTreeMap<Operation, Operator>,
+    /// The `$` evaluations that surely run, each a `$e`: run once the body is typed
+    /// ([`Reported`](super::Reported)).
+    pub evaluations: Vec<ExprId>,
+    /// The `$for` bindings a step is typed under; none for a whole body.
+    pub staged: Vec<Staging>,
     pub diag: DiagCtxt,
     pub exprs: usize,
 }
