@@ -860,6 +860,44 @@ in registers a call may overwrite, none saved.
 | GNU ld | vendor toolchain compatibility |
 | none | objects or static libraries for foreign builds |
 
+### 8.7 Checks of unsafe code
+
+- **Where.** Rewriting calls happens when a function is made concrete, in the same way as
+  `#[lang.lower.by]`: the query `Concrete` reads the program's checks, and a call of something
+  marked `check.by` for a checked kind becomes a call of its checked version. MIR still has the
+  types and the calls there. LIR has only addresses and could not tell a raw pointer from a
+  borrow the checks already proved. Everything else stays where it lives today:
+  - Lowering (`vun-lower`) gives a slot whose address becomes a raw pointer (`pointer_to` of a
+    local) a redzone of 16 bytes after it. It poisons the redzone at entry, and at each return
+    it poisons the slot as `returned`.
+  - The native backend checks assembly blocks when the unit's checks include `asm` (a field of
+    `vun_lir::Unit`, as `pointer_bits` is). Before each instruction whose form writes memory, it
+    checks the address that operand computes. Around a block that returns, it compares the
+    stack pointer before and after.
+  - The C backend writes the same checks around `__asm__`, except the per-instruction one, which
+    needs the encoder.
+  `vun-sanitize` (`compiler/mid/sanitize`) holds the rewrite and the slot policy (which slots
+  get redzones, and their size), so lowering and concreteness only call it.
+- **Runtime state is shadow memory**, one byte per 8 bytes of address space, as AddressSanitizer
+  encodes it: 0 for eight addressable bytes, `k` for the first `k`, and a negative value per
+  reason (`lang.check.Violation`) otherwise. A hosted runtime reserves the shadow at start and
+  commits it lazily. A board runtime takes it from a `.shadow` region of `Options.memory`, one
+  eighth of the RAM it checks. A WASI runtime keeps it in linear memory: the shadow of the
+  memory the program uses is grown with it (`memory.grow` by an eighth), so `pointers` and
+  `allocations` run on wasm as on native; `asm` does not arise there. The redzone size and the
+  quarantine's bound are named data in `lang.check` (`REDZONE`, `QUARANTINE`), read by lowering
+  and the runtime. Freed memory stays poisoned in a bounded quarantine before an
+  allocator may reuse it, so a use after free is caught while it is in there.
+- **Why not fat pointers.** Carrying bounds in `*T` would change its size, and with it every
+  layout holding one, `#[layout.c]` and the C ABI. A checked program could then no longer call
+  C, or a library built unchecked. Shadow memory keeps every layout. Code built without checks
+  still links, and its allocations are registered, because its allocators run their checked
+  versions.
+- **Known gaps, stated rather than hidden.** Data objects are addressable as wholes: an overflow
+  from one datum into the next is not caught, since that would need the linker to lay out
+  redzones. Accesses through borrows are not checked, because the borrow check proved them.
+  An `asm` block reading memory it does not own is not caught, only writes are.
+
 ## 9. Workspace
 
 ```

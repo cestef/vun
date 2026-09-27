@@ -180,3 +180,40 @@ add3 := (a: u64) -> u64 {
   GNU `__asm__` from the same forms, with the constraints the bindings give; a backend for an
   architecture without the block's (wasm) refuses it (`backend.lacks`).
 
+## 7. Checked unsafe code
+
+The place and borrow checks prove safe code. `unsafe` code is vouched for by its writer, and the
+reference interpreter checks it while compiling (spec 05, section 6). A program may also be built
+with **checks** that catch at run time what the compiler cannot see inside `unsafe`, each of them
+a trap carrying its origin:
+
+| Check (`lang.check.Kind`) | Catches |
+|---------------------------|---------|
+| `pointers` | a read or write through a raw pointer (`lang.mem.read`, `write`, `copy`, `fill`) of bytes no object holds: past the end of an allocation, a stack slot or a datum, freed memory, or a slot of a function that has returned |
+| `allocations` | an allocator freeing what it did not hand out or has freed already, or with another size |
+| `asm` | an assembly block writing memory no object holds, or returning with the stack pointer moved |
+
+- **Enabled by the build, never by a flag in the compiler.** `std.build.Options` has
+  `checks: &[lang.check.Kind] = &[]`, and `vun build`, `run` and `test` take `--checks`, whose
+  values are that table's entries. The checks a program is built with are part of what its
+  artifacts are keyed by, so checked and unchecked builds are cached apart.
+- **Declared in `lang`, provided by the runtime.** The operations a check performs are typed
+  link symbols in `lang.check`, which the program's runtime exports as it exports
+  `lang.panic.trap` (spec 08): `access(address, bytes, mode)`, `poison(address, bytes, why)`,
+  `allocated(address, bytes)`, `freed(address, bytes)`. A runtime without them cannot run a
+  checked program: linking fails naming the missing operation and the check needing it
+  (`check.unsupported`, declared in `lang/errors.vun` with its page).
+- **Checked versions are Vun.** A function, primitive or interface requirement marked
+  `#[lang.check.by(kind, f)]` runs as `f` in a program built with `kind` checked: each call of it
+  becomes a call of `f`, with the same arguments plus the call's origin as a compile-time
+  `lang.meta.Origin`. `lang.mem.read` is marked with `lang.check.mem.read`, which checks the bytes
+  and then reads. `std.mem.alloc.Allocator`'s `alloc` and `free` are marked too, so every
+  allocator is checked without cooperating. No library holds a privilege: any of them may mark
+  its own operations.
+- **Reported as traps with typed reasons.** A failed check calls `lang.check.fail`, a typed link
+  symbol taking `&lang.check.Failure { site: u32, violation: Violation, address: usize }` and
+  returning `never`. `Violation := enum { outside, freed, returned, double_free, foreign_free,
+  size_mismatch, stack_moved }`. The site indexes the message table like a trap site's
+  (section 3), so the runtime reports the violation, the address and the origin chain of the
+  access. `#[panic.never]` is judged on the program without checks. A check that fails in such
+  a function reports behavior that would have been undefined, so it is not a broken promise.
