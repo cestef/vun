@@ -39,8 +39,7 @@ impl Session {
         let written = if unchanged { Ok(()) } else { path.put(&text) };
         self.packages.wrote(&path);
         if let Err(e) = written.and_then(|()| self.store.register(dir)) {
-            let msg = Msg::new().text("cannot write ").code(path.display().to_string());
-            self.diag.error(Diagnostic::error(errors::IO_UNWRITABLE_FILE, msg).caused_by(&e));
+            self.diag.error(Diagnostic::unwritable(&path, &e));
         }
         Some(selection)
     }

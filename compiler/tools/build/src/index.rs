@@ -55,10 +55,11 @@ impl Listing {
         Some(Self { releases })
     }
 
-    /// The largest release, if newer than `current`.
+    /// The largest release of the major of `current`, if newer than it.
     #[must_use]
     pub fn newer(&self, current: Version) -> Option<(Version, Hash)> {
-        self.releases.last().copied().filter(|&(v, _)| v > current)
+        let major = self.releases.iter().rev().find(|(v, _)| v.major == current.major);
+        major.copied().filter(|&(v, _)| v > current)
     }
 }
 

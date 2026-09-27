@@ -1,13 +1,14 @@
-//! Unpacking: regular files are written with their executable bit, every path checked to be
-//! plain components.
+//! Unpacking: regular files are written through [`Unpacking`], which checks their paths and
+//! bounds them.
 
 use std::io::{self, Read};
 use std::path::Path;
 
-use vun_fs::{Edit, Modes};
-use vun_hash::Snapshot;
-
 use super::{BLOCK, Field, Header, Kind, Malformed, PAX_PATH, Tar};
+use crate::unpack::Unpacking;
+
+/// The most bytes a record naming the next entry holds, far past any path.
+const RECORD: u64 = 1 << 20;
 
 impl Tar {
     /// Unpacks the archive read from `input` into `dir`.
@@ -15,27 +16,29 @@ impl Tar {
     /// # Errors
     /// Returns an error if the archive is malformed or holds a link, or writing fails.
     pub fn unpack(mut input: impl Read, dir: &Path) -> io::Result<()> {
+        let mut unpacking = Unpacking::into(dir);
         // A path from a GNU or PAX record, for the entry that follows.
         let mut named: Option<String> = None;
         while let Some(header) = Self::header(&mut input)? {
+            unpacking.entry()?;
             if header.number(Field::CHECKSUM)? != header.checksum() {
                 return Err(Malformed::Header.into());
             }
-            let data = Self::data(&mut input, header.number(Field::SIZE)?)?;
+            let size = header.number(Field::SIZE)?;
             match header.kind() {
-                Kind::LongName => named = Some(Self::text(&data).to_owned()),
-                Kind::Extended => named = Self::pax_path(&data).or(named),
-                Kind::Global => {}
+                Kind::LongName => named = Some(Self::text(&Self::record(&mut input, size)?).to_owned()),
+                Kind::Extended => named = Self::pax_path(&Self::record(&mut input, size)?).or(named),
+                Kind::Global => drop(Self::record(&mut input, size)?),
                 // A directory is implied by its files, but a long path before it is its own.
-                Kind::Directory => named = None,
+                Kind::Directory => {
+                    named = None;
+                    Self::skip(&mut input, size + Self::padding(size))?;
+                }
                 Kind::Other(byte) => return Err(Malformed::Unsupported(char::from(byte)).into()),
                 Kind::File => {
                     let path = named.take().unwrap_or_else(|| header.path());
-                    let components = Snapshot::components(path.trim_start_matches("./"))
-                        .ok_or_else(|| Malformed::Path(path.clone()))?;
-                    let target = components.iter().fold(dir.to_path_buf(), |p, c| p.join(c));
-                    target.put(&data)?;
-                    target.set_mode(header.mode()?)?;
+                    unpacking.file(&path, &mut input, size, header.mode()?)?;
+                    Self::skip(&mut input, Self::padding(size))?;
                 }
             }
         }
@@ -56,15 +59,26 @@ impl Tar {
         Ok(block.iter().any(|&b| b != 0).then_some(Header(block)))
     }
 
-    /// The `size` bytes of an entry, then the padding to the next block.
-    fn data(input: &mut impl Read, size: u64) -> io::Result<Vec<u8>> {
+    /// The `size` bytes of a record naming the next entry, then the padding to the next block.
+    fn record(input: &mut impl Read, size: u64) -> io::Result<Vec<u8>> {
+        if size > RECORD {
+            return Err(Malformed::Header.into());
+        }
         let mut data = Vec::new();
         input.take(size).read_to_end(&mut data)?;
         if data.len() as u64 != size {
             return Err(io::ErrorKind::UnexpectedEof.into());
         }
-        io::copy(&mut input.take(Self::padding(size)), &mut io::sink())?;
+        Self::skip(input, Self::padding(size))?;
         Ok(data)
+    }
+
+    /// Passes over `size` bytes.
+    fn skip(input: &mut impl Read, size: u64) -> io::Result<()> {
+        if io::copy(&mut input.take(size), &mut io::sink())? != size {
+            return Err(io::ErrorKind::UnexpectedEof.into());
+        }
+        Ok(())
     }
 
     /// The `path` among PAX records `<length> <key>=<value>\n`.

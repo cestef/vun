@@ -122,8 +122,7 @@ fn pack(session: &mut Session, args: &Args, shell: &mut Shell<'_>) -> io::Result
         }
     };
     if let Err(e) = path.put(&bytes) {
-        let msg = Msg::new().text("cannot write ").code(path.display().to_string());
-        session.diag.error(Diagnostic::error(errors::IO_UNWRITABLE_FILE, msg).caused_by(&e));
+        session.diag.error(Diagnostic::unwritable(&path, &e));
         return Ok(Outcome::Failure);
     }
     let path = path.display().to_string();

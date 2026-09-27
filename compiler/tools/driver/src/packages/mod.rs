@@ -25,7 +25,7 @@ use std::path::{Path, PathBuf};
 use vun_build::layout::MANIFEST;
 use vun_build::lock::{Lock, Replaced, Replacing};
 use vun_build::manifest::{DEFAULT_DEPS, DEFAULT_PRELUDE, DepKind, Identity, Manifest, Source, Version};
-use vun_diag::{Diagnostic, ErrorGuaranteed};
+use vun_diag::{Diagnostic, ErrorGuaranteed, Msg, errors};
 use vun_hash::{Hash, Snapshot};
 use vun_intern::Symbol;
 use vun_span::{FileId, Span};
@@ -33,6 +33,7 @@ use vun_trace::tracing;
 
 pub use add::{Addition, Unstated};
 pub use fetch::Fetched;
+use inputs::Sources;
 pub use select::Selection;
 pub use update::Updated;
 
@@ -62,6 +63,8 @@ pub struct Package {
     pub prelude_span: Option<Span>,
     /// The hashes of its files, from which its key is computed; empty for [`PackageKey::Loose`].
     pub snapshot: Snapshot,
+    /// The text of its source files, as hashed.
+    sources: Sources,
     /// Its identity across versions and its version; `None` for [`PackageKey::Loose`].
     pub release: Option<(Identity, Version)>,
     /// The identities it replaces; only the project's apply.
@@ -172,9 +175,18 @@ impl Session {
     fn read_package(&mut self, dir: &Path) -> Option<PackageKey> {
         let path = dir.join(MANIFEST);
         let manifest = self.manifest_at(&path.is_file().then_some(path)?)?;
-        let snapshot = Snapshot::of(dir, &manifest.include);
-        let key = PackageKey::Content(snapshot.root());
-        tracing::debug!(dir = %dir.display(), name = %manifest.name, files = snapshot.files().count(), "package read");
+        if dir.starts_with(self.store.dir())
+            && let Some(span) = manifest.by_path().next()
+        {
+            let msg = Msg::new().text("a stored package names its dependencies by hash, not by path");
+            self.report(Some(span), Diagnostic::error(errors::MANIFEST_INVALID_FIELD, msg));
+            return None;
+        }
+        let taken = Snapshot::take(dir, &manifest.include)
+            .map_err(|e| self.diag.error(Diagnostic::unreadable(dir, &e)))
+            .ok()?;
+        let key = PackageKey::Content(taken.snapshot.root());
+        tracing::debug!(dir = %dir.display(), name = %manifest.name, files = taken.snapshot.files().count(), "package read");
         if !self.packages.list.contains_key(&key) {
             let name = Some(Symbol::intern(&manifest.name));
             let replace = manifest.replace.iter().map(|r| Replace {
@@ -208,7 +220,8 @@ impl Session {
                 deps: deps.collect(),
                 prelude: manifest.prelude,
                 prelude_span: Some(manifest.prelude_span),
-                snapshot,
+                sources: Sources::of(&taken),
+                snapshot: taken.snapshot,
                 release,
                 replace,
             };
@@ -257,6 +270,7 @@ impl Session {
                 prelude,
                 prelude_span: None,
                 snapshot: Snapshot::default(),
+                sources: Sources::default(),
                 release: None,
                 replace: Vec::new(),
             };

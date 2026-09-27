@@ -2,11 +2,13 @@
 //! user. An entry is nested as `<store>/<algorithm>/<first digest characters>/<rest of the
 //! digest>/`, so that no directory grows past a few thousand entries and every path is derived
 //! from the hash alone; it holds the unpacked `package/`, the `snapshot` of its file hashes
-//! verified when fetched, and a `label` naming it for people. A fetch unpacks under `staging/` and
-//! moves the entry in place once verified. Projects register their lockfiles under `roots/`, and
+//! verified when fetched, and a `label` naming it for people. A fetch unpacks under `staging/`, in
+//! a directory of its process, and moves the entry in place once verified unless another process
+//! already did. Projects register their lockfiles under `roots/`, and
 //! collection keeps what some registered lockfile records.
 
 mod collect;
+mod staging;
 #[cfg(test)]
 mod tests;
 
@@ -14,7 +16,8 @@ use std::path::{Path, PathBuf};
 
 use vun_hash::Hash;
 
-pub use collect::{Collected, Listed};
+pub use collect::{Collected, Listed, Unparsed};
+pub use staging::Staging;
 
 /// What a store entry is called for people: the name and version a dependent declared.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -56,15 +59,17 @@ impl Store {
 
     /// The user's store: the directory named by [`Self::ENV`], or `vun/store` in the user's
     /// cache directory (XDG on Unix, including macOS, as command-line tools expect; the known
-    /// folder on Windows), or in the temporary directory for a user without a home.
+    /// folder on Windows). A user without a home keeps one in the working directory's
+    /// [`vun_fs::WORK`], never in a directory other users can write.
     #[must_use]
     pub fn user() -> Self {
         use etcetera::BaseStrategy;
         let named = std::env::var_os(Self::ENV).map(PathBuf::from);
         let cache = || {
-            let base =
-                etcetera::choose_base_strategy().map_or_else(|_| std::env::temp_dir(), |b| b.cache_dir());
-            base.join(Self::CACHE).join(Self::DIR)
+            etcetera::choose_base_strategy().map_or_else(
+                |_| std::env::current_dir().unwrap_or_default().join(vun_fs::WORK).join(Self::DIR),
+                |b| b.cache_dir().join(Self::CACHE).join(Self::DIR),
+            )
         };
         Self::at(&named.unwrap_or_else(cache))
     }
@@ -99,11 +104,5 @@ impl Store {
     #[must_use]
     pub fn label(&self, hash: Hash) -> PathBuf {
         self.entry(hash).join(Self::LABEL)
-    }
-
-    /// Where a fetch of `hash` builds its entry before moving it in place.
-    #[must_use]
-    pub fn staging(&self, hash: Hash) -> PathBuf {
-        self.root.join(Self::STAGING).join(hash.algorithm().name()).join(hash.digest())
     }
 }

@@ -95,26 +95,35 @@ fn reports_where_the_manifest_is_wrong() {
         ("build := 1;", &[errors::MANIFEST_MISSING_PACKAGE]),
         ("package := 1;", &[errors::MANIFEST_INVALID_FIELD]),
         (
-            r#"package := .{ .name = "a", .id = 1, .version = "1.0.0", .edition = 1, .include = .{},
+            r#"package := .{ .name = "a", .id = 1, .version = "1.0.0", .edition = 1, .include = .{ "build.vun" },
                 .deps = .{ .x = .{ .version = "1.0.0", .hash = "blake3-m7qd" } } };"#,
             &[errors::MANIFEST_INVALID_FIELD],
         ),
         (
-            r#"package := .{ .name = "a", .id = 1, .version = "1.0", .edition = 1, .include = .{} };"#,
+            r#"package := .{ .name = "a", .id = 1, .version = "1.0", .edition = 1, .include = .{ "build.vun" } };"#,
             &[errors::MANIFEST_INVALID_FIELD],
         ),
         (
-            r#"package := .{ .name = "a", .id = -1, .version = "1.0.0", .edition = 1, .include = .{}, .dpes = .{} };"#,
+            r#"package := .{ .name = "a", .id = -1, .version = "1.0.0", .edition = 1, .include = .{ "build.vun" }, .dpes = .{} };"#,
             &[errors::MANIFEST_INVALID_FIELD, errors::MANIFEST_UNKNOWN_FIELD],
         ),
         (
-            r#"package := .{ .nme = "a", .id = 1, .version = "1.0.0", .edition = 1, .include = .{} };"#,
+            r#"package := .{ .nme = "a", .id = 1, .version = "1.0.0", .edition = 1, .include = .{ "build.vun" } };"#,
             &[errors::MANIFEST_MISSING_FIELD, errors::MANIFEST_UNKNOWN_FIELD],
         ),
         (
-            r#"package := .{ .name = "a", .id = 1, .version = "1.0.0", .edition = 1, .include = .{},
+            r#"package := .{ .name = "a", .id = 1, .version = "1.0.0", .edition = 1, .include = .{ "build.vun" },
                 .deps = .{ .x = .{ .path = "p", .version = "1.0.0" }, .y = .{ .version = "1.0.0" } } };"#,
             &[errors::MANIFEST_INVALID_FIELD, errors::MANIFEST_MISSING_FIELD],
+        ),
+        (
+            r#"package := .{ .name = "a", .id = 1, .version = "1.0.0", .edition = 1, .include = .{ "src" } };"#,
+            &[errors::MANIFEST_INVALID_FIELD],
+        ),
+        (
+            r#"package := .{ .name = "a", .id = 1, .version = "1.0.0", .edition = 1,
+                .include = .{ "build.vun", "../secrets" } };"#,
+            &[errors::MANIFEST_INVALID_FIELD],
         ),
     ];
     for &(text, expected) in cases {
@@ -155,7 +164,7 @@ fn declared_deps_read_back() {
             dep.declare(decls, &text).unwrap()
         })
         .0;
-        text = vun_diag::Edit::apply(&[edit], &text);
+        text = vun_diag::Edit::apply(&[edit], &text).unwrap();
     }
     let (manifest, ids) = manifest(&text);
     assert!(ids.is_empty(), "{ids:?}\n{text}");

@@ -1,19 +1,22 @@
 //! Raising dependencies (`vun pkg update`, spec 12, section 3): each stored dependency is raised
 //! to the newest release its identity's major has in the project's indexes. The release is
 //! fetched from the index, verified against the hash the listing states, stored, and its entry in
-//! `.deps` rewritten with that hash, so the index is trusted no more than any mirror.
+//! `.deps` rewritten with that hash. The index is trusted to name a release, as `vun pkg add`
+//! trusts an archive on first use; the release must declare the identity and version it is
+//! listed under.
 
 use std::path::Path;
 
 use vun_build::index::{Index, Listing};
 use vun_build::layout::MANIFEST;
-use vun_build::manifest::{self, DepKind, Source, Version};
+use vun_build::manifest::{self, DepKind, Identity, Source, Version};
 use vun_build::store::Label;
 use vun_diag::{ChildKind, Diagnostic, Msg, errors};
 use vun_hash::Hash;
 use vun_intern::Symbol;
 use vun_pkg::Failure;
 
+use super::fetch::Rejected;
 use super::{Dep, DepSource};
 use crate::Session;
 
@@ -76,8 +79,7 @@ impl Session {
                 let Some((to, hash)) = listing.newer(version) else { break };
                 let url = index.archive(identity, to);
                 let label = Label { name: &dep.name, version: to };
-                let store = self.store.clone();
-                if let Err(why) = self.stage(DepKind::Vun, &store, hash, &store.staging(hash), &url, label) {
+                if let Err(why) = self.release(identity, to, hash, &url, label) {
                     let msg = Msg::new().text("cannot fetch ").code(&dep.name).text(" ").code(to.to_string());
                     self.diag.error(Diagnostic::error(errors::PACKAGE_FETCH_FAILED, msg).caused_by(&why));
                     break;
@@ -96,6 +98,26 @@ impl Session {
             raised.iter().map(|(dep, _)| dep.redeclare(decls, text)).collect()
         });
         if written { raised.into_iter().map(|(_, u)| u).collect() } else { Vec::new() }
+    }
+
+    /// Stores the release `version` of `identity` from `url`, checking it is what it is listed as.
+    fn release(
+        &mut self,
+        identity: Identity,
+        version: Version,
+        hash: Hash,
+        url: &str,
+        label: Label<'_>,
+    ) -> Result<(), Rejected> {
+        let store = self.store.clone();
+        let staging = store.stage(hash).map_err(Rejected::Store)?;
+        self.stage(DepKind::Vun, &store, hash, &staging, url, label)?;
+        let stored = self.package_at(&store.package(hash));
+        let declared = stored.and_then(|key| self.packages.list[&key].release);
+        match declared {
+            Some(release) if release == (identity, version) => Ok(()),
+            _ => Err(Rejected::Release { identity, version }),
+        }
     }
 
     /// The listing at `url`; one that cannot be read is reported.

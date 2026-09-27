@@ -13,8 +13,6 @@ use vun_trace::tracing;
 
 /// Where link stamps are kept, among the builds.
 const LINKED: &str = "linked";
-/// What a file being made is named after, until it is whole.
-const PART: &str = "part";
 
 /// The directory holding a program's artifacts and objects.
 pub(super) struct Objects;
@@ -26,11 +24,6 @@ impl Objects {
         let contents: Vec<(&Path, &[u8])> =
             artifacts.iter().map(|a| (a.name.as_path(), a.bytes.as_slice())).collect();
         Hash::of_value(&(contents, compiler, profile))
-    }
-
-    /// The name `path` is made under before it is whole: `program.c` gives `program.part`.
-    pub(super) fn part(path: &Path) -> PathBuf {
-        path.with_extension(PART)
     }
 }
 

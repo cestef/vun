@@ -29,6 +29,18 @@ pub struct Collected {
     pub kept: usize,
 }
 
+/// A registered lockfile that does not parse.
+#[derive(Debug)]
+pub struct Unparsed(pub PathBuf);
+
+impl std::fmt::Display for Unparsed {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "`{}` is not a lockfile", self.0.display())
+    }
+}
+
+impl std::error::Error for Unparsed {}
+
 impl Store {
     /// Registers the project in `dir`: the entries its lockfile records are kept.
     ///
@@ -64,6 +76,9 @@ impl Store {
     /// # Errors
     /// Returns an error if the store cannot be read or an entry removed.
     pub fn collect(&self) -> io::Result<Collected> {
+        // Alone in the store: no fetch is staging, or reading an entry it is about to record.
+        let held = self.lock()?;
+        held.lock()?;
         let mut collected = Collected::default();
         for listed in self.list()? {
             if listed.rooted {
@@ -77,18 +92,26 @@ impl Store {
         Ok(collected)
     }
 
-    /// The hashes the registered lockfiles record; a root whose project has no readable lockfile
-    /// is forgotten.
+    /// The hashes the registered lockfiles record; a root whose project has no lockfile any more
+    /// is forgotten. A lockfile that cannot be read or does not parse stops collection, which
+    /// could otherwise remove what it records.
     fn live(&self) -> io::Result<HashSet<Hash>> {
         let mut live = HashSet::new();
         let roots = self.root.join(Self::ROOTS);
         for root in roots.entries().unwrap_or_default() {
             let project = std::fs::read_to_string(&root)?;
-            let lock = std::fs::read_to_string(Path::new(&project).join(lock::FILE)).ok();
-            match lock.and_then(|text| Lock::parse(&text)) {
-                Some(lock) => live.extend(lock.entries().iter().map(|e| e.hash)),
-                None => std::fs::remove_file(&root)?,
-            }
+            let path = Path::new(&project).join(lock::FILE);
+            let text = match std::fs::read_to_string(&path) {
+                Ok(text) => text,
+                Err(e) if e.kind() == io::ErrorKind::NotFound => {
+                    std::fs::remove_file(&root)?;
+                    continue;
+                }
+                Err(e) => return Err(e),
+            };
+            let lock = Lock::parse(&text)
+                .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, Unparsed(path)))?;
+            live.extend(lock.entries().iter().map(|e| e.hash));
         }
         Ok(live)
     }
@@ -97,7 +120,8 @@ impl Store {
     fn hashes(&self) -> io::Result<Vec<Hash>> {
         let mut hashes = Vec::new();
         for &algorithm in Algorithm::ALL {
-            for first in self.root.join(algorithm.name()).entries().unwrap_or_default() {
+            let firsts = self.root.join(algorithm.name()).entries().unwrap_or_default();
+            for first in firsts.into_iter().filter(|p| p.is_dir()) {
                 for rest in first.entries()? {
                     let digest =
                         [&first, &rest].map(|p| p.file_name().map(|n| n.to_string_lossy().into_owned()));

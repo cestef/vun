@@ -1,6 +1,7 @@
 //! Writing a project's manifest back after edits computed from its literal declarations, so that
 //! everything a command changes goes through the literal writer and keeps the file's layout.
 
+use std::error::Error;
 use std::path::Path;
 
 use vun_build::manifest::PACKAGE;
@@ -27,18 +28,21 @@ impl Session {
             let package = decls.iter().find(|d| d.name == PACKAGE).map(|d| d.span);
             (edit(decls, &text), package)
         });
-        let edits = match edits {
-            Ok(edits) => edits,
+        let rewritten = match edits {
+            Ok(edits) => Edit::apply(&edits, &text).map_err(|e| Box::new(e) as Box<dyn Error>),
+            Err(e) => Err(Box::new(e) as Box<dyn Error>),
+        };
+        let rewritten = match rewritten {
+            Ok(rewritten) => rewritten,
             Err(e) => {
                 let msg = Msg::new().text("cannot ").append(what).text(" in this manifest");
-                let d = Diagnostic::error(errors::MANIFEST_UNEDITABLE, msg).caused_by(&e);
+                let d = Diagnostic::error(errors::MANIFEST_UNEDITABLE, msg).caused_by(e.as_ref());
                 self.report(Some(package.unwrap_or_else(|| Span::new(file, 0, 0))), d);
                 return false;
             }
         };
-        if let Err(e) = path.put(Edit::apply(&edits, &text)) {
-            let msg = Msg::new().text("cannot write ").code(path.display().to_string());
-            self.diag.error(Diagnostic::error(errors::IO_UNWRITABLE_FILE, msg).caused_by(&e));
+        if let Err(e) = path.put(rewritten) {
+            self.diag.error(Diagnostic::unwritable(path, &e));
             return false;
         }
         self.packages.wrote(path);

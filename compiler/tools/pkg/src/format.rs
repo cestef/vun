@@ -10,6 +10,7 @@ use flate2::read::GzDecoder;
 use flate2::write::GzEncoder;
 use vun_hash::Snapshot;
 
+use crate::unpack::{Bounded, Unpacking};
 use crate::{Contents, Tar, Zip, Zstd};
 
 pub struct Format {
@@ -28,9 +29,9 @@ pub const FORMATS: &[Format] = &[
     Format {
         suffixes: &[".tar.xz", ".txz"],
         unpack: |bytes, dir| {
-            let mut tar = Vec::new();
+            let mut tar = Bounded::new(Vec::new(), Unpacking::STREAM);
             lzma_rs::xz_decompress(&mut BufReader::new(bytes), &mut tar).map_err(io::Error::other)?;
-            Tar::unpack(tar.as_slice(), dir)
+            Tar::unpack(tar.inner.as_slice(), dir)
         },
         pack: |contents| {
             let mut xz = Vec::new();
@@ -60,6 +61,9 @@ pub const FORMATS: &[Format] = &[
 ];
 
 impl Format {
+    /// The most bytes of an archive read from a mirror.
+    pub const MAX_ARCHIVE: u64 = Unpacking::STREAM;
+
     /// What packages are published in, and indexes serve: a zstd-compressed tar.
     pub const PUBLISHED: Self = Self {
         suffixes: &[".tar.zst", ".tzst"],
@@ -85,13 +89,13 @@ impl Format {
     }
 
     /// The archive of the files under `dir` named by `include`, under the directory `top` in
-    /// formats that wrap a tree in one, and the snapshot the files were read with.
+    /// formats that wrap a tree in one, and the snapshot of the bytes it holds.
     ///
     /// # Errors
-    /// Returns an error if a file cannot be read.
+    /// Returns an error if a file cannot be read or `include` names one outside `dir`.
     pub fn pack(&self, dir: &Path, include: &[String], top: &str) -> io::Result<(Vec<u8>, Snapshot)> {
-        let snapshot = Snapshot::of(dir, include);
-        let bytes = (self.pack)(&Contents { dir, snapshot: &snapshot, top })?;
-        Ok((bytes, snapshot))
+        let taken = Snapshot::take(dir, include)?;
+        let bytes = (self.pack)(&Contents { taken: &taken, top })?;
+        Ok((bytes, taken.snapshot))
     }
 }

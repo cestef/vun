@@ -3,7 +3,9 @@
 
 use std::fmt;
 
-use super::Manifest;
+use vun_span::Span;
+
+use super::{Manifest, Source};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Identity {
@@ -39,6 +41,14 @@ impl Manifest {
     #[must_use]
     pub fn identity(&self) -> Identity {
         Identity { id: self.id, major: self.version.major }
+    }
+
+    /// Where it declares a dependency or a replacement by path, which only a package on the
+    /// user's disk may: a stored one names every package by hash.
+    pub fn by_path(&self) -> impl Iterator<Item = Span> + '_ {
+        let deps = self.deps.iter().map(|d| (&d.source, d.span));
+        let replace = self.replace.iter().map(|r| (&r.source, r.span));
+        deps.chain(replace).filter(|(source, _)| matches!(source, Source::Path(_))).map(|(_, span)| span)
     }
 
     /// The name of its release, `hal-1.0.0`: the stem of its archives and the directory foreign

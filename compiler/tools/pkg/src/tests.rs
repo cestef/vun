@@ -1,7 +1,8 @@
 use vun_fs::{Mode, Modes, Scratch};
 use vun_hash::Snapshot;
 
-use super::{FORMATS, Failure, Mirror, Scheme, Schemes};
+use super::{FORMATS, Failure, Locator, Mirror, Scheme, Schemes, Zip};
+use crate::unpack::Refused;
 
 /// A package tree with a nested file, an executable one and a path past the ustar name field.
 fn tree(dir: &Scratch) -> Vec<String> {
@@ -23,17 +24,18 @@ fn every_format_packs_reproducibly_and_unpacks_to_the_same_tree() {
         let path = dir.write(["demo", format.suffix()].concat(), &bytes);
         let out = dir.join(format.suffix());
         Mirror::parse(&Scheme::file_url(&path), &Schemes::default()).unwrap().fetch(&out).unwrap();
-        assert_eq!(Snapshot::of(&out, &include), snapshot, "{}", format.suffix());
+        assert_eq!(Snapshot::of(&out, &include).unwrap(), snapshot, "{}", format.suffix());
         #[cfg(unix)]
         assert_eq!(out.join("configure").mode(), Mode::Executable, "{}", format.suffix());
-        assert!(!dir.join(format!("{}.unpacking", format.suffix())).exists());
+        assert!(!Mirror::unpacking(&out).exists());
     }
 }
 
 #[test]
 fn unknown_schemes_and_formats_are_named() {
     /// A network scheme as a program installs one; never read here.
-    const NETWORK: &[Scheme] = &[Scheme { prefix: "https://", read: |_, _| Ok(Vec::new()) }];
+    const NETWORK: &[Scheme] =
+        &[Scheme { prefix: "https://", read: |_, _| Ok(Vec::new()), locator: Locator::Url }];
     let mut schemes = Schemes::default();
     assert!(matches!(Mirror::parse("https://x/a.tar.gz", &schemes), Err(Failure::Scheme(_))));
     schemes.install(NETWORK);
@@ -41,4 +43,26 @@ fn unknown_schemes_and_formats_are_named() {
     assert_eq!(unknown.to_string(), "no supported scheme; supported: file://, https://");
     assert!(matches!(Mirror::parse("https://x/a.rar", &schemes), Err(Failure::Format)));
     assert!(Mirror::parse("https://x/a.tar.gz?download=1", &schemes).is_ok());
+}
+
+#[test]
+fn a_zip_holding_a_link_is_refused() {
+    use std::io::{Cursor, Write};
+    use zip::ZipWriter;
+    use zip::write::SimpleFileOptions;
+    let mut zip = ZipWriter::new(Cursor::new(Vec::new()));
+    zip.start_file("a.vun", SimpleFileOptions::default()).unwrap();
+    zip.write_all(b"a := 1;").unwrap();
+    zip.add_symlink("home", "/home", SimpleFileOptions::default()).unwrap();
+    let bytes = zip.finish().unwrap().into_inner();
+    let dir = Scratch::new("zip-link");
+    let error = Zip::unpack(&bytes, &dir.join("out")).unwrap_err();
+    assert!(matches!(error.get_ref().and_then(|e| e.downcast_ref()), Some(Refused::Entry(_))));
+}
+
+#[test]
+fn a_local_path_keeps_what_a_url_would_read_as_a_query() {
+    let schemes = Schemes::default();
+    let path = std::path::Path::new("/tmp/v#1/a.tar.gz");
+    assert!(Mirror::parse(&Scheme::file_url(path), &schemes).is_ok());
 }

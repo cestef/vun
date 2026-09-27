@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 use std::{fmt, fs, io};
 
 use vun_build::layout::MANIFEST;
-use vun_build::manifest::{DepKind, Version};
+use vun_build::manifest::{DepKind, Identity, Version};
 use vun_build::store::{Label, Store};
 use vun_diag::{ChildKind, Diagnostic, Msg, errors};
 use vun_fs::{Edit, Tree};
@@ -37,6 +37,13 @@ pub(super) enum Rejected {
     Hash {
         found: Hash,
     },
+    /// What it unpacked cannot be read as a package, such as a link or a path outside it.
+    Unpacked(io::Error),
+    /// It does not declare the release an index lists it as.
+    Release {
+        identity: Identity,
+        version: Version,
+    },
     Store(io::Error),
 }
 
@@ -45,6 +52,10 @@ impl fmt::Display for Rejected {
         match self {
             Self::Mirror(failure) => failure.fmt(f),
             Self::Hash { found } => write!(f, "its contents hash to `{found}`"),
+            Self::Unpacked(_) => f.write_str("cannot read what it unpacked"),
+            Self::Release { identity, version } => {
+                write!(f, "it does not declare the release `{identity}` `{version}` it is listed as")
+            }
             Self::Store(_) => f.write_str("cannot move it into the store"),
         }
     }
@@ -54,8 +65,8 @@ impl Error for Rejected {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
             Self::Mirror(failure) => failure.source(),
-            Self::Hash { .. } => None,
-            Self::Store(e) => Some(e),
+            Self::Hash { .. } | Self::Release { .. } => None,
+            Self::Unpacked(e) | Self::Store(e) => Some(e),
         }
     }
 }
@@ -86,39 +97,53 @@ impl Session {
         if done.iter().any(|(_, h, _)| h == hash) {
             return None;
         }
-        let outcome =
-            if self.present(*hash) { Fetched::Present } else { self.download(dep, *hash, *version, urls) };
+        let outcome = if self.present(dep.kind, *hash) {
+            Fetched::Present
+        } else {
+            self.download(dep, *hash, *version, urls)
+        };
         done.push((dep.name, *hash, outcome.clone()));
         Some(outcome)
     }
 
-    /// Whether the store holds `hash` as it was verified.
-    fn present(&self, hash: Hash) -> bool {
-        let store = &self.store;
+    /// Whether the store holds `hash` as it was verified: a package read as the session reads
+    /// every package, once, or a foreign tree against the snapshot recorded with it.
+    fn present(&mut self, kind: DepKind, hash: Hash) -> bool {
+        let store = self.store.clone();
+        if kind == DepKind::Vun {
+            return self.package_at(&store.package(hash)) == Some(PackageKey::Content(hash));
+        }
         let Some(recorded) = fs::read_to_string(store.snapshot(hash)).ok().and_then(|t| Snapshot::parse(&t))
         else {
             return false;
         };
         let mut top: Vec<String> = recorded.files().map(|(path, _)| path[0].clone()).collect();
         top.dedup();
-        Snapshot::of(&store.package(hash), &top) == recorded
+        Snapshot::of(&store.package(hash), &top).is_ok_and(|found| found == recorded)
     }
 
     fn download(&mut self, dep: &Dep, hash: Hash, version: Version, urls: &[String]) -> Fetched {
         let store = self.store.clone();
-        let staging = store.staging(hash);
-        let name = dep.name.as_str().to_owned();
-        let label = Label { name: &name, version };
+        let name = dep.name.as_str();
+        let msg = Msg::new().text("cannot fetch ").code(name).text(" (").code(hash.to_string()).text(")");
+        let staging = match store.stage(hash) {
+            Ok(staging) => staging,
+            Err(e) => {
+                self.report(dep.span, Diagnostic::error(errors::PACKAGE_FETCH_FAILED, msg).caused_by(&e));
+                return Fetched::Failed;
+            }
+        };
+        let label = Label { name, version };
         let mut rejected = Vec::new();
         for url in urls {
             match self.stage(dep.kind, &store, hash, &staging, url, label) {
-                Ok(()) => return Fetched::Stored { url: url.clone() },
+                Ok(()) => {
+                    self.packages.wrote(&store.package(hash).join(MANIFEST));
+                    return Fetched::Stored { url: url.clone() };
+                }
                 Err(why) => rejected.push((url, why)),
             }
         }
-        let _ = staging.remove();
-        let name = dep.name.as_str();
-        let msg = Msg::new().text("cannot fetch ").code(name).text(" (").code(hash.to_string()).text(")");
         let mut d = Diagnostic::error(errors::PACKAGE_FETCH_FAILED, msg);
         if urls.is_empty() {
             d = d.child(ChildKind::Help, Msg::new().text("declare mirrors in its ").code(".urls"));
@@ -141,7 +166,7 @@ impl Session {
         label: Label<'_>,
     ) -> Result<(), Rejected> {
         let unpacked = self.unpack(staging, url)?;
-        let snapshot = Snapshot::of(&unpacked, &self.include(kind, &unpacked));
+        let snapshot = Snapshot::of(&unpacked, &self.include(kind, &unpacked)).map_err(Rejected::Unpacked)?;
         if snapshot.root() != hash {
             return Err(Rejected::Hash { found: snapshot.root() });
         }
@@ -157,7 +182,8 @@ impl Session {
     }
 
     /// Moves the verified `staging` entry into the store under the root of `snapshot`, recording
-    /// the snapshot it was verified with and its label.
+    /// the snapshot it was verified with and its label; an entry another process stored first is
+    /// kept, as it holds the same contents.
     pub(super) fn commit(
         store: &Store,
         staging: &Path,
@@ -167,7 +193,7 @@ impl Session {
         let commit = || -> io::Result<()> {
             staging.join(Store::SNAPSHOT).put(snapshot.to_string())?;
             staging.join(Store::LABEL).put(label.to_string())?;
-            store.entry(snapshot.root()).replace_with(staging)
+            store.entry(snapshot.root()).install(staging)
         };
         commit().map_err(Rejected::Store)
     }

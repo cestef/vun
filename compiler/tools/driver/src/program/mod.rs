@@ -10,7 +10,7 @@ use std::path::{Path, PathBuf};
 use vun_backend::{Artifact, Emits};
 use vun_command::{Param, PathKind, Values};
 use vun_diag::{Diagnostic, ErrorGuaranteed, Msg, errors};
-use vun_fs::Edit;
+use vun_fs::{Edit, Part};
 use vun_link::{LinkPlan, OutputKind};
 use vun_lir::FuncId;
 use vun_par::Parallel;
@@ -82,10 +82,7 @@ impl Session {
         // A directory of this key holds these artifacts already.
         for artifact in coded.artifacts.iter().filter(|a| !dir.join(&a.name).exists()) {
             let path = dir.join(&artifact.name);
-            path.put(&artifact.bytes).map_err(|e| {
-                let msg = Msg::new().text("cannot write ").code(path.display().to_string());
-                self.diag.error(Diagnostic::error(errors::IO_UNWRITABLE_FILE, msg).caused_by(&e))
-            })?;
+            path.put(&artifact.bytes).map_err(|e| self.diag.error(Diagnostic::unwritable(&path, &e)))?;
         }
         let sources: Vec<&Artifact> = coded.artifacts.iter().filter(|a| a.kind == Emits::Source).collect();
         let results = sources.par_map(|a| {
@@ -149,7 +146,8 @@ impl Session {
         if object.exists() {
             return Ok(object);
         }
-        let part = cache::Objects::part(path).with_extension(OBJECT);
+        // Made under this process's own name, so builds of one key at once never meet.
+        let part = path.part().with_extension(OBJECT);
         let optimize = match profile {
             Profile::Debug => &[][..],
             Profile::Release => &compiler.optimize,

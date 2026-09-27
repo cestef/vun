@@ -6,7 +6,7 @@ use std::sync::Arc;
 
 use vun_build::layout::SEPARATOR;
 use vun_diag::DiagCtxt;
-use vun_hash::{Hash, Snapshot};
+use vun_hash::{Hash, Snapshot, Taken};
 use vun_hir::db::{
     DepData, FileRef, FileText, Package as PackageInput, PackageData, PackageId, Parsed, Unloaded,
 };
@@ -48,14 +48,23 @@ impl Package {
         let parts = inside.map(|p| p.iter().map(|c| c.to_string_lossy().into_owned()).collect::<Vec<_>>());
         parts.map_or_else(|| file.display().to_string(), |p| p.join(&Snapshot::PATH_SEPARATOR.to_string()))
     }
+}
 
-    /// Its source files, relative to its directory, components joined as in snapshots.
-    fn sources(&self) -> Vec<String> {
-        let files = self.snapshot.files().map(|(path, _)| path);
-        let sources = files.filter(|path| {
+/// A package's source files, by their path relative to its directory, components joined as in
+/// snapshots, with the text they were hashed with: `None` for one that is not UTF-8.
+#[derive(Default)]
+pub(super) struct Sources(Vec<(String, Option<Arc<str>>)>);
+
+impl Sources {
+    pub(super) fn of(taken: &Taken) -> Self {
+        let sources = taken.files().filter(|(path, _, _)| {
             path.last().is_some_and(|f| Path::new(f).extension().is_some_and(|e| e == EXTENSION))
         });
-        sources.map(|path| path.join(&Snapshot::PATH_SEPARATOR.to_string())).collect()
+        let sources = sources.map(|(path, _, bytes)| {
+            let text = std::str::from_utf8(bytes).ok().map(Arc::from);
+            (path.join(&Snapshot::PATH_SEPARATOR.to_string()), text)
+        });
+        Self(sources.collect())
     }
 }
 
@@ -116,12 +125,10 @@ impl Session {
             deps,
             prelude,
             prelude_span: p.prelude_span,
-            files: p.sources(),
+            files: p.sources.0.iter().map(|(path, _)| path.clone()).collect(),
         };
-        let texts = data.files.par_map(|path| std::fs::read_to_string(p.dir.join(path)).ok());
-        for (path, text) in data.files.iter().zip(texts) {
-            self.db
-                .set::<FileText>(&FileRef { package: id, path: Symbol::intern(path) }, text.map(Arc::from));
+        for (path, text) in &p.sources.0 {
+            self.db.set::<FileText>(&FileRef { package: id, path: Symbol::intern(path) }, text.clone());
         }
         self.db.set::<PackageInput>(&id, Arc::new(data));
         id

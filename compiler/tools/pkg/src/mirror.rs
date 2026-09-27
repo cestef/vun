@@ -1,17 +1,30 @@
 //! Mirrors: URLs read through a scheme, holding an archive in a known format.
 
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use vun_fs::{Edit, Tree};
 
 use super::{Failure, Format};
+
+/// The suffix of the directory an archive is unpacked in.
+const UNPACKING: &str = ".unpacking";
 
 /// A way of reading URLs that start with `prefix`.
 pub struct Scheme {
     pub prefix: &'static str,
     /// Reads the resource: given the whole URL and what follows the prefix.
     pub read: fn(&str, &str) -> Result<Vec<u8>, Failure>,
+    pub locator: Locator,
+}
+
+/// What follows a scheme's prefix.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Locator {
+    /// A path on this machine, taken whole.
+    Path,
+    /// A URL's path, which a query (`?`) or a fragment (`#`) may follow.
+    Url,
 }
 
 impl Scheme {
@@ -19,6 +32,7 @@ impl Scheme {
     pub const FILE: Self = Self {
         prefix: "file://",
         read: |_, path| fs::read(path).map_err(|e| Failure::Download(Box::new(e))),
+        locator: Locator::Path,
     };
 
     /// The URL of the local file `path`.
@@ -76,9 +90,20 @@ impl<'u> Mirror<'u> {
     /// Returns which part of the URL no table knows.
     pub fn parse(url: &'u str, schemes: &Schemes) -> Result<Self, Failure> {
         let scheme = schemes.of(url)?;
-        let path = url.split(['?', '#']).next().unwrap_or(url);
+        let path = match scheme.locator {
+            Locator::Path => url,
+            Locator::Url => url.split(['?', '#']).next().unwrap_or(url),
+        };
         let format = Format::of(path).ok_or(Failure::Format)?;
         Ok(Self { url, scheme, format })
+    }
+
+    /// Where an archive fetched into `dir` is unpacked before it is moved there.
+    #[must_use]
+    pub fn unpacking(dir: &Path) -> PathBuf {
+        let mut name = dir.as_os_str().to_owned();
+        name.push(UNPACKING);
+        PathBuf::from(name)
     }
 
     /// Downloads the archive and unpacks it into `dir`, which must not exist; see
@@ -88,13 +113,14 @@ impl<'u> Mirror<'u> {
     /// Returns why reading or unpacking failed.
     pub fn fetch(&self, dir: &Path) -> Result<(), Failure> {
         let bytes = (self.scheme.read)(self.url, &self.url[self.scheme.prefix.len()..])?;
-        let raw = dir.with_extension("unpacking");
+        let raw = Self::unpacking(dir);
         let unpack = Failure::Unpack;
         raw.remove().map_err(unpack)?;
         self.format.unpack(&bytes, &raw).map_err(unpack)?;
         let entries = raw.entries().map_err(unpack)?;
+        let directory = |p: &Path| fs::symlink_metadata(p).is_ok_and(|m| m.is_dir());
         let root = match entries.as_slice() {
-            [only] if self.format.strip && only.is_dir() => only.clone(),
+            [only] if self.format.strip && directory(only) => only.clone(),
             _ => raw.clone(),
         };
         dir.replace_with(&root).map_err(unpack)?;

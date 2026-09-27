@@ -150,8 +150,6 @@ impl Header {
 pub(crate) enum Malformed {
     /// A header whose checksum or numbers do not read.
     Header,
-    /// A path that is not plain components, which could name a file outside the tree.
-    Path(String),
     /// An entry that is not a file or a directory, by its kind byte.
     Unsupported(char),
 }
@@ -160,7 +158,6 @@ impl std::fmt::Display for Malformed {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Header => f.write_str("a malformed tar header"),
-            Self::Path(path) => write!(f, "`{path}` is not a plain path inside the archive"),
             Self::Unsupported(kind) => write!(f, "an entry of kind `{kind}`, which a package cannot hold"),
         }
     }

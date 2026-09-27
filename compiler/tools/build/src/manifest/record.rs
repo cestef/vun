@@ -1,7 +1,7 @@
 //! Reading records and typed values out of literals, reporting where they do not fit.
 
 use vun_diag::{ChildKind, DiagCx, Diagnostic, Msg, errors};
-use vun_hash::{Algorithm, Hash};
+use vun_hash::{Algorithm, Hash, Snapshot};
 use vun_suggest::{Lookup, closest};
 use vun_syntax::literal::{Decl, Literal};
 
@@ -78,6 +78,8 @@ pub(crate) trait Record {
     fn int<T: TryFrom<i128>>(&self, cx: &mut DiagCx<'_>) -> Option<T>;
     /// A list of strings: `.{ "a", "b" }` or `[ "a", "b" ]`.
     fn strings(&self, cx: &mut DiagCx<'_>) -> Option<Vec<String>>;
+    /// A list of paths inside a directory, as snapshots name them: no root, no `..`.
+    fn paths(&self, cx: &mut DiagCx<'_>) -> Option<Vec<String>>;
     /// One of the names in `table`, written `.name`.
     fn choice<T: Copy>(&self, table: &[(&str, T)], cx: &mut DiagCx<'_>) -> Option<T>;
     /// The items of a list, each read by `read` as a record at the list's source.
@@ -135,6 +137,15 @@ impl Record for Decl<'_> {
         };
         let texts: Option<Vec<String>> = items.iter().map(|i| i.as_str().map(str::to_owned)).collect();
         texts.or_else(|| self.invalid(Msg::new().text("a list of strings"), cx))
+    }
+
+    fn paths(&self, cx: &mut DiagCx<'_>) -> Option<Vec<String>> {
+        let paths = self.strings(cx)?;
+        if let Some(outside) = paths.iter().find(|p| Snapshot::components(p).is_none()) {
+            let msg = Msg::new().text("a list of paths inside the package, not ").code(outside.as_str());
+            return self.invalid(msg, cx);
+        }
+        Some(paths)
     }
 
     fn choice<T: Copy>(&self, table: &[(&str, T)], cx: &mut DiagCx<'_>) -> Option<T> {

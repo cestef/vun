@@ -19,7 +19,6 @@ impl Tar {
     pub fn pack(contents: &Contents<'_>) -> io::Result<Vec<u8>> {
         let mut out = Vec::new();
         for file in contents.files() {
-            let file = file?;
             let name = if file.path.len() <= Field::NAME.len {
                 file.path.as_str()
             } else {
@@ -32,7 +31,7 @@ impl Tar {
                 }
                 &file.path[..end]
             };
-            Self::entry(&mut out, Kind::File, name, file.mode, &file.bytes);
+            Self::entry(&mut out, Kind::File, name, file.mode, file.bytes);
         }
         Self::end(&mut out);
         Ok(out)

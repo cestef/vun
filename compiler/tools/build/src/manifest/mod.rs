@@ -20,6 +20,8 @@ use record::{Fields, Record};
 pub use version::Version;
 use vun_hash::Hash;
 
+use crate::layout::MANIFEST;
+
 /// The declaration `std.build.Package` requires to hold the manifest.
 pub const PACKAGE: &str = "package";
 
@@ -125,6 +127,17 @@ impl Manifest {
         decls.iter().any(|d| d.name == PACKAGE)
     }
 
+    /// The files a package's hash covers, its manifest among them, so that what the package
+    /// declares is verified with its contents.
+    fn include(decl: &Decl<'_>, cx: &mut DiagCx<'_>) -> Option<Vec<String>> {
+        let include = decl.paths(cx)?;
+        if include.iter().any(|path| path == MANIFEST) {
+            return Some(include);
+        }
+        let help = Msg::new().text("a package's hash covers its manifest");
+        decl.invalid_with(Msg::new().text("a list naming ").code(MANIFEST), Some(help), cx)
+    }
+
     /// Reads the manifest from the declarations of a `build.vun`; `file` locates a missing `package`.
     pub fn read(decls: &[Decl<'_>], file: FileId, cx: &mut DiagCx<'_>) -> Option<Self> {
         let Some(package) = decls.iter().find(|d| d.name == PACKAGE) else {
@@ -142,7 +155,7 @@ impl Manifest {
         let version = fields.require(field::VERSION).and_then(|d| Version::read(d, cx));
         let edition = fields.require(field::EDITION).and_then(|d| d.int(cx));
         let toolchain = fields.get(field::TOOLCHAIN).map_or(Some(None), |d| Version::read(d, cx).map(Some));
-        let include = fields.require(field::INCLUDE).and_then(|d| d.strings(cx));
+        let include = fields.require(field::INCLUDE).and_then(|d| Self::include(d, cx));
         let deps = fields.get(field::DEPS).map_or(Some(Vec::new()), |d| Dep::list(d, cx));
         let replace = fields.get(field::REPLACE).map_or(Some(Vec::new()), |d| Replacement::list(d, cx));
         let index = fields.get(field::INDEX).map_or(Some(Vec::new()), |d| d.strings(cx));

@@ -3,16 +3,17 @@
 //! hash it has now, so that every later fetch is checked against it.
 
 use std::fmt;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use vun_build::layout::MANIFEST;
 use vun_build::manifest::{self, DepKind, Manifest, Source, Version};
-use vun_build::store::Label;
+use vun_build::store::{Label, Staging};
 use vun_diag::{Diagnostic, Msg, errors};
-use vun_fs::{Edit, Relative};
+use vun_fs::Relative;
 use vun_hash::{Hash, Snapshot};
 use vun_span::Span;
 
+use super::fetch::Rejected;
 use crate::Session;
 
 /// What `vun pkg add` is asked to declare: a directory or an archive's URL, and the name and
@@ -55,9 +56,9 @@ enum Place {
     Archive { url: String, staged: Staged },
 }
 
-/// An unpacked archive awaiting its move into the store.
+/// An unpacked archive awaiting its move into the store; dropped undeclared, it is removed.
 struct Staged {
-    dir: PathBuf,
+    staging: Staging,
     snapshot: Snapshot,
 }
 
@@ -95,7 +96,7 @@ impl Session {
         }
         if let (Some(staged), Source::Archive { version, .. }) = (&unstored, &dep.source) {
             let label = Label { name: &dep.name, version: *version };
-            if let Err(why) = Self::commit(&self.store, &staged.dir, &staged.snapshot, label) {
+            if let Err(why) = Self::commit(&self.store, &staged.staging, &staged.snapshot, label) {
                 let msg = Msg::new().text("cannot store ").code(&dep.name);
                 self.diag.error(Diagnostic::error(errors::PACKAGE_FETCH_FAILED, msg).caused_by(&why));
                 return Ok(None);
@@ -119,7 +120,11 @@ impl Session {
             self.diag.error(Diagnostic::error(errors::PACKAGE_MISSING_DEP, msg));
             return None;
         };
-        let relative = target.relative_to(dir)?;
+        let Some(relative) = target.relative_to(dir) else {
+            let msg = Msg::new().text("cannot reach ").code(source).text(" from the project");
+            self.diag.error(Diagnostic::error(errors::PACKAGE_MISSING_DEP, msg));
+            return None;
+        };
         let at = Place::Path(relative.to_string_lossy().into_owned());
         Some(Found { at, kind: DepKind::Vun, manifest: Some(manifest) })
     }
@@ -127,20 +132,20 @@ impl Session {
     /// The archive at `url`, unpacked under staging; an archive without a manifest is foreign.
     fn archive(&mut self, url: &str) -> Option<Found> {
         // Its contents, and so its hash, are unknown until it is unpacked.
-        let staging = self.store.staging(Hash::of(url.as_bytes()));
-        let fetched = self.unpack(&staging, url).map(|unpacked| {
+        let staged = self.store.stage(Hash::of(url.as_bytes())).map_err(Rejected::Store);
+        let fetched = staged.and_then(|staging| {
+            let unpacked = self.unpack(&staging, url)?;
             let manifest_path = unpacked.join(MANIFEST);
             let manifest = manifest_path.is_file().then(|| self.manifest_at(&manifest_path)).flatten();
             let kind = if manifest.is_some() { DepKind::Vun } else { DepKind::Foreign };
-            let snapshot = Snapshot::of(&unpacked, &self.include(kind, &unpacked));
-            let at =
-                Place::Archive { url: url.to_owned(), staged: Staged { dir: staging.clone(), snapshot } };
-            Found { at, kind, manifest }
+            let snapshot =
+                Snapshot::of(&unpacked, &self.include(kind, &unpacked)).map_err(Rejected::Unpacked)?;
+            let at = Place::Archive { url: url.to_owned(), staged: Staged { staging, snapshot } };
+            Ok(Found { at, kind, manifest })
         });
         match fetched {
             Ok(found) => Some(found),
             Err(why) => {
-                let _ = staging.remove();
                 let msg = Msg::new().text("cannot fetch ").code(url);
                 self.diag.error(Diagnostic::error(errors::PACKAGE_FETCH_FAILED, msg).caused_by(&why));
                 None

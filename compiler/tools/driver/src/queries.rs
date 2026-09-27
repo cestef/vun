@@ -6,7 +6,7 @@
 use std::hash::Hash as _;
 use std::path::{Path, PathBuf};
 
-use vun_fs::Edit;
+use vun_fs::{Edit, Tree};
 use vun_hash::Hasher;
 use vun_query::Db;
 use vun_trace::tracing;
@@ -71,6 +71,14 @@ impl Session {
         match path.put(&bytes) {
             Ok(()) => tracing::info!(bytes = bytes.len(), path = %path.display(), "queries saved"),
             Err(error) => tracing::warn!(%error, path = %path.display(), "cannot save the queries"),
+        }
+        // What other toolchains saved is never read by this one; the next build of that one
+        // computes its queries again.
+        let saved = path.parent().and_then(|dir| dir.entries().ok()).unwrap_or_default();
+        for stale in saved.iter().filter(|p| *p != path) {
+            if let Err(error) = std::fs::remove_file(stale) {
+                tracing::debug!(%error, path = %stale.display(), "cannot remove saved queries");
+            }
         }
     }
 
