@@ -3,6 +3,7 @@
 //! instructions computing its value into its place. Values in SSA are transient, so a later pass
 //! can promote slots to values.
 
+mod asm;
 mod bounds;
 mod call;
 mod constant;

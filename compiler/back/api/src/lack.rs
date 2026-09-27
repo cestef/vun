@@ -31,6 +31,8 @@ pub enum Missing {
     /// A C record's eightbyte of floats holding this many bytes, neither a `f32` nor two nor a
     /// `f64`: a layout only an explicit size makes.
     FloatPart(u64),
+    /// A block of inline assembly.
+    Asm,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -82,6 +84,7 @@ impl Missing {
             Missing::FunctionOffset => Msg::new().text("an address inside a function"),
             Missing::Format(f) => Msg::new().text("objects of format ").code(f.as_str()),
             Missing::Convention => Msg::new().text("the calling convention of this target"),
+            Missing::Asm => Msg::new().text("inline assembly"),
             Missing::FloatPart(n) => {
                 Msg::new().text("a C record passing ").num(n).text(" bytes of floats in a register")
             }

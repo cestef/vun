@@ -94,7 +94,15 @@ pub enum Rvalue {
     Splice {
         code: Code,
     },
+    /// An inline assembly block (spec 07, section 6): it reads its inputs and the declarations
+    /// whose addresses it names, writes its outputs, and does anything to memory and to the
+    /// registers it names.
+    Asm(Box<Asm>),
 }
+
+/// An inline assembly block as MIR holds it: inputs as operands, outputs as places, a
+/// declaration's address as the operand naming the declaration.
+pub type Asm = vun_inline::Block<Operand, Place, Operand>;
 
 impl Rvalue {
     /// The operands this reads, in order, to rewrite.
@@ -109,6 +117,7 @@ impl Rvalue {
             Self::Range { lo, hi, .. } => std::iter::once(lo).chain(hi).collect(),
             Self::Aggregate { parts, .. } => parts.iter_mut().collect(),
             Self::Call { callee, args } => std::iter::once(callee).chain(args).collect(),
+            Self::Asm(asm) => asm.reads_mut().map(vun_inline::Read::read).collect(),
             Self::Ref { .. }
             | Self::Resume { .. }
             | Self::End { .. }
@@ -133,6 +142,7 @@ impl Rvalue {
             Self::Range { lo, hi, .. } => std::iter::once(lo).chain(hi).collect(),
             Self::Aggregate { parts, .. } => parts.iter().collect(),
             Self::Call { callee, args } => std::iter::once(callee).chain(args).collect(),
+            Self::Asm(asm) => asm.reads().map(vun_inline::Read::read).collect(),
             Self::Ref { .. }
             | Self::Resume { .. }
             | Self::End { .. }
@@ -141,6 +151,16 @@ impl Rvalue {
             | Self::Quote { .. }
             | Self::Splice { .. }
             | Self::Dead => Vec::new(),
+        }
+    }
+
+    /// The places this writes besides the statement's own: an assembly block's outputs, each
+    /// with whether it reads it first.
+    #[must_use]
+    pub fn outputs(&self) -> Vec<(&Place, bool)> {
+        match self {
+            Self::Asm(asm) => asm.outputs().collect(),
+            _ => Vec::new(),
         }
     }
 }

@@ -35,3 +35,27 @@ fn the_verifier_accepts_a_body_and_rejects_dangling_names() {
     let elsewhere = OriginTable::new();
     assert_eq!(body(&origins, |_| {}).verify(&elsewhere), Err(Malformed::NoOrigin(Entity::Body)));
 }
+
+#[test]
+fn the_verifier_checks_what_an_assembly_block_writes_and_where_it_ends() {
+    use vun_inline::{Block as Asm, Bound, FormId, Inst, OpId, Operand as Bind, SizeId};
+    let origins = OriginTable::new();
+    // Local `out` written by a block, which returns or not, before `term`.
+    let verify = |out: usize, returns: bool, term: TerminatorKind| {
+        let body = body(&origins, |b| {
+            let block = &mut b.blocks[Idx::new(0)];
+            let origin = block.stmts[0].origin;
+            let operands = vec![Bind::Bound(Bound::Out { place: Place::of(Idx::new(out)), reg: None })];
+            let inst = Inst { op: OpId(0), form: FormId(0), size: SizeId(0), operands, origin };
+            let arch = vun_items::lang::arch_x86_64::arith.parent().expect("a namespace");
+            block.stmts[0].value = Rvalue::Asm(Box::new(Asm { arch, insts: vec![inst], returns }));
+            block.term.kind = term;
+        });
+        body.verify(&origins)
+    };
+    assert_eq!(verify(0, true, TerminatorKind::Return), Ok(()));
+    assert_eq!(verify(0, false, TerminatorKind::Unreachable), Ok(()));
+    assert_eq!(verify(0, false, TerminatorKind::Return), Err(Malformed::PastNever(0)));
+    let at = Entity::Stmt { block: 0, index: 0 };
+    assert_eq!(verify(7, true, TerminatorKind::Return), Err(Malformed::UnknownLocal { at, local: 7 }));
+}

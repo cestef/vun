@@ -169,8 +169,9 @@ impl<'b, 'a, 'db> Frame<'b, 'a, 'db> {
                 _ => Err(Unevaluated::Unsupported),
             },
             // `execute` ends a binding's scope without a value.
-            // Code spliced at run time reads what only a call site holds.
-            Rvalue::Splice { .. } => Err(Unevaluated::Runtime),
+            // Code spliced at run time reads what only a call site holds, and machine
+            // instructions run on the machine alone.
+            Rvalue::Splice { .. } | Rvalue::Asm(_) => Err(Unevaluated::Runtime),
             Rvalue::Dead => Err(Unevaluated::Unsupported),
             Rvalue::Call { callee, args } => self.call(callee, args),
         }

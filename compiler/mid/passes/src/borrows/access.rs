@@ -76,7 +76,8 @@ impl Checker<'_> {
     }
 
     /// The places `stmt` reaches before writing its place, and how: operands and tests read,
-    /// borrows access as their mode says, resuming a frame is exclusive.
+    /// borrows access as their mode says, resuming a frame and writing an assembly block's
+    /// outputs are exclusive.
     pub(super) fn accesses<'s>(&self, stmt: &'s Stmt) -> Vec<(&'s Place, Access)> {
         let mut accesses: Vec<(&Place, Access)> = stmt
             .value
@@ -93,6 +94,8 @@ impl Checker<'_> {
             Rvalue::Resume { frame, .. } | Rvalue::End { frame } => accesses.push((frame, Access::Exclusive)),
             _ => {}
         }
+        // An assembly block's outputs are written as the statement's place is.
+        accesses.extend(stmt.value.outputs().into_iter().map(|(place, _)| (place, Access::Exclusive)));
         accesses
     }
 

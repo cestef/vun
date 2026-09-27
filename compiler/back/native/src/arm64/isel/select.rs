@@ -171,6 +171,7 @@ impl<'a> Look<'_, 'a> {
             }
             &InstKind::Offset { base, offset } => snippet(ADD, &[base, offset], Size::B64, None),
             &InstKind::Copy { to, from, bytes } => Selection::Copy { to, from, bytes },
+            InstKind::Asm(_) => return Err(self.0.lack(Missing::Asm)),
             InstKind::Const { .. } | InstKind::SlotAddr(_) | InstKind::Addr(_) => {
                 unreachable!("recomputed where used")
             }

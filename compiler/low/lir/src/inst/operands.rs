@@ -4,27 +4,35 @@
 use super::{Callee, InstKind, Target, Terminator};
 use crate::entity::Value;
 
-/// The values an instruction reads: up to three of its own, then a call's arguments.
+/// The values an instruction reads: up to three of its own, then a call's arguments, then what
+/// an assembly block binds.
 macro_rules! inst_operands {
     ($inst:expr) => {
         match $inst {
-            InstKind::Const { .. } | InstKind::SlotAddr(_) | InstKind::Addr(_) => ([None, None, None], None),
-            InstKind::Binary { a, b, .. } | InstKind::Compare { a, b, .. } => {
-                ([Some(a), Some(b), None], None)
+            InstKind::Const { .. } | InstKind::SlotAddr(_) | InstKind::Addr(_) => {
+                ([None, None, None], None, None)
             }
-            InstKind::Cast { value, .. } => ([Some(value), None, None], None),
-            InstKind::Select { cond, then, otherwise } => ([Some(cond), Some(then), Some(otherwise)], None),
-            InstKind::Load { addr, .. } => ([Some(addr), None, None], None),
+            InstKind::Binary { a, b, .. } | InstKind::Compare { a, b, .. } => {
+                ([Some(a), Some(b), None], None, None)
+            }
+            InstKind::Cast { value, .. } => ([Some(value), None, None], None, None),
+            InstKind::Select { cond, then, otherwise } => {
+                ([Some(cond), Some(then), Some(otherwise)], None, None)
+            }
+            InstKind::Load { addr, .. } => ([Some(addr), None, None], None, None),
             InstKind::Store { value, addr, .. } | InstKind::Rmw { addr, value, .. } => {
-                ([Some(value), Some(addr), None], None)
+                ([Some(value), Some(addr), None], None, None)
             }
             InstKind::CompareExchange { addr, expected, new, .. } => {
-                ([Some(addr), Some(expected), Some(new)], None)
+                ([Some(addr), Some(expected), Some(new)], None, None)
             }
-            InstKind::Offset { base, offset } => ([Some(base), Some(offset), None], None),
-            InstKind::Copy { to, from, .. } => ([Some(to), Some(from), None], None),
-            InstKind::Call { callee: Callee::Indirect(f, _), args } => ([Some(f), None, None], Some(args)),
-            InstKind::Call { args, .. } => ([None, None, None], Some(args)),
+            InstKind::Offset { base, offset } => ([Some(base), Some(offset), None], None, None),
+            InstKind::Copy { to, from, .. } => ([Some(to), Some(from), None], None, None),
+            InstKind::Call { callee: Callee::Indirect(f, _), args } => {
+                ([Some(f), None, None], Some(args), None)
+            }
+            InstKind::Call { args, .. } => ([None, None, None], Some(args), None),
+            InstKind::Asm(asm) => ([None, None, None], None, Some(asm)),
         }
     };
 }
@@ -84,14 +92,16 @@ impl Terminator {
 impl InstKind {
     /// The values this reads.
     pub fn operands(&self) -> impl Iterator<Item = Value> {
-        let (own, args) = inst_operands!(self);
-        own.into_iter().flatten().chain(args.into_iter().flatten()).copied()
+        let (own, args, asm) = inst_operands!(self);
+        let bound = asm.into_iter().flat_map(|asm| asm.bindings().map(vun_inline::Bound::bound));
+        own.into_iter().flatten().chain(args.into_iter().flatten()).chain(bound).copied()
     }
 
     /// Replaces each value this reads by what `f` gives for it.
     pub fn map_values(&mut self, mut f: impl FnMut(Value) -> Value) {
-        let (own, args) = inst_operands!(self);
-        for v in own.into_iter().flatten().chain(args.into_iter().flatten()) {
+        let (own, args, asm) = inst_operands!(self);
+        let bound = asm.into_iter().flat_map(|asm| asm.bindings_mut().map(vun_inline::Bound::bound_mut));
+        for v in own.into_iter().flatten().chain(args.into_iter().flatten()).chain(bound) {
             *v = f(*v);
         }
     }

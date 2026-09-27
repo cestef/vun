@@ -70,6 +70,8 @@ pub enum Reason {
     DuplicateCase(u128),
     /// An alignment that is not a power of two.
     Alignment(u64),
+    /// An assembly block that does not return, not ending its block as unreachable.
+    PastNever,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Encode, Decode)]

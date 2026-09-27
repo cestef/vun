@@ -227,8 +227,11 @@ impl Body {
         let stmts = self.blocks.iter().flat_map(|(_, b)| &b.stmts);
         for stmt in stmts.filter(|s| !matches!(s.value, Rvalue::Dead)) {
             writes[stmt.place.local] += 1;
-            // A borrow may write through.
+            // A borrow may write through, and an assembly block writes its outputs.
             if let Rvalue::Ref { place, .. } = &stmt.value {
+                writes[place.local] += 1;
+            }
+            for (place, _) in stmt.value.outputs() {
                 writes[place.local] += 1;
             }
             if let (true, Rvalue::Use(Operand::Const(value))) =

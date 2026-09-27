@@ -40,6 +40,8 @@ pub enum Malformed {
     YieldEdges(usize),
     /// A frame ending in a body that never suspends.
     Unsuspended(usize),
+    /// An assembly block that does not return, followed by more than its block's `Unreachable`.
+    PastNever(usize),
 }
 
 impl fmt::Display for Entity {
@@ -66,6 +68,9 @@ impl fmt::Display for Malformed {
             Self::EntryTargeted(block) => write!(f, "bb{block} jumps to the first block"),
             Self::YieldEdges(block) => write!(f, "the yield of bb{block} resumes where it is ended"),
             Self::Unsuspended(block) => write!(f, "bb{block} ends a frame the body never suspends"),
+            Self::PastNever(block) => {
+                write!(f, "bb{block} goes on past an assembly block that does not return")
+            }
         }
     }
 }
@@ -130,6 +135,10 @@ impl Body {
                 self.place(at, &stmt.place)?;
                 self.rvalue(at, &stmt.value)?;
             }
+            let never = b.stmts.iter().position(|s| matches!(&s.value, Rvalue::Asm(asm) if !asm.returns));
+            if never.is_some_and(|i| i + 1 != b.stmts.len() || b.term.kind != TerminatorKind::Unreachable) {
+                return Err(Malformed::PastNever(block.index()));
+            }
             let at = Entity::Terminator(block.index());
             has(at, b.term.origin)?;
             if b.term.kind.successors().contains(&BlockId::new(0)) {
@@ -191,25 +200,16 @@ impl Body {
         })
     }
 
+    /// The places and operands an rvalue reads, and the places it writes besides the statement's.
     fn rvalue(&self, at: Entity, rvalue: &Rvalue) -> Result<(), Malformed> {
-        let operands: Vec<&Operand> = match rvalue {
-            Rvalue::Use(o)
-            | Rvalue::Not { operand: o }
-            | Rvalue::Narrow { operand: o, .. }
-            | Rvalue::Repeat { operand: o, .. } => vec![o],
-            Rvalue::Ref { place, .. }
-            | Rvalue::IsVariant { place, .. }
-            | Rvalue::Resume { frame: place, .. }
-            | Rvalue::End { frame: place } => {
-                return self.place(at, place);
-            }
-            Rvalue::Aggregate { parts, .. } => parts.iter().collect(),
-            Rvalue::Range { lo, hi, .. } => [lo].into_iter().chain(hi).collect(),
-            Rvalue::Call { callee, args } => [callee].into_iter().chain(args).collect(),
-            Rvalue::Comptime { .. } | Rvalue::Quote { .. } | Rvalue::Splice { .. } | Rvalue::Dead => {
-                Vec::new()
-            }
-        };
-        operands.into_iter().try_for_each(|o| self.operand(at, o))
+        if let Rvalue::Ref { place, .. }
+        | Rvalue::IsVariant { place, .. }
+        | Rvalue::Resume { frame: place, .. }
+        | Rvalue::End { frame: place } = rvalue
+        {
+            self.place(at, place)?;
+        }
+        rvalue.operands().into_iter().try_for_each(|o| self.operand(at, o))?;
+        rvalue.outputs().into_iter().try_for_each(|(p, _)| self.place(at, p))
     }
 }

@@ -35,6 +35,18 @@ impl Analysis<'_> {
                     self.operand(arg, states, origin);
                 }
             }
+            // Its inputs and in-out places are read before any of its outputs is written.
+            Rvalue::Asm(asm) => {
+                for operand in rvalue.operands() {
+                    self.operand(operand, states, origin);
+                }
+                for (place, _) in asm.outputs().filter(|&(_, reads)| reads) {
+                    self.read(place, states, origin);
+                }
+                for (place, _) in asm.outputs() {
+                    self.write(place, states, origin);
+                }
+            }
             Rvalue::IsVariant { place, .. } | Rvalue::Resume { frame: place, .. } => {
                 self.read(place, states, origin);
             }

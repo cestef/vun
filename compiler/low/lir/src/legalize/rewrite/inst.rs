@@ -128,6 +128,11 @@ impl Rewrite<'_> {
             InstKind::Copy { to, from, bytes } => {
                 InstKind::Copy { to: one(to), from: one(from), bytes: *bytes }
             }
+            InstKind::Asm(_) => {
+                let mut kind = kind.clone();
+                kind.map_values(|v| self.one(v));
+                kind
+            }
             InstKind::Call { .. } => unreachable!("calls are rewritten apart"),
         }
     }

@@ -52,6 +52,7 @@ impl FnLower<'_, '_, '_> {
             Rvalue::Comptime { .. } | Rvalue::Quote { .. } | Rvalue::Splice { .. } => {
                 Err(unsupported(Form::Quote))
             }
+            Rvalue::Asm(asm) => self.asm(asm),
             Rvalue::Dead => Ok(()),
         }
     }

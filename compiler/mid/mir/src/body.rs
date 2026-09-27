@@ -143,6 +143,10 @@ impl Stmt {
                         place.read_by(true, &mut out);
                     }
                 }
+                // An output is read where the block reads it first, its indices always.
+                for (place, reads) in value.outputs() {
+                    place.read_by(reads, &mut out);
+                }
             }
         }
         out

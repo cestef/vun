@@ -103,6 +103,7 @@ impl FnEmit<'_, '_> {
                 return Ok(());
             }
             InstKind::Call { callee, args } => return self.call(callee, args, data.result),
+            InstKind::Asm(_) => return Err(Missing::Asm.at(at)),
         };
         if let Some(result) = data.result {
             self.define(result, value);

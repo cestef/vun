@@ -46,6 +46,13 @@ impl fmt::Display for Rvalue {
             Self::Comptime { expr, .. } => write!(f, "comptime e{}", expr.index()),
             Self::Quote { expr, .. } => write!(f, "quote e{}", expr.index()),
             Self::Splice { code } => write!(f, "splice e{}", code.expr.expr.id.index()),
+            Self::Asm(asm) => {
+                write!(f, "asm {} ({} instructions)", asm.arch, asm.insts.len())?;
+                self.operands().iter().try_for_each(|o| write!(f, " in {o}"))?;
+                self.outputs()
+                    .iter()
+                    .try_for_each(|(p, reads)| write!(f, " {} {p}", if *reads { "inout" } else { "out" }))
+            }
             Self::Aggregate { kind, parts } => {
                 let (open, close) = match kind {
                     Aggregate::Struct { ty, .. } | Aggregate::Variant { ty, .. } => {

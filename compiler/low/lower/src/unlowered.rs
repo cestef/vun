@@ -51,6 +51,9 @@ pub enum Form {
     Frame,
     /// Code values at run time.
     Quote,
+    /// A binding of an assembly block to a place without storage, or to a symbol naming no
+    /// function, link symbol or static.
+    Asm,
 }
 
 impl fmt::Display for Unlowered {
@@ -97,6 +100,7 @@ impl Form {
             Self::Projection => "projection",
             Self::Frame => "frame",
             Self::Quote => "quote",
+            Self::Asm => "asm",
         }
     }
 
@@ -111,6 +115,7 @@ impl Form {
             Self::Projection => "this part of this type",
             Self::Frame => "coroutine frames",
             Self::Quote => "code values at run time",
+            Self::Asm => "this binding of an assembly block",
         }
     }
 }

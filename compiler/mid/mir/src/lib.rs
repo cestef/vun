@@ -16,7 +16,7 @@ pub use build::{Mir, Unbuilt, Why};
 pub use concrete::{Concrete, Lowered, Unready};
 pub use place::{Place, Projection};
 pub use program::{Program, Programs, Roots};
-pub use rvalue::{Aggregate, Operand, Rvalue};
+pub use rvalue::{Aggregate, Asm, Operand, Rvalue};
 pub use verify::Malformed;
 
 /// The queries of MIR whose memos outlive the process, with their values.

@@ -17,7 +17,7 @@ use vun_origin::{OriginId, OriginTable};
 use crate::analysis::{Cfg, Dominators};
 use crate::entity::{Block, FuncId, Inst, Value};
 use crate::func::{Def, Function};
-use crate::inst::{Address, Callee, InstKind, Target};
+use crate::inst::{Address, Asm, Callee, InstKind, Target, Terminator};
 use crate::ty::Scalar;
 use crate::unit::{ImportKind, Unit};
 
@@ -244,5 +244,24 @@ impl Checker<'_> {
         }
         let result = self.func.insts[inst].result.map(|v| self.func.ty(v));
         if result == returns { Ok(()) } else { Self::fail(at, Reason::Return) }
+    }
+
+    /// What an assembly block writes is at addresses, the symbols it names exist, and one that
+    /// does not return ends its block, as unreachable.
+    fn asm(&self, inst: Inst, asm: &Asm) -> Result<(), Malformed> {
+        let at = Entity::Inst(self.id, inst);
+        for (&address, _) in asm.outputs() {
+            self.expect(at, address, Scalar::Ptr)?;
+        }
+        for read in asm.reads() {
+            if let vun_inline::Read::Symbol(&address) = read {
+                self.unit.address(at, address)?;
+            }
+        }
+        let ends = self.homes[inst].is_some_and(|block| {
+            let data = &self.func.blocks[block];
+            data.insts.last() == Some(&inst) && data.term == Terminator::Unreachable
+        });
+        if asm.returns || ends { Ok(()) } else { Self::fail(at, Reason::PastNever) }
     }
 }

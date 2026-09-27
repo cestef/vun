@@ -46,6 +46,27 @@ impl Lowering<'_, '_> {
         }
     }
 
+    /// What `value` of type `ty` is the address of, where it is one: a function's or a link
+    /// symbol's.
+    pub(crate) fn address(
+        &mut self,
+        value: &Constant,
+        ty: Ty,
+        at: OriginId,
+    ) -> Result<Option<Address>, Unlowered> {
+        let code = matches!(&*ty, TyKind::Primitive(..));
+        Ok(Some(match value {
+            Constant::Fn(f) | Constant::Closure { f, .. } if code => {
+                Address::Func(self.function(&Instantiation::new(f.clone(), Vec::new()), at)?)
+            }
+            Constant::Constructor { ty: of, name } if code => {
+                Address::Func(self.constructor(*of, *name, at)?)
+            }
+            Constant::Linked(decl) => self.linked(decl, at)?,
+            _ => return Ok(None),
+        }))
+    }
+
     fn put(
         &mut self,
         value: &Constant,
@@ -75,20 +96,13 @@ impl Lowering<'_, '_> {
             let inner = args.first().and_then(Constant::as_type).ok_or_else(unsupported)?;
             return self.put(value, inner, out, base, at);
         }
-        let shape = self.types.shape(ty, at)?;
         let address = |target| Reloc { offset: base, target, addend: 0 };
+        if let Some(target) = self.address(value, ty, at)? {
+            out.relocs.push(address(target));
+            return Ok(());
+        }
+        let shape = self.types.shape(ty, at)?;
         match value {
-            Constant::Fn(f) | Constant::Closure { f, .. } if matches!(&*ty, TyKind::Primitive(..)) => {
-                let id = self.function(&Instantiation::new(f.clone(), Vec::new()), at)?;
-                out.relocs.push(address(Address::Func(id)));
-            }
-            Constant::Constructor { ty: of, name } if matches!(&*ty, TyKind::Primitive(..)) => {
-                out.relocs.push(address(Address::Func(self.constructor(*of, *name, at)?)));
-            }
-            Constant::Linked(decl) => {
-                let target = self.linked(decl, at)?;
-                out.relocs.push(address(target));
-            }
             Constant::Struct { fields, .. } => {
                 let members = cx.get::<Members>(&ty).ok_or_else(unsupported)?;
                 let Parts::Sequence(offsets) = &shape.parts else { return Err(unsupported()) };

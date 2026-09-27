@@ -183,3 +183,33 @@ fn an_import_prints_the_library_it_comes_from() {
     });
     assert!(unit.to_string().contains(r#"import i0 "fd_write" from "wasi_snapshot_preview1""#), "{unit}");
 }
+
+#[test]
+fn the_verifier_checks_what_an_assembly_block_binds_and_where_it_ends() {
+    use vun_inline::{Block, Bound, FormId, Inst, OpId, Operand, SizeId};
+    let origins = OriginTable::new();
+    let o = origin(&origins);
+    // A block writing an 8-byte slot, or the constant 8 as if it were an address.
+    let verify = |bind_slot: bool, returns: bool, term: Terminator| {
+        let signature = Signature { conv: Conv::Vun, params: Vec::new(), result: None };
+        let mut b = Builder::new(Linkage::Internal, signature, o);
+        let slot = b.slot(8, 8, o);
+        let place = if bind_slot { b.slot_addr(slot, o) } else { b.constant(Scalar::I64, 8, o) };
+        let operands = vec![Operand::Bound(Bound::Out { place, reg: None })];
+        let inst = Inst { op: OpId(0), form: FormId(0), size: SizeId(3), operands, origin: o };
+        let arch = vun_items::lang::arch_x86_64::arith.parent().expect("a namespace");
+        b.push(InstKind::Asm(Box::new(Block { arch, insts: vec![inst], returns })), None, o);
+        b.terminate(term);
+        let mut unit = Unit { pointer_bits: 64, ..Unit::default() };
+        unit.functions.push(b.finish());
+        unit.verify(&origins).map_err(|m| m.reason)
+    };
+    assert_eq!(verify(true, true, Terminator::Return(None)), Ok(()));
+    assert_eq!(verify(true, false, Terminator::Unreachable), Ok(()));
+    assert_eq!(verify(true, false, Terminator::Return(None)), Err(Reason::PastNever));
+    let found = Scalar::I64;
+    assert_eq!(
+        verify(false, true, Terminator::Return(None)),
+        Err(Reason::Type { expected: Scalar::Ptr, found })
+    );
+}
