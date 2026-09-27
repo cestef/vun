@@ -152,3 +152,28 @@ fn blobs_are_read_in_place() {
     assert_eq!((seven, blob, x.as_str()), (7, Blob { at: 2, len: 3 }, "x"));
     assert_eq!(blob.of(&bytes), [1, 2, 3], "written as bytes, read as their place");
 }
+
+/// A handle whose entry may name another handle of its pool.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+struct Chain;
+
+impl Pooled for Chain {
+    const POOL: &'static str = "chain";
+
+    fn write(self, _: &mut Writer<'_>) {}
+
+    fn read(r: &mut Reader<'_>) -> Result<Self, Malformed> {
+        if bool::decode(r)? { r.pooled::<Self>() } else { Ok(Self) }
+    }
+}
+
+crate::pooled!(Chain);
+
+#[test]
+fn entries_referring_to_themselves_are_malformed() {
+    let pools = |entries| crate::Pools(vec![crate::Pool { name: Chain::POOL.to_owned(), entries }]);
+    let ended = Context::new(pools(vec![vec![1, 1], vec![0]]));
+    assert_eq!(ended.read::<Chain>(&[0]), Ok(Chain));
+    let looping = Context::new(pools(vec![vec![1, 1], vec![1, 0]]));
+    assert_eq!(looping.read::<Chain>(&[0]), Err(Malformed::Cycle));
+}

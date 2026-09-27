@@ -3,7 +3,7 @@
 
 use vun_codec::{Decode, Encode, Malformed, Pooled, Reader, Writer};
 
-use crate::{FileId, SourceFiles, SourceMap};
+use crate::{ByteRange, FileId, SourceFiles, SourceMap, Span};
 
 impl Pooled for FileId {
     const POOL: &'static str = "file";
@@ -21,3 +21,22 @@ impl Pooled for FileId {
 }
 
 vun_codec::pooled!(FileId);
+
+impl Decode for ByteRange {
+    fn decode(r: &mut Reader<'_>) -> Result<Self, Malformed> {
+        let (lo, hi) = <(u32, u32)>::decode(r)?;
+        (lo <= hi).then_some(Self { lo, hi }).ok_or(Malformed::Invariant)
+    }
+}
+
+/// A span read lies within its file's text, on character boundaries.
+impl Decode for Span {
+    fn decode(r: &mut Reader<'_>) -> Result<Self, Malformed> {
+        let (file, range) = <(FileId, ByteRange)>::decode(r)?;
+        let text = &SourceFiles::global().file(file).text;
+        let within = [range.lo, range.hi]
+            .iter()
+            .all(|&at| usize::try_from(at).is_ok_and(|at| text.is_char_boundary(at)));
+        within.then_some(Self { file, range }).ok_or(Malformed::Invariant)
+    }
+}

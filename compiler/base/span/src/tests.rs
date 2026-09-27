@@ -60,3 +60,17 @@ fn a_file_added_again_is_the_same_file() {
         "named alike in every process"
     );
 }
+
+#[test]
+fn spans_read_back_only_within_their_text() {
+    use vun_codec::{Context, Malformed, Writer};
+    let file = SourceFiles::global().add("codec.vun", "é := 1;");
+    let mut w = Writer::new();
+    let bytes = [Span::new(file, 0, 2), Span::new(file, 0, 1), Span::new(file, 0, 99)].map(|s| w.encode(&s));
+    let context = Context::new(w.into_pools());
+    assert_eq!(context.read::<Span>(&bytes[0]), Ok(Span::new(file, 0, 2)));
+    assert_eq!(context.read::<Span>(&bytes[1]), Err(Malformed::Invariant), "inside a character");
+    assert_eq!(context.read::<Span>(&bytes[2]), Err(Malformed::Invariant), "past the text");
+    let backwards = Writer::new().encode(&(3u32, 1u32));
+    assert_eq!(Context::new(vun_codec::Pools::default()).read::<ByteRange>(&backwards), Err(Malformed::Invariant));
+}

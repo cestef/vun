@@ -5,7 +5,7 @@
 
 use std::hash::{Hash, Hasher};
 
-use vun_codec::{Decode, Encode};
+use vun_codec::Encode;
 
 mod codec;
 
@@ -52,7 +52,7 @@ impl Hash for FileId {
 }
 
 /// A half-open byte range `lo..hi`, relative to some text.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encode, Decode)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encode)]
 pub struct ByteRange {
     pub lo: u32,
     pub hi: u32,
@@ -97,7 +97,7 @@ impl ByteRange {
 }
 
 /// A byte range in one file.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encode, Decode)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encode)]
 pub struct Span {
     pub file: FileId,
     pub range: ByteRange,

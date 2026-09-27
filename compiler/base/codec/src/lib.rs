@@ -68,6 +68,10 @@ pub enum Malformed {
     Trailing,
     /// A pooled handle numbers no entry of its pool.
     Unpooled { pool: &'static str, number: usize },
+    /// A value that decodes but breaks an invariant of its type.
+    Invariant,
+    /// A pooled entry that refers to itself.
+    Cycle,
 }
 
 impl fmt::Display for Malformed {
@@ -79,6 +83,8 @@ impl fmt::Display for Malformed {
             Self::Tag(tag) => write!(f, "tag {tag} names no variant"),
             Self::Trailing => f.write_str("bytes remain after the value"),
             Self::Unpooled { pool, number } => write!(f, "{pool} {number} is not in the stream"),
+            Self::Invariant => f.write_str("a value breaks its type's invariant"),
+            Self::Cycle => f.write_str("a pooled entry refers to itself"),
         }
     }
 }

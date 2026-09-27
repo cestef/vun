@@ -1,7 +1,8 @@
 //! Reading a stream: its bytes, and the pools its handles are read from.
 
 use std::any::{Any, TypeId};
-use std::collections::HashMap;
+use std::cell::RefCell;
+use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, OnceLock};
 
 use vun_par::Map;
@@ -178,12 +179,38 @@ impl<'a> Reader<'a> {
         }
         let entry = context.pools[T::POOL][number];
         // Reading the entry may read other entries, so the slot is set after: two threads may
-        // both record it, which gives equal handles, and the first stands.
+        // both record it, which gives equal handles, and the first stands. An entry reached
+        // again while it is read refers to itself, which no written stream does.
+        let _reading = Reading::enter(context, TypeId::of::<T>(), number)?;
         let mut r = Reader { bytes: context.bytes(entry), at: entry.at, context };
         let handle = T::read(&mut r)?;
         if r.remaining() != 0 {
             return Err(Malformed::Trailing);
         }
         Ok(*slot.get_or_init(|| handle))
+    }
+}
+
+/// A pool entry this thread is reading, by its stream, handle type and number.
+type Entry = (usize, TypeId, usize);
+
+thread_local! {
+    static READING: RefCell<HashSet<Entry>> = RefCell::new(HashSet::new());
+}
+
+/// The mark of an entry being read on this thread, removed when dropped.
+struct Reading(Entry);
+
+impl Reading {
+    fn enter(context: &Context, ty: TypeId, number: usize) -> Result<Self, Malformed> {
+        let entry = (std::ptr::from_ref(context).addr(), ty, number);
+        let fresh = READING.with_borrow_mut(|reading| reading.insert(entry));
+        fresh.then_some(Self(entry)).ok_or(Malformed::Cycle)
+    }
+}
+
+impl Drop for Reading {
+    fn drop(&mut self) {
+        READING.with_borrow_mut(|reading| reading.remove(&self.0));
     }
 }
