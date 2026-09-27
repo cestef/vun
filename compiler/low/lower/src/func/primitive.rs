@@ -45,12 +45,14 @@ impl FnLower<'_, '_, '_> {
             Primitive::Int(Int::bit_and) => binary(BinOp::And),
             Primitive::Int(Int::bit_or) => binary(BinOp::Or),
             Primitive::Int(Int::bit_xor) => binary(BinOp::Xor),
-            Primitive::Int(Int::shl) => binary(BinOp::Shl),
-            Primitive::Int(Int::shr) => binary(BinOp::LShr),
             _ => None,
         };
         if let Some(op) = op {
             return self.arithmetic(op, arg(0)?, arg(1)?, dest, ty);
+        }
+        if let Primitive::Int(shift @ (Int::shl | Int::shr)) = p {
+            let op = if shift == Int::shl { BinOp::Shl } else { BinOp::LShr };
+            return self.shift(op, arg(0)?, arg(1)?, dest, ty);
         }
         if let Primitive::Int(quotient @ (Int::div | Int::rem)) = p {
             return self.divide(quotient == Int::div, arg(0)?, arg(1)?, dest, ty);

@@ -23,11 +23,50 @@ impl FnLower<'_, '_, '_> {
         ty: Ty,
     ) -> Result<(), Unlowered> {
         let Some(dest) = dest else { return Ok(()) };
-        let (int, signed) = self.l.types.int(ty).ok_or(Unlowered::unsupported(self.at, Form::Primitive))?;
+        let (int, _) = self.l.types.int(ty).ok_or(Unlowered::unsupported(self.at, Form::Primitive))?;
         let (x, y) = (self.int_operand(x, int)?, self.int_operand(y, int)?);
-        let op = if op == BinOp::LShr && signed { BinOp::AShr } else { op };
         let value = self.b.binary(op, x, y, self.at);
         self.b.store(value, dest, Access::Plain, self.at);
+        Ok(())
+    }
+
+    /// `x << n` or `x >> n`, `x` of the `uN` range `ty` of the result: an amount past `N - 1`
+    /// traps (rule 8), checked in the amount's own storage where its range does not prove it.
+    pub(crate) fn shift(
+        &mut self,
+        op: BinOp,
+        x: &Operand,
+        n: &Operand,
+        dest: Option<Value>,
+        ty: Ty,
+    ) -> Result<(), Unlowered> {
+        let at = self.at;
+        let unsupported = move || Unlowered::unsupported(at, Form::Primitive);
+        let width = ty.interval().and_then(|r| r.unsigned_width()).ok_or_else(unsupported)?;
+        let amount_ty = self.operand_ty(n).ok_or_else(unsupported)?;
+        let (own, signed) = self.l.types.int(amount_ty).ok_or_else(unsupported)?;
+        let amount = self.scalar_operand(n)?;
+        let below = Interval::half_open(Integer::zero(), &Integer::from(i128::from(width)))
+            .ok_or_else(unsupported)?;
+        let proven = amount_ty.interval().is_some_and(|r| below.contains(&r));
+        // An amount whose storage cannot hold `N` is below it, negative ones aside, which the
+        // unsigned compare sees as past it.
+        let fits = own.bits(self.l.types.pointer_bits()) >= u32::BITS - width.leading_zeros();
+        if !proven && fits {
+            let limit = self.b.constant(own, u128::from(width), at);
+            let within = self.b.compare(Cond::ULt, amount, limit, at);
+            self.check(within)?;
+        } else if !proven && signed {
+            let zero = self.b.constant(own, 0, at);
+            let within = self.b.compare(Cond::SGe, amount, zero, at);
+            self.check(within)?;
+        }
+        let Some(dest) = dest else { return Ok(()) };
+        let (int, _) = self.l.types.int(ty).ok_or_else(unsupported)?;
+        let x = self.int_operand(x, int)?;
+        let amount = self.resize(amount, own, signed, int);
+        let value = self.b.binary(op, x, amount, at);
+        self.b.store(value, dest, Access::Plain, at);
         Ok(())
     }
 

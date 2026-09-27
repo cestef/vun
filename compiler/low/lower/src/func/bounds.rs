@@ -160,8 +160,15 @@ impl FnLower<'_, '_, '_> {
     ) -> Result<Reached, Unlowered> {
         let word = self.l.types.word;
         let b = self.load_bounds(bounds, ty)?;
-        let lo = self.resize(b.lo, b.scalar, b.signed, word);
-        let second = self.resize(b.end, b.scalar, b.signed, word);
+        let lo = self.word_index(b.lo, b.scalar, b.signed)?;
+        // Open bounds leave their end unwritten, which only a checked end reads.
+        let end = if self.wider_than_word(b.scalar) {
+            let zero = self.b.constant(b.scalar, 0, self.at);
+            self.b.select(b.open, zero, b.end, self.at)
+        } else {
+            b.end
+        };
+        let second = self.word_index(end, b.scalar, b.signed)?;
         // The end past the last item; bounds through the greatest word select past every run,
         // which the test of the last item against the length catches.
         let one = self.b.constant(word, 1, self.at);

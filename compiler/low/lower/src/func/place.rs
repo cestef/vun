@@ -149,12 +149,32 @@ impl FnLower<'_, '_, '_> {
         let (index_int, signed) = self.l.types.int(index_ty).ok_or_else(unsupported)?;
         let addr = self.local(local).ok_or_else(unsupported)?;
         let index = self.b.load(index_int, addr, Access::Plain, self.at);
-        let index = self.resize(index, index_int, signed, word);
+        let index = self.word_index(index, index_int, signed)?;
         let inside = self.b.compare(Cond::ULt, index, len, self.at);
         self.check(inside)?;
         let stride = self.b.constant(word, u128::from(stride), self.at);
         let offset = self.b.binary(BinOp::Mul, index, stride, self.at);
         Ok(Reached { addr: self.b.offset(from.addr, offset, self.at), ty: item, len: None })
+    }
+
+    /// `value`, an index held in `int`, as a word to compare with a length: one past every word,
+    /// which no length reaches, traps rather than losing its high bits.
+    pub(crate) fn word_index(&mut self, value: Value, int: Scalar, signed: bool) -> Result<Value, Unlowered> {
+        let word = self.l.types.word;
+        let bits = word.bits(self.l.types.pointer_bits());
+        if self.wider_than_word(int) {
+            // A negative index is past every word too, read without its sign.
+            let words = self.b.constant(int, 1 << bits, self.at);
+            let within = self.b.compare(Cond::ULt, value, words, self.at);
+            self.check(within)?;
+        }
+        Ok(self.resize(value, int, signed, word))
+    }
+
+    /// Whether an integer held in `int` may be past every word.
+    pub(crate) fn wider_than_word(&self, int: Scalar) -> bool {
+        let bits = |s: Scalar| s.bits(self.l.types.pointer_bits());
+        bits(int) > bits(self.l.types.word)
     }
 
     /// `value`, an integer of type `from` (signed or not), as an integer of type `to`.
