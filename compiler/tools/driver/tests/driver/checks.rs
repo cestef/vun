@@ -169,9 +169,16 @@ main := (sys: &mut std.os.System) -> std.os.Exit {
     }
 }
 
-/// The status `source`, built for `target` by `backend` with the asm checks, ends with; `None`
-/// where this machine runs no program of `target`.
-fn asm_run(name: &str, target: [&str; 2], backend: &str, source: &str) -> Option<Option<i32>> {
+/// How a program built for a target ran here.
+enum Ran {
+    /// With this status, or none where a signal ended it.
+    Exited(Option<i32>),
+    /// Not at all: this machine runs no program of the target.
+    Elsewhere,
+}
+
+/// How `source`, built for `target` by `backend` with the asm checks, runs here.
+fn asm_run(name: &str, target: [&str; 2], backend: &str, source: &str) -> Ran {
     let fixture = Fixture::new(name);
     let path = fixture.root.write("main.vun", source);
     let mut session = fixture.session();
@@ -183,10 +190,10 @@ fn asm_run(name: &str, target: [&str; 2], backend: &str, source: &str) -> Option
     let _ = session.lir(file);
     let native = cfg!(target_arch = "x86_64") && target == ["linux", "x86_64"];
     if !cfg!(target_os = "linux") || !native && session.runner.is_empty() {
-        return None;
+        return Ran::Elsewhere;
     }
     let program = session.build(file, None).unwrap_or_else(|_| panic!("{:#?}", session.diag));
-    Some(session.command(&program).status().unwrap().code())
+    Ran::Exited(session.command(&program).status().unwrap().code())
 }
 
 /// A program writing 7 through a block of `arch`, `write` with `past` for its offset, `past`
@@ -236,7 +243,7 @@ fn a_block_writing_past_its_memory_traps_under_the_asm_checks() {
         let run = |past| {
             asm_run(&format!("checks-asm-{arch}-{past}"), target, "native", &writing(arch, write, past))
         };
-        let (Some(within), Some(past)) = (run(0), run(8)) else { continue };
+        let (Ran::Exited(within), Ran::Exited(past)) = (run(0), run(8)) else { continue };
         assert_eq!((within, past), (Some(7), Some(101)), "{arch}");
     }
 }
@@ -246,7 +253,7 @@ fn a_block_returning_with_the_stack_moved_traps_through_native_code_and_c() {
     for (target, arch, _, moves) in ARCHES {
         for backend in ["native", "c"] {
             let name = format!("checks-asm-stack-{arch}-{backend}");
-            let Some(status) = asm_run(&name, target, backend, &moving(arch, moves)) else { continue };
+            let Ran::Exited(status) = asm_run(&name, target, backend, &moving(arch, moves)) else { continue };
             assert_eq!(status, Some(101), "{arch} {backend}");
         }
     }
