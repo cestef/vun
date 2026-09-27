@@ -1,0 +1,65 @@
+//! Spaces within a line (spec 13, section 5): one between two tokens, unless a table of the
+//! grammar or the role of one of them in the CST says none.
+
+use vun_grammar::{DelimitersRow, NodeKind, SEPARATORS, Spacing, TokenKind};
+
+/// A token as spacing reads it: its kind, and the kind of the node it anchors.
+#[derive(Clone, Copy)]
+pub(crate) struct Tok {
+    pub(crate) kind: TokenKind,
+    pub(crate) anchor: Option<NodeKind>,
+    /// Whether it is an infix operator without a right operand: `a..`.
+    pub(crate) open: bool,
+}
+
+/// Where two tokens stand towards the groups around them.
+pub(crate) struct Between {
+    /// The group `next` closes, if it closes one.
+    pub(crate) closing: Option<DelimitersRow>,
+    /// The kind of node the opener of the group `prev` closes anchors, if `prev` closes one:
+    /// `[4]u8` is an array type.
+    pub(crate) closed: Option<NodeKind>,
+}
+
+impl Tok {
+    /// Whether one space separates this token from `next` on a line.
+    pub(crate) fn spaced(self, next: Self, between: &Between) -> bool {
+        if let Some(row) = self.kind.delimiter() {
+            // An empty group is tight: `()`, `.{}`.
+            return next.kind != row.close && row.inside == Spacing::Spaced;
+        }
+        if let Some(row) = between.closing {
+            return row.inside == Spacing::Spaced;
+        }
+        if SEPARATORS.contains(&next.kind) || between.closed == Some(NodeKind::ArrayType) {
+            return false;
+        }
+        // Operators are tight to their operand: `-x`, `&mut x`, `$f`, `..rest`, `x.*`, `a.b`.
+        let prefix =
+            matches!(self.anchor, Some(NodeKind::Prefix | NodeKind::Spread)) && !self.kind.is_keyword();
+        let dot = |t: Self| {
+            t.kind == TokenKind::Dot && matches!(t.anchor, Some(NodeKind::Member | NodeKind::DotName))
+        };
+        if prefix
+            || dot(self)
+            || next.anchor == Some(NodeKind::Postfix)
+            || (dot(next) && next.anchor == Some(NodeKind::Member))
+        {
+            return false;
+        }
+        // A call, an index, a typed literal and a selection open right after what they apply
+        // to: `f(x)`, `a[i]`, `Point{ }`, `..std.{ fmt }`.
+        let applied = matches!(
+            next.anchor,
+            Some(NodeKind::Call | NodeKind::Index | NodeKind::TypedLit | NodeKind::Select)
+        );
+        if next.kind.opens() && applied {
+            return false;
+        }
+        // An infix level may be tight to its operands: `0..n`, and `0.. {` without a right one.
+        let tight = |t: Self| {
+            t.anchor == Some(NodeKind::Infix) && t.kind.infix().is_some_and(|i| i.around == Spacing::Tight)
+        };
+        !(tight(next) || (tight(self) && !self.open))
+    }
+}

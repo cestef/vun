@@ -10,31 +10,38 @@ use super::*;
 pub struct DelimitersRow {
     pub open: TokenKind,
     pub close: TokenKind,
+    pub inside: Spacing,
 }
-/// Opening delimiters and the tokens that close them.
+/// Opening delimiters, the tokens that close them, and how their contents are spaced inside.
 pub const DELIMITERS: &[DelimitersRow] = &[
     DelimitersRow {
         open: TokenKind::LParen,
         close: TokenKind::RParen,
+        inside: Spacing::Tight,
     },
     DelimitersRow {
         open: TokenKind::LBracket,
         close: TokenKind::RBracket,
+        inside: Spacing::Tight,
     },
     DelimitersRow {
         open: TokenKind::HashLBracket,
         close: TokenKind::RBracket,
+        inside: Spacing::Tight,
     },
     DelimitersRow {
         open: TokenKind::LBrace,
         close: TokenKind::RBrace,
+        inside: Spacing::Spaced,
     },
     DelimitersRow {
         open: TokenKind::HashLBrace,
         close: TokenKind::RBrace,
+        inside: Spacing::Spaced,
     },
     DelimitersRow {
         open: TokenKind::DotLBrace,
         close: TokenKind::RBrace,
+        inside: Spacing::Spaced,
     },
 ];

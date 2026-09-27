@@ -276,6 +276,30 @@ kind's fields never depend on its anchor token: `x := e` is `binding` and `x: T 
 `typed_binding`, `.{ }` is `struct_lit` and `T{ }` is `typed_lit`. Malformed source is an `error`
 node, which holds what recovery skipped and fits any slot. Dumps print each child's field.
 
+**The formatter.** `vun fmt` (`vun-fmt`) changes whitespace only: a file's tokens, comments
+included, are the same before and after, and formatting twice changes nothing. It keeps the line
+breaks the author wrote, and computes everything else from the CST and the grammar's tables, so
+the syntax is never stated a second time and there is no option:
+
+- *Lines.* At most one blank line in a row; none at the start of the file, after an opening
+  delimiter or before its closer; the file ends with one newline.
+- *Spaces within a line.* One space between two tokens, but none: inside the delimiters whose row
+  of `delimiters` is `tight` inside (`(a)`, `[i]`, `#[test]`; `{ x }`, `.{ .x = 1 }` are `spaced`),
+  or in an empty group (`()`, `.{}`); before a token of `separators` (`,`, `;`, `:`); after a
+  prefix operator (`-x`, `&mut x`, `$f`) unless it is a keyword; before a postfix operator, a
+  member's `.` and the opening delimiter of a call, an index or a typed literal (`f(x)`, `a.b`,
+  `p.*`, `Point{ }`); after the `.` of `.name`; and around the operators of an infix level whose
+  row of `infix` is `tight` (`0..n`).
+- *Indentation.* Four spaces a level. A line inside a group is indented one level past the line
+  holding the group's opening delimiter, and the line starting with its closer as that line. A
+  line that does not start an entry (an item, a statement, a member, a variant, an argument, a
+  field, an arm, or what docs and attributes mark) continues one and is indented one level more;
+  a raw string line continues the one above at its indent.
+- *Comments* keep their place: one space after the token a trailing comment follows, or on a line
+  of their own, indented as the line after them (inside a group when that line closes it).
+
+A file that does not parse is not formatted, and its diagnostics are reported.
+
 ## 6. Compile-time evaluation
 
 `vun-interp` interprets MIR under an explicit target model (layout, endianness, ranges, traps,
@@ -829,7 +853,7 @@ compiler/
   back/    api  asm  x86_64  arm64  object  dwarf  codegen  native  c  cranelift  qbe  llvm  external
   link/    api  wild  mold  lld  gnu  msvc  external
   render/  short  annotate  ariadne  json  sarif
-  tools/   build  pkg  http  fmt  bind  clang  probe  command  harness  driver  lsp  cli  generate
+  tools/   build  pkg  http  fmt  bind  clang  command  harness  driver  lsp  cli  generate
            xtask
 fuzz/      cargo-fuzz targets over the verifiers, a workspace member
 lib/

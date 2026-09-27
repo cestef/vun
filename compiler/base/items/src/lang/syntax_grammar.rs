@@ -24,10 +24,14 @@ pub const BorrowWord: Item = Item::new(&["lang", "syntax", "grammar", "BorrowWor
 pub const Assoc: Item = Item::new(&["lang", "syntax", "grammar", "Assoc"]);
 /// Words that are keywords only in one context.
 pub const contextual: Item = Item::new(&["lang", "syntax", "grammar", "contextual"]);
-/// Opening delimiters and the tokens that close them.
+/// How the formatter spaces tokens where a table says (spec 13, section 5).
+pub const Spacing: Item = Item::new(&["lang", "syntax", "grammar", "Spacing"]);
+/// Opening delimiters, the tokens that close them, and how their contents are spaced inside.
 pub const delimiters: Item = Item::new(&["lang", "syntax", "grammar", "delimiters"]);
-/// Infix operator levels, loosest first (spec 01, section 6). Each level lists its tokens by
-/// borrow, so that levels of different sizes share one type.
+/// Punctuation written right after what it follows, and a space after it: `a, b`, `x: T`.
+pub const separators: Item = Item::new(&["lang", "syntax", "grammar", "separators"]);
+/// Infix operator levels, loosest first (spec 01, section 6), and how the formatter spaces them.
+/// Each level lists its tokens by borrow, so that levels of different sizes share one type.
 pub const infix: Item = Item::new(&["lang", "syntax", "grammar", "infix"]);
 /// Operators written before their operand. `&` may be followed by borrow modes (`&temp mut`);
 /// `..` without an operand is a rest pattern.

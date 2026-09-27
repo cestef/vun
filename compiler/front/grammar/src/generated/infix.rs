@@ -10,17 +10,20 @@ use super::*;
 pub struct InfixRow {
     pub assoc: Assoc,
     pub tokens: &'static [TokenKind],
+    pub around: Spacing,
 }
-/// Infix operator levels, loosest first (spec 01, section 6). Each level lists its tokens by
-/// borrow, so that levels of different sizes share one type.
+/// Infix operator levels, loosest first (spec 01, section 6), and how the formatter spaces them.
+/// Each level lists its tokens by borrow, so that levels of different sizes share one type.
 pub const INFIX: &[InfixRow] = &[
     InfixRow {
         assoc: Assoc::Left,
         tokens: &[TokenKind::Or],
+        around: Spacing::Spaced,
     },
     InfixRow {
         assoc: Assoc::Left,
         tokens: &[TokenKind::And],
+        around: Spacing::Spaced,
     },
     InfixRow {
         assoc: Assoc::None,
@@ -32,37 +35,46 @@ pub const INFIX: &[InfixRow] = &[
             TokenKind::Gt,
             TokenKind::Ge,
         ],
+        around: Spacing::Spaced,
     },
     InfixRow {
         assoc: Assoc::None,
         tokens: &[TokenKind::DotDot, TokenKind::DotDotEq],
+        around: Spacing::Tight,
     },
     InfixRow {
         assoc: Assoc::Left,
         tokens: &[TokenKind::Pipe],
+        around: Spacing::Spaced,
     },
     InfixRow {
         assoc: Assoc::Left,
         tokens: &[TokenKind::Caret],
+        around: Spacing::Spaced,
     },
     InfixRow {
         assoc: Assoc::Left,
         tokens: &[TokenKind::Amp],
+        around: Spacing::Spaced,
     },
     InfixRow {
         assoc: Assoc::Left,
         tokens: &[TokenKind::Shl, TokenKind::Shr],
+        around: Spacing::Spaced,
     },
     InfixRow {
         assoc: Assoc::Left,
         tokens: &[TokenKind::PlusPlus],
+        around: Spacing::Spaced,
     },
     InfixRow {
         assoc: Assoc::Left,
         tokens: &[TokenKind::Plus, TokenKind::Minus],
+        around: Spacing::Spaced,
     },
     InfixRow {
         assoc: Assoc::Left,
         tokens: &[TokenKind::Star, TokenKind::Slash, TokenKind::Percent],
+        around: Spacing::Spaced,
     },
 ];

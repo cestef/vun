@@ -59,6 +59,7 @@ pub const PROGRAM: Program<Session> = Program {
                 }]),
             CHECK,
             explain::EXPLAIN,
+            fmt::FMT,
             Command::group(pkg::GROUP, "dependencies and releases", pkg::COMMANDS),
             Command::group(tool::GROUP, "bindings to other languages", &[tool::BIND]),
             Command::group(toolchain::GROUP, "this toolchain's backends and linkers", toolchain::COMMANDS),
@@ -183,6 +184,7 @@ impl Context for Session {
 mod cache;
 mod debug;
 mod explain;
+mod fmt;
 mod pkg;
 mod status;
 mod tool;

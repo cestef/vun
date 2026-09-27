@@ -201,30 +201,41 @@ contextual := [
     .{ .text = "in", .context = .for_pattern },
 ];
 
-/// Opening delimiters and the tokens that close them.
+/// How the formatter spaces tokens where a table says (spec 13, section 5).
+Spacing := enum {
+    /// No space: `(a)`, `0..n`.
+    tight,
+    /// One space: `{ x }`, `a + b`.
+    spaced,
+};
+
+/// Opening delimiters, the tokens that close them, and how their contents are spaced inside.
 delimiters := [
-    .{ .open = .l_paren, .close = .r_paren },
-    .{ .open = .l_bracket, .close = .r_bracket },
-    .{ .open = .hash_l_bracket, .close = .r_bracket },
-    .{ .open = .l_brace, .close = .r_brace },
-    .{ .open = .hash_l_brace, .close = .r_brace },
-    .{ .open = .dot_l_brace, .close = .r_brace },
+    .{ .open = .l_paren, .close = .r_paren, .inside = .tight },
+    .{ .open = .l_bracket, .close = .r_bracket, .inside = .tight },
+    .{ .open = .hash_l_bracket, .close = .r_bracket, .inside = .tight },
+    .{ .open = .l_brace, .close = .r_brace, .inside = .spaced },
+    .{ .open = .hash_l_brace, .close = .r_brace, .inside = .spaced },
+    .{ .open = .dot_l_brace, .close = .r_brace, .inside = .spaced },
 ];
 
-/// Infix operator levels, loosest first (spec 01, section 6). Each level lists its tokens by
-/// borrow, so that levels of different sizes share one type.
+/// Punctuation written right after what it follows, and a space after it: `a, b`, `x: T`.
+separators := [.comma, .semi, .colon];
+
+/// Infix operator levels, loosest first (spec 01, section 6), and how the formatter spaces them.
+/// Each level lists its tokens by borrow, so that levels of different sizes share one type.
 infix := [
-    .{ .assoc = .left, .tokens = &[.\or] },
-    .{ .assoc = .left, .tokens = &[.\and] },
-    .{ .assoc = .none, .tokens = &[.eq_eq, .bang_eq, .lt, .le, .gt, .ge] },
-    .{ .assoc = .none, .tokens = &[.dot_dot, .dot_dot_eq] },
-    .{ .assoc = .left, .tokens = &[.pipe] },
-    .{ .assoc = .left, .tokens = &[.caret] },
-    .{ .assoc = .left, .tokens = &[.amp] },
-    .{ .assoc = .left, .tokens = &[.shl, .shr] },
-    .{ .assoc = .left, .tokens = &[.plus_plus] },
-    .{ .assoc = .left, .tokens = &[.plus, .minus] },
-    .{ .assoc = .left, .tokens = &[.star, .slash, .percent] },
+    .{ .assoc = .left, .tokens = &[.\or], .around = .spaced },
+    .{ .assoc = .left, .tokens = &[.\and], .around = .spaced },
+    .{ .assoc = .none, .tokens = &[.eq_eq, .bang_eq, .lt, .le, .gt, .ge], .around = .spaced },
+    .{ .assoc = .none, .tokens = &[.dot_dot, .dot_dot_eq], .around = .tight },
+    .{ .assoc = .left, .tokens = &[.pipe], .around = .spaced },
+    .{ .assoc = .left, .tokens = &[.caret], .around = .spaced },
+    .{ .assoc = .left, .tokens = &[.amp], .around = .spaced },
+    .{ .assoc = .left, .tokens = &[.shl, .shr], .around = .spaced },
+    .{ .assoc = .left, .tokens = &[.plus_plus], .around = .spaced },
+    .{ .assoc = .left, .tokens = &[.plus, .minus], .around = .spaced },
+    .{ .assoc = .left, .tokens = &[.star, .slash, .percent], .around = .spaced },
 ];
 
 /// Operators written before their operand. `&` may be followed by borrow modes (`&temp mut`);

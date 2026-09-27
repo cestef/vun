@@ -10,8 +10,9 @@
 //! One rule depends on context: a number directly after `.` is lexed without a fraction, so that
 //! `t.0.1` indexes twice instead of reading `0.1`.
 
-use vun_diag::DiagCx;
+use vun_diag::{DiagCtxt, DiagCx};
 use vun_grammar::TokenKind;
+use vun_origin::OriginTable;
 use vun_span::FileId;
 use vun_trace::tracing;
 
@@ -44,10 +45,30 @@ pub(crate) const COMMENT: &str = "//";
 pub(crate) const DOC_COMMENT: &str = "///";
 pub(crate) const MODULE_DOC_COMMENT: &str = "//!";
 const RAW_STRING_LINE: &str = "\\\\";
+
+/// Tokens that run to the end of their line, which ends them: doc comments and raw string lines.
+pub const TO_LINE_END: &[TokenKind] =
+    &[TokenKind::DocComment, TokenKind::ModuleDocComment, TokenKind::RawStringLine];
+
 /// Takes the next word or string literally.
 pub(crate) const ESCAPE: char = '\\';
 
 impl Tokens {
+    /// Whether the token text `next`, written right after the source `before` in `file`, lexes
+    /// as one token starting where `before` ends: after `2` and `.`, `5` would make `2.5`, and
+    /// after `..`, `=` would make `..=`. A line of source lexes alone, so `before` is the line
+    /// written so far.
+    #[must_use]
+    pub fn apart(file: FileId, before: &str, next: &str) -> bool {
+        let text = [before, next].concat();
+        let mut diag = DiagCtxt::new();
+        let tokens = Self::lex(file, &text, &mut DiagCx { diag: &mut diag, origins: OriginTable::global() });
+        let significant = tokens.ids().filter(|&t| tokens.kind(t) != TokenKind::Eof);
+        let last = significant.last().map(|t| tokens.range(t));
+        diag.error_count() == 0
+            && last.is_some_and(|r| r.lo as usize == before.len() && r.hi as usize == text.len())
+    }
+
     /// Lexes one file. Diagnostics go to `cx`; the result is always a complete token stream.
     ///
     /// # Panics

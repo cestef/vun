@@ -1,0 +1,52 @@
+//! A file written carelessly, as the formatter meets it.
+
+
+..std .{ fmt ,mem };
+
+
+
+/// A point.
+Point:=struct{x:i32,y:i32=0,
+      origin := Point{.x=0};};
+
+   #[test]
+area :=   ( p : Point )->i32 {
+        // Both parts.
+  p.x*p.y   // area
+};
+
+Shape := enum { circle ( u8 ) , rect(u8,u8) , empty;
+    unit := Shape.empty; };
+
+select :=($s:Shape)->u16{
+match s {
+  .circle(r)=>r*3,
+      .rect(w,h) if w==h =>w*w,
+  .rect( w , h ) => w * h ,
+.empty=>0
+}
+};
+
+steps := (n: u8) -> u32 {
+    mut total : u32 = 0;
+    for i in 0 .. n { total += i; }
+    'outer: for j in 1..20 {
+        if j > 10 { break 'outer; }
+    else { continue; }
+    }
+    total
+};
+
+message :=
+  \\first line
+         \\second line
+;
+
+long := a_value
+      and another
+   and a_third;
+
+call := f(
+one,
+          two,
+    );

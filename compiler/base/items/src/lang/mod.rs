@@ -193,6 +193,7 @@ pub mod syntax_grammar;
 pub mod syntax_grammar_Assoc;
 pub mod syntax_grammar_Context;
 pub mod syntax_grammar_Count;
+pub mod syntax_grammar_Spacing;
 pub mod target;
 pub mod target_Atomics;
 pub mod target_Attributes;

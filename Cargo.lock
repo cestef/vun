@@ -988,6 +988,7 @@ dependencies = [
  "vun-clang",
  "vun-command",
  "vun-diag",
+ "vun-fmt",
  "vun-fs",
  "vun-grammar",
  "vun-harness",
@@ -1040,6 +1041,13 @@ dependencies = [
 name = "vun-fmt"
 version = "0.0.0"
 dependencies = [
+ "vun-diag",
+ "vun-fs",
+ "vun-grammar",
+ "vun-harness",
+ "vun-index",
+ "vun-origin",
+ "vun-span",
  "vun-syntax",
 ]
 
@@ -1053,6 +1061,8 @@ version = "0.0.0"
 dependencies = [
  "libfuzzer-sys",
  "vun-diag",
+ "vun-fmt",
+ "vun-grammar",
  "vun-hir",
  "vun-origin",
  "vun-regalloc",
@@ -1415,14 +1425,6 @@ dependencies = [
  "vun-fs",
  "vun-hash",
  "zip",
-]
-
-[[package]]
-name = "vun-probe"
-version = "0.0.0"
-dependencies = [
- "vun-diag",
- "vun-target",
 ]
 
 [[package]]

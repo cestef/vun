@@ -51,6 +51,8 @@ impl Prec {
 pub struct Infix {
     pub prec: Prec,
     pub assoc: Assoc,
+    /// How the formatter spaces the operator.
+    pub around: Spacing,
 }
 
 impl Context {
@@ -98,14 +100,26 @@ impl TokenKind {
     #[must_use]
     pub fn infix(self) -> Option<Infix> {
         INFIX.iter().zip(0..).find_map(|(row, level)| {
-            row.tokens.contains(&self).then_some(Infix { prec: Prec(level), assoc: row.assoc })
+            let infix = Infix { prec: Prec(level), assoc: row.assoc, around: row.around };
+            row.tokens.contains(&self).then_some(infix)
         })
     }
 
     /// The token closing a group this token opens.
     #[must_use]
     pub fn closer(self) -> Option<Self> {
-        DELIMITERS.iter().find_map(|row| (row.open == self).then_some(row.close))
+        self.delimiter().map(|row| row.close)
+    }
+
+    /// The row of `delimiters` of the group this token opens.
+    #[must_use]
+    pub fn delimiter(self) -> Option<DelimitersRow> {
+        DELIMITERS.iter().copied().find(|row| row.open == self)
+    }
+
+    #[must_use]
+    pub fn is_keyword(self) -> bool {
+        Self::KEYWORDS.contains(&self)
     }
 
     #[must_use]
