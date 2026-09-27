@@ -55,6 +55,7 @@ impl Printer<'_, '_, '_> {
                 })
             }
             &Ty::Int { bits, signed } => self.ident(Ident::Own(Own::Int { bits, signed })),
+            Ty::Wide { signed } => self.f.write_str(if *signed { "__int128" } else { "unsigned __int128" }),
             Ty::Float => self.f.write_str("float"),
             Ty::Double => self.f.write_str("double"),
             Ty::Struct(tag) => {

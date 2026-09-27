@@ -7,6 +7,7 @@ use vun_target::Atomics;
 
 use super::FnEmit;
 use crate::ast::{Binary, Builtin, Expr, Ident, Own, Stmt, Ty, Unary};
+use crate::emit::Emitter;
 use crate::emit::signature::SignedC;
 use vun_backend::{Lack, Missing};
 
@@ -85,6 +86,8 @@ impl FnEmit<'_, '_> {
                 self.body.push(Stmt::Expr(call));
                 return Ok(());
             }
+            // C defines pointer arithmetic only inside an object or one past its end, which is
+            // exactly where LIR keeps an offset (spec 13, section 3; decision 245).
             &InstKind::Offset { base, offset } => {
                 let base = self.operand(base);
                 let offset = self.offset(offset);
@@ -166,15 +169,20 @@ impl FnEmit<'_, '_> {
         };
         let c = self.e.signature(&signature, at)?;
         let mut passed = Vec::new();
-        for ((abi, ty), &arg) in signature.params.iter().zip(&c.params).zip(args) {
-            let arg = self.operand(arg);
+        let mut args = args.iter().copied();
+        for (abi, ty) in signature.params.iter().zip(&c.params) {
+            let arg = self.operand(args.next().expect("a call passes the signature's values"));
             passed.push(match abi {
                 AbiType::Record(_) => arg.at(ty.clone()),
+                &AbiType::Wide { half, .. } => {
+                    let high = self.operand(args.next().expect("a wide integer is two values"));
+                    Emitter::join(ty.clone(), [arg, high], half)
+                }
                 _ if abi.signed_c(signature.conv).is_some() => arg.cast(ty.clone()),
                 _ => arg,
             });
         }
-        let out = args.get(signature.params.len()).copied();
+        let out = args.next();
         let call = |passed| Expr::Call(Box::new(name), passed);
         match &signature.result {
             Some(AbiType::Memory { .. }) => {
@@ -186,9 +194,8 @@ impl FnEmit<'_, '_> {
                 self.body.push(Stmt::Assign(place, call(passed)));
             }
             Some(given @ (AbiType::Scalar(_) | AbiType::Int(..) | AbiType::Address(_))) => {
-                let s = given.value();
                 let value = match given.signed_c(signature.conv) {
-                    Some(_) => call(passed).cast(self.e.scalar(s, at)?),
+                    Some(s) => call(passed).cast(self.e.scalar(s, at)?),
                     None => call(passed),
                 };
                 match result {
@@ -196,6 +203,7 @@ impl FnEmit<'_, '_> {
                     _ => self.body.push(Stmt::Expr(value)),
                 }
             }
+            Some(AbiType::Wide { .. }) => unreachable!("the verifier refuses a wide result"),
             None => self.body.push(Stmt::Expr(call(passed))),
         }
         Ok(())

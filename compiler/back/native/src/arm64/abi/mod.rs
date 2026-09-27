@@ -7,9 +7,15 @@
 //! gives a C call's scalars on the stack their own size at their own alignment, not a word each.
 
 use vun_backend::Missing;
-use vun_lir::{AbiType, Conv, Record, Scalar, Signature, Value};
+use vun_lir::{AbiType, Conv, Signature, Value};
 
 use vun_asm_arm64::{Reg, V};
+
+use free::Free;
+use shape::{Shape, is_float};
+
+mod free;
+mod shape;
 
 /// The registers integers and addresses are passed in, in order, and a result returned in.
 pub const ARGS: [Reg; 8] = [Reg::X0, Reg::X1, Reg::X2, Reg::X3, Reg::X4, Reg::X5, Reg::X6, Reg::X7];
@@ -97,121 +103,6 @@ pub struct Passing {
     pub stack: u64,
 }
 
-/// How a record travels, by its fields.
-enum Shape {
-    /// Fields of one float type, each in a floating-point register.
-    Homogeneous { count: usize, bytes: u64 },
-    /// In general registers, a word each.
-    Words(usize),
-    /// Too large for registers: through a copy's address.
-    Large,
-}
-
-impl Shape {
-    fn of(record: &Record) -> Result<Self, Missing> {
-        let floats = record.fields.iter().map(|&(_, s)| is_float(s)).collect::<Result<Vec<_>, _>>()?;
-        if let Some(&(_, first)) = record.fields.first()
-            && floats.iter().all(|&f| f)
-            && record.fields.len() <= HOMOGENEOUS
-        {
-            let bytes = if first == Scalar::F32 { 4 } else { 8 };
-            let laid_out =
-                record.fields.iter().enumerate().all(|(k, &(at, s))| s == first && at == k as u64 * bytes);
-            if laid_out && record.size == record.fields.len() as u64 * bytes {
-                return Ok(Self::Homogeneous { count: record.fields.len(), bytes });
-            }
-        }
-        Ok(if record.size <= IN_REGISTERS {
-            Self::Words(usize::try_from(record.size.div_ceil(WORD)).expect("two words"))
-        } else {
-            Self::Large
-        })
-    }
-
-    /// Its parts, over `ints` and `fps`, the registers taken; `None` if too few are left.
-    fn parts(&self, record: &Record, ints: &mut &[Reg], fps: &mut &[V]) -> Option<Vec<Part>> {
-        match *self {
-            Self::Homogeneous { count, bytes } => {
-                let (taken, rest) = fps.split_at_checked(count)?;
-                *fps = rest;
-                let parts = taken.iter().enumerate();
-                Some(
-                    parts
-                        .map(|(k, &v)| Part { carrier: Carrier::Fp(v), offset: k as u64 * bytes, bytes })
-                        .collect(),
-                )
-            }
-            Self::Words(count) => {
-                let (taken, rest) = ints.split_at_checked(count)?;
-                *ints = rest;
-                let parts = taken.iter().enumerate().map(|(k, &r)| {
-                    let offset = k as u64 * WORD;
-                    Part { carrier: Carrier::Int(r), offset, bytes: (record.size - offset).min(WORD) }
-                });
-                Some(parts.collect())
-            }
-            Self::Large => None,
-        }
-    }
-}
-
-/// A scalar's carrier class: whether it travels in a floating-point register.
-fn is_float(scalar: Scalar) -> Result<bool, Missing> {
-    match scalar {
-        Scalar::F16 => Err(Missing::Half),
-        Scalar::I128 => Err(Missing::Int128),
-        Scalar::F32 | Scalar::F64 => Ok(true),
-        _ => Ok(false),
-    }
-}
-
-/// The argument registers still free and the stack taken, as the call standard counts them.
-struct Free {
-    ints: &'static [Reg],
-    fps: &'static [V],
-    stack: u64,
-    /// Whether a scalar on the stack takes its own size rather than a word.
-    packed: bool,
-}
-
-impl Free {
-    /// Takes `size` bytes of the stack at their alignment: at least a word, even where scalars
-    /// are packed, and at most 16 bytes (AAPCS64, rule C.16).
-    fn stack(&mut self, size: u64, align: u64) -> u64 {
-        let at = self.stack.next_multiple_of(align.clamp(WORD, COMPOSITE_ALIGN));
-        self.stack = at + size.next_multiple_of(WORD);
-        at
-    }
-
-    /// The next register of the class, else the stack: a word, or `bytes` at their own
-    /// alignment where arguments are packed.
-    fn word(&mut self, float: bool, bytes: u64) -> Loc {
-        let next = if float {
-            self.fps.split_first().map(|(&v, rest)| {
-                self.fps = rest;
-                Carrier::Fp(v)
-            })
-        } else {
-            self.ints.split_first().map(|(&r, rest)| {
-                self.ints = rest;
-                Carrier::Int(r)
-            })
-        };
-        next.map_or_else(
-            || {
-                if self.packed {
-                    let offset = self.stack.next_multiple_of(bytes);
-                    self.stack = offset + bytes;
-                    Loc::Stack { offset, bytes }
-                } else {
-                    Loc::Stack { offset: self.stack(WORD, WORD), bytes: WORD }
-                }
-            },
-            Loc::Reg,
-        )
-    }
-}
-
 impl Passing {
     /// The arguments of `args` passed in general registers, with their registers.
     #[must_use]
@@ -239,6 +130,7 @@ impl Passing {
                 let (mut ints, mut fps) = (&ARGS[..], &FP_ARGS[..]);
                 Shape::of(r)?.parts(r, &mut ints, &mut fps).map_or(Ret::Indirect, Ret::Split)
             }
+            Some(AbiType::Wide { .. }) => unreachable!("the verifier refuses a wide result"),
             // Vun's convention passes the result's address as its last value.
             None | Some(AbiType::Record(_) | AbiType::Memory { .. }) => Ret::None,
         };
@@ -247,6 +139,10 @@ impl Passing {
         let mut params = Vec::new();
         for param in &signature.params {
             let loc = match param {
+                AbiType::Wide { .. } => {
+                    params.extend(free.pair());
+                    continue;
+                }
                 AbiType::Record(r) if c => {
                     let shape = Shape::of(r)?;
                     match shape.parts(r, &mut free.ints, &mut free.fps) {

@@ -131,3 +131,20 @@ fn a_record_after_packed_scalars_is_word_aligned_on_the_stack() {
     assert_eq!(passing.params[8], Loc::Stack { offset: 0, bytes: 1 });
     assert_eq!(passing.params[9], Loc::Copied { offset: 8, size: 16 });
 }
+
+#[test]
+fn a_wide_integer_takes_an_even_register_pair() {
+    use crate::arm64::abi::{ARGS, Carrier, Convention, Loc, Passing};
+    use vun_lir::AbiType;
+    let (int, wide) =
+        (AbiType::Int(Scalar::I64, Ext::Zero), AbiType::Wide { half: Scalar::I64, ext: Ext::Zero });
+    let params = vec![int.clone(), wide.clone(), int.clone(), int.clone(), wide.clone(), wide, int];
+    let signature = Signature { conv: Conv::C, params, result: None };
+    let passing = Passing::of(&signature, Convention::Aapcs64).unwrap();
+    let reg = |k: usize| Loc::Reg(Carrier::Int(ARGS[k]));
+    // `x1` is skipped for the first pair; the third finds no pair left and takes 16 bytes of the
+    // stack, after which no general register is used.
+    assert_eq!(passing.params[..7], [reg(0), reg(2), reg(3), reg(4), reg(5), reg(6), reg(7)]);
+    let stack = |offset| Loc::Stack { offset, bytes: 8 };
+    assert_eq!(passing.params[7..], [stack(0), stack(8), stack(16)]);
+}

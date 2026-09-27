@@ -25,6 +25,11 @@ pub enum Ty {
         bits: u32,
         signed: bool,
     },
+    /// `__int128`, which GCC and Clang declare on 64-bit targets and pass as their conventions
+    /// pass an integer twice a register wide.
+    Wide {
+        signed: bool,
+    },
     Float,
     Double,
     Pointer(Box<Ty>),

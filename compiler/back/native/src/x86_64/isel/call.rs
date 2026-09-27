@@ -55,10 +55,12 @@ impl Sel<'_, '_> {
         }
         self.pass_in_regs(&passed);
         self.clear();
+        // What each LIR value passes, a wide integer's halves both, the address of a result none.
+        let abis: Vec<&AbiType> = signature.passed().collect();
         for (i, (&a, loc)) in args.iter().zip(&passing.params).enumerate() {
             match loc {
                 Loc::Reg(carrier @ Carrier::Sse(_)) => self.pass(a, *carrier),
-                Loc::Reg(Carrier::Int(r)) => match (signature.params.get(i), f.constant(a)) {
+                Loc::Reg(Carrier::Int(r)) => match (abis.get(i).copied(), f.constant(a)) {
                     (Some(AbiType::Int(scalar, ext)), Some((_, bits))) => {
                         self.constant_to(*r, ext.widen(*scalar, bits));
                     }

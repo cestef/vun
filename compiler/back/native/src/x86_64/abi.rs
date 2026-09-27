@@ -172,21 +172,35 @@ impl Passing {
                 Ret::Split(parts.collect())
             }
             Some(AbiType::Record(_)) if c => Ret::Hidden,
+            Some(AbiType::Wide { .. }) => unreachable!("the verifier refuses a wide result"),
             // Vun's convention passes the result's address as its last value.
             None | Some(AbiType::Record(_) | AbiType::Memory { .. }) => Ret::None,
         };
         let hidden = usize::from(ret == Ret::Hidden);
         let mut free =
             Free { ints: ARGS[hidden..].iter().copied().collect(), sses: SSE_ARGS.into_iter().collect() };
-        let mut stack = 0;
-        let mut on_stack = |size: u64| {
-            let at = stack;
-            stack += size.next_multiple_of(EIGHTBYTE);
+        let mut stack: u64 = 0;
+        // Arguments on the stack take whole eightbytes, each at its alignment.
+        let mut on_stack = |size: u64, align: u64| {
+            let at = stack.next_multiple_of(align.max(EIGHTBYTE));
+            stack = at + size.next_multiple_of(EIGHTBYTE);
             at
         };
         let mut params = Vec::new();
         for param in &signature.params {
             let loc = match param {
+                // Both halves in general registers, or the whole on the stack at its alignment.
+                AbiType::Wide { .. } => {
+                    let halves = free.take(&[Class::Int; 2]).map_or_else(
+                        || {
+                            let at = on_stack(2 * EIGHTBYTE, 2 * EIGHTBYTE);
+                            vec![Loc::Stack(at), Loc::Stack(at + EIGHTBYTE)]
+                        },
+                        |carriers| carriers.into_iter().map(Loc::Reg).collect(),
+                    );
+                    params.extend(halves);
+                    continue;
+                }
                 AbiType::Record(r) if c => {
                     // A record past two eightbytes is copied to the stack whole, taking no register.
                     let parts = if r.size <= IN_REGISTERS { eightbytes(r)? } else { Vec::new() };
@@ -195,15 +209,15 @@ impl Passing {
                         Some(carriers) => {
                             Loc::Split(carriers.into_iter().zip(parts.iter().map(|&(_, n)| n)).collect())
                         }
-                        None => Loc::Copied { offset: on_stack(r.size), size: r.size },
+                        None => Loc::Copied { offset: on_stack(r.size, r.align), size: r.size },
                     }
                 }
                 AbiType::Scalar(s) => {
                     let class = Class::of(*s)?;
-                    free.next(class).map_or_else(|| Loc::Stack(on_stack(EIGHTBYTE)), Loc::Reg)
+                    free.next(class).map_or_else(|| Loc::Stack(on_stack(EIGHTBYTE, EIGHTBYTE)), Loc::Reg)
                 }
                 AbiType::Int(..) | AbiType::Address(_) | AbiType::Record(_) | AbiType::Memory { .. } => {
-                    free.next(Class::Int).map_or_else(|| Loc::Stack(on_stack(EIGHTBYTE)), Loc::Reg)
+                    free.next(Class::Int).map_or_else(|| Loc::Stack(on_stack(EIGHTBYTE, EIGHTBYTE)), Loc::Reg)
                 }
             };
             params.push(loc);
@@ -212,7 +226,9 @@ impl Passing {
             params.push(match ret {
                 Ret::Hidden => Loc::Reg(Carrier::Int(ARGS[0])),
                 Ret::Split(_) => Loc::Returned,
-                _ => free.next(Class::Int).map_or_else(|| Loc::Stack(on_stack(EIGHTBYTE)), Loc::Reg),
+                _ => {
+                    free.next(Class::Int).map_or_else(|| Loc::Stack(on_stack(EIGHTBYTE, EIGHTBYTE)), Loc::Reg)
+                }
             });
         }
         let sse = u8::try_from(SSE_ARGS.len() - free.sses.len()).expect("eight registers");

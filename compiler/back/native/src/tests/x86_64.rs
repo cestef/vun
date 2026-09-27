@@ -84,3 +84,20 @@ fn a_record_past_two_eightbytes_takes_no_argument_register() {
     assert_eq!(passing.params[0], Loc::Copied { offset: 0, size: 24 });
     assert_eq!(passing.params[1], Loc::Reg(Carrier::Int(ARGS[0])));
 }
+
+#[test]
+fn a_wide_integer_takes_two_registers_or_16_aligned_stack() {
+    use crate::x86_64::abi::{ARGS, Carrier, Loc, Passing};
+    use vun_lir::{AbiType, Conv, Ext, Signature};
+    let (int, wide) =
+        (AbiType::Int(Scalar::I64, Ext::Zero), AbiType::Wide { half: Scalar::I64, ext: Ext::Sign });
+    let mut params = vec![int.clone(); 3];
+    params.extend([wide.clone(), int.clone(), wide, int]);
+    let signature = Signature { conv: Conv::C, params, result: None };
+    let passing = Passing::of(&signature).unwrap();
+    let reg = |k: usize| Loc::Reg(Carrier::Int(ARGS[k]));
+    assert_eq!(passing.params[3..6], [reg(3), reg(4), reg(5)]);
+    // One register left: the second goes on the stack, and the register stays free.
+    assert_eq!(passing.params[6..9], [Loc::Stack(0), Loc::Stack(8), Loc::Stack(16)]);
+    assert_eq!(passing.stack, 32);
+}
