@@ -1,0 +1,18 @@
+//! `return`, `break` and `continue` never finish: they have the empty type `never`, which fits
+//! any type expected of them, so a branch or arm holding one takes the type of the others
+//! (spec 02, section 2).
+
+first := (xs: &[u8]) -> bool {
+    for x in xs {
+        found := if x.* == 0 { continue } else { x.* };
+        flag: bool = found; //~ types.mismatch
+    }
+    early := match xs.len() { 0 => return false, n => n };
+    early == 1
+};
+
+last := (c: bool) -> u8 {
+    value := if c { return 1 } else { 2 };
+    ok: bool = value; //~ types.mismatch
+    value
+};

@@ -61,7 +61,7 @@ impl Typer<'_, '_, '_> {
                         self.expect(hir.exprs[*value].origin, found, result, self.written);
                     }
                 }
-                None
+                self.never()
             }
             ExprKind::Block(block) => self.block_value(*block, self.expected(expr)),
             ExprKind::Prefix { op: TokenKind::Dollar, operand, .. } => self.comptime(expr, *operand),
@@ -84,8 +84,9 @@ impl Typer<'_, '_, '_> {
             }
             ExprKind::Break { label, value } => {
                 self.leave(expr, *label, *value);
-                None
+                self.never()
             }
+            ExprKind::Continue { .. } => self.never(),
             ExprKind::Prefix { op, operand, .. } if PREFIX_OPERATORS.iter().any(|row| row.token == *op) => {
                 self.prefix(expr, *op, *operand)
             }

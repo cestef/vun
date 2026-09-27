@@ -22,7 +22,8 @@ impl Typer<'_, '_, '_> {
             });
             match b.tail {
                 Some(tail) => t.typed_as(tail, expected),
-                None => (!t.leaves(block)).then(|| Known { ty: TyKind::unit(), stage: Stage::Compile }),
+                None if t.leaves(block) => t.never(),
+                None => Some(Known { ty: TyKind::unit(), stage: Stage::Compile }),
             }
         })
     }

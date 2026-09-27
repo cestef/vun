@@ -84,6 +84,13 @@ impl Typer<'_, '_, '_> {
         }
     }
 
+    /// The type of what never finishes, such as a `return`: the empty `never`, which fits any
+    /// type expected of it.
+    pub(super) fn never(&self) -> Option<Known> {
+        let never = self.env().item(vun_items::lang::never).ok()?.as_type()?;
+        Some(Known { ty: never, stage: Stage::Compile })
+    }
+
     /// The type both a branch typed so far, `sofar`, and the branch `at`, `found`, can take;
     /// branches with none in common are reported at `at`.
     pub(super) fn join(&mut self, at: ExprId, sofar: Known, found: Known) -> Option<Known> {

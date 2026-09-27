@@ -3,7 +3,7 @@
 //! parts in the same mode (decision 31). A `match` has the type all its arms can take.
 
 use vun_diag::{Diagnostic, Msg, errors};
-use vun_hir::tree::{Arm, BinderId, Entry, ExprId, ExprKind, Joined, Name, PatId, PatKind};
+use vun_hir::tree::{Arm, BinderId, Entry, ExprId, Joined, Name, PatId, PatKind};
 
 use vun_grammar::TokenKind;
 
@@ -191,13 +191,6 @@ impl Typer<'_, '_, '_> {
             let Some(value) = arm.value else { continue };
             let found = self.narrowing(&holds, |t| t.typed_as(value, expected));
             let found = self.fits(value, found, expected);
-            let leaves = matches!(
-                hir.exprs[value].kind,
-                ExprKind::Return(_) | ExprKind::Break { .. } | ExprKind::Continue { .. }
-            );
-            if leaves {
-                continue;
-            }
             joined = Some(match (joined, found) {
                 (None, found) => found,
                 (Some(Some(sofar)), Some(found)) => self.join(value, sofar, found),

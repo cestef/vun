@@ -75,10 +75,7 @@ impl Typer<'_, '_, '_> {
         match self.loops.pop()?.value {
             Ends::With(known) => Some(known),
             // A loop nothing leaves gives no value: it has the empty type.
-            Ends::Never => {
-                let never = self.env().item(vun_items::lang::never).ok()?.as_type()?;
-                Some(Known { ty: never, stage: Stage::Compile })
-            }
+            Ends::Never => self.never(),
             Ends::Unknown => None,
         }
     }
