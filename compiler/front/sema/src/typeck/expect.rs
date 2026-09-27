@@ -100,6 +100,25 @@ impl<'a, 'db> Typer<'_, 'a, 'db> {
         evaluated
     }
 
+    /// What a `$` form at `expr` gave, typed as `known`: as [`Self::reported`], and where it
+    /// surely runs, a form compile-time evaluation does not run yet is an error too, since what
+    /// `$` asks for cannot wait for run time (spec 03, section 1).
+    pub(super) fn ran<T>(
+        &mut self,
+        expr: ExprId,
+        known: Option<Known>,
+        evaluated: Result<T, Unevaluated>,
+    ) -> Result<T, Unevaluated> {
+        let evaluated = self.reported(expr, evaluated);
+        if self.undecided == 0 && known.is_some() && matches!(evaluated, Err(Unevaluated::Unsupported)) {
+            let msg = Msg::new().text("compile-time evaluation does not run this form yet");
+            self.diag.error(
+                Diagnostic::error(errors::COMPTIME_UNSUPPORTED, msg).at(self.hir().exprs[expr].origin, None),
+            );
+        }
+        evaluated
+    }
+
     /// Reports the run-time intermediate `expr`, of range `range`, as needing more bits than the
     /// widest storage (spec 04, rule 5).
     pub(super) fn width_cap(&mut self, expr: ExprId, range: &Interval) {

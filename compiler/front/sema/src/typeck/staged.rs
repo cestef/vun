@@ -20,10 +20,10 @@ impl<'a, 'db> Typer<'_, 'a, 'db> {
     pub(super) fn unroll<T>(&mut self, hir: &Hir, staged: &Staged<T>, entry: &mut dyn FnMut(&mut Self, &T)) {
         match staged {
             Staged::If { cond, then, otherwise, .. } => {
-                self.typed(*cond);
+                let known = self.typed(*cond);
                 let env = self.evaluating();
                 let holds = env.eval(*cond).and_then(|c| env.holds(&c));
-                match self.reported(*cond, holds) {
+                match self.ran(*cond, known, holds) {
                     Ok(holds) => walk_list(self, hir, if holds { then } else { otherwise }, entry),
                     Err(_) => self.undecided(|t| walk_staged(t, hir, staged, entry)),
                 }
@@ -78,7 +78,7 @@ impl<'a, 'db> Typer<'_, 'a, 'db> {
         // reports is reported here.
         if self.undecided == 0 {
             let value = self.evaluating().eval(operand);
-            let _ = self.reported(expr, value);
+            let _ = self.ran(expr, known, value);
         }
         match known.and_then(|k| k.ty.quoted()) {
             Some(ty) => Some(Known { ty, stage: self.stage }),

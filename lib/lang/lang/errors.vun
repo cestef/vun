@@ -94,6 +94,7 @@ comptime := struct {
     trap := diag.Diag{ .explanation = lang.meta.embed("errors/comptime/trap.md") };
     exhausted := diag.Diag{ .explanation = lang.meta.embed("errors/comptime/exhausted.md") };
     reported := diag.Diag{ .explanation = lang.meta.embed("errors/comptime/reported.md") };
+    unsupported := diag.Diag{ .explanation = lang.meta.embed("errors/comptime/unsupported.md") };
 };
 
 /// Place states (spec 05, section 2).
