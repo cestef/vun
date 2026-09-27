@@ -51,7 +51,7 @@ j := _x.Instruction{ .forms = &[
 ] };
 
 jmp := _x.Instruction{ .forms = &[
-    .{ .operands = &[_rel], .sizes = _all, .opcode = &[0xe9], .layout = .bare, .w = .never },
+    .{ .operands = &[_rel], .sizes = _all, .opcode = &[0xe9], .layout = .bare, .w = .never, .flow = .jump },
 ] };
 
 /// A call's operand is 64 bits without REX.W.
@@ -67,7 +67,7 @@ call := _x.Instruction{ .forms = &[
 ] };
 
 ret := _x.Instruction{ .forms = &[
-    .{ .operands = &[], .sizes = _all, .opcode = &[0xc3], .layout = .bare, .w = .never },
+    .{ .operands = &[], .sizes = _all, .opcode = &[0xc3], .layout = .bare, .w = .never, .flow = .ends },
 ] };
 
 push := _x.Instruction{ .forms = &[
@@ -107,7 +107,7 @@ leave := _x.Instruction{ .forms = &[
 ] };
 
 ud2 := _x.Instruction{ .forms = &[
-    .{ .operands = &[], .sizes = _all, .opcode = &[0x0f, 0x0b], .layout = .bare, .w = .never },
+    .{ .operands = &[], .sizes = _all, .opcode = &[0x0f, 0x0b], .layout = .bare, .w = .never, .flow = .ends },
 ] };
 
 xchg := _x.Instruction{ .forms = &[

@@ -18,7 +18,7 @@ _x_d_w: _a.Arg = .{ .kind = .gpr(.zr, .is(.b64)), .at = 0, .access = .write };
 _x_n: _a.Arg = .{ .kind = .gpr(.zr, .is(.b64)), .at = 5, .access = .read };
 
 b := _a.Instruction{ .forms = &[
-    .{ .base = 0x14000000, .sizes = _any, .args = &[_jump26_d] },
+    .{ .base = 0x14000000, .sizes = _any, .args = &[_jump26_d], .flow = .jump },
 ] };
 
 /// A conditional branch, written with its condition as the mnemonic's suffix (`b.eq`).
@@ -31,7 +31,7 @@ bl := _a.Instruction{ .forms = &[
 ] };
 
 br := _a.Instruction{ .forms = &[
-    .{ .base = 0xd61f0000, .sizes = _any, .args = &[_x_n] },
+    .{ .base = 0xd61f0000, .sizes = _any, .args = &[_x_n], .flow = .jump },
 ] };
 
 blr := _a.Instruction{ .forms = &[
@@ -39,7 +39,7 @@ blr := _a.Instruction{ .forms = &[
 ] };
 
 ret := _a.Instruction{ .forms = &[
-    .{ .base = 0xd65f03c0, .sizes = _any, .args = &[], .reads = &[.x30] },
+    .{ .base = 0xd65f03c0, .sizes = _any, .args = &[], .reads = &[.x30], .flow = .ends },
 ] };
 
 cbz := _a.Instruction{ .forms = &[
@@ -51,11 +51,11 @@ cbnz := _a.Instruction{ .forms = &[
 ] };
 
 udf := _a.Instruction{ .forms = &[
-    .{ .base = 0x0, .sizes = _any, .args = &[_u16_d] },
+    .{ .base = 0x0, .sizes = _any, .args = &[_u16_d], .flow = .ends },
 ] };
 
 brk := _a.Instruction{ .forms = &[
-    .{ .base = 0xd4200000, .sizes = _any, .args = &[_u16_n] },
+    .{ .base = 0xd4200000, .sizes = _any, .args = &[_u16_n], .flow = .ends },
 ] };
 
 /// The page of an address, which a following `add` or load completes with its low 12 bits.

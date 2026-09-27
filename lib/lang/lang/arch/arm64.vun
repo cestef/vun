@@ -229,6 +229,16 @@ Access := enum {
     address,
 };
 
+/// Where control goes after a form.
+Flow := enum {
+    /// To the next instruction, and for a conditional branch also to its target.
+    next,
+    /// To its target only.
+    jump,
+    /// Out of the code: it returns or traps.
+    ends,
+};
+
 /// An operand position: what it takes, the bit its field starts at, and what the form does with
 /// it.
 Arg := struct {
@@ -258,6 +268,7 @@ Form := ($W: type) -> type { struct {
     reads: &[Reg] = &[],
     writes: &[Reg] = &[],
     flags: ?Access = .none,
+    flow: Flow = .next,
 } };
 
 /// An instruction, named as its declaration is unless `mnemonic` says otherwise (`bcond` is

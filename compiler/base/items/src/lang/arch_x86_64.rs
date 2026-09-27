@@ -35,6 +35,8 @@ pub const Xmm: Item = Item::new(&["lang", "arch", "x86_64", "Xmm"]);
 pub const Kind: Item = Item::new(&["lang", "arch", "x86_64", "Kind"]);
 /// What a form does with an operand, or with the flags.
 pub const Access: Item = Item::new(&["lang", "arch", "x86_64", "Access"]);
+/// Where control goes after a form.
+pub const Flow: Item = Item::new(&["lang", "arch", "x86_64", "Flow"]);
 pub const Operand: Item = Item::new(&["lang", "arch", "x86_64", "Operand"]);
 /// A prefix before REX: `lock`, `rep`, or the mandatory prefix of an SSE instruction.
 pub const Prefix: Item = Item::new(&["lang", "arch", "x86_64", "Prefix"]);

@@ -58,6 +58,8 @@ pub const Branch: Item = Item::new(&["lang", "arch", "arm64", "Branch"]);
 pub const Kind: Item = Item::new(&["lang", "arch", "arm64", "Kind"]);
 /// What a form does with an operand, or with the flags.
 pub const Access: Item = Item::new(&["lang", "arch", "arm64", "Access"]);
+/// Where control goes after a form.
+pub const Flow: Item = Item::new(&["lang", "arch", "arm64", "Flow"]);
 /// An operand position: what it takes, the bit its field starts at, and what the form does with
 /// it.
 pub const Arg: Item = Item::new(&["lang", "arch", "arm64", "Arg"]);
