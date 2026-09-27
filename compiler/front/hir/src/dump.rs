@@ -6,7 +6,10 @@ use vun_outline::{Outline, Outlined};
 use vun_span::SourceMap;
 
 use crate::resolve::{Res, Resolution};
-use crate::tree::{BlockId, DeclId, ExprId, ExprKind, Hir, Lit, NsId, PatId, PatKind, Spread};
+use crate::tree::{
+    Asm, AsmEntry, BlockId, DeclId, ExprId, ExprKind, Hir, Lit, NsId, Operand, OperandKind, PatId, PatKind,
+    Spread, Writeback,
+};
 use crate::visit::{self, Visitor};
 
 impl Hir {
@@ -67,6 +70,53 @@ impl Printer<'_> {
     }
 }
 
+impl Printer<'_> {
+    /// The architecture of a block, then a line per label and instruction.
+    fn asm(&mut self, hir: &Hir, asm: &Asm) {
+        self.expr(hir, asm.arch);
+        for entry in &asm.entries {
+            match entry {
+                AsmEntry::Label { name, origin } => self.line(*origin, &format!("Label '{name}"), |_| {}),
+                AsmEntry::Inst(inst) => {
+                    let suffix = inst.suffix.map(|s| format!(".{s}")).unwrap_or_default();
+                    self.line(inst.origin, &format!("Inst {}{suffix}", inst.mnemonic), |p| {
+                        inst.operands.iter().for_each(|o| p.operand(hir, o));
+                    });
+                }
+            }
+        }
+    }
+
+    fn operand(&mut self, hir: &Hir, operand: &Operand) {
+        let label = match &operand.kind {
+            OperandKind::Error => "Error".to_owned(),
+            OperandKind::Unfit(_) => "Unfit".to_owned(),
+            OperandKind::Word(w) => format!("Word {w}"),
+            OperandKind::Int(i) => format!("Int {i}"),
+            OperandKind::Label(l) => format!("Label '{l}"),
+            OperandKind::Prefix { op, .. } => format!("Prefix {}", op.text().unwrap_or_default()),
+            OperandKind::Infix { op, .. } => format!("Infix {}", op.text().unwrap_or_default()),
+            OperandKind::Memory { writeback: Writeback::No, .. } => "Memory".to_owned(),
+            OperandKind::Memory { writeback: Writeback::Yes, .. } => "Memory !".to_owned(),
+            OperandKind::Bound { flow, register, .. } => {
+                let flow = flow.and_then(vun_grammar::Flow::text).unwrap_or_default();
+                let register = register.map(|r| format!("({r})")).unwrap_or_default();
+                format!("Bound {flow}{register}")
+            }
+        };
+        self.line(operand.origin, label.trim_end(), |p| match &operand.kind {
+            OperandKind::Prefix { operand, .. } => p.operand(hir, operand),
+            OperandKind::Infix { left, right, .. } => {
+                p.operand(hir, left);
+                p.operand(hir, right);
+            }
+            OperandKind::Memory { parts, .. } => parts.iter().for_each(|o| p.operand(hir, o)),
+            OperandKind::Bound { value: e, .. } | OperandKind::Unfit(e) => p.expr(hir, *e),
+            OperandKind::Error | OperandKind::Word(_) | OperandKind::Int(_) | OperandKind::Label(_) => {}
+        });
+    }
+}
+
 impl Visitor for Printer<'_> {
     fn namespace(&mut self, hir: &Hir, ns: NsId) {
         self.line(hir.namespaces[ns].origin, "Namespace", |p| visit::walk_namespace(p, hir, ns));
@@ -89,7 +139,10 @@ impl Visitor for Printer<'_> {
 
     fn expr(&mut self, hir: &Hir, expr: ExprId) {
         let label = self.expr_label(hir, expr);
-        self.line(hir.exprs[expr].origin, &label, |p| visit::walk_expr(p, hir, expr));
+        self.line(hir.exprs[expr].origin, &label, |p| match &hir.exprs[expr].kind {
+            ExprKind::Asm(asm) => p.asm(hir, asm),
+            _ => visit::walk_expr(p, hir, expr),
+        });
     }
 
     fn pat(&mut self, hir: &Hir, pat: PatId) {

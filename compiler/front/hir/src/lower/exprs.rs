@@ -122,6 +122,7 @@ impl Lower<'_, '_> {
             }
             NodeKind::Block => ExprKind::Block(self.block(n)),
             NodeKind::Quote => ExprKind::Quote(self.block(n)),
+            NodeKind::Asm => ExprKind::Asm(Box::new(self.asm(&f, n))),
             NodeKind::Struct => ExprKind::Struct(self.namespace(&f, n)),
             NodeKind::Enum => {
                 let (variants, ns) = self.enum_body(&f, n);

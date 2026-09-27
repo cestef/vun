@@ -231,7 +231,14 @@ pub fn walk_expr<V: Visitor + ?Sized>(v: &mut V, hir: &Hir, expr: ExprId) {
             each(v, hir, attrs);
             v.expr(hir, *inner);
         }
+        ExprKind::Asm(asm) => walk_asm(v, hir, asm),
     }
+}
+
+/// The architecture of a block of instructions, then the Vun expressions among its operands.
+pub fn walk_asm<V: Visitor + ?Sized>(v: &mut V, hir: &Hir, asm: &crate::tree::Asm) {
+    v.expr(hir, asm.arch);
+    asm.each_expr(&mut |e| v.expr(hir, e));
 }
 
 pub fn walk_params<V: Visitor + ?Sized>(v: &mut V, hir: &Hir, params: &List<crate::tree::Param>) {

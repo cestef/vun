@@ -4,6 +4,7 @@
 //! nothing: the parser reported malformed source, which lowers to `Error` nodes, and the checks
 //! that need the HIR run after it.
 
+mod asm;
 mod control;
 mod exprs;
 mod members;
