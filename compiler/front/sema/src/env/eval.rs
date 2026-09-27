@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use vun_desugar::{Borrow, Form, MARKERS, TYPE_PREFIXES};
+use vun_desugar::{Access, Borrow, Form, MARKERS, TYPE_PREFIXES};
 use vun_grammar::TokenKind;
 use vun_hir::tree::{BlockId, Cond, Entry, ExprId, ExprKind, List, Lit, Param};
 use vun_origin::OriginTable;
@@ -68,6 +68,7 @@ impl Env<'_, '_> {
                 Value::repeat(item, &self.eval(*count)?)
             }
             ExprKind::Prefix { op: TokenKind::Dollar, operand, .. } => self.splice(self.eval(*operand)?),
+            ExprKind::Postfix { op: TokenKind::DotStar, operand } => self.reached(*operand),
             // `!c` is the other condition; `-a` and `~a` are operators.
             ExprKind::Prefix { op: TokenKind::Bang, operand, .. } => {
                 self.decide(!self.holds(&self.eval(*operand)?)?)
@@ -147,12 +148,23 @@ impl Env<'_, '_> {
     /// `&T`, `&mut T`, ...: the borrow type of the mode (appendix B), applied to the type
     /// `operand`. A borrow of a value exists at run time only.
     fn borrow(&self, expr: ExprId, mode: Borrow, operand: ExprId) -> Result<Value, Unevaluated> {
-        let value = self.eval_as(operand, self.type_of(expr).and_then(|t| t.pointee()))?;
+        // Typed as a borrow, `&t` borrows the value `t`, even when that value is a type.
+        let pointee = self.type_of(expr).and_then(|t| t.pointee());
+        let value = self.eval_as(operand, pointee)?;
         match value.as_type() {
-            Some(ty) => self.apply(self.item(mode.item())?, vec![Value::Type(ty)]),
+            Some(ty) if pointee.is_none() => self.apply(self.item(mode.item())?, vec![Value::Type(ty)]),
             // A shared borrow of a compile-time value reads the value, which never changes.
-            None if mode.is_plain() => Ok(value),
-            None => Err(Unevaluated::Runtime),
+            _ if mode.is_plain() => Ok(value),
+            _ => Err(Unevaluated::Runtime),
+        }
+    }
+
+    /// `operand.*`: through a shared borrow, the value it reads. Other pointers are followed by
+    /// the evaluator, which holds the places they reach.
+    fn reached(&self, operand: ExprId) -> Result<Value, Unevaluated> {
+        match self.type_of(operand).and_then(|t| t.borrowing()) {
+            Some((mode, ..)) if mode.access() == Access::Shared => self.eval(operand),
+            _ => Err(Unevaluated::Unsupported),
         }
     }
 

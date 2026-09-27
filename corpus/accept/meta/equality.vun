@@ -1,0 +1,22 @@
+//! `==` on types and names calls their `lang.ops.Eq` impls at compile time, also in a
+//! compile-time call whose result a run-time function reads (spec 02, section 4).
+
+is_byte := ($T: type) -> bool { T == u8 };
+is_linux := ($os: lang.meta.Name) -> bool { os == .linux };
+
+byte: bool = is_byte(u8);
+wide: bool = is_byte(u16);
+linux: bool = is_linux(.linux);
+other: bool = is_linux(.macos);
+
+start := std.os.start(main);
+
+main := (sys: &mut std.os.System) -> std.os.Exit {
+    if byte and !wide and linux and !other { .ok } else { .code(1) }
+};
+
+#[test]
+equal := () {
+    $assert(byte and !wide);
+    $assert(linux and !other);
+};
