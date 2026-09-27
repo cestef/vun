@@ -45,6 +45,10 @@ pub enum Op {
     Ret,
     Push,
     Pop,
+    /// Pushes the flags, 64 bits of them.
+    Pushf,
+    /// Pops the flags.
+    Popf,
     Leave,
     Ud2,
     Xchg,
@@ -106,6 +110,8 @@ impl Op {
         Self::Ret,
         Self::Push,
         Self::Pop,
+        Self::Pushf,
+        Self::Popf,
         Self::Leave,
         Self::Ud2,
         Self::Xchg,

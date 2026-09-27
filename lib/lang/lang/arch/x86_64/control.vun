@@ -94,6 +94,34 @@ pop := _x.Instruction{ .forms = &[
     },
 ] };
 
+/// Pushes the flags, 64 bits of them.
+pushf := _x.Instruction{ .forms = &[
+    .{
+        .operands = &[],
+        .sizes = _all,
+        .opcode = &[0x9c],
+        .layout = .bare,
+        .w = .never,
+        .reads = _stack,
+        .writes = _stack,
+        .flags = _reads,
+    },
+] };
+
+/// Pops the flags.
+popf := _x.Instruction{ .forms = &[
+    .{
+        .operands = &[],
+        .sizes = _all,
+        .opcode = &[0x9d],
+        .layout = .bare,
+        .w = .never,
+        .reads = _stack,
+        .writes = _stack,
+        .flags = _sets,
+    },
+] };
+
 leave := _x.Instruction{ .forms = &[
     .{
         .operands = &[],

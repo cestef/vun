@@ -18,6 +18,10 @@ pub const call: Item = Item::new(&["lang", "arch", "x86_64", "control", "call"])
 pub const ret: Item = Item::new(&["lang", "arch", "x86_64", "control", "ret"]);
 pub const push: Item = Item::new(&["lang", "arch", "x86_64", "control", "push"]);
 pub const pop: Item = Item::new(&["lang", "arch", "x86_64", "control", "pop"]);
+/// Pushes the flags, 64 bits of them.
+pub const pushf: Item = Item::new(&["lang", "arch", "x86_64", "control", "pushf"]);
+/// Pops the flags.
+pub const popf: Item = Item::new(&["lang", "arch", "x86_64", "control", "popf"]);
 pub const leave: Item = Item::new(&["lang", "arch", "x86_64", "control", "leave"]);
 pub const ud2: Item = Item::new(&["lang", "arch", "x86_64", "control", "ud2"]);
 pub const xchg: Item = Item::new(&["lang", "arch", "x86_64", "control", "xchg"]);

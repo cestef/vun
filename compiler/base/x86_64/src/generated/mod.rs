@@ -30,6 +30,8 @@ mod call;
 mod ret;
 mod push;
 mod pop;
+mod pushf;
+mod popf;
 mod leave;
 mod ud2;
 mod xchg;
