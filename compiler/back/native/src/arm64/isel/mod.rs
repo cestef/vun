@@ -5,26 +5,22 @@ mod atomic;
 mod call;
 mod carry;
 mod entry;
-mod float;
 mod memory;
+mod needs;
+mod select;
 mod term;
 
-use vun_asm_arm64::{Cc, Size};
+use vun_asm_arm64::{Reg, Size};
 use vun_backend::{Lack, Missing};
-use vun_codegen::snippet::{Args, Snippet};
-use vun_codegen::{Cx, Isel};
-use vun_lir::{BinOp, Block, CastOp, Cond, Function, Inst, InstKind, Reads, Scalar, Value};
+use vun_codegen::snippet::Args;
+use vun_codegen::{Cx, Isel, Needs};
+use vun_lir::{Block, Cond, Function, Inst, Scalar, Value};
 
 use vun_abi::Convention;
 
 use super::abi::Passing;
-use super::snippets::{
-    ADD, AND, CMP, CMP_SIGNED, CMP_UNSIGNED, KEEP, MUL, OR, SAR, SAR_NARROW, SDIV, SDIV_NARROW, SELECT, SET,
-    SET_SIGNED, SET_UNSIGNED, SEXT, SHL, SHR, SHR_NARROW, SREM, SREM_NARROW, SUB, UDIV, UDIV_NARROW, UREM,
-    UREM_NARROW, XOR, ZEXT,
-};
 use super::{Arm, condition};
-use crate::width::size_of;
+use select::{Look, Selection};
 
 /// What the instruction compilers keep for one function.
 pub struct State {
@@ -63,8 +59,25 @@ impl Isel for Arm {
         Ok(State { convention, passing, frame_at: 0, gathered: None })
     }
 
+    /// Those the call standard preserves.
+    fn preserved(convention: Self::Convention) -> &'static [Reg] {
+        convention.registers.preserved
+    }
+
     fn fuses(cond: Cond) -> bool {
         condition(cond).is_some()
+    }
+
+    fn inst_needs(cx: &Cx<'_, Self>, inst: Inst, needs: &mut Needs) {
+        Look(cx).needs(inst, needs);
+    }
+
+    fn term_needs(cx: &Cx<'_, Self>, block: Block, needs: &mut Needs) {
+        Look(cx).term_needs(block, needs);
+    }
+
+    fn entry_needs(cx: &Cx<'_, Self>, needs: &mut Needs) {
+        Look(cx).entry_needs(needs);
     }
 
     fn prologue(cx: &mut Cx<'_, Self>) -> Result<(), Lack> {
@@ -95,124 +108,34 @@ fn narrow(size: Size) -> bool {
     size < Size::B32
 }
 
-impl Sel<'_, '_> {
+impl<'a> Sel<'_, 'a> {
+    /// The function compiled, read without emitting.
+    fn look(&self) -> Look<'_, 'a> {
+        Look(self.0)
+    }
+
     fn inst(&mut self, inst: Inst) -> Result<(), Lack> {
-        let f = self.f;
-        let data = &f.insts[inst];
-        let out = data.result;
-        match &data.kind {
-            &InstKind::Binary { op, a, b } => self.binary(op, a, b, out),
-            &InstKind::Compare { cond, a, b } => self.compare(cond, a, b, out),
-            &InstKind::Cast { op, value, to } => self.cast(op, value, to, out),
-            &InstKind::Select { cond, then, otherwise } => {
-                self.size(then)?;
-                self.apply(SELECT, &[cond, then, otherwise], out, Size::B64, None);
-                Ok(())
+        let out = self.f.insts[inst].result;
+        match self.look().selection(inst)? {
+            Selection::Snippet { snippet, ins, size, cond } => {
+                self.snippet(snippet, &Args { ins: &ins, out, size, cond });
             }
-            InstKind::Call { callee, args } => self.call(callee, args, out),
-            kind => self.memory(kind, out),
+            Selection::Call { callee, args } => self.call(callee, args, out)?,
+            Selection::Rmw { op, addr, value, size } => self.rmw(op, addr, value, out, size),
+            Selection::CompareExchange { addr, expected, new, size } => {
+                self.compare_exchange(addr, expected, new, out, size);
+            }
+            Selection::Copy { to, from, bytes } => self.copy(to, from, bytes),
         }
+        Ok(())
     }
 
     /// The size of an integer, address or float value, or what the backend lacks for it.
     fn size(&self, v: Value) -> Result<Size, Lack> {
-        self.size_of(self.f.ty(v))
+        self.look().size(v)
     }
 
     fn size_of(&self, scalar: Scalar) -> Result<Size, Lack> {
-        size_of(scalar).ok_or_else(|| {
-            self.lack(match scalar {
-                Scalar::I128 => Missing::Int128,
-                _ => Missing::Half,
-            })
-        })
-    }
-
-    /// Emits `snippet` over `ins`, defining `out`.
-    fn apply(
-        &mut self,
-        snippet: Snippet<Arm>,
-        ins: &[Value],
-        out: Option<Value>,
-        size: Size,
-        cond: Option<Cc>,
-    ) {
-        self.snippet(snippet, &Args { ins, out, size, cond });
-    }
-
-    fn binary(&mut self, op: BinOp, a: Value, b: Value, out: Option<Value>) -> Result<(), Lack> {
-        if op.reads() == Reads::Float {
-            return self.float_binary(op, a, b, out);
-        }
-        let size = self.size(a)?;
-        let snippet = match (op, narrow(size)) {
-            (BinOp::Add, _) => ADD,
-            (BinOp::Sub, _) => SUB,
-            (BinOp::And, _) => AND,
-            (BinOp::Or, _) => OR,
-            (BinOp::Xor, _) => XOR,
-            (BinOp::Mul, _) => MUL,
-            (BinOp::Shl, _) => SHL,
-            (BinOp::UDiv, false) => UDIV,
-            (BinOp::URem, false) => UREM,
-            (BinOp::SDiv, false) => SDIV,
-            (BinOp::SRem, false) => SREM,
-            (BinOp::LShr, false) => SHR,
-            (BinOp::AShr, false) => SAR,
-            (BinOp::UDiv, true) => UDIV_NARROW,
-            (BinOp::URem, true) => UREM_NARROW,
-            (BinOp::SDiv, true) => SDIV_NARROW,
-            (BinOp::SRem, true) => SREM_NARROW,
-            (BinOp::LShr, true) => SHR_NARROW,
-            (BinOp::AShr, true) => SAR_NARROW,
-            (BinOp::FAdd | BinOp::FSub | BinOp::FMul | BinOp::FDiv, _) => {
-                unreachable!("floats are read as floats")
-            }
-        };
-        self.apply(snippet, &[a, b], out, size, None);
-        Ok(())
-    }
-
-    fn compare(&mut self, cond: Cond, a: Value, b: Value, out: Option<Value>) -> Result<(), Lack> {
-        if cond.reads() == Reads::Float {
-            return self.float_compare(cond, a, b, out);
-        }
-        let size = self.size(a)?;
-        let snippet = match (narrow(size), cond.reads()) {
-            (false, _) => SET,
-            (true, Reads::Signed) => SET_SIGNED,
-            (true, _) => SET_UNSIGNED,
-        };
-        self.apply(snippet, &[a, b], out, size, condition(cond));
-        Ok(())
-    }
-
-    /// Sets the flags `cond` holds on for `a` and `b`, as the branch fusing the comparison reads
-    /// them.
-    fn flags(&mut self, cond: Cond, a: Value, b: Value) -> Result<(), Lack> {
-        let size = self.size(a)?;
-        let snippet = match (cond.reads(), narrow(size)) {
-            (Reads::Float, _) => super::snippets::FCMP,
-            (_, false) => CMP,
-            (Reads::Signed, true) => CMP_SIGNED,
-            (_, true) => CMP_UNSIGNED,
-        };
-        self.apply(snippet, &[a, b], None, size, None);
-        Ok(())
-    }
-
-    fn cast(&mut self, op: CastOp, value: Value, to: Scalar, out: Option<Value>) -> Result<(), Lack> {
-        let snippet = match op {
-            CastOp::ZExt => ZEXT,
-            CastOp::SExt => SEXT,
-            CastOp::Trunc | CastOp::PtrToInt | CastOp::IntToPtr | CastOp::Bitcast => KEEP,
-            CastOp::FConvert | CastOp::SToF | CastOp::UToF | CastOp::FToS | CastOp::FToU => {
-                return self.float_cast(op, value, to, out);
-            }
-        };
-        self.size_of(to)?;
-        let size = self.size(value)?;
-        self.apply(snippet, &[value], out, size, None);
-        Ok(())
+        self.look().size_of(scalar)
     }
 }

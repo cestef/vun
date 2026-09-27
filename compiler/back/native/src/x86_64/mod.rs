@@ -30,8 +30,7 @@ impl Arch for X86 {
     const REGS: usize = Reg::ALL.len();
     /// Those a call may overwrite, but the two kept for the framework's moves.
     const ALLOCATABLE: &'static [Reg] = &[Reg::Rax, Reg::Rcx, Reg::Rdx, Reg::Rsi, Reg::Rdi, Reg::R8, Reg::R9];
-    /// Those the convention preserves, but the frame pointer.
-    const CALLEE_SAVED: &'static [Reg] = &[Reg::Rbx, Reg::R12, Reg::R13, Reg::R14, Reg::R15];
+    const FRAME: Reg = Reg::Rbp;
     const CARRIER: Reg = Reg::R11;
     const TEMP: Reg = Reg::R10;
     const WORD: u64 = 8;

@@ -3,7 +3,7 @@
 
 use vun_asm::imm::low64;
 use vun_index::IndexVec;
-use vun_lir::analysis::{Liveness, Order};
+use vun_lir::analysis::Order;
 use vun_lir::{Address, Function, InstKind, Slot, Value};
 
 /// What an address in a function is relative to.
@@ -43,61 +43,51 @@ pub enum Recompute {
     Addr(Place),
 }
 
-/// Where one value is.
+/// What the framework keeps of one value; where it is, the plan says.
 #[derive(Clone, Copy, Debug)]
-pub(crate) struct Assignment<R> {
-    pub(crate) reg: Option<R>,
+pub(crate) struct Assignment {
     /// Its home's offset from the frame pointer, once allocated.
     pub(crate) home: Option<i32>,
-    /// Whether the home holds the value.
-    pub(crate) saved: bool,
-    /// The uses not compiled yet.
-    pub(crate) left: u32,
-    /// The callee-saved register held for it from definition to last use.
-    pub(crate) fixed: Option<R>,
     pub(crate) recompute: Option<Recompute>,
+    /// How many times instructions and terminators read it.
+    pub(crate) uses: u32,
 }
 
-impl<R> Assignment<R> {
-    fn new(left: u32) -> Self {
-        Self { reg: None, home: None, saved: false, left, fixed: None, recompute: None }
-    }
-}
-
-/// The assignments of every value of `f`, each value's uses counted by `live`, the values
-/// recomputed where used found in `order`, a definition coming before its uses.
-pub(crate) fn assign<R: Copy>(
-    f: &Function,
-    live: &Liveness,
-    order: &Order,
-    slots: &IndexVec<Slot, i32>,
-) -> IndexVec<Value, Assignment<R>> {
-    let mut values: IndexVec<Value, Assignment<R>> = f
-        .values
-        .iter()
-        .map(|(v, _)| Assignment::new(live.range(v).map_or(0, |r| r.uses)))
-        .collect::<Vec<_>>()
-        .into();
-    for &block in order.blocks() {
-        for &inst in &f.blocks[block].insts {
-            let data = &f.insts[inst];
-            let Some(out) = data.result else { continue };
-            let constant = |v: Value| match values[v].recompute {
-                // An offset is address-wide, and native addresses are 64 bits.
-                Some(Recompute::Const(bits)) => Some(low64(bits).cast_signed()),
-                _ => None,
-            };
-            values[out].recompute = match data.kind {
-                InstKind::Const { bits, .. } => Some(Recompute::Const(bits)),
-                InstKind::SlotAddr(s) => Some(Recompute::Addr(Place::frame(slots[s]))),
-                InstKind::Addr(a) => Some(Recompute::Addr(Place { anchor: Anchor::Sym(a), disp: 0 })),
-                InstKind::Offset { base, offset } => match (values[base].recompute, constant(offset)) {
-                    (Some(Recompute::Addr(place)), Some(bytes)) => Some(Recompute::Addr(place.plus(bytes))),
+impl Assignment {
+    /// The assignments of every value of `f`: the values recomputed where used found in
+    /// `order`, a definition coming before its uses, and every value's uses counted.
+    pub(crate) fn all(f: &Function, order: &Order, slots: &IndexVec<Slot, i32>) -> IndexVec<Value, Self> {
+        let mut values: IndexVec<Value, Self> =
+            f.values.iter().map(|_| Self { home: None, recompute: None, uses: 0 }).collect::<Vec<_>>().into();
+        for &block in order.blocks() {
+            for &inst in &f.blocks[block].insts {
+                let data = &f.insts[inst];
+                for v in data.kind.operands() {
+                    values[v].uses += 1;
+                }
+                let Some(out) = data.result else { continue };
+                let constant = |v: Value| match values[v].recompute {
+                    // An offset is address-wide, and native addresses are 64 bits.
+                    Some(Recompute::Const(bits)) => Some(low64(bits).cast_signed()),
                     _ => None,
-                },
-                _ => None,
-            };
+                };
+                values[out].recompute = match data.kind {
+                    InstKind::Const { bits, .. } => Some(Recompute::Const(bits)),
+                    InstKind::SlotAddr(s) => Some(Recompute::Addr(Place::frame(slots[s]))),
+                    InstKind::Addr(a) => Some(Recompute::Addr(Place { anchor: Anchor::Sym(a), disp: 0 })),
+                    InstKind::Offset { base, offset } => match (values[base].recompute, constant(offset)) {
+                        (Some(Recompute::Addr(place)), Some(bytes)) => {
+                            Some(Recompute::Addr(place.plus(bytes)))
+                        }
+                        _ => None,
+                    },
+                    _ => None,
+                };
+            }
+            for v in f.blocks[block].term.operands() {
+                values[v].uses += 1;
+            }
         }
+        values
     }
-    values
 }

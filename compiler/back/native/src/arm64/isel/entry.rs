@@ -1,7 +1,7 @@
 //! The frame and the parameters: the prologue saves the frame pointer and the link register and
 //! reserves the frame, its size built in `x16` by two moves written when the function ends;
 //! parameters passed in memory are addresses recomputed where used, the others are received
-//! where the convention passes them once the callee-saved registers are chosen.
+//! where the convention passes them, and the plan moves them on from there.
 
 use crate::width::offset_of;
 use vun_asm_arm64::{Emit, Mem, Op, Operand, Reg, Size};
@@ -59,29 +59,21 @@ impl Sel<'_, '_> {
         self.asm.replace(at, moves.finish().expect("no labels"));
     }
 
-    /// Receives the parameters passed in registers and on the stack.
+    /// Receives the parameters passed in floating-point registers and on the stack, and the
+    /// records whose parts are passed in registers; those in general registers are where the
+    /// plan takes them.
     pub(super) fn entry(&mut self) {
         let f = self.f;
         let Some(entry) = f.entry() else { return };
-        let params = &f.blocks[entry].params;
         let locs = self.state.passing.params.clone();
-        // Values in general registers are received first, so that one received from a
-        // floating-point register, which takes a general register, overwrites none still to be
-        // received.
-        let fp = |loc: &Loc| matches!(loc, Loc::Reg(Carrier::Float(_)));
-        let ordered = params
-            .iter()
-            .zip(&locs)
-            .filter(|(_, l)| !fp(l))
-            .chain(params.iter().zip(&locs).filter(|(_, l)| fp(l)));
-        for (&v, loc) in ordered {
+        for (&v, loc) in f.blocks[entry].params.iter().zip(&locs) {
             // A record copied by the caller is received as its address.
             let loc = match loc {
                 Loc::Indirect { at, .. } => at.as_ref(),
                 loc => loc,
             };
             match loc {
-                Loc::Reg(carrier) => self.receive(v, *carrier),
+                Loc::Reg(Carrier::Float(x)) => self.receive_float(v, *x),
                 Loc::Stack { offset, .. } => self.home_at(v, CALLER_ARGS + offset_of(*offset)),
                 Loc::Split(parts) => {
                     let buffer = self.place(v).expect("placed by the prologue");
@@ -90,15 +82,9 @@ impl Sel<'_, '_> {
                         self.store_part(FP, disp, part.reg, part.bytes);
                     }
                 }
-                Loc::Copied { .. } | Loc::Returned | Loc::Indirect { .. } => {}
+                Loc::Reg(Carrier::Int(_)) | Loc::Copied { .. } | Loc::Returned | Loc::Indirect { .. } => {}
             }
         }
-        // An entry that is also jumped to receives its parameters in their homes.
-        if !self.cfg.preds[entry].is_empty() {
-            self.spill_live();
-            self.clear();
-        }
-        self.unlock();
     }
 
     /// A buffer in the frame for a record of `parts`.

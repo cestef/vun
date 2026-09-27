@@ -10,10 +10,12 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
+vun-abi.workspace = true
 vun-asm.workspace = true
 vun-backend.workspace = true
 vun-dwarf.workspace = true
 vun-index.workspace = true
 vun-lir.workspace = true
 vun-origin.workspace = true
+vun-regalloc.workspace = true
 vun-trace.workspace = true

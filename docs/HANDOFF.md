@@ -159,8 +159,7 @@ language rules go in as proposed unless the user approves them.
    program runs on linux.x86_64, linux.arm64 and wasi.wasm32.
    In progress: typed inline assembly (decision 258: the x86-64 table is data in
    `lang.arch.x86_64` and generates the assembler's; arm64 next, then the block syntax, the MIR/LIR
-   instruction and the backends); `vun-regalloc` (linear scan with a checker, integration into
-   `vun-codegen`); `vun-fmt` (then the repository reformatted, and a check keeping it so);
+   instruction and the backends); `vun-fmt` (then the repository reformatted, and a check keeping it so);
    `vun-lsp` after it. Left, most severe first:
    - A Linux runtime calling the kernel (static programs without libc), which needs inline
      assembly for `syscall`.
@@ -201,8 +200,18 @@ language rules go in as proposed unless the user approves them.
    109 ms natively (C `-O2`: 116), `half.vun` shrinks from 22,917 to 13,773 instructions.
    Then (decision 229) threading through loop heads deciding on a state (parameters demoted
    to slots, then promoted), edge facts in `reuse`, more folds: a `for` over a range is a
-   one-block loop, its state in callee-saved registers (decision 230: 56 ms; C `-O2` 51). Left: values live across blocks are still homed at every block end
-   (a callee-saved register only for loops); padding tiles are copied as zeros (LIR has no
+   one-block loop, its state in callee-saved registers (decision 230: 56 ms; C `-O2` 51).
+   Then (decision 257, proposed) a register allocator the native backends share,
+   `vun-regalloc`: linear scan on SSA after Wimmer and Franz over what each instruction says it
+   needs (`Isel::inst_needs`, snippets from their slots, calls from `vun-abi`), a plan the
+   framework follows, checked by simulation in debug builds, tests and the `regalloc` fuzz
+   target. Values live across blocks stay in registers; the backend test programs lose 3 to 22
+   percent of their instructions and up to 85 percent of their frame accesses (`half.vun`:
+   13,238 to 11,686 instructions); the LCG loop is 7 instructions a round instead of 13, in
+   registers a call may overwrite. Left: constants too wide for an immediate are rebuilt in the
+   loop each round rather than kept in a register (the plan could keep them when registers are
+   free); a spilled operand is loaded into a register even where the instruction takes memory
+   (snippets ask for every operand in a register); padding tiles are copied as zeros (LIR has no
    undefined value). (c) DWARF line tables and symbol names done (decisions 204, 205:
    `vun-dwarf`; `gdb` breaks on Vun lines); the unit is named by the first file with a row;
    unwind information done (decision 215, `.eh_frame` on ELF; Mach-O's compact unwind is

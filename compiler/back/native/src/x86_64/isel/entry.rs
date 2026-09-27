@@ -1,6 +1,6 @@
 //! The frame and the parameters: the prologue reserves the frame, its size written when the
 //! function ends; parameters passed in memory are addresses recomputed where used, the others
-//! are received where the convention passes them once the callee-saved registers are chosen.
+//! are received where the convention passes them, and the plan moves them on from there.
 
 use crate::width::offset_of;
 use vun_asm_x86_64::{Emit, Inst, Mem, Op, Operand, Reg, Size};
@@ -56,23 +56,15 @@ impl Sel<'_, '_> {
         self.asm.relist(at, sub);
     }
 
-    /// Receives the parameters passed in registers and on the stack.
+    /// Receives the parameters passed in SSE registers and on the stack, and the records whose
+    /// parts are passed in registers; those in general registers are where the plan takes them.
     pub(super) fn entry(&mut self) {
         let f = self.f;
         let Some(entry) = f.entry() else { return };
-        let params = &f.blocks[entry].params;
         let locs = self.state.passing.params.clone();
-        // Values in general registers are received first, so that one received from an SSE
-        // register, which takes a general register, overwrites none still to be received.
-        let sse = |loc: &Loc| matches!(loc, Loc::Reg(Carrier::Float(_)));
-        let ordered = params
-            .iter()
-            .zip(&locs)
-            .filter(|(_, l)| !sse(l))
-            .chain(params.iter().zip(&locs).filter(|(_, l)| sse(l)));
-        for (&v, loc) in ordered {
+        for (&v, loc) in f.blocks[entry].params.iter().zip(&locs) {
             match loc {
-                Loc::Reg(carrier) => self.receive(v, *carrier),
+                Loc::Reg(Carrier::Float(x)) => self.receive_float(v, *x),
                 Loc::Stack { offset, .. } => self.home_at(v, CALLER_ARGS + offset_of(*offset)),
                 Loc::Split(parts) => {
                     let buffer = self.place(v).expect("placed by the prologue");
@@ -81,7 +73,7 @@ impl Sel<'_, '_> {
                         self.store_part(at, part.reg, X86::WORD);
                     }
                 }
-                Loc::Copied { .. } | Loc::Indirect { .. } | Loc::Returned => {}
+                Loc::Reg(Carrier::Int(_)) | Loc::Copied { .. } | Loc::Indirect { .. } | Loc::Returned => {}
             }
         }
         if self.state.passing.ret == Ret::Memory {
@@ -89,12 +81,6 @@ impl Sel<'_, '_> {
             self.asm.emit(Op::Mov, Size::B64, &[Mem::at(Reg::Rbp, home).into(), ARGS[0].into()]);
             self.state.hidden = Some(home);
         }
-        // An entry that is also jumped to receives its parameters in their homes.
-        if !self.cfg.preds[entry].is_empty() {
-            self.spill_live();
-            self.clear();
-        }
-        self.unlock();
     }
 
     /// A buffer of `eightbytes` words in the frame.

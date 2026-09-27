@@ -1,24 +1,30 @@
-//! Calls, as the framework sees them: a call may write any register but the callee-saved ones,
-//! so what is used after it is stored home first, and the values passed in registers are moved
-//! there together, straight from where they are.
+//! Calls, as the framework plans them. Where each argument goes follows from the convention's
+//! placements (`vun_abi::Passing`): one passed in a general register is there when the call is
+//! reached, a constant written there by the call itself; one passed elsewhere is read from
+//! wherever the plan holds it. A call may write every register but those it preserves, so the
+//! values live across it are held in those or in their homes.
 
-use vun_lir::Value;
+use vun_abi::{Carrier, Loc, Passing, Ret};
+use vun_lir::{Callee, ImportKind, Signature, Value};
+use vun_regalloc::{Need, Needs, Out, Read};
 
 use super::Cx;
 use crate::Arch;
 
-impl<A: Arch> Cx<'_, A> {
-    /// Stores home every value held in a register and still used, but those whose every
-    /// remaining use is a register argument in `passed`: the call reads them from their
-    /// registers.
-    pub fn spill_for_call(&mut self, passed: &[(Value, A::Reg)]) {
-        for &r in A::ALLOCATABLE.iter().chain(A::CALLEE_SAVED) {
-            let Some(v) = self.regs.holds(r) else { continue };
-            let reads = passed.iter().filter(|&&(p, _)| p == v).count();
-            if u32::try_from(reads).is_ok_and(|n| n == self.values[v].left) {
-                continue;
-            }
-            self.store_home(v, r);
+impl<'a, A: Arch> Cx<'a, A> {
+    /// The signature `callee` is called with.
+    ///
+    /// # Panics
+    /// Never for a unit the verifier accepts, whose calls call functions.
+    #[must_use]
+    pub fn signature(&self, callee: &'a Callee) -> &'a Signature {
+        match callee {
+            Callee::Func(f) => &self.unit.functions[*f].signature,
+            Callee::Import(i) => match &self.unit.imports[*i].kind {
+                ImportKind::Func(s) => s,
+                ImportKind::Data => unreachable!("the verifier checks calls call functions"),
+            },
+            Callee::Indirect(_, s) => s,
         }
     }
 
@@ -27,30 +33,58 @@ impl<A: Arch> Cx<'_, A> {
         A::recompute(&mut self.asm, dst, crate::Recompute::Const(bits));
     }
 
-    /// Writes each value of `passed` into its register, as one parallel move: a register is
-    /// written once no value still to be passed is in it, and a cycle is broken by storing one
-    /// of its values home.
-    ///
-    /// # Panics
-    /// Never: a move is blocked only by a register holding a value.
-    pub fn pass_in_regs(&mut self, passed: &[(Value, A::Reg)]) {
-        let mut pending = passed.to_vec();
-        while !pending.is_empty() {
-            let blocks = |dst: A::Reg, v: Value, pending: &[(Value, A::Reg)], cx: &Self| {
-                cx.regs.holds(dst).is_some_and(|w| w != v && pending.iter().any(|&(u, _)| u == w))
-            };
-            if let Some(at) = pending.iter().position(|&(v, dst)| !blocks(dst, v, &pending, self)) {
-                let (v, dst) = pending.remove(at);
-                self.reg_to(v, dst);
-                if self.regs.holds(dst).is_some_and(|w| w != v) {
-                    self.unbind(dst);
+    /// What a call passing `args` as `passing` needs, calling `target` when it calls through an
+    /// address, and defining `result`.
+    pub fn call_needs<F>(
+        &self,
+        passing: &Passing<Carrier<A::Reg, F>>,
+        args: &[Value],
+        target: Option<Value>,
+        result: Option<Value>,
+        needs: &mut Needs,
+    ) {
+        let kept = |v: Value| self.recomputed(v).is_none();
+        let read = |needs: &mut Needs, v: Value, need: Need, late: bool| {
+            if kept(v) {
+                needs.uses.push(Read { value: v, need, late });
+            }
+        };
+        for (&a, loc) in args.iter().zip(&passing.params) {
+            match loc {
+                Loc::Reg(Carrier::Int(r)) if kept(a) => read(needs, a, Need::Fixed(A::preg(*r)), false),
+                // A constant is written where it goes by the call itself.
+                Loc::Reg(Carrier::Int(r)) => needs.reserved = needs.reserved.with(A::preg(*r)),
+                Loc::Reg(Carrier::Float(_)) | Loc::Stack { .. } | Loc::Copied { .. } => {
+                    read(needs, a, Need::Any, false);
                 }
-            } else {
-                let (_, dst) = pending[0];
-                let w = self.regs.holds(dst).expect("a register blocking a move holds a value");
-                self.store_home(w, dst);
-                self.unbind(dst);
+                Loc::Split(parts) => {
+                    read(needs, a, Need::Any, false);
+                    for part in parts {
+                        if let Carrier::Int(r) = part.reg {
+                            needs.reserved = needs.reserved.with(A::preg(r));
+                        }
+                    }
+                }
+                Loc::Indirect { at, .. } => {
+                    read(needs, a, Need::Any, false);
+                    if let Loc::Reg(Carrier::Int(r)) = **at {
+                        needs.reserved = needs.reserved.with(A::preg(r));
+                    }
+                }
+                // The address the result is written to once the call returns.
+                Loc::Returned => read(needs, a, Need::Any, true),
             }
         }
+        if let Some(target) = target {
+            read(needs, target, Need::Any, false);
+        }
+        if let (Some(out), Ret::Reg(carrier)) = (result, &passing.ret) {
+            let out_at = match carrier {
+                Carrier::Int(r) => Out::Fixed(A::preg(*r)),
+                Carrier::Float(_) => Out::Reg,
+            };
+            needs.defs.push((out, out_at));
+        }
+        needs.clobbers = self.machine.clobbered();
     }
 }

@@ -54,8 +54,7 @@ impl Arch for Arm {
         Reg::X13,
         Reg::X14,
     ];
-    const CALLEE_SAVED: &'static [Reg] =
-        &[Reg::X19, Reg::X20, Reg::X21, Reg::X22, Reg::X23, Reg::X24, Reg::X25, Reg::X26, Reg::X27, Reg::X28];
+    const FRAME: Reg = FP;
     const CARRIER: Reg = Reg::X16;
     const TEMP: Reg = Reg::X17;
     const WORD: u64 = 8;

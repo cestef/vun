@@ -1,5 +1,6 @@
 //! The snippet encoder: a snippet's steps emitted in order, each over operands chosen as the
-//! architecture's forms allow.
+//! architecture's forms allow, in the places the plan gives them (`Cx::snippet_needs` says what
+//! the plan provides for).
 
 use vun_lir::Value;
 
@@ -71,17 +72,6 @@ impl<A: Emits> Cx<'_, A> {
     /// Panics if a step takes no form even with every operand in a register, or names a slot
     /// its arguments lack: the snippet is wrong for its architecture.
     pub fn snippet(&mut self, snippet: Snippet<A>, args: &Args<'_, A>) {
-        // Registers instructions require are freed first, so that nothing placed later blocks them.
-        for step in snippet {
-            for &r in A::implicit(step.op) {
-                self.take(r);
-            }
-            for slot in step.slots {
-                if let Slot::Fixed(r) | Slot::Through(r, _) = slot {
-                    self.take(*r);
-                }
-            }
-        }
         let mut temps: [Option<A::Reg>; TEMPS] = [None; TEMPS];
         let mut out: Option<A::Reg> = None;
         for (i, step) in snippet.iter().enumerate() {
@@ -89,7 +79,7 @@ impl<A: Emits> Cx<'_, A> {
             if step.op == A::MOV
                 && out.is_none()
                 && let [Slot::Out, from] = step.slots
-                && let Some(r) = self.adopt(*from, args, &temps, snippet, i)
+                && let Some(r) = self.adopt(*from, args, snippet, i)
             {
                 out = Some(r);
                 continue;
@@ -128,12 +118,15 @@ impl<A: Emits> Cx<'_, A> {
                         ops.push(A::reg(r), None);
                     }
                     Slot::Fixed(r) => ops.push(A::reg(r), None),
+                    // A value kept is in the register already, the plan having put it there.
                     Slot::Through(r, k) => {
                         let v = args.ins[k as usize];
                         if let Some(value) = self.imm(v) {
                             ops.push(A::imm(value), Some(Folded::Through(v, r)));
                         } else {
-                            self.reg_to(v, r);
+                            if self.recomputed(v).is_some() {
+                                self.reg_to(v, r);
+                            }
                             ops.push(A::reg(r), None);
                         }
                     }
@@ -147,7 +140,7 @@ impl<A: Emits> Cx<'_, A> {
                 }
             }
             if first != 0 {
-                let r = *out.insert(self.result(snippet, i, args));
+                let r = *out.insert(self.def(args.out.expect("a snippet naming its result is given one")));
                 for at in (0..ops.len).filter(|at| first & 1 << at != 0) {
                     ops.chosen[at] = A::reg(r);
                 }
@@ -188,24 +181,6 @@ impl<A: Emits> Cx<'_, A> {
         (A::reg(self.reg(v)), None)
     }
 
-    /// The result's register, first written by step `i`: the register of an operand the step
-    /// reads for the last time, since an instruction reads its operands before it writes, else a
-    /// new one.
-    fn result(&mut self, snippet: Snippet<A>, i: usize, args: &Args<'_, A>) -> A::Reg {
-        let out = args.out.expect("a snippet naming its result is given one");
-        let dying = snippet[i].slots.iter().find_map(|slot| match *slot {
-            Slot::In(k) | Slot::At(k) if !Self::read_after(snippet, i, k) => {
-                let v = args.ins[k as usize];
-                (self.held(v).is_some() && self.dies(v)).then_some(v)
-            }
-            _ => None,
-        });
-        match dying.and_then(|v| self.inherit(out, v)) {
-            Some(r) => r,
-            None => self.def(out),
-        }
-    }
-
     /// Whether a step after step `i` reads operand `k`.
     fn read_after(snippet: Snippet<A>, i: usize, k: u8) -> bool {
         snippet[i + 1..]
@@ -214,34 +189,14 @@ impl<A: Emits> Cx<'_, A> {
             .any(|s| matches!(*s, Slot::In(j) | Slot::At(j) if j == k))
     }
 
-    /// The result's register where the move of step `i` into it needs no instruction: a dying
-    /// operand's the snippet reads no more, a fixed register an instruction wrote, a scratch one.
-    fn adopt(
-        &mut self,
-        from: Slot<A>,
-        args: &Args<'_, A>,
-        temps: &[Option<A::Reg>; TEMPS],
-        snippet: Snippet<A>,
-        i: usize,
-    ) -> Option<A::Reg> {
+    /// The result's register where the move of step `i` into it needs no instruction: the
+    /// operand's the snippet reads no more where the plan gives it to the result, or the fixed
+    /// register an instruction wrote, where the plan takes the result from.
+    fn adopt(&mut self, from: Slot<A>, args: &Args<'_, A>, snippet: Snippet<A>, i: usize) -> Option<A::Reg> {
         let out = args.out?;
         match from {
-            Slot::In(k) => {
-                if Self::read_after(snippet, i, k) {
-                    None
-                } else {
-                    self.inherit(out, args.ins[k as usize])
-                }
-            }
-            Slot::Fixed(r) => {
-                self.def_at(out, r);
-                Some(r)
-            }
-            Slot::Temp(k) => {
-                let r = temps[k as usize]?;
-                self.def_at(out, r);
-                Some(r)
-            }
+            Slot::In(k) if !Self::read_after(snippet, i, k) => self.inherit(out, args.ins[k as usize]),
+            Slot::Fixed(r) => Some(r),
             _ => None,
         }
     }

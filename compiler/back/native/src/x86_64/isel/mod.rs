@@ -7,20 +7,19 @@ mod carry;
 mod entry;
 mod float;
 mod memory;
+mod needs;
+mod select;
 mod term;
 
 use vun_backend::{Lack, Missing};
 use vun_codegen::snippet::{Args, Snippet};
-use vun_codegen::{Cx, Isel};
-use vun_lir::{BinOp, Block, CastOp, Cond, Function, Inst, InstKind, Reads, Scalar, Value};
+use vun_codegen::{Cx, Isel, Needs};
+use vun_lir::{Block, Cond, Function, Inst, Scalar, Value};
 
 use super::abi::Passing;
-use super::snippets::{
-    ADD, AND, KEEP, MUL, OR, SAR, SDIV, SELECT, SET, SEXT, SHL, SHR, SREM, SUB, UDIV, UREM, XOR, ZEXT,
-};
 use super::{X86, condition};
-use crate::width::size_of;
-use vun_asm_x86_64::{Cc, Size};
+use select::{Look, Selection};
+use vun_asm_x86_64::{Reg, Size};
 
 /// What the instruction compilers keep for one function.
 pub struct State {
@@ -61,8 +60,25 @@ impl Isel for X86 {
         Ok(State { convention, passing, frame_at: 0, frame_imm: 0, hidden: None, gathered: None })
     }
 
+    /// Those System V preserves.
+    fn preserved(convention: Self::Convention) -> &'static [Reg] {
+        convention.registers.preserved
+    }
+
     fn fuses(cond: Cond) -> bool {
         condition(cond).is_some()
+    }
+
+    fn inst_needs(cx: &Cx<'_, Self>, inst: Inst, needs: &mut Needs) {
+        Look(cx).needs(inst, needs);
+    }
+
+    fn term_needs(cx: &Cx<'_, Self>, block: Block, needs: &mut Needs) {
+        Look(cx).term_needs(block, needs);
+    }
+
+    fn entry_needs(cx: &Cx<'_, Self>, needs: &mut Needs) {
+        Look(cx).entry_needs(needs);
     }
 
     fn prologue(cx: &mut Cx<'_, Self>) -> Result<(), Lack> {
@@ -88,97 +104,38 @@ impl Isel for X86 {
     }
 }
 
-impl Sel<'_, '_> {
+impl<'a> Sel<'_, 'a> {
+    /// The function compiled, read without emitting.
+    fn look(&self) -> Look<'_, 'a> {
+        Look(self.0)
+    }
+
     fn inst(&mut self, inst: Inst) -> Result<(), Lack> {
-        let f = self.f;
-        let data = &f.insts[inst];
-        let out = data.result;
-        match &data.kind {
-            &InstKind::Binary { op, a, b } => self.binary(op, a, b, out),
-            &InstKind::Compare { cond, a, b } => self.compare(cond, a, b, out),
-            &InstKind::Cast { op, value, to } => self.cast(op, value, to, out),
-            &InstKind::Select { cond, then, otherwise } => {
-                let size = self.size(then)?;
-                self.apply(SELECT, &[cond, then, otherwise], out, size, None);
-                Ok(())
+        let out = self.f.insts[inst].result;
+        match self.look().selection(inst)? {
+            Selection::Snippet { snippet, ins, size, cond } => {
+                self.snippet(snippet, &Args { ins: &ins, out, size, cond });
             }
-            InstKind::Call { callee, args } => self.call(callee, args, out),
-            kind => self.memory(kind, out),
+            Selection::Call { callee, args } => self.call(callee, args, out)?,
+            Selection::Fetch { op, addr, value, size } => self.fetch(op, addr, value, size),
+            Selection::Copy { to, from, bytes } => self.copy(to, from, bytes),
+            Selection::UnsignedToFloat { value, precision } => self.unsigned_to_float(value, precision, out),
+            Selection::FloatToUnsigned { value, precision } => self.float_to_unsigned(value, precision, out),
         }
+        Ok(())
     }
 
     /// The size of an integer, address or float value, or what the backend lacks for it.
     fn size(&self, v: Value) -> Result<Size, Lack> {
-        self.size_of(self.f.ty(v))
+        self.look().size(v)
     }
 
     fn size_of(&self, scalar: Scalar) -> Result<Size, Lack> {
-        size_of(scalar).ok_or_else(|| {
-            self.lack(match scalar {
-                Scalar::I128 => Missing::Int128,
-                _ => Missing::Half,
-            })
-        })
+        self.look().size_of(scalar)
     }
 
-    /// Emits `snippet` over `ins`, defining `out`.
-    fn apply(
-        &mut self,
-        snippet: Snippet<X86>,
-        ins: &[Value],
-        out: Option<Value>,
-        size: Size,
-        cond: Option<Cc>,
-    ) {
-        self.snippet(snippet, &Args { ins, out, size, cond });
-    }
-
-    fn binary(&mut self, op: BinOp, a: Value, b: Value, out: Option<Value>) -> Result<(), Lack> {
-        if op.reads() == Reads::Float {
-            return self.float_binary(op, a, b, out);
-        }
-        let snippet = match op {
-            BinOp::Add => ADD,
-            BinOp::Sub => SUB,
-            BinOp::And => AND,
-            BinOp::Or => OR,
-            BinOp::Xor => XOR,
-            BinOp::Mul => MUL,
-            BinOp::UDiv => UDIV,
-            BinOp::URem => UREM,
-            BinOp::SDiv => SDIV,
-            BinOp::SRem => SREM,
-            BinOp::Shl => SHL,
-            BinOp::LShr => SHR,
-            BinOp::AShr => SAR,
-            BinOp::FAdd | BinOp::FSub | BinOp::FMul | BinOp::FDiv => {
-                unreachable!("floats are read as floats")
-            }
-        };
-        let size = self.size(a)?;
-        self.apply(snippet, &[a, b], out, size, None);
-        Ok(())
-    }
-
-    fn compare(&mut self, cond: Cond, a: Value, b: Value, out: Option<Value>) -> Result<(), Lack> {
-        let Some(cc) = condition(cond) else { return self.float_compare(cond, a, b, out) };
-        let size = self.size(a)?;
-        self.apply(SET, &[a, b], out, size, Some(cc));
-        Ok(())
-    }
-
-    fn cast(&mut self, op: CastOp, value: Value, to: Scalar, out: Option<Value>) -> Result<(), Lack> {
-        let snippet = match op {
-            CastOp::ZExt => ZEXT,
-            CastOp::SExt => SEXT,
-            CastOp::Trunc | CastOp::PtrToInt | CastOp::IntToPtr | CastOp::Bitcast => KEEP,
-            CastOp::FConvert | CastOp::SToF | CastOp::UToF | CastOp::FToS | CastOp::FToU => {
-                return self.float_cast(op, value, to, out);
-            }
-        };
-        self.size_of(to)?;
-        let size = self.size(value)?;
-        self.apply(snippet, &[value], out, size, None);
-        Ok(())
+    /// Emits `snippet` over `ins`, defining nothing.
+    fn apply(&mut self, snippet: Snippet<X86>, ins: &[Value], size: Size) {
+        self.snippet(snippet, &Args { ins, out: None, size, cond: None });
     }
 }

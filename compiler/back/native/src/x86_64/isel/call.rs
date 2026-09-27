@@ -1,12 +1,12 @@
-//! Calls: every value used after the call is stored home, since a call may write any register
-//! values are held in but the callee-saved ones; arguments go where the callee's convention
-//! passes them, those in general registers straight from where they are, and a result comes
-//! back in registers or through memory.
+//! Calls: the plan holds what is used after the call in registers it preserves or in homes, and
+//! the arguments passed in general registers in them when the call is reached (`Cx::call_needs`);
+//! the rest goes where the callee's convention passes it from wherever the plan holds it, and a
+//! result comes back in registers or through memory.
 
 use vun_asm_x86_64::{Emit, Mem, Op, Reg, Size};
 use vun_backend::Lack;
 use vun_codegen::Arch;
-use vun_lir::{AbiType, Address, Callee, Conv, Ext, ImportKind, Signature, Value};
+use vun_lir::{AbiType, Address, Callee, Conv, Ext, Signature, Value};
 
 use super::Sel;
 use crate::width::offset_of;
@@ -20,26 +20,11 @@ impl Sel<'_, '_> {
         args: &[Value],
         result: Option<Value>,
     ) -> Result<(), Lack> {
-        let (unit, f) = (self.unit, self.f);
-        let signature: &Signature = match callee {
-            Callee::Func(f) => &unit.functions[*f].signature,
-            Callee::Import(i) => match &unit.imports[*i].kind {
-                ImportKind::Func(s) => s,
-                ImportKind::Data => unreachable!("the verifier checks calls call functions"),
-            },
-            Callee::Indirect(_, s) => s,
-        };
+        let f = self.f;
+        let signature: &Signature = self.signature(callee);
         let passing = Passing::of(signature, self.state.convention).map_err(|u| self.lack(u.into()))?;
-        for &a in args {
-            self.size(a)?;
-        }
-        // Constants are written where they go once the others are, already extended.
-        let passed: Vec<_> =
-            passing.in_ints(args).into_iter().filter(|&(a, _)| f.constant(a).is_none()).collect();
-        self.spill_for_call(&passed);
         self.frame.outgoing(passing.stack);
-        // Arguments on the stack and records copied there go through the carrier, before those
-        // passed in registers.
+        // Arguments on the stack and records copied there go through the carrier.
         for (&a, loc) in args.iter().zip(&passing.params) {
             match *loc {
                 Loc::Stack { offset, .. } => {
@@ -53,8 +38,6 @@ impl Sel<'_, '_> {
                 Loc::Reg(_) | Loc::Split(_) | Loc::Indirect { .. } | Loc::Returned => {}
             }
         }
-        self.pass_in_regs(&passed);
-        self.clear();
         // What each LIR value passes, a wide integer's halves both, the address of a result none.
         let abis: Vec<&AbiType> = signature.passed().collect();
         for (i, (&a, loc)) in args.iter().zip(&passing.params).enumerate() {
@@ -69,7 +52,13 @@ impl Sel<'_, '_> {
                         let size = self.size_of(*scalar)?;
                         self.extend(*r, size, *ext);
                     }
-                    (_, None) => {}
+                    // An address known while compiling is written there by the call itself; a
+                    // value kept is there already, the plan having put it.
+                    (_, None) => {
+                        if self.recomputed(a).is_some() {
+                            self.reg_to(a, *r);
+                        }
+                    }
                 },
                 Loc::Split(parts) => {
                     self.reg_to(a, X86::CARRIER);
@@ -97,9 +86,9 @@ impl Sel<'_, '_> {
             }
         }
         match &passing.ret {
-            Ret::Reg(carrier) => {
+            Ret::Reg(Carrier::Float(x)) => {
                 if let Some(out) = result {
-                    self.receive(out, *carrier);
+                    self.receive_float(out, *x);
                 }
             }
             Ret::Split(parts) => {
@@ -109,7 +98,8 @@ impl Sel<'_, '_> {
                     self.store_part(Mem::at(X86::CARRIER, offset_of(part.offset)), part.reg, part.bytes);
                 }
             }
-            Ret::None | Ret::Memory => {}
+            // The plan takes a result in a general register from there.
+            Ret::Reg(Carrier::Int(_)) | Ret::None | Ret::Memory => {}
         }
         Ok(())
     }

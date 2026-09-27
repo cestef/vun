@@ -1,0 +1,70 @@
+//! What the register allocator reads of the function compiled: the machine, the values
+//! recomputed where used, which hold no register, and what each point needs, as the
+//! architecture's instruction compilers describe it. The plan made is checked in debug builds.
+
+use vun_lir::{Block, Function, Inst, Scalar, Value};
+use vun_regalloc::{Allocation, Bank, Describe, Machine, Needs};
+
+use super::Cx;
+use crate::Isel;
+
+pub(super) struct Described<'c, 'a, A: Isel>(&'c Cx<'a, A>);
+
+impl<A: Isel> Described<'_, '_, A> {
+    /// Plans where every value of the function `cx` compiles lives.
+    ///
+    /// # Panics
+    /// In debug builds, when the plan fails its check.
+    pub(super) fn plan(cx: &Cx<'_, A>) -> Allocation {
+        let described = Described(cx);
+        let plan = Allocation::of(cx.f, &described);
+        if cfg!(debug_assertions)
+            && let Err(wrong) = plan.check(cx.f, &described)
+        {
+            panic!("the register allocator planned {wrong} in\n{plan}");
+        }
+        plan
+    }
+}
+
+impl<A: Isel> Describe for Described<'_, '_, A> {
+    fn machine(&self) -> &Machine {
+        &self.0.machine
+    }
+
+    /// Floats are held as their bits in general registers, like integers.
+    fn bank(&self, _: Scalar) -> Bank {
+        Bank::General
+    }
+
+    fn recomputed(&self, v: Value) -> bool {
+        self.0.values[v].recompute.is_some()
+    }
+
+    fn inst(&self, f: &Function, inst: Inst, needs: &mut Needs) {
+        let cx = self.0;
+        // Made by the branch it is fused into, or recomputed where used: nothing here.
+        let made = f.insts[inst].result.is_some_and(|v| self.recomputed(v) || cx.is_fused(v));
+        if !made {
+            A::inst_needs(cx, inst, needs);
+        }
+    }
+
+    fn term(&self, _: &Function, block: Block, needs: &mut Needs) {
+        A::term_needs(self.0, block, needs);
+    }
+
+    fn entry(&self, _: &Function, needs: &mut Needs) {
+        A::entry_needs(self.0, needs);
+    }
+}
+
+impl<A: Isel> Cx<'_, A> {
+    /// Whether `v` is a comparison the branch ending its block makes.
+    fn is_fused(&self, v: Value) -> bool {
+        self.f.blocks.iter().any(|(block, data)| {
+            matches!(data.term, vun_lir::Terminator::Branch { cond, .. } if cond == v)
+                && self.fused(block).is_some_and(|fused| fused.value == v)
+        })
+    }
+}

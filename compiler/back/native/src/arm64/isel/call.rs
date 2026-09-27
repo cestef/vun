@@ -1,15 +1,16 @@
-//! Calls: every value used after the call is stored home, since a call may write any register
-//! values are held in but the callee-saved ones; arguments go where the callee's convention
-//! passes them, those in general registers straight from where they are, records larger than 16 bytes as the address of a copy in the caller's frame, and a result
+//! Calls: the plan holds what is used after the call in registers it preserves or in homes, and
+//! the arguments passed in general registers in them when the call is reached (`Cx::call_needs`);
+//! the rest goes where the callee's convention passes it from wherever the plan holds it,
+//! records larger than 16 bytes as the address of a copy in the caller's frame, and a result
 //! comes back in registers or through memory.
 
 use vun_asm_arm64::{Emit, Op, Operand, Reg, Size};
 use vun_backend::Lack;
 use vun_codegen::Arch;
-use vun_lir::{AbiType, Address, Callee, Ext, ImportKind, Signature, Value};
+use vun_lir::{AbiType, Address, Callee, Ext, Signature, Value};
 
 use super::Sel;
-use crate::arm64::abi::{Carrier, INDIRECT, Loc, Passing, Ret};
+use crate::arm64::abi::{Carrier, Loc, Passing, Ret};
 use crate::arm64::{Arm, FAR, FP, access, offset};
 
 impl Sel<'_, '_> {
@@ -19,23 +20,9 @@ impl Sel<'_, '_> {
         args: &[Value],
         result: Option<Value>,
     ) -> Result<(), Lack> {
-        let (unit, f) = (self.unit, self.f);
-        let signature: &Signature = match callee {
-            Callee::Func(f) => &unit.functions[*f].signature,
-            Callee::Import(i) => match &unit.imports[*i].kind {
-                ImportKind::Func(s) => s,
-                ImportKind::Data => unreachable!("the verifier checks calls call functions"),
-            },
-            Callee::Indirect(_, s) => s,
-        };
+        let f = self.f;
+        let signature: &Signature = self.signature(callee);
         let passing = Passing::of(signature, self.state.convention).map_err(|u| self.lack(u.into()))?;
-        for &a in args {
-            self.size(a)?;
-        }
-        // Constants are written where they go once the others are, already extended.
-        let passed: Vec<_> =
-            passing.in_ints(args).into_iter().filter(|&(a, _)| f.constant(a).is_none()).collect();
-        self.spill_for_call(&passed);
         self.frame.outgoing(passing.stack);
         // What goes through memory first, through the framework's registers: arguments on the
         // stack, records copied there, and the copies of records passed by address.
@@ -61,8 +48,6 @@ impl Sel<'_, '_> {
                 Loc::Reg(_) | Loc::Split(_) | Loc::Returned => {}
             }
         }
-        self.pass_in_regs(&passed);
-        self.clear();
         let mut copies = copies.into_iter();
         // What each LIR value passes, a wide integer's halves both, the address of a result none.
         let abis: Vec<&AbiType> = signature.passed().collect();
@@ -78,7 +63,13 @@ impl Sel<'_, '_> {
                         let size = self.size_of(*scalar)?;
                         self.extend(*r, size, *ext);
                     }
-                    (_, None) => {}
+                    // An address known while compiling is written there by the call itself; a
+                    // value kept is there already, the plan having put it.
+                    (_, None) => {
+                        if self.recomputed(a).is_some() {
+                            self.reg_to(a, *r);
+                        }
+                    }
                 },
                 Loc::Split(parts) => {
                     self.reg_to(a, Arm::CARRIER);
@@ -95,10 +86,6 @@ impl Sel<'_, '_> {
                 Loc::Stack { .. } | Loc::Copied { .. } | Loc::Returned => {}
             }
         }
-        if passing.ret == Ret::Memory {
-            let out = *args.last().expect("the address of the result is passed last");
-            self.reg_to(out, INDIRECT);
-        }
         match callee {
             Callee::Func(f) => self.asm.emit(Op::Bl, Size::B64, &[Operand::Sym(Address::Func(*f))]),
             Callee::Import(i) => self.asm.emit(Op::Bl, Size::B64, &[Operand::Sym(Address::Import(*i))]),
@@ -108,9 +95,9 @@ impl Sel<'_, '_> {
             }
         }
         match &passing.ret {
-            Ret::Reg(carrier) => {
+            Ret::Reg(Carrier::Float(x)) => {
                 if let Some(out) = result {
-                    self.receive(out, *carrier);
+                    self.receive_float(out, *x);
                 }
             }
             Ret::Split(parts) => {
@@ -120,7 +107,8 @@ impl Sel<'_, '_> {
                     self.store_part(Arm::CARRIER, disp(part.offset), part.reg, part.bytes);
                 }
             }
-            Ret::None | Ret::Memory => {}
+            // The plan takes a result in a general register from there.
+            Ret::Reg(Carrier::Int(_)) | Ret::None | Ret::Memory => {}
         }
         Ok(())
     }

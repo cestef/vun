@@ -1,8 +1,8 @@
 //! x86-64: fusion, callee-saved registers for loops, results in dying operands' registers.
 
-use vun_lir::{BinOp, Cond, Scalar, Target, Terminator};
+use vun_lir::{BinOp, Cond, Scalar, Terminator};
 
-use super::{compiled, text, to};
+use super::{compiled, sum, text, to};
 use crate::x86_64::X86;
 
 #[test]
@@ -29,26 +29,16 @@ fn a_branch_on_a_comparison_jumps_on_its_flags() {
 }
 
 #[test]
-fn values_live_across_a_loop_take_callee_saved_registers() {
-    // The sum of `0..n`, in a loop whose counter and total are block parameters.
-    let code = compiled::<X86>(|b, n, origin| {
-        let zero = b.constant(Scalar::I64, 0, origin);
-        let head = b.block(&[Scalar::I64, Scalar::I64], origin);
-        let (body, exit) = (b.block(&[], origin), b.block(&[], origin));
-        b.terminate(Terminator::Jump(Target { block: head, args: vec![zero, zero] }));
-        b.switch_to(head);
-        let [i, total] = [b.params(head)[0], b.params(head)[1]];
-        let more = b.compare(Cond::ULt, i, n, origin);
-        b.terminate(Terminator::Branch { cond: more, then: to(body), otherwise: to(exit) });
-        b.switch_to(body);
-        let one = b.constant(Scalar::I64, 1, origin);
-        let (next, added) = (b.binary(BinOp::Add, i, one, origin), b.binary(BinOp::Add, total, i, origin));
-        b.terminate(Terminator::Jump(Target { block: head, args: vec![next, added] }));
-        b.switch_to(exit);
-        b.terminate(Terminator::Return(Some(total)));
-    });
-    let text = text(&code);
-    // `rbx` saved below the frame pointer and restored.
+fn a_loop_keeps_its_values_in_registers() {
+    let text = text(&compiled::<X86>(|b, n, origin| sum(b, n, origin, false)));
+    // Nothing is stored in the frame or loaded from it.
+    assert!(!text.iter().any(|i| i.contains("[rbp")), "{text:#?}");
+}
+
+#[test]
+fn values_live_across_a_call_take_callee_saved_registers() {
+    let text = text(&compiled::<X86>(|b, n, origin| sum(b, n, origin, true)));
+    // A register the call preserves saved below the frame pointer and restored.
     assert!(text.iter().any(|i| i.starts_with("mov qword [rbp - ") && i.ends_with(", rbx")), "{text:#?}");
     assert!(text.iter().any(|i| i.starts_with("mov rbx, qword [rbp - ")), "{text:#?}");
 }

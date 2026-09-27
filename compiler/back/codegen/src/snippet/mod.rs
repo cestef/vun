@@ -8,6 +8,7 @@
 //! against each architecture's instruction table.
 
 mod encode;
+mod needs;
 
 use std::fmt::Debug;
 

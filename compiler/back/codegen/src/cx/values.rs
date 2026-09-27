@@ -1,10 +1,10 @@
-//! Where values are, as instruction compilers ask: operands brought into registers, results
-//! given registers, a dying operand's register taken over by the result, scratch registers, and
-//! registers freed for instructions that write fixed ones. Registers an instruction uses are
-//! locked until it is done, so nothing it holds is evicted under it.
+//! Where values are, as instruction compilers ask: operands in the registers the plan holds
+//! them in, results in the ones it gives them, scratch registers it keeps free for the point,
+//! and values recomputed where used brought into one.
 
 use vun_asm::imm::{low64, sign_extend};
 use vun_lir::Value;
+use vun_regalloc::{Loc, Pos};
 
 use super::Cx;
 use crate::Arch;
@@ -37,23 +37,27 @@ impl<A: Arch> Cx<'_, A> {
         }
     }
 
-    /// The register holding `v` now, if one does.
+    /// Where the plan holds `v` as the point compiled now reads it.
+    fn loc(&self, v: Value) -> Option<Loc> {
+        self.plan().at(v, Pos::read(self.point))
+    }
+
+    /// The register holding `v` as the point compiled now reads it, if one does.
     #[must_use]
     pub fn held(&self, v: Value) -> Option<A::Reg> {
-        self.values[v].reg
+        match self.loc(v) {
+            Some(Loc::Reg(p)) => Some(self.reg_of(p)),
+            _ => None,
+        }
     }
 
     /// The offset of the home holding `v`, when no register does.
     #[must_use]
     pub fn in_home(&self, v: Value) -> Option<i32> {
-        let a = &self.values[v];
-        (a.reg.is_none() && a.saved).then_some(a.home).flatten()
-    }
-
-    /// Whether the use compiled now is `v`'s last, so its register is free to overwrite.
-    #[must_use]
-    pub fn dies(&self, v: Value) -> bool {
-        self.values[v].left == 1 && self.values[v].fixed.is_none()
+        match self.loc(v) {
+            Some(Loc::Home(_)) => self.values[v].home,
+            _ => None,
+        }
     }
 
     /// Makes `v` recomputed as the address `place`: a parameter passed in memory.
@@ -61,13 +65,10 @@ impl<A: Arch> Cx<'_, A> {
         self.values[v].recompute = Some(Recompute::Addr(place));
     }
 
-    /// Makes `v` live in memory at `offset` from the frame pointer, which holds it already.
+    /// Makes the home of `v` the memory at `offset` from the frame pointer, which holds it
+    /// already: a parameter passed on the stack.
     pub fn home_at(&mut self, v: Value, offset: i32) {
         self.values[v].home = Some(offset);
-        self.values[v].saved = true;
-        if let Some(r) = self.values[v].fixed {
-            A::load(&mut self.asm, r, offset);
-        }
     }
 
     /// The offset of `v`'s home, allocated when first needed.
@@ -80,201 +81,86 @@ impl<A: Arch> Cx<'_, A> {
         at
     }
 
-    /// The register holding `v` for the instruction compiled, brought there if it is not.
+    /// The register holding `v` for the instruction compiled: the plan's, or for a value
+    /// recomputed where used, a scratch register it is written into once per point.
+    ///
+    /// # Panics
+    /// Panics where the plan keeps `v` in memory: the architecture said the instruction takes
+    /// it anywhere, and asks for it in a register.
     pub fn reg(&mut self, v: Value) -> A::Reg {
-        let r = if let Some(r) = self.values[v].reg {
-            r
-        } else {
-            let r = self.alloc();
-            self.reg_to(v, r);
-            let saved = self.values[v].recompute.is_none();
-            self.bind(v, r, saved);
-            r
-        };
-        self.regs.lock(r);
+        if let Some(r) = self.held(v) {
+            return r;
+        }
+        if let Some(&(_, r)) = self.remade.iter().find(|&&(w, _)| w == v) {
+            return r;
+        }
+        let what = self.values[v]
+            .recompute
+            .unwrap_or_else(|| panic!("the plan holds {v} in memory at a register use"));
+        let r = self.scratch();
+        A::recompute(&mut self.asm, r, what);
+        self.remade.push((v, r));
         r
     }
 
     /// Writes `v` into `dst`, which does not then hold it for later uses.
     pub fn reg_to(&mut self, v: Value, dst: A::Reg) {
-        let a = self.values[v];
-        match (a.reg, a.recompute) {
-            (Some(r), _) => A::copy(&mut self.asm, dst, r),
-            (None, Some(what)) => A::recompute(&mut self.asm, dst, what),
-            (None, None) => {
+        match (self.loc(v), self.values[v].recompute) {
+            (Some(Loc::Reg(p)), _) => {
+                let r = self.reg_of(p);
+                A::copy(&mut self.asm, dst, r);
+            }
+            (_, Some(what)) => A::recompute(&mut self.asm, dst, what),
+            _ => {
                 let home = self.home(v);
                 A::load(&mut self.asm, dst, home);
             }
         }
     }
 
-    /// A register for the value `v` defines.
+    /// The register the value `v` the point defines is written to.
+    ///
+    /// # Panics
+    /// Panics where the plan gives the result no register: the architecture said the
+    /// instruction writes it elsewhere.
     pub fn def(&mut self, v: Value) -> A::Reg {
-        let r = match self.values[v].fixed {
-            Some(r) => r,
-            None => self.alloc(),
-        };
-        self.bind(v, r, false);
-        self.regs.lock(r);
-        r
-    }
-
-    /// Makes `r`, which an instruction wrote, hold the value `v` defines.
-    pub fn def_at(&mut self, v: Value, r: A::Reg) {
-        self.bind(v, r, false);
-        self.regs.lock(r);
+        match self.plan().at(v, Pos::write(self.point)) {
+            Some(Loc::Reg(p)) => self.reg_of(p),
+            other => panic!("the plan writes {v} to {other:?}, not a register"),
+        }
     }
 
     /// A register for `out` holding `v`'s value, to be overwritten by an instruction that reads
-    /// and writes it: `v`'s own where this is its last use, else a copy.
+    /// and writes it: `v`'s own where the plan gives it to `out`, else a copy.
     pub fn reuse(&mut self, out: Value, v: Value) -> A::Reg {
         let src = self.reg(v);
-        if let Some(r) = self.inherit(out, v) {
-            return r;
-        }
         let dst = self.def(out);
         A::copy(&mut self.asm, dst, src);
         dst
     }
 
-    /// Gives `out` the register holding `v`, when this is `v`'s last use and one does: the
-    /// result then overwrites the operand in place.
+    /// The register holding `v`, when the plan gives it to `out` as well: the result then
+    /// overwrites the operand in place.
     pub fn inherit(&mut self, out: Value, v: Value) -> Option<A::Reg> {
-        let r = self.values[v].reg?;
-        if !self.dies(v) || self.values[out].fixed.is_some() {
-            return None;
-        }
-        self.unbind(r);
-        self.def_at(out, r);
-        Some(r)
+        let r = self.held(v)?;
+        (self.def(out) == r).then_some(r)
     }
 
-    /// A register for the instruction compiled to use apart from any value.
+    /// A register for the instruction compiled to use apart from any value: the next of the
+    /// point's scratch registers.
+    ///
+    /// # Panics
+    /// Panics past the scratch registers the architecture said the instruction takes.
     pub fn scratch(&mut self) -> A::Reg {
-        let r = self.alloc();
-        self.regs.lock(r);
-        r
+        let temps = self.plan().temps(self.point);
+        let p = *temps.get(self.temps).expect("an instruction takes no more scratch registers than it said");
+        self.temps += 1;
+        self.reg_of(p)
     }
 
-    /// Frees `r` for an instruction that writes it: what it holds, is still used and is not
-    /// home already moves to a free register, or is stored home when none is.
-    pub fn take(&mut self, r: A::Reg) {
-        if let Some(v) = self.regs.holds(r) {
-            let a = self.values[v];
-            let moved = a.left > 0 && !a.saved && a.fixed.is_none() && a.recompute.is_none();
-            if let Some(to) = self.regs.free().filter(|_| moved) {
-                A::copy(&mut self.asm, to, r);
-                self.unbind(r);
-                self.bind(v, to, a.saved);
-            } else {
-                self.store_home(v, r);
-                self.unbind(r);
-            }
-        }
-        self.regs.lock(r);
-    }
-
-    fn alloc(&mut self) -> A::Reg {
-        if let Some(r) = self.regs.free() {
-            return r;
-        }
-        let r = self.regs.victim();
-        if let Some(v) = self.regs.holds(r) {
-            self.store_home(v, r);
-            self.unbind(r);
-        }
-        r
-    }
-
-    pub(super) fn bind(&mut self, v: Value, r: A::Reg, saved: bool) {
-        // A value with a register of its own is moved there.
-        if let Some(fixed) = self.values[v].fixed
-            && fixed != r
-        {
-            A::copy(&mut self.asm, fixed, r);
-            return self.bind(v, fixed, saved);
-        }
-        self.regs.set(r, Some(v));
-        self.values[v].reg = Some(r);
-        self.values[v].saved = saved;
-    }
-
-    pub(super) fn unbind(&mut self, r: A::Reg) {
-        if let Some(v) = self.regs.holds(r) {
-            self.values[v].reg = None;
-            self.regs.set(r, None);
-        }
-    }
-
-    /// Stores `v`, held in `r`, home when it is used later and its home does not hold it.
-    pub(super) fn store_home(&mut self, v: Value, r: A::Reg) {
-        let a = self.values[v];
-        if a.recompute.is_none() && !a.saved && a.left > 0 && a.fixed.is_none() {
-            let home = self.home(v);
-            A::store(&mut self.asm, home, r);
-            self.values[v].saved = true;
-        }
-    }
-
-    /// After an instruction: one use of each operand is done, a value used no more frees its
-    /// register, and nothing is locked.
-    pub(crate) fn release<I: Iterator<Item = Value>>(
-        &mut self,
-        operands: impl Fn() -> I,
-        result: Option<Value>,
-    ) {
-        for v in operands() {
-            self.values[v].left = self.values[v].left.saturating_sub(1);
-        }
-        // Freed only once every operand is counted: one read twice is still held after the first.
-        for v in operands().chain(result) {
-            if self.values[v].left == 0
-                && let Some(r) = self.values[v].reg
-            {
-                self.unbind(r);
-            }
-        }
-        self.regs.unlock_all();
-    }
-
-    /// Counts one use of `v` as compiled outside an instruction, by a terminator; its register
-    /// stays bound until the block is left (`Cx::left`), since the terminator reads it last.
-    pub fn used(&mut self, v: Value) {
-        self.values[v].left = self.values[v].left.saturating_sub(1);
-    }
-
-    /// Frees the registers of values used no more.
-    pub(super) fn free_dead(&mut self) {
-        for &r in A::ALLOCATABLE.iter().chain(A::CALLEE_SAVED) {
-            if let Some(v) = self.regs.holds(r)
-                && self.values[v].left == 0
-            {
-                self.unbind(r);
-            }
-        }
-    }
-
-    /// Stores home every value held in a register and still used whose home does not hold it.
-    pub fn spill_live(&mut self) {
-        for &r in A::ALLOCATABLE.iter().chain(A::CALLEE_SAVED) {
-            if let Some(v) = self.regs.holds(r) {
-                self.store_home(v, r);
-            }
-        }
-    }
-
-    /// Forgets what every register holds, but the values held in registers of their own.
-    pub fn clear(&mut self) {
-        for &r in A::ALLOCATABLE.iter().chain(A::CALLEE_SAVED) {
-            if !self.is_fixed(r) {
-                self.unbind(r);
-            }
-        }
-        self.regs.unlock_all();
-    }
-
-    /// Unlocks every register, as between instructions.
-    pub fn unlock(&mut self) {
-        self.regs.unlock_all();
+    /// The number of uses `v` has.
+    #[must_use]
+    pub fn uses(&self, v: Value) -> u32 {
+        self.values[v].uses
     }
 }

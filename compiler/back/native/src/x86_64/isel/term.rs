@@ -1,7 +1,7 @@
 //! Terminators: a branch jumps on the flags of the comparison it fuses, or tests its condition;
 //! a switch compares case by case; a return passes the result where the convention returns it.
-//! Leaving a block (`Cx::leave`) stores home what its targets read there, and each jump fills
-//! its target's parameters (`Cx::jump`).
+//! Each jump runs the plan's moves for its edge (`Cx::jump`), a conditional one on its own way
+//! to its target.
 
 use vun_asm_x86_64::{Cc, Emit, Mem, Op, Operand, Reg, Size};
 use vun_backend::Lack;
@@ -22,21 +22,18 @@ impl Sel<'_, '_> {
         let flags = match self.fused(block) {
             Some(fused) => {
                 let size = self.size(fused.a)?;
-                self.apply(CMP, &[fused.a, fused.b], None, size, None);
-                self.used(fused.a);
-                self.used(fused.b);
+                self.apply(CMP, &[fused.a, fused.b], size);
                 Some(condition(fused.cond).expect("only integer comparisons fuse"))
             }
             None => None,
         };
-        // The terminator's operand is read where it is now, before its uses are counted done.
         let operand = match term {
             Terminator::Branch { cond: v, .. } | Terminator::Switch { value: v, .. } if flags.is_none() => {
                 Some((self.reg(*v), self.size(*v)?))
             }
             _ => None,
         };
-        let next = self.leave(block);
+        let next = self.next(block);
         match term {
             Terminator::Jump(target) => self.jump(target, next),
             Terminator::Branch { then, otherwise, .. } => {
@@ -60,20 +57,19 @@ impl Sel<'_, '_> {
             Terminator::Return(value) => self.ret(*value)?,
             Terminator::Unreachable => self.asm.emit(Op::Ud2, Size::B64, &[]),
         }
-        self.left();
         Ok(())
     }
 
-    /// Jumps to `target` where `holds` does, filling its parameters only on the way there.
+    /// Jumps to `target` where `holds` does, running the moves of its edge only on the way there.
     fn jump_if(&mut self, holds: Cc, target: &Target) {
-        if target.args.is_empty() {
-            let label = self.label(target.block);
-            self.asm.emit(Op::J, Size::B64, &[holds.into(), label.into()]);
-        } else {
+        if self.moves_on(target) {
             let skip = self.asm.label();
             self.asm.emit(Op::J, Size::B64, &[holds.not().into(), skip.into()]);
             self.jump(target, None);
             self.asm.bind(skip);
+        } else {
+            let label = self.label(target.block);
+            self.asm.emit(Op::J, Size::B64, &[holds.into(), label.into()]);
         }
     }
 
@@ -93,7 +89,10 @@ impl Sel<'_, '_> {
         let f = self.f;
         match (value, self.state.passing.ret.clone()) {
             (Some(v), Ret::Reg(carrier)) => {
-                self.pass(v, carrier);
+                // A value kept in a general register is there already, the plan having put it.
+                if matches!(carrier, Carrier::Float(_)) || self.recomputed(v).is_some() {
+                    self.pass(v, carrier);
+                }
                 if let (Some(AbiType::Int(scalar, ext)), Carrier::Int(r)) = (&f.signature.result, carrier) {
                     let size = self.size_of(*scalar)?;
                     self.extend(r, size, *ext);

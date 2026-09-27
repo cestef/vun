@@ -1,11 +1,11 @@
 //! arm64: fusion, callee-saved registers for loops, results in dying operands' registers, each
 //! instruction decoded by an independent decoder to the text the listing shows.
 
-use vun_lir::{BinOp, Cond, Scalar, Target, Terminator};
+use vun_lir::{BinOp, Cond, Scalar, Terminator};
 use yaxpeax_arch::{Decoder, U8Reader};
 use yaxpeax_arm::armv8::a64::InstDecoder;
 
-use super::{compiled, text, to};
+use super::{compiled, sum, text, to};
 use crate::Code;
 use crate::arm64::Arm;
 
@@ -49,26 +49,16 @@ fn a_branch_on_a_comparison_jumps_on_its_flags() {
 }
 
 #[test]
-fn values_live_across_a_loop_take_callee_saved_registers() {
-    // The sum of `0..n`, in a loop whose counter and total are block parameters.
-    let code = compiled::<Arm>(|b, n, origin| {
-        let zero = b.constant(Scalar::I64, 0, origin);
-        let head = b.block(&[Scalar::I64, Scalar::I64], origin);
-        let (body, exit) = (b.block(&[], origin), b.block(&[], origin));
-        b.terminate(Terminator::Jump(Target { block: head, args: vec![zero, zero] }));
-        b.switch_to(head);
-        let [i, total] = [b.params(head)[0], b.params(head)[1]];
-        let more = b.compare(Cond::ULt, i, n, origin);
-        b.terminate(Terminator::Branch { cond: more, then: to(body), otherwise: to(exit) });
-        b.switch_to(body);
-        let one = b.constant(Scalar::I64, 1, origin);
-        let (next, added) = (b.binary(BinOp::Add, i, one, origin), b.binary(BinOp::Add, total, i, origin));
-        b.terminate(Terminator::Jump(Target { block: head, args: vec![next, added] }));
-        b.switch_to(exit);
-        b.terminate(Terminator::Return(Some(total)));
-    });
-    let text = checked(&code);
-    // `x19` saved below the frame pointer and restored.
+fn a_loop_keeps_its_values_in_registers() {
+    let text = checked(&compiled::<Arm>(|b, n, origin| sum(b, n, origin, false)));
+    // Nothing is stored in the frame or loaded from it.
+    assert!(!text.iter().any(|i| i.contains("[x29")), "{text:#?}");
+}
+
+#[test]
+fn values_live_across_a_call_take_callee_saved_registers() {
+    let text = checked(&compiled::<Arm>(|b, n, origin| sum(b, n, origin, true)));
+    // A register the call preserves saved below the frame pointer and restored.
     assert!(text.iter().any(|i| i.starts_with("stur x19, [x29, #-")), "{text:#?}");
     assert!(text.iter().any(|i| i.starts_with("ldur x19, [x29, #-")), "{text:#?}");
 }

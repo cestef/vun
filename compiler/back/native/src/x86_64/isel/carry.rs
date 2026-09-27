@@ -27,15 +27,11 @@ impl Sel<'_, '_> {
         }
     }
 
-    /// Takes `v` from `carrier`, holding it in a general register.
-    pub(super) fn receive(&mut self, v: Value, carrier: Carrier) {
-        match carrier {
-            Carrier::Int(r) => self.def_at(v, r),
-            Carrier::Float(x) => {
-                let (d, size) = (self.def(v), part(self.bytes(v)));
-                self.asm.emit(Op::Movd, size, &[d.into(), x.into()]);
-            }
-        }
+    /// Takes the float `v` from the SSE register `x`, holding it in a general register; one
+    /// passed in a general register is where the plan takes it from.
+    pub(super) fn receive_float(&mut self, v: Value, x: Xmm) {
+        let (d, size) = (self.def(v), part(self.bytes(v)));
+        self.asm.emit(Op::Movd, size, &[d.into(), x.into()]);
     }
 
     fn move_to_sse(&mut self, size: Size, x: Xmm, r: Reg) {

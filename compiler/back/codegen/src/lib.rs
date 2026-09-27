@@ -1,20 +1,20 @@
 //! The single-pass code generation framework (spec 13, section 8.3), after TPDE: what does not
-//! depend on the architecture. LIR is read directly with its shared analyses; blocks are
-//! compiled in `Order`, instructions in program order, each selected, given registers and
-//! encoded at once into a `vun_asm::Buffer`.
+//! depend on the architecture. LIR is read directly with its shared analyses; where each value
+//! lives is planned first by the register allocator (`vun_regalloc`, from what the instruction
+//! compilers say each instruction needs); blocks are then compiled in `Order`, instructions in
+//! program order, each selected and encoded at once into a `vun_asm::Buffer` over the places
+//! the plan gives.
 //!
 //! An architecture brings its registers and the framework's own moves ([`Arch`]), its
-//! instruction compilers ([`Isel`]), and, for instructions described as data, the operands and
-//! forms its assembler takes ([`snippet::Emits`]). The framework brings the rest: every value's
-//! assignment (its register, its home in the frame, whether the home holds it, its remaining
-//! uses), register allocation with eviction, values recomputed where used (constants and
-//! addresses), callee-saved registers for values live across loops, the frame, jumps filling
-//! their targets' parameters, compare and branch fusion, and the snippet encoder.
+//! instruction compilers and what each instruction needs ([`Isel`]), and, for instructions
+//! described as data, the operands and forms its assembler takes ([`snippet::Emits`]). The
+//! framework brings the rest: the plan and its moves, homes, values recomputed where used
+//! (constants and addresses), the callee-saved registers the plan uses, the frame, compare and
+//! branch fusion, and the snippet encoder with what snippets need.
 
 mod cx;
 mod frame;
 mod pieces;
-mod regs;
 pub mod snippet;
 mod values;
 
@@ -22,9 +22,11 @@ pub use cx::{Compiled, Cx, Fused, Layout, compile};
 pub use frame::Frame;
 pub use pieces::pieces;
 pub use values::{Anchor, Place, Recompute};
+pub use vun_regalloc::{Bank, Need, Needs, Out, PReg, Read};
 
 use vun_backend::Lack;
 use vun_lir::{Address, Block, Cond, Function, Inst};
+use vun_regalloc::PReg as Planned;
 
 /// A function's code as it is emitted.
 pub type Code<A> = vun_asm::Buffer<<A as Arch>::Isa, Address>;
@@ -40,10 +42,11 @@ pub trait Arch: Sized + 'static {
 
     /// How many registers the bank has, numbered densely by [`Arch::index`].
     const REGS: usize;
-    /// The registers values are held in, taken lowest first.
+    /// The registers a call may overwrite that values are held in, the preferred first; values
+    /// are also held in those the convention preserves, but the frame pointer.
     const ALLOCATABLE: &'static [Self::Reg];
-    /// The registers a call preserves, which hold values live across loops.
-    const CALLEE_SAVED: &'static [Self::Reg];
+    /// The frame pointer, which homes are reached from.
+    const FRAME: Self::Reg;
     /// The registers kept for the framework's own moves, apart from any value: one carries a
     /// value between two places in memory, the other breaks cycles of moves.
     const CARRIER: Self::Reg;
@@ -54,6 +57,14 @@ pub trait Arch: Sized + 'static {
     const STACK_ALIGN: u64;
 
     fn index(r: Self::Reg) -> usize;
+
+    /// `r` as the register allocator names it: by its index.
+    ///
+    /// # Panics
+    /// Never: a bank has at most 64 registers.
+    fn preg(r: Self::Reg) -> Planned {
+        Planned(u8::try_from(Self::index(r)).expect("banks of at most 64 registers"))
+    }
     /// The number DWARF gives `r` in call frame information.
     fn dwarf(r: Self::Reg) -> u16;
 
@@ -78,8 +89,21 @@ pub trait Isel: Arch {
     /// Returns what the backend cannot compile in `f`'s signature.
     fn state(f: &Function, convention: Self::Convention) -> Result<Self::State, Lack>;
 
+    /// The general registers `convention` preserves across calls.
+    fn preserved(convention: Self::Convention) -> &'static [Self::Reg];
+
     /// Whether a branch on the comparison `cond` jumps on the flags it sets.
     fn fuses(cond: Cond) -> bool;
+
+    /// What `inst` needs of the places of its operands and result, which the plan provides.
+    fn inst_needs(cx: &Cx<'_, Self>, inst: Inst, needs: &mut Needs);
+
+    /// What the terminator of `block` needs of the values it reads itself.
+    fn term_needs(cx: &Cx<'_, Self>, block: Block, needs: &mut Needs);
+
+    /// Where the entry receives the function's parameters, those the prologue made recomputed
+    /// as addresses aside.
+    fn entry_needs(cx: &Cx<'_, Self>, needs: &mut Needs);
 
     /// The prologue, and where the parameters passed in memory are (`Cx::recompute_as`,
     /// `Cx::home_at`).
@@ -88,8 +112,7 @@ pub trait Isel: Arch {
     /// Returns what the backend cannot compile.
     fn prologue(cx: &mut Cx<'_, Self>) -> Result<(), Lack>;
 
-    /// Receives the parameters where the convention passes them, once the callee-saved
-    /// registers values keep are chosen.
+    /// Receives the parameters where the convention passes them, as the entry needs said.
     ///
     /// # Errors
     /// Returns what the backend cannot compile.

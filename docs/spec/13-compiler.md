@@ -550,47 +550,47 @@ assembler and its instruction compilers and nothing else:
   return the frame torn down), each machine giving its registers' DWARF numbers (`Arch::dwarf`)
   and where its calls leave the return address (`CallFrame`); unwinders and profilers walk
   through Vun frames at every instruction.
-- **`vun-codegen`**: the framework, which knows no architecture: value assignments, register
-  allocation, the frame, homes, values recomputed where used, callee-saved registers for loops,
-  jumps filling their targets' parameters, compare and branch fusion, and the snippet encoder.
-  An architecture gives it its registers and its own moves (`Arch`) and its instruction compilers
-  (`Isel`).
+- **`vun-regalloc`**: the register allocator (section 8.6), which knows no architecture.
+- **`vun-codegen`**: the framework, which knows no architecture: the plan and its moves, the
+  frame, homes, values recomputed where used, the callee-saved registers the plan uses, compare
+  and branch fusion, and the snippet encoder with what snippets need. An architecture gives it
+  its registers and its own moves (`Arch`), and its instruction compilers with what each
+  instruction needs (`Isel`).
 - **`vun-backend-native`**: per architecture, the calling conventions, the snippets and the
   instruction compilers; the unit assembled as one object; listings.
 
 The framework:
 
-- **One pass per function.** Blocks in `Order`, instructions in program order; instruction
-  selection, register allocation and encoding happen together into a code buffer that later
-  steps only patch (jumps to later blocks, the frame size).
-- **Values.** Each value has an assignment, indexed by its id: its register, if any, its home in
-  the frame, whether the home holds it, and its remaining uses from `Liveness`. A use decrements
-  the count; at zero the register is free once the instruction is done. Constants and addresses
-  known while compiling (a slot's, a datum's, a function's, at constant offsets) are recomputed
-  where used, never kept: `Recompute`, found once per function.
-- **Registers.** The lowest free register is taken; when none is, one is evicted round-robin,
-  stored home if still used there only. Registers an instruction uses are locked until it is
-  done. Values live across the blocks of a loop and the parameters of a loop's head (a block
-  jumping to itself heads a loop of its own), deepest loops and most uses first, each hold a
-  callee-saved register from definition to last use. Only the state at the current point is
-  tracked: before a call every value used after it, and at a jump to a block entered from
-  elsewhere every value still used, is stored home (a call's arguments in general registers
-  are moved there together from where they are, as one parallel move), so each block starts with every value in its home or its own register, but a
-  block emitted next that only the block before reaches, which keeps the registers.
+- **One pass per function**, once the allocator has planned where values live. Blocks in
+  `Order`, instructions in program order; instruction selection and encoding happen together
+  into a code buffer that later steps only patch (jumps to later blocks, the frame size).
+- **Values.** Each value has an assignment, indexed by its id: its home in the frame, once one is
+  needed, and its uses. Constants and addresses known while compiling (a slot's, a datum's, a
+  function's, at constant offsets) are recomputed where used, never kept: `Recompute`, found
+  once per function; the plan holds them nowhere, and an instruction needing one in a register
+  writes it into a scratch register once per instruction.
+- **Registers.** Where each value lives is planned before the pass (section 8.6): each
+  instruction's architecture says what it needs, one decision (`Selection`) giving both what it
+  needs and what it emits, and the framework follows the plan: the moves before and after each
+  instruction and on each edge, a block starting with values where the plan has them, and the
+  callee-saved registers the plan uses saved by the prologue. A conditional jump whose edge moves
+  anything goes there through its own moves.
 - **Instruction compilers** ask the framework for operands (`Cx::reg`), results (`Cx::def`), a
-  result overwriting a dying operand (`Cx::reuse`: no copy where the operand is used no more),
-  scratch registers, and fixed registers freed (`Cx::take`: a value there still used and not
-  home yet moves to a free register rather than through memory, as TPDE moves it).
+  result overwriting an operand (`Cx::reuse`: no copy where the plan gives both one register),
+  and scratch registers (`Cx::scratch`), each where the plan has them; a mismatch between what an
+  instruction said it needs and what it asks panics rather than miscompiling.
 - **Snippets** (TPDE, section 4): most operations are instruction sequences as data, over slots
   for the operation's operands (`In`, and memory at an operand's address, `At`), its result
-  (`Out`), scratch registers (`Temp`), registers an instruction requires (`Fixed`, freed before
-  the snippet starts) and operands taken as an immediate where a form takes one, else through the
-  register the instruction requires (`Through`: a shift's count, in `cl` unless constant). The
-  snippet encoder places each operand as the forms allow: an operand in a register as it is, a
-  constant as an immediate, a value in its home as memory, a known address folded into a memory
-  operand, else brought into a register; and a move of a dying operand into the result is no
-  instruction, the result taking its register, as is a move of a register to itself at the
-  full width (narrower ones clear the bits above). Where TPDE derives snippets from C through LLVM,
+  (`Out`), scratch registers (`Temp`), registers an instruction requires (`Fixed`, taken for the
+  whole instruction) and operands taken as an immediate where a form takes one, else through the
+  register the instruction requires (`Through`: a shift's count, in `cl` unless constant). What a
+  snippet needs is read from its slots (`Cx::snippet_needs`): each operand in a register, read
+  again after the result is written when a later step reads it; the result in the register of
+  the operand its first step moves into it, or in the fixed register it moves it from. The
+  snippet encoder places each operand as the forms allow: a constant as an immediate, a known
+  address folded into a memory operand, else in its register; and a move of an operand into the
+  result is no instruction where the plan gives both one register, as is a move of a register to
+  itself at the full width (narrower ones clear the bits above). Where TPDE derives snippets from C through LLVM,
   they are written against the instruction table: `add` is a move of the first operand into the
   result then `add` of the second, and the encoder turns that into `add rdi, 0x1` where the first
   operand dies in `rdi` and the second is 1.
@@ -611,8 +611,8 @@ The framework:
   source each LIR instruction comes from.
 
 As built (x86-64 System V, ELF): values are held in the registers a call may overwrite but
-`r10` and `r11`, which the framework keeps for its own moves, and those of loops in `rbx` and
-`r12` to `r15`. Vun's convention passes the signature's values in the registers C passes
+`r10` and `r11`, which the framework keeps for its own moves, then in those a call preserves,
+`rbx` and `r12` to `r15`. Vun's convention passes the signature's values in the registers C passes
 integers in, then on the stack; the C convention classifies records as System V does (integer
 records of up to 16 bytes in registers, larger ones in memory, a result in memory through an
 address passed first). Narrow integers are held with undefined upper bits and extended where an
@@ -627,14 +627,15 @@ the canonical NaN where its result is unequal to itself. `rem` and `mul_add` run
 `lang.float.soft`'s functions (`#[lower.by]`).
 
 As built (arm64, AAPCS64, ELF): values are held in `x0` to `x14`; `x16` and `x17` are the
-framework's own moves, `x15` builds offsets and addresses too far for one instruction, and values
-of loops take `x19` to `x28`. The prologue saves `x29` and `x30` as a pair, points `x29` at them,
+framework's own moves, `x15` builds offsets and addresses too far for one instruction, and
+values are also held in `x19` to `x28`, which calls preserve. The prologue saves `x29` and `x30` as a pair, points `x29` at them,
 and builds the frame's size in `x16` by two moves the function's end rewrites (instruction and
 listing alike); homes are reached from `x29` by `ldur` and `stur`, or at an index past 256 bytes.
 Constants take one move where a form holds them (`movz`, `movn`, a bitmask), else a move of the
 first differing 16 bits and a `movk` of each other; a symbol's address is `adrp` and `add` of its
-low 12 bits, an import's is read from the global offset table. Snippets are three-address, so the
-encoder gives a result the register of an operand the step reads for the last time. Narrow
+low 12 bits, an import's is read from the global offset table. Snippets are three-address, so a
+result may take the register of an operand the step reads for the last time, as the plan gives
+it. Narrow
 integers compute at 32 bits with undefined upper bits; division, right shifts, comparisons and
 conversions of 8 and 16 bits extend their operands first (`uxt`, `sxt`, one instruction per
 source width in the table), and have snippets of their own. Floats are held as bits and computed
@@ -765,10 +766,13 @@ rules (proposed, decision 256).
 
 ### 8.6 Register allocation
 
-The native backends are to share one register allocator, `vun-regalloc`, which plans where every
-value of a function lives before the framework compiles it; the framework then follows the plan
-instead of choosing registers as it goes (proposed, decision 257; the framework does not follow
-it yet).
+The native backends share one register allocator, `vun-regalloc`, which plans where every value
+of a function lives before the framework compiles it; the framework then follows the plan
+instead of choosing registers as it goes (proposed, decision 257). Against the framework's
+earlier choices as it went, the backend test programs take 3 to 22 percent fewer instructions
+and up to 85 percent fewer frame accesses (`half.vun`: 13,238 instructions to 11,686, 1,774
+frame accesses to 264); the LCG loop of decision 230 runs its 50 million rounds in 7
+instructions each instead of 13, in registers a call may overwrite, none saved.
 
 - **Linear scan on SSA**, after Wimmer and Franz (2010): LIR is in SSA form with block
   parameters, so each value's lifetime is built in one backward walk of the blocks in `Order`,
