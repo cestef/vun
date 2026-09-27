@@ -9,153 +9,23 @@
 //! program through `check.stack`; the addresses each instruction writes are the native backend's
 //! to check, which encodes them.
 
-use std::fmt;
+mod gnu;
 
-use vun_asm::{AsmOperand, Blocks, Place, Via};
+use vun_asm::AsmOperand;
 use vun_asm_arm64::Arm64;
-use vun_asm_x86_64::{Syntax, X86_64};
+use vun_asm_x86_64::X86_64;
 use vun_backend::{Lack, Missing};
-use vun_inline::{Bound, Inst, Line, Rebind};
+use vun_inline::{Bound, Line};
 use vun_intern::Symbol;
-use vun_items::Item;
-use vun_lir::{Address, AsmCheck, Output, Scalar, Value};
+use vun_lir::{Address, AsmCheck, Scalar, Value};
 use vun_origin::OriginId;
 
 use super::FnEmit;
 use crate::ast::{Asm, Binary, Binding, Decl, Expr, Flow, Ident, Stmt};
+use gnu::{Block, Given, Gnu, Labelled, Unlinked};
 
 /// The registers a block writes beyond those it names: the flags, and memory.
 const CLOBBERED: [&str; 2] = ["cc", "memory"];
-
-/// A line of a block, as the text GNU C assembles names its label: unique to each `__asm__`
-/// statement by `%=`.
-#[derive(Clone, Copy, Debug)]
-struct Labelled(Line);
-
-impl fmt::Display for Labelled {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, ".Lvun%=_{}", self.0.0)
-    }
-}
-
-type Block = vun_inline::Block<Value, Output, Labelled>;
-
-/// What GNU C writes of an instruction set's blocks.
-trait Gnu: Blocks {
-    /// The namespace of the instruction set, `lang.arch.<arch>`.
-    const ARCH: Item;
-    /// The lines before and after a block's, setting the assembler's syntax to the listing's and
-    /// back.
-    const ENTER: &'static [&'static str];
-    const LEAVE: &'static [&'static str];
-
-    /// The registers a binding may take: the argument registers of the C convention.
-    fn free(convention: vun_target::Convention) -> &'static [Self::Reg];
-
-    /// A register's name, as the assembler reads it.
-    fn name(r: Self::Reg) -> String;
-
-    /// The text of `inst` over `operands`.
-    fn text(inst: &Inst<Value, Output, Labelled>, operands: &[Self::Operand<Labelled>]) -> String;
-
-    /// The text of the move of the stack pointer into `dst`.
-    fn read_stack(dst: Self::Reg) -> String;
-}
-
-impl Gnu for X86_64 {
-    const ARCH: Item = vun_items::lang::arch::x86_64;
-    const ENTER: &'static [&'static str] = &[".intel_syntax noprefix"];
-    const LEAVE: &'static [&'static str] = &[".att_syntax prefix"];
-
-    fn free(convention: vun_target::Convention) -> &'static [vun_asm_x86_64::Reg] {
-        let mut conventions = vun_asm_x86_64::conventions::CONVENTIONS.iter();
-        conventions.find(|(c, _)| *c == convention).map_or(&[], |(_, c)| c.registers.int_args)
-    }
-
-    fn name(r: vun_asm_x86_64::Reg) -> String {
-        r.name(vun_asm_x86_64::Size::B64).to_owned()
-    }
-
-    fn text(inst: &Inst<Value, Output, Labelled>, operands: &[vun_asm_x86_64::Operand<Labelled>]) -> String {
-        let op = vun_asm_x86_64::Op::entry(inst.op, inst.form).0;
-        let size = vun_asm_x86_64::Size::of(inst.size);
-        vun_asm_x86_64::Inst::new(op, size, operands).text(Syntax::Gnu).to_string()
-    }
-
-    fn read_stack(dst: vun_asm_x86_64::Reg) -> String {
-        let operands: [vun_asm_x86_64::Operand<Labelled>; 2] = [dst.into(), vun_asm_x86_64::Reg::Rsp.into()];
-        let size = vun_asm_x86_64::Size::B64;
-        vun_asm_x86_64::Inst::new(vun_asm_x86_64::Op::Mov, size, &operands).text(Syntax::Gnu).to_string()
-    }
-}
-
-impl Gnu for Arm64 {
-    const ARCH: Item = vun_items::lang::arch::arm64;
-    const ENTER: &'static [&'static str] = &[];
-    const LEAVE: &'static [&'static str] = &[];
-
-    fn free(convention: vun_target::Convention) -> &'static [vun_asm_arm64::Reg] {
-        let mut conventions = vun_asm_arm64::conventions::CONVENTIONS.iter();
-        conventions.find(|(c, _)| *c == convention).map_or(&[], |(_, c)| c.registers.int_args)
-    }
-
-    fn name(r: vun_asm_arm64::Reg) -> String {
-        r.name(vun_asm_arm64::Size::B64).to_string()
-    }
-
-    fn text(inst: &Inst<Value, Output, Labelled>, operands: &[vun_asm_arm64::Operand<Labelled>]) -> String {
-        let op = vun_asm_arm64::Op::entry(inst.op, inst.form).0;
-        vun_asm_arm64::Inst::new(op, vun_asm_arm64::Size::of(inst.size), operands).to_string()
-    }
-
-    fn read_stack(dst: vun_asm_arm64::Reg) -> String {
-        let operands: [vun_asm_arm64::Operand<Labelled>; 2] = [dst.into(), vun_asm_arm64::Reg::Sp.into()];
-        vun_asm_arm64::Inst::new(vun_asm_arm64::Op::Mov, vun_asm_arm64::Size::B64, &operands).to_string()
-    }
-}
-
-/// A block's symbols, which GNU C cannot name, refused; its lines named as labels.
-struct Unlinked;
-
-impl Rebind<Value, Output, Address> for Unlinked {
-    type Value = Value;
-    type Place = Output;
-    type Symbol = Labelled;
-    type Error = AsmOperand;
-
-    fn value(&mut self, value: Value) -> Result<Value, AsmOperand> {
-        Ok(value)
-    }
-
-    fn place(&mut self, place: Output) -> Result<Output, AsmOperand> {
-        Ok(place)
-    }
-
-    fn symbol(&mut self, _: Address) -> Result<Labelled, AsmOperand> {
-        Err(AsmOperand::Symbol)
-    }
-}
-
-/// Where a block's operands are in the C statement: its bindings in the registers given them, in
-/// order, and its lines at their labels.
-struct Given<I: Blocks> {
-    regs: std::vec::IntoIter<I::Reg>,
-}
-
-impl<I: Blocks> Place<I, Labelled> for Given<I> {
-    fn bound(&mut self) -> I::Reg {
-        self.regs.next().expect("a register for each binding")
-    }
-
-    fn line(&self, line: Line) -> I::Operand<Labelled> {
-        I::target(Labelled(line))
-    }
-
-    /// Never asked: a block naming a symbol is refused.
-    fn via(&self, _: Labelled) -> Via {
-        Via::Direct
-    }
-}
 
 impl FnEmit<'_, '_> {
     /// `asm` as a GNU C statement, if the target's architecture is the block's.

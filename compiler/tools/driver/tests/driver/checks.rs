@@ -169,76 +169,85 @@ main := (sys: &mut std.os.System) -> std.os.Exit {
     }
 }
 
-/// A program writing `n` through a block `past` bytes into its local, built by the native backend
-/// with the asm checks, and the status it ends with.
-fn written_by_asm(name: &str, past: u32) -> Option<i32> {
+/// The status `source`, built for `target` by `backend` with the asm checks, ends with; `None`
+/// where this machine runs no program of `target`.
+fn asm_run(name: &str, target: [&str; 2], backend: &str, source: &str) -> Option<Option<i32>> {
     let fixture = Fixture::new(name);
-    let source = format!(
+    let path = fixture.root.write("main.vun", source);
+    let mut session = fixture.session();
+    session.choice = Choice::Path(target.iter().map(|&n| Symbol::intern(n)).collect());
+    session.codegen.backend = Some(Symbol::intern(backend));
+    session.add_checks([Check::Asm]);
+    let file = session.load(&path).unwrap();
+    // Choosing the target equips it with the machine's tools, and a runner where it needs one.
+    let _ = session.lir(file);
+    let native = cfg!(target_arch = "x86_64") && target == ["linux", "x86_64"];
+    if !cfg!(target_os = "linux") || !native && session.runner.is_empty() {
+        return None;
+    }
+    let program = session.build(file, None).unwrap_or_else(|_| panic!("{:#?}", session.diag));
+    Some(session.command(&program).status().unwrap().code())
+}
+
+/// A program writing 7 through a block of `arch`, `write` with `past` for its offset, `past`
+/// bytes into its local, exiting with what the local holds.
+fn writing(arch: &str, write: &str, past: u32) -> String {
+    let write = write.replace("{past}", &past.to_string());
+    format!(
         "\
 start := std.os.start(main);
 main := (sys: &mut std.os.System) -> std.os.Exit {{
     mut x: u64 = 0;
     n: u64 = 7;
     p := unsafe lang.mem.pointer_to(u64, &x);
-    unsafe lang.arch.x86_64.asm {{
-        mov [{{in p}} + {past}], {{in n}}
+    unsafe lang.arch.{arch}.asm {{
+        {write}
     }};
     std.os.Exit.of((x % 100).to(Int(0..=125)))
 }};
 "
-    );
-    let path = fixture.root.write("main.vun", &source);
-    let mut session = fixture.session();
-    session.choice = Choice::Path(vec![Symbol::intern("linux"), Symbol::intern("x86_64")]);
-    session.codegen.backend = Some(Symbol::intern("native"));
-    session.add_checks([Check::Asm]);
-    let file = session.load(&path).unwrap();
-    let program = session.build(file, None).unwrap_or_else(|_| panic!("{:#?}", session.diag));
-    session.command(&program).status().unwrap().code()
+    )
 }
+
+/// A program whose block of `arch` moves the stack pointer, `moves`, and returns so.
+fn moving(arch: &str, moves: &str) -> String {
+    format!(
+        "\
+start := std.os.start(main);
+main := (sys: &mut std.os.System) -> std.os.Exit {{
+    unsafe lang.arch.{arch}.asm {{
+        {moves}
+    }};
+    .ok
+}};
+"
+    )
+}
+
+/// Each architecture's block writing through a binding, and moving the stack pointer.
+const ARCHES: [([&str; 2], &str, &str, &str); 2] = [
+    (["linux", "x86_64"], "x86_64", "mov [{in p} + {past}], {in n}", "push rax"),
+    (["linux", "arm64"], "arm64", "str {in n}, [{in p}, {past}]", "sub sp, sp, 16"),
+];
 
 #[test]
 fn a_block_writing_past_its_memory_traps_under_the_asm_checks() {
-    if !cfg!(all(target_arch = "x86_64", target_os = "linux")) {
-        return;
+    for (target, arch, write, _) in ARCHES {
+        let run = |past| {
+            asm_run(&format!("checks-asm-{arch}-{past}"), target, "native", &writing(arch, write, past))
+        };
+        let (Some(within), Some(past)) = (run(0), run(8)) else { continue };
+        assert_eq!((within, past), (Some(7), Some(101)), "{arch}");
     }
-    assert_eq!(written_by_asm("checks-asm-within", 0), Some(7));
-    assert_eq!(written_by_asm("checks-asm-past", 8), Some(101));
-}
-
-/// A program whose block pushes a word it never pops, built by `backend` with the asm checks, and
-/// the status it ends with.
-fn stack_moved_by_asm(name: &str, backend: &str) -> Option<i32> {
-    let fixture = Fixture::new(name);
-    let source = "\
-start := std.os.start(main);
-main := (sys: &mut std.os.System) -> std.os.Exit {
-    unsafe lang.arch.x86_64.asm {
-        push rax
-    };
-    .ok
-};
-";
-    let path = fixture.root.write("main.vun", source);
-    let mut session = fixture.session();
-    session.choice = Choice::Path(vec![Symbol::intern("linux"), Symbol::intern("x86_64")]);
-    session.codegen.backend = Some(Symbol::intern(backend));
-    session.add_checks([Check::Asm]);
-    let file = session.load(&path).unwrap();
-    let program = session.build(file, None).unwrap_or_else(|_| panic!("{:#?}", session.diag));
-    session.command(&program).status().unwrap().code()
 }
 
 #[test]
 fn a_block_returning_with_the_stack_moved_traps_through_native_code_and_c() {
-    if !cfg!(all(target_arch = "x86_64", target_os = "linux")) {
-        return;
-    }
-    for backend in ["native", "c"] {
-        assert_eq!(
-            stack_moved_by_asm(&format!("checks-asm-stack-{backend}"), backend),
-            Some(101),
-            "{backend}"
-        );
+    for (target, arch, _, moves) in ARCHES {
+        for backend in ["native", "c"] {
+            let name = format!("checks-asm-stack-{arch}-{backend}");
+            let Some(status) = asm_run(&name, target, backend, &moving(arch, moves)) else { continue };
+            assert_eq!(status, Some(101), "{arch} {backend}");
+        }
     }
 }
