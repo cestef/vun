@@ -244,6 +244,7 @@
 | 248 | Network sources are `https://` only; `http://` is refused when a source is read, before any request. Downloads follow redirects themselves, each hop a parsed URL whose scheme is checked before it is requested, at most 8 hops. Local mirrors are `file` sources | accepted | 12 |
 | 249 | `lang.link.keep` is removed: a declaration kept past the linker's section collection is one it exports (`link.export`), as the vector table of spec 08 is, so `keep` was a second way with no reader | proposed | 08, appendices |
 | 250 | `std.mem.alloc.Fixed` borrows its buffer (`init := (storage: &mut [u8]) -> Fixed`), so the borrow checker keeps an allocator from outliving its bytes; it used to hold a raw pointer that nothing tied to the storage | proposed | 07 |
+| 251 | What a C library lays out its own way is a row per system (`std.os.libc.System`: the `errno` function, the signal set's word type and count, `pthread_sigmask`'s `how` values), declared by the system's module (`std.os.linux.c`, `std.os.macos.c`); `std.os.libc` uses the row whose `os` is `lang.target.current.os`, and a target with no row fails at compile time | proposed | 08 |
 
 Numbers 184 to 189 and 217 to 220 were never assigned.
 

@@ -8,15 +8,22 @@
 use crate::Item;
 pub const write: Item = Item::new(&["std", "os", "libc", "write"]);
 pub const exit: Item = Item::new(&["std", "os", "libc", "exit"]);
+/// What the C library of a system lays out its own way: each system declares its row
+/// (`std.os.linux.c`), and a program uses the row of the system it is built for.
+pub const System: Item = Item::new(&["std", "os", "libc", "System"]);
+/// The systems whose C library the runtime knows.
+pub const systems: Item = Item::new(&["std", "os", "libc", "systems"]);
+/// The row of the system `os`.
+pub const of: Item = Item::new(&["std", "os", "libc", "of"]);
+/// The row of the system being built for.
+pub const system: Item = Item::new(&["std", "os", "libc", "system"]);
 /// Where the calling thread's `errno` is.
 pub const errno_location: Item = Item::new(&["std", "os", "libc", "errno_location"]);
-/// A signal set as the C library lays it out: 1024 bits, of which Linux uses the first 64.
+/// A signal set as the C library lays it out, and the one holding no signal.
 pub const Sigset: Item = Item::new(&["std", "os", "libc", "Sigset"]);
+pub const no_signals: Item = Item::new(&["std", "os", "libc", "no_signals"]);
 pub const sigfillset: Item = Item::new(&["std", "os", "libc", "sigfillset"]);
 pub const pthread_sigmask: Item = Item::new(&["std", "os", "libc", "pthread_sigmask"]);
-/// `how` for `pthread_sigmask`: add the set to the mask, or make it the mask.
-pub const sig_block: Item = Item::new(&["std", "os", "libc", "sig_block"]);
-pub const sig_setmask: Item = Item::new(&["std", "os", "libc", "sig_setmask"]);
 pub const pthread_self: Item = Item::new(&["std", "os", "libc", "pthread_self"]);
 pub const sched_yield: Item = Item::new(&["std", "os", "libc", "sched_yield"]);
 /// The thread holding the critical section, 0 when none: a thread entering it again nests.

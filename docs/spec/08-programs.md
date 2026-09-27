@@ -56,7 +56,10 @@ start := ($main: (&mut System) -> Exit) -> type { struct {
 ```
 
 Linking against a C library instead is another runtime: `std.os.libc.start(main)` exports C `main`
-and lets crt0 do the rest.
+and lets crt0 do the rest. What each C library lays out its own way (the function giving
+`errno`, the signal set, the values of `pthread_sigmask`) is a row per system,
+`std.os.libc.System`, which each system's module declares (`std.os.linux.c`); the runtime takes
+the row whose `os` is `lang.target.current.os`.
 
 ### Bare metal
 

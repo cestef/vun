@@ -6,19 +6,45 @@
 write: unsafe (fd: i32, bytes: *u8, count: usize) -> isize = _;
 #[link.symbol("exit"), abi.c]
 exit: unsafe (status: i32) -> lang.never = _;
+/// What the C library of a system lays out its own way: each system declares its row
+/// (`std.os.linux.c`), and a program uses the row of the system it is built for.
+System := struct {
+    os: lang.meta.Name,
+    /// The function giving where the calling thread's `errno` is.
+    errno: &[u8],
+    /// A signal set: `words` words of type `Word`, the first holding the signals 1 up.
+    Word: type,
+    words: usize,
+    /// `how` for `pthread_sigmask`: add the set to the mask, or make it the mask.
+    block: i32,
+    set_mask: i32,
+};
+
+/// The systems whose C library the runtime knows.
+systems := [std.os.linux.c, std.os.macos.c];
+
+/// The row of the system `os`.
+of := ($os: lang.meta.Name) -> System {
+    $for row in systems {
+        if row.os == os { return row; }
+    }
+    lang.panic.fail(.message("the runtime knows no C library for this system"))
+};
+
+/// The row of the system being built for.
+system := of(lang.target.current.os);
+
 /// Where the calling thread's `errno` is.
-#[link.symbol("__errno_location"), abi.c]
+#[link.symbol(system.errno), abi.c]
 errno_location: unsafe () -> *i32 = _;
 
-/// A signal set as the C library lays it out: 1024 bits, of which Linux uses the first 64.
-Sigset := [16]u64;
+/// A signal set as the C library lays it out, and the one holding no signal.
+Sigset := [system.words]system.Word;
+no_signals: Sigset = [0; system.words];
 #[link.symbol("sigfillset"), abi.c, panic.never]
 sigfillset: unsafe (set: *Sigset) -> i32 = _;
 #[link.symbol("pthread_sigmask"), abi.c, panic.never]
 pthread_sigmask: unsafe (how: i32, set: *Sigset, old: *Sigset) -> i32 = _;
-/// `how` for `pthread_sigmask`: add the set to the mask, or make it the mask.
-sig_block := 0;
-sig_setmask := 2;
 #[link.symbol("pthread_self"), abi.c, panic.never]
 pthread_self: unsafe () -> usize = _;
 #[link.symbol("sched_yield"), abi.c]
@@ -49,11 +75,11 @@ start := ($main: (&mut std.os.System) -> std.os.Exit) -> type { struct {
     /// from other threads.
     #[link.export(std.sync.symbols.enter), panic.never]
     enter := () -> std.sync.Mask {
-        mut all: Sigset = [0; 16];
-        mut old: Sigset = [0; 16];
+        mut all := no_signals;
+        mut old := no_signals;
         unsafe {
             sigfillset(lang.mem.pointer_to(Sigset, &all));
-            pthread_sigmask(sig_block, lang.mem.pointer_to(Sigset, &all), lang.mem.pointer_to(Sigset, &old));
+            pthread_sigmask(system.block, lang.mem.pointer_to(Sigset, &all), lang.mem.pointer_to(Sigset, &old));
         }
         me := unsafe pthread_self();
         outer := owner.load(.acquire) != me;
@@ -68,11 +94,11 @@ start := ($main: (&mut std.os.System) -> std.os.Exit) -> type { struct {
         if mask.outer() {
             owner.store(0, .release);
         }
-        mut set: Sigset = [0; 16];
-        set[0] = mask.bits();
-        mut old: Sigset = [0; 16];
+        mut set := no_signals;
+        set[0] = mask.bits().wrap(system.Word);
+        mut old := no_signals;
         unsafe {
-            pthread_sigmask(sig_setmask, lang.mem.pointer_to(Sigset, &set), lang.mem.pointer_to(Sigset, &old));
+            pthread_sigmask(system.set_mask, lang.mem.pointer_to(Sigset, &set), lang.mem.pointer_to(Sigset, &old));
         }
     };
 

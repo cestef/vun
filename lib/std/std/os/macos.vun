@@ -1,0 +1,11 @@
+//! macOS.
+
+/// The C library's layout on macOS: 32-bit signal sets.
+c: std.os.libc.System = .{
+    .os = .macos,
+    .errno = "__error",
+    .Word = u32,
+    .words = 1,
+    .block = 1,
+    .set_mask = 3,
+};

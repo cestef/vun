@@ -10,6 +10,8 @@ use crate::Item;
 pub const libc: Item = Item::new(&["std", "os", "libc"]);
 /// The namespace `std.os.linux`.
 pub const linux: Item = Item::new(&["std", "os", "linux"]);
+/// The namespace `std.os.macos`.
+pub const macos: Item = Item::new(&["std", "os", "macos"]);
 /// How the program ends: `ok`, or a status for the process that started it.
 pub const Exit: Item = Item::new(&["std", "os", "Exit"]);
 /// Why a request to the system failed: the error number it reported, or a stream that took no

@@ -3,6 +3,8 @@
 
 use crate::common::Fixture;
 use vun_diag::errors;
+use vun_intern::Symbol;
+use vun_sema::target::Choice;
 
 #[test]
 fn tuples_strings_and_slices_are_typed_and_evaluated() {
@@ -185,4 +187,30 @@ wrong: Int(nothing()..=nothing()) = 4;
     // `<[1, 20, 300] ab>`, `<-45 []>` and `plain`: arrays of other items than bytes are written
     // item by item, through the defaults of `Writer` that the impl does not declare.
     assert_eq!(fixture.check(&file), [errors::INT_DOES_NOT_FIT]);
+}
+
+#[test]
+fn the_c_library_row_is_the_chosen_systems() {
+    let rows = [(["linux", "x86_64"], "__errno_location"), (["macos", "arm64"], "__error")];
+    for (target, errno) in rows {
+        let fixture = Fixture::new(&format!("std-libc-{}", target[0]));
+        let file = fixture.root.write(
+            "p.vun",
+            "\
+start := std.os.start(main);
+main := (sys: &mut std.os.System) -> std.os.Exit {
+    mut out := sys.stdout();
+    std.fmt.print(&mut out, \"{}\\n\", .{ 1 });
+    .ok
+};
+",
+        );
+        let mut session = fixture.session();
+        session.choice = Choice::Path(target.map(Symbol::intern).to_vec());
+        let file = session.load(&file).unwrap();
+        let lowered = session.lir(file);
+        let unit = lowered.as_ref().as_ref().unwrap_or_else(|_| panic!("{target:?}: {:#?}", session.diag));
+        // `errno` is reached through the function the system's row names.
+        assert!(unit.imports.iter().any(|(_, i)| i.symbol == Symbol::intern(errno)), "{target:?}");
+    }
 }

@@ -1,1 +1,11 @@
 //! The Linux runtime: exports `_start` and the trap handler.
+
+/// The GNU C library's layout on Linux: 1024-bit signal sets, of which Linux uses the first 64.
+c: std.os.libc.System = .{
+    .os = .linux,
+    .errno = "__errno_location",
+    .Word = u64,
+    .words = 16,
+    .block = 0,
+    .set_mask = 2,
+};
