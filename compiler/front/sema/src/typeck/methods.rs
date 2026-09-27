@@ -49,7 +49,7 @@ impl Typer<'_, '_, '_> {
         let members = self.env().cx.get::<Members>(&requirements)?;
         match members.find(name) {
             Found::Decl(_) => {
-                self.methods.insert(expr, (requirements, name));
+                self.found.methods.insert(expr, (requirements, name));
                 self.env().cx.get::<MemberType>(&(requirements, name)).ok()
             }
             Found::Unknown => None,
@@ -57,7 +57,7 @@ impl Typer<'_, '_, '_> {
             _ if matches!(&*ty, TyKind::Frame(_))
                 && let Some(owner) = self.method(expr, ty, name) =>
             {
-                self.methods.insert(expr, (owner, name));
+                self.found.methods.insert(expr, (owner, name));
                 self.env().cx.get::<MemberType>(&(owner, name)).ok()
             }
             _ => {

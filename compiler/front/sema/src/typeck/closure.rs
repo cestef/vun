@@ -95,7 +95,7 @@ impl Typer<'_, '_, '_> {
             }
         }
         let signature = self.function(func, &[])?;
-        self.types.insert(func, Known { ty: signature.ty(), stage: self.stage });
+        self.found.types.insert(func, Known { ty: signature.ty(), stage: self.stage });
         let closure = Closure { f: self.env().func(func), captures: typed?, signature };
         Some(Known { ty: TyKind::Closure(closure).intern(), stage: self.stage })
     }

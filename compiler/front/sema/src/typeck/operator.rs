@@ -97,7 +97,7 @@ impl Typer<'_, '_, '_> {
         if known.is_none() {
             for arg in args {
                 if let Argument::Expr(e) = arg
-                    && !self.types.contains_key(e)
+                    && !self.found.types.contains_key(e)
                 {
                     self.typed(*e);
                 }
@@ -136,7 +136,7 @@ impl Typer<'_, '_, '_> {
         let callee = Callee { f, signature, receiver: Some(receiver), passing: Passing::Asked };
         let applied = self.apply(site, &callee, args)?;
         let written = args.iter().filter_map(|a| match a {
-            Argument::Expr(e) => self.types.get(e),
+            Argument::Expr(e) => self.found.types.get(e),
             Argument::Matched(_) => None,
         });
         let stage = written.fold(left.stage, |s, k| s.max(k.stage));
@@ -151,7 +151,7 @@ impl Typer<'_, '_, '_> {
         }
         let inferred = applied.inferred.unwrap_or_default();
         let result = applied.known.ty;
-        self.operators.insert(at, Operator { method: (owner, function), inferred, result });
+        self.found.operators.insert(at, Operator { method: (owner, function), inferred, result });
         Some(Known { stage, ..applied.known })
     }
 }

@@ -24,7 +24,7 @@ impl Typer<'_, '_, '_> {
         let place = self.hir().exprs[operand].kind.is_place();
         if let Some(pointee) = pointee.filter(|p| !place && p.accepts(&known.ty)) {
             known = Known { ty: pointee, ..known };
-            self.types.insert(operand, known);
+            self.found.types.insert(operand, known);
         }
         // A borrow for the borrower's scope of what lives as long as the program is one for the
         // whole program: the row of the same transition and access whose extent is `static`.

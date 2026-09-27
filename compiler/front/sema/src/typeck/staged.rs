@@ -59,7 +59,7 @@ impl<'a, 'db> Typer<'_, 'a, 'db> {
                         }
                         walk_list(t, hir, body, entry);
                     });
-                    self.steps.insert(Step { at: *pat, index }, Arc::new(typed));
+                    self.found.steps.insert(Step { at: *pat, index }, Arc::new(typed));
                 }
             }
         }
@@ -110,32 +110,14 @@ impl<'a, 'db> Typer<'_, 'a, 'db> {
     /// Types what `f` types in `env`, apart from the rest of the body; reports stay with it.
     fn step(&mut self, env: Env<'a, 'db>, f: impl FnOnce(&mut Self)) -> TypedBody {
         let outer = self.step.replace(env);
-        let saved = (
-            take(&mut self.types),
-            take(&mut self.methods),
-            take(&mut self.steps),
-            take(&mut self.iterations),
-            take(&mut self.inferred),
-            take(&mut self.operators),
-        );
+        let found = take(&mut self.found);
         // What the step binds is its own: the binders it declares have their types there.
         let locals = self.locals.clone();
         f(self);
         let stepped = std::mem::replace(&mut self.locals, locals);
         let binders =
             stepped.into_iter().filter(|(b, k)| self.locals.get(b) != Some(k)).map(|(b, k)| (b, k.ty));
-        let typed = TypedBody {
-            types: take(&mut self.types).into_iter().collect(),
-            binders: binders.collect(),
-            methods: take(&mut self.methods).into_iter().collect(),
-            steps: take(&mut self.steps),
-            iterations: take(&mut self.iterations),
-            inferred: take(&mut self.inferred),
-            operators: take(&mut self.operators),
-            diag: DiagCtxt::new(),
-            exprs: 0,
-        };
-        (self.types, self.methods, self.steps, self.iterations, self.inferred, self.operators) = saved;
+        let typed = std::mem::replace(&mut self.found, found).body(binders.collect(), DiagCtxt::new(), 0);
         self.step = outer;
         typed
     }

@@ -5,6 +5,7 @@ use std::sync::Arc;
 
 use vun_codec::{Decode, Encode};
 use vun_diag::DiagCtxt;
+use vun_hash::Map;
 use vun_hir::tree::{BinderId, ExprId, ExprKind, Hir, NsId, PatId};
 use vun_hir::visit::Visitor;
 use vun_intern::Symbol;
@@ -14,6 +15,39 @@ use super::{Iteration, Known, Operation, Operator, Stage, Typer};
 use crate::env::Env;
 use crate::eval::Instantiation;
 use crate::ty::{Ty, Value};
+
+/// What typing finds in a body, or in one `$for` step of it, apart from its locals and reports:
+/// what a step keeps apart from the rest of its body.
+#[derive(Default)]
+pub(super) struct Found {
+    pub types: Map<ExprId, Known>,
+    /// Member expressions naming a declaration through a value: `p.norm` in `p.norm()`, whose
+    /// call passes `p` first (spec 01, section 4); each with the struct declaring it, the type's
+    /// own or a witness, and its name.
+    pub methods: Map<ExprId, (Ty, Symbol)>,
+    pub operators: BTreeMap<Operation, Operator>,
+    /// The typed steps of the `$for`s typed so far.
+    pub steps: BTreeMap<Step, Arc<TypedBody>>,
+    pub iterations: BTreeMap<ExprId, Iteration>,
+    pub inferred: BTreeMap<ExprId, Vec<(usize, Value)>>,
+}
+
+impl Found {
+    /// The typed body of what was found, its locals of the types `binders`.
+    pub(super) fn body(self, binders: BTreeMap<BinderId, Ty>, diag: DiagCtxt, exprs: usize) -> TypedBody {
+        TypedBody {
+            types: self.types.into_iter().collect(),
+            binders,
+            methods: self.methods.into_iter().collect(),
+            steps: self.steps,
+            iterations: self.iterations,
+            inferred: self.inferred,
+            operators: self.operators,
+            diag,
+            exprs,
+        }
+    }
+}
 
 /// A typed function body: the type of each expression typed, what typing reports, and how many
 /// expressions the body holds, nested functions and quotes apart.

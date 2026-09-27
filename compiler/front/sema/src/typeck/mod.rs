@@ -25,6 +25,7 @@ mod operator;
 
 pub use loops::Iteration;
 pub use operator::{Operation, Operator};
+use typed::Found;
 pub use typed::{Step, Typed, TypedBody};
 mod pattern;
 mod prefix;
@@ -38,18 +39,15 @@ mod suspend;
 mod tests;
 mod typed;
 
-use std::collections::BTreeMap;
-use std::sync::Arc;
 use vun_hash::Map;
 
 use vun_codec::{Decode, Encode};
 use vun_diag::DiagCtxt;
 use vun_hir::tree::{BinderId, BlockId, DeclId, ExprId, Hir, NsId, Staged};
 use vun_hir::visit::Visitor;
-use vun_intern::Symbol;
 
 use crate::env::Env;
-use crate::ty::{Ty, Value};
+use crate::ty::Ty;
 
 /// When a value is known: at compile time, or only at run time. Only run-time integers are
 /// capped at 128 bits (spec 04, rule 5).
@@ -73,20 +71,12 @@ pub struct Typer<'e, 'a, 'db> {
     step: Option<Env<'a, 'db>>,
     /// When the code typed runs: at compile time outside a body, or under `$`.
     stage: Stage,
-    types: Map<ExprId, Known>,
+    /// What typing the body, or the `$for` step typed, finds.
+    found: Found,
     locals: Map<BinderId, Known>,
     /// The ranges immutable integer bindings are narrowed to where the expression typed is
     /// (spec 04, rule 4).
     narrowed: Map<BinderId, Ty>,
-    /// Member expressions naming a declaration through a value: `p.norm` in `p.norm()`, whose
-    /// call passes `p` first (spec 01, section 4); each with the struct declaring it, the type's
-    /// own or a witness, and its name.
-    methods: Map<ExprId, (Ty, Symbol)>,
-    operators: BTreeMap<Operation, Operator>,
-    /// The typed steps of the `$for`s typed so far.
-    steps: BTreeMap<Step, Arc<TypedBody>>,
-    iterations: BTreeMap<ExprId, Iteration>,
-    inferred: BTreeMap<ExprId, Vec<(usize, Value)>>,
     /// The type expected of an expression where its context says, for forms typed by it:
     /// `.name`, `.{ }` (spec 01, section 2).
     expected: Map<ExprId, Ty>,
@@ -116,14 +106,9 @@ impl<'e, 'a, 'db> Typer<'e, 'a, 'db> {
             env,
             step: None,
             stage,
-            types: Map::default(),
+            found: Found::default(),
             locals: Map::default(),
             narrowed: Map::default(),
-            methods: Map::default(),
-            operators: BTreeMap::new(),
-            steps: BTreeMap::new(),
-            iterations: BTreeMap::new(),
-            inferred: BTreeMap::new(),
             expected: Map::default(),
             result: None,
             written: None,
@@ -139,17 +124,8 @@ impl<'e, 'a, 'db> Typer<'e, 'a, 'db> {
     /// What this typer found, over a body of `exprs` expressions.
     #[must_use]
     pub fn finish(self, exprs: usize) -> TypedBody {
-        TypedBody {
-            types: self.types.into_iter().collect(),
-            binders: self.locals.into_iter().map(|(b, k)| (b, k.ty)).collect(),
-            methods: self.methods.into_iter().collect(),
-            steps: self.steps,
-            iterations: self.iterations,
-            inferred: self.inferred,
-            operators: self.operators,
-            diag: self.diag,
-            exprs,
-        }
+        let binders = self.locals.into_iter().map(|(b, k)| (b, k.ty)).collect();
+        self.found.body(binders, self.diag, exprs)
     }
 
     /// The environment typed in: the file's, or a `$for` step's.
@@ -170,7 +146,7 @@ impl<'e, 'a, 'db> Typer<'e, 'a, 'db> {
     /// Types `expr` and its parts.
     pub fn typed(&mut self, expr: ExprId) -> Option<Known> {
         self.expr(self.hir(), expr);
-        self.types.get(&expr).copied()
+        self.found.types.get(&expr).copied()
     }
 
     /// Types `expr` where a value of type `expected` is wanted, if one is.
@@ -215,7 +191,7 @@ impl Visitor for Typer<'_, '_, '_> {
 
     fn expr(&mut self, hir: &Hir, expr: ExprId) {
         if let Some(known) = self.infer(hir, expr) {
-            self.types.insert(expr, known);
+            self.found.types.insert(expr, known);
         }
     }
 }

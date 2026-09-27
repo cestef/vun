@@ -151,7 +151,7 @@ impl Typer<'_, '_, '_> {
     /// keeps its type when that is the parameter's: typing it again would give the same, and
     /// nested calls of generic functions would each type their arguments twice over.
     fn retyped(&mut self, expr: ExprId, param: Option<Ty>, typed: bool) -> Option<Known> {
-        match self.types.get(&expr) {
+        match self.found.types.get(&expr) {
             Some(&known) if typed && param == Some(known.ty) => Some(known),
             _ => self.typed_as(expr, param),
         }

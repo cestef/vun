@@ -107,7 +107,7 @@ impl Typer<'_, '_, '_> {
                         std::iter::once(decl.decl.decl.origin).chain(also.iter().map(|m| m.decl.decl.origin));
                     self.collision(expr, name, origins.collect());
                 }
-                self.methods.insert(expr, (known.ty, name));
+                self.found.methods.insert(expr, (known.ty, name));
                 self.env().cx.get::<MemberType>(&(known.ty, name)).ok()
             }
             // A member missing from the type and its impls; a variant is reached through its
@@ -119,7 +119,7 @@ impl Typer<'_, '_, '_> {
                     }
                     return None;
                 };
-                self.methods.insert(expr, (owner, name));
+                self.found.methods.insert(expr, (owner, name));
                 self.env().cx.get::<MemberType>(&(owner, name)).ok()
             }
         }

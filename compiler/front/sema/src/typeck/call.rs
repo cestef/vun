@@ -46,14 +46,14 @@ impl Typer<'_, '_, '_> {
         };
         // A method's receiver is passed in the mode its first parameter asks for.
         let receiver = match &self.hir().exprs[callee].kind {
-            ExprKind::Member { object, .. } if self.methods.contains_key(&callee) => Some(*object),
+            ExprKind::Member { object, .. } if self.found.methods.contains_key(&callee) => Some(*object),
             _ => None,
         };
         let target = Callee { f: self.called(callee), signature, receiver, passing: Passing::Written };
         let written: Vec<Argument> = written.into_iter().map(Argument::Expr).collect();
         let applied = self.apply(call, &target, &written)?;
         if let Some(inferred) = applied.inferred {
-            self.inferred.insert(call, inferred);
+            self.found.inferred.insert(call, inferred);
         }
         Some(applied.known)
     }
@@ -122,7 +122,7 @@ impl Typer<'_, '_, '_> {
     /// What a call of `callee` runs, when known here: a method, or a function or primitive
     /// known at compile time.
     fn called(&self, callee: ExprId) -> Option<Callable> {
-        let f = match self.methods.get(&callee) {
+        let f = match self.found.methods.get(&callee) {
             Some(method) => self.env().cx.get::<MemberValue>(method),
             None => self.env().eval(callee),
         };

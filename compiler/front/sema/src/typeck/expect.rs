@@ -82,8 +82,10 @@ impl<'a, 'db> Typer<'_, 'a, 'db> {
     /// typed by their context, and methods called on values of no type of their own, such as
     /// arrays, dispatch by them.
     pub(super) fn evaluating(&self) -> Env<'a, 'db> {
-        let types =
-            TypedBody { types: self.types.iter().map(|(&e, &k)| (e, k)).collect(), ..TypedBody::default() };
+        let types = TypedBody {
+            types: self.found.types.iter().map(|(&e, &k)| (e, k)).collect(),
+            ..TypedBody::default()
+        };
         self.env().clone().typed_by(Some(Arc::new(types)))
     }
 

@@ -66,7 +66,7 @@ impl Typer<'_, '_, '_> {
 
     /// The range of the integer `expr` has, typed already.
     fn interval_of(&self, expr: ExprId) -> Option<Interval> {
-        self.types.get(&expr)?.ty.interval()
+        self.found.types.get(&expr)?.ty.interval()
     }
 
     /// The immutable local `expr` names, if it names one.

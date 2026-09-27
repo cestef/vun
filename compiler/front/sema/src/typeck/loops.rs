@@ -60,7 +60,7 @@ impl Typer<'_, '_, '_> {
                 let iterated = self.typed(*iter).map(|k| k.ty);
                 let driven = iterated.and_then(|ty| self.iteration(ty));
                 if let Some((iteration, _)) = driven {
-                    self.iterations.insert(*iter, iteration);
+                    self.found.iterations.insert(*iter, iteration);
                 } else if let Some(ty) = iterated
                     && self.iterated(ty).is_none()
                 {
@@ -89,7 +89,7 @@ impl Typer<'_, '_, '_> {
         };
         let known = self.looping(Some(label), head, *block, self.expected(expr));
         if let Some(known) = known {
-            self.types.insert(body, known);
+            self.found.types.insert(body, known);
         }
         known
     }
