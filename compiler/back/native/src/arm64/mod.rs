@@ -5,6 +5,7 @@
 
 pub mod abi;
 mod asm;
+mod inline;
 mod isel;
 mod snippets;
 

@@ -5,6 +5,7 @@
 //! compilers. x86-64 and arm64, in ELF objects, and arm64 in Mach-O objects.
 
 pub mod arm64;
+mod inline;
 mod listing;
 mod object;
 pub mod width;

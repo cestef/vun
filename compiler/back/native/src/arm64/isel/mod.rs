@@ -20,6 +20,7 @@ use vun_abi::Convention;
 
 use super::abi::Passing;
 use super::{Arm, condition};
+use crate::inline::Inlined;
 use select::{Look, Selection};
 
 /// What the instruction compilers keep for one function.
@@ -126,6 +127,7 @@ impl<'a> Sel<'_, 'a> {
                 self.compare_exchange(addr, expected, new, out, size);
             }
             Selection::Copy { to, from, bytes } => self.copy(to, from, bytes),
+            Selection::Asm(asm) => asm.emit(self.0)?,
         }
         Ok(())
     }

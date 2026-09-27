@@ -25,7 +25,9 @@ fn compiled<A: Native>(build: impl FnOnce(&mut Builder, Value, OriginId)) -> Cod
 }
 
 /// `f` compiled, or what the backend lacks for it.
-fn compile<A: Native>(build: impl FnOnce(&mut Builder, Value, OriginId)) -> Result<Code<A>, vun_backend::Lack> {
+fn compile<A: Native>(
+    build: impl FnOnce(&mut Builder, Value, OriginId),
+) -> Result<Code<A>, vun_backend::Lack> {
     let origins = OriginTable::new();
     let origin = origins.source(Span::new(SourceFiles::new().add("a.vun", "n"), 0, 1));
     let int = AbiType::Int(Scalar::I64, Ext::Sign);

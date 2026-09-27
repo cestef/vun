@@ -51,6 +51,9 @@ pub enum AsmOperand {
     Imported,
     /// A value bound in a register of a class no value is allocated to.
     Unallocated,
+    /// Operands the instruction's form does not encode, such as an immediate none of its
+    /// encodings holds.
+    Unencodable,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -110,6 +113,7 @@ impl Missing {
                     AsmOperand::Absolute => "memory at a fixed address",
                     AsmOperand::Imported => "memory at a symbol another module defines",
                     AsmOperand::Unallocated => "a value bound to a register of this class",
+                    AsmOperand::Unencodable => "operands the instruction's form does not encode",
                 };
                 Msg::new().text(what).text(" in inline assembly")
             }

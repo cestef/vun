@@ -7,8 +7,8 @@ use vun_codegen::snippet::Args;
 use vun_codegen::{Arch, Need, Needs, Out};
 use vun_lir::{Block, Callee, Conv, Inst, Terminator, Value};
 
-use super::asm::Encoded;
 use super::select::{Look, Selection};
+use crate::inline::Inlined;
 use crate::x86_64::abi::{Carrier, Loc, Passing, Ret};
 use crate::x86_64::snippets::CMP;
 use crate::x86_64::{X86, memory};
@@ -54,7 +54,7 @@ impl Look<'_, '_> {
                 self.read(needs, from, Need::Any);
                 self.read(needs, to, Need::Any);
             }
-            Selection::Asm(asm) => asm.needs(needs),
+            Selection::Asm(asm) => asm.needs(cx, needs),
             Selection::UnsignedToFloat { value, .. } | Selection::FloatToUnsigned { value, .. } => {
                 self.read(needs, value, Need::Any);
                 needs.defs.extend(out.map(|v| (v, Out::Reg)));

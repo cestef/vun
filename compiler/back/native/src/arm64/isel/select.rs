@@ -18,6 +18,7 @@ use crate::arm64::snippets::{
     UNSIGNED_TO_DOUBLE, UNSIGNED_TO_SINGLE, UREM, UREM_NARROW, WIDEN, XOR, ZEXT,
 };
 use crate::arm64::{Arm, condition};
+use crate::inline::Inlined;
 use crate::width::size_of;
 
 /// An instruction as it is compiled.
@@ -50,6 +51,7 @@ pub(super) enum Selection<'f> {
         from: Value,
         bytes: u64,
     },
+    Asm(&'f vun_lir::Asm),
 }
 
 /// The function compiled, read without emitting.
@@ -171,7 +173,10 @@ impl<'a> Look<'_, 'a> {
             }
             &InstKind::Offset { base, offset } => snippet(ADD, &[base, offset], Size::B64, None),
             &InstKind::Copy { to, from, bytes } => Selection::Copy { to, from, bytes },
-            InstKind::Asm(_) => return Err(self.0.lack(Missing::Asm)),
+            InstKind::Asm(asm) => {
+                asm.check::<Arm>()?;
+                Selection::Asm(asm)
+            }
             InstKind::Const { .. } | InstKind::SlotAddr(_) | InstKind::Addr(_) => {
                 unreachable!("recomputed where used")
             }

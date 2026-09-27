@@ -2,7 +2,6 @@
 //! loops of atomic operations, unsigned 64-bit float conversions, the frame and the
 //! terminators are written here.
 
-mod asm;
 mod call;
 mod carry;
 mod entry;
@@ -19,6 +18,7 @@ use vun_lir::{Block, Cond, Function, Inst, Scalar, Value};
 
 use super::abi::Passing;
 use super::{X86, condition};
+use crate::inline::Inlined;
 use select::{Look, Selection};
 use vun_asm_x86_64::{Reg, Size};
 
@@ -122,7 +122,7 @@ impl<'a> Sel<'_, 'a> {
             Selection::Copy { to, from, bytes } => self.copy(to, from, bytes),
             Selection::UnsignedToFloat { value, precision } => self.unsigned_to_float(value, precision, out),
             Selection::FloatToUnsigned { value, precision } => self.float_to_unsigned(value, precision, out),
-            Selection::Asm(asm) => self.asm(asm)?,
+            Selection::Asm(asm) => asm.emit(self.0)?,
         }
         Ok(())
     }

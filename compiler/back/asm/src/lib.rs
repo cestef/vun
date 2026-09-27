@@ -31,6 +31,19 @@ pub trait Isa {
     fn patch(fixup: Self::Fixup, code: &mut [u8], at: u64, target: u64) -> Result<(), Unpatched>;
 }
 
+/// Operands the form an instruction was checked against does not encode at its width: an
+/// immediate none of its encodings holds, or a register its field cannot name.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Untaken;
+
+impl std::fmt::Display for Untaken {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("the form does not encode these operands at this width")
+    }
+}
+
+impl std::error::Error for Untaken {}
+
 /// How an operand reaches something the linker places.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Via {

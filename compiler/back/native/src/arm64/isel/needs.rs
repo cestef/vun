@@ -10,6 +10,7 @@ use super::narrow;
 use super::select::{Look, Selection};
 use crate::arm64::Arm;
 use crate::arm64::abi::{Carrier, Loc, Passing, Ret};
+use crate::inline::Inlined;
 
 impl Look<'_, '_> {
     /// What `inst` needs; nothing for one the backend cannot compile, which compiling reports.
@@ -45,6 +46,7 @@ impl Look<'_, '_> {
                 self.read(needs, to, false);
                 self.read(needs, from, false);
             }
+            Selection::Asm(asm) => asm.needs(cx, needs),
             Selection::Copy { to, from, .. } => {
                 needs.temps.extend([Bank::General; 3]);
                 for v in [to, from] {

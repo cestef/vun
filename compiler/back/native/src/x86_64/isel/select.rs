@@ -8,7 +8,7 @@ use vun_codegen::Cx;
 use vun_codegen::snippet::Snippet;
 use vun_lir::{Access, BinOp, Callee, CastOp, Cond, Inst, InstKind, Order, Reads, RmwOp, Scalar, Value};
 
-use super::asm::Encoded;
+use crate::inline::Inlined;
 use crate::width::size_of;
 use crate::x86_64::snippets::{
     ADD, AND, COMPARE_EXCHANGE, DOUBLE_TO_INT, FADD, FCOMPARE, FDIV, FEQUAL, FETCH_ADD, FETCH_SUB, FMUL,
@@ -157,7 +157,7 @@ impl<'a> Look<'_, 'a> {
             &InstKind::Offset { base, offset } => snippet(ADD, &[base, offset], Size::B64, None),
             &InstKind::Copy { to, from, bytes } => Selection::Copy { to, from, bytes },
             InstKind::Asm(asm) => {
-                asm.check()?;
+                asm.check::<X86>()?;
                 Selection::Asm(asm)
             }
             InstKind::Const { .. } | InstKind::SlotAddr(_) | InstKind::Addr(_) => {

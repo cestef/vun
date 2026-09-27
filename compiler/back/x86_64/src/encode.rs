@@ -1,7 +1,7 @@
 //! Encoding: an instruction's bytes from the form its operands fit. Prefixes, REX, the opcode,
 //! `ModRM` with SIB and displacement, then immediates and a 32-bit label or call target.
 
-use vun_asm::{RelocKind, Via};
+use vun_asm::{RelocKind, Untaken, Via};
 
 use crate::inst::Inst;
 use crate::operand::{Base, Mem, Operand};
@@ -23,9 +23,15 @@ pub trait Emit<S: Copy> {
     /// Emits `op` at `size` over `operands` by its form `form`, the one a block of inline
     /// assembly was checked against.
     ///
-    /// # Panics
-    /// Panics if `form` does not take them.
-    fn emit_by(&mut self, op: Op, form: &'static Form, size: Size, operands: &[Operand<S>]);
+    /// # Errors
+    /// `form` does not take them.
+    fn emit_by(
+        &mut self,
+        op: Op,
+        form: &'static Form,
+        size: Size,
+        operands: &[Operand<S>],
+    ) -> Result<(), Untaken>;
 }
 
 impl<S: Copy> Emit<S> for Asm<S> {
@@ -36,9 +42,18 @@ impl<S: Copy> Emit<S> for Asm<S> {
         put(self, op, form, size, operands);
     }
 
-    fn emit_by(&mut self, op: Op, form: &'static Form, size: Size, operands: &[Operand<S>]) {
-        assert!(form.takes(size, operands), "the form of `{}` does not take these operands", op.mnemonic());
+    fn emit_by(
+        &mut self,
+        op: Op,
+        form: &'static Form,
+        size: Size,
+        operands: &[Operand<S>],
+    ) -> Result<(), Untaken> {
+        if !form.takes(size, operands) {
+            return Err(Untaken);
+        }
         put(self, op, form, size, operands);
+        Ok(())
     }
 }
 

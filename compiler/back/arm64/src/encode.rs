@@ -1,12 +1,12 @@
 //! Encoding: an instruction's word from the form its operands fit, and the references to labels
 //! and relocations its fields leave for later.
 
-use vun_asm::{Label, RelocKind, Via};
+use vun_asm::{Label, RelocKind, Untaken, Via};
 
 use crate::inst::Inst;
 use crate::operand::{Mem, Operand};
 use crate::reg::Size;
-use crate::table::{Kind, Op};
+use crate::table::{Form, Kind, Op};
 use crate::{Asm, Fixup};
 
 /// Emitting instructions into a function's code.
@@ -16,6 +16,19 @@ pub trait Emit<S: Copy> {
     /// # Panics
     /// Panics if no form takes them: callers choose operands a form takes (`Op::form`).
     fn emit(&mut self, op: Op, size: Size, operands: &[Operand<S>]);
+
+    /// Emits `op` at `size` over `operands` by its form `form`, the one a block of inline
+    /// assembly was checked against.
+    ///
+    /// # Errors
+    /// `form` does not encode them.
+    fn emit_by(
+        &mut self,
+        op: Op,
+        form: &'static Form,
+        size: Size,
+        operands: &[Operand<S>],
+    ) -> Result<(), Untaken>;
 }
 
 impl<S: Copy> Emit<S> for Asm<S> {
@@ -23,18 +36,36 @@ impl<S: Copy> Emit<S> for Asm<S> {
         let Some((form, word)) = op.select(size, operands) else {
             panic!("no form of `{}` at {size:?} takes these {} operands", op.mnemonic(), operands.len())
         };
-        let at = self.here();
-        for (arg, operand) in form.args.iter().zip(operands) {
-            match arg.kind.link(operand, size) {
-                Some(Link::Label(label, fixup)) => self.refer(at, label, fixup),
-                Some(Link::Reloc(target, kind)) => self.relocate(at, target, kind, 0),
-                None => {}
-            }
+        put(self, op, form, word, size, operands);
+    }
+
+    fn emit_by(
+        &mut self,
+        op: Op,
+        form: &'static Form,
+        size: Size,
+        operands: &[Operand<S>],
+    ) -> Result<(), Untaken> {
+        let word = form.encode(size, operands).ok_or(Untaken)?;
+        put(self, op, form, word, size, operands);
+        Ok(())
+    }
+}
+
+/// Puts `word`, `op` encoded by `form`, with the references its fields leave, listing it where
+/// the code is listed.
+fn put<S: Copy>(asm: &mut Asm<S>, op: Op, form: &Form, word: u32, size: Size, operands: &[Operand<S>]) {
+    let at = asm.here();
+    for (arg, operand) in form.args.iter().zip(operands) {
+        match arg.kind.link(operand, size) {
+            Some(Link::Label(label, fixup)) => asm.refer(at, label, fixup),
+            Some(Link::Reloc(target, kind)) => asm.relocate(at, target, kind, 0),
+            None => {}
         }
-        self.put(&word.to_le_bytes());
-        if self.lists() {
-            self.list(at, Inst::new(op, size, operands));
-        }
+    }
+    asm.put(&word.to_le_bytes());
+    if asm.lists() {
+        asm.list(at, Inst::new(op, size, operands));
     }
 }
 

@@ -3,6 +3,7 @@
 //! instruction compilers.
 
 pub mod abi;
+mod inline;
 mod isel;
 mod snippets;
 
