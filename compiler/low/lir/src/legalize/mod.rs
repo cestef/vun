@@ -204,6 +204,7 @@ impl Unit {
         if let Some((_, at)) = helpers.divide {
             self.functions.push(divide::helper(legalize, self.pointer_bits, at));
         }
+        self.verified();
         Ok(())
     }
 }

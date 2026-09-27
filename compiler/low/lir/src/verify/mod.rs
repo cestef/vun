@@ -3,12 +3,14 @@
 //! have the types their instructions need.
 
 mod bounds;
+mod reason;
+mod structure;
 mod types;
 
-use std::collections::HashSet;
-use std::fmt;
+pub use reason::{Entity, Malformed, Reason};
 
-use vun_codec::{Decode, Encode};
+use std::collections::HashSet;
+
 use vun_index::{Idx, IndexVec};
 use vun_origin::{OriginId, OriginTable};
 
@@ -19,93 +21,41 @@ use crate::inst::{Address, Callee, InstKind, Target};
 use crate::ty::Scalar;
 use crate::unit::{ImportKind, Unit};
 
-/// Where in a unit something is malformed.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Encode, Decode)]
-pub enum Entity {
-    Func(FuncId),
-    Block(FuncId, Block),
-    Inst(FuncId, Inst),
-    Data(usize),
-    Import(usize),
-}
-
-/// Why; see [`Unit::verify`].
-#[derive(Clone, Debug, PartialEq, Eq, Encode, Decode)]
-pub enum Reason {
-    NoOrigin,
-    /// A function without blocks.
-    Empty,
-    /// The entry block's parameters are not the signature's values.
-    EntryParams,
-    UnknownBlock(Block),
-    UnknownValue(Value),
-    /// A value whose definition does not dominate a use of it.
-    NotDominated(Value),
-    /// An instruction in no block, or in two.
-    Placement(Inst),
-    /// An address or callee naming nothing in the unit.
-    UnknownAddress(Address),
-    /// A jump passing values that are not the target's parameters in number or type.
-    Arguments(Block),
-    /// Two jumps of one terminator to a block, with different arguments: moves on an edge belong
-    /// to its pair of blocks (spec 13, section 8.1).
-    Edge(Block),
-    /// An operand, or the value defined, of a type the instruction does not accept.
-    Type {
-        expected: Scalar,
-        found: Scalar,
-    },
-    /// An operation on a type it does not apply to, such as `fadd` of integers.
-    Operation(Scalar),
-    /// A constant with bits past its type.
-    Constant,
-    /// A call whose arguments are not the callee's values in number.
-    Arity,
-    /// A return whose value does not match the signature's result.
-    Return,
-    /// A signature passing an integer without how it extends, or anything else with it.
-    Passing,
-    /// An offset leaving the object its base points into, `at` bytes into an object of `size`.
-    OutOfBounds {
-        size: u64,
-        at: i128,
-    },
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Encode, Decode)]
-pub struct Malformed {
-    pub at: Entity,
-    pub reason: Reason,
-}
-
-impl fmt::Display for Entity {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Func(id) => write!(f, "{id}"),
-            Self::Block(id, block) => write!(f, "{block} of {id}"),
-            Self::Inst(id, inst) => write!(f, "instruction {} of {id}", inst.index()),
-            Self::Data(i) => write!(f, "d{i}"),
-            Self::Import(i) => write!(f, "i{i}"),
-        }
-    }
-}
-
-impl fmt::Display for Malformed {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}: {:?}", self.at, self.reason)
-    }
-}
-
-impl std::error::Error for Malformed {}
-
 impl Unit {
     /// Checks the whole unit against the invariants of the module.
     ///
     /// # Errors
     /// Returns the first violation found.
     pub fn verify(&self, origins: &OriginTable) -> Result<(), Malformed> {
+        self.check(Some(origins))
+    }
+
+    /// Checks every invariant but that origins are in the table, which passes do not hold: what
+    /// each pass leaves, in debug builds (spec 13, section 4).
+    ///
+    /// # Errors
+    /// Returns the first violation found.
+    pub fn verify_structure(&self) -> Result<(), Malformed> {
+        self.check(None)
+    }
+
+    /// Checks the unit after the pass calling this rewrote it, in debug builds.
+    ///
+    /// # Panics
+    /// Panics, naming the caller, if the pass left it malformed: a bug of the pass.
+    #[track_caller]
+    pub(crate) fn verified(&self) {
+        if cfg!(debug_assertions)
+            && let Err(malformed) = self.verify_structure()
+        {
+            panic!("a pass left malformed LIR: {malformed}");
+        }
+    }
+
+    fn check(&self, origins: Option<&OriginTable>) -> Result<(), Malformed> {
         let has = |at: Entity, origin: OriginId| {
-            origins.contains(origin).then_some(()).ok_or(Malformed { at, reason: Reason::NoOrigin })
+            let known = origins.is_none_or(|origins| origins.contains(origin));
+            known.then_some(()).ok_or(Malformed { at, reason: Reason::NoOrigin })
         };
         for (i, import) in self.imports.iter() {
             has(Entity::Import(i.index()), import.origin)?;
@@ -117,6 +67,9 @@ impl Unit {
         }
         for (i, data) in self.data.iter() {
             has(Entity::Data(i.index()), data.origin)?;
+            if !data.align.is_power_of_two() {
+                return Err(Malformed { at: Entity::Data(i.index()), reason: Reason::Alignment(data.align) });
+            }
             for reloc in &data.relocs {
                 self.address(Entity::Data(i.index()), reloc.target)?;
             }
@@ -142,7 +95,8 @@ struct Checker<'u> {
     unit: &'u Unit,
     id: FuncId,
     func: &'u Function,
-    origins: &'u OriginTable,
+    /// The table origins must be in, when checked.
+    origins: Option<&'u OriginTable>,
     /// The block holding each instruction, read once placement is checked.
     homes: IndexVec<Inst, Option<Block>>,
 }
@@ -163,6 +117,7 @@ impl Checker<'_> {
         if params != func.signature.values() {
             return Self::fail(Entity::Block(id, entry), Reason::EntryParams);
         }
+        self.structure(entry)?;
         self.placement()?;
         let dominators = Dominators::of(func, &Cfg::of(func));
         for (block, data) in func.blocks.iter() {
@@ -191,7 +146,11 @@ impl Checker<'_> {
     }
 
     fn origin(&self, at: Entity, origin: OriginId) -> Result<(), Malformed> {
-        if self.origins.contains(origin) { Ok(()) } else { Self::fail(at, Reason::NoOrigin) }
+        if self.origins.is_none_or(|origins| origins.contains(origin)) {
+            Ok(())
+        } else {
+            Self::fail(at, Reason::NoOrigin)
+        }
     }
 
     /// Every instruction is in exactly one block, and its value, if any, is defined by it.
@@ -223,6 +182,9 @@ impl Checker<'_> {
         let Some(data) = self.func.values.get(value) else {
             return Self::fail(at, Reason::UnknownValue(value));
         };
+        if !self.defines(data.def, value) {
+            return Self::fail(at, Reason::Definition(value));
+        }
         let seen = match data.def {
             Def::Param(def, _) => dominators.dominates(def, block),
             Def::Inst(inst) => {

@@ -127,3 +127,43 @@ fn the_verifier_rejects_an_offset_leaving_its_object() {
     assert_eq!(verify(&[4, 5]), Err(Reason::OutOfBounds { size: 8, at: 9 }));
     assert_eq!(verify(&[u64::MAX]), Err(Reason::OutOfBounds { size: 8, at: -1 }));
 }
+
+#[test]
+fn the_verifier_rejects_a_malformed_shape() {
+    let origins = OriginTable::new();
+    let o = origin(&origins);
+    let f = FuncId::new(0);
+    let reason = |edit: &dyn Fn(&mut Unit)| {
+        let mut unit = sum(o);
+        edit(&mut unit);
+        unit.verify(&origins).map_err(|m| (m.at, m.reason))
+    };
+    // The loop jumping back to the entry.
+    let entered = reason(&|u| {
+        let func = &mut u.functions[f];
+        func.blocks[Idx::new(2)].term = Terminator::Jump(Target { block: Idx::new(0), args: Vec::new() });
+    });
+    assert_eq!(entered, Err((Entity::Block(f, Idx::new(2)), Reason::EntryTargeted)));
+    // A switch on the counter with two cases of 1.
+    let cases = reason(&|u| {
+        let func = &mut u.functions[f];
+        let i = func.blocks[Idx::new(1)].params[0];
+        let to = |block| Target { block: Idx::new(block), args: Vec::new() };
+        let cases = vec![(1, to(2)), (1, to(3))];
+        func.blocks[Idx::new(1)].term = Terminator::Switch { value: i, cases, default: to(3) };
+    });
+    assert_eq!(cases, Err((Entity::Block(f, Idx::new(1)), Reason::DuplicateCase(1))));
+    // A value claiming the definition of another.
+    let claimed = reason(&|u| {
+        let func = &mut u.functions[f];
+        let [i, total] = [func.blocks[Idx::new(1)].params[0], func.blocks[Idx::new(1)].params[1]];
+        func.values[total].def = func.values[i].def;
+    });
+    assert!(matches!(claimed, Err((_, Reason::Definition(_)))), "{claimed:?}");
+    // A slot aligned to 3 bytes.
+    let aligned = reason(&|u| {
+        let func = &mut u.functions[f];
+        func.slots.push(crate::func::SlotData { size: 3, align: 3, origin: o });
+    });
+    assert!(matches!(aligned, Err((Entity::Slot(..), Reason::Alignment(3)))), "{aligned:?}");
+}

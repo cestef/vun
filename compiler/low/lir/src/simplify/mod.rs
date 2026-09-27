@@ -30,6 +30,7 @@ impl Unit {
                 self.functions[f].tidy(bits);
             }
         }
+        self.verified();
     }
 }
 
