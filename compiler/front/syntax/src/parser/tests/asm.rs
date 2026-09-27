@@ -56,3 +56,11 @@ fn labels_mark_lines_that_jumps_target() {
         "(Binding':= f (Fn'( ) (Block'{ (Asm'. a asm { 'top : (Line'dec rcx) (Line'b (Suffix'. ne) 'top) 'end : (Line'ret) }) })))"
     );
 }
+
+#[test]
+fn lines_end_operands_and_keywords_spell_mnemonics() {
+    assert_eq!(
+        first("f := () { a.asm {\n    mov rdi, rsp\n    and rsp, -16\n} };"),
+        "(Binding':= f (Fn'( ) (Block'{ (Asm'. a asm { (Line'mov rdi , rsp) (Line'and rsp , (Prefix'- 16)) }) })))"
+    );
+}

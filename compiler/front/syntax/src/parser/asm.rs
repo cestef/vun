@@ -44,7 +44,8 @@ impl Parser<'_, '_, '_> {
     /// line's end.
     fn instruction(&mut self) {
         let mark = self.out.mark();
-        if !self.at(TokenKind::Ident) {
+        // A mnemonic may be spelled as a keyword: `and`, `or`.
+        if !self.at(TokenKind::Ident) && !self.peek().is_keyword() {
             let msg = self.found(Msg::new().text("expected an instruction, found "));
             self.report_here(errors::SYNTAX_EXPECTED_NAME, msg);
             self.leaf(NodeKind::Error);
@@ -111,6 +112,12 @@ impl Parser<'_, '_, '_> {
             self.leaf(NodeKind::Writeback);
         }
         self.out.node(NodeKind::Memory, Anchor::Token(open), mark);
+    }
+
+    /// Whether the expression parsed goes on at the current token: always, but in an
+    /// instruction's operand, which its line ends.
+    pub(super) fn line_goes_on(&self, brace: Brace) -> bool {
+        brace != Brace::Hole || !self.line_ends_before(self.current())
     }
 
     /// Whether a line break stands before the token `t`.

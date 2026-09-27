@@ -17,7 +17,8 @@ impl Parser<'_, '_, '_> {
         self.prefix(brace);
         let mut chained = None;
         let mut chain = Chain::new(mark);
-        while let Some(op) = self.peek().infix().filter(|op| op.prec >= min) {
+        // An instruction's operand ends with its line: `and` after one starts the next.
+        while let Some(op) = self.peek().infix().filter(|op| op.prec >= min && self.line_goes_on(brace)) {
             if !self.link(&mut chain) {
                 return;
             }
