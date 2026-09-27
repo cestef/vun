@@ -33,7 +33,10 @@ impl Typer<'_, '_, '_> {
         let mut stage = Stage::Compile;
         let mut known = true;
         for field in fields {
-            let Entry::One(Arg { name, value }) = field else { return None };
+            let Entry::One(Arg { name, value }) = field else {
+                self.walk_entry(field, |arg| arg.value);
+                return None;
+            };
             let found = self.typed(*value);
             stage = stage.max(found.map_or(self.stage, |k| k.stage));
             match (name, found) {

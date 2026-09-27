@@ -82,7 +82,7 @@ impl Visitor for Checker<'_, '_, '_> {
                 self.evaluate(hir, *d);
                 self.hole(hir, *d);
                 self.frozen(hir, *d);
-                self.bit_layout(hir, *d);
+                self.layout(hir, *d);
                 self.c_layout(hir, *d);
                 let key = (DeclRef::new(self.env.file.clone(), hir, *d), None, Vec::new());
                 if let Some(typed) = self.env.cx.get::<TypedDecl>(&key) {

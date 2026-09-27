@@ -208,6 +208,12 @@ impl Instantiation {
         Self { f: Func { literal: f, within: None, staged: Arc::from([]) }, args: Vec::new() }
     }
 
+    /// Whether this is its function literal outside any call, with no parameter bound.
+    #[must_use]
+    pub fn is_plain(&self) -> bool {
+        *self == Self::plain(self.f.literal.clone())
+    }
+
     /// The instantiation `call` runs: its function, with its `$` parameters bound to the call's
     /// arguments.
     #[must_use]

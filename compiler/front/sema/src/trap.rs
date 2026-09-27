@@ -19,6 +19,9 @@ pub enum Reason {
     Narrowing,
     /// The call ran out of its step budget.
     Budget,
+    /// A value past what compile-time evaluation holds: an array of more than
+    /// [`crate::ops::MAX_ITEMS`] items.
+    Size,
     /// An index outside the items indexed.
     Bounds,
     /// An argument of a compile-time call that is not a value of its parameter's type, such as
@@ -91,6 +94,7 @@ impl Reason {
             Self::Shift => "shift past any width",
             Self::Narrowing => "value outside the type it is narrowed to",
             Self::Budget => "the call ran out of its step budget",
+            Self::Size => "a value too large for compile-time evaluation",
             Self::Bounds => "index outside the items",
             Self::Argument => "argument outside the type of its parameter",
             Self::Trap => "a trap site was reached",

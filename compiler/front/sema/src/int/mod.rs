@@ -14,10 +14,14 @@ use std::ops::{Add, Mul, Neg, Sub};
 use num_bigint::{BigInt, Sign};
 use vun_codec::{Decode, Encode, Malformed, Reader, Writer};
 
-pub use bits::Bitwise;
+pub use bits::{Bitwise, Shift};
 pub use compare::Compared;
 pub use extended::Extended;
 pub use interval::{Divided, Divisor, Interval, Storage};
+
+/// The most bits a shift at compile time makes a value grow to: a shift past it traps
+/// ([`crate::trap::Reason::Shift`]) rather than allocate without bound.
+pub const MAX_BITS: u64 = 1 << 24;
 
 /// An integer of any size.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -94,12 +98,20 @@ impl Integer {
         (!modulus.is_zero()).then(|| Self(((&self.0 % &modulus.0) + &modulus.0) % &modulus.0))
     }
 
-    /// `self * 2^amount`, or `self / 2^amount` rounded toward negative infinity for a negative
-    /// amount, as `<<` and `>>` compute at compile time; `None` for an amount past `u32`.
+    /// `self << amount` (`self * 2^amount`) or `self >> amount` (`self / 2^amount` rounded
+    /// toward negative infinity), as compile time computes them; a negative amount shifts the
+    /// other way. `None` for a result past [`MAX_BITS`].
     #[must_use]
-    pub fn shifted(&self, amount: &Self) -> Option<Self> {
-        let by = u32::try_from(&amount.abs().0).ok()?;
-        Some(Self(if amount.is_negative() { &self.0 >> by } else { &self.0 << by }))
+    pub fn shifted(&self, shift: Shift, amount: &Self) -> Option<Self> {
+        let by = u64::try_from(&amount.abs().0).unwrap_or(u64::MAX);
+        if (shift == Shift::Left) == amount.is_negative() {
+            // Past the magnitude's bits every result is 0, or -1 for a negative value.
+            return Some(Self(&self.0 >> by.min(self.bits())));
+        }
+        if self.is_zero() {
+            return Some(Self::zero());
+        }
+        self.bits().checked_add(by).filter(|bits| *bits <= MAX_BITS).map(|_| Self(&self.0 << by))
     }
 
     /// How many bits the magnitude needs: 0 for zero.

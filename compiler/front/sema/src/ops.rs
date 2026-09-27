@@ -11,16 +11,23 @@ use crate::int::{Extended, Integer, Interval};
 use crate::trap::Reason;
 use crate::ty::Value;
 
+/// The most items a compile-time array holds: a repetition past it traps
+/// ([`Reason::Size`]) rather than allocate without bound.
+pub const MAX_ITEMS: usize = 1 << 20;
+
 impl Value {
     /// `[item; count]`: an array of `count` copies of `item`.
     ///
     /// # Errors
-    /// Returns [`Unevaluated::Unsupported`] for a count that is not an integer that fits a
-    /// `usize`.
+    /// Returns [`Unevaluated::Unsupported`] for a count that is not a non-negative integer, and
+    /// a trap for one past [`MAX_ITEMS`].
     pub fn repeat(item: Self, count: &Self) -> Result<Self, Unevaluated> {
         let Self::Int(n) = count else { return Err(Unevaluated::Unsupported) };
-        let n = n.to_i128().and_then(|n| usize::try_from(n).ok()).ok_or(Unevaluated::Unsupported)?;
-        Ok(Self::Array(vec![item; n]))
+        if n.is_negative() {
+            return Err(Unevaluated::Unsupported);
+        }
+        let n = n.to_u128().and_then(|n| usize::try_from(n).ok()).filter(|n| *n <= MAX_ITEMS);
+        Ok(Self::Array(vec![item; n.ok_or_else(|| Unevaluated::trap(Reason::Size))?]))
     }
 
     /// The part `part` of this value.
@@ -128,7 +135,7 @@ impl Interval {
     #[must_use]
     pub fn is_unsigned_width(&self) -> bool {
         let (Some(bits), Some(count)) = (self.bits(), self.count()) else { return false };
-        !self.is_signed() && Integer::from(1).shifted(&Integer::from(u128::from(bits))) == Some(count)
+        !self.is_signed() && u32::try_from(bits).is_ok_and(|bits| Integer::power_of_two(bits) == count)
     }
 }
 

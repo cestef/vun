@@ -4,3 +4,5 @@ use crate::DiagId;
 pub const LAYOUT: DiagId = DiagId::new("lang.errors.layout");
 pub const LAYOUT_BITS_WIDTH: DiagId = DiagId::new("lang.errors.layout.bits_width");
 pub const LAYOUT_NOT_C: DiagId = DiagId::new("lang.errors.layout.not_c");
+pub const LAYOUT_TAG: DiagId = DiagId::new("lang.errors.layout.tag");
+pub const LAYOUT_ALIGN: DiagId = DiagId::new("lang.errors.layout.align");

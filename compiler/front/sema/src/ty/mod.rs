@@ -156,6 +156,13 @@ impl TyKind {
         Self::primitive(Primitive::Lang(Lang::r#type))
     }
 
+    /// Whether this is a parameter of a generic body or a coroutine's frame, whose impls are
+    /// what its requirements say rather than any declared for it.
+    #[must_use]
+    pub fn is_required(&self) -> bool {
+        matches!(self, Self::Param(_) | Self::Frame(_))
+    }
+
     /// Whether the values of this type have members of their own, which the value declares: a
     /// type, an interface, a namespace, or a function making one, such as an interface
     /// constructor. Other values have the members of their type.

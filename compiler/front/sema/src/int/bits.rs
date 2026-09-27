@@ -14,6 +14,13 @@ pub enum Bitwise {
     Xor,
 }
 
+/// `<<` or `>>`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Shift {
+    Left,
+    Right,
+}
+
 impl Integer {
     /// `self op other`, in two's complement.
     #[must_use]
@@ -66,19 +73,18 @@ impl Interval {
         Self::half_open(Integer::zero(), &Integer::power_of_two(bits))
     }
 
-    /// The range of `self << amount`, or `>>` for `right`: a `uN` range keeps itself; a
+    /// The range of `self << amount` or `self >> amount`: a `uN` range keeps itself; a
     /// compile-time value shifted by any amount of a bounded range spans the shifts of its ends.
-    /// `None` for anything else.
+    /// `None` for anything else, and where a shift passes [`super::MAX_BITS`].
     #[must_use]
-    pub fn shifted(&self, amount: &Self, right: bool) -> Option<Self> {
+    pub fn shifted(&self, amount: &Self, shift: Shift) -> Option<Self> {
         if self.unsigned_width().is_some() {
             return Some(self.clone());
         }
         let value = self.value()?;
-        let (lo, hi) = (amount.lo().finite()?, amount.hi().finite()?);
-        let by = |n: &Integer| if right { value.shifted(&(&Integer::zero() - n)) } else { value.shifted(n) };
-        let ends = [by(lo)?, by(hi)?];
-        let (low, high) = if ends[0] <= ends[1] { (&ends[0], &ends[1]) } else { (&ends[1], &ends[0]) };
-        Self::new(Extended::Finite(low.clone()), Extended::Finite(high.clone()))
+        let by = |n: &Integer| value.shifted(shift, n).map(Extended::Finite);
+        let (a, b) = (by(amount.lo().finite()?)?, by(amount.hi().finite()?)?);
+        let (low, high) = if a <= b { (a, b) } else { (b, a) };
+        Self::new(low, high)
     }
 }

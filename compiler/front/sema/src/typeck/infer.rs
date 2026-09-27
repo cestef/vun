@@ -119,8 +119,10 @@ impl Typer<'_, '_, '_> {
         let members = target.and_then(|t| self.env().cx.get::<Members>(&t));
         let mut stage = Stage::Compile;
         for field in fields {
+            // A staged field is made where the literal is instantiated: its value is run time.
             let Entry::One(Arg { name, value }) = field else {
-                stage = Stage::Run.max(self.stage);
+                self.walk_entry(field, |arg| arg.value);
+                stage = Stage::Run;
                 continue;
             };
             let at = self.hir().exprs[*value].origin;

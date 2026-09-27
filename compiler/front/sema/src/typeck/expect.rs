@@ -132,6 +132,24 @@ impl<'a, 'db> Typer<'_, 'a, 'db> {
             .error(Diagnostic::error(errors::TYPES_NO_IMPL, msg).at(self.hir().exprs[expr].origin, None));
     }
 
+    /// Reports `ty`, of the operand `expr` of a form driven by `interface`, as having no impl of
+    /// it; a type whose impls its requirements give is left to them.
+    pub(super) fn unimplemented(&mut self, expr: ExprId, interface: Option<Item>, ty: Ty) {
+        if let Some(interface) = interface
+            && !ty.through_borrows().is_required()
+        {
+            self.no_impl(expr, interface, ty);
+        }
+    }
+
+    /// Reports `name`, used at `at` on the type `ty`, as a field, which values have.
+    pub(super) fn field_of_type(&mut self, at: OriginId, ty: Ty, name: Symbol) {
+        let msg = Msg::new().text("no member ").code(name.as_str()).text(" in the type ").ty(ty.to_string());
+        let note = Msg::new().text("it is a field, which a value of the type has");
+        self.diag
+            .error(Diagnostic::error(errors::TYPES_NO_MEMBER, msg).at(at, None).child(ChildKind::Note, note));
+    }
+
     /// Reports `name`, used at `at`, as no member of `ty`.
     pub(super) fn no_member(&mut self, at: OriginId, ty: Ty, name: Symbol) {
         let msg = Msg::new().text("no member ").code(name.as_str()).text(" in ").ty(ty.to_string());

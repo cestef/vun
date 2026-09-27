@@ -79,6 +79,8 @@ coroutine := struct {
 layout := struct {
     bits_width := diag.Diag{ .explanation = lang.meta.embed("errors/layout/bits_width.md") };
     not_c := diag.Diag{ .explanation = lang.meta.embed("errors/layout/not_c.md") };
+    tag := diag.Diag{ .explanation = lang.meta.embed("errors/layout/tag.md") };
+    align := diag.Diag{ .explanation = lang.meta.embed("errors/layout/align.md") };
 };
 
 /// Compile-time evaluation and reflection (spec 03).

@@ -68,10 +68,16 @@ impl Env<'_, '_> {
         Ok(vec![Variant { name: Symbol::intern(""), index: 0, parts }])
     }
 
+    /// The fields of the struct type `ty`, the parts of its one variant: `Cycle` while they are
+    /// not known, as inside its own literal.
+    fn struct_parts(&self, ty: Ty) -> Result<Vec<Part>, Unevaluated> {
+        self.shape(ty)?.into_iter().next().map(|v| v.parts).ok_or(Unevaluated::Cycle)
+    }
+
     /// `lang.meta.fields(ty)`: a descriptor of each field of the struct type `ty`.
     pub(crate) fn fields(&self, ty: Ty) -> Result<Value, Unevaluated> {
         let parts = match &*ty {
-            TyKind::Nominal(n) if n.kind == crate::ty::NominalKind::Struct => self.shape(ty)?.remove(0).parts,
+            TyKind::Nominal(n) if n.kind == crate::ty::NominalKind::Struct => self.struct_parts(ty)?,
             _ => Vec::new(),
         };
         self.describe(lang::meta::Field, &parts, PART)
@@ -115,8 +121,7 @@ impl Env<'_, '_> {
         let (variant, index) = (Self::index_of(variant)?, Self::index_of(index)?);
         let part = match value {
             Value::Struct { ty, fields } if variant == 0 => {
-                let shape = self.shape(*ty)?;
-                let name = shape[0].parts.get(index).ok_or(Unevaluated::Unsupported)?.name;
+                let name = self.struct_parts(*ty)?.get(index).ok_or(Unevaluated::Unsupported)?.name;
                 fields.iter().find(|(n, _)| *n == name).map(|(_, v)| v.clone())
             }
             Value::Variant { payload, .. }

@@ -5,7 +5,7 @@
 use vun_desugar::Narrowing;
 
 use crate::env::{Env, Unevaluated};
-use crate::int::{Bitwise, Integer, Interval};
+use crate::int::{Bitwise, Integer, Interval, Shift};
 use crate::primitives::int::Int;
 use crate::trap::Reason;
 use crate::ty::Value;
@@ -65,8 +65,9 @@ impl Int {
             Self::shifted_left | Self::shifted_right => {
                 // A shift of a run-time value outside any `uN` type is reported; a compile-time
                 // one by an amount not bounded here has no range known here.
+                let shift = self.shift().ok_or(Unevaluated::Unsupported)?;
                 known(
-                    a.shifted(b, self == Self::shifted_right)
+                    a.shifted(b, shift)
                         .ok_or_else(|| if a.value().is_some() { unknown } else { Self::not_unsigned() }),
                 )
             }
@@ -85,7 +86,7 @@ impl Int {
             Self::bit_and => x.bitwise(y, Bitwise::And),
             Self::bit_or => x.bitwise(y, Bitwise::Or),
             Self::bit_xor => x.bitwise(y, Bitwise::Xor),
-            Self::shl | Self::shr => Self::shift(a, x, y, self == Self::shr)?,
+            Self::shl | Self::shr => Self::shifted(a, x, y, self.shift().ok_or(Unevaluated::Unsupported)?)?,
             Self::equal => return env.decide(x == y),
             Self::unequal => return env.decide(x != y),
             Self::less => return env.decide(x < y),
@@ -98,22 +99,32 @@ impl Int {
         Ok(Value::Int(n))
     }
 
-    /// `x << n`, or `>>` for `right`: in the `uN` type of `a`, the bits shifted out are lost and
-    /// an amount past `N - 1` traps; a compile-time value shifts exactly.
-    fn shift(a: &Interval, x: &Integer, n: &Integer, right: bool) -> Result<Integer, Unevaluated> {
-        let amount = if right { &Integer::zero() - n } else { n.clone() };
-        let shifted = x.shifted(&amount).ok_or_else(|| Unevaluated::trap(Reason::Shift))?;
-        let Some(bits) = a.unsigned_width() else { return Ok(shifted) };
-        if n.is_negative() || *n >= Integer::from(i128::from(bits)) {
-            return Err(Unevaluated::trap(Reason::Shift));
+    /// The direction of a shift primitive.
+    fn shift(self) -> Option<Shift> {
+        match self {
+            Self::shl | Self::shifted_left => Some(Shift::Left),
+            Self::shr | Self::shifted_right => Some(Shift::Right),
+            _ => None,
         }
+    }
+
+    /// `x << n` or `x >> n`: in the `uN` type of `a`, the bits shifted out are lost and an amount
+    /// past `N - 1` traps; a compile-time value shifts exactly, up to [`crate::int::MAX_BITS`].
+    fn shifted(a: &Interval, x: &Integer, n: &Integer, shift: Shift) -> Result<Integer, Unevaluated> {
+        let trap = || Unevaluated::trap(Reason::Shift);
+        let Some(bits) = a.unsigned_width() else { return x.shifted(shift, n).ok_or_else(trap) };
+        if n.is_negative() || *n >= Integer::from(i128::from(bits)) {
+            return Err(trap());
+        }
+        let shifted = x.shifted(shift, n).ok_or_else(trap)?;
         shifted.modulo(&Integer::power_of_two(bits)).ok_or(Unevaluated::Unsupported)
     }
 
     /// Whether a call with the compile-time arguments `args` may trap, where its `$` arguments
     /// decide: a division by a divisor whose range holds 0 (spec 04, rule 6), a shift of a `uN`
-    /// value by an amount that may pass `N - 1` (rule 8). `None` for another primitive, which
-    /// its markers describe.
+    /// value by an amount that may pass `N - 1` (rule 8), or of a compile-time value by an amount
+    /// that may shift it past [`crate::int::MAX_BITS`]. `None` for another primitive, which its
+    /// markers describe.
     #[must_use]
     pub fn may_trap(self, args: &[Option<Value>]) -> Option<bool> {
         let range = |i: usize| match args.get(i) {
@@ -126,8 +137,12 @@ impl Int {
                 Some(range(1).is_none_or(|divisor| divisor.contains(&zero)))
             }
             Self::shl | Self::shr => {
-                let (Some(value), Some(amount)) = (range(0), range(1)) else { return Some(true) };
-                let Some(bits) = value.unsigned_width() else { return Some(false) };
+                let (Some(value), Some(amount), Some(shift)) = (range(0), range(1), self.shift()) else {
+                    return Some(true);
+                };
+                let Some(bits) = value.unsigned_width() else {
+                    return Some(value.shifted(&amount, shift).is_none());
+                };
                 let within = Interval::closed(Integer::zero(), Integer::from(i128::from(bits) - 1));
                 Some(within.is_none_or(|w| !w.contains(&amount)))
             }

@@ -5,7 +5,7 @@
 use std::mem::{replace, take};
 
 use vun_hir::db::Parsed;
-use vun_hir::tree::{Entry, ExprId, ExprKind, List, Param, PatKind};
+use vun_hir::tree::{Entry, ExprId, ExprKind, List, Param};
 use vun_query::Cx;
 
 use super::{Known, Typer};
@@ -34,8 +34,8 @@ impl Typer<'_, '_, '_> {
                         (Some(bound), Some(written)) if !written.accepts(&bound) => Some(written),
                         (bound, written) => bound.or(written),
                     };
-                    if let (PatKind::Bind(binder), Some(ty)) = (&hir.pats[*pat].kind, ty) {
-                        self.bind(*binder, ty);
+                    if ty.is_some() {
+                        self.pattern(*pat, ty, None);
                     }
                     ty
                 }

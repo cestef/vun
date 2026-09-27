@@ -19,6 +19,12 @@ fn decimals_round_to_nearest_even_in_each_format() {
     assert_eq!(parsed("65520", Format::F16), 0x7c00);
     assert_eq!(parsed("5e-324", Format::F64), 1);
     assert_eq!(parsed("1e-400", Format::F64), 0);
+    assert_eq!(parsed("1e1000000000", Format::F64), f64::INFINITY.to_bits());
+    assert_eq!(parsed("1e-1000000000", Format::F64), 0);
+    assert_eq!(parsed("0e1000000000", Format::F64), 0);
+    assert_eq!(Binary::parse("1.5e-9223372036854775808", Format::F64), None);
+    assert_eq!(Binary::parse("", Format::F64), None);
+    assert_eq!(Binary::parse(".", Format::F64), None);
     assert_eq!(parsed("3.4028235e38", Format::F32), u64::from(f32::MAX.to_bits()));
 }
 

@@ -1,4 +1,4 @@
-use super::{Divided, Divisor, Extended, Integer, Interval, Storage};
+use super::{Divided, Divisor, Extended, Integer, Interval, Shift, Storage};
 
 fn int(lo: i128, hi: i128) -> Interval {
     Interval::closed(lo.into(), hi.into()).unwrap()
@@ -90,7 +90,18 @@ fn unbounded_ranges_have_no_storage_and_stay_sound() {
 #[test]
 fn shifts_are_exact() {
     let one = Integer::from(1);
-    assert_eq!(one.shifted(&64.into()), Some(Integer::power_of_two(64)));
-    assert_eq!(Integer::from(-5).shifted(&(-1).into()), Some(Integer::from(-3)), "rounds down");
-    assert_eq!(one.shifted(&Integer::power_of_two(40)), None);
+    assert_eq!(one.shifted(Shift::Left, &64.into()), Some(Integer::power_of_two(64)));
+    assert_eq!(Integer::from(-5).shifted(Shift::Right, &1.into()), Some(Integer::from(-3)), "rounds down");
+    assert_eq!(Integer::from(-5).shifted(Shift::Left, &(-1).into()), Some(Integer::from(-3)));
+    assert_eq!(one.shifted(Shift::Left, &Integer::power_of_two(40)), None);
+    assert_eq!(Integer::from(-5).shifted(Shift::Right, &Integer::power_of_two(80)), Some(Integer::from(-1)));
+    assert_eq!(Integer::zero().shifted(Shift::Left, &Integer::power_of_two(80)), Some(Integer::zero()));
+}
+
+#[test]
+fn shifts_past_the_limit_have_no_range() {
+    let amounts = int(0, i128::from(u32::MAX));
+    assert_eq!(Interval::singleton(1.into()).shifted(&amounts, Shift::Left), None);
+    let shifted = Interval::singleton(1.into()).shifted(&int(0, 8), Shift::Left).unwrap();
+    assert_eq!(shifted, int(1, 256));
 }

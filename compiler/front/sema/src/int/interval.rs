@@ -2,14 +2,22 @@
 //! operation is monotone in each operand on the domains used, so its extremes are at the corners.
 
 use super::{Extended, Integer};
-use vun_codec::{Decode, Encode};
+use vun_codec::{Decode, Encode, Malformed, Reader};
 
 /// The integers from `lo` to `hi`, both included: the values of `Int(lo..=hi)`, or of `Int(lo..)`
 /// with an infinite end. Never empty.
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode)]
 pub struct Interval {
     lo: Extended,
     hi: Extended,
+}
+
+/// An interval read is one [`Interval::new`] makes.
+impl Decode for Interval {
+    fn decode(r: &mut Reader<'_>) -> Result<Self, Malformed> {
+        let (lo, hi) = <(Extended, Extended)>::decode(r)?;
+        Self::new(lo, hi).ok_or(Malformed::Invariant)
+    }
 }
 
 /// Whether a divisor's range contains zero, which makes the division a trap site (rule 6).

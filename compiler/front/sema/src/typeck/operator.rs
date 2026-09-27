@@ -17,7 +17,7 @@ use super::{Known, Stage, Typer};
 use crate::callable::Callable;
 use crate::eval::{Call, Instance};
 use crate::member::{MemberType, MemberValue};
-use crate::ty::{Ty, TyKind, Value};
+use crate::ty::{Ty, Value};
 
 /// Where an operator is written, by what it belongs to.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Encode, Decode)]
@@ -83,8 +83,30 @@ impl Typer<'_, '_, '_> {
     }
 
     /// The call of `function`, a requirement of an interface, for the type of `receiver`, with
-    /// the operands `args` after it. Its value is known when its operands are.
+    /// the operands `args` after it. Its value is known when its operands are; when it is not,
+    /// every operand is still typed, so what is wrong inside one is reported.
     fn operator(
+        &mut self,
+        at: Operation,
+        site: ExprId,
+        function: Item,
+        receiver: ExprId,
+        args: &[Argument],
+    ) -> Option<Known> {
+        let known = self.dispatch(at, site, function, receiver, args);
+        if known.is_none() {
+            for arg in args {
+                if let Argument::Expr(e) = arg
+                    && !self.types.contains_key(e)
+                {
+                    self.typed(*e);
+                }
+            }
+        }
+        known
+    }
+
+    fn dispatch(
         &mut self,
         at: Operation,
         site: ExprId,
@@ -95,7 +117,7 @@ impl Typer<'_, '_, '_> {
         let left = self.typed(receiver)?;
         let ty = left.ty.through_borrows();
         let (interface, function) = (function.parent()?, function.symbol());
-        let owner = if matches!(&*ty, TyKind::Param(_) | TyKind::Frame(_)) {
+        let owner = if ty.is_required() {
             // In a generic body, what the interface requires of its parameter.
             let Ok(Value::Interface(f)) = self.env().item(interface) else { return None };
             self.env().cx.get::<Call>(&Instance { f, args: vec![Value::Type(ty)] }).ok()?.as_type()?

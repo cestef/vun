@@ -62,7 +62,10 @@ impl Typer<'_, '_, '_> {
                                 v.payload.iter().map(|p| p.as_ref().ok().copied()).collect::<Option<_>>()?;
                             Some(Known { ty: Signature::new(params, ty).ty(), stage: Stage::Compile })
                         }
-                        Found::Field(_) => None,
+                        Found::Field(_) => {
+                            self.field_of_type(self.hir().exprs[expr].origin, ty, name);
+                            None
+                        }
                         found @ (Found::Absent | Found::Unknown) => {
                             let Some(owner) = self.method(expr, ty, name) else {
                                 if !matches!(found, Found::Unknown) || !Self::declares(ty) {
@@ -126,6 +129,6 @@ impl Typer<'_, '_, '_> {
     /// type, an interface or a value declaring its own, or a parameter or frame, whose members
     /// its interface requires.
     fn declares(ty: Ty) -> bool {
-        matches!(&*ty, TyKind::Nominal(_) | TyKind::Param(_) | TyKind::Frame(_)) || ty.declares_members()
+        matches!(&*ty, TyKind::Nominal(_)) || ty.is_required() || ty.declares_members()
     }
 }

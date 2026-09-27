@@ -25,12 +25,17 @@ impl Shapes {
             // significant bit on.
             NominalKind::Struct if let Some([backing]) = attr(Attr::bits).as_deref() => {
                 let mut offsets = Vec::new();
-                let mut at = 0;
+                let mut at = 0u64;
                 for field in &members.fields {
                     offsets.push(at);
-                    at += Self::bits(cx, *field.ty.as_ref().ok()?)?;
+                    at = at.checked_add(Self::bits(cx, *field.ty.as_ref().ok()?)?)?;
                 }
-                let layout = Layout { niche: None, ..layout(&backing.as_type()?)? };
+                // Fields past the backing integer have no place in it.
+                let backing = backing.as_type()?;
+                if at > Self::bits(cx, backing)? {
+                    return None;
+                }
+                let layout = Layout { niche: None, ..layout(&backing)? };
                 Shape { layout, parts: Parts::Bits(offsets) }
             }
             // `#[layout.offset(n)]` places a field at `n`.
@@ -45,17 +50,22 @@ impl Shapes {
                         v.payload.iter().map(|p| layout(p.as_ref().ok()?)).collect::<Option<Vec<_>>>()?,
                     ))
                 });
-                let tag = attr(Attr::tag).and_then(|t| layout(&t.first()?.as_type()?));
+                let tag = match attr(Attr::tag).as_deref() {
+                    Some([tag]) => Some(Self::tag(cx, tag.as_type()?, members.variants.len())?),
+                    _ => None,
+                };
                 let empty: Vec<bool> = members.variants.iter().map(|v| v.payload.is_empty()).collect();
                 Self::tagged(&payloads.collect::<Option<Vec<_>>>()?, tag, &empty)?
             }
         };
-        // `#[layout.align(n)]` raises the alignment.
+        // `#[layout.align(n)]` raises the alignment to a power of two.
         match attr(Attr::align).as_deref() {
             Some([Value::Int(n)]) => {
-                let align = u64::try_from(n.to_i128()?).ok()?.max(whole.layout.align);
-                let layout =
-                    Layout { size: whole.layout.size.next_multiple_of(align), align, ..whole.layout };
+                let align =
+                    n.to_u128().and_then(|n| u64::try_from(n).ok()).filter(|n| n.is_power_of_two())?;
+                let align = align.max(whole.layout.align);
+                let size = whole.layout.size.checked_next_multiple_of(align)?;
+                let layout = Layout { size, align, ..whole.layout };
                 Some(Shape { layout, ..whole })
             }
             _ => Some(whole),
@@ -86,8 +96,9 @@ impl Shapes {
         };
         let widest = payloads.iter().map(|(p, _)| p.size).max().unwrap_or(0);
         let align = payloads.iter().map(|(p, _)| p.align).fold(tag.align, u64::max);
-        let base = tag.size.next_multiple_of(align);
-        let size = (base + widest).next_multiple_of(align);
+        let base = tag.size.checked_next_multiple_of(align)?;
+        let size = base.checked_add(widest)?.checked_next_multiple_of(align)?;
+        // Every offset lies within the widest payload, so none passes `size`.
         let placed = payloads.iter().map(|(_, offsets)| offsets.iter().map(|o| base + o).collect()).collect();
         // The tag's patterns past the variants are unused.
         let (tag, niche) = if tag.size == 0 {
@@ -97,6 +108,13 @@ impl Shapes {
             (Tag::Index { bytes: tag.size }, Niche::past(tag.size, &last, &Integer::from(count)))
         };
         Some(Shape { layout: Layout { size, align, niche }, parts: Parts::Enum { tag, payloads: placed } })
+    }
+
+    /// The layout of `#[layout.tag(T)]` on an enum of `count` variants: `T` a `uN` type with a
+    /// pattern for each; `None` for another.
+    fn tag(cx: &Cx<'_>, ty: Ty, count: usize) -> Option<Layout> {
+        let range = ty.interval().filter(|r| r.unsigned_width().is_some())?;
+        (range.count()? >= Integer::from(count)).then(|| Self::layout(cx, &ty)).flatten()
     }
 
     /// How many bits a field of type `ty` takes in a `#[layout.bits(uN)]` struct: the minimal

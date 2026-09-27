@@ -43,7 +43,7 @@ impl Typer<'_, '_, '_> {
             Shape::Product(parts, names) => {
                 let arity = parts.len();
                 let rows = Self::specialized(&rows, arity, |head| match head {
-                    Pat::Product(items) if items.len() == arity => Some(items.clone()),
+                    Pat::Product(items) => Some(items.clone()),
                     _ => None,
                 });
                 let witness = self.missing(rows, &[parts, rest.to_vec()].concat())?;
@@ -101,7 +101,8 @@ impl Typer<'_, '_, '_> {
         let heads = rows.iter().filter_map(|row| {
             let head = match &row[0] {
                 Pat::Any => vec![Pat::Any; arity],
-                head => parts(head)?,
+                // A head of another arity, of a pattern that does not type, matches nothing here.
+                head => parts(head).filter(|parts| parts.len() == arity)?,
             };
             Some([head, row[1..].to_vec()].concat())
         });

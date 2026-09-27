@@ -57,9 +57,14 @@ impl Typer<'_, '_, '_> {
                 ends
             }
             ForHead::In { pat, iter } => {
-                let driven = self.typed(*iter).and_then(|k| self.iteration(k.ty));
+                let iterated = self.typed(*iter).map(|k| k.ty);
+                let driven = iterated.and_then(|ty| self.iteration(ty));
                 if let Some((iteration, _)) = driven {
                     self.iterations.insert(*iter, iteration);
+                } else if let Some(ty) = iterated
+                    && self.iterated(ty).is_none()
+                {
+                    self.unimplemented(*iter, ITERATION.first().and_then(|r| r.function.parent()), ty);
                 }
                 self.pattern(*pat, driven.map(|(_, item)| item), None);
                 ends
@@ -123,15 +128,8 @@ impl Typer<'_, '_, '_> {
     /// How `for p in e` drives `e` of type `ty`, and the type of the items it binds, looking
     /// through a borrow when the borrow itself is not iterated.
     pub(super) fn iteration(&self, ty: Ty) -> Option<(Iteration, Ty)> {
-        let &IterationRow { function, iterator, resume, each: item, .. } = ITERATION.first()?;
-        let interface = function.parent()?;
-        // Through a borrow, the borrowed value's impl, a borrowed array being the slice of its
-        // items, as its borrow is accepted as one.
-        let through = || {
-            let borrowed = ty.borrowed()?;
-            Some(borrowed.as_array().map_or(borrowed, |(_, item)| TyKind::slice(item)))
-        };
-        let witness = self.witness_of(interface, ty).or_else(|| self.witness_of(interface, through()?))?;
+        let &IterationRow { iterator, resume, each: item, .. } = ITERATION.first()?;
+        let witness = self.iterated(ty)?;
         let member = (witness, iterator.symbol());
         let Ok(Value::Interface(coroutine)) = self.env().cx.get::<MemberValue>(&member) else { return None };
         let requirements = self
@@ -147,6 +145,17 @@ impl Typer<'_, '_, '_> {
             _ => return None,
         };
         Some((Iteration { witness, step }, item))
+    }
+
+    /// The witness of `lang.ops.Iterate` for `ty`, or through a borrow, the borrowed value's, a
+    /// borrowed array being the slice of its items, as its borrow is accepted as one.
+    fn iterated(&self, ty: Ty) -> Option<Ty> {
+        let interface = ITERATION.first()?.function.parent()?;
+        let through = || {
+            let borrowed = ty.borrowed()?;
+            Some(borrowed.as_array().map_or(borrowed, |(_, item)| TyKind::slice(item)))
+        };
+        self.witness_of(interface, ty).or_else(|| self.witness_of(interface, through()?))
     }
 }
 

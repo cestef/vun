@@ -1,7 +1,7 @@
 //! How types relate: which values a type accepts where another is expected, and the type values
 //! of two types both have.
 
-use vun_desugar::Extent;
+use vun_desugar::{Access, Extent};
 
 use super::{NominalKind, Ty, TyKind, Value};
 use crate::Primitive;
@@ -44,13 +44,18 @@ impl TyKind {
         {
             return self.accepts(&Self::Primitive(p, vec![Value::Type(pointee)]).intern());
         }
-        // A borrow of an array is a borrow of its items as a slice, in the same mode.
+        // A borrow of an array is a borrow of its items as a slice, in the same mode; only a
+        // shared one may see them as a wider item type, since an exclusive one writes through.
         if let (Some((mode, _, expected)), Some((found_mode, _, found))) =
             (self.borrowing(), found.borrowing())
             && mode == found_mode
             && let (Some(items), Some((_, found_items))) = (expected.slice_items(), found.as_array())
         {
-            return items.accepts(&found_items);
+            return if mode.access() == Access::Shared {
+                items.accepts(&found_items)
+            } else {
+                items == found_items
+            };
         }
         // A function whose markers the expected type has too (spec 07, section 4).
         if let (Some(expected), Some(found)) = (self.signature(), found.signature()) {
@@ -99,7 +104,8 @@ impl TyKind {
             return Some(Self::int(&a.hull(&b)));
         }
         // Borrows of one transition and access meet in the shorter extent, a `&static` one as
-        // the other; borrows of arrays of one item type meet as a borrow of a slice.
+        // the other; borrows of arrays meet as a borrow of a slice of their items' join, or, for
+        // an exclusive borrow, which writes through, of their one item type.
         if let (Some((mode, p, a)), Some((other_mode, q, b))) = (self.borrowing(), other.borrowing())
             && mode.alike(other_mode)
             && (a != b || mode != other_mode)
@@ -107,7 +113,8 @@ impl TyKind {
             let p = if self.extent() == Some(Extent::Static) { q } else { p };
             let pointee = match (a.as_array(), b.as_array()) {
                 _ if a == b => a,
-                (Some((_, a)), Some((_, b))) => Self::slice(a.join(&b)?),
+                (Some((_, a)), Some((_, b))) if mode.access() == Access::Shared => Self::slice(a.join(&b)?),
+                (Some((_, a)), Some((_, b))) if a == b => Self::slice(a),
                 _ => return None,
             };
             return Some(Self::Primitive(p, vec![Value::Type(pointee)]).intern());

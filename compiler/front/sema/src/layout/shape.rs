@@ -2,7 +2,7 @@
 //! tells its variants apart, and the unused bit patterns an enclosing enum can keep its tag in.
 
 use crate::int::Integer;
-use vun_codec::{Decode, Encode};
+use vun_codec::{Decode, Encode, Malformed, Reader};
 
 /// Size and alignment in bytes, and where unused patterns are.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encode, Decode)]
@@ -16,12 +16,20 @@ pub struct Layout {
 /// `count` bit patterns no value uses, from `start` on and wrapping, of the unsigned integer of
 /// `bytes` bytes at `offset`: past the range of an integer, the null pointer, the tags past an
 /// enum's variants.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encode, Decode)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encode)]
 pub struct Niche {
     pub offset: u64,
     pub bytes: u64,
     pub start: u128,
     pub count: u128,
+}
+
+/// A niche read holds a pattern.
+impl Decode for Niche {
+    fn decode(r: &mut Reader<'_>) -> Result<Self, Malformed> {
+        let (offset, bytes, start, count) = <(u64, u64, u128, u128)>::decode(r)?;
+        (count > 0).then_some(Self { offset, bytes, start, count }).ok_or(Malformed::Invariant)
+    }
 }
 
 /// A type's layout and where its parts are.
@@ -82,19 +90,18 @@ impl Layout {
 
     /// The parts in order, each at the offset given, or else at the first offset its alignment
     /// allows after the one before; `None` when a given offset overlaps the part before or
-    /// misaligns the part.
+    /// misaligns the part, or the size passes `u64`.
     pub(crate) fn placed(parts: impl IntoIterator<Item = (Self, Option<u64>)>) -> Option<(Self, Vec<u64>)> {
         let mut whole = Self::EMPTY;
         let mut offsets = Vec::new();
         for (part, at) in parts {
-            let next = whole.size.next_multiple_of(part.align);
             let offset = match at {
                 Some(at) if at < whole.size || at % part.align != 0 => return None,
                 Some(at) => at,
-                None => next,
+                None => whole.size.checked_next_multiple_of(part.align)?,
             };
             offsets.push(offset);
-            whole.size = offset + part.size;
+            whole.size = offset.checked_add(part.size)?;
             whole.align = whole.align.max(part.align);
             if let Some(niche) = part.niche
                 && niche.count > whole.niches()
@@ -102,7 +109,7 @@ impl Layout {
                 whole.niche = Some(niche.within(offset));
             }
         }
-        whole.size = whole.size.next_multiple_of(whole.align);
+        whole.size = whole.size.checked_next_multiple_of(whole.align)?;
         Some((whole, offsets))
     }
 }

@@ -110,7 +110,8 @@ impl Value {
         String::from_utf8(bytes.collect::<Option<_>>()?).ok()
     }
 
-    /// The items a `$for` steps through: those of an array, or the integers of a finite range.
+    /// The items a `$for` steps through: those of an array, or the integers of a finite range
+    /// of at most [`crate::ops::MAX_ITEMS`].
     #[must_use]
     pub fn items(self) -> Option<Vec<Self>> {
         match self {
@@ -121,7 +122,9 @@ impl Value {
                     return None;
                 };
                 let (lo, hi) = (lo.to_i128()?, hi.to_i128()?);
-                Some((lo..=hi).map(|n| Self::Int(Integer::from(n))).collect())
+                let count = hi.checked_sub(lo).and_then(|n| usize::try_from(n).ok())?;
+                (count < crate::ops::MAX_ITEMS)
+                    .then(|| (lo..=hi).map(|n| Self::Int(Integer::from(n))).collect())
             }
             _ => None,
         }

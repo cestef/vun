@@ -14,7 +14,10 @@ impl Typer<'_, '_, '_> {
     pub(super) fn early_return(&mut self, expr: ExprId, operand: ExprId) -> Option<Known> {
         let known = self.typed(operand)?;
         let &EarlyReturnRow { function, go, stop } = EARLY_RETURN.first()?;
-        let witness = self.witness_of(function.parent()?, known.ty)?;
+        let Some(witness) = self.witness_of(function.parent()?, known.ty) else {
+            self.unimplemented(operand, function.parent(), known.ty);
+            return None;
+        };
         let function = function.symbol();
         let branch = self.env().cx.get::<MemberType>(&(witness, function)).ok()?.ty.signature()?.result;
         self.methods.insert(expr, (witness, function));

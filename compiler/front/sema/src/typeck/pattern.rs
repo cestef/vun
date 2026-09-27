@@ -101,10 +101,14 @@ impl Typer<'_, '_, '_> {
                 for (i, field) in fields.iter().enumerate() {
                     let Entry::One((name, field)) = field else { continue };
                     let found = members.as_ref().and_then(|m| match name {
-                        Some(Name::Plain(name)) => match m.find(*name) {
-                            Found::Field(f) => f.ty.as_ref().ok().copied(),
-                            _ => None,
-                        },
+                        Some(Name::Plain(name)) => {
+                            if let Found::Field(f) = m.find(*name) {
+                                f.ty.as_ref().ok().copied()
+                            } else {
+                                self.no_member(hir.pats[*field].origin, ty?, *name);
+                                None
+                            }
+                        }
                         None => m.fields.get(i).and_then(|f| f.ty.as_ref().ok().copied()),
                         Some(_) => None,
                     });
