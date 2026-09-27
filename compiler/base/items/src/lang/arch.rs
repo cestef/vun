@@ -6,5 +6,9 @@
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
 use crate::Item;
+/// The namespace `lang.arch.arm64`.
+pub const arm64: Item = Item::new(&["lang", "arch", "arm64"]);
+/// The namespace `lang.arch.x86_64`.
+pub const x86_64: Item = Item::new(&["lang", "arch", "x86_64"]);
 pub const Operands: Item = Item::new(&["lang", "arch", "Operands"]);
 pub const asm: Item = Item::new(&["lang", "arch", "asm"]);
