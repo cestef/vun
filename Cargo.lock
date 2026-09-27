@@ -977,6 +977,7 @@ dependencies = [
 name = "vun-driver"
 version = "0.0.0"
 dependencies = [
+ "vun-asm-x86_64",
  "vun-backend",
  "vun-backend-c",
  "vun-backend-cranelift",
@@ -1018,6 +1019,7 @@ dependencies = [
  "vun-par",
  "vun-pkg",
  "vun-query",
+ "vun-reduce",
  "vun-render-annotate",
  "vun-render-ariadne",
  "vun-render-short",
@@ -1063,6 +1065,7 @@ version = "0.0.0"
 dependencies = [
  "libfuzzer-sys",
  "vun-diag",
+ "vun-driver",
  "vun-fmt",
  "vun-grammar",
  "vun-hir",
@@ -1459,6 +1462,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "vun-reduce"
+version = "0.0.0"
+dependencies = [
+ "vun-diag",
+ "vun-fmt",
+ "vun-hash",
+ "vun-index",
+ "vun-origin",
+ "vun-span",
+ "vun-syntax",
+ "vun-trace",
+]
+
+[[package]]
 name = "vun-regalloc"
 version = "0.0.0"
 dependencies = [
@@ -1533,6 +1550,7 @@ dependencies = [
  "vun-grammar",
  "vun-hash",
  "vun-hir",
+ "vun-inline",
  "vun-intern",
  "vun-items",
  "vun-origin",

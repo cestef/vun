@@ -1,10 +1,12 @@
 //! `vun debug`: low-level commands for developing the compiler: each representation of a file
-//! with origins, how far the stages take a file, and how the backends agree on a program.
+//! with origins, how far the stages take a file, how the backends agree on a program, and a
+//! failing file reduced.
 
 mod compare;
 mod coverage;
 mod dump;
 mod queries;
+mod reduce;
 mod types;
 
 use vun_command::Command;
@@ -100,4 +102,10 @@ pub(super) const COMMANDS: &[Command<Session>] = &[
         |s, args, shell| shell.document(DUMP, "compare".to_owned(), |out| compare::compare(s, args, out)),
     )
     .params(&[FILE]),
+    Command::run(
+        "reduce",
+        "the least text that fails as a file does: the same crash, or the same error",
+        reduce::reduce,
+    )
+    .params(&[FILE, reduce::KEEP, crate::codegen::BACKEND]),
 ];

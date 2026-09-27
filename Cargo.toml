@@ -76,6 +76,7 @@ vun-build = { path = "compiler/tools/build" }
 vun-pkg = { path = "compiler/tools/pkg" }
 vun-http = { path = "compiler/tools/http" }
 vun-fmt = { path = "compiler/tools/fmt" }
+vun-reduce = { path = "compiler/tools/reduce" }
 vun-bind = { path = "compiler/tools/bind" }
 vun-clang = { path = "compiler/tools/clang" }
 vun-command = { path = "compiler/tools/command" }

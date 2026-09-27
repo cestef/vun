@@ -5,3 +5,6 @@ pub const TOOL: DiagId = DiagId::new("lang.errors.tool");
 pub const TOOL_MISSING_LIBRARY: DiagId = DiagId::new("lang.errors.tool.missing_library");
 pub const TOOL_BIND_FAILED: DiagId = DiagId::new("lang.errors.tool.bind_failed");
 pub const TOOL_BIND_SKIPPED: DiagId = DiagId::new("lang.errors.tool.bind_skipped");
+pub const TOOL_NOTHING_TO_REDUCE: DiagId = DiagId::new(
+    "lang.errors.tool.nothing_to_reduce",
+);

@@ -11,3 +11,6 @@ pub const missing_library: Item = Item::new(
 );
 pub const bind_failed: Item = Item::new(&["lang", "errors", "tool", "bind_failed"]);
 pub const bind_skipped: Item = Item::new(&["lang", "errors", "tool", "bind_skipped"]);
+pub const nothing_to_reduce: Item = Item::new(
+    &["lang", "errors", "tool", "nothing_to_reduce"],
+);

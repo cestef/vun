@@ -856,14 +856,15 @@ instructions each instead of 13, in registers a call may overwrite, none saved.
 ```
 compiler/
   base/    index  span  intern  origin  diag  query  pass  tool  target  trace  items  json  codec
-           codec-derive  hash  graph  fs  outline  par  suggest  term
+           codec-derive  hash  graph  fs  outline  par  suggest  term  bytes  inline
   front/   grammar  desugar  syntax  hir  sema
   mid/     mir  passes  interp
   low/     lir  lower  abi  passes
-  back/    api  asm  x86_64  arm64  object  dwarf  codegen  native  c  cranelift  qbe  llvm  external
-  link/    api  wild  mold  lld  gnu  msvc  external
+  back/    api  asm  x86_64  arm64  object  dwarf  codegen  regalloc  native  c  wasm  cranelift  qbe
+           llvm  external
+  link/    api  wild  mold  lld  gnu  msvc  ar  external
   render/  short  annotate  ariadne  json  sarif
-  tools/   build  pkg  http  fmt  bind  clang  command  harness  driver  lsp  cli  generate
+  tools/   build  pkg  http  fmt  reduce  bind  clang  command  harness  driver  lsp  cli  generate
            xtask
 fuzz/      cargo-fuzz targets over the verifiers, a workspace member
 lib/
@@ -907,3 +908,20 @@ Rules:
 - Terminal output goes through `vun-term`: text is built from pieces naming their `Style`, one
   palette maps styles to colors, tables align columns, and a `Shell` holds standard output
   (results) and standard error (status lines, diagnostics), each colored as `--color` decides.
+
+## 10. Test case reduction
+
+A file that makes the compiler fail is cut down to the least text that fails the same way
+(`vun-reduce`, `vun debug reduce <file>`). A failure is typed: the compiler crashing at a place of
+its own source, or the file reporting an error id; `--keep <id>` names the error to keep, and
+otherwise the file's first failure is kept. Each candidate is compiled in the driver's process as
+the file it stands for, through every check and the chosen backend's code generation, over the
+same queries, so the library is compiled once.
+
+Edits follow the concrete syntax tree, as in hierarchical delta debugging: runs of a node's
+children are removed, the whole run first and then halves down to single children; then a node is
+replaced by one of its children; then single lexemes are removed. Each pass runs until none of its
+edits is kept, and the passes repeat until none is. A candidate that parses with more errors than
+the text it came from is dropped before it is compiled, and no text is compiled twice. The result
+is laid out by the formatter when that keeps the failure. It is what a fuzz target's crash becomes
+before it is added to the corpus.

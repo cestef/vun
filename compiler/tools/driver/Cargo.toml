@@ -42,6 +42,7 @@ vun-span.workspace = true
 vun-origin.workspace = true
 vun-diag.workspace = true
 vun-query.workspace = true
+vun-reduce.workspace = true
 vun-target.workspace = true
 vun-tool.workspace = true
 vun-syntax.workspace = true
@@ -80,5 +81,7 @@ vun-link-msvc = { workspace = true, optional = true }
 vun-link-external = { workspace = true, optional = true }
 
 [dev-dependencies]
+# The generated assemblers, whose numbering sema's tables must follow.
+vun-asm-x86_64.workspace = true
 vun-harness.workspace = true
 vun-hash.workspace = true

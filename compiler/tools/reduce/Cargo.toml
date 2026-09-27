@@ -1,0 +1,20 @@
+[package]
+name = "vun-reduce"
+description = "Test case reduction: a file cut down, node by node, to the least that keeps what makes it interesting."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+vun-diag.workspace = true
+vun-fmt.workspace = true
+vun-hash.workspace = true
+vun-index.workspace = true
+vun-origin.workspace = true
+vun-span.workspace = true
+vun-syntax.workspace = true
+vun-trace.workspace = true

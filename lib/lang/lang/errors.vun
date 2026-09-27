@@ -182,6 +182,7 @@ tool := struct {
     missing_library := diag.Diag{ .explanation = lang.meta.embed("errors/tool/missing_library.md") };
     bind_failed := diag.Diag{ .explanation = lang.meta.embed("errors/tool/bind_failed.md") };
     bind_skipped := diag.Diag{ .explanation = lang.meta.embed("errors/tool/bind_skipped.md") };
+    nothing_to_reduce := diag.Diag{ .explanation = lang.meta.embed("errors/tool/nothing_to_reduce.md") };
 };
 
 /// Reading and writing files.

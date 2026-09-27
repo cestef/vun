@@ -14,6 +14,7 @@ mod plan;
 mod positions;
 pub mod program;
 mod queries;
+mod reduce;
 mod registry;
 mod session;
 mod shared;
