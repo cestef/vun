@@ -19,6 +19,7 @@ vun-fmt.workspace = true
 vun-grammar.workspace = true
 vun-hir.workspace = true
 vun-origin.workspace = true
+vun-query.workspace = true
 vun-regalloc = { workspace = true, features = ["sample"] }
 vun-render-annotate.workspace = true
 vun-render-ariadne.workspace = true
@@ -65,6 +66,13 @@ bench = false
 [[bin]]
 name = "format"
 path = "fuzz_targets/format.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "memos"
+path = "fuzz_targets/memos.rs"
 test = false
 doc = false
 bench = false
