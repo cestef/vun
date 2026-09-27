@@ -871,8 +871,9 @@ in registers a call may overwrite, none saved.
   (`Func::requirement`, the query `Requirement`), becomes a call of its checked version. MIR still has the
   types and the calls there. LIR has only addresses and could not tell a raw pointer from a
   borrow the checks already proved. Everything else stays where it lives today:
-  - Lowering (`vun-lower`) gives the slot of a local whose address is taken (borrowed itself,
-    not through a borrow it holds) a start at a shadow granule (`lang.check.granule`) and
+  - Under the `pointers` or the `asm` checks, lowering (`vun-lower`) gives the slot of a local
+    whose address is taken (borrowed itself, not through a borrow it holds) a start at a shadow
+    granule (`lang.check.granule`) and
     `lang.check.redzone` bytes after it. At entry the slot is marked accessible as far as it
     reaches and its redzone poisoned; at each return both are marked accessible again, since
     the stack past a frame is the next call's. The checks do not apply in the functions they

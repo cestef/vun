@@ -1,7 +1,8 @@
-//! Redzones (spec 13, section 8.7): under the pointer checks, the slot of a local whose address
-//! is taken starts at a shadow granule (`lang.check.granule`) and is followed by
+//! Redzones (spec 13, section 8.7): under the pointer or the asm checks, the slot of a local
+//! whose address is taken starts at a shadow granule (`lang.check.granule`) and is followed by
 //! `lang.check.redzone` bytes, poisoned while its function runs and made accessible again when
-//! it returns, so an access through a raw pointer running past the slot fails its check.
+//! it returns, so an access through a raw pointer, or an assembly block's write, running past
+//! the slot fails its check.
 
 use vun_hash::Set;
 use vun_items::Item;
@@ -17,10 +18,12 @@ use super::FnLower;
 use crate::unlowered::{Form, Unlowered};
 
 impl FnLower<'_, '_, '_> {
-    /// The locals whose slots are guarded: under the pointer checks, every one whose address is
-    /// taken, borrowed itself or a part of it rather than through a borrow it holds.
+    /// The locals whose slots are guarded: under the checks of what raw pointers or assembly
+    /// blocks touch, every one whose address is taken, borrowed itself or a part of it rather
+    /// than through a borrow it holds.
     pub(super) fn guarded(&self) -> Set<Local> {
-        if !self.checked || !self.l.types.cx.get::<ChecksOf>(&()).contains(Check::Pointers) {
+        let checks = self.l.types.cx.get::<ChecksOf>(&());
+        if !self.checked || !(checks.contains(Check::Pointers) || checks.contains(Check::Asm)) {
             return Set::default();
         }
         let stmts = self.body.blocks.iter().flat_map(|(_, b)| &b.stmts);

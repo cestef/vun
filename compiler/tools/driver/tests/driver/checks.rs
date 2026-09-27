@@ -191,7 +191,7 @@ main := (sys: &mut std.os.System) -> std.os.Exit {{
     let mut session = fixture.session();
     session.choice = Choice::Path(vec![Symbol::intern("linux"), Symbol::intern("x86_64")]);
     session.codegen.backend = Some(Symbol::intern("native"));
-    session.add_checks([Check::Asm, Check::Pointers]);
+    session.add_checks([Check::Asm]);
     let file = session.load(&path).unwrap();
     let program = session.build(file, None).unwrap_or_else(|_| panic!("{:#?}", session.diag));
     session.command(&program).status().unwrap().code()
