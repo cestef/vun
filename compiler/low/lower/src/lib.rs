@@ -7,6 +7,7 @@ mod func;
 mod program;
 mod repr;
 mod signature;
+mod unchecked;
 mod unlowered;
 
 pub use frame::{FrameShape, FrameState, Frames, Framing};

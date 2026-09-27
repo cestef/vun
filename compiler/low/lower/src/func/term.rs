@@ -49,6 +49,7 @@ impl FnLower<'_, '_, '_> {
     /// Returns the result local: a scalar as the value, one in memory through the address the
     /// caller passed.
     pub(super) fn ret(&mut self) -> Result<Terminator, Unlowered> {
+        self.unguard()?;
         let ty = self.ty(self.body.ret)?;
         let Some(addr) = self.local(self.body.ret) else { return Ok(Terminator::Return(None)) };
         match (self.l.types.repr(ty, self.at)?, self.out) {

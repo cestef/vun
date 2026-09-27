@@ -13,7 +13,10 @@ pub const Kind: Item = Item::new(&["lang", "check", "Kind"]);
 /// At run time, in a program built with `kind` checked, each call of the declaration this marks
 /// is a call of `f`: its arguments, then the call's origin as a `$` `lang.meta.Origin`.
 pub const by: Item = Item::new(&["lang", "check", "by"]);
-/// The bytes poisoned past a stack slot whose address becomes a raw pointer.
+/// The bytes of memory one byte of the runtime's shadow describes, which a slot with a redzone
+/// starts at a multiple of.
+pub const granule: Item = Item::new(&["lang", "check", "granule"]);
+/// The bytes poisoned past a stack slot whose address is taken, a multiple of `granule`.
 pub const redzone: Item = Item::new(&["lang", "check", "redzone"]);
 /// The bytes of freed memory kept poisoned before an allocator may hand them out again.
 pub const quarantine: Item = Item::new(&["lang", "check", "quarantine"]);

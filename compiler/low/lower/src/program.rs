@@ -66,6 +66,8 @@ pub(crate) struct Lowering<'a, 'db> {
     exports: Map<Symbol, FuncId>,
     data: Map<(Vec<u8>, Vec<Reloc>, u64), DataId>,
     globals: Map<DeclRef, DataId>,
+    /// The functions the checks of unsafe code run in, which they do not apply in.
+    pub(crate) unchecked: vun_hash::Set<Instantiation>,
 }
 
 impl<'a, 'db> Lowering<'a, 'db> {
@@ -140,6 +142,7 @@ impl<'a, 'db> Lowering<'a, 'db> {
             exports: program.exports.iter().map(|&(i, symbol)| (symbol, FuncId::new(i))).collect(),
             data: Map::default(),
             globals: Map::default(),
+            unchecked: Self::unchecked(cx, root, program),
         })
     }
 
@@ -162,7 +165,7 @@ impl<'a, 'db> Lowering<'a, 'db> {
         let at = nominal.literal.expr.origin;
         let body = Body::constructor(cx, ty, name).ok_or(Unlowered { at, why: Why::NoLayout(ty) })?;
         let params = body.params.clone();
-        FnLower::function(self, &body, &params, None, Linkage::Internal, Arc::default())
+        FnLower::function(self, &body, &params, None, Linkage::Internal, Arc::default(), true)
     }
 
     /// The id of the function the constructor of the variant `name` of `ty` is as a value.

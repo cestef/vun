@@ -16,7 +16,10 @@ Kind := enum {
 /// is a call of `f`: its arguments, then the call's origin as a `$` `lang.meta.Origin`.
 by: ($kind: Kind, $F: type, $f: F) -> Attribute(&[Place.decls]) = _;
 
-/// The bytes poisoned past a stack slot whose address becomes a raw pointer.
+/// The bytes of memory one byte of the runtime's shadow describes, which a slot with a redzone
+/// starts at a multiple of.
+granule := 8;
+/// The bytes poisoned past a stack slot whose address is taken, a multiple of `granule`.
 redzone := 16;
 /// The bytes of freed memory kept poisoned before an allocator may hand them out again.
 quarantine := 1 << 20;

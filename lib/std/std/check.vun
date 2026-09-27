@@ -5,7 +5,7 @@
 //! (`exports`). The shadow is read and written by atomic accesses, which no check rewrites.
 
 /// The bytes of memory one shadow byte describes.
-granule := 8;
+granule := lang.check.granule;
 
 /// Why memory is poisoned, as its shadow bytes code it.
 code := (why: lang.check.Violation) -> i8 {

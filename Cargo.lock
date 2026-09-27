@@ -1425,6 +1425,7 @@ dependencies = [
  "vun-mir-passes",
  "vun-origin",
  "vun-query",
+ "vun-sanitize",
  "vun-sema",
  "vun-target",
  "vun-trace",

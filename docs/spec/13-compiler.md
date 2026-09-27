@@ -870,9 +870,13 @@ in registers a call may overwrite, none saved.
   marked `check.by` for a checked kind becomes a call of its checked version. MIR still has the
   types and the calls there. LIR has only addresses and could not tell a raw pointer from a
   borrow the checks already proved. Everything else stays where it lives today:
-  - Lowering (`vun-lower`) gives a slot whose address becomes a raw pointer (`pointer_to` of a
-    local) a redzone of 16 bytes after it. It poisons the redzone at entry, and at each return
-    it poisons the slot as `returned`.
+  - Lowering (`vun-lower`) gives the slot of a local whose address is taken (borrowed itself,
+    not through a borrow it holds) a start at a shadow granule (`lang.check.granule`) and
+    `lang.check.redzone` bytes after it. At entry the slot is marked accessible as far as it
+    reaches and its redzone poisoned; at each return both are marked accessible again, since
+    the stack past a frame is the next call's. The checks do not apply in the functions they
+    run in: each function the runtime exports for an operation of `lang.check`, and every
+    function one calls, or an operation would check itself.
   - The native backend checks assembly blocks when the unit's checks include `asm` (a field of
     `vun_lir::Unit`, as `pointer_bits` is). Before each instruction whose form writes memory, it
     checks the address that operand computes. Around a block that returns, it compares the
@@ -902,7 +906,10 @@ in registers a call may overwrite, none saved.
 - **Known gaps, stated rather than hidden.** Data objects are addressable as wholes: an overflow
   from one datum into the next is not caught, since that would need the linker to lay out
   redzones. Accesses through borrows are not checked, because the borrow check proved them.
-  An `asm` block reading memory it does not own is not caught, only writes are.
+  An `asm` block reading memory it does not own is not caught, only writes are. A slot is
+  not poisoned once its function returns, so a pointer to it used afterwards is caught only
+  where another call's redzone lies there; catching it always would take frames on a stack of
+  their own (`Violation.returned` is kept for that).
 
 ## 9. Workspace
 

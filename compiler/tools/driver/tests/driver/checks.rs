@@ -46,16 +46,38 @@ main := (sys: &mut std.os.System) -> std.os.Exit {
 };
 ";
 
-#[test]
-fn a_checked_program_runs_through_each_backend_over_its_runtime_shadow() {
-    let fixture = Fixture::new("checks-run");
-    let path = fixture.root.write("main.vun", THIRD);
+/// The same, reading past the array's end: into its slot's redzone.
+const PAST: &str = "\
+start := std.os.start(main);
+main := (sys: &mut std.os.System) -> std.os.Exit {
+    xs: [4]u8 = [1, 2, 3, 4];
+    past := unsafe lang.mem.pointer_to([4]u8, &xs).cast(u8).offset(5).read();
+    std.os.Exit.of((past % 100).to(Int(0..=125)))
+};
+";
+
+/// The statuses `source`, built with the pointer checks, ends with through each backend.
+fn checked_statuses(name: &str, source: &str) -> Vec<Option<i32>> {
+    let fixture = Fixture::new(name);
+    let path = fixture.root.write("main.vun", source);
     let mut session = fixture.session();
     session.add_checks([Check::Pointers]);
     let file = session.load(&path).unwrap();
     let runs = session.run_each(file).unwrap_or_else(|_| panic!("{:#?}", session.diag));
-    let statuses: Vec<Option<i32>> = runs.iter().map(|r| r.output.status.code()).collect();
+    runs.iter().map(|r| r.output.status.code()).collect()
+}
+
+#[test]
+fn a_checked_program_runs_through_each_backend_over_its_runtime_shadow() {
+    let statuses = checked_statuses("checks-run", THIRD);
     assert!(statuses.len() > 1 && statuses.iter().all(|&s| s == Some(10)), "{statuses:?}");
+}
+
+#[test]
+fn a_read_past_a_slot_traps_the_same_way_through_each_backend() {
+    let statuses = checked_statuses("checks-past", PAST);
+    let trapped = Some(101);
+    assert!(statuses.len() > 1 && statuses.iter().all(|&s| s == trapped), "{statuses:?}");
 }
 
 #[test]

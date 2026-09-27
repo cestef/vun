@@ -189,7 +189,7 @@ a trap carrying its origin:
 
 | Check (`lang.check.Kind`) | Catches |
 |---------------------------|---------|
-| `pointers` | a read or write through a raw pointer (`lang.mem.read`, `write`, `copy`, `fill`) of bytes no object holds: past the end of an allocation, a stack slot or a datum, freed memory, or a slot of a function that has returned |
+| `pointers` | a read or write through a raw pointer (`lang.mem.read`, `write`, `copy`, `fill`) of bytes no object holds: past the end of an allocation or a stack slot, or freed memory |
 | `allocations` | an allocator freeing what it did not hand out or has freed already, or with another size |
 | `asm` | an assembly block writing memory no object holds, or returning with the stack pointer moved |
 
