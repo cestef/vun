@@ -218,13 +218,16 @@ impl Typer<'_, '_, '_> {
     ) -> Instantiation {
         let comptime = f.comptime(self.env().cx).unwrap_or_default();
         let quotes = f.quotes(self.env().cx).unwrap_or_default();
+        // A `$` argument is a value of its parameter's type, as `Env::passing` passes it: `.empty`
+        // for `$s: Shape` is the variant.
+        let params = Callable::Fn(f.clone()).types(self.env()).unwrap_or_default();
         let mut values: Vec<Option<Value>> = vec![None; comptime.len()];
         for (&slot, &arg) in slots.iter().zip(args) {
             let (Some(true), Argument::Expr(arg)) = (comptime.get(slot), arg) else { continue };
             values[slot] = if quotes.get(slot) == Some(&true) {
                 Some(Value::Code(self.env().code(arg)))
             } else {
-                self.env().eval(arg).ok()
+                self.env().eval_as(arg, params.get(slot).copied().flatten()).ok()
             };
         }
         for (slot, value) in inferred.into_iter().flatten() {
