@@ -71,6 +71,16 @@ impl Ty {
         Self::BYTE.pointer()
     }
 
+    /// Whether the type is a pointer, whose qualifiers C writes after its `*`.
+    #[must_use]
+    pub fn derived(&self) -> bool {
+        match self {
+            Self::Pointer(_) | Self::Function { .. } => true,
+            Self::Volatile(ty) | Self::Restrict(ty) => ty.derived(),
+            _ => false,
+        }
+    }
+
     /// `void (*)(void)`: a function's address held in data.
     #[must_use]
     pub fn code() -> Self {

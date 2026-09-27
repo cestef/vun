@@ -5,6 +5,8 @@ mod arith;
 mod inline;
 mod inst;
 mod term;
+#[cfg(test)]
+mod tests;
 
 use std::collections::BTreeSet;
 

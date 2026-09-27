@@ -86,7 +86,8 @@ impl<'u> Emitter<'u> {
         for (id, func) in unit.functions.iter() {
             let storage = e.storage(func.linkage);
             protos.push(Item::Declare(e.proto(storage, e.func(id), &func.signature, func.origin)?));
-            let at = usize::try_from(Hash::of_value(func).short()).unwrap_or_default() % shards;
+            #[expect(clippy::cast_possible_truncation, reason = "the remainder is below the shard count")]
+            let at = (Hash::of_value(func).short() % shards as u64) as usize;
             bodies.push((at, e.define(id, storage)?));
             vun_trace::tracing::debug!(f = %func.linkage, shard = at, "emitted");
         }
@@ -142,8 +143,8 @@ impl<'u> Emitter<'u> {
 
     /// The spellings of the names of `unit`'s C, tagged when it spans several files.
     pub(crate) fn names(unit: &Unit, shard: usize) -> Names {
-        let tag = (Self::shards(unit, shard) > 1)
-            .then(|| u32::try_from(Hash::of_value(unit).short() & u64::from(u32::MAX)).unwrap_or_default());
+        #[expect(clippy::cast_possible_truncation, reason = "a tag keeps the hash's low bits")]
+        let tag = (Self::shards(unit, shard) > 1).then(|| Hash::of_value(unit).short() as u32);
         Names::new(Self::linked(unit).map(|(s, _)| s), tag)
     }
 

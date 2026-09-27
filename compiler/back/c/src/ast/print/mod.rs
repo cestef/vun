@@ -33,8 +33,15 @@ impl Printer<'_, '_, '_> {
         self.f.write_str(&self.names.spell(ident))
     }
 
-    /// A type as a cast writes it.
+    /// A type as a cast writes it: its declarator with no name.
     fn ty(&mut self, ty: &Ty) -> fmt::Result {
+        self.left(ty)?;
+        self.right(ty)
+    }
+
+    /// What a declarator writes left of its name: the specifier, then pointers and their
+    /// qualifiers, inner ones first, so `u8 *volatile *` is a pointer to a volatile pointer.
+    fn left(&mut self, ty: &Ty) -> fmt::Result {
         match ty {
             Ty::Void => self.f.write_str("void"),
             Ty::Base { base, signed } => {
@@ -50,18 +57,6 @@ impl Printer<'_, '_, '_> {
             &Ty::Int { bits, signed } => self.ident(Ident::Own(Own::Int { bits, signed })),
             Ty::Float => self.f.write_str("float"),
             Ty::Double => self.f.write_str("double"),
-            Ty::Pointer(to) => {
-                self.ty(to)?;
-                self.f.write_str(if matches!(**to, Ty::Pointer(_)) { "*" } else { " *" })
-            }
-            Ty::Restrict(pointer) => {
-                self.ty(pointer)?;
-                self.f.write_str("restrict")
-            }
-            Ty::Volatile(ty) => {
-                self.f.write_str("volatile ")?;
-                self.ty(ty)
-            }
             Ty::Struct(tag) => {
                 self.f.write_str("struct ")?;
                 self.ident(*tag)
@@ -70,12 +65,47 @@ impl Printer<'_, '_, '_> {
                 self.f.write_str("union ")?;
                 self.ident(*tag)
             }
-            Ty::Function { result, params } => {
-                self.ty(result)?;
-                self.f.write_str(" (*)")?;
-                self.params(params.iter(), Self::ty)
+            Ty::Volatile(ty) if !ty.derived() => {
+                self.f.write_str("volatile ")?;
+                self.left(ty)
+            }
+            Ty::Volatile(pointer) => self.qualified(pointer, "volatile"),
+            Ty::Restrict(pointer) => self.qualified(pointer, "restrict"),
+            Ty::Pointer(to) => {
+                self.left(to)?;
+                self.gap(to)?;
+                self.f.write_char('*')
+            }
+            Ty::Function { result, .. } => {
+                self.left(result)?;
+                self.gap(result)?;
+                self.f.write_str("(*")
             }
         }
+    }
+
+    /// What a declarator writes right of its name: a function pointer's parameters.
+    fn right(&mut self, ty: &Ty) -> fmt::Result {
+        match ty {
+            Ty::Volatile(ty) | Ty::Restrict(ty) | Ty::Pointer(ty) => self.right(ty),
+            Ty::Function { result, params } => {
+                self.f.write_char(')')?;
+                self.params(params.iter(), Self::ty)?;
+                self.right(result)
+            }
+            _ => Ok(()),
+        }
+    }
+
+    /// A qualifier on a pointer, written after its `*`.
+    fn qualified(&mut self, pointer: &Ty, qualifier: &str) -> fmt::Result {
+        self.left(pointer)?;
+        self.f.write_str(qualifier)
+    }
+
+    /// The space between `ty`'s left part and what follows it, unless it ends in `*` or `(*`.
+    fn gap(&mut self, ty: &Ty) -> fmt::Result {
+        if matches!(ty, Ty::Pointer(_) | Ty::Function { .. }) { Ok(()) } else { self.f.write_char(' ') }
     }
 
     /// `(a, b)`, or `(void)` for none.
@@ -98,22 +128,13 @@ impl Printer<'_, '_, '_> {
     }
 
     fn decl(&mut self, decl: &Decl) -> fmt::Result {
-        if let Ty::Function { result, params } = &decl.ty {
-            self.ty(result)?;
-            self.f.write_str(" (*")?;
-            self.ident(decl.name)?;
-            self.f.write_char(')')?;
-            return self.params(params.iter(), Self::ty);
-        }
-        self.ty(&decl.ty)?;
-        if !matches!(decl.ty, Ty::Pointer(_)) {
-            self.f.write_char(' ')?;
-        }
+        self.left(&decl.ty)?;
+        self.gap(&decl.ty)?;
         self.ident(decl.name)?;
-        match decl.len {
-            Some(len) => write!(self.f, "[{len}]"),
-            None => Ok(()),
+        if let Some(len) = decl.len {
+            write!(self.f, "[{len}]")?;
         }
+        self.right(&decl.ty)
     }
 
     /// ` __attribute__((aligned(16), section(".vectors")))`, or nothing without attributes.

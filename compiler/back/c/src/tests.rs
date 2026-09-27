@@ -115,9 +115,10 @@ fn frame_sizes_are_read_by_function() {
     let mut unit = constant("seven", Scalar::I32, at);
     unit.functions.push(returning(Linkage::Internal, Scalar::I64, at));
     let report =
-        b"program.c:3:5:seven\t16\tstatic\nprogram.c:9:12:f1\t48\tstatic\nother.c:1:1:elsewhere\t8\tstatic\n";
+        b"program.c:3:5:seven\t16\tstatic\nprogram.c:9:12:f1\t48\tstatic\nother.c:1:1:elsewhere\t8\tstatic\n\
+          program.c:3:5:seven.part.0\t32\tstatic\nprogram.c:9:12:f1.constprop.0\t64\tstatic\n";
     let sizes = CBackend::default().frame_sizes(&unit, report);
-    assert_eq!(sizes, [(FuncId::new(0), 16), (FuncId::new(1), 48)]);
+    assert_eq!(sizes, [(FuncId::new(0), 48), (FuncId::new(1), 64)]);
 }
 
 #[test]
@@ -150,4 +151,22 @@ fn data_aligned_past_c_or_placed_in_a_section_needs_gnu_attributes() {
         _ => None,
     });
     assert_eq!(placed, Some(vec![Attribute::Section(vectors), Attribute::Aligned(64)]));
+}
+
+#[test]
+fn qualifiers_on_pointers_follow_their_star() {
+    use crate::ast::{Decl, File, Item, Ty};
+    let name = Symbol::intern("p");
+    let typedef = |ty: Ty| {
+        let file = File {
+            names: Names::new([name], None),
+            items: vec![Item::Typedef(Decl::new(ty, Ident::Symbol(name)))],
+        };
+        file.to_string()
+    };
+    let volatile = |ty: Ty| Ty::Volatile(Box::new(ty));
+    assert_eq!(typedef(volatile(Ty::address()).pointer()), "typedef u8 *volatile *p;\n");
+    assert_eq!(typedef(volatile(Ty::BYTE).pointer()), "typedef volatile u8 *p;\n");
+    assert_eq!(typedef(Ty::code().pointer()), "typedef void (**p)(void);\n");
+    assert_eq!(typedef(volatile(Ty::code())), "typedef void (*volatile p)(void);\n");
 }

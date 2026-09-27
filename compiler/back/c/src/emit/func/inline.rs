@@ -17,31 +17,26 @@ impl Inlined {
         let once = |v: Value| live.range(v).is_some_and(|r| r.uses == 1 && r.first == r.last && !r.through);
         for &block in order.blocks() {
             let data = &func.blocks[block];
-            let mut loads: Vec<Value> = Vec::new();
+            // Inlined values that read memory where they are written: plain loads, and the
+            // inlined values reading them, which carry the load to their own use.
+            let mut reading: Vec<Value> = Vec::new();
             for &inst in &data.insts {
                 let inst = &func.insts[inst];
-                let operands: Vec<Value> = inst.kind.operands().collect();
-                loads.retain(|v| !operands.contains(v));
-                if Self::writes(&inst.kind) {
-                    for v in loads.drain(..) {
+                let before = reading.len();
+                reading.retain(|v| !inst.kind.operands().any(|o| o == *v));
+                let carries = reading.len() < before;
+                if inst.kind.acts() {
+                    for v in reading.drain(..) {
                         inlined[v] = false;
                     }
                 }
                 let Some(v) = inst.result.filter(|&v| once(v)) else { continue };
-                match inst.kind {
-                    InstKind::Load { access: Access::Plain, .. } => {
-                        inlined[v] = true;
-                        loads.push(v);
+                let loads = matches!(inst.kind, InstKind::Load { access: Access::Plain, .. });
+                if loads || inst.kind.pure() {
+                    inlined[v] = true;
+                    if loads || carries {
+                        reading.push(v);
                     }
-                    InstKind::Const { .. }
-                    | InstKind::Binary { .. }
-                    | InstKind::Compare { .. }
-                    | InstKind::Cast { .. }
-                    | InstKind::Select { .. }
-                    | InstKind::Offset { .. }
-                    | InstKind::SlotAddr(_)
-                    | InstKind::Addr(_) => inlined[v] = true,
-                    _ => {}
                 }
             }
             for target in data.term.targets() {
@@ -53,19 +48,6 @@ impl Inlined {
             }
         }
         Self(inlined)
-    }
-
-    /// Whether an instruction writes memory or calls, which a load read after it must follow.
-    fn writes(kind: &InstKind) -> bool {
-        match kind {
-            InstKind::Store { .. }
-            | InstKind::Rmw { .. }
-            | InstKind::CompareExchange { .. }
-            | InstKind::Copy { .. }
-            | InstKind::Call { .. } => true,
-            InstKind::Load { access, .. } => *access != Access::Plain,
-            _ => false,
-        }
     }
 
     /// Whether the instruction defining `v` reads another value.
