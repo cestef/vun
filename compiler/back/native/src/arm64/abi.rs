@@ -18,6 +18,8 @@ pub const FP_ARGS: [V; 8] = [V(0), V(1), V(2), V(3), V(4), V(5), V(6), V(7)];
 /// The register the address a result is written through is passed in.
 pub const INDIRECT: Reg = Reg::X8;
 const WORD: u64 = 8;
+/// The most a composite on the stack is aligned to.
+const COMPOSITE_ALIGN: u64 = 16;
 const POINTER_BITS: u32 = 64;
 /// The size up to which a record travels in general registers.
 const IN_REGISTERS: u64 = 16;
@@ -173,9 +175,11 @@ struct Free {
 }
 
 impl Free {
-    fn stack(&mut self, size: u64) -> u64 {
-        let at = self.stack;
-        self.stack += size.next_multiple_of(WORD);
+    /// Takes `size` bytes of the stack at their alignment: at least a word, even where scalars
+    /// are packed, and at most 16 bytes (AAPCS64, rule C.16).
+    fn stack(&mut self, size: u64, align: u64) -> u64 {
+        let at = self.stack.next_multiple_of(align.clamp(WORD, COMPOSITE_ALIGN));
+        self.stack = at + size.next_multiple_of(WORD);
         at
     }
 
@@ -200,7 +204,7 @@ impl Free {
                     self.stack = offset + bytes;
                     Loc::Stack { offset, bytes }
                 } else {
-                    Loc::Stack { offset: self.stack(WORD), bytes: WORD }
+                    Loc::Stack { offset: self.stack(WORD, WORD), bytes: WORD }
                 }
             },
             Loc::Reg,
@@ -256,7 +260,7 @@ impl Passing {
                                 Shape::Homogeneous { .. } => free.fps = &[],
                                 _ => free.ints = &[],
                             }
-                            Loc::Copied { offset: free.stack(r.size), size: r.size }
+                            Loc::Copied { offset: free.stack(r.size, r.align), size: r.size }
                         }
                     }
                 }

@@ -17,7 +17,7 @@ pub(crate) struct RegFile<A: Arch> {
 
 impl<A: Arch> RegFile<A> {
     pub(crate) fn new() -> Self {
-        assert!(A::REGS <= 64, "locks are a 64-bit set");
+        const { assert!(A::REGS <= 64, "locks are a 64-bit set") };
         Self { holds: vec![None; A::REGS], locked: 0, victim: 0, arch: PhantomData }
     }
 

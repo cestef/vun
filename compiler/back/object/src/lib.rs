@@ -14,7 +14,7 @@ index! {
 }
 
 /// What the linker writes at a relocation, whatever the machine; each machine numbers the kinds
-/// it has (`Machine::relocation`).
+/// it has (`Machine::elf_relocation`, `Machine::macho_relocation`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum RelocKind {
     /// The symbol's address, 64 bits.

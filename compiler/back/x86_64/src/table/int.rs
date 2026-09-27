@@ -55,10 +55,14 @@ pub(super) const MOVZX: [Form; 4] = [
     Form::new(&[Rn(Size::B32), RMn(Size::B32)], Sizes::of(&[Size::B32]), Opcode::one(0x8b), SRC_DST)
         .w(W::Never)
         .named("mov"),
+    MOV64,
+];
+
+/// A 64-bit value extends to itself: `mov`, the widest form of either extension.
+const MOV64: Form =
     Form::new(&[Rn(Size::B64), RMn(Size::B64)], Sizes::of(&[Size::B64]), Opcode::one(0x8b), SRC_DST)
         .w(W::Always)
-        .named("mov"),
-];
+        .named("mov");
 
 /// By the width of the operand extended.
 pub(super) const MOVSX: [Form; 4] = [
@@ -69,9 +73,7 @@ pub(super) const MOVSX: [Form; 4] = [
     Form::new(&[Rn(Size::B64), RMn(Size::B32)], Sizes::of(&[Size::B32]), Opcode::one(0x63), SRC_DST)
         .w(W::Always)
         .named("movsxd"),
-    Form::new(&[Rn(Size::B64), RMn(Size::B64)], Sizes::of(&[Size::B64]), Opcode::one(0x8b), SRC_DST)
-        .w(W::Always)
-        .named("mov"),
+    MOV64,
 ];
 
 pub(super) const LEA: [Form; 1] = [Form::new(&[R, M], Sizes::WIDE, Opcode::one(0x8d), SRC_DST)];

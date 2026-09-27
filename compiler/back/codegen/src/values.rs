@@ -1,6 +1,7 @@
 //! Values' assignments: where each value is, and which values are recomputed where used rather
 //! than kept.
 
+use vun_asm::imm::low64;
 use vun_index::IndexVec;
 use vun_lir::analysis::{Liveness, Order};
 use vun_lir::{Address, Function, InstKind, Slot, Value};
@@ -82,7 +83,8 @@ pub(crate) fn assign<R: Copy>(
             let data = &f.insts[inst];
             let Some(out) = data.result else { continue };
             let constant = |v: Value| match values[v].recompute {
-                Some(Recompute::Const(bits)) => u64::try_from(bits & u128::from(u64::MAX)).ok(),
+                // An offset is address-wide, and native addresses are 64 bits.
+                Some(Recompute::Const(bits)) => Some(low64(bits).cast_signed()),
                 _ => None,
             };
             values[out].recompute = match data.kind {
@@ -90,9 +92,7 @@ pub(crate) fn assign<R: Copy>(
                 InstKind::SlotAddr(s) => Some(Recompute::Addr(Place::frame(slots[s]))),
                 InstKind::Addr(a) => Some(Recompute::Addr(Place { anchor: Anchor::Sym(a), disp: 0 })),
                 InstKind::Offset { base, offset } => match (values[base].recompute, constant(offset)) {
-                    (Some(Recompute::Addr(place)), Some(bytes)) => {
-                        Some(Recompute::Addr(place.plus(bytes.cast_signed())))
-                    }
+                    (Some(Recompute::Addr(place)), Some(bytes)) => Some(Recompute::Addr(place.plus(bytes))),
                     _ => None,
                 },
                 _ => None,

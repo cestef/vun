@@ -17,8 +17,8 @@ use std::path::PathBuf;
 
 use vun_asm::Isa;
 use vun_backend::{
-    Artifact, ArtifactSink, Backend, BackendCaps, BackendInfo, Emits, Emitted, Lack, Missing, Readiness,
-    Request,
+    Artifact, ArtifactSink, Backend, BackendCaps, BackendInfo, Emits, Emitted, Feature, Lack, Missing,
+    Readiness, Request,
 };
 use vun_codegen::{Compiled, Isel};
 use vun_diag::{DiagCtxt, ErrorGuaranteed};
@@ -76,14 +76,9 @@ pub const INFO: BackendInfo = BackendInfo {
     arches: Arches::Only(&NAMES),
     caps: BackendCaps {
         emits: Emits::Object,
-        c_abi: true,
-        vectors: false,
-        tail_calls: false,
-        noalias: false,
-        frame_sizes: true,
+        features: &[Feature::CAbi, Feature::FrameSizes, Feature::DebugInfo],
         int_bits: 64,
         half: Half::Promoted,
-        debug_info: true,
     },
     readiness: Readiness::Ready,
 };
@@ -204,9 +199,9 @@ impl Backend for NativeBackend {
         diag: &mut DiagCtxt,
     ) -> Result<(), ErrorGuaranteed> {
         if Self::format(request, Self::arch(request).machine).is_none() {
-            return Err(diag.error(Missing::Format(request.target.object_format).diagnostic(INFO.id.0)));
+            return Err(diag.error(Missing::Format(request.target.object_format).diagnostic(INFO.id)));
         }
-        let emitted = Self::emitted(request).map_err(|lack| diag.error(lack.diagnostic(INFO.id.0)))?;
+        let emitted = Self::emitted(request).map_err(|lack| diag.error(lack.diagnostic(INFO.id)))?;
         for artifact in emitted.artifacts {
             out.put(artifact);
         }

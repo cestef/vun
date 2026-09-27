@@ -68,3 +68,19 @@ fn a_dying_operand_s_register_holds_the_result() {
     let body: Vec<&str> = text.iter().skip(3).map(String::as_str).collect();
     assert_eq!(body, ["add rdi, 0x1", "mov eax, 0x3", "imul rdi, rax", "mov rax, rdi", "leave", "ret"]);
 }
+
+#[test]
+fn a_record_past_two_eightbytes_takes_no_argument_register() {
+    use crate::x86_64::abi::{ARGS, Carrier, Loc, Passing};
+    use vun_lir::{AbiType, Conv, Ext, Record, Signature};
+    let large =
+        Record { size: 24, align: 8, fields: vec![(0, Scalar::I64), (8, Scalar::I64), (16, Scalar::I64)] };
+    let signature = Signature {
+        conv: Conv::C,
+        params: vec![AbiType::Record(large), AbiType::Int(Scalar::I64, Ext::Zero)],
+        result: None,
+    };
+    let passing = Passing::of(&signature).unwrap();
+    assert_eq!(passing.params[0], Loc::Copied { offset: 0, size: 24 });
+    assert_eq!(passing.params[1], Loc::Reg(Carrier::Int(ARGS[0])));
+}

@@ -1,10 +1,12 @@
 //! The bytes of an ELF-64 relocatable object: the header, each section's bytes, their
 //! relocations, the symbol and string tables, then the section headers.
 
+mod numbers;
+
 use vun_index::{Idx, IndexVec};
 
 use super::Strings;
-use crate::{Binding, Contents, Machine, Object, RelocKind, SectionId, SymbolId, SymbolKind};
+use crate::{Binding, Contents, Object, SectionId, SymbolId};
 
 const HEADER: u64 = 64;
 const SECTION_HEADER: u16 = 64;
@@ -118,7 +120,9 @@ impl Object {
             let offset = w.at(8);
             for r in &s.relocs {
                 w.out.extend_from_slice(&r.offset.to_le_bytes());
-                let kind = elf_relocation(self.machine, r.kind)
+                let kind = self
+                    .machine
+                    .elf_relocation(r.kind)
                     .expect("backends emit the relocations their machine has");
                 let info = u64::from(number[r.symbol]) << 32 | u64::from(kind);
                 w.out.extend_from_slice(&info.to_le_bytes());
@@ -146,16 +150,7 @@ impl Object {
         w.out.extend_from_slice(&[0; 24]);
         for &id in order {
             let s = &self.symbols[id];
-            let kind: u8 = match s.kind {
-                SymbolKind::Unknown => 0,
-                SymbolKind::Object => 1,
-                SymbolKind::Func => 2,
-                SymbolKind::Section => 3,
-            };
-            let bind: u8 = match s.binding {
-                Binding::Local => 0,
-                Binding::Global => 1,
-            };
+            let (kind, bind) = (s.kind.elf(), s.binding.elf());
             let section =
                 s.section.map_or(0, |s| u16::try_from(Writer::number(s)).expect("sections fit 16 bits"));
             w.out.extend_from_slice(&strings.add(&s.name).to_le_bytes());
@@ -241,7 +236,7 @@ impl Object {
         header.extend_from_slice(&MAGIC);
         header.extend_from_slice(&[CLASS64, LITTLE, CURRENT, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
         header.extend_from_slice(&RELOCATABLE.to_le_bytes());
-        header.extend_from_slice(&elf_machine(self.machine).to_le_bytes());
+        header.extend_from_slice(&self.machine.elf().to_le_bytes());
         header.extend_from_slice(&u32::from(CURRENT).to_le_bytes());
         for word in [0, 0, shoff] {
             header.extend_from_slice(&u64::to_le_bytes(word));
@@ -252,39 +247,5 @@ impl Object {
             header.extend_from_slice(&half.to_le_bytes());
         }
         header
-    }
-}
-
-/// The number of a relocation kind (`R_X86_64_*`, `R_AARCH64_*`), if the machine has it.
-const fn elf_relocation(machine: Machine, kind: RelocKind) -> Option<u32> {
-    Some(match (machine, kind) {
-        (Machine::X86_64, RelocKind::Abs64) => 1,
-        (Machine::X86_64, RelocKind::Pc32) => 2,
-        (Machine::X86_64, RelocKind::Call32) => 4,
-        (Machine::X86_64, RelocKind::GotPc32) => 9,
-        (Machine::X86_64, RelocKind::Abs32) => 10,
-        (Machine::Aarch64, RelocKind::Abs64) => 257,
-        (Machine::Aarch64, RelocKind::Abs32) => 258,
-        (Machine::Aarch64, RelocKind::Pc32) => 261,
-        (Machine::Aarch64, RelocKind::Page21) => 275,
-        (Machine::Aarch64, RelocKind::PageOffset12) => 277,
-        (Machine::Aarch64, RelocKind::PageOffset8) => 278,
-        (Machine::Aarch64, RelocKind::Branch19) => 280,
-        (Machine::Aarch64, RelocKind::Jump26) => 282,
-        (Machine::Aarch64, RelocKind::Call26) => 283,
-        (Machine::Aarch64, RelocKind::PageOffset16) => 284,
-        (Machine::Aarch64, RelocKind::PageOffset32) => 285,
-        (Machine::Aarch64, RelocKind::PageOffset64) => 286,
-        (Machine::Aarch64, RelocKind::GotPage21) => 311,
-        (Machine::Aarch64, RelocKind::GotPageOffset64) => 312,
-        _ => return None,
-    })
-}
-
-/// The `EM_*` number of `machine`.
-const fn elf_machine(machine: Machine) -> u16 {
-    match machine {
-        Machine::X86_64 => 62,
-        Machine::Aarch64 => 183,
     }
 }

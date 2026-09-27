@@ -48,7 +48,8 @@ impl Sel<'_, '_> {
     /// Writes the frame's size into the prologue's immediate, the last field of its `sub`.
     pub(super) fn frame(&mut self, frame: u64) {
         let (at, imm) = (self.state.frame_at, self.state.frame_imm);
-        let size = u32::try_from(frame).expect("frames fit 4 GiB");
+        // The CPU sign-extends the immediate: a frame of 2 GiB or more would grow the stack down.
+        let size = i32::try_from(frame).expect("frames fit 2 GiB");
         self.asm.overwrite(imm, &size.to_le_bytes());
         let sub = Inst::new(Op::Sub, Size::B64, &[Reg::Rsp.into(), Operand::Imm(i64::from(size))]);
         self.asm.relist(at, sub);

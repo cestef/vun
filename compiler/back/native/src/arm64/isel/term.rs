@@ -91,7 +91,7 @@ impl Sel<'_, '_> {
 
     /// `cmp v, bits`, at `size`: as an immediate where it fits one, else through the carrier.
     fn compare_case(&mut self, v: Reg, size: Size, bits: u128) {
-        let value = u64::try_from(bits & u128::from(u64::MAX)).expect("masked").cast_signed();
+        let value = vun_asm::imm::low64(bits).cast_signed();
         let operands: [Opnd; 2] = [v.into(), Operand::Imm(value)];
         if Op::Cmp.form(size, &operands).is_none() {
             constant(&mut self.asm, Arm::CARRIER, value.cast_unsigned());

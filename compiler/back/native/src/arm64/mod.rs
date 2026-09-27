@@ -89,7 +89,7 @@ impl Arch for Arm {
     fn recompute(code: &mut Asm<Address>, dst: Reg, what: Recompute) {
         match what {
             Recompute::Const(bits) => {
-                constant(code, dst, u64::try_from(bits & u128::from(u64::MAX)).expect("masked"));
+                constant(code, dst, vun_asm::imm::low64(bits));
             }
             Recompute::Addr(Place { anchor: Anchor::Frame, disp }) => offset(code, dst, FP, disp),
             Recompute::Addr(Place { anchor: Anchor::Sym(target), disp }) => {
@@ -168,11 +168,17 @@ pub fn address(code: &mut Asm<Address>, dst: Reg, target: Address) {
     }
 }
 
+/// Whether `op` of `size` between `reg` and memory `disp` bytes past `base` is one instruction.
+#[must_use]
+pub fn reaches(op: Op, size: Size, reg: Opnd, base: Reg, disp: i64) -> bool {
+    op.form(size, &[reg, Opnd::Mem(Mem::at(base, disp))]).is_some()
+}
+
 /// `op` of `size` between `reg` and memory `disp` bytes past `base`: at an offset where a form
 /// takes it, else at an index built in `scratch`.
 pub fn access(code: &mut Asm<Address>, op: Op, size: Size, reg: Opnd, base: Reg, disp: i64, scratch: Reg) {
     let at = Opnd::Mem(Mem::at(base, disp));
-    if op.form(size, &[reg, at]).is_some() {
+    if reaches(op, size, reg, base, disp) {
         code.emit(op, size, &[reg, at]);
     } else {
         constant(code, scratch, disp.cast_unsigned());

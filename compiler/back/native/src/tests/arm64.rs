@@ -117,3 +117,17 @@ fn apple_packs_a_c_calls_stack_arguments_by_their_own_size() {
     assert_eq!(stacked(Convention::Darwin), (vec![(0, 1), (1, 1), (2, 2), (4, 4)], 16));
     assert_eq!(stacked(Convention::Aapcs64), (vec![(0, 8), (8, 8), (16, 8), (24, 8)], 32));
 }
+
+#[test]
+fn a_record_after_packed_scalars_is_word_aligned_on_the_stack() {
+    use crate::arm64::abi::{Convention, Loc, Passing};
+    use vun_lir::{AbiType, Record};
+    let byte = AbiType::Int(Scalar::I8, Ext::Zero);
+    let pair = Record { size: 16, align: 8, fields: vec![(0, Scalar::I64), (8, Scalar::I64)] };
+    let mut params = vec![byte.clone(); 9];
+    params.push(AbiType::Record(pair));
+    let signature = Signature { conv: Conv::C, params, result: None };
+    let passing = Passing::of(&signature, Convention::Darwin).unwrap();
+    assert_eq!(passing.params[8], Loc::Stack { offset: 0, bytes: 1 });
+    assert_eq!(passing.params[9], Loc::Copied { offset: 8, size: 16 });
+}

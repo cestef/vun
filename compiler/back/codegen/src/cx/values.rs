@@ -3,7 +3,7 @@
 //! registers freed for instructions that write fixed ones. Registers an instruction uses are
 //! locked until it is done, so nothing it holds is evicted under it.
 
-use vun_asm::imm::sign_extend;
+use vun_asm::imm::{low64, sign_extend};
 use vun_lir::Value;
 
 use super::Cx;
@@ -25,7 +25,7 @@ impl<A: Arch> Cx<'_, A> {
     pub fn imm(&self, v: Value) -> Option<i64> {
         let Some(Recompute::Const(bits)) = self.values[v].recompute else { return None };
         let width = self.f.ty(v).bits(self.unit.pointer_bits);
-        (width <= 64).then(|| sign_extend(u64::try_from(bits & u128::from(u64::MAX)).expect("masked"), width))
+        (width <= 64).then(|| sign_extend(low64(bits), width))
     }
 
     /// The address `v` is, when it is known while compiling.

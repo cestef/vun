@@ -1,16 +1,25 @@
 //! Immediates: which values an encoding of some width holds, and the bits it holds them as.
 //! Values are the bits of an `i64`; an operation of `op_bits` reads only its low `op_bits`.
 
+/// The low 64 bits of a constant's bits, which every immediate is taken from.
+#[must_use]
+#[expect(clippy::cast_possible_truncation, reason = "the low 64 bits")]
+pub const fn low64(bits: u128) -> u64 {
+    bits as u64
+}
+
 /// The low `bits` bits of `value`.
 #[must_use]
 pub const fn truncate(value: i64, bits: u32) -> u64 {
     if bits >= 64 { value.cast_unsigned() } else { value.cast_unsigned() & ((1 << bits) - 1) }
 }
 
-/// The low `bits` bits of `value`, sign-extended to 64.
+/// The low `bits` bits of `value`, sign-extended to 64: 0 of none.
 #[must_use]
 pub const fn sign_extend(value: u64, bits: u32) -> i64 {
-    if bits >= 64 {
+    if bits == 0 {
+        0
+    } else if bits >= 64 {
         value.cast_signed()
     } else {
         let shift = 64 - bits;

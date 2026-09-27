@@ -46,29 +46,25 @@ impl Sel<'_, '_> {
         self.asm.emit(Op::Movd, size, &[x.into(), r.into()]);
     }
 
-    /// Loads the `bytes` bytes at `at` into `carrier`.
+    /// Loads the `bytes` bytes at `at` into `carrier`: a float part, of 4 or 8 bytes, directly.
     pub(super) fn load_part(&mut self, carrier: Carrier, at: Mem<vun_lir::Address>, bytes: u64) {
         match carrier {
             Carrier::Int(r) => self.load_bytes(r, at, bytes),
-            Carrier::Sse(x) => {
-                self.load_bytes(X86::TEMP, at, bytes);
-                self.move_to_sse(bits(bytes), x, X86::TEMP);
-            }
+            Carrier::Sse(x) => self.asm.emit(Op::Movd, bits(bytes), &[x.into(), at.into()]),
         }
     }
 
-    /// Stores the low `bytes` bytes `carrier` holds at `at`.
+    /// Stores the low `bytes` bytes `carrier` holds at `at`, which a general register no longer
+    /// holds after.
     pub(super) fn store_part(&mut self, at: Mem<vun_lir::Address>, carrier: Carrier, bytes: u64) {
         match carrier {
             Carrier::Int(r) => self.store_bytes(at, r, bytes),
-            Carrier::Sse(x) => {
-                self.asm.emit(Op::Movd, bits(bytes), &[X86::TEMP.into(), x.into()]);
-                self.store_bytes(at, X86::TEMP, bytes);
-            }
+            Carrier::Sse(x) => self.asm.emit(Op::Movd, bits(bytes), &[at.into(), x.into()]),
         }
     }
 
-    /// Loads `bytes` (1 to 8) bytes at `at` into `dst`, in pieces a load can take.
+    /// Loads `bytes` (1 to 8) bytes at `at` into `dst`, in pieces a load can take, through
+    /// [`X86::TEMP`], which `dst` and `at` must not be.
     fn load_bytes(&mut self, dst: Reg, at: Mem<vun_lir::Address>, bytes: u64) {
         if let Some(size) = Size::of_bytes(bytes) {
             self.asm.emit(Op::Movzx, size, &[dst.into(), at.into()]);
@@ -83,17 +79,17 @@ impl Sel<'_, '_> {
         }
     }
 
-    /// Stores the low `bytes` (1 to 8) bytes of `src` at `at`.
+    /// Stores the low `bytes` (1 to 8) bytes of `src` at `at`, lowest piece first, shifting each
+    /// stored piece out of `src`: no other register is written, so `at` may be based on any.
     fn store_bytes(&mut self, at: Mem<vun_lir::Address>, src: Reg, bytes: u64) {
-        if let Some(size) = Size::of_bytes(bytes) {
-            self.asm.emit(Op::Mov, size, &[at.into(), src.into()]);
-            return;
-        }
+        let mut stored = 0;
         for (size, offset) in pieces(bytes, &Size::WIDEST, |s| u64::from(s.bytes())) {
+            if offset > stored {
+                self.asm.emit(Op::Shr, Size::B64, &[src.into(), ((offset - stored) * 8).into()]);
+                stored = offset;
+            }
             let piece = at.plus(offset).expect("records fit 2 GiB");
-            self.asm.emit(Op::Mov, Size::B64, &[X86::CARRIER.into(), src.into()]);
-            self.asm.emit(Op::Shr, Size::B64, &[X86::CARRIER.into(), (offset * 8).into()]);
-            self.asm.emit(Op::Mov, size, &[piece.into(), X86::CARRIER.into()]);
+            self.asm.emit(Op::Mov, size, &[piece.into(), src.into()]);
         }
     }
 

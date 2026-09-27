@@ -160,12 +160,12 @@ impl<A: Isel> Cx<'_, A> {
 }
 
 impl<A: Arch> Cx<'_, A> {
-    /// The label of `block`.
     /// Records that the frame takes `step` here, after the code emitted so far.
     pub fn unwound(&mut self, step: Step) {
         self.unwind.push((self.asm.here(), step));
     }
 
+    /// The label of `block`.
     #[must_use]
     pub fn label(&self, block: Block) -> Label {
         self.labels[block]

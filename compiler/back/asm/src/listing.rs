@@ -14,8 +14,9 @@ pub enum Line<T> {
     Label(Label),
 }
 
-/// The most bytes a line shows before the instruction's text.
-const BYTES_SHOWN: usize = 10;
+/// The bytes a line leaves room for before the instruction's text, so that most align; a longer
+/// instruction's pushes its text right.
+const BYTES_COLUMN: usize = 10;
 
 impl<T: fmt::Display> Line<T> {
     /// The line as a listing prints it, reading its bytes from `code`.
@@ -41,7 +42,7 @@ impl<T: fmt::Display> fmt::Display for Shown<'_, T> {
                 for (i, b) in bytes.iter().enumerate() {
                     write!(f, "{}{b:02x}", if i == 0 { "" } else { " " })?;
                 }
-                let pad = (BYTES_SHOWN * 3).saturating_sub(bytes.len() * 3);
+                let pad = (BYTES_COLUMN * 3).saturating_sub(bytes.len() * 3);
                 write!(f, "{:pad$} {inst}", "")
             }
         }

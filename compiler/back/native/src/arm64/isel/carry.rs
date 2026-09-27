@@ -7,7 +7,7 @@ use vun_lir::Value;
 
 use super::Sel;
 use crate::arm64::abi::Carrier;
-use crate::arm64::{Arm, FAR, Opnd, access, size_of};
+use crate::arm64::{Arm, FAR, Opnd, access, offset, reaches, size_of};
 
 /// The size of a float's bits of `bytes` bytes.
 fn bits(bytes: u64) -> Size {
@@ -93,11 +93,26 @@ impl Sel<'_, '_> {
     }
 
     /// Copies `bytes` bytes from `from` to `to`, both registers holding addresses, through `via`,
-    /// largest pieces first.
+    /// largest pieces first. A piece past what an access reaches moves both addresses up to it
+    /// rather than building its offset, so no register but these is written, and `via` may be
+    /// [`FAR`]; both addresses are as they were after.
     pub(super) fn copy_bytes(&mut self, to: Reg, from: Reg, bytes: u64, via: Reg) {
+        let mut moved = 0;
         for (size, at) in pieces(bytes, &Size::WIDEST, |s| u64::from(s.bytes())) {
-            access(&mut self.asm, Op::Ldr, size, via.into(), from, at, FAR);
-            access(&mut self.asm, Op::Str, size, via.into(), to, at, FAR);
+            let disp = at - moved;
+            if !reaches(Op::Ldr, size, via.into(), from, disp)
+                || !reaches(Op::Str, size, via.into(), to, disp)
+            {
+                offset(&mut self.asm, from, from, at - moved);
+                offset(&mut self.asm, to, to, at - moved);
+                moved = at;
+            }
+            access(&mut self.asm, Op::Ldr, size, via.into(), from, at - moved, FAR);
+            access(&mut self.asm, Op::Str, size, via.into(), to, at - moved, FAR);
+        }
+        if moved != 0 {
+            offset(&mut self.asm, from, from, -moved);
+            offset(&mut self.asm, to, to, -moved);
         }
     }
 }

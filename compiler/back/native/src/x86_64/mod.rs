@@ -7,6 +7,7 @@ mod isel;
 mod snippets;
 
 use vun_asm::Via;
+use vun_asm::imm::low64;
 use vun_asm_x86_64::{Asm, Cc, Emit, Mem, Op, Operand, Reg, Size, X86_64};
 use vun_codegen::snippet::{Emits, Width};
 use vun_codegen::{Anchor, Arch, Place, Recompute};
@@ -60,8 +61,7 @@ impl Arch for X86 {
     fn recompute(code: &mut Asm<Address>, dst: Reg, what: Recompute) {
         match what {
             Recompute::Const(bits) => {
-                let bits = u64::try_from(bits & u128::from(u64::MAX)).expect("masked");
-                code.emit(Op::Mov, Size::B64, &[dst.into(), Opnd::Imm(bits.cast_signed())]);
+                code.emit(Op::Mov, Size::B64, &[dst.into(), Opnd::Imm(low64(bits).cast_signed())]);
             }
             Recompute::Addr(place) => {
                 if let Some(mem) = memory(place) {

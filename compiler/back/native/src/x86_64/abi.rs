@@ -21,6 +21,8 @@ pub const SSE_RETURNS: [Xmm; 2] = [Xmm(0), Xmm(1)];
 const EIGHTBYTE: u64 = 8;
 /// The size up to which a record travels in registers.
 const IN_REGISTERS: u64 = 16;
+/// The bytes an eightbyte of floats may hold: a `f32`, or two, or a `f64`.
+const FLOAT_PARTS: [u64; 2] = [4, 8];
 
 /// A register a value travels in: a general one, or an SSE one for floats.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -86,7 +88,12 @@ fn eightbytes(record: &Record) -> Result<Vec<(Class, u64)>, Missing> {
             let fields = record.fields.iter().filter(|&&(at, _)| at >= from && at < to);
             let classes = fields.map(|&(_, s)| Class::of(s)).collect::<Result<Vec<_>, _>>()?;
             let sse = !classes.is_empty() && classes.iter().all(|&c| c == Class::Sse);
-            Ok((if sse { Class::Sse } else { Class::Int }, (record.size - from).min(EIGHTBYTE)))
+            let bytes = (record.size - from).min(EIGHTBYTE);
+            // A float part moves between memory and its register in one `movd` or `movq`.
+            if sse && !FLOAT_PARTS.contains(&bytes) {
+                return Err(Missing::FloatPart(bytes));
+            }
+            Ok((if sse { Class::Sse } else { Class::Int }, bytes))
         })
         .collect()
 }
@@ -181,9 +188,10 @@ impl Passing {
         for param in &signature.params {
             let loc = match param {
                 AbiType::Record(r) if c => {
-                    let parts = eightbytes(r)?;
+                    // A record past two eightbytes is copied to the stack whole, taking no register.
+                    let parts = if r.size <= IN_REGISTERS { eightbytes(r)? } else { Vec::new() };
                     let classes: Vec<Class> = parts.iter().map(|&(class, _)| class).collect();
-                    match free.take(&classes).filter(|_| r.size <= IN_REGISTERS) {
+                    match free.take(&classes).filter(|_| !parts.is_empty()) {
                         Some(carriers) => {
                             Loc::Split(carriers.into_iter().zip(parts.iter().map(|&(_, n)| n)).collect())
                         }

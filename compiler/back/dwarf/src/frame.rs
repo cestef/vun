@@ -63,6 +63,9 @@ const ADVANCE_LOC1: u8 = 0x02;
 const ADVANCE_LOC2: u8 = 0x03;
 const ADVANCE_LOC4: u8 = 0x04;
 const OFFSET: u8 = 0x80;
+/// The registers `DW_CFA_offset` numbers in its low six bits.
+const OFFSET_REGS: u8 = 0x40;
+const OFFSET_EXTENDED: u8 = 0x05;
 const SAME_VALUE: u8 = 0x08;
 const REMEMBER_STATE: u8 = 0x0a;
 const RESTORE_STATE: u8 = 0x0b;
@@ -162,9 +165,14 @@ impl CallFrame {
     /// `reg` is stored `offset` bytes from where the caller's frame starts.
     fn saved(out: &mut Out, reg: u16, offset: i64) {
         let factored = (offset / DATA_ALIGN).cast_unsigned();
+        // The short form holds the register in six bits; others, such as arm64's `d8`, are
+        // written in full.
         match u8::try_from(reg) {
-            Ok(low) if low < 0x40 => out.u8(OFFSET | low),
-            _ => unreachable!("the registers frames save are numbered below 64"),
+            Ok(low) if low < OFFSET_REGS => out.u8(OFFSET | low),
+            _ => {
+                out.u8(OFFSET_EXTENDED);
+                out.uleb(u64::from(reg));
+            }
         }
         out.uleb(factored);
     }
