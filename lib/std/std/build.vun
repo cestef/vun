@@ -24,6 +24,11 @@ Flash := enum { probe(Probe), uf2, dfu };
 /// Where a program's tests run.
 Runner := enum { host, qemu(&[u8]), probe(Probe) };
 
+/// What a program is built as: an executable a system runs, or a library other programs link,
+/// shared (loaded when they run) or static (copied into them). A library has no runtime and no
+/// entry: its exports are its interface (spec 08, section 2).
+Output := enum { executable, shared, static };
+
 /// What a program is built from.
 Options := struct {
     /// Its root file, relative to the directory of the `build.vun`.
@@ -33,6 +38,7 @@ Options := struct {
     deps: &[Use] = &[],
     /// Its memory map, empty for a program an operating system loads.
     memory: &[Region] = &[],
+    output: Output = .executable,
 };
 /// A dependency a program uses: its name in `package.deps`, as a step builds it.
 Use := struct { name: lang.meta.Name, dep: Dep };

@@ -6,7 +6,7 @@
 mod tests;
 mod write;
 
-use vun_index::{IndexVec, index};
+use vun_index::{Idx, IndexVec, index};
 
 index! {
     pub struct SectionId;
@@ -173,6 +173,33 @@ impl Object {
             kind: SymbolKind::Section,
             binding: Binding::Local,
         })
+    }
+
+    /// Makes every relocation naming a symbol this object defines name its section instead, at
+    /// the symbol's offset: the object's own definitions are reached as they are here, never
+    /// through another module's, which a shared library needs of every symbol it exports.
+    ///
+    /// # Panics
+    /// Panics on a symbol at an offset past 2^63.
+    pub fn bind_locally(&mut self) {
+        let targets: Vec<Option<(SectionId, u64)>> = self
+            .symbols
+            .iter()
+            .map(|(_, s)| s.section.filter(|_| s.kind != SymbolKind::Section).map(|at| (at, s.value)))
+            .collect();
+        let mut sections = self.sections.iter().map(|(id, _)| id).collect::<Vec<_>>();
+        sections.retain(|id| targets.iter().flatten().any(|(at, _)| at == id));
+        let symbols: Vec<(SectionId, SymbolId)> =
+            sections.into_iter().map(|s| (s, self.section_symbol(s))).collect();
+        for (_, section) in self.sections.iter_mut() {
+            for r in &mut section.relocs {
+                let Some((at, value)) = targets.get(r.symbol.index()).copied().flatten() else { continue };
+                let (_, symbol) =
+                    symbols.iter().find(|(s, _)| *s == at).expect("each defining section has one");
+                r.symbol = *symbol;
+                r.addend += i64::try_from(value).expect("offsets fit 63 bits");
+            }
+        }
     }
 
     /// Appends `bytes` to `section` at `align`: the offset they start at.

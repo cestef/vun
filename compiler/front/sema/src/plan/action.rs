@@ -5,11 +5,13 @@ use vun_codec::{Decode, Encode};
 use vun_intern::Symbol;
 use vun_items::std::{
     build_Action as action, build_Dep as dep, build_Flashed as flashed, build_Needed as needed,
-    build_Options as options, build_Program as program, build_Region as region, build_Step as step,
-    build_Tested as tested, build_Use as used,
+    build_Options as options, build_Output as output, build_Program as program, build_Region as region,
+    build_Step as step, build_Tested as tested, build_Use as used,
 };
 
-use crate::target::{Declared, Members, Read, Unread};
+use vun_target::Output;
+
+use crate::target::{Declared, Members, Read, Unread, Variants};
 use crate::ty::Value;
 
 /// What a step does.
@@ -41,6 +43,7 @@ pub struct Options {
     pub target: Declared,
     pub deps: Vec<Use>,
     pub memory: Vec<Region>,
+    pub output: Output,
 }
 
 /// A dependency a program uses, by its name and the step that builds it.
@@ -88,8 +91,17 @@ impl Read for Options {
             target: m.read(options::target)?,
             deps: m.list(options::deps)?,
             memory: m.list(options::memory)?,
+            output: m.read(options::output)?,
         })
     }
+}
+
+impl Variants for Output {
+    const VARIANTS: &'static [(vun_items::Item, Self)] = &[
+        (output::executable, Self::Executable),
+        (output::shared, Self::Shared),
+        (output::r#static, Self::Static),
+    ];
 }
 
 impl Read for Use {

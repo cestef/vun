@@ -15,7 +15,7 @@ use vun_lir::{FuncId, Scalar, Unit};
 use vun_lower::Unlowered;
 use vun_origin::{OriginId, OriginTable, Resolve};
 use vun_span::{FileId, SourceFiles, SourceMap};
-use vun_target::{Name, Profile, TargetSpec};
+use vun_target::{Name, Output, Profile, TargetSpec};
 
 use crate::Session;
 use crate::registry::Codegen;
@@ -30,15 +30,21 @@ pub const LINKER: Param = Param::option("linker")
     .values(Values::Choice(|| crate::Registry::with_defaults().linkers().map(|l| l.info().id.0).collect()))
     .env("VUN_LINKER");
 
+pub const LIBRARY: Param = Param::option("library")
+    .about("build a library other programs link instead of an executable")
+    .values(Values::Choice(|| Output::ALL.iter().filter(|o| o.library()).map(|o| o.name()).collect()));
+
 pub const RELEASE: Param = Param::flag("release").short('r').about("build fast code rather than build fast");
 
 /// Applies `--release`, `--backend` and `--linker` to the session.
 pub fn configure(session: &mut Session, args: &Args) {
     let profile = if args.flag(&RELEASE) { Profile::Release } else { Profile::Debug };
+    let library = args.value(&LIBRARY).and_then(|name| Output::ALL.into_iter().find(|o| o.name() == name));
     session.codegen = Codegen {
         profile,
         backend: args.value(&BACKEND).map(Symbol::intern),
         linker: args.value(&LINKER).map(Symbol::intern),
+        output: library.unwrap_or_default(),
     };
 }
 

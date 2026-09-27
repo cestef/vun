@@ -103,7 +103,11 @@ start := wasi.cli.command(main);     // component model: exports wasi:cli/run#ru
 kmod  := linux.module(.{ .init = init, .exit = exit });   // init_module / cleanup_module + .modinfo
 ```
 
-A library is a root file with `#[link.export]` declarations and no runtime.
+A library is a root file with `#[link.export]` declarations and no runtime: built as
+`std.build.Output.shared` or `.static` (a plan's `Options.output`, or `vun build --library
+shared`), it has no entry symbol, and its file is named as its object format names libraries
+(`libcalc.so` and `libcalc.a` on ELF, `calc.wasm` on WebAssembly). A shared library binds to its
+own definitions: its exports are not replaced by another module's.
 
 ## 3. Typed link symbols in detail
 

@@ -21,6 +21,10 @@ pub const Probe: Item = Item::new(&["std", "build", "Probe"]);
 pub const Flash: Item = Item::new(&["std", "build", "Flash"]);
 /// Where a program's tests run.
 pub const Runner: Item = Item::new(&["std", "build", "Runner"]);
+/// What a program is built as: an executable a system runs, or a library other programs link,
+/// shared (loaded when they run) or static (copied into them). A library has no runtime and no
+/// entry: its exports are its interface (spec 08, section 2).
+pub const Output: Item = Item::new(&["std", "build", "Output"]);
 /// What a program is built from.
 pub const Options: Item = Item::new(&["std", "build", "Options"]);
 /// A dependency a program uses: its name in `package.deps`, as a step builds it.

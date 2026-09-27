@@ -27,7 +27,13 @@ pub const PROGRAM: Program<Session> = Program {
                 build,
             )
             .aliases(&["b"])
-            .params(&[FILE, crate::codegen::BACKEND, crate::codegen::LINKER, crate::program::OUTPUT])
+            .params(&[
+                FILE,
+                crate::codegen::BACKEND,
+                crate::codegen::LINKER,
+                crate::codegen::LIBRARY,
+                crate::program::OUTPUT,
+            ])
             .sets(&[COMPILE])
             .examples(&[
                 Example { line: "main.vun", about: "build the program, named after its file" },

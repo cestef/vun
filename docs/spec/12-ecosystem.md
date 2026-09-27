@@ -307,10 +307,11 @@ implemented; nothing is listed that does not run.
 
 | Command | Does |
 |---------|------|
-| `vun build <file>` (`b`) | build the program a root file exports |
+| `vun build <file>` (`b`) | build the program a root file exports; `--library shared` builds a library of its exports |
 | `vun run <file> [args]...` (`r`) | build and run it; words after `--` go to the program |
 | `vun check <file>` (`c`) | analyze without generating code |
 | `vun explain <id>` | the explanation page of a diagnostic, offline, paged |
+| `vun fmt [--check] <files>...` | lay out source files as the formatter does (spec 13, section 5); `--check` changes nothing and fails when a file would change |
 | `vun pkg add <source>`, `update`, `pack` | declare a dependency, raise versions, write the archive |
 | `vun tool bind <header>` | C declarations as Vun |
 | `vun toolchain components` | the backends and linkers of this toolchain |
@@ -319,7 +320,7 @@ implemented; nothing is listed that does not run.
 | `vun debug tokens\|cst\|manifest\|plan\|hir\|types\|mir\|layout\|program\|lir\|code\|frames <file>` | every representation with origins (spec 10) |
 | `vun debug coverage\|queries\|compare <file>` | how far the stages reach; what the saved queries hold; every backend run and compared |
 
-Still to come, each as a verb or a group verb: `new`, `test`, `bench`, `fuzz`, `fmt`, `fix`, `doc`,
+Still to come, each as a verb or a group verb: `new`, `test`, `bench`, `fuzz`, `fix`, `doc`,
 `pkg vendor|why|tag|api`, `tool header|svd`, `target flash|attach|debug`, `toolchain
 list|install|prune`, `util lsp`.
 
@@ -378,7 +379,8 @@ Wrap the vendor's tree; never repackage it.
   headers, so bindings match the real build's macros.
 
 **Vun inside a vendor build.**
-- `vun build --emit staticlib --header` produces a library and a C header.
+- `vun build --library static` produces a library (`vun tool header` its C header, both still to
+  come for static libraries, which need the target's archiver).
 - The toolchain ships `vun.cmake` with `vun_add_library(name DIR ...)`.
 - A package can ship an `idf_component.yml` (ESP-IDF) and a `zephyr/module.yml` (Zephyr, pulled in
   by west) that call it. The SDK keeps ownership of startup, linking and its component manager.

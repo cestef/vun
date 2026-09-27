@@ -3,7 +3,7 @@
 //! and Mach-O are still to come.
 
 use vun_diag::{DiagCtxt, Diagnostic, ErrorGuaranteed, Msg, errors};
-use vun_link::{LinkPlan, Linker, LinkerInfo, OutputKind};
+use vun_link::{LinkPlan, Linker, LinkerInfo, Output};
 use vun_target::{Name, Readiness, TargetSpec};
 use vun_tool::{Arg, Executable, Invocation, Tool};
 
@@ -20,8 +20,13 @@ const FORMATS: [Name; FLAVORS.len()] = {
     formats
 };
 
-pub const INFO: LinkerInfo =
-    LinkerInfo { id: Name("lld"), formats: &FORMATS, regions: false, readiness: Readiness::Ready };
+pub const INFO: LinkerInfo = LinkerInfo {
+    id: Name("lld"),
+    formats: &FORMATS,
+    regions: false,
+    outputs: &[Output::Executable, Output::Shared],
+    readiness: Readiness::Ready,
+};
 
 /// `wasm-ld`'s options.
 const OUTPUT: &str = "-o";
@@ -37,9 +42,6 @@ impl Linker for LldLinker {
     }
 
     fn link(&self, plan: &LinkPlan, target: &TargetSpec, diag: &mut DiagCtxt) -> Result<(), ErrorGuaranteed> {
-        if plan.kind != OutputKind::Executable {
-            return Err(INFO.unavailable(diag));
-        }
         let Some(&(_, program)) = FLAVORS.iter().find(|(format, _)| format.is(target.object_format)) else {
             return Err(INFO.unavailable(diag));
         };

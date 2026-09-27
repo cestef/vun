@@ -9,14 +9,19 @@ use std::path::Path;
 
 use vun_diag::{DiagCtxt, Diagnostic, ErrorGuaranteed, Msg, errors};
 use vun_fs::Edit;
-use vun_link::{LinkPlan, Linker, LinkerInfo, OutputKind};
+use vun_link::{LinkPlan, Linker, LinkerInfo, Output};
 use vun_target::{Name, Readiness, TargetSpec};
 use vun_tool::{Arg, Executable, Invocation, Tool, gcc};
 
 pub use script::{Script, Unscripted};
 
-pub const INFO: LinkerInfo =
-    LinkerInfo { id: Name("gnu"), formats: &[Name("elf")], regions: true, readiness: Readiness::Ready };
+pub const INFO: LinkerInfo = LinkerInfo {
+    id: Name("gnu"),
+    formats: &[Name("elf")],
+    regions: true,
+    outputs: &[Output::Executable, Output::Shared],
+    readiness: Readiness::Ready,
+};
 
 /// The extension of a linker script written beside the output.
 const SCRIPT: &str = "ld";
@@ -58,15 +63,15 @@ impl Ld<'_> {
         target: &TargetSpec,
         diag: &mut DiagCtxt,
     ) -> Result<(), ErrorGuaranteed> {
-        if plan.kind != OutputKind::Executable {
-            return Err(info.unavailable(diag));
-        }
         let compiler = &target.c.compiler;
         let mut args: Vec<Arg> = compiler.link_flags.iter().map(|&f| Arg::Text(f)).collect();
         match self {
             Self::Own => {}
             Self::Flag(flag) => args.push(flag.into()),
             Self::In(dir) => args.extend([gcc::PROGRAMS.into(), Arg::Path(dir.to_path_buf())]),
+        }
+        if plan.kind == Output::Shared {
+            args.push(gcc::SHARED.into());
         }
         args.extend([gcc::OUTPUT.into(), Arg::Path(plan.output.clone())]);
         if let Some(entry) = plan.entry {

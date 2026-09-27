@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use vun_intern::Symbol;
-use vun_link::{LinkPlan, MemoryRegion, OutputKind, SectionPlacement};
+use vun_link::{LinkPlan, MemoryRegion, Output, SectionPlacement};
 use vun_origin::OriginTable;
 use vun_span::{SourceFiles, Span};
 
@@ -22,7 +22,7 @@ fn regions_and_sections_become_a_script() {
     let plan = LinkPlan {
         inputs: vec![PathBuf::from("a.o")],
         output: PathBuf::from("a"),
-        kind: OutputKind::Executable,
+        kind: Output::Executable,
         entry: Some(name("Reset")),
         regions: vec![MemoryRegion { name: name("flash"), origin: 0x0800_0000, len: 0x10_0000, declared }],
         sections: vec![placed(".data", "flash", Some("flash"))],
@@ -53,7 +53,7 @@ fn names_a_script_cannot_say_are_refused() {
     let plan = |regions, sections| LinkPlan {
         inputs: Vec::new(),
         output: PathBuf::from("a"),
-        kind: OutputKind::Executable,
+        kind: Output::Executable,
         entry: None,
         regions,
         sections,

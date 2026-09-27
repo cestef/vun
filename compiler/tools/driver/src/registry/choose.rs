@@ -8,7 +8,7 @@ use vun_target::{Name, Profile, Support, TargetSpec};
 
 use super::Registry;
 
-/// Which backend a build asks for, and which linker.
+/// Which backend a build asks for, which linker, and what it builds the program as.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Codegen {
     pub profile: Profile,
@@ -16,13 +16,15 @@ pub struct Codegen {
     pub backend: Option<Symbol>,
     /// The linker named (`--linker`), overriding the target's.
     pub linker: Option<Symbol>,
+    /// An executable, or the library `--library` or the plan names.
+    pub output: vun_link::Output,
 }
 
 impl Codegen {
     /// A debug build through the backend `name`.
     #[must_use]
     pub fn through(name: Name) -> Self {
-        Self { profile: Profile::Debug, backend: Some(name.symbol()), linker: None }
+        Self { backend: Some(name.symbol()), ..Self::default() }
     }
 }
 

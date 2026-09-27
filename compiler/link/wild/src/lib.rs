@@ -3,13 +3,18 @@
 
 use vun_diag::{DiagCtxt, Diagnostic, ErrorGuaranteed, Msg, errors};
 use vun_fs::Edit;
-use vun_link::{LinkPlan, Linker, LinkerInfo};
+use vun_link::{LinkPlan, Linker, LinkerInfo, Output};
 use vun_link_gnu::Ld;
 use vun_target::{Name, Readiness, TargetSpec};
 use vun_tool::Executable;
 
-pub const INFO: LinkerInfo =
-    LinkerInfo { id: Name("wild"), formats: &[Name("elf")], regions: false, readiness: Readiness::Ready };
+pub const INFO: LinkerInfo = LinkerInfo {
+    id: Name("wild"),
+    formats: &[Name("elf")],
+    regions: false,
+    outputs: &[Output::Executable, Output::Shared],
+    readiness: Readiness::Ready,
+};
 
 /// The program, as found on the search path.
 const PROGRAM: &str = "wild";

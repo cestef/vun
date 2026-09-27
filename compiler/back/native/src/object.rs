@@ -81,6 +81,8 @@ impl<T> Assembly<'_, T> {
                 steps: c.unwind.clone(),
             });
             self.frames.write(&mut object, &fdes.collect::<Vec<_>>());
+            // Mach-O keeps naming symbols: its linker splits sections at them.
+            object.bind_locally();
         }
         object
     }

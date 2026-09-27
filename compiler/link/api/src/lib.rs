@@ -10,15 +10,8 @@ use std::path::PathBuf;
 use vun_diag::{DiagCtxt, Diagnostic, ErrorGuaranteed, Msg, errors};
 use vun_intern::Symbol;
 use vun_origin::OriginId;
+pub use vun_target::Output;
 use vun_target::{Name, Readiness, Support, TargetSpec, Unsupported};
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum OutputKind {
-    Executable,
-    SharedLibrary,
-    /// For foreign build systems.
-    StaticLibrary,
-}
 
 /// A region of target memory, such as flash or RAM.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -47,7 +40,7 @@ pub struct LinkPlan {
     /// Objects and archives, in order.
     pub inputs: Vec<PathBuf>,
     pub output: PathBuf,
-    pub kind: OutputKind,
+    pub kind: Output,
     /// From the target (spec 08, rule 2).
     pub entry: Option<Symbol>,
     pub regions: Vec<MemoryRegion>,
@@ -79,6 +72,8 @@ pub struct LinkerInfo {
     pub formats: &'static [Name],
     /// Whether memory regions and section placement can be expressed (linker scripts).
     pub regions: bool,
+    /// What it builds programs as.
+    pub outputs: &'static [Output],
     pub readiness: Readiness,
 }
 
@@ -90,6 +85,9 @@ impl LinkerInfo {
         }
         if !self.regions && plan.places() {
             return Support::No(Unsupported::MemoryRegions);
+        }
+        if !self.outputs.contains(&plan.kind) {
+            return Support::No(Unsupported::Output(plan.kind));
         }
         Support::Yes
     }

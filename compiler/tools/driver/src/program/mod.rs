@@ -11,7 +11,7 @@ use vun_backend::{Artifact, Emits};
 use vun_command::{Param, PathKind, Values};
 use vun_diag::{Diagnostic, ErrorGuaranteed, Msg, errors};
 use vun_fs::{Edit, Part};
-use vun_link::{LinkPlan, OutputKind};
+use vun_link::LinkPlan;
 use vun_lir::FuncId;
 use vun_origin::Resolve;
 use vun_par::Parallel;
@@ -86,7 +86,7 @@ impl Session {
         let sources: Vec<&Artifact> = coded.artifacts.iter().filter(|a| a.kind == Emits::Source).collect();
         let results = sources.par_map(|a| {
             tracing::debug!(source = %a.file().display(), compiler = compiler.command.as_str(), "compiling");
-            Self::compile_source(compiler, profile, &dir, a.part)
+            Self::compile_source(compiler, profile, self.codegen.output, &dir, a.part)
         });
         let mut objects = Vec::new();
         for (artifact, result) in sources.iter().zip(results) {
@@ -144,6 +144,7 @@ impl Session {
     fn compile_source(
         compiler: &CCompiler,
         profile: Profile,
+        output: vun_link::Output,
         dir: &Path,
         part: vun_backend::Part,
     ) -> Result<PathBuf, Failure> {
@@ -161,6 +162,9 @@ impl Session {
         let mut args: Vec<Arg> = compiler.flags.iter().chain(optimize).map(|&f| Arg::Text(f)).collect();
         if compiler.frame_sizes == FrameSizes::StackUsage {
             args.push(gcc::STACK_USAGE.into());
+        }
+        if output == vun_link::Output::Shared {
+            args.push(gcc::PIC.into());
         }
         args.extend([
             gcc::COMPILE.into(),
@@ -188,13 +192,16 @@ impl Session {
         let compiled = self.compile(file)?;
         let target = &compiled.coded.target;
         let root = PathBuf::from(&self.sources.file(file).path);
-        let stem = root.file_stem().map(PathBuf::from).unwrap_or_default();
-        let output = output.map_or_else(|| compiled.builds.join(stem), Path::to_path_buf);
+        let kind = self.codegen.output;
+        let stem = root.file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or_default();
+        let output = output
+            .map_or_else(|| kind.file(&compiled.builds, &stem, target.object_format), Path::to_path_buf);
         let plan = LinkPlan {
             inputs: compiled.objects.clone(),
             output: output.clone(),
-            kind: OutputKind::Executable,
-            entry: target.entry_symbol,
+            kind,
+            // A library's exports are its interface: nothing starts it.
+            entry: target.entry_symbol.filter(|_| !kind.library()),
             regions: self.memory.clone(),
             sections: Vec::new(),
         };
@@ -209,6 +216,7 @@ impl Session {
                 Unsupported::ObjectFormat(format) => msg.text("objects of format ").code(format.as_str()),
                 Unsupported::MemoryRegions => msg.text("the placement of sections in memory regions"),
                 Unsupported::Arch(arch) => msg.text("code for ").code(arch.as_str()),
+                Unsupported::Output(output) => msg.text("programs as ").code(output.name()),
             };
             return Err(self.diag.error(Diagnostic::error(errors::LINK_UNSUPPORTED, msg)));
         }

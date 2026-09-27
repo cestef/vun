@@ -53,6 +53,52 @@ pub trait Read: Sized {
     fn read(value: &Value) -> Result<Self, Unread>;
 }
 
+/// An enum read by its variant: each declares, once, the variant of its `lang` enum each of its
+/// values is.
+pub trait Variants: Copy + 'static {
+    const VARIANTS: &'static [(Item, Self)];
+}
+
+impl<T: Variants> Read for T {
+    fn read(value: &Value) -> Result<Self, Unread> {
+        let Value::Variant { name, .. } = value else { return Err(Unread::Record) };
+        T::VARIANTS
+            .iter()
+            .find(|(variant, _)| *name == variant.symbol())
+            .map(|&(_, v)| v)
+            .ok_or(Unread::Record)
+    }
+}
+
+impl Variants for Endian {
+    const VARIANTS: &'static [(Item, Self)] = &[(endian::little, Self::Little), (endian::big, Self::Big)];
+}
+
+impl Variants for Convention {
+    const VARIANTS: &'static [(Item, Self)] = &[
+        (convention::sysv, Self::Sysv),
+        (convention::aapcs64, Self::Aapcs64),
+        (convention::darwin_arm64, Self::DarwinArm64),
+        (convention::lp64d, Self::Lp64d),
+        (convention::aapcs_vfp, Self::AapcsVfp),
+        (convention::ilp32, Self::Ilp32),
+        (convention::wasm32, Self::Wasm32),
+    ];
+}
+
+impl Variants for Atomics {
+    const VARIANTS: &'static [(Item, Self)] = &[(atomics::none, Self::None), (atomics::gnu, Self::Gnu)];
+}
+
+impl Variants for Attributes {
+    const VARIANTS: &'static [(Item, Self)] = &[(attributes::none, Self::None), (attributes::gnu, Self::Gnu)];
+}
+
+impl Variants for FrameSizes {
+    const VARIANTS: &'static [(Item, Self)] =
+        &[(frames::none, Self::None), (frames::stack_usage, Self::StackUsage)];
+}
+
 /// The members of a `struct` value.
 pub(crate) struct Members<'v>(&'v [(Symbol, Value)]);
 
@@ -160,66 +206,10 @@ impl<'v> Members<'v> {
     }
 }
 
-impl Read for Endian {
-    fn read(value: &Value) -> Result<Self, Unread> {
-        match value {
-            Value::Variant { name, .. } if *name == endian::little.symbol() => Ok(Self::Little),
-            Value::Variant { name, .. } if *name == endian::big.symbol() => Ok(Self::Big),
-            _ => Err(Unread::Record),
-        }
-    }
-}
-
-impl Read for Convention {
-    fn read(value: &Value) -> Result<Self, Unread> {
-        const VARIANTS: [(Item, Convention); 7] = [
-            (convention::sysv, Convention::Sysv),
-            (convention::aapcs64, Convention::Aapcs64),
-            (convention::darwin_arm64, Convention::DarwinArm64),
-            (convention::lp64d, Convention::Lp64d),
-            (convention::aapcs_vfp, Convention::AapcsVfp),
-            (convention::ilp32, Convention::Ilp32),
-            (convention::wasm32, Convention::Wasm32),
-        ];
-        let Value::Variant { name, .. } = value else { return Err(Unread::Record) };
-        VARIANTS.iter().find(|(variant, _)| *name == variant.symbol()).map(|&(_, c)| c).ok_or(Unread::Record)
-    }
-}
-
 impl Read for CInt {
     fn read(value: &Value) -> Result<Self, Unread> {
         let m = Members::of(value)?;
         Ok(Self { bits: m.int(cint::bits)?, align: m.int(cint::align)? })
-    }
-}
-
-impl Read for Atomics {
-    fn read(value: &Value) -> Result<Self, Unread> {
-        match value {
-            Value::Variant { name, .. } if *name == atomics::none.symbol() => Ok(Self::None),
-            Value::Variant { name, .. } if *name == atomics::gnu.symbol() => Ok(Self::Gnu),
-            _ => Err(Unread::Record),
-        }
-    }
-}
-
-impl Read for Attributes {
-    fn read(value: &Value) -> Result<Self, Unread> {
-        match value {
-            Value::Variant { name, .. } if *name == attributes::none.symbol() => Ok(Self::None),
-            Value::Variant { name, .. } if *name == attributes::gnu.symbol() => Ok(Self::Gnu),
-            _ => Err(Unread::Record),
-        }
-    }
-}
-
-impl Read for FrameSizes {
-    fn read(value: &Value) -> Result<Self, Unread> {
-        match value {
-            Value::Variant { name, .. } if *name == frames::none.symbol() => Ok(Self::None),
-            Value::Variant { name, .. } if *name == frames::stack_usage.symbol() => Ok(Self::StackUsage),
-            _ => Err(Unread::Record),
-        }
     }
 }
 

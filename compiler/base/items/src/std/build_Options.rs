@@ -13,3 +13,4 @@ pub const target: Item = Item::new(&["std", "build", "Options", "target"]);
 pub const deps: Item = Item::new(&["std", "build", "Options", "deps"]);
 /// Its memory map, empty for a program an operating system loads.
 pub const memory: Item = Item::new(&["std", "build", "Options", "memory"]);
+pub const output: Item = Item::new(&["std", "build", "Options", "output"]);

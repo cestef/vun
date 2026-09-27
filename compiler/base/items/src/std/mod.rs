@@ -9,6 +9,7 @@ pub mod build_Flash;
 pub mod build_Flashed;
 pub mod build_Needed;
 pub mod build_Options;
+pub mod build_Output;
 pub mod build_Package;
 pub mod build_Probe;
 pub mod build_Program;

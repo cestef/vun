@@ -2,6 +2,7 @@
 //! 13, section 7), and the names components declare what they handle by.
 
 use std::fmt;
+use std::path::{Path, PathBuf};
 
 use vun_codec::{Decode, Encode};
 use vun_intern::Symbol;
@@ -213,4 +214,57 @@ pub enum Unsupported {
     Arch(Symbol),
     ObjectFormat(Symbol),
     MemoryRegions,
+    Output(Output),
 }
+
+/// What a program is built as (`std.build.Output`): an executable a system runs, or a library
+/// other programs link, shared (loaded when they run) or static (copied into them).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Encode, Decode)]
+pub enum Output {
+    #[default]
+    Executable,
+    Shared,
+    Static,
+}
+
+impl Output {
+    pub const ALL: [Self; 3] = [Self::Executable, Self::Shared, Self::Static];
+
+    /// Its name, as `std.build.Output` and the command line spell it.
+    #[must_use]
+    pub const fn name(self) -> &'static str {
+        match self {
+            Self::Executable => "executable",
+            Self::Shared => "shared",
+            Self::Static => "static",
+        }
+    }
+
+    /// Whether it is a library, which has no entry symbol.
+    #[must_use]
+    pub const fn library(self) -> bool {
+        !matches!(self, Self::Executable)
+    }
+
+    /// The file in `dir` the program `name` is built into, as the object format `format` names
+    /// a library: a prefix, the name, the extension of a shared or a static one.
+    #[must_use]
+    pub fn file(self, dir: &Path, name: &str, format: Symbol) -> PathBuf {
+        let named = LIBRARIES.iter().find(|(f, ..)| f.is(format));
+        let file = match (self, named) {
+            (Self::Shared, Some((_, prefix, shared, _))) => format!("{prefix}{name}.{shared}"),
+            (Self::Static, Some((_, prefix, _, archive))) => format!("{prefix}{name}.{archive}"),
+            _ => name.to_owned(),
+        };
+        dir.join(file)
+    }
+}
+
+/// How each object format names a library: a prefix before the program's name, and the extension
+/// of a shared and of a static one. An executable is named as its program.
+const LIBRARIES: [(Name, &str, &str, &str); 4] = [
+    (Name("elf"), "lib", "so", "a"),
+    (Name("macho"), "lib", "dylib", "a"),
+    (Name("coff"), "", "dll", "lib"),
+    (Name("wasm"), "", "wasm", "a"),
+];
