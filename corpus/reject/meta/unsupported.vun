@@ -1,0 +1,7 @@
+//! A `$assert` whose condition compile-time evaluation does not run is an error, not a check
+//! that passes (spec 03, section 7): addresses exist at run time only.
+
+x: u8 = 5;
+
+#[test]
+placed := () { $assert(lang.mem.address(u8, lang.mem.pointer_to(u8, &x)) != 0); }; //~ comptime.unsupported

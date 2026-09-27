@@ -16,13 +16,14 @@ use crate::{Aggregate, Body, Local, Mir, Operand, Rvalue, TerminatorKind};
 use vun_sema::ty::Value;
 
 impl Builder<'_, '_, '_> {
-    /// `$c` at run time for the code `c`: its value at compile time where it has one, else a
-    /// splice that the call site expanding this body builds.
+    /// `$c` at run time for the code `c`: its value at compile time where it has one, a splice
+    /// that the call site expanding this body builds where it reads what only that site holds,
+    /// and otherwise the evaluation, which stops as it did here when run.
     pub(super) fn spliced(&mut self, expr: ExprId, code: Code, origin: OriginId) -> Operand {
         match self.env().eval(expr) {
             Ok(value) => Operand::Const(value),
-            Err(Unevaluated::Trapped(_)) => self.temp(self.comptime(expr, None), origin),
-            Err(_) => self.temp(Rvalue::Splice { code }, origin),
+            Err(Unevaluated::Runtime) => self.temp(Rvalue::Splice { code }, origin),
+            Err(_) => self.temp(self.comptime(expr, None), origin),
         }
     }
 
