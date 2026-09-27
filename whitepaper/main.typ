@@ -19,9 +19,18 @@
     implementation architecture in which every stage after the front end is replaceable, the
     compile-time interpreter defines the reference semantics, and every entity in every
     intermediate representation carries an origin chain to the source text that produced it. The
-    front end, the compile-time evaluator and the mid-level checks are implemented; code
-    generation is not yet. We report the state of the implementation and the questions that
-    remain open.
+    front end, the compile-time evaluator, the mid-level checks and three backends (C, a
+    single-pass native backend for x86-64 and arm64, and WebAssembly) are implemented, and the
+    same test programs give the same results through each of them. We report the state of the
+    implementation and the questions that remain open.
+  ],
+  notice: [
+    This is a working draft of a personal project, not a peer-reviewed publication. The language
+    design and the decisions recorded in its log are the author's. Most of the compiler's code,
+    of the specification's prose and of this paper was written by AI coding agents (Anthropic's
+    Claude) under the author's direction. Figures about the implementation are measured from the
+    repository at the date above; claims attributed to other work should be checked against the
+    cited sources.
   ],
   keywords: (
     "systems programming", "language design", "multi-stage programming", "linear types",

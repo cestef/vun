@@ -22,7 +22,7 @@
   if head.numbering == none { head.body } else [#numbering(head.numbering, ..counter(heading).at(head.location()))#h(0.6em)#head.body]
 }
 
-#let paper(title: "", subtitle: "", authors: (), date: none, abstract: [], keywords: (), body) = {
+#let paper(title: "", subtitle: "", authors: (), date: none, abstract: [], keywords: (), notice: none, body) = {
   set document(title: title, author: authors.map(a => a.name), keywords: keywords)
   set page(
     paper: "a4",
@@ -151,6 +151,14 @@
     #if keywords.len() > 0 [
       #v(0.9em)
       #text(9pt)[#smallcaps[*Keywords.*] #keywords.join(", ")]
+    ]
+    #if notice != none [
+      #v(1.4em)
+      #block(width: 100%, inset: (x: 10pt, y: 8pt), stroke: 0.5pt + rule-color)[
+        #set text(8.8pt)
+        #set par(justify: true)
+        #smallcaps[*Notice.*] #notice
+      ]
     ]
   ]
   pagebreak()

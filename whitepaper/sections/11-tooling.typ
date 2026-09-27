@@ -55,10 +55,10 @@ range error of @sec-integers.
     │
   5 │ norm1 := (p: Point) -> u32 {
     │                        ─── expected because of this type
-  6 │     p.x.abs() + p.y.abs()   //~ int.does_not_fit
+  6 │     p.x.abs() + p.y.abs() //~ int.does_not_fit
     │     ━━━━━━━━━━━━━━━━━━━━━
     │
-    ├ note: the value is `Int(0..=4294967296)`, and `u32` is `Int(0..=4294967295)`
+    ├ note: the value is `Int(0..=2^32)`, and `u32` is `Int(0..2^32)`
     ╰ help: widen `u32` to hold the whole range, or narrow the value explicitly; …
   ```,
   caption: [A range error as the compiler reports it. The file is part of the rejection corpus,

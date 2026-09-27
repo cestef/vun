@@ -97,7 +97,7 @@
   brace(0, 13.2, -0.2, [`std.meta.Frame(echo)`, whose size is known at compile time], "north")
 })
 
-// The compiler pipeline; planned stages are dashed.
+// The compiler pipeline.
 #let pipeline = cetz.canvas(length: 1cm, {
   import cetz.draw
   let w = 2.0
@@ -108,10 +108,10 @@
   node(draw, (row.at(2), 0), "hir", [HIR], width: w)
   node(draw, (row.at(3), 0), "mir", [MIR], width: w, fill: highlight)
   node(draw, (row.at(3), 2.1), "interp", [interpreter], width: w)
-  node(draw, (row.at(3), -2.2), "lir", [LIR], width: w, planned: true)
-  node(draw, (row.at(2), -2.2), "back", [backend], width: w, planned: true)
-  node(draw, (row.at(1), -2.2), "link", [linker], width: w, planned: true)
-  node(draw, (row.at(0), -2.2), "out", [executable], width: w, planned: true)
+  node(draw, (row.at(3), -2.2), "lir", [LIR], width: w)
+  node(draw, (row.at(2), -2.2), "back", [backend], width: w)
+  node(draw, (row.at(1), -2.2), "link", [linker], width: w)
+  node(draw, (row.at(0), -2.2), "out", [executable], width: w)
   arrow(draw, "src.east", "cst.west", label: [parse])
   arrow(draw, "cst.east", "hir.west", label: [desugar, \ resolve])
   arrow(draw, "hir.east", "mir.west", label: [type, \ evaluate])
@@ -120,12 +120,12 @@
     mark: (end: "stealth", fill: ink, scale: 0.7), stroke: 0.6pt + ink)
   draw.content((row.at(2) + 0.1, 2.1), anchor: "south-west", padding: 0.1,
     text(7.8pt, fill: muted-ink)[values and types])
-  arrow(draw, "mir.south", "lir.north", planned: true, label: [lower], anchor: "west")
-  arrow(draw, "lir.west", "back.east", planned: true)
-  arrow(draw, "back.west", "link.east", planned: true, label: [objects])
-  arrow(draw, "link.west", "out.east", planned: true, label: [link plan])
-  draw.content((row.at(2), -2.75), anchor: "north", text(7.8pt, fill: faint)[C, Cranelift, QBE, LLVM])
-  draw.content((row.at(1), -2.75), anchor: "north", text(7.8pt, fill: faint)[wild, mold, lld, GNU ld])
+  arrow(draw, "mir.south", "lir.north", label: [lower], anchor: "west")
+  arrow(draw, "lir.west", "back.east")
+  arrow(draw, "back.west", "link.east", label: [objects])
+  arrow(draw, "link.west", "out.east", label: [link plan])
+  draw.content((row.at(2), -2.75), anchor: "north", text(7.8pt, fill: muted-ink)[C, native, wasm])
+  draw.content((row.at(1), -2.75), anchor: "north", text(7.8pt, fill: muted-ink)[GNU ld, mold, wild, wasm-ld])
   draw.content((row.at(3) + w / 2 + 0.2, 0), anchor: "west",
     text(7.8pt, fill: muted-ink)[checks: \ places, kinds, \ borrows, traps])
 })
@@ -174,14 +174,14 @@
 #let code-size = {
   // Listed bottom to top, so the layering order reads from the top.
   let groups = ("tools", "render", "link", "back", "low", "mid", "front", "base")
-  let lines = (12952, 480, 466, 5378, 5314, 5058, 19880, 9671)
+  let lines = (18620, 716, 703, 18158, 12146, 5960, 22405, 11514)
   let ys = range(groups.len())
   lq.diagram(
     width: 9cm, height: 4.4cm,
     xlabel: [lines of Rust],
     yaxis: (ticks: ys.zip(groups.map(g => raw(g))), subticks: none),
-    xaxis: (ticks: (0, 5000, 10000, 15000, 20000).map(v => (v, str(v))), subticks: none),
-    xlim: (0, 20000),
+    xaxis: (ticks: (0, 5000, 10000, 15000, 20000, 25000).map(v => (v, str(v))), subticks: none),
+    xlim: (0, 25000),
     ylim: (-0.6, 7.6),
     lq.hbar(lines, ys, fill: accent.lighten(40%), stroke: 0.4pt + accent, width: 0.6),
   )

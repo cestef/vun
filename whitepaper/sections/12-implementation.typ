@@ -15,8 +15,8 @@ above LIR knows about any backend, and nothing above the linker interface knows 
 
 #figure(
   pipeline,
-  caption: [Compiler pipeline. Solid stages are implemented; dashed stages are defined as interfaces
-    only. The interpreter runs MIR and serves as the reference semantics.],
+  caption: [Compiler pipeline, with the implemented backends and linkers. The interpreter runs MIR
+    and serves as the reference semantics.],
 ) <fig-pipeline>
 
 Three decisions shape the architecture.
@@ -68,11 +68,11 @@ compiler and the language's own description of itself cannot drift apart.
 
 == Current state
 
-@tab-state summarizes the implementation as of this draft. The workspace comprises 56 crates and
-about 37,000 lines of Rust, layered so that a crate depends only on earlier groups:
-`base` < `front` < `mid` < `low` < `back`, `link`, `render` < `tools`. @fig-code-size shows their
-distribution. The Vun libraries amount to about 1,200 lines in `lang` and 900 in `std`,
-including the compiler's tables.
+@tab-state summarizes the implementation as of this draft. The workspace comprises 74 crates and
+about 90,000 lines of Rust excluding generated code, layered so that a crate depends only on
+earlier groups: `base` < `front` < `mid` < `low` < `back`, `link`, `render` < `tools`.
+@fig-code-size shows their distribution. The Vun libraries amount to about 3,800 lines in `lang`
+and 1,400 in `std`, including the compiler's tables.
 
 #figure(
   table(
@@ -80,19 +80,21 @@ including the compiler's tables.
     toprule,
     [Component], [State],
     midrule,
-    [syntax], [lexer, error-recovering parser, postorder syntax tree with a verifier, literal reader; fuzzed],
+    [syntax], [lexer, error-recovering parser, postorder syntax tree with a verifier, literal reader, formatter; fuzzed],
     [HIR], [desugaring through the `lang` tables; name resolution, visibility, spreads],
-    [semantic analysis], [types as values, compile-time evaluation, implementations and witnesses, reflection, code values, closures, coroutines, layout, kinds, inference of `$` parameters],
-    [MIR], [lowering of 83 of the 94 functions in the accepted corpus],
+    [semantic analysis], [types as values, compile-time evaluation, implementations and witnesses, reflection, code values, closures, coroutines, layout, kinds, narrowing, exhaustiveness, inference of `$` parameters],
+    [MIR], [lowering of 110 of the 115 run-time functions in the accepted corpus; structural verifier],
     [MIR checks], [place states, moves and leaks, `defer`, borrow conflicts and escapes, free values, `panic.never`],
-    [interpreter], [runs compile-time code on MIR, including coroutine frames; no memory model for `&mut` yet],
-    [packages], [manifests, BLAKE3 tree hashes, store and collection, `.tar.zst` archives, lockfile, minimal version selection, replacement, indexes],
-    [diagnostics], [84 identifiers in 23 groups, each with a checked explanation page; renderers in the annotate-snippets, ariadne and one-line styles],
-    [LIR, backends, linkers], [LIR with a verifier and the analyses backends share; lowering from MIR, coroutine frames included; a C backend writing strict C99 and a single-pass native backend writing ELF objects for x86-64 and arm64, which run the backend tests with identical results on both machines (arm64 through an emulator); linking through GNU ld],
+    [interpreter], [runs compile-time code on MIR on a stack of its own, including coroutine frames and loans for `&mut`],
+    [LIR], [static single assignment with block parameters and a verifier; the analyses backends share; legalization of wide integers and `f16`; promotion, folding, value numbering, jump threading, narrowing and inlining],
+    [backends], [C99; a single-pass native backend for x86-64 and arm64 writing ELF objects with DWARF line tables and unwind information, over a shared linear-scan register allocator; WebAssembly objects for WASI],
+    [linkers], [GNU ld, mold and wild through the target's C compiler; `wasm-ld`; static and shared libraries],
+    [packages], [manifests, BLAKE3 tree hashes, store and collection, `.tar.zst` archives, lockfile, minimal version selection, replacement, indexes over HTTPS],
+    [diagnostics], [99 identifiers in 25 groups, each with a checked explanation page; renderers in the annotate-snippets, ariadne, one-line and JSON styles],
     midrule,
-    [corpus], [36 source files to accept and 58 to reject; the harness reports 207 passing checks and no failures],
-    [test suite], [265 tests, including a check that every `lang` and `std` file is accepted],
-    [coverage], [82% of expressions in accepted function bodies are typed],
+    [corpus], [55 source files to accept and 90 to reject; the harness reports 250 passing checks and no failures, with 10 programs waiting for library surface],
+    [backend tests], [every test program is built through each backend and run on Linux for x86-64 and arm64 (through an emulator) and under WASI, with identical results required],
+    [coverage], [88% of expressions in accepted function bodies are typed; 99% of reached functions lower to LIR],
     bottomrule,
   ),
   caption: [State of the implementation, September 2026.],
@@ -103,13 +105,19 @@ including the compiler's tables.
   caption: [Lines of Rust per workspace group, including tests, excluding generated code.],
 ) <fig-code-size>
 
-The main gaps, in the order in which they are planned, are: the remaining library surface (a thread
-pool, the simulator, text and collections); the `fixed` and `scoped` kinds and the ending of
-suspended frames; the driver side of the build function; the remaining MIR lowering (listed by the
-corpus harness); exhaustiveness checking; an evaluator with its own
-stack and a memory model for mutable borrows at compile time; and persistence of the front-end
-queries. @tab-roadmap gives the phases of the project and their exit criteria; the implementation
-is between phases 1 and 2.
+The native backend follows TPDE @tpde: one pass over LIR, instructions selected from snippets
+declared as data, and every instruction of each architecture declared once in a table that the
+encoder, the printer and instruction selection read. A loop of 50 million steps of a linear
+congruential generator runs in 56 ms through it, against 51 ms for the C backend compiled with
+`-O2`. This is one small program and says little about larger ones.
+
+The main gaps, in the order in which they are planned, are: typed inline assembly, under way,
+and with it a Linux runtime that calls the kernel without a C library; runtimes for boards, which
+wait for build plans that declare memory regions; the remaining library surface (a thread pool,
+the simulator, text and collections); the `fixed` kind; the language server; and, in the native backend,
+linking for macOS and support for RISC-V. @tab-roadmap gives the phases of the project and their exit
+criteria. The implementation has passed the exit criterion of phase 2 and meets that of phase 3
+except for running on a board.
 
 #figure(
   table(
@@ -129,9 +137,7 @@ is between phases 1 and 2.
   caption: [Phases of the project and their exit criteria.],
 ) <tab-roadmap>
 
-The planned backends are C, for reach, including vendor toolchains; Cranelift, for fast debug
-builds, which reduced code-generation time by about 20% when used for rustc at the cost of code
-about 14% slower @cranelift-rustc; QBE, for simplicity @qbe; and LLVM, for optimized code. A
-single-pass backend in the style of TPDE @tpde may follow. The planned linkers are wild, mold, lld,
-GNU ld and the MSVC linker, behind one interface that receives a target-independent plan of
-objects, sections, memory regions and symbols @wild-mold.
+Backends and linkers are chosen per target and profile from lists the target declares, among
+those the machine's toolchain provides. Cranelift, QBE and LLVM backends and the lld linker for
+ELF and COFF are declared as interfaces without an implementation; a program asking for one is
+refused with a diagnostic naming what is available.
