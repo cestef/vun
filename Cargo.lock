@@ -733,9 +733,11 @@ dependencies = [
 name = "vun-asm-arm64"
 version = "0.0.0"
 dependencies = [
+ "vun-abi",
  "vun-asm",
  "vun-inline",
  "vun-object",
+ "vun-target",
  "yaxpeax-arch",
  "yaxpeax-arm",
 ]
@@ -744,9 +746,11 @@ dependencies = [
 name = "vun-asm-x86_64"
 version = "0.0.0"
 dependencies = [
+ "vun-abi",
  "vun-asm",
  "vun-inline",
  "vun-object",
+ "vun-target",
  "yaxpeax-arch",
  "yaxpeax-x86",
 ]

@@ -189,6 +189,5 @@ impl crate::Native for Arm {
         return_pushed: false,
     };
 
-    const CONVENTIONS: &'static [(Convention, Self::Convention)] =
-        &[(Convention::Aapcs64, &abi::AAPCS64), (Convention::DarwinArm64, &abi::DARWIN_ARM64)];
+    const CONVENTIONS: &'static [(Convention, Self::Convention)] = vun_asm_arm64::conventions::CONVENTIONS;
 }

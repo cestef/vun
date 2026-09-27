@@ -6,6 +6,7 @@
 //! TPDE's snippet encoders do. Code goes into a `vun_asm::Buffer` through [`Emit`].
 
 mod bitmask;
+pub mod conventions;
 mod encode;
 #[rustfmt::skip]
 mod generated;

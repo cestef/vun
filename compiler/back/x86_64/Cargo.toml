@@ -10,9 +10,11 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
+vun-abi.workspace = true
 vun-asm.workspace = true
 vun-inline.workspace = true
 vun-object.workspace = true
+vun-target.workspace = true
 
 [dev-dependencies]
 # An independent decoder checks every form of the table; never shipped.

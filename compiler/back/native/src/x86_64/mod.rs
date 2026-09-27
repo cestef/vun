@@ -179,5 +179,5 @@ impl crate::Native for X86 {
         return_pushed: true,
     };
 
-    const CONVENTIONS: &'static [(Convention, Self::Convention)] = &[(Convention::Sysv, &abi::SYSV)];
+    const CONVENTIONS: &'static [(Convention, Self::Convention)] = vun_asm_x86_64::conventions::CONVENTIONS;
 }

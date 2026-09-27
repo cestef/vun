@@ -4,6 +4,7 @@
 //! memory, or a register), as TPDE's snippet encoders do. Code goes into a `vun_asm::Buffer`
 //! through [`Emit`].
 
+pub mod conventions;
 mod encode;
 #[rustfmt::skip]
 mod generated;
