@@ -2,11 +2,12 @@
 //! reached by typed access through `u8 *` addresses, which `-fno-strict-aliasing` defines.
 
 use vun_lir::func::Def;
-use vun_lir::{AbiType, Access, Callee, Conv, Ext, ImportKind, Inst, InstKind, Order, RmwOp, Value};
+use vun_lir::{AbiType, Access, Callee, ImportKind, Inst, InstKind, Order, RmwOp, Value};
 use vun_target::Atomics;
 
 use super::FnEmit;
 use crate::ast::{Binary, Builtin, Expr, Ident, Own, Stmt, Ty, Unary};
+use crate::emit::signature::SignedC;
 use vun_backend::{Lack, Missing};
 
 impl FnEmit<'_, '_> {
@@ -169,7 +170,7 @@ impl FnEmit<'_, '_> {
             let arg = self.operand(arg);
             passed.push(match abi {
                 AbiType::Record(_) => arg.at(ty.clone()),
-                AbiType::Int(_, Ext::Sign) if signature.conv == Conv::C => arg.cast(ty.clone()),
+                _ if abi.signed_c(signature.conv).is_some() => arg.cast(ty.clone()),
                 _ => arg,
             });
         }
@@ -186,9 +187,10 @@ impl FnEmit<'_, '_> {
             }
             Some(given @ (AbiType::Scalar(_) | AbiType::Int(..) | AbiType::Address(_))) => {
                 let s = given.value();
-                let signed =
-                    matches!(signature.result, Some(AbiType::Int(_, Ext::Sign))) && signature.conv == Conv::C;
-                let value = if signed { call(passed).cast(self.e.scalar(s, at)?) } else { call(passed) };
+                let value = match given.signed_c(signature.conv) {
+                    Some(_) => call(passed).cast(self.e.scalar(s, at)?),
+                    None => call(passed),
+                };
                 match result {
                     Some(v) if self.live.range(v).is_some_and(|r| r.uses > 0) => self.assign(v, value),
                     _ => self.body.push(Stmt::Expr(value)),

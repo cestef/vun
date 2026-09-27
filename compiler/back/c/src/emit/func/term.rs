@@ -3,10 +3,11 @@
 //! `switch`, and a block control never leaves an empty infinite loop.
 
 use vun_lir::analysis::{Location, Moves};
-use vun_lir::{AbiType, Block, Conv, Ext, Target, Terminator};
+use vun_lir::{AbiType, Block, Target, Terminator};
 
 use super::FnEmit;
 use crate::ast::{Expr, Ident, Own, Stmt};
+use crate::emit::signature::SignedC;
 use vun_backend::Lack;
 
 impl FnEmit<'_, '_> {
@@ -40,7 +41,7 @@ impl FnEmit<'_, '_> {
             Terminator::Return(value) => {
                 let signature = &func.signature;
                 let value = match (value, &signature.result) {
-                    (Some(v), Some(AbiType::Int(s, Ext::Sign))) if signature.conv == Conv::C => {
+                    (Some(v), Some(result)) if let Some(s) = result.signed_c(signature.conv) => {
                         let ty = self.e.int(s.bits(0), true, data.origin)?;
                         Some(self.operand(*v).cast(ty))
                     }

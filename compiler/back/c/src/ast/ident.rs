@@ -87,8 +87,15 @@ pub enum Own {
     },
     /// The `struct` whose size checks the alignment of `uN`, or of an address for 0.
     Aligned(u32),
-    /// A float of `bits` bits from its bits, and the bits of one.
+    Helper(Helper),
+}
+
+/// A float conversion the file defines once it is used: reading a value's bits as the other type.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum Helper {
+    /// The float of `bits` bits whose bits these are.
     FloatOf(u32),
+    /// The bits of a float of `bits` bits.
     BitsOf(u32),
 }
 
@@ -176,8 +183,8 @@ impl Own {
             Self::Int { bits, signed } => format!("{}{bits}", if signed { "i" } else { "u" }),
             Self::Aligned(0) => "aligned_ptr".to_owned(),
             Self::Aligned(bits) => format!("aligned_u{bits}"),
-            Self::FloatOf(bits) => format!("float_of{bits}"),
-            Self::BitsOf(bits) => format!("bits_of{bits}"),
+            Self::Helper(Helper::FloatOf(bits)) => format!("float_of{bits}"),
+            Self::Helper(Helper::BitsOf(bits)) => format!("bits_of{bits}"),
         }
     }
 }

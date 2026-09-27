@@ -117,12 +117,13 @@ impl Emitter<'_> {
             }
             attributes.push(Attribute::Section(section));
         }
-        let (align, _) = match self.aligned(data.align, at) {
-            Err(_) if gnu => {
+        let (align, _) = match self.aligned(data.align) {
+            Some(found) => found,
+            None if gnu => {
                 attributes.push(Attribute::Aligned(data.align));
                 self.most_aligned()
             }
-            found => found?,
+            None => return Err(Missing::Align(data.align).at(at)),
         };
         let word = u64::from(unit.pointer_bits / u8::BITS);
         let pointer_align = u64::from(self.target.c.pointer_align);

@@ -18,7 +18,8 @@ use vun_origin::OriginId;
 use vun_target::TargetSpec;
 
 use crate::ast::{
-    Aggregate, Binary, Builtin, Decl, Expr, File, Ident, Item, Names, Own, Proto, Stmt, Storage, Ty, Unary,
+    Aggregate, Binary, Builtin, Decl, Expr, File, Helper, Ident, Item, Names, Own, Proto, Stmt, Storage, Ty,
+    Unary,
 };
 use vun_backend::{Lack, Missing};
 
@@ -34,7 +35,7 @@ pub(crate) struct Emitter<'u> {
     /// The sizes copied as one `struct` of bytes.
     copies: BTreeSet<u64>,
     /// The float conversions used.
-    helpers: BTreeSet<Own>,
+    helpers: BTreeSet<Helper>,
     /// The compiler's builtins used.
     builtins: BTreeSet<Builtin>,
     checks: Vec<Item>,
@@ -75,7 +76,7 @@ impl<'u> Emitter<'u> {
             builtins: BTreeSet::new(),
             checks: Vec::new(),
         };
-        let symbols = e.symbols()?;
+        e.writable()?;
         if let Some(at) = unit.functions.iter().map(|(_, f)| f.origin).next() {
             e.int(unit.pointer_bits, false, at)?;
         }
@@ -93,9 +94,8 @@ impl<'u> Emitter<'u> {
         }
         let data = e.objects()?;
         // A link symbol spelling a builtin the file uses would hide it.
-        if let Some(&clash) = symbols.iter().find(|s| e.builtins.iter().any(|b| b.spelling() == s.as_str())) {
-            let at =
-                unit.functions.iter().map(|(_, f)| f.origin).next().expect("builtins are used by functions");
+        let builtin = |s: &Symbol| e.builtins.iter().any(|b| b.spelling() == s.as_str());
+        if let Some((clash, at)) = Self::linked(unit).find(|(s, _)| builtin(s)) {
             return Err(Missing::Symbol(clash).at(at));
         }
         let mut common = ints;
@@ -177,11 +177,10 @@ impl<'u> Emitter<'u> {
         }
     }
 
-    /// The unit's link symbols, each checked writable in C.
-    fn symbols(&self) -> Result<Vec<Symbol>, Lack> {
+    /// Refuses a link symbol C cannot write, where it is declared.
+    fn writable(&self) -> Result<(), Lack> {
         Self::linked(self.unit)
-            .map(|(s, at)| if Names::writable(s) { Ok(s) } else { Err(Missing::Symbol(s).at(at)) })
-            .collect()
+            .try_for_each(|(s, at)| if Names::writable(s) { Ok(()) } else { Err(Missing::Symbol(s).at(at)) })
     }
 
     fn import(&mut self, import: &vun_lir::Import) -> Result<Item, Lack> {
@@ -262,6 +261,12 @@ impl<'u> Emitter<'u> {
         items
     }
 
+    /// A call of the float conversion `helper`, defined once it is used.
+    pub(super) fn helper(&mut self, helper: Helper, arg: Expr) -> Expr {
+        self.helpers.insert(helper);
+        Expr::Call(Box::new(Expr::Name(Ident::Own(Own::Helper(helper)))), vec![arg])
+    }
+
     /// The float conversions used: each reads its parameter's bits as the other type, which
     /// `-fno-strict-aliasing` defines.
     fn helpers(&self) -> Vec<Item> {
@@ -269,9 +274,8 @@ impl<'u> Emitter<'u> {
             .iter()
             .map(|&helper| {
                 let (width, float_of) = match helper {
-                    Own::FloatOf(width) => (width, true),
-                    Own::BitsOf(width) => (width, false),
-                    _ => unreachable!("only float conversions are helpers"),
+                    Helper::FloatOf(width) => (width, true),
+                    Helper::BitsOf(width) => (width, false),
                 };
                 let (int, float) = (Ty::uint(width), if width == 32 { Ty::Float } else { Ty::Double });
                 let (from, to) = if float_of { (int, float) } else { (float, int) };
@@ -280,7 +284,7 @@ impl<'u> Emitter<'u> {
                 let proto = Proto {
                     storage: Storage::Static,
                     result: to,
-                    name: Ident::Own(helper),
+                    name: Ident::Own(Own::Helper(helper)),
                     params: vec![Decl::new(from, param)],
                 };
                 Item::Define(proto, vec![Stmt::Return(Some(read))])

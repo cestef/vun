@@ -46,9 +46,18 @@ impl Printer<'_, '_, '_> {
     fn stmt(&mut self, stmt: &Stmt) -> fmt::Result {
         match stmt {
             Stmt::Line(line) => {
-                let file = line.file.to_string_lossy();
-                let file = file.replace('\\', "\\\\").replace('"', "\\\"");
-                return writeln!(self.f, "#line {} \"{file}\"", line.line);
+                write!(self.f, "#line {} \"", line.line)?;
+                // The path's bytes as they are: printable ones plainly, the others in octal, so any
+                // path, whatever its encoding, names its file; `?` escaped, as C99 reads `??/` as
+                // a trigraph.
+                for &byte in line.file.as_os_str().as_encoded_bytes() {
+                    match byte {
+                        b'\\' | b'"' | b'?' => write!(self.f, "\\{}", char::from(byte))?,
+                        b' '..=b'~' => self.f.write_char(char::from(byte))?,
+                        _ => write!(self.f, "\\{byte:03o}")?,
+                    }
+                }
+                return self.f.write_str("\"\n");
             }
             Stmt::Label(label) => {
                 self.f.write_str("\n")?;

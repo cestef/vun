@@ -6,7 +6,7 @@ mod ident;
 mod print;
 mod ty;
 
-pub use ident::{Builtin, Ident, Names, Own};
+pub use ident::{Builtin, Helper, Ident, Names, Own};
 pub use ty::{Base, Suffix, Ty};
 
 use vun_backend::Line;

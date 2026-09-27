@@ -3,7 +3,7 @@
 //! the C convention they are `iN` or `uN` as their LIR extension says, and records are `struct`s
 //! passed and returned by value.
 
-use vun_lir::{AbiType, Alias, Conv, Ext, Record, Signature};
+use vun_lir::{AbiType, Alias, Conv, Ext, Record, Scalar, Signature};
 use vun_origin::OriginId;
 
 use super::Emitter;
@@ -14,6 +14,22 @@ use vun_backend::{Lack, Missing};
 pub(super) struct CSignature {
     pub(super) result: Ty,
     pub(super) params: Vec<Ty>,
+}
+
+/// A value C declares as a signed integer, where Vun holds its bits unsigned: converted each
+/// time it crosses a call, as argument, parameter, result or returned value.
+pub(super) trait SignedC {
+    /// Its scalar, when it passes as a signed C integer under `conv`.
+    fn signed_c(&self, conv: Conv) -> Option<Scalar>;
+}
+
+impl SignedC for AbiType {
+    fn signed_c(&self, conv: Conv) -> Option<Scalar> {
+        match *self {
+            AbiType::Int(s, Ext::Sign) if conv == Conv::C => Some(s),
+            _ => None,
+        }
+    }
 }
 
 impl Emitter<'_> {

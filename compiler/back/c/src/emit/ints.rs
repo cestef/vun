@@ -8,7 +8,7 @@ use vun_origin::OriginId;
 use vun_target::CInt;
 
 use super::Emitter;
-use crate::ast::{Aggregate, Base, Binary, Decl, Expr, Ident, Item, Own, Suffix, Ty};
+use crate::ast::{Aggregate, Base, Binary, Decl, Expr, Helper, Ident, Item, Own, Suffix, Ty};
 use vun_backend::{Lack, Missing};
 
 /// The widths of the integers LIR has that C can declare.
@@ -94,12 +94,11 @@ impl Emitter<'_> {
     }
 
     /// The unsigned integer aligned to `align` bytes, which slots and data objects are arrays and
-    /// unions of, and its size in bytes.
-    pub(super) fn aligned(&self, align: u64, at: OriginId) -> Result<(Ty, u64), Lack> {
+    /// unions of, and its size in bytes; none when no C type is aligned so.
+    pub(super) fn aligned(&self, align: u64) -> Option<(Ty, u64)> {
         let found =
             self.bases().into_iter().find(|(_, c)| u64::from(c.align) == align && WIDTHS.contains(&c.bits));
-        let (_, c) = found.ok_or(Missing::Align(align).at(at))?;
-        Ok((Ty::uint(c.bits), u64::from(c.bits / u8::BITS)))
+        found.map(|(_, c)| (Ty::uint(c.bits), u64::from(c.bits / u8::BITS)))
     }
 
     /// The unsigned integer aligned the most, which a slot aligned past every C type lies in an
@@ -138,9 +137,8 @@ impl Emitter<'_> {
                 if finite {
                     Expr::Float { bits: width, value }
                 } else {
-                    self.helpers.insert(Own::FloatOf(width));
-                    let helper = Expr::Name(Ident::Own(Own::FloatOf(width)));
-                    Expr::Call(Box::new(helper), vec![self.literal(bits, width, at)?])
+                    let bits = self.literal(bits, width, at)?;
+                    self.helper(Helper::FloatOf(width), bits)
                 }
             }
             Scalar::Ptr => {

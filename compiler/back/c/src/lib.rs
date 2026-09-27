@@ -8,7 +8,9 @@ pub use vun_backend::{Lack, Missing, Readiness};
 use vun_lir::legalize::Half;
 
 use std::collections::{BTreeMap, HashMap};
-use vun_backend::{Artifact, ArtifactSink, Backend, BackendCaps, BackendInfo, Emits, Lines, Request};
+use vun_backend::{
+    Artifact, ArtifactSink, Backend, BackendCaps, BackendInfo, Emits, Feature, Lines, Request,
+};
 use vun_diag::{DiagCtxt, ErrorGuaranteed};
 
 use vun_lir::FuncId;
@@ -22,14 +24,9 @@ pub const INFO: BackendInfo = BackendInfo {
     arches: Arches::Any,
     caps: BackendCaps {
         emits: Emits::Source,
-        c_abi: true,
-        vectors: false,
-        tail_calls: false,
-        noalias: true,
-        frame_sizes: true,
+        features: &[Feature::CAbi, Feature::NoAlias, Feature::FrameSizes, Feature::DebugInfo],
         int_bits: 64,
         half: Half::Promoted,
-        debug_info: true,
     },
     readiness: Readiness::Ready,
 };
@@ -86,7 +83,7 @@ impl Backend for CBackend {
     ) -> Result<(), ErrorGuaranteed> {
         let artifacts = self
             .sources(request.unit, request.target, request.lines)
-            .map_err(|lack| diag.error(lack.diagnostic(INFO.id.0)))?;
+            .map_err(|lack| diag.error(lack.diagnostic(INFO.id)))?;
         for artifact in artifacts {
             out.put(artifact);
         }

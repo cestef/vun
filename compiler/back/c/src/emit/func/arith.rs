@@ -7,7 +7,7 @@
 use vun_lir::{BinOp, CastOp, Cond, Reads, Scalar, Value};
 
 use super::FnEmit;
-use crate::ast::{Binary, Expr, Own, Ty};
+use crate::ast::{Binary, Expr, Helper, Ty};
 use vun_backend::Lack;
 
 impl FnEmit<'_, '_> {
@@ -78,17 +78,11 @@ impl FnEmit<'_, '_> {
             CastOp::FToS => e.cast(Ty::int(to.bits(0))).cast(target),
             CastOp::PtrToInt | CastOp::IntToPtr => e.cast(self.e.word()).cast(target),
             CastOp::Bitcast => match (from.is_float(), to.is_float()) {
-                (false, true) => self.helper(Own::FloatOf(to.bits(0)), e),
-                (true, false) => self.helper(Own::BitsOf(from.bits(0)), e),
+                (false, true) => self.e.helper(Helper::FloatOf(to.bits(0)), e),
+                (true, false) => self.e.helper(Helper::BitsOf(from.bits(0)), e),
                 _ if from == Scalar::Ptr || to == Scalar::Ptr => e.cast(self.e.word()).cast(target),
                 _ => e,
             },
         })
-    }
-
-    /// A call of the float conversion `helper`, declared once it is used.
-    fn helper(&mut self, helper: Own, arg: Expr) -> Expr {
-        self.e.helpers.insert(helper);
-        Expr::Call(Box::new(Expr::Name(crate::ast::Ident::Own(helper))), vec![arg])
     }
 }

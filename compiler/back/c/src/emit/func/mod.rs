@@ -13,11 +13,11 @@ use std::collections::BTreeSet;
 use vun_backend::Line;
 use vun_index::IndexVec;
 use vun_lir::analysis::{Cfg, Liveness, Loops, Order};
-use vun_lir::{AbiType, Block, Conv, Ext, FuncId, Function, Scalar, Value};
+use vun_lir::{AbiType, Block, FuncId, Function, Scalar, Value};
 use vun_origin::OriginId;
 
 use super::Emitter;
-use super::signature::CSignature;
+use super::signature::{CSignature, SignedC};
 use crate::ast::{Binary, Decl, Expr, Ident, Item, Own, Proto, Stmt, Storage, Ty};
 use inline::Inlined;
 use vun_backend::Lack;
@@ -84,7 +84,7 @@ impl FnEmit<'_, '_> {
             let (v, param) = (values[i], Ident::param(i));
             let converted = match abi {
                 AbiType::Record(_) => Expr::Name(param).address_of(),
-                &AbiType::Int(s, Ext::Sign) if signature.conv == Conv::C => {
+                _ if let Some(s) = abi.signed_c(signature.conv) => {
                     Expr::Name(param).cast(self.e.scalar(s, func.origin)?)
                 }
                 AbiType::Scalar(_) | AbiType::Int(..) | AbiType::Address(_) | AbiType::Memory { .. } => {
@@ -121,12 +121,16 @@ impl FnEmit<'_, '_> {
         self.term(block)
     }
 
-    /// Places the statements that follow at `origin`'s line.
+    /// Places the statements that follow at `origin`'s line; a line no statement followed, as
+    /// an inlined value's, gives way to this one.
     fn at(&mut self, origin: OriginId) {
         if let Some(line) = self.e.lines.line(origin)
             && self.line.as_ref() != Some(&line)
         {
-            self.body.push(Stmt::Line(line.clone()));
+            match self.body.last_mut() {
+                Some(Stmt::Line(unused)) => unused.clone_from(&line),
+                _ => self.body.push(Stmt::Line(line.clone())),
+            }
             self.line = Some(line);
         }
     }
@@ -163,7 +167,7 @@ impl FnEmit<'_, '_> {
         }
         let mut aligning = Vec::new();
         for (slot, data) in func.slots.iter() {
-            if let Ok((ty, bytes)) = e.aligned(data.align, data.origin) {
+            if let Some((ty, bytes)) = e.aligned(data.align) {
                 let len = data.size.div_ceil(bytes).max(1);
                 out.push(Stmt::Local(Decl { ty, name: Ident::slot(slot), len: Some(len) }));
                 continue;
