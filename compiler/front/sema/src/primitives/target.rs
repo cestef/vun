@@ -7,10 +7,19 @@ pub enum Target {
     Features,
     /// The largest address of the target: `usize` is `Int(0..=usize_max)`.
     usize_max,
+    /// The target being built for, as its declaration gives it: code picks what differs between
+    /// systems by its members at compile time (`lang.target.current.os`). A machine's toolchain file
+    /// changes only where the tools are, which this value does not say.
+    current,
 }
 impl Target {
     pub const NAMESPACE: vun_items::Item = vun_items::lang::target;
-    pub const ALL: &[Self] = &[Self::require, Self::Features, Self::usize_max];
+    pub const ALL: &[Self] = &[
+        Self::require,
+        Self::Features,
+        Self::usize_max,
+        Self::current,
+    ];
     /// The declaration's name.
     #[must_use]
     pub const fn name(self) -> &'static str {
@@ -18,6 +27,7 @@ impl Target {
             Self::require => "require",
             Self::Features => "Features",
             Self::usize_max => "usize_max",
+            Self::current => "current",
         }
     }
     /// The declaration.
@@ -27,6 +37,7 @@ impl Target {
             Self::require => vun_items::lang::target::require,
             Self::Features => vun_items::lang::target::Features,
             Self::usize_max => vun_items::lang::target::usize_max,
+            Self::current => vun_items::lang::target::current,
         }
     }
 }

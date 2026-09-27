@@ -20,7 +20,7 @@ impl Session {
         let Some(toolchain) = self.machine_toolchain() else { return spec };
         for tools in toolchain.targets {
             match self.db.get::<Chosen>(&(key.clone(), Choice::Path(tools.target.clone()))) {
-                Ok(named) if named == spec => {
+                Ok(named) if named.spec == spec => {
                     tracing::info!(compiler = ?tools.compiler, runner = ?tools.runner, "tools of the machine");
                     tools.apply(&mut spec);
                     self.runner = tools.runner;

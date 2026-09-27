@@ -111,7 +111,7 @@ impl Shapes {
 
     /// A pointer of the target: as wide as an address; never null.
     fn pointer(cx: &Cx<'_>) -> Option<Layout> {
-        let usize_max = cx.get::<TargetOf>(&())?.usize_max.clone();
+        let usize_max = cx.get::<TargetOf>(&())?.usize_max();
         let bytes = Interval::closed(Integer::zero(), usize_max)?.storage()?.bits() / u64::from(u8::BITS);
         Some(Layout::scalar(bytes, Some(Niche { offset: 0, bytes, start: 0, count: 1 })))
     }

@@ -19,27 +19,45 @@ use crate::int::Integer;
 use crate::primitives::target::Target as Constant;
 use crate::ty::Value;
 
+/// A target as its declaration gives it: the description read from it, and the value itself.
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
+pub struct Declared {
+    pub spec: TargetSpec,
+    pub value: Value,
+}
+
+impl Read for Declared {
+    fn read(value: &Value) -> Result<Self, Unread> {
+        Ok(Self { spec: TargetSpec::read(value)?, value: value.clone() })
+    }
+}
+
 /// What compile-time code sees of the target.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct Target {
-    /// The largest address: `usize` is `Int(0..=usize_max)`.
-    pub usize_max: Integer,
     /// The order of the bytes of a value in memory.
     pub endian: Endian,
     /// The width of an address, in bits.
     pub address_bits: u32,
+    /// The value of its declaration: `lang.target.current`.
+    pub declared: Value,
 }
 
 impl Target {
-    /// What compile-time code sees of `spec`.
+    /// What compile-time code sees of `target`.
     #[must_use]
-    pub fn of(spec: &TargetSpec) -> Self {
-        let bits = spec.pointer_bits;
+    pub fn of(target: &Declared) -> Self {
         Self {
-            usize_max: &Integer::power_of_two(bits) - &Integer::from(1),
-            endian: spec.endian,
-            address_bits: bits,
+            endian: target.spec.endian,
+            address_bits: target.spec.pointer_bits,
+            declared: target.value.clone(),
         }
+    }
+
+    /// The largest address: `usize` is `Int(0..=usize_max)`.
+    #[must_use]
+    pub fn usize_max(&self) -> Integer {
+        &Integer::power_of_two(self.address_bits) - &Integer::from(1)
     }
 }
 
@@ -65,7 +83,8 @@ impl Primitive {
     #[must_use]
     pub fn target_constant(self) -> Option<fn(&Target) -> Value> {
         match self {
-            Self::Target(Constant::usize_max) => Some(|t| Value::Int(t.usize_max.clone())),
+            Self::Target(Constant::usize_max) => Some(|t| Value::Int(t.usize_max())),
+            Self::Target(Constant::current) => Some(|t| t.declared.clone()),
             _ => None,
         }
     }

@@ -42,6 +42,9 @@ impl fmt::Display for Unread {
 
 impl std::error::Error for Unread {}
 
+/// The widths of an address a target may have.
+const ADDRESS_BITS: [u32; 3] = [16, 32, 64];
+
 /// A description read from its value.
 pub trait Read: Sized {
     /// # Errors
@@ -81,6 +84,12 @@ impl<'v> Members<'v> {
 
     pub(crate) fn read<T: Read>(&self, member: Item) -> Result<T, Unread> {
         T::read(self.get(member)?).map_err(|_| Unread::Member(member))
+    }
+
+    /// The width of an address, one of `ADDRESS_BITS`.
+    fn address_bits(&self, member: Item) -> Result<u32, Unread> {
+        let bits = self.int(member)?;
+        ADDRESS_BITS.contains(&bits).then_some(bits).ok_or(Unread::Member(member))
     }
 
     /// A `&[lang.meta.Name]`.
@@ -241,7 +250,7 @@ impl Read for TargetSpec {
             cpu: m.name(spec::cpu)?,
             os: m.name(spec::os)?,
             abi: m.name(spec::abi)?,
-            pointer_bits: m.int(spec::pointer_bits)?,
+            pointer_bits: m.address_bits(spec::pointer_bits)?,
             endian: m.read(spec::endian)?,
             object_format: m.name(spec::object_format)?,
             entry_symbol: m.symbol(spec::entry_symbol)?,

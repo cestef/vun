@@ -8,9 +8,8 @@ use vun_items::std::{
     build_Options as options, build_Program as program, build_Region as region, build_Step as step,
     build_Tested as tested, build_Use as used,
 };
-use vun_target::TargetSpec;
 
-use crate::target::{Members, Read, Unread};
+use crate::target::{Declared, Members, Read, Unread};
 use crate::ty::Value;
 
 /// What a step does.
@@ -21,7 +20,7 @@ pub enum Action {
         name: Symbol,
         params: Value,
     },
-    Program(Options),
+    Program(Box<Options>),
     /// The program built at a step, written to its device.
     Flash {
         program: usize,
@@ -39,7 +38,7 @@ pub enum Action {
 pub struct Options {
     /// Its root file, relative to the directory of the `build.vun`.
     pub root: Symbol,
-    pub target: TargetSpec,
+    pub target: Declared,
     pub deps: Vec<Use>,
     pub memory: Vec<Region>,
 }
@@ -68,7 +67,7 @@ impl Read for Action {
             let m = m()?;
             Ok(Self::Dep { name: m.name(needed::name)?, params: m.get(needed::params)?.clone() })
         } else if *name == action::program.symbol() {
-            Options::read(payload).map(Self::Program)
+            Options::read(payload).map(|o| Self::Program(Box::new(o)))
         } else if *name == action::flash.symbol() {
             Ok(Self::Flash { program: Built::read(m()?.get(flashed::program)?)?.0 })
         } else if *name == action::test_on.symbol() {

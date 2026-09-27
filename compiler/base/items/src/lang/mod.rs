@@ -89,6 +89,7 @@ pub mod mem_Order;
 pub mod meta;
 pub mod meta_ArrayConcat;
 pub mod meta_Field;
+pub mod meta_NameEq;
 pub mod meta_SliceConcat;
 pub mod meta_TypeEq;
 pub mod meta_Variant;

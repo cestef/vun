@@ -12,13 +12,20 @@ TypeOf := ($T: type, $e: Code(T)) -> type { T };
 origin: ($T: type) -> Origin = _;
 embed: ($path: &[u8]) -> &static [_]u8 = _;
 
-/// Whether `A` and `B` are one type: made by the same constructor from the same arguments.
-same: ($A: type, $B: type) -> bool = _;
+/// Whether `a` and `b` are one compile-time value: two types made by the same constructor from
+/// the same arguments, one name.
+same: ($T: type, $a: T, $b: T) -> bool = _;
 
 /// Types are equal when they are one type (spec 02, section 1: `Pair(u16)` is one type).
 #[impl(lang.ops.Eq(type))]
 TypeEq := struct {
-    eq := (a: &type, b: &type) -> bool { same(a.*, b.*) };
+    eq := (a: &type, b: &type) -> bool { same(type, a.*, b.*) };
+};
+
+/// Names are equal when they are one name: `lang.target.current.os == .linux`.
+#[impl(lang.ops.Eq(Name))]
+NameEq := struct {
+    eq := (a: &Name, b: &Name) -> bool { same(Name, a.*, b.*) };
 };
 
 /// A compile-time value of any type, with its type: what a plan records of a record whose type

@@ -114,7 +114,7 @@ IntFormat := ($r: lang.Range) -> type { struct {
 #[impl(Format(lang.mem.Slice))]
 SliceFormat := ($T: type) -> type { struct {
     format := ($W: Writer, value: &[T], w: &mut W) -> Result((), W.Error) {
-        $if lang.meta.same(T, u8) {
+        $if lang.meta.same(type, T, u8) {
             w.write_all(value)
         } else {
             w.write_all(opening)?;

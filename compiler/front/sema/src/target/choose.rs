@@ -7,10 +7,11 @@ use std::fmt;
 use vun_codec::{Decode, Encode};
 use vun_hir::db::FileRef;
 use vun_intern::Symbol;
+use vun_items::lang::target_Host as host;
 use vun_query::{Cx, Query};
-use vun_target::{Host, TargetSpec};
+use vun_target::Host;
 
-use super::{Read, Unread};
+use super::{Declared, Members, Read, Unread};
 use crate::env::{Env, Unevaluated};
 use crate::ty::Value;
 
@@ -22,7 +23,7 @@ pub enum Choice {
     /// The row of `targets.hosts` for the machine of these names.
     Host { arch: Symbol, os: Symbol },
     /// A target read already, such as a program's in a package's plan.
-    Given(Box<TargetSpec>),
+    Given(Box<Declared>),
 }
 
 impl Choice {
@@ -69,7 +70,7 @@ pub struct Chosen;
 impl Query for Chosen {
     const NAME: &'static str = "chosen_target";
     type Key = (FileRef, Choice);
-    type Value = Result<TargetSpec, Unchosen>;
+    type Value = Result<Declared, Unchosen>;
 
     fn compute(cx: &Cx<'_>, (file, choice): &Self::Key) -> Self::Value {
         let env = Env::of(cx, file).ok_or(Unchosen::Unevaluated(Unevaluated::Absent))?;
@@ -77,7 +78,7 @@ impl Query for Chosen {
             Choice::Path(path) => {
                 let names = std::iter::once(vun_items::targets.symbol()).chain(path.iter().copied());
                 let value = env.path(names).map_err(Unchosen::Unevaluated)?;
-                TargetSpec::read(&value).map_err(Unchosen::Unread)
+                Declared::read(&value).map_err(Unchosen::Unread)
             }
             &Choice::Host { arch, os } => {
                 let hosts = env.item(vun_items::targets::hosts).map_err(Unchosen::Unevaluated)?;
@@ -85,9 +86,10 @@ impl Query for Chosen {
                     return Err(Unchosen::Unread(Unread::Record));
                 };
                 for row in &rows {
-                    let host = Host::read(row).map_err(Unchosen::Unread)?;
-                    if host.arch == arch && host.os == os {
-                        return Ok(host.target);
+                    let machine = Host::read(row).map_err(Unchosen::Unread)?;
+                    if machine.arch == arch && machine.os == os {
+                        let target = Members::of(row).and_then(|m| m.get(host::target));
+                        return target.and_then(Declared::read).map_err(Unchosen::Unread);
                     }
                 }
                 Err(Unchosen::Unhosted { arch, os })

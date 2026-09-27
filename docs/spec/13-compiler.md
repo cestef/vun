@@ -345,7 +345,10 @@ pub trait DiagSink {
   architecture, CPU, system and ABI are fields, never parts of a name. A `Spec` also holds the
   target's C model (`lang.target.C`: the width and alignment of each C integer type), which the C
   backend declares its types from. Adding a target adds a declaration; the compiler is not
-  rebuilt.
+  rebuilt. Compile-time code reads the chosen target as `lang.target.current`, the value of its
+  declaration (`Declared`: the `Spec` read, and the value it was read from), and picks what
+  differs between systems by its members: `std.os.libc` finds its system's row by
+  `current.os`. An address is 16, 32 or 64 bits wide; any other `pointer_bits` does not read.
 - **The target is chosen once, and nothing assumes one.** `--target` names a declaration of
   `targets` by its path (`--target bare.cortex_m4f`); without it, `targets.hosts` gives the
   target of the machine running the toolchain, named as Rust's `std::env::consts` names it. The

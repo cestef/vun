@@ -40,3 +40,7 @@ pub const require: Item = Item::new(&["lang", "target", "require"]);
 pub const Features: Item = Item::new(&["lang", "target", "Features"]);
 /// The largest address of the target: `usize` is `Int(0..=usize_max)`.
 pub const usize_max: Item = Item::new(&["lang", "target", "usize_max"]);
+/// The target being built for, as its declaration gives it: code picks what differs between
+/// systems by its members at compile time (`lang.target.current.os`). A machine's toolchain file
+/// changes only where the tools are, which this value does not say.
+pub const current: Item = Item::new(&["lang", "target", "current"]);

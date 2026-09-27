@@ -10,7 +10,8 @@ pub enum Meta {
     Origin,
     origin,
     embed,
-    /// Whether `A` and `B` are one type: made by the same constructor from the same arguments.
+    /// Whether `a` and `b` are one compile-time value: two types made by the same constructor from
+    /// the same arguments, one name.
     same,
     /// A compile-time value of any type, with its type: what a plan records of a record whose type
     /// each call infers (spec 03, section 7). It exists at compile time only.

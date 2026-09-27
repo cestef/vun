@@ -81,7 +81,7 @@ fn staged_branches_compare_types() {
     let file = fixture.root.write(
         "same.vun",
         "\
-width := ($T: type) -> u8 { $if lang.meta.same(T, u8) { 8 } else { 0 } };
+width := ($T: type) -> u8 { $if lang.meta.same(type, T, u8) { 8 } else { 0 } };
 eight: Int(width(u8)..=width(u8)) = 8;
 none: Int(width(u16)..=width(u16)) = 0;
 wrong: Int(width(u16)..=width(u16)) = 8;

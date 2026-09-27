@@ -14,7 +14,7 @@ require := ($holds: bool, $msg: &[u8]) -> u8 {
 };
 
 small := require(std.meta.size(Counter) <= 16, "a counter's frame outgrew 16 bytes");
-named := require(std.meta.same(Counter, std.meta.TypeOf(counter(3))), "a call makes another frame");
+named := require(std.meta.same(type, Counter, std.meta.TypeOf(counter(3))), "a call makes another frame");
 
 first := (c: &mut Counter) -> ?u8 {
     match c.resume() {

@@ -9,4 +9,5 @@ use crate::Item;
 pub const to: Item = Item::new(&["std", "int", "IntNarrow", "to"]);
 pub const wrap: Item = Item::new(&["std", "int", "IntNarrow", "wrap"]);
 pub const sat: Item = Item::new(&["std", "int", "IntNarrow", "sat"]);
+/// A value that fits is its own wrap, which cannot trap.
 pub const try_to: Item = Item::new(&["std", "int", "IntNarrow", "try_to"]);

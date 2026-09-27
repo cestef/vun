@@ -46,13 +46,7 @@ impl Meta {
                     _ => Err(Unevaluated::trap(Reason::NoFrame)),
                 }
             }
-            (Self::same, [a, b]) => {
-                let (a, b) = (
-                    a.as_type().ok_or(Unevaluated::Unsupported)?,
-                    b.as_type().ok_or(Unevaluated::Unsupported)?,
-                );
-                env.decide(a == b)
-            }
+            (Self::same, [_, a, b]) => env.decide(a == b),
             (Self::any, [ty, value]) => {
                 let ty = ty.as_type().ok_or(Unevaluated::Unsupported)?;
                 Ok(Value::Any { ty, value: Box::new(value.clone()) })

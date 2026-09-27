@@ -232,6 +232,8 @@
 | 236 | `targets.gnu` takes the flags selecting a target's machine (`-mcpu`, `-mthumb`, `-mfloat-abi`, `-march`/`-mabi`, `--target`), given to every compile and every link so the driver picks the libraries built for it: `bare.cortex_m4f` builds Thumb-2 hard-float code, `bare.rv32imc` RV32IMC/ilp32, `wasi.wasm32` wasm | accepted (a review finding) | 13 |
 | 237 | Compile-time values are bounded: shifts to 2^24 bits and arrays to 2^20 items, past which evaluation traps, so no program makes the compiler allocate without bound | proposed | 03 |
 | 238 | Executors only look at an `Event`'s mark; the task waiting takes it through `Event.wait` (`for !self.take() { yield .on(self); }`), so a task resumed early yields again, as spec 06 states. `Wait` is `enum { on(&Event), either(&Wait, &Wait) }`: `select` yields `.either(&first, &second)`, where it used to drop the first wait's chain (a nested `select` could hang) and resume a task whose event had not fired | proposed | 06 |
+| 239 | `lang.target.current: Spec = _` is the chosen target as a compile-time value, the value of its declaration (the query `Chosen` gives the `Spec` read and that value; a machine's toolchain file changes only the tools, which it does not say). An address is 16, 32 or 64 bits; `usize_max` derives from the width | accepted (the user's choice) | 13 |
+| 240 | `lang.meta.same($T, a, b)` says whether two compile-time values are one value (two types, two names), replacing `same(A, B)` on types; `lang.meta.Name` implements `Eq` through it, as `type` does | accepted (the user's direction: no primitive per kind) | 03 |
 
 Numbers 184 to 189 and 217 to 220 were never assigned.
 

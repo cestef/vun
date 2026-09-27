@@ -93,7 +93,7 @@ impl Session {
             .map(|r| MemoryRegion { name: r.name, origin: r.origin, len: r.len, declared: at })
             .collect();
         let root = dir.join(options.root.as_str());
-        tracing::info!(root = %root.display(), arch = %options.target.arch, "building a program of the plan");
+        tracing::info!(root = %root.display(), arch = %options.target.spec.arch, "building a program of the plan");
         let result = session.load(&root).ok_or(()).and_then(|file| session.build(file, None).map_err(|_| ()));
         self.diag.absorb(&session.diag);
         result.map_err(|()| self.diag.failed().expect("a build that stopped is reported"))

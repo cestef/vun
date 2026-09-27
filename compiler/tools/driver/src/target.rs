@@ -40,10 +40,11 @@ impl Session {
         }
         let chosen = self.db.get::<Chosen>(&(key.clone(), self.choice.clone()));
         let target = match chosen {
-            Ok(spec) => {
+            Ok(declared) => {
+                let spec = &declared.spec;
                 tracing::info!(arch = %spec.arch, cpu = %spec.cpu, os = %spec.os, "target chosen");
-                let spec = self.equip(key, spec);
-                let target = Target::of(&spec);
+                let spec = self.equip(key, spec.clone());
+                let target = Target::of(&declared);
                 let current = self.db.get::<TargetOf>(&());
                 assert!(
                     current.as_deref().is_none_or(|t| *t == target),
