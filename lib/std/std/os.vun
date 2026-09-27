@@ -4,8 +4,9 @@
 /// How the program ends: `ok`, or a status for the process that started it.
 Exit := enum { ok, code(u8) };
 
-/// Why a request to the system failed: the error number it reported.
-Error := struct { number: i32 };
+/// Why a request to the system failed: the error number it reported, or a stream that took no
+/// more bytes.
+Error := enum { number(i32), closed };
 
 /// The streams every process starts with, by their numbers.
 stdout_fd := 1;
@@ -71,11 +72,12 @@ Stream := struct {
 #[impl(std.fmt.Writer(Stream))]
 StreamWriter := struct {
     Error := std.os.Error;
+    closed: std.os.Error = .closed;
     /// Writes some of `bytes`, returning how many.
     write := (self: &mut Stream, bytes: &[u8]) -> Result(usize, std.os.Error) {
         written := unsafe std.os.libc.write(self.fd(), lang.mem.items_pointer(u8, bytes), bytes.len());
         if written < 0 {
-            .err(.{ .number = unsafe std.os.libc.errno_location().read() })
+            .err(.number(unsafe std.os.libc.errno_location().read()))
         } else {
             .ok(written.to(usize))
         }

@@ -96,14 +96,27 @@ Eq := interface(($Self: type) -> type { struct {
     ne := (a: &Self, b: &Self) -> bool { !eq(a, b) };
 }});
 
-/// `a < b`, `a <= b`, `a > b` and `a >= b`: a total order, from `cmp`.
+/// `a < b`, `a <= b`, `a > b` and `a >= b`: a partial order, in which two values may be
+/// unordered, every comparison of them false (a float NaN is unordered with every value).
+PartialOrd := interface(($Self: type) -> type { struct {
+    lt: (a: &Self, b: &Self) -> bool = _;
+    le: (a: &Self, b: &Self) -> bool = _;
+    gt := (a: &Self, b: &Self) -> bool { lt(b, a) };
+    ge := (a: &Self, b: &Self) -> bool { le(b, a) };
+}});
+
+/// A total order: any two values compare, as `cmp` says. A totally ordered type's operators are
+/// its `PartialOrd`, which `by_cmp` derives from `cmp`.
 Ord := interface(($Self: type) -> type { struct {
     cmp: (a: &Self, b: &Self) -> Ordering = _;
-    lt := (a: &Self, b: &Self) -> bool { match cmp(a, b) { .less => true, _ => false } };
-    le := (a: &Self, b: &Self) -> bool { match cmp(a, b) { .greater => false, _ => true } };
-    gt := (a: &Self, b: &Self) -> bool { match cmp(a, b) { .greater => true, _ => false } };
-    ge := (a: &Self, b: &Self) -> bool { match cmp(a, b) { .less => false, _ => true } };
 }});
+
+/// The `PartialOrd` witness of a type ordered by `Ord`, its operators following `cmp`:
+/// `#[impl(lang.ops.PartialOrd(Point))] PointPartialOrd := lang.ops.by_cmp(Point);`
+by_cmp := ($T: Ord) -> type { struct {
+    lt := (a: &T, b: &T) -> bool { match a.cmp(b) { .less => true, _ => false } };
+    le := (a: &T, b: &T) -> bool { match a.cmp(b) { .greater => false, _ => true } };
+} };
 
 Index := interface(($Self: type) -> type { struct {
     Key: type = _;

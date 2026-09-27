@@ -7,12 +7,12 @@ events: sync.Atomic(u32) = .init(0);
 
 #[panic.never]
 on_systick := () {
-    sync.critical([] (cs: &temp sync.Critical) { ticks.get(cs).* +%= 1; });
+    sync.critical([] (cs: &temp sync.Critical) { ticks.set(cs, (ticks.get(cs) + 1).wrap(u32)); });
     events.add(1, .relaxed);
 };
 
 uptime := () -> u32 {
-    sync.critical([] (cs: &temp sync.Critical) -> u32 { ticks.get(cs).* })
+    sync.critical([] (cs: &temp sync.Critical) -> u32 { ticks.get(cs) })
 };
 
 Queue := struct {
@@ -22,4 +22,12 @@ Queue := struct {
         guard.get().*[0] = v;
         guard.unlock();
     };
+};
+
+/// The ticks counted so far, the count starting again; and a count raised by a function of it.
+take_ticks := () -> u32 {
+    sync.critical([] (cs: &temp sync.Critical) -> u32 { ticks.replace(cs, 0) })
+};
+double_ticks := () {
+    sync.critical([] (cs: &temp sync.Critical) { ticks.update(cs, [] (n: u32) -> u32 { (n * 2).wrap(u32) }); });
 };

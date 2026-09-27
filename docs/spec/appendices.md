@@ -8,7 +8,7 @@ declaration whose value is `_`.
 | Module | Contents |
 |--------|----------|
 | `lang` | `type`, `Int`, `Fn`, `f16`, `f32`, `f64`, `bool`, `never`, `Range`, `Bounds`, `Option`, `Result`, `Step`, `Coroutine`, `Interface`, `interface` |
-| `lang.ops` | `Add`, `Sub`, `Mul`, `Div`, `Rem`, `Neg`, `BitAnd`, `BitOr`, `BitXor`, `Not`, `Shl`, `Shr`, `Concat`, `Eq`, `Ord`, `Index`, `Call`, `Try`, `Iterate` |
+| `lang.ops` | `Add`, `Sub`, `Mul`, `Div`, `Rem`, `Neg`, `BitAnd`, `BitOr`, `BitXor`, `Not`, `Shl`, `Shr`, `Concat`, `Eq`, `PartialOrd`, `Ord`, `by_cmp`, `Index`, `Call`, `Try`, `Iterate` |
 | `lang.mem` | `Ref`, `RefMut`, `RefOut`, `RefTake`, `RefTemp`, `RefTempMut`, `Ptr`, `Slice`, `Array`, `len`, `Cell`, `pointer_to`, `address`, `offset`, `cast`, `read`, `write`, `copy`, `fill`, `volatile_load`, `volatile_store`, `atomic_*`, `prefetch` |
 | `lang.meta` | `Code`, `Name`, `quote` primitives, type and declaration info, witnesses, attributes, origins, spans, `embed`, `heap`, `TypeOf` |
 | `lang.syntax` | token and node types generated from `grammar.vun` |
@@ -44,7 +44,7 @@ declaration whose value is `_`.
 | `a < b` (each comparison) in a condition | narrows the ranges of immutable integer bindings it compares where it holds and where it fails (the table `comparisons`, spec 04, rule 4) |
 | `a + b` (each operator) | `lang.ops.Add.add(a, b)`: the interface and function the table `operators` of `lang.syntax.desugar` gives |
 | `a == b`, `a != b` | `lang.ops.Eq.eq(&a, &b)`, `Eq.ne` (provided) |
-| `a < b`, `<=`, `>`, `>=` | `lang.ops.Ord.lt(&a, &b)`, `le`, `gt`, `ge`, provided from `Ord.cmp` |
+| `a < b`, `<=`, `>`, `>=` | `lang.ops.PartialOrd.lt(&a, &b)`, `le`, `gt`, `ge` (a total order's from `Ord.cmp` through `lang.ops.by_cmp`) |
 | `a[i]` | `lang.ops.Index.at(&a, i)`, or `at_mut(&mut a, i)` in a place context |
 | `f(x)` where `f` is not a function | `lang.ops.Call.call(&f, (x,))` |
 | `x op= y` | `x = (x op y).to(lang.meta.TypeOf(x))` |

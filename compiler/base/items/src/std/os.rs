@@ -12,7 +12,8 @@ pub const libc: Item = Item::new(&["std", "os", "libc"]);
 pub const linux: Item = Item::new(&["std", "os", "linux"]);
 /// How the program ends: `ok`, or a status for the process that started it.
 pub const Exit: Item = Item::new(&["std", "os", "Exit"]);
-/// Why a request to the system failed: the error number it reported.
+/// Why a request to the system failed: the error number it reported, or a stream that took no
+/// more bytes.
 pub const Error: Item = Item::new(&["std", "os", "Error"]);
 /// The streams every process starts with, by their numbers.
 pub const stdout_fd: Item = Item::new(&["std", "os", "stdout_fd"]);

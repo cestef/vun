@@ -7,7 +7,3 @@
 )]
 use crate::Item;
 pub const cmp: Item = Item::new(&["lang", "int", "ops", "IntOrd", "cmp"]);
-pub const lt: Item = Item::new(&["lang", "int", "ops", "IntOrd", "lt"]);
-pub const le: Item = Item::new(&["lang", "int", "ops", "IntOrd", "le"]);
-pub const gt: Item = Item::new(&["lang", "int", "ops", "IntOrd", "gt"]);
-pub const ge: Item = Item::new(&["lang", "int", "ops", "IntOrd", "ge"]);

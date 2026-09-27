@@ -84,8 +84,11 @@ IntEq := ($r: Range) -> type { struct {
 
 /// Integers in their order, of any two ranges.
 #[impl(lang.ops.Ord(Int))]
-IntOrd := ($r: Range) -> type { struct {
-    cmp := lang.int.compare;
+IntOrd := ($r: Range) -> type { struct { cmp := lang.int.compare; } };
+
+/// The operators of that order.
+#[impl(lang.ops.PartialOrd(Int))]
+IntPartialOrd := ($r: Range) -> type { struct {
     lt := lang.int.less;
     le := lang.int.less_equal;
     gt := lang.int.greater;

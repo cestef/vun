@@ -18,9 +18,10 @@ pub const leave: Item = Item::new(&["std", "sync", "leave"]);
 /// so nothing reached through it outlives the section.
 pub const Critical: Item = Item::new(&["std", "sync", "Critical"]);
 pub const critical: Item = Item::new(&["std", "sync", "critical"]);
-/// A value reached only inside the critical section.
+/// A value reached only inside the critical section, and only by value: no borrow of it is ever
+/// lent, so sections that nest never reach it twice at once.
 pub const Shared: Item = Item::new(&["std", "sync", "Shared"]);
-pub const Ordering: Item = Item::new(&["std", "sync", "Ordering"]);
+pub const Order: Item = Item::new(&["std", "sync", "Order"]);
 /// A value accessed atomically. Adding and subtracting wrap within `T`; each returns the value
 /// held before, as `swap` and `compare_swap` do.
 pub const Atomic: Item = Item::new(&["std", "sync", "Atomic"]);

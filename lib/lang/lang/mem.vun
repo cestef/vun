@@ -66,21 +66,21 @@ volatile_load: unsafe ($T: type, p: *T) -> T = _;
 volatile_store: unsafe ($T: type, p: *T, value: T) = _;
 
 /// How an atomic access orders the accesses around it, as C11 defines the orders.
-Ordering := enum { relaxed, acquire, release, acq_rel, seq_cst };
+Order := enum { relaxed, acquire, release, acq_rel, seq_cst };
 
 /// Atomic accesses to what `p` points to, which must be aligned for `T` and accessed atomically
 /// only while shared (spec 05, section 5). The read-modify-write ones return the value held
 /// before; `atomic_add` and `atomic_sub` wrap within `T`.
 #[panic.never]
-atomic_load: unsafe ($T: type, p: *T, order: Ordering) -> T = _;
+atomic_load: unsafe ($T: type, p: *T, order: Order) -> T = _;
 #[panic.never]
-atomic_store: unsafe ($T: type, p: *T, value: T, order: Ordering) = _;
+atomic_store: unsafe ($T: type, p: *T, value: T, order: Order) = _;
 #[panic.never]
-atomic_swap: unsafe ($T: type, p: *T, value: T, order: Ordering) -> T = _;
+atomic_swap: unsafe ($T: type, p: *T, value: T, order: Order) -> T = _;
 /// Stores `new` when `p` holds `expected`.
 #[panic.never]
-atomic_compare_swap: unsafe ($T: type, p: *T, expected: T, new: T, order: Ordering) -> T = _;
+atomic_compare_swap: unsafe ($T: type, p: *T, expected: T, new: T, order: Order) -> T = _;
 #[panic.never]
-atomic_add: unsafe ($T: type, p: *T, value: T, order: Ordering) -> T = _;
+atomic_add: unsafe ($T: type, p: *T, value: T, order: Order) -> T = _;
 #[panic.never]
-atomic_sub: unsafe ($T: type, p: *T, value: T, order: Ordering) -> T = _;
+atomic_sub: unsafe ($T: type, p: *T, value: T, order: Order) -> T = _;

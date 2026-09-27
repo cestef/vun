@@ -7,5 +7,11 @@
 )]
 use crate::Item;
 pub const init: Item = Item::new(&["std", "sync", "Shared", "init"]);
-/// The value, for as long as `cs` is held.
+/// A copy of the value.
 pub const get: Item = Item::new(&["std", "sync", "Shared", "get"]);
+/// Puts `value` in and returns the value it replaces.
+pub const replace: Item = Item::new(&["std", "sync", "Shared", "replace"]);
+/// Puts `value` in, in place of the value held.
+pub const set: Item = Item::new(&["std", "sync", "Shared", "set"]);
+/// Puts in what `f` makes of a copy of the value.
+pub const update: Item = Item::new(&["std", "sync", "Shared", "update"]);

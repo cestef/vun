@@ -7,5 +7,6 @@
 )]
 use crate::Item;
 pub const Error: Item = Item::new(&["std", "os", "StreamWriter", "Error"]);
+pub const closed: Item = Item::new(&["std", "os", "StreamWriter", "closed"]);
 /// Writes some of `bytes`, returning how many.
 pub const write: Item = Item::new(&["std", "os", "StreamWriter", "write"]);

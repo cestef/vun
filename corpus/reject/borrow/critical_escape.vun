@@ -1,11 +1,9 @@
-//! A borrow tied to a critical section cannot leave it (spec 07, section 2).
+//! The critical section a call is lent cannot leave it (spec 07, section 2).
 
 ..std.{ sync };
 
-ticks: sync.Shared(u32) = .init(0);
-
-leak := () -> &mut u32 {
-    sync.critical([] (cs: &temp sync.Critical) -> &mut u32 {
-        ticks.get(cs) //~ borrow.escape
+leak := () -> &sync.Critical {
+    sync.critical([] (cs: &temp sync.Critical) -> &sync.Critical {
+        cs //~ borrow.escape
     })
 };

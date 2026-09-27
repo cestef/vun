@@ -7,7 +7,9 @@
 )]
 use crate::Item;
 pub const Error: Item = Item::new(&["std", "fmt", "Writer", "Error"]);
+/// The error of a writer that took none of the bytes it was given: it takes no more.
+pub const closed: Item = Item::new(&["std", "fmt", "Writer", "closed"]);
 /// Writes some of `bytes`, returning how many.
 pub const write: Item = Item::new(&["std", "fmt", "Writer", "write"]);
-/// Writes all of `bytes`.
+/// Writes all of `bytes`, or fails with `closed` once a write takes none of them.
 pub const write_all: Item = Item::new(&["std", "fmt", "Writer", "write_all"]);

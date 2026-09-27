@@ -50,7 +50,7 @@ as data. An excerpt of the table of operators and the table of borrow forms:
 ```vun
 operators := [
     .{ .token = .plus, .interface = "lang.ops.Add", .function = "add" },
-    .{ .token = .lt, .interface = "lang.ops.Ord", .function = "lt" },
+    .{ .token = .lt, .interface = "lang.ops.PartialOrd", .function = "lt" },
     // ...
 ];
 borrows := [

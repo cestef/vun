@@ -10,13 +10,13 @@ use vun_sema::ty::{Ty, Value as Constant};
 use super::FnLower;
 use crate::unlowered::{Form, Unlowered};
 
-/// The orderings of `lang.mem.Ordering`, as LIR's.
+/// The orders of `lang.mem.Order`, as LIR's.
 const ORDERS: [(vun_items::Item, Order); 5] = [
-    (vun_items::lang::mem_Ordering::relaxed, Order::Relaxed),
-    (vun_items::lang::mem_Ordering::acquire, Order::Acquire),
-    (vun_items::lang::mem_Ordering::release, Order::Release),
-    (vun_items::lang::mem_Ordering::acq_rel, Order::AcqRel),
-    (vun_items::lang::mem_Ordering::seq_cst, Order::SeqCst),
+    (vun_items::lang::mem_Order::relaxed, Order::Relaxed),
+    (vun_items::lang::mem_Order::acquire, Order::Acquire),
+    (vun_items::lang::mem_Order::release, Order::Release),
+    (vun_items::lang::mem_Order::acq_rel, Order::AcqRel),
+    (vun_items::lang::mem_Order::seq_cst, Order::SeqCst),
 ];
 
 impl FnLower<'_, '_, '_> {

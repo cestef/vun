@@ -165,7 +165,7 @@ pub enum Access {
     Atomic(Order),
 }
 
-/// A memory ordering of an atomic access (`lang.mem.Ordering`).
+/// A memory ordering of an atomic access (`lang.mem.Order`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Encode, Decode)]
 pub enum Order {
     Relaxed,

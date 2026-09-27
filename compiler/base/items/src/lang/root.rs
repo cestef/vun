@@ -77,7 +77,7 @@ pub const bool: Item = Item::new(&["lang", "bool"]);
 pub const r#true: Item = Item::new(&["lang", "true"]);
 pub const r#false: Item = Item::new(&["lang", "false"]);
 pub const never: Item = Item::new(&["lang", "never"]);
-/// How two values compare (`lang.ops.Ord`).
+/// How two values compare (`lang.ops.Ord.cmp`).
 pub const Ordering: Item = Item::new(&["lang", "Ordering"]);
 /// Conditions are equal when both hold or neither does.
 pub const BoolEq: Item = Item::new(&["lang", "BoolEq"]);

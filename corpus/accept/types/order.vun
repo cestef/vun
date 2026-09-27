@@ -1,0 +1,36 @@
+//! Comparison operators are `lang.ops.PartialOrd`; a total order is `lang.ops.Ord`, whose `cmp`
+//! a type's operators follow through `lang.ops.by_cmp` (spec 02, section 4).
+
+Version := struct { major: u8, minor: u8 };
+
+#[impl(lang.ops.Ord(Version))]
+VersionOrd := struct {
+    cmp := (a: &Version, b: &Version) -> lang.Ordering {
+        if a.major != b.major { a.major.cmp(&b.major) } else { a.minor.cmp(&b.minor) }
+    };
+};
+
+#[impl(lang.ops.PartialOrd(Version))]
+VersionPartialOrd := lang.ops.by_cmp(Version);
+
+old := Version{ .major = 1, .minor = 9 };
+new := Version{ .major = 2, .minor = 0 };
+
+/// Every operator and `cmp` agree on a total order.
+#[test]
+versions := () {
+    $assert(old < new);
+    $assert(old <= old);
+    $assert(new > old);
+    $assert(!(old >= new));
+};
+
+/// Floats are ordered partially: a NaN is unordered with every value, and IEEE `totalOrder` is a
+/// function of its own.
+#[test]
+floats := () {
+    nan := 0.0 / 0.0;
+    $assert(!(nan < 1.0) and !(nan >= 1.0));
+    $assert(-0.0 >= 0.0);
+    $assert(match lang.float.total_order(f64, &-0.0, &0.0) { .less => true, _ => false });
+};

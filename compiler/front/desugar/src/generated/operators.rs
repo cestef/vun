@@ -75,18 +75,18 @@ pub const OPERATORS: &[OperatorsRow] = &[
     },
     OperatorsRow {
         token: TokenKind::Lt,
-        function: vun_items::lang::ops_Ord::lt,
+        function: vun_items::lang::ops_PartialOrd::lt,
     },
     OperatorsRow {
         token: TokenKind::Le,
-        function: vun_items::lang::ops_Ord::le,
+        function: vun_items::lang::ops_PartialOrd::le,
     },
     OperatorsRow {
         token: TokenKind::Gt,
-        function: vun_items::lang::ops_Ord::gt,
+        function: vun_items::lang::ops_PartialOrd::gt,
     },
     OperatorsRow {
         token: TokenKind::Ge,
-        function: vun_items::lang::ops_Ord::ge,
+        function: vun_items::lang::ops_PartialOrd::ge,
     },
 ];

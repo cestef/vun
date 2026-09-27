@@ -39,29 +39,29 @@ ticks: std.sync.Shared(u32) = .init(0);
 
 #[panic.never]
 on_systick := () {
-    std.sync.critical([] (cs: &temp std.sync.Critical) { ticks.get(cs).* +%= 1; });
+    std.sync.critical([] (cs: &temp std.sync.Critical) { ticks.set(cs, (ticks.get(cs) + 1).wrap(u32)); });
 };
 ```
 
 `critical` lends the `Critical` value it creates for the duration of the call only (`&temp`,
-@sec-memory). `ticks.get(cs)` returns a `&mut u32` tied to `cs` by the scoping rule, so returning
-it from the closure is rejected (@fig-escape): nothing reached through `cs` leaves the critical
-section.
+@sec-memory), so returning it from the closure is rejected (@fig-escape). A `Shared(T)` is reached
+only by value, through `get`, `set`, `replace` and `update`, and never lends a borrow of what it
+holds: sections nest, and a borrow lent to each of two nested sections would alias.
 
 #figure(
   ```term
   $ vun check corpus/reject/borrow/critical_escape.vun
   error[borrow.escape]: `cs` is lent for the call only, and a borrow tied to it is returned
-    ╭▸ corpus/reject/borrow/critical_escape.vun:9:9
+    ╭▸ corpus/reject/borrow/critical_escape.vun:7:9
     │
-  8 │     sync.critical([] (cs: &temp sync.Critical) -> &mut u32 {
+  6 │     sync.critical([] (cs: &temp sync.Critical) -> &sync.Critical {
     │                       ── lent as `&temp` here
-  9 │         ticks.get(cs) //~ borrow.escape
-    │         ━━━━━━━━━━━━━
+  7 │         cs //~ borrow.escape
+    │         ━━
     │
     ╰ help: a `&temp` parameter never reaches the result; return what another parameter lends
   ```,
-  caption: [A borrow obtained inside a critical section cannot leave it.],
+  caption: [The critical section a call is lent cannot leave it.],
 ) <fig-escape>
 
 The

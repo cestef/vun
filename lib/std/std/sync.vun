@@ -47,19 +47,36 @@ Critical := struct {
 
 critical := Critical.run;
 
-/// A value reached only inside the critical section.
+/// A value reached only inside the critical section, and only by value: no borrow of it is ever
+/// lent, so sections that nest never reach it twice at once.
 Shared := ($T: type) -> type { struct {
     _value: lang.mem.Cell(T),
 
     init := (value: T) -> Shared(T) { .{ ._value = lang.mem.cell(T, value) } };
-    /// The value, for as long as `cs` is held.
+    /// A copy of the value.
     #[panic.never]
-    get := (self: &Shared(T), cs: &Critical) -> &mut T {
-        unsafe { &mut lang.mem.cell_pointer(T, &self._value).* }
+    get := (self: &Shared(T), cs: &Critical) -> T {
+        held := unsafe { &lang.mem.cell_pointer(T, &self._value).* };
+        held.*
+    };
+    /// Puts `value` in and returns the value it replaces.
+    #[panic.never]
+    replace := (self: &Shared(T), cs: &Critical, value: T) -> T {
+        at := unsafe lang.mem.cell_pointer(T, &self._value);
+        old := unsafe lang.mem.read(T, at);
+        unsafe lang.mem.write(T, at, value);
+        old
+    };
+    /// Puts `value` in, in place of the value held.
+    #[panic.never]
+    set := (self: &Shared(T), cs: &Critical, value: T) { self.replace(cs, value); };
+    /// Puts in what `f` makes of a copy of the value.
+    update := ($F: lang.ops.Call((T), T), self: &Shared(T), cs: &Critical, f: F) {
+        self.set(cs, f(self.get(cs)));
     };
 } };
 
-Ordering := lang.mem.Ordering;
+Order := lang.mem.Order;
 
 /// A value accessed atomically. Adding and subtracting wrap within `T`; each returns the value
 /// held before, as `swap` and `compare_swap` do.
@@ -68,26 +85,26 @@ Atomic := ($T: type) -> type { struct {
 
     init := (value: T) -> Atomic(T) { .{ ._value = lang.mem.cell(T, value) } };
     #[panic.never]
-    load := (self: &Atomic(T), order: Ordering) -> T { unsafe lang.mem.atomic_load(T, self._at(), order) };
+    load := (self: &Atomic(T), order: Order) -> T { unsafe lang.mem.atomic_load(T, self._at(), order) };
     #[panic.never]
-    store := (self: &Atomic(T), value: T, order: Ordering) {
+    store := (self: &Atomic(T), value: T, order: Order) {
         unsafe lang.mem.atomic_store(T, self._at(), value, order)
     };
     #[panic.never]
-    swap := (self: &Atomic(T), value: T, order: Ordering) -> T {
+    swap := (self: &Atomic(T), value: T, order: Order) -> T {
         unsafe lang.mem.atomic_swap(T, self._at(), value, order)
     };
     /// Stores `new` when the value is `expected`.
     #[panic.never]
-    compare_swap := (self: &Atomic(T), expected: T, new: T, order: Ordering) -> T {
+    compare_swap := (self: &Atomic(T), expected: T, new: T, order: Order) -> T {
         unsafe lang.mem.atomic_compare_swap(T, self._at(), expected, new, order)
     };
     #[panic.never]
-    add := (self: &Atomic(T), value: T, order: Ordering) -> T {
+    add := (self: &Atomic(T), value: T, order: Order) -> T {
         unsafe lang.mem.atomic_add(T, self._at(), value, order)
     };
     #[panic.never]
-    sub := (self: &Atomic(T), value: T, order: Ordering) -> T {
+    sub := (self: &Atomic(T), value: T, order: Order) -> T {
         unsafe lang.mem.atomic_sub(T, self._at(), value, order)
     };
 

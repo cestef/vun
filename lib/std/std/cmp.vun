@@ -1,4 +1,4 @@
-//! Comparing values through `lang.ops.Ord`, whose `<` and `>` these use.
+//! Comparing values through `lang.ops.PartialOrd`, whose `<` and `>` these use.
 
 /// The smaller of `a` and `b`, `a` when equal.
 #[panic.never]

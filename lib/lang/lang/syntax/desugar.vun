@@ -19,10 +19,10 @@ operators := [
     .{ .token = .plus_plus, .function = "lang.ops.Concat.concat" },
     .{ .token = .eq_eq, .function = "lang.ops.Eq.eq" },
     .{ .token = .bang_eq, .function = "lang.ops.Eq.ne" },
-    .{ .token = .lt, .function = "lang.ops.Ord.lt" },
-    .{ .token = .le, .function = "lang.ops.Ord.le" },
-    .{ .token = .gt, .function = "lang.ops.Ord.gt" },
-    .{ .token = .ge, .function = "lang.ops.Ord.ge" },
+    .{ .token = .lt, .function = "lang.ops.PartialOrd.lt" },
+    .{ .token = .le, .function = "lang.ops.PartialOrd.le" },
+    .{ .token = .gt, .function = "lang.ops.PartialOrd.gt" },
+    .{ .token = .ge, .function = "lang.ops.PartialOrd.ge" },
 ];
 
 /// How a comparison relates its left operand to its right.

@@ -86,10 +86,15 @@ function so that it can be used as a constraint.
 ```vun
 Writer := interface(($Self: type) -> type { struct {
     Error: type = _;                                             // required
+    closed: Error = _;
     write: (self: &mut Self, bytes: &[u8]) -> Result(usize, Error) = _;
     write_all := (self: &mut Self, bytes: &[u8]) -> Result((), Error) {  // provided default
         mut rest := bytes;
-        for rest.len() > 0 { rest = rest[self.write(rest)?..]; }
+        for rest.len() > 0 {
+            n := self.write(rest)?;
+            if n == 0 { return .err(closed); }
+            rest = rest[n..];
+        }
         .ok(())
     };
 }});
@@ -97,7 +102,9 @@ Writer := interface(($Self: type) -> type { struct {
 
 Requirements are declarations whose value is `_` (spec 01, section 3). Declarations with a value
 are defaults. There is no separate "associated type" notion: `Error` is a declaration like the
-others, and `write` refers to it by name because declarations resolve lazily.
+others, and `write` and `closed` refer to it by name because declarations resolve lazily. `closed`
+is the error `write_all` reports when a write takes none of its bytes, so that it never loops on a
+writer that takes no more.
 
 ### Conformance
 
@@ -105,6 +112,7 @@ others, and `write` refers to it by name because declarations resolve lazily.
 #[impl(Writer(Uart))]
 UartWriter := struct {
     Error := uart.Error;
+    closed: uart.Error = .stopped;
     write := (self: &mut Uart, bytes: &[u8]) -> Result(usize, uart.Error) { ... };
 };
 ```
@@ -180,7 +188,12 @@ Every operator desugars to an interface in `lang.ops` (appendix B): `a + b` is
 `f(x)` on a non-function value is `lang.ops.Call.call(&f, (x,))`. Which interface and function each
 operator names is data, the table `operators` of `lang.syntax.desugar`, so the compiler finds them
 by lookup; the result of `a == b` is the result type of `Eq.eq` for the type of `a`, `bool` in
-`lang`. `Ord` requires `cmp` and provides `lt`, `le`, `gt` and `ge`; `Eq` provides `ne`. The
+`lang`. The comparison operators are `PartialOrd`, which requires `lt` and `le` and provides `gt`
+and `ge`: a partial order, in which two values may be unordered, every comparison of them false.
+`Ord` is a total order and requires only `cmp`; a totally ordered type's `PartialOrd` is
+`lang.ops.by_cmp(T)`, so its operators and `cmp` never disagree. Floats implement only
+`PartialOrd`, with IEEE comparisons (a NaN is unordered); IEEE `totalOrder` is the function
+`lang.float.total_order`. `Eq` provides `ne`. The
 arithmetic, bit and concatenation interfaces take the right operand's type per call
 (`add: ($R: type, a: Self, b: R) -> Output(R)`), since an integer result's range depends on both
 operands. Prefix `-` and `~` are `lang.ops.Neg` and `Not` (the table `prefix_operators`); `!`

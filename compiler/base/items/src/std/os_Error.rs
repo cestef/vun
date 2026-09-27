@@ -7,3 +7,4 @@
 )]
 use crate::Item;
 pub const number: Item = Item::new(&["std", "os", "Error", "number"]);
+pub const closed: Item = Item::new(&["std", "os", "Error", "closed"]);

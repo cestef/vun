@@ -34,8 +34,15 @@ pub const Neg: Item = Item::new(&["lang", "ops", "Neg"]);
 pub const Not: Item = Item::new(&["lang", "ops", "Not"]);
 /// `a == b` and `a != b`.
 pub const Eq: Item = Item::new(&["lang", "ops", "Eq"]);
-/// `a < b`, `a <= b`, `a > b` and `a >= b`: a total order, from `cmp`.
+/// `a < b`, `a <= b`, `a > b` and `a >= b`: a partial order, in which two values may be
+/// unordered, every comparison of them false (a float NaN is unordered with every value).
+pub const PartialOrd: Item = Item::new(&["lang", "ops", "PartialOrd"]);
+/// A total order: any two values compare, as `cmp` says. A totally ordered type's operators are
+/// its `PartialOrd`, which `by_cmp` derives from `cmp`.
 pub const Ord: Item = Item::new(&["lang", "ops", "Ord"]);
+/// The `PartialOrd` witness of a type ordered by `Ord`, its operators following `cmp`:
+/// `#[impl(lang.ops.PartialOrd(Point))] PointPartialOrd := lang.ops.by_cmp(Point);`
+pub const by_cmp: Item = Item::new(&["lang", "ops", "by_cmp"]);
 pub const Index: Item = Item::new(&["lang", "ops", "Index"]);
 /// What `e?` desugars to: continue with a value, or stop the function with a result.
 pub const Try: Item = Item::new(&["lang", "ops", "Try"]);

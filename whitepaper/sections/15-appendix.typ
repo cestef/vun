@@ -21,7 +21,7 @@ Every form below is a rewrite into `lang` items. The tables named in parentheses
     [`if c`, `for c`, `!c`], [`c` has type `lang.bool` and holds when it is `lang.bool.true` (`forms`)],
     [`a..b`, `a..=b`], [bounds of type `lang.Bounds(T)`; a `lang.Range` where one is expected (`forms`)],
     [`a + b`, and each operator], [`lang.ops.Add.add(a, b)`, as the table gives (`operators`)],
-    [`a == b`, `a < b`], [`lang.ops.Eq.eq(&a, &b)`, `lang.ops.Ord.lt(&a, &b)`],
+    [`a == b`, `a < b`], [`lang.ops.Eq.eq(&a, &b)`, `lang.ops.PartialOrd.lt(&a, &b)`],
     [`a[i]`], [`lang.ops.Index.at(&a, i)`, or `at_mut(&mut a, i)` in a place context],
     [`f(a, b)`, `f` not a function literal], [`lang.ops.Call.call(&mut f, (a, b))` (`calls`)],
     [`x op= y`], [`x = (x op y).to(lang.meta.TypeOf(x))` (`compound`)],

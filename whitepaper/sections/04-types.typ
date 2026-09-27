@@ -66,10 +66,15 @@ to it by name because declarations resolve lazily.
 ```vun
 Writer := interface(($Self: type) -> type { struct {
     Error: type = _;
+    closed: Error = _;
     write: (self: &mut Self, bytes: &[u8]) -> Result(usize, Error) = _;
     write_all := (self: &mut Self, bytes: &[u8]) -> Result((), Error) {
         mut rest := bytes;
-        for rest.len() > 0 { rest = rest[self.write(rest)?..]; }
+        for rest.len() > 0 {
+            n := self.write(rest)?;
+            if n == 0 { return .err(closed); }
+            rest = rest[n..];
+        }
         .ok(())
     };
 }});
@@ -122,8 +127,10 @@ function pointers and a fat pointer.
 
 Every operator desugars to an interface of `lang.ops`: `a + b` is `lang.ops.Add.add(a, b)`,
 `a == b` is `lang.ops.Eq.eq(&a, &b)`, `a[i]` is `lang.ops.Index.at(&a, i)`. The table that maps
-tokens to interfaces is the one shown in @sec-principles. `Ord` requires `cmp` and provides `lt`,
-`le`, `gt` and `ge`; `Eq` provides `ne`. Integer, floating-point and vector operators are
+tokens to interfaces is the one shown in @sec-principles. The comparison operators are
+`PartialOrd`, a partial order: floats implement it with IEEE comparisons, a NaN unordered with
+every value. `Ord` is a total order, requiring only `cmp`, and `lang.ops.by_cmp` derives a type's
+`PartialOrd` from it, so that operators and `cmp` never disagree. `Eq` provides `ne`. Integer, floating-point and vector operators are
 implementations whose functions are `_`, supplied by the compiler; user types implement the same
 interfaces and dispatch statically.
 

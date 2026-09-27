@@ -31,14 +31,16 @@ ticks: sync.Shared(u32) = .init(0);
 
 #[panic.never]
 on_systick := () {
-    sync.critical([] (cs: &temp sync.Critical) { ticks.get(cs).* +%= 1; });
+    sync.critical([] (cs: &temp sync.Critical) { ticks.set(cs, (ticks.get(cs) + 1).wrap(u32)); });
 };
 ```
 
 `sync.critical` takes `$F: lang.ops.Call((&temp Critical), R)` and lends the `Critical` it makes
-for the call only (spec 05, section 4). `ticks.get(cs)` returns `&mut u32` tied to `cs` by the
-scoping rule, so returning it from the closure is `borrow.escape`: nothing reached through `cs`
-leaves the critical section. The section itself is two typed link symbols the runtime exports,
+for the call only (spec 05, section 4), so returning it from the closure is `borrow.escape`. A
+`Shared(T)` is reached only by value: `get` copies the value out, `set` and `replace` put one in,
+and `update` puts in what a function makes of a copy. It never lends a borrow of what it holds,
+since sections nest (`enter` records whether it took the section) and a borrow lent to each of two
+nested sections would alias. The section itself is two typed link symbols the runtime exports,
 `std.sync.enter` and `leave` (spec 08, section 1). `Shared(T)` and `Atomic(T)` hold a
 `lang.mem.Cell(T)`, reached through `lang.mem.cell_pointer` and the `lang.mem.atomic_*`
 primitives in `unsafe` code; `Mutex(T)` spins on an `Atomic(bool)` and returns a linear `Guard`.

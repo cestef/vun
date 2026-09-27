@@ -22,3 +22,5 @@ pub const IntNot: Item = Item::new(&["lang", "int", "ops", "IntNot"]);
 pub const IntEq: Item = Item::new(&["lang", "int", "ops", "IntEq"]);
 /// Integers in their order, of any two ranges.
 pub const IntOrd: Item = Item::new(&["lang", "int", "ops", "IntOrd"]);
+/// The operators of that order.
+pub const IntPartialOrd: Item = Item::new(&["lang", "int", "ops", "IntPartialOrd"]);
