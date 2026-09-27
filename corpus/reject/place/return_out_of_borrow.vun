@@ -1,0 +1,8 @@
+//! Returning a linear value read through a borrow moves it out of the borrow, which does not
+//! own it (spec 05, section 1).
+
+Token := #[kind.linear] struct { n: u8 };
+
+take := (p: &Token) -> Token {
+    p.* //~ place.move_out_of_borrow
+};

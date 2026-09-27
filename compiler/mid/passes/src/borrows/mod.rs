@@ -48,7 +48,9 @@ impl Query for BorrowChecks {
         let having = |f: fn(&Kind) -> bool| kinds.iter().filter(|(_, k)| f(k)).map(|(&l, _)| l).collect();
         let locals = Locals {
             scoped: having(|k| k.is_scoped()),
-            misplaced: having(|k| k.misplaced),
+            // A borrow stored in a free value is reported where its type is written: in the
+            // function as written, or at the call instantiating it, not again in the instance.
+            misplaced: if i.is_plain() { having(|k| k.misplaced) } else { BTreeSet::new() },
             linear: having(|k| k.is_linear()),
         };
         Some(Checker::new(&body, calls, locals).run())

@@ -86,7 +86,7 @@ impl Query for Mir {
     fn compute(cx: &Cx<'_>, i: &Instantiation) -> Self::Value {
         // What is evaluated while lowering, `$if` conditions and `$for` items, is typed as the
         // body is.
-        let env = i.env(cx).expect("a function value's file is read");
+        let env = i.env(cx).ok_or(Unbuilt::at(i.f.literal.expr.origin))?;
         let name = OriginTable::global().declaration_name(i.f.literal.expr.origin);
         let _span =
             vun_trace::tracing::debug_span!("mir", f = name.as_ref().map_or("", |n| n.as_str())).entered();

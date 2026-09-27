@@ -194,10 +194,11 @@ impl Body {
         changed
     }
 
-    /// The function the primitive `p` runs as where no instruction computes it (`lower.by`).
+    /// The function the primitive `p` runs as where no instruction computes it (`lower.by`): a
+    /// function, so that folding it again changes nothing.
     fn lowered_by(env: &Env<'_, '_>, p: Primitive) -> Option<Value> {
         let attributes = env.primitive_decl(p).ok()?.attributes(env.cx)?;
-        attributes.get(Primitive::Lower(Lower::by))?.pop()
+        attributes.get(Primitive::Lower(Lower::by))?.pop().filter(|f| matches!(f, Value::Fn(_)))
     }
 
     /// The value of the primitive `p` applied to `args`, when every parameter of it is a `$` one

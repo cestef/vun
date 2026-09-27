@@ -77,8 +77,8 @@ struct Analysis<'b> {
     constants: BTreeMap<Local, i128>,
     /// The locals holding linear values, which a read moves and a return must find `uninit`.
     linear: BTreeSet<Local>,
-    /// The linear values moved out of borrows, by the local they land in.
-    moved: Vec<(Local, OriginId)>,
+    /// The linear values moved out of borrows, by the linear local they land in, if any.
+    moved: Vec<(Option<Local>, OriginId)>,
     diag: DiagCtxt,
     /// Where each deferred statement at an exit goes, once the states are fixed.
     defers: BTreeMap<BlockId, BlockId>,
@@ -88,7 +88,7 @@ struct Analysis<'b> {
 }
 
 impl<'b> Analysis<'b> {
-    fn new(body: &'b Body, linear: BTreeSet<Local>, moved: Vec<(Local, OriginId)>) -> Self {
+    fn new(body: &'b Body, linear: BTreeSet<Local>, moved: Vec<(Option<Local>, OriginId)>) -> Self {
         let targets = body
             .params
             .iter()
@@ -153,14 +153,16 @@ impl<'b> Analysis<'b> {
     /// linear ones, so that the report is not repeated as a leak.
     fn moved_out(&mut self) {
         for (local, origin) in std::mem::take(&mut self.moved) {
-            if self.linear.remove(&local) {
+            if local.is_none_or(|local| self.linear.remove(&local)) {
                 let msg = Msg::new().text("this moves a linear value out of a borrow, which does not own it");
                 let help = Msg::new()
                     .text("match or read through the borrow itself, without ")
                     .code(".*")
                     .text(", to bind by borrow");
                 self.advise(errors::PLACE_MOVE_OUT_OF_BORROW, origin, msg, Some(help));
-                self.derived(local);
+                if let Some(local) = local {
+                    self.derived(local);
+                }
             }
         }
     }
