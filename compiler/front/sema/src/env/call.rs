@@ -4,6 +4,7 @@
 use super::passing::Passed;
 use super::{Env, Unevaluated};
 use crate::eval::{Call, Instance};
+use crate::member::{Found, Members};
 use crate::ty::Value;
 use vun_hir::tree::{Arg, Entry, ExprId, ExprKind, Name};
 
@@ -36,7 +37,12 @@ impl Env<'_, '_> {
                 // namespace or of `type`.
                 let declared = matches!(object, Value::Namespace(_) | Value::Type(_));
                 let ty = if declared { None } else { object.ty().or(ty) };
+                // A field holds a value, which the call calls with no receiver.
+                let field = ty
+                    .and_then(|t| self.cx.get::<Members>(&t))
+                    .is_some_and(|m| matches!(m.find(*name), Found::Field(_)));
                 match ty {
+                    Some(_) if field => self.member(object, *name)?,
                     // Through borrows, as `.` goes: a compile-time borrow is its value. A type
                     // lacking the member, or not known to have it, passes the search on; a
                     // member that fails to evaluate fails the call.

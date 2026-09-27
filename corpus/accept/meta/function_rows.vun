@@ -1,0 +1,35 @@
+//! Function values, `$` parameters included, are compile-time values as any other: a row of a
+//! table holds one in a field, a function returns the row, and a call through the field calls
+//! the function it holds (spec 03, section 7).
+
+Runtime := struct {
+    os: lang.meta.Name,
+    start: ($main: (&mut std.os.System) -> std.os.Exit) -> type,
+};
+
+runtimes := [
+    Runtime{ .os = .macos, .start = std.os.libc.start },
+    Runtime{ .os = .linux, .start = std.os.libc.start },
+];
+
+/// The row of `os` in `runtimes`.
+runtime := ($os: lang.meta.Name) -> Runtime {
+    mut found := runtimes[0];
+    for r in runtimes {
+        if r.os == os { found = r; }
+    }
+    found
+};
+
+start := runtime(.linux).start(main);
+
+main := (sys: &mut std.os.System) -> std.os.Exit { .ok };
+
+Sized := struct { bits: ($n: u8) -> type };
+widths := Sized{ .bits = ($n: u8) -> type { Int(0..=n) } };
+
+#[test]
+through_fields := () {
+    small: widths.bits(3) = 3;
+    $assert(runtime(.macos).os == .macos);
+};

@@ -152,6 +152,11 @@ plain function value.
 > type of `a`, and `<a>` passes the place `a` in whatever mode the first parameter of `f` asks for:
 > by value, `&`, `&mut`, `&out`, `&take` or `&temp`.
 
+A field is not a method: when `f` is a field of `T`, `a.f(b)` calls the function value the field
+holds with `b` alone, as `(a.f)(b)` would. A function value, `$` parameters included, is a value as
+any other, in a field, an array or a result: a table of rows naming functions is looked up and
+called at compile time as a table of numbers is.
+
 Arguments inside `( )` are ordinary expressions, so borrowing them is written out: `f(&mut x)`.
 The place `a` is computed before the arguments, and borrowed after them, so `v.push(v.len())`
 reads `v` before the `&mut v` its receiver takes begins.
