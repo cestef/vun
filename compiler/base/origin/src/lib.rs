@@ -164,8 +164,13 @@ impl OriginTable {
             Anchor::File => origin.span.hash(&mut hasher),
             Anchor::Declaration { .. } => origin.span.file.hash(&mut hasher),
             Anchor::Within(declaration) => {
-                let start = self.get(declaration).span.range.lo;
-                (origin.span.range.lo - start, origin.span.range.len()).hash(&mut hasher);
+                let anchor = self.get(declaration).span;
+                let offset = origin.span.range.lo.checked_sub(anchor.range.lo);
+                match offset.filter(|_| anchor.file == origin.span.file) {
+                    Some(offset) => (offset, origin.span.range.len()).hash(&mut hasher),
+                    // A span outside its anchor is named where it is, as a file's origin is.
+                    None => origin.span.hash(&mut hasher),
+                }
             }
         }
         hasher.finish()

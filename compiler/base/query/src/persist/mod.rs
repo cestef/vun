@@ -22,7 +22,7 @@ pub use self::census::{Census, Counted};
 pub(crate) use self::query::Persisted;
 use self::query::{Layout, Persisting};
 pub use self::saved::Unloaded;
-use self::saved::{Body, FORMAT, Loaded, Named};
+use self::saved::{Body, Build, FORMAT, Loaded, Named};
 pub(crate) use self::saved::{Growth, Saved, SavedDep};
 use self::store::StoredQuery;
 pub(crate) use self::store::{Attached, Store};
@@ -100,7 +100,7 @@ impl Db {
         let size = u64::try_from(body.len()).expect("a body fits in 64 bits");
         let compacted = growth.map_or(size, |growth| growth.compacted);
         tracing::debug!(size, compacted, whole = extends.is_none(), "memos saved");
-        Saved { format: FORMAT, compacted, body }.encoded()
+        Saved { format: FORMAT, build: Build::identity(), compacted, body }.encoded()
     }
 
     /// Whether saved memos were loaded.
@@ -134,6 +134,9 @@ impl Db {
             return Err(Unloaded::Format { found: format });
         }
         let header = Saved::<Blob>::decoded(&bytes).map_err(Unloaded::Decode)?;
+        if header.build.is_none() || header.build != Build::identity() {
+            return Err(Unloaded::Build);
+        }
         let saved: Loaded = header.body.read(&bytes).map_err(Unloaded::Decode)?;
         // Each query is saved once, so that its positions name its own memos.
         let mut names = HashSet::new();

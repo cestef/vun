@@ -10,13 +10,33 @@
 //! written whole.
 
 use std::fmt;
+use std::sync::OnceLock;
+use std::time::UNIX_EPOCH;
 
 use vun_codec::{Blob, Decode, Encode, Malformed, Pools};
+use vun_hash::Hash;
 
 use crate::fingerprint::Fingerprint;
 
 /// The version of the saved form; a file of another version is not read.
-pub(super) const FORMAT: u32 = 8;
+pub(super) const FORMAT: u32 = 9;
+
+/// The compiler running, as saved memos name it.
+pub(crate) struct Build;
+
+impl Build {
+    /// The running executable, by its size and when it was written: another build of the
+    /// compiler is another executable, and its memos may hold values of types changed since.
+    /// `None` when the executable cannot be found, where no memo is trusted.
+    pub(crate) fn identity() -> Option<Hash> {
+        static IDENTITY: OnceLock<Option<Hash>> = OnceLock::new();
+        *IDENTITY.get_or_init(|| {
+            let meta = std::env::current_exe().and_then(std::fs::metadata).ok()?;
+            let written = meta.modified().ok()?.duration_since(UNIX_EPOCH).ok()?;
+            Some(Hash::of_value(&(meta.len(), written.as_nanos())))
+        })
+    }
+}
 
 /// How many times its size when last written whole a body grows to before it is written whole.
 const GROWTH: u64 = 2;
@@ -25,6 +45,8 @@ const GROWTH: u64 = 2;
 pub(crate) struct Saved<B = Vec<u8>> {
     /// Leads, so that another version is named rather than misread.
     pub(crate) format: u32,
+    /// The compiler that wrote it ([`Build::identity`]), whose types its values are of.
+    pub(crate) build: Option<Hash>,
     /// The size of the body when last written whole.
     pub(crate) compacted: u64,
     pub(crate) body: B,
@@ -108,6 +130,8 @@ pub enum Unloaded {
     },
     /// The database holds memos loaded already.
     Again,
+    /// Written by another build of the compiler, whose saved types may differ from this one's.
+    Build,
 }
 
 impl fmt::Display for Unloaded {
@@ -116,6 +140,7 @@ impl fmt::Display for Unloaded {
             Self::Decode(_) => f.write_str("the saved memos do not decode"),
             Self::Format { found } => write!(f, "the saved memos are in format {found}, not {FORMAT}"),
             Self::Again => f.write_str("memos were loaded already"),
+            Self::Build => f.write_str("the saved memos were written by another build of the compiler"),
         }
     }
 }
@@ -124,7 +149,7 @@ impl std::error::Error for Unloaded {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
             Self::Decode(e) => Some(e),
-            Self::Format { .. } | Self::Again => None,
+            Self::Format { .. } | Self::Again | Self::Build => None,
         }
     }
 }
