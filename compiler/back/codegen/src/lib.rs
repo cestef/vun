@@ -70,7 +70,7 @@ pub trait Arch: Sized + 'static {
 /// function.
 pub trait Isel: Arch {
     /// The variant of the architecture's C calling convention a target follows.
-    type Convention: Copy + Default + Send + Sync;
+    type Convention: Copy + Send + Sync + 'static;
 
     /// The state of the instruction compilers for `f`, under `convention`.
     ///

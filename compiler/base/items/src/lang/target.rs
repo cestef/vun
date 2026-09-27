@@ -25,6 +25,9 @@ pub const CCompiler: Item = Item::new(&["lang", "target", "CCompiler"]);
 /// fixed-width types from them, and checks each while compiling (spec 13, section 8.2). A `char`
 /// is 8 bits everywhere Vun runs.
 pub const C: Item = Item::new(&["lang", "target", "C"]);
+/// The calling convention of a target's C functions (spec 13, section 8.5): where a call passes
+/// its arguments and gets its result.
+pub const Convention: Item = Item::new(&["lang", "target", "Convention"]);
 /// The backends a target builds with under each profile, most preferred first: a build takes
 /// the first the toolchain has that generates code for the target (spec 13, section 8).
 pub const Backends: Item = Item::new(&["lang", "target", "Backends"]);

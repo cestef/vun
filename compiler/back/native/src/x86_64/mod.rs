@@ -13,7 +13,7 @@ use vun_codegen::snippet::{Emits, Width};
 use vun_codegen::{Anchor, Arch, Place, Recompute};
 use vun_dwarf::CallFrame;
 use vun_lir::{Address, Cond};
-use vun_target::TargetSpec;
+use vun_target::Convention;
 
 /// x86-64, as the framework drives it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -30,6 +30,7 @@ impl Arch for X86 {
     const REGS: usize = Reg::ALL.len();
     /// Those a call may overwrite, but the two kept for the framework's moves.
     const ALLOCATABLE: &'static [Reg] = &[Reg::Rax, Reg::Rcx, Reg::Rdx, Reg::Rsi, Reg::Rdi, Reg::R8, Reg::R9];
+    /// Those the convention preserves, but the frame pointer.
     const CALLEE_SAVED: &'static [Reg] = &[Reg::Rbx, Reg::R12, Reg::R13, Reg::R14, Reg::R15];
     const CARRIER: Reg = Reg::R11;
     const TEMP: Reg = Reg::R10;
@@ -178,5 +179,5 @@ impl crate::Native for X86 {
         return_pushed: true,
     };
 
-    fn convention(_: &TargetSpec) {}
+    const CONVENTIONS: &'static [(Convention, Self::Convention)] = &[(Convention::Sysv, &abi::SYSV)];
 }

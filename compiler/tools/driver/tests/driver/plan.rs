@@ -48,7 +48,8 @@ build := (b: &mut std.build.Build) {
 ",
     )
     .expect("the plan runs");
-    let target = ".{ .arch = .arm, .cpu = .cortex_m4f, .os = .bare, .abi = .eabihf, .pointer_bits = 32, \
+    let target = ".{ .arch = .arm, .cpu = .cortex_m4f, .os = .bare, .abi = .eabihf, .convention = .aapcs_vfp, \
+                  .pointer_bits = 32, \
                   .endian = .little, \
                   .object_format = .elf, .entry_symbol = .some(\"Reset\"), .backends = .{ .debug = .{ .cranelift, .c }, \
                   .release = .{ .llvm, .c } }, .linker = .lld, .c = .{ .short = .{ .bits = 16, .align = 2 }, \

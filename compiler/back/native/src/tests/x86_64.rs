@@ -68,36 +68,3 @@ fn a_dying_operand_s_register_holds_the_result() {
     let body: Vec<&str> = text.iter().skip(3).map(String::as_str).collect();
     assert_eq!(body, ["add rdi, 0x1", "mov eax, 0x3", "imul rdi, rax", "mov rax, rdi", "leave", "ret"]);
 }
-
-#[test]
-fn a_record_past_two_eightbytes_takes_no_argument_register() {
-    use crate::x86_64::abi::{ARGS, Carrier, Loc, Passing};
-    use vun_lir::{AbiType, Conv, Ext, Record, Signature};
-    let large =
-        Record { size: 24, align: 8, fields: vec![(0, Scalar::I64), (8, Scalar::I64), (16, Scalar::I64)] };
-    let signature = Signature {
-        conv: Conv::C,
-        params: vec![AbiType::Record(large), AbiType::Int(Scalar::I64, Ext::Zero)],
-        result: None,
-    };
-    let passing = Passing::of(&signature).unwrap();
-    assert_eq!(passing.params[0], Loc::Copied { offset: 0, size: 24 });
-    assert_eq!(passing.params[1], Loc::Reg(Carrier::Int(ARGS[0])));
-}
-
-#[test]
-fn a_wide_integer_takes_two_registers_or_16_aligned_stack() {
-    use crate::x86_64::abi::{ARGS, Carrier, Loc, Passing};
-    use vun_lir::{AbiType, Conv, Ext, Signature};
-    let (int, wide) =
-        (AbiType::Int(Scalar::I64, Ext::Zero), AbiType::Wide { half: Scalar::I64, ext: Ext::Sign });
-    let mut params = vec![int.clone(); 3];
-    params.extend([wide.clone(), int.clone(), wide, int]);
-    let signature = Signature { conv: Conv::C, params, result: None };
-    let passing = Passing::of(&signature).unwrap();
-    let reg = |k: usize| Loc::Reg(Carrier::Int(ARGS[k]));
-    assert_eq!(passing.params[3..6], [reg(3), reg(4), reg(5)]);
-    // One register left: the second goes on the stack, and the register stays free.
-    assert_eq!(passing.params[6..9], [Loc::Stack(0), Loc::Stack(8), Loc::Stack(16)]);
-    assert_eq!(passing.stack, 32);
-}

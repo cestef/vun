@@ -115,7 +115,7 @@ impl Sel<'_, '_> {
                 let at = self.state.gathered.expect("gathered where the entry receives the address");
                 for part in parts {
                     let disp = i64::from(at) + i64::try_from(part.offset).expect("records fit memory");
-                    self.load_part(part.carrier, FP, disp, part.bytes);
+                    self.load_part(part.reg, FP, disp, part.bytes);
                 }
             }
             _ => {}

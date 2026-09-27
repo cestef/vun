@@ -1,12 +1,14 @@
 //! Linux, with the GNU C library.
 
-/// A 64-bit Linux target of `arch`, built with the system's C compiler.
-_on := ($arch: lang.meta.Name) -> lang.target.Spec {
+/// A 64-bit Linux target of `arch`, calling C by `convention`, built with the system's C
+/// compiler.
+_on := ($arch: lang.meta.Name, $convention: lang.target.Convention) -> lang.target.Spec {
     .{
         .arch = arch,
         .cpu = .generic,
         .os = .linux,
         .abi = .gnu,
+        .convention = convention,
         .pointer_bits = 64,
         .endian = .little,
         .object_format = .elf,
@@ -18,8 +20,8 @@ _on := ($arch: lang.meta.Name) -> lang.target.Spec {
 };
 
 /// 64-bit x86.
-x86_64 := _on(.x86_64);
+x86_64 := _on(.x86_64, .sysv);
 /// 64-bit ARM (AArch64).
-arm64 := _on(.arm64);
+arm64 := _on(.arm64, .aapcs64);
 /// 64-bit RISC-V with the general extensions (RV64GC).
-riscv64 := _on(.riscv64);
+riscv64 := _on(.riscv64, .lp64d);

@@ -40,7 +40,7 @@ impl Sel<'_, '_> {
                     self.state.gathered = Some(buffer);
                     Place::frame(buffer)
                 }
-                Loc::Reg(_) | Loc::Stack(_) => continue,
+                Loc::Reg(_) | Loc::Stack { .. } | Loc::Indirect { .. } => continue,
             };
             self.recompute_as(v, place);
         }
@@ -64,7 +64,7 @@ impl Sel<'_, '_> {
         let locs = self.state.passing.params.clone();
         // Values in general registers are received first, so that one received from an SSE
         // register, which takes a general register, overwrites none still to be received.
-        let sse = |loc: &Loc| matches!(loc, Loc::Reg(Carrier::Sse(_)));
+        let sse = |loc: &Loc| matches!(loc, Loc::Reg(Carrier::Float(_)));
         let ordered = params
             .iter()
             .zip(&locs)
@@ -73,18 +73,18 @@ impl Sel<'_, '_> {
         for (&v, loc) in ordered {
             match loc {
                 Loc::Reg(carrier) => self.receive(v, *carrier),
-                Loc::Stack(offset) => self.home_at(v, CALLER_ARGS + offset_of(*offset)),
+                Loc::Stack { offset, .. } => self.home_at(v, CALLER_ARGS + offset_of(*offset)),
                 Loc::Split(parts) => {
                     let buffer = self.place(v).expect("placed by the prologue");
-                    for (k, &(carrier, _)) in parts.iter().enumerate() {
-                        let at = Mem::at(Reg::Rbp, frame_offset(buffer) + offset_of(k as u64 * X86::WORD));
-                        self.store_part(at, carrier, X86::WORD);
+                    for part in parts {
+                        let at = Mem::at(Reg::Rbp, frame_offset(buffer) + offset_of(part.offset));
+                        self.store_part(at, part.reg, X86::WORD);
                     }
                 }
-                Loc::Copied { .. } | Loc::Returned => {}
+                Loc::Copied { .. } | Loc::Indirect { .. } | Loc::Returned => {}
             }
         }
-        if self.state.passing.ret == Ret::Hidden {
+        if self.state.passing.ret == Ret::Memory {
             let home = self.frame.reserve(X86::WORD, X86::WORD);
             self.asm.emit(Op::Mov, Size::B64, &[Mem::at(Reg::Rbp, home).into(), ARGS[0].into()]);
             self.state.hidden = Some(home);

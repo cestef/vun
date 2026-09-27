@@ -6,17 +6,16 @@ mod x86_64;
 
 use std::fmt::Display;
 
-use vun_codegen::Isel;
 use vun_intern::Symbol;
 use vun_lir::func::{Conv, Linkage, Signature};
 use vun_lir::{AbiType, Block, Builder, Ext, Scalar, Target, Unit, Value};
 use vun_origin::{OriginId, OriginTable};
 use vun_span::{SourceFiles, Span};
 
-use crate::Code;
+use crate::{Code, Native};
 
 /// `f(n: i64) -> i64` for `A`, its body built by `build` from `n`, compiled and listed.
-fn compiled<A: Isel>(build: impl FnOnce(&mut Builder, Value, OriginId)) -> Code<A> {
+fn compiled<A: Native>(build: impl FnOnce(&mut Builder, Value, OriginId)) -> Code<A> {
     let origins = OriginTable::new();
     let origin = origins.source(Span::new(SourceFiles::new().add("a.vun", "n"), 0, 1));
     let int = AbiType::Int(Scalar::I64, Ext::Sign);
@@ -26,7 +25,8 @@ fn compiled<A: Isel>(build: impl FnOnce(&mut Builder, Value, OriginId)) -> Code<
     build(&mut b, n, origin);
     let mut unit = Unit { pointer_bits: 64, ..Unit::default() };
     let f = unit.functions.push(b.finish());
-    vun_codegen::compile::<A>(&unit, &unit.functions[f], A::Convention::default(), true).unwrap()
+    // The first convention the architecture follows.
+    vun_codegen::compile::<A>(&unit, &unit.functions[f], A::CONVENTIONS[0].1, true).unwrap()
 }
 
 /// The instructions of `code`, as the listing prints them.

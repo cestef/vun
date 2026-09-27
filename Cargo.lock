@@ -717,6 +717,7 @@ checksum = "b8c0a043c9540bae7c578c88f91dda8bd82e59ae27c21baca69c8b191aaf5a6e"
 name = "vun-abi"
 version = "0.0.0"
 dependencies = [
+ "vun-fs",
  "vun-lir",
  "vun-target",
 ]
@@ -752,6 +753,7 @@ dependencies = [
 name = "vun-backend"
 version = "0.0.0"
 dependencies = [
+ "vun-abi",
  "vun-diag",
  "vun-intern",
  "vun-lir",
@@ -806,6 +808,7 @@ dependencies = [
 name = "vun-backend-native"
 version = "0.0.0"
 dependencies = [
+ "vun-abi",
  "vun-asm",
  "vun-asm-arm64",
  "vun-asm-x86_64",

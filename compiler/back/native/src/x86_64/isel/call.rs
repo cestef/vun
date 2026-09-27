@@ -29,20 +29,20 @@ impl Sel<'_, '_> {
             },
             Callee::Indirect(_, s) => s,
         };
-        let passing = Passing::of(signature).map_err(|m| self.lack(m))?;
+        let passing = Passing::of(signature, self.state.convention).map_err(|u| self.lack(u.into()))?;
         for &a in args {
             self.size(a)?;
         }
         // Constants are written where they go once the others are, already extended.
         let passed: Vec<_> =
-            passing.in_regs(args).into_iter().filter(|&(a, _)| f.constant(a).is_none()).collect();
+            passing.in_ints(args).into_iter().filter(|&(a, _)| f.constant(a).is_none()).collect();
         self.spill_for_call(&passed);
         self.frame.outgoing(passing.stack);
         // Arguments on the stack and records copied there go through the carrier, before those
         // passed in registers.
         for (&a, loc) in args.iter().zip(&passing.params) {
             match *loc {
-                Loc::Stack(offset) => {
+                Loc::Stack { offset, .. } => {
                     self.reg_to(a, X86::CARRIER);
                     self.asm.emit(Op::Mov, Size::B64, &[outgoing(offset).into(), X86::CARRIER.into()]);
                 }
@@ -50,7 +50,7 @@ impl Sel<'_, '_> {
                     self.reg_to(a, X86::CARRIER);
                     self.copy_bytes(outgoing(offset), Mem::at(X86::CARRIER, 0), size, X86::TEMP);
                 }
-                Loc::Reg(_) | Loc::Split(_) | Loc::Returned => {}
+                Loc::Reg(_) | Loc::Split(_) | Loc::Indirect { .. } | Loc::Returned => {}
             }
         }
         self.pass_in_regs(&passed);
@@ -59,7 +59,7 @@ impl Sel<'_, '_> {
         let abis: Vec<&AbiType> = signature.passed().collect();
         for (i, (&a, loc)) in args.iter().zip(&passing.params).enumerate() {
             match loc {
-                Loc::Reg(carrier @ Carrier::Sse(_)) => self.pass(a, *carrier),
+                Loc::Reg(carrier @ Carrier::Float(_)) => self.pass(a, *carrier),
                 Loc::Reg(Carrier::Int(r)) => match (abis.get(i).copied(), f.constant(a)) {
                     (Some(AbiType::Int(scalar, ext)), Some((_, bits))) => {
                         self.constant_to(*r, ext.widen(*scalar, bits));
@@ -73,16 +73,16 @@ impl Sel<'_, '_> {
                 },
                 Loc::Split(parts) => {
                     self.reg_to(a, X86::CARRIER);
-                    for (k, &(carrier, bytes)) in parts.iter().enumerate() {
-                        self.load_part(carrier, eightbyte(X86::CARRIER, k), bytes);
+                    for part in parts {
+                        self.load_part(part.reg, Mem::at(X86::CARRIER, offset_of(part.offset)), part.bytes);
                     }
                 }
-                Loc::Stack(_) | Loc::Copied { .. } | Loc::Returned => {}
+                Loc::Stack { .. } | Loc::Copied { .. } | Loc::Indirect { .. } | Loc::Returned => {}
             }
         }
         // A variadic C function reads how many SSE registers carry arguments from `al`.
         if signature.conv == Conv::C {
-            self.asm.emit(Op::Mov, Size::B32, &[Reg::Rax.into(), i64::from(passing.sse).into()]);
+            self.asm.emit(Op::Mov, Size::B32, &[Reg::Rax.into(), i64::from(passing.floats).into()]);
         }
         match callee {
             Callee::Func(f) => {
@@ -105,11 +105,11 @@ impl Sel<'_, '_> {
             Ret::Split(parts) => {
                 let out = *args.last().expect("the address of the result is passed last");
                 self.reg_to(out, X86::CARRIER);
-                for (k, &(carrier, bytes)) in parts.iter().enumerate() {
-                    self.store_part(eightbyte(X86::CARRIER, k), carrier, bytes);
+                for part in parts {
+                    self.store_part(Mem::at(X86::CARRIER, offset_of(part.offset)), part.reg, part.bytes);
                 }
             }
-            Ret::None | Ret::Hidden => {}
+            Ret::None | Ret::Memory => {}
         }
         Ok(())
     }
@@ -130,9 +130,4 @@ impl Sel<'_, '_> {
 /// Where the stack argument at `offset` goes: the bottom of the frame.
 fn outgoing(offset: u64) -> Mem<Address> {
     Mem::at(Reg::Rsp, offset_of(offset))
-}
-
-/// The `k`th eightbyte of a record at `base`.
-fn eightbyte(base: Reg, k: usize) -> Mem<Address> {
-    Mem::at(base, offset_of(k as u64 * X86::WORD))
 }

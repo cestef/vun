@@ -152,6 +152,7 @@ pub mod target_Backends;
 pub mod target_C;
 pub mod target_CCompiler;
 pub mod target_CInt;
+pub mod target_Convention;
 pub mod target_Endian;
 pub mod target_FrameSizes;
 pub mod target_Host;

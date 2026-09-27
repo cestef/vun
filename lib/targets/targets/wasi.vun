@@ -6,6 +6,7 @@ wasm32 := lang.target.Spec{
     .cpu = .generic,
     .os = .wasi,
     .abi = .p1,
+    .convention = .wasm32,
     .pointer_bits = 32,
     .endian = .little,
     .object_format = .wasm,

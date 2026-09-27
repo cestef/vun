@@ -41,15 +41,22 @@ pub use listing::Listing;
 struct Arch {
     name: Name,
     machine: Machine,
+    /// Whether it follows a target's calling convention.
+    follows: fn(&TargetSpec) -> bool,
     object: fn(&Request<'_>, Machine, Format) -> Result<Emitted, Lack>,
 }
 
-/// An architecture's instruction compilers, with the calling convention a target follows.
+/// An architecture's instruction compilers, with the calling conventions it compiles for.
 pub trait Native: Isel {
     /// How its call frames are described to unwinders.
     const CALL_FRAME: vun_dwarf::CallFrame;
+    /// The conventions it follows, by the name targets give them.
+    const CONVENTIONS: &'static [(vun_target::Convention, Self::Convention)];
 
-    fn convention(target: &TargetSpec) -> Self::Convention;
+    /// The convention `target` follows, if the architecture compiles for it.
+    fn convention(target: &TargetSpec) -> Option<Self::Convention> {
+        Self::CONVENTIONS.iter().find(|(name, _)| *name == target.convention).map(|&(_, c)| c)
+    }
 }
 
 /// The object formats the backend writes, by their names among targets', and the machines it
@@ -60,8 +67,18 @@ const FORMATS: [(Name, Format, &[Machine]); 2] = [
 ];
 
 const ARCHES: [Arch; 2] = [
-    Arch { name: Name("x86_64"), machine: Machine::X86_64, object: NativeBackend::object::<x86_64::X86> },
-    Arch { name: Name("arm64"), machine: Machine::Aarch64, object: NativeBackend::object::<arm64::Arm> },
+    Arch {
+        name: Name("x86_64"),
+        machine: Machine::X86_64,
+        follows: |t| x86_64::X86::convention(t).is_some(),
+        object: NativeBackend::object::<x86_64::X86>,
+    },
+    Arch {
+        name: Name("arm64"),
+        machine: Machine::Aarch64,
+        follows: |t| arm64::Arm::convention(t).is_some(),
+        object: NativeBackend::object::<arm64::Arm>,
+    },
 ];
 
 const NAMES: [Name; ARCHES.len()] = {
@@ -136,12 +153,16 @@ impl NativeBackend {
     ///
     /// # Errors
     /// As [`Self::compile`].
+    ///
+    /// # Panics
+    /// For a target whose convention `A` does not follow, which emitting checks first.
     pub fn object<A: Native>(request: &Request<'_>, machine: Machine, format: Format) -> Result<Emitted, Lack>
     where
         Code<A>: Send,
         <A::Isa as Isa>::Inst<Address>: Display,
     {
-        let code = Self::compile::<A>(request.unit, A::convention(request.target), request.listing)?;
+        let convention = A::convention(request.target).expect("checked before emitting");
+        let code = Self::compile::<A>(request.unit, convention, request.listing)?;
         let bytes =
             Assembly { unit: request.unit, code: &code, lines: request.lines, frames: &A::CALL_FRAME }
                 .object((machine, format))
@@ -203,8 +224,12 @@ impl Backend for NativeBackend {
         out: &mut dyn ArtifactSink,
         diag: &mut DiagCtxt,
     ) -> Result<(), ErrorGuaranteed> {
-        if Self::format(request, Self::arch(request).machine).is_none() {
+        let arch = Self::arch(request);
+        if Self::format(request, arch.machine).is_none() {
             return Err(diag.error(Missing::Format(request.target.object_format).diagnostic(INFO.id)));
+        }
+        if !(arch.follows)(request.target) {
+            return Err(diag.error(Missing::Convention.diagnostic(INFO.id)));
         }
         let emitted = Self::emitted(request).map_err(|lack| diag.error(lack.diagnostic(INFO.id)))?;
         for artifact in emitted.artifacts {

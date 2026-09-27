@@ -15,7 +15,9 @@ use vun_codegen::snippet::{Args, Snippet};
 use vun_codegen::{Cx, Isel};
 use vun_lir::{BinOp, Block, CastOp, Cond, Function, Inst, InstKind, Reads, Scalar, Value};
 
-use super::abi::{Convention, Passing};
+use vun_abi::Convention;
+
+use super::abi::Passing;
 use super::snippets::{
     ADD, AND, CMP, CMP_SIGNED, CMP_UNSIGNED, KEEP, MUL, OR, SAR, SAR_NARROW, SDIV, SDIV_NARROW, SELECT, SET,
     SET_SIGNED, SET_UNSIGNED, SEXT, SHL, SHR, SHR_NARROW, SREM, SREM_NARROW, SUB, UDIV, UDIV_NARROW, UREM,
@@ -27,7 +29,7 @@ use crate::width::size_of;
 /// What the instruction compilers keep for one function.
 pub struct State {
     /// The variant of the call standard the target follows.
-    convention: Convention,
+    convention: &'static Convention<vun_asm_arm64::Reg, vun_asm_arm64::V>,
     /// Where the function's own signature passes each value.
     passing: Passing,
     /// Where the prologue's frame size is written once known.
@@ -54,10 +56,10 @@ impl std::ops::DerefMut for Sel<'_, '_> {
 }
 
 impl Isel for Arm {
-    type Convention = Convention;
+    type Convention = &'static Convention<vun_asm_arm64::Reg, vun_asm_arm64::V>;
 
-    fn state(f: &Function, convention: Convention) -> Result<State, Lack> {
-        let passing = Passing::of(&f.signature, convention).map_err(|m| m.at(f.origin))?;
+    fn state(f: &Function, convention: Self::Convention) -> Result<State, Lack> {
+        let passing = Passing::of(&f.signature, convention).map_err(|u| Missing::from(u).at(f.origin))?;
         Ok(State { convention, passing, frame_at: 0, gathered: None })
     }
 

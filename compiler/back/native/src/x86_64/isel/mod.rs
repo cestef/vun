@@ -24,6 +24,7 @@ use vun_asm_x86_64::{Cc, Size};
 
 /// What the instruction compilers keep for one function.
 pub struct State {
+    convention: &'static vun_abi::Convention<vun_asm_x86_64::Reg, vun_asm_x86_64::Xmm>,
     /// Where the function's own signature passes each value.
     passing: Passing,
     /// Where the prologue's `sub rsp, frame` is, and its immediate, written once the size is known.
@@ -53,11 +54,11 @@ impl std::ops::DerefMut for Sel<'_, '_> {
 }
 
 impl Isel for X86 {
-    type Convention = ();
+    type Convention = &'static vun_abi::Convention<vun_asm_x86_64::Reg, vun_asm_x86_64::Xmm>;
 
-    fn state(f: &Function, (): ()) -> Result<State, Lack> {
-        let passing = Passing::of(&f.signature).map_err(|m| m.at(f.origin))?;
-        Ok(State { passing, frame_at: 0, frame_imm: 0, hidden: None, gathered: None })
+    fn state(f: &Function, convention: Self::Convention) -> Result<State, Lack> {
+        let passing = Passing::of(&f.signature, convention).map_err(|u| Missing::from(u).at(f.origin))?;
+        Ok(State { convention, passing, frame_at: 0, frame_imm: 0, hidden: None, gathered: None })
     }
 
     fn fuses(cond: Cond) -> bool {

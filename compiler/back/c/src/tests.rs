@@ -4,7 +4,9 @@ use vun_intern::Symbol;
 use vun_lir::{AbiType, Builder, Conv, Ext, FuncId, Linkage, Scalar, Signature, Terminator, Unit, Value};
 use vun_origin::{OriginId, OriginTable};
 use vun_span::{SourceFiles, Span};
-use vun_target::{Atomics, Attributes, Backends, CCompiler, CInt, CTypes, Endian, FrameSizes, TargetSpec};
+use vun_target::{
+    Atomics, Attributes, Backends, CCompiler, CInt, CTypes, Convention, Endian, FrameSizes, TargetSpec,
+};
 
 use crate::ast::{Ident, Names};
 use crate::{CBackend, Lack};
@@ -24,6 +26,7 @@ fn target() -> TargetSpec {
         cpu: name("generic"),
         os: name("linux"),
         abi: name("gnu"),
+        convention: Convention::Sysv,
         pointer_bits: 64,
         endian: Endian::Little,
         object_format: name("elf"),

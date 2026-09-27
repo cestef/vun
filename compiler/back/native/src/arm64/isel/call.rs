@@ -28,13 +28,13 @@ impl Sel<'_, '_> {
             },
             Callee::Indirect(_, s) => s,
         };
-        let passing = Passing::of(signature, self.state.convention).map_err(|m| self.lack(m))?;
+        let passing = Passing::of(signature, self.state.convention).map_err(|u| self.lack(u.into()))?;
         for &a in args {
             self.size(a)?;
         }
         // Constants are written where they go once the others are, already extended.
         let passed: Vec<_> =
-            passing.in_regs(args).into_iter().filter(|&(a, _)| f.constant(a).is_none()).collect();
+            passing.in_ints(args).into_iter().filter(|&(a, _)| f.constant(a).is_none()).collect();
         self.spill_for_call(&passed);
         self.frame.outgoing(passing.stack);
         // What goes through memory first, through the framework's registers: arguments on the
@@ -68,7 +68,7 @@ impl Sel<'_, '_> {
         let abis: Vec<&AbiType> = signature.passed().collect();
         for (i, (&a, loc)) in args.iter().zip(&passing.params).enumerate() {
             match loc {
-                Loc::Reg(carrier @ Carrier::Fp(_)) => self.pass(a, *carrier),
+                Loc::Reg(carrier @ Carrier::Float(_)) => self.pass(a, *carrier),
                 Loc::Reg(Carrier::Int(r)) => match (abis.get(i).copied(), f.constant(a)) {
                     (Some(AbiType::Int(scalar, ext)), Some((_, bits))) => {
                         self.constant_to(*r, ext.widen(*scalar, bits));
@@ -83,7 +83,7 @@ impl Sel<'_, '_> {
                 Loc::Split(parts) => {
                     self.reg_to(a, Arm::CARRIER);
                     for part in parts {
-                        self.load_part(part.carrier, Arm::CARRIER, disp(part.offset), part.bytes);
+                        self.load_part(part.reg, Arm::CARRIER, disp(part.offset), part.bytes);
                     }
                 }
                 Loc::Indirect { at, .. } => {
@@ -95,7 +95,7 @@ impl Sel<'_, '_> {
                 Loc::Stack { .. } | Loc::Copied { .. } | Loc::Returned => {}
             }
         }
-        if passing.ret == Ret::Indirect {
+        if passing.ret == Ret::Memory {
             let out = *args.last().expect("the address of the result is passed last");
             self.reg_to(out, INDIRECT);
         }
@@ -117,10 +117,10 @@ impl Sel<'_, '_> {
                 let out = *args.last().expect("the address of the result is passed last");
                 self.reg_to(out, Arm::CARRIER);
                 for part in parts {
-                    self.store_part(Arm::CARRIER, disp(part.offset), part.carrier, part.bytes);
+                    self.store_part(Arm::CARRIER, disp(part.offset), part.reg, part.bytes);
                 }
             }
-            Ret::None | Ret::Indirect => {}
+            Ret::None | Ret::Memory => {}
         }
         Ok(())
     }

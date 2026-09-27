@@ -1,14 +1,13 @@
 //! arm64: fusion, callee-saved registers for loops, results in dying operands' registers, each
 //! instruction decoded by an independent decoder to the text the listing shows.
 
-use vun_lir::{BinOp, Cond, Conv, Ext, Scalar, Signature, Target, Terminator};
+use vun_lir::{BinOp, Cond, Scalar, Target, Terminator};
 use yaxpeax_arch::{Decoder, U8Reader};
 use yaxpeax_arm::armv8::a64::InstDecoder;
 
 use super::{compiled, text, to};
 use crate::Code;
 use crate::arm64::Arm;
-use crate::arm64::abi::{Convention, Loc, Passing};
 
 /// The listing of `code`, each instruction checked against the decoder's reading of its word.
 fn checked(code: &Code<Arm>) -> Vec<String> {
@@ -98,53 +97,4 @@ fn a_dying_operand_s_register_holds_the_result() {
             "ret"
         ]
     );
-}
-
-#[test]
-fn apple_packs_a_c_calls_stack_arguments_by_their_own_size() {
-    let int = |s| vun_lir::AbiType::Int(s, Ext::Zero);
-    let mut params = vec![int(Scalar::I32); 8];
-    params.extend([int(Scalar::I8), int(Scalar::I8), int(Scalar::I16), int(Scalar::I32)]);
-    let signature = Signature { conv: Conv::C, params, result: None };
-    let stacked = |convention| {
-        let passing = Passing::of(&signature, convention).unwrap();
-        let at = passing.params.iter().filter_map(|loc| match *loc {
-            Loc::Stack { offset, bytes } => Some((offset, bytes)),
-            _ => None,
-        });
-        (at.collect::<Vec<_>>(), passing.stack)
-    };
-    assert_eq!(stacked(Convention::Darwin), (vec![(0, 1), (1, 1), (2, 2), (4, 4)], 16));
-    assert_eq!(stacked(Convention::Aapcs64), (vec![(0, 8), (8, 8), (16, 8), (24, 8)], 32));
-}
-
-#[test]
-fn a_record_after_packed_scalars_is_word_aligned_on_the_stack() {
-    use crate::arm64::abi::{Convention, Loc, Passing};
-    use vun_lir::{AbiType, Record};
-    let byte = AbiType::Int(Scalar::I8, Ext::Zero);
-    let pair = Record { size: 16, align: 8, fields: vec![(0, Scalar::I64), (8, Scalar::I64)] };
-    let mut params = vec![byte.clone(); 9];
-    params.push(AbiType::Record(pair));
-    let signature = Signature { conv: Conv::C, params, result: None };
-    let passing = Passing::of(&signature, Convention::Darwin).unwrap();
-    assert_eq!(passing.params[8], Loc::Stack { offset: 0, bytes: 1 });
-    assert_eq!(passing.params[9], Loc::Copied { offset: 8, size: 16 });
-}
-
-#[test]
-fn a_wide_integer_takes_an_even_register_pair() {
-    use crate::arm64::abi::{ARGS, Carrier, Convention, Loc, Passing};
-    use vun_lir::AbiType;
-    let (int, wide) =
-        (AbiType::Int(Scalar::I64, Ext::Zero), AbiType::Wide { half: Scalar::I64, ext: Ext::Zero });
-    let params = vec![int.clone(), wide.clone(), int.clone(), int.clone(), wide.clone(), wide, int];
-    let signature = Signature { conv: Conv::C, params, result: None };
-    let passing = Passing::of(&signature, Convention::Aapcs64).unwrap();
-    let reg = |k: usize| Loc::Reg(Carrier::Int(ARGS[k]));
-    // `x1` is skipped for the first pair; the third finds no pair left and takes 16 bytes of the
-    // stack, after which no general register is used.
-    assert_eq!(passing.params[..7], [reg(0), reg(2), reg(3), reg(4), reg(5), reg(6), reg(7)]);
-    let stack = |offset| Loc::Stack { offset, bytes: 8 };
-    assert_eq!(passing.params[7..], [stack(0), stack(8), stack(16)]);
 }

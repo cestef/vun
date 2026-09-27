@@ -7,6 +7,7 @@ use std::fmt;
 use vun_codec::{Decode, Encode};
 use vun_intern::Symbol;
 use vun_items::Item;
+use vun_items::lang::target_Convention as convention;
 use vun_items::lang::{Option as option, target_C as c, target_CInt as cint, target_Endian as endian};
 use vun_items::lang::{
     target_Atomics as atomics, target_Attributes as attributes, target_CCompiler as compiler,
@@ -14,7 +15,7 @@ use vun_items::lang::{
 };
 use vun_items::lang::{target_Backends as backends, target_Host as host, target_Spec as spec};
 use vun_target::{
-    Atomics, Attributes, Backends, CCompiler, CInt, CTypes, Endian, FrameSizes, Host, TargetSpec,
+    Atomics, Attributes, Backends, CCompiler, CInt, CTypes, Convention, Endian, FrameSizes, Host, TargetSpec,
 };
 
 use crate::ty::Value;
@@ -169,6 +170,22 @@ impl Read for Endian {
     }
 }
 
+impl Read for Convention {
+    fn read(value: &Value) -> Result<Self, Unread> {
+        const VARIANTS: [(Item, Convention); 7] = [
+            (convention::sysv, Convention::Sysv),
+            (convention::aapcs64, Convention::Aapcs64),
+            (convention::darwin_arm64, Convention::DarwinArm64),
+            (convention::lp64d, Convention::Lp64d),
+            (convention::aapcs_vfp, Convention::AapcsVfp),
+            (convention::ilp32, Convention::Ilp32),
+            (convention::wasm32, Convention::Wasm32),
+        ];
+        let Value::Variant { name, .. } = value else { return Err(Unread::Record) };
+        VARIANTS.iter().find(|(variant, _)| *name == variant.symbol()).map(|&(_, c)| c).ok_or(Unread::Record)
+    }
+}
+
 impl Read for CInt {
     fn read(value: &Value) -> Result<Self, Unread> {
         let m = Members::of(value)?;
@@ -250,6 +267,7 @@ impl Read for TargetSpec {
             cpu: m.name(spec::cpu)?,
             os: m.name(spec::os)?,
             abi: m.name(spec::abi)?,
+            convention: m.read(spec::convention)?,
             pointer_bits: m.address_bits(spec::pointer_bits)?,
             endian: m.read(spec::endian)?,
             object_format: m.name(spec::object_format)?,

@@ -58,6 +58,25 @@ C := struct {
     compiler: CCompiler,
 };
 
+/// The calling convention of a target's C functions (spec 13, section 8.5): where a call passes
+/// its arguments and gets its result.
+Convention := enum {
+    /// System V AMD64.
+    sysv,
+    /// The procedure call standard for 64-bit ARM (AAPCS64).
+    aapcs64,
+    /// Apple's variant of AAPCS64: a C call's scalars on the stack at their own size.
+    darwin_arm64,
+    /// The RISC-V convention for 64-bit integers and double-precision floats in registers.
+    lp64d,
+    /// The procedure call standard for 32-bit ARM, floats in VFP registers (hard-float EABI).
+    aapcs_vfp,
+    /// The RISC-V convention for 32-bit integers, floats in general registers.
+    ilp32,
+    /// The C convention of `wasm32`, as clang follows it.
+    wasm32,
+};
+
 /// The backends a target builds with under each profile, most preferred first: a build takes
 /// the first the toolchain has that generates code for the target (spec 13, section 8).
 Backends := struct {
@@ -80,6 +99,7 @@ Spec := struct {
     os: lang.meta.Name,
     /// The conventions of the system's binaries: `gnu` (the GNU C library), `eabihf`, ...
     abi: lang.meta.Name,
+    convention: Convention,
     /// The width of an address.
     pointer_bits: u8,
     endian: Endian,

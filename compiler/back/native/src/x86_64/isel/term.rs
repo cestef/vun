@@ -101,12 +101,12 @@ impl Sel<'_, '_> {
             }
             (_, Ret::Split(parts)) => {
                 let at = self.state.gathered.expect("gathered where the entry receives the address");
-                for (k, &(carrier, _)) in parts.iter().enumerate() {
-                    let offset = at + crate::width::offset_of(k as u64 * X86::WORD);
-                    self.load_part(carrier, Mem::at(Reg::Rbp, offset), X86::WORD);
+                for part in parts {
+                    let offset = at + crate::width::offset_of(part.offset);
+                    self.load_part(part.reg, Mem::at(Reg::Rbp, offset), X86::WORD);
                 }
             }
-            (_, Ret::Hidden) => {
+            (_, Ret::Memory) => {
                 let home = self.state.hidden.expect("kept where the entry receives it");
                 self.asm.emit(Op::Mov, Size::B64, &[Reg::Rax.into(), Mem::at(Reg::Rbp, home).into()]);
             }

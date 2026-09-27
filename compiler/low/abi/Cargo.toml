@@ -12,3 +12,6 @@ workspace = true
 [dependencies]
 vun-lir.workspace = true
 vun-target.workspace = true
+
+[dev-dependencies]
+vun-fs.workspace = true

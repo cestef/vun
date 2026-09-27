@@ -14,6 +14,7 @@ pub const cpu: Item = Item::new(&["lang", "target", "Spec", "cpu"]);
 pub const os: Item = Item::new(&["lang", "target", "Spec", "os"]);
 /// The conventions of the system's binaries: `gnu` (the GNU C library), `eabihf`, ...
 pub const abi: Item = Item::new(&["lang", "target", "Spec", "abi"]);
+pub const convention: Item = Item::new(&["lang", "target", "Spec", "convention"]);
 /// The width of an address.
 pub const pointer_bits: Item = Item::new(&["lang", "target", "Spec", "pointer_bits"]);
 pub const endian: Item = Item::new(&["lang", "target", "Spec", "endian"]);

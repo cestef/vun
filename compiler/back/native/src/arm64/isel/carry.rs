@@ -20,7 +20,7 @@ impl Sel<'_, '_> {
     pub(super) fn pass(&mut self, v: Value, carrier: Carrier) {
         match carrier {
             Carrier::Int(r) => self.reg_to(v, r),
-            Carrier::Fp(x) => {
+            Carrier::Float(x) => {
                 self.reg_to(v, Arm::CARRIER);
                 let size = part(self.bytes(v));
                 self.asm.emit(Op::Fmov, size, &[x.into(), Arm::CARRIER.into()]);
@@ -32,7 +32,7 @@ impl Sel<'_, '_> {
     pub(super) fn receive(&mut self, v: Value, carrier: Carrier) {
         match carrier {
             Carrier::Int(r) => self.def_at(v, r),
-            Carrier::Fp(x) => {
+            Carrier::Float(x) => {
                 let (d, size) = (self.def(v), part(self.bytes(v)));
                 self.asm.emit(Op::Fmov, size, &[d.into(), x.into()]);
             }
@@ -43,7 +43,7 @@ impl Sel<'_, '_> {
     pub(super) fn load_part(&mut self, carrier: Carrier, base: Reg, disp: i64, bytes: u64) {
         match carrier {
             Carrier::Int(r) => self.load_bytes(r, base, disp, bytes),
-            Carrier::Fp(x) => access(&mut self.asm, Op::Ldr, part(bytes), x.into(), base, disp, FAR),
+            Carrier::Float(x) => access(&mut self.asm, Op::Ldr, part(bytes), x.into(), base, disp, FAR),
         }
     }
 
@@ -51,7 +51,7 @@ impl Sel<'_, '_> {
     pub(super) fn store_part(&mut self, base: Reg, disp: i64, carrier: Carrier, bytes: u64) {
         match carrier {
             Carrier::Int(r) => self.store_bytes(base, disp, r, bytes),
-            Carrier::Fp(x) => access(&mut self.asm, Op::Str, part(bytes), x.into(), base, disp, FAR),
+            Carrier::Float(x) => access(&mut self.asm, Op::Str, part(bytes), x.into(), base, disp, FAR),
         }
     }
 

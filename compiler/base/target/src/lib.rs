@@ -51,6 +51,18 @@ pub enum Endian {
     Big,
 }
 
+/// `lang.target.Convention`: the calling convention of a target's C functions.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encode, Decode)]
+pub enum Convention {
+    Sysv,
+    Aapcs64,
+    DarwinArm64,
+    Lp64d,
+    AapcsVfp,
+    Ilp32,
+    Wasm32,
+}
+
 /// `lang.target.CInt`: a C integer type, its width in bits and alignment in bytes.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct CInt {
@@ -142,6 +154,7 @@ pub struct TargetSpec {
     pub cpu: Symbol,
     pub os: Symbol,
     pub abi: Symbol,
+    pub convention: Convention,
     pub pointer_bits: u32,
     pub endian: Endian,
     pub object_format: Symbol,

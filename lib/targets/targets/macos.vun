@@ -6,6 +6,7 @@ arm64 := lang.target.Spec{
     .cpu = .generic,
     .os = .macos,
     .abi = .darwin,
+    .convention = .darwin_arm64,
     .pointer_bits = 64,
     .endian = .little,
     .object_format = .macho,

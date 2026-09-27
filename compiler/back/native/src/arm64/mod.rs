@@ -13,9 +13,7 @@ use vun_codegen::snippet::{Emits, Width};
 use vun_codegen::{Anchor, Arch, Place, Recompute};
 use vun_dwarf::CallFrame;
 use vun_lir::{Address, Cond};
-use vun_target::{Name, TargetSpec};
-
-use self::abi::Convention;
+use vun_target::Convention;
 
 /// arm64, as the framework drives it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -262,9 +260,6 @@ pub const fn condition(cond: Cond) -> Option<Cc> {
     })
 }
 
-/// The target ABI following Apple's variant of the call standard.
-const DARWIN: Name = Name("darwin");
-
 impl crate::Native for Arm {
     /// Instructions are 4 bytes; the return address is in the link register, `x30`.
     const CALL_FRAME: CallFrame = CallFrame {
@@ -275,7 +270,6 @@ impl crate::Native for Arm {
         return_pushed: false,
     };
 
-    fn convention(target: &TargetSpec) -> Convention {
-        if DARWIN.is(target.abi) { Convention::Darwin } else { Convention::Aapcs64 }
-    }
+    const CONVENTIONS: &'static [(Convention, Self::Convention)] =
+        &[(Convention::Aapcs64, &abi::AAPCS64), (Convention::DarwinArm64, &abi::DARWIN_ARM64)];
 }

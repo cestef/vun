@@ -68,7 +68,7 @@ impl Sel<'_, '_> {
         // Values in general registers are received first, so that one received from a
         // floating-point register, which takes a general register, overwrites none still to be
         // received.
-        let fp = |loc: &Loc| matches!(loc, Loc::Reg(Carrier::Fp(_)));
+        let fp = |loc: &Loc| matches!(loc, Loc::Reg(Carrier::Float(_)));
         let ordered = params
             .iter()
             .zip(&locs)
@@ -87,7 +87,7 @@ impl Sel<'_, '_> {
                     let buffer = self.place(v).expect("placed by the prologue");
                     for part in parts {
                         let disp = buffer.disp + i64::try_from(part.offset).expect("records fit memory");
-                        self.store_part(FP, disp, part.carrier, part.bytes);
+                        self.store_part(FP, disp, part.reg, part.bytes);
                     }
                 }
                 Loc::Copied { .. } | Loc::Returned | Loc::Indirect { .. } => {}
