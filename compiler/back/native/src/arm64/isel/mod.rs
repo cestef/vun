@@ -127,7 +127,7 @@ impl<'a> Sel<'_, 'a> {
                 self.compare_exchange(addr, expected, new, out, size);
             }
             Selection::Copy { to, from, bytes } => self.copy(to, from, bytes),
-            Selection::Asm(asm) => asm.emit(self.0)?,
+            Selection::Asm(asm, check) => asm.emit(check, self.0)?,
         }
         Ok(())
     }

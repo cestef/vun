@@ -34,6 +34,8 @@ pub enum Missing {
     FloatPart(u64),
     /// A block of inline assembly.
     Asm,
+    /// Checking the memory a block of inline assembly writes.
+    AsmWriteCheck,
     /// An operand of inline assembly the backend cannot place.
     AsmOperand(AsmOperand),
 }
@@ -88,6 +90,7 @@ impl Missing {
             Missing::Format(f) => Msg::new().text("objects of format ").code(f.as_str()),
             Missing::Convention => Msg::new().text("the calling convention of this target"),
             Missing::Asm => Msg::new().text("inline assembly"),
+            Missing::AsmWriteCheck => Msg::new().text("checks of the memory inline assembly writes"),
             Missing::AsmOperand(operand) => {
                 let what = match operand {
                     AsmOperand::Indexed => "memory with an index register",

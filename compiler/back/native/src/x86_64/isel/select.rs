@@ -51,7 +51,7 @@ pub(super) enum Selection<'f> {
         value: Value,
         precision: Size,
     },
-    Asm(&'f vun_lir::Asm),
+    Asm(&'f vun_lir::Asm, Option<&'f vun_lir::AsmCheck>),
 }
 
 /// The function compiled, read without emitting.
@@ -156,9 +156,9 @@ impl<'a> Look<'_, 'a> {
             }
             &InstKind::Offset { base, offset } => snippet(ADD, &[base, offset], Size::B64, None),
             &InstKind::Copy { to, from, bytes } => Selection::Copy { to, from, bytes },
-            InstKind::Asm(asm, _) => {
+            InstKind::Asm(asm, check) => {
                 asm.check::<X86>()?;
-                Selection::Asm(asm)
+                Selection::Asm(asm, check.as_ref())
             }
             InstKind::Const { .. } | InstKind::SlotAddr(_) | InstKind::Addr(_) => {
                 unreachable!("recomputed where used")

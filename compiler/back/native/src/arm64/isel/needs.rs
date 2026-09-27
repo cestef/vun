@@ -46,7 +46,7 @@ impl Look<'_, '_> {
                 self.read(needs, to, false);
                 self.read(needs, from, false);
             }
-            Selection::Asm(asm) => asm.needs(cx, needs),
+            Selection::Asm(asm, check) => asm.needs(check, cx, needs),
             Selection::Copy { to, from, .. } => {
                 needs.temps.extend([Bank::General; 3]);
                 for v in [to, from] {

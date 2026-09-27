@@ -54,7 +54,7 @@ impl Look<'_, '_> {
                 self.read(needs, from, Need::Any);
                 self.read(needs, to, Need::Any);
             }
-            Selection::Asm(asm) => asm.needs(cx, needs),
+            Selection::Asm(asm, check) => asm.needs(check, cx, needs),
             Selection::UnsignedToFloat { value, .. } | Selection::FloatToUnsigned { value, .. } => {
                 self.read(needs, value, Need::Any);
                 needs.defs.extend(out.map(|v| (v, Out::Reg)));

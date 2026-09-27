@@ -6,7 +6,7 @@
 use vun_inline::{Disp, FormId, Inst, OpId, RegRef, SizeId};
 use vun_isa::{AsmOperand, Blocks, Fit, Fixed, Given, Label, Misfit, Place};
 
-use crate::{Base, Cc, Class, Form, Kind, Mem, Op, Operand, Reg, Size, X86_64, Xmm};
+use crate::{Access, Base, Cc, Class, Form, Kind, Mem, Op, Operand, Reg, Size, X86_64, Xmm};
 
 impl Op {
     /// The instruction a block names, and the form it was checked against.
@@ -35,6 +35,18 @@ impl Blocks for X86_64 {
 
     fn implicit<V, P, S>(inst: &Inst<V, P, S>) -> impl Iterator<Item = Reg> {
         Op::entry(inst.op, inst.form).1.implicit.iter().copied()
+    }
+
+    fn written<V, P, S>(inst: &Inst<V, P, S>) -> Option<(usize, u32)> {
+        let form = Op::entry(inst.op, inst.form).1;
+        form.slots
+            .iter()
+            .zip(&inst.operands)
+            .position(|(slot, operand)| {
+                matches!(operand, vun_inline::Operand::Mem(_))
+                    && matches!(slot.access, Access::Write | Access::ReadWrite)
+            })
+            .and_then(|i| Some((i, form.slots[i].kind.width(Size::of(inst.size))?.bytes())))
     }
 
     fn general(r: RegRef) -> Option<Reg> {

@@ -6,7 +6,9 @@
 use vun_inline::{Disp, FormId, Inst, OpId, RegRef, SizeId};
 use vun_isa::{AsmOperand, Blocks, Fit, Fixed, Given, Label, Misfit, Place};
 
-use crate::{Arm64, Barrier, Cc, Class, Extend, Form, Kind, Mem, Mode, Op, Operand, Reg, Scale, Size, V};
+use crate::{
+    Access, Arm64, Barrier, Cc, Class, Extend, Form, Kind, Mem, Mode, Op, Operand, Reg, Scale, Size, V,
+};
 
 impl Op {
     /// The instruction a block names, and the form it was checked against.
@@ -36,6 +38,18 @@ impl Blocks for Arm64 {
     fn implicit<V, P, S>(inst: &Inst<V, P, S>) -> impl Iterator<Item = Reg> {
         let form = Op::entry(inst.op, inst.form).1;
         form.reads.iter().chain(form.writes).copied()
+    }
+
+    /// A pair writes two of its access's width.
+    fn written<V, P, S>(inst: &Inst<V, P, S>) -> Option<(usize, u32)> {
+        let form = Op::entry(inst.op, inst.form).1;
+        form.args.iter().enumerate().find_map(|(i, arg)| match (arg.kind, arg.access) {
+            (Kind::Mem(mode, width), Access::Write | Access::ReadWrite) => {
+                let pairs = if matches!(mode, Mode::Pair | Mode::PairPre | Mode::PairPost) { 2 } else { 1 };
+                Some((i, width.at(Size::of(inst.size)).bytes() * pairs))
+            }
+            _ => None,
+        })
     }
 
     fn general(r: RegRef) -> Option<Reg> {

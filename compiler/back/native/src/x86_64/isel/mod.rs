@@ -122,7 +122,7 @@ impl<'a> Sel<'_, 'a> {
             Selection::Copy { to, from, bytes } => self.copy(to, from, bytes),
             Selection::UnsignedToFloat { value, precision } => self.unsigned_to_float(value, precision, out),
             Selection::FloatToUnsigned { value, precision } => self.float_to_unsigned(value, precision, out),
-            Selection::Asm(asm) => asm.emit(self.0)?,
+            Selection::Asm(asm, check) => asm.emit(check, self.0)?,
         }
         Ok(())
     }

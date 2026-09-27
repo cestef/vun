@@ -3,13 +3,16 @@
 //! register the block names or its forms use unnamed is reserved for the whole block, so no
 //! binding is held there, but for an input read where it names; an output is written in a
 //! register of its own, loaded first for `inout`, and stored through its address once the block
-//! ends. What differs between architectures, their tables and operands, is [`Inline`].
+//! ends. Where the program checks its blocks (`AsmCheck`), each instruction writing memory first
+//! has the address it writes checked, and a block that returns has its stack pointer compared
+//! with the one it started with (spec 13, section 8.7). What differs between architectures,
+//! their tables and operands, is [`Inline`].
 
 use vun_asm::{Blocks, Label, Place, Untaken, Via};
 use vun_backend::{AsmOperand, Lack, Missing};
 use vun_codegen::{Bank, Code, Cx, Isel, Need, Needs, RegSet};
 use vun_inline::Bound;
-use vun_lir::{Address, Asm, Output, Scalar, Value};
+use vun_lir::{Address, Asm, AsmCheck, Output, Scalar, Value};
 
 use crate::width::{Width, size_of};
 
@@ -36,6 +39,24 @@ pub(crate) trait Inline: Isel {
     /// # Errors
     /// The form does not encode them.
     fn emit(code: &mut Code<Self>, inst: &Inst, operands: &[Encoded<Self>]) -> Result<(), Untaken>;
+
+    /// Checks through `check.write` the `bytes` the next instruction writes at `at`, keeping every
+    /// register and the flags as they were.
+    ///
+    /// # Errors
+    /// What the architecture lacks for it.
+    fn check_write(
+        code: &mut Code<Self>,
+        at: &Encoded<Self>,
+        bytes: u32,
+        check: &AsmCheck,
+    ) -> Result<(), Missing>;
+
+    /// Writes the stack pointer into `dst`.
+    fn stack(code: &mut Code<Self>, dst: Self::Reg);
+
+    /// Ends the program through `check.stack` unless the stack pointer is `before`.
+    fn check_stack(code: &mut Code<Self>, before: Self::Reg, check: &AsmCheck);
 
     /// Loads `r` from `addr`, or stores it there, `size` wide.
     fn load_at(code: &mut Code<Self>, r: Self::Reg, addr: Self::Reg, size: Self::Size);
@@ -84,14 +105,15 @@ pub(crate) trait Inlined {
     /// the registers it names or its forms use unnamed kept for it, but where an input is read.
     /// A value recomputed where used takes a scratch register, or is written into the one it
     /// is fixed to.
-    fn needs<A: Inline>(&self, cx: &Cx<'_, A>, needs: &mut Needs);
+    /// Where it is checked, a register keeps the stack pointer it starts with.
+    fn needs<A: Inline>(&self, check: Option<&AsmCheck>, cx: &Cx<'_, A>, needs: &mut Needs);
 
     /// Emits it: each output given its register, loaded for `inout`; each instruction by its
     /// form; then each output stored, where the block goes on.
     ///
     /// # Errors
     /// What the backend lacks for it.
-    fn emit<A: Inline>(&self, cx: &mut Cx<'_, A>) -> Result<(), Lack>;
+    fn emit<A: Inline>(&self, check: Option<&AsmCheck>, cx: &mut Cx<'_, A>) -> Result<(), Lack>;
 }
 
 impl Inlined for Asm {
@@ -110,7 +132,10 @@ impl Inlined for Asm {
         Ok(())
     }
 
-    fn needs<A: Inline>(&self, cx: &Cx<'_, A>, needs: &mut Needs) {
+    fn needs<A: Inline>(&self, check: Option<&AsmCheck>, cx: &Cx<'_, A>, needs: &mut Needs) {
+        if check.is_some() {
+            needs.temps.push(Bank::General);
+        }
         let mut reserved = A::Table::named(self).fold(RegSet::EMPTY, |set, r| set.with(A::preg(r)));
         let mut inputs = RegSet::EMPTY;
         for used in A::Table::uses(self) {
@@ -141,7 +166,12 @@ impl Inlined for Asm {
         needs.reserved = reserved.without(inputs);
     }
 
-    fn emit<A: Inline>(&self, cx: &mut Cx<'_, A>) -> Result<(), Lack> {
+    fn emit<A: Inline>(&self, check: Option<&AsmCheck>, cx: &mut Cx<'_, A>) -> Result<(), Lack> {
+        let before = check.map(|_| {
+            let r = cx.scratch();
+            A::stack(&mut cx.asm, r);
+            r
+        });
         let mut regs = Vec::new();
         let mut outputs = Vec::new();
         for used in A::Table::uses(self) {
@@ -176,6 +206,9 @@ impl Inlined for Asm {
                 .zip(&inst.operands)
                 .map(|(kind, o)| A::Table::operand(o, kind, &mut placed));
             let operands: Vec<_> = operands.collect();
+            if let (Some(check), Some((at, bytes))) = (check, A::Table::written(inst)) {
+                A::check_write(&mut cx.asm, &operands[at], bytes, check).map_err(|m| m.at(inst.origin))?;
+            }
             A::emit(&mut cx.asm, inst, &operands)
                 .map_err(|Untaken| Missing::AsmOperand(AsmOperand::Unencodable).at(inst.origin))?;
         }
@@ -183,6 +216,9 @@ impl Inlined for Asm {
         if self.returns {
             for (r, addr, size) in outputs {
                 A::store_at(&mut cx.asm, addr, r, size);
+            }
+            if let (Some(check), Some(before)) = (check, before) {
+                A::check_stack(&mut cx.asm, before, check);
             }
         }
         Ok(())

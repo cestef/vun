@@ -105,3 +105,61 @@ fn arm64_encodes_a_block_by_the_form_it_was_checked_against() {
     };
     assert!(insts.iter().any(stored), "{insts:#?}");
 }
+
+/// `f(n)` storing `n` at the address `n` through a block of `arch` of the `op`th instruction by
+/// its `form`th form at 64 bits, checked as `check` says, returning `n`.
+fn store(
+    b: &mut Builder,
+    n: Value,
+    origin: OriginId,
+    arch: Item,
+    [op, form, size]: [usize; 3],
+    check: Option<vun_lir::AsmCheck>,
+) {
+    let value = Operand::Bound(Bound::In { value: n, reg: None });
+    let base = vun_inline::Base::Bound(Bound::In { value: n, reg: None });
+    let at = Operand::Mem(vun_inline::Mem { base: Some(base), index: None, disp: Disp::Bytes(0) });
+    let (op, form) = (OpId(u16::try_from(op).expect("few")), FormId(u16::try_from(form).expect("few")));
+    let size = SizeId(u8::try_from(size).expect("few"));
+    let operands = if arch == vun_items::lang::arch::x86_64 { vec![at, value] } else { vec![value, at] };
+    let inst = Inst { op, form, size, operands, origin };
+    b.push(InstKind::Asm(Box::new(Block { arch, insts: vec![inst], returns: true }), check), None, origin);
+    b.terminate(Terminator::Return(Some(n)));
+}
+
+/// A check calling the function itself for both helpers, at the site 5.
+fn checked() -> vun_lir::AsmCheck {
+    let own = vun_lir::Address::Func(<vun_lir::FuncId as vun_index::Idx>::new(0));
+    vun_lir::AsmCheck { site: 5, write: own, stack: own }
+}
+
+#[test]
+fn a_checked_write_calls_the_runtime_between_saved_flags_and_registers() {
+    use vun_asm_x86_64::{Kind, Op, Operand, Size};
+    let form = Op::Mov.forms().iter().position(|f| f.kinds().eq([Kind::Rm, Kind::R]));
+    let entry = [index(Op::ALL, &Op::Mov), form.expect("mov to memory"), index(&Size::ALL, &Size::B64)];
+    let code =
+        compiled::<X86>(|b, n, origin| store(b, n, origin, vun_items::lang::arch::x86_64, entry, Some(checked())));
+    let insts = insts(&code.code.listing);
+    let ops: Vec<Op> = insts.iter().map(|i| i.op).collect();
+    let at = |op| ops.iter().position(|&o| o == op).unwrap_or_else(|| panic!("{op:?} in {insts:#?}"));
+    let stored = ops.iter().rposition(|&o| o == Op::Mov).expect("the store");
+    assert!(at(Op::Pushf) < at(Op::Call) && at(Op::Call) < at(Op::Popf), "{insts:#?}");
+    let site = insts.iter().any(|i| i.op == Op::Mov && matches!(i.operands(), [_, Operand::Imm(5)]));
+    assert!(site, "{insts:#?}");
+    // The stack pointer compared once the block ends, after the store.
+    assert!(ops.iter().rposition(|&o| o == Op::Cmp).is_some_and(|cmp| cmp > at(Op::Popf)), "{insts:#?}");
+    assert!(stored > at(Op::Popf), "{insts:#?}");
+}
+
+#[test]
+fn arm64_refuses_to_check_what_a_block_writes() {
+    use vun_asm_arm64::{Op, Size};
+    let entry = [index(Op::ALL, &Op::Str), 0, index(&Size::ALL, &Size::B64)];
+    let Err(lack) =
+        compile::<Arm>(|b, n, origin| store(b, n, origin, vun_items::lang::arch::arm64, entry, Some(checked())))
+    else {
+        panic!("a checked write compiled")
+    };
+    assert_eq!(lack.missing, Missing::AsmWriteCheck);
+}

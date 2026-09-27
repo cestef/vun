@@ -44,6 +44,10 @@ pub trait Blocks: Isa {
     /// The general registers that form reads or writes without naming them.
     fn implicit<V, P, S>(inst: &Inst<V, P, S>) -> impl Iterator<Item = Self::Reg>;
 
+    /// The memory operand the form of `inst` writes, by its index among the operands, and the
+    /// bytes it writes there.
+    fn written<V, P, S>(inst: &Inst<V, P, S>) -> Option<(usize, u32)>;
+
     /// The general register `r` is, if it is of that class.
     fn general(r: RegRef) -> Option<Self::Reg>;
 

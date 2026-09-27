@@ -168,3 +168,40 @@ main := (sys: &mut std.os.System) -> std.os.Exit {
         assert!((check.site as usize) < sites && exported(check.write) && exported(check.stack));
     }
 }
+
+/// A program writing `n` through a block `past` bytes into its local, built by the native backend
+/// with the asm checks, and the status it ends with.
+fn written_by_asm(name: &str, past: u32) -> Option<i32> {
+    let fixture = Fixture::new(name);
+    let source = format!(
+        "\
+start := std.os.start(main);
+main := (sys: &mut std.os.System) -> std.os.Exit {{
+    mut x: u64 = 0;
+    n: u64 = 7;
+    p := unsafe lang.mem.pointer_to(u64, &x);
+    unsafe lang.arch.x86_64.asm {{
+        mov [{{in p}} + {past}], {{in n}}
+    }};
+    std.os.Exit.of((x % 100).to(Int(0..=125)))
+}};
+"
+    );
+    let path = fixture.root.write("main.vun", &source);
+    let mut session = fixture.session();
+    session.choice = Choice::Path(vec![Symbol::intern("linux"), Symbol::intern("x86_64")]);
+    session.codegen.backend = Some(Symbol::intern("native"));
+    session.add_checks([Check::Asm, Check::Pointers]);
+    let file = session.load(&path).unwrap();
+    let program = session.build(file, None).unwrap_or_else(|_| panic!("{:#?}", session.diag));
+    session.command(&program).status().unwrap().code()
+}
+
+#[test]
+fn a_block_writing_past_its_memory_traps_under_the_asm_checks() {
+    if !cfg!(all(target_arch = "x86_64", target_os = "linux")) {
+        return;
+    }
+    assert_eq!(written_by_asm("checks-asm-within", 0), Some(7));
+    assert_eq!(written_by_asm("checks-asm-past", 8), Some(101));
+}
