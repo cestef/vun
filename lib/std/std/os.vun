@@ -2,7 +2,31 @@
 //! `start := std.os.start(main)`; the runtime makes the one `System` and passes it to `main`.
 
 /// How the program ends: `ok`, or a status for the process that started it.
-Exit := enum { ok, code(u8) };
+Exit := enum {
+    ok,
+    code(u8);
+
+    /// The status the process ends with.
+    status := (self: &Exit) -> u8 {
+        match self.* {
+            .ok => 0,
+            .code(n) => n,
+        }
+    };
+};
+
+/// The status a process ends with when it traps.
+trapped: u8 = 101;
+
+/// The link symbols of this namespace's declarations, which a runtime exports (spec 08,
+/// section 1): each system reaches its streams its own way.
+symbols := struct {
+    write := "vun_os_write";
+};
+
+/// Writes some of `bytes` to the stream the system knows as `fd`, returning how many.
+#[link.symbol(symbols.write)]
+write: (fd: i32, bytes: &[u8]) -> Result(usize, Error) = _;
 
 /// Why a request to the system failed: the error number it reported, or a stream that took no
 /// more bytes.
@@ -75,14 +99,31 @@ StreamWriter := struct {
     closed: std.os.Error = .closed;
     /// Writes some of `bytes`, returning how many.
     write := (self: &mut Stream, bytes: &[u8]) -> Result(usize, std.os.Error) {
-        written := unsafe std.os.libc.write(self.fd(), lang.mem.items_pointer(u8, bytes), bytes.len());
-        if written < 0 {
-            .err(.number(unsafe std.os.libc.errno_location().read()))
-        } else {
-            .ok(written.to(usize))
-        }
+        std.os.write(self.fd(), bytes)
     };
 };
 
-/// The hosted runtime: the C library's.
-start := std.os.libc.start;
+/// A program's `main`, which a runtime calls with the one `System`.
+Main := (&mut System) -> Exit;
+
+/// A hosted runtime: the system and ABI of the targets it serves, and the function making a
+/// program's exports from its `main` (spec 08, section 2).
+Runtime := struct {
+    os: lang.meta.Name,
+    abi: lang.meta.Name,
+    start: ($main: Main) -> type,
+};
+
+/// The runtimes of the systems `std` knows, each declared by its system's namespace.
+runtimes := [std.os.linux.runtime, std.os.macos.runtime, std.os.wasi.runtime];
+
+/// The runtime of the targets of `target`'s system and ABI.
+runtime := ($target: lang.target.Spec) -> Runtime {
+    $for row in runtimes {
+        if row.os == target.os and row.abi == target.abi { return row; }
+    }
+    lang.panic.fail(.message("std knows no runtime for this target's system and ABI"))
+};
+
+/// The runtime of the target being built for: `start := std.os.start(main)`.
+start := runtime(lang.target.current).start;

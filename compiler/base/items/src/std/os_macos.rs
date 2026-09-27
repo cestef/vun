@@ -6,5 +6,7 @@
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
 use crate::Item;
+/// macOS runs programs through its C library's runtime.
+pub const runtime: Item = Item::new(&["std", "os", "macos", "runtime"]);
 /// The C library's layout on macOS: 32-bit signal sets.
 pub const c: Item = Item::new(&["std", "os", "macos", "c"]);

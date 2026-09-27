@@ -116,8 +116,8 @@ pub(super) fn module(unit: &Unit, lines: &dyn Lines) -> Result<Module, Lack> {
     let lowered = bodies.par_map(|&(id, f)| {
         let _span = vun_trace::tracing::debug_span!("wasm", f = %f.linkage).entered();
         let mut lower = Lower::new(&cx, f, cx.passing(id))?;
-        let shape = Shape::of(&lower)?;
-        Emit::new(&mut lower, &shape).tree(f.entry().expect("a function has a body"))?;
+        let shape = Shape::of(&mut lower);
+        Emit::new(&mut lower, &shape).body(f.entry().expect("a function has a body"))?;
         Ok(lower.finish())
     });
     let funcs = lowered.into_iter().collect::<Result<Vec<Func>, Lack>>()?;

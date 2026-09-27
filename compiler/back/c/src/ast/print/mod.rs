@@ -151,6 +151,12 @@ impl Printer<'_, '_, '_> {
             match attribute {
                 Attribute::Aligned(bytes) => write!(self.f, "aligned({bytes})")?,
                 Attribute::Section(name) => write!(self.f, "section(\"{}\")", name.as_str())?,
+                Attribute::Import { module, name } => write!(
+                    self.f,
+                    "import_module(\"{}\"), import_name(\"{}\")",
+                    module.as_str(),
+                    name.as_str()
+                )?,
             }
         }
         self.f.write_str("))")
@@ -198,8 +204,9 @@ impl Printer<'_, '_, '_> {
                 self.operand(holds)?;
                 self.f.write_str(" ? 1 : -1];\n")
             }
-            Item::Declare(proto) => {
+            Item::Declare(proto, attributes) => {
                 self.proto(proto)?;
+                self.attributes(attributes)?;
                 self.f.write_str(";\n")
             }
             Item::Define(proto, body) => {

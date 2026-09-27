@@ -1,0 +1,68 @@
+//! WASI preview 1 (spec 08, section 2): a runtime exporting `_start`, which reaches the system
+//! through the functions of preview 1's import module. A module runs one thread and takes no
+//! signals, so its critical section is nothing to take.
+
+/// Preview 1 programs run through this namespace's runtime.
+runtime: std.os.Runtime = .{ .os = .wasi, .abi = .p1, .start = start };
+
+/// The import module of preview 1's functions.
+module := "wasi_snapshot_preview1";
+
+/// Bytes a write reads: an address and a length.
+Ciovec := struct { buf: *u8, len: usize };
+
+#[link.symbol("fd_write"), link.library(module), abi.c]
+fd_write: unsafe (fd: i32, iovs: *Ciovec, count: usize, written: *usize) -> u16 = _;
+#[link.symbol("proc_exit"), link.library(module), abi.c]
+proc_exit: unsafe (status: i32) -> lang.never = _;
+#[link.symbol("args_sizes_get"), link.library(module), abi.c]
+args_sizes_get: unsafe (count: *usize, bytes: *usize) -> u16 = _;
+#[link.symbol("args_get"), link.library(module), abi.c]
+args_get: unsafe (values: *usize, bytes: *u8) -> u16 = _;
+
+/// The most arguments, and bytes of them, a program starts with: `_start` holds them in its
+/// frame, which lasts as long as the program. A program started with more exits trapped.
+arguments := 256;
+argument_bytes := 8192;
+
+/// The exports of a program whose `_start` the host calls.
+start := ($main: std.os.Main) -> type { struct {
+    #[link.export("_start"), abi.c]
+    entry := () -> lang.never {
+        mut count: usize = 0;
+        mut size: usize = 0;
+        unsafe { args_sizes_get(std.ptr.to(usize, &count), std.ptr.to(usize, &size)); }
+        if count > arguments or size > argument_bytes {
+            unsafe proc_exit(std.os.trapped.to(i32))
+        }
+        mut values: [arguments]usize = [0; arguments];
+        mut bytes: [argument_bytes]u8 = [0; argument_bytes];
+        at := unsafe std.ptr.to([arguments]usize, &values).cast(usize);
+        unsafe { args_get(at, std.ptr.to([argument_bytes]u8, &bytes).cast(u8)); }
+        args := unsafe std.os.Args.of(count, at.cast(*u8));
+        mut sys := unsafe std.os.System.claim(args);
+        status := main(&mut sys).status();
+        unsafe proc_exit(status.to(i32))
+    };
+
+    #[link.export(lang.panic.symbols.trap)]
+    trap := (t: &lang.panic.Trap) -> lang.never { unsafe proc_exit(std.os.trapped.to(i32)) };
+
+    #[link.export(std.os.symbols.write)]
+    write := (fd: i32, bytes: &[u8]) -> Result(usize, std.os.Error) {
+        iov := Ciovec{ .buf = lang.mem.items_pointer(u8, bytes), .len = bytes.len() };
+        mut written: usize = 0;
+        errno := unsafe fd_write(fd, std.ptr.to(Ciovec, &iov), 1, std.ptr.to(usize, &written));
+        if errno != 0 { .err(.number(errno.to(i32))) } else { .ok(written) }
+    };
+
+    #[link.export(std.sync.symbols.enter), panic.never]
+    enter := () -> std.sync.Mask { unsafe std.sync.Mask.of(0, false) };
+
+    #[link.export(std.sync.symbols.leave), panic.never]
+    leave := (mask: std.sync.Mask) {};
+
+    /// Nothing else runs in the module, so there is nothing to wait for.
+    #[link.export(std.task.symbols.sleep)]
+    sleep := () {};
+}};

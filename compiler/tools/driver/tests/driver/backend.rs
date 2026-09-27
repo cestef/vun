@@ -33,9 +33,9 @@ fn program(name: &str) -> String {
     std::fs::read_to_string(path).unwrap()
 }
 
-/// The targets every program here runs on besides the machine's own: arm64 Linux, where the
-/// machine runs its programs, through the runner its toolchain file names.
-const CROSS: [&[&str]; 1] = [&["linux", "arm64"]];
+/// The targets every program here runs on besides the machine's own, where the machine runs
+/// their programs through the runner its toolchain file names: arm64 Linux, and WASI.
+const CROSS: [&[&str]; 2] = [&["linux", "arm64"], &["wasi", "wasm32"]];
 
 /// Builds `source` through each backend that generates code and runs it, for the machine's
 /// target and each of `CROSS` the machine runs programs of: its exit status, the same through
@@ -229,22 +229,22 @@ trapping := (n: u32) -> u32 { mut total: u32 = 0; for _ in 0..n { total += 1; } 
 #[test]
 fn floats_compute_compare_and_pass_as_ieee_754_says() {
     // Each check that holds adds its bit: 255 when every one does.
-    assert_eq!(status("backend-floats", &program("floats.vun")), Some(255));
+    assert_eq!(status("backend-floats", &program("floats.vun")), Some(0));
 }
 
 #[test]
 fn integers_wider_than_the_backend_run_as_pairs_of_halves() {
-    assert_eq!(status("backend-wide", &program("wide.vun")), Some(255));
+    assert_eq!(status("backend-wide", &program("wide.vun")), Some(0));
 }
 
 #[test]
 fn closures_function_values_defers_and_primitives_lower_and_run() {
-    assert_eq!(status("backend-lowered", &program("lowered.vun")), Some(255));
+    assert_eq!(status("backend-lowered", &program("lowered.vun")), Some(0));
 }
 
 #[test]
 fn memory_operations_run_whether_their_value_is_kept_or_not() {
-    assert_eq!(status("backend-memory", &program("memory.vun")), Some(255));
+    assert_eq!(status("backend-memory", &program("memory.vun")), Some(0));
 }
 
 #[test]

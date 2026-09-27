@@ -4,6 +4,7 @@
 
 mod data;
 mod func;
+mod import;
 mod ints;
 mod signature;
 
@@ -86,7 +87,8 @@ impl<'u> Emitter<'u> {
         let mut bodies = Vec::new();
         for (id, func) in unit.functions.iter() {
             let storage = e.storage(func.linkage);
-            protos.push(Item::Declare(e.proto(storage, e.func(id), &func.signature, func.origin)?));
+            protos
+                .push(Item::Declare(e.proto(storage, e.func(id), &func.signature, func.origin)?, Vec::new()));
             #[expect(clippy::cast_possible_truncation, reason = "the remainder is below the shard count")]
             let at = (Hash::of_value(func).short() % shards as u64) as usize;
             bodies.push((at, e.define(id, storage)?));
@@ -181,22 +183,6 @@ impl<'u> Emitter<'u> {
     fn writable(&self) -> Result<(), Lack> {
         Self::linked(self.unit)
             .try_for_each(|(s, at)| if Names::writable(s) { Ok(()) } else { Err(Missing::Symbol(s).at(at)) })
-    }
-
-    fn import(&mut self, import: &vun_lir::Import) -> Result<Item, Lack> {
-        let name = Ident::Symbol(import.symbol);
-        Ok(match &import.kind {
-            ImportKind::Func(signature) => {
-                Item::Declare(self.proto(Storage::Extern, name, signature, import.origin)?)
-            }
-            ImportKind::Data => Item::Object {
-                storage: Storage::Extern,
-                constant: false,
-                decl: Decl::new(Ty::BYTE, name),
-                attributes: Vec::new(),
-                init: None,
-            },
-        })
     }
 
     fn func(&self, id: FuncId) -> Ident {

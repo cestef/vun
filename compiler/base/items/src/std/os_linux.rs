@@ -6,5 +6,7 @@
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
 use crate::Item;
+/// Linux with the GNU C library runs programs through the C library's runtime.
+pub const runtime: Item = Item::new(&["std", "os", "linux", "runtime"]);
 /// The GNU C library's layout on Linux: 1024-bit signal sets, of which Linux uses the first 64.
 pub const c: Item = Item::new(&["std", "os", "linux", "c"]);

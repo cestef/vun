@@ -60,5 +60,6 @@ main := (sys: &mut std.os.System) -> std.os.Exit {
     if unsafe lang.mem.read(u16, second) == 9 and lang.mem.address(u16, second) % 2 == 0 {
         code = code | 128;
     }
-    .code(code)
+    // The checks that failed: 0 when all hold, a status every system can return.
+    .code(code ^ 255)
 };

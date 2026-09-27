@@ -212,6 +212,8 @@ pub enum Attribute {
     Aligned(u64),
     /// In the link section of this name.
     Section(Symbol),
+    /// On wasm, imported as `name` from `module` (`lang.link.library`).
+    Import { module: Symbol, name: Symbol },
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -229,7 +231,7 @@ pub enum Item {
         name: Ident,
         holds: Expr,
     },
-    Declare(Proto),
+    Declare(Proto, Vec<Attribute>),
     Define(Proto, Vec<Stmt>),
     Object {
         storage: Storage,

@@ -1,5 +1,8 @@
 //! macOS.
 
+/// macOS runs programs through its C library's runtime.
+runtime: std.os.Runtime = .{ .os = .macos, .abi = .darwin, .start = std.os.libc.start };
+
 /// The C library's layout on macOS: 32-bit signal sets.
 c: std.os.libc.System = .{
     .os = .macos,

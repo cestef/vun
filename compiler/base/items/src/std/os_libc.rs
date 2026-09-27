@@ -28,8 +28,5 @@ pub const pthread_self: Item = Item::new(&["std", "os", "libc", "pthread_self"])
 pub const sched_yield: Item = Item::new(&["std", "os", "libc", "sched_yield"]);
 /// The thread holding the critical section, 0 when none: a thread entering it again nests.
 pub const owner: Item = Item::new(&["std", "os", "libc", "owner"]);
-/// The status C `main` returns for `std.os.Exit.ok`, and the one a trap exits with.
-pub const success: Item = Item::new(&["std", "os", "libc", "success"]);
-pub const trapped: Item = Item::new(&["std", "os", "libc", "trapped"]);
 /// The exports of a program whose `main` the C library calls.
 pub const start: Item = Item::new(&["std", "os", "libc", "start"]);

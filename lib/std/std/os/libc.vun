@@ -53,23 +53,26 @@ sched_yield: unsafe () -> i32 = _;
 /// The thread holding the critical section, 0 when none: a thread entering it again nests.
 owner: std.sync.Atomic(usize) = .init(0);
 
-/// The status C `main` returns for `std.os.Exit.ok`, and the one a trap exits with.
-success := 0;
-trapped := 101;
-
 /// The exports of a program whose `main` the C library calls.
-start := ($main: (&mut std.os.System) -> std.os.Exit) -> type { struct {
+start := ($main: std.os.Main) -> type { struct {
     #[link.export("main"), abi.c]
     entry := (argc: i32, argv: *(*u8)) -> i32 {
         mut sys := unsafe std.os.System.claim(std.os.Args.of(argc.to(usize), argv));
-        match main(&mut sys) {
-            .ok => success,
-            .code(status) => status,
-        }
+        main(&mut sys).status().to(i32)
     };
 
     #[link.export(lang.panic.symbols.trap)]
-    trap := (t: &lang.panic.Trap) -> lang.never { unsafe exit(trapped) };
+    trap := (t: &lang.panic.Trap) -> lang.never { unsafe exit(std.os.trapped.to(i32)) };
+
+    #[link.export(std.os.symbols.write)]
+    write_to := (fd: i32, bytes: &[u8]) -> Result(usize, std.os.Error) {
+        written := unsafe write(fd, lang.mem.items_pointer(u8, bytes), bytes.len());
+        if written < 0 {
+            .err(.number(unsafe errno_location().read()))
+        } else {
+            .ok(written.to(usize))
+        }
+    };
 
     /// Blocks the thread's signals, the interrupts of a hosted program, and takes the section
     /// from other threads.

@@ -15,5 +15,6 @@ main := (sys: &mut std.os.System) -> std.os.Exit {
     if signed / 3 == -0xaaaa_aaaa_aaaa_aaa8 { code = code | 32; }
     if signed % 3 == -1 { code = code | 64; }
     if (big + big).wrap(u64) == 0xffff_ffff_ffff_ffe0 { code = code | 128; }
-    .code(code)
+    // The checks that failed: 0 when all hold, a status every system can return.
+    .code(code ^ 255)
 };

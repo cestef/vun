@@ -12,8 +12,17 @@ pub const libc: Item = Item::new(&["std", "os", "libc"]);
 pub const linux: Item = Item::new(&["std", "os", "linux"]);
 /// The namespace `std.os.macos`.
 pub const macos: Item = Item::new(&["std", "os", "macos"]);
+/// The namespace `std.os.wasi`.
+pub const wasi: Item = Item::new(&["std", "os", "wasi"]);
 /// How the program ends: `ok`, or a status for the process that started it.
 pub const Exit: Item = Item::new(&["std", "os", "Exit"]);
+/// The status a process ends with when it traps.
+pub const trapped: Item = Item::new(&["std", "os", "trapped"]);
+/// The link symbols of this namespace's declarations, which a runtime exports (spec 08,
+/// section 1): each system reaches its streams its own way.
+pub const symbols: Item = Item::new(&["std", "os", "symbols"]);
+/// Writes some of `bytes` to the stream the system knows as `fd`, returning how many.
+pub const write: Item = Item::new(&["std", "os", "write"]);
 /// Why a request to the system failed: the error number it reported, or a stream that took no
 /// more bytes.
 pub const Error: Item = Item::new(&["std", "os", "Error"]);
@@ -30,5 +39,14 @@ pub const ArgsIterate: Item = Item::new(&["std", "os", "ArgsIterate"]);
 /// A byte stream the system holds open: standard output, a file, a socket.
 pub const Stream: Item = Item::new(&["std", "os", "Stream"]);
 pub const StreamWriter: Item = Item::new(&["std", "os", "StreamWriter"]);
-/// The hosted runtime: the C library's.
+/// A program's `main`, which a runtime calls with the one `System`.
+pub const Main: Item = Item::new(&["std", "os", "Main"]);
+/// A hosted runtime: the system and ABI of the targets it serves, and the function making a
+/// program's exports from its `main` (spec 08, section 2).
+pub const Runtime: Item = Item::new(&["std", "os", "Runtime"]);
+/// The runtimes of the systems `std` knows, each declared by its system's namespace.
+pub const runtimes: Item = Item::new(&["std", "os", "runtimes"]);
+/// The runtime of the targets of `target`'s system and ABI.
+pub const runtime: Item = Item::new(&["std", "os", "runtime"]);
+/// The runtime of the target being built for: `start := std.os.start(main)`.
 pub const start: Item = Item::new(&["std", "os", "start"]);

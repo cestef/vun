@@ -4,8 +4,12 @@
 //! jump is a `br` to the label of its target or, to a block only it reaches, the target's code in
 //! place. A jump's arguments are pushed, then popped into the target's parameters in reverse:
 //! a parallel copy with no temporary.
+//!
+//! A function entering a loop other than through its head (a coroutine's resumption) has no
+//! such structure: it runs as one `loop` around a `br_table` on a local naming the next block,
+//! each jump setting it and branching back.
 
-use vun_backend::{Lack, Missing};
+use vun_backend::Lack;
 use vun_index::IndexVec;
 use vun_lir::analysis::{Cfg, Dominators, Loops};
 use vun_lir::{Block, Target, Terminator};
@@ -22,6 +26,8 @@ enum Label {
     Head(Block),
     /// A label no jump names: an `if`, or where a switch lands.
     Other,
+    /// The loop dispatching on the next block.
+    Dispatch,
 }
 
 /// The shape of a function's control flow.
@@ -34,11 +40,20 @@ pub(super) struct Shape {
     merge: IndexVec<Block, bool>,
     /// Whether a back edge reaches a block.
     head: IndexVec<Block, bool>,
+    /// For a function whose control is irreducible, the dispatch it runs as.
+    dispatch: Option<Dispatch>,
+}
+
+/// A function run as a loop dispatching on the next block: the local naming it, and the blocks
+/// reached in reverse postorder, each named by its place there.
+struct Dispatch {
+    next: u32,
+    blocks: Vec<Block>,
 }
 
 impl Shape {
-    /// The shape of `lower`'s function, which must be reducible.
-    pub(super) fn of(lower: &Lower<'_>) -> Result<Self, Lack> {
+    /// The shape of `lower`'s function.
+    pub(super) fn of(lower: &mut Lower<'_>) -> Self {
         let f = lower.f;
         let cfg = Cfg::of(f);
         let loops = Loops::of(f, &cfg);
@@ -47,10 +62,10 @@ impl Shape {
         let mut rpo = IndexVec::filled(usize::MAX, count);
         for (i, &b) in dominators.rpo().iter().enumerate() {
             rpo[b] = i;
-            if loops.is_header(b) && loops.is_irreducible(b) {
-                return Err(Missing::Irreducible.at(f.blocks[b].origin));
-            }
         }
+        let irreducible = dominators.rpo().iter().any(|&b| loops.is_header(b) && loops.is_irreducible(b));
+        let dispatch = irreducible
+            .then(|| Dispatch { next: lower.temp(crate::module::ValType::I32), blocks: dominators.rpo().to_vec() });
         let mut merge = IndexVec::filled(false, count);
         let mut forward: IndexVec<Block, u32> = IndexVec::filled(0, count);
         let mut head = IndexVec::filled(false, count);
@@ -64,7 +79,7 @@ impl Shape {
                 }
             }
         }
-        Ok(Self { rpo, children: dominators.children(), merge, head })
+        Self { rpo, children: dominators.children(), merge, head, dispatch }
     }
 }
 
@@ -80,8 +95,32 @@ impl<'s, 'l, 'a> Emit<'s, 'l, 'a> {
         Self { lower, shape, labels: Vec::new() }
     }
 
+    /// The function's body, from its entry `block`.
+    pub(super) fn body(&mut self, entry: Block) -> Result<(), Lack> {
+        let Some(dispatch) = &self.shape.dispatch else { return self.tree(entry) };
+        let (next, blocks) = (dispatch.next, dispatch.blocks.clone());
+        self.lower.op(Op::I32Const(0));
+        self.lower.op(Op::LocalSet(next));
+        self.open(Op::Loop, Label::Dispatch);
+        for _ in &blocks {
+            self.open(Op::Block, Label::Other);
+        }
+        self.lower.op(Op::LocalGet(next));
+        let places = u32::try_from(blocks.len()).expect("blocks fit u32");
+        self.lower.op(Op::BrTable { cases: (0..places).collect(), default: places - 1 });
+        for block in blocks {
+            self.close();
+            for &inst in &self.lower.f.blocks[block].insts {
+                self.lower.inst(inst)?;
+            }
+            self.terminator(block)?;
+        }
+        self.close();
+        Ok(())
+    }
+
     /// The code of `block` and of what it dominates.
-    pub(super) fn tree(&mut self, block: Block) -> Result<(), Lack> {
+    fn tree(&mut self, block: Block) -> Result<(), Lack> {
         let mut merges: Vec<Block> =
             self.shape.children[block].iter().copied().filter(|&c| self.shape.merge[c]).collect();
         merges.sort_by_key(|&c| self.shape.rpo[c]);
@@ -140,6 +179,14 @@ impl<'s, 'l, 'a> Emit<'s, 'l, 'a> {
         }
         for &p in params.iter().rev() {
             self.lower.set(p);
+        }
+        if let Some(dispatch) = &self.shape.dispatch {
+            let place = dispatch.blocks.iter().position(|&b| b == t.block).expect("a jump's target is reached");
+            self.lower.op(Op::I32Const(i32::try_from(place).expect("blocks fit i32")));
+            self.lower.op(Op::LocalSet(dispatch.next));
+            let depth = self.depth(Label::Dispatch);
+            self.lower.op(Op::Br(depth));
+            return Ok(());
         }
         let backward = self.shape.rpo[t.block] <= self.shape.rpo[from];
         if backward || self.shape.merge[t.block] {

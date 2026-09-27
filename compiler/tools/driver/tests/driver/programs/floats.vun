@@ -23,5 +23,6 @@ main := (sys: &mut std.os.System) -> std.os.Exit {
     if n * 0.1 + 0.2 > 0.49 { code = code | 32; }
     if v.x == 3.0 and v.y == 0.25 and v.z == 1.5 { code = code | 64; }
     match lang.float.total_order(f64, &n, &zero) { .greater => { code = code | 128; }, _ => {} }
-    .code(code)
+    // The checks that failed: 0 when all hold, a status every system can return.
+    .code(code ^ 255)
 };

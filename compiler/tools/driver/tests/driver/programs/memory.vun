@@ -33,5 +33,6 @@ main := (sys: &mut std.os.System) -> std.os.Exit {
     unsafe lang.mem.copy([3]u8, lang.mem.cast(u8, [3]u8, lang.mem.offset(u8, at, 1)), triples, 2);
     if bytes == [1, 1, 2, 3, 4, 5, 6] { code = code | 32; }
     code = code | 64 | 128;
-    .code(code)
+    // The checks that failed: 0 when all hold, a status every system can return.
+    .code(code ^ 255)
 };

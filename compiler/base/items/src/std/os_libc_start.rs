@@ -8,6 +8,7 @@
 use crate::Item;
 pub const entry: Item = Item::new(&["std", "os", "libc", "start", "entry"]);
 pub const trap: Item = Item::new(&["std", "os", "libc", "start", "trap"]);
+pub const write_to: Item = Item::new(&["std", "os", "libc", "start", "write_to"]);
 /// Blocks the thread's signals, the interrupts of a hosted program, and takes the section
 /// from other threads.
 pub const enter: Item = Item::new(&["std", "os", "libc", "start", "enter"]);

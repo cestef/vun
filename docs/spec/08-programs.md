@@ -61,6 +61,16 @@ and lets crt0 do the rest. What each C library lays out its own way (the functio
 `std.os.libc.System`, which each system's module declares (`std.os.linux.c`); the runtime takes
 the row whose `os` is `lang.target.current.os`.
 
+**Choosing a runtime.** `std.os.start` is not a runtime of its own: it is the `start` of the
+runtime of the target being built for. Each system's namespace declares its row,
+`std.os.Runtime { os, abi, start }` (`std.os.linux.runtime` runs the C library's runtime for
+`linux`/`gnu`, `std.os.wasi.runtime` WASI preview 1's for `wasi`/`p1`), and `std.os.runtime` takes
+the row matching `lang.target.current`'s system and ABI; a target none matches fails when
+compiling. So no program, and nothing in `std` but a runtime, is tied to a C library: `std.os`
+reaches the system through typed link symbols each runtime exports (`std.os.symbols.write`, beside
+`lang.panic.symbols.trap` and `std.sync.symbols.enter`), and a runtime without one (a Linux one
+calling the kernel, for static programs) is one more row.
+
 ### Bare metal
 
 ```vun
