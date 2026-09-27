@@ -66,10 +66,10 @@ impl Builder<'_, '_, '_> {
             ExprKind::Return(value) => self.exit(*value, origin),
             ExprKind::Defer(statement) => Ok(self.deferred(*statement)),
             ExprKind::Infix { left, right: Some(right), .. } => {
-                self.operator(Operation::Expr(expr), *left, vec![Side::Expr(*right)], origin)
+                self.operator(Operation::Expr(expr), Side::Expr(*left), vec![Side::Expr(*right)], origin)
             }
             ExprKind::Prefix { op: TokenKind::Minus | TokenKind::Tilde, operand, .. } => {
-                self.operator(Operation::Expr(expr), *operand, Vec::new(), origin)
+                self.operator(Operation::Expr(expr), Side::Expr(*operand), Vec::new(), origin)
             }
             ExprKind::Prefix { op: TokenKind::Bang, operand, .. } => {
                 let operand = self.operand(*operand)?;

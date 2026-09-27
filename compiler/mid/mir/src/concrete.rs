@@ -126,8 +126,9 @@ impl Body {
     }
 
     /// Replaces each read of a local holding a constant by that constant: a `$` parameter bound
-    /// to `bound`'s value, or a local written once, whole, with a constant, and never borrowed;
-    /// and folds the calls known when compiling; until nothing changes. A constant written into a local nothing reads is dropped.
+    /// to `bound`'s value, or a local written once, whole, with a constant, never borrowed and no
+    /// static; and folds the calls known when compiling; until nothing changes. A constant written
+    /// into a local nothing reads, and no static, is dropped.
     fn propagate(&mut self, env: &Env<'_, '_>, bound: &[Option<Value>]) {
         loop {
             let (writes, mut constants) = self.writes();
@@ -136,8 +137,11 @@ impl Body {
             }
             let is_bound =
                 |local: Local| self.params.iter().zip(bound).any(|(&p, v)| p == local && v.is_some());
+            // A static's value is seen, and changed, by every call: it is never a constant here.
+            let locals = &self.locals;
             let constant = |local: Local| {
-                (is_bound(local) || writes[local] == 1).then(|| constants[local].clone()).flatten()
+                let known = is_bound(local) || (writes[local] == 1 && !locals[local].role.is_static());
+                known.then(|| constants[local].clone()).flatten()
             };
             let mut changed = false;
             for (_, block) in self.blocks.iter_mut() {
@@ -159,9 +163,10 @@ impl Body {
         let read = self.read();
         for (_, block) in self.blocks.iter_mut() {
             block.stmts.retain(|s| {
-                !(s.place.projection.is_empty()
+                let unread = s.place.projection.is_empty()
                     && !read.contains(&s.place.local)
-                    && matches!(s.value, Rvalue::Use(Operand::Const(_))))
+                    && !self.locals[s.place.local].role.is_static();
+                !unread || !matches!(s.value, Rvalue::Use(Operand::Const(_)))
             });
         }
     }

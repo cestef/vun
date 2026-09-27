@@ -151,11 +151,16 @@ impl Builder<'_, '_, '_> {
         Ok(place)
     }
 
-    /// The storage of a top-level binding, `init` from the program's start: a local of the
-    /// binding's type, which nothing in the body writes first.
+    /// The storage of a top-level binding, `init` from the program's start: one local of the
+    /// binding's type, shared by every mention of it, which nothing in the body writes first.
     fn global(&mut self, role: Role, expr: ExprId, origin: OriginId) -> Local {
+        if let Some(&local) = self.globals.get(&role) {
+            return local;
+        }
         let ty = self.type_of(expr);
-        self.locals.push(LocalDecl { name: None, ty, role, origin })
+        let local = self.locals.push(LocalDecl { name: None, ty, role: role.clone(), origin });
+        self.globals.insert(role, local);
+        local
     }
 
     /// A temporary holding the value of `expr`.

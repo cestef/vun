@@ -24,7 +24,7 @@ impl Builder<'_, '_, '_> {
     pub(super) fn operator(
         &mut self,
         at: Operation,
-        receiver: ExprId,
+        receiver: Side,
         args: Vec<Side>,
         origin: OriginId,
     ) -> Result<Operand, Unbuilt> {
@@ -40,7 +40,7 @@ impl Builder<'_, '_, '_> {
             }
         };
         fill(&mut values);
-        for side in std::iter::once(Side::Expr(receiver)).chain(args) {
+        for side in std::iter::once(receiver).chain(args) {
             let mode = modes.get(values.len()).copied().flatten();
             // An operand that is no borrow, passed by value, is read as any argument is.
             if let (None, Side::Expr(expr)) = (mode, &side)

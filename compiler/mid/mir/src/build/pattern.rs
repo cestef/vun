@@ -143,16 +143,17 @@ impl Builder<'_, '_, '_> {
             // The tests typing found: `value == x`, and `lo <= x` with `hi >= x` or `hi > x`.
             PatKind::Value(value) => {
                 let found = Side::Matched(matched.place.clone(), matched.ty);
-                let cond = self.operator(Operation::Test(pat), *value, vec![found], origin)?;
+                let cond = self.operator(Operation::Test(pat), Side::Expr(*value), vec![found], origin)?;
                 self.guard(cond, fail, origin);
                 Ok(())
             }
             PatKind::Range { lo, hi, .. } => {
                 let found = || Side::Matched(matched.place.clone(), matched.ty);
-                let cond = self.operator(Operation::Lower(pat), *lo, vec![found()], origin)?;
+                let cond = self.operator(Operation::Lower(pat), Side::Expr(*lo), vec![found()], origin)?;
                 self.guard(cond, fail, origin);
                 if let Some(hi) = hi {
-                    let cond = self.operator(Operation::Upper(pat), *hi, vec![found()], origin)?;
+                    let cond =
+                        self.operator(Operation::Upper(pat), Side::Expr(*hi), vec![found()], origin)?;
                     self.guard(cond, fail, origin);
                 }
                 Ok(())

@@ -121,6 +121,8 @@ struct Builder<'e, 'a, 'db> {
     shared: Map<BinderId, Local>,
     /// The captured binders whose local holds a borrow of them.
     through: Set<BinderId>,
+    /// The local each top-level binding the body names is stored in.
+    globals: Map<Role, Local>,
     /// Where the result is written before returning.
     ret: Local,
     /// The loops around the code lowered, innermost last.
@@ -153,6 +155,7 @@ impl<'a, 'db> Builder<'_, 'a, 'db> {
             bound: Map::default(),
             shared: Map::default(),
             through: Set::default(),
+            globals: Map::default(),
             ret,
             loops: Vec::new(),
             pending: Vec::new(),

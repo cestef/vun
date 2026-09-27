@@ -40,7 +40,9 @@ impl Builder<'_, '_, '_> {
         let typed = self.typed().ok_or(unbuilt)?;
         let ty = typed.types.get(&place).ok_or(unbuilt)?.ty;
         let result = typed.operators.get(&Operation::Assign(place)).map(|o| o.result);
-        let operand = self.operator(Operation::Assign(place), place, vec![Side::Expr(value)], origin)?;
+        // The target is evaluated once: its place is both read and written.
+        let receiver = Side::Matched(target.clone(), Some(ty));
+        let operand = self.operator(Operation::Assign(place), receiver, vec![Side::Expr(value)], origin)?;
         let value =
             if result == Some(ty) { Rvalue::Use(operand) } else { Rvalue::Narrow { operand, ty, narrowing } };
         self.assign(target, value, origin);
