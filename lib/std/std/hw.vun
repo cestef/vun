@@ -12,5 +12,6 @@ Reg := ($T: type) -> type { struct {
     #[panic.never]
     write := (self: &Reg(T), value: T) { unsafe lang.mem.volatile_store(T, self._at(), value) };
 
+    #[panic.never]
     _at := (self: &Reg(T)) -> *T { unsafe lang.mem.cell_pointer(T, &self._value) };
 } };

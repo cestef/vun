@@ -378,7 +378,7 @@ pub trait DiagSink {
 | Backend | Role | Targets | Notes |
 |---------|------|---------|-------|
 | C | reach | anything with a C99 compiler | first; vendor toolchains, Cortex-M, AVR, Xtensa; strict C99, defined C only (section 8.2); `restrict` from aliasing facts; frame sizes via `-fstack-usage` |
-| Cranelift | default debug backend | x86_64, arm64, riscv64, s390x | in process; roughly 20% less codegen time than LLVM for rustc, code about 14% slower |
+| Cranelift | in-process debug backend (still to come) | x86_64, arm64, riscv64, s390x | in process; roughly 20% less codegen time than LLVM for rustc, code about 14% slower |
 | QBE | small and simple | amd64, arm64, rv64 | subprocess on IL text; no vectors (lowered), no tail calls, no 32-bit targets |
 | LLVM | optimized builds, widest native reach | ARM32/Thumb, RV32, AVR, wasm, ... | optional; `noalias`, `musttail`, stack-size sections |
 | native | fastest debug builds | x86_64, arm64 | the toolchain's own: a single-pass LIR backend in the style of TPDE (8x to 24x faster than LLVM -O0), section 8.3 |
@@ -670,18 +670,21 @@ as the `ld` of a directory beside the output that the compiler looks in first (`
 
 ```
 compiler/
-  base/    index  span  intern  origin  diag  query  pass  tool  target  trace  items  json
+  base/    index  span  intern  origin  diag  query  pass  tool  target  trace  items  json  codec
+           codec-derive  hash  graph  fs  outline  par  suggest  term
   front/   grammar  desugar  syntax  hir  sema
   mid/     mir  passes  interp
-  low/     lir  abi  passes
-  back/    api  asm  x86_64  arm64  object  codegen  native  c  cranelift  qbe  llvm  external
+  low/     lir  lower  abi  passes
+  back/    api  asm  x86_64  arm64  object  dwarf  codegen  native  c  cranelift  qbe  llvm  external
   link/    api  wild  mold  lld  gnu  msvc  external
   render/  short  annotate  ariadne  json  sarif
-  tools/   build  fmt  bind  clang  probe  harness  driver  lsp  cli  generate  xtask
+  tools/   build  pkg  http  fmt  bind  clang  probe  command  harness  driver  lsp  cli  generate
+           xtask
+fuzz/      cargo-fuzz targets over the verifiers, a workspace member
 lib/
-  lang/     primitives (declarations with `= _`), syntax/grammar.vun
-  std/      prelude, iter, task, mem, sync, fmt, text, meta, diag, lints, log, hw, os, simd, testing, build,
-            collections
+  lang/     primitives (declarations with `= _`), syntax/grammar.vun and syntax/desugar.vun
+  std/      prelude, option, result, cmp, int, iter, seq, ptr, task, mem, sync, fmt, text, meta,
+            diag, lints, log, hw, os, simd, panic, testing, build, collections
   targets/  a namespace per system, a target per CPU: targets.<system>.<cpu>
   boards/   example runtimes: stm32f4, rp2040, esp32c3
 ```

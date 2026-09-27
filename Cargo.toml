@@ -1,7 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["compiler/*/*"]
-exclude = ["fuzz"]
+members = ["compiler/*/*", "fuzz"]
 
 [workspace.package]
 version = "0.0.0"
@@ -106,6 +105,7 @@ ruzstd = { version = "0.9", default-features = false, features = ["std"] }
 lzma-rs = "0.3"
 stacker = "0.1.25"
 num-bigint = "0.5"
+libfuzzer-sys = "0.4"
 # Tests only: an independent decoder checking the x86-64 assembler's table.
 yaxpeax-x86 = { version = "2", default-features = false, features = ["std", "fmt"] }
 # Tests only: an independent AArch64 decoder checking the arm64 assembler's table, and its traits.
@@ -120,14 +120,12 @@ unreachable_pub = "warn"
 
 [workspace.lints.clippy]
 pedantic = { level = "warn", priority = -1 }
-module_name_repetitions = "allow"
 
 [profile.dev]
 debug = 1
 
 [profile.release]
 lto = "thin"
-codegen-units = 16
 
 # What is distributed: slower to build, smaller and faster to run; `cargo xtask size` measures it.
 [profile.dist]

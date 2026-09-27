@@ -1,21 +1,23 @@
 [package]
 name = "vun-fuzz"
 description = "Fuzz targets, run with cargo-fuzz: `cargo fuzz run <target>`."
-version = "0.0.0"
-edition = "2024"
-publish = false
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
 
 [package.metadata]
 cargo-fuzz = true
 
-[workspace]
+[lints]
+workspace = true
 
 [dependencies]
-libfuzzer-sys = "0.4"
-vun-diag = { path = "../compiler/base/diag" }
-vun-origin = { path = "../compiler/base/origin" }
-vun-span = { path = "../compiler/base/span" }
-vun-syntax = { path = "../compiler/front/syntax" }
+libfuzzer-sys.workspace = true
+vun-diag.workspace = true
+vun-origin.workspace = true
+vun-span.workspace = true
+vun-syntax.workspace = true
 
 [[bin]]
 name = "lex"

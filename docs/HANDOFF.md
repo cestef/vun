@@ -1,6 +1,6 @@
 # Handoff
 
-State of Vun as of 2026-09-26 (end of the fifteenth session), for the next agent. Read this, then
+State of Vun as of 2026-09-27 (the eighteenth session), for the next agent. Read this, then
 `CLAUDE.md` (rules and the agent procedure; on disk but ignored by the user's global gitignore, so
 `jj st` never shows it), `docs/spec/00-principles.md`, `docs/spec/decisions.md` and the spec
 files of the area you touch. The code is the detail; this file says where things are and why.
@@ -63,7 +63,7 @@ cargo fmt && cargo clippy --all-targets && cargo nextest run && cargo gen --chec
 cargo xtask corpus            # verdicts, coverage, what stops MIR most
 cargo xtask size              # the distributed binary against its budget (12 MiB)
 cargo run -q -p vun-cli -- run|build [--release] [--backend b] [--target t] <file>
-cargo run -q -p vun-cli -- debug tokens|cst|hir|mir|layout|program|lir|code|frames|compare <file>
+cargo run -q -p vun-cli -- debug tokens|cst|manifest|plan|hir|types|mir|layout|program|lir|code|frames|coverage|compare <file>
 cargo run -q -p vun-cli -- debug queries <file>   # what the saved queries hold, per query and pool
 cargo run -q -p vun-cli -- toolchain components
 cargo run -q -p vun-cli -- debug compare --target linux.arm64 <file>   # through qemu, see below
@@ -117,8 +117,8 @@ Logging: `VUN_LOG=<filter>` (`info` steps, `debug` units of work, `trace` elemen
   list and adds the C compiler's `optimize` flags; refusals are `backend.unavailable`,
   `backend.unsupported`, `backend.unchosen`. `vun toolchain components` shows each component's
   status and what it handles.
-- **Linkers** (`compiler/link`): `LinkPlan`, `LinkerInfo` with readiness; only `gnu` links
-  (through the target's C compiler).
+- **Linkers** (`compiler/link`): `LinkPlan`, `LinkerInfo` with readiness; `gnu`, `mold` and
+  `wild` link (through the target's C compiler); `lld`, `msvc` and `external` are stubs.
 - **Tools** (`compiler/tools`): `vun-driver` (`Session`, stages, codegen, builds, stacks,
   compare, the command tree, `toolchain.rs`: the chosen target equipped with the machine's tools,
   `Session::command` running through the runner), `vun-command` (declarative CLI, completions, JSON output), `vun-pkg`,
@@ -133,9 +133,9 @@ x86-64 and (when the machine runs it) linux.arm64, and require equal results on 
 
 ## 6. Decisions
 
-Every decision in `decisions.md` is accepted, 1 to 215 (the user approved all of the seventeenth
-session's, 209 included; 138, 157, 161 and 166 are amended by 182 and 183). New language rules go
-in as proposed unless the user approves them.
+Every decision in `decisions.md` is accepted, 1 to 231 (the user approved all of the seventeenth
+and eighteenth sessions', 209 included; 138, 157, 161 and 166 are amended by 182 and 183). New
+language rules go in as proposed unless the user approves them.
 
 ## 7. Next steps, in order
 
@@ -146,7 +146,7 @@ in as proposed unless the user approves them.
    `qemu-riscv64` but no riscv64 linker or sysroot (Fedora packages none; `lld` or
    `gcc-riscv64-linux-gnu` need the user to install them), and nothing to link or run Mach-O.
    (b) Native code quality, seventeenth session (decisions 200 to 203): slots promoted to SSA
-   values after lowering (`Unit::promote`), constants folded by the builder, branches falling
+   values after lowering (`Function::promote`), constants folded by the builder, branches falling
    into the next block, no self moves, `mov r/m8, imm8`, parameters and call arguments moved
    straight into their registers: 13 to 49 percent fewer instructions on the backend test
    programs. Then (decisions 211 to 214): `Unit::simplify` runs promotion, a fold of each

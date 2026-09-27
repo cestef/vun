@@ -242,9 +242,9 @@ at both dependents; a conflict writes no lockfile.
 Selection runs over the packages present. While some are absent (not fetched, or changed in the
 store), the lockfile is neither judged nor written, and dependencies resolve through it, since it
 recorded the whole graph: an absent package is then reported where it is needed, once, and never
-silently replaced by another version. Without a lockfile, the present packages decide. `vun pkg
-fetch` walks the graph as declared rather than as selected, so it fills the store and rewrites a
-stale lockfile without consulting it. Replacements are listed in `replace`, one per line:
+silently replaced by another version. Without a lockfile, the present packages decide. Fetching,
+implicit before every compiling command (decision 181), walks the graph as declared rather than as
+selected, so it fills the store and rewrites a stale lockfile without consulting it. Replacements are listed in `replace`, one per line:
 `.{ .name, .id, .hash }` for a stored package or `.{ .name, .id, .path }` for a directory. A pinned
 toolchain will add a `toolchain` declaration (section 6).
 
@@ -256,9 +256,9 @@ diff (section 7) first.
 
 ## 6. Toolchain
 
-`vun` is a small launcher. It reads `.toolchain` from the nearest `build.vun`, fetches that exact
-toolchain (hash-checked and recorded in the lock) into `~/.cache/vun/toolchains`, and runs it.
-`vun toolchain list|install|prune` manages the cache.
+`vun` will be a small launcher (section 7 lists it as still to come). It reads `.toolchain` from
+the nearest `build.vun`, fetches that exact toolchain (hash-checked and recorded in the lock) into
+`~/.cache/vun/toolchains`, and runs it. `vun toolchain list|install|prune` manages the cache.
 
 **The machine's toolchain file.** A target names its own tools (`lang.target.CCompiler`), which
 fit a machine of that target; building for another machine needs other tools, a cross C compiler
@@ -303,8 +303,8 @@ implemented; nothing is listed that does not run.
 | `vun toolchain components` | the backends and linkers of this toolchain |
 | `vun cache list\|gc` | the shared store: entries, sizes, labels; collection by lockfile roots |
 | `vun util completion <shell>` | the completion script of bash, zsh, fish or nushell |
-| `vun debug tokens\|cst\|hir\|types\|mir\|layout\|program\|lir\|code\|frames <file>` | every representation with origins (spec 10) |
-| `vun debug coverage\|compare <file>` | how far the stages reach; every backend run and compared |
+| `vun debug tokens\|cst\|manifest\|plan\|hir\|types\|mir\|layout\|program\|lir\|code\|frames <file>` | every representation with origins (spec 10) |
+| `vun debug coverage\|queries\|compare <file>` | how far the stages reach; what the saved queries hold; every backend run and compared |
 
 Still to come, each as a verb or a group verb: `new`, `test`, `bench`, `fuzz`, `fmt`, `fix`, `doc`,
 `pkg vendor|why|tag|api`, `tool header|svd`, `target flash|attach|debug`, `toolchain

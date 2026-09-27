@@ -1,6 +1,5 @@
 /target
 .vun/
 /whitepaper/*.pdf
-/fuzz/target
 /fuzz/corpus
 /fuzz/artifacts
