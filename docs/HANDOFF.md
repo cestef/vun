@@ -139,6 +139,48 @@ language rules go in as proposed unless the user approves them.
 
 ## 7. Next steps, in order
 
+0. **Review follow-ups (2026-09-27).** Four sessions reviewed the whole tree and fixed what
+   mattered (decisions 232 to 244; commits from `chore: fuzz joins the workspace` on). What is
+   left, most severe first:
+   - Decisions for the user: (a) the C backend lowers LIR `Offset` to `u8*` arithmetic while LIR
+     states no in-bounds rule, so GCC may fold wrapping checks (`back/c/src/emit/func/inst.rs:87`):
+     address-wide integer arithmetic, or an in-bounds rule for `Offset` in spec 13; (b) a `u128`
+     parameter under `Conv::C` is split into two `I64`s (`low/lir/src/legalize/mod.rs:153`),
+     wrong for AAPCS64 (even pair) and SysV: a typed wide `AbiType` for the backends'
+     classifiers; (c) file keys are `name@version/path` text
+     (`driver/src/packages/locate.rs:49`), so a fork of one release shares keys: a typed key;
+     (d) `http://` sources stay allowed for `pkg add`, and bitreq follows redirects itself, so a
+     downgrade is refused only after the request (`tools/http/src/lib.rs:44`).
+   - Bugs: `==` through an `Eq` witness in a compile-time call reached from MIR does not
+     evaluate (`t == u8` in a `$t: type` function, read by a run-time constant), while
+     `lang.meta.same` does (sema `Env::binary`, TypeEq taking `&type`). It blocks the per-system
+     C library table: `std.os.libc.System { os, errno, Word, words, block, set_mask }`, a row
+     per system (`std.os.linux.c`, `std.os.macos.c`: `__error`, `u32` words, 1 and 3), found by
+     `current.os` in `$for r in systems`, the set constant `no_signals`; until then `std.os.libc`
+     holds glibc's facts only. Return, `break` and `continue` are untyped instead of `never`
+     (`typeck/infer.rs:54`); an empty range loses its bounds (`xs[10..10]` on 3 items gives
+     `[]`, `sema/ops.rs:106`); parts of linear values never move (`passes/places/transfer.rs:48`);
+     `OriginId` compares by relative identity but resolves absolutely, so reused memos show stale
+     positions after an edit above (`base/origin/src/lib.rs:34`); a `$assert` whose evaluation
+     is unsupported passes silently; `$for`/`$if` after `;` in an enum are taken as variant
+     generators (`hir/lower/members.rs:169`); `Mem::copy` per item can overlap
+     (`lower/func/memory.rs:143`); `stm32f4` has an empty vector table and no `init_memory`
+     (waits for plans declaring memory regions); `std.mem.alloc.Fixed.init` keeps a raw pointer
+     not tied to its storage (make it `unsafe` or hold a tied borrow).
+   - Debuggability and verifiers: MIR's `Unbuilt` drops the `Unevaluated` reason
+     (`mir/build/{aggregate.rs:20,place.rs:183}`); LIR and MIR verifiers miss def positions,
+     jumps to entry, duplicate switch cases, slot alignment, dead projections, `Yield` placement;
+     bodies rewritten by passes are never re-verified; persisted fingerprints use foldhash, not
+     `vun-hash`; a panic in a query's compute leaves stale stack entries (RAII guards); fuzz
+     targets for MIR, LIR and saved-query decoding, and a dictionary from the grammar tables.
+   - Design and refactors: `lang.float.ops` restates the float types in 24 impls (a family
+     constructor); each `errors.vun` entry restates its page path (derive it); `lang.link.keep`
+     is declared and unused; `vun-harness` (tools) is a dev-dependency of front crates (move it
+     to `compiler/base`); stub crates `render/sarif`, `tools/{fmt,probe,lsp}`, `low/abi`;
+     orphan functions on `Asm<Address>` in the native backend (an `AsmExt` trait); the
+     worklist solver written twice (places, borrows); `DiagId` and pass ids are strings;
+     `LinkerInfo` declares no output kinds; typeck's output maps listed three times.
+
 1. Backends (the user's focus): (a) arm64: done for linux.arm64 in the sixteenth session
    (decision 192); next `macos.arm64` (Mach-O in `vun-object`, Apple's AAPCS64 variant: narrow
    arguments extended by the caller, stack arguments packed, `x18` reserved), then riscv64 the
@@ -265,4 +307,20 @@ language rules go in as proposed unless the user approves them.
   `~/.config/vun/toolchain.vun` breaks them all. Its field errors reuse the `manifest.*` ids, as
   the lock file's do: a generic id set for literal files is a small follow-up.
 - Driver integration tests are one binary (`tests/driver/main.rs`); sema unit tests run on a
-  stand-in `lang` without operator impls. `VUN_BLESS` blesses whenever set.
+  stand-in `lang` without operator impls. Snapshots are written only with `VUN_BLESS=1` (`0` or
+  empty is off), and stale ones fail.
+- Before committing sema or `std` changes, run `cargo nextest run -p vun-driver`: the corpus does
+  not exercise `std.fmt.print`'s staged paths.
+- A table in `desugar.vun` naming `lang` items is a tuple `.{ }`: its items have types of their
+  own, and an array would not type. Borrow modes are lists of `BorrowWord` (`grammar.vun`).
+- The parser's depth bound counts each link of a chain; past it the rest of the expression is one
+  `Error` node, so later stages never recurse deeper than about twice `MAX_NESTING`.
+- Saved queries are stamped with the compiler build that wrote them; another build's are refused
+  and recomputed (decision 241), so a changed query type never decodes into garbage.
+- Typing checks both branches of an `if` against the expected type, even when the condition is
+  known: `x: Int(0..=0) = if true { 0 } else { 1 }` is `int.does_not_fit`.
+- `BackendCaps` is a `Feature` set; unimplemented backends are `vun_backend::Planned`;
+  `Store::stage` returns a per-process `Staging` guard removed on drop; `xtask`, `vun-command`
+  and `generate` declare tool-local diagnostic ids.
+- `fuzz` is a workspace member (workspace lints, one lockfile); `cargo +nightly fuzz` still
+  runs from `fuzz/` and builds into the root `target/`.

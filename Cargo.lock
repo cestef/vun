@@ -803,8 +803,6 @@ name = "vun-cli"
 version = "0.0.0"
 dependencies = [
  "mimalloc",
- "vun-command",
- "vun-diag",
  "vun-driver",
  "vun-http",
  "vun-trace",

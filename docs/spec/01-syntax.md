@@ -187,7 +187,8 @@ Literals:
 - Characters `'a'` are integer literals of their Unicode scalar value.
 - Floats `1.5`, `1e-3`, typed by context or `f64` by default.
 - Strings `"text\n"` have type `&static [N]u8`. Escapes are `\n \t \r \0 \\ \" \'`, `\xHH` and
-  `\u{H..HHHHHH}`.
+  `\u{H..HHHHHH}`. `\xHH` is one byte of a string; in a character literal it is the scalar value
+  `HH`.
 - A backslash before a string takes it literally: `\"C:\dir\new"` has no escapes and ends at the
   next `"`. A multi-line string is a run of lines each starting with `\\`, also taken literally, so
   it may contain quotes. So there are two string forms: escaped (`"..."`) and literal (`\"..."`,

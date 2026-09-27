@@ -237,6 +237,7 @@
 | 241 | Saved query memos carry the identity of the compiler build that wrote them (the executable's size and write time); memos from another build are refused (`Unloaded::Build`) and recomputed, since their types may have changed | proposed | 13 |
 | 242 | A package's `include` names `build.vun`, so its hash covers its manifest; a stored package may not name a dependency or replacement by path; archives are bounded by named constants (`Unpacking::{ENTRIES, BYTES, STREAM}`: 65536 entries, 512 MiB of files, 1 GiB read) | proposed | 12 |
 | 243 | The place, borrow and panic checks run on every function of a file and on every generic instantiation its program reaches; a closure called in a `#[panic.never]` body keeps the promise by its own body (`MayTrap`) | accepted (review fixes) | 07, 13 |
+| 244 | An impl's member must carry every marker its requirement declares (spec 07, section 4), compared by markers alone when the requirement's type does not evaluate (with `$` parameters, say): `impl.requirement_type` | proposed | 02, 07 |
 
 Numbers 184 to 189 and 217 to 220 were never assigned.
 
