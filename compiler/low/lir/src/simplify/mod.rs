@@ -1,8 +1,8 @@
 //! Simplifying a unit after lowering, one function at a time, callees first: slots of
 //! aggregates cut into scalars, locals promoted to values, operations on the constants that
-//! makes folded, computations repeated reused, jumps threaded through the decisions that
-//! folds, truncations narrowed, and what nothing reads swept, round after round while a round
-//! changes something; then the small functions it calls inlined, simplified already, and the
+//! makes folded, constants hoisted out of loops, computations repeated reused, jumps threaded
+//! through the decisions that folds, truncations narrowed, and what nothing reads swept, round
+//! after round while a round changes something; then the small functions it calls inlined, simplified already, and the
 //! rounds run again. A function is done before any caller decides whether it is small.
 
 #[cfg(test)]
@@ -35,13 +35,14 @@ impl Unit {
 }
 
 impl Function {
-    /// Runs `Function::scalarize`, `promote`, `fold`, `reuse`, `thread`, `narrow` and `sweep` in
-    /// rounds until one changes nothing.
+    /// Runs `Function::scalarize`, `promote`, `fold`, `hoist`, `reuse`, `thread`, `narrow` and
+    /// `sweep` in rounds until one changes nothing.
     fn tidy(&mut self, pointer_bits: u32) {
         for _ in 0..ROUNDS {
             let changed = self.scalarize(pointer_bits)
                 + self.promote(pointer_bits)
                 + self.fold()
+                + self.hoist()
                 + self.reuse()
                 + self.thread(pointer_bits)
                 + self.narrow(pointer_bits)

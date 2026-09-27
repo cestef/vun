@@ -81,6 +81,12 @@ impl Dominators {
         }
     }
 
+    /// The block immediately dominating `block`, when it is reached and not the entry.
+    #[must_use]
+    pub fn idom(&self, block: Block) -> Option<Block> {
+        self.idom.get(block).copied().flatten().filter(|&up| up != block)
+    }
+
     /// The blocks each block immediately dominates, in reverse postorder.
     #[must_use]
     pub fn children(&self) -> IndexVec<Block, Vec<Block>> {
