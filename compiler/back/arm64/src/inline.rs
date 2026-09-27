@@ -1,23 +1,12 @@
 //! Blocks of inline assembly (spec 07, section 6) read as this assembler's instructions: a block
 //! names instructions, forms, widths, conditions and register classes by their index in the
-//! table, whose declaration order `generated` keeps.
+//! table, whose declaration order `generated` keeps. Bindings are general registers; memory is in
+//! the addressing mode its form names, and a symbol a branch's target, a page or its low bits.
 
-use vun_asm::Via;
-use vun_inline::{Disp, FormId, Line, OpId, RegRef, SizeId};
+use vun_asm::{AsmOperand, Blocks, Label, Place};
+use vun_inline::{Disp, FormId, Inst, OpId, RegRef, SizeId};
 
-use crate::{Cc, Class, Extend, Form, Kind, Mem, Mode, Op, Operand, Reg, Scale, Size, V};
-
-/// Where a block's operands are, as the code it is emitted into has them.
-pub trait Place<S> {
-    /// The register of the next binding, in the order `Block::bindings` gives them.
-    fn bound(&mut self) -> Reg;
-
-    /// The operand naming the start of `line`.
-    fn line(&self, line: Line) -> Operand<S>;
-
-    /// How a page or an address reaches `symbol`.
-    fn via(&self, symbol: S) -> Via;
-}
+use crate::{Arm64, Barrier, Cc, Class, Extend, Form, Kind, Mem, Mode, Op, Operand, Reg, Scale, Size, V};
 
 impl Op {
     /// The instruction a block names, and the form it was checked against.
@@ -35,45 +24,81 @@ impl Size {
     }
 }
 
-impl Reg {
-    /// The general register a block names, if it names one.
-    #[must_use]
-    pub const fn named(r: RegRef) -> Option<Self> {
-        match Class::ALL[r.class.0 as usize] {
-            Class::General => Some(Self::ALL[r.number as usize]),
+impl Blocks for Arm64 {
+    type Reg = Reg;
+    type Kind = Kind;
+    type Operand<S: Copy> = Operand<S>;
+
+    fn kinds<V, P, S>(inst: &Inst<V, P, S>) -> impl Iterator<Item = Kind> {
+        Op::entry(inst.op, inst.form).1.args.iter().map(|arg| arg.kind)
+    }
+
+    fn implicit<V, P, S>(inst: &Inst<V, P, S>) -> impl Iterator<Item = Reg> {
+        let form = Op::entry(inst.op, inst.form).1;
+        form.reads.iter().chain(form.writes).copied()
+    }
+
+    fn general(r: RegRef) -> Option<Reg> {
+        match Class::ALL[usize::from(r.class.0)] {
+            Class::General => Some(Reg::ALL[usize::from(r.number)]),
             Class::Fp => None,
         }
     }
-}
 
-impl<S: Copy> Operand<S> {
-    /// A block's operand at a position of `kind` as this assembler takes it, placed where
-    /// `place` says: a symbol as the position takes it, memory in the position's mode.
-    ///
-    /// # Panics
-    /// Panics on memory without a base, or a symbol past a register outside `lo12`; a block is
-    /// checked for those first.
-    pub fn of<V, P>(operand: &vun_inline::Operand<V, P, S>, kind: Kind, place: &mut impl Place<S>) -> Self {
+    fn fixed(kind: Option<Kind>, named: Option<Reg>) -> Result<Option<Reg>, AsmOperand> {
+        match kind {
+            Some(Kind::Gpr(..) | Kind::Shifted(_) | Kind::Extended) | None => Ok(named),
+            Some(_) => Err(AsmOperand::Unallocated),
+        }
+    }
+
+    /// Off a base register, indexed unscaled in `index`, a symbol's low bits in `lo12`.
+    fn addressable<V, P, S>(mem: &vun_inline::Mem<V, P, S>, kind: Kind) -> Result<(), AsmOperand> {
+        let Kind::Mem(mode, _) = kind else { return Err(AsmOperand::Unencodable) };
+        match (mode, &mem.base, &mem.index, &mem.disp) {
+            (_, None, _, _) => Err(AsmOperand::Absolute),
+            (Mode::Index, Some(_), Some((_, 1)), Disp::Bytes(0))
+            | (Mode::Lo12, Some(_), None, Disp::Symbol(_, 0))
+            | (_, Some(_), None, Disp::Bytes(_)) => Ok(()),
+            (Mode::Index | Mode::Lo12, ..) => Err(AsmOperand::Unencodable),
+            (_, Some(_), Some(_), _) => Err(AsmOperand::Indexed),
+            (_, Some(_), None, Disp::Symbol(..)) => Err(AsmOperand::SymbolOffRegister),
+        }
+    }
+
+    fn label<S: Copy>(label: Label) -> Operand<S> {
+        Operand::Label(label)
+    }
+
+    fn target<S: Copy>(target: S) -> Operand<S> {
+        Operand::Sym(target)
+    }
+
+    fn operand<V, P, S: Copy>(
+        operand: &vun_inline::Operand<V, P, S>,
+        kind: Kind,
+        place: &mut impl Place<Self, S>,
+    ) -> Operand<S> {
         match operand {
-            vun_inline::Operand::Reg(r) => Reg::named(*r).map_or(Self::V(V(r.number)), Self::Reg),
-            vun_inline::Operand::Imm(n) => Self::Imm(*n),
-            vun_inline::Operand::Cond(c) => Self::Cond(Cc::ALL[usize::from(c.0)]),
-            vun_inline::Operand::Choice(_) => unreachable!("no arm64 form takes a named choice yet"),
+            vun_inline::Operand::Reg(r) => Self::general(*r).map_or(Operand::V(V(r.number)), Operand::Reg),
+            vun_inline::Operand::Imm(n) => Operand::Imm(*n),
+            vun_inline::Operand::Cond(c) => Operand::Cond(Cc::ALL[usize::from(c.0)]),
+            vun_inline::Operand::Choice(k) => Operand::Barrier(Barrier::ALL[usize::from(*k)]),
             vun_inline::Operand::Label(line) => place.line(*line),
             vun_inline::Operand::Symbol(s) => match kind {
-                Kind::Page => Self::Page(*s, place.via(*s)),
-                Kind::Lo12 => Self::Lo12(*s),
-                _ => Self::Sym(*s),
+                Kind::Page => Operand::Page(*s, place.via(*s)),
+                Kind::Lo12 => Operand::Lo12(*s),
+                _ => Operand::Sym(*s),
             },
-            vun_inline::Operand::Bound(_) => Self::Reg(place.bound()),
+            vun_inline::Operand::Bound(_) => Operand::Reg(place.bound()),
             vun_inline::Operand::Mem(mem) => {
                 let mut register = |base: &vun_inline::Base<V, P>| match base {
-                    vun_inline::Base::Reg(r) => Reg::named(*r).expect("a general register of an address"),
+                    vun_inline::Base::Reg(r) => Self::general(*r).expect("a general register of an address"),
                     vun_inline::Base::Bound(_) => place.bound(),
                 };
                 let base = register(mem.base.as_ref().expect("an address with a base"));
                 let Kind::Mem(mode, _) = kind else { panic!("memory where the form takes none") };
-                Self::Mem(match (mode, &mem.disp, &mem.index) {
+                Operand::Mem(match (mode, &mem.disp, &mem.index) {
                     (Mode::Index, _, Some((index, _))) => {
                         let index = register(index);
                         Mem::Index { base, index, extend: Extend::LSL, scale: Scale::One }

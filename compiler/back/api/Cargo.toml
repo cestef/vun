@@ -11,6 +11,7 @@ workspace = true
 
 [dependencies]
 vun-abi.workspace = true
+vun-asm.workspace = true
 vun-lir.workspace = true
 vun-origin.workspace = true
 vun-target.workspace = true

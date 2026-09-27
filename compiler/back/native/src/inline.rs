@@ -5,86 +5,71 @@
 //! register of its own, loaded first for `inout`, and stored through its address once the block
 //! ends. What differs between architectures, their tables and operands, is [`Inline`].
 
-use vun_asm::{Label, Untaken, Via};
+use vun_asm::{Blocks, Label, Place, Untaken, Via};
 use vun_backend::{AsmOperand, Lack, Missing};
 use vun_codegen::{Bank, Code, Cx, Isel, Need, Needs, RegSet};
-use vun_inline::{Bound, RegRef};
+use vun_inline::Bound;
 use vun_lir::{Address, Asm, Output, Scalar, Value};
 
 use crate::width::{Width, size_of};
 
 pub(crate) type Inst = vun_inline::Inst<Value, Output, Address>;
-pub(crate) type Operand = vun_inline::Operand<Value, Output, Address>;
 pub(crate) type Mem = vun_inline::Mem<Value, Output, Address>;
 type Binding = Bound<Value, Output>;
 
-/// What an architecture tells inline assembly: its table, and its operands.
+/// What a native architecture adds to its instruction set's facts about blocks (`Blocks`): how
+/// it emits an instruction, and loads and stores an output.
 pub(crate) trait Inline: Isel {
-    /// What an operand position takes.
-    type Kind: Copy;
-    /// An operand as the assembler encodes it.
-    type Operand;
+    /// The instruction set, as it reads blocks.
+    type Table: Blocks<Reg = Self::Reg>;
     type Size: Width;
 
-    /// The kinds of the positions of the form `inst` was checked against, in order.
-    fn kinds(inst: &Inst) -> impl Iterator<Item = Self::Kind>;
-
-    /// The value registers the form reads or writes without naming them.
-    fn implicit(inst: &Inst) -> impl Iterator<Item = Self::Reg>;
-
-    /// The register `r` is, if its class is the one values are held in.
-    fn general(r: RegRef) -> Option<Self::Reg>;
-
-    /// The register a binding at a position of `kind` must be in, if one: `named`, or the one
-    /// the position takes; `None` for an address's base.
+    /// Whether memory a block names at a position of `kind` is one this code addresses.
     ///
     /// # Errors
-    /// The position takes no value register.
-    fn fixed(kind: Option<Self::Kind>, named: Option<Self::Reg>) -> Result<Option<Self::Reg>, AsmOperand>;
-
-    /// Whether memory of this shape at a position of `kind` is one the architecture addresses.
-    ///
-    /// # Errors
-    /// What it cannot address.
-    fn addressing(mem: &Mem, kind: Self::Kind) -> Result<(), AsmOperand>;
-
-    /// `operand` at a position of `kind` as the assembler takes it, where `placed` says.
-    fn operand(operand: &Operand, kind: Self::Kind, placed: &mut Placed<'_, Self::Reg>) -> Self::Operand;
+    /// What it does not address.
+    fn addressing(mem: &Mem, kind: Kind<Self>) -> Result<(), AsmOperand> {
+        Self::Table::addressable(mem, kind)
+    }
 
     /// Emits `inst` over `operands` by its form.
     ///
     /// # Errors
     /// The form does not encode them.
-    fn emit(code: &mut Code<Self>, inst: &Inst, operands: &[Self::Operand]) -> Result<(), Untaken>;
+    fn emit(code: &mut Code<Self>, inst: &Inst, operands: &[Encoded<Self>]) -> Result<(), Untaken>;
 
     /// Loads `r` from `addr`, or stores it there, `size` wide.
     fn load_at(code: &mut Code<Self>, r: Self::Reg, addr: Self::Reg, size: Self::Size);
     fn store_at(code: &mut Code<Self>, addr: Self::Reg, r: Self::Reg, size: Self::Size);
 }
 
+/// What an operand position of `A` takes.
+pub(crate) type Kind<A> = <<A as Inline>::Table as Blocks>::Kind;
+/// An operand as `A`'s assembler encodes it.
+pub(crate) type Encoded<A> = <<A as Inline>::Table as Blocks>::Operand<Address>;
+
 /// Where a block's operands are in the function compiled: its bindings in the registers the
 /// plan gives them, in order, and its lines at `labels`.
-pub(crate) struct Placed<'a, R> {
-    regs: std::vec::IntoIter<R>,
+pub(crate) struct Placed<'a, T: Blocks> {
+    regs: std::vec::IntoIter<T::Reg>,
     labels: &'a [Label],
 }
 
-impl<R> Placed<'_, R> {
-    /// The register of the next binding.
-    pub(crate) fn take(&mut self) -> R {
+impl<T: Blocks> Place<T, Address> for Placed<'_, T> {
+    fn bound(&mut self) -> T::Reg {
         self.regs.next().expect("a register for each binding")
     }
 
-    pub(crate) fn label(&self, line: vun_inline::Line) -> Label {
-        self.labels[usize::from(line.0)]
+    fn line(&self, line: vun_inline::Line) -> T::Operand<Address> {
+        T::label(self.labels[usize::from(line.0)])
     }
-}
 
-/// How an address reaches `target`: an import through its entry in the global offset table.
-pub(crate) fn via(target: Address) -> Via {
-    match target {
-        Address::Import(_) => Via::Got,
-        Address::Func(_) | Address::Data(_) => Via::Direct,
+    /// An import through its entry in the global offset table.
+    fn via(&self, target: Address) -> Via {
+        match target {
+            Address::Import(_) => Via::Got,
+            Address::Func(_) | Address::Data(_) => Via::Direct,
+        }
     }
 }
 
@@ -92,14 +77,15 @@ pub(crate) fn via(target: Address) -> Via {
 /// for an address's base.
 pub(crate) struct Use<'a, A: Inline> {
     inst: &'a Inst,
-    kind: Option<A::Kind>,
+    kind: Option<Kind<A>>,
     bound: &'a Binding,
 }
 
 impl<A: Inline> Use<'_, A> {
     fn fixed(&self) -> Result<Option<A::Reg>, AsmOperand> {
-        let named = self.bound.reg().map(|r| A::general(r).ok_or(AsmOperand::Unallocated)).transpose()?;
-        A::fixed(self.kind, named)
+        let named =
+            self.bound.reg().map(|r| A::Table::general(r).ok_or(AsmOperand::Unallocated)).transpose()?;
+        A::Table::fixed(self.kind, named)
     }
 }
 
@@ -131,7 +117,7 @@ pub(crate) trait Inlined {
 impl Inlined for Asm {
     fn uses<A: Inline>(&self) -> impl Iterator<Item = Use<'_, A>> {
         self.insts.iter().flat_map(|inst| {
-            A::kinds(inst).zip(&inst.operands).flat_map(move |(kind, operand)| {
+            A::Table::kinds(inst).zip(&inst.operands).flat_map(move |(kind, operand)| {
                 let (kind, bounds) = match operand {
                     vun_inline::Operand::Bound(b) => (Some(kind), [Some(b), None]),
                     vun_inline::Operand::Mem(mem) => (None, mem.bindings()),
@@ -145,7 +131,7 @@ impl Inlined for Asm {
     fn check<A: Inline>(&self) -> Result<(), Lack> {
         for inst in &self.insts {
             let lack = |o| Missing::AsmOperand(o).at(inst.origin);
-            for (kind, operand) in A::kinds(inst).zip(&inst.operands) {
+            for (kind, operand) in A::Table::kinds(inst).zip(&inst.operands) {
                 if let vun_inline::Operand::Mem(mem) = operand {
                     A::addressing(mem, kind).map_err(lack)?;
                 }
@@ -165,10 +151,10 @@ impl Inlined for Asm {
                 vun_inline::Operand::Reg(r)
                 | vun_inline::Operand::Mem(vun_inline::Mem {
                     base: Some(vun_inline::Base::Reg(r)), ..
-                }) => A::general(*r),
+                }) => A::Table::general(*r),
                 _ => None,
             });
-            reserved = A::implicit(inst).chain(named).fold(reserved, |set, r| set.with(A::preg(r)));
+            reserved = A::Table::implicit(inst).chain(named).fold(reserved, |set, r| set.with(A::preg(r)));
         }
         for used in self.uses::<A>() {
             let fixed = used.fixed().ok().flatten().map(A::preg);
@@ -226,11 +212,12 @@ impl Inlined for Asm {
             regs.push(r);
         }
         let labels: Vec<Label> = (0..=self.insts.len()).map(|_| cx.asm.label()).collect();
-        let mut placed = Placed { regs: regs.into_iter(), labels: &labels };
+        let mut placed = Placed::<A::Table> { regs: regs.into_iter(), labels: &labels };
         for (inst, &label) in self.insts.iter().zip(&labels) {
             cx.asm.bind(label);
-            let operands =
-                A::kinds(inst).zip(&inst.operands).map(|(kind, o)| A::operand(o, kind, &mut placed));
+            let operands = A::Table::kinds(inst)
+                .zip(&inst.operands)
+                .map(|(kind, o)| A::Table::operand(o, kind, &mut placed));
             let operands: Vec<_> = operands.collect();
             A::emit(&mut cx.asm, inst, &operands)
                 .map_err(|Untaken| Missing::AsmOperand(AsmOperand::Unencodable).at(inst.origin))?;

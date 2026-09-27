@@ -18,7 +18,6 @@ mod table;
 mod tests;
 
 pub use encode::Emit;
-pub use inline::Place;
 pub use inst::{Inst, Syntax, Text};
 pub use operand::{Base, Mem, Operand};
 pub use reg::{Cc, Class, Reg, Size, Xmm};

@@ -1,23 +1,12 @@
 //! Blocks of inline assembly (spec 07, section 6) read as this assembler's instructions: a block
 //! names instructions, forms, widths, conditions and register classes by their index in the
-//! table, whose declaration order `generated` keeps.
+//! table, whose declaration order `generated` keeps. Bindings are general registers, a shift's
+//! count `cl`; memory is off a base register or a symbol, never indexed.
 
-use vun_asm::Via;
-use vun_inline::{Disp, FormId, Line, OpId, RegRef, SizeId};
+use vun_asm::{AsmOperand, Blocks, Label, Place};
+use vun_inline::{Disp, FormId, Inst, OpId, RegRef, SizeId};
 
-use crate::{Base, Cc, Class, Form, Mem, Op, Operand, Reg, Size, Xmm};
-
-/// Where a block's operands are, as the code it is emitted into has them.
-pub trait Place<S> {
-    /// The register of the next binding, in the order `Block::bindings` gives them.
-    fn bound(&mut self) -> Reg;
-
-    /// The operand naming the start of `line`.
-    fn line(&self, line: Line) -> Operand<S>;
-
-    /// How an address reaches `symbol`.
-    fn via(&self, symbol: S) -> Via;
-}
+use crate::{Base, Cc, Class, Form, Kind, Mem, Op, Operand, Reg, Size, X86_64, Xmm};
 
 impl Op {
     /// The instruction a block names, and the form it was checked against.
@@ -35,36 +24,71 @@ impl Size {
     }
 }
 
-impl Reg {
-    /// The general register a block names, if it names one.
-    #[must_use]
-    pub const fn named(r: RegRef) -> Option<Self> {
-        match Class::ALL[r.class.0 as usize] {
-            Class::General => Some(Self::ALL[r.number as usize]),
+impl Blocks for X86_64 {
+    type Reg = Reg;
+    type Kind = Kind;
+    type Operand<S: Copy> = Operand<S>;
+
+    fn kinds<V, P, S>(inst: &Inst<V, P, S>) -> impl Iterator<Item = Kind> {
+        Op::entry(inst.op, inst.form).1.kinds()
+    }
+
+    fn implicit<V, P, S>(inst: &Inst<V, P, S>) -> impl Iterator<Item = Reg> {
+        Op::entry(inst.op, inst.form).1.implicit.iter().copied()
+    }
+
+    fn general(r: RegRef) -> Option<Reg> {
+        match Class::ALL[usize::from(r.class.0)] {
+            Class::General => Some(Reg::ALL[usize::from(r.number)]),
             Class::Sse => None,
         }
     }
-}
 
-impl<S: Copy> Operand<S> {
-    /// A block's operand as this assembler takes it, placed where `place` says.
-    ///
-    /// # Panics
-    /// Panics on memory x86-64 does not address: indexed, off a register and a symbol, or with
-    /// a displacement past 32 bits; a block is checked for those first.
-    pub fn of<V, P>(operand: &vun_inline::Operand<V, P, S>, place: &mut impl Place<S>) -> Self {
+    fn fixed(kind: Option<Kind>, named: Option<Reg>) -> Result<Option<Reg>, AsmOperand> {
+        match kind {
+            Some(Kind::Cl) => Ok(Some(Reg::Rcx)),
+            Some(Kind::R | Kind::Rn(_) | Kind::Rm | Kind::Rmn(_)) | None => Ok(named),
+            Some(_) => Err(AsmOperand::Unallocated),
+        }
+    }
+
+    fn addressable<V, P, S>(mem: &vun_inline::Mem<V, P, S>, _: Kind) -> Result<(), AsmOperand> {
+        let fits = |n: i64| i32::try_from(n).map(drop).map_err(|_| AsmOperand::Absolute);
+        match (&mem.base, &mem.index, &mem.disp) {
+            (_, Some(_), _) => Err(AsmOperand::Indexed),
+            (Some(_), None, Disp::Symbol(..)) => Err(AsmOperand::SymbolOffRegister),
+            (None, None, Disp::Bytes(_)) => Err(AsmOperand::Absolute),
+            (Some(_), None, Disp::Bytes(n)) | (None, None, Disp::Symbol(_, n)) => fits(*n),
+        }
+    }
+
+    fn label<S: Copy>(label: Label) -> Operand<S> {
+        Operand::Label(label)
+    }
+
+    fn target<S: Copy>(target: S) -> Operand<S> {
+        Operand::Sym(target)
+    }
+
+    fn operand<V, P, S: Copy>(
+        operand: &vun_inline::Operand<V, P, S>,
+        _: Kind,
+        place: &mut impl Place<Self, S>,
+    ) -> Operand<S> {
         match operand {
-            vun_inline::Operand::Reg(r) => Reg::named(*r).map_or(Self::Xmm(Xmm(r.number)), Self::Reg),
-            vun_inline::Operand::Imm(n) => Self::Imm(*n),
-            vun_inline::Operand::Cond(c) => Self::Cond(Cc::ALL[usize::from(c.0)]),
-            vun_inline::Operand::Choice(_) => unreachable!("no x86-64 form takes a named choice"),
+            vun_inline::Operand::Reg(r) => {
+                Self::general(*r).map_or(Operand::Xmm(Xmm(r.number)), Operand::Reg)
+            }
+            vun_inline::Operand::Imm(n) => Operand::Imm(*n),
+            vun_inline::Operand::Cond(c) => Operand::Cond(Cc::ALL[usize::from(c.0)]),
+            vun_inline::Operand::Choice(_) => panic!("no x86-64 form takes a named choice"),
             vun_inline::Operand::Label(line) => place.line(*line),
-            vun_inline::Operand::Symbol(s) => Self::Sym(*s),
-            vun_inline::Operand::Bound(_) => Self::Reg(place.bound()),
+            vun_inline::Operand::Symbol(s) => Operand::Sym(*s),
+            vun_inline::Operand::Bound(_) => Operand::Reg(place.bound()),
             vun_inline::Operand::Mem(mem) => {
                 let (base, disp) = match (&mem.base, &mem.index, &mem.disp) {
                     (Some(vun_inline::Base::Reg(r)), None, &Disp::Bytes(n)) => {
-                        (Base::Reg(Reg::named(*r).expect("a general register of an address")), n)
+                        (Base::Reg(Self::general(*r).expect("a general register of an address")), n)
                     }
                     (Some(vun_inline::Base::Bound(_)), None, &Disp::Bytes(n)) => {
                         (Base::Reg(place.bound()), n)
@@ -72,7 +96,7 @@ impl<S: Copy> Operand<S> {
                     (None, None, &Disp::Symbol(s, n)) => (Base::Rip(s, place.via(s)), n),
                     _ => panic!("memory x86-64 does not address"),
                 };
-                Self::Mem(Mem { base, disp: i32::try_from(disp).expect("a displacement of 32 bits") })
+                Operand::Mem(Mem { base, disp: i32::try_from(disp).expect("a displacement of 32 bits") })
             }
         }
     }

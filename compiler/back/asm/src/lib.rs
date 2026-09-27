@@ -7,12 +7,14 @@
 
 mod buffer;
 pub mod imm;
+mod inline;
 mod listing;
 
 #[cfg(test)]
 mod tests;
 
 pub use buffer::{Buffer, Code, Label, Reloc, Unpatched};
+pub use inline::{AsmOperand, Blocks, Place};
 pub use listing::{Line, Listing};
 pub use vun_object::RelocKind;
 

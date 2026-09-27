@@ -1,6 +1,7 @@
 //! What a backend cannot express, found while emitting (spec 13, section 8); each is refused,
 //! never approximated.
 
+pub use vun_asm::AsmOperand;
 use vun_diag::{Diagnostic, Msg, errors};
 use vun_intern::Symbol;
 use vun_origin::OriginId;
@@ -35,25 +36,6 @@ pub enum Missing {
     Asm,
     /// An operand of inline assembly the backend cannot place.
     AsmOperand(AsmOperand),
-}
-
-/// Operands of inline assembly a backend may have no encoding or no register for.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum AsmOperand {
-    /// Memory with an index register.
-    Indexed,
-    /// Memory at a symbol's address past a register.
-    SymbolOffRegister,
-    /// Memory at a fixed address, with no register or symbol.
-    Absolute,
-    /// Memory at the address of something another module defines, which only its entry in the
-    /// global offset table holds.
-    Imported,
-    /// A value bound in a register of a class no value is allocated to.
-    Unallocated,
-    /// Operands the instruction's form does not encode, such as an immediate none of its
-    /// encodings holds.
-    Unencodable,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
