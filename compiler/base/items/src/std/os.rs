@@ -14,6 +14,10 @@ pub const linux: Item = Item::new(&["std", "os", "linux"]);
 pub const macos: Item = Item::new(&["std", "os", "macos"]);
 /// The namespace `std.os.wasi`.
 pub const wasi: Item = Item::new(&["std", "os", "wasi"]);
+/// A status a process ends with, besides success: what every system passes on unchanged. A shell
+/// reads 126 and 127 as a program that could not run and 128 plus `n` as one killed by signal
+/// `n`, and WASI's `proc_exit` refuses 126 and above.
+pub const Status: Item = Item::new(&["std", "os", "Status"]);
 /// How the program ends: `ok`, or a status for the process that started it.
 pub const Exit: Item = Item::new(&["std", "os", "Exit"]);
 /// The status a process ends with when it traps.

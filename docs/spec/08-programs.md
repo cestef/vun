@@ -76,8 +76,8 @@ calling the kernel, for static programs) is one more row.
 unchanged: a shell reads 126 and 127 as a program that could not run and 128 plus `n` as one
 killed by signal `n`, and WASI's `proc_exit` refuses 126 and above. So `.code(200)` does not type
 check, the same as any value outside its integer's range (spec 04), and no runtime checks a
-status: each passes `Exit.status()`, 0 for `ok`, to its system as it is. A trap ends with
-`std.os.trapped`, a `Status` (101). A system with statuses of its own (a Windows `NTSTATUS`) is
+status: each passes `Exit.status()`, 0 for `ok`, to its system as it is, and `Exit.of(n)` is its
+inverse for a computed `n: Int(0..=125)`. A trap ends with `std.os.trapped`, a `Status` (101). A system with statuses of its own (a Windows `NTSTATUS`) is
 reached through that system's namespace, not through `Exit`.
 
 ### Bare metal

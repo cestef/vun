@@ -125,7 +125,7 @@ values := () -> std.iter.Iter(u8) {{ yield 3; yield 4; yield 5; yield 30; }};
 main := (sys: &mut std.os.System) -> std.os.Exit {{
     mut total: u8 = 0;
     for x in values() {{ {body} }}
-    .code(total)
+    std.os.Exit.of(total % 126)
 }};
 "
     )

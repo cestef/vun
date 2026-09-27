@@ -1,13 +1,23 @@
 //! Hosted runtimes and the `System` capability (spec 08, section 2). A hosted program is
 //! `start := std.os.start(main)`; the runtime makes the one `System` and passes it to `main`.
 
+/// A status a process ends with, besides success: what every system passes on unchanged. A shell
+/// reads 126 and 127 as a program that could not run and 128 plus `n` as one killed by signal
+/// `n`, and WASI's `proc_exit` refuses 126 and above.
+Status := Int(1..=125);
+
 /// How the program ends: `ok`, or a status for the process that started it.
 Exit := enum {
     ok,
-    code(u8);
+    code(Status);
 
-    /// The status the process ends with.
-    status := (self: &Exit) -> u8 {
+    /// The end with status `n`, `ok` for 0.
+    of := (n: Int(0..=125)) -> Exit {
+        if n == 0 { .ok } else { .code(n) }
+    };
+
+    /// The status the process ends with, 0 for `ok`.
+    status := (self: &Exit) -> Int(0..=125) {
         match self.* {
             .ok => 0,
             .code(n) => n,
@@ -16,7 +26,7 @@ Exit := enum {
 };
 
 /// The status a process ends with when it traps.
-trapped: u8 = 101;
+trapped: Status = 101;
 
 /// The link symbols of this namespace's declarations, which a runtime exports (spec 08,
 /// section 1): each system reaches its streams its own way.

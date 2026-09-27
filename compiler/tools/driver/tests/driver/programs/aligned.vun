@@ -10,5 +10,5 @@ line: Line = .{ .bytes = [7; 64] };
 
 main := (sys: &mut std.os.System) -> std.os.Exit {
     at := lang.mem.address(Line, lang.mem.pointer_to(Line, &line));
-    .code(((at % 64).wrap(u8) + line.bytes[3]).wrap(u8))
+    std.os.Exit.of(((at % 64).wrap(u8) + line.bytes[3]).wrap(u8) % 126)
 };

@@ -19,5 +19,5 @@ Errno := struct {
     /// A pipe or stream whose reader is gone.
     pipe := 64;
 };
-Exit := enum { ok, code(u8) };
+Exit := enum { ok, code(Int(1..=125)) };
 command := ($main: (&mut System) -> Exit) -> type { struct {} };

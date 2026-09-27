@@ -22,7 +22,7 @@ same := ($T: type, a: T, b: T) -> bool { lang.float.bits(T, a) == lang.float.bit
 
 main := (sys: &mut std.os.System) -> std.os.Exit {
     one: f16 = if sys.args().len() == 1 { 1.0 } else { 2.0 };
-    mut failed: u8 = 0;
+    mut failed: Int(0..=125) = 0;
     $for c in Add16 {
         if !same(f16, c.0 * one + c.1, $(c.0 + c.1)) { failed +|= 1; }
         if !same(f16, c.0 * one - c.1, $(c.0 - c.1)) { failed +|= 1; }
@@ -44,5 +44,5 @@ main := (sys: &mut std.os.System) -> std.os.Exit {
             failed +|= 1;
         }
     }
-    .code(failed)
+    std.os.Exit.of(failed)
 };

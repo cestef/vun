@@ -24,12 +24,12 @@ fn a_declaration_an_edit_moved_is_not_typed_at_its_old_place() {
     let fixture = Fixture::new("persist");
     let before = "\
 start := std.os.start(main);
-main := (sys: &mut std.os.System) -> std.os.Exit { .code(0) };
+main := (sys: &mut std.os.System) -> std.os.Exit { .ok };
 ";
     // The local declaration takes the place `main` had among the file's declarations.
     let after = "\
 start := std.os.start(main);
-main := (sys: &mut std.os.System) -> std.os.Exit { x: u8 = 1; .code(x) };
+main := (sys: &mut std.os.System) -> std.os.Exit { x: std.os.Status = 1; .code(x) };
 ";
     let path = fixture.root.write("app.vun", before);
     assert_eq!(persisted(&fixture, &path), []);

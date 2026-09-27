@@ -27,39 +27,39 @@ add_one := (x: u8) -> u8 { (x + 1).wrap(u8) };
 
 main := (sys: &mut std.os.System) -> std.os.Exit {
     n: u8 = sys.args().len().sat(u8);
-    mut code: u8 = 0;
+    mut failed: Int(0..=8) = 0;
     // A closure capturing by borrow and by value.
     mut total: u32 = 0;
     bump := [&mut total] (by: u8) { total += by; };
     bump(3);
     three := [n] () -> u8 { (n + 2).wrap(u8) };
-    if total == 3 and three() == 3 { code = code | 1; }
+    if !(total == 3 and three() == 3) { failed +|= 1; }
     // A function value called through its address.
     f: (u8) -> u8 = add_one;
-    if twice(f, n) == 3 { code = code | 2; }
+    if twice(f, n) != 3 { failed +|= 1; }
     // A variant's constructor as a function value.
-    if failing(n).map_err(Fault.io) == .err(.io(1)) { code = code | 4; }
+    if failing(n).map_err(Fault.io) != .err(.io(1)) { failed +|= 1; }
     // A deferred statement consuming a linear value runs only where it is still held.
     mut log: u8 = 0;
     if .some(h) = kept(false, &mut log) { close(h, &mut log); log = 100; }
     if .some(h) = kept(true, &mut log) { close(h, &mut log); }
-    if log == 2 { code = code | 8; }
+    if log != 2 { failed +|= 1; }
     // Integers: fits, abs, bytes.
     m: i16 = (-300 * n).sat(i16);
-    if m.try_to(i8).is_none() and m.abs() == 300 { code = code | 16; }
+    if !(m.try_to(i8).is_none() and m.abs() == 300) { failed +|= 1; }
     bytes: [4]u8 = [0x78, 0x56, 0x34, n];
-    if u32.from_le(&bytes) == 0x0134_5678 { code = code | 32; }
+    if u32.from_le(&bytes) != 0x0134_5678 { failed +|= 1; }
     // The variant of an enum value, and sizes.
     pt: Point = .{ .x = 300, .y = -1 };
     same := pt == Point{ .x = 300, .y = -1 } and pt != Point{ .x = 300, .y = n.wrap(i8) };
-    if lang.meta.variant(Fault, &Fault.other) == 1 and std.meta.size(u64) == 8 and same { code = code | 64; }
+    if !(lang.meta.variant(Fault, &Fault.other) == 1 and std.meta.size(u64) == 8 and same) { failed +|= 1; }
     // Pointers: offset, cast and address.
     items: [2]u16 = [7, 9];
     p := lang.mem.pointer_to([2]u16, &items);
     second := unsafe lang.mem.offset(u16, lang.mem.cast([2]u16, u16, p), 1);
-    if unsafe lang.mem.read(u16, second) == 9 and lang.mem.address(u16, second) % 2 == 0 {
-        code = code | 128;
+    if !(unsafe lang.mem.read(u16, second) == 9 and lang.mem.address(u16, second) % 2 == 0) {
+        failed +|= 1;
     }
-    // The checks that failed: 0 when all hold, a status every system can return.
-    .code(code ^ 255)
+    // How many checks failed: 0 when all hold.
+    std.os.Exit.of(failed)
 };

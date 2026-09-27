@@ -102,7 +102,7 @@ System := struct {
     /// The capability, from what the system left on the stack at the entry point.
     from_stack := unsafe (sp: *usize) -> System { .{} };
 };
-Exit := enum { code(u8) };
+Exit := enum { code(Int(1..=125)) };
 exit := (e: Exit) -> never { for {} };
 report := (t: &lang.panic.Trap) {};
 

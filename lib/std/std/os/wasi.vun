@@ -33,7 +33,7 @@ start := ($main: std.os.Main) -> type { struct {
         mut size: usize = 0;
         unsafe { args_sizes_get(std.ptr.to(usize, &count), std.ptr.to(usize, &size)); }
         if count > arguments or size > argument_bytes {
-            unsafe proc_exit(std.os.trapped.to(i32))
+            unsafe proc_exit(std.os.trapped)
         }
         mut values: [arguments]usize = [0; arguments];
         mut bytes: [argument_bytes]u8 = [0; argument_bytes];
@@ -41,12 +41,11 @@ start := ($main: std.os.Main) -> type { struct {
         unsafe { args_get(at, std.ptr.to([argument_bytes]u8, &bytes).cast(u8)); }
         args := unsafe std.os.Args.of(count, at.cast(*u8));
         mut sys := unsafe std.os.System.claim(args);
-        status := main(&mut sys).status();
-        unsafe proc_exit(status.to(i32))
+        unsafe proc_exit(main(&mut sys).status())
     };
 
     #[link.export(lang.panic.symbols.trap)]
-    trap := (t: &lang.panic.Trap) -> lang.never { unsafe proc_exit(std.os.trapped.to(i32)) };
+    trap := (t: &lang.panic.Trap) -> lang.never { unsafe proc_exit(std.os.trapped) };
 
     #[link.export(std.os.symbols.write)]
     write := (fd: i32, bytes: &[u8]) -> Result(usize, std.os.Error) {

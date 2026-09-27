@@ -58,11 +58,11 @@ start := ($main: std.os.Main) -> type { struct {
     #[link.export("main"), abi.c]
     entry := (argc: i32, argv: *(*u8)) -> i32 {
         mut sys := unsafe std.os.System.claim(std.os.Args.of(argc.to(usize), argv));
-        main(&mut sys).status().to(i32)
+        main(&mut sys).status()
     };
 
     #[link.export(lang.panic.symbols.trap)]
-    trap := (t: &lang.panic.Trap) -> lang.never { unsafe exit(std.os.trapped.to(i32)) };
+    trap := (t: &lang.panic.Trap) -> lang.never { unsafe exit(std.os.trapped) };
 
     #[link.export(std.os.symbols.write)]
     write_to := (fd: i32, bytes: &[u8]) -> Result(usize, std.os.Error) {

@@ -54,7 +54,7 @@ counter := (n: u8) -> std.iter.Iter(u8) { mut a: u8 = n; yield a; a ^= 1; yield 
 main := (sys: &mut std.os.System) -> std.os.Exit {
     mut total: u8 = 0;
     for x in counter(5) { total ^= x; }
-    .code(total)
+    std.os.Exit.of(total % 126)
 };
 ",
     );

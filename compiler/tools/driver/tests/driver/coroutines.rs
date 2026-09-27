@@ -175,7 +175,7 @@ main := (sys: &mut std.os.System) -> std.os.Exit {
         _ := f.resume();
         f.end();
     }
-    .code(hits)
+    std.os.Exit.of(hits % 126)
 };
 ";
     assert_eq!(crate::backend::status("coroutines-frame-end", source), Some(7));

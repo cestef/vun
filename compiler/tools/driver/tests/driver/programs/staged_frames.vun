@@ -5,5 +5,5 @@ main := (sys: &mut std.os.System) -> std.os.Exit {
         gen := () -> std.iter.Iter(u8) { yield k; yield k; };
         for x in gen() { total = (total + x).wrap(u8); }
     }
-    .code(total)
+    std.os.Exit.of(total % 126)
 };

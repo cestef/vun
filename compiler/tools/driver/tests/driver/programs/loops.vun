@@ -9,5 +9,5 @@ main := (sys: &mut std.os.System) -> std.os.Exit {
     mut count: u8 = 0;
     for _ in 0..=last { count = (count + 1).sat(u8); }
     for _ in n..n { count = 0; }
-    .code((total + count).wrap(u8))
+    std.os.Exit.of((total + count).wrap(u8) % 126)
 };

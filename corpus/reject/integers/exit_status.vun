@@ -1,0 +1,5 @@
+//! An exit status is one every system passes on unchanged, `std.os.Status` (spec 08, section 2).
+
+main := (sys: &mut std.os.System) -> std.os.Exit {
+    .code(200) //~ int.does_not_fit "is `Int(1..=125)`"
+};

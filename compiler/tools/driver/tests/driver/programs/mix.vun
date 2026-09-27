@@ -48,5 +48,5 @@ main := (sys: &mut std.os.System) -> std.os.Exit {
     copy := arr;
     x := (m.wrap(u8) + p.y.wrap(u8) + p.x.wrap(u8) + (big.a.wrap(u8) * 3 + big.b.wrap(u8) * 5 + big.c.wrap(u8) * 7).wrap(u8)
         + pick(n8) + pick((n8 + 6).wrap(u8)) + old.wrap(u8) + was.wrap(u8) + cas.wrap(u8) + now.wrap(u8) + copy[39].wrap(u8)).wrap(u8);
-    .code(x)
+    std.os.Exit.of(x % 126)
 };
