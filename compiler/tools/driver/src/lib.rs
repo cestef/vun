@@ -4,6 +4,7 @@
 //! and linkers are registered statically through Cargo features; external ones are reached
 //! through the `process` adapters.
 
+pub mod checks;
 pub mod codegen;
 pub mod commands;
 pub mod compare;

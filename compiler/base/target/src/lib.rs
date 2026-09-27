@@ -7,6 +7,10 @@ use std::path::{Path, PathBuf};
 use vun_codec::{Decode, Encode};
 use vun_intern::Symbol;
 
+mod check;
+
+pub use check::Check;
+
 /// A name of one of the open sets targets draw from (decision 138): architectures, systems,
 /// object formats, backends and linkers. Targets give theirs as `lang.meta.Name` values;
 /// components declare theirs statically.

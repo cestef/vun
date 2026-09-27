@@ -1623,9 +1623,9 @@ name = "vun-sanitize"
 version = "0.0.0"
 dependencies = [
  "vun-codec",
- "vun-items",
  "vun-query",
  "vun-sema",
+ "vun-target",
 ]
 
 [[package]]

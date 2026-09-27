@@ -88,6 +88,7 @@ impl Session {
     ) -> Result<PathBuf, ErrorGuaranteed> {
         let mut session = self.child(Choice::Given(Box::new(options.target.clone())));
         session.codegen.output = options.output;
+        session.add_checks(self.checks().iter().chain(options.checks.iter().copied()));
         session.memory = options
             .memory
             .iter()

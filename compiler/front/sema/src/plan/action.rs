@@ -9,7 +9,8 @@ use vun_items::std::{
     build_Step as step, build_Tested as tested, build_Use as used,
 };
 
-use vun_target::Output;
+use vun_items::lang::check_Kind as check;
+use vun_target::{Check, Output};
 
 use crate::target::{Declared, Members, Read, Unread, Variants};
 use crate::ty::Value;
@@ -44,6 +45,8 @@ pub struct Options {
     pub deps: Vec<Use>,
     pub memory: Vec<Region>,
     pub output: Output,
+    /// What its unsafe code is checked for at run time.
+    pub checks: Vec<Check>,
 }
 
 /// A dependency a program uses, by its name and the step that builds it.
@@ -92,6 +95,7 @@ impl Read for Options {
             deps: m.list(options::deps)?,
             memory: m.list(options::memory)?,
             output: m.read(options::output)?,
+            checks: m.list(options::checks)?,
         })
     }
 }
@@ -101,6 +105,14 @@ impl Variants for Output {
         (output::executable, Self::Executable),
         (output::shared, Self::Shared),
         (output::r#static, Self::Static),
+    ];
+}
+
+impl Variants for Check {
+    const VARIANTS: &'static [(vun_items::Item, Self)] = &[
+        (check::pointers, Self::Pointers),
+        (check::allocations, Self::Allocations),
+        (check::asm, Self::Asm),
     ];
 }
 

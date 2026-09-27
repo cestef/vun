@@ -11,6 +11,6 @@ workspace = true
 
 [dependencies]
 vun-codec.workspace = true
-vun-items.workspace = true
 vun-query.workspace = true
 vun-sema.workspace = true
+vun-target.workspace = true

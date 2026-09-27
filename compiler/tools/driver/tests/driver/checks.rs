@@ -2,7 +2,7 @@
 //! operation marked `#[lang.check.by]` runs as its checked version, a trap site of its own.
 
 use vun_intern::Symbol;
-use vun_sanitize::{Checks, ChecksOf, Kind};
+use vun_target::Check;
 
 use crate::common::Fixture;
 
@@ -16,17 +16,17 @@ fn a_raw_read_runs_as_its_checked_version_under_the_pointer_checks() {
 first := (xs: &[4]u8) -> u8 { unsafe lang.mem.pointer_to([4]u8, xs).cast(u8).read() };
 ",
     );
-    let lowered = |checks: Checks| {
+    let lowered = |checks: &[Check]| {
         let mut session = fixture.session();
-        session.db.set::<ChecksOf>(&(), checks);
+        session.add_checks(checks.iter().copied());
         let file = session.load(&path).unwrap();
         let unit = session.lir(file).as_ref().clone().unwrap();
         assert_eq!(unit.verify(session.origins), Ok(()));
         let imports: Vec<Symbol> = unit.imports.iter().map(|(_, i)| i.symbol).collect();
         (unit.sites.len(), imports)
     };
-    let (sites, imports) = lowered(Checks::default());
-    let (checked, checked_imports) = lowered(Checks::of([Kind::Pointers]));
+    let (sites, imports) = lowered(&[]);
+    let (checked, checked_imports) = lowered(&[Check::Pointers]);
     assert_eq!(checked, sites + 1);
     for symbol in ["vun_check_access", "vun_check_fail"] {
         assert!(!imports.contains(&Symbol::intern(symbol)));
