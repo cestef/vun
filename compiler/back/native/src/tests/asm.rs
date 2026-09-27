@@ -167,3 +167,40 @@ fn arm64_keeps_the_flags_around_a_checked_write() {
     let stored = ops.iter().rposition(|&o| o == Op::Str).expect("the store");
     assert!(stored > at(Op::Msr), "{insts:#?}");
 }
+
+#[test]
+fn a_checked_write_keeps_the_floating_point_registers_its_block_names() {
+    use vun_asm_x86_64::{Class, Kind, Op, Operand, Size};
+    let mov = Op::Mov.forms().iter().position(|f| f.kinds().eq([Kind::Rm, Kind::R])).expect("mov to memory");
+    let movq = Op::Movd.forms().iter().position(|f| f.kinds().eq([Kind::X, Kind::Rmn(Size::B64)]));
+    let code = compiled::<X86>(|b, n, origin| {
+        let id = |op, form| {
+            (
+                OpId(u16::try_from(index(Op::ALL, &op)).expect("few")),
+                FormId(u16::try_from(form).expect("few")),
+            )
+        };
+        let size = SizeId(u8::try_from(index(&Size::ALL, &Size::B64)).expect("few"));
+        let xmm0 = vun_inline::RegRef { class: vun_inline::ClassId(Class::Sse as u8), number: 0 };
+        let value = || vun_inline::Operand::Bound(Bound::In { value: n, reg: None });
+        let base = vun_inline::Base::Bound(Bound::In { value: n, reg: None });
+        let at =
+            vun_inline::Operand::Mem(vun_inline::Mem { base: Some(base), index: None, disp: Disp::Bytes(0) });
+        let (op, form) = id(Op::Movd, movq.expect("movq from a register"));
+        let first = Inst { op, form, size, operands: vec![vun_inline::Operand::Reg(xmm0), value()], origin };
+        let (op, form) = id(Op::Mov, mov);
+        let second = Inst { op, form, size, operands: vec![at, value()], origin };
+        let block = Block { arch: vun_items::lang::arch::x86_64, insts: vec![first, second], returns: true };
+        b.push(InstKind::Asm(Box::new(block), Some(checked())), None, origin);
+        b.terminate(Terminator::Return(Some(n)));
+    });
+    let insts = insts(&code.code.listing);
+    let call = insts.iter().position(|i| i.op == Op::Call).expect("the check");
+    let spilled = |i: &vun_asm_x86_64::Inst<_>| {
+        i.op == Op::Movd && matches!(i.operands(), [Operand::Mem(_), Operand::Xmm(_)])
+    };
+    let reloaded = |i: &vun_asm_x86_64::Inst<_>| {
+        i.op == Op::Movd && matches!(i.operands(), [Operand::Xmm(_), Operand::Mem(_)])
+    };
+    assert!(insts[..call].iter().any(spilled) && insts[call..].iter().any(reloaded), "{insts:#?}");
+}

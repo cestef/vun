@@ -4,7 +4,7 @@
 //! over a stack aligned from `rbx`, which the call keeps.
 
 use vun_asm::{AsmOperand, Blocks, Untaken};
-use vun_asm_x86_64::{Base, Cc, Emit, Kind, Mem, Op, Operand, Reg, Size, X86_64};
+use vun_asm_x86_64::{Base, Cc, Emit, Kind, Mem, Op, Operand, Reg, Size, X86_64, Xmm};
 use vun_codegen::Code;
 use vun_inline::Disp;
 use vun_lir::{Address, AsmCheck};
@@ -36,13 +36,26 @@ impl Inline for X86 {
         code.emit_by(op, form, Size::of(inst.size), operands)
     }
 
-    fn check_write(code: &mut Code<Self>, at: &Operand<Address>, bytes: u32, check: &AsmCheck) {
+    fn check_write(
+        code: &mut Code<Self>,
+        at: &Operand<Address>,
+        bytes: u32,
+        floats: &[u8],
+        check: &AsmCheck,
+    ) {
         code.emit(Op::Pushf, Size::B64, &[]);
         for r in KEPT {
             code.emit(Op::Push, Size::B64, &[r.into()]);
         }
-        // An address off the stack pointer is further from it by what was pushed.
-        let pushed = i32::try_from((KEPT.len() + 1) * 8).expect("a few words");
+        let spilled = i32::try_from(floats.len() * 8).expect("a few words");
+        if spilled > 0 {
+            code.emit(Op::Sub, Size::B64, &[Reg::Rsp.into(), Operand::Imm(i64::from(spilled))]);
+        }
+        for (k, &x) in (0_i32..).zip(floats) {
+            code.emit(Op::Movd, Size::B64, &[Mem::at(Reg::Rsp, 8 * k).into(), Xmm(x).into()]);
+        }
+        // An address off the stack pointer is further from it by what was pushed and spilled.
+        let pushed = i32::try_from((KEPT.len() + 1) * 8).expect("a few words") + spilled;
         let at = match *at {
             Operand::Mem(Mem { base: Base::Reg(Reg::Rsp), disp }) => {
                 Operand::Mem(Mem { base: Base::Reg(Reg::Rsp), disp: disp + pushed })
@@ -56,6 +69,12 @@ impl Inline for X86 {
         code.emit(Op::And, Size::B64, &[Reg::Rsp.into(), Operand::Imm(ALIGN)]);
         code.emit(Op::Call, Size::B64, &[Operand::Sym(check.write)]);
         code.emit(Op::Mov, Size::B64, &[Reg::Rsp.into(), Reg::Rbx.into()]);
+        for (k, &x) in (0_i32..).zip(floats) {
+            code.emit(Op::Movd, Size::B64, &[Xmm(x).into(), Mem::at(Reg::Rsp, 8 * k).into()]);
+        }
+        if spilled > 0 {
+            code.emit(Op::Add, Size::B64, &[Reg::Rsp.into(), Operand::Imm(i64::from(spilled))]);
+        }
         for r in KEPT.into_iter().rev() {
             code.emit(Op::Pop, Size::B64, &[r.into()]);
         }

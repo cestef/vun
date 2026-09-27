@@ -41,8 +41,11 @@ pub(crate) trait Inline: Isel {
     fn emit(code: &mut Code<Self>, inst: &Inst, operands: &[Encoded<Self>]) -> Result<(), Untaken>;
 
     /// Checks through `check.write` the `bytes` the next instruction writes at `at`, keeping every
-    /// register and the flags as they were.
-    fn check_write(code: &mut Code<Self>, at: &Encoded<Self>, bytes: u32, check: &AsmCheck);
+    /// register and the flags as they were: the general registers a call may overwrite, and the
+    /// low 64 bits of the floating-point registers `floats`, those of the block's. No value lives in
+    /// another floating-point register between instructions, and no instruction of the table
+    /// reads more of one.
+    fn check_write(code: &mut Code<Self>, at: &Encoded<Self>, bytes: u32, floats: &[u8], check: &AsmCheck);
 
     /// Writes the stack pointer into `dst`.
     fn stack(code: &mut Code<Self>, dst: Self::Reg);
@@ -190,6 +193,16 @@ impl Inlined for Asm {
             };
             regs.push(r);
         }
+        let mut floats: Vec<u8> = Vec::new();
+        let named = self.insts.iter().flat_map(|inst| &inst.operands).filter_map(|o| match o {
+            vun_inline::Operand::Reg(r) if A::Table::general(*r).is_none() => Some(r.number),
+            _ => None,
+        });
+        for number in named {
+            if !floats.contains(&number) {
+                floats.push(number);
+            }
+        }
         let labels: Vec<Label> = (0..=self.insts.len()).map(|_| cx.asm.label()).collect();
         let mut placed = Placed::<A::Table> { regs: regs.into_iter(), labels: &labels };
         for (inst, &label) in self.insts.iter().zip(&labels) {
@@ -199,7 +212,7 @@ impl Inlined for Asm {
                 .map(|(kind, o)| A::Table::operand(o, kind, &mut placed));
             let operands: Vec<_> = operands.collect();
             if let (Some(check), Some((at, bytes))) = (check, A::Table::written(inst)) {
-                A::check_write(&mut cx.asm, &operands[at], bytes, check);
+                A::check_write(&mut cx.asm, &operands[at], bytes, &floats, check);
             }
             A::emit(&mut cx.asm, inst, &operands)
                 .map_err(|Untaken| Missing::AsmOperand(AsmOperand::Unencodable).at(inst.origin))?;

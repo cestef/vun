@@ -3,7 +3,7 @@
 //! (`nzcv`), the address built in `x16` from the operand's mode.
 
 use vun_asm::Untaken;
-use vun_asm_arm64::{Arm64, Cc, Emit, Mem, Op, Operand, Reg, Size, SysReg};
+use vun_asm_arm64::{Arm64, Cc, Emit, Mem, Op, Operand, Reg, Size, SysReg, V};
 use vun_codegen::Arch;
 use vun_codegen::Code;
 use vun_lir::{Address, AsmCheck};
@@ -43,7 +43,13 @@ impl Inline for Arm {
         code.emit_by(op, form, Size::of(inst.size), operands)
     }
 
-    fn check_write(code: &mut Code<Self>, at: &Operand<Address>, bytes: u32, check: &AsmCheck) {
+    fn check_write(
+        code: &mut Code<Self>,
+        at: &Operand<Address>,
+        bytes: u32,
+        floats: &[u8],
+        check: &AsmCheck,
+    ) {
         for [a, b] in KEPT {
             code.emit(
                 Op::Stp,
@@ -51,8 +57,16 @@ impl Inline for Arm {
                 &[a.into(), b.into(), Mem::Pre { base: Reg::Sp, offset: -PAIR }.into()],
             );
         }
+        // Each floating-point register in a word of its own, the stack kept aligned to pairs.
+        let spilled = PAIR * i64::try_from(floats.len().div_ceil(2)).expect("a few pairs");
+        if spilled > 0 {
+            code.emit(Op::Sub, Size::B64, &[Reg::Sp.into(), Reg::Sp.into(), spilled.into()]);
+        }
+        for (k, &v) in (0_i64..).zip(floats) {
+            code.emit(Op::Str, Size::B64, &[V(v).into(), Mem::at(Reg::Sp, 8 * k).into()]);
+        }
         // An address off the stack pointer is further from it by what was saved.
-        let saved = PAIR * i64::try_from(KEPT.len()).expect("a few pairs");
+        let saved = PAIR * i64::try_from(KEPT.len()).expect("a few pairs") + spilled;
         let off = |base: Reg| if base == Reg::Sp { saved } else { 0 };
         let Operand::Mem(mem) = *at else { unreachable!("a write is to memory") };
         match mem {
@@ -79,6 +93,12 @@ impl Inline for Arm {
         code.emit(Op::Bl, Size::B64, &[Operand::Sym(check.write)]);
         code.emit(Op::Ldr, Size::B64, &[FLAGS.into(), Mem::Post { base: Reg::Sp, offset: PAIR }.into()]);
         code.emit(Op::Msr, Size::B64, &[Operand::Sys(SysReg::Nzcv), FLAGS.into()]);
+        for (k, &v) in (0_i64..).zip(floats) {
+            code.emit(Op::Ldr, Size::B64, &[V(v).into(), Mem::at(Reg::Sp, 8 * k).into()]);
+        }
+        if spilled > 0 {
+            code.emit(Op::Add, Size::B64, &[Reg::Sp.into(), Reg::Sp.into(), spilled.into()]);
+        }
         for [a, b] in KEPT.into_iter().rev() {
             code.emit(
                 Op::Ldp,
