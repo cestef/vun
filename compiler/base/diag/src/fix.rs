@@ -55,23 +55,55 @@ pub struct Edit {
 }
 
 impl Edit {
-    /// `text` with `edits` applied; they must not overlap. Insertions at one offset keep their
-    /// order.
-    #[must_use]
-    pub fn apply(edits: &[Self], text: &str) -> String {
+    /// `text` with `edits` applied, all of one file. Insertions at one offset keep their order.
+    ///
+    /// # Errors
+    /// Returns why the edits do not apply: they overlap, span several files, or reach past
+    /// `text` or inside a character.
+    pub fn apply(edits: &[Self], text: &str) -> Result<String, Unapplied> {
         let mut sorted: Vec<&Self> = edits.iter().collect();
         sorted.sort_by_key(|e| (e.span.range.lo, e.span.range.hi));
         let mut out = String::with_capacity(text.len());
         let mut at = 0;
-        for e in sorted {
-            out.push_str(&text[at..e.span.range.lo as usize]);
+        for e in &sorted {
+            if e.span.file != sorted[0].span.file {
+                return Err(Unapplied::Files(sorted[0].span, e.span));
+            }
+            let lo = e.span.range.lo as usize;
+            let unapplied = if lo < at { Unapplied::Overlap(e.span) } else { Unapplied::Outside(e.span) };
+            let before = text.get(at..lo).ok_or(unapplied)?;
+            text.get(lo..e.span.range.hi as usize).ok_or(Unapplied::Outside(e.span))?;
+            out.push_str(before);
             out.push_str(&e.text);
             at = e.span.range.hi as usize;
         }
         out.push_str(&text[at..]);
-        out
+        Ok(out)
     }
 }
+
+/// Why edits do not apply to a text.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Unapplied {
+    /// The edit starts before the one ahead of it ends.
+    Overlap(Span),
+    /// The edit reaches past the text, or inside a character.
+    Outside(Span),
+    /// The edits are of two files.
+    Files(Span, Span),
+}
+
+impl fmt::Display for Unapplied {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(match self {
+            Self::Overlap(_) => "an edit overlaps another",
+            Self::Outside(_) => "an edit reaches outside the text",
+            Self::Files(..) => "the edits are of several files",
+        })
+    }
+}
+
+impl std::error::Error for Unapplied {}
 
 /// A proposed change; its edits never overlap.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]

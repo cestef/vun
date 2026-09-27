@@ -76,7 +76,7 @@ fn fields_are_inserted_after_the_last_one() {
     ];
     for (before, after) in cases {
         let edit = read(before)[0].insert(before, "hal", &dep).unwrap();
-        assert_eq!(vun_diag::Edit::apply(&[edit], before), after);
+        assert_eq!(vun_diag::Edit::apply(&[edit], before).unwrap(), after);
     }
     assert_eq!(read("p := 1;")[0].insert("p := 1;", "a", &dep), Err(Unwritable::NotRecord));
 }
@@ -89,7 +89,7 @@ fn long_insertions_are_laid_out_one_field_per_line() {
     let before =
         "package := .{\n    .name = \"app\",\n    .deps = .{ .util = .{ .path = \"../util\" } },\n};";
     let deps = read(before)[0].value.decls().unwrap()[1].clone();
-    let after = vun_diag::Edit::apply(&[deps.insert(before, "hal", &dep).unwrap()], before);
+    let after = vun_diag::Edit::apply(&[deps.insert(before, "hal", &dep).unwrap()], before).unwrap();
     let expected = format!(
         "package := .{{\n    .name = \"app\",\n    .deps = .{{\n        .util = .{{ .path = \"../util\" }},\n        \
          .hal = .{{\n            .version = \"1.0.0\",\n            .urls = .{{\n                \"{long}\",\n            \
@@ -116,7 +116,7 @@ fn values_are_set_in_place() {
     let before = "p := .{\n    .hal = .{ .version = \"1.0.0\" },\n};";
     let hal = read(before)[0].value.decls().unwrap()[0].clone();
     let newer = read("v := .{ .version = \"1.2.0\" };")[0].value.clone();
-    let after = vun_diag::Edit::apply(&[hal.set(before, &newer).unwrap()], before);
+    let after = vun_diag::Edit::apply(&[hal.set(before, &newer).unwrap()], before).unwrap();
     assert_eq!(after, "p := .{\n    .hal = .{ .version = \"1.2.0\" },\n};");
 }
 
