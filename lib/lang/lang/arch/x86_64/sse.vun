@@ -1,0 +1,230 @@
+//! SSE instructions: moves between general and SSE registers, scalar float arithmetic,
+//! comparisons and conversions. Each has its mandatory prefix before REX, then `0F` and its
+//! opcode.
+
+_x := lang.arch.x86_64;
+
+_x_w: _x.Operand = _x.Operand{ .kind = .x, .access = .write };
+_x_rw: _x.Operand = _x.Operand{ .kind = .x, .access = .read_write };
+_x_r: _x.Operand = _x.Operand{ .kind = .x, .access = .read };
+_single: _x.Operand = _x.Operand{ .kind = .xmn(.b32), .access = .read };
+_double: _x.Operand = _x.Operand{ .kind = .xmn(.b64), .access = .read };
+_x_src: _x.Layout(u8) = .reg_rm(_x.RegRm{ .reg = 0, .rm = 1 });
+_x_dst: _x.Layout(u8) = .reg_rm(_x.RegRm{ .reg = 1, .rm = 0 });
+_all: &[_x.Size] = &[.b8, .b16, .b32, .b64];
+_wide: &[_x.Size] = &[.b32, .b64];
+
+/// `movd` at 32 bits, `movq` at 64.
+movd := _x.Instruction{ .forms = &[
+    .{
+        .operands = &[_x_w, _x.Operand{ .kind = .rmn(.b32), .access = .read }],
+        .sizes = &[.b32],
+        .opcode = &[0x0f, 0x6e],
+        .layout = _x_src,
+        .prefix = .p66,
+        .w = .never,
+    },
+    .{
+        .operands = &[_x.Operand{ .kind = .rmn(.b32), .access = .write }, _x_r],
+        .sizes = &[.b32],
+        .opcode = &[0x0f, 0x7e],
+        .layout = _x_dst,
+        .prefix = .p66,
+        .w = .never,
+    },
+    .{
+        .operands = &[_x_w, _x.Operand{ .kind = .rmn(.b64), .access = .read }],
+        .sizes = &[.b64],
+        .opcode = &[0x0f, 0x6e],
+        .layout = _x_src,
+        .prefix = .p66,
+        .w = .always,
+        .name = .some("movq"),
+    },
+    .{
+        .operands = &[_x.Operand{ .kind = .rmn(.b64), .access = .write }, _x_r],
+        .sizes = &[.b64],
+        .opcode = &[0x0f, 0x7e],
+        .layout = _x_dst,
+        .prefix = .p66,
+        .w = .always,
+        .name = .some("movq"),
+    },
+] };
+
+/// `addss` at 32 bits, `addsd` at 64; so for each scalar operation.
+adds := _x.Instruction{ .forms = &[
+    .{
+        .operands = &[_x_rw, _single],
+        .sizes = &[.b32],
+        .opcode = &[0x0f, 0x58],
+        .layout = _x_src,
+        .prefix = .f3,
+        .w = .never,
+        .name = .some("addss"),
+    },
+    .{
+        .operands = &[_x_rw, _double],
+        .sizes = &[.b64],
+        .opcode = &[0x0f, 0x58],
+        .layout = _x_src,
+        .prefix = .f2,
+        .w = .never,
+        .name = .some("addsd"),
+    },
+] };
+
+subs := _x.Instruction{ .forms = &[
+    .{
+        .operands = &[_x_rw, _single],
+        .sizes = &[.b32],
+        .opcode = &[0x0f, 0x5c],
+        .layout = _x_src,
+        .prefix = .f3,
+        .w = .never,
+        .name = .some("subss"),
+    },
+    .{
+        .operands = &[_x_rw, _double],
+        .sizes = &[.b64],
+        .opcode = &[0x0f, 0x5c],
+        .layout = _x_src,
+        .prefix = .f2,
+        .w = .never,
+        .name = .some("subsd"),
+    },
+] };
+
+muls := _x.Instruction{ .forms = &[
+    .{
+        .operands = &[_x_rw, _single],
+        .sizes = &[.b32],
+        .opcode = &[0x0f, 0x59],
+        .layout = _x_src,
+        .prefix = .f3,
+        .w = .never,
+        .name = .some("mulss"),
+    },
+    .{
+        .operands = &[_x_rw, _double],
+        .sizes = &[.b64],
+        .opcode = &[0x0f, 0x59],
+        .layout = _x_src,
+        .prefix = .f2,
+        .w = .never,
+        .name = .some("mulsd"),
+    },
+] };
+
+divs := _x.Instruction{ .forms = &[
+    .{
+        .operands = &[_x_rw, _single],
+        .sizes = &[.b32],
+        .opcode = &[0x0f, 0x5e],
+        .layout = _x_src,
+        .prefix = .f3,
+        .w = .never,
+        .name = .some("divss"),
+    },
+    .{
+        .operands = &[_x_rw, _double],
+        .sizes = &[.b64],
+        .opcode = &[0x0f, 0x5e],
+        .layout = _x_src,
+        .prefix = .f2,
+        .w = .never,
+        .name = .some("divsd"),
+    },
+] };
+
+/// Sets the flags from comparing floats, unordered where either is a NaN.
+ucomis := _x.Instruction{ .forms = &[
+    .{
+        .operands = &[_x_r, _single],
+        .sizes = &[.b32],
+        .opcode = &[0x0f, 0x2e],
+        .layout = _x_src,
+        .prefix = .none,
+        .w = .never,
+        .name = .some("ucomiss"),
+        .flags = .some(.write),
+    },
+    .{
+        .operands = &[_x_r, _double],
+        .sizes = &[.b64],
+        .opcode = &[0x0f, 0x2e],
+        .layout = _x_src,
+        .prefix = .p66,
+        .w = .never,
+        .name = .some("ucomisd"),
+        .flags = .some(.write),
+    },
+] };
+
+cvtss2sd := _x.Instruction{ .forms = &[
+    .{
+        .operands = &[_x_w, _single],
+        .sizes = _all,
+        .opcode = &[0x0f, 0x5a],
+        .layout = _x_src,
+        .prefix = .f3,
+        .w = .never,
+    },
+] };
+
+cvtsd2ss := _x.Instruction{ .forms = &[
+    .{
+        .operands = &[_x_w, _double],
+        .sizes = _all,
+        .opcode = &[0x0f, 0x5a],
+        .layout = _x_src,
+        .prefix = .f2,
+        .w = .never,
+    },
+] };
+
+/// A signed integer of the instruction's size, rounded to single precision.
+cvtsi2ss := _x.Instruction{ .forms = &[
+    .{
+        .operands = &[_x_w, _x.Operand{ .kind = .rm, .access = .read }],
+        .sizes = _wide,
+        .opcode = &[0x0f, 0x2a],
+        .layout = _x_src,
+        .prefix = .f3,
+        .w = .rex,
+    },
+] };
+
+cvtsi2sd := _x.Instruction{ .forms = &[
+    .{
+        .operands = &[_x_w, _x.Operand{ .kind = .rm, .access = .read }],
+        .sizes = _wide,
+        .opcode = &[0x0f, 0x2a],
+        .layout = _x_src,
+        .prefix = .f2,
+        .w = .rex,
+    },
+] };
+
+/// Single precision truncated toward zero, a signed integer of the instruction's size.
+cvttss2si := _x.Instruction{ .forms = &[
+    .{
+        .operands = &[_x.Operand{ .kind = .r, .access = .write }, _single],
+        .sizes = _wide,
+        .opcode = &[0x0f, 0x2c],
+        .layout = _x_src,
+        .prefix = .f3,
+        .w = .rex,
+    },
+] };
+
+cvttsd2si := _x.Instruction{ .forms = &[
+    .{
+        .operands = &[_x.Operand{ .kind = .r, .access = .write }, _double],
+        .sizes = _wide,
+        .opcode = &[0x0f, 0x2c],
+        .layout = _x_src,
+        .prefix = .f2,
+        .w = .rex,
+    },
+] };

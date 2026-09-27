@@ -1,0 +1,234 @@
+//! Integer arithmetic, logic, comparisons and shifts; each writes the flags.
+
+_x := lang.arch.x86_64;
+
+_r: _x.Operand = _x.Operand{ .kind = .r, .access = .read };
+_w: _x.Operand = _x.Operand{ .kind = .r, .access = .write };
+_rw: _x.Operand = _x.Operand{ .kind = .r, .access = .read_write };
+_rm: _x.Operand = _x.Operand{ .kind = .rm, .access = .read };
+_rm_rw: _x.Operand = _x.Operand{ .kind = .rm, .access = .read_write };
+_i8: _x.Operand = _x.Operand{ .kind = .i8, .access = .read };
+_iz: _x.Operand = _x.Operand{ .kind = .iz, .access = .read };
+_all: &[_x.Size] = &[.b8, .b16, .b32, .b64];
+_words: &[_x.Size] = &[.b16, .b32, .b64];
+_dst_src: _x.Layout(_x.Byte) = .reg_rm(_x.RegRm{ .reg = 1, .rm = 0 });
+_src_dst: _x.Layout(_x.Byte) = .reg_rm(_x.RegRm{ .reg = 0, .rm = 1 });
+_extension: _x.Layout(_x.Byte) = .digit(.{ .digit = .digit, .rm = 0 });
+_accumulator: &[_x.Reg] = &[.rax, .rdx];
+
+/// `add`, `or`, `and`, `sub` and `xor`, `x = x op y`, by their opcode and its extension.
+alu := _x.Family{
+    .members = &[
+        _x.Member{ .name = .add, .opcode = 0x00, .digit = 0 },
+        _x.Member{ .name = .\or, .opcode = 0x08, .digit = 1 },
+        _x.Member{ .name = .\and, .opcode = 0x20, .digit = 4 },
+        _x.Member{ .name = .sub, .opcode = 0x28, .digit = 5 },
+        _x.Member{ .name = .xor, .opcode = 0x30, .digit = 6 },
+    ],
+    .forms = &[
+        .{
+            .operands = &[_rm_rw, _r],
+            .sizes = _all,
+            .opcode = &[.opcode(1)],
+            .byte = .some(.opcode(0)),
+            .layout = _dst_src,
+            .flags = _sets,
+        },
+        .{
+            .operands = &[_rw, _rm],
+            .sizes = _all,
+            .opcode = &[.opcode(3)],
+            .byte = .some(.opcode(2)),
+            .layout = _src_dst,
+            .flags = _sets,
+        },
+        .{
+            .operands = &[_rm_rw, _i8],
+            .sizes = _words,
+            .opcode = &[.is(0x83)],
+            .layout = _extension,
+            .flags = _sets,
+        },
+        .{
+            .operands = &[_rm_rw, _iz],
+            .sizes = _all,
+            .opcode = &[.is(0x81)],
+            .byte = .some(.is(0x80)),
+            .layout = _extension,
+            .flags = _sets,
+        },
+    ],
+};
+
+/// `sub` setting only the flags.
+cmp := _x.Instruction{ .forms = &[
+    .{
+        .operands = &[_rm, _r],
+        .sizes = _all,
+        .opcode = &[0x39],
+        .byte = .some(0x38),
+        .layout = _dst_src8,
+        .flags = _sets,
+    },
+    .{
+        .operands = &[_r, _rm],
+        .sizes = _all,
+        .opcode = &[0x3b],
+        .byte = .some(0x3a),
+        .layout = _src_dst8,
+        .flags = _sets,
+    },
+    .{
+        .operands = &[_rm, _i8],
+        .sizes = _words,
+        .opcode = &[0x83],
+        .layout = .digit(.{ .digit = 7, .rm = 0 }),
+        .flags = _sets,
+    },
+    .{
+        .operands = &[_rm, _iz],
+        .sizes = _all,
+        .opcode = &[0x81],
+        .byte = .some(0x80),
+        .layout = .digit(.{ .digit = 7, .rm = 0 }),
+        .flags = _sets,
+    },
+] };
+
+/// `and` setting only the flags.
+\test := _x.Instruction{ .forms = &[
+    .{
+        .operands = &[_rm, _r],
+        .sizes = _all,
+        .opcode = &[0x85],
+        .byte = .some(0x84),
+        .layout = _dst_src8,
+        .flags = _sets,
+    },
+    .{
+        .operands = &[_rm, _iz],
+        .sizes = _all,
+        .opcode = &[0xf7],
+        .byte = .some(0xf6),
+        .layout = .digit(.{ .digit = 0, .rm = 0 }),
+        .flags = _sets,
+    },
+] };
+
+imul := _x.Instruction{ .forms = &[
+    .{
+        .operands = &[_rw, _rm],
+        .sizes = _words,
+        .opcode = &[0x0f, 0xaf],
+        .layout = _src_dst8,
+        .flags = _sets,
+    },
+    .{
+        .operands = &[_w, _rm, _i8],
+        .sizes = _words,
+        .opcode = &[0x6b],
+        .layout = _src_dst8,
+        .flags = _sets,
+    },
+    .{
+        .operands = &[_w, _rm, _iz],
+        .sizes = _words,
+        .opcode = &[0x69],
+        .layout = _src_dst8,
+        .flags = _sets,
+    },
+] };
+
+\not := _x.Instruction{ .forms = &[
+    .{
+        .operands = &[_rm_rw],
+        .sizes = _all,
+        .opcode = &[0xf7],
+        .byte = .some(0xf6),
+        .layout = .digit(.{ .digit = 2, .rm = 0 }),
+    },
+] };
+
+neg := _x.Instruction{ .forms = &[
+    .{
+        .operands = &[_rm_rw],
+        .sizes = _all,
+        .opcode = &[0xf7],
+        .byte = .some(0xf6),
+        .layout = .digit(.{ .digit = 3, .rm = 0 }),
+        .flags = _sets,
+    },
+] };
+
+/// `mul`, `div` and `idiv`, over `rdx:rax`.
+wide := _x.Family{
+    .members = &[
+        _x.Member{ .name = .mul, .digit = 4 },
+        _x.Member{ .name = .div, .digit = 6 },
+        _x.Member{ .name = .idiv, .digit = 7 },
+    ],
+    .forms = &[
+        .{
+            .operands = &[_rm],
+            .sizes = _all,
+            .opcode = &[.is(0xf7)],
+            .byte = .some(.is(0xf6)),
+            .layout = _extension,
+            .reads = _accumulator,
+            .writes = _accumulator,
+            .flags = _sets,
+        },
+    ],
+};
+
+/// Shifts by `cl` or by an immediate.
+shifts := _x.Family{
+    .members = &[
+        _x.Member{ .name = .shl, .digit = 4 },
+        _x.Member{ .name = .shr, .digit = 5 },
+        _x.Member{ .name = .sar, .digit = 7 },
+    ],
+    .forms = &[
+        .{
+            .operands = &[_rm_rw, _x.Operand{ .kind = .cl, .access = .read }],
+            .sizes = _all,
+            .opcode = &[.is(0xd3)],
+            .byte = .some(.is(0xd2)),
+            .layout = _extension,
+            .flags = _sets,
+        },
+        .{
+            .operands = &[_rm_rw, _i8],
+            .sizes = _all,
+            .opcode = &[.is(0xc1)],
+            .byte = .some(.is(0xc0)),
+            .layout = _extension,
+            .flags = _sets,
+        },
+    ],
+};
+
+/// Sign-extends `rax` into `rdx`, `eax` into `edx` at 32 bits (`cdq`).
+cqo := _x.Instruction{ .forms = &[
+    .{
+        .operands = &[],
+        .sizes = &[.b32],
+        .opcode = &[0x99],
+        .layout = .bare,
+        .name = .some("cdq"),
+        .reads = &[.rax],
+        .writes = &[.rdx],
+    },
+    .{
+        .operands = &[],
+        .sizes = &[.b64],
+        .opcode = &[0x99],
+        .layout = .bare,
+        .reads = &[.rax],
+        .writes = &[.rdx],
+    },
+] };
+
+_sets: ?_x.Access = .some(.write);
+_dst_src8: _x.Layout(u8) = .reg_rm(_x.RegRm{ .reg = 1, .rm = 0 });
+_src_dst8: _x.Layout(u8) = .reg_rm(_x.RegRm{ .reg = 0, .rm = 1 });

@@ -72,10 +72,10 @@ fn encode<S: Copy>(asm: &mut Asm<S>, form: &Form, size: Size, operands: &[Operan
         _ => plus.is_some_and(|(_, high)| high),
     };
     // A byte register past the first four needs REX, even with no bit of it set.
-    let byte_rex =
-        form.kinds.iter().zip(operands).any(|(k, o)| {
-            k.width(size) == Some(Size::B8) && matches!(o, Operand::Reg(r) if r.byte_needs_rex())
-        });
+    let byte_rex = form
+        .kinds()
+        .zip(operands)
+        .any(|(k, o)| k.width(size) == Some(Size::B8) && matches!(o, Operand::Reg(r) if r.byte_needs_rex()));
     let rex = REX | u8::from(w) << 3 | u8::from(reg.is_some_and(|(_, high)| high)) << 2 | u8::from(base_high);
     if rex != REX || byte_rex {
         asm.put(&[rex]);
@@ -95,11 +95,11 @@ fn encode<S: Copy>(asm: &mut Asm<S>, form: &Form, size: Size, operands: &[Operan
     }
     asm.put(&opcode[..bytes.len()]);
     // What follows a RIP-relative displacement, which it is counted from the end of.
-    let trailing: u32 = form.kinds.iter().filter_map(|k| k.imm_bytes(size)).sum();
+    let trailing: u32 = form.kinds().filter_map(|k| k.imm_bytes(size)).sum();
     if let (Some((field, _)), Some(rm)) = (reg, rm) {
         modrm(asm, field, rm, trailing);
     }
-    for (kind, operand) in form.kinds.iter().zip(operands) {
+    for (kind, operand) in form.kinds().zip(operands) {
         match operand {
             Operand::Imm(v) if kind.is_imm() => {
                 let n = kind.imm_bytes(size).expect("an immediate") as usize;

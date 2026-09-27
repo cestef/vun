@@ -2,6 +2,7 @@
 //! compiler, from only what reading `.vun` data needs, so that a generated change breaking a
 //! consumer never keeps it from running (decision 132).
 
+mod asm;
 mod errors;
 mod generate;
 mod grammar;

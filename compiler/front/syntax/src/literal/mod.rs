@@ -48,7 +48,7 @@ pub enum Literal<'s> {
     Call(Vec<&'s str>, Vec<Literal<'s>>),
     /// `enum { a, b(T) }`; the payloads read as `Opaque`.
     Enum(Vec<Decl<'s>>),
-    /// `struct { name := value; }`; fields read as `Opaque` declarations.
+    /// `struct { name := value; }`; a field reads as its default, or `Opaque` without one.
     Namespace(Vec<Decl<'s>>),
     /// `($T: type) -> type { struct { ... } }`: a function whose body is only the value it
     /// makes, read as that value: a type constructor.

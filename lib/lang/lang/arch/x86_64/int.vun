@@ -1,0 +1,133 @@
+//! Integer moves and arithmetic.
+
+_x := lang.arch.x86_64;
+
+_r: _x.Operand = _x.Operand{ .kind = .r, .access = .read };
+_w: _x.Operand = _x.Operand{ .kind = .r, .access = .write };
+_rw: _x.Operand = _x.Operand{ .kind = .r, .access = .read_write };
+_rm: _x.Operand = _x.Operand{ .kind = .rm, .access = .read };
+_rm_w: _x.Operand = _x.Operand{ .kind = .rm, .access = .write };
+_rm_rw: _x.Operand = _x.Operand{ .kind = .rm, .access = .read_write };
+_i8: _x.Operand = _x.Operand{ .kind = .i8, .access = .read };
+_iz: _x.Operand = _x.Operand{ .kind = .iz, .access = .read };
+_all: &[_x.Size] = &[.b8, .b16, .b32, .b64];
+_words: &[_x.Size] = &[.b16, .b32, .b64];
+_wide: &[_x.Size] = &[.b32, .b64];
+_dst_src: _x.Layout(u8) = .reg_rm(_x.RegRm{ .reg = 1, .rm = 0 });
+_src_dst: _x.Layout(u8) = .reg_rm(_x.RegRm{ .reg = 0, .rm = 1 });
+_accumulator: &[_x.Reg] = &[.rax, .rdx];
+
+mov := _x.Instruction{ .forms = &[
+    .{
+        .operands = &[_rm_w, _r],
+        .sizes = _all,
+        .opcode = &[0x89],
+        .byte = .some(0x88),
+        .layout = _dst_src,
+    },
+    .{
+        .operands = &[_w, _rm],
+        .sizes = _all,
+        .opcode = &[0x8b],
+        .byte = .some(0x8a),
+        .layout = _src_dst,
+    },
+    // Writing a 32-bit register clears the upper half.
+    .{
+        .operands = &[_w32, _x.Operand{ .kind = .u32, .access = .read }],
+        .sizes = _wide,
+        .opcode = &[0xb8],
+        .layout = .plus_reg(0),
+        .w = .never,
+    },
+    .{
+        .operands = &[_rm_w, _iz],
+        .sizes = _all,
+        .opcode = &[0xc7],
+        .byte = .some(0xc6),
+        .layout = .digit(.{ .digit = 0, .rm = 0 }),
+    },
+    .{
+        .operands = &[_w, _x.Operand{ .kind = .i64, .access = .read }],
+        .sizes = &[.b64],
+        .opcode = &[0xb8],
+        .layout = .plus_reg(0),
+    },
+] };
+
+/// Zero-extends an operand of the instruction's size to 32 bits, or 64.
+movzx := _x.Instruction{ .forms = &[
+    .{
+        .operands = &[_w32, _rm8],
+        .sizes = &[.b8],
+        .opcode = &[0x0f, 0xb6],
+        .layout = _src_dst,
+        .w = .never,
+    },
+    .{
+        .operands = &[_w32, _rm16],
+        .sizes = &[.b16],
+        .opcode = &[0x0f, 0xb7],
+        .layout = _src_dst,
+        .w = .never,
+    },
+    .{
+        .operands = &[_w32, _x.Operand{ .kind = .rmn(.b32), .access = .read }],
+        .sizes = &[.b32],
+        .opcode = &[0x8b],
+        .layout = _src_dst,
+        .w = .never,
+        .name = .some("mov"),
+    },
+    _mov64,
+] };
+
+/// Sign-extends an operand of the instruction's size to 64 bits.
+movsx := _x.Instruction{ .forms = &[
+    .{
+        .operands = &[_w64, _rm8],
+        .sizes = &[.b8],
+        .opcode = &[0x0f, 0xbe],
+        .layout = _src_dst,
+        .w = .always,
+    },
+    .{
+        .operands = &[_w64, _rm16],
+        .sizes = &[.b16],
+        .opcode = &[0x0f, 0xbf],
+        .layout = _src_dst,
+        .w = .always,
+    },
+    .{
+        .operands = &[_w64, _x.Operand{ .kind = .rmn(.b32), .access = .read }],
+        .sizes = &[.b32],
+        .opcode = &[0x63],
+        .layout = _src_dst,
+        .w = .always,
+        .name = .some("movsxd"),
+    },
+    _mov64,
+] };
+
+_w32: _x.Operand = _x.Operand{ .kind = .rn(.b32), .access = .write };
+_w64: _x.Operand = _x.Operand{ .kind = .rn(.b64), .access = .write };
+_rm8: _x.Operand = _x.Operand{ .kind = .rmn(.b8), .access = .read };
+_rm16: _x.Operand = _x.Operand{ .kind = .rmn(.b16), .access = .read };
+/// A 64-bit value extends to itself: `mov`, the widest form of either extension.
+_mov64: _x.Form(u8) = .{
+    .operands = &[_w64, _x.Operand{ .kind = .rmn(.b64), .access = .read }],
+    .sizes = &[.b64],
+    .opcode = &[0x8b],
+    .layout = _src_dst,
+    .w = .always,
+    .name = .some("mov"),
+};
+
+lea := _x.Instruction{ .forms = &[
+    .{
+        .operands = &[_w, _x.Operand{ .kind = .m, .access = .address }],
+        .sizes = _wide,
+        .opcode = &[0x8d],
+        .layout = _src_dst,
+    },
+] };

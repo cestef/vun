@@ -20,7 +20,7 @@ use vun_syntax::literal::Decl;
 use vun_syntax::tokens::Tokens;
 
 use crate::names::raw;
-use crate::{errors, grammar, items, primitives};
+use crate::{asm, errors, grammar, items, primitives};
 
 pub(crate) struct Generator {
     /// The Vun file, or the directory of them, relative to the repository root.
@@ -50,6 +50,8 @@ pub(crate) enum Access {
     Path,
     /// It only adds methods to the types of its siblings, reached through them: `mod name`.
     Impl,
+    /// Its items are its siblings' alone, which name them by path: `mod name`.
+    Sibling,
 }
 
 impl Module {
@@ -96,6 +98,7 @@ pub(crate) const ALL: &[Generator] = &[
     items::LANG,
     items::STD,
     items::TARGETS,
+    asm::X86_64,
 ];
 
 const SYNTAX: DiagId = DiagId::new("generate.generate.syntax");
@@ -168,7 +171,7 @@ impl Generator {
             match m.access {
                 Access::Glob => quote! { mod #name; pub use #name::*; },
                 Access::Path => quote! { pub mod #name; },
-                Access::Impl => quote! { mod #name; },
+                Access::Impl | Access::Sibling => quote! { mod #name; },
             }
         });
         let mut files = BTreeMap::from([(format!("{ROOT}.rs"), format(quote! { #(#declared)* }))]);

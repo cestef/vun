@@ -2,47 +2,10 @@
 
 use std::fmt;
 
-/// A general-purpose register, by its encoding.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub enum Reg {
-    Rax,
-    Rcx,
-    Rdx,
-    Rbx,
-    Rsp,
-    Rbp,
-    Rsi,
-    Rdi,
-    R8,
-    R9,
-    R10,
-    R11,
-    R12,
-    R13,
-    R14,
-    R15,
-}
+use crate::generated::NAMES;
+pub use crate::generated::Reg;
 
 impl Reg {
-    pub const ALL: [Self; 16] = [
-        Self::Rax,
-        Self::Rcx,
-        Self::Rdx,
-        Self::Rbx,
-        Self::Rsp,
-        Self::Rbp,
-        Self::Rsi,
-        Self::Rdi,
-        Self::R8,
-        Self::R9,
-        Self::R10,
-        Self::R11,
-        Self::R12,
-        Self::R13,
-        Self::R14,
-        Self::R15,
-    ];
-
     /// Its number, 0 to 15.
     #[must_use]
     pub const fn number(self) -> u8 {
@@ -70,24 +33,6 @@ impl Reg {
     /// Its name at `size`, as Intel syntax writes it.
     #[must_use]
     pub const fn name(self, size: Size) -> &'static str {
-        const NAMES: [[&str; 4]; 16] = [
-            ["al", "ax", "eax", "rax"],
-            ["cl", "cx", "ecx", "rcx"],
-            ["dl", "dx", "edx", "rdx"],
-            ["bl", "bx", "ebx", "rbx"],
-            ["spl", "sp", "esp", "rsp"],
-            ["bpl", "bp", "ebp", "rbp"],
-            ["sil", "si", "esi", "rsi"],
-            ["dil", "di", "edi", "rdi"],
-            ["r8b", "r8w", "r8d", "r8"],
-            ["r9b", "r9w", "r9d", "r9"],
-            ["r10b", "r10w", "r10d", "r10"],
-            ["r11b", "r11w", "r11d", "r11"],
-            ["r12b", "r12w", "r12d", "r12"],
-            ["r13b", "r13w", "r13d", "r13"],
-            ["r14b", "r14w", "r14d", "r14"],
-            ["r15b", "r15w", "r15d", "r15"],
-        ];
         NAMES[self.number() as usize][size as usize]
     }
 }

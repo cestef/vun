@@ -15,11 +15,11 @@ pub enum Kind {
     Rn(Size),
     /// Memory of the instruction's width.
     M,
-    RM,
-    RMn(Size),
+    Rm,
+    Rmn(Size),
     X,
     /// An SSE register, or memory of this width.
-    XMn(Size),
+    Xmn(Size),
     /// `cl`, the count of a shift.
     Cl,
     /// 8 bits, sign-extended to the instruction's width.
@@ -39,8 +39,8 @@ impl Kind {
     #[must_use]
     pub const fn width(self, size: Size) -> Option<Size> {
         match self {
-            Self::R | Self::RM | Self::M => Some(size),
-            Self::Rn(n) | Self::RMn(n) | Self::XMn(n) => Some(n),
+            Self::R | Self::Rm | Self::M => Some(size),
+            Self::Rn(n) | Self::Rmn(n) | Self::Xmn(n) => Some(n),
             Self::Cl => Some(Size::B8),
             Self::X | Self::I8 | Self::Iz | Self::U32 | Self::I64 | Self::Rel | Self::Cond => None,
         }
@@ -69,9 +69,9 @@ impl Kind {
     pub fn takes<S>(self, size: Size, operand: &Operand<S>) -> bool {
         let op_bits = size.bits();
         match (self, operand) {
-            (Self::R | Self::Rn(_) | Self::RM | Self::RMn(_), Operand::Reg(_))
-            | (Self::M | Self::RM | Self::RMn(_) | Self::XMn(_), Operand::Mem(_))
-            | (Self::X | Self::XMn(_), Operand::Xmm(_))
+            (Self::R | Self::Rn(_) | Self::Rm | Self::Rmn(_), Operand::Reg(_))
+            | (Self::M | Self::Rm | Self::Rmn(_) | Self::Xmn(_), Operand::Mem(_))
+            | (Self::X | Self::Xmn(_), Operand::Xmm(_))
             | (Self::Rel, Operand::Label(_) | Operand::Sym(_))
             | (Self::Cond, Operand::Cond(_))
             | (Self::I64, Operand::Imm(_)) => true,
@@ -111,11 +111,12 @@ impl Sizes {
     }
 }
 
-/// A prefix before REX: `lock`, or the mandatory prefix of an SSE instruction.
+/// A prefix before REX: `lock`, `rep`, or the mandatory prefix of an SSE instruction.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Prefix {
     None,
     Lock,
+    Rep,
     P66,
     F2,
     F3,
@@ -129,9 +130,37 @@ impl Prefix {
             Self::Lock => Some(0xf0),
             Self::P66 => Some(0x66),
             Self::F2 => Some(0xf2),
-            Self::F3 => Some(0xf3),
+            Self::Rep | Self::F3 => Some(0xf3),
         }
     }
+
+    /// The word written before the mnemonic, for a prefix that is an instruction's own rather
+    /// than part of its opcode.
+    #[must_use]
+    pub const fn keyword(self) -> Option<&'static str> {
+        match self {
+            Self::Lock => Some("lock"),
+            Self::Rep => Some("rep"),
+            Self::None | Self::P66 | Self::F2 | Self::F3 => None,
+        }
+    }
+}
+
+/// What a form does with an operand, or with the flags.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Access {
+    Read,
+    Write,
+    ReadWrite,
+    /// Nothing but compute its address (`lea`).
+    Address,
+}
+
+/// An operand position: what it takes, and what the form does with it.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Slot {
+    pub kind: Kind,
+    pub access: Access,
 }
 
 /// How the instruction's width is encoded.
@@ -186,7 +215,7 @@ impl Opcode {
 /// One form of an instruction.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Form {
-    pub kinds: &'static [Kind],
+    pub slots: &'static [Slot],
     pub sizes: Sizes,
     pub prefix: Prefix,
     pub opcode: Opcode,
@@ -196,56 +225,26 @@ pub struct Form {
     pub layout: Layout,
     /// The mnemonic, where it is not the instruction's (`movsxd`).
     pub name: Option<&'static str>,
-    /// The registers it reads or writes without naming them (`rax` and `rdx` of `div`).
+    /// The registers it reads without naming them (`rax` and `rdx` of `div`).
+    pub reads: &'static [Reg],
+    pub writes: &'static [Reg],
+    /// The registers it reads or writes without naming them, each once.
     pub implicit: &'static [Reg],
+    /// What it does with the flags, if anything.
+    pub flags: Option<Access>,
 }
 
 impl Form {
-    #[must_use]
-    pub const fn new(kinds: &'static [Kind], sizes: Sizes, opcode: Opcode, layout: Layout) -> Self {
-        Self {
-            kinds,
-            sizes,
-            prefix: Prefix::None,
-            opcode,
-            byte: None,
-            w: W::Size,
-            layout,
-            name: None,
-            implicit: &[],
-        }
-    }
-
-    #[must_use]
-    pub const fn byte(self, byte: u8) -> Self {
-        Self { byte: Some(byte), ..self }
-    }
-
-    #[must_use]
-    pub const fn w(self, w: W) -> Self {
-        Self { w, ..self }
-    }
-
-    #[must_use]
-    pub const fn prefix(self, prefix: Prefix) -> Self {
-        Self { prefix, ..self }
-    }
-
-    #[must_use]
-    pub const fn named(self, name: &'static str) -> Self {
-        Self { name: Some(name), ..self }
-    }
-
-    #[must_use]
-    pub const fn implicit(self, implicit: &'static [Reg]) -> Self {
-        Self { implicit, ..self }
+    /// The kinds of its operands, in order.
+    pub fn kinds(&self) -> impl Iterator<Item = Kind> {
+        self.slots.iter().map(|s| s.kind)
     }
 
     /// Whether this form takes `operands` at `size`.
     #[must_use]
     pub fn takes<S>(&self, size: Size, operands: &[Operand<S>]) -> bool {
         self.sizes.contains(size)
-            && self.kinds.len() == operands.len()
-            && self.kinds.iter().zip(operands).all(|(k, o)| k.takes(size, o))
+            && self.slots.len() == operands.len()
+            && self.kinds().zip(operands).all(|(k, o)| k.takes(size, o))
     }
 }

@@ -58,10 +58,12 @@ impl<'s> Reader<'_, 's> {
                 self.decl(*children.last()?, doc)
             }
             NodeKind::Attr => self.decl(*children.last()?, doc),
-            // A field of a `struct` literal is a member without a value of its own.
+            // A field of a `struct` literal, its value the default it declares, if any.
             NodeKind::Field => {
-                let name = self.name(self.cst.fields(n)?.one(NodeField::Pattern)?)?;
-                Some(Decl { name, doc, value: Literal::Opaque, span: self.span(n) })
+                let fields = self.cst.fields(n)?;
+                let name = self.name(fields.one(NodeField::Pattern)?)?;
+                let value = fields.one(NodeField::Value).map_or(Literal::Opaque, |v| self.value(v));
+                Some(Decl { name, doc, value, span: self.span(n) })
             }
             NodeKind::Binding | NodeKind::TypedBinding => {
                 let fields = self.cst.fields(n)?;

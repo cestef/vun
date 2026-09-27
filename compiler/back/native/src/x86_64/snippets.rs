@@ -109,16 +109,16 @@ pub(super) const STORE_SEQ_CST: Snippet<X86> =
 pub(super) const SWAP: Snippet<X86> =
     &[S::new(Op::Mov, B64, &[Out, In(1)]), S::new(Op::Xchg, OP, &[At(0), Out])];
 pub(super) const FETCH_ADD: Snippet<X86> =
-    &[S::new(Op::Mov, B64, &[Out, In(1)]), S::new(Op::LockXadd, OP, &[At(0), Out])];
+    &[S::new(Op::Mov, B64, &[Out, In(1)]), S::new(Op::Xadd, OP, &[At(0), Out])];
 pub(super) const FETCH_SUB: Snippet<X86> = &[
     S::new(Op::Mov, B64, &[Out, In(1)]),
     S::new(Op::Neg, WORD, &[Out]),
-    S::new(Op::LockXadd, OP, &[At(0), Out]),
+    S::new(Op::Xadd, OP, &[At(0), Out]),
 ];
 /// Writes `In(2)` at `In(0)` where it holds `In(1)`; gives what it held.
 pub(super) const COMPARE_EXCHANGE: Snippet<X86> = &[
     S::new(Op::Mov, B64, &[RAX, In(1)]),
-    S::new(Op::LockCmpxchg, OP, &[At(0), In(2)]),
+    S::new(Op::Cmpxchg, OP, &[At(0), In(2)]),
     S::new(Op::Mov, B64, &[Out, RAX]),
 ];
 

@@ -30,9 +30,9 @@ fn samples(kind: Kind) -> Vec<Operand<Sym>> {
     match kind {
         Kind::R | Kind::Rn(_) => regs().collect(),
         Kind::M => mems().collect(),
-        Kind::RM | Kind::RMn(_) => regs().chain(mems()).collect(),
+        Kind::Rm | Kind::Rmn(_) => regs().chain(mems()).collect(),
         Kind::X => xmms().collect(),
-        Kind::XMn(_) => xmms().chain(mems()).collect(),
+        Kind::Xmn(_) => xmms().chain(mems()).collect(),
         Kind::Cl => vec![Operand::Reg(Reg::Rcx)],
         Kind::I8 | Kind::Iz | Kind::U32 | Kind::I64 => IMMS.iter().map(|&i| Operand::Imm(i)).collect(),
         Kind::Rel => vec![Operand::Sym("f")],
@@ -41,8 +41,8 @@ fn samples(kind: Kind) -> Vec<Operand<Sym>> {
 }
 
 /// Every combination of `kinds`' samples.
-fn combinations(kinds: &[Kind]) -> Vec<Vec<Operand<Sym>>> {
-    kinds.iter().fold(vec![Vec::new()], |acc, &k| {
+fn combinations(kinds: impl Iterator<Item = Kind>) -> Vec<Vec<Operand<Sym>>> {
+    kinds.fold(vec![Vec::new()], |acc, k| {
         acc.iter()
             .flat_map(|prefix| {
                 samples(k).into_iter().map(move |o| {
@@ -63,7 +63,7 @@ fn every_form_decodes_as_one_instruction_printed_alike() {
     for &op in Op::ALL {
         for form in op.forms() {
             for size in Size::ALL.into_iter().filter(|&s| form.sizes.contains(s)) {
-                for operands in combinations(form.kinds) {
+                for operands in combinations(form.kinds()) {
                     // A combination another form of the instruction takes first is that form's.
                     if op.form(size, &operands) != Some(form) {
                         continue;
@@ -88,9 +88,12 @@ fn every_form_decodes_as_one_instruction_printed_alike() {
                     // yaxpeax-x86 writes a string instruction's implicit operands, and decodes
                     // `movd xmm, r/m32` (`66 0f 6e`, no REX.W) as `movq`: those bytes are
                     // checked by `the_shortest_form_is_chosen`.
-                    let known = op == Op::RepMovsb
+                    let known = op == Op::Movsb
                         || op == Op::Movd && size == Size::B32 && matches!(operands[0], Operand::Xmm(_));
-                    if !form.kinds.contains(&Kind::Rel) && !known && ours.to_string() != theirs.to_string() {
+                    if !form.kinds().any(|k| k == Kind::Rel)
+                        && !known
+                        && ours.to_string() != theirs.to_string()
+                    {
                         differ.push(format!("{ours}  |  {theirs}"));
                     }
                     checked += 1;

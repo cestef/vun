@@ -77,7 +77,7 @@ impl Sel<'_, '_> {
         self.asm.bind(again);
         self.asm.emit(Op::Mov, Size::B64, &[Reg::Rdx.into(), Reg::Rax.into()]);
         self.asm.emit(op, size.max(Size::B32), &[Reg::Rdx.into(), X86::CARRIER.into()]);
-        self.asm.emit(Op::LockCmpxchg, size, &[mem.into(), Reg::Rdx.into()]);
+        self.asm.emit(Op::Cmpxchg, size, &[mem.into(), Reg::Rdx.into()]);
         self.asm.emit(Op::J, Size::B64, &[Cc::Ne.into(), again.into()]);
         if let Some(out) = out {
             self.def_at(out, Reg::Rax);
@@ -101,6 +101,6 @@ impl Sel<'_, '_> {
             Size::B64,
             &[Reg::Rcx.into(), i64::try_from(bytes).expect("copies fit memory").into()],
         );
-        self.asm.emit(Op::RepMovsb, Size::B8, &[]);
+        self.asm.emit(Op::Movsb, Size::B8, &[]);
     }
 }

@@ -1,10 +1,12 @@
-//! The x86-64 assembler. Every instruction the toolchain emits is declared once in `table`, as
-//! its forms: the encoder picks the first form an instruction's operands fit, the printer writes
+//! The x86-64 assembler. Every instruction is declared once, in `lang.arch.x86_64`, as its forms,
+//! from which `generated` is made: the encoder picks the first form an instruction's operands fit, the printer writes
 //! the same form's text, and callers ask which forms fit before choosing operands (an immediate,
 //! memory, or a register), as TPDE's snippet encoders do. Code goes into a `vun_asm::Buffer`
 //! through [`Emit`].
 
 mod encode;
+#[rustfmt::skip]
+mod generated;
 mod inst;
 mod operand;
 mod reg;
@@ -17,7 +19,7 @@ pub use encode::Emit;
 pub use inst::Inst;
 pub use operand::{Base, Mem, Operand};
 pub use reg::{Cc, Reg, Size, Xmm};
-pub use table::{Form, Kind, Layout, Op, Prefix, W};
+pub use table::{Access, Form, Kind, Layout, Op, Prefix, Slot, W};
 
 /// The instruction set, as `vun-asm` knows it.
 #[derive(Clone, Copy, Debug)]

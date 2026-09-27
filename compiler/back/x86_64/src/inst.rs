@@ -45,9 +45,12 @@ impl<S: Copy> Inst<S> {
 impl<S: Copy + fmt::Display> fmt::Display for Inst<S> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let Some(form) = self.form() else { return write!(f, "{:?} (no form)", self.op) };
+        if let Some(keyword) = form.prefix.keyword() {
+            write!(f, "{keyword} ")?;
+        }
         f.write_str(form.name.unwrap_or(self.op.mnemonic()))?;
         let mut first = true;
-        for (&kind, operand) in form.kinds.iter().zip(self.operands()) {
+        for (kind, operand) in form.kinds().zip(self.operands()) {
             if let Operand::Cond(cc) = operand {
                 f.write_str(cc.suffix())?;
                 continue;

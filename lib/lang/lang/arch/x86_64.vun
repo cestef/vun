@@ -1,0 +1,141 @@
+//! x86-64 (spec 07, section 6): its registers, and each instruction with its forms as the
+//! toolchain's assembler encodes them (Intel SDM volume 2), with what each form reads and writes.
+//! The instructions are declared in `control`, `int` and `sse`; `vun-asm-x86_64`'s tables are
+//! generated from these declarations, so the language, the assembler and its listings share one
+//! table.
+
+/// The width of an operation or an operand.
+Size := enum { b8, b16, b32, b64 };
+
+/// A general register, by its encoding.
+Reg := enum { rax, rcx, rdx, rbx, rsp, rbp, rsi, rdi, r8, r9, r10, r11, r12, r13, r14, r15 };
+
+/// A general register's name at each width, as Intel syntax writes it.
+Names := struct { b8: &[u8], b16: &[u8], b32: &[u8], b64: &[u8] };
+
+/// The names of each general register.
+names := .{
+    .rax = Names{ .b8 = "al", .b16 = "ax", .b32 = "eax", .b64 = "rax" },
+    .rcx = Names{ .b8 = "cl", .b16 = "cx", .b32 = "ecx", .b64 = "rcx" },
+    .rdx = Names{ .b8 = "dl", .b16 = "dx", .b32 = "edx", .b64 = "rdx" },
+    .rbx = Names{ .b8 = "bl", .b16 = "bx", .b32 = "ebx", .b64 = "rbx" },
+    .rsp = Names{ .b8 = "spl", .b16 = "sp", .b32 = "esp", .b64 = "rsp" },
+    .rbp = Names{ .b8 = "bpl", .b16 = "bp", .b32 = "ebp", .b64 = "rbp" },
+    .rsi = Names{ .b8 = "sil", .b16 = "si", .b32 = "esi", .b64 = "rsi" },
+    .rdi = Names{ .b8 = "dil", .b16 = "di", .b32 = "edi", .b64 = "rdi" },
+    .r8 = Names{ .b8 = "r8b", .b16 = "r8w", .b32 = "r8d", .b64 = "r8" },
+    .r9 = Names{ .b8 = "r9b", .b16 = "r9w", .b32 = "r9d", .b64 = "r9" },
+    .r10 = Names{ .b8 = "r10b", .b16 = "r10w", .b32 = "r10d", .b64 = "r10" },
+    .r11 = Names{ .b8 = "r11b", .b16 = "r11w", .b32 = "r11d", .b64 = "r11" },
+    .r12 = Names{ .b8 = "r12b", .b16 = "r12w", .b32 = "r12d", .b64 = "r12" },
+    .r13 = Names{ .b8 = "r13b", .b16 = "r13w", .b32 = "r13d", .b64 = "r13" },
+    .r14 = Names{ .b8 = "r14b", .b16 = "r14w", .b32 = "r14d", .b64 = "r14" },
+    .r15 = Names{ .b8 = "r15b", .b16 = "r15w", .b32 = "r15d", .b64 = "r15" },
+};
+
+/// A condition, by its encoding: what the flags say after a comparison (`b`, below, for
+/// unsigned less than; `l`, less, for signed; `p`, parity, where either operand of `ucomis` is a
+/// NaN).
+Cond := enum { o, no, b, ae, e, ne, be, a, s, ns, p, np, l, ge, le, g };
+
+/// What an operand position takes. A register or memory operand without a width of its own has
+/// the instruction's.
+Kind := enum {
+    /// A general register.
+    r,
+    /// A general register at this width, whatever the instruction's.
+    rn(Size),
+    /// Memory.
+    m,
+    /// A general register or memory.
+    rm,
+    rmn(Size),
+    /// An SSE register.
+    x,
+    /// An SSE register, or memory of this width.
+    xmn(Size),
+    /// `cl`, the count of a shift.
+    cl,
+    /// 8 bits, sign-extended to the instruction's width.
+    i8,
+    /// The instruction's width up to 32 bits, sign-extended to 64.
+    iz,
+    /// 32 bits, zero-extended to 64.
+    u32,
+    i64,
+    /// A label or a symbol, 32 bits from the end of the instruction.
+    rel,
+    /// A condition, which the mnemonic's suffix names (`je`).
+    cond,
+};
+
+/// What a form does with an operand, or with the flags.
+Access := enum {
+    read,
+    write,
+    read_write,
+    /// Nothing but compute its address (`lea`).
+    address,
+};
+
+Operand := struct { kind: Kind, access: Access };
+
+/// A prefix before REX: `lock`, `rep`, or the mandatory prefix of an SSE instruction.
+Prefix := enum { none, lock, rep, p66, f2, f3 };
+
+/// How the instruction's width is encoded.
+W := enum {
+    /// `66` at 16 bits, REX.W at 64: integer operations.
+    size,
+    /// REX.W at 64 only: SSE instructions over a general register of that width.
+    rex,
+    always,
+    never,
+};
+
+/// A byte of the forms of a family: its own, or its member's opcode with these bits set, or its
+/// member's opcode extension.
+Byte := enum { is(u8), opcode(u8), digit };
+
+/// `ModRM` with a register in `reg` and a register or memory in `rm`, by operand position.
+RegRm := struct { reg: u8, rm: u8 };
+/// `ModRM` with an opcode extension in `reg`.
+Digit := ($B: type) -> type { struct { digit: B, rm: u8 } };
+
+/// Where the operands go in the encoding, by position.
+Layout := ($B: type) -> type { enum {
+    reg_rm(RegRm),
+    digit(Digit(B)),
+    /// The register at this position added to the opcode's last byte.
+    plus_reg(u8),
+    /// No `ModRM`.
+    bare,
+} };
+
+/// One form of an instruction, its bytes of type `B`: the operands it takes and the widths it is
+/// defined at, its encoding, and what it reads and writes beyond its operands.
+Form := ($B: type) -> type { struct {
+    operands: &[Operand],
+    sizes: &[Size],
+    /// Up to three bytes, the first `0F` for a two-byte opcode.
+    opcode: &[B],
+    layout: Layout(B),
+    /// The opcode's last byte at 8 bits, where it differs.
+    byte: ?B = .none,
+    prefix: Prefix = .none,
+    w: W = .size,
+    /// The mnemonic, where it is not the instruction's (`movsxd`).
+    name: ?&[u8] = .none,
+    reads: &[Reg] = &[],
+    writes: &[Reg] = &[],
+    flags: ?Access = .none,
+} };
+
+/// An instruction, named as its declaration is (`\and` for `and`).
+Instruction := struct { forms: &[Form(u8)] };
+
+/// An instruction of a family, and the bytes it fills the family's forms with.
+Member := struct { name: lang.meta.Name, opcode: u8 = 0, digit: u8 = 0 };
+
+/// Instructions sharing their forms but for a few bytes.
+Family := struct { members: &[Member], forms: &[Form(Byte)] };
