@@ -14,7 +14,7 @@ mod listing;
 mod tests;
 
 pub use buffer::{Buffer, Code, Label, Reloc, Unpatched};
-pub use inline::{AsmOperand, Blocks, Place};
+pub use inline::{AsmOperand, Blocks, Place, Use};
 pub use listing::{Line, Listing};
 pub use vun_object::RelocKind;
 

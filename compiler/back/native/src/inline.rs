@@ -15,7 +15,6 @@ use crate::width::{Width, size_of};
 
 pub(crate) type Inst = vun_inline::Inst<Value, Output, Address>;
 pub(crate) type Mem = vun_inline::Mem<Value, Output, Address>;
-type Binding = Bound<Value, Output>;
 
 /// What a native architecture adds to its instruction set's facts about blocks (`Blocks`): how
 /// it emits an instruction, and loads and stores an output.
@@ -73,27 +72,8 @@ impl<T: Blocks> Place<T, Address> for Placed<'_, T> {
     }
 }
 
-/// A binding of a block, with its instruction and the kind of the position it is at: `None`
-/// for an address's base.
-pub(crate) struct Use<'a, A: Inline> {
-    inst: &'a Inst,
-    kind: Option<Kind<A>>,
-    bound: &'a Binding,
-}
-
-impl<A: Inline> Use<'_, A> {
-    fn fixed(&self) -> Result<Option<A::Reg>, AsmOperand> {
-        let named =
-            self.bound.reg().map(|r| A::Table::general(r).ok_or(AsmOperand::Unallocated)).transpose()?;
-        A::Table::fixed(self.kind, named)
-    }
-}
-
 /// A block of inline assembly, as an architecture encodes it.
 pub(crate) trait Inlined {
-    /// Its bindings, in the order `Block::bindings` gives them.
-    fn uses<A: Inline>(&self) -> impl Iterator<Item = Use<'_, A>>;
-
     /// Whether every memory operand is one `A` addresses, and every binding has a register.
     ///
     /// # Errors
@@ -115,19 +95,6 @@ pub(crate) trait Inlined {
 }
 
 impl Inlined for Asm {
-    fn uses<A: Inline>(&self) -> impl Iterator<Item = Use<'_, A>> {
-        self.insts.iter().flat_map(|inst| {
-            A::Table::kinds(inst).zip(&inst.operands).flat_map(move |(kind, operand)| {
-                let (kind, bounds) = match operand {
-                    vun_inline::Operand::Bound(b) => (Some(kind), [Some(b), None]),
-                    vun_inline::Operand::Mem(mem) => (None, mem.bindings()),
-                    _ => (None, [None, None]),
-                };
-                bounds.into_iter().flatten().map(move |bound| Use { inst, kind, bound })
-            })
-        })
-    }
-
     fn check<A: Inline>(&self) -> Result<(), Lack> {
         for inst in &self.insts {
             let lack = |o| Missing::AsmOperand(o).at(inst.origin);
@@ -137,26 +104,16 @@ impl Inlined for Asm {
                 }
             }
         }
-        for used in self.uses::<A>() {
+        for used in A::Table::uses(self) {
             used.fixed().map_err(|o| Missing::AsmOperand(o).at(used.inst.origin))?;
         }
         Ok(())
     }
 
     fn needs<A: Inline>(&self, cx: &Cx<'_, A>, needs: &mut Needs) {
-        let mut reserved = RegSet::EMPTY;
+        let mut reserved = A::Table::named(self).fold(RegSet::EMPTY, |set, r| set.with(A::preg(r)));
         let mut inputs = RegSet::EMPTY;
-        for inst in &self.insts {
-            let named = inst.operands.iter().filter_map(|operand| match operand {
-                vun_inline::Operand::Reg(r)
-                | vun_inline::Operand::Mem(vun_inline::Mem {
-                    base: Some(vun_inline::Base::Reg(r)), ..
-                }) => A::Table::general(*r),
-                _ => None,
-            });
-            reserved = A::Table::implicit(inst).chain(named).fold(reserved, |set, r| set.with(A::preg(r)));
-        }
-        for used in self.uses::<A>() {
+        for used in A::Table::uses(self) {
             let fixed = used.fixed().ok().flatten().map(A::preg);
             match (used.bound, fixed) {
                 (Bound::In { value, .. }, _) if cx.recomputed(*value).is_some() => match fixed {
@@ -187,7 +144,7 @@ impl Inlined for Asm {
     fn emit<A: Inline>(&self, cx: &mut Cx<'_, A>) -> Result<(), Lack> {
         let mut regs = Vec::new();
         let mut outputs = Vec::new();
-        for used in self.uses::<A>() {
+        for used in A::Table::uses(self) {
             let r = match used.bound {
                 Bound::In { value, .. } => match used.fixed() {
                     Ok(Some(r)) if cx.recomputed(*value).is_some() => {
@@ -229,22 +186,6 @@ impl Inlined for Asm {
             }
         }
         Ok(())
-    }
-}
-
-/// A memory operand of a block.
-trait Addressed {
-    /// The bindings of its base and its index, in that order.
-    fn bindings(&self) -> [Option<&Binding>; 2];
-}
-
-impl Addressed for Mem {
-    fn bindings(&self) -> [Option<&Binding>; 2] {
-        let index = self.index.as_ref().map(|(index, _)| index);
-        [self.base.as_ref(), index].map(|r| match r? {
-            vun_inline::Base::Bound(b) => Some(b),
-            vun_inline::Base::Reg(_) => None,
-        })
     }
 }
 
