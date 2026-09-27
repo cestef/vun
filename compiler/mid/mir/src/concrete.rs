@@ -16,7 +16,7 @@ use vun_sema::primitives::lower::Lower;
 use vun_sema::ty::Value;
 use vun_sema::typeck::Typed;
 
-use crate::{Aggregate, Body, Local, Mir, Operand, Rvalue, Unbuilt};
+use crate::{Aggregate, Body, Local, Mir, Operand, Rvalue, Unbuilt, Why};
 
 /// Why an instantiation's body is not ready for code generation.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
@@ -38,7 +38,10 @@ impl From<Unbuilt> for Unready {
 impl std::fmt::Display for Unready {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Unbuilt(_) => f.write_str("a form MIR does not lower yet"),
+            Self::Unbuilt(Unbuilt { why: Why::Form, .. }) => f.write_str("a form MIR does not lower yet"),
+            Self::Unbuilt(Unbuilt { why: Why::Unevaluated(why), .. }) => {
+                write!(f, "a compile-time value MIR reads has none: {}", why.why())
+            }
             Self::Unevaluated { why, .. } => write!(f, "a compile-time value has none: {}", why.why()),
             Self::Untyped { .. } => f.write_str("a local has no type"),
         }
@@ -77,6 +80,7 @@ impl Query for Concrete {
         body.evaluate(&env)?;
         body.propagate(&env, &i.args);
         body.typed()?;
+        body.verified();
         Ok(Arc::new(body))
     }
 

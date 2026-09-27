@@ -21,7 +21,7 @@ impl Builder<'_, '_, '_> {
         value: ExprId,
         origin: OriginId,
     ) -> Result<(), Unbuilt> {
-        let unbuilt = Unbuilt::at(origin);
+        let unbuilt = move || Unbuilt::at(origin);
         // `_ = e` evaluates `e` and discards it, into a temporary nothing consumes: a linear
         // value discarded is a leak the place checks find (spec 05, section 2).
         if op == TokenKind::Eq && matches!(self.env.parsed.hir.exprs[place].kind, ExprKind::Hole) {
@@ -37,8 +37,8 @@ impl Builder<'_, '_, '_> {
         };
         // `x op= y` is `x = (x op y)`, an integer narrowed back to the type of `x` (spec 04,
         // rule 9); a result of that type already, such as a float's, is written as it is.
-        let typed = self.typed().ok_or(unbuilt)?;
-        let ty = typed.types.get(&place).ok_or(unbuilt)?.ty;
+        let typed = self.typed().ok_or_else(unbuilt)?;
+        let ty = typed.types.get(&place).ok_or_else(unbuilt)?.ty;
         let result = typed.operators.get(&Operation::Assign(place)).map(|o| o.result);
         // The target is evaluated once: its place is both read and written.
         let receiver = Side::Matched(target.clone(), Some(ty));

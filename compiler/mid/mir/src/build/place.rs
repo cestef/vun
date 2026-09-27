@@ -180,7 +180,6 @@ impl Builder<'_, '_, '_> {
     /// constant, or what a `mut` top-level binding's storage holds.
     pub(super) fn named(&mut self, expr: ExprId, origin: OriginId) -> Result<Operand, Unbuilt> {
         let hir = &self.env.parsed.hir;
-        let unbuilt = Unbuilt::at(origin);
         match self.env.parsed.resolution.names[expr] {
             // A read of a local is a statement where it is written, which checks point at; a
             // read of a linear value moves it, so the temporary has the value's type.
@@ -199,7 +198,7 @@ impl Builder<'_, '_, '_> {
             _ => match self.env().eval(expr) {
                 Ok(value) => Ok(Operand::Const(value)),
                 Err(Unevaluated::Runtime) => self.read(expr),
-                Err(_) => Err(unbuilt),
+                Err(why) => Err(Unbuilt::unevaluated(origin, why)),
             },
         }
     }

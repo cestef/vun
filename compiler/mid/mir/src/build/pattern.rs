@@ -74,7 +74,7 @@ impl Builder<'_, '_, '_> {
     pub(super) fn test(&mut self, pat: PatId, matched: &Matched, fail: BlockId) -> Result<(), Unbuilt> {
         let hir = &self.env.parsed.hir;
         let origin = hir.pats[pat].origin;
-        let unbuilt = Unbuilt::at(origin);
+        let unbuilt = move || Unbuilt::at(origin);
         match &hir.pats[pat].kind {
             PatKind::Hole | PatKind::Rest(None) => Ok(()),
             PatKind::Bind(binder) => {
@@ -91,7 +91,7 @@ impl Builder<'_, '_, '_> {
                     _ => None,
                 });
                 for (i, item) in items.iter().enumerate() {
-                    let Entry::One(item) = item else { return Err(unbuilt) };
+                    let Entry::One(item) = item else { return Err(unbuilt()) };
                     // A rest pattern last matches the remaining items.
                     if let PatKind::Rest(None) = hir.pats[*item].kind
                         && i + 1 == items.len()
@@ -113,17 +113,17 @@ impl Builder<'_, '_, '_> {
                     _ => Vec::new(),
                 };
                 for (i, arg) in args.iter().flatten().enumerate() {
-                    let Entry::One(arg) = arg else { return Err(unbuilt) };
+                    let Entry::One(arg) = arg else { return Err(unbuilt()) };
                     let ty = payload.get(i).copied().flatten();
                     self.test(*arg, &matched.part(Projection::Payload { variant: *name, at: i }, ty), fail)?;
                 }
                 Ok(())
             }
             PatKind::Struct { ty, fields } => {
-                let ty = ty.and_then(|t| self.env().ty(t).ok()).or(matched.ty).ok_or(unbuilt)?;
-                let members = self.env.cx.get::<Members>(&ty).ok_or(unbuilt)?;
+                let ty = ty.and_then(|t| self.env().ty(t).ok()).or(matched.ty).ok_or_else(unbuilt)?;
+                let members = self.env.cx.get::<Members>(&ty).ok_or_else(unbuilt)?;
                 for (i, field) in fields.iter().enumerate() {
-                    let Entry::One((name, field)) = field else { return Err(unbuilt) };
+                    let Entry::One((name, field)) = field else { return Err(unbuilt()) };
                     if let PatKind::Rest(None) = hir.pats[*field].kind {
                         continue;
                     }
@@ -132,7 +132,7 @@ impl Builder<'_, '_, '_> {
                         None => members.fields.get(i),
                         Some(_) => None,
                     };
-                    let def = def.ok_or(unbuilt)?;
+                    let def = def.ok_or_else(unbuilt)?;
                     let field_matched =
                         matched.part(Projection::Field(def.name), def.ty.as_ref().ok().copied());
                     self.test(*field, &field_matched, fail)?;
@@ -159,7 +159,7 @@ impl Builder<'_, '_, '_> {
                 Ok(())
             }
             PatKind::Variant { .. } | PatKind::Rest(Some(_)) | PatKind::Computed(_) | PatKind::Error => {
-                Err(unbuilt)
+                Err(unbuilt())
             }
         }
     }

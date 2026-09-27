@@ -1,6 +1,6 @@
 //! The verifier of MIR: every local, place and jump target a body names exists, parameters are
-//! distinct locals apart from the result, and every entity has an origin in the table (spec 13,
-//! section 4).
+//! distinct locals apart from the result, no jump enters the first block, a frame ends only where
+//! the body can suspend, and every entity has an origin in the table (spec 13, section 4).
 
 use std::collections::HashSet;
 use std::fmt;
@@ -34,6 +34,12 @@ pub enum Malformed {
     NoOrigin(Entity),
     /// A body with no block to start in.
     Empty,
+    /// A jump to the first block, which only a call enters.
+    EntryTargeted(usize),
+    /// A `yield` resuming where ending the frame goes on.
+    YieldEdges(usize),
+    /// A frame ending in a body that never suspends.
+    Unsuspended(usize),
 }
 
 impl fmt::Display for Entity {
@@ -57,6 +63,9 @@ impl fmt::Display for Malformed {
             }
             Self::NoOrigin(at) => write!(f, "{at} has no origin in the table"),
             Self::Empty => f.write_str("the body has no block"),
+            Self::EntryTargeted(block) => write!(f, "bb{block} jumps to the first block"),
+            Self::YieldEdges(block) => write!(f, "the yield of bb{block} resumes where it is ended"),
+            Self::Unsuspended(block) => write!(f, "bb{block} ends a frame the body never suspends"),
         }
     }
 }
@@ -69,12 +78,40 @@ impl Body {
     /// # Errors
     /// Returns the first violation found.
     pub fn verify(&self, origins: &OriginTable) -> Result<(), Malformed> {
+        self.check(Some(origins))
+    }
+
+    /// Checks every invariant but that origins are in the table: what each pass leaves, in debug
+    /// builds (spec 13, section 4).
+    ///
+    /// # Errors
+    /// Returns the first violation found.
+    pub fn verify_structure(&self) -> Result<(), Malformed> {
+        self.check(None)
+    }
+
+    /// Checks the body after the pass calling this built or rewrote it, in debug builds.
+    ///
+    /// # Panics
+    /// Panics, naming the caller, if the pass left it malformed: a bug of the pass.
+    #[track_caller]
+    pub(crate) fn verified(&self) {
+        if cfg!(debug_assertions)
+            && let Err(malformed) = self.verify_structure()
+        {
+            panic!("a pass left malformed MIR: {malformed}");
+        }
+    }
+
+    fn check(&self, origins: Option<&OriginTable>) -> Result<(), Malformed> {
         if self.blocks.is_empty() {
             return Err(Malformed::Empty);
         }
         let has = |at: Entity, origin: OriginId| {
-            origins.contains(origin).then_some(()).ok_or(Malformed::NoOrigin(at))
+            let known = origins.is_none_or(|origins| origins.contains(origin));
+            known.then_some(()).ok_or(Malformed::NoOrigin(at))
         };
+        let suspends = self.blocks.iter().any(|(_, b)| matches!(b.term.kind, TerminatorKind::Yield { .. }));
         has(Entity::Body, self.origin)?;
         for (local, decl) in self.locals.iter() {
             has(Entity::Local(local.index()), decl.origin)?;
@@ -95,7 +132,14 @@ impl Body {
             }
             let at = Entity::Terminator(block.index());
             has(at, b.term.origin)?;
+            if b.term.kind.successors().contains(&BlockId::new(0)) {
+                return Err(Malformed::EntryTargeted(block.index()));
+            }
             match &b.term.kind {
+                TerminatorKind::Ended if !suspends => return Err(Malformed::Unsuspended(block.index())),
+                TerminatorKind::Yield { resume, cancel, .. } if resume == cancel => {
+                    return Err(Malformed::YieldEdges(block.index()));
+                }
                 TerminatorKind::Return | TerminatorKind::Ended | TerminatorKind::Unreachable => {}
                 TerminatorKind::Goto(to) => self.block(at, *to)?,
                 TerminatorKind::Yield { value, resume, cancel } => {

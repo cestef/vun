@@ -28,10 +28,15 @@ impl Builder<'_, '_, '_> {
         args: Vec<Side>,
         origin: OriginId,
     ) -> Result<Operand, Unbuilt> {
-        let unbuilt = Unbuilt::at(origin);
-        let operator = self.typed().and_then(|t| t.operators.get(&at).cloned()).ok_or(unbuilt)?;
-        let f =
-            self.env.cx.get::<MemberValue>(&operator.method).ok().and_then(Callable::of).ok_or(unbuilt)?;
+        let unbuilt = move || Unbuilt::at(origin);
+        let operator = self.typed().and_then(|t| t.operators.get(&at).cloned()).ok_or_else(unbuilt)?;
+        let f = self
+            .env
+            .cx
+            .get::<MemberValue>(&operator.method)
+            .ok()
+            .and_then(Callable::of)
+            .ok_or_else(unbuilt)?;
         let modes = f.modes(self.env()).unwrap_or_default();
         let mut values: Vec<Operand> = Vec::new();
         let fill = |values: &mut Vec<Operand>| {

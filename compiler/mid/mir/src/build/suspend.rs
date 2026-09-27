@@ -17,10 +17,10 @@ use crate::{Local, Operand, Role, Rvalue, TerminatorKind};
 impl Builder<'_, '_, '_> {
     /// `yield value`, or `yield ..frame`.
     pub(super) fn yielded(&mut self, value: ExprId, origin: OriginId) -> Result<Operand, Unbuilt> {
-        let unbuilt = Unbuilt::at(origin);
+        let unbuilt = move || Unbuilt::at(origin);
         if let ExprKind::Prefix { op: TokenKind::DotDot, operand, .. } = self.env.parsed.hir.exprs[value].kind
         {
-            let step = self.type_of(operand).and_then(|t| self.env().resumed(t)).ok_or(unbuilt)?;
+            let step = self.type_of(operand).and_then(|t| self.env().resumed(t)).ok_or_else(unbuilt)?;
             let value = self.operand(operand)?;
             let frame = self.temp_local(Rvalue::Use(value), origin);
             // Ending this frame while it drives the other ends the other too.
@@ -56,8 +56,8 @@ impl Builder<'_, '_, '_> {
         origin: OriginId,
         mut each: impl FnMut(&mut Self, Place) -> Result<(), Unbuilt>,
     ) -> Result<Operand, Unbuilt> {
-        let unbuilt = Unbuilt::at(origin);
-        let row = ITERATION.first().ok_or(unbuilt)?;
+        let unbuilt = move || Unbuilt::at(origin);
+        let row = ITERATION.first().ok_or_else(unbuilt)?;
         let head = self.fresh(origin);
         self.terminate(TerminatorKind::Goto(head), origin);
         self.current = head;

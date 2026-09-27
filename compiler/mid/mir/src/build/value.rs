@@ -15,7 +15,7 @@ impl Builder<'_, '_, '_> {
     pub(super) fn value(&mut self, expr: ExprId) -> Result<Operand, Unbuilt> {
         let hir = &self.env.parsed.hir;
         let origin = hir.exprs[expr].origin;
-        let unbuilt = Unbuilt::at(origin);
+        let unbuilt = move || Unbuilt::at(origin);
         match &hir.exprs[expr].kind {
             ExprKind::Lit(Lit::Int(n)) => Ok(Operand::Const(Value::Int(Integer::from(n.clone())))),
             ExprKind::Name(_) => self.named(expr, origin),
@@ -59,7 +59,7 @@ impl Builder<'_, '_, '_> {
             ExprKind::For { head, body } => self.repeat(None, head, *body, origin),
             ExprKind::Labeled { label, body } => match &hir.exprs[*body].kind {
                 ExprKind::For { head, body } => self.repeat(Some(*label), head, *body, origin),
-                _ => Err(unbuilt),
+                _ => Err(unbuilt()),
             },
             ExprKind::Break { label, value } => self.leave(*label, *value, origin),
             ExprKind::Continue { label } => self.again(*label, origin),
@@ -76,7 +76,7 @@ impl Builder<'_, '_, '_> {
                 Ok(self.temp(Rvalue::Not { operand }, origin))
             }
             ExprKind::Call { callee, .. } if matches!(hir.exprs[*callee].kind, ExprKind::DotName(_)) => {
-                self.aggregate(expr).unwrap_or(Err(unbuilt))
+                self.aggregate(expr).unwrap_or(Err(unbuilt()))
             }
             ExprKind::Call { callee, args } => self.call(expr, *callee, args, origin),
             ExprKind::Struct(_) | ExprKind::Enum { .. } | ExprKind::Fn { .. } => {
@@ -89,7 +89,7 @@ impl Builder<'_, '_, '_> {
                 None => match self.env().eval(expr) {
                     Ok(value) => Ok(Operand::Const(value)),
                     Err(Unevaluated::Trapped(_)) => Ok(self.temp(self.comptime(expr, None), origin)),
-                    Err(_) => Err(unbuilt),
+                    Err(_) => Err(unbuilt()),
                 },
             },
         }

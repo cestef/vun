@@ -102,11 +102,11 @@ impl Builder<'_, '_, '_> {
     /// The iterator `for p in e` drives, in a new local, and the type resuming it gives: made
     /// by the `iter` of the witness the typer found.
     fn iterator(&mut self, iter: ExprId, origin: OriginId) -> Result<(Local, Ty), Unbuilt> {
-        let unbuilt = Unbuilt::at(origin);
-        let function = ITERATION.first().ok_or(unbuilt)?.function;
-        let iteration = *self.typed().ok_or(unbuilt)?.iterations.get(&iter).ok_or(unbuilt)?;
+        let unbuilt = move || Unbuilt::at(origin);
+        let function = ITERATION.first().ok_or_else(unbuilt)?.function;
+        let iteration = *self.typed().ok_or_else(unbuilt)?.iterations.get(&iter).ok_or_else(unbuilt)?;
         let make = self.env.cx.get::<MemberValue>(&(iteration.witness, function.symbol()));
-        let make = make.map_err(|_| unbuilt)?;
+        let make = make.map_err(|_| unbuilt())?;
         let value = self.operand(iter)?;
         let call = Rvalue::Call { callee: Operand::Const(make), args: vec![value] };
         Ok((self.temp_local(call, origin), iteration.step))

@@ -90,7 +90,7 @@ impl Session {
             let unready = program.unready.iter().find(|(i, _)| i.f.literal == f).map(|(_, u)| u.clone());
             // A literal only compile-time code calls is covered by the bodies built for it.
             let at_compile_time = ran.iter().filter(|(i, _)| i.f.literal == f).map(|(_, built)| built);
-            let unbuilt = at_compile_time.clone().find_map(|built| built.as_ref().err().copied());
+            let unbuilt = at_compile_time.clone().find_map(|built| built.as_ref().err().cloned());
             let kind = match (unready, unbuilt) {
                 (_, Some(unbuilt)) if instantiations.is_empty() => {
                     let form = self.form_at(&key, unbuilt.at);

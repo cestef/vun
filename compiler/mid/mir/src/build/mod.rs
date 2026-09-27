@@ -30,7 +30,7 @@ use vun_index::{Idx, IndexVec};
 use vun_intern::Symbol;
 use vun_origin::{OriginId, OriginTable};
 use vun_query::{Cx, Cycle, Query};
-use vun_sema::env::Env;
+use vun_sema::env::{Env, Unevaluated};
 use vun_sema::eval::{Instantiation, Staging};
 use vun_sema::ty::Ty;
 use vun_sema::typeck::{Step, Typed, TypedBody};
@@ -43,11 +43,21 @@ use crate::{
 };
 
 /// A form MIR does not lower yet, by where it is written.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encode, Decode)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct Unbuilt {
     pub at: OriginId,
     /// The check of the builder that stopped, which `vun debug mir` names.
     pub by: Check,
+    pub why: Why,
+}
+
+/// Why the builder stopped.
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
+pub enum Why {
+    /// A form it does not lower yet.
+    Form,
+    /// A compile-time value the body reads has none.
+    Unevaluated(Unevaluated),
 }
 
 /// Where in the builder a check is, as `file:line:column`: the caller of [`Unbuilt::at`].
@@ -68,9 +78,21 @@ impl Unbuilt {
     #[must_use]
     #[track_caller]
     pub fn at(at: OriginId) -> Self {
+        Self::because(at, Why::Form)
+    }
+
+    /// A compile-time value at `at` with none, for the reason `why`.
+    #[must_use]
+    #[track_caller]
+    pub fn unevaluated(at: OriginId, why: Unevaluated) -> Self {
+        Self::because(at, Why::Unevaluated(why))
+    }
+
+    #[track_caller]
+    fn because(at: OriginId, why: Why) -> Self {
         let caller = Location::caller();
         let by = Check { file: Symbol::intern(caller.file()), line: caller.line(), column: caller.column() };
-        Self { at, by }
+        Self { at, by, why }
     }
 }
 
@@ -93,6 +115,7 @@ impl Query for Mir {
         let built = Builder::lower(&env, i);
         match &built {
             Ok(body) => {
+                body.verified();
                 vun_trace::tracing::debug!(blocks = body.blocks.len(), locals = body.locals.len(), "built");
             }
             Err(unbuilt) => {

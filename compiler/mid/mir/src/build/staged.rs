@@ -42,13 +42,13 @@ impl Builder<'_, '_, '_> {
                 self.stmts(if holds.map_err(|_| Unbuilt::at(*origin))? { then } else { otherwise })
             }
             Staged::For { pat, iter, body, origin } => {
-                let unbuilt = Unbuilt::at(*origin);
-                let items = self.env().eval(*iter).ok().and_then(Value::items).ok_or(unbuilt)?;
+                let unbuilt = move || Unbuilt::at(*origin);
+                let items = self.env().eval(*iter).ok().and_then(Value::items).ok_or_else(unbuilt)?;
                 // `_` binds nothing: the body is repeated as written.
                 let binder = match hir.pats[*pat].kind {
                     PatKind::Bind(binder) => Some(Node { id: binder, origin: hir.binders[binder].origin }),
                     PatKind::Hole => None,
-                    _ => return Err(unbuilt),
+                    _ => return Err(unbuilt()),
                 };
                 for (index, value) in items.into_iter().enumerate() {
                     let staged: Vec<Staging> =

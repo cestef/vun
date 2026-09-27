@@ -17,13 +17,13 @@ impl Builder<'_, '_, '_> {
     pub(super) fn aggregate(&mut self, expr: ExprId) -> Option<Result<Operand, Unbuilt>> {
         let hir = &self.env.parsed.hir;
         let origin = hir.exprs[expr].origin;
-        let unbuilt = Unbuilt::at(origin);
+        let unbuilt = move || Unbuilt::at(origin);
         Some(match &hir.exprs[expr].kind {
             ExprKind::Tuple(items) => self.parts(items, Aggregate::Tuple, origin),
             ExprKind::Array(items) => self.parts(items, Aggregate::Array, origin),
             ExprKind::Repeat { value, count } => {
                 let (value, count) = (*value, *count);
-                self.env().eval(count).map_err(|_| unbuilt).and_then(|count| {
+                self.env().eval(count).map_err(|why| Unbuilt::unevaluated(origin, why)).and_then(|count| {
                     let operand = self.operand(value)?;
                     Ok(self.temp(Rvalue::Repeat { operand, count }, origin))
                 })
@@ -33,16 +33,18 @@ impl Builder<'_, '_, '_> {
                     Some(ty) => self.env().ty(*ty).ok(),
                     None => self.type_of(expr),
                 };
-                ty.ok_or(unbuilt).and_then(|ty| self.record(ty, fields, origin))
+                ty.ok_or_else(unbuilt).and_then(|ty| self.record(ty, fields, origin))
             }
             ExprKind::Call { callee, args } => {
                 let ExprKind::DotName(Name::Plain(name)) = hir.exprs[*callee].kind else { return None };
-                let ty = self.type_of(expr).ok_or(unbuilt);
+                let ty = self.type_of(expr).ok_or_else(unbuilt);
                 ty.and_then(|ty| self.variant(ty, name, args, origin))
             }
             ExprKind::DotName(Name::Plain(_)) => {
-                let ty = self.type_of(expr).ok_or(unbuilt);
-                ty.and_then(|ty| self.env().eval_as(expr, Some(ty)).map(Operand::Const).map_err(|_| unbuilt))
+                let ty = self.type_of(expr).ok_or_else(unbuilt);
+                ty.and_then(|ty| {
+                    self.env().eval_as(expr, Some(ty)).map(Operand::Const).map_err(|_| unbuilt())
+                })
             }
             _ => return None,
         })
@@ -69,12 +71,12 @@ impl Builder<'_, '_, '_> {
     /// A value of the struct type `ty`: the fields written, in the order written, then the whole
     /// in declaration order, a missing field from its default.
     fn record(&mut self, ty: Ty, fields: &List<Arg>, origin: OriginId) -> Result<Operand, Unbuilt> {
-        let unbuilt = Unbuilt::at(origin);
+        let unbuilt = move || Unbuilt::at(origin);
         // A structural literal: a tuple of its items, or a record of its fields by name.
         if let TyKind::Tuple(_) | TyKind::Record(_) = &*ty {
             let mut written = Vec::new();
             for field in fields {
-                let Entry::One(Arg { name, value }) = field else { return Err(unbuilt) };
+                let Entry::One(Arg { name, value }) = field else { return Err(unbuilt()) };
                 written.push((*name, self.operand(*value)?));
             }
             let kind = match &*ty {
@@ -91,11 +93,13 @@ impl Builder<'_, '_, '_> {
             let parts = written.into_iter().map(|(_, part)| part).collect();
             return Ok(self.temp(Rvalue::Aggregate { kind, parts }, origin));
         }
-        let members = self.env.cx.get::<Members>(&ty).ok_or(unbuilt)?;
-        let TyKind::Nominal(Nominal { literal, instance, .. }) = &*ty else { return Err(unbuilt) };
+        let members = self.env.cx.get::<Members>(&ty).ok_or_else(unbuilt)?;
+        let TyKind::Nominal(Nominal { literal, instance, .. }) = &*ty else { return Err(unbuilt()) };
         let mut written = Vec::new();
         for field in fields {
-            let Entry::One(Arg { name: Some(Name::Plain(name)), value }) = field else { return Err(unbuilt) };
+            let Entry::One(Arg { name: Some(Name::Plain(name)), value }) = field else {
+                return Err(unbuilt());
+            };
             written.push((*name, self.operand(*value)?));
         }
         let mut parts = Vec::new();
@@ -103,10 +107,10 @@ impl Builder<'_, '_, '_> {
             let part = if let Some(i) = written.iter().position(|(name, _)| *name == field.name) {
                 written.swap_remove(i).1
             } else {
-                let default = field.default.as_ref().ok_or(unbuilt)?;
-                let defining = Env::defining(self.env.cx, literal, instance.as_ref()).ok_or(unbuilt)?;
+                let default = field.default.as_ref().ok_or_else(unbuilt)?;
+                let defining = Env::defining(self.env.cx, literal, instance.as_ref()).ok_or_else(unbuilt)?;
                 let expected = field.ty.as_ref().ok().copied();
-                Operand::Const(defining.eval_as(default.expr.id, expected).map_err(|_| unbuilt)?)
+                Operand::Const(defining.eval_as(default.expr.id, expected).map_err(|_| unbuilt())?)
             };
             parts.push(part);
         }
@@ -122,14 +126,14 @@ impl Builder<'_, '_, '_> {
         args: &List<Arg>,
         origin: OriginId,
     ) -> Result<Operand, Unbuilt> {
-        let unbuilt = Unbuilt::at(origin);
-        let members = self.env.cx.get::<Members>(&ty).ok_or(unbuilt)?;
-        let Found::Variant(_) = members.find(name) else { return Err(unbuilt) };
+        let unbuilt = move || Unbuilt::at(origin);
+        let members = self.env.cx.get::<Members>(&ty).ok_or_else(unbuilt)?;
+        let Found::Variant(_) = members.find(name) else { return Err(unbuilt()) };
         let parts = args
             .iter()
             .map(|arg| match arg {
                 Entry::One(Arg { name: None, value }) => self.operand(*value),
-                _ => Err(unbuilt),
+                _ => Err(unbuilt()),
             })
             .collect::<Result<_, _>>()?;
         Ok(self.temp(Rvalue::Aggregate { kind: Aggregate::Variant { ty, name }, parts }, origin))

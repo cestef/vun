@@ -33,7 +33,7 @@ impl Builder<'_, '_, '_> {
         args: &[Entry<Arg>],
         origin: OriginId,
     ) -> Result<Operand, Unbuilt> {
-        let unbuilt = Unbuilt::at(origin);
+        let unbuilt = move || Unbuilt::at(origin);
         if let Some(value) = self.frame_call(call, callee, args, origin)? {
             return Ok(value);
         }
@@ -52,7 +52,7 @@ impl Builder<'_, '_, '_> {
                 .iter()
                 .map(|arg| match arg {
                     Entry::One(Arg { name: None, value }) => self.operand(*value),
-                    _ => Err(unbuilt),
+                    _ => Err(unbuilt()),
                 })
                 .collect::<Result<_, _>>()?;
             return Ok(self.temp(Rvalue::Aggregate { kind, parts }, origin));
@@ -61,7 +61,7 @@ impl Builder<'_, '_, '_> {
             Operand::Const(value) => Some(value),
             Operand::Place(_) => None,
         };
-        let passing = self.env().passing(known, method.is_some(), args, &inferred).map_err(|_| unbuilt)?;
+        let passing = self.env().passing(known, method.is_some(), args, &inferred).map_err(|_| unbuilt())?;
         let at = passing.iter().position(|p| *p == Passed::Receiver);
         let receiver = match (method, at) {
             (Some((f, receiver, method)), Some(at)) => Some((at, self.receiver(&f, &method, receiver, at)?)),
@@ -153,10 +153,10 @@ impl Builder<'_, '_, '_> {
     fn method(&self, callee: ExprId) -> Result<Option<(Operand, ExprId, Method)>, Unbuilt> {
         let e = &self.env.parsed.hir.exprs[callee];
         let ExprKind::Member { object, .. } = e.kind else { return Ok(None) };
-        let unbuilt = Unbuilt::at(e.origin);
-        let typed = self.typed().ok_or(unbuilt)?;
+        let unbuilt = move || Unbuilt::at(e.origin);
+        let typed = self.typed().ok_or_else(unbuilt)?;
         let Some(method) = typed.methods.get(&callee) else { return Ok(None) };
-        let f = self.env.cx.get::<MemberValue>(method).map_err(|_| unbuilt)?;
+        let f = self.env.cx.get::<MemberValue>(method).map_err(|_| unbuilt())?;
         Ok(Some((Operand::Const(f), object, *method)))
     }
 

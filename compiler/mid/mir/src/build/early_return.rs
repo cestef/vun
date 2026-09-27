@@ -18,12 +18,12 @@ impl Builder<'_, '_, '_> {
         operand: ExprId,
         origin: OriginId,
     ) -> Result<Operand, Unbuilt> {
-        let unbuilt = Unbuilt::at(origin);
+        let unbuilt = move || Unbuilt::at(origin);
         // The variant `stop` is the other one, so a failed test of `go` is a stop.
-        let row = EARLY_RETURN.first().ok_or(unbuilt)?;
-        let typed = self.typed().ok_or(unbuilt)?;
-        let method = typed.methods.get(&expr).ok_or(unbuilt)?;
-        let branch = self.env.cx.get::<MemberValue>(method).map_err(|_| unbuilt)?;
+        let row = EARLY_RETURN.first().ok_or_else(unbuilt)?;
+        let typed = self.typed().ok_or_else(unbuilt)?;
+        let method = typed.methods.get(&expr).ok_or_else(unbuilt)?;
+        let branch = self.env.cx.get::<MemberValue>(method).map_err(|_| unbuilt())?;
         let value = self.operand(operand)?;
         let call = Rvalue::Call { callee: Operand::Const(branch), args: vec![value] };
         // Its parts carry what it held: the value going on, or what is returned.
