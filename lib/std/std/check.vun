@@ -91,11 +91,11 @@ Shadow := struct {
 /// requirement): the bytes it hands out are recorded.
 alloc := ($A: type, self: &mut A, size: usize, align: usize, $at: lang.meta.Origin)
     -> Result(*u8, std.mem.alloc.Allocator(A).Error)
-{
-    given := self.alloc(size, align)?;
-    lang.check.allocated(given.address(), size);
-    .ok(given)
-};
+    {
+        given := self.alloc(size, align)?;
+        lang.check.allocated(given.address(), size);
+        .ok(given)
+    };
 
 /// `free` of the allocator `A`, checked: bytes given back twice fail the check made at `at`;
 /// others are poisoned, so an access through a pointer kept to them fails its own.
