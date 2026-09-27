@@ -15,21 +15,23 @@ impl Checker<'_, '_, '_> {
     /// Checks the member `m` of the namespace innermost in `self.homes`.
     pub(super) fn visibility(&mut self, hir: &Hir, m: &Member) {
         let Some(home) = self.homes.last().cloned() else { return };
-        let (name, attrs) = match m {
+        // A declaration's attributes apply to each name it binds.
+        let (names, attrs): (Vec<Symbol>, _) = match m {
             Member::Decl(d) => {
                 let mut binders = Vec::new();
                 hir.binders(hir.decls[*d].pat, &mut binders);
-                let Some(&first) = binders.first() else { return };
-                (hir.binders[first].name, &hir.decls[*d].attrs)
+                (binders.iter().map(|&b| hir.binders[b].name).collect(), &hir.decls[*d].attrs)
             }
             Member::Field(field) => match field.name {
-                Name::Plain(name) => (name, &field.attrs),
+                Name::Plain(name) => (vec![name], &field.attrs),
                 _ => return,
             },
-            Member::Spread(spread) => return self.spread(hir, spread),
+            Member::Spread(spread) => return self.selected(hir, spread),
         };
-        if let (_, Some((attr, misplaced))) = self.env.visible(name, attrs, home) {
-            self.misplaced(hir, attr, name, misplaced);
+        for name in names {
+            if let (_, Some((attr, misplaced))) = self.env.visible(name, attrs, home.clone()) {
+                self.misplaced(hir, attr, name, misplaced);
+            }
         }
     }
 
@@ -49,7 +51,7 @@ impl Checker<'_, '_, '_> {
     }
 
     /// Reports the selected names of `spread` restricted to scopes the spread is outside of.
-    fn spread(&mut self, hir: &Hir, spread: &Spread) {
+    fn selected(&mut self, hir: &Hir, spread: &Spread) {
         let (Some(select), Some((_, path))) = (&spread.select, hir.path(spread.path)) else { return };
         let Ok(target) = self.env.cx.get::<NamespaceAt>(&(self.env.file.package, path)) else { return };
         for &b in select {

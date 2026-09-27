@@ -7,8 +7,8 @@ use vun_intern::Symbol;
 
 use super::Checker;
 use crate::decl::DeclValue;
-use crate::member::{Found, MemberType, MemberValue, Members};
-use crate::ty::{Ty, TyKind, Value};
+use crate::member::{Found, MemberDecl, MemberTable, MemberType, MemberValue, Members};
+use crate::ty::{Marker, Ty, TyKind, Value};
 use crate::witness::{ImplDecl, Impls};
 
 impl Checker<'_, '_, '_> {
@@ -37,7 +37,10 @@ impl Checker<'_, '_, '_> {
                 let label = Msg::new().code(contract.requirements.to_string()).text(" requires it");
                 Diagnostic::error(errors::IMPL_MISSING_REQUIREMENT, msg)
                     .label(requirement.decl.decl.origin, Some(label))
-            } else if let Some(msg) = self.mistyped(contract.requirements, witness, requirement.name) {
+            } else if let Some(msg) = self
+                .mistyped(contract.requirements, witness, requirement.name)
+                .or_else(|| self.unmarked(contract.requirements, requirement, &provided, witness))
+            {
                 let label = Msg::new().text("required here");
                 Diagnostic::error(errors::IMPL_REQUIREMENT_TYPE, msg)
                     .label(requirement.decl.decl.origin, Some(label))
@@ -72,6 +75,42 @@ impl Checker<'_, '_, '_> {
                 .text(" requires ")
                 .ty(expected.to_string())
         })
+    }
+
+    /// Why the witness's member for `requirement` does not carry the markers the requirement
+    /// declares (spec 07, section 4): compared by the markers alone, for a requirement whose type
+    /// does not evaluate here, such as one with `$` parameters.
+    fn unmarked(
+        &self,
+        requirements: Ty,
+        requirement: &MemberDecl,
+        provided: &MemberTable,
+        witness: Ty,
+    ) -> Option<Msg> {
+        let cx = self.env.cx;
+        let required = requirement.decl.attributes(cx)?.markers().to_vec();
+        let name = requirement.name;
+        let found = match cx.get::<MemberType>(&(witness, name)).ok().and_then(|k| k.ty.signature()) {
+            Some(signature) => signature.markers,
+            None => match provided.find(name) {
+                Found::Decl(decl) => decl.decl.attributes(cx)?.markers().to_vec(),
+                _ => return None,
+            },
+        };
+        if Marker::accepts(&required, &found) {
+            return None;
+        }
+        let missing: Vec<String> =
+            required.iter().filter(|m| !found.contains(m)).map(ToString::to_string).collect();
+        Some(
+            Msg::new()
+                .code(name.as_str())
+                .text(" lacks ")
+                .code(missing.join(" "))
+                .text(", which ")
+                .code(requirements.to_string())
+                .text(" requires"),
+        )
     }
 
     /// Reports `decl` when an impl before it registers a witness for a pair it covers too.

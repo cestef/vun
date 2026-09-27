@@ -38,11 +38,15 @@ impl Checker<'_, '_, '_> {
     }
 }
 
-/// The calls in an expression with one argument, by callee and argument.
+/// The calls in an expression with one argument, by callee and argument, outside the bodies of
+/// the functions it makes, which run once the type is made.
 struct Calls(Vec<(ExprId, ExprId)>);
 
 impl Visitor for Calls {
     fn expr(&mut self, hir: &Hir, expr: ExprId) {
+        if matches!(hir.exprs[expr].kind, ExprKind::Fn { .. }) {
+            return;
+        }
         if let ExprKind::Call { callee, args } = &hir.exprs[expr].kind
             && let [Entry::One(Arg { name: None, value })] = args.as_slice()
         {

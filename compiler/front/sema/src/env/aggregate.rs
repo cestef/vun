@@ -89,6 +89,10 @@ impl Env<'_, '_> {
     /// `T{ .name = value, ... }`: every field of `ty` in declaration order, from the literal or
     /// from its default; for a record type, its fields; for a tuple type, its positions.
     pub(super) fn record(&self, ty: Ty, fields: &List<Arg>) -> Result<Value, Unevaluated> {
+        // Fields a `$for` or `$if` makes are known once staged, which evaluation does not do.
+        if fields.iter().any(|f| matches!(f, Entry::Staged(_))) {
+            return Err(Unevaluated::Unsupported);
+        }
         // `.{ x, y }` where a tuple is expected: its items, each as its position's type.
         if let TyKind::Tuple(types) = &*ty {
             if fields.len() != types.len() {

@@ -111,3 +111,21 @@ impl Marker {
         Some(Self { item: *item, args: args.to_vec() })
     }
 }
+
+/// As an attribute is written: `#[lang.stack.max(512)]`.
+impl std::fmt::Display for Marker {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "#[{}", self.item.item())?;
+        if !self.args.is_empty() {
+            f.write_str("(")?;
+            for (i, arg) in self.args.iter().enumerate() {
+                if i > 0 {
+                    f.write_str(", ")?;
+                }
+                write!(f, "{arg}")?;
+            }
+            f.write_str(")")?;
+        }
+        f.write_str("]")
+    }
+}

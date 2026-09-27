@@ -21,6 +21,9 @@ impl fmt::Display for TyKind {
             };
         }
         if let Some(sig) = self.signature() {
+            for marker in &sig.markers {
+                write!(f, "{marker} ")?;
+            }
             return write!(f, "{} -> {}", Self::Tuple(sig.params), sig.result);
         }
         // Borrows and sequences as written: `&mut T`, `[4]u8`, `[u8]`.

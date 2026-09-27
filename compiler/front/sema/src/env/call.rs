@@ -37,13 +37,16 @@ impl Env<'_, '_> {
                 let declared = matches!(object, Value::Namespace(_) | Value::Type(_));
                 let ty = if declared { None } else { object.ty().or(ty) };
                 match ty {
-                    // Through borrows, as `.` goes: a compile-time borrow is its value.
+                    // Through borrows, as `.` goes: a compile-time borrow is its value. A type
+                    // lacking the member passes the search on; any other failure is the call's.
                     Some(ty) => {
                         receiver = Some(object);
                         let mut types = std::iter::successors(Some(ty), |t| t.borrowed());
-                        types
-                            .find_map(|t| self.member(Value::Type(t), *name).ok())
-                            .ok_or(Unevaluated::Unsupported)?
+                        let found = types.find_map(|t| match self.member(Value::Type(t), *name) {
+                            Err(Unevaluated::Absent) => None,
+                            found => Some(found),
+                        });
+                        found.ok_or(Unevaluated::Unsupported)??
                     }
                     None => self.member(object, *name)?,
                 }
