@@ -44,9 +44,9 @@ impl Value {
                     .map(|(_, v)| v.clone())
                     .ok_or(Unevaluated::Unsupported);
             }
-            // Items at a range of indices are that run of items, as `xs[a..b]` borrows them.
-            (Part::Item(Self::Range(range)), Self::Array(items)) => {
-                return Ok(Self::Array(items[Part::run(range.as_ref(), items.len())?].to_vec()));
+            // Items at bounds of indices are that run of items, as `xs[a..b]` borrows them.
+            (Part::Item(Self::Bounds(bounds)), Self::Array(items)) => {
+                return Ok(Self::Array(items[bounds.run(items.len())?].to_vec()));
             }
             (Part::Item(_), Self::Array(items)) | (Part::Position(_), Self::Tuple(items)) => items,
             (Part::Payload(_), Self::Variant { payload, .. }) => payload,
@@ -107,14 +107,55 @@ impl Value {
     /// # Errors
     /// Returns [`Unevaluated::Unsupported`] for bounds that are not integers.
     pub fn range(op: TokenKind, lo: &Self, hi: Option<&Self>) -> Result<Self, Unevaluated> {
-        let Self::Int(lo) = lo else { return Err(Unevaluated::Unsupported) };
-        let range = match (hi, op) {
-            (None, _) => Some(Interval::at_least(lo.clone())),
-            (Some(Self::Int(hi)), TokenKind::DotDotEq) => Interval::closed(lo.clone(), hi.clone()),
-            (Some(Self::Int(hi)), _) => Interval::half_open(lo.clone(), hi),
+        let Self::Int(start) = lo else { return Err(Unevaluated::Unsupported) };
+        let end = match (hi, op) {
+            (None, _) => None,
+            (Some(Self::Int(hi)), TokenKind::DotDotEq) => Some(hi + &Integer::from(1)),
+            (Some(Self::Int(hi)), _) => Some(hi.clone()),
             (Some(_), _) => return Err(Unevaluated::Unsupported),
         };
-        Ok(Self::Range(range))
+        Ok(Self::Bounds(Endpoints { start: start.clone(), end }))
+    }
+
+    /// This value where a `lang.Range` may be expected: bounds are the set of their items (spec
+    /// 04, section 1), any other value itself.
+    #[must_use]
+    pub fn ranged(self) -> Self {
+        match self {
+            Self::Bounds(bounds) => Self::Range(bounds.items()),
+            value => value,
+        }
+    }
+}
+
+/// Bounds at compile time: from `start` up to `end`, which they stop before, or without an end.
+/// `a..=b` is `a..b + 1`. They keep where they are even holding nothing: `xs[10..10]` is past the
+/// end of three items, `xs[3..3]` is not.
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
+pub struct Endpoints {
+    pub start: Integer,
+    pub end: Option<Integer>,
+}
+
+impl Endpoints {
+    /// The integers these bounds hold, as the `lang.Range` they are accepted as.
+    #[must_use]
+    pub fn items(&self) -> Option<Interval> {
+        match &self.end {
+            Some(end) => Interval::half_open(self.start.clone(), end),
+            None => Some(Interval::at_least(self.start.clone())),
+        }
+    }
+
+    /// The indices these bounds cover among `len` items: an open end reaches the last; bounds
+    /// starting after they end or reaching past the last item trap.
+    fn run(&self, len: usize) -> Result<std::ops::Range<usize>, Unevaluated> {
+        let index = |n: &Integer| n.to_i128().and_then(|n| usize::try_from(n).ok());
+        let end = self.end.as_ref().map_or(Some(len), index);
+        match (index(&self.start), end) {
+            (Some(start), Some(end)) if start <= end && end <= len => Ok(start..end),
+            _ => Err(Unevaluated::trap(Reason::Bounds)),
+        }
     }
 }
 
@@ -150,22 +191,6 @@ pub enum Part {
 }
 
 impl Part {
-    /// The indices `range` covers among `len` items: an open end reaches the last; a range past
-    /// the end traps.
-    fn run(range: Option<&Interval>, len: usize) -> Result<std::ops::Range<usize>, Unevaluated> {
-        let Some(range) = range else { return Ok(0..0) };
-        let index = |n: &Integer| n.to_i128().and_then(|n| usize::try_from(n).ok());
-        let lo = range.lo().finite().and_then(index);
-        let end = match range.hi() {
-            Extended::PosInf => Some(len),
-            hi => hi.finite().and_then(index).and_then(|hi| hi.checked_add(1)),
-        };
-        match (lo, end) {
-            (Some(lo), Some(end)) if lo <= end && end <= len => Ok(lo..end),
-            _ => Err(Unevaluated::trap(Reason::Bounds)),
-        }
-    }
-
     /// Where this part is among `parts`: an index past the end traps.
     fn position(&self, parts: &[Value]) -> Result<usize, Unevaluated> {
         let at = match self {

@@ -13,7 +13,7 @@ use crate::eval::{Code, Func, Suspended};
 use crate::float::{Binary, Format};
 use crate::int::{Extended, Integer, Interval};
 use crate::item::DeclRef;
-use crate::ops::Part;
+use crate::ops::{Endpoints, Part};
 use crate::primitives::meta::Meta;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
@@ -21,9 +21,10 @@ pub enum Value {
     Int(Integer),
     /// A float of a binary format (spec 04, section 2).
     Float(Binary),
-    /// A `lang.Range`: the integers it holds, `None` when it holds none. `a..b` and `a..=b - 1`
-    /// are one value.
+    /// A `lang.Range`: the integers it holds, `None` when it holds none.
     Range(Option<Interval>),
+    /// Bounds, the value of `a..b`, `a..=b` or `a..` (spec 04, section 1).
+    Bounds(Endpoints),
     Type(Ty),
     Tuple(Vec<Value>),
     Array(Vec<Value>),
@@ -122,6 +123,7 @@ impl Value {
     pub fn items(self) -> Option<Vec<Self>> {
         match self {
             Self::Array(items) => Some(items),
+            Self::Bounds(bounds) => Self::Range(bounds.items()).items(),
             Self::Range(None) => Some(Vec::new()),
             Self::Range(Some(range)) => {
                 let (Extended::Finite(lo), Extended::Finite(hi)) = (range.lo(), range.hi()) else {

@@ -1,0 +1,8 @@
+//! Bounds keep where they start even when they hold nothing, so indexing by bounds past the end
+//! traps however many items they cover (spec 04, section 1; spec 07, section 3).
+
+items: [3]u8 = [1, 2, 3];
+none := &items[3..3];
+past := &items[10..10]; //~ comptime.trap
+reversed := &items[2..1]; //~ comptime.trap
+open := &items[1..];

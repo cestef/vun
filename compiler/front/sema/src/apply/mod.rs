@@ -33,6 +33,14 @@ impl Primitive {
     /// not applied at compile time yet.
     pub fn apply(self, env: &Env<'_, '_>, args: &[Value]) -> Result<Value, Unevaluated> {
         env.check_arguments(self, args)?;
+        // Primitives read bounds as the `lang.Range` of their items.
+        let ranged: Vec<Value>;
+        let args = if args.iter().any(|a| matches!(a, Value::Bounds(_))) {
+            ranged = args.iter().cloned().map(Value::ranged).collect();
+            &ranged
+        } else {
+            args
+        };
         match (self, args) {
             // `lang.Int(range)`: the integers of the range (spec 04, section 1).
             (Self::Lang(Lang::Int), [Value::Range(Some(range))]) => Ok(Value::Type(TyKind::int(range))),

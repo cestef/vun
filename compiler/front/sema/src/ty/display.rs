@@ -5,6 +5,7 @@ use std::fmt;
 
 use super::{Nominal, NominalKind, TyKind, Value};
 use crate::int::{Extended, Integer};
+use crate::ops::Endpoints;
 
 impl fmt::Display for TyKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -87,6 +88,8 @@ impl fmt::Display for Value {
             Self::Float(x) => x.fmt(f),
             Self::Range(Some(range)) => write!(f, "{}..={}", Bound(range.lo()), Bound(range.hi())),
             Self::Range(None) => f.write_str("0..0"),
+            Self::Bounds(Endpoints { start, end: Some(end) }) => write!(f, "{start}..{end}"),
+            Self::Bounds(Endpoints { start, end: None }) => write!(f, "{start}.."),
             Self::Type(ty) => ty.fmt(f),
             Self::Tuple(items) => {
                 f.write_str("(")?;
