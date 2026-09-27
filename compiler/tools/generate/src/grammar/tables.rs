@@ -4,7 +4,6 @@ use std::collections::HashSet;
 
 use proc_macro2::TokenStream;
 use quote::{ToTokens, quote};
-use vun_build::layout::SEPARATOR;
 use vun_diag::Msg;
 use vun_syntax::literal::{Decl, Literal};
 
@@ -12,10 +11,6 @@ use super::{Enum, GENERATOR, Grammar, SHAPE, Ty, UNRESOLVED};
 use crate::generate::{Module, Read, Source};
 use crate::items;
 
-/// The package whose declarations a table names by their paths (`"lang.ops.Try"`): a column of
-/// such paths is typed as their handles, so that a table naming a declaration that does not exist
-/// does not compile.
-const DECLARING: &str = "lang";
 use crate::names::{Name, constant, docs, ident, pascal, raw};
 
 /// Ends the name of a table's row struct: `iteration` holds `IterationRow`s.
@@ -80,6 +75,7 @@ impl<'s> Grammar<'s> {
         match values.first() {
             None => Err(GENERATOR.error(SHAPE, decl, Msg::new().text("an empty list has no type to infer"))),
             Some(Literal::String(_)) if values.iter().all(|v| v.as_str().is_some()) => Ok(Ty::Str),
+            Some(Literal::Path(_)) if values.iter().all(|v| matches!(v, Literal::Path(_))) => Ok(Ty::Item),
             Some(Literal::Name(_)) => {
                 let names =
                     values.iter().map(|v| v.as_name()).collect::<Option<Vec<_>>>().ok_or_else(mismatch)?;
@@ -102,13 +98,7 @@ impl<'s> Grammar<'s> {
                             .map(|v| v.get(field.name))
                             .collect::<Option<Vec<_>>>()
                             .ok_or_else(mismatch)?;
-                        let ty = self.infer(decl, &column)?;
-                        let declares = |v: &&Literal<'_>| {
-                            v.as_str().and_then(|p| p.split(SEPARATOR).next()) == Some(DECLARING)
-                        };
-                        let ty =
-                            if matches!(ty, Ty::Str) && column.iter().all(declares) { Ty::Item } else { ty };
-                        Ok((field.name.to_owned(), ty))
+                        Ok((field.name.to_owned(), self.infer(decl, &column)?))
                     })
                     .collect::<Read<_>>()
                     .map(Ty::Tuple)
@@ -172,9 +162,7 @@ impl<'s> Grammar<'s> {
     pub(super) fn value(&self, value: &Literal<'_>, ty: &Ty) -> TokenStream {
         match (ty, value) {
             (Ty::Str, Literal::String(text)) => quote! { #text },
-            (Ty::Item, Literal::String(path)) => {
-                items::Handles::rust_path(&path.split(SEPARATOR).collect::<Vec<_>>())
-            }
+            (Ty::Item, Literal::Path(path)) => items::Handles::rust_path(path),
             (Ty::Enum(i), Literal::Name(name)) => {
                 let (e, v) = (ident(self.enums[*i].name), pascal(name));
                 quote! { #e::#v }

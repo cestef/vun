@@ -1,7 +1,7 @@
 //! Expressions and types.
 
 use vun_desugar::Borrow;
-use vun_grammar::{NodeField, NodeKind, TokenKind};
+use vun_grammar::{BorrowWord, NodeField, NodeKind, TokenKind};
 use vun_syntax::cst::{Fields, NodeId};
 use vun_syntax::lexer;
 
@@ -103,8 +103,9 @@ impl Lower<'_, '_> {
                 match self.token(n) {
                     // The words after `&` name a row of the table `borrows`: `temp mut`.
                     Some(TokenKind::Amp) => {
-                        let words = f.get(NodeField::Mode).iter().map(|&m| self.symbol(m).as_str());
-                        ExprKind::Borrow { mode: Borrow::written(words), operand }
+                        let words = f.get(NodeField::Mode).iter().map(|&m| BorrowWord::spelled(self.text(m)));
+                        let mode = words.collect::<Option<Vec<_>>>().and_then(Borrow::written);
+                        ExprKind::Borrow { mode, operand }
                     }
                     Some(op) => ExprKind::Prefix { op, operand },
                     None => ExprKind::Error,

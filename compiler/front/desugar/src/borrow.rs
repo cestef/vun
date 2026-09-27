@@ -5,11 +5,12 @@ use std::fmt;
 use std::sync::LazyLock;
 
 use vun_codec::{Decode, Encode};
+use vun_grammar::BorrowWord;
 use vun_items::Item;
 
 use crate::{Access, BORROWS, BorrowsRow, Extent, PlaceState};
 
-/// Separates the words of a borrow mode in the table `borrows`: `temp mut`.
+/// Separates the words of a borrow mode as written: `temp mut`.
 pub const MODE_SEPARATOR: &str = " ";
 
 /// A borrow mode: a row of the table `borrows`.
@@ -24,10 +25,9 @@ impl Borrow {
 
     /// The mode written with the words `words` after `&`; `&T` itself for none.
     #[must_use]
-    pub fn written<'w>(words: impl IntoIterator<Item = &'w str>) -> Option<Self> {
-        let words: Vec<&str> = words.into_iter().collect();
-        Self::all()
-            .find(|b| b.row().mode.split(MODE_SEPARATOR).filter(|w| !w.is_empty()).eq(words.iter().copied()))
+    pub fn written(words: impl IntoIterator<Item = BorrowWord>) -> Option<Self> {
+        let words: Vec<BorrowWord> = words.into_iter().collect();
+        Self::all().find(|b| b.row().mode == words.as_slice())
     }
 
     /// The mode whose type is the `lang` item `item`.
@@ -105,6 +105,12 @@ impl Borrow {
 /// The words after `&`, as written.
 impl fmt::Display for Borrow {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(self.row().mode)
+        for (i, word) in self.row().mode.iter().enumerate() {
+            if i > 0 {
+                f.write_str(MODE_SEPARATOR)?;
+            }
+            f.write_str(word.text().unwrap_or_default())?;
+        }
+        Ok(())
     }
 }

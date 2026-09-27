@@ -33,6 +33,12 @@ impl Parser<'_, '_, '_> {
         self.peek() == kind
     }
 
+    /// Whether the current token is a name or keyword spelled as one of `texts`.
+    pub(super) fn at_spelled(&self, mut texts: impl Iterator<Item = &'static str>) -> bool {
+        let k = self.peek();
+        (k == TokenKind::Ident || k.text().is_some()) && texts.any(|t| t == self.text(self.current()))
+    }
+
     pub(super) fn at_word(&self, context: Context) -> bool {
         self.at(TokenKind::Ident) && context.keyword(self.text(self.current()))
     }

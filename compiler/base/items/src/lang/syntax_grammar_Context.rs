@@ -10,11 +10,3 @@ use crate::Item;
 pub const for_pattern: Item = Item::new(
     &["lang", "syntax", "grammar", "Context", "for_pattern"],
 );
-/// Directly after `&`.
-pub const after_amp: Item = Item::new(
-    &["lang", "syntax", "grammar", "Context", "after_amp"],
-);
-/// Directly after `&`, before a borrow mode: `&temp mut`.
-pub const borrow_qualifier: Item = Item::new(
-    &["lang", "syntax", "grammar", "Context", "borrow_qualifier"],
-);

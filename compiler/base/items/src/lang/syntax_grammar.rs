@@ -16,6 +16,10 @@ pub const Count: Item = Item::new(&["lang", "syntax", "grammar", "Count"]);
 pub const NodeKind: Item = Item::new(&["lang", "syntax", "grammar", "NodeKind"]);
 /// Where a contextual keyword is recognized; elsewhere it is a name.
 pub const Context: Item = Item::new(&["lang", "syntax", "grammar", "Context"]);
+/// The words after `&` naming a borrow mode (appendix B, the table `borrows`): first a qualifier
+/// of how long a call holds the borrow, then a word of what it does to the place. `mut` is a
+/// keyword; the others are words only there.
+pub const BorrowWord: Item = Item::new(&["lang", "syntax", "grammar", "BorrowWord"]);
 /// How an infix operator groups with its own level.
 pub const Assoc: Item = Item::new(&["lang", "syntax", "grammar", "Assoc"]);
 /// Words that are keywords only in one context.

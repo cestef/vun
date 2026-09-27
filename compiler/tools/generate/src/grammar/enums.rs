@@ -23,6 +23,7 @@ impl Enum<'_> {
         });
         let spelled: Vec<_> =
             self.variants.iter().filter_map(|v| Some((pascal(v.name), v.text.as_deref()?))).collect();
+        let unspelled = (spelled.len() < self.variants.len()).then(|| quote! { _ => None, });
         let text = (!spelled.is_empty()).then(|| {
             let (variants, texts): (Vec<_>, Vec<_>) = spelled.into_iter().unzip();
             quote! {
@@ -31,7 +32,7 @@ impl Enum<'_> {
                 pub const fn text(self) -> Option<&'static str> {
                     match self {
                         #(Self::#variants => Some(#texts),)*
-                        _ => None,
+                        #unspelled
                     }
                 }
             }

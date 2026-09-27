@@ -12,6 +12,8 @@ pub use node_slot::*;
 mod node_kind_slots;
 mod context;
 pub use context::*;
+mod borrow_word;
+pub use borrow_word::*;
 mod assoc;
 pub use assoc::*;
 mod contextual;

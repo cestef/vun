@@ -17,20 +17,4 @@ pub const CONTEXTUAL: &[ContextualRow] = &[
         text: "in",
         context: Context::ForPattern,
     },
-    ContextualRow {
-        text: "out",
-        context: Context::AfterAmp,
-    },
-    ContextualRow {
-        text: "take",
-        context: Context::AfterAmp,
-    },
-    ContextualRow {
-        text: "static",
-        context: Context::AfterAmp,
-    },
-    ContextualRow {
-        text: "temp",
-        context: Context::BorrowQualifier,
-    },
 ];

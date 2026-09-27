@@ -10,8 +10,4 @@ use super::*;
 pub enum Context {
     /// After the pattern of a `for`.
     ForPattern,
-    /// Directly after `&`.
-    AfterAmp,
-    /// Directly after `&`, before a borrow mode: `&temp mut`.
-    BorrowQualifier,
 }

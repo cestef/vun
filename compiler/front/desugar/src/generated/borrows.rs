@@ -14,7 +14,7 @@ use vun_grammar::*;
 /// A row of [`BORROWS`].
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct BorrowsRow {
-    pub mode: &'static str,
+    pub mode: &'static [BorrowWord],
     pub item: vun_items::Item,
     pub before: PlaceState,
     pub after: PlaceState,
@@ -28,7 +28,7 @@ pub struct BorrowsRow {
 /// where `&static` is written.
 pub const BORROWS: &[BorrowsRow] = &[
     BorrowsRow {
-        mode: "",
+        mode: &[],
         item: vun_items::lang::mem::Ref,
         before: PlaceState::Init,
         after: PlaceState::Init,
@@ -36,7 +36,7 @@ pub const BORROWS: &[BorrowsRow] = &[
         extent: Extent::Tied,
     },
     BorrowsRow {
-        mode: "mut",
+        mode: &[BorrowWord::Mut],
         item: vun_items::lang::mem::RefMut,
         before: PlaceState::Init,
         after: PlaceState::Init,
@@ -44,7 +44,7 @@ pub const BORROWS: &[BorrowsRow] = &[
         extent: Extent::Tied,
     },
     BorrowsRow {
-        mode: "out",
+        mode: &[BorrowWord::Out],
         item: vun_items::lang::mem::RefOut,
         before: PlaceState::Uninit,
         after: PlaceState::Init,
@@ -52,7 +52,7 @@ pub const BORROWS: &[BorrowsRow] = &[
         extent: Extent::Tied,
     },
     BorrowsRow {
-        mode: "take",
+        mode: &[BorrowWord::Take],
         item: vun_items::lang::mem::RefTake,
         before: PlaceState::Init,
         after: PlaceState::Uninit,
@@ -60,7 +60,7 @@ pub const BORROWS: &[BorrowsRow] = &[
         extent: Extent::Tied,
     },
     BorrowsRow {
-        mode: "temp",
+        mode: &[BorrowWord::Temp],
         item: vun_items::lang::mem::RefTemp,
         before: PlaceState::Init,
         after: PlaceState::Init,
@@ -68,7 +68,7 @@ pub const BORROWS: &[BorrowsRow] = &[
         extent: Extent::Temp,
     },
     BorrowsRow {
-        mode: "temp mut",
+        mode: &[BorrowWord::Temp, BorrowWord::Mut],
         item: vun_items::lang::mem::RefTempMut,
         before: PlaceState::Init,
         after: PlaceState::Init,
@@ -76,7 +76,7 @@ pub const BORROWS: &[BorrowsRow] = &[
         extent: Extent::Temp,
     },
     BorrowsRow {
-        mode: "static",
+        mode: &[BorrowWord::Static],
         item: vun_items::lang::mem::RefStatic,
         before: PlaceState::Init,
         after: PlaceState::Init,

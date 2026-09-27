@@ -1,29 +1,30 @@
 //! What syntax means (appendix B): the `lang` items operators, borrows and other forms desugar
 //! into, as data the compiler looks up, so no `lang` name is written in the compiler. Read with
-//! `grammar.vun`, whose token kinds these tables name.
+//! `grammar.vun`, whose token kinds these tables name. A table naming `lang` items by their paths
+//! is a tuple, since the items it names have types of their own.
 
 /// What infix operators desugar to (appendix B): `a op b` calls `function`, a requirement of an
 /// interface, in the witness of that interface for the type of `a`, the operands passed as the
 /// function's parameters ask. `and`, `or` and ranges are not interfaces.
-operators := [
-    .{ .token = .plus, .function = "lang.ops.Add.add" },
-    .{ .token = .minus, .function = "lang.ops.Sub.sub" },
-    .{ .token = .star, .function = "lang.ops.Mul.mul" },
-    .{ .token = .slash, .function = "lang.ops.Div.div" },
-    .{ .token = .percent, .function = "lang.ops.Rem.rem" },
-    .{ .token = .amp, .function = "lang.ops.BitAnd.bit_and" },
-    .{ .token = .pipe, .function = "lang.ops.BitOr.bit_or" },
-    .{ .token = .caret, .function = "lang.ops.BitXor.bit_xor" },
-    .{ .token = .shl, .function = "lang.ops.Shl.shl" },
-    .{ .token = .shr, .function = "lang.ops.Shr.shr" },
-    .{ .token = .plus_plus, .function = "lang.ops.Concat.concat" },
-    .{ .token = .eq_eq, .function = "lang.ops.Eq.eq" },
-    .{ .token = .bang_eq, .function = "lang.ops.Eq.ne" },
-    .{ .token = .lt, .function = "lang.ops.PartialOrd.lt" },
-    .{ .token = .le, .function = "lang.ops.PartialOrd.le" },
-    .{ .token = .gt, .function = "lang.ops.PartialOrd.gt" },
-    .{ .token = .ge, .function = "lang.ops.PartialOrd.ge" },
-];
+operators := .{
+    .{ .token = .plus, .function = lang.ops.Add.add },
+    .{ .token = .minus, .function = lang.ops.Sub.sub },
+    .{ .token = .star, .function = lang.ops.Mul.mul },
+    .{ .token = .slash, .function = lang.ops.Div.div },
+    .{ .token = .percent, .function = lang.ops.Rem.rem },
+    .{ .token = .amp, .function = lang.ops.BitAnd.bit_and },
+    .{ .token = .pipe, .function = lang.ops.BitOr.bit_or },
+    .{ .token = .caret, .function = lang.ops.BitXor.bit_xor },
+    .{ .token = .shl, .function = lang.ops.Shl.shl },
+    .{ .token = .shr, .function = lang.ops.Shr.shr },
+    .{ .token = .plus_plus, .function = lang.ops.Concat.concat },
+    .{ .token = .eq_eq, .function = lang.ops.Eq.eq },
+    .{ .token = .bang_eq, .function = lang.ops.Eq.ne },
+    .{ .token = .lt, .function = lang.ops.PartialOrd.lt },
+    .{ .token = .le, .function = lang.ops.PartialOrd.le },
+    .{ .token = .gt, .function = lang.ops.PartialOrd.gt },
+    .{ .token = .ge, .function = lang.ops.PartialOrd.ge },
+};
 
 /// How a comparison relates its left operand to its right.
 Comparison := enum {
@@ -48,10 +49,10 @@ comparisons := [
 
 /// What prefix operators desugar to (appendix B): `op a` calls `function` in the witness of its
 /// interface for the type of `a`. `!` is not an interface: it negates a condition (`forms`).
-prefix_operators := [
-    .{ .token = .minus, .function = "lang.ops.Neg.neg" },
-    .{ .token = .tilde, .function = "lang.ops.Not.not" },
-];
+prefix_operators := .{
+    .{ .token = .minus, .function = lang.ops.Neg.neg },
+    .{ .token = .tilde, .function = lang.ops.Not.not },
+};
 
 /// Syntax whose meaning is a `lang` item, besides operators and borrows (appendix B).
 Form := enum {
@@ -71,20 +72,20 @@ Form := enum {
 };
 
 /// The item each form means.
-forms := [
-    .{ .form = .condition, .item = "lang.bool" },
-    .{ .form = .truth, .item = "lang.true" },
-    .{ .form = .range, .item = "lang.Range" },
-    .{ .form = .bounds, .item = "lang.Bounds" },
-    .{ .form = .array, .item = "lang.mem.Array" },
-    .{ .form = .slice, .item = "lang.mem.Slice" },
-];
+forms := .{
+    .{ .form = .condition, .item = lang.bool },
+    .{ .form = .truth, .item = lang.true },
+    .{ .form = .range, .item = lang.Range },
+    .{ .form = .bounds, .item = lang.Bounds },
+    .{ .form = .array, .item = lang.mem.Array },
+    .{ .form = .slice, .item = lang.mem.Slice },
+};
 
 /// Prefix operators on types (appendix B): `?T` is `lang.Option(T)`, `*T` is `lang.mem.Ptr(T)`.
-type_prefixes := [
-    .{ .token = .question, .item = "lang.Option" },
-    .{ .token = .star, .item = "lang.mem.Ptr" },
-];
+type_prefixes := .{
+    .{ .token = .question, .item = lang.Option },
+    .{ .token = .star, .item = lang.mem.Ptr },
+};
 
 /// The states of a place (spec 05, section 2).
 PlaceState := enum {
@@ -116,15 +117,15 @@ Extent := enum {
 /// needs before, and the state the place has after; by the access it leaves others; and by how
 /// long a call holds it. Borrows of one transition and access are accepted for each other, but
 /// where `&static` is written.
-borrows := [
-    .{ .mode = "", .item = "lang.mem.Ref", .before = .init, .after = .init, .access = .shared, .extent = .tied },
-    .{ .mode = "mut", .item = "lang.mem.RefMut", .before = .init, .after = .init, .access = .exclusive, .extent = .tied },
-    .{ .mode = "out", .item = "lang.mem.RefOut", .before = .uninit, .after = .init, .access = .exclusive, .extent = .tied },
-    .{ .mode = "take", .item = "lang.mem.RefTake", .before = .init, .after = .uninit, .access = .exclusive, .extent = .tied },
-    .{ .mode = "temp", .item = "lang.mem.RefTemp", .before = .init, .after = .init, .access = .shared, .extent = .temp },
-    .{ .mode = "temp mut", .item = "lang.mem.RefTempMut", .before = .init, .after = .init, .access = .exclusive, .extent = .temp },
-    .{ .mode = "static", .item = "lang.mem.RefStatic", .before = .init, .after = .init, .access = .shared, .extent = .static },
-];
+borrows := .{
+    .{ .mode = [], .item = lang.mem.Ref, .before = .init, .after = .init, .access = .shared, .extent = .tied },
+    .{ .mode = [.\mut], .item = lang.mem.RefMut, .before = .init, .after = .init, .access = .exclusive, .extent = .tied },
+    .{ .mode = [.out], .item = lang.mem.RefOut, .before = .uninit, .after = .init, .access = .exclusive, .extent = .tied },
+    .{ .mode = [.take], .item = lang.mem.RefTake, .before = .init, .after = .uninit, .access = .exclusive, .extent = .tied },
+    .{ .mode = [.temp], .item = lang.mem.RefTemp, .before = .init, .after = .init, .access = .shared, .extent = .temp },
+    .{ .mode = [.temp, .\mut], .item = lang.mem.RefTempMut, .before = .init, .after = .init, .access = .exclusive, .extent = .temp },
+    .{ .mode = [.static], .item = lang.mem.RefStatic, .before = .init, .after = .init, .access = .shared, .extent = .static },
+};
 
 /// How a compound assignment brings its result back to the place's type (spec 04, rule 9).
 Narrowing := enum {
@@ -158,9 +159,9 @@ compound := [
 
 /// Prefixes that mark what they apply to with a `lang` item: `unsafe (...) -> T` carries
 /// `lang.safety.unsafe` in its type, as a property calls are checked against (spec 07, section 4).
-markers := [
-    .{ .token = .\unsafe, .item = "lang.safety.unsafe" },
-];
+markers := .{
+    .{ .token = .\unsafe, .item = lang.safety.\unsafe },
+};
 
 /// How a function carrying a marker is accepted where a function type is expected (spec 07,
 /// section 4).
@@ -177,46 +178,46 @@ Relation := enum {
 
 /// The properties a function type carries as markers (spec 07, section 4): attributes on a
 /// function literal, a function type or a declaration, and the prefixes of the table `markers`.
-fn_markers := [
-    .{ .item = "lang.safety.unsafe", .relation = .duty },
-    .{ .item = "lang.target.require", .relation = .duty },
-    .{ .item = "lang.panic.never", .relation = .guarantee },
-    .{ .item = "lang.stack.max", .relation = .bound },
-    .{ .item = "lang.abi.c", .relation = .identity },
-    .{ .item = "lang.abi.interrupt", .relation = .identity },
-    .{ .item = "lang.abi.naked", .relation = .identity },
-];
+fn_markers := .{
+    .{ .item = lang.safety.\unsafe, .relation = .duty },
+    .{ .item = lang.target.require, .relation = .duty },
+    .{ .item = lang.panic.never, .relation = .guarantee },
+    .{ .item = lang.stack.max, .relation = .bound },
+    .{ .item = lang.abi.c, .relation = .identity },
+    .{ .item = lang.abi.interrupt, .relation = .identity },
+    .{ .item = lang.abi.naked, .relation = .identity },
+};
 
 /// What calling a value that is not a function literal means (spec 01, section 4): `f(a, b)` is
 /// `function(&mut f, (a, b))` of the witness of its interface, which function values and closures
 /// implement, so a parameter `$F: Call((T), U)` takes either.
-calls := [
-    .{ .function = "lang.ops.Call.call" },
-];
+calls := .{
+    .{ .function = lang.ops.Call.call },
+};
 
 /// What `e?` means (appendix B): the witness of the interface of `function` for the type of `e`
 /// gives it, and its result carries the value in the variant `go` and what the function returns
 /// in the variant `stop`.
-early_return := [
+early_return := .{
     .{
-        .function = "lang.ops.Try.branch",
-        .go = "lang.Branch.go",
-        .stop = "lang.Branch.stop",
+        .function = lang.ops.Try.branch,
+        .go = lang.Branch.go,
+        .stop = lang.Branch.stop,
     },
-];
+};
 
 /// What `for p in e` drives (appendix B): the witness of the interface of `function` for the type
 /// of `e` gives the iterator through it and names its coroutine interface `iterator`; each item is
 /// the payload of the variant `each` of what the interface's `resume` returns, and the variant
 /// `done` carries what the coroutine returns. A frame answers the interface's `resume` and `end`
 /// itself (spec 06, section 1).
-iteration := [
+iteration := .{
     .{
-        .function = "lang.ops.Iterate.iter",
-        .iterator = "lang.ops.Iterate.Iter",
-        .resume = "lang.Coroutine.resume",
-        .end = "lang.Coroutine.end",
-        .each = "lang.Step.yielded",
-        .done = "lang.Step.done",
+        .function = lang.ops.Iterate.iter,
+        .iterator = lang.ops.Iterate.Iter,
+        .resume = lang.Coroutine.resume,
+        .end = lang.Coroutine.end,
+        .each = lang.Step.yielded,
+        .done = lang.Step.done,
     },
-];
+};

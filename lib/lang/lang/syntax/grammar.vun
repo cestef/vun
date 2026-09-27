@@ -178,10 +178,14 @@ NodeKind := .{
 Context := enum {
     /// After the pattern of a `for`.
     for_pattern,
-    /// Directly after `&`.
-    after_amp,
-    /// Directly after `&`, before a borrow mode: `&temp mut`.
-    borrow_qualifier,
+};
+
+/// The words after `&` naming a borrow mode (appendix B, the table `borrows`): first a qualifier
+/// of how long a call holds the borrow, then a word of what it does to the place. `mut` is a
+/// keyword; the others are words only there.
+BorrowWord := .{
+    .qualifiers = ["temp"],
+    .modes = ["mut", "out", "take", "static"],
 };
 
 /// How an infix operator groups with its own level.
@@ -194,10 +198,6 @@ Assoc := enum {
 /// Words that are keywords only in one context.
 contextual := [
     .{ .text = "in", .context = .for_pattern },
-    .{ .text = "out", .context = .after_amp },
-    .{ .text = "take", .context = .after_amp },
-    .{ .text = "static", .context = .after_amp },
-    .{ .text = "temp", .context = .borrow_qualifier },
 ];
 
 /// Opening delimiters and the tokens that close them.

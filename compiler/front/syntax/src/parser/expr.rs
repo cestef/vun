@@ -1,7 +1,7 @@
 //! Operator expressions and operands.
 
 use vun_diag::{Diagnostic, Msg, errors};
-use vun_grammar::{Assoc, Context, LITERAL_TYPES, NodeKind, POSTFIX, PREFIX, Prec, TokenKind};
+use vun_grammar::{Assoc, BorrowWord, LITERAL_TYPES, NodeKind, POSTFIX, PREFIX, Prec, TokenKind};
 
 use super::nesting::Chain;
 use super::{Brace, Item, List, Parser};
@@ -48,12 +48,12 @@ impl Parser<'_, '_, '_> {
             } else if PREFIX.contains(&k) {
                 let mark = p.out.mark();
                 let token = p.bump();
+                // The words of a borrow mode, a qualifier first: `&temp mut`.
                 if k == TokenKind::Amp {
-                    if p.at_word(Context::BorrowQualifier) {
-                        p.leaf(NodeKind::Mode);
-                    }
-                    if p.at(TokenKind::Mut) || p.at_word(Context::AfterAmp) {
-                        p.leaf(NodeKind::Mode);
+                    for words in [BorrowWord::QUALIFIERS, BorrowWord::MODES] {
+                        if p.at_spelled(words.iter().filter_map(|w| w.text())) {
+                            p.leaf(NodeKind::Mode);
+                        }
                     }
                 }
                 p.prefix(brace);
