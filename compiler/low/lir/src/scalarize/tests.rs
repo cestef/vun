@@ -43,7 +43,13 @@ fn pair(at: OriginId, escapes: bool) -> Unit {
     unit.functions.push(b.finish());
     let signature = Signature { conv: Conv::C, params: vec![AbiType::Address(Alias::Any)], result: None };
     let kind = ImportKind::Func(signature);
-    unit.imports.push(Import { symbol: Symbol::intern("keep"), kind, origin: at, stack_max: None });
+    unit.imports.push(Import {
+        symbol: Symbol::intern("keep"),
+        library: None,
+        kind,
+        origin: at,
+        stack_max: None,
+    });
     unit
 }
 

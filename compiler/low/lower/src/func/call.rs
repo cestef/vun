@@ -64,7 +64,7 @@ impl FnLower<'_, '_, '_> {
                 let callee = self.l.linked(decl, self.at)?.callee().ok_or_else(unsupported)?;
                 let signature =
                     cx.get::<DeclType>(decl).ok().and_then(|k| k.ty.signature()).ok_or_else(unsupported)?;
-                let abi = decl.linked(cx).and_then(|(_, abi)| abi);
+                let abi = decl.linked(cx).and_then(|l| l.abi);
                 let args: Vec<&Operand> = args.iter().collect();
                 self.invoke(callee, &signature.params, signature.result, abi, &args, dest, ty)
             }

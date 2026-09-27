@@ -3,7 +3,7 @@
 
 use vun_object::{Contents, Object, Reloc, RelocKind, SectionId};
 
-use super::encode::Out;
+use vun_bytes::Out;
 
 const VERSION: u16 = 4;
 const ADDRESS: u8 = 8;

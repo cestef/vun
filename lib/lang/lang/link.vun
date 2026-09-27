@@ -3,3 +3,6 @@
 section: (name: &[u8]) -> Attribute(&[Place.decls]) = _;
 export: (symbol: &[u8]) -> Attribute(&[Place.decls]) = _;
 symbol: (name: &[u8]) -> Attribute(&[Place.decls]) = _;
+/// The library a linked symbol comes from: an import module of wasm, a library an ELF program
+/// links (spec 08, section 3).
+library: (name: &[u8]) -> Attribute(&[Place.decls]) = _;

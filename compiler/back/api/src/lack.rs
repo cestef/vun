@@ -29,6 +29,9 @@ pub enum Missing {
     /// A C record's eightbyte of floats holding this many bytes, neither a `f32` nor two nor a
     /// `f64`: a layout only an explicit size makes.
     FloatPart(u64),
+    /// Control flow entering a loop other than through its head, which structured control
+    /// cannot hold.
+    Irreducible,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -68,6 +71,7 @@ impl Missing {
             Missing::Symbol(s) => Msg::new().text("the link symbol ").code(s.as_str()),
             Missing::FunctionOffset => Msg::new().text("an address inside a function"),
             Missing::Format(f) => Msg::new().text("objects of format ").code(f.as_str()),
+            Missing::Irreducible => Msg::new().text("a loop entered other than through its head"),
             Missing::FloatPart(n) => {
                 Msg::new().text("a C record passing ").num(n).text(" bytes of floats in a register")
             }

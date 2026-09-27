@@ -6,10 +6,13 @@ pub enum Link {
     section,
     export,
     symbol,
+    /// The library a linked symbol comes from: an import module of wasm, a library an ELF program
+    /// links (spec 08, section 3).
+    library,
 }
 impl Link {
     pub const NAMESPACE: vun_items::Item = vun_items::lang::link;
-    pub const ALL: &[Self] = &[Self::section, Self::export, Self::symbol];
+    pub const ALL: &[Self] = &[Self::section, Self::export, Self::symbol, Self::library];
     /// The declaration's name.
     #[must_use]
     pub const fn name(self) -> &'static str {
@@ -17,6 +20,7 @@ impl Link {
             Self::section => "section",
             Self::export => "export",
             Self::symbol => "symbol",
+            Self::library => "library",
         }
     }
     /// The declaration.
@@ -26,6 +30,7 @@ impl Link {
             Self::section => vun_items::lang::link::section,
             Self::export => vun_items::lang::link::export,
             Self::symbol => vun_items::lang::link::symbol,
+            Self::library => vun_items::lang::link::library,
         }
     }
 }

@@ -9,3 +9,6 @@ use crate::Item;
 pub const section: Item = Item::new(&["lang", "link", "section"]);
 pub const export: Item = Item::new(&["lang", "link", "export"]);
 pub const symbol: Item = Item::new(&["lang", "link", "symbol"]);
+/// The library a linked symbol comes from: an import module of wasm, a library an ELF program
+/// links (spec 08, section 3).
+pub const library: Item = Item::new(&["lang", "link", "library"]);

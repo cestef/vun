@@ -10,9 +10,10 @@ publish.workspace = true
 workspace = true
 
 [features]
-default = ["backend-c", "backend-native", "backend-cranelift", "backend-qbe", "backend-llvm", "backend-external", "link-wild", "link-mold", "link-lld", "link-gnu", "link-msvc", "link-external"]
+default = ["backend-c", "backend-native", "backend-wasm", "backend-cranelift", "backend-qbe", "backend-llvm", "backend-external", "link-wild", "link-mold", "link-lld", "link-gnu", "link-msvc", "link-external"]
 backend-c = ["dep:vun-backend-c"]
 backend-native = ["dep:vun-backend-native"]
+backend-wasm = ["dep:vun-backend-wasm"]
 backend-cranelift = ["dep:vun-backend-cranelift"]
 backend-qbe = ["dep:vun-backend-qbe"]
 backend-llvm = ["dep:vun-backend-llvm"]
@@ -63,6 +64,7 @@ vun-render-annotate.workspace = true
 vun-render-ariadne.workspace = true
 vun-backend-c = { workspace = true, optional = true }
 vun-backend-native = { workspace = true, optional = true }
+vun-backend-wasm = { workspace = true, optional = true }
 vun-backend-cranelift = { workspace = true, optional = true }
 vun-backend-qbe = { workspace = true, optional = true }
 vun-backend-llvm = { workspace = true, optional = true }

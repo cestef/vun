@@ -101,12 +101,7 @@ impl<T> Assembly<'_, T> {
             let value = object.append(text, bytes, FUNCTION_ALIGN);
             // An internal function is named by its declaration, as debuggers show it; local symbols
             // may share a name, as instantiations of one declaration do.
-            let path = self.lines.declaration(f.origin);
-            let own = if path.is_empty() {
-                id.to_string()
-            } else {
-                path.iter().map(|name| name.as_str()).collect::<Vec<_>>().join(".")
-            };
+            let own = self.lines.name(f.origin).unwrap_or_else(|| id.to_string());
             let (name, binding) = Self::named(f.linkage, own);
             let size = bytes.len() as u64;
             let symbol = Symbol { name, section: Some(text), value, size, kind: SymbolKind::Func, binding };

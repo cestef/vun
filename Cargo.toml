@@ -19,6 +19,7 @@ vun-json = { path = "compiler/base/json" }
 vun-items = { path = "compiler/base/items" }
 vun-hash = { path = "compiler/base/hash" }
 vun-graph = { path = "compiler/base/graph" }
+vun-bytes = { path = "compiler/base/bytes" }
 vun-fs = { path = "compiler/base/fs" }
 vun-outline = { path = "compiler/base/outline" }
 vun-span = { path = "compiler/base/span" }
@@ -49,6 +50,7 @@ vun-asm-x86_64 = { path = "compiler/back/x86_64" }
 vun-asm-arm64 = { path = "compiler/back/arm64" }
 vun-object = { path = "compiler/back/object" }
 vun-dwarf = { path = "compiler/back/dwarf" }
+vun-backend-wasm = { path = "compiler/back/wasm" }
 vun-backend-c = { path = "compiler/back/c" }
 vun-backend-native = { path = "compiler/back/native" }
 vun-backend-cranelift = { path = "compiler/back/cranelift" }
@@ -111,6 +113,8 @@ yaxpeax-x86 = { version = "2", default-features = false, features = ["std", "fmt
 # Tests only: an independent AArch64 decoder checking the arm64 assembler's table, and its traits.
 yaxpeax-arm = { version = "0.5", default-features = false, features = ["std", "fmt"] }
 yaxpeax-arch = { version = "0.3", default-features = false }
+# Tests only: an independent parser validating the modules of the wasm backend.
+wasmparser = { version = "0.259", default-features = false, features = ["std", "validate", "features"] }
 # libclang loaded at run time, never linked (decision 131); `clang_9_0` is the oldest accepted.
 clang-sys = { version = "1.8", default-features = false, features = ["runtime", "clang_9_0"] }
 

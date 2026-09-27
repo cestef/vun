@@ -4,7 +4,6 @@
 //! information unwinders read (`.eh_frame`). Addresses are relocations
 //! against the functions' symbols, so the linker places them.
 
-mod encode;
 mod frame;
 mod info;
 mod line;

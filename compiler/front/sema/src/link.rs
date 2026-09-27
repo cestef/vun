@@ -33,13 +33,27 @@ impl Func {
     }
 }
 
+/// How a declaration the linker provides is linked.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Linked {
+    /// `#[link.symbol(s)]`.
+    pub symbol: Symbol,
+    /// The calling convention its markers name.
+    pub abi: Option<Abi>,
+    /// The library the symbol comes from, `#[link.library(name)]`.
+    pub library: Option<Symbol>,
+}
+
 impl DeclRef {
-    /// The symbol the linker provides this declaration under (`#[link.symbol(s)]`), and the
-    /// calling convention its markers name.
+    /// How the linker provides this declaration, if it does (`#[link.symbol(s)]`).
     #[must_use]
-    pub fn linked(&self, cx: &Cx<'_>) -> Option<(Symbol, Option<Abi>)> {
+    pub fn linked(&self, cx: &Cx<'_>) -> Option<Linked> {
         let attributes = self.attributes(cx)?;
-        Some((attributes.text(Primitive::Link(Link::symbol))?, attributes.abi()))
+        Some(Linked {
+            symbol: attributes.text(Primitive::Link(Link::symbol))?,
+            abi: attributes.abi(),
+            library: attributes.text(Primitive::Link(Link::library)),
+        })
     }
 }
 

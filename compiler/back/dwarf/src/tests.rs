@@ -2,19 +2,7 @@ use std::path::PathBuf;
 
 use vun_object::{Binding, Contents, Format, Machine, Object, RelocKind, Symbol, SymbolId, SymbolKind};
 
-use super::encode::Out;
 use super::{Lines, Row, Sequence};
-
-#[test]
-fn leb128_encodes_as_dwarf_reads_it() {
-    let mut out = Out::default();
-    out.uleb(624_485);
-    out.sleb(-123_456);
-    out.sleb(63);
-    out.sleb(-64);
-    out.sleb(64);
-    assert_eq!(out.0, [0xe5, 0x8e, 0x26, 0xc0, 0xbb, 0x78, 0x3f, 0x40, 0xc0, 0x00]);
-}
 
 /// An object with a `.text` of two functions, of 16 and 8 bytes.
 fn object() -> (Object, [SymbolId; 2]) {

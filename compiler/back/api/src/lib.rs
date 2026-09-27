@@ -146,6 +146,13 @@ pub trait Lines {
         let _ = origin;
         Vec::new()
     }
+
+    /// The name debuggers show for an internal definition at `origin`: the path of its
+    /// declaration, if it has one.
+    fn name(&self, origin: OriginId) -> Option<String> {
+        let path = self.declaration(origin);
+        (!path.is_empty()).then(|| path.iter().map(|name| name.as_str()).collect::<Vec<_>>().join("."))
+    }
 }
 
 /// What a backend is asked to generate code for.

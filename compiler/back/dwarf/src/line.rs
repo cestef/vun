@@ -5,8 +5,8 @@
 
 use vun_object::{Contents, Object, Reloc, RelocKind, SectionId};
 
-use super::encode::Out;
 use super::{Lines, Row};
+use vun_bytes::Out;
 
 const VERSION: u16 = 4;
 /// Every instruction is counted in bytes, one operation each, and starts a statement.

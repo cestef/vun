@@ -10,4 +10,5 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
+vun-bytes.workspace = true
 vun-object.workspace = true

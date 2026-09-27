@@ -44,6 +44,9 @@ pub enum ImportKind {
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct Import {
     pub symbol: Symbol,
+    /// The library it comes from (`#[link.library(name)]`): a wasm import module, a library an
+    /// ELF program links.
+    pub library: Option<Symbol>,
     pub kind: ImportKind,
     pub origin: OriginId,
     /// The most bytes of stack a call of it takes, as its declaration states (`#[stack.max(n)]`).

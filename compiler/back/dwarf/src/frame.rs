@@ -6,7 +6,7 @@
 
 use vun_object::{Contents, Object, Reloc, RelocKind, SymbolId};
 
-use super::encode::Out;
+use vun_bytes::Out;
 
 /// A step of a function's frame, at the code offset it takes effect.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

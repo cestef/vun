@@ -1,6 +1,6 @@
 [package]
 name = "vun-link-lld"
-description = "lld adapter, with linker-script generation."
+description = "lld adapter: a flavor per object format, wasm-ld first."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -10,5 +10,7 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
+vun-diag.workspace = true
+vun-tool.workspace = true
 vun-link.workspace = true
 vun-target.workspace = true

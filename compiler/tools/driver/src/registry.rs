@@ -30,6 +30,7 @@ impl Registry {
         register!(r.add_backend {
             "backend-c" => vun_backend_c::CBackend::default(),
             "backend-native" => vun_backend_native::NativeBackend,
+            "backend-wasm" => vun_backend_wasm::WasmBackend,
             "backend-cranelift" => vun_backend_cranelift::BACKEND,
             "backend-qbe" => vun_backend_qbe::BACKEND,
             "backend-llvm" => vun_backend_llvm::BACKEND,

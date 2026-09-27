@@ -15,6 +15,7 @@ use vun_query::{Cx, Query};
 use vun_sema::env::Env;
 use vun_sema::eval::Instantiation;
 use vun_sema::item::DeclRef;
+use vun_sema::link::Linked;
 use vun_sema::target::TargetOf;
 use vun_sema::ty::{Ty, TyKind, Value};
 
@@ -200,21 +201,16 @@ impl<'a, 'db> Lowering<'a, 'db> {
     /// its symbol, or else an import, made once per symbol.
     pub(crate) fn linked(&mut self, decl: &DeclRef, at: OriginId) -> Result<Address, Unlowered> {
         let cx = self.types.cx;
-        let (symbol, abi) = decl.linked(cx).ok_or(Unlowered::unsupported(at, Form::Callee))?;
-        if let Some(&f) = self.exports.get(&symbol) {
+        let linked = decl.linked(cx).ok_or(Unlowered::unsupported(at, Form::Callee))?;
+        if let Some(&f) = self.exports.get(&linked.symbol) {
             return Ok(Address::Func(f));
         }
-        self.import(decl, symbol, abi, at).map(Address::Import)
+        self.import(decl, linked, at).map(Address::Import)
     }
 
-    fn import(
-        &mut self,
-        decl: &DeclRef,
-        symbol: Symbol,
-        abi: Option<vun_sema::primitives::abi::Abi>,
-        at: OriginId,
-    ) -> Result<ImportId, Unlowered> {
+    fn import(&mut self, decl: &DeclRef, linked: Linked, at: OriginId) -> Result<ImportId, Unlowered> {
         let cx = self.types.cx;
+        let Linked { symbol, abi, library } = linked;
         if let Some(&id) = self.imports.get(&symbol) {
             return Ok(id);
         }
@@ -229,7 +225,8 @@ impl<'a, 'db> Lowering<'a, 'db> {
         // The largest bound the program's declarations of the symbol state, the handler of
         // traps included, which a program declares itself (decision 164).
         let stack_max = self.env.linked_stack(symbol);
-        let id = self.unit.imports.push(Import { symbol, kind, origin: decl.decl.origin, stack_max });
+        let id =
+            self.unit.imports.push(Import { symbol, library, kind, origin: decl.decl.origin, stack_max });
         self.imports.insert(symbol, id);
         Ok(id)
     }
