@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use vun_fs::{Mode, Modes, Scratch};
+use vun_fs::{Mode, Modes, Refusal, Scratch};
 
 use super::{Algorithm, Change, Hash, Snapshot, base32};
 
@@ -27,19 +27,22 @@ fn base32_matches_rfc_4648_and_has_one_spelling() {
 #[test]
 fn trees_depend_on_contents_and_names_only() {
     let src = Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
-    let whole = Hash::tree(&src, &["lib.rs".into(), "tree.rs".into()]);
-    assert_eq!(whole, Hash::tree(&src, &["tree.rs".into(), "lib.rs".into(), "absent".into()]));
-    assert_ne!(whole, Hash::tree(&src, &["lib.rs".into()]));
-    assert_ne!(Hash::tree(&src, &["lib.rs".into()]), Hash::of(&std::fs::read(src.join("lib.rs")).unwrap()));
+    let whole = Hash::tree(&src, &["lib.rs".into(), "tree.rs".into()]).unwrap();
+    assert_eq!(whole, Hash::tree(&src, &["tree.rs".into(), "lib.rs".into(), "absent".into()]).unwrap());
+    assert_ne!(whole, Hash::tree(&src, &["lib.rs".into()]).unwrap());
+    assert_ne!(
+        Hash::tree(&src, &["lib.rs".into()]).unwrap(),
+        Hash::of(&std::fs::read(src.join("lib.rs")).unwrap())
+    );
 }
 
 #[test]
 fn snapshots_round_trip_and_name_changed_files() {
     let src = Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
-    let all = Snapshot::of(&src, &["lib.rs".into(), "tree.rs".into()]);
+    let all = Snapshot::of(&src, &["lib.rs".into(), "tree.rs".into()]).unwrap();
     assert_eq!(Snapshot::parse(&all.to_string()), Some(all.clone()));
-    assert_eq!(all.root(), Hash::tree(&src, &["tree.rs".into(), "lib.rs".into()]));
-    let fewer = Snapshot::of(&src, &["lib.rs".into(), "tests.rs".into()]);
+    assert_eq!(all.root(), Hash::tree(&src, &["tree.rs".into(), "lib.rs".into()]).unwrap());
+    let fewer = Snapshot::of(&src, &["lib.rs".into(), "tests.rs".into()]).unwrap();
     let changes = all.changes(&fewer);
     assert_eq!(changes, [("tests.rs".to_owned(), Change::Added), ("tree.rs".to_owned(), Change::Removed)]);
     assert_eq!(Snapshot::parse("blake3:zz lib.rs"), None);
@@ -61,9 +64,9 @@ fn the_executable_bit_is_part_of_the_tree() {
     let dir = Scratch::new("mode");
     let script = dir.write("configure", "#!/bin/sh\n");
     let include = ["configure".to_owned()];
-    let regular = Snapshot::of(dir.path(), &include);
+    let regular = Snapshot::of(dir.path(), &include).unwrap();
     script.set_mode(Mode::Executable).unwrap();
-    let executable = Snapshot::of(dir.path(), &include);
+    let executable = Snapshot::of(dir.path(), &include).unwrap();
     if script.mode() == Mode::Executable {
         assert_ne!(regular.root(), executable.root());
         assert!(executable.to_string().contains(" x configure"), "{executable}");
@@ -83,4 +86,41 @@ fn a_value_hashes_as_its_bytes_however_they_are_written() {
         }
         assert_eq!(hasher.finish_hash(), Hash::of(&bytes), "{step}");
     }
+}
+
+#[test]
+fn snapshots_refuse_entries_leaving_their_tree_and_links() {
+    let dir = Scratch::new("refuse");
+    dir.write("a/b.vun", "");
+    for entry in ["../a", "/etc", "a/../a"] {
+        let e = Snapshot::of(dir.path(), &[entry.to_owned()]).unwrap_err();
+        assert_eq!(e.get_ref().and_then(|e| e.downcast_ref()), Some(&Refusal::Outside(entry.to_owned())));
+    }
+    #[cfg(unix)]
+    {
+        std::os::unix::fs::symlink("/etc", dir.join("a/link")).unwrap();
+        let e = Snapshot::of(dir.path(), &["a".to_owned()]).unwrap_err();
+        assert_eq!(e.get_ref().and_then(|e| e.downcast_ref()), Some(&Refusal::Link(dir.join("a/link"))));
+    }
+}
+
+#[test]
+fn taken_snapshots_keep_what_they_hashed() {
+    let dir = Scratch::new("take");
+    dir.write("a/b.vun", "b");
+    dir.write("c.vun", "c");
+    let taken = Snapshot::take(dir.path(), &["a".to_owned(), "c.vun".to_owned()]).unwrap();
+    let files: Vec<_> =
+        taken.files().map(|(path, entry, bytes)| (path.join("/"), entry.hash, bytes)).collect();
+    assert_eq!(
+        files,
+        [("a/b.vun".to_owned(), Hash::of(b"b"), &b"b"[..]), ("c.vun".to_owned(), Hash::of(b"c"), &b"c"[..])]
+    );
+}
+
+#[test]
+fn a_file_is_no_directory_in_a_snapshot() {
+    let h = Hash::of(b"x");
+    assert_eq!(Snapshot::parse(&format!("{h} - a\n{h} - a/b")), None);
+    assert!(Snapshot::parse(&format!("{h} - a\n{h} - ab/c")).is_some());
 }

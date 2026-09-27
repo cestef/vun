@@ -2,8 +2,9 @@
 
 use std::ffi::OsString;
 use std::fs;
-use std::io;
+use std::io::{self, Write};
 use std::path::Path;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 /// Changes on paths.
 pub trait Edit {
@@ -26,11 +27,20 @@ pub trait Edit {
     /// Returns an error if the old directory cannot be removed or the new one created.
     fn fresh(&self) -> io::Result<()>;
 
-    /// Moves the directory `from` here, replacing what was there and creating the parents.
+    /// Moves the directory `from` here, replacing what was there and creating the parents. What
+    /// was there is moved aside before it is removed, so this is never missing for long.
     ///
     /// # Errors
-    /// Returns an error if the old directory cannot be removed or `from` cannot be moved.
+    /// Returns an error if the old directory cannot be moved or removed, or `from` cannot be moved.
     fn replace_with(&self, from: &Path) -> io::Result<()>;
+
+    /// Moves the directory `from` here unless something already is, then removes `from`: for
+    /// entries named by their contents, where whatever is here is equal to `from` and may be in
+    /// use by another process, so it is kept.
+    ///
+    /// # Errors
+    /// Returns an error if `from` can be neither moved here nor removed.
+    fn install(&self, from: &Path) -> io::Result<()>;
 
     /// Makes this a symbolic link to `target`, creating its parents; like [`Edit::put`], the link
     /// is made beside and renamed over what was here.
@@ -41,9 +51,13 @@ pub trait Edit {
     fn link_to(&self, target: &Path) -> io::Result<()>;
 }
 
-/// A file being written by [`Edit::put`] ends with this, after the writing process's id, so that
-/// processes writing one file at once each write their own.
+/// A file being written by [`Edit::put`] ends with this, after the writing process's id and a
+/// count of the parts it named, so that processes and threads writing one file at once each write
+/// their own.
 const PART: &str = "part";
+
+/// The parts this process named so far.
+static PARTS: AtomicU64 = AtomicU64::new(0);
 
 /// What [`Edit::put`] needs of a path beyond [`Edit`].
 trait Part {
@@ -55,7 +69,7 @@ impl Part for Path {
     fn part_name(&self) -> OsString {
         let mut name = OsString::from(".");
         name.push(self.file_name().unwrap_or_default());
-        name.push(format!(".{}.{PART}", std::process::id()));
+        name.push(format!(".{}.{}.{PART}", std::process::id(), PARTS.fetch_add(1, Ordering::Relaxed)));
         name
     }
 }
@@ -66,7 +80,14 @@ impl Edit for Path {
             fs::create_dir_all(parent)?;
         }
         let part = self.with_file_name(Self::part_name(self));
-        fs::write(&part, contents).and_then(|()| fs::rename(&part, self)).inspect_err(|_| {
+        let write = || -> io::Result<()> {
+            // A new file, so that a link planted at the part's name is never written through.
+            let mut file = fs::OpenOptions::new().write(true).create_new(true).open(&part)?;
+            file.write_all(contents.as_ref())?;
+            file.sync_all()?;
+            fs::rename(&part, self)
+        };
+        write().inspect_err(|_| {
             // The error that matters is the write's or the rename's.
             let _ = fs::remove_file(&part);
         })
@@ -88,8 +109,32 @@ impl Edit for Path {
         if let Some(parent) = self.parent() {
             fs::create_dir_all(parent)?;
         }
-        self.remove()?;
-        fs::rename(from, self)
+        let aside = self.with_file_name(Self::part_name(self));
+        let moved = match fs::rename(self, &aside) {
+            Err(e) if e.kind() == io::ErrorKind::NotFound => false,
+            moved => moved.map(|()| true)?,
+        };
+        fs::rename(from, self).inspect_err(|_| {
+            if moved {
+                let _ = fs::rename(&aside, self);
+            }
+        })?;
+        if moved { aside.remove() } else { Ok(()) }
+    }
+
+    fn install(&self, from: &Path) -> io::Result<()> {
+        if let Some(parent) = self.parent() {
+            fs::create_dir_all(parent)?;
+        }
+        if self.symlink_metadata().is_err() {
+            match fs::rename(from, self) {
+                Ok(()) => return Ok(()),
+                // Another process installed it first.
+                Err(_) if self.symlink_metadata().is_ok() => {}
+                Err(e) => return Err(e),
+            }
+        }
+        from.remove()
     }
 
     fn link_to(&self, target: &Path) -> io::Result<()> {

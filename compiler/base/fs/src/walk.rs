@@ -3,6 +3,8 @@
 use std::io;
 use std::path::{Path, PathBuf};
 
+use crate::Refusal;
+
 /// The directory the toolchain keeps its own files in, beside sources: builds, saved queries.
 /// Never source, so walks leave it out, and nothing it holds changes what a package is.
 pub const WORK: &str = ".vun";
@@ -10,9 +12,10 @@ pub const WORK: &str = ".vun";
 /// Directory walks on paths.
 pub trait Tree {
     /// The files at or below this path, recursively, sorted; a file is its own only entry.
+    /// Symbolic links are not followed: a walk meeting one fails with [`Refusal::Link`].
     ///
     /// # Errors
-    /// Returns an error if the path does not exist or a directory cannot be read.
+    /// Returns an error if the path does not exist, a directory cannot be read or a link is met.
     fn files(&self) -> io::Result<Vec<PathBuf>>;
 
     /// The files at or below this path whose extension is `ext`, sorted.
@@ -41,7 +44,11 @@ pub trait Tree {
 
 impl Tree for Path {
     fn files(&self) -> io::Result<Vec<PathBuf>> {
-        if self.is_file() {
+        let kind = self.symlink_metadata()?.file_type();
+        if kind.is_symlink() {
+            return Err(Refusal::Link(self.to_path_buf()).into());
+        }
+        if !kind.is_dir() {
             return Ok(vec![self.to_path_buf()]);
         }
         let mut found = Vec::new();

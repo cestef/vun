@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use super::{Edit, Mode, Modes, Relative, Scratch, Tree, WORK};
+use super::{Edit, Mode, Modes, Refusal, Relative, Scratch, Tree, WORK};
 
 fn names(paths: &[PathBuf], root: &std::path::Path) -> Vec<String> {
     paths.iter().map(|p| p.strip_prefix(root).unwrap().to_string_lossy().into_owned()).collect()
@@ -31,6 +31,43 @@ fn edits_create_parents_and_replace_whole_directories() {
     assert!(target.entries().unwrap().is_empty());
     target.remove().unwrap();
     target.remove().unwrap();
+}
+
+#[test]
+fn installs_keep_what_is_already_there() {
+    let dir = Scratch::new("install");
+    let target = dir.join("store/entry");
+    dir.write("first/a.vun", "first");
+    dir.write("second/a.vun", "second");
+    target.install(&dir.join("first")).unwrap();
+    target.install(&dir.join("second")).unwrap();
+    assert_eq!(std::fs::read_to_string(target.join("a.vun")).unwrap(), "first");
+    assert!(!dir.join("first").exists() && !dir.join("second").exists());
+}
+
+#[test]
+fn threads_putting_one_file_each_write_their_own_part() {
+    let dir = Scratch::new("put");
+    let path = dir.join("f");
+    let contents: Vec<_> = (0..8u8).map(|i| vec![i; 1 << 16]).collect();
+    std::thread::scope(|s| {
+        for bytes in &contents {
+            let path = &path;
+            s.spawn(move || path.put(bytes).unwrap());
+        }
+    });
+    assert!(contents.contains(&std::fs::read(&path).unwrap()));
+    assert_eq!(dir.path().entries().unwrap(), [path]);
+}
+
+#[cfg(unix)]
+#[test]
+fn walks_refuse_links() {
+    let dir = Scratch::new("links");
+    dir.write("a/b.vun", "");
+    std::os::unix::fs::symlink("/etc", dir.join("a/link")).unwrap();
+    let e = dir.join("a").files().unwrap_err();
+    assert_eq!(e.get_ref().and_then(|e| e.downcast_ref()), Some(&Refusal::Link(dir.join("a/link"))));
 }
 
 #[test]

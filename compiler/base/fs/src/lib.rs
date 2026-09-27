@@ -4,12 +4,14 @@
 
 mod edit;
 mod mode;
+mod refusal;
 mod relative;
 mod scratch;
 mod walk;
 
 pub use edit::Edit;
 pub use mode::{Mode, Modes};
+pub use refusal::Refusal;
 pub use relative::Relative;
 pub use scratch::Scratch;
 pub use walk::{Tree, WORK};

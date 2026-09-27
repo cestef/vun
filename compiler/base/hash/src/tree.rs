@@ -6,9 +6,10 @@
 
 use std::collections::BTreeMap;
 use std::fmt;
+use std::io;
 use std::path::{Component, Path};
 
-use vun_fs::{Mode, Modes, Tree};
+use vun_fs::{Mode, Modes, Refusal, Tree};
 
 use super::{Algorithm, Hash};
 
@@ -26,6 +27,24 @@ pub struct Snapshot {
 pub struct Entry {
     pub hash: Hash,
     pub mode: Mode,
+}
+
+/// A snapshot taken with the contents it hashed, so that nothing reads its files twice.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Taken {
+    pub snapshot: Snapshot,
+    /// In path order, as [`Snapshot::files`].
+    contents: Vec<Vec<u8>>,
+}
+
+impl Taken {
+    /// The files by path components with their contents, in path order.
+    pub fn files(&self) -> impl Iterator<Item = (&[String], Entry, &[u8])> {
+        self.snapshot
+            .files()
+            .zip(&self.contents)
+            .map(|((path, entry), bytes)| (path, entry, bytes.as_slice()))
+    }
 }
 
 /// How a file differs between two snapshots.
@@ -60,24 +79,42 @@ impl Snapshot {
     /// Characters no component may hold: separators or specials on some platform.
     pub const FORBIDDEN: &[char] = &['\\', ':', '\0'];
 
-    /// The files under `dir` named by `include` (files or directories). Entries that do not exist
-    /// are left out.
-    #[must_use]
-    pub fn of(dir: &Path, include: &[String]) -> Self {
-        let mut files = BTreeMap::new();
-        for file in include.iter().flat_map(|entry| dir.join(entry).files().unwrap_or_default()) {
-            let Ok(bytes) = std::fs::read(&file) else { continue };
-            let relative = file.strip_prefix(dir).unwrap_or(&file);
-            let components = relative
-                .components()
-                .filter_map(|c| match c {
-                    Component::Normal(name) => Some(name.to_string_lossy().into_owned()),
-                    _ => None,
-                })
-                .collect();
-            files.insert(components, Entry { hash: Hash::of(&bytes), mode: file.mode() });
+    /// The files under `dir` named by `include` (files or directories); see [`Snapshot::take`].
+    ///
+    /// # Errors
+    /// As [`Snapshot::take`].
+    pub fn of(dir: &Path, include: &[String]) -> io::Result<Self> {
+        Self::take(dir, include).map(|taken| taken.snapshot)
+    }
+
+    /// The files under `dir` named by `include`, with the contents hashed. Include entries are
+    /// written like snapshot paths and must stay inside `dir`; entries that do not exist are left
+    /// out.
+    ///
+    /// # Errors
+    /// Returns an error if an entry leaves `dir` ([`Refusal::Outside`]), a file cannot be read,
+    /// a symbolic link is met ([`Refusal::Link`]) or a name is not Unicode ([`Refusal::Name`]).
+    pub fn take(dir: &Path, include: &[String]) -> io::Result<Taken> {
+        let mut read = BTreeMap::new();
+        for entry in include {
+            let components = Self::components(entry).ok_or_else(|| Refusal::Outside(entry.clone()))?;
+            let root = components.iter().fold(dir.to_path_buf(), |path, c| path.join(c));
+            let found = match root.files() {
+                Err(e) if e.kind() == io::ErrorKind::NotFound && root.symlink_metadata().is_err() => continue,
+                found => found?,
+            };
+            for file in found {
+                let relative = file.strip_prefix(dir).unwrap_or(&file);
+                let name = |c: Component<'_>| c.as_os_str().to_str().map(str::to_owned);
+                let path = relative.components().map(name).collect::<Option<Vec<_>>>();
+                let path = path.ok_or_else(|| Refusal::Name(file.clone()))?;
+                let bytes = std::fs::read(&file)?;
+                read.insert(path, (Entry { hash: Hash::of(&bytes), mode: file.mode() }, bytes));
+            }
         }
-        Self { files }
+        let files = read.iter().map(|(path, &(entry, _))| (path.clone(), entry)).collect();
+        let contents = read.into_values().map(|(_, bytes)| bytes).collect();
+        Ok(Taken { snapshot: Self { files }, contents })
     }
 
     /// The files by path components, in path order.
@@ -126,6 +163,11 @@ impl Snapshot {
             let mark = marks.next().filter(|_| marks.next().is_none())?;
             let mode = MODES.iter().find(|&&(m, _)| m == mark)?.1;
             files.insert(Self::components(path)?, Entry { hash: Hash::parse(hash)?, mode });
+        }
+        // A file is no directory: `a` beside `a/b` names no tree.
+        let paths: Vec<_> = files.keys().collect();
+        if paths.windows(2).any(|w| w[1].starts_with(w[0])) {
+            return None;
         }
         Some(Self { files })
     }
@@ -194,9 +236,11 @@ impl Node {
 }
 
 impl Hash {
-    /// The tree hash of the files under `dir` named by `include`; see [`Snapshot::of`].
-    #[must_use]
-    pub fn tree(dir: &Path, include: &[String]) -> Self {
-        Snapshot::of(dir, include).root()
+    /// The tree hash of the files under `dir` named by `include`; see [`Snapshot::take`].
+    ///
+    /// # Errors
+    /// As [`Snapshot::take`].
+    pub fn tree(dir: &Path, include: &[String]) -> io::Result<Self> {
+        Snapshot::of(dir, include).map(|snapshot| snapshot.root())
     }
 }
