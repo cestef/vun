@@ -3,15 +3,21 @@
 use std::io::{self, Write};
 use std::process::ExitCode;
 
-use vun_diag::{Color, DiagCtxt, DiagSink, Diagnostic};
+use vun_diag::{Color, DiagCtxt, DiagId, DiagSink, Diagnostic, Msg};
 use vun_json::Object;
 use vun_origin::OriginTable;
 use vun_render_json::JsonRenderer;
 use vun_render_short::ShortRenderer;
 use vun_span::SourceFiles;
-use vun_term::{ColorChoice, Env, Format, Out, Record, Shell, Stream, Text, Verbosity};
+use vun_term::{ColorChoice, Document, Env, Format, Out, Record, Shell, Stream, Text, Verbosity};
 
 use crate::{Action, Args, COLOR, Detail, FORMAT, Outcome, Program, QUIET, Refusal, Request};
+
+/// A command stopped by an input or output error it did not report itself.
+const FAILED: DiagId = DiagId::new("command.failed");
+
+/// The kind of the record a help page is reported as.
+const HELP: &str = "help";
 
 /// What a program's context does around a command: collect a refusal as a diagnostic, and
 /// report what was collected once the command is done.
@@ -90,9 +96,13 @@ impl<Cx> Program<Cx> {
         let written = match request {
             Request::Help(selected, _, detail) => {
                 let page = selected.help(detail);
-                match detail {
-                    Detail::Short => shell.out.print(&page),
-                    Detail::Long => shell.page(&page),
+                match (shell.format, detail) {
+                    (Format::Human, Detail::Short) => shell.out.print(&page),
+                    (Format::Human, Detail::Long) => shell.page(&page),
+                    (Format::Json, _) => {
+                        let name = selected.last().name.to_owned();
+                        shell.result(&Document { kind: HELP, name, text: page.to_string() })
+                    }
                 }
                 .map(|()| Outcome::Success)
             }
@@ -107,8 +117,16 @@ impl<Cx> Program<Cx> {
                 Action::Group(_) => unreachable!("parse turns a bare group into a help request"),
             },
         };
-        // Output that cannot be written, such as a closed pipe, fails the command without a report.
-        Ok(written.unwrap_or(Outcome::Failure))
+        match written {
+            Ok(outcome) => Ok(outcome),
+            // A reader that stopped reading, such as `| head`, wants nothing more, not a report.
+            Err(e) if e.kind() == io::ErrorKind::BrokenPipe => Ok(Outcome::Failure),
+            Err(e) => {
+                let diagnostic =
+                    Diagnostic::error(FAILED, Msg::new().text("the command failed")).caused_by(&e);
+                Err(Refusal { outcome: Outcome::Failure, diagnostic: Box::new(diagnostic) })
+            }
+        }
     }
 
     /// Runs the program on the process's arguments and standard streams, as a binary's `main`.

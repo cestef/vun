@@ -3,7 +3,6 @@
 use std::fmt::Write;
 
 use super::Tree;
-use crate::parse::LONG;
 use crate::{Param, Values};
 
 /// Loads zsh's support for bash completion functions.
@@ -65,8 +64,7 @@ impl Tree<'_> {
 impl Param {
     /// How it can be written: `--name`, and `-n` when it has a short form.
     fn bash_spellings(&self) -> Vec<String> {
-        let long = format!("{LONG}{}", self.name);
-        std::iter::once(long).chain(self.short.map(|c| format!("-{c}"))).collect()
+        std::iter::once(self.long_form()).chain(self.short_form()).collect()
     }
 }
 

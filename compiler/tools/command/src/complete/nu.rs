@@ -24,9 +24,9 @@ impl Tree<'_> {
                     ParamKind::Positional(Arity::Optional) => writeln!(body, "    {}?: {shape}", param.name),
                     ParamKind::Positional(Arity::Many) => writeln!(body, "    ...{}: {shape}", param.name),
                     ParamKind::Flag | ParamKind::Option(_) => {
-                        let short = param.short.map(|c| format!("(-{c})")).unwrap_or_default();
+                        let short = param.short_form().map(|s| format!("({s})")).unwrap_or_default();
                         let value = if param.takes_value() { format!(": {shape}") } else { String::new() };
-                        writeln!(body, "    --{}{short}{value}  # {}", param.name, param.about)
+                        writeln!(body, "    {}{short}{value}  # {}", param.long_form(), param.about)
                     }
                 };
             }

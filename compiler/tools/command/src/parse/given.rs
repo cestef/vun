@@ -3,11 +3,9 @@
 
 use vun_diag::Diagnostic;
 
-use super::{LONG, OPTIONS_END};
+use super::{LONG, OPTIONS_END, SHORT};
 use crate::{Args, Arity, GLOBAL, Param, ParamKind, Program};
 
-/// Prefix of short options.
-pub(super) const SHORT: char = '-';
 /// Separates a long option from its value in one argument.
 const VALUE_SEPARATOR: char = '=';
 
@@ -22,27 +20,48 @@ impl<Cx> Program<Cx> {
         while let Some(word) = rest.next() {
             let Some(given) = Given::of(word) else { continue };
             let Some(param) = GLOBAL.params.iter().find(|p| given.names(p)) else { continue };
-            match (param.kind, given) {
-                (ParamKind::Flag, _) => args.flags.push(param.name),
-                (_, Given::Long(_, Some(value))) => drop(args.give(param, value)),
-                _ => {
-                    if let Some(value) = rest.next() {
-                        drop(args.give(param, value));
-                    }
-                }
-            }
+            drop(args.take(param, given, given.value(param, &mut rest)));
         }
-        let unset: Vec<&Param> = GLOBAL.params.iter().filter(|p| args.value(p).is_none()).collect();
-        for param in unset {
-            if let Some(value) = param.env.and_then(|name| std::env::var(name).ok()) {
-                drop(args.give(param, &value));
-            }
-        }
+        drop(args.fill(GLOBAL.params.iter()));
         args
     }
 }
 
 impl Args {
+    /// Records `param` as `given`: a flag, which takes no value, or an option with `value`.
+    pub(super) fn take(
+        &mut self,
+        param: &Param,
+        given: Given<'_>,
+        value: Option<&str>,
+    ) -> Result<(), Box<Diagnostic>> {
+        match (param.kind, given, value) {
+            (ParamKind::Flag, Given::Long(_, Some(value)), _) => Err(param.unexpected_value(value)),
+            (ParamKind::Flag, ..) => {
+                self.flags.push(param.name);
+                Ok(())
+            }
+            (_, _, Some(value)) => self.give(param, value),
+            (_, _, None) => Err(param.missing_value()),
+        }
+    }
+
+    /// Gives each of `params` the command line left out the value of its environment variable,
+    /// when that is set and not empty.
+    pub(super) fn fill<'p>(
+        &mut self,
+        params: impl Iterator<Item = &'p Param>,
+    ) -> Result<(), Box<Diagnostic>> {
+        let unset: Vec<&Param> = params.filter(|p| self.value(p).is_none()).collect();
+        for param in unset {
+            if let Some(value) = param.env.and_then(|name| std::env::var(name).ok()).filter(|v| !v.is_empty())
+            {
+                self.give(param, &value)?;
+            }
+        }
+        Ok(())
+    }
+
     /// Records `value` for `param`, checking it against the parameter's choices. A parameter
     /// taking one value keeps the last given.
     pub(super) fn give(&mut self, param: &Param, value: &str) -> Result<(), Box<Diagnostic>> {
@@ -72,6 +91,22 @@ impl<'a> Given<'a> {
         match *self {
             Self::Long(name, _) => param.name == name,
             Self::Short(c) => param.short == Some(c),
+        }
+    }
+
+    /// The value it gives `param`: none for a flag, the one after `=`, or else the next word.
+    pub(super) fn value<'w>(
+        self,
+        param: &Param,
+        rest: &mut impl Iterator<Item = &'w String>,
+    ) -> Option<&'w str>
+    where
+        'a: 'w,
+    {
+        match (param.kind, self) {
+            (ParamKind::Flag, _) => None,
+            (_, Self::Long(_, Some(value))) => Some(value),
+            _ => rest.next().map(String::as_str),
         }
     }
 

@@ -97,12 +97,17 @@ fn values_are_checked_and_words_after_the_end_of_options_are_positional() {
 }
 
 #[test]
-fn completions_cover_every_command() {
+fn completions_cover_every_command_under_its_aliases() {
     let paths: Vec<_> = PROGRAM.tree().nodes.into_iter().map(|n| n.path).collect();
-    assert_eq!(paths, [vec![], vec!["dump"], vec!["dump", "cst"], vec!["exec"]]);
+    assert_eq!(paths, [vec![], vec!["dump"], vec!["dump", "cst"], vec!["exec"], vec!["x"]]);
     for dialect in Dialect::ALL {
         assert!(!PROGRAM.completion(dialect).is_empty());
     }
+}
+
+#[test]
+fn a_flag_takes_no_value() {
+    assert_eq!(error("dump cst a.vun --fast=yes").0, errors::CLI_UNEXPECTED_ARGUMENT);
 }
 
 #[test]

@@ -3,12 +3,14 @@
 use vun_diag::{ChildKind, DiagId, Diagnostic, Msg, errors};
 use vun_suggest::closest;
 
-use given::{Given, SHORT};
+use given::Given;
 
 use crate::{Args, Arity, Command, GLOBAL, HELP, HELP_COMMAND, Param, ParamKind, Program, VERSION};
 
 /// Prefix of long options.
 pub(crate) const LONG: &str = "--";
+/// Prefix of short options.
+pub(crate) const SHORT: char = '-';
 /// The title of a command's own options in help.
 pub(crate) const OWN: &str = "Options";
 /// Ends the options: every word after it is positional.
@@ -122,13 +124,8 @@ impl<Cx> Program<Cx> {
                         help = Some(detail);
                     }
                     _ if param.is(&VERSION) => return Ok(Request::Version),
-                    (ParamKind::Flag, _) => args.flags.push(param.name),
-                    (ParamKind::Option(_), Given::Long(_, Some(value))) => args.give(param, value)?,
-                    (ParamKind::Option(_), _) => {
-                        let value = rest.next().ok_or_else(|| param.missing_value())?;
-                        args.give(param, value)?;
-                    }
                     (ParamKind::Positional(_), _) => unreachable!("Selected::option finds options and flags"),
+                    _ => args.take(param, option, option.value(param, &mut rest))?,
                 }
             } else if !command.children().is_empty() && !options_end {
                 if word == HELP_COMMAND {
@@ -169,9 +166,15 @@ impl Param {
         usage_error(errors::CLI_INVALID_VALUE, msg, help)
     }
 
+    fn unexpected_value(&self, value: &str) -> Box<Diagnostic> {
+        let msg = Msg::new().text("flag ").code(self.long_form()).text(" takes no value, given ").code(value);
+        let help = Msg::new().text("write ").code(self.long_form());
+        usage_error(errors::CLI_UNEXPECTED_ARGUMENT, msg, help)
+    }
+
     fn missing_value(&self) -> Box<Diagnostic> {
-        let msg = Msg::new().text("option ").code(format!("{LONG}{}", self.name)).text(" needs a value");
-        let help = Msg::new().text("write ").code(format!("{LONG}{} <{}>", self.name, self.name));
+        let msg = Msg::new().text("option ").code(self.long_form()).text(" needs a value");
+        let help = Msg::new().text("write ").code(self.long());
         usage_error(errors::CLI_MISSING_VALUE, msg, help)
     }
 }
@@ -184,19 +187,11 @@ impl<'p, Cx> Selected<'p, Cx> {
 
     /// Fills the options the command line left out from their environment variables.
     fn defaults(&self, args: &mut Args) -> Result<(), Box<Diagnostic>> {
-        let params = self.options().chain(self.last().positionals());
-        let unset: Vec<&Param> = params.filter(|p| args.value(p).is_none()).collect();
-        for param in unset {
-            if let Some(value) = param.env.and_then(|name| std::env::var(name).ok()).filter(|v| !v.is_empty())
-            {
-                args.give(param, &value)?;
-            }
-        }
-        Ok(())
+        args.fill(self.options().chain(self.last().positionals()))
     }
 
     fn see_help(&self) -> Msg {
-        Msg::new().text("see ").code(format!("{} {LONG}{}", self.invocation(), HELP.name))
+        Msg::new().text("see ").code([self.invocation(), HELP.long_form()].join(" "))
     }
 
     /// Help suggesting the closest of `candidates` to `given`, or pointing at the help page.
@@ -222,13 +217,13 @@ impl<'p, Cx> Selected<'p, Cx> {
         };
         let msg =
             Msg::new().text("unknown option ").code(written.clone()).text(" for ").code(self.invocation());
-        let names: Vec<String> = self.options().map(|p| format!("{LONG}{}", p.name)).collect();
+        let names: Vec<String> = self.options().map(Param::long_form).collect();
         let help = self.suggestion(&written, names.iter().map(String::as_str));
         usage_error(errors::CLI_UNKNOWN_OPTION, msg, help)
     }
 
     fn missing_argument(&self, param: &Param) -> Box<Diagnostic> {
-        let needed = format!("<{}>", param.name);
+        let needed = param.value_form();
         let msg =
             Msg::new().code(self.invocation()).text(" needs ").code(needed).text(": ").text(param.about);
         let help = Msg::new().text("usage: ").code(self.usage().to_string());

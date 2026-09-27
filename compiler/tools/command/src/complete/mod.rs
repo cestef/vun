@@ -40,7 +40,7 @@ pub(crate) struct Tree<'p> {
 
 /// One command of the tree, as a script completes it.
 pub(crate) struct Node<'p> {
-    /// The words selecting it below the program: `["pkg", "add"]`.
+    /// The words selecting it below the program, names or aliases: `["pkg", "add"]`.
     pub(crate) path: Vec<&'static str>,
     about: &'static str,
     /// The commands below it, with what each does.
@@ -62,14 +62,20 @@ impl<Cx> Program<Cx> {
         }
     }
 
+    /// Every command, once under each path of names and aliases selecting it.
     pub(crate) fn tree(&self) -> Tree<'_> {
         let mut nodes = Vec::new();
-        let mut pending = vec![Selected::root(&self.root)];
-        while let Some(selected) = pending.pop() {
+        let mut pending = vec![(Selected::root(&self.root), Vec::new())];
+        while let Some((selected, path)) = pending.pop() {
             let command = selected.last();
-            pending.extend(command.children().iter().rev().map(|c| selected.then(c)));
+            for child in command.children().iter().rev() {
+                for &spelling in std::iter::once(&child.name).chain(child.aliases).rev() {
+                    let below = path.iter().copied().chain([spelling]).collect();
+                    pending.push((selected.then(child), below));
+                }
+            }
             nodes.push(Node {
-                path: selected.path(),
+                path,
                 about: command.about,
                 children: command.children().iter().map(|c| (c.name, c.about)).collect(),
                 options: selected.options().collect(),

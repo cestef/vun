@@ -2,7 +2,7 @@
 
 use vun_term::{Column, Style, Table, Text};
 
-use crate::parse::LONG;
+use crate::parse::{LONG, SHORT};
 use crate::{Arity, Detail, HELP_COMMAND, Param, ParamKind, Selected};
 
 /// The two columns of a help section: what to write, and what it does.
@@ -77,8 +77,8 @@ impl<Cx> Selected<'_, Cx> {
 impl Param {
     /// How it is written in help: its short form, if any, then its long form.
     fn spelling(&self) -> Text {
-        let short = self.short.map(|c| Text::of(Style::Literal, format!("-{c}")).plain(", "));
-        let long = Text::of(Style::Literal, format!("{LONG}{}", self.name));
+        let short = self.short_form().map(|s| Text::of(Style::Literal, s).plain(", "));
+        let long = Text::of(Style::Literal, self.long_form());
         let value = self.takes_value().then(|| Text::new().plain(" ").append(self.placeholder()));
         short.unwrap_or_default().append(long).append(value.unwrap_or_default())
     }
@@ -88,7 +88,7 @@ impl Param {
         let written = match self.kind {
             ParamKind::Positional(Arity::Optional) => format!("[{}]", self.name),
             ParamKind::Positional(Arity::Many) => format!("[{}]...", self.name),
-            _ => format!("<{}>", self.name),
+            _ => self.value_form(),
         };
         Text::of(Style::Placeholder, written)
     }
@@ -109,13 +109,31 @@ impl Param {
     /// How messages name it: `--name`, or `<name>` for a positional.
     #[must_use]
     pub fn written(&self) -> String {
-        if self.is_positional() { format!("<{}>", self.name) } else { format!("{LONG}{}", self.name) }
+        if self.is_positional() { self.value_form() } else { self.long_form() }
     }
 
     /// How it is written in full: `--name`, and `--name <name>` when it takes a value.
     #[must_use]
     pub fn long(&self) -> String {
-        let value = if self.takes_value() { format!(" <{}>", self.name) } else { String::new() };
-        format!("{LONG}{}{value}", self.name)
+        let long = self.long_form();
+        if self.takes_value() { [long, self.value_form()].join(" ") } else { long }
+    }
+
+    /// `--name`.
+    #[must_use]
+    pub fn long_form(&self) -> String {
+        [LONG, self.name].concat()
+    }
+
+    /// `-c`, when it has a short form.
+    #[must_use]
+    pub fn short_form(&self) -> Option<String> {
+        self.short.map(|c| [SHORT, c].iter().collect())
+    }
+
+    /// `<name>`: what stands for its value.
+    #[must_use]
+    pub fn value_form(&self) -> String {
+        ["<", self.name, ">"].concat()
     }
 }

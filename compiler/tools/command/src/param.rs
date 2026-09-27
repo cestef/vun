@@ -85,8 +85,14 @@ impl Param {
         Self { values, ..self }
     }
 
+    /// Reads its value from `env` when the command line gives none.
+    ///
+    /// # Panics
+    /// When declared on a flag, which has no value to read: at compile time, as parameters are
+    /// constants.
     #[must_use]
     pub const fn env(self, env: &'static str) -> Self {
+        assert!(!matches!(self.kind, ParamKind::Flag), "a flag takes no value from a variable");
         Self { env: Some(env), ..self }
     }
 
