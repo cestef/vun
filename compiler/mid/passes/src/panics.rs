@@ -8,11 +8,11 @@ use vun_desugar::Narrowing;
 use vun_diag::{DiagCtxt, Diagnostic, Msg, errors};
 use vun_mir::{Body, Mir, Operand, Place, Projection, Rvalue};
 use vun_origin::OriginId;
-use vun_query::{Cx, Query};
+use vun_query::{Cx, Cycle, Query};
 use vun_sema::env::Env;
 use vun_sema::eval::Instantiation;
 use vun_sema::int::{Extended, Integer, Interval};
-use vun_sema::ty::{Marker, Value};
+use vun_sema::ty::{Marker, TyKind, Value};
 
 /// The `panic.never` reports of an instantiation's body; `None` when it has no MIR yet.
 pub struct PanicChecks;
@@ -30,6 +30,33 @@ impl Query for PanicChecks {
             check.run();
         }
         Some(check.diag)
+    }
+}
+
+/// Whether an instantiation's body may trap: a trap site its types do not discharge, or a call of
+/// what may. A closure is judged so where it is called, its promise being its body; a body without
+/// MIR, or reached again while judged, may.
+pub struct MayTrap;
+
+impl Query for MayTrap {
+    const NAME: &'static str = "may_trap";
+    type Key = Instantiation;
+    type Value = bool;
+
+    fn compute(cx: &Cx<'_>, i: &Instantiation) -> Self::Value {
+        let (Ok(body), Some(env)) = (cx.get::<Mir>(i), Env::inside(cx, &i.f, i.args.iter().cloned())) else {
+            return true;
+        };
+        if Marker::never_traps(&env.literal_markers(i.f.literal.expr.id)) {
+            return false;
+        }
+        let mut check = Check { env: &env, body: &body, diag: DiagCtxt::new() };
+        check.run();
+        check.diag.failed().is_some()
+    }
+
+    fn cycle(_: &Cx<'_>, _: &Instantiation, _: &Cycle) -> Self::Value {
+        true
     }
 }
 
@@ -82,11 +109,22 @@ impl Check<'_, '_, '_, '_> {
         }
     }
 
-    /// Whether calling `callee` with `args` may trap: a function or primitive without the
-    /// promise, but a primitive whose compile-time arguments show it cannot, such as a division by
+    /// Whether calling `callee` with `args` may trap: a closure whose body may ([`MayTrap`]), a
+    /// function or primitive without the promise, but a primitive whose compile-time arguments show it cannot, such as a division by
     /// a divisor whose range excludes 0; a variant's constructor never does, and a callee of
     /// unknown type says nothing.
     fn may_trap(&self, callee: &Operand, args: &[Operand]) -> bool {
+        let closure = match callee {
+            Operand::Const(Value::Closure { f, .. }) => Some(f),
+            Operand::Place(place) => match self.body.locals[place.local].ty.as_deref() {
+                Some(TyKind::Closure(closure)) => Some(&closure.f),
+                _ => None,
+            },
+            Operand::Const(_) => None,
+        };
+        if let Some(f) = closure {
+            return self.env.cx.get::<MayTrap>(&Instantiation::new(f.clone(), Vec::new()));
+        }
         if let Operand::Const(Value::Primitive(p)) = callee {
             let known: Vec<Option<Value>> = args
                 .iter()
@@ -100,7 +138,7 @@ impl Check<'_, '_, '_, '_> {
             }
         }
         let markers = match callee {
-            Operand::Const(Value::Fn(f) | Value::Closure { f, .. }) => {
+            Operand::Const(Value::Fn(f)) => {
                 let Some(env) = Env::inside(self.env.cx, f, []) else { return false };
                 env.literal_markers(f.literal.expr.id)
             }

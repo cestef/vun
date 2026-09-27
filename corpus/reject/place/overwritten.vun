@@ -1,9 +1,8 @@
 //! Writing a whole linear place that still holds a value would drop it: the value must be
 //! consumed first (spec 05, section 2).
 
-reopen := (fs: &mut Fs, a: &[u8], b: &[u8]) -> Result((), Error) {
-    mut f := fs.open(a)?;
-    f = fs.open(b)?; //~ place.linear_leak
+replace := (fs: &mut Fs, first: File, second: File) {
+    mut f := first;
+    f = second; //~ place.linear_leak
     fs.close(f);
-    .ok(())
 };
