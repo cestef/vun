@@ -223,9 +223,14 @@ language rules go in as proposed unless the user approves them.
    13,238 to 11,686 instructions); the LCG loop is 5 instructions a round instead of 13, in
    registers a call may overwrite: constants are hoisted out of loops (`Function::hoist`) and a
    constant no instruction takes as an immediate is held across the loop, made again rather than
-   reloaded when spilled (`Remade::Held`). Left: a spilled operand is loaded into a register even where the instruction takes memory
-   (snippets ask for every operand in a register); padding tiles are copied as zeros (LIR has no
-   undefined value). (c) DWARF line tables and symbol names done (decisions 204, 205:
+   reloaded when spilled (`Remade::Held`); a spilled operand is read from its home where every
+   step reading it takes memory (`Need::Any` from the snippet's forms). Left: padding tiles are
+   copied as zeros (LIR has no undefined value). Checks of unsafe code at run time (decision 268,
+   proposed; spec 07 section 7, 13 section 8.7): `--checks` / `Options.checks`, the rewrite at
+   concreteness (`#[lang.check.by]`, through `Func::requirement` for `Allocator`), redzones in
+   lowering, shadow memory in the libc runtime (`std.check`), `check.unsupported` elsewhere.
+   Left: the asm checks in the backends (`Unit.checks`), a board and a WASI shadow, foreign
+   frees and sizes, the quarantine, use after return. (c) DWARF line tables and symbol names done (decisions 204, 205:
    `vun-dwarf`; `gdb` breaks on Vun lines); the unit is named by the first file with a row;
    unwind information done (decision 215, `.eh_frame` on ELF; Mach-O's compact unwind is
    left); next `DW_TAG_subprogram`s; (d) done in the seventeenth session: data aligned past every C type or in a
