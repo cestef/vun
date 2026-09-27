@@ -71,6 +71,15 @@ reaches the system through typed link symbols each runtime exports (`std.os.symb
 `lang.panic.symbols.trap` and `std.sync.symbols.enter`), and a runtime without one (a Linux one
 calling the kernel, for static programs) is one more row.
 
+**Exit statuses.** How a program ends is `std.os.Exit`: `ok`, or `code(s)` with `s` a
+`std.os.Status`, `Int(1..=125)`. The range is what every system `std` runs on passes on
+unchanged: a shell reads 126 and 127 as a program that could not run and 128 plus `n` as one
+killed by signal `n`, and WASI's `proc_exit` refuses 126 and above. So `.code(200)` does not type
+check, the same as any value outside its integer's range (spec 04), and no runtime checks a
+status: each passes `Exit.status()`, 0 for `ok`, to its system as it is. A trap ends with
+`std.os.trapped`, a `Status` (101). A system with statuses of its own (a Windows `NTSTATUS`) is
+reached through that system's namespace, not through `Exit`.
+
 ### Bare metal
 
 ```vun
