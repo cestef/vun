@@ -122,11 +122,12 @@ impl Span {
     }
 }
 
-/// A one-based line and column, the column counted in bytes.
+/// A one-based line and column, the column counted both in bytes and in characters.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct LineCol {
     pub line: u32,
     pub col: u32,
+    pub chars: u32,
 }
 
 /// A source file and the byte offset of each of its lines.
@@ -155,9 +156,12 @@ impl SourceFile {
     #[expect(clippy::missing_panics_doc, reason = "line indices fit u32 because offsets do")]
     pub fn line_col(&self, offset: u32) -> LineCol {
         let line = self.line_starts.partition_point(|&start| start <= offset) - 1;
+        let start = self.line_starts[line];
+        let before = ByteRange::new(start, offset).of(&self.text);
         LineCol {
             line: u32::try_from(line + 1).expect("line numbers fit u32"),
-            col: offset - self.line_starts[line] + 1,
+            col: offset - start + 1,
+            chars: u32::try_from(before.chars().count() + 1).expect("columns fit u32 because offsets do"),
         }
     }
 

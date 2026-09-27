@@ -268,4 +268,4 @@ macro_rules! from_integer {
         }
     )*};
 }
-from_integer!(u8, u16, u32, u64, usize, i8, i16, i32, i64, isize);
+from_integer!(u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize);

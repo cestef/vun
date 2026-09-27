@@ -3,9 +3,15 @@ use super::*;
 #[test]
 fn line_col_counts_from_one() {
     let file = SourceFile::new("a.vun".into(), "x := 1;\ny := 2;\n".into());
-    assert_eq!(file.line_col(0), LineCol { line: 1, col: 1 });
-    assert_eq!(file.line_col(8), LineCol { line: 2, col: 1 });
-    assert_eq!(file.line_col(10), LineCol { line: 2, col: 3 });
+    assert_eq!(file.line_col(0), LineCol { line: 1, col: 1, chars: 1 });
+    assert_eq!(file.line_col(8), LineCol { line: 2, col: 1, chars: 1 });
+    assert_eq!(file.line_col(10), LineCol { line: 2, col: 3, chars: 3 });
+}
+
+#[test]
+fn line_col_counts_characters_apart_from_bytes() {
+    let file = SourceFile::new("a.vun".into(), "s := \"é\"; x".into());
+    assert_eq!(file.line_col(11), LineCol { line: 1, col: 12, chars: 11 });
 }
 
 #[test]

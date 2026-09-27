@@ -105,6 +105,13 @@ impl Diagnostic {
         Self::new(id, Severity::Error, message)
     }
 
+    /// A failure to write `path`.
+    #[must_use]
+    pub fn unwritable(path: &std::path::Path, error: &std::io::Error) -> Self {
+        let msg = Msg::new().text("cannot write ").code(path.display().to_string());
+        Self::error(crate::errors::IO_UNWRITABLE_FILE, msg).caused_by(error)
+    }
+
     #[must_use]
     pub fn at(mut self, origin: OriginId, msg: Option<Msg>) -> Self {
         self.primary = Some(Label { origin, msg });

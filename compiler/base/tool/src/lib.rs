@@ -4,7 +4,7 @@
 //! and outputs so the build can cache and sandbox it (spec 12, section 8).
 
 use std::ffi::OsStr;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use vun_intern::Symbol;
@@ -121,11 +121,25 @@ impl Executable {
         Self { id: id.into(), program: program.into() }
     }
 
-    /// Where the program `name` is on the search path (`PATH`), if it is.
+    /// Where the program `name` is on the search path (`PATH`), if it is, as an absolute path.
     #[must_use]
     pub fn search(name: &str) -> Option<PathBuf> {
         let paths = std::env::var_os("PATH")?;
-        std::env::split_paths(&paths).map(|dir| dir.join(name)).find(|path| path.is_file())
+        std::env::split_paths(&paths)
+            .filter_map(|dir| std::path::absolute(dir.join(name)).ok())
+            .find(|path| Self::runnable(path))
+    }
+
+    fn runnable(path: &Path) -> bool {
+        let Ok(meta) = path.metadata() else { return false };
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            const EXECUTE: u32 = 0o111;
+            meta.is_file() && meta.permissions().mode() & EXECUTE != 0
+        }
+        #[cfg(not(unix))]
+        meta.is_file()
     }
 }
 
