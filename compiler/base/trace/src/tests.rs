@@ -8,6 +8,7 @@ fn the_most_specific_directive_decides() {
     assert!(filter.enabled("vun_sema::check", Level::TRACE));
     assert!(!filter.enabled("vun_sema::int", Level::WARN));
     assert!(filter.enabled("vun_syntax", Level::INFO));
+    assert!(!filter.enabled("vun_sema_passes", Level::TRACE), "a module, not a prefix of names");
     assert!(!filter.enabled("vun_syntax", Level::DEBUG));
     assert!(!Filter::default().enabled("anything", Level::ERROR), "nothing without a filter");
     assert!(

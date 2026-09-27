@@ -8,6 +8,7 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fmt;
+use std::marker::PhantomData;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, LazyLock, OnceLock};
 use std::time::{Duration, Instant};
@@ -59,9 +60,10 @@ thread_local! {
     static SUMS: RefCell<HashMap<Activity, Arc<Sums>>> = RefCell::new(HashMap::new());
 }
 
-/// An activity being timed; its time is added when it is dropped.
+/// An activity being timed; its time is added when it is dropped, on the thread that started it,
+/// whose open activities nest.
 #[must_use = "the activity is timed until the timer is dropped"]
-pub struct Timer(Option<Arc<Sums>>);
+pub struct Timer(Option<Arc<Sums>>, PhantomData<*const ()>);
 
 impl Timings {
     /// Starts timing, from now.
@@ -109,7 +111,7 @@ impl Activity {
     /// Times the activity until the timer returned is dropped.
     pub fn start(self) -> Timer {
         if !Timings::enabled() {
-            return Timer(None);
+            return Timer(None, PhantomData);
         }
         let sums = SUMS.with_borrow_mut(|sums| {
             Arc::clone(
@@ -118,7 +120,7 @@ impl Activity {
             )
         });
         OPEN.with_borrow_mut(|open| open.push(Open { started: Instant::now(), inner: Duration::ZERO }));
-        Timer(Some(sums))
+        Timer(Some(sums), PhantomData)
     }
 }
 

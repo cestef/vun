@@ -8,6 +8,8 @@ use tracing::Level;
 /// Separates directives, and a target from its level.
 const DIRECTIVES: char = ',';
 const TARGET: char = '=';
+/// Separates the modules of a target, as Rust paths do.
+const PATH: &str = "::";
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 struct Directive {
@@ -48,7 +50,10 @@ impl Filter {
     /// Whether an event or span of `level` from `target` is shown.
     #[must_use]
     pub fn enabled(&self, target: &str, level: Level) -> bool {
-        let applies = |d: &&Directive| d.target.as_deref().is_none_or(|t| target.starts_with(t));
+        // A directive names a module and the modules within it, not every name it begins.
+        let within =
+            |t: &str| target.strip_prefix(t).is_some_and(|rest| rest.is_empty() || rest.starts_with(PATH));
+        let applies = |d: &&Directive| d.target.as_deref().is_none_or(within);
         // `max_by_key` keeps the last maximum, so later directives win among equally specific ones.
         let decisive =
             self.directives.iter().filter(applies).max_by_key(|d| d.target.as_ref().map_or(0, String::len));

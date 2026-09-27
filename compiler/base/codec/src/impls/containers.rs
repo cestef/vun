@@ -43,12 +43,17 @@ impl<T: Encode> Encode for Vec<T> {
     }
 }
 
+/// The most items without data a list may hold.
+const MOST_EMPTY_ITEMS: usize = 1 << 16;
+
 impl<T: Decode> Decode for Vec<T> {
     fn decode(r: &mut Reader<'_>) -> Result<Self, Malformed> {
         let len = usize::decode(r)?;
         // An item takes at least one byte unless it is of a type without data, so a longer
-        // length is malformed, found before allocating it.
-        if size_of::<T>() != 0 && len > r.remaining() {
+        // length is malformed, found before allocating it; items without data are bounded apart,
+        // so that no length makes reading loop for long.
+        let most = if size_of::<T>() == 0 { MOST_EMPTY_ITEMS } else { r.remaining() };
+        if len > most {
             return Err(Malformed::Truncated);
         }
         (0..len).map(|_| T::decode(r)).collect()

@@ -11,11 +11,11 @@ mod query;
 mod saved;
 mod store;
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use std::sync::atomic::Ordering;
 
-use vun_codec::{Blob, Context, Decode, Encode, Writer};
+use vun_codec::{Blob, Context, Decode, Encode, Malformed, Writer};
 use vun_trace::{Activity, tracing};
 
 pub use self::census::{Census, Counted};
@@ -135,6 +135,11 @@ impl Db {
         }
         let header = Saved::<Blob>::decoded(&bytes).map_err(Unloaded::Decode)?;
         let saved: Loaded = header.body.read(&bytes).map_err(Unloaded::Decode)?;
+        // Each query is saved once, so that its positions name its own memos.
+        let mut names = HashSet::new();
+        if !saved.queries.iter().all(|q| names.insert(q.name.as_str())) {
+            return Err(Unloaded::Decode(Malformed::Invariant));
+        }
         let size = u64::try_from(header.body.len).expect("a body fits in 64 bits");
         let growth = Growth { size, compacted: header.compacted };
         let persisted = self.persisted.read().expect("persisted queries").clone();
