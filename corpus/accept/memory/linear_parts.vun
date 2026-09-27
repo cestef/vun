@@ -1,0 +1,13 @@
+//! A linear value's parts are consumed on their own: closing each closes the whole
+//! (spec 05, section 2).
+
+close_both := (fs: &mut Fs, pair: (File, File)) {
+    fs.close(pair.0);
+    fs.close(pair.1);
+};
+
+close_nested := (fs: &mut Fs, files: (File, (File, File))) {
+    fs.close(files.1.0);
+    fs.close(files.0);
+    fs.close(files.1.1);
+};

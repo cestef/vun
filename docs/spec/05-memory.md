@@ -47,12 +47,15 @@ Rules, all checked on the control-flow graph:
   compile error. There is no `undefined` value.
 - A part named without running the program (a field, a tuple position, an item at a constant
   index) has its own state once written: `buf[0] = 1;` makes `buf[0]` readable, not `buf[1]`. A
-  part at an index known only at run time needs the whole place `init`.
+  part at an index known only at run time needs the whole place `init`. Passing such a part by
+  value moves it the same way when its type is linear: `close(pair.0)` leaves `pair.0` `uninit`
+  and `pair.1` held, a second `close(pair.0)` reads an `uninit` place, and reading `pair` whole
+  needs every part `init`. A place holding linear parts is consumed once each of them is.
 - A linear value cannot be moved out of a place reached through a borrow's `.*`: a borrow does
   not own what it points to. Matching or reading through the borrow itself binds by borrow
   instead (`place.move_out_of_borrow`). An owner held by value owns its target, so moving a
   part out of it is allowed (`cur = node.next` before freeing `node`).
-- Writing a whole linear place that still holds a value is a leak (`place.linear_leak`). Moving a
+- Writing a linear place, whole or a part, that still holds a value is a leak (`place.linear_leak`). Moving a
   linear value is an exclusive access: it conflicts with any live borrow of it.
 - **At every scope exit, every place holding a linear value must be `uninit`.** Forgetting to close,
   free, release or finish something is a compile error. No destructor ever runs implicitly.

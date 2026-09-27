@@ -8,6 +8,7 @@
 
 mod leak;
 mod moved;
+mod parts;
 mod states;
 mod transfer;
 
@@ -27,6 +28,7 @@ use vun_sema::ty::Value;
 
 use leak::Stop;
 use moved::Moved;
+use parts::Linear;
 use states::{State, States};
 
 /// What the place states find in an instantiation's body: the reports, and where each deferred
@@ -50,8 +52,8 @@ impl Query for Placed {
         let linear =
             body.locals.iter().filter(|(_, d)| d.ty.is_some_and(|t| cx.get::<Kinds>(&t).is_linear()));
         let linear = linear.filter(|(_, d)| d.role == Role::Held).map(|(local, _)| local);
-        let linear: BTreeSet<Local> = linear.filter(|&l| l != body.ret).collect();
-        let moved = Moved::find(cx, &body, |l| linear.contains(&l));
+        let linear = Linear::find(cx, &body, linear.filter(|&l| l != body.ret));
+        let moved = Moved::find(cx, &body, |l| linear.contains(l));
         Some(Arc::new(Analysis::new(&body, linear, moved).run()))
     }
 }
@@ -75,8 +77,9 @@ struct Analysis<'b> {
     targets: BTreeMap<Local, (State, State)>,
     /// The locals assigned once, a constant integer: the indices a part can be named by.
     constants: BTreeMap<Local, i128>,
-    /// The locals holding linear values, which a read moves and a return must find `uninit`.
-    linear: BTreeSet<Local>,
+    /// The locals holding linear values, which a read moves and a return must find `uninit`,
+    /// with their linear parts.
+    linear: Linear,
     /// The linear values moved out of borrows, by the linear local they land in, if any.
     moved: Vec<(Option<Local>, OriginId)>,
     diag: DiagCtxt,
@@ -88,7 +91,7 @@ struct Analysis<'b> {
 }
 
 impl<'b> Analysis<'b> {
-    fn new(body: &'b Body, linear: BTreeSet<Local>, moved: Vec<(Option<Local>, OriginId)>) -> Self {
+    fn new(body: &'b Body, linear: Linear, moved: Vec<(Option<Local>, OriginId)>) -> Self {
         let targets = body
             .params
             .iter()
@@ -153,7 +156,7 @@ impl<'b> Analysis<'b> {
     /// linear ones, so that the report is not repeated as a leak.
     fn moved_out(&mut self) {
         for (local, origin) in std::mem::take(&mut self.moved) {
-            if local.is_none_or(|local| self.linear.remove(&local)) {
+            if local.is_none_or(|local| self.linear.remove(local)) {
                 let msg = Msg::new().text("this moves a linear value out of a borrow, which does not own it");
                 let help = Msg::new()
                     .text("match or read through the borrow itself, without ")
@@ -177,7 +180,7 @@ impl<'b> Analysis<'b> {
                         && source.local == from
                         && seen.insert(stmt.place.local)
                     {
-                        self.linear.remove(&stmt.place.local);
+                        self.linear.remove(stmt.place.local);
                         work.push(stmt.place.local);
                     }
                 }
@@ -264,10 +267,10 @@ impl<'b> Analysis<'b> {
 
     /// At the end of the scope of `local`'s binding, a linear value it holds is leaked.
     fn scope_ends(&mut self, local: Local, states: &mut States, origin: OriginId) {
-        if self.linear.contains(&local) && states.locals[local] != State::Uninit {
+        if self.holds(states, local, &[]) {
             self.leak(local, origin, Stop::Scope);
         }
-        states.end(local);
+        states.set(local, &[], State::Uninit);
     }
 
     fn report(&mut self, id: DiagId, origin: OriginId, msg: Msg) {

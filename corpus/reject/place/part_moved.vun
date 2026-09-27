@@ -1,0 +1,17 @@
+//! Passing a linear part by value leaves that part `uninit` and its siblings held: a part is
+//! consumed once, and every linear part must be (spec 05, section 2).
+
+close_first_twice := (fs: &mut Fs, pair: (File, File)) {
+    fs.close(pair.0);
+    fs.close(pair.0); //~ place.read_uninit
+    fs.close(pair.1);
+};
+
+close_first := (fs: &mut Fs, pair: (File, File)) { //~ place.linear_leak
+    fs.close(pair.0);
+};
+
+close_all_then_whole := (fs: &mut Fs, pair: (File, File)) -> (File, File) {
+    fs.close(pair.1);
+    pair //~ place.read_uninit
+};

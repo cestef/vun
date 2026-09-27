@@ -45,12 +45,15 @@ impl Analysis<'_> {
         }
     }
 
-    /// A use of `operand`: a read, which moves a whole linear value out of its place.
+    /// A use of `operand`: a read, which moves a linear value, whole or a linear part, out of
+    /// its place.
     pub(super) fn operand(&mut self, operand: &Operand, states: &mut States, origin: OriginId) {
         if let Operand::Place(place) = operand {
             self.read(place, states, origin);
-            if place.projection.is_empty() && self.linear.contains(&place.local) {
-                states.locals[place.local] = State::Uninit;
+            if let Some(path) = self.path(place)
+                && self.linear.holds(place.local, &path)
+            {
+                states.set(place.local, &path, State::Uninit);
             }
         }
     }
@@ -73,20 +76,24 @@ impl Analysis<'_> {
     pub(super) fn write(&mut self, place: &Place, states: &mut States, origin: OriginId) {
         self.indices(place, states, origin);
         match (place.projection.as_slice(), self.path(place)) {
-            ([], _) => {
-                if self.linear.contains(&place.local) && states.locals[place.local] != State::Uninit {
-                    self.leak(place.local, origin, Stop::Overwritten);
-                }
-                states.write(place.local);
-            }
             ([Projection::Deref], _) if states.targets.contains_key(&place.local) => {
                 states.targets.insert(place.local, State::Init);
             }
             (_, Some(path)) => {
-                states.parts.insert((place.local, path), State::Init);
+                if self.holds(states, place.local, &path) {
+                    self.leak(place.local, origin, Stop::Overwritten);
+                }
+                states.set(place.local, &path, State::Init);
             }
             (_, None) => {}
         }
+    }
+
+    /// Whether a linear part of `local` within `path`, or the whole when it is empty, may still
+    /// hold a value.
+    pub(super) fn holds(&self, states: &States, local: Local, path: &[Key]) -> bool {
+        let leaves = self.linear.leaves(local).iter().filter(|leaf| leaf.starts_with(path));
+        leaves.map(|leaf| states.of(local, Some(leaf))).any(|state| state != State::Uninit)
     }
 
     /// `&mode place`: the place must be in the state the mode needs, and is left in the state
@@ -99,10 +106,7 @@ impl Analysis<'_> {
         // A mode that leaves the state it needs changes nothing: a borrow of an `uninit` place
         // is reported, not initialized.
         if place.projection.is_empty() && before != after {
-            match State::from(after) {
-                State::Init => states.write(place.local),
-                state => states.locals[place.local] = state,
-            }
+            states.set(place.local, &[], State::from(after));
         }
     }
 

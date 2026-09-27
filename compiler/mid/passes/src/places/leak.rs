@@ -6,14 +6,13 @@ use vun_diag::{Msg, errors};
 use vun_origin::OriginId;
 
 use super::Analysis;
-use super::states::{State, States};
+use super::states::States;
 use vun_mir::Local;
 
 impl Analysis<'_> {
     /// Every linear place still `init` where the function stops: nothing is closed implicitly.
     pub(super) fn leaks(&mut self, states: &States, origin: OriginId, stop: Stop) {
-        let leaked: Vec<Local> =
-            self.linear.iter().copied().filter(|&l| states.locals[l] != State::Uninit).collect();
+        let leaked: Vec<Local> = self.linear.locals().filter(|&l| self.holds(states, l, &[])).collect();
         for local in leaked {
             self.leak(local, origin, stop);
         }

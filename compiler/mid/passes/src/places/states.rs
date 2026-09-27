@@ -21,6 +21,16 @@ impl State {
     fn join(self, other: Self) -> Self {
         if self == other { self } else { Self::Ambiguous }
     }
+
+    /// The one of the two a read cannot rely on more: `uninit`, then undecided, then `init`.
+    fn worse(self, other: Self) -> Self {
+        let rank = |s| match s {
+            Self::Init => 0,
+            Self::Ambiguous => 1,
+            Self::Uninit => 2,
+        };
+        if rank(other) > rank(self) { other } else { self }
+    }
 }
 
 impl From<PlaceState> for State {
@@ -60,8 +70,7 @@ impl States {
         let before = self.clone();
         let keys: BTreeSet<_> = self.parts.keys().chain(other.parts.keys()).cloned().collect();
         for key in keys {
-            let mine = self.parts.get(&key).copied().unwrap_or(self.locals[key.0]);
-            let theirs = other.parts.get(&key).copied().unwrap_or(other.locals[key.0]);
+            let (mine, theirs) = (self.enclosing(key.0, &key.1), other.enclosing(key.0, &key.1));
             self.parts.insert(key, mine.join(theirs));
         }
         for (local, state) in other.locals.iter() {
@@ -75,28 +84,32 @@ impl States {
         *self != before
     }
 
-    /// The state of the part `path` of `local`: `init` when the whole is, or when the part or
-    /// one enclosing it was written; the whole's state otherwise.
+    /// The state of the part `path` of `local`, the whole when not known: that of the part or of
+    /// the closest part enclosing it that was written or moved on its own, else the whole's, and
+    /// no better than that of any part within it.
     pub(super) fn of(&self, local: Local, path: Option<&[Key]>) -> State {
-        let whole = self.locals[local];
-        if whole == State::Init {
-            return whole;
+        let path = path.unwrap_or_default();
+        let within = self
+            .parts
+            .iter()
+            .filter(|((l, p), _)| *l == local && p.len() > path.len() && p.starts_with(path));
+        within.fold(self.enclosing(local, path), |state, (_, &part)| state.worse(part))
+    }
+
+    /// The state of the closest part enclosing `path` of `local`, or of `path` itself, known on
+    /// its own; the whole's otherwise.
+    fn enclosing(&self, local: Local, path: &[Key]) -> State {
+        let known = (1..=path.len()).rev().find_map(|n| self.parts.get(&(local, path[..n].to_vec())));
+        known.copied().unwrap_or(self.locals[local])
+    }
+
+    /// The part `path` of `local`, the whole when empty, is now in `state`, parts within it too.
+    pub(super) fn set(&mut self, local: Local, path: &[Key], state: State) {
+        self.parts.retain(|(l, p), _| *l != local || !p.starts_with(path));
+        if path.is_empty() {
+            self.locals[local] = state;
+        } else {
+            self.parts.insert((local, path.to_vec()), state);
         }
-        let written = path.is_some_and(|path| {
-            (1..=path.len()).any(|n| self.parts.get(&(local, path[..n].to_vec())) == Some(&State::Init))
-        });
-        if written { State::Init } else { whole }
-    }
-
-    /// The binding of `local` goes out of scope: it holds nothing any more.
-    pub(super) fn end(&mut self, local: Local) {
-        self.locals[local] = State::Uninit;
-        self.parts.retain(|(l, _), _| *l != local);
-    }
-
-    /// The whole of `local` is written.
-    pub(super) fn write(&mut self, local: Local) {
-        self.locals[local] = State::Init;
-        self.parts.retain(|(l, _), _| *l != local);
     }
 }
