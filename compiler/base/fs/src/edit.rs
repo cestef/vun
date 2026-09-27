@@ -3,7 +3,7 @@
 use std::ffi::OsString;
 use std::fs;
 use std::io::{self, Write};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 
 /// Changes on paths.
@@ -59,18 +59,19 @@ const PART: &str = "part";
 /// The parts this process named so far.
 static PARTS: AtomicU64 = AtomicU64::new(0);
 
-/// What [`Edit::put`] needs of a path beyond [`Edit`].
-trait Part {
-    /// The name of the file `put` writes before renaming it to this path.
-    fn part_name(&self) -> OsString;
+/// Where a file is written before it is renamed to its path, as [`Edit::put`] does.
+pub trait Part {
+    /// A path beside this one, hidden and unique to this process and call, for a file being
+    /// written before it is renamed to this path.
+    fn part(&self) -> PathBuf;
 }
 
 impl Part for Path {
-    fn part_name(&self) -> OsString {
+    fn part(&self) -> PathBuf {
         let mut name = OsString::from(".");
         name.push(self.file_name().unwrap_or_default());
         name.push(format!(".{}.{}.{PART}", std::process::id(), PARTS.fetch_add(1, Ordering::Relaxed)));
-        name
+        self.with_file_name(name)
     }
 }
 
@@ -79,7 +80,7 @@ impl Edit for Path {
         if let Some(parent) = self.parent() {
             fs::create_dir_all(parent)?;
         }
-        let part = self.with_file_name(Self::part_name(self));
+        let part = self.part();
         let write = || -> io::Result<()> {
             // A new file, so that a link planted at the part's name is never written through.
             let mut file = fs::OpenOptions::new().write(true).create_new(true).open(&part)?;
@@ -109,7 +110,7 @@ impl Edit for Path {
         if let Some(parent) = self.parent() {
             fs::create_dir_all(parent)?;
         }
-        let aside = self.with_file_name(Self::part_name(self));
+        let aside = self.part();
         let moved = match fs::rename(self, &aside) {
             Err(e) if e.kind() == io::ErrorKind::NotFound => false,
             moved => moved.map(|()| true)?,
@@ -141,7 +142,7 @@ impl Edit for Path {
         if let Some(parent) = self.parent() {
             fs::create_dir_all(parent)?;
         }
-        let part = self.with_file_name(Self::part_name(self));
+        let part = self.part();
         #[cfg(unix)]
         let linked = std::os::unix::fs::symlink(target, &part);
         #[cfg(not(unix))]

@@ -9,7 +9,7 @@ mod relative;
 mod scratch;
 mod walk;
 
-pub use edit::Edit;
+pub use edit::{Edit, Part};
 pub use mode::{Mode, Modes};
 pub use refusal::Refusal;
 pub use relative::Relative;
