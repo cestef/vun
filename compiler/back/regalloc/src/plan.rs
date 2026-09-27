@@ -16,7 +16,8 @@ use crate::points::{Point, Points, Pos};
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Loc {
     Reg(PReg),
-    /// The value's home in the frame.
+    /// The value's home in the frame; for a value made again (`Remade::Held`), nowhere: moves
+    /// out of it make the value, and none go into it.
     Home(Value),
     /// The framework's own register for breaking a cycle of moves.
     Temp,

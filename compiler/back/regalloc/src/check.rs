@@ -8,7 +8,7 @@ use std::fmt;
 use vun_index::IndexVec;
 use vun_lir::{Block, Function, Value};
 
-use crate::needs::{Describe, Need, Needs, Out, Read};
+use crate::needs::{Describe, Need, Needs, Out, Read, Remade};
 use crate::plan::{Allocation, Loc, Move, Source};
 use crate::points::Pos;
 
@@ -47,9 +47,11 @@ impl std::error::Error for Wrong {}
 struct State(HashMap<Loc, Value>);
 
 impl State {
-    fn expect(&self, at: Loc, v: Value, point: u32) -> Result<(), Wrong> {
+    /// Requires `at` to hold `v` where `point` reads it; the home of a value made again holds it
+    /// by making it.
+    fn expect(&self, d: &impl Describe, at: Loc, v: Value, point: u32) -> Result<(), Wrong> {
         let found = self.0.get(&at).copied();
-        if found == Some(v) {
+        if found == Some(v) || (at == Loc::Home(v) && d.remade(v) == Some(Remade::Held)) {
             Ok(())
         } else {
             Err(Wrong { point, value: v, why: Why::Elsewhere { at, found } })
@@ -104,13 +106,13 @@ impl Allocation {
                 let entered = points.entered(to);
                 for (&param, &arg) in f.blocks[to].params.iter().zip(&target.args) {
                     let Some(at) = self.at(param, entered) else { continue };
-                    there.expect(at, arg, last)?;
+                    there.expect(d, at, arg, last)?;
                     there.0.insert(at, param);
                 }
                 for v in live.into[to].iter() {
                     let at =
                         self.at(v, entered).ok_or(Wrong { point: last, value: v, why: Why::Placeless })?;
-                    there.expect(at, v, last)?;
+                    there.expect(d, at, v, last)?;
                 }
                 let merged = match &entries[to] {
                     None => there,
@@ -156,7 +158,7 @@ impl Allocation {
             if let Some(why) = why {
                 return Err(Wrong { point, value: v, why });
             }
-            state.expect(at, v, point)?;
+            state.expect(d, at, v, point)?;
         }
         let written = needs.clobbers.union(needs.reserved).iter().chain(self.temps(point).iter().copied());
         for r in written {

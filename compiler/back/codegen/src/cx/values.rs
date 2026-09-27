@@ -4,17 +4,26 @@
 
 use vun_asm::imm::{low64, sign_extend};
 use vun_lir::Value;
-use vun_regalloc::{Loc, Pos};
+use vun_regalloc::{Loc, Pos, Remade};
 
 use super::Cx;
 use crate::Arch;
 use crate::values::{Place, Recompute};
 
 impl<A: Arch> Cx<'_, A> {
-    /// How `v` is recomputed where used, if it is.
+    /// How `v` is made where used, if it is: held nowhere.
     #[must_use]
     pub fn recomputed(&self, v: Value) -> Option<Recompute> {
-        self.values[v].recompute
+        match self.values[v].made {
+            Some((what, Remade::Used)) => Some(what),
+            _ => None,
+        }
+    }
+
+    /// How `v` is made anywhere, if it is, whether where used or held.
+    #[must_use]
+    pub fn made(&self, v: Value) -> Option<Recompute> {
+        self.values[v].made.map(|(what, _)| what)
     }
 
     /// The constant `v` is, sign-extended from its width, when it is one of at most 64 bits.
@@ -23,7 +32,7 @@ impl<A: Arch> Cx<'_, A> {
     /// Never: the bits are masked to 64.
     #[must_use]
     pub fn imm(&self, v: Value) -> Option<i64> {
-        let Some(Recompute::Const(bits)) = self.values[v].recompute else { return None };
+        let Some(Recompute::Const(bits)) = self.made(v) else { return None };
         let width = self.f.ty(v).bits(self.unit.pointer_bits);
         (width <= 64).then(|| sign_extend(low64(bits), width))
     }
@@ -31,7 +40,7 @@ impl<A: Arch> Cx<'_, A> {
     /// The address `v` is, when it is known while compiling.
     #[must_use]
     pub fn place(&self, v: Value) -> Option<Place> {
-        match self.values[v].recompute {
+        match self.made(v) {
             Some(Recompute::Addr(place)) => Some(place),
             _ => None,
         }
@@ -62,7 +71,7 @@ impl<A: Arch> Cx<'_, A> {
 
     /// Makes `v` recomputed as the address `place`: a parameter passed in memory.
     pub fn recompute_as(&mut self, v: Value, place: Place) {
-        self.values[v].recompute = Some(Recompute::Addr(place));
+        self.values[v].made = Some((Recompute::Addr(place), Remade::Used));
     }
 
     /// Makes the home of `v` the memory at `offset` from the frame pointer, which holds it
@@ -94,9 +103,8 @@ impl<A: Arch> Cx<'_, A> {
         if let Some(&(_, r)) = self.remade.iter().find(|&&(w, _)| w == v) {
             return r;
         }
-        let what = self.values[v]
-            .recompute
-            .unwrap_or_else(|| panic!("the plan holds {v} in memory at a register use"));
+        let what =
+            self.recomputed(v).unwrap_or_else(|| panic!("the plan holds {v} in memory at a register use"));
         let r = self.scratch();
         A::recompute(&mut self.asm, r, what);
         self.remade.push((v, r));
@@ -105,7 +113,7 @@ impl<A: Arch> Cx<'_, A> {
 
     /// Writes `v` into `dst`, which does not then hold it for later uses.
     pub fn reg_to(&mut self, v: Value, dst: A::Reg) {
-        match (self.loc(v), self.values[v].recompute) {
+        match (self.loc(v), self.made(v)) {
             (Some(Loc::Reg(p)), _) => {
                 let r = self.reg_of(p);
                 A::copy(&mut self.asm, dst, r);

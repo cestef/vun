@@ -198,6 +198,9 @@ per second per stage and fails on regressions.
   low bit; floats are left to the machine.
   After promotion the same folds run over each function (`Function::fold`), since a load
   promoted may now be the constant stored, and a branch or switch on a constant becomes a jump.
+  A constant inside a loop is defined before it (`Function::hoist`), at the end of the block
+  immediately dominating the header of the outermost loop around it, irreducible loops left as
+  they are, so a backend keeping it in a register keeps it across the loop.
   Jumps are then threaded (`Function::thread`): a predecessor passing a constant to a block
   deciding on that parameter, by branching or switching on it or on its comparison with a
   constant, nothing else it computes read beyond it, jumps where the block would send that
@@ -805,8 +808,9 @@ of a function lives before the framework compiles it; the framework then follows
 instead of choosing registers as it goes (proposed, decision 257). Against the framework's
 earlier choices as it went, the backend test programs take 3 to 22 percent fewer instructions
 and up to 85 percent fewer frame accesses (`half.vun`: 13,238 instructions to 11,686, 1,774
-frame accesses to 264); the LCG loop of decision 230 runs its 50 million rounds in 7
-instructions each instead of 13, in registers a call may overwrite, none saved.
+frame accesses to 264); the LCG loop of decision 230 runs its 50 million rounds in 5
+instructions each instead of 13 (7 before its two 64-bit constants were held across the loop),
+in registers a call may overwrite, none saved.
 
 - **Linear scan on SSA**, after Wimmer and Franz (2010): LIR is in SSA form with block
   parameters, so each value's lifetime is built in one backward walk of the blocks in `Order`,
@@ -814,8 +818,13 @@ instructions each instead of 13, in registers a call may overwrite, none saved.
   allocated in order of their start. A value that finds no register free for its whole
   lifetime is split: the part up to where the register is next needed keeps it, the rest waits
   for another, and a part that finds none is spilled to a home in the frame, split again before
-  a use that needs a register. Values recomputed where used (constants, addresses known while
-  compiling, section 8.3) have no interval.
+  a use that needs a register. Values made anywhere (constants, addresses known while
+  compiling, section 8.3) that the architecture's instructions take in place, as an immediate
+  or an address operand, are made where used and have no interval. Another is held in a
+  register (`Remade::Held`) where a use is in a loop its definition is outside of, as a constant
+  hoisted out of a loop is (section 3), and made where used otherwise: held, it has no home,
+  so a spill stores nothing and a reload makes it again, and a register only such values hold
+  is taken first where they need it later.
 - **Constraints as data.** An architecture describes its registers once (`Machine`): the banks,
   each with its allocatable registers in the order they are preferred, the registers a call
   preserves, and those the framework keeps for its own moves. Each instruction states what its

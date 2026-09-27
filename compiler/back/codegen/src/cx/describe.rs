@@ -3,7 +3,7 @@
 //! architecture's instruction compilers describe it. The plan made is checked in debug builds.
 
 use vun_lir::{Block, Function, Inst, Scalar, Value};
-use vun_regalloc::{Allocation, Bank, Describe, Machine, Needs};
+use vun_regalloc::{Allocation, Bank, Describe, Machine, Needs, Out, Remade};
 
 use super::Cx;
 use crate::Isel;
@@ -37,16 +37,18 @@ impl<A: Isel> Describe for Described<'_, '_, A> {
         Bank::General
     }
 
-    fn recomputed(&self, v: Value) -> bool {
-        self.0.values[v].recompute.is_some()
+    fn remade(&self, v: Value) -> Option<Remade> {
+        self.0.values[v].made.map(|(_, remade)| remade)
     }
 
     fn inst(&self, f: &Function, inst: Inst, needs: &mut Needs) {
         let cx = self.0;
-        // Made by the branch it is fused into, or recomputed where used: nothing here.
-        let made = f.insts[inst].result.is_some_and(|v| self.recomputed(v) || cx.is_fused(v));
-        if !made {
-            A::inst_needs(cx, inst, needs);
+        // Made by the branch it is fused into, or where used: nothing here; held, into a
+        // register of its own.
+        match f.insts[inst].result {
+            Some(v) if self.remade(v) == Some(Remade::Held) => needs.defs.push((v, Out::Reg)),
+            Some(v) if self.recomputed(v) || cx.is_fused(v) => {}
+            _ => A::inst_needs(cx, inst, needs),
         }
     }
 

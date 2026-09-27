@@ -60,12 +60,23 @@ pub(crate) struct Interval {
     /// The register it would rather have: where its value is defined or goes next.
     pub(crate) hint: Option<PReg>,
     pub(crate) held: Held,
+    /// Whether its value is made again rather than reloaded (`Remade::Held`): giving up its
+    /// register stores nothing.
+    pub(crate) remade: bool,
 }
 
 impl Interval {
     #[must_use]
     pub(crate) fn new(value: Option<Value>, bank: Bank) -> Self {
-        Self { value, bank, ranges: Vec::new(), uses: Vec::new(), hint: None, held: Held::Unassigned }
+        Self {
+            value,
+            bank,
+            ranges: Vec::new(),
+            uses: Vec::new(),
+            hint: None,
+            held: Held::Unassigned,
+            remade: false,
+        }
     }
 
     /// # Panics
@@ -156,6 +167,7 @@ impl Interval {
             uses,
             hint: self.hint,
             held: Held::Unassigned,
+            remade: self.remade,
         }
     }
 }

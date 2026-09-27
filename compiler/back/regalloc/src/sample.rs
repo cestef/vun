@@ -2,7 +2,7 @@
 //! few registers, two-address arithmetic, calls passing arguments in the first registers, and
 //! functions generated from a seed, a loop whose body computes, calls and branches.
 
-use std::collections::HashSet;
+use std::collections::HashMap;
 
 use vun_index::Idx;
 use vun_lir::{
@@ -11,13 +11,13 @@ use vun_lir::{
 };
 use vun_origin::OriginId;
 
-use crate::{Bank, Describe, Machine, Need, Needs, Out, PReg, RegSet};
+use crate::{Bank, Describe, Machine, Need, Needs, Out, PReg, RegSet, Remade};
 
 /// A machine of `regs` registers, the last `preserved` of them kept by calls, passing arguments
 /// and results in the first ones.
 pub struct Toy {
     machine: Machine,
-    constants: HashSet<Value>,
+    constants: HashMap<Value, u128>,
 }
 
 impl Toy {
@@ -25,7 +25,7 @@ impl Toy {
     pub fn new(f: &Function, regs: u8, preserved: u8) -> Self {
         let general: Vec<PReg> = (0..regs).map(PReg).collect();
         let kept: Vec<PReg> = (regs - preserved..regs).map(PReg).collect();
-        let constants = f.values.iter().filter(|&(v, _)| f.constant(v).is_some()).map(|(v, _)| v).collect();
+        let constants = f.values.iter().filter_map(|(v, _)| Some((v, f.constant(v)?.1))).collect();
         Self { machine: Machine { general, float: Vec::new(), preserved: RegSet::of(&kept) }, constants }
     }
 
@@ -43,12 +43,19 @@ impl Describe for Toy {
         Bank::General
     }
 
-    fn recomputed(&self, v: Value) -> bool {
-        self.constants.contains(&v)
+    /// Constants of up to 8 bits are taken as they are, and wider ones held.
+    fn remade(&self, v: Value) -> Option<Remade> {
+        let wide = |bits: u128| bits > u128::from(u8::MAX);
+        self.constants.get(&v).map(|&bits| if wide(bits) { Remade::Held } else { Remade::Used })
     }
 
     fn inst(&self, f: &Function, inst: Inst, needs: &mut Needs) {
         let data = &f.insts[inst];
+        match data.result.and_then(|v| Some((v, self.remade(v)?))) {
+            Some((_, Remade::Used)) => return,
+            Some((v, Remade::Held)) => return needs.defs.push((v, Out::Reg)),
+            None => {}
+        }
         let operands = data.kind.operands().filter(|&v| !self.recomputed(v));
         match &data.kind {
             InstKind::Call { .. } => {
@@ -79,6 +86,11 @@ impl Describe for Toy {
                 operands.for_each(|v| needs.read(v, Need::Reg));
                 let out = if needs.uses.is_empty() { Out::Reg } else { Out::Reuse(0) };
                 needs.defs.extend(data.result.map(|v| (v, out)));
+            }
+            // An extension reads its operand anywhere, as x86-64's `movzx` takes memory.
+            InstKind::Cast { .. } => {
+                operands.for_each(|v| needs.read(v, Need::Any));
+                needs.defs.extend(data.result.map(|v| (v, Out::Reg)));
             }
             _ => {
                 operands.for_each(|v| needs.read(v, Need::Reg));
@@ -153,6 +165,8 @@ impl Random {
     pub fn function(&mut self, calls: bool, o: OriginId) -> Function {
         let mut b = Builder::new(Linkage::Internal, signature(3), o);
         let mut pool = b.params(b.current()).to_vec();
+        // A constant taken as it is, and one held.
+        pool.extend([b.constant(Scalar::I64, 7, o), b.constant(Scalar::I64, 1 << 40, o)]);
         self.compute(&mut b, &mut pool, 4, calls, o);
         let head = b.block(&[Scalar::I64, Scalar::I64], o);
         let [body, left, right, exit] = [0; 4].map(|_| b.block(&[], o));

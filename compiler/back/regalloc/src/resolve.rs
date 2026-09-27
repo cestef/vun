@@ -11,7 +11,7 @@ use vun_lir::Function;
 use crate::build::Built;
 use crate::interval::{Held, Interval, IntervalId};
 use crate::machine::RegSet;
-use crate::needs::Describe;
+use crate::needs::{Describe, Remade};
 use crate::plan::{Allocation, Loc, Move, Piece, Source};
 use crate::points::{Points, Pos};
 
@@ -88,7 +88,22 @@ impl Allocation {
             }
         }
         plan.edges(f, describe);
+        plan.remake(describe);
         plan
+    }
+
+    /// Makes again what values without a home would be reloaded from, and stores none of them.
+    fn remake(&mut self, describe: &impl Describe) {
+        let held = |v| describe.remade(v) == Some(Remade::Held);
+        let groups = self.before.values_mut().chain(self.after.values_mut()).chain(self.edges.values_mut());
+        for moves in groups {
+            moves.retain(|m| !(m.to == Loc::Home(m.value) && held(m.value)));
+            for m in moves.iter_mut().filter(|m| held(m.value)) {
+                if m.from == Source::At(Loc::Home(m.value)) {
+                    m.from = Source::Remade(m.value);
+                }
+            }
+        }
     }
 
     fn edges(&mut self, f: &Function, describe: &impl Describe) {

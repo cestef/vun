@@ -85,6 +85,18 @@ impl Arch for Arm {
         code.access(Op::Str, Size::B64, src.into(), FP, i64::from(offset), FAR);
     }
 
+    /// A constant one move takes, and an address in the frame; a symbol's takes two
+    /// instructions.
+    fn in_place(what: Recompute, bits: u32) -> bool {
+        match what {
+            Recompute::Const(c) => {
+                let v = vun_asm::imm::sign_extend(vun_asm::imm::low64(c), bits);
+                Op::Mov.form(Size::B64, &[Opnd::Reg(FAR), Opnd::Imm(v)]).is_some()
+            }
+            Recompute::Addr(Place { anchor, .. }) => anchor == Anchor::Frame,
+        }
+    }
+
     fn recompute(code: &mut Asm<Address>, dst: Reg, what: Recompute) {
         match what {
             Recompute::Const(bits) => {

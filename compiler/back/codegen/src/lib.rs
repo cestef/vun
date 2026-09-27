@@ -22,7 +22,7 @@ pub use cx::{Compiled, Cx, Fused, Layout, compile};
 pub use frame::Frame;
 pub use pieces::pieces;
 pub use values::{Anchor, Place, Recompute};
-pub use vun_regalloc::{Bank, Need, Needs, Out, PReg, Read, RegSet};
+pub use vun_regalloc::{Bank, Need, Needs, Out, PReg, Read, RegSet, Remade};
 
 use vun_backend::Lack;
 use vun_lir::{Address, Block, Cond, Function, Inst};
@@ -74,6 +74,10 @@ pub trait Arch: Sized + 'static {
     fn store(code: &mut Code<Self>, offset: i32, src: Self::Reg);
     /// Writes a value recomputed where used into `dst`.
     fn recompute(code: &mut Code<Self>, dst: Self::Reg, what: Recompute);
+    /// Whether instructions take `what`, of `bits` bits, in place of a register (an immediate,
+    /// an address operand), so it is made where used; otherwise it is held in a register while
+    /// one is free and made again rather than reloaded.
+    fn in_place(what: Recompute, bits: u32) -> bool;
     fn jump(code: &mut Code<Self>, to: vun_asm::Label);
 }
 

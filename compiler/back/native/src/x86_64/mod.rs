@@ -8,7 +8,7 @@ mod isel;
 mod snippets;
 
 use vun_asm::Via;
-use vun_asm::imm::low64;
+use vun_asm::imm::{low64, sign_extend};
 use vun_asm_x86_64::{Asm, Cc, Emit, Mem, Op, Operand, Reg, Size, X86_64};
 use vun_codegen::snippet::{Emits, Width};
 use vun_codegen::{Anchor, Arch, Place, Recompute};
@@ -57,6 +57,14 @@ impl Arch for X86 {
 
     fn store(code: &mut Asm<Address>, offset: i32, src: Reg) {
         code.emit(Op::Mov, Size::B64, &[Mem::at(Reg::Rbp, offset).into(), src.into()]);
+    }
+
+    /// A constant an immediate of 32 bits takes, and an address a memory operand reaches.
+    fn in_place(what: Recompute, bits: u32) -> bool {
+        match what {
+            Recompute::Const(c) => i32::try_from(sign_extend(low64(c), bits)).is_ok(),
+            Recompute::Addr(place) => memory(place).is_some(),
+        }
     }
 
     fn recompute(code: &mut Asm<Address>, dst: Reg, what: Recompute) {

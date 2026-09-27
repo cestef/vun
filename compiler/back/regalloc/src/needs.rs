@@ -16,6 +16,17 @@ pub enum Need {
     Any,
 }
 
+/// How a value the architecture makes anywhere (a constant, an address known while compiling)
+/// is placed.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Remade {
+    /// Made where each use reads it, held nowhere: instructions take it in place of a register.
+    Used,
+    /// Held in a register while one is free, and made again where it would be reloaded: it has
+    /// no home, so it is never stored, and a point reading it in place reads it in a register.
+    Held,
+}
+
 /// Where a result must be when it is written.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Out {
@@ -62,6 +73,15 @@ impl Needs {
         self.uses.push(Read { value, need, late: false });
     }
 
+    /// Reads in a register what would be read in place but has no home: values made again.
+    pub(crate) fn homeless(&mut self, d: &(impl Describe + ?Sized)) {
+        for read in &mut self.uses {
+            if read.need == Need::Any && d.remade(read.value) == Some(Remade::Held) {
+                read.need = Need::Reg;
+            }
+        }
+    }
+
     pub fn clear(&mut self) {
         self.uses.clear();
         self.defs.clear();
@@ -78,11 +98,16 @@ pub trait Describe {
     /// The bank values of type `ty` are held in.
     fn bank(&self, ty: Scalar) -> Bank;
 
-    /// Whether `v` is recomputed where used rather than kept anywhere: a constant or an address
-    /// known while compiling.
-    fn recomputed(&self, v: Value) -> bool;
+    /// How `v` is made again, if the architecture makes it anywhere.
+    fn remade(&self, v: Value) -> Option<Remade>;
 
-    /// What `inst` needs.
+    /// Whether `v` is made where used rather than kept anywhere.
+    fn recomputed(&self, v: Value) -> bool {
+        self.remade(v) == Some(Remade::Used)
+    }
+
+    /// What `inst` needs: nothing where it defines a value made where used, and a register for
+    /// one held.
     fn inst(&self, f: &Function, inst: Inst, needs: &mut Needs);
 
     /// What the terminator of `block` needs of the values it reads itself (a condition, a value

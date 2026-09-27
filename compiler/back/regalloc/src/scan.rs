@@ -1,7 +1,8 @@
 //! The scan (Wimmer and Franz, 2010): intervals in order of their start, each given the register
 //! free longest, or split where it stops being free; when none is free, the register whose
 //! holders need it latest is taken from them, or the interval itself waits in its home until
-//! its next use that needs a register.
+//! its next use that needs a register. A register only values made again hold is taken first
+//! where they need it later, since giving it up stores nothing.
 
 use std::cmp::Reverse;
 use std::collections::BinaryHeap;
@@ -157,14 +158,16 @@ impl<'a> Scan<'a> {
     /// does; else `current` waits in its home until it needs one.
     fn blocked(&mut self, current: IntervalId) {
         let pos = self.intervals[current].start();
-        // Where each register is next needed by what holds it, and where a fixed range takes it.
-        let (mut used, mut blocked) = ([Pos::MAX; REGS], [Pos::MAX; REGS]);
+        // Where each register is next needed by what holds it, where a fixed range takes it, and
+        // whether only values made again hold it.
+        let (mut used, mut blocked, mut remade) = ([Pos::MAX; REGS], [Pos::MAX; REGS], [true; REGS]);
         for &a in &self.active {
             let i = &self.intervals[a];
             if let Held::Reg(r) = i.held {
                 // A scratch register is needed for all of it.
                 let at = if i.value.is_none() { pos } else { i.next_reg_use(pos).unwrap_or(Pos::MAX) };
                 used[r.index()] = used[r.index()].min(at);
+                remade[r.index()] &= i.remade;
             }
         }
         let cur = &self.intervals[current];
@@ -172,6 +175,7 @@ impl<'a> Scan<'a> {
             let i = &self.intervals[a];
             if let (Held::Reg(r), Some(_)) = (i.held, i.intersection(&cur.ranges, pos)) {
                 used[r.index()] = used[r.index()].min(i.next_reg_use(pos).unwrap_or(Pos::MAX));
+                remade[r.index()] &= i.remade;
             }
         }
         for &r in self.regs(current) {
@@ -181,7 +185,17 @@ impl<'a> Scan<'a> {
             }
         }
         let first = cur.next_reg_use(pos);
-        let &r = self.regs(current).iter().max_by_key(|r| used[r.index()]).expect("a bank with registers");
+        // Past the point `current` first needs it, so those holding it are split between.
+        let cheap = |r: &PReg| {
+            remade[r.index()]
+                && blocked[r.index()] == Pos::MAX
+                && first.is_some_and(|f| used[r.index()] > f.next())
+        };
+        let &r = self
+            .regs(current)
+            .iter()
+            .max_by_key(|r| (cheap(r), used[r.index()]))
+            .expect("a bank with registers");
         let (use_at, block_at) = (used[r.index()], blocked[r.index()]);
         match first {
             None => self.intervals[current].held = Held::Home,

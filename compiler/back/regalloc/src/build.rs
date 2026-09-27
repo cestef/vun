@@ -10,7 +10,7 @@ use vun_lir::{Function, Value};
 use crate::interval::{Interval, IntervalId, Range, Use};
 use crate::live::Live;
 use crate::machine::{PReg, RegSet};
-use crate::needs::{Describe, Need, Needs, Out, Read};
+use crate::needs::{Describe, Need, Needs, Out, Read, Remade};
 use crate::plan::Loc;
 use crate::points::{Points, Pos};
 
@@ -108,7 +108,9 @@ impl Built {
         let id = if let Some(id) = self.of_value[v] {
             id
         } else {
-            let id = self.intervals.push(Interval::new(Some(v), d.bank(f.ty(v))));
+            let mut interval = Interval::new(Some(v), d.bank(f.ty(v)));
+            interval.remade = d.remade(v) == Some(Remade::Held);
+            let id = self.intervals.push(interval);
             self.of_value[v] = Some(id);
             id
         };

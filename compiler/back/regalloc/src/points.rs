@@ -118,9 +118,13 @@ impl Points {
     pub fn needs(&self, f: &Function, d: &impl Describe, point: u32, needs: &mut Needs) {
         needs.clear();
         match self.points[point as usize] {
-            Point::Inst(inst) => d.inst(f, inst, needs),
+            Point::Inst(inst) => {
+                d.inst(f, inst, needs);
+                needs.homeless(d);
+            }
             Point::Term(block) => {
                 d.term(f, block, needs);
+                needs.homeless(d);
                 let args = f.blocks[block].term.targets().flat_map(|t| t.args.iter().copied());
                 for v in args.filter(|&v| !d.recomputed(v)) {
                     needs.read(v, Need::Any);

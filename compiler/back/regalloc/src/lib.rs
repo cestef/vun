@@ -22,7 +22,7 @@ mod tests;
 
 pub use check::{Why, Wrong};
 pub use machine::{Bank, Machine, PReg, RegSet};
-pub use needs::{Describe, Need, Needs, Out, Read};
+pub use needs::{Describe, Need, Needs, Out, Read, Remade};
 pub use plan::{Allocation, Loc, Move, Piece, Source};
 pub use points::{Point, Points, Pos};
 

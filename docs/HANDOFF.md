@@ -211,10 +211,10 @@ language rules go in as proposed unless the user approves them.
    framework follows, checked by simulation in debug builds, tests and the `regalloc` fuzz
    target. Values live across blocks stay in registers; the backend test programs lose 3 to 22
    percent of their instructions and up to 85 percent of their frame accesses (`half.vun`:
-   13,238 to 11,686 instructions); the LCG loop is 7 instructions a round instead of 13, in
-   registers a call may overwrite. Left: constants too wide for an immediate are rebuilt in the
-   loop each round rather than kept in a register (the plan could keep them when registers are
-   free); a spilled operand is loaded into a register even where the instruction takes memory
+   13,238 to 11,686 instructions); the LCG loop is 5 instructions a round instead of 13, in
+   registers a call may overwrite: constants are hoisted out of loops (`Function::hoist`) and a
+   constant no instruction takes as an immediate is held across the loop, made again rather than
+   reloaded when spilled (`Remade::Held`). Left: a spilled operand is loaded into a register even where the instruction takes memory
    (snippets ask for every operand in a register); padding tiles are copied as zeros (LIR has no
    undefined value). (c) DWARF line tables and symbol names done (decisions 204, 205:
    `vun-dwarf`; `gdb` breaks on Vun lines); the unit is named by the first file with a row;

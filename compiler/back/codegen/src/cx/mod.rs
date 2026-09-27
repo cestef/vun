@@ -18,7 +18,7 @@ use vun_index::{Idx, IndexVec};
 use vun_lir::analysis::{Cfg, Loops, Order};
 use vun_lir::{Address, Block, Conv, Function, Slot, Unit, Value};
 use vun_origin::OriginId;
-use vun_regalloc::{Allocation, Machine, PReg};
+use vun_regalloc::{Allocation, Machine, PReg, Remade};
 
 use crate::frame::Frame;
 use crate::values::Assignment;
@@ -114,7 +114,7 @@ pub fn compile<A: Isel>(
         }
         slots.push(frame.reserve(slot.size, slot.align));
     }
-    let values = Assignment::all(f, &order, &slots);
+    let values = Assignment::all::<A>(f, &loops, &order, &slots, unit.pointer_bits);
     let (machine, regs) = Cx::<A>::machine(A::preserved(convention));
     let mut cx = Cx {
         unit,
@@ -170,11 +170,16 @@ impl<A: Isel> Cx<'_, A> {
             self.marks.push((self.asm.here(), data.origin));
             vun_trace::tracing::trace!(inst = %data.kind, at = self.asm.here(), "select");
             self.enter(self.plan().points.insts[inst].expect("a numbered instruction"));
-            // The comparison the branch fuses is made by the branch; a value recomputed where
-            // used reads nothing where it is defined.
-            let made = data.result.is_some_and(|v| Some(v) == fused || self.values[v].recompute.is_some());
-            if !made {
-                A::inst(self, inst)?;
+            // The comparison the branch fuses is made by the branch; a value made where used
+            // reads nothing where it is defined, and one held is made into its register.
+            match data.result.and_then(|v| Some((v, self.values[v].made?))) {
+                Some((_, (_, Remade::Used))) => {}
+                Some((v, (what, Remade::Held))) => {
+                    let dst = self.def(v);
+                    A::recompute(&mut self.asm, dst, what);
+                }
+                None if fused.is_some() && data.result == fused => {}
+                None => A::inst(self, inst)?,
             }
             self.leave_point(self.point);
         }

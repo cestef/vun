@@ -37,7 +37,7 @@ impl<A: Arch> Cx<'_, A> {
             Source::At(Loc::Reg(p)) => Written::Reg(self.reg_of(p)),
             Source::At(Loc::Temp) => Written::Reg(A::TEMP),
             Source::At(Loc::Home(v)) => Written::Home(self.home(v)),
-            Source::Remade(v) => Written::Remade(self.recomputed(v).expect("a value the plan recomputes")),
+            Source::Remade(v) => Written::Remade(self.made(v).expect("a value the plan makes")),
         }
     }
 
