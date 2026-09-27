@@ -43,11 +43,19 @@ impl<W: Write> DiagSink for ShortRenderer<W> {
             .styled(d.severity.style(), format!("{}[{}]", d.severity, d.id))
             .styled(Style::Strong, ": ")
             .styled(Style::Strong, d.message.to_string());
-        let children = d.children.iter().map(|c| c.kind.line(c.msg.to_string()));
-        let fixes = d.fixes.iter().map(|f| ChildKind::Help.line(format!("{} [{}]", f.msg, f.safety)));
+        let fix = |f: &vun_diag::Fix| ChildKind::Help.line(format!("{} [{}]", f.msg, f.safety));
+        let children = d
+            .children
+            .iter()
+            .flat_map(|c| std::iter::once(c.kind.line(c.msg.to_string())).chain(c.fixes.iter().map(fix)));
+        let trace = d.trace.iter().map(|frame| {
+            let at = sources.locate(origins.source_span(frame.origin));
+            ChildKind::Note.line(format!("{} at {at}", frame.msg))
+        });
+        let fixes = d.fixes.iter().map(fix);
         let mut out = Out::colored(&mut self.out, self.color);
         // Best-effort output: a closed stream must not abort compilation.
-        for line in std::iter::once(title).chain(children).chain(fixes) {
+        for line in std::iter::once(title).chain(children).chain(trace).chain(fixes) {
             let _ = out.line(&line);
         }
     }

@@ -1,7 +1,7 @@
 //! A diagnostic as a JSON value.
 
 use vun_diag::{Child, Diagnostic, Edit, Fix, Label, Msg, MsgPart, TraceFrame};
-use vun_json::{Number, Object, Value};
+use vun_json::{Object, Value};
 use vun_origin::{OriginId, OriginTable};
 use vun_span::{SourceMap, Span};
 
@@ -79,8 +79,10 @@ impl Cx<'_> {
     fn span(&self, span: Span) -> Value<'static> {
         let file = self.sources.file(span.file);
         let (start, end) = (file.line_col(span.range.lo), file.line_col(span.range.hi));
-        let position =
-            |at: vun_span::LineCol| Value::Object(Object::new().with("line", at.line).with("column", at.col));
+        // A column counts characters, as editors and the terminal excerpt do; bytes are apart.
+        let position = |at: vun_span::LineCol| {
+            Value::Object(Object::new().with("line", at.line).with("column", at.chars))
+        };
         let bytes = Object::new().with("start", span.range.lo).with("end", span.range.hi);
         let object = Object::new()
             .with("file", file.path.clone())
@@ -108,10 +110,7 @@ impl MsgJson for Msg {
                     MsgPart::Code(code) => ("code", code.clone().into()),
                     MsgPart::Type(ty) => ("type", ty.clone().into()),
                     // An integer of any size, kept exact.
-                    MsgPart::Num(n) => (
-                        "number",
-                        Number::parse(&n.to_string()).map_or(Value::Null, |n| Value::Number(n).into_owned()),
-                    ),
+                    MsgPart::Num(n) => ("number", Value::from(*n)),
                 };
                 Value::Object(Object::new().with("kind", kind).with("value", value))
             })

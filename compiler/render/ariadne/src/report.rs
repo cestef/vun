@@ -1,17 +1,32 @@
 //! A diagnostic as an ariadne report over the files its labels point into.
 
+use std::fmt;
 use std::io::{self, Write};
 use std::ops::Range;
 
 use ariadne::{CharSet, Config, IndexType, Label, Report, ReportKind, sources};
-use vun_diag::{ChildKind, Color, Diagnostic, Fix, Severity};
+use vun_diag::{ChildKind, Color, DiagSink, Diagnostic, Fix, Severity};
 use vun_origin::{OriginId, OriginTable};
-use vun_span::{SourceMap, Span};
+use vun_render_short::ShortRenderer;
+use vun_span::{FileId, SourceMap, Span};
 
 use crate::AriadneRenderer;
 
-/// A span as ariadne takes it: the file's path and a byte range.
-type At = (String, Range<usize>);
+/// A span as ariadne takes it: its file and a byte range.
+type At = (Source, Range<usize>);
+
+/// A file, as ariadne names it: by its path, told apart from other files of that path.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+struct Source {
+    file: FileId,
+    path: String,
+}
+
+impl fmt::Display for Source {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(&self.path)
+    }
+}
 
 /// Colors of labels by role.
 const PRIMARY: ariadne::Color = ariadne::Color::Red;
@@ -29,15 +44,13 @@ impl<W: Write> AriadneRenderer<W> {
         let (color, out) = (self.color, &mut self.out);
         let at = |origin: OriginId| -> At {
             let span = origins.source_span(origin);
-            (sources_.file(span.file).path.clone(), span.range.lo as usize..span.range.hi as usize)
+            let source = Source { file: span.file, path: sources_.file(span.file).path.clone() };
+            (source, span.range.lo as usize..span.range.hi as usize)
         };
         let title = d.message.to_string();
         let Some(primary) = &d.primary else {
-            // Without a location there is no excerpt to draw.
-            writeln!(out, "{}[{}]: {title}", d.severity, d.id)?;
-            for child in &d.children {
-                writeln!(out, "  = {}: {}", child.kind, child.msg)?;
-            }
+            // Without a location there is no excerpt to draw: the diagnostic is its lines alone.
+            ShortRenderer::new(&mut *out, color).emit(d, origins, sources_);
             return Ok(());
         };
         let config = Config::default()
@@ -86,11 +99,11 @@ impl<W: Write> AriadneRenderer<W> {
         for fix in &d.fixes {
             report.add_help(describe(fix, sources_));
         }
-        let mut texts: Vec<(String, String)> = Vec::new();
+        let mut texts: Vec<(Source, String)> = Vec::new();
         for span in files {
-            let file = sources_.file(span.file);
-            if !texts.iter().any(|(path, _)| *path == file.path) {
-                texts.push((file.path.clone(), file.text.clone()));
+            if !texts.iter().any(|(source, _)| source.file == span.file) {
+                let file = sources_.file(span.file);
+                texts.push((Source { file: span.file, path: file.path.clone() }, file.text.clone()));
             }
         }
         report.finish().write(sources(texts), out)

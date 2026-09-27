@@ -3,8 +3,9 @@
 
 mod print;
 
+use vun_diag::{Diagnostic, Msg, errors};
 use vun_intern::Symbol;
-use vun_link::LinkPlan;
+use vun_link::{LinkPlan, LinkerInfo};
 
 /// A linker script.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -49,26 +50,74 @@ pub enum Pattern {
     Under(Symbol),
 }
 
+/// Why a plan has no linker script.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Unscripted {
+    /// A name the command language does not read as one: it would end a clause or start another.
+    Name(Symbol),
+    /// A section placed in a region the plan does not declare.
+    Region { section: Symbol, region: Symbol },
+}
+
+impl Unscripted {
+    /// The report that the linker `info` cannot link the plan.
+    #[must_use]
+    pub fn report(self, info: &LinkerInfo) -> Diagnostic {
+        let msg = Msg::new().text("linker ").code(info.id.0).text(" cannot place ");
+        let msg = match self {
+            Self::Name(name) => msg.code(name.as_str()).text(": its script does not read it as a name"),
+            Self::Region { section, region } => msg
+                .code(section.as_str())
+                .text(" in ")
+                .code(region.as_str())
+                .text(", which no region declares"),
+        };
+        Diagnostic::error(errors::LINK_UNSUPPORTED, msg)
+    }
+}
+
 impl Script {
     /// The script placing what `plan` places: each section gathers its own name and those under
     /// it.
-    #[must_use]
-    pub fn of(plan: &LinkPlan) -> Self {
-        let memory =
-            plan.regions.iter().map(|r| Region { name: r.name, origin: r.origin, length: r.len }).collect();
+    ///
+    /// # Errors
+    /// Returns what the script could not say: a name ld would not read as one, or a region no
+    /// declaration names.
+    pub fn of(plan: &LinkPlan) -> Result<Self, Unscripted> {
+        let memory = plan
+            .regions
+            .iter()
+            .map(|r| Ok(Region { name: Self::name(r.name)?, origin: r.origin, length: r.len }))
+            .collect::<Result<_, _>>()?;
+        let declared = |section: Symbol, region: Symbol| {
+            let known = plan.regions.iter().any(|r| r.name == region);
+            if known { Ok(region) } else { Err(Unscripted::Region { section, region }) }
+        };
         let sections = plan
             .sections
             .iter()
-            .map(|s| OutputSection {
-                name: s.name,
-                inputs: Inputs {
-                    keep: s.keep,
-                    patterns: vec![Pattern::Exact(s.name), Pattern::Under(s.name)],
-                },
-                region: s.region,
-                load: s.load_region,
+            .map(|s| {
+                let name = Self::name(s.name)?;
+                Ok(OutputSection {
+                    name,
+                    inputs: Inputs {
+                        keep: s.keep,
+                        patterns: vec![Pattern::Exact(name), Pattern::Under(name)],
+                    },
+                    region: declared(name, s.region)?,
+                    load: s.load_region.map(|load| declared(name, load)).transpose()?,
+                })
             })
-            .collect();
-        Self { entry: plan.entry, memory, sections }
+            .collect::<Result<_, _>>()?;
+        let entry = plan.entry.map(Self::name).transpose()?;
+        Ok(Self { entry, memory, sections })
+    }
+
+    /// `name`, when ld reads it as a name unquoted: a letter, `_` or `.`, then those or digits.
+    fn name(name: Symbol) -> Result<Symbol, Unscripted> {
+        let word = |c: char| c.is_ascii_alphabetic() || c == '_' || c == '.';
+        let mut chars = name.as_str().chars();
+        let named = chars.next().is_some_and(word) && chars.all(|c| word(c) || c.is_ascii_digit());
+        if named { Ok(name) } else { Err(Unscripted::Name(name)) }
     }
 }

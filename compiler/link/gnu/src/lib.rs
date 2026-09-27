@@ -13,7 +13,7 @@ use vun_link::{LinkPlan, Linker, LinkerInfo, OutputKind};
 use vun_target::{Name, Readiness, TargetSpec};
 use vun_tool::{Arg, Executable, Invocation, Tool, gcc};
 
-pub use script::Script;
+pub use script::{Script, Unscripted};
 
 pub const INFO: LinkerInfo =
     LinkerInfo { id: Name("gnu"), formats: &[Name("elf")], regions: true, readiness: Readiness::Ready };
@@ -73,12 +73,10 @@ impl Ld<'_> {
             args.extend([gcc::ENTRY.into(), Arg::Text(entry)]);
         }
         let mut inputs = plan.inputs.clone();
-        if !plan.regions.is_empty() {
-            let path = plan.output.with_extension(SCRIPT);
-            path.put(Script::of(plan).to_string()).map_err(|e| {
-                let msg = Msg::new().text("cannot write ").code(path.display().to_string());
-                diag.error(Diagnostic::error(errors::IO_UNWRITABLE_FILE, msg).caused_by(&e))
-            })?;
+        if plan.places() {
+            let script = Script::of(plan).map_err(|why| diag.error(why.report(info)))?;
+            let path = plan.beside(SCRIPT);
+            path.put(script.to_string()).map_err(|e| diag.error(Diagnostic::unwritable(&path, &e)))?;
             args.extend([gcc::SCRIPT.into(), Arg::Path(path.clone())]);
             inputs.push(path);
         }

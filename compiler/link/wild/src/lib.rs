@@ -31,12 +31,9 @@ impl Linker for WildLinker {
             let msg = Msg::new().text("linker ").code(PROGRAM).text(" is not on the search path");
             return Err(diag.error(Diagnostic::error(errors::LINK_UNAVAILABLE, msg)));
         };
-        let dir = plan.output.with_extension(PROGRAMS);
+        let dir = plan.beside(PROGRAMS);
         let ld = dir.join(LD);
-        ld.link_to(&program).map_err(|e| {
-            let msg = Msg::new().text("cannot write ").code(ld.display().to_string());
-            diag.error(Diagnostic::error(errors::IO_UNWRITABLE_FILE, msg).caused_by(&e))
-        })?;
+        ld.link_to(&program).map_err(|e| diag.error(Diagnostic::unwritable(&ld, &e)))?;
         Ld::In(&dir).link(&INFO, plan, target, diag)
     }
 }

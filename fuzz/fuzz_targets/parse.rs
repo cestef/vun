@@ -11,8 +11,8 @@ use vun_syntax::tokens::Tokens;
 
 fuzz_target!(|text: &str| {
     let file = SourceFiles::new().add("fuzz.vun", text);
-    let (mut diag, mut origins) = (DiagCtxt::new(), OriginTable::new());
-    let mut cx = DiagCx { diag: &mut diag, origins: &mut origins };
+    let (mut diag, origins) = (DiagCtxt::new(), OriginTable::new());
+    let mut cx = DiagCx { diag: &mut diag, origins: &origins };
     let tokens = Tokens::lex(file, text, &mut cx);
     let cst = Cst::parse(&tokens, text, &mut cx);
     if let Err(malformed) = cst.verify(&tokens) {
