@@ -38,7 +38,11 @@ impl From<PlaceState> for State {
 pub(super) enum Key {
     Field(Symbol),
     Position(usize),
-    Payload(usize),
+    /// A payload's part, of the variant it is of: parts of two variants are two places.
+    Payload {
+        variant: Symbol,
+        at: usize,
+    },
     Item(i128),
 }
 
