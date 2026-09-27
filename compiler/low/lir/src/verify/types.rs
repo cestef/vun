@@ -13,7 +13,7 @@ impl Checker<'_> {
     }
 
     /// The address-sized integer.
-    fn word(&self) -> Scalar {
+    pub(super) fn word(&self) -> Scalar {
         Scalar::int(self.unit.pointer_bits).unwrap_or(Scalar::I64)
     }
 

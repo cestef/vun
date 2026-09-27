@@ -154,6 +154,11 @@ per second per stage and fails on regressions.
   operations, calls, branches. Range types, enums and aggregates are lowered before it. A new backend
   translates LIR and nothing else. Values are scalars (`i8` to `i128`, `f16` to `f64`, `ptr`) in
   blocks with parameters; aggregates live in stack slots and data objects, reached by address.
+  An `offset` of an address stays inside the object its base points into (a slot, a data object,
+  or memory reached through a pointer), or one past its end; an offset leaving it is undefined.
+  Backends may lower it as pointer arithmetic (the C backend's `+`) and passes may rely on it; the
+  verifier rejects an offset whose object and displacement it knows, a chain of constant offsets
+  from the address of a slot or a data object, when it leaves that object (decision 245).
   Functions, data and imports are named by id, and only exports and imports carry link symbols.
   Under Vun's convention a value in memory is passed by address and a result in memory written
   through an address passed after the parameters; under the C convention (`#[abi.c]`) such values

@@ -2,6 +2,7 @@
 //! and callees exist, values are defined where their uses see them (dominance), and operands
 //! have the types their instructions need.
 
+mod bounds;
 mod types;
 
 use std::collections::HashSet;
@@ -64,6 +65,11 @@ pub enum Reason {
     Return,
     /// A signature passing an integer without how it extends, or anything else with it.
     Passing,
+    /// An offset leaving the object its base points into, `at` bytes into an object of `size`.
+    OutOfBounds {
+        size: u64,
+        at: i128,
+    },
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Encode, Decode)]
@@ -181,7 +187,7 @@ impl Checker<'_> {
             }
             self.term(block)?;
         }
-        Ok(())
+        self.bounds()
     }
 
     fn origin(&self, at: Entity, origin: OriginId) -> Result<(), Malformed> {

@@ -103,3 +103,27 @@ fn the_verifier_rejects_what_breaks_the_invariants() {
     let elsewhere = OriginTable::new();
     assert_eq!(sum(o).verify(&elsewhere).map_err(|m| m.reason), Err(Reason::NoOrigin));
 }
+
+#[test]
+fn the_verifier_rejects_an_offset_leaving_its_object() {
+    let origins = OriginTable::new();
+    let o = origin(&origins);
+    // Offsets of `steps` in turn from the address of an 8-byte slot.
+    let verify = |steps: &[u64]| {
+        let signature = Signature { conv: Conv::Vun, params: Vec::new(), result: None };
+        let mut b = Builder::new(Linkage::Internal, signature, o);
+        let slot = b.slot(8, 8, o);
+        let mut at = b.slot_addr(slot, o);
+        for &step in steps {
+            let step = b.constant(Scalar::I64, u128::from(step), o);
+            at = b.offset(at, step, o);
+        }
+        b.terminate(Terminator::Return(None));
+        let mut unit = Unit { pointer_bits: 64, ..Unit::default() };
+        unit.functions.push(b.finish());
+        unit.verify(&origins).map_err(|m| m.reason)
+    };
+    assert_eq!(verify(&[4, 4]), Ok(()));
+    assert_eq!(verify(&[4, 5]), Err(Reason::OutOfBounds { size: 8, at: 9 }));
+    assert_eq!(verify(&[u64::MAX]), Err(Reason::OutOfBounds { size: 8, at: -1 }));
+}
