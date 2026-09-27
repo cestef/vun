@@ -1,0 +1,37 @@
+//! Blocks of x86-64 instructions (spec 07, section 6): operands are the table's registers,
+//! integers, labels, memory and Vun values bound in braces; each line takes the first form of
+//! its mnemonic that fits, and a block whose end is not reached is `never`.
+
+add3 := (a: u64) -> u64 {
+    mut r: u64 = 0;
+    unsafe lang.arch.x86_64.asm {
+        lea {out r}, [{in a} + 3]
+    };
+    r
+};
+
+countdown := (n: u32) -> u32 {
+    mut left: u32 = n;
+    unsafe lang.arch.x86_64.asm {
+        'top:
+        sub {inout left}, 1
+        jnz 'top
+    };
+    left
+};
+
+sum := (xs: *u64, i: u64) -> u64 {
+    mut r: u64 = 0;
+    unsafe lang.arch.x86_64.asm {
+        mov {out(rax) r}, [{in xs} + {in i} * 8 + 16]
+        add rax, -1
+        movzx ecx, cl
+    };
+    r
+};
+
+halt := () -> never {
+    unsafe lang.arch.x86_64.asm {
+        ud2
+    }
+};

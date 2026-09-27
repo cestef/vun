@@ -12,6 +12,7 @@ use vun_intern::Symbol;
 use vun_query::{Cx, Cycle, Query};
 
 use super::{Iteration, Known, Operation, Operator, Stage, Typer};
+use crate::asm::Block;
 use crate::env::Env;
 use crate::eval::{Instantiation, Staging};
 use crate::ty::{Ty, Value};
@@ -34,6 +35,7 @@ pub(super) struct Found {
     pub evaluations: Vec<ExprId>,
     /// The `$for` bindings a step is typed under.
     pub staged: Vec<Staging>,
+    pub asm: BTreeMap<ExprId, Block>,
 }
 
 impl Found {
@@ -49,6 +51,7 @@ impl Found {
             operators: self.operators,
             evaluations: self.evaluations,
             staged: self.staged,
+            asm: self.asm,
             diag,
             exprs,
         }
@@ -77,6 +80,8 @@ pub struct TypedBody {
     pub evaluations: Vec<ExprId>,
     /// The `$for` bindings a step is typed under; none for a whole body.
     pub staged: Vec<Staging>,
+    /// Each block of instructions, checked against its architecture's table.
+    pub asm: BTreeMap<ExprId, Block>,
     pub diag: DiagCtxt,
     pub exprs: usize,
 }

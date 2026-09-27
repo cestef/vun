@@ -1,0 +1,33 @@
+//! What a block of x86-64 instructions reports (spec 07, section 6): a mnemonic, a word or a
+//! label the table and the block do not have, operands no form takes, immediates too wide,
+//! registers of another class, an output that is no place, and a block outside `unsafe`.
+
+lines := () {
+    unsafe lang.arch.x86_64.asm {
+        pause //~ asm.unknown_mnemonic
+        mov rxa, 1 //~ asm.unknown_operand
+        jnz 'nowhere //~ asm.unknown_operand
+        mov 1, rax //~ asm.no_form
+        add eax, 5000000000 //~ asm.immediate_too_wide
+        cvtss2sd rax, xmm1 //~ asm.register_class
+        mov [rax], 1 //~ asm.no_form
+    };
+};
+
+unplaced := () {
+    unsafe lang.arch.x86_64.asm {
+        mov {out 1}, rax //~ asm.unknown_operand
+    };
+};
+
+unvouched := () {
+    lang.arch.x86_64.asm { //~ safety.requires_unsafe
+        ret
+    };
+};
+
+nowhere := () {
+    unsafe lang.mem.asm { //~ asm.unknown_arch
+        ret
+    };
+};

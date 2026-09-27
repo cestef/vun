@@ -4,6 +4,7 @@
 mod common;
 
 mod add;
+mod asm;
 mod backend;
 mod bind;
 mod borrows;
@@ -28,6 +29,7 @@ mod persist;
 mod places;
 mod plan;
 mod quotes;
+mod reduce;
 mod reflection;
 mod replace;
 mod select;

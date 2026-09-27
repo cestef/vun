@@ -156,14 +156,26 @@ add3 := (a: u64) -> u64 {
   Immediates are plain integers on every architecture (`add x0, x0, 1`, no `#`). It is read at
   compile time against the architecture's table, into typed values of it; the block is an expression
   of type `()`, or `never` when its last instruction does not return. It is `unsafe`.
-- **Operands are Vun.** A register is named as the table names it. An immediate is an integer
-  expression the form's width must hold. `{name}` is a declaration's address, relocated when
-  linking. `{in e}` passes the value of `e` in a register the backend picks, `{out p}` writes a
-  register into the place `p`, `{inout p}` both; `{in(rdi) e}` names the register.
+- **Operands are Vun.** A register is named as the table names it, at a width where its name
+  gives one (`eax`). An immediate is an integer the operation's width holds, signed or unsigned,
+  and the form's immediate holds as it extends it; a constant is never cut to the bits read.
+  Memory is `[...]` (`[base + index * 8 + 16]` on x86-64). `'name` is the instruction a label
+  `'name:` marks. `{name}` is a declaration's address, relocated when linking. `{in e}` passes
+  the value of `e` in a register the backend picks, of the class and width its type needs (a
+  float in a floating-point register); `{out p}` writes a register into the place `p`, `{inout
+  p}` both, and each takes a place; `{in(rdi) e}` names the register.
+- **Forms are chosen as the assembler chooses.** A mnemonic spells the forms of its
+  instructions, in the table's order, with a condition as its suffix where a form takes one
+  (`jz`); the instruction's width is the one its registers of that width give, and the first form
+  taking the operands at that width is the instruction's. Where no operand gives the width and
+  the form has several (`mov [rax], 1`), none is chosen.
 - **Clobbers are derived.** Each form declares what it writes, so the registers and flags a block
   writes, beyond its outputs, are known without being listed, and the backend saves what it must.
-- **Checked when compiling.** A mnemonic the table lacks, operands no form of it takes, an
-  immediate wider than the form's, or a register of another class is an error at the instruction.
+- **Checked when compiling.** A path before `.asm` that is no architecture
+  (`asm.unknown_arch`), a mnemonic the table lacks (`asm.unknown_mnemonic`), a word, label or
+  expression that is no operand (`asm.unknown_operand`), operands no form of it takes
+  (`asm.no_form`), an immediate wider than the form's (`asm.immediate_too_wide`), or a register of
+  another class (`asm.register_class`) is an error at the instruction or the operand.
 - **Backends.** The native backend encodes the instructions itself; the C backend writes them as
   GNU `__asm__` from the same forms, with the constraints the bindings give; a backend for an
   architecture without the block's (wasm) refuses it (`backend.lacks`).

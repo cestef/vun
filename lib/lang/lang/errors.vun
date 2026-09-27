@@ -62,6 +62,16 @@ safety := struct {
     requires_unsafe := diag.Diag{ .explanation = lang.meta.embed("errors/safety/requires_unsafe.md") };
 };
 
+/// Blocks of an architecture's instructions (spec 07, section 6).
+asm := struct {
+    unknown_arch := diag.Diag{ .explanation = lang.meta.embed("errors/asm/unknown_arch.md") };
+    unknown_mnemonic := diag.Diag{ .explanation = lang.meta.embed("errors/asm/unknown_mnemonic.md") };
+    unknown_operand := diag.Diag{ .explanation = lang.meta.embed("errors/asm/unknown_operand.md") };
+    no_form := diag.Diag{ .explanation = lang.meta.embed("errors/asm/no_form.md") };
+    immediate_too_wide := diag.Diag{ .explanation = lang.meta.embed("errors/asm/immediate_too_wide.md") };
+    register_class := diag.Diag{ .explanation = lang.meta.embed("errors/asm/register_class.md") };
+};
+
 /// Interface conformance (spec 02, section 3).
 impl := struct {
     missing_requirement := diag.Diag{ .explanation = lang.meta.embed("errors/impl/missing_requirement.md") };

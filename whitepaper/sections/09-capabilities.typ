@@ -185,5 +185,9 @@ A C import is a declaration provided by the linker,
 `#[link.symbol("puts"), abi.c] puts: unsafe (s: *u8) -> i32 = _;`, and `#[link.export("name")]`
 exports a binding under a C symbol. Generating declarations from C headers, using the build's real
 compiler flags, and emitting C headers for a Vun library are tools rather than language features.
-Inline assembly is the `unsafe` function `lang.arch.asm`, which takes a compile-time template and
-operands.
+Inline assembly is an `unsafe` block of one architecture's instructions, `lang.arch.x86_64.asm
+{ ... }`, read at compile time against that architecture's table in `lang.arch`, the one the
+native assemblers are generated from. Its operands are registers, integers, labels, memory and Vun
+values bound in braces (`{in e}`, `{out p}`); each line takes the first form of its mnemonic that
+fits, as the assembler would choose, and the registers a block writes are derived from its forms
+rather than listed.

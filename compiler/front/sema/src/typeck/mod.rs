@@ -6,6 +6,7 @@
 //! is typed where it is checked, and by [`crate::decl::DeclType`] where it is named.
 
 mod apply;
+mod asm;
 mod block;
 mod call;
 mod closure;

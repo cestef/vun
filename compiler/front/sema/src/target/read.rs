@@ -154,7 +154,7 @@ impl<'v> Members<'v> {
     }
 
     /// A `?&[u8]` naming a symbol.
-    fn symbol(&self, member: Item) -> Result<Option<Symbol>, Unread> {
+    pub(crate) fn symbol(&self, member: Item) -> Result<Option<Symbol>, Unread> {
         match self.get(member)? {
             Value::Variant { name, .. } if *name == option::none.symbol() => Ok(None),
             Value::Variant { name, payload, .. } if *name == option::some.symbol() => {

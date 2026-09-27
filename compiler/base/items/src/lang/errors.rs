@@ -20,6 +20,8 @@ pub const names: Item = Item::new(&["lang", "errors", "names"]);
 pub const binding: Item = Item::new(&["lang", "errors", "binding"]);
 /// The `unsafe` boundary (spec 01, section 3; spec 05, section 5).
 pub const safety: Item = Item::new(&["lang", "errors", "safety"]);
+/// Blocks of an architecture's instructions (spec 07, section 6).
+pub const asm: Item = Item::new(&["lang", "errors", "asm"]);
 /// Interface conformance (spec 02, section 3).
 pub const r#impl: Item = Item::new(&["lang", "errors", "impl"]);
 /// Coroutine frames (spec 06, section 1).

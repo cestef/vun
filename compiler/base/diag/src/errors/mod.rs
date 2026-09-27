@@ -13,6 +13,8 @@ mod binding;
 pub use binding::*;
 mod safety;
 pub use safety::*;
+mod asm;
+pub use asm::*;
 mod r#impl;
 pub use r#impl::*;
 mod coroutine;
