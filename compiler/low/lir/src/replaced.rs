@@ -14,6 +14,7 @@ pub(crate) struct Replaced {
 
 impl Replaced {
     pub(crate) fn insert(&mut self, value: Value, by: Value) {
+        debug_assert_ne!(value, by, "a value replaced by itself never resolves");
         if self.by.len() <= value.index() {
             self.by.resize(value.index() + 1, None);
         }

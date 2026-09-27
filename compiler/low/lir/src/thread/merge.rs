@@ -33,7 +33,8 @@ impl Function {
                 }
                 let args = target.args.clone();
                 let merged = &mut self.blocks[next];
-                for (&param, arg) in merged.params.iter().zip(args) {
+                // A block passing its own parameter to itself is unreached, and names it for nothing.
+                for (&param, arg) in merged.params.iter().zip(args).filter(|&(&p, a)| p != a) {
                     replaced.insert(param, arg);
                 }
                 merged.params.clear();
