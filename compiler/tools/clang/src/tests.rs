@@ -1,3 +1,4 @@
+use crate::resource::major;
 use std::path::PathBuf;
 
 use crate::{Clang, Kind, TypeKind};
@@ -41,4 +42,12 @@ fn a_header_reads_as_declarations_with_target_sizes() {
     assert_eq!(param.kind(), TypeKind::Pointer);
     assert_eq!(param.pointee().kind(), TypeKind::Elaborated);
     assert_eq!(param.pointee().named().declaration().name(), "point");
+}
+
+#[test]
+fn major_versions_are_read_from_library_names() {
+    assert_eq!(major("libclang.so.21.1.8"), Some(21));
+    assert_eq!(major("libclang-18.so.1"), Some(18));
+    assert_eq!(major("libclang.so"), None);
+    assert_eq!(major("libclang.dylib"), None);
 }

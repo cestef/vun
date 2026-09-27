@@ -42,7 +42,7 @@ fn bind(session: &mut Session, args: &Args, shell: &mut Shell<'_>) -> io::Result
     let place = target.as_deref().unwrap_or(&header);
     let dir = place.parent().filter(|d| !d.as_os_str().is_empty()).unwrap_or(Path::new("."));
     let reserved = session.names_seen_in(dir);
-    let bindings = match vun_bind::bind(&header, &flags, &reserved) {
+    let bindings = match vun_bind::Bindings::of(&header, &flags, &reserved) {
         Ok(bindings) => bindings,
         Err(failure) => {
             session.diag.error(failed(&header, failure));

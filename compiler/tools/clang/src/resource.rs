@@ -28,17 +28,8 @@ pub(crate) fn find(library: &Path) -> Option<PathBuf> {
 }
 
 /// The major version in a library's file name: `libclang.so.21.1.8`, `libclang-18.so.1`.
-fn major(name: &str) -> Option<u32> {
+pub(crate) fn major(name: &str) -> Option<u32> {
     let rest = name.strip_prefix("libclang")?;
     let digits = rest.trim_start_matches(['-', '.', 's', 'o']);
     digits.split(|c: char| !c.is_ascii_digit()).next()?.parse().ok()
-}
-
-#[cfg(test)]
-#[test]
-fn major_versions_are_read_from_library_names() {
-    assert_eq!(major("libclang.so.21.1.8"), Some(21));
-    assert_eq!(major("libclang-18.so.1"), Some(18));
-    assert_eq!(major("libclang.so"), None);
-    assert_eq!(major("libclang.dylib"), None);
 }

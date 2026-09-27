@@ -29,7 +29,7 @@ fn bindings_check_and_lay_structs_out_as_c_does() {
     let header = fixture.root.write("c/demo.h", HEADER);
     let mut session = fixture.session();
     let reserved = session.names_seen_in(&fixture.root.join("c"));
-    let bindings = match vun_bind::bind(&header, &["--target=x86_64-linux-gnu".to_owned()], &reserved) {
+    let bindings = match vun_bind::Bindings::of(&header, &["--target=x86_64-linux-gnu".to_owned()], &reserved) {
         Ok(bindings) => bindings,
         // Machines without libclang cannot run this; the command reports the same absence.
         Err(vun_bind::Failure::Missing(_)) => return,

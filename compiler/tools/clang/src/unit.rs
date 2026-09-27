@@ -5,6 +5,7 @@ use std::marker::PhantomData;
 use std::path::Path;
 
 use clang_sys::{
+    CXDiagnostic_DisplayColumn, CXDiagnostic_DisplaySourceLocation, CXDiagnostic_DisplaySourceRanges,
     CXDiagnostic_Error, CXDiagnostic_Fatal, CXDiagnostic_Warning, CXIndex, CXTranslationUnit,
     CXTranslationUnit_DetailedPreprocessingRecord, CXTranslationUnit_SkipFunctionBodies, clang_createIndex,
     clang_disposeDiagnostic, clang_disposeIndex, clang_disposeTranslationUnit, clang_formatDiagnostic,
@@ -35,19 +36,26 @@ pub struct Diagnostic {
     pub text: String,
 }
 
+/// The flag naming the directory of the headers clang provides, as `-resource-dir <dir>` or
+/// `-resource-dir=<dir>`.
+const RESOURCE_DIR: &str = "-resource-dir";
+
 impl Clang {
     /// Parses `header` as C with the compile flags `args`, such as `-I`, `-D` and `--target`;
     /// `None` when clang could not start parsing at all. The headers clang provides are found
     /// next to the library, unless `args` name their directory with `-resource-dir`.
     #[must_use]
     pub fn parse(&self, header: &Path, args: &[String]) -> Option<Unit<'_>> {
-        let file = CString::new(header.to_str()?).ok()?;
-        let resource = if args.iter().any(|a| a == "-resource-dir") {
+        let file = CString::new(header.as_os_str().as_encoded_bytes()).ok()?;
+        let given = |a: &String| {
+            a.strip_prefix(RESOURCE_DIR).is_some_and(|rest| rest.is_empty() || rest.starts_with('='))
+        };
+        let resource = if args.iter().any(given) {
             None
         } else {
             clang_sys::get_library().and_then(|l| crate::resource::find(l.path()))
         };
-        let resource = resource.and_then(|dir| Some(["-resource-dir".to_owned(), dir.to_str()?.to_owned()]));
+        let resource = resource.and_then(|dir| Some([RESOURCE_DIR.to_owned(), dir.to_str()?.to_owned()]));
         let args: Vec<CString> = std::iter::once("-xc".to_owned())
             .chain(resource.into_iter().flatten())
             .chain(args.iter().cloned())
@@ -101,8 +109,10 @@ impl Unit<'_> {
                         CXDiagnostic_Warning => Severity::Warning,
                         _ => Severity::Note,
                     };
-                    // 0x1 | 0x2 | 0x4: the file, line and column of the place.
-                    let text = text::take(clang_formatDiagnostic(d, 0x7));
+                    let shown = CXDiagnostic_DisplaySourceLocation
+                        | CXDiagnostic_DisplayColumn
+                        | CXDiagnostic_DisplaySourceRanges;
+                    let text = text::take(clang_formatDiagnostic(d, shown));
                     clang_disposeDiagnostic(d);
                     Diagnostic { severity, text }
                 })

@@ -100,38 +100,43 @@ pub(crate) struct Binder<'u> {
     skipped: Vec<Skipped>,
 }
 
-/// Binds `header`, parsed with the compile flags `args`, avoiding the names `reserved`, those
-/// the file the bindings are written to sees already.
-///
-/// # Errors
-/// Returns why nothing could be bound: libclang is missing, or the header does not parse.
-pub fn bind(header: &Path, args: &[String], reserved: &[String]) -> Result<Bindings, Failure> {
-    let clang = Clang::load().map_err(Failure::Missing)?;
-    let unit = clang.parse(header, args).ok_or(Failure::Unreadable)?;
-    let errors: Vec<Diagnostic> =
-        unit.diagnostics().into_iter().filter(|d| d.severity == Severity::Error).collect();
-    if !errors.is_empty() {
-        return Err(Failure::Errors(errors));
+impl Bindings {
+    /// The bindings of `header`, parsed with the compile flags `args`, avoiding the names
+    /// `reserved`, those the file the bindings are written to sees already.
+    ///
+    /// # Errors
+    /// Returns why nothing could be bound: libclang is missing, or the header does not parse.
+    pub fn of(header: &Path, args: &[String], reserved: &[String]) -> Result<Self, Failure> {
+        let clang = Clang::load().map_err(Failure::Missing)?;
+        let unit = clang.parse(header, args).ok_or(Failure::Unreadable)?;
+        let errors: Vec<Diagnostic> =
+            unit.diagnostics().into_iter().filter(|d| d.severity == Severity::Error).collect();
+        if !errors.is_empty() {
+            return Err(Failure::Errors(errors));
+        }
+        // The header's own declarations, and those of headers beside it: by absolute paths, as
+        // `board.h` is beside `./other.h` but not `/usr/include/stdint.h`.
+        let absolute = |p: &Path| std::path::absolute(p).unwrap_or_else(|_| p.to_path_buf());
+        let dir = absolute(header).parent().map(Path::to_path_buf).unwrap_or_default();
+        let mine: Vec<Cursor<'_>> = unit
+            .root()
+            .children()
+            .into_iter()
+            .filter(|c| c.location().file.is_some_and(|f| absolute(&f).starts_with(&dir)))
+            .collect();
+        let mut binder = Binder {
+            decls: Vec::new(),
+            names: HashMap::new(),
+            opaque: HashMap::new(),
+            reserved: reserved.iter().cloned().collect(),
+            params_reserved: HashSet::new(),
+            skipped: Vec::new(),
+        };
+        binder.collect(&mine);
+        let name = header.file_name().map_or_else(String::new, |n| n.to_string_lossy().into_owned());
+        let source = binder.file(&name).source();
+        Ok(Bindings { source, skipped: binder.skipped })
     }
-    let dir = header.parent().unwrap_or(Path::new(""));
-    let mine: Vec<Cursor<'_>> = unit
-        .root()
-        .children()
-        .into_iter()
-        .filter(|c| c.location().file.is_some_and(|f| f.starts_with(dir)))
-        .collect();
-    let mut binder = Binder {
-        decls: Vec::new(),
-        names: HashMap::new(),
-        opaque: HashMap::new(),
-        reserved: reserved.iter().cloned().collect(),
-        params_reserved: HashSet::new(),
-        skipped: Vec::new(),
-    };
-    binder.collect(&mine);
-    let name = header.file_name().map_or_else(String::new, |n| n.to_string_lossy().into_owned());
-    let source = binder.file(&name).source();
-    Ok(Bindings { source, skipped: binder.skipped })
 }
 
 impl Binder<'_> {
@@ -164,3 +169,6 @@ impl Binder<'_> {
         self.skipped.push(Skipped { name, file: at.file.unwrap_or_default(), line: at.line, reason });
     }
 }
+
+#[cfg(test)]
+mod tests;
