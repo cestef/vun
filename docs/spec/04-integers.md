@@ -59,7 +59,9 @@ denotes at compile time; bounds are accepted where a `Range` is expected.
    offset encoding. In a `layout.bits` struct it is the minimal bit count. Unused bit patterns are
    niches (spec 05, section 6).
 8. **Bit operations** (`&`, `|`, `^`, `~`, `<<`, `>>`) exist on `uN` types and preserve the type.
-   A shift amount whose range exceeds `N-1` is a trap site.
+   A shift amount whose range exceeds `N-1` is a trap site. The run-time check of a shift amount
+   is made in the amount's own storage, before any resize. An index or bound wider than the word
+   traps when past every word.
 9. **Compound assignment is sugar**: `x += y` is `x = (x + y).to(TypeOf(x))`; `x +%= y` uses `.wrap`
    and `x +|= y` uses `.sat`.
 

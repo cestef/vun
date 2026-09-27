@@ -234,6 +234,9 @@
 | 238 | Executors only look at an `Event`'s mark; the task waiting takes it through `Event.wait` (`for !self.take() { yield .on(self); }`), so a task resumed early yields again, as spec 06 states. `Wait` is `enum { on(&Event), either(&Wait, &Wait) }`: `select` yields `.either(&first, &second)`, where it used to drop the first wait's chain (a nested `select` could hang) and resume a task whose event had not fired | proposed | 06 |
 | 239 | `lang.target.current: Spec = _` is the chosen target as a compile-time value, the value of its declaration (the query `Chosen` gives the `Spec` read and that value; a machine's toolchain file changes only the tools, which it does not say). An address is 16, 32 or 64 bits; `usize_max` derives from the width | accepted (the user's choice) | 13 |
 | 240 | `lang.meta.same($T, a, b)` says whether two compile-time values are one value (two types, two names), replacing `same(A, B)` on types; `lang.meta.Name` implements `Eq` through it, as `type` does | accepted (the user's direction: no primitive per kind) | 03 |
+| 241 | Saved query memos carry the identity of the compiler build that wrote them (the executable's size and write time); memos from another build are refused (`Unloaded::Build`) and recomputed, since their types may have changed | proposed | 13 |
+| 242 | A package's `include` names `build.vun`, so its hash covers its manifest; a stored package may not name a dependency or replacement by path; archives are bounded by named constants (`Unpacking::{ENTRIES, BYTES, STREAM}`: 65536 entries, 512 MiB of files, 1 GiB read) | proposed | 12 |
+| 243 | The place, borrow and panic checks run on every function of a file and on every generic instantiation its program reaches; a closure called in a `#[panic.never]` body keeps the promise by its own body (`MayTrap`) | accepted (review fixes) | 07, 13 |
 
 Numbers 184 to 189 and 217 to 220 were never assigned.
 

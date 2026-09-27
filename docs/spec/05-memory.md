@@ -52,6 +52,8 @@ Rules, all checked on the control-flow graph:
   not own what it points to. Matching or reading through the borrow itself binds by borrow
   instead (`place.move_out_of_borrow`). An owner held by value owns its target, so moving a
   part out of it is allowed (`cur = node.next` before freeing `node`).
+- Writing a whole linear place that still holds a value is a leak (`place.linear_leak`). Moving a
+  linear value is an exclusive access: it conflicts with any live borrow of it.
 - **At every scope exit, every place holding a linear value must be `uninit`.** Forgetting to close,
   free, release or finish something is a compile error. No destructor ever runs implicitly.
 - A place that is `init` on one incoming path and `uninit` on another cannot be used after the join.
@@ -98,7 +100,9 @@ returns. So `find := (hay: &[u8], needle: &temp [u8]) -> &[u8]` returns a borrow
 alone, and a caller may pass a short-lived `needle`. The table `borrows` records this as each
 mode's extent (`tied` or `temp`). A `&temp` borrow and the ordinary borrow of the same transition
 and access are accepted for each other, so the rule is carried by the parameter and checked in the
-callee's body, where a `&temp` parameter is a loan that must not reach the result.
+callee's body, where a `&temp` parameter is a loan that must not reach the result. A borrow
+written through an exclusive borrow parameter outlives the call, so it may not be of the
+function's own storage (`borrow.escape`).
 
 A borrow cannot be stored in a free value: a top-level binding, an `Own`, a heap node. A type is
 made free by `#[kind.free]`: neither its parts nor its type arguments may then be scoped, so

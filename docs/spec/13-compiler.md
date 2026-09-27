@@ -126,6 +126,8 @@ per second per stage and fails on regressions.
   non-lexical and treat every kind of control flow the same way (`defer` and `yield` become explicit
   edges before checking). A `yield` has two successors: where resuming goes on, and a cancel path
   running what is pending there, which ending the suspended frame takes (terminator `Ended`).
+  The place, borrow and panic checks run on every function of a file and on every generic
+  instantiation its program reaches, since a type argument can make a body wrong.
 - **Calls** pass their arguments as one reading of the callee's parameters says (`Env::passing`),
   shared by compile-time evaluation and MIR: the receiver, `$` arguments inferred by typing, code
   for a `Code(T)` parameter, a compile-time value for another `$` parameter, evaluated as the
@@ -481,9 +483,9 @@ c` shows it, and `vun build` and `vun run` compile and link it.
 - **Aliasing.** An address a signature passes says what else reaches what it reaches
   (`AbiType::Address(Alias)`): an exclusive borrow is `Alias::Exclusive` (spec 05, section 8), and
   C declares it `restrict`.
-- **Shards.** A program of more functions than a shard holds (`SHARD`, 256) spans a header every
-  file includes (types, checks, declarations), a file of its data, and shards of functions, each
-  function in the shard its content hash gives, so the files compile in parallel and a changed
+- **Shards.** A program of more functions than a shard holds on average (`SHARD`, 256) spans a
+  header every file includes (types, checks, declarations), a file of its data, and shards of
+  functions, each function in the shard its content hash gives, so the files compile in parallel and a changed
   function recompiles one shard. Its functions and data are then seen by the linker, under names
   tagged by the unit's content hash (`p1f3a_f3`), never another program's.
 

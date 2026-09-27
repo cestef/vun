@@ -146,7 +146,17 @@ build := (b: &mut std.build.Build) {
   hash the toolchain uses, for caches as well (in-memory identities and query fingerprints use a
   fixed-seed fast hash, stable within one toolchain build, spec 13): measured at 2 to 3 GiB/s on one core and 12 GiB/s on 14,
   against 1.4 GiB/s for SHA-256 with hardware support.
-- **Store.** Fetched packages are kept in one store per user, shared by every project:
+- **What a package is.** A manifest's `include` names `build.vun`: a package's hash covers its
+  manifest. Include entries are paths inside the package, with no root and no `..`
+  (`manifest.invalid_field`). A stored package names its dependencies and replacements by hash;
+  a path is refused. An archive holds at most 65536 entries and 512 MiB of files, and is read up
+  to 1 GiB; links and other non-regular entries are refused. Downloads take at most 10 minutes
+  and 8 redirects, never from `https://` to another scheme. `vun pkg update` takes the newest
+  release of the dependency's major and checks that it declares the identity and version it is
+  listed under.
+- **Store.** A fetch stages in a directory of its own process under `staging/`, holding the
+  store's lock shared; collection takes it alone. An entry another process stored first is kept,
+  as it holds the same contents. Fetched packages are kept in one store per user, shared by every project:
   `vun/store` in the user's cache directory (`~/.cache` on Unix, including macOS, as command-line
   tools expect; the known folder on Windows), or the directory `VUN_STORE` names. Entries nest by
   the hash alone, `<store>/blake3/<first 2 digest characters>/<remaining 50>/`, so the first level
