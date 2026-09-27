@@ -104,6 +104,14 @@ impl Env<'_, '_> {
             });
             return items.collect::<Result<_, _>>().map(Value::Tuple);
         }
+        // `.{ x, y }` where an array or slice is expected: an array of its items.
+        if let Some(item) = ty.items() {
+            let items = fields.iter().map(|field| match field {
+                Entry::One(Arg { name: None, value }) => self.eval_as(*value, Some(item)),
+                _ => Err(Unevaluated::Unsupported),
+            });
+            return items.collect::<Result<_, _>>().map(Value::Array);
+        }
         if let TyKind::Record(types) = &*ty {
             let values = types.iter().map(|(name, field)| {
                 let written = fields.iter().find_map(|f| match f {

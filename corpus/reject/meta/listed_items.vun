@@ -1,0 +1,5 @@
+//! `.{ x, y }` where an array is expected is that array at compile time too, so an index past
+//! its end traps where it is read (spec 01, section 2; spec 07, section 3).
+
+items: [3]u8 = .{ 1, 2, 3 };
+last: u8 = items[3]; //~ comptime.trap
