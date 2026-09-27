@@ -15,8 +15,9 @@ pub enum Op {
     Brk,
     /// The page of an address, which a following `add` or load completes with its low 12 bits.
     Adrp,
-    /// A full barrier within the inner shareable domain.
-    DmbIsh,
+    /// A data memory barrier: accesses the barrier orders complete, as its operand says, before any
+    /// after it.
+    Dmb,
     Fmov,
     /// Two operands into a third.
     Fadd,
@@ -191,7 +192,7 @@ impl Op {
         Self::Udf,
         Self::Brk,
         Self::Adrp,
-        Self::DmbIsh,
+        Self::Dmb,
         Self::Fmov,
         Self::Fadd,
         Self::Fsub,

@@ -63,6 +63,11 @@ names := .{
 /// for unsigned; `ge` for signed).
 Cond := enum { eq, ne, hs, lo, mi, pl, vs, vc, hi, ls, ge, lt, gt, le, al, nv };
 
+/// What a memory barrier orders (`dmb`): accesses within the outer (`osh`), non-shareable (`nsh`)
+/// or inner (`ish`) shareability domain, or the full system (`sy`), each for loads (`ld`),
+/// stores (`st`) or both.
+Barrier := enum { oshld, oshst, osh, nshld, nshst, nsh, ishld, ishst, ish, ld, st, sy };
+
 /// What register 31 is at a position.
 R31 := enum { zr, sp };
 
@@ -147,6 +152,8 @@ Kind := enum {
     page,
     /// A symbol's low 12 bits (`add`).
     lo12,
+    /// What a barrier orders (`dmb`).
+    barrier,
 };
 
 /// What a form does with an operand, or with the flags.

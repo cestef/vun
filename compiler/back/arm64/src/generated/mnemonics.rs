@@ -13,7 +13,7 @@ const MNEMONICS: [&str; 100usize] = [
     "udf",
     "brk",
     "adrp",
-    "dmb ish",
+    "dmb",
     "fmov",
     "fadd",
     "fsub",

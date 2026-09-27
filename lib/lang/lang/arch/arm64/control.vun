@@ -63,7 +63,8 @@ adrp := _a.Instruction{ .forms = &[
         .{ .base = 0x90000000, .sizes = _any, .args = &[_x_d_w, _page_d] },
     ] };
 
-/// A full barrier within the inner shareable domain.
-dmb_ish := _a.Instruction{ .mnemonic = .some("dmb ish"), .forms = &[
-        .{ .base = 0xd5033bbf, .sizes = _any, .args = &[] },
+/// A data memory barrier: accesses the barrier orders complete, as its operand says, before any
+/// after it.
+dmb := _a.Instruction{ .forms = &[
+        .{ .base = 0xd50330bf, .sizes = _any, .args = &[.{ .kind = .barrier, .at = 8, .access = .read }] },
     ] };

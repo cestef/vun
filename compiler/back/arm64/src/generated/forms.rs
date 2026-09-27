@@ -14,7 +14,7 @@ const FORMS: [&[Form]; 100usize] = [
     &super::udf::UDF,
     &super::brk::BRK,
     &super::adrp::ADRP,
-    &super::dmb_ish::DMB_ISH,
+    &super::dmb::DMB,
     &super::fmov::FMOV,
     &super::fadd::FADD,
     &super::fsub::FSUB,

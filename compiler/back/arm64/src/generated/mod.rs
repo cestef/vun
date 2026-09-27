@@ -12,7 +12,7 @@ mod cbnz;
 mod udf;
 mod brk;
 mod adrp;
-mod dmb_ish;
+mod dmb;
 mod fmov;
 mod fadd;
 mod fsub;

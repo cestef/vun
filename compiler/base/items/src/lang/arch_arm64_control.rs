@@ -19,5 +19,6 @@ pub const udf: Item = Item::new(&["lang", "arch", "arm64", "control", "udf"]);
 pub const brk: Item = Item::new(&["lang", "arch", "arm64", "control", "brk"]);
 /// The page of an address, which a following `add` or load completes with its low 12 bits.
 pub const adrp: Item = Item::new(&["lang", "arch", "arm64", "control", "adrp"]);
-/// A full barrier within the inner shareable domain.
-pub const dmb_ish: Item = Item::new(&["lang", "arch", "arm64", "control", "dmb_ish"]);
+/// A data memory barrier: accesses the barrier orders complete, as its operand says, before any
+/// after it.
+pub const dmb: Item = Item::new(&["lang", "arch", "arm64", "control", "dmb"]);

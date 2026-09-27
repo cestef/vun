@@ -22,3 +22,5 @@ pub const target: Item = Item::new(&["lang", "arch", "arm64", "Kind", "target"])
 pub const page: Item = Item::new(&["lang", "arch", "arm64", "Kind", "page"]);
 /// A symbol's low 12 bits (`add`).
 pub const lo12: Item = Item::new(&["lang", "arch", "arm64", "Kind", "lo12"]);
+/// What a barrier orders (`dmb`).
+pub const barrier: Item = Item::new(&["lang", "arch", "arm64", "Kind", "barrier"]);

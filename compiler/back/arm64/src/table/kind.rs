@@ -245,6 +245,8 @@ pub enum Kind {
     Page,
     /// A symbol's low 12 bits (`add`).
     Lo12,
+    /// What a barrier orders (`dmb`).
+    Barrier,
 }
 
 impl Kind {
@@ -271,6 +273,7 @@ impl Kind {
             (Self::Mem(mode, width), Operand::Mem(mem)) => mode.encode(mem, width.at(size)),
             (Self::Cond(Cond::Inverted), Operand::Cond(cc)) => Some(u32::from(cc.not().number())),
             (Self::Cond(_), Operand::Cond(cc)) => Some(u32::from(cc.number())),
+            (Self::Barrier, Operand::Barrier(b)) => Some(b.field()),
             (Self::Target(_), Operand::Label(_) | Operand::Sym(_))
             | (Self::Page, Operand::Page(..))
             | (Self::Lo12, Operand::Lo12(_)) => Some(0),

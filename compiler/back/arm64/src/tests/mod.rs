@@ -14,6 +14,7 @@ use yaxpeax_arch::{Decoder, U8Reader};
 use yaxpeax_arm::armv8::a64::{InstDecoder, Instruction};
 
 use crate::{
+    Barrier,
     Asm, Cc, Emit, Extend, Form, Inst, Kind, Mem, Mode, Op, Operand, Reg, Scale, Shift, ShiftKind, Size, V,
 };
 
@@ -106,6 +107,7 @@ fn samples(kind: Kind, label: Label) -> Vec<Operand<Sym>> {
         Kind::Target(_) => vec![Operand::Label(label), Operand::Sym("f")],
         Kind::Page => vec![Operand::Page("f", Via::Direct), Operand::Page("f", Via::Got)],
         Kind::Lo12 => vec![Operand::Lo12("f")],
+        Kind::Barrier => Barrier::ALL.map(Operand::Barrier).to_vec(),
     }
 }
 

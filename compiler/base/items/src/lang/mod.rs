@@ -14,6 +14,7 @@ pub mod arch;
 pub mod arch_arm64;
 pub mod arch_arm64_Access;
 pub mod arch_arm64_Arg;
+pub mod arch_arm64_Barrier;
 pub mod arch_arm64_Branch;
 pub mod arch_arm64_Cond;
 pub mod arch_arm64_Condition;
