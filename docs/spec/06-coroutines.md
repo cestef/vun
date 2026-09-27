@@ -95,16 +95,20 @@ iterators into plain loops.
 Executors are `std` library code with no compiler support. A frame answers its interface's
 `resume` and `end` itself (the table `iteration`), so an executor calls `t.resume()` and
 `t.end()` like any method. An `Event` carries an atomic mark that `fire` sets, from an interrupt
-handler too, and an executor takes; a `Wait` names an event and, through `also`, another wait,
-a chain living in the waiting frames, so waiting on either of two tasks allocates nothing. A task
-resumed before its event fires finds no mark and yields again.
+handler too; executors only look at it (`fired`), and the task waiting takes it (`take`). Leaf
+futures wait through `Event.wait`, `for !self.take() { yield .on(self); }`: a task resumed before
+its event fires finds no mark and yields again, so an executor may resume a task whenever it likes
+and loses no wakeup by resuming one early. A `Wait` is `.on(event)` or `.either(a, b)`, a join of
+two waits living in the waiting frames, so waiting on either of two tasks allocates nothing, and
+`ready` holds when an event it names fired.
 
 - `std.task.run(tasks)`: single-threaded, over a tuple of borrowed tasks that never finish; it
   resumes each task whose wait is ready and sleeps through the runtime's `std.task.sleep` (a
   typed link symbol) between rounds (embedded, bare metal);
 - `std.task.block_on(t)`: hosted, one task;
 - `std.task.select(.{ &mut a, &mut b })`: inside a task, runs two tasks until one finishes and
-  gives `.first(r)` or `.second(r)`; both stay for the caller to end;
+  gives `.first(r)` or `.second(r)`, yielding `.either` of their waits; both stay for the caller to
+  end;
 - `std.task.Pool(n)`: hosted, thread pool;
 - `std.testing.Sim`: deterministic, seeded, virtual time (spec 11).
 

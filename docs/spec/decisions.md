@@ -231,6 +231,7 @@
 | 235 | `std.sync.Shared(T)` is reached only by value under a `&Critical`: `get` (a copy), `set`, `replace` and `update`. It used to lend `&mut T`, which two calls or two nested sections could hold at once, aliasing in safe code | accepted (the user's choice) | 07 |
 | 236 | `targets.gnu` takes the flags selecting a target's machine (`-mcpu`, `-mthumb`, `-mfloat-abi`, `-march`/`-mabi`, `--target`), given to every compile and every link so the driver picks the libraries built for it: `bare.cortex_m4f` builds Thumb-2 hard-float code, `bare.rv32imc` RV32IMC/ilp32, `wasi.wasm32` wasm | accepted (a review finding) | 13 |
 | 237 | Compile-time values are bounded: shifts to 2^24 bits and arrays to 2^20 items, past which evaluation traps, so no program makes the compiler allocate without bound | proposed | 03 |
+| 238 | Executors only look at an `Event`'s mark; the task waiting takes it through `Event.wait` (`for !self.take() { yield .on(self); }`), so a task resumed early yields again, as spec 06 states. `Wait` is `enum { on(&Event), either(&Wait, &Wait) }`: `select` yields `.either(&first, &second)`, where it used to drop the first wait's chain (a nested `select` could hang) and resume a task whose event had not fired | proposed | 06 |
 
 Numbers 184 to 189 and 217 to 220 were never assigned.
 

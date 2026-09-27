@@ -3,29 +3,38 @@
 //! `block_on` for one task on a hosted system, `select` inside a task.
 
 /// Something that happens, which an executor watches: an interrupt, a timer, a device. Firing it,
-/// from an interrupt handler too, marks it until an executor takes the mark.
+/// from an interrupt handler too, marks it until a task waiting on it takes the mark; executors
+/// only look at it.
 Event := struct {
     _fired: std.sync.Atomic(bool),
 
     init := () -> Event { .{ ._fired = std.sync.Atomic(bool).init(false) } };
     #[panic.never]
     fire := (self: &Event) { self._fired.store(true, .release); };
+    /// Whether it fired since the mark was last taken, leaving the mark.
+    #[panic.never]
+    fired := (self: &Event) -> bool { self._fired.load(.acquire) };
     /// Whether it fired since the mark was last taken, taking it.
     #[panic.never]
     take := (self: &Event) -> bool { self._fired.swap(false, .acquire) };
+    /// Waits until it fires, and takes the mark: resumed before then, it finds no mark and yields
+    /// again, so a task may be resumed whenever an executor likes.
+    wait := (self: &Event) -> Async(()) {
+        for !self.take() { yield .on(self); }
+    };
 };
 
-/// A request yielded to the executor: resume the task when `event` fires, or when the wait `also`
-/// names is ready: a chain living in the frames of the tasks waiting.
-Wait := struct {
-    event: &Event,
-    also: ?&Wait = .none,
+/// A request yielded to the executor: resume the task once an event fires. Waiting on either of
+/// two tasks joins their waits, in the frames of the tasks waiting, and allocates nothing.
+Wait := enum { on(&Event), either(&Wait, &Wait) };
 
-    /// Whether an event of the chain fired, taking its mark.
+#[impl(Wait)]
+WaitReady := struct {
+    /// Whether an event the wait names fired. The marks stay for the tasks to take.
     ready := (self: &Wait) -> bool {
-        self.event.take() or match self.also {
-            .some(other) => other.ready(),
-            .none => false,
+        match self {
+            .on(event) => event.fired(),
+            .either(a, b) => a.ready() or b.ready(),
         }
     };
 };
@@ -43,7 +52,8 @@ sleep: () -> () = _;
 /// Which of two tasks finished first, with its result.
 Either := ($A: type, $B: type) -> type { enum { first(A), second(B) } };
 
-/// Runs two tasks until one finishes, and gives its result; both stay for the caller to end.
+/// Runs two tasks until one finishes, and gives its result; both stay for the caller to end. It is
+/// resumed once either task's wait is ready and resumes both, the other finding no mark.
 select := ($A: type, $B: type, $F: Async(A), $G: Async(B), tasks: (&mut F, &mut G)) -> Async(Either(A, B)) {
     for {
         first := match tasks.0.resume() {
@@ -54,7 +64,7 @@ select := ($A: type, $B: type, $F: Async(A), $G: Async(B), tasks: (&mut F, &mut 
             .done(result) => break .second(result),
             .yielded(wait) => wait,
         };
-        yield .{ .event = first.event, .also = .some(&second) };
+        yield .either(&first, &second);
     }
 };
 

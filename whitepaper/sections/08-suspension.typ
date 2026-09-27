@@ -84,10 +84,11 @@ Iterator adapters are coroutine functions as well: `std.iter` gives every frame 
 
 Executors are library code with no compiler support. A frame answers its interface's `resume` and
 `end` like any method, so an executor is an ordinary loop over frames. An `Event` carries an atomic
-mark that `fire` sets, possibly from an interrupt handler, and that an executor takes. A `Wait`
-names an event and, through a field `also`, optionally another wait; the chain lives in the waiting
-frames, so waiting on either of two tasks allocates nothing. A task resumed before its event fires
-finds no mark and yields again. `std.task` provides a single-threaded executor over a tuple of
+mark that `fire` sets, possibly from an interrupt handler; executors only look at it, and the task
+waiting takes it through `Event.wait`, which finds no mark when resumed early and yields again, so
+an executor may resume a task whenever it likes. A `Wait` is `.on(event)` or `.either(a, b)`, a
+join of two waits living in the waiting frames, so waiting on either of two tasks allocates
+nothing. `std.task` provides a single-threaded executor over a tuple of
 borrowed tasks that sleeps between rounds through a symbol the runtime provides (@sec-capabilities),
 a `block_on` for hosted programs, and `select`, which runs two tasks until one finishes and leaves
 both for the caller to end. A thread pool and a deterministic simulator (@sec-tooling) follow the

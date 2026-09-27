@@ -8,5 +8,10 @@
 use crate::Item;
 pub const init: Item = Item::new(&["std", "task", "Event", "init"]);
 pub const fire: Item = Item::new(&["std", "task", "Event", "fire"]);
+/// Whether it fired since the mark was last taken, leaving the mark.
+pub const fired: Item = Item::new(&["std", "task", "Event", "fired"]);
 /// Whether it fired since the mark was last taken, taking it.
 pub const take: Item = Item::new(&["std", "task", "Event", "take"]);
+/// Waits until it fires, and takes the mark: resumed before then, it finds no mark and yields
+/// again, so a task may be resumed whenever an executor likes.
+pub const wait: Item = Item::new(&["std", "task", "Event", "wait"]);

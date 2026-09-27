@@ -59,8 +59,8 @@ fn executors_drive_frames_through_their_own_resume_and_end() {
     let file = fixture.root.write(
         "executors.vun",
         "\
-tick := (e: &std.task.Event) -> std.task.Async(never) { for { yield .{ .event = e }; } };
-count := (e: &std.task.Event) -> std.task.Async(u32) { yield .{ .event = e }; 3 };
+tick := (e: &std.task.Event) -> std.task.Async(never) { for { yield ..e.wait(); } };
+count := (e: &std.task.Event) -> std.task.Async(u32) { yield ..e.wait(); 3 };
 go := (e: &std.task.Event) -> never {
     mut a := tick(e);
     mut b := tick(e);
@@ -138,17 +138,17 @@ fn a_frame_ended_at_a_yield_runs_only_what_is_pending_there() {
     let file = fixture.root.write(
         "cancel.vun",
         "\
-count := (e: &std.task.Event) -> std.task.Async(u32) { yield .{ .event = e }; 3 };
+count := (e: &std.task.Event) -> std.task.Async(u32) { yield ..e.wait(); 3 };
 held := (e: &std.task.Event) -> std.task.Async(u32) {
     mut c := count(e);
-    yield .{ .event = e };
+    yield ..e.wait();
     c.end();
     3
 };
 deferred := (e: &std.task.Event) -> std.task.Async(u32) {
     mut c := count(e);
     defer c.end();
-    yield .{ .event = e };
+    yield ..e.wait();
     3
 };
 ",

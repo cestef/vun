@@ -35,18 +35,18 @@ Led := struct {
     toggle := (self: &mut Led) {};
 };
 Timer := struct {
-    after := (self: &Timer, d: Duration) -> Async(()) { yield .{ .event = &ready }; };
+    after := (self: &Timer, d: Duration) -> Async(()) { yield ..ready.wait(); };
 };
 Serial := struct {
     enable := (self: &mut Serial) {};
     disable := (self: &mut Serial) {};
-    read_byte := (self: &mut Serial) -> Async(u8) { yield .{ .event = &ready }; 0 };
+    read_byte := (self: &mut Serial) -> Async(u8) { yield ..ready.wait(); 0 };
     read := (self: &mut Serial, buf: &out [64]u8) -> Async(usize) {
         buf.* = [0; 64];
-        yield .{ .event = &ready };
+        yield ..ready.wait();
         0
     };
-    write := (self: &mut Serial, bytes: &[u8]) -> Async(()) { yield .{ .event = &ready }; };
+    write := (self: &mut Serial, bytes: &[u8]) -> Async(()) { yield ..ready.wait(); };
 };
 Uart := struct {
     send := (self: &mut Uart, bytes: &[u8]) -> Result(usize, support.uart.Error) { .ok(bytes.len()) };

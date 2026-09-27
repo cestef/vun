@@ -6,7 +6,5 @@
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
 use crate::Item;
-pub const event: Item = Item::new(&["std", "task", "Wait", "event"]);
-pub const also: Item = Item::new(&["std", "task", "Wait", "also"]);
-/// Whether an event of the chain fired, taking its mark.
-pub const ready: Item = Item::new(&["std", "task", "Wait", "ready"]);
+pub const on: Item = Item::new(&["std", "task", "Wait", "on"]);
+pub const either: Item = Item::new(&["std", "task", "Wait", "either"]);

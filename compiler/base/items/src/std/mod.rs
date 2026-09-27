@@ -92,5 +92,6 @@ pub mod task;
 pub mod task_Either;
 pub mod task_Event;
 pub mod task_Wait;
+pub mod task_WaitReady;
 pub mod task_symbols;
 pub mod testing;

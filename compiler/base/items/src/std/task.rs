@@ -7,11 +7,13 @@
 )]
 use crate::Item;
 /// Something that happens, which an executor watches: an interrupt, a timer, a device. Firing it,
-/// from an interrupt handler too, marks it until an executor takes the mark.
+/// from an interrupt handler too, marks it until a task waiting on it takes the mark; executors
+/// only look at it.
 pub const Event: Item = Item::new(&["std", "task", "Event"]);
-/// A request yielded to the executor: resume the task when `event` fires, or when the wait `also`
-/// names is ready: a chain living in the frames of the tasks waiting.
+/// A request yielded to the executor: resume the task once an event fires. Waiting on either of
+/// two tasks joins their waits, in the frames of the tasks waiting, and allocates nothing.
 pub const Wait: Item = Item::new(&["std", "task", "Wait"]);
+pub const WaitReady: Item = Item::new(&["std", "task", "WaitReady"]);
 pub const Async: Item = Item::new(&["std", "task", "Async"]);
 /// Waits for the next event: sleeps the core until an interrupt, or parks a hosted thread. A
 /// typed link symbol the runtime exports (spec 08, section 1).
@@ -19,7 +21,8 @@ pub const symbols: Item = Item::new(&["std", "task", "symbols"]);
 pub const sleep: Item = Item::new(&["std", "task", "sleep"]);
 /// Which of two tasks finished first, with its result.
 pub const Either: Item = Item::new(&["std", "task", "Either"]);
-/// Runs two tasks until one finishes, and gives its result; both stay for the caller to end.
+/// Runs two tasks until one finishes, and gives its result; both stay for the caller to end. It is
+/// resumed once either task's wait is ready and resumes both, the other finding no mark.
 pub const select: Item = Item::new(&["std", "task", "select"]);
 /// Runs `tasks`, borrows of tasks that never finish, forever: each resumes when an event it waits
 /// on fires, and between rounds the core sleeps until an interrupt.
