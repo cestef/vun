@@ -66,7 +66,9 @@ years (rustc's parallel front end). So both are designed in from phase 1.
   the way to a memo, one computes each memo while the others needing it wait, and a thread that
   would wait on a thread waiting for it computes the memo itself. Sessions compiling for one
   target share a database, so each library is checked once per process. Inputs are set, and a set that leaves
-  an input's interface unchanged starts no revision. A query that reaches itself gets the value
+  an input's interface unchanged starts no revision. The inputs are each package's description,
+  keyed by its `PackageId`, and each file's text, keyed by its `FileRef`: the typed identities
+  spans hash by (spec 10, section 1; decision 247). A query that reaches itself gets the value
   its `cycle` rule gives, with the path of queries, instead of looping. A value computed from
   that cycle value, directly or through what it read, is provisional: it serves the computation
   that asked for it and is not kept, since the query reached again may have another value once
@@ -393,6 +395,7 @@ pub trait DiagSink {
 | QBE | small and simple | amd64, arm64, rv64 | subprocess on IL text; no vectors (lowered), no tail calls, no 32-bit targets |
 | LLVM | optimized builds, widest native reach | ARM32/Thumb, RV32, AVR, wasm, ... | optional; `noalias`, `musttail`, stack-size sections |
 | native | fastest debug builds | x86_64, arm64 | the toolchain's own: a single-pass LIR backend in the style of TPDE (8x to 24x faster than LLVM -O0), section 8.3 |
+| wasm | WebAssembly without a C toolchain | wasm32 | the toolchain's own: relocatable objects `wasm-ld` links, section 8.4 |
 | external | anything | any | a process reading LIR text |
 
 **Choosing a backend.** A target lists the backends it builds with under each profile, most
@@ -670,6 +673,88 @@ or regions; the backend tests run every program through both backends and requir
 result. GNU ld, mold and wild link, all through the target's C compiler, which passes the C
 runtime's start files and libraries (`vun_link_gnu::Ld`): its own `ld`, `-fuse-ld=mold`, or wild
 as the `ld` of a directory beside the output that the compiler looks in first (`-B`).
+
+### 8.4 The wasm backend
+
+The toolchain's own backend for WebAssembly (`wasm32` targets, `wasi.wasm32`), in one crate,
+`vun-backend-wasm`. It writes a relocatable object in the format of the WebAssembly tool
+conventions (a module with the `linking` and `reloc.*` custom sections), which `wasm-ld` links
+(the `lld` adapter, flavored by the target's object format), so its objects link with C compiled
+by clang for the same target.
+
+- **Modules as data.** A module is a typed value (`Module`: types, imports, functions, data
+  segments, symbols, relocations), written once into bytes; instructions are a typed set
+  (`Op`), each declaring its encoding and the operand types it pops and pushes. `Module::verify`
+  checks every index and runs the validation algorithm of the WebAssembly specification over
+  every body, so a module the backend makes is valid before it is written; tests also validate
+  with an independent parser (`wasmparser`).
+- **Values.** Integers up to 32 bits and addresses are `i32`, 64-bit integers `i64`, floats
+  their own (`BackendCaps::int_bits` is 64, `f16` is promoted). A value narrower than 32 bits is
+  held zero-extended: every operation producing one masks it, sign-reading operations
+  (`SLt`, `AShr`, `SDiv`, `SExt`) extend it first (`i32.extend8_s`). Each LIR value is a local,
+  each block parameter one too.
+- **Control.** Blocks become structured control by the algorithm of Ramsey (2022), from the
+  dominator tree and reverse postorder: a block with more than one forward predecessor is the
+  continuation of a `block`, a loop head a `loop`, a jump a `br` to the label of its target, a
+  switch a `br_table`. A jump's arguments are pushed, then popped into the target's parameters in
+  reverse, which is a parallel copy with no temporary. A function whose control flow is
+  irreducible is refused (`backend.lacks`), which lowering never produces.
+- **Memory.** Stack slots live in linear memory below `__stack_pointer`, a global the linker
+  defines: a function with slots lowers it on entry by its frame, rounded to 16 bytes, and
+  restores it before each return. `Copy` is `memory.copy` (bulk memory). Atomic accesses are
+  plain ones, since a module without shared memory runs one thread.
+- **Calls.** Vun's convention passes scalars as values and aggregates by address; the C
+  convention is clang's for wasm32: a record of one scalar is that scalar, another is passed as
+  the address of a copy the caller makes and returned through an address passed first; a wide
+  integer is two `i64`s. An indirect call is `call_indirect` through the linker's
+  `__indirect_function_table`, a function's address its index there.
+- **Imports.** A linked symbol is an undefined function or data symbol of the object. The library
+  it comes from, `#[link.library(name)]`, is its import module (`wasi_snapshot_preview1`), and
+  the linker keeps it an import of the program; a symbol with no library is one another object
+  defines.
+
+### 8.5 Calling conventions
+
+Where a call passes each value is decided once, in `vun-abi`, from the convention as data, and
+every backend that places arguments itself reads the result; no backend states a convention's
+rules (proposed, decision 256).
+
+- **Conventions as values.** A `Convention` declares: how many argument and result registers
+  each class has (general, floating-point); where the address of a result in memory goes (the
+  first general argument register, System V, or a register of its own, `x8` under AAPCS64);
+  how records travel (`Records`: System V's eightbytes, each general or SSE by its fields; or
+  AAPCS64's homogeneous aggregates of up to four floats of one type, a field per register, and
+  other records of up to 16 bytes a word per general register); what becomes of a larger record
+  (copied onto the stack whole, or passed as the address of a copy the caller makes); whether a
+  record that finds too few registers of its class leaves the rest of the class unused
+  (AAPCS64, rule C.13) or takes none and leaves them to later arguments (System V); where an
+  integer of two words goes (any two general registers, or an even pair, AAPCS64 rule C.9);
+  the stack (a slot of 8 bytes, or scalars at their own size and alignment, as Apple's variant
+  packs a C call's; composites aligned to at most 16 bytes); who extends a narrow integer
+  (the callee reads it extended by the caller, as Apple's variant says, or extends it itself);
+  and whether a variadic call counts the floating-point registers it uses (System V's `al`).
+  `SYSV`, `AAPCS64` and `DARWIN_ARM64` are the three built; riscv64's LP64D and wasm32's C
+  convention are further values of the same type.
+- **One classifier.** `Passing::of(signature, convention)` gives every LIR value of a signature
+  (`Signature::passed`: a wide integer's halves each, the address of a result in memory last)
+  a typed placement: a register, a place on the stack, a record's parts in registers with their
+  offsets and sizes, a record copied onto the stack, the address of a copy the caller makes and
+  where that address goes, or the address a result returned in registers is written to; and
+  the result its own: none, a register, parts in registers, or memory through an address. It
+  also gives the bytes of arguments on the stack. Registers are named by their class and
+  position among the convention's argument or result registers (`Reg::Int(2)`); the backend
+  maps positions to its machine's registers, so the crate depends on no assembler, and
+  registers a platform reserves (Apple's `x18`) are the backend's to keep out of allocation.
+- **Vun's convention** passes each LIR value of the signature in the general registers in order,
+  then on the stack, records by address and a result in memory through an address passed last;
+  a wide integer as the C convention of the target passes one.
+- **Chosen by the target.** A target description names its convention (`lang.target`), so no
+  backend matches a target's ABI by name.
+- **Readers.** The native backend's instruction compilers read placements for calls, entries and
+  returns. The C backend reads none: the C compiler places arguments, which is what the
+  classifier is checked against. Tests compare placements with what clang does for the same C
+  signature on each target, and the backend tests run every `#[abi.c]` function through the C
+  and native backends and require the same results.
 
 | Linker | Use |
 |--------|-----|
