@@ -144,6 +144,9 @@ impl fmt::Display for Text<'_> {
         writeln!(f, "unit ptr {}", unit.pointer_bits)?;
         for (id, import) in unit.imports.iter() {
             write!(f, "import {id} {:?}", import.symbol.as_str())?;
+            if let Some(library) = import.library {
+                write!(f, " from {:?}", library.as_str())?;
+            }
             match &import.kind {
                 ImportKind::Func(signature) => write!(f, ": {signature}")?,
                 ImportKind::Data => f.write_str(": data")?,

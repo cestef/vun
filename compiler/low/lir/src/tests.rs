@@ -167,3 +167,19 @@ fn the_verifier_rejects_a_malformed_shape() {
     });
     assert!(matches!(aligned, Err((Entity::Slot(..), Reason::Alignment(3)))), "{aligned:?}");
 }
+
+#[test]
+fn an_import_prints_the_library_it_comes_from() {
+    let origins = OriginTable::new();
+    let mut unit = Unit::default();
+    let library = Some(Symbol::intern("wasi_snapshot_preview1"));
+    let kind = crate::ImportKind::Data;
+    unit.imports.push(crate::Import {
+        symbol: Symbol::intern("fd_write"),
+        library,
+        kind,
+        origin: origin(&origins),
+        stack_max: None,
+    });
+    assert!(unit.to_string().contains(r#"import i0 "fd_write" from "wasi_snapshot_preview1""#), "{unit}");
+}
