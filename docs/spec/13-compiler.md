@@ -698,7 +698,8 @@ by clang for the same target.
   continuation of a `block`, a loop head a `loop`, a jump a `br` to the label of its target, a
   switch a `br_table`. A jump's arguments are pushed, then popped into the target's parameters in
   reverse, which is a parallel copy with no temporary. A function whose control flow is
-  irreducible is refused (`backend.lacks`), which lowering never produces.
+  irreducible (a coroutine's resumption enters its loops in the middle) runs as one `loop` around
+  a `br_table` on a local naming the next block, each jump setting it and branching back.
 - **Memory.** Stack slots live in linear memory below `__stack_pointer`, a global the linker
   defines: a function with slots lowers it on entry by its frame, rounded to 16 bytes, and
   restores it before each return. `Copy` is `memory.copy` (bulk memory). Atomic accesses are
@@ -728,7 +729,8 @@ rules (proposed, decision 256).
   (copied onto the stack whole, or passed as the address of a copy the caller makes); whether a
   record that finds too few registers of its class leaves the rest of the class unused
   (AAPCS64, rule C.13) or takes none and leaves them to later arguments (System V); where an
-  integer of two words goes (any two general registers, or an even pair, AAPCS64 rule C.9);
+  integer of two words goes (any two general registers, as System V and Apple's variant take
+  them, or an even pair, AAPCS64 rule C.9);
   the stack (a slot of 8 bytes, or scalars at their own size and alignment, as Apple's variant
   packs a C call's; composites aligned to at most 16 bytes); who extends a narrow integer
   (the callee reads it extended by the caller, as Apple's variant says, or extends it itself);
@@ -748,13 +750,60 @@ rules (proposed, decision 256).
 - **Vun's convention** passes each LIR value of the signature in the general registers in order,
   then on the stack, records by address and a result in memory through an address passed last;
   a wide integer as the C convention of the target passes one.
-- **Chosen by the target.** A target description names its convention (`lang.target`), so no
-  backend matches a target's ABI by name.
+- **Chosen by the target.** Each target description states its convention, a
+  `lang.target.Convention` (`sysv`, `aapcs64`, `darwin_arm64`, `lp64d`, `aapcs_vfp`, `ilp32`,
+  `wasm32`), so no backend matches a target's ABI by name; an architecture lists the conventions
+  it follows, and a target naming another is refused (`backend.lacks`).
+- **Checked against clang.** For each built convention, a C function per argument returning it
+  is compiled by clang for the target, and the register or stack slot its code reads the
+  argument from must be the classifier's.
 - **Readers.** The native backend's instruction compilers read placements for calls, entries and
   returns. The C backend reads none: the C compiler places arguments, which is what the
   classifier is checked against. Tests compare placements with what clang does for the same C
   signature on each target, and the backend tests run every `#[abi.c]` function through the C
   and native backends and require the same results.
+
+### 8.6 Register allocation
+
+The native backends are to share one register allocator, `vun-regalloc`, which plans where every
+value of a function lives before the framework compiles it; the framework then follows the plan
+instead of choosing registers as it goes (proposed, decision 257; the framework does not follow
+it yet).
+
+- **Linear scan on SSA**, after Wimmer and Franz (2010): LIR is in SSA form with block
+  parameters, so each value's lifetime is built in one backward walk of the blocks in `Order`,
+  as intervals of positions with holes, and its uses with what each needs. Intervals are
+  allocated in order of their start. A value that finds no register free for its whole
+  lifetime is split: the part up to where the register is next needed keeps it, the rest waits
+  for another, and a part that finds none is spilled to a home in the frame, split again before
+  a use that needs a register. Values recomputed where used (constants, addresses known while
+  compiling, section 8.3) have no interval.
+- **Constraints as data.** An architecture describes its registers once (`Machine`): the banks,
+  each with its allocatable registers in the order they are preferred, the registers a call
+  preserves, and those the framework keeps for its own moves. Each instruction states what its
+  operands and result need (`Needs`): any register of a bank, a fixed register, a register or
+  memory, or the register of one of its operands for a result that overwrites it; the registers
+  it writes besides its result; and the scratch registers it takes. Snippets give these from
+  their slots (`Fixed`, `Through`, `Temp`), and calls from the placements of `vun-abi` (section
+  8.5) and the convention's registers that a call does not preserve. A fixed register is an
+  interval of its own that the values meeting it are split around.
+- **Preferences.** A value crossing a call prefers a register the call preserves, and a value
+  passed to a block parameter, an argument register or a result prefers where it goes, so that
+  most moves disappear.
+- **Resolution.** Where an edge leaves a value in one place and its target expects it in
+  another (a block parameter, or a value split between them), the moves are made on the edge
+  as one parallel move (`Moves`), in the predecessor when it has one successor, else in the
+  successor when it has one predecessor, else in a block of their own.
+- **The plan** (`Allocation`) gives each value its place at every position (a register or its
+  home), and the moves at each position and edge. The framework compiles in one pass as before,
+  asking the plan where an operand is and where a result goes; a block starts with values where
+  the plan says, not in their homes, and a callee-saved register is saved by the prologue when
+  the plan uses one.
+- **Checked.** A checker simulates the plan over the function's control-flow graph: what each
+  register and home holds, through definitions, moves, spills, reloads, clobbers and edges,
+  meeting at joins by what every predecessor agrees on, and requires every use to read the
+  place holding its value. It runs on every function in tests and in a fuzz target (`fuzz/`,
+  `regalloc`).
 
 | Linker | Use |
 |--------|-----|
