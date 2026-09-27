@@ -69,7 +69,7 @@ impl Session {
             .db
             .computed::<Mir>()
             .into_iter()
-            .filter(|(i, _)| i.f.literal.file == key && *i != Instantiation::plain(i.f.literal.clone()))
+            .filter(|(i, _)| i.f.literal.file == key && !i.is_plain())
             .collect();
         for f in self.functions(file) {
             let origin = f.expr.origin;

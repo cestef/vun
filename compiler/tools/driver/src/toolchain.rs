@@ -2,7 +2,7 @@
 //! machine's toolchain file names for it replace the target's own (a cross C compiler, its
 //! flags), and programs built for it run through its runner (an emulator).
 
-use std::path::Path;
+use std::path::{Component, Path};
 use std::process::Command;
 
 use vun_build::toolchain::Toolchain;
@@ -41,9 +41,12 @@ impl Session {
         self.declarations(file, Toolchain::read)
     }
 
-    /// The command running `program`: through the target's runner, if it has one.
+    /// The command running `program`: through the target's runner, if it has one. A relative
+    /// path is taken from the working directory, never looked up in `PATH`.
     #[must_use]
     pub fn command(&self, program: &Path) -> Command {
+        let here = Path::new(Component::CurDir.as_os_str());
+        let program = if program.is_relative() { here.join(program) } else { program.to_path_buf() };
         match self.runner.split_first() {
             Some((runner, args)) => {
                 let mut command = Command::new(runner.as_str());

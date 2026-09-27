@@ -54,7 +54,7 @@ pub const PROGRAM: Program<Session> = Program {
             CHECK,
             explain::EXPLAIN,
             Command::group(pkg::GROUP, "dependencies and releases", pkg::COMMANDS),
-            Command::group("tool", "bindings to other languages", &[tool::BIND]),
+            Command::group(tool::GROUP, "bindings to other languages", &[tool::BIND]),
             Command::group(toolchain::GROUP, "this toolchain's backends and linkers", toolchain::COMMANDS),
             Command::group(cache::GROUP, "the shared store of fetched packages", cache::COMMANDS),
             Command::group("util", "infrequently used commands", &[util::COMPLETION]),

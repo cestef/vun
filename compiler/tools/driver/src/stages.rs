@@ -8,6 +8,7 @@ use vun_query::Query;
 use vun_span::{FileId, SourceMap};
 use vun_trace::{Activity, Timer, tracing};
 
+use vun_mir::{Programs, Roots};
 use vun_mir_passes::borrows::BorrowChecks;
 use vun_mir_passes::panics::PanicChecks;
 use vun_mir_passes::places::PlaceStates;
@@ -148,13 +149,20 @@ impl Session {
             .collect()
     }
 
-    /// Runs the MIR check `Q` on every function body of `file`.
+    /// Runs the MIR check `Q` on every function body of `file`, and on every instantiation of a
+    /// generic function its program reaches, wherever that function is written: a body checked
+    /// only as written would miss what its arguments make of it.
     pub(crate) fn check_bodies<Q: Query<Key = Instantiation, Value = Option<DiagCtxt>>>(
         &mut self,
         file: FileId,
     ) {
-        for f in self.functions(file) {
-            if let Some(reports) = self.db.get::<Q>(&Instantiation::plain(f)) {
+        let plain = self.functions(file).into_iter().map(Instantiation::plain);
+        let root = self.file_ref(file);
+        let program = self.db.get::<Programs>(&(root, Roots::Functions));
+        let instantiated = program.functions.iter().filter(|i| !i.is_plain());
+        let bodies: Vec<Instantiation> = plain.chain(instantiated.cloned()).collect();
+        for body in bodies {
+            if let Some(reports) = self.db.get::<Q>(&body) {
                 self.diag.absorb(&reports);
             }
         }

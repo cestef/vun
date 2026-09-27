@@ -10,6 +10,7 @@ use vun_diag::{ChildKind, Diagnostic, Msg, Severity, errors};
 use vun_fs::Edit;
 use vun_term::{Document, Shell};
 
+use super::PROGRAM;
 use crate::Session;
 
 const HEADER: Param =
@@ -21,6 +22,8 @@ const OUT: Param = Param::option("out")
 const CFLAGS: Param = Param::option("cflag")
     .arity(Arity::Many)
     .about("a flag the build compiles the header with, such as -Iinclude; repeat it for each");
+
+pub(super) const GROUP: &str = "tool";
 
 pub(super) const BIND: Command<Session> = Command::run("bind", "generate declarations from a C header", bind)
     .params(&[HEADER, OUT, CFLAGS])
@@ -55,8 +58,7 @@ fn bind(session: &mut Session, args: &Args, shell: &mut Shell<'_>) -> io::Result
         return Ok(Outcome::Success);
     };
     if let Err(e) = path.put(bindings.source.as_bytes()) {
-        let msg = Msg::new().text("cannot write ").code(path.display().to_string());
-        session.diag.error(Diagnostic::error(errors::IO_UNWRITABLE_FILE, msg).caused_by(&e));
+        session.diag.error(Diagnostic::unwritable(&path, &e));
         return Ok(Outcome::Failure);
     }
     Ok(Outcome::Success)
@@ -67,7 +69,7 @@ fn failed(header: &Path, failure: Failure) -> Diagnostic {
     match failure {
         Failure::Missing(missing) => {
             let msg = Msg::new()
-                .code("vun tool bind")
+                .code(PROGRAM.invocation(&[GROUP, BIND.name]).expect("bind is a command"))
                 .text(" needs libclang ")
                 .num(i128::from(vun_clang::OLDEST))
                 .text(" or later, and none was found");
