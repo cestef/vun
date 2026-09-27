@@ -307,7 +307,7 @@ implemented; nothing is listed that does not run.
 
 | Command | Does |
 |---------|------|
-| `vun build <file>` (`b`) | build the program a root file exports; `--library shared` builds a library of its exports |
+| `vun build <file>` (`b`) | build the program a root file exports; `--library shared` or `static` builds a library of its exports |
 | `vun run <file> [args]...` (`r`) | build and run it; words after `--` go to the program |
 | `vun check <file>` (`c`) | analyze without generating code |
 | `vun explain <id>` | the explanation page of a diagnostic, offline, paged |
@@ -379,8 +379,9 @@ Wrap the vendor's tree; never repackage it.
   headers, so bindings match the real build's macros.
 
 **Vun inside a vendor build.**
-- `vun build --library static` produces a library (`vun tool header` its C header, both still to
-  come for static libraries, which need the target's archiver).
+- `vun build --library static` produces a library, which the target's archiver
+  (`lang.target.CCompiler.archiver`, or the machine's toolchain file's `archiver`) bundles;
+  `vun tool header` writes its C header.
 - The toolchain ships `vun.cmake` with `vun_add_library(name DIR ...)`.
 - A package can ship an `idf_component.yml` (ESP-IDF) and a `zephyr/module.yml` (Zephyr, pulled in
   by west) that call it. The SDK keeps ownership of startup, linking and its component manager.

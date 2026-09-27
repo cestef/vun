@@ -36,6 +36,8 @@ FrameSizes := enum {
 /// (bare metal brings no C runtime), and what it offers beyond C99.
 CCompiler := struct {
     command: &[u8],
+    /// The program bundling objects into a static library, as `ar` does.
+    archiver: &[u8],
     flags: &[&[u8]],
     /// The flags a release build adds to `flags`.
     optimize: &[&[u8]],

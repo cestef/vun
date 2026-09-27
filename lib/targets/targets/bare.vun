@@ -2,13 +2,14 @@
 //! runtime, and starts at its reset handler.
 
 /// A 32-bit bare-metal target of `arch` and `cpu`, following `abi` and calling C by
-/// `convention`, built with `command` for the machine its `machine` flags select.
+/// `convention`, built with `command` and `archiver` for the machine its `machine` flags select.
 _on := (
     $arch: lang.meta.Name,
     $cpu: lang.meta.Name,
     $abi: lang.meta.Name,
     $convention: lang.target.Convention,
     $command: &[u8],
+    $archiver: &[u8],
     $machine: &[&[u8]],
 ) -> lang.target.Spec {
     .{
@@ -23,7 +24,7 @@ _on := (
         .entry_symbol = .some("Reset"),
         .backends = targets.through_c,
         .linker = .lld,
-        .c = targets.ilp32(targets.gnu(command, machine, &["-nostdlib", "-nostartfiles"])),
+        .c = targets.ilp32(targets.gnu(command, archiver, machine, &["-nostdlib", "-nostartfiles"])),
     }
 };
 
@@ -34,6 +35,7 @@ cortex_m4f := _on(
     .eabihf,
     .aapcs_vfp,
     "arm-none-eabi-gcc",
+    "arm-none-eabi-ar",
     &["-mcpu=cortex-m4", "-mthumb", "-mfloat-abi=hard", "-mfpu=fpv4-sp-d16"],
 );
 /// 32-bit RISC-V with multiplication and compressed instructions (RV32IMC).
@@ -43,5 +45,6 @@ rv32imc := _on(
     .ilp32,
     .ilp32,
     "riscv32-unknown-elf-gcc",
+    "riscv32-unknown-elf-ar",
     &["-march=rv32imc", "-mabi=ilp32"],
 );

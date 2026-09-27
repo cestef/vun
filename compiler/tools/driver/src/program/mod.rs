@@ -205,7 +205,7 @@ impl Session {
             regions: self.memory.clone(),
             sections: Vec::new(),
         };
-        let named = self.codegen.linker.unwrap_or(target.linker);
+        let named = self.codegen.linker.unwrap_or_else(|| self.registry.linker_for(kind, target));
         let Some(linker) = self.registry.linker(named) else {
             let msg = Msg::new().text("no linker ").code(named.as_str()).text(" is in this toolchain");
             return Err(self.diag.error(Diagnostic::error(errors::LINK_UNAVAILABLE, msg)));

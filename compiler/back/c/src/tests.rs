@@ -41,6 +41,7 @@ fn target() -> TargetSpec {
             pointer_align: 8,
             compiler: CCompiler {
                 command: name("cc"),
+                archiver: name("ar"),
                 flags: Vec::new(),
                 optimize: Vec::new(),
                 link_flags: Vec::new(),

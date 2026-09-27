@@ -7,6 +7,8 @@
 )]
 use crate::Item;
 pub const command: Item = Item::new(&["lang", "target", "CCompiler", "command"]);
+/// The program bundling objects into a static library, as `ar` does.
+pub const archiver: Item = Item::new(&["lang", "target", "CCompiler", "archiver"]);
 pub const flags: Item = Item::new(&["lang", "target", "CCompiler", "flags"]);
 /// The flags a release build adds to `flags`.
 pub const optimize: Item = Item::new(&["lang", "target", "CCompiler", "optimize"]);

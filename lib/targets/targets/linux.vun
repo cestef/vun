@@ -15,7 +15,7 @@ _on := ($arch: lang.meta.Name, $convention: lang.target.Convention) -> lang.targ
         .entry_symbol = .some("_start"),
         .backends = targets.native_first,
         .linker = .gnu,
-        .c = targets.lp64(targets.gnu("cc", &[], &[])),
+        .c = targets.lp64(targets.gnu("cc", "ar", &[], &[])),
     }
 };
 

@@ -986,6 +986,7 @@ dependencies = [
  "vun-clang",
  "vun-command",
  "vun-diag",
+ "vun-fmt",
  "vun-fs",
  "vun-grammar",
  "vun-harness",
@@ -997,6 +998,7 @@ dependencies = [
  "vun-items",
  "vun-json",
  "vun-link",
+ "vun-link-ar",
  "vun-link-external",
  "vun-link-gnu",
  "vun-link-lld",
@@ -1037,6 +1039,13 @@ dependencies = [
 name = "vun-fmt"
 version = "0.0.0"
 dependencies = [
+ "vun-diag",
+ "vun-fs",
+ "vun-grammar",
+ "vun-harness",
+ "vun-index",
+ "vun-origin",
+ "vun-span",
  "vun-syntax",
 ]
 
@@ -1050,6 +1059,8 @@ version = "0.0.0"
 dependencies = [
  "libfuzzer-sys",
  "vun-diag",
+ "vun-fmt",
+ "vun-grammar",
  "vun-hir",
  "vun-origin",
  "vun-render-annotate",
@@ -1191,6 +1202,17 @@ dependencies = [
  "vun-intern",
  "vun-origin",
  "vun-target",
+]
+
+[[package]]
+name = "vun-link-ar"
+version = "0.0.0"
+dependencies = [
+ "vun-diag",
+ "vun-link",
+ "vun-target",
+ "vun-tool",
+ "vun-trace",
 ]
 
 [[package]]

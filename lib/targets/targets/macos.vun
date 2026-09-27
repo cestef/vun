@@ -13,5 +13,5 @@ arm64 := lang.target.Spec{
     .entry_symbol = .some("_main"),
     .backends = targets.native_first,
     .linker = .lld,
-    .c = targets.lp64(targets.gnu("clang", &[], &[])),
+    .c = targets.lp64(targets.gnu("clang", "ar", &[], &[])),
 };

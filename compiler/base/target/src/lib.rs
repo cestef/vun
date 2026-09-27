@@ -99,6 +99,8 @@ pub enum FrameSizes {
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct CCompiler {
     pub command: Symbol,
+    /// The program bundling objects into a static library.
+    pub archiver: Symbol,
     pub flags: Vec<Symbol>,
     pub link_flags: Vec<Symbol>,
     /// The flags a release build adds to `flags`.
@@ -247,24 +249,45 @@ impl Output {
     }
 
     /// The file in `dir` the program `name` is built into, as the object format `format` names
-    /// a library: a prefix, the name, the extension of a shared or a static one.
+    /// it: a library with its kind's prefix and extension, an executable as its program.
     #[must_use]
     pub fn file(self, dir: &Path, name: &str, format: Symbol) -> PathBuf {
-        let named = LIBRARIES.iter().find(|(f, ..)| f.is(format));
+        let named = LIBRARIES.iter().find(|l| l.format.is(format));
         let file = match (self, named) {
-            (Self::Shared, Some((_, prefix, shared, _))) => format!("{prefix}{name}.{shared}"),
-            (Self::Static, Some((_, prefix, _, archive))) => format!("{prefix}{name}.{archive}"),
+            (Self::Shared, Some(l)) => l.shared.file(name),
+            (Self::Static, Some(l)) => l.archive.file(name),
             _ => name.to_owned(),
         };
         dir.join(file)
     }
 }
 
-/// How each object format names a library: a prefix before the program's name, and the extension
-/// of a shared and of a static one. An executable is named as its program.
-const LIBRARIES: [(Name, &str, &str, &str); 4] = [
-    (Name("elf"), "lib", "so", "a"),
-    (Name("macho"), "lib", "dylib", "a"),
-    (Name("coff"), "", "dll", "lib"),
-    (Name("wasm"), "", "wasm", "a"),
+/// How an object format names its libraries, shared and static.
+struct Libraries {
+    format: Name,
+    shared: Naming,
+    archive: Naming,
+}
+
+/// A prefix before a program's name, and an extension after it.
+struct Naming {
+    prefix: &'static str,
+    extension: &'static str,
+}
+
+impl Naming {
+    fn file(&self, name: &str) -> String {
+        format!("{}{name}.{}", self.prefix, self.extension)
+    }
+}
+
+const fn named(prefix: &'static str, extension: &'static str) -> Naming {
+    Naming { prefix, extension }
+}
+
+const LIBRARIES: [Libraries; 4] = [
+    Libraries { format: Name("elf"), shared: named("lib", "so"), archive: named("lib", "a") },
+    Libraries { format: Name("macho"), shared: named("lib", "dylib"), archive: named("lib", "a") },
+    Libraries { format: Name("coff"), shared: named("", "dll"), archive: named("", "lib") },
+    Libraries { format: Name("wasm"), shared: named("", "wasm"), archive: named("lib", "a") },
 ];

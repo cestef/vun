@@ -218,6 +218,7 @@ impl Read for CCompiler {
         let m = Members::of(value)?;
         Ok(Self {
             command: m.string(compiler::command)?,
+            archiver: m.string(compiler::archiver)?,
             flags: m.strings(compiler::flags)?,
             optimize: m.strings(compiler::optimize)?,
             link_flags: m.strings(compiler::link_flags)?,

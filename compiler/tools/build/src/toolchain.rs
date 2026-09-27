@@ -8,6 +8,7 @@
 //!         .{
 //!             .target = linux.arm64,
 //!             .compiler = "aarch64-linux-gnu-gcc",
+//!             .archiver = "aarch64-linux-gnu-ar",
 //!             .flags = .{ "--sysroot=/usr/aarch64-linux-gnu" },
 //!             .runner = .{ "qemu-aarch64", "-L", "/usr/aarch64-linux-gnu" },
 //!         },
@@ -38,6 +39,8 @@ pub struct Tools {
     pub target: Vec<Symbol>,
     /// The C compiler run instead of the target's.
     pub compiler: Option<Symbol>,
+    /// The archiver run instead of the target's.
+    pub archiver: Option<Symbol>,
     /// Flags every run of the C compiler takes, compiling and linking.
     pub flags: Vec<Symbol>,
     /// The command a program is run through, its path and arguments after: an emulator. Empty
@@ -50,11 +53,12 @@ mod field {
     pub(super) const TARGETS: &str = "targets";
     pub(super) const TARGET: &str = "target";
     pub(super) const COMPILER: &str = "compiler";
+    pub(super) const ARCHIVER: &str = "archiver";
     pub(super) const FLAGS: &str = "flags";
     pub(super) const RUNNER: &str = "runner";
 
     pub(super) const TOOLCHAIN: &[&str] = &[TARGETS];
-    pub(super) const TOOLS: &[&str] = &[TARGET, COMPILER, FLAGS, RUNNER];
+    pub(super) const TOOLS: &[&str] = &[TARGET, COMPILER, ARCHIVER, FLAGS, RUNNER];
 }
 
 impl Toolchain {
@@ -103,10 +107,20 @@ impl Tools {
         let compiler = fields
             .get(field::COMPILER)
             .map_or(Some(None), |d| d.string(cx).map(|s| Some(Symbol::intern(&s))));
+        let archiver = fields
+            .get(field::ARCHIVER)
+            .map_or(Some(None), |d| d.string(cx).map(|s| Some(Symbol::intern(&s))));
         let flags = fields.get(field::FLAGS).map_or(Some(Vec::new()), |d| d.symbols(cx));
         let runner = fields.get(field::RUNNER).map_or(Some(Vec::new()), |d| d.symbols(cx));
         fields.finish(cx);
-        Some(Self { target: target?, compiler: compiler?, flags: flags?, runner: runner?, span: decl.span })
+        Some(Self {
+            target: target?,
+            compiler: compiler?,
+            archiver: archiver?,
+            flags: flags?,
+            runner: runner?,
+            span: decl.span,
+        })
     }
 
     /// Makes `spec` built with these tools: their C compiler, and their flags on each of its runs.
@@ -114,6 +128,9 @@ impl Tools {
         let compiler = &mut spec.c.compiler;
         if let Some(command) = self.compiler {
             compiler.command = command;
+        }
+        if let Some(archiver) = self.archiver {
+            compiler.archiver = archiver;
         }
         compiler.flags.extend(&self.flags);
         compiler.link_flags.extend(&self.flags);

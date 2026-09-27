@@ -4,7 +4,8 @@ pub use choose::{Codegen, Unchosen, Unfit};
 
 use vun_backend::Backend;
 use vun_intern::Symbol;
-use vun_link::Linker;
+use vun_link::{Linker, Output};
+use vun_target::TargetSpec;
 
 /// The backends and linkers available to a session.
 #[derive(Default)]
@@ -39,6 +40,7 @@ impl Registry {
         register!(r.add_linker {
             "link-wild" => vun_link_wild::WildLinker,
             "link-mold" => vun_link_mold::MoldLinker,
+            "link-ar" => vun_link_ar::ArLinker,
             "link-lld" => vun_link_lld::LldLinker,
             "link-gnu" => vun_link_gnu::GnuLinker,
             "link-msvc" => vun_link_msvc::MsvcLinker,
@@ -71,6 +73,20 @@ impl Registry {
     #[must_use]
     pub fn linker(&self, name: Symbol) -> Option<&dyn Linker> {
         self.linkers().find(|l| l.info().id.is(name))
+    }
+
+    /// The adapter building a program as `output` for `target`: the target's linker where it
+    /// makes that output, else the first that makes it for the target's object format (the
+    /// archiver, for a static library).
+    #[must_use]
+    pub fn linker_for(&self, output: Output, target: &TargetSpec) -> Symbol {
+        let makes = |l: &&dyn Linker| {
+            l.info().outputs.contains(&output) && l.info().formats.iter().any(|f| f.is(target.object_format))
+        };
+        match self.linker(target.linker) {
+            Some(own) if makes(&own) => target.linker,
+            _ => self.linkers().find(makes).map_or(target.linker, |l| l.info().id.symbol()),
+        }
     }
 }
 

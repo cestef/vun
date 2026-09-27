@@ -10,7 +10,7 @@ publish.workspace = true
 workspace = true
 
 [features]
-default = ["backend-c", "backend-native", "backend-wasm", "backend-cranelift", "backend-qbe", "backend-llvm", "backend-external", "link-wild", "link-mold", "link-lld", "link-gnu", "link-msvc", "link-external"]
+default = ["backend-c", "backend-native", "backend-wasm", "backend-cranelift", "backend-qbe", "backend-llvm", "backend-external", "link-wild", "link-mold", "link-ar", "link-lld", "link-gnu", "link-msvc", "link-external"]
 backend-c = ["dep:vun-backend-c"]
 backend-native = ["dep:vun-backend-native"]
 backend-wasm = ["dep:vun-backend-wasm"]
@@ -20,6 +20,7 @@ backend-llvm = ["dep:vun-backend-llvm"]
 backend-external = ["dep:vun-backend-external"]
 link-wild = ["dep:vun-link-wild"]
 link-mold = ["dep:vun-link-mold"]
+link-ar = ["dep:vun-link-ar"]
 link-lld = ["dep:vun-link-lld"]
 link-gnu = ["dep:vun-link-gnu"]
 link-msvc = ["dep:vun-link-msvc"]
@@ -71,6 +72,7 @@ vun-backend-llvm = { workspace = true, optional = true }
 vun-backend-external = { workspace = true, optional = true }
 vun-link-wild = { workspace = true, optional = true }
 vun-link-mold = { workspace = true, optional = true }
+vun-link-ar = { workspace = true, optional = true }
 vun-link-lld = { workspace = true, optional = true }
 vun-link-gnu = { workspace = true, optional = true }
 vun-link-msvc = { workspace = true, optional = true }

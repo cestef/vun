@@ -1,0 +1,17 @@
+[package]
+name = "vun-link-ar"
+description = "Static libraries: the target's archiver bundling a program's objects."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+vun-diag.workspace = true
+vun-link.workspace = true
+vun-target.workspace = true
+vun-tool.workspace = true
+vun-trace.workspace = true

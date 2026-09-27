@@ -19,12 +19,13 @@ c_flags: &[&[u8]] = &["-std=c99", "-ffreestanding", "-fno-strict-aliasing"];
 /// The flags a release build adds for a GCC or Clang driver.
 c_optimize: &[&[u8]] = &["-O2"];
 
-/// A GCC or Clang driver, run as `command`: `machine` selects the target machine (instruction
-/// set, floating-point ABI) in every compile and link, which also picks the libraries built for
-/// it, and its links take `link_flags`.
-gnu := ($command: &[u8], $machine: &[&[u8]], $link_flags: &[&[u8]]) -> lang.target.CCompiler {
+/// A GCC or Clang driver, run as `command`, beside the `archiver` of its toolchain: `machine`
+/// selects the target machine (instruction set, floating-point ABI) in every compile and link,
+/// which also picks the libraries built for it, and its links take `link_flags`.
+gnu := ($command: &[u8], $archiver: &[u8], $machine: &[&[u8]], $link_flags: &[&[u8]]) -> lang.target.CCompiler {
     .{
         .command = command,
+        .archiver = archiver,
         .flags = c_flags ++ machine,
         .optimize = c_optimize,
         .link_flags = machine ++ link_flags,
