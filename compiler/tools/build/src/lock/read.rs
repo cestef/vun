@@ -8,8 +8,8 @@ use vun_syntax::literal::{Decl, Literal};
 use vun_syntax::tokens::Tokens;
 
 use super::{FILE, LAYOUT, Lock, Locked, Replaced, Replacing, field};
+use crate::manifest::Identity;
 use crate::manifest::record::{Fields, Record};
-use crate::manifest::{Identity, Version};
 
 impl Lock {
     /// Reads the lockfile whose declarations are `decls`; `file` locates what is missing.
@@ -50,7 +50,7 @@ impl Locked {
     fn read(decl: &Decl<'_>, cx: &mut DiagCx<'_>) -> Option<Self> {
         let mut fields = Fields::new(decl, field::ENTRY, cx)?;
         let name = fields.require(field::NAME).and_then(|d| d.string(cx));
-        let version = fields.require(field::VERSION).and_then(|d| Version::read(d, cx));
+        let version = fields.require(field::VERSION).and_then(|d| d.version(cx));
         let identity = fields.require(field::ID).and_then(|d| match d.value {
             Literal::Name(field::FOREIGN) => Some(None),
             _ => Identity::read(d, cx).map(Some),

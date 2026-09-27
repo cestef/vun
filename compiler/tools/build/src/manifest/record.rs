@@ -3,6 +3,7 @@
 use vun_diag::{ChildKind, DiagCx, Diagnostic, Msg, errors};
 use vun_hash::{Algorithm, Hash, Snapshot};
 use vun_intern::Symbol;
+use vun_span::Version;
 use vun_suggest::{Lookup, closest};
 use vun_syntax::literal::{Decl, Literal};
 
@@ -75,6 +76,8 @@ pub(crate) trait Record {
     fn string(&self, cx: &mut DiagCx<'_>) -> Option<String>;
     /// A content hash in its text form, `algorithm:digest`.
     fn content_hash(&self, cx: &mut DiagCx<'_>) -> Option<Hash>;
+    /// A version, `"major.minor.patch"`.
+    fn version(&self, cx: &mut DiagCx<'_>) -> Option<Version>;
     /// An integer that fits `T`.
     fn int<T: TryFrom<i128>>(&self, cx: &mut DiagCx<'_>) -> Option<T>;
     /// A list of strings: `.{ "a", "b" }` or `[ "a", "b" ]`.
@@ -121,6 +124,14 @@ impl Record for Decl<'_> {
             let algorithms = Algorithm::ALL.iter().map(|a| format!("{}{}...", a.name(), Hash::SEPARATOR));
             self.invalid(Msg::new().text("a content hash: ").code_list(algorithms), cx)
         })
+    }
+
+    fn version(&self, cx: &mut DiagCx<'_>) -> Option<Version> {
+        match &self.value {
+            Literal::String(text) => Version::parse(text),
+            _ => None,
+        }
+        .or_else(|| self.invalid(Msg::new().text("a version ").code("\"major.minor.patch\""), cx))
     }
 
     fn int<T: TryFrom<i128>>(&self, cx: &mut DiagCx<'_>) -> Option<T> {

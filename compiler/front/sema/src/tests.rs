@@ -28,13 +28,12 @@ pub(crate) fn packages(app: &str) -> (vun_query::Db, vun_hir::db::FileRef) {
     use vun_intern::Symbol;
 
     let db = vun_query::Db::new();
-    let (lang, user) = (PackageId(Hash::of(b"lang")), PackageId(Hash::of(b"app")));
+    let (lang, user) = (PackageId::Stored(Hash::of(b"lang")), PackageId::Stored(Hash::of(b"app")));
     let text = "type: type = _;\nInt: ($r: Range) -> type = _;\nRange: type = _;\nbool := enum { false, true };\nu8 := Int(0..=255);\n";
     let files = |name: &str| vec![format!("{name}.vun")];
     let data = |name: &str, deps, prelude| PackageData {
         name: Some(Symbol::intern(name)),
         dir: format!("/{name}"),
-        key: format!("{name}@1.0.0"),
         deps,
         prelude,
         files: files(name),

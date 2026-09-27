@@ -127,7 +127,7 @@ impl Session {
         self.restore(path);
         let text = self.read(path)?;
         let key = self.file_key(path);
-        Some(self.sources.add_as(&key, path.display().to_string(), text))
+        Some(self.sources.add_as(key, path.display().to_string(), text))
     }
 
     /// Reads a file's text; a read failure becomes a diagnostic.
@@ -219,9 +219,8 @@ impl Session {
     pub(crate) fn file_ref(&mut self, file: FileId) -> FileRef {
         let path = PathBuf::from(&self.sources.file(file).path);
         let package = self.package_of(file);
-        let id = self.publish(package);
-        let key =
-            FileRef { package: id, path: Symbol::intern(&self.packages.list[&package].relative(&path)) };
+        self.publish(package);
+        let key = self.packages.list[&package].file(&path);
         // The file as loaded, which its package's files do not include when it is loose.
         self.db.set::<FileText>(&key, Some(Arc::from(self.text(file))));
         // Reported once when none is; what needs it then stays unknown.

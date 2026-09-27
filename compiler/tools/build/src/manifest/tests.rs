@@ -132,15 +132,6 @@ fn reports_where_the_manifest_is_wrong() {
 }
 
 #[test]
-fn versions_are_canonical_triples() {
-    assert_eq!(Version::parse("1.20.3"), Some(Version { major: 1, minor: 20, patch: 3 }));
-    for bad in ["1.2", "1.2.3.4", "01.2.3", "1.x.3", "", "1..3", "+1.2.3"] {
-        assert_eq!(Version::parse(bad), None, "{bad}");
-    }
-    assert_eq!(Version::parse("0.4.2").unwrap().to_string(), "0.4.2");
-}
-
-#[test]
 fn declared_deps_read_back() {
     let hash = vun_hash::Hash::of(b"hal");
     let archive = Source::Archive {

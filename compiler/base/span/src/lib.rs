@@ -8,6 +8,9 @@ use std::hash::{Hash, Hasher};
 use vun_codec::Encode;
 
 mod codec;
+mod key;
+
+pub use key::{FileRef, PackageId, Version};
 
 /// The extension of Vun source files, as a literal for [`source_file!`].
 #[macro_export]
@@ -28,9 +31,9 @@ macro_rules! source_file {
     };
 }
 
-/// A source file within one compilation session. It hashes by its key, which names the file the
-/// same way in every process (its package and its path inside it), so that hashes of spans and of
-/// anything holding them do not depend on the order files were read in.
+/// A source file within one compilation session. It hashes by its key, the [`FileRef`] naming it
+/// the same way in every process, so that hashes of spans and of anything holding them do not
+/// depend on the order files were read in.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct FileId {
     index: u32,
@@ -210,10 +213,10 @@ impl std::fmt::Display for Location<'_> {
 #[derive(Default)]
 pub struct SourceFiles {
     /// Each file, with the key naming it.
-    files: boxcar::Vec<(String, SourceFile)>,
+    files: boxcar::Vec<(FileRef, SourceFile)>,
     /// Each file by its key, the path it is shown as and the hash of its text, so that adding
     /// it again returns it.
-    added: std::sync::RwLock<std::collections::HashMap<(u64, String, vun_hash::Hash), FileId>>,
+    added: std::sync::RwLock<std::collections::HashMap<(FileRef, String, vun_hash::Hash), FileId>>,
 }
 
 impl SourceFiles {
@@ -222,11 +225,10 @@ impl SourceFiles {
         Self::default()
     }
 
-    /// Adds a file keyed by its path.
+    /// Adds a file outside any package, keyed by its path.
     pub fn add(&self, path: impl Into<String>, text: impl Into<String>) -> FileId {
         let path = path.into();
-        let key = path.clone();
-        self.add_as(&key, path, text)
+        self.add_as(FileRef::loose(&path), path, text)
     }
 
     /// Adds a file under `key`, which names it the same way in every process, shown as `path`;
@@ -234,9 +236,9 @@ impl SourceFiles {
     ///
     /// # Panics
     /// Panics past `u32::MAX` files, or if a thread panicked while adding.
-    pub fn add_as(&self, key: &str, path: impl Into<String>, text: impl Into<String>) -> FileId {
-        let (named, key) = (key, vun_hash::Hash::of(key.as_bytes()).short());
+    pub fn add_as(&self, key: FileRef, path: impl Into<String>, text: impl Into<String>) -> FileId {
         let (path, text) = (path.into(), text.into());
+        let (named, short) = (key.clone(), vun_hash::Stable::of(&key));
         let identity = (key, path, vun_hash::Hash::of(text.as_bytes()));
         if let Some(&file) = self.added.read().expect("source files").get(&identity) {
             return file;
@@ -244,8 +246,8 @@ impl SourceFiles {
         let mut added = self.added.write().expect("source files");
         let path = identity.1.clone();
         *added.entry(identity).or_insert_with(|| {
-            let index = self.files.push((named.to_owned(), SourceFile::new(path, text)));
-            FileId { index: u32::try_from(index).expect("fewer than 2^32 files"), key }
+            let index = self.files.push((named, SourceFile::new(path, text)));
+            FileId { index: u32::try_from(index).expect("fewer than 2^32 files"), key: short }
         })
     }
 }
@@ -261,7 +263,7 @@ impl SourceFiles {
 
     /// The key naming `id` in every process.
     #[must_use]
-    pub fn key(&self, id: FileId) -> &str {
+    pub fn key(&self, id: FileId) -> &FileRef {
         &self.files[id.index as usize].0
     }
 }

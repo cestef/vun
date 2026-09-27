@@ -28,7 +28,7 @@ use vun_build::manifest::{DEFAULT_DEPS, DEFAULT_PRELUDE, DepKind, Identity, Mani
 use vun_diag::{Diagnostic, ErrorGuaranteed, Msg, errors};
 use vun_hash::{Hash, Snapshot};
 use vun_intern::Symbol;
-use vun_span::{FileId, Span};
+use vun_span::{FileId, PackageId, Span};
 use vun_trace::tracing;
 
 pub use add::{Addition, Unstated};
@@ -53,6 +53,8 @@ pub enum PackageKey {
 }
 
 pub struct Package {
+    /// How its files are named in every process.
+    pub id: PackageId,
     /// `None` for [`PackageKey::Loose`].
     pub name: Option<Symbol>,
     pub dir: PathBuf,
@@ -213,8 +215,18 @@ impl Session {
                 kind: d.kind,
                 span: Some(d.span),
             });
-            let release = Some((manifest.identity(), manifest.version));
+            let identity = manifest.identity();
+            let id = if dir.starts_with(self.store.dir()) {
+                PackageId::Stored(taken.snapshot.root())
+            } else {
+                PackageId::Local {
+                    name: Symbol::intern(&manifest.name),
+                    id: identity.id,
+                    version: manifest.version,
+                }
+            };
             let package = Package {
+                id,
                 name,
                 dir: dir.to_path_buf(),
                 deps: deps.collect(),
@@ -222,7 +234,7 @@ impl Session {
                 prelude_span: Some(manifest.prelude_span),
                 sources: Sources::of(&taken),
                 snapshot: taken.snapshot,
-                release,
+                release: Some((identity, manifest.version)),
                 replace,
             };
             let package = package.with_defaults(&self.library);
@@ -264,6 +276,7 @@ impl Session {
         if !self.packages.list.contains_key(&PackageKey::Loose) {
             let prelude = vec![DEFAULT_PRELUDE.to_owned()];
             let package = Package {
+                id: PackageId::Loose,
                 name: None,
                 dir: PathBuf::new(),
                 deps: Vec::new(),

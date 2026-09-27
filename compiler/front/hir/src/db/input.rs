@@ -6,21 +6,11 @@ use std::sync::Arc;
 
 use vun_codec::{Decode, Encode};
 use vun_diag::DiagCtxt;
-use vun_hash::{Hash, Snapshot};
 use vun_intern::Symbol;
 use vun_query::{Cx, Query};
 use vun_span::Span;
 
-/// A package, by the hash of its `include` tree, or the stand-in for files outside any package.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Encode, Decode)]
-pub struct PackageId(pub Hash);
-
-/// A file of a package, by its path inside the package directory, components joined by `/`.
-#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Encode, Decode)]
-pub struct FileRef {
-    pub package: PackageId,
-    pub path: Symbol,
-}
+pub use vun_span::{FileRef, PackageId};
 
 /// A package as the driver loaded it.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
@@ -29,9 +19,6 @@ pub struct PackageData {
     pub name: Option<Symbol>,
     /// Its directory as shown to users; the paths of its files are relative to it.
     pub dir: String,
-    /// What names its files in every process: `name@version`, or empty outside any package,
-    /// where a file is named by its path (decision 59).
-    pub key: String,
     pub deps: Vec<DepData>,
     /// The namespaces whose public names its files see, by path.
     pub prelude: Vec<Vec<Symbol>>,
@@ -59,15 +46,6 @@ pub enum Unloaded {
 }
 
 impl PackageData {
-    /// The key naming `path`, one of its files, in every process: `name@version/path`.
-    #[must_use]
-    pub fn file_key(&self, path: &str) -> String {
-        if self.key.is_empty() {
-            return path.to_owned();
-        }
-        [self.key.as_str(), path].join(&Snapshot::PATH_SEPARATOR.to_string())
-    }
-
     /// `path`, one of its files, as shown to users.
     #[must_use]
     pub fn display(&self, path: &str) -> String {

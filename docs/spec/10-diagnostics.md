@@ -29,8 +29,11 @@ pub enum Via {
   derived from them (HIR, MIR statements, LIR instructions, backend output, link-plan entries)
   holds an `OriginId`, created from those ranges. Origins are interned in a table; chains are
   shared, so the cost is one id per entity.
-- **Stable identity.** A file is keyed by its package, version and path inside the package
-  (`hal@1.4.0/hal/gpio.vun`), a loose file by its path. An origin is identified by how it came to
+- **Stable identity.** A file is keyed by its package and its path inside the package, a typed
+  key (`FileRef`), a loose file by its path. A package in the store, which never changes, is named
+  by its content hash, so a fork of a release is a package of its own; a package on disk, edited
+  in place, by the name, identity and version its manifest declares, which its edits keep
+  (decision 247). An origin is identified by how it came to
   exist and its anchor: a declaration by its name inside the declaration around it, anything
   inside a declaration by its span relative to the declaration's start. `FileId` and `OriginId`
   hash by these identities, computed once, so a hash of anything holding them (query interfaces,

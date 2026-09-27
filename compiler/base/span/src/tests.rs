@@ -31,16 +31,22 @@ fn cover_joins_ranges() {
     assert_eq!(Span::new(f, 4, 6).cover(Span::new(f, 1, 5)), Span::new(f, 1, 6));
 }
 
+fn hal(path: &str) -> FileRef {
+    let version = Version { major: 1, minor: 0, patch: 0 };
+    let package = PackageId::Local { name: vun_intern::Symbol::intern("hal"), id: 7, version };
+    FileRef { package, path: vun_intern::Symbol::intern(path) }
+}
+
 #[test]
 fn file_ids_hash_by_key_not_by_order() {
     use std::hash::{BuildHasher, BuildHasherDefault};
     let hash =
         |id: FileId| BuildHasherDefault::<std::collections::hash_map::DefaultHasher>::default().hash_one(id);
     let first = SourceFiles::new();
-    let a = first.add_as("hal@1.0.0/hal.vun", "/home/a/hal/hal.vun", "");
+    let a = first.add_as(hal("hal.vun"), "/home/a/hal/hal.vun", "");
     let second = SourceFiles::new();
     let _ = second.add("other.vun", "");
-    let b = second.add_as("hal@1.0.0/hal.vun", "/home/b/hal/hal.vun", "");
+    let b = second.add_as(hal("hal.vun"), "/home/b/hal/hal.vun", "");
     assert_eq!(hash(a), hash(b));
     assert_eq!(second.file(b).path, "/home/b/hal/hal.vun");
 }
@@ -48,10 +54,10 @@ fn file_ids_hash_by_key_not_by_order() {
 #[test]
 fn a_file_added_again_is_the_same_file() {
     let files = SourceFiles::new();
-    let a = files.add_as("p@1.0.0/a.vun", "/x/a.vun", "x := 1;");
-    assert_eq!(a, files.add_as("p@1.0.0/a.vun", "/x/a.vun", "x := 1;"));
-    assert_ne!(a, files.add_as("p@1.0.0/a.vun", "/x/a.vun", "x := 2;"), "an edited file is another");
-    let elsewhere = files.add_as("p@1.0.0/a.vun", "/y/a.vun", "x := 1;");
+    let a = files.add_as(hal("a.vun"), "/x/a.vun", "x := 1;");
+    assert_eq!(a, files.add_as(hal("a.vun"), "/x/a.vun", "x := 1;"));
+    assert_ne!(a, files.add_as(hal("a.vun"), "/x/a.vun", "x := 2;"), "an edited file is another");
+    let elsewhere = files.add_as(hal("a.vun"), "/y/a.vun", "x := 1;");
     assert_ne!(a, elsewhere, "each shows the path it was added with");
     assert_eq!(files.file(elsewhere).path, "/y/a.vun");
     assert_eq!(
@@ -59,6 +65,27 @@ fn a_file_added_again_is_the_same_file() {
         vun_hash::Hash::of_value(&elsewhere),
         "named alike in every process"
     );
+}
+
+#[test]
+fn a_fork_of_a_stored_release_is_named_apart_from_it() {
+    let files = SourceFiles::new();
+    let stored = |hash: &[u8]| FileRef {
+        package: PackageId::Stored(vun_hash::Hash::of(hash)),
+        path: vun_intern::Symbol::intern("hal.vun"),
+    };
+    let (release, fork) =
+        (files.add_as(stored(b"release"), "/s/hal.vun", ""), files.add_as(stored(b"fork"), "/s/hal.vun", ""));
+    assert_ne!(vun_hash::Hash::of_value(&release), vun_hash::Hash::of_value(&fork));
+}
+
+#[test]
+fn versions_are_canonical_triples() {
+    assert_eq!(Version::parse("1.20.3"), Some(Version { major: 1, minor: 20, patch: 3 }));
+    for bad in ["1.2", "1.2.3.4", "01.2.3", "1.x.3", "", "1..3", "+1.2.3"] {
+        assert_eq!(Version::parse(bad), None, "{bad}");
+    }
+    assert_eq!(Version::parse("0.4.2").unwrap().to_string(), "0.4.2");
 }
 
 #[test]

@@ -6,17 +6,11 @@ use std::path::{Path, PathBuf};
 use vun_build::layout::MANIFEST;
 use vun_build::manifest;
 use vun_diag::{Diagnostic, Msg, errors};
-use vun_hash::Snapshot;
 use vun_hir::db::Scope;
-use vun_span::{FileId, SourceMap};
+use vun_span::{FileId, FileRef, SourceMap};
 
 use super::PackageKey;
 use crate::Session;
-
-/// Separates a package's name from its version in a file key.
-pub(super) const VERSION_MARK: char = '@';
-/// Separates the parts of a file key, on every platform.
-const SEPARATOR: char = Snapshot::PATH_SEPARATOR;
 
 impl Session {
     /// The package `file` belongs to. The first one found is the project, whose graph version
@@ -45,19 +39,14 @@ impl Session {
         dir.ancestors().find_map(|d| self.package_at(d).map(|key| (d.to_path_buf(), key)))
     }
 
-    /// The key naming the file at `path` the same way in every process and on every machine:
-    /// `<package>@<version>/<path inside it>`, or the path of a file outside any package.
-    pub(crate) fn file_key(&mut self, path: &Path) -> String {
+    /// The file at `path` as every process names it: by its package and its path inside it, or
+    /// by its path outside any package.
+    pub(crate) fn file_key(&mut self, path: &Path) -> FileRef {
         let around = path.parent().and_then(|dir| self.package_around(dir));
-        let release = around.and_then(|(dir, key)| {
-            let package = &self.packages.list[&key];
-            let relative = path.strip_prefix(&dir).ok()?;
-            let parts = relative.iter().map(|p| p.to_string_lossy().into_owned());
-            let key = package.key();
-            (!key.is_empty())
-                .then(|| [key].into_iter().chain(parts).collect::<Vec<_>>().join(&SEPARATOR.to_string()))
-        });
-        release.unwrap_or_else(|| path.display().to_string())
+        around.map_or_else(
+            || FileRef::loose(&path.display().to_string()),
+            |(_, key)| self.packages.list[&key].file(path),
+        )
     }
 
     /// The project around the current directory; its absence is reported.

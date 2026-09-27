@@ -3,7 +3,7 @@
 
 use vun_codec::{Decode, Encode, Malformed, Pooled, Reader, Writer};
 
-use crate::{ByteRange, FileId, SourceFiles, SourceMap, Span};
+use crate::{ByteRange, FileId, FileRef, SourceFiles, SourceMap, Span};
 
 impl Pooled for FileId {
     const POOL: &'static str = "file";
@@ -15,8 +15,8 @@ impl Pooled for FileId {
     }
 
     fn read(r: &mut Reader<'_>) -> Result<Self, Malformed> {
-        let (key, path, text) = <(String, String, String)>::decode(r)?;
-        Ok(SourceFiles::global().add_as(&key, path, text))
+        let (key, path, text) = <(FileRef, String, String)>::decode(r)?;
+        Ok(SourceFiles::global().add_as(key, path, text))
     }
 }
 

@@ -152,9 +152,9 @@ impl Manifest {
         // Every field is read before any result is used, so that one run reports every problem.
         let name = fields.require(field::NAME).and_then(|d| d.string(cx));
         let id = fields.require(field::ID).and_then(|d| d.int(cx));
-        let version = fields.require(field::VERSION).and_then(|d| Version::read(d, cx));
+        let version = fields.require(field::VERSION).and_then(|d| d.version(cx));
         let edition = fields.require(field::EDITION).and_then(|d| d.int(cx));
-        let toolchain = fields.get(field::TOOLCHAIN).map_or(Some(None), |d| Version::read(d, cx).map(Some));
+        let toolchain = fields.get(field::TOOLCHAIN).map_or(Some(None), |d| d.version(cx).map(Some));
         let include = fields.require(field::INCLUDE).and_then(|d| Self::include(d, cx));
         let deps = fields.get(field::DEPS).map_or(Some(Vec::new()), |d| Dep::list(d, cx));
         let replace = fields.get(field::REPLACE).map_or(Some(Vec::new()), |d| Replacement::list(d, cx));

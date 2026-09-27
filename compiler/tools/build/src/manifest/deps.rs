@@ -4,7 +4,7 @@ use vun_diag::{DiagCx, Diagnostic, Msg, errors};
 use vun_syntax::literal::{Decl, Literal};
 
 use super::record::{Fields, Record};
-use super::{DEP_KINDS, Dep, DepKind, Identity, Replacement, Source, Version, field};
+use super::{DEP_KINDS, Dep, DepKind, Identity, Replacement, Source, field};
 
 impl Dep {
     /// The entries of `.deps`.
@@ -53,7 +53,7 @@ impl Source {
         match (fields.get(field::PATH), fields.get(field::VERSION)) {
             (Some(path), None) => path.string(cx).map(Self::Path),
             (None, Some(version)) => {
-                let version = Version::read(version, cx);
+                let version = version.version(cx);
                 let hash = fields.require(field::HASH).and_then(|d| d.content_hash(cx));
                 let urls = fields.get(field::URLS).map_or(Some(Vec::new()), |d| d.strings(cx));
                 match (version, hash, urls) {

@@ -6,7 +6,7 @@ use std::sync::Arc;
 
 use vun_build::layout::SEPARATOR;
 use vun_diag::DiagCtxt;
-use vun_hash::{Hash, Snapshot, Taken};
+use vun_hash::{Snapshot, Taken};
 use vun_hir::db::{
     DepData, FileRef, FileText, Package as PackageInput, PackageData, PackageId, Parsed, Unloaded,
 };
@@ -15,30 +15,13 @@ use vun_par::Parallel;
 use vun_span::EXTENSION;
 
 use super::deps::Unfetched;
-use super::locate::VERSION_MARK;
 use super::{Package, PackageKey};
 use crate::Session;
 
-/// What stands for the files outside any package in the queries.
-const LOOSE: &[u8] = b"loose";
-
-impl PackageKey {
-    #[must_use]
-    pub fn id(self) -> PackageId {
-        match self {
-            Self::Content(hash) => PackageId(hash),
-            Self::Loose => PackageId(Hash::of(LOOSE)),
-        }
-    }
-}
-
 impl Package {
-    /// What names its files in every process: `name@version`, or empty for loose files.
-    pub(super) fn key(&self) -> String {
-        match (self.name, self.release) {
-            (Some(name), Some((_, version))) => format!("{name}{VERSION_MARK}{version}"),
-            _ => String::new(),
-        }
+    /// `file`, one of its files, as every process names it.
+    pub(crate) fn file(&self, file: &Path) -> FileRef {
+        FileRef { package: self.id, path: Symbol::intern(&self.relative(file)) }
     }
 
     /// The path of `file` as its queries name it: relative to its directory, components joined
@@ -81,7 +64,7 @@ impl Session {
             .published
             .iter()
             .flat_map(|package| {
-                let id = package.id();
+                let id = self.packages.list[package].id;
                 let data = self.db.get::<PackageInput>(&id);
                 data.files
                     .iter()
@@ -97,7 +80,7 @@ impl Session {
     /// id. Dependencies are resolved without reporting: a missing one carries its diagnostic, which
     /// the queries return where it is needed.
     pub fn publish(&mut self, package: PackageKey) -> PackageId {
-        let id = package.id();
+        let id = self.packages.list[&package].id;
         if !self.packages.published.insert(package) {
             return id;
         }
@@ -121,7 +104,6 @@ impl Session {
         let data = PackageData {
             name: p.name,
             dir: p.dir.display().to_string(),
-            key: p.key(),
             deps,
             prelude,
             prelude_span: p.prelude_span,

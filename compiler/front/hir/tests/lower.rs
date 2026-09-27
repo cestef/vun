@@ -41,7 +41,7 @@ fn repository_sources_lower_and_verify() {
 
 /// The origins of every declaration and expression of `text`, lowered in a fresh table.
 fn origins(text: &str) -> vun_hash::Hash {
-    let file = SourceFiles::new().add_as("pkg@1.0.0/pkg.vun", "pkg.vun", text);
+    let file = SourceFiles::new().add("pkg.vun", text);
     let (mut diag, origins) = (DiagCtxt::new(), OriginTable::new());
     let mut cx = DiagCx { diag: &mut diag, origins: &origins };
     let tokens = Tokens::lex(file, text, &mut cx);
