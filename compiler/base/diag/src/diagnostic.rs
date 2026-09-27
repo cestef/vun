@@ -1,6 +1,8 @@
 //! Diagnostics with their children and traces.
 
 use std::fmt;
+use std::io;
+use std::path::Path;
 
 use vun_codec::{Decode, Encode};
 use vun_origin::OriginId;
@@ -105,11 +107,20 @@ impl Diagnostic {
         Self::new(id, Severity::Error, message)
     }
 
+    /// A failure to read `path`.
+    #[must_use]
+    pub fn unreadable(path: &Path, error: &io::Error) -> Self {
+        Self::io(crate::errors::IO_UNREADABLE_FILE, "cannot read ", path, error)
+    }
+
     /// A failure to write `path`.
     #[must_use]
-    pub fn unwritable(path: &std::path::Path, error: &std::io::Error) -> Self {
-        let msg = Msg::new().text("cannot write ").code(path.display().to_string());
-        Self::error(crate::errors::IO_UNWRITABLE_FILE, msg).caused_by(error)
+    pub fn unwritable(path: &Path, error: &io::Error) -> Self {
+        Self::io(crate::errors::IO_UNWRITABLE_FILE, "cannot write ", path, error)
+    }
+
+    fn io(id: DiagId, verb: &'static str, path: &Path, error: &io::Error) -> Self {
+        Self::error(id, Msg::new().text(verb).code(path.display().to_string())).caused_by(error)
     }
 
     #[must_use]
