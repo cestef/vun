@@ -8,6 +8,7 @@ use vun_lir::Value;
 
 use super::Sel;
 use crate::arm64::Arm;
+use crate::arm64::asm::AsmExt;
 
 /// Copies up to this many bytes move through a register, larger ones in a loop.
 pub(super) const UNROLLED: u64 = 128;
@@ -26,7 +27,7 @@ impl Sel<'_, '_> {
         self.reg_to(to, dst);
         self.reg_to(from, src);
         let steps = i64::try_from(bytes / STEP).expect("copies fit memory");
-        crate::arm64::constant(&mut self.asm, left, steps.cast_unsigned());
+        self.asm.constant(left, steps.cast_unsigned());
         let again = self.asm.label();
         self.asm.bind(again);
         let step = i64::try_from(STEP).expect("a word");

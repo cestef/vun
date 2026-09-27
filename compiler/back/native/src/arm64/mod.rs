@@ -4,10 +4,11 @@
 //! `x15` holds offsets and addresses too far for one instruction.
 
 pub mod abi;
+mod asm;
 mod isel;
 mod snippets;
 
-use vun_asm::Via;
+use self::asm::AsmExt;
 use vun_asm_arm64::{Arm64, Asm, Cc, Emit, Mem, Op, Operand, Reg, Size};
 use vun_codegen::snippet::{Emits, Width};
 use vun_codegen::{Anchor, Arch, Place, Recompute};
@@ -76,110 +77,28 @@ impl Arch for Arm {
     }
 
     fn load(code: &mut Asm<Address>, dst: Reg, offset: i32) {
-        access(code, Op::Ldr, Size::B64, dst.into(), FP, i64::from(offset), dst);
+        code.access(Op::Ldr, Size::B64, dst.into(), FP, i64::from(offset), dst);
     }
 
     fn store(code: &mut Asm<Address>, offset: i32, src: Reg) {
-        access(code, Op::Str, Size::B64, src.into(), FP, i64::from(offset), FAR);
+        code.access(Op::Str, Size::B64, src.into(), FP, i64::from(offset), FAR);
     }
 
     fn recompute(code: &mut Asm<Address>, dst: Reg, what: Recompute) {
         match what {
             Recompute::Const(bits) => {
-                constant(code, dst, vun_asm::imm::low64(bits));
+                code.constant(dst, vun_asm::imm::low64(bits));
             }
-            Recompute::Addr(Place { anchor: Anchor::Frame, disp }) => offset(code, dst, FP, disp),
+            Recompute::Addr(Place { anchor: Anchor::Frame, disp }) => code.offset(dst, FP, disp),
             Recompute::Addr(Place { anchor: Anchor::Sym(target), disp }) => {
-                address(code, dst, target);
-                offset(code, dst, dst, disp);
+                code.address(dst, target);
+                code.offset(dst, dst, disp);
             }
         }
     }
 
     fn jump(code: &mut Asm<Address>, to: vun_asm::Label) {
         code.emit(Op::B, Size::B64, &[to.into()]);
-    }
-}
-
-/// The 16-bit halves of a 64-bit constant, and their bits.
-const HALVES: u32 = 4;
-const HALF: u32 = 16;
-
-/// Writes the 64 bits `bits` into `dst`: in one move where one takes them, else a move of the
-/// first 16 bits differing from the rest, zeros or (where no 16 bits are zero and most are ones)
-/// ones, then a `movk` of each other differing 16 bits, never of zeros, which it cannot shift.
-///
-/// # Panics
-/// Never: a constant no one move takes has 16 bits differing from the rest.
-pub fn constant(code: &mut Asm<Address>, dst: Reg, bits: u64) {
-    let v = bits.cast_signed();
-    if Op::Mov.form(Size::B64, &[Opnd::Reg(dst), Opnd::Imm(v)]).is_some() {
-        code.emit(Op::Mov, Size::B64, &[dst.into(), v.into()]);
-        return;
-    }
-    let half = |k: u32| (bits >> (k * HALF)) & 0xffff;
-    let ones = (0..HALVES).filter(|&k| half(k) == 0xffff).count();
-    let zeros = (0..HALVES).filter(|&k| half(k) == 0).count();
-    let fill = if ones > zeros && zeros == 0 { 0xffff } else { 0 };
-    let differing: Vec<u32> = (0..HALVES).filter(|&k| half(k) != fill).collect();
-    let (&first, rest) = differing.split_first().expect("a constant one move misses differs from its fill");
-    let filled = (0..HALVES).filter(|&k| k != first).fold(0u64, |acc, k| acc | fill << (k * HALF));
-    let start = filled | half(first) << (first * HALF);
-    code.emit(Op::Mov, Size::B64, &[dst.into(), start.cast_signed().into()]);
-    for &k in rest {
-        code.emit(Op::Movk, Size::B64, &[dst.into(), (half(k) << (k * HALF)).cast_signed().into()]);
-    }
-}
-
-/// Writes `base + disp` into `dst`, the constant built in `dst` or, when that is the base, in
-/// `FAR`.
-pub fn offset(code: &mut Asm<Address>, dst: Reg, base: Reg, disp: i64) {
-    let takes =
-        |op: Op, n: i64| op.form(Size::B64, &[Opnd::Reg(dst), Opnd::Reg(base), Opnd::Imm(n)]).is_some();
-    if disp == 0 {
-        Arm::copy(code, dst, base);
-    } else if takes(Op::Add, disp) {
-        code.emit(Op::Add, Size::B64, &[dst.into(), base.into(), disp.into()]);
-    } else if takes(Op::Sub, disp.wrapping_neg()) {
-        code.emit(Op::Sub, Size::B64, &[dst.into(), base.into(), disp.wrapping_neg().into()]);
-    } else {
-        let scratch = if dst == base || dst == Reg::Sp { FAR } else { dst };
-        constant(code, scratch, disp.cast_unsigned());
-        code.emit(Op::Add, Size::B64, &[dst.into(), base.into(), scratch.into()]);
-    }
-}
-
-/// Writes the address of `target` into `dst`: its page and the offset within it, or for an
-/// import, its entry in the global offset table.
-pub fn address(code: &mut Asm<Address>, dst: Reg, target: Address) {
-    match target {
-        Address::Import(_) => {
-            code.emit(Op::Adrp, Size::B64, &[dst.into(), Opnd::Page(target, Via::Got)]);
-            let entry = Mem::Lo12 { base: dst, target, via: Via::Got };
-            code.emit(Op::Ldr, Size::B64, &[dst.into(), entry.into()]);
-        }
-        Address::Func(_) | Address::Data(_) => {
-            code.emit(Op::Adrp, Size::B64, &[dst.into(), Opnd::Page(target, Via::Direct)]);
-            code.emit(Op::Add, Size::B64, &[dst.into(), dst.into(), Opnd::Lo12(target)]);
-        }
-    }
-}
-
-/// Whether `op` of `size` between `reg` and memory `disp` bytes past `base` is one instruction.
-#[must_use]
-pub fn reaches(op: Op, size: Size, reg: Opnd, base: Reg, disp: i64) -> bool {
-    op.form(size, &[reg, Opnd::Mem(Mem::at(base, disp))]).is_some()
-}
-
-/// `op` of `size` between `reg` and memory `disp` bytes past `base`: at an offset where a form
-/// takes it, else at an index built in `scratch`.
-pub fn access(code: &mut Asm<Address>, op: Op, size: Size, reg: Opnd, base: Reg, disp: i64, scratch: Reg) {
-    let at = Opnd::Mem(Mem::at(base, disp));
-    if reaches(op, size, reg, base, disp) {
-        code.emit(op, size, &[reg, at]);
-    } else {
-        constant(code, scratch, disp.cast_unsigned());
-        code.emit(op, size, &[reg, Mem::index(base, scratch).into()]);
     }
 }
 

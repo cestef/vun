@@ -7,7 +7,8 @@ use vun_lir::Value;
 
 use super::Sel;
 use crate::arm64::abi::Carrier;
-use crate::arm64::{Arm, FAR, Opnd, access, offset, reaches};
+use crate::arm64::asm::{AsmExt, OpExt};
+use crate::arm64::{Arm, FAR, Opnd};
 use crate::width::{part, size_of};
 
 impl Sel<'_, '_> {
@@ -39,7 +40,7 @@ impl Sel<'_, '_> {
     pub(super) fn load_part(&mut self, carrier: Carrier, base: Reg, disp: i64, bytes: u64) {
         match carrier {
             Carrier::Int(r) => self.load_bytes(r, base, disp, bytes),
-            Carrier::Float(x) => access(&mut self.asm, Op::Ldr, part(bytes), x.into(), base, disp, FAR),
+            Carrier::Float(x) => self.asm.access(Op::Ldr, part(bytes), x.into(), base, disp, FAR),
         }
     }
 
@@ -47,19 +48,19 @@ impl Sel<'_, '_> {
     pub(super) fn store_part(&mut self, base: Reg, disp: i64, carrier: Carrier, bytes: u64) {
         match carrier {
             Carrier::Int(r) => self.store_bytes(base, disp, r, bytes),
-            Carrier::Float(x) => access(&mut self.asm, Op::Str, part(bytes), x.into(), base, disp, FAR),
+            Carrier::Float(x) => self.asm.access(Op::Str, part(bytes), x.into(), base, disp, FAR),
         }
     }
 
     /// Loads `bytes` (1 to 8) bytes `disp` past `base` into `dst`, in pieces a load can take.
     fn load_bytes(&mut self, dst: Reg, base: Reg, disp: i64, bytes: u64) {
         if let Some(size) = Size::of_bytes(bytes) {
-            access(&mut self.asm, Op::Ldr, size, dst.into(), base, disp, FAR);
+            self.asm.access(Op::Ldr, size, dst.into(), base, disp, FAR);
             return;
         }
         self.asm.emit(Op::Mov, Size::B64, &[dst.into(), Reg::Zr.into()]);
         for (size, at) in pieces(bytes, &Size::WIDEST, |s| u64::from(s.bytes())) {
-            access(&mut self.asm, Op::Ldr, size, Arm::TEMP.into(), base, disp + at, FAR);
+            self.asm.access(Op::Ldr, size, Arm::TEMP.into(), base, disp + at, FAR);
             let shifted = Opnd::Shifted(Arm::TEMP, Shift { kind: ShiftKind::Lsl, amount: byte_shift(at) });
             let piece = if at == 0 { Arm::TEMP.into() } else { shifted };
             self.asm.emit(Op::Orr, Size::B64, &[dst.into(), dst.into(), piece]);
@@ -69,7 +70,7 @@ impl Sel<'_, '_> {
     /// Stores the low `bytes` (1 to 8) bytes of `src` `disp` past `base`.
     fn store_bytes(&mut self, base: Reg, disp: i64, src: Reg, bytes: u64) {
         if let Some(size) = Size::of_bytes(bytes) {
-            access(&mut self.asm, Op::Str, size, src.into(), base, disp, FAR);
+            self.asm.access(Op::Str, size, src.into(), base, disp, FAR);
             return;
         }
         for (size, at) in pieces(bytes, &Size::WIDEST, |s| u64::from(s.bytes())) {
@@ -80,7 +81,7 @@ impl Sel<'_, '_> {
                 self.asm.emit(Op::Lsr, Size::B64, &[Arm::TEMP.into(), src.into(), amount]);
                 Arm::TEMP
             };
-            access(&mut self.asm, Op::Str, size, piece.into(), base, disp + at, FAR);
+            self.asm.access(Op::Str, size, piece.into(), base, disp + at, FAR);
         }
     }
 
@@ -92,19 +93,18 @@ impl Sel<'_, '_> {
         let mut moved = 0;
         for (size, at) in pieces(bytes, &Size::WIDEST, |s| u64::from(s.bytes())) {
             let disp = at - moved;
-            if !reaches(Op::Ldr, size, via.into(), from, disp)
-                || !reaches(Op::Str, size, via.into(), to, disp)
+            if !Op::Ldr.reaches(size, via.into(), from, disp) || !Op::Str.reaches(size, via.into(), to, disp)
             {
-                offset(&mut self.asm, from, from, at - moved);
-                offset(&mut self.asm, to, to, at - moved);
+                self.asm.offset(from, from, at - moved);
+                self.asm.offset(to, to, at - moved);
                 moved = at;
             }
-            access(&mut self.asm, Op::Ldr, size, via.into(), from, at - moved, FAR);
-            access(&mut self.asm, Op::Str, size, via.into(), to, at - moved, FAR);
+            self.asm.access(Op::Ldr, size, via.into(), from, at - moved, FAR);
+            self.asm.access(Op::Str, size, via.into(), to, at - moved, FAR);
         }
         if moved != 0 {
-            offset(&mut self.asm, from, from, -moved);
-            offset(&mut self.asm, to, to, -moved);
+            self.asm.offset(from, from, -moved);
+            self.asm.offset(to, to, -moved);
         }
     }
 }

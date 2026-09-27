@@ -11,7 +11,8 @@ use vun_lir::{AbiType, Address, Callee, Ext, Signature, Value};
 
 use super::Sel;
 use crate::arm64::abi::{Carrier, Loc, Passing, Ret};
-use crate::arm64::{Arm, FAR, FP, access, offset};
+use crate::arm64::asm::AsmExt;
+use crate::arm64::{Arm, FAR, FP};
 
 impl Sel<'_, '_> {
     pub(super) fn call(
@@ -32,13 +33,13 @@ impl Sel<'_, '_> {
                 Loc::Stack { offset, bytes } => self.outgoing(a, *offset, *bytes),
                 Loc::Copied { offset: at, size } => {
                     self.reg_to(a, Arm::CARRIER);
-                    offset(&mut self.asm, Arm::TEMP, Reg::Sp, disp(*at));
+                    self.asm.offset(Arm::TEMP, Reg::Sp, disp(*at));
                     self.copy_bytes(Arm::TEMP, Arm::CARRIER, *size, FAR);
                 }
                 Loc::Indirect { size, at } => {
                     let copy = self.frame.reserve(*size, Arm::STACK_ALIGN);
                     self.reg_to(a, Arm::CARRIER);
-                    offset(&mut self.asm, Arm::TEMP, FP, i64::from(copy));
+                    self.asm.offset(Arm::TEMP, FP, i64::from(copy));
                     self.copy_bytes(Arm::TEMP, Arm::CARRIER, *size, FAR);
                     if let Loc::Stack { offset, bytes } = **at {
                         self.store_outgoing(Arm::TEMP, offset, bytes);
@@ -80,7 +81,7 @@ impl Sel<'_, '_> {
                 Loc::Indirect { at, .. } => {
                     let copy = copies.next().expect("copied above");
                     if let Loc::Reg(Carrier::Int(r)) = **at {
-                        offset(&mut self.asm, r, FP, i64::from(copy));
+                        self.asm.offset(r, FP, i64::from(copy));
                     }
                 }
                 Loc::Stack { .. } | Loc::Copied { .. } | Loc::Returned => {}
@@ -122,7 +123,7 @@ impl Sel<'_, '_> {
     /// Stores the `bytes` low bytes of `r` where the stack argument at `offset` goes.
     fn store_outgoing(&mut self, r: Reg, offset: u64, bytes: u64) {
         let size = Size::of_bytes(bytes).expect("stack arguments are scalars or addresses");
-        access(&mut self.asm, Op::Str, size, r.into(), Reg::Sp, disp(offset), FAR);
+        self.asm.access(Op::Str, size, r.into(), Reg::Sp, disp(offset), FAR);
     }
 
     /// Extends an integer of `size` in `r` to 32 bits, as the C convention expects of callers

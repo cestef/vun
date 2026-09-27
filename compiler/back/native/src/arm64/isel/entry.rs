@@ -4,20 +4,19 @@
 //! where the convention passes them, and the plan moves them on from there.
 
 use crate::width::offset_of;
-use vun_asm_arm64::{Emit, Mem, Op, Operand, Reg, Size};
+use vun_asm_arm64::{Emit, Mem, Op, Reg, Size};
 use vun_codegen::{Arch, Place};
 use vun_dwarf::Step;
 
 use super::Sel;
 use crate::arm64::abi::{Carrier, Loc, Ret};
+use crate::arm64::asm::AsmExt;
 use crate::arm64::{Arm, FP, LR};
 
 /// Where the caller's stack arguments start, above the saved frame pointer and link register.
 pub(super) const CALLER_ARGS: i32 = 16;
 /// The bytes the prologue pushes: the frame pointer and the link register.
 const PAIR: i64 = 16;
-/// The bits of the frame size each of its two moves writes.
-const HALF: u32 = 16;
 /// The register the frame size is built in.
 const SIZE: Reg = Arm::CARRIER;
 
@@ -31,7 +30,7 @@ impl Sel<'_, '_> {
         self.asm.emit(Op::Mov, Size::B64, &[FP.into(), Reg::Sp.into()]);
         self.unwound(Step::Framed);
         self.state.frame_at = self.asm.here();
-        frame_size(&mut self.asm, 0);
+        self.asm.frame_size(SIZE, 0);
         self.asm.emit(Op::Sub, Size::B64, &[Reg::Sp.into(), Reg::Sp.into(), SIZE.into()]);
         let f = self.f;
         let Some(entry) = f.entry() else { return };
@@ -54,7 +53,7 @@ impl Sel<'_, '_> {
     /// Writes the frame's size into the prologue's moves.
     pub(super) fn finish(&mut self, frame: u64) {
         let mut moves = vun_asm_arm64::Asm::listed();
-        frame_size(&mut moves, frame);
+        moves.frame_size(SIZE, frame);
         let at = self.state.frame_at;
         self.asm.replace(at, moves.finish().expect("no labels"));
     }
@@ -92,12 +91,4 @@ impl Sel<'_, '_> {
         let size = parts.iter().map(|p| p.offset + p.bytes).max().unwrap_or(0);
         self.frame.reserve(size.next_multiple_of(Arm::WORD), Arm::WORD)
     }
-}
-
-/// The moves building the frame's `size` in `x16`: its upper 16 bits, then its lower.
-fn frame_size(code: &mut vun_asm_arm64::Asm<vun_lir::Address>, size: u64) {
-    assert!(size >> (2 * HALF) == 0, "frames fit 4 GiB");
-    let (high, low) = (size >> HALF << HALF, size & 0xffff);
-    code.emit(Op::Mov, Size::B64, &[SIZE.into(), Operand::Imm(high.cast_signed())]);
-    code.emit(Op::Movk, Size::B64, &[SIZE.into(), Operand::Imm(low.cast_signed())]);
 }

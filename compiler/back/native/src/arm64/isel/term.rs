@@ -12,7 +12,8 @@ use vun_lir::{AbiType, Block, Target, Terminator, Value};
 
 use super::{Sel, narrow};
 use crate::arm64::abi::{Carrier, Ret};
-use crate::arm64::{Arm, FP, LR, Opnd, condition, constant};
+use crate::arm64::asm::AsmExt;
+use crate::arm64::{Arm, FP, LR, Opnd, condition};
 
 /// The bytes the prologue pushed, popped by the epilogue.
 const PAIR: i64 = 16;
@@ -92,7 +93,7 @@ impl Sel<'_, '_> {
         let value = vun_asm::imm::low64(bits).cast_signed();
         let operands: [Opnd; 2] = [v.into(), Operand::Imm(value)];
         if Op::Cmp.form(size, &operands).is_none() {
-            constant(&mut self.asm, Arm::CARRIER, value.cast_unsigned());
+            self.asm.constant(Arm::CARRIER, value.cast_unsigned());
             self.asm.emit(Op::Cmp, size, &[v.into(), Arm::CARRIER.into()]);
         } else {
             self.asm.emit(Op::Cmp, size, &operands);
