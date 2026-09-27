@@ -10,6 +10,9 @@ use crate::Item;
 pub const mem: Item = Item::new(&["lang", "check", "mem"]);
 /// What a program may be built to check (`std.build.Options.checks`).
 pub const Kind: Item = Item::new(&["lang", "check", "Kind"]);
+/// The checks the program is built with (`std.build.Options.checks`), known when compiling, as
+/// `lang.target.current` is: a runtime exports the operations below only for a program they check.
+pub const current: Item = Item::new(&["lang", "check", "current"]);
 /// At run time, in a program built with `kind` checked, each call of the declaration this marks
 /// is a call of `f`: its arguments, then the call's origin as a `$` `lang.meta.Origin`.
 pub const by: Item = Item::new(&["lang", "check", "by"]);

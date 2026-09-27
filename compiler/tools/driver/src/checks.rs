@@ -5,10 +5,12 @@
 use vun_command::{Args, Arity, Param, Values};
 use vun_diag::{Diagnostic, ErrorGuaranteed, Msg, errors};
 use vun_lir::Unit;
-use vun_sanitize::{Checks, ChecksOf, Operations};
+use vun_sanitize::Operations;
+use vun_sema::checks::ChecksOf;
 use vun_sema::target::Variants;
 use vun_span::FileId;
 use vun_target::Check;
+use vun_target::Checks;
 
 use crate::Session;
 

@@ -8,7 +8,7 @@
 use crate::Item;
 pub const entry: Item = Item::new(&["std", "os", "libc", "start", "entry"]);
 pub const trap: Item = Item::new(&["std", "os", "libc", "start", "trap"]);
-/// The operations of the checks of unsafe code.
+/// The operations of the checks of unsafe code, for a program built with checks.
 pub const checks: Item = Item::new(&["std", "os", "libc", "start", "checks"]);
 pub const write_to: Item = Item::new(&["std", "os", "libc", "start", "write_to"]);
 /// Blocks the thread's signals, the interrupts of a hosted program, and takes the section

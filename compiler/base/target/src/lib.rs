@@ -9,7 +9,7 @@ use vun_intern::Symbol;
 
 mod check;
 
-pub use check::Check;
+pub use check::{Check, Checks};
 
 /// A name of one of the open sets targets draw from (decision 138): architectures, systems,
 /// object formats, backends and linkers. Targets give theirs as `lang.meta.Name` values;

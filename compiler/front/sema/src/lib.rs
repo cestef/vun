@@ -8,6 +8,7 @@ pub mod asm;
 pub mod attributes;
 pub mod callable;
 pub mod check;
+pub mod checks;
 pub mod decl;
 pub mod env;
 pub mod eval;

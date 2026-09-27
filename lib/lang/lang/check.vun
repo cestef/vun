@@ -12,6 +12,10 @@ Kind := enum {
     asm,
 };
 
+/// The checks the program is built with (`std.build.Options.checks`), known when compiling, as
+/// `lang.target.current` is: a runtime exports the operations below only for a program they check.
+current: &[Kind] = _;
+
 /// At run time, in a program built with `kind` checked, each call of the declaration this marks
 /// is a call of `f`: its arguments, then the call's origin as a `$` `lang.meta.Origin`.
 by: ($kind: Kind, $F: type, $f: F) -> Attribute(&[Place.decls]) = _;

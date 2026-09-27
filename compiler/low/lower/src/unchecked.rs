@@ -6,7 +6,8 @@ use vun_hash::Set;
 use vun_hir::db::FileRef;
 use vun_mir::{Concrete, Lowered as _, Operand, Program, Rvalue};
 use vun_query::Cx;
-use vun_sanitize::{ChecksOf, Operations};
+use vun_sanitize::Operations;
+use vun_sema::checks::ChecksOf;
 use vun_sema::eval::Instantiation;
 use vun_sema::ty::Value;
 

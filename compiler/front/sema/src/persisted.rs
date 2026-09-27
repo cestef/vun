@@ -4,6 +4,7 @@
 use vun_query::Db;
 
 use crate::check::Checked;
+use crate::checks::ChecksOf;
 use crate::decl::{DeclType, DeclValue, TypedDecl};
 use crate::env::{ItemSite, PrimitiveComptime, PrimitiveDecl, PrimitiveSignature};
 use crate::eval::{Call, MeteredCall, Signed};
@@ -20,6 +21,7 @@ use crate::witness::{Impls, Witnesses};
 
 pub const PERSISTED: &[fn(&Db)] = &[
     Db::trace::<TargetOf>,
+    Db::trace::<ChecksOf>,
     Db::persist::<Chosen>,
     Db::persist::<Checked>,
     Db::persist::<DeclType>,

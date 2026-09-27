@@ -3,6 +3,9 @@
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, vun_codec::Encode, vun_codec::Decode)]
 #[allow(non_camel_case_types, reason = "variants are named as their declarations")]
 pub enum Check {
+    /// The checks the program is built with (`std.build.Options.checks`), known when compiling, as
+    /// `lang.target.current` is: a runtime exports the operations below only for a program they check.
+    current,
     /// At run time, in a program built with `kind` checked, each call of the declaration this marks
     /// is a call of `f`: its arguments, then the call's origin as a `$` `lang.meta.Origin`.
     by,
@@ -26,6 +29,7 @@ pub enum Check {
 impl Check {
     pub const NAMESPACE: vun_items::Item = vun_items::lang::check;
     pub const ALL: &[Self] = &[
+        Self::current,
         Self::by,
         Self::access,
         Self::poison,
@@ -39,6 +43,7 @@ impl Check {
     #[must_use]
     pub const fn name(self) -> &'static str {
         match self {
+            Self::current => "current",
             Self::by => "by",
             Self::access => "access",
             Self::poison => "poison",
@@ -53,6 +58,7 @@ impl Check {
     #[must_use]
     pub const fn item(self) -> vun_items::Item {
         match self {
+            Self::current => vun_items::lang::check::current,
             Self::by => vun_items::lang::check::by,
             Self::access => vun_items::lang::check::access,
             Self::poison => vun_items::lang::check::poison,

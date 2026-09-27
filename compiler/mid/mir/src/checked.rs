@@ -2,10 +2,10 @@
 //! `#[lang.check.by(kind, f)]` marks is a call of `f`, with the call's origin after its
 //! arguments; within `f` itself, the operation it checks runs unchecked.
 
-use vun_sanitize::Checks;
 use vun_sema::env::Env;
 use vun_sema::eval::Func;
 use vun_sema::ty::Value;
+use vun_target::Checks;
 
 use crate::{Body, Operand, Rvalue};
 
@@ -24,7 +24,7 @@ impl Body {
                     Value::Fn(f) => f.attributes(env.cx),
                     _ => None,
                 };
-                let Some(version) = attributes.and_then(|a| checks.version(&a)) else { continue };
+                let Some(version) = attributes.and_then(|a| a.checked(checks)) else { continue };
                 if matches!(&version, Value::Fn(f) if f == within) {
                     continue;
                 }

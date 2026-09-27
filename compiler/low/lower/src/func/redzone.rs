@@ -8,7 +8,7 @@ use vun_items::Item;
 use vun_items::lang::{check, check_Violation as violation};
 use vun_lir::{BinOp, CastOp, InstKind, Slot, Value};
 use vun_mir::{Local, Operand, Projection, Rvalue};
-use vun_sanitize::ChecksOf;
+use vun_sema::checks::ChecksOf;
 use vun_sema::item::Site;
 use vun_sema::ty::Value as Constant;
 use vun_target::Check;
