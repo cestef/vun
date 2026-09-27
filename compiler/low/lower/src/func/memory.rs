@@ -139,7 +139,8 @@ impl FnLower<'_, '_, '_> {
                 Ok(())
             }
             // Item by item, backward when the items copied to start past those copied from, so
-            // that overlapping runs copy as if through a buffer.
+            // that overlapping runs copy as if through a buffer. Each item goes through a
+            // temporary, since it may overlap the one it is copied to by less than a stride.
             Mem::copy => {
                 let ty = self.operand_ty(arg(0)?).and_then(|t| t.pointee()).ok_or_else(unsupported)?;
                 let stride = self.stride(ty)?;
@@ -150,13 +151,15 @@ impl FnLower<'_, '_, '_> {
                     self.b.cast(CastOp::PtrToInt, from, word, self.at),
                 );
                 let backward = self.b.compare(Cond::UGt, at_to, at_from, self.at);
+                let Some(staged) = self.temp(ty)? else { return Ok(()) };
                 self.each(n, |this, i| {
                     let one = this.b.constant(word, 1, this.at);
                     let last = this.b.binary(BinOp::Sub, n, one, this.at);
                     let reversed = this.b.binary(BinOp::Sub, last, i, this.at);
                     let i = this.b.select(backward, reversed, i, this.at);
                     let (dest, src) = (this.scaled(to, i, stride), this.scaled(from, i, stride));
-                    this.copy_value(src, dest, ty)
+                    this.copy_value(src, staged, ty)?;
+                    this.copy_value(staged, dest, ty)
                 })
             }
             Mem::fill => {

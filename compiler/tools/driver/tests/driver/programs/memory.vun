@@ -26,6 +26,12 @@ main := (sys: &mut std.os.System) -> std.os.Exit {
     if ws == [70001, 70001, 0] { code = code | 16; }
     // An unused narrowing still checks: this one holds.
     _ = (n * 200).to(u8);
-    code = code | 32 | 64 | 128;
+    // Items overlapping those they are copied to by less than an item.
+    mut bytes: [7]u8 = [1, 2, 3, 4, 5, 6, 7];
+    at := unsafe lang.mem.cast([7]u8, u8, lang.mem.pointer_to([7]u8, &bytes));
+    triples := unsafe lang.mem.cast(u8, [3]u8, at);
+    unsafe lang.mem.copy([3]u8, lang.mem.cast(u8, [3]u8, lang.mem.offset(u8, at, 1)), triples, 2);
+    if bytes == [1, 1, 2, 3, 4, 5, 6] { code = code | 32; }
+    code = code | 64 | 128;
     .code(code)
 };
