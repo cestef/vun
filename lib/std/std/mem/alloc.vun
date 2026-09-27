@@ -4,7 +4,9 @@
 
 Allocator := lang.interface(($Self: type) -> type { struct {
     Error: type = _;
+    #[lang.check.by(.allocations, std.check.alloc)]
     alloc: (self: &mut Self, size: usize, align: usize) -> Result(*u8, Error) = _;
+    #[lang.check.by(.allocations, std.check.free)]
     free: (self: &mut Self, p: *u8, size: usize, align: usize) = _;
 } });
 

@@ -190,7 +190,7 @@ a trap carrying its origin:
 | Check (`lang.check.Kind`) | Catches |
 |---------------------------|---------|
 | `pointers` | a read or write through a raw pointer (`lang.mem.read`, `write`, `copy`, `fill`) of bytes no object holds: past the end of an allocation or a stack slot, or freed memory |
-| `allocations` | an allocator freeing what it did not hand out or has freed already, or with another size |
+| `allocations` | an allocator given back what it was given back already; with `pointers`, an access to memory given back |
 | `asm` | an assembly block writing memory no object holds, or returning with the stack pointer moved |
 
 - **Enabled by the build, never by a flag in the compiler.** `std.build.Options` has
@@ -206,9 +206,11 @@ a trap carrying its origin:
 - **Checked versions are Vun.** A function, primitive or interface requirement marked
   `#[lang.check.by(kind, f)]` runs as `f` in a program built with `kind` checked: each call of it
   becomes a call of `f`, with the same arguments plus the call's origin as a compile-time
-  `lang.meta.Origin`. `lang.mem.read` is marked with `lang.check.mem.read`, which checks the bytes
-  and then reads. `std.mem.alloc.Allocator`'s `alloc` and `free` are marked too, so every
-  allocator is checked without cooperating. No library holds a privilege: any of them may mark
+  `lang.meta.Origin`; a function implementing a requirement so marked (the witness's member of
+  the same name) runs as `f` too, which then takes the type the impl is for first. `lang.mem.read`
+  is marked with `lang.check.mem.read`, which checks the bytes and then reads.
+  `std.mem.alloc.Allocator`'s `alloc` and `free` are marked with `std.check.alloc` and `free`,
+  so every allocator is checked without cooperating. No library holds a privilege: any of them may mark
   its own operations.
 - **Reported as traps with typed reasons.** A failed check calls `lang.check.fail`, a typed link
   symbol taking `&lang.check.Failure { site: u32, violation: Violation, address: usize }` and

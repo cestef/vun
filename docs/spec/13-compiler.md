@@ -867,7 +867,8 @@ in registers a call may overwrite, none saved.
 
 - **Where.** Rewriting calls happens when a function is made concrete, in the same way as
   `#[lang.lower.by]`: the query `Concrete` reads the program's checks, and a call of something
-  marked `check.by` for a checked kind becomes a call of its checked version. MIR still has the
+  marked `check.by` for a checked kind, or of a function implementing a requirement so marked
+  (`Func::requirement`, the query `Requirement`), becomes a call of its checked version. MIR still has the
   types and the calls there. LIR has only addresses and could not tell a raw pointer from a
   borrow the checks already proved. Everything else stays where it lives today:
   - Lowering (`vun-lower`) gives the slot of a local whose address is taken (borrowed itself,
@@ -909,7 +910,10 @@ in registers a call may overwrite, none saved.
   An `asm` block reading memory it does not own is not caught, only writes are. A slot is
   not poisoned once its function returns, so a pointer to it used afterwards is caught only
   where another call's redzone lies there; catching it always would take frames on a stack of
-  their own (`Violation.returned` is kept for that).
+  their own (`Violation.returned` is kept for that). An allocator given back memory it did not
+  hand out, or with another size, is not caught yet (it takes a table of what is handed out),
+  nor is memory kept in quarantine: it goes back to the allocator when given back, so an access
+  to it is caught until the allocator hands it out again.
 
 ## 9. Workspace
 

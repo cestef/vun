@@ -17,7 +17,7 @@ use crate::member::{MemberType, MemberValue, Members};
 use crate::plan::Planned;
 use crate::target::{Chosen, TargetOf};
 use crate::typeck::{Reported, Typed};
-use crate::witness::{Impls, Witnesses};
+use crate::witness::{Impls, Requirement, Witnesses};
 
 pub const PERSISTED: &[fn(&Db)] = &[
     Db::trace::<TargetOf>,
@@ -47,5 +47,6 @@ pub const PERSISTED: &[fn(&Db)] = &[
     Db::persist::<MemberValue>,
     Db::persist::<Planned>,
     Db::persist::<Impls>,
+    Db::persist::<Requirement>,
     Db::persist::<Witnesses>,
 ];

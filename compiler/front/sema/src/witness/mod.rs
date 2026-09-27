@@ -9,6 +9,7 @@
 //! value as methods, found by the same lookup (decision 102).
 
 mod lookup;
+mod requirement;
 
 use std::sync::Arc;
 
@@ -28,6 +29,7 @@ use crate::primitives::lang::Lang;
 use crate::ty::{Nominal, Ty, TyKind, Value};
 
 pub use lookup::{Method, Witness, Witnesses};
+pub use requirement::{Implemented, Requirement};
 
 /// A declaration marked `#[impl(I(T))]`, or `#[impl(T)]` for methods without an interface.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]

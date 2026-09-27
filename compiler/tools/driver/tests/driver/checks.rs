@@ -56,12 +56,12 @@ main := (sys: &mut std.os.System) -> std.os.Exit {
 };
 ";
 
-/// The statuses `source`, built with the pointer checks, ends with through each backend.
-fn checked_statuses(name: &str, source: &str) -> Vec<Option<i32>> {
+/// The statuses `source`, built with `checks`, ends with through each backend.
+fn checked_statuses(name: &str, source: &str, checks: &[Check]) -> Vec<Option<i32>> {
     let fixture = Fixture::new(name);
     let path = fixture.root.write("main.vun", source);
     let mut session = fixture.session();
-    session.add_checks([Check::Pointers]);
+    session.add_checks(checks.iter().copied());
     let file = session.load(&path).unwrap();
     let runs = session.run_each(file).unwrap_or_else(|_| panic!("{:#?}", session.diag));
     runs.iter().map(|r| r.output.status.code()).collect()
@@ -69,13 +69,13 @@ fn checked_statuses(name: &str, source: &str) -> Vec<Option<i32>> {
 
 #[test]
 fn a_checked_program_runs_through_each_backend_over_its_runtime_shadow() {
-    let statuses = checked_statuses("checks-run", THIRD);
+    let statuses = checked_statuses("checks-run", THIRD, &[Check::Pointers]);
     assert!(statuses.len() > 1 && statuses.iter().all(|&s| s == Some(10)), "{statuses:?}");
 }
 
 #[test]
 fn a_read_past_a_slot_traps_the_same_way_through_each_backend() {
-    let statuses = checked_statuses("checks-past", PAST);
+    let statuses = checked_statuses("checks-past", PAST, &[Check::Pointers]);
     let trapped = Some(101);
     assert!(statuses.len() > 1 && statuses.iter().all(|&s| s == trapped), "{statuses:?}");
 }
@@ -91,4 +91,37 @@ fn a_runtime_without_the_operations_of_the_checks_is_refused() {
     let _ = session.compile(file);
     let ids: Vec<DiagId> = session.diag.sorted(session.origins).into_iter().map(|d| d.id.clone()).collect();
     assert_eq!(ids, [errors::CHECK_UNSUPPORTED]);
+}
+
+/// Memory of a fixed allocator given back, then `then`.
+fn freed(then: &str) -> String {
+    format!(
+        "\
+start := std.os.start(main);
+main := (sys: &mut std.os.System) -> std.os.Exit {{
+    mut buffer: [64]u8 = [0; 64];
+    mut fixed := std.mem.alloc.Fixed.init(&mut buffer);
+    p := fixed.alloc(8, 8).expect(\"fits\");
+    unsafe p.write(5);
+    fixed.free(p, 8, 8);
+    {then}
+}};
+"
+    )
+}
+
+#[test]
+fn memory_given_back_twice_or_read_once_given_back_traps_through_each_backend() {
+    let twice = freed("fixed.free(p, 8, 8);\n    std.os.Exit.of(3)");
+    let after = freed("std.os.Exit.of(unsafe p.read().to(Int(0..=125)))");
+    let trapped = Some(101);
+    let runs = [
+        checked_statuses("checks-twice", &twice, &[Check::Allocations]),
+        checked_statuses("checks-after", &after, &[Check::Pointers, Check::Allocations]),
+    ];
+    for statuses in runs {
+        assert!(statuses.len() > 1 && statuses.iter().all(|&s| s == trapped), "{statuses:?}");
+    }
+    // Without the pointer checks, the read goes through.
+    assert!(checked_statuses("checks-unread", &after, &[Check::Allocations]).iter().all(|&s| s == Some(5)));
 }

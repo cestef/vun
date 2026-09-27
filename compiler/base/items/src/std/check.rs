@@ -14,6 +14,12 @@ pub const code: Item = Item::new(&["std", "check", "code"]);
 pub const violation: Item = Item::new(&["std", "check", "violation"]);
 /// The shadow at `base`, a byte for each granule of the address space.
 pub const Shadow: Item = Item::new(&["std", "check", "Shadow"]);
+/// `alloc` of the allocator `A`, checked (`#[lang.check.by(.allocations, alloc)]` on the
+/// requirement): the bytes it hands out are recorded.
+pub const alloc: Item = Item::new(&["std", "check", "alloc"]);
+/// `free` of the allocator `A`, checked: bytes given back twice fail the check made at `at`;
+/// others are poisoned, so an access through a pointer kept to them fails its own.
+pub const free: Item = Item::new(&["std", "check", "free"]);
 /// The exports of a runtime whose shadow `shadow` gives, and which ends the program with
 /// `status` when a check fails.
 pub const exports: Item = Item::new(&["std", "check", "exports"]);
