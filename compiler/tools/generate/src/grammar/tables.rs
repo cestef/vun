@@ -91,24 +91,37 @@ impl<'s> Grammar<'s> {
                 let items: Vec<_> = lists.into_iter().flatten().collect();
                 self.infer(decl, &items).map(|t| Ty::List(Box::new(t)))
             }
-            Some(Literal::Record(first)) => first
-                .iter()
-                .map(|field| {
-                    let column = values
-                        .iter()
-                        .map(|v| v.get(field.name))
-                        .collect::<Option<Vec<_>>>()
-                        .ok_or_else(mismatch)?;
-                    let ty = self.infer(decl, &column)?;
-                    let declares = |v: &&Literal<'_>| {
-                        v.as_str().and_then(|p| p.split(SEPARATOR).next()) == Some(DECLARING)
-                    };
-                    let ty = if matches!(ty, Ty::Str) && column.iter().all(declares) { Ty::Item } else { ty };
-                    Ok((field.name.to_owned(), ty))
-                })
-                .collect::<Read<_>>()
-                .map(Ty::Tuple),
+            Some(Literal::Record(first))
+                if values.iter().all(|v| Self::fields(v) == Self::fields(values[0])) =>
+            {
+                first
+                    .iter()
+                    .map(|field| {
+                        let column = values
+                            .iter()
+                            .map(|v| v.get(field.name))
+                            .collect::<Option<Vec<_>>>()
+                            .ok_or_else(mismatch)?;
+                        let ty = self.infer(decl, &column)?;
+                        let declares = |v: &&Literal<'_>| {
+                            v.as_str().and_then(|p| p.split(SEPARATOR).next()) == Some(DECLARING)
+                        };
+                        let ty =
+                            if matches!(ty, Ty::Str) && column.iter().all(declares) { Ty::Item } else { ty };
+                        Ok((field.name.to_owned(), ty))
+                    })
+                    .collect::<Read<_>>()
+                    .map(Ty::Tuple)
+            }
             Some(_) => Err(mismatch()),
+        }
+    }
+
+    /// The names of a record's fields, in order; none for another value.
+    fn fields<'v>(value: &'v Literal<'s>) -> Vec<&'v str> {
+        match value {
+            Literal::Record(fields) => fields.iter().map(|f| f.name).collect(),
+            _ => Vec::new(),
         }
     }
 
@@ -159,7 +172,9 @@ impl<'s> Grammar<'s> {
     pub(super) fn value(&self, value: &Literal<'_>, ty: &Ty) -> TokenStream {
         match (ty, value) {
             (Ty::Str, Literal::String(text)) => quote! { #text },
-            (Ty::Item, Literal::String(path)) => items::Handles::rust_path(path),
+            (Ty::Item, Literal::String(path)) => {
+                items::Handles::rust_path(&path.split(SEPARATOR).collect::<Vec<_>>())
+            }
             (Ty::Enum(i), Literal::Name(name)) => {
                 let (e, v) = (ident(self.enums[*i].name), pascal(name));
                 quote! { #e::#v }

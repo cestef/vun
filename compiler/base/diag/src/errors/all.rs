@@ -6,6 +6,8 @@
 )]
 use super::*;
 use crate::DiagId;
+/// The file declaring every diagnostic, relative to the repository root.
+pub const DECLARED_IN: &str = "lib/lang/lang/errors.vun";
 /// Every diagnostic declared in `lang.errors`.
 pub const ALL: &[DiagId] = &[
     SYNTAX_UNKNOWN_CHARACTER,

@@ -8,14 +8,14 @@
 
 use std::path::Path;
 
-use proc_macro2::{Ident, Span, TokenStream};
+use proc_macro2::{Ident, TokenStream};
 use quote::quote;
 use vun_syntax::literal::{Decl, Literal};
 
 use vun_diag::{DiagId, Msg};
 
 use crate::generate::{self, Access, Generator, Module, Read, Source};
-use crate::names::docs;
+use crate::names::{constant, docs};
 
 pub(crate) const GENERATOR: Generator =
     Generator { source: "lib/lang/lang/errors.vun", output: "compiler/base/diag/src/errors", emit };
@@ -31,7 +31,7 @@ const EXPLANATION: &str = "explanation";
 const EMBED: [&str; 3] = ["lang", "meta", "embed"];
 
 fn emit(sources: &[Source<'_>]) -> Read<Vec<Module>> {
-    // The source is one file.
+    // The source is one file, which `Generator::generate` found.
     let source = &sources[0];
     let namespace = source.namespace_text();
     let mut ids = Vec::new();
@@ -80,8 +80,11 @@ fn emit(sources: &[Source<'_>]) -> Read<Vec<Module>> {
         pages.push(quote! { (#name, #path) });
     }
     let all_doc = format!(" Every diagnostic declared in `{namespace}`.");
+    let declared_in = GENERATOR.source;
     let all = quote! {
         use crate::DiagId;
+        /// The file declaring every diagnostic, relative to the repository root.
+        pub const DECLARED_IN: &str = #declared_in;
         #[doc = #all_doc]
         pub const ALL: &[DiagId] = &[#(#names),*];
         /// The explanation page of each diagnostic, relative to the library.
@@ -109,7 +112,7 @@ struct Id<'s> {
 impl Id<'_> {
     /// `syntax.unknown_character` is `SYNTAX_UNKNOWN_CHARACTER`.
     fn constant(&self) -> Ident {
-        Ident::new(&self.within.join("_").to_ascii_uppercase(), Span::call_site())
+        constant(&self.within.join("_"))
     }
 }
 

@@ -21,7 +21,8 @@ impl Enum<'_> {
             let (list, members) = (constant(list), members.iter().map(|m| pascal(m)));
             quote! { pub const #list: &[Self] = &[#(Self::#members),*]; }
         });
-        let spelled: Vec<_> = self.variants.iter().filter_map(|v| Some((pascal(v.name), v.text?))).collect();
+        let spelled: Vec<_> =
+            self.variants.iter().filter_map(|v| Some((pascal(v.name), v.text.as_deref()?))).collect();
         let text = (!spelled.is_empty()).then(|| {
             let (variants, texts): (Vec<_>, Vec<_>) = spelled.into_iter().unzip();
             quote! {
@@ -55,9 +56,10 @@ impl<'s> Variant<'s> {
                 let slots = payload.iter().map(Slot::of).collect::<Option<_>>()?;
                 return Some(Self { name, doc: Vec::new(), text: None, slots });
             }
-            Literal::String(Cow::Borrowed(text)) => (*text, Some(*text)),
+            // Named after itself, so written without escapes.
+            Literal::String(Cow::Borrowed(text)) => (*text, Some(Cow::Borrowed(*text))),
             Literal::Record(_) => match (entry.get(ENTRY_NAME)?, entry.get(ENTRY_TEXT)?) {
-                (Literal::Name(name), Literal::String(Cow::Borrowed(text))) => (*name, Some(*text)),
+                (Literal::Name(name), Literal::String(text)) => (*name, Some(text.clone())),
                 _ => return None,
             },
             _ => return None,

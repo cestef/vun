@@ -33,7 +33,6 @@ pub(crate) const TARGETS: Generator =
 /// The crate the handles are generated into.
 const CRATE: &str = "vun_items";
 /// Joins the segments of a nested namespace in a module name.
-const JOIN: &str = "_";
 /// The module holding a package's root namespace, whose items the package's module re-exports.
 const ROOT: &str = "root";
 /// Marks a private declaration, which gets no handle.
@@ -98,10 +97,9 @@ impl Handles {
         let modules = self.0.into_iter().filter(|(_, items)| !items.is_empty());
         modules
             .map(|(namespace, items)| {
-                let (name, access) = match namespace.as_slice() {
-                    [_] => (ROOT.to_owned(), Access::Glob),
-                    [_, inner @ ..] => (inner.join(JOIN), Access::Path),
-                    [] => unreachable!("a namespace has a package"),
+                let (name, access) = match Module::nested(&namespace) {
+                    None => (ROOT.to_owned(), Access::Glob),
+                    Some(inner) => (inner, Access::Path),
                 };
                 let doc = format!(" The declarations of `{}`.", namespace.join(SEPARATOR));
                 let items = quote! {
@@ -119,24 +117,24 @@ impl Handles {
             .collect()
     }
 
-    /// The Rust path of the handle of the declaration at the dotted `path`, for generated code of
-    /// other crates: `lang.mem.Ptr` is `vun_items::lang::mem::Ptr`, `lang.Option` is
+    /// The Rust path of the handle of the declaration at `path`, for generated code of other
+    /// crates: `lang.mem.Ptr` is `vun_items::lang::mem::Ptr`, `lang.Option` is
     /// `vun_items::lang::Option`, a package `lang` is `vun_items::lang`.
-    pub(crate) fn rust_path(path: &str) -> TokenStream {
-        let segments: Vec<&str> = path.split(SEPARATOR).collect();
+    pub(crate) fn rust_path(path: &[&str]) -> TokenStream {
         let krate = raw(CRATE);
-        match segments.as_slice() {
+        match path {
             [package] => {
                 let package = raw(package);
                 quote! { #krate::#package }
             }
-            [package, namespaces @ .., name] => {
-                let (package, name) = (raw(package), raw(name));
-                if namespaces.is_empty() {
-                    quote! { #krate::#package::#name }
-                } else {
-                    let inner = raw(&namespaces.join(JOIN));
-                    quote! { #krate::#package::#inner::#name }
+            [namespace @ .., name] => {
+                let (package, name) = (raw(namespace[0]), raw(name));
+                match Module::nested(namespace) {
+                    None => quote! { #krate::#package::#name },
+                    Some(inner) => {
+                        let inner = raw(&inner);
+                        quote! { #krate::#package::#inner::#name }
+                    }
                 }
             }
             [] => unreachable!("a path has a segment"),

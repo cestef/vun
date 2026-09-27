@@ -9,6 +9,8 @@
 //! the token set, generate twice: the parser that reads the grammar is built from the previous
 //! output.
 
+use std::borrow::Cow;
+
 use std::collections::HashSet;
 use std::path::Path;
 
@@ -79,7 +81,8 @@ struct Variant<'s> {
     /// The name in `grammar.vun`, by which tables refer to it.
     name: &'s str,
     doc: Vec<String>,
-    text: Option<&'s str>,
+    /// Its fixed spelling, escaped in the source or not.
+    text: Option<Cow<'s, str>>,
     /// For a kind entry written `.name(slots...)`, its children.
     slots: Vec<Slot<'s>>,
 }

@@ -11,7 +11,7 @@ use std::path::{Path, PathBuf};
 use proc_macro2::TokenStream;
 use quote::quote;
 use vun_build::layout::{Location, SEPARATOR};
-use vun_diag::{DiagCtxt, DiagCx, DiagId, Diagnostic, Msg};
+use vun_diag::{ChildKind, DiagCtxt, DiagCx, DiagId, Diagnostic, Msg};
 use vun_fs::{Relative, Tree};
 use vun_origin::OriginTable;
 use vun_span::{EXTENSION, SourceFiles};
@@ -64,6 +64,18 @@ impl Module {
     }
 }
 
+impl Module {
+    /// The module name of the namespace at `path` inside its package, its segments below the
+    /// package joined: `lang.mem.raw` is `mem_raw`; `None` for the package's own namespace.
+    pub(crate) fn nested(path: &[impl AsRef<str>]) -> Option<String> {
+        let inner: Vec<&str> = path.iter().skip(1).map(AsRef::as_ref).collect();
+        (!inner.is_empty()).then(|| inner.join(JOIN))
+    }
+}
+
+/// Joins the namespaces below a package in one module name.
+const JOIN: &str = "_";
+
 /// The name of a directory module's root file.
 const ROOT: &str = "mod";
 
@@ -87,6 +99,9 @@ pub(crate) const ALL: &[Generator] = &[
 ];
 
 const SYNTAX: DiagId = DiagId::new("generate.generate.syntax");
+const EMPTY: DiagId = DiagId::new("generate.generate.empty");
+/// Two modules of one output directory with one name, as `a.b_c` and `a_b.c` join.
+const COLLISION: DiagId = DiagId::new("generate.generate.collision");
 
 /// Where packages live, relative to the repository root.
 pub(crate) const PACKAGES: &str = "lib";
@@ -123,16 +138,20 @@ impl Generator {
     /// Returns the diagnostics of a source that cannot be read or parsed, or that has a shape the
     /// generator does not translate.
     pub(crate) fn generate(&self, root: &Path) -> Result<BTreeMap<String, String>, Box<Diagnostic>> {
-        let unreadable = |e: &std::io::Error, path: &str| {
-            let msg = Msg::new().text("cannot read ").code(path);
-            Box::new(Diagnostic::error(vun_diag::errors::IO_UNREADABLE_FILE, msg).caused_by(e))
-        };
-        let files = root.join(self.source).files().map_err(|e| unreadable(&e, self.source))?;
+        let unreadable = |e: &std::io::Error, path: &Path| Box::new(Diagnostic::unreadable(path, e));
+        let files = root.join(self.source).files().map_err(|e| unreadable(&e, Path::new(self.source)))?;
         let mut texts = Vec::new();
         for file in files.iter().filter(|f| f.extension().is_some_and(|e| e == EXTENSION)) {
-            let path = file.relative_to(root).unwrap_or_else(|| file.clone()).display().to_string();
+            let path = file.relative_to(root).unwrap_or_else(|| file.clone());
             let text = std::fs::read_to_string(file).map_err(|e| unreadable(&e, &path))?;
-            texts.push((path, text));
+            texts.push((path.display().to_string(), text));
+        }
+        if texts.is_empty() {
+            return Err(self.error(
+                EMPTY,
+                self.source,
+                Msg::new().text("holds no ").code(EXTENSION).text(" file"),
+            ));
         }
         let mut sources = Vec::new();
         for (path, text) in &texts {
@@ -154,7 +173,12 @@ impl Generator {
         });
         let mut files = BTreeMap::from([(format!("{ROOT}.rs"), format(quote! { #(#declared)* }))]);
         for module in modules {
-            files.insert(format!("{}.rs", module.name), format(module.items));
+            let name = format!("{}.rs", module.name);
+            if files.contains_key(&name) {
+                let msg = Msg::new().text("generates the module ").code(&module.name).text(" twice");
+                return Err(self.error(COLLISION, &module.name, msg));
+            }
+            files.insert(name, format(module.items));
         }
         Ok(files)
     }
@@ -210,9 +234,11 @@ impl Generator {
         let tokens = Tokens::lex(file, text, &mut cx);
         let cst = Cst::parse(&tokens, text, &mut cx);
         if diag.error_count() > 0 {
-            let run = format!("vun debug cst {path}");
+            let run = ["vun debug cst", path].join(" ");
             let msg = Msg::new().code(path).text(" does not parse; run ").code(run);
-            return Err(Box::new(Diagnostic::error(SYNTAX, msg)));
+            let errors = diag.sorted(&origins).into_iter().map(|e| e.message.clone());
+            let d = errors.fold(Diagnostic::error(SYNTAX, msg), |d, e| d.child(ChildKind::Note, e));
+            return Err(Box::new(d));
         }
         Ok(Source { path: path.to_owned(), decls: cst.declarations(&tokens, text) })
     }
