@@ -18,53 +18,53 @@ _x_d_w: _a.Arg = .{ .kind = .gpr(.zr, .is(.b64)), .at = 0, .access = .write };
 _x_n: _a.Arg = .{ .kind = .gpr(.zr, .is(.b64)), .at = 5, .access = .read };
 
 b := _a.Instruction{ .forms = &[
-        .{ .base = 0x14000000, .sizes = _any, .args = &[_jump26_d] },
-    ] };
+    .{ .base = 0x14000000, .sizes = _any, .args = &[_jump26_d] },
+] };
 
 /// A conditional branch, written with its condition as the mnemonic's suffix (`b.eq`).
 bcond := _a.Instruction{ .mnemonic = .some("b"), .forms = &[
-        .{ .base = 0x54000000, .sizes = _any, .args = &[_cond_d, _cond19_n], .flags = .some(.read) },
-    ] };
+    .{ .base = 0x54000000, .sizes = _any, .args = &[_cond_d, _cond19_n], .flags = .some(.read) },
+] };
 
 bl := _a.Instruction{ .forms = &[
-        .{ .base = 0x94000000, .sizes = _any, .args = &[_call26_d], .writes = &[.x30] },
-    ] };
+    .{ .base = 0x94000000, .sizes = _any, .args = &[_call26_d], .writes = &[.x30] },
+] };
 
 br := _a.Instruction{ .forms = &[
-        .{ .base = 0xd61f0000, .sizes = _any, .args = &[_x_n] },
-    ] };
+    .{ .base = 0xd61f0000, .sizes = _any, .args = &[_x_n] },
+] };
 
 blr := _a.Instruction{ .forms = &[
-        .{ .base = 0xd63f0000, .sizes = _any, .args = &[_x_n], .writes = &[.x30] },
-    ] };
+    .{ .base = 0xd63f0000, .sizes = _any, .args = &[_x_n], .writes = &[.x30] },
+] };
 
 ret := _a.Instruction{ .forms = &[
-        .{ .base = 0xd65f03c0, .sizes = _any, .args = &[], .reads = &[.x30] },
-    ] };
+    .{ .base = 0xd65f03c0, .sizes = _any, .args = &[], .reads = &[.x30] },
+] };
 
 cbz := _a.Instruction{ .forms = &[
-        .{ .base = 0x34000000, .sizes = _sf, .args = &[_r_d, _cond19_n] },
-    ] };
+    .{ .base = 0x34000000, .sizes = _sf, .args = &[_r_d, _cond19_n] },
+] };
 
 cbnz := _a.Instruction{ .forms = &[
-        .{ .base = 0x35000000, .sizes = _sf, .args = &[_r_d, _cond19_n] },
-    ] };
+    .{ .base = 0x35000000, .sizes = _sf, .args = &[_r_d, _cond19_n] },
+] };
 
 udf := _a.Instruction{ .forms = &[
-        .{ .base = 0x0, .sizes = _any, .args = &[_u16_d] },
-    ] };
+    .{ .base = 0x0, .sizes = _any, .args = &[_u16_d] },
+] };
 
 brk := _a.Instruction{ .forms = &[
-        .{ .base = 0xd4200000, .sizes = _any, .args = &[_u16_n] },
-    ] };
+    .{ .base = 0xd4200000, .sizes = _any, .args = &[_u16_n] },
+] };
 
 /// The page of an address, which a following `add` or load completes with its low 12 bits.
 adrp := _a.Instruction{ .forms = &[
-        .{ .base = 0x90000000, .sizes = _any, .args = &[_x_d_w, _page_d] },
-    ] };
+    .{ .base = 0x90000000, .sizes = _any, .args = &[_x_d_w, _page_d] },
+] };
 
 /// A data memory barrier: accesses the barrier orders complete, as its operand says, before any
 /// after it.
 dmb := _a.Instruction{ .forms = &[
-        .{ .base = 0xd50330bf, .sizes = _any, .args = &[.{ .kind = .barrier, .at = 8, .access = .read }] },
-    ] };
+    .{ .base = 0xd50330bf, .sizes = _any, .args = &[.{ .kind = .barrier, .at = 8, .access = .read }] },
+] };

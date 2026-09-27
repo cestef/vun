@@ -40,7 +40,7 @@ impl Sel<'_, '_> {
                 let holds = flags.unwrap_or_else(|| {
                     let (c, _) = operand.expect("a branch reads its condition");
                     self.asm.emit(Op::Test, Size::B8, &[c.into(), c.into()]);
-                    Cc::Ne
+                    Cc::Nz
                 });
                 let layout = Layout::of(then, otherwise, next);
                 self.jump_if(if layout.inverted { holds.not() } else { holds }, layout.taken);
@@ -50,7 +50,7 @@ impl Sel<'_, '_> {
                 let (v, size) = operand.expect("a switch reads its value");
                 for &(bits, ref target) in cases {
                     self.compare_case(v, size, bits);
-                    self.jump_if(Cc::E, target);
+                    self.jump_if(Cc::Z, target);
                 }
                 self.jump(default, next);
             }

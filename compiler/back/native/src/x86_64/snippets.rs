@@ -16,7 +16,7 @@ const RAX: Slot<X86> = Slot::Fixed(Reg::Rax);
 const RDX: Slot<X86> = Slot::Fixed(Reg::Rdx);
 const X0: Slot<X86> = Slot::Is(Operand::Xmm(Xmm(0)));
 const X1: Slot<X86> = Slot::Is(Operand::Xmm(Xmm(1)));
-const NE: Slot<X86> = Slot::Is(Operand::Cond(Cc::Ne));
+const NE: Slot<X86> = Slot::Is(Operand::Cond(Cc::Nz));
 const NP: Slot<X86> = Slot::Is(Operand::Cond(Cc::Np));
 
 const OP: Width<Size> = Width::Op;

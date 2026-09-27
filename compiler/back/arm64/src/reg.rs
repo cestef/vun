@@ -109,47 +109,11 @@ impl Size {
     }
 }
 
-/// A condition code, by its encoding. `al` and `nv` are left out: an unconditional branch is `b`.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum Cc {
-    Eq,
-    Ne,
-    /// Unsigned higher or same (carry set).
-    Hs,
-    /// Unsigned lower (carry clear).
-    Lo,
-    Mi,
-    Pl,
-    Vs,
-    Vc,
-    /// Unsigned higher.
-    Hi,
-    /// Unsigned lower or same.
-    Ls,
-    Ge,
-    Lt,
-    Gt,
-    Le,
-}
+use crate::generated::CONDITIONS;
+pub use crate::generated::Cc;
 
+/// A condition code, by its encoding: the encoding's low bit negates it.
 impl Cc {
-    pub const ALL: [Self; 14] = [
-        Self::Eq,
-        Self::Ne,
-        Self::Hs,
-        Self::Lo,
-        Self::Mi,
-        Self::Pl,
-        Self::Vs,
-        Self::Vc,
-        Self::Hi,
-        Self::Ls,
-        Self::Ge,
-        Self::Lt,
-        Self::Gt,
-        Self::Le,
-    ];
-
     #[must_use]
     pub const fn number(self) -> u8 {
         self as u8
@@ -163,9 +127,7 @@ impl Cc {
 
     #[must_use]
     pub const fn name(self) -> &'static str {
-        const NAMES: [&str; 14] =
-            ["eq", "ne", "hs", "lo", "mi", "pl", "vs", "vc", "hi", "ls", "ge", "lt", "gt", "le"];
-        NAMES[self.number() as usize]
+        CONDITIONS[self as usize]
     }
 }
 

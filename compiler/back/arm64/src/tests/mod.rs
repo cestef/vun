@@ -14,8 +14,8 @@ use yaxpeax_arch::{Decoder, U8Reader};
 use yaxpeax_arm::armv8::a64::{InstDecoder, Instruction};
 
 use crate::{
-    Barrier,
-    Asm, Cc, Emit, Extend, Form, Inst, Kind, Mem, Mode, Op, Operand, Reg, Scale, Shift, ShiftKind, Size, V,
+    Asm, Barrier, Cc, Emit, Extend, Form, Inst, Kind, Mem, Mode, Op, Operand, Reg, Scale, Shift, ShiftKind,
+    Size, V,
 };
 
 type Sym = &'static str;

@@ -170,8 +170,8 @@ impl<'a> Look<'_, 'a> {
             Cond::FLe => (FCOMPARE, [b, a], Cc::Ae),
             Cond::FGt => (FCOMPARE, [a, b], Cc::A),
             Cond::FGe => (FCOMPARE, [a, b], Cc::Ae),
-            Cond::FEq => (FEQUAL, [a, b], Cc::E),
-            _ => (FEQUAL, [a, b], Cc::Ne),
+            Cond::FEq => (FEQUAL, [a, b], Cc::Z),
+            _ => (FEQUAL, [a, b], Cc::Nz),
         };
         Ok(Selection::Snippet { snippet, ins: ins.to_vec(), size: precision, cond: Some(cc) })
     }

@@ -26,6 +26,15 @@ pub const names: Item = Item::new(&["lang", "arch", "arm64", "names"]);
 /// A condition, by its encoding: what the flags say after a comparison (`hs`, higher or same,
 /// for unsigned; `ge` for signed).
 pub const Cond: Item = Item::new(&["lang", "arch", "arm64", "Cond"]);
+/// The classes of registers an operand names: general ones (`Reg`) and floating-point and vector
+/// ones (`V`).
+pub const Class: Item = Item::new(&["lang", "arch", "arm64", "Class"]);
+/// A floating-point and vector register, by its number.
+pub const V: Item = Item::new(&["lang", "arch", "arm64", "V"]);
+/// A floating-point register's name at each width.
+pub const FpNames: Item = Item::new(&["lang", "arch", "arm64", "FpNames"]);
+/// The names of each floating-point register.
+pub const fp_names: Item = Item::new(&["lang", "arch", "arm64", "fp_names"]);
 /// What a memory barrier orders (`dmb`): accesses within the outer (`osh`), non-shareable (`nsh`)
 /// or inner (`ish`) shareability domain, or the full system (`sy`), each for loads (`ld`),
 /// stores (`st`) or both.

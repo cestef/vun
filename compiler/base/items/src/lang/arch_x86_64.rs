@@ -22,10 +22,14 @@ pub const Reg: Item = Item::new(&["lang", "arch", "x86_64", "Reg"]);
 pub const Names: Item = Item::new(&["lang", "arch", "x86_64", "Names"]);
 /// The names of each general register.
 pub const names: Item = Item::new(&["lang", "arch", "x86_64", "names"]);
-/// A condition, by its encoding: what the flags say after a comparison (`b`, below, for
-/// unsigned less than; `l`, less, for signed; `p`, parity, where either operand of `ucomis` is a
-/// NaN).
+/// A condition, by its encoding: what the flags say after a comparison (`z` for equal, `b`,
+/// below, for unsigned less than; `l`, less, for signed; `p`, parity, where either operand of
+/// `ucomis` is a NaN).
 pub const Cond: Item = Item::new(&["lang", "arch", "x86_64", "Cond"]);
+/// The classes of registers an operand names: general ones (`Reg`) and SSE ones (`Xmm`).
+pub const Class: Item = Item::new(&["lang", "arch", "x86_64", "Class"]);
+/// An SSE register, by its encoding.
+pub const Xmm: Item = Item::new(&["lang", "arch", "x86_64", "Xmm"]);
 /// What an operand position takes. A register or memory operand without a width of its own has
 /// the instruction's.
 pub const Kind: Item = Item::new(&["lang", "arch", "x86_64", "Kind"]);
@@ -36,7 +40,7 @@ pub const Operand: Item = Item::new(&["lang", "arch", "x86_64", "Operand"]);
 pub const Prefix: Item = Item::new(&["lang", "arch", "x86_64", "Prefix"]);
 /// How the instruction's width is encoded.
 pub const W: Item = Item::new(&["lang", "arch", "x86_64", "W"]);
-/// A byte of the forms of a family: its own, or its member's opcode with these bits set, or its
+/// A byte of the forms of a family: fixed, or its member's opcode with these bits set, or its
 /// member's opcode extension.
 pub const Byte: Item = Item::new(&["lang", "arch", "x86_64", "Byte"]);
 /// `ModRM` with a register in `reg` and a register or memory in `rm`, by operand position.

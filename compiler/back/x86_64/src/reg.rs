@@ -126,60 +126,20 @@ impl Size {
     }
 }
 
-/// A condition code, as `jcc`, `setcc` and `cmovcc` encode it.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum Cc {
-    B = 0x2,
-    Ae = 0x3,
-    E = 0x4,
-    Ne = 0x5,
-    Be = 0x6,
-    A = 0x7,
-    /// Parity: after `ucomis`, the operands are unordered (a NaN among them).
-    P = 0xa,
-    Np = 0xb,
-    L = 0xc,
-    Ge = 0xd,
-    Le = 0xe,
-    G = 0xf,
-}
+use crate::generated::CONDITIONS;
+pub use crate::generated::Cc;
 
+/// A condition code, as `jcc`, `setcc` and `cmovcc` encode it: the encoding's low bit negates it.
 impl Cc {
     /// The condition that holds where this one does not.
     #[must_use]
     pub const fn not(self) -> Self {
-        match self {
-            Self::B => Self::Ae,
-            Self::Ae => Self::B,
-            Self::E => Self::Ne,
-            Self::Ne => Self::E,
-            Self::Be => Self::A,
-            Self::A => Self::Be,
-            Self::P => Self::Np,
-            Self::Np => Self::P,
-            Self::L => Self::Ge,
-            Self::Ge => Self::L,
-            Self::Le => Self::G,
-            Self::G => Self::Le,
-        }
+        Self::ALL[self as usize ^ 1]
     }
 
     /// Its suffix in mnemonics (`jae`, `setnz`).
     #[must_use]
     pub const fn suffix(self) -> &'static str {
-        match self {
-            Self::B => "b",
-            Self::Ae => "ae",
-            Self::E => "z",
-            Self::Ne => "nz",
-            Self::Be => "be",
-            Self::A => "a",
-            Self::P => "p",
-            Self::Np => "np",
-            Self::L => "l",
-            Self::Ge => "ge",
-            Self::Le => "le",
-            Self::G => "g",
-        }
+        CONDITIONS[self as usize]
     }
 }

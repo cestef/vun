@@ -8,17 +8,22 @@
 use crate::Item;
 pub const eq: Item = Item::new(&["lang", "arch", "arm64", "Cond", "eq"]);
 pub const ne: Item = Item::new(&["lang", "arch", "arm64", "Cond", "ne"]);
+/// Unsigned higher or same (carry set).
 pub const hs: Item = Item::new(&["lang", "arch", "arm64", "Cond", "hs"]);
+/// Unsigned lower (carry clear).
 pub const lo: Item = Item::new(&["lang", "arch", "arm64", "Cond", "lo"]);
 pub const mi: Item = Item::new(&["lang", "arch", "arm64", "Cond", "mi"]);
 pub const pl: Item = Item::new(&["lang", "arch", "arm64", "Cond", "pl"]);
 pub const vs: Item = Item::new(&["lang", "arch", "arm64", "Cond", "vs"]);
 pub const vc: Item = Item::new(&["lang", "arch", "arm64", "Cond", "vc"]);
+/// Unsigned higher.
 pub const hi: Item = Item::new(&["lang", "arch", "arm64", "Cond", "hi"]);
+/// Unsigned lower or same.
 pub const ls: Item = Item::new(&["lang", "arch", "arm64", "Cond", "ls"]);
 pub const ge: Item = Item::new(&["lang", "arch", "arm64", "Cond", "ge"]);
 pub const lt: Item = Item::new(&["lang", "arch", "arm64", "Cond", "lt"]);
 pub const gt: Item = Item::new(&["lang", "arch", "arm64", "Cond", "gt"]);
 pub const le: Item = Item::new(&["lang", "arch", "arm64", "Cond", "le"]);
+/// Always, which an unconditional branch is written without.
 pub const al: Item = Item::new(&["lang", "arch", "arm64", "Cond", "al"]);
 pub const nv: Item = Item::new(&["lang", "arch", "arm64", "Cond", "nv"]);

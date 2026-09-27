@@ -32,7 +32,7 @@ impl Sel<'_, '_> {
         self.asm.emit(Op::Mov, Size::B64, &[Reg::Rdx.into(), Reg::Rax.into()]);
         self.asm.emit(op, size.max(Size::B32), &[Reg::Rdx.into(), X86::CARRIER.into()]);
         self.asm.emit(Op::Cmpxchg, size, &[mem.into(), Reg::Rdx.into()]);
-        self.asm.emit(Op::J, Size::B64, &[Cc::Ne.into(), again.into()]);
+        self.asm.emit(Op::J, Size::B64, &[Cc::Nz.into(), again.into()]);
     }
 
     /// Copies `bytes` bytes, through a register or, past `UNROLLED`, with `rep movsb`.

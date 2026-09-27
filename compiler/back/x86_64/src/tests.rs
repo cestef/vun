@@ -20,7 +20,7 @@ const MEMS: [Mem<Sym>; 5] = [
     Mem::at(Reg::Rax, -129),
 ];
 const IMMS: [i64; 7] = [0, -1, 127, 128, -32768, 0xffff_ffff, 0x1234_5678_9abc_def0];
-const CCS: [Cc; 3] = [Cc::B, Cc::Ne, Cc::G];
+const CCS: [Cc; 3] = [Cc::B, Cc::Nz, Cc::G];
 
 /// The operands tried at a position of `kind`.
 fn samples(kind: Kind) -> Vec<Operand<Sym>> {

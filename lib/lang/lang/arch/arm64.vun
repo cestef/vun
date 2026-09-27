@@ -61,7 +61,71 @@ names := .{
 
 /// A condition, by its encoding: what the flags say after a comparison (`hs`, higher or same,
 /// for unsigned; `ge` for signed).
-Cond := enum { eq, ne, hs, lo, mi, pl, vs, vc, hi, ls, ge, lt, gt, le, al, nv };
+Cond := enum {
+    eq, ne,
+    /// Unsigned higher or same (carry set).
+    hs,
+    /// Unsigned lower (carry clear).
+    lo,
+    mi, pl, vs, vc,
+    /// Unsigned higher.
+    hi,
+    /// Unsigned lower or same.
+    ls,
+    ge, lt, gt, le,
+    /// Always, which an unconditional branch is written without.
+    al,
+    nv,
+};
+
+/// The classes of registers an operand names: general ones (`Reg`) and floating-point and vector
+/// ones (`V`).
+Class := enum { general, fp };
+
+/// A floating-point and vector register, by its number.
+V := enum {
+    v0, v1, v2, v3, v4, v5, v6, v7, v8, v9, v10, v11, v12, v13, v14, v15,
+    v16, v17, v18, v19, v20, v21, v22, v23, v24, v25, v26, v27, v28, v29, v30, v31,
+};
+
+/// A floating-point register's name at each width.
+FpNames := struct { b8: &[u8], b16: &[u8], b32: &[u8], b64: &[u8], b128: &[u8] };
+
+/// The names of each floating-point register.
+fp_names := .{
+    .v0 = FpNames{ .b8 = "b0", .b16 = "h0", .b32 = "s0", .b64 = "d0", .b128 = "q0" },
+    .v1 = FpNames{ .b8 = "b1", .b16 = "h1", .b32 = "s1", .b64 = "d1", .b128 = "q1" },
+    .v2 = FpNames{ .b8 = "b2", .b16 = "h2", .b32 = "s2", .b64 = "d2", .b128 = "q2" },
+    .v3 = FpNames{ .b8 = "b3", .b16 = "h3", .b32 = "s3", .b64 = "d3", .b128 = "q3" },
+    .v4 = FpNames{ .b8 = "b4", .b16 = "h4", .b32 = "s4", .b64 = "d4", .b128 = "q4" },
+    .v5 = FpNames{ .b8 = "b5", .b16 = "h5", .b32 = "s5", .b64 = "d5", .b128 = "q5" },
+    .v6 = FpNames{ .b8 = "b6", .b16 = "h6", .b32 = "s6", .b64 = "d6", .b128 = "q6" },
+    .v7 = FpNames{ .b8 = "b7", .b16 = "h7", .b32 = "s7", .b64 = "d7", .b128 = "q7" },
+    .v8 = FpNames{ .b8 = "b8", .b16 = "h8", .b32 = "s8", .b64 = "d8", .b128 = "q8" },
+    .v9 = FpNames{ .b8 = "b9", .b16 = "h9", .b32 = "s9", .b64 = "d9", .b128 = "q9" },
+    .v10 = FpNames{ .b8 = "b10", .b16 = "h10", .b32 = "s10", .b64 = "d10", .b128 = "q10" },
+    .v11 = FpNames{ .b8 = "b11", .b16 = "h11", .b32 = "s11", .b64 = "d11", .b128 = "q11" },
+    .v12 = FpNames{ .b8 = "b12", .b16 = "h12", .b32 = "s12", .b64 = "d12", .b128 = "q12" },
+    .v13 = FpNames{ .b8 = "b13", .b16 = "h13", .b32 = "s13", .b64 = "d13", .b128 = "q13" },
+    .v14 = FpNames{ .b8 = "b14", .b16 = "h14", .b32 = "s14", .b64 = "d14", .b128 = "q14" },
+    .v15 = FpNames{ .b8 = "b15", .b16 = "h15", .b32 = "s15", .b64 = "d15", .b128 = "q15" },
+    .v16 = FpNames{ .b8 = "b16", .b16 = "h16", .b32 = "s16", .b64 = "d16", .b128 = "q16" },
+    .v17 = FpNames{ .b8 = "b17", .b16 = "h17", .b32 = "s17", .b64 = "d17", .b128 = "q17" },
+    .v18 = FpNames{ .b8 = "b18", .b16 = "h18", .b32 = "s18", .b64 = "d18", .b128 = "q18" },
+    .v19 = FpNames{ .b8 = "b19", .b16 = "h19", .b32 = "s19", .b64 = "d19", .b128 = "q19" },
+    .v20 = FpNames{ .b8 = "b20", .b16 = "h20", .b32 = "s20", .b64 = "d20", .b128 = "q20" },
+    .v21 = FpNames{ .b8 = "b21", .b16 = "h21", .b32 = "s21", .b64 = "d21", .b128 = "q21" },
+    .v22 = FpNames{ .b8 = "b22", .b16 = "h22", .b32 = "s22", .b64 = "d22", .b128 = "q22" },
+    .v23 = FpNames{ .b8 = "b23", .b16 = "h23", .b32 = "s23", .b64 = "d23", .b128 = "q23" },
+    .v24 = FpNames{ .b8 = "b24", .b16 = "h24", .b32 = "s24", .b64 = "d24", .b128 = "q24" },
+    .v25 = FpNames{ .b8 = "b25", .b16 = "h25", .b32 = "s25", .b64 = "d25", .b128 = "q25" },
+    .v26 = FpNames{ .b8 = "b26", .b16 = "h26", .b32 = "s26", .b64 = "d26", .b128 = "q26" },
+    .v27 = FpNames{ .b8 = "b27", .b16 = "h27", .b32 = "s27", .b64 = "d27", .b128 = "q27" },
+    .v28 = FpNames{ .b8 = "b28", .b16 = "h28", .b32 = "s28", .b64 = "d28", .b128 = "q28" },
+    .v29 = FpNames{ .b8 = "b29", .b16 = "h29", .b32 = "s29", .b64 = "d29", .b128 = "q29" },
+    .v30 = FpNames{ .b8 = "b30", .b16 = "h30", .b32 = "s30", .b64 = "d30", .b128 = "q30" },
+    .v31 = FpNames{ .b8 = "b31", .b16 = "h31", .b32 = "s31", .b64 = "d31", .b128 = "q31" },
+};
 
 /// What a memory barrier orders (`dmb`): accesses within the outer (`osh`), non-shareable (`nsh`)
 /// or inner (`ish`) shareability domain, or the full system (`sy`), each for loads (`ld`),

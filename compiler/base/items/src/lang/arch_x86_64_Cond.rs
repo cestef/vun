@@ -10,12 +10,13 @@ pub const o: Item = Item::new(&["lang", "arch", "x86_64", "Cond", "o"]);
 pub const no: Item = Item::new(&["lang", "arch", "x86_64", "Cond", "no"]);
 pub const b: Item = Item::new(&["lang", "arch", "x86_64", "Cond", "b"]);
 pub const ae: Item = Item::new(&["lang", "arch", "x86_64", "Cond", "ae"]);
-pub const e: Item = Item::new(&["lang", "arch", "x86_64", "Cond", "e"]);
-pub const ne: Item = Item::new(&["lang", "arch", "x86_64", "Cond", "ne"]);
+pub const z: Item = Item::new(&["lang", "arch", "x86_64", "Cond", "z"]);
+pub const nz: Item = Item::new(&["lang", "arch", "x86_64", "Cond", "nz"]);
 pub const be: Item = Item::new(&["lang", "arch", "x86_64", "Cond", "be"]);
 pub const a: Item = Item::new(&["lang", "arch", "x86_64", "Cond", "a"]);
 pub const s: Item = Item::new(&["lang", "arch", "x86_64", "Cond", "s"]);
 pub const ns: Item = Item::new(&["lang", "arch", "x86_64", "Cond", "ns"]);
+/// Parity: after `ucomis`, the operands are unordered (a NaN among them).
 pub const p: Item = Item::new(&["lang", "arch", "x86_64", "Cond", "p"]);
 pub const np: Item = Item::new(&["lang", "arch", "x86_64", "Cond", "np"]);
 pub const l: Item = Item::new(&["lang", "arch", "x86_64", "Cond", "l"]);

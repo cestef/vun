@@ -44,24 +44,24 @@ _wide_not_n: _a.Arg = .{ .kind = .imm(.wide_not), .at = 5, .access = .read };
 _x_d_w: _a.Arg = .{ .kind = .gpr(.zr, .is(.b64)), .at = 0, .access = .write };
 
 mov := _a.Instruction{ .forms = &[
-        .{ .base = 0x2a0003e0, .sizes = _sf, .args = &[_r_d_w, _r_m] },
-        .{ .base = 0x11000000, .sizes = _sf, .args = &[_rsp_d_w, _rsp_n] },
-        .{ .base = 0x52800000, .sizes = _sf, .args = &[_r_d_w, _wide_n] },
-        .{ .base = 0x12800000, .sizes = _sf, .args = &[_r_d_w, _wide_not_n] },
-        .{ .base = 0x320003e0, .sizes = _sf, .args = &[_rsp_d_w, _bitmask_a] },
-    ] };
+    .{ .base = 0x2a0003e0, .sizes = _sf, .args = &[_r_d_w, _r_m] },
+    .{ .base = 0x11000000, .sizes = _sf, .args = &[_rsp_d_w, _rsp_n] },
+    .{ .base = 0x52800000, .sizes = _sf, .args = &[_r_d_w, _wide_n] },
+    .{ .base = 0x12800000, .sizes = _sf, .args = &[_r_d_w, _wide_not_n] },
+    .{ .base = 0x320003e0, .sizes = _sf, .args = &[_rsp_d_w, _bitmask_a] },
+] };
 
 /// Moves 16 bits into a register, keeping the others.
 movk := _a.Instruction{ .forms = &[
-        .{ .base = 0x72800000, .sizes = _sf, .args = &[_r_d_rw, _half_n] },
-    ] };
+    .{ .base = 0x72800000, .sizes = _sf, .args = &[_r_d_rw, _half_n] },
+] };
 
 add := _a.Instruction{ .forms = &[
-        .{ .base = 0xb000000, .sizes = _sf, .args = &[_r_d_w, _r_n, _shifted_a] },
-        .{ .base = 0x11000000, .sizes = _sf, .args = &[_rsp_d_w, _rsp_n, _arith_a] },
-        .{ .base = 0xb200000, .sizes = _sf, .args = &[_rsp_d_w, _rsp_n, _extended_a] },
-        .{ .base = 0x11000000, .sizes = _sf, .args = &[_rsp_d_w, _rsp_n, _lo12_a] },
-    ] };
+    .{ .base = 0xb000000, .sizes = _sf, .args = &[_r_d_w, _r_n, _shifted_a] },
+    .{ .base = 0x11000000, .sizes = _sf, .args = &[_rsp_d_w, _rsp_n, _arith_a] },
+    .{ .base = 0xb200000, .sizes = _sf, .args = &[_rsp_d_w, _rsp_n, _extended_a] },
+    .{ .base = 0x11000000, .sizes = _sf, .args = &[_rsp_d_w, _rsp_n, _lo12_a] },
+] };
 
 /// `adds` and `subs`, over a shifted register, an immediate and an extended register.
 arith_flags := _a.Family{
@@ -89,10 +89,10 @@ arith_flags := _a.Family{
 };
 
 sub := _a.Instruction{ .forms = &[
-        .{ .base = 0x4b000000, .sizes = _sf, .args = &[_r_d_w, _r_n, _shifted_a] },
-        .{ .base = 0x51000000, .sizes = _sf, .args = &[_rsp_d_w, _rsp_n, _arith_a] },
-        .{ .base = 0x4b200000, .sizes = _sf, .args = &[_rsp_d_w, _rsp_n, _extended_a] },
-    ] };
+    .{ .base = 0x4b000000, .sizes = _sf, .args = &[_r_d_w, _r_n, _shifted_a] },
+    .{ .base = 0x51000000, .sizes = _sf, .args = &[_rsp_d_w, _rsp_n, _arith_a] },
+    .{ .base = 0x4b200000, .sizes = _sf, .args = &[_rsp_d_w, _rsp_n, _extended_a] },
+] };
 
 /// `cmp` and `cmn`: `subs` and `adds` into the zero register.
 compares := _a.Family{
@@ -105,45 +105,45 @@ compares := _a.Family{
 };
 
 neg := _a.Instruction{ .forms = &[
-        .{ .base = 0x4b0003e0, .sizes = _sf, .args = &[_r_d_w, _shifted_a] },
-    ] };
+    .{ .base = 0x4b0003e0, .sizes = _sf, .args = &[_r_d_w, _shifted_a] },
+] };
 
 negs := _a.Instruction{ .forms = &[
-        .{ .base = 0x6b0003e0, .sizes = _sf, .args = &[_r_d_w, _shifted_a], .flags = .some(.write) },
-    ] };
+    .{ .base = 0x6b0003e0, .sizes = _sf, .args = &[_r_d_w, _shifted_a], .flags = .some(.write) },
+] };
 
 mul := _a.Instruction{ .forms = &[
-        .{ .base = 0x1b007c00, .sizes = _sf, .args = &[_r_d_w, _r_n, _r_m] },
-    ] };
+    .{ .base = 0x1b007c00, .sizes = _sf, .args = &[_r_d_w, _r_n, _r_m] },
+] };
 
 madd := _a.Instruction{ .forms = &[
-        .{ .base = 0x1b000000, .sizes = _sf, .args = &[_r_d_w, _r_n, _r_m, _r_a] },
-    ] };
+    .{ .base = 0x1b000000, .sizes = _sf, .args = &[_r_d_w, _r_n, _r_m, _r_a] },
+] };
 
 msub := _a.Instruction{ .forms = &[
-        .{ .base = 0x1b008000, .sizes = _sf, .args = &[_r_d_w, _r_n, _r_m, _r_a] },
-    ] };
+    .{ .base = 0x1b008000, .sizes = _sf, .args = &[_r_d_w, _r_n, _r_m, _r_a] },
+] };
 
 mneg := _a.Instruction{ .forms = &[
-        .{ .base = 0x1b00fc00, .sizes = _sf, .args = &[_r_d_w, _r_n, _r_m] },
-    ] };
+    .{ .base = 0x1b00fc00, .sizes = _sf, .args = &[_r_d_w, _r_n, _r_m] },
+] };
 
 /// The high 64 bits of a signed product.
 smulh := _a.Instruction{ .forms = &[
-        .{ .base = 0x9b407c00, .sizes = _x64, .args = &[_r_d_w, _r_n, _r_m] },
-    ] };
+    .{ .base = 0x9b407c00, .sizes = _x64, .args = &[_r_d_w, _r_n, _r_m] },
+] };
 
 umulh := _a.Instruction{ .forms = &[
-        .{ .base = 0x9bc07c00, .sizes = _x64, .args = &[_r_d_w, _r_n, _r_m] },
-    ] };
+    .{ .base = 0x9bc07c00, .sizes = _x64, .args = &[_r_d_w, _r_n, _r_m] },
+] };
 
 sdiv := _a.Instruction{ .forms = &[
-        .{ .base = 0x1ac00c00, .sizes = _sf, .args = &[_r_d_w, _r_n, _r_m] },
-    ] };
+    .{ .base = 0x1ac00c00, .sizes = _sf, .args = &[_r_d_w, _r_n, _r_m] },
+] };
 
 udiv := _a.Instruction{ .forms = &[
-        .{ .base = 0x1ac00800, .sizes = _sf, .args = &[_r_d_w, _r_n, _r_m] },
-    ] };
+    .{ .base = 0x1ac00800, .sizes = _sf, .args = &[_r_d_w, _r_n, _r_m] },
+] };
 
 /// `and`, `orr` and `eor`, over a shifted register and a bitmask.
 logic := _a.Family{
@@ -159,9 +159,9 @@ logic := _a.Family{
 };
 
 ands := _a.Instruction{ .forms = &[
-        .{ .base = 0x6a000000, .sizes = _sf, .args = &[_r_d_w, _r_n, _logic_a], .flags = .some(.write) },
-        .{ .base = 0x72000000, .sizes = _sf, .args = &[_r_d_w, _r_n, _bitmask_a], .flags = .some(.write) },
-    ] };
+    .{ .base = 0x6a000000, .sizes = _sf, .args = &[_r_d_w, _r_n, _logic_a], .flags = .some(.write) },
+    .{ .base = 0x72000000, .sizes = _sf, .args = &[_r_d_w, _r_n, _bitmask_a], .flags = .some(.write) },
+] };
 
 /// `bic` and `orn`: `and` and `orr` of a negated shifted register.
 negated := _a.Family{
@@ -172,28 +172,28 @@ negated := _a.Family{
 };
 
 tst := _a.Instruction{ .forms = &[
-        .{ .base = 0x6a00001f, .sizes = _sf, .args = &[_r_n, _logic_a], .flags = .some(.write) },
-        .{ .base = 0x7200001f, .sizes = _sf, .args = &[_r_n, _bitmask_a], .flags = .some(.write) },
-    ] };
+    .{ .base = 0x6a00001f, .sizes = _sf, .args = &[_r_n, _logic_a], .flags = .some(.write) },
+    .{ .base = 0x7200001f, .sizes = _sf, .args = &[_r_n, _bitmask_a], .flags = .some(.write) },
+] };
 
 mvn := _a.Instruction{ .forms = &[
-        .{ .base = 0x2a2003e0, .sizes = _sf, .args = &[_r_d_w, _logic_a] },
-    ] };
+    .{ .base = 0x2a2003e0, .sizes = _sf, .args = &[_r_d_w, _logic_a] },
+] };
 
 lsl := _a.Instruction{ .forms = &[
-        .{ .base = 0x1ac02000, .sizes = _sf, .args = &[_r_d_w, _r_n, _r_m] },
-        .{ .base = 0x53000000, .sizes = _sf_n, .args = &[_r_d_w, _r_n, _lsl_a] },
-    ] };
+    .{ .base = 0x1ac02000, .sizes = _sf, .args = &[_r_d_w, _r_n, _r_m] },
+    .{ .base = 0x53000000, .sizes = _sf_n, .args = &[_r_d_w, _r_n, _lsl_a] },
+] };
 
 lsr := _a.Instruction{ .forms = &[
-        .{ .base = 0x1ac02400, .sizes = _sf, .args = &[_r_d_w, _r_n, _r_m] },
-        .{ .base = 0x53000000, .sizes = _sf_n, .args = &[_r_d_w, _r_n, _shr_a] },
-    ] };
+    .{ .base = 0x1ac02400, .sizes = _sf, .args = &[_r_d_w, _r_n, _r_m] },
+    .{ .base = 0x53000000, .sizes = _sf_n, .args = &[_r_d_w, _r_n, _shr_a] },
+] };
 
 asr := _a.Instruction{ .forms = &[
-        .{ .base = 0x1ac02800, .sizes = _sf, .args = &[_r_d_w, _r_n, _r_m] },
-        .{ .base = 0x13000000, .sizes = _sf_n, .args = &[_r_d_w, _r_n, _shr_a] },
-    ] };
+    .{ .base = 0x1ac02800, .sizes = _sf, .args = &[_r_d_w, _r_n, _r_m] },
+    .{ .base = 0x13000000, .sizes = _sf_n, .args = &[_r_d_w, _r_n, _shr_a] },
+] };
 
 /// Sign extensions from the low byte or half to the instruction's width.
 signs := _a.Family{
@@ -204,8 +204,8 @@ signs := _a.Family{
 };
 
 sxtw := _a.Instruction{ .forms = &[
-        .{ .base = 0x93407c00, .sizes = _x64, .args = &[_r_d_w, _w_n] },
-    ] };
+    .{ .base = 0x93407c00, .sizes = _x64, .args = &[_r_d_w, _w_n] },
+] };
 
 /// Zero extensions from the low byte or half to 32 bits, which clears the upper half too.
 zeros := _a.Family{
@@ -217,15 +217,15 @@ zeros := _a.Family{
 
 /// Sign-extends to 64 bits from the instruction's width: `sxtb`, `sxth`, `sxtw`, a `mov` from 64.
 sxt := _a.Instruction{ .forms = &[
-        .{ .base = 0x13000000, .sizes = _sxt, .args = &[_x_d_w, _w_n], .name = .some("sxt") },
-        .{ .base = 0x2a0003e0, .sizes = _mov_x, .args = &[_r_d_w, _r_m], .name = .some("mov") },
-    ] };
+    .{ .base = 0x13000000, .sizes = _sxt, .args = &[_x_d_w, _w_n], .name = .some("sxt") },
+    .{ .base = 0x2a0003e0, .sizes = _mov_x, .args = &[_r_d_w, _r_m], .name = .some("mov") },
+] };
 
 /// Zero-extends to 64 bits from the instruction's width: `uxtb`, `uxth`, a `mov` from 32 or 64.
 uxt := _a.Instruction{ .forms = &[
-        .{ .base = 0x53000000, .sizes = _uxt, .args = &[_w_d_w, _w_n], .name = .some("uxt") },
-        .{ .base = 0x2a0003e0, .sizes = _sf, .args = &[_r_d_w, _r_m], .name = .some("mov") },
-    ] };
+    .{ .base = 0x53000000, .sizes = _uxt, .args = &[_w_d_w, _w_n], .name = .some("uxt") },
+    .{ .base = 0x2a0003e0, .sizes = _sf, .args = &[_r_d_w, _r_m], .name = .some("mov") },
+] };
 
 /// Conditional selects: the first register if the condition holds, else the second, incremented,
 /// inverted or negated.

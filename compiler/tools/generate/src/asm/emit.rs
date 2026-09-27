@@ -14,6 +14,8 @@ use crate::names::{constant, pascal, raw};
 /// The general registers, and their names by width.
 const REG: &str = "Reg";
 const NAMES: &str = "names";
+/// The conditions, in encoding order.
+const COND: &str = "Cond";
 /// The modules of the `Op` enum, its mnemonics and its forms.
 const OPS: &str = "ops";
 const MNEMONICS: &str = "mnemonics";
@@ -42,8 +44,11 @@ impl Crate {
     ) -> Read<Vec<Module>> {
         let shape = |what: Msg| self.generator.error(SHAPE, self.arch, what);
         let registers = self.registers(table);
-        let mut modules =
-            vec![registers.ok_or_else(|| shape(Msg::new().text("declares its registers unreadably")))?];
+        let conditions = Self::conditions(table);
+        let mut modules = vec![
+            registers.ok_or_else(|| shape(Msg::new().text("declares its registers unreadably")))?,
+            conditions.ok_or_else(|| shape(Msg::new().text("declares its conditions unreadably")))?,
+        ];
         for inst in &table.instructions {
             let forms = inst.forms.iter().map(|f| form(self, f)).collect::<Option<Vec<_>>>();
             let forms = forms.ok_or_else(|| {
@@ -137,6 +142,27 @@ impl Crate {
             pub(crate) const NAMES: [[&str; #width_count]; #count] = [#(#rows),*];
         };
         Some(Module { name: REG.to_ascii_lowercase(), access: Access::Glob, items })
+    }
+
+    /// The `Cc` enum of the conditions in encoding order, and each one's name as mnemonics write
+    /// it.
+    fn conditions(table: &Table<'_, '_>) -> Option<Module> {
+        let conds = table.own(COND)?.value.members()?;
+        let variants: Vec<_> = conds.iter().map(|c| pascal(c.name)).collect();
+        let names = conds.iter().map(|c| c.name);
+        let docs = conds.iter().map(|c| crate::names::docs(&c.doc));
+        let count = conds.len();
+        let items = quote! {
+            /// A condition, by its encoding.
+            #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+            pub enum Cc { #(#(#[doc = #docs])* #variants,)* }
+            impl Cc {
+                pub const ALL: [Self; #count] = [#(Self::#variants),*];
+            }
+            /// Each condition's name, in encoding order.
+            pub(crate) const CONDITIONS: [&str; #count] = [#(#names),*];
+        };
+        Some(Module { name: COND.to_ascii_lowercase(), access: Access::Glob, items })
     }
 
     /// The variant a `.name` value names of the Vun type `ty`, by its path from the crate root.

@@ -33,10 +33,23 @@ names := .{
     .r15 = Names{ .b8 = "r15b", .b16 = "r15w", .b32 = "r15d", .b64 = "r15" },
 };
 
-/// A condition, by its encoding: what the flags say after a comparison (`b`, below, for
-/// unsigned less than; `l`, less, for signed; `p`, parity, where either operand of `ucomis` is a
-/// NaN).
-Cond := enum { o, no, b, ae, e, ne, be, a, s, ns, p, np, l, ge, le, g };
+/// A condition, by its encoding: what the flags say after a comparison (`z` for equal, `b`,
+/// below, for unsigned less than; `l`, less, for signed; `p`, parity, where either operand of
+/// `ucomis` is a NaN).
+Cond := enum {
+    o, no, b, ae, z, nz, be, a, s, ns,
+    /// Parity: after `ucomis`, the operands are unordered (a NaN among them).
+    p,
+    np, l, ge, le, g,
+};
+
+/// The classes of registers an operand names: general ones (`Reg`) and SSE ones (`Xmm`).
+Class := enum { general, sse };
+
+/// An SSE register, by its encoding.
+Xmm := enum {
+    xmm0, xmm1, xmm2, xmm3, xmm4, xmm5, xmm6, xmm7, xmm8, xmm9, xmm10, xmm11, xmm12, xmm13, xmm14, xmm15,
+};
 
 /// What an operand position takes. A register or memory operand without a width of its own has
 /// the instruction's.

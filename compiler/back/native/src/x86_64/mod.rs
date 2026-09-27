@@ -149,8 +149,8 @@ impl Emits for X86 {
 #[must_use]
 pub const fn condition(cond: Cond) -> Option<Cc> {
     Some(match cond {
-        Cond::Eq => Cc::E,
-        Cond::Ne => Cc::Ne,
+        Cond::Eq => Cc::Z,
+        Cond::Ne => Cc::Nz,
         Cond::SLt => Cc::L,
         Cond::SLe => Cc::Le,
         Cond::SGt => Cc::G,

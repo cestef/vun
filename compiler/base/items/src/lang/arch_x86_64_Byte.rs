@@ -6,6 +6,6 @@
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
 use crate::Item;
-pub const is: Item = Item::new(&["lang", "arch", "x86_64", "Byte", "is"]);
+pub const fixed: Item = Item::new(&["lang", "arch", "x86_64", "Byte", "fixed"]);
 pub const opcode: Item = Item::new(&["lang", "arch", "x86_64", "Byte", "opcode"]);
 pub const digit: Item = Item::new(&["lang", "arch", "x86_64", "Byte", "digit"]);
