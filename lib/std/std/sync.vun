@@ -71,6 +71,7 @@ Shared := ($T: type) -> type { struct {
     #[panic.never]
     set := (self: &Shared(T), cs: &Critical, value: T) { self.replace(cs, value); };
     /// Puts in what `f` makes of a copy of the value.
+    #[panic.never]
     update := ($F: lang.ops.Call((T), T), self: &Shared(T), cs: &Critical, f: F) {
         self.set(cs, f(self.get(cs)));
     };

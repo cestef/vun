@@ -57,7 +57,10 @@ primitives in `unsafe` code; `Mutex(T)` spins on an `Atomic(bool)` and returns a
   chains and text is emitted into a non-loaded section, so traps cost a call and a constant on
   embedded targets and still report the exact source span on the host (spec 10).
 - **`#[panic.never]`** on a function is checked transitively: its body may contain no undischarged
-  trap site, and it may call only `#[panic.never]` functions.
+  trap site, and it may call only `#[panic.never]` functions. A closure called in a
+  `#[panic.never]` function without the marker keeps the promise when its own body does: no
+  undischarged trap site, and calls only of functions that keep it; declared functions keep it
+  only by the marker.
 - `vun check --traps` lists every remaining trap site with the reason it remains.
 
 ## 4. Function types
