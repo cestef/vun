@@ -30,8 +30,9 @@ impl FnLower<'_, '_, '_> {
         Ok(())
     }
 
-    /// `x << n` or `x >> n`, `x` of the `uN` range `ty` of the result: an amount past `N - 1`
-    /// traps (rule 8), checked in the amount's own storage where its range does not prove it.
+    /// `x << n` or `x >> n`, of the result's range `ty`. Where that is a `uN` range, an amount past
+    /// `N - 1` traps (rule 8), checked in the amount's own storage where its range does not
+    /// prove it.
     pub(crate) fn shift(
         &mut self,
         op: BinOp,
@@ -42,7 +43,10 @@ impl FnLower<'_, '_, '_> {
     ) -> Result<(), Unlowered> {
         let at = self.at;
         let unsupported = move || Unlowered::unsupported(at, Form::Primitive);
-        let width = ty.interval().and_then(|r| r.unsigned_width()).ok_or_else(unsupported)?;
+        // A shift of a compile-time value has the exact range typing found, which no amount leaves.
+        let Some(width) = ty.interval().and_then(|r| r.unsigned_width()) else {
+            return self.arithmetic(op, x, n, dest, ty);
+        };
         let amount_ty = self.operand_ty(n).ok_or_else(unsupported)?;
         let (own, signed) = self.l.types.int(amount_ty).ok_or_else(unsupported)?;
         let amount = self.scalar_operand(n)?;
