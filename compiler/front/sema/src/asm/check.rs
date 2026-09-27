@@ -13,7 +13,7 @@ use vun_origin::OriginId;
 
 use super::given::Given;
 use super::table::{Flow, Table};
-use super::{Arch, Block, arm64, x86_64};
+use super::{Arch, Block, arm64, thumb, x86_64};
 
 /// A term of an address: a register, one times a scale, bytes, or a declaration's address.
 pub(super) enum Term {
@@ -35,6 +35,7 @@ impl Arch {
         match self {
             Self::X86_64 => <vun_isa_x86_64::X86_64 as Blocks>::fit(op, form, fixed, givens),
             Self::Arm64 => <vun_isa_arm64::Arm64 as Blocks>::fit(op, form, fixed, givens),
+            Self::Thumb => <vun_isa_thumb::Thumb as Blocks>::fit(op, form, fixed, givens),
         }
     }
 
@@ -50,6 +51,8 @@ impl Arch {
                 _ => None,
             },
             Self::Arm64 => arm64::memory(parts),
+            // No form of Thumb's table takes memory.
+            Self::Thumb => None,
         }
     }
 
@@ -64,6 +67,7 @@ impl Arch {
         match self {
             Self::X86_64 => Some((x86_64::class(table, float)?, width)),
             Self::Arm64 => Some((arm64::class(table, float)?, width)),
+            Self::Thumb => Some((thumb::class(table, float)?, width)),
         }
     }
 }

@@ -20,5 +20,8 @@ fn tables_number_instructions_and_forms_as_the_assemblers_do() {
     let arm64: Vec<_> =
         vun_isa_arm64::Op::ALL.iter().map(|op| (op.mnemonic().to_owned(), op.forms().len())).collect();
     assert_eq!(read(Arch::X86_64), x86_64);
+    let thumb: Vec<_> =
+        vun_isa_thumb::Op::ALL.iter().map(|op| (op.mnemonic().to_owned(), op.forms().len())).collect();
     assert_eq!(read(Arch::Arm64), arm64);
+    assert_eq!(read(Arch::Thumb), thumb);
 }

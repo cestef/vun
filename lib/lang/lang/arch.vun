@@ -1,4 +1,2 @@
-//! Inline assembly and architecture intrinsics, under `arch.<name>`.
-
-Operands: type = _;
-asm: unsafe ($template: &[u8], operands: Operands) = _;
+//! The instruction sets a block of instructions is written in, each a namespace declaring its
+//! table (spec 07, section 6): `x86_64`, `arm64` and `thumb`.

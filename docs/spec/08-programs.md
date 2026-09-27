@@ -42,7 +42,14 @@ main := (sys: &mut std.os.System) -> std.os.Exit {
 start := ($main: (&mut System) -> Exit) -> type { struct {
     #[link.export("_start"), abi.naked]
     entry := () -> never {
-        unsafe { lang.arch.asm("mov rdi, rsp; and rsp, -16; call {boot}", .{ .boot = _boot }) }
+        unsafe {
+            lang.arch.x86_64.asm {
+                mov rdi, rsp
+                and rsp, -16
+                call {_boot}
+            };
+            lang.hint.unreachable()
+        }
     };
 
     _boot := (sp: *usize) -> never {

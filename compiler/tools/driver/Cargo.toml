@@ -85,6 +85,7 @@ vun-link-external = { workspace = true, optional = true }
 [dev-dependencies]
 # The generated assemblers, whose numbering sema's tables must follow.
 vun-isa-arm64.workspace = true
+vun-isa-thumb.workspace = true
 vun-isa-x86_64.workspace = true
 vun-harness.workspace = true
 vun-hash.workspace = true

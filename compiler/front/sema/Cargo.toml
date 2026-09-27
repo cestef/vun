@@ -27,6 +27,7 @@ vun-items.workspace = true
 vun-inline.workspace = true
 vun-isa.workspace = true
 vun-isa-arm64.workspace = true
+vun-isa-thumb.workspace = true
 vun-isa-x86_64.workspace = true
 vun-syntax.workspace = true
 num-bigint.workspace = true

@@ -180,8 +180,9 @@ language rules go in as proposed unless the user approves them.
    Sema now checks x86-64 and arm64 blocks through the shared `Blocks::fit` of the `vun-isa`
    crates (one matcher, the encoders' predicates; `Given::Mem` carries its writeback, and
    `[x1], 8` is tried as a post-index access); a driver test compares both `ArchTable`s with
-   `Op::ALL`. In progress: Thumb (a `lang.arch.thumb` table and `vun-isa-thumb` for stm32f4's
-   `mrs`/`cpsid`/`wfi`, then the string `lang.arch.asm` primitive removed); vun-sanitize step 5
+   `Op::ALL`. Thumb is done too (`lang.arch.thumb`, `vun-isa-thumb`, `Arch::Thumb`; stm32f4's
+   runtime masks interrupts and waits through blocks), and the string `lang.arch.asm` primitive
+   is removed. In progress: vun-sanitize step 5
    (runtime hooks over shadow memory, `check.unsupported` at link time), then redzones, the
    `Allocator`'s `check.by`, assembly checks and a native-versus-C trap test. Left, most severe
    first:

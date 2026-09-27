@@ -37,19 +37,28 @@ start := ($config: Config) -> type { struct {
     /// contended and nests by restoring the mask.
     #[link.export(std.sync.symbols.enter), panic.never]
     enter := () -> std.sync.Mask {
-        mut primask: usize = 0;
-        unsafe { lang.arch.asm("mrs {mask}, PRIMASK\ncpsid i", .{ .mask = &out primask }); }
-        unsafe std.sync.Mask.of(primask, true)
+        mut mask: usize = 0;
+        unsafe lang.arch.thumb.asm {
+            mrs {out mask}, primask
+            cpsid i
+        };
+        unsafe std.sync.Mask.of(mask, true)
     };
 
     #[link.export(std.sync.symbols.leave), panic.never]
     leave := (mask: std.sync.Mask) {
         if mask.bits() & 1 == 0 {
-            unsafe { lang.arch.asm("cpsie i", .{}); }
+            unsafe lang.arch.thumb.asm {
+                cpsie i
+            };
         }
     };
 
     /// Waits for an interrupt.
     #[link.export(std.task.symbols.sleep)]
-    sleep := () { unsafe { lang.arch.asm("wfi", .{}); } };
+    sleep := () {
+        unsafe lang.arch.thumb.asm {
+            wfi
+        };
+    };
 } };

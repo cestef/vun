@@ -1,0 +1,20 @@
+//! Blocks of Thumb instructions (spec 07, section 6): general and special registers, interrupt
+//! masks and barrier domains as words, as a board's runtime masks interrupts and waits.
+
+enter := () -> usize {
+    mut mask: usize = 0;
+    unsafe lang.arch.thumb.asm {
+        mrs {out mask}, primask
+        cpsid i
+        dsb sy
+    };
+    mask
+};
+
+leave := (mask: usize) {
+    unsafe lang.arch.thumb.asm {
+        msr primask, {in mask}
+        cpsie i
+        wfi
+    };
+};

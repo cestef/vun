@@ -8,6 +8,7 @@ mod check;
 mod given;
 mod read;
 mod table;
+mod thumb;
 mod x86_64;
 
 use vun_codec::{Decode, Encode};
@@ -26,10 +27,11 @@ pub type Block = vun_inline::Block<ExprId, ExprId, ExprId>;
 pub enum Arch {
     X86_64,
     Arm64,
+    Thumb,
 }
 
 impl Arch {
-    pub const ALL: &[Self] = &[Self::X86_64, Self::Arm64];
+    pub const ALL: &[Self] = &[Self::X86_64, Self::Arm64, Self::Thumb];
 
     /// The namespace declaring its table.
     #[must_use]
@@ -37,6 +39,7 @@ impl Arch {
         match self {
             Self::X86_64 => lang::arch::x86_64,
             Self::Arm64 => lang::arch::arm64,
+            Self::Thumb => lang::arch::thumb,
         }
     }
 
@@ -45,6 +48,7 @@ impl Arch {
         match self {
             Self::X86_64 => &x86_64::SHAPE,
             Self::Arm64 => &arm64::SHAPE,
+            Self::Thumb => &thumb::SHAPE,
         }
     }
 }
