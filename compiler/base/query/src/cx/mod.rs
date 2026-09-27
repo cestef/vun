@@ -3,17 +3,19 @@
 
 mod cycle;
 mod frame;
+mod guard;
 mod why;
 
 use std::cell::RefCell;
-use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use std::sync::atomic::Ordering;
 
-use vun_trace::{Activity, Timer, tracing};
+use vun_hash::{Map, Set};
+use vun_trace::{Activity, tracing};
 
 pub use self::cycle::Cycle;
 use self::frame::{Frame, Standing};
+use self::guard::{Entered, Verifying};
 use self::why::Why;
 use super::claim::Claim;
 use super::db::Db;
@@ -28,9 +30,9 @@ pub struct Cx<'db> {
     stack: RefCell<Vec<Frame>>,
     /// Where each memo computed on the stack is on it, so that reaching one again is found at
     /// once however deep the stack is.
-    computing: RefCell<HashMap<(TableId, Slot), usize, foldhash::fast::RandomState>>,
+    computing: RefCell<Map<(TableId, Slot), usize>>,
     /// The memos being verified on this thread.
-    verifying: RefCell<HashSet<(TableId, Slot), foldhash::fast::RandomState>>,
+    verifying: RefCell<Set<(TableId, Slot)>>,
 }
 
 impl<'db> Cx<'db> {
@@ -117,9 +119,9 @@ impl<'db> Cx<'db> {
         if self.verifying.borrow().contains(&(table.id, slot)) {
             return Err(Why::Cycle);
         }
-        self.verifying.borrow_mut().insert((table.id, slot));
+        let verifying = Verifying::start(self, (table.id, slot));
         let stale = self.stale(deps);
-        self.verifying.borrow_mut().remove(&(table.id, slot));
+        drop(verifying);
         if let Some(read) = stale {
             return Err(Why::Stale(read));
         }
@@ -163,10 +165,9 @@ impl<'db> Cx<'db> {
             Claim::Owner(owned) => Some(owned),
             Claim::Alone => None,
         };
-        let timer = self.enter(table.id, slot, why);
+        let entered = self.enter(table.id, slot, why);
         let value = Q::compute(self, &entry.key);
-        drop(timer);
-        let (reads, standing) = self.leave();
+        let (reads, standing) = entered.leave();
         let fingerprint = Q::interface(&value);
         if standing == Standing::Provisional {
             tracing::debug!(query = Q::NAME, "not kept: computed from a cycle value");
@@ -206,19 +207,19 @@ impl<'db> Cx<'db> {
         Some(cycle)
     }
 
-    /// Starts computing `slot` of `table`, timed until the timer returned is dropped.
+    /// Starts computing `slot` of `table`, timed until it is left.
     #[inline(never)]
-    fn enter(&self, table: TableId, slot: Slot, why: Why) -> Timer {
+    fn enter(&self, table: TableId, slot: Slot, why: Why) -> Entered<'_, 'db> {
         let any = self.db.any_table(table);
         tracing::debug!(query = any.name(), why = %why.show(self.db), "computing");
         tracing::trace!(query = any.name(), key = any.show(slot), "key");
         let mut stack = self.stack.borrow_mut();
         self.computing.borrow_mut().insert((table, slot), stack.len());
         stack.push(Frame { table, slot, reads: Vec::new(), head: None });
-        Activity::query(any.name()).start()
+        Entered::new(self, Activity::query(any.name()).start())
     }
 
-    /// Ends the computation [`Cx::enter`] started, returning what it read and whether its value
+    /// Ends the computation on top of the stack, returning what it read and whether its value
     /// stands: a cycle value read of a frame below it makes the frame reading it provisional too.
     #[inline(never)]
     fn leave(&self) -> (Box<[Dep]>, Standing) {
@@ -264,8 +265,8 @@ impl<'db> Cx<'db> {
             }
             reads.truncate(kept);
         } else {
-            let mut seen =
-                HashSet::with_capacity_and_hasher(reads.len(), foldhash::fast::RandomState::default());
+            let mut seen = Set::default();
+            seen.reserve(reads.len());
             reads.retain(|dep| seen.insert((dep.table, dep.slot)));
         }
         reads.into_boxed_slice()

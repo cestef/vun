@@ -247,3 +247,30 @@ fn a_cycle_across_threads_ends_without_waiting_forever() {
     });
     assert_eq!(db.get::<Ping>(&1), 0);
 }
+
+static FLAKY: Runs = Runs::new();
+
+/// Fails the first time it runs; a cycle through it would give `None`.
+struct Flaky;
+impl Query for Flaky {
+    const NAME: &'static str = "flaky";
+    type Key = u8;
+    type Value = Option<u8>;
+    fn compute(_: &Cx<'_>, key: &u8) -> Option<u8> {
+        FLAKY.tick();
+        assert!(FLAKY.count() > 1, "the first run fails");
+        Some(*key)
+    }
+    fn cycle(_: &Cx<'_>, _: &u8, _: &Cycle) -> Option<u8> {
+        None
+    }
+}
+
+#[test]
+fn a_panic_in_a_computation_leaves_no_frame_behind() {
+    let db = Db::new();
+    let cx = Cx::new(&db);
+    let caught = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| cx.get::<Flaky>(&7)));
+    assert!(caught.is_err());
+    assert_eq!(cx.get::<Flaky>(&7), Some(7), "computed again, not taken for a cycle");
+}
