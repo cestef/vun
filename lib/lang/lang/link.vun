@@ -3,4 +3,3 @@
 section: (name: &[u8]) -> Attribute(&[Place.decls]) = _;
 export: (symbol: &[u8]) -> Attribute(&[Place.decls]) = _;
 symbol: (name: &[u8]) -> Attribute(&[Place.decls]) = _;
-keep: Attribute(&[Place.decls]) = _;

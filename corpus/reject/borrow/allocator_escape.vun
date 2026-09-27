@@ -1,0 +1,8 @@
+//! A fixed allocator borrows its buffer, so it cannot outlive it (spec 05, section 4).
+
+..std.mem.alloc.{ Fixed };
+
+leak := () -> Fixed {
+    mut storage: [64]u8 = [0; 64];
+    Fixed.init(&mut storage) //~ borrow.escape
+};

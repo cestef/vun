@@ -9,4 +9,3 @@ use crate::Item;
 pub const section: Item = Item::new(&["lang", "link", "section"]);
 pub const export: Item = Item::new(&["lang", "link", "export"]);
 pub const symbol: Item = Item::new(&["lang", "link", "symbol"]);
-pub const keep: Item = Item::new(&["lang", "link", "keep"]);

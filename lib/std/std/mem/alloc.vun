@@ -14,26 +14,23 @@ Error := enum { exhausted };
 /// An allocator handing out the bytes of one buffer in order, freeing nothing until it is
 /// dropped as a whole.
 Fixed := struct {
-    _base: *u8,
-    _len: usize,
+    _storage: &mut [u8],
     _used: usize,
 
-    /// An allocator over `storage`, which must outlive what it hands out.
-    init := ($n: usize, storage: &mut [n]u8) -> Fixed {
-        base := unsafe std.ptr.to([n]u8, &storage.*).cast(u8);
-        .{ ._base = base, ._len = n, ._used = 0 }
-    };
+    /// An allocator over `storage`, which it borrows for as long as it lives.
+    init := (storage: &mut [u8]) -> Fixed { .{ ._storage = storage, ._used = 0 } };
 
     /// The next `size` bytes aligned to `align`, a power of two: what its `Allocator` impl's
     /// `alloc` gives.
     take := (self: &mut Fixed, size: usize, align: usize) -> Result(*u8, Error) {
-        base := self._base.address();
+        at := lang.mem.items_pointer(u8, &self._storage.*);
+        base := at.address();
         free := (base + self._used).sat(usize);
         aligned := ((free + align - 1).sat(usize) / align * align).sat(usize);
         start := (aligned - base).sat(usize);
-        if start + size > self._len { return .err(.exhausted); }
+        if start + size > self._storage.len() { return .err(.exhausted); }
         self._used = (start + size).sat(usize);
-        .ok(unsafe self._base.offset(start.sat(isize)))
+        .ok(unsafe at.offset(start.sat(isize)))
     };
 
     /// A place for a `T`, `uninit`, owned by the caller.

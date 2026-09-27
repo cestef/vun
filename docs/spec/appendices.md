@@ -17,7 +17,7 @@ declaration whose value is `_`.
 | `lang.lint` | `Lint`, `Cx`, `pattern`, `define` |
 | `lang.kind` | `linear`, `free`, `fixed`, `owns` |
 | `lang.layout` | `bits`, `c`, `tag`, `align`, `offset` |
-| `lang.link` | `section`, `keep`, `export`, `symbol`, `weak` |
+| `lang.link` | `section`, `export`, `symbol` |
 | `lang.abi` | `native`, `c`, `interrupt`, `naked` |
 | `lang.panic` | `Trap`, `trap`, `symbols`, `never`, `unreachable` |
 | `lang.stack` | `max`, `depth` |

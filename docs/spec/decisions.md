@@ -242,6 +242,8 @@
 | 246 | An integer wider than a register is a typed wide `AbiType` in LIR, not split by legalization into `I64` halves; each backend's call classifier places it by its convention (an even register pair under AAPCS64, two registers or memory under SysV) | accepted | 13 |
 | 247 | A package file's persisted key is typed (the package's content hash and the file's path within it), not `name@version/path` text, so a fork of one release keeps keys of its own | accepted | 12, 13 |
 | 248 | Network sources are `https://` only; `http://` is refused when a source is read, before any request. Downloads follow redirects themselves, each hop a parsed URL whose scheme is checked before it is requested, at most 8 hops. Local mirrors are `file` sources | accepted | 12 |
+| 249 | `lang.link.keep` is removed: a declaration kept past the linker's section collection is one it exports (`link.export`), as the vector table of spec 08 is, so `keep` was a second way with no reader | proposed | 08, appendices |
+| 250 | `std.mem.alloc.Fixed` borrows its buffer (`init := (storage: &mut [u8]) -> Fixed`), so the borrow checker keeps an allocator from outliving its bytes; it used to hold a raw pointer that nothing tied to the storage | proposed | 07 |
 
 Numbers 184 to 189 and 217 to 220 were never assigned.
 

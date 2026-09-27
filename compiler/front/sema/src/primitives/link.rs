@@ -6,11 +6,10 @@ pub enum Link {
     section,
     export,
     symbol,
-    keep,
 }
 impl Link {
     pub const NAMESPACE: vun_items::Item = vun_items::lang::link;
-    pub const ALL: &[Self] = &[Self::section, Self::export, Self::symbol, Self::keep];
+    pub const ALL: &[Self] = &[Self::section, Self::export, Self::symbol];
     /// The declaration's name.
     #[must_use]
     pub const fn name(self) -> &'static str {
@@ -18,7 +17,6 @@ impl Link {
             Self::section => "section",
             Self::export => "export",
             Self::symbol => "symbol",
-            Self::keep => "keep",
         }
     }
     /// The declaration.
@@ -28,7 +26,6 @@ impl Link {
             Self::section => vun_items::lang::link::section,
             Self::export => vun_items::lang::link::export,
             Self::symbol => vun_items::lang::link::symbol,
-            Self::keep => vun_items::lang::link::keep,
         }
     }
 }

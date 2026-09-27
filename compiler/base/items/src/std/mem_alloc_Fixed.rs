@@ -6,7 +6,7 @@
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
 use crate::Item;
-/// An allocator over `storage`, which must outlive what it hands out.
+/// An allocator over `storage`, which it borrows for as long as it lives.
 pub const init: Item = Item::new(&["std", "mem", "alloc", "Fixed", "init"]);
 /// The next `size` bytes aligned to `align`, a power of two: what its `Allocator` impl's
 /// `alloc` gives.
