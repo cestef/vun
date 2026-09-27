@@ -72,5 +72,8 @@ fn spans_read_back_only_within_their_text() {
     assert_eq!(context.read::<Span>(&bytes[1]), Err(Malformed::Invariant), "inside a character");
     assert_eq!(context.read::<Span>(&bytes[2]), Err(Malformed::Invariant), "past the text");
     let backwards = Writer::new().encode(&(3u32, 1u32));
-    assert_eq!(Context::new(vun_codec::Pools::default()).read::<ByteRange>(&backwards), Err(Malformed::Invariant));
+    assert_eq!(
+        Context::new(vun_codec::Pools::default()).read::<ByteRange>(&backwards),
+        Err(Malformed::Invariant)
+    );
 }

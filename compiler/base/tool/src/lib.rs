@@ -3,8 +3,9 @@
 //! Anything the toolchain runs as a separate program goes through [`Tool`], with declared inputs
 //! and outputs so the build can cache and sandbox it (spec 12, section 8).
 
+use std::borrow::Cow;
 use std::ffi::OsStr;
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 use std::process::Command;
 
 use vun_intern::Symbol;
@@ -19,15 +20,22 @@ pub enum Arg {
 }
 
 impl Arg {
-    /// The argument as the system passes it.
+    /// The argument as the system passes it. A relative path whose first name starts with `-`
+    /// is passed as `./` and the path, which no tool reads as an option.
     #[must_use]
-    pub fn os(&self) -> &OsStr {
+    pub fn os(&self) -> Cow<'_, OsStr> {
         match self {
-            Self::Text(text) => OsStr::new(text.as_str()),
-            Self::Path(path) => path.as_os_str(),
+            Self::Text(text) => Cow::Borrowed(OsStr::new(text.as_str())),
+            Self::Path(path) if path.as_os_str().as_encoded_bytes().starts_with(OPTION) => {
+                Cow::Owned(Path::new(Component::CurDir.as_os_str()).join(path).into_os_string())
+            }
+            Self::Path(path) => Cow::Borrowed(path.as_os_str()),
         }
     }
 }
+
+/// What starts an option on every tool's command line.
+const OPTION: &[u8] = b"-";
 
 impl From<&'static str> for Arg {
     fn from(text: &'static str) -> Self {
@@ -159,3 +167,6 @@ impl Tool for Executable {
         Ok(Output { code: out.status.code(), stdout: out.stdout, stderr: out.stderr })
     }
 }
+
+#[cfg(test)]
+mod tests;

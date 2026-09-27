@@ -192,7 +192,7 @@ pub trait SourceMap {
     }
 }
 
-/// A position as shown to users; displays as `path:line:col`.
+/// A position as shown to users; displays as `path:line:column`, the column in characters.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Location<'a> {
     pub path: &'a str,
@@ -201,7 +201,7 @@ pub struct Location<'a> {
 
 impl std::fmt::Display for Location<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}:{}:{}", self.path, self.at.line, self.at.col)
+        write!(f, "{}:{}:{}", self.path, self.at.line, self.at.chars)
     }
 }
 
