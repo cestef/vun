@@ -103,10 +103,11 @@ float semantics. Operations that trade precision for speed are explicit function
 `lang.float.mul_add(a, b, c)`, `v.reduce_add(.pairwise(8))` with a specified reduction tree. They
 are vectorizable and reproducible at once. There are no implicit int/float conversions.
 
-A float literal has the float type expected of it. At compile time a float is its format and its
-bits, and every operation computes its exact result and rounds it once, to nearest even, as the
-hardware does, for every format alike (`f16` included): compile time and run time agree
-(guarantee 4), bit for bit.
+A float literal has the float type expected of it, and `f64` where nothing expects one, at
+compile time and at run time alike: `nan := 0.0 / 0.0` is an `f64`. At compile time a float is its
+format and its bits, and every operation computes its exact result and rounds it once, to nearest
+even, as the hardware does, for every format alike (`f16` included): compile time and run time
+agree (guarantee 4), bit for bit.
 
 **NaN.** Every operation whose result is a NaN (arithmetic, `rem`, `mul_add`) gives the
 *canonical NaN* of its format: sign clear, exponent all ones, only the top fraction bit set

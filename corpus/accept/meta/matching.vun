@@ -1,0 +1,21 @@
+//! `match` runs at compile time as at run time: the first arm whose pattern takes the value and
+//! whose guard holds gives the value, the pattern's binders bound (spec 03, section 7).
+
+Shape := enum { circle(u8), rect(u8, u8), empty };
+
+/// A compile-time value computed by a `match` over a `$` parameter.
+area := ($s: Shape) -> u16 {
+    $(match s { .circle(r) => r * 3, .rect(w, h) if w == h => w * w, .rect(w, h) => w * h, .empty => 0 })
+};
+
+answer: u8 = 42;
+
+#[test]
+shapes := () {
+    $assert(area(.circle(2)) == 6);
+    $assert(area(.rect(3, 3)) == 9);
+    $assert(area(.rect(2, 5)) == 10);
+    $assert(area(.empty) == 0);
+    $assert($(match (1, 2, 3) { (_, .., last) => last }) == 3);
+    $assert($(match answer { 0..=9 => false, 10..100 => true, _ => false }));
+};

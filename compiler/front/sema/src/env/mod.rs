@@ -14,6 +14,7 @@ mod condition;
 mod eval;
 mod frame;
 mod lasting;
+mod matching;
 mod named;
 mod operator;
 mod passing;

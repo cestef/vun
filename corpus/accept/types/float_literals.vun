@@ -1,0 +1,15 @@
+//! A float literal nothing gives a float type is an `f64`, at compile time and at run time
+//! alike (spec 04, section 2).
+
+start := std.os.start(main);
+
+main := (sys: &mut std.os.System) -> std.os.Exit {
+    nan := 0.0 / 0.0;
+    if nan != nan and 1.5 > 1.0 { .ok } else { .code(1) }
+};
+
+#[test]
+defaults := () {
+    $assert(-0.0 >= 0.0);
+    $assert(0.1 + 0.2 != 0.3);
+};

@@ -69,6 +69,7 @@ impl Env<'_, '_> {
             }
             ExprKind::Prefix { op: TokenKind::Dollar, operand, .. } => self.splice(self.eval(*operand)?),
             ExprKind::Postfix { op: TokenKind::DotStar, operand } => self.reached(*operand),
+            ExprKind::Match { scrutinee, arms } => self.matching(*scrutinee, arms),
             // `!c` is the other condition; `-a` and `~a` are operators.
             ExprKind::Prefix { op: TokenKind::Bang, operand, .. } => {
                 self.decide(!self.holds(&self.eval(*operand)?)?)
@@ -235,8 +236,7 @@ impl Env<'_, '_> {
             Lit::Char(c) => Ok(Value::Int(Integer::from(i128::from(u32::from(*c))))),
             Lit::String(bytes) => Ok(Value::bytes(bytes)),
             Lit::Float(text) => {
-                let format =
-                    self.type_of(expr).and_then(|t| Format::of(&t)).ok_or(Unevaluated::Unsupported)?;
+                let format = self.type_of(expr).and_then(|t| Format::of(&t)).unwrap_or(Format::DEFAULT);
                 Binary::parse(text, format).map(Value::Float).ok_or(Unevaluated::Unsupported)
             }
         }

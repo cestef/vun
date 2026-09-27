@@ -14,6 +14,9 @@ pub enum Format {
 }
 
 impl Format {
+    /// The format of a float literal that nothing gives a float type (spec 04, section 2).
+    pub const DEFAULT: Self = Self::F64;
+
     /// The widths of the exponent and fraction fields.
     const fn fields(self) -> (u32, u32) {
         match self {
