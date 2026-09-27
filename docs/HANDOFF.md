@@ -61,7 +61,7 @@ Generated, never edited (edit the `.vun` source, run `cargo gen`): `front/gramma
 ```sh
 cargo fmt && cargo clippy --all-targets && cargo nextest run && cargo gen --check && cargo xtask lines
 cargo xtask corpus            # verdicts, coverage, what stops MIR most
-cargo xtask size              # the distributed binary against its budget (12 MiB)
+cargo xtask size              # the distributed binary against its budget (20 MiB)
 cargo run -q -p vun-cli -- run|build [--release] [--backend b] [--target t] <file>
 cargo run -q -p vun-cli -- debug tokens|cst|manifest|plan|hir|types|mir|layout|program|lir|code|frames|coverage|compare <file>
 cargo run -q -p vun-cli -- debug queries <file>   # what the saved queries hold, per query and pool
@@ -139,51 +139,51 @@ language rules go in as proposed unless the user approves them.
 
 ## 7. Next steps, in order
 
-0. **Review follow-ups (2026-09-27).** Four sessions reviewed the whole tree and fixed what
-   mattered (decisions 232 to 248; commits from `chore: fuzz joins the workspace` on). What is
-   left, most severe first:
-   - Settled by the user, to implement (decisions 245 to 248): an in-bounds rule for LIR
-     `Offset` in spec 13, which the C backend's pointer arithmetic
-     (`back/c/src/emit/func/inst.rs:87`) relies on; a typed wide `AbiType` instead of splitting
-     `u128` into `I64`s (`low/lir/src/legalize/mod.rs:153`); typed package file keys
-     (`driver/src/packages/locate.rs:49`); `https://` only, redirects followed hop by hop with
-     each scheme checked before the request (`tools/http/src/lib.rs`).
-   - Bugs: `==` through an `Eq` witness in a compile-time call reached from MIR does not
-     evaluate (`t == u8` in a `$t: type` function, read by a run-time constant), while
-     `lang.meta.same` does (sema `Env::binary`, TypeEq taking `&type`). It blocks the per-system
-     C library table: `std.os.libc.System { os, errno, Word, words, block, set_mask }`, a row
-     per system (`std.os.linux.c`, `std.os.macos.c`: `__error`, `u32` words, 1 and 3), found by
-     `current.os` in `$for r in systems`, the set constant `no_signals`; until then `std.os.libc`
-     holds glibc's facts only. Return, `break` and `continue` are untyped instead of `never`
-     (`typeck/infer.rs:54`); an empty range loses its bounds (`xs[10..10]` on 3 items gives
-     `[]`, `sema/ops.rs:106`); parts of linear values never move (`passes/places/transfer.rs:48`);
-     `OriginId` compares by relative identity but resolves absolutely, so reused memos show stale
-     positions after an edit above (`base/origin/src/lib.rs:34`); a `$assert` whose evaluation
-     is unsupported passes silently; `$for`/`$if` after `;` in an enum are taken as variant
-     generators (`hir/lower/members.rs:169`); `Mem::copy` per item can overlap
-     (`lower/func/memory.rs:143`); `stm32f4` has an empty vector table and no `init_memory`
-     (waits for plans declaring memory regions); `std.mem.alloc.Fixed.init` keeps a raw pointer
-     not tied to its storage (make it `unsafe` or hold a tied borrow).
-   - Debuggability and verifiers: MIR's `Unbuilt` drops the `Unevaluated` reason
-     (`mir/build/{aggregate.rs:20,place.rs:183}`); LIR and MIR verifiers miss def positions,
-     jumps to entry, duplicate switch cases, slot alignment, dead projections, `Yield` placement;
-     bodies rewritten by passes are never re-verified; persisted fingerprints use foldhash, not
-     `vun-hash`; a panic in a query's compute leaves stale stack entries (RAII guards); fuzz
-     targets for MIR, LIR and saved-query decoding, and a dictionary from the grammar tables.
-   - Design and refactors: `lang.float.ops` restates the float types in 24 impls (a family
-     constructor); each `errors.vun` entry restates its page path (derive it); `lang.link.keep`
-     is declared and unused; `vun-harness` (tools) is a dev-dependency of front crates (move it
-     to `compiler/base`); stub crates `render/sarif`, `tools/{fmt,probe,lsp}`, `low/abi`;
-     orphan functions on `Asm<Address>` in the native backend (an `AsmExt` trait); the
-     worklist solver written twice (places, borrows); `DiagId` and pass ids are strings;
-     `LinkerInfo` declares no output kinds; typeck's output maps listed three times.
+0. **Second round (2026-09-27): four sessions, coordinated.** Done (decisions 245 to 264):
+   the LIR in-bounds rule for `Offset` with a verifier check; `u128` as one typed wide
+   `AbiType`; calling conventions as data (`vun-abi`, `lang.target.Convention`, checked against
+   clang); typed package file keys (`PackageId::{Stored, Local}`); `https://` only through
+   `ureq`, redirects checked hop by hop (the size budget is 20 MiB, decision 252); positions
+   resolved through the files a compilation reads (`vun_origin::Resolve`); linear parts moving
+   on their own; overlapping copies; MIR/LIR structural verifiers after passes; `never` for
+   jumps; bounds keeping their endpoints; compile-time `match`, `$` evaluations after typing,
+   untyped float literals as `f64`; function values in fields (`row.f(x)`); the wasm backend
+   (`vun-backend-wasm`: objects `wasm-ld` links, a verifier running the specification's
+   validation, Ramsey's structuring with a dispatch loop for irreducible control, listings with
+   `vun debug code`); runtimes chosen by target (`std.os.Runtime` rows, WASI preview 1 in
+   `std.os.wasi`, `std.os` writing through `std.os.symbols.write`); `lang.link.library`;
+   artifacts named by their part (`vun_backend::Part`); shared and static libraries
+   (`std.build.Output`, `vun build --library`, the target's archiver); per-system C library
+   facts; `std.mem.alloc.Fixed` borrowing its buffer; `lang.link.keep` removed. This machine
+   runs WASI programs through `wasmtime` (its toolchain file names it), and every backend test
+   program runs on linux.x86_64, linux.arm64 and wasi.wasm32.
+   In progress: typed inline assembly (decision 258: the x86-64 table is data in
+   `lang.arch.x86_64` and generates the assembler's; arm64 next, then the block syntax, the MIR/LIR
+   instruction and the backends); `vun-regalloc` (linear scan with a checker, integration into
+   `vun-codegen`); `vun-fmt` (then the repository reformatted, and a check keeping it so);
+   `vun-lsp` after it. Left, most severe first:
+   - A Linux runtime calling the kernel (static programs without libc), which needs inline
+     assembly for `syscall`.
+   - `stm32f4` has an empty vector table and no `init_memory` (waits for plans declaring memory
+     regions); a `$` form reading a run-time local is silent (it should be an error); a staged
+     `$if` with declarations in both branches reports `names.duplicate`; range patterns over a
+     `$n: u8` binder report `int.does_not_fit`; an array literal of the wrong length is not
+     reported; `Env::borrow` of `&mut` gives `Runtime`.
+   - Verifiers and fuzzing: persisted fingerprints use foldhash, not `vun-hash`; a panic in a
+     query's compute leaves stale stack entries (RAII guards); fuzz targets for MIR, LIR and
+     saved-query decoding.
+   - Design and refactors: floats as one constructor (`lang.float.Float($format)`), so each
+     operator interface has one impl; each `errors.vun` entry restates its page path; move
+     `vun-harness` to `compiler/base`; stub crates `render/sarif`, `tools/probe`; the worklist
+     solver written twice (places, borrows); `DiagId` and pass ids are strings; typeck's output
+     maps listed three times; exit statuses above 125 are not portable (WASI rejects them).
 
 1. Backends (the user's focus): (a) arm64: done for linux.arm64 in the sixteenth session
    (decision 192); next `macos.arm64` (Mach-O in `vun-object`, Apple's AAPCS64 variant: narrow
    arguments extended by the caller, stack arguments packed, `x18` reserved), then riscv64 the
    same way (an assembler after `vun-asm-arm64`, `Arch`, `Isel`). This machine has
-   `qemu-riscv64` but no riscv64 linker or sysroot (Fedora packages none; `lld` or
-   `gcc-riscv64-linux-gnu` need the user to install them), and nothing to link or run Mach-O.
+   `qemu-riscv64`, `ld.lld` and `wasm-ld` (lld 21), but no riscv64 sysroot and nothing to run
+   Mach-O.
    (b) Native code quality, seventeenth session (decisions 200 to 203): slots promoted to SSA
    values after lowering (`Function::promote`), constants folded by the builder, branches falling
    into the next block, no self moves, `mov r/m8, imm8`, parameters and call arguments moved
@@ -221,8 +221,8 @@ language rules go in as proposed unless the user approves them.
    instead of BLAKE3 for symbols, interned values and origins, token and item lookups by table
    (10% more); `FileRef.path` a `Symbol`; the query engine's code shared across queries (the
    binary 470 KB smaller). `par_map`'s spawns measured: about 1 ms a run, not worth a pool.
-   The size budget is 12 MiB (decision 193, the user's choice): the dist binary is 11.7 MiB
-   at the end of the seventeenth session (316 KiB left);
+   The size budget is 20 MiB (decision 252, the user's choice, raised from 12 MiB): the dist
+   binary was 12.4 MiB with the https client of decision 248;
    the largest parts are `std` (1.7 MiB of text), rustls and ring (640 KiB, for `vun-http`) and
    per-query code (`Cx::get`, `Table::slot`, about 400 KiB). (b) Done in the
    seventeenth session (decision 197): saved queries load as used (`persist/store.rs`: a
