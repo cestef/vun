@@ -1,0 +1,12 @@
+//! A closure capturing by exclusive borrow changes its binding at compile time as at run time
+//! (spec 03, section 7).
+
+counter := () -> u32 {
+    mut n: u32 = 0;
+    add := [&mut n] (by: u32) { n += by; };
+    add(5);
+    add(2);
+    n
+};
+
+seven: Int(counter()..=counter()) = 7;
