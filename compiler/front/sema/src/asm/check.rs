@@ -12,8 +12,9 @@ use vun_isa::{Blocks, Fit, Fixed, Misfit, Why};
 use vun_origin::OriginId;
 
 use super::given::Given;
+use super::spell::Mnemonic;
 use super::table::{Flow, Table};
-use super::{Arch, Block, arm64, thumb, x86_64};
+use super::{Arch, Block, arm64, bracket, thumb, x86_64};
 
 /// A term of an address: a register, one times a scale, bytes, or a declaration's address.
 pub(super) enum Term {
@@ -50,9 +51,7 @@ impl Arch {
                 (Ok([terms]), Writeback::No) => x86_64::memory(terms),
                 _ => None,
             },
-            Self::Arm64 => arm64::memory(parts),
-            // No form of Thumb's table takes memory.
-            Self::Thumb => None,
+            Self::Arm64 | Self::Thumb => bracket::memory(parts),
         }
     }
 
@@ -114,13 +113,11 @@ impl Checker<'_> {
     ) -> Option<vun_inline::Inst<ExprId, ExprId, ExprId>> {
         let givens: Vec<_> = inst.operands.iter().map(|o| self.given(o, labels)).collect();
         let givens = givens.into_iter().collect::<Option<Vec<_>>>()?;
-        let Some(spellings) = self.table.spellings.get(&(inst.mnemonic, inst.suffix)) else {
-            let known = self.table.spellings.keys().filter(|(_, s)| s.is_none()).map(|(m, _)| m.as_str());
+        let mnemonic = Mnemonic { word: inst.mnemonic, parts: inst.suffixes.clone() };
+        let Some(spellings) = self.table.spellings.get(&mnemonic) else {
+            let known = self.table.spellings.keys().filter(|m| m.parts.is_empty()).map(|m| m.word.as_str());
             let near = vun_suggest::closest(inst.mnemonic.as_str(), known);
-            let written = match inst.suffix {
-                Some(suffix) => [inst.mnemonic.as_str(), suffix.as_str()].join("."),
-                None => inst.mnemonic.as_str().to_owned(),
-            };
+            let written = mnemonic.to_string();
             let msg = Msg::new().text("the architecture has no instruction ").code(written);
             let mut d = Diagnostic::error(errors::ASM_UNKNOWN_MNEMONIC, msg).at(inst.origin, None);
             if let Some(near) = near {
@@ -141,6 +138,7 @@ impl Checker<'_> {
                 let misfit = match self.arch.fit(spelling.op, spelling.form, spelling.fixed, givens) {
                     Ok(fit) => {
                         let (op, form, size, operands) = (spelling.op, spelling.form, fit.size, fit.operands);
+                        vun_trace::tracing::trace!(%mnemonic, op = op.0, form = form.0, size = size.0, "fitted");
                         return Some(vun_inline::Inst { op, form, size, operands, origin: inst.origin });
                     }
                     // Named by its place among the operands written.
@@ -149,6 +147,8 @@ impl Checker<'_> {
                     }
                     Err(misfit) => misfit,
                 };
+                let (op, form, fixed) = (spelling.op.0, spelling.form.0, spelling.fixed);
+                vun_trace::tracing::trace!(%mnemonic, op, form, ?fixed, ?misfit, "missed");
                 nearest = Some(nearest.map_or(misfit, |n| n.nearer(misfit)));
             }
         }

@@ -31,6 +31,8 @@ mod list;
 pub use list::*;
 mod branch;
 pub use branch::*;
+mod encoding;
+pub use encoding::*;
 mod b;
 mod bcond;
 mod bl;

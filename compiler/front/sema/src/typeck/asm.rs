@@ -13,6 +13,7 @@ use super::{Known, Stage, Typer};
 use crate::asm::{Arch, ArchTable, Checker};
 use crate::float::Format;
 use crate::layout::Shapes;
+use crate::target::TargetOf;
 use crate::ty::{TyKind, Value};
 
 impl Typer<'_, '_, '_> {
@@ -45,10 +46,13 @@ impl Typer<'_, '_, '_> {
         });
         let unit = Known { ty: TyKind::unit(), stage: Stage::Run };
         let Some((arch, table)) = self.arch(asm.arch).filter(|_| placed) else { return Some(unit) };
+        // A value's width is known only where the target's code is the block's: elsewhere the
+        // block is checked for its class of register alone.
+        let targeted = self.env().cx.get::<TargetOf>(&()).is_some_and(|t| t.isa == arch.namespace().symbol());
         let mut bound = BTreeMap::new();
         for &(flow, value) in &bindings {
             let Some(known) = flow.and(self.found.types.get(&value).copied()) else { continue };
-            let bytes = self.env().cx.get::<Shapes>(&known.ty).map(|s| s.layout.size);
+            let bytes = self.env().cx.get::<Shapes>(&known.ty).map(|s| s.layout.size).filter(|_| targeted);
             let float = Format::of(&known.ty).is_some();
             if let Some(register) = arch.register(&table, bytes, float) {
                 bound.insert(value, register);

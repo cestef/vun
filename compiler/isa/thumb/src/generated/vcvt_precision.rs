@@ -4,7 +4,7 @@ use crate::{reg, table};
 pub(super) const VCVT_PRECISION: [table::Form; 2usize] = [
     table::Form::new(
         0xeeb7_0ac0,
-        &[table::Sized::new(reg::Size::B64, 0x0000_0000).suffix(".f64.f32")],
+        &[table::Sized::new(reg::Size::B64, 0x0000_0000).qualifiers(&["f64", "f32"])],
         &[
             table::Arg::new(
                 table::Kind::Fpr(table::Width::Inst, table::Fields::D),
@@ -20,7 +20,7 @@ pub(super) const VCVT_PRECISION: [table::Form; 2usize] = [
     ),
     table::Form::new(
         0xeeb7_0bc0,
-        &[table::Sized::new(reg::Size::B32, 0x0000_0000).suffix(".f32.f64")],
+        &[table::Sized::new(reg::Size::B32, 0x0000_0000).qualifiers(&["f32", "f64"])],
         &[
             table::Arg::new(
                 table::Kind::Fpr(table::Width::Inst, table::Fields::D),

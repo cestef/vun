@@ -40,8 +40,8 @@ impl Parser<'_, '_, '_> {
         self.out.node(NodeKind::Asm, Anchor::Token(dot), mark);
     }
 
-    /// One line: its mnemonic, which anchors it, a suffix after a `.`, and its operands up to the
-    /// line's end.
+    /// One line: its mnemonic, which anchors it, a suffix after each `.` (`b.eq`, `vcvt.s32.f32`),
+    /// and its operands up to the line's end.
     fn instruction(&mut self) {
         let mark = self.out.mark();
         // A mnemonic may be spelled as a keyword: `and`, `or`.
@@ -52,8 +52,7 @@ impl Parser<'_, '_, '_> {
             return;
         }
         let mnemonic = self.bump();
-        // A condition after the mnemonic: `b.eq`.
-        if self.at(TokenKind::Dot) && self.nth(1) == TokenKind::Ident {
+        while self.at(TokenKind::Dot) && self.nth(1) == TokenKind::Ident {
             let (mark, dot) = (self.out.mark(), self.bump());
             self.leaf(NodeKind::Name);
             self.out.node(NodeKind::Suffix, Anchor::Token(dot), mark);

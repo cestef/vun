@@ -8,7 +8,7 @@ use vun_isa::imm::truncate;
 
 use crate::operand::{List, Mem, Operand};
 use crate::reg::Size;
-use crate::table::{Form, Imm, Kind, Op};
+use crate::table::{Encoding, Form, Imm, Kind, Op};
 
 /// The most operands an instruction takes.
 const MAX: usize = 4;
@@ -68,7 +68,10 @@ impl<S: Copy + fmt::Display> fmt::Display for Text<'_, S> {
         }
         f.write_str(sized.suffix)?;
         if form.name.is_none() && inst.op.qualified(form) {
-            f.write_str(".w")?;
+            write!(f, ".{}", Encoding::W.name())?;
+        }
+        for qualifier in sized.qualifiers {
+            write!(f, ".{qualifier}")?;
         }
         let mut first = true;
         for (arg, operand) in form.args.iter().zip(inst.operands()) {

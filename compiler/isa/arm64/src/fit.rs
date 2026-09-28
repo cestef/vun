@@ -7,7 +7,7 @@
 use vun_inline::{FormId, Line, OpId, SizeId};
 use vun_isa::imm::held;
 use vun_isa::word::Field;
-use vun_isa::{Blocks, Fit, Fixed, Given, Label, Misfit, Place, Via, Why, Writeback, positions};
+use vun_isa::{Blocks, Fit, Fixed, Given, Label, Misfit, Place, Via, Why, Writeback, positions, width};
 
 use crate::{Arm64, Barrier, Choice, Class, Kind, Mode, Op, Operand, Reg, Size, SysReg, Width};
 
@@ -140,21 +140,8 @@ pub(crate) fn fit<V: Clone, P: Clone, S: Copy>(
     let kinds = form.args.iter().map(|arg| arg.kind);
     let positions = positions(kinds, fixed, |k| matches!(k, Kind::Cond(_)), givens)?;
     // A width the spelling gives is the instruction's; its registers are checked against it.
-    let mut known = fixed.size;
-    for p in positions.iter().filter(|p| fixed.size.is_none() && p.kind.sized()) {
-        let Some(width) = p.given.size() else { continue };
-        if known.is_some_and(|k| k != width) {
-            return Err(p.misfit(Why::Kind));
-        }
-        known = Some(width);
-    }
-    let size = match known {
-        Some(width) => Size::of(width),
-        None if form.sizes.len() == 1 || !positions.iter().any(|p| p.kind.sized()) => {
-            form.sizes.first().ok_or(Misfit::Width)?.size
-        }
-        None => return Err(Misfit::Unsized),
-    };
+    let sizes = form.sizes.iter().map(|s| s.size.id());
+    let size = Size::of(width(&positions, fixed, Kind::sized, sizes)?);
     if form.at(size).is_none() {
         return Err(Misfit::Width);
     }

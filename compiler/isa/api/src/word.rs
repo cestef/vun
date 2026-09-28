@@ -49,23 +49,30 @@ impl<K: Copy> Arg<K> {
     }
 }
 
-/// A width a form is defined at, the bits it sets, and the suffix it gives the mnemonic.
+/// A width a form is defined at, the bits it sets, the suffix it gives the mnemonic (`ldrb`), and
+/// the qualifiers written after it, each after a `.` (`vcvt.s32.f32`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Sized<Z> {
     pub size: Z,
     pub bits: u32,
     pub suffix: &'static str,
+    pub qualifiers: &'static [&'static str],
 }
 
 impl<Z: Copy> Sized<Z> {
     #[must_use]
     pub const fn new(size: Z, bits: u32) -> Self {
-        Self { size, bits, suffix: "" }
+        Self { size, bits, suffix: "", qualifiers: &[] }
     }
 
     #[must_use]
     pub const fn suffix(self, suffix: &'static str) -> Self {
         Self { suffix, ..self }
+    }
+
+    #[must_use]
+    pub const fn qualifiers(self, qualifiers: &'static [&'static str]) -> Self {
+        Self { qualifiers, ..self }
     }
 }
 

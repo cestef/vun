@@ -8,4 +8,6 @@
 use crate::Item;
 pub const size: Item = Item::new(&["lang", "arch", "thumb", "Sized", "size"]);
 pub const bits: Item = Item::new(&["lang", "arch", "thumb", "Sized", "bits"]);
-pub const suffix: Item = Item::new(&["lang", "arch", "thumb", "Sized", "suffix"]);
+pub const qualifiers: Item = Item::new(
+    &["lang", "arch", "thumb", "Sized", "qualifiers"],
+);

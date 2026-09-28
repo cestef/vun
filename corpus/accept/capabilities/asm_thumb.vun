@@ -18,3 +18,43 @@ leave := (mask: usize) {
         wfi
     };
 };
+
+/// Memory as `[base, offset]`, written back before the access with `!` or after it, an index,
+/// and a width as the mnemonic's suffix (`ldrb`); `.w` asks for a 32-bit encoding.
+copy := (to: *u32, from: *u32) {
+    unsafe lang.arch.thumb.asm {
+        ldr r2, [{in from}]
+        str r2, [{in to}, 4]
+        ldr.w r3, [{in from}, 8]
+        ldr r3, [{in from}], 4
+        str r3, [{in to}, 8]!
+        ldrb r3, [{in from}, r2]
+    };
+};
+
+/// Floating-point registers named at each width (`s1`, `d1`), the types after the mnemonic's `.`,
+/// and the status register read into the flags.
+floats := () {
+    unsafe lang.arch.thumb.asm {
+        vmul.f64 d1, d2, d3
+        vcvt.s32.f32 s0, s1
+        vcvt.f64.f32 d0, s2
+        vmov s4, r0
+        vmrs apsr_nzcv, fpscr
+    };
+};
+
+/// A condition glued to the mnemonic (`bne`), and each form's encoding width after a `.`.
+countdown := (n: u32) -> u32 {
+    mut left: u32 = n;
+    unsafe lang.arch.thumb.asm {
+        'top:
+        subs {inout left}, {inout left}, 1
+        bne 'top
+        beq.w 'end
+        add.w r0, r1, r2
+        adds.n r0, r1, r2
+        'end:
+    };
+    left
+};

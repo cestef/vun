@@ -4,12 +4,12 @@
 
 _t := lang.arch.thumb;
 
-_float: &[_t.Sized] = &[.{ .size = .b32, .suffix = ".f32" }, .{ .size = .b64, .bits = 0x100, .suffix = ".f64" }];
+_float: &[_t.Sized] = &[.{ .size = .b32, .qualifiers = &["f32"] }, .{ .size = .b64, .bits = 0x100, .qualifiers = &["f64"] }];
 _plain: &[_t.Sized] = &[.{ .size = .b32 }, .{ .size = .b64, .bits = 0x100 }];
-_to_signed: &[_t.Sized] = &[.{ .size = .b32, .suffix = ".s32.f32" }, .{ .size = .b64, .bits = 0x100, .suffix = ".s32.f64" }];
-_to_unsigned: &[_t.Sized] = &[.{ .size = .b32, .suffix = ".u32.f32" }, .{ .size = .b64, .bits = 0x100, .suffix = ".u32.f64" }];
-_from_signed: &[_t.Sized] = &[.{ .size = .b32, .suffix = ".f32.s32" }, .{ .size = .b64, .bits = 0x100, .suffix = ".f64.s32" }];
-_from_unsigned: &[_t.Sized] = &[.{ .size = .b32, .suffix = ".f32.u32" }, .{ .size = .b64, .bits = 0x100, .suffix = ".f64.u32" }];
+_to_signed: &[_t.Sized] = &[.{ .size = .b32, .qualifiers = &["s32", "f32"] }, .{ .size = .b64, .bits = 0x100, .qualifiers = &["s32", "f64"] }];
+_to_unsigned: &[_t.Sized] = &[.{ .size = .b32, .qualifiers = &["u32", "f32"] }, .{ .size = .b64, .bits = 0x100, .qualifiers = &["u32", "f64"] }];
+_from_signed: &[_t.Sized] = &[.{ .size = .b32, .qualifiers = &["f32", "s32"] }, .{ .size = .b64, .bits = 0x100, .qualifiers = &["f64", "s32"] }];
+_from_unsigned: &[_t.Sized] = &[.{ .size = .b32, .qualifiers = &["f32", "u32"] }, .{ .size = .b64, .bits = 0x100, .qualifiers = &["f64", "u32"] }];
 
 _d_w: _t.Arg = .{ .kind = .fpr(.inst, .d), .access = .write };
 _d: _t.Arg = .{ .kind = .fpr(.inst, .d), .access = .read };
@@ -102,8 +102,8 @@ vcvt_from_unsigned := _t.Instruction{
 /// Conversions between the precisions: to double from single, and to single from double.
 vcvt_precision := _t.Instruction{
     .forms = &[
-        .{ .base = 0xeeb70ac0, .sizes = &[.{ .size = .b64, .suffix = ".f64.f32" }], .args = &[_d_w, _s_m] },
-        .{ .base = 0xeeb70bc0, .sizes = &[.{ .size = .b32, .suffix = ".f32.f64" }], .args = &[_d_w, _d_m] },
+        .{ .base = 0xeeb70ac0, .sizes = &[.{ .size = .b64, .qualifiers = &["f64", "f32"] }], .args = &[_d_w, _s_m] },
+        .{ .base = 0xeeb70bc0, .sizes = &[.{ .size = .b32, .qualifiers = &["f32", "f64"] }], .args = &[_d_w, _d_m] },
     ],
     .mnemonic = .some("vcvt"),
 };

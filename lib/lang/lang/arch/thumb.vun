@@ -28,6 +28,21 @@ V := enum {
     v16, v17, v18, v19, v20, v21, v22, v23, v24, v25, v26, v27, v28, v29, v30, v31,
 };
 
+/// The names of the floating-point registers at each width: `s{n}` at 32 bits, and at 64 bits
+/// `d{k}` for `v{2k}` alone.
+fp_names := .{
+    .b32 = .{
+        .v0 = "s0", .v1 = "s1", .v2 = "s2", .v3 = "s3", .v4 = "s4", .v5 = "s5", .v6 = "s6", .v7 = "s7",
+        .v8 = "s8", .v9 = "s9", .v10 = "s10", .v11 = "s11", .v12 = "s12", .v13 = "s13", .v14 = "s14", .v15 = "s15",
+        .v16 = "s16", .v17 = "s17", .v18 = "s18", .v19 = "s19", .v20 = "s20", .v21 = "s21", .v22 = "s22", .v23 = "s23",
+        .v24 = "s24", .v25 = "s25", .v26 = "s26", .v27 = "s27", .v28 = "s28", .v29 = "s29", .v30 = "s30", .v31 = "s31",
+    },
+    .b64 = .{
+        .v0 = "d0", .v2 = "d1", .v4 = "d2", .v6 = "d3", .v8 = "d4", .v10 = "d5", .v12 = "d6", .v14 = "d7",
+        .v16 = "d8", .v18 = "d9", .v20 = "d10", .v22 = "d11", .v24 = "d12", .v26 = "d13", .v28 = "d14", .v30 = "d15",
+    },
+};
+
 /// A special register, which `mrs` reads and `msr` writes: the interrupt masks and the control
 /// of the stack and privilege.
 Special := enum {
@@ -240,9 +255,13 @@ Arg := struct {
     access: Access,
 };
 
-/// A width a form is defined at, the bits it sets in the word, and the suffix it gives the
-/// mnemonic.
-Sized := struct { size: Size, bits: u32 = 0, suffix: &[u8] = "" };
+/// A width a form is defined at, the bits it sets in the word, and the qualifiers written after
+/// the mnemonic, each after a `.` (`vcvt.s32.f32`).
+Sized := struct { size: Size, bits: u32 = 0, qualifiers: &[&[u8]] = &[] };
+
+/// The qualifier naming the width of a form's encoding, after the mnemonic's `.`: `n` a 16-bit
+/// form, `w` a 32-bit one. A mnemonic written without it takes the first form its operands fit.
+Encoding := enum { n, w };
 
 /// A base word of the forms of a family: fixed, or its member's bits with these set.
 Word := enum { fixed(u32), \or(u32) };

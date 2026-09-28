@@ -14,6 +14,7 @@ use vun_query::{Cx, Query};
 
 use super::Arch;
 use super::given::Word;
+use super::spell::Mnemonic;
 use crate::env::{Env, ItemSite, Unevaluated};
 use crate::item::Site;
 use crate::member::Members as TypeMembers;
@@ -71,9 +72,6 @@ pub(super) struct Shape {
     /// The bits of each width.
     pub(super) bits: &'static [(Item, u32)],
 }
-
-/// A mnemonic as a line writes it: a word, and the suffix after a `.` (`b.eq`).
-pub type Mnemonic = (Symbol, Option<Symbol>);
 
 /// An architecture's table: its instructions in order, the names of its widths, conditions and
 /// register classes in declaration order, its words by the name a line writes, and the forms each

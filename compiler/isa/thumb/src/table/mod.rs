@@ -8,7 +8,7 @@ mod kind;
 mod mem;
 mod syntax;
 
-pub use crate::generated::{Branch, Fields, List, Mode, Op, Place, Regs};
+pub use crate::generated::{Branch, Encoding, Fields, List, Mode, Op, Place, Regs};
 pub use imm::Imm;
 pub use kind::{Kind, Width};
 pub use vun_isa::word::Access;
@@ -27,9 +27,14 @@ const NARROW: u32 = 0xffff;
 
 /// Whether a form's encoding is a halfword or two.
 pub trait Halves {
-    /// Whether it is 32 bits: its first halfword says so, as it starts `0b11101`, `0b11110` or
-    /// `0b11111`.
-    fn wide(&self) -> bool;
+    /// The width of its encoding: 32 bits where its first halfword says so, as it starts
+    /// `0b11101`, `0b11110` or `0b11111`.
+    fn encoding(&self) -> Encoding;
+
+    /// Whether it is 32 bits.
+    fn wide(&self) -> bool {
+        self.encoding() == Encoding::W
+    }
 
     /// Its bytes.
     fn bytes(&self) -> u64 {
@@ -38,8 +43,8 @@ pub trait Halves {
 }
 
 impl Halves for Form {
-    fn wide(&self) -> bool {
-        self.base > NARROW
+    fn encoding(&self) -> Encoding {
+        if self.base > NARROW { Encoding::W } else { Encoding::N }
     }
 }
 

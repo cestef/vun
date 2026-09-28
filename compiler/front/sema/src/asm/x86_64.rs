@@ -3,7 +3,7 @@
 //! `[base + index * scale + disp]`; which form takes which operands, `vun-isa-x86_64` says.
 
 use vun_hir::tree::ExprId;
-use vun_inline::{ClassId, CondId, Disp, Mem, RegRef};
+use vun_inline::{ClassId, Disp, Mem, RegRef};
 use vun_intern::Symbol;
 use vun_isa::Fixed;
 use vun_items::Item;
@@ -15,7 +15,8 @@ use vun_items::lang::{
 
 use super::check::Term;
 use super::given::{Addressing, Word};
-use super::table::{Flow, Mnemonic, Shape, Table, variants};
+use super::spell::{At, Mnemonic, Spelled};
+use super::table::{Flow, Shape, Table, variants};
 use crate::env::{Env, Unevaluated};
 use crate::target::Members;
 use crate::ty::Value;
@@ -82,16 +83,9 @@ fn is(kind: &Value, item: Item) -> bool {
 
 /// A form taking a condition is spelled with each condition as a suffix: `j` as `jz`, `jnz`, ...
 fn spellings(table: &Table, name: Symbol, form: &Value) -> Vec<(Mnemonic, Fixed)> {
-    if !kinds(form).iter().any(|k| is(k, kind::cond)) {
-        return vec![((name, None), Fixed::default())];
-    }
-    let conds = table.conds.iter().enumerate().filter_map(|(i, cond)| Some((u8::try_from(i).ok()?, cond)));
-    conds
-        .map(|(i, cond)| {
-            let spelled = Symbol::intern(&[name.as_str(), cond.as_str()].concat());
-            ((spelled, None), Fixed { cond: Some(CondId(i)), size: None })
-        })
-        .collect()
+    let spelled = Spelled::of(name);
+    if kinds(form).iter().any(|k| is(k, kind::cond)) { spelled.conds(table, At::Glued) } else { spelled }
+        .into_vec()
 }
 
 /// The class of register a value is held in: SSE for a float, general otherwise.

@@ -4,8 +4,7 @@
 //! memory as `[base]`, `[base, offset]` or `[base, index]`; which form takes which operands,
 //! `vun-isa-arm64` says.
 
-use vun_hir::tree::ExprId;
-use vun_inline::{ClassId, CondId, Disp, Mem, RegRef};
+use vun_inline::{ClassId, CondId, RegRef};
 use vun_intern::Symbol;
 use vun_isa::{ChoiceId, Fixed};
 use vun_items::Item;
@@ -17,9 +16,9 @@ use vun_items::lang::{
     arch_arm64_Sized as sized,
 };
 
-use super::check::Term;
-use super::given::{Addressing, Word};
-use super::table::{Flow, Mnemonic, Shape, Table, variants};
+use super::given::Word;
+use super::spell::{At, Mnemonic, Sizes, Spelled, Width};
+use super::table::{Flow, Shape, Table, variants};
 use crate::env::{Env, Unevaluated};
 use crate::target::Members;
 use crate::ty::Value;
@@ -103,10 +102,9 @@ fn registers(env: &Env<'_, '_>, table: &mut Table) -> Result<(), Unevaluated> {
     Ok(())
 }
 
-/// A member of a struct value, by its handle.
-fn field(value: &Value, item: Item) -> Option<Value> {
-    Members::of(value).ok()?.get(item).ok().cloned()
-}
+/// How a form's widths are read: each its suffix (`ldrb`).
+const SIZES: Sizes =
+    Sizes { of: form::sizes, size: sized::size, suffix: Some(sized::suffix), qualifiers: None };
 
 /// Whether `value` is the variant `item`, and its payload.
 fn variant(value: &Value, item: Item) -> Option<Vec<Value>> {
@@ -119,65 +117,17 @@ fn variant(value: &Value, item: Item) -> Option<Vec<Value>> {
 /// A form is spelled as its mnemonic, or with the suffix of an access width (`ldrb`), and one
 /// whose condition is a suffix with each condition after a `.` (`b.eq`).
 fn spellings(table: &Table, name: Symbol, form: &Value) -> Vec<(Mnemonic, Fixed)> {
-    let sizes = field(form, form::sizes).and_then(Value::items).unwrap_or_default();
-    let mut widths = Vec::new();
-    for s in &sizes {
-        let suffix = field(s, sized::suffix).and_then(|t| t.text()).unwrap_or_default();
-        let width = field(s, sized::size).and_then(|v| match v {
-            Value::Variant { name, .. } => table.size(name),
-            _ => None,
-        });
-        let spelled = if suffix.is_empty() {
-            (name, Fixed::default())
-        } else {
-            (Symbol::intern(&[name.as_str(), &suffix].concat()), Fixed { cond: None, size: width })
-        };
-        if !widths.contains(&spelled) {
-            widths.push(spelled);
-        }
-    }
-    if widths.is_empty() {
-        widths.push((name, Fixed::default()));
-    }
+    let spelled = Spelled::of(name).sized(&Width::of(table, form, &SIZES));
+    let field = |value: &Value, item: Item| Members::of(value).ok()?.get(item).ok().cloned();
     let args = field(form, form::args).and_then(Value::items).unwrap_or_default();
     let suffixed = args.iter().filter_map(|a| field(a, arg::kind)).any(|k| {
         variant(&k, kind::cond)
             .is_some_and(|p| p.first().is_some_and(|c| variant(c, condition::suffix).is_some()))
     });
-    let conds: Vec<Option<(u8, Symbol)>> = if suffixed {
-        table.conds.iter().enumerate().filter_map(|(i, &c)| Some(Some((u8::try_from(i).ok()?, c)))).collect()
-    } else {
-        vec![None]
-    };
-    let mut out = Vec::new();
-    for &(spelled, fixed) in &widths {
-        for cond in &conds {
-            out.push(match cond {
-                Some((i, c)) => ((spelled, Some(*c)), Fixed { cond: Some(CondId(*i)), ..fixed }),
-                None => ((spelled, None), fixed),
-            });
-        }
-    }
-    out
+    if suffixed { spelled.conds(table, At::Dotted) } else { spelled }.into_vec()
 }
 
 /// The class of register a value is held in: floating-point for a float, general otherwise.
 pub(super) fn class(table: &Table, float: bool) -> Option<ClassId> {
     table.class(if float { class::fp } else { class::general })
-}
-
-/// Memory from its parts: a base, then an offset in bytes, an index register or a symbol's low
-/// bits.
-pub(super) fn memory(parts: Vec<Vec<Term>>) -> Option<Mem<ExprId, ExprId, ExprId>> {
-    let mut parts = parts.into_iter().map(|p| <[Term; 1]>::try_from(p).ok().map(|[t]| t));
-    let Some(Term::Reg(base)) = parts.next()? else { return None };
-    let base = Some(base.base()?);
-    let mem = match parts.next() {
-        None => Mem { base, index: None, disp: Disp::Bytes(0) },
-        Some(Some(Term::Bytes(n))) => Mem { base, index: None, disp: Disp::Bytes(n) },
-        Some(Some(Term::Reg(index))) => Mem { base, index: Some((index.base()?, 1)), disp: Disp::Bytes(0) },
-        Some(Some(Term::Symbol(s))) => Mem { base, index: None, disp: Disp::Symbol(s, 0) },
-        Some(_) => return None,
-    };
-    parts.next().is_none().then_some(mem)
 }

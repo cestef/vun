@@ -220,7 +220,7 @@ const ASM: &[NodeSlot] = &[
     NodeSlot::new(NodeField::Lines, Count::Many, None),
 ];
 const LINE: &[NodeSlot] = &[
-    NodeSlot::new(NodeField::Suffix, Count::Optional, Some(NodeKind::Suffix)),
+    NodeSlot::new(NodeField::Suffix, Count::Many, Some(NodeKind::Suffix)),
     NodeSlot::new(NodeField::Operands, Count::Many, None),
 ];
 const SUFFIX: &[NodeSlot] = &[

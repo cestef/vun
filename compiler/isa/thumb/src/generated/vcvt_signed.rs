@@ -6,8 +6,8 @@ pub(super) const VCVT_SIGNED: [table::Form; 1usize] = [
     table::Form::new(
         0xeebd_0ac0,
         &[
-            table::Sized::new(reg::Size::B32, 0x0000_0000).suffix(".s32.f32"),
-            table::Sized::new(reg::Size::B64, 0x0000_0100).suffix(".s32.f64"),
+            table::Sized::new(reg::Size::B32, 0x0000_0000).qualifiers(&["s32", "f32"]),
+            table::Sized::new(reg::Size::B64, 0x0000_0100).qualifiers(&["s32", "f64"]),
         ],
         &[
             table::Arg::new(

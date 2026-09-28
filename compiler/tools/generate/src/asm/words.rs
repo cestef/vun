@@ -29,11 +29,16 @@ pub(super) fn form(c: &Crate, record: &Literal<'_>) -> Option<TokenStream> {
     let base = word(field("base")?)?;
     let sizes = field("sizes")?.as_list()?.iter().map(|s| {
         let (size, bits) = (c.variant("Size", s.get("size")?)?, word(s.get("bits")?)?);
-        let sized = quote! { table::Sized::new(#size, #bits) };
-        Some(match s.get("suffix")?.as_str()? {
-            "" => sized,
-            suffix => quote! { #sized.suffix(#suffix) },
-        })
+        let mut sized = quote! { table::Sized::new(#size, #bits) };
+        if let Some(suffix) = s.get("suffix").and_then(Literal::as_str).filter(|s| !s.is_empty()) {
+            sized = quote! { #sized.suffix(#suffix) };
+        }
+        let qualifiers = s.get("qualifiers").and_then(Literal::as_list).unwrap_or_default();
+        if !qualifiers.is_empty() {
+            let qualifiers = qualifiers.iter().map(Literal::as_str).collect::<Option<Vec<_>>>()?;
+            sized = quote! { #sized.qualifiers(&[#(#qualifiers),*]) };
+        }
+        Some(sized)
     });
     let sizes = sizes.collect::<Option<Vec<_>>>()?;
     let args = field("args")?.as_list()?.iter().map(|a| {

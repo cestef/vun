@@ -1,10 +1,13 @@
 //! What a block of Thumb instructions reports (spec 07, section 6): a choice of another kind, a
-//! register of another class, and an instruction the table lacks.
+//! register of another class, an instruction the table lacks, types it does not spell, and an
+//! offset no 16-bit form holds.
 
 lines := () {
     unsafe lang.arch.thumb.asm {
         cpsid sy //~ asm.no_form
         msr r0, primask //~ asm.register_class
         yield //~ asm.unknown_mnemonic
+        vadd.f16 s0, s1, s2 //~ asm.unknown_mnemonic
+        ldr.n r0, [r1, 256] //~ asm.no_form
     };
 };

@@ -25,6 +25,9 @@ pub const Reg: Item = Item::new(&["lang", "arch", "thumb", "Reg"]);
 /// A floating-point register, by its number as a single-precision one: `v{2k}` is also the
 /// double-precision `d{k}`, which overlaps `s{2k}` and `s{2k+1}`.
 pub const V: Item = Item::new(&["lang", "arch", "thumb", "V"]);
+/// The names of the floating-point registers at each width: `s{n}` at 32 bits, and at 64 bits
+/// `d{k}` for `v{2k}` alone.
+pub const fp_names: Item = Item::new(&["lang", "arch", "thumb", "fp_names"]);
 /// A special register, which `mrs` reads and `msr` writes: the interrupt masks and the control
 /// of the stack and privilege.
 pub const Special: Item = Item::new(&["lang", "arch", "thumb", "Special"]);
@@ -70,9 +73,12 @@ pub const Flow: Item = Item::new(&["lang", "arch", "thumb", "Flow"]);
 /// An operand position: what it takes, the bit its field starts at, and what the form does with
 /// it.
 pub const Arg: Item = Item::new(&["lang", "arch", "thumb", "Arg"]);
-/// A width a form is defined at, the bits it sets in the word, and the suffix it gives the
-/// mnemonic.
+/// A width a form is defined at, the bits it sets in the word, and the qualifiers written after
+/// the mnemonic, each after a `.` (`vcvt.s32.f32`).
 pub const Sized: Item = Item::new(&["lang", "arch", "thumb", "Sized"]);
+/// The qualifier naming the width of a form's encoding, after the mnemonic's `.`: `n` a 16-bit
+/// form, `w` a 32-bit one. A mnemonic written without it takes the first form its operands fit.
+pub const Encoding: Item = Item::new(&["lang", "arch", "thumb", "Encoding"]);
 /// A base word of the forms of a family: fixed, or its member's bits with these set.
 pub const Word: Item = Item::new(&["lang", "arch", "thumb", "Word"]);
 /// One form of an instruction, its base word of type `W`: the widths it is defined at, its

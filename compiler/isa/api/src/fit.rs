@@ -169,3 +169,42 @@ pub fn positions<K: Copy, V: Clone, P: Clone, S: Clone>(
     }
     Ok(positions)
 }
+
+/// The width of an instruction over `positions`, whose form is `defined` at these widths in
+/// order: the one its spelling fixes, else the one the operands at its `sized` positions agree
+/// on, else its first where it has one, where no position is sized, or where a value is bound at
+/// a sized position with no known width (its type's width is the target's, and the target is
+/// another architecture's), as nothing then says the width is another.
+///
+/// # Errors
+/// `Misfit::Operand` for operands giving two widths, `Misfit::Width` for a form defined at none,
+/// and `Misfit::Unsized` where several widths remain and no operand chooses one.
+pub fn width<K: Copy, V, P, S>(
+    positions: &[Position<K, V, P, S>],
+    fixed: Fixed,
+    sized: impl Fn(K) -> bool,
+    mut defined: impl Iterator<Item = SizeId> + Clone,
+) -> Result<SizeId, Misfit> {
+    if let Some(size) = fixed.size {
+        return Ok(size);
+    }
+    let mut known = None;
+    for p in positions.iter().filter(|p| sized(p.kind)) {
+        let Some(width) = p.given.size() else { continue };
+        if known.is_some_and(|k| k != width) {
+            return Err(p.misfit(Why::Kind));
+        }
+        known = Some(width);
+    }
+    if let Some(width) = known {
+        return Ok(width);
+    }
+    let unknowable =
+        positions.iter().any(|p| sized(p.kind) && matches!(p.given, Given::Bound { size: None, .. }));
+    let asked = positions.iter().any(|p| sized(p.kind));
+    if defined.clone().count() == 1 || !asked || unknowable {
+        defined.next().ok_or(Misfit::Width)
+    } else {
+        Err(Misfit::Unsized)
+    }
+}

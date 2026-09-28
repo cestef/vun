@@ -173,7 +173,7 @@ NodeKind := .{
         .\defer(.one(.body)),
         .multiline_string(.many(.lines)),
         .asm(.one(.target), .many(.lines)),
-        .line(.optional(.suffix), .many(.operands)),
+        .line(.many(.suffix), .many(.operands)),
         .suffix(.one(.name)),
         .bound(.optional(.flow), .optional(.register), .one(.value)),
         .memory(.many(.parts), .optional(.writeback)),

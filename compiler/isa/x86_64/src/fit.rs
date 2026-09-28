@@ -5,7 +5,7 @@
 
 use vun_inline::{FormId, OpId, SizeId};
 use vun_isa::imm::held;
-use vun_isa::{Blocks, Fit, Fixed, Given, Label, Misfit, Why, Writeback, positions};
+use vun_isa::{Blocks, Fit, Fixed, Given, Label, Misfit, Why, Writeback, positions, width};
 
 use crate::{Base, Cc, Class, Kind, Mem, Op, Operand, Reg, Size, X86_64, Xmm};
 
@@ -84,22 +84,8 @@ pub(crate) fn fit<V: Clone, P: Clone, S: Copy>(
 ) -> Result<Fit<V, P, S>, Misfit> {
     let form = Op::entry(op, form).1;
     let positions = positions(form.kinds(), fixed, |k| k == Kind::Cond, givens)?;
-    let mut known = None;
-    for p in positions.iter().filter(|p| p.kind.sized()) {
-        let Some(width) = p.given.size() else { continue };
-        if known.is_some_and(|k| k != width) {
-            return Err(p.misfit(Why::Kind));
-        }
-        known = Some(width);
-    }
-    let mut sizes = Size::ALL.into_iter().filter(|&s| form.sizes.contains(s));
-    let size = match known.or(fixed.size) {
-        Some(width) => Size::of(width),
-        None if sizes.clone().count() == 1 || !positions.iter().any(|p| p.kind.sized()) => {
-            sizes.next().ok_or(Misfit::Width)?
-        }
-        None => return Err(Misfit::Unsized),
-    };
+    let sizes = Size::ALL.into_iter().filter(|&s| form.sizes.contains(s)).map(Size::id);
+    let size = Size::of(width(&positions, fixed, Kind::sized, sizes)?);
     if !form.sizes.contains(size) {
         return Err(Misfit::Width);
     }

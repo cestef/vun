@@ -29,7 +29,7 @@ const CRATE: Crate = Crate {
     widths: &[],
     enums: &[
         "Size", "V", "Special", "Status", "Mask", "Barrier", "Regs", "Place", "Mode", "Fields", "List",
-        "Branch",
+        "Branch", "Encoding",
     ],
     payloads: &[
         ("Kind", "gpr", &["Regs"]),

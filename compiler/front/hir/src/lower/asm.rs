@@ -19,10 +19,11 @@ impl Lower<'_, '_> {
             return AsmEntry::Label { name: self.label(n), origin: self.origin(n) };
         }
         let f = self.fields(n);
-        let suffix = f.one(NodeField::Suffix).and_then(|s| self.fields(s).one(NodeField::Name));
+        let names: Vec<NodeId> =
+            f.get(NodeField::Suffix).iter().filter_map(|&s| self.fields(s).one(NodeField::Name)).collect();
         AsmEntry::Inst(Inst {
             mnemonic: self.symbol(n),
-            suffix: suffix.map(|s| self.symbol(s)),
+            suffixes: names.into_iter().map(|s| self.symbol(s)).collect(),
             operands: f.get(NodeField::Operands).iter().map(|&o| self.asm_operand(o)).collect(),
             origin: self.origin(n),
         })

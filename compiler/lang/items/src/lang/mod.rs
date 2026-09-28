@@ -51,6 +51,7 @@ pub mod arch_thumb_Branch;
 pub mod arch_thumb_Choice;
 pub mod arch_thumb_Class;
 pub mod arch_thumb_Cond;
+pub mod arch_thumb_Encoding;
 pub mod arch_thumb_Family;
 pub mod arch_thumb_Fields;
 pub mod arch_thumb_Flow;

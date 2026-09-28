@@ -11,6 +11,7 @@ pub use read::{Read, Unread, Variants};
 use std::sync::Arc;
 
 use vun_codec::{Decode, Encode};
+use vun_intern::Symbol;
 use vun_query::{Cx, Query};
 use vun_target::{Endian, TargetSpec};
 
@@ -39,6 +40,8 @@ pub struct Target {
     pub endian: Endian,
     /// The width of an address, in bits.
     pub address_bits: u32,
+    /// The instruction set its code is written in, which a block of instructions names.
+    pub isa: Symbol,
     /// The value of its declaration: `lang.target.current`.
     pub declared: Value,
 }
@@ -50,6 +53,7 @@ impl Target {
         Self {
             endian: target.spec.endian,
             address_bits: target.spec.pointer_bits,
+            isa: target.spec.isa,
             declared: target.value.clone(),
         }
     }

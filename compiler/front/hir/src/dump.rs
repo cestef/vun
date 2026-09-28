@@ -78,8 +78,12 @@ impl Printer<'_> {
             match entry {
                 AsmEntry::Label { name, origin } => self.line(*origin, &format!("Label '{name}"), |_| {}),
                 AsmEntry::Inst(inst) => {
-                    let suffix = inst.suffix.map(|s| format!(".{s}")).unwrap_or_default();
-                    self.line(inst.origin, &format!("Inst {}{suffix}", inst.mnemonic), |p| {
+                    let mut line = format!("Inst {}", inst.mnemonic);
+                    for suffix in &inst.suffixes {
+                        line.push('.');
+                        line.push_str(suffix.as_str());
+                    }
+                    self.line(inst.origin, &line, |p| {
                         inst.operands.iter().for_each(|o| p.operand(hir, o));
                     });
                 }

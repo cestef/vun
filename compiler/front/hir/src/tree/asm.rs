@@ -24,11 +24,11 @@ pub enum AsmEntry {
     Inst(Inst),
 }
 
-/// One line: `mnemonic.suffix operands`.
+/// One line: `mnemonic.suffix... operands`.
 pub struct Inst {
     pub mnemonic: Symbol,
-    /// The condition after a `.`: `b.eq`.
-    pub suffix: Option<Symbol>,
+    /// What follows each `.`: a condition (`b.eq`), types (`vcvt.s32.f32`), a width (`add.w`).
+    pub suffixes: Vec<Symbol>,
     pub operands: Vec<Operand>,
     pub origin: OriginId,
 }

@@ -1777,6 +1777,7 @@ dependencies = [
  "vun-suggest",
  "vun-syntax",
  "vun-target",
+ "vun-trace",
 ]
 
 [[package]]

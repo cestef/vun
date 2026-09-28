@@ -4,9 +4,11 @@
 //! not say, how an operand of each kind is written, each architecture tells here.
 
 mod arm64;
+mod bracket;
 mod check;
 mod given;
 mod read;
+mod spell;
 mod table;
 mod thumb;
 mod x86_64;
@@ -17,7 +19,8 @@ use vun_items::{Item, lang};
 
 pub(crate) use check::Checker;
 pub use given::Word;
-pub use table::{ArchTable, Flow, Mnemonic, Op, Spelling, Table};
+pub use spell::Mnemonic;
+pub use table::{ArchTable, Flow, Op, Spelling, Table};
 
 /// A block as sema checked it: each operand's binding is the expression it binds.
 pub type Block = vun_inline::Block<ExprId, ExprId, ExprId>;
