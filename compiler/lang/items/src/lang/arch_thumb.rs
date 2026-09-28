@@ -64,6 +64,9 @@ pub const Fields: Item = Item::new(&["lang", "arch", "thumb", "Fields"]);
 pub const List: Item = Item::new(&["lang", "arch", "thumb", "List"]);
 /// A branch's field, and the relocation that fills it with a symbol's address.
 pub const Branch: Item = Item::new(&["lang", "arch", "thumb", "Branch"]);
+/// The instructions an `it` makes conditional after the first: none, or one more holding on the
+/// same condition (`t`) or on its opposite (`e`).
+pub const Then: Item = Item::new(&["lang", "arch", "thumb", "Then"]);
 /// What an operand position takes.
 pub const Kind: Item = Item::new(&["lang", "arch", "thumb", "Kind"]);
 /// What a form does with an operand, or with the flags.

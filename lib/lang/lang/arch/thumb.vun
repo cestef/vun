@@ -200,6 +200,10 @@ Branch := enum {
     call,
 };
 
+/// The instructions an `it` makes conditional after the first: none, or one more holding on the
+/// same condition (`t`) or on its opposite (`e`).
+Then := enum { none, t, e };
+
 /// What an operand position takes.
 Kind := enum {
     gpr(Regs),
@@ -214,6 +218,9 @@ Kind := enum {
     mem(Mode, Width),
     /// A condition, as the mnemonic's suffix.
     cond,
+    /// The condition an `it` block's first instruction holds on, written as an operand, in
+    /// `firstcond` at 4, and those of the instructions after it, in the mask below it.
+    then(Then),
     /// A label, or a symbol the linker places.
     target(Branch),
     /// The low or high 16 bits of a symbol's address: `movw`, `movt`.

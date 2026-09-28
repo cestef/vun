@@ -18,6 +18,9 @@ pub const shifted: Item = Item::new(&["lang", "arch", "thumb", "Kind", "shifted"
 pub const mem: Item = Item::new(&["lang", "arch", "thumb", "Kind", "mem"]);
 /// A condition, as the mnemonic's suffix.
 pub const cond: Item = Item::new(&["lang", "arch", "thumb", "Kind", "cond"]);
+/// The condition an `it` block's first instruction holds on, written as an operand, in
+/// `firstcond` at 4, and those of the instructions after it, in the mask below it.
+pub const then: Item = Item::new(&["lang", "arch", "thumb", "Kind", "then"]);
 /// A label, or a symbol the linker places.
 pub const target: Item = Item::new(&["lang", "arch", "thumb", "Kind", "target"]);
 /// The low or high 16 bits of a symbol's address: `movw`, `movt`.

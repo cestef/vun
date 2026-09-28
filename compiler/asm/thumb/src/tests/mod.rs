@@ -9,7 +9,7 @@ mod operands;
 use std::io::Write;
 use std::process::{Command, Stdio};
 
-use vun_isa_thumb::{Form, Halves, Kind, Op, Operand, Size};
+use vun_isa_thumb::{Cc, Form, Halves, Kind, Op, Operand, Size, Then};
 
 use crate::{Asm, Emit};
 use operands::candidates;
@@ -68,6 +68,23 @@ fn assemble(text: &str) -> Option<Result<Vec<Vec<u8>>, String>> {
     Some(Ok(encodings))
 }
 
+/// The instructions an `it` form makes conditional, as `nop`s holding on each condition: the
+/// assembler refuses a block left short.
+fn conditional(form: &Form, operands: &[Operand<Sym>]) -> Vec<(String, Vec<u8>)> {
+    let (Some(Kind::Then(then)), Some(&Operand::Cond(cc))) = (form.kinds().next(), operands.first()) else {
+        return Vec::new();
+    };
+    let later: &[Cc] = match then {
+        Then::None => &[],
+        Then::T => &[cc],
+        Then::E => &[cc.not()],
+    };
+    let mut nop = Asm::<Sym>::listed();
+    nop.emit(Op::Nop, Size::B32, &[]);
+    let bytes = nop.finish().expect("no label").bytes;
+    [cc].iter().chain(later).map(|c| (format!("nop{c}"), bytes.clone())).collect()
+}
+
 #[test]
 fn every_form_assembles_as_llvm_does() {
     let mut lines = Vec::new();
@@ -81,6 +98,7 @@ fn every_form_assembles_as_llvm_does() {
                     let inst = vun_isa_thumb::Inst::new(op, sized.size, &operands);
                     assert_eq!(code.bytes.len() as u64, form.bytes(), "{}", inst.by(form));
                     lines.push((inst.by(form).to_string(), code.bytes));
+                    lines.extend(conditional(form, &operands));
                 }
             }
         }

@@ -70,6 +70,7 @@ pub mod arch_thumb_Size;
 pub mod arch_thumb_Sized;
 pub mod arch_thumb_Special;
 pub mod arch_thumb_Status;
+pub mod arch_thumb_Then;
 pub mod arch_thumb_V;
 pub mod arch_thumb_Width;
 pub mod arch_thumb_Word;

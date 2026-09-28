@@ -61,3 +61,15 @@ bkpt := _t.Instruction{ .forms = &[
     .{ .base = 0xbe00, .args = &[], .flow = .ends },
     .{ .base = 0xbe00, .args = &[_u8], .flow = .ends },
 ] };
+
+/// Makes the next instruction conditional (`it`), or the next two, the second on the same
+/// condition (`itt`) or on its opposite (`ite`): their encodings are the unconditional ones.
+it := _t.Instruction{ .forms = &[
+    .{ .base = 0xbf00, .args = &[.{ .kind = .then(.none), .access = .read }], .flags = .some(.read) },
+] };
+itt := _t.Instruction{ .forms = &[
+    .{ .base = 0xbf00, .args = &[.{ .kind = .then(.t), .access = .read }], .flags = .some(.read) },
+] };
+ite := _t.Instruction{ .forms = &[
+    .{ .base = 0xbf00, .args = &[.{ .kind = .then(.e), .access = .read }], .flags = .some(.read) },
+] };

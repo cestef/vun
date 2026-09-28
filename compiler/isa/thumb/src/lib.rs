@@ -27,7 +27,7 @@ pub use operand::{List, Mem, Operand, Shift, ShiftKind};
 pub use reg::{Barrier, Cc, Choice, Class, Mask, Reg, Size, Special, Status, V, VName};
 pub use table::{
     Access, Arg, Branch, Encoding, Fields, Form, Halves, Imm, Kind, List as Lists, Mode, Op, Place, Regs,
-    Sized, Width,
+    Sized, Then, Width,
 };
 
 /// The instruction set.

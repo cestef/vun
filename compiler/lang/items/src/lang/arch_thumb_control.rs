@@ -25,3 +25,8 @@ pub const udf: Item = Item::new(&["lang", "arch", "thumb", "control", "udf"]);
 pub const svc: Item = Item::new(&["lang", "arch", "thumb", "control", "svc"]);
 /// A trap into the debugger, or a fault without one.
 pub const bkpt: Item = Item::new(&["lang", "arch", "thumb", "control", "bkpt"]);
+/// Makes the next instruction conditional (`it`), or the next two, the second on the same
+/// condition (`itt`) or on its opposite (`ite`): their encodings are the unconditional ones.
+pub const it: Item = Item::new(&["lang", "arch", "thumb", "control", "it"]);
+pub const itt: Item = Item::new(&["lang", "arch", "thumb", "control", "itt"]);
+pub const ite: Item = Item::new(&["lang", "arch", "thumb", "control", "ite"]);

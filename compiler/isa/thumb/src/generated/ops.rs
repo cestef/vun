@@ -21,6 +21,11 @@ pub enum Op {
     Svc,
     /// A trap into the debugger, or a fault without one.
     Bkpt,
+    /// Makes the next instruction conditional (`it`), or the next two, the second on the same
+    /// condition (`itt`) or on its opposite (`ite`): their encodings are the unconditional ones.
+    It,
+    Itt,
+    Ite,
     /// Moves a register, any of them, into another, or an immediate: 16 bits by `movw`, as
     /// assemblers choose it, else a modified immediate.
     Mov,
@@ -181,6 +186,9 @@ impl Op {
         Self::Udf,
         Self::Svc,
         Self::Bkpt,
+        Self::It,
+        Self::Itt,
+        Self::Ite,
         Self::Mov,
         Self::Movs,
         Self::Movw,

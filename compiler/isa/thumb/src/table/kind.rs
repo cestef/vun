@@ -5,7 +5,7 @@
 use vun_isa::word::Field;
 
 use super::imm::Imm;
-use crate::generated::{Branch, Fields, List as Lists, Mode, Regs};
+use crate::generated::{Branch, Fields, List as Lists, Mode, Regs, Then};
 use crate::operand::{List, Operand, ShiftKind};
 use crate::reg::{Reg, Size, Status, V};
 
@@ -42,6 +42,9 @@ pub enum Kind {
     Mem(Mode, Width),
     /// A condition, as the mnemonic's suffix.
     Cond,
+    /// The condition an `it` block's first instruction holds on, as an operand, and those of the
+    /// instructions after it.
+    Then(Then),
     /// A label, or a symbol the linker places.
     Target(Branch),
     /// The low or high 16 bits of a symbol's address: `movw`, `movt`.
@@ -132,6 +135,20 @@ impl Lists {
     }
 }
 
+impl Then {
+    /// `firstcond` at 4 and the mask below it: a bit per later instruction, the condition's lowest
+    /// for the same condition and its opposite for the other, then a bit ending the block.
+    fn encode(self, cc: crate::Cc) -> u32 {
+        let (cond, low) = (u32::from(cc.number()), u32::from(cc.number()) & 1);
+        let mask = match self {
+            Self::None => 0b1000,
+            Self::T => low << 3 | 0b100,
+            Self::E => (low ^ 1) << 3 | 0b100,
+        };
+        cond << 4 | mask
+    }
+}
+
 impl<S> Field<Operand<S>, Size> for Kind {
     fn encode(self, operand: &Operand<S>, size: Size) -> Option<u32> {
         let general = |r: &Reg| Regs::General.takes(*r).then(|| u32::from(r.number()));
@@ -155,6 +172,7 @@ impl<S> Field<Operand<S>, Size> for Kind {
             }
             (Self::Mem(mode, width), Operand::Mem(mem)) => mode.encode(mem, width.at(size)),
             (Self::Cond, Operand::Cond(cc)) => (*cc != crate::Cc::Al).then(|| u32::from(cc.number())),
+            (Self::Then(then), Operand::Cond(cc)) => (*cc != crate::Cc::Al).then(|| then.encode(*cc)),
             (
                 Self::Target(Branch::Jump | Branch::Call | Branch::Cond),
                 Operand::Label(_) | Operand::Sym(_),

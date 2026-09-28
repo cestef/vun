@@ -24,12 +24,13 @@ const CRATE: Crate = Crate {
         ("Fields", "table", "Fields"),
         ("List", "table", "List"),
         ("Branch", "table", "Branch"),
+        ("Then", "table", "Then"),
         ("Status", "reg", "Status"),
     ],
     widths: &[],
     enums: &[
         "Size", "V", "Special", "Status", "Mask", "Barrier", "Regs", "Place", "Mode", "Fields", "List",
-        "Branch", "Encoding",
+        "Branch", "Encoding", "Then",
     ],
     payloads: &[
         ("Kind", "gpr", &["Regs"]),
@@ -37,6 +38,7 @@ const CRATE: Crate = Crate {
         ("Kind", "imm", &["Imm"]),
         ("Kind", "mem", &["Mode", "Width"]),
         ("Kind", "target", &["Branch"]),
+        ("Kind", "then", &["Then"]),
         ("Kind", "list", &["List"]),
         ("Kind", "status", &["Status"]),
         ("Imm", "unsigned", &["u8"]),

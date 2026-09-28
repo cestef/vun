@@ -51,7 +51,7 @@ pub(super) fn candidates(kind: Kind) -> Vec<Operand<Sym>> {
             [&regs[..], &shifted].concat()
         }
         Kind::Mem(..) => mems(),
-        Kind::Cond => CCS.map(Operand::Cond).to_vec(),
+        Kind::Cond | Kind::Then(_) => CCS.map(Operand::Cond).to_vec(),
         Kind::List(_) => lists(),
         Kind::Special => Special::ALL.map(Operand::Special).to_vec(),
         Kind::Status(_) => Status::ALL.map(Operand::Status).to_vec(),
