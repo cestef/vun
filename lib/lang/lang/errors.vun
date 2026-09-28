@@ -92,6 +92,7 @@ layout := struct {
     not_c := diag.Diag{};
     tag := diag.Diag{};
     align := diag.Diag{};
+    offset := diag.Diag{};
 };
 
 /// Compile-time evaluation and reflection (spec 03).

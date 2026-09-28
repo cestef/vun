@@ -1,0 +1,15 @@
+//! A field placed by `#[layout.offset(N)]` keeps its declaration order and its alignment: the
+//! compiler never reorders (spec 05, section 6).
+
+Regs := struct {
+    #[layout.offset(4)]
+    status: u32,
+    #[layout.offset(0)]
+    control: u32, //~ layout.offset
+};
+
+Aligned := struct {
+    flag: u8,
+    #[layout.offset(2)]
+    word: u32, //~ layout.offset
+};

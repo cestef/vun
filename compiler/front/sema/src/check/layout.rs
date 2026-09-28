@@ -1,9 +1,10 @@
 //! Layout attributes (spec 05, section 6): the fields of a `#[layout.bits(uN)]` struct take
-//! exactly N bits, the tag of a `#[layout.tag(uN)]` enum numbers every variant, and
-//! `#[layout.align(N)]` aligns to a power of two.
+//! exactly N bits, the tag of a `#[layout.tag(uN)]` enum numbers every variant,
+//! `#[layout.align(N)]` aligns to a power of two, and `#[layout.offset(N)]` keeps fields in order.
 
-use vun_diag::{Diagnostic, Msg, errors};
+use vun_diag::{ChildKind, Diagnostic, Msg, errors};
 use vun_hir::tree::{DeclId, ExprKind, Hir};
+use vun_intern::Symbol;
 use vun_origin::OriginId;
 
 use super::Checker;
@@ -49,6 +50,7 @@ impl Checker<'_, '_, '_> {
         if let Some([Value::Int(n)]) = self.args(&laid, Layout::align).as_deref() {
             self.align(&laid, n);
         }
+        self.offsets(&laid);
     }
 
     fn args(&self, laid: &Laid<'_>, attr: Layout) -> Option<Vec<Value>> {
@@ -92,6 +94,45 @@ impl Checker<'_, '_, '_> {
             .num(u64::try_from(variants).unwrap_or(u64::MAX))
             .text(" variants");
         self.diag.error(Diagnostic::error(errors::LAYOUT_TAG, msg).at(laid.at, None));
+    }
+
+    /// `#[layout.offset(N)]`: a field lies at or past the end of the one before it, as the
+    /// compiler never reorders, and at a multiple of its alignment.
+    fn offsets(&mut self, laid: &Laid<'_>) {
+        let cx = self.env.cx;
+        let mut end = 0u64;
+        for field in &laid.members.fields {
+            let Some(layout) = field.ty.as_ref().ok().and_then(|ty| Shapes::layout(cx, ty)) else { return };
+            let at = match field.offset {
+                Some(at) if at < end || at % layout.align != 0 => {
+                    self.offset(laid, field.name, at, end, layout.align);
+                    return;
+                }
+                Some(at) => at,
+                None => end.next_multiple_of(layout.align),
+            };
+            end = at + layout.size;
+        }
+    }
+
+    /// Reports the field `name` placed at `at`, before `end` or off its alignment `align`.
+    fn offset(&mut self, laid: &Laid<'_>, name: Symbol, at: u64, end: u64, align: u64) {
+        let msg = Msg::new().code(name.as_str()).text(" cannot be placed at ").num(at);
+        let why = if at < end {
+            Msg::new()
+                .text("the fields before it end at ")
+                .num(end)
+                .text("; fields keep their declaration order")
+        } else {
+            Msg::new().text("its type is aligned to ").num(align).text(" bytes")
+        };
+        let ns = laid.hir.decls[laid.decl].value.and_then(|v| match laid.hir.exprs[v].kind {
+            ExprKind::Struct(ns) => Some(ns),
+            _ => None,
+        });
+        let at_field = ns.and_then(|ns| laid.hir.field(ns, name)).map_or(laid.at, |f| f.origin);
+        let d = Diagnostic::error(errors::LAYOUT_OFFSET, msg).at(at_field, None).child(ChildKind::Note, why);
+        self.diag.error(d);
     }
 
     /// `#[layout.align(N)]`: `N` is a power of two.

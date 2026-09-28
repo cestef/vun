@@ -2,7 +2,9 @@
 
 use vun_intern::Symbol;
 
-use super::{BinderId, DeclId, Entry, ExprId, Hir, List, Member, NsId, PatId, PatKind, Spread, Staged};
+use super::{
+    BinderId, DeclId, Entry, ExprId, FieldDef, Hir, List, Member, Name, NsId, PatId, PatKind, Spread, Staged,
+};
 
 impl Hir {
     /// Binders introduced by a pattern, without visiting the expressions inside it.
@@ -109,6 +111,22 @@ impl Hir {
             Member::Field(_) => {}
         });
         out
+    }
+}
+
+impl Hir {
+    /// The field of the namespace `ns` written with the plain name `name`, staged ones included.
+    #[must_use]
+    pub fn field(&self, ns: NsId, name: Symbol) -> Option<&FieldDef> {
+        let mut found = None;
+        each_entry(&self.namespaces[ns].members, &mut |m| {
+            if let Member::Field(f) = m
+                && f.name == Name::Plain(name)
+            {
+                found = found.or(Some(f));
+            }
+        });
+        found
     }
 }
 

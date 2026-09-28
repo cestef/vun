@@ -10,3 +10,4 @@ pub const bits_width: Item = Item::new(&["lang", "errors", "layout", "bits_width
 pub const not_c: Item = Item::new(&["lang", "errors", "layout", "not_c"]);
 pub const tag: Item = Item::new(&["lang", "errors", "layout", "tag"]);
 pub const align: Item = Item::new(&["lang", "errors", "layout", "align"]);
+pub const offset: Item = Item::new(&["lang", "errors", "layout", "offset"]);

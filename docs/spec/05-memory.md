@@ -163,7 +163,8 @@ Defined, never left to the implementation:
 - `#[layout.tag(uN)] enum`: explicit tag representation; `uN` has a pattern for each variant
   (`layout.tag`).
 - `#[layout.align(N)]`, `#[layout.offset(N)]`: raise alignment, `N` a power of two
-  (`layout.align`); place a field at an offset.
+  (`layout.align`); place a field at an offset, at or past the end of the field before it and a
+  multiple of its type's alignment (`layout.offset`).
 - **Niches (one rule).** An enum with one payload-free variant and one payload variant whose type has
   unused bit patterns stores the tag in an unused pattern. Unused patterns are: the null pointer,
   out-of-range values of range integers (`Int(0..200)` in 8 bits has 56), and unused enum tags.
