@@ -14,7 +14,9 @@ use vun_term::{Elapsed, Noun, Record, Shell, Status, Style, Text, Verb};
 pub(super) use hash::{HashText, Shown};
 pub(super) use packages::{Added, Collected, Packed, Source, UpToDate, Updated};
 
-use crate::Session;
+use vun_driver::Session;
+
+pub(crate) use packages::Report;
 
 const ERROR: Noun = Noun { one: "error", many: "errors" };
 const WARNING: Noun = Noun { one: "warning", many: "warnings" };
@@ -108,10 +110,14 @@ impl Status for Finished {
     }
 }
 
-impl Session {
+pub(crate) trait Conclude {
     /// Shows the diagnostics collected, then how the step on `subject` started at `started`
     /// ended.
-    pub(super) fn conclude(&mut self, shell: &mut Shell<'_>, subject: String, started: Instant) {
+    fn conclude(&mut self, shell: &mut Shell<'_>, subject: String, started: Instant);
+}
+
+impl Conclude for Session {
+    fn conclude(&mut self, shell: &mut Shell<'_>, subject: String, started: Instant) {
         let (errors, warnings) = (self.diag.count(Severity::Error), self.diag.count(Severity::Warning));
         // Errors shown earlier, such as while fetching, fail the step as well.
         let errors = if self.failed() { errors.max(1) } else { errors };

@@ -15,7 +15,7 @@ use vun_sema::typeck::{Operation, Typed};
 use vun_span::SourceMap;
 
 use super::FILE;
-use crate::Session;
+use vun_driver::Session;
 
 /// How much of an expression's source a line shows.
 const SHOWN: usize = 48;

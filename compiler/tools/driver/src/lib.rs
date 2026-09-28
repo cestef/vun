@@ -6,9 +6,9 @@
 
 pub mod checks;
 pub mod codegen;
-pub mod commands;
 pub mod compare;
-mod coverage;
+pub mod coverage;
+mod doc;
 pub mod editor;
 pub mod formats;
 pub mod packages;
@@ -20,6 +20,7 @@ mod reduce;
 mod registry;
 mod session;
 mod shared;
+mod shell;
 mod stack;
 pub mod stages;
 mod steps;

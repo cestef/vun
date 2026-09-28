@@ -14,7 +14,7 @@ use vun_span::SourceMap;
 use vun_term::Shell;
 
 use super::super::FILE;
-use crate::Session;
+use vun_driver::Session;
 
 /// What debug commands report.
 pub(super) const DUMP: &str = "dump";
@@ -157,8 +157,17 @@ impl Stage {
     }
 }
 
-impl Session {
+trait Dump {
     /// Prints a function's body with the origin of each line, or where lowering it stopped.
+    fn dump_body(
+        &self,
+        origin: OriginId,
+        body: Result<Arc<Body>, Unbuilt>,
+        out: &mut dyn Write,
+    ) -> io::Result<()>;
+}
+
+impl Dump for Session {
     fn dump_body(
         &self,
         origin: OriginId,

@@ -10,8 +10,8 @@ use vun_origin::Resolve;
 use vun_span::SourceMap;
 
 use super::FILE;
-use crate::Session;
-use crate::coverage::GapKind;
+use vun_driver::Session;
+use vun_driver::coverage::GapKind;
 
 pub(super) fn coverage(session: &mut Session, args: &Args, out: &mut dyn Write) -> io::Result<Outcome> {
     let path = args.value(&FILE).expect("positional parameters are present when a command runs");

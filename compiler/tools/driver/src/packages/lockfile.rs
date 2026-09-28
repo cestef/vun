@@ -14,7 +14,6 @@ use vun_intern::Symbol;
 
 use super::{Fetched, PackageKey, Selection};
 use crate::Session;
-use crate::commands::{CHECK_PATH, PROGRAM};
 
 impl Session {
     /// Writes the lockfile of the project in `dir` when its selection differs from it, registers
@@ -103,8 +102,9 @@ impl Session {
         for line in expected.lines().filter(|line| !present.contains(line)) {
             d = d.child(ChildKind::Note, Msg::new().text("the selection requires ").code(line));
         }
-        let check = PROGRAM.invocation(&CHECK_PATH).expect("check is a command");
-        d = d.child(ChildKind::Help, Msg::new().text("rewrite it with ").code(check));
+        if let Some(check) = &self.check {
+            d = d.child(ChildKind::Help, Msg::new().text("rewrite it with ").code(check.as_str()));
+        }
         self.report(Some(first), d);
     }
 }

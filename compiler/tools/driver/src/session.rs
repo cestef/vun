@@ -75,6 +75,9 @@ pub struct Session {
     pub memory: Vec<vun_link::MemoryRegion>,
     /// What `vun util lsp` runs: the language server the program installs, as `vun` does.
     pub language_server: Option<fn(&mut Session) -> std::io::Result<vun_command::Outcome>>,
+    /// How the program running the session writes its `check` command, for messages that
+    /// suggest it; `None` where no command line runs the session.
+    pub check: Option<String>,
     /// The errors already shown and taken out of `diag`.
     shown_errors: usize,
 }
@@ -114,6 +117,7 @@ impl Session {
             runner: Vec::new(),
             memory: Vec::new(),
             language_server: None,
+            check: None,
             shown_errors: 0,
         }
     }

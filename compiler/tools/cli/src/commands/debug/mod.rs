@@ -12,8 +12,8 @@ mod types;
 use vun_command::Command;
 
 use super::FILE;
-use crate::Session;
 use dump::{DUMP, Stage};
+use vun_driver::Session;
 
 pub(super) const GROUP: &str = "debug";
 
@@ -77,13 +77,13 @@ pub(super) const COMMANDS: &[Command<Session>] = &[
         "what a backend generates for the program a root file exports, when it is text",
         |s, args, shell| Stage::Code.show(s, args, shell),
     )
-    .params(&[FILE, crate::codegen::BACKEND]),
+    .params(&[FILE, vun_driver::codegen::BACKEND]),
     Command::run(
         Stage::Frames.name(),
         "the frame size of each function of the program a root file exports, as its tools report them",
         |s, args, shell| Stage::Frames.show(s, args, shell),
     )
-    .params(&[FILE, crate::codegen::BACKEND]),
+    .params(&[FILE, vun_driver::codegen::BACKEND]),
     Command::run(
         "coverage",
         "how far MIR and LIR take the functions of a file, and where each stops",
@@ -107,5 +107,5 @@ pub(super) const COMMANDS: &[Command<Session>] = &[
         "the least text that fails as a file does: the same crash, or the same error",
         reduce::reduce,
     )
-    .params(&[FILE, reduce::KEEP, crate::codegen::BACKEND]),
+    .params(&[FILE, reduce::KEEP, vun_driver::codegen::BACKEND]),
 ];

@@ -2,7 +2,9 @@
 
 use std::process::ExitCode;
 
-use vun_driver::commands::PROGRAM;
+mod commands;
+
+use commands::{CHECK_PATH, PROGRAM};
 use vun_driver::{Persistence, Session};
 
 /// The compiler allocates many small, short-lived values from many threads, where mimalloc is
@@ -16,5 +18,6 @@ fn main() -> ExitCode {
     session.persistence = Persistence::On;
     session.schemes.install(vun_http::SCHEMES);
     session.language_server = Some(vun_lsp::serve);
+    session.check = PROGRAM.invocation(&CHECK_PATH);
     PROGRAM.main(&mut session)
 }

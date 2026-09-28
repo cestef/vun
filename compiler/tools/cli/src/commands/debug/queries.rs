@@ -11,7 +11,7 @@ use vun_query::{Census, Counted};
 use vun_term::{Bytes, Column, Record, Row, Shell, Style, Text};
 
 use super::FILE;
-use crate::Session;
+use vun_driver::Session;
 
 /// What a counted part of the file is.
 #[derive(Clone, Copy)]

@@ -8,8 +8,8 @@ use vun_diag::{ChildKind, Diagnostic, Msg, errors};
 use vun_suggest::closest;
 use vun_term::{Document, Format, Shell, Text};
 
-use crate::Session;
-use crate::packages::LIBRARY;
+use vun_driver::Session;
+use vun_driver::packages::LIBRARY;
 
 const ID: Param =
     Param::positional("id").about("a diagnostic, such as names.duplicate or lang.errors.names.duplicate");

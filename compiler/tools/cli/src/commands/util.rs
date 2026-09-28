@@ -7,7 +7,7 @@ use vun_diag::{Diagnostic, Msg, errors};
 use vun_term::{Document, Shell};
 
 use super::PROGRAM;
-use crate::Session;
+use vun_driver::Session;
 
 const SHELL: Param = Param::positional("shell")
     .about("the shell to complete in")

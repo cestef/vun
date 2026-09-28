@@ -9,7 +9,7 @@ use vun_json::Object;
 use vun_term::{Bytes, Column, Record, Row, Shell, Style, Text};
 
 use super::status::{Collected, HashText, Shown};
-use crate::Session;
+use vun_driver::Session;
 
 pub(super) const GROUP: &str = "cache";
 
@@ -22,8 +22,12 @@ pub(super) const COMMANDS: &[Command<Session>] = &[
     Command::run("gc", "remove stored packages no registered lockfile records", gc),
 ];
 
-impl Session {
+trait StoreFailure {
     /// Reports that the store cannot be read or changed.
+    fn store_failed(&mut self, e: &io::Error) -> Outcome;
+}
+
+impl StoreFailure for Session {
     fn store_failed(&mut self, e: &io::Error) -> Outcome {
         let msg = Msg::new().text("cannot use the store at ").code(self.store.dir().display().to_string());
         self.diag.error(Diagnostic::error(errors::IO_UNWRITABLE_FILE, msg).caused_by(e));

@@ -4,17 +4,15 @@ use std::io;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
-use vun_command::{
-    Args, Arity, Command, Context, Example, OptionSet, Outcome, Param, PathKind, Program, Values,
-};
+use vun_command::{Args, Arity, Command, Example, OptionSet, Outcome, Param, PathKind, Program, Values};
 use vun_span::FileId;
 use vun_term::Shell;
 
-use status::{Started, Step};
+use status::{Conclude, Report, Started, Step};
 
-use crate::{Session, VERSION, checks, codegen, formats, target};
+use vun_driver::{Session, VERSION, checks, codegen, formats, target};
 
-pub const PROGRAM: Program<Session> = Program {
+pub(crate) const PROGRAM: Program<Session> = Program {
     version: VERSION,
     configure,
     root: Command::group(
@@ -29,10 +27,10 @@ pub const PROGRAM: Program<Session> = Program {
             .aliases(&["b"])
             .params(&[
                 FILE,
-                crate::codegen::BACKEND,
-                crate::codegen::LINKER,
-                crate::codegen::LIBRARY,
-                crate::program::OUTPUT,
+                vun_driver::codegen::BACKEND,
+                vun_driver::codegen::LINKER,
+                vun_driver::codegen::LIBRARY,
+                vun_driver::program::OUTPUT,
             ])
             .sets(&[COMPILE])
             .examples(&[
@@ -48,9 +46,9 @@ pub const PROGRAM: Program<Session> = Program {
                 .params(&[
                     FILE,
                     ARGS,
-                    crate::codegen::BACKEND,
-                    crate::codegen::LINKER,
-                    crate::program::OUTPUT,
+                    vun_driver::codegen::BACKEND,
+                    vun_driver::codegen::LINKER,
+                    vun_driver::program::OUTPUT,
                 ])
                 .sets(&[COMPILE])
                 .examples(&[Example {
@@ -102,9 +100,16 @@ fn configure(session: &mut Session, args: &Args) -> Result<(), Box<vun_diag::Dia
     target::configure(session, args)
 }
 
-impl Session {
+trait Inputs {
     /// Reads the file `args` names, once its project is ready: dependencies fetched and the
     /// lockfile written, as cargo does before compiling.
+    fn root(&mut self, args: &Args, shell: &mut Shell<'_>) -> Option<FileId>;
+
+    /// Builds the program `args` names, reporting how it went.
+    fn built(&mut self, args: &Args, shell: &mut Shell<'_>) -> Option<PathBuf>;
+}
+
+impl Inputs for Session {
     fn root(&mut self, args: &Args, shell: &mut Shell<'_>) -> Option<FileId> {
         let path =
             Path::new(args.value(&FILE).expect("positional parameters are present when a command runs"));
@@ -117,12 +122,11 @@ impl Session {
         self.load(path)
     }
 
-    /// Builds the program `args` names, reporting how it went.
     fn built(&mut self, args: &Args, shell: &mut Shell<'_>) -> Option<PathBuf> {
         let started = Instant::now();
         let path = args.value(&FILE).expect("positional parameters are present when a command runs");
         shell.status(&Started { step: Step::Build, subject: path.to_owned() });
-        let output = args.value(&crate::program::OUTPUT).map(Path::new);
+        let output = args.value(&vun_driver::program::OUTPUT).map(Path::new);
         let built = self.root(args, shell).and_then(|file| {
             if self.is_package(file) {
                 // A package's `build.vun` builds the programs its plan records.
@@ -134,12 +138,6 @@ impl Session {
         let subject = built.as_ref().map_or_else(|| path.to_owned(), |p| p.display().to_string());
         self.conclude(shell, subject, started);
         built
-    }
-
-    /// How a command that reported its failures as diagnostics ends.
-    #[must_use]
-    pub fn outcome(&self) -> Outcome {
-        if self.failed() { Outcome::Failure } else { Outcome::Success }
     }
 }
 
@@ -167,20 +165,6 @@ fn check(session: &mut Session, args: &Args, shell: &mut Shell<'_>) -> io::Resul
     }
     session.conclude(shell, path.to_owned(), started);
     Ok(session.outcome())
-}
-
-impl Context for Session {
-    fn refused(&mut self, diagnostic: vun_diag::Diagnostic) {
-        self.diag.error(diagnostic);
-    }
-
-    fn finish(&mut self, shell: &mut Shell<'_>) {
-        self.emit(shell);
-        self.save();
-        if let Some(report) = vun_trace::Timings::report() {
-            shell.status(&report);
-        }
-    }
 }
 
 mod cache;

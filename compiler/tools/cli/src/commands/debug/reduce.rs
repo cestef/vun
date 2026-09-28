@@ -12,7 +12,7 @@ use vun_term::{Record, Shell, Status, Style, Text, Verb};
 
 use super::FILE;
 use super::dump::DUMP;
-use crate::Session;
+use vun_driver::Session;
 
 pub(super) const KEEP: Param = Param::option("keep")
     .about("the error the reduced file must still report; the file's first failure otherwise")

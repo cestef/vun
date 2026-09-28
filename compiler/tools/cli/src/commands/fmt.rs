@@ -10,7 +10,7 @@ use vun_fs::Edit;
 use vun_json::Object;
 use vun_term::{Record, Shell, Status, Style, Text, Verb};
 
-use crate::Session;
+use vun_driver::Session;
 
 const FILES: Param = Param::positional("files")
     .arity(Arity::Many)
@@ -79,9 +79,13 @@ fn fmt(session: &mut Session, args: &Args, shell: &mut Shell<'_>) -> io::Result<
     Ok(if pending { Outcome::Failure } else { session.outcome() })
 }
 
-impl Session {
+trait Formatted {
     /// The file at `path` laid out, when that changes it; `None` when it is laid out already, or
     /// does not read or parse, which is reported.
+    fn laid_out(&mut self, path: &Path) -> Option<String>;
+}
+
+impl Formatted for Session {
     fn laid_out(&mut self, path: &Path) -> Option<String> {
         let text = self.read(path)?;
         let file = self.sources.add(path.display().to_string(), text);

@@ -7,7 +7,7 @@ use vun_json::Object;
 use vun_term::{Bytes, Noun, Record, Shell, Status, Style, Text, Verb};
 
 use super::{HashText, Shown};
-use crate::packages::Fetched;
+use vun_driver::packages::Fetched;
 
 const PACKAGE: Noun = Noun { one: "package", many: "packages" };
 
@@ -45,9 +45,14 @@ impl Status for Downloaded {
     }
 }
 
-impl Fetched {
+/// An outcome of fetching, as a command line reports it.
+pub(crate) trait Report {
     /// Reports this outcome of fetching `name` at `hash`, when a download happened.
-    pub(in crate::commands) fn report(&self, name: Symbol, hash: Hash, shell: &mut Shell<'_>) {
+    fn report(&self, name: Symbol, hash: Hash, shell: &mut Shell<'_>);
+}
+
+impl Report for Fetched {
+    fn report(&self, name: Symbol, hash: Hash, shell: &mut Shell<'_>) {
         if let Self::Stored { url } = self {
             shell.status(&Downloaded { name, hash, url: url.clone() });
         }

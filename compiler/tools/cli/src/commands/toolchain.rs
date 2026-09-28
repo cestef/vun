@@ -8,7 +8,7 @@ use vun_term::{Column, Record, Row, Shell, Style, Text};
 
 use vun_target::{Arches, Name, Readiness};
 
-use crate::{Registry, Session};
+use vun_driver::{Registry, Session};
 
 pub(super) const GROUP: &str = "toolchain";
 

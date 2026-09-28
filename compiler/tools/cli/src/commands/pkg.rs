@@ -11,9 +11,9 @@ use vun_fetch::{FORMATS, Format};
 use vun_fs::Edit;
 use vun_term::Shell;
 
-use super::status::{self, Source as Added};
-use crate::Session;
-use crate::packages::{Addition, Unstated};
+use super::status::{self, Report, Source as Added};
+use vun_driver::Session;
+use vun_driver::packages::{Addition, Unstated};
 
 /// The group of these commands.
 pub(super) const GROUP: &str = "pkg";

@@ -11,7 +11,7 @@ use vun_fs::Edit;
 use vun_term::{Document, Shell};
 
 use super::PROGRAM;
-use crate::Session;
+use vun_driver::Session;
 
 const HEADER: Param =
     Param::positional("header").about("the C header to bind").values(Values::Path(PathKind::File));
