@@ -10,6 +10,7 @@ use vun_origin::OriginId;
 
 use std::sync::Arc;
 
+use super::typed::Found;
 use super::{Known, Stage, TypedBody, Typer};
 use crate::env::{Env, Unevaluated};
 use crate::int::{Interval, Storage};
@@ -82,10 +83,8 @@ impl<'a, 'db> Typer<'_, 'a, 'db> {
     /// typed by their context, and methods called on values of no type of their own, such as
     /// arrays, dispatch by them.
     pub(super) fn evaluating(&self) -> Env<'a, 'db> {
-        let types = TypedBody {
-            types: self.found.types.iter().map(|(&e, &k)| (e, k)).collect(),
-            ..TypedBody::default()
-        };
+        let found = Found { types: self.found.types.clone(), ..Found::default() };
+        let types = TypedBody { found, ..TypedBody::default() };
         self.env().clone().typed_by(Some(Arc::new(types)))
     }
 

@@ -1,11 +1,11 @@
 //! Typed bodies: what typing a body finds, and the query typing each instantiation.
 
 use std::collections::{BTreeMap, BTreeSet};
+use std::ops::Deref;
 use std::sync::Arc;
 
 use vun_codec::{Decode, Encode};
 use vun_diag::DiagCtxt;
-use vun_hash::Map;
 use vun_hir::tree::{BinderId, ExprId, ExprKind, Hir, NsId, PatId};
 use vun_hir::visit::Visitor;
 use vun_intern::Symbol;
@@ -18,63 +18,22 @@ use crate::eval::{Instantiation, Staging};
 use crate::ty::{Ty, Value};
 
 /// What typing finds in a body, or in one `$for` step of it, apart from its locals and reports:
-/// what a step keeps apart from the rest of its body.
-#[derive(Default)]
-pub(super) struct Found {
-    pub types: Map<ExprId, Known>,
+/// what a step keeps apart from the rest of its body. A typed body holds it and reads as it.
+#[derive(Debug, Default, PartialEq, Eq, Hash, Encode, Decode)]
+pub struct Found {
+    pub types: BTreeMap<ExprId, Known>,
     /// Member expressions naming a declaration through a value: `p.norm` in `p.norm()`, whose
     /// call passes `p` first (spec 01, section 4); each with the struct declaring it, the type's
     /// own or a witness, and its name.
-    pub methods: Map<ExprId, (Ty, Symbol)>,
-    pub operators: BTreeMap<Operation, Operator>,
-    /// The typed steps of the `$for`s typed so far.
-    pub steps: BTreeMap<Step, Arc<TypedBody>>,
-    pub iterations: BTreeMap<ExprId, Iteration>,
-    pub inferred: BTreeMap<ExprId, Vec<(usize, Value)>>,
-    /// The `$` evaluations that surely run, each a `$e`, run once the body is typed.
-    pub evaluations: Vec<ExprId>,
-    /// The `$for` bindings a step is typed under.
-    pub staged: Vec<Staging>,
-    pub asm: BTreeMap<ExprId, Block>,
-}
-
-impl Found {
-    /// The typed body of what was found, its locals of the types `binders`.
-    pub(super) fn body(self, binders: BTreeMap<BinderId, Ty>, diag: DiagCtxt, exprs: usize) -> TypedBody {
-        TypedBody {
-            types: self.types.into_iter().collect(),
-            binders,
-            methods: self.methods.into_iter().collect(),
-            steps: self.steps,
-            iterations: self.iterations,
-            inferred: self.inferred,
-            operators: self.operators,
-            evaluations: self.evaluations,
-            staged: self.staged,
-            asm: self.asm,
-            diag,
-            exprs,
-        }
-    }
-}
-
-/// A typed function body: the type of each expression typed, what typing reports, and how many
-/// expressions the body holds, nested functions and quotes apart.
-#[derive(Debug, Default, PartialEq, Eq, Hash, Encode, Decode)]
-pub struct TypedBody {
-    pub types: BTreeMap<ExprId, Known>,
-    /// The type each local of the body holds, steps' included.
-    pub binders: BTreeMap<BinderId, Ty>,
-    /// Each method named through a value, with the struct declaring it and its name.
     pub methods: BTreeMap<ExprId, (Ty, Symbol)>,
+    /// The function each operator calls (spec 02, section 4).
+    pub operators: BTreeMap<Operation, Operator>,
     /// The body of each step of a `$for`, typed with its binder bound (spec 03, section 1).
     pub steps: BTreeMap<Step, Arc<TypedBody>>,
     /// How each `for p in e` drives `e`, by `e`.
     pub iterations: BTreeMap<ExprId, Iteration>,
     /// The `$` arguments each call leaves out, by parameter, as inferred.
     pub inferred: BTreeMap<ExprId, Vec<(usize, Value)>>,
-    /// The function each operator calls (spec 02, section 4).
-    pub operators: BTreeMap<Operation, Operator>,
     /// The `$` evaluations that surely run, each a `$e`: run once the body is typed
     /// ([`Reported`](super::Reported)).
     pub evaluations: Vec<ExprId>,
@@ -82,8 +41,32 @@ pub struct TypedBody {
     pub staged: Vec<Staging>,
     /// Each block of instructions, checked against its architecture's table.
     pub asm: BTreeMap<ExprId, Block>,
+}
+
+impl Found {
+    /// The typed body of what was found, its locals of the types `binders`.
+    pub(super) fn body(self, binders: BTreeMap<BinderId, Ty>, diag: DiagCtxt, exprs: usize) -> TypedBody {
+        TypedBody { found: self, binders, diag, exprs }
+    }
+}
+
+/// A typed function body: what typing found, the type each local holds, what typing reports, and
+/// how many expressions the body holds, nested functions and quotes apart.
+#[derive(Debug, Default, PartialEq, Eq, Hash, Encode, Decode)]
+pub struct TypedBody {
+    pub found: Found,
+    /// The type each local of the body holds, steps' included.
+    pub binders: BTreeMap<BinderId, Ty>,
     pub diag: DiagCtxt,
     pub exprs: usize,
+}
+
+impl Deref for TypedBody {
+    type Target = Found;
+
+    fn deref(&self) -> &Found {
+        &self.found
+    }
 }
 
 impl TypedBody {
