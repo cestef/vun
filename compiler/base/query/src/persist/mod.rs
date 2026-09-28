@@ -28,7 +28,7 @@ pub(crate) use self::saved::{Growth, Saved, SavedDep};
 use self::store::StoredQuery;
 pub(crate) use self::store::{Attached, Store};
 use super::Query;
-use super::db::Db;
+use super::db::{Db, Sharing};
 
 /// Loading saved memos, as timed: the rest is read as it is used.
 const LOAD: Activity = Activity::stage("load memos");
@@ -101,7 +101,12 @@ impl Db {
             Part::Table(p) => Some(p.number(self, extends.is_some(), include)),
             Part::Carried { .. } => None,
         });
-        let layout = Layout { positions, numbers: tables.zip(numbers).collect() };
+        let layout = Layout {
+            positions,
+            numbers: tables.zip(numbers).collect(),
+            revision: self.revision(),
+            shared: Sharing::LEVELS.map(|level| self.shared_inputs_now(level)),
+        };
         let mut w = extends.map_or_else(Writer::new, |store| Writer::extending(&store.stream));
         let queries = parts.iter().map(|part| part.save(self, &mut w, &layout, extends)).collect();
         let body = Body { pools: w.into_pools(), queries }.encoded();

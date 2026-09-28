@@ -18,3 +18,5 @@ papaya.workspace = true
 vun-par.workspace = true
 vun-codec.workspace = true
 vun-hash.workspace = true
+vun-json.workspace = true
+vun-term.workspace = true

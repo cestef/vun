@@ -1,6 +1,7 @@
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 mod all;
+mod durable;
 mod persist;
 mod reuse;
 mod settle;

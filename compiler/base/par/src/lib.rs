@@ -11,10 +11,14 @@ use std::cell::Cell;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Mutex, OnceLock, PoisonError};
 use std::thread;
+use std::time::Instant;
 
 mod pool;
+mod usage;
 
 use pool::Pool;
+pub use usage::Usage;
+use usage::{COUNTS, Counts};
 
 #[cfg(test)]
 mod tests;
@@ -63,20 +67,33 @@ pub trait Parallel<T> {
 impl<T: Sync> Parallel<T> for [T] {
     fn par_map<R: Send>(&self, f: impl Fn(&T) -> R + Sync) -> Vec<R> {
         let workers = threads().min(self.len());
-        if workers <= 1 || WORKING.get() {
+        if WORKING.get() {
+            Counts::add(&COUNTS.nested, 1);
             return self.iter().map(f).collect();
         }
+        if workers <= 1 {
+            Counts::add(&COUNTS.alone, 1);
+            return self.iter().map(f).collect();
+        }
+        let started = Instant::now();
         let counter = Counter(AtomicUsize::new(0));
         let runs: Mutex<Vec<(usize, Vec<R>)>> = Mutex::new(Vec::new());
         let work = || {
+            let busy = Instant::now();
             let _working = Working::start();
             let mut mine = Vec::new();
             while let Some((start, end)) = claim(&counter.0, self.len(), workers) {
                 mine.push((start, self[start..end].iter().map(&f).collect::<Vec<R>>()));
             }
             runs.lock().unwrap_or_else(PoisonError::into_inner).extend(mine);
+            Counts::add_time(&COUNTS.busy, busy.elapsed());
         };
-        Pool::global().run(workers - 1, &work);
+        let lent = Pool::global().run(workers - 1, &work);
+        Counts::add(&COUNTS.spread, 1);
+        Counts::add(&COUNTS.items, self.len() as u64);
+        Counts::add(&COUNTS.asked, (workers - 1) as u64);
+        Counts::add(&COUNTS.lent, lent as u64);
+        Counts::add_time(&COUNTS.wall, started.elapsed());
         let mut runs = runs.into_inner().unwrap_or_else(PoisonError::into_inner);
         runs.sort_unstable_by_key(|&(start, _)| start);
         let mut all = Vec::with_capacity(self.len());
@@ -103,8 +120,12 @@ fn claim(counter: &AtomicUsize, len: usize, workers: usize) -> Option<(usize, us
     }
 }
 
-/// How many threads the machine runs at once, asked once.
+/// How many threads a call runs on: as [`Usage::VAR`] says, else as many as the machine runs at
+/// once, asked once.
 pub(crate) fn threads() -> usize {
     static THREADS: OnceLock<usize> = OnceLock::new();
-    *THREADS.get_or_init(|| thread::available_parallelism().map_or(1, std::num::NonZero::get))
+    *THREADS.get_or_init(|| {
+        let chosen = std::env::var(Usage::VAR).ok().and_then(|n| n.parse().ok()).filter(|&n| n > 0);
+        chosen.unwrap_or_else(|| thread::available_parallelism().map_or(1, std::num::NonZero::get))
+    })
 }

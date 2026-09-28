@@ -98,11 +98,6 @@ impl StoredKeys {
         let slots = std::iter::repeat_with(OnceLock::new).take(saved.len()).collect();
         Self { saved, index, slots }
     }
-
-    /// The slot given to the key at `at`, if one was.
-    pub(crate) fn slot(&self, at: u32) -> Option<Slot> {
-        self.slots.get(at as usize)?.get().copied()
-    }
 }
 
 /// A table's view of its query's part of the file, and how its keys and values are read.
@@ -154,18 +149,11 @@ impl<Q: Query> Attached<Q> {
             memo.inspect_err(|malformed| tracing::debug!(query = Q::NAME, %malformed, "saved memo not read"));
         let memo = memo.ok()?;
         let saved = self.value.zip(memo.value).map(|(read, at)| Saved { at, read });
-        Some(Memo::loaded(saved, memo.fingerprint.or(key.fingerprint)?, memo.deps.into()))
+        Some(Memo::loaded(saved, memo.fingerprint.or(key.fingerprint)?, memo.deps.into(), memo.under))
     }
 
-    /// The slot given to the key at `at`, if one was.
-    pub(crate) fn linked(&self, at: u32) -> Option<Slot> {
-        self.keys()?.slot(at)
-    }
-
-    /// Records `slot` as the one given to the key at `at`.
-    pub(crate) fn link(&self, at: u32, slot: Slot) {
-        if let Some(cell) = self.keys().and_then(|keys| keys.slots.get(at as usize)) {
-            cell.get_or_init(|| slot);
-        }
+    /// The slot of the key at `at`, set once it is given one.
+    pub(crate) fn slot(&self, at: u32) -> Option<&OnceLock<Slot>> {
+        self.keys()?.slots.get(at as usize)
     }
 }

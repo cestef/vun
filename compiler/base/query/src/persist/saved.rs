@@ -16,10 +16,11 @@ use std::time::UNIX_EPOCH;
 use vun_codec::{Blob, Decode, Encode, Malformed, Pools};
 use vun_hash::Hash;
 
+use crate::db::Sharing;
 use crate::fingerprint::Fingerprint;
 
 /// The version of the saved form; a file of another version is not read.
-pub(super) const FORMAT: u32 = 9;
+pub(super) const FORMAT: u32 = 10;
 
 /// The compiler running, as saved memos name it.
 pub(crate) struct Build;
@@ -108,6 +109,8 @@ pub(crate) struct SavedMemo<B = Vec<u8>> {
     /// `None` for a query persisted without its values.
     pub(super) value: Option<B>,
     pub(super) deps: Vec<SavedDep>,
+    /// For a memo whose inputs are shared, how far, and their fingerprint when it last held.
+    pub(super) under: Option<(Sharing, Fingerprint)>,
 }
 
 /// A read: its query's position in the file, its key's among the query's keys, and the

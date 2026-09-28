@@ -7,6 +7,7 @@ mod frame;
 mod guard;
 mod reuse;
 mod settle;
+mod verify;
 mod why;
 
 use std::cell::RefCell;
@@ -18,20 +19,17 @@ use vun_trace::{Activity, tracing};
 
 pub use self::cycle::Cycle;
 use self::frame::{Frame, Standing};
-use self::guard::{Entered, Verifying};
+use self::guard::Entered;
 pub use self::reuse::{Differs, Reuse, Unsound};
-pub(crate) use self::settle::Settle;
+pub(crate) use self::settle::{Found, Settle};
 use self::why::Why;
 use super::claim::Claim;
 use super::db::Db;
 use super::fingerprint::Fingerprint;
-use super::memo::{Dep, Memo};
+use super::memo::{Dep, Memo, Source};
 use super::table::{Slot, Table, TableId};
+use super::tally::Event;
 use super::{Query, Revision};
-
-/// Verifying memos from an earlier revision or another process, as timed: what they read
-/// compared, those computed again meanwhile timed on their own.
-const VERIFY: Activity = Activity::stage("verify memos");
 
 /// The queries being computed on one thread, and what each has read so far.
 pub struct Cx<'db> {
@@ -112,56 +110,6 @@ impl<'db> Cx<'db> {
         }
     }
 
-    /// The memo at `slot` if it holds in `revision`: current, or everything it read unchanged.
-    /// Verifying reads other memos, which may take long: the memo is held on its own meanwhile.
-    fn verified<Q: Query>(
-        &self,
-        table: &Table<Q>,
-        slot: Slot,
-        revision: Revision,
-    ) -> Result<Arc<Memo<Q>>, Why> {
-        let memo = table.entry(slot).memo.load_full().ok_or(Why::Absent)?;
-        if memo.current(revision) {
-            return Ok(memo);
-        }
-        let deps = memo.deps.get(self.db).ok_or(Why::Unresolved)?;
-        if self.verifying.borrow().contains(&(table.id, slot)) {
-            return Err(Why::Cycle);
-        }
-        self.settle(deps, revision);
-        let verifying = Verifying::start(self, (table.id, slot));
-        let timer = VERIFY.start();
-        let stale = self.stale(deps);
-        drop((timer, verifying));
-        if let Some(read) = stale {
-            if self.db.settled_in((table.id, slot), revision) {
-                Self::unsound(table, slot, Differs::Settled);
-            }
-            return Err(Why::Stale(read));
-        }
-        if self.db.reuse == Reuse::Check && !memo.input {
-            self.check(table, slot, &memo);
-        }
-        // Recovering from a cycle among its reads may have computed it meanwhile.
-        if let Some(computed) = table.entry(slot).memo.load_full()
-            && !Arc::ptr_eq(&computed, &memo)
-            && computed.current(revision)
-        {
-            return Ok(computed);
-        }
-        memo.verified.set(revision);
-        Ok(memo)
-    }
-
-    /// The first of `reads` that changed, each brought up to date in turn.
-    #[inline(never)]
-    fn stale(&self, reads: &[Dep]) -> Option<Dep> {
-        reads
-            .iter()
-            .copied()
-            .find(|dep| !self.db.any_table(dep.table).unchanged(self, dep.slot, dep.fingerprint))
-    }
-
     /// The value at `slot` computed on this thread, or the value of the cycle it closes; `None`
     /// when another thread computed it meanwhile.
     fn computed<Q: Query>(
@@ -173,29 +121,35 @@ impl<'db> Cx<'db> {
     ) -> Option<(Q::Value, Fingerprint)> {
         let entry = table.entry(slot);
         if let Some(cycle) = self.cycle(table.id, slot) {
-            let value = Q::cycle(self, &entry.key, &cycle);
+            let value = Q::cycle(self, table.key(slot), &cycle);
             let fingerprint = Q::interface(&value);
             return Some((value, fingerprint));
         }
         let owned = match entry.claims.claim(&self.db.waits) {
-            Claim::Waited => return None,
+            Claim::Waited => {
+                table.counts.add(Event::Waited);
+                return None;
+            }
             Claim::Owner(owned) => Some(owned),
             Claim::Alone => None,
         };
+        table.counts.add(why.event());
         let entered = self.enter(table.id, slot, why);
-        let value = Q::compute(self, &entry.key);
+        let value = Q::compute(self, table.key(slot));
         let (reads, standing) = entered.leave();
         let fingerprint = Q::interface(&value);
         if standing == Standing::Provisional {
+            table.counts.add(Event::Provisional);
             tracing::debug!(query = Q::NAME, "not kept: computed from a cycle value");
             return Some((value, fingerprint));
         }
         let memo = if Q::INPUT {
             // An input not set holds what it computes until it is, alike in every database.
-            Memo::input(value.clone(), fingerprint, revision, true)
+            Memo::input(value.clone(), fingerprint, revision, Source::Unset)
         } else {
             self.computing(table, entry.memo.load().as_deref(), fingerprint, &reads);
-            Memo::computed(value.clone(), fingerprint, reads, revision)
+            let durability = self.durability(&reads);
+            Memo::computed(value.clone(), fingerprint, reads, revision, durability)
         };
         entry.memo.store(Some(Arc::new(memo)));
         drop(owned);

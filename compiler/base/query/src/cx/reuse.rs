@@ -12,6 +12,7 @@ use super::why::Why;
 use crate::Query;
 use crate::memo::Memo;
 use crate::table::{AnyTable, Slot, Table};
+use crate::tally::Event;
 
 /// Whether memos reused without being computed are trusted, or computed again to check them.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -78,9 +79,9 @@ impl Cx<'_> {
         if self.computing.borrow().contains_key(&(table.id, slot)) {
             return;
         }
-        let entry = table.entry(slot);
+        table.counts.add(Event::Checked);
         let entered = self.enter(table.id, slot, Why::Checked);
-        let value = Q::compute(self, &entry.key);
+        let value = Q::compute(self, table.key(slot));
         let (_, standing) = entered.leave();
         if standing == Standing::Provisional {
             return;

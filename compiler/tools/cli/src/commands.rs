@@ -80,20 +80,24 @@ pub(crate) const CHECK_PATH: [&str; 1] = [CHECK.name];
 /// The options of every command that compiles a file.
 pub(crate) const COMPILE: OptionSet = OptionSet {
     title: "Compile options",
-    params: &[target::TARGET, checks::CHECKS, codegen::RELEASE, formats::DIAGNOSTICS, TIMINGS],
+    params: &[target::TARGET, checks::CHECKS, codegen::RELEASE, formats::DIAGNOSTICS, TIMINGS, MEMOS],
 };
 
 pub(crate) const FILE: Param =
     Param::positional("file").about("the root source file").values(Values::Path(PathKind::File));
 const ARGS: Param = Param::positional("args").arity(Arity::Many).about("arguments passed to the program");
 /// Reports at exit where the time went, as `VUN_TIMINGS=1` does.
-const TIMINGS: Param = Param::flag("timings").about("report the time of each stage and query at exit");
+const TIMINGS: Param = Param::flag("timings")
+    .about("report the time of each stage and query, and how work spread over threads, at exit");
+/// Reports at exit what the queries did with their memos, as `VUN_MEMOS=1` does.
+const MEMOS: Param = Param::flag("memos").about("report what each query did with its memos at exit");
 
 /// Applies the options of the command.
 fn configure(session: &mut Session, args: &Args) -> Result<(), Box<vun_diag::Diagnostic>> {
     if args.flag(&TIMINGS) {
         vun_trace::Timings::enable();
     }
+    session.tally |= args.flag(&MEMOS);
     formats::configure(session, args)?;
     codegen::configure(session, args);
     checks::configure(session, args)?;

@@ -278,17 +278,17 @@ Next, most useful first:
    runtime (`stm32f4` has an empty vector table and no `init_memory`).
 2. Kernel runtime: threads (clone, stacks, TLS, join) through `std.os.symbols`; riscv64 numbers;
    directories, seeking, environment.
-2b. Speed (decision 291; `--timings` now shows the engine's work and the build steps). Warm
-   `files.vun`: 450 ms to about 245 ms (no memo saved again, verifying ahead over threads).
-   What is left warm: reading saved keys (~120 ms over 14.6k keys, about 8 us each; each pooled
-   handle read clones its pool's `Arc`, contended across threads) and restoring memos (~60 ms).
-   Cold (fresh `VUN_STORE`): 1.42 s to about 1.3 s wall (the reach in waves); the front end is a chain
-   (`typed`, `mir` and `metered_call` about 1970 runs each, comptime evaluation), threads wait on
-   the same `std` declarations, and saving the memos takes ~165 ms at exit, twice in the CLI
-   (the project file, then the shared entry, which the project file copies). Ideas: a key read
-   without its pools' `Arc`s; the project file naming the shared entry instead of copying it;
-   saving in the background of linking. Waiting on a claim counts as the waiting query's own
-   time, so cold `--timings` work is inflated by waits. The driver tests read the machine's
+2b. Speed (decisions 291, 301 and 302). Inspect with `--timings` (with the thread report) and `--memos`,
+   `VUN_THREADS=1` for exact counts; the CPU clock varies (a laptop on battery), so compare A/B
+   runs made together, never across time. Durability made warm `files.vun` restore 1.7k memos
+   instead of 14.4k (1.5k hold at once; ~300 of the project's own verified in order). A new
+   project with the libraries shared (dev, 843 ms): lowering's second phase, `inline_small` on
+   the unit, re-tidies each function it inlined into, per program and in turn (~350 ms): next is
+   inlining per function as a query reading its callees' (shared like `FunctionLir`, merging
+   `Refs` as `Assembly` places them). Saving the memos (~136 ms) copies every key of the loaded
+   shared entry into the project file: next is layered stores (the project file holding its own
+   memos, its reads of the shared entry naming that file). Truly cold (empty store): threads wait
+   ~1.1 s on the same `std` claims, once per toolchain. The driver tests read the machine's
    toolchain file: an entry naming a target the branch lacks fails every test choosing a target
    (`target.unchosen`); `VUN_TOOLCHAIN` points them at another file.
 3. Checks (268): a board and a WASI shadow, use after return; `fixed` kinds.

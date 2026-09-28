@@ -1665,6 +1665,8 @@ version = "0.0.0"
 dependencies = [
  "foldhash",
  "papaya",
+ "vun-json",
+ "vun-term",
 ]
 
 [[package]]
@@ -1686,7 +1688,9 @@ dependencies = [
  "papaya",
  "vun-codec",
  "vun-hash",
+ "vun-json",
  "vun-par",
+ "vun-term",
  "vun-trace",
 ]
 

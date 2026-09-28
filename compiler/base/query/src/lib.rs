@@ -18,11 +18,13 @@
 mod claim;
 mod cx;
 mod db;
+mod durable;
 mod fingerprint;
 mod hashed;
 mod memo;
 mod persist;
 mod table;
+mod tally;
 #[cfg(test)]
 mod tests;
 
@@ -32,6 +34,7 @@ pub use cx::{Cx, Cycle, Differs, Reuse, Unsound};
 pub use db::{Db, Sharing};
 pub use fingerprint::Fingerprint;
 pub use persist::{Census, Counted, Unloaded};
+pub use tally::{Event, Tally};
 
 /// A point in the history of inputs.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]

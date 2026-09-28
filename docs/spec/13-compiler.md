@@ -63,7 +63,16 @@ years (rustc's parallel front end). So both are designed in from phase 1.
   memos are. Before the reads of a memo reading many are verified in order, the memos they
   reach are verified ahead over threads, computing none: each whose reads all hold is marked
   current, so verifying in order finds it done, and computes only what changed, in the order
-  that never computes a read keyed by an earlier read's value before that value holds. Under
+  that never computes a read keyed by an earlier read's value before that value holds; one
+  thread looks at each memo, another reaching it leaves it to verifying in order. Durability
+  (as Salsa's): an input is set as the database's own, as shared among databases that chose
+  alike (the target, the checks) or as shared by all (a library's sources), and a memo is as
+  durable as the least shared input it reads through all it read. A memo is saved with the
+  fingerprint of every input of its level or a more shared one when it last held, and holds at
+  once, its reads never looked at, while that fingerprint is the same: a library's memos hold
+  whatever the target, those reading the target while it is the one chosen. An input not set
+  stays out of every fingerprint, so a memo that read it unset never matches one that read it
+  set. Under
   `VUN_QUERY_CHECK=1` what verifying ahead finds is only recorded, and verifying in order fails
   on a memo it found to hold whose reads changed. Traces hold fingerprints rather than revision
   numbers, so they stay valid in the next process. Each key gets a slot in its query's table
@@ -95,7 +104,8 @@ years (rustc's parallel front end). So both are designed in from phase 1.
   dependency graph). Loading reads what is used, in place in the file: a query's keys when one
   of them is first looked for, found by the stable hash of the key's value (`vun_hash::Stable`,
   which symbols, interned values and origins hash by), a key's memo when that key is first asked
-  for, a memo's reads when it is first verified and its value when first needed; so a run pays
+  for (a key reached through another memo's reads gets its slot by its position, and is read
+  when first needed), a memo's reads when it is first verified and its value when first needed; so a run pays
   for the memos it uses, not for those of other programs sharing the file. Saving happens only
   when a memo of a persisted query was computed that the file did not hold, and extends the loaded stream: every key
   keeps its position, and keys and memos never asked for are copied, not decoded again. Since an
@@ -1098,8 +1108,13 @@ Rules:
   memos and values), and the driver each stage of its table and each build step (the program's
   reach and its bodies' reports, lowering, legalizing, emitting). Each activity sums
   its runs, its own time (without the activities run inside it) and its total time over every
-  thread. `VUN_TIMINGS=1` or `--timings` reports the table at exit, the most own time first;
-  when off, timing an activity costs one relaxed load.
+  thread. `VUN_TIMINGS=1` or `--timings` reports the table at exit, the most own time first,
+  with how work spread over threads (calls spread, run alone or nested in a worker, helpers
+  asked and lent, wall and busy time); when off, timing an activity costs one relaxed load.
+  Waiting for another thread's memo is an activity of its own. `VUN_THREADS=n` sets the threads
+  a call runs on. `VUN_MEMOS=1` or `--memos` reports what each query did with its memos:
+  restored, keys and values read, found to hold in order or ahead, and each computation by why
+  it ran; counts, the same every run on one thread.
 - There is one frontend: the LSP runs on the same query engine as the compiler.
 - Command lines are declared, never matched by hand: `vun-command` holds command trees (names,
   aliases, typed parameters with their values and variables, shared option sets, examples,

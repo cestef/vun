@@ -11,11 +11,11 @@ use vun_trace::tracing;
 use super::saved::{SavedDep, SavedKey, SavedMemo, SavedQuery};
 use super::shared::Included;
 use super::store::{Attached, Store};
-use crate::Query;
-use crate::db::Db;
+use crate::db::{Db, Sharing};
 use crate::fingerprint::Fingerprint;
 use crate::memo::{Dep, Deps, Memo, ReadValue};
 use crate::table::TableId;
+use crate::{Query, Revision};
 
 pub(crate) trait Persisted: Send + Sync {
     fn name(&self) -> &'static str;
@@ -52,6 +52,10 @@ pub(crate) struct Layout {
     pub(super) positions: Map<TableId, u32>,
     /// Each table's keys, by slot; none for a key the file leaves out.
     pub(super) numbers: Map<TableId, Vec<Option<Number>>>,
+    /// The revision saved, and the fingerprint of the inputs shared as far as each level in it,
+    /// which a memo of that level holding in it is saved as holding under.
+    pub(super) revision: Revision,
+    pub(super) shared: [Fingerprint; Sharing::LEVELS.len()],
 }
 
 impl Layout {
@@ -154,8 +158,8 @@ impl<Q: Query<Key: Encode + Decode>> Persisted for Persisting<Q> {
             let memo = self.memo(db, w, layout, extends, number, entry.memo.load_full().as_deref());
             // A key loaded is kept as it was, with the memo it has now.
             let key = keys[number.at as usize].get_or_insert_with(|| SavedKey {
-                key: w.encode(&entry.key),
-                hash: Stable::of(&entry.key),
+                key: w.encode(table.key(slot)),
+                hash: Stable::of(table.key(slot)),
                 fingerprint: number.base,
                 memo: None,
             });
@@ -176,7 +180,7 @@ impl<Q: Query<Key: Encode + Decode>> Persisting<Q> {
         number: Number,
         memo: Option<&Memo<Q>>,
     ) -> Option<Vec<u8>> {
-        let memo = memo.filter(|memo| !memo.input)?;
+        let memo = memo.filter(|memo| !memo.is_input())?;
         // Reads as loaded keep their positions in a stream extending the one they were read from.
         let deps = match (&memo.deps, extends) {
             (Deps::Saved { saved, .. }, Some(_)) => saved.to_vec(),
@@ -190,6 +194,9 @@ impl<Q: Query<Key: Encode + Decode>> Persisting<Q> {
             (None, None) => memo.value(db).map(|value| (values.write)(w, value)),
         });
         let fingerprint = (number.base != Some(memo.fingerprint)).then_some(memo.fingerprint);
-        Some(SavedMemo { fingerprint, value, deps }.encoded())
+        let level = memo.durability.level;
+        let now = level.level().filter(|_| memo.current(layout.revision)).map(|at| layout.shared[at]);
+        let under = now.or(memo.durability.under).map(|under| (level, under));
+        Some(SavedMemo { fingerprint, value, deps, under }.encoded())
     }
 }

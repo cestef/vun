@@ -233,3 +233,41 @@ fn only_the_memos_asked_for_are_restored() {
     assert_eq!(second.get::<Words>(&"a".into()), ["x"]);
     assert_eq!(second.computed::<Words>().len(), 1, "the memo of b is never restored");
 }
+
+static LENGTHS: Runs = Runs::new();
+
+/// How many words the sources `0` to `key` hold, read through `Words`.
+struct Length;
+impl Query for Length {
+    const NAME: &'static str = "length";
+    type Key = u32;
+    type Value = usize;
+    fn compute(cx: &Cx<'_>, key: &u32) -> usize {
+        LENGTHS.tick();
+        (0..*key).map(|i| cx.get::<Words>(&i.to_string()).len()).sum()
+    }
+}
+
+#[test]
+fn a_key_reached_by_its_saved_position_and_by_its_value_has_one_slot() {
+    let sources = |db: &Db| (0..20).for_each(|i: u32| db.set::<Source>(&i.to_string(), "a b".into()));
+    let first = persisting("");
+    first.persist::<Length>();
+    sources(&first);
+    assert_eq!(first.get::<Length>(&20), 40);
+    let (saved, words) = (first.save(), WORDS.count());
+
+    // Verifying the length reaches each word memo by its saved position, its key unread; a
+    // source changed then makes the length ask for the words by their keys.
+    let second = persisting("");
+    second.persist::<Length>();
+    second.load(saved).unwrap();
+    sources(&second);
+    assert_eq!(second.get::<Length>(&20), 40);
+    second.set::<Source>(&"7".into(), "a b c".into());
+    assert_eq!(second.get::<Length>(&20), 41);
+    assert_eq!(WORDS.count(), words + 1, "only the words of the source changed are computed");
+    let keys: Vec<String> = second.computed::<Words>().into_iter().map(|(key, _)| key).collect();
+    let distinct: std::collections::HashSet<&String> = keys.iter().collect();
+    assert_eq!((keys.len(), distinct.len()), (20, 20), "one slot per key");
+}

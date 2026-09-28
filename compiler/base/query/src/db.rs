@@ -5,11 +5,14 @@ use std::cell::RefCell;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, OnceLock, RwLock};
 
+use arc_swap::ArcSwapOption;
+use vun_codec::{Decode, Encode};
 use vun_par::Map;
 
 use super::claim::Waits;
-use super::cx::{Cx, Reuse};
-use super::memo::Memo;
+use super::cx::{Cx, Found, Reuse};
+use super::fingerprint::Fingerprint;
+use super::memo::{Memo, Source};
 use super::persist::{Persisted, Store};
 use super::table::{AnyTable, Slot, Table, TableId};
 use super::{Query, Revision};
@@ -31,14 +34,26 @@ thread_local! {
         RefCell::default();
 }
 
-/// Whether an input is the same in other databases, so that what reads such inputs alone is
-/// shared with them.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+/// How far an input is the same in other databases, so that what reads such inputs alone is
+/// shared with them; ordered from the least shared.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Encode, Decode)]
 pub enum Sharing {
     /// This database's own.
     Own,
-    /// Seen alike by other databases.
+    /// Seen alike by other databases that chose alike, as the target and the checks are.
+    Chosen,
+    /// Seen alike by every other database, as a library's sources are.
     Shared,
+}
+
+impl Sharing {
+    /// The levels shared at all, each with a fingerprint of its inputs ([`Db::shared_inputs`]).
+    pub(crate) const LEVELS: [Self; 2] = [Self::Chosen, Self::Shared];
+
+    /// Its place among [`Self::LEVELS`]; `None` for [`Self::Own`].
+    pub(crate) fn level(self) -> Option<usize> {
+        Self::LEVELS.iter().position(|&level| level == self)
+    }
 }
 
 /// Every query's memos, and the current revision. Threads share it, each through its own
@@ -49,7 +64,7 @@ pub struct Db {
     /// remembers.
     id: DbId,
     revision: AtomicU64,
-    tables: boxcar::Vec<Box<dyn AnyTable>>,
+    pub(crate) tables: boxcar::Vec<Box<dyn AnyTable>>,
     /// Each query's table, by the query's type.
     ids: Map<TypeId, TableId>,
     pub(crate) waits: Waits,
@@ -61,8 +76,11 @@ pub struct Db {
     pub(crate) persisted: RwLock<Vec<Arc<dyn Persisted>>>,
     /// Whether memos reused without being computed are checked by computing them again.
     pub(crate) reuse: Reuse,
-    /// Whether each memo verified ahead holds, with the revision it was looked at in.
-    pub(crate) settled: Map<(TableId, Slot), (Revision, bool)>,
+    /// What verifying ahead found of each memo it looked at, by the revision it looked in.
+    pub(crate) settled: Map<(TableId, Slot, Revision), Found>,
+    /// The fingerprint of the shared inputs, with the revision it was found in; unset when an
+    /// input is set.
+    pub(crate) shared_inputs: ArcSwapOption<(Revision, [Fingerprint; Sharing::LEVELS.len()])>,
     resources: Map<TypeId, Arc<dyn Any + Send + Sync>>,
 }
 
@@ -96,24 +114,28 @@ impl Db {
     }
 
     /// Sets the input `key` of `Q` as [`Db::set`] does, shared with other databases or not.
+    ///
+    /// # Panics
+    /// If `Q` is not an input ([`Query::INPUT`]): what a query computes is never set.
     pub fn set_as<Q: Query>(&self, key: &Q::Key, value: Q::Value, sharing: Sharing) {
-        let shared = sharing == Sharing::Shared;
+        assert!(Q::INPUT, "{} is set, but is not an input", Q::NAME);
+        self.shared_inputs.store(None);
         let fingerprint = Q::interface(&value);
         let table = self.table::<Q>();
         let entry = table.entry(table.slot(key));
         let revision = match &*entry.memo.load() {
-            Some(current)
-                if current.input && current.fingerprint == fingerprint && current.shared == shared =>
-            {
+            Some(current) if current.source == Source::Set(sharing) && current.fingerprint == fingerprint => {
                 return;
             }
             // Shared or not, an equal value leaves what read it current.
-            Some(current) if current.input && current.fingerprint == fingerprint => current.verified.get(),
+            Some(current) if current.is_input() && current.fingerprint == fingerprint => {
+                current.verified.get()
+            }
             Some(_) => Some(Revision(self.revision.fetch_add(1, Ordering::AcqRel) + 1)),
             None => Some(self.revision()),
         };
         let revision = revision.unwrap_or_else(|| self.revision());
-        entry.memo.store(Some(Arc::new(Memo::input(value, fingerprint, revision, shared))));
+        entry.memo.store(Some(Arc::new(Memo::input(value, fingerprint, revision, Source::Set(sharing)))));
     }
 
     /// The value of `Q` at `key`, from a fresh context.

@@ -8,6 +8,12 @@ use std::collections::HashMap;
 use std::sync::{Arc, Condvar, Mutex};
 use std::thread::{self, ThreadId};
 
+use vun_trace::Activity;
+
+/// Waiting for another thread to compute a memo, as timed: the waiting query's own time
+/// leaves it out.
+const WAIT: Activity = Activity::stage("wait for claims");
+
 /// The claim on one memo: the computation running it, if any.
 #[derive(Default)]
 pub(crate) struct Claims(Mutex<Option<Arc<Running>>>);
@@ -59,6 +65,7 @@ impl Claims {
         if other.owner == me || !waits.start(me, other.owner) {
             return Claim::Alone;
         }
+        let _timer = WAIT.start();
         let done = other.done.lock().expect("a running computation");
         drop(other.finished.wait_while(done, |done| !*done).expect("a running computation"));
         waits.end(me);

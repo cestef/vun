@@ -24,6 +24,13 @@ impl Decode for Fingerprint {
 }
 
 impl Fingerprint {
+    /// The fingerprint of a set with `self` and `other` in it: added, so that the order members
+    /// come in does not matter.
+    #[must_use]
+    pub(crate) fn with(self, other: Self) -> Self {
+        Self(self.0.wrapping_add(other.0))
+    }
+
     #[must_use]
     pub fn of<T: Hash + ?Sized>(value: &T) -> Self {
         Self(Stable::wide(value))

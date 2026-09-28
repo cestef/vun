@@ -2,6 +2,7 @@
 
 use crate::db::Db;
 use crate::memo::Dep;
+use crate::tally::Event;
 
 /// Why a memo is computed.
 #[derive(Clone, Copy, Debug)]
@@ -22,6 +23,18 @@ pub(super) enum Why {
 }
 
 impl Why {
+    /// The computation as [`Db::tally`] counts it.
+    pub(super) fn event(self) -> Event {
+        match self {
+            Self::Absent => Event::Absent,
+            Self::Stale(_) => Event::Stale,
+            Self::Unloaded => Event::Unloaded,
+            Self::Unresolved => Event::Unresolved,
+            Self::Cycle => Event::Cycle,
+            Self::Checked => Event::Checked,
+        }
+    }
+
     pub(super) fn show(self, db: &Db) -> String {
         match self {
             Self::Absent => "absent".to_owned(),

@@ -7,10 +7,11 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use vun_codec::{Blob, Context, Malformed};
 use vun_trace::{Activity, tracing};
 
-use super::db::Db;
+use super::db::{Db, Sharing};
 use super::fingerprint::Fingerprint;
 use super::persist::SavedDep;
 use super::table::{Slot, TableId};
+use super::tally::Event;
 use super::{Query, Revision};
 
 /// Reading saved values, as timed.
@@ -26,10 +27,37 @@ pub(crate) struct Memo<Q: Query> {
     pub(crate) deps: Deps,
     /// None for a loaded memo until it is verified.
     pub(crate) verified: Verified,
-    /// Set with [`Db::set`], or an input's value while unset, rather than computed.
-    pub(crate) input: bool,
-    /// An input set with [`Db::share`], which other databases see alike.
-    pub(crate) shared: bool,
+    pub(crate) source: Source,
+    /// How far the inputs it reads, through all it read, are shared.
+    pub(crate) durability: Durability,
+}
+
+/// Where a memo's value comes from.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum Source {
+    Computed,
+    /// An input set ([`Db::set_as`]), shared as it says.
+    Set(Sharing),
+    /// An input's value while it is not set, alike in every database.
+    Unset,
+}
+
+/// How far the inputs a memo reads, through all it read, are shared: the least shared of them.
+/// A memo whose inputs are shared holds as long as they do, which one fingerprint of every input
+/// shared as far tells ([`Db::shared_inputs`]).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) struct Durability {
+    pub(crate) level: Sharing,
+    /// Loaded: the fingerprint of the inputs shared as far as its level when it last held.
+    pub(crate) under: Option<Fingerprint>,
+}
+
+impl Durability {
+    pub(crate) const OWN: Self = Self { level: Sharing::Own, under: None };
+
+    pub(crate) fn at(level: Sharing) -> Self {
+        Self { level, under: None }
+    }
 }
 
 /// A value as saved, a place in the stream the database loaded, and how to read it.
@@ -50,16 +78,26 @@ pub(crate) struct Dep {
 }
 
 impl<Q: Query> Memo<Q> {
-    pub(crate) fn input(value: Q::Value, fingerprint: Fingerprint, revision: Revision, shared: bool) -> Self {
+    /// An input's value, set or standing while it is not.
+    pub(crate) fn input(
+        value: Q::Value,
+        fingerprint: Fingerprint,
+        revision: Revision,
+        source: Source,
+    ) -> Self {
         let verified = Verified::at(revision);
+        let level = match source {
+            Source::Set(sharing) => sharing,
+            Source::Computed | Source::Unset => Sharing::Shared,
+        };
         Self {
             value: OnceLock::from(value),
             saved: None,
             fingerprint,
             deps: Deps::Read(Box::new([])),
             verified,
-            input: true,
-            shared,
+            source,
+            durability: Durability::at(level),
         }
     }
 
@@ -68,6 +106,7 @@ impl<Q: Query> Memo<Q> {
         fingerprint: Fingerprint,
         deps: Box<[Dep]>,
         revision: Revision,
+        durability: Durability,
     ) -> Self {
         let verified = Verified::at(revision);
         let deps = Deps::Read(deps);
@@ -77,21 +116,42 @@ impl<Q: Query> Memo<Q> {
             fingerprint,
             deps,
             verified,
-            input: false,
-            shared: false,
+            source: Source::Computed,
+            durability,
         }
     }
 
-    /// A memo of another process, never verified in this one.
-    pub(crate) fn loaded(saved: Option<Saved<Q>>, fingerprint: Fingerprint, deps: Box<[SavedDep]>) -> Self {
+    /// A memo of another process, never verified in this one; `under`, for one whose inputs are
+    /// shared, how far, and their fingerprint when it last held.
+    pub(crate) fn loaded(
+        saved: Option<Saved<Q>>,
+        fingerprint: Fingerprint,
+        deps: Box<[SavedDep]>,
+        under: Option<(Sharing, Fingerprint)>,
+    ) -> Self {
         let verified = Verified::default();
         let deps = Deps::Saved { saved: deps, read: OnceLock::new() };
-        Self { value: OnceLock::new(), saved, fingerprint, deps, verified, input: false, shared: false }
+        let durability =
+            under.map_or(Durability::OWN, |(level, under)| Durability { level, under: Some(under) });
+        Self {
+            value: OnceLock::new(),
+            saved,
+            fingerprint,
+            deps,
+            verified,
+            source: Source::Computed,
+            durability,
+        }
+    }
+
+    /// Whether it is an input's value rather than computed.
+    pub(crate) fn is_input(&self) -> bool {
+        self.source != Source::Computed
     }
 
     /// Whether it holds in `revision` without looking at what it read.
     pub(crate) fn current(&self, revision: Revision) -> bool {
-        self.input || self.verified.get() == Some(revision)
+        self.is_input() || self.verified.get() == Some(revision)
     }
 
     /// Its value if it has one: computed, or saved and read now the first time. `None` when it
@@ -102,6 +162,7 @@ impl<Q: Query> Memo<Q> {
         }
         let saved = self.saved.as_ref()?;
         let _timer = READ.start();
+        db.table::<Q>().counts.add(Event::ValueRead);
         match (saved.read)(&db.store.get()?.stream, saved.at) {
             Ok(value) => Some(self.value.get_or_init(|| value)),
             Err(malformed) => {

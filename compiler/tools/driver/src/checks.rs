@@ -5,6 +5,7 @@
 use vun_command::{Args, Arity, Param, Values};
 use vun_diag::{Diagnostic, ErrorGuaranteed, Msg, errors};
 use vun_lir::Unit;
+use vun_query::Sharing;
 use vun_sanitize::Operations;
 use vun_sema::checks::ChecksOf;
 use vun_sema::target::Variants;
@@ -36,7 +37,7 @@ impl Session {
     pub fn add_checks(&mut self, checks: impl IntoIterator<Item = Check>) {
         let current = self.db.get::<ChecksOf>(&());
         // Shared memos are kept by the checks, which they may read.
-        self.db.share::<ChecksOf>(&(), Checks::of(current.iter().chain(checks)));
+        self.db.set_as::<ChecksOf>(&(), Checks::of(current.iter().chain(checks)), Sharing::Chosen);
     }
 
     /// The checks the session's programs are built with.

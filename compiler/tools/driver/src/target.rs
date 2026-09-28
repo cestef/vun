@@ -10,6 +10,7 @@ use vun_diag::{Diagnostic, ErrorGuaranteed, Msg, errors};
 use vun_grammar::PATH_SEPARATOR;
 use vun_hir::db::FileRef;
 use vun_intern::Symbol;
+use vun_query::Sharing;
 use vun_sema::target::{Choice, Chosen, Target, TargetOf};
 use vun_target::TargetSpec;
 use vun_trace::tracing;
@@ -51,7 +52,7 @@ impl Session {
                     "sessions sharing queries compile for one target (`Shared` gives one database per package)"
                 );
                 // Shared memos are kept by the target chosen, which they may read.
-                self.db.share::<TargetOf>(&(), Some(Arc::new(target)));
+                self.db.set_as::<TargetOf>(&(), Some(Arc::new(target)), Sharing::Chosen);
                 Ok(spec)
             }
             Err(why) => {

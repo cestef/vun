@@ -92,9 +92,10 @@ impl Pool {
     }
 
     /// Runs `work` on the caller and on up to `helpers` idle workers at once, returning once each
-    /// is done with it. A panic in the caller's run goes on once the workers are done; a panic in
-    /// a worker's goes on in the caller once the caller's own run ends.
-    pub(crate) fn run(&self, helpers: usize, work: &(dyn Fn() + Sync)) {
+    /// is done with it, with how many workers joined. A panic in the caller's run goes on once the
+    /// workers are done; a panic in a worker's goes on in the caller once the caller's own run
+    /// ends.
+    pub(crate) fn run(&self, helpers: usize, work: &(dyn Fn() + Sync)) -> usize {
         // SAFETY: erases the lifetime of `work` alone, the pointee and its metadata unchanged. The
         // pointer goes only into the tasks queued below, each reports to `latch` once its worker
         // is done with it, and `lent` waits for every report before this frame ends, however it
@@ -108,7 +109,7 @@ impl Pool {
         let latch =
             Arc::new(Latch { state: Mutex::new(Pending { workers: 0, panic: None }), done: Condvar::new() });
         let lent = Lent(Arc::clone(&latch));
-        {
+        let workers = {
             let mut state = lock(&self.state);
             let workers = helpers.min(state.idle);
             // Room first, so that lending below allocates nothing and cannot fail halfway.
@@ -118,12 +119,14 @@ impl Pool {
             for _ in 0..workers {
                 state.queue.push_back(Task { work: Work(erased), latch: Arc::clone(&latch) });
             }
-        }
+            workers
+        };
         self.lent.notify_all();
         work();
         if let Some(panic) = lent.wait() {
             panic::resume_unwind(panic);
         }
+        workers
     }
 
     /// A worker: takes each task lent, runs it, reports, and is idle again.
