@@ -1,0 +1,7 @@
+//! What a staged `$if`'s branch declares is not in scope after it: which branch is generated is
+//! known only once the condition is (spec 03, section 1).
+
+pick := ($wide: bool) -> u32 {
+    $if wide { x: u32 = 7; } else { x: u32 = 3; }
+    x //~ names.unresolved
+};

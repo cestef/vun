@@ -1,0 +1,20 @@
+//! A staged `$if`'s branches are scopes of their own, as a `$for`'s steps are: each may declare
+//! the same names, and a value chosen at compile time is the `$if`'s value (spec 03, section 1).
+
+pick := ($wide: bool) -> u32 {
+    $if wide {
+        x: u32 = 7;
+        _ = x;
+    } else {
+        x: u32 = 3;
+        _ = x;
+    }
+    x: u32 = $if wide { 7 } else { 3 };
+    x
+};
+
+#[test]
+picked := () {
+    $assert(pick(true) == 7);
+    $assert(pick(false) == 3);
+};

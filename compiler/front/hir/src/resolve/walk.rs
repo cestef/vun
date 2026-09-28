@@ -178,7 +178,14 @@ impl Visitor for Resolver<'_, '_> {
                     this.declaring = declaring;
                 });
             }
-            Staged::If { .. } => visit::walk_staged(self, hir, staged, entry),
+            // A branch's declarations are its own, as a step's are: which branch is generated
+            // is known only once the condition is.
+            Staged::If { cond, then, otherwise, .. } => {
+                self.expr(hir, *cond);
+                for branch in [then, otherwise] {
+                    self.with_scope(Kind::Local, |this| visit::walk_list(this, hir, branch, entry));
+                }
+            }
         }
     }
 
