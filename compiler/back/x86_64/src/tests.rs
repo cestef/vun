@@ -88,7 +88,7 @@ fn every_form_decodes_as_one_instruction_printed_alike() {
                     // yaxpeax-x86 writes a string instruction's implicit operands, and decodes
                     // `movd xmm, r/m32` (`66 0f 6e`, no REX.W) as `movq`: those bytes are
                     // checked by `the_shortest_form_is_chosen`.
-                    let known = op == Op::Movsb
+                    let known = matches!(op, Op::Movsb | Op::Stosb)
                         || op == Op::Movd && size == Size::B32 && matches!(operands[0], Operand::Xmm(_));
                     if !form.kinds().any(|k| k == Kind::Rel)
                         && !known
@@ -129,6 +129,8 @@ fn the_shortest_form_is_chosen() {
     assert_eq!(bytes(Op::Sub, Size::B64, &[Reg::Rsp.into(), 16.into()]), [0x48, 0x83, 0xec, 0x10]);
     assert_eq!(bytes(Op::Cmp, Size::B8, &[Reg::Rsi.into(), Reg::Rax.into()]), [0x40, 0x38, 0xc6]);
     assert_eq!(bytes(Op::Movd, Size::B32, &[Xmm(1).into(), Reg::Rax.into()]), [0x66, 0x0f, 0x6e, 0xc8]);
+    assert_eq!(bytes(Op::Movsb, Size::B8, &[]), [0xf3, 0xa4]);
+    assert_eq!(bytes(Op::Stosb, Size::B8, &[]), [0xf3, 0xaa]);
 }
 
 #[test]

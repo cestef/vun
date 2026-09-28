@@ -191,4 +191,42 @@ movsb := _x.Instruction{ .forms = &[
     },
 ] };
 
+/// Fills `rcx` bytes at `[rdi]` with `al` with `rep`.
+stosb := _x.Instruction{ .forms = &[
+    .{
+        .operands = &[],
+        .sizes = _all,
+        .opcode = &[0xaa],
+        .layout = .bare,
+        .prefix = .rep,
+        .w = .never,
+        .reads = &[.rdi, .rcx, .rax],
+        .writes = &[.rdi, .rcx],
+    },
+] };
+
+/// Clears the direction flag: string operations go up.
+cld := _x.Instruction{ .forms = &[
+    .{ .operands = &[], .sizes = _all, .opcode = &[0xfc], .layout = .bare, .w = .never, .flags = _sets },
+] };
+
+/// Sets the direction flag: string operations go down.
+\std := _x.Instruction{ .forms = &[
+    .{ .operands = &[], .sizes = _all, .opcode = &[0xfd], .layout = .bare, .w = .never, .flags = _sets },
+] };
+
+/// Calls the kernel: the call's number in `rax`, its result there too; the kernel keeps every
+/// register but `rcx` and `r11`, which the return address and the flags pass through.
+syscall := _x.Instruction{ .forms = &[
+    .{
+        .operands = &[],
+        .sizes = _all,
+        .opcode = &[0x0f, 0x05],
+        .layout = .bare,
+        .w = .never,
+        .reads = &[.rax],
+        .writes = &[.rax, .rcx, .r11],
+    },
+] };
+
 _string: &[_x.Reg] = &[.rsi, .rdi, .rcx];

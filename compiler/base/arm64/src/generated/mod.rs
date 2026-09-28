@@ -17,6 +17,7 @@ mod cbz;
 mod cbnz;
 mod udf;
 mod brk;
+mod svc;
 mod adrp;
 mod dmb;
 mod mrs;

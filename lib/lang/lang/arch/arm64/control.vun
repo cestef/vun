@@ -59,6 +59,12 @@ brk := _a.Instruction{ .forms = &[
     .{ .base = 0xd4200000, .sizes = _any, .args = &[_u16_n], .flow = .ends },
 ] };
 
+/// Calls the kernel (the supervisor): Linux takes the call's number in `x8` and returns its
+/// result in `x0`, keeping every other register.
+svc := _a.Instruction{ .forms = &[
+    .{ .base = 0xd4000001, .sizes = _any, .args = &[_u16_n], .reads = &[.x8], .writes = &[.x0] },
+] };
+
 /// The page of an address, which a following `add` or load completes with its low 12 bits.
 adrp := _a.Instruction{ .forms = &[
     .{ .base = 0x90000000, .sizes = _any, .args = &[_x_d_w, _page_d] },

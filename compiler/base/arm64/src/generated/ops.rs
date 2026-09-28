@@ -13,6 +13,9 @@ pub enum Op {
     Cbnz,
     Udf,
     Brk,
+    /// Calls the kernel (the supervisor): Linux takes the call's number in `x8` and returns its
+    /// result in `x0`, keeping every other register.
+    Svc,
     /// The page of an address, which a following `add` or load completes with its low 12 bits.
     Adrp,
     /// A data memory barrier: accesses the barrier orders complete, as its operand says, before any
@@ -195,6 +198,7 @@ impl Op {
         Self::Cbnz,
         Self::Udf,
         Self::Brk,
+        Self::Svc,
         Self::Adrp,
         Self::Dmb,
         Self::Mrs,

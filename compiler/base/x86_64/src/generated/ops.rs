@@ -59,6 +59,15 @@ pub enum Op {
     Cmpxchg,
     /// Copies `rcx` bytes from `[rsi]` to `[rdi]` with `rep`.
     Movsb,
+    /// Fills `rcx` bytes at `[rdi]` with `al` with `rep`.
+    Stosb,
+    /// Clears the direction flag: string operations go up.
+    Cld,
+    /// Sets the direction flag: string operations go down.
+    Std,
+    /// Calls the kernel: the call's number in `rax`, its result there too; the kernel keeps every
+    /// register but `rcx` and `r11`, which the return address and the flags pass through.
+    Syscall,
     Mov,
     /// Zero-extends an operand of the instruction's size to 32 bits, or 64.
     Movzx,
@@ -118,6 +127,10 @@ impl Op {
         Self::Xadd,
         Self::Cmpxchg,
         Self::Movsb,
+        Self::Stosb,
+        Self::Cld,
+        Self::Std,
+        Self::Syscall,
         Self::Mov,
         Self::Movzx,
         Self::Movsx,
