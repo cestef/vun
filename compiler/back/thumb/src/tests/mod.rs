@@ -25,7 +25,10 @@ fn fitting(op: Op, form: &'static Form, size: Size) -> Vec<Vec<Operand<Sym>>> {
     let mut all: Vec<Vec<Operand<Sym>>> = vec![Vec::new()];
     for kind in form.kinds() {
         let choices = candidates(kind);
-        all = all.into_iter().flat_map(|prefix| choices.iter().map(move |c| [&prefix[..], &[*c]].concat())).collect();
+        all = all
+            .into_iter()
+            .flat_map(|prefix| choices.iter().map(move |c| [&prefix[..], &[*c]].concat()))
+            .collect();
     }
     all.into_iter().filter(|operands| op.form(size, operands) == Some(form)).collect()
 }
@@ -52,8 +55,15 @@ fn assemble(text: &str) -> Option<Result<Vec<Vec<u8>>, String>> {
     }
     let encodings = String::from_utf8_lossy(&out.stdout)
         .lines()
-        .filter_map(|line| line.split_once("encoding: [").map(|(_, bytes)| bytes.trim_end_matches(']').to_owned()))
-        .map(|bytes| bytes.split(',').map(|b| u8::from_str_radix(b.trim().trim_start_matches("0x"), 16).expect("a byte")).collect())
+        .filter_map(|line| {
+            line.split_once("encoding: [").map(|(_, bytes)| bytes.trim_end_matches(']').to_owned())
+        })
+        .map(|bytes| {
+            bytes
+                .split(',')
+                .map(|b| u8::from_str_radix(b.trim().trim_start_matches("0x"), 16).expect("a byte"))
+                .collect()
+        })
         .collect();
     Some(Ok(encodings))
 }
@@ -74,9 +84,13 @@ fn every_form_assembles_as_llvm_does() {
                 }
             }
         }
-        assert!(op.forms().iter().any(|f| linked(f)) || op.forms().iter().all(|f| f.sizes.iter().any(|s| !fitting(op, f, s.size).is_empty())), "{op:?} has a form no operand fits");
+        assert!(
+            op.forms().iter().any(linked)
+                || op.forms().iter().all(|f| f.sizes.iter().any(|s| !fitting(op, f, s.size).is_empty())),
+            "{op:?} has a form no operand fits"
+        );
     }
-    let text: String = lines.iter().map(|(line, _)| format!("{line}\n")).collect();
+    let text: String = lines.iter().flat_map(|(line, _)| [line.as_str(), "\n"]).collect();
     let Some(assembled) = assemble(&text) else { return };
     let encodings = assembled.unwrap_or_else(|errors| panic!("LLVM refuses the text:\n{errors}"));
     assert_eq!(encodings.len(), lines.len());
@@ -86,5 +100,11 @@ fn every_form_assembles_as_llvm_does() {
         .filter(|((_, ours), theirs)| ours != *theirs)
         .map(|((line, ours), theirs)| format!("{line}  |  ours {ours:02x?}, LLVM's {theirs:02x?}"))
         .collect();
-    assert!(differ.is_empty(), "{} of {} differ:\n{}", differ.len(), lines.len(), differ.iter().take(60).cloned().collect::<Vec<_>>().join("\n"));
+    assert!(
+        differ.is_empty(),
+        "{} of {} differ:\n{}",
+        differ.len(),
+        lines.len(),
+        differ.iter().take(60).cloned().collect::<Vec<_>>().join("\n")
+    );
 }

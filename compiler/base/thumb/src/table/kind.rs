@@ -101,10 +101,10 @@ const DOUBLES: u32 = 16;
 
 impl Lists {
     /// The field of `list`, if this position takes it.
-    fn encode(self, list: &List) -> Option<u32> {
+    fn encode(self, list: List) -> Option<u32> {
         const LOW: u16 = 0xff;
         let (sp, lr, pc) = (1 << Reg::Sp.number(), 1 << Reg::Lr.number(), 1 << Reg::Pc.number());
-        match (self, *list) {
+        match (self, list) {
             (Self::Push, List::Regs(regs)) if regs & !(LOW | lr) == 0 => {
                 Some(u32::from(regs & LOW) | u32::from(regs & lr != 0) << 8)
             }
@@ -125,7 +125,7 @@ impl Lists {
                 if count == 0 || d + count > DOUBLES {
                     return None;
                 }
-                Fields::D.encode(first, Size::B64).map(|f| f | count * 2)
+                Fields::D.encode(first, Size::B64).map(|f| f | (count * 2))
             }
             _ => None,
         }
@@ -155,11 +155,14 @@ impl<S> Field<Operand<S>, Size> for Kind {
             }
             (Self::Mem(mode, width), Operand::Mem(mem)) => mode.encode(mem, width.at(size)),
             (Self::Cond, Operand::Cond(cc)) => (*cc != crate::Cc::Al).then(|| u32::from(cc.number())),
-            (Self::Target(Branch::Jump | Branch::Call | Branch::Cond), Operand::Label(_) | Operand::Sym(_))
+            (
+                Self::Target(Branch::Jump | Branch::Call | Branch::Cond),
+                Operand::Label(_) | Operand::Sym(_),
+            )
             | (Self::Target(_), Operand::Label(_))
             | (Self::Low, Operand::Low(_))
             | (Self::High, Operand::High(_)) => Some(0),
-            (Self::List(lists), Operand::List(list)) => lists.encode(list),
+            (Self::List(lists), Operand::List(list)) => lists.encode(*list),
             (Self::Special, Operand::Special(s)) => Some(s.field()),
             (Self::Status(want), Operand::Status(s)) => (want == *s).then_some(0),
             (Self::Mask, Operand::Mask(m)) => Some(m.field()),

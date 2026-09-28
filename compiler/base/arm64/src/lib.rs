@@ -20,7 +20,7 @@ mod table;
 mod tests;
 
 use vun_isa::Unpatched;
-use vun_isa::imm::{fits_signed, truncate};
+use vun_isa::imm::{field, fits_signed};
 
 pub use bitmask::Bitmask;
 pub use generated::Choice;
@@ -76,8 +76,7 @@ impl vun_isa::Isa for Arm64 {
             return Err(range);
         }
         let (bits, shift) = fixup.field();
-        let field = u32::try_from(truncate(distance / INST_BYTES.cast_signed(), bits))
-            .expect("the field is narrower");
+        let field = field(distance / INST_BYTES.cast_signed(), 0, bits);
         let at = usize::try_from(at).expect("code fits memory");
         let word: &mut [u8; 4] = (&mut code[at..at + size_of::<u32>()]).try_into().expect("a word");
         *word = (u32::from_le_bytes(*word) | field << shift).to_le_bytes();

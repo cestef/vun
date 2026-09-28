@@ -4,6 +4,8 @@
 
 use std::fmt;
 
+use vun_isa::imm::truncate;
+
 use crate::operand::{List, Mem, Operand};
 use crate::reg::Size;
 use crate::table::{Form, Imm, Kind, Op};
@@ -92,10 +94,17 @@ impl<S: Copy + fmt::Display> fmt::Display for Inst<S> {
 
 impl Kind {
     /// Writes `operand`, which this kind takes, in an instruction of `size`.
-    fn write<S: fmt::Display>(self, f: &mut fmt::Formatter<'_>, operand: &Operand<S>, size: Size) -> fmt::Result {
+    fn write<S: fmt::Display>(
+        self,
+        f: &mut fmt::Formatter<'_>,
+        operand: &Operand<S>,
+        size: Size,
+    ) -> fmt::Result {
         match (self, operand) {
             (Self::Fpr(width, _), Operand::V(v)) => write!(f, "{}", v.name_at(width.at(size))),
-            (Self::Imm(Imm::Modified | Imm::Half), Operand::Imm(v)) => write!(f, "#{:#x}", *v as u32),
+            (Self::Imm(Imm::Modified | Imm::Half), Operand::Imm(v)) => {
+                write!(f, "#{:#x}", truncate(*v, u32::BITS))
+            }
             (_, Operand::Imm(v)) => write!(f, "#{v}"),
             (_, Operand::Reg(r)) => write!(f, "{r}"),
             (_, Operand::Shifted(r, shift)) => write!(f, "{r}, {} #{}", shift.kind, shift.amount),

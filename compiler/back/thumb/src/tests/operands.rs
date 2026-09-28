@@ -7,8 +7,29 @@ use super::Sym;
 
 const REGS: [Reg; 6] = [Reg::R0, Reg::R7, Reg::R9, Reg::Sp, Reg::Lr, Reg::Pc];
 const VS: [V; 4] = [V::V0, V::V1, V::V14, V::V31];
-const IMMS: [i64; 21] =
-    [0, 1, 7, 8, 31, 32, 255, 256, 508, 1020, 1024, 0x3fc, 0x00ab_00ab, 0xab00_ab00, 0xabab_abab, 4095, 4096, 0xffff, 0x1_0000, -1, -4];
+const IMMS: [i64; 21] = [
+    0,
+    1,
+    7,
+    8,
+    31,
+    32,
+    255,
+    256,
+    508,
+    1020,
+    1024,
+    0x3fc,
+    0x00ab_00ab,
+    0xab00_ab00,
+    0xabab_abab,
+    4095,
+    4096,
+    0xffff,
+    0x1_0000,
+    -1,
+    -4,
+];
 const OFFSETS: [i64; 12] = [0, 1, 4, 124, 128, 255, 256, 1020, 4095, -4, -255, -1020];
 const CCS: [Cc; 4] = [Cc::Eq, Cc::Ne, Cc::Ge, Cc::Hi];
 
@@ -20,7 +41,12 @@ pub(super) fn candidates(kind: Kind) -> Vec<Operand<Sym>> {
         Kind::Fpr(..) => VS.map(Operand::V).to_vec(),
         Kind::Imm(_) => IMMS.map(Operand::Imm).to_vec(),
         Kind::Shifted => {
-            let shifted = [(Reg::R1, ShiftKind::Lsl, 3), (Reg::R9, ShiftKind::Lsr, 32), (Reg::R2, ShiftKind::Asr, 1), (Reg::R3, ShiftKind::Ror, 7)];
+            let shifted = [
+                (Reg::R1, ShiftKind::Lsl, 3),
+                (Reg::R9, ShiftKind::Lsr, 32),
+                (Reg::R2, ShiftKind::Asr, 1),
+                (Reg::R3, ShiftKind::Ror, 7),
+            ];
             let shifted = shifted.map(|(r, kind, amount)| Operand::Shifted(r, Shift { kind, amount }));
             [&regs[..], &shifted].concat()
         }
@@ -43,7 +69,11 @@ fn mems() -> Vec<Operand<Sym>> {
             all.extend([Mem::Off { base, offset }, Mem::Pre { base, offset }, Mem::Post { base, offset }]);
         }
     }
-    all.extend([Mem::index(Reg::R1, Reg::R2), Mem::Index { base: Reg::R9, index: Reg::R10, shift: 3 }, Mem::Index { base: Reg::R1, index: Reg::R8, shift: 2 }]);
+    all.extend([
+        Mem::index(Reg::R1, Reg::R2),
+        Mem::Index { base: Reg::R9, index: Reg::R10, shift: 3 },
+        Mem::Index { base: Reg::R1, index: Reg::R8, shift: 2 },
+    ]);
     all.into_iter().map(Operand::Mem).collect()
 }
 

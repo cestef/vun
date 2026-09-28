@@ -2,7 +2,7 @@
 //! plus 4 (the manual's `PC`), written into the branch's fields, which the 32-bit forms scatter.
 
 use vun_isa::Unpatched;
-use vun_isa::imm::fits_signed;
+use vun_isa::imm::{field, fits_signed};
 
 /// How far a branch reads the program counter ahead of itself: a relocation of a branch's field
 /// adds it back.
@@ -46,12 +46,14 @@ impl Fixup {
     /// The fields holding a distance of `v` halfwords.
     #[must_use]
     pub fn fields(self, v: i64) -> u32 {
-        let bits = |at: u32, n: u32| (v >> at) as u32 & ((1 << n) - 1);
+        let bits = |at: u32, n: u32| field(v, at, n);
         match self {
             Self::NarrowCond => bits(0, 8),
             Self::Narrow => bits(0, 11),
             Self::Compare => bits(5, 1) << 9 | bits(0, 5) << 3,
-            Self::Cond => bits(19, 1) << 26 | bits(11, 6) << 16 | bits(17, 1) << 13 | bits(18, 1) << 11 | bits(0, 11),
+            Self::Cond => {
+                bits(19, 1) << 26 | bits(11, 6) << 16 | bits(17, 1) << 13 | bits(18, 1) << 11 | bits(0, 11)
+            }
             Self::Jump => {
                 let s = bits(23, 1);
                 let j1 = !(bits(22, 1) ^ s) & 1;
@@ -78,6 +80,9 @@ impl Fixup {
     ///
     /// # Errors
     /// Returns when the distance does not fit the field.
+    ///
+    /// # Panics
+    /// When `at` is past the address space.
     pub fn patch(self, code: &mut [u8], at: u64, target: u64) -> Result<(), Unpatched> {
         let distance = i64::try_from(i128::from(target) - i128::from(at)).unwrap_or(i64::MAX);
         let v = self.reach(at, target).ok_or(Unpatched::Range { at, distance })?;

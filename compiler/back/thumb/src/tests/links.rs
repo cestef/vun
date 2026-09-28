@@ -26,6 +26,10 @@ fn a_call_and_an_address_are_left_to_the_linker() {
     asm.emit(Op::Movw, Size::B32, &[Operand::Reg(Reg::R0), Operand::Low("d")]);
     asm.emit(Op::Movt, Size::B32, &[Operand::Reg(Reg::R0), Operand::High("d")]);
     let code = asm.finish().expect("no label");
-    let kinds: Vec<(u64, RelocKind, i64)> = code.relocs.iter().map(|r| (r.offset, r.kind, r.addend)).collect();
-    assert_eq!(kinds, [(0, RelocKind::ThumbCall, -4), (4, RelocKind::ThumbLow16, 0), (8, RelocKind::ThumbHigh16, 0)]);
+    let kinds: Vec<(u64, RelocKind, i64)> =
+        code.relocs.iter().map(|r| (r.offset, r.kind, r.addend)).collect();
+    assert_eq!(
+        kinds,
+        [(0, RelocKind::ThumbCall, -4), (4, RelocKind::ThumbLow16, 0), (8, RelocKind::ThumbHigh16, 0)]
+    );
 }

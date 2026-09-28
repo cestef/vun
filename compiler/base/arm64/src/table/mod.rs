@@ -7,9 +7,9 @@
 mod kind;
 
 pub use crate::generated::Op;
-pub use vun_isa::word::Access;
 pub(crate) use kind::{ARITH_BITS, HALF_BITS};
 pub use kind::{Branch, Cond, Imm, Kind, Mode, R31, Shifts, Width};
+pub use vun_isa::word::Access;
 
 use crate::operand::Operand;
 use crate::reg::{Reg, Size};

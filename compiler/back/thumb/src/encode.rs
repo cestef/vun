@@ -19,8 +19,13 @@ pub trait Emit<S: Copy> {
     ///
     /// # Errors
     /// `form` does not encode them.
-    fn emit_by(&mut self, op: Op, form: &'static Form, size: Size, operands: &[Operand<S>])
-    -> Result<(), Untaken>;
+    fn emit_by(
+        &mut self,
+        op: Op,
+        form: &'static Form,
+        size: Size,
+        operands: &[Operand<S>],
+    ) -> Result<(), Untaken>;
 }
 
 impl<S: Copy> Emit<S> for Asm<S> {

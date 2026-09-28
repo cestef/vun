@@ -73,9 +73,10 @@ impl Mem {
     #[must_use]
     pub const fn base(&self) -> Reg {
         match self {
-            Self::Off { base, .. } | Self::Pre { base, .. } | Self::Post { base, .. } | Self::Index { base, .. } => {
-                *base
-            }
+            Self::Off { base, .. }
+            | Self::Pre { base, .. }
+            | Self::Post { base, .. }
+            | Self::Index { base, .. } => *base,
         }
     }
 }

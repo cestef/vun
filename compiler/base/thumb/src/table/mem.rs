@@ -45,7 +45,7 @@ impl Puw {
 
 /// `n` as a count of `unit`s below `2^bits`, if it is one.
 fn count(n: u32, unit: u32, bits: u32) -> Option<u32> {
-    (n % unit == 0 && n / unit < 1 << bits).then_some(n / unit)
+    (n.is_multiple_of(unit) && n / unit < 1 << bits).then_some(n / unit)
 }
 
 impl Mode {
@@ -68,7 +68,9 @@ impl Mode {
                 let offset = u32::try_from(offset).ok().filter(|&o| o < 1 << OFFSET)?;
                 base(b).map(|b| b | offset)
             }
-            (Self::Index, Mem::Index { base: b, index, shift }) if shift < 4 && !matches!(index, Reg::Sp | Reg::Pc) => {
+            (Self::Index, Mem::Index { base: b, index, shift })
+                if shift < 4 && !matches!(index, Reg::Sp | Reg::Pc) =>
+            {
                 base(b).map(|b| b | u32::from(shift) << 4 | u32::from(index.number()))
             }
             (Self::Byte, Mem::Off { offset, .. })
@@ -79,7 +81,9 @@ impl Mode {
                 let fits = n < 1 << BYTE && (puw.back || offset < 0);
                 fits.then(|| base(b).map(|b| b | puw.bits(BYTE_PUW) | n))?
             }
-            (Self::Pair, Mem::Off { .. }) | (Self::PairPre, Mem::Pre { .. }) | (Self::PairPost, Mem::Post { .. }) => {
+            (Self::Pair, Mem::Off { .. })
+            | (Self::PairPre, Mem::Pre { .. })
+            | (Self::PairPost, Mem::Post { .. }) => {
                 let (puw, n, b) = Puw::of(mem)?;
                 let n = count(n, 4, BYTE)?;
                 base(b).map(|b| b | puw.bits(WORDS_PUW) | n)

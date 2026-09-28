@@ -7,7 +7,8 @@ use vun_inline::{Disp, FormId, Inst, OpId, RegRef, SizeId};
 use vun_isa::{AsmOperand, Blocks, Fit, Fixed, Given, Label, Misfit, Place};
 
 use crate::{
-    Access, Barrier, Cc, Class, Form, Kind, Mask, Mem, Mode, Op, Operand, Reg, Size, Special, Status, Thumb, V,
+    Access, Barrier, Cc, Class, Form, Kind, Mask, Mem, Mode, Op, Operand, Reg, Size, Special, Status, Thumb,
+    V,
 };
 
 impl Op {
@@ -132,7 +133,9 @@ impl Blocks for Thumb {
                 let base = register(mem.base.as_ref().expect("an address with a base"));
                 let Kind::Mem(mode, _) = kind else { panic!("memory where the form takes none") };
                 Operand::Mem(match (mode, &mem.disp, &mem.index) {
-                    (Mode::Index | Mode::NarrowIndex, _, Some((index, _))) => Mem::index(base, register(index)),
+                    (Mode::Index | Mode::NarrowIndex, _, Some((index, _))) => {
+                        Mem::index(base, register(index))
+                    }
                     (Mode::BytePre | Mode::PairPre, &Disp::Bytes(offset), _) => Mem::Pre { base, offset },
                     (Mode::BytePost | Mode::PairPost, &Disp::Bytes(offset), _) => Mem::Post { base, offset },
                     (_, &Disp::Bytes(offset), _) => Mem::Off { base, offset },

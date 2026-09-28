@@ -21,7 +21,7 @@ use crate::ty::Value;
 pub(super) const SHAPE: Shape = Shape {
     instruction: t::Instruction,
     instruction_forms: instruction::forms,
-    instruction_mnemonic: None,
+    instruction_mnemonic: Some(instruction::mnemonic),
     family: t::Family,
     family_forms: family::forms,
     members: family::members,

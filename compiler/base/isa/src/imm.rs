@@ -14,6 +14,14 @@ pub const fn truncate(value: i64, bits: u32) -> u64 {
     if bits >= 64 { value.cast_unsigned() } else { value.cast_unsigned() & ((1 << bits) - 1) }
 }
 
+/// The `bits` bits of `value` from bit `at`, as a field of an instruction word.
+#[must_use]
+#[expect(clippy::cast_possible_truncation, reason = "a field is narrower than a word")]
+pub const fn field(value: i64, at: u32, bits: u32) -> u32 {
+    debug_assert!(bits <= u32::BITS, "a field is narrower than a word");
+    truncate(value >> at, bits) as u32
+}
+
 /// The low `bits` bits of `value`, sign-extended to 64: 0 of none.
 #[must_use]
 pub const fn sign_extend(value: u64, bits: u32) -> i64 {

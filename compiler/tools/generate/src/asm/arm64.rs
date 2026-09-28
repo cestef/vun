@@ -40,4 +40,3 @@ const CRATE: Crate = Crate {
 fn emit(sources: &[Source<'_>]) -> Read<Vec<Module>> {
     CRATE.modules(&Table::read(&ARM64, CRATE.arch, sources, words::fill)?, words::form)
 }
-

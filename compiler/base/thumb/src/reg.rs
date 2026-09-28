@@ -42,7 +42,7 @@ impl V {
     #[must_use]
     pub const fn at(self, size: Size) -> Option<u8> {
         match size {
-            Size::B64 if self.number() % 2 == 0 => Some(self.number() / 2),
+            Size::B64 if self.number().is_multiple_of(2) => Some(self.number() / 2),
             Size::B64 => None,
             _ => Some(self.number()),
         }
