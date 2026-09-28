@@ -293,9 +293,12 @@ language rules go in as proposed unless the user approves them.
    Left: carry out `flash` (a probe tool), `test_on` (needs a test command and runners),
    dependency parameters (packages parameterized by a record their `build.vun` declares), lint
    levels (a lint configuration the checks read); `vun run build.vun` runs the first program.
-6. MIR and sema gaps (`cargo xtask corpus` lists them): `.{ }` and `.name` in plain
-   instantiations, `lang.simd.chunks`, `#[layout.offset]`, traps in a callee's instantiated signature; `&.word(3)` (a
-   borrow of a compile-time enum value) at run time stops at `backend.unlowered`. Or-patterns
+6. MIR and sema gaps (`cargo xtask corpus` lists them): `lang.simd.chunks` (an API to write);
+   lowering stops in `coroutines/cancel.vun` (a constant) and `integers/narrowing.vun` (a
+   conversion), not yet looked into. Done: `.{ }` and `.name` in plain instantiations, traps in
+   a callee's instantiated signature, borrows of compile-time values of any kind at run time
+   (`&.word(3)`), and `layout.offset` for a field placed out of order or off its alignment
+   (decision 278, proposed), which had no layout and stopped only at lowering. Or-patterns
    that bind (decision 194), exhaustiveness (decision 196, `typeck/exhaust/`) and impl member
    types (decision 199; a requirement type naming another requirement is not compared yet) are
    done. A diagnostic equal apart from its trace is reported once, reached the shortest way

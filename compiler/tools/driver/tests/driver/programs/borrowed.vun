@@ -1,0 +1,24 @@
+//! Borrows of compile-time values at run time, whatever their kind, and fields placed by
+//! `#[layout.offset]`.
+
+start := std.os.start(main);
+
+W := enum { word(u32), none };
+P := struct { a: u32, b: u32 };
+Regs := struct {
+    #[layout.offset(0)]
+    control: u8,
+    #[layout.offset(8)]
+    status: u32,
+};
+
+taken := (w: &W) -> u8 { match w.* { .word(3) => 1, .word(_) => 2, .none => 4 } };
+summed := (p: &P) -> u8 { if p.a == 1 and p.b == 2 { 8 } else { 16 } };
+placed := (r: Regs) -> u8 { if r.control == 5 and r.status == 7 { 32 } else { 64 } };
+
+main := (sys: &mut std.os.System) -> std.os.Exit {
+    mut regs := Regs { .control = 5, .status = 0 };
+    regs.status = 7;
+    total := taken(&.word(3)) + taken(&.none) + summed(&.{ .a = 1, .b = 2 }) + placed(regs);
+    .code(total.to(std.os.Status))
+};

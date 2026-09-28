@@ -103,6 +103,24 @@ impl Lowering<'_, '_> {
         }
         let shape = self.types.shape(ty, at)?;
         match value {
+            // A shared borrow of a compile-time value holds the value, whatever its kind: it lives
+            // in a data object, with its length for a slice.
+            _ if let Some(pointee) = ty.pointee() => {
+                let (stored, len) = match (pointee.slice_items(), value) {
+                    (Some(item), Constant::Array(items)) => {
+                        (TyKind::array(Integer::from(items.len()), item), Some(items.len()))
+                    }
+                    _ => (pointee, None),
+                };
+                let bytes = self.encode(value, stored, at)?;
+                let align = self.types.shape(stored, at)?.layout.align;
+                let data = self.constant(bytes.bytes, bytes.relocs, align, at);
+                out.relocs.push(address(Address::Data(data)));
+                if let Some(len) = len {
+                    let word = self.types.word.bytes(self.types.pointer_bits());
+                    self.int(&Integer::from(len), word, &mut out.bytes, base + word);
+                }
+            }
             Constant::Struct { fields, .. } => {
                 let members = cx.get::<Members>(&ty).ok_or_else(unsupported)?;
                 let Parts::Sequence(offsets) = &shape.parts else { return Err(unsupported()) };
@@ -141,24 +159,6 @@ impl Lowering<'_, '_> {
                 let items = members.variants[index].payload.iter();
                 for ((v, item), offset) in payload.iter().zip(items).zip(&payloads[index]) {
                     self.put(v, *item.as_ref().map_err(|_| unsupported())?, out, base + offset, at)?;
-                }
-            }
-            // A shared borrow of a compile-time value holds the value: it lives in a data object,
-            // with its length for a slice.
-            _ if let Some(pointee) = ty.pointee() => {
-                let (stored, len) = match (pointee.slice_items(), value) {
-                    (Some(item), Constant::Array(items)) => {
-                        (TyKind::array(Integer::from(items.len()), item), Some(items.len()))
-                    }
-                    _ => (pointee, None),
-                };
-                let bytes = self.encode(value, stored, at)?;
-                let align = self.types.shape(stored, at)?.layout.align;
-                let data = self.constant(bytes.bytes, bytes.relocs, align, at);
-                out.relocs.push(address(Address::Data(data)));
-                if let Some(len) = len {
-                    let word = self.types.word.bytes(self.types.pointer_bits());
-                    self.int(&Integer::from(len), word, &mut out.bytes, base + word);
                 }
             }
             _ => return Err(unsupported()),

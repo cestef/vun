@@ -152,6 +152,11 @@ fn coroutines_generated_by_staged_loops_run_as_their_steps() {
 }
 
 #[test]
+fn borrowed_constants_and_placed_fields_run_through_each_backend() {
+    assert_eq!(status("backend-borrowed", &program("borrowed.vun")), Some(1 + 4 + 8 + 32));
+}
+
+#[test]
 fn arithmetic_records_atomics_and_matches_run_as_they_mean() {
     // Division and remainder of each signedness, shifts, bit operations, signed comparisons,
     // nine parameters, records passed and returned in registers and in memory under the C
