@@ -1,5 +1,7 @@
 //! Collecting diagnostics: the context, the sink interface and the error token.
 
+use std::collections::HashMap;
+
 use vun_codec::{Decode, Encode};
 use vun_origin::{OriginTable, Resolve};
 use vun_span::{SourceMap, Span};
@@ -84,6 +86,26 @@ impl DiagCtxt {
 
     pub fn report(&mut self, d: Diagnostic) {
         self.diagnostics.push(d);
+    }
+
+    /// Keeps one of the diagnostics equal apart from how they were reached, the one reached the
+    /// shortest way: an error in a generic body is found in the plain body and again in each
+    /// instantiation reaching it.
+    pub fn reached_once(&mut self) {
+        let mut kept: HashMap<Diagnostic, usize> = HashMap::new();
+        let mut once: Vec<Diagnostic> = Vec::with_capacity(self.diagnostics.len());
+        for d in std::mem::take(&mut self.diagnostics) {
+            let reached = Diagnostic { trace: Vec::new(), ..d.clone() };
+            match kept.get(&reached) {
+                Some(&at) if once[at].trace.len() > d.trace.len() => once[at] = d,
+                Some(_) => {}
+                None => {
+                    kept.insert(reached, once.len());
+                    once.push(d);
+                }
+            }
+        }
+        self.diagnostics = once;
     }
 
     /// The guarantee that an error was reported, if one was.

@@ -45,6 +45,7 @@ impl Query for Checked {
         checker.placement(&env.parsed.hir);
         checker.impls();
         checker.exports();
+        checker.diag.reached_once();
         Some(Arc::new(checker.diag))
     }
 }

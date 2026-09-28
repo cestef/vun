@@ -30,6 +30,22 @@ bad := (p: Pair(u32)) -> u8 { p.small() };
 }
 
 #[test]
+fn an_error_every_instantiation_repeats_is_reported_once() {
+    let fixture = Fixture::new("generics-once");
+    let file = fixture.root.write(
+        "once.vun",
+        "\
+narrow := ($T: type, x: T) -> u8 { y: u8 = 300; y };
+main := () { _ = narrow(u32, 1); _ = narrow(u16, 2); };
+",
+    );
+    assert_eq!(
+        fixture.reported(&file),
+        [(errors::INT_DOES_NOT_FIT, "value does not fit the type `u8`".to_owned())]
+    );
+}
+
+#[test]
 fn omitted_comptime_arguments_are_inferred_from_the_others() {
     let fixture = Fixture::new("generics-inferred");
     let file = fixture.root.write(
