@@ -970,11 +970,13 @@ compiler/
            codec-derive  hash  graph  fs  outline  par  suggest  term  bytes  harness
   lang/    grammar  items                        Rust views generated from lib/lang
   isa/     api  inline  x86_64  arm64  thumb     instruction sets, one table each
+  object/  core  dwarf                           object files and debug information as data
   front/   desugar  syntax  hir  sema
   mid/     mir  passes  interp
   low/     lir  lower  abi  passes
-  back/    api  object  dwarf  codegen  regalloc  native  c  wasm  cranelift  qbe  llvm  external
+  back/    api  codegen  regalloc  c  wasm  cranelift  qbe  llvm  external
   asm/     core  x86_64  arm64  thumb            assemblers over the isa tables
+  native/  core  x86_64  arm64  backend          the native backend, an architecture per crate
   link/    api  wild  mold  lld  gnu  msvc  ar  external
   render/  short  annotate  ariadne  json  sarif
   pkg/     build  fetch  http                    manifests, locks, the store, fetching
@@ -996,8 +998,9 @@ so that no two directories share a name within a group and every crate sits at
 
 Rules:
 - `vun-driver` is a library; the CLI, the LSP and the test harness are thin shells over it.
-- A crate depends only on crates in its own or earlier groups: `base` < `lang` < `isa` < `front` <
-  `mid` < `low` < `back`, `asm`, `link`, `render` < `pkg` < `tools`. Where a later stage implements something an earlier one
+- A crate depends only on crates in its own or earlier groups: `base` < `lang` < `isa`, `object` < `front` <
+  `mid` < `low` < `asm` < `back`, `link`, `render` < `native`, `pkg` < `tools`; the order is
+  declared once in `xtask/src/layers.rs` and checked by `cargo xtask layers`. Where a later stage implements something an earlier one
   needs, the earlier one owns the trait (`vun-sema` defines `Evaluator`, `vun-interp`
   implements it).
 - Components declare their facts once (`BackendInfo`, `LinkerInfo`); support checks derive from

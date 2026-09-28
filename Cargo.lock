@@ -860,28 +860,22 @@ dependencies = [
 name = "vun-backend-native"
 version = "0.0.0"
 dependencies = [
- "vun-abi",
  "vun-asm",
  "vun-asm-arm64",
  "vun-asm-x86_64",
  "vun-backend",
- "vun-codegen",
  "vun-diag",
- "vun-dwarf",
  "vun-index",
  "vun-inline",
- "vun-intern",
  "vun-items",
  "vun-lir",
  "vun-lir-passes",
+ "vun-native",
+ "vun-native-arm64",
+ "vun-native-x86_64",
  "vun-object",
  "vun-origin",
- "vun-par",
- "vun-span",
  "vun-target",
- "vun-trace",
- "yaxpeax-arch",
- "yaxpeax-arm",
 ]
 
 [[package]]
@@ -1539,6 +1533,59 @@ dependencies = [
  "vun-pass",
  "vun-query",
  "vun-sema",
+]
+
+[[package]]
+name = "vun-native"
+version = "0.0.0"
+dependencies = [
+ "vun-asm",
+ "vun-backend",
+ "vun-codegen",
+ "vun-dwarf",
+ "vun-index",
+ "vun-inline",
+ "vun-intern",
+ "vun-lir",
+ "vun-object",
+ "vun-origin",
+ "vun-par",
+ "vun-span",
+ "vun-target",
+ "vun-trace",
+]
+
+[[package]]
+name = "vun-native-arm64"
+version = "0.0.0"
+dependencies = [
+ "vun-abi",
+ "vun-asm",
+ "vun-asm-arm64",
+ "vun-backend",
+ "vun-codegen",
+ "vun-dwarf",
+ "vun-lir",
+ "vun-native",
+ "vun-target",
+ "yaxpeax-arch",
+ "yaxpeax-arm",
+]
+
+[[package]]
+name = "vun-native-x86_64"
+version = "0.0.0"
+dependencies = [
+ "vun-abi",
+ "vun-asm",
+ "vun-asm-x86_64",
+ "vun-backend",
+ "vun-codegen",
+ "vun-dwarf",
+ "vun-inline",
+ "vun-lir",
+ "vun-native",
+ "vun-target",
 ]
 
 [[package]]

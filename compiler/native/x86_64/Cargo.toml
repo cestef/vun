@@ -1,0 +1,25 @@
+[package]
+name = "vun-native-x86_64"
+description = "The native backend for x86-64: System V calls, snippets and instruction compilers."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+vun-abi.workspace = true
+vun-asm.workspace = true
+vun-asm-x86_64.workspace = true
+vun-backend.workspace = true
+vun-codegen.workspace = true
+vun-dwarf.workspace = true
+vun-inline.workspace = true
+vun-lir.workspace = true
+vun-native.workspace = true
+vun-target.workspace = true
+
+[dev-dependencies]
+vun-native = { workspace = true, features = ["testing"] }

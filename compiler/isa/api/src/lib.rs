@@ -7,12 +7,14 @@
 mod blocks;
 mod fit;
 pub mod imm;
+mod width;
 pub mod word;
 
 use std::fmt;
 
 pub use blocks::{AsmOperand, Blocks, Place, Use};
 pub use fit::{ChoiceId, Fit, Fixed, Given, Misfit, Position, Why, Writeback, positions};
+pub use width::Width;
 
 /// A place in a function's code that jumps name.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]

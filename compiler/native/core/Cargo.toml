@@ -1,0 +1,29 @@
+[package]
+name = "vun-native"
+description = "The native backend shared by every architecture: compiling units, object files and listings."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[features]
+testing = []
+
+[dependencies]
+vun-asm.workspace = true
+vun-backend.workspace = true
+vun-codegen.workspace = true
+vun-dwarf.workspace = true
+vun-index.workspace = true
+vun-inline.workspace = true
+vun-intern.workspace = true
+vun-lir.workspace = true
+vun-object.workspace = true
+vun-origin.workspace = true
+vun-par.workspace = true
+vun-span.workspace = true
+vun-target.workspace = true
+vun-trace.workspace = true

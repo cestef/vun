@@ -18,7 +18,7 @@ pub(crate) const RANKS: &[&[&str]] = &[
     &["low"],
     &["asm"],
     &["back", "link", "render"],
-    &["pkg"],
+    &["native", "pkg"],
     &["tools"],
 ];
 

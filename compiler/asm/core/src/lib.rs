@@ -12,5 +12,5 @@ mod tests;
 
 pub use buffer::{Buffer, Code, Reloc};
 pub use listing::{Line, Listing};
-pub use vun_isa::{AsmOperand, Blocks, Isa, Label, Place, Unpatched, Untaken, Use, Via, imm};
+pub use vun_isa::{AsmOperand, Blocks, Isa, Label, Place, Unpatched, Untaken, Use, Via, Width, imm};
 pub use vun_object::RelocKind;

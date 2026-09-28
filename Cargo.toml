@@ -61,7 +61,10 @@ vun-object = { path = "compiler/object/core" }
 vun-dwarf = { path = "compiler/object/dwarf" }
 vun-backend-wasm = { path = "compiler/back/wasm" }
 vun-backend-c = { path = "compiler/back/c" }
-vun-backend-native = { path = "compiler/back/native" }
+vun-backend-native = { path = "compiler/native/backend" }
+vun-native = { path = "compiler/native/core" }
+vun-native-x86_64 = { path = "compiler/native/x86_64" }
+vun-native-arm64 = { path = "compiler/native/arm64" }
 vun-backend-cranelift = { path = "compiler/back/cranelift" }
 vun-backend-qbe = { path = "compiler/back/qbe" }
 vun-backend-llvm = { path = "compiler/back/llvm" }

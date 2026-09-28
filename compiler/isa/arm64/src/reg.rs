@@ -109,6 +109,15 @@ impl Size {
     }
 }
 
+impl vun_isa::Width for Size {
+    const B32: Self = Self::B32;
+    const B64: Self = Self::B64;
+
+    fn of_bytes(bytes: u64) -> Option<Self> {
+        Self::of_bytes(bytes)
+    }
+}
+
 use crate::generated::CONDITIONS;
 pub use crate::generated::Cc;
 

@@ -47,7 +47,7 @@ lib/lang/lang/syntax/{grammar,desugar}.vun   tokens, nodes, parse tables; append
 lib/lang/lang/errors.vun + errors/           every diagnostic id and its explanation page
 lib/lang, lib/std, lib/targets               `lang` primitives, `std`, one `lang.target.Spec` per target
 corpus/{accept,reject,planned,support}       programs; `//~ id` annotations; waiting for APIs; stand-ins
-compiler/<group>/<crate>                     base < lang < isa, object < front < mid < low < asm < back, link, render < pkg < tools
+compiler/<group>/<crate>                     base < lang < isa, object < front < mid < low < asm < back, link, render < native, pkg < tools
 fuzz/                                        cargo-fuzz targets `lex`, `parse` (outside the workspace)
 whitepaper/                                  Typst paper; it quotes real numbers and `vun` output
 README.md                                    for people: pitch, status, how to try; contributor detail stays here
