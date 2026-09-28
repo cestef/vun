@@ -143,6 +143,9 @@ pedantic = { level = "warn", priority = -1 }
 
 [profile.dev]
 debug = 1
+# The compiler's tests build and run programs through it: optimized a little, the suite runs in a
+# third of the time for a few seconds more per rebuild.
+opt-level = 1
 
 [profile.release]
 lto = "thin"
