@@ -7,6 +7,12 @@
 )]
 use crate::Item;
 pub const write: Item = Item::new(&["std", "os", "libc", "write"]);
+pub const read: Item = Item::new(&["std", "os", "libc", "read"]);
+/// C's `open` is variadic, its permissions passed only with `O_CREAT`: declared with them always,
+/// it is called as the conventions pass the first variadic argument in the next register, which
+/// Apple's arm64 variant does not.
+pub const open: Item = Item::new(&["std", "os", "libc", "open"]);
+pub const close: Item = Item::new(&["std", "os", "libc", "close"]);
 pub const exit: Item = Item::new(&["std", "os", "libc", "exit"]);
 pub const mmap: Item = Item::new(&["std", "os", "libc", "mmap"]);
 pub const munmap: Item = Item::new(&["std", "os", "libc", "munmap"]);
@@ -38,8 +44,9 @@ pub const reserve: Item = Item::new(&["std", "os", "libc", "reserve"]);
 pub const unmap: Item = Item::new(&["std", "os", "libc", "unmap"]);
 /// The state of the checks of unsafe code, mapped the first time a check needs it.
 pub const state: Item = Item::new(&["std", "os", "libc", "state"]);
-/// The error of a call that returned `result`, `-1` where it failed and set `errno`.
-pub const failed: Item = Item::new(&["std", "os", "libc", "failed"]);
+/// What a call returning `result` gives: the count or number it returned, or, where it returned
+/// -1, the error it set `errno` to.
+pub const outcome: Item = Item::new(&["std", "os", "libc", "outcome"]);
 /// Ends the process with `status`.
 pub const end: Item = Item::new(&["std", "os", "libc", "end"]);
 /// The thread holding the critical section, 0 when none: a thread entering it again nests.

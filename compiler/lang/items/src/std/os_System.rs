@@ -10,9 +10,12 @@ use crate::Item;
 pub const claim: Item = Item::new(&["std", "os", "System", "claim"]);
 /// The arguments the process was started with.
 pub const args: Item = Item::new(&["std", "os", "System", "args"]);
+pub const stdin: Item = Item::new(&["std", "os", "System", "stdin"]);
 pub const stdout: Item = Item::new(&["std", "os", "System", "stdout"]);
+pub const stderr: Item = Item::new(&["std", "os", "System", "stderr"]);
+/// Opens the file at `path` in `mode`.
+pub const open: Item = Item::new(&["std", "os", "System", "open"]);
 /// Reads `clock`.
 pub const now: Item = Item::new(&["std", "os", "System", "now"]);
 /// Suspends the calling thread for at least `span`.
 pub const pause: Item = Item::new(&["std", "os", "System", "pause"]);
-pub const stderr: Item = Item::new(&["std", "os", "System", "stderr"]);

@@ -3,6 +3,9 @@
 /// macOS runs programs through its C library's runtime.
 runtime: std.os.Runtime = .{ .os = .macos, .abi = .darwin, .start = std.os.libc.start };
 
+/// The error macOS reports as `number`, a path too long being 63.
+error := (number: i32) -> std.os.Error { std.os.posix_error(number, 63) };
+
 /// The C library's layout on macOS: 32-bit signal sets; memory reserved is
 /// `MAP_PRIVATE | MAP_ANON | MAP_NORESERVE`.
 c: std.os.libc.System = .{
@@ -14,4 +17,14 @@ c: std.os.libc.System = .{
     .set_mask = 3,
     .reserve = 0x1042,
     .clocks = .{ .monotonic = 6, .real = 0 },
+    .error = error,
+    .flags = .{
+        .read_only = 0,
+        .write_only = 1,
+        .read_write = 2,
+        .create = 0x200,
+        .truncate = 0x400,
+        .append = 0x8,
+        .close_on_exec = 0x1000000,
+    },
 };

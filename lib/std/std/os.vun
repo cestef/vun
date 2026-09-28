@@ -32,6 +32,9 @@ trapped: Status = 101;
 /// section 1): each system reaches its streams its own way.
 symbols := struct {
     write := "vun_os_write";
+    read := "vun_os_read";
+    open := "vun_os_open";
+    close := "vun_os_close";
     now := "vun_os_now";
     pause := "vun_os_pause";
 };
@@ -39,6 +42,19 @@ symbols := struct {
 /// Writes some of `bytes` to the stream the system knows as `fd`, returning how many.
 #[link.symbol(symbols.write)]
 write: (fd: i32, bytes: &[u8]) -> Result(usize, Error) = _;
+
+/// Reads into `bytes` from the stream the system knows as `fd`, returning how many bytes it
+/// read: 0 at the stream's end.
+#[link.symbol(symbols.read)]
+read: (fd: i32, bytes: &mut [u8]) -> Result(usize, Error) = _;
+
+/// Opens the file at `path` in `mode`, returning the number the system knows its stream by.
+#[link.symbol(symbols.open)]
+open: (path: &[u8], mode: std.os.file.Mode) -> Result(i32, Error) = _;
+
+/// Closes the stream the system knows as `fd`.
+#[link.symbol(symbols.close)]
+close: (fd: i32) -> Result((), Error) = _;
 
 /// Reads `clock`.
 #[link.symbol(symbols.now)]
@@ -79,15 +95,46 @@ Clocks := struct {
     };
 };
 
-/// The error number of a request a signal interrupted before it finished, on every system `std`
-/// reaches through POSIX numbers (`EINTR`).
-interrupted: i32 = 4;
+/// Why a request to the system failed: a reason `std` names, or the error number the system
+/// reported where it names none.
+Error := enum {
+    /// No file or directory at the path.
+    missing,
+    /// Not permitted.
+    denied,
+    /// Something at the path already.
+    exists,
+    /// A directory where a file was wanted.
+    directory,
+    /// A file where a directory was wanted.
+    not_directory,
+    /// A path longer than the system takes, or holding a zero byte.
+    path,
+    /// A signal interrupted the request before it finished.
+    interrupted,
+    /// A stream that took no more bytes.
+    closed,
+    number(i32),
+};
 
-/// Why a request to the system failed: the error number it reported, or a stream that took no
-/// more bytes.
-Error := enum { number(i32), closed };
+/// The error a system numbering its errors as POSIX's first systems did, Linux and macOS
+/// alike, means by `number`: `EPERM`, `ENOENT`, `EINTR`, `EACCES`, `EEXIST`, `ENOTDIR` and
+/// `EISDIR`, and `too_long`, its own number for a path too long (`ENAMETOOLONG`).
+posix_error := (number: i32, too_long: i32) -> Error {
+    if number == too_long { return .path; }
+    match number {
+        1 | 13 => .denied,
+        2 => .missing,
+        4 => .interrupted,
+        17 => .exists,
+        20 => .not_directory,
+        21 => .directory,
+        _ => .number(number),
+    }
+};
 
 /// The streams every process starts with, by their numbers.
+stdin_fd := 0;
 stdout_fd := 1;
 stderr_fd := 2;
 
@@ -99,12 +146,20 @@ System := struct {
     claim := unsafe (given: Args) -> System { .{ ._args = given } };
     /// The arguments the process was started with.
     args := (self: &System) -> Args { self._args };
+    stdin := (self: &mut System) -> Stream { unsafe Stream.of(stdin_fd) };
     stdout := (self: &mut System) -> Stream { unsafe Stream.of(stdout_fd) };
+    stderr := (self: &mut System) -> Stream { unsafe Stream.of(stderr_fd) };
+    /// Opens the file at `path` in `mode`.
+    open := (self: &mut System, path: &[u8], mode: std.os.file.Mode) -> Result(std.os.file.File, Error) {
+        match std.os.open(path, mode) {
+            .ok(fd) => .ok(unsafe std.os.file.File.of(fd)),
+            .err(e) => .err(e),
+        }
+    };
     /// Reads `clock`.
     now := (self: &System, clock: std.time.Clock) -> Result(std.time.Instant, Error) { std.os.now(clock) };
     /// Suspends the calling thread for at least `span`.
     pause := (self: &mut System, span: std.time.Duration) -> Result((), Error) { std.os.pause(span) };
-    stderr := (self: &mut System) -> Stream { unsafe Stream.of(stderr_fd) };
 };
 
 /// The arguments a process was started with, its program's name first where the system passes
@@ -150,6 +205,8 @@ Stream := struct {
     of := unsafe (number: i32) -> Stream { .{ ._fd = number } };
     /// The number the system knows it by.
     fd := (self: &Stream) -> i32 { self._fd };
+    /// Reads into `bytes`, returning how many bytes it read: 0 at the stream's end.
+    read := (self: &mut Stream, bytes: &mut [u8]) -> Result(usize, Error) { std.os.read(self._fd, bytes) };
 };
 
 #[impl(std.fmt.Writer(Stream))]

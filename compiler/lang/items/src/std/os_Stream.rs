@@ -10,3 +10,5 @@ use crate::Item;
 pub const of: Item = Item::new(&["std", "os", "Stream", "of"]);
 /// The number the system knows it by.
 pub const fd: Item = Item::new(&["std", "os", "Stream", "fd"]);
+/// Reads into `bytes`, returning how many bytes it read: 0 at the stream's end.
+pub const read: Item = Item::new(&["std", "os", "Stream", "read"]);

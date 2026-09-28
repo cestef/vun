@@ -11,6 +11,9 @@ pub const trap: Item = Item::new(&["std", "os", "libc", "start", "trap"]);
 /// The operations of the checks of unsafe code, for a program built with checks.
 pub const checks: Item = Item::new(&["std", "os", "libc", "start", "checks"]);
 pub const write_to: Item = Item::new(&["std", "os", "libc", "start", "write_to"]);
+pub const read_from: Item = Item::new(&["std", "os", "libc", "start", "read_from"]);
+pub const open_file: Item = Item::new(&["std", "os", "libc", "start", "open_file"]);
+pub const close_file: Item = Item::new(&["std", "os", "libc", "start", "close_file"]);
 pub const now: Item = Item::new(&["std", "os", "libc", "start", "now"]);
 /// Sleeps, going on with what is left when a signal interrupts it.
 pub const pause: Item = Item::new(&["std", "os", "libc", "start", "pause"]);

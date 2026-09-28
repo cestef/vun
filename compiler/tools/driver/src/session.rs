@@ -17,7 +17,6 @@ use vun_lower::{Lowered, Unlowered};
 use vun_mir::{Body, Mir, Program, Programs, Roots, Unbuilt};
 use vun_origin::OriginTable;
 use vun_query::Db;
-use vun_sema::check::Checked;
 use vun_sema::decl::DeclValue;
 use vun_sema::eval::Evaluators;
 use vun_sema::eval::Instantiation;
@@ -239,14 +238,6 @@ impl Session {
         // Reported once when none is; what needs it then stays unknown.
         let _ = self.target_for(&key);
         key
-    }
-
-    /// Checks the types of `file`, as far as sema does yet.
-    pub fn check_types(&mut self, file: FileId) {
-        let key = self.file_ref(file);
-        if let Some(reports) = self.db.get::<Checked>(&key) {
-            self.diag.absorb(&reports);
-        }
     }
 
     /// Resolves the names of `file` against its package, reporting what needs no types.

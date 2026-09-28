@@ -91,7 +91,21 @@ one and `System.pause(span)` suspends the thread for at least `span`, through th
 itself, the C library's runtime its functions of the same names (`nanosleep` to pause), each
 system's row giving its clocks' numbers (`std.os.Clocks`: 1 and 0 on Linux, 6 and 0 on macOS),
 and WASI's `clock_time_get` and `poll_oneoff` on a clock. A pause a signal interrupts goes on with
-what is left. Failures are `std.os.Error.number`, the system's error number.
+what is left.
+
+**Files and errors.** `System.open(path, mode)` gives a `std.os.file.File` (`Mode`: `read`,
+`write` creating or emptying, `append` creating, `update`), whose `stream()` is read
+(`Stream.read`, 0 at the end) and written as any `Stream`, and `close` ends it; `System.stdin()`
+is the stream 0. They reach the system through `std.os.symbols.{open, read, close}`: the kernel
+runtime calls `openat` from the working directory, `read` and `close`; the C library's runtime
+its functions (C's `open` is variadic, called with its permissions always, which Apple's arm64
+passes elsewhere: open); WASI opens from the preopened directory a path is inside (`.` for a
+relative one), `.denied` when the host gave none. A path is passed with a zero after it
+(`std.os.file.Path`, up to `PATH_MAX`), every file closed in a program the process runs next, a
+created one read and written by its owner. A failure is a `std.os.Error`: a reason `std` names
+(`missing`, `denied`, `exists`, `directory`, `not_directory`, `path`, `interrupted`, `closed`) or
+the system's own number (`number(n)`), each system mapping its numbers (`std.os.posix_error` for
+Linux and macOS, which number a path too long apart; `std.os.wasi.error`).
 
 **Linux targets.** `targets.linux.<cpu>` (`linux.x86_64`, `linux.arm64`) builds static programs on
 the kernel runtime, with ABI `kernel`; `targets.linux.gnu.<cpu>` builds programs on the GNU C

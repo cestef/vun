@@ -1,0 +1,73 @@
+//! Files a hosted program opens through its `std.os.System` (spec 08, section 2).
+
+/// How a file is opened.
+Mode := enum {
+    /// Reading a file that exists.
+    read,
+    /// Writing a file from its start: created when missing, emptied when not.
+    write,
+    /// Writing at a file's end, created when missing.
+    append,
+    /// Reading and writing a file that exists, from its start.
+    update,
+};
+
+/// A file open for as long as the value lives, until `close`.
+File := struct {
+    _stream: std.os.Stream,
+
+    /// The file the system knows as `fd`, which it must have opened and nothing else closes.
+    of := unsafe (fd: i32) -> File { .{ ._stream = unsafe std.os.Stream.of(fd) } };
+    /// Its stream, read and written through.
+    stream := (self: &mut File) -> &mut std.os.Stream { &mut self._stream };
+    /// Closes it.
+    close := (self: File) -> Result((), std.os.Error) { std.os.close(self._stream.fd()) };
+};
+
+/// The flags a POSIX system's `open` takes for each mode: those it names, as it numbers them.
+Flags := struct {
+    read_only: u32,
+    write_only: u32,
+    read_write: u32,
+    create: u32,
+    truncate: u32,
+    append: u32,
+    /// Closed in a program the process runs next (`O_CLOEXEC`), as every file `std` opens is.
+    close_on_exec: u32,
+
+    /// The flags opening a file in `mode`.
+    of := (self: &Flags, mode: Mode) -> u32 {
+        opened := match mode {
+            .read => self.read_only,
+            .write => self.write_only | self.create | self.truncate,
+            .append => self.write_only | self.create | self.append,
+            .update => self.read_write,
+        };
+        opened | self.close_on_exec
+    };
+};
+
+/// The permissions a file `std` creates gets before the process's mask: read and written by its
+/// owner, read by the others (`0o644`).
+created := 0o644;
+
+/// The longest path the POSIX systems `std` knows take, its zero byte aside (`PATH_MAX`).
+path_max := 4095;
+
+/// A path as POSIX systems take it: its bytes and a zero byte after them.
+Path := struct {
+    _bytes: [path_max + 1]u8,
+
+    /// `path` ended by a zero byte, or `.path` when it is too long or holds one.
+    of := (path: &[u8]) -> Result(Path, std.os.Error) {
+        if path.len() > path_max { return .err(.path); }
+        mut ended := Path{ ._bytes = [0; path_max + 1] };
+        for i in 0..path.len() {
+            if path[i] == 0 { return .err(.path); }
+            ended._bytes[i] = path[i];
+        }
+        .ok(ended)
+    };
+    /// The address of its first byte.
+    start := (self: &Path) -> *u8 { unsafe std.ptr.to([path_max + 1]u8, &self._bytes).cast(u8) };
+};

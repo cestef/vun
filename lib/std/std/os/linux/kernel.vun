@@ -6,7 +6,10 @@
 /// The numbers of the system calls the runtime makes, which each architecture assigns its own.
 Numbers := struct {
     arch: lang.meta.Name,
+    read: usize,
     write: usize,
+    openat: usize,
+    close: usize,
     mmap: usize,
     munmap: usize,
     rt_sigprocmask: usize,
@@ -21,7 +24,10 @@ Numbers := struct {
 arches := [
     Numbers{
         .arch = .x86_64,
+        .read = 0,
         .write = 1,
+        .openat = 257,
+        .close = 3,
         .mmap = 9,
         .munmap = 11,
         .rt_sigprocmask = 14,
@@ -33,7 +39,10 @@ arches := [
     },
     Numbers{
         .arch = .arm64,
+        .read = 63,
         .write = 64,
+        .openat = 56,
+        .close = 57,
         .mmap = 222,
         .munmap = 215,
         .rt_sigprocmask = 135,
@@ -121,19 +130,23 @@ unmap := (address: usize, bytes: usize) { call(numbers.munmap, [address, bytes, 
 /// The state of the checks of unsafe code, mapped the first time a check needs it.
 state := () -> std.check.State { std.check.mapped(map, unmap) };
 
-/// The error of a system call that returned `result`, if it failed.
-failed := (result: isize) -> ?std.os.Error {
-    if result < 0 { .some(.number((-result).to(i32))) } else { .none }
+/// What a system call returning `result` gives: the count or number it returned, or the error
+/// it reported as a negative number.
+outcome := (result: isize) -> Result(usize, std.os.Error) {
+    if result < 0 { .err(std.os.linux.error((-result).to(i32))) } else { .ok(result.to(usize)) }
 };
 
 /// The number of `clock`.
 clock_id := (clock: std.time.Clock) -> usize { std.os.linux.clocks.id(clock).to(usize) };
 
-/// Ends the process with `status`.
-end := (status: std.os.Status) -> lang.never {
-    call(numbers.exit_group, [status.to(usize), 0, 0, 0, 0, 0]);
+/// Ends the process with `code`, 0 where it succeeded.
+exit := (code: Int(0..=125)) -> lang.never {
+    call(numbers.exit_group, [code.to(usize), 0, 0, 0, 0, 0]);
     unsafe lang.hint.unreachable()
 };
+
+/// Ends the process with the failure `status`.
+end := (status: std.os.Status) -> lang.never { exit(status) };
 
 /// The thread holding the critical section, 0 when none: a thread entering it again nests.
 owner: std.sync.Atomic(usize) = .init(0);
@@ -170,7 +183,7 @@ start := ($main: std.os.Main) -> type { struct {
         count := unsafe stack.read();
         values := unsafe stack.offset(1).cast(*u8);
         mut sys := unsafe std.os.System.claim(std.os.Args.of(count, values));
-        end(main(&mut sys).status())
+        exit(main(&mut sys).status())
     };
 
     #[link.export(lang.panic.symbols.trap)]
@@ -182,21 +195,33 @@ start := ($main: std.os.Main) -> type { struct {
     #[link.export(std.os.symbols.write)]
     write := (fd: i32, bytes: &[u8]) -> Result(usize, std.os.Error) {
         address := lang.mem.items_pointer(u8, bytes).address();
-        written := call(numbers.write, [fd.to(usize), address, bytes.len(), 0, 0, 0]);
-        match failed(written) {
-            .some(e) => .err(e),
-            .none => .ok(written.to(usize)),
-        }
+        outcome(call(numbers.write, [fd.to(usize), address, bytes.len(), 0, 0, 0]))
+    };
+
+    #[link.export(std.os.symbols.read)]
+    read := (fd: i32, bytes: &mut [u8]) -> Result(usize, std.os.Error) {
+        address := lang.mem.items_pointer(u8, bytes).address();
+        outcome(call(numbers.read, [fd.to(usize), address, bytes.len(), 0, 0, 0]))
+    };
+
+    #[link.export(std.os.symbols.open)]
+    open := (path: &[u8], mode: std.os.file.Mode) -> Result(i32, std.os.Error) {
+        ended := std.os.file.Path.of(path)?;
+        at := [std.os.linux.cwd.wrap(usize), ended.start().address(), std.os.linux.flags.of(mode).to(usize), std.os.file.created, 0, 0];
+        .ok(outcome(call(numbers.openat, at))?.to(i32))
+    };
+
+    #[link.export(std.os.symbols.close)]
+    close := (fd: i32) -> Result((), std.os.Error) {
+        outcome(call(numbers.close, [fd.to(usize), 0, 0, 0, 0, 0]))?;
+        .ok(())
     };
 
     #[link.export(std.os.symbols.now)]
     now := (clock: std.time.Clock) -> Result(std.time.Instant, std.os.Error) {
         mut at := std.os.Timespec{ .seconds = 0, .nanos = 0 };
-        read := call(numbers.clock_gettime, [clock_id(clock), std.ptr.to(std.os.Timespec, &at).address(), 0, 0, 0, 0]);
-        match failed(read) {
-            .some(e) => .err(e),
-            .none => .ok(at.instant()),
-        }
+        outcome(call(numbers.clock_gettime, [clock_id(clock), std.ptr.to(std.os.Timespec, &at).address(), 0, 0, 0, 0]))?;
+        .ok(at.instant())
     };
 
     /// Sleeps on the monotonic clock, going on with what is left when a signal interrupts it.
@@ -207,11 +232,10 @@ start := ($main: std.os.Main) -> type { struct {
             request := left;
             asked := std.ptr.to(std.os.Timespec, &request).address();
             at := std.ptr.to(std.os.Timespec, &left).address();
-            slept := call(numbers.clock_nanosleep, [clock_id(.monotonic), 0, asked, at, 0, 0]);
-            match failed(slept) {
-                .none => return .ok(()),
-                .some(.number(n)) if n == std.os.interrupted => {},
-                .some(e) => return .err(e),
+            match outcome(call(numbers.clock_nanosleep, [clock_id(.monotonic), 0, asked, at, 0, 0])) {
+                .ok(_) => return .ok(()),
+                .err(.interrupted) => {},
+                .err(e) => return .err(e),
             }
         }
     };

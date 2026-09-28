@@ -6,6 +6,8 @@
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
 use crate::Item;
+/// The namespace `std.os.file`.
+pub const file: Item = Item::new(&["std", "os", "file"]);
 /// The namespace `std.os.libc`.
 pub const libc: Item = Item::new(&["std", "os", "libc"]);
 /// The namespace `std.os.linux`.
@@ -27,6 +29,13 @@ pub const trapped: Item = Item::new(&["std", "os", "trapped"]);
 pub const symbols: Item = Item::new(&["std", "os", "symbols"]);
 /// Writes some of `bytes` to the stream the system knows as `fd`, returning how many.
 pub const write: Item = Item::new(&["std", "os", "write"]);
+/// Reads into `bytes` from the stream the system knows as `fd`, returning how many bytes it
+/// read: 0 at the stream's end.
+pub const read: Item = Item::new(&["std", "os", "read"]);
+/// Opens the file at `path` in `mode`, returning the number the system knows its stream by.
+pub const open: Item = Item::new(&["std", "os", "open"]);
+/// Closes the stream the system knows as `fd`.
+pub const close: Item = Item::new(&["std", "os", "close"]);
 /// Reads `clock`.
 pub const now: Item = Item::new(&["std", "os", "now"]);
 /// Suspends the calling thread for at least `span`.
@@ -36,13 +45,15 @@ pub const pause: Item = Item::new(&["std", "os", "pause"]);
 pub const Timespec: Item = Item::new(&["std", "os", "Timespec"]);
 /// The numbers a system gives its clocks.
 pub const Clocks: Item = Item::new(&["std", "os", "Clocks"]);
-/// The error number of a request a signal interrupted before it finished, on every system `std`
-/// reaches through POSIX numbers (`EINTR`).
-pub const interrupted: Item = Item::new(&["std", "os", "interrupted"]);
-/// Why a request to the system failed: the error number it reported, or a stream that took no
-/// more bytes.
+/// Why a request to the system failed: a reason `std` names, or the error number the system
+/// reported where it names none.
 pub const Error: Item = Item::new(&["std", "os", "Error"]);
+/// The error a system numbering its errors as POSIX's first systems did, Linux and macOS
+/// alike, means by `number`: `EPERM`, `ENOENT`, `EINTR`, `EACCES`, `EEXIST`, `ENOTDIR` and
+/// `EISDIR`, and `too_long`, its own number for a path too long (`ENAMETOOLONG`).
+pub const posix_error: Item = Item::new(&["std", "os", "posix_error"]);
 /// The streams every process starts with, by their numbers.
+pub const stdin_fd: Item = Item::new(&["std", "os", "stdin_fd"]);
 pub const stdout_fd: Item = Item::new(&["std", "os", "stdout_fd"]);
 pub const stderr_fd: Item = Item::new(&["std", "os", "stderr_fd"]);
 /// Access to the operating system: files, sockets, threads, clocks, the environment.

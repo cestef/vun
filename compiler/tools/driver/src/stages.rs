@@ -13,7 +13,9 @@ use vun_mir::{Programs, Roots};
 use vun_mir_passes::borrows::BorrowChecks;
 use vun_mir_passes::panics::PanicChecks;
 use vun_mir_passes::places::PlaceStates;
+use vun_sema::check::Checked;
 use vun_sema::eval::Instantiation;
+use vun_sema::typeck::Typed;
 
 use crate::Session;
 
@@ -137,6 +139,24 @@ impl Session {
         tracing::info!(file = %self.sources.file(file).path, errors = self.diag.error_count(), "checked");
     }
 
+    /// Checks the types of `file`, as far as sema does yet.
+    pub fn check_types(&mut self, file: FileId) {
+        let key = self.file_ref(file);
+        if let Some(reports) = self.db.get::<Checked>(&key) {
+            self.diag.absorb(&reports);
+        }
+        // The bodies of other files its program compiles, a library's included: what is built
+        // is checked, each typed where the program reaches it.
+        let program = self.db.get::<Programs>(&(key.clone(), Roots::Functions));
+        for body in program.functions.iter().filter(|i| i.f.literal.file != key) {
+            if let Some(typed) = self.db.get::<Typed>(body) {
+                self.diag.absorb(&typed.diag);
+            }
+        }
+        // An error in a generic body, found through the root's calls and in the body itself.
+        self.diag.reached_once();
+    }
+
     /// The lines, first and last, of each function of `file` that MIR does not lower yet.
     pub fn unlowered(&mut self, file: FileId) -> Vec<(u32, u32)> {
         let bodies = self.bodies(file);
@@ -150,9 +170,10 @@ impl Session {
             .collect()
     }
 
-    /// Runs the MIR check `Q` on every function body of `file`, and on every instantiation of a
-    /// generic function its program reaches, wherever that function is written: a body checked
-    /// only as written would miss what its arguments make of it.
+    /// Runs the MIR check `Q` on every function body of `file`, and on every function and
+    /// instantiation its program reaches, wherever it is written: what the program compiles is
+    /// checked, a library's bodies included, and a body checked only as written would miss what
+    /// its arguments make of it.
     pub(crate) fn check_bodies<Q: Query<Key = Instantiation, Value = Option<DiagCtxt>>>(
         &mut self,
         file: FileId,
@@ -160,8 +181,9 @@ impl Session {
         let plain = self.functions(file).into_iter().map(Instantiation::plain);
         let root = self.file_ref(file);
         let program = self.db.get::<Programs>(&(root, Roots::Functions));
-        let instantiated = program.functions.iter().filter(|i| !i.is_plain());
-        let bodies: Vec<Instantiation> = plain.chain(instantiated.cloned()).collect();
+        let mut seen = vun_hash::Set::default();
+        let bodies: Vec<Instantiation> =
+            plain.chain(program.functions.iter().cloned()).filter(|body| seen.insert(body.clone())).collect();
         for body in bodies {
             if let Some(reports) = self.db.get::<Q>(&body) {
                 self.diag.absorb(&reports);

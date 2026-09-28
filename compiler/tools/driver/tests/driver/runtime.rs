@@ -3,7 +3,7 @@
 
 use vun_harness::{ACCEPT, repo_root};
 
-use crate::backend::{BACKENDS, build, status_on};
+use crate::backend::{BACKENDS, build, status, status_on};
 
 /// The types of an ELF program's segments: its program headers' `p_type`, read from the
 /// 64-bit little-endian layout (`e_phoff` at 32, `e_phentsize` at 54, `e_phnum` at 56).
@@ -69,4 +69,30 @@ fn the_runtime_moves_fills_and_compares_memory_as_c_does() {
         return;
     }
     assert_eq!(status_on("runtime-memory", MEMORY, &[&["linux", "arm64"]]), Some(120));
+}
+
+/// A corpus program of `programs/`, by its name.
+fn corpus(name: &str) -> String {
+    std::fs::read_to_string(repo_root().join(ACCEPT).join("programs").join(name)).unwrap()
+}
+
+#[test]
+fn clocks_are_read_and_a_pause_lasts_on_every_runtime() {
+    if !cfg!(target_os = "linux") {
+        return;
+    }
+    assert_eq!(status("runtime-clocks", &corpus("clocks.vun")), Some(0));
+}
+
+#[test]
+fn a_file_written_reads_back_and_a_missing_one_is_missing() {
+    if !cfg!(target_os = "linux") {
+        return;
+    }
+    // The file goes in a directory of the test's own, which WASI's runner is not given.
+    let dir = vun_fs::Scratch::create("runtime-files").unwrap();
+    let written = dir.path().join("written");
+    let source =
+        corpus("files.vun").replace("\"files.vun.out\"", &format!("{:?}", written.display().to_string()));
+    assert_eq!(status_on("runtime-files", &source, &[&["linux", "arm64"]]), Some(0));
 }

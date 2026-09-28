@@ -18,3 +18,6 @@ pub const set_mask: Item = Item::new(&["std", "os", "libc", "System", "set_mask"
 /// `flags` for `mmap` of private memory reserved, not backed until touched.
 pub const reserve: Item = Item::new(&["std", "os", "libc", "System", "reserve"]);
 pub const clocks: Item = Item::new(&["std", "os", "libc", "System", "clocks"]);
+/// The error the system reports as a number.
+pub const error: Item = Item::new(&["std", "os", "libc", "System", "error"]);
+pub const flags: Item = Item::new(&["std", "os", "libc", "System", "flags"]);

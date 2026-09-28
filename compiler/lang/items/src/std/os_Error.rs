@@ -6,5 +6,20 @@
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
 use crate::Item;
-pub const number: Item = Item::new(&["std", "os", "Error", "number"]);
+/// No file or directory at the path.
+pub const missing: Item = Item::new(&["std", "os", "Error", "missing"]);
+/// Not permitted.
+pub const denied: Item = Item::new(&["std", "os", "Error", "denied"]);
+/// Something at the path already.
+pub const exists: Item = Item::new(&["std", "os", "Error", "exists"]);
+/// A directory where a file was wanted.
+pub const directory: Item = Item::new(&["std", "os", "Error", "directory"]);
+/// A file where a directory was wanted.
+pub const not_directory: Item = Item::new(&["std", "os", "Error", "not_directory"]);
+/// A path longer than the system takes, or holding a zero byte.
+pub const path: Item = Item::new(&["std", "os", "Error", "path"]);
+/// A signal interrupted the request before it finished.
+pub const interrupted: Item = Item::new(&["std", "os", "Error", "interrupted"]);
+/// A stream that took no more bytes.
 pub const closed: Item = Item::new(&["std", "os", "Error", "closed"]);
+pub const number: Item = Item::new(&["std", "os", "Error", "number"]);

@@ -7,7 +7,12 @@
 )]
 use crate::Item;
 pub const arch: Item = Item::new(&["std", "os", "linux", "kernel", "Numbers", "arch"]);
+pub const read: Item = Item::new(&["std", "os", "linux", "kernel", "Numbers", "read"]);
 pub const write: Item = Item::new(&["std", "os", "linux", "kernel", "Numbers", "write"]);
+pub const openat: Item = Item::new(
+    &["std", "os", "linux", "kernel", "Numbers", "openat"],
+);
+pub const close: Item = Item::new(&["std", "os", "linux", "kernel", "Numbers", "close"]);
 pub const mmap: Item = Item::new(&["std", "os", "linux", "kernel", "Numbers", "mmap"]);
 pub const munmap: Item = Item::new(
     &["std", "os", "linux", "kernel", "Numbers", "munmap"],

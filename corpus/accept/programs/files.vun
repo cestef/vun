@@ -1,0 +1,31 @@
+//! Writing a file, reading it back, and a typed error for one that is missing (spec 08,
+//! section 2).
+
+start := std.os.start(main);
+
+path := "files.vun.out";
+
+main := (sys: &mut std.os.System) -> std.os.Exit {
+    match check(sys) {
+        .ok(true) => .ok,
+        .ok(false) => .code(1),
+        .err(_) => .code(2),
+    }
+};
+
+/// Whether the bytes written come back, and a missing file is `.missing`.
+check := (sys: &mut std.os.System) -> Result(bool, std.os.Error) {
+    mut out := sys.open(path, .write)?;
+    std.fmt.print(out.stream(), "{} lines\n", .{ 2 })?;
+    out.close()?;
+    mut back := sys.open(path, .read)?;
+    mut bytes: [16]u8 = [0; 16];
+    n := back.stream().read(&mut bytes)?;
+    back.close()?;
+    same := n == 8 and bytes[0] == '2' and bytes[7] == '\n';
+    missing := match sys.open("no such file", .read) {
+        .err(.missing) => true,
+        _ => false,
+    };
+    .ok(same and missing)
+};

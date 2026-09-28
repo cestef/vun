@@ -16,6 +16,13 @@ pub const fd_write: Item = Item::new(&["std", "os", "wasi", "fd_write"]);
 pub const proc_exit: Item = Item::new(&["std", "os", "wasi", "proc_exit"]);
 pub const args_sizes_get: Item = Item::new(&["std", "os", "wasi", "args_sizes_get"]);
 pub const args_get: Item = Item::new(&["std", "os", "wasi", "args_get"]);
+pub const fd_read: Item = Item::new(&["std", "os", "wasi", "fd_read"]);
+pub const fd_close: Item = Item::new(&["std", "os", "wasi", "fd_close"]);
+pub const path_open: Item = Item::new(&["std", "os", "wasi", "path_open"]);
+pub const fd_prestat_get: Item = Item::new(&["std", "os", "wasi", "fd_prestat_get"]);
+pub const fd_prestat_dir_name: Item = Item::new(
+    &["std", "os", "wasi", "fd_prestat_dir_name"],
+);
 pub const clock_time_get: Item = Item::new(&["std", "os", "wasi", "clock_time_get"]);
 pub const poll_oneoff: Item = Item::new(&["std", "os", "wasi", "poll_oneoff"]);
 /// The numbers preview 1 gives its clocks.
@@ -26,8 +33,29 @@ pub const Subscription: Item = Item::new(&["std", "os", "wasi", "Subscription"])
 pub const Timeout: Item = Item::new(&["std", "os", "wasi", "Timeout"]);
 /// What happened to a subscription (`event`, its `event_fd_readwrite` unused for a clock).
 pub const Event: Item = Item::new(&["std", "os", "wasi", "Event"]);
-/// The error of a call that returned `errno`.
-pub const failed: Item = Item::new(&["std", "os", "wasi", "failed"]);
+/// The error preview 1 reports as `number` (its `errno`, numbered its own way): `acces`,
+/// `exist`, `intr`, `isdir`, `nametoolong`, `noent`, `notdir` and `perm`.
+pub const error: Item = Item::new(&["std", "os", "wasi", "error"]);
+/// What a call returning `errno` gives: nothing, or the error it reported.
+pub const outcome: Item = Item::new(&["std", "os", "wasi", "outcome"]);
+/// A preopened directory, as `fd_prestat_get` describes it: tag 0 and its name's length.
+pub const Prestat: Item = Item::new(&["std", "os", "wasi", "Prestat"]);
+/// The first stream a host may preopen, after the three standard ones.
+pub const first_preopen: Item = Item::new(&["std", "os", "wasi", "first_preopen"]);
+/// The longest preopened directory's name the runtime reads.
+pub const name_max: Item = Item::new(&["std", "os", "wasi", "name_max"]);
+/// How `path_open` opens a file in a mode: its `oflags` (`creat` 1, `trunc` 8) and its
+/// `fdflags` (`append` 1).
+pub const Opening: Item = Item::new(&["std", "os", "wasi", "Opening"]);
+/// Every right preview 1 defines, one bit each from `fd_datasync` to `sock_shutdown`: a host
+/// grants a file what its directory allows of them.
+pub const rights: Item = Item::new(&["std", "os", "wasi", "rights"]);
+/// The part of `path` inside the preopened directory named `dir`, if it is inside it: every
+/// relative path is inside `.`, an absolute one inside the directory its name starts with.
+pub const inside: Item = Item::new(&["std", "os", "wasi", "inside"]);
+/// Opens `path` in `mode` from the first preopened directory it is inside; `.denied` when it is
+/// inside none, as the host gave the module no way to it.
+pub const open: Item = Item::new(&["std", "os", "wasi", "open"]);
 /// The most arguments, and bytes of them, a program starts with: `_start` holds them in its
 /// frame, which lasts as long as the program. A program started with more exits trapped.
 pub const arguments: Item = Item::new(&["std", "os", "wasi", "arguments"]);

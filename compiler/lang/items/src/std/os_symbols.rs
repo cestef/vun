@@ -7,5 +7,8 @@
 )]
 use crate::Item;
 pub const write: Item = Item::new(&["std", "os", "symbols", "write"]);
+pub const read: Item = Item::new(&["std", "os", "symbols", "read"]);
+pub const open: Item = Item::new(&["std", "os", "symbols", "open"]);
+pub const close: Item = Item::new(&["std", "os", "symbols", "close"]);
 pub const now: Item = Item::new(&["std", "os", "symbols", "now"]);
 pub const pause: Item = Item::new(&["std", "os", "symbols", "pause"]);

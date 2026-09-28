@@ -14,6 +14,12 @@ pub const runtime: Item = Item::new(&["std", "os", "linux", "runtime"]);
 pub const gnu: Item = Item::new(&["std", "os", "linux", "gnu"]);
 /// The numbers Linux gives its clocks (`CLOCK_MONOTONIC`, `CLOCK_REALTIME`).
 pub const clocks: Item = Item::new(&["std", "os", "linux", "clocks"]);
+/// The error Linux reports as `number`, a path too long being 36.
+pub const error: Item = Item::new(&["std", "os", "linux", "error"]);
+/// The flags of `open` on Linux, the same on every architecture `std` builds for.
+pub const flags: Item = Item::new(&["std", "os", "linux", "flags"]);
+/// The directory a relative path is found from, for the calls taking one (`AT_FDCWD`).
+pub const cwd: Item = Item::new(&["std", "os", "linux", "cwd"]);
 /// The GNU C library's layout on Linux: 1024-bit signal sets, of which Linux uses the first 64;
 /// memory reserved is `MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE`.
 pub const c: Item = Item::new(&["std", "os", "linux", "c"]);

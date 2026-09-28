@@ -19,6 +19,16 @@ proc_exit: unsafe (status: i32) -> lang.never = _;
 args_sizes_get: unsafe (count: *usize, bytes: *usize) -> u16 = _;
 #[link.symbol("args_get"), link.library(module), abi.c]
 args_get: unsafe (values: *usize, bytes: *u8) -> u16 = _;
+#[link.symbol("fd_read"), link.library(module), abi.c]
+fd_read: unsafe (fd: i32, iovs: *Ciovec, count: usize, read: *usize) -> u16 = _;
+#[link.symbol("fd_close"), link.library(module), abi.c]
+fd_close: unsafe (fd: i32) -> u16 = _;
+#[link.symbol("path_open"), link.library(module), abi.c]
+path_open: unsafe (dir: i32, lookup: u32, path: *u8, length: usize, open: u16, rights: u64, inherited: u64, flags: u16, fd: *i32) -> u16 = _;
+#[link.symbol("fd_prestat_get"), link.library(module), abi.c]
+fd_prestat_get: unsafe (fd: i32, prestat: *Prestat) -> u16 = _;
+#[link.symbol("fd_prestat_dir_name"), link.library(module), abi.c]
+fd_prestat_dir_name: unsafe (fd: i32, path: *u8, length: usize) -> u16 = _;
 #[link.symbol("clock_time_get"), link.library(module), abi.c]
 clock_time_get: unsafe (clock: u32, precision: u64, time: *u64) -> u16 = _;
 #[link.symbol("poll_oneoff"), link.library(module), abi.c]
@@ -54,9 +64,96 @@ Event := struct {
     flags: u16,
 };
 
-/// The error of a call that returned `errno`.
-failed := (errno: u16) -> ?std.os.Error {
-    if errno != 0 { .some(.number(errno.to(i32))) } else { .none }
+/// The error preview 1 reports as `number` (its `errno`, numbered its own way): `acces`,
+/// `exist`, `intr`, `isdir`, `nametoolong`, `noent`, `notdir` and `perm`.
+error := (number: i32) -> std.os.Error {
+    match number {
+        2 | 63 => .denied,
+        20 => .exists,
+        27 => .interrupted,
+        31 => .directory,
+        37 => .path,
+        44 => .missing,
+        54 => .not_directory,
+        _ => .number(number),
+    }
+};
+
+/// What a call returning `errno` gives: nothing, or the error it reported.
+outcome := (errno: u16) -> Result((), std.os.Error) {
+    if errno != 0 { .err(error(errno.to(i32))) } else { .ok(()) }
+};
+
+/// A preopened directory, as `fd_prestat_get` describes it: tag 0 and its name's length.
+#[layout.c]
+Prestat := struct { tag: u8, length: usize };
+
+/// The first stream a host may preopen, after the three standard ones.
+first_preopen: i32 = 3;
+/// The longest preopened directory's name the runtime reads.
+name_max := 1024;
+
+/// How `path_open` opens a file in a mode: its `oflags` (`creat` 1, `trunc` 8) and its
+/// `fdflags` (`append` 1).
+Opening := struct {
+    open: u16,
+    flags: u16,
+
+    of := (mode: std.os.file.Mode) -> Opening {
+        match mode {
+            .read => .{ .open = 0, .flags = 0 },
+            .write => .{ .open = 1 | 8, .flags = 0 },
+            .append => .{ .open = 1, .flags = 1 },
+            .update => .{ .open = 0, .flags = 0 },
+        }
+    };
+};
+
+/// Every right preview 1 defines, one bit each from `fd_datasync` to `sock_shutdown`: a host
+/// grants a file what its directory allows of them.
+rights: u64 = 0x1fff_ffff;
+
+/// The part of `path` inside the preopened directory named `dir`, if it is inside it: every
+/// relative path is inside `.`, an absolute one inside the directory its name starts with.
+inside := (dir: &[u8], path: &[u8]) -> ?&[u8] {
+    relative := path.len() == 0 or path[0] != '/';
+    if dir.len() == 1 and dir[0] == '.' { return if relative { .some(path) } else { .none }; }
+    if relative or path.len() < dir.len() { return .none; }
+    for i in 0..dir.len() {
+        if path[i] != dir[i] { return .none; }
+    }
+    rest := path[dir.len()..];
+    match rest.len() {
+        0 => .some("."),
+        _ if dir[dir.len() - 1] == '/' => .some(rest),
+        _ if rest[0] == '/' => .some(rest[1..]),
+        _ => .none,
+    }
+};
+
+/// Opens `path` in `mode` from the first preopened directory it is inside; `.denied` when it is
+/// inside none, as the host gave the module no way to it.
+open := (path: &[u8], mode: std.os.file.Mode) -> Result(i32, std.os.Error) {
+    mut dir := first_preopen;
+    for {
+        mut stat := Prestat{ .tag = 0, .length = 0 };
+        if unsafe fd_prestat_get(dir, std.ptr.to(Prestat, &stat)) != 0 { return .err(.denied); }
+        if stat.tag == 0 and stat.length <= name_max {
+            mut name: [name_max]u8 = [0; name_max];
+            outcome(unsafe fd_prestat_dir_name(dir, std.ptr.to([name_max]u8, &name).cast(u8), stat.length))?;
+            match inside(&name[0..stat.length], path) {
+                .some(rest) => {
+                    how := Opening.of(mode);
+                    mut fd: i32 = -1;
+                    at := lang.mem.items_pointer(u8, rest);
+                    outcome(unsafe path_open(dir, 0, at, rest.len(), how.open, rights, rights, how.flags, std.ptr.to(i32, &fd)))?;
+                    return .ok(fd);
+                },
+                .none => {},
+            }
+        }
+        dir += 1;
+    }
 };
 
 /// The most arguments, and bytes of them, a program starts with: `_start` holds them in its
@@ -90,17 +187,29 @@ start := ($main: std.os.Main) -> type { struct {
     write := (fd: i32, bytes: &[u8]) -> Result(usize, std.os.Error) {
         iov := Ciovec{ .buf = lang.mem.items_pointer(u8, bytes), .len = bytes.len() };
         mut written: usize = 0;
-        errno := unsafe fd_write(fd, std.ptr.to(Ciovec, &iov), 1, std.ptr.to(usize, &written));
-        if errno != 0 { .err(.number(errno.to(i32))) } else { .ok(written) }
+        outcome(unsafe fd_write(fd, std.ptr.to(Ciovec, &iov), 1, std.ptr.to(usize, &written)))?;
+        .ok(written)
     };
+
+    #[link.export(std.os.symbols.read)]
+    read := (fd: i32, bytes: &mut [u8]) -> Result(usize, std.os.Error) {
+        iov := Ciovec{ .buf = lang.mem.items_pointer(u8, bytes), .len = bytes.len() };
+        mut got: usize = 0;
+        outcome(unsafe fd_read(fd, std.ptr.to(Ciovec, &iov), 1, std.ptr.to(usize, &got)))?;
+        .ok(got)
+    };
+
+    #[link.export(std.os.symbols.open)]
+    open_file := (path: &[u8], mode: std.os.file.Mode) -> Result(i32, std.os.Error) { open(path, mode) };
+
+    #[link.export(std.os.symbols.close)]
+    close := (fd: i32) -> Result((), std.os.Error) { outcome(unsafe fd_close(fd)) };
 
     #[link.export(std.os.symbols.now)]
     now := (clock: std.time.Clock) -> Result(std.time.Instant, std.os.Error) {
         mut at: u64 = 0;
-        match failed(unsafe clock_time_get(clocks.id(clock).to(u32), 1, std.ptr.to(u64, &at))) {
-            .some(e) => .err(e),
-            .none => .ok(std.time.Instant.at(at)),
-        }
+        outcome(unsafe clock_time_get(clocks.id(clock).to(u32), 1, std.ptr.to(u64, &at)))?;
+        .ok(std.time.Instant.at(at))
     };
 
     /// Waits for the monotonic clock to pass `span` from now.
@@ -113,11 +222,7 @@ start := ($main: std.os.Main) -> type { struct {
         };
         mut event := Event{ .userdata = 0, .error = 0, .kind = 0, .bytes = 0, .flags = 0 };
         mut happened: usize = 0;
-        polled := unsafe poll_oneoff(std.ptr.to(Subscription, &subscription), std.ptr.to(Event, &event), 1, std.ptr.to(usize, &happened));
-        match failed(polled) {
-            .some(e) => .err(e),
-            .none => .ok(()),
-        }
+        outcome(unsafe poll_oneoff(std.ptr.to(Subscription, &subscription), std.ptr.to(Event, &event), 1, std.ptr.to(usize, &happened)))
     };
 
     #[link.export(std.sync.symbols.enter), panic.never]

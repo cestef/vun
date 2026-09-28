@@ -4,6 +4,15 @@
 
 #[link.symbol("write"), abi.c]
 write: unsafe (fd: i32, bytes: *u8, count: usize) -> isize = _;
+#[link.symbol("read"), abi.c]
+read: unsafe (fd: i32, bytes: *u8, count: usize) -> isize = _;
+/// C's `open` is variadic, its permissions passed only with `O_CREAT`: declared with them always,
+/// it is called as the conventions pass the first variadic argument in the next register, which
+/// Apple's arm64 variant does not.
+#[link.symbol("open"), abi.c]
+open: unsafe (path: *u8, flags: u32, permissions: u32) -> i32 = _;
+#[link.symbol("close"), abi.c]
+close: unsafe (fd: i32) -> i32 = _;
 #[link.symbol("exit"), abi.c]
 exit: unsafe (status: i32) -> lang.never = _;
 #[link.symbol("mmap"), abi.c]
@@ -29,6 +38,9 @@ System := struct {
     /// `flags` for `mmap` of private memory reserved, not backed until touched.
     reserve: i32,
     clocks: std.os.Clocks,
+    /// The error the system reports as a number.
+    error: (i32) -> std.os.Error,
+    flags: std.os.file.Flags,
 };
 
 /// The systems whose C library the runtime knows.
@@ -72,9 +84,14 @@ unmap := (address: usize, bytes: usize) { unsafe { munmap(address, bytes); } };
 /// The state of the checks of unsafe code, mapped the first time a check needs it.
 state := () -> std.check.State { std.check.mapped(reserve, unmap) };
 
-/// The error of a call that returned `result`, `-1` where it failed and set `errno`.
-failed := (result: i32) -> ?std.os.Error {
-    if result < 0 { .some(.number(unsafe errno_location().read())) } else { .none }
+/// What a call returning `result` gives: the count or number it returned, or, where it returned
+/// -1, the error it set `errno` to.
+outcome := (result: isize) -> Result(usize, std.os.Error) {
+    if result < 0 {
+        .err(system.error(unsafe errno_location().read()))
+    } else {
+        .ok(result.to(usize))
+    }
 };
 
 /// Ends the process with `status`.
@@ -99,21 +116,31 @@ start := ($main: std.os.Main) -> type { struct {
 
     #[link.export(std.os.symbols.write)]
     write_to := (fd: i32, bytes: &[u8]) -> Result(usize, std.os.Error) {
-        written := unsafe write(fd, lang.mem.items_pointer(u8, bytes), bytes.len());
-        if written < 0 {
-            .err(.number(unsafe errno_location().read()))
-        } else {
-            .ok(written.to(usize))
-        }
+        outcome(unsafe write(fd, lang.mem.items_pointer(u8, bytes), bytes.len()))
+    };
+
+    #[link.export(std.os.symbols.read)]
+    read_from := (fd: i32, bytes: &mut [u8]) -> Result(usize, std.os.Error) {
+        outcome(unsafe read(fd, lang.mem.items_pointer(u8, bytes), bytes.len()))
+    };
+
+    #[link.export(std.os.symbols.open)]
+    open_file := (path: &[u8], mode: std.os.file.Mode) -> Result(i32, std.os.Error) {
+        ended := std.os.file.Path.of(path)?;
+        .ok(outcome(unsafe open(ended.start(), system.flags.of(mode), std.os.file.created).to(isize))?.to(i32))
+    };
+
+    #[link.export(std.os.symbols.close)]
+    close_file := (fd: i32) -> Result((), std.os.Error) {
+        outcome(unsafe close(fd).to(isize))?;
+        .ok(())
     };
 
     #[link.export(std.os.symbols.now)]
     now := (clock: std.time.Clock) -> Result(std.time.Instant, std.os.Error) {
         mut at := std.os.Timespec{ .seconds = 0, .nanos = 0 };
-        match failed(unsafe clock_gettime(system.clocks.id(clock), lang.mem.pointer_to(std.os.Timespec, &at))) {
-            .some(e) => .err(e),
-            .none => .ok(at.instant()),
-        }
+        outcome(unsafe clock_gettime(system.clocks.id(clock), lang.mem.pointer_to(std.os.Timespec, &at)).to(isize))?;
+        .ok(at.instant())
     };
 
     /// Sleeps, going on with what is left when a signal interrupts it.
@@ -123,10 +150,10 @@ start := ($main: std.os.Main) -> type { struct {
         for {
             request := left;
             asked := lang.mem.pointer_to(std.os.Timespec, &request);
-            match failed(unsafe nanosleep(asked, lang.mem.pointer_to(std.os.Timespec, &left))) {
-                .none => return .ok(()),
-                .some(.number(n)) if n == std.os.interrupted => {},
-                .some(e) => return .err(e),
+            match outcome(unsafe nanosleep(asked, lang.mem.pointer_to(std.os.Timespec, &left)).to(isize)) {
+                .ok(_) => return .ok(()),
+                .err(.interrupted) => {},
+                .err(e) => return .err(e),
             }
         }
     };

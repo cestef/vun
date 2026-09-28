@@ -64,9 +64,12 @@ main := (sys: &mut std.os.System) -> std.os.Exit {
     let mut session = fixture.session();
     let file = session.load(&path).unwrap();
     let program = session.program(file);
+    let root = session.file_ref(file);
+    // `main`'s frame: the runtime's bodies hold frames of their own loops.
     let frame = program
         .functions
         .iter()
+        .filter(|i| i.f.literal.file == root)
         .filter_map(|i| session.db.get::<vun_mir::Concrete>(i).ok())
         .flat_map(|body| body.locals.iter().filter_map(|(_, l)| l.ty).collect::<Vec<_>>())
         .find(|ty| matches!(&**ty, vun_sema::ty::TyKind::Frame(_)))

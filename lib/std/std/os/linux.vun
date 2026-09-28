@@ -9,6 +9,23 @@ gnu: std.os.Runtime = .{ .os = .linux, .abi = .gnu, .start = std.os.libc.start }
 /// The numbers Linux gives its clocks (`CLOCK_MONOTONIC`, `CLOCK_REALTIME`).
 clocks: std.os.Clocks = .{ .monotonic = 1, .real = 0 };
 
+/// The error Linux reports as `number`, a path too long being 36.
+error := (number: i32) -> std.os.Error { std.os.posix_error(number, 36) };
+
+/// The flags of `open` on Linux, the same on every architecture `std` builds for.
+flags: std.os.file.Flags = .{
+    .read_only = 0,
+    .write_only = 1,
+    .read_write = 2,
+    .create = 0o100,
+    .truncate = 0o1000,
+    .append = 0o2000,
+    .close_on_exec = 0o2000000,
+};
+
+/// The directory a relative path is found from, for the calls taking one (`AT_FDCWD`).
+cwd := -100;
+
 /// The GNU C library's layout on Linux: 1024-bit signal sets, of which Linux uses the first 64;
 /// memory reserved is `MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE`.
 c: std.os.libc.System = .{
@@ -20,4 +37,6 @@ c: std.os.libc.System = .{
     .set_mask = 2,
     .reserve = 0x4022,
     .clocks = clocks,
+    .error = error,
+    .flags = flags,
 };
