@@ -28,6 +28,10 @@ dot := ($N: usize, a: &[N]f32, b: &[N]f32) -> f32 {
 Calling a function value known at compile time is always a static call, so templates compose
 through ordinary higher-order functions.
 
+A local declared with a value that exists at compile time only (a namespace, a type, a name) is
+known then, as a `$` local is: `arith := lang.float.soft.arith; arith.add(f64, a, b)` calls the
+function statically, and `T := u8; x: T = 7` annotates with the type.
+
 Among statements, `$for` and `$if` generate statements: each step of a `$for` is the body with
 the binder bound to one item, typed and lowered on its own, so `a.$(f.name)` may have a different
 type in each step. A step, and each branch of a `$if`, is a scope of its own: what it declares is

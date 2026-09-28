@@ -285,3 +285,20 @@ seven: Int(0..=apply()) = 8;
     let reported: Vec<_> = fixture.reported(&file).into_iter().map(|(id, _)| id).collect();
     assert_eq!(reported, [errors::INT_DOES_NOT_FIT]);
 }
+
+#[test]
+fn locals_holding_compile_time_values_are_known_then() {
+    let fixture = Fixture::new("comptime-locals");
+    let file = fixture.root.write(
+        "locals.vun",
+        "\
+math := struct { double := (x: u16) -> u32 { x * 2 }; };
+four := () -> u32 { m := math; m.double(2) };
+fits: Int(0..=four()) = 4;
+over: Int(0..=four()) = 5;
+narrow := () -> u32 { T := u8; y: T = 300; y };
+",
+    );
+    // `m` holds a namespace and `T` a type, values existing at compile time only.
+    assert_eq!(fixture.check(&file), [errors::INT_DOES_NOT_FIT, errors::INT_DOES_NOT_FIT]);
+}

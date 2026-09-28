@@ -248,9 +248,8 @@ In flight, not in main:
   conversions (int and float, `f32` and `f64`), `f64` in VFP `d` registers for linux.arm (its
   FPU computes it; the backend lacks it), float conversions of integers wider than a word, 64-bit
   atomics (`ldrexd`/`strexd`), the backend tests running linux.arm, factoring the isel shared by
-  arm64 and Thumb (`call`, `entry`, `term`, `carry`), and two MIR gaps met on the way: an
-  operator on a generic `$T` in a generic body, and a namespace bound to a local
-  (`s := lang.float.soft.arith; s.add(..)`).
+  arm64 and Thumb (`call`, `entry`, `term`, `carry`). A local holding a namespace or a type is known
+  at compile time (decision 295).
 - Milestone 3a landed (decision 280): `Rules::{AAPCS, AAPCS_VFP}` (word, stack alignment,
   `returned`, `Floats`, `Split`), backfill in `vun-abi`'s banks, `Loc::Split { parts, rest }` for
   straddling records (handled by the x86-64 and arm64 isel), wide results as `AbiType::Wide`

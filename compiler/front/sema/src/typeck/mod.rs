@@ -152,9 +152,11 @@ impl<'e, 'a, 'db> Typer<'e, 'a, 'db> {
         &self.env.parsed.hir
     }
 
-    /// Records `binder` as holding values of type `ty`, known when the binder is.
+    /// Records `binder` as holding values of type `ty`, known when the binder is: at compile
+    /// time for a `$` local, and for a local declared with a value existing then only.
     fn bind(&mut self, binder: BinderId, ty: Ty) {
-        let stage = if self.hir().binders[binder].comptime { Stage::Compile } else { self.stage };
+        let fixed = self.env().declared(binder).is_some() && self.env().compile_only_type(ty);
+        let stage = if self.hir().binders[binder].comptime || fixed { Stage::Compile } else { self.stage };
         self.locals.insert(binder, Known { ty, stage });
     }
 

@@ -153,6 +153,7 @@ impl Value {
                 Some(TyKind::Tuple(items.iter().map(Self::ty).collect::<Option<_>>()?).intern())
             }
             Self::Type(_) => Some(TyKind::of_types()),
+            Self::Namespace(_) => Some(TyKind::primitive(Primitive::Meta(Meta::Namespace))),
             // An array's items have the type they all have in common.
             Self::Array(items) => {
                 let item = items.iter().map(Self::ty).reduce(|a, b| a?.join(&*b?))??;
