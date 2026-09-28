@@ -160,7 +160,9 @@ add3 := (a: u64) -> u64 {
   gives one (`eax`). An immediate is an integer the operation's width holds, signed or unsigned,
   and the form's immediate holds as it extends it; a constant is never cut to the bits read.
   Memory is `[...]`: one sum on x86-64 (`[base + index * 8 + 16]`), parts on arm64 and Thumb
-  (`[x1, 8]`, `[x1, x2]`), where `[x1, 8]!` writes the address back before the access and `[x1], 8` after it. `'name` is the instruction a label
+  (`[x1, 8]`, `[x1, x2]`), where `[x1, 8]!` writes the address back before the access and
+  `[x1], 8` after it. A list of registers is the rest of the line (`push r4, lr`, `vpush d8,
+  d9`). `'name` is the instruction a label
   `'name:` marks. `{name}` is a declaration's address, relocated when linking. `{in e}` passes
   the value of `e` in a register the backend picks, of the class and width its type needs (a
   float in a floating-point register); `{out p}` writes a register into the place `p`, `{inout

@@ -104,6 +104,7 @@ impl Blocks for X86_64 {
             vun_inline::Operand::Imm(n) => Operand::Imm(*n),
             vun_inline::Operand::Cond(c) => Operand::Cond(Cc::ALL[usize::from(c.0)]),
             vun_inline::Operand::Choice(_) => panic!("no x86-64 form takes a named choice"),
+            vun_inline::Operand::List(_) => panic!("no x86-64 form takes a list"),
             vun_inline::Operand::Label(line) => place.line(*line),
             vun_inline::Operand::Symbol(s) => Operand::Sym(*s),
             vun_inline::Operand::Bound(_) => Operand::Reg(place.bound()),

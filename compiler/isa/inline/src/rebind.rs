@@ -57,6 +57,7 @@ impl<V, P, S> Operand<V, P, S> {
             Self::Cond(c) => Operand::Cond(c),
             Self::Choice(k) => Operand::Choice(k),
             Self::Label(l) => Operand::Label(l),
+            Self::List(regs) => Operand::List(regs),
             Self::Symbol(s) => Operand::Symbol(to.symbol(s)?),
             Self::Bound(b) => Operand::Bound(b.rebind(to)?),
             Self::Mem(m) => Operand::Mem(Mem {

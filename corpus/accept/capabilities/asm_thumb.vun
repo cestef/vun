@@ -58,3 +58,14 @@ countdown := (n: u32) -> u32 {
     };
     left
 };
+
+/// A list of registers as the rest of the line: general ones, or consecutive double-precision
+/// ones.
+saved := () {
+    unsafe lang.arch.thumb.asm {
+        push r4, r5, lr
+        vpush d8, d9
+        vpop d8, d9
+        pop r4, r5, pc
+    };
+};

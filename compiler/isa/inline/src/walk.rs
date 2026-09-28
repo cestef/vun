@@ -39,9 +39,12 @@ macro_rules! parts {
                 };
                 ([base, index], symbol)
             }
-            Operand::Reg(_) | Operand::Imm(_) | Operand::Cond(_) | Operand::Choice(_) | Operand::Label(_) => {
-                ([None, None], None)
-            }
+            Operand::Reg(_)
+            | Operand::Imm(_)
+            | Operand::Cond(_)
+            | Operand::Choice(_)
+            | Operand::Label(_)
+            | Operand::List(_) => ([None, None], None),
         }
     };
 }

@@ -125,10 +125,14 @@ pub trait Blocks {
     #[must_use]
     fn named<V, P, S>(block: &Block<V, P, S>) -> impl Iterator<Item = Self::Reg> {
         block.insts.iter().flat_map(|inst| {
-            let named = inst.operands.iter().filter_map(|operand| match operand {
-                Operand::Reg(r) | Operand::Mem(Mem { base: Some(Base::Reg(r)), .. }) => Self::general(*r),
-                _ => None,
+            let named = inst.operands.iter().flat_map(|operand| match operand {
+                Operand::Reg(r) | Operand::Mem(Mem { base: Some(Base::Reg(r)), .. }) => {
+                    std::slice::from_ref(r)
+                }
+                Operand::List(regs) => regs.as_slice(),
+                _ => &[],
             });
+            let named = named.filter_map(|&r| Self::general(r));
             Self::implicit(inst).chain(named)
         })
     }

@@ -6,9 +6,11 @@
 use vun_inline::{FormId, Line, OpId, SizeId};
 use vun_isa::imm::held;
 use vun_isa::word::Field;
-use vun_isa::{Blocks, Fit, Fixed, Given, Label, Misfit, Place, Via, Why, Writeback, positions, width};
+use vun_isa::{
+    Blocks, Fit, Fixed, Given, Label, Misfit, Place, Takes, Via, Why, Writeback, positions, width,
+};
 
-use crate::{Choice, Class, Kind, Mode, Op, Operand, Reg, Size, Thumb, Width};
+use crate::{Choice, Class, Kind, List, Mode, Op, Operand, Reg, Size, Thumb, Width};
 
 /// The bits of every operation on general registers.
 const WORD_BITS: u32 = 32;
@@ -91,7 +93,14 @@ impl Kind {
             (Self::Mem(mode, _), Given::Mem { mem, writeback }) if mode.writeback() == *writeback => {
                 Thumb::addressable(mem, self).map_err(|_| Why::Kind)?;
             }
-            (_, Given::Choice { .. } | Given::Mem { .. }) => return Err(Why::Kind),
+            // A list of floating-point registers names double-precision ones (`d8, d9`).
+            (Self::List(_), Given::List(regs))
+                if List::of(&regs.iter().map(|&(r, _)| r).collect::<Vec<_>>()).is_some()
+                    && regs.iter().all(|&(r, size)| {
+                        Class::ALL[usize::from(r.class.0)] != Class::Fp
+                            || size.map(Size::of) == Some(Size::B64)
+                    }) => {}
+            (_, Given::Choice { .. } | Given::Mem { .. } | Given::List(_)) => return Err(Why::Kind),
             _ => {}
         }
         let operand = Thumb::operand(&given.clone().operand(), self, &mut Representative);
@@ -122,6 +131,16 @@ impl<S: Copy> Place<Thumb, S> for Representative {
     }
 }
 
+impl Takes for Kind {
+    fn cond(self) -> bool {
+        matches!(self, Self::Cond)
+    }
+
+    fn list(self) -> bool {
+        matches!(self, Self::List(_))
+    }
+}
+
 /// The width `givens` give the form `form` of `op`, and each as the form takes it.
 pub(crate) fn fit<V: Clone, P: Clone, S: Copy>(
     op: OpId,
@@ -130,7 +149,7 @@ pub(crate) fn fit<V: Clone, P: Clone, S: Copy>(
     givens: &[Given<V, P, S>],
 ) -> Result<Fit<V, P, S>, Misfit> {
     let form = Op::entry(op, form).1;
-    let positions = positions(form.kinds(), fixed, |k| matches!(k, Kind::Cond), givens)?;
+    let positions = positions(form.kinds(), fixed, givens)?;
     // A width the spelling gives is the instruction's; its registers are checked against it.
     let sizes = form.sizes.iter().map(|s| s.size.id());
     let size = Size::of(width(&positions, fixed, Kind::sized, sizes)?);

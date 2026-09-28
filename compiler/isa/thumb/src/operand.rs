@@ -6,7 +6,9 @@ use std::fmt;
 
 use vun_isa::Label;
 
-use crate::reg::{Barrier, Cc, Mask, Reg, Special, Status, V};
+use vun_inline::RegRef;
+
+use crate::reg::{Barrier, Cc, Class, Mask, Reg, Special, Status, V};
 
 /// How a register operand is shifted, by its encoding (`type`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -88,6 +90,34 @@ pub enum List {
     Regs(u16),
     /// `count` consecutive double-precision registers from `first`.
     Doubles { first: V, count: u8 },
+}
+
+impl List {
+    /// The list of `regs` as a block writes them: general registers, each once, or
+    /// floating-point ones, each the double-precision register after the one before (`d8, d9`);
+    /// `None` for any other.
+    #[must_use]
+    pub fn of(regs: &[RegRef]) -> Option<Self> {
+        let class = |r: &RegRef| Class::ALL[usize::from(r.class.0)];
+        let first = regs.first()?;
+        match class(first) {
+            Class::General => regs
+                .iter()
+                .try_fold(0_u16, |bits, r| {
+                    let bit = 1 << r.number;
+                    (class(r) == Class::General && bits & bit == 0).then_some(bits | bit)
+                })
+                .map(Self::Regs),
+            Class::Fp => {
+                let doubles = regs.iter().enumerate().all(|(i, r)| {
+                    class(r) == Class::Fp && usize::from(r.number) == usize::from(first.number) + 2 * i
+                });
+                let count = u8::try_from(regs.len()).ok()?;
+                doubles.then(|| Self::Doubles { first: V::ALL[usize::from(first.number)], count })
+            }
+            Class::Special | Class::Status => None,
+        }
+    }
 }
 
 /// An operand of an instruction.

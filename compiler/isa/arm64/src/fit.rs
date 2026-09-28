@@ -7,7 +7,9 @@
 use vun_inline::{FormId, Line, OpId, SizeId};
 use vun_isa::imm::held;
 use vun_isa::word::Field;
-use vun_isa::{Blocks, Fit, Fixed, Given, Label, Misfit, Place, Via, Why, Writeback, positions, width};
+use vun_isa::{
+    Blocks, Fit, Fixed, Given, Label, Misfit, Place, Takes, Via, Why, Writeback, positions, width,
+};
 
 use crate::{Arm64, Barrier, Choice, Class, Kind, Mode, Op, Operand, Reg, Size, SysReg, Width};
 
@@ -129,6 +131,16 @@ impl<S: Copy> Place<Arm64, S> for Representative {
     }
 }
 
+impl Takes for Kind {
+    fn cond(self) -> bool {
+        matches!(self, Self::Cond(_))
+    }
+
+    fn list(self) -> bool {
+        false
+    }
+}
+
 /// The width `givens` give the form `form` of `op`, and each as the form takes it.
 pub(crate) fn fit<V: Clone, P: Clone, S: Copy>(
     op: OpId,
@@ -138,7 +150,7 @@ pub(crate) fn fit<V: Clone, P: Clone, S: Copy>(
 ) -> Result<Fit<V, P, S>, Misfit> {
     let form = Op::entry(op, form).1;
     let kinds = form.args.iter().map(|arg| arg.kind);
-    let positions = positions(kinds, fixed, |k| matches!(k, Kind::Cond(_)), givens)?;
+    let positions = positions(kinds, fixed, givens)?;
     // A width the spelling gives is the instruction's; its registers are checked against it.
     let sizes = form.sizes.iter().map(|s| s.size.id());
     let size = Size::of(width(&positions, fixed, Kind::sized, sizes)?);

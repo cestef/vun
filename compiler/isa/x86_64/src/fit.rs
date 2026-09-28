@@ -5,7 +5,7 @@
 
 use vun_inline::{FormId, OpId, SizeId};
 use vun_isa::imm::held;
-use vun_isa::{Blocks, Fit, Fixed, Given, Label, Misfit, Why, Writeback, positions, width};
+use vun_isa::{Blocks, Fit, Fixed, Given, Label, Misfit, Takes, Why, Writeback, positions, width};
 
 use crate::{Base, Cc, Class, Kind, Mem, Op, Operand, Reg, Size, X86_64, Xmm};
 
@@ -62,8 +62,8 @@ impl Kind {
             }
             Given::Label(_) => Operand::Label(Label::new(0)),
             Given::Symbol(s) => Operand::Sym(*s),
-            // Nothing writes an address back, and no position names a choice.
-            Given::Mem { .. } | Given::Choice { .. } => return Err(Why::Kind),
+            // Nothing writes an address back, and no position names a choice or takes a list.
+            Given::Mem { .. } | Given::Choice { .. } | Given::List(_) => return Err(Why::Kind),
         };
         match operand {
             _ if !self.takes(size, &operand) => {
@@ -75,6 +75,16 @@ impl Kind {
     }
 }
 
+impl Takes for Kind {
+    fn cond(self) -> bool {
+        matches!(self, Self::Cond)
+    }
+
+    fn list(self) -> bool {
+        false
+    }
+}
+
 /// The width `givens` give the form `form` of `op`, and each as the form takes it.
 pub(crate) fn fit<V: Clone, P: Clone, S: Copy>(
     op: OpId,
@@ -83,7 +93,7 @@ pub(crate) fn fit<V: Clone, P: Clone, S: Copy>(
     givens: &[Given<V, P, S>],
 ) -> Result<Fit<V, P, S>, Misfit> {
     let form = Op::entry(op, form).1;
-    let positions = positions(form.kinds(), fixed, |k| k == Kind::Cond, givens)?;
+    let positions = positions(form.kinds(), fixed, givens)?;
     let sizes = Size::ALL.into_iter().filter(|&s| form.sizes.contains(s)).map(Size::id);
     let size = Size::of(width(&positions, fixed, Kind::sized, sizes)?);
     if !form.sizes.contains(size) {

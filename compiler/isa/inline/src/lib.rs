@@ -82,6 +82,8 @@ pub enum Operand<V, P, S> {
     /// The address of a declaration, relocated when linking.
     Symbol(S),
     Bound(Bound<V, P>),
+    /// Registers a form takes as one list, in the order written: `push r4, lr`.
+    List(Vec<RegRef>),
 }
 
 /// Memory at `base + index * scale + disp`.

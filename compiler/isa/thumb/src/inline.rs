@@ -7,8 +7,8 @@ use vun_inline::{Disp, FormId, Inst, OpId, RegRef, SizeId};
 use vun_isa::{AsmOperand, Blocks, Fit, Fixed, Given, Label, Misfit, Place};
 
 use crate::{
-    Access, Barrier, Cc, Class, Form, Kind, Mask, Mem, Mode, Op, Operand, Reg, Size, Special, Status, Thumb,
-    V,
+    Access, Barrier, Cc, Class, Form, Kind, List, Mask, Mem, Mode, Op, Operand, Reg, Size, Special, Status,
+    Thumb, V,
 };
 
 impl Op {
@@ -113,6 +113,9 @@ impl Blocks for Thumb {
                 }
             }
             vun_inline::Operand::Imm(n) => Operand::Imm(*n),
+            vun_inline::Operand::List(regs) => {
+                Operand::List(List::of(regs).expect("a list the block was checked to write"))
+            }
             vun_inline::Operand::Cond(c) => Operand::Cond(Cc::ALL[usize::from(c.0)]),
             vun_inline::Operand::Choice(k) => match kind {
                 Kind::Mask => Operand::Mask(Mask::ALL[usize::from(*k)]),

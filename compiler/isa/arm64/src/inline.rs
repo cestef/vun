@@ -108,6 +108,7 @@ impl Blocks for Arm64 {
             vun_inline::Operand::Reg(r) => Self::general(*r).map_or(Operand::V(V(r.number)), Operand::Reg),
             vun_inline::Operand::Imm(n) => Operand::Imm(*n),
             vun_inline::Operand::Cond(c) => Operand::Cond(Cc::ALL[usize::from(c.0)]),
+            vun_inline::Operand::List(_) => panic!("no arm64 form takes a list"),
             vun_inline::Operand::Choice(k) => match kind {
                 Kind::Sys => Operand::Sys(SysReg::ALL[usize::from(*k)]),
                 _ => Operand::Barrier(Barrier::ALL[usize::from(*k)]),

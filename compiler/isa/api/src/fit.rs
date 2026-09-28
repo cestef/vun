@@ -34,6 +34,9 @@ pub enum Given<V, P, S> {
     Label(Line),
     /// The address of something the linker places.
     Symbol(S),
+    /// The registers a list position takes, each with the width its name gives: the rest of the
+    /// line (`push r4, lr`).
+    List(Vec<(RegRef, Option<SizeId>)>),
 }
 
 impl<V, P, S> Given<V, P, S> {
@@ -68,6 +71,7 @@ impl<V, P, S> Given<V, P, S> {
             Self::Mem { mem, .. } => Operand::Mem(mem),
             Self::Label(line) => Operand::Label(line),
             Self::Symbol(symbol) => Operand::Symbol(symbol),
+            Self::List(regs) => Operand::List(regs.into_iter().map(|(reg, _)| reg).collect()),
         }
     }
 }
@@ -142,22 +146,40 @@ impl<K, V, P, S> Position<K, V, P, S> {
     }
 }
 
-/// Each position of a form with its operand: a condition the mnemonic supplies fills the
-/// position `cond` says is one.
+/// What a position of a form takes of a line, beyond one operand.
+pub trait Takes: Copy {
+    /// Whether it is a condition, which a mnemonic may supply (`jz`).
+    fn cond(self) -> bool;
+
+    /// Whether it is a list, which takes every register left on the line (`push r4, lr`).
+    fn list(self) -> bool;
+}
+
+/// Each position of a form with its operand: a condition the mnemonic supplies fills a position
+/// that is one, and a list takes the registers left.
 ///
 /// # Errors
-/// `Misfit::Count` when the line writes another number of operands than the positions leave.
-pub fn positions<K: Copy, V: Clone, P: Clone, S: Clone>(
+/// `Misfit::Count` when the line writes another number of operands than the positions leave, and
+/// `Misfit::Operand` for an operand of a list that is no register.
+pub fn positions<K: Takes, V: Clone, P: Clone, S: Clone>(
     kinds: impl Iterator<Item = K>,
     fixed: Fixed,
-    cond: impl Fn(K) -> bool,
     givens: &[Given<V, P, S>],
 ) -> Result<Vec<Position<K, V, P, S>>, Misfit> {
-    let mut rest = givens.iter().enumerate();
+    let mut rest = givens.iter().enumerate().peekable();
     let mut positions = Vec::new();
     for kind in kinds {
         match fixed.cond {
-            Some(c) if cond(kind) => positions.push(Position { kind, at: None, given: Given::Cond(c) }),
+            Some(c) if kind.cond() => positions.push(Position { kind, at: None, given: Given::Cond(c) }),
+            _ if kind.list() => {
+                let at = rest.peek().map(|&(at, _)| at).ok_or(Misfit::Count)?;
+                let regs = rest.by_ref().map(|(at, given)| match *given {
+                    Given::Reg { reg, size } => Ok((reg, size)),
+                    _ => Err(Misfit::Operand { at, why: Why::Kind }),
+                });
+                let given = Given::List(regs.collect::<Result<_, _>>()?);
+                positions.push(Position { kind, at: Some(at), given });
+            }
             _ => {
                 let (at, given) = rest.next().ok_or(Misfit::Count)?;
                 positions.push(Position { kind, at: Some(at), given: given.clone() });
