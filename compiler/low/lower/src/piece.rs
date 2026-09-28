@@ -6,7 +6,6 @@
 use std::sync::Arc;
 
 use vun_codec::{Decode, Encode};
-use vun_hash::Set;
 use vun_intern::Symbol;
 use vun_lir::{Function, Linkage, Reloc, Site};
 use vun_lir_passes::Tidy;
@@ -19,6 +18,7 @@ use vun_sema::ty::{Nominal, Ty, TyKind};
 
 use crate::func::{FnLower, Mode};
 use crate::lowering::Lowering;
+use crate::unchecked::Unchecked;
 use crate::unlowered::{Form, Unlowered, Why};
 
 /// A function of a program, as lowering makes it.
@@ -109,7 +109,7 @@ impl Query for FunctionLir {
 
 impl Piece {
     /// The function `f`, or with `end` its `end`, with the checks but where they run.
-    pub(crate) fn of(f: &Instantiation, end: bool, unchecked: &Set<Instantiation>) -> Self {
+    pub(crate) fn of(f: &Instantiation, end: bool, unchecked: &Unchecked) -> Self {
         Piece::Function { f: f.clone(), end, checked: !unchecked.contains(f) }
     }
 

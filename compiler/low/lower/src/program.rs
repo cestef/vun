@@ -9,11 +9,19 @@ use vun_lir::Unit;
 use vun_mir::{Programs, Roots};
 use vun_query::{Cx, Query};
 use vun_sema::eval::Instantiation;
+use vun_trace::Activity;
 
 use crate::assemble::Assembly;
+use crate::inlined::{InlinedLir, Inlining};
 use crate::lowering::Lowering;
 use crate::piece::{FunctionLir, Piece};
 use crate::unlowered::{Unlowered, Why};
+
+/// Numbering a program's functions, as timed: its root file's environment, which functions
+/// suspend and which the checks run in.
+const NUMBER: Activity = Activity::stage("number functions");
+/// Placing each function's ids in the program's unit, as timed.
+const PLACE: Activity = Activity::stage("place functions");
 
 /// The LIR of the program whose root is a file.
 pub struct Lowered;
@@ -31,14 +39,21 @@ impl Query for Lowered {
 impl Lowered {
     fn program(cx: &Cx<'_>, root: &FileRef) -> Result<Unit, Unlowered> {
         let program = cx.get::<Programs>(&(root.clone(), Roots::Exports));
+        let numbering = NUMBER.start();
         let l = Lowering::new(cx, root, true)?;
         if let Some((i, unready)) = program.unready.first() {
             return Err(Unlowered { at: i.f.literal.expr.origin, why: Why::Unready(unready.clone()) });
         }
         let at = Lowering::root_of(&l.env);
         let mut assembly = Assembly::new(&l);
-        let pieces = assembly.number(&program, &Lowering::unchecked(cx, root, &program), at)?;
-        for lir in cx.get_all::<FunctionLir>(&pieces) {
+        let unchecked = Lowering::unchecked(cx, root, &program);
+        let pieces = assembly.number(&program, &unchecked, at)?;
+        drop(numbering);
+        let keys: Vec<Inlining> =
+            pieces.into_iter().map(|piece| Inlining { piece, unchecked: unchecked.clone() }).collect();
+        let lirs = cx.get_all::<InlinedLir>(&keys);
+        let _placing = PLACE.start();
+        for lir in lirs {
             assembly.add(lir.as_ref().as_ref().map_err(Clone::clone)?, at)?;
         }
         Ok(assembly.finish())

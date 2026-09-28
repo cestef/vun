@@ -16,7 +16,7 @@ pub mod thread;
 
 pub use fold::Fold;
 pub use hoist::Hoist;
-pub use inline::Inline;
+pub use inline::{Inline, InlineCalls};
 pub use legalize::Legalize;
 pub use narrow::Narrow;
 pub use promote::Promote;

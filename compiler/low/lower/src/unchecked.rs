@@ -2,7 +2,10 @@
 //! runtime exports for an operation of `lang.check`, and every function one calls. The checks do
 //! not apply in them, or an operation would check itself.
 
-use vun_hash::Set;
+use std::sync::Arc;
+
+use vun_codec::{Decode, Encode};
+use vun_hash::{Set, Stable};
 use vun_hir::db::FileRef;
 use vun_mir::{Concrete, Lowered as _, Operand, Program, Rvalue};
 use vun_query::Cx;
@@ -13,12 +16,24 @@ use vun_sema::ty::Value;
 
 use crate::lowering::Lowering;
 
+/// The functions of a program the checks run in, in an order of their own: alike for every
+/// program whose runtime is the same, which a function lowered on its own is keyed by.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash, Encode, Decode)]
+pub struct Unchecked(Arc<Vec<Instantiation>>);
+
+impl Unchecked {
+    /// Whether the checks do not apply in `f`.
+    pub(crate) fn contains(&self, f: &Instantiation) -> bool {
+        self.0.contains(f)
+    }
+}
+
 impl Lowering<'_, '_> {
     /// The functions of `program`, rooted at `root`, the checks run in; none without checks.
-    pub(crate) fn unchecked(cx: &Cx<'_>, root: &FileRef, program: &Program) -> Set<Instantiation> {
+    pub(crate) fn unchecked(cx: &Cx<'_>, root: &FileRef, program: &Program) -> Unchecked {
         let mut unchecked = Set::default();
         if cx.get::<ChecksOf>(&()).is_empty() {
-            return unchecked;
+            return Unchecked::default();
         }
         let operations = cx.get::<Operations>(&root.package);
         let mut pending: Vec<Instantiation> = program
@@ -39,6 +54,8 @@ impl Lowering<'_, '_> {
                 }
             }
         }
-        unchecked
+        let mut unchecked: Vec<Instantiation> = unchecked.into_iter().collect();
+        unchecked.sort_by_key(Stable::of);
+        Unchecked(Arc::new(unchecked))
     }
 }

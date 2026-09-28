@@ -226,10 +226,14 @@ per second per stage and fails on regressions.
   functions in the order the program reached them (in waves, each wave's bodies made over
   threads, in the order reaching one function at a time finds), coroutines' `end`s and then constructors
   after; a link symbol the function the program exports under it, else one import per symbol;
-  constants once per content and a top-level binding once per binding, each after the data its
-  bytes point to; trap sites numbered in the order of the functions, the ids that data and
-  assembly checks hold written as placed (a site's id is never an immediate a pass could fold).
-  Then, callees first, each function inlines its small callees and is tidied again. Lowering
+  constants once per content, a top-level binding once per binding and a trap site once per
+  site, each after the data its bytes point to, the ids that data and assembly checks hold
+  written as placed (a site's id is never an immediate a pass could fold). Each function placed
+  has its small callees inlined already (`InlinedLir`, keyed by the function and the functions
+  the checks run in, which stay unchecked wherever they are inlined): the callees, inlined
+  themselves, are placed in the function's own tables as the unit places a function
+  (`placing`), inlined and the function tidied again, so a library function's is shared as its
+  LIR is; a function reached again through its callees inlines none of theirs. Lowering
   makes every local a stack slot of its layout, a top-level binding one data object, statements the
   instructions computing into their place; integers in their range's storage, converted where a
   value moves between ranges; enums by their shapes; checks of indices and narrowings as trap

@@ -1,17 +1,14 @@
-//! Assembling a program from its functions, each lowered on its own (`piece`): every id a
-//! function's LIR holds is placed in the program's unit. A declaration the linker provides is
-//! the function the program exports under its symbol, else an import made once per symbol;
-//! constants are made once per content and a top-level binding's object once per binding; trap
-//! sites are numbered in the order the functions come, the ids their data and assembly blocks
-//! hold moved past the sites of the functions before.
+//! Assembling a program from its functions, each lowered on its own (`piece`) with its small
+//! callees inlined (`inlined`): every id a function's LIR holds is placed in the program's unit
+//! (`placing`). A declaration the linker provides is the function the program exports under its
+//! symbol, else an import made once per symbol; constants are made once per content, a top-level
+//! binding's object once per binding, and a trap site once per site, whichever functions hold
+//! it, the ids that data and assembly blocks hold placed with it.
 
-use vun_hash::{Map, Set};
+use vun_hash::Map;
 use vun_index::Idx;
 use vun_intern::Symbol;
-use vun_lir::{
-    Address, Data, DataId, FuncId, Function, Import, ImportId, ImportKind, InstKind, Linkage, Unit,
-};
-use vun_lir_passes::Simplify;
+use vun_lir::{Address, Data, DataId, FuncId, Import, ImportId, ImportKind, Linkage, Site, Unit};
 use vun_mir::{Concrete, Program};
 use vun_origin::OriginId;
 use vun_sema::eval::Instantiation;
@@ -22,6 +19,8 @@ use vun_sema::ty::{Ty, TyKind};
 
 use crate::lowering::Lowering;
 use crate::piece::{Bytes, Datum, DatumKind, FuncRef, Lir, Piece};
+use crate::placing::{Places, SiteIds};
+use crate::unchecked::Unchecked;
 use crate::unlowered::{Form, Unlowered, Why};
 
 /// The program's unit being assembled, and where each thing named in it went.
@@ -39,15 +38,7 @@ pub(crate) struct Assembly<'l, 'a, 'db> {
     imports: Map<Symbol, ImportId>,
     constants: Map<(Bytes, u64), DataId>,
     globals: Map<DeclRef, DataId>,
-}
-
-/// Where the ids of one function's LIR go in the unit.
-struct Placing {
-    functions: Vec<Address>,
-    imports: Vec<Address>,
-    data: Vec<DataId>,
-    /// The id of the function's first trap site.
-    base: u32,
+    sites: SiteIds,
 }
 
 impl<'l, 'a, 'db> Assembly<'l, 'a, 'db> {
@@ -65,6 +56,7 @@ impl<'l, 'a, 'db> Assembly<'l, 'a, 'db> {
             imports: Map::default(),
             constants: Map::default(),
             globals: Map::default(),
+            sites: SiteIds::default(),
         }
     }
 
@@ -74,7 +66,7 @@ impl<'l, 'a, 'db> Assembly<'l, 'a, 'db> {
     pub(crate) fn number(
         &mut self,
         program: &Program,
-        unchecked: &Set<Instantiation>,
+        unchecked: &Unchecked,
         at: OriginId,
     ) -> Result<Vec<Piece>, Unlowered> {
         let cx = self.l.types.cx;
@@ -116,89 +108,25 @@ impl<'l, 'a, 'db> Assembly<'l, 'a, 'db> {
         Ok(())
     }
 
-    /// The unit, once every function is added: callees first, each inlines its small callees.
-    pub(crate) fn finish(mut self) -> Unit {
-        self.unit.inline_small();
+    /// The unit, once every function is added, each with its small callees inlined already.
+    pub(crate) fn finish(self) -> Unit {
+        self.unit.verified();
         self.unit
     }
+}
 
-    /// The function of `lir`, its ids placed in the unit, reported at `at` when one is not.
-    fn place(&mut self, lir: &Lir, at: OriginId) -> Result<Function, Unlowered> {
-        let unplaced = || Unlowered::unsupported(at, Form::Callee);
-        let base = u32::try_from(self.unit.sites.len()).map_err(|_| unplaced())?;
-        self.unit.sites.extend(lir.refs.sites.iter().cloned());
-        let functions =
-            lir.refs.functions.iter().map(|f| self.function(f).map(Address::Func).ok_or_else(unplaced));
-        let functions = functions.collect::<Result<_, _>>()?;
-        let imports = lir.refs.imports.iter().map(|decl| self.linked(decl, at)).collect::<Result<_, _>>()?;
-        let mut placing = Placing { functions, imports, data: Vec::with_capacity(lir.refs.data.len()), base };
-        for datum in &lir.refs.data {
-            let id = self.datum(datum, &placing);
-            placing.data.push(id);
-        }
-        let mut function = lir.function.clone();
-        function.map_addresses(|a| placing.address(a));
-        for (_, inst) in function.insts.iter_mut() {
-            if let InstKind::Asm(_, Some(check)) = &mut inst.kind {
-                check.site += base;
-            }
-        }
-        Ok(function)
-    }
-
-    /// The id in the unit of the function `named`.
-    fn function(&self, named: &FuncRef) -> Option<FuncId> {
-        match named {
-            FuncRef::Function(f) => self.functions.get(f).copied(),
-            FuncRef::End(f) => self.ends.get(f).copied(),
-            FuncRef::Constructor(ty, name) => self.constructors.get(&(*ty, *name)).copied(),
-        }
-    }
-
-    /// The id in the unit of `datum`, its addresses and sites placed as `placing` says.
-    fn datum(&mut self, datum: &Datum, placing: &Placing) -> DataId {
-        if let DatumKind::Global { decl, .. } = &datum.kind
-            && let Some(&id) = self.globals.get(decl)
-        {
-            return id;
-        }
-        let mut bytes = datum.bytes.clone();
-        for reloc in &mut bytes.relocs {
-            reloc.target = placing.address(reloc.target);
-        }
-        for site in std::mem::take(&mut bytes.sites) {
-            let id = Integer::from((placing.base + site.site) as usize);
-            self.l.int(&id, site.width, &mut bytes.bytes, site.offset);
-        }
-        let key = (bytes, datum.align);
-        if let (DatumKind::Constant, Some(&id)) = (&datum.kind, self.constants.get(&key)) {
-            return id;
-        }
-        let writable = matches!(datum.kind, DatumKind::Global { writable: true, .. });
-        let (bytes, align) = key.clone();
-        let data = Data {
-            linkage: Linkage::Internal,
-            bytes: bytes.bytes,
-            relocs: bytes.relocs,
-            align,
-            writable,
-            section: None,
-            origin: datum.origin,
+impl Places for Assembly<'_, '_, '_> {
+    fn function(&mut self, named: &FuncRef, at: OriginId) -> Result<Address, Unlowered> {
+        let placed = match named {
+            FuncRef::Function(f) => self.functions.get(f),
+            FuncRef::End(f) => self.ends.get(f),
+            FuncRef::Constructor(ty, name) => self.constructors.get(&(*ty, *name)),
         };
-        let id = self.unit.data.push(data);
-        match &datum.kind {
-            DatumKind::Constant => {
-                self.constants.insert(key, id);
-            }
-            DatumKind::Global { decl, .. } => {
-                self.globals.insert(decl.clone(), id);
-            }
-        }
-        id
+        placed.map(|&f| Address::Func(f)).ok_or(Unlowered::unsupported(at, Form::Callee))
     }
 
-    /// What the declaration the linker provides names in the program: the function it exports
-    /// under its symbol, or an import, made once per symbol.
+    /// The function the program exports under the declaration's symbol, or an import, made once
+    /// per symbol.
     fn linked(&mut self, decl: &DeclRef, at: OriginId) -> Result<Address, Unlowered> {
         let linked = decl.linked(self.l.types.cx).ok_or(Unlowered::unsupported(at, Form::Callee))?;
         if let Some(&f) = self.exports.get(&linked.symbol) {
@@ -207,6 +135,51 @@ impl<'l, 'a, 'db> Assembly<'l, 'a, 'db> {
         self.import(decl, linked, at).map(Address::Import)
     }
 
+    /// The object of a top-level binding once per binding, and a constant once per content, its
+    /// sites' ids written into its bytes.
+    fn datum(&mut self, datum: Datum) -> DataId {
+        if let DatumKind::Global { decl, .. } = &datum.kind
+            && let Some(&id) = self.globals.get(decl)
+        {
+            return id;
+        }
+        let Datum { mut bytes, align, kind, origin } = datum;
+        for site in std::mem::take(&mut bytes.sites) {
+            self.l.int(&Integer::from(site.site as usize), site.width, &mut bytes.bytes, site.offset);
+        }
+        let key = (bytes, align);
+        if let (DatumKind::Constant, Some(&id)) = (&kind, self.constants.get(&key)) {
+            return id;
+        }
+        let writable = matches!(kind, DatumKind::Global { writable: true, .. });
+        let (bytes, align) = key.clone();
+        let data = Data {
+            linkage: Linkage::Internal,
+            bytes: bytes.bytes,
+            relocs: bytes.relocs,
+            align,
+            writable,
+            section: None,
+            origin,
+        };
+        let id = self.unit.data.push(data);
+        match kind {
+            DatumKind::Constant => {
+                self.constants.insert(key, id);
+            }
+            DatumKind::Global { decl, .. } => {
+                self.globals.insert(decl, id);
+            }
+        }
+        id
+    }
+
+    fn sites(&mut self, sites: &[Site], at: OriginId) -> Result<Vec<u32>, Unlowered> {
+        sites.iter().map(|site| self.sites.id(&mut self.unit.sites, site, at)).collect()
+    }
+}
+
+impl Assembly<'_, '_, '_> {
     fn import(&mut self, decl: &DeclRef, linked: Linked, at: OriginId) -> Result<ImportId, Unlowered> {
         let Linked { symbol, abi, library } = linked;
         if let Some(&id) = self.imports.get(&symbol) {
@@ -230,16 +203,5 @@ impl<'l, 'a, 'db> Assembly<'l, 'a, 'db> {
             self.unit.imports.push(Import { symbol, library, kind, origin: decl.decl.origin, stack_max });
         self.imports.insert(symbol, id);
         Ok(id)
-    }
-}
-
-impl Placing {
-    /// Where `address`, of the function's own ids, is in the unit.
-    fn address(&self, address: Address) -> Address {
-        match address {
-            Address::Func(f) => self.functions[f.index()],
-            Address::Import(i) => self.imports[i.index()],
-            Address::Data(d) => Address::Data(self.data[d.index()]),
-        }
     }
 }

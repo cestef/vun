@@ -282,10 +282,8 @@ Next, most useful first:
    `VUN_THREADS=1` for exact counts; the CPU clock varies (a laptop on battery), so compare A/B
    runs made together, never across time. Durability made warm `files.vun` restore 1.7k memos
    instead of 14.4k (1.5k hold at once; ~300 of the project's own verified in order). A new
-   project with the libraries shared (dev, 843 ms): lowering's second phase, `inline_small` on
-   the unit, re-tidies each function it inlined into, per program and in turn (~350 ms): next is
-   inlining per function as a query reading its callees' (shared like `FunctionLir`, merging
-   `Refs` as `Assembly` places them). Saving the memos (~136 ms) copies every key of the loaded
+   project with the libraries shared (dev): 843 ms to ~578 ms, inlining now per function and
+   shared (decision 303). Saving the memos (~136 ms) copies every key of the loaded
    shared entry into the project file: next is layered stores (the project file holding its own
    memos, its reads of the shared entry naming that file). Truly cold (empty store): threads wait
    ~1.1 s on the same `std` claims, once per toolchain. The driver tests read the machine's

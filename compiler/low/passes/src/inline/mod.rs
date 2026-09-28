@@ -34,6 +34,31 @@ pub trait Inline {
     fn inline_calls_of(&self, f: FuncId, function: &mut Function) -> usize;
 }
 
+/// Inlining into one function the callees it is given.
+pub trait InlineCalls {
+    /// Whether calls of this function are replaced by its body.
+    fn small(&self) -> bool;
+
+    /// Inlines the calls this makes of the small functions among `callees`, by their ids in
+    /// this function, returning how many were.
+    fn inline_small<'f>(&mut self, callees: impl IntoIterator<Item = (FuncId, &'f Function)>) -> usize;
+}
+
+impl InlineCalls for Function {
+    fn small(&self) -> bool {
+        self.linkage == Linkage::Internal && self.signature.conv == Conv::Vun && self.cost() <= SMALL
+    }
+
+    fn inline_small<'f>(&mut self, callees: impl IntoIterator<Item = (FuncId, &'f Function)>) -> usize {
+        let small: Map<FuncId, Function> =
+            callees.into_iter().filter(|(_, g)| g.small()).map(|(id, g)| (id, g.clone())).collect();
+        if small.is_empty() {
+            return 0;
+        }
+        self.inline_calls(&small)
+    }
+}
+
 impl Inline for Unit {
     fn inline(&mut self) -> usize {
         self.callees_first().into_iter().map(|f| self.inline_into(f)).sum()
@@ -47,23 +72,12 @@ impl Inline for Unit {
     }
 
     fn inline_calls_of(&self, f: FuncId, function: &mut Function) -> usize {
-        let mut small: Map<FuncId, Function> = Map::default();
-        for g in function.callees() {
-            if g != f && !small.contains_key(&g) && self.functions[g].small() {
-                small.insert(g, self.functions[g].clone());
-            }
-        }
-        if small.is_empty() {
-            return 0;
-        }
-        function.inline_calls(&small)
+        let callees: Vec<FuncId> = function.callees().filter(|&g| g != f).collect();
+        function.inline_small(callees.into_iter().map(|g| (g, &self.functions[g])))
     }
 }
 
 trait InlinableSteps {
-    /// Whether calls of this function are replaced by its body.
-    fn small(&self) -> bool;
-
     /// The instructions of the body but its constants, which code generation computes where
     /// they are used.
     fn cost(&self) -> usize;
@@ -79,10 +93,6 @@ trait InlinableSteps {
 }
 
 impl InlinableSteps for Function {
-    fn small(&self) -> bool {
-        self.linkage == Linkage::Internal && self.signature.conv == Conv::Vun && self.cost() <= SMALL
-    }
-
     fn cost(&self) -> usize {
         let insts = self.blocks.iter().flat_map(|(_, b)| &b.insts);
         insts.filter(|&&i| !matches!(self.insts[i].kind, InstKind::Const { .. })).count()
