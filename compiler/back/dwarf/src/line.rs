@@ -3,7 +3,7 @@
 //! opcodes, advancing the line and the address by what changed; a row that repeats the line
 //! before it is left out.
 
-use vun_object::{Contents, Object, Reloc, RelocKind, SectionId};
+use vun_object::{Contents, Object, Reloc, SectionId};
 
 use super::{Lines, Row};
 use vun_bytes::Out;
@@ -29,8 +29,6 @@ const SET_FILE: u8 = 4;
 const EXTENDED: u8 = 0;
 const END_SEQUENCE: u8 = 1;
 const SET_ADDRESS: u8 = 2;
-/// The bytes of an address.
-const ADDRESS: u8 = 8;
 
 /// Where a sequence stands: DWARF numbers files from 1 and lines start at 1.
 struct State {
@@ -78,15 +76,16 @@ impl Lines {
         out.patch_length(header);
         for sequence in self.sequences.iter().filter(|s| !s.rows.is_empty()) {
             out.u8(EXTENDED);
-            out.uleb(u64::from(ADDRESS) + 1);
+            let address = object.machine.address_bytes();
+            out.uleb(u64::from(address) + 1);
             out.u8(SET_ADDRESS);
             relocs.push(Reloc {
                 offset: out.here(),
                 symbol: sequence.symbol,
-                kind: RelocKind::Abs64,
+                kind: object.machine.address(),
                 addend: 0,
             });
-            out.u64(0);
+            out.zeros(usize::from(address));
             let mut state = State::START;
             let mut last = None;
             for &row in &sequence.rows {

@@ -1507,6 +1507,7 @@ dependencies = [
 name = "vun-object"
 version = "0.0.0"
 dependencies = [
+ "vun-fs",
  "vun-index",
 ]
 

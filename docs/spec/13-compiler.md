@@ -574,8 +574,11 @@ assembler and its instruction compilers and nothing else:
   same form's text, and callers ask which forms fit before choosing operands. So an instruction's
   encoding and its text cannot disagree, and a test decodes every form with an independent
   decoder (yaxpeax) and compares both.
-- **`vun-object`**: relocatable objects as data, written once in the target's format: ELF-64,
-  or Mach-O 64-bit for arm64 (`macos.arm64`), whose symbols are C names with a leading
+- **`vun-object`**: relocatable objects as data, written once in the target's format: ELF of
+  the class the machine's addresses fix (ELF32 for 32-bit Arm, whose objects carry EABI 5 and the
+  convention's float ABI in their flags, relocations with explicit addends, Thumb functions with
+  bit 0 of their value set, and `$t`/`$d` mapping symbols where code and data change), or
+  Mach-O 64-bit for arm64 (`macos.arm64`), whose symbols are C names with a leading
   underscore, whose relocations keep a word's addend in place and an instruction's in an
   `ARM64_RELOC_ADDEND` before it, and whose debugging sections are `__DWARF` ones; relocation
   kinds are the framework's, each format and machine numbers them. A target whose format the

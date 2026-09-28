@@ -1,10 +1,17 @@
-//! The numbers ELF gives machines, relocations, symbol kinds and bindings.
+//! The numbers ELF gives machines, their flags, relocations, symbol kinds and bindings, and the
+//! names of mapping symbols.
 
-use crate::{Binding, Machine, RelocKind, SymbolKind};
+use crate::{Binding, Float, Machine, Mapping, RelocKind, SymbolKind};
 
 /// `EM_*`.
+const EM_ARM: u16 = 40;
 const EM_X86_64: u16 = 62;
 const EM_AARCH64: u16 = 183;
+
+/// `EF_ARM_*`: the version of the Arm EABI, and where its convention passes floats.
+const EF_ARM_EABI_VER5: u32 = 0x0500_0000;
+const EF_ARM_ABI_FLOAT_SOFT: u32 = 0x200;
+const EF_ARM_ABI_FLOAT_HARD: u32 = 0x400;
 
 /// `R_X86_64_*`.
 const R_X86_64_64: u32 = 1;
@@ -12,6 +19,15 @@ const R_X86_64_PC32: u32 = 2;
 const R_X86_64_PLT32: u32 = 4;
 const R_X86_64_GOTPCREL: u32 = 9;
 const R_X86_64_32: u32 = 10;
+
+/// `R_ARM_*`.
+const R_ARM_ABS32: u32 = 2;
+const R_ARM_REL32: u32 = 3;
+const R_ARM_THM_CALL: u32 = 10;
+const R_ARM_THM_JUMP24: u32 = 30;
+const R_ARM_THM_MOVW_ABS_NC: u32 = 47;
+const R_ARM_THM_MOVT_ABS: u32 = 48;
+const R_ARM_THM_JUMP19: u32 = 51;
 
 /// `R_AARCH64_*`.
 const R_AARCH64_ABS64: u32 = 257;
@@ -45,6 +61,25 @@ impl Machine {
         match self {
             Self::X86_64 => EM_X86_64,
             Self::Aarch64 => EM_AARCH64,
+            Self::Arm(_) => EM_ARM,
+        }
+    }
+
+    /// Its `e_flags`.
+    pub(super) const fn elf_flags(self) -> u32 {
+        match self {
+            Self::X86_64 | Self::Aarch64 => 0,
+            Self::Arm(Float::Soft) => EF_ARM_EABI_VER5 | EF_ARM_ABI_FLOAT_SOFT,
+            Self::Arm(Float::Hard) => EF_ARM_EABI_VER5 | EF_ARM_ABI_FLOAT_HARD,
+        }
+    }
+
+    /// The value ELF gives a symbol of `kind` defined at `value`: a Thumb function's has bit 0
+    /// set, which tells linkers the state its code runs in (Arm ELF ABI).
+    pub(super) const fn elf_value(self, kind: SymbolKind, value: u64) -> u64 {
+        match (self, kind) {
+            (Self::Arm(_), SymbolKind::Func) => value | 1,
+            _ => value,
         }
     }
 
@@ -70,6 +105,13 @@ impl Machine {
             (Self::Aarch64, RelocKind::PageOffset64) => R_AARCH64_LDST64_ABS_LO12_NC,
             (Self::Aarch64, RelocKind::GotPage21) => R_AARCH64_ADR_GOT_PAGE,
             (Self::Aarch64, RelocKind::GotPageOffset64) => R_AARCH64_LD64_GOT_LO12_NC,
+            (Self::Arm(_), RelocKind::Abs32) => R_ARM_ABS32,
+            (Self::Arm(_), RelocKind::Pc32) => R_ARM_REL32,
+            (Self::Arm(_), RelocKind::ThumbCall) => R_ARM_THM_CALL,
+            (Self::Arm(_), RelocKind::ThumbJump24) => R_ARM_THM_JUMP24,
+            (Self::Arm(_), RelocKind::ThumbJump19) => R_ARM_THM_JUMP19,
+            (Self::Arm(_), RelocKind::ThumbLow16) => R_ARM_THM_MOVW_ABS_NC,
+            (Self::Arm(_), RelocKind::ThumbHigh16) => R_ARM_THM_MOVT_ABS,
             _ => return None,
         })
     }
@@ -79,7 +121,7 @@ impl SymbolKind {
     /// Its `STT_*` number.
     pub(super) const fn elf(self) -> u8 {
         match self {
-            Self::Unknown => STT_NOTYPE,
+            Self::Unknown | Self::Mapping(_) => STT_NOTYPE,
             Self::Object => STT_OBJECT,
             Self::Func => STT_FUNC,
             Self::Section => STT_SECTION,
@@ -93,6 +135,16 @@ impl Binding {
         match self {
             Self::Local => STB_LOCAL,
             Self::Global => STB_GLOBAL,
+        }
+    }
+}
+
+impl Mapping {
+    /// The name of its mapping symbol, which the Arm ELF ABI fixes.
+    pub(super) const fn elf(self) -> &'static [u8] {
+        match self {
+            Self::Thumb => b"$t",
+            Self::Data => b"$d",
         }
     }
 }

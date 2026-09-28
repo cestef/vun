@@ -6,7 +6,6 @@ use vun_object::{Contents, Object, Reloc, RelocKind, SectionId};
 use vun_bytes::Out;
 
 const VERSION: u16 = 4;
-const ADDRESS: u8 = 8;
 /// `DW_TAG_compile_unit`, without children.
 const COMPILE_UNIT: u64 = 0x11;
 const NO_CHILDREN: u8 = 0;
@@ -60,14 +59,14 @@ impl Unit<'_> {
         info.u16(VERSION);
         at(&info, abbrevs, RelocKind::Abs32);
         info.u32(0);
-        info.u8(ADDRESS);
+        info.u8(object.machine.address_bytes());
         info.uleb(ABBREVIATION);
         info.str(self.producer.as_bytes());
         info.str(self.name.as_bytes());
         at(&info, line, RelocKind::Abs32);
         info.u32(0);
-        at(&info, text, RelocKind::Abs64);
-        info.u64(0);
+        at(&info, text, object.machine.address());
+        info.zeros(usize::from(object.machine.address_bytes()));
         info.u64(size);
         info.patch_length(0);
         let section = object.section(b".debug_info", Contents::Debug);

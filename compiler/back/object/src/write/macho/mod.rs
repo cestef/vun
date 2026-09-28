@@ -128,6 +128,7 @@ impl Object {
         let (cpu, subtype) = match self.machine {
             Machine::Aarch64 => (ARM64, ARM64_ALL),
             Machine::X86_64 => (X86_64, X86_64_ALL),
+            Machine::Arm(_) => panic!("Mach-O objects are written for 64-bit machines"),
         };
         for word in [cpu, subtype, OBJECT, 4, commands, SUBSECTIONS_VIA_SYMBOLS, 0] {
             out.put32(word);

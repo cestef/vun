@@ -183,7 +183,9 @@ language rules go in as proposed unless the user approves them.
    `Op::ALL`. Thumb is done too (`lang.arch.thumb`, `vun-isa-thumb`, `Arch::Thumb`; stm32f4's
    runtime masks interrupts and waits through blocks), and the string `lang.arch.asm` primitive
    is removed. The C backend writes naked functions under GNU attributes, a block's symbols by
-   their ELF names (decision 276, proposed). In progress: vun-sanitize step 5
+   their ELF names (decision 276, proposed). `vun-object` writes 32-bit Arm objects (ELF32 by
+   the machine's address width, Thumb relocations as RELA, `$t`/`$d` mapping symbols; decision
+   277, proposed), milestone 2 of the native Thumb backend. In progress: vun-sanitize step 5
    (runtime hooks over shadow memory, `check.unsupported` at link time), then redzones, the
    `Allocator`'s `check.by`, assembly checks and a native-versus-C trap test. Left, most severe
    first:

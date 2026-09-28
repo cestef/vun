@@ -9,7 +9,7 @@ use vun_backend::Lines;
 use vun_codegen::Compiled;
 use vun_dwarf::{CallFrame, Fde, Row, Sequence};
 use vun_object::{
-    Binding, Contents, Format, Machine, Object, Reloc, RelocKind, SectionId, Symbol, SymbolId, SymbolKind,
+    Binding, Contents, Format, Machine, Object, Reloc, SectionId, Symbol, SymbolId, SymbolKind,
 };
 
 /// The alignment functions start at.
@@ -68,7 +68,8 @@ impl<T> Assembly<'_, T> {
         for ((_, d), (section, start)) in self.unit.data.iter().zip(placed) {
             for r in &d.relocs {
                 let (symbol, addend) = (symbol(r.target), r.addend);
-                let reloc = Reloc { offset: start + r.offset, symbol, kind: RelocKind::Abs64, addend };
+                let reloc =
+                    Reloc { offset: start + r.offset, symbol, kind: object.machine.address(), addend };
                 object.sections[section].relocs.push(reloc);
             }
         }

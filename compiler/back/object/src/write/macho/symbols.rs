@@ -18,7 +18,10 @@ pub(super) struct Order {
 
 impl Object {
     pub(super) fn macho_order(&self) -> Order {
-        let named = |(_, s): &(SymbolId, &crate::Symbol)| s.kind != SymbolKind::Section;
+        // Sections and mapping symbols are ELF's; Mach-O names neither.
+        let named = |(_, s): &(SymbolId, &crate::Symbol)| {
+            !matches!(s.kind, SymbolKind::Section | SymbolKind::Mapping(_))
+        };
         let group = |local: bool, defined: bool| {
             self.symbols
                 .iter()

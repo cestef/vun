@@ -32,6 +32,11 @@ impl Out {
         self.0.extend_from_slice(v);
     }
 
+    /// `n` zero bytes, a field something later fills.
+    pub fn zeros(&mut self, n: usize) {
+        self.0.resize(self.0.len() + n, 0);
+    }
+
     pub fn uleb(&mut self, mut v: u64) {
         loop {
             let byte = Self::low7(v);

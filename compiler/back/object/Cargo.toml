@@ -1,6 +1,6 @@
 [package]
 name = "vun-object"
-description = "Relocatable object files as data: sections, symbols and relocations, written once (ELF first)."
+description = "Relocatable object files as data: sections, symbols and relocations, written once in ELF of either class or Mach-O."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -11,3 +11,6 @@ workspace = true
 
 [dependencies]
 vun-index.workspace = true
+
+[dev-dependencies]
+vun-fs.workspace = true

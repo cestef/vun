@@ -1,10 +1,13 @@
 //! Relocatable objects as data: sections of bytes, symbols and relocations, built by a backend
-//! and written once in the target's object format (`Object::write`: ELF-64 or Mach-O 64-bit,
-//! little-endian).
+//! and written once in the target's object format (`Object::write`: ELF of the machine's class, or
+//! Mach-O 64-bit, little-endian).
 
+mod machine;
 #[cfg(test)]
 mod tests;
 mod write;
+
+pub use machine::{Float, Machine};
 
 use vun_index::{Idx, IndexVec, index};
 
@@ -50,6 +53,17 @@ pub enum RelocKind {
     Call26,
     /// A conditional branch's target relative to the field, 19 bits counting instructions.
     Branch19,
+    /// A Thumb `bl`'s target relative to the field, through the procedure linkage table if
+    /// needed.
+    ThumbCall,
+    /// A Thumb `b.w`'s target relative to the field, 24 bits counting halfwords.
+    ThumbJump24,
+    /// A Thumb conditional `b.w`'s target relative to the field, 20 bits counting halfwords.
+    ThumbJump19,
+    /// The low 16 bits of the symbol's address, as a Thumb `movw` reads them.
+    ThumbLow16,
+    /// The high 16 bits of the symbol's address, as a Thumb `movt` reads them.
+    ThumbHigh16,
 }
 
 /// What a section holds.
@@ -92,6 +106,17 @@ pub enum SymbolKind {
     Section,
     /// Defined elsewhere, of a kind not said.
     Unknown,
+    /// Where what a section holds changes, for disassemblers and linkers (`Object::map`).
+    Mapping(Mapping),
+}
+
+/// What a section holds from a mapping symbol on.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Mapping {
+    /// Thumb instructions.
+    Thumb,
+    /// Data, such as a literal pool among instructions.
+    Data,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -109,13 +134,6 @@ pub struct Symbol {
     pub size: u64,
     pub kind: SymbolKind,
     pub binding: Binding,
-}
-
-/// The machine an object is for.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Machine {
-    X86_64,
-    Aarch64,
 }
 
 /// The file format an object is written in.
@@ -200,6 +218,18 @@ impl Object {
                 r.addend += i64::try_from(value).expect("offsets fit 63 bits");
             }
         }
+    }
+
+    /// Marks what `section` holds from `offset` on.
+    pub fn map(&mut self, section: SectionId, offset: u64, mapping: Mapping) -> SymbolId {
+        self.symbols.push(Symbol {
+            name: Vec::new(),
+            section: Some(section),
+            value: offset,
+            size: 0,
+            kind: SymbolKind::Mapping(mapping),
+            binding: Binding::Local,
+        })
     }
 
     /// Appends `bytes` to `section` at `align`: the offset they start at.
