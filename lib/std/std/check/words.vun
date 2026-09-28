@@ -21,19 +21,10 @@ Words := struct {
     /// The words from the `i`th on.
     from := (self: Words, i: usize) -> Words { .{ ._base = self._at(i) } };
 
-    /// Stores `new` in the `i`th word if it holds `old`, and gives what it held.
-    _swap := (self: Words, i: usize, old: usize, new: usize) -> usize {
-        unsafe lang.mem.atomic_compare_swap(usize, self._at(i), old, new, .acquire)
-    };
-
     /// Takes the lock the `i`th word is, spinning while another thread holds it.
     lock := (self: Words, i: usize) {
-        for self._swap(i, free, held) != free {}
+        for unsafe lang.mem.atomic_compare_swap(usize, self._at(i), free, held, .acquire) != free {}
     };
 
-    unlock := (self: Words, i: usize) { self._release(i, free) };
-
-    _release := (self: Words, i: usize, value: usize) {
-        unsafe lang.mem.atomic_store(usize, self._at(i), value, .release)
-    };
+    unlock := (self: Words, i: usize) { unsafe lang.mem.atomic_store(usize, self._at(i), free, .release) };
 };

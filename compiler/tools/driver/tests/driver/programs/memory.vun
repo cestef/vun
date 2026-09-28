@@ -2,7 +2,7 @@ start := std.os.start(main);
 
 main := (sys: &mut std.os.System) -> std.os.Exit {
     n: u8 = sys.args().len().sat(u8);
-    mut failed: Int(0..=8) = 0;
+    mut failed: Int(0..=10) = 0;
     // A register written and read back through volatile accesses.
     mut word: u32 = 0;
     reg := unsafe &lang.mem.cast(u32, std.hw.Reg(u32), lang.mem.pointer_to(u32, &word)).*;
@@ -32,6 +32,14 @@ main := (sys: &mut std.os.System) -> std.os.Exit {
     triples := unsafe lang.mem.cast(u8, [3]u8, at);
     unsafe lang.mem.copy([3]u8, lang.mem.cast(u8, [3]u8, lang.mem.offset(u8, at, 1)), triples, 2);
     if bytes != [1, 1, 2, 3, 4, 5, 6] { failed +|= 1; }
+    // Atomics on a wide word, given constants a narrower type holds: each is the word's width.
+    mut wide: u64 = 1 << 40;
+    wide_at := lang.mem.pointer_to(u64, &wide);
+    unsafe lang.mem.atomic_store(u64, wide_at, 0, .relaxed);
+    if wide != 0 { failed +|= 1; }
+    held := unsafe lang.mem.atomic_compare_swap(u64, wide_at, 0, 1 << 33, .acquire);
+    added := unsafe lang.mem.atomic_add(u64, wide_at, 2, .relaxed);
+    if !(held == 0 and added == 1 << 33 and wide == (1 << 33) + 2) { failed +|= 1; }
     // How many checks failed: 0 when all hold.
     std.os.Exit.of(failed)
 };

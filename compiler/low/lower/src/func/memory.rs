@@ -96,14 +96,15 @@ impl FnLower<'_, '_, '_> {
                     Mem::atomic_add => RmwOp::Add,
                     _ => RmwOp::Sub,
                 };
-                let (addr, value) = (self.scalar_operand(arg(0)?)?, self.scalar_operand(arg(1)?)?);
+                let (addr, value) = (self.scalar_operand(arg(0)?)?, self.scalar_operand_as(arg(1)?, ty)?);
                 let order = self.order(arg(2)?)?;
                 let scalar = self.scalar_of(ty)?;
                 let kind = InstKind::Rmw { op, addr, value, order };
                 self.b.push(kind, Some(scalar), self.at).expect("an exchange gives what was held")
             }
             Mem::atomic_compare_swap => {
-                let (expected, new) = (self.scalar_operand(arg(1)?)?, self.scalar_operand(arg(2)?)?);
+                let (expected, new) =
+                    (self.scalar_operand_as(arg(1)?, ty)?, self.scalar_operand_as(arg(2)?, ty)?);
                 let order = self.order(arg(3)?)?;
                 let failure = match order {
                     Order::AcqRel | Order::Acquire => Order::Acquire,
@@ -127,10 +128,13 @@ impl FnLower<'_, '_, '_> {
         let unsupported = move || Unlowered::unsupported(at, Form::Primitive);
         let arg = |i: usize| runtime.get(i).copied().ok_or_else(unsupported);
         let word = self.l.types.word;
+        // The type of the items the first argument points to, which the value written has.
+        let pointee =
+            |this: &Self| this.operand_ty(arg(0)?).and_then(|t| t.pointee()).ok_or_else(unsupported);
         match m {
             Mem::write => {
                 let to = self.scalar_operand(arg(0)?)?;
-                let ty = self.operand_ty(arg(1)?).ok_or_else(unsupported)?;
+                let ty = pointee(self)?;
                 self.write(arg(1)?, Some(to), ty)
             }
             store @ (Mem::volatile_store | Mem::atomic_store) => {
@@ -138,7 +142,8 @@ impl FnLower<'_, '_, '_> {
                     Mem::volatile_store => Access::Volatile,
                     _ => Access::Atomic(self.order(arg(2)?)?),
                 };
-                let (to, value) = (self.scalar_operand(arg(0)?)?, self.scalar_operand(arg(1)?)?);
+                let ty = pointee(self)?;
+                let (to, value) = (self.scalar_operand(arg(0)?)?, self.scalar_operand_as(arg(1)?, ty)?);
                 self.b.store(value, to, access, self.at);
                 Ok(())
             }
@@ -167,7 +172,7 @@ impl FnLower<'_, '_, '_> {
                 })
             }
             Mem::fill => {
-                let ty = self.operand_ty(arg(1)?).ok_or_else(unsupported)?;
+                let ty = pointee(self)?;
                 let stride = self.stride(ty)?;
                 let to = self.scalar_operand(arg(0)?)?;
                 let n = self.int_operand(arg(2)?, word)?;

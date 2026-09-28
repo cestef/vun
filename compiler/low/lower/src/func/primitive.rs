@@ -160,6 +160,18 @@ impl FnLower<'_, '_, '_> {
         }
     }
 
+    /// The scalar `operand` holds as a value of `ty`, the type of the parameter it is passed to:
+    /// a constant takes that type, where its own value would give a narrower one.
+    pub(crate) fn scalar_operand_as(&mut self, operand: &Operand, ty: Ty) -> Result<Value, Unlowered> {
+        match operand {
+            Operand::Const(value) => {
+                let scalar = self.scalar_of(ty)?;
+                self.scalar_const(value, ty, scalar)
+            }
+            Operand::Place(_) => self.scalar_operand(operand),
+        }
+    }
+
     /// The address holding `operand`: its place's, or a temporary's holding the constant.
     pub(crate) fn operand_addr(&mut self, operand: &Operand) -> Result<Value, Unlowered> {
         let at = self.at;
