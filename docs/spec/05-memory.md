@@ -153,7 +153,10 @@ tied to arguments, so no interprocedural analysis is needed.
   an address that code outside the language hands over (`lang.mem.pointer_at`: a mapping, a
   device's registers) is `unsafe` too.
 - Volatile and atomic access are operations in `lang.mem`, not type qualifiers.
-  `std.hw.Reg(T)` and `std.sync.Atomic(T)` wrap them.
+  `std.hw.Reg(T)` and `std.sync.Atomic(T)` wrap them. An atomic access of an integer wider than
+  an address runs as `lang.mem.soft`'s (`#[lower.soft]`): on Thumb, exclusive loads and stores of
+  two words (`ldrexd`, `strexd`, Armv7-A's) in a loop between barriers, sequentially consistent
+  whatever order it asks; on a processor with no such routine it is an error while compiling.
 
 ## 6. Layout
 

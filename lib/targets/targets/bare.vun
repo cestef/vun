@@ -23,6 +23,7 @@ _on := (
         .abi = abi,
         .convention = convention,
         .pointer_bits = 32,
+        .register_bits = 32,
         .floats = floats,
         .endian = .little,
         .object_format = .elf,

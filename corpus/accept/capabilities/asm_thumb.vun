@@ -72,3 +72,16 @@ saved := () {
         pop r4, r5, pc
     };
 };
+
+/// A value bound where some forms take an immediate: the forms taking a register take it.
+exclusive_add := (at: usize, low: u32, high: u32) -> u32 {
+    mut status: u32 = 0;
+    unsafe lang.arch.thumb.asm {
+        ldrexd r4, r5, [{in(r0) at}]
+        adds r4, r4, {in(r2) low}
+        adc r5, r5, {in(r3) high}
+        cmp r4, {in(r2) low}
+        strexd {out(r1) status}, r4, r5, [r0]
+    };
+    status
+};

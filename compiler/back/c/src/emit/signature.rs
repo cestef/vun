@@ -1,8 +1,10 @@
 //! Signatures in C. Values in memory are `u8 *`, and under Vun's convention a result in memory
 //! is written through a last `u8 *` parameter. Under Vun's convention integers are `uN`; under
 //! the C convention they are `iN` or `uN` as their LIR extension says, and records are `struct`s
-//! passed and returned by value. An integer twice a register wide is one `__int128` made of its
-//! two halves, which C passes as the convention passes it.
+//! passed and returned by value. An integer wider than the widest computed is its limbs: under
+//! the C convention two of them are the C integer of their width (`long long`, or `__int128`
+//! where the target has it), which C passes as the convention passes it; under Vun's each limb
+//! is a parameter, and a result a record of them.
 
 use vun_lir::{AbiType, Alias, Conv, Ext, Record, Scalar, Signature};
 use vun_origin::OriginId;
@@ -56,25 +58,60 @@ impl Emitter<'_> {
         match ty {
             &AbiType::Int(s, ext) if conv == Conv::C => self.int(s.bits(0), ext == Ext::Sign, at),
             &AbiType::Scalar(s) | &AbiType::Int(s, _) => self.scalar(s, at),
-            &AbiType::Wide { ext, .. } => Ok(Ty::Wide { signed: ext == Ext::Sign }),
+            &AbiType::Wide { limb, ext, .. } if conv == Conv::C => self.joined(limb, ext == Ext::Sign, at),
+            &AbiType::Wide { limb, limbs, .. } => Ok(Ty::Struct(self.record(&Self::limbs(limb, limbs), at)?)),
             AbiType::Address(Alias::Exclusive) => Ok(Ty::Restrict(Box::new(Ty::address()))),
             AbiType::Address(Alias::Any) | AbiType::Memory { .. } => Ok(Ty::address()),
             AbiType::Record(record) => Ok(Ty::Struct(self.record(record, at)?)),
         }
     }
 
-    /// The halves of the `__int128` `whole`, low first, each of `half`.
+    /// The C integer of two limbs of `half`: `__int128` only where the target has it, on a
+    /// 64-bit one.
+    fn joined(&self, half: Scalar, signed: bool, at: OriginId) -> Result<Ty, Lack> {
+        match 2 * half.bits(0) {
+            128 if self.unit.pointer_bits == 64 => Ok(Ty::Wide { signed }),
+            128 => Err(Missing::Int128.at(at)),
+            bits => self.int(bits, signed, at),
+        }
+    }
+
+    /// The record of `count` limbs of `limb`, low first, as Vun's convention returns them.
+    fn limbs(limb: Scalar, count: u8) -> Record {
+        let bytes = limb.bytes(0);
+        let fields = (0..u64::from(count)).map(|k| (k * bytes, limb)).collect();
+        Record { size: bytes * u64::from(count), align: bytes, fields }
+    }
+
+    /// The halves of the C integer `whole`, low first, each of `half`.
     pub(super) fn split(&self, whole: Expr, half: Scalar, at: OriginId) -> Result<[Expr; 2], Lack> {
-        let (ty, whole) = (self.scalar(half, at)?, whole.cast(Ty::Wide { signed: false }));
+        let (ty, whole) = (self.scalar(half, at)?, whole.cast(self.joined(half, false, at)?));
         let high = Expr::binary(Binary::Shr, whole.clone(), Expr::small(u64::from(half.bits(0))));
         Ok([whole.cast(ty.clone()), high.cast(ty)])
     }
 
-    /// The `__int128` of type `ty` whose halves, each of `half`, are `low` and `high`.
-    pub(super) fn join(ty: Ty, [low, high]: [Expr; 2], half: Scalar) -> Expr {
-        let wide = Ty::Wide { signed: false };
+    /// The C integer of type `ty` whose halves, each of `half`, are `low` and `high`.
+    pub(super) fn join(
+        &self,
+        ty: Ty,
+        [low, high]: [Expr; 2],
+        half: Scalar,
+        at: OriginId,
+    ) -> Result<Expr, Lack> {
+        let wide = self.joined(half, false, at)?;
         let high = Expr::binary(Binary::Shl, high.cast(wide.clone()), Expr::small(u64::from(half.bits(0))));
-        Expr::binary(Binary::Or, high, low.cast(wide)).cast(ty)
+        Ok(Expr::binary(Binary::Or, high, low.cast(wide)).cast(ty))
+    }
+
+    /// The C types of the parameters passing a value of `ty` under `conv`: a limb each for a
+    /// wide integer under Vun's convention, else one.
+    fn passed(&mut self, conv: Conv, ty: &AbiType, at: OriginId) -> Result<Vec<Ty>, Lack> {
+        match *ty {
+            AbiType::Wide { limb, limbs, .. } if conv != Conv::C => {
+                Ok(vec![self.scalar(limb, at)?; usize::from(limbs)])
+            }
+            ref ty => Ok(vec![self.abi(conv, ty, at)?]),
+        }
     }
 
     /// The `struct` of a record, declared once per layout.
@@ -94,8 +131,10 @@ impl Emitter<'_> {
         if conv == Conv::Naked && !(gnu && signature.params.is_empty() && signature.result.is_none()) {
             return Err(Missing::Naked.at(at));
         }
-        let mut params =
-            signature.params.iter().map(|p| self.abi(conv, p, at)).collect::<Result<Vec<_>, _>>()?;
+        let mut params = Vec::new();
+        for p in &signature.params {
+            params.extend(self.passed(conv, p, at)?);
+        }
         let result = match &signature.result {
             None => Ty::Void,
             Some(AbiType::Memory { .. }) => {

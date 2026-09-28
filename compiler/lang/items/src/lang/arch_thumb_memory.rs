@@ -22,6 +22,9 @@ pub const strd: Item = Item::new(&["lang", "arch", "thumb", "memory", "strd"]);
 /// there since, writing 0 into its first register if it did and 1 if not.
 pub const ldrex: Item = Item::new(&["lang", "arch", "thumb", "memory", "ldrex"]);
 pub const strex: Item = Item::new(&["lang", "arch", "thumb", "memory", "strex"]);
+/// The exclusive load and store of two words, of Armv7-A's Thumb state (Armv7-M has none).
+pub const ldrexd: Item = Item::new(&["lang", "arch", "thumb", "memory", "ldrexd"]);
+pub const strexd: Item = Item::new(&["lang", "arch", "thumb", "memory", "strexd"]);
 /// Stores registers below the stack pointer, lowest register lowest, and moves it down; `pop`
 /// loads them back and moves it up.
 pub const push: Item = Item::new(&["lang", "arch", "thumb", "memory", "push"]);

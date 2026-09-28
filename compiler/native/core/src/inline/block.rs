@@ -75,6 +75,9 @@ impl Inlined for Asm {
             }
         }
         needs.reserved = reserved.without(inputs);
+        // What the block leaves in a register it names is its own, an input's included: no value
+        // is kept there past it.
+        needs.clobbers = needs.clobbers.union(reserved);
     }
 
     fn emit<A: Inline>(&self, check: Option<&AsmCheck>, cx: &mut Cx<'_, A>) -> Result<(), Lack> {

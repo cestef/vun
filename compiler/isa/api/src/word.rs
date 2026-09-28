@@ -14,6 +14,14 @@ pub enum Access {
     Address,
 }
 
+/// The Arm profiles a form is part of.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Profile {
+    Every,
+    /// The application profile alone: Thumb on Armv7-A has instructions Armv7-M lacks.
+    Application,
+}
+
 /// What an operand position of kind `Self` takes: the field an operand `O` encodes to in an
 /// instruction of width `Z`, relative to the bit its position starts at, if it fits there.
 pub trait Field<O, Z>: Copy {
@@ -92,12 +100,23 @@ pub struct Form<K: 'static, Z: 'static, R: 'static> {
     /// Pairs of positions whose registers must differ: the manual calls the instruction
     /// unpredictable where they do not.
     pub apart: &'static [[u8; 2]],
+    pub profile: Profile,
 }
 
 impl<K: Copy, Z: Copy + PartialEq, R> Form<K, Z, R> {
     #[must_use]
     pub const fn new(base: u32, sizes: &'static [Sized<Z>], args: &'static [Arg<K>]) -> Self {
-        Self { base, sizes, args, name: None, reads: &[], writes: &[], flags: None, apart: &[] }
+        Self {
+            base,
+            sizes,
+            args,
+            name: None,
+            reads: &[],
+            writes: &[],
+            flags: None,
+            apart: &[],
+            profile: Profile::Every,
+        }
     }
 
     #[must_use]
@@ -123,6 +142,11 @@ impl<K: Copy, Z: Copy + PartialEq, R> Form<K, Z, R> {
     #[must_use]
     pub const fn apart(self, apart: &'static [[u8; 2]]) -> Self {
         Self { apart, ..self }
+    }
+
+    #[must_use]
+    pub const fn profile(self, profile: Profile) -> Self {
+        Self { profile, ..self }
     }
 
     /// Its definition at `size`.

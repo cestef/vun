@@ -1,7 +1,8 @@
 //! Inline assembly (spec 07, section 6) on every native architecture: each instruction encoded
 //! by the form it was checked against, over the registers the plan gives its bindings. Every
 //! register the block names or its forms use unnamed is reserved for the whole block, so no
-//! binding is held there, but for an input read where it names; an output is written in a
+//! binding is held there, but for an input read where it names, and is overwritten by it, so no
+//! value is kept there past it; an output is written in a
 //! register of its own, loaded first for `inout`, and stored through its address once the block
 //! ends. Where the program checks its blocks (`AsmCheck`), each instruction writing memory first
 //! has the address it writes checked, and a block that returns has its stack pointer compared

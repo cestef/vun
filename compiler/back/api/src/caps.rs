@@ -45,8 +45,8 @@ impl HeldFloats {
 pub enum Widest {
     /// Of this many bits, on every target.
     Bits(u32),
-    /// A register's: as wide as the target's addresses.
-    Address,
+    /// A general register's, as wide as the target states.
+    Register,
 }
 
 impl Widest {
@@ -55,7 +55,7 @@ impl Widest {
     pub fn on(self, target: &TargetSpec) -> u32 {
         match self {
             Self::Bits(bits) => bits,
-            Self::Address => target.pointer_bits,
+            Self::Register => target.register_bits,
         }
     }
 }

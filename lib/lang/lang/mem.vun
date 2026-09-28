@@ -74,17 +74,18 @@ Order := enum { relaxed, acquire, release, acq_rel, seq_cst };
 
 /// Atomic accesses to what `p` points to, which must be aligned for `T` and accessed atomically
 /// only while shared (spec 05, section 5). The read-modify-write ones return the value held
-/// before; `atomic_add` and `atomic_sub` wrap within `T`.
-#[panic.never]
+/// before; `atomic_add` and `atomic_sub` wrap within `T`. An integer wider than an address runs
+/// as `lang.mem.soft`'s, where the processor reaches it atomically as two words.
+#[panic.never, lower.soft(lang.mem.soft.load)]
 atomic_load: unsafe ($T: type, p: *T, order: Order) -> T = _;
-#[panic.never]
+#[panic.never, lower.soft(lang.mem.soft.store)]
 atomic_store: unsafe ($T: type, p: *T, value: T, order: Order) = _;
-#[panic.never]
+#[panic.never, lower.soft(lang.mem.soft.swap)]
 atomic_swap: unsafe ($T: type, p: *T, value: T, order: Order) -> T = _;
 /// Stores `new` when `p` holds `expected`.
-#[panic.never]
+#[panic.never, lower.soft(lang.mem.soft.compare_swap)]
 atomic_compare_swap: unsafe ($T: type, p: *T, expected: T, new: T, order: Order) -> T = _;
-#[panic.never]
+#[panic.never, lower.soft(lang.mem.soft.add)]
 atomic_add: unsafe ($T: type, p: *T, value: T, order: Order) -> T = _;
-#[panic.never]
+#[panic.never, lower.soft(lang.mem.soft.sub)]
 atomic_sub: unsafe ($T: type, p: *T, value: T, order: Order) -> T = _;

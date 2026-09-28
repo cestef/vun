@@ -50,6 +50,9 @@ pub const Barrier: Item = Item::new(&["lang", "arch", "thumb", "Barrier"]);
 pub const Choice: Item = Item::new(&["lang", "arch", "thumb", "Choice"]);
 /// What a form does with an operand, or with the flags.
 pub const Access: Item = Item::new(&["lang", "arch", "thumb", "Access"]);
+/// The Arm profile a form is part of alone, where not every one is: Thumb on Armv7-A has
+/// instructions Armv7-M lacks (`ldrexd`).
+pub const Profile: Item = Item::new(&["lang", "arch", "thumb", "Profile"]);
 /// Where control goes after a form.
 pub const Flow: Item = Item::new(&["lang", "arch", "thumb", "Flow"]);
 /// An operand position: what it takes, the bit its field starts at, and what the form does with

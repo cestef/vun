@@ -2,7 +2,7 @@
 use super::Op;
 use crate::table::Form;
 /// The forms of each instruction, in the order of `Op`.
-const FORMS: [&[Form]; 110usize] = [
+const FORMS: [&[Form]; 112usize] = [
     &super::b::B,
     &super::bcond::BCOND,
     &super::bl::BL,
@@ -91,6 +91,8 @@ const FORMS: [&[Form]; 110usize] = [
     &super::strd::STRD,
     &super::ldrex::LDREX,
     &super::strex::STREX,
+    &super::ldrexd::LDREXD,
+    &super::strexd::STREXD,
     &super::push::PUSH,
     &super::pop::POP,
     &super::mul::MUL,

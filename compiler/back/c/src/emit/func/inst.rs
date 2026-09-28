@@ -2,12 +2,12 @@
 //! reached by typed access through `u8 *` addresses, which `-fno-strict-aliasing` defines.
 
 use vun_lir::func::Def;
-use vun_lir::{AbiType, Access, Callee, ImportKind, Inst, InstKind, Order, RmwOp, Value};
+use vun_lir::{AbiType, Access, Callee, Conv, ImportKind, Inst, InstKind, Order, RmwOp, Value};
 use vun_target::Atomics;
 
 use super::FnEmit;
 use crate::ast::{Binary, Builtin, Expr, Ident, Own, Stmt, Ty, Unary};
-use crate::emit::Emitter;
+
 use crate::emit::signature::SignedC;
 use vun_backend::{Lack, Missing};
 
@@ -170,13 +170,25 @@ impl FnEmit<'_, '_> {
         let c = self.e.signature(&signature, at)?;
         let mut passed = Vec::new();
         let mut args = args.iter().copied();
-        for (abi, ty) in signature.params.iter().zip(&c.params) {
+        let mut types = c.params.iter();
+        for abi in &signature.params {
+            // Under Vun's convention a wide integer's limbs are arguments of their own.
+            if let &AbiType::Wide { limbs, .. } = abi
+                && signature.conv != Conv::C
+            {
+                for _ in 0..limbs {
+                    passed.push(self.operand(args.next().expect("a call passes the signature's values")));
+                    types.next();
+                }
+                continue;
+            }
+            let ty = types.next().expect("a C parameter for each value");
             let arg = self.operand(args.next().expect("a call passes the signature's values"));
             passed.push(match abi {
                 AbiType::Record(_) => arg.at(ty.clone()),
                 &AbiType::Wide { limb: half, .. } => {
                     let high = self.operand(args.next().expect("a wide integer is two values"));
-                    Emitter::join(ty.clone(), [arg, high], half)
+                    self.e.join(ty.clone(), [arg, high], half, at)?
                 }
                 _ if abi.signed_c(signature.conv).is_some() => arg.cast(ty.clone()),
                 _ => arg,

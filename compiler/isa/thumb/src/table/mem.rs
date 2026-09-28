@@ -96,6 +96,7 @@ impl Mode {
                 let n = count(u32::try_from(offset).ok()?, 4, BYTE)?;
                 base(b).map(|b| b | n)
             }
+            (Self::ExclusivePair, Mem::Off { base: b, offset: 0 }) => base(b),
             _ => None,
         }
     }

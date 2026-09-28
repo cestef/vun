@@ -1,0 +1,168 @@
+//! Atomic accesses of integers wider than an address, for a processor whose atomic instructions
+//! reach one word (`lang.lower.soft`): on Thumb, where Armv7-A has exclusive loads and stores of
+//! two words, loops of them between barriers, as the word's are made, which makes each
+//! sequentially consistent whatever order it asks. No other processor has one written yet, and
+//! reaching one there is an error while compiling.
+
+_unsupported := "no atomic access of an integer wider than an address on this target";
+
+/// Whether the target reaches `T` atomically as two words.
+_paired := ($T: type) -> bool {
+    lang.target.current.isa == .thumb and lang.meta.size(T) == 8
+};
+
+/// The words of `x`, low first.
+_words := ($T: type, x: T) -> (u32, u32) {
+    bits := x.wrap(u64);
+    (bits.wrap(u32), (bits >> 32).wrap(u32))
+};
+
+/// The integer of type `T` of the words `low` and `high`.
+_joined := ($T: type, low: u32, high: u32) -> T {
+    ((high.to(u64) << 32).wrap(u64) | low.to(u64)).wrap(T)
+};
+
+load := unsafe ($T: type, p: *T, order: lang.mem.Order) -> T {
+    $if _paired(T) {
+        at := lang.mem.address(T, p);
+        mut (low, high): (u32, u32) = (0, 0);
+        unsafe lang.arch.thumb.asm {
+            dmb sy
+            ldrexd {out(r2) low}, {out(r3) high}, [{in(r0) at}]
+            dmb sy
+        };
+        _joined(T, low, high)
+    } else {
+        $lang.diag.error(_unsupported, .none)
+    }
+};
+
+store := unsafe ($T: type, p: *T, value: T, order: lang.mem.Order) {
+    $if _paired(T) {
+        at := lang.mem.address(T, p);
+        (low, high) := _words(T, value);
+        unsafe lang.arch.thumb.asm {
+            push r4, r5
+            dmb sy
+            'again:
+            ldrexd r4, r5, [{in(r0) at}]
+            strexd r1, {in(r2) low}, {in(r3) high}, [r0]
+            cmp r1, 0
+            bne 'again
+            dmb sy
+            pop r4, r5
+        };
+    } else {
+        $lang.diag.error(_unsupported, .none);
+    }
+};
+
+swap := unsafe ($T: type, p: *T, value: T, order: lang.mem.Order) -> T {
+    $if _paired(T) {
+        at := lang.mem.address(T, p);
+        (low, high) := _words(T, value);
+        mut (old_low, old_high): (u32, u32) = (0, 0);
+        unsafe lang.arch.thumb.asm {
+            push r4, r5
+            dmb sy
+            'again:
+            ldrexd r4, r5, [{in(r0) at}]
+            strexd r1, {in(r2) low}, {in(r3) high}, [r0]
+            cmp r1, 0
+            bne 'again
+            dmb sy
+            mov {out(r0) old_low}, r4
+            mov {out(r1) old_high}, r5
+            pop r4, r5
+        };
+        _joined(T, old_low, old_high)
+    } else {
+        $lang.diag.error(_unsupported, .none)
+    }
+};
+
+/// Stores `new` when `p` holds `expected`, giving what it held.
+compare_swap := unsafe ($T: type, p: *T, expected: T, new: T, order: lang.mem.Order) -> T {
+    $if _paired(T) {
+        at := lang.mem.address(T, p);
+        (low, high) := _words(T, expected);
+        (new_low, new_high) := _words(T, new);
+        wanted: [2]u32 = [new_low, new_high];
+        from := lang.mem.address([2]u32, lang.mem.pointer_to([2]u32, &wanted));
+        mut (old_low, old_high): (u32, u32) = (0, 0);
+        unsafe lang.arch.thumb.asm {
+            push r4, r5, r6, r8
+            ldrd r6, r8, [{in(r1) from}]
+            dmb sy
+            'again:
+            ldrexd r4, r5, [{in(r0) at}]
+            cmp r4, {in(r2) low}
+            bne 'done
+            cmp r5, {in(r3) high}
+            bne 'done
+            strexd r1, r6, r8, [r0]
+            cmp r1, 0
+            bne 'again
+            'done:
+            dmb sy
+            mov {out(r0) old_low}, r4
+            mov {out(r1) old_high}, r5
+            pop r4, r5, r6, r8
+        };
+        _joined(T, old_low, old_high)
+    } else {
+        $lang.diag.error(_unsupported, .none)
+    }
+};
+
+add := unsafe ($T: type, p: *T, value: T, order: lang.mem.Order) -> T {
+    $if _paired(T) {
+        at := lang.mem.address(T, p);
+        (low, high) := _words(T, value);
+        mut (old_low, old_high): (u32, u32) = (0, 0);
+        unsafe lang.arch.thumb.asm {
+            push r4, r5, r6, r8
+            dmb sy
+            'again:
+            ldrexd r4, r5, [{in(r0) at}]
+            adds r6, r4, {in(r2) low}
+            adc r8, r5, {in(r3) high}
+            strexd r1, r6, r8, [r0]
+            cmp r1, 0
+            bne 'again
+            dmb sy
+            mov {out(r0) old_low}, r4
+            mov {out(r1) old_high}, r5
+            pop r4, r5, r6, r8
+        };
+        _joined(T, old_low, old_high)
+    } else {
+        $lang.diag.error(_unsupported, .none)
+    }
+};
+
+sub := unsafe ($T: type, p: *T, value: T, order: lang.mem.Order) -> T {
+    $if _paired(T) {
+        at := lang.mem.address(T, p);
+        (low, high) := _words(T, value);
+        mut (old_low, old_high): (u32, u32) = (0, 0);
+        unsafe lang.arch.thumb.asm {
+            push r4, r5, r6, r8
+            dmb sy
+            'again:
+            ldrexd r4, r5, [{in(r0) at}]
+            subs r6, r4, {in(r2) low}
+            sbc r8, r5, {in(r3) high}
+            strexd r1, r6, r8, [r0]
+            cmp r1, 0
+            bne 'again
+            dmb sy
+            mov {out(r0) old_low}, r4
+            mov {out(r1) old_high}, r5
+            pop r4, r5, r6, r8
+        };
+        _joined(T, old_low, old_high)
+    } else {
+        $lang.diag.error(_unsupported, .none)
+    }
+};

@@ -9,6 +9,7 @@ arm64 := lang.target.Spec{
     .abi = .darwin,
     .convention = .darwin_arm64,
     .pointer_bits = 64,
+    .register_bits = 64,
     .floats = &[f32, f64],
     .endian = .little,
     .object_format = .macho,

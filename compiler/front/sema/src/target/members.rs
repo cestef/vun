@@ -10,8 +10,8 @@ use super::read::{Read, Unread};
 use crate::float::Format;
 use crate::ty::Value;
 
-/// The widths of an address a target may have.
-const ADDRESS_BITS: [u32; 3] = [16, 32, 64];
+/// The widths of an address or a register a target may have.
+const WIDTHS: [u32; 3] = [16, 32, 64];
 
 /// The members of a `struct` value.
 pub(crate) struct Members<'v>(&'v [(Symbol, Value)]);
@@ -48,9 +48,9 @@ impl<'v> Members<'v> {
     }
 
     /// The width of an address, one of `ADDRESS_BITS`.
-    pub(super) fn address_bits(&self, member: Item) -> Result<u32, Unread> {
+    pub(super) fn width(&self, member: Item) -> Result<u32, Unread> {
         let bits = self.int(member)?;
-        ADDRESS_BITS.contains(&bits).then_some(bits).ok_or(Unread::Member(member))
+        WIDTHS.contains(&bits).then_some(bits).ok_or(Unread::Member(member))
     }
 
     /// A `&[type]` of float types.

@@ -53,7 +53,8 @@ pub enum Mem {
     volatile_store,
     /// Atomic accesses to what `p` points to, which must be aligned for `T` and accessed atomically
     /// only while shared (spec 05, section 5). The read-modify-write ones return the value held
-    /// before; `atomic_add` and `atomic_sub` wrap within `T`.
+    /// before; `atomic_add` and `atomic_sub` wrap within `T`. An integer wider than an address runs
+    /// as `lang.mem.soft`'s, where the processor reaches it atomically as two words.
     atomic_load,
     atomic_store,
     atomic_swap,

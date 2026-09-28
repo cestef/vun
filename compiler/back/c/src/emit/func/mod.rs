@@ -83,9 +83,24 @@ impl FnEmit<'_, '_> {
         let mut values = func.blocks[entry].params.iter().copied();
         let signature = &func.signature;
         let mut params = Vec::new();
-        for (i, (abi, ty)) in signature.params.iter().zip(&c.params).enumerate() {
-            let (v, param) =
-                (values.next().expect("the entry takes the signature's values"), Ident::param(i));
+        let mut types = c.params.iter();
+        for abi in &signature.params {
+            let mut next = || {
+                let v = values.next().expect("the entry takes the signature's values");
+                (v, types.next().expect("a C parameter for each value").clone())
+            };
+            // Under Vun's convention a wide integer's limbs are parameters of their own.
+            if let &AbiType::Wide { limbs, .. } = abi
+                && signature.conv != Conv::C
+            {
+                for _ in 0..limbs {
+                    let (v, ty) = next();
+                    params.push(Decl::new(ty, Ident::value(v)));
+                }
+                continue;
+            }
+            let ((v, ty), param) = (next(), Ident::param(params.len()));
+            let ty = &ty;
             let converted = match abi {
                 AbiType::Record(_) => Expr::Name(param).address_of(),
                 &AbiType::Wide { limb: half, .. } => {

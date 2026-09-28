@@ -73,6 +73,7 @@ fn cortex_m4() -> TargetSpec {
         abi: name("eabihf"),
         convention: Convention::AapcsVfp,
         pointer_bits: 32,
+        register_bits: 32,
         floats: vun_target::Floats::ALL,
         c: CTypes { long: CInt { bits: 32, align: 4 }, pointer_align: 4, ..target().c },
         ..target()

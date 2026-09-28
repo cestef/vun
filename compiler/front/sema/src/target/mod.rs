@@ -42,6 +42,8 @@ pub struct Target {
     pub endian: Endian,
     /// The width of an address, in bits.
     pub address_bits: u32,
+    /// The width of a general register, in bits.
+    pub register_bits: u32,
     /// The instruction set its code is written in, which a block of instructions names.
     pub isa: Symbol,
     /// The floats its processor computes (`lang.target.Spec.floats`).
@@ -57,15 +59,17 @@ impl Target {
         Self {
             endian: target.spec.endian,
             address_bits: target.spec.pointer_bits,
+            register_bits: target.spec.register_bits,
             isa: target.spec.isa,
             floats: target.spec.floats,
             declared: target.value.clone(),
         }
     }
 
-    /// Whether its processor computes with the type `value` names, which `lang.float.soft`
-    /// does otherwise (`lang.lower.soft`): a float type it lists, and an integer type, or the
-    /// range of one, no wider than an address; any other value names nothing it lacks.
+    /// Whether its processor computes with the type `value` names, which `lang.float.soft` and
+    /// `lang.mem.soft` do otherwise (`lang.lower.soft`): a float type it lists, and an integer
+    /// type, or the range of one, no wider than a register; any other value names nothing it
+    /// lacks.
     #[must_use]
     pub fn computes(&self, value: &Value) -> bool {
         let range = match value {
@@ -76,7 +80,7 @@ impl Target {
             Value::Type(ty) => ty.interval(),
             _ => None,
         };
-        range.and_then(|r| r.storage()).is_none_or(|s| s.bits() <= u64::from(self.address_bits))
+        range.and_then(|r| r.storage()).is_none_or(|s| s.bits() <= u64::from(self.register_bits))
     }
 
     /// The largest address: `usize` is `Int(0..=usize_max)`.

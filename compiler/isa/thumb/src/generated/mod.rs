@@ -123,6 +123,8 @@ mod ldrd;
 mod strd;
 mod ldrex;
 mod strex;
+mod ldrexd;
+mod strexd;
 mod push;
 mod pop;
 mod mul;

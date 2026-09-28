@@ -75,6 +75,8 @@ Mode := enum {
     /// `[base, #offset]` of an exclusive access: the base at 16, the offset a multiple of 4, 0 to
     /// 1020.
     exclusive,
+    /// `[base]` of an exclusive access of two words: the base at 16, no offset.
+    exclusive_pair,
 };
 
 /// Which fields a floating-point register's number is split into: `Vd:D`, `Vn:N` or `Vm:M`, the

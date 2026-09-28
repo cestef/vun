@@ -9,16 +9,20 @@ mod operands;
 use std::io::Write;
 use std::process::{Command, Stdio};
 
-use vun_isa_thumb::{Cc, Form, Halves, Kind, Op, Operand, Size, Then};
+use vun_isa_thumb::{Cc, Form, Halves, Kind, Op, Operand, Profile, Size, Then};
 
 use crate::{Asm, Emit};
 use operands::candidates;
 
 type Sym = &'static str;
 
-/// LLVM's assembler, for a core of Armv7E-M with the double-precision floating-point extension.
+/// LLVM's assembler, for a core of each profile a form is part of: Armv7E-M with the
+/// double-precision floating-point extension for every form, Armv7-A for its own.
 const LLVM_MC: &str = "llvm-mc";
-const ARGS: [&str; 4] = ["--triple=thumbv7em-none-eabihf", "-mcpu=cortex-m7", "--show-encoding", "-"];
+const CORES: [(Profile, [&str; 2]); 2] = [
+    (Profile::Every, ["--triple=thumbv7em-none-eabihf", "-mcpu=cortex-m7"]),
+    (Profile::Application, ["--triple=thumbv7a-none-eabihf", "-mcpu=cortex-a9"]),
+];
 
 /// Each combination of operands whose first fitting form is `form`, once each.
 fn fitting(op: Op, form: &'static Form, size: Size) -> Vec<Vec<Operand<Sym>>> {
@@ -38,10 +42,12 @@ fn linked(form: &Form) -> bool {
     form.kinds().any(|k| matches!(k, Kind::Target(_) | Kind::Low | Kind::High))
 }
 
-/// The encoding LLVM's assembler gives each line of `text`, or its errors.
-fn assemble(text: &str) -> Option<Result<Vec<Vec<u8>>, String>> {
+/// The encoding LLVM's assembler for a core of `profile` gives each line of `text`, or its errors.
+fn assemble(profile: Profile, text: &str) -> Option<Result<Vec<Vec<u8>>, String>> {
+    let (_, core) = CORES.iter().find(|(p, _)| *p == profile)?;
     let mut child = Command::new(LLVM_MC)
-        .args(ARGS)
+        .args(core)
+        .args(["--show-encoding", "-"])
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -87,7 +93,7 @@ fn conditional(form: &Form, operands: &[Operand<Sym>]) -> Vec<(String, Vec<u8>)>
 
 #[test]
 fn every_form_assembles_as_llvm_does() {
-    let mut lines = Vec::new();
+    let mut lines: [Vec<(String, Vec<u8>)>; 2] = [Vec::new(), Vec::new()];
     for &op in Op::ALL {
         for form in op.forms().iter().filter(|f| !linked(f)) {
             for sized in form.sizes {
@@ -97,8 +103,9 @@ fn every_form_assembles_as_llvm_does() {
                     let code = asm.finish().expect("no label");
                     let inst = vun_isa_thumb::Inst::new(op, sized.size, &operands);
                     assert_eq!(code.bytes.len() as u64, form.bytes(), "{}", inst.by(form));
-                    lines.push((inst.by(form).to_string(), code.bytes));
-                    lines.extend(conditional(form, &operands));
+                    let group = &mut lines[usize::from(form.profile == Profile::Application)];
+                    group.push((inst.by(form).to_string(), code.bytes));
+                    group.extend(conditional(form, &operands));
                 }
             }
         }
@@ -108,21 +115,23 @@ fn every_form_assembles_as_llvm_does() {
             "{op:?} has a form no operand fits"
         );
     }
-    let text: String = lines.iter().flat_map(|(line, _)| [line.as_str(), "\n"]).collect();
-    let Some(assembled) = assemble(&text) else { return };
-    let encodings = assembled.unwrap_or_else(|errors| panic!("LLVM refuses the text:\n{errors}"));
-    assert_eq!(encodings.len(), lines.len());
-    let differ: Vec<String> = lines
-        .iter()
-        .zip(&encodings)
-        .filter(|((_, ours), theirs)| ours != *theirs)
-        .map(|((line, ours), theirs)| format!("{line}  |  ours {ours:02x?}, LLVM's {theirs:02x?}"))
-        .collect();
-    assert!(
-        differ.is_empty(),
-        "{} of {} differ:\n{}",
-        differ.len(),
-        lines.len(),
-        differ.iter().take(60).cloned().collect::<Vec<_>>().join("\n")
-    );
+    for ((profile, _), lines) in CORES.iter().zip(&lines) {
+        let text: String = lines.iter().flat_map(|(line, _)| [line.as_str(), "\n"]).collect();
+        let Some(assembled) = assemble(*profile, &text) else { return };
+        let encodings = assembled.unwrap_or_else(|errors| panic!("LLVM refuses the text:\n{errors}"));
+        assert_eq!(encodings.len(), lines.len());
+        let differ: Vec<String> = lines
+            .iter()
+            .zip(&encodings)
+            .filter(|((_, ours), theirs)| ours != *theirs)
+            .map(|((line, ours), theirs)| format!("{line}  |  ours {ours:02x?}, LLVM's {theirs:02x?}"))
+            .collect();
+        assert!(
+            differ.is_empty(),
+            "{} of {} differ:\n{}",
+            differ.len(),
+            lines.len(),
+            differ.iter().take(60).cloned().collect::<Vec<_>>().join("\n")
+        );
+    }
 }

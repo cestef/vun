@@ -131,6 +131,8 @@ pub struct TargetSpec {
     pub abi: Symbol,
     pub convention: Convention,
     pub pointer_bits: u32,
+    /// The width of a general register: the widest integer the processor computes with.
+    pub register_bits: u32,
     pub floats: Floats,
     pub endian: Endian,
     pub object_format: Symbol,

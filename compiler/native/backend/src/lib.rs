@@ -79,7 +79,7 @@ pub const INFO: BackendInfo = BackendInfo {
     caps: BackendCaps {
         emits: Emits::Object,
         features: &[Feature::CAbi, Feature::FrameSizes, Feature::DebugInfo],
-        widest: Widest::Address,
+        widest: Widest::Register,
         half: Half::Promoted,
         floats: HeldFloats::Computed,
     },

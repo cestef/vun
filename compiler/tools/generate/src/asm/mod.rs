@@ -75,7 +75,7 @@ impl<'a, 's> Table<'a, 's> {
     ) -> Read<Self> {
         let unread = |what: &'static str| generator.error(UNREAD, arch, Msg::new().text(what));
         let own_path = format!("{ARCH}/{arch}.vun");
-        let file =
+        let declaring =
             sources.iter().find(|s| s.path == own_path).ok_or_else(|| unread("has no declaration file"))?;
         let dir = format!("{ARCH}/{arch}/");
         let children = sources.iter().filter(|s| s.path.starts_with(&dir));
@@ -84,7 +84,7 @@ impl<'a, 's> Table<'a, 's> {
             !d.name.starts_with(PRIVATE)
                 && !matches!(&d.value, Literal::Typed(ty, _) if matches!(ty.last().copied(), Some(INSTRUCTION | FAMILY)))
         });
-        let own: Vec<&'a Decl<'s>> = file.decls.iter().chain(types).collect();
+        let own: Vec<&'a Decl<'s>> = declaring.decls.iter().chain(types).collect();
         let defaults = |ty: &str| {
             let decl = own.iter().find(|d| d.name == ty);
             let fields = decl.and_then(|d| d.value.members()).unwrap_or_default();

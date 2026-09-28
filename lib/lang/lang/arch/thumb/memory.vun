@@ -12,6 +12,7 @@ _t_r: _t.Arg = .{ .kind = .gpr(.general), .at = 12, .access = .read };
 _t2_w: _t.Arg = .{ .kind = .gpr(.general), .at = 8, .access = .write };
 _t2_r: _t.Arg = .{ .kind = .gpr(.general), .at = 8, .access = .read };
 _status_w: _t.Arg = .{ .kind = .gpr(.general), .at = 8, .access = .write };
+_status_0_w: _t.Arg = .{ .kind = .gpr(.general), .access = .write };
 
 _narrow: _t.Arg = .{ .kind = .mem(.narrow, .inst), .access = .read };
 _narrow_sp: _t.Arg = .{ .kind = .mem(.narrow_sp, .inst), .access = .read };
@@ -37,6 +38,8 @@ _pair_pre_w: _t.Arg = .{ .kind = .mem(.pair_pre, .is(.b64)), .access = .write };
 _pair_post_w: _t.Arg = .{ .kind = .mem(.pair_post, .is(.b64)), .access = .write };
 _exclusive: _t.Arg = .{ .kind = .mem(.exclusive, .inst), .access = .read };
 _exclusive_w: _t.Arg = .{ .kind = .mem(.exclusive, .inst), .access = .write };
+_exclusive_pair: _t.Arg = .{ .kind = .mem(.exclusive_pair, .is(.b64)), .access = .read };
+_exclusive_pair_w: _t.Arg = .{ .kind = .mem(.exclusive_pair, .is(.b64)), .access = .write };
 
 /// A base written back is not the register loaded or stored; a pair's two registers differ.
 _written_back: &[[2]u8] = &[[0, 1]];
@@ -145,6 +148,24 @@ strd := _t.Instruction{ .forms = &[
 ldrex := _t.Instruction{ .forms = &[.{ .base = 0xe8500f00, .args = &[_t_w, _exclusive] }] };
 strex := _t.Instruction{ .forms = &[
     .{ .base = 0xe8400000, .args = &[_status_w, _t_r, _exclusive_w], .apart = &[[0, 1], [0, 2]] },
+] };
+
+/// The exclusive load and store of two words, of Armv7-A's Thumb state (Armv7-M has none).
+ldrexd := _t.Instruction{ .forms = &[
+    .{
+        .base = 0xe8d0007f,
+        .args = &[_t_w, _t2_w, _exclusive_pair],
+        .apart = &[[0, 1]],
+        .profile = .some(.application),
+    },
+] };
+strexd := _t.Instruction{ .forms = &[
+    .{
+        .base = 0xe8c00070,
+        .args = &[_status_0_w, _t_r, _t2_r, _exclusive_pair_w],
+        .apart = &[[0, 1], [0, 2], [0, 3]],
+        .profile = .some(.application),
+    },
 ] };
 
 /// Stores registers below the stack pointer, lowest register lowest, and moves it down; `pop`

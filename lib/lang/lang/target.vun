@@ -109,6 +109,10 @@ Spec := struct {
     convention: Convention,
     /// The width of an address.
     pointer_bits: u8,
+    /// The width of a general register: the widest integer its processor computes with, wider
+    /// ones being computed in parts, and accessed atomically by `lang.mem.soft`
+    /// (`lang.lower.soft`).
+    register_bits: u8,
     /// The float types its processor computes; `lang.float.soft` computes the others
     /// (`lang.lower.soft`).
     floats: &[type],

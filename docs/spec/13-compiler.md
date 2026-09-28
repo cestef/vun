@@ -196,7 +196,9 @@ per second per stage and fails on regressions.
   writes, and in both the addresses of the declarations it names. It defines no value. The
   place checks read its inputs and in-out places, then write its outputs; the borrow check
   takes an output as an exclusive access; passes take it as acting and impure
-  (`InstKind::acts`, `InstKind::pure`), so nothing moves across it and it is never swept. A block that does not return is the last statement of
+  (`InstKind::acts`, `InstKind::pure`), so nothing moves across it and it is never swept. Native
+  code overwrites every register a block names, its inputs' too: no value is kept there past it.
+  A value bound where a form takes no register, such as an immediate, fits another form. A block that does not return is the last statement of
   its block, whose terminator is unreachable, and both verifiers check it; LIR's also checks that
   outputs are addresses. Clobbers are not carried: the backend derives them from the forms.
   Functions, data and imports are named by id, and only exports and imports carry link symbols.
@@ -442,8 +444,11 @@ pub trait DiagSink {
   rebuilt. Compile-time code reads the chosen target as `lang.target.current`, the value of its
   declaration (`Declared`: the `Spec` read, and the value it was read from), and picks what
   differs between systems by its members: `std.os.libc` finds its system's row by
-  `current.os`. An address is 16, 32 or 64 bits wide; any other `pointer_bits` does not read. `floats` lists the
-  float types the processor computes, the others computed by `lang.float.soft` (spec 04).
+  `current.os`. An address is 16, 32 or 64 bits wide; any other `pointer_bits` does not read. `register_bits`
+  is a general register's width, the widest integer the processor computes with (64 on wasm32,
+  whose addresses are 32 bits), which native code's legalization splits wider ones by and past
+  which `lang.lower.soft` computes. `floats` lists the float types the processor computes, the
+  others computed by `lang.float.soft` (spec 04).
 - **The target is chosen once, and nothing assumes one.** `--target` names a declaration of
   `targets` by its path (`--target bare.cortex_m4f`); without it, `targets.hosts` gives the
   target of the machine running the toolchain, named as Rust's `std::env::consts` names it. The
@@ -760,7 +765,9 @@ calls. A wide parameter is one `AbiType::Wide { limb, limbs, ext }`, its limbs v
 backend's call classifier places together by its convention (an even register pair under
 AAPCS64, two registers or 16 aligned bytes of the stack under System V, as C passes `__int128`;
 decision 246); under the C convention an integer of more than two limbs is no C integer
-(`Unpassable::Integer`). A wide result is one `AbiType::Wide` too, written through the caller's
+(`Unpassable::Integer`); the C backend passes two limbs under the C convention as the C integer of
+their width (`__int128` only where the target has it, on a 64-bit one) and each limb as a
+parameter of its own under Vun's. A wide result is one `AbiType::Wide` too, written through the caller's
 place as its limbs (returned in consecutive result registers under the C convention, as C returns
 its wide integers, through memory under Vun's; decision 280). Division and remainder call a helper
 function the pass adds per count of limbs (restoring division over limbs, signs put back around

@@ -52,3 +52,7 @@ pub const fp: Item = Item::new(&["lang", "arch", "thumb", "operand", "Mode", "fp
 pub const exclusive: Item = Item::new(
     &["lang", "arch", "thumb", "operand", "Mode", "exclusive"],
 );
+/// `[base]` of an exclusive access of two words: the base at 16, no offset.
+pub const exclusive_pair: Item = Item::new(
+    &["lang", "arch", "thumb", "operand", "Mode", "exclusive_pair"],
+);

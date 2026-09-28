@@ -6,6 +6,8 @@
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
 use crate::Item;
+/// The namespace `lang.mem.soft`.
+pub const soft: Item = Item::new(&["lang", "mem", "soft"]);
 pub const Ref: Item = Item::new(&["lang", "mem", "Ref"]);
 pub const RefMut: Item = Item::new(&["lang", "mem", "RefMut"]);
 pub const RefOut: Item = Item::new(&["lang", "mem", "RefOut"]);
@@ -58,7 +60,8 @@ pub const volatile_store: Item = Item::new(&["lang", "mem", "volatile_store"]);
 pub const Order: Item = Item::new(&["lang", "mem", "Order"]);
 /// Atomic accesses to what `p` points to, which must be aligned for `T` and accessed atomically
 /// only while shared (spec 05, section 5). The read-modify-write ones return the value held
-/// before; `atomic_add` and `atomic_sub` wrap within `T`.
+/// before; `atomic_add` and `atomic_sub` wrap within `T`. An integer wider than an address runs
+/// as `lang.mem.soft`'s, where the processor reaches it atomically as two words.
 pub const atomic_load: Item = Item::new(&["lang", "mem", "atomic_load"]);
 pub const atomic_store: Item = Item::new(&["lang", "mem", "atomic_store"]);
 pub const atomic_swap: Item = Item::new(&["lang", "mem", "atomic_swap"]);

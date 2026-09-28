@@ -75,3 +75,30 @@ fn floats_are_bound_in_floating_point_registers_through_each_backend() {
     .unwrap();
     assert_eq!(crate::backend::status_on("asm-floats", &source, &[&["linux", "arm64"]]), Some(0));
 }
+
+/// A block writing the register an input is read in, the input used again after it.
+const OVERWRITTEN: &str = "\
+start := std.os.start(main);
+main := (sys: &mut std.os.System) -> std.os.Exit {
+    x: u64 = (sys.args().len() + 40).wrap(u64);
+    mut y: u64 = 0;
+    unsafe lang.arch.x86_64.asm {
+        lea rcx, [{in(rax) x} + 1]
+        mov rax, rcx
+        mov {out(rdx) y}, rcx
+    };
+    std.os.Exit.of(if x == 41 and y == 42 { 7 } else { 1 })
+};
+";
+
+#[test]
+fn a_value_read_in_a_register_a_block_writes_is_kept_apart_through_each_backend() {
+    if !cfg!(all(target_arch = "x86_64", target_os = "linux")) {
+        return;
+    }
+    for backend in crate::backend::BACKENDS {
+        let (_fixture, program) = crate::backend::build("asm-overwritten", OVERWRITTEN, backend);
+        let ran = std::process::Command::new(&program).output().unwrap();
+        assert_eq!(ran.status.code(), Some(7), "{backend}");
+    }
+}

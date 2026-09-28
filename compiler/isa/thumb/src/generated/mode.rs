@@ -29,9 +29,11 @@ pub enum Mode {
     /// `[base, #offset]` of an exclusive access: the base at 16, the offset a multiple of 4, 0 to
     /// 1020.
     Exclusive,
+    /// `[base]` of an exclusive access of two words: the base at 16, no offset.
+    ExclusivePair,
 }
 impl Mode {
-    pub const ALL: [Self; 13usize] = [
+    pub const ALL: [Self; 14usize] = [
         Self::Narrow,
         Self::NarrowSp,
         Self::NarrowIndex,
@@ -45,13 +47,14 @@ impl Mode {
         Self::PairPost,
         Self::Fp,
         Self::Exclusive,
+        Self::ExclusivePair,
     ];
 }
 impl Mode {
     /// Its name, as the table writes it.
     #[must_use]
     pub const fn name(self) -> &'static str {
-        const NAMES: [&str; 13usize] = [
+        const NAMES: [&str; 14usize] = [
             "narrow",
             "narrow_sp",
             "narrow_index",
@@ -65,6 +68,7 @@ impl Mode {
             "pair_post",
             "fp",
             "exclusive",
+            "exclusive_pair",
         ];
         NAMES[self as usize]
     }

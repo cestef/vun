@@ -48,12 +48,10 @@ exports := struct {
                 };
             } else {
                 unsafe lang.arch.thumb.asm {
-                    mov r1, {in at}
-                    mov r0, {in byte}
-                    mov r3, {in bytes}
-                    cbz r3, 'end
+                    cmp {in(r3) bytes}, 0
+                    beq 'end
                     'top:
-                    strb r0, [r1], 1
+                    strb {in(r0) byte}, [{in(r1) at}], 1
                     subs r3, r3, 1
                     bne 'top
                     'end:
@@ -104,13 +102,11 @@ forward := (to: usize, from: usize, bytes: usize) {
             };
         } else {
             unsafe lang.arch.thumb.asm {
-                mov r1, {in to}
-                mov r2, {in from}
-                mov r3, {in bytes}
-                cbz r3, 'end
+                cmp {in(r3) bytes}, 0
+                beq 'end
                 'top:
-                ldrb r0, [r2], 1
-                strb r0, [r1], 1
+                ldrb r0, [{in(r2) from}], 1
+                strb r0, [{in(r1) to}], 1
                 subs r3, r3, 1
                 bne 'top
                 'end:
@@ -145,13 +141,10 @@ backward := (to: usize, from: usize, bytes: usize) {
             };
         } else {
             unsafe lang.arch.thumb.asm {
-                mov r1, {in last_to}
-                mov r2, {in last_from}
-                mov r3, {in bytes}
                 'top:
-                ldrb r0, [r2], -1
-                strb r0, [r1], -1
-                subs r3, r3, 1
+                ldrb r0, [{in(r2) last_from}], -1
+                strb r0, [{in(r1) last_to}], -1
+                subs r3, {in(r3) bytes}, 1
                 bne 'top
             };
         }

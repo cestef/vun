@@ -32,6 +32,7 @@ pub(crate) fn target() -> TargetSpec {
         abi: name("gnu"),
         convention: Convention::Sysv,
         pointer_bits: 64,
+        register_bits: 64,
         floats: vun_target::Floats::ALL,
         endian: Endian::Little,
         object_format: name("elf"),

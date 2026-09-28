@@ -20,6 +20,10 @@ pub const abi: Item = Item::new(&["lang", "target", "Spec", "abi"]);
 pub const convention: Item = Item::new(&["lang", "target", "Spec", "convention"]);
 /// The width of an address.
 pub const pointer_bits: Item = Item::new(&["lang", "target", "Spec", "pointer_bits"]);
+/// The width of a general register: the widest integer its processor computes with, wider
+/// ones being computed in parts, and accessed atomically by `lang.mem.soft`
+/// (`lang.lower.soft`).
+pub const register_bits: Item = Item::new(&["lang", "target", "Spec", "register_bits"]);
 /// The float types its processor computes; `lang.float.soft` computes the others
 /// (`lang.lower.soft`).
 pub const floats: Item = Item::new(&["lang", "target", "Spec", "floats"]);

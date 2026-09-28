@@ -10,6 +10,7 @@ _Machine := struct {
     arch: lang.meta.Name,
     isa: lang.meta.Name,
     pointer_bits: u8,
+    register_bits: u8,
     floats: &[type],
     convention: lang.target.Convention,
 };
@@ -19,6 +20,7 @@ _x86_64: _Machine = .{
     .arch = .x86_64,
     .isa = .x86_64,
     .pointer_bits = 64,
+    .register_bits = 64,
     .floats = &[f32, f64],
     .convention = .sysv,
 };
@@ -27,6 +29,7 @@ _arm64: _Machine = .{
     .arch = .arm64,
     .isa = .arm64,
     .pointer_bits = 64,
+    .register_bits = 64,
     .floats = &[f32, f64],
     .convention = .aapcs64,
 };
@@ -35,6 +38,7 @@ _arm: _Machine = .{
     .arch = .arm,
     .isa = .thumb,
     .pointer_bits = 32,
+    .register_bits = 32,
     .floats = &[f32, f64],
     .convention = .aapcs_vfp,
 };
@@ -43,6 +47,7 @@ _riscv64: _Machine = .{
     .arch = .riscv64,
     .isa = .riscv64,
     .pointer_bits = 64,
+    .register_bits = 64,
     .floats = &[f32, f64],
     .convention = .lp64d,
 };
@@ -60,6 +65,7 @@ _on := ($machine: _Machine, $abi: lang.meta.Name, $flags: &[&[u8]], $link_flags:
         .abi = abi,
         .convention = machine.convention,
         .pointer_bits = machine.pointer_bits,
+        .register_bits = machine.register_bits,
         .floats = machine.floats,
         .endian = .little,
         .object_format = .elf,

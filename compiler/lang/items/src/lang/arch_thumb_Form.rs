@@ -18,3 +18,5 @@ pub const flow: Item = Item::new(&["lang", "arch", "thumb", "Form", "flow"]);
 /// Pairs of operand positions whose registers must differ, a memory operand's by its base:
 /// the manual calls the instruction unpredictable where they do not.
 pub const apart: Item = Item::new(&["lang", "arch", "thumb", "Form", "apart"]);
+/// The profile it is part of alone, if not every one.
+pub const profile: Item = Item::new(&["lang", "arch", "thumb", "Form", "profile"]);

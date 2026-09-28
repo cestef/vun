@@ -134,6 +134,9 @@ pub enum Op {
     /// there since, writing 0 into its first register if it did and 1 if not.
     Ldrex,
     Strex,
+    /// The exclusive load and store of two words, of Armv7-A's Thumb state (Armv7-M has none).
+    Ldrexd,
+    Strexd,
     /// Stores registers below the stack pointer, lowest register lowest, and moves it down; `pop`
     /// loads them back and moves it up.
     Push,
@@ -264,6 +267,8 @@ impl Op {
         Self::Strd,
         Self::Ldrex,
         Self::Strex,
+        Self::Ldrexd,
+        Self::Strexd,
         Self::Push,
         Self::Pop,
         Self::Mul,

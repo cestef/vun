@@ -82,7 +82,9 @@ impl Kind {
 
     /// Whether this position of an instruction of `size` takes `given`.
     fn fits<V: Clone, P: Clone, S: Copy>(self, size: Size, given: &Given<V, P, S>) -> Result<(), Why> {
-        if let (Some(class), Some((want, width))) = (given.class(), self.register(size)) {
+        // A register, or a value bound to one, fits only a position taking a register.
+        if let Some(class) = given.class() {
+            let Some((want, width)) = self.register(size) else { return Err(Why::Kind) };
             if Class::ALL[usize::from(class.0)] != want {
                 return Err(Why::Class);
             }
