@@ -220,6 +220,10 @@ impl Reach {
                     },
                 };
                 tiles.insert(at, ty);
+                // An array wider than the most tiles stays in memory, found before it is cut up.
+                if tiles.len() > MOST {
+                    return None;
+                }
                 at += ty.bytes(pointer_bits);
             }
         }
@@ -228,6 +232,6 @@ impl Reach {
             // One scalar filling the slot: promotion takes it as it is.
             return None;
         }
-        (tiles.len() <= MOST).then_some(tiles)
+        Some(tiles)
     }
 }

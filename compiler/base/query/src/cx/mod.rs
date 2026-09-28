@@ -1,6 +1,7 @@
 //! Computing queries: the stack of queries being computed on one thread, what each has read, and
 //! cycles.
 
+mod all;
 mod cycle;
 mod frame;
 mod guard;
@@ -179,8 +180,8 @@ impl<'db> Cx<'db> {
             return Some((value, fingerprint));
         }
         let memo = if Q::INPUT {
-            // An input not set holds what it computes until it is.
-            Memo::input(value.clone(), fingerprint, revision)
+            // An input not set holds what it computes until it is, alike in every database.
+            Memo::input(value.clone(), fingerprint, revision, true)
         } else {
             self.computing(entry.memo.load().as_deref(), fingerprint, &reads);
             Memo::computed(value.clone(), fingerprint, reads, revision)

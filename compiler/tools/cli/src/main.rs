@@ -16,6 +16,7 @@ fn main() -> ExitCode {
     vun_trace::Config::from_env().install();
     let mut session = Session::new();
     session.persistence = Persistence::On;
+    session.shared = Some(session.store.memos());
     session.schemes.install(vun_http::SCHEMES);
     session.language_server = Some(vun_lsp::serve);
     session.check = PROGRAM.invocation(&CHECK_PATH);

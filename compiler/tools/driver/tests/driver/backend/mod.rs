@@ -4,76 +4,19 @@
 use vun_harness::{ACCEPT, repo_root};
 
 use vun_driver::Codegen;
-use vun_driver::compare::Ran;
-use vun_intern::Symbol;
-use vun_sema::target::Choice;
 use vun_target::Name;
 
 use crate::common::Fixture;
 
-/// The backends every program here is built through, which must agree.
-pub(crate) const BACKENDS: [Name; 2] = [vun_backend_c::INFO.id, vun_backend_native::INFO.id];
+mod run;
 
-/// Builds `source` through `backend` for the machine's target: the program's path, in the
-/// fixture holding it.
-pub(crate) fn build(name: &str, source: &str, backend: Name) -> (Fixture, std::path::PathBuf) {
-    let fixture = Fixture::new(&format!("{name}-{backend}"));
-    let path = fixture.root.write("main.vun", source);
-    let mut session = fixture.session();
-    let file = session.load(&path).unwrap();
-    session.codegen = Codegen::through(backend);
-    let program = session.build(file, None);
-    let program = program.unwrap_or_else(|_| panic!("{:#?}", session.diag));
-    (fixture, program)
-}
-
-/// Builds `source` through `backend` and runs it.
-pub(crate) fn run(name: &str, source: &str, backend: Name) -> std::process::Output {
-    let (_fixture, program) = build(name, source, backend);
-    std::process::Command::new(program).output().unwrap()
-}
+pub(crate) use run::{BACKENDS, build, run, status, status_on};
 
 /// The test program `name`, a file of `programs/` beside these tests, which
 /// `vun debug compare` runs as the tests do.
 fn program(name: &str) -> String {
     let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/driver/programs").join(name);
     std::fs::read_to_string(path).unwrap()
-}
-
-/// The targets every program here runs on besides the machine's own, where the machine runs
-/// their programs through the runner its toolchain file names: arm64 Linux, and WASI.
-const CROSS: [&[&str]; 2] = [&["linux", "arm64"], &["wasi", "wasm32"]];
-
-/// Builds `source` through each backend that generates code and runs it, for the machine's
-/// target and each of `CROSS` the machine runs programs of: its exit status, the same through
-/// each (what `vun debug compare` shows).
-pub(crate) fn status(name: &str, source: &str) -> Option<i32> {
-    status_on(name, source, &CROSS)
-}
-
-/// [`status`] for the machine's target and each of `cross` the machine runs programs of.
-pub(crate) fn status_on(name: &str, source: &str, cross: &[&[&str]]) -> Option<i32> {
-    let cross = cross.iter().map(|path| Choice::Path(path.iter().map(|&n| Symbol::intern(n)).collect()));
-    let mut statuses: Vec<(String, Option<i32>)> = Vec::new();
-    for (i, choice) in std::iter::once(Choice::host()).chain(cross).enumerate() {
-        let fixture = Fixture::new(&format!("{name}-{i}"));
-        let path = fixture.root.write("main.vun", source);
-        let mut session = fixture.session();
-        session.choice = choice.clone();
-        let file = session.load(&path).unwrap();
-        // Choosing the target equips it with the machine's tools.
-        let _ = session.lir(file);
-        if choice != Choice::host() && session.runner.is_empty() {
-            continue;
-        }
-        let runs = session.run_each(file).unwrap_or_else(|_| panic!("{:#?}", session.diag));
-        let target =
-            session.target.clone().and_then(Result::ok).map(|t| t.arch.to_string()).unwrap_or_default();
-        statuses.extend(runs.iter().map(|r| (format!("{target} {}", r.backend), r.output.status.code())));
-        assert!(Ran::agree(&runs), "the backends disagree: {statuses:?}");
-    }
-    assert!(statuses.windows(2).all(|w| w[0].1 == w[1].1), "the targets disagree: {statuses:?}");
-    statuses[0].1
 }
 
 #[test]

@@ -172,7 +172,25 @@ As of 2026-09-28 (nineteenth session, five agents converged): everything is comm
 chain, no workspace holds work but Thumb's, 517 tests pass, clippy, `cargo gen --check` and `lines` clean.
 History lives in `jj log` and `decisions.md`; this section keeps only what is open.
 
-Just landed:
+Just landed (twentieth session):
+- Parameter packs (285): `..args: P` as the last parameter gathers the trailing arguments into a
+  tuple, `P` written or a `$` parameter inferred; `..P` in a function type is `lang.Pack(P)`.
+  Under `#[abi.c]` a pack is C's `...` (286): `vun-abi` places variadic arguments per convention
+  (Apple arm64 on the stack, AAPCS-VFP the base standard), `Signature::variadic`, the C backend
+  declares `...`, wasm refuses them. `open` takes its mode as a pack. Open: a `$`-generic C
+  import (a pack inferred per call) is typed nowhere yet (such calls stay silently untyped).
+- Tests and builds fast (287 to 289): the suite went from ~190 s to ~80 s, a hello build from
+  3.3 s to ~0.6 s. The libraries' memos are shared entries of the store (`<store>/memos`, per
+  toolchain, target and checks; tests share `target/tmp/memos`), loaded by a session with no
+  memos of its own and rewritten when a session computed some they lacked. `[v; n]` lowers to
+  a loop (`[0; 4096]` in `Path.of` was 12k instructions in every program); a test budgets every
+  function of a hosted program at 2000 instructions. `vun-par` runs on a process pool, the one
+  `unsafe` module (Miri-tested). Simplify tidies all functions at once, then inlines; scalarize
+  gives up on wide slots early; the program walk makes a body's environment only for a closure.
+  LIR is lowered per function (`FunctionLir`, 290) and assembled per program. `--timings` times
+  each simplify pass; `VUN_LOG=vun_lir_passes=debug` logs each function's
+  tidy (`trace`: each pass). Fixture sessions no longer check reused memos by default: run the
+  driver tests with `VUN_QUERY_CHECK=1` for query, sema or MIR changes.
 - Saved queries sound at the source (283): `Node` (`DeclRef`, `ExprRef`) hashed by origin alone
   while comparing by place too, so values holding a node an edit moved kept their fingerprint
   and early cutoff kept stale HIR indices (wrong diagnostics, wrong nodes, out-of-bounds panics
@@ -225,7 +243,7 @@ In flight, not in main:
   (`Ret::Split` of halves), `Unpassable::Wider` + `Rules::fits` for legalization; clang checks
   `thumbv7em-none-eabihf` and `thumbv7m-none-eabi`. No `Loc::Pair`: a LIR value never spans
   registers. Open: legalize splits a soft `f64` by `Rules::fits`; variadic AAPCS-VFP calls use the base standard
-  (`Signature` has no variadic flag yet); `Rules` declared in `lang` and generated; a target check
+  (done: `Rules::calling`); `Rules` declared in `lang` and generated; a target check
   that the convention's word matches `pointer_bits`. The `abi-3a` workspace is spent.
 - For the user: forget and delete the `regalloc-2f` workspace (`ws-regalloc`, 3.2 GB, content
   ported); `site/` and `docs/references/` are theirs, untracked; `~/.config/vun/toolchain.vun`
@@ -237,9 +255,14 @@ Next, most useful first:
    no sysroot); DWARF `DW_TAG_subprogram`s; memory regions into `LinkPlan` and a bare-metal
    runtime (`stm32f4` has an empty vector table and no `init_memory`).
 2. Kernel runtime: threads (clone, stacks, TLS, join) through `std.os.symbols`; riscv64 numbers;
-   directories, seeking, environment. C's variadic `open` is declared fixed, wrong on Apple
-   arm64 until the FFI declares variadic functions. WASI files need the runner to preopen a
-   directory (`wasmtime --dir .`): the user's toolchain row runs plain `wasmtime`.
+   directories, seeking, environment.
+2b. Speed: a warm hello build is ~0.65 s; what is left is spread thin. `programs` (the
+   program's reach, ~200 ms own) includes verifying the loaded memos it reads; a combined
+   fingerprint of the shared inputs, stored with an entry, would let a session trust the whole
+   entry at once. The project's own pieces (`start` instantiated with its `main`) are
+   recomputed in tests, which keep no project memos. `Parsed` is traced, so every run parses the
+   library files again. The CLI's project memo file extends the loaded stream, so it copies the
+   shared entry it started from.
 3. Checks (268): a board and a WASI shadow, use after return; `fixed` kinds.
 4. Corpus gaps (`cargo xtask corpus`): `lang.simd.chunks`; lowering stops in
    `coroutines/cancel.vun` (a constant) and `integers/narrowing.vun` (a conversion).

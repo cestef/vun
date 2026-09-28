@@ -26,3 +26,4 @@ fn a_panic_goes_on_in_the_caller_which_works_again_after() {
     assert!(caught.is_err());
     assert_eq!(items.par_map(|n| n + 1).len(), 100);
 }
+mod pool;

@@ -11,9 +11,10 @@ use vun_par::Map;
 use super::Query;
 use super::claim::Claims;
 use super::cx::Cx;
+use super::db::Db;
 use super::fingerprint::Fingerprint;
 use super::hashed::{Hashed, Probe};
-use super::memo::Memo;
+use super::memo::{Dep, Deps, Memo};
 use super::persist::Attached;
 
 /// A table of a database, by the order it was made in.
@@ -149,6 +150,21 @@ pub(crate) trait AnyTable: Send + Sync {
     fn show(&self, slot: Slot) -> String;
     /// The slot of the key saved at `at` among the query's keys in the memos loaded.
     fn saved_slot(&self, at: u32) -> Option<Slot>;
+    /// How many keys have slots.
+    fn len(&self) -> usize;
+    /// What the memo at `slot` holds and read, if it has one whose reads are held.
+    fn facts(&self, db: &Db, slot: Slot) -> Option<Facts>;
+}
+
+/// What a memo is, as sharing it with other databases asks.
+pub(crate) struct Facts {
+    /// An input, set or holding what it computes while unset.
+    pub(crate) input: bool,
+    /// An input set with [`Db::share`].
+    pub(crate) shared: bool,
+    /// Computed in this process rather than loaded.
+    pub(crate) computed: bool,
+    pub(crate) deps: Box<[Dep]>,
 }
 
 impl<Q: Query> AnyTable for Table<Q> {
@@ -170,5 +186,16 @@ impl<Q: Query> AnyTable for Table<Q> {
 
     fn saved_slot(&self, at: u32) -> Option<Slot> {
         Table::saved_slot(self, at)
+    }
+
+    fn len(&self) -> usize {
+        self.entries.count()
+    }
+
+    fn facts(&self, db: &Db, slot: Slot) -> Option<Facts> {
+        let memo = self.entry(slot).memo.load_full()?;
+        let computed = matches!(memo.deps, Deps::Read(_)) && !memo.input;
+        let deps = memo.deps.get(db)?.into();
+        Some(Facts { input: memo.input, shared: memo.shared, computed, deps })
     }
 }

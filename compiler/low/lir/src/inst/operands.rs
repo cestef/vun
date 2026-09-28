@@ -124,6 +124,38 @@ impl InstKind {
         })
     }
 
+    /// Replaces each function, datum and import this names by what `f` gives for it: what it
+    /// takes the address of or calls, and the symbols of an assembly block and of its checks. A
+    /// callee stays a function or an import.
+    ///
+    /// # Panics
+    /// If `f` maps a callee to a datum.
+    pub fn map_addresses(&mut self, mut f: impl FnMut(Address) -> Address) {
+        match self {
+            Self::Addr(a) => *a = f(*a),
+            Self::Call { callee, .. } => {
+                let to = match *callee {
+                    Callee::Func(g) => f(Address::Func(g)),
+                    Callee::Import(i) => f(Address::Import(i)),
+                    Callee::Indirect(..) => return,
+                };
+                *callee = to.callee().expect("a callee maps to what can be called");
+            }
+            Self::Asm(asm, check) => {
+                for read in asm.reads_mut() {
+                    if let Read::Symbol(symbol) = read {
+                        *symbol = f(*symbol);
+                    }
+                }
+                if let Some(check) = check {
+                    check.write = f(check.write);
+                    check.stack = f(check.stack);
+                }
+            }
+            _ => {}
+        }
+    }
+
     /// Replaces each value this reads by what `f` gives for it.
     pub fn map_values(&mut self, mut f: impl FnMut(Value) -> Value) {
         let (own, args, asm) = inst_operands!(self);

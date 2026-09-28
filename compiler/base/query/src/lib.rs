@@ -29,7 +29,7 @@ mod tests;
 use std::fmt;
 
 pub use cx::{Cx, Cycle, Differs, Reuse, Unsound};
-pub use db::Db;
+pub use db::{Db, Sharing};
 pub use fingerprint::Fingerprint;
 pub use persist::{Census, Counted, Unloaded};
 

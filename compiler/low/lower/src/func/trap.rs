@@ -3,13 +3,13 @@
 //! call of `lang.panic.fail` is one, saying its reason.
 
 use vun_diag::Msg;
-use vun_lir::{Address, InstKind, Target, Terminator, Value};
+use vun_lir::{Address, DataId, InstKind, Target, Terminator, Value};
 use vun_origin::OriginId;
-use vun_sema::int::Integer;
 use vun_sema::item::Site;
-use vun_sema::ty::Value as Constant;
+use vun_sema::ty::{Ty, Value as Constant};
 
 use super::FnLower;
+use crate::piece::{Bytes, SiteAt};
 use crate::unlowered::{Form, Unlowered};
 
 impl FnLower<'_, '_, '_> {
@@ -33,10 +33,22 @@ impl FnLower<'_, '_, '_> {
 
     /// A new site of the message table at `at`, saying `msg`: its id.
     pub(crate) fn new_site(&mut self, at: OriginId, msg: Option<Msg>) -> Result<u32, Unlowered> {
-        let site = u32::try_from(self.l.unit.sites.len())
-            .map_err(|_| Unlowered::unsupported(self.at, Form::Callee))?;
-        self.l.unit.sites.push(vun_lir::Site { at, msg });
-        Ok(site)
+        self.l.site(vun_lir::Site { at, msg }).ok_or(Unlowered::unsupported(self.at, Form::Callee))
+    }
+
+    /// A constant of type `ty` holding the id of the site `site` at `offset`, zero elsewhere:
+    /// the id the program gives the site, written as the program is assembled.
+    pub(crate) fn holding_site(
+        &mut self,
+        ty: Ty,
+        offset: u64,
+        width: u64,
+        site: u32,
+    ) -> Result<DataId, Unlowered> {
+        let layout = self.l.types.shape(ty, self.at)?.layout;
+        let zeros = vec![0; usize::try_from(layout.size).unwrap_or_default()];
+        let sites = vec![SiteAt { offset, width, site }];
+        Ok(self.l.constant(Bytes { bytes: zeros, relocs: Vec::new(), sites }, layout.align, self.at))
     }
 
     /// Calls the trap handler for a new site at the origin lowered, saying `msg`.
@@ -47,11 +59,10 @@ impl FnLower<'_, '_, '_> {
         let Constant::Type(ty) = self.l.item(vun_items::lang::panic::Trap, self.at)? else {
             return Err(unsupported());
         };
-        let fields =
-            vec![(vun_items::lang::panic_Trap::site.symbol(), Constant::Int(Integer::from(site as usize)))];
-        let bytes = self.l.encode(&Constant::Struct { ty, fields }, ty, self.at)?;
-        let align = self.l.types.shape(ty, self.at)?.layout.align;
-        let data = self.l.constant(bytes.bytes, bytes.relocs, align, self.at);
+        let field = vun_items::lang::panic_Trap::site.symbol();
+        let (offset, field) = self.l.types.field(ty, field).ok_or_else(unsupported)?;
+        let width = self.l.types.shape(field, self.at)?.layout.size;
+        let data = self.holding_site(ty, offset, width, site)?;
         let Ok(Site::Decl(handler)) = self.l.env.site(vun_items::lang::panic::trap) else {
             return Err(unsupported());
         };

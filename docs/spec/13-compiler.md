@@ -104,8 +104,31 @@ years (rustc's parallel front end). So both are designed in from phase 1.
   and per pool. A key naming a HIR node is equal to another only when both the node's place and
   its origin are: a memo is computed from its key, and a key equal by origin alone would keep the
   place a node had before an edit moved it.
+- The libraries' memos are shared between projects. An input is set as the project's own
+  (`Db::set`) or as one every database sees alike (`Db::share`, `Sharing::Shared`): the files and
+  package data of every package but the project and loose files, the target chosen and the
+  checks; an input computed while unset is alike everywhere too. A memo is shared when every
+  read leads to shared inputs alone (`Db::save_shared` finds them, reads of a query not
+  persisted or of the project's inputs excluding a memo). They are saved whole into an entry of
+  the store's `memos` directory (a directory the tests of one build share, for them), in a
+  directory named by the toolchain, the entry by the target chosen and the checks; a session
+  holding no memos of its own loads that entry instead, and a session that computed shared memos
+  the entry lacked writes it anew when it ends. Entries are written as files are, renamed over
+  the old, so sessions sharing one never read a part; the last to write wins, and what it lacked
+  is computed again later. Entries of other toolchains are removed when one is written. Loaded
+  memos are verified before use, so an entry never makes a result wrong, only a build faster:
+  `lang` and `std` are checked and built into MIR once per toolchain, target and checks.
 
 **Parallelism.**
+- Independent work goes through `vun-par`: `par_map` over items, results in order, on the
+  process's pool of threads, started once. A call lends its work only to workers idle then, so
+  it waits on nothing queued behind other work, and a call made inside a worker runs on that
+  worker alone. The pool is the one place of the compiler with `unsafe` code: it lends a closure
+  borrowing the caller's stack to threads that outlive the call, sound because the call returns,
+  or unwinds, only once every worker it lent the closure to has reported done with it; its
+  tests run under Miri over several schedules.
+- Simplifying a unit tidies every function at once, tidying reading no other function, then
+  inlines callees first.
 - Sema claims declarations on worker threads. Code generation is per function, with one thread
   emitting and linking (Zig's split).
 - Output is independent of scheduling: diagnostics are sorted, symbols are ordered by stable keys,
@@ -177,7 +200,19 @@ per second per stage and fails on regressions.
   are records passed by value, their scalars given for the backend's classification. A trap site
   calls `lang.panic.trap` with a `lang.panic.Trap` whose `site` indexes the unit's message table.
 - **Lowering** (`vun-lower`, query `Lowered`, `vun debug lir`) turns a program's concrete MIR into
-  LIR: every local a stack slot of its layout, a top-level binding one data object, statements the
+  LIR one function at a time: each is a query of its own (`FunctionLir`, keyed by the
+  instantiation, whether it is a coroutine's `end`, and whether the checks of unsafe code apply
+  in it; or by a constructor taken as a value), lowered and tidied with every id it holds a
+  position in tables of its own, the functions, link symbols, data and trap sites it names
+  (`Refs`). So a function of a library lowers once for every program, its memo shared (section
+  2). Assembling the program computes its functions over threads and places them in one unit:
+  functions in the order the program reached them, coroutines' `end`s and then constructors
+  after; a link symbol the function the program exports under it, else one import per symbol;
+  constants once per content and a top-level binding once per binding, each after the data its
+  bytes point to; trap sites numbered in the order of the functions, the ids that data and
+  assembly checks hold written as placed (a site's id is never an immediate a pass could fold).
+  Then, callees first, each function inlines its small callees and is tidied again. Lowering
+  makes every local a stack slot of its layout, a top-level binding one data object, statements the
   instructions computing into their place; integers in their range's storage, converted where a
   value moves between ranges; enums by their shapes; checks of indices and narrowings as trap
   sites. A primitive no instruction computes is marked `#[lang.lower.by(f)]`: making its caller

@@ -63,11 +63,8 @@ impl FnLower<'_, '_, '_> {
                 if let Some(members) = cx.get::<Members>(&from.ty)
                     && let Some((field, pointee)) = members.deref()
                 {
-                    let index =
-                        members.fields.iter().position(|f| f.name == field).ok_or_else(unsupported)?;
-                    let shape = shape()?;
-                    let Parts::Sequence(offsets) = &shape.parts else { return Err(unsupported()) };
-                    let field = self.at_offset(from.addr, offsets[index]);
+                    let (offset, _) = self.l.types.field(from.ty, field).ok_or_else(unsupported)?;
+                    let field = self.at_offset(from.addr, offset);
                     let addr = self.b.load(Scalar::Ptr, field, Access::Plain, self.at);
                     return Ok(Reached { addr, ty: pointee, len: None });
                 }

@@ -17,7 +17,7 @@ use vun_sema::ty::{Ty, TyKind};
 
 use super::FnLower;
 use crate::frame::{FrameShape, FrameState, Frames};
-use crate::program::Lowering;
+use crate::lowering::Lowering;
 use crate::repr::Repr;
 use crate::unlowered::{Form, Unlowered};
 
@@ -207,7 +207,7 @@ impl<'l, 'a, 'db> FnLower<'l, 'a, 'db> {
         let unsupported = Unlowered::unsupported(self.at, Form::Frame);
         let (Some(addr), frame_ty) = self.place(frame)? else { return Err(unsupported) };
         let TyKind::Frame(shaped) = &*frame_ty else { return Err(unsupported) };
-        let (resume, end) = self.l.coroutine(&shaped.instantiation(), self.at)?;
+        let (resume, end) = self.l.coroutine(&shaped.instantiation());
         let step = self.l.env.resumed(frame_ty).ok_or(unsupported)?;
         let (callee, signature) = match mode {
             Mode::Resume => (resume, self.l.frame_signature(Some(step), self.at)?),

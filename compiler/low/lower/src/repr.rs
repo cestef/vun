@@ -4,6 +4,7 @@
 use std::sync::Arc;
 
 use vun_codec::{Decode, Encode};
+use vun_intern::Symbol;
 use vun_lir::Scalar;
 use vun_origin::OriginId;
 use vun_query::Cx;
@@ -59,6 +60,17 @@ impl<'a, 'db> Types<'a, 'db> {
     /// Returns [`Why::NoLayout`] for a type with no layout at run time.
     pub fn shape(self, ty: Ty, at: OriginId) -> Result<Arc<Shape>, Unlowered> {
         self.cx.get::<Shapes>(&ty).ok_or(Unlowered { at, why: Why::NoLayout(ty) })
+    }
+
+    /// Where the field `name` of a struct of type `ty` lies, and its type.
+    #[must_use]
+    pub fn field(self, ty: Ty, name: Symbol) -> Option<(u64, Ty)> {
+        let members = self.cx.get::<Members>(&ty)?;
+        let index = members.fields.iter().position(|f| f.name == name)?;
+        let field = *members.fields[index].ty.as_ref().ok()?;
+        let shape = self.cx.get::<Shapes>(&ty)?;
+        let Parts::Sequence(offsets) = &shape.parts else { return None };
+        Some((*offsets.get(index)?, field))
     }
 
     /// The integer storing values of the range type `ty`, and whether it is signed.

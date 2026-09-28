@@ -37,7 +37,7 @@ use vun_sema::eval::Instantiation;
 use vun_sema::primitives::abi::Abi;
 use vun_sema::ty::Ty;
 
-use crate::program::Lowering;
+use crate::lowering::Lowering;
 use crate::repr::Repr;
 use crate::unlowered::{Form, Unlowered, Why};
 
@@ -73,7 +73,7 @@ impl<'l, 'a, 'db> FnLower<'l, 'a, 'db> {
         let cx = l.types.cx;
         let params = Self::runtime_params(cx, f, body);
         let defers = cx.get::<Placed>(f).unwrap_or_default();
-        let checked = !l.unchecked.contains(f);
+        let checked = l.checked;
         let mut function = Self::function(l, body, &params, f.f.abi(cx), linkage, defers, checked)?;
         function.stack_max = f.f.attributes(cx).and_then(|a| a.stack_max());
         Ok(function)

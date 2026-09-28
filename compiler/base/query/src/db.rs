@@ -31,6 +31,16 @@ thread_local! {
         RefCell::default();
 }
 
+/// Whether an input is the same in other databases, so that what reads such inputs alone is
+/// shared with them.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Sharing {
+    /// This database's own.
+    Own,
+    /// Seen alike by other databases.
+    Shared,
+}
+
 /// Every query's memos, and the current revision. Threads share it, each through its own
 /// [`Cx`]; reading a memo takes no lock.
 #[derive(Default)]
@@ -74,15 +84,34 @@ impl Db {
     /// Sets the input `key` of `Q`. A value whose interface differs from the current one starts
     /// a new revision; an equal one changes nothing, and neither does a key nothing has read.
     pub fn set<Q: Query>(&self, key: &Q::Key, value: Q::Value) {
+        self.set_as::<Q>(key, value, Sharing::Own);
+    }
+
+    /// Sets the input `key` of `Q` as [`Db::set`] does, as one that other databases see alike: a
+    /// memo reading such inputs alone is shared with them ([`Db::save_shared`]).
+    pub fn share<Q: Query>(&self, key: &Q::Key, value: Q::Value) {
+        self.set_as::<Q>(key, value, Sharing::Shared);
+    }
+
+    /// Sets the input `key` of `Q` as [`Db::set`] does, shared with other databases or not.
+    pub fn set_as<Q: Query>(&self, key: &Q::Key, value: Q::Value, sharing: Sharing) {
+        let shared = sharing == Sharing::Shared;
         let fingerprint = Q::interface(&value);
         let table = self.table::<Q>();
         let entry = table.entry(table.slot(key));
         let revision = match &*entry.memo.load() {
-            Some(current) if current.input && current.fingerprint == fingerprint => return,
-            Some(_) => Revision(self.revision.fetch_add(1, Ordering::AcqRel) + 1),
-            None => self.revision(),
+            Some(current)
+                if current.input && current.fingerprint == fingerprint && current.shared == shared =>
+            {
+                return;
+            }
+            // Shared or not, an equal value leaves what read it current.
+            Some(current) if current.input && current.fingerprint == fingerprint => current.verified.get(),
+            Some(_) => Some(Revision(self.revision.fetch_add(1, Ordering::AcqRel) + 1)),
+            None => Some(self.revision()),
         };
-        entry.memo.store(Some(Arc::new(Memo::input(value, fingerprint, revision))));
+        let revision = revision.unwrap_or_else(|| self.revision());
+        entry.memo.store(Some(Arc::new(Memo::input(value, fingerprint, revision, shared))));
     }
 
     /// The value of `Q` at `key`, from a fresh context.

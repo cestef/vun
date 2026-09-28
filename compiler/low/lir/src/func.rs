@@ -9,7 +9,7 @@ use vun_intern::Symbol;
 use vun_origin::OriginId;
 
 use crate::entity::{Block, Inst, Slot, Value};
-use crate::inst::{InstKind, Terminator};
+use crate::inst::{Address, InstKind, Terminator};
 use crate::ty::Scalar;
 
 /// How a function is called.
@@ -223,6 +223,14 @@ pub struct Function {
 }
 
 impl Function {
+    /// Replaces each function, datum and import its instructions name by what `f` gives: the
+    /// ids of another unit it is placed in.
+    pub fn map_addresses(&mut self, mut f: impl FnMut(Address) -> Address) {
+        for (_, inst) in self.insts.iter_mut() {
+            inst.kind.map_addresses(&mut f);
+        }
+    }
+
     /// The block control starts in.
     #[must_use]
     pub fn entry(&self) -> Option<Block> {

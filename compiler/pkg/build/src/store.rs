@@ -50,6 +50,14 @@ impl Store {
     pub const LABEL: &str = "label";
     pub const STAGING: &str = "staging";
     pub const ROOTS: &str = "roots";
+    /// The libraries' memos shared between projects (spec 13, section 2).
+    pub const MEMOS: &str = "memos";
+
+    /// The directory of the libraries' memos shared between projects.
+    #[must_use]
+    pub fn memos(&self) -> PathBuf {
+        self.root.join(Self::MEMOS)
+    }
 
     /// The store in `dir`.
     #[must_use]

@@ -28,6 +28,10 @@ pub trait Inline {
 
     /// Inlines the calls `f` makes of small functions, as they are now, returning how many were.
     fn inline_into(&mut self, f: FuncId) -> usize;
+
+    /// Inlines into `function`, the body of `f` taken out of the unit, the calls it makes of the
+    /// unit's small functions, returning how many were.
+    fn inline_calls_of(&self, f: FuncId, function: &mut Function) -> usize;
 }
 
 impl Inline for Unit {
@@ -36,8 +40,15 @@ impl Inline for Unit {
     }
 
     fn inline_into(&mut self, f: FuncId) -> usize {
+        let mut function = self.functions[f].clone();
+        let inlined = self.inline_calls_of(f, &mut function);
+        self.functions[f] = function;
+        inlined
+    }
+
+    fn inline_calls_of(&self, f: FuncId, function: &mut Function) -> usize {
         let mut small: Map<FuncId, Function> = Map::default();
-        for g in self.functions[f].callees() {
+        for g in function.callees() {
             if g != f && !small.contains_key(&g) && self.functions[g].small() {
                 small.insert(g, self.functions[g].clone());
             }
@@ -45,7 +56,7 @@ impl Inline for Unit {
         if small.is_empty() {
             return 0;
         }
-        self.functions[f].inline_calls(&small)
+        function.inline_calls(&small)
     }
 }
 

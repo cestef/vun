@@ -14,27 +14,23 @@ use vun_sema::ty::{Ty, TyKind, Value as Constant};
 use vun_target::Endian;
 
 use super::FnLower;
-use crate::program::Lowering;
+use crate::lowering::Lowering;
+use crate::piece::Bytes;
 use crate::repr::Repr;
 use crate::unlowered::{Form, Unlowered};
-
-/// A value's bytes, and the addresses to write into them.
-pub(crate) struct Bytes {
-    pub(crate) bytes: Vec<u8>,
-    pub(crate) relocs: Vec<Reloc>,
-}
 
 impl Lowering<'_, '_> {
     /// `value` as a value of type `ty` holds it.
     pub(crate) fn encode(&mut self, value: &Constant, ty: Ty, at: OriginId) -> Result<Bytes, Unlowered> {
         let size = self.types.shape(ty, at)?.layout.size;
-        let mut out = Bytes { bytes: vec![0; usize::try_from(size).unwrap_or_default()], relocs: Vec::new() };
+        let bytes = vec![0; usize::try_from(size).unwrap_or_default()];
+        let mut out = Bytes { bytes, relocs: Vec::new(), sites: Vec::new() };
         self.put(value, ty, &mut out, 0, at)?;
         Ok(out)
     }
 
     /// Writes the integer `n` into `bytes` in `width` bytes at `at`, in the target's byte order.
-    fn int(&self, n: &Integer, width: u64, bytes: &mut [u8], at: u64) {
+    pub(crate) fn int(&self, n: &Integer, width: u64, bytes: &mut [u8], at: u64) {
         let modulus = Integer::power_of_two(u32::try_from(width * u64::from(u8::BITS)).unwrap_or(u128::BITS));
         let bits = n.modulo(&modulus).and_then(|m| m.to_u128()).unwrap_or_default().to_le_bytes();
         let (at, width) =
@@ -56,11 +52,9 @@ impl Lowering<'_, '_> {
     ) -> Result<Option<Address>, Unlowered> {
         Ok(Some(match value {
             Constant::Fn(f) | Constant::Closure { f, .. } if code => {
-                Address::Func(self.function(&Instantiation::new(f.clone(), Vec::new()), at)?)
+                Address::Func(self.function(&Instantiation::new(f.clone(), Vec::new())))
             }
-            Constant::Constructor { ty: of, name } if code => {
-                Address::Func(self.constructor(*of, *name, at)?)
-            }
+            Constant::Constructor { ty: of, name } if code => Address::Func(self.constructor(*of, *name)),
             Constant::Linked(decl) => self.linked(decl, at)?,
             _ => return Ok(None),
         }))
@@ -113,7 +107,7 @@ impl Lowering<'_, '_> {
                 };
                 let bytes = self.encode(value, stored, at)?;
                 let align = self.types.shape(stored, at)?.layout.align;
-                let data = self.constant(bytes.bytes, bytes.relocs, align, at);
+                let data = self.constant(bytes, align, at);
                 out.relocs.push(address(Address::Data(data)));
                 if let Some(len) = len {
                     let word = self.types.word.bytes(self.types.pointer_bits());
@@ -121,13 +115,9 @@ impl Lowering<'_, '_> {
                 }
             }
             Constant::Struct { fields, .. } => {
-                let members = cx.get::<Members>(&ty).ok_or_else(unsupported)?;
-                let Parts::Sequence(offsets) = &shape.parts else { return Err(unsupported()) };
                 for (name, v) in fields {
-                    let index =
-                        members.fields.iter().position(|f| f.name == *name).ok_or_else(unsupported)?;
-                    let field = members.fields[index].ty.as_ref().map_err(|_| unsupported())?;
-                    self.put(v, *field, out, base + offsets[index], at)?;
+                    let (offset, field) = self.types.field(ty, *name).ok_or_else(unsupported)?;
+                    self.put(v, field, out, base + offset, at)?;
                 }
             }
             Constant::Tuple(items) | Constant::Closure { captures: items, .. } => {
@@ -178,7 +168,7 @@ impl FnLower<'_, '_, '_> {
             }
             Repr::Memory(layout) => {
                 let bytes = self.l.encode(value, ty, self.at)?;
-                let data = self.l.constant(bytes.bytes, bytes.relocs, layout.align, self.at);
+                let data = self.l.constant(bytes, layout.align, self.at);
                 let from = self.b.addr(Address::Data(data), self.at);
                 self.b.copy(dest, from, layout.size, self.at);
                 Ok(())

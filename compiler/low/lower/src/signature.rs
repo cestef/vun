@@ -10,7 +10,7 @@ use vun_sema::member::Members;
 use vun_sema::primitives::abi::Abi;
 use vun_sema::ty::{self, Closure, Ty, TyKind};
 
-use crate::program::Lowering;
+use crate::lowering::Lowering;
 use crate::repr::{Repr, Types};
 use crate::unlowered::{Form, Unlowered};
 

@@ -22,6 +22,6 @@ pub use narrow::Narrow;
 pub use promote::Promote;
 pub use reuse::Reuse;
 pub use scalarize::Scalarize;
-pub use simplify::Simplify;
+pub use simplify::{Simplify, Tidy};
 pub use sweep::Sweep;
 pub use thread::Thread;

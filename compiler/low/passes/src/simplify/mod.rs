@@ -9,7 +9,9 @@
 mod tests;
 
 use crate::{Fold, Hoist, Inline, Narrow, Promote, Reuse, Scalarize, Sweep, Thread};
-use vun_trace::Activity;
+use vun_index::Idx;
+use vun_par::Parallel;
+use vun_trace::{Activity, tracing};
 
 use vun_lir::func::Function;
 use vun_lir::unit::Unit;
@@ -23,23 +25,48 @@ const ROUNDS: usize = 4;
 pub trait Simplify {
     /// Simplifies every function (see the module).
     fn simplify(&mut self);
+
+    /// Callees first, each function inlines its small callees, simplified already, and is
+    /// tidied again when it did: what simplifying does once every function is tidied.
+    fn inline_small(&mut self);
 }
 
 impl Simplify for Unit {
+    /// Every function tidied at once over threads, since tidying reads no other function; then,
+    /// callees first, each inlines its small callees, simplified already, and is tidied again.
     fn simplify(&mut self) {
         let _timer = SIMPLIFY.start();
+        let bits = self.pointer_bits;
+        let functions: Vec<Function> = std::mem::take(&mut self.functions).into_vec();
+        let tidied = functions.par_map(|f| {
+            let mut f = f.clone();
+            let started = std::time::Instant::now();
+            f.tidy(bits);
+            tracing::debug!(origin = ?f.origin, insts = f.insts.len(), micros = started.elapsed().as_micros(), "tidied");
+            f
+        });
+        self.functions = tidied.into_iter().collect();
+        self.inline_small();
+    }
+
+    fn inline_small(&mut self) {
+        let bits = self.pointer_bits;
         for f in self.callees_first() {
-            let bits = self.pointer_bits;
-            self.functions[f].tidy(bits);
             if timed(INLINE, || self.inline_into(f)) > 0 {
+                let started = std::time::Instant::now();
                 self.functions[f].tidy(bits);
+                let (insts, micros) = (self.functions[f].insts.len(), started.elapsed().as_micros());
+                tracing::debug!(f = f.index(), insts, micros, "tidied after inlining");
             }
         }
-        self.verified();
+        timed(VERIFY, || {
+            self.verified();
+            0
+        });
     }
 }
 
-trait Tidy {
+pub trait Tidy {
     /// Runs `Function::scalarize`, `promote`, `fold`, `hoist`, `reuse`, `thread`, `narrow` and
     /// `sweep` in rounds until one changes nothing.
     fn tidy(&mut self, pointer_bits: u32);
@@ -72,9 +99,13 @@ const THREAD: Activity = Activity::stage("thread");
 const NARROW: Activity = Activity::stage("narrow");
 const SWEEP: Activity = Activity::stage("sweep");
 const INLINE: Activity = Activity::stage("inline");
+const VERIFY: Activity = Activity::stage("verify");
 
 /// Runs the pass `run`, timed as `pass`: what it changed.
 fn timed(pass: Activity, run: impl FnOnce() -> usize) -> usize {
     let _timer = pass.start();
-    run()
+    let started = std::time::Instant::now();
+    let changed = run();
+    tracing::trace!(pass = pass.name, changed, micros = started.elapsed().as_micros(), "pass");
+    changed
 }

@@ -129,6 +129,12 @@ impl<I: Idx, T> IndexVec<I, T> {
     }
 }
 
+impl<I: Idx, T> FromIterator<T> for IndexVec<I, T> {
+    fn from_iter<It: IntoIterator<Item = T>>(items: It) -> Self {
+        Self { raw: items.into_iter().collect(), _index: PhantomData }
+    }
+}
+
 impl<I: Idx, T> ops::Index<I> for IndexVec<I, T> {
     type Output = T;
 

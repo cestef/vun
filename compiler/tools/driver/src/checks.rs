@@ -35,7 +35,8 @@ impl Session {
     /// Adds `checks` to those the session's programs are built with.
     pub fn add_checks(&mut self, checks: impl IntoIterator<Item = Check>) {
         let current = self.db.get::<ChecksOf>(&());
-        self.db.set::<ChecksOf>(&(), Checks::of(current.iter().chain(checks)));
+        // Shared memos are kept by the checks, which they may read.
+        self.db.share::<ChecksOf>(&(), Checks::of(current.iter().chain(checks)));
     }
 
     /// The checks the session's programs are built with.

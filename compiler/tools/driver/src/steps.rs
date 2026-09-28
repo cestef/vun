@@ -114,6 +114,7 @@ impl Session {
             Persistence::Off => Persistence::Off,
             Persistence::On | Persistence::At(_) => Persistence::On,
         };
+        session.shared.clone_from(&self.shared);
         session.choice = choice;
         session
     }

@@ -56,11 +56,8 @@ impl FnLower<'_, '_, '_> {
     /// ends its block, whose terminator is then unreachable.
     pub(super) fn asm(&mut self, asm: &Asm) -> Result<(), Unlowered> {
         let block = asm.clone().rebind(&mut Binder(self))?;
-        let checked = if self.checked && self.l.unit.checks.contains(Check::Asm) {
-            Some(self.asm_check()?)
-        } else {
-            None
-        };
+        let checked =
+            if self.checked && self.l.checks.contains(Check::Asm) { Some(self.asm_check()?) } else { None };
         self.b.push(InstKind::Asm(Box::new(block), checked), None, self.at);
         Ok(())
     }

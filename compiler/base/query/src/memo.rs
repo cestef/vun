@@ -25,6 +25,8 @@ pub(crate) struct Memo<Q: Query> {
     pub(crate) verified: Verified,
     /// Set with [`Db::set`], or an input's value while unset, rather than computed.
     pub(crate) input: bool,
+    /// An input set with [`Db::share`], which other databases see alike.
+    pub(crate) shared: bool,
 }
 
 /// A value as saved, a place in the stream the database loaded, and how to read it.
@@ -45,7 +47,7 @@ pub(crate) struct Dep {
 }
 
 impl<Q: Query> Memo<Q> {
-    pub(crate) fn input(value: Q::Value, fingerprint: Fingerprint, revision: Revision) -> Self {
+    pub(crate) fn input(value: Q::Value, fingerprint: Fingerprint, revision: Revision, shared: bool) -> Self {
         let verified = Verified::at(revision);
         Self {
             value: OnceLock::from(value),
@@ -54,6 +56,7 @@ impl<Q: Query> Memo<Q> {
             deps: Deps::Read(Box::new([])),
             verified,
             input: true,
+            shared,
         }
     }
 
@@ -65,14 +68,22 @@ impl<Q: Query> Memo<Q> {
     ) -> Self {
         let verified = Verified::at(revision);
         let deps = Deps::Read(deps);
-        Self { value: OnceLock::from(value), saved: None, fingerprint, deps, verified, input: false }
+        Self {
+            value: OnceLock::from(value),
+            saved: None,
+            fingerprint,
+            deps,
+            verified,
+            input: false,
+            shared: false,
+        }
     }
 
     /// A memo of another process, never verified in this one.
     pub(crate) fn loaded(saved: Option<Saved<Q>>, fingerprint: Fingerprint, deps: Box<[SavedDep]>) -> Self {
         let verified = Verified::default();
         let deps = Deps::Saved { saved: deps, read: OnceLock::new() };
-        Self { value: OnceLock::new(), saved, fingerprint, deps, verified, input: false }
+        Self { value: OnceLock::new(), saved, fingerprint, deps, verified, input: false, shared: false }
     }
 
     /// Whether it holds in `revision` without looking at what it read.

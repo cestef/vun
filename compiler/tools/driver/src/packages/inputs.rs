@@ -12,10 +12,11 @@ use vun_hir::db::{
 };
 use vun_intern::Symbol;
 use vun_par::Parallel;
+use vun_query::Sharing;
 use vun_span::EXTENSION;
 
 use super::deps::Unfetched;
-use super::{Package, PackageKey};
+use super::{Package, PackageKey, Packages};
 use crate::Session;
 
 impl Package {
@@ -109,10 +110,22 @@ impl Session {
             prelude_span: p.prelude_span,
             files: p.sources.0.iter().map(|(path, _)| path.clone()).collect(),
         };
+        // A library's inputs are the same in every project, so what reads them alone is shared.
+        let sharing = if self.packages.library(package) { Sharing::Shared } else { Sharing::Own };
         for (path, text) in &p.sources.0 {
-            self.db.set::<FileText>(&FileRef { package: id, path: Symbol::intern(path) }, text.clone());
+            let key = FileRef { package: id, path: Symbol::intern(path) };
+            self.db.set_as::<FileText>(&key, text.clone(), sharing);
         }
-        self.db.set::<PackageInput>(&id, Arc::new(data));
+        self.db.set_as::<PackageInput>(&id, Arc::new(data), sharing);
         id
+    }
+}
+
+impl Packages {
+    /// Whether `key` is a library of the project: a package other than the project and the
+    /// files outside any package, whose inputs every project sees alike.
+    #[must_use]
+    pub fn library(&self, key: PackageKey) -> bool {
+        key != PackageKey::Loose && self.root != Some(key)
     }
 }

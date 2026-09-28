@@ -9,6 +9,7 @@ use vun_hash::{Map, Stable};
 use vun_trace::tracing;
 
 use super::saved::{SavedDep, SavedKey, SavedMemo, SavedQuery};
+use super::shared::Included;
 use super::store::{Attached, Store};
 use crate::Query;
 use crate::db::Db;
@@ -27,8 +28,9 @@ pub(crate) trait Persisted: Send + Sync {
     fn attach(&self, db: &Db, store: &Arc<Store>, at: usize);
 
     /// Each slot's place in the file saved, by slot: the position a key has in the file loaded
-    /// when the file saved `extends` it, the next one after them otherwise.
-    fn number(&self, db: &Db, extends: bool) -> Vec<Number>;
+    /// when the file saved `extends` it, the next one after them otherwise; none for a slot
+    /// outside `include`, when the file holds only those.
+    fn number(&self, db: &Db, extends: bool, include: Option<&Included>) -> Vec<Option<Number>>;
 
     /// Every key, with its memo if it is computed and reads persisted queries alone, into a
     /// stream that `extends` the one loaded or starts anew. A stream extending the one loaded
@@ -48,8 +50,8 @@ pub(crate) struct Number {
 pub(crate) struct Layout {
     /// Each table's query's position among the queries.
     pub(super) positions: Map<TableId, u32>,
-    /// Each table's keys, by slot.
-    pub(super) numbers: Map<TableId, Vec<Number>>,
+    /// Each table's keys, by slot; none for a key the file leaves out.
+    pub(super) numbers: Map<TableId, Vec<Option<Number>>>,
 }
 
 impl Layout {
@@ -60,7 +62,10 @@ impl Layout {
             tracing::debug!(read = db.any_table(dep.table).name(), "not saved: reads a query not persisted");
             return None;
         };
-        let number = numbers.get(dep.slot.index())?;
+        let Some(Some(number)) = numbers.get(dep.slot.index()) else {
+            tracing::debug!(read = db.any_table(dep.table).name(), "not saved: reads a key left out");
+            return None;
+        };
         let fingerprint = (number.base != Some(dep.fingerprint)).then_some(dep.fingerprint);
         Some(SavedDep { query, key: number.at, fingerprint })
     }
@@ -110,17 +115,20 @@ impl<Q: Query<Key: Encode + Decode>> Persisted for Persisting<Q> {
         db.table::<Q>().attach(Attached::new(Arc::clone(store), at, Context::read_blob, value));
     }
 
-    fn number(&self, db: &Db, extends: bool) -> Vec<Number> {
+    fn number(&self, db: &Db, extends: bool, include: Option<&Included>) -> Vec<Option<Number>> {
         let table = db.table::<Q>();
         let loaded = table.attached.get().filter(|_| extends).and_then(Attached::keys);
         let mut next = loaded.map_or(0, |keys| keys.saved.len());
-        let numbers = table.entries().map(|(_, entry)| {
+        let numbers = table.entries().map(|(slot, entry)| {
+            if include.is_some_and(|include| !include.contains(&(table.id, slot))) {
+                return None;
+            }
             if let (Some(keys), Some(&at)) = (loaded, entry.at.get()) {
-                return Number { at, base: keys.saved[at as usize].fingerprint };
+                return Some(Number { at, base: keys.saved[at as usize].fingerprint });
             }
             let at = u32::try_from(next).expect("fewer than 2^32 keys per query");
             next += 1;
-            Number { at, base: entry.memo.load().as_ref().map(|memo| memo.fingerprint) }
+            Some(Number { at, base: entry.memo.load().as_ref().map(|memo| memo.fingerprint) })
         });
         numbers.collect()
     }
@@ -139,10 +147,10 @@ impl<Q: Query<Key: Encode + Decode>> Persisted for Persisting<Q> {
             });
             saved.map(Some).collect()
         });
-        let len = numbers.iter().map(|number| number.at as usize + 1).max().unwrap_or(0);
+        let len = numbers.iter().flatten().map(|number| number.at as usize + 1).max().unwrap_or(0);
         keys.resize_with(keys.len().max(len), || None);
         for (slot, entry) in table.entries() {
-            let Some(&number) = numbers.get(slot.index()) else { continue };
+            let Some(&Some(number)) = numbers.get(slot.index()) else { continue };
             let memo = self.memo(db, w, layout, extends, number, entry.memo.load_full().as_deref());
             // A key loaded is kept as it was, with the memo it has now.
             let key = keys[number.at as usize].get_or_insert_with(|| SavedKey {

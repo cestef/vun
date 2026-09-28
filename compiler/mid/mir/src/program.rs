@@ -139,7 +139,8 @@ impl Reach<'_, '_> {
             Ok(body) => body,
             Err(unready) => return self.program.unready.push((i.clone(), unready)),
         };
-        let env = i.env(self.cx);
+        // The body's environment, which only a closure made needs, made once for the first.
+        let mut env = None;
         for (_, block) in body.blocks.iter() {
             for stmt in &block.stmts {
                 // A called function is reached as the call instantiates it; what a statement
@@ -150,7 +151,7 @@ impl Reach<'_, '_> {
                         args.iter().collect()
                     }
                     Rvalue::Aggregate { kind: Aggregate::Closure { literal, staged }, parts } => {
-                        if let Some(env) = &env {
+                        if let Some(env) = env.get_or_insert_with(|| i.env(self.cx)) {
                             let f = env.clone().staging(staged).func(*literal);
                             self.function(Instantiation::new(f, Vec::new()));
                         }

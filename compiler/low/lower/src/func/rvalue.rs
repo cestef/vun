@@ -40,11 +40,13 @@ impl FnLower<'_, '_, '_> {
                 let Parts::Array { stride, .. } = self.l.types.shape(ty, self.at)?.parts else {
                     return Err(unsupported(Form::Projection));
                 };
-                for i in 0..count.to_u128().and_then(|c| u64::try_from(c).ok()).unwrap_or_default() {
-                    let at = self.at_offset(dest, i * stride);
-                    self.write(operand, Some(at), item)?;
-                }
-                Ok(())
+                // A loop over the items, whatever their count: `[0; 4096]` is a few instructions.
+                let count = count.to_u128().ok_or(unsupported(Form::Constant))?;
+                let len = self.b.constant(self.l.types.word, count, self.at);
+                self.each(len, |this, i| {
+                    let at = this.scaled(dest, i, stride);
+                    this.write(operand, Some(at), item)
+                })
             }
             Rvalue::Range { op, lo, hi } => self.range(*op, lo, hi.as_ref(), dest, ty),
             Rvalue::Resume { frame, .. } => self.drive(frame, dest, super::coroutine::Mode::Resume),
@@ -132,13 +134,10 @@ impl FnLower<'_, '_, '_> {
                 }
                 Ok(())
             }
-            (Aggregate::Struct { fields, .. }, Parts::Sequence(offsets)) => {
-                let members = self.l.types.cx.get::<Members>(&ty).ok_or_else(unsupported)?;
+            (Aggregate::Struct { fields, .. }, Parts::Sequence(_)) => {
                 for (name, part) in fields.iter().zip(parts) {
-                    let index =
-                        members.fields.iter().position(|f| f.name == *name).ok_or_else(unsupported)?;
-                    let field = *members.fields[index].ty.as_ref().map_err(|_| unsupported())?;
-                    let at = self.at_offset(dest, offsets[index]);
+                    let (offset, field) = self.l.types.field(ty, *name).ok_or_else(unsupported)?;
+                    let at = self.at_offset(dest, offset);
                     self.write(part, Some(at), field)?;
                 }
                 Ok(())

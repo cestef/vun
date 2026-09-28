@@ -4,12 +4,11 @@
 //! address; a result in memory is written through an address, converted into the place if its
 //! type differs.
 
-use vun_lir::{Callee, Conv, InstKind, Signature, Value};
+use vun_lir::{Address, Callee, Conv, InstKind, Signature, Value};
 use vun_mir::{Concrete, Lowered as _, Operand, Projection};
 use vun_sema::Primitive;
 use vun_sema::decl::DeclType;
 use vun_sema::eval::Instantiation;
-use vun_sema::int::Integer;
 use vun_sema::layout::Parts;
 use vun_sema::primitives::abi::Abi;
 use vun_sema::primitives::check::Check;
@@ -41,7 +40,7 @@ impl FnLower<'_, '_, '_> {
                 if body.suspends() {
                     return self.construct(&i, &body, args, dest, ty);
                 }
-                let id = self.l.function(&i, self.at)?;
+                let id = self.l.function(&i);
                 let comptime = f.comptime(cx).unwrap_or_default();
                 let runtime = |i: &usize| comptime.get(*i) != Some(&true);
                 let params = body
@@ -76,12 +75,16 @@ impl FnLower<'_, '_, '_> {
                 let [Operand::Const(reason)] = args else { return Err(unsupported()) };
                 self.site(Some(Failure::of(reason).ok_or_else(unsupported)?.msg()))
             }
-            // `lang.check.site(at)` is a new site at `at`, known when compiling: its id.
+            // `lang.check.site(at)` is a new site at `at`, known when compiling: its id, read from
+            // a constant the program writes it into.
             Operand::Const(Constant::Primitive(Primitive::Check(Check::site))) => {
                 let [Operand::Const(Constant::Origin(at))] = args else { return Err(unsupported()) };
                 let site = self.new_site(*at, None)?;
                 let Some(dest) = dest else { return Ok(()) };
-                self.write_const(&Constant::Int(Integer::from(site as usize)), dest, ty)
+                let width = self.l.types.shape(ty, self.at)?.layout.size;
+                let data = self.holding_site(ty, 0, width, site)?;
+                let from = self.b.addr(Address::Data(data), self.at);
+                self.copy_value(from, dest, ty)
             }
             Operand::Const(Constant::Primitive(p)) => {
                 self.primitive(*p, args, dest, ty).map_err(|u| u.naming(*p))

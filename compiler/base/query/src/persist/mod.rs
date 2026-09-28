@@ -9,6 +9,7 @@
 mod census;
 mod query;
 mod saved;
+mod shared;
 mod store;
 
 use std::collections::{HashMap, HashSet};
@@ -75,10 +76,16 @@ impl Db {
     /// If the registry was poisoned by a panicking query.
     #[must_use]
     pub fn save(&self) -> Vec<u8> {
+        self.save_keys(None)
+    }
+
+    /// The memos of every key of `include`, or of every key, as [`Db::save`] says; a file holding
+    /// some keys alone is written whole.
+    fn save_keys(&self, include: Option<&shared::Included>) -> Vec<u8> {
         let _timer = SAVE.start();
         let persisted = self.persisted.read().expect("persisted queries").clone();
         let store = self.store.get().map(Arc::as_ref);
-        let growth = store.map(|store| store.growth).filter(|growth| !growth.outgrown());
+        let growth = store.map(|store| store.growth).filter(|growth| !growth.outgrown() && include.is_none());
         let extends = growth.and(store);
         if let (None, Some(store)) = (extends, store) {
             store.restore_all(self);
@@ -90,7 +97,7 @@ impl Db {
         });
         let positions = tables.clone().zip(0..).collect();
         let numbers = parts.iter().filter_map(|part| match part {
-            Part::Table(p) => Some(p.number(self, extends.is_some())),
+            Part::Table(p) => Some(p.number(self, extends.is_some(), include)),
             Part::Carried { .. } => None,
         });
         let layout = Layout { positions, numbers: tables.zip(numbers).collect() };

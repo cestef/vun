@@ -23,6 +23,43 @@ fn a_hosted_program_lowers_to_lir_that_verifies() {
     assert_eq!(entry.map(|(_, f)| f.signature.conv), Some(Conv::Naked));
 }
 
+/// The most instructions a function of a hosted program has: its largest have a few hundred, and a
+/// form lowered item by item where a loop fits (`[0; 4096]` was twelve thousand) goes far past,
+/// slowing every pass and every build of every program that reaches it.
+const LARGEST: usize = 2000;
+
+#[test]
+fn no_function_of_a_hosted_program_is_larger_than_its_budget() {
+    let fixture = Fixture::new("lir-budget");
+    let text = std::fs::read_to_string(repo_root().join(ACCEPT).join("programs/files.vun")).unwrap();
+    let path = fixture.root.write("main.vun", &text);
+    let mut session = fixture.session();
+    let file = session.load(&path).unwrap();
+    let lowered = session.lir(file);
+    let unit = lowered.as_ref().as_ref().unwrap_or_else(|_| panic!("{:#?}", session.diag));
+    for (_, f) in unit.functions.iter() {
+        let name = session.origins.declaration_name(f.origin);
+        assert!(f.insts.len() <= LARGEST, "{name:?} has {} instructions", f.insts.len());
+    }
+}
+
+#[test]
+fn a_repeated_item_lowers_to_the_same_code_whatever_its_count() {
+    let sizes = [1 << 12, 1 << 16].map(|count| {
+        let fixture = Fixture::new(&format!("lir-repeat-{count}"));
+        let source = format!(
+            "#[link.export(\"fill\")]\nfill := (x: u8) -> u8 {{ xs: [{count}]u8 = [x; {count}]; xs[1] }};\n"
+        );
+        let path = fixture.root.write("p.vun", &source);
+        let mut session = fixture.session();
+        let file = session.load(&path).unwrap();
+        let lowered = session.lir(file);
+        let unit = lowered.as_ref().as_ref().unwrap_or_else(|_| panic!("{:#?}", session.diag));
+        unit.functions.iter().map(|(_, f)| f.insts.len()).sum::<usize>()
+    });
+    assert_eq!(sizes[0], sizes[1]);
+}
+
 #[test]
 fn integers_arrays_and_runs_lower_with_their_checks() {
     let fixture = Fixture::new("lir-lowering");

@@ -11,7 +11,7 @@ use vun_sema::checks::ChecksOf;
 use vun_sema::eval::Instantiation;
 use vun_sema::ty::Value;
 
-use crate::program::Lowering;
+use crate::lowering::Lowering;
 
 impl Lowering<'_, '_> {
     /// The functions of `program`, rooted at `root`, the checks run in; none without checks.

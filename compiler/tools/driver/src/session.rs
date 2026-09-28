@@ -64,6 +64,8 @@ pub struct Session {
     pub codegen: Codegen,
     /// Whether the queries are saved between runs; off unless the program turns it on.
     pub persistence: Persistence,
+    /// The directory of the libraries' memos shared between projects, if they are shared.
+    pub shared: Option<PathBuf>,
     /// The machine's toolchain file, the user's unless set (`Toolchain::path`).
     pub toolchain: Option<PathBuf>,
     /// The command programs built for the target run through, from the toolchain file; empty
@@ -112,6 +114,7 @@ impl Session {
             registry: Registry::with_defaults(),
             codegen: Codegen::default(),
             persistence: Persistence::Off,
+            shared: None,
             toolchain: vun_build::toolchain::Toolchain::path(),
             runner: Vec::new(),
             memory: Vec::new(),

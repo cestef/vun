@@ -21,6 +21,7 @@ vun-target.workspace = true
 vun-diag.workspace = true
 vun-intern.workspace = true
 vun-inline.workspace = true
+vun-par.workspace = true
 
 [dev-dependencies]
 vun-lir = { workspace = true, features = ["testing"] }

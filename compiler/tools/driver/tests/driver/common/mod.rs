@@ -14,8 +14,12 @@ use vun_driver::Session;
 use vun_fetch::{Format, Scheme};
 use vun_fs::Scratch;
 use vun_hash::Hash;
-use vun_query::{Db, Reuse};
+use vun_query::Db;
 use vun_span::{EXTENSION, SourceFiles, Span};
+
+/// Where the tests of one build share the libraries' memos, so that `lang` and `std` are
+/// computed once per target and set of checks rather than in every session.
+const SHARED: &str = concat!(env!("CARGO_TARGET_TMPDIR"), "/memos");
 
 /// A scratch directory of packages.
 pub(crate) struct Fixture {
@@ -95,11 +99,13 @@ impl Fixture {
         Store::at(&self.root.join(Store::DIR))
     }
 
-    /// A fresh session using this fixture's store, checking every memo it reuses: a memo
-    /// verified or loaded must be what computing it again gives (`Reuse::Check`).
+    /// A fresh session using this fixture's store, starting from the libraries' memos that the
+    /// tests of this build share (`SHARED`); `VUN_QUERY_CHECK=1` checks every memo it reuses
+    /// against computing it again.
     pub(crate) fn session(&self) -> Session {
-        let mut session = Session::sharing(&Arc::new(Db::reusing(Reuse::Check)));
+        let mut session = Session::sharing(&Arc::new(Db::new()));
         session.store = self.store();
+        session.shared = Some(PathBuf::from(SHARED));
         session
     }
 
