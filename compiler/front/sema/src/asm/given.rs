@@ -2,6 +2,7 @@
 //! registers, conditions and choices, integers as immediates, labels as the lines they mark, and
 //! bindings with the class and width of register their value needs.
 
+use vun_codec::{Decode, Encode};
 use vun_hir::tree::ExprId;
 use vun_inline::{Base, Bound, CondId, RegRef, SizeId};
 use vun_isa::ChoiceId;
@@ -10,7 +11,7 @@ use vun_isa::ChoiceId;
 pub(crate) type Given = vun_isa::Given<ExprId, ExprId, ExprId>;
 
 /// A word of an architecture.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub enum Word {
     /// A register, with the width its name gives, if it gives one.
     Reg { reg: RegRef, size: Option<SizeId> },

@@ -60,9 +60,14 @@ years (rustc's parallel front end). So both are designed in from phase 1.
   Peyton Jones, *Build systems à la carte*): the fingerprint of each memo it read, once each, in
   the order first read. In a later revision it is reused when every dependency, brought up to
   date, has the fingerprint recorded, and it is checked at most once per revision, as Salsa's
-  memos are. Traces hold fingerprints rather than revision numbers, so they stay valid in the
-  next process. Each key gets a slot in its query's table when first asked for; reads are
-  recorded, verified and compared by table and slot. Threads share a database without locks on
+  memos are. Before the reads of a memo reading many are verified in order, the memos they
+  reach are verified ahead over threads, computing none: each whose reads all hold is marked
+  current, so verifying in order finds it done, and computes only what changed, in the order
+  that never computes a read keyed by an earlier read's value before that value holds. Under
+  `VUN_QUERY_CHECK=1` what verifying ahead finds is only recorded, and verifying in order fails
+  on a memo it found to hold whose reads changed. Traces hold fingerprints rather than revision
+  numbers, so they stay valid in the next process. Each key gets a slot in its query's table
+  when first asked for; reads are recorded, verified and compared by table and slot. Threads share a database without locks on
   the way to a memo, one computes each memo while the others needing it wait, and a thread that
   would wait on a thread waiting for it computes the memo itself. Sessions compiling for one
   target share a database, so each library is checked once per process. Inputs are set, and a set that leaves
@@ -92,7 +97,7 @@ years (rustc's parallel front end). So both are designed in from phase 1.
   which symbols, interned values and origins hash by), a key's memo when that key is first asked
   for, a memo's reads when it is first verified and its value when first needed; so a run pays
   for the memos it uses, not for those of other programs sharing the file. Saving happens only
-  when a memo was computed that the file did not hold, and extends the loaded stream: every key
+  when a memo of a persisted query was computed that the file did not hold, and extends the loaded stream: every key
   keeps its position, and keys and memos never asked for are copied, not decoded again. Since an
   extended stream keeps every entry of the one it extends, the file records its body's size when
   last written whole, and a body grown past twice that size is written whole on the next save,
@@ -206,7 +211,8 @@ per second per stage and fails on regressions.
   position in tables of its own, the functions, link symbols, data and trap sites it names
   (`Refs`). So a function of a library lowers once for every program, its memo shared (section
   2). Assembling the program computes its functions over threads and places them in one unit:
-  functions in the order the program reached them, coroutines' `end`s and then constructors
+  functions in the order the program reached them (in waves, each wave's bodies made over
+  threads, in the order reaching one function at a time finds), coroutines' `end`s and then constructors
   after; a link symbol the function the program exports under it, else one import per symbol;
   constants once per content and a top-level binding once per binding, each after the data its
   bytes point to; trap sites numbered in the order of the functions, the ids that data and
@@ -1054,7 +1060,9 @@ Rules:
   a run, `debug` a unit of work, `trace` an element such as a statement or an instruction.
   Corpus and snapshot tests go through `vun-harness` (`VUN_BLESS`).
 - Timings are activities timed where they run: the query engine times every computation by its
-  query's name, and the driver each stage of its table and each build step. Each activity sums
+  query's name and its own work (verifying memos and verifying them ahead, reading saved keys,
+  memos and values), and the driver each stage of its table and each build step (the program's
+  reach and its bodies' reports, lowering, legalizing, emitting). Each activity sums
   its runs, its own time (without the activities run inside it) and its total time over every
   thread. `VUN_TIMINGS=1` or `--timings` reports the table at exit, the most own time first;
   when off, timing an activity costs one relaxed load.

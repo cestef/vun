@@ -1313,6 +1313,7 @@ dependencies = [
 name = "vun-isa"
 version = "0.0.0"
 dependencies = [
+ "vun-codec",
  "vun-inline",
  "vun-items",
 ]

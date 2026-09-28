@@ -4,7 +4,7 @@
 use std::path::Path;
 
 use vun_diag::{DiagId, errors};
-use vun_driver::Persistence;
+use vun_driver::{Persistence, Session};
 
 use crate::common::Fixture;
 
@@ -67,9 +67,8 @@ unread := () -> u8 {
 }
 
 /// A package `app` whose root file calls `app.util.code` and whose `app/util.vun` holds `util`,
-/// built through lowering in a fresh session that loads and saves its queries: every memo the
-/// session reuses is checked against computing it again (`Reuse::Check`).
-fn built(fixture: &Fixture, util: &str) -> Vec<DiagId> {
+/// built through lowering in a fresh session that loads and saves its queries.
+fn build(fixture: &Fixture, util: &str) -> Session {
     let mut app = Fixture::manifest("app", 1, "0.1.0");
     app.include.push(app.name.clone());
     let dir = fixture.write(
@@ -87,6 +86,13 @@ main := (sys: &mut std.os.System) -> std.os.Exit { app.util.code(sys) };
     session.check(file);
     session.program(file);
     session.save();
+    session
+}
+
+/// The diagnostics of [`build`], every memo the session reuses checked against computing it
+/// again (`Reuse::Check`).
+fn built(fixture: &Fixture, util: &str) -> Vec<DiagId> {
+    let session = build(fixture, util);
     session.diag.sorted(session.origins).into_iter().map(|d| d.id.clone()).collect()
 }
 
@@ -106,4 +112,13 @@ fn a_signature_an_edit_changed_in_another_file_is_checked_again() {
     assert_eq!(built(&fixture, "code := (sys: &mut std.os.System) -> std.os.Exit { .ok };\n"), []);
     let changed = "code := (sys: &mut std.os.System) -> u8 { 0 };\n";
     assert_eq!(built(&fixture, changed), [errors::TYPES_MISMATCH]);
+}
+
+#[test]
+fn an_unchanged_program_built_again_computes_nothing_it_saves() {
+    let fixture = Fixture::new("persist-unchanged");
+    let code = "code := (sys: &mut std.os.System) -> std.os.Exit { .ok };\n";
+    drop(build(&fixture, code));
+    // A memo reading a query that is not saved is never saved either, and so computed again.
+    assert!(!build(&fixture, code).db.changed());
 }

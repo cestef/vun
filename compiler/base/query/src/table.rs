@@ -3,6 +3,7 @@
 //! verified and compared by table and slot, two integers.
 
 use std::any::Any;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, OnceLock};
 
 use arc_swap::ArcSwapOption;
@@ -10,7 +11,7 @@ use vun_par::Map;
 
 use super::Query;
 use super::claim::Claims;
-use super::cx::Cx;
+use super::cx::{Cx, Settle};
 use super::db::Db;
 use super::fingerprint::Fingerprint;
 use super::hashed::{Hashed, Probe};
@@ -42,6 +43,8 @@ pub(crate) struct Table<Q: Query> {
     /// The query's part of the saved memos loaded, whose memos are restored as their keys are
     /// first asked for.
     pub(crate) attached: OnceLock<Attached<Q>>,
+    /// Whether its memos are saved: what computing one changes of the memos loaded.
+    pub(crate) persisted: AtomicBool,
 }
 
 /// A key, its memo once there is one, and the claim of whoever computes it.
@@ -55,7 +58,13 @@ pub(crate) struct Entry<Q: Query> {
 
 impl<Q: Query> Table<Q> {
     pub(crate) fn new(id: TableId) -> Self {
-        Self { id, slots: Map::default(), entries: boxcar::Vec::new(), attached: OnceLock::new() }
+        Self {
+            id,
+            slots: Map::default(),
+            entries: boxcar::Vec::new(),
+            attached: OnceLock::new(),
+            persisted: AtomicBool::new(false),
+        }
     }
 
     /// The slot of `key`, made the first time it is asked for, holding the memo saved for it if
@@ -154,6 +163,15 @@ pub(crate) trait AnyTable: Send + Sync {
     fn len(&self) -> usize;
     /// What the memo at `slot` holds and read, if it has one whose reads are held.
     fn facts(&self, db: &Db, slot: Slot) -> Option<Facts>;
+    /// Marks its memos as saved.
+    fn persist(&self);
+    /// The fingerprint of the memo at `slot` if it holds without computing ([`Settle::holds`]).
+    fn settled(
+        &self,
+        settle: &Settle<'_>,
+        slot: Slot,
+        path: &mut Vec<(TableId, Slot)>,
+    ) -> Option<Fingerprint>;
 }
 
 /// What a memo is, as sharing it with other databases asks.
@@ -197,5 +215,18 @@ impl<Q: Query> AnyTable for Table<Q> {
         let computed = matches!(memo.deps, Deps::Read(_)) && !memo.input;
         let deps = memo.deps.get(db)?.into();
         Some(Facts { input: memo.input, shared: memo.shared, computed, deps })
+    }
+
+    fn persist(&self) {
+        self.persisted.store(true, Ordering::Relaxed);
+    }
+
+    fn settled(
+        &self,
+        settle: &Settle<'_>,
+        slot: Slot,
+        path: &mut Vec<(TableId, Slot)>,
+    ) -> Option<Fingerprint> {
+        settle.holds(self, slot, path)
     }
 }

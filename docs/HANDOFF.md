@@ -256,13 +256,19 @@ Next, most useful first:
    runtime (`stm32f4` has an empty vector table and no `init_memory`).
 2. Kernel runtime: threads (clone, stacks, TLS, join) through `std.os.symbols`; riscv64 numbers;
    directories, seeking, environment.
-2b. Speed: a warm hello build is ~0.65 s; what is left is spread thin. `programs` (the
-   program's reach, ~200 ms own) includes verifying the loaded memos it reads; a combined
-   fingerprint of the shared inputs, stored with an entry, would let a session trust the whole
-   entry at once. The project's own pieces (`start` instantiated with its `main`) are
-   recomputed in tests, which keep no project memos. `Parsed` is traced, so every run parses the
-   library files again. The CLI's project memo file extends the loaded stream, so it copies the
-   shared entry it started from.
+2b. Speed (decision 291; `--timings` now shows the engine's work and the build steps). Warm
+   `files.vun`: 450 ms to about 245 ms (no memo saved again, verifying ahead over threads).
+   What is left warm: reading saved keys (~120 ms over 14.6k keys, about 8 us each; each pooled
+   handle read clones its pool's `Arc`, contended across threads) and restoring memos (~60 ms).
+   Cold (fresh `VUN_STORE`): 1.42 s to about 1.3 s wall (the reach in waves); the front end is a chain
+   (`typed`, `mir` and `metered_call` about 1970 runs each, comptime evaluation), threads wait on
+   the same `std` declarations, and saving the memos takes ~165 ms at exit, twice in the CLI
+   (the project file, then the shared entry, which the project file copies). Ideas: a key read
+   without its pools' `Arc`s; the project file naming the shared entry instead of copying it;
+   saving in the background of linking. Waiting on a claim counts as the waiting query's own
+   time, so cold `--timings` work is inflated by waits. The driver tests read the machine's
+   toolchain file: an entry naming a target the branch lacks fails every test choosing a target
+   (`target.unchosen`); `VUN_TOOLCHAIN` points them at another file.
 3. Checks (268): a board and a WASI shadow, use after return; `fixed` kinds.
 4. Corpus gaps (`cargo xtask corpus`): `lang.simd.chunks`; lowering stops in
    `coroutines/cancel.vun` (a constant) and `integers/narrowing.vun` (a conversion).

@@ -11,7 +11,7 @@ use super::claim::Waits;
 use super::cx::{Cx, Reuse};
 use super::memo::Memo;
 use super::persist::{Persisted, Store};
-use super::table::{AnyTable, Table, TableId};
+use super::table::{AnyTable, Slot, Table, TableId};
 use super::{Query, Revision};
 
 /// A database's number, unique in the process.
@@ -61,6 +61,8 @@ pub struct Db {
     pub(crate) persisted: RwLock<Vec<Arc<dyn Persisted>>>,
     /// Whether memos reused without being computed are checked by computing them again.
     pub(crate) reuse: Reuse,
+    /// Whether each memo verified ahead holds, with the revision it was looked at in.
+    pub(crate) settled: Map<(TableId, Slot), (Revision, bool)>,
     resources: Map<TypeId, Arc<dyn Any + Send + Sync>>,
 }
 

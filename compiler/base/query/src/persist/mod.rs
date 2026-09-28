@@ -53,6 +53,7 @@ impl Db {
     /// If another query of the same name is registered, or if the registry was poisoned by a
     /// panicking query.
     fn register(&self, query: Arc<dyn Persisted>) {
+        self.any_table(query.table(self)).persist();
         let mut persisted = self.persisted.write().expect("persisted queries");
         match persisted.iter().position(|p| p.name() == query.name()) {
             Some(at) => {

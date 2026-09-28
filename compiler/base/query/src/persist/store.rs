@@ -6,13 +6,18 @@ use std::sync::{Arc, OnceLock};
 
 use vun_codec::{Blob, Context};
 use vun_hash::{Map, Stable};
-use vun_trace::tracing;
+use vun_trace::{Activity, tracing};
 
 use super::saved::{Growth, SavedDep, SavedKey, SavedMemo, SavedQuery};
 use crate::Query;
 use crate::db::Db;
 use crate::memo::{Dep, Memo, ReadValue, Saved};
 use crate::table::{Slot, TableId};
+
+/// Reading saved keys, a query's table of them and each key, as timed.
+const KEYS: Activity = Activity::stage("read keys");
+/// Reading a key's saved memo, as timed.
+const RESTORE: Activity = Activity::stage("restore memos");
 
 /// A file of saved memos, loaded.
 pub(crate) struct Store {
@@ -69,11 +74,14 @@ impl StoredQuery {
     /// Its keys, read the first time; `None` when they do not decode.
     pub(crate) fn keys(&self, stream: &Context) -> Option<&StoredKeys> {
         self.keys
-            .get_or_init(|| match stream.read_blob::<SavedQuery<Blob>>(self.bytes) {
-                Ok(query) => Some(StoredKeys::new(query.keys)),
-                Err(malformed) => {
-                    tracing::debug!(query = self.name, %malformed, "saved keys not read");
-                    None
+            .get_or_init(|| {
+                let _timer = KEYS.start();
+                match stream.read_blob::<SavedQuery<Blob>>(self.bytes) {
+                    Ok(query) => Some(StoredKeys::new(query.keys)),
+                    Err(malformed) => {
+                        tracing::debug!(query = self.name, %malformed, "saved keys not read");
+                        None
+                    }
                 }
             })
             .as_ref()
@@ -130,6 +138,7 @@ impl<Q: Query> Attached<Q> {
     /// The key saved at `at`, read from the file; `None` when it does not decode.
     pub(crate) fn key(&self, at: u32) -> Option<Q::Key> {
         let saved = self.keys()?.saved.get(at as usize)?;
+        let _timer = KEYS.start();
         (self.key)(&self.store.stream, saved.key)
             .inspect_err(|malformed| tracing::debug!(query = Q::NAME, %malformed, "saved key not read"))
             .ok()
@@ -139,6 +148,7 @@ impl<Q: Query> Attached<Q> {
     /// first needed.
     pub(crate) fn memo(&self, at: u32) -> Option<Memo<Q>> {
         let key = self.keys()?.saved.get(at as usize)?;
+        let _timer = RESTORE.start();
         let memo = self.store.stream.read_blob::<SavedMemo<Blob>>(key.memo?);
         let memo =
             memo.inspect_err(|malformed| tracing::debug!(query = Q::NAME, %malformed, "saved memo not read"));

@@ -3,6 +3,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 mod all;
 mod persist;
 mod reuse;
+mod settle;
 mod shared;
 
 use super::{Cx, Cycle, Db, Query, Reuse, Revision};

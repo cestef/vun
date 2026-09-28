@@ -50,15 +50,18 @@ pub enum Differs {
     Fingerprint,
     /// Its value, under an equal fingerprint: the fingerprint misses part of what the value is.
     Value,
+    /// What it read: verifying ahead found it to hold, verifying in order to have changed.
+    Settled,
 }
 
 impl fmt::Display for Unsound {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let what = match self.differs {
-            Differs::Fingerprint => "its fingerprint",
-            Differs::Value => "its value under an equal fingerprint",
+            Differs::Fingerprint => "computing it again changes its fingerprint",
+            Differs::Value => "computing it again changes its value under an equal fingerprint",
+            Differs::Settled => "verifying it in order finds a read changed",
         };
-        write!(f, "memo {}({}) was reused, but computing it again changes {what}", self.query, self.key)
+        write!(f, "memo {}({}) was reused, but {what}", self.query, self.key)
     }
 }
 
@@ -90,8 +93,16 @@ impl Cx<'_> {
             None
         };
         if let Some(differs) = differs {
-            let unsound = Unsound { query: Q::NAME, key: AnyTable::show(table, slot), differs };
-            panic!("{unsound}");
+            Self::unsound(table, slot, differs);
         }
+    }
+
+    /// Fails with [`Unsound`] for the memo at `slot` of `table`.
+    ///
+    /// # Panics
+    /// Always.
+    pub(super) fn unsound<Q: Query>(table: &Table<Q>, slot: Slot, differs: Differs) -> ! {
+        let unsound = Unsound { query: Q::NAME, key: AnyTable::show(table, slot), differs };
+        panic!("{unsound}");
     }
 }

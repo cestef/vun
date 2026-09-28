@@ -16,9 +16,17 @@ use vun_lower::Unlowered;
 use vun_origin::{OriginId, OriginTable, Resolve};
 use vun_span::{FileId, SourceFiles, SourceMap};
 use vun_target::{Name, Output, Profile, TargetSpec};
+use vun_trace::Activity;
 
 use crate::Session;
 use crate::registry::Codegen;
+
+/// Lowering the program to LIR, as timed.
+const LOWER: Activity = Activity::stage("lower");
+/// Splitting what the backend cannot compute with, as timed.
+const LEGALIZE: Activity = Activity::stage("legalize");
+/// The backend making the program's artifacts, as timed.
+const EMIT: Activity = Activity::stage("emit");
 
 pub const BACKEND: Param = Param::option("backend")
     .about("the backend generating code, instead of the target's preferences for the profile")
@@ -111,7 +119,10 @@ impl Session {
     /// # Panics
     /// Never: naming a file chooses the target.
     pub fn code(&mut self, file: FileId, listed: Listed) -> Result<Coded, Uncoded> {
-        let lowered = self.lir(file);
+        let lowered = {
+            let _timer = LOWER.start();
+            self.lir(file)
+        };
         let target =
             self.target.clone().expect("naming a file chooses the target").map_err(Uncoded::Reported)?;
         let unit = match &*lowered {
@@ -128,6 +139,7 @@ impl Session {
         };
         let info = *backend.info();
         // Integers wider than the backend's are split into halves first.
+        let legalizing = LEGALIZE.start();
         let mut unit = unit.clone();
         let widest =
             Scalar::int(info.caps.widest.on(&target)).expect("a backend computes with an integer width");
@@ -142,6 +154,7 @@ impl Session {
             let d = Diagnostic::error(errors::BACKEND_LACKS, msg).at(unlegal.at, None);
             return Err(Uncoded::Reported(self.diag.error(d)));
         }
+        drop(legalizing);
         let request = Request {
             unit: &unit,
             target: &target,
@@ -151,7 +164,9 @@ impl Session {
         };
         let mut emitted = Emitted::default();
         let backend = self.registry.backend(info.id.symbol()).expect("chosen from the registry");
+        let emitting = EMIT.start();
         backend.emit(&request, &mut emitted, &mut self.diag).map_err(Uncoded::Reported)?;
+        drop(emitting);
         Ok(Coded { artifacts: emitted.artifacts, frames: emitted.frames, backend: info.id, unit, target })
     }
 }

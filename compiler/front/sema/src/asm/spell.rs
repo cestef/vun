@@ -3,6 +3,7 @@
 //! qualifiers each after a `.` (`add.w`, `vcvt.s32.f32`). Each architecture composes the steps
 //! its syntax takes; what they fix is what the spelling says of the form.
 
+use vun_codec::{Decode, Encode};
 use vun_inline::{CondId, SizeId};
 use vun_intern::Symbol;
 use vun_isa::Fixed;
@@ -13,7 +14,7 @@ use crate::target::Members;
 use crate::ty::Value;
 
 /// A mnemonic as a line writes it: a word, and what follows each `.` in order.
-#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Encode, Decode)]
 pub struct Mnemonic {
     pub word: Symbol,
     pub parts: Vec<Symbol>,

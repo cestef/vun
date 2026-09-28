@@ -3,6 +3,7 @@
 
 use vun_query::Db;
 
+use crate::asm::ArchTable;
 use crate::check::Checked;
 use crate::checks::ChecksOf;
 use crate::decl::{DeclType, DeclValue, Declaration, TypedDecl};
@@ -50,4 +51,5 @@ pub const PERSISTED: &[fn(&Db)] = &[
     Db::persist::<Impls>,
     Db::persist::<Requirement>,
     Db::persist::<Witnesses>,
+    Db::persist::<ArchTable>,
 ];

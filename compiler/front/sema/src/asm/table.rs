@@ -6,6 +6,7 @@
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
+use vun_codec::{Decode, Encode};
 use vun_hir::db::{Exports, FileRef, Namespace, Package, PackageId};
 use vun_inline::{ClassId, FormId, OpId, SizeId};
 use vun_intern::Symbol;
@@ -33,14 +34,14 @@ pub enum Flow {
 }
 
 /// A form an instruction is spelled with.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct Spelling {
     pub op: OpId,
     pub form: FormId,
     pub fixed: vun_isa::Fixed,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct Op {
     pub name: Symbol,
     /// Each form's value, of the architecture's `Form`.
@@ -76,7 +77,7 @@ pub(super) struct Shape {
 /// An architecture's table: its instructions in order, the names of its widths, conditions and
 /// register classes in declaration order, its words by the name a line writes, and the forms each
 /// mnemonic spells.
-#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct Table {
     pub ops: Vec<Op>,
     pub sizes: Vec<Symbol>,

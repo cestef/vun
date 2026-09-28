@@ -19,6 +19,11 @@ use vun_sema::typeck::Typed;
 
 use crate::Session;
 
+/// Finding what a program reaches, as timed.
+const REACH: Activity = Activity::stage("reach");
+/// Reading the reports of typing each body a program reaches, as timed.
+const BODIES: Activity = Activity::stage("bodies");
+
 pub struct Stage {
     pub name: &'static str,
     pub reports: &'static [DiagId],
@@ -147,7 +152,11 @@ impl Session {
         }
         // The bodies of other files its program compiles, a library's included: what is built
         // is checked, each typed where the program reaches it.
-        let program = self.db.get::<Programs>(&(key.clone(), Roots::Functions));
+        let program = {
+            let _timer = REACH.start();
+            self.db.get::<Programs>(&(key.clone(), Roots::Functions))
+        };
+        let _timer = BODIES.start();
         for body in program.functions.iter().filter(|i| i.f.literal.file != key) {
             if let Some(typed) = self.db.get::<Typed>(body) {
                 self.diag.absorb(&typed.diag);

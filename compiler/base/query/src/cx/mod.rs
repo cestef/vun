@@ -6,6 +6,7 @@ mod cycle;
 mod frame;
 mod guard;
 mod reuse;
+mod settle;
 mod why;
 
 use std::cell::RefCell;
@@ -19,6 +20,7 @@ pub use self::cycle::Cycle;
 use self::frame::{Frame, Standing};
 use self::guard::{Entered, Verifying};
 pub use self::reuse::{Differs, Reuse, Unsound};
+pub(crate) use self::settle::Settle;
 use self::why::Why;
 use super::claim::Claim;
 use super::db::Db;
@@ -26,6 +28,10 @@ use super::fingerprint::Fingerprint;
 use super::memo::{Dep, Memo};
 use super::table::{Slot, Table, TableId};
 use super::{Query, Revision};
+
+/// Verifying memos from an earlier revision or another process, as timed: what they read
+/// compared, those computed again meanwhile timed on their own.
+const VERIFY: Activity = Activity::stage("verify memos");
 
 /// The queries being computed on one thread, and what each has read so far.
 pub struct Cx<'db> {
@@ -122,10 +128,15 @@ impl<'db> Cx<'db> {
         if self.verifying.borrow().contains(&(table.id, slot)) {
             return Err(Why::Cycle);
         }
+        self.settle(deps, revision);
         let verifying = Verifying::start(self, (table.id, slot));
+        let timer = VERIFY.start();
         let stale = self.stale(deps);
-        drop(verifying);
+        drop((timer, verifying));
         if let Some(read) = stale {
+            if self.db.settled_in((table.id, slot), revision) {
+                Self::unsound(table, slot, Differs::Settled);
+            }
             return Err(Why::Stale(read));
         }
         if self.db.reuse == Reuse::Check && !memo.input {
@@ -183,7 +194,7 @@ impl<'db> Cx<'db> {
             // An input not set holds what it computes until it is, alike in every database.
             Memo::input(value.clone(), fingerprint, revision, true)
         } else {
-            self.computing(entry.memo.load().as_deref(), fingerprint, &reads);
+            self.computing(table, entry.memo.load().as_deref(), fingerprint, &reads);
             Memo::computed(value.clone(), fingerprint, reads, revision)
         };
         entry.memo.store(Some(Arc::new(memo)));
@@ -244,13 +255,19 @@ impl<'db> Cx<'db> {
         (Self::once(frame.reads), standing)
     }
 
-    /// Records a memo computed with `fingerprint` from `reads` in place of `replaced`: one equal
-    /// to it, as one loaded computed again for its value or out of a cycle among its reads,
-    /// changes nothing saved.
-    fn computing<Q: Query>(&self, replaced: Option<&Memo<Q>>, fingerprint: Fingerprint, reads: &[Dep]) {
+    /// Records a memo of `table` computed with `fingerprint` from `reads` in place of `replaced`:
+    /// one of a query not saved, or equal to it, as one loaded computed again for its value or
+    /// out of a cycle among its reads, changes nothing saved.
+    fn computing<Q: Query>(
+        &self,
+        table: &Table<Q>,
+        replaced: Option<&Memo<Q>>,
+        fingerprint: Fingerprint,
+        reads: &[Dep],
+    ) {
         let equal = replaced
             .is_some_and(|memo| memo.fingerprint == fingerprint && memo.deps.get(self.db) == Some(reads));
-        if !equal {
+        if table.persisted.load(Ordering::Relaxed) && !equal {
             tracing::trace!(query = Q::NAME, replaced = replaced.is_some(), "a memo changed");
             self.db.changed.store(true, Ordering::Relaxed);
         }

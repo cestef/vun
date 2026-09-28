@@ -5,13 +5,16 @@ use std::sync::OnceLock;
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use vun_codec::{Blob, Context, Malformed};
-use vun_trace::tracing;
+use vun_trace::{Activity, tracing};
 
 use super::db::Db;
 use super::fingerprint::Fingerprint;
 use super::persist::SavedDep;
 use super::table::{Slot, TableId};
 use super::{Query, Revision};
+
+/// Reading saved values, as timed.
+const READ: Activity = Activity::stage("read values");
 
 pub(crate) struct Memo<Q: Query> {
     /// Unset for a memo loaded without its value, or whose saved value is not read yet.
@@ -98,6 +101,7 @@ impl<Q: Query> Memo<Q> {
             return Some(value);
         }
         let saved = self.saved.as_ref()?;
+        let _timer = READ.start();
         match (saved.read)(&db.store.get()?.stream, saved.at) {
             Ok(value) => Some(self.value.get_or_init(|| value)),
             Err(malformed) => {

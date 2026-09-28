@@ -81,10 +81,15 @@ impl Query for Programs {
                 }
             }
         }
+        // The functions reached in turn, each wave's bodies made over threads: the ones the
+        // wave reaches come after it, in the order a function at a time would find them.
         let mut next = 0;
-        while let Some(i) = reach.program.functions.get(next).cloned() {
-            reach.body(&i);
-            next += 1;
+        while next < reach.program.functions.len() {
+            let wave = reach.program.functions[next..].to_vec();
+            next = reach.program.functions.len();
+            for (i, body) in wave.iter().zip(cx.get_all::<Concrete>(&wave)) {
+                reach.body(i, body);
+            }
         }
         Arc::new(reach.program)
     }
@@ -133,9 +138,9 @@ impl Reach<'_, '_> {
         })
     }
 
-    /// Reaches what the body of `i` calls and takes.
-    fn body(&mut self, i: &Instantiation) {
-        let body = match self.cx.get::<Concrete>(i) {
+    /// Reaches what `body`, the body of `i`, calls and takes.
+    fn body(&mut self, i: &Instantiation, body: <Concrete as Query>::Value) {
+        let body = match body {
             Ok(body) => body,
             Err(unready) => return self.program.unready.push((i.clone(), unready)),
         };

@@ -2,6 +2,7 @@
 //! they give and whether each position takes its operand, by the predicates its assembler encodes
 //! with, so a block that checks is one the assembler encodes.
 
+use vun_codec::{Decode, Encode};
 use vun_inline::{Bound, ClassId, CondId, Line, Mem, Operand, RegRef, SizeId};
 
 /// An operand as a line writes it, before a form takes it.
@@ -77,7 +78,7 @@ impl<V, P, S> Given<V, P, S> {
 }
 
 /// A kind of named choice, by its place in the table's `Choice`.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct ChoiceId(pub u8);
 
 /// Whether a memory access writes the address it reached back to its base: not at all, before
@@ -92,7 +93,7 @@ pub enum Writeback {
 
 /// What a mnemonic's spelling supplies: a condition as its suffix (`jz`, `b.eq`), or the width
 /// of its access (`ldrb`).
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct Fixed {
     pub cond: Option<CondId>,
     pub size: Option<SizeId>,
