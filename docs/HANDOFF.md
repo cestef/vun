@@ -1,6 +1,6 @@
 # Handoff
 
-State of Vun as of 2026-09-27 (the eighteenth session), for the next agent. Read this, then
+State of Vun as of 2026-09-28 (the nineteenth session), for the next agent. Read this, then
 `CLAUDE.md` (rules and the agent procedure; on disk but ignored by the user's global gitignore, so
 `jj st` never shows it), `docs/spec/00-principles.md`, `docs/spec/decisions.md` and the spec
 files of the area you touch. The code is the detail; this file says where things are and why.
@@ -21,6 +21,7 @@ its analyses and legalization, a C99 backend and a native backend after TPDE for
 arm64, ELF objects, the `gnu` linker adapter, the machine's toolchain file (cross compilers and
 runners), styled and JSON output, explanation pages for every diagnostic. `vun run` builds and
 runs programs through either backend, for the host or (through an emulator) for linux.arm64.
+Linux programs are static by default, on a runtime calling the kernel (decision 279).
 
 ## 2. How the user works (non-negotiable)
 
@@ -136,176 +137,69 @@ Logging: `VUN_LOG=<filter>` (`info` steps, `debug` units of work, `trace` elemen
   `std` (`option`, `result`, `cmp`, `mem`, `seq`, `iter`, `sync`, `os`, `fmt`, `diag`, `task`,
   `build`, `lints`, `panic`, `testing`).
 
-Progress: corpus 225 passed, 10 planned, 32 shown, 0 failed; 355 tests; the backend tests build
-every program in `compiler/tools/driver/tests/driver/programs/` through C and native, for
-x86-64 and (when the machine runs it) linux.arm64, and require equal results on all four.
+Progress: corpus 278 passed; 517 tests; the backend tests build every program in
+`compiler/tools/driver/tests/driver/programs/` through C and native, for linux.x86_64 and (when
+the machine runs it) linux.arm64 and wasi.wasm32, and require equal results.
 
 ## 6. Decisions
 
-Every decision in `decisions.md` is accepted, 1 to 231 (the user approved all of the seventeenth
-and eighteenth sessions', 209 included; 138, 157, 161 and 166 are amended by 182 and 183). New
-language rules go in as proposed unless the user approves them.
+Every decision is accepted but these, proposed and waiting for the user: 249 to 251, 253 to
+257, 259, 260, 262, 265, 266, 268, 269, 271, 273 (integers in patterns), 274 (`$` forms that
+cannot run where written), 275 (`$if` branch scopes), 276 (C naked functions), 277 (ELF32), 278
+(`layout.offset`). 279 (static Linux targets) is the user's choice. New language rules go
+in as proposed unless the user approves them.
 
-## 7. Next steps, in order
+## 7. State and next steps
 
-0. **Second round (2026-09-27): four sessions, coordinated.** Done (decisions 245 to 264):
-   the LIR in-bounds rule for `Offset` with a verifier check; `u128` as one typed wide
-   `AbiType`; calling conventions as data (`vun-abi`, `lang.target.Convention`, checked against
-   clang); typed package file keys (`PackageId::{Stored, Local}`); `https://` only through
-   `ureq`, redirects checked hop by hop (the size budget is 20 MiB, decision 252); positions
-   resolved through the files a compilation reads (`vun_origin::Resolve`); linear parts moving
-   on their own; overlapping copies; MIR/LIR structural verifiers after passes; `never` for
-   jumps; bounds keeping their endpoints; compile-time `match`, `$` evaluations after typing,
-   untyped float literals as `f64`; function values in fields (`row.f(x)`); the wasm backend
-   (`vun-backend-wasm`: objects `wasm-ld` links, a verifier running the specification's
-   validation, Ramsey's structuring with a dispatch loop for irreducible control, listings with
-   `vun debug code`); runtimes chosen by target (`std.os.Runtime` rows, WASI preview 1 in
-   `std.os.wasi`, `std.os` writing through `std.os.symbols.write`); `lang.link.library`;
-   artifacts named by their part (`vun_backend::Part`); shared and static libraries
-   (`std.build.Output`, `vun build --library`, the target's archiver); per-system C library
-   facts; `std.mem.alloc.Fixed` borrowing its buffer; `lang.link.keep` removed. This machine
-   runs WASI programs through `wasmtime` (its toolchain file names it), and every backend test
-   program runs on linux.x86_64, linux.arm64 and wasi.wasm32.
-   Also done since (decisions 265 to 270): floats as one constructor (`lang.Float(bits)`); exit
-   statuses as `std.os.Status := Int(1..=125)` (266, proposed); typed inline assembly for x86-64
-   end to end (258): the tables in `lang.arch`, generating the instruction sets now in the base
-   layer (`vun-isa`, `vun-isa-x86_64`, `vun-isa-arm64`); the block syntax; sema checking x86-64
-   blocks against `ArchTable`; `vun-inline`'s `Block` through MIR (`Rvalue::Asm`) and LIR
-   (`InstKind::Asm`); the native backend encoding blocks on x86-64 and arm64 through one
-   `vun_asm::Blocks` walk; the C backend writing GNU `__asm__` over register variables (gcc and
-   clang); wasm refusing. Constants hoisted out of loops and held in registers by the allocator.
-   `vun-reduce` (`vun debug reduce`, 267); `vun-html` and `vun-doc` (`vun doc`, 270); `vun-lsp`
-   (`vun util lsp`, 269, proposed); `vun-sanitize` steps 1 to 4 (268, proposed: `lang.check`,
-   `check.by` rewrites at concreteness, `--checks`); a fuzz target for saved memos.
-   Sema now checks x86-64 and arm64 blocks through the shared `Blocks::fit` of the `vun-isa`
-   crates (one matcher, the encoders' predicates; `Given::Mem` carries its writeback, and
-   `[x1], 8` is tried as a post-index access); a driver test compares both `ArchTable`s with
-   `Op::ALL`. Thumb is done too (`lang.arch.thumb`, `vun-isa-thumb`, `Arch::Thumb`; stm32f4's
-   runtime masks interrupts and waits through blocks), and the string `lang.arch.asm` primitive
-   is removed. The C backend writes naked functions under GNU attributes, a block's symbols by
-   their ELF names (decision 276, proposed). `vun-object` writes 32-bit Arm objects (ELF32 by
-   the machine's address width, Thumb relocations as RELA, `$t`/`$d` mapping symbols; decision
-   277, proposed), milestone 2 of the native Thumb backend. In progress: vun-sanitize step 5
-   (runtime hooks over shadow memory, `check.unsupported` at link time), then redzones, the
-   `Allocator`'s `check.by`, assembly checks and a native-versus-C trap test. Left, most severe
-   first:
-   - A Linux runtime calling the kernel (static programs without libc), now that x86-64 inline
-     assembly works end to end.
-   - `stm32f4` has an empty vector table and no `init_memory` (waits for plans declaring memory
-     regions). Each branch of a staged `$if` is a scope of its own (decision 275, proposed).
-     Integers in patterns are comparison
-     operands and need not fit the matched type (decision 273, proposed). A `$` form that cannot
-     be computed where it is written is an error (decision 274, proposed): `comptime.runtime`
-     for a run-time local, `comptime.unsupported` for statements or `&mut` outside a call;
-     running those at compile time needs an evaluator entry for an expression, not only a call.
-   - Fuzzing: a MIR and LIR target (`fuzz/fuzz_targets/lir.rs`, written, uncommitted, not run: its
-     build under the sanitizer is heavy on this machine).
-   - Code quality: spilled operands loaded where the form takes memory (regalloc).
-   - Refactors: move `vun-harness` to `compiler/base`; stub crate `render/sarif`; `DiagId` and
-     pass ids are strings; `vun doc` types only a namespace's own declarations (members of
-     structs keep the kind their shape shows).
+As of 2026-09-28 (nineteenth session, five agents converged): everything is committed in the main
+chain, no workspace holds work but Thumb's, 517 tests pass, clippy, `cargo gen --check` and `lines` clean.
+History lives in `jj log` and `decisions.md`; this section keeps only what is open.
 
-1. Backends (the user's focus): (a) arm64: done for linux.arm64 in the sixteenth session
-   (decision 192); next `macos.arm64` (Mach-O in `vun-object`, Apple's AAPCS64 variant: narrow
-   arguments extended by the caller, stack arguments packed, `x18` reserved), then riscv64 the
-   same way (an assembler after `vun-asm-arm64`, `Arch`, `Isel`). This machine has
-   `qemu-riscv64`, `ld.lld` and `wasm-ld` (lld 21), but no riscv64 sysroot and nothing to run
-   Mach-O.
-   (b) Native code quality, seventeenth session (decisions 200 to 203): slots promoted to SSA
-   values after lowering (`Function::promote`), constants folded by the builder, branches falling
-   into the next block, no self moves, `mov r/m8, imm8`, parameters and call arguments moved
-   straight into their registers: 13 to 49 percent fewer instructions on the backend test
-   programs. Then (decisions 211 to 214): `Unit::simplify` runs promotion, a fold of each
-   function (`Function::fold`) and jump threading (`Function::thread`, which removes the
-   `if c { true } else { false }` joins); constant call arguments are written already
-   extended; a value displaced from a fixed register moves to a free one (frame accesses down
-   by up to 40 percent). Eighteenth session (decisions 226 to 228): `Unit::simplify` works
-   callees first, in rounds of scalarize (aggregate slots cut into tiles, copies expanded),
-   promote, fold, reuse (dominator-scoped value numbering), thread, narrow (truncations of wide
-   arithmetic computed narrow) and sweep (unreached blocks, parameters only passed back, unread
-   pure instructions), then inlines callees of any shape up to 96 non-constant instructions and
-   runs the rounds again. A `for` over a range now runs in registers: a 50M-step LCG loop takes
-   109 ms natively (C `-O2`: 116), `half.vun` shrinks from 22,917 to 13,773 instructions.
-   Then (decision 229) threading through loop heads deciding on a state (parameters demoted
-   to slots, then promoted), edge facts in `reuse`, more folds: a `for` over a range is a
-   one-block loop, its state in callee-saved registers (decision 230: 56 ms; C `-O2` 51).
-   Then (decision 257, proposed) a register allocator the native backends share,
-   `vun-regalloc`: linear scan on SSA after Wimmer and Franz over what each instruction says it
-   needs (`Isel::inst_needs`, snippets from their slots, calls from `vun-abi`), a plan the
-   framework follows, checked by simulation in debug builds, tests and the `regalloc` fuzz
-   target. Values live across blocks stay in registers; the backend test programs lose 3 to 22
-   percent of their instructions and up to 85 percent of their frame accesses (`half.vun`:
-   13,238 to 11,686 instructions); the LCG loop is 5 instructions a round instead of 13, in
-   registers a call may overwrite: constants are hoisted out of loops (`Function::hoist`) and a
-   constant no instruction takes as an immediate is held across the loop, made again rather than
-   reloaded when spilled (`Remade::Held`); a spilled operand is read from its home where every
-   step reading it takes memory (`Need::Any` from the snippet's forms). Left: padding tiles are
-   copied as zeros (LIR has no undefined value). Checks of unsafe code at run time (decision 268,
-   proposed; spec 07 section 7, 13 section 8.7): `--checks` / `Options.checks`, the rewrite at
-   concreteness (`#[lang.check.by]`, through `Func::requirement` for `Allocator`), redzones in
-   lowering, shadow memory in the libc runtime (`std.check`), `check.unsupported` elsewhere.
-   The runtime also keeps a table of what allocators hand out (`foreign_free`, `size_mismatch`)
-   and a quarantine delaying frees, evicted only for the allocator freeing (`std.check.State`,
-   `std.check.mapped` for runtimes that map memory). Left: a board and a WASI shadow, use after
-   return. (c) DWARF line tables and symbol names done (decisions 204, 205:
-   `vun-dwarf`; `gdb` breaks on Vun lines); the unit is named by the first file with a row;
-   unwind information done (decision 215, `.eh_frame` on ELF; Mach-O's compact unwind is
-   left); next `DW_TAG_subprogram`s; (d) done in the seventeenth session: data aligned past every C type or in a
-   link section through GNU attributes (decision 209: `lang.target.Attributes`), a
-   slice bound by value is `types.slice_value` (decision 210); left: memory regions into
-   `LinkPlan` and a bare-metal runtime, which wait for item 5 (plans declare the regions); (e)
-   done: mold and wild link through the C compiler (`vun_link_gnu::Ld`), `--linker` names one
-   (decision 208); lld waits for `ld.lld` on the machine. macOS (decisions 206, 207): Mach-O
-   objects for arm64 and Apple's call convention (packed stack arguments) are written and
-   checked with `llvm-objdump` and against clang's objects; linking waits for lld and an SDK.
-2. Performance and persistence. Done in the sixteenth session (decision 191): saved queries
-   written whole past twice their compacted size, atomic `Edit::put`, reads saved without their
-   key's fingerprint (11.4 to 6.8 MB on ten programs sharing a directory), queries decoded in
-   parallel, `vun debug queries`; mimalloc (cold compiles 19% faster); `vun_hash::Stable`
-   instead of BLAKE3 for symbols, interned values and origins, token and item lookups by table
-   (10% more); `FileRef.path` a `Symbol`; the query engine's code shared across queries (the
-   binary 470 KB smaller). `par_map`'s spawns measured: about 1 ms a run, not worth a pool.
-   The size budget is 20 MiB (decision 252, the user's choice, raised from 12 MiB): the dist
-   binary was 12.4 MiB with the https client of decision 248;
-   the largest parts are `std` (1.7 MiB of text), rustls and ring (640 KiB, for `vun-http`) and
-   per-query code (`Cx::get`, `Table::slot`, about 400 KiB). (b) Done in the
-   seventeenth session (decision 197): saved queries load as used (`persist/store.rs`: a
-   query's keys when one is looked for, by `Stable` hash; a memo when its key gets a slot, placed
-   in the entry before it is published, so no `arc_swap` store; reads resolved on first verify);
-   a save extending the file keeps every key's position and copies what was never asked for.
-   Load went from 7.5 to 0.4 ms; a warm check sharing a file with ten programs 15.1 to 11.1 ms
-   (45 to 11 ms of CPU). What is left of a warm run is reading packages (`stage syntax`, about
-   4 ms: 168 files read and hashed) and process start. Decision 198 fixed cycles found on the
-   way (see pitfalls). Left: (c) The audit items with no workload to
-   measure yet: fingerprints of large values, the interpreter copying whole values, small
-   `Integer`s; the corpus has no program past 70 ms, so a comptime-heavy benchmark comes first.
-3. `std`: `task.Pool`, `testing.Sim`, a Linux runtime without libc, `Str` and collections,
-   `print`'s `.fixes`; generic bodies over a constrained `$A: Allocator`.
-4. Checks: `fixed` kinds (never moved; needs a spec rule for construction in place first, since
-   MIR moves values through temporaries for declarations and call results); frames' regions.
-   Frames' `end` runs the pending defers (a `defer x = e` parsed as `(defer x) = e` made it look
-   otherwise; `defer` now takes an assignment whole). Done: borrows of parts of immutable top-level bindings are
-   `&static` (`Env::lasting`), leaks at
-   every scope exit, scoped kinds, and `borrow.conflict` labels the later use keeping the loan
-   live (`borrows/later.rs`).
-5. `vun build build.vun` carries out a plan (decision 216, `driver/src/steps.rs`): programs from
-   the typed `std.build.Options`, each in its own session, memory regions into the link plan.
-   Left: carry out `flash` (a probe tool), `test_on` (needs a test command and runners),
-   dependency parameters (packages parameterized by a record their `build.vun` declares), lint
-   levels (a lint configuration the checks read); `vun run build.vun` runs the first program.
-6. MIR and sema gaps (`cargo xtask corpus` lists them): `lang.simd.chunks` (an API to write);
-   lowering stops in `coroutines/cancel.vun` (a constant) and `integers/narrowing.vun` (a
-   conversion), not yet looked into. Done: `.{ }` and `.name` in plain instantiations, traps in
-   a callee's instantiated signature, borrows of compile-time values of any kind at run time
-   (`&.word(3)`), and `layout.offset` for a field placed out of order or off its alignment
-   (decision 278, proposed), which had no layout and stopped only at lowering. Or-patterns
-   that bind (decision 194), exhaustiveness (decision 196, `typeck/exhaust/`) and impl member
-   types (decision 199; a requirement type naming another requirement is not compared yet) are
-   done. A diagnostic equal apart from its trace is reported once, reached the shortest way
-   (`DiagCtxt::reached_once`, in `Checked`).
-7. Evaluator: its own stack done (decision 221: stack segments added as calls nest); left: loans
-   inside aggregate arguments, and memory per nesting level (about 10 KiB). Packaging: signed caches, planned
-   builds, `vun pkg why`, `.workspace` visibility.
+Just landed:
+- Static Linux (decision 279): `targets.linux.{x86_64,arm64}` (ABI `kernel`) run on
+  `std.os.linux.kernel` (naked `_start`, system calls through one `Call` record, `string.h`
+  exports in `kernel/memory.vun`, the checks' state through `mmap`); `targets.linux.gnu.*` for
+  C interop. Both backends, both arches, checks included (`driver/tests/driver/runtime.rs`).
+- Naked functions: native (no frame; verifier `Reason::Naked`), C (`__attribute__((naked))`,
+  b4, 276); asm symbols keep their functions reachable (`InstKind::addresses`); a fixed asm input
+  is read from its register; an asm statement's temp is unit.
+- 2f: `std.check.State`/`mapped`, handed-out table and quarantine; typeck tables declared once;
+  `vun doc` documents types as types. a6: `comptime.runtime`/`unsupported` (274), `$if` branch
+  scopes (275), `layout.offset` (278), borrows of compile-time values at run time, diagnostics
+  repeated per instantiation shown once. b4: patterns (273), ELF32 and Thumb relocations (277).
+
+In flight, not in main:
+- Native Thumb (82): workspace `../vun-thumb-82`, commit ytonorkq (full Thumb-2 table with
+  encodings, `vun_isa::word` shared with arm64, new crate `vun-asm-thumb` checked against llvm-mc).
+  Needs a full check, then `jj rebase -r ytonorkq --insert-before @` from the main copy. After it:
+  sema's `asm/thumb.rs` reads fp registers, memory, conditions and `.w`; then Thumb codegen
+  (Isel, AAPCS rows, `ARCHES`), LIR halves to limbs by the target's widest integer, CPU features
+  (single or double float), a static `linux` Thumb target under `qemu-arm`.
+- Milestone 3a (unassigned, b4's notes): 32-bit AAPCS in `vun-abi`: `Rules` gain word,
+  stack_align, returned, `Floats {Next, Core, Backfill}`, `Split {Never, WhileStackEmpty}`;
+  placements `Loc::Pair`/`Ret::Pair` (soft-float double) and `Loc::Straddled` (AAPCS C.5); arms in
+  the x86/arm64 isel and codegen matches.
+- For the user: forget and delete the `regalloc-2f` workspace (`ws-regalloc`, 3.2 GB, content
+  ported); `site/` and `docs/references/` are theirs, untracked; `~/.config/vun/toolchain.vun`
+  needs a `linux.gnu.arm64` row (same compiler, sysroot and runner as `linux.arm64`) for glibc
+  arm64 programs; the static `linux.arm64` row still works as it is.
+
+Next, most useful first:
+1. Backends: Thumb as above; `macos.arm64` linking (lld, an SDK); riscv64 (`qemu-riscv64` is here,
+   no sysroot); DWARF `DW_TAG_subprogram`s; memory regions into `LinkPlan` and a bare-metal
+   runtime (`stm32f4` has an empty vector table and no `init_memory`).
+2. Kernel runtime: threads, files, clocks as system calls; riscv64 numbers; `Stream` errors from
+   `-errno`.
+3. Checks (268): a board and a WASI shadow, use after return; `fixed` kinds.
+4. Corpus gaps (`cargo xtask corpus`): `lang.simd.chunks`; lowering stops in
+   `coroutines/cancel.vun` (a constant) and `integers/narrowing.vun` (a conversion).
+5. Plans (`vun build build.vun`): `flash`, `test_on`, dependency parameters, lint levels.
+6. `std`: `task.Pool`, `testing.Sim`, `Str` and collections, generic bodies over `$A: Allocator`.
+7. Evaluator: loans inside aggregate arguments, memory per nesting level. Packaging: signed
+   caches, planned builds, `vun pkg why`. A comptime-heavy benchmark before perf audits.
+8. Refactors: `vun-harness` to `compiler/base`; `render/sarif`; `DiagId` and pass ids are
+   strings; regalloc loads spilled operands where the form takes memory; LIR has no undefined
+   value (padding copied as zeros); fuzz target `lir.rs` (written, never run).
 
 ## 8. Pitfalls
 
