@@ -31,7 +31,7 @@ impl Simplify for Unit {
         for f in self.callees_first() {
             let bits = self.pointer_bits;
             self.functions[f].tidy(bits);
-            if self.inline_into(f) > 0 {
+            if timed(INLINE, || self.inline_into(f)) > 0 {
                 self.functions[f].tidy(bits);
             }
         }
@@ -48,17 +48,33 @@ trait Tidy {
 impl Tidy for Function {
     fn tidy(&mut self, pointer_bits: u32) {
         for _ in 0..ROUNDS {
-            let changed = self.scalarize(pointer_bits)
-                + self.promote(pointer_bits)
-                + self.fold()
-                + self.hoist()
-                + self.reuse()
-                + self.thread(pointer_bits)
-                + self.narrow(pointer_bits)
-                + self.sweep();
+            let changed = timed(SCALARIZE, || self.scalarize(pointer_bits))
+                + timed(PROMOTE, || self.promote(pointer_bits))
+                + timed(FOLD, || self.fold())
+                + timed(HOIST, || self.hoist())
+                + timed(REUSE, || self.reuse())
+                + timed(THREAD, || self.thread(pointer_bits))
+                + timed(NARROW, || self.narrow(pointer_bits))
+                + timed(SWEEP, || self.sweep());
             if changed == 0 {
                 return;
             }
         }
     }
+}
+
+const SCALARIZE: Activity = Activity::stage("scalarize");
+const PROMOTE: Activity = Activity::stage("promote");
+const FOLD: Activity = Activity::stage("fold");
+const HOIST: Activity = Activity::stage("hoist");
+const REUSE: Activity = Activity::stage("reuse");
+const THREAD: Activity = Activity::stage("thread");
+const NARROW: Activity = Activity::stage("narrow");
+const SWEEP: Activity = Activity::stage("sweep");
+const INLINE: Activity = Activity::stage("inline");
+
+/// Runs the pass `run`, timed as `pass`: what it changed.
+fn timed(pass: Activity, run: impl FnOnce() -> usize) -> usize {
+    let _timer = pass.start();
+    run()
 }
