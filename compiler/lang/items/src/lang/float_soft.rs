@@ -6,6 +6,10 @@
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
 use crate::Item;
+/// The namespace `lang.float.soft.arith`.
+pub const arith: Item = Item::new(&["lang", "float", "soft", "arith"]);
+/// The namespace `lang.float.soft.compare`.
+pub const compare: Item = Item::new(&["lang", "float", "soft", "compare"]);
 /// `a` less `b` as many whole times as it goes, the quotient rounded toward zero: IEEE 754
 /// `fmod`, which is exact. A NaN when `b` is zero or a NaN, or `a` an infinity or a NaN.
 pub const rem: Item = Item::new(&["lang", "float", "soft", "rem"]);
@@ -17,6 +21,13 @@ pub const soft_significand: Item = Item::new(
 /// `a * b + c` rounded once, as IEEE 754 `fusedMultiplyAdd`: the product and the sum are exact,
 /// in integers twice as wide as `T`, and only the result is rounded, to nearest, ties to even.
 pub const mul_add: Item = Item::new(&["lang", "float", "soft", "mul_add"]);
+/// Whether the encoding `x` is a NaN: its exponent field all ones, and its fraction not zero.
+pub const soft_nan: Item = Item::new(&["lang", "float", "soft", "soft_nan"]);
+/// The finite or infinite encoding `x` as an integer in the order of the floats: its magnitude,
+/// negated where its sign is set, so both zeros are 0.
+pub const soft_order: Item = Item::new(&["lang", "float", "soft", "soft_order"]);
+/// The canonical NaN of `T` (spec 04, section 2): quiet, positive, its fraction's top bit alone.
+pub const soft_canonical: Item = Item::new(&["lang", "float", "soft", "soft_canonical"]);
 /// The exponent field of the encoding `x`, of `M` bits of fraction.
 pub const soft_field: Item = Item::new(&["lang", "float", "soft", "soft_field"]);
 /// The significand of the finite encoding `x`, its leading one included for a normal number,

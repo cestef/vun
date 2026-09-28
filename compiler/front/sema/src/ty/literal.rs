@@ -8,13 +8,14 @@ use vun_intern::Symbol;
 use vun_span::Span;
 use vun_syntax::literal::{Decl, Literal};
 
-use super::Value;
+use super::{TyKind, Value};
 
 impl Value {
     /// This value as a literal: integers, text (an array of bytes that is UTF-8), lists, records
-    /// for `struct` values, `.name` and `.name(payload)` for variants and names, and what an
-    /// `Any` holds, and namespaces by their path from the package, whose name `package` gives;
-    /// `None` for a value no literal spells, such as a type or a function. `span` is where the
+    /// for `struct` values, `.name` and `.name(payload)` for variants and names, what an `Any`
+    /// holds, namespaces by their path from the package, whose name `package` gives, and
+    /// primitive types by their declaration's path, applied to their arguments as the call making
+    /// them (`lang.Float(32)`); `None` for a value no literal spells, such as a function. `span` is where the
     /// fields it makes are said to be written.
     #[must_use]
     pub fn literal(
@@ -49,6 +50,11 @@ impl Value {
             Self::Namespace(ns) => {
                 Literal::Path([package(ns.package)?].iter().chain(&ns.path).map(|n| n.as_str()).collect())
             }
+            Self::Type(ty) => match &**ty {
+                TyKind::Primitive(p, args) if args.is_empty() => Literal::Path(p.item().path().to_vec()),
+                TyKind::Primitive(p, args) => Literal::Call(p.item().path().to_vec(), all(args)?),
+                _ => return None,
+            },
             _ => return None,
         })
     }

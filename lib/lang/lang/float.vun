@@ -5,30 +5,30 @@ mul_add: ($T: type, a: T, b: T, c: T) -> T = _;
 
 /// IEEE 754 arithmetic in the float type `T`, rounding to nearest: none traps, a division by
 /// zero giving an infinity, a NaN result the canonical NaN (spec 04, section 2).
-#[panic.never]
+#[panic.never, lower.soft(lang.float.soft.arith.add)]
 add: ($T: type, a: T, b: T) -> T = _;
-#[panic.never]
+#[panic.never, lower.soft(lang.float.soft.arith.sub)]
 sub: ($T: type, a: T, b: T) -> T = _;
-#[panic.never]
+#[panic.never, lower.soft(lang.float.soft.arith.mul)]
 mul: ($T: type, a: T, b: T) -> T = _;
-#[panic.never]
+#[panic.never, lower.soft(lang.float.soft.arith.div)]
 div: ($T: type, a: T, b: T) -> T = _;
 #[panic.never, lower.by(lang.float.soft.rem)]
 rem: ($T: type, a: T, b: T) -> T = _;
 #[panic.never]
 neg: ($T: type, a: T) -> T = _;
 /// IEEE 754 comparisons: a NaN is equal to nothing, itself included, and in no order.
-#[panic.never]
+#[panic.never, lower.soft(lang.float.soft.compare.equal)]
 equal: ($T: type, a: &T, b: &T) -> bool = _;
-#[panic.never]
+#[panic.never, lower.soft(lang.float.soft.compare.unequal)]
 unequal: ($T: type, a: &T, b: &T) -> bool = _;
-#[panic.never]
+#[panic.never, lower.soft(lang.float.soft.compare.less)]
 less: ($T: type, a: &T, b: &T) -> bool = _;
-#[panic.never]
+#[panic.never, lower.soft(lang.float.soft.compare.less_equal)]
 less_equal: ($T: type, a: &T, b: &T) -> bool = _;
-#[panic.never]
+#[panic.never, lower.soft(lang.float.soft.compare.greater)]
 greater: ($T: type, a: &T, b: &T) -> bool = _;
-#[panic.never]
+#[panic.never, lower.soft(lang.float.soft.compare.greater_equal)]
 greater_equal: ($T: type, a: &T, b: &T) -> bool = _;
 /// IEEE 754 `totalOrder`: every float in one order, `-NaN < -inf < ... < -0 < +0 < ... < NaN`.
 #[panic.never]

@@ -9,6 +9,7 @@ wasm32 := lang.target.Spec{
     .abi = .p1,
     .convention = .wasm32,
     .pointer_bits = 32,
+    .floats = &[f32, f64],
     .endian = .little,
     .object_format = .wasm,
     .entry_symbol = .some("_start"),

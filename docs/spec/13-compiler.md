@@ -223,7 +223,9 @@ per second per stage and fails on regressions.
   value moves between ranges; enums by their shapes; checks of indices and narrowings as trap
   sites. A primitive no instruction computes is marked `#[lang.lower.by(f)]`: making its caller
   concrete rewrites each call of it into a call of `f`, a Vun function of the same parameters
-  (`lang.float.rem` runs as `lang.float.soft.rem`), compiled like any other. A slot only plain
+  (`lang.float.rem` runs as `lang.float.soft.rem`), compiled like any other. A primitive marked
+  `#[lang.lower.soft(f)]` is rewritten so when its first argument is a float type the target does
+  not compute (`lang.target.Spec.floats`): `lang.float.add` runs as `lang.float.soft.arith.add`. A slot only plain
   loads and stores of one scalar as wide as it reach, by its address alone, is then promoted
   (`Function::promote`): its stores become definitions, its loads the definition reaching them,
   through block parameters where definitions meet (as Braun et al. build SSA, every predecessor
@@ -437,7 +439,8 @@ pub trait DiagSink {
   rebuilt. Compile-time code reads the chosen target as `lang.target.current`, the value of its
   declaration (`Declared`: the `Spec` read, and the value it was read from), and picks what
   differs between systems by its members: `std.os.libc` finds its system's row by
-  `current.os`. An address is 16, 32 or 64 bits wide; any other `pointer_bits` does not read.
+  `current.os`. An address is 16, 32 or 64 bits wide; any other `pointer_bits` does not read. `floats` lists the
+  float types the processor computes, the others computed by `lang.float.soft` (spec 04).
 - **The target is chosen once, and nothing assumes one.** `--target` names a declaration of
   `targets` by its path (`--target bare.cortex_m4f`); without it, `targets.hosts` gives the
   target of the machine running the toolchain, named as Rust's `std::env::consts` names it. The

@@ -74,6 +74,10 @@ Type syntax mirrors value syntax. Patterns mirror constructors. Each symbol mean
 | `=>` | "then": match arms |
 | `\` | take what follows literally: `\unsafe` is a name, `\"C:\dir"` a string without escapes, `\\` a raw line |
 
+A sequence of types is read by what is expected of it. Where a type is expected, `(u8, bool)` is
+the tuple type and `[u8]` the slice type, and `&[u8]` a borrow type; where a sequence of types is
+expected, as by a field `floats: &[type]`, `&[f32]` borrows the array holding `f32`.
+
 ## 3. Bindings
 
 ```vun

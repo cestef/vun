@@ -2,14 +2,15 @@
 //! runtime, and starts at its reset handler.
 
 /// A 32-bit bare-metal target of `arch` and `cpu`, its code in the instruction set `isa`,
-/// following `abi` and calling C by `convention`, built with `command` and `archiver` for the
-/// machine its `machine` flags select.
+/// following `abi` and calling C by `convention`, its processor computing `floats`, built with
+/// `command` and `archiver` for the machine its `machine` flags select.
 _on := (
     $arch: lang.meta.Name,
     $isa: lang.meta.Name,
     $cpu: lang.meta.Name,
     $abi: lang.meta.Name,
     $convention: lang.target.Convention,
+    $floats: &[type],
     $command: &[u8],
     $archiver: &[u8],
     $machine: &[&[u8]],
@@ -22,6 +23,7 @@ _on := (
         .abi = abi,
         .convention = convention,
         .pointer_bits = 32,
+        .floats = floats,
         .endian = .little,
         .object_format = .elf,
         .entry_symbol = .some("Reset"),
@@ -38,6 +40,7 @@ cortex_m4f := _on(
     .cortex_m4f,
     .eabihf,
     .aapcs_vfp,
+    &[f32],
     "arm-none-eabi-gcc",
     "arm-none-eabi-ar",
     &["-mcpu=cortex-m4", "-mthumb", "-mfloat-abi=hard", "-mfpu=fpv4-sp-d16"],
@@ -49,6 +52,7 @@ cortex_m3 := _on(
     .cortex_m3,
     .eabi,
     .aapcs,
+    &[],
     "arm-none-eabi-gcc",
     "arm-none-eabi-ar",
     &["-mcpu=cortex-m3", "-mthumb", "-mfloat-abi=soft"],
@@ -60,6 +64,7 @@ rv32imc := _on(
     .rv32imc,
     .ilp32,
     .ilp32,
+    &[],
     "riscv32-unknown-elf-gcc",
     "riscv32-unknown-elf-ar",
     &["-march=rv32imc", "-mabi=ilp32"],

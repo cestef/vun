@@ -161,6 +161,8 @@ pub mod float_ops_FloatRem;
 pub mod float_ops_FloatSub;
 pub mod float_soft;
 pub mod float_soft_Soft;
+pub mod float_soft_arith;
+pub mod float_soft_compare;
 pub mod flow;
 pub mod hint;
 pub mod int;

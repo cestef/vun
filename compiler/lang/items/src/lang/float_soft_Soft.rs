@@ -11,8 +11,14 @@ pub const e: Item = Item::new(&["lang", "float", "soft", "Soft", "e"]);
 pub const negative: Item = Item::new(&["lang", "float", "soft", "Soft", "negative"]);
 /// `m · 2^e`, `m` shifted so that its leading one sits at bit `L`.
 pub const normalized: Item = Item::new(&["lang", "float", "soft", "Soft", "normalized"]);
-/// The significand shifted down by `d` bits, those shifted out kept as one sticky bit.
+/// The significand shifted down by `by` bits, those shifted out kept as one sticky bit; `D`
+/// holds `2 · W - 1` bits.
 pub const shifted: Item = Item::new(&["lang", "float", "soft", "Soft", "shifted"]);
+/// This value plus `other`, both normalized at bit `L`, rounded once to the float of type `T`
+/// nearest: the larger magnitude first, the smaller shifted to its exponent with the bits
+/// shifted out kept sticky, and an exact cancellation a positive zero, as rounding to nearest
+/// gives it.
+pub const plus: Item = Item::new(&["lang", "float", "soft", "Soft", "plus"]);
 /// The float of type `T` nearest this value, ties to even: `M` bits of fraction, `Top` the
 /// exponent field of infinities, the leading one at bit `L`.
 pub const rounded: Item = Item::new(&["lang", "float", "soft", "Soft", "rounded"]);

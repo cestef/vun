@@ -3,3 +3,8 @@
 /// At run time, the primitive this marks is a call of `f`, a Vun function taking the primitive's
 /// parameters: an operation written with those instructions do compute.
 by: ($F: type, $f: F) -> Attribute(&[Place.decls]) = _;
+
+/// At run time, where the target's processor computes no float of the type the primitive's first
+/// parameter names (`lang.target.Spec.floats`), the primitive this marks is a call of `f`: the
+/// operation written with integers (`lang.float.soft`).
+soft: ($F: type, $f: F) -> Attribute(&[Place.decls]) = _;

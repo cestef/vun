@@ -123,7 +123,12 @@ operand is a NaN, every other comparison false.
 `lang.float.bits(T, x)` is `x`'s encoding, an integer of `lang.float.Bits(T)` (unsigned, as wide
 as `T`), and `from_bits` the float of an encoding. Operations no instruction computes are written
 in Vun over the encoding (`lang.float.soft`); a primitive marked `#[lower.by(f)]` runs as a call of
-`f` at run time (spec 13, section 3).
+`f` at run time (spec 13, section 3). A target states the floats its processor computes
+(`lang.target.Spec.floats`); a primitive marked `#[lower.soft(f)]`, given a float type the target
+does not compute, runs as a call of `f`: `lang.float.soft.arith` adds, subtracts, multiplies and
+divides, rounding once to nearest, ties to even, and `lang.float.soft.compare` compares, as IEEE
+754 does both. A processor without floats (`bare.cortex_m3`) computes every float so, and one of
+single precision (`bare.cortex_m4f`) its `f64`.
 
 ## 3. Vectors
 

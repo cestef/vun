@@ -15,6 +15,7 @@ use vun_sema::checks::ChecksOf;
 use vun_sema::env::{Env, Unevaluated};
 use vun_sema::eval::{Func, Instantiation};
 use vun_sema::primitives::lower::Lower;
+use vun_sema::target::TargetOf;
 use vun_sema::ty::Value;
 use vun_sema::typeck::Typed;
 
@@ -186,7 +187,7 @@ impl Body {
                     }),
                     Value::Primitive(p) => {
                         Self::known(env, *p, args).map(|v| Rvalue::Use(Operand::Const(v))).or_else(|| {
-                            let f = Self::lowered_by(env, *p)?;
+                            let f = Self::lowered_by(env, *p, args)?;
                             Some(Rvalue::Call { callee: Operand::Const(f), args: args.clone() })
                         })
                     }
@@ -201,11 +202,26 @@ impl Body {
         changed
     }
 
-    /// The function the primitive `p` runs as where no instruction computes it (`lower.by`): a
-    /// function, so that folding it again changes nothing.
-    fn lowered_by(env: &Env<'_, '_>, p: Primitive) -> Option<Value> {
+    /// The function the primitive `p` applied to `args` runs as where no instruction computes
+    /// it: always (`lower.by`), or where the target's processor computes no float of the type
+    /// its first argument names (`lower.soft`). A function, so that folding it again changes
+    /// nothing.
+    fn lowered_by(env: &Env<'_, '_>, p: Primitive, args: &[Operand]) -> Option<Value> {
         let attributes = env.primitive_decl(p).ok()?.attributes(env.cx)?;
-        attributes.get(Primitive::Lower(Lower::by))?.pop().filter(|f| matches!(f, Value::Fn(_)))
+        let function = |attribute| {
+            attributes
+                .get(Primitive::Lower(attribute))
+                .and_then(|mut f| f.pop())
+                .filter(|f| matches!(f, Value::Fn(_)))
+        };
+        if let Some(f) = function(Lower::by) {
+            return Some(f);
+        }
+        let target = env.cx.get::<TargetOf>(&())?;
+        match args.first() {
+            Some(Operand::Const(ty)) if !target.computes(ty) => function(Lower::soft),
+            _ => None,
+        }
     }
 
     /// The value of the primitive `p` applied to `args`, when every parameter of it is a `$` one

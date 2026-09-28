@@ -1,7 +1,7 @@
 //! Prefix forms that keep or wrap their operand's type: `&e` borrows through the table
 //! `borrows` (appendix B), for the whole program when `e` lives that long; `unsafe e` has the
 //! type of `e`, and so does `#[attrs] e`, whose attributes are data. A borrow of a type, as in
-//! `Pair(&u8)`, is a type.
+//! `Pair(&u8)`, is a type, unless a borrow of a sequence of types is expected.
 
 use vun_desugar::{Borrow, Extent};
 use vun_hir::tree::ExprId;
@@ -15,9 +15,12 @@ impl Typer<'_, '_, '_> {
         let pointee = self.expected(expr).and_then(|t| t.pointee());
         let mut known = self.typed_as(operand, pointee)?;
         // Of a type, such as `u8` or `[u8]`, `&` makes a borrow type (type syntax mirrors value
-        // syntax, spec 01).
-        if known.ty == TyKind::of_types() || self.env().denotes_type(operand) {
-            return Some(Known { ty: TyKind::of_types(), ..known });
+        // syntax, spec 01), unless a borrow of types is expected: `[f32]` is then the array
+        // holding `f32` (decision 75).
+        let types = TyKind::of_types();
+        let sequence = pointee.is_some_and(|p| p.items() == Some(types));
+        if !sequence && (known.ty == types || self.env().denotes_type(operand)) {
+            return Some(Known { ty: types, ..known });
         }
         // A temporary, such as `7` in `&7`, holds the value as the type the borrow is expected
         // to reach when that type accepts it, as `x: u8 = 7` stores it; a place keeps its own.

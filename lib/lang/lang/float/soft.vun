@@ -101,34 +101,28 @@ mul_add := ($T: type, a: T, b: T, c: T) -> T {
     (mb, pb): (S, i32) = soft_parts(U, M, Top, xb);
     (mc, pc): (S, i32) = soft_parts(U, M, Top, xc);
     product_negative := ((xa ^ xb) >> (W - 1)) == 1;
-    mut big: Soft(D) = Soft(D).normalized(ma * mb, (pa + pb).to(i32), product_negative, L);
+    big: Soft(D) = Soft(D).normalized(ma * mb, (pa + pb).to(i32), product_negative, L);
     if mc == 0 { return big.rounded(T, U, M, Top, L); }
-    mut small: Soft(D) = Soft(D).normalized(mc, pc, (xc >> (W - 1)) == 1, L);
-    // The larger magnitude first; equal exponents compare significands.
-    if small.e > big.e or (small.e == big.e and small.m > big.m) {
-        swapped := big;
-        big = small;
-        small = swapped;
-    }
-    small.m = small.shifted((big.e - small.e).sat(i32), W);
-    mut m: D = if big.negative == small.negative {
-        (big.m + small.m).wrap(D)
-    } else {
-        (big.m - small.m).wrap(D)
-    };
-    // Exact cancellation gives a positive zero, rounding to nearest.
-    if m == 0 { return lang.float.from_bits(T, 0); }
-    mut e := big.e;
-    // A carry past the leading position goes back down, its bit kept sticky.
-    if m >> (L + 1) != 0 {
-        m = ((m >> 1) | (m & 1)).wrap(D);
-        e += 1;
-    }
-    for m >> L == 0 {
-        m = (m << 1).wrap(D);
-        e -= 1;
-    }
-    Soft(D){ .m = m, .e = e, .negative = big.negative }.rounded(T, U, M, Top, L)
+    small: Soft(D) = Soft(D).normalized(mc, pc, (xc >> (W - 1)) == 1, L);
+    big.plus(small, T, U, M, Top, L, W)
+};
+
+/// Whether the encoding `x` is a NaN: its exponent field all ones, and its fraction not zero.
+soft_nan := ($U: type, $M: usize, $Top: Int(0..), x: U) -> bool {
+    soft_field(U, M, Top, x) == Top and (x & ((1 << M) - 1)) != 0
+};
+
+/// The finite or infinite encoding `x` as an integer in the order of the floats: its magnitude,
+/// negated where its sign is set, so both zeros are 0.
+soft_order := ($U: type, x: U) -> Int(-(1 << (8 * lang.meta.size(U)))..(1 << (8 * lang.meta.size(U)))) {
+    $Sign := 1 << (8 * lang.meta.size(U) - 1);
+    magnitude := x & (Sign - 1);
+    if x & Sign != 0 { -magnitude } else { magnitude }
+};
+
+/// The canonical NaN of `T` (spec 04, section 2): quiet, positive, its fraction's top bit alone.
+soft_canonical := ($T: type, $U: type, $M: usize, $Top: Int(0..)) -> T {
+    lang.float.from_bits(T, ((Top.to(U) << M) | (1 << (M - 1))).wrap(U))
 };
 
 /// The exponent field of the encoding `x`, of `M` bits of fraction.
@@ -164,12 +158,54 @@ Soft := ($D: type) -> type { struct {
         .{ .m = m, .e = e, .negative = negative }
     };
 
-    /// The significand shifted down by `d` bits, those shifted out kept as one sticky bit.
+    /// The significand shifted down by `by` bits, those shifted out kept as one sticky bit; `D`
+    /// holds `2 · W - 1` bits.
     shifted := (self: &Soft(D), by: i32, $W: usize) -> D {
-        if by >= 2 * W { return if self.m != 0 { 1 } else { 0 }; }
-        d := by.wrap(Int(0..(2 * W)));
+        if by >= 2 * W - 1 { return if self.m != 0 { 1 } else { 0 }; }
+        d := by.to(Int(0..(2 * W - 1)));
         lost: D = if (self.m & ((1 << d) - 1).wrap(D)) != 0 { 1 } else { 0 };
         ((self.m >> d) | lost).wrap(D)
+    };
+
+    /// This value plus `other`, both normalized at bit `L`, rounded once to the float of type `T`
+    /// nearest: the larger magnitude first, the smaller shifted to its exponent with the bits
+    /// shifted out kept sticky, and an exact cancellation a positive zero, as rounding to nearest
+    /// gives it.
+    plus := (
+        self: Soft(D),
+        other: Soft(D),
+        $T: type,
+        $U: type,
+        $M: usize,
+        $Top: Int(0..),
+        $L: usize,
+        $W: usize,
+    ) -> T {
+        mut big := self;
+        mut small := other;
+        // Equal exponents compare significands.
+        if small.e > big.e or (small.e == big.e and small.m > big.m) {
+            big = other;
+            small = self;
+        }
+        small.m = small.shifted((big.e - small.e).sat(i32), W);
+        mut m: D = if big.negative == small.negative {
+            (big.m + small.m).wrap(D)
+        } else {
+            (big.m - small.m).wrap(D)
+        };
+        if m == 0 { return lang.float.from_bits(T, 0); }
+        mut e := big.e;
+        // A carry past the leading position goes back down, its bit kept sticky.
+        if m >> (L + 1) != 0 {
+            m = ((m >> 1) | (m & 1)).wrap(D);
+            e += 1;
+        }
+        for m >> L == 0 {
+            m = (m << 1).wrap(D);
+            e -= 1;
+        }
+        Soft(D){ .m = m, .e = e, .negative = big.negative }.rounded(T, U, M, Top, L)
     };
 
     /// The float of type `T` nearest this value, ties to even: `M` bits of fraction, `Top` the
@@ -192,7 +228,7 @@ Soft := ($D: type) -> type { struct {
             q = q >> 1;
             field += 1;
         }
-        if field >= Top { return lang.float.from_bits(T, (sign | (Top << M)).wrap(U)); }
+        if field >= Top { return lang.float.from_bits(T, (sign | (Top.to(U) << M)).wrap(U)); }
         // A normal number's leading one is its exponent's lowest bit, dropped as it adds in.
         bits := if field == 0 { q } else { ((q & ((1 << M) - 1)) | (field.wrap(D) << M)).wrap(D) };
         lang.float.from_bits(T, (sign | bits.wrap(U)).wrap(U))

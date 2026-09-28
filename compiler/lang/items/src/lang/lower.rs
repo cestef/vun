@@ -9,3 +9,7 @@ use crate::Item;
 /// At run time, the primitive this marks is a call of `f`, a Vun function taking the primitive's
 /// parameters: an operation written with those instructions do compute.
 pub const by: Item = Item::new(&["lang", "lower", "by"]);
+/// At run time, where the target's processor computes no float of the type the primitive's first
+/// parameter names (`lang.target.Spec.floats`), the primitive this marks is a call of `f`: the
+/// operation written with integers (`lang.float.soft`).
+pub const soft: Item = Item::new(&["lang", "lower", "soft"]);

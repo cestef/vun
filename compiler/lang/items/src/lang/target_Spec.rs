@@ -20,6 +20,9 @@ pub const abi: Item = Item::new(&["lang", "target", "Spec", "abi"]);
 pub const convention: Item = Item::new(&["lang", "target", "Spec", "convention"]);
 /// The width of an address.
 pub const pointer_bits: Item = Item::new(&["lang", "target", "Spec", "pointer_bits"]);
+/// The float types its processor computes; `lang.float.soft` computes the others
+/// (`lang.lower.soft`).
+pub const floats: Item = Item::new(&["lang", "target", "Spec", "floats"]);
 pub const endian: Item = Item::new(&["lang", "target", "Spec", "endian"]);
 pub const object_format: Item = Item::new(&["lang", "target", "Spec", "object_format"]);
 /// The symbol a program starts at, when the target has one.

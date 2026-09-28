@@ -76,10 +76,12 @@ every_signal: Sigset = 0xffff_ffff_ffff_ffff;
 /// not backed until touched (`MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE`).
 read_write: usize = 3;
 reserve: usize = 0x4022;
+/// The file descriptor `mmap` is given for memory backed by no file: -1.
+no_file: usize = (-1).wrap(usize);
 
 /// Private memory of `bytes` reserved, backed only where touched.
 map := (bytes: usize) -> usize {
-    call(numbers.mmap, [0, bytes, read_write, reserve, lang.target.usize_max, 0]).wrap(usize)
+    call(numbers.mmap, [0, bytes, read_write, reserve, no_file, 0]).wrap(usize)
 };
 
 /// Gives back the `bytes` mapped at `address`.

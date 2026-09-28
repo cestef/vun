@@ -1,0 +1,121 @@
+//! IEEE 754 arithmetic written with integers, for a processor computing no float of the type
+//! (`lang.lower.soft`): each operand taken apart through `lang.float.bits`, the result exact in
+//! integers twice as wide as the float, then rounded once to nearest, ties to even; a NaN result
+//! is the canonical NaN, as the instructions' are made (spec 04, section 2).
+
+_soft := lang.float.soft;
+
+/// `a + b`.
+add := ($T: type, a: T, b: T) -> T {
+    $U := lang.float.Bits(T);
+    $W := lang.meta.size(T) * 8;
+    $M := lang.float.fraction_bits(T);
+    $Top := (1 << (W - M - 1)) - 1;
+    $D := Int(0..(1 << (2 * W - 1)));
+    $L := 2 * W - 3;
+    $Sign := 1 << (W - 1);
+    (x, y): (U, U) = (lang.float.bits(T, a), lang.float.bits(T, b));
+    if _soft.soft_nan(U, M, Top, x) or _soft.soft_nan(U, M, Top, y) {
+        return _soft.soft_canonical(T, U, M, Top);
+    }
+    (ex, ey) := (_soft.soft_field(U, M, Top, x), _soft.soft_field(U, M, Top, y));
+    if ex == Top {
+        // Infinities of opposite signs add to no number.
+        if ey == Top and (x ^ y) == Sign { return _soft.soft_canonical(T, U, M, Top); }
+        return a;
+    }
+    if ey == Top { return b; }
+    // A zero adds nothing; two zeros sum to a negative zero only when both are.
+    if (x << 1).wrap(U) == 0 {
+        if (y << 1).wrap(U) == 0 { return lang.float.from_bits(T, x & y); }
+        return b;
+    }
+    if (y << 1).wrap(U) == 0 { return a; }
+    (mx, px) := _soft.soft_parts(U, M, Top, x);
+    (my, py) := _soft.soft_parts(U, M, Top, y);
+    first: _soft.Soft(D) = _soft.Soft(D).normalized(mx, px, (x >> (W - 1)) == 1, L);
+    second: _soft.Soft(D) = _soft.Soft(D).normalized(my, py, (y >> (W - 1)) == 1, L);
+    first.plus(second, T, U, M, Top, L, W)
+};
+
+/// `a - b`: `a` plus `b` negated.
+sub := ($T: type, a: T, b: T) -> T { add(T, a, lang.float.neg(T, b)) };
+
+/// `a · b`.
+mul := ($T: type, a: T, b: T) -> T {
+    $U := lang.float.Bits(T);
+    $W := lang.meta.size(T) * 8;
+    $M := lang.float.fraction_bits(T);
+    $Top := (1 << (W - M - 1)) - 1;
+    $D := Int(0..(1 << (2 * W - 1)));
+    $L := 2 * W - 3;
+    $Sign := 1 << (W - 1);
+    (x, y): (U, U) = (lang.float.bits(T, a), lang.float.bits(T, b));
+    if _soft.soft_nan(U, M, Top, x) or _soft.soft_nan(U, M, Top, y) {
+        return _soft.soft_canonical(T, U, M, Top);
+    }
+    sign: U = (x ^ y) & Sign;
+    zero := (x << 1).wrap(U) == 0 or (y << 1).wrap(U) == 0;
+    if _soft.soft_field(U, M, Top, x) == Top or _soft.soft_field(U, M, Top, y) == Top {
+        // An infinity times zero is no number.
+        if zero { return _soft.soft_canonical(T, U, M, Top); }
+        return lang.float.from_bits(T, (sign | (Top.to(U) << M)).wrap(U));
+    }
+    if zero { return lang.float.from_bits(T, sign); }
+    (mx, px) := _soft.soft_parts(U, M, Top, x);
+    (my, py) := _soft.soft_parts(U, M, Top, y);
+    product: _soft.Soft(D) = _soft.Soft(D).normalized(mx * my, (px + py).to(i32), sign != 0, L);
+    product.rounded(T, U, M, Top, L)
+};
+
+/// `a / b`: the dividend's significand shifted up past the divisor's, both with their leading
+/// one at bit `M`, so the integer quotient holds `M + 3` bits at least, a remainder kept sticky.
+div := ($T: type, a: T, b: T) -> T {
+    $U := lang.float.Bits(T);
+    $W := lang.meta.size(T) * 8;
+    $M := lang.float.fraction_bits(T);
+    $Top := (1 << (W - M - 1)) - 1;
+    $S := Int(0..(1 << (M + 1)));
+    $D := Int(0..(1 << (2 * W - 1)));
+    $L := 2 * W - 3;
+    $Sign := 1 << (W - 1);
+    $Shift := M + 4;
+    (x, y): (U, U) = (lang.float.bits(T, a), lang.float.bits(T, b));
+    if _soft.soft_nan(U, M, Top, x) or _soft.soft_nan(U, M, Top, y) {
+        return _soft.soft_canonical(T, U, M, Top);
+    }
+    sign: U = (x ^ y) & Sign;
+    infinity := lang.float.from_bits(T, (sign | (Top.to(U) << M)).wrap(U));
+    zero := lang.float.from_bits(T, sign);
+    (zx, zy) := ((x << 1).wrap(U) == 0, (y << 1).wrap(U) == 0);
+    (ex, ey) := (_soft.soft_field(U, M, Top, x), _soft.soft_field(U, M, Top, y));
+    // Infinities over infinities and zeros over zeros are no number.
+    if ex == Top {
+        if ey == Top { return _soft.soft_canonical(T, U, M, Top); }
+        return infinity;
+    }
+    if ey == Top { return zero; }
+    if zy {
+        if zx { return _soft.soft_canonical(T, U, M, Top); }
+        return infinity;
+    }
+    if zx { return zero; }
+    (mx, px) := _soft.soft_parts(U, M, Top, x);
+    (my, py) := _soft.soft_parts(U, M, Top, y);
+    mut (nx, ex2): (S, i32) = (mx, px);
+    mut (ny, ey2): (S, i32) = (my, py);
+    for nx >> M == 0 {
+        nx = (nx << 1).wrap(S);
+        ex2 -= 1;
+    }
+    for ny >> M == 0 {
+        ny = (ny << 1).wrap(S);
+        ey2 -= 1;
+    }
+    dividend: D = (nx.to(D) << Shift).wrap(D);
+    quotient: D = dividend / ny.to(D);
+    lost: D = if dividend % ny.to(D) != 0 { 1 } else { 0 };
+    q: D = (quotient | lost).wrap(D);
+    ratio: _soft.Soft(D) = _soft.Soft(D).normalized(q, (ex2 - ey2 - Shift).sat(i32), sign != 0, L);
+    ratio.rounded(T, U, M, Top, L)
+};

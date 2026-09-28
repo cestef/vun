@@ -240,11 +240,17 @@ In flight, not in main:
   `targets.linux.arm` runs under `qemu-arm` with a toolchain row naming `clang
   --target=armv7a-linux-gnueabihf -fuse-ld=lld -nostdlib` (this machine has no 32-bit Arm
   `libgcc`; the row is not in the user's file yet: pass `VUN_TOOLCHAIN=<copy>`, as other sessions
-  read that file). 9 of the 13 driver programs agree with x86-64; open: soft floats (`f64` on a
-  single-precision FPU, every float under `aapcs`; `lang.float.soft`), float conversions of
-  integers wider than a word, 64-bit atomics (`ldrexd`/`strexd`), CPU features (single or double
-  float), the backend tests running linux.arm, and factoring the isel shared by arm64 and Thumb
-  (`needs.rs` is identical, `call`, `entry`, `term` and `carry` nearly).
+  read that file). 9 of the 13 driver programs agree with x86-64. Soft floats (decision 294):
+  `Spec.floats` and `#[lower.soft]` rewrite float arithmetic and comparisons the processor lacks
+  into `lang.float.soft.{arith, compare}`, checked bit for bit against x86-64 (random and special
+  operands, and x86-64 run with `floats = &[]`). Open: legalization holding a float the backend
+  does not compute as its bits (`f64` on 32-bit Thumb, as `Half::Promoted` holds `f16`), soft
+  conversions (int and float, `f32` and `f64`), `f64` in VFP `d` registers for linux.arm (its
+  FPU computes it; the backend lacks it), float conversions of integers wider than a word, 64-bit
+  atomics (`ldrexd`/`strexd`), the backend tests running linux.arm, factoring the isel shared by
+  arm64 and Thumb (`call`, `entry`, `term`, `carry`), and two MIR gaps met on the way: an
+  operator on a generic `$T` in a generic body, and a namespace bound to a local
+  (`s := lang.float.soft.arith; s.add(..)`).
 - Milestone 3a landed (decision 280): `Rules::{AAPCS, AAPCS_VFP}` (word, stack alignment,
   `returned`, `Floats`, `Split`), backfill in `vun-abi`'s banks, `Loc::Split { parts, rest }` for
   straddling records (handled by the x86-64 and arm64 isel), wide results as `AbiType::Wide`

@@ -19,6 +19,7 @@ use crate::Primitive;
 use crate::int::Integer;
 use crate::primitives::target::Target as Constant;
 use crate::ty::Value;
+use vun_items::lang::target_Spec as spec;
 
 /// A target as its declaration gives it: the description read from it, and the value itself.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
@@ -42,6 +43,8 @@ pub struct Target {
     pub address_bits: u32,
     /// The instruction set its code is written in, which a block of instructions names.
     pub isa: Symbol,
+    /// The float types its processor computes, as types (`lang.target.Spec.floats`).
+    pub floats: Vec<Value>,
     /// The value of its declaration: `lang.target.current`.
     pub declared: Value,
 }
@@ -50,12 +53,21 @@ impl Target {
     /// What compile-time code sees of `target`.
     #[must_use]
     pub fn of(target: &Declared) -> Self {
+        let floats = Members::of(&target.value).and_then(|m| m.get(spec::floats)).ok().cloned();
         Self {
             endian: target.spec.endian,
             address_bits: target.spec.pointer_bits,
             isa: target.spec.isa,
+            floats: floats.and_then(Value::items).unwrap_or_default(),
             declared: target.value.clone(),
         }
+    }
+
+    /// Whether its processor computes floats of the type `ty`, which `lang.float.soft` computes
+    /// otherwise (`lang.lower.soft`).
+    #[must_use]
+    pub fn computes(&self, ty: &Value) -> bool {
+        self.floats.contains(ty)
     }
 
     /// The largest address: `usize` is `Int(0..=usize_max)`.

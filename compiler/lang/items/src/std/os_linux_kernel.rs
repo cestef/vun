@@ -35,6 +35,8 @@ pub const every_signal: Item = Item::new(
 /// not backed until touched (`MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE`).
 pub const read_write: Item = Item::new(&["std", "os", "linux", "kernel", "read_write"]);
 pub const reserve: Item = Item::new(&["std", "os", "linux", "kernel", "reserve"]);
+/// The file descriptor `mmap` is given for memory backed by no file: -1.
+pub const no_file: Item = Item::new(&["std", "os", "linux", "kernel", "no_file"]);
 /// Private memory of `bytes` reserved, backed only where touched.
 pub const map: Item = Item::new(&["std", "os", "linux", "kernel", "map"]);
 /// Gives back the `bytes` mapped at `address`.

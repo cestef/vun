@@ -1,0 +1,41 @@
+//! IEEE 754 comparisons written with integers, for a processor computing no float of the type
+//! (`lang.lower.soft`): a NaN is equal to nothing and in no order, zeros of both signs are equal,
+//! and other floats are in the order of their signed magnitudes.
+
+_soft := lang.float.soft;
+
+/// `a == b`.
+equal := ($T: type, a: &T, b: &T) -> bool {
+    $U := lang.float.Bits(T);
+    $M := lang.float.fraction_bits(T);
+    $Top := (1 << (lang.meta.size(T) * 8 - M - 1)) - 1;
+    (x, y): (U, U) = (lang.float.bits(T, a.*), lang.float.bits(T, b.*));
+    if _soft.soft_nan(U, M, Top, x) or _soft.soft_nan(U, M, Top, y) { return false; }
+    x == y or ((x | y) << 1).wrap(U) == 0
+};
+
+/// `a != b`: true with a NaN.
+unequal := ($T: type, a: &T, b: &T) -> bool { !equal(T, a, b) };
+
+/// `a < b`.
+less := ($T: type, a: &T, b: &T) -> bool {
+    $U := lang.float.Bits(T);
+    $M := lang.float.fraction_bits(T);
+    $Top := (1 << (lang.meta.size(T) * 8 - M - 1)) - 1;
+    (x, y): (U, U) = (lang.float.bits(T, a.*), lang.float.bits(T, b.*));
+    if _soft.soft_nan(U, M, Top, x) or _soft.soft_nan(U, M, Top, y) { return false; }
+    _soft.soft_order(U, x) < _soft.soft_order(U, y)
+};
+
+/// `a <= b`.
+less_equal := ($T: type, a: &T, b: &T) -> bool {
+    $U := lang.float.Bits(T);
+    $M := lang.float.fraction_bits(T);
+    $Top := (1 << (lang.meta.size(T) * 8 - M - 1)) - 1;
+    (x, y): (U, U) = (lang.float.bits(T, a.*), lang.float.bits(T, b.*));
+    if _soft.soft_nan(U, M, Top, x) or _soft.soft_nan(U, M, Top, y) { return false; }
+    _soft.soft_order(U, x) <= _soft.soft_order(U, y)
+};
+
+greater := ($T: type, a: &T, b: &T) -> bool { less(T, b, a) };
+greater_equal := ($T: type, a: &T, b: &T) -> bool { less_equal(T, b, a) };

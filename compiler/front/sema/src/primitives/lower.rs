@@ -6,15 +6,20 @@ pub enum Lower {
     /// At run time, the primitive this marks is a call of `f`, a Vun function taking the primitive's
     /// parameters: an operation written with those instructions do compute.
     by,
+    /// At run time, where the target's processor computes no float of the type the primitive's first
+    /// parameter names (`lang.target.Spec.floats`), the primitive this marks is a call of `f`: the
+    /// operation written with integers (`lang.float.soft`).
+    soft,
 }
 impl Lower {
     pub const NAMESPACE: vun_items::Item = vun_items::lang::lower;
-    pub const ALL: &[Self] = &[Self::by];
+    pub const ALL: &[Self] = &[Self::by, Self::soft];
     /// The declaration's name.
     #[must_use]
     pub const fn name(self) -> &'static str {
         match self {
             Self::by => "by",
+            Self::soft => "soft",
         }
     }
     /// The declaration.
@@ -22,6 +27,7 @@ impl Lower {
     pub const fn item(self) -> vun_items::Item {
         match self {
             Self::by => vun_items::lang::lower::by,
+            Self::soft => vun_items::lang::lower::soft,
         }
     }
 }
