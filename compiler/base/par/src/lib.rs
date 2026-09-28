@@ -1,11 +1,12 @@
 //! Independent work spread over threads, results in the items' order, and the map threads share
 //! state in.
 //!
-//! The caller works alongside the pool's threads, started once for the process (`pool`). Items are claimed in runs from one shared
-//! counter, guided: a run is a share of what is left, so early claims are long and cheap to
-//! coordinate and the last ones single items that balance uneven costs. Each worker keeps its
-//! runs' results together; they are joined in order at the end. A call made from inside a worker
-//! runs on that worker alone: the machine is already busy, and more threads would only compete.
+//! The caller works alongside the pool's threads, started once for the process (`pool`), which
+//! join it while it runs whenever they are free, a call made inside another's work as well.
+//! Items are claimed in runs from one shared counter, guided: a run is a share of what is left,
+//! so early claims are long and cheap to coordinate and the last ones single items that balance
+//! uneven costs. Each worker keeps its runs' results together; they are joined in order at the
+//! end.
 
 use std::cell::Cell;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -16,7 +17,7 @@ use std::time::Instant;
 mod pool;
 mod usage;
 
-use pool::Pool;
+pub use pool::Pool;
 pub use usage::Usage;
 use usage::{COUNTS, Counts};
 
@@ -35,7 +36,7 @@ const SHARES: usize = 2;
 struct Counter(AtomicUsize);
 
 thread_local! {
-    /// Whether this thread is working for a `par_map`.
+    /// Whether this thread is working for a `par_map`, as the reports count.
     static WORKING: Cell<bool> = const { Cell::new(false) };
 }
 
@@ -69,7 +70,6 @@ impl<T: Sync> Parallel<T> for [T] {
         let workers = threads().min(self.len());
         if WORKING.get() {
             Counts::add(&COUNTS.nested, 1);
-            return self.iter().map(f).collect();
         }
         if workers <= 1 {
             Counts::add(&COUNTS.alone, 1);

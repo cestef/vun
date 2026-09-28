@@ -13,11 +13,19 @@ use crate::{Blob, Decode, Malformed, Pooled, Pools};
 /// and the handles already read from them, so that each entry is recorded once however often it
 /// is referenced. Threads share it without locks, so values can be read when first needed, in
 /// any order, on any thread.
+///
+/// A stream can be layered over another: its input follows the other's, so that a place names
+/// the input of the layer holding it, and each of its pools numbers its entries after the other's
+/// entries of that pool, so that its values name the other's handles as the other's values do.
 #[derive(Default)]
 pub struct Context {
     input: Box<[u8]>,
+    /// Where `input` starts in the stream: the end of the stream it is layered over.
+    offset: usize,
+    base: Option<Arc<Context>>,
+    /// The entries of this layer's pools, as places in the stream.
     pools: HashMap<String, Vec<Blob>>,
-    /// The handles read from each pool, by the handle's type.
+    /// The handles read from each pool of this layer, by the handle's type.
     read: Map<TypeId, Arc<dyn Any + Send + Sync>>,
 }
 
@@ -31,29 +39,54 @@ impl Context {
     #[must_use]
     pub fn within(input: Box<[u8]>, pools: Pools<Blob>) -> Self {
         let pools = pools.0.into_iter().map(|pool| (pool.name, pool.entries)).collect();
-        Self { input, pools, read: Map::default() }
+        Self { input, offset: 0, base: None, pools, read: Map::default() }
+    }
+
+    /// A stream of `input` layered over `base`, whose pools are the places `pools` give in
+    /// `input`.
+    #[must_use]
+    pub fn over(base: Arc<Context>, input: Box<[u8]>, pools: Pools<Blob>) -> Self {
+        let offset = base.end();
+        let mut stream = Self { offset, base: Some(base), ..Self::within(input, Pools::default()) };
+        let pools = pools
+            .0
+            .into_iter()
+            .map(|pool| (pool.name, pool.entries.into_iter().map(|blob| stream.place(blob)).collect()));
+        stream.pools = pools.collect();
+        stream
+    }
+
+    /// The stream this one is layered over.
+    #[must_use]
+    pub fn base(&self) -> Option<&Context> {
+        self.base.as_deref()
+    }
+
+    /// The place in the stream of `blob`, a place in this layer's input.
+    #[must_use]
+    pub fn place(&self, blob: Blob) -> Blob {
+        Blob { at: self.offset + blob.at, len: blob.len }
+    }
+
+    /// Where the stream ends: where a stream layered over it starts.
+    fn end(&self) -> usize {
+        self.offset + self.input.len()
     }
 
     /// A stream with `pools`, as written.
     #[must_use]
     pub fn new(pools: Pools) -> Self {
-        let mut input = Vec::new();
-        let pools = pools.0.into_iter().map(|pool| {
-            let entries = pool.entries.iter().map(|entry| {
-                let at = input.len();
-                input.extend_from_slice(entry);
-                Blob { at, len: entry.len() }
-            });
-            crate::Pool { name: pool.name, entries: entries.collect() }
-        });
-        let pools = Pools(pools.collect());
-        Self::within(input.into_boxed_slice(), pools)
+        let (input, pools) = pools.placed();
+        Self::within(input, pools)
     }
 
     /// The bytes of `blob`, read from this stream's input.
     #[must_use]
     pub fn bytes(&self, blob: Blob) -> &[u8] {
-        blob.of(&self.input)
+        match &self.base {
+            Some(base) if blob.at < self.offset => base.bytes(blob),
+            _ => Blob { at: blob.at - self.offset, len: blob.len }.of(&self.input),
+        }
     }
 
     /// Reads a value from the front of `bytes`, as a header leading them, which holds no handle.
@@ -81,24 +114,62 @@ impl Context {
         Reader { bytes: self.bytes(blob), at: blob.at, context: self }.whole()
     }
 
-    /// The entries of each pool, as bytes.
+    /// The entries of each pool of this layer, as bytes.
     pub(crate) fn entries(&self) -> HashMap<String, Vec<Vec<u8>>> {
         let entries = |blobs: &Vec<Blob>| blobs.iter().map(|&blob| self.bytes(blob).to_vec()).collect();
         self.pools.iter().map(|(name, blobs)| (name.clone(), entries(blobs))).collect()
     }
 
-    /// The handles of type `T` read so far, with their numbers in the stream.
-    pub(crate) fn numbers<T: Pooled>(&self) -> HashMap<T, usize, foldhash::fast::RandomState> {
-        let Some(pool) = self.read.pin().get(&TypeId::of::<T>()).cloned() else { return HashMap::default() };
-        let pool = pool.downcast::<PoolReader<T>>().expect("one pool per handle type");
-        pool.handles
-            .iter()
-            .enumerate()
-            .filter_map(|(number, handle)| Some((*handle.get()?, number)))
-            .collect()
+    /// How many entries the pool `name` holds, in every layer.
+    pub(crate) fn count(&self, name: &str) -> usize {
+        self.first(name) + self.pools.get(name).map_or(0, Vec::len)
     }
 
-    /// The handles read from the pool of `T`, made the first time.
+    /// The number of the first entry of this layer's pool `name`.
+    fn first(&self, name: &str) -> usize {
+        self.base.as_ref().map_or(0, |base| base.count(name))
+    }
+
+    /// The handles of type `T` read so far, with their numbers in the stream.
+    pub(crate) fn numbers<T: Pooled>(&self) -> HashMap<T, usize, foldhash::fast::RandomState> {
+        let mut numbers = self.base.as_ref().map(|base| base.numbers()).unwrap_or_default();
+        let Some(pool) = self.read.pin().get(&TypeId::of::<T>()).cloned() else { return numbers };
+        let pool = pool.downcast::<PoolReader<T>>().expect("one pool per handle type");
+        let first = self.first(T::POOL);
+        let read = pool.handles.iter().enumerate();
+        numbers.extend(read.filter_map(|(number, handle)| Some((*handle.get()?, first + number))));
+        numbers
+    }
+
+    /// The handle numbered `number` in the pool of `T`, recording its entry in the reading
+    /// process's table the first time the stream references it.
+    fn handle<T: Pooled>(&self, number: usize) -> Result<T, Malformed> {
+        let first = self.first(T::POOL);
+        if let Some(base) = &self.base
+            && number < first
+        {
+            return base.handle(number);
+        }
+        let pool = self.pool::<T>();
+        let own = number - first;
+        let slot = pool.handles.get(own).ok_or(Malformed::Unpooled { pool: T::POOL, number })?;
+        if let Some(&handle) = slot.get() {
+            return Ok(handle);
+        }
+        let entry = self.pools[T::POOL][own];
+        // Reading the entry may read other entries, so the slot is set after: two threads may
+        // both record it, which gives equal handles, and the first stands. An entry reached
+        // again while it is read refers to itself, which no written stream does.
+        let _reading = Reading::enter(self, TypeId::of::<T>(), number)?;
+        let mut r = Reader { bytes: self.bytes(entry), at: entry.at, context: self };
+        let handle = T::read(&mut r)?;
+        if r.remaining() != 0 {
+            return Err(Malformed::Trailing);
+        }
+        Ok(*slot.get_or_init(|| handle))
+    }
+
+    /// The handles read from this layer's pool of `T`, made the first time.
     fn pool<T: Pooled>(&self) -> Arc<PoolReader<T>> {
         let read = self.read.pin();
         let pool = read.get_or_insert_with(TypeId::of::<T>(), || {
@@ -171,23 +242,7 @@ impl<'a> Reader<'a> {
     /// Returns why the number or its entry is malformed.
     pub fn pooled<T: Pooled>(&mut self) -> Result<T, Malformed> {
         let number = usize::decode(self)?;
-        let context = self.context;
-        let pool = context.pool::<T>();
-        let slot = pool.handles.get(number).ok_or(Malformed::Unpooled { pool: T::POOL, number })?;
-        if let Some(&handle) = slot.get() {
-            return Ok(handle);
-        }
-        let entry = context.pools[T::POOL][number];
-        // Reading the entry may read other entries, so the slot is set after: two threads may
-        // both record it, which gives equal handles, and the first stands. An entry reached
-        // again while it is read refers to itself, which no written stream does.
-        let _reading = Reading::enter(context, TypeId::of::<T>(), number)?;
-        let mut r = Reader { bytes: context.bytes(entry), at: entry.at, context };
-        let handle = T::read(&mut r)?;
-        if r.remaining() != 0 {
-            return Err(Malformed::Trailing);
-        }
-        Ok(*slot.get_or_init(|| handle))
+        self.context.handle(number)
     }
 }
 

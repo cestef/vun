@@ -1,10 +1,10 @@
 //! What a saved file holds, counted per query and per pool without loading it into a database:
 //! what `vun debug queries` shows.
 
-use vun_codec::{Blob, Context, Decode};
+use vun_codec::Blob;
 
 use super::Unloaded;
-use super::saved::{FORMAT, Loaded, Saved, SavedMemo, SavedQuery};
+use super::saved::{Loaded, Saved, SavedMemo, SavedQuery};
 
 /// The counts of a saved file.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -32,16 +32,13 @@ impl Census {
     /// # Errors
     /// Returns an error if the bytes are not saved memos of this format.
     pub fn of(bytes: &[u8]) -> Result<Self, Unloaded> {
-        let format = Context::default().front::<u32>(bytes).map_err(Unloaded::Decode)?;
-        if format != FORMAT {
-            return Err(Unloaded::Format { found: format });
-        }
-        let header = Saved::<Blob>::decoded(bytes).map_err(Unloaded::Decode)?;
+        let header = Saved::header(bytes)?;
         let body: Loaded = header.body.read(bytes).map_err(Unloaded::Decode)?;
         let sum = |blobs: &mut dyn Iterator<Item = Blob>| blobs.map(|b| b.len).sum::<usize>();
         let queries = body.queries.iter().map(|q| {
-            let keys = q.query.read::<SavedQuery<Blob>>(bytes)?.keys;
-            let memos = keys.iter().filter_map(|k| k.memo).map(|m| m.read::<SavedMemo<Blob>>(bytes));
+            let SavedQuery { keys, replaced } = q.query.read::<SavedQuery<Blob>>(bytes)?;
+            let memos = keys.iter().filter_map(|k| k.memo).chain(replaced.iter().map(|r| r.memo));
+            let memos = memos.map(|m| m.read::<SavedMemo<Blob>>(bytes));
             let memos = memos.collect::<Result<Vec<_>, _>>()?;
             Ok(Counted {
                 name: q.name.clone(),

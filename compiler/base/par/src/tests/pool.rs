@@ -1,13 +1,13 @@
 //! The pool's `unsafe` lending, tested for what makes it sound: the work, borrowing the caller's
-//! stack, is never used after the call ends, however it ends; every result is dropped once; and
-//! a call never waits on work it did not lend. Run under Miri as well (`cargo +nightly miri test
+//! stack, is never used after the call ends, however it ends; every result is dropped once; a
+//! call never waits on work it did not lend; and a worker freed while a call runs joins it. Run under Miri as well (`cargo +nightly miri test
 //! -p vun-par`), which checks every access against the borrow's lifetime.
 
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::thread;
 use std::time::Duration;
 
-use crate::Parallel;
+use crate::{Parallel, Pool};
 
 /// How many times a test repeats: fewer under Miri, which interprets every step.
 const ROUNDS: usize = if cfg!(miri) { 4 } else { 200 };
@@ -92,7 +92,7 @@ fn many_callers_at_once_each_get_their_own_results() {
 }
 
 #[test]
-fn nested_calls_from_many_callers_run_on_their_workers() {
+fn nested_calls_from_many_callers_each_get_their_own_results() {
     thread::scope(|scope| {
         for _ in 0..if cfg!(miri) { 2 } else { 8 } {
             scope.spawn(|| {
@@ -129,6 +129,48 @@ fn a_call_while_every_worker_is_busy_runs_without_waiting_for_them() {
         let items: Vec<usize> = (0..100).collect();
         assert_eq!(items.par_map(|n| n + 1).len(), 100);
         release.store(true, Ordering::SeqCst);
+        holder.join().unwrap();
+    });
+}
+
+#[test]
+fn a_worker_free_later_joins_a_call_still_running_and_is_named_its_helper() {
+    let workers = crate::threads();
+    if workers < 2 {
+        return;
+    }
+    let (release, held) = (AtomicBool::new(false), AtomicUsize::new(0));
+    let (entered, named) = (AtomicUsize::new(0), AtomicBool::new(false));
+    thread::scope(|scope| {
+        // Holds every worker idle at the start until the call below is open.
+        let holder = scope.spawn(|| {
+            let items: Vec<usize> = (0..workers * 2).collect();
+            items.par_map(|_| {
+                held.fetch_add(1, Ordering::SeqCst);
+                while !release.load(Ordering::SeqCst) {
+                    thread::sleep(Duration::from_millis(1));
+                }
+            });
+        });
+        while held.load(Ordering::SeqCst) == 0 {
+            thread::sleep(Duration::from_millis(1));
+        }
+        let caller = thread::current().id();
+        let joined = Pool::global().run(1, &|| {
+            entered.fetch_add(1, Ordering::SeqCst);
+            release.store(true, Ordering::SeqCst);
+            // A worker is free once the calls holding it end, other tests' included: the call
+            // stays open until one joins.
+            while entered.load(Ordering::SeqCst) < 2 {
+                thread::sleep(Duration::from_millis(1));
+            }
+            if Pool::global().helpers(caller).len() == 1 {
+                named.store(true, Ordering::SeqCst);
+            }
+        });
+        assert_eq!(joined, 1, "a worker freed while the call ran joined it");
+        assert!(named.load(Ordering::SeqCst), "the worker in the call is named its caller's helper");
+        assert!(Pool::global().helpers(caller).is_empty(), "none once the call ended");
         holder.join().unwrap();
     });
 }

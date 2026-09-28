@@ -1,78 +1,94 @@
-//! The threads every `par_map` of the process shares, started once, so that a call costs a queue
-//! push and a wake-up rather than a thread per worker.
+//! The threads every `par_map` of the process shares, started once, so that a call costs a lock
+//! and a wake-up rather than a thread per worker.
 //!
-//! A call lends its work, a closure borrowing the caller's stack, to workers idle at that moment,
-//! runs its own share, and waits until every worker lent it is done with it. Lending only to idle
-//! workers keeps what the caller waits on running, never queued behind other work: a worker never
-//! waits for a call, so a caller holding a query that a busy worker needs cannot wait on it.
+//! A call opens its work, a closure borrowing the caller's stack, to the workers, runs its own
+//! share, closes it, and waits until every worker that joined is done with it. A worker idle, at
+//! the call or any time before it closes, joins the newest call open with room: work is taken by
+//! whoever is free, calls made inside another's work included, never queued behind other work.
+//! What a caller waits on is always running, and [`Pool::helpers`] names it, so that a thread
+//! about to wait on another can see whether that one waits on it.
 //!
 //! This is the one module of the compiler that uses `unsafe` (the workspace denies it): the
-//! closure's lifetime is erased to send it to a thread that outlives the call. The invariant that
-//! makes it sound is local to [`Pool::run`]: the frame owning the closure does not end, returning
-//! or unwinding, before every worker it was lent to has reported to the call's latch, and a
-//! worker reports only once it will never touch the closure again.
+//! closure's lifetime is erased to send it to threads that outlive the call. The invariant that
+//! makes it sound is local to [`Pool::run`]: a worker joins only while the call is open, counted
+//! on the call's latch under the pool's lock; the call closes under that lock before its frame
+//! ends, returning or unwinding, and the frame then waits until every worker counted has
+//! reported, which a worker does only once it will never touch the closure again.
 
 #![allow(unsafe_code, reason = "lending borrowed work to threads that outlive the call")]
 
 use std::any::Any;
-use std::collections::VecDeque;
+use std::collections::HashMap;
 use std::panic::{self, AssertUnwindSafe};
 use std::sync::{Arc, Condvar, Mutex, MutexGuard, OnceLock, PoisonError};
-use std::thread;
+use std::thread::{self, ThreadId};
 
 use crate::{STACK, Working};
 
 /// A panic's payload, carried from the thread it happened on to the caller.
 type Panic = Box<dyn Any + Send>;
 
-/// The shared threads, and the work lent to them.
-pub(crate) struct Pool {
+/// The shared threads, and the calls open to them.
+pub struct Pool {
     state: Mutex<State>,
-    /// Signalled when work is lent.
-    lent: Condvar,
+    /// Signalled when a call opens.
+    opened: Condvar,
 }
 
+#[derive(Default)]
 struct State {
-    /// Work lent and not yet taken: never more than the workers idle, so each is taken at once.
-    queue: VecDeque<Task>,
-    /// Workers not running anything and not reserved for work in the queue.
-    idle: usize,
+    /// Calls taking workers, the newest last.
+    open: Vec<Open>,
+    /// The workers in the work of each thread's calls, by the calling thread.
+    helping: HashMap<ThreadId, Vec<ThreadId>>,
 }
 
-/// Work lent to one worker: the call's closure and where to report when done with it.
-struct Task {
+/// A call open, and how many more workers it takes.
+struct Open {
+    call: Arc<Call>,
+    room: usize,
+}
+
+/// A call's work, the thread that made it, and where the workers that joined report.
+struct Call {
     work: Work,
-    latch: Arc<Latch>,
+    caller: ThreadId,
+    latch: Latch,
 }
 
-/// A call's closure, its lifetime erased so that it can be sent to a worker. Only
-/// [`Pool::run`] makes one, and only a worker calls it, before reporting to the call's latch.
+/// A call's closure, its lifetime erased so that it can be sent to workers. Only [`Pool::run`]
+/// makes one, and only a worker counted on the call's latch calls it, before reporting.
 struct Work(*const (dyn Fn() + Sync + 'static));
 
-// SAFETY: the closure is `Sync`, so calling it from another thread through a shared reference is
+// SAFETY: the closure is `Sync`, so calling it from other threads through a shared reference is
 // sound; its lifetime is upheld by `Pool::run` (see the module).
 unsafe impl Send for Work {}
+// SAFETY: as above: workers share it only to call the `Sync` closure.
+unsafe impl Sync for Work {}
 
-/// How many workers lent a call's work are not done with it, and the first panic among them.
+/// How many workers that joined a call are not done with it, how many joined, and the first
+/// panic among them.
 struct Latch {
     state: Mutex<Pending>,
     done: Condvar,
 }
 
+#[derive(Default)]
 struct Pending {
     workers: usize,
+    joined: usize,
     panic: Option<Panic>,
 }
 
 impl Pool {
     /// The process's pool, its workers started on first use: one fewer than the threads the
     /// machine runs at once, the caller being the last.
-    pub(crate) fn global() -> &'static Pool {
+    pub fn global() -> &'static Pool {
         static POOL: OnceLock<Pool> = OnceLock::new();
         let mut started = false;
         let pool = POOL.get_or_init(|| {
             started = true;
-            Pool { state: Mutex::new(State { queue: VecDeque::new(), idle: 0 }), lent: Condvar::new() }
+            Pool { state: Mutex::new(State::default()), opened: Condvar::new() }
         });
         if started {
             pool.start(crate::threads().saturating_sub(1));
@@ -80,76 +96,112 @@ impl Pool {
         pool
     }
 
-    /// Starts up to `workers` threads; each that starts is idle.
+    /// Starts up to `workers` threads.
     fn start(&'static self, workers: usize) {
         for _ in 0..workers {
             let spawned = thread::Builder::new().stack_size(STACK).spawn(move || self.work());
             if spawned.is_err() {
                 break;
             }
-            lock(&self.state).idle += 1;
         }
     }
 
-    /// Runs `work` on the caller and on up to `helpers` idle workers at once, returning once each
-    /// is done with it, with how many workers joined. A panic in the caller's run goes on once the
-    /// workers are done; a panic in a worker's goes on in the caller once the caller's own run
-    /// ends.
+    /// The workers in the work of the calls `thread` made and has not ended: those it waits on
+    /// before they end.
+    #[must_use]
+    pub fn helpers(&self, thread: ThreadId) -> Vec<ThreadId> {
+        lock(&self.state).helping.get(&thread).cloned().unwrap_or_default()
+    }
+
+    /// Runs `work` on the caller and on up to `helpers` workers, each joining while the caller
+    /// runs its own share, returning once each is done with it, with how many joined. A panic in
+    /// the caller's run goes on once the workers are done; a panic in a worker's goes on in the
+    /// caller once the caller's own run ends.
     pub(crate) fn run(&self, helpers: usize, work: &(dyn Fn() + Sync)) -> usize {
         // SAFETY: erases the lifetime of `work` alone, the pointee and its metadata unchanged. The
-        // pointer goes only into the tasks queued below, each reports to `latch` once its worker
-        // is done with it, and `lent` waits for every report before this frame ends, however it
-        // ends: `work` outlives every use.
+        // pointer goes only into the call below, which workers join only while it is open;
+        // `lent` closes it and waits for every worker that joined before this frame ends,
+        // however it ends: `work` outlives every use.
         #[expect(clippy::transmute_ptr_to_ptr, reason = "a cast cannot lengthen a trait object's lifetime")]
         let erased = unsafe {
             std::mem::transmute::<*const (dyn Fn() + Sync + '_), *const (dyn Fn() + Sync + 'static)>(work)
         };
-        // The guard comes first: from here on, this frame ends only once every worker lent the
-        // work is done with it, however it ends.
-        let latch =
-            Arc::new(Latch { state: Mutex::new(Pending { workers: 0, panic: None }), done: Condvar::new() });
-        let lent = Lent(Arc::clone(&latch));
-        let workers = {
-            let mut state = lock(&self.state);
-            let workers = helpers.min(state.idle);
-            // Room first, so that lending below allocates nothing and cannot fail halfway.
-            state.queue.reserve(workers);
-            lock(&latch.state).workers = workers;
-            state.idle -= workers;
-            for _ in 0..workers {
-                state.queue.push_back(Task { work: Work(erased), latch: Arc::clone(&latch) });
-            }
-            workers
-        };
-        self.lent.notify_all();
+        let caller = thread::current().id();
+        let call = Arc::new(Call {
+            work: Work(erased),
+            caller,
+            latch: Latch { state: Mutex::default(), done: Condvar::new() },
+        });
+        // The guard comes first: from here on, this frame ends only once the call is closed and
+        // every worker that joined is done with it, however it ends.
+        let lent = Lent { pool: self, call: Arc::clone(&call) };
+        if helpers > 0 {
+            lock(&self.state).open.push(Open { call, room: helpers });
+            self.opened.notify_all();
+        }
         work();
-        if let Some(panic) = lent.wait() {
+        let (joined, panic) = lent.finish();
+        if let Some(panic) = panic {
             panic::resume_unwind(panic);
         }
-        workers
+        joined
     }
 
-    /// A worker: takes each task lent, runs it, reports, and is idle again.
+    /// A worker: joins each call open, runs its work, reports, and looks again.
     fn work(&self) {
-        // What a task's work calls in turn runs on this thread alone (see `par_map`).
+        // What a call's work calls in turn knows it runs inside a call (see `par_map`).
         let _working = Working::start();
+        let me = thread::current().id();
         loop {
-            let task = {
+            let call = {
                 let mut state = lock(&self.state);
                 loop {
-                    if let Some(task) = state.queue.pop_front() {
-                        break task;
+                    if let Some(call) = state.join(me) {
+                        break call;
                     }
-                    state = self.lent.wait(state).unwrap_or_else(PoisonError::into_inner);
+                    state = self.opened.wait(state).unwrap_or_else(PoisonError::into_inner);
                 }
             };
-            let Task { work, latch } = task;
-            // SAFETY: the caller that lent `work` is waiting on `latch` for this report, so the
-            // closure is alive; it is not touched after the report below.
-            let ran = panic::catch_unwind(AssertUnwindSafe(|| unsafe { (*work.0)() }));
-            latch.report(ran.err());
-            lock(&self.state).idle += 1;
+            // SAFETY: this worker is counted on the call's latch, which its caller waits on
+            // before its frame ends, so the closure is alive; it is not touched after the report.
+            let ran = panic::catch_unwind(AssertUnwindSafe(|| unsafe { (*call.work.0)() }));
+            lock(&self.state).left(&call, me);
+            call.latch.report(ran.err());
         }
+    }
+}
+
+impl State {
+    /// The newest call open with room, `me` counted on its latch as working on it.
+    fn join(&mut self, me: ThreadId) -> Option<Arc<Call>> {
+        let open = self.open.last_mut()?;
+        let call = Arc::clone(&open.call);
+        open.room -= 1;
+        if open.room == 0 {
+            self.open.pop();
+        }
+        let mut pending = lock(&call.latch.state);
+        pending.workers += 1;
+        pending.joined += 1;
+        drop(pending);
+        self.helping.entry(call.caller).or_default().push(me);
+        Some(call)
+    }
+
+    /// `me` is done with the work of `call`.
+    fn left(&mut self, call: &Call, me: ThreadId) {
+        let Some(helping) = self.helping.get_mut(&call.caller) else { return };
+        if let Some(at) = helping.iter().position(|&thread| thread == me) {
+            helping.swap_remove(at);
+        }
+        if helping.is_empty() {
+            self.helping.remove(&call.caller);
+        }
+    }
+
+    /// Takes no more workers into `call`.
+    fn close(&mut self, call: &Arc<Call>) {
+        self.open.retain(|open| !Arc::ptr_eq(&open.call, call));
     }
 }
 
@@ -167,28 +219,33 @@ impl Latch {
     }
 }
 
-/// A call's latch, waited on however the call's frame ends.
-struct Lent(Arc<Latch>);
+/// A call open, closed and waited on however the call's frame ends.
+struct Lent<'p> {
+    pool: &'p Pool,
+    call: Arc<Call>,
+}
 
-impl Lent {
-    /// Waits until every worker lent the work is done with it: the first panic among them. The
-    /// guard then drops with nothing left to wait for.
-    fn wait(self) -> Option<Panic> {
+impl Lent<'_> {
+    /// Closes the call and waits until every worker that joined is done with it: how many
+    /// joined, and the first panic among them. The guard then drops with nothing left to wait for.
+    fn finish(self) -> (usize, Option<Panic>) {
         self.until_done()
     }
 
-    fn until_done(&self) -> Option<Panic> {
-        let mut pending = lock(&self.0.state);
+    fn until_done(&self) -> (usize, Option<Panic>) {
+        lock(&self.pool.state).close(&self.call);
+        let latch = &self.call.latch;
+        let mut pending = lock(&latch.state);
         while pending.workers > 0 {
-            pending = self.0.done.wait(pending).unwrap_or_else(PoisonError::into_inner);
+            pending = latch.done.wait(pending).unwrap_or_else(PoisonError::into_inner);
         }
-        pending.panic.take()
+        (pending.joined, pending.panic.take())
     }
 }
 
-/// While the caller unwinds from a panic in its own run, the workers still using the work are
-/// waited for: the frame holding it ends only after.
-impl Drop for Lent {
+/// While the caller unwinds from a panic in its own run, the call is closed and the workers
+/// still using the work are waited for: the frame holding it ends only after.
+impl Drop for Lent<'_> {
     fn drop(&mut self) {
         drop(self.until_done());
     }

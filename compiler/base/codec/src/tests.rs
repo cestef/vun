@@ -177,3 +177,23 @@ fn entries_referring_to_themselves_are_malformed() {
     let looping = Context::new(pools(vec![vec![1, 1], vec![1, 0]]));
     assert_eq!(looping.read::<Chain>(&[0]), Err(Malformed::Cycle));
 }
+
+#[test]
+fn a_layer_names_the_handles_of_the_stream_under_it() {
+    let (a, b) = (Name::add("a"), Name::add("b"));
+    let mut w = Writer::new();
+    let old_a = w.encode(&a);
+    let base = std::sync::Arc::new(Context::new(w.into_pools()));
+    let read: Name = base.read(&old_a).unwrap();
+
+    let mut w = Writer::over(&base);
+    let (again, new) = (w.encode(&read), w.encode(&b));
+    assert_eq!(again, old_a, "a handle of the stream under keeps its number");
+    let pools = w.into_pools();
+    assert_eq!(pools.0.iter().map(|p| p.entries.len()).sum::<usize>(), 1, "written without the base's");
+    let (input, pools) = pools.placed();
+    let layer = Context::over(base, input, pools);
+    let texts: Vec<String> =
+        [&old_a, &new].iter().map(|bytes| layer.read::<Name>(bytes).unwrap().text()).collect();
+    assert_eq!(texts, ["a", "b"]);
+}

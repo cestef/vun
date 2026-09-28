@@ -124,24 +124,38 @@ years (rustc's parallel front end). So both are designed in from phase 1.
   package data of every package but the project and loose files, the target chosen and the
   checks; an input computed while unset is alike everywhere too. A memo is shared when every
   read leads to shared inputs alone (`Db::save_shared` finds them, reads of a query not
-  persisted or of the project's inputs excluding a memo). They are saved whole into an entry of
+  persisted or of the project's inputs excluding a memo). They are saved whole into a file of
   the store's `memos` directory (a directory the tests of one build share, for them), in a
-  directory named by the toolchain, the entry by the target chosen and the checks; a session
-  holding no memos of its own loads that entry instead, and a session that computed shared memos
-  the entry lacked writes it anew when it ends. Entries are written as files are, renamed over
-  the old, so sessions sharing one never read a part; the last to write wins, and what it lacked
-  is computed again later. Entries of other toolchains are removed when one is written. Loaded
-  memos are verified before use, so an entry never makes a result wrong, only a build faster:
-  `lang` and `std` are checked and built into MIR once per toolchain, target and checks.
+  directory named by the toolchain and one named by the target chosen and the checks, the file
+  named by the hash of its body; a session that computed shared memos the file it loaded lacked
+  writes a new one when it ends. A memo counts as computed only when no memo loaded equals it
+  (`Novelty`): one read again for its value, as a traced query's, is not new. Files older than
+  a week but the newest are removed, and those of other toolchains. Loaded memos are verified
+  before use, so a shared file never makes a result wrong, only a build faster: `lang` and `std`
+  are checked and built into MIR once per toolchain, target and checks.
+- A project's memos are saved layered over the shared file it loaded (`Db::load_over`), naming
+  it by its hash: the stream continues that file's (places and pool numbers past its own), each
+  query of that file keeps its position, and each query's keys follow that file's, so that a read
+  saved in either names the same memo in both. The project file holds the keys the shared file
+  lacks, and the memos of its keys computed again (`replaced`); it extends itself as a file alone
+  does, and is written whole over the shared file once it outgrows its size. A session with no
+  file of its own loads the newest shared file; one that loaded nothing takes the shared memos it
+  saves as the file its own are layered over (`Taking::Written`), so a first build is layered too.
+  A project file whose shared file is gone is dropped, its memos computed again.
 
 **Parallelism.**
 - Independent work goes through `vun-par`: `par_map` over items, results in order, on the
-  process's pool of threads, started once. A call lends its work only to workers idle then, so
-  it waits on nothing queued behind other work, and a call made inside a worker runs on that
-  worker alone. The pool is the one place of the compiler with `unsafe` code: it lends a closure
-  borrowing the caller's stack to threads that outlive the call, sound because the call returns,
-  or unwinds, only once every worker it lent the closure to has reported done with it; its
-  tests run under Miri over several schedules.
+  process's pool of threads, started once. A call is open to the workers while its caller runs
+  its own share: any worker free, at the call or later, joins the newest call open with room,
+  calls made inside another's work included, so it waits on nothing queued behind other work.
+  The pool names the workers in each thread's calls (`Pool::helpers`), and a thread about to
+  wait on a query's claim follows those as it follows claims, computing the query itself when
+  the path comes back to it. `get_all` computes each key on a context under the caller's path
+  of queries, so a cycle through it is found as on one thread. The pool is the one place of the
+  compiler with `unsafe` code: it lends a closure borrowing the caller's stack to threads that
+  outlive the call, sound because workers join only while the call is open, counted under the
+  pool's lock, and the call closes and returns, or unwinds, only once every worker counted has
+  reported done with it; its tests run under Miri over several schedules.
 - Simplifying a unit tidies every function at once, tidying reading no other function, then
   inlines callees first.
 - Sema claims declarations on worker threads. Code generation is per function, with one thread

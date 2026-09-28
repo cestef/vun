@@ -54,3 +54,30 @@ fn values_come_in_order_and_each_is_a_read_of_the_caller() {
     assert_eq!(db.get::<Sum>(&100), (0..100u64).map(|n| n * n).sum::<u64>() - 49);
     assert_eq!(SUMS.count(), runs + 1);
 }
+
+/// How many nodes a ring holds.
+const RING: u32 = 6;
+
+/// The greatest node a node of the ring reaches, through `get_all` over the next few: every node
+/// comes back to itself, a cycle whose steps run on other threads than the one waiting on them.
+struct Ring;
+impl Query for Ring {
+    const NAME: &'static str = "ring";
+    type Key = u32;
+    type Value = u32;
+    fn compute(cx: &Cx<'_>, key: &u32) -> u32 {
+        let next: Vec<u32> = (1..=2).map(|step| (key + step) % RING).collect();
+        cx.get_all::<Ring>(&next).into_iter().fold(*key, u32::max)
+    }
+    fn cycle(_: &Cx<'_>, key: &u32, _: &crate::Cycle) -> u32 {
+        *key
+    }
+}
+
+#[test]
+fn a_cycle_through_parallel_calls_ends() {
+    for _ in 0..20 {
+        let db = Db::reusing(Reuse::Trust);
+        assert!(db.get::<Ring>(&0) < RING);
+    }
+}

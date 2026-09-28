@@ -13,7 +13,7 @@ fn no_items_give_no_results() {
 }
 
 #[test]
-fn a_call_inside_a_worker_runs_on_it() {
+fn a_call_inside_a_worker_is_joined_by_workers_free() {
     let rows: Vec<u64> = (0..64).collect();
     let sums = rows.par_map(|&r| (0..100).collect::<Vec<u64>>().par_map(|c| r * c).iter().sum::<u64>());
     assert_eq!(sums, rows.iter().map(|r| r * 4950).collect::<Vec<_>>());

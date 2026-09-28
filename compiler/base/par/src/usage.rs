@@ -1,5 +1,5 @@
 //! How work spread over threads went, counted as it happens: the calls that spread and those run
-//! on one thread, the helpers each asked for and those idle to join it, and how busy the threads
+//! on one thread, the helpers each asked for and those that joined it, and how busy the threads
 //! were while a call ran. Counting is always on, a few relaxed increments per call; [`Usage::now`]
 //! reads it.
 
@@ -53,11 +53,11 @@ pub struct Usage {
     pub spread: u64,
     /// Calls run on the calling thread, having one item or one thread.
     pub alone: u64,
-    /// Calls made from inside a spread call's work, run on that thread alone.
+    /// Calls made from inside a spread call's work.
     pub nested: u64,
     /// The items of the calls spread.
     pub items: u64,
-    /// The helpers the spread calls asked for, and those idle to join them.
+    /// The helpers the spread calls asked for, and those that joined them while they ran.
     pub asked: u64,
     pub lent: u64,
     /// How long the spread calls took, summed, and how long the threads worked on them, summed

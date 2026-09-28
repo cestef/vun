@@ -30,6 +30,16 @@ pub(crate) struct Memo<Q: Query> {
     pub(crate) source: Source,
     /// How far the inputs it reads, through all it read, are shared.
     pub(crate) durability: Durability,
+    pub(crate) novelty: Novelty,
+}
+
+/// Whether a memo is new to the saved memos loaded.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum Novelty {
+    /// Loaded, or computed again equal to one loaded.
+    Saved,
+    /// Computed, with none loaded equal to it.
+    New,
 }
 
 /// Where a memo's value comes from.
@@ -98,6 +108,7 @@ impl<Q: Query> Memo<Q> {
             verified,
             source,
             durability: Durability::at(level),
+            novelty: Novelty::New,
         }
     }
 
@@ -107,6 +118,7 @@ impl<Q: Query> Memo<Q> {
         deps: Box<[Dep]>,
         revision: Revision,
         durability: Durability,
+        novelty: Novelty,
     ) -> Self {
         let verified = Verified::at(revision);
         let deps = Deps::Read(deps);
@@ -118,6 +130,7 @@ impl<Q: Query> Memo<Q> {
             verified,
             source: Source::Computed,
             durability,
+            novelty,
         }
     }
 
@@ -141,12 +154,18 @@ impl<Q: Query> Memo<Q> {
             verified,
             source: Source::Computed,
             durability,
+            novelty: Novelty::Saved,
         }
     }
 
     /// Whether it is an input's value rather than computed.
     pub(crate) fn is_input(&self) -> bool {
         self.source != Source::Computed
+    }
+
+    /// Whether it was computed in this process, and no memo loaded is equal to it.
+    pub(crate) fn fresh(&self) -> bool {
+        self.novelty == Novelty::New && !self.is_input()
     }
 
     /// Whether it holds in `revision` without looking at what it read.

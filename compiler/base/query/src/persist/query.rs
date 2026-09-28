@@ -8,7 +8,9 @@ use vun_codec::{Context, Decode, Encode, Writer};
 use vun_hash::{Map, Stable};
 use vun_trace::tracing;
 
-use super::saved::{SavedDep, SavedKey, SavedMemo, SavedQuery};
+use super::Keeps;
+use super::load::Taking;
+use super::saved::{Replaced, SavedDep, SavedKey, SavedMemo, SavedQuery};
 use super::shared::Included;
 use super::store::{Attached, Store};
 use crate::db::{Db, Sharing};
@@ -25,17 +27,18 @@ pub(crate) trait Persisted: Send + Sync {
     fn table(&self, db: &Db) -> TableId;
 
     /// Attaches the query at `at` in `store`, the saved memos loaded, to the query's table.
-    fn attach(&self, db: &Db, store: &Arc<Store>, at: usize);
+    fn attach(&self, db: &Db, store: &Arc<Store>, at: usize, taking: Taking);
 
-    /// Each slot's place in the file saved, by slot: the position a key has in the file loaded
-    /// when the file saved `extends` it, the next one after them otherwise; none for a slot
+    /// Each slot's place in the file saved, by slot: the position a key has in the files loaded
+    /// when the file saved `keeps` it, the next one after those kept otherwise; none for a slot
     /// outside `include`, when the file holds only those.
-    fn number(&self, db: &Db, extends: bool, include: Option<&Included>) -> Vec<Option<Number>>;
+    fn number(&self, db: &Db, keeps: Keeps<'_>, include: Option<&Included>) -> Vec<Option<Number>>;
 
-    /// Every key, with its memo if it is computed and reads persisted queries alone, into a
-    /// stream that `extends` the one loaded or starts anew. A stream extending the one loaded
-    /// keeps every key it holds, as it was unless this process gave it a slot.
-    fn save(&self, db: &Db, w: &mut Writer<'_>, layout: &Layout, extends: Option<&Store>) -> SavedQuery;
+    /// Every key but those left to the shared file, with its memo if it is computed and reads
+    /// persisted queries alone, and the memos of those left that this process computed or the
+    /// file loaded replaced. A stream extending the one loaded keeps every key it holds, as it
+    /// was unless this process gave it a slot.
+    fn save(&self, db: &Db, w: &mut Writer<'_>, layout: &Layout, keeps: Keeps<'_>) -> SavedQuery;
 }
 
 /// A key's place in the file saved: its position among its query's keys, and the fingerprint
@@ -114,50 +117,71 @@ impl<Q: Query<Key: Encode + Decode>> Persisted for Persisting<Q> {
         db.table::<Q>().id
     }
 
-    fn attach(&self, db: &Db, store: &Arc<Store>, at: usize) {
+    fn attach(&self, db: &Db, store: &Arc<Store>, at: usize, taking: Taking) {
         let value = self.values.as_ref().map(|values| values.read);
-        db.table::<Q>().attach(Attached::new(Arc::clone(store), at, Context::read_blob, value));
+        db.table::<Q>().attach(Attached::new(Arc::clone(store), at, Context::read_blob, value), taking);
     }
 
-    fn number(&self, db: &Db, extends: bool, include: Option<&Included>) -> Vec<Option<Number>> {
+    fn number(&self, db: &Db, keeps: Keeps<'_>, include: Option<&Included>) -> Vec<Option<Number>> {
         let table = db.table::<Q>();
-        let loaded = table.attached.get().filter(|_| extends).and_then(Attached::keys);
-        let mut next = loaded.map_or(0, |keys| keys.saved.len());
+        let loaded = keeps.store().and(table.attached.get()).and_then(Attached::keys);
+        let kept = loaded.map_or(0, |keys| keeps.kept(keys));
+        let mut next = kept;
         let numbers = table.entries().map(|(slot, entry)| {
             if include.is_some_and(|include| !include.contains(&(table.id, slot))) {
                 return None;
             }
-            if let (Some(keys), Some(&at)) = (loaded, entry.at.get()) {
+            if let (Some(keys), Some(&at)) = (loaded, entry.at.get())
+                && at < kept
+            {
                 return Some(Number { at, base: keys.saved[at as usize].fingerprint });
             }
-            let at = u32::try_from(next).expect("fewer than 2^32 keys per query");
+            let at = next;
             next += 1;
             Some(Number { at, base: entry.memo.load().as_ref().map(|memo| memo.fingerprint) })
         });
         numbers.collect()
     }
 
-    fn save(&self, db: &Db, w: &mut Writer<'_>, layout: &Layout, extends: Option<&Store>) -> SavedQuery {
+    fn save(&self, db: &Db, w: &mut Writer<'_>, layout: &Layout, keeps: Keeps<'_>) -> SavedQuery {
         let table = db.table::<Q>();
         let numbers = &layout.numbers[&table.id];
-        let loaded = extends.zip(table.attached.get().and_then(Attached::keys));
-        let mut keys: Vec<Option<SavedKey>> = loaded.map_or_else(Vec::new, |(store, keys)| {
+        let loaded = keeps.store().and(table.attached.get()).and_then(Attached::keys);
+        let first = loaded.map_or(0, |keys| keeps.first(keys));
+        let extends = keeps.extends();
+        let mut keys: Vec<Option<SavedKey>> = Vec::new();
+        let mut replaced: Map<u32, Vec<u8>> = Map::default();
+        if let (Some(store), Some(loaded)) = (extends, loaded) {
             let copy = |blob| store.stream.bytes(blob).to_vec();
-            let saved = keys.saved.iter().map(|key| SavedKey {
+            let saved = loaded.saved[first as usize..].iter().map(|key| SavedKey {
                 key: copy(key.key),
                 hash: key.hash,
                 fingerprint: key.fingerprint,
                 memo: key.memo.map(copy),
             });
-            saved.map(Some).collect()
-        });
-        let len = numbers.iter().flatten().map(|number| number.at as usize + 1).max().unwrap_or(0);
-        keys.resize_with(keys.len().max(len), || None);
+            keys = saved.map(Some).collect();
+            let memos = loaded.replaced.iter().map(|&at| (at, loaded.saved[at as usize].memo));
+            replaced = memos.filter_map(|(at, memo)| Some((at, copy(memo?)))).collect();
+        }
+        let len = numbers.iter().flatten().map(|number| number.at + 1).max().unwrap_or(0);
+        keys.resize_with(keys.len().max(len.saturating_sub(first) as usize), || None);
         for (slot, entry) in table.entries() {
             let Some(&Some(number)) = numbers.get(slot.index()) else { continue };
-            let memo = self.memo(db, w, layout, extends, number, entry.memo.load_full().as_deref());
+            let memo = entry.memo.load_full();
+            if number.at < first {
+                // A key left to the shared file: its memo there stands unless replaced.
+                let replacing = memo.as_deref().is_some_and(Memo::fresh)
+                    || loaded.is_some_and(|keys| keys.replaced.contains(&number.at));
+                if let Some(memo) = memo.as_deref().filter(|_| replacing)
+                    && let Some(bytes) = self.memo(db, w, layout, extends, number, Some(memo))
+                {
+                    replaced.insert(number.at, bytes);
+                }
+                continue;
+            }
+            let memo = self.memo(db, w, layout, extends, number, memo.as_deref());
             // A key loaded is kept as it was, with the memo it has now.
-            let key = keys[number.at as usize].get_or_insert_with(|| SavedKey {
+            let key = keys[(number.at - first) as usize].get_or_insert_with(|| SavedKey {
                 key: w.encode(table.key(slot)),
                 hash: Stable::of(table.key(slot)),
                 fingerprint: number.base,
@@ -165,7 +189,10 @@ impl<Q: Query<Key: Encode + Decode>> Persisted for Persisting<Q> {
             });
             key.memo = memo;
         }
-        SavedQuery { keys: keys.into_iter().flatten().collect() }
+        let mut replaced: Vec<Replaced> =
+            replaced.into_iter().map(|(at, memo)| Replaced { at, memo }).collect();
+        replaced.sort_unstable_by_key(|replaced| replaced.at);
+        SavedQuery { keys: keys.into_iter().flatten().collect(), replaced }
     }
 }
 

@@ -3,8 +3,12 @@
 //! database holding none of its own loads them instead of computing them again.
 
 use std::collections::{HashMap, HashSet};
+use std::sync::atomic::Ordering;
+
+use vun_trace::tracing;
 
 use super::super::db::Db;
+use super::load::Taking;
 use crate::table::{Slot, TableId};
 
 /// The keys a file of shared memos holds, by table and slot.
@@ -12,15 +16,17 @@ pub(crate) type Included = HashSet<(TableId, Slot)>;
 
 impl Db {
     /// The memos of persisted queries whose every read leads to shared inputs alone, with those
-    /// inputs, saved whole; `None` when this process computed none of them, so that the ones
-    /// loaded are what a save would write.
+    /// inputs, saved whole; `None` when this process computed none of them since they were last
+    /// saved, so that the ones loaded or saved are what a save would write. A database that
+    /// loaded no memos takes these as the shared memos it is layered over, so that the memos it
+    /// saves next hold its own alone.
     ///
     /// # Panics
     /// If the registry was poisoned by a panicking query.
     #[must_use]
     pub fn save_shared(&self) -> Option<Vec<u8>> {
         // Nothing computed: what was loaded is what a save would write.
-        if self.restored() && !self.changed() {
+        if !self.unshared.swap(false, Ordering::Relaxed) {
             return None;
         }
         let persisted = self.persisted.read().expect("persisted queries").clone();
@@ -33,12 +39,18 @@ impl Db {
             return None;
         }
         if let Some(store) = self.store.get() {
-            store.restore_all(self);
+            store.restore_all(self, false);
             sharing.all();
         }
         let included: Included =
             sharing.known.into_iter().filter(|&(_, shared)| shared).map(|(k, _)| k).collect();
-        Some(self.save_keys(Some(&included)))
+        let bytes = self.save_keys(Some(&included));
+        if !self.restored()
+            && let Err(unloaded) = self.layer(bytes.clone(), None, Taking::Written)
+        {
+            tracing::debug!(%unloaded, "the shared memos saved are not layered under");
+        }
+        Some(bytes)
     }
 }
 
@@ -79,6 +91,10 @@ impl Sharing<'_> {
             };
             let Some(dep) = facts.deps.pop() else {
                 self.known.insert(at, true);
+                if facts.computed {
+                    let table = self.db.any_table(at.0);
+                    tracing::debug!(query = table.name(), key = table.show(at.1), "a shared memo computed");
+                }
                 self.computed |= facts.computed;
                 stack.pop();
                 continue;

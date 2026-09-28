@@ -2,7 +2,7 @@
 
 use std::hash::Hash;
 
-use crate::{Decode, Encode, Malformed, Reader, Writer};
+use crate::{Blob, Decode, Encode, Malformed, Reader, Writer};
 
 /// A handle whose meaning is an entry of a table of the process, such as a file or an origin: in
 /// a stream, its first occurrence writes the entry into the pool of its type and every occurrence
@@ -50,4 +50,22 @@ pub struct Pools<B = Vec<u8>>(pub Vec<Pool<B>>);
 pub struct Pool<B = Vec<u8>> {
     pub name: String,
     pub entries: Vec<B>,
+}
+
+impl Pools {
+    /// An input holding every entry, one after another, and the pools as places in it.
+    #[must_use]
+    pub fn placed(self) -> (Box<[u8]>, Pools<Blob>) {
+        let mut input = Vec::new();
+        let pools = self.0.into_iter().map(|pool| {
+            let entries = pool.entries.iter().map(|entry| {
+                let at = input.len();
+                input.extend_from_slice(entry);
+                Blob { at, len: entry.len() }
+            });
+            Pool { name: pool.name, entries: entries.collect() }
+        });
+        let pools = Pools(pools.collect());
+        (input.into_boxed_slice(), pools)
+    }
 }

@@ -283,9 +283,16 @@ Next, most useful first:
    runs made together, never across time. Durability made warm `files.vun` restore 1.7k memos
    instead of 14.4k (1.5k hold at once; ~300 of the project's own verified in order). A new
    project with the libraries shared (dev): 843 ms to ~578 ms, inlining now per function and
-   shared (decision 303). Saving the memos (~136 ms) copies every key of the loaded
-   shared entry into the project file: next is layered stores (the project file holding its own
-   memos, its reads of the shared entry naming that file). Truly cold (empty store): threads wait
+   shared (decision 303). Project memo files are layered over the shared file (decision 304):
+   ~110 KB instead of the ~2 MB shared file copied, warm `files.vun` ~90 to 120 ms (dev). A new
+   project still writes a whole new shared file (~450 ms dev, after the build): memos whose keys
+   name the project's functions (`std`'s start instantiated with its `main`) read shared inputs
+   alone, so count as shared (`VUN_LOG=vun_query=debug` names each, "a shared memo computed").
+   Sessions of another toolchain remove this one's shared files; `VUN_STORE` isolates a
+   measurement. Workers join `par_map` calls in flight, nested ones too (decision 305); a cycle
+   through `get_all` used to recurse without end (a thread re-entering its own claim through a
+   fresh context). Dev, quiet machine: cold ~1.3 s, warm ~0.11 s, new project 0.3 s build
+   (~1 s wall with the shared save). Truly cold (empty store): threads wait
    ~1.1 s on the same `std` claims, once per toolchain. The driver tests read the machine's
    toolchain file: an entry naming a target the branch lacks fails every test choosing a target
    (`target.unchosen`); `VUN_TOOLCHAIN` points them at another file.

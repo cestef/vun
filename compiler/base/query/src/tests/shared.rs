@@ -1,8 +1,8 @@
 //! Memos shared between databases: those reading shared inputs alone, saved apart and loaded by a
-//! database that holds none of its own.
+//! database that holds none of its own, which saves its own memos layered over them.
 
 use super::Runs;
-use crate::{Census, Cx, Db, Query, Reuse};
+use crate::{Census, Cx, Db, Layering, Query, Reuse, Unloaded};
 
 static LENGTHS: Runs = Runs::new();
 static JOINED: Runs = Runs::new();
@@ -79,4 +79,80 @@ fn memos_reading_shared_inputs_alone_are_saved_apart_and_reused() {
     assert_eq!(edited.get::<Joined>(&both), 10);
     assert!(edited.save_shared().is_some());
     assert!(JOINED.count() >= 3);
+}
+
+#[test]
+fn memos_saved_over_shared_ones_hold_the_project_s_alone() {
+    let both = ("lib".to_owned(), "main".to_owned());
+    let first = project("main one");
+    first.get::<Joined>(&both);
+    let shared = first.save_shared().expect("a shared memo was computed");
+    let id = Layering::of(&shared).unwrap().id;
+    assert!(id.is_some(), "a shared file is named by its body");
+
+    let second = project("main two");
+    second.load_over(shared.clone(), None).unwrap();
+    assert_eq!(second.get::<Joined>(&both), 15);
+    let own = second.save();
+    assert_eq!(Layering::of(&own).unwrap(), Layering { id: None, base: id });
+    // The project's length and what joins them; the library's stays in the shared file.
+    let memos = Census::of(&own).unwrap().queries.iter().map(|q| q.memos).collect::<Vec<_>>();
+    assert_eq!(memos, [0, 1, 1]);
+    assert!(matches!(project("main two").load(own.clone()), Err(Unloaded::Base)));
+    assert!(matches!(project("main two").load_over(own.clone(), None), Err(Unloaded::Base)));
+
+    // Both loaded again, nothing is computed.
+    let third = project("main two");
+    third.load_over(shared.clone(), Some(own)).unwrap();
+    let (lengths, joined) = (LENGTHS.count(), JOINED.count());
+    assert_eq!(third.get::<Joined>(&both), 15);
+    assert_eq!((LENGTHS.count(), JOINED.count()), (lengths, joined));
+
+    // A shared memo computed again is saved over the one it replaces, and holds next time.
+    let edited = || {
+        let db = project("main two");
+        db.share::<Text>(&"lib".into(), "lib".into());
+        db
+    };
+    let fourth = edited();
+    fourth.load_over(shared.clone(), None).unwrap();
+    assert_eq!(fourth.get::<Joined>(&both), 11);
+    let own = fourth.save();
+    let memos = Census::of(&own).unwrap().queries.iter().map(|q| q.memos).collect::<Vec<_>>();
+    assert_eq!(memos, [0, 2, 1], "the library's length replaced");
+    let fifth = edited();
+    fifth.load_over(shared.clone(), Some(own)).unwrap();
+    let lengths = LENGTHS.count();
+    assert_eq!(fifth.get::<Joined>(&both), 11);
+    assert_eq!(LENGTHS.count(), lengths, "the replaced memo holds");
+
+    // A file extending one layered over the shared file stays layered over it.
+    fifth.get::<Length>(&"other".into());
+    let grown = fifth.save();
+    assert_eq!(Layering::of(&grown).unwrap().base, id);
+    let sixth = edited();
+    sixth.load_over(shared, Some(grown)).unwrap();
+    let lengths = LENGTHS.count();
+    assert_eq!(sixth.get::<Joined>(&both), 11);
+    sixth.get::<Length>(&"other".into());
+    assert_eq!(LENGTHS.count(), lengths, "every memo of both layers holds");
+}
+
+#[test]
+fn a_database_that_loaded_nothing_saves_over_the_shared_memos_it_saved() {
+    let both = ("lib".to_owned(), "main".to_owned());
+    let first = project("main one");
+    first.get::<Joined>(&both);
+    let shared = first.save_shared().expect("a shared memo was computed");
+    assert_eq!(first.save_shared(), None, "saved already");
+    let own = first.save();
+    assert_eq!(Layering::of(&own).unwrap().base, Layering::of(&shared).unwrap().id);
+    let memos = Census::of(&own).unwrap().queries.iter().map(|q| q.memos).collect::<Vec<_>>();
+    assert_eq!(memos, [0, 1, 1], "the project's alone");
+
+    let second = project("main one");
+    second.load_over(shared, Some(own)).unwrap();
+    let (lengths, joined) = (LENGTHS.count(), JOINED.count());
+    assert_eq!(second.get::<Joined>(&both), 15);
+    assert_eq!((LENGTHS.count(), JOINED.count()), (lengths, joined));
 }

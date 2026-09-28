@@ -8,8 +8,8 @@ pub(super) struct Frame {
     pub(super) table: TableId,
     pub(super) slot: Slot,
     pub(super) reads: Vec<Dep>,
-    /// The lowest frame on the stack whose cycle value this computation read, itself or through
-    /// what it read.
+    /// The lowest frame on the path whose cycle value this computation read, itself or through
+    /// what it read, by its depth on the path (the lenders' frames first, see `Cx::path`).
     pub(super) head: Option<usize>,
 }
 

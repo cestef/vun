@@ -1,11 +1,14 @@
 //! The saved memos loaded, read as they are needed: a query's keys when one of them is first
 //! looked for, a key's value and memo when that key is first asked for, and a memo's reads when
 //! it is first verified. What a run never asks for is never read, so loading costs what is used.
+//!
+//! A file layered over a file of shared memos is read with it, as one: a query's keys are that
+//! file's, then its own, and the memos it replaces stand for that file's.
 
 use std::sync::{Arc, OnceLock};
 
 use vun_codec::{Blob, Context};
-use vun_hash::{Map, Stable};
+use vun_hash::{Hash, Map, Stable};
 use vun_trace::{Activity, tracing};
 
 use super::saved::{Growth, SavedDep, SavedKey, SavedMemo, SavedQuery};
@@ -19,25 +22,44 @@ const KEYS: Activity = Activity::stage("read keys");
 /// Reading a key's saved memo, as timed.
 const RESTORE: Activity = Activity::stage("restore memos");
 
-/// A file of saved memos, loaded.
+/// A file of saved memos, loaded, with the file of shared memos it is layered over.
 pub(crate) struct Store {
-    pub(crate) stream: Context,
-    pub(crate) growth: Growth,
-    /// Each query of the file, by its position there.
+    /// The file's stream, layered over the shared file's.
+    pub(crate) stream: Arc<Context>,
+    /// The file's own growth; `None` when only the shared file was loaded.
+    pub(crate) growth: Option<Growth>,
+    /// Each query of the files, by its position there.
     pub(crate) queries: Vec<StoredQuery>,
+    /// The shared file the file is layered over.
+    pub(crate) base: Option<Hash>,
 }
 
-/// A query of the file: its table, if a query of that name is registered, and its keys once read.
+/// A query of the files: its table, if a query of that name is registered, and its keys once
+/// read.
 pub(crate) struct StoredQuery {
     pub(crate) name: String,
-    pub(crate) bytes: Blob,
+    /// Its [`SavedQuery`] in the shared file, and in the file layered over it.
+    pub(crate) layers: Layers,
     pub(crate) table: Option<TableId>,
     keys: OnceLock<Option<StoredKeys>>,
 }
 
+/// A query's part of the shared file, and of the file loaded: of that file alone when it is not
+/// layered.
+#[derive(Clone, Copy)]
+pub(crate) struct Layers {
+    pub(crate) base: Option<Blob>,
+    pub(crate) own: Option<Blob>,
+}
+
 /// A query's saved keys, found by their hashes, and the slot each was given in this process.
 pub(crate) struct StoredKeys {
+    /// The shared file's keys, then the file's own, each with the memo that stands.
     pub(crate) saved: Vec<SavedKey<Blob>>,
+    /// How many keys are the shared file's.
+    pub(crate) base: u32,
+    /// The positions of the shared file's keys whose memo the file layered over it replaces.
+    pub(crate) replaced: Vec<u32>,
     /// The first position of each hash.
     index: Map<u64, u32>,
     slots: Box<[OnceLock<Slot>]>,
@@ -54,21 +76,24 @@ impl Store {
     }
 
     /// Gives every saved key of a registered query its slot, and so its memo: what a file written
-    /// whole holds.
-    pub(crate) fn restore_all(&self, db: &Db) {
+    /// whole holds. A file written whole over the shared file holds none of that file's keys but
+    /// those whose memo it replaces.
+    pub(crate) fn restore_all(&self, db: &Db, over_base: bool) {
         for query in &self.queries {
             let (Some(table), Some(keys)) = (query.table, query.keys(&self.stream)) else { continue };
             let table = db.any_table(table);
-            for at in 0..keys.saved.len() {
-                table.saved_slot(u32::try_from(at).expect("fewer than 2^32 keys per query"));
+            let len = u32::try_from(keys.saved.len()).expect("fewer than 2^32 keys per query");
+            let (first, replaced) = if over_base { (keys.base, &keys.replaced[..]) } else { (0, &[][..]) };
+            for at in (first..len).chain(replaced.iter().copied()) {
+                table.saved_slot(at);
             }
         }
     }
 }
 
 impl StoredQuery {
-    pub(crate) fn new(name: String, bytes: Blob, table: Option<TableId>) -> Self {
-        Self { name, bytes, table, keys: OnceLock::new() }
+    pub(crate) fn new(name: String, layers: Layers, table: Option<TableId>) -> Self {
+        Self { name, layers, table, keys: OnceLock::new() }
     }
 
     /// Its keys, read the first time; `None` when they do not decode.
@@ -76,8 +101,10 @@ impl StoredQuery {
         self.keys
             .get_or_init(|| {
                 let _timer = KEYS.start();
-                match stream.read_blob::<SavedQuery<Blob>>(self.bytes) {
-                    Ok(query) => Some(StoredKeys::new(query.keys)),
+                let read = |blob: Option<Blob>| blob.map(|blob| stream.read_blob::<SavedQuery<Blob>>(blob));
+                let (base, own) = (read(self.layers.base).transpose(), read(self.layers.own).transpose());
+                match base.and_then(|base| Ok((base, own?))) {
+                    Ok((base, own)) => StoredKeys::new(base, own),
                     Err(malformed) => {
                         tracing::debug!(query = self.name, %malformed, "saved keys not read");
                         None
@@ -89,14 +116,33 @@ impl StoredQuery {
 }
 
 impl StoredKeys {
-    fn new(saved: Vec<SavedKey<Blob>>) -> Self {
+    /// The keys of the shared file's query and of the file's own; `None` when the shared file's
+    /// replaces memos, or the file's replaces a key the shared file lacks.
+    fn new(base: Option<SavedQuery<Blob>>, own: Option<SavedQuery<Blob>>) -> Option<Self> {
+        let mut saved = Vec::new();
+        if let Some(base) = base {
+            if !base.replaced.is_empty() {
+                return None;
+            }
+            saved = base.keys;
+        }
+        let first = u32::try_from(saved.len()).ok()?;
+        let mut replaced = Vec::new();
+        if let Some(own) = own {
+            for replacing in own.replaced {
+                (replacing.at < first).then_some(())?;
+                saved[replacing.at as usize].memo = Some(replacing.memo);
+                replaced.push(replacing.at);
+            }
+            saved.extend(own.keys);
+        }
         let mut index = Map::default();
         index.reserve(saved.len());
         for (at, key) in (0..).zip(&saved) {
             index.entry(key.hash).or_insert(at);
         }
         let slots = std::iter::repeat_with(OnceLock::new).take(saved.len()).collect();
-        Self { saved, index, slots }
+        Some(Self { saved, base: first, replaced, index, slots })
     }
 }
 

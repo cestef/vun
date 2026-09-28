@@ -1,13 +1,15 @@
 //! Claims of memos being computed, so that one thread computes a memo while the others needing it
-//! wait. A thread about to wait on another first follows who that one waits on: if the chain comes
-//! back to it, waiting would never end, and it computes the memo itself. Two threads may then
-//! compute the same memo, which is only work done twice: a query's value depends on its key and
-//! inputs alone.
+//! wait. A thread about to wait on another first follows whom that one waits on, the thread whose
+//! claim it waits for and the workers in its parallel calls (`vun_par::Pool::helpers`): if any
+//! path comes back to it, waiting would never end, and it computes the memo itself. Two threads
+//! may then compute the same memo, which is only work done twice: a query's value depends on its
+//! key and inputs alone.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Condvar, Mutex};
 use std::thread::{self, ThreadId};
 
+use vun_par::Pool;
 use vun_trace::Activity;
 
 /// Waiting for another thread to compute a memo, as timed: the waiting query's own time
@@ -82,15 +84,18 @@ impl Drop for Owned<'_> {
 }
 
 impl Waits {
-    /// Records that `me` waits on `owner`, unless `owner` waits, through others, on `me`.
+    /// Records that `me` waits on `owner`, unless `owner` waits, through others, on `me`: for
+    /// the claim of another thread, or for the workers in its parallel calls to end.
     fn start(&self, me: ThreadId, owner: ThreadId) -> bool {
         let mut waits = self.0.lock().expect("waits");
-        let mut at = owner;
-        while let Some(&next) = waits.get(&at) {
-            if next == me {
+        let pool = Pool::global();
+        let (mut seen, mut next) = (HashSet::from([owner]), vec![owner]);
+        while let Some(at) = next.pop() {
+            if at == me {
                 return false;
             }
-            at = next;
+            let on = waits.get(&at).copied().into_iter().chain(pool.helpers(at));
+            next.extend(on.filter(|&thread| seen.insert(thread)));
         }
         waits.insert(me, owner);
         true

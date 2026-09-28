@@ -10,7 +10,7 @@ mod settle;
 mod verify;
 mod why;
 
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::sync::Arc;
 use std::sync::atomic::Ordering;
 
@@ -26,7 +26,7 @@ use self::why::Why;
 use super::claim::Claim;
 use super::db::Db;
 use super::fingerprint::Fingerprint;
-use super::memo::{Dep, Memo, Source};
+use super::memo::{Dep, Memo, Novelty, Source};
 use super::table::{Slot, Table, TableId};
 use super::tally::Event;
 use super::{Query, Revision};
@@ -34,6 +34,11 @@ use super::{Query, Revision};
 /// The queries being computed on one thread, and what each has read so far.
 pub struct Cx<'db> {
     db: &'db Db,
+    /// The queries being computed by the contexts that lent this one its work (`get_all`), the
+    /// outermost first: frames of the path below this context's own.
+    above: Arc<[(TableId, Slot)]>,
+    /// The lowest of those whose cycle value a computation here read.
+    reached: Cell<Option<usize>>,
     stack: RefCell<Vec<Frame>>,
     /// Where each memo computed on the stack is on it, so that reaching one again is found at
     /// once however deep the stack is.
@@ -45,7 +50,19 @@ pub struct Cx<'db> {
 impl<'db> Cx<'db> {
     #[must_use]
     pub fn new(db: &'db Db) -> Self {
-        Self { db, stack: RefCell::default(), computing: RefCell::default(), verifying: RefCell::default() }
+        Self::under(db, Arc::from([]))
+    }
+
+    /// A context computing work lent by the contexts computing `above`.
+    fn under(db: &'db Db, above: Arc<[(TableId, Slot)]>) -> Self {
+        Self {
+            db,
+            above,
+            reached: Cell::new(None),
+            stack: RefCell::default(),
+            computing: RefCell::default(),
+            verifying: RefCell::default(),
+        }
     }
 
     #[must_use]
@@ -147,35 +164,13 @@ impl<'db> Cx<'db> {
             // An input not set holds what it computes until it is, alike in every database.
             Memo::input(value.clone(), fingerprint, revision, Source::Unset)
         } else {
-            self.computing(table, entry.memo.load().as_deref(), fingerprint, &reads);
+            let novelty = self.computing(table, entry.memo.load().as_deref(), fingerprint, &reads);
             let durability = self.durability(&reads);
-            Memo::computed(value.clone(), fingerprint, reads, revision, durability)
+            Memo::computed(value.clone(), fingerprint, reads, revision, durability, novelty)
         };
         entry.memo.store(Some(Arc::new(memo)));
         drop(owned);
         Some((value, fingerprint))
-    }
-
-    /// What the stack reaches again by computing `slot` of `table`, if it computes it already.
-    /// What does not depend on the query is kept out of the code made for each one.
-    #[inline(never)]
-    fn cycle(&self, table: TableId, slot: Slot) -> Option<Cycle> {
-        let mut stack = self.stack.borrow_mut();
-        let from = *self.computing.borrow().get(&(table, slot))?;
-        let top = stack.last_mut().expect("the frame reaching it");
-        top.head = Some(top.head.map_or(from, |head| head.min(from)));
-        let path = stack[from..]
-            .iter()
-            .map(|f| (f.table, f.slot))
-            .chain([(table, slot)])
-            .map(|(table, slot)| {
-                let table = self.db.any_table(table);
-                (table.name(), table.show(slot))
-            })
-            .collect();
-        let cycle = Cycle { path };
-        tracing::debug!(%cycle, "cycle recovered");
-        Some(cycle)
     }
 
     /// Starts computing `slot` of `table`, timed until it is left.
@@ -191,17 +186,16 @@ impl<'db> Cx<'db> {
     }
 
     /// Ends the computation on top of the stack, returning what it read and whether its value
-    /// stands: a cycle value read of a frame below it makes the frame reading it provisional too.
+    /// stands: a cycle value read of a frame below it makes the frame reading it provisional too,
+    /// and the frame below it, or the lender's, reads that cycle value in turn.
     #[inline(never)]
     fn leave(&self) -> (Box<[Dep]>, Standing) {
-        let mut stack = self.stack.borrow_mut();
-        let frame = stack.pop().expect("a frame entered");
+        let frame = self.stack.borrow_mut().pop().expect("a frame entered");
         self.computing.borrow_mut().remove(&(frame.table, frame.slot));
-        let at = stack.len();
+        let depth = self.above.len() + self.stack.borrow().len();
         let standing = match frame.head {
-            Some(head) if head < at => {
-                let parent = stack.last_mut().expect("a frame below the head");
-                parent.head = Some(parent.head.map_or(head, |h| h.min(head)));
+            Some(head) if head < depth => {
+                self.reach(head);
                 Standing::Provisional
             }
             _ => Standing::Final,
@@ -209,22 +203,27 @@ impl<'db> Cx<'db> {
         (Self::once(frame.reads), standing)
     }
 
-    /// Records a memo of `table` computed with `fingerprint` from `reads` in place of `replaced`:
-    /// one of a query not saved, or equal to it, as one loaded computed again for its value or
-    /// out of a cycle among its reads, changes nothing saved.
+    /// Records a memo of `table` computed with `fingerprint` from `reads` in place of `replaced`,
+    /// returning how new it is: one of a query not saved, or equal to it, as one loaded computed
+    /// again for its value or out of a cycle among its reads, changes nothing saved.
     fn computing<Q: Query>(
         &self,
         table: &Table<Q>,
         replaced: Option<&Memo<Q>>,
         fingerprint: Fingerprint,
         reads: &[Dep],
-    ) {
-        let equal = replaced
-            .is_some_and(|memo| memo.fingerprint == fingerprint && memo.deps.get(self.db) == Some(reads));
-        if table.persisted.load(Ordering::Relaxed) && !equal {
+    ) -> Novelty {
+        let equal =
+            replaced.filter(|memo| memo.fingerprint == fingerprint && memo.deps.get(self.db) == Some(reads));
+        if let Some(memo) = equal {
+            return memo.novelty;
+        }
+        if table.persisted.load(Ordering::Relaxed) {
             tracing::trace!(query = Q::NAME, replaced = replaced.is_some(), "a memo changed");
             self.db.changed.store(true, Ordering::Relaxed);
+            self.db.unshared.store(true, Ordering::Relaxed);
         }
+        Novelty::New
     }
 
     /// `reads` with each memo once, in the order it was first read: verifying follows it, since a

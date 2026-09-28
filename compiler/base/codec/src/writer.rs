@@ -13,15 +13,19 @@ pub struct Writer<'r> {
     /// The pool of each handle type, in the order first written.
     pools: Vec<Box<dyn AnyPool>>,
     by_type: HashMap<TypeId, usize>,
-    /// The stream this one extends, whose pools it starts from.
-    extends: Option<&'r Context>,
-    /// The pools of that stream not written to yet, by name.
+    /// The stream whose handles keep their numbers: the one extended or layered over.
+    known: Option<&'r Context>,
+    /// The stream this one is layered over, whose entries its pools number theirs after.
+    under: Option<&'r Context>,
+    /// The pools of the layer extended not written to yet, by name.
     carried: HashMap<String, Vec<Vec<u8>>>,
 }
 
 /// The entries written so far of one pool.
 struct PoolWriter<T: Pooled> {
     numbers: HashMap<T, usize, foldhash::fast::RandomState>,
+    /// The number of its first entry: how many the stream layered under holds.
+    first: usize,
     entries: Vec<Vec<u8>>,
 }
 
@@ -56,7 +60,14 @@ impl<'r> Writer<'r> {
     /// of that stream are the same value in this one, and are written as they are.
     #[must_use]
     pub fn extending(stream: &'r Context) -> Self {
-        Self { extends: Some(stream), carried: stream.entries(), ..Self::default() }
+        Self { known: Some(stream), under: stream.base(), carried: stream.entries(), ..Self::default() }
+    }
+
+    /// A stream layered over `base`: its pools number their entries after that stream's, so that
+    /// a value of that stream is the same value in this one, and are written without them.
+    #[must_use]
+    pub fn over(base: &'r Context) -> Self {
+        Self { known: Some(base), under: Some(base), ..Self::default() }
     }
 
     pub fn write(&mut self, bytes: &[u8]) {
@@ -78,7 +89,7 @@ impl<'r> Writer<'r> {
     }
 
     /// The pools written, in the order they were first written to, then those carried from the
-    /// stream extended and not written to, by name.
+    /// stream extended and not written to, by name: the entries of this layer alone.
     #[must_use]
     pub fn into_pools(self) -> Pools {
         let mut carried: Vec<Pool> =
@@ -95,8 +106,9 @@ impl<'r> Writer<'r> {
             let entry = self.encode_with(|w| handle.write(w));
             let pool = self.pool::<T>();
             pool.entries.push(entry);
-            pool.numbers.insert(handle, pool.entries.len() - 1);
-            pool.entries.len() - 1
+            let number = pool.first + pool.entries.len() - 1;
+            pool.numbers.insert(handle, number);
+            number
         };
         number.encode(self);
     }
@@ -116,8 +128,9 @@ impl<'r> Writer<'r> {
                 T::POOL
             );
             let entries = self.carried.remove(T::POOL).unwrap_or_default();
-            let numbers = self.extends.map(Context::numbers).unwrap_or_default();
-            self.pools.push(Box::new(PoolWriter::<T> { numbers, entries }));
+            let numbers = self.known.map(Context::numbers).unwrap_or_default();
+            let first = self.under.map_or(0, |under| under.count(T::POOL));
+            self.pools.push(Box::new(PoolWriter::<T> { numbers, first, entries }));
             self.pools.len() - 1
         });
         self.pools[index].as_any().downcast_mut().expect("one pool per handle type")

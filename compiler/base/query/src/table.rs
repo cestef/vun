@@ -18,8 +18,8 @@ use super::cx::{Cx, Found, Settle};
 use super::db::{Db, Sharing};
 use super::fingerprint::Fingerprint;
 use super::hashed::{Hashed, Probe};
-use super::memo::{Dep, Deps, Memo, Source};
-use super::persist::Attached;
+use super::memo::{Dep, Memo, Source};
+use super::persist::{Attached, Taking};
 use super::tally::{Counts, Event};
 
 /// A table of a database, by the order it was made in.
@@ -134,8 +134,8 @@ impl<Q: Query> Table<Q> {
     }
 
     /// Attaches the query's part of the saved memos loaded: keys asked for already are linked to
-    /// theirs, and given their memos if they have none.
-    pub(crate) fn attach(&self, attached: Attached<Q>) {
+    /// theirs, and given their memos as `taking` says.
+    pub(crate) fn attach(&self, attached: Attached<Q>, taking: Taking) {
         if self.attached.set(attached).is_err() {
             return;
         }
@@ -146,8 +146,17 @@ impl<Q: Query> Table<Q> {
             if let Some(cell) = attached.slot(at) {
                 cell.get_or_init(|| slot);
             }
-            if entry.memo.load().is_none() {
-                entry.memo.store(attached.memo(at).map(Arc::new));
+            let held = entry.memo.load_full();
+            match held.as_deref() {
+                None => entry.memo.store(attached.memo(at).map(Arc::new)),
+                Some(memo) if taking == Taking::Written && memo.fresh() => {
+                    let Some(saved) = attached.memo(at) else { continue };
+                    if let Some(revision) = memo.verified.get() {
+                        saved.verified.set(revision);
+                    }
+                    entry.memo.store(Some(Arc::new(saved)));
+                }
+                Some(_) => {}
             }
         }
     }
@@ -238,7 +247,7 @@ impl<Q: Query> AnyTable for Table<Q> {
 
     fn facts(&self, db: &Db, slot: Slot) -> Option<Facts> {
         let memo = self.entry(slot).memo.load_full()?;
-        let computed = matches!(memo.deps, Deps::Read(_)) && !memo.is_input();
+        let computed = memo.fresh();
         let deps = memo.deps.get(db)?.into();
         let shared = match memo.source {
             Source::Set(sharing) => sharing != Sharing::Own,

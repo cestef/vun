@@ -72,6 +72,8 @@ pub struct Db {
     pub(crate) store: OnceLock<Arc<Store>>,
     /// Whether a memo was computed that the saved ones did not already hold.
     pub(crate) changed: AtomicBool,
+    /// Whether a memo was computed since the shared memos were last saved.
+    pub(crate) unshared: AtomicBool,
     /// The persisted queries, in the order registered.
     pub(crate) persisted: RwLock<Vec<Arc<dyn Persisted>>>,
     /// Whether memos reused without being computed are checked by computing them again.

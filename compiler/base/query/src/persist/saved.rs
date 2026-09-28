@@ -8,19 +8,25 @@
 //! A body extends the one loaded, keeping every position in it and every entry it holds whether
 //! still referenced or not, so it is written whole again once it outgrows its size when last
 //! written whole.
+//!
+//! A file can be layered over a file of shared memos, named by the hash of its body: its stream
+//! follows that file's, its pools number their entries after that file's, each query of that
+//! file is at the same position in it, and each query's keys follow that file's keys of the
+//! query, so that the positions that file's memos read by mean the same in both. It holds the
+//! keys that file lacks, and the memos of that file's keys it computed again.
 
 use std::fmt;
 use std::sync::OnceLock;
 use std::time::UNIX_EPOCH;
 
-use vun_codec::{Blob, Decode, Encode, Malformed, Pools};
+use vun_codec::{Blob, Context, Decode, Encode, Malformed, Pools};
 use vun_hash::Hash;
 
 use crate::db::Sharing;
 use crate::fingerprint::Fingerprint;
 
 /// The version of the saved form; a file of another version is not read.
-pub(super) const FORMAT: u32 = 10;
+pub(super) const FORMAT: u32 = 11;
 
 /// The compiler running, as saved memos name it.
 pub(crate) struct Build;
@@ -50,7 +56,39 @@ pub(crate) struct Saved<B = Vec<u8>> {
     pub(crate) build: Option<Hash>,
     /// The size of the body when last written whole.
     pub(crate) compacted: u64,
+    /// The hash of the body of a file of shared memos, which files layered over it name it by.
+    pub(crate) id: Option<Hash>,
+    /// The file of shared memos it is layered over.
+    pub(crate) base: Option<Hash>,
     pub(crate) body: B,
+}
+
+impl Saved<Blob> {
+    /// The header of `bytes`, if they are saved memos of this format.
+    pub(super) fn header(bytes: &[u8]) -> Result<Self, Unloaded> {
+        let format = Context::default().front::<u32>(bytes).map_err(Unloaded::Decode)?;
+        if format != FORMAT {
+            return Err(Unloaded::Format { found: format });
+        }
+        Self::decoded(bytes).map_err(Unloaded::Decode)
+    }
+}
+
+/// What a saved file is to others: its name as a file of shared memos, and the file of shared
+/// memos it is layered over.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Layering {
+    pub id: Option<Hash>,
+    pub base: Option<Hash>,
+}
+
+impl Layering {
+    /// # Errors
+    /// Returns an error if the bytes are not saved memos of this format.
+    pub fn of(bytes: &[u8]) -> Result<Self, Unloaded> {
+        let header = Saved::header(bytes)?;
+        Ok(Self { id: header.id, base: header.base })
+    }
 }
 
 /// The pools, then each query by name, encoded on its own so that it is read when first needed.
@@ -84,10 +122,19 @@ impl Growth {
     }
 }
 
-/// One query: every key it had a slot for, each with its memo if it was computed.
+/// One query: every key it had a slot for, each with its memo if it was computed, and in a file
+/// layered over another, the memos of that file's keys computed again.
 #[derive(Encode, Decode)]
 pub(crate) struct SavedQuery<B = Vec<u8>> {
     pub(super) keys: Vec<SavedKey<B>>,
+    pub(super) replaced: Vec<Replaced<B>>,
+}
+
+/// The memo of a key of the file layered under, at `at` among its keys: a [`SavedMemo`].
+#[derive(Encode, Decode)]
+pub(crate) struct Replaced<B = Vec<u8>> {
+    pub(super) at: u32,
+    pub(super) memo: B,
 }
 
 /// A key, the stable hash of its value, by which it is found, and the fingerprint of its memo if
@@ -135,6 +182,9 @@ pub enum Unloaded {
     Again,
     /// Written by another build of the compiler, whose saved types may differ from this one's.
     Build,
+    /// Layered over a file of shared memos other than the one given, or given one while layered
+    /// over none.
+    Base,
 }
 
 impl fmt::Display for Unloaded {
@@ -144,6 +194,7 @@ impl fmt::Display for Unloaded {
             Self::Format { found } => write!(f, "the saved memos are in format {found}, not {FORMAT}"),
             Self::Again => f.write_str("memos were loaded already"),
             Self::Build => f.write_str("the saved memos were written by another build of the compiler"),
+            Self::Base => f.write_str("the saved memos are layered over other shared memos"),
         }
     }
 }
@@ -152,7 +203,7 @@ impl std::error::Error for Unloaded {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
             Self::Decode(e) => Some(e),
-            Self::Format { .. } | Self::Again | Self::Build => None,
+            Self::Format { .. } | Self::Again | Self::Build | Self::Base => None,
         }
     }
 }
