@@ -1,0 +1,10 @@
+//! Only a borrow of the same transition serves where another is expected (spec 05, section 2):
+//! `&out` leaves a place initialized that was not, and `&take` leaves it uninitialized, so
+//! neither is read as `&T`.
+
+peek := (x: &u8) -> u8 { x.* };
+
+fill := (x: &out u8) -> u8 {
+    x.* = 1;
+    peek(x) //~ types.mismatch
+};

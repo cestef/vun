@@ -24,8 +24,9 @@ pub struct BorrowsRow {
 /// Borrow types by the words after `&` (appendix B): `&T` is `lang.mem.Ref(T)`. Each mode is named
 /// by the transition it performs on the place it borrows (spec 05, section 2): the state it
 /// needs before, and the state the place has after; by the access it leaves others; and by how
-/// long a call holds it. Borrows of one transition and access are accepted for each other, but
-/// where `&static` is written.
+/// long a call holds it. A borrow serves where another of the same transition is expected when it
+/// leaves others no more access (`&mut T` where `&T` is), whatever its extent, but where `&static`
+/// is written.
 pub const BORROWS: &[BorrowsRow] = &[
     BorrowsRow {
         mode: &[],

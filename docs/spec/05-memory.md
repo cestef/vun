@@ -38,6 +38,12 @@ on the place they borrow:
 
 Passing by value moves. A linear value leaves its place `uninit`; a copy value leaves it `init`.
 
+A borrow serves where another is expected when it performs the same transition and leaves others
+no more access: `&mut T` is accepted where `&T` is, read as a shared borrow for as long as that one
+lives, and branches of both meet as `&T`. `&out` and `&take` perform other transitions, so neither
+serves as `&T` (`types.mismatch`). The rule reads the table `borrows`: a mode's `before`, `after`
+and `access` columns.
+
 A parameter type may add `temp` to a borrow (`&temp T`, `&temp mut T`): the borrow is lent for the
 call only (section 4). It changes no place state, so arguments are written as ordinary borrows.
 
@@ -102,7 +108,7 @@ only: the result is not tied to it, and the function may not return it or put it
 returns. So `find := (hay: &[u8], needle: &temp [u8]) -> &[u8]` returns a borrow tied to `hay`
 alone, and a caller may pass a short-lived `needle`. The table `borrows` records this as each
 mode's extent (`tied` or `temp`). A `&temp` borrow and the ordinary borrow of the same transition
-and access are accepted for each other, so the rule is carried by the parameter and checked in the
+and access serve for each other, so the rule is carried by the parameter and checked in the
 callee's body, where a `&temp` parameter is a loan that must not reach the result. A borrow
 written through an exclusive borrow parameter outlives the call, so it may not be of the
 function's own storage (`borrow.escape`).

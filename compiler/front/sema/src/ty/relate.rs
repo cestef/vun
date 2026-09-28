@@ -34,12 +34,14 @@ impl TyKind {
                 None => *self == Self::Primitive(Primitive::Lang(Lang::Range), Vec::new()),
             };
         }
-        // Borrows of one transition and access are accepted for each other: a `&temp` parameter
-        // takes an ordinary borrow, lent for the call only, and a `&static` one goes wherever a
-        // borrow does; only where `&static` is written is it required (spec 05, section 4).
+        // A borrow serving where another is expected is accepted there: one of the same
+        // transition leaving others no more, so `&mut` where `&` is expected; a `&temp`
+        // parameter takes an ordinary borrow, lent for the call only, and a `&static` one goes
+        // wherever a borrow does; only where `&static` is written is it required (spec 05,
+        // section 4).
         if let (Some((mode, p, _)), Some((found_mode, _, pointee))) = (self.borrowing(), found.borrowing())
             && mode != found_mode
-            && mode.alike(found_mode)
+            && found_mode.serves(mode)
             && self.extent() != Some(Extent::Static)
         {
             return self.accepts(&Self::Primitive(p, vec![Value::Type(pointee)]).intern());
@@ -103,14 +105,20 @@ impl TyKind {
         if let (Some(a), Some(b)) = (self.interval(), other.interval()) {
             return Some(Self::int(&a.hull(&b)));
         }
-        // Borrows of one transition and access meet in the shorter extent, a `&static` one as
-        // the other; borrows of arrays meet as a borrow of a slice of their items' join, or, for
-        // an exclusive borrow, which writes through, of their one item type.
+        // Borrows of one transition meet in the access both serve, and in the shorter extent, a
+        // `&static` one as the other; borrows of arrays meet as a borrow of a slice of their
+        // items' join, or, for an exclusive borrow, which writes through, of their one item type.
         if let (Some((mode, p, a)), Some((other_mode, q, b))) = (self.borrowing(), other.borrowing())
-            && mode.alike(other_mode)
+            && (mode.serves(other_mode) || other_mode.serves(mode))
             && (a != b || mode != other_mode)
         {
-            let p = if self.extent() == Some(Extent::Static) { q } else { p };
+            // The one the other serves, else the one of the shorter extent.
+            let (mode, p) = match (other_mode.serves(mode), mode.serves(other_mode)) {
+                (true, false) => (mode, p),
+                (false, true) => (other_mode, q),
+                _ if self.extent() == Some(Extent::Static) => (other_mode, q),
+                _ => (mode, p),
+            };
             let pointee = match (a.as_array(), b.as_array()) {
                 _ if a == b => a,
                 (Some((_, a)), Some((_, b))) if mode.access() == Access::Shared => Self::slice(a.join(&b)?),

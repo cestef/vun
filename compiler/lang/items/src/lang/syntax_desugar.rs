@@ -37,8 +37,9 @@ pub const Extent: Item = Item::new(&["lang", "syntax", "desugar", "Extent"]);
 /// Borrow types by the words after `&` (appendix B): `&T` is `lang.mem.Ref(T)`. Each mode is named
 /// by the transition it performs on the place it borrows (spec 05, section 2): the state it
 /// needs before, and the state the place has after; by the access it leaves others; and by how
-/// long a call holds it. Borrows of one transition and access are accepted for each other, but
-/// where `&static` is written.
+/// long a call holds it. A borrow serves where another of the same transition is expected when it
+/// leaves others no more access (`&mut T` where `&T` is), whatever its extent, but where `&static`
+/// is written.
 pub const borrows: Item = Item::new(&["lang", "syntax", "desugar", "borrows"]);
 /// How a compound assignment brings its result back to the place's type (spec 04, rule 9).
 pub const Narrowing: Item = Item::new(&["lang", "syntax", "desugar", "Narrowing"]);

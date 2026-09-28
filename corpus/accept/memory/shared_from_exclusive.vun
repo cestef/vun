@@ -1,0 +1,16 @@
+//! An exclusive borrow serves where a shared one is expected (spec 05, section 2): `&mut T` is
+//! read as `&T`, and the exclusive borrow is usable again once the shared one ends.
+
+sum := (xs: &[u8]) -> u32 { (xs[0] + xs[1]).to(u32) };
+
+bump := (xs: &mut [u8]) -> u32 {
+    first := sum(xs);
+    xs[0] = 5;
+    (first + sum(xs)).to(u32)
+};
+
+/// Branches of both modes meet as the shared one.
+pick := (flag: bool, a: &mut u8, b: &u8) -> u8 {
+    r := if flag { a } else { b };
+    r.*
+};

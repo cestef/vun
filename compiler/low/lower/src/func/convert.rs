@@ -1,6 +1,7 @@
 //! Moving values between places of related types: an integer into a wider or narrower storage
-//! of a range holding it, a borrow of an array into a borrow of a slice, and a variant into an
-//! enum of the same constructor laid out apart (`Result(never, E)` into `Result(u64, E)`).
+//! of a range holding it, a borrow of an array into a borrow of a slice, a borrow into one of
+//! another mode, and a variant into an enum of the same constructor laid out apart
+//! (`Result(never, E)` into `Result(u64, E)`).
 
 use vun_lir::{Access, Cond, Scalar, Target, Terminator, Value};
 use vun_mir::Operand;
@@ -89,7 +90,14 @@ impl FnLower<'_, '_, '_> {
         {
             return self.variants(src, from, dest, to);
         }
-        // Types held alike, such as `&static T` and `&T`.
+        // A borrow as a borrow of the same pointee in another mode, `&mut T` as `&T` or
+        // `&static T` as `&T`: held alike, whatever the pointee.
+        if let (Some((_, _, a)), Some((_, _, b))) = (from.borrowing(), to.borrowing())
+            && a == b
+        {
+            return self.copy_value(src, dest, to);
+        }
+        // Types held alike.
         match (types.repr(from, self.at)?, types.repr(to, self.at)?) {
             (Repr::Scalar(a), Repr::Scalar(b)) if a == b => self.copy_value(src, dest, to),
             _ => Err(Unlowered::unsupported(self.at, Form::Conversion)),

@@ -95,6 +95,15 @@ impl Borrow {
         (self.before(), self.after(), self.access()) == (other.before(), other.after(), other.access())
     }
 
+    /// Whether a borrow of this mode serves where one of `expected` is: it performs the same
+    /// transition, and leaves others no more than `expected` does, so an exclusive borrow is
+    /// read as a shared one (`&mut T` where `&T` is expected; spec 05, section 2).
+    #[must_use]
+    pub fn serves(self, expected: Self) -> bool {
+        (self.before(), self.after()) == (expected.before(), expected.after())
+            && self.access().covers(expected.access())
+    }
+
     /// Whether it is written with no word: `&T`.
     #[must_use]
     pub fn is_plain(self) -> bool {
@@ -112,5 +121,14 @@ impl fmt::Display for Borrow {
             f.write_str(word.text().unwrap_or_default())?;
         }
         Ok(())
+    }
+}
+
+impl Access {
+    /// Whether a borrow leaving this access may stand for one leaving `other`: an exclusive
+    /// borrow, which nothing else reaches, for any; a shared one for a shared one.
+    #[must_use]
+    pub fn covers(self, other: Self) -> bool {
+        self == other || self == Self::Exclusive
     }
 }
