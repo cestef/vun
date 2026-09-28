@@ -1,0 +1,85 @@
+//! Conversions written with integers, for a processor that does not convert between the types
+//! (`lang.lower.soft`): a float it lacks, or an integer wider than an address. Each takes the
+//! encoding apart through `lang.float.bits` and rounds once, to nearest, ties to even, as the
+//! primitives of `lang.float` say.
+
+_soft := lang.float.soft;
+
+/// The float of type `T` nearest the integer `x`.
+from_int := ($r: lang.Range, x: Int(r), $T: type) -> T {
+    $U := lang.float.Bits(T);
+    $M := lang.float.fraction_bits(T);
+    $Top := (1 << (lang.meta.size(T) * 8 - M - 1)) - 1;
+    // The magnitude's leading one at bit `L` at most, and `L` past the fraction, which rounding
+    // keeps below it.
+    $I := lang.meta.size(Int(r)) * 8;
+    $L := if I - 1 > M + 2 { I - 1 } else { M + 2 };
+    $D := Int(0..(1 << (L + 1)));
+    if x == 0 { return lang.float.from_bits(T, 0); }
+    magnitude: D = lang.int.abs(r, x).to(D);
+    value: _soft.Soft(D) = _soft.Soft(D).normalized(magnitude, 0, x < 0, L);
+    value.rounded(T, U, M, Top, L)
+};
+
+/// `x` rounded toward zero and clamped to the bounds of the integer type `U`; a NaN gives 0,
+/// clamped likewise.
+to_int := ($T: type, x: T, $U: type) -> U {
+    $B := lang.float.Bits(T);
+    $M := lang.float.fraction_bits(T);
+    $Top := (1 << (lang.meta.size(T) * 8 - M - 1)) - 1;
+    // `S` bits hold any value of `U`, so a magnitude of `2^S` or more clamps; `Wide` holds the
+    // significand shifted up to that.
+    $S := lang.meta.size(U) * 8;
+    $Wide := Int(0..(1 << (if S > M + 1 { S } else { M + 1 })));
+    $Magnitude := Int(0..(1 << S));
+    $Most: Magnitude = (-1).wrap(Magnitude);
+    $Half := 1 << (S - 1);
+    bits: B = lang.float.bits(T, x);
+    if _soft.soft_nan(B, M, Top, bits) { return (0).sat(U); }
+    negative := (bits >> (lang.meta.size(T) * 8 - 1)) == 1;
+    magnitude: Magnitude = if _soft.soft_field(B, M, Top, bits) == Top {
+        Most
+    } else {
+        (significand, e) := _soft.soft_parts(B, M, Top, bits);
+        if e >= S {
+            Most
+        } else if e >= 0 {
+            shifted: Wide = (significand.to(Wide) << e.to(Int(0..S))).wrap(Wide);
+            // Bits shifted past the top clamp.
+            lost := (shifted >> e.to(Int(0..S))) != significand.to(Wide);
+            if lost { Most } else { shifted.sat(Magnitude) }
+        } else if -e > M {
+            0
+        } else {
+            (significand >> (-e).to(Int(0..=M))).sat(Magnitude)
+        }
+    };
+    if !negative { return magnitude.sat(U); }
+    // A negative value is at least `-2^(S-1)`, the least any `U` of `S` bits holds.
+    least: Int(0..=Half) = magnitude.sat(Int(0..=Half));
+    (0 - least).sat(U)
+};
+
+/// The float of type `U` nearest `x`, of type `T`; a NaN gives the canonical NaN.
+convert := ($T: type, x: T, $U: type) -> U {
+    $B := lang.float.Bits(T);
+    $M := lang.float.fraction_bits(T);
+    $Top := (1 << (lang.meta.size(T) * 8 - M - 1)) - 1;
+    $V := lang.float.Bits(U);
+    $W := lang.meta.size(U) * 8;
+    $N := lang.float.fraction_bits(U);
+    $Most := (1 << (W - N - 1)) - 1;
+    $L := if 2 * W - 3 > M + 2 { 2 * W - 3 } else { M + 2 };
+    $D := Int(0..(1 << (L + 1)));
+    bits: B = lang.float.bits(T, x);
+    if _soft.soft_nan(B, M, Top, bits) { return _soft.soft_canonical(U, V, N, Most); }
+    negative := (bits >> (lang.meta.size(T) * 8 - 1)) == 1;
+    sign: V = if negative { 1 << (W - 1) } else { 0 };
+    if _soft.soft_field(B, M, Top, bits) == Top {
+        return lang.float.from_bits(U, (sign | (Most.to(V) << N)).wrap(V));
+    }
+    if (bits << 1).wrap(B) == 0 { return lang.float.from_bits(U, sign); }
+    (significand, e) := _soft.soft_parts(B, M, Top, bits);
+    value: _soft.Soft(D) = _soft.Soft(D).normalized(significand.to(D), e, negative, L);
+    value.rounded(U, V, N, Most, L)
+};

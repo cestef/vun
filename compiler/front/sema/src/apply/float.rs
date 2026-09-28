@@ -5,7 +5,9 @@ use std::cmp::Ordering;
 
 use crate::env::{Env, Unevaluated};
 use crate::float::{Binary, Format};
-use crate::int::{Integer, Interval};
+use vun_desugar::Narrowing;
+
+use crate::int::{Extended, Integer, Interval};
 use crate::primitives::float::Float;
 use crate::ty::{TyKind, Value};
 
@@ -15,6 +17,9 @@ impl Float {
     pub(crate) fn apply(self, env: &Env<'_, '_>, args: &[Value]) -> Result<Value, Unevaluated> {
         if let Some(encoded) = self.encoding(args) {
             return encoded;
+        }
+        if let Some(converted) = self.conversion(args) {
+            return converted;
         }
         let operands = args.iter().skip(1).map(|a| match a {
             Value::Float(x) => Some(*x),
@@ -42,6 +47,35 @@ impl Float {
             (Self::total_order, [a, b]) => env.ordering(a.total_order(*b)),
             _ => Err(Unevaluated::Unsupported),
         }
+    }
+
+    /// The conversions: `from_int`, `to_int` and `convert`; `None` for another primitive.
+    fn conversion(self, args: &[Value]) -> Option<Result<Value, Unevaluated>> {
+        let format = |ty: &Value| ty.as_type().and_then(|t| Format::of(&t)).ok_or(Unevaluated::Unsupported);
+        let value = match (self, args) {
+            (Self::from_int, [_, Value::Int(n), ty]) => {
+                format(ty).map(|f| Value::Float(Binary::of_integer(f, n)))
+            }
+            (Self::convert, [_, Value::Float(x), ty]) => format(ty).map(|f| Value::Float(x.converted(f))),
+            (Self::to_int, [_, Value::Float(x), ty]) => Self::clamped(*x, ty),
+            (Self::from_int | Self::convert | Self::to_int, _) => Err(Unevaluated::Unsupported),
+            _ => return None,
+        };
+        Some(value)
+    }
+
+    /// `x` rounded toward zero into the integer type `ty`, clamped: an infinity to the bound on
+    /// its side, a NaN from 0.
+    fn clamped(x: Binary, ty: &Value) -> Result<Value, Unevaluated> {
+        let range = ty.as_type().and_then(|t| t.interval()).ok_or(Unevaluated::Unsupported)?;
+        let bound = if x.negative() { range.lo() } else { range.hi() };
+        let exact = match (x.truncated(), bound) {
+            (Some(n), _) => n,
+            (None, _) if x.is_nan() => Integer::zero(),
+            (None, Extended::Finite(bound)) => bound.clone(),
+            (None, _) => return Err(Unevaluated::Unsupported),
+        };
+        Value::Int(exact).narrow(&range, Narrowing::Sat)
     }
 
     /// The primitives of the encoding: `Bits`, `bits`, `from_bits` and `fraction_bits`; `None`

@@ -218,10 +218,16 @@ Soft := ($D: type) -> type { struct {
         extra: i32 = if unbounded >= 1 { 0 } else { (1 - unbounded).sat(i32) };
         if L - M + extra > L + 1 { return lang.float.from_bits(T, sign); }
         shift := (L - M + extra).to(Int(1..=(L + 1)));
-        mut q: D = self.m >> shift;
-        rest := (self.m & ((1 << shift) - 1).wrap(D)).wrap(D);
-        half: D = (1 << (shift - 1)).wrap(D);
-        if rest > half or (rest == half and (q & 1) == 1) { q = (q + 1).wrap(D); }
+        // Shifted past the leading one, nothing is kept and the whole significand is the rest.
+        (kept, rest, half): (D, D, D) = if shift > L {
+            (0, self.m, 1 << L)
+        } else {
+            by := shift.to(Int(1..=L));
+            (self.m >> by, (self.m & ((1 << by) - 1)).wrap(D), 1 << (by - 1))
+        };
+        // The shift leaves `M + 1` bits at most, and rounding up one more.
+        mut q: Int(0..(1 << (M + 2))) = kept.wrap(Int(0..(1 << (M + 2))));
+        if rest > half or (rest == half and (q & 1) == 1) { q += 1; }
         mut field: i32 = if extra > 0 { 0 } else { unbounded.sat(i32) };
         // Rounding up to the next power of two raises the exponent.
         if q >> (M + 1) != 0 {
@@ -230,7 +236,8 @@ Soft := ($D: type) -> type { struct {
         }
         if field >= Top { return lang.float.from_bits(T, (sign | (Top.to(U) << M)).wrap(U)); }
         // A normal number's leading one is its exponent's lowest bit, dropped as it adds in.
-        bits := if field == 0 { q } else { ((q & ((1 << M) - 1)) | (field.wrap(D) << M)).wrap(D) };
-        lang.float.from_bits(T, (sign | bits.wrap(U)).wrap(U))
+        low: U = (q & ((1 << M) - 1)).wrap(U);
+        bits: U = if field == 0 { q.wrap(U) } else { (low | (field.wrap(U) << M)).wrap(U) };
+        lang.float.from_bits(T, (sign | bits).wrap(U))
     };
 } };

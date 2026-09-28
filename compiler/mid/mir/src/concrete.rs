@@ -203,9 +203,9 @@ impl Body {
     }
 
     /// The function the primitive `p` applied to `args` runs as where no instruction computes
-    /// it: always (`lower.by`), or where the target's processor computes no float of the type
-    /// its first argument names (`lower.soft`). A function, so that folding it again changes
-    /// nothing.
+    /// it: always (`lower.by`), or where the target's processor does not compute with a type
+    /// one of its constant arguments names (`lower.soft`): a float it lacks, an integer wider
+    /// than an address. A function, so that folding it again changes nothing.
     fn lowered_by(env: &Env<'_, '_>, p: Primitive, args: &[Operand]) -> Option<Value> {
         let attributes = env.primitive_decl(p).ok()?.attributes(env.cx)?;
         let function = |attribute| {
@@ -218,10 +218,8 @@ impl Body {
             return Some(f);
         }
         let target = env.cx.get::<TargetOf>(&())?;
-        match args.first() {
-            Some(Operand::Const(ty)) if !target.computes(ty) => function(Lower::soft),
-            _ => None,
-        }
+        let lacked = args.iter().any(|a| matches!(a, Operand::Const(value) if !target.computes(value)));
+        if lacked { function(Lower::soft) } else { None }
     }
 
     /// The value of the primitive `p` applied to `args`, when every parameter of it is a `$` one

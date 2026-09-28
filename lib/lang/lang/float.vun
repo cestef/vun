@@ -44,3 +44,14 @@ bits: ($T: type, x: T) -> Bits(T) = _;
 from_bits: ($T: type, b: Bits(T)) -> T = _;
 /// How many bits of the float type `T`'s encoding hold the fraction of its significand.
 fraction_bits: ($T: type) -> usize = _;
+
+/// The float of type `T` nearest the integer `x`, ties to even.
+#[panic.never, lower.soft(lang.float.soft.convert.from_int)]
+from_int: ($r: Range, x: Int(r), $T: type) -> T = _;
+/// `x` rounded toward zero to an integer and clamped to the bounds of the integer type `U`; a
+/// NaN gives 0, clamped likewise.
+#[panic.never, lower.soft(lang.float.soft.convert.to_int)]
+to_int: ($T: type, x: T, $U: type) -> U = _;
+/// The float of type `U` nearest `x`, of type `T`, ties to even; a NaN gives the canonical NaN.
+#[panic.never, lower.soft(lang.float.soft.convert.convert)]
+convert: ($T: type, x: T, $U: type) -> U = _;

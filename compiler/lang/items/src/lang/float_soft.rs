@@ -10,6 +10,8 @@ use crate::Item;
 pub const arith: Item = Item::new(&["lang", "float", "soft", "arith"]);
 /// The namespace `lang.float.soft.compare`.
 pub const compare: Item = Item::new(&["lang", "float", "soft", "compare"]);
+/// The namespace `lang.float.soft.convert`.
+pub const convert: Item = Item::new(&["lang", "float", "soft", "convert"]);
 /// `a` less `b` as many whole times as it goes, the quotient rounded toward zero: IEEE 754
 /// `fmod`, which is exact. A NaN when `b` is zero or a NaN, or `a` an infinity or a NaN.
 pub const rem: Item = Item::new(&["lang", "float", "soft", "rem"]);

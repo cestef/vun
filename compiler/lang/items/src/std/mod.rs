@@ -34,6 +34,8 @@ pub mod cmp_derive_eq;
 pub mod diag;
 pub mod diag_Fix;
 pub mod diag_Report;
+pub mod float;
+pub mod float_FloatMethods;
 pub mod fmt;
 pub mod fmt_ArrayFormat;
 pub mod fmt_Format;

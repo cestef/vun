@@ -8,6 +8,8 @@
 use crate::Item;
 /// The absolute value, whose range is the magnitude of `r`: `i32` gives `Int(0..=2^31)`.
 pub const abs: Item = Item::new(&["std", "int", "IntMethods", "abs"]);
+/// The float of type `T` nearest the value, ties to even.
+pub const nearest: Item = Item::new(&["std", "int", "IntMethods", "nearest"]);
 /// The integer whose storage holds `bytes`, least significant first: its first
 /// `lang.meta.size(Int(r))` bytes, which it must have.
 pub const from_le: Item = Item::new(&["std", "int", "IntMethods", "from_le"]);

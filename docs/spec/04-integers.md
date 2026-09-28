@@ -120,14 +120,21 @@ included. Every float result is thus one encoding on every target and at compile
 lowering replaces a NaN the hardware gives by the canonical one. `!=` is true where either
 operand is a NaN, every other comparison false.
 
+**Conversions** are explicit and total. `n.nearest(f64)` is the float nearest the integer `n`
+(`lang.float.from_int`), `x.nearest(f32)` the float of another width nearest `x`
+(`lang.float.convert`, a NaN the canonical one), both ties to even; `x.truncate(i32)` rounds `x`
+toward zero and clamps it to the bounds of the integer type (`lang.float.to_int`), a NaN giving
+0, clamped likewise, as Arm's and WebAssembly's saturating conversions do. None traps.
+
 `lang.float.bits(T, x)` is `x`'s encoding, an integer of `lang.float.Bits(T)` (unsigned, as wide
 as `T`), and `from_bits` the float of an encoding. Operations no instruction computes are written
 in Vun over the encoding (`lang.float.soft`); a primitive marked `#[lower.by(f)]` runs as a call of
 `f` at run time (spec 13, section 3). A target states the floats its processor computes
-(`lang.target.Spec.floats`); a primitive marked `#[lower.soft(f)]`, given a float type the target
-does not compute, runs as a call of `f`: `lang.float.soft.arith` adds, subtracts, multiplies and
-divides, rounding once to nearest, ties to even, and `lang.float.soft.compare` compares, as IEEE
-754 does both. A processor without floats (`bare.cortex_m3`) computes every float so, and one of
+(`lang.target.Spec.floats`); a primitive marked `#[lower.soft(f)]`, given a type the target does
+not compute with (a float it does not list, an integer wider than an address), runs as a call of
+`f`: `lang.float.soft.arith` adds, subtracts, multiplies and divides, rounding once to nearest,
+ties to even, `lang.float.soft.compare` compares, as IEEE 754 does both, and
+`lang.float.soft.convert` converts, so `i128` to `f64` is Vun on every target. A processor without floats (`bare.cortex_m3`) computes every float so, and one of
 single precision (`bare.cortex_m4f`) its `f64`.
 
 ## 3. Vectors

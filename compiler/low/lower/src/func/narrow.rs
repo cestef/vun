@@ -12,9 +12,9 @@ use crate::unlowered::{Form, Unlowered};
 
 /// The bounds of a target range that cut a source range: those inside it, which fit the
 /// source's storage.
-struct Cuts {
-    lo: Option<i128>,
-    hi: Option<i128>,
+pub(super) struct Cuts {
+    pub(super) lo: Option<i128>,
+    pub(super) hi: Option<i128>,
 }
 
 impl FnLower<'_, '_, '_> {
@@ -39,34 +39,31 @@ impl FnLower<'_, '_, '_> {
                 self.resize(x, source, signed, target)
             }
             Narrowing::Sat => {
-                let (lt, gt) = if signed { (Cond::SLt, Cond::SGt) } else { (Cond::ULt, Cond::UGt) };
-                let mut x = x;
-                for (cond, n) in [(lt, cuts.lo), (gt, cuts.hi)] {
-                    let Some(n) = n else { continue };
-                    let n = self.b.constant(source, source.truncate(n), self.at);
-                    let past = self.b.compare(cond, x, n, self.at);
-                    x = self.b.select(past, n, x, self.at);
-                }
+                let x = self.clamp(x, source, signed, &cuts);
                 self.resize(x, source, signed, target)
             }
             // Modular reduction into a range whose size is a power of two, from its low bound,
             // in the wider of both storages, whose wrapping keeps the low bits exact.
             Narrowing::Wrap => {
                 let range = ty.interval().ok_or_else(unsupported)?;
-                let bound = |e: &Extended| e.finite().and_then(Integer::to_i128).ok_or_else(unsupported);
+                let bound = |e: &Extended| e.finite().cloned().ok_or_else(unsupported);
                 let (lo, hi) = (bound(range.lo())?, bound(range.hi())?);
                 // The size less one, a mask of low bits when the size is a power of two, 2^128
                 // included.
-                let span = hi.abs_diff(lo);
-                if span & span.wrapping_add(1) != 0 {
+                let span = &hi - &lo;
+                let size = &span + &Integer::from(1);
+                let exponent = u32::try_from(size.magnitude_bits() - 1).map_err(|_| unsupported())?;
+                if size != Integer::power_of_two(exponent) {
                     return Err(unsupported());
                 }
+                let (lo, span) =
+                    (lo.to_bits().ok_or_else(unsupported)?, span.to_bits().ok_or_else(unsupported)?);
                 let bits = |s: Scalar| s.bits(self.l.types.pointer_bits());
                 let wide = if bits(target) > bits(source) { target } else { source };
                 let x = self.resize(x, source, signed, wide);
                 let (low, mask) = (
                     self.b.constant(wide, wide.truncate(lo), self.at),
-                    self.b.constant(wide, wide.truncate(hi.wrapping_sub(lo)), self.at),
+                    self.b.constant(wide, wide.truncate(span), self.at),
                 );
                 let shifted = self.b.binary(BinOp::Sub, x, low, self.at);
                 let reduced = self.b.binary(BinOp::And, shifted, mask, self.at);
@@ -88,7 +85,7 @@ impl FnLower<'_, '_, '_> {
         self.write(operand, Some(temp), from)?;
         let (source, signed) = self.l.types.int(from).ok_or_else(unsupported)?;
         let (range, own) = (ty.interval().ok_or_else(unsupported)?, from.interval().ok_or_else(unsupported)?);
-        let bound = |e: &Extended| e.finite().and_then(Integer::to_i128).ok_or_else(unsupported);
+        let bound = |e: &Extended| e.finite().and_then(Integer::to_bits).ok_or_else(unsupported);
         // Only a bound inside the source's range cuts it, and such a bound fits the source's
         // storage: checks and clamps compare there, and nothing widens past both storages.
         let lo = if range.lo() > own.lo() { Some(bound(range.lo())?) } else { None };
@@ -102,6 +99,19 @@ impl FnLower<'_, '_, '_> {
     pub(super) fn within(&mut self, operand: &Operand, ty: Ty) -> Result<Option<Value>, Unlowered> {
         let (x, source, signed, cuts) = self.cut(operand, ty)?;
         Ok(self.inside(x, source, signed, &cuts))
+    }
+
+    /// `x`, in the storage `source`, clamped to `cuts`.
+    pub(super) fn clamp(&mut self, x: Value, source: Scalar, signed: bool, cuts: &Cuts) -> Value {
+        let (lt, gt) = if signed { (Cond::SLt, Cond::SGt) } else { (Cond::ULt, Cond::UGt) };
+        let mut x = x;
+        for (cond, n) in [(lt, cuts.lo), (gt, cuts.hi)] {
+            let Some(n) = n else { continue };
+            let n = self.b.constant(source, source.truncate(n), self.at);
+            let past = self.b.compare(cond, x, n, self.at);
+            x = self.b.select(past, n, x, self.at);
+        }
+        x
     }
 
     /// Whether `x`, in the storage `source`, is within `cuts`: `None` when nothing cuts.

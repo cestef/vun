@@ -16,6 +16,7 @@ use vun_query::{Cx, Query};
 use vun_target::{Endian, TargetSpec};
 
 use crate::Primitive;
+use crate::float::Format;
 use crate::int::Integer;
 use crate::primitives::target::Target as Constant;
 use crate::ty::Value;
@@ -63,11 +64,18 @@ impl Target {
         }
     }
 
-    /// Whether its processor computes floats of the type `ty`, which `lang.float.soft` computes
-    /// otherwise (`lang.lower.soft`).
+    /// Whether its processor computes with the type `value` names, which `lang.float.soft`
+    /// does otherwise (`lang.lower.soft`): a float type it lists, and an integer type, or the
+    /// range of one, no wider than an address; any other value names nothing it lacks.
     #[must_use]
-    pub fn computes(&self, ty: &Value) -> bool {
-        self.floats.contains(ty)
+    pub fn computes(&self, value: &Value) -> bool {
+        let range = match value {
+            Value::Range(range) => range.clone(),
+            Value::Type(ty) if Format::of(ty).is_some() => return self.floats.contains(value),
+            Value::Type(ty) => ty.interval(),
+            _ => None,
+        };
+        range.and_then(|r| r.storage()).is_none_or(|s| s.bits() <= u64::from(self.address_bits))
     }
 
     /// The largest address: `usize` is `Int(0..=usize_max)`.

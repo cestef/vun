@@ -63,12 +63,37 @@ impl Binary {
 
     /// This value in `f64`, which holds every value of every format exactly.
     pub(crate) fn widened(self) -> Self {
+        self.converted(Format::F64)
+    }
+
+    /// This value rounded to `format`; a NaN is its canonical NaN.
+    #[must_use]
+    pub fn converted(self, format: Format) -> Self {
         match self.class() {
-            Class::Nan => Self::nan(Format::F64),
-            Class::Infinite { negative } => Self::infinity(Format::F64, negative),
+            Class::Nan => Self::nan(format),
+            Class::Infinite { negative } => Self::infinity(format, negative),
             Class::Finite { negative, mantissa, exponent } => {
-                Self::round(Format::F64, negative, &mantissa, &Integer::from(1), exponent)
+                Self::round(format, negative, &mantissa, &Integer::from(1), exponent)
             }
         }
+    }
+
+    /// The float of `format` nearest `n`.
+    #[must_use]
+    pub fn of_integer(format: Format, n: &Integer) -> Self {
+        Self::round(format, n.is_negative(), &n.abs(), &Integer::from(1), 0)
+    }
+
+    /// This value rounded toward zero, when it is finite.
+    #[must_use]
+    pub fn truncated(self) -> Option<Integer> {
+        let Class::Finite { negative, mantissa, exponent } = self.class() else { return None };
+        let shift = u32::try_from(exponent.unsigned_abs()).ok()?;
+        let magnitude = if exponent >= 0 {
+            &mantissa * &Integer::power_of_two(shift)
+        } else {
+            mantissa.checked_div(&Integer::power_of_two(shift))?
+        };
+        Some(if negative { -&magnitude } else { magnitude })
     }
 }

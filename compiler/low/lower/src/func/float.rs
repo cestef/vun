@@ -2,7 +2,8 @@
 //! operations, a NaN result replaced by the canonical NaN; comparisons (`!=` as `==` negated,
 //! since LIR's comparisons are ordered); negation as the sign bit flipped; `totalOrder` as a
 //! signed comparison of the bits with the order of negative values reversed; and the encoding
-//! through `bits` and `from_bits`. `rem` and `mul_add` run as their `lower.by` functions.
+//! through `bits` and `from_bits`; conversions as `rounded` makes them. `rem` and `mul_add` run as
+//! their `lower.by` functions.
 
 use vun_lir::{Access, BinOp, CastOp, Cond, Scalar, Value};
 use vun_mir::Operand;
@@ -52,6 +53,9 @@ impl FnLower<'_, '_, '_> {
             let equal = self.b.compare(Cond::Eq, x, y, self.at);
             return self.ordering(less, equal, dest, ty);
         }
+        if let Float::from_int | Float::to_int | Float::convert = f {
+            return self.rounded(f, arg(0)?, dest, ty);
+        }
         // The encoding: the same bits as the other scalar.
         if let Float::bits | Float::from_bits = f {
             let x = self.scalar_operand(arg(0)?)?;
@@ -88,7 +92,7 @@ impl FnLower<'_, '_, '_> {
 
     /// `x`, or the canonical NaN of `format` where `x` is a NaN, whatever NaN the hardware gave
     /// (spec 04, section 2): only a NaN is unequal to itself.
-    fn canonical(&mut self, x: Value, format: Format) -> Value {
+    pub(super) fn canonical(&mut self, x: Value, format: Format) -> Value {
         let ordered = self.b.compare(Cond::FEq, x, x, self.at);
         let nan = self.b.constant(self.b.ty(x), u128::from(Binary::nan(format).bits), self.at);
         self.b.select(ordered, x, nan, self.at)

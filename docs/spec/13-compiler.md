@@ -224,8 +224,11 @@ per second per stage and fails on regressions.
   sites. A primitive no instruction computes is marked `#[lang.lower.by(f)]`: making its caller
   concrete rewrites each call of it into a call of `f`, a Vun function of the same parameters
   (`lang.float.rem` runs as `lang.float.soft.rem`), compiled like any other. A primitive marked
-  `#[lang.lower.soft(f)]` is rewritten so when its first argument is a float type the target does
-  not compute (`lang.target.Spec.floats`): `lang.float.add` runs as `lang.float.soft.arith.add`. A slot only plain
+  `#[lang.lower.soft(f)]` is rewritten so when a constant argument names a type the target does not
+  compute with (`Target::computes`: a float `lang.target.Spec.floats` does not list, an integer
+  wider than an address): `lang.float.add` runs as `lang.float.soft.arith.add`. A float
+  converted to an integer is brought within the integer's storage before the instruction, which
+  hardware and C leave undefined outside it, and the bound put in after. A slot only plain
   loads and stores of one scalar as wide as it reach, by its address alone, is then promoted
   (`Function::promote`): its stores become definitions, its loads the definition reaching them,
   through block parameters where definitions meet (as Braun et al. build SSA, every predecessor

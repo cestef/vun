@@ -35,6 +35,9 @@ IntMethods := ($r: lang.Range) -> type { struct {
     /// The absolute value, whose range is the magnitude of `r`: `i32` gives `Int(0..=2^31)`.
     #[panic.never]
     abs := (x: Int(r)) -> Int(lang.int.magnitude(r)) { lang.int.abs(r, x) };
+    /// The float of type `T` nearest the value, ties to even.
+    #[panic.never]
+    nearest := (x: Int(r), $T: type) -> T { lang.float.from_int(r, x, T) };
     /// The integer whose storage holds `bytes`, least significant first: its first
     /// `lang.meta.size(Int(r))` bytes, which it must have.
     from_le := (bytes: &[u8]) -> Int(r) {

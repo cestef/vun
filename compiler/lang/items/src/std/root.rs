@@ -16,6 +16,8 @@ pub const cmp: Item = Item::new(&["std", "cmp"]);
 pub const collections: Item = Item::new(&["std", "collections"]);
 /// The namespace `std.diag`.
 pub const diag: Item = Item::new(&["std", "diag"]);
+/// The namespace `std.float`.
+pub const float: Item = Item::new(&["std", "float"]);
 /// The namespace `std.fmt`.
 pub const fmt: Item = Item::new(&["std", "fmt"]);
 /// The namespace `std.hw`.

@@ -32,7 +32,7 @@ impl Binary {
         Some(Exact { value: if negative { -&mantissa } else { mantissa }, exponent })
     }
 
-    fn is_nan(self) -> bool {
+    pub(crate) fn is_nan(self) -> bool {
         self.class() == Class::Nan
     }
 

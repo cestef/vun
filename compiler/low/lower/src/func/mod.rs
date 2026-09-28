@@ -16,6 +16,7 @@ mod narrow;
 mod place;
 mod primitive;
 mod redzone;
+mod rounded;
 mod rvalue;
 mod storage;
 mod term;

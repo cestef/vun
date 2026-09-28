@@ -36,3 +36,10 @@ pub const bits: Item = Item::new(&["lang", "float", "bits"]);
 pub const from_bits: Item = Item::new(&["lang", "float", "from_bits"]);
 /// How many bits of the float type `T`'s encoding hold the fraction of its significand.
 pub const fraction_bits: Item = Item::new(&["lang", "float", "fraction_bits"]);
+/// The float of type `T` nearest the integer `x`, ties to even.
+pub const from_int: Item = Item::new(&["lang", "float", "from_int"]);
+/// `x` rounded toward zero to an integer and clamped to the bounds of the integer type `U`; a
+/// NaN gives 0, clamped likewise.
+pub const to_int: Item = Item::new(&["lang", "float", "to_int"]);
+/// The float of type `U` nearest `x`, of type `T`, ties to even; a NaN gives the canonical NaN.
+pub const convert: Item = Item::new(&["lang", "float", "convert"]);

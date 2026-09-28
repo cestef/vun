@@ -163,6 +163,7 @@ pub mod float_soft;
 pub mod float_soft_Soft;
 pub mod float_soft_arith;
 pub mod float_soft_compare;
+pub mod float_soft_convert;
 pub mod flow;
 pub mod hint;
 pub mod int;

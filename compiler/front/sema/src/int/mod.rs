@@ -131,6 +131,13 @@ impl Integer {
     pub fn to_i128(&self) -> Option<i128> {
         i128::try_from(&self.0).ok()
     }
+
+    /// Its 128 bits in two's complement, for a value of `i128` or of `u128`.
+    #[must_use]
+    pub fn to_bits(&self) -> Option<i128> {
+        #[expect(clippy::cast_possible_wrap, reason = "two's complement bits")]
+        self.to_i128().or_else(|| self.to_u128().map(|n| n as i128))
+    }
 }
 
 impl From<BigInt> for Integer {
