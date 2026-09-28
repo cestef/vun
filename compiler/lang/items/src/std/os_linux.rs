@@ -12,6 +12,8 @@ pub const kernel: Item = Item::new(&["std", "os", "linux", "kernel"]);
 pub const runtime: Item = Item::new(&["std", "os", "linux", "runtime"]);
 /// Linux with the GNU C library runs programs through the C library's runtime.
 pub const gnu: Item = Item::new(&["std", "os", "linux", "gnu"]);
+/// The numbers Linux gives its clocks (`CLOCK_MONOTONIC`, `CLOCK_REALTIME`).
+pub const clocks: Item = Item::new(&["std", "os", "linux", "clocks"]);
 /// The GNU C library's layout on Linux: 1024-bit signal sets, of which Linux uses the first 64;
 /// memory reserved is `MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE`.
 pub const c: Item = Item::new(&["std", "os", "linux", "c"]);

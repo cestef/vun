@@ -17,3 +17,4 @@ pub const block: Item = Item::new(&["std", "os", "libc", "System", "block"]);
 pub const set_mask: Item = Item::new(&["std", "os", "libc", "System", "set_mask"]);
 /// `flags` for `mmap` of private memory reserved, not backed until touched.
 pub const reserve: Item = Item::new(&["std", "os", "libc", "System", "reserve"]);
+pub const clocks: Item = Item::new(&["std", "os", "libc", "System", "clocks"]);

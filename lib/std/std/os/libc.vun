@@ -10,6 +10,10 @@ exit: unsafe (status: i32) -> lang.never = _;
 mmap: unsafe (address: usize, bytes: usize, protection: i32, flags: i32, fd: i32, offset: isize) -> usize = _;
 #[link.symbol("munmap"), abi.c]
 munmap: unsafe (address: usize, bytes: usize) -> i32 = _;
+#[link.symbol("clock_gettime"), abi.c]
+clock_gettime: unsafe (clock: i32, at: *std.os.Timespec) -> i32 = _;
+#[link.symbol("nanosleep"), abi.c]
+nanosleep: unsafe (span: *std.os.Timespec, left: *std.os.Timespec) -> i32 = _;
 /// What the C library of a system lays out its own way: each system declares its row
 /// (`std.os.linux.c`), and a program uses the row of the system it is built for.
 System := struct {
@@ -24,6 +28,7 @@ System := struct {
     set_mask: i32,
     /// `flags` for `mmap` of private memory reserved, not backed until touched.
     reserve: i32,
+    clocks: std.os.Clocks,
 };
 
 /// The systems whose C library the runtime knows.
@@ -67,6 +72,11 @@ unmap := (address: usize, bytes: usize) { unsafe { munmap(address, bytes); } };
 /// The state of the checks of unsafe code, mapped the first time a check needs it.
 state := () -> std.check.State { std.check.mapped(reserve, unmap) };
 
+/// The error of a call that returned `result`, `-1` where it failed and set `errno`.
+failed := (result: i32) -> ?std.os.Error {
+    if result < 0 { .some(.number(unsafe errno_location().read())) } else { .none }
+};
+
 /// Ends the process with `status`.
 end := (status: std.os.Status) -> lang.never { unsafe exit(status.to(i32)) };
 
@@ -94,6 +104,30 @@ start := ($main: std.os.Main) -> type { struct {
             .err(.number(unsafe errno_location().read()))
         } else {
             .ok(written.to(usize))
+        }
+    };
+
+    #[link.export(std.os.symbols.now)]
+    now := (clock: std.time.Clock) -> Result(std.time.Instant, std.os.Error) {
+        mut at := std.os.Timespec{ .seconds = 0, .nanos = 0 };
+        match failed(unsafe clock_gettime(system.clocks.id(clock), lang.mem.pointer_to(std.os.Timespec, &at))) {
+            .some(e) => .err(e),
+            .none => .ok(at.instant()),
+        }
+    };
+
+    /// Sleeps, going on with what is left when a signal interrupts it.
+    #[link.export(std.os.symbols.pause)]
+    pause := (span: std.time.Duration) -> Result((), std.os.Error) {
+        mut left := std.os.Timespec.of(span);
+        for {
+            request := left;
+            asked := lang.mem.pointer_to(std.os.Timespec, &request);
+            match failed(unsafe nanosleep(asked, lang.mem.pointer_to(std.os.Timespec, &left))) {
+                .none => return .ok(()),
+                .some(.number(n)) if n == std.os.interrupted => {},
+                .some(e) => return .err(e),
+            }
         }
     };
 

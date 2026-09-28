@@ -32,11 +32,56 @@ trapped: Status = 101;
 /// section 1): each system reaches its streams its own way.
 symbols := struct {
     write := "vun_os_write";
+    now := "vun_os_now";
+    pause := "vun_os_pause";
 };
 
 /// Writes some of `bytes` to the stream the system knows as `fd`, returning how many.
 #[link.symbol(symbols.write)]
 write: (fd: i32, bytes: &[u8]) -> Result(usize, Error) = _;
+
+/// Reads `clock`.
+#[link.symbol(symbols.now)]
+now: (clock: std.time.Clock) -> Result(std.time.Instant, Error) = _;
+
+/// Suspends the calling thread for at least `span`.
+#[link.symbol(symbols.pause)]
+pause: (span: std.time.Duration) -> Result((), Error) = _;
+
+/// A span of time as POSIX systems take and give it (`struct timespec`): whole seconds, and the
+/// nanoseconds past them.
+#[layout.c]
+Timespec := struct {
+    seconds: i64,
+    nanos: i64,
+
+    /// The span `span`.
+    of := (span: std.time.Duration) -> Timespec {
+        .{ .seconds = span.whole_seconds().to(i64), .nanos = span.subsec_nanos().to(i64) }
+    };
+    /// The reading of a clock this span after its start.
+    instant := (self: &Timespec) -> std.time.Instant {
+        std.time.Instant.at((self.seconds * std.time.nanos_per_second + self.nanos).to(u64))
+    };
+};
+
+/// The numbers a system gives its clocks.
+Clocks := struct {
+    monotonic: i32,
+    real: i32,
+
+    /// The number of `clock`.
+    id := (self: &Clocks, clock: std.time.Clock) -> i32 {
+        match clock {
+            .monotonic => self.monotonic,
+            .real => self.real,
+        }
+    };
+};
+
+/// The error number of a request a signal interrupted before it finished, on every system `std`
+/// reaches through POSIX numbers (`EINTR`).
+interrupted: i32 = 4;
 
 /// Why a request to the system failed: the error number it reported, or a stream that took no
 /// more bytes.
@@ -55,6 +100,10 @@ System := struct {
     /// The arguments the process was started with.
     args := (self: &System) -> Args { self._args };
     stdout := (self: &mut System) -> Stream { unsafe Stream.of(stdout_fd) };
+    /// Reads `clock`.
+    now := (self: &System, clock: std.time.Clock) -> Result(std.time.Instant, Error) { std.os.now(clock) };
+    /// Suspends the calling thread for at least `span`.
+    pause := (self: &mut System, span: std.time.Duration) -> Result((), Error) { std.os.pause(span) };
     stderr := (self: &mut System) -> Stream { unsafe Stream.of(stderr_fd) };
 };
 

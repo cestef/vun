@@ -13,4 +13,5 @@ c: std.os.libc.System = .{
     .block = 1,
     .set_mask = 3,
     .reserve = 0x1042,
+    .clocks = .{ .monotonic = 6, .real = 0 },
 };

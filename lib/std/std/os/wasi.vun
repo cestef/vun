@@ -19,6 +19,45 @@ proc_exit: unsafe (status: i32) -> lang.never = _;
 args_sizes_get: unsafe (count: *usize, bytes: *usize) -> u16 = _;
 #[link.symbol("args_get"), link.library(module), abi.c]
 args_get: unsafe (values: *usize, bytes: *u8) -> u16 = _;
+#[link.symbol("clock_time_get"), link.library(module), abi.c]
+clock_time_get: unsafe (clock: u32, precision: u64, time: *u64) -> u16 = _;
+#[link.symbol("poll_oneoff"), link.library(module), abi.c]
+poll_oneoff: unsafe (subscriptions: *Subscription, events: *Event, count: usize, happened: *usize) -> u16 = _;
+
+/// The numbers preview 1 gives its clocks.
+clocks: std.os.Clocks = .{ .monotonic = 1, .real = 0 };
+
+/// What `poll_oneoff` waits for (`subscription`): here a clock, tag 0, its union's case.
+#[layout.c]
+Subscription := struct {
+    userdata: u64,
+    tag: u8,
+    clock: Timeout,
+};
+
+/// The clock `id` reaching `timeout` nanoseconds from now (`subscription_clock`).
+#[layout.c]
+Timeout := struct {
+    id: u32,
+    timeout: u64,
+    precision: u64,
+    flags: u16,
+};
+
+/// What happened to a subscription (`event`, its `event_fd_readwrite` unused for a clock).
+#[layout.c]
+Event := struct {
+    userdata: u64,
+    error: u16,
+    kind: u8,
+    bytes: u64,
+    flags: u16,
+};
+
+/// The error of a call that returned `errno`.
+failed := (errno: u16) -> ?std.os.Error {
+    if errno != 0 { .some(.number(errno.to(i32))) } else { .none }
+};
 
 /// The most arguments, and bytes of them, a program starts with: `_start` holds them in its
 /// frame, which lasts as long as the program. A program started with more exits trapped.
@@ -53,6 +92,32 @@ start := ($main: std.os.Main) -> type { struct {
         mut written: usize = 0;
         errno := unsafe fd_write(fd, std.ptr.to(Ciovec, &iov), 1, std.ptr.to(usize, &written));
         if errno != 0 { .err(.number(errno.to(i32))) } else { .ok(written) }
+    };
+
+    #[link.export(std.os.symbols.now)]
+    now := (clock: std.time.Clock) -> Result(std.time.Instant, std.os.Error) {
+        mut at: u64 = 0;
+        match failed(unsafe clock_time_get(clocks.id(clock).to(u32), 1, std.ptr.to(u64, &at))) {
+            .some(e) => .err(e),
+            .none => .ok(std.time.Instant.at(at)),
+        }
+    };
+
+    /// Waits for the monotonic clock to pass `span` from now.
+    #[link.export(std.os.symbols.pause)]
+    pause := (span: std.time.Duration) -> Result((), std.os.Error) {
+        subscription := Subscription{
+            .userdata = 0,
+            .tag = 0,
+            .clock = .{ .id = clocks.monotonic.to(u32), .timeout = span.as_nanos(), .precision = 1, .flags = 0 },
+        };
+        mut event := Event{ .userdata = 0, .error = 0, .kind = 0, .bytes = 0, .flags = 0 };
+        mut happened: usize = 0;
+        polled := unsafe poll_oneoff(std.ptr.to(Subscription, &subscription), std.ptr.to(Event, &event), 1, std.ptr.to(usize, &happened));
+        match failed(polled) {
+            .some(e) => .err(e),
+            .none => .ok(()),
+        }
     };
 
     #[link.export(std.sync.symbols.enter), panic.never]

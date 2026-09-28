@@ -44,6 +44,10 @@ pub const map: Item = Item::new(&["std", "os", "linux", "kernel", "map"]);
 pub const unmap: Item = Item::new(&["std", "os", "linux", "kernel", "unmap"]);
 /// The state of the checks of unsafe code, mapped the first time a check needs it.
 pub const state: Item = Item::new(&["std", "os", "linux", "kernel", "state"]);
+/// The error of a system call that returned `result`, if it failed.
+pub const failed: Item = Item::new(&["std", "os", "linux", "kernel", "failed"]);
+/// The number of `clock`.
+pub const clock_id: Item = Item::new(&["std", "os", "linux", "kernel", "clock_id"]);
 /// Ends the process with `status`.
 pub const end: Item = Item::new(&["std", "os", "linux", "kernel", "end"]);
 /// The thread holding the critical section, 0 when none: a thread entering it again nests.

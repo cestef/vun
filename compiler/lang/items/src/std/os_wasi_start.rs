@@ -9,6 +9,9 @@ use crate::Item;
 pub const entry: Item = Item::new(&["std", "os", "wasi", "start", "entry"]);
 pub const trap: Item = Item::new(&["std", "os", "wasi", "start", "trap"]);
 pub const write: Item = Item::new(&["std", "os", "wasi", "start", "write"]);
+pub const now: Item = Item::new(&["std", "os", "wasi", "start", "now"]);
+/// Waits for the monotonic clock to pass `span` from now.
+pub const pause: Item = Item::new(&["std", "os", "wasi", "start", "pause"]);
 pub const enter: Item = Item::new(&["std", "os", "wasi", "start", "enter"]);
 pub const leave: Item = Item::new(&["std", "os", "wasi", "start", "leave"]);
 /// Nothing else runs in the module, so there is nothing to wait for.

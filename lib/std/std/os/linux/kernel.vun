@@ -12,6 +12,8 @@ Numbers := struct {
     rt_sigprocmask: usize,
     sched_yield: usize,
     gettid: usize,
+    clock_gettime: usize,
+    clock_nanosleep: usize,
     exit_group: usize,
 };
 
@@ -25,6 +27,8 @@ arches := [
         .rt_sigprocmask = 14,
         .sched_yield = 24,
         .gettid = 186,
+        .clock_gettime = 228,
+        .clock_nanosleep = 230,
         .exit_group = 231,
     },
     Numbers{
@@ -35,6 +39,8 @@ arches := [
         .rt_sigprocmask = 135,
         .sched_yield = 124,
         .gettid = 178,
+        .clock_gettime = 113,
+        .clock_nanosleep = 115,
         .exit_group = 94,
     },
 ];
@@ -115,6 +121,14 @@ unmap := (address: usize, bytes: usize) { call(numbers.munmap, [address, bytes, 
 /// The state of the checks of unsafe code, mapped the first time a check needs it.
 state := () -> std.check.State { std.check.mapped(map, unmap) };
 
+/// The error of a system call that returned `result`, if it failed.
+failed := (result: isize) -> ?std.os.Error {
+    if result < 0 { .some(.number((-result).to(i32))) } else { .none }
+};
+
+/// The number of `clock`.
+clock_id := (clock: std.time.Clock) -> usize { std.os.linux.clocks.id(clock).to(usize) };
+
 /// Ends the process with `status`.
 end := (status: std.os.Status) -> lang.never {
     call(numbers.exit_group, [status.to(usize), 0, 0, 0, 0, 0]);
@@ -169,7 +183,37 @@ start := ($main: std.os.Main) -> type { struct {
     write := (fd: i32, bytes: &[u8]) -> Result(usize, std.os.Error) {
         address := lang.mem.items_pointer(u8, bytes).address();
         written := call(numbers.write, [fd.to(usize), address, bytes.len(), 0, 0, 0]);
-        if written < 0 { .err(.number((-written).to(i32))) } else { .ok(written.to(usize)) }
+        match failed(written) {
+            .some(e) => .err(e),
+            .none => .ok(written.to(usize)),
+        }
+    };
+
+    #[link.export(std.os.symbols.now)]
+    now := (clock: std.time.Clock) -> Result(std.time.Instant, std.os.Error) {
+        mut at := std.os.Timespec{ .seconds = 0, .nanos = 0 };
+        read := call(numbers.clock_gettime, [clock_id(clock), std.ptr.to(std.os.Timespec, &at).address(), 0, 0, 0, 0]);
+        match failed(read) {
+            .some(e) => .err(e),
+            .none => .ok(at.instant()),
+        }
+    };
+
+    /// Sleeps on the monotonic clock, going on with what is left when a signal interrupts it.
+    #[link.export(std.os.symbols.pause)]
+    pause := (span: std.time.Duration) -> Result((), std.os.Error) {
+        mut left := std.os.Timespec.of(span);
+        for {
+            request := left;
+            asked := std.ptr.to(std.os.Timespec, &request).address();
+            at := std.ptr.to(std.os.Timespec, &left).address();
+            slept := call(numbers.clock_nanosleep, [clock_id(.monotonic), 0, asked, at, 0, 0]);
+            match failed(slept) {
+                .none => return .ok(()),
+                .some(.number(n)) if n == std.os.interrupted => {},
+                .some(e) => return .err(e),
+            }
+        }
     };
 
     /// Blocks the thread's signals, the interrupts of a hosted program, and takes the section

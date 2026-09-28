@@ -16,6 +16,18 @@ pub const fd_write: Item = Item::new(&["std", "os", "wasi", "fd_write"]);
 pub const proc_exit: Item = Item::new(&["std", "os", "wasi", "proc_exit"]);
 pub const args_sizes_get: Item = Item::new(&["std", "os", "wasi", "args_sizes_get"]);
 pub const args_get: Item = Item::new(&["std", "os", "wasi", "args_get"]);
+pub const clock_time_get: Item = Item::new(&["std", "os", "wasi", "clock_time_get"]);
+pub const poll_oneoff: Item = Item::new(&["std", "os", "wasi", "poll_oneoff"]);
+/// The numbers preview 1 gives its clocks.
+pub const clocks: Item = Item::new(&["std", "os", "wasi", "clocks"]);
+/// What `poll_oneoff` waits for (`subscription`): here a clock, tag 0, its union's case.
+pub const Subscription: Item = Item::new(&["std", "os", "wasi", "Subscription"]);
+/// The clock `id` reaching `timeout` nanoseconds from now (`subscription_clock`).
+pub const Timeout: Item = Item::new(&["std", "os", "wasi", "Timeout"]);
+/// What happened to a subscription (`event`, its `event_fd_readwrite` unused for a clock).
+pub const Event: Item = Item::new(&["std", "os", "wasi", "Event"]);
+/// The error of a call that returned `errno`.
+pub const failed: Item = Item::new(&["std", "os", "wasi", "failed"]);
 /// The most arguments, and bytes of them, a program starts with: `_start` holds them in its
 /// frame, which lasts as long as the program. A program started with more exits trapped.
 pub const arguments: Item = Item::new(&["std", "os", "wasi", "arguments"]);

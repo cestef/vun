@@ -16,6 +16,9 @@ pub const trap: Item = Item::new(&["std", "os", "linux", "kernel", "start", "tra
 /// The operations of the checks of unsafe code, for a program built with checks.
 pub const checks: Item = Item::new(&["std", "os", "linux", "kernel", "start", "checks"]);
 pub const write: Item = Item::new(&["std", "os", "linux", "kernel", "start", "write"]);
+pub const now: Item = Item::new(&["std", "os", "linux", "kernel", "start", "now"]);
+/// Sleeps on the monotonic clock, going on with what is left when a signal interrupts it.
+pub const pause: Item = Item::new(&["std", "os", "linux", "kernel", "start", "pause"]);
 /// Blocks the thread's signals, the interrupts of a hosted program, and takes the section
 /// from other threads.
 pub const enter: Item = Item::new(&["std", "os", "linux", "kernel", "start", "enter"]);

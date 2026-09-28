@@ -10,6 +10,8 @@ pub const write: Item = Item::new(&["std", "os", "libc", "write"]);
 pub const exit: Item = Item::new(&["std", "os", "libc", "exit"]);
 pub const mmap: Item = Item::new(&["std", "os", "libc", "mmap"]);
 pub const munmap: Item = Item::new(&["std", "os", "libc", "munmap"]);
+pub const clock_gettime: Item = Item::new(&["std", "os", "libc", "clock_gettime"]);
+pub const nanosleep: Item = Item::new(&["std", "os", "libc", "nanosleep"]);
 /// What the C library of a system lays out its own way: each system declares its row
 /// (`std.os.linux.c`), and a program uses the row of the system it is built for.
 pub const System: Item = Item::new(&["std", "os", "libc", "System"]);
@@ -36,6 +38,8 @@ pub const reserve: Item = Item::new(&["std", "os", "libc", "reserve"]);
 pub const unmap: Item = Item::new(&["std", "os", "libc", "unmap"]);
 /// The state of the checks of unsafe code, mapped the first time a check needs it.
 pub const state: Item = Item::new(&["std", "os", "libc", "state"]);
+/// The error of a call that returned `result`, `-1` where it failed and set `errno`.
+pub const failed: Item = Item::new(&["std", "os", "libc", "failed"]);
 /// Ends the process with `status`.
 pub const end: Item = Item::new(&["std", "os", "libc", "end"]);
 /// The thread holding the critical section, 0 when none: a thread entering it again nests.

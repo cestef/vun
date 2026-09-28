@@ -1,0 +1,46 @@
+//! Time as the system keeps it (spec 08, section 2): spans of time, and readings of the clocks a
+//! hosted program reaches through its `std.os.System`.
+
+nanos_per_micro := 1_000;
+nanos_per_milli := 1_000_000;
+nanos_per_second := 1_000_000_000;
+
+/// A span of time, to the nanosecond.
+Duration := struct {
+    _nanos: u64,
+
+    nanos := (n: u64) -> Duration { .{ ._nanos = n } };
+    micros := (n: u64) -> Duration { .{ ._nanos = (n * nanos_per_micro).to(u64) } };
+    millis := (n: u64) -> Duration { .{ ._nanos = (n * nanos_per_milli).to(u64) } };
+    seconds := (n: u64) -> Duration { .{ ._nanos = (n * nanos_per_second).to(u64) } };
+
+    /// Its length in nanoseconds.
+    as_nanos := (self: &Duration) -> u64 { self._nanos };
+    /// Its whole seconds.
+    whole_seconds := (self: &Duration) -> u64 { self._nanos / nanos_per_second };
+    /// The nanoseconds past its whole seconds.
+    subsec_nanos := (self: &Duration) -> u64 { self._nanos % nanos_per_second };
+};
+
+/// A clock the system keeps.
+Clock := enum {
+    /// Never goes back; its readings are measured from an instant the system chose, such as
+    /// when it booted, and mean nothing across processes.
+    monotonic,
+    /// The time of day, since 1970-01-01 00:00 UTC; it moves when the system's time is set.
+    real,
+};
+
+/// A reading of a clock: nanoseconds since the clock's start.
+Instant := struct {
+    _nanos: u64,
+
+    /// The reading `n` nanoseconds after the clock's start.
+    at := (n: u64) -> Instant { .{ ._nanos = n } };
+    /// Nanoseconds since the clock's start.
+    as_nanos := (self: &Instant) -> u64 { self._nanos };
+    /// The time from `earlier`, a reading of the same clock, to this one.
+    since := (self: &Instant, earlier: &Instant) -> Duration {
+        Duration.nanos((self._nanos - earlier._nanos).to(u64))
+    };
+};

@@ -27,6 +27,18 @@ pub const trapped: Item = Item::new(&["std", "os", "trapped"]);
 pub const symbols: Item = Item::new(&["std", "os", "symbols"]);
 /// Writes some of `bytes` to the stream the system knows as `fd`, returning how many.
 pub const write: Item = Item::new(&["std", "os", "write"]);
+/// Reads `clock`.
+pub const now: Item = Item::new(&["std", "os", "now"]);
+/// Suspends the calling thread for at least `span`.
+pub const pause: Item = Item::new(&["std", "os", "pause"]);
+/// A span of time as POSIX systems take and give it (`struct timespec`): whole seconds, and the
+/// nanoseconds past them.
+pub const Timespec: Item = Item::new(&["std", "os", "Timespec"]);
+/// The numbers a system gives its clocks.
+pub const Clocks: Item = Item::new(&["std", "os", "Clocks"]);
+/// The error number of a request a signal interrupted before it finished, on every system `std`
+/// reaches through POSIX numbers (`EINTR`).
+pub const interrupted: Item = Item::new(&["std", "os", "interrupted"]);
 /// Why a request to the system failed: the error number it reported, or a stream that took no
 /// more bytes.
 pub const Error: Item = Item::new(&["std", "os", "Error"]);

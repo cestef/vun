@@ -1,0 +1,28 @@
+//! Reading the system's clocks and sleeping (spec 08, section 2): a pause of a millisecond
+//! takes at least that long on the monotonic clock.
+
+start := std.os.start(main);
+
+main := (sys: &mut std.os.System) -> std.os.Exit {
+    before := match sys.now(.monotonic) {
+        .ok(at) => at,
+        .err(_) => return .code(1),
+    };
+    span := std.time.Duration.millis(1);
+    match sys.pause(span) {
+        .ok(()) => {},
+        .err(_) => return .code(2),
+    }
+    after := match sys.now(.monotonic) {
+        .ok(at) => at,
+        .err(_) => return .code(3),
+    };
+    real := match sys.now(.real) {
+        .ok(at) => at,
+        .err(_) => return .code(4),
+    };
+    waited := after.since(&before).as_nanos() >= span.as_nanos();
+    // Past 2020-01-01 on the time of day.
+    dated := real.as_nanos() / std.time.nanos_per_second > 1_577_836_800;
+    if waited and dated { .ok } else { .code(5) }
+};

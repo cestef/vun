@@ -83,6 +83,16 @@ compiling. So no program, and nothing in `std` but a runtime, is tied to a C lib
 reaches the system through typed link symbols each runtime exports (`std.os.symbols.write`, beside
 `lang.panic.symbols.trap` and `std.sync.symbols.enter`).
 
+**Clocks.** `std.time` holds spans of time (`Duration`, to the nanosecond) and readings of a clock
+(`Instant`, nanoseconds since the clock's start); `Clock` is `monotonic` (never goes back, from an
+instant the system chose) or `real` (the time of day since 1970 UTC). `System.now(clock)` reads
+one and `System.pause(span)` suspends the thread for at least `span`, through the link symbols
+`std.os.symbols.{now, pause}`: the kernel runtime calls `clock_gettime` and `clock_nanosleep`
+itself, the C library's runtime its functions of the same names (`nanosleep` to pause), each
+system's row giving its clocks' numbers (`std.os.Clocks`: 1 and 0 on Linux, 6 and 0 on macOS),
+and WASI's `clock_time_get` and `poll_oneoff` on a clock. A pause a signal interrupts goes on with
+what is left. Failures are `std.os.Error.number`, the system's error number.
+
 **Linux targets.** `targets.linux.<cpu>` (`linux.x86_64`, `linux.arm64`) builds static programs on
 the kernel runtime, with ABI `kernel`; `targets.linux.gnu.<cpu>` builds programs on the GNU C
 library, with ABI `gnu`, which a program calling C picks. arm64's static target compiles C without

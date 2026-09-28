@@ -21,6 +21,12 @@ pub const sched_yield: Item = Item::new(
 pub const gettid: Item = Item::new(
     &["std", "os", "linux", "kernel", "Numbers", "gettid"],
 );
+pub const clock_gettime: Item = Item::new(
+    &["std", "os", "linux", "kernel", "Numbers", "clock_gettime"],
+);
+pub const clock_nanosleep: Item = Item::new(
+    &["std", "os", "linux", "kernel", "Numbers", "clock_nanosleep"],
+);
 pub const exit_group: Item = Item::new(
     &["std", "os", "linux", "kernel", "Numbers", "exit_group"],
 );
