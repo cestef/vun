@@ -17,7 +17,8 @@ pub struct Item {
     pub line: u32,
 }
 
-/// What a declaration is, as its value's shape says.
+/// What a declaration is, as its value's shape says; a caller that types the declarations tells
+/// the types among the rest (`Namespace::retype`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Kind {
     /// A function literal, or a declaration typed as a function.
@@ -30,6 +31,8 @@ pub enum Kind {
     Field,
     /// A variant of an `enum`.
     Variant,
+    /// A type whose value's shape does not show it: `Word := u32`, `Pair := Make(u8)`.
+    Type,
     /// Any other value.
     Value,
 }
@@ -43,6 +46,7 @@ impl Kind {
             Self::Enum => "enum",
             Self::Field => "field",
             Self::Variant => "variant",
+            Self::Type => "type",
             Self::Value => "value",
         }
     }

@@ -367,7 +367,10 @@ read that declaration.
   declarations) and refuses a release whose version bump is smaller than the change requires. It
   checks types and signatures, not behavior, and says so.
 - **Docs.** A namespace's summary is the first line of its `//!` comment. `vun doc` emits static
-  HTML plus JSON for the LSP and indexes.
+  HTML plus JSON for the LSP and indexes. Declarations are read from the CST, each with the kind
+  its value's shape shows (function, struct, enum, value); the driver then asks sema which of the
+  values are types (the query `vun_sema::decl::Declaration`), so `Word := u32` is documented as a
+  type. The documentation model (`vun-doc`) does not depend on sema.
 
 ## 8. C and vendor SDK interop
 

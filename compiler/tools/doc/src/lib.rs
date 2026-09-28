@@ -34,6 +34,18 @@ pub struct Namespace {
     pub items: Vec<Item>,
 }
 
+impl Namespace {
+    /// Marks as types the declarations the reader took for values that `is_type` says are types:
+    /// a namespace's own, which are the ones its caller can type by name.
+    pub fn retype(&mut self, mut is_type: impl FnMut(&str) -> bool) {
+        for item in &mut self.items {
+            if item.kind == Kind::Value && is_type(&item.name) {
+                item.kind = Kind::Type;
+            }
+        }
+    }
+}
+
 /// The documentation of every namespace added, by path.
 #[derive(Default)]
 pub struct Docs {

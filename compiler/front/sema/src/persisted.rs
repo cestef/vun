@@ -5,7 +5,7 @@ use vun_query::Db;
 
 use crate::check::Checked;
 use crate::checks::ChecksOf;
-use crate::decl::{DeclType, DeclValue, TypedDecl};
+use crate::decl::{DeclType, DeclValue, Declaration, TypedDecl};
 use crate::env::{ItemSite, PrimitiveComptime, PrimitiveDecl, PrimitiveSignature};
 use crate::eval::{Call, MeteredCall, Signed};
 use crate::fuel::Callee;
@@ -26,6 +26,7 @@ pub const PERSISTED: &[fn(&Db)] = &[
     Db::persist::<Checked>,
     Db::persist::<DeclType>,
     Db::persist::<DeclValue>,
+    Db::persist::<Declaration>,
     Db::persist::<TypedDecl>,
     Db::persist::<Typed>,
     Db::persist::<Reported>,

@@ -1,9 +1,11 @@
-//! The value and the type of a namespace member's declaration. A declaration whose value is `_`
-//! in `lang` is its primitive (decision 66); elsewhere it is a link symbol the linker provides.
+//! The value and the type of a namespace member's declaration, and whether it declares a type. A
+//! declaration whose value is `_` in `lang` is its primitive (decision 66); elsewhere it is a link
+//! symbol the linker provides.
 
 use std::sync::Arc;
 
-use vun_hir::db::Package;
+use vun_codec::{Decode, Encode};
+use vun_hir::db::{FileRef, Package, Parsed};
 use vun_hir::tree::{DeclId, ExprKind, Hir, PatKind};
 use vun_hir::visit::Visitor;
 use vun_intern::Symbol;
@@ -15,7 +17,7 @@ use crate::eval::{Instance, Staging};
 use crate::item::DeclRef;
 use crate::primitives::check::Check;
 use crate::target::TargetOf;
-use crate::ty::Value;
+use crate::ty::{TyKind, Value};
 use crate::typeck::{Known, Stage, TypedBody, Typer};
 
 pub struct DeclValue;
@@ -140,5 +142,32 @@ impl Query for TypedDecl {
 
     fn cycle(_: &Cx<'_>, _: &Self::Key, _: &Cycle) -> Self::Value {
         None
+    }
+}
+
+/// What a namespace member declares, by the type of its declaration.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encode, Decode)]
+pub enum Declares {
+    /// A type: its declaration is of type `lang.type`, as `Word := u32` is.
+    Type,
+    /// A value of any other type.
+    Value,
+}
+
+/// What the member `name` of the file `file` declares; `None` when the file declares no such
+/// member, or its type is not known.
+pub struct Declaration;
+
+impl Query for Declaration {
+    const NAME: &'static str = "declaration";
+    type Key = (FileRef, Symbol);
+    type Value = Option<Declares>;
+
+    fn compute(cx: &Cx<'_>, (file, name): &Self::Key) -> Self::Value {
+        let parsed = cx.get::<Parsed>(file)?;
+        let hir = &parsed.hir;
+        let decl = hir.declaring(hir.root?, *name)?;
+        let known = cx.get::<DeclType>(&DeclRef::new(file.clone(), hir, decl)).ok()?;
+        Some(if known.ty == TyKind::of_types() { Declares::Type } else { Declares::Value })
     }
 }
