@@ -13,7 +13,7 @@ use vun_native::width::{part, size_of};
 impl Sel<'_, '_> {
     /// The bytes of `v` in a register.
     fn bytes(&self, v: Value) -> u64 {
-        u64::from(size_of(self.f.ty(v)).unwrap_or(Size::B64).bytes())
+        u64::from(size_of(self.f.ty(v), self.unit.pointer_bits).unwrap_or(Size::B64).bytes())
     }
 
     /// Puts `v` in `carrier`.

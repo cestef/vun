@@ -4,13 +4,13 @@
 use vun_asm::Width;
 use vun_lir::Scalar;
 
-/// The size of an integer, an address or the bits of a float as a general register holds them;
-/// `None` for a 128-bit integer and for `f16`, which legalization removes.
+/// The size of an integer, an address of `pointer_bits` or the bits of a float as a general
+/// register holds them; `None` for a 128-bit integer and for `f16`, which legalization removes.
 #[must_use]
-pub fn size_of<S: Width>(scalar: Scalar) -> Option<S> {
+pub fn size_of<S: Width>(scalar: Scalar, pointer_bits: u32) -> Option<S> {
     match scalar {
         Scalar::I128 | Scalar::F16 => None,
-        _ => S::of_bytes(scalar.bytes(u64::BITS)),
+        _ => S::of_bytes(scalar.bytes(pointer_bits)),
     }
 }
 

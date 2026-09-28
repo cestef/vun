@@ -196,6 +196,7 @@ pub const fn condition(cond: Cond) -> Option<Cc> {
 impl vun_native::Native for Arm {
     /// Instructions are 4 bytes; the return address is in the link register, `x30`.
     const CALL_FRAME: CallFrame = CallFrame {
+        word: 8,
         code_align: 4,
         stack_pointer: 31,
         frame_pointer: 29,

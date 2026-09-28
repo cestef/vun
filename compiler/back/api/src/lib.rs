@@ -105,11 +105,31 @@ pub enum Feature {
 pub struct BackendCaps {
     pub emits: Emits,
     pub features: &'static [Feature],
-    /// The widest integer it computes with, in bits: wider ones are split into halves before it
-    /// reads the unit (`Unit::legalize`).
-    pub int_bits: u32,
+    /// The widest integer it computes with: wider ones are split into halves before it reads the
+    /// unit (`Legalize`).
+    pub widest: Widest,
     /// Whether it computes `f16`, or holds it as bits and computes in `f32` (`Unit::legalize`).
     pub half: Half,
+}
+
+/// The widest integer a backend computes with.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Widest {
+    /// Of this many bits, on every target.
+    Bits(u32),
+    /// A register's: as wide as the target's addresses.
+    Address,
+}
+
+impl Widest {
+    /// Its bits on `target`.
+    #[must_use]
+    pub fn on(self, target: &TargetSpec) -> u32 {
+        match self {
+            Self::Bits(bits) => bits,
+            Self::Address => target.pointer_bits,
+        }
+    }
 }
 
 impl BackendCaps {

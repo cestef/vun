@@ -129,7 +129,8 @@ impl Session {
         let info = *backend.info();
         // Integers wider than the backend's are split into halves first.
         let mut unit = unit.clone();
-        let widest = Scalar::int(info.caps.int_bits).expect("a backend computes with an integer width");
+        let widest =
+            Scalar::int(info.caps.widest.on(&target)).expect("a backend computes with an integer width");
         if let Err(unlegal) =
             (Legalize { widest, endian: target.endian, half: info.caps.half }).apply(&mut unit)
         {

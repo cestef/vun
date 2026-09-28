@@ -30,9 +30,6 @@ pub use listing::Listing;
 /// A function compiled for the architecture `A`.
 pub type Code<A> = Compiled<<<A as vun_codegen::Arch>::Isa as Isa>::Inst<Address>>;
 
-/// Bytes a call pushes above a frame: the return address and the saved frame pointer.
-const LINKAGE: u64 = 16;
-
 /// An architecture's instruction compilers, with the calling conventions it compiles for.
 pub trait Native: Isel {
     /// How its call frames are described to unwinders.
@@ -98,7 +95,9 @@ pub trait Native: Isel {
             let text = Listing { unit: request.unit, code: &code, lines: request.lines }.to_string();
             artifacts.push(Artifact { part: Part::Whole, kind: Emits::Listing, bytes: text.into_bytes() });
         }
-        let frames = code.iter().map(|(id, c)| (id, c.frame + LINKAGE)).collect();
+        // Above the frame, a call leaves the return address and the saved frame pointer.
+        let linkage = 2 * Self::WORD;
+        let frames = code.iter().map(|(id, c)| (id, c.frame + linkage)).collect();
         Ok(Emitted { artifacts, frames })
     }
 }

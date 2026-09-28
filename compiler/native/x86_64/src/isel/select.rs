@@ -64,7 +64,7 @@ impl<'a> Look<'_, 'a> {
     }
 
     pub(super) fn size_of(&self, scalar: Scalar) -> Result<Size, Lack> {
-        size_of(scalar).ok_or_else(|| {
+        size_of(scalar, self.0.unit.pointer_bits).ok_or_else(|| {
             self.0.lack(match scalar {
                 Scalar::I128 => Missing::Int128,
                 _ => Missing::Half,

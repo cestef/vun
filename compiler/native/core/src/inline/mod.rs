@@ -126,9 +126,10 @@ pub trait Inlined {
     fn emit<A: Inline>(&self, check: Option<&AsmCheck>, cx: &mut Cx<'_, A>) -> Result<(), Lack>;
 }
 
-/// The size an output of type `ty` is loaded and stored at, or what the backend lacks for it.
-fn sized<S: Width>(ty: Scalar, inst: &Inst) -> Result<S, Lack> {
-    size_of(ty).ok_or_else(|| {
+/// The size an output of type `ty`, addresses of `pointer_bits`, is loaded and stored at, or
+/// what the backend lacks for it.
+fn sized<S: Width>(ty: Scalar, pointer_bits: u32, inst: &Inst) -> Result<S, Lack> {
+    size_of(ty, pointer_bits).ok_or_else(|| {
         let missing = if ty == Scalar::I128 { Missing::Int128 } else { Missing::Half };
         missing.at(inst.origin)
     })

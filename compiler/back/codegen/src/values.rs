@@ -3,7 +3,7 @@
 
 use std::iter;
 
-use vun_asm::imm::low64;
+use vun_asm::imm::{low64, sign_extend};
 use vun_index::{BitSet, IndexVec};
 use vun_lir::analysis::{Loops, Order};
 use vun_lir::{Address, Function, InstKind, Slot, Value};
@@ -92,8 +92,8 @@ impl Assignment {
                 let Some(out) = data.result else { continue };
                 defined[out] = here;
                 let constant = |v: Value| match values[v].made {
-                    // An offset is address-wide, and native addresses are 64 bits.
-                    Some((Recompute::Const(bits), _)) => Some(low64(bits).cast_signed()),
+                    // An offset is address-wide.
+                    Some((Recompute::Const(bits), _)) => Some(sign_extend(low64(bits), pointer_bits)),
                     _ => None,
                 };
                 let made = match data.kind {

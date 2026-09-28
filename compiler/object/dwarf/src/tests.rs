@@ -114,6 +114,7 @@ fn call_frames_are_one_common_record_then_one_per_function() {
     use super::{CallFrame, Fde, Step};
     let (mut object, [f, g]) = object();
     let x86 = CallFrame {
+        word: 8,
         code_align: 1,
         stack_pointer: 7,
         frame_pointer: 6,

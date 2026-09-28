@@ -11,6 +11,7 @@ mod tests;
 
 use vun_backend::{
     Artifact, ArtifactSink, Backend, BackendCaps, BackendInfo, Emits, Missing, Part, Readiness, Request,
+    Widest,
 };
 use vun_diag::{DiagCtxt, ErrorGuaranteed};
 
@@ -21,7 +22,7 @@ use vun_target::{Arches, Name};
 pub const INFO: BackendInfo = BackendInfo {
     id: Name("wasm"),
     arches: Arches::Only(&[Name("wasm32")]),
-    caps: BackendCaps { emits: Emits::Object, features: &[], int_bits: 64, half: Half::Promoted },
+    caps: BackendCaps { emits: Emits::Object, features: &[], widest: Widest::Bits(64), half: Half::Promoted },
     readiness: Readiness::Ready,
 };
 

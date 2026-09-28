@@ -31,6 +31,8 @@ pub enum Step {
 /// A machine's call frames: the factors offsets are counted in and its registers' numbers.
 #[derive(Clone, Copy, Debug)]
 pub struct CallFrame {
+    /// The bytes of a word: of the return address and of the frame pointer as they are stored.
+    pub word: u8,
     /// The bytes an instruction's offset counts in.
     pub code_align: u64,
     pub stack_pointer: u16,
@@ -49,9 +51,6 @@ pub struct Fde {
     pub steps: Vec<(u64, Step)>,
 }
 
-const WORD: i64 = 8;
-/// Offsets from where the caller's frame starts count in words, downwards.
-const DATA_ALIGN: i64 = -WORD;
 const CIE_VERSION: u8 = 1;
 /// `z`: an augmentation length follows; `R`: then the encoding of an FDE's addresses.
 const AUGMENTATION: &[u8] = b"zR";
@@ -97,12 +96,12 @@ impl CallFrame {
                 at = offset;
                 self.step(&mut out, step);
             }
-            Self::pad(&mut out, start);
+            self.pad(&mut out, start);
         }
         let section = object.section(b".eh_frame", Contents::ReadOnly);
         object.sections[section].bytes = out.0;
         object.sections[section].relocs = relocs;
-        object.sections[section].align = WORD.cast_unsigned();
+        object.sections[section].align = u64::from(self.word);
     }
 
     /// The common record: at a call, the caller's frame starts where the stack pointer is,
@@ -113,7 +112,7 @@ impl CallFrame {
         out.u8(CIE_VERSION);
         out.str(AUGMENTATION);
         out.uleb(self.code_align);
-        out.sleb(DATA_ALIGN);
+        out.sleb(self.data_align());
         out.uleb(u64::from(self.return_address));
         out.uleb(1);
         out.u8(PCREL_SDATA4);
@@ -121,31 +120,40 @@ impl CallFrame {
         out.uleb(u64::from(self.stack_pointer));
         out.uleb(self.entry().cast_unsigned());
         if self.return_pushed {
-            Self::saved(out, self.return_address, -WORD);
+            self.saved(out, self.return_address, -self.word());
         }
-        Self::pad(out, 0);
+        self.pad(out, 0);
+    }
+
+    fn word(&self) -> i64 {
+        i64::from(self.word)
+    }
+
+    /// Offsets from where the caller's frame starts count in words, downwards.
+    fn data_align(&self) -> i64 {
+        -self.word()
     }
 
     /// Where the caller's frame starts above the stack pointer at a call.
     fn entry(&self) -> i64 {
-        if self.return_pushed { WORD } else { 0 }
+        if self.return_pushed { self.word() } else { 0 }
     }
 
     fn step(&self, out: &mut Out, step: Step) {
         match step {
             Step::Pushed => {
                 out.u8(DEF_CFA_OFFSET);
-                out.uleb((2 * WORD).cast_unsigned());
-                Self::saved(out, self.frame_pointer, -2 * WORD);
+                out.uleb((2 * self.word()).cast_unsigned());
+                self.saved(out, self.frame_pointer, -2 * self.word());
                 if !self.return_pushed {
-                    Self::saved(out, self.return_address, -WORD);
+                    self.saved(out, self.return_address, -self.word());
                 }
             }
             Step::Framed => {
                 out.u8(DEF_CFA_REGISTER);
                 out.uleb(u64::from(self.frame_pointer));
             }
-            Step::Saved { reg, offset } => Self::saved(out, reg, offset),
+            Step::Saved { reg, offset } => self.saved(out, reg, offset),
             Step::Leaving => out.u8(REMEMBER_STATE),
             Step::Popped => {
                 out.u8(DEF_CFA);
@@ -163,8 +171,8 @@ impl CallFrame {
     }
 
     /// `reg` is stored `offset` bytes from where the caller's frame starts.
-    fn saved(out: &mut Out, reg: u16, offset: i64) {
-        let factored = (offset / DATA_ALIGN).cast_unsigned();
+    fn saved(&self, out: &mut Out, reg: u16, offset: i64) {
+        let factored = (offset / self.data_align()).cast_unsigned();
         // The short form holds the register in six bits; others, such as arm64's `d8`, are
         // written in full.
         match u8::try_from(reg) {
@@ -199,8 +207,8 @@ impl CallFrame {
     }
 
     /// Pads the record starting at `start` to a word with `DW_CFA_nop` and writes its length.
-    fn pad(out: &mut Out, start: u64) {
-        while !(out.here() - start).is_multiple_of(WORD.cast_unsigned()) {
+    fn pad(&self, out: &mut Out, start: u64) {
+        while !(out.here() - start).is_multiple_of(u64::from(self.word)) {
             out.u8(NOP);
         }
         out.patch_length(start);

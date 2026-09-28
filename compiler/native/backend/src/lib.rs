@@ -10,7 +10,7 @@ mod tests;
 
 use vun_backend::{
     ArtifactSink, Backend, BackendCaps, BackendInfo, Emits, Emitted, Feature, Lack, Missing, Readiness,
-    Request,
+    Request, Widest,
 };
 use vun_diag::{DiagCtxt, ErrorGuaranteed};
 use vun_lir_passes::legalize::Half;
@@ -68,7 +68,7 @@ pub const INFO: BackendInfo = BackendInfo {
     caps: BackendCaps {
         emits: Emits::Object,
         features: &[Feature::CAbi, Feature::FrameSizes, Feature::DebugInfo],
-        int_bits: 64,
+        widest: Widest::Address,
         half: Half::Promoted,
     },
     readiness: Readiness::Ready,

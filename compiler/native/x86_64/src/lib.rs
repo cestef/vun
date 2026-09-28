@@ -182,6 +182,7 @@ const DWARF: [u16; 16] = [0, 2, 1, 3, 7, 6, 4, 5, 8, 9, 10, 11, 12, 13, 14, 15];
 impl vun_native::Native for X86 {
     /// The call pushes the return address, `rip`'s column.
     const CALL_FRAME: CallFrame = CallFrame {
+        word: 8,
         code_align: 1,
         stack_pointer: 7,
         frame_pointer: 6,

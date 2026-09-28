@@ -182,7 +182,7 @@ impl<A: Inline> Binding<'_, '_, A> {
         let crowded = || Missing::AsmOperand(AsmOperand::Crowded).at(self.used.inst.origin);
         let r = self.fixed.or_else(|| free.next()).ok_or_else(crowded)?;
         if let Bound::In { value, .. } = self.used.bound {
-            let size = sized::<Size<A>>(cx.f.ty(*value), self.used.inst)?;
+            let size = sized::<Size<A>>(cx.f.ty(*value), cx.unit.pointer_bits, self.used.inst)?;
             let src = cx.reg(*value);
             A::moved(&mut cx.asm, r, src, size);
         }
@@ -193,7 +193,8 @@ impl<A: Inline> Binding<'_, '_, A> {
     /// Where it is an output: `r` loaded first for `inout`, and stored once the block ends.
     fn output(&self, r: RegRef, cx: &mut Cx<'_, A>, outputs: &mut Vec<Stored<A>>) -> Result<(), Lack> {
         let (Bound::Out { place, .. } | Bound::InOut { place, .. }) = self.used.bound else { return Ok(()) };
-        let (addr, size) = (cx.reg(place.addr), sized::<Size<A>>(place.ty, self.used.inst)?);
+        let (addr, size) =
+            (cx.reg(place.addr), sized::<Size<A>>(place.ty, cx.unit.pointer_bits, self.used.inst)?);
         if matches!(self.used.bound, Bound::InOut { .. }) {
             A::load_at(&mut cx.asm, r, addr, size);
         }
