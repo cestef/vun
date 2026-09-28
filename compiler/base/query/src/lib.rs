@@ -28,7 +28,7 @@ mod tests;
 
 use std::fmt;
 
-pub use cx::{Cx, Cycle};
+pub use cx::{Cx, Cycle, Differs, Reuse, Unsound};
 pub use db::Db;
 pub use fingerprint::Fingerprint;
 pub use persist::{Census, Counted, Unloaded};
@@ -45,7 +45,7 @@ pub trait Query: 'static {
     /// never saved, and one not set holds what it computes until it is.
     const INPUT: bool = false;
     type Key: Clone + Eq + std::hash::Hash + fmt::Debug + Send + Sync + 'static;
-    type Value: Clone + std::hash::Hash + Send + Sync + 'static;
+    type Value: Clone + PartialEq + std::hash::Hash + Send + Sync + 'static;
 
     /// Computes the value, reading other queries through `cx`. An input's is what a key that
     /// was never set holds.

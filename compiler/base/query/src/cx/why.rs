@@ -17,6 +17,8 @@ pub(super) enum Why {
     /// Verifying what it read reached it again: its reads were a cycle, which computing it
     /// recovers from as any cycle.
     Cycle,
+    /// It holds, and is computed again to check that it does ([`super::Reuse::Check`]).
+    Checked,
 }
 
 impl Why {
@@ -30,6 +32,7 @@ impl Why {
             Self::Unloaded => "loaded without its value".to_owned(),
             Self::Unresolved => "loaded reading a query not held".to_owned(),
             Self::Cycle => "reached again while verifying it".to_owned(),
+            Self::Checked => "checking that reusing it holds".to_owned(),
         }
     }
 }

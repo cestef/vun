@@ -4,7 +4,7 @@ use vun_codec::{Blob, Decode};
 
 use super::Runs;
 use crate::persist::Saved;
-use crate::{Census, Cx, Db, Query, Unloaded};
+use crate::{Census, Cx, Db, Query, Reuse, Unloaded};
 
 static WORDS: Runs = Runs::new();
 
@@ -33,7 +33,7 @@ impl Query for Words {
 
 /// A database with the persisted queries registered and `text` set as the source of `a`.
 fn persisting(text: &str) -> Db {
-    let db = Db::new();
+    let db = Db::reusing(Reuse::Trust);
     db.trace::<Source>();
     db.persist::<Words>();
     db.set::<Source>(&"a".into(), text.into());
@@ -136,7 +136,7 @@ fn memos_of_unregistered_queries_and_other_formats_are_not_loaded() {
     let first = persisting("x");
     first.get::<Words>(&"a".into());
     let saved = first.save();
-    let bare = Db::new();
+    let bare = Db::reusing(Reuse::Trust);
     bare.persist::<Words>();
     assert_eq!(bare.load(saved.clone()).unwrap(), 1);
     let runs = WORDS.count();
@@ -145,8 +145,8 @@ fn memos_of_unregistered_queries_and_other_formats_are_not_loaded() {
     // The format is the leading varint.
     let mut other = saved.clone();
     other[0] = 1;
-    assert!(matches!(Db::new().load(other.clone()), Err(Unloaded::Format { found: 1 })));
-    assert!(matches!(Db::new().load(Vec::new()), Err(Unloaded::Decode(_))));
+    assert!(matches!(Db::reusing(Reuse::Trust).load(other.clone()), Err(Unloaded::Format { found: 1 })));
+    assert!(matches!(Db::reusing(Reuse::Trust).load(Vec::new()), Err(Unloaded::Decode(_))));
 }
 
 static COUNTS: Runs = Runs::new();
@@ -177,7 +177,7 @@ impl Query for Tokens {
 }
 
 fn counting(text: &str) -> Db {
-    let db = Db::new();
+    let db = Db::reusing(Reuse::Trust);
     db.trace::<Source>();
     db.trace::<Tokens>();
     db.persist::<Count>();

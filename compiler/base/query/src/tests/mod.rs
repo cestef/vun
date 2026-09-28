@@ -1,8 +1,9 @@
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 mod persist;
+mod reuse;
 
-use super::{Cx, Cycle, Db, Query, Revision};
+use super::{Cx, Cycle, Db, Query, Reuse, Revision};
 
 /// Counts how many times a query ran.
 pub(super) struct Runs(AtomicUsize);
@@ -60,7 +61,7 @@ impl Query for Parity {
 
 #[test]
 fn results_are_memoized_and_cut_off_early() {
-    let db = Db::new();
+    let db = Db::reusing(Reuse::Trust);
     db.set::<Text>(&"a", "four".into());
     assert!(db.get::<Parity>(&"a"));
     assert!(db.get::<Parity>(&"a"));
@@ -79,7 +80,7 @@ fn results_are_memoized_and_cut_off_early() {
 
 #[test]
 fn setting_an_equal_input_starts_no_revision() {
-    let db = Db::new();
+    let db = Db::reusing(Reuse::Trust);
     db.set::<Text>(&"b", "x".into());
     let revision = db.revision();
     db.set::<Text>(&"b", "x".into());
@@ -106,7 +107,7 @@ impl Query for Ring {
 
 #[test]
 fn cycles_are_named_and_recovered() {
-    let db = Db::new();
+    let db = Db::reusing(Reuse::Trust);
     let path: Vec<_> = db.get::<Ring>(&0).into_iter().map(|(_, key)| key).collect();
     assert_eq!(path, ["0", "1", "2", "0"]);
     let cycle = Cycle { path: vec![("ring", "0".into()), ("ring", "1".into())] };
@@ -115,7 +116,7 @@ fn cycles_are_named_and_recovered() {
 
 #[test]
 fn memos_reading_a_cycle_are_verified_in_a_later_revision() {
-    let db = Db::new();
+    let db = Db::reusing(Reuse::Trust);
     db.get::<Ring>(&0);
     // A new revision: verifying the ring reaches its first memo again, and recovers as computing.
     db.set::<Text>(&"c", "x".into());
@@ -155,7 +156,7 @@ impl Query for Parts {
 
 #[test]
 fn a_value_computed_from_a_cycle_value_is_not_kept() {
-    let db = Db::new();
+    let db = Db::reusing(Reuse::Trust);
     assert_eq!(db.get::<Parts>(&0), [0, 1, 2]);
     // Computing 0 read 1 through 0's cycle value, which lacked 0: 1 is computed again on its own.
     let runs = PARTS.count();
@@ -167,7 +168,7 @@ fn a_value_computed_from_a_cycle_value_is_not_kept() {
 
 #[test]
 fn resources_are_shared_per_type() {
-    let db = Db::new();
+    let db = Db::reusing(Reuse::Trust);
     let first = db.resource::<std::sync::Mutex<Vec<u8>>>();
     first.lock().unwrap().push(1);
     assert_eq!(*db.resource::<std::sync::Mutex<Vec<u8>>>().lock().unwrap(), [1]);
@@ -190,7 +191,7 @@ impl Query for Slow {
 
 #[test]
 fn threads_needing_one_memo_compute_it_once() {
-    let db = Db::new();
+    let db = Db::reusing(Reuse::Trust);
     std::thread::scope(|s| {
         for _ in 0..8 {
             s.spawn(|| assert_eq!(db.get::<Slow>(&1), 2));
@@ -240,7 +241,7 @@ impl Query for Pong {
 
 #[test]
 fn a_cycle_across_threads_ends_without_waiting_forever() {
-    let db = Db::new();
+    let db = Db::reusing(Reuse::Trust);
     std::thread::scope(|s| {
         s.spawn(|| db.get::<Ping>(&1));
         s.spawn(|| db.get::<Pong>(&1));
@@ -268,7 +269,7 @@ impl Query for Flaky {
 
 #[test]
 fn a_panic_in_a_computation_leaves_no_frame_behind() {
-    let db = Db::new();
+    let db = Db::reusing(Reuse::Trust);
     let cx = Cx::new(&db);
     let caught = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| cx.get::<Flaky>(&7)));
     assert!(caught.is_err());

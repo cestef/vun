@@ -54,6 +54,14 @@ impl std::hash::Hash for ParsedFile {
     }
 }
 
+impl PartialEq for ParsedFile {
+    fn eq(&self, other: &Self) -> bool {
+        (self.text, self.file) == (other.text, other.file)
+    }
+}
+
+impl Eq for ParsedFile {}
+
 /// `None` for a file the driver did not read.
 pub struct Parsed;
 

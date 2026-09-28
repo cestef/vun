@@ -4,6 +4,7 @@
 mod cycle;
 mod frame;
 mod guard;
+mod reuse;
 mod why;
 
 use std::cell::RefCell;
@@ -16,6 +17,7 @@ use vun_trace::{Activity, tracing};
 pub use self::cycle::Cycle;
 use self::frame::{Frame, Standing};
 use self::guard::{Entered, Verifying};
+pub use self::reuse::{Differs, Reuse, Unsound};
 use self::why::Why;
 use super::claim::Claim;
 use super::db::Db;
@@ -124,6 +126,9 @@ impl<'db> Cx<'db> {
         drop(verifying);
         if let Some(read) = stale {
             return Err(Why::Stale(read));
+        }
+        if self.db.reuse == Reuse::Check && !memo.input {
+            self.check(table, slot, &memo);
         }
         // Recovering from a cycle among its reads may have computed it meanwhile.
         if let Some(computed) = table.entry(slot).memo.load_full()

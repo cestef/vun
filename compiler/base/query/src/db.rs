@@ -8,7 +8,7 @@ use std::sync::{Arc, OnceLock, RwLock};
 use vun_par::Map;
 
 use super::claim::Waits;
-use super::cx::Cx;
+use super::cx::{Cx, Reuse};
 use super::memo::Memo;
 use super::persist::{Persisted, Store};
 use super::table::{AnyTable, Table, TableId};
@@ -49,13 +49,21 @@ pub struct Db {
     pub(crate) changed: AtomicBool,
     /// The persisted queries, in the order registered.
     pub(crate) persisted: RwLock<Vec<Arc<dyn Persisted>>>,
+    /// Whether memos reused without being computed are checked by computing them again.
+    pub(crate) reuse: Reuse,
     resources: Map<TypeId, Arc<dyn Any + Send + Sync>>,
 }
 
 impl Db {
+    /// A database reusing memos as the environment asks ([`Reuse::from_env`]).
     #[must_use]
     pub fn new() -> Self {
-        Self::default()
+        Self::reusing(Reuse::from_env())
+    }
+
+    #[must_use]
+    pub fn reusing(reuse: Reuse) -> Self {
+        Self { reuse, ..Self::default() }
     }
 
     #[must_use]

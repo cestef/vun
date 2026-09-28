@@ -65,3 +65,45 @@ unread := () -> u8 {
     assert_eq!(shown(body), 3);
     assert_eq!(shown(&format!("\n\n\n{body}")), 6);
 }
+
+/// A package `app` whose root file calls `app.util.code` and whose `app/util.vun` holds `util`,
+/// built through lowering in a fresh session that loads and saves its queries: every memo the
+/// session reuses is checked against computing it again (`Reuse::Check`).
+fn built(fixture: &Fixture, util: &str) -> Vec<DiagId> {
+    let mut app = Fixture::manifest("app", 1, "0.1.0");
+    app.include.push(app.name.clone());
+    let dir = fixture.write(
+        "",
+        &app,
+        "\
+start := std.os.start(main);
+main := (sys: &mut std.os.System) -> std.os.Exit { app.util.code(sys) };
+",
+    );
+    fixture.root.write(dir.join(&app.name).join("util.vun"), util);
+    let mut session = fixture.session();
+    session.persistence = Persistence::On;
+    let file = session.load(&Fixture::file(&dir, &app)).unwrap();
+    session.check(file);
+    session.program(file);
+    session.save();
+    session.diag.sorted(session.origins).into_iter().map(|d| d.id.clone()).collect()
+}
+
+#[test]
+fn declarations_an_edit_moved_in_another_file_are_reused_soundly() {
+    let fixture = Fixture::new("persist-moved-elsewhere");
+    let code = "code := (sys: &mut std.os.System) -> std.os.Exit { .ok };\n";
+    assert_eq!(built(&fixture, code), []);
+    // Declarations inserted above move `code`, whose origin, anchored to its name, stays.
+    assert_eq!(built(&fixture, &format!("first := 1;\nsecond := () -> u8 {{ 2 }};\n{code}")), []);
+    assert_eq!(built(&fixture, code), []);
+}
+
+#[test]
+fn a_signature_an_edit_changed_in_another_file_is_checked_again() {
+    let fixture = Fixture::new("persist-signature-elsewhere");
+    assert_eq!(built(&fixture, "code := (sys: &mut std.os.System) -> std.os.Exit { .ok };\n"), []);
+    let changed = "code := (sys: &mut std.os.System) -> u8 { 0 };\n";
+    assert_eq!(built(&fixture, changed), [errors::TYPES_MISMATCH]);
+}

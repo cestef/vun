@@ -9,11 +9,11 @@ use vun_intern::Symbol;
 use vun_origin::OriginId;
 use vun_query::{Cx, Cycle, Query};
 
-/// A node of a file's HIR: `id` finds it in the file, and its origin identifies it, so that it
-/// hashes the same in every process and after edits elsewhere in the file (decision 59). Two
-/// nodes are equal when both agree: in one file's HIR each node has its own origin, and after an
-/// edit that moved a node, its place differs, so a query keyed by it is another key rather than
-/// one computed with the place the node had before. Nodes order by their place in the file.
+/// A node of a file's HIR: `id` finds it in the file, and its origin identifies it in every
+/// process (decision 59). Two nodes are equal when both agree, and hash by both, as every value
+/// hashes by what it compares by: after an edit that moved a node its place differs, so a query
+/// keyed by it is another key, and a value holding it another fingerprint, rather than one
+/// computed with, or reading, the place the node had before. Nodes order by their place.
 #[derive(Clone, Copy, Debug, Encode, Decode)]
 pub struct Node<Id> {
     pub id: Id,
@@ -68,8 +68,9 @@ impl<Id: PartialEq> PartialEq for Node<Id> {
 
 impl<Id: Eq> Eq for Node<Id> {}
 
-impl<Id> std::hash::Hash for Node<Id> {
+impl<Id: std::hash::Hash> std::hash::Hash for Node<Id> {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.id.hash(state);
         self.origin.hash(state);
     }
 }

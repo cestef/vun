@@ -2,6 +2,7 @@
 //! checks from a fresh session.
 
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 use vun_build::layout::MANIFEST;
 use vun_build::manifest::{
@@ -13,6 +14,7 @@ use vun_driver::Session;
 use vun_fetch::{Format, Scheme};
 use vun_fs::Scratch;
 use vun_hash::Hash;
+use vun_query::{Db, Reuse};
 use vun_span::{EXTENSION, SourceFiles, Span};
 
 /// A scratch directory of packages.
@@ -93,9 +95,10 @@ impl Fixture {
         Store::at(&self.root.join(Store::DIR))
     }
 
-    /// A fresh session using this fixture's store.
+    /// A fresh session using this fixture's store, checking every memo it reuses: a memo
+    /// verified or loaded must be what computing it again gives (`Reuse::Check`).
     pub(crate) fn session(&self) -> Session {
-        let mut session = Session::new();
+        let mut session = Session::sharing(&Arc::new(Db::reusing(Reuse::Check)));
         session.store = self.store();
         session
     }
