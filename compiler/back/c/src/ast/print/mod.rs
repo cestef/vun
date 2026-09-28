@@ -160,6 +160,8 @@ impl Printer<'_, '_, '_> {
                     module.as_str(),
                     name.as_str()
                 )?,
+                Attribute::Used => self.f.write_str("used")?,
+                Attribute::Naked => self.f.write_str("naked")?,
             }
         }
         self.f.write_str("))")

@@ -234,7 +234,7 @@ pub struct Proto {
     pub params: Vec<Decl>,
 }
 
-/// Where GNU C places an object beyond what C99 says (`__attribute__`).
+/// What GNU C says of a function or an object beyond what C99 does (`__attribute__`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Attribute {
     /// At an address a multiple of these bytes.
@@ -243,6 +243,10 @@ pub enum Attribute {
     Section(Symbol),
     /// On wasm, imported as `name` from `module` (`lang.link.library`).
     Import { module: Symbol, name: Symbol },
+    /// Kept though C reads it nowhere: a block of inline assembly names it.
+    Used,
+    /// A function without prologue or epilogue, whose body is its blocks of assembly.
+    Naked,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

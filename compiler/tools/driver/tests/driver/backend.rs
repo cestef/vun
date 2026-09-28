@@ -15,7 +15,7 @@ use crate::common::Fixture;
 const BACKENDS: [Name; 2] = [vun_backend_c::INFO.id, vun_backend_native::INFO.id];
 
 /// Builds `source` through `backend` and runs it.
-fn run(name: &str, source: &str, backend: Name) -> std::process::Output {
+pub(crate) fn run(name: &str, source: &str, backend: Name) -> std::process::Output {
     let fixture = Fixture::new(&format!("{name}-{backend}"));
     let path = fixture.root.write("main.vun", source);
     let mut session = fixture.session();

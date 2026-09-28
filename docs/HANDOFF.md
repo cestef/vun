@@ -182,7 +182,8 @@ language rules go in as proposed unless the user approves them.
    `[x1], 8` is tried as a post-index access); a driver test compares both `ArchTable`s with
    `Op::ALL`. Thumb is done too (`lang.arch.thumb`, `vun-isa-thumb`, `Arch::Thumb`; stm32f4's
    runtime masks interrupts and waits through blocks), and the string `lang.arch.asm` primitive
-   is removed. In progress: vun-sanitize step 5
+   is removed. The C backend writes naked functions under GNU attributes, a block's symbols by
+   their ELF names (decision 276, proposed). In progress: vun-sanitize step 5
    (runtime hooks over shadow memory, `check.unsupported` at link time), then redzones, the
    `Allocator`'s `check.by`, assembly checks and a native-versus-C trap test. Left, most severe
    first:

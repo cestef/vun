@@ -6,6 +6,7 @@
 
 use vun_lir::{AbiType, Alias, Conv, Ext, Record, Scalar, Signature};
 use vun_origin::OriginId;
+use vun_target::Attributes;
 
 use super::Emitter;
 use crate::ast::{Binary, Decl, Expr, Ident, Proto, Storage, Ty};
@@ -72,7 +73,9 @@ impl Emitter<'_> {
 
     pub(super) fn signature(&mut self, signature: &Signature, at: OriginId) -> Result<CSignature, Lack> {
         let conv = signature.conv;
-        if conv == Conv::Naked {
+        // A naked function is entered as its code, which GNU C writes, taking and giving nothing.
+        let gnu = self.target.c.compiler.attributes == Attributes::Gnu;
+        if conv == Conv::Naked && !(gnu && signature.params.is_empty() && signature.result.is_none()) {
             return Err(Missing::Naked.at(at));
         }
         let mut params =

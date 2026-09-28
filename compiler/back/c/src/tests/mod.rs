@@ -13,6 +13,7 @@ use crate::{CBackend, Lack};
 use vun_backend::Missing;
 
 mod asm;
+mod naked;
 
 pub(crate) fn origin(origins: &OriginTable) -> OriginId {
     let file = SourceFiles::new().add("a.vun", "f := () {};");

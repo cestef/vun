@@ -117,6 +117,9 @@ impl Emitter<'_> {
             }
             attributes.push(Attribute::Section(section));
         }
+        if self.named.contains(&Address::Data(id)) {
+            attributes.push(Attribute::Used);
+        }
         let (align, _) = match self.aligned(data.align) {
             Some(found) => found,
             None if gnu => {

@@ -14,17 +14,18 @@ use std::collections::BTreeSet;
 use vun_backend::Line;
 use vun_index::IndexVec;
 use vun_lir::analysis::{Cfg, Liveness, Loops, Order};
-use vun_lir::{AbiType, Block, FuncId, Function, Scalar, Value};
+use vun_lir::{AbiType, Block, Conv, FuncId, Function, Scalar, Value};
 use vun_origin::OriginId;
 
 use super::Emitter;
 use super::signature::{CSignature, SignedC};
 use crate::ast::{Binary, Decl, Expr, Ident, Item, Own, Proto, Stmt, Storage, Ty};
 use inline::Inlined;
-use vun_backend::Lack;
+use vun_backend::{Lack, Missing};
 
 pub(super) struct FnEmit<'e, 'u> {
     e: &'e mut Emitter<'u>,
+    id: FuncId,
     func: &'u Function,
     order: Order,
     live: Liveness,
@@ -52,6 +53,7 @@ impl Emitter<'_> {
         let name = self.func(id);
         let mut f = FnEmit {
             e: self,
+            id,
             func,
             order,
             live,
@@ -206,6 +208,20 @@ impl FnEmit<'_, '_> {
         let mut targets = BTreeSet::new();
         Stmt::targets(&self.body, &mut targets);
         out.extend(self.body.into_iter().filter(|s| !matches!(s, Stmt::Label(l) if !targets.contains(l))));
+        if func.signature.conv == Conv::Naked {
+            return Self::naked(out, func.origin);
+        }
         Ok(out)
+    }
+
+    /// A naked function's body, which GNU C allows to hold its blocks of assembly alone: where
+    /// its code ends is never reached, and any other statement is refused.
+    fn naked(body: Vec<Stmt>, at: OriginId) -> Result<Vec<Stmt>, Lack> {
+        let body: Vec<Stmt> = body.into_iter().filter(|s| !matches!(s, Stmt::Halt)).collect();
+        if body.iter().all(|s| matches!(s, Stmt::Asm(_) | Stmt::Line(_))) {
+            Ok(body)
+        } else {
+            Err(Missing::Naked.at(at))
+        }
     }
 }

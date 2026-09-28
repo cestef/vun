@@ -121,7 +121,7 @@ fn write_mem<S: fmt::Display>(f: &mut fmt::Formatter<'_>, mem: &Mem<S>) -> fmt::
     match &mem.base {
         Base::Reg(r) => write!(f, "[{}", r.name(Size::B64))?,
         Base::Rip(target, via) => {
-            write!(f, "[rip + {target}{}", if *via == vun_isa::Via::Got { "@got" } else { "" })?;
+            write!(f, "[rip + {target}{}", if *via == vun_isa::Via::Got { "@GOTPCREL" } else { "" })?;
         }
     }
     match mem.disp {

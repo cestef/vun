@@ -25,3 +25,30 @@ fn tables_number_instructions_and_forms_as_the_assemblers_do() {
     assert_eq!(read(Arch::Arm64), arm64);
     assert_eq!(read(Arch::Thumb), thumb);
 }
+
+/// A naked function, entered as its code, whose block calls a function by its symbol: that
+/// function ends the program with 7.
+const NAKED: &str = "\
+#[abi.naked]
+hop := () -> never {
+    unsafe {
+        lang.arch.x86_64.asm {
+            sub rsp, 8
+            call {finish}
+        };
+        lang.hint.unreachable()
+    }
+};
+finish := () -> never { unsafe std.os.libc.exit(7) };
+start := std.os.start(main);
+main := (sys: &mut std.os.System) -> std.os.Exit { hop() };
+";
+
+#[test]
+fn a_naked_function_calls_by_symbol_through_gnu_c() {
+    if !cfg!(all(target_arch = "x86_64", target_os = "linux")) {
+        return;
+    }
+    let ran = crate::backend::run("asm-naked", NAKED, vun_backend_c::INFO.id);
+    assert_eq!(ran.status.code(), Some(7));
+}

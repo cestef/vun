@@ -1,6 +1,6 @@
 //! Blocks of inline assembly as GNU C writes them: a braced statement declaring each binding's
 //! register variable, the `__asm__ volatile` statement over them, then what the block's outputs
-//! become.
+//! become; a block binding and clobbering nothing is the plain statement alone.
 
 use std::fmt::{self, Write};
 
@@ -14,6 +14,10 @@ const IN: &str = "r";
 
 impl Printer<'_, '_, '_> {
     pub(super) fn asm(&mut self, asm: &Asm) -> fmt::Result {
+        // A block with no bindings and no clobbers is plain `__asm__`, all a naked function holds.
+        if asm.bindings.is_empty() && asm.clobbers.is_empty() && asm.after.is_empty() {
+            return self.statement(asm);
+        }
         self.f.write_str("{\n")?;
         self.depth += 1;
         for binding in &asm.bindings {
@@ -30,8 +34,21 @@ impl Printer<'_, '_, '_> {
             self.f.write_str(";\n")?;
         }
         self.indent()?;
+        self.statement(asm)?;
+        self.f.write_char('\n')?;
+        self.stmts(&asm.after)?;
+        self.depth -= 1;
+        self.indent()?;
+        self.f.write_char('}')
+    }
+
+    /// The `__asm__ volatile` statement, with its operands and clobbers where it has any.
+    fn statement(&mut self, asm: &Asm) -> fmt::Result {
         self.f.write_str("__asm__ volatile(")?;
         self.string(&asm.lines.join("\n\t"))?;
+        if asm.bindings.is_empty() && asm.clobbers.is_empty() {
+            return self.f.write_str(");");
+        }
         let outputs = asm.bindings.iter().filter_map(|b| match b.flow {
             Flow::Out => Some((OUT, b.decl.name)),
             Flow::InOut(_) => Some((IN_OUT, b.decl.name)),
@@ -60,11 +77,7 @@ impl Printer<'_, '_, '_> {
             }
             self.string(clobber)?;
         }
-        self.f.write_str(");\n")?;
-        self.stmts(&asm.after)?;
-        self.depth -= 1;
-        self.indent()?;
-        self.f.write_char('}')
+        self.f.write_str(");")
     }
 
     /// `text` as a C string literal.

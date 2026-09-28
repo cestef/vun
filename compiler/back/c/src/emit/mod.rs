@@ -6,6 +6,7 @@ mod data;
 mod func;
 mod import;
 mod ints;
+mod names;
 mod signature;
 
 use std::collections::BTreeSet;
@@ -13,8 +14,7 @@ use std::collections::BTreeSet;
 use vun_backend::{Emits, Lines, Part};
 use vun_hash::Hash;
 use vun_intern::Symbol;
-use vun_lir::{Address, DataId, FuncId, ImportKind, Linkage, Record, Unit};
-use vun_origin::OriginId;
+use vun_lir::{Address, Record, Unit};
 use vun_target::TargetSpec;
 
 use crate::ast::{
@@ -39,6 +39,10 @@ pub(crate) struct Emitter<'u> {
     /// The compiler's builtins used.
     builtins: BTreeSet<Builtin>,
     checks: Vec<Item>,
+    /// How names are spelled, as a block of inline assembly writes them too.
+    names: Names,
+    /// What the blocks of inline assembly name: kept though no C reads them.
+    named: BTreeSet<Address>,
 }
 
 /// A file the backend writes: the part of the program it holds, and its C. The shared part of a
@@ -74,6 +78,8 @@ impl<'u> Emitter<'u> {
             helpers: BTreeSet::new(),
             builtins: BTreeSet::new(),
             checks: Vec::new(),
+            names: Self::names(unit, shard),
+            named: Self::named(unit),
         };
         e.writable()?;
         if let Some(at) = unit.functions.iter().map(|(_, f)| f.origin).next() {
@@ -85,8 +91,8 @@ impl<'u> Emitter<'u> {
         let mut bodies = Vec::new();
         for (id, func) in unit.functions.iter() {
             let storage = e.storage(func.linkage);
-            protos
-                .push(Item::Declare(e.proto(storage, e.func(id), &func.signature, func.origin)?, Vec::new()));
+            let proto = e.proto(storage, e.func(id), &func.signature, func.origin)?;
+            protos.push(Item::Declare(proto, e.func_attributes(id)));
             #[expect(clippy::cast_possible_truncation, reason = "the remainder is below the shard count")]
             let at = (Hash::of_value(func).short() % shards as u64) as usize;
             bodies.push((at, e.define(id, storage)?));
@@ -106,8 +112,7 @@ impl<'u> Emitter<'u> {
         common.extend(imports);
         common.extend(protos);
         common.extend(data.declared);
-        let names = Self::names(unit, shard);
-        let file = |items| File { names: names.clone(), items };
+        let file = |items| File { names: e.names.clone(), items };
         if !e.shared {
             common.extend(data.defined);
             common.extend(bodies.into_iter().map(|(_, body)| body));
@@ -131,72 +136,6 @@ impl<'u> Emitter<'u> {
     /// How many shards the functions of `unit` fill, `shard` in each.
     fn shards(unit: &Unit, shard: usize) -> usize {
         unit.functions.len().div_ceil(shard.max(1)).max(1)
-    }
-
-    /// The spellings of the names of `unit`'s C, tagged when it spans several files.
-    pub(crate) fn names(unit: &Unit, shard: usize) -> Names {
-        #[expect(clippy::cast_possible_truncation, reason = "a tag keeps the hash's low bits")]
-        let tag = (Self::shards(unit, shard) > 1).then(|| Hash::of_value(unit).short() as u32);
-        Names::new(Self::linked(unit).map(|(s, _)| s), tag)
-    }
-
-    /// The link symbols of `unit`, exported or imported, with where each is written.
-    fn linked(unit: &Unit) -> impl Iterator<Item = (Symbol, OriginId)> {
-        let exported = |linkage: Linkage, at| match linkage {
-            Linkage::Export(s) => Some((s, at)),
-            Linkage::Internal => None,
-        };
-        let functions = unit.functions.iter().filter_map(move |(_, f)| exported(f.linkage, f.origin));
-        let data = unit.data.iter().filter_map(move |(_, d)| exported(d.linkage, d.origin));
-        functions.chain(data).chain(unit.imports.iter().map(|(_, i)| (i.symbol, i.origin)))
-    }
-
-    /// The name of function `id` of `unit`.
-    pub(crate) fn func_ident(unit: &Unit, id: FuncId) -> Ident {
-        match unit.functions[id].linkage {
-            Linkage::Export(s) => Ident::Symbol(s),
-            Linkage::Internal => Ident::func(id),
-        }
-    }
-
-    /// Who sees a definition of the unit: exports the linker; the rest this file, or, in a
-    /// program spanning several, each of them, under tagged names.
-    fn storage(&self, linkage: Linkage) -> Storage {
-        match linkage {
-            Linkage::Export(_) => Storage::Public,
-            Linkage::Internal if self.shared => Storage::Public,
-            Linkage::Internal => Storage::Static,
-        }
-    }
-
-    /// Refuses a link symbol C cannot write, where it is declared.
-    fn writable(&self) -> Result<(), Lack> {
-        Self::linked(self.unit)
-            .try_for_each(|(s, at)| if Names::writable(s) { Ok(()) } else { Err(Missing::Symbol(s).at(at)) })
-    }
-
-    fn func(&self, id: FuncId) -> Ident {
-        Self::func_ident(self.unit, id)
-    }
-
-    fn data_name(&self, id: DataId) -> Ident {
-        match self.unit.data[id].linkage {
-            Linkage::Export(s) => Ident::Symbol(s),
-            Linkage::Internal => Ident::data(id),
-        }
-    }
-
-    /// `&name` of something in the program, and whether it is code.
-    fn reference(&self, address: Address) -> (Expr, bool) {
-        let (name, code) = match address {
-            Address::Func(f) => (self.func(f), true),
-            Address::Data(d) => (self.data_name(d), false),
-            Address::Import(i) => {
-                let import = &self.unit.imports[i];
-                (Ident::Symbol(import.symbol), matches!(import.kind, ImportKind::Func(_)))
-            }
-        };
-        (Expr::unary(Unary::Address, Expr::Name(name)), code)
     }
 
     /// The address of something in the program, as a `u8 *`; a function's goes through the
