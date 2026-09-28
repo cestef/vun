@@ -19,3 +19,7 @@ pub const enter: Item = Item::new(&["std", "os", "wasi", "start", "enter"]);
 pub const leave: Item = Item::new(&["std", "os", "wasi", "start", "leave"]);
 /// Nothing else runs in the module, so there is nothing to wait for.
 pub const sleep: Item = Item::new(&["std", "os", "wasi", "start", "sleep"]);
+/// A module runs one thread.
+pub const spawn: Item = Item::new(&["std", "os", "wasi", "start", "spawn"]);
+/// No thread was started to join.
+pub const join: Item = Item::new(&["std", "os", "wasi", "start", "join"]);

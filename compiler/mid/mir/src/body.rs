@@ -2,7 +2,7 @@
 //! section 3). Every local, statement and terminator carries the origin that produced it.
 
 use vun_codec::{Decode, Encode};
-use vun_index::{IndexVec, index};
+use vun_index::{Idx, IndexVec, index};
 use vun_intern::Symbol;
 use vun_origin::OriginId;
 use vun_query::Cx;
@@ -30,6 +30,27 @@ pub struct Body {
 }
 
 impl Body {
+    /// Empties each block control never reaches from the entry, the first block: what follows a
+    /// `return`, `break` or `continue` is built into a block nothing goes to, whose statements
+    /// need not fit the types of those before (a `return` in an arm assigns no value to the
+    /// match), so none is kept.
+    pub fn prune(&mut self) {
+        let mut reached = vec![false; self.blocks.len()];
+        let mut next = vec![BlockId::new(0)];
+        while let Some(at) = next.pop() {
+            if std::mem::replace(&mut reached[at.index()], true) {
+                continue;
+            }
+            next.extend(self.blocks[at].term.kind.successors());
+        }
+        for (at, block) in self.blocks.iter_mut() {
+            if !reached[at.index()] {
+                block.stmts.clear();
+                block.term.kind = TerminatorKind::Unreachable;
+            }
+        }
+    }
+
     /// Where ending the frame suspended at the yield resuming at `resume` goes on.
     #[must_use]
     pub fn cancel_of(&self, resume: BlockId) -> Option<BlockId> {

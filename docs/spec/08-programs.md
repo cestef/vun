@@ -93,6 +93,21 @@ system's row giving its clocks' numbers (`std.os.Clocks`: 1 and 0 on Linux, 6 an
 and WASI's `clock_time_get` and `poll_oneoff` on a clock. A pause a signal interrupts goes on with
 what is left.
 
+**Threads.** `System.spawn(&mut f)` starts a thread running the closure `f` (any
+`lang.ops.Call((), R)`) and gives a `std.os.thread.Thread(R, F)`: linear, and tied to the borrow
+of `f`, so the closure and what it borrows stay, and are not reached otherwise, until `join`,
+which consumes the thread and gives what `f` returned; a thread never joined is
+`place.linear_leak`, a closure reached while its thread runs `borrow.conflict`. Values safe to
+share are safe across threads (spec 07, section 2), so threads borrow what the one starting them
+goes on reading. A runtime starts a thread through `std.os.symbols.{spawn, join}` with a
+function of `std.os.thread` and a copy of the thread's context it keeps until the join copies it
+back: the kernel runtime maps each thread a stack of 8 MiB, its lowest 64 KiB left inaccessible,
+and calls `clone` sharing memory, files and signal handlers, the new thread jumping to a function
+that runs it and ends it with `exit`; joining waits on the thread's id, which the kernel clears
+when it ends (`CLONE_CHILD_CLEARTID`, then `futex`), and unmaps the stack. The C library's runtime
+calls `pthread_create` and `pthread_join`; WASI's, whose module runs one thread, reports
+`Error.unsupported`. Threads keep no storage of their own (no thread-local storage yet).
+
 **Files and errors.** `System.open(path, mode)` gives a `std.os.file.File` (`Mode`: `read`,
 `write` creating or emptying, `append` creating, `update`), whose `stream()` is read
 (`Stream.read`, 0 at the end) and written as any `Stream`, and `close` ends it; `System.stdin()`

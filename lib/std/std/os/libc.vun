@@ -70,6 +70,22 @@ pthread_sigmask: unsafe (how: i32, set: *Sigset, old: *Sigset) -> i32 = _;
 pthread_self: unsafe () -> usize = _;
 #[link.symbol("sched_yield"), abi.c]
 sched_yield: unsafe () -> i32 = _;
+/// C's `start` returns a pointer, which nothing here reads: a function returning nothing is
+/// called alike.
+#[link.symbol("pthread_create"), abi.c]
+pthread_create: unsafe (thread: *usize, attributes: usize, start: std.os.thread.Start, context: usize) -> i32 = _;
+#[link.symbol("pthread_join"), abi.c]
+pthread_join: unsafe (thread: usize, result: usize) -> i32 = _;
+
+/// What the runtime keeps of a thread, at the top of the memory mapped for its context.
+#[layout.c]
+Thread := struct {
+    /// The C library's handle, which `pthread_create` writes first.
+    handle: usize,
+    mapped: usize,
+    bytes: usize,
+    context: usize,
+};
 
 /// `protection` for `mmap` of memory read and written.
 read_write: i32 = 3;
@@ -191,4 +207,37 @@ start := ($main: std.os.Main) -> type { struct {
     /// signal handler, and nothing is missed between an executor's check and its sleep.
     #[link.export(std.task.symbols.sleep)]
     sleep := () { unsafe { sched_yield(); } };
+
+    /// Starts a thread through the C library, its context copied into memory mapped for it.
+    #[link.export(std.os.symbols.spawn)]
+    spawn := unsafe (thread: std.os.thread.Start, context: *u8, bytes: usize) -> Result(usize, std.os.Error) {
+        total := (lang.meta.size(Thread) + bytes + 2 * std.os.thread.align).wrap(usize);
+        mapped := outcome(reserve(total).wrap(isize))?;
+        placed := std.os.thread.Placed.of(Thread, (mapped + total).wrap(usize), bytes);
+        unsafe {
+            lang.mem.pointer_at(Thread, placed.record).write(Thread{
+                .handle = 0,
+                .mapped = mapped,
+                .bytes = total,
+                .context = placed.context,
+            });
+            lang.mem.copy(u8, lang.mem.pointer_at(u8, placed.context), context, bytes);
+        }
+        failed := unsafe pthread_create(lang.mem.pointer_at(usize, placed.record), 0, thread, placed.context);
+        if failed != 0 {
+            unmap(mapped, total);
+            return .err(system.error(failed));
+        }
+        .ok(placed.record)
+    };
+
+    #[link.export(std.os.symbols.join)]
+    join := unsafe (thread: usize, context: *u8, bytes: usize) {
+        held := unsafe lang.mem.pointer_at(Thread, thread).read();
+        unsafe {
+            pthread_join(held.handle, 0);
+            lang.mem.copy(u8, context, lang.mem.pointer_at(u8, held.context), bytes);
+        }
+        unmap(held.mapped, held.bytes);
+    };
 } };

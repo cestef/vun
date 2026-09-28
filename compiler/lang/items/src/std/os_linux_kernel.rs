@@ -10,6 +10,8 @@ use crate::Item;
 pub const calls: Item = Item::new(&["std", "os", "linux", "kernel", "calls"]);
 /// The namespace `std.os.linux.kernel.memory`.
 pub const memory: Item = Item::new(&["std", "os", "linux", "kernel", "memory"]);
+/// The namespace `std.os.linux.kernel.thread`.
+pub const thread: Item = Item::new(&["std", "os", "linux", "kernel", "thread"]);
 /// The numbers of the system calls, the architecture's being built for.
 pub const numbers: Item = Item::new(&["std", "os", "linux", "kernel", "numbers"]);
 /// A system call: its number and six arguments, which the architecture's instruction takes in
@@ -37,6 +39,8 @@ pub const read_write: Item = Item::new(&["std", "os", "linux", "kernel", "read_w
 pub const reserve: Item = Item::new(&["std", "os", "linux", "kernel", "reserve"]);
 /// The file descriptor `mmap` is given for memory backed by no file: -1.
 pub const no_file: Item = Item::new(&["std", "os", "linux", "kernel", "no_file"]);
+/// Maps private memory of `bytes` reserved, backed only where touched: what the kernel returns.
+pub const mapping: Item = Item::new(&["std", "os", "linux", "kernel", "mapping"]);
 /// Private memory of `bytes` reserved, backed only where touched.
 pub const map: Item = Item::new(&["std", "os", "linux", "kernel", "map"]);
 /// Gives back the `bytes` mapped at `address`.

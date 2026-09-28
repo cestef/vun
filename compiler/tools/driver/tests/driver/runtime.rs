@@ -96,3 +96,11 @@ fn a_file_written_reads_back_and_a_missing_one_is_missing() {
         corpus("files.vun").replace("\"files.vun.out\"", &format!("{:?}", written.display().to_string()));
     assert_eq!(status_on("runtime-files", &source, &[&["linux", "arm64"]]), Some(0));
 }
+
+#[test]
+fn threads_run_beside_the_main_one_and_are_joined_on_every_runtime() {
+    if !cfg!(target_os = "linux") {
+        return;
+    }
+    assert_eq!(status("runtime-threads", &corpus("threads.vun")), Some(36));
+}

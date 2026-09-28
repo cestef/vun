@@ -276,7 +276,9 @@ Next, most useful first:
 1. Backends: Thumb as above; `macos.arm64` linking (lld, an SDK); riscv64 (`qemu-riscv64` is here,
    no sysroot); DWARF `DW_TAG_subprogram`s; memory regions into `LinkPlan` and a bare-metal
    runtime (`stm32f4` has an empty vector table and no `init_memory`).
-2. Kernel runtime: threads (clone, stacks, TLS, join) through `std.os.symbols`; riscv64 numbers;
+2. Kernel runtime: threads are done (decision 306: `System.spawn`, `clone` with a guarded
+   stack, `futex` join; pthreads on the C library; `corpus/accept/programs/threads.vun`); TLS
+   (`CLONE_SETTLS`) waits for thread-local storage in the language; riscv64 numbers;
    directories, seeking, environment.
 2b. Speed (decisions 291, 301 and 302). Inspect with `--timings` (with the thread report) and `--memos`,
    `VUN_THREADS=1` for exact counts; the CPU clock varies (a laptop on battery), so compare A/B

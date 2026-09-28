@@ -19,3 +19,5 @@ pub const open: Item = Item::new(&["std", "os", "System", "open"]);
 pub const now: Item = Item::new(&["std", "os", "System", "now"]);
 /// Suspends the calling thread for at least `span`.
 pub const pause: Item = Item::new(&["std", "os", "System", "pause"]);
+/// Starts a thread running `f`, borrowed until the thread is joined.
+pub const spawn: Item = Item::new(&["std", "os", "System", "spawn"]);

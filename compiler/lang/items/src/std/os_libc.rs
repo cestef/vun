@@ -34,6 +34,12 @@ pub const sigfillset: Item = Item::new(&["std", "os", "libc", "sigfillset"]);
 pub const pthread_sigmask: Item = Item::new(&["std", "os", "libc", "pthread_sigmask"]);
 pub const pthread_self: Item = Item::new(&["std", "os", "libc", "pthread_self"]);
 pub const sched_yield: Item = Item::new(&["std", "os", "libc", "sched_yield"]);
+/// C's `start` returns a pointer, which nothing here reads: a function returning nothing is
+/// called alike.
+pub const pthread_create: Item = Item::new(&["std", "os", "libc", "pthread_create"]);
+pub const pthread_join: Item = Item::new(&["std", "os", "libc", "pthread_join"]);
+/// What the runtime keeps of a thread, at the top of the memory mapped for its context.
+pub const Thread: Item = Item::new(&["std", "os", "libc", "Thread"]);
 /// `protection` for `mmap` of memory read and written.
 pub const read_write: Item = Item::new(&["std", "os", "libc", "read_write"]);
 /// Private memory of `bytes` reserved, backed only where touched.

@@ -24,3 +24,6 @@ pub const leave: Item = Item::new(&["std", "os", "libc", "start", "leave"]);
 /// Gives the core to other threads: what fires an event runs on one of them, or in a
 /// signal handler, and nothing is missed between an executor's check and its sleep.
 pub const sleep: Item = Item::new(&["std", "os", "libc", "start", "sleep"]);
+/// Starts a thread through the C library, its context copied into memory mapped for it.
+pub const spawn: Item = Item::new(&["std", "os", "libc", "start", "spawn"]);
+pub const join: Item = Item::new(&["std", "os", "libc", "start", "join"]);

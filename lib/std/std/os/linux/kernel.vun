@@ -79,10 +79,11 @@ reserve: usize = 0x4022;
 /// The file descriptor `mmap` is given for memory backed by no file: -1.
 no_file: usize = (-1).wrap(usize);
 
+/// Maps private memory of `bytes` reserved, backed only where touched: what the kernel returns.
+mapping := (bytes: usize) -> isize { call(numbers.mmap, [0, bytes, read_write, reserve, no_file, 0]) };
+
 /// Private memory of `bytes` reserved, backed only where touched.
-map := (bytes: usize) -> usize {
-    call(numbers.mmap, [0, bytes, read_write, reserve, no_file, 0]).wrap(usize)
-};
+map := (bytes: usize) -> usize { mapping(bytes).wrap(usize) };
 
 /// Gives back the `bytes` mapped at `address`.
 unmap := (address: usize, bytes: usize) { call(numbers.munmap, [address, bytes, 0, 0, 0, 0]); };
@@ -240,4 +241,5 @@ start := ($main: std.os.Main) -> type { struct {
     sleep := () { call(numbers.sched_yield, [0, 0, 0, 0, 0, 0]); };
 
     memory := std.os.linux.kernel.memory.exports;
+    threads := std.os.linux.kernel.thread.exports;
 } };

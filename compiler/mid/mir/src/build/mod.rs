@@ -208,6 +208,7 @@ impl<'a, 'db> Builder<'_, 'a, 'db> {
         b.assign(Place::of(ret), Rvalue::Use(result), end);
         b.blocks[b.current].term = Terminator { kind: TerminatorKind::Return, origin: end };
         let mut body = Body { locals: b.locals, params: args, ret, blocks: b.blocks, origin };
+        body.prune();
         // A coroutine's body ends with what its frame gives when done, not the frame.
         let result = signature.map(|s| s.result);
         body.locals[ret].ty = if body.suspends() {

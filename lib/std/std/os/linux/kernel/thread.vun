@@ -1,0 +1,174 @@
+//! Threads of a program calling the kernel itself. Each runs on a stack of its own, mapped for it
+//! with its lowest pages left inaccessible so that running past its end faults, and starts from
+//! `clone`, sharing the process's memory, files and signal handlers. The kernel clears the
+//! thread's id in its record when the thread ends and wakes whoever waits on that word
+//! (`CLONE_CHILD_CLEARTID`): joining waits for it, then unmaps the stack.
+
+/// The bytes of a thread's stack, as many as a process's main thread has by default.
+stack_bytes := 8 << 20;
+/// The bytes left inaccessible below a stack: whole pages whatever the page size.
+guard_bytes := 64 << 10;
+/// The bytes mapped for a thread.
+mapped_bytes := stack_bytes + guard_bytes;
+/// What `clone` shares with the new thread, and where it reports its id: `CLONE_VM`, `CLONE_FS`,
+/// `CLONE_FILES`, `CLONE_SIGHAND`, `CLONE_THREAD`, `CLONE_SYSVSEM`, `CLONE_PARENT_SETTID` and
+/// `CLONE_CHILD_CLEARTID`.
+sharing: usize = 0x35_0f00;
+/// `op` for `futex`: wait while the word holds a value (`FUTEX_WAIT`).
+wait: usize = 0;
+/// `protection` for `mprotect` of memory neither read nor written.
+inaccessible: usize = 0;
+
+/// What the runtime keeps of a thread, at the top of its mapping.
+#[layout.c]
+Record := struct {
+    /// The thread's id while it runs, which the kernel clears when it ends.
+    tid: u32,
+    mapped: usize,
+    start: std.os.thread.Start,
+    context: usize,
+};
+
+/// Where a new thread starts, given the address of its record.
+Begin := #[abi.c] (record: usize) -> lang.never;
+
+/// A `clone` request.
+#[layout.c]
+Clone := struct {
+    number: usize,
+    flags: usize,
+    stack: usize,
+    parent: usize,
+    child: usize,
+};
+
+/// Where the words a new thread starts from are above its stack pointer: past a return address
+/// where the architecture's call pushes one. They are the address of the thread's record, then
+/// the function it begins at (`Begin`).
+entered: usize = if lang.target.current.arch == .x86_64 { lang.meta.size(usize) } else { 0 };
+/// The bytes a new thread's stack holds from its pointer up when it starts, the pointer aligned.
+frame: usize = ((entered + 2 * lang.meta.size(usize) + std.os.thread.align - 1) / std.os.thread.align * std.os.thread.align).wrap(usize);
+
+/// Makes the `clone` system call of `request`, returning what it returns to the calling thread.
+/// The new thread starts on `request.stack`, branching to the function the stack holds with the
+/// record's address it holds, through no register the system call does not read: a block the
+/// checks of assembly watch keeps two free. On arm64 the branch goes through `x16`, the register
+/// a branch may land on a function's entry through where branch targets are enforced (BTI), as a
+/// C compiler building with branch protection makes them. On Thumb the number goes in `r7`, the
+/// frame pointer, which the calling thread keeps on the stack meanwhile; the new thread starts on
+/// a stack of its own and never gives it back.
+clone := (request: Clone) -> isize {
+    at := std.ptr.to(Clone, &request).address();
+    mut result: usize = 0;
+    $if lang.target.current.arch == .x86_64 {
+        unsafe lang.arch.x86_64.asm {
+            mov rdi, [{in(rax) at} + 8]
+            mov rsi, [rax + 16]
+            mov rdx, [rax + 24]
+            mov r10, [rax + 32]
+            mov rax, [rax]
+            syscall
+            test rax, rax
+            jnz 'parent
+            mov rdi, [rsp + 8]
+            jmp [rsp + 16]
+            'parent:
+            mov {out(rax) result}, rax
+        };
+    } else {
+        $if lang.target.current.arch == .arm64 {
+            unsafe lang.arch.arm64.asm {
+                ldr x8, [{in(x0) at}]
+                ldr x1, [x0, 16]
+                ldr x2, [x0, 24]
+                ldr x4, [x0, 32]
+                ldr x0, [x0, 8]
+                svc 0
+                cbnz x0, 'parent
+                ldr x16, [sp, 8]
+                ldr x0, [sp]
+                br x16
+                'parent:
+                mov {out(x0) result}, x0
+            };
+        } else {
+            unsafe lang.arch.thumb.asm {
+                push r4, r7
+                ldr r7, [{in(r0) at}]
+                ldr r1, [r0, 8]
+                ldr r2, [r0, 12]
+                ldr r4, [r0, 16]
+                ldr r0, [r0, 4]
+                svc 0
+                cbnz r0, 'parent
+                ldr r1, [sp, 4]
+                ldr r0, [sp]
+                bx r1
+                'parent:
+                pop r4, r7
+                mov {out(r0) result}, r0
+            };
+        }
+    }
+    result.wrap(isize)
+};
+
+/// Where a new thread starts, on its own stack: runs the thread of `record`, then ends it.
+#[abi.c]
+begin := (record: usize) -> lang.never {
+    held := unsafe lang.mem.pointer_at(Record, record).read();
+    held.start(held.context);
+    std.os.linux.kernel.call(std.os.linux.kernel.numbers.exit, [0, 0, 0, 0, 0, 0]);
+    unsafe lang.hint.unreachable()
+};
+
+/// The exports, which the runtime holds: `threads := std.os.linux.kernel.thread.exports`.
+exports := struct {
+    #[link.export(std.os.symbols.spawn)]
+    spawn := unsafe (start: std.os.thread.Start, context: *u8, bytes: usize) -> Result(usize, std.os.Error) {
+        mapped := std.os.linux.kernel.outcome(std.os.linux.kernel.mapping(mapped_bytes))?;
+        placed := std.os.thread.Placed.of(Record, (mapped + mapped_bytes).wrap(usize), bytes);
+        stack := (placed.context - frame).wrap(usize);
+        unsafe {
+            lang.mem.pointer_at(Record, placed.record).write(Record{
+                .tid = 0,
+                .mapped = mapped,
+                .start = start,
+                .context = placed.context,
+            });
+            lang.mem.copy(u8, lang.mem.pointer_at(u8, placed.context), context, bytes);
+            lang.mem.fill(u8, lang.mem.pointer_at(u8, stack), 0, frame);
+            lang.mem.pointer_at(usize, (stack + entered).wrap(usize)).write(placed.record);
+            lang.mem.pointer_at(Begin, (stack + entered + lang.meta.size(usize)).wrap(usize)).write(begin);
+        }
+        request := Clone{
+            .number = std.os.linux.kernel.numbers.clone,
+            .flags = sharing,
+            .stack = stack,
+            .parent = placed.record,
+            .child = placed.record,
+        };
+        guarded := std.os.linux.kernel.call(std.os.linux.kernel.numbers.mprotect, [mapped, guard_bytes, inaccessible, 0, 0, 0]);
+        started := if guarded < 0 { guarded } else { clone(request) };
+        match std.os.linux.kernel.outcome(started) {
+            .ok(_) => .ok(placed.record),
+            .err(e) => {
+                std.os.linux.kernel.unmap(mapped, mapped_bytes);
+                .err(e)
+            },
+        }
+    };
+
+    #[link.export(std.os.symbols.join)]
+    join := unsafe (thread: usize, context: *u8, bytes: usize) {
+        tid := unsafe lang.mem.pointer_at(u32, thread);
+        mut running := unsafe lang.mem.atomic_load(u32, tid, .acquire);
+        for running != 0 {
+            std.os.linux.kernel.call(std.os.linux.kernel.numbers.futex, [thread, wait, running.to(usize), 0, 0, 0]);
+            running = unsafe lang.mem.atomic_load(u32, tid, .acquire);
+        }
+        held := unsafe lang.mem.pointer_at(Record, thread).read();
+        unsafe lang.mem.copy(u8, context, lang.mem.pointer_at(u8, held.context), bytes);
+        std.os.linux.kernel.unmap(held.mapped, mapped_bytes);
+    };
+};

@@ -39,6 +39,7 @@ pub enum Op {
     Cmov,
     /// A jump if the condition holds.
     J,
+    /// An indirect jump's operand is 64 bits without REX.W, as a call's.
     Jmp,
     /// A call's operand is 64 bits without REX.W.
     Call,

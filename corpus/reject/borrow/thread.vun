@@ -1,0 +1,14 @@
+//! A thread holds the closure it runs until it is joined: the closure is not called or changed
+//! meanwhile, and a thread never joined is a leak (spec 08, section 2).
+
+start := std.os.start(main);
+
+main := (sys: &mut std.os.System) -> std.os.Exit {
+    mut n: u32 = 0;
+    mut count := [&mut n] () -> u32 { n += 1; n };
+    running := match sys.spawn(&mut count) { .ok(t) => t, .err(_) => return .code(1) };
+    count(); //~ borrow.conflict
+    running.join();
+    forgotten := match sys.spawn(&mut count) { .ok(t) => t, .err(_) => return .code(1) };
+    .ok //~ place.linear_leak
+};

@@ -37,6 +37,8 @@ symbols := struct {
     close := "vun_os_close";
     now := "vun_os_now";
     pause := "vun_os_pause";
+    spawn := "vun_os_spawn";
+    join := "vun_os_join";
 };
 
 /// Writes some of `bytes` to the stream the system knows as `fd`, returning how many.
@@ -63,6 +65,17 @@ now: (clock: std.time.Clock) -> Result(std.time.Instant, Error) = _;
 /// Suspends the calling thread for at least `span`.
 #[link.symbol(symbols.pause)]
 pause: (span: std.time.Duration) -> Result((), Error) = _;
+
+/// Starts a thread at `start` with the address of a copy of the `bytes` of its context at
+/// `context`, returning the handle `join` takes: the copy stays, where the thread may write it,
+/// until then.
+#[link.symbol(symbols.spawn)]
+spawn: unsafe (start: std.os.thread.Start, context: *u8, bytes: usize) -> Result(usize, Error) = _;
+
+/// Waits for the thread of `thread` to end, then copies its context back to the `bytes` at
+/// `context` and gives back what it held.
+#[link.symbol(symbols.join)]
+join: unsafe (thread: usize, context: *u8, bytes: usize) = _;
 
 /// A span of time as POSIX systems take and give it (`struct timespec`): whole seconds, and the
 /// nanoseconds past them.
@@ -114,6 +127,8 @@ Error := enum {
     interrupted,
     /// A stream that took no more bytes.
     closed,
+    /// Something the system does not offer, as threads on a system running one.
+    unsupported,
     number(i32),
 };
 
@@ -160,6 +175,10 @@ System := struct {
     now := (self: &System, clock: std.time.Clock) -> Result(std.time.Instant, Error) { std.os.now(clock) };
     /// Suspends the calling thread for at least `span`.
     pause := (self: &mut System, span: std.time.Duration) -> Result((), Error) { std.os.pause(span) };
+    /// Starts a thread running `f`, borrowed until the thread is joined.
+    spawn := (self: &temp mut System, $R: type, $F: lang.ops.Call((), R), f: &mut F) -> Result(std.os.thread.Thread(R, F), Error) {
+        std.os.thread.Thread(R, F).spawn(f)
+    };
 };
 
 /// The arguments a process was started with, its program's name first where the system passes

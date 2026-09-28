@@ -12,6 +12,7 @@ pub const set: Item = Item::new(&["lang", "arch", "x86_64", "control", "set"]);
 pub const cmov: Item = Item::new(&["lang", "arch", "x86_64", "control", "cmov"]);
 /// A jump if the condition holds.
 pub const j: Item = Item::new(&["lang", "arch", "x86_64", "control", "j"]);
+/// An indirect jump's operand is 64 bits without REX.W, as a call's.
 pub const jmp: Item = Item::new(&["lang", "arch", "x86_64", "control", "jmp"]);
 /// A call's operand is 64 bits without REX.W.
 pub const call: Item = Item::new(&["lang", "arch", "x86_64", "control", "call"]);

@@ -24,6 +24,9 @@ pub const close: Item = Item::new(
 pub const mmap: Item = Item::new(
     &["std", "os", "linux", "kernel", "calls", "Numbers", "mmap"],
 );
+pub const mprotect: Item = Item::new(
+    &["std", "os", "linux", "kernel", "calls", "Numbers", "mprotect"],
+);
 pub const munmap: Item = Item::new(
     &["std", "os", "linux", "kernel", "calls", "Numbers", "munmap"],
 );
@@ -41,6 +44,15 @@ pub const clock_gettime: Item = Item::new(
 );
 pub const clock_nanosleep: Item = Item::new(
     &["std", "os", "linux", "kernel", "calls", "Numbers", "clock_nanosleep"],
+);
+pub const clone: Item = Item::new(
+    &["std", "os", "linux", "kernel", "calls", "Numbers", "clone"],
+);
+pub const futex: Item = Item::new(
+    &["std", "os", "linux", "kernel", "calls", "Numbers", "futex"],
+);
+pub const exit: Item = Item::new(
+    &["std", "os", "linux", "kernel", "calls", "Numbers", "exit"],
 );
 pub const exit_group: Item = Item::new(
     &["std", "os", "linux", "kernel", "calls", "Numbers", "exit_group"],

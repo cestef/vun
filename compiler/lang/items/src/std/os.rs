@@ -14,6 +14,8 @@ pub const libc: Item = Item::new(&["std", "os", "libc"]);
 pub const linux: Item = Item::new(&["std", "os", "linux"]);
 /// The namespace `std.os.macos`.
 pub const macos: Item = Item::new(&["std", "os", "macos"]);
+/// The namespace `std.os.thread`.
+pub const thread: Item = Item::new(&["std", "os", "thread"]);
 /// The namespace `std.os.wasi`.
 pub const wasi: Item = Item::new(&["std", "os", "wasi"]);
 /// A status a process ends with, besides success: what every system passes on unchanged. A shell
@@ -40,6 +42,13 @@ pub const close: Item = Item::new(&["std", "os", "close"]);
 pub const now: Item = Item::new(&["std", "os", "now"]);
 /// Suspends the calling thread for at least `span`.
 pub const pause: Item = Item::new(&["std", "os", "pause"]);
+/// Starts a thread at `start` with the address of a copy of the `bytes` of its context at
+/// `context`, returning the handle `join` takes: the copy stays, where the thread may write it,
+/// until then.
+pub const spawn: Item = Item::new(&["std", "os", "spawn"]);
+/// Waits for the thread of `thread` to end, then copies its context back to the `bytes` at
+/// `context` and gives back what it held.
+pub const join: Item = Item::new(&["std", "os", "join"]);
 /// A span of time as POSIX systems take and give it (`struct timespec`): whole seconds, and the
 /// nanoseconds past them.
 pub const Timespec: Item = Item::new(&["std", "os", "Timespec"]);

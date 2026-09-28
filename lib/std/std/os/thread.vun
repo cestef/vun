@@ -1,0 +1,72 @@
+//! Threads the system runs beside the one starting them (spec 08, section 2). A thread runs a
+//! closure borrowed for as long as it runs: `Thread` is linear and holds the borrow, so the
+//! closure, and what it borrows, stay until the thread is joined, and joining gives what the
+//! closure returned. Values safe to share are safe to share across threads (spec 07, section 2),
+//! so a closure may borrow what the thread starting it goes on reading.
+//!
+//! A runtime starts a thread through `std.os.spawn`, with a function of this namespace and a copy
+//! of the thread's context it keeps until `std.os.join` copies it back.
+
+/// What a runtime starts a thread at: a function given the address of the thread's context.
+Start := #[abi.c] (context: usize) -> ();
+
+/// The alignment of what a runtime places for a thread, a stack's on every architecture `std`
+/// builds for.
+align: usize = 16;
+
+/// Where a runtime places a thread's pieces in memory it mapped for the thread, ending at `end`:
+/// its own record of `Record` at the top, then the copy of a context of `bytes` below it.
+Placed := struct {
+    record: usize,
+    context: usize,
+
+    of := ($Record: type, end: usize, bytes: usize) -> Placed {
+        record := down((end - lang.meta.size(Record)).wrap(usize));
+        .{ .record = record, .context = down((record - bytes).wrap(usize)) }
+    };
+};
+
+/// `at` rounded down to `align`.
+down := (at: usize) -> usize { (at - at % align).wrap(usize) };
+
+/// A thread running a closure of type `F` that returns `R`: linear, joined once.
+Thread := ($R: type, $F: lang.ops.Call((), R)) -> type { #[kind.linear] struct {
+    _f: &mut F,
+    _handle: usize,
+
+    /// What the thread starts with: its closure, and where what it returns goes.
+    Context := struct {
+        f: *F,
+        result: ?R,
+
+        /// Its bytes, which a runtime copies.
+        bytes := (self: &Context) -> *u8 { unsafe std.ptr.to(Context, self).cast(u8) };
+    };
+
+    /// Starts a thread running `f`.
+    spawn := (f: &mut F) -> Result(Thread(R, F), std.os.Error) {
+        context := Context{ .f = std.ptr.to(F, f), .result = .none };
+        handle := unsafe std.os.spawn(run, context.bytes(), lang.meta.size(Context))?;
+        .ok(.{ ._f = f, ._handle = handle })
+    };
+
+    /// Waits for the thread to end, and gives what its closure returned.
+    join := (self: Thread(R, F)) -> R {
+        .{ ._f = f, ._handle = handle } := self;
+        mut context := Context{ .f = std.ptr.to(F, f), .result = .none };
+        unsafe std.os.join(handle, context.bytes(), lang.meta.size(Context));
+        match context.result {
+            .some(result) => result,
+            .none => lang.panic.fail(.message("a thread ended without returning")),
+        }
+    };
+
+    /// Where the thread starts: calls the closure and puts what it returns in the context.
+    #[abi.c]
+    run := (at: usize) {
+        context := unsafe lang.mem.pointer_at(Context, at);
+        at_f := unsafe context.read().f;
+        result := unsafe { at_f.*() };
+        unsafe context.write(Context{ .f = at_f, .result = .some(result) });
+    };
+} };

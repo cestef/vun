@@ -12,3 +12,5 @@ pub const open: Item = Item::new(&["std", "os", "symbols", "open"]);
 pub const close: Item = Item::new(&["std", "os", "symbols", "close"]);
 pub const now: Item = Item::new(&["std", "os", "symbols", "now"]);
 pub const pause: Item = Item::new(&["std", "os", "symbols", "pause"]);
+pub const spawn: Item = Item::new(&["std", "os", "symbols", "spawn"]);
+pub const join: Item = Item::new(&["std", "os", "symbols", "join"]);

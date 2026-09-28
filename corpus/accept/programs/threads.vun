@@ -1,0 +1,19 @@
+//! Threads summing halves of an array each, borrowed by both, joined for their sums (spec 08,
+//! section 2). A system running one thread sums both halves on it.
+
+start := std.os.start(main);
+
+main := (sys: &mut std.os.System) -> std.os.Exit {
+    items: [8]u8 = [1, 2, 3, 4, 5, 6, 7, 8];
+    mut low := [&items] () -> u32 { items[0] + items[1] + items[2] + items[3] };
+    mut high := [&items] () -> u32 { items[4] + items[5] + items[6] + items[7] };
+    sum := match sys.spawn(&mut low) {
+        .ok(first) => match sys.spawn(&mut high) {
+            .ok(second) => first.join() + second.join(),
+            .err(_) => first.join() + high(),
+        },
+        .err(.unsupported) => low() + high(),
+        .err(_) => return .code(1),
+    };
+    std.os.Exit.of(sum.to(Int(0..=125)))
+};

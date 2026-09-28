@@ -234,4 +234,16 @@ start := ($main: std.os.Main) -> type { struct {
     /// Nothing else runs in the module, so there is nothing to wait for.
     #[link.export(std.task.symbols.sleep)]
     sleep := () {};
+
+    /// A module runs one thread.
+    #[link.export(std.os.symbols.spawn)]
+    spawn := unsafe (thread: std.os.thread.Start, context: *u8, bytes: usize) -> Result(usize, std.os.Error) {
+        .err(.unsupported)
+    };
+
+    /// No thread was started to join.
+    #[link.export(std.os.symbols.join)]
+    join := unsafe (thread: usize, context: *u8, bytes: usize) {
+        lang.panic.fail(.message("a module runs one thread, so none is joined"))
+    };
 } };
