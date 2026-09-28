@@ -57,7 +57,7 @@ impl<'a, A: Arch> Cx<'a, A> {
                 Loc::Reg(Carrier::Float(_)) | Loc::Stack { .. } | Loc::Copied { .. } => {
                     read(needs, a, Need::Any, false);
                 }
-                Loc::Split(parts) => {
+                Loc::Split { parts, .. } => {
                     read(needs, a, Need::Any, false);
                     for part in parts {
                         if let Carrier::Int(r) = part.reg {

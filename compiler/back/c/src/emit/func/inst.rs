@@ -190,8 +190,9 @@ impl FnEmit<'_, '_> {
                 passed.push(self.operand(out.expect("a result in memory has an address")));
                 self.body.push(Stmt::Expr(call(passed)));
             }
-            Some(AbiType::Record(_)) => {
-                let place = self.operand(out.expect("a record result has an address")).at(c.result.clone());
+            Some(AbiType::Record(_) | AbiType::Wide { .. }) => {
+                let place =
+                    self.operand(out.expect("a result through memory has an address")).at(c.result.clone());
                 self.body.push(Stmt::Assign(place, call(passed)));
             }
             Some(given @ (AbiType::Scalar(_) | AbiType::Int(..) | AbiType::Address(_))) => {
@@ -204,7 +205,6 @@ impl FnEmit<'_, '_> {
                     _ => self.body.push(Stmt::Expr(value)),
                 }
             }
-            Some(AbiType::Wide { .. }) => unreachable!("the verifier refuses a wide result"),
             None => self.body.push(Stmt::Expr(call(passed))),
         }
         Ok(())

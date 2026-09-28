@@ -9,7 +9,7 @@ use vun_dwarf::Step;
 
 use super::Sel;
 use crate::x86_64::X86;
-use crate::x86_64::abi::{ARGS, Carrier, Loc, Ret};
+use crate::x86_64::abi::{ARGS, Carrier, Loc, Part, Ret};
 
 /// Where the caller's stack arguments start, above the saved frame pointer and return address.
 pub(super) const CALLER_ARGS: i32 = 16;
@@ -33,10 +33,10 @@ impl Sel<'_, '_> {
         for (i, &v) in f.blocks[entry].params.iter().enumerate() {
             let place = match &self.state.passing.params[i] {
                 Loc::Copied { offset, .. } => Place::frame(CALLER_ARGS + offset_of(*offset)),
-                Loc::Split(parts) => Place::frame(self.buffer(parts.len())),
+                Loc::Split { parts, rest } => Place::frame(self.buffer(Part::extent(parts, rest.as_ref()))),
                 Loc::Returned => {
                     let Ret::Split(parts) = &self.state.passing.ret else { continue };
-                    let buffer = self.buffer(parts.len());
+                    let buffer = self.buffer(Part::extent(parts, None));
                     self.state.gathered = Some(buffer);
                     Place::frame(buffer)
                 }
@@ -66,11 +66,16 @@ impl Sel<'_, '_> {
             match loc {
                 Loc::Reg(Carrier::Float(x)) => self.receive_float(v, *x),
                 Loc::Stack { offset, .. } => self.home_at(v, CALLER_ARGS + offset_of(*offset)),
-                Loc::Split(parts) => {
+                Loc::Split { parts, rest } => {
                     let buffer = self.place(v).expect("placed by the prologue");
+                    let at = |offset| Mem::at(Reg::Rbp, frame_offset(buffer) + offset_of(offset));
                     for part in parts {
-                        let at = Mem::at(Reg::Rbp, frame_offset(buffer) + offset_of(part.offset));
-                        self.store_part(at, part.reg, X86::WORD);
+                        self.store_part(at(part.offset), part.reg, X86::WORD);
+                    }
+                    // The rest the caller left on the stack joins the parts.
+                    if let Some(rest) = rest {
+                        let from = Mem::at(Reg::Rbp, CALLER_ARGS + offset_of(rest.offset));
+                        self.copy_bytes(at(rest.from), from, rest.bytes, X86::TEMP);
                     }
                 }
                 Loc::Reg(Carrier::Int(_)) | Loc::Copied { .. } | Loc::Indirect { .. } | Loc::Returned => {}
@@ -83,9 +88,9 @@ impl Sel<'_, '_> {
         }
     }
 
-    /// A buffer of `eightbytes` words in the frame.
-    fn buffer(&mut self, eightbytes: usize) -> i32 {
-        self.frame.reserve(eightbytes as u64 * X86::WORD, X86::WORD)
+    /// A buffer in the frame for a record of `size` bytes.
+    fn buffer(&mut self, size: u64) -> i32 {
+        self.frame.reserve(size.next_multiple_of(X86::WORD), X86::WORD)
     }
 }
 

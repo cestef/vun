@@ -12,5 +12,7 @@ pub type Carrier = vun_abi::Carrier<Reg, Xmm>;
 pub type Loc = vun_abi::Loc<Carrier>;
 /// How a result comes back.
 pub type Ret = vun_abi::Ret<Carrier>;
+/// Bytes of a record travelling in one register.
+pub type Part = vun_abi::Part<Carrier>;
 /// Where a call of a signature passes everything.
 pub type Passing = vun_abi::Passing<Carrier>;

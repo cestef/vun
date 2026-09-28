@@ -1,3 +1,4 @@
+mod aapcs;
 mod clang;
 
 use vun_lir::{AbiType, Conv, Ext, Record, Scalar, Signature};
@@ -6,7 +7,7 @@ use crate::{Carrier, Convention, Loc, Part, Passing, Registers, Ret, Rules};
 
 /// Registers named by numbers: System V's six general and eight floating-point argument registers,
 /// two result registers of each class.
-const SYSV: Convention<u8, u8> = Convention {
+pub(super) const SYSV: Convention<u8, u8> = Convention {
     rules: &Rules::SYSV,
     registers: Registers {
         int_args: &[0, 1, 2, 3, 4, 5],
@@ -20,7 +21,7 @@ const SYSV: Convention<u8, u8> = Convention {
 };
 
 const EIGHT: &[u8] = &[0, 1, 2, 3, 4, 5, 6, 7];
-const AAPCS64: Convention<u8, u8> = Convention {
+pub(super) const AAPCS64: Convention<u8, u8> = Convention {
     rules: &Rules::AAPCS64,
     registers: Registers {
         int_args: EIGHT,
@@ -32,18 +33,18 @@ const AAPCS64: Convention<u8, u8> = Convention {
         reserved: &[],
     },
 };
-const DARWIN: Convention<u8, u8> = Convention { rules: &Rules::DARWIN_ARM64, ..AAPCS64 };
+pub(super) const DARWIN: Convention<u8, u8> = Convention { rules: &Rules::DARWIN_ARM64, ..AAPCS64 };
 
 const I64: AbiType = AbiType::Int(Scalar::I64, Ext::Zero);
 const WIDE: AbiType = AbiType::Wide { half: Scalar::I64, ext: Ext::Sign };
 
-fn c(params: Vec<AbiType>, result: Option<AbiType>) -> Signature {
+pub(super) fn c(params: Vec<AbiType>, result: Option<AbiType>) -> Signature {
     Signature { conv: Conv::C, params, result }
 }
 
 type Place = Loc<Carrier<u8, u8>>;
 
-fn int(k: u8) -> Place {
+pub(super) fn int(k: u8) -> Place {
     Loc::Reg(Carrier::Int(k))
 }
 
@@ -72,7 +73,7 @@ fn eightbytes_travel_by_class() {
         Part { reg: Carrier::Float(0), offset: 0, bytes: 8 },
         Part { reg: Carrier::Int(0), offset: 8, bytes: 8 },
     ];
-    assert_eq!(passing.params, [Loc::Split(parts)]);
+    assert_eq!(passing.params, [Loc::Split { parts, rest: None }]);
     assert_eq!(passing.floats, 1);
 }
 
@@ -82,7 +83,7 @@ fn a_record_of_floats_of_one_type_takes_a_register_a_field_under_aapcs64() {
         Record { size: 12, align: 4, fields: vec![(0, Scalar::F32), (4, Scalar::F32), (8, Scalar::F32)] };
     let passing = Passing::of(&c(vec![AbiType::Record(floats)], None), &AAPCS64).unwrap();
     let parts = (0..3).map(|k| Part { reg: Carrier::Float(k), offset: u64::from(k) * 4, bytes: 4 }).collect();
-    assert_eq!(passing.params, [Loc::Split(parts)]);
+    assert_eq!(passing.params, [Loc::Split { parts, rest: None }]);
 }
 
 #[test]

@@ -2,10 +2,9 @@
 
 use vun_lir::{AbiType, Conv, Record, Signature};
 
-use crate::convention::{Large, POINTER_BITS, WORD};
 use crate::free::Free;
 use crate::record::{Class, Piece};
-use crate::{Carrier, Convention, Loc, Passing, Ret, Unpassable};
+use crate::{Carrier, Convention, Large, Loc, Part, Passing, Ret, Rules, Unpassable};
 
 impl<I: Copy, F: Copy> Passing<Carrier<I, F>> {
     /// Where a call of `signature` under `convention` passes its values and gets its result. The
@@ -13,12 +12,12 @@ impl<I: Copy, F: Copy> Passing<Carrier<I, F>> {
     /// stack, and a wide integer as the C convention does.
     ///
     /// # Errors
-    /// Returns what the convention cannot pass: `f16`, an unsplit 128-bit integer, a record part
-    /// of floats of an odd size, or anything to a naked function.
+    /// Returns what the convention cannot pass: `f16`, a scalar wider than a register as one
+    /// value, a record part of floats of an odd size, or anything to a naked function.
     ///
     /// # Panics
-    /// If the convention declares no result register of a class a scalar result takes, or the
-    /// signature has a wide result, which the LIR verifier refuses.
+    /// If the convention declares too few result registers for a result of a scalar or its
+    /// halves.
     pub fn of(signature: &Signature, convention: &Convention<I, F>) -> Result<Self, Unpassable> {
         let c = match signature.conv {
             Conv::C => true,
@@ -30,17 +29,26 @@ impl<I: Copy, F: Copy> Passing<Carrier<I, F>> {
             Conv::Naked => return Err(Unpassable::Naked),
         };
         let (rules, registers) = (convention.rules, &convention.registers);
+        let bits = rules.pointer_bits();
         let mut results = Free::new(rules, registers.int_results, registers.float_results, false);
         let ret = match &signature.result {
-            Some(AbiType::Scalar(s)) => Ret::Reg(results.next(Class::of(*s)?).expect("a result register")),
-            Some(AbiType::Int(..) | AbiType::Address(_)) => {
-                Ret::Reg(results.next(Class::Int).expect("a result register"))
+            Some(AbiType::Scalar(s) | AbiType::Int(s, _)) => {
+                Ret::Reg(results.one(rules.class(*s)?, s.bytes(bits)).expect("a result register"))
+            }
+            Some(AbiType::Address(_)) => {
+                Ret::Reg(results.one(Class::Int, rules.word).expect("a result register"))
+            }
+            Some(AbiType::Wide { half, .. }) => {
+                let halves = Piece::halves(half.bytes(bits));
+                let regs = results.take(&halves, 2 * half.bytes(bits)).expect("two result registers");
+                Ret::Split(Part::of(regs, &halves))
             }
             Some(AbiType::Record(r)) if c => {
-                let parts = rules.pieces(r)?.and_then(|pieces| results.take(&pieces));
+                let pieces = rules.pieces(r, rules.returned)?;
+                let parts =
+                    pieces.and_then(|pieces| Some(Part::of(results.take(&pieces, r.align).ok()?, &pieces)));
                 parts.map_or(Ret::Memory, Ret::Split)
             }
-            Some(AbiType::Wide { .. }) => unreachable!("the verifier refuses a wide result"),
             // Vun's convention passes the address of a result in memory as its last value.
             None | Some(AbiType::Record(_) | AbiType::Memory { .. }) => Ret::None,
         };
@@ -48,21 +56,22 @@ impl<I: Copy, F: Copy> Passing<Carrier<I, F>> {
         // A result in memory's address, in its own register or the first argument register.
         let result_address = match (&ret, registers.result_address) {
             (Ret::Memory, Some(own)) => Some(Carrier::Int(own)),
-            (Ret::Memory, None) => free.next(Class::Int),
+            (Ret::Memory, None) => free.one(Class::Int, rules.word),
             _ => None,
         };
         let mut params = Vec::new();
         for param in &signature.params {
             let loc = match param {
-                AbiType::Wide { .. } => {
-                    params.extend(free.pair());
+                AbiType::Wide { half, .. } => {
+                    params.extend(free.wide(half.bytes(bits)));
                     continue;
                 }
-                AbiType::Record(r) if c => Self::record(&mut free, r, rules.pieces(r)?, rules.large),
-                AbiType::Scalar(s) => free.scalar(Class::of(*s)?, s.bytes(POINTER_BITS)),
-                AbiType::Int(s, _) => free.scalar(Class::Int, s.bytes(POINTER_BITS)),
+                AbiType::Record(r) if c => {
+                    Self::record(&mut free, r, rules.pieces(r, rules.in_registers)?, rules)
+                }
+                AbiType::Scalar(s) | AbiType::Int(s, _) => free.scalar(rules.class(*s)?, s.bytes(bits)),
                 AbiType::Address(_) | AbiType::Record(_) | AbiType::Memory { .. } => {
-                    free.scalar(Class::Int, WORD)
+                    free.scalar(Class::Int, rules.word)
                 }
             };
             params.push(loc);
@@ -71,29 +80,26 @@ impl<I: Copy, F: Copy> Passing<Carrier<I, F>> {
             params.push(match (result_address, &ret) {
                 (Some(reg), _) => Loc::Reg(reg),
                 (None, Ret::Split(_)) => Loc::Returned,
-                (None, _) => free.scalar(Class::Int, WORD),
+                (None, _) => free.scalar(Class::Int, rules.word),
             });
         }
         Ok(Self { params, ret, stack: free.stack_size(), floats: free.floats_used() })
     }
 
-    /// Where a record passed by value under the C convention travels: its pieces in registers,
-    /// else copied onto the stack, or a large one as the rules say.
+    /// Where a record passed by value under the C convention travels: in its pieces, else as the
+    /// rules say of a large one.
     fn record(
         free: &mut Free<'_, I, F>,
         r: &Record,
         pieces: Option<Vec<Piece>>,
-        large: Large,
+        rules: &Rules,
     ) -> Loc<Carrier<I, F>> {
-        let Some(pieces) = pieces else {
-            return match large {
-                Large::Stack => Loc::Copied { offset: free.stack(r.size, r.align), size: r.size },
-                Large::Address => Loc::Indirect { size: r.size, at: Box::new(free.scalar(Class::Int, WORD)) },
-            };
-        };
-        match free.take(&pieces) {
-            Some(parts) => Loc::Split(parts),
-            None => Loc::Copied { offset: free.stack(r.size, r.align), size: r.size },
+        match (pieces, rules.large) {
+            (Some(pieces), _) => free.record(r, &pieces),
+            (None, Large::Stack) => Loc::Copied { offset: free.stack(r.size, r.align), size: r.size },
+            (None, Large::Address) => {
+                Loc::Indirect { size: r.size, at: Box::new(free.scalar(Class::Int, rules.word)) }
+            }
         }
     }
 }

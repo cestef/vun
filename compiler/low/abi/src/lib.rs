@@ -9,12 +9,15 @@
 use std::error::Error;
 use std::fmt;
 
+mod bank;
 mod classify;
 mod convention;
 mod free;
 mod record;
+mod rules;
 
-pub use convention::{Convention, Large, Pair, Records, Registers, Rules, Short, Stack, Variadic};
+pub use convention::{Convention, Registers};
+pub use rules::{Floats, Large, Pair, Records, Rules, Short, Split, Stack, Variadic};
 
 /// A register a value travels in: a general one, or a floating-point one.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -32,6 +35,22 @@ pub struct Part<R> {
     pub bytes: u64,
 }
 
+/// The bytes of a record from `from` to its end, on the stack at `offset` of the arguments.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct Rest {
+    pub from: u64,
+    pub offset: u64,
+    pub bytes: u64,
+}
+
+impl<R> Part<R> {
+    /// The bytes of a record from its start to the end of the last of `parts` and `rest`.
+    pub fn extent(parts: &[Self], rest: Option<&Rest>) -> u64 {
+        let ends = parts.iter().map(|p| p.offset + p.bytes).chain(rest.map(|r| r.from + r.bytes));
+        ends.max().unwrap_or(0)
+    }
+}
+
 /// Where one LIR value of a signature travels, `R` naming registers.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Loc<R> {
@@ -41,8 +60,12 @@ pub enum Loc<R> {
         offset: u64,
         bytes: u64,
     },
-    /// The address of a record whose parts travel in registers.
-    Split(Vec<Part<R>>),
+    /// The address of a record whose first parts travel in registers, and the rest, if any, on
+    /// the stack (AAPCS, rule C.5).
+    Split {
+        parts: Vec<Part<R>>,
+        rest: Option<Rest>,
+    },
     /// The address of a record copied whole onto the stack at this offset.
     Copied {
         offset: u64,
@@ -78,7 +101,7 @@ pub struct Passing<R> {
     /// last.
     pub params: Vec<Loc<R>>,
     pub ret: Ret<R>,
-    /// The bytes of arguments on the stack, a multiple of 16.
+    /// The bytes of arguments on the stack, a multiple of the stack's alignment.
     pub stack: u64,
     /// How many floating-point registers carry arguments, which a variadic call states under
     /// some conventions ([`Variadic::FloatCount`]).
@@ -103,8 +126,10 @@ impl<I: Copy, F> Passing<Carrier<I, F>> {
 pub enum Unpassable {
     /// A half-precision float, which C passes by no convention built.
     Half,
-    /// A 128-bit integer as one value, which legalization splits first.
-    Int128,
+    /// A scalar of these bytes as one value, wider than a register of its class, which
+    /// legalization splits first: a 128-bit integer, or a 64-bit one or a soft `f64` on a
+    /// 32-bit machine.
+    Wider(u64),
     /// A record's eightbyte of floats holding this many bytes, neither one `f32` nor two nor a
     /// `f64`: a layout only an explicit size makes.
     FloatPart(u64),
@@ -116,7 +141,7 @@ impl fmt::Display for Unpassable {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Half => f.write_str("`f16` values"),
-            Self::Int128 => f.write_str("128-bit integers as one value"),
+            Self::Wider(bytes) => write!(f, "a value of {bytes} bytes in one register"),
             Self::FloatPart(bytes) => write!(f, "a record part of {bytes} bytes of floats"),
             Self::Naked => f.write_str("naked functions"),
         }

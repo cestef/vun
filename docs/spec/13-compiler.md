@@ -708,8 +708,9 @@ comparisons by the high halves then the low ones, extensions, truncations, selec
 stores, block parameters, switches, and calls. A wide parameter is one `AbiType::Wide`, its
 halves two values that each backend's call classifier places together by its convention (an even
 register pair under AAPCS64, two registers or 16 aligned bytes of the stack under System V, as C
-passes `__int128`; decision 246), and a wide result is a record of them (returned in registers under the C convention, as C returns its
-128-bit integers, through memory under Vun's). Division and remainder call a helper function the
+passes `__int128`; decision 246), and a wide result is one `AbiType::Wide` too, written through
+the caller's place as its halves (returned in consecutive result registers under the C
+convention, as C returns its wide integers, through memory under Vun's; decision 280). Division and remainder call a helper function the
 pass adds (restoring division over pairs, signs put back around it). Atomic accesses of wide
 integers and conversions between them and floats are refused (`backend.lacks`). A backend that
 does not compute `f16` (`BackendCaps::half` is `Half::Promoted`; both the C and the native
@@ -772,27 +773,43 @@ Where a call passes each value is decided once, in `vun-abi`, from the conventio
 every backend that places arguments itself reads the result; no backend states a convention's
 rules (proposed, decision 256).
 
-- **Conventions as values.** A `Convention` declares: how many argument and result registers
-  each class has (general, floating-point); where the address of a result in memory goes (the
-  first general argument register, System V, or a register of its own, `x8` under AAPCS64);
-  how records travel (`Records`: System V's eightbytes, each general or SSE by its fields; or
-  AAPCS64's homogeneous aggregates of up to four floats of one type, a field per register, and
-  other records of up to 16 bytes a word per general register); what becomes of a larger record
-  (copied onto the stack whole, or passed as the address of a copy the caller makes); whether a
-  record that finds too few registers of its class leaves the rest of the class unused
-  (AAPCS64, rule C.13) or takes none and leaves them to later arguments (System V); where an
-  integer of two words goes (any two general registers, as System V and Apple's variant take
-  them, or an even pair, AAPCS64 rule C.9);
-  the stack (a slot of 8 bytes, or scalars at their own size and alignment, as Apple's variant
-  packs a C call's; composites aligned to at most 16 bytes); who extends a narrow integer
-  (the callee reads it extended by the caller, as Apple's variant says, or extends it itself);
-  and whether a variadic call counts the floating-point registers it uses (System V's `al`).
-  `SYSV`, `AAPCS64` and `DARWIN_ARM64` are the three built; riscv64's LP64D and wasm32's C
+- **Conventions as values.** A `Convention` is its `Rules` and the machine's registers they name:
+  the argument and result registers of each class (general, floating-point); where the address
+  of a result in memory goes (the first general argument register, System V and AAPCS, or a
+  register of its own, `x8` under AAPCS64). The rules declare: the word (the bytes of a general
+  register, an address and a stack slot) and the stack's alignment at a call; how records
+  travel (`Records`: System V's eightbytes, each general or SSE by its fields; or homogeneous
+  aggregates of up to four floats of one type, a field per floating-point register whatever the
+  record's size, and other records a word per general register); the largest record passed in
+  registers and the largest returned in them (16 bytes under System V and AAPCS64; any size
+  passed and a word returned under AAPCS); what becomes of a larger record (copied onto the
+  stack whole, or passed as the address of a copy the caller makes); whether a value that finds
+  too few registers of its class leaves the rest of the class unused (AAPCS64, rules C.11 and
+  C.13; AAPCS, C.2 and C.6) or leaves them to later arguments (System V); where a value aligned
+  to two words starts in general registers (at the next, as System V and Apple's variant take
+  an integer of two words, or at the next even one, AAPCS64 rule C.9 and AAPCS rule C.3, which
+  also applies to records so aligned); where floats travel (`Floats`: each in the next
+  floating-point register, System V and AAPCS64; in general registers, AAPCS's base standard,
+  the soft-float EABI; or in single-precision registers a double taking an aligned pair named by
+  its first, each value in the lowest free run so that a float fills back a register a double's
+  alignment skipped, AAPCS's VFP variant, rule C.1); whether a record finding too few general
+  registers may take the rest of them and the stack (`Split`: never, or while nothing is on the
+  stack yet, AAPCS rule C.5); the stack (a slot of a word, scalars in the words they take at
+  their own alignment, or scalars at their own size and alignment, as Apple's variant packs a
+  C call's; composites aligned to at most the stack's alignment); and whether a variadic call
+  counts the floating-point registers it uses (System V's `al`). `SYSV`, `AAPCS64`,
+  `DARWIN_ARM64`, `AAPCS` and `AAPCS_VFP` are the five built; riscv64's LP64D and wasm32's C
   convention are further values of the same type.
+- **A value in one register.** A LIR value never spans registers: a scalar wider than a register
+  of its class (a 128-bit integer, or a 64-bit one or a soft-float `f64` on a 32-bit machine) is
+  refused (`Unpassable::Wider`), legalization having split it into halves first by asking the
+  rules (`Rules::fits`); its halves are one `AbiType::Wide`, placed as the rules place a value
+  of two words (decision 280).
 - **One classifier.** `Passing::of(signature, convention)` gives every LIR value of a signature
   (`Signature::passed`: a wide integer's halves each, the address of a result in memory last)
   a typed placement: a register, a place on the stack, a record's parts in registers with their
-  offsets and sizes, a record copied onto the stack, the address of a copy the caller makes and
+  offsets and sizes and the rest of it, if any, on the stack (`Loc::Split { parts, rest }`), a
+  record copied onto the stack, the address of a copy the caller makes and
   where that address goes, or the address a result returned in registers is written to; and
   the result its own: none, a register, parts in registers, or memory through an address. It
   also gives the bytes of arguments on the stack. Registers are named by their class and

@@ -110,7 +110,7 @@ impl FnEmit<'_, '_> {
             (Some(AbiType::Memory { .. }), Some(out)) => {
                 params.push(Decl::new(Ty::address(), Ident::value(out)));
             }
-            (Some(AbiType::Record(_)), Some(out)) => {
+            (Some(AbiType::Record(_) | AbiType::Wide { .. }), Some(out)) => {
                 self.result = Some(c.result.clone());
                 self.assign(out, Expr::Name(Ident::Own(Own::Result)).address_of());
             }

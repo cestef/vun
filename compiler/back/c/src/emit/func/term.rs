@@ -46,7 +46,9 @@ impl FnEmit<'_, '_> {
                         Some(self.operand(*v).cast(ty))
                     }
                     (Some(v), _) => Some(self.operand(*v)),
-                    (None, Some(AbiType::Record(_))) => Some(Expr::Name(Ident::Own(Own::Result))),
+                    (None, Some(AbiType::Record(_) | AbiType::Wide { .. })) => {
+                        Some(Expr::Name(Ident::Own(Own::Result)))
+                    }
                     (None, _) => None,
                 };
                 self.body.push(Stmt::Return(value));

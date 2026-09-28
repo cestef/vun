@@ -146,7 +146,7 @@ the machine runs it) linux.arm64 and wasi.wasm32, and require equal results.
 Every decision is accepted but these, proposed and waiting for the user: 249 to 251, 253 to
 257, 259, 260, 262, 265, 266, 268, 269, 271, 273 (integers in patterns), 274 (`$` forms that
 cannot run where written), 275 (`$if` branch scopes), 276 (C naked functions), 277 (ELF32), 278
-(`layout.offset`). 279 (static Linux targets) is the user's choice. New language rules go
+(`layout.offset`), 280 (32-bit AAPCS in `vun-abi`). 279 (static Linux targets) is the user's choice. New language rules go
 in as proposed unless the user approves them.
 
 ## 7. State and next steps
@@ -174,10 +174,15 @@ In flight, not in main:
   `.w`; then Thumb codegen (Isel, AAPCS rows in `compiler/isa/thumb/src/conventions.rs`,
   `ARCHES`), LIR halves to limbs by the target's widest integer, CPU features (single or double
   float), a static `linux` Thumb target under `qemu-arm`. The `thumb-82` workspace is spent.
-- Milestone 3a (session vun-68, workspace `../vun-abi-3a`): 32-bit AAPCS in `vun-abi`: `Rules` gain word,
-  stack_align, returned, `Floats {Next, Core, Backfill}`, `Split {Never, WhileStackEmpty}`;
-  placements `Loc::Pair`/`Ret::Pair` (soft-float double) and `Loc::Straddled` (AAPCS C.5); arms in
-  the x86/arm64 isel and codegen matches.
+- Milestone 3a landed (decision 280): `Rules::{AAPCS, AAPCS_VFP}` (word, stack alignment,
+  `returned`, `Floats`, `Split`), backfill in `vun-abi`'s banks, `Loc::Split { parts, rest }` for
+  straddling records (handled by the x86-64 and arm64 isel), wide results as `AbiType::Wide`
+  (`Ret::Split` of halves), `Unpassable::Wider` + `Rules::fits` for legalization; clang checks
+  `thumbv7em-none-eabihf` and `thumbv7m-none-eabi`. No `Loc::Pair`: a LIR value never spans
+  registers. Open: `lang.target.Convention` gains `aapcs` (soft float) with the Thumb rows;
+  legalize splits a soft `f64` by `Rules::fits`; variadic AAPCS-VFP calls use the base standard
+  (`Signature` has no variadic flag yet); `Rules` declared in `lang` and generated; a target check
+  that the convention's word matches `pointer_bits`. The `abi-3a` workspace is spent.
 - For the user: forget and delete the `regalloc-2f` workspace (`ws-regalloc`, 3.2 GB, content
   ported); `site/` and `docs/references/` are theirs, untracked; `~/.config/vun/toolchain.vun`
   needs a `linux.gnu.arm64` row (same compiler, sysroot and runner as `linux.arm64`) for glibc

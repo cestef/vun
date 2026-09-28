@@ -31,11 +31,9 @@ impl Sel<'_, '_> {
                     self.reg_to(a, X86::CARRIER);
                     self.asm.emit(Op::Mov, Size::B64, &[outgoing(offset).into(), X86::CARRIER.into()]);
                 }
-                Loc::Copied { offset, size } => {
-                    self.reg_to(a, X86::CARRIER);
-                    self.copy_bytes(outgoing(offset), Mem::at(X86::CARRIER, 0), size, X86::TEMP);
-                }
-                Loc::Reg(_) | Loc::Split(_) | Loc::Indirect { .. } | Loc::Returned => {}
+                Loc::Copied { offset, size } => self.copy_out(a, 0, offset, size),
+                Loc::Split { rest: Some(rest), .. } => self.copy_out(a, rest.from, rest.offset, rest.bytes),
+                Loc::Reg(_) | Loc::Split { rest: None, .. } | Loc::Indirect { .. } | Loc::Returned => {}
             }
         }
         // What each LIR value passes, a wide integer's halves both, the address of a result none.
@@ -60,7 +58,7 @@ impl Sel<'_, '_> {
                         }
                     }
                 },
-                Loc::Split(parts) => {
+                Loc::Split { parts, .. } => {
                     self.reg_to(a, X86::CARRIER);
                     for part in parts {
                         self.load_part(part.reg, Mem::at(X86::CARRIER, offset_of(part.offset)), part.bytes);
@@ -114,6 +112,14 @@ impl Sel<'_, '_> {
             };
             self.asm.emit(op, size, &[r.into(), r.into()]);
         }
+    }
+}
+
+impl Sel<'_, '_> {
+    /// Copies the `bytes` from `from` of the record at `a` to `offset` of the outgoing arguments.
+    fn copy_out(&mut self, a: Value, from: u64, offset: u64, bytes: u64) {
+        self.reg_to(a, X86::CARRIER);
+        self.copy_bytes(outgoing(offset), Mem::at(X86::CARRIER, offset_of(from)), bytes, X86::TEMP);
     }
 }
 

@@ -9,9 +9,9 @@ use vun_codegen::{Arch, Place};
 use vun_dwarf::Step;
 
 use super::Sel;
-use crate::arm64::abi::{Carrier, Loc, Ret};
+use crate::arm64::abi::{Carrier, Loc, Part, Ret};
 use crate::arm64::asm::AsmExt;
-use crate::arm64::{Arm, FP, LR};
+use crate::arm64::{Arm, FAR, FP, LR};
 
 /// Where the caller's stack arguments start, above the saved frame pointer and link register.
 pub(super) const CALLER_ARGS: i32 = 16;
@@ -37,10 +37,10 @@ impl Sel<'_, '_> {
         for (i, &v) in f.blocks[entry].params.iter().enumerate() {
             let place = match self.state.passing.params[i].clone() {
                 Loc::Copied { offset, .. } => Place::frame(CALLER_ARGS + offset_of(offset)),
-                Loc::Split(parts) => Place::frame(self.buffer(&parts)),
+                Loc::Split { parts, rest } => Place::frame(self.buffer(Part::extent(&parts, rest.as_ref()))),
                 Loc::Returned => {
                     let Ret::Split(parts) = self.state.passing.ret.clone() else { continue };
-                    let buffer = self.buffer(&parts);
+                    let buffer = self.buffer(Part::extent(&parts, None));
                     self.state.gathered = Some(buffer);
                     Place::frame(buffer)
                 }
@@ -74,11 +74,17 @@ impl Sel<'_, '_> {
             match loc {
                 Loc::Reg(Carrier::Float(x)) => self.receive_float(v, *x),
                 Loc::Stack { offset, .. } => self.home_at(v, CALLER_ARGS + offset_of(*offset)),
-                Loc::Split(parts) => {
+                Loc::Split { parts, rest } => {
                     let buffer = self.place(v).expect("placed by the prologue");
+                    let at = |offset: u64| buffer.disp + i64::try_from(offset).expect("records fit memory");
                     for part in parts {
-                        let disp = buffer.disp + i64::try_from(part.offset).expect("records fit memory");
-                        self.store_part(FP, disp, part.reg, part.bytes);
+                        self.store_part(FP, at(part.offset), part.reg, part.bytes);
+                    }
+                    // The rest the caller left on the stack joins the parts.
+                    if let Some(rest) = rest {
+                        self.asm.offset(Arm::TEMP, FP, at(rest.from));
+                        self.asm.offset(Arm::CARRIER, FP, i64::from(CALLER_ARGS + offset_of(rest.offset)));
+                        self.copy_bytes(Arm::TEMP, Arm::CARRIER, rest.bytes, FAR);
                     }
                 }
                 Loc::Reg(Carrier::Int(_)) | Loc::Copied { .. } | Loc::Returned | Loc::Indirect { .. } => {}
@@ -86,9 +92,8 @@ impl Sel<'_, '_> {
         }
     }
 
-    /// A buffer in the frame for a record of `parts`.
-    fn buffer(&mut self, parts: &[crate::arm64::abi::Part]) -> i32 {
-        let size = parts.iter().map(|p| p.offset + p.bytes).max().unwrap_or(0);
+    /// A buffer in the frame for a record of `size` bytes.
+    fn buffer(&mut self, size: u64) -> i32 {
         self.frame.reserve(size.next_multiple_of(Arm::WORD), Arm::WORD)
     }
 }

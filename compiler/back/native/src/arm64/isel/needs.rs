@@ -126,7 +126,7 @@ impl Look<'_, '_> {
                 Loc::Reg(Carrier::Int(r)) => Out::Fixed(Arm::preg(*r)),
                 Loc::Reg(Carrier::Float(_)) => Out::Reg,
                 Loc::Stack { .. } => Out::Home,
-                Loc::Copied { .. } | Loc::Split(_) | Loc::Returned | Loc::Indirect { .. } => continue,
+                Loc::Copied { .. } | Loc::Split { .. } | Loc::Returned | Loc::Indirect { .. } => continue,
             };
             needs.defs.push((v, out));
         }

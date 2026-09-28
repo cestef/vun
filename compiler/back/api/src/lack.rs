@@ -10,6 +10,8 @@ use vun_target::Name;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Missing {
     Int128,
+    /// A scalar of this many bytes in one register, wider than the register.
+    Wider(u64),
     Half,
     /// Floating-point values.
     Float,
@@ -48,7 +50,7 @@ impl From<vun_abi::Unpassable> for Missing {
     fn from(unpassable: vun_abi::Unpassable) -> Self {
         match unpassable {
             vun_abi::Unpassable::Half => Self::Half,
-            vun_abi::Unpassable::Int128 => Self::Int128,
+            vun_abi::Unpassable::Wider(bytes) => Self::Wider(bytes),
             vun_abi::Unpassable::FloatPart(bytes) => Self::FloatPart(bytes),
             vun_abi::Unpassable::Naked => Self::Naked,
         }
@@ -75,6 +77,7 @@ impl Missing {
     pub fn diagnostic(self, backend: Name) -> Diagnostic {
         let what = match self {
             Missing::Int128 => Msg::new().text("128-bit integers"),
+            Missing::Wider(n) => Msg::new().text("a value of ").num(n).text(" bytes in one register"),
             Missing::Half => Msg::new().code("f16"),
             Missing::Float => Msg::new().text("floating-point values"),
             Missing::Atomic => Msg::new().text("atomic memory access"),

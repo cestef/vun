@@ -122,23 +122,22 @@ impl Signature {
         self.params.iter().flat_map(|p| iter::repeat_n(p, p.values().count()))
     }
 
-    /// Whether every integer it passes says how it extends, and every address what aliases it;
-    /// a wide integer is only passed, a wide result being the record of its halves.
+    /// Whether every integer it passes says how it extends, and every address what aliases it.
     #[must_use]
     pub fn well_formed(&self) -> bool {
-        let wide = matches!(self.result, Some(AbiType::Wide { .. }));
-        !wide
-            && self.params.iter().chain(&self.result).all(|p| match p {
-                AbiType::Scalar(s) => s.is_float(),
-                AbiType::Int(s, _) | AbiType::Wide { half: s, .. } => s.is_int(),
-                AbiType::Address(_) | AbiType::Record(_) | AbiType::Memory { .. } => true,
-            })
+        self.params.iter().chain(&self.result).all(|p| match p {
+            AbiType::Scalar(s) => s.is_float(),
+            AbiType::Int(s, _) | AbiType::Wide { half: s, .. } => s.is_int(),
+            AbiType::Address(_) | AbiType::Record(_) | AbiType::Memory { .. } => true,
+        })
     }
 
-    /// Whether the result is written through an address rather than returned.
+    /// Whether the result is written through an address rather than returned as one value: a
+    /// record, memory, or a wide integer's halves, which the convention may return in registers
+    /// the caller then writes there.
     #[must_use]
     pub fn through(&self) -> bool {
-        matches!(self.result, Some(AbiType::Record(_) | AbiType::Memory { .. }))
+        matches!(self.result, Some(AbiType::Record(_) | AbiType::Wide { .. } | AbiType::Memory { .. }))
     }
 
     /// The type of the value a call gives, for a scalar result.

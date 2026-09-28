@@ -31,11 +31,8 @@ impl Sel<'_, '_> {
         for (&a, loc) in args.iter().zip(&passing.params) {
             match loc {
                 Loc::Stack { offset, bytes } => self.outgoing(a, *offset, *bytes),
-                Loc::Copied { offset: at, size } => {
-                    self.reg_to(a, Arm::CARRIER);
-                    self.asm.offset(Arm::TEMP, Reg::Sp, disp(*at));
-                    self.copy_bytes(Arm::TEMP, Arm::CARRIER, *size, FAR);
-                }
+                Loc::Copied { offset, size } => self.copy_out(a, 0, *offset, *size),
+                Loc::Split { rest: Some(rest), .. } => self.copy_out(a, rest.from, rest.offset, rest.bytes),
                 Loc::Indirect { size, at } => {
                     let copy = self.frame.reserve(*size, Arm::STACK_ALIGN);
                     self.reg_to(a, Arm::CARRIER);
@@ -46,7 +43,7 @@ impl Sel<'_, '_> {
                     }
                     copies.push(copy);
                 }
-                Loc::Reg(_) | Loc::Split(_) | Loc::Returned => {}
+                Loc::Reg(_) | Loc::Split { rest: None, .. } | Loc::Returned => {}
             }
         }
         let mut copies = copies.into_iter();
@@ -72,7 +69,7 @@ impl Sel<'_, '_> {
                         }
                     }
                 },
-                Loc::Split(parts) => {
+                Loc::Split { parts, .. } => {
                     self.reg_to(a, Arm::CARRIER);
                     for part in parts {
                         self.load_part(part.reg, Arm::CARRIER, disp(part.offset), part.bytes);
@@ -112,6 +109,16 @@ impl Sel<'_, '_> {
             Ret::Reg(Carrier::Int(_)) | Ret::None | Ret::Memory => {}
         }
         Ok(())
+    }
+
+    /// Copies the `bytes` from `from` of the record at `a` to `offset` of the outgoing arguments.
+    fn copy_out(&mut self, a: Value, from: u64, offset: u64, bytes: u64) {
+        self.reg_to(a, Arm::CARRIER);
+        if from > 0 {
+            self.asm.offset(Arm::CARRIER, Arm::CARRIER, disp(from));
+        }
+        self.asm.offset(Arm::TEMP, Reg::Sp, disp(offset));
+        self.copy_bytes(Arm::TEMP, Arm::CARRIER, bytes, FAR);
     }
 
     /// Writes `a` at `offset` of the outgoing arguments.

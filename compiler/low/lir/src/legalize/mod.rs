@@ -3,8 +3,9 @@
 //!
 //! An integer of twice the widest width a backend computes with becomes a pair of halves, low
 //! first, and every operation on it a sequence over the halves. A wide parameter is passed as its
-//! two halves, one `AbiType::Wide` the backend's convention places together; a wide result is a record of them, which the C convention returns in registers as
-//! C returns its 128-bit integers, and Vun's through memory. Division calls a helper function the
+//! two halves, one `AbiType::Wide` the backend's convention places together, and a wide result
+//! written through an address as its halves, which the C convention returns in registers as C
+//! returns its wide integers, and Vun's through memory. Division calls a helper function the
 //! pass adds. Afterwards no value is wider than the widest width.
 //!
 //! An `f16`, for a backend that does not compute it, becomes its bits, an `i16`, and every
@@ -24,7 +25,6 @@ use vun_index::Idx;
 use vun_origin::OriginId;
 use vun_target::Endian;
 
-use crate::func::Record;
 use crate::{AbiType, Conv, Ext, FuncId, ImportKind, Scalar, Signature, Unit};
 use rewrite::Rewrite;
 
@@ -133,8 +133,8 @@ impl Legalize {
         }
     }
 
-    /// `signature` with each wide integer passed as its halves, a wide result a record of them,
-    /// and each promoted `f16` as its bits.
+    /// `signature` with each wide integer, parameter or result, passed as its halves, and each
+    /// promoted `f16` as its bits.
     fn signature(self, signature: &Signature, wide: Option<Scalar>) -> Result<Signature, Unlegalized> {
         let half = |t: &AbiType| match t {
             AbiType::Scalar(s) => self.promoted(*s),
@@ -149,19 +149,12 @@ impl Legalize {
             AbiType::Scalar(s) if self.promoted(s) => AbiType::Int(Scalar::I16, Ext::Zero),
             other => other,
         };
-        let params = signature.params.iter().map(|p| match p {
-            AbiType::Int(s, ext) if Some(*s) == wide => AbiType::Wide { half: self.widest, ext: *ext },
-            other => promoted(other.clone()),
-        });
-        let result = signature.result.clone().map(|r| match r {
-            AbiType::Int(s, _) if Some(s) == wide => {
-                let (lo, hi) = self.offsets();
-                let fields = vec![(lo.min(hi), self.widest), (lo.max(hi), self.widest)];
-                AbiType::Record(Record { size: 2 * self.half_bytes(), align: self.half_bytes(), fields })
-            }
-            other => promoted(other),
-        });
-        Ok(Signature { conv: signature.conv, params: params.collect(), result })
+        let split = |t: &AbiType| match *t {
+            AbiType::Int(s, ext) if Some(s) == wide => AbiType::Wide { half: self.widest, ext },
+            ref other => promoted(other.clone()),
+        };
+        let result = signature.result.as_ref().map(split);
+        Ok(Signature { conv: signature.conv, params: signature.params.iter().map(split).collect(), result })
     }
 }
 

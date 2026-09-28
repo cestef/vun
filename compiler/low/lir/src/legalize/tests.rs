@@ -27,7 +27,7 @@ fn wide_integers_become_halves_and_division_a_helper() {
     let wide_left = unit.functions.iter().any(|(_, f)| f.values.iter().any(|(_, v)| v.ty == Scalar::I128));
     assert!(!wide_left, "{unit}");
     // The division helper was added, each parameter became a pair of halves passed together
-    // and the result a record of them.
+    // and the result written through an address as its halves.
     assert_eq!(unit.functions.len(), 2);
     let f = &unit.functions.iter().next().unwrap().1;
     assert!(f.signature.params.iter().all(|p| matches!(p, AbiType::Wide { half: Scalar::I64, .. })));
