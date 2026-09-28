@@ -31,7 +31,7 @@ use crate::names::{Name, docs};
 const SYNTAX: &str = "lib/lang/lang/syntax";
 
 pub(crate) const GENERATOR: Generator =
-    Generator { source: SYNTAX, output: "compiler/front/grammar/src/generated", emit: emit_grammar };
+    Generator { source: SYNTAX, output: "compiler/lang/grammar/src/generated", emit: emit_grammar };
 pub(crate) const DESUGAR: Generator =
     Generator { source: SYNTAX, output: "compiler/front/desugar/src/generated", emit: emit_desugar };
 

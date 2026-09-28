@@ -5,7 +5,7 @@ use std::fmt;
 
 use ureq::http::StatusCode;
 use ureq::http::uri::{InvalidUri, InvalidUriParts, Uri};
-use vun_pkg::Failure;
+use vun_fetch::Failure;
 
 use crate::Secure;
 

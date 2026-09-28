@@ -6,8 +6,8 @@ use vun_build::index::{Index, Listing};
 use vun_build::layout::MANIFEST;
 use vun_build::manifest::Identity;
 use vun_diag::errors;
+use vun_fetch::{Format, Scheme};
 use vun_hash::Hash;
-use vun_pkg::{Format, Scheme};
 
 const HAL: Identity = Identity { id: 7, major: 1 };
 

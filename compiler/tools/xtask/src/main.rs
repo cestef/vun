@@ -1,7 +1,9 @@
 //! Repository automation, run through the `cargo xtask` alias.
 
+mod cargo;
 mod corpus;
 mod explanations;
+mod layers;
 mod lines;
 mod report;
 mod size;
@@ -17,10 +19,14 @@ use vun_harness::repo_root;
 use vun_term::Document;
 
 use corpus::Corpus;
+use layers::Breach;
 use lines::Oversized;
 use report::{Judged, Passed, Tally};
 use size::Measured;
 
+const UPWARD: DiagId = DiagId::new("xtask.layers.upward");
+const UNRANKED: DiagId = DiagId::new("xtask.layers.unranked");
+const NO_METADATA: DiagId = DiagId::new("xtask.layers.no_metadata");
 const OVERSIZED: DiagId = DiagId::new("xtask.lines.oversized");
 const OVER_BUDGET: DiagId = DiagId::new("xtask.size.over_budget");
 const UNMEASURED: DiagId = DiagId::new("xtask.size.unmeasured");
@@ -37,6 +43,7 @@ const PROGRAM: Program<DiagCtxt> = Program {
                 "run corpus/accept and corpus/reject through the stages that exist",
                 run_corpus,
             ),
+            Command::run("layers", "fail on a crate depending on a later group of crates", check_layers),
             Command::run("lines", "fail on source files too long to stay one concern", check_lines),
             Command::run("size", "fail when the distributed vun outgrows its budget", check_size),
         ],
@@ -78,6 +85,48 @@ fn check_lines(diag: &mut DiagCtxt, _: &Args, shell: &mut Shell<'_>) -> io::Resu
         shell.status(&Passed::Lines { max: lines::MAX_LINES });
     }
     Ok(if oversized.is_empty() { Outcome::Success } else { Outcome::Failure })
+}
+
+#[expect(clippy::unnecessary_wraps, reason = "every command has the `Run` signature")]
+fn check_layers(diag: &mut DiagCtxt, _: &Args, shell: &mut Shell<'_>) -> io::Result<Outcome> {
+    let breaches = match Breach::all(&repo_root()) {
+        Ok(breaches) => breaches,
+        Err(why) => {
+            let msg = Msg::new().text("cargo reports no metadata of the workspace");
+            diag.error(Diagnostic::error(NO_METADATA, msg).caused_by(&why));
+            return Ok(Outcome::Failure);
+        }
+    };
+    for breach in &breaches {
+        diag.error(match breach {
+            Breach::Upward { from, to } => {
+                let msg = Msg::new()
+                    .code(from.name.as_str())
+                    .text(" in ")
+                    .code(from.group.as_str())
+                    .text(" depends on ")
+                    .code(to.name.as_str())
+                    .text(" in ")
+                    .code(to.group.as_str())
+                    .text(", a group not before its own");
+                let help =
+                    Msg::new().text("move the shared part into an earlier group, or own the trait there");
+                Diagnostic::error(UPWARD, msg).child(ChildKind::Help, help)
+            }
+            Breach::Unranked(placed) => {
+                let msg = Msg::new()
+                    .code(placed.name.as_str())
+                    .text(" is in the unranked group ")
+                    .code(placed.group.as_str());
+                let help = Msg::new().text("rank the group in `layers::RANKS` and spec 13, section 9");
+                Diagnostic::error(UNRANKED, msg).child(ChildKind::Help, help)
+            }
+        });
+    }
+    if breaches.is_empty() {
+        shell.status(&Passed::Layers { groups: layers::RANKS.iter().map(|r| r.len()).sum() });
+    }
+    Ok(if breaches.is_empty() { Outcome::Success } else { Outcome::Failure })
 }
 
 #[expect(clippy::unnecessary_wraps, reason = "every command has the `Run` signature")]

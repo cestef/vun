@@ -5,8 +5,8 @@
 //! Under a base URL, `<identity>/list` holds one `version hash` line per release, and
 //! `<identity>/<version>.tar.zst` the archive; `<identity>` is written `id/major`.
 
+use vun_fetch::Format;
 use vun_hash::Hash;
-use vun_pkg::Format;
 
 use crate::manifest::{Identity, Version};
 

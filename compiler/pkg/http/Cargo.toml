@@ -10,5 +10,5 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
-vun-pkg.workspace = true
+vun-fetch.workspace = true
 ureq.workspace = true

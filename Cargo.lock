@@ -922,13 +922,13 @@ version = "0.0.0"
 dependencies = [
  "etcetera",
  "vun-diag",
+ "vun-fetch",
  "vun-fs",
  "vun-grammar",
  "vun-harness",
  "vun-hash",
  "vun-intern",
  "vun-origin",
- "vun-pkg",
  "vun-query",
  "vun-span",
  "vun-suggest",
@@ -1053,6 +1053,7 @@ dependencies = [
  "vun-command",
  "vun-diag",
  "vun-doc",
+ "vun-fetch",
  "vun-fmt",
  "vun-fs",
  "vun-grammar",
@@ -1082,7 +1083,6 @@ dependencies = [
  "vun-mir-passes",
  "vun-origin",
  "vun-par",
- "vun-pkg",
  "vun-query",
  "vun-reduce",
  "vun-render-annotate",
@@ -1105,6 +1105,18 @@ version = "0.0.0"
 dependencies = [
  "vun-bytes",
  "vun-object",
+]
+
+[[package]]
+name = "vun-fetch"
+version = "0.0.0"
+dependencies = [
+ "flate2",
+ "lzma-rs",
+ "ruzstd",
+ "vun-fs",
+ "vun-hash",
+ "zip",
 ]
 
 [[package]]
@@ -1230,7 +1242,7 @@ name = "vun-http"
 version = "0.0.0"
 dependencies = [
  "ureq",
- "vun-pkg",
+ "vun-fetch",
 ]
 
 [[package]]
@@ -1551,18 +1563,6 @@ dependencies = [
  "vun-diag",
  "vun-graph",
  "vun-origin",
-]
-
-[[package]]
-name = "vun-pkg"
-version = "0.0.0"
-dependencies = [
- "flate2",
- "lzma-rs",
- "ruzstd",
- "vun-fs",
- "vun-hash",
- "zip",
 ]
 
 [[package]]

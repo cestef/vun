@@ -88,6 +88,7 @@ impl Record for Judged<'_> {
 
 /// A check of the repository that passed, and what it measured.
 pub(crate) enum Passed {
+    Layers { groups: usize },
     Lines { max: u32 },
     Size { path: String, bytes: u64, budget: u64 },
 }
@@ -95,6 +96,7 @@ pub(crate) enum Passed {
 impl Record for Passed {
     fn kind(&self) -> &'static str {
         match self {
+            Self::Layers { .. } => "layers",
             Self::Lines { .. } => "lines",
             Self::Size { .. } => "size",
         }
@@ -102,6 +104,9 @@ impl Record for Passed {
 
     fn text(&self) -> Text {
         match self {
+            Self::Layers { groups } => {
+                Text::from(format!("every crate depends only on its own group or earlier ones, of {groups}"))
+            }
             Self::Lines { max } => Text::from(format!("every source file has at most {max} lines")),
             Self::Size { path, bytes, budget } => {
                 let under = format!(
@@ -117,6 +122,7 @@ impl Record for Passed {
 
     fn fields(&self) -> Object<'static> {
         match self {
+            Self::Layers { groups } => Object::new().with("groups", *groups),
             Self::Lines { max } => Object::new().with("max", *max),
             Self::Size { path, bytes, budget } => {
                 Object::new().with("path", path.clone()).with("bytes", *bytes).with("budget", *budget)

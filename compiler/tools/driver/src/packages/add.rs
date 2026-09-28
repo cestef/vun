@@ -9,9 +9,9 @@ use vun_build::layout::MANIFEST;
 use vun_build::manifest::{self, DepKind, Manifest, Source, Version};
 use vun_build::store::{Label, Staging};
 use vun_diag::{Diagnostic, Msg, errors};
+use vun_fetch::Mirror;
 use vun_fs::Relative;
 use vun_hash::{Hash, Snapshot};
-use vun_pkg::Mirror;
 use vun_span::Span;
 
 use super::fetch::Rejected;

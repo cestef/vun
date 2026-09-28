@@ -7,7 +7,7 @@ use vun_build::manifest::{DepKind, Source, Version};
 use vun_diag::errors;
 use vun_driver::Session;
 use vun_driver::packages::{Addition, Unstated};
-use vun_pkg::{Format, Scheme};
+use vun_fetch::{Format, Scheme};
 
 #[test]
 fn added_dependencies_are_declared_and_resolve() {

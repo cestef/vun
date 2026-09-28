@@ -12,9 +12,9 @@ use vun_build::layout::MANIFEST;
 use vun_build::manifest::{self, DepKind, Identity, Source, Version};
 use vun_build::store::Label;
 use vun_diag::{ChildKind, Diagnostic, Msg, errors};
+use vun_fetch::Failure;
 use vun_hash::Hash;
 use vun_intern::Symbol;
-use vun_pkg::Failure;
 
 use super::fetch::Rejected;
 use super::{Dep, DepSource};

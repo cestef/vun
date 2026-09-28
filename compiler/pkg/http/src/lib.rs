@@ -1,5 +1,5 @@
 //! The network scheme of package downloads (spec 12, section 3): `https://`, which a program
-//! installs into its `vun_pkg::Schemes`. It lives apart from `vun-pkg` so that the TLS stack
+//! installs into its `vun_fetch::Schemes`. It lives apart from `vun-fetch` so that the TLS stack
 //! builds beside the compiler, not before it. Redirects are followed here, a hop at a time, each
 //! target checked to be `https` before it is requested (decision 248).
 
@@ -7,7 +7,7 @@ use std::time::{Duration, Instant};
 
 use ureq::Agent;
 use ureq::http::header::LOCATION;
-use vun_pkg::{Failure, Format, Locator, Scheme};
+use vun_fetch::{Failure, Format, Locator, Scheme};
 
 mod secure;
 mod unfetched;

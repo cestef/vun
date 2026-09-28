@@ -47,7 +47,7 @@ lib/lang/lang/syntax/{grammar,desugar}.vun   tokens, nodes, parse tables; append
 lib/lang/lang/errors.vun + errors/           every diagnostic id and its explanation page
 lib/lang, lib/std, lib/targets               `lang` primitives, `std`, one `lang.target.Spec` per target
 corpus/{accept,reject,planned,support}       programs; `//~ id` annotations; waiting for APIs; stand-ins
-compiler/<stage>/<crate>                     base < front < mid < low < back, link, render < tools
+compiler/<group>/<crate>                     base < lang < isa, object < front < mid < low < asm < back, link, render < pkg < tools
 fuzz/                                        cargo-fuzz targets `lex`, `parse` (outside the workspace)
 whitepaper/                                  Typst paper; it quotes real numbers and `vun` output
 README.md                                    for people: pitch, status, how to try; contributor detail stays here
@@ -59,15 +59,15 @@ section 11 are measured from the repository and go stale; refresh them when an a
 title page and the README carry a notice on AI use (the design is the user's, most code and prose
 written by agents under their direction); keep it when rewriting either.
 
-Generated, never edited (edit the `.vun` source, run `cargo gen`): `front/grammar/src/generated/`,
+Generated, never edited (edit the `.vun` source, run `cargo gen`): `lang/grammar/src/generated/`,
 `front/desugar/src/generated/`, `base/diag/src/errors/`, `front/sema/src/primitives/`,
-`base/items/src/{lang,std,targets}/` (a handle per public declaration: Rust names `lang` and
+`lang/items/src/{lang,std,targets}/` (a handle per public declaration: Rust names `lang` and
 `std` only through `vun_items`).
 
 ## 4. Commands
 
 ```sh
-cargo fmt && cargo clippy --all-targets && cargo nextest run && cargo gen --check && cargo xtask lines
+cargo fmt && cargo clippy --all-targets && cargo nextest run && cargo gen --check && cargo xtask lines && cargo xtask layers
 cargo xtask corpus            # verdicts, coverage, what stops MIR most
 cargo xtask size              # the distributed binary against its budget (20 MiB)
 cargo run -q -p vun-cli -- run|build [--release] [--backend b] [--target t] <file>
@@ -131,7 +131,7 @@ Logging: `VUN_LOG=<filter>` (`info` steps, `debug` units of work, `trace` elemen
   `wild` link (through the target's C compiler); `lld`, `msvc` and `external` are stubs.
 - **Tools** (`compiler/tools`): `vun-driver` (`Session`, stages, codegen, builds, stacks,
   compare, the command tree, `toolchain.rs`: the chosen target equipped with the machine's tools,
-  `Session::command` running through the runner), `vun-command` (declarative CLI, completions, JSON output), `vun-pkg`,
+  `Session::command` running through the runner), `vun-command` (declarative CLI, completions, JSON output), `vun-fetch`,
   `vun-build` (manifests, locks, the store, `toolchain`: the machine's file), `vun-harness`, `vun-generate` (`cargo gen`), `xtask`, `vun-cli`.
 - **Libraries**: `lang` (primitives, operator impls over primitives, float soft routines) and
   `std` (`option`, `result`, `cmp`, `mem`, `seq`, `iter`, `sync`, `os`, `fmt`, `diag`, `task`,
@@ -171,7 +171,7 @@ Just landed:
 In flight, not in main:
 - Native Thumb: the Thumb-2 table and `vun-asm-thumb` are in main (ytonorkq, yqmrxmyz; sema reads
   `Instruction.mnemonic`). Next: sema's `asm/thumb.rs` reads fp registers, memory, conditions and
-  `.w`; then Thumb codegen (Isel, AAPCS rows in `compiler/base/thumb/src/conventions.rs`,
+  `.w`; then Thumb codegen (Isel, AAPCS rows in `compiler/isa/thumb/src/conventions.rs`,
   `ARCHES`), LIR halves to limbs by the target's widest integer, CPU features (single or double
   float), a static `linux` Thumb target under `qemu-arm`. The `thumb-82` workspace is spent.
 - Milestone 3a (session vun-68, workspace `../vun-abi-3a`): 32-bit AAPCS in `vun-abi`: `Rules` gain word,
@@ -196,7 +196,7 @@ Next, most useful first:
 6. `std`: `task.Pool`, `testing.Sim`, `Str` and collections, generic bodies over `$A: Allocator`.
 7. Evaluator: loans inside aggregate arguments, memory per nesting level. Packaging: signed
    caches, planned builds, `vun pkg why`. A comptime-heavy benchmark before perf audits.
-8. Refactors: `vun-harness` to `compiler/base`; `render/sarif`; `DiagId` and pass ids are
+8. Refactors: `render/sarif`; `DiagId` and pass ids are
    strings; regalloc loads spilled operands where the form takes memory; LIR has no undefined
    value (padding copied as zeros); fuzz target `lir.rs` (written, never run).
 

@@ -949,17 +949,19 @@ in registers a call may overwrite, none saved.
 
 ```
 compiler/
-  base/    index  span  intern  origin  diag  query  pass  tool  target  trace  items  json  codec
-           codec-derive  hash  graph  fs  outline  par  suggest  term  bytes  inline
-  front/   grammar  desugar  syntax  hir  sema
+  base/    index  span  intern  origin  diag  query  pass  tool  target  trace  json  codec
+           codec-derive  hash  graph  fs  outline  par  suggest  term  bytes  harness
+  lang/    grammar  items                        Rust views generated from lib/lang
+  isa/     api  inline  x86_64  arm64  thumb     instruction sets, one table each
+  front/   desugar  syntax  hir  sema
   mid/     mir  passes  interp
   low/     lir  lower  abi  passes
-  back/    api  asm  x86_64  arm64  object  dwarf  codegen  regalloc  native  c  wasm  cranelift  qbe
-           llvm  external
+  back/    api  object  dwarf  codegen  regalloc  native  c  wasm  cranelift  qbe  llvm  external
+  asm/     core  x86_64  arm64  thumb            assemblers over the isa tables
   link/    api  wild  mold  lld  gnu  msvc  ar  external
   render/  short  annotate  ariadne  json  sarif
-  tools/   build  pkg  http  fmt  reduce  bind  clang  command  harness  driver  lsp  cli  generate
-           xtask
+  pkg/     build  fetch  http                    manifests, locks, the store, fetching
+  tools/   fmt  reduce  bind  clang  command  driver  lsp  cli  generate  xtask
 fuzz/      cargo-fuzz targets over the verifiers, a workspace member
 lib/
   lang/     primitives (declarations with `= _`), syntax/grammar.vun and syntax/desugar.vun
@@ -970,12 +972,15 @@ lib/
 ```
 
 Directory names are short because the path gives context; packages are named `vun-<name>`
-(`compiler/back/c` is `vun-backend-c`, `compiler/back/api` is `vun-backend`).
+(`compiler/back/c` is `vun-backend-c`, `compiler/back/api` is `vun-backend`). A family of crates
+sharing a concern is a group of its own (`isa/`, `asm/`), its shared crate named `api` or `core`,
+so that no two directories share a name within a group and every crate sits at
+`compiler/<group>/<crate>`.
 
 Rules:
 - `vun-driver` is a library; the CLI, the LSP and the test harness are thin shells over it.
-- A crate depends only on crates in earlier groups: `base` < `front` < `mid` < `low` <
-  `back`, `link`, `render` < `tools`. Where a later stage implements something an earlier one
+- A crate depends only on crates in its own or earlier groups: `base` < `lang` < `isa` < `front` <
+  `mid` < `low` < `back`, `asm`, `link`, `render` < `pkg` < `tools`. Where a later stage implements something an earlier one
   needs, the earlier one owns the trait (`vun-sema` defines `Evaluator`, `vun-interp`
   implements it).
 - Components declare their facts once (`BackendInfo`, `LinkerInfo`); support checks derive from

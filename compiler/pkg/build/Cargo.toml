@@ -10,7 +10,7 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
-vun-pkg.workspace = true
+vun-fetch.workspace = true
 etcetera.workspace = true
 vun-hash.workspace = true
 vun-intern.workspace = true

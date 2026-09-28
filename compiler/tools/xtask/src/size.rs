@@ -3,8 +3,9 @@
 //! 248 took the build past it; raising it takes a decision, as a new external crate does.
 
 use std::path::{Path, PathBuf};
-use std::process::{Command, ExitStatus, Stdio};
 use std::{fmt, io};
+
+use crate::cargo::{self, CargoFailed};
 
 /// The most bytes the stripped `dist` build of `vun` may take on the host.
 pub(crate) const BUDGET: u64 = 20 * 1024 * 1024;
@@ -17,8 +18,7 @@ const PROFILE: &str = "dist";
 /// Why the binary could not be measured.
 #[derive(Debug)]
 pub(crate) enum Unmeasured {
-    Cargo(io::Error),
-    Failed(ExitStatus),
+    Cargo(CargoFailed),
     NoExecutable,
     Unreadable(io::Error),
 }
@@ -26,8 +26,7 @@ pub(crate) enum Unmeasured {
 impl fmt::Display for Unmeasured {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Cargo(_) => f.write_str("cargo cannot run"),
-            Self::Failed(status) => write!(f, "`cargo build --profile {PROFILE}` failed: {status}"),
+            Self::Cargo(_) => write!(f, "cargo cannot build `{PACKAGE}`"),
             Self::NoExecutable => write!(f, "cargo built no executable of `{PACKAGE}`"),
             Self::Unreadable(_) => f.write_str("the executable cannot be read"),
         }
@@ -37,8 +36,9 @@ impl fmt::Display for Unmeasured {
 impl std::error::Error for Unmeasured {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
-            Self::Cargo(e) | Self::Unreadable(e) => Some(e),
-            Self::Failed(_) | Self::NoExecutable => None,
+            Self::Cargo(e) => Some(e),
+            Self::Unreadable(e) => Some(e),
+            Self::NoExecutable => None,
         }
     }
 }
@@ -55,17 +55,8 @@ impl Measured {
     /// # Errors
     /// Returns why cargo cannot run or fails, or names no executable.
     pub(crate) fn build(root: &Path) -> Result<Self, Unmeasured> {
-        let cargo = std::env::var_os("CARGO").unwrap_or_else(|| "cargo".into());
-        let output = Command::new(cargo)
-            .current_dir(root)
-            .args(["build", "--quiet", "--message-format=json", "--profile", PROFILE, "--package", PACKAGE])
-            .stderr(Stdio::inherit())
-            .output()
-            .map_err(Unmeasured::Cargo)?;
-        if !output.status.success() {
-            return Err(Unmeasured::Failed(output.status));
-        }
-        let messages = String::from_utf8_lossy(&output.stdout);
+        let args = ["build", "--quiet", "--message-format=json", "--profile", PROFILE, "--package", PACKAGE];
+        let messages = cargo::output(root, &args).map_err(Unmeasured::Cargo)?;
         let path = Self::executable(&messages).ok_or(Unmeasured::NoExecutable)?;
         let bytes = std::fs::metadata(&path).map_err(Unmeasured::Unreadable)?.len();
         Ok(Self { path, bytes })

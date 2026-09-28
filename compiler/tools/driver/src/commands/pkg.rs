@@ -7,8 +7,8 @@ use vun_build::layout::MANIFEST;
 use vun_build::manifest::{Source, Version};
 use vun_command::{Args, Command, Example, Outcome, Param, PathKind, Values};
 use vun_diag::{ChildKind, Diagnostic, Msg, errors};
+use vun_fetch::{FORMATS, Format};
 use vun_fs::Edit;
-use vun_pkg::{FORMATS, Format};
 use vun_term::Shell;
 
 use super::status::{self, Source as Added};

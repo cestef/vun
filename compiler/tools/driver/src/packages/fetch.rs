@@ -10,10 +10,10 @@ use vun_build::layout::MANIFEST;
 use vun_build::manifest::{DepKind, Identity, Version};
 use vun_build::store::{Label, Store};
 use vun_diag::{ChildKind, Diagnostic, Msg, errors};
+use vun_fetch::{Failure, Mirror};
 use vun_fs::{Edit, Tree};
 use vun_hash::{Hash, Snapshot};
 use vun_intern::Symbol;
-use vun_pkg::{Failure, Mirror};
 
 use super::{Dep, DepSource, PackageKey};
 use crate::Session;

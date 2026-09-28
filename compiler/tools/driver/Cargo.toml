@@ -27,7 +27,7 @@ link-msvc = ["dep:vun-link-msvc"]
 link-external = ["dep:vun-link-external"]
 
 [dependencies]
-vun-pkg.workspace = true
+vun-fetch.workspace = true
 vun-bind.workspace = true
 vun-clang.workspace = true
 vun-fs.workspace = true

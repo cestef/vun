@@ -4,7 +4,7 @@
 use crate::common::Fixture;
 use vun_diag::errors;
 use vun_driver::packages::Fetched;
-use vun_pkg::{Format, Scheme};
+use vun_fetch::{Format, Scheme};
 
 #[test]
 fn fetched_packages_are_stored_verified_and_checked() {

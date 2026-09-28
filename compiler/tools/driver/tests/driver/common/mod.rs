@@ -10,9 +10,9 @@ use vun_build::manifest::{
 use vun_build::store::Store;
 use vun_diag::DiagId;
 use vun_driver::Session;
+use vun_fetch::{Format, Scheme};
 use vun_fs::Scratch;
 use vun_hash::Hash;
-use vun_pkg::{Format, Scheme};
 use vun_span::{EXTENSION, SourceFiles, Span};
 
 /// A scratch directory of packages.

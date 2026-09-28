@@ -5,7 +5,7 @@ use super::{ARCH, Table, words};
 use crate::generate::{Generator, Module, Read, Source};
 
 pub(crate) const ARM64: Generator =
-    Generator { source: ARCH, output: "compiler/base/arm64/src/generated", emit };
+    Generator { source: ARCH, output: "compiler/isa/arm64/src/generated", emit };
 
 const CRATE: Crate = Crate {
     generator: &ARM64,

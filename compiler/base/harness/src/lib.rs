@@ -37,7 +37,7 @@ pub fn repo_root() -> PathBuf {
         .to_path_buf()
 }
 
-/// Depth of this crate below the repository root: `compiler/tools/harness`.
+/// Depth of this crate below the repository root: `compiler/base/harness`.
 const REPO_DEPTH: usize = 3;
 
 /// Programs that check without a diagnostic.
