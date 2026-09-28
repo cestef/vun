@@ -99,6 +99,13 @@ pub trait Isel: Arch {
     /// Whether a branch on the comparison `cond` jumps on the flags it sets.
     fn fuses(cond: Cond) -> bool;
 
+    /// What the backend lacks to compile `inst`, asked of every instruction before anything is
+    /// planned, as one it cannot compile says nothing of what it needs.
+    ///
+    /// # Errors
+    /// Returns what it lacks.
+    fn lacks(cx: &Cx<'_, Self>, inst: Inst) -> Result<(), Lack>;
+
     /// What `inst` needs of the places of its operands and result, which the plan provides.
     fn inst_needs(cx: &Cx<'_, Self>, inst: Inst, needs: &mut Needs);
 

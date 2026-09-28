@@ -6,19 +6,16 @@
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
 use crate::Item;
+/// The namespace `std.os.linux.kernel.calls`.
+pub const calls: Item = Item::new(&["std", "os", "linux", "kernel", "calls"]);
 /// The namespace `std.os.linux.kernel.memory`.
 pub const memory: Item = Item::new(&["std", "os", "linux", "kernel", "memory"]);
-/// The numbers of the system calls the runtime makes, which each architecture assigns its own.
-pub const Numbers: Item = Item::new(&["std", "os", "linux", "kernel", "Numbers"]);
-/// The architectures the runtime reaches the kernel from.
-pub const arches: Item = Item::new(&["std", "os", "linux", "kernel", "arches"]);
-/// The numbers of the architecture `arch`.
-pub const of: Item = Item::new(&["std", "os", "linux", "kernel", "of"]);
-/// The numbers of the architecture being built for.
+/// The numbers of the system calls, the architecture's being built for.
 pub const numbers: Item = Item::new(&["std", "os", "linux", "kernel", "numbers"]);
 /// A system call: its number and six arguments, which the architecture's instruction takes in
 /// registers. A block loads them from here, binding the one register the address comes in and
-/// the result goes out in, rather than eight.
+/// the result goes out in, rather than eight. On Thumb the number goes in `r7`, the frame
+/// pointer, which the block keeps on the stack meanwhile.
 pub const Call: Item = Item::new(&["std", "os", "linux", "kernel", "Call"]);
 /// Makes the system call `number` with `args`, returning what the kernel returns: a negative
 /// error number where the call failed.

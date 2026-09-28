@@ -16,7 +16,8 @@ use vun_codegen::snippet::{Emits, Width};
 use vun_codegen::{Anchor, Arch, Place, Recompute};
 use vun_dwarf::CallFrame;
 use vun_lir::{Address, Cond};
-use vun_target::Convention;
+use vun_object::Machine;
+use vun_target::{Convention, TargetSpec};
 
 /// x86-64, as the framework drives it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -191,4 +192,8 @@ impl vun_native::Native for X86 {
     };
 
     const CONVENTIONS: &'static [(Convention, Self::Convention)] = vun_asm_x86_64::conventions::CONVENTIONS;
+
+    fn machine(_: &TargetSpec) -> Machine {
+        Machine::X86_64
+    }
 }

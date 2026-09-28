@@ -1,19 +1,19 @@
 //! Legalizing the scalars a backend does not compute with (spec 13, section 8.1), before it reads
 //! the unit.
 //!
-//! An integer of twice the widest width a backend computes with becomes a pair of halves, low
-//! first, and every operation on it a sequence over the halves. A wide parameter is passed as its
-//! two halves, one `AbiType::Wide` the backend's convention places together, and a wide result
-//! written through an address as its halves, which the C convention returns in registers as C
+//! An integer wider than the widest a backend computes with becomes limbs of the widest, low
+//! first, and every operation on it a sequence over the limbs. A wide parameter is passed as its
+//! limbs, one `AbiType::Wide` the backend's convention places together, and a wide result
+//! written through an address as its limbs, which the C convention returns in registers as C
 //! returns its wide integers, and Vun's through memory. Division calls a helper function the
-//! pass adds. Afterwards no value is wider than the widest width.
+//! pass adds, one per count of limbs. Afterwards no value is wider than the widest width.
 //!
 //! An `f16`, for a backend that does not compute it, becomes its bits, an `i16`, and every
 //! operation on it one in `f32` between an exact widening and a rounding back (`float16`).
 
 mod divide;
 mod float16;
-mod halves;
+mod limbs;
 mod rewrite;
 #[cfg(test)]
 mod tests;
@@ -33,7 +33,7 @@ use vun_lir::{AbiType, Conv, Ext, FuncId, ImportKind, Scalar, Signature, Unit};
 pub struct Legalize {
     /// The widest integer the backend computes with.
     pub widest: Scalar,
-    /// Where the halves of a wide integer are in memory.
+    /// Where the limbs of a wide integer are in memory.
     pub endian: Endian,
     pub half: Half,
 }
@@ -47,7 +47,7 @@ pub enum Half {
     Promoted,
 }
 
-/// Why an operation on a wide integer has no sequence over halves.
+/// Why an operation on a wide integer has no sequence over limbs.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub enum Unlegalized {
     /// An atomic access of a wide integer.
@@ -58,8 +58,6 @@ pub enum Unlegalized {
     HalfConversion,
     /// A promoted `f16` passed under the C convention, which passes it as a float.
     HalfAbi,
-    /// An integer wider than two halves.
-    Wider,
 }
 
 /// An operation the pass cannot legalize, where it is.
@@ -76,7 +74,6 @@ impl fmt::Display for Unlegal {
             Unlegalized::Float => "a conversion between a float and an integer wider than the backend's",
             Unlegalized::HalfConversion => "a conversion to `f16` from a type other than `f32`",
             Unlegalized::HalfAbi => "an `f16` passed under the C convention",
-            Unlegalized::Wider => "an integer more than twice as wide as the backend's",
         })
     }
 }
@@ -87,28 +84,27 @@ impl std::error::Error for Unlegal {}
 pub(super) struct Helpers {
     /// The id the next helper gets: after every function of the unit.
     next: FuncId,
-    /// The unsigned division of pairs giving quotient and remainder, and where it was first
-    /// needed.
-    divide: Option<(FuncId, OriginId)>,
+    /// The unsigned divisions giving quotient and remainder, in the order made: of integers of
+    /// how many limbs, and where each was first needed.
+    divide: Vec<(u8, OriginId)>,
 }
 
 impl Helpers {
-    /// The division helper, made when first called.
-    pub(super) fn divide(&mut self, at: OriginId) -> FuncId {
-        if let Some((id, _)) = self.divide {
-            return id;
-        }
-        let id = self.next;
-        self.next = FuncId::new(id.index() + 1);
-        self.divide = Some((id, at));
-        id
+    /// The division helper of integers of `limbs` limbs, made when first called.
+    pub(super) fn divide(&mut self, limbs: u8, at: OriginId) -> FuncId {
+        let made = self.divide.iter().position(|&(l, _)| l == limbs).unwrap_or_else(|| {
+            self.divide.push((limbs, at));
+            self.divide.len() - 1
+        });
+        FuncId::new(self.next.index() + made)
     }
 }
 
 impl Legalize {
-    /// The integer split into halves: twice the widest.
-    fn wide(self) -> Option<Scalar> {
-        Scalar::int(self.widest.bits(0) * 2)
+    /// How many limbs an integer of type `ty` is, where it is wider than the widest.
+    fn limbs(self, ty: Scalar) -> Option<u8> {
+        let (bits, widest) = (ty.bits(0), self.widest.bits(0));
+        (ty.is_int() && bits > widest).then(|| u8::try_from(bits / widest).expect("a few limbs"))
     }
 
     /// Whether a value of `ty` is an `f16` held as its bits.
@@ -121,21 +117,22 @@ impl Legalize {
         if self.promoted(ty) { Scalar::I16 } else { ty }
     }
 
-    fn half_bytes(self) -> u64 {
+    fn limb_bytes(self) -> u64 {
         self.widest.bytes(0)
     }
 
-    /// The offsets of the low and the high half of a wide integer in memory.
-    fn offsets(self) -> (u64, u64) {
-        match self.endian {
-            Endian::Little => (0, self.half_bytes()),
-            Endian::Big => (self.half_bytes(), 0),
-        }
+    /// The offset in memory of limb `k` of a wide integer of `count` limbs.
+    fn offset(self, k: usize, count: usize) -> u64 {
+        let place = match self.endian {
+            Endian::Little => k,
+            Endian::Big => count - 1 - k,
+        };
+        self.limb_bytes() * u64::try_from(place).expect("a few limbs")
     }
 
-    /// `signature` with each wide integer, parameter or result, passed as its halves, and each
+    /// `signature` with each wide integer, parameter or result, passed as its limbs, and each
     /// promoted `f16` as its bits.
-    fn signature(self, signature: &Signature, wide: Option<Scalar>) -> Result<Signature, Unlegalized> {
+    fn signature(self, signature: &Signature) -> Result<Signature, Unlegalized> {
         let half = |t: &AbiType| match t {
             AbiType::Scalar(s) => self.promoted(*s),
             AbiType::Record(r) => r.fields.iter().any(|&(_, s)| self.promoted(s)),
@@ -150,7 +147,10 @@ impl Legalize {
             other => other,
         };
         let split = |t: &AbiType| match *t {
-            AbiType::Int(s, ext) if Some(s) == wide => AbiType::Wide { half: self.widest, ext },
+            AbiType::Int(s, ext) => match self.limbs(s) {
+                Some(limbs) => AbiType::Wide { limb: self.widest, limbs, ext },
+                None => AbiType::Int(s, ext),
+            },
             ref other => promoted(other.clone()),
         };
         let result = signature.result.as_ref().map(split);
@@ -162,31 +162,20 @@ impl Legalize {
         })
     }
 
-    /// Splits every integer of `unit` twice as wide as `self.widest` into halves; see the module.
+    /// Splits every integer of `unit` wider than `self.widest` into limbs; see the module.
     ///
     /// # Errors
-    /// Returns the first operation on a wide integer that has no sequence over halves.
+    /// Returns the first operation on a wide integer that has no sequence over limbs.
     pub fn apply(self, unit: &mut Unit) -> Result<(), Unlegal> {
         let legalize = self;
-        let wide = legalize.wide();
-        if wide.is_none() && legalize.half == Half::Computed {
+        if legalize.widest == Scalar::I128 && legalize.half == Half::Computed {
             return Ok(());
         }
-        let width = |s: Scalar| s.is_int() && s.bits(0) > legalize.widest.bits(0);
-        for (_, f) in unit.functions.iter() {
-            if let Some((_, v)) = f.values.iter().find(|(_, v)| width(v.ty) && Some(v.ty) != wide) {
-                let at = match v.def {
-                    vun_lir::func::Def::Inst(inst) => f.insts[inst].origin,
-                    vun_lir::func::Def::Param(block, _) => f.blocks[block].origin,
-                };
-                return Err(Unlegal { at, why: Unlegalized::Wider });
-            }
-        }
-        let mut helpers = Helpers { next: FuncId::new(unit.functions.len()), divide: None };
+        let mut helpers = Helpers { next: FuncId::new(unit.functions.len()), divide: Vec::new() };
         let rewritten = unit
             .functions
             .iter()
-            .map(|(_, f)| Rewrite::function(unit, f, legalize, wide, &mut helpers))
+            .map(|(_, f)| Rewrite::function(unit, f, legalize, &mut helpers))
             .collect::<Result<Vec<_>, _>>()?;
         for (id, f) in rewritten.into_iter().enumerate() {
             unit.functions[FuncId::new(id)] = f;
@@ -194,12 +183,12 @@ impl Legalize {
         for (_, import) in unit.imports.iter_mut() {
             if let ImportKind::Func(signature) = &import.kind {
                 let signature =
-                    legalize.signature(signature, wide).map_err(|why| Unlegal { at: import.origin, why })?;
+                    legalize.signature(signature).map_err(|why| Unlegal { at: import.origin, why })?;
                 import.kind = ImportKind::Func(signature);
             }
         }
-        if let Some((_, at)) = helpers.divide {
-            unit.functions.push(divide::helper(legalize, unit.pointer_bits, at));
+        for (limbs, at) in helpers.divide {
+            unit.functions.push(divide::helper(legalize, limbs, unit.pointer_bits, at));
         }
         unit.verified();
         Ok(())

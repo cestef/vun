@@ -234,9 +234,17 @@ In flight, not in main:
   (`Inline::{floats, moved, load_at, store_at}`), GNU C declares a register variable of the
   float with its class's constraint (`Gnu::{floats, float_name, float_class}`). Thumb's
   conventions are `vun-abi` rows in `compiler/asm/thumb/src/conventions.rs` (`AAPCS_VFP`, and the soft `AAPCS`
-  that `bare.cortex_m3` names). Then Thumb codegen (a crate `compiler/native/thumb`
-  implementing `Native` and `Inline`, a row of `ARCHES`), LIR halves to limbs by the target's widest integer,
-  CPU features (single or double float), a static `linux` Thumb target under `qemu-arm`.
+  that `bare.cortex_m3` names). Native Thumb (decision 293): `vun-native-thumb` (`Thumb2`,
+  row `arm` of `ARCHES`), `it` blocks in the table, `.ARM.attributes` and the Thumb bit on local
+  relocations in `vun-object`; legalization splits wide integers into limbs (292, `limbs/`).
+  `targets.linux.arm` runs under `qemu-arm` with a toolchain row naming `clang
+  --target=armv7a-linux-gnueabihf -fuse-ld=lld -nostdlib` (this machine has no 32-bit Arm
+  `libgcc`; the row is not in the user's file yet: pass `VUN_TOOLCHAIN=<copy>`, as other sessions
+  read that file). 9 of the 13 driver programs agree with x86-64; open: soft floats (`f64` on a
+  single-precision FPU, every float under `aapcs`; `lang.float.soft`), float conversions of
+  integers wider than a word, 64-bit atomics (`ldrexd`/`strexd`), CPU features (single or double
+  float), the backend tests running linux.arm, and factoring the isel shared by arm64 and Thumb
+  (`needs.rs` is identical, `call`, `entry`, `term` and `carry` nearly).
 - Milestone 3a landed (decision 280): `Rules::{AAPCS, AAPCS_VFP}` (word, stack alignment,
   `returned`, `Floats`, `Split`), backfill in `vun-abi`'s banks, `Loc::Split { parts, rest }` for
   straddling records (handled by the x86-64 and arm64 isel), wide results as `AbiType::Wide`

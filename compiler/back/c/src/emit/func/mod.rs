@@ -88,7 +88,7 @@ impl FnEmit<'_, '_> {
                 (values.next().expect("the entry takes the signature's values"), Ident::param(i));
             let converted = match abi {
                 AbiType::Record(_) => Expr::Name(param).address_of(),
-                &AbiType::Wide { half, .. } => {
+                &AbiType::Wide { limb: half, .. } => {
                     let high = values.next().expect("a wide integer is two values");
                     let [low, upper] = self.e.split(Expr::Name(param), half, func.origin)?;
                     self.assign(high, upper);

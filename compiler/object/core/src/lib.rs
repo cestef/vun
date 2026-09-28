@@ -194,8 +194,9 @@ impl Object {
     }
 
     /// Makes every relocation naming a symbol this object defines name its section instead, at
-    /// the symbol's offset: the object's own definitions are reached as they are here, never
-    /// through another module's, which a shared library needs of every symbol it exports.
+    /// the address the symbol is reached by: the object's own definitions are reached as they are
+    /// here, never through another module's, which a shared library needs of every symbol it
+    /// exports.
     ///
     /// # Panics
     /// Panics on a symbol at an offset past 2^63.
@@ -203,7 +204,10 @@ impl Object {
         let targets: Vec<Option<(SectionId, u64)>> = self
             .symbols
             .iter()
-            .map(|(_, s)| s.section.filter(|_| s.kind != SymbolKind::Section).map(|at| (at, s.value)))
+            .map(|(_, s)| {
+                let reached = self.machine.reached(s.kind, s.value);
+                s.section.filter(|_| s.kind != SymbolKind::Section).map(|at| (at, reached))
+            })
             .collect();
         let mut sections = self.sections.iter().map(|(id, _)| id).collect::<Vec<_>>();
         sections.retain(|id| targets.iter().flatten().any(|(at, _)| at == id));

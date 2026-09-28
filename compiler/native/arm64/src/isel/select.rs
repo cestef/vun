@@ -6,7 +6,7 @@ use vun_asm_arm64::{Cc, Size};
 use vun_backend::{Lack, Missing};
 use vun_codegen::Cx;
 use vun_codegen::snippet::Snippet;
-use vun_lir::{Access, BinOp, Callee, CastOp, Cond, Inst, InstKind, Order, Reads, RmwOp, Scalar, Value};
+use vun_lir::{BinOp, Callee, CastOp, Cond, Inst, InstKind, Reads, RmwOp, Scalar, Value};
 
 use super::narrow;
 use crate::snippets::{
@@ -157,10 +157,10 @@ impl<'a> Look<'_, 'a> {
                 Selection::Call { callee, args }
             }
             &InstKind::Load { ty, addr, access } => {
-                snippet(if ordered(access) { LOAD_ACQUIRE } else { LOAD }, &[addr], self.size_of(ty)?, None)
+                snippet(if access.ordered() { LOAD_ACQUIRE } else { LOAD }, &[addr], self.size_of(ty)?, None)
             }
             &InstKind::Store { value, addr, access } => snippet(
-                if ordered(access) { STORE_RELEASE } else { STORE },
+                if access.ordered() { STORE_RELEASE } else { STORE },
                 &[value, addr],
                 self.size(value)?,
                 None,
@@ -246,9 +246,4 @@ impl<'a> Look<'_, 'a> {
             }
         })
     }
-}
-
-/// Whether an access is ordered beyond a plain one: acquiring loads, releasing stores.
-fn ordered(access: Access) -> bool {
-    matches!(access, Access::Atomic(order) if order != Order::Relaxed)
 }

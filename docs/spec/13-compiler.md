@@ -742,17 +742,23 @@ every program on linux.arm64 too, through the runner of the machine's toolchain 
 section 6), and require the same results as on x86-64.
 
 **Legalization.** Each backend declares the widest integer it computes with
-(`BackendCaps::int_bits`); before it reads a unit, `Unit::legalize` splits every integer twice as
-wide into halves (low first, placed in memory by the target's byte order): add and subtract with
-carries, multiply through quarter-width partial products, shifts by any amount below the width,
-comparisons by the high halves then the low ones, extensions, truncations, selects, loads,
-stores, block parameters, switches, and calls. A wide parameter is one `AbiType::Wide`, its
-halves two values that each backend's call classifier places together by its convention (an even
-register pair under AAPCS64, two registers or 16 aligned bytes of the stack under System V, as C
-passes `__int128`; decision 246), and a wide result is one `AbiType::Wide` too, written through
-the caller's place as its halves (returned in consecutive result registers under the C
-convention, as C returns its wide integers, through memory under Vun's; decision 280). Division and remainder call a helper function the
-pass adds (restoring division over pairs, signs put back around it). Atomic accesses of wide
+(`BackendCaps::widest`: a number of bits, or `Widest::Address`, the target's address width, which
+the native backend computes with); before it reads a unit, `Legalize::apply` splits every wider
+integer into limbs of the widest (low first, placed in memory by the target's byte order; an
+`i128` is four limbs on a 32-bit target, decision 292): add and subtract with carries and
+borrows running up the limbs, multiply by products of limbs made whole through half-width
+partial products and added at their positions, shifts by any amount below the width (bits
+crossing between neighbouring limbs, then whole limbs moved), comparisons by the highest limbs
+that differ, extensions, truncations, selects, loads, stores, block parameters, switches, and
+calls. A wide parameter is one `AbiType::Wide { limb, limbs, ext }`, its limbs values that each
+backend's call classifier places together by its convention (an even register pair under
+AAPCS64, two registers or 16 aligned bytes of the stack under System V, as C passes `__int128`;
+decision 246); under the C convention an integer of more than two limbs is no C integer
+(`Unpassable::Integer`). A wide result is one `AbiType::Wide` too, written through the caller's
+place as its limbs (returned in consecutive result registers under the C convention, as C returns
+its wide integers, through memory under Vun's; decision 280). Division and remainder call a helper
+function the pass adds per count of limbs (restoring division over limbs, signs put back around
+it). Atomic accesses of wide
 integers and conversions between them and floats are refused (`backend.lacks`). A backend that
 does not compute `f16` (`BackendCaps::half` is `Half::Promoted`; both the C and the native
 backend) receives each `f16` as its bits, an `i16`: every operation on it widens its operands to
@@ -783,7 +789,7 @@ by clang for the same target.
   every body, so a module the backend makes is valid before it is written; tests also validate
   with an independent parser (`wasmparser`).
 - **Values.** Integers up to 32 bits and addresses are `i32`, 64-bit integers `i64`, floats
-  their own (`BackendCaps::int_bits` is 64, `f16` is promoted). A value narrower than 32 bits is
+  their own (`BackendCaps::widest` is 64 bits, `f16` is promoted). A value narrower than 32 bits is
   held zero-extended: every operation producing one masks it, sign-reading operations
   (`SLt`, `AShr`, `SDiv`, `SExt`) extend it first (`i32.extend8_s`). Each LIR value is a local,
   each block parameter one too.
@@ -851,11 +857,11 @@ rules (proposed, decision 256).
   convention are further values of the same type.
 - **A value in one register.** A LIR value never spans registers: a scalar wider than a register
   of its class (a 128-bit integer, or a 64-bit one or a soft-float `f64` on a 32-bit machine) is
-  refused (`Unpassable::Wider`), legalization having split it into halves first by asking the
-  rules (`Rules::fits`); its halves are one `AbiType::Wide`, placed as the rules place a value
-  of two words (decision 280).
+  refused (`Unpassable::Wider`), legalization having split it into limbs first by asking the
+  rules (`Rules::fits`); its limbs are one `AbiType::Wide`, placed as the rules place a value
+  of two words, or one limb per register under Vun's convention (decisions 280, 292).
 - **One classifier.** `Passing::of(signature, convention)` gives every LIR value of a signature
-  (`Signature::passed`: a wide integer's halves each, the address of a result in memory last)
+  (`Signature::passed`: a wide integer's limbs each, the address of a result in memory last)
   a typed placement: a register, a place on the stack, a record's parts in registers with their
   offsets and sizes and the rest of it, if any, on the stack (`Loc::Split { parts, rest }`), a
   record copied onto the stack, the address of a copy the caller makes and

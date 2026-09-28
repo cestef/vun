@@ -76,6 +76,10 @@ impl Isel for Arm {
         condition(cond).is_some()
     }
 
+    fn lacks(cx: &Cx<'_, Self>, inst: Inst) -> Result<(), Lack> {
+        Look(cx).selection(inst).map(drop)
+    }
+
     fn inst_needs(cx: &Cx<'_, Self>, inst: Inst, needs: &mut Needs) {
         Look(cx).needs(inst, needs);
     }

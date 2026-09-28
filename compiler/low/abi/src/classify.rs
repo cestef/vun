@@ -29,6 +29,13 @@ impl<I: Copy, F: Copy> Passing<Carrier<I, F>> {
             Conv::Naked => return Err(Unpassable::Naked),
         };
         let rules = &convention.rules.calling(signature);
+        // C's integers are at most two registers wide.
+        let passed = signature.params.iter().chain(&signature.result);
+        if let Some(&AbiType::Wide { limb, limbs, .. }) =
+            passed.into_iter().find(|p| c && matches!(p, AbiType::Wide { limbs, .. } if *limbs > 2))
+        {
+            return Err(Unpassable::Integer(limb.bytes(rules.pointer_bits()) * u64::from(limbs)));
+        }
         let registers = &convention.registers;
         let bits = rules.pointer_bits();
         let mut results = Free::new(rules, registers.int_results, registers.float_results, false);
@@ -39,10 +46,11 @@ impl<I: Copy, F: Copy> Passing<Carrier<I, F>> {
             Some(AbiType::Address(_)) => {
                 Ret::Reg(results.one(Class::Int, rules.word).expect("a result register"))
             }
-            Some(AbiType::Wide { half, .. }) => {
-                let halves = Piece::halves(half.bytes(bits));
-                let regs = results.take(&halves, 2 * half.bytes(bits)).expect("two result registers");
-                Ret::Split(Part::of(regs, &halves))
+            &Some(AbiType::Wide { limb, limbs, .. }) => {
+                let (bytes, pieces) = (limb.bytes(bits), Piece::limbs(limb.bytes(bits), limbs));
+                let regs =
+                    results.take(&pieces, bytes * u64::from(limbs)).expect("a result register per limb");
+                Ret::Split(Part::of(regs, &pieces))
             }
             Some(AbiType::Record(r)) if c => {
                 let pieces = rules.pieces(r, rules.returned)?;
@@ -66,8 +74,8 @@ impl<I: Copy, F: Copy> Passing<Carrier<I, F>> {
                 free.spill();
             }
             let loc = match param {
-                AbiType::Wide { half, .. } => {
-                    params.extend(free.wide(half.bytes(bits)));
+                &AbiType::Wide { limb, limbs, .. } => {
+                    params.extend(free.wide(limb.bytes(bits), limbs));
                     continue;
                 }
                 AbiType::Record(r) if c => {

@@ -15,6 +15,7 @@ vun-diag.workspace = true
 vun-lir-passes.workspace = true
 vun-native.workspace = true
 vun-native-arm64.workspace = true
+vun-native-thumb.workspace = true
 vun-native-x86_64.workspace = true
 vun-object.workspace = true
 vun-target.workspace = true

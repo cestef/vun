@@ -74,15 +74,6 @@ impl Machine {
         }
     }
 
-    /// The value ELF gives a symbol of `kind` defined at `value`: a Thumb function's has bit 0
-    /// set, which tells linkers the state its code runs in (Arm ELF ABI).
-    pub(super) const fn elf_value(self, kind: SymbolKind, value: u64) -> u64 {
-        match (self, kind) {
-            (Self::Arm(_), SymbolKind::Func) => value | 1,
-            _ => value,
-        }
-    }
-
     /// The number of the relocation `kind`, if the machine has it.
     pub(super) const fn elf_relocation(self, kind: RelocKind) -> Option<u32> {
         Some(match (self, kind) {

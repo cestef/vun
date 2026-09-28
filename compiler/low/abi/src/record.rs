@@ -25,9 +25,9 @@ pub(crate) struct Piece {
 const FLOAT_PARTS: [u64; 2] = [4, 8];
 
 impl Piece {
-    /// The halves of an integer, a general register each.
-    pub(crate) fn halves(half: u64) -> [Self; 2] {
-        [0, half].map(|offset| Self { class: Class::Int, offset, bytes: half })
+    /// The `count` limbs of `limb` bytes of an integer, a general register each.
+    pub(crate) fn limbs(limb: u64, count: u8) -> Vec<Self> {
+        (0..u64::from(count)).map(|k| Self { class: Class::Int, offset: k * limb, bytes: limb }).collect()
     }
 }
 

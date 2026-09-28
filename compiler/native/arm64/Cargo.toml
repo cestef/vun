@@ -18,6 +18,7 @@ vun-codegen.workspace = true
 vun-dwarf.workspace = true
 vun-inline.workspace = true
 vun-lir.workspace = true
+vun-object.workspace = true
 vun-native.workspace = true
 vun-target.workspace = true
 

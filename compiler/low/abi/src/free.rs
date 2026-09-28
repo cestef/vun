@@ -96,15 +96,15 @@ impl<'r, I: Copy, F: Copy> Free<'r, I, F> {
         self.packed = false;
     }
 
-    /// The halves of an integer of two halves of `half` bytes: two general registers, else the
-    /// stack at the whole's alignment.
-    pub(crate) fn wide(&mut self, half: u64) -> [Loc<Carrier<I, F>>; 2] {
-        let halves = Piece::halves(half);
-        if let Some(regs) = self.all(&halves, 2 * half) {
-            return [regs[0], regs[1]].map(Loc::Reg);
+    /// The limbs of an integer of `count` limbs of `limb` bytes: a general register each, else
+    /// the stack at the whole's alignment.
+    pub(crate) fn wide(&mut self, limb: u64, count: u8) -> Vec<Loc<Carrier<I, F>>> {
+        let (limbs, size) = (Piece::limbs(limb, count), limb * u64::from(count));
+        if let Some(regs) = self.all(&limbs, size) {
+            return regs.into_iter().map(Loc::Reg).collect();
         }
-        let offset = self.stack(2 * half, 2 * half);
-        [offset, offset + half].map(|offset| Loc::Stack { offset, bytes: half })
+        let offset = self.stack(size, size);
+        limbs.iter().map(|p| Loc::Stack { offset: offset + p.offset, bytes: limb }).collect()
     }
 
     /// A record passed by value in `pieces`: in registers; else, as the rules let it, its first

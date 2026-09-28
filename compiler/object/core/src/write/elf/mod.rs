@@ -1,6 +1,7 @@
 //! The bytes of an ELF relocatable object of the machine's class: the header, each section's
 //! bytes, their relocations, the symbol and string tables, then the section headers.
 
+mod attributes;
 mod class;
 mod numbers;
 
@@ -15,6 +16,8 @@ const PROGBITS: u32 = 1;
 const SYMTAB: u32 = 2;
 const STRTAB: u32 = 3;
 const RELA_TYPE: u32 = 4;
+/// `SHT_ARM_ATTRIBUTES`.
+const ARM_ATTRIBUTES: u32 = 0x7000_0003;
 /// `SHF_*`
 const WRITE: u64 = 1;
 const ALLOC: u64 = 2;
@@ -158,7 +161,7 @@ impl Object {
                 section: s
                     .section
                     .map_or(0, |s| u16::try_from(Writer::number(s)).expect("sections fit 16 bits")),
-                value: if s.section.is_some() { self.machine.elf_value(s.kind, s.value) } else { s.value },
+                value: if s.section.is_some() { self.machine.reached(s.kind, s.value) } else { s.value },
                 size: s.size,
             };
             class.symbol(&mut w.out, &entry);
@@ -202,6 +205,17 @@ impl Object {
         let symtab = u32::try_from(w.headers.len() + relocated).expect("sections fit 32 bits");
         self.write_relocations(&mut w, &number, symtab);
         self.write_symbols(&mut w, &order, symtab);
+        if let Some(attributes) = self.machine.elf_attributes() {
+            let header = Header {
+                kind: ARM_ATTRIBUTES,
+                offset: w.out.len() as u64,
+                size: attributes.len() as u64,
+                align: 1,
+                ..Header::default()
+            };
+            w.header(b".ARM.attributes", header);
+            w.out.extend_from_slice(&attributes);
+        }
         let shstrtab = u16::try_from(w.headers.len()).expect("sections fit 16 bits");
         let name = w.names.add(b".shstrtab");
         let table = std::mem::take(&mut w.names.0);

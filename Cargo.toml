@@ -65,6 +65,7 @@ vun-backend-native = { path = "compiler/native/backend" }
 vun-native = { path = "compiler/native/core" }
 vun-native-x86_64 = { path = "compiler/native/x86_64" }
 vun-native-arm64 = { path = "compiler/native/arm64" }
+vun-native-thumb = { path = "compiler/native/thumb" }
 vun-backend-cranelift = { path = "compiler/back/cranelift" }
 vun-backend-qbe = { path = "compiler/back/qbe" }
 vun-backend-llvm = { path = "compiler/back/llvm" }

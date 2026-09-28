@@ -142,6 +142,7 @@ pub fn compile<A: Isel>(
     if !naked {
         A::prologue(&mut cx)?;
     }
+    cx.lacking()?;
     cx.plan = Some(Described::plan(&cx));
     if !naked {
         cx.save();
@@ -159,6 +160,20 @@ pub fn compile<A: Isel>(
 }
 
 impl<A: Isel> Cx<'_, A> {
+    /// The first thing an instruction needs that the backend lacks; a value made where used is
+    /// no instruction compiled.
+    fn lacking(&self) -> Result<(), Lack> {
+        for (_, data) in self.f.blocks.iter() {
+            for &inst in &data.insts {
+                if self.f.insts[inst].result.is_some_and(|v| self.values[v].made.is_some()) {
+                    continue;
+                }
+                A::lacks(self, inst)?;
+            }
+        }
+        Ok(())
+    }
+
     fn block(&mut self, block: Block) -> Result<(), Lack> {
         self.asm.bind(self.labels[block]);
         self.block = block;

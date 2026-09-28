@@ -16,6 +16,8 @@ pub const fp: Item = Item::new(&["lang", "arch", "thumb", "fp"]);
 pub const memory: Item = Item::new(&["lang", "arch", "thumb", "memory"]);
 /// The namespace `lang.arch.thumb.multiply`.
 pub const multiply: Item = Item::new(&["lang", "arch", "thumb", "multiply"]);
+/// The namespace `lang.arch.thumb.operand`.
+pub const operand: Item = Item::new(&["lang", "arch", "thumb", "operand"]);
 /// The namespace `lang.arch.thumb.system`.
 pub const system: Item = Item::new(&["lang", "arch", "thumb", "system"]);
 /// The width of an operation or an access.
@@ -28,8 +30,8 @@ pub const V: Item = Item::new(&["lang", "arch", "thumb", "V"]);
 /// The names of the floating-point registers at each width: `s{n}` at 32 bits, and at 64 bits
 /// `d{k}` for `v{2k}` alone.
 pub const fp_names: Item = Item::new(&["lang", "arch", "thumb", "fp_names"]);
-/// A special register, which `mrs` reads and `msr` writes: the interrupt masks and the control
-/// of the stack and privilege.
+/// A special register, which `mrs` reads and `msr` writes: the flags, the interrupt masks and
+/// the control of the stack and privilege.
 pub const Special: Item = Item::new(&["lang", "arch", "thumb", "Special"]);
 /// The registers `vmrs` names: the floating-point status and control register, and the flags it
 /// is read into.
@@ -46,29 +48,6 @@ pub const Mask: Item = Item::new(&["lang", "arch", "thumb", "Mask"]);
 pub const Barrier: Item = Item::new(&["lang", "arch", "thumb", "Barrier"]);
 /// The kinds of named choice a position takes, each an enum of its own.
 pub const Choice: Item = Item::new(&["lang", "arch", "thumb", "Choice"]);
-/// The width of an operand: the instruction's, or its own.
-pub const Width: Item = Item::new(&["lang", "arch", "thumb", "Width"]);
-/// The general registers a position names.
-pub const Regs: Item = Item::new(&["lang", "arch", "thumb", "Regs"]);
-/// An immediate encoding.
-pub const Imm: Item = Item::new(&["lang", "arch", "thumb", "Imm"]);
-/// Where a shift's amount goes.
-pub const Place: Item = Item::new(&["lang", "arch", "thumb", "Place"]);
-/// An addressing mode: which memory operands a position takes. The base register's field is part
-/// of the mode.
-pub const Mode: Item = Item::new(&["lang", "arch", "thumb", "Mode"]);
-/// Which fields a floating-point register's number is split into: `Vd:D`, `Vn:N` or `Vm:M`, the
-/// four bits at 12, 16 or 0 and the fifth at 22, 7 or 5.
-pub const Fields: Item = Item::new(&["lang", "arch", "thumb", "Fields"]);
-/// Which registers a list takes.
-pub const List: Item = Item::new(&["lang", "arch", "thumb", "List"]);
-/// A branch's field, and the relocation that fills it with a symbol's address.
-pub const Branch: Item = Item::new(&["lang", "arch", "thumb", "Branch"]);
-/// The instructions an `it` makes conditional after the first: none, or one more holding on the
-/// same condition (`t`) or on its opposite (`e`).
-pub const Then: Item = Item::new(&["lang", "arch", "thumb", "Then"]);
-/// What an operand position takes.
-pub const Kind: Item = Item::new(&["lang", "arch", "thumb", "Kind"]);
 /// What a form does with an operand, or with the flags.
 pub const Access: Item = Item::new(&["lang", "arch", "thumb", "Access"]);
 /// Where control goes after a form.

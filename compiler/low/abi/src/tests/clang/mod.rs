@@ -126,7 +126,7 @@ impl C {
         };
         let half = Scalar::int(scalar.bits(0) / 2).filter(|_| !rules.fits(scalar));
         match half {
-            Some(half) => AbiType::Wide { half, ext: Ext::Sign },
+            Some(half) => AbiType::Wide { limb: half, limbs: 2, ext: Ext::Sign },
             None if scalar.is_float() => AbiType::Scalar(scalar),
             None => AbiType::Int(scalar, Ext::Sign),
         }

@@ -12,8 +12,8 @@ use vun_items::Item;
 use vun_items::lang::{
     arch_thumb as t, arch_thumb_Arg as arg, arch_thumb_Choice as choice, arch_thumb_Class as class,
     arch_thumb_Encoding as encoding, arch_thumb_Family as family, arch_thumb_Flow as flow,
-    arch_thumb_Form as form, arch_thumb_Instruction as instruction, arch_thumb_Kind as kind,
-    arch_thumb_Member as member, arch_thumb_Size as size, arch_thumb_Sized as sized,
+    arch_thumb_Form as form, arch_thumb_Instruction as instruction, arch_thumb_Member as member,
+    arch_thumb_Size as size, arch_thumb_Sized as sized, arch_thumb_operand_Kind as kind,
 };
 
 use super::given::Word;

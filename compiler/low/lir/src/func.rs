@@ -37,10 +37,12 @@ pub enum AbiType {
     /// An integer, and how it extends to a wider register, as its range reads it: C declares it
     /// signed or unsigned by that.
     Int(Scalar, Ext),
-    /// An integer twice as wide as `half`, passed as its halves, low first, which the backend's
-    /// call convention places together; `ext` is how the whole extends.
+    /// An integer of `limbs` integers of type `limb`, wider than any the backend computes with,
+    /// passed as its limbs, low first, which the backend's call convention places together;
+    /// `ext` is how the whole extends.
     Wide {
-        half: Scalar,
+        limb: Scalar,
+        limbs: u8,
         ext: Ext,
     },
     Record(Record),
@@ -86,12 +88,12 @@ pub struct Record {
 }
 
 impl AbiType {
-    /// The types of the LIR values standing for it: the scalar, the halves of a wide integer,
+    /// The types of the LIR values standing for it: the scalar, the limbs of a wide integer,
     /// or the address of the record.
     pub fn values(&self) -> impl Iterator<Item = Scalar> + use<> {
         let (scalar, count) = match self {
             Self::Scalar(s) | Self::Int(s, _) => (*s, 1),
-            Self::Wide { half, .. } => (*half, 2),
+            Self::Wide { limb, limbs, .. } => (*limb, usize::from(*limbs)),
             Self::Address(_) | Self::Record(_) | Self::Memory { .. } => (Scalar::Ptr, 1),
         };
         iter::repeat_n(scalar, count)
@@ -130,7 +132,7 @@ impl Signature {
     pub fn well_formed(&self) -> bool {
         self.params.iter().chain(&self.result).all(|p| match p {
             AbiType::Scalar(s) => s.is_float(),
-            AbiType::Int(s, _) | AbiType::Wide { half: s, .. } => s.is_int(),
+            AbiType::Int(s, _) | AbiType::Wide { limb: s, .. } => s.is_int(),
             AbiType::Address(_) | AbiType::Record(_) | AbiType::Memory { .. } => true,
         })
     }

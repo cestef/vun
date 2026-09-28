@@ -1,4 +1,4 @@
-//! Terminators: jump arguments as halves, a switch on a wide integer as a chain of equalities,
+//! Terminators: jump arguments as limbs, a switch on a wide integer as a chain of equalities,
 //! a wide result written through the address the function receives.
 
 use vun_origin::OriginId;
@@ -25,12 +25,12 @@ impl Rewrite<'_> {
                 otherwise: self.target(otherwise),
             },
             Terminator::Switch { value, cases, default } if self.is_wide(*value) => {
-                // Case by case, each an equality of pairs.
-                let value = self.pair(*value);
+                // Case by case, each an equality of limbs.
+                let value = self.limbs(*value);
                 for (bits, t) in cases {
-                    let mut h = self.halves(at);
-                    let case = h.pair(*bits);
-                    let equal = h.compared(vun_lir::Cond::Eq, value, case);
+                    let mut l = self.limbwise(at);
+                    let case = l.limbs(*bits, value.len());
+                    let equal = l.compared(vun_lir::Cond::Eq, &value, &case);
                     let next = self.b.block(&[], at);
                     let then = self.target(t);
                     self.b.terminate(Terminator::Branch {
@@ -49,8 +49,8 @@ impl Rewrite<'_> {
             },
             Terminator::Return(Some(v)) if self.is_wide(*v) => {
                 let (value, addr) =
-                    (self.pair(*v), self.result.expect("a wide result's address is received"));
-                self.store_pair(value, addr, Access::Plain, at);
+                    (self.limbs(*v), self.result.expect("a wide result's address is received"));
+                self.store_limbs(&value, addr, Access::Plain, at);
                 Terminator::Return(None)
             }
             Terminator::Return(v) => Terminator::Return(v.map(|v| self.one(v))),

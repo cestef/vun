@@ -1,0 +1,81 @@
+//! The numbers of the system calls the kernel runtime makes, which each architecture assigns
+//! its own.
+
+/// The numbers of the system calls the runtime makes, which each architecture assigns its own.
+Numbers := struct {
+    arch: lang.meta.Name,
+    read: usize,
+    write: usize,
+    openat: usize,
+    close: usize,
+    mmap: usize,
+    munmap: usize,
+    rt_sigprocmask: usize,
+    sched_yield: usize,
+    gettid: usize,
+    clock_gettime: usize,
+    clock_nanosleep: usize,
+    exit_group: usize,
+};
+
+/// The architectures the runtime reaches the kernel from.
+arches := [
+    Numbers{
+        .arch = .x86_64,
+        .read = 0,
+        .write = 1,
+        .openat = 257,
+        .close = 3,
+        .mmap = 9,
+        .munmap = 11,
+        .rt_sigprocmask = 14,
+        .sched_yield = 24,
+        .gettid = 186,
+        .clock_gettime = 228,
+        .clock_nanosleep = 230,
+        .exit_group = 231,
+    },
+    Numbers{
+        .arch = .arm64,
+        .read = 63,
+        .write = 64,
+        .openat = 56,
+        .close = 57,
+        .mmap = 222,
+        .munmap = 215,
+        .rt_sigprocmask = 135,
+        .sched_yield = 124,
+        .gettid = 178,
+        .clock_gettime = 113,
+        .clock_nanosleep = 115,
+        .exit_group = 94,
+    },
+    /// The EABI's, the clocks' calls those of 64-bit times (`clock_gettime64`), which
+    /// `std.os.Timespec` is, and memory mapped by pages (`mmap2`).
+    Numbers{
+        .arch = .arm,
+        .read = 3,
+        .write = 4,
+        .openat = 322,
+        .close = 6,
+        .mmap = 192,
+        .munmap = 91,
+        .rt_sigprocmask = 175,
+        .sched_yield = 158,
+        .gettid = 224,
+        .clock_gettime = 403,
+        .clock_nanosleep = 407,
+        .exit_group = 248,
+    },
+];
+
+/// The numbers of the architecture `arch`.
+of := ($arch: lang.meta.Name) -> Numbers {
+    $for row in arches {
+        if row.arch == arch { return row; }
+    }
+    lang.panic.fail(.message("the runtime knows no system calls for this architecture"))
+};
+
+/// The numbers of the architecture being built for.
+current := of(lang.target.current.arch);

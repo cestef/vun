@@ -6,6 +6,8 @@
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
 use crate::Item;
+/// The flags; `msr` writes its `nzcvq` bits.
+pub const apsr: Item = Item::new(&["lang", "arch", "thumb", "Special", "apsr"]);
 /// Masks every interrupt of configurable priority.
 pub const primask: Item = Item::new(&["lang", "arch", "thumb", "Special", "primask"]);
 /// Masks the interrupts at or below a priority.

@@ -26,7 +26,7 @@ const I32: AbiType = AbiType::Int(Scalar::I32, Ext::Sign);
 const F32: AbiType = AbiType::Scalar(Scalar::F32);
 const F64: AbiType = AbiType::Scalar(Scalar::F64);
 /// A 64-bit integer, or a soft `f64`, as legalization passes it on a 32-bit machine.
-const PAIR: AbiType = AbiType::Wide { half: Scalar::I32, ext: Ext::Zero };
+const PAIR: AbiType = AbiType::Wide { limb: Scalar::I32, limbs: 2, ext: Ext::Zero };
 
 fn float(k: u8) -> Loc<Carrier<u8, u8>> {
     Loc::Reg(Carrier::Float(k))
@@ -86,6 +86,14 @@ fn a_scalar_wider_than_a_register_is_legalizations_to_split() {
 }
 
 #[test]
+fn an_integer_of_more_than_two_registers_is_no_c_integer() {
+    let limbs = AbiType::Wide { limb: Scalar::I32, limbs: 4, ext: Ext::Sign };
+    assert_eq!(Passing::of(&c(vec![limbs.clone()], None), &SOFT), Err(Unpassable::Integer(16)));
+    let vun = vun_lir::Signature { conv: vun_lir::func::Conv::Vun, ..c(vec![limbs], None) };
+    assert_eq!(Passing::of(&vun, &SOFT).unwrap().params, [int(0), int(1), int(2), int(3)]);
+}
+
+#[test]
 fn a_record_straddles_the_last_registers_and_the_stack_while_it_is_empty() {
     let words = fields(Scalar::I32, 5);
     let placed = params(&SOFT, vec![I32, AbiType::Record(words.clone()), I32]);
@@ -136,7 +144,7 @@ fn only_a_record_of_a_word_or_of_vfp_registers_comes_back_in_registers() {
 
 #[test]
 fn a_wide_result_comes_back_as_its_halves_written_to_the_callers_place() {
-    let wide = |half| Some(AbiType::Wide { half, ext: Ext::Sign });
+    let wide = |half| Some(AbiType::Wide { limb: half, limbs: 2, ext: Ext::Sign });
     let sysv = Passing::of(&c(Vec::new(), wide(Scalar::I64)), &SYSV).unwrap();
     assert_eq!(
         (sysv.ret, sysv.params),

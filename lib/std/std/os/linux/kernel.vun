@@ -3,71 +3,13 @@
 //! the process with, and every request is a system call. The C compiler may call the four
 //! functions of C's `string.h` a freestanding program must provide, so the runtime exports them.
 
-/// The numbers of the system calls the runtime makes, which each architecture assigns its own.
-Numbers := struct {
-    arch: lang.meta.Name,
-    read: usize,
-    write: usize,
-    openat: usize,
-    close: usize,
-    mmap: usize,
-    munmap: usize,
-    rt_sigprocmask: usize,
-    sched_yield: usize,
-    gettid: usize,
-    clock_gettime: usize,
-    clock_nanosleep: usize,
-    exit_group: usize,
-};
-
-/// The architectures the runtime reaches the kernel from.
-arches := [
-    Numbers{
-        .arch = .x86_64,
-        .read = 0,
-        .write = 1,
-        .openat = 257,
-        .close = 3,
-        .mmap = 9,
-        .munmap = 11,
-        .rt_sigprocmask = 14,
-        .sched_yield = 24,
-        .gettid = 186,
-        .clock_gettime = 228,
-        .clock_nanosleep = 230,
-        .exit_group = 231,
-    },
-    Numbers{
-        .arch = .arm64,
-        .read = 63,
-        .write = 64,
-        .openat = 56,
-        .close = 57,
-        .mmap = 222,
-        .munmap = 215,
-        .rt_sigprocmask = 135,
-        .sched_yield = 124,
-        .gettid = 178,
-        .clock_gettime = 113,
-        .clock_nanosleep = 115,
-        .exit_group = 94,
-    },
-];
-
-/// The numbers of the architecture `arch`.
-of := ($arch: lang.meta.Name) -> Numbers {
-    $for row in arches {
-        if row.arch == arch { return row; }
-    }
-    lang.panic.fail(.message("the runtime knows no system calls for this architecture"))
-};
-
-/// The numbers of the architecture being built for.
-numbers := of(lang.target.current.arch);
+/// The numbers of the system calls, the architecture's being built for.
+numbers := std.os.linux.kernel.calls.current;
 
 /// A system call: its number and six arguments, which the architecture's instruction takes in
 /// registers. A block loads them from here, binding the one register the address comes in and
-/// the result goes out in, rather than eight.
+/// the result goes out in, rather than eight. On Thumb the number goes in `r7`, the frame
+/// pointer, which the block keeps on the stack meanwhile.
 #[layout.c]
 Call := struct { number: usize, args: [6]usize };
 
@@ -91,17 +33,33 @@ call := (number: usize, args: [6]usize) -> isize {
             mov {out(rax) result}, rax
         };
     } else {
-        unsafe lang.arch.arm64.asm {
-            ldr x8, [{in(x0) at}]
-            ldr x1, [x0, 16]
-            ldr x2, [x0, 24]
-            ldr x3, [x0, 32]
-            ldr x4, [x0, 40]
-            ldr x5, [x0, 48]
-            ldr x0, [x0, 8]
-            svc 0
-            mov {out(x0) result}, x0
-        };
+        $if lang.target.current.arch == .arm64 {
+            unsafe lang.arch.arm64.asm {
+                ldr x8, [{in(x0) at}]
+                ldr x1, [x0, 16]
+                ldr x2, [x0, 24]
+                ldr x3, [x0, 32]
+                ldr x4, [x0, 40]
+                ldr x5, [x0, 48]
+                ldr x0, [x0, 8]
+                svc 0
+                mov {out(x0) result}, x0
+            };
+        } else {
+            unsafe lang.arch.thumb.asm {
+                push r4, r5, r7
+                ldr r7, [{in(r0) at}]
+                ldr r1, [r0, 8]
+                ldr r2, [r0, 12]
+                ldr r3, [r0, 16]
+                ldr r4, [r0, 20]
+                ldr r5, [r0, 24]
+                ldr r0, [r0, 4]
+                svc 0
+                pop r4, r5, r7
+                mov {out(r0) result}, r0
+            };
+        }
     }
     result.wrap(isize)
 };
@@ -121,7 +79,7 @@ reserve: usize = 0x4022;
 
 /// Private memory of `bytes` reserved, backed only where touched.
 map := (bytes: usize) -> usize {
-    call(numbers.mmap, [0, bytes, read_write, reserve, 0xffff_ffff_ffff_ffff, 0]).wrap(usize)
+    call(numbers.mmap, [0, bytes, read_write, reserve, lang.target.usize_max, 0]).wrap(usize)
 };
 
 /// Gives back the `bytes` mapped at `address`.
@@ -167,12 +125,21 @@ start := ($main: std.os.Main) -> type { struct {
                     call {boot}
                 };
             } else {
-                lang.arch.arm64.asm {
-                    mov x29, 0
-                    mov x30, 0
-                    mov x0, sp
-                    bl {boot}
-                };
+                $if lang.target.current.arch == .arm64 {
+                    lang.arch.arm64.asm {
+                        mov x29, 0
+                        mov x30, 0
+                        mov x0, sp
+                        bl {boot}
+                    };
+                } else {
+                    lang.arch.thumb.asm {
+                        mov r7, 0
+                        mov lr, 0
+                        mov r0, sp
+                        bl {boot}
+                    };
+                }
             }
             lang.hint.unreachable()
         }

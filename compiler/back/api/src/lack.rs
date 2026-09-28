@@ -55,6 +55,9 @@ impl From<vun_abi::Unpassable> for Missing {
             vun_abi::Unpassable::Wider(bytes) => Self::Wider(bytes),
             vun_abi::Unpassable::FloatPart(bytes) => Self::FloatPart(bytes),
             vun_abi::Unpassable::Naked => Self::Naked,
+            vun_abi::Unpassable::Integer(bytes) => {
+                Self::Width(u32::try_from(bytes * 8).expect("integers of at most 128 bits"))
+            }
         }
     }
 }

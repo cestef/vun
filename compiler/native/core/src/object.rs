@@ -45,6 +45,9 @@ impl<T> Assembly<'_, T> {
             object.section_named(name, contents);
         }
         let text = object.section_named(b".text", Contents::Code);
+        if let Some(code) = machine.code() {
+            object.map(text, 0, code);
+        }
         let funcs = self.functions(&mut object, text);
         let (data, placed) = self.data(&mut object);
         let imports = self.imports(&mut object);

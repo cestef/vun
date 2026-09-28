@@ -1,6 +1,6 @@
 //! The machines objects are for, and what each fixes of them: the width of an address.
 
-use crate::RelocKind;
+use crate::{Mapping, RelocKind, SymbolKind};
 
 /// The machine an object is for.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -36,6 +36,25 @@ impl Machine {
         match self.pointer_bits() {
             64 => 8,
             _ => 4,
+        }
+    }
+
+    /// The instructions its code is, where objects mark it: Thumb for 32-bit Arm.
+    #[must_use]
+    pub const fn code(self) -> Option<Mapping> {
+        match self {
+            Self::X86_64 | Self::Aarch64 => None,
+            Self::Arm(_) => Some(Mapping::Thumb),
+        }
+    }
+
+    /// The address code reaches a symbol of `kind` defined at `value` by: a Thumb function's has
+    /// bit 0 set, which tells a branch the state it runs in (Arm ELF ABI).
+    #[must_use]
+    pub const fn reached(self, kind: SymbolKind, value: u64) -> u64 {
+        match (self.code(), kind) {
+            (Some(Mapping::Thumb), SymbolKind::Func) => value | 1,
+            _ => value,
         }
     }
 

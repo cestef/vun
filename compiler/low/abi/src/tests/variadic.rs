@@ -37,7 +37,7 @@ fn opens_permissions_travel_on_the_stack_only_on_apple_arm64() {
 #[test]
 fn apple_arm64_passes_each_variadic_argument_in_the_words_it_takes() {
     // `printf(p, 7, 3.5, (struct { long a, b; }){..}, (struct { double a, b; }){..}, (__int128)9)`.
-    let wide = AbiType::Wide { half: Scalar::I64, ext: Ext::Sign };
+    let wide = AbiType::Wide { limb: Scalar::I64, limbs: 2, ext: Ext::Sign };
     let printf = variadic(vec![PTR, I32, F64, two(Scalar::I64), two(Scalar::F64), wide], 1, Some(I32));
     let passing = Passing::of(&printf, &DARWIN).unwrap();
     let copied = |offset| Loc::Copied { offset, size: 16 };

@@ -1,0 +1,145 @@
+//! What an operand position of a Thumb form takes, and how its operand is encoded: registers,
+//! immediates, addressing modes, lists, branch targets and conditions.
+
+/// The width of an operand: the instruction's, or its own.
+Width := enum { inst, is(lang.arch.thumb.Size) };
+
+/// The general registers a position names.
+Regs := enum {
+    /// `r0` to `r7`, in three bits.
+    low,
+    /// Every one but `sp` and `pc`.
+    general,
+    /// Those and `sp`.
+    sp,
+    /// Every one, `pc` among them.
+    any,
+    /// `sp` alone, in no field.
+    only_sp,
+};
+
+/// An immediate encoding.
+Imm := enum {
+    /// A byte, shifted or repeated, in the fields `i:imm3:imm8` (the manual's `ThumbExpandImm`).
+    modified,
+    /// 12 bits in the fields `i:imm3:imm8`: `addw`, `subw`.
+    plain,
+    /// 16 bits in the fields `imm4:i:imm3:imm8`: `movw`, `movt`.
+    half,
+    /// An unsigned value of this many bits, in one field.
+    unsigned(u8),
+    /// A multiple of 4, as a count of words of this many bits, in one field.
+    words(u8),
+    /// A left shift, 0 to 31.
+    lsl(Place),
+    /// A right shift, 1 to 32, 32 written as 0.
+    shr(Place),
+    /// Floating-point zero, which `vcmp` compares with.
+    zero,
+};
+
+/// Where a shift's amount goes.
+Place := enum {
+    /// Five bits in one field.
+    narrow,
+    /// `imm3` at 12 and `imm2` at 6.
+    wide,
+};
+
+/// An addressing mode: which memory operands a position takes. The base register's field is part
+/// of the mode.
+Mode := enum {
+    /// `[base, #offset]`: the base low at 3, the offset a count of accesses in five bits at 6.
+    narrow,
+    /// `[sp, #offset]`: the offset a count of words in eight bits at 0.
+    narrow_sp,
+    /// `[base, index]`: both low, the base at 3 and the index at 6.
+    narrow_index,
+    /// `[base, #offset]`: the base at 16, the offset 0 to 4095 in twelve bits.
+    offset,
+    /// `[base, #-offset]`: the base at 16, the offset 1 to 255 in eight bits.
+    byte,
+    /// `[base, #offset]!` and `[base], #offset`, -255 to 255.
+    byte_pre,
+    byte_post,
+    /// `[base, index, lsl #n]`: the base at 16, the index at 0 and `n`, 0 to 3, at 4.
+    index,
+    /// `[base, #offset]` of a pair: the base at 16, the offset a multiple of 4, -1020 to 1020, as
+    /// a count of words in eight bits; and written back before or after the access.
+    pair,
+    pair_pre,
+    pair_post,
+    /// `[base, #offset]` of a floating-point register: the base at 16, the offset a multiple of 4,
+    /// -1020 to 1020.
+    fp,
+    /// `[base, #offset]` of an exclusive access: the base at 16, the offset a multiple of 4, 0 to
+    /// 1020.
+    exclusive,
+};
+
+/// Which fields a floating-point register's number is split into: `Vd:D`, `Vn:N` or `Vm:M`, the
+/// four bits at 12, 16 or 0 and the fifth at 22, 7 or 5.
+Fields := enum { d, n, m };
+
+/// Which registers a list takes.
+List := enum {
+    /// `r0` to `r7` in eight bits, and `lr` in bit 8: a 16-bit `push`.
+    push,
+    /// `r0` to `r7`, and `pc` in bit 8: a 16-bit `pop`.
+    pop,
+    /// Sixteen bits, a register each, but `sp` and `pc`: a 32-bit `push`.
+    wide,
+    /// Those and `pc`: a 32-bit `pop`.
+    wide_pc,
+    /// Consecutive double-precision registers: the first in `Vd:D`, twice their count at 0.
+    doubles,
+};
+
+/// A branch's field, and the relocation that fills it with a symbol's address.
+Branch := enum {
+    /// Eight bits at 0, conditional: a 16-bit `b<c>`.
+    narrow_cond,
+    /// Eleven bits at 0: a 16-bit `b`.
+    narrow,
+    /// `i:imm5`, forward only: `cbz`, `cbnz`.
+    compare,
+    /// `S:J2:J1:imm6:imm11`, conditional: a 32-bit `b<c>`.
+    cond,
+    /// `S:J1:J2:imm10:imm11`: a 32-bit `b`.
+    jump,
+    /// The same, for a call: `bl`.
+    call,
+};
+
+/// The instructions an `it` makes conditional after the first: none, or one more holding on the
+/// same condition (`t`) or on its opposite (`e`).
+Then := enum { none, t, e };
+
+/// What an operand position takes.
+Kind := enum {
+    gpr(Regs),
+    /// Any register in a low register's field with a fourth bit at 7: a 16-bit `add` or `mov`.
+    split,
+    fpr(Width, Fields),
+    imm(Imm),
+    /// A register, shifted or not: the amount in `imm3:imm2`, the shift's kind at 4, the register
+    /// at 0.
+    shifted,
+    /// Memory accessed at a width.
+    mem(Mode, Width),
+    /// A condition, as the mnemonic's suffix.
+    cond,
+    /// The condition an `it` block's first instruction holds on, written as an operand, in
+    /// `firstcond` at 4, and those of the instructions after it, in the mask below it.
+    then(Then),
+    /// A label, or a symbol the linker places.
+    target(Branch),
+    /// The low or high 16 bits of a symbol's address: `movw`, `movt`.
+    low,
+    high,
+    list(List),
+    special,
+    status(lang.arch.thumb.Status),
+    mask,
+    barrier,
+};

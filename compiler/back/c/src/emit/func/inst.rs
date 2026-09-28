@@ -174,7 +174,7 @@ impl FnEmit<'_, '_> {
             let arg = self.operand(args.next().expect("a call passes the signature's values"));
             passed.push(match abi {
                 AbiType::Record(_) => arg.at(ty.clone()),
-                &AbiType::Wide { half, .. } => {
+                &AbiType::Wide { limb: half, .. } => {
                     let high = self.operand(args.next().expect("a wide integer is two values"));
                     Emitter::join(ty.clone(), [arg, high], half)
                 }

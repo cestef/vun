@@ -135,6 +135,8 @@ pub enum Unpassable {
     FloatPart(u64),
     /// A function without a prologue, which no convention passes anything to.
     Naked,
+    /// An integer of these bytes, which C has no type of on the machine.
+    Integer(u64),
 }
 
 impl fmt::Display for Unpassable {
@@ -144,6 +146,7 @@ impl fmt::Display for Unpassable {
             Self::Wider(bytes) => write!(f, "a value of {bytes} bytes in one register"),
             Self::FloatPart(bytes) => write!(f, "a record part of {bytes} bytes of floats"),
             Self::Naked => f.write_str("naked functions"),
+            Self::Integer(bytes) => write!(f, "a C integer of {bytes} bytes"),
         }
     }
 }

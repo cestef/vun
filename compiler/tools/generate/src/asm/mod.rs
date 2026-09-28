@@ -2,7 +2,7 @@
 //! instructions as declared there, families expanded, become its `Op` enum and the forms of each.
 //!
 //! An architecture `a` declares its types and registers in `arch/a.vun` and its instructions in
-//! `arch/a/*.vun`. An instruction is a value of `Instruction`, or a member of a `Family`, whose
+//! `arch/a/*.vun`, where other types of it may be declared too. An instruction is a value of `Instruction`, or a member of a `Family`, whose
 //! forms hold holes the member fills. A form's absent fields take the defaults `Form` declares, and
 //! a name starting with `_` is a shorthand of its file, read as the value it names.
 
@@ -57,10 +57,10 @@ pub(crate) struct Instruction<'s> {
     pub(crate) forms: Vec<Literal<'s>>,
 }
 
-/// An architecture as its files declare it: its own declarations, and its instructions, file by
-/// file in path order.
+/// An architecture as its files declare it: its own declarations, types and registers, and its
+/// instructions, file by file in path order.
 pub(crate) struct Table<'a, 's> {
-    pub(crate) own: &'a [Decl<'s>],
+    pub(crate) own: Vec<&'a Decl<'s>>,
     pub(crate) instructions: Vec<Instruction<'s>>,
 }
 
@@ -75,18 +75,25 @@ impl<'a, 's> Table<'a, 's> {
     ) -> Read<Self> {
         let unread = |what: &'static str| generator.error(UNREAD, arch, Msg::new().text(what));
         let own_path = format!("{ARCH}/{arch}.vun");
-        let own =
+        let file =
             sources.iter().find(|s| s.path == own_path).ok_or_else(|| unread("has no declaration file"))?;
+        let dir = format!("{ARCH}/{arch}/");
+        let children = sources.iter().filter(|s| s.path.starts_with(&dir));
+        // A declaration of a child file that is neither an instruction nor a shorthand is a type.
+        let types = children.clone().flat_map(|s| &s.decls).filter(|d| {
+            !d.name.starts_with(PRIVATE)
+                && !matches!(&d.value, Literal::Typed(ty, _) if matches!(ty.last().copied(), Some(INSTRUCTION | FAMILY)))
+        });
+        let own: Vec<&'a Decl<'s>> = file.decls.iter().chain(types).collect();
         let defaults = |ty: &str| {
-            let decl = own.decls.iter().find(|d| d.name == ty);
+            let decl = own.iter().find(|d| d.name == ty);
             let fields = decl.and_then(|d| d.value.members()).unwrap_or_default();
             fields.iter().filter(|f| f.value != Literal::Opaque).cloned().collect::<Vec<_>>()
         };
         let (form_defaults, member_defaults) = (defaults(FORM), defaults(MEMBER));
         let nested: Vec<_> = NESTED.iter().map(|&(field, ty)| (field, defaults(ty))).collect();
-        let dir = format!("{ARCH}/{arch}/");
         let mut instructions = Vec::new();
-        for source in sources.iter().filter(|s| s.path.starts_with(&dir)) {
+        for source in children {
             let shorthands: Fields<'s> = source
                 .decls
                 .iter()
@@ -131,12 +138,12 @@ impl<'a, 's> Table<'a, 's> {
                 }
             }
         }
-        Ok(Self { own: &own.decls, instructions })
+        Ok(Self { own, instructions })
     }
 
     /// The declaration of the architecture named `name`.
     pub(crate) fn own(&self, name: &str) -> Option<&'a Decl<'s>> {
-        self.own.iter().find(|d| d.name == name)
+        self.own.iter().find(|d| d.name == name).copied()
     }
 }
 

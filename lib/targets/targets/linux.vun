@@ -2,42 +2,60 @@
 //! library; `gnu` holds the targets of programs on the GNU C library (`linux.gnu.x86_64`), which
 //! calling C needs.
 
-/// A 64-bit Linux target of `arch` following `abi`, calling C by `convention`, built with the
-/// system's C compiler, given `machine` when compiling and linking and `link_flags` when linking.
+/// A machine Linux runs on: its architecture, the instruction set its code is written in, the
+/// width of an address, which gives the C data model (LP64, or ILP32), and the convention of its
+/// C functions.
 #[visible(.within(targets.linux))]
-_on := (
-    $arch: lang.meta.Name,
-    $convention: lang.target.Convention,
-    $abi: lang.meta.Name,
-    $machine: &[&[u8]],
-    $link_flags: &[&[u8]],
-) -> lang.target.Spec {
+_Machine := struct {
+    arch: lang.meta.Name,
+    isa: lang.meta.Name,
+    pointer_bits: u8,
+    convention: lang.target.Convention,
+};
+
+#[visible(.within(targets.linux))]
+_x86_64: _Machine = .{ .arch = .x86_64, .isa = .x86_64, .pointer_bits = 64, .convention = .sysv };
+#[visible(.within(targets.linux))]
+_arm64: _Machine = .{ .arch = .arm64, .isa = .arm64, .pointer_bits = 64, .convention = .aapcs64 };
+#[visible(.within(targets.linux))]
+_arm: _Machine = .{ .arch = .arm, .isa = .thumb, .pointer_bits = 32, .convention = .aapcs_vfp };
+#[visible(.within(targets.linux))]
+_riscv64: _Machine = .{ .arch = .riscv64, .isa = .riscv64, .pointer_bits = 64, .convention = .lp64d };
+
+/// A Linux target of `machine` following `abi`, built with the system's C compiler, given
+/// `flags` when compiling and linking and `link_flags` when linking.
+#[visible(.within(targets.linux))]
+_on := ($machine: _Machine, $abi: lang.meta.Name, $flags: &[&[u8]], $link_flags: &[&[u8]]) -> lang.target.Spec {
+    $compiler := targets.gnu("cc", "ar", flags, link_flags);
     .{
-        .arch = arch,
-        .isa = arch,
+        .arch = machine.arch,
+        .isa = machine.isa,
         .cpu = .generic,
         .os = .linux,
         .abi = abi,
-        .convention = convention,
-        .pointer_bits = 64,
+        .convention = machine.convention,
+        .pointer_bits = machine.pointer_bits,
         .endian = .little,
         .object_format = .elf,
         .entry_symbol = .some("_start"),
         .backends = targets.native_first,
         .linker = .gnu,
-        .c = targets.lp64(targets.gnu("cc", "ar", machine, link_flags)),
+        .c = $if machine.pointer_bits == 64 { targets.lp64(compiler) } else { targets.ilp32(compiler) },
     }
 };
 
-/// A static target of `arch`, compiled with `machine`: linked without the C library's start
+/// A static target of `machine`, compiled with `flags`: linked without the C library's start
 /// files and library, keeping the C compiler's own (`libgcc`: 128-bit division), its program
 /// started by `std.os.linux.kernel`.
-_kernel := ($arch: lang.meta.Name, $convention: lang.target.Convention, $machine: &[&[u8]]) -> lang.target.Spec {
-    _on(arch, convention, .kernel, machine, &["-static", "-nostartfiles", "-nolibc"])
+_kernel := ($machine: _Machine, $flags: &[&[u8]]) -> lang.target.Spec {
+    _on(machine, .kernel, flags, &["-static", "-nostartfiles", "-nolibc"])
 };
 
 /// 64-bit x86.
-x86_64 := _kernel(.x86_64, .sysv, &[]);
+x86_64 := _kernel(_x86_64, &[]);
 /// 64-bit ARM (AArch64). Atomics are inline instructions: the C compiler's out-of-line ones
 /// choose between forms by asking the C library what the CPU has.
-arm64 := _kernel(.arm64, .aapcs64, &["-mno-outline-atomics"]);
+arm64 := _kernel(_arm64, &["-mno-outline-atomics"]);
+/// 32-bit ARM (Armv7-A), its code Thumb-2, floats in the floating-point extension's registers
+/// (the hard-float EABI).
+arm := _kernel(_arm, &["-march=armv7-a", "-mthumb", "-mfloat-abi=hard", "-mfpu=vfpv3-d16"]);

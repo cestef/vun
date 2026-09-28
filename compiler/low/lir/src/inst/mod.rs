@@ -133,6 +133,14 @@ pub enum Access {
     Atomic(Order),
 }
 
+impl Access {
+    /// Whether it is ordered beyond a plain access: acquiring for a load, releasing for a store.
+    #[must_use]
+    pub fn ordered(self) -> bool {
+        matches!(self, Self::Atomic(order) if order != Order::Relaxed)
+    }
+}
+
 /// A memory ordering of an atomic access (`lang.mem.Order`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Encode, Decode)]
 pub enum Order {

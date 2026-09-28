@@ -77,7 +77,9 @@ impl Passing {
         let mut parts = Vec::new();
         for p in &signature.params {
             match p {
-                AbiType::Wide { .. } => parts.extend([Part::Value(ValType::I64, None); 2]),
+                &AbiType::Wide { limbs, .. } => {
+                    parts.extend(std::iter::repeat_n(Part::Value(ValType::I64, None), usize::from(limbs)));
+                }
                 other => parts.push(Self::part(other)?),
             }
         }

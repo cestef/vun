@@ -874,6 +874,7 @@ dependencies = [
  "vun-lir-passes",
  "vun-native",
  "vun-native-arm64",
+ "vun-native-thumb",
  "vun-native-x86_64",
  "vun-object",
  "vun-origin",
@@ -1591,9 +1592,27 @@ dependencies = [
  "vun-inline",
  "vun-lir",
  "vun-native",
+ "vun-object",
  "vun-target",
  "yaxpeax-arch",
  "yaxpeax-arm",
+]
+
+[[package]]
+name = "vun-native-thumb"
+version = "0.0.0"
+dependencies = [
+ "vun-abi",
+ "vun-asm",
+ "vun-asm-thumb",
+ "vun-backend",
+ "vun-codegen",
+ "vun-dwarf",
+ "vun-inline",
+ "vun-lir",
+ "vun-native",
+ "vun-object",
+ "vun-target",
 ]
 
 [[package]]
@@ -1609,6 +1628,7 @@ dependencies = [
  "vun-inline",
  "vun-lir",
  "vun-native",
+ "vun-object",
  "vun-target",
 ]
 
@@ -1616,6 +1636,7 @@ dependencies = [
 name = "vun-object"
 version = "0.0.0"
 dependencies = [
+ "vun-bytes",
  "vun-fs",
  "vun-index",
 ]

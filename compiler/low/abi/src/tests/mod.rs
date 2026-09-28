@@ -37,7 +37,7 @@ pub(super) const AAPCS64: Convention<u8, u8> = Convention {
 pub(super) const DARWIN: Convention<u8, u8> = Convention { rules: &Rules::DARWIN_ARM64, ..AAPCS64 };
 
 const I64: AbiType = AbiType::Int(Scalar::I64, Ext::Zero);
-const WIDE: AbiType = AbiType::Wide { half: Scalar::I64, ext: Ext::Sign };
+const WIDE: AbiType = AbiType::Wide { limb: Scalar::I64, limbs: 2, ext: Ext::Sign };
 
 pub(super) fn c(params: Vec<AbiType>, result: Option<AbiType>) -> Signature {
     Signature { conv: Conv::C, params, result, variadic: None }

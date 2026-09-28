@@ -1,9 +1,9 @@
 //! The native backend (spec 13, section 8.3): machine code for debug builds, in one pass per
 //! function over LIR and its shared analyses, in the design of TPDE. The framework is
 //! `vun-codegen` and `vun-native`; each architecture's calling conventions, snippets and
-//! instruction compilers are a crate of their own (`vun-native-x86_64`, `vun-native-arm64`),
-//! listed here with the object formats written for them: x86-64 and arm64 in ELF objects, and
-//! arm64 in Mach-O objects.
+//! instruction compilers are a crate of their own (`vun-native-x86_64`, `vun-native-arm64`,
+//! `vun-native-thumb`), listed here with the object formats written for them: each in ELF
+//! objects, and arm64 in Mach-O objects.
 
 #[cfg(test)]
 mod tests;
@@ -16,15 +16,16 @@ use vun_diag::{DiagCtxt, ErrorGuaranteed};
 use vun_lir_passes::legalize::Half;
 use vun_native::Native;
 use vun_native_arm64::Arm;
+use vun_native_thumb::Thumb2;
 use vun_native_x86_64::X86;
-use vun_object::{Format, Machine};
+use vun_object::{Float, Format, Machine};
 use vun_target::{Arches, Name, TargetSpec};
 
-/// An architecture the backend generates code for: its name among targets', the machine of its
-/// objects, and the compilation of a unit into one.
+/// An architecture the backend generates code for: its name among targets', the machine of a
+/// target's objects, and the compilation of a unit into one.
 struct Arch {
     name: Name,
-    machine: Machine,
+    machine: fn(&TargetSpec) -> Machine,
     /// Whether it follows a target's calling convention.
     follows: fn(&TargetSpec) -> bool,
     object: fn(&Request<'_>, Machine, Format) -> Result<Emitted, Lack>,
@@ -33,22 +34,32 @@ struct Arch {
 /// The object formats the backend writes, by their names among targets', and the machines it
 /// writes each for.
 const FORMATS: [(Name, Format, &[Machine]); 2] = [
-    (Name("elf"), Format::Elf, &[Machine::X86_64, Machine::Aarch64]),
+    (
+        Name("elf"),
+        Format::Elf,
+        &[Machine::X86_64, Machine::Aarch64, Machine::Arm(Float::Soft), Machine::Arm(Float::Hard)],
+    ),
     (Name("macho"), Format::MachO, &[Machine::Aarch64]),
 ];
 
-const ARCHES: [Arch; 2] = [
+const ARCHES: [Arch; 3] = [
     Arch {
         name: Name("x86_64"),
-        machine: Machine::X86_64,
+        machine: X86::machine,
         follows: |t| X86::convention(t).is_some(),
         object: X86::object,
     },
     Arch {
         name: Name("arm64"),
-        machine: Machine::Aarch64,
+        machine: Arm::machine,
         follows: |t| Arm::convention(t).is_some(),
         object: Arm::object,
+    },
+    Arch {
+        name: Name("arm"),
+        machine: Thumb2::machine,
+        follows: |t| Thumb2::convention(t).is_some(),
+        object: Thumb2::object,
     },
 ];
 
@@ -106,8 +117,9 @@ impl NativeBackend {
     /// Panics for an architecture [`INFO`] does not list, which no build chooses the backend for.
     fn emitted(request: &Request<'_>) -> Result<Emitted, Lack> {
         let arch = Self::arch(request);
-        let format = Self::format(request, arch.machine).expect("checked before emitting");
-        (arch.object)(request, arch.machine, format)
+        let machine = (arch.machine)(request.target);
+        let format = Self::format(request, machine).expect("checked before emitting");
+        (arch.object)(request, machine, format)
     }
 }
 
@@ -123,11 +135,11 @@ impl Backend for NativeBackend {
         diag: &mut DiagCtxt,
     ) -> Result<(), ErrorGuaranteed> {
         let arch = Self::arch(request);
-        if Self::format(request, arch.machine).is_none() {
-            return Err(diag.error(Missing::Format(request.target.object_format).diagnostic(INFO.id)));
-        }
         if !(arch.follows)(request.target) {
             return Err(diag.error(Missing::Convention.diagnostic(INFO.id)));
+        }
+        if Self::format(request, (arch.machine)(request.target)).is_none() {
+            return Err(diag.error(Missing::Format(request.target.object_format).diagnostic(INFO.id)));
         }
         let emitted = Self::emitted(request).map_err(|lack| diag.error(lack.diagnostic(INFO.id)))?;
         for artifact in emitted.artifacts {

@@ -97,6 +97,12 @@ impl Size {
         self.bits() / 8
     }
 
+    /// Whether it is narrower than a general register.
+    #[must_use]
+    pub const fn narrow(self) -> bool {
+        self.bits() < Self::B32.bits()
+    }
+
     /// `log2` of its bytes: what a count of accesses is shifted by.
     #[must_use]
     pub const fn shift(self) -> u32 {
@@ -138,6 +144,7 @@ impl Special {
     #[must_use]
     pub const fn field(self) -> u32 {
         match self {
+            Self::Apsr => 0,
             Self::Primask => 16,
             Self::Basepri => 17,
             Self::Faultmask => 19,

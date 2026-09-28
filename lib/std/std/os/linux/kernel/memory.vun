@@ -34,17 +34,31 @@ exports := struct {
                 stosb
             };
         } else {
-            unsafe lang.arch.arm64.asm {
-                mov x9, {in at}
-                mov x10, {in byte}
-                mov x11, {in bytes}
-                cbz x11, 'end
-                'top:
-                strb w10, [x9], 1
-                subs x11, x11, 1
-                b.ne 'top
-                'end:
-            };
+            $if lang.target.current.arch == .arm64 {
+                unsafe lang.arch.arm64.asm {
+                    mov x9, {in at}
+                    mov x10, {in byte}
+                    mov x11, {in bytes}
+                    cbz x11, 'end
+                    'top:
+                    strb w10, [x9], 1
+                    subs x11, x11, 1
+                    b.ne 'top
+                    'end:
+                };
+            } else {
+                unsafe lang.arch.thumb.asm {
+                    mov r1, {in at}
+                    mov r0, {in byte}
+                    mov r3, {in bytes}
+                    cbz r3, 'end
+                    'top:
+                    strb r0, [r1], 1
+                    subs r3, r3, 1
+                    bne 'top
+                    'end:
+                };
+            }
         }
         to
     };
@@ -75,18 +89,33 @@ forward := (to: usize, from: usize, bytes: usize) {
             movsb
         };
     } else {
-        unsafe lang.arch.arm64.asm {
-            mov x9, {in to}
-            mov x10, {in from}
-            mov x11, {in bytes}
-            cbz x11, 'end
-            'top:
-            ldrb w12, [x10], 1
-            strb w12, [x9], 1
-            subs x11, x11, 1
-            b.ne 'top
-            'end:
-        };
+        $if lang.target.current.arch == .arm64 {
+            unsafe lang.arch.arm64.asm {
+                mov x9, {in to}
+                mov x10, {in from}
+                mov x11, {in bytes}
+                cbz x11, 'end
+                'top:
+                ldrb w12, [x10], 1
+                strb w12, [x9], 1
+                subs x11, x11, 1
+                b.ne 'top
+                'end:
+            };
+        } else {
+            unsafe lang.arch.thumb.asm {
+                mov r1, {in to}
+                mov r2, {in from}
+                mov r3, {in bytes}
+                cbz r3, 'end
+                'top:
+                ldrb r0, [r2], 1
+                strb r0, [r1], 1
+                subs r3, r3, 1
+                bne 'top
+                'end:
+            };
+        }
     }
 };
 
@@ -103,15 +132,28 @@ backward := (to: usize, from: usize, bytes: usize) {
             cld
         };
     } else {
-        unsafe lang.arch.arm64.asm {
-            mov x9, {in last_to}
-            mov x10, {in last_from}
-            mov x11, {in bytes}
-            'top:
-            ldrb w12, [x10], -1
-            strb w12, [x9], -1
-            subs x11, x11, 1
-            b.ne 'top
-        };
+        $if lang.target.current.arch == .arm64 {
+            unsafe lang.arch.arm64.asm {
+                mov x9, {in last_to}
+                mov x10, {in last_from}
+                mov x11, {in bytes}
+                'top:
+                ldrb w12, [x10], -1
+                strb w12, [x9], -1
+                subs x11, x11, 1
+                b.ne 'top
+            };
+        } else {
+            unsafe lang.arch.thumb.asm {
+                mov r1, {in last_to}
+                mov r2, {in last_from}
+                mov r3, {in bytes}
+                'top:
+                ldrb r0, [r2], -1
+                strb r0, [r1], -1
+                subs r3, r3, 1
+                bne 'top
+            };
+        }
     }
 };

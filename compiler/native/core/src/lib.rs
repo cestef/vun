@@ -37,6 +37,9 @@ pub trait Native: Isel {
     /// The conventions it follows, by the name targets give them.
     const CONVENTIONS: &'static [(vun_target::Convention, Self::Convention)];
 
+    /// The machine of `target`'s objects.
+    fn machine(target: &TargetSpec) -> Machine;
+
     /// The convention `target` follows, if the architecture compiles for it.
     fn convention(target: &TargetSpec) -> Option<Self::Convention> {
         Self::CONVENTIONS.iter().find(|(name, _)| *name == target.convention).map(|&(_, c)| c)
