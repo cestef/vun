@@ -6,6 +6,7 @@
 pub mod inline;
 mod listing;
 mod object;
+pub mod select;
 #[cfg(any(test, feature = "testing"))]
 pub mod testing;
 pub mod width;

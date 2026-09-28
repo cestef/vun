@@ -6,7 +6,6 @@ mod call;
 mod carry;
 mod entry;
 mod memory;
-mod needs;
 mod select;
 mod term;
 
@@ -14,14 +13,16 @@ use vun_asm_thumb::{Reg, Size, V};
 use vun_backend::{Lack, Missing};
 use vun_codegen::snippet::Args;
 use vun_codegen::{Cx, Isel, Needs};
-use vun_lir::{Block, Cond, Function, Inst, Scalar};
+use vun_lir::{Block, Cond, Function, Inst, Scalar, Value};
 
 use vun_abi::Convention;
 
 use super::abi::Passing;
 use super::{Flags, Thumb2};
 use select::{Look, Selection};
+use vun_codegen::snippet::Snippet;
 use vun_native::inline::Inlined;
+use vun_native::select::Selects;
 
 /// What the instruction compilers keep for one function.
 pub struct State {
@@ -62,6 +63,36 @@ impl std::ops::DerefMut for Sel<'_, '_> {
     }
 }
 
+impl Selects for Thumb2 {
+    type Float = vun_asm_thumb::V;
+
+    const UNROLLED: u64 = memory::UNROLLED;
+
+    fn selection<'a>(cx: &Cx<'a, Self>, inst: Inst) -> Result<Selection<'a>, Lack> {
+        Look(cx).selection(inst)
+    }
+
+    fn flags(cx: &Cx<'_, Self>, cond: Cond, a: Value) -> Result<(Snippet<Self>, Size), Lack> {
+        Look(cx).flags(cond, a)
+    }
+
+    fn held(cx: &Cx<'_, Self>, v: Value) -> Result<Size, Lack> {
+        Look(cx).size(v)
+    }
+
+    fn narrow(size: Size) -> bool {
+        size.narrow()
+    }
+
+    fn convention(cx: &Cx<'_, Self>) -> &'static Convention<Reg, vun_asm_thumb::V> {
+        cx.state.convention
+    }
+
+    fn passing<'c>(cx: &'c Cx<'_, Self>) -> &'c Passing {
+        &cx.state.passing
+    }
+}
+
 impl Isel for Thumb2 {
     type Convention = &'static Convention<Reg, V>;
 
@@ -81,19 +112,19 @@ impl Isel for Thumb2 {
     }
 
     fn lacks(cx: &Cx<'_, Self>, inst: Inst) -> Result<(), Lack> {
-        Look(cx).selection(inst).map(drop)
+        Self::lacking(cx, inst)
     }
 
     fn inst_needs(cx: &Cx<'_, Self>, inst: Inst, needs: &mut Needs) {
-        Look(cx).needs(inst, needs);
+        Self::needs_of(cx, inst, needs);
     }
 
     fn term_needs(cx: &Cx<'_, Self>, block: Block, needs: &mut Needs) {
-        Look(cx).term_needs(block, needs);
+        Self::term_needs_of(cx, block, needs);
     }
 
     fn entry_needs(cx: &Cx<'_, Self>, needs: &mut Needs) {
-        Look(cx).entry_needs(needs);
+        Self::entry_needs_of(cx, needs);
     }
 
     fn prologue(cx: &mut Cx<'_, Self>) -> Result<(), Lack> {
@@ -132,8 +163,8 @@ impl<'a> Sel<'_, 'a> {
                 self.snippet(snippet, &Args { ins: &ins, out, size, cond });
             }
             Selection::Call { callee, args } => self.call(callee, args, out)?,
-            Selection::Rmw { op, addr, value } => self.rmw(op, addr, value, out),
-            Selection::CompareExchange { addr, expected, new } => {
+            Selection::Rmw { op, addr, value, .. } => self.rmw(op, addr, value, out),
+            Selection::CompareExchange { addr, expected, new, .. } => {
                 self.compare_exchange(addr, expected, new, out);
             }
             Selection::Copy { to, from, bytes } => self.copy(to, from, bytes),

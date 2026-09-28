@@ -2,11 +2,11 @@
 //! which size, or a sequence written here. What it needs of the plan and what it emits both
 //! read the same decision.
 
-use vun_asm_thumb::{Cc, Size};
+use vun_asm_thumb::Size;
 use vun_backend::{Lack, Missing};
 use vun_codegen::Cx;
 use vun_codegen::snippet::Snippet;
-use vun_lir::{BinOp, Callee, CastOp, Cond, Inst, InstKind, Reads, RmwOp, Scalar, Value};
+use vun_lir::{BinOp, CastOp, Cond, Inst, InstKind, Reads, Scalar, Value};
 
 use crate::snippets::{
     ADD, AND, CMP, CMP_SIGNED, CMP_UNSIGNED, FADD, FCMP, FDIV, FMUL, FNE, FSET, FSUB, KEEP, LOAD,
@@ -20,36 +20,7 @@ use vun_native::inline::Inlined;
 use vun_native::width::size_of;
 
 /// An instruction as it is compiled.
-pub(super) enum Selection<'f> {
-    Snippet {
-        snippet: Snippet<Thumb2>,
-        ins: Vec<Value>,
-        size: Size,
-        cond: Option<Cc>,
-    },
-    Call {
-        callee: &'f Callee,
-        args: &'f [Value],
-    },
-    /// An atomic read-modify-write or compare-exchange of a word, as a loop of exclusive
-    /// accesses.
-    Rmw {
-        op: RmwOp,
-        addr: Value,
-        value: Value,
-    },
-    CompareExchange {
-        addr: Value,
-        expected: Value,
-        new: Value,
-    },
-    Copy {
-        to: Value,
-        from: Value,
-        bytes: u64,
-    },
-    Asm(&'f vun_lir::Asm, Option<&'f vun_lir::AsmCheck>),
-}
+pub(super) type Selection<'f> = vun_native::select::Selection<'f, Thumb2>;
 
 /// The function compiled, read without emitting.
 pub(super) struct Look<'c, 'a>(pub(super) &'c Cx<'a, Thumb2>);
@@ -169,11 +140,11 @@ impl<'a> Look<'_, 'a> {
             ),
             &InstKind::Rmw { op, addr, value, .. } => {
                 self.word(value)?;
-                Selection::Rmw { op, addr, value }
+                Selection::Rmw { op, addr, value, size: Size::B32 }
             }
             &InstKind::CompareExchange { addr, expected, new, .. } => {
                 self.word(new)?;
-                Selection::CompareExchange { addr, expected, new }
+                Selection::CompareExchange { addr, expected, new, size: Size::B32 }
             }
             &InstKind::Offset { base, offset } => snippet(ADD, &[base, offset], Size::B32, None),
             &InstKind::Copy { to, from, bytes } => Selection::Copy { to, from, bytes },

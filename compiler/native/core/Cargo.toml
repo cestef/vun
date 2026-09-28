@@ -13,6 +13,7 @@ workspace = true
 testing = []
 
 [dependencies]
+vun-abi.workspace = true
 vun-asm.workspace = true
 vun-backend.workspace = true
 vun-codegen.workspace = true

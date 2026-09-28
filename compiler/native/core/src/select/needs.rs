@@ -1,29 +1,32 @@
 //! What each instruction, terminator and the entry needs of the plan, from the selection the
 //! instruction compilers emit: snippets say it by their slots, calls by where the convention
-//! passes each value; the sequences written here say it themselves.
+//! passes each value; the sequences the architectures write, loops over exclusive accesses and
+//! copies, say it themselves.
 
+use vun_abi::{Loc, Passing, Ret};
 use vun_codegen::snippet::Args;
-use vun_codegen::{Arch, Bank, Need, Needs, Out, Read};
+use vun_codegen::{Bank, Cx, Need, Needs, Out, Read};
 use vun_lir::{Block, Callee, Inst, Terminator, Value};
 
-use super::select::{Look, Selection};
-use crate::Thumb2;
-use crate::abi::{Carrier, Loc, Passing, Ret};
-use vun_asm_thumb::Size;
-use vun_native::inline::Inlined;
+use super::{Selection, Selects};
+use crate::inline::Inlined;
+use vun_abi::Carrier;
 
-impl Look<'_, '_> {
+/// The function compiled, read without emitting.
+pub(super) struct Looked<'c, 'a, A: Selects>(pub(super) &'c Cx<'a, A>);
+
+impl<A: Selects> Looked<'_, '_, A> {
     /// What `inst` needs; nothing for one the backend cannot compile, which compiling reports.
     pub(super) fn needs(&self, inst: Inst, needs: &mut Needs) {
         let cx = self.0;
         let out = cx.f.insts[inst].result;
-        let Ok(selection) = self.selection(inst) else { return };
+        let Ok(selection) = A::selection(cx, inst) else { return };
         match selection {
             Selection::Snippet { snippet, ins, size, cond } => {
                 cx.snippet_needs(snippet, &Args { ins: &ins, out, size, cond }, needs);
             }
             Selection::Call { callee, args } => {
-                let Ok(passing) = Passing::of(cx.signature(callee), cx.state.convention) else { return };
+                let Ok(passing) = Passing::of(cx.signature(callee), A::convention(cx)) else { return };
                 let target = match callee {
                     Callee::Indirect(target, _) => Some(*target),
                     Callee::Func(_) | Callee::Import(_) => None,
@@ -42,7 +45,7 @@ impl Look<'_, '_> {
                 }
                 Self::result(needs, out, 1);
             }
-            Selection::Copy { to, from, bytes } if bytes <= super::memory::UNROLLED => {
+            Selection::Copy { to, from, bytes } if bytes <= A::UNROLLED => {
                 self.read(needs, to, false);
                 self.read(needs, from, false);
             }
@@ -87,7 +90,7 @@ impl Look<'_, '_> {
         match cx.f.blocks[block].term {
             Terminator::Branch { cond, .. } => match cx.fused(block) {
                 Some(fused) => {
-                    let Ok((snippet, size)) = self.flags(fused.cond, fused.a) else { return };
+                    let Ok((snippet, size)) = A::flags(cx, fused.cond, fused.a) else { return };
                     let ins = [fused.a, fused.b];
                     cx.snippet_needs(snippet, &Args { ins: &ins, out: None, size, cond: None }, needs);
                 }
@@ -98,12 +101,12 @@ impl Look<'_, '_> {
                 if kept(value) {
                     needs.read(value, Need::Reg);
                 }
-                if self.size(value).is_ok_and(Size::narrow) {
+                if A::held(cx, value).is_ok_and(A::narrow) {
                     needs.temps.push(Bank::General);
                 }
             }
-            Terminator::Return(Some(v)) if kept(v) => match cx.state.passing.ret {
-                Ret::Reg(Carrier::Int(r)) => needs.read(v, Need::Fixed(Thumb2::preg(r))),
+            Terminator::Return(Some(v)) if kept(v) => match A::passing(cx).ret {
+                Ret::Reg(Carrier::Int(r)) => needs.read(v, Need::Fixed(A::preg(r))),
                 Ret::Reg(Carrier::Float(_)) => needs.read(v, Need::Any),
                 Ret::None | Ret::Split(_) | Ret::Memory => {}
             },
@@ -117,13 +120,13 @@ impl Look<'_, '_> {
     pub(super) fn entry_needs(&self, needs: &mut Needs) {
         let cx = self.0;
         let Some(entry) = cx.f.entry() else { return };
-        for (&v, loc) in cx.f.blocks[entry].params.iter().zip(&cx.state.passing.params) {
+        for (&v, loc) in cx.f.blocks[entry].params.iter().zip(&A::passing(cx).params) {
             let loc = match loc {
                 Loc::Indirect { at, .. } => at.as_ref(),
                 loc => loc,
             };
             let out = match loc {
-                Loc::Reg(Carrier::Int(r)) => Out::Fixed(Thumb2::preg(*r)),
+                Loc::Reg(Carrier::Int(r)) => Out::Fixed(A::preg(*r)),
                 Loc::Reg(Carrier::Float(_)) => Out::Reg,
                 Loc::Stack { .. } => Out::Home,
                 Loc::Copied { .. } | Loc::Split { .. } | Loc::Returned | Loc::Indirect { .. } => continue,

@@ -2,11 +2,11 @@
 //! which size, or a sequence written here. What it needs of the plan and what it emits both
 //! read the same decision.
 
-use vun_asm_arm64::{Cc, Size};
+use vun_asm_arm64::Size;
 use vun_backend::{Lack, Missing};
 use vun_codegen::Cx;
 use vun_codegen::snippet::Snippet;
-use vun_lir::{BinOp, Callee, CastOp, Cond, Inst, InstKind, Reads, RmwOp, Scalar, Value};
+use vun_lir::{BinOp, CastOp, Cond, Inst, InstKind, Reads, Scalar, Value};
 
 use super::narrow;
 use crate::snippets::{
@@ -22,37 +22,7 @@ use vun_native::inline::Inlined;
 use vun_native::width::size_of;
 
 /// An instruction as it is compiled.
-pub(super) enum Selection<'f> {
-    Snippet {
-        snippet: Snippet<Arm>,
-        ins: Vec<Value>,
-        size: Size,
-        cond: Option<Cc>,
-    },
-    Call {
-        callee: &'f Callee,
-        args: &'f [Value],
-    },
-    /// An atomic read-modify-write or compare-exchange, as a loop of exclusive accesses.
-    Rmw {
-        op: RmwOp,
-        addr: Value,
-        value: Value,
-        size: Size,
-    },
-    CompareExchange {
-        addr: Value,
-        expected: Value,
-        new: Value,
-        size: Size,
-    },
-    Copy {
-        to: Value,
-        from: Value,
-        bytes: u64,
-    },
-    Asm(&'f vun_lir::Asm, Option<&'f vun_lir::AsmCheck>),
-}
+pub(super) type Selection<'f> = vun_native::select::Selection<'f, Arm>;
 
 /// The function compiled, read without emitting.
 pub(super) struct Look<'c, 'a>(pub(super) &'c Cx<'a, Arm>);

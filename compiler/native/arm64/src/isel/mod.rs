@@ -6,7 +6,6 @@ mod call;
 mod carry;
 mod entry;
 mod memory;
-mod needs;
 mod select;
 mod term;
 
@@ -21,7 +20,9 @@ use vun_abi::Convention;
 use super::abi::Passing;
 use super::{Arm, condition};
 use select::{Look, Selection};
+use vun_codegen::snippet::Snippet;
 use vun_native::inline::Inlined;
+use vun_native::select::Selects;
 
 /// What the instruction compilers keep for one function.
 pub struct State {
@@ -59,6 +60,36 @@ impl std::ops::DerefMut for Sel<'_, '_> {
     }
 }
 
+impl Selects for Arm {
+    type Float = vun_asm_arm64::V;
+
+    const UNROLLED: u64 = memory::UNROLLED;
+
+    fn selection<'a>(cx: &Cx<'a, Self>, inst: Inst) -> Result<Selection<'a>, Lack> {
+        Look(cx).selection(inst)
+    }
+
+    fn flags(cx: &Cx<'_, Self>, cond: Cond, a: Value) -> Result<(Snippet<Self>, Size), Lack> {
+        Look(cx).flags(cond, a)
+    }
+
+    fn held(cx: &Cx<'_, Self>, v: Value) -> Result<Size, Lack> {
+        Look(cx).size(v)
+    }
+
+    fn narrow(size: Size) -> bool {
+        narrow(size)
+    }
+
+    fn convention(cx: &Cx<'_, Self>) -> &'static Convention<Reg, vun_asm_arm64::V> {
+        cx.state.convention
+    }
+
+    fn passing<'c>(cx: &'c Cx<'_, Self>) -> &'c Passing {
+        &cx.state.passing
+    }
+}
+
 impl Isel for Arm {
     type Convention = &'static Convention<vun_asm_arm64::Reg, vun_asm_arm64::V>;
 
@@ -77,19 +108,19 @@ impl Isel for Arm {
     }
 
     fn lacks(cx: &Cx<'_, Self>, inst: Inst) -> Result<(), Lack> {
-        Look(cx).selection(inst).map(drop)
+        Self::lacking(cx, inst)
     }
 
     fn inst_needs(cx: &Cx<'_, Self>, inst: Inst, needs: &mut Needs) {
-        Look(cx).needs(inst, needs);
+        Self::needs_of(cx, inst, needs);
     }
 
     fn term_needs(cx: &Cx<'_, Self>, block: Block, needs: &mut Needs) {
-        Look(cx).term_needs(block, needs);
+        Self::term_needs_of(cx, block, needs);
     }
 
     fn entry_needs(cx: &Cx<'_, Self>, needs: &mut Needs) {
-        Look(cx).entry_needs(needs);
+        Self::entry_needs_of(cx, needs);
     }
 
     fn prologue(cx: &mut Cx<'_, Self>) -> Result<(), Lack> {

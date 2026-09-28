@@ -1563,6 +1563,7 @@ dependencies = [
 name = "vun-native"
 version = "0.0.0"
 dependencies = [
+ "vun-abi",
  "vun-asm",
  "vun-backend",
  "vun-codegen",
