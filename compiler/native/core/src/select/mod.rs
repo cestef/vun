@@ -46,6 +46,11 @@ pub enum Selection<'f, A: Emits> {
         bytes: u64,
     },
     Asm(&'f vun_lir::Asm, Option<&'f vun_lir::AsmCheck>),
+    /// An operation reading or giving a value of the float bank, which lives in its home
+    /// (`Arch::bank`), as the architecture writes it: its other operands in registers.
+    Homed {
+        ins: Vec<Value>,
+    },
 }
 
 /// A register a value travels in under `A`'s conventions.

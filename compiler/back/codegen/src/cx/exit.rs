@@ -48,7 +48,9 @@ impl<A: Isel> Cx<'_, A> {
         let vun_lir::func::Def::Inst(inst) = self.f.values[value].def else { return None };
         let InstKind::Compare { cond, a, b } = self.f.insts[inst].kind else { return None };
         let here = self.f.blocks[block].insts.contains(&inst);
-        (here && self.values[value].uses == 1 && A::fuses(cond)).then_some(Fused { value, cond, a, b })
+        // A comparison of values living in their homes sets no flags a branch reads.
+        let fusable = A::fuses(cond) && !self.homed(a);
+        (here && self.values[value].uses == 1 && fusable).then_some(Fused { value, cond, a, b })
     }
 }
 

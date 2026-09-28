@@ -17,6 +17,18 @@ impl<A: Arch> Cx<'_, A> {
                     self.write(dst, from);
                 }
                 Loc::Temp => self.write(A::TEMP, from),
+                // A value wider than a register goes from home to home a register at a time.
+                Loc::Home(v) if self.home_bytes(v) > A::WORD => {
+                    let Written::Home(at) = from else {
+                        unreachable!("a value wider than a register is in no register")
+                    };
+                    let home = self.home(v);
+                    for word in (0..self.home_bytes(v)).step_by(usize::try_from(A::WORD).expect("a word")) {
+                        let word = i32::try_from(word).expect("a home's bytes");
+                        A::load(&mut self.asm, A::CARRIER, at + word);
+                        A::store(&mut self.asm, home + word, A::CARRIER);
+                    }
+                }
                 Loc::Home(v) => {
                     let src = match from {
                         Written::Reg(r) => r,

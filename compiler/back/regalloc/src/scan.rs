@@ -61,7 +61,15 @@ impl<'a> Scan<'a> {
             if let Some(r) = hint(&self, current) {
                 self.intervals[current].hint = Some(r);
             }
-            if !self.free(current) {
+            // A value of a bank without registers lives in its home, which every use of it reads.
+            if self.regs(current).is_empty() {
+                let at = self.intervals[current].start();
+                assert!(
+                    self.intervals[current].next_reg_use(at).is_none(),
+                    "a register of a bank without one"
+                );
+                self.intervals[current].held = Held::Home;
+            } else if !self.free(current) {
                 self.blocked(current);
             }
             if let Held::Reg(_) = self.intervals[current].held {

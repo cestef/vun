@@ -4,6 +4,7 @@
 mod atomic;
 mod call;
 mod carry;
+mod double;
 mod entry;
 mod memory;
 mod select;
@@ -169,6 +170,7 @@ impl<'a> Sel<'_, 'a> {
             }
             Selection::Copy { to, from, bytes } => self.copy(to, from, bytes),
             Selection::Asm(asm, check) => asm.emit(check, self.0)?,
+            Selection::Homed { .. } => self.double(inst)?,
         }
         Ok(())
     }

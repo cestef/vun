@@ -32,9 +32,8 @@ impl<A: Isel> Describe for Described<'_, '_, A> {
         &self.0.machine
     }
 
-    /// Floats are held as their bits in general registers, like integers.
-    fn bank(&self, _: Scalar) -> Bank {
-        Bank::General
+    fn bank(&self, ty: Scalar) -> Bank {
+        A::bank(ty)
     }
 
     fn remade(&self, v: Value) -> Option<Remade> {

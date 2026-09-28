@@ -108,7 +108,9 @@ impl Assignment {
                     },
                     _ => None,
                 };
-                values[out].made = made.map(|what| (what, Remade::Used));
+                // A value of the float bank lives in its home, never made where used.
+                let homed = A::bank(f.ty(out)) == vun_regalloc::Bank::Float;
+                values[out].made = made.filter(|_| !homed).map(|what| (what, Remade::Used));
             }
             for v in f.blocks[block].term.operands() {
                 read(&mut values, &defined, v);

@@ -50,6 +50,18 @@ impl<A: Selects> Looked<'_, '_, A> {
                 self.read(needs, from, false);
             }
             Selection::Asm(asm, check) => asm.needs(check, cx, needs),
+            Selection::Homed { ins } => {
+                for v in ins {
+                    if !cx.homed(v) {
+                        self.read(needs, v, false);
+                    } else if cx.recomputed(v).is_none() {
+                        needs.read(v, Need::Any);
+                    }
+                }
+                if let Some(v) = out {
+                    needs.defs.push((v, if cx.homed(v) { Out::Home } else { Out::Reg }));
+                }
+            }
             Selection::Copy { to, from, .. } => {
                 needs.temps.extend([Bank::General; 3]);
                 for v in [to, from] {
@@ -127,6 +139,7 @@ impl<A: Selects> Looked<'_, '_, A> {
             };
             let out = match loc {
                 Loc::Reg(Carrier::Int(r)) => Out::Fixed(A::preg(*r)),
+                Loc::Reg(Carrier::Float(_)) if cx.homed(v) => Out::Home,
                 Loc::Reg(Carrier::Float(_)) => Out::Reg,
                 Loc::Stack { .. } => Out::Home,
                 Loc::Copied { .. } | Loc::Split { .. } | Loc::Returned | Loc::Indirect { .. } => continue,

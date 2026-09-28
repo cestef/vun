@@ -54,8 +54,53 @@ impl<'a> Look<'_, 'a> {
         }
     }
 
+    /// An operation reading or giving a double, which lives in its home (`Arch::bank`), as the
+    /// isel writes it; `None` for another, and for a call, which passes doubles as calls do.
+    fn homed(&self, inst: Inst) -> Result<Option<Selection<'a>>, Lack> {
+        let cx = self.0;
+        let data = &cx.f.insts[inst];
+        let touched = data.result.is_some_and(|v| cx.homed(v)) || data.kind.operands().any(|v| cx.homed(v));
+        let word = |v: Value| self.size(v).is_ok();
+        let computed = match &data.kind {
+            _ if !touched => return Ok(None),
+            InstKind::Call { .. } => return Ok(None),
+            InstKind::Const { .. } | InstKind::Select { .. } => true,
+            InstKind::Binary { op, .. } => {
+                matches!(op, BinOp::FAdd | BinOp::FSub | BinOp::FMul | BinOp::FDiv)
+            }
+            InstKind::Compare { cond, .. } => cond.holds().is_some(),
+            // Between the precisions, and with integers of a word at most.
+            &InstKind::Cast { op, value, to } => match op {
+                CastOp::FConvert => true,
+                CastOp::SToF | CastOp::UToF => word(value),
+                CastOp::FToS | CastOp::FToU => self.size_of(to).is_ok(),
+                _ => false,
+            },
+            InstKind::Load { access, .. } | InstKind::Store { access, .. } => {
+                !matches!(access, vun_lir::Access::Atomic(_))
+            }
+            _ => false,
+        };
+        if !computed {
+            return Err(cx.lack(Missing::Wider(8)));
+        }
+        Ok(Some(Selection::Homed { ins: data.kind.operands().collect() }))
+    }
+
+    /// What the backend lacks to pass `args`: a word at most each, but a double, which travels
+    /// from its home.
+    fn passed(&self, args: &[Value]) -> Result<(), Lack> {
+        for &a in args.iter().filter(|&&a| !self.0.homed(a)) {
+            self.size(a)?;
+        }
+        Ok(())
+    }
+
     /// How `inst` is compiled.
     pub(super) fn selection(&self, inst: Inst) -> Result<Selection<'a>, Lack> {
+        if let Some(homed) = self.homed(inst)? {
+            return Ok(homed);
+        }
         let f = self.0.f;
         let snippet = |snippet, ins: &[Value], size, cond| Selection::Snippet {
             snippet,
@@ -124,9 +169,7 @@ impl<'a> Look<'_, 'a> {
                 snippet(SELECT, &[cond, then, otherwise], Size::B32, None)
             }
             InstKind::Call { callee, args } => {
-                for &a in args {
-                    self.size(a)?;
-                }
+                self.passed(args)?;
                 Selection::Call { callee, args }
             }
             &InstKind::Load { ty, addr, access } => {

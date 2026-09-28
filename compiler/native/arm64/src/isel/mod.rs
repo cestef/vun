@@ -170,6 +170,8 @@ impl<'a> Sel<'_, 'a> {
             }
             Selection::Copy { to, from, bytes } => self.copy(to, from, bytes),
             Selection::Asm(asm, check) => asm.emit(check, self.0)?,
+            // Every value is held in a general register: none lives in its home alone.
+            Selection::Homed { .. } => return Err(self.lack(Missing::Wider(16))),
         }
         Ok(())
     }

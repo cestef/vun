@@ -127,8 +127,14 @@ impl Sel<'_, '_> {
         self.copy_bytes(Thumb2::TEMP, Thumb2::CARRIER, bytes, FAR);
     }
 
-    /// Writes `a` at `offset` of the outgoing arguments.
+    /// Writes `a` at `offset` of the outgoing arguments: a double through `d0`.
     fn outgoing(&mut self, a: Value, offset: u64, bytes: u64) {
+        if self.homed(a) {
+            let d = vun_asm_thumb::V::V0;
+            self.load_double(d, a);
+            self.asm.access(Op::Vstr, Size::B64, d.into(), Reg::Sp, i64::from(offset_of(offset)), FAR);
+            return;
+        }
         self.reg_to(a, Thumb2::CARRIER);
         self.store_outgoing(Thumb2::CARRIER, offset, bytes);
     }

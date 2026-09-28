@@ -249,11 +249,16 @@ In flight, not in main:
   against x86-64 hardware and Python (random and special operands; x86-64 and linux.arm run with
   their `floats` narrowed, and 128-bit integers). An integer wider than 8 bytes is aligned to
   twice an address at most. A local holding a namespace or a type is known at compile time
-  (decision 295). Open: `f64` in VFP `d` registers for linux.arm (the framework holds values in
-  one general register; a value wider than a register would live in its home, 8 bytes, reached by
-  `vldr`/`vstr`), 64-bit atomics (`ldrexd`/`strexd`, planned as `lower.soft` routines in
-  `lang.mem`), the backend tests running linux.arm, and factoring the isel shared by arm64 and
-  Thumb (`call`, `entry`, `term`, `carry`).
+  (decision 295). 64-bit atomics on Thumb are `lang.mem.soft`'s `ldrexd`/`strexd` loops
+  (decision 298); `Spec.register_bits` is the widest integer a processor computes (299); on
+  linux.arm the FPU computes `f64`, each double living in its home in the register-less float
+  bank (300). The backend tests run linux.arm through both backends where the toolchain file has
+  a row for it; this machine's needs `clang --target=armv7a-linux-gnueabihf -fuse-ld=lld
+  -nostdlib` plus compiler-rt's Arm builtins archive (the NDK's
+  `libclang_rt.builtins-arm-android.a`; GCC's Linux `libgcc` needs libc's `raise`) and the
+  runner `qemu-arm`. Open: factoring the isel shared by arm64 and Thumb (`call`, `entry`,
+  `term`, `carry`), and the Vun asm checker refusing Armv7-A forms (`Profile::Application`) on an
+  M-profile target.
 - Milestone 3a landed (decision 280): `Rules::{AAPCS, AAPCS_VFP}` (word, stack alignment,
   `returned`, `Floats`, `Split`), backfill in `vun-abi`'s banks, `Loc::Split { parts, rest }` for
   straddling records (handled by the x86-64 and arm64 isel), wide results as `AbiType::Wide`

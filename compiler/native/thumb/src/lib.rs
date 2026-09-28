@@ -16,9 +16,9 @@ mod tests;
 use self::asm::AsmExt;
 use vun_asm_thumb::{Asm, Cc, Emit, Mem, Op, Operand, Reg, Size};
 use vun_codegen::snippet::{Emits, Slot, Step, Width};
-use vun_codegen::{Anchor, Arch, Place, Recompute};
+use vun_codegen::{Anchor, Arch, Bank, Place, Recompute};
 use vun_dwarf::CallFrame;
-use vun_lir::{Address, Cond};
+use vun_lir::{Address, Cond, Scalar};
 use vun_object::{Float, Machine};
 use vun_target::{Convention, TargetSpec};
 
@@ -99,6 +99,12 @@ impl Arch for Thumb2 {
 
     fn jump(code: &mut Asm<Address>, to: vun_asm::Label) {
         code.emit(Op::B, Size::B32, &[to.into()]);
+    }
+
+    /// A double lives in its home, two words no general register holds; everything else,
+    /// singles' bits included, in general registers.
+    fn bank(ty: Scalar) -> Bank {
+        if ty == Scalar::F64 { Bank::Float } else { Bank::General }
     }
 }
 

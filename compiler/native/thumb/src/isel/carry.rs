@@ -15,10 +15,11 @@ use vun_native::width::part;
 const PIECES: [Size; 3] = [Size::B32, Size::B16, Size::B8];
 
 impl Sel<'_, '_> {
-    /// Puts `v` in `carrier`.
+    /// Puts `v` in `carrier`: a double from its home.
     pub(super) fn pass(&mut self, v: Value, carrier: Carrier) {
         match carrier {
             Carrier::Int(r) => self.reg_to(v, r),
+            Carrier::Float(x) if self.homed(v) => self.load_double(x, v),
             Carrier::Float(x) => {
                 self.reg_to(v, Thumb2::CARRIER);
                 self.asm.emit(Op::Vmov, Size::B32, &[x.into(), Thumb2::CARRIER.into()]);
@@ -27,8 +28,13 @@ impl Sel<'_, '_> {
     }
 
     /// Takes the float `v` from the floating-point register `x`, holding it in a general
-    /// register; one passed in a general register is where the plan takes it from.
+    /// register, or a double in its home; one passed in a general register is where the plan
+    /// takes it from.
     pub(super) fn receive_float(&mut self, v: Value, x: V) {
+        if self.homed(v) {
+            self.store_double(v, x);
+            return;
+        }
         let d = self.def(v);
         self.asm.emit(Op::Vmov, Size::B32, &[d.into(), x.into()]);
     }

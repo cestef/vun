@@ -81,6 +81,7 @@ impl<'a, A: Arch> Cx<'a, A> {
         if let (Some(out), Ret::Reg(carrier)) = (result, &passing.ret) {
             let out_at = match carrier {
                 Carrier::Int(r) => Out::Fixed(A::preg(*r)),
+                Carrier::Float(_) if self.homed(out) => Out::Home,
                 Carrier::Float(_) => Out::Reg,
             };
             needs.defs.push((out, out_at));

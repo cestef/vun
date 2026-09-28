@@ -752,9 +752,19 @@ memory through `x8`; narrow integers are extended to 32 bits both ways. The back
 every program on linux.arm64 too, through the runner of the machine's toolchain file (spec 12,
 section 6), and require the same results as on x86-64.
 
+Thumb-2 (decision 293) holds integers and singles' bits in general registers of 32 bits, and a
+double in the float bank (`Arch::bank`), which has no registers: the allocator keeps each value
+of it in its home, two words, never made where used, moved between homes a word at a time; each
+operation on doubles (`Selection::Homed`) loads its operands into `d0` and `d1` (`vldr`),
+computes there (`vadd.f64`, `vcmp.f64`, `vcvt`) and stores its result to its home (`vstr`), or
+into a general register for a single or an integer; calls and the entry pass doubles between
+homes and the convention's `d` registers. A comparison of doubles sets no flags a branch fuses.
+The backend tests run every program on linux.arm too, where the machine's toolchain file names a
+runner for it.
+
 **Legalization.** Each backend declares the widest integer it computes with
-(`BackendCaps::widest`: a number of bits, or `Widest::Address`, the target's address width, which
-the native backend computes with); before it reads a unit, `Legalize::apply` splits every wider
+(`BackendCaps::widest`: a number of bits, or `Widest::Register`, the target's register width,
+which the native backend computes with); before it reads a unit, `Legalize::apply` splits every wider
 integer into limbs of the widest (low first, placed in memory by the target's byte order; an
 `i128` is four limbs on a 32-bit target, decision 292): add and subtract with carries and
 borrows running up the limbs, multiply by products of limbs made whole through half-width

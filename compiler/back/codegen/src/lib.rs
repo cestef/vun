@@ -25,7 +25,7 @@ pub use values::{Anchor, Place, Recompute};
 pub use vun_regalloc::{Bank, Need, Needs, Out, PReg, Read, RegSet, Remade};
 
 use vun_backend::Lack;
-use vun_lir::{Address, Block, Cond, Function, Inst};
+use vun_lir::{Address, Block, Cond, Function, Inst, Scalar};
 use vun_regalloc::PReg as Planned;
 
 /// A function's code as it is emitted.
@@ -79,6 +79,16 @@ pub trait Arch: Sized + 'static {
     /// one is free and made again rather than reloaded.
     fn in_place(what: Recompute, bits: u32) -> bool;
     fn jump(code: &mut Code<Self>, to: vun_asm::Label);
+
+    /// The bank values of type `ty` are held in: the general registers, floats' bits included,
+    /// unless the architecture keeps a float apart in the float bank, which has no registers:
+    /// such a value lives in its home, as wide as the value, each instruction reading it bringing
+    /// it into a register of its own (an `f64` where general registers hold 32 bits).
+    #[must_use]
+    fn bank(ty: Scalar) -> Bank {
+        let _ = ty;
+        Bank::General
+    }
 }
 
 /// The instruction compilers of an architecture: what the framework calls as it walks a

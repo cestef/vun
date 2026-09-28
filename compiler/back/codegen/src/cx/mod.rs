@@ -168,7 +168,9 @@ impl<A: Isel> Cx<'_, A> {
                 if self.f.insts[inst].result.is_some_and(|v| self.values[v].made.is_some()) {
                     continue;
                 }
-                A::lacks(self, inst)?;
+                A::lacks(self, inst).inspect_err(|lack| {
+                    vun_trace::tracing::debug!(inst = %self.f.insts[inst].kind, ?lack, "lacks");
+                })?;
             }
         }
         Ok(())
@@ -206,6 +208,7 @@ impl<A: Isel> Cx<'_, A> {
         self.at = self.f.blocks[block].origin;
         self.marks.push((self.asm.here(), self.at));
         self.enter(last);
+        vun_trace::tracing::trace!(term = %self.f.blocks[block].term, at = self.asm.here(), "terminate");
         A::terminate(self, block)
     }
 

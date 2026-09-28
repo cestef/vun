@@ -4,7 +4,7 @@
 
 use vun_asm::imm::{low64, sign_extend};
 use vun_lir::Value;
-use vun_regalloc::{Loc, Pos, Remade};
+use vun_regalloc::{Bank, Loc, Pos, Remade};
 
 use super::Cx;
 use crate::Arch;
@@ -80,12 +80,14 @@ impl<A: Arch> Cx<'_, A> {
         self.values[v].home = Some(offset);
     }
 
-    /// The offset of `v`'s home, allocated when first needed.
+    /// The offset of `v`'s home, allocated when first needed: a register's bytes, or the value's
+    /// where it is wider, as a value of the float bank may be.
     pub fn home(&mut self, v: Value) -> i32 {
         if let Some(at) = self.values[v].home {
             return at;
         }
-        let at = self.frame.reserve(A::WORD, A::WORD);
+        let bytes = self.home_bytes(v);
+        let at = self.frame.reserve(bytes, bytes);
         self.values[v].home = Some(at);
         at
     }
@@ -164,6 +166,18 @@ impl<A: Arch> Cx<'_, A> {
         let p = *temps.get(self.temps).expect("an instruction takes no more scratch registers than it said");
         self.temps += 1;
         self.reg_of(p)
+    }
+
+    /// The bytes of `v`'s home.
+    #[must_use]
+    pub fn home_bytes(&self, v: Value) -> u64 {
+        self.f.ty(v).bytes(self.unit.pointer_bits).max(A::WORD)
+    }
+
+    /// Whether `v` lives in its home alone, a value of the float bank (`Arch::bank`).
+    #[must_use]
+    pub fn homed(&self, v: Value) -> bool {
+        A::bank(self.f.ty(v)) == Bank::Float
     }
 
     /// The number of uses `v` has.

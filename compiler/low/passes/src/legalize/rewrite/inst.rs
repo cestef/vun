@@ -90,7 +90,8 @@ impl Rewrite<'_> {
         Ok(())
     }
 
-    /// A conversion from or to a wide integer: an extension or truncation over limbs.
+    /// A conversion from or to a wide integer: an extension or truncation over limbs, or the bits
+    /// of a float.
     fn cast(&mut self, op: CastOp, value: Value, to: Scalar, at: OriginId) -> Result<Parts, Unlegalized> {
         let count = self.legalize.limbs(to).map(usize::from);
         Ok(match (op, count) {
@@ -116,8 +117,28 @@ impl Rewrite<'_> {
                     self.b.cast(CastOp::Trunc, low, to, at)
                 })
             }
+            // A float's bits as limbs, or back, through memory: no instruction moves them.
+            (CastOp::Bitcast, Some(count)) => {
+                let float = self.one(value);
+                let addr = self.bits_slot(self.old.ty(value), at);
+                self.b.store(float, addr, Access::Plain, at);
+                Parts::Limbs(self.load_limbs(addr, Access::Plain, count, at))
+            }
+            (CastOp::Bitcast, None) => {
+                let limbs = self.limbs(value);
+                let addr = self.bits_slot(to, at);
+                self.store_limbs(&limbs, addr, Access::Plain, at);
+                Parts::One(self.b.load(to, addr, Access::Plain, at))
+            }
             _ => return Err(Unlegalized::Float),
         })
+    }
+
+    /// The address of a slot holding the bits of a value of `float`.
+    fn bits_slot(&mut self, float: Scalar, at: OriginId) -> Value {
+        let bytes = float.bytes(0);
+        let slot = self.b.slot(bytes, bytes, at);
+        self.b.slot_addr(slot, at)
     }
 
     /// `kind`, on no wide value, over the new values.

@@ -199,6 +199,14 @@ pub(super) const FSET: Snippet<Thumb2> = &[
     Instr::Is(Op::It).step(B32, &[Cond]),
     Instr::Then(Op::Mov).step(B32, &[Out, TRUE]),
 ];
+/// The flags of a `vcmp` made already, moved to the core's and given as a byte: a double's, whose
+/// operands no snippet reads.
+pub(super) const FLAGS_SET: Snippet<Thumb2> = &[
+    Instr::Is(Op::Vmrs).step(B32, &[FLAGS, FPSCR]),
+    Instr::Is(Op::Mov).step(B32, &[Out, FALSE]),
+    Instr::Is(Op::It).step(B32, &[Cond]),
+    Instr::Then(Op::Mov).step(B32, &[Out, TRUE]),
+];
 /// Ordered inequality: less, or greater.
 pub(super) const FNE: Snippet<Thumb2> = &[
     Instr::Is(Op::Vmov).step(B32, &[S0, In(0)]),
