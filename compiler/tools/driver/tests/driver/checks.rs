@@ -193,7 +193,14 @@ fn asm_run(name: &str, target: [&str; 2], backend: &str, source: &str) -> Ran {
         return Ran::Elsewhere;
     }
     let program = session.build(file, None).unwrap_or_else(|_| panic!("{:#?}", session.diag));
-    Ran::Exited(session.command(&program).status().unwrap().code())
+    // A runner the toolchain names but this machine lacks runs nothing either.
+    match session.command(&program).status() {
+        Ok(status) => Ran::Exited(status.code()),
+        Err(why) if why.kind() == std::io::ErrorKind::NotFound && !session.runner.is_empty() => {
+            Ran::Elsewhere
+        }
+        Err(why) => panic!("{why}"),
+    }
 }
 
 /// A program writing 7 through a block of `arch`, `write` with `past` for its offset, `past`
