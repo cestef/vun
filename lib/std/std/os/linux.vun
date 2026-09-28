@@ -1,7 +1,10 @@
 //! Linux.
 
+/// Linux runs static programs through a runtime calling the kernel itself, with no C library.
+runtime: std.os.Runtime = .{ .os = .linux, .abi = .kernel, .start = std.os.linux.kernel.start };
+
 /// Linux with the GNU C library runs programs through the C library's runtime.
-runtime: std.os.Runtime = .{ .os = .linux, .abi = .gnu, .start = std.os.libc.start };
+gnu: std.os.Runtime = .{ .os = .linux, .abi = .gnu, .start = std.os.libc.start };
 
 /// The GNU C library's layout on Linux: 1024-bit signal sets, of which Linux uses the first 64;
 /// memory reserved is `MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE`.

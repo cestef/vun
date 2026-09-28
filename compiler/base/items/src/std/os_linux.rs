@@ -6,8 +6,12 @@
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
 use crate::Item;
-/// Linux with the GNU C library runs programs through the C library's runtime.
+/// The namespace `std.os.linux.kernel`.
+pub const kernel: Item = Item::new(&["std", "os", "linux", "kernel"]);
+/// Linux runs static programs through a runtime calling the kernel itself, with no C library.
 pub const runtime: Item = Item::new(&["std", "os", "linux", "runtime"]);
+/// Linux with the GNU C library runs programs through the C library's runtime.
+pub const gnu: Item = Item::new(&["std", "os", "linux", "gnu"]);
 /// The GNU C library's layout on Linux: 1024-bit signal sets, of which Linux uses the first 64;
 /// memory reserved is `MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE`.
 pub const c: Item = Item::new(&["std", "os", "linux", "c"]);

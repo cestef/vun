@@ -38,7 +38,7 @@ main := (sys: &mut std.os.System) -> std.os.Exit {
 ```
 
 ```vun
-// std/os/linux/start.vun: plain library code
+// std/os/linux/kernel.vun: plain library code, abridged
 start := ($main: (&mut System) -> Exit) -> type { struct {
     #[link.export("_start"), abi.naked]
     entry := () -> never {
@@ -62,21 +62,31 @@ start := ($main: (&mut System) -> Exit) -> type { struct {
 }};
 ```
 
-Linking against a C library instead is another runtime: `std.os.libc.start(main)` exports C `main`
-and lets crt0 do the rest. What each C library lays out its own way (the function giving
+That runtime, `std.os.linux.kernel.start`, calls the kernel itself: every request is a system call
+through a block (`syscall`, `svc 0`), the shadow of the checks of unsafe code is mapped with `mmap`,
+and it exports the four functions of C's `string.h` a freestanding C compiler may call (`memcpy`,
+`memmove`, `memset`, `memcmp`), written in assembly so that no C compiler reads them back as calls
+of themselves. The program is static: linked with `-static -nostartfiles -nolibc`, keeping only the
+C compiler's own library (`libgcc`). Linking against a C library instead is another runtime:
+`std.os.libc.start(main)` exports C `main` and lets crt0 do the rest. What each C library lays out its own way (the function giving
 `errno`, the signal set, the values of `pthread_sigmask`) is a row per system,
 `std.os.libc.System`, which each system's module declares (`std.os.linux.c`); the runtime takes
 the row whose `os` is `lang.target.current.os`.
 
 **Choosing a runtime.** `std.os.start` is not a runtime of its own: it is the `start` of the
 runtime of the target being built for. Each system's namespace declares its row,
-`std.os.Runtime { os, abi, start }` (`std.os.linux.runtime` runs the C library's runtime for
-`linux`/`gnu`, `std.os.wasi.runtime` WASI preview 1's for `wasi`/`p1`), and `std.os.runtime` takes
+`std.os.Runtime { os, abi, start }` (`std.os.linux.runtime` is the kernel runtime for
+`linux`/`kernel`, `std.os.linux.gnu` the C library's for `linux`/`gnu`, `std.os.wasi.runtime` WASI
+preview 1's for `wasi`/`p1`), and `std.os.runtime` takes
 the row matching `lang.target.current`'s system and ABI; a target none matches fails when
 compiling. So no program, and nothing in `std` but a runtime, is tied to a C library: `std.os`
 reaches the system through typed link symbols each runtime exports (`std.os.symbols.write`, beside
-`lang.panic.symbols.trap` and `std.sync.symbols.enter`), and a runtime without one (a Linux one
-calling the kernel, for static programs) is one more row.
+`lang.panic.symbols.trap` and `std.sync.symbols.enter`).
+
+**Linux targets.** `targets.linux.<cpu>` (`linux.x86_64`, `linux.arm64`) builds static programs on
+the kernel runtime, with ABI `kernel`; `targets.linux.gnu.<cpu>` builds programs on the GNU C
+library, with ABI `gnu`, which a program calling C picks. arm64's static target compiles C without
+out-of-line atomics, which ask the C library what the CPU has.
 
 **Exit statuses.** How a program ends is `std.os.Exit`: `ok`, or `code(s)` with `s` a
 `std.os.Status`, `Int(1..=125)`. The range is what every system `std` runs on passes on

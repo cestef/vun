@@ -598,6 +598,10 @@ assembler and its instruction compilers and nothing else:
   and where its calls leave the return address (`CallFrame`); unwinders and profilers walk
   through Vun frames at every instruction.
 - **`vun-regalloc`**: the register allocator (section 8.6), which knows no architecture.
+- **Naked functions** (`#[abi.naked]`, taking and giving nothing): the LIR verifier allows them
+  only blocks without bindings, no slot and no return, and the framework emits their blocks with
+  no prologue, saves or epilogue. What any block names by symbol is reached (`Reached`), so a
+  function only a block calls is kept.
 - **`vun-codegen`**: the framework, which knows no architecture: the plan and its moves, the
   frame, homes, values recomputed where used, the callee-saved registers the plan uses, compare
   and branch fusion, and the snippet encoder with what snippets need. An architecture gives it

@@ -1,0 +1,206 @@
+//! A runtime calling the kernel itself, for static programs without a C library (spec 08,
+//! section 2). `_start` finds the arguments where the kernel puts them, on the stack it starts
+//! the process with, and every request is a system call. The C compiler may call the four
+//! functions of C's `string.h` a freestanding program must provide, so the runtime exports them.
+
+/// The numbers of the system calls the runtime makes, which each architecture assigns its own.
+Numbers := struct {
+    arch: lang.meta.Name,
+    write: usize,
+    mmap: usize,
+    munmap: usize,
+    rt_sigprocmask: usize,
+    sched_yield: usize,
+    gettid: usize,
+    exit_group: usize,
+};
+
+/// The architectures the runtime reaches the kernel from.
+arches := [
+    Numbers{
+        .arch = .x86_64,
+        .write = 1,
+        .mmap = 9,
+        .munmap = 11,
+        .rt_sigprocmask = 14,
+        .sched_yield = 24,
+        .gettid = 186,
+        .exit_group = 231,
+    },
+    Numbers{
+        .arch = .arm64,
+        .write = 64,
+        .mmap = 222,
+        .munmap = 215,
+        .rt_sigprocmask = 135,
+        .sched_yield = 124,
+        .gettid = 178,
+        .exit_group = 94,
+    },
+];
+
+/// The numbers of the architecture `arch`.
+of := ($arch: lang.meta.Name) -> Numbers {
+    $for row in arches {
+        if row.arch == arch { return row; }
+    }
+    lang.panic.fail(.message("the runtime knows no system calls for this architecture"))
+};
+
+/// The numbers of the architecture being built for.
+numbers := of(lang.target.current.arch);
+
+/// A system call: its number and six arguments, which the architecture's instruction takes in
+/// registers. A block loads them from here, binding the one register the address comes in and
+/// the result goes out in, rather than eight.
+#[layout.c]
+Call := struct { number: usize, args: [6]usize };
+
+/// Makes the system call `number` with `args`, returning what the kernel returns: a negative
+/// error number where the call failed.
+#[panic.never]
+call := (number: usize, args: [6]usize) -> isize {
+    request := Call{ .number = number, .args = args };
+    at := std.ptr.to(Call, &request).address();
+    mut result: usize = 0;
+    $if lang.target.current.arch == .x86_64 {
+        unsafe lang.arch.x86_64.asm {
+            mov rdi, [{in(rax) at} + 8]
+            mov rsi, [rax + 16]
+            mov rdx, [rax + 24]
+            mov r10, [rax + 32]
+            mov r8, [rax + 40]
+            mov r9, [rax + 48]
+            mov rax, [rax]
+            syscall
+            mov {out(rax) result}, rax
+        };
+    } else {
+        unsafe lang.arch.arm64.asm {
+            ldr x8, [{in(x0) at}]
+            ldr x1, [x0, 16]
+            ldr x2, [x0, 24]
+            ldr x3, [x0, 32]
+            ldr x4, [x0, 40]
+            ldr x5, [x0, 48]
+            ldr x0, [x0, 8]
+            svc 0
+            mov {out(x0) result}, x0
+        };
+    }
+    result.wrap(isize)
+};
+
+/// `how` for `rt_sigprocmask`: add the set to the mask, or make it the mask.
+block: usize = 0;
+set_mask: usize = 2;
+/// The kernel's signal set: 64 bits, a bit per signal from 1 up.
+Sigset := u64;
+sigset_bytes: usize = 8;
+every_signal: Sigset = 0xffff_ffff_ffff_ffff;
+
+/// `protection` for `mmap` of memory read and written, and `flags` for private memory reserved,
+/// not backed until touched (`MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE`).
+read_write: usize = 3;
+reserve: usize = 0x4022;
+
+/// Private memory of `bytes` reserved, backed only where touched.
+map := (bytes: usize) -> usize {
+    call(numbers.mmap, [0, bytes, read_write, reserve, 0xffff_ffff_ffff_ffff, 0]).wrap(usize)
+};
+
+/// Gives back the `bytes` mapped at `address`.
+unmap := (address: usize, bytes: usize) { call(numbers.munmap, [address, bytes, 0, 0, 0, 0]); };
+
+/// The state of the checks of unsafe code, mapped the first time a check needs it.
+state := () -> std.check.State { std.check.mapped(map, unmap) };
+
+/// Ends the process with `status`.
+end := (status: std.os.Status) -> lang.never {
+    call(numbers.exit_group, [status.to(usize), 0, 0, 0, 0, 0]);
+    unsafe lang.hint.unreachable()
+};
+
+/// The thread holding the critical section, 0 when none: a thread entering it again nests.
+owner: std.sync.Atomic(usize) = .init(0);
+
+/// The exports of a program the kernel starts at `_start`.
+start := ($main: std.os.Main) -> type { struct {
+    /// The kernel enters with the stack pointer at the argument count, without a return address
+    /// and with the stack aligned: the frame pointer is cleared to end the chain of frames, and
+    /// `boot` is called with the stack's address.
+    #[link.export("_start"), abi.naked]
+    entry := () -> lang.never {
+        unsafe {
+            $if lang.target.current.arch == .x86_64 {
+                lang.arch.x86_64.asm {
+                    xor ebp, ebp
+                    mov rdi, rsp
+                    and rsp, -16
+                    call {boot}
+                };
+            } else {
+                lang.arch.arm64.asm {
+                    mov x29, 0
+                    mov x30, 0
+                    mov x0, sp
+                    bl {boot}
+                };
+            }
+            lang.hint.unreachable()
+        }
+    };
+
+    /// The argument count at `stack`, then the arguments' addresses.
+    boot := (stack: *usize) -> lang.never {
+        count := unsafe stack.read();
+        values := unsafe stack.offset(1).cast(*u8);
+        mut sys := unsafe std.os.System.claim(std.os.Args.of(count, values));
+        end(main(&mut sys).status())
+    };
+
+    #[link.export(lang.panic.symbols.trap)]
+    trap := (t: &lang.panic.Trap) -> lang.never { end(std.os.trapped) };
+
+    /// The operations of the checks of unsafe code, for a program built with checks.
+    checks := if lang.check.current.len() > 0 { std.check.exports(state, end) } else { struct {} };
+
+    #[link.export(std.os.symbols.write)]
+    write := (fd: i32, bytes: &[u8]) -> Result(usize, std.os.Error) {
+        address := lang.mem.items_pointer(u8, bytes).address();
+        written := call(numbers.write, [fd.to(usize), address, bytes.len(), 0, 0, 0]);
+        if written < 0 { .err(.number((-written).to(i32))) } else { .ok(written.to(usize)) }
+    };
+
+    /// Blocks the thread's signals, the interrupts of a hosted program, and takes the section
+    /// from other threads.
+    #[link.export(std.sync.symbols.enter), panic.never]
+    enter := () -> std.sync.Mask {
+        all := every_signal;
+        mut old: Sigset = 0;
+        call(numbers.rt_sigprocmask, [block, std.ptr.to(Sigset, &all).address(), std.ptr.to(Sigset, &old).address(), sigset_bytes, 0, 0]);
+        me := call(numbers.gettid, [0, 0, 0, 0, 0, 0]).wrap(usize);
+        outer := owner.load(.acquire) != me;
+        if outer {
+            for owner.compare_swap(0, me, .acquire) != 0 {}
+        }
+        unsafe std.sync.Mask.of(old.wrap(usize), outer)
+    };
+
+    #[link.export(std.sync.symbols.leave), panic.never]
+    leave := (mask: std.sync.Mask) {
+        if mask.outer() {
+            owner.store(0, .release);
+        }
+        set: Sigset = mask.bits().wrap(Sigset);
+        mut old: Sigset = 0;
+        call(numbers.rt_sigprocmask, [set_mask, std.ptr.to(Sigset, &set).address(), std.ptr.to(Sigset, &old).address(), sigset_bytes, 0, 0]);
+    };
+
+    /// Gives the core to other threads: what fires an event runs on one of them, or in a
+    /// signal handler, and nothing is missed between an executor's check and its sleep.
+    #[link.export(std.task.symbols.sleep)]
+    sleep := () { call(numbers.sched_yield, [0, 0, 0, 0, 0, 0]); };
+
+    memory := std.os.linux.kernel.memory.exports;
+} };

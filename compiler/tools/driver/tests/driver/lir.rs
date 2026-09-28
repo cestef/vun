@@ -15,9 +15,12 @@ fn a_hosted_program_lowers_to_lir_that_verifies() {
     let lowered = session.lir(file);
     let unit = lowered.as_ref().as_ref().unwrap();
     assert_eq!(unit.verify(session.origins), Ok(()));
-    let main =
-        unit.functions.iter().find(|(_, f)| matches!(f.linkage, Linkage::Export(s) if s.as_str() == "main"));
-    assert_eq!(main.map(|(_, f)| f.signature.conv), Some(Conv::C));
+    // Linux programs start at the kernel runtime's `_start`, entered as its code.
+    let entry = unit
+        .functions
+        .iter()
+        .find(|(_, f)| matches!(f.linkage, Linkage::Export(s) if s.as_str() == "_start"));
+    assert_eq!(entry.map(|(_, f)| f.signature.conv), Some(Conv::Naked));
 }
 
 #[test]

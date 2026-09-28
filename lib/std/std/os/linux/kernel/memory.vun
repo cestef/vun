@@ -1,0 +1,117 @@
+//! The functions of C's `string.h` a freestanding C program must provide, which a C compiler
+//! calls for copies and fills of its own. Copies and fills are written in assembly: a loop in
+//! Vun would be read back by the C compiler as a call of the function it is.
+
+/// The exports, which a runtime holds: `memory := std.os.linux.kernel.memory.exports`.
+exports := struct {
+    #[link.export("memcpy"), abi.c]
+    copy := (to: *u8, from: *u8, bytes: usize) -> *u8 {
+        forward(to.address(), from.address(), bytes);
+        to
+    };
+
+    /// Copies from the last byte down where `to` overlaps the end of `from`, else up.
+    #[link.export("memmove"), abi.c]
+    move := (to: *u8, from: *u8, bytes: usize) -> *u8 {
+        (t, f) := (to.address(), from.address());
+        if t <= f or t >= f + bytes {
+            forward(t, f, bytes);
+        } else {
+            backward(t, f, bytes);
+        }
+        to
+    };
+
+    #[link.export("memset"), abi.c]
+    fill := (to: *u8, value: i32, bytes: usize) -> *u8 {
+        byte: usize = value.wrap(u8).to(usize);
+        at := to.address();
+        $if lang.target.current.arch == .x86_64 {
+            unsafe lang.arch.x86_64.asm {
+                mov rdi, {in at}
+                mov rax, {in byte}
+                mov rcx, {in bytes}
+                stosb
+            };
+        } else {
+            unsafe lang.arch.arm64.asm {
+                mov x9, {in at}
+                mov x10, {in byte}
+                mov x11, {in bytes}
+                cbz x11, 'end
+                'top:
+                strb w10, [x9], 1
+                subs x11, x11, 1
+                b.ne 'top
+                'end:
+            };
+        }
+        to
+    };
+
+    /// The sign of the first byte that differs, as unsigned bytes, 0 where none does.
+    #[link.export("memcmp"), abi.c]
+    compare := (a: *u8, b: *u8, bytes: usize) -> i32 {
+        mut i: usize = 0;
+        for i < bytes {
+            at := i.to(isize);
+            (x, y) := unsafe (a.offset(at).read(), b.offset(at).read());
+            if x != y {
+                return if x < y { -1 } else { 1 };
+            }
+            i += 1;
+        }
+        0
+    };
+};
+
+/// Copies `bytes` from `from` to `to`, from the first byte up.
+forward := (to: usize, from: usize, bytes: usize) {
+    $if lang.target.current.arch == .x86_64 {
+        unsafe lang.arch.x86_64.asm {
+            mov rdi, {in to}
+            mov rsi, {in from}
+            mov rcx, {in bytes}
+            movsb
+        };
+    } else {
+        unsafe lang.arch.arm64.asm {
+            mov x9, {in to}
+            mov x10, {in from}
+            mov x11, {in bytes}
+            cbz x11, 'end
+            'top:
+            ldrb w12, [x10], 1
+            strb w12, [x9], 1
+            subs x11, x11, 1
+            b.ne 'top
+            'end:
+        };
+    }
+};
+
+/// Copies `bytes`, at least one, from `from` to `to`, from the last byte down.
+backward := (to: usize, from: usize, bytes: usize) {
+    (last_to, last_from) := ((to + bytes - 1).wrap(usize), (from + bytes - 1).wrap(usize));
+    $if lang.target.current.arch == .x86_64 {
+        unsafe lang.arch.x86_64.asm {
+            mov rdi, {in last_to}
+            mov rsi, {in last_from}
+            mov rcx, {in bytes}
+            std
+            movsb
+            cld
+        };
+    } else {
+        unsafe lang.arch.arm64.asm {
+            mov x9, {in last_to}
+            mov x10, {in last_from}
+            mov x11, {in bytes}
+            'top:
+            ldrb w12, [x10], -1
+            strb w12, [x9], -1
+            subs x11, x11, 1
+            b.ne 'top
+        };
+    }
+};

@@ -8,7 +8,7 @@
 hosts := .{
     lang.target.Host{ .arch = .x86_64, .os = .linux, .target = targets.linux.x86_64 },
     lang.target.Host{ .arch = .aarch64, .os = .linux, .target = targets.linux.arm64 },
-    lang.target.Host{ .arch = .riscv64, .os = .linux, .target = targets.linux.riscv64 },
+    lang.target.Host{ .arch = .riscv64, .os = .linux, .target = targets.linux.gnu.riscv64 },
     lang.target.Host{ .arch = .aarch64, .os = .macos, .target = targets.macos.arm64 },
 };
 

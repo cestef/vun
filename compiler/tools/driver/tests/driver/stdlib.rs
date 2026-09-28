@@ -191,7 +191,8 @@ wrong: Int(nothing()..=nothing()) = 4;
 
 #[test]
 fn the_c_library_row_is_the_chosen_systems() {
-    let rows = [(["linux", "x86_64"], "__errno_location"), (["macos", "arm64"], "__error")];
+    let rows: [(&[&str], &str); 2] =
+        [(&["linux", "gnu", "x86_64"], "__errno_location"), (&["macos", "arm64"], "__error")];
     for (target, errno) in rows {
         let fixture = Fixture::new(&format!("std-libc-{}", target[0]));
         let file = fixture.root.write(
@@ -206,7 +207,7 @@ main := (sys: &mut std.os.System) -> std.os.Exit {
 ",
         );
         let mut session = fixture.session();
-        session.choice = Choice::Path(target.map(Symbol::intern).to_vec());
+        session.choice = Choice::Path(target.iter().map(|&n| Symbol::intern(n)).collect());
         let file = session.load(&file).unwrap();
         let lowered = session.lir(file);
         let unit = lowered.as_ref().as_ref().unwrap_or_else(|_| panic!("{target:?}: {:#?}", session.diag));

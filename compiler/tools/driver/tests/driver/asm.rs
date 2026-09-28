@@ -45,7 +45,7 @@ leap := () -> never {
         jmp {finish}
     }
 };
-finish := () -> never { unsafe std.os.libc.exit(7) };
+finish := () -> never { std.os.linux.kernel.end(7) };
 start := std.os.start(main);
 main := (sys: &mut std.os.System) -> std.os.Exit { if sys.args().len() > 1 { leap() } else { hop() } };
 ";

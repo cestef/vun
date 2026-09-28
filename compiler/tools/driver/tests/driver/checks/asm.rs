@@ -43,9 +43,10 @@ main := (sys: &mut std.os.System) -> std.os.Exit {
     assert!(!unchecked.is_empty() && unchecked.iter().all(Option::is_none));
     let (checked, sites) = checks(&[Check::Asm]);
     let exported = |a: vun_lir::Address| matches!(a, vun_lir::Address::Func(_));
-    assert!(!checked.is_empty());
-    for check in &checked {
-        let check = check.expect("each block is checked");
+    // The program's block is checked; the runtime's own, on the paths the checks run on or in a
+    // naked function without a frame, are not.
+    assert!(checked.iter().any(Option::is_some));
+    for check in checked.iter().flatten() {
         assert!((check.site as usize) < sites && exported(check.write) && exported(check.stack));
     }
 }
