@@ -215,8 +215,8 @@ In flight, not in main:
   from its general register into one of the convention's float argument registers
   (`Inline::{floats, moved, load_at, store_at}`), GNU C declares a register variable of the
   float with its class's constraint (`Gnu::{floats, float_name, float_class}`). Thumb's
-  conventions are `vun-abi` rows in `compiler/asm/thumb/src/conventions.rs` (`AapcsVfp`; the soft
-  `aapcs` waits for its `lang.target.Convention`). Then Thumb codegen (a crate `compiler/native/thumb`
+  conventions are `vun-abi` rows in `compiler/asm/thumb/src/conventions.rs` (`AAPCS_VFP`, and the soft `AAPCS`
+  that `bare.cortex_m3` names). Then Thumb codegen (a crate `compiler/native/thumb`
   implementing `Native` and `Inline`, a row of `ARCHES`), LIR halves to limbs by the target's widest integer,
   CPU features (single or double float), a static `linux` Thumb target under `qemu-arm`.
 - Milestone 3a landed (decision 280): `Rules::{AAPCS, AAPCS_VFP}` (word, stack alignment,
@@ -224,8 +224,7 @@ In flight, not in main:
   straddling records (handled by the x86-64 and arm64 isel), wide results as `AbiType::Wide`
   (`Ret::Split` of halves), `Unpassable::Wider` + `Rules::fits` for legalization; clang checks
   `thumbv7em-none-eabihf` and `thumbv7m-none-eabi`. No `Loc::Pair`: a LIR value never spans
-  registers. Open: `lang.target.Convention` gains `aapcs` (soft float) with the Thumb rows;
-  legalize splits a soft `f64` by `Rules::fits`; variadic AAPCS-VFP calls use the base standard
+  registers. Open: legalize splits a soft `f64` by `Rules::fits`; variadic AAPCS-VFP calls use the base standard
   (`Signature` has no variadic flag yet); `Rules` declared in `lang` and generated; a target check
   that the convention's word matches `pointer_bits`. The `abi-3a` workspace is spent.
 - For the user: forget and delete the `regalloc-2f` workspace (`ws-regalloc`, 3.2 GB, content

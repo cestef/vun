@@ -42,6 +42,17 @@ cortex_m4f := _on(
     "arm-none-eabi-ar",
     &["-mcpu=cortex-m4", "-mthumb", "-mfloat-abi=hard", "-mfpu=fpv4-sp-d16"],
 );
+/// ARM Cortex-M3, without a floating-point unit (Thumb-2, soft-float EABI).
+cortex_m3 := _on(
+    .arm,
+    .thumb,
+    .cortex_m3,
+    .eabi,
+    .aapcs,
+    "arm-none-eabi-gcc",
+    "arm-none-eabi-ar",
+    &["-mcpu=cortex-m3", "-mthumb", "-mfloat-abi=soft"],
+);
 /// 32-bit RISC-V with multiplication and compressed instructions (RV32IMC).
 rv32imc := _on(
     .riscv32,

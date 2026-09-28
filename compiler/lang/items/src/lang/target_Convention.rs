@@ -18,6 +18,8 @@ pub const darwin_arm64: Item = Item::new(
 pub const lp64d: Item = Item::new(&["lang", "target", "Convention", "lp64d"]);
 /// The procedure call standard for 32-bit ARM, floats in VFP registers (hard-float EABI).
 pub const aapcs_vfp: Item = Item::new(&["lang", "target", "Convention", "aapcs_vfp"]);
+/// The procedure call standard for 32-bit ARM, floats in general registers (soft-float EABI).
+pub const aapcs: Item = Item::new(&["lang", "target", "Convention", "aapcs"]);
 /// The RISC-V convention for 32-bit integers, floats in general registers.
 pub const ilp32: Item = Item::new(&["lang", "target", "Convention", "ilp32"]);
 /// The C convention of `wasm32`, as clang follows it.

@@ -45,6 +45,13 @@ pub const AAPCS_VFP: Convention<Reg, V> = Convention {
     },
 };
 
+/// AAPCS's base standard: floats travel in general registers, so none is passed in a
+/// floating-point one.
+pub const AAPCS: Convention<Reg, V> = Convention {
+    rules: &Rules::AAPCS,
+    registers: Registers { float_args: &[], float_results: &[], ..AAPCS_VFP.registers },
+};
+
 /// The conventions Thumb code follows, by the name targets give them.
 pub const CONVENTIONS: &[(vun_target::Convention, &Convention<Reg, V>)] =
-    &[(vun_target::Convention::AapcsVfp, &AAPCS_VFP)];
+    &[(vun_target::Convention::AapcsVfp, &AAPCS_VFP), (vun_target::Convention::Aapcs, &AAPCS)];

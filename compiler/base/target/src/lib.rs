@@ -64,6 +64,7 @@ pub enum Convention {
     DarwinArm64,
     Lp64d,
     AapcsVfp,
+    Aapcs,
     Ilp32,
     Wasm32,
 }

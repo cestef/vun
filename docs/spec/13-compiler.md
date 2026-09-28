@@ -828,8 +828,8 @@ rules (proposed, decision 256).
   then on the stack, records by address and a result in memory through an address passed last;
   a wide integer as the C convention of the target passes one.
 - **Chosen by the target.** Each target description states its convention, a
-  `lang.target.Convention` (`sysv`, `aapcs64`, `darwin_arm64`, `lp64d`, `aapcs_vfp`, `ilp32`,
-  `wasm32`), so no backend matches a target's ABI by name; an architecture lists the conventions
+  `lang.target.Convention` (`sysv`, `aapcs64`, `darwin_arm64`, `lp64d`, `aapcs_vfp`, `aapcs`,
+  `ilp32`, `wasm32`), so no backend matches a target's ABI by name; an architecture lists the conventions
   it follows, and a target naming another is refused (`backend.lacks`).
 - **Checked against clang.** For each built convention, a C function per argument returning it
   is compiled by clang for the target, and the register or stack slot its code reads the

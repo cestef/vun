@@ -94,6 +94,7 @@ impl Variants for Convention {
         (convention::darwin_arm64, Self::DarwinArm64),
         (convention::lp64d, Self::Lp64d),
         (convention::aapcs_vfp, Self::AapcsVfp),
+        (convention::aapcs, Self::Aapcs),
         (convention::ilp32, Self::Ilp32),
         (convention::wasm32, Self::Wasm32),
     ];

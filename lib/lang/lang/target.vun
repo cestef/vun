@@ -73,6 +73,8 @@ Convention := enum {
     lp64d,
     /// The procedure call standard for 32-bit ARM, floats in VFP registers (hard-float EABI).
     aapcs_vfp,
+    /// The procedure call standard for 32-bit ARM, floats in general registers (soft-float EABI).
+    aapcs,
     /// The RISC-V convention for 32-bit integers, floats in general registers.
     ilp32,
     /// The C convention of `wasm32`, as clang follows it.
