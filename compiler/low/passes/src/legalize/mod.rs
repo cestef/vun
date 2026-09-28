@@ -154,7 +154,12 @@ impl Legalize {
             ref other => promoted(other.clone()),
         };
         let result = signature.result.as_ref().map(split);
-        Ok(Signature { conv: signature.conv, params: signature.params.iter().map(split).collect(), result })
+        Ok(Signature {
+            conv: signature.conv,
+            params: signature.params.iter().map(split).collect(),
+            result,
+            variadic: signature.variadic,
+        })
     }
 
     /// Splits every integer of `unit` twice as wide as `self.widest` into halves; see the module.

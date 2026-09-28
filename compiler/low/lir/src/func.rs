@@ -105,6 +105,9 @@ pub struct Signature {
     /// The result; one in memory is written through the address the body receives after its
     /// parameters, and callers pass.
     pub result: Option<AbiType>,
+    /// Under the C convention, the parameter the variadic arguments start at (C's `...`); the
+    /// function is an import declared at the arity its callers use.
+    pub variadic: Option<usize>,
 }
 
 impl Signature {
@@ -130,6 +133,13 @@ impl Signature {
             AbiType::Int(s, _) | AbiType::Wide { half: s, .. } => s.is_int(),
             AbiType::Address(_) | AbiType::Record(_) | AbiType::Memory { .. } => true,
         })
+    }
+
+    /// Whether it marks variadic arguments only as C passes them: under the C convention, from
+    /// one of its parameters.
+    #[must_use]
+    pub fn variadic_well_formed(&self) -> bool {
+        self.variadic.is_none_or(|fixed| self.conv == Conv::C && fixed <= self.params.len())
     }
 
     /// Whether the result is written through an address rather than returned as one value: a

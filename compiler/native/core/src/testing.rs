@@ -33,7 +33,7 @@ pub fn compile<A: Native>(
     let origins = OriginTable::new();
     let origin = origins.source(Span::new(SourceFiles::new().add("a.vun", "n"), 0, 1));
     let int = AbiType::Int(Scalar::I64, Ext::Sign);
-    let signature = Signature { conv: Conv::C, params: vec![int.clone()], result: Some(int) };
+    let signature = Signature { conv: Conv::C, params: vec![int.clone()], result: Some(int), variadic: None };
     let mut b = Builder::new(Linkage::Export(Symbol::intern("f")), signature, origin);
     let n = b.params(b.current())[0];
     build(&mut b, n, origin);

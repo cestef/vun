@@ -56,6 +56,9 @@ pub enum Reason {
     Return,
     /// A signature passing an integer without how it extends, or anything else with it.
     Passing,
+    /// A signature marking variadic arguments outside the C convention or past its parameters,
+    /// or a function with a body taking them.
+    Variadic,
     /// An offset leaving the object its base points into, `at` bytes into an object of `size`.
     OutOfBounds {
         size: u64,

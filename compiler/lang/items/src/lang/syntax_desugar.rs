@@ -24,7 +24,8 @@ pub const prefix_operators: Item = Item::new(
 pub const Form: Item = Item::new(&["lang", "syntax", "desugar", "Form"]);
 /// The item each form means.
 pub const forms: Item = Item::new(&["lang", "syntax", "desugar", "forms"]);
-/// Prefix operators on types (appendix B): `?T` is `lang.Option(T)`, `*T` is `lang.mem.Ptr(T)`.
+/// Prefix operators on types (appendix B): `?T` is `lang.Option(T)`, `*T` is `lang.mem.Ptr(T)`,
+/// `..P` is `lang.Pack(P)`.
 pub const type_prefixes: Item = Item::new(
     &["lang", "syntax", "desugar", "type_prefixes"],
 );

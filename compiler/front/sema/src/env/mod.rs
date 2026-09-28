@@ -193,6 +193,13 @@ impl<'a, 'db> Env<'a, 'db> {
         self.types.as_ref()?.types.get(&expr).map(|k| k.ty)
     }
 
+    /// Where the written arguments the call `expr` gathers into its callee's pack start, as
+    /// typing found it.
+    #[must_use]
+    pub fn pack(&self, expr: ExprId) -> Option<usize> {
+        self.types.as_ref().and_then(|t| t.packs.get(&expr)).copied()
+    }
+
     /// The `$` arguments the call `expr` leaves out, by parameter, as typing inferred them.
     #[must_use]
     pub fn inferred(&self, expr: ExprId) -> &[(usize, Value)] {

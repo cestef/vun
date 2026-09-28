@@ -55,6 +55,9 @@ impl Typer<'_, '_, '_> {
         if let Some(inferred) = applied.inferred {
             self.found.inferred.insert(call, inferred);
         }
+        if let Some(pack) = applied.pack {
+            self.found.packs.insert(call, pack);
+        }
         Some(applied.known)
     }
 

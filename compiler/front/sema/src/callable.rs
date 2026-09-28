@@ -5,6 +5,7 @@
 
 use vun_codec::{Decode, Encode};
 use vun_desugar::{Borrow, MARKERS};
+use vun_grammar::TokenKind;
 use vun_hir::tree::{BinderId, Entry, ExprId, ExprKind, Param, PatKind};
 use vun_query::Cx;
 
@@ -67,6 +68,12 @@ impl Callable {
                 Some(Written { env, expr })
             }
         }
+    }
+
+    /// The parameter gathering the arguments after the others: see [`Written::pack`].
+    #[must_use]
+    pub fn pack(&self, env: &Env<'_, '_>) -> Option<usize> {
+        self.written(env)?.pack()
     }
 
     /// Whether each parameter is a `$` parameter, known at compile time.
@@ -135,7 +142,7 @@ impl Written<'_, '_> {
             .map(|p| match p {
                 Entry::One(Param { pat, ty, .. }) => {
                     let binder = pat.and_then(|p| match hir.pats[p].kind {
-                        PatKind::Bind(b) => Some(b),
+                        PatKind::Bind(b) | PatKind::Rest(Some(b)) => Some(b),
                         _ => None,
                     });
                     Some((binder, *ty))
@@ -143,6 +150,25 @@ impl Written<'_, '_> {
                 Entry::Staged(_) => None,
             })
             .collect()
+    }
+
+    /// The parameter gathering the arguments after the others, when it has one: the last, a
+    /// rest pattern `..args: P` in a function literal, `..P` in a function type.
+    #[must_use]
+    pub fn pack(&self) -> Option<usize> {
+        let hir = &self.env.parsed.hir;
+        let (ExprKind::Fn { params, .. } | ExprKind::FnType { params, .. }) = &hir.exprs[self.expr].kind
+        else {
+            return None;
+        };
+        let last = params.len().checked_sub(1)?;
+        let Some(Entry::One(Param { pat, ty, .. })) = params.iter().last() else { return None };
+        let packed = match (pat, ty) {
+            (Some(p), _) => matches!(hir.pats[*p].kind, PatKind::Rest(_)),
+            (None, Some(t)) => matches!(hir.exprs[*t].kind, ExprKind::Prefix { op: TokenKind::DotDot, .. }),
+            (None, None) => false,
+        };
+        packed.then_some(last)
     }
 
     /// Whether each parameter is a `$` parameter, known at compile time.

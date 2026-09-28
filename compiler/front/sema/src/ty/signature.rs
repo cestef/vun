@@ -108,6 +108,27 @@ impl TyKind {
         }
     }
 
+    /// The item types of a tuple type.
+    #[must_use]
+    pub fn as_tuple(&self) -> Option<&[Ty]> {
+        match self {
+            Self::Tuple(items) => Some(items),
+            _ => None,
+        }
+    }
+
+    /// The tuple of the types of the arguments a pack gathers: `P` of `lang.Pack(P)`.
+    #[must_use]
+    pub fn packed(&self) -> Option<Ty> {
+        match self {
+            Self::Primitive(Primitive::Lang(Lang::Pack), args) => match args.as_slice() {
+                [Value::Type(items)] => Some(*items),
+                _ => None,
+            },
+            _ => None,
+        }
+    }
+
     /// `()`, the empty tuple: the result of a function written without one.
     #[must_use]
     pub fn unit() -> Ty {

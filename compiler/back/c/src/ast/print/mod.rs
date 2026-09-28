@@ -92,9 +92,9 @@ impl Printer<'_, '_, '_> {
     fn right(&mut self, ty: &Ty) -> fmt::Result {
         match ty {
             Ty::Volatile(ty) | Ty::Restrict(ty) | Ty::Pointer(ty) => self.right(ty),
-            Ty::Function { result, params } => {
+            Ty::Function { result, params, variadic } => {
                 self.f.write_char(')')?;
-                self.params(params.iter(), Self::ty)?;
+                self.declared(params.iter(), Self::ty, *variadic)?;
                 self.right(result)
             }
             _ => Ok(()),
@@ -110,6 +110,25 @@ impl Printer<'_, '_, '_> {
     /// The space between `ty`'s left part and what follows it, unless it ends in `*` or `(*`.
     fn gap(&mut self, ty: &Ty) -> fmt::Result {
         if matches!(ty, Ty::Pointer(_) | Ty::Function { .. }) { Ok(()) } else { self.f.write_char(' ') }
+    }
+
+    /// A function's parameters as declared: `(a, b)`, `(a, b, ...)` when `variadic`, or
+    /// `(void)` for none.
+    fn declared<T>(
+        &mut self,
+        items: impl ExactSizeIterator<Item = T>,
+        mut each: impl FnMut(&mut Self, T) -> fmt::Result,
+        variadic: bool,
+    ) -> fmt::Result {
+        if !variadic {
+            return self.params(items, each);
+        }
+        self.f.write_char('(')?;
+        for item in items {
+            each(self, item)?;
+            self.f.write_str(", ")?;
+        }
+        self.f.write_str("...)")
     }
 
     /// `(a, b)`, or `(void)` for none.
@@ -178,7 +197,7 @@ impl Printer<'_, '_, '_> {
     fn proto(&mut self, proto: &Proto) -> fmt::Result {
         self.storage(proto.storage)?;
         self.decl(&Decl::new(proto.result.clone(), proto.name))?;
-        self.params(proto.params.iter(), Self::decl)
+        self.declared(proto.params.iter(), Self::decl, proto.variadic)
     }
 
     fn item(&mut self, item: &Item) -> fmt::Result {

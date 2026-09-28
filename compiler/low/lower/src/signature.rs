@@ -50,10 +50,17 @@ impl Lowering<'_, '_> {
     /// (`None`): the frame's address, which nothing else reaches while it runs.
     pub(crate) fn frame_signature(&self, step: Option<Ty>, at: OriginId) -> Result<Signature, Unlowered> {
         let result = step.map(|step| self.passed(step, Conv::Vun, at)).transpose()?.flatten();
-        Ok(Signature { conv: Conv::Vun, params: vec![AbiType::Address(Alias::Exclusive)], result })
+        Ok(Signature {
+            conv: Conv::Vun,
+            params: vec![AbiType::Address(Alias::Exclusive)],
+            result,
+            variadic: None,
+        })
     }
 
     /// The LIR signature of parameters of the types `params`, their result of type `result`.
+    /// A pack passes the tuple of its arguments; under the C convention, each of its items as a
+    /// variadic argument of C.
     pub(crate) fn signature(
         &self,
         params: &[Ty],
@@ -66,11 +73,20 @@ impl Lowering<'_, '_> {
             Some(Abi::naked) => Conv::Naked,
             _ => Conv::Vun,
         };
-        let passed = |ty: Ty| self.passed(ty, conv, at);
-        let params =
-            params.iter().map(|&p| passed(p)).collect::<Result<Vec<_>, _>>()?.into_iter().flatten().collect();
-        let result = passed(result)?;
-        Ok(Signature { conv, params, result })
+        let (mut passed, mut variadic) = (Vec::new(), None);
+        for &param in params {
+            match param.packed() {
+                Some(items) if conv == Conv::C => {
+                    variadic = Some(passed.len());
+                    for item in self.types.parts(items).ok_or(Unlowered::unsupported(at, Form::Callee))? {
+                        passed.extend(self.passed(item, conv, at)?);
+                    }
+                }
+                packed => passed.extend(self.passed(packed.unwrap_or(param), conv, at)?),
+            }
+        }
+        let result = self.passed(result, conv, at)?;
+        Ok(Signature { conv, params: passed, result, variadic })
     }
 }
 

@@ -17,7 +17,7 @@ use crate::emit::Emitter;
 fn calling(origin: OriginId) -> Unit {
     use vun_asm_x86_64::{Op, Size};
     use vun_inline::{Block, FormId, Inst, OpId, Operand, SizeId};
-    let signature = Signature { conv: Conv::Naked, params: Vec::new(), result: None };
+    let signature = Signature { conv: Conv::Naked, params: Vec::new(), result: None, variadic: None };
     let mut b = Builder::new(Linkage::Export(Symbol::intern("start")), signature, origin);
     let index =
         |all: &[Op], op| u16::try_from(all.iter().position(|&o| o == op).expect("call")).expect("few");

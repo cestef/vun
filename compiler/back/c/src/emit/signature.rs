@@ -15,7 +15,23 @@ use vun_backend::{Lack, Missing};
 /// A signature as C passes it.
 pub(super) struct CSignature {
     pub(super) result: Ty,
+    /// The type of each argument, variadic ones included.
     pub(super) params: Vec<Ty>,
+    /// The parameter the variadic arguments start at, if any.
+    pub(super) variadic: Option<usize>,
+}
+
+impl CSignature {
+    /// The types of the parameters it declares, before any variadic ones.
+    pub(super) fn declared(&self) -> &[Ty] {
+        &self.params[..self.variadic.unwrap_or(self.params.len())]
+    }
+
+    /// A pointer to a function of this signature.
+    pub(super) fn pointer(&self) -> Ty {
+        let (result, params) = (Box::new(self.result.clone()), self.declared().to_vec());
+        Ty::Function { result, params, variadic: self.variadic.is_some() }
+    }
 }
 
 /// A value C declares as a signed integer, where Vun holds its bits unsigned: converted each
@@ -88,7 +104,7 @@ impl Emitter<'_> {
             }
             Some(result) => self.abi(conv, result, at)?,
         };
-        Ok(CSignature { result, params })
+        Ok(CSignature { result, params, variadic: signature.variadic })
     }
 
     /// A declaration of a function named `name`, its parameters named by position.
@@ -100,7 +116,8 @@ impl Emitter<'_> {
         at: OriginId,
     ) -> Result<Proto, Lack> {
         let c = self.signature(signature, at)?;
-        let params = c.params.into_iter().enumerate().map(|(i, ty)| Decl::new(ty, Ident::param(i))).collect();
-        Ok(Proto { storage, result: c.result, name, params })
+        let params = c.declared().iter().enumerate().map(|(i, ty)| Decl::new(ty.clone(), Ident::param(i)));
+        let (params, variadic) = (params.collect(), c.variadic.is_some());
+        Ok(Proto { storage, result: c.result, name, params, variadic })
     }
 }

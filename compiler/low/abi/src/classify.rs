@@ -4,7 +4,7 @@ use vun_lir::{AbiType, Conv, Record, Signature};
 
 use crate::free::Free;
 use crate::record::{Class, Piece};
-use crate::{Carrier, Convention, Large, Loc, Part, Passing, Ret, Rules, Unpassable};
+use crate::{Carrier, Convention, Large, Loc, Part, Passing, Ret, Rules, Unpassable, Variadic};
 
 impl<I: Copy, F: Copy> Passing<Carrier<I, F>> {
     /// Where a call of `signature` under `convention` passes its values and gets its result. The
@@ -28,7 +28,8 @@ impl<I: Copy, F: Copy> Passing<Carrier<I, F>> {
             }
             Conv::Naked => return Err(Unpassable::Naked),
         };
-        let (rules, registers) = (convention.rules, &convention.registers);
+        let rules = &convention.rules.calling(signature);
+        let registers = &convention.registers;
         let bits = rules.pointer_bits();
         let mut results = Free::new(rules, registers.int_results, registers.float_results, false);
         let ret = match &signature.result {
@@ -60,7 +61,10 @@ impl<I: Copy, F: Copy> Passing<Carrier<I, F>> {
             _ => None,
         };
         let mut params = Vec::new();
-        for param in &signature.params {
+        for (i, param) in signature.params.iter().enumerate() {
+            if signature.variadic == Some(i) && rules.variadic == Variadic::Stack {
+                free.spill();
+            }
             let loc = match param {
                 AbiType::Wide { half, .. } => {
                     params.extend(free.wide(half.bytes(bits)));

@@ -1,10 +1,11 @@
 //! Moving values between places of related types: an integer into a wider or narrower storage
 //! of a range holding it, a borrow of an array into a borrow of a slice, a borrow into one of
-//! another mode, and a variant into an enum of the same constructor laid out apart
-//! (`Result(never, E)` into `Result(u64, E)`).
+//! another mode, a variant into an enum of the same constructor laid out apart
+//! (`Result(never, E)` into `Result(u64, E)`), and arrays and tuples item by item.
 
 use vun_lir::{Access, Cond, Scalar, Target, Terminator, Value};
 use vun_mir::Operand;
+use vun_sema::layout::Parts;
 use vun_sema::member::Members;
 use vun_sema::ty::{Ty, TyKind};
 
@@ -84,6 +85,21 @@ impl FnLower<'_, '_, '_> {
                 let (at_a, at_b) = (this.scaled(src, i, sa), this.scaled(dest, i, sb));
                 this.convert(at_a, a, at_b, b)
             });
+        }
+        // Tuples of as many items, item by item.
+        if let (Some(a), Some(b)) = (from.as_tuple(), to.as_tuple())
+            && a.len() == b.len()
+        {
+            let (a, b) = (a.to_vec(), b.to_vec());
+            let (sa, sb) = (types.shape(from, self.at)?, types.shape(to, self.at)?);
+            let (Parts::Sequence(oa), Parts::Sequence(ob)) = (&sa.parts, &sb.parts) else {
+                return Err(Unlowered::unsupported(self.at, Form::Conversion));
+            };
+            for (((&a, &b), &oa), &ob) in a.iter().zip(&b).zip(oa).zip(ob) {
+                let (at_a, at_b) = (self.at_offset(src, oa), self.at_offset(dest, ob));
+                self.convert(at_a, a, at_b, b)?;
+            }
+            return Ok(());
         }
         if let (TyKind::Nominal(a), TyKind::Nominal(b)) = (&*from, &*to)
             && a.literal == b.literal

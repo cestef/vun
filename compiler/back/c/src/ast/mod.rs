@@ -242,6 +242,8 @@ pub struct Proto {
     pub result: Ty,
     pub name: Ident,
     pub params: Vec<Decl>,
+    /// Whether it takes variadic arguments after `params` (`...`).
+    pub variadic: bool,
 }
 
 /// What GNU C says of a function or an object beyond what C99 does (`__attribute__`).

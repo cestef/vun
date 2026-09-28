@@ -14,6 +14,9 @@ pub enum Lang {
     /// The type of functions from a tuple of `params` to `result`: `(A, B) -> R` is
     /// `Fn((A, B), R)` (appendix B).
     Fn,
+    /// The type of a function's last parameter when it gathers the arguments after the others into
+    /// a tuple of the types `items`: `(A, ..P) -> R` is `Fn((A, Pack(P)), R)` (spec 01, section 4).
+    Pack,
     /// The IEEE 754 binary floats of `bits` bits: 16, 32 or 64 (spec 04, section 2).
     Float,
     Interface,
@@ -34,6 +37,7 @@ impl Lang {
         Self::Range,
         Self::Bounds,
         Self::Fn,
+        Self::Pack,
         Self::Float,
         Self::Interface,
         Self::interface,
@@ -49,6 +53,7 @@ impl Lang {
             Self::Range => "Range",
             Self::Bounds => "Bounds",
             Self::Fn => "Fn",
+            Self::Pack => "Pack",
             Self::Float => "Float",
             Self::Interface => "Interface",
             Self::interface => "interface",
@@ -65,6 +70,7 @@ impl Lang {
             Self::Range => vun_items::lang::Range,
             Self::Bounds => vun_items::lang::Bounds,
             Self::Fn => vun_items::lang::Fn,
+            Self::Pack => vun_items::lang::Pack,
             Self::Float => vun_items::lang::Float,
             Self::Interface => vun_items::lang::Interface,
             Self::interface => vun_items::lang::interface,

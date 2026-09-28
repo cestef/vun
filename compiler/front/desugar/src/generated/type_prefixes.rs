@@ -17,7 +17,8 @@ pub struct TypePrefixesRow {
     pub token: TokenKind,
     pub item: vun_items::Item,
 }
-/// Prefix operators on types (appendix B): `?T` is `lang.Option(T)`, `*T` is `lang.mem.Ptr(T)`.
+/// Prefix operators on types (appendix B): `?T` is `lang.Option(T)`, `*T` is `lang.mem.Ptr(T)`,
+/// `..P` is `lang.Pack(P)`.
 pub const TYPE_PREFIXES: &[TypePrefixesRow] = &[
     TypePrefixesRow {
         token: TokenKind::Question,
@@ -26,5 +27,9 @@ pub const TYPE_PREFIXES: &[TypePrefixesRow] = &[
     TypePrefixesRow {
         token: TokenKind::Star,
         item: vun_items::lang::mem::Ptr,
+    },
+    TypePrefixesRow {
+        token: TokenKind::DotDot,
+        item: vun_items::lang::Pack,
     },
 ];

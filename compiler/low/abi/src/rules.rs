@@ -95,12 +95,20 @@ pub enum Stack {
     Packed,
 }
 
-/// What a call to a variadic function states.
+/// How a call of a C function passes its variadic arguments (`...`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Variadic {
-    Nothing,
-    /// How many floating-point registers carry arguments (System V's `al`).
+    /// As fixed ones (AAPCS64).
+    Fixed,
+    /// As fixed ones, the call stating how many floating-point registers carry arguments
+    /// (System V's `al`).
     FloatCount,
+    /// Each on the stack in the words it takes, whatever registers are left (Apple's arm64
+    /// variant).
+    Stack,
+    /// As the base standard passes them, fixed arguments and result too: floats in general
+    /// registers (AAPCS, section 6.5).
+    Core,
 }
 
 impl Rules {
@@ -120,6 +128,16 @@ impl Rules {
         variadic: Variadic::FloatCount,
     };
 
+    /// The rules a call of `signature` follows: a variadic one under [`Variadic::Core`] passes
+    /// as the base standard does.
+    #[must_use]
+    pub fn calling(&self, signature: &vun_lir::Signature) -> Self {
+        match (signature.variadic, self.variadic) {
+            (Some(_), Variadic::Core) => Self { floats: Floats::Core, ..*self },
+            _ => *self,
+        }
+    }
+
     /// The procedure call standard for arm64 (AAPCS64).
     pub const AAPCS64: Self = Self {
         word: 8,
@@ -133,12 +151,13 @@ impl Rules {
         floats: Floats::Next,
         split: Split::Never,
         stack: Stack::Words,
-        variadic: Variadic::Nothing,
+        variadic: Variadic::Fixed,
     };
 
-    /// Apple's variant of AAPCS64, on macOS and iOS: a C call's scalars packed on the stack, and
-    /// a value of two words in any two general registers.
-    pub const DARWIN_ARM64: Self = Self { stack: Stack::Packed, pair: Pair::Any, ..Self::AAPCS64 };
+    /// Apple's variant of AAPCS64, on macOS and iOS: a C call's scalars packed on the stack, a
+    /// value of two words in any two general registers, and variadic arguments on the stack.
+    pub const DARWIN_ARM64: Self =
+        Self { stack: Stack::Packed, pair: Pair::Any, variadic: Variadic::Stack, ..Self::AAPCS64 };
 
     /// The procedure call standard for 32-bit Arm with floats in VFP registers (AAPCS, section
     /// 6.5, the hard-float EABI): a record of any size travels in words, in registers then on the
@@ -155,7 +174,7 @@ impl Rules {
         floats: Floats::Backfill,
         split: Split::WhileStackEmpty,
         stack: Stack::Words,
-        variadic: Variadic::Nothing,
+        variadic: Variadic::Core,
     };
 
     /// AAPCS's base standard, floats in general registers (the soft-float EABI).

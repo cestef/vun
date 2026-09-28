@@ -38,10 +38,12 @@ pub enum Ty {
     Restrict(Box<Ty>),
     Struct(Ident),
     Union(Ident),
-    /// A pointer to a function taking `params` and giving `result`.
+    /// A pointer to a function taking `params`, and variadic arguments after them when
+    /// `variadic`, and giving `result`.
     Function {
         result: Box<Ty>,
         params: Vec<Ty>,
+        variadic: bool,
     },
 }
 
@@ -89,7 +91,7 @@ impl Ty {
     /// `void (*)(void)`: a function's address held in data.
     #[must_use]
     pub fn code() -> Self {
-        Self::Function { result: Box::new(Self::Void), params: Vec::new() }
+        Self::Function { result: Box::new(Self::Void), params: Vec::new(), variadic: false }
     }
 }
 

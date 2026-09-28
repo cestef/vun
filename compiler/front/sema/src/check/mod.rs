@@ -8,6 +8,7 @@ mod impls;
 mod layout;
 mod link;
 mod members;
+mod pack;
 mod placed;
 mod visible;
 
@@ -85,6 +86,7 @@ impl Visitor for Checker<'_, '_, '_> {
                 self.frozen(hir, *d);
                 self.layout(hir, *d);
                 self.c_layout(hir, *d);
+                self.pack(hir, *d);
                 let key = (DeclRef::new(self.env.file.clone(), hir, *d), None, Vec::new());
                 if let Some(typed) = self.env.cx.get::<TypedDecl>(&key) {
                     self.diag.absorb(&typed.diag);

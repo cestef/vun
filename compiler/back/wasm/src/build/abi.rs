@@ -70,6 +70,10 @@ impl Passing {
         if signature.conv == Conv::Naked {
             return Err(Missing::Naked);
         }
+        // Clang passes variadic arguments in a buffer the caller fills, which calls do not build.
+        if signature.variadic.is_some() {
+            return Err(Missing::Variadic);
+        }
         let mut parts = Vec::new();
         for p in &signature.params {
             match p {

@@ -2,6 +2,8 @@
 //! parameter may be omitted, all such parameters or none, and is inferred by matching the types
 //! of the arguments against the types the parameters are declared with.
 
+mod plan;
+
 use std::collections::{BTreeMap, BTreeSet};
 
 use vun_desugar::{Form, TYPE_PREFIXES};
@@ -15,54 +17,7 @@ use crate::callable::Callable;
 use crate::env::Env;
 use crate::ty::{Nominal, Ty, TyKind, Value};
 
-/// Which parameter each written argument of a call is for.
-pub(crate) struct Plan {
-    /// The parameter of each written argument, the receiver's first.
-    pub(crate) slots: Vec<usize>,
-    /// The `$` parameters left out, to infer.
-    pub(crate) omitted: Vec<usize>,
-}
-
-impl Plan {
-    /// How `written` arguments, the receiver included, go to the parameters of `f`: one each,
-    /// or one each but for every `$` parameter a later parameter's type names.
-    pub(crate) fn of(env: &Env<'_, '_>, f: &Callable, written: usize) -> Option<Self> {
-        let inferable = Self::inferable(env, f)?;
-        if written == inferable.len() {
-            return Some(Self { slots: (0..written).collect(), omitted: Vec::new() });
-        }
-        let omitted: Vec<usize> = (0..inferable.len()).filter(|&i| inferable[i]).collect();
-        let slots: Vec<usize> = (0..inferable.len()).filter(|&i| !inferable[i]).collect();
-        (!omitted.is_empty() && slots.len() == written).then_some(Self { slots, omitted })
-    }
-
-    /// The argument counts a call of `f` may pass, the receiver included: every parameter, or
-    /// every one but the inferable `$` parameters when there are some.
-    pub(crate) fn counts(env: &Env<'_, '_>, f: &Callable) -> Vec<usize> {
-        let Some(inferable) = Self::inferable(env, f) else { return Vec::new() };
-        let without = inferable.iter().filter(|&&i| !i).count();
-        if without == inferable.len() { vec![inferable.len()] } else { vec![inferable.len(), without] }
-    }
-
-    /// Whether each parameter of `f` is a `$` parameter named in a later parameter's type.
-    fn inferable(env: &Env<'_, '_>, f: &Callable) -> Option<Vec<bool>> {
-        let written = f.written(env)?;
-        let inside = &written.env;
-        let hir = &inside.parsed.hir;
-        let params = written.params()?;
-        Some(
-            params
-                .iter()
-                .enumerate()
-                .map(|(i, (binder, _))| {
-                    binder.filter(|&b| hir.binders[b].comptime).is_some_and(|b| {
-                        params[i + 1..].iter().any(|(_, ty)| ty.is_some_and(|t| Named::names(inside, t, b)))
-                    })
-                })
-                .collect(),
-        )
-    }
-}
+pub(crate) use plan::Plan;
 
 /// Whether a type annotation names a binder.
 struct Named<'e, 'a, 'db> {
@@ -109,9 +64,9 @@ impl Unifier<'_, '_, '_> {
         let params = written.params()?;
         let wanted = plan.omitted.iter().filter_map(|&i| params[i].0).collect();
         let mut unifier = Unifier { env: &written.env, wanted, bound: BTreeMap::new() };
-        for (&slot, arg) in plan.slots.iter().zip(args) {
+        for (slot, arg) in plan.grouped(args) {
             if let (Some(ty), Some(annotation)) = (arg, params[slot].1) {
-                unifier.unify(annotation, &Value::Type(*ty));
+                unifier.unify(annotation, &Value::Type(ty));
             }
         }
         // A parameter found to be a type may fix others through its constraint: `U` in

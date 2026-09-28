@@ -128,6 +128,30 @@ Pair := ($T: type) -> type { struct { a: T, b: T } }; // $: known at compile tim
 - `unsafe (p: *u32) -> u32 { ... }` marks a function whose callers must be inside `unsafe`. Its body
   is not implicitly unsafe; unsafe operations inside it still need their own `unsafe { }`.
 
+### Packs
+
+The last parameter may be a **pack**, the rest pattern `..args: P` of the parameter tuple: it
+gathers the arguments of a call after the others into a tuple of type `P`, which `args` binds. `P`
+is written, or is a `$` parameter the call infers as the tuple of those arguments' types (spec 02,
+section 1), so each call shape is its own instantiation. A call passes as many arguments to a
+written `P` as it has items (`types.arity`); a pack anywhere else is `types.pack_position`.
+
+```vun
+sum := (first: u8, ..rest: (u8, u8)) -> u16 { first + rest.0 + rest.1 };
+total := ($P: type, ..xs: P) -> u32 {
+    mut t: u32 = 0;
+    $for i in 0..lang.meta.items(P).len() { t +|= xs.$(i); }
+    t
+};
+six := sum(1, 2, 3);
+none := total();
+```
+
+In a function type the pack is `..P`, `lang.Pack(P)` (the table `type_prefixes`): the type of
+`sum` is `(u8, ..(u8, u8)) -> u16`, `lang.Fn((u8, lang.Pack((u8, u8))), u16)`. The calling
+convention decides how a pack is passed: under Vun's it is its tuple; under the C convention its
+items are the C function's variadic arguments (spec 07, section 5).
+
 ### Closures
 
 A closure lists what it captures, spelled exactly as the values would be passed:

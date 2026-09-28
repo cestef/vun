@@ -48,6 +48,8 @@ pub const stack: Item = Item::new(&["lang", "errors", "stack"]);
 pub const target: Item = Item::new(&["lang", "errors", "target"]);
 /// Linking (spec 13).
 pub const link: Item = Item::new(&["lang", "errors", "link"]);
+/// Calling conventions (spec 07, section 4).
+pub const abi: Item = Item::new(&["lang", "errors", "abi"]);
 /// Package manifests: the `package` literal of `build.vun` (spec 12, section 2).
 pub const manifest: Item = Item::new(&["lang", "errors", "manifest"]);
 /// Packages and their namespaces on disk (spec 01, section 8, and spec 12, section 3).

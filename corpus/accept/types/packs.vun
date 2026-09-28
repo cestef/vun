@@ -1,0 +1,18 @@
+//! A pack `..args: P` gathers the arguments of a call after the others into a tuple of type `P`
+//! (spec 01, section 4): written, or inferred as a `$` parameter the pack's type names.
+
+sum := (first: u8, ..rest: (u8, u8)) -> u16 { first + rest.0 + rest.1 };
+
+/// The sum of any number of integers, each widened into the total.
+total := ($P: type, ..xs: P) -> u32 {
+    mut t: u32 = 0;
+    $for i in 0..lang.meta.items(P).len() { t +|= xs.$(i); }
+    t
+};
+
+six: u16 = sum(1, 2, 3);
+none: u32 = total();
+thirty_six: u32 = total(1, 5, 30);
+
+/// A function value of a type with a pack takes its arguments as the function does.
+through := (f: (u8, ..(u8, u8)) -> u16) -> u16 { f(1, 2, 3) };

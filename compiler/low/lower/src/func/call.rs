@@ -10,6 +10,7 @@ use vun_sema::Primitive;
 use vun_sema::decl::DeclType;
 use vun_sema::eval::Instantiation;
 use vun_sema::int::Integer;
+use vun_sema::layout::Parts;
 use vun_sema::primitives::abi::Abi;
 use vun_sema::primitives::check::Check;
 use vun_sema::primitives::panic::Panic;
@@ -128,12 +129,24 @@ impl FnLower<'_, '_, '_> {
         let signature: Signature = self.l.signature(params, result, abi, self.at)?;
         let mut values = Vec::new();
         for (&param, &arg) in params.iter().zip(args) {
+            // A pack passes the tuple of its arguments; under the C convention, each of its items
+            // as a variadic argument.
+            let packed = param.packed();
+            let param = packed.unwrap_or(param);
             let Some(temp) = self.temp(param)? else { continue };
             self.write(arg, Some(temp), param)?;
-            match self.l.types.repr(param, self.at)? {
-                Repr::Scalar(s) => values.push(self.b.load(s, temp, vun_lir::Access::Plain, self.at)),
-                Repr::Memory(_) => values.push(temp),
-                Repr::Zero => {}
+            if packed.is_some() && signature.conv == Conv::C {
+                let shape = self.l.types.shape(param, self.at)?;
+                let Parts::Sequence(offsets) = &shape.parts else {
+                    return Err(Unlowered::unsupported(self.at, Form::Callee));
+                };
+                let items = self.l.types.parts(param).ok_or(Unlowered::unsupported(self.at, Form::Callee))?;
+                for (item, &offset) in items.into_iter().zip(offsets) {
+                    let at = self.at_offset(temp, offset);
+                    self.pass(at, item, &mut values)?;
+                }
+            } else {
+                self.pass(temp, param, &mut values)?;
             }
         }
         // The result lands in `dest` when it has the place's type, else in a temporary first. A C
@@ -156,6 +169,16 @@ impl FnLower<'_, '_, '_> {
             } else {
                 self.convert(landing, result, dest, ty)?;
             }
+        }
+        Ok(())
+    }
+
+    /// Passes the value of type `ty` at `at`: its scalar, or its address.
+    fn pass(&mut self, at: Value, ty: Ty, values: &mut Vec<Value>) -> Result<(), Unlowered> {
+        match self.l.types.repr(ty, self.at)? {
+            Repr::Scalar(s) => values.push(self.b.load(s, at, vun_lir::Access::Plain, self.at)),
+            Repr::Memory(_) => values.push(at),
+            Repr::Zero => {}
         }
         Ok(())
     }

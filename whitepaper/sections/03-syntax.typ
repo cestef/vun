@@ -123,6 +123,12 @@ its captures in brackets, spelled as the values would be passed (`[&mut n] (by: 
 and is equivalent to an anonymous structure of its captures with an implementation of
 `lang.ops.Call`. A function literal without a capture list captures nothing.
 
+Because the parameters are a tuple pattern, variadic functions need no construct of their own: a
+rest pattern `..args: P` as the last parameter gathers the arguments after the others into a tuple
+of type `P`, either written or inferred as a `$` parameter, so that each call shape is an
+instantiation. The calling convention decides how that tuple is passed: as a tuple under Vun's, and
+as C's variadic arguments under `#[abi.c]`, which is how a C import such as `open` is declared.
+
 == Places and arguments <sec-syntax-places>
 
 Method calls follow one rule: the dot operates on places, and arguments are values. In `a.f(b)` the

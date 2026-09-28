@@ -135,7 +135,7 @@ impl C {
 
 /// The result registers of a function returning `ty`, as the classifier gives them.
 fn results(ty: AbiType, convention: &Convention<u8, u8>) -> Vec<Dest> {
-    let signature = Signature { conv: Conv::C, params: Vec::new(), result: Some(ty) };
+    let signature = Signature { conv: Conv::C, params: Vec::new(), result: Some(ty), variadic: None };
     let dest = |c: Carrier<u8, u8>| match c {
         Carrier::Int(k) => (false, k),
         Carrier::Float(k) => (true, k),
@@ -196,7 +196,7 @@ fn placements_agree_with_clang() {
                 .map(|(k, c)| format!("{} f{k}({params}) {{ return a{k}; }}\n", c.spelling()));
             let Some(text) = assembly(target, &functions.collect::<String>()) else { return };
             let abis: Vec<AbiType> = case.iter().map(|c| c.abi(rules)).collect();
-            let signature = Signature { conv: Conv::C, params: abis.clone(), result: None };
+            let signature = Signature { conv: Conv::C, params: abis.clone(), result: None, variadic: None };
             let passing = Passing::of(&signature, target.convention).unwrap();
             let mut ours = passing.params.iter().map(|loc| match *loc {
                 Loc::Reg(c) => Seen::Reg(c),

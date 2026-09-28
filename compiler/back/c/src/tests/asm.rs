@@ -13,7 +13,8 @@ fn lea(origin: OriginId) -> Unit {
     use vun_asm_x86_64::{Op, Size};
     use vun_inline::{Base, Block, Bound, Disp, FormId, Inst, Mem, OpId, Operand, SizeId};
     let word = AbiType::Int(Scalar::I64, Ext::Sign);
-    let signature = Signature { conv: Conv::C, params: vec![word.clone()], result: Some(word) };
+    let signature =
+        Signature { conv: Conv::C, params: vec![word.clone()], result: Some(word), variadic: None };
     let mut b = Builder::new(Linkage::Export(Symbol::intern("f")), signature, origin);
     let n = b.params(b.current())[0];
     let slot = b.slot(8, 8, origin);
@@ -83,7 +84,8 @@ fn masked(origin: OriginId) -> Unit {
     use vun_asm_thumb::{Class, Mask, Op, Size, Special};
     use vun_inline::{Block, Bound, ClassId, FormId, Inst, OpId, Operand, RegRef};
     let word = AbiType::Int(Scalar::I32, Ext::Sign);
-    let signature = Signature { conv: Conv::C, params: vec![word.clone()], result: Some(word) };
+    let signature =
+        Signature { conv: Conv::C, params: vec![word.clone()], result: Some(word), variadic: None };
     let mut b = Builder::new(Linkage::Export(Symbol::intern("f")), signature, origin);
     let slot = b.slot(4, 4, origin);
     let addr = b.push(vun_lir::InstKind::SlotAddr(slot), Some(Scalar::Ptr), origin).expect("an address");

@@ -21,6 +21,7 @@ pub(super) fn helper(legalize: Legalize, pointer_bits: u32, at: OriginId) -> Fun
         conv: Conv::Vun,
         params: vec![int.clone(), int.clone(), int.clone(), int],
         result: Some(AbiType::Memory { size: 4 * bytes, align: bytes }),
+        variadic: None,
     };
     let mut build = Builder::new(Linkage::Internal, signature, at);
     let entry = build.params(build.current()).to_vec();

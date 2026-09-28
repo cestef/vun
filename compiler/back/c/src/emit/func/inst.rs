@@ -163,8 +163,7 @@ impl FnEmit<'_, '_> {
                 (Expr::Name(Ident::Symbol(import.symbol)), signature.clone())
             }
             Callee::Indirect(f, signature) => {
-                let c = self.e.signature(signature, at)?;
-                let ty = Ty::Function { result: Box::new(c.result), params: c.params };
+                let ty = self.e.signature(signature, at)?.pointer();
                 (self.operand(*f).cast(self.e.word()).cast(ty), (**signature).clone())
             }
         };

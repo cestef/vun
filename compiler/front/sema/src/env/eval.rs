@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use vun_desugar::{Access, Borrow, Form, MARKERS, TYPE_PREFIXES};
 use vun_grammar::TokenKind;
-use vun_hir::tree::{BlockId, Cond, Entry, ExprId, ExprKind, List, Lit, Param};
+use vun_hir::tree::{BlockId, Cond, Entry, ExprId, ExprKind, List, Lit, Param, PatId, PatKind};
 use vun_origin::OriginTable;
 
 use super::{Env, Unevaluated};
@@ -197,14 +197,29 @@ impl Env<'_, '_> {
             .iter()
             .map(|param| match param {
                 // `$W: Writer`: a parameter constrained by an interface holds a type.
-                Entry::One(Param { ty: Some(t), .. }) => match self.eval(*t) {
+                Entry::One(Param { pat, ty: Some(t), .. }) => match self.eval(*t) {
                     Ok(Value::Interface(_)) => Ok(TyKind::of_types()),
-                    _ => self.ty(*t),
+                    _ => self.param_type(*pat, self.ty(*t)?),
                 },
                 _ => Err(Unevaluated::Unsupported),
             })
             .collect::<Result<_, _>>()?;
         Ok(Signature::new(params, self.result(returns)?))
+    }
+
+    /// The type a function's signature gives the parameter `pat` annotated `ty`: a pack's,
+    /// `lang.Pack(ty)`, for the rest pattern `..args` gathering the arguments after the others.
+    ///
+    /// # Errors
+    /// Returns why `lang.Pack(ty)` has no value: a type that is not a tuple.
+    pub fn param_type(&self, pat: Option<PatId>, ty: Ty) -> Result<Ty, Unevaluated> {
+        match pat.map(|p| &self.parsed.hir.pats[p].kind) {
+            Some(PatKind::Rest(_)) => {
+                let pack = self.item(vun_items::lang::Pack)?;
+                self.apply(pack, vec![Value::Type(ty)])?.as_type().ok_or(Unevaluated::Unsupported)
+            }
+            _ => Ok(ty),
+        }
     }
 
     /// The function value the function literal `literal` evaluates to here, inside the call

@@ -39,6 +39,7 @@ types := struct {
     cannot_infer := diag.Diag{};
     arity := diag.Diag{};
     slice_value := diag.Diag{};
+    pack_position := diag.Diag{};
 };
 
 /// Name resolution and visibility (spec 01, sections 3, 7 and 8).
@@ -163,6 +164,11 @@ link := struct {
     unavailable := diag.Diag{};
     unsupported := diag.Diag{};
     export_mismatch := diag.Diag{};
+};
+
+/// Calling conventions (spec 07, section 4).
+abi := struct {
+    variadic := diag.Diag{};
 };
 
 /// Package manifests: the `package` literal of `build.vun` (spec 12, section 2).

@@ -16,6 +16,9 @@ Bounds: ($T: type) -> type = _;
 /// The type of functions from a tuple of `params` to `result`: `(A, B) -> R` is
 /// `Fn((A, B), R)` (appendix B).
 Fn: ($params: type, $result: type) -> type = _;
+/// The type of a function's last parameter when it gathers the arguments after the others into
+/// a tuple of the types `items`: `(A, ..P) -> R` is `Fn((A, Pack(P)), R)` (spec 01, section 4).
+Pack: ($items: type) -> type = _;
 
 /// The IEEE 754 binary floats of `bits` bits: 16, 32 or 64 (spec 04, section 2).
 Float: ($bits: Int(1..)) -> type = _;

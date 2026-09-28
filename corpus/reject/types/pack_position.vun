@@ -1,0 +1,3 @@
+//! A pack gathers the arguments after the others: it is the last parameter (spec 01, section 4).
+
+first := (..xs: .{ u8, u8 }, last: u8) -> u8 { last }; //~ types.pack_position

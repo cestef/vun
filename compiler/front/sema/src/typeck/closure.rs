@@ -4,8 +4,9 @@
 
 use std::mem::{replace, take};
 
+use vun_diag::{Diagnostic, Msg, errors};
 use vun_hir::db::Parsed;
-use vun_hir::tree::{Entry, ExprId, ExprKind, List, Param};
+use vun_hir::tree::{Entry, ExprId, ExprKind, List, Param, PatKind};
 use vun_query::Cx;
 
 use super::{Known, Typer};
@@ -41,7 +42,20 @@ impl Typer<'_, '_, '_> {
                 }
                 _ => None,
             };
-            match (&mut types, ty) {
+            let pat = match param {
+                Entry::One(Param { pat, .. }) => *pat,
+                Entry::Staged(_) => None,
+            };
+            // A pack gathers the arguments after the others: it comes last.
+            if let Some(p) = pat.filter(|p| matches!(hir.pats[*p].kind, PatKind::Rest(_)))
+                && index + 1 != params.len()
+            {
+                let msg = Msg::new()
+                    .text("a pack gathers the arguments after the others, and this one is not last");
+                self.diag
+                    .error(Diagnostic::error(errors::TYPES_PACK_POSITION, msg).at(hir.pats[p].origin, None));
+            }
+            match (&mut types, ty.and_then(|ty| self.env().param_type(pat, ty).ok())) {
                 (Some(types), Some(ty)) => types.push(ty),
                 _ => types = None,
             }

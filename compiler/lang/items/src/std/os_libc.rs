@@ -8,9 +8,7 @@
 use crate::Item;
 pub const write: Item = Item::new(&["std", "os", "libc", "write"]);
 pub const read: Item = Item::new(&["std", "os", "libc", "read"]);
-/// C's `open` is variadic, its permissions passed only with `O_CREAT`: declared with them always,
-/// it is called as the conventions pass the first variadic argument in the next register, which
-/// Apple's arm64 variant does not.
+/// C's `open` is variadic, its permissions read only with `O_CREAT`: passed always.
 pub const open: Item = Item::new(&["std", "os", "libc", "open"]);
 pub const close: Item = Item::new(&["std", "os", "libc", "close"]);
 pub const exit: Item = Item::new(&["std", "os", "libc", "exit"]);

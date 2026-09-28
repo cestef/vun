@@ -42,4 +42,5 @@ mod staged;
 mod stdlib;
 mod typing;
 mod update;
+mod variadic;
 mod visibility;

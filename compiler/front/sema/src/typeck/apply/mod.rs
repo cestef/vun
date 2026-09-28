@@ -5,12 +5,11 @@
 use vun_codec::{Decode, Encode};
 use vun_hir::tree::ExprId;
 
-use super::omitted::{Plan, Unifier};
+mod bind;
+
+use super::omitted::Plan;
 use super::{Known, Reported, Stage, Typer};
-use crate::Primitive;
 use crate::callable::Callable;
-use crate::env::Unevaluated;
-use crate::eval::{Func, Instantiation};
 use crate::int::Interval;
 use crate::ty::{Signature, Ty, TyKind, Value};
 use vun_diag::Msg;
@@ -46,10 +45,12 @@ pub(super) struct Callee {
     pub(super) passing: Passing,
 }
 
-/// A call typed: its value, and the `$` arguments inferred for it.
+/// A call typed: its value, the `$` arguments inferred for it, and where the written arguments
+/// its callee's pack gathers start.
 pub(super) struct Applied {
     pub(super) known: Known,
     pub(super) inferred: Option<Vec<(usize, Value)>>,
+    pub(super) pack: Option<usize>,
 }
 
 impl Typer<'_, '_, '_> {
@@ -58,7 +59,10 @@ impl Typer<'_, '_, '_> {
     pub(super) fn apply(&mut self, call: ExprId, callee: &Callee, args: &[Argument]) -> Option<Applied> {
         let receiver = usize::from(callee.receiver.is_some());
         let count = receiver + args.len();
-        let plan = callee.f.as_ref().and_then(|f| Plan::of(self.env(), f, count));
+        let plan = match &callee.f {
+            Some(f) => Plan::of(self.env(), f, count),
+            None => callee.signature.as_ref().and_then(|s| Plan::typed(&s.params, count)),
+        };
         // Without a plan the call passes a count the function does not take, or its literal is
         // not read here, and the signature alone checks it.
         let counts = callee.f.as_ref().filter(|_| plan.is_none()).map(|f| Plan::counts(self.env(), f));
@@ -72,6 +76,8 @@ impl Typer<'_, '_, '_> {
             return None;
         }
         let slots = plan.as_ref().map_or_else(|| (0..count).collect(), |p| p.slots.clone());
+        let items = plan.as_ref().map_or_else(|| vec![None; count], Plan::items);
+        let pack = plan.as_ref().and_then(|p| p.pack);
         let omitted = plan.as_ref().filter(|p| !p.omitted.is_empty());
         let inferred = match (omitted, &callee.f) {
             (Some(plan), Some(f)) => Some(self.inferred(call, f, plan, callee, args)?),
@@ -105,9 +111,9 @@ impl Typer<'_, '_, '_> {
                 self.reported(call, signature).ok()
             });
         let mut found = Vec::new();
-        for (&slot, &arg) in slots[receiver..].iter().zip(args) {
+        for ((&slot, &item), &arg) in slots[receiver..].iter().zip(&items[receiver..]).zip(args) {
             // An argument for a `Code(T)` parameter is code of a `T`.
-            let param = signature.as_ref().and_then(|s| s.params.get(slot).copied());
+            let param = signature.as_ref().and_then(|s| Self::param(s, slot, item));
             let param = param.map(|p| callee.passing.expected(p.quoted().unwrap_or(p)));
             found.push(match arg {
                 Argument::Expr(expr) => (expr, self.retyped(expr, param, inferred.is_some())),
@@ -118,16 +124,22 @@ impl Typer<'_, '_, '_> {
         if signature.is_unsafe() {
             self.unchecked(call, Msg::new().text("calling a function whose type is ").code("unsafe"));
         }
-        if slots.len() != count || signature.params.len() < slots.len() {
+        // The parameters the call reaches: one per argument, but one for its pack's.
+        let reached = slots.iter().filter(|&&s| Some(s) != pack).count() + usize::from(pack.is_some());
+        if slots.len() != count || signature.params.len() < reached {
             return None;
         }
-        if inferred.is_none() && signature.params.len() != slots.len() {
-            self.arity(call, &[signature.params.len()], receiver, slots.len());
+        let gathered = pack.and_then(|p| signature.params[p].packed()?.as_tuple().map(<[Ty]>::len));
+        let passed = slots.iter().filter(|&&s| Some(s) == pack).count();
+        if inferred.is_none() && signature.params.len() != reached || gathered.is_some_and(|n| n != passed) {
+            let takes = signature.params.len() - usize::from(pack.is_some()) + gathered.unwrap_or(0);
+            self.arity(call, &[takes], receiver, count);
             return None;
         }
-        for (&slot, (value, known)) in slots[receiver..].iter().zip(found) {
-            if let Some(known) = known {
-                let param = signature.params[slot];
+        for ((&slot, &item), (value, known)) in slots[receiver..].iter().zip(&items[receiver..]).zip(found) {
+            if let Some(known) = known
+                && let Some(param) = Self::param(&signature, slot, item)
+            {
                 let param = callee.passing.expected(param.quoted().unwrap_or(param));
                 let known = Known { ty: callee.passing.passed(known.ty, param), ..known };
                 self.expect(self.hir().exprs[value].origin, known, param, None);
@@ -142,9 +154,20 @@ impl Typer<'_, '_, '_> {
                 }
                 _ => signature.result,
             };
-            return Some(Applied { known: Known { ty, stage: Stage::Compile }, inferred });
+            return Some(Applied { known: Known { ty, stage: Stage::Compile }, inferred, pack: None });
         }
-        Some(Applied { known: Known { ty: signature.result, stage: self.stage }, inferred })
+        let pack = pack.map(|p| slots.iter().position(|&s| s == p).unwrap_or(count) - receiver);
+        Some(Applied { known: Known { ty: signature.result, stage: self.stage }, inferred, pack })
+    }
+
+    /// The type of the parameter at `slot` of `signature` an argument is for: for the `item`th
+    /// argument of a pack, that item of the pack's tuple.
+    fn param(signature: &Signature, slot: usize, item: Option<usize>) -> Option<Ty> {
+        let param = *signature.params.get(slot)?;
+        match (item, param.packed()) {
+            (Some(item), Some(tuple)) => tuple.as_tuple()?.get(item).copied(),
+            _ => Some(param),
+        }
     }
 
     /// `expr` typed as `param`. An argument typed already, to infer the `$` parameters left out,
@@ -155,115 +178,6 @@ impl Typer<'_, '_, '_> {
             Some(&known) if typed && param == Some(known.ty) => Some(known),
             _ => self.typed_as(expr, param),
         }
-    }
-
-    /// The values of the `$` parameters `plan` leaves out, from the types of the receiver and the
-    /// written arguments `args`, as they are passed; `None`, reported, when one is not determined.
-    fn inferred(
-        &mut self,
-        call: ExprId,
-        f: &Callable,
-        plan: &Plan,
-        callee: &Callee,
-        args: &[Argument],
-    ) -> Option<Vec<(usize, Value)>> {
-        let modes = f.modes(self.env()).unwrap_or_default();
-        let quotes = f.quotes(self.env()).unwrap_or_default();
-        let receiver = callee.receiver.map(|r| (r, Passing::Asked));
-        let receiver = receiver.map(|(r, passing)| (Argument::Expr(r), passing));
-        let arguments = receiver.into_iter().chain(args.iter().map(|&a| (a, callee.passing)));
-        let types: Vec<Option<Ty>> = arguments
-            .zip(&plan.slots)
-            .map(|((arg, passing), &slot)| {
-                let ty = match arg {
-                    Argument::Expr(arg) => self.typed(arg)?.ty,
-                    Argument::Matched(ty) => ty,
-                };
-                let ty = match passing {
-                    Passing::Written => Some(ty),
-                    Passing::Asked => {
-                        let reached = ty.through_borrows();
-                        match modes.get(slot).copied().flatten() {
-                            Some(mode) => TyKind::borrowed_as(mode, reached),
-                            None => Some(reached),
-                        }
-                    }
-                };
-                // An argument for a `Code(T)` parameter is passed as code of its type.
-                if quotes.get(slot) == Some(&true) { ty.map(TyKind::code) } else { ty }
-            })
-            .collect();
-        let values = Unifier::infer(self.env(), f, plan, &types)?;
-        if values.iter().any(Option::is_none) {
-            let written = args.iter().map(|a| match a {
-                Argument::Expr(e) => Some(*e),
-                Argument::Matched(_) => None,
-            });
-            let operands: Vec<Option<ExprId>> =
-                callee.receiver.map(Some).into_iter().chain(written).collect();
-            self.cannot_infer(call, f, plan, &types, &operands);
-            return None;
-        }
-        Some(plan.omitted.iter().copied().zip(values.into_iter().flatten()).collect())
-    }
-
-    /// The instantiation a call of `f` reaches, each `$` parameter bound to the value of its
-    /// written argument among `args`, at `slots`, when known here, or to the value inferred.
-    fn instantiation(
-        &self,
-        f: Func,
-        slots: &[usize],
-        args: &[Argument],
-        inferred: Option<&[(usize, Value)]>,
-    ) -> Instantiation {
-        let comptime = f.comptime(self.env().cx).unwrap_or_default();
-        let quotes = f.quotes(self.env().cx).unwrap_or_default();
-        // A `$` argument is a value of its parameter's type, as `Env::passing` passes it: `.empty`
-        // for `$s: Shape` is the variant.
-        let params = Callable::Fn(f.clone()).types(self.env()).unwrap_or_default();
-        let mut values: Vec<Option<Value>> = vec![None; comptime.len()];
-        for (&slot, &arg) in slots.iter().zip(args) {
-            let (Some(true), Argument::Expr(arg)) = (comptime.get(slot), arg) else { continue };
-            values[slot] = if quotes.get(slot) == Some(&true) {
-                Some(Value::Code(self.env().code(arg)))
-            } else {
-                self.env().eval_as(arg, params.get(slot).copied().flatten()).ok()
-            };
-        }
-        for (slot, value) in inferred.into_iter().flatten() {
-            if let Some(v) = values.get_mut(*slot) {
-                *v = Some(value.clone());
-            }
-        }
-        Instantiation { args: values, f }
-    }
-}
-
-impl Typer<'_, '_, '_> {
-    /// The signature of the primitive `p` for a call passing `receiver` and `args` at `slots`,
-    /// with its `$` parameters bound to their arguments' values known here, or to those
-    /// inferred.
-    fn primitive_signature(
-        &self,
-        p: Primitive,
-        receiver: Option<ExprId>,
-        slots: &[usize],
-        args: &[Argument],
-        inferred: Option<&[(usize, Value)]>,
-    ) -> Result<Signature, Unevaluated> {
-        let written = receiver.map(Argument::Expr).into_iter().chain(args.iter().copied());
-        let mut values: Vec<Option<Value>> = vec![None; slots.len() + inferred.map_or(0, <[_]>::len)];
-        for (&slot, arg) in slots.iter().zip(written) {
-            if let (Some(v), Argument::Expr(e)) = (values.get_mut(slot), arg) {
-                *v = self.env().eval(e).ok();
-            }
-        }
-        for (slot, value) in inferred.into_iter().flatten() {
-            if let Some(v) = values.get_mut(*slot) {
-                *v = Some(value.clone());
-            }
-        }
-        self.env().primitive_signature(p, &values)
     }
 }
 

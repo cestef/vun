@@ -68,7 +68,7 @@ impl vun_backend::Lines for NoLines {
 /// A function of `linkage` returning a constant of `ty`.
 fn returning(linkage: Linkage, ty: Scalar, origin: OriginId) -> vun_lir::Function {
     let result = if ty.is_int() { AbiType::Int(ty, Ext::Zero) } else { AbiType::Scalar(ty) };
-    let signature = Signature { conv: Conv::Vun, params: Vec::new(), result: Some(result) };
+    let signature = Signature { conv: Conv::Vun, params: Vec::new(), result: Some(result), variadic: None };
     let mut b = Builder::new(linkage, signature, origin);
     let v = b.constant(ty, 7, origin);
     b.terminate(Terminator::Return(Some(v)));

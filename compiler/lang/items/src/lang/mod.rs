@@ -119,6 +119,7 @@ pub mod diag;
 pub mod diag_Safety;
 pub mod diag_Severity;
 pub mod errors;
+pub mod errors_abi;
 pub mod errors_asm;
 pub mod errors_attr;
 pub mod errors_backend;

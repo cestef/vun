@@ -6,11 +6,9 @@
 write: unsafe (fd: i32, bytes: *u8, count: usize) -> isize = _;
 #[link.symbol("read"), abi.c]
 read: unsafe (fd: i32, bytes: *u8, count: usize) -> isize = _;
-/// C's `open` is variadic, its permissions passed only with `O_CREAT`: declared with them always,
-/// it is called as the conventions pass the first variadic argument in the next register, which
-/// Apple's arm64 variant does not.
+/// C's `open` is variadic, its permissions read only with `O_CREAT`: passed always.
 #[link.symbol("open"), abi.c]
-open: unsafe (path: *u8, flags: u32, permissions: u32) -> i32 = _;
+open: unsafe (path: *u8, flags: u32, ..permissions: .{ u32 }) -> i32 = _;
 #[link.symbol("close"), abi.c]
 close: unsafe (fd: i32) -> i32 = _;
 #[link.symbol("exit"), abi.c]

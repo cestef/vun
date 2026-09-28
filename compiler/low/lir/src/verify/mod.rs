@@ -59,10 +59,14 @@ impl Unit {
         };
         for (i, import) in self.imports.iter() {
             has(Entity::Import(i.index()), import.origin)?;
-            if let ImportKind::Func(signature) = &import.kind
-                && !signature.well_formed()
-            {
-                return Err(Malformed { at: Entity::Import(i.index()), reason: Reason::Passing });
+            if let ImportKind::Func(signature) = &import.kind {
+                let at = Entity::Import(i.index());
+                if !signature.well_formed() {
+                    return Err(Malformed { at, reason: Reason::Passing });
+                }
+                if !signature.variadic_well_formed() {
+                    return Err(Malformed { at, reason: Reason::Variadic });
+                }
             }
         }
         for (i, data) in self.data.iter() {
@@ -111,6 +115,9 @@ impl Checker<'_> {
         self.origin(Entity::Func(id), func.origin)?;
         if !func.signature.well_formed() {
             return Self::fail(Entity::Func(id), Reason::Passing);
+        }
+        if func.signature.variadic.is_some() {
+            return Self::fail(Entity::Func(id), Reason::Variadic);
         }
         let Some(entry) = func.entry() else { return Self::fail(Entity::Func(id), Reason::Empty) };
         let params: Vec<Scalar> = func.blocks[entry].params.iter().map(|&v| func.ty(v)).collect();

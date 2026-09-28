@@ -34,6 +34,9 @@ pub struct Found {
     pub iterations: BTreeMap<ExprId, Iteration>,
     /// The `$` arguments each call leaves out, by parameter, as inferred.
     pub inferred: BTreeMap<ExprId, Vec<(usize, Value)>>,
+    /// Where the arguments each call gathers into its callee's pack start, among the written
+    /// ones (spec 01, section 4): a pack takes those from there on.
+    pub packs: BTreeMap<ExprId, usize>,
     /// The `$` evaluations that surely run, each a `$e`: run once the body is typed
     /// ([`Reported`](super::Reported)).
     pub evaluations: Vec<ExprId>,

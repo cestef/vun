@@ -38,7 +38,7 @@ impl Builder<'_, '_, '_> {
             Passed::Inferred(value) => Some(Some(value.clone())),
             Passed::Code(expr) => Some(Some(Value::Code(self.env().code(*expr)))),
             Passed::Known { expr, ty } => self.env().eval_as(*expr, *ty).ok().map(Some),
-            Passed::Receiver | Passed::Run { .. } => None,
+            Passed::Receiver | Passed::Run { .. } | Passed::Pack { .. } => None,
         });
         let i = Instantiation::new(f.clone(), args.collect::<Option<_>>()?);
         let mut body = Body::clone(&*cx.get::<Mir>(&i).ok()?);

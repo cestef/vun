@@ -17,6 +17,8 @@ pub enum Missing {
     Float,
     Atomic,
     Naked,
+    /// A call of a C function's variadic arguments.
+    Variadic,
     Section,
     Align(u64),
     /// An integer width no C integer type of the target has.
@@ -82,6 +84,7 @@ impl Missing {
             Missing::Float => Msg::new().text("floating-point values"),
             Missing::Atomic => Msg::new().text("atomic memory access"),
             Missing::Naked => Msg::new().text("naked functions"),
+            Missing::Variadic => Msg::new().text("variadic arguments of C functions"),
             Missing::Section => Msg::new().text("link sections"),
             Missing::Align(n) => Msg::new().text("an alignment of ").num(n).text(" bytes"),
             Missing::Width(n) => Msg::new().text("an integer of ").num(n).text(" bits on this target"),

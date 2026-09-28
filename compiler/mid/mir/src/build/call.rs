@@ -39,6 +39,7 @@ impl Builder<'_, '_, '_> {
         }
         // The `$` arguments the call leaves out, as the typer inferred them.
         let inferred = self.typed().and_then(|t| t.inferred.get(&call).cloned()).unwrap_or_default();
+        let pack = self.typed().and_then(|t| t.packs.get(&call).copied());
         // `a.f(b)` is `T.f(a, b)`, `f` the method the typer found (spec 01, section 4).
         let method = self.method(callee)?;
         let callee = match &method {
@@ -61,7 +62,8 @@ impl Builder<'_, '_, '_> {
             Operand::Const(value) => Some(value),
             Operand::Place(_) => None,
         };
-        let passing = self.env().passing(known, method.is_some(), args, &inferred).map_err(|_| unbuilt())?;
+        let passing =
+            self.env().passing(known, method.is_some(), args, &inferred, pack).map_err(|_| unbuilt())?;
         let at = passing.iter().position(|p| *p == Passed::Receiver);
         let receiver = match (method, at) {
             (Some((f, receiver, method)), Some(at)) => Some((at, self.receiver(&f, &method, receiver, at)?)),
@@ -115,6 +117,11 @@ impl Builder<'_, '_, '_> {
                 self.typed_temp(self.comptime(expr, ty), self.type_of(expr).or(ty), origin)
             }
             Passed::Run { expr, .. } => self.operand(expr)?,
+            // A pack's arguments are the tuple its parameter receives.
+            Passed::Pack { exprs, .. } => {
+                let parts = exprs.into_iter().map(|e| self.operand(e)).collect::<Result<_, _>>()?;
+                self.temp(Rvalue::Aggregate { kind: Aggregate::Tuple, parts }, origin)
+            }
         })
     }
 

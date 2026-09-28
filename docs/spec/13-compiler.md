@@ -796,8 +796,16 @@ rules (proposed, decision 256).
   registers may take the rest of them and the stack (`Split`: never, or while nothing is on the
   stack yet, AAPCS rule C.5); the stack (a slot of a word, scalars in the words they take at
   their own alignment, or scalars at their own size and alignment, as Apple's variant packs a
-  C call's; composites aligned to at most the stack's alignment); and whether a variadic call
-  counts the floating-point registers it uses (System V's `al`). `SYSV`, `AAPCS64`,
+  C call's; composites aligned to at most the stack's alignment); and how a call passes a C
+  function's variadic arguments (`Variadic`: as fixed ones, AAPCS64; as fixed ones counting the
+  floating-point registers used, System V's `al`; each on the stack in the words it takes
+  whatever registers are left, Apple's variant, so that `open`'s mode is the first stack slot;
+  or everything the call passes and returns as the base standard does, floats in general
+  registers, AAPCS's VFP variant, section 6.5). A LIR signature marks where its variadic
+  arguments start (`Signature::variadic`), which only an import under the C convention has;
+  `Rules::calling` gives the rules a call of it follows, legalization asking them too. The C
+  backend declares such an import with `...`; the wasm backend, whose C convention passes them
+  in a buffer the caller fills, refuses it (`Missing::Variadic`). `SYSV`, `AAPCS64`,
   `DARWIN_ARM64`, `AAPCS` and `AAPCS_VFP` are the five built; riscv64's LP64D and wasm32's C
   convention are further values of the same type.
 - **A value in one register.** A LIR value never spans registers: a scalar wider than a register

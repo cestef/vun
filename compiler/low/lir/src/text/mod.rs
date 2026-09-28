@@ -52,7 +52,11 @@ impl fmt::Display for Signature {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}(", self.conv)?;
         for (i, p) in self.params.iter().enumerate() {
-            write!(f, "{}{p}", if i > 0 { ", " } else { "" })?;
+            let variadic = if self.variadic == Some(i) { "..." } else { "" };
+            write!(f, "{}{variadic}{p}", if i > 0 { ", " } else { "" })?;
+        }
+        if self.variadic == Some(self.params.len()) {
+            f.write_str(if self.params.is_empty() { "..." } else { ", ..." })?;
         }
         f.write_str(")")?;
         match &self.result {

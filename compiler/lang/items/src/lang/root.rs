@@ -71,6 +71,9 @@ pub const Bounds: Item = Item::new(&["lang", "Bounds"]);
 /// The type of functions from a tuple of `params` to `result`: `(A, B) -> R` is
 /// `Fn((A, B), R)` (appendix B).
 pub const Fn: Item = Item::new(&["lang", "Fn"]);
+/// The type of a function's last parameter when it gathers the arguments after the others into
+/// a tuple of the types `items`: `(A, ..P) -> R` is `Fn((A, Pack(P)), R)` (spec 01, section 4).
+pub const Pack: Item = Item::new(&["lang", "Pack"]);
 /// The IEEE 754 binary floats of `bits` bits: 16, 32 or 64 (spec 04, section 2).
 pub const Float: Item = Item::new(&["lang", "Float"]);
 pub const f16: Item = Item::new(&["lang", "f16"]);

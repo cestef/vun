@@ -18,15 +18,17 @@ impl Env<'_, '_> {
         args: &[Entry<Arg>],
     ) -> Result<Value, Unevaluated> {
         let origin = self.parsed.hir.exprs[call].origin;
-        self.called(callee, args, self.inferred(call)).map_err(|u| u.through(origin))
+        self.called(callee, args, self.inferred(call), self.pack(call)).map_err(|u| u.through(origin))
     }
 
-    /// `callee(args)`, the `$` arguments left out `inferred`.
+    /// `callee(args)`, the `$` arguments left out `inferred`, the arguments from `pack` on
+    /// gathered.
     fn called(
         &self,
         callee: ExprId,
         args: &[Entry<Arg>],
         inferred: &[(usize, Value)],
+        pack: Option<usize>,
     ) -> Result<Value, Unevaluated> {
         let mut receiver = None;
         let callee = match &self.parsed.hir.exprs[callee].kind {
@@ -60,19 +62,21 @@ impl Env<'_, '_> {
             }
             _ => self.eval(callee)?,
         };
-        self.call_value(callee, receiver, args, inferred)
+        self.call_value(callee, receiver, args, inferred, pack)
     }
 
     /// `callee(args)`, passed as [`Self::passing`] reads them: the receiver `receiver` of
-    /// `a.f(b)` when there is one, and the `$` arguments left out, `inferred` by parameter.
+    /// `a.f(b)` when there is one, the `$` arguments left out, `inferred` by parameter, and the
+    /// arguments from `pack` on gathered.
     pub(super) fn call_value(
         &self,
         callee: Value,
         mut receiver: Option<Value>,
         args: &[Entry<Arg>],
         inferred: &[(usize, Value)],
+        pack: Option<usize>,
     ) -> Result<Value, Unevaluated> {
-        let passing = self.passing(Some(&callee), receiver.is_some(), args, inferred)?;
+        let passing = self.passing(Some(&callee), receiver.is_some(), args, inferred, pack)?;
         let values = passing
             .into_iter()
             .map(|passed| match passed {
@@ -80,6 +84,12 @@ impl Env<'_, '_> {
                 Passed::Inferred(value) => Ok(value),
                 Passed::Code(expr) => Ok(Value::Code(self.code(expr))),
                 Passed::Known { expr, ty } | Passed::Run { expr, ty } => self.eval_as(expr, ty),
+                Passed::Pack { exprs, ty } => exprs
+                    .iter()
+                    .enumerate()
+                    .map(|(at, &e)| self.eval_as(e, Passed::item(ty, at)))
+                    .collect::<Result<_, _>>()
+                    .map(Value::Tuple),
             })
             .collect::<Result<_, _>>()?;
         self.apply(callee, values)

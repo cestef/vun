@@ -60,6 +60,13 @@ impl Primitive {
                 let TyKind::Tuple(params) = &*params else { return Err(Unevaluated::Unsupported) };
                 Ok(Value::Type(Signature::new(params.clone(), result).ty()))
             }
+            // `lang.Pack(P)`: the parameter gathering the arguments after the others into a tuple.
+            (Self::Lang(Lang::Pack), [items]) => match items.as_type() {
+                Some(items) if matches!(&*items, TyKind::Tuple(_)) => {
+                    Ok(Value::Type(TyKind::Primitive(self, vec![Value::Type(items)]).intern()))
+                }
+                _ => Err(Unevaluated::trap(Reason::Argument)),
+            },
             // A cell's value at compile time is what it holds.
             (Self::Mem(Mem::cell), [_, value]) => Ok(value.clone()),
             // `lang.interface(f)` wraps `f` so that it can constrain `$` parameters.

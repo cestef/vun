@@ -154,7 +154,7 @@ impl Env<'_, '_> {
     fn constructed(&self, ty: Ty, name: Symbol, args: &List<Arg>) -> Result<Value, Unevaluated> {
         let members = self.cx.get::<Members>(&ty).ok_or(Unevaluated::Unsupported)?;
         let Found::Variant(variant) = members.find(name) else {
-            return self.call_value(self.member(Value::Type(ty), name)?, None, args, &[]);
+            return self.call_value(self.member(Value::Type(ty), name)?, None, args, &[], None);
         };
         let payload = args
             .iter()

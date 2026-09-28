@@ -88,6 +88,14 @@ impl<'r, I: Copy, F: Copy> Free<'r, I, F> {
         Loc::Stack { offset: self.stack(slot, bytes), bytes: slot }
     }
 
+    /// Leaves every later value on the stack, in the words it takes: variadic arguments under
+    /// [`crate::Variadic::Stack`].
+    pub(crate) fn spill(&mut self) {
+        self.ints.close();
+        self.floats.close();
+        self.packed = false;
+    }
+
     /// The halves of an integer of two halves of `half` bytes: two general registers, else the
     /// stack at the whole's alignment.
     pub(crate) fn wide(&mut self, half: u64) -> [Loc<Carrier<I, F>>; 2] {

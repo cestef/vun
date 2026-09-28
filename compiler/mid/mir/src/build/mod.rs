@@ -194,9 +194,12 @@ impl<'a, 'db> Builder<'_, 'a, 'db> {
         for (index, param) in params.iter().enumerate() {
             let Entry::One(param) = param else { return Err(Unbuilt::at(origin)) };
             let pat = param.pat.ok_or(Unbuilt::at(param.origin))?;
-            let PatKind::Bind(binder) = hir.pats[pat].kind else { return Err(Unbuilt::at(param.origin)) };
+            // A pack `..args: P` binds the tuple its arguments make.
+            let (PatKind::Bind(binder) | PatKind::Rest(Some(binder))) = hir.pats[pat].kind else {
+                return Err(Unbuilt::at(param.origin));
+            };
             let local = b.bind(binder);
-            b.locals[local].ty = types.get(index).copied();
+            b.locals[local].ty = types.get(index).map(|&t| t.packed().unwrap_or(t));
             args.push(local);
         }
         let result = b.scope(*body, defer::Exit::Function)?;

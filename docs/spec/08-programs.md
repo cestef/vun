@@ -98,8 +98,8 @@ what is left.
 (`Stream.read`, 0 at the end) and written as any `Stream`, and `close` ends it; `System.stdin()`
 is the stream 0. They reach the system through `std.os.symbols.{open, read, close}`: the kernel
 runtime calls `openat` from the working directory, `read` and `close`; the C library's runtime
-its functions (C's `open` is variadic, called with its permissions always, which Apple's arm64
-passes elsewhere: open); WASI opens from the preopened directory a path is inside (`.` for a
+its functions (C's `open` is variadic, its mode passed always as its pack, spec 07, section 5);
+WASI opens from the preopened directory a path is inside (`.` for a
 relative one), `.denied` when the host gave none. A path is passed with a zero after it
 (`std.os.file.Path`, up to `PATH_MAX`), every file closed in a program the process runs next, a
 created one read and written by its owner. A failure is a `std.os.Error`: a reason `std` names

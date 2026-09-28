@@ -41,6 +41,8 @@ mod target;
 pub use target::*;
 mod link;
 pub use link::*;
+mod abi;
+pub use abi::*;
 mod manifest;
 pub use manifest::*;
 mod package;

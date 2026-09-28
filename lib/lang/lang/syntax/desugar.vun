@@ -81,10 +81,12 @@ forms := .{
     .{ .form = .slice, .item = lang.mem.Slice },
 };
 
-/// Prefix operators on types (appendix B): `?T` is `lang.Option(T)`, `*T` is `lang.mem.Ptr(T)`.
+/// Prefix operators on types (appendix B): `?T` is `lang.Option(T)`, `*T` is `lang.mem.Ptr(T)`,
+/// `..P` is `lang.Pack(P)`.
 type_prefixes := .{
     .{ .token = .question, .item = lang.Option },
     .{ .token = .star, .item = lang.mem.Ptr },
+    .{ .token = .dot_dot, .item = lang.Pack },
 };
 
 /// The states of a place (spec 05, section 2).

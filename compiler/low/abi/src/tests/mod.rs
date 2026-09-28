@@ -1,5 +1,6 @@
 mod aapcs;
 mod clang;
+mod variadic;
 
 use vun_lir::{AbiType, Conv, Ext, Record, Scalar, Signature};
 
@@ -39,7 +40,7 @@ const I64: AbiType = AbiType::Int(Scalar::I64, Ext::Zero);
 const WIDE: AbiType = AbiType::Wide { half: Scalar::I64, ext: Ext::Sign };
 
 pub(super) fn c(params: Vec<AbiType>, result: Option<AbiType>) -> Signature {
-    Signature { conv: Conv::C, params, result }
+    Signature { conv: Conv::C, params, result, variadic: None }
 }
 
 type Place = Loc<Carrier<u8, u8>>;

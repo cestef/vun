@@ -12,7 +12,12 @@ fn wide_integers_become_halves_and_division_a_helper() {
     let origins = OriginTable::new();
     let at = origin(&origins);
     let wide = AbiType::Int(Scalar::I128, Ext::Sign);
-    let signature = Signature { conv: Conv::C, params: vec![wide.clone(), wide.clone()], result: Some(wide) };
+    let signature = Signature {
+        conv: Conv::C,
+        params: vec![wide.clone(), wide.clone()],
+        result: Some(wide),
+        variadic: None,
+    };
     let mut b = Builder::new(Linkage::Export(Symbol::intern("f")), signature, at);
     let [x, y] = [b.params(b.current())[0], b.params(b.current())[1]];
     let sum = b.binary(BinOp::Add, x, y, at);
@@ -39,7 +44,8 @@ fn wide_integers_become_halves_and_division_a_helper() {
 fn half(conv: Conv, origins: &OriginTable) -> Unit {
     let at = origin(origins);
     let half = AbiType::Scalar(Scalar::F16);
-    let signature = Signature { conv, params: vec![half.clone(), half.clone()], result: Some(half) };
+    let signature =
+        Signature { conv, params: vec![half.clone(), half.clone()], result: Some(half), variadic: None };
     let mut b = Builder::new(Linkage::Export(Symbol::intern("f")), signature, at);
     let [x, y] = [b.params(b.current())[0], b.params(b.current())[1]];
     let sum = b.binary(BinOp::FAdd, x, y, at);
