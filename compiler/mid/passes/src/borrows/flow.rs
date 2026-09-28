@@ -1,14 +1,12 @@
 //! The two flows the rules read: which loans each local may hold, forward from the entry, and
 //! which locals are live, backward from each use.
 
-use std::collections::VecDeque;
-
 use vun_desugar::Extent;
 use vun_index::{BitMatrix, BitSet, IndexVec};
 use vun_mir::{BlockId, Local, Operand, Rvalue, Stmt, Terminator, TerminatorKind};
 
 use super::{Checker, LoanId};
-use crate::flow::Forward;
+use crate::flow::{Backward, Forward};
 
 /// The loans each local may hold.
 pub(super) type Holds = BitMatrix<Local, LoanId>;
@@ -79,33 +77,16 @@ impl Checker<'_> {
     /// The locals live before each statement and terminator: read later on some path before
     /// being written whole.
     pub(super) fn liveness(&self) -> Live {
-        let blocks = &self.body.blocks;
-        let mut predecessors: IndexVec<BlockId, Vec<BlockId>> = IndexVec::filled(Vec::new(), blocks.len());
-        for (block, b) in blocks.iter() {
-            for next in b.term.kind.successors() {
-                predecessors[next].push(block);
-            }
-        }
-        let mut entry: IndexVec<BlockId, BitSet<Local>> = IndexVec::filled(BitSet::new(), blocks.len());
-        let mut work: VecDeque<BlockId> = blocks.iter().map(|(block, _)| block).collect();
-        while let Some(block) = work.pop_front() {
-            let live = self.live_in(block, &entry).swap_remove(0);
-            if live != entry[block] {
-                entry[block] = live;
-                work.extend(predecessors[block].iter().copied());
-            }
-        }
-        blocks.iter().map(|(block, _)| self.live_in(block, &entry)).collect::<Vec<_>>().into()
+        let mut this = self;
+        let entry = this.solve_backward(self.body.blocks.len());
+        let before = |block| self.live_before(block, self.exit(block, &entry));
+        self.body.blocks.iter().map(|(block, _)| before(block)).collect::<Vec<_>>().into()
     }
 
     /// The locals live before each statement of `block` and its terminator, given those live at
-    /// the entry of each block.
-    fn live_in(&self, block: BlockId, entry: &IndexVec<BlockId, BitSet<Local>>) -> Vec<BitSet<Local>> {
+    /// its exit.
+    fn live_before(&self, block: BlockId, mut live: BitSet<Local>) -> Vec<BitSet<Local>> {
         let b = &self.body.blocks[block];
-        let mut live = BitSet::new();
-        for next in b.term.kind.successors() {
-            live.union(&entry[next]);
-        }
         live.extend(self.terminator_uses(&b.term));
         let mut before = vec![live.clone()];
         for stmt in b.stmts.iter().rev() {
@@ -164,5 +145,18 @@ impl Forward for &Checker<'_> {
             self.hold(block, index, stmt, holds);
         }
         self.body.blocks[block].term.kind.successors().into_iter().collect()
+    }
+}
+
+/// The locals live, backward from each use: a statement writing a local whole ends its life.
+impl Backward for &Checker<'_> {
+    type Fact = BitSet<Local>;
+
+    fn successors(&self, block: BlockId) -> Vec<BlockId> {
+        self.body.blocks[block].term.kind.successors().into_iter().collect()
+    }
+
+    fn back(&mut self, block: BlockId, live: &mut BitSet<Local>) {
+        *live = self.live_before(block, std::mem::take(live)).swap_remove(0);
     }
 }

@@ -1,16 +1,23 @@
-//! Forward dataflow over a body's blocks, as the checks run it: a fact at the entry of each block
-//! reached, which the block turns into what the blocks it goes to see, joined where paths meet,
-//! until nothing changes.
+//! Dataflow over a body's blocks, as the checks run it, until nothing changes. Forward: a fact at
+//! the entry of each block reached, which the block turns into what the blocks it goes to see,
+//! joined where paths meet. Backward: a fact at the entry of each block, from those at the
+//! entries of the blocks it goes to, joined, and what the block does before them.
 
 use std::collections::VecDeque;
 
-use vun_index::{BitMatrix, Idx, IndexVec};
+use vun_index::{BitMatrix, BitSet, Idx, IndexVec};
 use vun_mir::BlockId;
 
 /// What holds at a point, and how what holds on two paths meets.
 pub(crate) trait Fact: Clone {
     /// Joins `other` into `self`, giving whether `self` changed.
     fn join(&mut self, other: &Self) -> bool;
+}
+
+impl<I: Idx> Fact for BitSet<I> {
+    fn join(&mut self, other: &Self) -> bool {
+        self.union(other)
+    }
 }
 
 impl<R: Idx, C: Idx> Fact for BitMatrix<R, C> {
@@ -48,5 +55,47 @@ pub(crate) trait Forward {
             }
         }
         at
+    }
+}
+
+/// A backward problem: the blocks each block goes to, and what a block does to the fact at its
+/// exit, which gives the fact at its entry.
+pub(crate) trait Backward {
+    type Fact: Fact + Default + PartialEq;
+
+    /// The blocks `block` goes to.
+    fn successors(&self, block: BlockId) -> Vec<BlockId>;
+
+    /// Turns the fact at the exit of `block` into the fact at its entry.
+    fn back(&mut self, block: BlockId, fact: &mut Self::Fact);
+
+    /// The fact at the exit of `block`: those at the entries of the blocks it goes to, joined.
+    fn exit(&self, block: BlockId, entry: &IndexVec<BlockId, Self::Fact>) -> Self::Fact {
+        let mut fact = Self::Fact::default();
+        for next in self.successors(block) {
+            fact.join(&entry[next]);
+        }
+        fact
+    }
+
+    /// The fact at the entry of each of `blocks` blocks.
+    fn solve_backward(&mut self, blocks: usize) -> IndexVec<BlockId, Self::Fact> {
+        let mut predecessors: IndexVec<BlockId, Vec<BlockId>> = IndexVec::filled(Vec::new(), blocks);
+        for block in (0..blocks).map(BlockId::new) {
+            for next in self.successors(block) {
+                predecessors[next].push(block);
+            }
+        }
+        let mut entry: IndexVec<BlockId, Self::Fact> = IndexVec::filled(Self::Fact::default(), blocks);
+        let mut work: VecDeque<BlockId> = (0..blocks).map(BlockId::new).collect();
+        while let Some(block) = work.pop_front() {
+            let mut fact = self.exit(block, &entry);
+            self.back(block, &mut fact);
+            if fact != entry[block] {
+                entry[block] = fact;
+                work.extend(predecessors[block].iter().copied());
+            }
+        }
+        entry
     }
 }
