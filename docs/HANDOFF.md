@@ -239,8 +239,12 @@ language rules go in as proposed unless the user approves them.
    proposed; spec 07 section 7, 13 section 8.7): `--checks` / `Options.checks`, the rewrite at
    concreteness (`#[lang.check.by]`, through `Func::requirement` for `Allocator`), redzones in
    lowering, shadow memory in the libc runtime (`std.check`), `check.unsupported` elsewhere.
-   Left: the asm checks in the backends (`Unit.checks`), a board and a WASI shadow, foreign
-   frees and sizes, the quarantine, use after return. (c) DWARF line tables and symbol names done (decisions 204, 205:
+   The runtime also keeps a table of what allocators hand out (`foreign_free`, `size_mismatch`)
+   and a quarantine delaying frees, evicted only for the allocator freeing (`std.check.State`,
+   `std.check.mapped` for runtimes that map memory). Left: a board and a WASI shadow, use after
+   return. Lowering gap found on the way: an untyped constant argument of a `$T` primitive
+   (`lang.mem.atomic_compare_swap(usize, p, 0, 1, ...)`) lowers at its own narrow width (`i8`)
+   and fails the LIR verifier; `std.check.words` passes such values through typed parameters. (c) DWARF line tables and symbol names done (decisions 204, 205:
    `vun-dwarf`; `gdb` breaks on Vun lines); the unit is named by the first file with a row;
    unwind information done (decision 215, `.eh_frame` on ELF; Mach-O's compact unwind is
    left); next `DW_TAG_subprogram`s; (d) done in the seventeenth session: data aligned past every C type or in a

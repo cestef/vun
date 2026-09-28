@@ -1,0 +1,82 @@
+//! Memory given back to allocators, held poisoned before they may hand it out again (spec 13,
+//! section 8.7): a ring of what was given back, oldest first. Past `lang.check.quarantine` bytes,
+//! each free gives back the oldest memory of the allocator freeing, so memory leaves only for an
+//! allocator known to be alive.
+
+/// The entries of the ring.
+entries := 1 << 16;
+
+/// The words of the ring's header: its oldest entry, the entries from it, the bytes they hold.
+header := struct {
+    oldest := 0;
+    count := 1;
+    held := 2;
+    length := 3;
+};
+/// The words of an entry, `lang.check.Held`'s fields in order; an evicted one's allocator is 0.
+fields := 4;
+/// The words of the ring: its header, then its entries.
+words := header.length + fields * entries;
+
+/// An entry no allocator has memory in.
+evicted: lang.check.Held = .{ .address = 0, .bytes = 0, .align = 0, .allocator = 0 };
+
+Quarantine := struct {
+    _words: std.check.words.Words,
+
+    of := (at: std.check.words.Words) -> Quarantine { .{ ._words = at } };
+
+    /// The entry `i` after the oldest.
+    _slot := (self: Quarantine, i: usize) -> usize { (self._words.get(header.oldest) + i) % entries };
+
+    _entry := (self: Quarantine, slot: usize) -> lang.check.Held {
+        at := self._words.from((header.length + fields * slot).sat(usize));
+        .{ .address = at.get(0), .bytes = at.get(1), .align = at.get(2), .allocator = at.get(3) }
+    };
+
+    _put := (self: Quarantine, slot: usize, held: lang.check.Held) {
+        at := self._words.from((header.length + fields * slot).sat(usize));
+        at.set(0, held.address);
+        at.set(1, held.bytes);
+        at.set(2, held.align);
+        at.set(3, held.allocator);
+    };
+
+    /// Holds `held`; gives it back when the ring has no room for it.
+    hold := (self: Quarantine, held: lang.check.Held) -> ?lang.check.Held {
+        count := self._words.get(header.count);
+        if count == entries { return .some(held); }
+        self._put(self._slot(count), held);
+        self._words.set(header.count, (count + 1).sat(usize));
+        self._words.set(header.held, (self._words.get(header.held) + held.bytes).sat(usize));
+        .none
+    };
+
+    /// The oldest memory `allocator` has here, while the ring holds more than its bound or has
+    /// no room left.
+    evict := (self: Quarantine, allocator: usize) -> ?lang.check.Held {
+        count := self._words.get(header.count);
+        if self._words.get(header.held) <= lang.check.quarantine and count < entries { return .none; }
+        mut i: usize = 0;
+        for i < count {
+            slot := self._slot(i);
+            held := self._entry(slot);
+            if held.allocator == allocator {
+                self._put(slot, evicted);
+                self._words.set(header.held, (self._words.get(header.held) - held.bytes).sat(usize));
+                self._drop_evicted();
+                return .some(held);
+            }
+            i = (i + 1).sat(usize);
+        }
+        .none
+    };
+
+    /// Moves the oldest entry past those evicted already.
+    _drop_evicted := (self: Quarantine) {
+        for self._words.get(header.count) > 0 and self._entry(self._slot(0)).allocator == 0 {
+            self._words.set(header.oldest, self._slot(1));
+            self._words.set(header.count, (self._words.get(header.count) - 1).sat(usize));
+        }
+    };
+};

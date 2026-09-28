@@ -1,0 +1,76 @@
+//! What allocators have handed out, for the checks of allocations (spec 13, section 8.7): the
+//! bytes handed out at each address, open-addressed by linear probing. A removal moves later
+//! entries of its run back rather than leaving a tombstone, so probes stay as short as the table
+//! is full.
+
+/// The entries of the table, a power of two; one is always left empty, so every probe ends.
+entries := 1 << 22;
+
+/// The words of the table: the entries in use, then two per entry, the address handed out (0
+/// where the entry is empty) and its bytes.
+words := 1 + 2 * entries;
+
+/// Where the probe for `address` starts.
+home := (address: usize) -> usize { address / lang.check.granule % entries };
+
+/// The entry after `slot`, the first after the last.
+next := (slot: usize) -> usize { (slot + 1) % entries };
+
+/// Whether `slot` lies in the run from after `hole` to `end`, around the end of the table.
+within := (hole: usize, slot: usize, end: usize) -> bool {
+    if hole <= end { hole < slot and slot <= end } else { hole < slot or slot <= end }
+};
+
+Table := struct {
+    _words: std.check.words.Words,
+
+    of := (at: std.check.words.Words) -> Table { .{ ._words = at } };
+
+    _address := (self: Table, slot: usize) -> usize { self._words.get((1 + 2 * slot).sat(usize)) };
+
+    _bytes := (self: Table, slot: usize) -> usize { self._words.get((2 + 2 * slot).sat(usize)) };
+
+    _put := (self: Table, slot: usize, address: usize, bytes: usize) {
+        self._words.set((1 + 2 * slot).sat(usize), address);
+        self._words.set((2 + 2 * slot).sat(usize), bytes);
+    };
+
+    /// The entry holding `address`, or the empty one its probe ends at.
+    _find := (self: Table, address: usize) -> usize {
+        mut slot := home(address);
+        for self._address(slot) != 0 and self._address(slot) != address {
+            slot = next(slot);
+        }
+        slot
+    };
+
+    /// Records that the `bytes` at `address` were handed out; nothing when the table is full.
+    insert := (self: Table, address: usize, bytes: usize) {
+        slot := self._find(address);
+        if self._address(slot) == 0 {
+            used := self._words.get(0);
+            if used + 2 > entries { return; }
+            self._words.set(0, (used + 1).sat(usize));
+        }
+        self._put(slot, address, bytes);
+    };
+
+    /// Removes the record of `address`: the bytes it was handed out with, if it was.
+    remove := (self: Table, address: usize) -> ?usize {
+        mut hole := self._find(address);
+        if self._address(hole) == 0 { return .none; }
+        bytes := self._bytes(hole);
+        // Each later entry of the run whose probe starts at or before the hole moves into it.
+        mut slot := next(hole);
+        for self._address(slot) != 0 {
+            if !within(hole, home(self._address(slot)), slot) {
+                self._put(hole, self._address(slot), self._bytes(slot));
+                hole = slot;
+            }
+            slot = next(slot);
+        }
+        self._put(hole, 0, 0);
+        self._words.set(0, (self._words.get(0) - 1).sat(usize));
+        .some(bytes)
+    };
+};

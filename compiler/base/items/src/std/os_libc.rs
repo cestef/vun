@@ -30,13 +30,12 @@ pub const pthread_self: Item = Item::new(&["std", "os", "libc", "pthread_self"])
 pub const sched_yield: Item = Item::new(&["std", "os", "libc", "sched_yield"]);
 /// `protection` for `mmap` of memory read and written.
 pub const read_write: Item = Item::new(&["std", "os", "libc", "read_write"]);
-/// The shadow of the checks of unsafe code: a byte for each granule of 47 bits of addresses.
-pub const shadow_bytes: Item = Item::new(&["std", "os", "libc", "shadow_bytes"]);
-/// Where the shadow is mapped, 0 until a check first needs it.
-pub const shadow_base: Item = Item::new(&["std", "os", "libc", "shadow_base"]);
-/// The shadow, mapped the first time a check needs it; a thread losing the race to map it
-/// unmaps its own.
-pub const shadow: Item = Item::new(&["std", "os", "libc", "shadow"]);
+/// Private memory of `bytes` reserved, backed only where touched.
+pub const reserve: Item = Item::new(&["std", "os", "libc", "reserve"]);
+/// Gives back the `bytes` mapped at `address`.
+pub const unmap: Item = Item::new(&["std", "os", "libc", "unmap"]);
+/// The state of the checks of unsafe code, mapped the first time a check needs it.
+pub const state: Item = Item::new(&["std", "os", "libc", "state"]);
 /// Ends the process with `status`.
 pub const end: Item = Item::new(&["std", "os", "libc", "end"]);
 /// The thread holding the critical section, 0 when none: a thread entering it again nests.

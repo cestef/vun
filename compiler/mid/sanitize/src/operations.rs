@@ -6,24 +6,13 @@ use std::sync::Arc;
 use vun_hir::db::PackageId;
 use vun_intern::Symbol;
 use vun_items::Item;
-use vun_items::lang::check;
 use vun_query::{Cx, Query};
 use vun_sema::env::ItemSite;
 use vun_sema::item::Site;
+use vun_sema::primitives::check::Check;
 
-/// Each operation of `lang.check` a runtime exports.
-const PROVIDED: [Item; 8] = [
-    check::access,
-    check::poison,
-    check::unpoison,
-    check::allocated,
-    check::freed,
-    check::fail,
-    check::asm_write,
-    check::asm_stack,
-];
-
-/// The operations of `lang.check` as the files of a package see them, each with its link symbol.
+/// The operations of `lang.check` as the files of a package see them, each with its link symbol:
+/// its primitives a runtime exports, the ones with a link symbol.
 pub struct Operations;
 
 impl Query for Operations {
@@ -36,6 +25,6 @@ impl Query for Operations {
             let Ok(Site::Decl(decl)) = cx.get::<ItemSite>(&(*package, item)) else { return None };
             Some((item, decl.linked(cx)?.symbol))
         };
-        Arc::new(PROVIDED.into_iter().filter_map(linked).collect())
+        Arc::new(Check::ALL.iter().map(|p| p.item()).filter_map(linked).collect())
     }
 }

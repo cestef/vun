@@ -25,7 +25,8 @@ by: ($kind: Kind, $F: type, $f: F) -> Attribute(&[Place.decls]) = _;
 granule := 8;
 /// The bytes poisoned past a stack slot whose address is taken, a multiple of `granule`.
 redzone := 16;
-/// The bytes of freed memory kept poisoned before an allocator may hand them out again.
+/// The bytes of memory given back that the quarantine holds poisoned before giving them to their
+/// allocator, past which each free gives back the oldest its allocator has there.
 quarantine := 1 << 20;
 
 /// Why a check fails, or why memory is poisoned.
@@ -56,6 +57,15 @@ Failure := struct {
     address: usize,
 };
 
+/// Memory an allocator was given back, held in the quarantine: where, how much, the alignment it
+/// was handed out with, and the allocator's address.
+Held := struct {
+    address: usize,
+    bytes: usize,
+    align: usize,
+    allocator: usize,
+};
+
 /// The link symbols of this namespace's declarations, which a runtime exports.
 symbols := struct {
     access := "vun_check_access";
@@ -63,6 +73,8 @@ symbols := struct {
     unpoison := "vun_check_unpoison";
     allocated := "vun_check_allocated";
     freed := "vun_check_freed";
+    hold := "vun_check_hold";
+    evict := "vun_check_evict";
     fail := "vun_check_fail";
     asm_write := "vun_check_asm_write";
     asm_stack := "vun_check_asm_stack";
@@ -84,10 +96,19 @@ unpoison: (address: usize, bytes: usize) = _;
 #[link.symbol(symbols.allocated)]
 allocated: (address: usize, bytes: usize) = _;
 
-/// Records that an allocator was given back the `bytes` at `address`; why it may not be, if it
-/// may not.
+/// Records that an allocator was given back the `bytes` at `address` and poisons them; why it may
+/// not be, if it may not: they were given back already, never handed out, or with another size.
 #[link.symbol(symbols.freed)]
 freed: (address: usize, bytes: usize) -> ?Violation = _;
+
+/// Holds `held` in the quarantine; gives it back when the quarantine has no room for it.
+#[link.symbol(symbols.hold)]
+hold: (held: &Held) -> ?Held = _;
+
+/// The oldest memory the allocator at `allocator` has in the quarantine, to give it back now, while
+/// the quarantine holds more than `quarantine` bytes or has no room left.
+#[link.symbol(symbols.evict)]
+evict: (allocator: usize) -> ?Held = _;
 
 /// Reports `f` and ends the program, as a trap does.
 #[link.symbol(symbols.fail)]

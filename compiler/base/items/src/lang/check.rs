@@ -21,7 +21,8 @@ pub const by: Item = Item::new(&["lang", "check", "by"]);
 pub const granule: Item = Item::new(&["lang", "check", "granule"]);
 /// The bytes poisoned past a stack slot whose address is taken, a multiple of `granule`.
 pub const redzone: Item = Item::new(&["lang", "check", "redzone"]);
-/// The bytes of freed memory kept poisoned before an allocator may hand them out again.
+/// The bytes of memory given back that the quarantine holds poisoned before giving them to their
+/// allocator, past which each free gives back the oldest its allocator has there.
 pub const quarantine: Item = Item::new(&["lang", "check", "quarantine"]);
 /// Why a check fails, or why memory is poisoned.
 pub const Violation: Item = Item::new(&["lang", "check", "Violation"]);
@@ -29,6 +30,9 @@ pub const Violation: Item = Item::new(&["lang", "check", "Violation"]);
 pub const Access: Item = Item::new(&["lang", "check", "Access"]);
 /// A failed check: its site in the message table, why it failed, and the address it failed at.
 pub const Failure: Item = Item::new(&["lang", "check", "Failure"]);
+/// Memory an allocator was given back, held in the quarantine: where, how much, the alignment it
+/// was handed out with, and the allocator's address.
+pub const Held: Item = Item::new(&["lang", "check", "Held"]);
 /// The link symbols of this namespace's declarations, which a runtime exports.
 pub const symbols: Item = Item::new(&["lang", "check", "symbols"]);
 /// Why the `bytes` at `address` may not be accessed, if they may not.
@@ -39,9 +43,14 @@ pub const poison: Item = Item::new(&["lang", "check", "poison"]);
 pub const unpoison: Item = Item::new(&["lang", "check", "unpoison"]);
 /// Records that an allocator handed out the `bytes` at `address`.
 pub const allocated: Item = Item::new(&["lang", "check", "allocated"]);
-/// Records that an allocator was given back the `bytes` at `address`; why it may not be, if it
-/// may not.
+/// Records that an allocator was given back the `bytes` at `address` and poisons them; why it may
+/// not be, if it may not: they were given back already, never handed out, or with another size.
 pub const freed: Item = Item::new(&["lang", "check", "freed"]);
+/// Holds `held` in the quarantine; gives it back when the quarantine has no room for it.
+pub const hold: Item = Item::new(&["lang", "check", "hold"]);
+/// The oldest memory the allocator at `allocator` has in the quarantine, to give it back now, while
+/// the quarantine holds more than `quarantine` bytes or has no room left.
+pub const evict: Item = Item::new(&["lang", "check", "evict"]);
 /// Reports `f` and ends the program, as a trap does.
 pub const fail: Item = Item::new(&["lang", "check", "fail"]);
 /// Fails at the site `site` unless the `bytes` at `address` may be written: what a backend calls

@@ -1,8 +1,9 @@
 //! Shadow memory for the checks of unsafe code at run time (spec 07, section 7; spec 13,
 //! section 8.7): one byte for each `granule` bytes of the address space, 0 where all of them
 //! may be accessed, `k` where the first `k` may, and a negative code saying why where none may.
-//! A runtime gives where the shadow is and exports the operations of `lang.check` over it
-//! (`exports`). The shadow is read and written by atomic accesses, which no check rewrites.
+//! A runtime gives where the shadow and the rest of the state are (`State`, or `mapped` from
+//! memory it maps) and exports the operations of `lang.check` over them (`exports`). The state is
+//! read and written by atomic accesses, which no check rewrites.
 
 /// The bytes of memory one shadow byte describes.
 granule := lang.check.granule;
@@ -77,14 +78,89 @@ Shadow := struct {
         }
     };
 
-    /// Records memory given back: poisoned as freed, unless it was already.
-    freed := (self: Shadow, address: usize, bytes: usize) -> ?lang.check.Violation {
-        if self._get(address) == code(.freed) {
-            return .some(.double_free);
-        }
-        self.poison(address, bytes, .freed);
-        .none
+    /// Whether the granule holding `address` is poisoned as given back.
+    given_back := (self: Shadow, address: usize) -> bool { self._get(address) == code(.freed) };
+};
+
+/// What the checks keep at run time: the shadow, and in words a runtime gives past it, a lock,
+/// what allocators have handed out and the quarantine.
+State := struct {
+    shadow: Shadow,
+    _words: std.check.words.Words,
+
+    /// The words a state takes past its shadow.
+    words := 1 + std.check.table.words + std.check.quarantine.words;
+
+    of := (shadow: Shadow, at: std.check.words.Words) -> State { .{ .shadow = shadow, ._words = at } };
+
+    _table := (self: State) -> std.check.table.Table { std.check.table.Table.of(self._words.from(1)) };
+
+    _quarantine := (self: State) -> std.check.quarantine.Quarantine {
+        std.check.quarantine.Quarantine.of(self._words.from(1 + std.check.table.words))
     };
+
+    /// Records the `bytes` handed out at `address` and marks them accessible.
+    allocated := (self: State, address: usize, bytes: usize) {
+        self._words.lock(0);
+        self._table().insert(address, bytes);
+        self._words.unlock(0);
+        self.shadow.unpoison(address, bytes);
+    };
+
+    /// Records the `bytes` at `address` given back and poisons them, unless they were given back
+    /// already, never handed out, or handed out with another size.
+    freed := (self: State, address: usize, bytes: usize) -> ?lang.check.Violation {
+        self._words.lock(0);
+        given := self._table().remove(address);
+        self._words.unlock(0);
+        match given {
+            .none => .some(if self.shadow.given_back(address) { .double_free } else { .foreign_free }),
+            .some(b) => {
+                if b != bytes { return .some(.size_mismatch); }
+                self.shadow.poison(address, bytes, .freed);
+                .none
+            },
+        }
+    };
+
+    hold := (self: State, held: lang.check.Held) -> ?lang.check.Held {
+        self._words.lock(0);
+        back := self._quarantine().hold(held);
+        self._words.unlock(0);
+        back
+    };
+
+    evict := (self: State, allocator: usize) -> ?lang.check.Held {
+        self._words.lock(0);
+        back := self._quarantine().evict(allocator);
+        self._words.unlock(0);
+        back
+    };
+};
+
+/// The shadow of a hosted program: a byte for each granule of 47 bits of addresses.
+hosted_shadow := (1 << 47) / granule;
+/// The bytes a hosted program maps for the state: its shadow, then the words past it.
+hosted_bytes := hosted_shadow + State.words * lang.meta.size(usize);
+/// Where the state `mapped` gives is, 0 until a check first needs it.
+mapped_at: std.sync.Atomic(usize) = .init(0);
+
+/// The state of a hosted program in memory `map` reserves, backed only where touched, mapped the
+/// first time a check needs it; a thread losing the race to map it gives its own back to `unmap`.
+mapped := ($map: (bytes: usize) -> usize, $unmap: (address: usize, bytes: usize)) -> State {
+    mut base := mapped_at.load(.acquire);
+    if base == 0 {
+        fresh := map(hosted_bytes);
+        base = mapped_at.compare_swap(0, fresh, .acq_rel);
+        if base == 0 {
+            base = fresh;
+        } else {
+            unmap(fresh, hosted_bytes);
+        }
+    }
+    shadow := unsafe Shadow.of(lang.mem.pointer_at(i8, base));
+    at := unsafe std.check.words.Words.of(lang.mem.pointer_at(usize, (base + hosted_shadow).sat(usize)));
+    State.of(shadow, at)
 };
 
 /// `alloc` of the allocator `A`, checked (`#[lang.check.by(.allocations, alloc)]` on the
@@ -97,43 +173,63 @@ alloc := ($A: type, self: &mut A, size: usize, align: usize, $at: lang.meta.Orig
         .ok(given)
     };
 
-/// `free` of the allocator `A`, checked: bytes given back twice fail the check made at `at`;
-/// others are poisoned, so an access through a pointer kept to them fails its own.
+/// `free` of the allocator `A`, checked: bytes given back twice, never handed out or with another
+/// size fail the check made at `at`; others are poisoned and held in the quarantine, so an access
+/// through a pointer kept to them fails its own. The allocator is given back what it has there
+/// once the quarantine is past its bound.
 free := ($A: type, self: &mut A, p: *u8, size: usize, align: usize, $at: lang.meta.Origin) {
     match lang.check.freed(p.address(), size) {
         .some(why) => lang.check.failed(at, why, p.address()),
-        .none => self.free(p, size, align),
+        .none => {},
+    }
+    allocator := lang.mem.pointer_to(A, self).address();
+    held: lang.check.Held = .{ .address = p.address(), .bytes = size, .align = align, .allocator = allocator };
+    match lang.check.hold(&held) {
+        .some(back) => self.free(p, back.bytes, back.align),
+        .none => {},
+    }
+    for {
+        match lang.check.evict(allocator) {
+            .some(back) => self.free(unsafe lang.mem.pointer_at(u8, back.address), back.bytes, back.align),
+            .none => break,
+        }
     }
 };
 
-/// The exports of a runtime whose shadow `shadow` gives, and which ends the program with
-/// `status` when a check fails.
-exports := ($shadow: () -> Shadow, $end: (status: std.os.Status) -> lang.never) -> type { struct {
+/// The exports of a runtime whose state `state` gives, and which ends the program with `status`
+/// when a check fails.
+exports := ($state: () -> State, $end: (status: std.os.Status) -> lang.never) -> type { struct {
     #[link.export(lang.check.symbols.access)]
     access := (address: usize, bytes: usize, how: lang.check.Access) -> ?lang.check.Violation {
-        shadow().access(address, bytes)
+        state().shadow.access(address, bytes)
     };
 
     #[link.export(lang.check.symbols.poison)]
     poison := (address: usize, bytes: usize, why: lang.check.Violation) {
-        shadow().poison(address, bytes, why)
+        state().shadow.poison(address, bytes, why)
     };
 
     #[link.export(lang.check.symbols.unpoison)]
-    unpoison := (address: usize, bytes: usize) { shadow().unpoison(address, bytes) };
+    unpoison := (address: usize, bytes: usize) { state().shadow.unpoison(address, bytes) };
 
     #[link.export(lang.check.symbols.allocated)]
-    allocated := (address: usize, bytes: usize) { shadow().unpoison(address, bytes) };
+    allocated := (address: usize, bytes: usize) { state().allocated(address, bytes) };
 
     #[link.export(lang.check.symbols.freed)]
-    freed := (address: usize, bytes: usize) -> ?lang.check.Violation { shadow().freed(address, bytes) };
+    freed := (address: usize, bytes: usize) -> ?lang.check.Violation { state().freed(address, bytes) };
+
+    #[link.export(lang.check.symbols.hold)]
+    hold := (held: &lang.check.Held) -> ?lang.check.Held { state().hold(held.*) };
+
+    #[link.export(lang.check.symbols.evict)]
+    evict := (allocator: usize) -> ?lang.check.Held { state().evict(allocator) };
 
     #[link.export(lang.check.symbols.fail)]
     fail := (f: &lang.check.Failure) -> lang.never { end(std.os.trapped) };
 
     #[link.export(lang.check.symbols.asm_write), abi.c]
     asm_write := (address: usize, bytes: usize, site: u32) {
-        if shadow().access(address, bytes).is_some() {
+        if state().shadow.access(address, bytes).is_some() {
             end(std.os.trapped)
         }
     };

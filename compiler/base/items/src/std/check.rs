@@ -6,6 +6,12 @@
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
 use crate::Item;
+/// The namespace `std.check.quarantine`.
+pub const quarantine: Item = Item::new(&["std", "check", "quarantine"]);
+/// The namespace `std.check.table`.
+pub const table: Item = Item::new(&["std", "check", "table"]);
+/// The namespace `std.check.words`.
+pub const words: Item = Item::new(&["std", "check", "words"]);
 /// The bytes of memory one shadow byte describes.
 pub const granule: Item = Item::new(&["std", "check", "granule"]);
 /// Why memory is poisoned, as its shadow bytes code it.
@@ -14,12 +20,26 @@ pub const code: Item = Item::new(&["std", "check", "code"]);
 pub const violation: Item = Item::new(&["std", "check", "violation"]);
 /// The shadow at `base`, a byte for each granule of the address space.
 pub const Shadow: Item = Item::new(&["std", "check", "Shadow"]);
+/// What the checks keep at run time: the shadow, and in words a runtime gives past it, a lock,
+/// what allocators have handed out and the quarantine.
+pub const State: Item = Item::new(&["std", "check", "State"]);
+/// The shadow of a hosted program: a byte for each granule of 47 bits of addresses.
+pub const hosted_shadow: Item = Item::new(&["std", "check", "hosted_shadow"]);
+/// The bytes a hosted program maps for the state: its shadow, then the words past it.
+pub const hosted_bytes: Item = Item::new(&["std", "check", "hosted_bytes"]);
+/// Where the state `mapped` gives is, 0 until a check first needs it.
+pub const mapped_at: Item = Item::new(&["std", "check", "mapped_at"]);
+/// The state of a hosted program in memory `map` reserves, backed only where touched, mapped the
+/// first time a check needs it; a thread losing the race to map it gives its own back to `unmap`.
+pub const mapped: Item = Item::new(&["std", "check", "mapped"]);
 /// `alloc` of the allocator `A`, checked (`#[lang.check.by(.allocations, alloc)]` on the
 /// requirement): the bytes it hands out are recorded.
 pub const alloc: Item = Item::new(&["std", "check", "alloc"]);
-/// `free` of the allocator `A`, checked: bytes given back twice fail the check made at `at`;
-/// others are poisoned, so an access through a pointer kept to them fails its own.
+/// `free` of the allocator `A`, checked: bytes given back twice, never handed out or with another
+/// size fail the check made at `at`; others are poisoned and held in the quarantine, so an access
+/// through a pointer kept to them fails its own. The allocator is given back what it has there
+/// once the quarantine is past its bound.
 pub const free: Item = Item::new(&["std", "check", "free"]);
-/// The exports of a runtime whose shadow `shadow` gives, and which ends the program with
-/// `status` when a check fails.
+/// The exports of a runtime whose state `state` gives, and which ends the program with `status`
+/// when a check fails.
 pub const exports: Item = Item::new(&["std", "check", "exports"]);

@@ -903,8 +903,23 @@ in registers a call may overwrite, none saved.
   memory, grown with the memory the program uses (`memory.grow` by an eighth); until they do,
   a checked build for them stops at `check.unsupported`. `asm` does not arise on wasm. The
   redzone size and the quarantine's bound are named data in `lang.check` (`redzone`,
-  `quarantine`), read by lowering and the runtime. Freed memory stays poisoned in a bounded quarantine before an
-  allocator may reuse it, so a use after free is caught while it is in there.
+  `quarantine`), read by lowering and the runtime.
+- **The rest of the state** lies in words past the shadow (`std.check.State`), taken under a
+  lock word: a table of what allocators have handed out, an address and its bytes per entry,
+  open-addressed by linear probing with entries moved back on removal (`std.check.table`); and
+  the quarantine, a ring of memory given back (`lang.check.Held`: the address, bytes, alignment
+  and the allocator's address), oldest first (`std.check.quarantine`). A runtime that maps memory
+  has it all from `std.check.mapped($map, $unmap)`, which maps the shadow of 47 bits of
+  addresses and the state once, the first thread to need it winning. The checked `free`
+  (`std.check.free`) asks `lang.check.freed`, which fails with `foreign_free` for an address the
+  table does not hold (`double_free` when its shadow says it was given back), `size_mismatch`
+  for other bytes than the table records, and otherwise removes it and poisons the bytes. It then
+  holds them in the quarantine (`hold`) instead of giving them to the allocator, and gives the
+  allocator what `evict` hands back: while the quarantine holds more than `lang.check.quarantine`
+  bytes or has no room, the oldest memory of the allocator freeing. Memory leaves the quarantine
+  only for the allocator that is giving memory back at that moment, which is alive, never for
+  one that may have been dropped since; the memory of an allocator that never frees again stays
+  there, and a full ring gives memory back at once.
 - **Why not fat pointers.** Carrying bounds in `*T` would change its size, and with it every
   layout holding one, `#[layout.c]` and the C ABI. A checked program could then no longer call
   C, or a library built unchecked. Shadow memory keeps every layout. Code built without checks
@@ -916,10 +931,10 @@ in registers a call may overwrite, none saved.
   An `asm` block reading memory it does not own is not caught, only writes are. A slot is
   not poisoned once its function returns, so a pointer to it used afterwards is caught only
   where another call's redzone lies there; catching it always would take frames on a stack of
-  their own (`Violation.returned` is kept for that). An allocator given back memory it did not
-  hand out, or with another size, is not caught yet (it takes a table of what is handed out),
-  nor is memory kept in quarantine: it goes back to the allocator when given back, so an access
-  to it is caught until the allocator hands it out again.
+  their own (`Violation.returned` is kept for that). The table of allocations is
+  bounded (`std.check.table.entries`): past it, allocations are not recorded, and giving them back
+  reports `foreign_free`. An allocator whose `free` gives memory to another allocator it wraps is
+  checked twice, so the second check reports memory given back twice.
 
 ## 9. Workspace
 

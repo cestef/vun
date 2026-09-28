@@ -13,5 +13,5 @@ pub const access: Item = Item::new(&["std", "check", "Shadow", "access"]);
 pub const poison: Item = Item::new(&["std", "check", "Shadow", "poison"]);
 /// Marks the `bytes` at `address` as accessible, the last granule as far as they reach.
 pub const unpoison: Item = Item::new(&["std", "check", "Shadow", "unpoison"]);
-/// Records memory given back: poisoned as freed, unless it was already.
-pub const freed: Item = Item::new(&["std", "check", "Shadow", "freed"]);
+/// Whether the granule holding `address` is poisoned as given back.
+pub const given_back: Item = Item::new(&["std", "check", "Shadow", "given_back"]);

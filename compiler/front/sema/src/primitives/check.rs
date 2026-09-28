@@ -17,9 +17,14 @@ pub enum Check {
     unpoison,
     /// Records that an allocator handed out the `bytes` at `address`.
     allocated,
-    /// Records that an allocator was given back the `bytes` at `address`; why it may not be, if it
-    /// may not.
+    /// Records that an allocator was given back the `bytes` at `address` and poisons them; why it may
+    /// not be, if it may not: they were given back already, never handed out, or with another size.
     freed,
+    /// Holds `held` in the quarantine; gives it back when the quarantine has no room for it.
+    hold,
+    /// The oldest memory the allocator at `allocator` has in the quarantine, to give it back now, while
+    /// the quarantine holds more than `quarantine` bytes or has no room left.
+    evict,
     /// Reports `f` and ends the program, as a trap does.
     fail,
     /// Fails at the site `site` unless the `bytes` at `address` may be written: what a backend calls
@@ -42,6 +47,8 @@ impl Check {
         Self::unpoison,
         Self::allocated,
         Self::freed,
+        Self::hold,
+        Self::evict,
         Self::fail,
         Self::asm_write,
         Self::asm_stack,
@@ -58,6 +65,8 @@ impl Check {
             Self::unpoison => "unpoison",
             Self::allocated => "allocated",
             Self::freed => "freed",
+            Self::hold => "hold",
+            Self::evict => "evict",
             Self::fail => "fail",
             Self::asm_write => "asm_write",
             Self::asm_stack => "asm_stack",
@@ -75,6 +84,8 @@ impl Check {
             Self::unpoison => vun_items::lang::check::unpoison,
             Self::allocated => vun_items::lang::check::allocated,
             Self::freed => vun_items::lang::check::freed,
+            Self::hold => vun_items::lang::check::hold,
+            Self::evict => vun_items::lang::check::evict,
             Self::fail => vun_items::lang::check::fail,
             Self::asm_write => vun_items::lang::check::asm_write,
             Self::asm_stack => vun_items::lang::check::asm_stack,

@@ -91,6 +91,7 @@ pub mod bounds;
 pub mod check;
 pub mod check_Access;
 pub mod check_Failure;
+pub mod check_Held;
 pub mod check_Kind;
 pub mod check_Violation;
 pub mod check_mem;
