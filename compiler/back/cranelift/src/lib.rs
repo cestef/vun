@@ -1,6 +1,6 @@
 //! In-process Cranelift code generation: the default for debug builds.
 
-use vun_backend::{BackendCaps, BackendInfo, Emits, Feature, Planned, Readiness, Widest};
+use vun_backend::{BackendCaps, BackendInfo, Emits, Feature, HeldFloats, Planned, Readiness, Widest};
 use vun_lir_passes::legalize::Half;
 use vun_target::{Arches, Name};
 
@@ -12,6 +12,7 @@ pub const INFO: BackendInfo = BackendInfo {
         features: &[Feature::Vectors, Feature::TailCalls, Feature::DebugInfo],
         widest: Widest::Bits(128),
         half: Half::Promoted,
+        floats: HeldFloats::Every,
     },
     readiness: Readiness::Planned,
 };

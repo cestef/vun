@@ -9,7 +9,8 @@ use vun_lir_passes::legalize::Half;
 
 use std::collections::{BTreeMap, HashMap};
 use vun_backend::{
-    Artifact, ArtifactSink, Backend, BackendCaps, BackendInfo, Emits, Feature, Lines, Request, Widest,
+    Artifact, ArtifactSink, Backend, BackendCaps, BackendInfo, Emits, Feature, HeldFloats, Lines, Request,
+    Widest,
 };
 use vun_diag::{DiagCtxt, ErrorGuaranteed};
 
@@ -27,6 +28,7 @@ pub const INFO: BackendInfo = BackendInfo {
         features: &[Feature::CAbi, Feature::NoAlias, Feature::FrameSizes, Feature::DebugInfo],
         widest: Widest::Bits(64),
         half: Half::Promoted,
+        floats: HeldFloats::Every,
     },
     readiness: Readiness::Ready,
 };

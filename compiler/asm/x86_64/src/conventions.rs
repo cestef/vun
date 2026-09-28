@@ -17,7 +17,7 @@ pub const SSE_RETURNS: [Xmm; 2] = [Xmm(0), Xmm(1)];
 
 /// System V AMD64: a result in memory's address is passed first, and given back in `rax`.
 pub const SYSV: Convention<Reg, Xmm> = Convention {
-    rules: &Rules::SYSV,
+    rules: Rules::of(vun_target::Convention::Sysv).expect("built"),
     registers: Registers {
         int_args: &ARGS,
         float_args: &SSE_ARGS,

@@ -1,6 +1,6 @@
 //! LLVM code generation: optimized builds and the widest native reach.
 
-use vun_backend::{BackendCaps, BackendInfo, Emits, Feature, Planned, Readiness, Widest};
+use vun_backend::{BackendCaps, BackendInfo, Emits, Feature, HeldFloats, Planned, Readiness, Widest};
 use vun_lir_passes::legalize::Half;
 use vun_target::{Arches, Name};
 
@@ -18,6 +18,7 @@ pub const INFO: BackendInfo = BackendInfo {
         ],
         widest: Widest::Bits(128),
         half: Half::Computed,
+        floats: HeldFloats::Every,
     },
     readiness: Readiness::Planned,
 };

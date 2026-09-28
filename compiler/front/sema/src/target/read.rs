@@ -5,19 +5,19 @@
 use std::fmt;
 
 use vun_codec::{Decode, Encode};
-use vun_intern::Symbol;
 use vun_items::Item;
 use vun_items::lang::target_Convention as convention;
-use vun_items::lang::{Option as option, target_C as c, target_CInt as cint, target_Endian as endian};
 use vun_items::lang::{
     target_Atomics as atomics, target_Attributes as attributes, target_CCompiler as compiler,
     target_FrameSizes as frames,
 };
 use vun_items::lang::{target_Backends as backends, target_Host as host, target_Spec as spec};
+use vun_items::lang::{target_C as c, target_CInt as cint, target_Endian as endian};
 use vun_target::{
     Atomics, Attributes, Backends, CCompiler, CInt, CTypes, Convention, Endian, FrameSizes, Host, TargetSpec,
 };
 
+use super::members::Members;
 use crate::ty::Value;
 
 /// Why a value is not the description its type promises: it is not evaluated yet, or not a
@@ -42,9 +42,6 @@ impl fmt::Display for Unread {
 }
 
 impl std::error::Error for Unread {}
-
-/// The widths of an address a target may have.
-const ADDRESS_BITS: [u32; 3] = [16, 32, 64];
 
 /// A description read from its value.
 pub trait Read: Sized {
@@ -113,113 +110,6 @@ impl Variants for FrameSizes {
         &[(frames::none, Self::None), (frames::stack_usage, Self::StackUsage)];
 }
 
-/// The members of a `struct` value.
-pub(crate) struct Members<'v>(&'v [(Symbol, Value)]);
-
-impl<'v> Members<'v> {
-    pub(crate) fn of(value: &'v Value) -> Result<Self, Unread> {
-        match value {
-            Value::Struct { fields, .. } => Ok(Self(fields)),
-            _ => Err(Unread::Record),
-        }
-    }
-
-    pub(crate) fn get(&self, member: Item) -> Result<&'v Value, Unread> {
-        let symbol = member.symbol();
-        self.0.iter().find(|(name, _)| *name == symbol).map(|(_, v)| v).ok_or(Unread::Member(member))
-    }
-
-    pub(crate) fn name(&self, member: Item) -> Result<Symbol, Unread> {
-        match self.get(member)? {
-            Value::Name(name) => Ok(*name),
-            _ => Err(Unread::Member(member)),
-        }
-    }
-
-    pub(crate) fn int<N: TryFrom<u128>>(&self, member: Item) -> Result<N, Unread> {
-        match self.get(member)? {
-            Value::Int(n) => n.to_u128().and_then(|n| N::try_from(n).ok()).ok_or(Unread::Member(member)),
-            _ => Err(Unread::Member(member)),
-        }
-    }
-
-    pub(crate) fn read<T: Read>(&self, member: Item) -> Result<T, Unread> {
-        T::read(self.get(member)?).map_err(|_| Unread::Member(member))
-    }
-
-    /// The width of an address, one of `ADDRESS_BITS`.
-    fn address_bits(&self, member: Item) -> Result<u32, Unread> {
-        let bits = self.int(member)?;
-        ADDRESS_BITS.contains(&bits).then_some(bits).ok_or(Unread::Member(member))
-    }
-
-    /// A `&[lang.meta.Name]`.
-    fn names(&self, member: Item) -> Result<Vec<Symbol>, Unread> {
-        match self.get(member)? {
-            Value::Array(items) | Value::Tuple(items) => items
-                .iter()
-                .map(|n| match n {
-                    Value::Name(name) => Ok(*name),
-                    _ => Err(Unread::Member(member)),
-                })
-                .collect(),
-            _ => Err(Unread::Member(member)),
-        }
-    }
-
-    /// A `?&[u8]` naming a symbol.
-    pub(crate) fn symbol(&self, member: Item) -> Result<Option<Symbol>, Unread> {
-        match self.get(member)? {
-            Value::Variant { name, .. } if *name == option::none.symbol() => Ok(None),
-            Value::Variant { name, payload, .. } if *name == option::some.symbol() => {
-                match payload.as_slice() {
-                    [text] => Self::text(text).map(Some).ok_or(Unread::Member(member)),
-                    _ => Err(Unread::Member(member)),
-                }
-            }
-            _ => Err(Unread::Member(member)),
-        }
-    }
-
-    /// The items of a `&[T]`, each read.
-    pub(crate) fn list<T: Read>(&self, member: Item) -> Result<Vec<T>, Unread> {
-        match self.get(member)? {
-            Value::Array(items) | Value::Tuple(items) => {
-                items.iter().map(|item| T::read(item).map_err(|_| Unread::Member(member))).collect()
-            }
-            _ => Err(Unread::Member(member)),
-        }
-    }
-
-    /// A `&[u8]` as the text it holds.
-    pub(crate) fn string(&self, member: Item) -> Result<Symbol, Unread> {
-        Self::text(self.get(member)?).ok_or(Unread::Member(member))
-    }
-
-    /// A `&[&[u8]]` as the texts it holds.
-    fn strings(&self, member: Item) -> Result<Vec<Symbol>, Unread> {
-        match self.get(member)? {
-            Value::Array(items) | Value::Tuple(items) => {
-                items.iter().map(|t| Self::text(t).ok_or(Unread::Member(member))).collect()
-            }
-            _ => Err(Unread::Member(member)),
-        }
-    }
-
-    /// The UTF-8 text a byte array holds.
-    fn text(value: &Value) -> Option<Symbol> {
-        let Value::Array(bytes) = value else { return None };
-        let bytes = bytes
-            .iter()
-            .map(|b| match b {
-                Value::Int(n) => n.to_u128().and_then(|n| u8::try_from(n).ok()),
-                _ => None,
-            })
-            .collect::<Option<Vec<u8>>>()?;
-        String::from_utf8(bytes).ok().map(|s| Symbol::intern(&s))
-    }
-}
-
 impl Read for CInt {
     fn read(value: &Value) -> Result<Self, Unread> {
         let m = Members::of(value)?;
@@ -275,6 +165,7 @@ impl Read for TargetSpec {
             abi: m.name(spec::abi)?,
             convention: m.read(spec::convention)?,
             pointer_bits: m.address_bits(spec::pointer_bits)?,
+            floats: m.floats(spec::floats)?,
             endian: m.read(spec::endian)?,
             object_format: m.name(spec::object_format)?,
             entry_symbol: m.symbol(spec::entry_symbol)?,

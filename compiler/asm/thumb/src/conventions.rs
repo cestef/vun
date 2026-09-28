@@ -33,7 +33,7 @@ const PRESERVED: [Reg; 8] = [Reg::R4, Reg::R5, Reg::R6, Reg::R7, Reg::R8, Reg::R
 
 /// AAPCS with floats in floating-point registers.
 pub const AAPCS_VFP: Convention<Reg, V> = Convention {
-    rules: &Rules::AAPCS_VFP,
+    rules: Rules::of(vun_target::Convention::AapcsVfp).expect("built"),
     registers: Registers {
         int_args: &ARGS,
         float_args: &FP_ARGS,
@@ -48,7 +48,7 @@ pub const AAPCS_VFP: Convention<Reg, V> = Convention {
 /// AAPCS's base standard: floats travel in general registers, so none is passed in a
 /// floating-point one.
 pub const AAPCS: Convention<Reg, V> = Convention {
-    rules: &Rules::AAPCS,
+    rules: Rules::of(vun_target::Convention::Aapcs).expect("built"),
     registers: Registers { float_args: &[], float_results: &[], ..AAPCS_VFP.registers },
 };
 

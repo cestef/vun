@@ -143,8 +143,14 @@ impl Session {
         let mut unit = unit.clone();
         let widest =
             Scalar::int(info.caps.widest.on(&target)).expect("a backend computes with an integer width");
-        if let Err(unlegal) =
-            (Legalize { widest, endian: target.endian, half: info.caps.half }).apply(&mut unit)
+        if let Err(unlegal) = (Legalize {
+            widest,
+            endian: target.endian,
+            half: info.caps.half,
+            floats: info.caps.floats.on(&target),
+            convention: target.convention,
+        })
+        .apply(&mut unit)
         {
             let msg = Msg::new()
                 .text("backend ")

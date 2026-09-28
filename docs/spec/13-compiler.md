@@ -765,7 +765,12 @@ place as its limbs (returned in consecutive result registers under the C convent
 its wide integers, through memory under Vun's; decision 280). Division and remainder call a helper
 function the pass adds per count of limbs (restoring division over limbs, signs put back around
 it). Atomic accesses of wide
-integers and conversions between them and floats are refused (`backend.lacks`). A backend that
+integers are refused (`backend.lacks`); conversions between them and floats never reach the pass,
+running as `lang.float.soft.convert`'s. A float the backend does not hold (`BackendCaps.floats`:
+native code holds those the target's processor computes) is its bits, an integer of its width
+and limbs where that is wide: every operation on it ran as `lang.float.soft`'s, so only moves and
+bitcasts are left, and a C signature carries one only where its convention passes floats in
+general registers (`Unlegalized::FloatAbi`, decision 297). A backend that
 does not compute `f16` (`BackendCaps::half` is `Half::Promoted`; both the C and the native
 backend) receives each `f16` as its bits, an `i16`: every operation on it widens its operands to
 `f32` exactly, computes there and rounds back once to nearest even, which gives the `f16` result

@@ -9,8 +9,8 @@
 mod tests;
 
 use vun_backend::{
-    ArtifactSink, Backend, BackendCaps, BackendInfo, Emits, Emitted, Feature, Lack, Missing, Readiness,
-    Request, Widest,
+    ArtifactSink, Backend, BackendCaps, BackendInfo, Emits, Emitted, Feature, HeldFloats, Lack, Missing,
+    Readiness, Request, Widest,
 };
 use vun_diag::{DiagCtxt, ErrorGuaranteed};
 use vun_lir_passes::legalize::Half;
@@ -81,6 +81,7 @@ pub const INFO: BackendInfo = BackendInfo {
         features: &[Feature::CAbi, Feature::FrameSizes, Feature::DebugInfo],
         widest: Widest::Address,
         half: Half::Promoted,
+        floats: HeldFloats::Computed,
     },
     readiness: Readiness::Ready,
 };

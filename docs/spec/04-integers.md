@@ -57,7 +57,9 @@ denotes at compile time; bounds are accepted where a `Range` is expected.
    excludes 0 (`Int(1..)`, a literal, a compile-time value) it is not.
 7. **Storage** is the smallest of 8, 16, 32, 64 or 128 bits that holds the range directly, with no
    offset encoding. In a `layout.bits` struct it is the minimal bit count. Unused bit patterns are
-   niches (spec 05, section 6).
+   niches (spec 05, section 6). An integer is aligned to its size, but one wider than 8 bytes to
+   twice an address at most, as C compilers align their widest scalars: an `i128` to 16 bytes on
+   a 64-bit target, to 8 on a 32-bit one.
 8. **Bit operations** (`&`, `|`, `^`, `~`, `<<`, `>>`) exist on `uN` types and preserve the type.
    A shift amount whose range exceeds `N-1` is a trap site. The run-time check of a shift amount
    is made in the amount's own storage, before any resize. An index or bound wider than the word
@@ -135,7 +137,10 @@ not compute with (a float it does not list, an integer wider than an address), r
 `f`: `lang.float.soft.arith` adds, subtracts, multiplies and divides, rounding once to nearest,
 ties to even, `lang.float.soft.compare` compares, as IEEE 754 does both, and
 `lang.float.soft.convert` converts, so `i128` to `f64` is Vun on every target. A processor without floats (`bare.cortex_m3`) computes every float so, and one of
-single precision (`bare.cortex_m4f`) its `f64`.
+single precision (`bare.cortex_m4f`) its `f64`. A backend handing its code to no compiler holds
+such a float as its bits (`BackendCaps.floats`): an `f64` on a 32-bit target is two limbs like an
+`i64` (spec 13, section 8.1), and it reaches a C function only under a convention passing floats
+in general registers (AAPCS's base standard), never in a float register it could not fill.
 
 ## 3. Vectors
 

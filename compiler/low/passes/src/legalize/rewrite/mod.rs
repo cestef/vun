@@ -1,5 +1,5 @@
-//! Rewriting one function: each old value is itself, its bits for a promoted `f16`, or limbs in
-//! the new function, each block a block whose wide parameters are limbs, each operation on a wide
+//! Rewriting one function: each old value is itself, its bits for a promoted `f16` or a float
+//! held so, or limbs in the new function, each block a block whose wide parameters are limbs, each operation on a wide
 //! integer a sequence over limbs (`Limbwise`) and each on a promoted `f16` one in `f32`
 //! (`Float16`).
 
@@ -13,6 +13,7 @@ use super::limbs::{Limbs, Limbwise};
 
 mod call;
 mod half;
+mod held;
 mod inst;
 mod term;
 use super::{Helpers, Legalize, Unlegal};

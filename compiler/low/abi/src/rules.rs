@@ -179,4 +179,19 @@ impl Rules {
 
     /// AAPCS's base standard, floats in general registers (the soft-float EABI).
     pub const AAPCS: Self = Self { floats: Floats::Core, ..Self::AAPCS_VFP };
+
+    /// The rules of the convention targets name `convention`, where one is built: the one place
+    /// a name is given its rules, which each architecture's conventions read.
+    #[must_use]
+    pub const fn of(convention: vun_target::Convention) -> Option<&'static Self> {
+        use vun_target::Convention as Named;
+        match convention {
+            Named::Sysv => Some(&Self::SYSV),
+            Named::Aapcs64 => Some(&Self::AAPCS64),
+            Named::DarwinArm64 => Some(&Self::DARWIN_ARM64),
+            Named::AapcsVfp => Some(&Self::AAPCS_VFP),
+            Named::Aapcs => Some(&Self::AAPCS),
+            Named::Lp64d | Named::Ilp32 | Named::Wasm32 => None,
+        }
+    }
 }

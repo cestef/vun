@@ -1,6 +1,6 @@
 //! QBE as a subprocess on IL text: small and simple, no vectors, no 32-bit targets.
 
-use vun_backend::{BackendCaps, BackendInfo, Emits, Feature, Planned, Readiness, Widest};
+use vun_backend::{BackendCaps, BackendInfo, Emits, Feature, HeldFloats, Planned, Readiness, Widest};
 use vun_lir_passes::legalize::Half;
 use vun_target::{Arches, Name};
 
@@ -12,6 +12,7 @@ pub const INFO: BackendInfo = BackendInfo {
         features: &[Feature::CAbi],
         widest: Widest::Bits(64),
         half: Half::Promoted,
+        floats: HeldFloats::Every,
     },
     readiness: Readiness::Planned,
 };

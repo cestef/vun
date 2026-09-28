@@ -2,10 +2,11 @@
 //! constants `lang.target` declares with `_`.
 
 mod choose;
+mod members;
 mod read;
 
 pub use choose::{Choice, Chosen, Unchosen};
-pub(crate) use read::Members;
+pub(crate) use members::Members;
 pub use read::{Read, Unread, Variants};
 
 use std::sync::Arc;
@@ -13,14 +14,13 @@ use std::sync::Arc;
 use vun_codec::{Decode, Encode};
 use vun_intern::Symbol;
 use vun_query::{Cx, Query};
-use vun_target::{Endian, TargetSpec};
+use vun_target::{Endian, Floats, TargetSpec};
 
 use crate::Primitive;
 use crate::float::Format;
 use crate::int::Integer;
 use crate::primitives::target::Target as Constant;
 use crate::ty::Value;
-use vun_items::lang::target_Spec as spec;
 
 /// A target as its declaration gives it: the description read from it, and the value itself.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
@@ -44,8 +44,8 @@ pub struct Target {
     pub address_bits: u32,
     /// The instruction set its code is written in, which a block of instructions names.
     pub isa: Symbol,
-    /// The float types its processor computes, as types (`lang.target.Spec.floats`).
-    pub floats: Vec<Value>,
+    /// The floats its processor computes (`lang.target.Spec.floats`).
+    pub floats: Floats,
     /// The value of its declaration: `lang.target.current`.
     pub declared: Value,
 }
@@ -54,12 +54,11 @@ impl Target {
     /// What compile-time code sees of `target`.
     #[must_use]
     pub fn of(target: &Declared) -> Self {
-        let floats = Members::of(&target.value).and_then(|m| m.get(spec::floats)).ok().cloned();
         Self {
             endian: target.spec.endian,
             address_bits: target.spec.pointer_bits,
             isa: target.spec.isa,
-            floats: floats.and_then(Value::items).unwrap_or_default(),
+            floats: target.spec.floats,
             declared: target.value.clone(),
         }
     }
@@ -71,7 +70,9 @@ impl Target {
     pub fn computes(&self, value: &Value) -> bool {
         let range = match value {
             Value::Range(range) => range.clone(),
-            Value::Type(ty) if Format::of(ty).is_some() => return self.floats.contains(value),
+            Value::Type(ty) if let Some(format) = Format::of(ty) => {
+                return self.floats.computes(format.bits());
+            }
             Value::Type(ty) => ty.interval(),
             _ => None,
         };

@@ -11,6 +11,12 @@ impl Rewrite<'_> {
         let data = &self.old.insts[inst];
         let (at, result) = (data.origin, data.result);
         let unlegal = |why| Unlegal { at, why };
+        if let Some(parts) = self.held(&data.kind).map_err(unlegal)? {
+            if let Some(v) = result {
+                self.parts.insert(v, parts);
+            }
+            return Ok(());
+        }
         if let Some(parts) = self.half(&data.kind, at).map_err(unlegal)? {
             if let Some(v) = result {
                 self.parts.insert(v, parts);

@@ -61,7 +61,8 @@ impl Query for Shapes {
         let layouts =
             |tys: &mut dyn Iterator<Item = &Ty>| tys.map(|t| Self::layout(cx, t)).collect::<Option<Vec<_>>>();
         if let Some(range) = ty.interval() {
-            return Self::integer(&range).map(|l| Arc::new(Shape::whole(l)));
+            let layout = Self::capped(cx, Self::integer(&range)?)?;
+            return Some(Arc::new(Shape::whole(layout)));
         }
         let shape = match &**ty {
             TyKind::Primitive(p, args) => Self::primitive(cx, *p, args)?,
@@ -108,6 +109,19 @@ impl Shapes {
             }
             _ => Some(Layout { niche: None, ..Self::layout(cx, item)? }),
         }
+    }
+
+    /// `layout`, a scalar's, aligned to twice an address at most where it is wider than 8
+    /// bytes, as C compilers align their widest scalars: 16 bytes under System V and AAPCS64, 8
+    /// under 32-bit AAPCS. Narrower ones are aligned to their size on every target, so their
+    /// layout does not wait for one.
+    fn capped(cx: &Cx<'_>, layout: Layout) -> Option<Layout> {
+        const TARGETLESS: u64 = 8;
+        if layout.align <= TARGETLESS {
+            return Some(layout);
+        }
+        let largest = 2 * Self::pointer(cx)?.size;
+        Some(Layout { align: layout.align.min(largest), ..layout })
     }
 
     /// A pointer of the target: as wide as an address; never null.

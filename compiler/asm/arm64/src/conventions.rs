@@ -38,11 +38,14 @@ const REGISTERS: Registers<Reg, V> = Registers {
 };
 
 /// AAPCS64.
-pub const AAPCS64: Convention<Reg, V> = Convention { rules: &Rules::AAPCS64, registers: REGISTERS };
+pub const AAPCS64: Convention<Reg, V> =
+    Convention { rules: Rules::of(vun_target::Convention::Aapcs64).expect("built"), registers: REGISTERS };
 
 /// Apple's variant, which also keeps `x18` for the platform.
-pub const DARWIN_ARM64: Convention<Reg, V> =
-    Convention { rules: &Rules::DARWIN_ARM64, registers: Registers { reserved: &[Reg::X18], ..REGISTERS } };
+pub const DARWIN_ARM64: Convention<Reg, V> = Convention {
+    rules: Rules::of(vun_target::Convention::DarwinArm64).expect("built"),
+    registers: Registers { reserved: &[Reg::X18], ..REGISTERS },
+};
 
 /// The conventions arm64 code follows, by the name targets give them.
 pub const CONVENTIONS: &[(vun_target::Convention, &Convention<Reg, V>)] =

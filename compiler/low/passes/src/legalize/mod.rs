@@ -10,6 +10,11 @@
 //!
 //! An `f16`, for a backend that does not compute it, becomes its bits, an `i16`, and every
 //! operation on it one in `f32` between an exact widening and a rounding back (`float16`).
+//!
+//! A float the backend does not hold, the target's processor not computing it, becomes its bits:
+//! every operation on it ran as `lang.float.soft`'s before lowering, so only moves of its bits
+//! remain, and an `f64` on a 32-bit target is two limbs like an `i64`. A C function passes one
+//! only under a convention passing floats in general registers, as integers of their width.
 
 mod divide;
 mod float16;
@@ -20,10 +25,11 @@ mod tests;
 
 use std::fmt;
 
+use vun_abi::{Floats as Passed, Rules};
 use vun_codec::{Decode, Encode};
 use vun_index::Idx;
 use vun_origin::OriginId;
-use vun_target::Endian;
+use vun_target::{Convention, Endian, Floats};
 
 use rewrite::Rewrite;
 use vun_lir::{AbiType, Conv, Ext, FuncId, ImportKind, Scalar, Signature, Unit};
@@ -36,6 +42,10 @@ pub struct Legalize {
     /// Where the limbs of a wide integer are in memory.
     pub endian: Endian,
     pub half: Half,
+    /// The floats the backend holds as floats.
+    pub floats: Floats,
+    /// The convention the target's C functions follow.
+    pub convention: Convention,
 }
 
 /// How a backend holds `f16`.
@@ -58,6 +68,10 @@ pub enum Unlegalized {
     HalfConversion,
     /// A promoted `f16` passed under the C convention, which passes it as a float.
     HalfAbi,
+    /// A float held as its bits passed under a C convention passing it in a float register.
+    FloatAbi,
+    /// An operation, other than a move of its bits, on a float held as its bits.
+    HeldFloat,
 }
 
 /// An operation the pass cannot legalize, where it is.
@@ -74,6 +88,10 @@ impl fmt::Display for Unlegal {
             Unlegalized::Float => "a conversion between a float and an integer wider than the backend's",
             Unlegalized::HalfConversion => "a conversion to `f16` from a type other than `f32`",
             Unlegalized::HalfAbi => "an `f16` passed under the C convention",
+            Unlegalized::FloatAbi => {
+                "a float its processor does not compute passed to or from C in a float register"
+            }
+            Unlegalized::HeldFloat => "an operation on a float its processor does not compute",
         })
     }
 }
@@ -101,20 +119,29 @@ impl Helpers {
 }
 
 impl Legalize {
-    /// How many limbs an integer of type `ty` is, where it is wider than the widest.
+    /// How many limbs a value of type `ty` is, where it is an integer wider than the widest or
+    /// the bits of a float held so.
     fn limbs(self, ty: Scalar) -> Option<u8> {
+        let ty = self.held(ty).unwrap_or(ty);
         let (bits, widest) = (ty.bits(0), self.widest.bits(0));
         (ty.is_int() && bits > widest).then(|| u8::try_from(bits / widest).expect("a few limbs"))
     }
 
-    /// Whether a value of `ty` is an `f16` held as its bits.
-    fn promoted(self, ty: Scalar) -> bool {
-        ty == Scalar::F16 && self.half == Half::Promoted
+    /// The integer holding the bits of a value of `ty`, where it is a float the backend does not
+    /// hold.
+    fn held(self, ty: Scalar) -> Option<Scalar> {
+        let bits = ty.bits(0);
+        (ty.is_float() && !self.floats.computes(bits)).then(|| Scalar::int(bits).expect("a float's width"))
     }
 
-    /// The scalar a value of `ty`, not a wide integer, becomes.
+    /// Whether a value of `ty` is an `f16` held as its bits and computed in `f32`.
+    fn promoted(self, ty: Scalar) -> bool {
+        ty == Scalar::F16 && self.half == Half::Promoted && self.held(ty).is_none()
+    }
+
+    /// The scalar a value of `ty`, not wide, becomes.
     fn scalar(self, ty: Scalar) -> Scalar {
-        if self.promoted(ty) { Scalar::I16 } else { ty }
+        if self.promoted(ty) { Scalar::I16 } else { self.held(ty).unwrap_or(ty) }
     }
 
     fn limb_bytes(self) -> u64 {
@@ -142,16 +169,32 @@ impl Legalize {
         if signature.conv == Conv::C && passed.clone().any(half) {
             return Err(Unlegalized::HalfAbi);
         }
+        let held = |t: &AbiType| match t {
+            AbiType::Scalar(s) => self.held(*s).is_some(),
+            AbiType::Record(r) => r.fields.iter().any(|&(_, s)| self.held(s).is_some()),
+            _ => false,
+        };
+        let core = Rules::of(self.convention).is_some_and(|r| r.calling(signature).floats == Passed::Core);
+        if signature.conv == Conv::C && !core && passed.clone().any(held) {
+            return Err(Unlegalized::FloatAbi);
+        }
         let promoted = |t: AbiType| match t {
             AbiType::Scalar(s) if self.promoted(s) => AbiType::Int(Scalar::I16, Ext::Zero),
+            AbiType::Scalar(s) if let Some(bits) = self.held(s) => AbiType::Int(bits, Ext::Zero),
+            AbiType::Record(mut r) => {
+                for (_, s) in &mut r.fields {
+                    *s = self.scalar(*s);
+                }
+                AbiType::Record(r)
+            }
             other => other,
         };
-        let split = |t: &AbiType| match *t {
+        let split = |t: &AbiType| match promoted(t.clone()) {
             AbiType::Int(s, ext) => match self.limbs(s) {
                 Some(limbs) => AbiType::Wide { limb: self.widest, limbs, ext },
                 None => AbiType::Int(s, ext),
             },
-            ref other => promoted(other.clone()),
+            other => other,
         };
         let result = signature.result.as_ref().map(split);
         Ok(Signature {
@@ -168,7 +211,10 @@ impl Legalize {
     /// Returns the first operation on a wide integer that has no sequence over limbs.
     pub fn apply(self, unit: &mut Unit) -> Result<(), Unlegal> {
         let legalize = self;
-        if legalize.widest == Scalar::I128 && legalize.half == Half::Computed {
+        if legalize.widest == Scalar::I128
+            && legalize.half == Half::Computed
+            && legalize.floats == Floats::ALL
+        {
             return Ok(());
         }
         let mut helpers = Helpers { next: FuncId::new(unit.functions.len()), divide: Vec::new() };

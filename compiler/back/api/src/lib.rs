@@ -7,13 +7,16 @@ mod lack;
 
 pub use lack::{AsmOperand, Lack, Missing};
 
+mod caps;
+
+pub use caps::{BackendCaps, HeldFloats, Widest};
+
 use std::path::PathBuf;
 
 use vun_diag::{DiagCtxt, Diagnostic, ErrorGuaranteed, Msg, errors};
 use vun_intern::Symbol;
 use vun_lir::FuncId;
 use vun_lir::unit::Unit;
-use vun_lir_passes::legalize::Half;
 use vun_origin::OriginId;
 pub use vun_target::Readiness;
 use vun_target::{Arches, Name, Profile, Support, TargetSpec, Unsupported};
@@ -98,45 +101,6 @@ pub enum Feature {
     /// Reports frame sizes, which `stack.max` requires.
     FrameSizes,
     DebugInfo,
-}
-
-/// Capabilities a program may require of its backend.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct BackendCaps {
-    pub emits: Emits,
-    pub features: &'static [Feature],
-    /// The widest integer it computes with: wider ones are split into halves before it reads the
-    /// unit (`Legalize`).
-    pub widest: Widest,
-    /// Whether it computes `f16`, or holds it as bits and computes in `f32` (`Unit::legalize`).
-    pub half: Half,
-}
-
-/// The widest integer a backend computes with.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Widest {
-    /// Of this many bits, on every target.
-    Bits(u32),
-    /// A register's: as wide as the target's addresses.
-    Address,
-}
-
-impl Widest {
-    /// Its bits on `target`.
-    #[must_use]
-    pub fn on(self, target: &TargetSpec) -> u32 {
-        match self {
-            Self::Bits(bits) => bits,
-            Self::Address => target.pointer_bits,
-        }
-    }
-}
-
-impl BackendCaps {
-    #[must_use]
-    pub fn has(&self, feature: Feature) -> bool {
-        self.features.contains(&feature)
-    }
 }
 
 /// Everything known about a backend without running it.

@@ -240,16 +240,20 @@ In flight, not in main:
   `targets.linux.arm` runs under `qemu-arm` with a toolchain row naming `clang
   --target=armv7a-linux-gnueabihf -fuse-ld=lld -nostdlib` (this machine has no 32-bit Arm
   `libgcc`; the row is not in the user's file yet: pass `VUN_TOOLCHAIN=<copy>`, as other sessions
-  read that file). 9 of the 13 driver programs agree with x86-64. Soft floats (decision 294):
-  `Spec.floats` and `#[lower.soft]` rewrite float arithmetic and comparisons the processor lacks
-  into `lang.float.soft.{arith, compare}`, checked bit for bit against x86-64 (random and special
-  operands, and x86-64 run with `floats = &[]`). Open: legalization holding a float the backend
-  does not compute as its bits (`f64` on 32-bit Thumb, as `Half::Promoted` holds `f16`), soft
-  conversions (int and float, `f32` and `f64`), `f64` in VFP `d` registers for linux.arm (its
-  FPU computes it; the backend lacks it), float conversions of integers wider than a word, 64-bit
-  atomics (`ldrexd`/`strexd`), the backend tests running linux.arm, factoring the isel shared by
-  arm64 and Thumb (`call`, `entry`, `term`, `carry`). A local holding a namespace or a type is known
-  at compile time (decision 295).
+  read that file). 9 of the 13 driver programs agree with x86-64. Soft floats (decisions 294 to 297):
+  `Spec.floats` (`TargetSpec.floats`, `vun_target::Floats`) and `#[lower.soft]` rewrite float
+  arithmetic, comparisons and conversions the processor lacks, and conversions of integers wider
+  than an address, into `lang.float.soft.{arith, compare, convert}`; native code holds a float the
+  target does not compute as its bits (an `f64` two limbs on Thumb). Conversions are new language
+  surface: `n.nearest(f64)`, `x.nearest(f32)`, `x.truncate(i32)` (saturating). Checked bit for bit
+  against x86-64 hardware and Python (random and special operands; x86-64 and linux.arm run with
+  their `floats` narrowed, and 128-bit integers). An integer wider than 8 bytes is aligned to
+  twice an address at most. A local holding a namespace or a type is known at compile time
+  (decision 295). Open: `f64` in VFP `d` registers for linux.arm (the framework holds values in
+  one general register; a value wider than a register would live in its home, 8 bytes, reached by
+  `vldr`/`vstr`), 64-bit atomics (`ldrexd`/`strexd`, planned as `lower.soft` routines in
+  `lang.mem`), the backend tests running linux.arm, and factoring the isel shared by arm64 and
+  Thumb (`call`, `entry`, `term`, `carry`).
 - Milestone 3a landed (decision 280): `Rules::{AAPCS, AAPCS_VFP}` (word, stack alignment,
   `returned`, `Floats`, `Split`), backfill in `vun-abi`'s banks, `Loc::Split { parts, rest }` for
   straddling records (handled by the x86-64 and arm64 isel), wide results as `AbiType::Wide`

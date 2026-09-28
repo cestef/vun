@@ -1,13 +1,19 @@
 //! External backends: any executable reading LIR text on standard input.
 
-use vun_backend::{BackendCaps, BackendInfo, Emits, Planned, Readiness, Widest};
+use vun_backend::{BackendCaps, BackendInfo, Emits, HeldFloats, Planned, Readiness, Widest};
 use vun_lir_passes::legalize::Half;
 use vun_target::{Arches, Name};
 
 pub const INFO: BackendInfo = BackendInfo {
     id: Name("external"),
     arches: Arches::Any,
-    caps: BackendCaps { emits: Emits::Object, features: &[], widest: Widest::Bits(64), half: Half::Promoted },
+    caps: BackendCaps {
+        emits: Emits::Object,
+        features: &[],
+        widest: Widest::Bits(64),
+        half: Half::Promoted,
+        floats: HeldFloats::Every,
+    },
     readiness: Readiness::Planned,
 };
 
