@@ -169,13 +169,12 @@ Just landed:
   repeated per instantiation shown once. b4: patterns (273), ELF32 and Thumb relocations (277).
 
 In flight, not in main:
-- Native Thumb (82): workspace `../vun-thumb-82`, commit ytonorkq (full Thumb-2 table with
-  encodings, `vun_isa::word` shared with arm64, new crate `vun-asm-thumb` checked against llvm-mc).
-  Needs a full check, then `jj rebase -r ytonorkq --insert-before @` from the main copy. After it:
-  sema's `asm/thumb.rs` reads fp registers, memory, conditions and `.w`; then Thumb codegen
-  (Isel, AAPCS rows, `ARCHES`), LIR halves to limbs by the target's widest integer, CPU features
-  (single or double float), a static `linux` Thumb target under `qemu-arm`.
-- Milestone 3a (unassigned, b4's notes): 32-bit AAPCS in `vun-abi`: `Rules` gain word,
+- Native Thumb: the Thumb-2 table and `vun-asm-thumb` are in main (ytonorkq, yqmrxmyz; sema reads
+  `Instruction.mnemonic`). Next: sema's `asm/thumb.rs` reads fp registers, memory, conditions and
+  `.w`; then Thumb codegen (Isel, AAPCS rows in `compiler/base/thumb/src/conventions.rs`,
+  `ARCHES`), LIR halves to limbs by the target's widest integer, CPU features (single or double
+  float), a static `linux` Thumb target under `qemu-arm`. The `thumb-82` workspace is spent.
+- Milestone 3a (session vun-68, workspace `../vun-abi-3a`): 32-bit AAPCS in `vun-abi`: `Rules` gain word,
   stack_align, returned, `Floats {Next, Core, Backfill}`, `Split {Never, WhileStackEmpty}`;
   placements `Loc::Pair`/`Ret::Pair` (soft-float double) and `Loc::Straddled` (AAPCS C.5); arms in
   the x86/arm64 isel and codegen matches.
