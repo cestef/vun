@@ -196,10 +196,9 @@ language rules go in as proposed unless the user approves them.
    - Fuzzing: a MIR and LIR target (`fuzz/fuzz_targets/lir.rs`, written, uncommitted, not run: its
      build under the sanitizer is heavy on this machine).
    - Code quality: spilled operands loaded where the form takes memory (regalloc).
-   - Refactors: each `errors.vun` entry restates its page path; move `vun-harness` to
-     `compiler/base`; stub crate `render/sarif`; the worklist solver written twice (places,
-     borrows); `DiagId` and pass ids are strings; typeck's output maps listed three times;
-     `vun doc` labels type aliases as values (the reader does not type).
+   - Refactors: move `vun-harness` to `compiler/base`; stub crate `render/sarif`; the worklist
+     solver written twice (places, borrows); `DiagId` and pass ids are strings; typeck's output
+     maps listed three times; `vun doc` labels type aliases as values (the reader does not type).
 
 1. Backends (the user's focus): (a) arm64: done for linux.arm64 in the sixteenth session
    (decision 192); next `macos.arm64` (Mach-O in `vun-object`, Apple's AAPCS64 variant: narrow

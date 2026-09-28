@@ -7,8 +7,8 @@ use std::fmt;
 use vun_asm::{AsmOperand, Blocks, Place, Via};
 use vun_asm_arm64::Arm64;
 use vun_asm_x86_64::{Syntax, X86_64};
-use vun_isa_thumb::Thumb;
 use vun_inline::{Inst, Line, Rebind};
+use vun_isa_thumb::Thumb;
 use vun_lir::{Address, Output, Value};
 
 /// A line of a block, as the text GNU C assembles names its label: unique to each `__asm__`

@@ -12,13 +12,13 @@
 mod gnu;
 
 use vun_asm::AsmOperand;
-use vun_asm_arm64::Arm64;
 use vun_asm::Blocks;
+use vun_asm_arm64::Arm64;
 use vun_asm_x86_64::X86_64;
-use vun_isa_thumb::Thumb;
 use vun_backend::{Lack, Missing};
 use vun_inline::{Bound, Line};
 use vun_intern::Symbol;
+use vun_isa_thumb::Thumb;
 use vun_lir::{Address, AsmCheck, Scalar, Value};
 use vun_origin::OriginId;
 

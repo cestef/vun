@@ -8,6 +8,8 @@
 use crate::Item;
 pub const Severity: Item = Item::new(&["lang", "diag", "Severity"]);
 pub const Safety: Item = Item::new(&["lang", "diag", "Safety"]);
+/// A diagnostic, named by its binding path; its explanation page is the file that path names,
+/// as a namespace's source is, with the extension `md` (spec 10, section 1).
 pub const Diag: Item = Item::new(&["lang", "diag", "Diag"]);
 /// Stops compile-time evaluation with an error saying `message`, shown at `at`, or else at the
 /// call that led to it from outside the reporting code, with the calls it was reported in

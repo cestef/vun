@@ -17,6 +17,9 @@ pub const cbz: Item = Item::new(&["lang", "arch", "arm64", "control", "cbz"]);
 pub const cbnz: Item = Item::new(&["lang", "arch", "arm64", "control", "cbnz"]);
 pub const udf: Item = Item::new(&["lang", "arch", "arm64", "control", "udf"]);
 pub const brk: Item = Item::new(&["lang", "arch", "arm64", "control", "brk"]);
+/// Calls the kernel (the supervisor): Linux takes the call's number in `x8` and returns its
+/// result in `x0`, keeping every other register.
+pub const svc: Item = Item::new(&["lang", "arch", "arm64", "control", "svc"]);
 /// The page of an address, which a following `add` or load completes with its low 12 bits.
 pub const adrp: Item = Item::new(&["lang", "arch", "arm64", "control", "adrp"]);
 /// A data memory barrier: accesses the barrier orders complete, as its operand says, before any

@@ -32,3 +32,12 @@ pub const xadd: Item = Item::new(&["lang", "arch", "x86_64", "control", "xadd"])
 pub const cmpxchg: Item = Item::new(&["lang", "arch", "x86_64", "control", "cmpxchg"]);
 /// Copies `rcx` bytes from `[rsi]` to `[rdi]` with `rep`.
 pub const movsb: Item = Item::new(&["lang", "arch", "x86_64", "control", "movsb"]);
+/// Fills `rcx` bytes at `[rdi]` with `al` with `rep`.
+pub const stosb: Item = Item::new(&["lang", "arch", "x86_64", "control", "stosb"]);
+/// Clears the direction flag: string operations go up.
+pub const cld: Item = Item::new(&["lang", "arch", "x86_64", "control", "cld"]);
+/// Sets the direction flag: string operations go down.
+pub const std: Item = Item::new(&["lang", "arch", "x86_64", "control", "std"]);
+/// Calls the kernel: the call's number in `rax`, its result there too; the kernel keeps every
+/// register but `rcx` and `r11`, which the return address and the flags pass through.
+pub const syscall: Item = Item::new(&["lang", "arch", "x86_64", "control", "syscall"]);

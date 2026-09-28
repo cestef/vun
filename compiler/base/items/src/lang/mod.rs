@@ -97,7 +97,6 @@ pub mod check_mem;
 pub mod check_symbols;
 pub mod comptime;
 pub mod diag;
-pub mod diag_Diag;
 pub mod diag_Safety;
 pub mod diag_Severity;
 pub mod errors;

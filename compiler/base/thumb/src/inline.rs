@@ -3,8 +3,8 @@
 //! declaration order `generated` keeps. Bindings are general registers; no form takes memory, an
 //! immediate, a label or a symbol.
 
-use vun_isa::{AsmOperand, Blocks, Fit, Fixed, Given, Label, Misfit, Place};
 use vun_inline::{FormId, Inst, OpId, RegRef, SizeId};
+use vun_isa::{AsmOperand, Blocks, Fit, Fixed, Given, Label, Misfit, Place};
 
 use crate::{Barrier, Class, Form, Kind, Mask, Op, Operand, Reg, Size, Special, Thumb};
 
