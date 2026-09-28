@@ -5,8 +5,11 @@
 
 use std::sync::Arc;
 
-use vun_diag::DiagCtxt;
-use vun_hir::tree::ExprKind;
+use vun_diag::{ChildKind, DiagCtxt, Diagnostic, Msg, errors};
+use vun_hir::resolve::Res;
+use vun_hir::tree::{BinderId, ExprId, ExprKind, Hir, PatId};
+use vun_hir::visit::{Visitor, walk_expr, walk_pat};
+use vun_origin::OriginId;
 use vun_query::{Cx, Cycle, Query};
 
 use super::{Typed, TypedBody};
@@ -49,6 +52,10 @@ impl TypedBody {
         for &expr in &self.evaluations {
             let ExprKind::Prefix { operand, .. } = hir.exprs[expr].kind else { continue };
             let surely = clean && self.types.contains_key(&operand);
+            if surely && let Some((read, local)) = Reads::local(&here, operand) {
+                diag.error(Self::runtime(hir, local, hir.exprs[read].origin));
+                continue;
+            }
             if let Err(stopped) = here.eval(operand)
                 && let Some(d) = stopped.report(hir.exprs[expr].origin, surely)
             {
@@ -58,5 +65,59 @@ impl TypedBody {
         for step in self.steps.values() {
             step.evaluate(env, diag);
         }
+    }
+}
+
+impl TypedBody {
+    /// The report of a `$` form reading, at `origin`, the local `local`, which its body computes
+    /// when it runs: what `$` asks for cannot wait for that.
+    fn runtime(hir: &Hir, local: BinderId, origin: OriginId) -> Diagnostic {
+        let name = hir.binders[local].name;
+        let msg = Msg::new().code(name.as_str()).text(" is known only when the program runs");
+        let help = Msg::new()
+            .text("bind it with ")
+            .code("$")
+            .text(" to know it when compiling, or compute this without ")
+            .code("$");
+        Diagnostic::error(errors::COMPTIME_RUNTIME, msg).at(origin, None).child(ChildKind::Help, help)
+    }
+}
+
+/// The names an expression reads, and the binders it introduces itself.
+#[derive(Default)]
+struct Reads {
+    names: Vec<ExprId>,
+    bound: Vec<BinderId>,
+}
+
+impl Reads {
+    /// The first local `expr` reads that its body computes when it runs (bound without `$`, by
+    /// the body rather than by `expr` itself or a namespace), and the name reading it.
+    fn local(env: &Env<'_, '_>, expr: ExprId) -> Option<(ExprId, BinderId)> {
+        let hir = &env.parsed.hir;
+        let mut reads = Self::default();
+        reads.expr(hir, expr);
+        let resolved = &env.parsed.resolution.names;
+        let mut binders = reads.names.iter().filter_map(|&e| match resolved[e] {
+            Some(Res::Binder(b)) => Some((e, b)),
+            _ => None,
+        });
+        binders.find(|&(_, b)| {
+            !hir.binders[b].comptime && hir.member_decl(b).is_none() && !reads.bound.contains(&b)
+        })
+    }
+}
+
+impl Visitor for Reads {
+    fn expr(&mut self, hir: &Hir, expr: ExprId) {
+        if let ExprKind::Name(_) = hir.exprs[expr].kind {
+            self.names.push(expr);
+        }
+        walk_expr(self, hir, expr);
+    }
+
+    fn pat(&mut self, hir: &Hir, pat: PatId) {
+        hir.binders(pat, &mut self.bound);
+        walk_pat(self, hir, pat);
     }
 }

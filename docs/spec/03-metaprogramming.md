@@ -30,10 +30,12 @@ through ordinary higher-order functions.
 
 Among statements, `$for` and `$if` generate statements: each step of a `$for` is the body with
 the binder bound to one item, typed and lowered on its own, so `a.$(f.name)` may have a different
-type in each step. A `$for` has no value and is never a block's value. `$if` used as a value,
-last in a block or in an expression, has the value of the branch it selects (spec 02, section 1).
-`$` on any other expression computes it at compile time; `$(if c { a } else { b })` computes the
-whole `if`.
+type in each step. A step, and each branch of a `$if`, is a scope of its own: what it declares is
+not in scope after it, since which branch is generated is known only once the condition is, and
+both branches may declare the same names. A `$for` has no value and is never a block's value.
+`$if` used as a value, last in a block or in an expression, has the value of the branch it
+selects (spec 02, section 1). `$` on any other expression computes it at compile time;
+`$(if c { a } else { b })` computes the whole `if`.
 
 ## 2. L1: computed names
 
@@ -241,7 +243,12 @@ generators that observe their own output, which is what makes impls and memoizat
   `$assert(x)`, run once the body is typed, with its types: a code value they pass evaluates
   where it is written, with the types found there. An evaluation that surely runs (outside a
   `$if` or `$for` not decided there) and uses a form compile-time evaluation does not run yet is
-  an error, `comptime.unsupported`, since what `$` asks for cannot wait for run time.
+  an error, `comptime.unsupported`, since what `$` asks for cannot wait for run time; so is one
+  that reads a local or parameter its body computes when it runs (`comptime.runtime`), even one
+  whose value is a constant: a local is known when compiling only where it is bound with `$`.
+  Statements, and so a `mut $` local, and exclusive borrows run only inside a compile-time call,
+  in the evaluator: a `$` form using one outside a call is `comptime.unsupported`. A `$` form
+  inside another is part of it, run when it runs, never on its own.
 - **Target semantics.** Compile-time code uses the target's layout, word size and endianness
   (guarantee 4).
 - **Traps.** A trap that fires during evaluation (a division by zero, a failed `.to`, spec 04) is

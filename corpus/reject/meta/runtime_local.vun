@@ -1,0 +1,8 @@
+//! A `$` form reading a local its body computes when it runs is an error, not a check that
+//! passes (spec 03, section 7).
+
+#[test]
+floats := () {
+    nan := 0.0 / 0.0;
+    $assert(!(nan < 1.0)); //~ comptime.runtime
+};

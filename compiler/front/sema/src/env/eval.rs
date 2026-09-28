@@ -126,12 +126,12 @@ impl Env<'_, '_> {
         }
     }
 
-    /// The value of a block without statements: its tail, or `()`. Statements run in the
-    /// evaluator.
+    /// The value of a block without statements: its tail, or `()`. Statements run only inside
+    /// a call, in the evaluator.
     pub(super) fn block_value(&self, block: BlockId) -> Result<Value, Unevaluated> {
         let block = &self.parsed.hir.blocks[block];
         if !block.stmts.is_empty() {
-            return Err(Unevaluated::Interpreter);
+            return Err(Unevaluated::Unsupported);
         }
         block.tail.map_or_else(|| Ok(Value::Tuple(Vec::new())), |t| self.eval(t))
     }
@@ -147,7 +147,8 @@ impl Env<'_, '_> {
     }
 
     /// `&T`, `&mut T`, ...: the borrow type of the mode (appendix B), applied to the type
-    /// `operand`. A borrow of a value exists at run time only.
+    /// `operand`. Any other borrow of a value needs its place, which only the evaluator holds,
+    /// inside a call.
     fn borrow(&self, expr: ExprId, mode: Borrow, operand: ExprId) -> Result<Value, Unevaluated> {
         // Typed as a borrow, `&t` borrows the value `t`, even when that value is a type.
         let pointee = self.type_of(expr).and_then(|t| t.pointee());
@@ -156,7 +157,7 @@ impl Env<'_, '_> {
             Some(ty) if pointee.is_none() => self.apply(self.item(mode.item())?, vec![Value::Type(ty)]),
             // A shared borrow of a compile-time value reads the value, which never changes.
             _ if mode.is_plain() => Ok(value),
-            _ => Err(Unevaluated::Runtime),
+            _ => Err(Unevaluated::Unsupported),
         }
     }
 

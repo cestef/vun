@@ -1,0 +1,13 @@
+//! Compile-time evaluation runs statements and takes `&mut` borrows only inside a call: a `$`
+//! form that surely runs and needs either elsewhere is an error, never a check that passes
+//! (spec 03, section 7).
+
+bump := (x: &mut u32) -> u32 {
+    x.* += 1;
+    x.*
+};
+
+#[test]
+counted := () {
+    $assert({ mut a: u32 = 1; bump(&mut a) } == 2); //~ comptime.unsupported
+};

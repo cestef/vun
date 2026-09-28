@@ -18,12 +18,14 @@ impl Env<'_, '_> {
         let hir = &self.parsed.hir;
         match self.parsed.resolution.names[expr] {
             Some(Res::Binder(b)) if let Some(bound) = self.bindings.get(&b) => Ok(bound.clone()),
+            // A `mut $` local changes as statements run, which they do only inside a call.
+            Some(Res::Binder(b)) if hir.binders[b].comptime && hir.binders[b].mutable => {
+                Err(Unevaluated::Unsupported)
+            }
             // A `$` local that is never assigned has the value of its declaration, fixed by
             // the call evaluated in, such as `$Regs := struct { ... }`; only a declaration
             // binding the name alone holds the whole value.
-            Some(Res::Binder(b))
-                if hir.binders[b].comptime && !hir.binders[b].mutable && hir.member_decl(b).is_none() =>
-            {
+            Some(Res::Binder(b)) if hir.binders[b].comptime && hir.member_decl(b).is_none() => {
                 let decl = hir.decl_of(b).ok_or(Unevaluated::Runtime)?;
                 if !matches!(hir.pats[hir.decls[decl].pat].kind, PatKind::Bind(whole) if whole == b) {
                     return Err(Unevaluated::Runtime);

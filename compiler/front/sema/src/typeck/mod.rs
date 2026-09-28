@@ -107,8 +107,9 @@ pub struct Typer<'e, 'a, 'db> {
     /// How many `unsafe` expressions enclose the expression typed: where unchecked operations
     /// are vouched for (spec 07, section 4).
     vouched: usize,
-    /// How many `$if` and `$for` whose condition or items are not known here enclose the
-    /// expression typed: code that may never run, whose `$e` is typed but not run.
+    /// How many `$if` and `$for` whose condition or items are not known here, and `$` forms,
+    /// enclose the expression typed: code that does not run on its own, whose `$e` is typed but
+    /// not run.
     undecided: usize,
     pub diag: DiagCtxt,
 }

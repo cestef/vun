@@ -106,6 +106,7 @@ comptime := struct {
     exhausted := diag.Diag{};
     reported := diag.Diag{};
     unsupported := diag.Diag{};
+    runtime := diag.Diag{};
 };
 
 /// Place states (spec 05, section 2).

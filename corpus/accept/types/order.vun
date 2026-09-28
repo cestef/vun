@@ -29,7 +29,7 @@ versions := () {
 /// function of its own.
 #[test]
 floats := () {
-    nan := 0.0 / 0.0;
+    $nan := 0.0 / 0.0;
     $assert(!(nan < 1.0) and !(nan >= 1.0));
     $assert(-0.0 >= 0.0);
     $assert(match lang.float.total_order(f64, &-0.0, &0.0) { .less => true, _ => false });

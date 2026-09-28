@@ -190,15 +190,16 @@ language rules go in as proposed unless the user approves them.
    - A Linux runtime calling the kernel (static programs without libc), now that x86-64 inline
      assembly works end to end.
    - `stm32f4` has an empty vector table and no `init_memory` (waits for plans declaring memory
-     regions); a `$` form reading a run-time local is silent (it should be an error); a staged
-     `$if` with declarations in both branches reports `names.duplicate`; `Env::borrow` of `&mut`
-     gives `Runtime`. Integers in patterns are comparison operands and need not fit the matched
-     type (decision 273, proposed).
+     regions). Each branch of a staged `$if` is a scope of its own (decision 275, proposed).
+     Integers in patterns are comparison
+     operands and need not fit the matched type (decision 273, proposed). A `$` form that cannot
+     be computed where it is written is an error (decision 274, proposed): `comptime.runtime`
+     for a run-time local, `comptime.unsupported` for statements or `&mut` outside a call;
+     running those at compile time needs an evaluator entry for an expression, not only a call.
    - Fuzzing: a MIR and LIR target (`fuzz/fuzz_targets/lir.rs`, written, uncommitted, not run: its
      build under the sanitizer is heavy on this machine).
    - Code quality: spilled operands loaded where the form takes memory (regalloc).
-   - Refactors: move `vun-harness` to `compiler/base`; stub crate `render/sarif`; the worklist
-     solver written twice (places, borrows); `DiagId` and pass ids are strings; typeck's output
+   - Refactors: move `vun-harness` to `compiler/base`; stub crate `render/sarif`; `DiagId` and pass ids are strings; typeck's output
      maps listed three times; `vun doc` labels type aliases as values (the reader does not type).
 
 1. Backends (the user's focus): (a) arm64: done for linux.arm64 in the sixteenth session
@@ -243,9 +244,7 @@ language rules go in as proposed unless the user approves them.
    The runtime also keeps a table of what allocators hand out (`foreign_free`, `size_mismatch`)
    and a quarantine delaying frees, evicted only for the allocator freeing (`std.check.State`,
    `std.check.mapped` for runtimes that map memory). Left: a board and a WASI shadow, use after
-   return. Lowering gap found on the way: an untyped constant argument of a `$T` primitive
-   (`lang.mem.atomic_compare_swap(usize, p, 0, 1, ...)`) lowers at its own narrow width (`i8`)
-   and fails the LIR verifier; `std.check.words` passes such values through typed parameters. (c) DWARF line tables and symbol names done (decisions 204, 205:
+   return. (c) DWARF line tables and symbol names done (decisions 204, 205:
    `vun-dwarf`; `gdb` breaks on Vun lines); the unit is named by the first file with a row;
    unwind information done (decision 215, `.eh_frame` on ELF; Mach-O's compact unwind is
    left); next `DW_TAG_subprogram`s; (d) done in the seventeenth session: data aligned past every C type or in a
@@ -296,9 +295,8 @@ language rules go in as proposed unless the user approves them.
    borrow of a compile-time enum value) at run time stops at `backend.unlowered`. Or-patterns
    that bind (decision 194), exhaustiveness (decision 196, `typeck/exhaust/`) and impl member
    types (decision 199; a requirement type naming another requirement is not compared yet) are
-   done. Every
-   typer diagnostic in a generic body is reported once per instantiation plus once plain
-   (`int.does_not_fit` three times for two instantiations): dedup them by origin in `Checked`.
+   done. A diagnostic equal apart from its trace is reported once, reached the shortest way
+   (`DiagCtxt::reached_once`, in `Checked`).
 7. Evaluator: its own stack done (decision 221: stack segments added as calls nest); left: loans
    inside aggregate arguments, and memory per nesting level (about 10 KiB). Packaging: signed caches, planned
    builds, `vun pkg why`, `.workspace` visibility.

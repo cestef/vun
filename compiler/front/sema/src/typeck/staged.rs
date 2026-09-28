@@ -71,7 +71,8 @@ impl<'a, 'db> Typer<'_, 'a, 'db> {
             return self.selected(expr, operand);
         }
         let outer = std::mem::replace(&mut self.stage, Stage::Compile);
-        let known = self.typed(operand);
+        // A `$` form inside runs as part of this one, never on its own.
+        let known = self.undecided(|t| t.typed(operand));
         self.stage = outer;
         // Where it surely runs, it runs once the body is typed, with the body's types.
         if self.undecided == 0 {
@@ -96,7 +97,8 @@ impl<'a, 'db> Typer<'_, 'a, 'db> {
         }
     }
 
-    /// `f` run on code that may never run, under a `$if` or `$for` not decided here.
+    /// `f` run on code that does not run on its own here: under a `$if` or `$for` not decided
+    /// here, or inside a `$` form, which runs it.
     fn undecided<R>(&mut self, f: impl FnOnce(&mut Self) -> R) -> R {
         self.undecided += 1;
         let result = f(self);
