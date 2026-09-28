@@ -28,7 +28,7 @@ use storage::Storage;
 
 use std::sync::Arc;
 use vun_index::{Idx, IndexVec};
-use vun_lir::{Builder, Function, Linkage, Scalar, Slot, Target, Terminator, Value};
+use vun_lir::{Builder, Conv, Function, Linkage, Scalar, Slot, Target, Terminator, Value};
 
 use vun_mir::{BlockId, Body, Local, Operand, Rvalue, Unready};
 use vun_mir_passes::places::{Found, Placed};
@@ -100,8 +100,10 @@ impl<'l, 'a, 'db> FnLower<'l, 'a, 'db> {
         let param_types = params.iter().map(|&p| Self::typed(body, p, at)).collect::<Result<Vec<_>, _>>()?;
         let signature = l.signature(&param_types, Self::typed(body, body.ret, at)?, abi, at)?;
         let through = signature.through();
+        // A naked function has no frame to check through.
+        let naked = signature.conv == Conv::Naked;
         let mut this = Self::new(l, defers, body, Builder::new(linkage, signature, at), at);
-        this.checked = checked;
+        this.checked = checked && !naked;
         this.storage(params, None)?;
         this.entry(params, through)?;
         this.guard()?;

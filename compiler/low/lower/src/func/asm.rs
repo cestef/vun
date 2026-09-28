@@ -5,6 +5,7 @@ use vun_inline::Rebind;
 use vun_items::lang::check as operations;
 use vun_lir::{Address, AsmCheck, InstKind, Output, Value};
 use vun_mir::{Asm, Operand, Place};
+use vun_sema::ty::Value as Constant;
 use vun_target::Check;
 
 use super::{FnLower, Storage};
@@ -37,9 +38,10 @@ impl Rebind<Operand, Place, Operand> for Binder<'_, '_, '_, '_> {
     fn symbol(&mut self, symbol: Operand) -> Result<Address, Unlowered> {
         let at = self.0.at;
         match &symbol {
+            // A function a block names is its code: a closure's captures have no symbol.
             Operand::Const(value) => {
-                let ty = self.0.operand_ty(&symbol).ok_or_else(|| self.unsupported())?;
-                self.0.l.address(value, ty, at)?.ok_or_else(|| self.unsupported())
+                let code = !matches!(value, Constant::Closure { .. });
+                self.0.l.address(value, code, at)?.ok_or_else(|| self.unsupported())
             }
             Operand::Place(place) => match self.0.slots[place.local] {
                 Storage::Global(data) if place.projection.is_empty() => Ok(Address::Data(data)),
@@ -54,7 +56,11 @@ impl FnLower<'_, '_, '_> {
     /// ends its block, whose terminator is then unreachable.
     pub(super) fn asm(&mut self, asm: &Asm) -> Result<(), Unlowered> {
         let block = asm.clone().rebind(&mut Binder(self))?;
-        let checked = if self.l.unit.checks.contains(Check::Asm) { Some(self.asm_check()?) } else { None };
+        let checked = if self.checked && self.l.unit.checks.contains(Check::Asm) {
+            Some(self.asm_check()?)
+        } else {
+            None
+        };
         self.b.push(InstKind::Asm(Box::new(block), checked), None, self.at);
         Ok(())
     }

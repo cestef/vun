@@ -98,9 +98,8 @@ pub fn compile<A: Isel>(
     convention: A::Convention,
     listed: bool,
 ) -> Result<Compiled<<A::Isa as Isa>::Inst<Address>>, Lack> {
-    if f.signature.conv == Conv::Naked {
-        return Err(Missing::Naked.at(f.origin));
-    }
+    // A naked function's code is its blocks as written: no frame is set up, saved or left.
+    let naked = f.signature.conv == Conv::Naked;
     let cfg = Cfg::of(f);
     let loops = Loops::of(f, &cfg);
     let order = Order::of(f, &loops);
@@ -140,15 +139,21 @@ pub fn compile<A: Isel>(
         marks: vec![(0, f.origin)],
         unwind: Vec::new(),
     };
-    A::prologue(&mut cx)?;
+    if !naked {
+        A::prologue(&mut cx)?;
+    }
     cx.plan = Some(Described::plan(&cx));
-    cx.save();
+    if !naked {
+        cx.save();
+    }
     for position in 0..cx.order.blocks().len() {
         let block = cx.order.blocks()[position];
         cx.block(block)?;
     }
     let size = cx.frame.size(A::STACK_ALIGN);
-    A::finish(&mut cx, size);
+    if !naked {
+        A::finish(&mut cx, size);
+    }
     let code = cx.asm.finish().expect("every block is bound, and a function's jumps reach across it");
     Ok(Compiled { code, frame: size, marks: cx.marks, unwind: cx.unwind })
 }

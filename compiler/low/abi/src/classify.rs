@@ -23,6 +23,10 @@ impl<I: Copy, F: Copy> Passing<Carrier<I, F>> {
         let c = match signature.conv {
             Conv::C => true,
             Conv::Vun => false,
+            // A naked function is entered as its code: nothing is passed, as nothing sets it up.
+            Conv::Naked if signature.params.is_empty() && signature.result.is_none() => {
+                return Ok(Self { params: Vec::new(), ret: Ret::None, stack: 0, floats: 0 });
+            }
             Conv::Naked => return Err(Unpassable::Naked),
         };
         let (rules, registers) = (convention.rules, &convention.registers);

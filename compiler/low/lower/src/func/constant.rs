@@ -46,15 +46,14 @@ impl Lowering<'_, '_> {
         }
     }
 
-    /// What `value` of type `ty` is the address of, where it is one: a function's or a link
-    /// symbol's.
+    /// What `value` is the address of, where it is one: a link symbol's, or a function's where
+    /// the value is `code` rather than a closure's captures.
     pub(crate) fn address(
         &mut self,
         value: &Constant,
-        ty: Ty,
+        code: bool,
         at: OriginId,
     ) -> Result<Option<Address>, Unlowered> {
-        let code = matches!(&*ty, TyKind::Primitive(..));
         Ok(Some(match value {
             Constant::Fn(f) | Constant::Closure { f, .. } if code => {
                 Address::Func(self.function(&Instantiation::new(f.clone(), Vec::new()), at)?)
@@ -97,7 +96,7 @@ impl Lowering<'_, '_> {
             return self.put(value, inner, out, base, at);
         }
         let address = |target| Reloc { offset: base, target, addend: 0 };
-        if let Some(target) = self.address(value, ty, at)? {
+        if let Some(target) = self.address(value, matches!(&*ty, TyKind::Primitive(..)), at)? {
             out.relocs.push(address(target));
             return Ok(());
         }

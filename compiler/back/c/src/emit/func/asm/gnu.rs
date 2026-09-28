@@ -70,8 +70,17 @@ pub(super) trait Gnu: Blocks {
     const ENTER: &'static [&'static str];
     const LEAVE: &'static [&'static str];
 
-    /// The registers a binding may take: the argument registers of the C convention.
-    fn free(convention: vun_target::Convention) -> &'static [Self::Reg];
+    /// The registers a call overwrites besides its arguments that C keeps for nothing else,
+    /// which a binding may take once the arguments' are taken.
+    const SCRATCH: &'static [Self::Reg];
+
+    /// The argument registers of the C convention.
+    fn args(convention: vun_target::Convention) -> &'static [Self::Reg];
+
+    /// The registers a binding may take, in order: the arguments', then the scratch ones.
+    fn free(convention: vun_target::Convention) -> impl Iterator<Item = Self::Reg> {
+        Self::args(convention).iter().chain(Self::SCRATCH).copied()
+    }
 
     /// A register's name, as the assembler reads it.
     fn name(r: Self::Reg) -> String;
@@ -87,7 +96,10 @@ impl Gnu for X86_64 {
     const ENTER: &'static [&'static str] = &[".intel_syntax noprefix"];
     const LEAVE: &'static [&'static str] = &[".att_syntax prefix"];
 
-    fn free(convention: vun_target::Convention) -> &'static [vun_asm_x86_64::Reg] {
+    const SCRATCH: &'static [vun_asm_x86_64::Reg] =
+        &[vun_asm_x86_64::Reg::Rax, vun_asm_x86_64::Reg::R10, vun_asm_x86_64::Reg::R11];
+
+    fn args(convention: vun_target::Convention) -> &'static [vun_asm_x86_64::Reg] {
         let mut conventions = vun_asm_x86_64::conventions::CONVENTIONS.iter();
         conventions.find(|(c, _)| *c == convention).map_or(&[], |(_, c)| c.registers.int_args)
     }
@@ -113,7 +125,13 @@ impl Gnu for Arm64 {
     const ENTER: &'static [&'static str] = &[];
     const LEAVE: &'static [&'static str] = &[];
 
-    fn free(convention: vun_target::Convention) -> &'static [vun_asm_arm64::Reg] {
+    /// `x16` and `x17` are the linker's, between a call and its callee.
+    const SCRATCH: &'static [vun_asm_arm64::Reg] = {
+        use vun_asm_arm64::Reg;
+        &[Reg::X9, Reg::X10, Reg::X11, Reg::X12, Reg::X13, Reg::X14, Reg::X15]
+    };
+
+    fn args(convention: vun_target::Convention) -> &'static [vun_asm_arm64::Reg] {
         let mut conventions = vun_asm_arm64::conventions::CONVENTIONS.iter();
         conventions.find(|(c, _)| *c == convention).map_or(&[], |(_, c)| c.registers.int_args)
     }
@@ -192,7 +210,9 @@ impl Gnu for Thumb {
     const ENTER: &'static [&'static str] = &[];
     const LEAVE: &'static [&'static str] = &[];
 
-    fn free(convention: vun_target::Convention) -> &'static [vun_isa_thumb::Reg] {
+    const SCRATCH: &'static [vun_isa_thumb::Reg] = &[vun_isa_thumb::Reg::R12];
+
+    fn args(convention: vun_target::Convention) -> &'static [vun_isa_thumb::Reg] {
         let mut conventions = vun_isa_thumb::conventions::CONVENTIONS.iter();
         conventions.find(|(c, _)| *c == convention).map_or(&[], |(_, args)| args)
     }

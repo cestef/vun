@@ -1,12 +1,13 @@
 //! The functions of a unit that can run: those exported, those whose address is taken where
-//! something that runs or data holds it, and those these call. Inlining leaves functions only
-//! their callers named; a backend need not emit what nothing reaches.
+//! something that runs or data holds it or an assembly block names them, and those these call.
+//! Inlining leaves functions only their callers named; a backend need not emit what nothing
+//! reaches.
 
 use vun_index::IndexVec;
 
 use crate::entity::FuncId;
 use crate::func::Linkage;
-use crate::inst::{Address, Callee, InstKind};
+use crate::inst::{Address, InstKind};
 use crate::unit::Unit;
 
 pub struct Reached(IndexVec<FuncId, bool>);
@@ -27,9 +28,9 @@ impl Reached {
             }
             let func = &unit.functions[f];
             let insts = func.blocks.iter().flat_map(|(_, b)| &b.insts).map(|&i| &func.insts[i].kind);
-            pending.extend(insts.filter_map(|kind| match kind {
-                InstKind::Call { callee: Callee::Func(g), .. } | InstKind::Addr(Address::Func(g)) => Some(*g),
-                _ => None,
+            pending.extend(insts.flat_map(InstKind::addresses).filter_map(|a| match a {
+                Address::Func(g) => Some(g),
+                Address::Data(_) | Address::Import(_) => None,
             }));
         }
         Self(reached)

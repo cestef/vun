@@ -216,6 +216,34 @@ fn the_verifier_checks_what_an_assembly_block_binds_and_where_it_ends() {
 }
 
 #[test]
+fn a_naked_function_holds_nothing_but_blocks_without_bindings() {
+    use vun_inline::{Block, FormId, Inst, OpId, SizeId};
+    let origins = OriginTable::new();
+    let o = origin(&origins);
+    let arch = vun_items::lang::arch_x86_64::arith.parent().expect("a namespace");
+    // A block naming nothing, then `slot` a slot, `constant` a constant, and `term`.
+    let verify = |slot: bool, constant: bool, term: Terminator| {
+        let signature = Signature { conv: Conv::Naked, params: Vec::new(), result: None };
+        let mut b = Builder::new(Linkage::Internal, signature, o);
+        if slot {
+            b.slot(8, 8, o);
+        }
+        if constant {
+            b.constant(Scalar::I64, 8, o);
+        }
+        let inst = Inst { op: OpId(0), form: FormId(0), size: SizeId(3), operands: Vec::new(), origin: o };
+        b.push(InstKind::Asm(Box::new(Block { arch, insts: vec![inst], returns: false }), None), None, o);
+        b.terminate(term);
+        let mut unit = Unit { pointer_bits: 64, ..Unit::default() };
+        unit.functions.push(b.finish());
+        unit.verify(&origins).map_err(|m| m.reason)
+    };
+    assert_eq!(verify(false, false, Terminator::Unreachable), Ok(()));
+    assert_eq!(verify(true, false, Terminator::Unreachable), Err(Reason::Naked));
+    assert_eq!(verify(false, true, Terminator::Unreachable), Err(Reason::Naked));
+}
+
+#[test]
 fn constants_leave_the_loops_around_them_for_the_block_before() {
     let origins = OriginTable::new();
     let mut unit = sum(origin(&origins));

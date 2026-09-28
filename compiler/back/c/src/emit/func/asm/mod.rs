@@ -1,6 +1,6 @@
 //! Inline assembly as GNU C writes it (spec 07, section 6): each binding a register variable in
-//! the register it names or its position takes, else in the first argument register of the
-//! target's C convention the block leaves free; the text is the assembler's own listing of each
+//! the register it names or its position takes, else in the first register the block leaves
+//! free of those a call of the target's C convention overwrites, its arguments' first; the text is the assembler's own listing of each
 //! instruction over those registers, its lines labelled uniquely to the statement by `%=`. The
 //! registers the block names or its forms use unnamed are clobbered, with the flags and memory.
 //! A naked function's blocks are plain `__asm__`, all GNU C allows there, their labels unique to
@@ -69,7 +69,7 @@ impl FnEmit<'_, '_> {
         }
         let named: Vec<I::Reg> = I::named(block).collect();
         let taken: Vec<I::Reg> = named.iter().copied().chain(fixed.iter().flatten().copied()).collect();
-        let mut free = I::free(self.e.target.convention).iter().copied().filter(|r| !taken.contains(r));
+        let mut free = I::free(self.e.target.convention).filter(|r| !taken.contains(r));
         let mut regs = Vec::with_capacity(uses.len());
         for (used, fixed) in uses.iter().zip(&fixed) {
             let reg = fixed.or_else(|| free.next());

@@ -12,10 +12,11 @@ use vun_target::Name;
 use crate::common::Fixture;
 
 /// The backends every program here is built through, which must agree.
-const BACKENDS: [Name; 2] = [vun_backend_c::INFO.id, vun_backend_native::INFO.id];
+pub(crate) const BACKENDS: [Name; 2] = [vun_backend_c::INFO.id, vun_backend_native::INFO.id];
 
-/// Builds `source` through `backend` and runs it.
-pub(crate) fn run(name: &str, source: &str, backend: Name) -> std::process::Output {
+/// Builds `source` through `backend` for the machine's target: the program's path, in the
+/// fixture holding it.
+pub(crate) fn build(name: &str, source: &str, backend: Name) -> (Fixture, std::path::PathBuf) {
     let fixture = Fixture::new(&format!("{name}-{backend}"));
     let path = fixture.root.write("main.vun", source);
     let mut session = fixture.session();
@@ -23,6 +24,12 @@ pub(crate) fn run(name: &str, source: &str, backend: Name) -> std::process::Outp
     session.codegen = Codegen::through(backend);
     let program = session.build(file, None);
     let program = program.unwrap_or_else(|_| panic!("{:#?}", session.diag));
+    (fixture, program)
+}
+
+/// Builds `source` through `backend` and runs it.
+pub(crate) fn run(name: &str, source: &str, backend: Name) -> std::process::Output {
+    let (_fixture, program) = build(name, source, backend);
     std::process::Command::new(program).output().unwrap()
 }
 
@@ -41,7 +48,12 @@ const CROSS: [&[&str]; 2] = [&["linux", "arm64"], &["wasi", "wasm32"]];
 /// target and each of `CROSS` the machine runs programs of: its exit status, the same through
 /// each (what `vun debug compare` shows).
 pub(crate) fn status(name: &str, source: &str) -> Option<i32> {
-    let cross = CROSS.iter().map(|path| Choice::Path(path.iter().map(|&n| Symbol::intern(n)).collect()));
+    status_on(name, source, &CROSS)
+}
+
+/// [`status`] for the machine's target and each of `cross` the machine runs programs of.
+pub(crate) fn status_on(name: &str, source: &str, cross: &[&[&str]]) -> Option<i32> {
+    let cross = cross.iter().map(|path| Choice::Path(path.iter().map(|&n| Symbol::intern(n)).collect()));
     let mut statuses: Vec<(String, Option<i32>)> = Vec::new();
     for (i, choice) in std::iter::once(Choice::host()).chain(cross).enumerate() {
         let fixture = Fixture::new(&format!("{name}-{i}"));
@@ -106,8 +118,12 @@ fn the_native_backend_reports_each_frame_it_lays_out() {
     let compiled = session.compile(file);
     let compiled = compiled.unwrap_or_else(|_| panic!("{:#?}", session.diag));
     assert_eq!(compiled.frames.len(), compiled.coded.unit.functions.len());
-    // Every frame holds at least the return address and the saved frame pointer.
-    assert!(compiled.frames.iter().all(|&(_, bytes)| bytes >= 16), "{:?}", compiled.frames);
+    // Every frame holds at least the return address and the saved frame pointer, but a naked
+    // function's, which has none.
+    let functions = &compiled.coded.unit.functions;
+    let framed =
+        compiled.frames.iter().filter(|&&(f, _)| functions[f].signature.conv != vun_lir::Conv::Naked);
+    assert!(framed.clone().all(|&(_, bytes)| bytes >= 16), "{:?}", compiled.frames);
 }
 
 #[test]

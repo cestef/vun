@@ -1,7 +1,9 @@
 //! What instructions and terminators read, and where they jump: read, and rewritten in place.
 //! Each shape is written once, for shared and mutable references alike, by binding modes.
 
-use super::{Callee, InstKind, Target, Terminator};
+use vun_inline::Read;
+
+use super::{Address, Callee, InstKind, Target, Terminator};
 use crate::entity::Value;
 
 /// The values an instruction reads: up to three of its own, then a call's arguments, then what
@@ -95,6 +97,31 @@ impl InstKind {
         let (own, args, asm) = inst_operands!(self);
         let bound = asm.into_iter().flat_map(|asm| asm.bindings().map(vun_inline::Bound::bound));
         own.into_iter().flatten().chain(args.into_iter().flatten()).chain(bound).copied()
+    }
+
+    /// The functions and data this names: what it takes the address of or calls, and the
+    /// symbols of an assembly block and of its checks.
+    pub fn addresses(&self) -> impl Iterator<Item = Address> {
+        let (own, check) = match self {
+            Self::Addr(a) => (Some(*a), None),
+            Self::Call { callee: Callee::Func(f), .. } => (Some(Address::Func(*f)), None),
+            Self::Call { callee: Callee::Import(i), .. } => (Some(Address::Import(*i)), None),
+            Self::Asm(_, check) => (None, check.as_ref()),
+            _ => (None, None),
+        };
+        own.into_iter().chain(self.symbols()).chain(check.into_iter().flat_map(|c| [c.write, c.stack]))
+    }
+
+    /// The symbols an assembly block's text names.
+    pub fn symbols(&self) -> impl Iterator<Item = Address> {
+        let asm = match self {
+            Self::Asm(asm, _) => Some(asm),
+            _ => None,
+        };
+        asm.into_iter().flat_map(|asm| asm.reads()).filter_map(|read| match read {
+            Read::Symbol(&a) => Some(a),
+            Read::Value(_) => None,
+        })
     }
 
     /// Replaces each value this reads by what `f` gives for it.

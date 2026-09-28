@@ -182,6 +182,8 @@ impl Inlined for Asm {
                         cx.reg_to(*value, r);
                         r
                     }
+                    // The plan copies it into its register before the block, wherever it keeps it.
+                    Ok(Some(r)) => r,
                     _ => cx.reg(*value),
                 },
                 Bound::Out { place, .. } | Bound::InOut { place, .. } => {

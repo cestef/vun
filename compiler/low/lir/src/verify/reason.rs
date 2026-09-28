@@ -72,6 +72,9 @@ pub enum Reason {
     Alignment(u64),
     /// An assembly block that does not return, not ending its block as unreachable.
     PastNever,
+    /// In a naked function, which has no frame: a slot, a return, or an instruction other than
+    /// an assembly block without bindings.
+    Naked,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Encode, Decode)]

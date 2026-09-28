@@ -42,7 +42,9 @@ impl Builder<'_, '_, '_> {
             Rvalue::Use(o) => operand(o),
             Rvalue::Not { .. } | Rvalue::IsVariant { .. } => self.env.condition().ok(),
             Rvalue::Resume { step, .. } => Some(*step),
-            Rvalue::End { .. } => Some(TyKind::unit()),
+            // A block computes nothing: where its end is not reached, the expression is `never`,
+            // not the statement.
+            Rvalue::End { .. } | Rvalue::Asm(_) => Some(TyKind::unit()),
             Rvalue::Ref { mode, place } => TyKind::borrowed_as(*mode, place.ty(self.env.cx, &self.locals)?),
             Rvalue::Aggregate {
                 kind: Aggregate::Struct { ty, .. } | Aggregate::Variant { ty, .. }, ..

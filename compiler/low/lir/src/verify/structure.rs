@@ -1,10 +1,10 @@
 //! The shape of a function: each value defined where its definition says, and used only so, the
-//! entry entered only by a call, the cases of a switch distinct, and slots aligned to powers of
-//! two.
+//! entry entered only by a call, the cases of a switch distinct, slots aligned to powers of two,
+//! and a naked function nothing but assembly without bindings.
 
 use crate::entity::{Block, Value};
-use crate::func::Def;
-use crate::inst::Terminator;
+use crate::func::{Conv, Def};
+use crate::inst::{InstKind, Terminator};
 
 use super::{Checker, Entity, Malformed, Reason};
 
@@ -36,7 +36,28 @@ impl Checker<'_> {
                 return Self::fail(at, Reason::DuplicateCase(cases[i].0));
             }
         }
+        if self.func.signature.conv == Conv::Naked {
+            self.naked()?;
+        }
         Ok(())
+    }
+
+    /// A naked function has no frame to hold a slot or return through, and no registers the
+    /// backend may give a binding: its code is its blocks' instructions as written.
+    fn naked(&self) -> Result<(), Malformed> {
+        let id = self.id;
+        if let Some((slot, _)) = self.func.slots.iter().next() {
+            return Self::fail(Entity::Slot(id, slot), Reason::Naked);
+        }
+        for (inst, data) in self.func.insts.iter() {
+            if !matches!(&data.kind, InstKind::Asm(asm, None) if asm.bindings().next().is_none()) {
+                return Self::fail(Entity::Inst(id, inst), Reason::Naked);
+            }
+        }
+        match self.func.blocks.iter().find(|(_, data)| matches!(data.term, Terminator::Return(_))) {
+            Some((block, _)) => Self::fail(Entity::Block(id, block), Reason::Naked),
+            None => Ok(()),
+        }
     }
 
     /// Whether `def` gives `value`: a value no longer defined may stay in the arena until the

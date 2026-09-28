@@ -26,8 +26,8 @@ fn tables_number_instructions_and_forms_as_the_assemblers_do() {
     assert_eq!(read(Arch::Thumb), thumb);
 }
 
-/// A naked function, entered as its code, whose block calls a function by its symbol: that
-/// function ends the program with 7.
+/// Naked functions, entered as their code, whose blocks reach a function by its symbol: `hop`
+/// calls it, `leap` jumps to it, and it ends the program with 7.
 const NAKED: &str = "\
 #[abi.naked]
 hop := () -> never {
@@ -39,16 +39,27 @@ hop := () -> never {
         lang.hint.unreachable()
     }
 };
+#[abi.naked]
+leap := () -> never {
+    unsafe lang.arch.x86_64.asm {
+        jmp {finish}
+    }
+};
 finish := () -> never { unsafe std.os.libc.exit(7) };
 start := std.os.start(main);
-main := (sys: &mut std.os.System) -> std.os.Exit { hop() };
+main := (sys: &mut std.os.System) -> std.os.Exit { if sys.args().len() > 1 { leap() } else { hop() } };
 ";
 
 #[test]
-fn a_naked_function_calls_by_symbol_through_gnu_c() {
+fn a_naked_function_calls_or_jumps_by_symbol_through_each_backend() {
     if !cfg!(all(target_arch = "x86_64", target_os = "linux")) {
         return;
     }
-    let ran = crate::backend::run("asm-naked", NAKED, vun_backend_c::INFO.id);
-    assert_eq!(ran.status.code(), Some(7));
+    for backend in crate::backend::BACKENDS {
+        let (_fixture, program) = crate::backend::build("asm-naked", NAKED, backend);
+        for (args, way) in [(&[][..], "call"), (&["leap"][..], "jump")] {
+            let ran = std::process::Command::new(&program).args(args).output().unwrap();
+            assert_eq!(ran.status.code(), Some(7), "{backend} {way}");
+        }
+    }
 }
