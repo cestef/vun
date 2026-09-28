@@ -165,10 +165,13 @@ impl Typer<'_, '_, '_> {
         }
     }
 
-    /// A value in a pattern, checked against the type matched.
+    /// A value in a pattern, checked against the type matched. An integer is an operand of the
+    /// comparison the pattern stands for, as in an expression, so it need not fit the type.
     fn against(&mut self, value: ExprId, ty: Option<Ty>) {
         let found = self.typed_as(value, ty);
-        if let (Some(found), Some(ty)) = (found, ty) {
+        if let (Some(found), Some(ty)) = (found, ty)
+            && (found.ty.interval().is_none() || ty.interval().is_none())
+        {
             self.expect(self.hir().exprs[value].origin, found, ty, None);
         }
     }

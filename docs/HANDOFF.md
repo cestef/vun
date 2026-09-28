@@ -190,9 +190,9 @@ language rules go in as proposed unless the user approves them.
      assembly works end to end.
    - `stm32f4` has an empty vector table and no `init_memory` (waits for plans declaring memory
      regions); a `$` form reading a run-time local is silent (it should be an error); a staged
-     `$if` with declarations in both branches reports `names.duplicate`; range patterns over a
-     `$n: u8` binder report `int.does_not_fit`; an array literal of the wrong length is not
-     reported; `Env::borrow` of `&mut` gives `Runtime`.
+     `$if` with declarations in both branches reports `names.duplicate`; `Env::borrow` of `&mut`
+     gives `Runtime`. Integers in patterns are comparison operands and need not fit the matched
+     type (decision 273, proposed).
    - Fuzzing: a MIR and LIR target (`fuzz/fuzz_targets/lir.rs`, written, uncommitted, not run: its
      build under the sanitizer is heavy on this machine).
    - Code quality: spilled operands loaded where the form takes memory (regalloc).

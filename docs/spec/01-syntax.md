@@ -265,6 +265,10 @@ means the one thing below.
 | `n := p` | a value matching `p`, bound whole to `n` as well |
 | any other expression | a value equal to it: a constant, `Color.red`, `$f(x)` |
 
+A literal or range pattern is the comparison with the value matched (`value == x`, `lo <= x`),
+so an integer in it is an operand as in an expression and need not fit the matched type: `0..=300`
+matches every `u8`. Any other value in a pattern is a value of the matched type.
+
 Matching through a borrow binds with the borrow's mode: when the scrutinee is `&E` or `&mut E`,
 bindings to parts of the `E` are `&` or `&mut` borrows of those parts, the same way `.` operates on
 places (section 4). Otherwise bindings copy or move the parts.
