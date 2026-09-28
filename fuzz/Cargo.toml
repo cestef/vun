@@ -20,6 +20,7 @@ vun-fmt.workspace = true
 vun-grammar.workspace = true
 vun-hir.workspace = true
 vun-lir.workspace = true
+vun-lir-passes.workspace = true
 vun-origin.workspace = true
 vun-query.workspace = true
 vun-regalloc = { workspace = true, features = ["sample"] }

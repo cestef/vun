@@ -20,6 +20,7 @@ vun-isa-thumb.workspace = true
 vun-items.workspace = true
 vun-diag.workspace = true
 vun-lir.workspace = true
+vun-lir-passes.workspace = true
 vun-target.workspace = true
 vun-hash.workspace = true
 vun-index.workspace = true

@@ -1,7 +1,7 @@
 //! LLVM code generation: optimized builds and the widest native reach.
 
 use vun_backend::{BackendCaps, BackendInfo, Emits, Feature, Planned, Readiness};
-use vun_lir::legalize::Half;
+use vun_lir_passes::legalize::Half;
 use vun_target::{Arches, Name};
 
 pub const INFO: BackendInfo = BackendInfo {

@@ -23,6 +23,7 @@ vun-items.workspace = true
 vun-sanitize.workspace = true
 vun-inline.workspace = true
 vun-lir.workspace = true
+vun-lir-passes.workspace = true
 vun-mir.workspace = true
 vun-mir-passes.workspace = true
 vun-origin.workspace = true

@@ -10,8 +10,8 @@ use vun_backend::{Artifact, Emits, Emitted, Line, Lines, Request};
 use vun_command::{Args, Param, Values};
 use vun_diag::{Diagnostic, ErrorGuaranteed, Msg, errors};
 use vun_intern::Symbol;
-use vun_lir::legalize::Legalize;
 use vun_lir::{FuncId, Scalar, Unit};
+use vun_lir_passes::legalize::Legalize;
 use vun_lower::Unlowered;
 use vun_origin::{OriginId, OriginTable, Resolve};
 use vun_span::{FileId, SourceFiles, SourceMap};
@@ -130,7 +130,8 @@ impl Session {
         // Integers wider than the backend's are split into halves first.
         let mut unit = unit.clone();
         let widest = Scalar::int(info.caps.int_bits).expect("a backend computes with an integer width");
-        if let Err(unlegal) = unit.legalize(Legalize { widest, endian: target.endian, half: info.caps.half })
+        if let Err(unlegal) =
+            (Legalize { widest, endian: target.endian, half: info.caps.half }).apply(&mut unit)
         {
             let msg = Msg::new()
                 .text("backend ")

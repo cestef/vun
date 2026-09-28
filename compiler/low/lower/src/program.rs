@@ -9,6 +9,7 @@ use vun_hir::db::FileRef;
 use vun_index::Idx;
 use vun_intern::Symbol;
 use vun_lir::{Address, Data, DataId, FuncId, Function, Import, ImportId, ImportKind, Linkage, Reloc, Unit};
+use vun_lir_passes::Simplify;
 use vun_mir::{Body, Concrete, Program, Programs, Roots};
 use vun_origin::OriginId;
 use vun_query::{Cx, Query};

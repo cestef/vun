@@ -1,7 +1,7 @@
 //! In-process Cranelift code generation: the default for debug builds.
 
 use vun_backend::{BackendCaps, BackendInfo, Emits, Feature, Planned, Readiness};
-use vun_lir::legalize::Half;
+use vun_lir_passes::legalize::Half;
 use vun_target::{Arches, Name};
 
 pub const INFO: BackendInfo = BackendInfo {

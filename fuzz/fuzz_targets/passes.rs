@@ -5,8 +5,9 @@
 #![no_main]
 
 use libfuzzer_sys::fuzz_target;
-use vun_lir::legalize::{Half, Legalize};
 use vun_lir::{Scalar, Unit};
+use vun_lir_passes::Simplify;
+use vun_lir_passes::legalize::{Half, Legalize};
 use vun_origin::OriginTable;
 use vun_regalloc::sample::Random;
 use vun_span::{SourceFiles, Span};
@@ -27,7 +28,7 @@ fuzz_target!(|data: &[u8]| {
         panic!("simplified: {malformed:?}");
     }
     let narrow = Legalize { widest: Scalar::I32, endian: Endian::Little, half: Half::Promoted };
-    if unit.legalize(narrow).is_ok()
+    if narrow.apply(&mut unit).is_ok()
         && let Err(malformed) = unit.verify(&origins)
     {
         panic!("legalized: {malformed:?}");

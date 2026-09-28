@@ -1,6 +1,6 @@
 [package]
 name = "vun-lir-passes"
-description = "LIR transforms: ABI lowering, identical-body merging."
+description = "LIR transforms: legalization and the passes simplifying a unit."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -12,5 +12,16 @@ workspace = true
 [dependencies]
 vun-lir.workspace = true
 vun-abi.workspace = true
-vun-pass.workspace = true
+vun-hash.workspace = true
+vun-codec.workspace = true
+vun-trace.workspace = true
+vun-index.workspace = true
+vun-origin.workspace = true
+vun-target.workspace = true
 vun-diag.workspace = true
+vun-intern.workspace = true
+vun-inline.workspace = true
+
+[dev-dependencies]
+vun-lir = { workspace = true, features = ["testing"] }
+vun-items.workspace = true

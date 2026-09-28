@@ -1,42 +1,11 @@
 use vun_index::Idx;
 use vun_intern::Symbol;
-use vun_origin::{OriginId, OriginTable};
-use vun_span::{SourceFiles, Span};
+use vun_origin::OriginTable;
 
 use crate::func::{Conv, Linkage, Signature};
+use crate::testing::{origin, sum};
 use crate::verify::{Entity, Reason};
-use crate::{AbiType, BinOp, Builder, Cond, FuncId, InstKind, Scalar, Target, Terminator, Unit};
-
-pub(crate) fn origin(origins: &OriginTable) -> OriginId {
-    let file = SourceFiles::new().add("a.vun", "sum := (n: u64) -> u64 { ... };");
-    origins.source(Span::new(file, 0, 3))
-}
-
-/// `sum(n)`: adds `0..n` in a loop whose counter and total are block parameters.
-pub(crate) fn sum(origin: OriginId) -> Unit {
-    let int = AbiType::Int(Scalar::I64, crate::Ext::Zero);
-    let signature = Signature { conv: Conv::C, params: vec![int.clone()], result: Some(int) };
-    let mut b = Builder::new(Linkage::Export(Symbol::intern("sum")), signature, origin);
-    let n = b.params(b.current())[0];
-    let zero = b.constant(Scalar::I64, 0, origin);
-    let head = b.block(&[Scalar::I64, Scalar::I64], origin);
-    let (body, exit) = (b.block(&[], origin), b.block(&[], origin));
-    b.terminate(Terminator::Jump(Target { block: head, args: vec![zero, zero] }));
-    b.switch_to(head);
-    let [i, total] = [b.params(head)[0], b.params(head)[1]];
-    let more = b.compare(Cond::ULt, i, n, origin);
-    let to = |block| Target { block, args: Vec::new() };
-    b.terminate(Terminator::Branch { cond: more, then: to(body), otherwise: to(exit) });
-    b.switch_to(body);
-    let one = b.constant(Scalar::I64, 1, origin);
-    let (next, added) = (b.binary(BinOp::Add, i, one, origin), b.binary(BinOp::Add, total, i, origin));
-    b.terminate(Terminator::Jump(Target { block: head, args: vec![next, added] }));
-    b.switch_to(exit);
-    b.terminate(Terminator::Return(Some(total)));
-    let mut unit = Unit { pointer_bits: 64, ..Unit::default() };
-    unit.functions.push(b.finish());
-    unit
-}
+use crate::{Builder, FuncId, InstKind, Scalar, Target, Terminator, Unit};
 
 #[test]
 fn the_verifier_accepts_a_loop_and_prints_it() {
@@ -241,19 +210,4 @@ fn a_naked_function_holds_nothing_but_blocks_without_bindings() {
     assert_eq!(verify(false, false, Terminator::Unreachable), Ok(()));
     assert_eq!(verify(true, false, Terminator::Unreachable), Err(Reason::Naked));
     assert_eq!(verify(false, true, Terminator::Unreachable), Err(Reason::Naked));
-}
-
-#[test]
-fn constants_leave_the_loops_around_them_for_the_block_before() {
-    let origins = OriginTable::new();
-    let mut unit = sum(origin(&origins));
-    let f = &mut unit.functions[FuncId::new(0)];
-    let body = Idx::new(2);
-    let one = f.blocks[body].insts[0];
-    assert!(matches!(f.insts[one].kind, InstKind::Const { .. }));
-    assert_eq!(f.hoist(), 1);
-    assert!(f.blocks[Idx::new(0)].insts.contains(&one));
-    assert!(!f.blocks[body].insts.contains(&one));
-    assert_eq!(f.hoist(), 0);
-    assert_eq!(unit.verify(&origins), Ok(()));
 }

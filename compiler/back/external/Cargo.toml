@@ -12,4 +12,5 @@ workspace = true
 [dependencies]
 vun-backend.workspace = true
 vun-lir.workspace = true
+vun-lir-passes.workspace = true
 vun-target.workspace = true

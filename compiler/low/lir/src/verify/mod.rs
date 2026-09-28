@@ -44,7 +44,7 @@ impl Unit {
     /// # Panics
     /// Panics, naming the caller, if the pass left it malformed: a bug of the pass.
     #[track_caller]
-    pub(crate) fn verified(&self) {
+    pub fn verified(&self) {
         if cfg!(debug_assertions)
             && let Err(malformed) = self.verify_structure()
         {

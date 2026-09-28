@@ -13,6 +13,7 @@ workspace = true
 vun-abi.workspace = true
 vun-asm.workspace = true
 vun-lir.workspace = true
+vun-lir-passes.workspace = true
 vun-origin.workspace = true
 vun-target.workspace = true
 vun-diag.workspace = true

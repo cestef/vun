@@ -5,7 +5,7 @@ pub mod ast;
 mod emit;
 
 pub use vun_backend::{Lack, Missing, Readiness};
-use vun_lir::legalize::Half;
+use vun_lir_passes::legalize::Half;
 
 use std::collections::{BTreeMap, HashMap};
 use vun_backend::{

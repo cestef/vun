@@ -1,7 +1,7 @@
 //! External backends: any executable reading LIR text on standard input.
 
 use vun_backend::{BackendCaps, BackendInfo, Emits, Planned, Readiness};
-use vun_lir::legalize::Half;
+use vun_lir_passes::legalize::Half;
 use vun_target::{Arches, Name};
 
 pub const INFO: BackendInfo = BackendInfo {

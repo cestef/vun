@@ -25,9 +25,9 @@ use vun_codegen::{Compiled, Isel};
 use vun_diag::{DiagCtxt, ErrorGuaranteed};
 use vun_index::IndexVec;
 use vun_lir::analysis::Reached;
-use vun_lir::legalize::Half;
 use vun_lir::unit::Unit;
 use vun_lir::{Address, FuncId, Function};
+use vun_lir_passes::legalize::Half;
 use vun_object::{Format, Machine};
 
 use object::Assembly;

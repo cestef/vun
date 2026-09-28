@@ -15,7 +15,7 @@ use vun_backend::{
 use vun_diag::{DiagCtxt, ErrorGuaranteed};
 
 pub use listing::Listing;
-use vun_lir::legalize::Half;
+use vun_lir_passes::legalize::Half;
 use vun_target::{Arches, Name};
 
 pub const INFO: BackendInfo = BackendInfo {

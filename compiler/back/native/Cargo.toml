@@ -20,6 +20,7 @@ vun-diag.workspace = true
 vun-index.workspace = true
 vun-inline.workspace = true
 vun-lir.workspace = true
+vun-lir-passes.workspace = true
 vun-object.workspace = true
 vun-dwarf.workspace = true
 vun-origin.workspace = true

@@ -4,7 +4,7 @@ use vun_origin::{OriginId, OriginTable};
 
 use super::{Cfg, Liveness, Location, Loops, Move, Moves, Order, Range, StackUse, Unbounded};
 use crate::func::{Conv, Linkage, Signature};
-use crate::tests::{origin, sum};
+use crate::testing::{origin, sum};
 use crate::{AbiType, Block, Builder, Function, Scalar, Target, Terminator};
 
 fn b(i: usize) -> Block {

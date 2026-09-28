@@ -7,21 +7,10 @@ pub mod build;
 mod compact;
 pub mod entity;
 pub mod facts;
-mod fold;
+pub mod fold;
 pub mod func;
-mod hoist;
-pub mod inline;
 pub mod inst;
-pub mod legalize;
-mod narrow;
-pub mod promote;
-mod replaced;
-mod reuse;
-pub mod scalarize;
-mod simplify;
-mod sweep;
 pub mod text;
-pub mod thread;
 pub mod ty;
 pub mod unit;
 mod uses;
@@ -39,5 +28,7 @@ pub use ty::Scalar;
 pub use unit::{Data, Import, ImportKind, Reloc, Site, Unit};
 pub use verify::Malformed;
 
+#[cfg(any(test, feature = "testing"))]
+pub mod testing;
 #[cfg(test)]
 mod tests;

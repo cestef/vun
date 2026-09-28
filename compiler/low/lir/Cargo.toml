@@ -9,6 +9,9 @@ publish.workspace = true
 [lints]
 workspace = true
 
+[features]
+testing = []
+
 [dependencies]
 vun-hash.workspace = true
 vun-trace.workspace = true
