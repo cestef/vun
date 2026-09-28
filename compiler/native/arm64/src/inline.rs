@@ -2,10 +2,13 @@
 //! write calls the runtime between saves of every register a call may overwrite and of the flags
 //! (`nzcv`), the address built in `x16` from the operand's mode.
 
+use vun_asm::Blocks;
 use vun_asm::Untaken;
-use vun_asm_arm64::{Arm64, Cc, Emit, Mem, Op, Operand, Reg, Size, SysReg, V};
+use vun_asm_arm64::{Arm64, Cc, Class, Emit, Mem, Op, Operand, Reg, Size, SysReg, V};
 use vun_codegen::Arch;
 use vun_codegen::Code;
+use vun_codegen::Cx;
+use vun_inline::RegRef;
 use vun_lir::{Address, AsmCheck};
 
 use super::Arm;
@@ -36,7 +39,6 @@ const FLAGS: Reg = Reg::X17;
 
 impl Inline for Arm {
     type Table = Arm64;
-    type Size = Size;
 
     fn emit(code: &mut Code<Self>, inst: &Inst, operands: &[Operand<Address>]) -> Result<(), Untaken> {
         let (op, form) = Op::entry(inst.op, inst.form);
@@ -126,11 +128,21 @@ impl Inline for Arm {
         code.bind(kept);
     }
 
-    fn load_at(code: &mut Code<Self>, r: Reg, addr: Reg, size: Size) {
-        code.emit(Op::Ldr, size, &[r.into(), Mem::at(addr, 0).into()]);
+    fn floats(cx: &Cx<'_, Self>) -> Vec<RegRef> {
+        cx.state.float_args().iter().map(|v| RegRef { class: Class::Fp.id(), number: v.0 }).collect()
     }
 
-    fn store_at(code: &mut Code<Self>, addr: Reg, r: Reg, size: Size) {
-        code.emit(Op::Str, size, &[r.into(), Mem::at(addr, 0).into()]);
+    /// `mov` between general registers, `fmov` into a floating-point one.
+    fn moved(code: &mut Code<Self>, dst: RegRef, src: Reg, size: Size) {
+        let op = if Arm64::general(dst).is_some() { Op::Mov } else { Op::Fmov };
+        code.emit(op, size, &[Arm64::register(dst), src.into()]);
+    }
+
+    fn load_at(code: &mut Code<Self>, r: RegRef, addr: Reg, size: Size) {
+        code.emit(Op::Ldr, size, &[Arm64::register(r), Mem::at(addr, 0).into()]);
+    }
+
+    fn store_at(code: &mut Code<Self>, addr: Reg, r: RegRef, size: Size) {
+        code.emit(Op::Str, size, &[Arm64::register(r), Mem::at(addr, 0).into()]);
     }
 }

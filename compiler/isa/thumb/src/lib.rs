@@ -6,7 +6,6 @@
 //! the first form an instruction's operands fit, the listing writes the same form's text, and
 //! sema checks blocks of inline assembly against the same forms.
 
-pub mod conventions;
 mod fit;
 mod fixup;
 #[rustfmt::skip]

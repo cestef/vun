@@ -771,8 +771,10 @@ dependencies = [
 name = "vun-asm-thumb"
 version = "0.0.0"
 dependencies = [
+ "vun-abi",
  "vun-asm",
  "vun-isa-thumb",
+ "vun-target",
 ]
 
 [[package]]
@@ -808,6 +810,7 @@ version = "0.0.0"
 dependencies = [
  "vun-asm",
  "vun-asm-arm64",
+ "vun-asm-thumb",
  "vun-asm-x86_64",
  "vun-backend",
  "vun-diag",
@@ -816,7 +819,6 @@ dependencies = [
  "vun-index",
  "vun-inline",
  "vun-intern",
- "vun-isa-thumb",
  "vun-items",
  "vun-lir",
  "vun-lir-passes",
@@ -1331,7 +1333,6 @@ dependencies = [
  "vun-inline",
  "vun-isa",
  "vun-items",
- "vun-target",
 ]
 
 [[package]]
@@ -1585,6 +1586,7 @@ dependencies = [
  "vun-backend",
  "vun-codegen",
  "vun-dwarf",
+ "vun-inline",
  "vun-lir",
  "vun-native",
  "vun-target",

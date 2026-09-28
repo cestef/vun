@@ -209,12 +209,15 @@ In flight, not in main:
   `vcvt.s32.f32`): a line's mnemonic takes any number of `.name` parts, spelled by one builder
   (`asm/spell.rs`) all three architectures compose; `lang.arch.thumb.Encoding` names the widths
   and `Halves::encoding` derives a form's. `VUN_LOG=vun_sema::asm=trace` shows each form a line
-  was tried against and why it missed. Open: a float bound in a floating-point register (`{in
-  a}` of an `f32`; the Thumb and arm64 fits take bindings in general registers only), and
-  register lists (`push {r4, lr}`, `vpush {d8, d9}`), whose braces the asm syntax gives to
-  bindings (a syntax choice for the user). Then Thumb codegen (a crate `compiler/native/thumb`
-  implementing `Native`, AAPCS rows in `compiler/isa/thumb/src/conventions.rs`, a row of
-  `ARCHES`, `vun_isa::Width` for its `Size`), LIR halves to limbs by the target's widest integer,
+  was tried against and why it missed. Register lists are the rest of the line (`push r4, lr`, `vpush d8, d9`: `Takes::list` in
+  `vun_isa::positions`, `List::of`). A float binding is held in a floating-point register of its
+  position's class (`Blocks::binding`, `Place::bound(class) -> RegRef`): native code moves it
+  from its general register into one of the convention's float argument registers
+  (`Inline::{floats, moved, load_at, store_at}`), GNU C declares a register variable of the
+  float with its class's constraint (`Gnu::{floats, float_name, float_class}`). Thumb's
+  conventions are `vun-abi` rows in `compiler/asm/thumb/src/conventions.rs` (`AapcsVfp`; the soft
+  `aapcs` waits for its `lang.target.Convention`). Then Thumb codegen (a crate `compiler/native/thumb`
+  implementing `Native` and `Inline`, a row of `ARCHES`), LIR halves to limbs by the target's widest integer,
   CPU features (single or double float), a static `linux` Thumb target under `qemu-arm`.
 - Milestone 3a landed (decision 280): `Rules::{AAPCS, AAPCS_VFP}` (word, stack alignment,
   `returned`, `Floats`, `Split`), backfill in `vun-abi`'s banks, `Loc::Split { parts, rest }` for

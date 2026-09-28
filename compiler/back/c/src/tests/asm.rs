@@ -80,8 +80,8 @@ fn cortex_m4() -> TargetSpec {
 /// `f(n) -> i32` exported as `f`: `mrs {out r}, primask` into a slot, then `cpsid i`, returning
 /// `r`.
 fn masked(origin: OriginId) -> Unit {
+    use vun_asm_thumb::{Class, Mask, Op, Size, Special};
     use vun_inline::{Block, Bound, ClassId, FormId, Inst, OpId, Operand, RegRef};
-    use vun_isa_thumb::{Class, Mask, Op, Size, Special};
     let word = AbiType::Int(Scalar::I32, Ext::Sign);
     let signature = Signature { conv: Conv::C, params: vec![word.clone()], result: Some(word) };
     let mut b = Builder::new(Linkage::Export(Symbol::intern("f")), signature, origin);

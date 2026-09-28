@@ -36,6 +36,13 @@ pub struct State {
     gathered: Option<i32>,
 }
 
+impl State {
+    /// The registers the function's convention passes floats in, which a call overwrites.
+    pub(crate) fn float_args(&self) -> &'static [vun_asm_x86_64::Xmm] {
+        self.convention.registers.float_args
+    }
+}
+
 /// The instruction compilers over the function compiled.
 struct Sel<'c, 'a>(&'c mut Cx<'a, X86>);
 

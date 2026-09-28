@@ -32,16 +32,19 @@ copy := (to: *u32, from: *u32) {
     };
 };
 
-/// Floating-point registers named at each width (`s1`, `d1`), the types after the mnemonic's `.`,
-/// and the status register read into the flags.
-floats := () {
+/// Floats bound in floating-point registers, registers named at each width (`s1`, `d1`), the
+/// types after the mnemonic's `.`, and the status register read into the flags.
+floats := (a: f32, b: f32) -> f32 {
+    mut sum: f32 = 0.0;
     unsafe lang.arch.thumb.asm {
+        vadd.f32 {out sum}, {in a}, {in b}
         vmul.f64 d1, d2, d3
         vcvt.s32.f32 s0, s1
         vcvt.f64.f32 d0, s2
         vmov s4, r0
         vmrs apsr_nzcv, fpscr
     };
+    sum
 };
 
 /// A condition glued to the mnemonic (`bne`), and each form's encoding width after a `.`.

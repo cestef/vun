@@ -2,9 +2,9 @@
 //! of its table a block names, by their index in declaration order, and its operands as the
 //! assembler takes them. Every backend emitting blocks, native code or GNU C, reads them here.
 
-use vun_inline::{Base, Block, Bound, FormId, Inst, Line, Mem, OpId, Operand, RegRef};
+use vun_inline::{Base, Block, Bound, ClassId, FormId, Inst, Line, Mem, OpId, Operand, RegRef};
 
-use crate::{Fit, Fixed, Given, Label, Misfit, Via};
+use crate::{Fit, Fixed, Given, Label, Misfit, Via, Width};
 
 /// Operands of inline assembly a backend may have no encoding or no register for.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -34,8 +34,13 @@ pub trait Blocks {
     /// The namespace of the instruction set, `lang.arch.<isa>`, which a block names.
     const ARCH: vun_items::Item;
 
+    /// The class of general registers, which values and addresses are held in.
+    const GENERAL: ClassId;
+
     /// A general register, of the class values are held in.
     type Reg: Copy + Eq + 'static;
+    /// The width of an operation or an operand.
+    type Size: Width;
     /// What an operand position takes.
     type Kind: Copy;
     /// An operand as the assembler encodes it, `S` naming what the linker places.
@@ -54,12 +59,15 @@ pub trait Blocks {
     /// The general register `r` is, if it is of that class.
     fn general(r: RegRef) -> Option<Self::Reg>;
 
-    /// The register a binding at a position of `kind` must be in, if one: `named`, or the one
-    /// the position takes; `None` is an address's register.
+    /// A general register, as a block names it.
+    fn reference(r: Self::Reg) -> RegRef;
+
+    /// The class of register a value bound at a position of `kind` is held in, and the register
+    /// the position takes, if one; `None` is an address's register, a general one.
     ///
     /// # Errors
-    /// The position takes no general register.
-    fn fixed(kind: Option<Self::Kind>, named: Option<Self::Reg>) -> Result<Option<Self::Reg>, AsmOperand>;
+    /// The position takes no register a value is held in.
+    fn binding(kind: Option<Self::Kind>) -> Result<(ClassId, Option<Self::Reg>), AsmOperand>;
 
     /// Whether memory a block names at a position of `kind` is one the assembler addresses.
     ///
@@ -142,12 +150,35 @@ pub trait Blocks {
         kind: Self::Kind,
         place: &mut impl Place<Self, S>,
     ) -> Self::Operand<S>;
+
+    /// The register of the next binding at a position of `kind`, as a block names it.
+    ///
+    /// # Panics
+    /// For a position no value is held at, which checking the block refuses.
+    fn bound<S: Copy>(kind: Option<Self::Kind>, place: &mut impl Place<Self, S>) -> RegRef
+    where
+        Self: Sized,
+    {
+        let (class, _) = Self::binding(kind).expect("a checked block binds values where they are held");
+        place.bound(class)
+    }
+
+    /// The general register of the next binding, an address's.
+    ///
+    /// # Panics
+    /// Where the architecture holds addresses in no general register.
+    fn address<S: Copy>(place: &mut impl Place<Self, S>) -> Self::Reg
+    where
+        Self: Sized,
+    {
+        Self::general(place.bound(Self::GENERAL)).expect("a general register")
+    }
 }
 
 /// Where a block's operands are, as the code it is emitted into has them.
 pub trait Place<I: Blocks + ?Sized, S: Copy> {
-    /// The register of the next binding, in the order `Block::bindings` gives them.
-    fn bound(&mut self) -> I::Reg;
+    /// The register of the next binding, of `class`, in the order `Block::bindings` gives them.
+    fn bound(&mut self, class: ClassId) -> RegRef;
 
     /// The operand naming the start of `line`.
     fn line(&self, line: Line) -> I::Operand<S>;
@@ -165,12 +196,24 @@ pub struct Use<'a, I: Blocks, V, P, S> {
 }
 
 impl<I: Blocks, V, P, S> Use<'_, I, V, P, S> {
+    /// The class of register it is held in.
+    ///
+    /// # Errors
+    /// Its position takes no register a value is held in.
+    pub fn class(&self) -> Result<ClassId, AsmOperand> {
+        I::binding(self.kind).map(|(class, _)| class)
+    }
+
     /// The register it must be in, if one: the one it names, or the one its position takes.
     ///
     /// # Errors
-    /// It names, or its position takes, no general register.
-    pub fn fixed(&self) -> Result<Option<I::Reg>, AsmOperand> {
-        let named = self.bound.reg().map(|r| I::general(r).ok_or(AsmOperand::Unallocated)).transpose()?;
-        I::fixed(self.kind, named)
+    /// Its position takes no register a value is held in, or it names one of another class.
+    pub fn fixed(&self) -> Result<Option<RegRef>, AsmOperand> {
+        let (class, taken) = I::binding(self.kind)?;
+        match self.bound.reg() {
+            Some(named) if named.class != class => Err(AsmOperand::Unallocated),
+            Some(named) => Ok(Some(named)),
+            None => Ok(taken.map(I::reference)),
+        }
     }
 }

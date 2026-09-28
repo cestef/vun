@@ -3,7 +3,7 @@
 //! table, whose declaration order `generated` keeps. Bindings are general registers, a shift's
 //! count `cl`; memory is off a base register or a symbol, never indexed.
 
-use vun_inline::{Disp, FormId, Inst, OpId, RegRef, SizeId};
+use vun_inline::{ClassId, Disp, FormId, Inst, OpId, RegRef, SizeId};
 use vun_isa::{AsmOperand, Blocks, Fit, Fixed, Given, Label, Misfit, Place};
 
 use crate::{Access, Base, Cc, Class, Form, Kind, Mem, Op, Operand, Reg, Size, X86_64, Xmm};
@@ -24,9 +24,19 @@ impl Size {
     }
 }
 
+impl X86_64 {
+    /// A register as a block names it, as the assembler takes it.
+    #[must_use]
+    pub fn register<S>(r: RegRef) -> Operand<S> {
+        Self::general(r).map_or(Operand::Xmm(Xmm(r.number)), Operand::Reg)
+    }
+}
+
 impl Blocks for X86_64 {
+    const GENERAL: ClassId = Class::General.id();
     const ARCH: vun_items::Item = vun_items::lang::arch::x86_64;
     type Reg = Reg;
+    type Size = Size;
     type Kind = Kind;
     type Operand<S: Copy> = Operand<S>;
 
@@ -57,10 +67,15 @@ impl Blocks for X86_64 {
         }
     }
 
-    fn fixed(kind: Option<Kind>, named: Option<Reg>) -> Result<Option<Reg>, AsmOperand> {
+    fn reference(r: Reg) -> RegRef {
+        RegRef { class: Self::GENERAL, number: r as u8 }
+    }
+
+    fn binding(kind: Option<Kind>) -> Result<(ClassId, Option<Reg>), AsmOperand> {
         match kind {
-            Some(Kind::Cl) => Ok(Some(Reg::Rcx)),
-            Some(Kind::R | Kind::Rn(_) | Kind::Rm | Kind::Rmn(_)) | None => Ok(named),
+            Some(Kind::Cl) => Ok((Self::GENERAL, Some(Reg::Rcx))),
+            Some(Kind::R | Kind::Rn(_) | Kind::Rm | Kind::Rmn(_)) | None => Ok((Self::GENERAL, None)),
+            Some(Kind::X | Kind::Xmn(_)) => Ok((Class::Sse.id(), None)),
             Some(_) => Err(AsmOperand::Unallocated),
         }
     }
@@ -94,27 +109,25 @@ impl Blocks for X86_64 {
 
     fn operand<V, P, S: Copy>(
         operand: &vun_inline::Operand<V, P, S>,
-        _: Kind,
+        kind: Kind,
         place: &mut impl Place<Self, S>,
     ) -> Operand<S> {
         match operand {
-            vun_inline::Operand::Reg(r) => {
-                Self::general(*r).map_or(Operand::Xmm(Xmm(r.number)), Operand::Reg)
-            }
+            vun_inline::Operand::Reg(r) => Self::register(*r),
             vun_inline::Operand::Imm(n) => Operand::Imm(*n),
             vun_inline::Operand::Cond(c) => Operand::Cond(Cc::ALL[usize::from(c.0)]),
             vun_inline::Operand::Choice(_) => panic!("no x86-64 form takes a named choice"),
             vun_inline::Operand::List(_) => panic!("no x86-64 form takes a list"),
             vun_inline::Operand::Label(line) => place.line(*line),
             vun_inline::Operand::Symbol(s) => Operand::Sym(*s),
-            vun_inline::Operand::Bound(_) => Operand::Reg(place.bound()),
+            vun_inline::Operand::Bound(_) => Self::register(Self::bound(Some(kind), place)),
             vun_inline::Operand::Mem(mem) => {
                 let (base, disp) = match (&mem.base, &mem.index, &mem.disp) {
                     (Some(vun_inline::Base::Reg(r)), None, &Disp::Bytes(n)) => {
                         (Base::Reg(Self::general(*r).expect("a general register of an address")), n)
                     }
                     (Some(vun_inline::Base::Bound(_)), None, &Disp::Bytes(n)) => {
-                        (Base::Reg(place.bound()), n)
+                        (Base::Reg(Self::address(place)), n)
                     }
                     (None, None, &Disp::Symbol(s, n)) => (Base::Rip(s, place.via(s)), n),
                     _ => panic!("memory x86-64 does not address"),

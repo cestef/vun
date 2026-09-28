@@ -1,7 +1,9 @@
 //! The Thumb assembler: each instruction of the instruction set (`vun-isa-thumb`) encoded as the
 //! halfword or two of the form its operands fit, with the references its fields leave, into a
-//! `vun_asm::Buffer` through [`Emit`].
+//! `vun_asm::Buffer` through [`Emit`]; and the registers of the calling conventions Thumb code
+//! follows.
 
+pub mod conventions;
 mod encode;
 
 #[cfg(test)]

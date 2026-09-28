@@ -3,7 +3,7 @@
 //! whose declaration order `generated` keeps. Bindings are general registers; memory is in the
 //! addressing mode its form names, and a symbol a branch's target or half of an address.
 
-use vun_inline::{Disp, FormId, Inst, OpId, RegRef, SizeId};
+use vun_inline::{ClassId, Disp, FormId, Inst, OpId, RegRef, SizeId};
 use vun_isa::{AsmOperand, Blocks, Fit, Fixed, Given, Label, Misfit, Place};
 
 use crate::{
@@ -27,9 +27,25 @@ impl Size {
     }
 }
 
+impl Thumb {
+    /// A register as a block names it, as the assembler takes it.
+    #[must_use]
+    pub fn register<S>(r: RegRef) -> Operand<S> {
+        let n = usize::from(r.number);
+        match Class::ALL[usize::from(r.class.0)] {
+            Class::General => Operand::Reg(Reg::ALL[n]),
+            Class::Fp => Operand::V(V::ALL[n]),
+            Class::Special => Operand::Special(Special::ALL[n]),
+            Class::Status => Operand::Status(Status::ALL[n]),
+        }
+    }
+}
+
 impl Blocks for Thumb {
+    const GENERAL: ClassId = Class::General.id();
     const ARCH: vun_items::Item = vun_items::lang::arch::thumb;
     type Reg = Reg;
+    type Size = Size;
     type Kind = Kind;
     type Operand<S: Copy> = Operand<S>;
 
@@ -59,9 +75,14 @@ impl Blocks for Thumb {
         }
     }
 
-    fn fixed(kind: Option<Kind>, named: Option<Reg>) -> Result<Option<Reg>, AsmOperand> {
+    fn reference(r: Reg) -> RegRef {
+        RegRef { class: Self::GENERAL, number: r.number() }
+    }
+
+    fn binding(kind: Option<Kind>) -> Result<(ClassId, Option<Reg>), AsmOperand> {
         match kind {
-            Some(Kind::Gpr(_) | Kind::Split | Kind::Shifted) | None => Ok(named),
+            Some(Kind::Gpr(_) | Kind::Split | Kind::Shifted) | None => Ok((Self::GENERAL, None)),
+            Some(Kind::Fpr(..)) => Ok((Class::Fp.id(), None)),
             Some(_) => Err(AsmOperand::Unallocated),
         }
     }
@@ -103,15 +124,7 @@ impl Blocks for Thumb {
         place: &mut impl Place<Self, S>,
     ) -> Operand<S> {
         match operand {
-            vun_inline::Operand::Reg(r) => {
-                let n = usize::from(r.number);
-                match Class::ALL[usize::from(r.class.0)] {
-                    Class::General => Operand::Reg(Reg::ALL[n]),
-                    Class::Fp => Operand::V(V::ALL[n]),
-                    Class::Special => Operand::Special(Special::ALL[n]),
-                    Class::Status => Operand::Status(Status::ALL[n]),
-                }
-            }
+            vun_inline::Operand::Reg(r) => Self::register(*r),
             vun_inline::Operand::Imm(n) => Operand::Imm(*n),
             vun_inline::Operand::List(regs) => {
                 Operand::List(List::of(regs).expect("a list the block was checked to write"))
@@ -127,11 +140,11 @@ impl Blocks for Thumb {
                 Kind::High => Operand::High(*s),
                 _ => Operand::Sym(*s),
             },
-            vun_inline::Operand::Bound(_) => Operand::Reg(place.bound()),
+            vun_inline::Operand::Bound(_) => Self::register(Self::bound(Some(kind), place)),
             vun_inline::Operand::Mem(mem) => {
                 let mut register = |base: &vun_inline::Base<Vb, P>| match base {
                     vun_inline::Base::Reg(r) => Self::general(*r).expect("a general register of an address"),
-                    vun_inline::Base::Bound(_) => place.bound(),
+                    vun_inline::Base::Bound(_) => Self::address(place),
                 };
                 let base = register(mem.base.as_ref().expect("an address with a base"));
                 let Kind::Mem(mode, _) = kind else { panic!("memory where the form takes none") };

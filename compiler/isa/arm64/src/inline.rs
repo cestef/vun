@@ -3,7 +3,7 @@
 //! table, whose declaration order `generated` keeps. Bindings are general registers; memory is in
 //! the addressing mode its form names, and a symbol a branch's target, a page or its low bits.
 
-use vun_inline::{Disp, FormId, Inst, OpId, RegRef, SizeId};
+use vun_inline::{ClassId, Disp, FormId, Inst, OpId, RegRef, SizeId};
 use vun_isa::{AsmOperand, Blocks, Fit, Fixed, Given, Label, Misfit, Place};
 
 use crate::{
@@ -27,9 +27,19 @@ impl Size {
     }
 }
 
+impl Arm64 {
+    /// A register as a block names it, as the assembler takes it.
+    #[must_use]
+    pub fn register<S>(r: RegRef) -> Operand<S> {
+        Self::general(r).map_or(Operand::V(V(r.number)), Operand::Reg)
+    }
+}
+
 impl Blocks for Arm64 {
+    const GENERAL: ClassId = Class::General.id();
     const ARCH: vun_items::Item = vun_items::lang::arch::arm64;
     type Reg = Reg;
+    type Size = Size;
     type Kind = Kind;
     type Operand<S: Copy> = Operand<S>;
 
@@ -61,9 +71,14 @@ impl Blocks for Arm64 {
         }
     }
 
-    fn fixed(kind: Option<Kind>, named: Option<Reg>) -> Result<Option<Reg>, AsmOperand> {
+    fn reference(r: Reg) -> RegRef {
+        RegRef { class: Self::GENERAL, number: r as u8 }
+    }
+
+    fn binding(kind: Option<Kind>) -> Result<(ClassId, Option<Reg>), AsmOperand> {
         match kind {
-            Some(Kind::Gpr(..) | Kind::Shifted(_) | Kind::Extended) | None => Ok(named),
+            Some(Kind::Gpr(..) | Kind::Shifted(_) | Kind::Extended) | None => Ok((Self::GENERAL, None)),
+            Some(Kind::Fpr(_)) => Ok((Class::Fp.id(), None)),
             Some(_) => Err(AsmOperand::Unallocated),
         }
     }
@@ -105,7 +120,7 @@ impl Blocks for Arm64 {
         place: &mut impl Place<Self, S>,
     ) -> Operand<S> {
         match operand {
-            vun_inline::Operand::Reg(r) => Self::general(*r).map_or(Operand::V(V(r.number)), Operand::Reg),
+            vun_inline::Operand::Reg(r) => Self::register(*r),
             vun_inline::Operand::Imm(n) => Operand::Imm(*n),
             vun_inline::Operand::Cond(c) => Operand::Cond(Cc::ALL[usize::from(c.0)]),
             vun_inline::Operand::List(_) => panic!("no arm64 form takes a list"),
@@ -119,11 +134,11 @@ impl Blocks for Arm64 {
                 Kind::Lo12 => Operand::Lo12(*s),
                 _ => Operand::Sym(*s),
             },
-            vun_inline::Operand::Bound(_) => Operand::Reg(place.bound()),
+            vun_inline::Operand::Bound(_) => Self::register(Self::bound(Some(kind), place)),
             vun_inline::Operand::Mem(mem) => {
                 let mut register = |base: &vun_inline::Base<V, P>| match base {
                     vun_inline::Base::Reg(r) => Self::general(*r).expect("a general register of an address"),
-                    vun_inline::Base::Bound(_) => place.bound(),
+                    vun_inline::Base::Bound(_) => Self::address(place),
                 };
                 let base = register(mem.base.as_ref().expect("an address with a base"));
                 let Kind::Mem(mode, _) = kind else { panic!("memory where the form takes none") };

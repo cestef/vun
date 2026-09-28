@@ -63,3 +63,15 @@ fn a_naked_function_calls_or_jumps_by_symbol_through_each_backend() {
         }
     }
 }
+
+#[test]
+fn floats_are_bound_in_floating_point_registers_through_each_backend() {
+    if !cfg!(all(target_arch = "x86_64", target_os = "linux")) {
+        return;
+    }
+    let source = std::fs::read_to_string(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/driver/programs/asm_floats.vun"),
+    )
+    .unwrap();
+    assert_eq!(crate::backend::status_on("asm-floats", &source, &[&["linux", "arm64"]]), Some(0));
+}

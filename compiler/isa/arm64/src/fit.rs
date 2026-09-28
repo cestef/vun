@@ -4,14 +4,22 @@
 //! over the operand the backends make of it, a register of the position's class and width, and an
 //! immediate the operation's bits hold.
 
-use vun_inline::{FormId, Line, OpId, SizeId};
+use vun_inline::{ClassId, FormId, Line, OpId, RegRef, SizeId};
 use vun_isa::imm::held;
 use vun_isa::word::Field;
 use vun_isa::{
     Blocks, Fit, Fixed, Given, Label, Misfit, Place, Takes, Via, Why, Writeback, positions, width,
 };
 
-use crate::{Arm64, Barrier, Choice, Class, Kind, Mode, Op, Operand, Reg, Size, SysReg, Width};
+use crate::{Arm64, Barrier, Choice, Class, Kind, Mode, Op, Operand, Size, SysReg, Width};
+
+impl Class {
+    /// Its index in the table, as a block names it.
+    #[must_use]
+    pub const fn id(self) -> ClassId {
+        ClassId(self as u8)
+    }
+}
 
 impl Size {
     /// The width a general register holding a value of this width is named at: 32 or 64 bits,
@@ -118,8 +126,9 @@ impl Kind {
 struct Representative;
 
 impl<S: Copy> Place<Arm64, S> for Representative {
-    fn bound(&mut self) -> Reg {
-        Reg::X0
+    /// The first register of its class.
+    fn bound(&mut self, class: ClassId) -> RegRef {
+        RegRef { class, number: 0 }
     }
 
     fn line(&self, _: Line) -> Operand<S> {

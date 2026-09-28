@@ -3,11 +3,19 @@
 //! encoder's `Kind::takes` does, a register of the position's class and width, and an immediate
 //! the operation's bits hold.
 
-use vun_inline::{FormId, OpId, SizeId};
+use vun_inline::{ClassId, FormId, OpId, SizeId};
 use vun_isa::imm::held;
 use vun_isa::{Blocks, Fit, Fixed, Given, Label, Misfit, Takes, Why, Writeback, positions, width};
 
 use crate::{Base, Cc, Class, Kind, Mem, Op, Operand, Reg, Size, X86_64, Xmm};
+
+impl Class {
+    /// Its index in the table, as a block names it.
+    #[must_use]
+    pub const fn id(self) -> ClassId {
+        ClassId(self as u8)
+    }
+}
 
 impl Size {
     /// Its index in the table, as a block names it.

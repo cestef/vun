@@ -11,21 +11,23 @@
 //! instruction writes are the native backend's to check, which encodes them.
 
 mod gnu;
+mod held;
 
 use vun_asm::AsmOperand;
 use vun_asm::Blocks;
 use vun_asm_arm64::Arm64;
+use vun_asm_thumb::Thumb;
 use vun_asm_x86_64::X86_64;
 use vun_backend::{Lack, Missing};
-use vun_inline::{Bound, Line};
+use vun_inline::{Bound, Line, RegRef};
 use vun_intern::Symbol;
-use vun_isa_thumb::Thumb;
 use vun_lir::{Address, AsmCheck, Conv, Inst, Scalar, Value};
 use vun_origin::OriginId;
 
 use super::FnEmit;
-use crate::ast::{Asm, Binary, Binding, Decl, Expr, Flow, Ident, Stmt};
+use crate::ast::{Asm, Binary, Binding, Constraint, Decl, Expr, Flow, Ident, Stmt};
 use gnu::{Block, Given, Gnu, Labelled, Linked, Named, Scope};
+use held::{Held, Registers};
 
 /// The registers a block writes beyond those it names: the flags, and memory.
 const CLOBBERED: [&str; 2] = ["cc", "memory"];
@@ -63,18 +65,7 @@ impl FnEmit<'_, '_> {
             }
         }
         let uses: Vec<_> = I::uses(block).collect();
-        let mut fixed = Vec::with_capacity(uses.len());
-        for used in &uses {
-            fixed.push(used.fixed().map_err(|o| Missing::AsmOperand(o).at(used.inst.origin))?);
-        }
-        let named: Vec<I::Reg> = I::named(block).collect();
-        let taken: Vec<I::Reg> = named.iter().copied().chain(fixed.iter().flatten().copied()).collect();
-        let mut free = I::free(self.e.target.convention).filter(|r| !taken.contains(r));
-        let mut regs = Vec::with_capacity(uses.len());
-        for (used, fixed) in uses.iter().zip(&fixed) {
-            let reg = fixed.or_else(|| free.next());
-            regs.push(reg.ok_or_else(|| Missing::AsmOperand(AsmOperand::Crowded).at(used.inst.origin))?);
-        }
+        let Registers { held, mut free } = self.registers::<I>(block, &uses)?;
         let origin = block.insts[0].origin;
         let crowded = || Missing::AsmOperand(AsmOperand::Crowded).at(origin);
         let stack = match check {
@@ -85,10 +76,19 @@ impl FnEmit<'_, '_> {
         let bits = self.e.unit.pointer_bits;
         let word = self.e.scalar(Scalar::int(bits).expect("addresses of an integer's width"), origin)?;
         let (mut bindings, mut after) = (Vec::new(), Vec::new());
-        for (k, (used, &reg)) in uses.iter().zip(&regs).enumerate() {
+        for (k, (used, held)) in uses.iter().zip(&held).enumerate() {
             let name = Ident::bound(k);
+            // A general register's variable is an address wide; a float's is the float.
+            let (var, reg, class) = match *held {
+                Held::General(r) => (word.clone(), I::name(r), Constraint::GENERAL),
+                Held::Float { reg, ty, size } => (
+                    self.e.scalar(ty, used.inst.origin)?,
+                    I::float_name(reg.number, size).expect("a register holding its binding's width"),
+                    I::float_class(size),
+                ),
+            };
             let flow = match used.bound {
-                Bound::In { value, .. } => Flow::In(self.operand(*value).cast(word.clone())),
+                Bound::In { value, .. } => Flow::In(self.operand(*value).cast(var.clone())),
                 Bound::Out { place, .. } | Bound::InOut { place, .. } => {
                     let ty = self.e.scalar(place.ty, used.inst.origin)?;
                     let at = self.named(place.addr).at(ty.clone());
@@ -96,16 +96,18 @@ impl FnEmit<'_, '_> {
                         after.push(Stmt::Assign(at.clone(), Expr::Name(name).cast(ty)));
                     }
                     match used.bound {
-                        Bound::InOut { .. } => Flow::InOut(at.cast(word.clone())),
+                        Bound::InOut { .. } => Flow::InOut(at.cast(var.clone())),
                         _ => Flow::Out,
                     }
                 }
             };
-            bindings.push(Binding { decl: Decl::new(word.clone(), name), reg: I::name(reg), flow });
+            bindings.push(Binding { decl: Decl::new(var, name), reg, class, flow });
         }
+        let regs: Vec<RegRef> = held.iter().map(Held::reg).collect();
+        let named: Vec<I::Reg> = I::named(block).collect();
         let mut clobbered: Vec<I::Reg> = Vec::new();
         for r in named {
-            if !regs.contains(&r) && !clobbered.contains(&r) {
+            if !regs.contains(&I::reference(r)) && !clobbered.contains(&r) {
                 clobbered.push(r);
             }
         }
@@ -122,6 +124,7 @@ impl FnEmit<'_, '_> {
                 bindings.push(Binding {
                     decl: Decl::new(word.clone(), name),
                     reg: I::name(reg),
+                    class: Constraint::GENERAL,
                     flow: Flow::Out,
                 });
             }
@@ -142,7 +145,7 @@ impl FnEmit<'_, '_> {
     /// labelled, between the lines setting the assembler's syntax.
     fn lines<I: Gnu>(
         block: &Block,
-        regs: Vec<I::Reg>,
+        regs: Vec<RegRef>,
         stack: Option<[I::Reg; 2]>,
         scope: Scope,
     ) -> Vec<String> {
@@ -154,7 +157,7 @@ impl FnEmit<'_, '_> {
             let line = Line(u16::try_from(line).expect("blocks of at most 65536 lines"));
             format!("{}:", Named::Line(Labelled { line, scope }))
         };
-        let mut given = Given::<I> { regs: regs.into_iter(), scope };
+        let mut given = Given { regs: regs.into_iter(), scope };
         let mut lines: Vec<String> = I::ENTER.iter().map(|&l| l.to_owned()).collect();
         lines.extend(stack.map(|[before, _]| I::read_stack(before)));
         for (k, inst) in block.insts.iter().enumerate() {

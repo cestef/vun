@@ -6,14 +6,15 @@ use std::fmt;
 
 use vun_asm::{AsmOperand, Blocks, Place, Via};
 use vun_asm_arm64::Arm64;
+use vun_asm_thumb::Thumb;
 use vun_asm_x86_64::{Syntax, X86_64};
 use vun_index::Idx;
-use vun_inline::{Inst, Line, Rebind};
+use vun_inline::{ClassId, Inst, Line, Rebind, RegRef};
 use vun_intern::Symbol;
-use vun_isa_thumb::Thumb;
 use vun_lir::{Address, FuncId, Output, Value};
 use vun_target::{Attributes, Name};
 
+use crate::ast::Constraint;
 use crate::emit::Emitter;
 
 /// The object format whose symbols assembly names as C does.
@@ -77,6 +78,16 @@ pub(super) trait Gnu: Blocks {
     /// The argument registers of the C convention.
     fn args(convention: vun_target::Convention) -> &'static [Self::Reg];
 
+    /// The registers the C convention passes floats in, which a float bound in one may take.
+    fn floats(convention: vun_target::Convention) -> Vec<RegRef>;
+
+    /// The name of the floating-point register `number` holding a value `size` wide, if it
+    /// holds one that wide.
+    fn float_name(number: u8, size: Self::Size) -> Option<String>;
+
+    /// The class GNU C holds a float `size` wide in.
+    fn float_class(size: Self::Size) -> Constraint;
+
     /// The registers a binding may take, in order: the arguments', then the scratch ones.
     fn free(convention: vun_target::Convention) -> impl Iterator<Item = Self::Reg> {
         Self::args(convention).iter().chain(Self::SCRATCH).copied()
@@ -102,6 +113,22 @@ impl Gnu for X86_64 {
     fn args(convention: vun_target::Convention) -> &'static [vun_asm_x86_64::Reg] {
         let mut conventions = vun_asm_x86_64::conventions::CONVENTIONS.iter();
         conventions.find(|(c, _)| *c == convention).map_or(&[], |(_, c)| c.registers.int_args)
+    }
+
+    fn floats(convention: vun_target::Convention) -> Vec<RegRef> {
+        let mut conventions = vun_asm_x86_64::conventions::CONVENTIONS.iter();
+        let args =
+            conventions.find(|(c, _)| *c == convention).map_or(&[][..], |(_, c)| c.registers.float_args);
+        args.iter().map(|x| RegRef { class: vun_asm_x86_64::Class::Sse.id(), number: x.0 }).collect()
+    }
+
+    fn float_class(_: vun_asm_x86_64::Size) -> Constraint {
+        Constraint('x')
+    }
+
+    /// An SSE register holds a float of either width.
+    fn float_name(number: u8, _: vun_asm_x86_64::Size) -> Option<String> {
+        Some(vun_asm_x86_64::Xmm(number).to_string())
     }
 
     fn name(r: vun_asm_x86_64::Reg) -> String {
@@ -134,6 +161,21 @@ impl Gnu for Arm64 {
     fn args(convention: vun_target::Convention) -> &'static [vun_asm_arm64::Reg] {
         let mut conventions = vun_asm_arm64::conventions::CONVENTIONS.iter();
         conventions.find(|(c, _)| *c == convention).map_or(&[], |(_, c)| c.registers.int_args)
+    }
+
+    fn floats(convention: vun_target::Convention) -> Vec<RegRef> {
+        let mut conventions = vun_asm_arm64::conventions::CONVENTIONS.iter();
+        let args =
+            conventions.find(|(c, _)| *c == convention).map_or(&[][..], |(_, c)| c.registers.float_args);
+        args.iter().map(|v| RegRef { class: vun_asm_arm64::Class::Fp.id(), number: v.0 }).collect()
+    }
+
+    fn float_class(_: vun_asm_arm64::Size) -> Constraint {
+        Constraint('w')
+    }
+
+    fn float_name(number: u8, size: vun_asm_arm64::Size) -> Option<String> {
+        Some(vun_asm_arm64::V(number).name(size).to_string())
     }
 
     fn name(r: vun_asm_arm64::Reg) -> String {
@@ -184,13 +226,13 @@ impl Rebind<Value, Output, Address> for Linked<'_, '_> {
 
 /// Where a block's operands are in the C statement: its bindings in the registers given them, in
 /// order, and its lines at their labels.
-pub(super) struct Given<I: Blocks> {
-    pub(super) regs: std::vec::IntoIter<I::Reg>,
+pub(super) struct Given {
+    pub(super) regs: std::vec::IntoIter<RegRef>,
     pub(super) scope: Scope,
 }
 
-impl<I: Blocks> Place<I, Named> for Given<I> {
-    fn bound(&mut self) -> I::Reg {
+impl<I: Blocks> Place<I, Named> for Given {
+    fn bound(&mut self, _: ClassId) -> RegRef {
         self.regs.next().expect("a register for each binding")
     }
 
@@ -210,25 +252,43 @@ impl Gnu for Thumb {
     const ENTER: &'static [&'static str] = &[];
     const LEAVE: &'static [&'static str] = &[];
 
-    const SCRATCH: &'static [vun_isa_thumb::Reg] = &[vun_isa_thumb::Reg::R12];
+    const SCRATCH: &'static [vun_asm_thumb::Reg] = &[vun_asm_thumb::Reg::R12];
 
-    fn args(convention: vun_target::Convention) -> &'static [vun_isa_thumb::Reg] {
-        let mut conventions = vun_isa_thumb::conventions::CONVENTIONS.iter();
-        conventions.find(|(c, _)| *c == convention).map_or(&[], |(_, args)| args)
+    fn args(convention: vun_target::Convention) -> &'static [vun_asm_thumb::Reg] {
+        let mut conventions = vun_asm_thumb::conventions::CONVENTIONS.iter();
+        conventions.find(|(c, _)| *c == convention).map_or(&[], |(_, c)| c.registers.int_args)
     }
 
-    fn name(r: vun_isa_thumb::Reg) -> String {
+    fn floats(convention: vun_target::Convention) -> Vec<RegRef> {
+        let mut conventions = vun_asm_thumb::conventions::CONVENTIONS.iter();
+        let args =
+            conventions.find(|(c, _)| *c == convention).map_or(&[][..], |(_, c)| c.registers.float_args);
+        args.iter().map(|&v| RegRef { class: vun_asm_thumb::Class::Fp.id(), number: v.number() }).collect()
+    }
+
+    /// Single-precision registers are `t`, double-precision ones `w`.
+    fn float_class(size: vun_asm_thumb::Size) -> Constraint {
+        if size == vun_asm_thumb::Size::B64 { Constraint('w') } else { Constraint('t') }
+    }
+
+    /// `s{n}`, or `d{n/2}` for an even `n` at 64 bits.
+    fn float_name(number: u8, size: vun_asm_thumb::Size) -> Option<String> {
+        let v = vun_asm_thumb::V::ALL[usize::from(number)];
+        v.at(size).map(|_| v.name_at(size).to_string())
+    }
+
+    fn name(r: vun_asm_thumb::Reg) -> String {
         r.name().to_owned()
     }
 
     /// The text of the form the line was checked against.
-    fn text(inst: &Inst<Value, Output, Named>, operands: &[vun_isa_thumb::Operand<Named>]) -> String {
-        let (op, form) = vun_isa_thumb::Op::entry(inst.op, inst.form);
-        vun_isa_thumb::Inst::new(op, vun_isa_thumb::Size::of(inst.size), operands).by(form).to_string()
+    fn text(inst: &Inst<Value, Output, Named>, operands: &[vun_asm_thumb::Operand<Named>]) -> String {
+        let (op, form) = vun_asm_thumb::Op::entry(inst.op, inst.form);
+        vun_asm_thumb::Inst::new(op, vun_asm_thumb::Size::of(inst.size), operands).by(form).to_string()
     }
 
-    fn read_stack(dst: vun_isa_thumb::Reg) -> String {
-        let operands: [vun_isa_thumb::Operand<Named>; 2] = [dst.into(), vun_isa_thumb::Reg::Sp.into()];
-        vun_isa_thumb::Inst::new(vun_isa_thumb::Op::Mov, vun_isa_thumb::Size::B32, &operands).to_string()
+    fn read_stack(dst: vun_asm_thumb::Reg) -> String {
+        let operands: [vun_asm_thumb::Operand<Named>; 2] = [dst.into(), vun_asm_thumb::Reg::Sp.into()];
+        vun_asm_thumb::Inst::new(vun_asm_thumb::Op::Mov, vun_asm_thumb::Size::B32, &operands).to_string()
     }
 }

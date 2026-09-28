@@ -168,13 +168,23 @@ pub struct Asm {
     pub after: Vec<Stmt>,
 }
 
-/// A binding's register variable: its register, by the name the assembler reads, and what the
-/// block does with it.
+/// A binding's register variable: its register, by the name the assembler reads, the class GNU C
+/// holds it in, and what the block does with it.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Binding {
     pub decl: Decl,
     pub reg: String,
+    pub class: Constraint,
     pub flow: Flow,
+}
+
+/// A class of registers, by the letter GNU C constrains an operand to it with.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Constraint(pub char);
+
+impl Constraint {
+    /// The general registers.
+    pub const GENERAL: Self = Self('r');
 }
 
 /// What a block does with a binding: reads it, from this value; writes it; or both.

@@ -4,9 +4,11 @@
 //! over a stack aligned from `rbx`, which the call keeps.
 
 use vun_asm::{AsmOperand, Blocks, Untaken};
-use vun_asm_x86_64::{Base, Cc, Emit, Kind, Mem, Op, Operand, Reg, Size, X86_64, Xmm};
+use vun_asm_x86_64::{Base, Cc, Class, Emit, Kind, Mem, Op, Operand, Reg, Size, X86_64, Xmm};
 use vun_codegen::Code;
+use vun_codegen::Cx;
 use vun_inline::Disp;
+use vun_inline::RegRef;
 use vun_lir::{Address, AsmCheck};
 
 use super::X86;
@@ -22,7 +24,6 @@ const ALIGN: i64 = -16;
 
 impl Inline for X86 {
     type Table = X86_64;
-    type Size = Size;
 
     fn addressing(mem: &inline::Mem, kind: Kind) -> Result<(), AsmOperand> {
         if let (None, Disp::Symbol(Address::Import(_), _)) = (&mem.base, &mem.disp) {
@@ -98,11 +99,27 @@ impl Inline for X86 {
         code.bind(kept);
     }
 
-    fn load_at(code: &mut Code<Self>, r: Reg, addr: Reg, size: Size) {
-        code.emit(Op::Mov, size, &[r.into(), Mem::at(addr, 0).into()]);
+    fn floats(cx: &Cx<'_, Self>) -> Vec<RegRef> {
+        cx.state.float_args().iter().map(|x| RegRef { class: Class::Sse.id(), number: x.0 }).collect()
     }
 
-    fn store_at(code: &mut Code<Self>, addr: Reg, r: Reg, size: Size) {
-        code.emit(Op::Mov, size, &[Mem::at(addr, 0).into(), r.into()]);
+    fn moved(code: &mut Code<Self>, dst: RegRef, src: Reg, size: Size) {
+        code.emit(Self::mov(dst), size, &[X86_64::register(dst), src.into()]);
+    }
+
+    fn load_at(code: &mut Code<Self>, r: RegRef, addr: Reg, size: Size) {
+        code.emit(Self::mov(r), size, &[X86_64::register(r), Mem::at(addr, 0).into()]);
+    }
+
+    fn store_at(code: &mut Code<Self>, addr: Reg, r: RegRef, size: Size) {
+        code.emit(Self::mov(r), size, &[Mem::at(addr, 0).into(), X86_64::register(r)]);
+    }
+}
+
+impl X86 {
+    /// The move of a value into or out of `r`: `mov` for a general register, `movd` for an SSE
+    /// one.
+    fn mov(r: RegRef) -> Op {
+        if X86_64::general(r).is_some() { Op::Mov } else { Op::Movd }
     }
 }

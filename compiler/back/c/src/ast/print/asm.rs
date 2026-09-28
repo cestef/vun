@@ -7,11 +7,6 @@ use std::fmt::{self, Write};
 use super::Printer;
 use crate::ast::{Asm, Flow};
 
-/// A binding's constraint: an output, one read first, or an input, in a general register.
-const OUT: &str = "=r";
-const IN_OUT: &str = "+r";
-const IN: &str = "r";
-
 impl Printer<'_, '_, '_> {
     pub(super) fn asm(&mut self, asm: &Asm) -> fmt::Result {
         // A block with no bindings and no clobbers is plain `__asm__`, all a naked function holds.
@@ -49,24 +44,22 @@ impl Printer<'_, '_, '_> {
         if asm.bindings.is_empty() && asm.clobbers.is_empty() {
             return self.f.write_str(");");
         }
-        let outputs = asm.bindings.iter().filter_map(|b| match b.flow {
-            Flow::Out => Some((OUT, b.decl.name)),
-            Flow::InOut(_) => Some((IN_OUT, b.decl.name)),
-            Flow::In(_) => None,
-        });
-        let inputs = asm.bindings.iter().filter_map(|b| match b.flow {
-            Flow::In(_) => Some((IN, b.decl.name)),
-            Flow::Out | Flow::InOut(_) => None,
-        });
-        for operands in [outputs.collect::<Vec<_>>(), inputs.collect()] {
+        let (outputs, inputs): (Vec<_>, Vec<_>) =
+            asm.bindings.iter().partition(|b| !matches!(b.flow, Flow::In(_)));
+        for operands in [outputs, inputs] {
             self.f.write_str(" : ")?;
-            for (k, (constraint, name)) in operands.into_iter().enumerate() {
+            for (k, binding) in operands.into_iter().enumerate() {
                 if k > 0 {
                     self.f.write_str(", ")?;
                 }
-                self.string(constraint)?;
-                self.f.write_char('(')?;
-                self.ident(name)?;
+                // An output is `=`, one read first `+`, then the class.
+                let mode = match binding.flow {
+                    Flow::Out => "=",
+                    Flow::InOut(_) => "+",
+                    Flow::In(_) => "",
+                };
+                write!(self.f, "\"{mode}{}\"(", binding.class.0)?;
+                self.ident(binding.decl.name)?;
                 self.f.write_char(')')?;
             }
         }

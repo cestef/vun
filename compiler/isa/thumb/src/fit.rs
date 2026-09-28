@@ -3,7 +3,7 @@
 //! each position takes what the encoder's `Kind::encode` does, over the operand the backends make
 //! of it, a register of the position's class and width, and an immediate a 32-bit operation holds.
 
-use vun_inline::{FormId, Line, OpId, SizeId};
+use vun_inline::{ClassId, FormId, Line, OpId, RegRef, SizeId};
 use vun_isa::imm::held;
 use vun_isa::word::Field;
 use vun_isa::{
@@ -14,6 +14,14 @@ use crate::{Choice, Class, Kind, List, Mode, Op, Operand, Reg, Size, Thumb, Widt
 
 /// The bits of every operation on general registers.
 const WORD_BITS: u32 = 32;
+
+impl Class {
+    /// Its index in the table, as a block names it.
+    #[must_use]
+    pub const fn id(self) -> ClassId {
+        ClassId(self as u8)
+    }
+}
 
 impl Size {
     /// Its index in the table, as a block names it.
@@ -118,8 +126,10 @@ impl Kind {
 struct Representative;
 
 impl<S: Copy> Place<Thumb, S> for Representative {
-    fn bound(&mut self) -> Reg {
-        Reg::R8
+    /// A high general register, or the first of another class.
+    fn bound(&mut self, class: ClassId) -> RegRef {
+        let number = if class == Class::General.id() { Reg::R8.number() } else { 0 };
+        RegRef { class, number }
     }
 
     fn line(&self, _: Line) -> Operand<S> {

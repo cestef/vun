@@ -1,0 +1,29 @@
+//! Floats bound in floating-point registers by a block of the target's instruction set: a
+//! product in single precision, an input moved in and an output read back first, and a sum in
+//! double precision.
+
+start := std.os.start(main);
+
+main := (sys: &mut std.os.System) -> std.os.Exit {
+    a: f32 = if sys.args().len() == 1 { 1.5 } else { 2.5 };
+    b: f32 = 4.0;
+    c: f64 = 2.25;
+    d: f64 = 0.75;
+    mut product: f32 = a;
+    mut sum: f64 = c;
+    $if lang.target.current.arch == .x86_64 {
+        unsafe lang.arch.x86_64.asm {
+            mulss {inout product}, {in b}
+            addsd {inout sum}, {in d}
+        };
+    } else {
+        unsafe lang.arch.arm64.asm {
+            fmul {out product}, {in a}, {in b}
+            fadd {out sum}, {in c}, {in d}
+        };
+    }
+    mut failed: Int(0..=2) = 0;
+    if product != 6.0 { failed +|= 1; }
+    if sum != 3.0 { failed +|= 1; }
+    std.os.Exit.of(failed)
+};

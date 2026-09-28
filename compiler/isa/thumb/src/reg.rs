@@ -71,6 +71,21 @@ impl fmt::Display for VName {
     }
 }
 
+impl vun_isa::Width for Size {
+    const B32: Self = Self::B32;
+    const B64: Self = Self::B64;
+
+    fn of_bytes(bytes: u64) -> Option<Self> {
+        match bytes {
+            1 => Some(Self::B8),
+            2 => Some(Self::B16),
+            4 => Some(Self::B32),
+            8 => Some(Self::B64),
+            _ => None,
+        }
+    }
+}
+
 impl Size {
     #[must_use]
     pub const fn bits(self) -> u32 {
