@@ -162,7 +162,8 @@ the machine runs it) linux.arm64 and wasi.wasm32, and require equal results.
 Every decision is accepted but these, proposed and waiting for the user: 249 to 251, 253 to
 257, 259, 260, 262, 265, 266, 268, 269, 271, 273 (integers in patterns), 274 (`$` forms that
 cannot run where written), 275 (`$if` branch scopes), 276 (C naked functions), 277 (ELF32), 278
-(`layout.offset`), 280 (32-bit AAPCS in `vun-abi`). 279 (static Linux targets) is the user's choice. New language rules go
+(`layout.offset`), 280 (32-bit AAPCS in `vun-abi`), 281 (clocks), 283 (query soundness), 284
+(files, typed errors, builds checking library bodies). 282 (`&mut T` where `&T` is) and 279 (static Linux targets) is the user's choice. New language rules go
 in as proposed unless the user approves them.
 
 ## 7. State and next steps
@@ -172,6 +173,23 @@ chain, no workspace holds work but Thumb's, 517 tests pass, clippy, `cargo gen -
 History lives in `jj log` and `decisions.md`; this section keeps only what is open.
 
 Just landed:
+- Saved queries sound at the source (283): `Node` (`DeclRef`, `ExprRef`) hashed by origin alone
+  while comparing by place too, so values holding a node an edit moved kept their fingerprint
+  and early cutoff kept stale HIR indices (wrong diagnostics, wrong nodes, out-of-bounds panics
+  after edits). Every `Hash` now agrees with its `Eq` (audited). `vun-query` checks reuse on
+  demand: `VUN_QUERY_CHECK=1` (or `Db::reusing(Reuse::Check)`) computes every reused memo again
+  and panics with the query and key when it differs (`Unsound`); the driver tests' `Fixture`
+  sessions always run so, and `driver/tests/driver/persist.rs` edits across files. A saved-query
+  bug should now fail a test by name: run the suite with `VUN_QUERY_CHECK=1` when in doubt.
+- `&mut T` serves where `&T` is expected (282, `Borrow::serves` from the `borrows` table);
+  branches of both join as `&T`; lowering copies a borrow into another mode.
+- `std.time` (`Duration`, `Instant`, `Clock`), `System.now/pause` (281); files:
+  `System.open(path, Mode)` gives `std.os.file.File`, `Stream.read`, `System.stdin`, typed
+  `std.os.Error` reasons mapped per system (284); every runtime (kernel, libc, WASI) exports
+  `std.os.symbols.{write, read, open, close, now, pause}`. Builds now report the typecheck of
+  every body they compile, a library's included (found a latent kernel `exit` typing bug).
+- Dev profile at `opt-level = 1`: the suite runs in ~76 s instead of ~210 s (the driver's backend
+  tests build and run programs through a debug compiler; they dominate).
 - Static Linux (decision 279): `targets.linux.{x86_64,arm64}` (ABI `kernel`) run on
   `std.os.linux.kernel` (naked `_start`, system calls through one `Call` record, `string.h`
   exports in `kernel/memory.vun`, the checks' state through `mmap`); `targets.linux.gnu.*` for
@@ -208,8 +226,10 @@ Next, most useful first:
 1. Backends: Thumb as above; `macos.arm64` linking (lld, an SDK); riscv64 (`qemu-riscv64` is here,
    no sysroot); DWARF `DW_TAG_subprogram`s; memory regions into `LinkPlan` and a bare-metal
    runtime (`stm32f4` has an empty vector table and no `init_memory`).
-2. Kernel runtime: threads, files, clocks as system calls; riscv64 numbers; `Stream` errors from
-   `-errno`.
+2. Kernel runtime: threads (clone, stacks, TLS, join) through `std.os.symbols`; riscv64 numbers;
+   directories, seeking, environment. C's variadic `open` is declared fixed, wrong on Apple
+   arm64 until the FFI declares variadic functions. WASI files need the runner to preopen a
+   directory (`wasmtime --dir .`): the user's toolchain row runs plain `wasmtime`.
 3. Checks (268): a board and a WASI shadow, use after return; `fixed` kinds.
 4. Corpus gaps (`cargo xtask corpus`): `lang.simd.chunks`; lowering stops in
    `coroutines/cancel.vun` (a constant) and `integers/narrowing.vun` (a conversion).
