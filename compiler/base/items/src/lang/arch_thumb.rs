@@ -6,39 +6,82 @@
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
 use crate::Item;
+/// The namespace `lang.arch.thumb.control`.
+pub const control: Item = Item::new(&["lang", "arch", "thumb", "control"]);
+/// The namespace `lang.arch.thumb.data`.
+pub const data: Item = Item::new(&["lang", "arch", "thumb", "data"]);
+/// The namespace `lang.arch.thumb.fp`.
+pub const fp: Item = Item::new(&["lang", "arch", "thumb", "fp"]);
+/// The namespace `lang.arch.thumb.memory`.
+pub const memory: Item = Item::new(&["lang", "arch", "thumb", "memory"]);
+/// The namespace `lang.arch.thumb.multiply`.
+pub const multiply: Item = Item::new(&["lang", "arch", "thumb", "multiply"]);
 /// The namespace `lang.arch.thumb.system`.
 pub const system: Item = Item::new(&["lang", "arch", "thumb", "system"]);
-/// The width of an operation: every register is 32 bits.
+/// The width of an operation or an access.
 pub const Size: Item = Item::new(&["lang", "arch", "thumb", "Size"]);
 /// A general register, by its encoding.
 pub const Reg: Item = Item::new(&["lang", "arch", "thumb", "Reg"]);
+/// A floating-point register, by its number as a single-precision one: `v{2k}` is also the
+/// double-precision `d{k}`, which overlaps `s{2k}` and `s{2k+1}`.
+pub const V: Item = Item::new(&["lang", "arch", "thumb", "V"]);
 /// A special register, which `mrs` reads and `msr` writes: the interrupt masks and the control
 /// of the stack and privilege.
 pub const Special: Item = Item::new(&["lang", "arch", "thumb", "Special"]);
-/// The classes of registers an operand names: general ones (`Reg`) and special ones (`Special`).
+/// The registers `vmrs` names: the floating-point status and control register, and the flags it
+/// is read into.
+pub const Status: Item = Item::new(&["lang", "arch", "thumb", "Status"]);
+/// The classes of registers an operand names: general ones (`Reg`), floating-point ones (`V`),
+/// special ones (`Special`) and those `vmrs` names (`Status`).
 pub const Class: Item = Item::new(&["lang", "arch", "thumb", "Class"]);
 /// A condition, by its encoding.
 pub const Cond: Item = Item::new(&["lang", "arch", "thumb", "Cond"]);
-/// The interrupts `cpsid` and `cpsie` mask and unmask: those of configurable priority (`i`, the
-/// mask `primask` holds), or those and the faults (`f`, `faultmask`).
+/// The interrupts `cpsid` and `cpsie` mask and unmask, by their bit: those of configurable
+/// priority and the faults (`f`, the mask `faultmask` holds), or those alone (`i`, `primask`).
 pub const Mask: Item = Item::new(&["lang", "arch", "thumb", "Mask"]);
 /// The domain a barrier orders: the full system.
 pub const Barrier: Item = Item::new(&["lang", "arch", "thumb", "Barrier"]);
 /// The kinds of named choice a position takes, each an enum of its own.
 pub const Choice: Item = Item::new(&["lang", "arch", "thumb", "Choice"]);
+/// The width of an operand: the instruction's, or its own.
+pub const Width: Item = Item::new(&["lang", "arch", "thumb", "Width"]);
+/// The general registers a position names.
+pub const Regs: Item = Item::new(&["lang", "arch", "thumb", "Regs"]);
+/// An immediate encoding.
+pub const Imm: Item = Item::new(&["lang", "arch", "thumb", "Imm"]);
+/// Where a shift's amount goes.
+pub const Place: Item = Item::new(&["lang", "arch", "thumb", "Place"]);
+/// An addressing mode: which memory operands a position takes. The base register's field is part
+/// of the mode.
+pub const Mode: Item = Item::new(&["lang", "arch", "thumb", "Mode"]);
+/// Which fields a floating-point register's number is split into: `Vd:D`, `Vn:N` or `Vm:M`, the
+/// four bits at 12, 16 or 0 and the fifth at 22, 7 or 5.
+pub const Fields: Item = Item::new(&["lang", "arch", "thumb", "Fields"]);
+/// Which registers a list takes.
+pub const List: Item = Item::new(&["lang", "arch", "thumb", "List"]);
+/// A branch's field, and the relocation that fills it with a symbol's address.
+pub const Branch: Item = Item::new(&["lang", "arch", "thumb", "Branch"]);
 /// What an operand position takes.
 pub const Kind: Item = Item::new(&["lang", "arch", "thumb", "Kind"]);
-/// What a form does with an operand.
+/// What a form does with an operand, or with the flags.
 pub const Access: Item = Item::new(&["lang", "arch", "thumb", "Access"]);
 /// Where control goes after a form.
 pub const Flow: Item = Item::new(&["lang", "arch", "thumb", "Flow"]);
-pub const Operand: Item = Item::new(&["lang", "arch", "thumb", "Operand"]);
-/// One form of an instruction: the operands it takes, the widths it is defined at, and what it
-/// reads and writes beyond its operands.
+/// An operand position: what it takes, the bit its field starts at, and what the form does with
+/// it.
+pub const Arg: Item = Item::new(&["lang", "arch", "thumb", "Arg"]);
+/// A width a form is defined at, the bits it sets in the word, and the suffix it gives the
+/// mnemonic.
+pub const Sized: Item = Item::new(&["lang", "arch", "thumb", "Sized"]);
+/// A base word of the forms of a family: fixed, or its member's bits with these set.
+pub const Word: Item = Item::new(&["lang", "arch", "thumb", "Word"]);
+/// One form of an instruction, its base word of type `W`: the widths it is defined at, its
+/// operands, and what it reads and writes beyond them.
 pub const Form: Item = Item::new(&["lang", "arch", "thumb", "Form"]);
-/// An instruction, named as its declaration is.
+/// An instruction, named as its declaration is unless `mnemonic` says otherwise (`bcond` is
+/// written `b`).
 pub const Instruction: Item = Item::new(&["lang", "arch", "thumb", "Instruction"]);
-/// An instruction of a family.
+/// An instruction of a family, and the bits it sets in the family's base words.
 pub const Member: Item = Item::new(&["lang", "arch", "thumb", "Member"]);
-/// Instructions sharing their forms.
+/// Instructions sharing their forms but for a few bits.
 pub const Family: Item = Item::new(&["lang", "arch", "thumb", "Family"]);

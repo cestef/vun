@@ -10,19 +10,13 @@ use crate::Item;
 pub const mrs: Item = Item::new(&["lang", "arch", "thumb", "system", "mrs"]);
 /// A general register written into a special one.
 pub const msr: Item = Item::new(&["lang", "arch", "thumb", "system", "msr"]);
-/// Masks interrupts: `cpsid i` sets `primask`, `cpsid f` sets `faultmask`.
+/// Masks interrupts: `cpsid i` sets `primask`, `cpsid f` sets `faultmask`; `cpsie` clears them.
 pub const cpsid: Item = Item::new(&["lang", "arch", "thumb", "system", "cpsid"]);
-/// Unmasks interrupts, clearing what `cpsid` sets.
 pub const cpsie: Item = Item::new(&["lang", "arch", "thumb", "system", "cpsie"]);
-/// Waits for an interrupt.
+/// Waits for an interrupt, or for an event.
 pub const wfi: Item = Item::new(&["lang", "arch", "thumb", "system", "wfi"]);
-/// Waits for an event.
 pub const wfe: Item = Item::new(&["lang", "arch", "thumb", "system", "wfe"]);
 pub const nop: Item = Item::new(&["lang", "arch", "thumb", "system", "nop"]);
 /// Barriers: every access before completes before any after (`dsb`), in order of memory
 /// (`dmb`), and the instructions after are fetched again (`isb`).
 pub const barriers: Item = Item::new(&["lang", "arch", "thumb", "system", "barriers"]);
-/// A trap into the debugger, or a fault without one.
-pub const bkpt: Item = Item::new(&["lang", "arch", "thumb", "system", "bkpt"]);
-/// Moves a general register, `sp` among them, into another.
-pub const mov: Item = Item::new(&["lang", "arch", "thumb", "system", "mov"]);

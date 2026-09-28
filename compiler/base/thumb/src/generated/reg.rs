@@ -16,6 +16,7 @@ pub enum Reg {
     R11,
     R12,
     Sp,
+    /// The link register.
     Lr,
     Pc,
 }

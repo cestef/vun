@@ -11,3 +11,5 @@ pub const write: Item = Item::new(&["lang", "arch", "thumb", "Access", "write"])
 pub const read_write: Item = Item::new(
     &["lang", "arch", "thumb", "Access", "read_write"],
 );
+/// Nothing but compute its address.
+pub const address: Item = Item::new(&["lang", "arch", "thumb", "Access", "address"]);

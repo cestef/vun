@@ -2,20 +2,16 @@
 use crate::{reg, table};
 /// A general register written into a special one.
 pub(super) const MSR: [table::Form; 1usize] = [
-    table::Form {
-        slots: &[
-            table::Slot {
-                kind: table::Kind::Special,
-                access: table::Access::Write,
-            },
-            table::Slot {
-                kind: table::Kind::R,
-                access: table::Access::Read,
-            },
+    table::Form::new(
+        0xf380_8800,
+        &[table::Sized::new(reg::Size::B32, 0x0000_0000)],
+        &[
+            table::Arg::new(table::Kind::Special, 0, table::Access::Write),
+            table::Arg::new(
+                table::Kind::Gpr(table::Regs::General),
+                16,
+                table::Access::Read,
+            ),
         ],
-        sizes: &[reg::Size::B32],
-        name: None,
-        reads: &[],
-        writes: &[],
-    },
+    ),
 ];

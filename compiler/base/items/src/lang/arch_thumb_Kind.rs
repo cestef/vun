@@ -6,11 +6,25 @@
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
 use crate::Item;
-/// A general register.
-pub const r: Item = Item::new(&["lang", "arch", "thumb", "Kind", "r"]);
-/// A special register.
+pub const gpr: Item = Item::new(&["lang", "arch", "thumb", "Kind", "gpr"]);
+/// Any register in a low register's field with a fourth bit at 7: a 16-bit `add` or `mov`.
+pub const split: Item = Item::new(&["lang", "arch", "thumb", "Kind", "split"]);
+pub const fpr: Item = Item::new(&["lang", "arch", "thumb", "Kind", "fpr"]);
+pub const imm: Item = Item::new(&["lang", "arch", "thumb", "Kind", "imm"]);
+/// A register, shifted or not: the amount in `imm3:imm2`, the shift's kind at 4, the register
+/// at 0.
+pub const shifted: Item = Item::new(&["lang", "arch", "thumb", "Kind", "shifted"]);
+/// Memory accessed at a width.
+pub const mem: Item = Item::new(&["lang", "arch", "thumb", "Kind", "mem"]);
+/// A condition, as the mnemonic's suffix.
+pub const cond: Item = Item::new(&["lang", "arch", "thumb", "Kind", "cond"]);
+/// A label, or a symbol the linker places.
+pub const target: Item = Item::new(&["lang", "arch", "thumb", "Kind", "target"]);
+/// The low or high 16 bits of a symbol's address: `movw`, `movt`.
+pub const low: Item = Item::new(&["lang", "arch", "thumb", "Kind", "low"]);
+pub const high: Item = Item::new(&["lang", "arch", "thumb", "Kind", "high"]);
+pub const list: Item = Item::new(&["lang", "arch", "thumb", "Kind", "list"]);
 pub const special: Item = Item::new(&["lang", "arch", "thumb", "Kind", "special"]);
-/// An interrupt mask (`i`).
+pub const status: Item = Item::new(&["lang", "arch", "thumb", "Kind", "status"]);
 pub const mask: Item = Item::new(&["lang", "arch", "thumb", "Kind", "mask"]);
-/// A barrier's domain (`sy`).
 pub const barrier: Item = Item::new(&["lang", "arch", "thumb", "Kind", "barrier"]);

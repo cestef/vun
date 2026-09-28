@@ -1,0 +1,48 @@
+//! Multiplication, with accumulation and 64-bit products, and division (Armv7-M, multiply and
+//! divide).
+
+_t := lang.arch.thumb;
+
+_d_w: _t.Arg = .{ .kind = .gpr(.general), .at = 8, .access = .write };
+_d_rw: _t.Arg = .{ .kind = .gpr(.general), .at = 8, .access = .read_write };
+_n: _t.Arg = .{ .kind = .gpr(.general), .at = 16, .access = .read };
+_m: _t.Arg = .{ .kind = .gpr(.general), .access = .read };
+_a: _t.Arg = .{ .kind = .gpr(.general), .at = 12, .access = .read };
+_low_w: _t.Arg = .{ .kind = .gpr(.general), .at = 12, .access = .write };
+_low_rw: _t.Arg = .{ .kind = .gpr(.general), .at = 12, .access = .read_write };
+
+mul := _t.Instruction{ .forms = &[.{ .base = 0xfb00f000, .args = &[_d_w, _n, _m] }] };
+
+/// A product added to a register, or subtracted from it.
+mla := _t.Instruction{ .forms = &[.{ .base = 0xfb000000, .args = &[_d_w, _n, _m, _a] }] };
+mls := _t.Instruction{ .forms = &[.{ .base = 0xfb000010, .args = &[_d_w, _n, _m, _a] }] };
+
+/// A 64-bit product, signed or not, its low half first; added to the pair with accumulation.
+long := _t.Family{
+    .members = &[
+        _t.Member{ .name = .smull, .bits = 0x800000 },
+        _t.Member{ .name = .umull, .bits = 0xa00000 },
+    ],
+    .forms = &[.{ .base = .\or(0xfb000000), .args = &[_low_w, _d_w, _n, _m], .apart = &[[0, 1]] }],
+};
+
+long_add := _t.Family{
+    .members = &[
+        _t.Member{ .name = .smlal, .bits = 0xc00000 },
+        _t.Member{ .name = .umlal, .bits = 0xe00000 },
+    ],
+    .forms = &[.{ .base = .\or(0xfb000000), .args = &[_low_rw, _d_rw, _n, _m], .apart = &[[0, 1]] }],
+};
+
+/// Division rounding toward zero; a division by zero gives zero.
+sdiv := _t.Instruction{ .forms = &[.{ .base = 0xfb90f0f0, .args = &[_d_w, _n, _m] }] };
+udiv := _t.Instruction{ .forms = &[.{ .base = 0xfbb0f0f0, .args = &[_d_w, _n, _m] }] };
+
+/// A 16-bit product into its second operand, setting the flags.
+muls := _t.Instruction{ .forms = &[
+    .{
+        .base = 0x4340,
+        .args = &[.{ .kind = .gpr(.low), .access = .read_write }, .{ .kind = .gpr(.low), .at = 3, .access = .read }],
+        .flags = .some(.write),
+    },
+] };

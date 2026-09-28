@@ -3,8 +3,15 @@
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Class {
     General,
+    Fp,
     Special,
+    Status,
 }
 impl Class {
-    pub const ALL: [Self; 2usize] = [Self::General, Self::Special];
+    pub const ALL: [Self; 4usize] = [
+        Self::General,
+        Self::Fp,
+        Self::Special,
+        Self::Status,
+    ];
 }

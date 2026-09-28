@@ -4,6 +4,7 @@
 //! over the operand the backends make of it, a register of the position's class and width, and an
 //! immediate the operation's bits hold.
 
+use vun_isa::word::Field;
 use vun_inline::{FormId, Line, OpId, SizeId};
 use vun_isa::imm::held;
 use vun_isa::{Blocks, Fit, Fixed, Given, Label, Misfit, Place, Via, Why, Writeback, positions};

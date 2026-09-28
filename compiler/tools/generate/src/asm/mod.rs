@@ -10,6 +10,7 @@ mod arm64;
 mod emit;
 mod spell;
 mod thumb;
+mod words;
 mod x86_64;
 
 use std::collections::BTreeMap;

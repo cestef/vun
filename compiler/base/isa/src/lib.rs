@@ -7,6 +7,7 @@
 mod blocks;
 mod fit;
 pub mod imm;
+pub mod word;
 
 use std::fmt;
 

@@ -6,5 +6,5 @@
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
 use crate::Item;
-pub const i: Item = Item::new(&["lang", "arch", "thumb", "Mask", "i"]);
 pub const f: Item = Item::new(&["lang", "arch", "thumb", "Mask", "f"]);
+pub const i: Item = Item::new(&["lang", "arch", "thumb", "Mask", "i"]);

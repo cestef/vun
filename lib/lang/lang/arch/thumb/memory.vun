@@ -1,0 +1,160 @@
+//! Loads and stores, of pairs, of lists of registers and exclusive ones (Armv7-M, load and
+//! store). Each access width has its own encodings, so each is an instruction of its own.
+
+_t := lang.arch.thumb;
+
+_lo_t_w: _t.Arg = .{ .kind = .gpr(.low), .access = .write };
+_lo_t: _t.Arg = .{ .kind = .gpr(.low), .access = .read };
+_lo_8_w: _t.Arg = .{ .kind = .gpr(.low), .at = 8, .access = .write };
+_lo_8: _t.Arg = .{ .kind = .gpr(.low), .at = 8, .access = .read };
+_t_w: _t.Arg = .{ .kind = .gpr(.general), .at = 12, .access = .write };
+_t_r: _t.Arg = .{ .kind = .gpr(.general), .at = 12, .access = .read };
+_t2_w: _t.Arg = .{ .kind = .gpr(.general), .at = 8, .access = .write };
+_t2_r: _t.Arg = .{ .kind = .gpr(.general), .at = 8, .access = .read };
+_status_w: _t.Arg = .{ .kind = .gpr(.general), .at = 8, .access = .write };
+
+_narrow: _t.Arg = .{ .kind = .mem(.narrow, .inst), .access = .read };
+_narrow_sp: _t.Arg = .{ .kind = .mem(.narrow_sp, .inst), .access = .read };
+_narrow_index: _t.Arg = .{ .kind = .mem(.narrow_index, .inst), .access = .read };
+_offset: _t.Arg = .{ .kind = .mem(.offset, .inst), .access = .read };
+_byte: _t.Arg = .{ .kind = .mem(.byte, .inst), .access = .read };
+_byte_pre: _t.Arg = .{ .kind = .mem(.byte_pre, .inst), .access = .read };
+_byte_post: _t.Arg = .{ .kind = .mem(.byte_post, .inst), .access = .read };
+_index: _t.Arg = .{ .kind = .mem(.index, .inst), .access = .read };
+_narrow_w: _t.Arg = .{ .kind = .mem(.narrow, .inst), .access = .write };
+_narrow_sp_w: _t.Arg = .{ .kind = .mem(.narrow_sp, .inst), .access = .write };
+_narrow_index_w: _t.Arg = .{ .kind = .mem(.narrow_index, .inst), .access = .write };
+_offset_w: _t.Arg = .{ .kind = .mem(.offset, .inst), .access = .write };
+_byte_w: _t.Arg = .{ .kind = .mem(.byte, .inst), .access = .write };
+_byte_pre_w: _t.Arg = .{ .kind = .mem(.byte_pre, .inst), .access = .write };
+_byte_post_w: _t.Arg = .{ .kind = .mem(.byte_post, .inst), .access = .write };
+_index_w: _t.Arg = .{ .kind = .mem(.index, .inst), .access = .write };
+_pair: _t.Arg = .{ .kind = .mem(.pair, .is(.b64)), .access = .read };
+_pair_pre: _t.Arg = .{ .kind = .mem(.pair_pre, .is(.b64)), .access = .read };
+_pair_post: _t.Arg = .{ .kind = .mem(.pair_post, .is(.b64)), .access = .read };
+_pair_w: _t.Arg = .{ .kind = .mem(.pair, .is(.b64)), .access = .write };
+_pair_pre_w: _t.Arg = .{ .kind = .mem(.pair_pre, .is(.b64)), .access = .write };
+_pair_post_w: _t.Arg = .{ .kind = .mem(.pair_post, .is(.b64)), .access = .write };
+_exclusive: _t.Arg = .{ .kind = .mem(.exclusive, .inst), .access = .read };
+_exclusive_w: _t.Arg = .{ .kind = .mem(.exclusive, .inst), .access = .write };
+
+/// A base written back is not the register loaded or stored; a pair's two registers differ.
+_written_back: &[[2]u8] = &[[0, 1]];
+_pair_back: &[[2]u8] = &[[0, 1], [0, 2], [1, 2]];
+_pair_stored_back: &[[2]u8] = &[[0, 2], [1, 2]];
+
+_b8: &[_t.Sized] = &[.{ .size = .b8 }];
+_b16: &[_t.Sized] = &[.{ .size = .b16 }];
+
+ldr := _t.Instruction{ .forms = &[
+    .{ .base = 0x6800, .args = &[_lo_t_w, _narrow] },
+    .{ .base = 0x9800, .args = &[_lo_8_w, _narrow_sp] },
+    .{ .base = 0x5800, .args = &[_lo_t_w, _narrow_index] },
+    .{ .base = 0xf8d00000, .args = &[_t_w, _offset] },
+    .{ .base = 0xf8500800, .args = &[_t_w, _byte] },
+    .{ .base = 0xf8500800, .args = &[_t_w, _byte_pre], .apart = _written_back },
+    .{ .base = 0xf8500800, .args = &[_t_w, _byte_post], .apart = _written_back },
+    .{ .base = 0xf8500000, .args = &[_t_w, _index] },
+] };
+
+ldrb := _t.Instruction{ .forms = &[
+    .{ .base = 0x7800, .sizes = _b8, .args = &[_lo_t_w, _narrow] },
+    .{ .base = 0x5c00, .sizes = _b8, .args = &[_lo_t_w, _narrow_index] },
+    .{ .base = 0xf8900000, .sizes = _b8, .args = &[_t_w, _offset] },
+    .{ .base = 0xf8100800, .sizes = _b8, .args = &[_t_w, _byte] },
+    .{ .base = 0xf8100800, .sizes = _b8, .args = &[_t_w, _byte_pre], .apart = _written_back },
+    .{ .base = 0xf8100800, .sizes = _b8, .args = &[_t_w, _byte_post], .apart = _written_back },
+    .{ .base = 0xf8100000, .sizes = _b8, .args = &[_t_w, _index] },
+] };
+
+ldrh := _t.Instruction{ .forms = &[
+    .{ .base = 0x8800, .sizes = _b16, .args = &[_lo_t_w, _narrow] },
+    .{ .base = 0x5a00, .sizes = _b16, .args = &[_lo_t_w, _narrow_index] },
+    .{ .base = 0xf8b00000, .sizes = _b16, .args = &[_t_w, _offset] },
+    .{ .base = 0xf8300800, .sizes = _b16, .args = &[_t_w, _byte] },
+    .{ .base = 0xf8300800, .sizes = _b16, .args = &[_t_w, _byte_pre], .apart = _written_back },
+    .{ .base = 0xf8300800, .sizes = _b16, .args = &[_t_w, _byte_post], .apart = _written_back },
+    .{ .base = 0xf8300000, .sizes = _b16, .args = &[_t_w, _index] },
+] };
+
+/// Loads of a byte or a halfword, extending its sign.
+ldrsb := _t.Instruction{ .forms = &[
+    .{ .base = 0x5600, .sizes = _b8, .args = &[_lo_t_w, _narrow_index] },
+    .{ .base = 0xf9900000, .sizes = _b8, .args = &[_t_w, _offset] },
+    .{ .base = 0xf9100800, .sizes = _b8, .args = &[_t_w, _byte] },
+    .{ .base = 0xf9100800, .sizes = _b8, .args = &[_t_w, _byte_pre], .apart = _written_back },
+    .{ .base = 0xf9100800, .sizes = _b8, .args = &[_t_w, _byte_post], .apart = _written_back },
+    .{ .base = 0xf9100000, .sizes = _b8, .args = &[_t_w, _index] },
+] };
+
+ldrsh := _t.Instruction{ .forms = &[
+    .{ .base = 0x5e00, .sizes = _b16, .args = &[_lo_t_w, _narrow_index] },
+    .{ .base = 0xf9b00000, .sizes = _b16, .args = &[_t_w, _offset] },
+    .{ .base = 0xf9300800, .sizes = _b16, .args = &[_t_w, _byte] },
+    .{ .base = 0xf9300800, .sizes = _b16, .args = &[_t_w, _byte_pre], .apart = _written_back },
+    .{ .base = 0xf9300800, .sizes = _b16, .args = &[_t_w, _byte_post], .apart = _written_back },
+    .{ .base = 0xf9300000, .sizes = _b16, .args = &[_t_w, _index] },
+] };
+
+str := _t.Instruction{ .forms = &[
+    .{ .base = 0x6000, .args = &[_lo_t, _narrow_w] },
+    .{ .base = 0x9000, .args = &[_lo_8, _narrow_sp_w] },
+    .{ .base = 0x5000, .args = &[_lo_t, _narrow_index_w] },
+    .{ .base = 0xf8c00000, .args = &[_t_r, _offset_w] },
+    .{ .base = 0xf8400800, .args = &[_t_r, _byte_w] },
+    .{ .base = 0xf8400800, .args = &[_t_r, _byte_pre_w], .apart = _written_back },
+    .{ .base = 0xf8400800, .args = &[_t_r, _byte_post_w], .apart = _written_back },
+    .{ .base = 0xf8400000, .args = &[_t_r, _index_w] },
+] };
+
+strb := _t.Instruction{ .forms = &[
+    .{ .base = 0x7000, .sizes = _b8, .args = &[_lo_t, _narrow_w] },
+    .{ .base = 0x5400, .sizes = _b8, .args = &[_lo_t, _narrow_index_w] },
+    .{ .base = 0xf8800000, .sizes = _b8, .args = &[_t_r, _offset_w] },
+    .{ .base = 0xf8000800, .sizes = _b8, .args = &[_t_r, _byte_w] },
+    .{ .base = 0xf8000800, .sizes = _b8, .args = &[_t_r, _byte_pre_w], .apart = _written_back },
+    .{ .base = 0xf8000800, .sizes = _b8, .args = &[_t_r, _byte_post_w], .apart = _written_back },
+    .{ .base = 0xf8000000, .sizes = _b8, .args = &[_t_r, _index_w] },
+] };
+
+strh := _t.Instruction{ .forms = &[
+    .{ .base = 0x8000, .sizes = _b16, .args = &[_lo_t, _narrow_w] },
+    .{ .base = 0x5200, .sizes = _b16, .args = &[_lo_t, _narrow_index_w] },
+    .{ .base = 0xf8a00000, .sizes = _b16, .args = &[_t_r, _offset_w] },
+    .{ .base = 0xf8200800, .sizes = _b16, .args = &[_t_r, _byte_w] },
+    .{ .base = 0xf8200800, .sizes = _b16, .args = &[_t_r, _byte_pre_w], .apart = _written_back },
+    .{ .base = 0xf8200800, .sizes = _b16, .args = &[_t_r, _byte_post_w], .apart = _written_back },
+    .{ .base = 0xf8200000, .sizes = _b16, .args = &[_t_r, _index_w] },
+] };
+
+/// Loads and stores of two registers, the first at the lower address.
+ldrd := _t.Instruction{ .forms = &[
+    .{ .base = 0xe8500000, .args = &[_t_w, _t2_w, _pair], .apart = &[[0, 1]] },
+    .{ .base = 0xe8500000, .args = &[_t_w, _t2_w, _pair_pre], .apart = _pair_back },
+    .{ .base = 0xe8500000, .args = &[_t_w, _t2_w, _pair_post], .apart = _pair_back },
+] };
+
+strd := _t.Instruction{ .forms = &[
+    .{ .base = 0xe8400000, .args = &[_t_r, _t2_r, _pair_w] },
+    .{ .base = 0xe8400000, .args = &[_t_r, _t2_r, _pair_pre_w], .apart = _pair_stored_back },
+    .{ .base = 0xe8400000, .args = &[_t_r, _t2_r, _pair_post_w], .apart = _pair_stored_back },
+] };
+
+/// A load marking its address for the next `strex`, which stores only if nothing else wrote
+/// there since, writing 0 into its first register if it did and 1 if not.
+ldrex := _t.Instruction{ .forms = &[.{ .base = 0xe8500f00, .args = &[_t_w, _exclusive] }] };
+strex := _t.Instruction{ .forms = &[
+    .{ .base = 0xe8400000, .args = &[_status_w, _t_r, _exclusive_w], .apart = &[[0, 1], [0, 2]] },
+] };
+
+/// Stores registers below the stack pointer, lowest register lowest, and moves it down; `pop`
+/// loads them back and moves it up.
+push := _t.Instruction{ .forms = &[
+    .{ .base = 0xb400, .args = &[.{ .kind = .list(.push), .access = .read }], .reads = &[.sp], .writes = &[.sp] },
+    .{ .base = 0xe92d0000, .args = &[.{ .kind = .list(.wide), .access = .read }], .reads = &[.sp], .writes = &[.sp] },
+] };
+
+pop := _t.Instruction{ .forms = &[
+    .{ .base = 0xbc00, .args = &[.{ .kind = .list(.pop), .access = .write }], .reads = &[.sp], .writes = &[.sp] },
+    .{ .base = 0xe8bd0000, .args = &[.{ .kind = .list(.wide_pc), .access = .write }], .reads = &[.sp], .writes = &[.sp] },
+] };

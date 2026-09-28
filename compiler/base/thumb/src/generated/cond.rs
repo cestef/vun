@@ -4,26 +4,31 @@
 pub enum Cc {
     Eq,
     Ne,
-    Cs,
-    Cc,
+    /// Unsigned higher or same (carry set).
+    Hs,
+    /// Unsigned lower (carry clear).
+    Lo,
     Mi,
     Pl,
     Vs,
     Vc,
+    /// Unsigned higher.
     Hi,
+    /// Unsigned lower or same.
     Ls,
     Ge,
     Lt,
     Gt,
     Le,
+    /// Always, which an unconditional branch is written without.
     Al,
 }
 impl Cc {
     pub const ALL: [Self; 15usize] = [
         Self::Eq,
         Self::Ne,
-        Self::Cs,
-        Self::Cc,
+        Self::Hs,
+        Self::Lo,
         Self::Mi,
         Self::Pl,
         Self::Vs,
@@ -41,8 +46,8 @@ impl Cc {
 pub(crate) const CONDITIONS: [&str; 15usize] = [
     "eq",
     "ne",
-    "cs",
-    "cc",
+    "hs",
+    "lo",
     "mi",
     "pl",
     "vs",

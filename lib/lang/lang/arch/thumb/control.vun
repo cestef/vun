@@ -1,0 +1,63 @@
+//! Branches, calls, returns and traps (Armv7-M, branches and exception-generating instructions).
+
+_t := lang.arch.thumb;
+
+_any: _t.Arg = .{ .kind = .gpr(.any), .at = 3, .access = .read };
+_lo: _t.Arg = .{ .kind = .gpr(.low), .access = .read };
+_u8: _t.Arg = .{ .kind = .imm(.unsigned(8)), .access = .read };
+_link: &[_t.Reg] = &[.lr];
+
+/// A branch; its 32-bit form first, as a label's distance is not known when it is chosen.
+b := _t.Instruction{ .forms = &[
+    .{ .base = 0xf0009000, .args = &[.{ .kind = .target(.jump), .access = .read }], .flow = .jump },
+    .{ .base = 0xe000, .args = &[.{ .kind = .target(.narrow), .access = .read }], .flow = .jump },
+] };
+
+/// A branch if the condition holds, its 32-bit form first.
+bcond := _t.Instruction{
+    .forms = &[
+        .{
+            .base = 0xf0008000,
+            .args = &[.{ .kind = .cond, .at = 22, .access = .read }, .{ .kind = .target(.cond), .access = .read }],
+            .flags = .some(.read),
+        },
+        .{
+            .base = 0xd000,
+            .args = &[.{ .kind = .cond, .at = 8, .access = .read }, .{ .kind = .target(.narrow_cond), .access = .read }],
+            .flags = .some(.read),
+        },
+    ],
+    .mnemonic = .some("b"),
+};
+
+/// A call: the return address, its lowest bit set for Thumb, into `lr`.
+bl := _t.Instruction{ .forms = &[
+    .{ .base = 0xf000d000, .args = &[.{ .kind = .target(.call), .access = .read }], .writes = _link },
+] };
+
+/// A call of the address in a register, whose lowest bit must be set.
+blx := _t.Instruction{ .forms = &[.{ .base = 0x4780, .args = &[_any], .writes = _link }] };
+
+/// A jump to the address in a register: a return, from `lr`.
+bx := _t.Instruction{ .forms = &[.{ .base = 0x4700, .args = &[_any], .flow = .ends }] };
+
+/// A branch forward if a register is zero, or is not.
+cbz := _t.Instruction{ .forms = &[
+    .{ .base = 0xb100, .args = &[_lo, .{ .kind = .target(.compare), .access = .read }] },
+] };
+
+cbnz := _t.Instruction{ .forms = &[
+    .{ .base = 0xb900, .args = &[_lo, .{ .kind = .target(.compare), .access = .read }] },
+] };
+
+/// A permanently undefined instruction: a trap.
+udf := _t.Instruction{ .forms = &[.{ .base = 0xde00, .args = &[_u8], .flow = .ends }] };
+
+/// A call of the system: Linux takes its number in `r7` and returns its result in `r0`.
+svc := _t.Instruction{ .forms = &[.{ .base = 0xdf00, .args = &[_u8], .reads = &[.r7], .writes = &[.r0] }] };
+
+/// A trap into the debugger, or a fault without one.
+bkpt := _t.Instruction{ .forms = &[
+    .{ .base = 0xbe00, .args = &[], .flow = .ends },
+    .{ .base = 0xbe00, .args = &[_u8], .flow = .ends },
+] };

@@ -7,3 +7,4 @@
 )]
 use crate::Item;
 pub const name: Item = Item::new(&["lang", "arch", "thumb", "Member", "name"]);
+pub const bits: Item = Item::new(&["lang", "arch", "thumb", "Member", "bits"]);

@@ -221,14 +221,14 @@ impl Gnu for Thumb {
         r.name().to_owned()
     }
 
-    fn text(inst: &Inst<Value, Output, Named>, operands: &[vun_isa_thumb::Operand]) -> String {
+    /// The text of the form the line was checked against.
+    fn text(inst: &Inst<Value, Output, Named>, operands: &[vun_isa_thumb::Operand<Named>]) -> String {
         let (op, form) = vun_isa_thumb::Op::entry(inst.op, inst.form);
-        vun_isa_thumb::Inst::new(op, form, operands).to_string()
+        vun_isa_thumb::Inst::new(op, vun_isa_thumb::Size::of(inst.size), operands).by(form).to_string()
     }
 
     fn read_stack(dst: vun_isa_thumb::Reg) -> String {
-        let op = vun_isa_thumb::Op::Mov;
-        let operands = [dst.into(), vun_isa_thumb::Reg::Sp.into()];
-        vun_isa_thumb::Inst::new(op, &op.forms()[0], &operands).to_string()
+        let operands: [vun_isa_thumb::Operand<Named>; 2] = [dst.into(), vun_isa_thumb::Reg::Sp.into()];
+        vun_isa_thumb::Inst::new(vun_isa_thumb::Op::Mov, vun_isa_thumb::Size::B32, &operands).to_string()
     }
 }

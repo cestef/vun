@@ -242,10 +242,8 @@ pub enum Kind {
     Sys,
 }
 
-impl Kind {
-    /// The field `operand` encodes to at this position in an instruction of `size`, if it fits.
-    #[must_use]
-    pub fn encode<S>(self, operand: &Operand<S>, size: Size) -> Option<u32> {
+impl<S> vun_isa::word::Field<Operand<S>, Size> for Kind {
+    fn encode(self, operand: &Operand<S>, size: Size) -> Option<u32> {
         let bits = size.bits();
         let reg = |r: &Reg| (*r != Reg::Sp).then(|| u32::from(r.number()) << 6);
         match (self, operand) {

@@ -7,3 +7,6 @@
 )]
 use crate::Item;
 pub const forms: Item = Item::new(&["lang", "arch", "thumb", "Instruction", "forms"]);
+pub const mnemonic: Item = Item::new(
+    &["lang", "arch", "thumb", "Instruction", "mnemonic"],
+);

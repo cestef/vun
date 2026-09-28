@@ -20,5 +20,6 @@ pub const r10: Item = Item::new(&["lang", "arch", "thumb", "Reg", "r10"]);
 pub const r11: Item = Item::new(&["lang", "arch", "thumb", "Reg", "r11"]);
 pub const r12: Item = Item::new(&["lang", "arch", "thumb", "Reg", "r12"]);
 pub const sp: Item = Item::new(&["lang", "arch", "thumb", "Reg", "sp"]);
+/// The link register.
 pub const lr: Item = Item::new(&["lang", "arch", "thumb", "Reg", "lr"]);
 pub const pc: Item = Item::new(&["lang", "arch", "thumb", "Reg", "pc"]);

@@ -56,6 +56,7 @@ vun-codegen = { path = "compiler/back/codegen" }
 vun-regalloc = { path = "compiler/back/regalloc" }
 vun-asm-x86_64 = { path = "compiler/back/x86_64" }
 vun-asm-arm64 = { path = "compiler/back/arm64" }
+vun-asm-thumb = { path = "compiler/back/thumb" }
 vun-object = { path = "compiler/back/object" }
 vun-dwarf = { path = "compiler/back/dwarf" }
 vun-backend-wasm = { path = "compiler/back/wasm" }

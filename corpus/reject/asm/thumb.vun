@@ -5,6 +5,6 @@ lines := () {
     unsafe lang.arch.thumb.asm {
         cpsid sy //~ asm.no_form
         msr r0, primask //~ asm.register_class
-        svc 0 //~ asm.unknown_mnemonic
+        yield //~ asm.unknown_mnemonic
     };
 };

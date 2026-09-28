@@ -768,6 +768,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "vun-asm-thumb"
+version = "0.0.0"
+dependencies = [
+ "vun-asm",
+ "vun-isa-thumb",
+]
+
+[[package]]
 name = "vun-asm-x86_64"
 version = "0.0.0"
 dependencies = [

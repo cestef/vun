@@ -6,10 +6,15 @@
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
 use crate::Item;
-pub const operands: Item = Item::new(&["lang", "arch", "thumb", "Form", "operands"]);
+pub const base: Item = Item::new(&["lang", "arch", "thumb", "Form", "base"]);
 pub const sizes: Item = Item::new(&["lang", "arch", "thumb", "Form", "sizes"]);
-/// The mnemonic, where it is not the instruction's.
+pub const args: Item = Item::new(&["lang", "arch", "thumb", "Form", "args"]);
+/// The mnemonic, where it is not the instruction's (`ldrb`).
 pub const name: Item = Item::new(&["lang", "arch", "thumb", "Form", "name"]);
 pub const reads: Item = Item::new(&["lang", "arch", "thumb", "Form", "reads"]);
 pub const writes: Item = Item::new(&["lang", "arch", "thumb", "Form", "writes"]);
+pub const flags: Item = Item::new(&["lang", "arch", "thumb", "Form", "flags"]);
 pub const flow: Item = Item::new(&["lang", "arch", "thumb", "Form", "flow"]);
+/// Pairs of operand positions whose registers must differ, a memory operand's by its base:
+/// the manual calls the instruction unpredictable where they do not.
+pub const apart: Item = Item::new(&["lang", "arch", "thumb", "Form", "apart"]);

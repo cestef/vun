@@ -2,42 +2,33 @@
 
 _t := lang.arch.thumb;
 
-_r: _t.Operand = _t.Operand{ .kind = .r, .access = .read };
-_r_w: _t.Operand = _t.Operand{ .kind = .r, .access = .write };
-_special: _t.Operand = _t.Operand{ .kind = .special, .access = .read };
-_special_w: _t.Operand = _t.Operand{ .kind = .special, .access = .write };
-_mask: _t.Operand = _t.Operand{ .kind = .mask, .access = .read };
-_barrier: _t.Operand = _t.Operand{ .kind = .barrier, .access = .read };
+_r_w: _t.Arg = .{ .kind = .gpr(.general), .at = 8, .access = .write };
+_r: _t.Arg = .{ .kind = .gpr(.general), .at = 16, .access = .read };
+_mask: _t.Arg = .{ .kind = .mask, .access = .read };
 
 /// A special register read into a general one.
-mrs := _t.Instruction{ .forms = &[.{ .operands = &[_r_w, _special] }] };
+mrs := _t.Instruction{ .forms = &[.{ .base = 0xf3ef8000, .args = &[_r_w, .{ .kind = .special, .access = .read }] }] };
 
 /// A general register written into a special one.
-msr := _t.Instruction{ .forms = &[.{ .operands = &[_special_w, _r] }] };
+msr := _t.Instruction{ .forms = &[.{ .base = 0xf3808800, .args = &[.{ .kind = .special, .access = .write }, _r] }] };
 
-/// Masks interrupts: `cpsid i` sets `primask`, `cpsid f` sets `faultmask`.
-cpsid := _t.Instruction{ .forms = &[.{ .operands = &[_mask], .writes = &[.primask, .faultmask] }] };
+/// Masks interrupts: `cpsid i` sets `primask`, `cpsid f` sets `faultmask`; `cpsie` clears them.
+cpsid := _t.Instruction{ .forms = &[.{ .base = 0xb670, .args = &[_mask] }] };
+cpsie := _t.Instruction{ .forms = &[.{ .base = 0xb660, .args = &[_mask] }] };
 
-/// Unmasks interrupts, clearing what `cpsid` sets.
-cpsie := _t.Instruction{ .forms = &[.{ .operands = &[_mask], .writes = &[.primask, .faultmask] }] };
+/// Waits for an interrupt, or for an event.
+wfi := _t.Instruction{ .forms = &[.{ .base = 0xbf30, .args = &[] }] };
+wfe := _t.Instruction{ .forms = &[.{ .base = 0xbf20, .args = &[] }] };
 
-/// Waits for an interrupt.
-wfi := _t.Instruction{ .forms = &[.{ .operands = &[] }] };
-
-/// Waits for an event.
-wfe := _t.Instruction{ .forms = &[.{ .operands = &[] }] };
-
-nop := _t.Instruction{ .forms = &[.{ .operands = &[] }] };
+nop := _t.Instruction{ .forms = &[.{ .base = 0xbf00, .args = &[] }] };
 
 /// Barriers: every access before completes before any after (`dsb`), in order of memory
 /// (`dmb`), and the instructions after are fetched again (`isb`).
 barriers := _t.Family{
-    .members = &[_t.Member{ .name = .dsb }, _t.Member{ .name = .dmb }, _t.Member{ .name = .isb }],
-    .forms = &[.{ .operands = &[_barrier] }],
+    .members = &[
+        _t.Member{ .name = .dsb, .bits = 0x40 },
+        _t.Member{ .name = .dmb, .bits = 0x50 },
+        _t.Member{ .name = .isb, .bits = 0x60 },
+    ],
+    .forms = &[.{ .base = .\or(0xf3bf8f00), .args = &[.{ .kind = .barrier, .access = .read }] }],
 };
-
-/// A trap into the debugger, or a fault without one.
-bkpt := _t.Instruction{ .forms = &[.{ .operands = &[], .flow = .ends }] };
-
-/// Moves a general register, `sp` among them, into another.
-mov := _t.Instruction{ .forms = &[.{ .operands = &[_r_w, _r] }] };

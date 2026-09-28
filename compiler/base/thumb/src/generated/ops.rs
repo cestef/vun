@@ -2,17 +2,161 @@
 /// An instruction, by its declaration in the architecture's table.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Op {
+    /// A branch; its 32-bit form first, as a label's distance is not known when it is chosen.
+    B,
+    /// A branch if the condition holds, its 32-bit form first.
+    Bcond,
+    /// A call: the return address, its lowest bit set for Thumb, into `lr`.
+    Bl,
+    /// A call of the address in a register, whose lowest bit must be set.
+    Blx,
+    /// A jump to the address in a register: a return, from `lr`.
+    Bx,
+    /// A branch forward if a register is zero, or is not.
+    Cbz,
+    Cbnz,
+    /// A permanently undefined instruction: a trap.
+    Udf,
+    /// A call of the system: Linux takes its number in `r7` and returns its result in `r0`.
+    Svc,
+    /// A trap into the debugger, or a fault without one.
+    Bkpt,
+    /// Moves a register, any of them, into another, or an immediate: 16 bits by `movw`, as
+    /// assemblers choose it, else a modified immediate.
+    Mov,
+    Movs,
+    /// Moves 16 bits, or the low 16 bits of a symbol's address, into a register, zeroing the rest.
+    Movw,
+    /// Moves 16 bits, or the high 16 bits of a symbol's address, into the top of a register.
+    Movt,
+    Mvn,
+    Add,
+    Adds,
+    Sub,
+    Subs,
+    /// Negates: `rsbs rd, rn, #0`.
+    Rsbs,
+    And,
+    Bic,
+    Orr,
+    Orn,
+    Eor,
+    Rsb,
+    Adc,
+    Sbc,
+    /// The operations with a 16-bit form of two operands, the first also the result, setting the flags.
+    Ands,
+    Eors,
+    Orrs,
+    Bics,
+    Adcs,
+    Sbcs,
+    Mvns,
+    /// Comparisons: the flags of a subtraction (`cmp`), an addition (`cmn`), an `and` (`tst`) or
+    /// an exclusive or (`teq`), the result discarded.
+    Cmp,
+    Cmn,
+    Tst,
+    Teq,
+    /// Shifts by an immediate, a `mov` of a shifted register, or by a register's low byte.
+    Lsl,
+    Lsls,
+    Lsr,
+    Lsrs,
+    Asr,
+    Asrs,
+    Ror,
+    Rors,
+    /// Extensions of a register's low byte or halfword, signed or not.
+    Sxtb,
+    Sxth,
+    Uxtb,
+    Uxth,
+    /// Counts the leading zero bits.
+    Clz,
+    /// Reverses the bits.
+    Rbit,
+    /// Reverses the bytes.
+    Rev,
+    /// Arithmetic of two operands.
+    Vadd,
+    /// Arithmetic of two operands.
+    Vsub,
+    /// Arithmetic of two operands.
+    Vmul,
+    /// Arithmetic of two operands.
+    Vdiv,
+    /// Arithmetic of one operand, and a move between floating-point registers.
+    Vneg,
+    /// Arithmetic of one operand, and a move between floating-point registers.
+    Vabs,
+    /// Arithmetic of one operand, and a move between floating-point registers.
+    Vsqrt,
+    /// Moves between floating-point registers, and between them and general ones: a single-precision
+    /// register's bits, or a double-precision one's as two general registers, the low half first.
+    Vmov,
+    /// Compares two registers, or one with zero, into the extension's own flags, which `vmrs` then
+    /// moves into the processor's.
+    Vcmp,
+    Vmrs,
+    Vldr,
+    Vstr,
+    /// Conversions to an integer, rounding toward zero, and from one, whose integer is the bits of a
+    /// single-precision register.
+    VcvtSigned,
+    VcvtUnsigned,
+    VcvtFromSigned,
+    VcvtFromUnsigned,
+    /// Conversions between the precisions: to double from single, and to single from double.
+    VcvtPrecision,
+    /// Stores double-precision registers below the stack pointer and moves it down; `vpop` loads them
+    /// back and moves it up.
+    Vpush,
+    Vpop,
+    Ldr,
+    Ldrb,
+    Ldrh,
+    /// Loads of a byte or a halfword, extending its sign.
+    Ldrsb,
+    Ldrsh,
+    Str,
+    Strb,
+    Strh,
+    /// Loads and stores of two registers, the first at the lower address.
+    Ldrd,
+    Strd,
+    /// A load marking its address for the next `strex`, which stores only if nothing else wrote
+    /// there since, writing 0 into its first register if it did and 1 if not.
+    Ldrex,
+    Strex,
+    /// Stores registers below the stack pointer, lowest register lowest, and moves it down; `pop`
+    /// loads them back and moves it up.
+    Push,
+    Pop,
+    Mul,
+    /// A product added to a register, or subtracted from it.
+    Mla,
+    Mls,
+    /// A 64-bit product, signed or not, its low half first; added to the pair with accumulation.
+    Smull,
+    /// A 64-bit product, signed or not, its low half first; added to the pair with accumulation.
+    Umull,
+    Smlal,
+    Umlal,
+    /// Division rounding toward zero; a division by zero gives zero.
+    Sdiv,
+    Udiv,
+    /// A 16-bit product into its second operand, setting the flags.
+    Muls,
     /// A special register read into a general one.
     Mrs,
     /// A general register written into a special one.
     Msr,
-    /// Masks interrupts: `cpsid i` sets `primask`, `cpsid f` sets `faultmask`.
+    /// Masks interrupts: `cpsid i` sets `primask`, `cpsid f` sets `faultmask`; `cpsie` clears them.
     Cpsid,
-    /// Unmasks interrupts, clearing what `cpsid` sets.
     Cpsie,
-    /// Waits for an interrupt.
+    /// Waits for an interrupt, or for an event.
     Wfi,
-    /// Waits for an event.
     Wfe,
     Nop,
     /// Barriers: every access before completes before any after (`dsb`), in order of memory
@@ -24,13 +168,106 @@ pub enum Op {
     /// Barriers: every access before completes before any after (`dsb`), in order of memory
     /// (`dmb`), and the instructions after are fetched again (`isb`).
     Isb,
-    /// A trap into the debugger, or a fault without one.
-    Bkpt,
-    /// Moves a general register, `sp` among them, into another.
-    Mov,
 }
 impl Op {
     pub const ALL: &[Self] = &[
+        Self::B,
+        Self::Bcond,
+        Self::Bl,
+        Self::Blx,
+        Self::Bx,
+        Self::Cbz,
+        Self::Cbnz,
+        Self::Udf,
+        Self::Svc,
+        Self::Bkpt,
+        Self::Mov,
+        Self::Movs,
+        Self::Movw,
+        Self::Movt,
+        Self::Mvn,
+        Self::Add,
+        Self::Adds,
+        Self::Sub,
+        Self::Subs,
+        Self::Rsbs,
+        Self::And,
+        Self::Bic,
+        Self::Orr,
+        Self::Orn,
+        Self::Eor,
+        Self::Rsb,
+        Self::Adc,
+        Self::Sbc,
+        Self::Ands,
+        Self::Eors,
+        Self::Orrs,
+        Self::Bics,
+        Self::Adcs,
+        Self::Sbcs,
+        Self::Mvns,
+        Self::Cmp,
+        Self::Cmn,
+        Self::Tst,
+        Self::Teq,
+        Self::Lsl,
+        Self::Lsls,
+        Self::Lsr,
+        Self::Lsrs,
+        Self::Asr,
+        Self::Asrs,
+        Self::Ror,
+        Self::Rors,
+        Self::Sxtb,
+        Self::Sxth,
+        Self::Uxtb,
+        Self::Uxth,
+        Self::Clz,
+        Self::Rbit,
+        Self::Rev,
+        Self::Vadd,
+        Self::Vsub,
+        Self::Vmul,
+        Self::Vdiv,
+        Self::Vneg,
+        Self::Vabs,
+        Self::Vsqrt,
+        Self::Vmov,
+        Self::Vcmp,
+        Self::Vmrs,
+        Self::Vldr,
+        Self::Vstr,
+        Self::VcvtSigned,
+        Self::VcvtUnsigned,
+        Self::VcvtFromSigned,
+        Self::VcvtFromUnsigned,
+        Self::VcvtPrecision,
+        Self::Vpush,
+        Self::Vpop,
+        Self::Ldr,
+        Self::Ldrb,
+        Self::Ldrh,
+        Self::Ldrsb,
+        Self::Ldrsh,
+        Self::Str,
+        Self::Strb,
+        Self::Strh,
+        Self::Ldrd,
+        Self::Strd,
+        Self::Ldrex,
+        Self::Strex,
+        Self::Push,
+        Self::Pop,
+        Self::Mul,
+        Self::Mla,
+        Self::Mls,
+        Self::Smull,
+        Self::Umull,
+        Self::Smlal,
+        Self::Umlal,
+        Self::Sdiv,
+        Self::Udiv,
+        Self::Muls,
         Self::Mrs,
         Self::Msr,
         Self::Cpsid,
@@ -41,7 +278,5 @@ impl Op {
         Self::Dsb,
         Self::Dmb,
         Self::Isb,
-        Self::Bkpt,
-        Self::Mov,
     ];
 }

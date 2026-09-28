@@ -1,49 +1,124 @@
-//! Fitting a line's operands to a Thumb form: every form is 32 bits wide; a register position takes
-//! a register of its class, a choice position a choice of its kind within its enum.
+//! Fitting a line's operands to a Thumb form: the instruction's width is the one its mnemonic's
+//! spelling gives (`vadd.f64`), else its floating-point registers' (`d0`), else the form's first;
+//! each position takes what the encoder's `Kind::encode` does, over the operand the backends make
+//! of it, a register of the position's class and width, and an immediate a 32-bit operation holds.
 
-use vun_inline::{FormId, OpId};
-use vun_isa::{ChoiceId, Fit, Fixed, Given, Misfit, Why, positions};
+use vun_inline::{FormId, Line, OpId, SizeId};
+use vun_isa::imm::held;
+use vun_isa::word::Field;
+use vun_isa::{Blocks, Fit, Fixed, Given, Label, Misfit, Place, Via, Why, Writeback, positions};
 
-use crate::{Barrier, Choice, Class, Kind, Mask, Op, Size};
+use crate::{Choice, Class, Kind, Mode, Op, Operand, Reg, Size, Thumb, Width};
+
+/// The bits of every operation on general registers.
+const WORD_BITS: u32 = 32;
+
+impl Size {
+    /// Its index in the table, as a block names it.
+    #[must_use]
+    pub const fn id(self) -> SizeId {
+        SizeId(self as u8)
+    }
+}
+
+impl Mode {
+    /// How an access in this mode updates its base.
+    const fn writeback(self) -> Writeback {
+        match self {
+            Self::BytePre | Self::PairPre => Writeback::Pre,
+            Self::BytePost | Self::PairPost => Writeback::Post,
+            _ => Writeback::No,
+        }
+    }
+}
+
+impl Choice {
+    /// How many choices of this kind there are.
+    const fn count(self) -> usize {
+        match self {
+            Self::Mask => crate::Mask::ALL.len(),
+            Self::Barrier => crate::Barrier::ALL.len(),
+        }
+    }
+}
 
 impl Kind {
-    /// The class of register this position takes, if it takes one.
-    const fn class(self) -> Option<Class> {
+    /// The kind of named choice this position takes, if it takes one.
+    #[must_use]
+    pub const fn choice(self) -> Option<Choice> {
         match self {
-            Self::R => Some(Class::General),
-            Self::Special => Some(Class::Special),
-            Self::Mask | Self::Barrier => None,
+            Self::Mask => Some(Choice::Mask),
+            Self::Barrier => Some(Choice::Barrier),
+            _ => None,
         }
     }
 
-    /// The kind of choice this position takes, if it takes one, and how many there are.
-    const fn choice(self) -> Option<(Choice, usize)> {
+    /// Whether a register at this position has the instruction's width.
+    const fn sized(self) -> bool {
+        matches!(self, Self::Fpr(Width::Inst, _))
+    }
+
+    /// The class of register this position takes, if it takes one, and the width it reads it at
+    /// in an instruction of `size`, if a fixed one.
+    const fn register(self, size: Size) -> Option<(Class, Option<Size>)> {
         match self {
-            Self::Mask => Some((Choice::Mask, Mask::ALL.len())),
-            Self::Barrier => Some((Choice::Barrier, Barrier::ALL.len())),
-            Self::R | Self::Special => None,
+            Self::Gpr(_) | Self::Split | Self::Shifted => Some((Class::General, Some(Size::B32))),
+            Self::Fpr(width, _) => Some((Class::Fp, Some(width.at(size)))),
+            Self::Special => Some((Class::Special, None)),
+            Self::Status(_) => Some((Class::Status, None)),
+            _ => None,
         }
     }
 
-    /// Whether this position takes `given`.
-    fn fits<V, P, S>(self, given: &Given<V, P, S>) -> Result<(), Why> {
-        match (self.class(), self.choice(), given) {
-            (Some(want), _, Given::Reg { reg, .. }) if Class::ALL[usize::from(reg.class.0)] != want => {
-                Err(Why::Class)
+    /// Whether this position of an instruction of `size` takes `given`.
+    fn fits<V: Clone, P: Clone, S: Copy>(self, size: Size, given: &Given<V, P, S>) -> Result<(), Why> {
+        if let (Some(class), Some((want, width))) = (given.class(), self.register(size)) {
+            if Class::ALL[usize::from(class.0)] != want {
+                return Err(Why::Class);
             }
-            (Some(Class::General), _, Given::Bound { class, .. })
-                if Class::ALL[usize::from(class.0)] != Class::General =>
+            if let (Some(given), Some(width)) = (given.size(), width)
+                && Size::of(given) != width
             {
-                Err(Why::Class)
+                return Err(Why::Kind);
             }
-            (Some(_), _, Given::Reg { .. }) | (Some(Class::General), _, Given::Bound { .. }) => Ok(()),
-            (_, Some((choice, count)), Given::Choice { of, index })
-                if *of == ChoiceId(choice as u8) && usize::from(*index) < count =>
-            {
-                Ok(())
-            }
-            _ => Err(Why::Kind),
         }
+        match (self, given) {
+            (_, Given::Imm(None)) => {
+                return Err(if matches!(self, Self::Imm(_)) { Why::Wide } else { Why::Kind });
+            }
+            (_, Given::Choice { of, index })
+                if self.choice().is_some_and(|c| c as u8 == of.0 && usize::from(*index) < c.count()) => {}
+            (Self::Mem(mode, _), Given::Mem { mem, writeback }) if mode.writeback() == *writeback => {
+                Thumb::addressable(mem, self).map_err(|_| Why::Kind)?;
+            }
+            (_, Given::Choice { .. } | Given::Mem { .. }) => return Err(Why::Kind),
+            _ => {}
+        }
+        let operand = Thumb::operand(&given.clone().operand(), self, &mut Representative);
+        match (self.encode(&operand, size), given) {
+            (None, Given::Imm(_)) if matches!(self, Self::Imm(_)) => Err(Why::Wide),
+            (None, _) => Err(Why::Kind),
+            (Some(_), Given::Imm(Some(v))) if !held(*v, WORD_BITS) => Err(Why::Wide),
+            (Some(_), _) => Ok(()),
+        }
+    }
+}
+
+/// The operands of a line as the encoder sees them before registers are given: a binding's
+/// register stands for any general one, so no position taking low registers alone takes it.
+struct Representative;
+
+impl<S: Copy> Place<Thumb, S> for Representative {
+    fn bound(&mut self) -> Reg {
+        Reg::R8
+    }
+
+    fn line(&self, _: Line) -> Operand<S> {
+        Operand::Label(Label::new(0))
+    }
+
+    fn via(&self, _: S) -> Via {
+        Via::Direct
     }
 }
 
@@ -55,16 +130,28 @@ pub(crate) fn fit<V: Clone, P: Clone, S: Copy>(
     givens: &[Given<V, P, S>],
 ) -> Result<Fit<V, P, S>, Misfit> {
     let form = Op::entry(op, form).1;
-    let positions = positions(form.kinds(), fixed, |_| false, givens)?;
-    let size = match fixed.size {
-        Some(size) => Size::of(size),
-        None => *form.sizes.first().ok_or(Misfit::Width)?,
+    let positions = positions(form.kinds(), fixed, |k| matches!(k, Kind::Cond), givens)?;
+    // A width the spelling gives is the instruction's; its registers are checked against it.
+    let mut known = fixed.size;
+    for p in positions.iter().filter(|p| fixed.size.is_none() && p.kind.sized()) {
+        let Some(width) = p.given.size() else { continue };
+        if known.is_some_and(|k| k != width) {
+            return Err(p.misfit(Why::Kind));
+        }
+        known = Some(width);
+    }
+    let size = match known {
+        Some(width) => Size::of(width),
+        None if form.sizes.len() == 1 || !positions.iter().any(|p| p.kind.sized()) => {
+            form.sizes.first().ok_or(Misfit::Width)?.size
+        }
+        None => return Err(Misfit::Unsized),
     };
-    if !form.sizes.contains(&size) {
+    if form.at(size).is_none() {
         return Err(Misfit::Width);
     }
     for p in &positions {
-        p.kind.fits(&p.given).map_err(|why| p.misfit(why))?;
+        p.kind.fits(size, &p.given).map_err(|why| p.misfit(why))?;
     }
     Ok(Fit { size: size.id(), operands: positions.into_iter().map(|p| p.given.operand()).collect() })
 }

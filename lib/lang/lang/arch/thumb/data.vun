@@ -1,0 +1,292 @@
+//! Moves, arithmetic, logic, shifts, comparisons, extensions and bit operations (Armv7-M, data
+//! processing). A family's members differ in the operation's four bits at 21 and the flags' bit
+//! at 20.
+
+_t := lang.arch.thumb;
+
+_lo_d_w: _t.Arg = .{ .kind = .gpr(.low), .access = .write };
+_lo_d: _t.Arg = .{ .kind = .gpr(.low), .access = .read };
+_lo_d_rw: _t.Arg = .{ .kind = .gpr(.low), .access = .read_write };
+_lo_n: _t.Arg = .{ .kind = .gpr(.low), .at = 3, .access = .read };
+_lo_m: _t.Arg = .{ .kind = .gpr(.low), .at = 6, .access = .read };
+_lo_8: _t.Arg = .{ .kind = .gpr(.low), .at = 8, .access = .read };
+_lo_8_w: _t.Arg = .{ .kind = .gpr(.low), .at = 8, .access = .write };
+_lo_8_rw: _t.Arg = .{ .kind = .gpr(.low), .at = 8, .access = .read_write };
+_split_w: _t.Arg = .{ .kind = .split, .access = .write };
+_split_rw: _t.Arg = .{ .kind = .split, .access = .read_write };
+_split: _t.Arg = .{ .kind = .split, .access = .read };
+_any_3: _t.Arg = .{ .kind = .gpr(.any), .at = 3, .access = .read };
+_d_w: _t.Arg = .{ .kind = .gpr(.general), .at = 8, .access = .write };
+_d_rw: _t.Arg = .{ .kind = .gpr(.general), .at = 8, .access = .read_write };
+_n: _t.Arg = .{ .kind = .gpr(.general), .at = 16, .access = .read };
+_sp_n: _t.Arg = .{ .kind = .gpr(.sp), .at = 16, .access = .read };
+_m: _t.Arg = .{ .kind = .gpr(.general), .access = .read };
+_m_twice: _t.Arg = .{ .kind = .gpr(.general), .again = .some(16), .access = .read };
+_sp: _t.Arg = .{ .kind = .gpr(.only_sp), .access = .read };
+_sp_w: _t.Arg = .{ .kind = .gpr(.only_sp), .access = .write };
+_shifted: _t.Arg = .{ .kind = .shifted, .access = .read };
+_modified: _t.Arg = .{ .kind = .imm(.modified), .access = .read };
+_plain: _t.Arg = .{ .kind = .imm(.plain), .access = .read };
+_half: _t.Arg = .{ .kind = .imm(.half), .access = .read };
+_u3_6: _t.Arg = .{ .kind = .imm(.unsigned(3)), .at = 6, .access = .read };
+_u8: _t.Arg = .{ .kind = .imm(.unsigned(8)), .access = .read };
+_words7: _t.Arg = .{ .kind = .imm(.words(7)), .access = .read };
+_words8: _t.Arg = .{ .kind = .imm(.words(8)), .access = .read };
+_zero: _t.Arg = .{ .kind = .imm(.zero), .access = .read };
+_lsl_narrow: _t.Arg = .{ .kind = .imm(.lsl(.narrow)), .at = 6, .access = .read };
+_shr_narrow: _t.Arg = .{ .kind = .imm(.shr(.narrow)), .at = 6, .access = .read };
+_lsl_wide: _t.Arg = .{ .kind = .imm(.lsl(.wide)), .access = .read };
+_shr_wide: _t.Arg = .{ .kind = .imm(.shr(.wide)), .access = .read };
+_symbol_low: _t.Arg = .{ .kind = .low, .access = .read };
+_symbol_high: _t.Arg = .{ .kind = .high, .access = .read };
+_sets: ?_t.Access = .some(.write);
+_reads: ?_t.Access = .some(.read);
+_updates: ?_t.Access = .some(.read_write);
+
+/// Moves a register, any of them, into another, or an immediate: 16 bits by `movw`, as
+/// assemblers choose it, else a modified immediate.
+mov := _t.Instruction{ .forms = &[
+    .{ .base = 0x4600, .args = &[_split_w, _any_3] },
+    .{ .base = 0xf2400000, .args = &[_d_w, _half], .name = .some("movw") },
+    .{ .base = 0xf04f0000, .args = &[_d_w, _modified] },
+] };
+
+movs := _t.Instruction{ .forms = &[
+    .{ .base = 0x2000, .args = &[_lo_8_w, _u8], .flags = _sets },
+    .{ .base = 0x0000, .args = &[_lo_d_w, _lo_n], .flags = _sets },
+    .{ .base = 0xf05f0000, .args = &[_d_w, _modified], .flags = _sets },
+] };
+
+/// Moves 16 bits, or the low 16 bits of a symbol's address, into a register, zeroing the rest.
+movw := _t.Instruction{ .forms = &[
+    .{ .base = 0xf2400000, .args = &[_d_w, _half] },
+    .{ .base = 0xf2400000, .args = &[_d_w, _symbol_low] },
+] };
+
+/// Moves 16 bits, or the high 16 bits of a symbol's address, into the top of a register.
+movt := _t.Instruction{ .forms = &[
+    .{ .base = 0xf2c00000, .args = &[_d_rw, _half] },
+    .{ .base = 0xf2c00000, .args = &[_d_rw, _symbol_high] },
+] };
+
+mvn := _t.Instruction{ .forms = &[
+    .{ .base = 0xf06f0000, .args = &[_d_w, _modified] },
+    .{ .base = 0xea6f0000, .args = &[_d_w, _shifted] },
+] };
+
+add := _t.Instruction{ .forms = &[
+    .{ .base = 0x4400, .args = &[_split_rw, _any_3] },
+    .{ .base = 0xa800, .args = &[_lo_8_w, _sp, _words8] },
+    .{ .base = 0xb000, .args = &[_sp_w, _sp, _words7] },
+    .{ .base = 0xf1000000, .args = &[_d_w, _sp_n, _modified] },
+    .{ .base = 0xf2000000, .args = &[_d_w, _sp_n, _plain], .name = .some("addw") },
+    .{ .base = 0xeb000000, .args = &[_d_w, _sp_n, _shifted] },
+] };
+
+adds := _t.Instruction{ .forms = &[
+    .{ .base = 0x1800, .args = &[_lo_d_w, _lo_n, _lo_m], .flags = _sets },
+    .{ .base = 0x1c00, .args = &[_lo_d_w, _lo_n, _u3_6], .flags = _sets },
+    .{ .base = 0x3000, .args = &[_lo_8_rw, _u8], .flags = _sets },
+    .{ .base = 0xf1100000, .args = &[_d_w, _sp_n, _modified], .flags = _sets },
+    .{ .base = 0xeb100000, .args = &[_d_w, _sp_n, _shifted], .flags = _sets },
+] };
+
+sub := _t.Instruction{ .forms = &[
+    .{ .base = 0xb080, .args = &[_sp_w, _sp, _words7] },
+    .{ .base = 0xf1a00000, .args = &[_d_w, _sp_n, _modified] },
+    .{ .base = 0xf2a00000, .args = &[_d_w, _sp_n, _plain], .name = .some("subw") },
+    .{ .base = 0xeba00000, .args = &[_d_w, _sp_n, _shifted] },
+] };
+
+subs := _t.Instruction{ .forms = &[
+    .{ .base = 0x1a00, .args = &[_lo_d_w, _lo_n, _lo_m], .flags = _sets },
+    .{ .base = 0x1e00, .args = &[_lo_d_w, _lo_n, _u3_6], .flags = _sets },
+    .{ .base = 0x3800, .args = &[_lo_8_rw, _u8], .flags = _sets },
+    .{ .base = 0xf1b00000, .args = &[_d_w, _sp_n, _modified], .flags = _sets },
+    .{ .base = 0xebb00000, .args = &[_d_w, _sp_n, _shifted], .flags = _sets },
+] };
+
+/// Negates: `rsbs rd, rn, #0`.
+rsbs := _t.Instruction{ .forms = &[
+    .{ .base = 0x4240, .args = &[_lo_d_w, _lo_n, _zero], .flags = _sets },
+    .{ .base = 0xf1d00000, .args = &[_d_w, _n, _modified], .flags = _sets },
+    .{ .base = 0xebd00000, .args = &[_d_w, _n, _shifted], .flags = _sets },
+] };
+
+/// Operations with 32-bit forms alone, from an immediate or a shifted register: logic and
+/// subtraction from the operand, which keep the flags, and additions and subtractions with the
+/// carry, which read it.
+_wide: &[_t.Form(_t.Word)] = &[
+    .{ .base = .\or(0xf0000000), .args = &[_d_w, _n, _modified] },
+    .{ .base = .\or(0xea000000), .args = &[_d_w, _n, _shifted] },
+];
+_carry: &[_t.Form(_t.Word)] = &[
+    .{ .base = .\or(0xf0000000), .args = &[_d_w, _n, _modified], .flags = _reads },
+    .{ .base = .\or(0xea000000), .args = &[_d_w, _n, _shifted], .flags = _reads },
+];
+
+logic := _t.Family{
+    .members = &[
+        _t.Member{ .name = .\and },
+        _t.Member{ .name = .bic, .bits = 0x200000 },
+        _t.Member{ .name = .orr, .bits = 0x400000 },
+        _t.Member{ .name = .orn, .bits = 0x600000 },
+        _t.Member{ .name = .eor, .bits = 0x800000 },
+        _t.Member{ .name = .rsb, .bits = 0x1c00000 },
+    ],
+    .forms = _wide,
+};
+
+carry := _t.Family{
+    .members = &[_t.Member{ .name = .adc, .bits = 0x1400000 }, _t.Member{ .name = .sbc, .bits = 0x1600000 }],
+    .forms = _carry,
+};
+
+/// The operations with a 16-bit form of two operands, the first also the result, setting the flags.
+ands := _t.Instruction{ .forms = &[
+    .{ .base = 0x4000, .args = &[_lo_d_rw, _lo_n], .flags = _sets },
+    .{ .base = 0xf0100000, .args = &[_d_w, _n, _modified], .flags = _sets },
+    .{ .base = 0xea100000, .args = &[_d_w, _n, _shifted], .flags = _sets },
+] };
+
+eors := _t.Instruction{ .forms = &[
+    .{ .base = 0x4040, .args = &[_lo_d_rw, _lo_n], .flags = _sets },
+    .{ .base = 0xf0900000, .args = &[_d_w, _n, _modified], .flags = _sets },
+    .{ .base = 0xea900000, .args = &[_d_w, _n, _shifted], .flags = _sets },
+] };
+
+orrs := _t.Instruction{ .forms = &[
+    .{ .base = 0x4300, .args = &[_lo_d_rw, _lo_n], .flags = _sets },
+    .{ .base = 0xf0500000, .args = &[_d_w, _n, _modified], .flags = _sets },
+    .{ .base = 0xea500000, .args = &[_d_w, _n, _shifted], .flags = _sets },
+] };
+
+bics := _t.Instruction{ .forms = &[
+    .{ .base = 0x4380, .args = &[_lo_d_rw, _lo_n], .flags = _sets },
+    .{ .base = 0xf0300000, .args = &[_d_w, _n, _modified], .flags = _sets },
+    .{ .base = 0xea300000, .args = &[_d_w, _n, _shifted], .flags = _sets },
+] };
+
+adcs := _t.Instruction{ .forms = &[
+    .{ .base = 0x4140, .args = &[_lo_d_rw, _lo_n], .flags = _updates },
+    .{ .base = 0xf1500000, .args = &[_d_w, _n, _modified], .flags = _updates },
+    .{ .base = 0xeb500000, .args = &[_d_w, _n, _shifted], .flags = _updates },
+] };
+
+sbcs := _t.Instruction{ .forms = &[
+    .{ .base = 0x4180, .args = &[_lo_d_rw, _lo_n], .flags = _updates },
+    .{ .base = 0xf1700000, .args = &[_d_w, _n, _modified], .flags = _updates },
+    .{ .base = 0xeb700000, .args = &[_d_w, _n, _shifted], .flags = _updates },
+] };
+
+mvns := _t.Instruction{ .forms = &[
+    .{ .base = 0x43c0, .args = &[_lo_d_w, _lo_n], .flags = _sets },
+    .{ .base = 0xf07f0000, .args = &[_d_w, _modified], .flags = _sets },
+    .{ .base = 0xea7f0000, .args = &[_d_w, _shifted], .flags = _sets },
+] };
+
+/// Comparisons: the flags of a subtraction (`cmp`), an addition (`cmn`), an `and` (`tst`) or
+/// an exclusive or (`teq`), the result discarded.
+cmp := _t.Instruction{ .forms = &[
+    .{ .base = 0x2800, .args = &[_lo_8, _u8], .flags = _sets },
+    .{ .base = 0x4280, .args = &[_lo_d, _lo_n], .flags = _sets },
+    .{ .base = 0x4500, .args = &[_split, _any_3], .flags = _sets },
+    .{ .base = 0xf1b00f00, .args = &[_n, _modified], .flags = _sets },
+    .{ .base = 0xebb00f00, .args = &[_n, _shifted], .flags = _sets },
+] };
+
+cmn := _t.Instruction{ .forms = &[
+    .{ .base = 0x42c0, .args = &[_lo_d, _lo_n], .flags = _sets },
+    .{ .base = 0xf1100f00, .args = &[_n, _modified], .flags = _sets },
+    .{ .base = 0xeb100f00, .args = &[_n, _shifted], .flags = _sets },
+] };
+
+tst := _t.Instruction{ .forms = &[
+    .{ .base = 0x4200, .args = &[_lo_d, _lo_n], .flags = _sets },
+    .{ .base = 0xf0100f00, .args = &[_n, _modified], .flags = _sets },
+    .{ .base = 0xea100f00, .args = &[_n, _shifted], .flags = _sets },
+] };
+
+teq := _t.Instruction{ .forms = &[
+    .{ .base = 0xf0900f00, .args = &[_n, _modified], .flags = _sets },
+    .{ .base = 0xea900f00, .args = &[_n, _shifted], .flags = _sets },
+] };
+
+/// Shifts by an immediate, a `mov` of a shifted register, or by a register's low byte.
+lsl := _t.Instruction{ .forms = &[
+    .{ .base = 0xea4f0000, .args = &[_d_w, _m, _lsl_wide] },
+    .{ .base = 0xfa00f000, .args = &[_d_w, _n, _m] },
+] };
+
+lsls := _t.Instruction{ .forms = &[
+    .{ .base = 0x0000, .args = &[_lo_d_w, _lo_n, _lsl_narrow], .flags = _sets },
+    .{ .base = 0x4080, .args = &[_lo_d_rw, _lo_n], .flags = _sets },
+    .{ .base = 0xea5f0000, .args = &[_d_w, _m, _lsl_wide], .flags = _sets },
+    .{ .base = 0xfa10f000, .args = &[_d_w, _n, _m], .flags = _sets },
+] };
+
+lsr := _t.Instruction{ .forms = &[
+    .{ .base = 0xea4f0010, .args = &[_d_w, _m, _shr_wide] },
+    .{ .base = 0xfa20f000, .args = &[_d_w, _n, _m] },
+] };
+
+lsrs := _t.Instruction{ .forms = &[
+    .{ .base = 0x0800, .args = &[_lo_d_w, _lo_n, _shr_narrow], .flags = _sets },
+    .{ .base = 0x40c0, .args = &[_lo_d_rw, _lo_n], .flags = _sets },
+    .{ .base = 0xea5f0010, .args = &[_d_w, _m, _shr_wide], .flags = _sets },
+    .{ .base = 0xfa30f000, .args = &[_d_w, _n, _m], .flags = _sets },
+] };
+
+asr := _t.Instruction{ .forms = &[
+    .{ .base = 0xea4f0020, .args = &[_d_w, _m, _shr_wide] },
+    .{ .base = 0xfa40f000, .args = &[_d_w, _n, _m] },
+] };
+
+asrs := _t.Instruction{ .forms = &[
+    .{ .base = 0x1000, .args = &[_lo_d_w, _lo_n, _shr_narrow], .flags = _sets },
+    .{ .base = 0x4100, .args = &[_lo_d_rw, _lo_n], .flags = _sets },
+    .{ .base = 0xea5f0020, .args = &[_d_w, _m, _shr_wide], .flags = _sets },
+    .{ .base = 0xfa50f000, .args = &[_d_w, _n, _m], .flags = _sets },
+] };
+
+ror := _t.Instruction{ .forms = &[
+    .{ .base = 0xfa60f000, .args = &[_d_w, _n, _m] },
+] };
+
+rors := _t.Instruction{ .forms = &[
+    .{ .base = 0x41c0, .args = &[_lo_d_rw, _lo_n], .flags = _sets },
+    .{ .base = 0xfa70f000, .args = &[_d_w, _n, _m], .flags = _sets },
+] };
+
+/// Extensions of a register's low byte or halfword, signed or not.
+sxtb := _t.Instruction{ .forms = &[
+    .{ .base = 0xb240, .args = &[_lo_d_w, _lo_n] },
+    .{ .base = 0xfa4ff080, .args = &[_d_w, _m] },
+] };
+
+sxth := _t.Instruction{ .forms = &[
+    .{ .base = 0xb200, .args = &[_lo_d_w, _lo_n] },
+    .{ .base = 0xfa0ff080, .args = &[_d_w, _m] },
+] };
+
+uxtb := _t.Instruction{ .forms = &[
+    .{ .base = 0xb2c0, .args = &[_lo_d_w, _lo_n] },
+    .{ .base = 0xfa5ff080, .args = &[_d_w, _m] },
+] };
+
+uxth := _t.Instruction{ .forms = &[
+    .{ .base = 0xb280, .args = &[_lo_d_w, _lo_n] },
+    .{ .base = 0xfa1ff080, .args = &[_d_w, _m] },
+] };
+
+/// Counts the leading zero bits.
+clz := _t.Instruction{ .forms = &[.{ .base = 0xfab0f080, .args = &[_d_w, _m_twice] }] };
+
+/// Reverses the bits.
+rbit := _t.Instruction{ .forms = &[.{ .base = 0xfa90f0a0, .args = &[_d_w, _m_twice] }] };
+
+/// Reverses the bytes.
+rev := _t.Instruction{ .forms = &[
+    .{ .base = 0xba00, .args = &[_lo_d_w, _lo_n] },
+    .{ .base = 0xfa90f080, .args = &[_d_w, _m_twice] },
+] };

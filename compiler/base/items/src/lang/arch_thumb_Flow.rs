@@ -6,7 +6,7 @@
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
 use crate::Item;
-/// To the next instruction.
+/// To the next instruction, and for a conditional branch also to its target.
 pub const next: Item = Item::new(&["lang", "arch", "thumb", "Flow", "next"]);
 /// To its target only.
 pub const jump: Item = Item::new(&["lang", "arch", "thumb", "Flow", "jump"]);

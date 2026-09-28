@@ -3,16 +3,9 @@ use crate::{reg, table};
 /// Barriers: every access before completes before any after (`dsb`), in order of memory
 /// (`dmb`), and the instructions after are fetched again (`isb`).
 pub(super) const DMB: [table::Form; 1usize] = [
-    table::Form {
-        slots: &[
-            table::Slot {
-                kind: table::Kind::Barrier,
-                access: table::Access::Read,
-            },
-        ],
-        sizes: &[reg::Size::B32],
-        name: None,
-        reads: &[],
-        writes: &[],
-    },
+    table::Form::new(
+        0xf3bf_8f50,
+        &[table::Sized::new(reg::Size::B32, 0x0000_0000)],
+        &[table::Arg::new(table::Kind::Barrier, 0, table::Access::Read)],
+    ),
 ];

@@ -1,14 +1,8 @@
-//! Thumb's table, `lang.arch.thumb`: no encodings, so a form is its operands' kinds and what each
-//! does, the widths it is defined at, its mnemonic where not its instruction's, and the special
-//! registers it reads and writes; the table's plain enums are generated as they are.
-
-use proc_macro2::TokenStream;
-use quote::quote;
-use vun_syntax::literal::Literal;
+//! `vun-isa-thumb`'s tables, from `lang.arch.thumb`: its forms as `table::Form` values, words of
+//! fixed fields as arm64's are, and the table's plain enums as they are.
 
 use super::emit::Crate;
-use super::spell::option;
-use super::{ARCH, Table};
+use super::{ARCH, Table, words};
 use crate::generate::{Generator, Module, Read, Source};
 
 pub(crate) const THUMB: Generator =
@@ -20,42 +14,36 @@ const CRATE: Crate = Crate {
     types: &[
         ("Size", "reg", "Size"),
         ("Reg", "reg", "Reg"),
-        ("Special", "reg", "Special"),
         ("Kind", "table", "Kind"),
         ("Access", "table", "Access"),
+        ("Width", "table", "Width"),
+        ("Regs", "table", "Regs"),
+        ("Imm", "table", "Imm"),
+        ("Place", "table", "Place"),
+        ("Mode", "table", "Mode"),
+        ("Fields", "table", "Fields"),
+        ("List", "table", "List"),
+        ("Branch", "table", "Branch"),
+        ("Status", "reg", "Status"),
     ],
     widths: &[],
-    enums: &["Size", "Special", "Mask", "Barrier", "Kind", "Access"],
-    payloads: &[],
+    enums: &["Size", "V", "Special", "Status", "Mask", "Barrier", "Regs", "Place", "Mode", "Fields", "List", "Branch"],
+    payloads: &[
+        ("Kind", "gpr", &["Regs"]),
+        ("Kind", "fpr", &["Width", "Fields"]),
+        ("Kind", "imm", &["Imm"]),
+        ("Kind", "mem", &["Mode", "Width"]),
+        ("Kind", "target", &["Branch"]),
+        ("Kind", "list", &["List"]),
+        ("Kind", "status", &["Status"]),
+        ("Imm", "unsigned", &["u8"]),
+        ("Imm", "words", &["u8"]),
+        ("Imm", "lsl", &["Place"]),
+        ("Imm", "shr", &["Place"]),
+        ("Width", "is", &["Size"]),
+    ],
 };
 
 fn emit(sources: &[Source<'_>]) -> Read<Vec<Module>> {
-    CRATE.modules(&Table::read(&THUMB, CRATE.arch, sources, fill)?, form)
-}
-
-/// A family's forms have no holes: its members differ by name alone.
-fn fill<'s>(_: &Literal<'s>, _: &Literal<'s>) -> Option<Literal<'s>> {
-    None
-}
-
-/// A form as a `table::Form` value.
-fn form(c: &Crate, record: &Literal<'_>) -> Option<TokenStream> {
-    let field = |name| record.get(name);
-    let slots = field("operands")?.as_list()?.iter().map(|o| {
-        let (kind, access) = (c.variant("Kind", o.get("kind")?)?, c.variant("Access", o.get("access")?)?);
-        Some(quote! { table::Slot { kind: #kind, access: #access } })
-    });
-    let slots = slots.collect::<Option<Vec<_>>>()?;
-    let sizes = c.variants("Size", field("sizes")?)?;
-    let name = option(field("name")?, |n| n.as_str().map(|s| quote! { #s }))?;
-    let (reads, writes) = (c.variants("Special", field("reads")?)?, c.variants("Special", field("writes")?)?);
-    Some(quote! {
-        table::Form {
-            slots: &[#(#slots),*],
-            sizes: &[#(#sizes),*],
-            name: #name,
-            reads: &[#(#reads),*],
-            writes: &[#(#writes),*],
-        }
-    })
+    CRATE.modules(&Table::read(&THUMB, CRATE.arch, sources, words::fill)?, words::form)
 }

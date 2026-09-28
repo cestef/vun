@@ -7,4 +7,6 @@
 )]
 use crate::Item;
 pub const general: Item = Item::new(&["lang", "arch", "thumb", "Class", "general"]);
+pub const fp: Item = Item::new(&["lang", "arch", "thumb", "Class", "fp"]);
 pub const special: Item = Item::new(&["lang", "arch", "thumb", "Class", "special"]);
+pub const status: Item = Item::new(&["lang", "arch", "thumb", "Class", "status"]);

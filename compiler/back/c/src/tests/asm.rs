@@ -80,8 +80,8 @@ fn cortex_m4() -> TargetSpec {
 /// `f(n) -> i32` exported as `f`: `mrs {out r}, primask` into a slot, then `cpsid i`, returning
 /// `r`.
 fn masked(origin: OriginId) -> Unit {
-    use vun_inline::{Block, Bound, ClassId, FormId, Inst, OpId, Operand, RegRef, SizeId};
-    use vun_isa_thumb::{Class, Mask, Op, Special};
+    use vun_inline::{Block, Bound, ClassId, FormId, Inst, OpId, Operand, RegRef};
+    use vun_isa_thumb::{Class, Mask, Op, Size, Special};
     let word = AbiType::Int(Scalar::I32, Ext::Sign);
     let signature = Signature { conv: Conv::C, params: vec![word.clone()], result: Some(word) };
     let mut b = Builder::new(Linkage::Export(Symbol::intern("f")), signature, origin);
@@ -92,7 +92,7 @@ fn masked(origin: OriginId) -> Unit {
         Operand::Reg(RegRef { class: ClassId(Class::Special as u8), number: Special::Primask as u8 });
     let op =
         |op: Op| OpId(u16::try_from(Op::ALL.iter().position(|&o| o == op).expect("an op")).expect("few"));
-    let inst = |o, operands| Inst { op: op(o), form: FormId(0), size: SizeId(0), operands, origin };
+    let inst = |o, operands| Inst { op: op(o), form: FormId(0), size: Size::B32.id(), operands, origin };
     let insts =
         vec![inst(Op::Mrs, vec![out, primask]), inst(Op::Cpsid, vec![Operand::Choice(Mask::I as u8)])];
     let block = Block { arch: vun_items::lang::arch::thumb, insts, returns: true };
