@@ -9,6 +9,8 @@ use crate::Item;
 pub const of: Item = Item::new(&["std", "check", "words", "Words", "of"]);
 pub const get: Item = Item::new(&["std", "check", "words", "Words", "get"]);
 pub const set: Item = Item::new(&["std", "check", "words", "Words", "set"]);
+/// Sets the `i`th word to `value` where it is 0; returns what it was.
+pub const settle: Item = Item::new(&["std", "check", "words", "Words", "settle"]);
 /// The words from the `i`th on.
 pub const from: Item = Item::new(&["std", "check", "words", "Words", "from"]);
 /// Takes the lock the `i`th word is, spinning while another thread holds it.

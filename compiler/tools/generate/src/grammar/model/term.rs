@@ -18,11 +18,10 @@ pub(crate) enum Term {
     Sequence(Vec<Term>),
 }
 
-/// What a table allows of a child: its kind, the kind it ends with through transparent kinds, or
-/// the token it starts with.
+/// What a table allows of a child: its kind, or that of the node it ends with through transparent
+/// kinds, or the token it starts with.
 pub(crate) enum Restriction {
     Of(Table<Kind>),
-    Ending(Table<Kind>),
     Starting(Table<Token>),
 }
 
@@ -120,6 +119,22 @@ impl Term {
                 .flat_map(|head| tails.iter().map(move |tail| head.iter().chain(tail).copied().collect()))
                 .collect()
         })
+    }
+
+    /// The tokens `terms` may start with: the first of each sequence they spell that starts with
+    /// a token.
+    pub(crate) fn first_tokens(terms: &[Self]) -> Vec<Token> {
+        let mut tokens: Vec<Token> = Vec::new();
+        for sequence in Self::spelled_out(terms) {
+            if let Some(Self::Tokens(first)) = sequence.first() {
+                for &t in first {
+                    if !tokens.contains(&t) {
+                        tokens.push(t);
+                    }
+                }
+            }
+        }
+        tokens
     }
 
     /// Every token and word term, in order.

@@ -1,9 +1,10 @@
 //! Shadow memory for the checks of unsafe code at run time (spec 07, section 7; spec 13,
 //! section 8.7): one byte for each `granule` bytes of the address space, 0 where all of them
 //! may be accessed, `k` where the first `k` may, and a negative code saying why where none may.
-//! A runtime gives where the shadow and the rest of the state are (`State`, or `mapped` from
-//! memory it maps) and exports the operations of `lang.check` over them (`exports`). The state is
-//! read and written by atomic accesses, which no check rewrites.
+//! The shadow of each span of `1 << span_bits` addresses is reserved the first time memory in
+//! it is described, so it follows the program's memory wherever the system puts it. A runtime
+//! gives how memory is mapped (`mapped`) and exports the operations of `lang.check` over the
+//! state (`exports`). The state is read and written by atomic accesses, which no check rewrites.
 
 /// The bytes of memory one shadow byte describes.
 granule := lang.check.granule;
@@ -22,23 +23,55 @@ violation := (b: i8) -> lang.check.Violation {
     if b == -2 { .freed } else if b == -3 { .returned } else { .outside }
 };
 
-/// The shadow at `base`, a byte for each granule of the address space.
+/// How many addresses the shadow of one span describes: its shadow, reserved at once and
+/// backed only where touched, is an eighth of that, and the directory a word per span.
+span := 1 << 32;
+/// The shadow bytes of a span.
+span_shadow: usize = span / granule;
+/// The spans of the address space, a word of the directory for each.
+spans: usize = (lang.target.usize_max / span + 1).to(usize);
+
+/// The shadow: a directory holding where the shadow of each span is, 0 until memory in the span
+/// is described, and how the runtime maps and gives back memory.
 Shadow := struct {
-    _base: *i8,
+    _directory: std.check.words.Words,
+    _map: (bytes: usize) -> usize,
+    _unmap: (address: usize, bytes: usize) -> (),
 
-    of := unsafe (base: *i8) -> Shadow { .{ ._base = base } };
+    of := unsafe (directory: std.check.words.Words, map: (bytes: usize) -> usize, unmap: (address: usize, bytes: usize) -> ())
+        -> Shadow
+        {
+            .{ ._directory = directory, ._map = map, ._unmap = unmap }
+        };
 
-    /// The shadow byte of the granule holding `address`.
-    _byte := (self: Shadow, address: usize) -> *i8 {
-        unsafe self._base.offset((address / granule).to(isize))
+    /// Where the shadow of the span holding `address` is, 0 where none is yet.
+    _span := (self: Shadow, address: usize) -> usize { self._directory.get(address / span) };
+
+    /// The shadow byte of the granule holding `address` in the shadow of its span at `at`.
+    _byte := (at: usize, address: usize) -> *i8 {
+        unsafe lang.mem.pointer_at(i8, (at + address % span / granule).sat(usize))
     };
 
+    /// The shadow byte of `address`: 0, all accessible, where its span has no shadow yet.
     _get := (self: Shadow, address: usize) -> i8 {
-        unsafe lang.mem.atomic_load(i8, self._byte(address), .relaxed)
+        at := self._span(address);
+        if at == 0 { 0 } else { unsafe lang.mem.atomic_load(i8, Shadow._byte(at, address), .relaxed) }
     };
 
+    /// Sets the shadow byte of `address` to `b`, reserving the shadow of its span first where it
+    /// has none; a thread losing the race to reserve it gives its own back.
     _set := (self: Shadow, address: usize, b: i8) {
-        unsafe lang.mem.atomic_store(i8, self._byte(address), b, .relaxed)
+        mut at := self._span(address);
+        if at == 0 {
+            fresh := (self._map)(span_shadow);
+            at = self._directory.settle(address / span, fresh);
+            if at == 0 {
+                at = fresh;
+            } else {
+                (self._unmap)(fresh, span_shadow);
+            }
+        }
+        unsafe lang.mem.atomic_store(i8, Shadow._byte(at, address), b, .relaxed)
     };
 
     /// Why the `bytes` at `address` may not be accessed, if they may not.
@@ -138,10 +171,9 @@ State := struct {
     };
 };
 
-/// The shadow of a hosted program: a byte for each granule of 47 bits of addresses.
-hosted_shadow := (1 << 47) / granule;
-/// The bytes a hosted program maps for the state: its shadow, then the words past it.
-hosted_bytes := hosted_shadow + State.words * lang.meta.size(usize);
+/// The bytes a runtime that maps memory maps for the state: the shadow's directory, then the
+/// words past it.
+hosted_bytes: usize = ((spans + State.words) * lang.meta.size(usize)).to(usize);
 /// Where the state `mapped` gives is, 0 until a check first needs it.
 mapped_at: std.sync.Atomic(usize) = .init(0);
 
@@ -158,9 +190,9 @@ mapped := ($map: (bytes: usize) -> usize, $unmap: (address: usize, bytes: usize)
             unmap(fresh, hosted_bytes);
         }
     }
-    shadow := unsafe Shadow.of(lang.mem.pointer_at(i8, base));
-    at := unsafe std.check.words.Words.of(lang.mem.pointer_at(usize, (base + hosted_shadow).sat(usize)));
-    State.of(shadow, at)
+    directory := unsafe std.check.words.Words.of(lang.mem.pointer_at(usize, base));
+    shadow := unsafe Shadow.of(directory, map, unmap);
+    State.of(shadow, directory.from(spans))
 };
 
 /// `alloc` of the allocator `A`, checked (`#[lang.check.by(.allocations, alloc)]` on the

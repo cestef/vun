@@ -12,6 +12,7 @@ impl NodeKind {
     pub const fn name(self) -> &'static str {
         match self {
             Self::Punct => "punct",
+            Self::Skipped => "skipped",
             Self::ModuleDoc => "module_doc",
             Self::Mut => "mut",
             Self::Qualifier => "qualifier",
@@ -76,6 +77,7 @@ impl NodeKind {
             Self::Continue => "continue",
             Self::Yield => "yield",
             Self::Defer => "defer",
+            Self::Staged => "staged",
             Self::Asm => "asm",
             Self::Line => "line",
             Self::Suffix => "suffix",

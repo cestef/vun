@@ -238,13 +238,12 @@ impl<'a> Lower<'a, '_> {
         }
     }
 
-    /// The `for` or `if` of a `$for` or `$if` node.
+    /// The `for` or `if` of a `$for` or `$if` entry.
     fn staged_control(&self, n: NodeId) -> Option<NodeId> {
-        if self.kind(n) != NodeKind::Prefix || self.token(n) != Some(TokenKind::Dollar) {
+        if self.kind(n) != NodeKind::Staged {
             return None;
         }
-        let control = self.fields(n).one(NodeField::Operand)?;
-        matches!(self.kind(control), NodeKind::For | NodeKind::If).then_some(control)
+        self.fields(n).one(NodeField::Control)
     }
 
     fn staged_if<T>(

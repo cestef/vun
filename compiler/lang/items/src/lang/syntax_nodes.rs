@@ -21,17 +21,20 @@ pub const Count: Item = Item::new(&["lang", "syntax", "nodes", "Count"]);
 /// and any number of times, `.separated(term, "sep")` for any number of `term` with `sep` between
 /// them and after the last if written, `.choice(a, ...)` for one of the terms,
 /// `.of(.field, table)` for a child in `field` of a kind the table lists,
-/// `.ending(.field, table)` for one of such a kind or of a `transparent` kind ending with one,
 /// `.starting(.field, tokens)` for one starting with a token a table of tokens lists, and
-/// `.seq(...)` for terms in sequence. Tables are named by paths, as `grammar.infix`.
+/// `.seq(...)` for terms in sequence. Tables are named by paths, as `grammar.infix`. Where a table
+/// names kinds (`.of`, `holds`), a `transparent` node stands for the node it ends with, and its
+/// last child stands where it stands, taking what that position takes.
 ///
 /// A node is anchored at the first token of its production; its other tokens are `punct` leaves,
 /// its children fill its fields. A field's count follows from where it stands: `many` in `many` or
 /// `separated`, else `optional` in `optional` or `choice`, else `one`. A field named after a kind
 /// holds a node of that kind, any other field any node. A leaf spells one token and holds nothing;
-/// `punct` holds the token its parent's production names. An `error` stands for skipped or absent
-/// source, and fits any field; an `error`, and a node holding one or anchored at an absent token,
-/// are recovery's shapes: they fit their kind's fields, not its production.
+/// `punct` holds the token its parent's production names, `skipped` a token no production reads,
+/// and neither stands in a field. An `error` stands for a child absent, or not one its position
+/// takes, which it holds, and fits any field; an `error`, a `skipped` token, and a node holding
+/// one or anchored at an absent token, are recovery's shapes: they fit their kind's fields, not
+/// its production.
 pub const NodeKind: Item = Item::new(&["lang", "syntax", "nodes", "NodeKind"]);
 /// Kinds that are never operands: they stand only in the fields that name them, hold them or
 /// admit them.
@@ -46,24 +49,28 @@ pub const admits: Item = Item::new(&["lang", "syntax", "nodes", "admits"]);
 pub const operand_contexts: Item = Item::new(
     &["lang", "syntax", "nodes", "operand_contexts"],
 );
-/// Fields holding only the kinds listed.
+/// Fields holding only the kinds listed: files and `struct` bodies hold declarations.
 pub const holds: Item = Item::new(&["lang", "syntax", "nodes", "holds"]);
 /// Kinds that may spell the same source, which the parser tells apart by what follows them or
 /// what they hold, each listed before those it is preferred to where several fit: `()` is a tuple,
 /// `() {}` a function. Editor grammars that try each keep the preferred.
 pub const preferred: Item = Item::new(&["lang", "syntax", "nodes", "preferred"]);
+/// Kinds of the entries of a list ended by `,`, and of a member list's last entry without one.
+pub const fields: Item = Item::new(&["lang", "syntax", "nodes", "fields"]);
 /// Kinds of entries of a list needing no `;` after them: module docs, blocks and the forms ending
 /// with one.
 pub const unterminated: Item = Item::new(&["lang", "syntax", "nodes", "unterminated"]);
+/// What a list's entry made at compile time is: a loop or a choice.
+pub const staged_forms: Item = Item::new(&["lang", "syntax", "nodes", "staged_forms"]);
 /// What a label names: a loop or a block.
 pub const labeled_bodies: Item = Item::new(
     &["lang", "syntax", "nodes", "labeled_bodies"],
 );
 /// What names a member after `.`: a name, an index, or `$` and the value naming it (`.$(f.name)`).
 pub const member_names: Item = Item::new(&["lang", "syntax", "nodes", "member_names"]);
-/// Kinds that end with the kind of their last child when written with one of the tokens listed,
-/// where a production says so (`.ending`): `$if a {}` and `unsafe {}` are unterminated as an `if`
-/// and a block are.
+/// Kinds that end with the kind of their last child when written with one of the tokens listed:
+/// `unsafe {}` is unterminated as a block is, `.$(e)` names a member as `.(e)` would, and
+/// `#[a] x: T,` is a field as `x: T,` is.
 pub const transparent: Item = Item::new(&["lang", "syntax", "nodes", "transparent"]);
 /// Kinds that end with their line: an instruction's operands stop where it does.
 pub const line_ends: Item = Item::new(&["lang", "syntax", "nodes", "line_ends"]);

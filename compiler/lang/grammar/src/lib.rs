@@ -8,12 +8,12 @@ use std::sync::LazyLock;
 
 #[rustfmt::skip]
 mod generated;
+mod automaton;
 mod choice;
-mod continuing;
 mod level;
 mod production;
 
-pub use continuing::Continuation;
+pub use automaton::{Automaton, Child, KindSet, Positions, Read, TokenSet};
 pub use generated::*;
 pub use level::{Infix, Level};
 pub use production::Element;
@@ -67,6 +67,13 @@ impl NodeKind {
     #[must_use]
     pub fn is_leaf(self) -> bool {
         Self::LEAVES.contains(&self)
+    }
+
+    /// Whether a node of this kind is a bare token, standing in no field: `punct`, one its
+    /// parent's production names, or `skipped`, one no production reads.
+    #[must_use]
+    pub fn is_token(self) -> bool {
+        matches!(self, Self::Punct | Self::Skipped)
     }
 }
 

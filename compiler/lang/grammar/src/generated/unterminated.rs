@@ -14,4 +14,5 @@ pub const UNTERMINATED: &[NodeKind] = &[
     NodeKind::For,
     NodeKind::Match,
     NodeKind::Labeled,
+    NodeKind::Staged,
 ];

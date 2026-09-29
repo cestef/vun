@@ -248,6 +248,8 @@ fn the_native_backend_lists_its_code_under_the_source_lines() {
     let mut out = Vec::new();
     session.dump_code(file, &mut out).unwrap();
     let text = String::from_utf8(out).unwrap();
-    assert!(text.lines().any(|l| l.ends_with("push rbp")), "{text}");
+    // A frame's prologue, as the host's instruction set writes it.
+    let prologue = if cfg!(target_arch = "aarch64") { "stp x29, x30" } else { "push rbp" };
+    assert!(text.lines().any(|l| l.contains(prologue)), "{text}");
     assert!(text.lines().any(|l| l.starts_with("  ; ") && l.contains("main.vun:")), "{text}");
 }

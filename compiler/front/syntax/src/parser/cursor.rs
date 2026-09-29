@@ -1,10 +1,9 @@
-//! The token cursor: looking ahead, consuming tokens and pushing leaves.
+//! The token cursor: looking ahead and consuming tokens.
 
-use vun_grammar::{Context, NodeKind, OPERANDS, PREFIX, TokenKind};
+use vun_grammar::TokenKind;
 use vun_index::Idx;
 
 use super::Parser;
-use crate::cst::Anchor;
 use crate::tokens::TokenId;
 
 impl Parser<'_, '_, '_> {
@@ -18,8 +17,7 @@ impl Parser<'_, '_, '_> {
     }
 
     pub(super) fn nth(&self, ahead: usize) -> TokenKind {
-        let last = self.tokens.len() - 1;
-        self.tokens.kind(TokenId::new((self.pos + ahead).min(last)))
+        self.tokens.kind(self.current_plus(ahead))
     }
 
     pub(super) fn peek(&self) -> TokenKind {
@@ -38,67 +36,23 @@ impl Parser<'_, '_, '_> {
         self.peek() == kind
     }
 
-    /// Whether the current token is a name or keyword spelled as one of `texts`.
-    pub(super) fn at_spelled(&self, texts: impl Iterator<Item = &'static str>) -> bool {
-        self.spelled_at(0, texts)
-    }
-
-    /// Whether the token `ahead` of the current one is a name or keyword spelled as one of `texts`.
-    pub(super) fn spelled_at(&self, ahead: usize, mut texts: impl Iterator<Item = &'static str>) -> bool {
-        let k = self.nth(ahead);
-        (k == TokenKind::Ident || k.text().is_some())
-            && texts.any(|t| t == self.text(self.current_plus(ahead)))
-    }
-
-    pub(super) fn at_word(&self, context: Context) -> bool {
-        self.at(TokenKind::Ident) && context.keyword(self.text(self.current()))
-    }
-
-    pub(super) fn starts_expr(&self) -> bool {
-        self.starts_expr_at(0)
-    }
-
-    /// Whether the token `ahead` of the current one can start an expression.
-    pub(super) fn starts_expr_at(&self, ahead: usize) -> bool {
-        let k = self.nth(ahead);
-        PREFIX.contains(&k) || OPERANDS.contains(&k)
-    }
-
-    /// Consumes the current token, which some node must anchor. After a token the lexer
-    /// reported, the next position stays quiet: what follows is usually its fallout.
+    /// Consumes the current token, which some node must anchor or hold. After a token the lexer
+    /// reported, the parser stays quiet: what follows is usually its fallout.
     pub(super) fn bump(&mut self) -> TokenId {
         debug_assert!(!self.at(TokenKind::Eof), "Eof anchors the file node only");
         let t = self.current();
         self.pos += 1;
         if self.tokens.diagnosed(t) {
             self.reported = Some(self.pos);
+            self.quiet = true;
         }
         t
     }
 
-    pub(super) fn leaf(&mut self, kind: NodeKind) {
-        let mark = self.out.mark();
-        let token = self.bump();
-        self.out.node(kind, Anchor::Token(token), mark);
-    }
-
-    pub(super) fn missing(&mut self, kind: NodeKind) {
-        let mark = self.out.mark();
-        self.out.node(kind, Anchor::Missing(self.current()), mark);
-    }
-
-    pub(super) fn eat(&mut self, kind: TokenKind) -> bool {
-        let found = self.at(kind);
-        if found {
-            self.leaf(NodeKind::Punct);
-        }
-        found
-    }
-
-    pub(super) fn expect(&mut self, kind: TokenKind) {
-        if !self.eat(kind) {
-            self.report_expected(&[kind]);
-            self.missing(NodeKind::Punct);
-        }
+    /// Whether a line break stands before the token `t`.
+    pub(super) fn line_ends_before(&self, t: TokenId) -> bool {
+        self.tokens
+            .leading_trivia(t)
+            .any(|l| l.kind == TokenKind::Whitespace && l.range.of(self.source).contains('\n'))
     }
 }

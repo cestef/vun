@@ -4,7 +4,7 @@
 use vun_tree_sitter::Assoc;
 
 use super::Rules;
-use crate::grammar::model::{Field, Kind, Term};
+use crate::grammar::model::{Field, Kind, Restriction, Term};
 
 impl Rules<'_> {
     /// How many kinds are preferred to `kind`, one before another: the longest chain of kinds
@@ -40,5 +40,30 @@ impl Rules<'_> {
     pub(super) fn is_operand(&self, kind: Kind) -> bool {
         let root = self.model.production(kind).is_some_and(|terms| self.is_root(terms));
         !root && !self.model.parts.contains(&kind) && kind != self.editors.tree_sitter.error
+    }
+
+    /// Whether a node of `kind` may continue an operand read before it, as the parser's
+    /// `NodeKind::continues`: a sequence its production spells begins with a child that may be an
+    /// operand.
+    pub(super) fn continues(&self, kind: Kind) -> bool {
+        let Some(terms) = self.model.production(kind) else { return false };
+        Term::spelled_out(terms).iter().any(|sequence| match sequence.first() {
+            Some(Term::Field(field, restriction)) => self.takes_operands(*field, restriction.as_ref()),
+            _ => false,
+        })
+    }
+
+    /// Whether the field `field`, restricted so, may hold an operand.
+    fn takes_operands(&self, field: Field, restriction: Option<&Restriction>) -> bool {
+        let listed: Vec<Kind> = match restriction {
+            Some(Restriction::Of(table)) => table.members.clone(),
+            _ if self.holds_operands(field) => return true,
+            _ => {
+                let contents =
+                    self.model.contents.get(&field).into_iter().flat_map(|c| c.kinds.iter().copied());
+                self.model.named_kind(field).into_iter().chain(contents).collect()
+            }
+        };
+        listed.into_iter().any(|k| self.is_operand(k))
     }
 }

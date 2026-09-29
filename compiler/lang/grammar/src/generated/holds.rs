@@ -11,11 +11,22 @@ pub struct HoldsRow {
     pub fields: &'static [NodeField],
     pub kinds: &'static [NodeKind],
 }
-/// Fields holding only the kinds listed.
+/// Fields holding only the kinds listed: files and `struct` bodies hold declarations.
 pub const HOLDS: &[HoldsRow] = &[
     HoldsRow {
+        fields: &[NodeField::Members],
+        kinds: &[
+            NodeKind::Binding,
+            NodeKind::TypedBinding,
+            NodeKind::Field,
+            NodeKind::Spread,
+            NodeKind::ModuleDoc,
+            NodeKind::Staged,
+        ],
+    },
+    HoldsRow {
         fields: &[NodeField::Arms],
-        kinds: &[NodeKind::Arm],
+        kinds: &[NodeKind::Arm, NodeKind::Staged],
     },
     HoldsRow {
         fields: &[NodeField::Lines],
@@ -28,5 +39,9 @@ pub const HOLDS: &[HoldsRow] = &[
     HoldsRow {
         fields: &[NodeField::Register],
         kinds: &[NodeKind::Name, NodeKind::Int, NodeKind::Prefix],
+    },
+    HoldsRow {
+        fields: &[NodeField::Names],
+        kinds: &[NodeKind::Name],
     },
 ];

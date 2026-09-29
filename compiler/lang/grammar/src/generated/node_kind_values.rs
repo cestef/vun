@@ -19,11 +19,11 @@ pub(super) const BLOCK: &[NodeTerm] = &[
                     ),
                     NodeTerm::Sequence(
                         &[
-                            NodeTerm::Field(NodeField::Statements),
+                            NodeTerm::Of(NodeField::Statements, FIELDS),
                             NodeTerm::Token(&[TokenKind::Comma]),
                         ],
                     ),
-                    NodeTerm::Ending(NodeField::Statements, UNTERMINATED),
+                    NodeTerm::Of(NodeField::Statements, UNTERMINATED),
                     NodeTerm::Token(&[TokenKind::Semi]),
                 ],
             ),
@@ -47,7 +47,7 @@ pub(super) const QUOTE: &[NodeTerm] = &[
                             NodeTerm::Token(&[TokenKind::Semi]),
                         ],
                     ),
-                    NodeTerm::Ending(NodeField::Statements, UNTERMINATED),
+                    NodeTerm::Of(NodeField::Statements, UNTERMINATED),
                     NodeTerm::Token(&[TokenKind::Semi]),
                 ],
             ),
@@ -74,17 +74,17 @@ pub(super) const STRUCT: &[NodeTerm] = &[
                     ),
                     NodeTerm::Sequence(
                         &[
-                            NodeTerm::Field(NodeField::Members),
+                            NodeTerm::Of(NodeField::Members, FIELDS),
                             NodeTerm::Token(&[TokenKind::Comma]),
                         ],
                     ),
-                    NodeTerm::Ending(NodeField::Members, UNTERMINATED),
+                    NodeTerm::Of(NodeField::Members, UNTERMINATED),
                     NodeTerm::Token(&[TokenKind::Semi]),
                 ],
             ),
         ],
     ),
-    NodeTerm::Optional(&[NodeTerm::Field(NodeField::Members)]),
+    NodeTerm::Optional(&[NodeTerm::Of(NodeField::Members, FIELDS)]),
     NodeTerm::Token(&[TokenKind::RBrace]),
 ];
 pub(super) const STRUCT_SLOTS: &[NodeSlot] = &[

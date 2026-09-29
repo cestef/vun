@@ -7,7 +7,7 @@ Read `CLAUDE.md` and [`dev/workflow.md`](dev/workflow.md) first.
 
 ## State
 
-Everything is committed in the main chain; no `jj` workspace holds work. 664 tests pass; clippy,
+Everything is committed in the main chain; no `jj` workspace holds work. 667 tests pass; clippy,
 `cargo gen --check`, `lines` and `layers` are clean; the corpus has 304 passing programs and 4
 planned, and LIR lowers every function the corpus reaches.
 
@@ -27,7 +27,14 @@ stills and CSS animations in `assets/mascot`, and cards with the mascot under ea
 `<variants>` metadata and compiles in parallel. Open: removing PNGs of variants no longer
 declared, as `cargo gen` does.
 
-Last landed (335 to 337): `lang.meta.embed` over the files a package includes (`FileBytes`);
+Last landed (340, 341): the parser reads the productions of `nodes.vun` (an automaton per
+production, readings keeping every kind a node may be, one rule for who reads a token, kinds
+chosen when the tree is written, recovery supposing, completing or skipping and quiet after a
+report; spec 13, section 5), and the hand parser is gone. With it the grammar lost its edge cases:
+`.ending` folds into `.of`, annotations are transparent, `skipped` leaves, a `staged` kind for
+`$for`/`$if` entries, files and `struct` bodies hold declarations only, borrow words only after
+`&`. The checks' shadow is reserved span by span as memory is described, so checked programs run
+on arm64 Linux, whose stacks sit above 2^47 (341). Before that (335 to 337): `lang.meta.embed` over the files a package includes (`FileBytes`);
 `$if` tests a pattern, its branch a step with the binders bound (the owner's choice);
 `std.fmt.parse` reads a format once into pieces or a typed `fmt.Error`, and `lang.meta.within`
 points a report at bytes inside the literal a `Code` argument wrote. Before that (331 to 334): vectors, `lang.simd.Vector(n, T)` laid out as its lanes, with
@@ -78,7 +85,8 @@ counted by name), 323 (the grammar read by type into one model, `editors.vun`, o
 the parser reading the tables), 324 (language server features), 325 (DWARF subprograms), 327
 (exported data), 328 (a constant shifted by a run-time amount has no width), 329 (board
 peripherals, exported aliases, `libgcc` on bare targets), 330 (macOS linking from target data,
-`sysroot`, `os_version`). 279 (static Linux targets), 282 (`&mut T` where `&T` is) and 326 (section
+`sysroot`, `os_version`), 340 (the parser over the productions, and the grammar's edge cases
+gone), 341 (the checks' shadow reserved span by span). 279 (static Linux targets), 282 (`&mut T` where `&T` is) and 326 (section
 placements) were the owner's choice.
 
 ## Known gaps in landed work
@@ -104,18 +112,17 @@ placements) were the owner's choice.
 ## Next steps, most useful first
 
 0. Editor integration (the owner's current focus; editors: Zed, Helix, VS Code, Neovim). The
-   owner chose: the parser reads the grammar's tables rather than stating the same facts in code,
-   and every source must agree with tree-sitter (all 199 do). In order:
-   (a) the parser reads `unterminated`, `transparent`, `labeled_bodies`, `operand_contexts`,
-   `member_names`, `precedence` (operands at a `Level`, the forms continuing one found from the
-   productions) and `preferred`/`parts`/`admits`/`holds` for the kind of a `(` or `[` group (323).
-   Left: `line_ends` (an operand ends at its line by `Brace::Hole`), and the choices made by
-   context rather than by children: `field` or `typed_binding` by what follows, `assign` or
-   `field_init` by the list, which parts an entry may be (`admits` is looser than the parser:
-   `assign` among members, `spread` among statements). The verifier could check `admits` too,
-   once it knows the operand context a node stands in. An engine over the productions, diffed
-   against the hand parser on every file and by fuzzing, only if the owner wants it (the fuzzer
-   runs on `am3.wg` with nightly and `cargo-fuzz`);
+   parser reads the productions (340) and every source agrees with tree-sitter. In order:
+   (a) inline assembly as ordinary Vun, the owner's choice: a block is a quote of calls,
+   `asm(#{ mov(rdi, rsp); \and(rsp, -16); call(_boot); })`, its names brought in by a spread
+   (`..lang.arch.x86_64;`): `lang.arch.<arch>` declares each register (at each width) and each
+   mnemonic (the members of a family too) as declarations, memory operands as `mem(...)`,
+   write-back as `pre`/`post`, outputs as `out(p)`/`inout(p)`, a register binding explicit, a
+   label a value (`top := label();`); sema reads the quote's typed HIR against the table as it
+   reads the `Asm` HIR today. The `asm`, `line`, `suffix`, `bound` and `memory` kinds,
+   `operand_contexts` and `line_ends` then leave the grammar, and with them the engine's line and
+   context handling. 55 blocks in `lib/` and the corpus change; spec 07 section 6, spec 01, the
+   decision replacing 258;
    (b) the owner publishes `tree-sitter-vun` by hand (`docs/dev/commands.md`, "Publishing the
    tree-sitter grammar"); the packages pin the revision in `editors/tree-sitter/release.json`;
    (c) try the packages in each editor (nothing was run in an editor yet; the Zed extension

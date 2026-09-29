@@ -5,6 +5,7 @@
 //! `optional` slots take one when they can, giving back when a later slot would go unfilled. A
 //! node that a later slot is restricted to is left to that slot first. A slot
 //! restricted to a kind also accepts `Error`, the placeholder the parser leaves for a missing node.
+//! `Punct` and `Skipped` tokens stand in no slot.
 
 use vun_grammar::{Count, NodeField, NodeKind, NodeSlot};
 
@@ -50,7 +51,7 @@ impl Cst {
     #[must_use]
     pub fn fields(&self, n: NodeId) -> Option<Fields> {
         let slots = self.kind(n).slots();
-        let nodes: Vec<NodeId> = self.children(n).filter(|&c| self.kind(c) != NodeKind::Punct).collect();
+        let nodes: Vec<NodeId> = self.children(n).filter(|&c| !self.kind(c).is_token()).collect();
         let mut bounds = Vec::with_capacity(slots.len());
         self.assign(slots, &nodes, 0, &mut bounds).then_some(Fields { slots, nodes, bounds })
     }

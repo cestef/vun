@@ -384,14 +384,17 @@ from the lexer's constants.
 the productions: a rule per kind; a field holds the kind it is named after, the kinds the tables
 `holds` (only these) or `admits` (these and any operand) give it, or any operand, the kinds
 `parts` lists being none; precedences come from the table `precedence`, whose row naming the kind
-spread over the infix levels stands for those levels; a restricted field (`.of`, `.ending`,
-`.starting`) holds variants of the kinds reaching an allowed one through their edge field, aliased
-to the kind, and completes its entry where its kind has no level of its own; the fields of an
+spread over the infix levels stands for those levels; a restricted field (`.of`, `.starting`)
+holds variants of the kinds reaching an allowed one through their edge field, aliased to the
+kind, and, as the parser's `standing_for`, those of the `transparent` kinds ending with one where
+no kind it allows continues an operand (a transparent node before a form continuing one holds
+the form: `$T{}` is `$(T{})`), and completes its entry where its kind has no level of its own; the fields of an
 operand context (`operand_contexts`: an instruction's operands and a memory operand's parts) read
 their operands at any depth in the context, where the kinds it lists replace those starting with
 the same token (`{` opens a bound, not a block), through variants of each kind holding operands;
 the kinds of `line_ends` end at a line break an external scanner finds; a kind of `transparent`
-ends with its last child only when written with one of the tokens its row lists (`$`, `unsafe`); where several kinds fit,
+ends with its last child only when written with one of the tokens its row lists (`$`, `unsafe`,
+a doc comment, `#[`); where several kinds fit,
 the first of `preferred` wins. The sets of rules tree-sitter must keep apart are an artifact of
 its tables and are found, not written: `cargo xtask tree-sitter` generates the parser until it
 builds (`conflicts.json`), then parses every source and compares each tree with the compiler's;
@@ -409,31 +412,59 @@ tokens its paths name (`.token(grammar.infix)`), `.word(path)` for a name or key
 variant of the kind, or the list of one, the path names (`.word(grammar.Flow)`), a child
 `.field`, `.optional(...)`, `.many(...)`, `.separated(term, ",")` (with an optional trailing
 separator), `.choice(...)`, a sequence `.seq(...)`, or a child restricted by a table: of a kind it
-lists (`.of(.field, table)`), of such a kind or a `transparent` kind ending with one (`.ending`),
-or starting with a token it lists (`.starting`). A leaf spells one token. A node is anchored at its
-production's first token; its other tokens are `punct` leaves. The generator derives from the
+lists (`.of(.field, table)`), or starting with a token it lists (`.starting`). Wherever a table
+names kinds (`.of`, `holds`), a `transparent` node stands for the node it ends with: `#[a] x: T,`
+is a field as `x: T,` is. A leaf spells one token. A node is anchored at its production's first
+token; its other tokens are `punct` leaves, and a token no production reads is a `skipped` leaf,
+which stands in no field. The generator derives from the
 productions a field enum and each kind's slots: a field under `many` or `separated` holds many
 nodes, one under `optional` or `choice` one at most, any other exactly one, and one standing in
 several places in a row many; a field named after a node kind holds a node of that kind, any other
 field any node. `Cst::fields` assigns a node's children to its slots (left to right, backtracking,
-leaving a node to a later slot restricted to its kind). The parser reads the tables it shares with
-editors rather than restating them: the entries needing no `;` start as the kinds of `unterminated`
-holding children do (`NodeKind::starts`, from the productions), under the tokens of `transparent`; a
-label names what `labeled_bodies` lists; an instruction's operands read the kinds of
-`operand_contexts`; a member named by `$` is of a kind `member_names` lists. An operand is read
-at a level of `precedence` (`Level`: its row, and in the row of the form spelling `infix`, the
-operator's level there): a form starting with a token holds its last operand at its own level, and
-after an operand the parser takes each form continuing it (`Continuation`: a kind that is no part,
-whose production begins with a child the operand may fill) at that level or tighter, the one whose
-leading tokens are all written, the longest such (`.asm {` over `.`); an instruction's operand ends
-with its line, and a `{` continues an operand only where one continues an expression. A group
-opened by `(` or `[` becomes the first kind starting with its token, the preferred first
-(`preferred`), whose production its children spell with each child in a field admitting it: a
-kind the field is named after, one `holds` lists for it, else any kind but a part, the parts
-`admits` lists for it and, in an operand context, its kinds (`NodeKind::admits`); what recovery
-built fits as it stands, an absent token for its term and an `error` for a child or for nothing.
-What the parser decides by what follows, whether a body or a result type is read and whether an
-entry is a field, stays in the parser. Each distinct shape is its own kind, so a
+leaving a node to a later slot restricted to its kind). **The parser** reads the productions themselves: each is compiled to an automaton over its
+terms, one position per token, word or child term (Glushkov's construction, `vun_grammar::Automaton`),
+and a stack of frames reads the tokens, readings of nodes alternating with the operands they read.
+A reading keeps every kind the node may still be, each at the positions of its automaton it stands
+at; a child is read once for every position reading it, taking what they take merged
+(`engine::Spec`: the kinds they name, whether any operand, the parts `admits` lists, the level,
+the operand context), and positions that may not hold what was read drop. One rule says who reads
+a token: the outermost reading that reads it where it stands, every frame above it able to end
+(so `if x {` opens the body and `if a {} .x;` starts a statement); else the innermost operand a
+form may continue (a kind whose production begins with a child the operand may fill, reachable
+from what the position takes), at the operand's level of `precedence` or tighter, the one reading
+the longest run of tokens before its next child (`.asm {` over `.`), forms reading as long a run
+continuing together (`x: T` is a `typed_binding` or a `field`); else the top frame ends where it
+may. A child starts only where a kind it may be starts with the token (its production's first
+token or word, or a first child that is no operand, as `mut`), the kinds of `operand_contexts`
+starting there in place of any other, a `transparent` kind standing for one named only with its
+tokens, so every move reads a token. An operand is read at a level: an edge child at its parent's
+(the infix form's right operand tighter than its operator), an interior one at the loosest, and
+where positions reading one child disagree, at the tightest. In a node of a kind of `line_ends`,
+and everything read inside it, nothing reads a token after a line break, and such a node holds
+on to its line while it reads. A chain of operators of a level without grouping is an `error`
+(`chained_operator`), and nesting past `MAX_NESTING` operands, or links of a chain, is one error
+holding the rest of the expression. A node's kind is chosen when the tree is written: the
+preferred (`preferred`) of the kinds it spells that may end where it ended, that the position
+holding it takes along the path its reading took (found back from where it ended); a transparent
+node standing for what it ends with passes that on to its last child, whose reading took both
+what it takes itself and what the node's position takes, and only the latter where the node may
+stand there as nothing else (`.$(e)`). So what a group becomes follows from what it spells and
+where it stands: `()` is a tuple, `() {}` a function, `(a: T)` a function type.
+
+Recovery mends the top frame where it may neither go on nor end, each report once per position:
+a reading supposes absent what a next position reads where the token may be read after it (a
+token, or an `error` child); before the end of the file, the token closing a group it opened, or
+a token a frame below reads (within an unclosed group, only as punctuation), it completes along
+its shortest way out up to the token (`unclosed_delimiter` where that supposes its closer); else
+it skips the token, with its group, as `skipped` leaves. An operand holding what may not stand
+there is reported with the tokens the kinds named there would read after it (`:=` after `run()`
+among declarations) and goes on as the first of them reading the token after supposing one
+(`.some(v) v` among arms), else is held in an `error`. After a report, and after a token the
+lexer reported, the parser is quiet until a production reads a punctuation token in place: what
+goes wrong in between is the fallout, reported by nothing, and recovery only completes or skips.
+What a report expects is read from the positions: their tokens, a name where a position names
+`name`, a declaration where one names a kind continuing an operand, else an expression.
+Each distinct shape is its own kind, so a
 kind's fields never depend on its anchor token: `x := e` is `binding` and `x: T = e` is
 `typed_binding`, `.{ }` is `struct_lit` and `T{ }` is `typed_lit`. Malformed source is an `error`
 node, which holds what recovery skipped and fits any slot. The CST verifier requires every node to
@@ -1144,9 +1175,12 @@ in registers a call may overwrite, none saved.
   encodes it: 0 for eight addressable bytes, `k` for the first `k`, and a negative value per
   reason (`lang.check.Violation`) otherwise. `std.check` holds the shadow's logic, reading and
   writing it by atomic accesses, which no check rewrites, and the exports a runtime makes of
-  it (`std.check.exports`). The runtime over a C library reserves the shadow of 47 bits of
-  addresses with `mmap` the first time a check needs it, backed only where touched, and reaches
-  it through `lang.mem.pointer_at`. A board runtime is to take it from a `.shadow` region of
+  it (`std.check.exports`). The shadow of each span of 2^32 addresses is reserved the first
+  time memory in it is described, backed only where touched, and a directory of a word per span
+  says where each is (0 where none is yet, which reads as accessible), so the shadow follows the
+  program's memory wherever the system puts it, whatever width of addresses the system gives
+  programs; a runtime that maps memory gives `std.check.mapped` how it maps and gives back memory
+  (`mmap`), and the shadow is reached through `lang.mem.pointer_at`. A board runtime is to take it from a `.shadow` region of
   `Options.memory`, one eighth of the RAM it checks, and a WASI runtime to keep it in linear
   memory, grown with the memory the program uses (`memory.grow` by an eighth); until they do,
   a checked build for them stops at `check.unsupported`. `asm` does not arise on wasm. The
@@ -1157,8 +1191,8 @@ in registers a call may overwrite, none saved.
   open-addressed by linear probing with entries moved back on removal (`std.check.table`); and
   the quarantine, a ring of memory given back (`lang.check.Held`: the address, bytes, alignment
   and the allocator's address), oldest first (`std.check.quarantine`). A runtime that maps memory
-  has it all from `std.check.mapped($map, $unmap)`, which maps the shadow of 47 bits of
-  addresses and the state once, the first thread to need it winning. The checked `free`
+  has it all from `std.check.mapped($map, $unmap)`, which maps the directory and the state once,
+  and each span's shadow when needed, the first thread to need either winning. The checked `free`
   (`std.check.free`) asks `lang.check.freed`, which fails with `foreign_free` for an address the
   table does not hold (`double_free` when its shadow says it was given back), `size_mismatch`
   for other bytes than the table records, and otherwise removes it and poisons the bytes. It then

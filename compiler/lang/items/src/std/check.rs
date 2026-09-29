@@ -18,14 +18,21 @@ pub const granule: Item = Item::new(&["std", "check", "granule"]);
 pub const code: Item = Item::new(&["std", "check", "code"]);
 /// What the shadow byte `b` of memory not all accessible says of it.
 pub const violation: Item = Item::new(&["std", "check", "violation"]);
-/// The shadow at `base`, a byte for each granule of the address space.
+/// How many addresses the shadow of one span describes: its shadow, reserved at once and
+/// backed only where touched, is an eighth of that, and the directory a word per span.
+pub const span: Item = Item::new(&["std", "check", "span"]);
+/// The shadow bytes of a span.
+pub const span_shadow: Item = Item::new(&["std", "check", "span_shadow"]);
+/// The spans of the address space, a word of the directory for each.
+pub const spans: Item = Item::new(&["std", "check", "spans"]);
+/// The shadow: a directory holding where the shadow of each span is, 0 until memory in the span
+/// is described, and how the runtime maps and gives back memory.
 pub const Shadow: Item = Item::new(&["std", "check", "Shadow"]);
 /// What the checks keep at run time: the shadow, and in words a runtime gives past it, a lock,
 /// what allocators have handed out and the quarantine.
 pub const State: Item = Item::new(&["std", "check", "State"]);
-/// The shadow of a hosted program: a byte for each granule of 47 bits of addresses.
-pub const hosted_shadow: Item = Item::new(&["std", "check", "hosted_shadow"]);
-/// The bytes a hosted program maps for the state: its shadow, then the words past it.
+/// The bytes a runtime that maps memory maps for the state: the shadow's directory, then the
+/// words past it.
 pub const hosted_bytes: Item = Item::new(&["std", "check", "hosted_bytes"]);
 /// Where the state `mapped` gives is, 0 until a check first needs it.
 pub const mapped_at: Item = Item::new(&["std", "check", "mapped_at"]);

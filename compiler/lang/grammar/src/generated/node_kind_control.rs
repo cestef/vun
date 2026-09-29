@@ -122,3 +122,10 @@ pub(super) const DEFER: &[NodeTerm] = &[
 pub(super) const DEFER_SLOTS: &[NodeSlot] = &[
     NodeSlot::new(NodeField::Body, Count::One, None),
 ];
+pub(super) const STAGED: &[NodeTerm] = &[
+    NodeTerm::Token(&[TokenKind::Dollar]),
+    NodeTerm::Of(NodeField::Control, STAGED_FORMS),
+];
+pub(super) const STAGED_SLOTS: &[NodeSlot] = &[
+    NodeSlot::new(NodeField::Control, Count::One, None),
+];

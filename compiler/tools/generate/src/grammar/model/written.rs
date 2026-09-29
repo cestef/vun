@@ -86,7 +86,6 @@ pub(crate) enum Term {
     Choice(#[literal(rest)] Vec<Term>),
     Seq(#[literal(rest)] Vec<Term>),
     Of(Name, Path),
-    Ending(Name, Path),
     Starting(Name, Path),
     #[literal(untagged)]
     Text(String),

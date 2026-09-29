@@ -19,7 +19,7 @@ mod fields;
 mod production;
 mod verify;
 
-pub(crate) use builder::{Builder, Mark};
+pub(crate) use builder::Builder;
 pub use dump::Dump;
 pub use fields::Fields;
 pub use verify::Malformed;

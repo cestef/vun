@@ -14,11 +14,9 @@ pub enum NodeTerm {
     Word(&'static [&'static str]),
     /// A child in this field.
     Field(NodeField),
-    /// A child in this field, of one of these kinds.
-    Of(NodeField, &'static [NodeKind]),
     /// A child in this field, of one of these kinds or a transparent kind ending with
     /// one.
-    Ending(NodeField, &'static [NodeKind]),
+    Of(NodeField, &'static [NodeKind]),
     /// A child in this field starting with a token of one of these kinds.
     Starting(NodeField, &'static [TokenKind]),
     /// These terms in sequence, or nothing.

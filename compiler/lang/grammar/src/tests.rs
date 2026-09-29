@@ -141,36 +141,8 @@ fn recovery_shapes_fit_as_left() {
 }
 
 #[test]
-fn fields_admit_parts_where_tables_say() {
-    assert!(NodeKind::FnType.admits(NodeField::Params, NodeKind::Param, &[]));
-    assert!(!NodeKind::Tuple.admits(NodeField::Items, NodeKind::Param, &[]));
-    assert!(NodeKind::Tuple.admits(NodeField::Items, NodeKind::Error, &[]));
-    assert!(NodeKind::Fn.admits(NodeField::Returns, NodeKind::Returns, &[]));
-    assert!(!NodeKind::If.admits(NodeField::Otherwise, NodeKind::Name, &[]));
-    assert!(!NodeKind::Paren.admits(NodeField::Inner, NodeKind::Bound, &[]));
-    assert!(NodeKind::Paren.admits(NodeField::Inner, NodeKind::Bound, &[NodeKind::Bound]));
-}
-
-#[test]
-fn groups_try_the_preferred_kinds_first() {
-    let kinds = NodeKind::starting_with(TokenKind::LParen);
-    let at = |kind| kinds.iter().position(|&k| k == kind);
-    assert!(at(NodeKind::Paren) < at(NodeKind::Tuple) && at(NodeKind::Tuple) < at(NodeKind::FnType));
-    assert!(at(NodeKind::Fn) < at(NodeKind::Tuple));
-}
-
-#[test]
-fn continuations_are_told_apart_by_their_leading_tokens() {
-    for c in Continuation::all() {
-        assert!(c.leads.iter().all(|run| !run.is_empty()), "{:?}", c.kind);
-    }
-    let longest = |kind| {
-        Continuation::all()
-            .iter()
-            .find(|c| c.kind == kind)
-            .and_then(|c| c.leads.iter().map(|r| r.len()).max())
-    };
-    // `.asm {` spells `.` and more: where both are written, the block wins.
-    assert!(longest(NodeKind::Asm) > longest(NodeKind::Member));
-    assert!(Continuation::all().iter().all(|c| !PARTS.contains(&c.kind)));
+fn preferred_kinds_rank_first() {
+    use NodeKind::{Fn, FnType, Paren, Tuple};
+    assert!(Paren.rank() < Tuple.rank() && Tuple.rank() < FnType.rank());
+    assert!(Fn.rank() < Tuple.rank());
 }

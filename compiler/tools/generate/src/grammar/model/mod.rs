@@ -90,6 +90,33 @@ pub(crate) struct Model {
 }
 
 impl Model {
+    /// The names of the tables `.of` terms restrict children by: tables of node kinds.
+    pub(crate) fn kind_tables(&self) -> Vec<&str> {
+        fn walk<'m>(terms: &'m [Term], out: &mut Vec<&'m str>) {
+            for term in terms {
+                match term {
+                    Term::Field(_, Some(Restriction::Of(table))) => out.push(&table.name),
+                    Term::Optional(terms)
+                    | Term::Many(terms)
+                    | Term::Choice(terms)
+                    | Term::Sequence(terms) => {
+                        walk(terms, out);
+                    }
+                    Term::Separated(item, separator) => {
+                        walk(std::slice::from_ref(item), out);
+                        walk(std::slice::from_ref(separator), out);
+                    }
+                    Term::Tokens(_) | Term::Words(_) | Term::Field(..) => {}
+                }
+            }
+        }
+        let mut tables = Vec::new();
+        for variant in &self.nodes.variants {
+            walk(variant.production.as_deref().unwrap_or_default(), &mut tables);
+        }
+        tables
+    }
+
     pub(crate) fn token(&self, name: &str) -> Option<Token> {
         self.tokens.variants.iter().position(|v| v.name == name).map(Token)
     }

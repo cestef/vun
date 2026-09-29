@@ -37,9 +37,11 @@ impl<'s> Grammar<'s> {
             });
             modules.extend(self.slots(e, model)?);
         }
+        let kind_tables = model.kind_tables();
         for d in source.decls.iter().filter(|d| own.contains(d.name)) {
             if let Some(items) = d.value.as_list() {
-                let table = self.table(d, items)?;
+                let kinds = kind_tables.contains(&d.name).then(|| self.node_enum(model)).flatten();
+                let table = self.table(d, items, kinds)?;
                 modules.push(Module::sibling(d.name.to_owned(), &quote! { #uses #table }));
             }
         }
@@ -47,9 +49,18 @@ impl<'s> Grammar<'s> {
     }
 
     /// A table: a list of rows. Rows that are records of several fields are values of a struct
-    /// named after the table (`iteration` holds `IterationRow`s), read by field name.
-    pub(super) fn table(&self, d: &Decl<'s>, items: &[Literal<'s>]) -> Read<TokenStream> {
-        let ty = self.infer(d.name, &items.iter().collect::<Vec<_>>())?;
+    /// named after the table (`iteration` holds `IterationRow`s), read by field name. A table of
+    /// node kinds, as `.of` terms use it, lists the enum `kinds`, whatever else its names fit.
+    pub(super) fn table(
+        &self,
+        d: &Decl<'s>,
+        items: &[Literal<'s>],
+        kinds: Option<usize>,
+    ) -> Read<TokenStream> {
+        let ty = match kinds {
+            Some(kinds) => Ty::Enum(kinds),
+            None => self.infer(d.name, &items.iter().collect::<Vec<_>>())?,
+        };
         let (name, doc) = (constant(d.name), docs(&d.doc));
         if let Ty::Tuple(fields) = &ty
             && fields.len() > 1
@@ -126,6 +137,12 @@ impl<'s> Grammar<'s> {
             Literal::Record(fields) => fields.iter().map(|f| f.name).collect(),
             _ => Vec::new(),
         }
+    }
+
+    /// The enum of node kinds: the one whose variants are the model's kinds.
+    fn node_enum(&self, model: &Model) -> Option<usize> {
+        let names = model.nodes.variants.iter().map(|v| v.name.as_str());
+        self.enums.iter().position(|e| e.variants.iter().map(|v| v.name.as_ref()).eq(names.clone()))
     }
 
     /// The one enum that has every name in `names`.

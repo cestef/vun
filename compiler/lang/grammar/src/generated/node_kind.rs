@@ -16,20 +16,24 @@ use super::*;
 /// and any number of times, `.separated(term, "sep")` for any number of `term` with `sep` between
 /// them and after the last if written, `.choice(a, ...)` for one of the terms,
 /// `.of(.field, table)` for a child in `field` of a kind the table lists,
-/// `.ending(.field, table)` for one of such a kind or of a `transparent` kind ending with one,
 /// `.starting(.field, tokens)` for one starting with a token a table of tokens lists, and
-/// `.seq(...)` for terms in sequence. Tables are named by paths, as `grammar.infix`.
+/// `.seq(...)` for terms in sequence. Tables are named by paths, as `grammar.infix`. Where a table
+/// names kinds (`.of`, `holds`), a `transparent` node stands for the node it ends with, and its
+/// last child stands where it stands, taking what that position takes.
 ///
 /// A node is anchored at the first token of its production; its other tokens are `punct` leaves,
 /// its children fill its fields. A field's count follows from where it stands: `many` in `many` or
 /// `separated`, else `optional` in `optional` or `choice`, else `one`. A field named after a kind
 /// holds a node of that kind, any other field any node. A leaf spells one token and holds nothing;
-/// `punct` holds the token its parent's production names. An `error` stands for skipped or absent
-/// source, and fits any field; an `error`, and a node holding one or anchored at an absent token,
-/// are recovery's shapes: they fit their kind's fields, not its production.
+/// `punct` holds the token its parent's production names, `skipped` a token no production reads,
+/// and neither stands in a field. An `error` stands for a child absent, or not one its position
+/// takes, which it holds, and fits any field; an `error`, a `skipped` token, and a node holding
+/// one or anchored at an absent token, are recovery's shapes: they fit their kind's fields, not
+/// its production.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, vun_codec::Encode, vun_codec::Decode)]
 pub enum NodeKind {
     Punct,
+    Skipped,
     ModuleDoc,
     Mut,
     Qualifier,
@@ -94,6 +98,7 @@ pub enum NodeKind {
     Continue,
     Yield,
     Defer,
+    Staged,
     Asm,
     Line,
     Suffix,
@@ -104,6 +109,7 @@ impl NodeKind {
     /// Every variant, in the order declared.
     pub const ALL: &[Self] = &[
         Self::Punct,
+        Self::Skipped,
         Self::ModuleDoc,
         Self::Mut,
         Self::Qualifier,
@@ -168,6 +174,7 @@ impl NodeKind {
         Self::Continue,
         Self::Yield,
         Self::Defer,
+        Self::Staged,
         Self::Asm,
         Self::Line,
         Self::Suffix,
@@ -176,6 +183,7 @@ impl NodeKind {
     ];
     pub const LEAVES: &[Self] = &[
         Self::Punct,
+        Self::Skipped,
         Self::ModuleDoc,
         Self::Mut,
         Self::Qualifier,
@@ -247,6 +255,7 @@ impl NodeKind {
         Self::Continue,
         Self::Yield,
         Self::Defer,
+        Self::Staged,
     ];
     pub const ASSEMBLY: &[Self] = &[
         Self::Asm,

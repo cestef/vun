@@ -6,10 +6,10 @@
 )]
 use super::*;
 pub(super) const ERROR: &[NodeTerm] = &[
-    NodeTerm::Many(&[NodeTerm::Field(NodeField::Skipped)]),
+    NodeTerm::Many(&[NodeTerm::Field(NodeField::Held)]),
 ];
 pub(super) const ERROR_SLOTS: &[NodeSlot] = &[
-    NodeSlot::new(NodeField::Skipped, Count::Many, None),
+    NodeSlot::new(NodeField::Held, Count::Many, None),
 ];
 pub(super) const FILE: &[NodeTerm] = &[
     NodeTerm::Many(
@@ -24,17 +24,17 @@ pub(super) const FILE: &[NodeTerm] = &[
                     ),
                     NodeTerm::Sequence(
                         &[
-                            NodeTerm::Field(NodeField::Members),
+                            NodeTerm::Of(NodeField::Members, FIELDS),
                             NodeTerm::Token(&[TokenKind::Comma]),
                         ],
                     ),
-                    NodeTerm::Ending(NodeField::Members, UNTERMINATED),
+                    NodeTerm::Of(NodeField::Members, UNTERMINATED),
                     NodeTerm::Token(&[TokenKind::Semi]),
                 ],
             ),
         ],
     ),
-    NodeTerm::Optional(&[NodeTerm::Field(NodeField::Members)]),
+    NodeTerm::Optional(&[NodeTerm::Of(NodeField::Members, FIELDS)]),
     NodeTerm::Token(&[TokenKind::Eof]),
 ];
 pub(super) const FILE_SLOTS: &[NodeSlot] = &[

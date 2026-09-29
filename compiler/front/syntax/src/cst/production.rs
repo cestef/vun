@@ -5,7 +5,6 @@
 use vun_grammar::{Element, NodeKind, TRANSPARENT};
 
 use vun_index::Idx;
-use vun_trace::tracing;
 
 use super::{Anchor, Cst, Fields, NodeId};
 use crate::tokens::{TokenId, Tokens};
@@ -16,40 +15,15 @@ impl Cst {
     /// is a node holding such a node, whose extent recovery decided, taking what `n` would spell
     /// after it: `#[x;` holds the `;` ending its entry.
     pub(super) fn spells(&self, n: NodeId, fields: &Fields, tokens: &Tokens, source: &str) -> bool {
-        let recovered =
-            |c: NodeId| self.kind(c) == NodeKind::Error || matches!(self.anchor(c), Anchor::Missing(_));
+        let recovered = |c: NodeId| {
+            matches!(self.kind(c), NodeKind::Error | NodeKind::Skipped)
+                || matches!(self.anchor(c), Anchor::Missing(_))
+        };
         let built = |c: NodeId| recovered(c) || self.children_rev(c).any(recovered);
         if built(n) || self.children_rev(n).any(built) {
             return true;
         }
         self.elements(n, fields, tokens, source).is_some_and(|elements| self.kind(n).spelled_by(&elements))
-    }
-
-    /// Whether `n` spells its kind's production with each child in a field admitting it
-    /// (`NodeKind::admits`), `context` admitted everywhere; what recovery built fits as it stands.
-    pub(crate) fn fits(&self, n: NodeId, context: &[NodeKind], tokens: &Tokens, source: &str) -> bool {
-        let kind = self.kind(n);
-        let Some(fields) = self.fields(n) else {
-            tracing::trace!(?kind, "its children fit no assignment to its slots");
-            return false;
-        };
-        let Some(elements) = self.elements(n, &fields, tokens, source) else {
-            tracing::trace!(?kind, "its children do not line up with its fields");
-            return false;
-        };
-        let refused = elements.iter().find(|e| match **e {
-            Element::Child { field, kind: child, .. } => !kind.admits(field, child, context),
-            Element::Token { .. } | Element::Absent => false,
-        });
-        if let Some(child) = refused {
-            tracing::trace!(?kind, ?child, "a field does not admit its child");
-            return false;
-        }
-        let spelled = kind.spelled_by(&elements);
-        if !spelled {
-            tracing::trace!(?kind, ?elements, "its children do not spell its production");
-        }
-        spelled
     }
 
     /// The anchor and children of `n`, whose children fill `fields`, as its production reads them:
@@ -66,7 +40,8 @@ impl Cst {
         let mut assigned = fields.assigned();
         let mut elements = Vec::with_capacity(self.size(n));
         let mut placed = false;
-        for c in self.children(n) {
+        // A skipped token is read by no production.
+        for c in self.children(n).filter(|&c| self.kind(c) != NodeKind::Skipped) {
             let at = self.anchor(c).token();
             if !placed && anchor < at {
                 elements.push(token(anchor));
@@ -92,21 +67,27 @@ impl Cst {
         Some(elements)
     }
 
-    /// The kind `n` counts as where a production names kinds by a table: a transparent node's,
-    /// written with a token making it so, that of its last child; `Error` for what recovery
-    /// built, which fits any.
-    fn counted(&self, mut n: NodeId, tokens: &Tokens) -> NodeKind {
+    /// The kind `n` counts as where a production names kinds by a table: that of the node it
+    /// ends with (`Cst::ends_with`); `Error` for what recovery built, which fits any.
+    fn counted(&self, n: NodeId, tokens: &Tokens) -> NodeKind {
+        let n = self.ends_with(n, tokens);
+        if matches!(self.anchor(n), Anchor::Missing(_)) { NodeKind::Error } else { self.kind(n) }
+    }
+
+    /// The node `n` ends with: itself, or for a transparent node written with a token making it
+    /// so, the node its last child ends with.
+    fn ends_with(&self, mut n: NodeId, tokens: &Tokens) -> NodeId {
         let transparent = |n: NodeId| {
             let at = tokens.kind(self.anchor(n).token());
             TRANSPARENT.iter().any(|row| row.kind == self.kind(n) && row.tokens.contains(&at))
         };
         while transparent(n) {
-            match self.children_rev(n).find(|&c| self.kind(c) != NodeKind::Punct) {
+            match self.children_rev(n).find(|&c| !self.kind(c).is_token()) {
                 Some(last) => n = last,
                 None => break,
             }
         }
-        if matches!(self.anchor(n), Anchor::Missing(_)) { NodeKind::Error } else { self.kind(n) }
+        n
     }
 
     /// The first token of the subtree of `n`, its tokens being contiguous.

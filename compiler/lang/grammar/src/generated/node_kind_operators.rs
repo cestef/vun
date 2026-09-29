@@ -7,7 +7,7 @@
 use super::*;
 pub(super) const DOT_NAME: &[NodeTerm] = &[
     NodeTerm::Token(&[TokenKind::Dot]),
-    NodeTerm::Ending(NodeField::Property, MEMBER_NAMES),
+    NodeTerm::Of(NodeField::Property, MEMBER_NAMES),
 ];
 pub(super) const DOT_NAME_SLOTS: &[NodeSlot] = &[
     NodeSlot::new(NodeField::Property, Count::One, None),
@@ -15,7 +15,7 @@ pub(super) const DOT_NAME_SLOTS: &[NodeSlot] = &[
 pub(super) const MEMBER: &[NodeTerm] = &[
     NodeTerm::Field(NodeField::Object),
     NodeTerm::Token(&[TokenKind::Dot]),
-    NodeTerm::Ending(NodeField::Property, MEMBER_NAMES),
+    NodeTerm::Of(NodeField::Property, MEMBER_NAMES),
 ];
 pub(super) const MEMBER_SLOTS: &[NodeSlot] = &[
     NodeSlot::new(NodeField::Object, Count::One, None),
@@ -45,21 +45,30 @@ pub(super) const INDEX_SLOTS: &[NodeSlot] = &[
     NodeSlot::new(NodeField::Subscript, Count::One, None),
 ];
 pub(super) const PREFIX: &[NodeTerm] = &[
-    NodeTerm::Token(
+    NodeTerm::Choice(
         &[
-            TokenKind::Minus,
-            TokenKind::Bang,
-            TokenKind::Tilde,
-            TokenKind::Amp,
-            TokenKind::Star,
-            TokenKind::Question,
-            TokenKind::DotDot,
-            TokenKind::Dollar,
-            TokenKind::Unsafe,
+            NodeTerm::Sequence(
+                &[
+                    NodeTerm::Token(&[TokenKind::Amp]),
+                    NodeTerm::Optional(&[NodeTerm::Field(NodeField::Qualifier)]),
+                    NodeTerm::Optional(&[NodeTerm::Field(NodeField::Mode)]),
+                ],
+            ),
+            NodeTerm::Token(
+                &[
+                    TokenKind::Minus,
+                    TokenKind::Bang,
+                    TokenKind::Tilde,
+                    TokenKind::Amp,
+                    TokenKind::Star,
+                    TokenKind::Question,
+                    TokenKind::DotDot,
+                    TokenKind::Dollar,
+                    TokenKind::Unsafe,
+                ],
+            ),
         ],
     ),
-    NodeTerm::Optional(&[NodeTerm::Field(NodeField::Qualifier)]),
-    NodeTerm::Optional(&[NodeTerm::Field(NodeField::Mode)]),
     NodeTerm::Field(NodeField::Operand),
 ];
 pub(super) const PREFIX_SLOTS: &[NodeSlot] = &[

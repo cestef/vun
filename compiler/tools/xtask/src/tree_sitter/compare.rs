@@ -57,7 +57,7 @@ fn compiler(text: &str) -> Vec<Spanned> {
     let mut cx = DiagCx { diag: &mut diag, origins: &origins };
     let tokens = Tokens::lex(file, text, &mut cx);
     let cst = Cst::parse(&tokens, text, &mut cx);
-    let spanned = cst.ids().filter(|&n| cst.kind(n) != NodeKind::Punct).map(|n| {
+    let spanned = cst.ids().filter(|&n| !cst.kind(n).is_token()).map(|n| {
         let range = cst.span(n, &tokens).range;
         Spanned { kind: canonical(cst.kind(n)), bytes: (range.lo, range.hi) }
     });

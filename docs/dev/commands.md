@@ -77,7 +77,7 @@ toolchain, target and checks).
 | Filter | Shows |
 |--------|-------|
 | `vun_mir=debug,vun_lower=trace` | building and lowering statement by statement, naming what fails |
-| `vun_syntax=trace` | each form continuing an operand and its level, each kind a `(` or `[` group was tried as and why it missed |
+| `vun_syntax=trace` | each decision of the parser at each token (who reads it, a form continuing an operand, an end, a mend), each node read with the kinds it spells, each report and whether it was fallout |
 | `vun_sema::asm=trace` | each form an assembly line was tried against and why it missed |
 | `vun_sema::typeck=trace` | each compile-time evaluation while typing that gave no value, where and why (`Runtime`, `Unsupported`, ...) |
 | `vun_codegen=trace` | each instruction selected |

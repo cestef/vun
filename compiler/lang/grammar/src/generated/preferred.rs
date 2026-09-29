@@ -20,5 +20,6 @@ pub const PREFERRED: &[&[NodeKind]] = &[
     &[NodeKind::Assign, NodeKind::FieldInit],
     &[NodeKind::Suffix, NodeKind::DotName],
     &[NodeKind::Spread, NodeKind::Prefix],
+    &[NodeKind::Staged, NodeKind::Prefix],
     &[NodeKind::Block, NodeKind::TypedLit],
 ];

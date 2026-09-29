@@ -59,8 +59,15 @@ Traps that cost a session before. Add one when it costs you time.
   never through the bare `Typer::env()`: without what typing found, a call whose `$` arguments
   are inferred (`TypeOf(x)`) or a form typed by its context has no value, and the call stays
   silently untyped. `VUN_LOG=vun_sema::typeck=trace` shows each evaluation that gave no value.
-- The parser's depth bound counts each link of a chain; past it the rest of the expression is one
-  `Error` node, so later stages never recurse deeper than about twice `MAX_NESTING`.
+- The parser's depth bound counts each operand being read and each link of a chain; past it the
+  rest of the expression is one `Error` node, so later stages never recurse deeper than about
+  twice `MAX_NESTING`.
+- The parser is the productions of `nodes.vun`: a syntax change is a grammar change (and
+  `cargo gen`), never parser code. A table the generator cannot type from its names (all of
+  them both token and node kinds, as `[.\for, .\if]`) is typed by its use in `.of`; a table named
+  as a kind's production constant would be (`staged` for the kind `staged`) clashes in Rust.
+- The generator links `vun-syntax`: code naming a node kind or field `cargo gen` has not yet
+  written breaks the run; write the generated item by hand first, then regenerate.
 
 ## Writing Vun
 

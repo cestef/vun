@@ -115,9 +115,6 @@ impl Model {
             written::Term::Of(field, path) => {
                 Term::Field(self.intern(field), Some(Restriction::Of(self.kind_table(files, path)?)))
             }
-            written::Term::Ending(field, path) => {
-                Term::Field(self.intern(field), Some(Restriction::Ending(self.kind_table(files, path)?)))
-            }
             written::Term::Starting(field, path) => {
                 let members = self.tokens_of(files, path)?;
                 Term::Field(

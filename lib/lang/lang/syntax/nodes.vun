@@ -22,20 +22,24 @@ Count := enum {
 /// and any number of times, `.separated(term, "sep")` for any number of `term` with `sep` between
 /// them and after the last if written, `.choice(a, ...)` for one of the terms,
 /// `.of(.field, table)` for a child in `field` of a kind the table lists,
-/// `.ending(.field, table)` for one of such a kind or of a `transparent` kind ending with one,
 /// `.starting(.field, tokens)` for one starting with a token a table of tokens lists, and
-/// `.seq(...)` for terms in sequence. Tables are named by paths, as `grammar.infix`.
+/// `.seq(...)` for terms in sequence. Tables are named by paths, as `grammar.infix`. Where a table
+/// names kinds (`.of`, `holds`), a `transparent` node stands for the node it ends with, and its
+/// last child stands where it stands, taking what that position takes.
 ///
 /// A node is anchored at the first token of its production; its other tokens are `punct` leaves,
 /// its children fill its fields. A field's count follows from where it stands: `many` in `many` or
 /// `separated`, else `optional` in `optional` or `choice`, else `one`. A field named after a kind
 /// holds a node of that kind, any other field any node. A leaf spells one token and holds nothing;
-/// `punct` holds the token its parent's production names. An `error` stands for skipped or absent
-/// source, and fits any field; an `error`, and a node holding one or anchored at an absent token,
-/// are recovery's shapes: they fit their kind's fields, not its production.
+/// `punct` holds the token its parent's production names, `skipped` a token no production reads,
+/// and neither stands in a field. An `error` stands for a child absent, or not one its position
+/// takes, which it holds, and fits any field; an `error`, a `skipped` token, and a node holding
+/// one or anchored at an absent token, are recovery's shapes: they fit their kind's fields, not
+/// its production.
 NodeKind := .{
     .leaves = [
         .punct,
+        .skipped,
         .module_doc(.token(.module_doc_comment)),
         .\mut("mut"),
         .qualifier(.word(grammar.BorrowWord.qualifiers)),
@@ -53,10 +57,10 @@ NodeKind := .{
         .writeback("!"),
     ],
     .structure = [
-        .error(.many(.skipped)),
+        .error(.many(.held)),
         .file(
-            .many(.choice(.seq(.members, ";"), .seq(.members, ","), .ending(.members, unterminated), ";")),
-            .optional(.members),
+            .many(.choice(.seq(.members, ";"), .seq(.of(.members, fields), ","), .of(.members, unterminated), ";")),
+            .optional(.of(.members, fields)),
             .token(.eof),
         ),
         .doc(.token(.doc_comment), .target),
@@ -70,8 +74,8 @@ NodeKind := .{
         .select(".{", .separated(.names, ","), "}"),
         .namespace(
             ";",
-            .many(.choice(.seq(.members, ";"), .seq(.members, ","), .ending(.members, unterminated), ";")),
-            .optional(.members),
+            .many(.choice(.seq(.members, ";"), .seq(.of(.members, fields), ","), .of(.members, unterminated), ";")),
+            .optional(.of(.members, fields)),
         ),
     ],
     .functions = [
@@ -85,21 +89,21 @@ NodeKind := .{
         // Under `$` among members or items, a block holds those: `$for f in fs { x: T, }`.
         .block(
             "{",
-            .many(.choice(.seq(.statements, ";"), .seq(.statements, ","), .ending(.statements, unterminated), ";")),
+            .many(.choice(.seq(.statements, ";"), .seq(.of(.statements, fields), ","), .of(.statements, unterminated), ";")),
             .optional(.statements),
             "}",
         ),
         .quote(
             "#{",
-            .many(.choice(.seq(.statements, ";"), .ending(.statements, unterminated), ";")),
+            .many(.choice(.seq(.statements, ";"), .of(.statements, unterminated), ";")),
             .optional(.statements),
             "}",
         ),
         .\struct(
             "struct",
             "{",
-            .many(.choice(.seq(.members, ";"), .seq(.members, ","), .ending(.members, unterminated), ";")),
-            .optional(.members),
+            .many(.choice(.seq(.members, ";"), .seq(.of(.members, fields), ","), .of(.members, unterminated), ";")),
+            .optional(.of(.members, fields)),
             "}",
         ),
         .\enum("enum", "{", .separated(.variants, ","), .optional(.namespace), "}"),
@@ -114,11 +118,11 @@ NodeKind := .{
         .multiline_string(.token(.raw_string_line), .many(.raw_string_line)),
     ],
     .operators = [
-        .dot_name(".", .ending(.property, member_names)),
-        .member(.object, ".", .ending(.property, member_names)),
+        .dot_name(".", .of(.property, member_names)),
+        .member(.object, ".", .of(.property, member_names)),
         .call(.callee, "(", .separated(.args, ","), ")"),
         .index(.object, "[", .subscript, "]"),
-        .prefix(.token(grammar.prefix), .optional(.qualifier), .optional(.mode), .operand),
+        .prefix(.choice(.seq("&", .optional(.qualifier), .optional(.mode)), .token(grammar.prefix)), .operand),
         .postfix(.operand, .token(grammar.postfix)),
         .infix(.left, .choice(.seq(.token(grammar.infix), .right), .token(grammar.open_ended))),
         .assign(.place, .token(grammar.assign), .value),
@@ -137,6 +141,8 @@ NodeKind := .{
         .\continue("continue", .optional(.label)),
         .\yield("yield", .value),
         .\defer("defer", .body),
+        // An entry of a list its `for` or `if` makes at compile time: `$for f in fs { x: T, }`.
+        .staged("$", .of(.control, staged_forms)),
     ],
     .assembly = [
         .asm(.arch, ".", "asm", "{", .many(.lines, .optional(":")), "}"),
@@ -152,19 +158,23 @@ NodeKind := .{
 parts := [
     .\mut, .qualifier, .mode, .raw_string_line, .flow, .writeback, .select, .namespace, .returns, .guard, .line,
     .suffix, .bound, .memory, .label, .binding, .typed_binding, .field, .assign, .spread, .field_init,
-    .param, .test, .in, .arm, .module_doc,
+    .param, .test, .in, .arm, .module_doc, .staged,
 ];
 
 /// Fields holding the kinds listed besides any operand: the entries of lists, the forms of heads
 /// and patterns.
 admits := [
     .{
-        .fields = &[.members, .statements, .target],
-        .kinds = &[.binding, .typed_binding, .field, .assign, .spread, .module_doc],
+        .fields = &[.statements],
+        .kinds = &[.binding, .typed_binding, .field, .assign, .spread, .module_doc, .staged],
     },
-    .{ .fields = &[.items, .values, .args, .fields, .variants], .kinds = &[.field_init] },
+    .{ .fields = &[.items, .values, .args, .fields, .variants], .kinds = &[.field_init, .staged] },
     .{ .fields = &[.params], .kinds = &[.param] },
     .{ .fields = &[.head, .condition], .kinds = &[.test, .\in] },
+    // A pattern may bind the whole value it matches: `n := .some(x) => n`.
+    .{ .fields = &[.pattern], .kinds = &[.binding] },
+    // What `defer` runs may be an assignment, looser than any operator: `defer x.* = 0`.
+    .{ .fields = &[.body], .kinds = &[.assign] },
 ];
 
 /// Fields read in a context of their own, at any depth of the operands they hold: an
@@ -175,12 +185,14 @@ operand_contexts := [
     .{ .fields = &[.operands, .parts], .kinds = &[.bound, .memory, .label] },
 ];
 
-/// Fields holding only the kinds listed.
+/// Fields holding only the kinds listed: files and `struct` bodies hold declarations.
 holds := [
-    .{ .fields = &[.arms], .kinds = &[.arm] },
+    .{ .fields = &[.members], .kinds = &[.binding, .typed_binding, .field, .spread, .module_doc, .staged] },
+    .{ .fields = &[.arms], .kinds = &[.arm, .staged] },
     .{ .fields = &[.lines], .kinds = &[.line, .label] },
     .{ .fields = &[.otherwise], .kinds = &[.block, .\if] },
     .{ .fields = &[.register], .kinds = &[.name, .int, .prefix] },
+    .{ .fields = &[.names], .kinds = &[.name] },
 ];
 
 /// Kinds that may spell the same source, which the parser tells apart by what follows them or
@@ -198,12 +210,19 @@ preferred := [
     &[.assign, .field_init],
     &[.suffix, .dot_name],
     &[.spread, .prefix],
+    &[.staged, .prefix],
     &[.block, .typed_lit],
 ];
 
+/// Kinds of the entries of a list ended by `,`, and of a member list's last entry without one.
+fields := [.field];
+
 /// Kinds of entries of a list needing no `;` after them: module docs, blocks and the forms ending
 /// with one.
-unterminated := [.module_doc, .block, .\if, .\for, .\match, .labeled];
+unterminated := [.module_doc, .block, .\if, .\for, .\match, .labeled, .staged];
+
+/// What a list's entry made at compile time is: a loop or a choice.
+staged_forms := [.\for, .\if];
 
 /// What a label names: a loop or a block.
 labeled_bodies := [.\for, .block];
@@ -211,10 +230,14 @@ labeled_bodies := [.\for, .block];
 /// What names a member after `.`: a name, an index, or `$` and the value naming it (`.$(f.name)`).
 member_names := [.name, .int, .paren];
 
-/// Kinds that end with the kind of their last child when written with one of the tokens listed,
-/// where a production says so (`.ending`): `$if a {}` and `unsafe {}` are unterminated as an `if`
-/// and a block are.
-transparent := [.{ .kind = .prefix, .tokens = &[.dollar, .\unsafe] }];
+/// Kinds that end with the kind of their last child when written with one of the tokens listed:
+/// `unsafe {}` is unterminated as a block is, `.$(e)` names a member as `.(e)` would, and
+/// `#[a] x: T,` is a field as `x: T,` is.
+transparent := [
+    .{ .kind = .prefix, .tokens = &[.dollar, .\unsafe] },
+    .{ .kind = .doc, .tokens = &[.doc_comment] },
+    .{ .kind = .attr, .tokens = &[.hash_l_bracket] },
+];
 
 /// Kinds that end with their line: an instruction's operands stop where it does.
 line_ends := [.line];
@@ -223,9 +246,9 @@ line_ends := [.line];
 /// the parser nests them (spec 01, section 6); `infix` stands for the levels of the table `infix`.
 /// Editor grammars resolve by it what the parser decides by nesting.
 precedence := [
-    &[.doc, .attr, .binding, .typed_binding, .field, .assign, .field_init, .param, .test, .in, .arm],
+    &[.doc, .attr, .binding, .typed_binding, .field, .assign, .field_init, .param, .test, .in, .arm, .\defer],
     &[.\if, .\for, .\match],
-    &[.\return, .\break, .\yield, .\defer, .labeled, .returns, .guard],
+    &[.\return, .\break, .\yield, .labeled, .returns, .guard],
     &[.infix],
     &[.prefix, .spread, .array_type],
     &[.member, .call, .index, .postfix, .asm, .dot_name, .closure, .qualifier, .mode, .suffix, .bound],

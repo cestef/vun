@@ -99,14 +99,10 @@ impl Lower<'_, '_> {
                 len: self.operand(&f, n, NodeField::Length),
                 elem: self.operand(&f, n, NodeField::Element),
             },
-            // `$if` as a value: its tests bind at compile time, as a staged `if`'s do.
-            NodeKind::Prefix
-                if self.token(n) == Some(TokenKind::Dollar)
-                    && let Some(control) =
-                        f.one(NodeField::Operand).filter(|&c| self.kind(c) == NodeKind::If) =>
-            {
-                ExprKind::Prefix { op: TokenKind::Dollar, operand: self.if_expr(control, Mode::STAGED) }
+            NodeKind::Prefix if self.token(n) == Some(TokenKind::Dollar) => {
+                self.earlier(&f, n, NodeField::Operand)
             }
+            NodeKind::Staged => self.earlier(&f, n, NodeField::Control),
             NodeKind::Prefix => {
                 let operand = self.operand(&f, n, NodeField::Operand);
                 match self.token(n) {
@@ -159,6 +155,16 @@ impl Lower<'_, '_> {
             }
             _ => self.control(&f, n),
         }
+    }
+
+    /// `$` before the `field` of `n`, one stage earlier: an `if`'s tests bind at compile time,
+    /// as a staged `if`'s do; a `$for` or `$if` entry standing for a value is one.
+    fn earlier(&mut self, f: &Fields, n: NodeId, field: NodeField) -> ExprKind {
+        let operand = match f.one(field) {
+            Some(control) if self.kind(control) == NodeKind::If => self.if_expr(control, Mode::STAGED),
+            _ => self.operand(f, n, field),
+        };
+        ExprKind::Prefix { op: TokenKind::Dollar, operand }
     }
 
     fn leaf(&mut self, n: NodeId) -> ExprKind {

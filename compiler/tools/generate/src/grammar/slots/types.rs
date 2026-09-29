@@ -20,6 +20,9 @@ impl Types<'_> {
             pub enum #field_ty { #(#variants),* }
 
             impl #field_ty {
+                /// Every field, in the order first named.
+                pub const ALL: &[Self] = &[#(Self::#variants),*];
+
                 /// The name of this field in `nodes.vun`.
                 #[must_use]
                 pub const fn name(self) -> &'static str {
@@ -68,11 +71,9 @@ impl Types<'_> {
                 Word(&'static [&'static str]),
                 /// A child in this field.
                 Field(#field_ty),
-                /// A child in this field, of one of these kinds.
-                Of(#field_ty, &'static [#kind_ty]),
                 /// A child in this field, of one of these kinds or a transparent kind ending with
                 /// one.
-                Ending(#field_ty, &'static [#kind_ty]),
+                Of(#field_ty, &'static [#kind_ty]),
                 /// A child in this field starting with a token of one of these kinds.
                 Starting(#field_ty, &'static [#tokens]),
                 /// These terms in sequence, or nothing.
@@ -109,7 +110,6 @@ impl Types<'_> {
                 let variant = field(*f);
                 let (form, table) = match restriction {
                     Restriction::Of(table) => (ident("Of"), constant(&table.name)),
-                    Restriction::Ending(table) => (ident("Ending"), constant(&table.name)),
                     Restriction::Starting(table) => (ident("Starting"), constant(&table.name)),
                 };
                 quote! { #ty::#form(#field_ty::#variant, #table) }

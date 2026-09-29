@@ -1,6 +1,4 @@
-use vun_diag::errors;
-
-use super::{first, parse_text};
+use super::first;
 
 #[test]
 fn lines_hold_a_mnemonic_and_its_operands() {
@@ -28,16 +26,6 @@ fn flow_words_are_names_elsewhere() {
         "(Binding':= f (Fn'( ) (Block'{ (Asm'. a asm { (Line'push (Bound'{ out })) }) })))"
     );
     assert_eq!(first("x := asm.out;"), "(Binding':= x (Member'. asm out))");
-    assert_eq!(
-        first("f := () { if c.asm { } };"),
-        "(Binding':= f (Fn'( ) (Block'{ (If'if (Member'. c asm) (Block'{ })) })))"
-    );
-}
-
-#[test]
-fn operands_are_separated_by_commas() {
-    let (_, ids) = parse_text("f := () { a.asm {\n    mov rdi rsp\n} };");
-    assert_eq!(ids, [errors::SYNTAX_EXPECTED_TOKEN]);
 }
 
 #[test]

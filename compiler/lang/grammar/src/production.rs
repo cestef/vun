@@ -62,11 +62,8 @@ impl Element<'_> {
                 (kind == TokenKind::Ident || kind.text().is_some()) && words.contains(&text)
             }
             (NodeTerm::Field(field), Self::Child { field: child, .. }) => field == child,
-            (NodeTerm::Of(field, kinds), Self::Child { field: child, kind, .. }) => {
-                field == child && kinds.contains(&kind)
-            }
             // What recovery built at the end fits, as it fits any field: `.$` missing its name.
-            (NodeTerm::Ending(field, kinds), Self::Child { field: child, kind, ends, .. }) => {
+            (NodeTerm::Of(field, kinds), Self::Child { field: child, kind, ends, .. }) => {
                 field == child && (kinds.contains(&kind) || kinds.contains(&ends) || ends == NodeKind::Error)
             }
             (NodeTerm::Starting(field, tokens), Self::Child { field: child, first, .. }) => {
@@ -93,7 +90,6 @@ impl Matcher<'_, '_> {
             | NodeTerm::Word(_)
             | NodeTerm::Field(_)
             | NodeTerm::Of(..)
-            | NodeTerm::Ending(..)
             | NodeTerm::Starting(..) => self
                 .skipped(starts)
                 .0

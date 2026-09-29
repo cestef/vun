@@ -34,4 +34,5 @@ pub const PARTS: &[NodeKind] = &[
     NodeKind::In,
     NodeKind::Arm,
     NodeKind::ModuleDoc,
+    NodeKind::Staged,
 ];

@@ -80,17 +80,17 @@ pub(super) const NAMESPACE: &[NodeTerm] = &[
                     ),
                     NodeTerm::Sequence(
                         &[
-                            NodeTerm::Field(NodeField::Members),
+                            NodeTerm::Of(NodeField::Members, FIELDS),
                             NodeTerm::Token(&[TokenKind::Comma]),
                         ],
                     ),
-                    NodeTerm::Ending(NodeField::Members, UNTERMINATED),
+                    NodeTerm::Of(NodeField::Members, UNTERMINATED),
                     NodeTerm::Token(&[TokenKind::Semi]),
                 ],
             ),
         ],
     ),
-    NodeTerm::Optional(&[NodeTerm::Field(NodeField::Members)]),
+    NodeTerm::Optional(&[NodeTerm::Of(NodeField::Members, FIELDS)]),
 ];
 pub(super) const NAMESPACE_SLOTS: &[NodeSlot] = &[
     NodeSlot::new(NodeField::Members, Count::Many, None),

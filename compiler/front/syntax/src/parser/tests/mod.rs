@@ -1,8 +1,8 @@
 mod asm;
+mod recovery;
 
 use vun_diag::{DiagCx, DiagId, errors};
 
-use super::MAX_NESTING;
 use crate::cst::NodeId;
 use crate::cst::{Anchor, Cst};
 use crate::tokens::Tokens;
@@ -30,7 +30,6 @@ fn sexp(cst: &Cst, tokens: &Tokens, text: &str, n: NodeId) -> std::string::Strin
     out
 }
 
-/// The top-level entries of `text` and the diagnostic ids, after checking the verifier.
 /// The verified tree of `text`, its tokens, and the ids of what parsing reported.
 fn parsed(text: &str) -> (Cst, Tokens, Vec<DiagId>) {
     let file = SourceFiles::new().add("t.vun", text);
@@ -39,7 +38,8 @@ fn parsed(text: &str) -> (Cst, Tokens, Vec<DiagId>) {
     let tokens = Tokens::lex(file, text, &mut cx);
     let cst = Cst::parse(&tokens, text, &mut cx);
     assert_eq!(cst.verify(&tokens, text), Ok(()), "{text:?}");
-    (cst, tokens, diag.sorted(&origins).into_iter().map(|d| d.id.clone()).collect())
+    let ids: Vec<DiagId> = diag.sorted(&origins).into_iter().map(|d| d.id.clone()).collect();
+    (cst, tokens, ids)
 }
 
 fn parse_text(text: &str) -> (Vec<std::string::String>, Vec<DiagId>) {
@@ -66,6 +66,10 @@ fn precedence_and_associativity() {
     );
     assert_eq!(first("x := a..=b + 1;"), "(Binding':= x (Infix'..= a (Infix'+ b 1)))");
     assert_eq!(first("x := s[i..];"), "(Binding':= x (Index'[ s (Infix'.. i) ]))");
+    assert_eq!(
+        first("f := () { for a < b { c.d(e.f()); } };"),
+        "(Binding':= f (Fn'( ) (Block'{ (For'for (Infix'< a b) (Block'{ (Call'( (Member'. c d) (Call'( (Member'. e f) )) )) ; })) })))"
+    );
 }
 
 #[test]
@@ -91,6 +95,11 @@ fn groups_become_functions_by_what_follows() {
         first("f: unsafe (p: *u8) = _;"),
         "(TypedBinding': f (Prefix'unsafe (FnType'( (Param': p (Prefix'* u8)) ))) = _)"
     );
+}
+
+#[test]
+fn packs_are_parameters() {
+    assert_eq!(first("f := (..xs: T) {};"), "(Binding':= f (Fn'( (Param': (Prefix'.. xs) T) ) (Block'{ })))");
 }
 
 #[test]
@@ -179,68 +188,10 @@ fn members_fields_and_annotations() {
     );
     assert_eq!(
         first("S := struct { $for r in rs { #[a(1), b] $(r.name): u8, } };"),
-        "(Binding':= S (Struct'struct { (Prefix'$ (For'for (In'in r rs) (Block'{ (Attr'#[ (Call'( a 1 )) , b ] (Field': (Prefix'$ (Paren'( (Member'. r name) ))) u8)) , }))) }))"
+        "(Binding':= S (Struct'struct { (Staged'$ (For'for (In'in r rs) (Block'{ (Attr'#[ (Call'( a 1 )) , b ] (Field': (Prefix'$ (Paren'( (Member'. r name) ))) u8)) , }))) }))"
     );
     let entries = clean("//! m\n/// d\n#[t] x := 1;");
     assert_eq!(entries, ["//! m", "(Doc'/// d (Attr'#[ t ] (Binding':= x 1)))", ";"]);
-}
-
-#[test]
-fn errors_are_reported_once_and_the_tree_verifies() {
-    let cases: &[(&str, &[DiagId])] = &[
-        ("x := 1\ny := 2;", &[errors::SYNTAX_EXPECTED_TOKEN]),
-        ("x := ;", &[errors::SYNTAX_EXPECTED_EXPRESSION]),
-        ("x := f(a, b;", &[errors::SYNTAX_UNCLOSED_DELIMITER]),
-        ("x := f(a b);", &[errors::SYNTAX_EXPECTED_TOKEN]),
-        ("x := a < b < c;", &[errors::SYNTAX_CHAINED_OPERATOR]),
-        ("x := a.;", &[errors::SYNTAX_EXPECTED_NAME]),
-        ("f(x);", &[errors::SYNTAX_EXPECTED_TOKEN]),
-        (") x := 1;", &[errors::SYNTAX_EXPECTED_DECLARATION]),
-        ("x := { a b };", &[errors::SYNTAX_EXPECTED_TOKEN]),
-        ("x := @;", &[errors::SYNTAX_UNKNOWN_CHARACTER]),
-        ("x := match a { .b c, };", &[errors::SYNTAX_EXPECTED_TOKEN]),
-        ("x := struct { a b };", &[errors::SYNTAX_EXPECTED_TOKEN]),
-        ("x := (", &[errors::SYNTAX_UNCLOSED_DELIMITER]),
-        ("/// dangling", &[errors::SYNTAX_EXPECTED_DECLARATION]),
-    ];
-    for &(text, expected) in cases {
-        assert_eq!(parse_text(text).1, expected, "{text:?}");
-    }
-}
-
-#[test]
-fn deep_nesting_is_bounded() {
-    let depth = MAX_NESTING as usize * 2;
-    let text = format!("x := {}1{};", "(".repeat(depth), ")".repeat(depth));
-    assert_eq!(parse_text(&text).1, [errors::SYNTAX_NESTING_TOO_DEEP]);
-    let text = format!("x := {}1;", "-".repeat(depth));
-    assert_eq!(parse_text(&text).1, [errors::SYNTAX_NESTING_TOO_DEEP]);
-}
-
-#[test]
-fn long_chains_are_bounded() {
-    let links = MAX_NESTING as usize * 64;
-    for text in [
-        format!("x := 1{};", " + 1".repeat(links)),
-        format!("x := a{};", ".b".repeat(links)),
-        format!("x := f{};", "()".repeat(links)),
-        format!("x := if a {{}}{} else {{}};", " else if a {}".repeat(links)),
-    ] {
-        let (cst, _, ids) = parsed(&text);
-        assert_eq!(ids, [errors::SYNTAX_NESTING_TOO_DEEP], "{}", &text[..40]);
-        assert!(cst.depth() <= MAX_NESTING as usize + 8, "depth {}", cst.depth());
-    }
-}
-
-#[test]
-fn recovered_trees_fit_their_slots() {
-    // Inputs the fuzzer found: junk in a list, a dangling doc before a failed entry, brackets
-    // before a group that is neither a closure nor an array type, and a member named by `$` and
-    // nothing, and an attribute whose recovery took the `;` ending its entry.
-    for text in ["[)#[", "///\n'''", "[](", "[a, b](c)", ".$", ".$.", ".$[", "#[\u{5};#["] {
-        let (_, ids) = parse_text(text);
-        assert!(!ids.is_empty(), "{text:?} should report");
-    }
 }
 
 #[test]

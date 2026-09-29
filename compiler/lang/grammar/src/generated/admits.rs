@@ -15,7 +15,7 @@ pub struct AdmitsRow {
 /// and patterns.
 pub const ADMITS: &[AdmitsRow] = &[
     AdmitsRow {
-        fields: &[NodeField::Members, NodeField::Statements, NodeField::Target],
+        fields: &[NodeField::Statements],
         kinds: &[
             NodeKind::Binding,
             NodeKind::TypedBinding,
@@ -23,6 +23,7 @@ pub const ADMITS: &[AdmitsRow] = &[
             NodeKind::Assign,
             NodeKind::Spread,
             NodeKind::ModuleDoc,
+            NodeKind::Staged,
         ],
     },
     AdmitsRow {
@@ -33,7 +34,7 @@ pub const ADMITS: &[AdmitsRow] = &[
             NodeField::Fields,
             NodeField::Variants,
         ],
-        kinds: &[NodeKind::FieldInit],
+        kinds: &[NodeKind::FieldInit, NodeKind::Staged],
     },
     AdmitsRow {
         fields: &[NodeField::Params],
@@ -42,5 +43,13 @@ pub const ADMITS: &[AdmitsRow] = &[
     AdmitsRow {
         fields: &[NodeField::Head, NodeField::Condition],
         kinds: &[NodeKind::Test, NodeKind::In],
+    },
+    AdmitsRow {
+        fields: &[NodeField::Pattern],
+        kinds: &[NodeKind::Binding],
+    },
+    AdmitsRow {
+        fields: &[NodeField::Body],
+        kinds: &[NodeKind::Assign],
     },
 ];

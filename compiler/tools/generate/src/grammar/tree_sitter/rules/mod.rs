@@ -171,6 +171,9 @@ impl<'m> Rules<'m> {
                 if contents.operands {
                     rules.push(operand);
                 }
+                // A transparent node's last child stands where it stands, holding what it holds.
+                let name = ["as_", self.model.field_name(field)].concat();
+                rules.extend(self.transparent_holding(&name, &|| self.content(field, context)));
                 Rule::choice(rules)
             }
             None => operand,

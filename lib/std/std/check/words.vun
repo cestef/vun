@@ -18,6 +18,11 @@ Words := struct {
         unsafe lang.mem.atomic_store(usize, self._at(i), value, .relaxed)
     };
 
+    /// Sets the `i`th word to `value` where it is 0; returns what it was.
+    settle := (self: Words, i: usize, value: usize) -> usize {
+        unsafe lang.mem.atomic_compare_swap(usize, self._at(i), 0, value, .acq_rel)
+    };
+
     /// The words from the `i`th on.
     from := (self: Words, i: usize) -> Words { .{ ._base = self._at(i) } };
 

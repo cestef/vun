@@ -1,27 +1,27 @@
 //! Parser diagnostics: one report per position, placed where the absent thing belongs.
 
-use vun_diag::{ChildKind, DiagId, Diagnostic, Fix, Msg, Safety, errors};
+use vun_diag::{ChildKind, Diagnostic, Fix, Msg, Safety, errors};
 use vun_grammar::TokenKind;
 use vun_index::Idx;
 use vun_span::{ByteRange, Span};
+use vun_trace::tracing;
 
-use super::{List, Parser};
+use super::Parser;
 use crate::lexer::ESCAPE;
 use crate::tokens::TokenId;
 
 impl Parser<'_, '_, '_> {
     pub(super) fn report(&mut self, span: Span, d: Diagnostic) {
-        // One position reports once, and the lexer already reported its malformed tokens.
-        if self.reported == Some(self.pos) || self.tokens.diagnosed(self.current()) {
+        // One position reports once, the lexer already reported its malformed tokens, and what
+        // goes wrong before the productions read on in place follows from the last error.
+        let fallout = self.quiet || self.reported == Some(self.pos) || self.tokens.diagnosed(self.current());
+        self.quiet = true;
+        tracing::trace!(at = self.pos, id = ?d.id, fallout, "report");
+        if fallout {
             return;
         }
         self.reported = Some(self.pos);
         self.cx.error_at(span, d);
-    }
-
-    pub(super) fn report_here(&mut self, id: DiagId, msg: Msg) {
-        let span = self.tokens.span(self.current());
-        self.report(span, Diagnostic::error(id, msg));
     }
 
     pub(super) fn report_expected(&mut self, expected: &[TokenKind]) {
@@ -50,11 +50,6 @@ impl Parser<'_, '_, '_> {
         Fix::replace(msg, Safety::Unsafe, self.tokens.span(token), escaped)
     }
 
-    /// Reports something absent right after the previous token, where it belongs.
-    pub(super) fn report_missing(&mut self, id: DiagId, msg: Msg) {
-        self.report(self.gap(), Diagnostic::error(id, msg));
-    }
-
     /// The current or previous token, if it is a keyword that may have been meant as a name.
     pub(super) fn nearby_keyword(&self) -> Option<TokenId> {
         let previous = self.pos.checked_sub(1).map(TokenId::new);
@@ -75,15 +70,15 @@ impl Parser<'_, '_, '_> {
         }
     }
 
-    pub(super) fn report_expected_entry(&mut self, list: List) {
-        let (id, what) = match list {
-            List::Members => (errors::SYNTAX_EXPECTED_DECLARATION, "expected a declaration, found "),
-            List::Statements | List::Items(_) => {
-                (errors::SYNTAX_EXPECTED_EXPRESSION, "expected an expression, found ")
-            }
-        };
-        let msg = self.found(Msg::new().text(what));
-        self.report_here(id, msg);
+    /// Reports the group `open` opened, unclosed before the current token.
+    pub(super) fn report_unclosed(&mut self, open: TokenId, close: TokenKind) {
+        let msg = Msg::new().text("unclosed ").code(self.text(open).to_owned());
+        let closer = close.text().unwrap_or_default();
+        let help = Msg::new().text("expected ").code(closer).text(", found ");
+        let d = Diagnostic::error(errors::SYNTAX_UNCLOSED_DELIMITER, msg)
+            .child(ChildKind::Help, self.found(help))
+            .fix(self.insertion(closer));
+        self.report(self.tokens.span(open), d);
     }
 
     pub(super) fn report_chained(&mut self) {

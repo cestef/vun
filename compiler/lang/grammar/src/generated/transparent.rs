@@ -11,12 +11,20 @@ pub struct TransparentRow {
     pub kind: NodeKind,
     pub tokens: &'static [TokenKind],
 }
-/// Kinds that end with the kind of their last child when written with one of the tokens listed,
-/// where a production says so (`.ending`): `$if a {}` and `unsafe {}` are unterminated as an `if`
-/// and a block are.
+/// Kinds that end with the kind of their last child when written with one of the tokens listed:
+/// `unsafe {}` is unterminated as a block is, `.$(e)` names a member as `.(e)` would, and
+/// `#[a] x: T,` is a field as `x: T,` is.
 pub const TRANSPARENT: &[TransparentRow] = &[
     TransparentRow {
         kind: NodeKind::Prefix,
         tokens: &[TokenKind::Dollar, TokenKind::Unsafe],
+    },
+    TransparentRow {
+        kind: NodeKind::Doc,
+        tokens: &[TokenKind::DocComment],
+    },
+    TransparentRow {
+        kind: NodeKind::Attr,
+        tokens: &[TokenKind::HashLBracket],
     },
 ];

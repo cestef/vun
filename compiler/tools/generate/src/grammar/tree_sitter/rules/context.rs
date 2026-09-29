@@ -44,11 +44,8 @@ impl Rules<'_> {
         Rule::symbol(&name)
     }
 
-    /// The tokens a production of `kind` may start with, if it starts with one.
+    /// The tokens a production of `kind` may start with.
     fn first_tokens(&self, kind: Kind) -> Vec<Token> {
-        match self.model.production(kind) {
-            Some([Term::Tokens(tokens), ..]) => tokens.clone(),
-            _ => Vec::new(),
-        }
+        self.model.production(kind).map(Term::first_tokens).unwrap_or_default()
     }
 }

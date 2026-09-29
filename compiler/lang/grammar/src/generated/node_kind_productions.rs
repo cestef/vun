@@ -63,6 +63,7 @@ impl NodeKind {
             Self::Continue => node_kind_control::CONTINUE_SLOTS,
             Self::Yield => node_kind_control::YIELD_SLOTS,
             Self::Defer => node_kind_control::DEFER_SLOTS,
+            Self::Staged => node_kind_control::STAGED_SLOTS,
             Self::Asm => node_kind_assembly::ASM_SLOTS,
             Self::Line => node_kind_assembly::LINE_SLOTS,
             Self::Suffix => node_kind_assembly::SUFFIX_SLOTS,
@@ -114,19 +115,6 @@ impl NodeKind {
             Self::StructLit => &[TokenKind::DotLBrace],
             Self::MultilineString => &[TokenKind::RawStringLine],
             Self::DotName => &[TokenKind::Dot],
-            Self::Prefix => {
-                &[
-                    TokenKind::Minus,
-                    TokenKind::Bang,
-                    TokenKind::Tilde,
-                    TokenKind::Amp,
-                    TokenKind::Star,
-                    TokenKind::Question,
-                    TokenKind::DotDot,
-                    TokenKind::Dollar,
-                    TokenKind::Unsafe,
-                ]
-            }
             Self::If => &[TokenKind::If],
             Self::For => &[TokenKind::For],
             Self::Match => &[TokenKind::Match],
@@ -137,6 +125,7 @@ impl NodeKind {
             Self::Continue => &[TokenKind::Continue],
             Self::Yield => &[TokenKind::Yield],
             Self::Defer => &[TokenKind::Defer],
+            Self::Staged => &[TokenKind::Dollar],
             Self::Line => {
                 &[
                     TokenKind::Ident,
@@ -233,12 +222,13 @@ impl NodeKind {
             Self::Continue => Some(node_kind_control::CONTINUE),
             Self::Yield => Some(node_kind_control::YIELD),
             Self::Defer => Some(node_kind_control::DEFER),
+            Self::Staged => Some(node_kind_control::STAGED),
             Self::Asm => Some(node_kind_assembly::ASM),
             Self::Line => Some(node_kind_assembly::LINE),
             Self::Suffix => Some(node_kind_assembly::SUFFIX),
             Self::Bound => Some(node_kind_assembly::BOUND),
             Self::Memory => Some(node_kind_assembly::MEMORY),
-            Self::Punct => None,
+            Self::Punct | Self::Skipped => None,
         }
     }
 }

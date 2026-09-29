@@ -84,7 +84,7 @@ impl<'s> Reader<'_, 's> {
 
     fn read(&self, n: NodeId) -> Option<Literal<'s>> {
         let children = self.children(n);
-        let items = || children.iter().copied().filter(|&c| self.cst.kind(c) != NodeKind::Punct);
+        let items = || children.iter().copied().filter(|&c| !self.cst.kind(c).is_token());
         Some(match self.cst.kind(n) {
             NodeKind::DotName => Literal::Name(self.name(*children.first()?)?),
             NodeKind::Hole => Literal::Hole,

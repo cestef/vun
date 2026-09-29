@@ -50,9 +50,9 @@ impl Tok {
         if SEPARATORS.contains(&next.kind) || between.closed == Some(NodeKind::ArrayType) {
             return false;
         }
-        // Operators are tight to their operand: `-x`, `&mut x`, `$f`, `..rest`, `x.*`, `a.b`.
-        let prefix =
-            matches!(self.anchor, Some(NodeKind::Prefix | NodeKind::Spread)) && !self.kind.is_keyword();
+        // Operators are tight to their operand: `-x`, `&mut x`, `$f`, `$for`, `..rest`, `x.*`, `a.b`.
+        let prefix = matches!(self.anchor, Some(NodeKind::Prefix | NodeKind::Spread | NodeKind::Staged))
+            && !self.kind.is_keyword();
         let dot = |t: Self| {
             t.kind == TokenKind::Dot
                 && matches!(
