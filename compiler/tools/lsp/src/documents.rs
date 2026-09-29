@@ -107,7 +107,7 @@ impl Server<'_> {
     }
 
     /// `d` as the protocol shows it in `document`, if it is shown there (spec 10, section 6).
-    fn diagnostic(&self, d: &Diagnostic, document: &Document) -> Option<protocol::Diagnostic> {
+    pub(crate) fn diagnostic(&self, d: &Diagnostic, document: &Document) -> Option<protocol::Diagnostic> {
         let span = self.session.source_span(d.primary.as_ref()?.origin);
         if span.file != document.file {
             return None;

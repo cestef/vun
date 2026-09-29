@@ -4,7 +4,7 @@
 //! from its value as sema computes it.
 
 mod lexical;
-mod names;
+pub(super) mod names;
 
 use vun_span::{ByteRange, FileId};
 use vun_variants::Variants;

@@ -1282,6 +1282,28 @@ Server Protocol: JSON-RPC messages framed by `Content-Length` headers. It is a t
   where it is used by what it resolves to: a parameter, a local, a member of a struct, a variant,
   or a declaration classed by the value sema computes for it (a type, a function, a namespace, a
   constant). Modifiers say a declaration, `mut`, `$` and documentation.
+- *References and rename.* At a name, or at the binder declaring it, the declaration it names
+  and every place naming it: its binder, and each name, member and path that resolution and sema
+  lead to it, matched by declaration and name together (one pattern declares several names). A
+  local is searched in its file; a declaration in the files of its package and of the package
+  asking, in parallel. Renaming edits each of those places, the new name spelled as the source
+  writes it (escaped when it is a keyword); it is refused when the new text is not a name, when
+  nothing is named at the position, for a namespace (named by its file) and for a declaration of
+  another package. Edits name the version of each document the client holds.
+- *Code actions.* The fixes of the diagnostics over the range asked about, each a quick fix
+  applying its edits, except those only shown and those whose edits are in an earlier text of
+  their file.
+- *Signature help.* In the arguments of a call, its callee's declaration as the source writes it
+  (its name, parameters and result, from a function literal or else a function type), each
+  parameter, the one the argument at the position fills, and its doc comment.
+- *Inlay hints.* After the name of each binding without a type, the type of its value, as hover
+  shows it; none for a value that is a function, a struct or an enum, which says what it is.
+- *Completion.* After `.`, the members of what is before it: a namespace's (all of them in the
+  asking package, else the public), or the fields, declarations and variants of the struct or
+  enum it is or has the type of, through a pointer. Elsewhere, the names in scope: the parameters
+  and locals of the function holding the position declared before it, the file's declarations,
+  and the names the package's files see from outside them. Each is classed as semantic tokens
+  class it.
 - *Positions* are counted in the encoding the client and the server agree on at initialization:
   UTF-8 when the client offers it, else UTF-32, else UTF-16, converted through each version's
   line index.

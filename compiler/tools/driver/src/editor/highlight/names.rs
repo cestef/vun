@@ -18,7 +18,7 @@ use super::{Class, Modifier, Modifiers};
 use crate::Session;
 
 /// Where the names of a file are declared and used.
-pub(super) struct Names {
+pub(in crate::editor) struct Names {
     key: FileRef,
     /// Each binder, by where its name starts.
     binders: HashMap<u32, BinderId>,
@@ -28,7 +28,7 @@ pub(super) struct Names {
 }
 
 impl Names {
-    pub(super) fn of(session: &mut Session, file: FileId, parsed: &ParsedFile) -> Self {
+    pub(in crate::editor) fn of(session: &mut Session, file: FileId, parsed: &ParsedFile) -> Self {
         let key = session.file_ref(file);
         let hir = &parsed.hir;
         let at = |origin| {
@@ -90,7 +90,12 @@ impl Names {
 
     /// What the binder `b` names: a member classed by its declaration's value, a parameter, or a
     /// local.
-    fn binder(&self, session: &Session, parsed: &ParsedFile, b: BinderId) -> (Class, Modifiers) {
+    pub(in crate::editor) fn binder(
+        &self,
+        session: &Session,
+        parsed: &ParsedFile,
+        b: BinderId,
+    ) -> (Class, Modifiers) {
         let hir = &parsed.hir;
         let binder = &hir.binders[b];
         let modifiers = Modifiers::default()
@@ -115,7 +120,7 @@ impl Names {
     }
 
     /// The class of the declaration `decl`, by the value sema computes for it.
-    fn declared(session: &Session, decl: &DeclRef) -> (Class, Modifiers) {
+    pub(in crate::editor) fn declared(session: &Session, decl: &DeclRef) -> (Class, Modifiers) {
         let plain = |class| (class, Modifiers::default());
         match session.db.get::<DeclValue>(decl) {
             Ok(Value::Type(_) | Value::Primitive(_)) => plain(Class::Type),

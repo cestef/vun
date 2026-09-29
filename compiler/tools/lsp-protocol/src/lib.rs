@@ -2,8 +2,10 @@
 //! framing aside, every value a method exchanges is a struct or enum here, and every method a type
 //! naming its parameters and result.
 
+pub mod assist;
 pub mod base;
 pub mod document;
+pub mod edit;
 pub mod language;
 pub mod lifecycle;
 pub mod methods;

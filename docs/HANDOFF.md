@@ -7,7 +7,7 @@ Read `CLAUDE.md` and [`dev/workflow.md`](dev/workflow.md) first.
 
 ## State
 
-Everything is committed in the main chain; no `jj` workspace holds work. 637 tests pass; clippy,
+Everything is committed in the main chain; no `jj` workspace holds work. 650 tests pass; clippy,
 `cargo gen --check`, `lines` and `layers` are clean; the corpus has 295 passing programs.
 
 Built: the front end, packages and the store, the persisted parallel query engine, sema, MIR and
@@ -59,8 +59,9 @@ Proposed, not yet accepted: 249 to 251, 253 to 257, 259, 260, 262, 265, 266, 268
 (clocks), 283 (query soundness), 284 (files, typed errors, builds checking library bodies), 316
 (JSON derives), 317 (`vun-uri`, typed manifest URLs), 318 (typed LSP, its new features), 319
 (productions), 320 (`vun-data`), 321 (editor grammars and packages), 322 (declaration origins
-counted by name), 323 (the grammar read by type into one model, `editors.vun`, operand contexts). 279 (static Linux targets) and 282 (`&mut T` where `&T` is) were the owner's
-choice.
+counted by name), 323 (the grammar read by type into one model, `editors.vun`, operand contexts),
+324 (language server features). 279 (static Linux targets) and 282 (`&mut T` where `&T` is) were
+the owner's choice.
 
 ## Known gaps in landed work
 

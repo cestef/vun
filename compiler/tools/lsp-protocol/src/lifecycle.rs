@@ -73,6 +73,18 @@ pub struct ServerCapabilities {
     pub document_formatting_provider: Option<bool>,
     pub folding_range_provider: Option<bool>,
     pub semantic_tokens_provider: Option<SemanticTokensOptions>,
+    pub references_provider: Option<bool>,
+    pub rename_provider: Option<bool>,
+    pub code_action_provider: Option<CodeActionOptions>,
+    pub signature_help_provider: Option<crate::assist::SignatureHelpOptions>,
+    pub inlay_hint_provider: Option<bool>,
+    pub completion_provider: Option<crate::assist::CompletionOptions>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, ToData, FromData)]
+#[data(case = camel)]
+pub struct CodeActionOptions {
+    pub code_action_kinds: Vec<crate::edit::CodeActionKind>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, ToData, FromData)]

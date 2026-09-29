@@ -1,16 +1,27 @@
 //! What an editor asks of the files it holds (spec 13, section 11): what checking one reports,
 //! the expression at a position with its type and the documentation of what it names, where a
-//! name at a position is declared, the file's outline, folds, highlights and formatted text, each
-//! over the queries `vun check` computes.
+//! name at a position is declared and named, renaming it, the signature of a call being written,
+//! the types code leaves unwritten, the names that may be written, the file's outline, folds,
+//! highlights and formatted text, each over the queries `vun check` computes.
 
+mod complete;
 mod folds;
 mod format;
 mod highlight;
+mod hints;
 mod outline;
+mod references;
+mod rename;
+mod signature;
 
+pub use complete::Completion;
 pub use folds::{Fold, FoldKind};
 pub use highlight::{Class, Highlight, Modifier, Modifiers};
+pub use hints::TypeHint;
 pub use outline::{Symbol, SymbolKind};
+pub use references::Occurrences;
+pub use rename::{Renamed, Unrenamed};
+pub use signature::Signature;
 
 use std::path::PathBuf;
 

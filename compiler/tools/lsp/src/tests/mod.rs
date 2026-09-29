@@ -1,3 +1,5 @@
+mod assist;
+mod edit;
 mod features;
 mod session;
 mod wire;

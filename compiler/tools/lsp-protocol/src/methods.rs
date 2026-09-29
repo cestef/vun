@@ -3,7 +3,7 @@
 
 use vun_data::{FromData, ToData, Value};
 
-use crate::{base, document, language, lifecycle};
+use crate::{assist, base, document, edit, language, lifecycle};
 
 /// A method answered by a response.
 pub trait Request {
@@ -34,7 +34,7 @@ macro_rules! methods {
 
 /// The requests, by the types naming them.
 pub mod requests {
-    use super::{Request, Value, base, language, lifecycle};
+    use super::{Request, Value, assist, base, edit, language, lifecycle};
 
     methods!(Request {
         Initialize = "initialize": lifecycle::InitializeParams => lifecycle::InitializeResult;
@@ -45,6 +45,12 @@ pub mod requests {
         SemanticTokens = "textDocument/semanticTokens/full": base::TextDocumentParams => language::SemanticTokens;
         Formatting = "textDocument/formatting": language::FormattingParams => Option<Vec<base::TextEdit>>;
         FoldingRange = "textDocument/foldingRange": base::TextDocumentParams => Vec<language::FoldingRange>;
+        References = "textDocument/references": edit::ReferenceParams => Vec<base::Location>;
+        Rename = "textDocument/rename": edit::RenameParams => Option<edit::WorkspaceEdit>;
+        CodeAction = "textDocument/codeAction": edit::CodeActionParams => Vec<edit::CodeAction>;
+        SignatureHelp = "textDocument/signatureHelp": base::TextDocumentPositionParams => Option<assist::SignatureHelp>;
+        InlayHint = "textDocument/inlayHint": assist::InlayHintParams => Option<Vec<assist::InlayHint>>;
+        Completion = "textDocument/completion": base::TextDocumentPositionParams => Vec<assist::CompletionItem>;
     });
 }
 

@@ -75,4 +75,6 @@ pub enum ErrorCode {
     ServerNotInitialized = -32002,
     RequestCancelled = -32800,
     ContentModified = -32801,
+    /// A request understood and valid, which the server cannot carry out.
+    RequestFailed = -32803,
 }

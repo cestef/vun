@@ -4,9 +4,13 @@
 //! derived from the rows.
 
 use vun_data::{ToData, Value};
+use vun_grammar::TokenKind;
+use vun_lsp_protocol::assist::{CompletionOptions, SignatureHelpOptions};
+use vun_lsp_protocol::edit::CodeActionKind;
 use vun_lsp_protocol::language::SemanticTokensLegend;
 use vun_lsp_protocol::lifecycle::{
-    SemanticTokensOptions, ServerCapabilities, TextDocumentSyncKind, TextDocumentSyncOptions,
+    CodeActionOptions, SemanticTokensOptions, ServerCapabilities, TextDocumentSyncKind,
+    TextDocumentSyncOptions,
 };
 use vun_lsp_protocol::{Notification, Request, notifications as n, requests as r};
 
@@ -49,6 +53,12 @@ pub(crate) enum Capability {
     Formatting,
     Folding,
     SemanticTokens,
+    References,
+    Rename,
+    CodeActions,
+    SignatureHelp,
+    InlayHints,
+    Completion,
 }
 
 impl Capability {
@@ -69,6 +79,23 @@ impl Capability {
                 let legend = SemanticTokensLegend::all();
                 capabilities.semantic_tokens_provider =
                     Some(SemanticTokensOptions { legend, full: true, range: false });
+            }
+            Self::References => capabilities.references_provider = Some(true),
+            Self::Rename => capabilities.rename_provider = Some(true),
+            Self::CodeActions => {
+                let kinds = vec![CodeActionKind::QuickFix];
+                capabilities.code_action_provider = Some(CodeActionOptions { code_action_kinds: kinds });
+            }
+            Self::SignatureHelp => {
+                let triggers = [TokenKind::LParen, TokenKind::Comma];
+                let trigger_characters =
+                    triggers.iter().filter_map(|t| t.text()).map(str::to_owned).collect();
+                capabilities.signature_help_provider = Some(SignatureHelpOptions { trigger_characters });
+            }
+            Self::InlayHints => capabilities.inlay_hint_provider = Some(true),
+            Self::Completion => {
+                let trigger_characters = TokenKind::Dot.text().map(str::to_owned).into_iter().collect();
+                capabilities.completion_provider = Some(CompletionOptions { trigger_characters });
             }
         }
     }
@@ -137,6 +164,12 @@ pub(crate) const METHODS: &[Method] = &[
     feature::<r::Formatting>(Capability::Formatting),
     feature::<r::FoldingRange>(Capability::Folding),
     feature::<r::SemanticTokens>(Capability::SemanticTokens),
+    feature::<r::References>(Capability::References),
+    feature::<r::Rename>(Capability::Rename),
+    feature::<r::CodeAction>(Capability::CodeActions),
+    feature::<r::SignatureHelp>(Capability::SignatureHelp),
+    feature::<r::InlayHint>(Capability::InlayHints),
+    feature::<r::Completion>(Capability::Completion),
 ];
 
 impl Method {

@@ -6,7 +6,8 @@ use std::fmt::{self, Write as _};
 use vun_grammar::TokenKind;
 
 use super::{Decl, Literal};
-use crate::lexer::{ESCAPE, SIMPLE_ESCAPES, is_ident};
+use crate::lexer::{ESCAPE, SIMPLE_ESCAPES};
+use crate::tokens::Tokens;
 
 /// Why a value has no literal source.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -95,13 +96,8 @@ impl Writer {
 
     /// `name`, escaped when it is a keyword.
     pub(crate) fn binder(&mut self, name: &str) -> Result<&mut Self, Unwritable> {
-        if !is_ident(name) {
-            return Err(Unwritable::Name);
-        }
-        if TokenKind::keyword(name).is_some() {
-            self.out.push(ESCAPE);
-        }
-        Ok(self.text(name))
+        let spelled = Tokens::spell_name(name).ok_or(Unwritable::Name)?;
+        Ok(self.text(&spelled))
     }
 
     /// `.name`

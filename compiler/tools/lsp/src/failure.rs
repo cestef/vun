@@ -4,6 +4,7 @@
 use std::fmt;
 
 use vun_data::Mismatch;
+use vun_driver::editor::Unrenamed;
 use vun_lsp_protocol::rpc::{ErrorCode, ResponseError};
 use vun_uri::NotFile;
 
@@ -37,6 +38,7 @@ pub(crate) enum Reason {
     Closed,
     /// The document named is not a local file.
     NotLocal(NotFile),
+    Rename(Unrenamed),
 }
 
 impl Failure {
@@ -67,6 +69,7 @@ impl fmt::Display for Failure {
             Reason::ShutDown => f.write_str("the server is shut down"),
             Reason::Closed => f.write_str("the document is not open"),
             Reason::NotLocal(not) => write!(f, "the document is not a local file: {not}"),
+            Reason::Rename(unrenamed) => write!(f, "cannot rename: {unrenamed}"),
         }
     }
 }
@@ -78,6 +81,7 @@ impl std::error::Error for Failure {
             Reason::Json(e) => Some(e),
             Reason::Message(e) | Reason::Params(e) => Some(e),
             Reason::NotLocal(e) => Some(e),
+            Reason::Rename(e) => Some(e),
             Reason::Nothing | Reason::Method | Reason::Uninitialized | Reason::ShutDown | Reason::Closed => {
                 None
             }

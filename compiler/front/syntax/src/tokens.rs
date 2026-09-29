@@ -11,6 +11,8 @@ use vun_grammar::TokenKind;
 use vun_index::{Idx, IndexVec, index};
 use vun_span::{ByteRange, FileId, Span};
 
+use crate::lexer::{ESCAPE, is_ident};
+
 index! {
     pub struct TokenId;
     pub struct TriviaId;
@@ -35,6 +37,14 @@ pub struct Tokens {
 }
 
 impl Tokens {
+    /// The source text naming `name`: itself, after `\` when it is a keyword; `None` when it does
+    /// not lex as a name.
+    #[must_use]
+    pub fn spell_name(name: &str) -> Option<String> {
+        let escape = TokenKind::keyword(name).map(|_| ESCAPE);
+        is_ident(name).then(|| escape.into_iter().chain(name.chars()).collect())
+    }
+
     #[must_use]
     pub fn file(&self) -> FileId {
         self.file

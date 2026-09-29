@@ -19,7 +19,7 @@ const LANGUAGE: &str = "vun";
 
 impl Server<'_> {
     /// The file and byte offset `params` name.
-    fn at(&self, params: &TextDocumentPositionParams) -> Result<(FileId, u32), Failure> {
+    pub(crate) fn at(&self, params: &TextDocumentPositionParams) -> Result<(FileId, u32), Failure> {
         let document = self.document(&params.text_document)?;
         let text = self.session.text(document.file);
         let offset = document.lines.offset(text, params.position, self.encoding);
