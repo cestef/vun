@@ -129,3 +129,17 @@ fn an_origin_recorded_in_an_earlier_text_is_found_where_it_is_now() {
     // Read as recorded, as a compilation reading the earlier text does.
     assert_eq!(Resolve::source_span(&t, lowered), Span::new(then, 20, 25));
 }
+
+#[test]
+fn a_file_shown_at_another_path_keeps_the_identities_of_its_origins() {
+    use vun_intern::Symbol;
+    use vun_span::FileRef;
+    // One file, read from one fixture and from saved memos written by another at another path.
+    let files = SourceFiles::new();
+    let key = FileRef::loose("app.vun");
+    let [here, saved] = ["/one/app.vun", "/two/app.vun"].map(|path| files.add_as(key.clone(), path, "text"));
+    assert_ne!(here, saved);
+    let t = OriginTable::new();
+    let decl = t.declaration(Span::new(here, 10, 20), None, Symbol::intern("main"));
+    assert_eq!(t.inside(decl, Span::new(here, 12, 14)), t.inside(decl, Span::new(saved, 12, 14)));
+}
