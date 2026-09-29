@@ -3,6 +3,7 @@ name = "vun-generate"
 description = "Rust sources generated from Vun sources: grammar, tables, diagnostic ids, primitives, item handles."
 version.workspace = true
 edition.workspace = true
+license.workspace = true
 rust-version.workspace = true
 publish.workspace = true
 

@@ -19,21 +19,30 @@ use quote::quote;
 use vun_diag::{DiagId, Msg};
 use vun_syntax::literal::{Decl, Literal};
 
-use crate::generate::{Generator, Module, Read, Source};
+use crate::generate::{Emit, Generator, Module, Read, Source};
 
+mod editor;
 mod enums;
 mod slots;
 mod tables;
 
 use crate::names::{Name, docs};
 
+pub(crate) use editor::EDITOR;
+
 /// The directory both files are in.
 const SYNTAX: &str = "lib/lang/lang/syntax";
 
-pub(crate) const GENERATOR: Generator =
-    Generator { source: SYNTAX, output: "compiler/lang/grammar/src/generated", emit: emit_grammar };
-pub(crate) const DESUGAR: Generator =
-    Generator { source: SYNTAX, output: "compiler/front/desugar/src/generated", emit: emit_desugar };
+pub(crate) const GENERATOR: Generator = Generator {
+    source: SYNTAX,
+    output: "compiler/lang/grammar/src/generated",
+    emit: Emit::Rust(emit_grammar),
+};
+pub(crate) const DESUGAR: Generator = Generator {
+    source: SYNTAX,
+    output: "compiler/front/desugar/src/generated",
+    emit: Emit::Rust(emit_desugar),
+};
 
 /// The file of each, by stem.
 const GRAMMAR_FILE: &str = "grammar";

@@ -362,6 +362,12 @@ handle, and what it depends on that is generated (token and node kinds, diagnost
 nothing else, so a generated change breaking any consumer never keeps it from running again
 (decision 132).
 
+The same task writes `editors/sublime/vun.sublime-syntax`, the highlighting that editors, the
+whitepaper and the README's code card read (through syntect): keywords, contextual words, borrow
+and flow words and every punctuation token come from `grammar.vun`, each punctuation token scoped
+by the tables it is in (`assign`, `infix`, ...), and the tokens the lexer reads by hand
+(comments, strings, numbers, labels) from the lexer's constants.
+
 **Node fields.** A branch kind declares its children as tagged slots, in source order and without
 punctuation: `.binding(.optional(.\mut), .one(.pattern), .one(.value))`. A slot is `one`,
 `optional` or `many`; a field named after a node kind holds a node of that kind, any other field
@@ -1109,21 +1115,21 @@ in registers a call may overwrite, none saved.
 ```
 compiler/
   base/    index  span  intern  origin  diag  query  pass  tool  target  trace  json  codec
-           codec-derive  hash  graph  fs  outline  par  suggest  term  bytes  harness
+           codec-derive  hash  graph  fs  outline  par  suggest  term  bytes  harness  html
   lang/    grammar  items  primitives            Rust views generated from lib/lang
   isa/     api  inline  x86_64  arm64  thumb     instruction sets, one table each
-  object/  core  dwarf                           object files and debug information as data
+  object/  core  elf  dwarf                      object files and debug information as data
   front/   desugar  syntax  hir
   sema/    int  float  ty  core  plan            types as values; `core` (`vun-sema`) checks and evaluates
-  mid/     mir  passes  interp
+  mid/     mir  passes  interp  sanitize
   low/     lir  lower  abi  passes
   back/    api  codegen  regalloc  c  wasm  cranelift  qbe  llvm  external
   asm/     core  x86_64  arm64  thumb            assemblers over the isa tables
-  native/  core  x86_64  arm64  backend          the native backend, an architecture per crate
+  native/  core  x86_64  arm64  thumb  backend   the native backend, an architecture per crate
   link/    api  wild  mold  lld  gnu  msvc  ar  external
   render/  short  annotate  ariadne  json  sarif
   pkg/     build  fetch  http                    manifests, locks, the store, fetching
-  tools/   fmt  reduce  bind  clang  command  driver  lsp  cli  generate  xtask
+  tools/   fmt  reduce  bind  clang  command  doc  driver  lsp  cli  generate  xtask
 fuzz/      cargo-fuzz targets over the verifiers, a workspace member
 lib/
   lang/     primitives (declarations with `= _`), syntax/grammar.vun and syntax/desugar.vun

@@ -7,11 +7,11 @@ use vun_syntax::literal::Literal;
 use super::emit::Crate;
 use super::spell::{implicit, int, option};
 use super::{ARCH, Table};
-use crate::generate::{Generator, Module, Read, Source};
+use crate::generate::{Emit, Generator, Module, Read, Source};
 use crate::names::pascal;
 
 pub(crate) const X86_64: Generator =
-    Generator { source: ARCH, output: "compiler/isa/x86_64/src/generated", emit };
+    Generator { source: ARCH, output: "compiler/isa/x86_64/src/generated", emit: Emit::Rust(emit) };
 
 const CRATE: Crate = Crate {
     generator: &X86_64,

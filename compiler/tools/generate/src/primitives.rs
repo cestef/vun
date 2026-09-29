@@ -17,12 +17,15 @@ use vun_build::layout::SEPARATOR;
 use vun_diag::{DiagId, Msg};
 use vun_syntax::literal::Literal;
 
-use crate::generate::{Access, Generator, Module, Read, Source};
+use crate::generate::{Access, Emit, Generator, Module, Read, Source};
 use crate::items;
 use crate::names::{docs, ident, pascal, raw};
 
-pub(crate) const GENERATOR: Generator =
-    Generator { source: "lib/lang", output: "compiler/lang/primitives/src/generated", emit };
+pub(crate) const GENERATOR: Generator = Generator {
+    source: "lib/lang",
+    output: "compiler/lang/primitives/src/generated",
+    emit: Emit::Rust(emit),
+};
 
 /// The module of the enum over every namespace's primitives.
 const PRIMITIVE_MODULE: &str = "primitive";

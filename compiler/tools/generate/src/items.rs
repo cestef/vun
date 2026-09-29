@@ -18,17 +18,20 @@ use quote::quote;
 use vun_build::layout::SEPARATOR;
 use vun_syntax::literal::Decl;
 
-use crate::generate::{Access, Generator, Module, Read, Source};
+use crate::generate::{Access, Emit, Generator, Module, Read, Source};
 use crate::names::{docs, raw};
 
 pub(crate) const LANG: Generator =
-    Generator { source: "lib/lang", output: "compiler/lang/items/src/lang", emit };
+    Generator { source: "lib/lang", output: "compiler/lang/items/src/lang", emit: Emit::Rust(emit) };
 pub(crate) const STD: Generator =
-    Generator { source: "lib/std", output: "compiler/lang/items/src/std", emit };
+    Generator { source: "lib/std", output: "compiler/lang/items/src/std", emit: Emit::Rust(emit) };
 /// `targets` has handles for its root file only, such as `targets.hosts`: a target is a file of
 /// its own, so adding one generates nothing.
-pub(crate) const TARGETS: Generator =
-    Generator { source: "lib/targets", output: "compiler/lang/items/src/targets", emit: emit_root };
+pub(crate) const TARGETS: Generator = Generator {
+    source: "lib/targets",
+    output: "compiler/lang/items/src/targets",
+    emit: Emit::Rust(emit_root),
+};
 
 /// The crate the handles are generated into.
 const CRATE: &str = "vun_items";

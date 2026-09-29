@@ -77,7 +77,7 @@
   // Code: a quiet panel with room around it.
   // Code: a quiet panel with room around it. Terminal sessions (`term`) are shown as the
   // terminal shows them, on a dark panel with the renderer's colors.
-  set raw(syntaxes: ("vun.sublime-syntax", "term.sublime-syntax"))
+  set raw(syntaxes: ("/editors/sublime/vun.sublime-syntax", "term.sublime-syntax"))
   set raw(theme: "vun.tmTheme")
   show raw.where(lang: "term"): set raw(theme: "term.tmTheme")
   show raw: set text(

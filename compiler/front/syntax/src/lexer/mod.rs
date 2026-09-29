@@ -30,28 +30,28 @@ mod words;
 pub use value::{bytes, literal, scalar};
 
 /// Escapes written as a backslash and one character, with the character each denotes.
-pub(crate) const SIMPLE_ESCAPES: [(char, char); 7] =
+pub const SIMPLE_ESCAPES: [(char, char); 7] =
     [('n', '\n'), ('t', '\t'), ('r', '\r'), ('0', '\0'), ('\\', '\\'), ('"', '"'), ('\'', '\'')];
 /// Hex digits in a byte escape `\xHH`.
-const BYTE_ESCAPE_DIGITS: usize = 2;
+pub const BYTE_ESCAPE_DIGITS: usize = 2;
 /// Maximum hex digits in a Unicode escape `\u{HHHHHH}`.
-const UNICODE_ESCAPE_DIGITS: usize = 6;
+pub const UNICODE_ESCAPE_DIGITS: usize = 6;
 /// Integer prefixes after a leading `0`, with their radix.
-pub(crate) const RADIX_PREFIXES: [(char, u32); 3] = [('x', 16), ('o', 8), ('b', 2)];
+pub const RADIX_PREFIXES: [(char, u32); 3] = [('x', 16), ('o', 8), ('b', 2)];
 /// What may stand between the digits of a number: `1_000`.
-pub(crate) const DIGIT_SEPARATOR: char = '_';
+pub const DIGIT_SEPARATOR: char = '_';
 
-pub(crate) const COMMENT: &str = "//";
-pub(crate) const DOC_COMMENT: &str = "///";
-pub(crate) const MODULE_DOC_COMMENT: &str = "//!";
-const RAW_STRING_LINE: &str = "\\\\";
+pub const COMMENT: &str = "//";
+pub const DOC_COMMENT: &str = "///";
+pub const MODULE_DOC_COMMENT: &str = "//!";
+pub const RAW_STRING_LINE: &str = "\\\\";
 
 /// Tokens that run to the end of their line, which ends them: doc comments and raw string lines.
 pub const TO_LINE_END: &[TokenKind] =
     &[TokenKind::DocComment, TokenKind::ModuleDocComment, TokenKind::RawStringLine];
 
 /// Takes the next word or string literally.
-pub(crate) const ESCAPE: char = '\\';
+pub const ESCAPE: char = '\\';
 
 impl Tokens {
     /// Whether the token text `next`, written right after the source `before` in `file`, lexes

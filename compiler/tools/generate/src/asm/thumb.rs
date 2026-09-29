@@ -3,10 +3,10 @@
 
 use super::emit::Crate;
 use super::{ARCH, Table, words};
-use crate::generate::{Generator, Module, Read, Source};
+use crate::generate::{Emit, Generator, Module, Read, Source};
 
 pub(crate) const THUMB: Generator =
-    Generator { source: ARCH, output: "compiler/isa/thumb/src/generated", emit };
+    Generator { source: ARCH, output: "compiler/isa/thumb/src/generated", emit: Emit::Rust(emit) };
 
 const CRATE: Crate = Crate {
     generator: &THUMB,

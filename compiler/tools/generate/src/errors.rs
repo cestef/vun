@@ -15,11 +15,14 @@ use vun_syntax::literal::{Decl, Literal};
 
 use vun_diag::{DiagId, Msg};
 
-use crate::generate::{Access, Generator, Module, Read, Source};
+use crate::generate::{Access, Emit, Generator, Module, Read, Source};
 use crate::names::{constant, docs};
 
-pub(crate) const GENERATOR: Generator =
-    Generator { source: "lib/lang/lang/errors.vun", output: "compiler/base/diag/src/errors", emit };
+pub(crate) const GENERATOR: Generator = Generator {
+    source: "lib/lang/lang/errors.vun",
+    output: "compiler/base/diag/src/errors",
+    emit: Emit::Rust(emit),
+};
 
 /// The module listing every diagnostic and its explanation page.
 const ALL_MODULE: &str = "all";
