@@ -22,7 +22,7 @@ use super::{Arm, condition};
 use select::{Look, Selection};
 use vun_codegen::snippet::Snippet;
 use vun_native::inline::Inlined;
-use vun_native::select::{Frames, Selects, Terminates, Thread};
+use vun_native::select::{Frames, Selects, Terminates};
 
 /// What the instruction compilers keep for one function.
 pub struct State {
@@ -64,9 +64,6 @@ impl Selects for Arm {
     type Float = vun_asm_arm64::V;
 
     const UNROLLED: u64 = memory::UNROLLED;
-    // The call a TLS descriptor names keeps every register but `x0`, which it gives the offset
-    // in, and `x30`; `x1` holds the call's address.
-    const THREAD: Option<Thread<Reg>> = Some(Thread { address: Reg::X0, overwrites: &[Reg::X1, Reg::X30] });
 
     fn selection<'a>(cx: &Cx<'a, Self>, inst: Inst) -> Result<Selection<'a>, Lack> {
         Look(cx).selection(inst)
@@ -173,7 +170,7 @@ impl<'a> Sel<'_, 'a> {
             }
             Selection::Copy { to, from, bytes } => self.copy(to, from, bytes),
             Selection::Asm(asm, check) => asm.emit(check, self.0)?,
-            Selection::ThreadAddr { data } => self.thread_addr(data),
+            Selection::ThreadAddr { data } => self.thread_addr(data)?,
             // Every value is held in a general register: none lives in its home alone.
             Selection::Homed { .. } => return Err(self.lack(Missing::Wider(16))),
         }

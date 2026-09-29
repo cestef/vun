@@ -23,7 +23,7 @@ use super::{Flags, Thumb2};
 use select::{Look, Selection};
 use vun_codegen::snippet::Snippet;
 use vun_native::inline::Inlined;
-use vun_native::select::{Frames, Selects, Terminates, Thread};
+use vun_native::select::{Frames, Selects, Terminates};
 
 /// What the instruction compilers keep for one function.
 pub struct State {
@@ -68,8 +68,6 @@ impl Selects for Thumb2 {
     type Float = vun_asm_thumb::V;
 
     const UNROLLED: u64 = memory::UNROLLED;
-    // The address is built in `r0`, the thread pointer read into `r1`.
-    const THREAD: Option<Thread<Reg>> = Some(Thread { address: Reg::R0, overwrites: &[Reg::R1] });
 
     fn selection<'a>(cx: &Cx<'a, Self>, inst: Inst) -> Result<Selection<'a>, Lack> {
         Look(cx).selection(inst)
@@ -172,7 +170,7 @@ impl<'a> Sel<'_, 'a> {
             }
             Selection::Copy { to, from, bytes } => self.copy(to, from, bytes),
             Selection::Asm(asm, check) => asm.emit(check, self.0)?,
-            Selection::ThreadAddr { data } => self.thread_addr(data),
+            Selection::ThreadAddr { data } => self.thread_addr(data)?,
             Selection::Homed { .. } => self.double(inst)?,
         }
         Ok(())

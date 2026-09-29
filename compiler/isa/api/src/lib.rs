@@ -103,4 +103,7 @@ pub enum Via {
     /// Its TLS descriptor, for storage per thread: the call the descriptor names gives the
     /// storage's offset from the thread pointer, which a linker writes itself where it knows it.
     Descriptor,
+    /// Its thread-local variable (Mach-O), for storage per thread: a pointer to a descriptor
+    /// whose call gives the storage's address.
+    Variable,
 }

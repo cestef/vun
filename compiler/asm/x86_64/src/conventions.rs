@@ -2,7 +2,7 @@
 //! values of a call in by its rules; native code and the C backend's inline assembly both read
 //! them.
 
-use vun_abi::{Convention, Registers, Rules};
+use vun_abi::{Access, Convention, Registers, Rules, Thread};
 
 use crate::{Reg, Xmm};
 
@@ -27,6 +27,8 @@ pub const SYSV: Convention<Reg, Xmm> = Convention {
         preserved: &[Reg::Rbx, Reg::Rbp, Reg::R12, Reg::R13, Reg::R14, Reg::R15],
         reserved: &[],
     },
+    // The call a TLS descriptor names gives the offset in `rax`, keeping every other register.
+    thread: Some(Thread { access: Access::Descriptor, address: Reg::Rax, overwrites: &[] }),
 };
 
 /// The conventions x86-64 code follows, by the name targets give them.

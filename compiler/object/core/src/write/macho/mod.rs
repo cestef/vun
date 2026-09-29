@@ -39,6 +39,8 @@ pub(super) const SOME_INSTRUCTIONS: u32 = 0x400;
 pub(super) const DEBUG: u32 = 0x0200_0000;
 /// `S_THREAD_LOCAL_REGULAR`: the initial bytes of storage per thread.
 pub(super) const THREAD_LOCAL_REGULAR: u32 = 0x11;
+/// `S_THREAD_LOCAL_VARIABLES`: the descriptors of thread-local variables.
+pub(super) const THREAD_LOCAL_VARIABLES: u32 = 0x13;
 /// `N_*`.
 pub(super) const EXTERNAL: u8 = 0x1;
 pub(super) const DEFINED: u8 = 0xe;
@@ -51,6 +53,8 @@ pub(super) const PAGE21: u32 = 3;
 pub(super) const PAGEOFF12: u32 = 4;
 pub(super) const GOT_LOAD_PAGE21: u32 = 5;
 pub(super) const GOT_LOAD_PAGEOFF12: u32 = 6;
+pub(super) const TLVP_LOAD_PAGE21: u32 = 8;
+pub(super) const TLVP_LOAD_PAGEOFF12: u32 = 9;
 pub(super) const ADDEND: u32 = 10;
 /// A relocation's length field: 4 or 8 bytes.
 pub(super) const WORD32: u32 = 2;
@@ -66,6 +70,7 @@ impl Contents {
             Self::Relocated => (b"__DATA", b"__const", 0),
             Self::Writable => (b"__DATA", b"__data", 0),
             Self::PerThread => (b"__DATA", b"__thread_data", THREAD_LOCAL_REGULAR),
+            Self::ThreadVariables => (b"__DATA", b"__thread_vars", THREAD_LOCAL_VARIABLES),
             Self::Debug => (b"__DWARF", b"", DEBUG),
             Self::StackNote => return None,
         })

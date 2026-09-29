@@ -63,7 +63,7 @@ impl<A: Selects> Looked<'_, '_, A> {
                 }
             }
             Selection::ThreadAddr { .. } => {
-                let Some(thread) = A::THREAD else { return };
+                let Some(thread) = A::convention(cx).thread else { return };
                 let overwritten = thread.overwrites.iter().copied().chain([thread.address]);
                 needs.reserved = overwritten.fold(needs.reserved, |set, r| set.with(A::preg(r)));
                 needs.defs.extend(out.map(|v| (v, Out::Fixed(A::preg(thread.address)))));

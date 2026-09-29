@@ -129,7 +129,7 @@ impl<'a> Sel<'_, 'a> {
                 self.snippet(snippet, &Args { ins: &ins, out, size, cond });
             }
             Selection::Call { callee, args } => self.call(callee, args, out)?,
-            Selection::ThreadAddr { data } => self.thread_addr(data),
+            Selection::ThreadAddr { data } => self.thread_addr(data)?,
             Selection::Fetch { op, addr, value, size } => self.fetch(op, addr, value, size),
             Selection::Copy { to, from, bytes } => self.copy(to, from, bytes),
             Selection::UnsignedToFloat { value, precision } => self.unsigned_to_float(value, precision, out),

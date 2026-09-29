@@ -2,8 +2,10 @@
 //! addresses fold a slot's and constant offsets where a form reaches them, ordered ones `ldar`
 //! and `stlr`, which together are sequentially consistent.
 
+use vun_abi::{Access, Thread};
 use vun_asm::{RelocKind, Via};
 use vun_asm_arm64::{Cc, Emit, Mem, Op, Operand, Reg, Size, SysReg};
+use vun_backend::{Lack, Missing};
 use vun_codegen::Arch;
 use vun_lir::{Address, DataId, Value};
 
@@ -19,25 +21,40 @@ const STEP: u64 = 8;
 
 impl Sel<'_, '_> {
     /// Copies `bytes` bytes, through a register or, past `UNROLLED`, in a loop of words.
-    /// The address of the calling thread's storage of `data`, in `x0`: its TLS descriptor's
-    /// call gives its offset from the thread pointer. A linker writes the offset itself where it
-    /// knows it, in an executable, which is why the sequence is the one it recognizes.
-    pub(super) fn thread_addr(&mut self, data: DataId) {
+    /// The address of the calling thread's storage of `data`, in the register the convention
+    /// names (`x0`), the call's address in `x1`. On ELF its TLS descriptor's call gives its offset
+    /// from the thread pointer; a linker writes the offset itself where it knows it, in an
+    /// executable, which is why the sequence is the one it recognizes. On Mach-O the call its
+    /// thread-local variable names gives the address.
+    pub(super) fn thread_addr(&mut self, data: DataId) -> Result<(), Lack> {
         let target = Address::Data(data);
-        let (address, call) = (Reg::X0, Reg::X1);
-        self.asm.emit(Op::Adrp, Size::B64, &[address.into(), Operand::Page(target, Via::Descriptor)]);
-        let entry = Mem::Lo12 { base: address, target, via: Via::Descriptor };
-        self.asm.emit(Op::Ldr, Size::B64, &[call.into(), entry.into()]);
-        self.asm.emit(
-            Op::Add,
-            Size::B64,
-            &[address.into(), address.into(), Operand::Lo12(target, Via::Descriptor)],
-        );
-        let at = self.asm.here();
-        self.asm.relocate(at, target, RelocKind::TlsDescCall, 0);
-        self.asm.emit(Op::Blr, Size::B64, &[call.into()]);
-        self.asm.emit(Op::Mrs, Size::B64, &[call.into(), Operand::Sys(SysReg::TpidrEl0)]);
-        self.asm.emit(Op::Add, Size::B64, &[address.into(), call.into(), address.into()]);
+        let call = Reg::X1;
+        match self.state.convention.thread {
+            Some(Thread { access: Access::Descriptor, address, .. }) => {
+                self.asm.emit(Op::Adrp, Size::B64, &[address.into(), Operand::Page(target, Via::Descriptor)]);
+                let entry = Mem::Lo12 { base: address, target, via: Via::Descriptor };
+                self.asm.emit(Op::Ldr, Size::B64, &[call.into(), entry.into()]);
+                self.asm.emit(
+                    Op::Add,
+                    Size::B64,
+                    &[address.into(), address.into(), Operand::Lo12(target, Via::Descriptor)],
+                );
+                let at = self.asm.here();
+                self.asm.relocate(at, target, RelocKind::TlsDescCall, 0);
+                self.asm.emit(Op::Blr, Size::B64, &[call.into()]);
+                self.asm.emit(Op::Mrs, Size::B64, &[call.into(), Operand::Sys(SysReg::TpidrEl0)]);
+                self.asm.emit(Op::Add, Size::B64, &[address.into(), call.into(), address.into()]);
+            }
+            Some(Thread { access: Access::Variable, address, .. }) => {
+                self.asm.emit(Op::Adrp, Size::B64, &[address.into(), Operand::Page(target, Via::Variable)]);
+                let pointer = Mem::Lo12 { base: address, target, via: Via::Variable };
+                self.asm.emit(Op::Ldr, Size::B64, &[address.into(), pointer.into()]);
+                self.asm.emit(Op::Ldr, Size::B64, &[call.into(), Mem::at(address, 0).into()]);
+                self.asm.emit(Op::Blr, Size::B64, &[call.into()]);
+            }
+            Some(Thread { access: Access::Offset, .. }) | None => return Err(self.lack(Missing::PerThread)),
+        }
+        Ok(())
     }
 
     pub(super) fn copy(&mut self, to: Value, from: Value, bytes: u64) {

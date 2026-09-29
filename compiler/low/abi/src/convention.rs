@@ -1,14 +1,16 @@
 //! Conventions as data: the rules of each, which this crate declares ([`crate::Rules`]), and the
 //! registers they name, which each backend declares for its machine.
 
-use crate::Rules;
+use crate::{Rules, Thread};
 
-/// A calling convention on one machine: its rules and the machine's registers it uses. `I` is a
-/// general register, `F` a floating-point one.
+/// A calling convention on one machine: its rules and the machine's registers it uses, and how
+/// its platform reaches storage per thread, where a backend does. `I` is a general register, `F` a
+/// floating-point one.
 #[derive(Clone, Copy, Debug)]
 pub struct Convention<I: 'static, F: 'static> {
     pub rules: &'static Rules,
     pub registers: Registers<I, F>,
+    pub thread: Option<Thread<I>>,
 }
 
 /// The registers a convention names, in the order it takes them. Under

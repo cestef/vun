@@ -2,7 +2,7 @@
 //! section 8.5), which `vun-abi` places the values of a call in by its rules; native code and the
 //! C backend's inline assembly both read them.
 
-use vun_abi::{Convention, Registers, Rules};
+use vun_abi::{Access, Convention, Registers, Rules, Thread};
 
 use crate::{Reg, V};
 
@@ -37,14 +37,25 @@ const REGISTERS: Registers<Reg, V> = Registers {
     reserved: &[],
 };
 
-/// AAPCS64.
-pub const AAPCS64: Convention<Reg, V> =
-    Convention { rules: Rules::of(vun_target::Convention::Aapcs64).expect("built"), registers: REGISTERS };
+/// AAPCS64, on ELF: the call a TLS descriptor names keeps every register but `x0`, which it
+/// gives the offset in, and `lr`; `x1` holds the call's address.
+pub const AAPCS64: Convention<Reg, V> = Convention {
+    rules: Rules::of(vun_target::Convention::Aapcs64).expect("built"),
+    registers: REGISTERS,
+    thread: Some(Thread { access: Access::Descriptor, address: Reg::X0, overwrites: &[Reg::X1, Reg::X30] }),
+};
 
-/// Apple's variant, which also keeps `x18` for the platform.
+/// Apple's variant, which also keeps `x18` for the platform. The call of a thread-local
+/// variable's descriptor keeps every register but `x0`, which it gives the address in, `x16`,
+/// `x17` and `lr`; `x1` holds the call's address.
 pub const DARWIN_ARM64: Convention<Reg, V> = Convention {
     rules: Rules::of(vun_target::Convention::DarwinArm64).expect("built"),
     registers: Registers { reserved: &[Reg::X18], ..REGISTERS },
+    thread: Some(Thread {
+        access: Access::Variable,
+        address: Reg::X0,
+        overwrites: &[Reg::X1, Reg::X16, Reg::X17, Reg::X30],
+    }),
 };
 
 /// The conventions arm64 code follows, by the name targets give them.

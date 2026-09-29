@@ -2,7 +2,7 @@
 //! floating-point registers; spec 13, section 8.5), which `vun-abi` places the values of a call
 //! in by its rules; native code and the C backend's inline assembly both read them.
 
-use vun_abi::{Convention, Registers, Rules};
+use vun_abi::{Access, Convention, Registers, Rules, Thread};
 
 use crate::{Reg, V};
 
@@ -43,6 +43,7 @@ pub const AAPCS_VFP: Convention<Reg, V> = Convention {
         preserved: &PRESERVED,
         reserved: &[],
     },
+    thread: Some(THREAD),
 };
 
 /// AAPCS's base standard: floats travel in general registers, so none is passed in a
@@ -50,7 +51,11 @@ pub const AAPCS_VFP: Convention<Reg, V> = Convention {
 pub const AAPCS: Convention<Reg, V> = Convention {
     rules: Rules::of(vun_target::Convention::Aapcs).expect("built"),
     registers: Registers { float_args: &[], float_results: &[], ..AAPCS_VFP.registers },
+    thread: Some(THREAD),
 };
+
+/// The offset of a thread's storage is built in `r0`, the thread pointer read into `r1`.
+const THREAD: Thread<Reg> = Thread { access: Access::Offset, address: Reg::R0, overwrites: &[Reg::R1] };
 
 /// The conventions Thumb code follows, by the name targets give them.
 pub const CONVENTIONS: &[(vun_target::Convention, &Convention<Reg, V>)] =

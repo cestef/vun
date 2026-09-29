@@ -2,8 +2,10 @@
 //! copies; loads, stores and the other atomic operations are snippets. Addresses fold a slot's,
 //! a datum's and constant offsets.
 
+use vun_abi::{Access, Thread};
 use vun_asm::{RelocKind, Via};
 use vun_asm_x86_64::{Cc, Emit, Mem, Op, Reg, Size};
+use vun_backend::{Lack, Missing};
 use vun_codegen::Arch;
 use vun_lir::{Address, DataId, Value};
 
@@ -36,17 +38,21 @@ impl Sel<'_, '_> {
         self.asm.emit(Op::J, Size::B64, &[Cc::Nz.into(), again.into()]);
     }
 
-    /// The address of the calling thread's storage of `data`, in `rax`: its TLS descriptor's
-    /// call gives its offset from the thread pointer, which the block's first word holds. A
-    /// linker writes the offset itself where it knows it, in an executable, which is why the
-    /// sequence is the one it recognizes.
-    pub(super) fn thread_addr(&mut self, data: DataId) {
+    /// The address of the calling thread's storage of `data`, in the register the convention
+    /// names: its TLS descriptor's call gives its offset from the thread pointer, which the
+    /// block's first word holds. A linker writes the offset itself where it knows it, in an
+    /// executable, which is why the sequence is the one it recognizes.
+    pub(super) fn thread_addr(&mut self, data: DataId) -> Result<(), Lack> {
+        let Some(Thread { access: Access::Descriptor, address, .. }) = self.state.convention.thread else {
+            return Err(self.lack(Missing::PerThread));
+        };
         let target = Address::Data(data);
-        self.asm.emit(Op::Lea, Size::B64, &[Reg::Rax.into(), Mem::rip(target, Via::Descriptor).into()]);
+        self.asm.emit(Op::Lea, Size::B64, &[address.into(), Mem::rip(target, Via::Descriptor).into()]);
         let call = self.asm.here();
         self.asm.relocate(call, target, RelocKind::TlsDescCall, 0);
-        self.asm.emit(Op::Call, Size::B64, &[Mem::at(Reg::Rax, 0).into()]);
-        self.asm.emit(Op::Add, Size::B64, &[Reg::Rax.into(), Mem::thread(0).into()]);
+        self.asm.emit(Op::Call, Size::B64, &[Mem::at(address, 0).into()]);
+        self.asm.emit(Op::Add, Size::B64, &[address.into(), Mem::thread(0).into()]);
+        Ok(())
     }
 
     /// Copies `bytes` bytes, through a register or, past `UNROLLED`, with `rep movsb`.

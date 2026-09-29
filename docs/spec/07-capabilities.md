@@ -67,14 +67,19 @@ per-thread binding reaches the storage of the thread taking it and is scoped, as
 binding's is (spec 05, section 4); what the storage holds is known at run time only.
 
 The compiler gives such a binding the target's thread-local storage (ELF's `.tdata`, symbols of
-`STT_TLS`), and LIR takes its address with `thread_addr`, never `addr`. C declares it `__thread`;
-the native backend reaches it through the TLS descriptor of x86-64 and arm64, whose call gives
+`STT_TLS`; Mach-O's thread-local variables), and LIR takes its address with `thread_addr`, never
+`addr`. How a platform reaches it is part of its calling convention (`vun_abi::Thread`: the
+sequence, the register it gives the address in, those it overwrites). C declares it `__thread`;
+on ELF the native backend reaches it through the TLS descriptor of x86-64 and arm64, whose call gives
 the storage's offset from the thread pointer, and which linkers rewrite into that offset in an
 executable, so executables and shared libraries share one sequence. 32-bit Arm's native backend,
 whose code reaches what the linker places by its address and so builds executables alone, adds to
 the thread pointer `mrc` reads (`TPIDRURO`) the storage's offset from it, a word the linker writes
 beside the code, which loads it and branches around it. A relocation naming the storage names a
-symbol of it, never its section's, which linkers read as an address. A runtime starting threads
+symbol of it, never its section's, which linkers read as an address. On Mach-O each binding is a
+thread-local variable: its symbol names a descriptor in `__thread_vars` (the loader's
+`_tlv_bootstrap`, a key, the address of its initial bytes in `__thread_data`), and code calls the
+function the descriptor holds, which gives the calling thread's storage. A runtime starting threads
 itself lays out each thread's block and sets the thread pointer (spec 08, section 2).
 
 ## 3. Errors and traps

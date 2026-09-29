@@ -294,8 +294,9 @@ Next, most useful first:
    storage per thread (decision 312: `std.sync.Local(T)`, a type marked `#[thread.local]`;
    `kernel/tls.vun` lays each block out and sets the thread pointer, each thread its own first;
    `corpus/accept/programs/locals.vun`, `link.rs`'s library counting per thread; native 32-bit
-   Arm loads the offset from a word beside the code and reads the pointer with `mrc`). Left: Mach-O
-   (thread-local variables are its own model); riscv64 numbers; directories, seeking,
+   Arm loads the offset from a word beside the code and reads the pointer with `mrc`; Mach-O
+   arm64 reaches thread-local variables, decision 314, checked by linking with `ld64.lld` but
+   never run on a Mac). Left: riscv64 numbers; directories, seeking,
    environment.
 2a. Backtraces (decision 309): a trap or failed check writes why it ends, its site's place, each
    function its code is inlined into and the chain of calls, through `std.trace.report` from

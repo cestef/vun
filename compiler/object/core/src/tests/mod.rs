@@ -222,3 +222,5 @@ fn ld_lld_resolves_thumb_relocations_with_their_addends_beside_them() {
     assert_eq!(word_at(&file, d), f, "the address of a Thumb function, bit 0 set");
     assert_eq!(word_at(&file, d + 4), f.wrapping_sub(d + 4), "its distance from the field");
 }
+
+mod thread;

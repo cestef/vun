@@ -19,8 +19,10 @@ const REGISTERS: Registers<u8, u8> = Registers {
     preserved: &[],
     reserved: &[],
 };
-pub(super) const VFP: Convention<u8, u8> = Convention { rules: &Rules::AAPCS_VFP, registers: REGISTERS };
-pub(super) const SOFT: Convention<u8, u8> = Convention { rules: &Rules::AAPCS, registers: REGISTERS };
+pub(super) const VFP: Convention<u8, u8> =
+    Convention { rules: &Rules::AAPCS_VFP, registers: REGISTERS, thread: None };
+pub(super) const SOFT: Convention<u8, u8> =
+    Convention { rules: &Rules::AAPCS, registers: REGISTERS, thread: None };
 
 const I32: AbiType = AbiType::Int(Scalar::I32, Ext::Sign);
 const F32: AbiType = AbiType::Scalar(Scalar::F32);

@@ -19,6 +19,7 @@ pub(super) const SYSV: Convention<u8, u8> = Convention {
         preserved: &[],
         reserved: &[],
     },
+    thread: None,
 };
 
 const EIGHT: &[u8] = &[0, 1, 2, 3, 4, 5, 6, 7];
@@ -33,6 +34,7 @@ pub(super) const AAPCS64: Convention<u8, u8> = Convention {
         preserved: &[],
         reserved: &[],
     },
+    thread: None,
 };
 pub(super) const DARWIN: Convention<u8, u8> = Convention { rules: &Rules::DARWIN_ARM64, ..AAPCS64 };
 

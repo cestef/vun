@@ -3,8 +3,8 @@
 
 use super::symbols::Order;
 use super::{
-    ADDEND, BRANCH26, GOT_LOAD_PAGE21, GOT_LOAD_PAGEOFF12, PAGE21, PAGEOFF12, Placed, Put, UNSIGNED, WORD32,
-    WORD64,
+    ADDEND, BRANCH26, GOT_LOAD_PAGE21, GOT_LOAD_PAGEOFF12, PAGE21, PAGEOFF12, Placed, Put, TLVP_LOAD_PAGE21,
+    TLVP_LOAD_PAGEOFF12, UNSIGNED, WORD32, WORD64,
 };
 use crate::{Machine, Object, Reloc, RelocKind, SymbolKind};
 
@@ -37,6 +37,8 @@ impl Machine {
             ) => (PAGEOFF12, false, WORD32),
             (Machine::Aarch64, RelocKind::GotPage21) => (GOT_LOAD_PAGE21, true, WORD32),
             (Machine::Aarch64, RelocKind::GotPageOffset64) => (GOT_LOAD_PAGEOFF12, false, WORD32),
+            (Machine::Aarch64, RelocKind::ThreadVariablePage21) => (TLVP_LOAD_PAGE21, true, WORD32),
+            (Machine::Aarch64, RelocKind::ThreadVariablePageOffset64) => (TLVP_LOAD_PAGEOFF12, false, WORD32),
             _ => return None,
         };
         Some(Kind { ty, pcrel, length })

@@ -15,7 +15,7 @@ impl Contents {
         match self {
             Self::Code => SectionFlags::ALLOC | SectionFlags::EXEC,
             Self::ReadOnly | Self::Relocated => SectionFlags::ALLOC,
-            Self::Writable => SectionFlags::ALLOC | SectionFlags::WRITE,
+            Self::Writable | Self::ThreadVariables => SectionFlags::ALLOC | SectionFlags::WRITE,
             Self::PerThread => SectionFlags::ALLOC | SectionFlags::WRITE | SectionFlags::TLS,
             Self::StackNote | Self::Debug => SectionFlags::NONE,
         }

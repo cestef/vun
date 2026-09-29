@@ -184,6 +184,7 @@ fn modrm<S: Copy>(asm: &mut Asm<S>, field: u8, rm: &Operand<S>, trailing: u32) {
                 Via::Direct => RelocKind::Pc32,
                 Via::Got => RelocKind::GotPc32,
                 Via::Descriptor => RelocKind::TlsDescPc32,
+                Via::Variable => RelocKind::ThreadVariablePc32,
             };
             asm.relocate(asm.here(), *target, kind, i64::from(*disp) - 4 - i64::from(trailing));
             asm.put(&[0; 4]);

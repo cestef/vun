@@ -2,8 +2,10 @@
 //! addresses fold a slot's and constant offsets where a form reaches them, ordered ones between
 //! barriers.
 
+use vun_abi::{Access, Thread};
 use vun_asm::RelocKind;
 use vun_asm_thumb::{Cc, Coprocessor, Cr, Emit, Mem, Op, Operand, Reg, Size};
+use vun_backend::{Lack, Missing};
 use vun_codegen::Arch;
 use vun_lir::{Address, DataId, Value};
 
@@ -24,12 +26,16 @@ const THREAD_POINTER: (Coprocessor, i64, Cr, Cr, i64) = (Coprocessor::P15, 0, Cr
 const OFFSET_BYTES: u32 = 4;
 
 impl Sel<'_, '_> {
-    /// The address of the calling thread's storage of `data`, in `r0`: the thread pointer plus
-    /// the datum's offset from it, a word the linker writes, which the code loads from beside
-    /// itself and branches around. The code of a program built for Thumb reaches what the linker
-    /// places at its address, which only an executable knows, and so the offset.
-    pub(super) fn thread_addr(&mut self, data: DataId) {
-        let (address, pointer) = (Reg::R0, Reg::R1);
+    /// The address of the calling thread's storage of `data`, in the register the convention
+    /// names (`r0`): the thread pointer, read into `r1`, plus the datum's offset from it, a word
+    /// the linker writes, which the code loads from beside itself and branches around. The code
+    /// of a program built for Thumb reaches what the linker places at its address, which only an
+    /// executable knows, and so the offset.
+    pub(super) fn thread_addr(&mut self, data: DataId) -> Result<(), Lack> {
+        let Some(Thread { access: Access::Offset, address, .. }) = self.state.convention.thread else {
+            return Err(self.lack(Missing::PerThread));
+        };
+        let pointer = Reg::R1;
         let (word, past) = (self.asm.label(), self.asm.label());
         self.asm.emit(Op::Ldr, Size::B32, &[address.into(), word.into()]);
         self.asm.emit(Op::B, Size::B32, &[past.into()]);
@@ -49,6 +55,7 @@ impl Sel<'_, '_> {
             ],
         );
         self.asm.emit(Op::Add, Size::B32, &[address.into(), address.into(), pointer.into()]);
+        Ok(())
     }
 
     /// Copies `bytes` bytes, through a register or, past `UNROLLED`, in a loop of words.

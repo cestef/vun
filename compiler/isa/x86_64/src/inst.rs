@@ -125,6 +125,7 @@ fn write_mem<S: fmt::Display>(f: &mut fmt::Formatter<'_>, mem: &Mem<S>) -> fmt::
                 vun_isa::Via::Direct => "",
                 vun_isa::Via::Got => "@GOTPCREL",
                 vun_isa::Via::Descriptor => "@TLSDESC",
+                vun_isa::Via::Variable => "@TLVP",
             };
             write!(f, "[rip + {target}{how}")?;
         }

@@ -97,6 +97,12 @@ impl<S: Copy> Link<S> {
             (Kind::Page, Operand::Page(target, Via::Descriptor)) => {
                 Link::Reloc(*target, RelocKind::TlsDescPage21)
             }
+            (Kind::Page, Operand::Page(target, Via::Variable)) => {
+                Link::Reloc(*target, RelocKind::ThreadVariablePage21)
+            }
+            (Kind::Mem(_, _), Operand::Mem(Mem::Lo12 { target, via: Via::Variable, .. })) => {
+                Link::Reloc(*target, RelocKind::ThreadVariablePageOffset64)
+            }
             (Kind::Lo12, Operand::Lo12(target, Via::Descriptor)) => {
                 Link::Reloc(*target, RelocKind::TlsDescPageOffset12)
             }
