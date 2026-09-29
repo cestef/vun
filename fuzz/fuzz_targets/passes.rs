@@ -7,7 +7,7 @@
 use libfuzzer_sys::fuzz_target;
 use vun_lir::{Scalar, Unit};
 use vun_lir_passes::Simplify;
-use vun_lir_passes::legalize::{Half, Legalize};
+use vun_lir_passes::legalize::{Division, Half, Legalize};
 use vun_origin::OriginTable;
 use vun_regalloc::sample::Random;
 use vun_span::{SourceFiles, Span};
@@ -33,6 +33,7 @@ fuzz_target!(|data: &[u8]| {
         half: Half::Promoted,
         floats: Floats::ALL,
         convention: Convention::Aapcs,
+        division: Division::Restoring,
     };
     if narrow.apply(&mut unit).is_ok()
         && let Err(malformed) = unit.verify(&origins)
