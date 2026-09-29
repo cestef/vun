@@ -113,6 +113,23 @@ impl<I: Isa, S: Copy> Buffer<I, S> {
         self.relocs.push(Reloc { offset, target, kind, addend });
     }
 
+    /// Places at `label` a word of `bytes` bytes, aligned to them, that the linker fills with
+    /// `target` plus `addend` as `kind` says: data the code loads, which control goes around.
+    ///
+    /// # Panics
+    /// For a word wider than 8 bytes, which no relocation fills.
+    pub fn word(&mut self, label: Label, bytes: u32, target: S, kind: RelocKind, addend: i64) {
+        let padding = self.here().next_multiple_of(u64::from(bytes)) - self.here();
+        self.put(&vec![0; usize::try_from(padding).expect("a word's alignment")]);
+        self.bind(label);
+        let at = self.here();
+        self.relocate(at, target, kind, addend);
+        self.put(&vec![0; bytes as usize]);
+        if let Some(listing) = &mut self.listing {
+            listing.push(Line::Word { at, len: bytes });
+        }
+    }
+
     /// Whether what is emitted is listed.
     #[must_use]
     pub fn lists(&self) -> bool {

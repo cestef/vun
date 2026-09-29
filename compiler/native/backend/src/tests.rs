@@ -46,7 +46,7 @@ fn block(
 fn insts<I: Copy>(listing: &[vun_asm::Line<I>]) -> Vec<I> {
     let insts = listing.iter().filter_map(|line| match line {
         vun_asm::Line::Inst { inst, .. } => Some(*inst),
-        vun_asm::Line::Label(_) => None,
+        vun_asm::Line::Label(_) | vun_asm::Line::Word { .. } => None,
     });
     insts.collect()
 }

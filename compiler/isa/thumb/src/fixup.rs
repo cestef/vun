@@ -1,5 +1,6 @@
 //! References to labels: a branch's distance, counted in halfwords from the instruction's address
-//! plus 4 (the manual's `PC`), written into the branch's fields, which the 32-bit forms scatter.
+//! plus 4 (the manual's `PC`), written into the branch's fields, which the 32-bit forms scatter;
+//! and a literal's, counted in bytes from that address rounded down to a word.
 
 use vun_isa::Unpatched;
 use vun_isa::imm::{field, fits_signed};
@@ -9,6 +10,8 @@ use vun_isa::imm::{field, fits_signed};
 pub const PC_AHEAD: i64 = 4;
 /// The bytes a branch's distance counts in.
 const HALFWORD: i64 = 2;
+/// The bytes a literal's distance is counted from a multiple of.
+const WORD: i64 = 4;
 
 /// A reference to a label, by the field its branch has.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -23,6 +26,8 @@ pub enum Fixup {
     Cond,
     /// Twenty-four bits, `S:J1:J2:imm10:imm11` with the `J`s inverted by `S`: `b.w`, `bl`.
     Jump,
+    /// Twelve bits of bytes and their sign in `U` at 23: `ldr` of a literal.
+    Literal,
 }
 
 impl Fixup {
@@ -34,6 +39,7 @@ impl Fixup {
             Self::Compare => (6, false),
             Self::Cond => (20, true),
             Self::Jump => (24, true),
+            Self::Literal => (12, true),
         }
     }
 
@@ -60,20 +66,27 @@ impl Fixup {
                 let j2 = !(bits(21, 1) ^ s) & 1;
                 s << 26 | bits(11, 10) << 16 | j1 << 13 | j2 << 11 | bits(0, 11)
             }
+            Self::Literal => u32::from(v >= 0) << 23 | field(v.abs(), 0, 12),
         }
     }
 
-    /// The distance in halfwords from a branch at `at` to `target`, if its field holds it.
+    /// The distance in its units from a reference at `at` to `target`, if its field holds it.
     #[must_use]
     pub fn reach(self, at: u64, target: u64) -> Option<i64> {
-        let distance = i64::try_from(i128::from(target) - i128::from(at) - i128::from(PC_AHEAD)).ok()?;
-        let v = distance / HALFWORD;
+        let pc = i128::from(at) + i128::from(PC_AHEAD);
+        let (from, unit) = match self {
+            Self::Literal => (pc - pc % i128::from(WORD), 1),
+            _ => (pc, HALFWORD),
+        };
+        let distance = i64::try_from(i128::from(target) - from).ok()?;
+        let v = distance / unit;
         let (bits, _) = self.span();
         let fits = match self {
             Self::Compare => (0..1 << bits).contains(&v),
+            Self::Literal => v.unsigned_abs() < 1 << bits,
             _ => fits_signed(v, bits, 64),
         };
-        (distance % HALFWORD == 0 && fits).then_some(v)
+        (distance % unit == 0 && fits).then_some(v)
     }
 
     /// Writes into `code` the distance from the branch at `at` to `target`.

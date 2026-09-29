@@ -22,7 +22,8 @@ pub const Mode: Item = Item::new(&["lang", "arch", "thumb", "operand", "Mode"]);
 pub const Fields: Item = Item::new(&["lang", "arch", "thumb", "operand", "Fields"]);
 /// Which registers a list takes.
 pub const List: Item = Item::new(&["lang", "arch", "thumb", "operand", "List"]);
-/// A branch's field, and the relocation that fills it with a symbol's address.
+/// A field holding the distance to a label, a branch's or a literal's, and the relocation that
+/// fills a branch's with a symbol's address.
 pub const Branch: Item = Item::new(&["lang", "arch", "thumb", "operand", "Branch"]);
 /// The instructions an `it` makes conditional after the first: none, or one more holding on the
 /// same condition (`t`) or on its opposite (`e`).

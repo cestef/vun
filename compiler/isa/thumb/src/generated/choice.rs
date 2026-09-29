@@ -4,7 +4,14 @@
 pub enum Choice {
     Mask,
     Barrier,
+    Coprocessor,
+    Cr,
 }
 impl Choice {
-    pub const ALL: [Self; 2usize] = [Self::Mask, Self::Barrier];
+    pub const ALL: [Self; 4usize] = [
+        Self::Mask,
+        Self::Barrier,
+        Self::Coprocessor,
+        Self::Cr,
+    ];
 }

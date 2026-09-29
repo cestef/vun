@@ -88,7 +88,7 @@ pub fn text<T: Display>(code: &vun_codegen::Compiled<T>) -> Vec<String> {
         .iter()
         .filter_map(|line| match line {
             vun_asm::Line::Inst { inst, .. } => Some(inst.to_string()),
-            vun_asm::Line::Label(_) => None,
+            vun_asm::Line::Label(_) | vun_asm::Line::Word { .. } => None,
         })
         .collect()
 }

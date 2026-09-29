@@ -7,8 +7,8 @@ use vun_inline::{ClassId, Disp, FormId, Inst, OpId, RegRef, SizeId};
 use vun_isa::{AsmOperand, Blocks, Fit, Fixed, Given, Label, Misfit, Place};
 
 use crate::{
-    Access, Barrier, Cc, Class, Form, Kind, List, Mask, Mem, Mode, Op, Operand, Reg, Size, Special, Status,
-    Thumb, V,
+    Access, Barrier, Cc, Class, Coprocessor, Cr, Form, Kind, List, Mask, Mem, Mode, Op, Operand, Reg, Size,
+    Special, Status, Thumb, V,
 };
 
 impl Op {
@@ -136,6 +136,8 @@ impl Blocks for Thumb {
             vun_inline::Operand::Cond(c) => Operand::Cond(Cc::ALL[usize::from(c.0)]),
             vun_inline::Operand::Choice(k) => match kind {
                 Kind::Mask => Operand::Mask(Mask::ALL[usize::from(*k)]),
+                Kind::Coprocessor => Operand::Coprocessor(Coprocessor::ALL[usize::from(*k)]),
+                Kind::Cr => Operand::Cr(Cr::ALL[usize::from(*k)]),
                 _ => Operand::Barrier(Barrier::ALL[usize::from(*k)]),
             },
             vun_inline::Operand::Label(line) => place.line(*line),

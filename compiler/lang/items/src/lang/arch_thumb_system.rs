@@ -9,6 +9,9 @@ use crate::Item;
 /// A special register read into a general one: the flags on every profile, the others on the
 /// microcontroller one's.
 pub const mrs: Item = Item::new(&["lang", "arch", "thumb", "system", "mrs"]);
+/// A coprocessor's register read into a general one: `mrc p15, 0, r0, c13, c0, 3` reads the
+/// thread pointer (A profile, where the system control coprocessor holds it).
+pub const mrc: Item = Item::new(&["lang", "arch", "thumb", "system", "mrc"]);
 /// A general register written into a special one, as `mrs` reads them.
 pub const msr: Item = Item::new(&["lang", "arch", "thumb", "system", "msr"]);
 /// Masks interrupts: `cpsid i` sets `primask`, `cpsid f` sets `faultmask`; `cpsie` clears them.

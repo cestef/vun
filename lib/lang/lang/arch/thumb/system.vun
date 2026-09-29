@@ -14,6 +14,22 @@ mrs := _t.Instruction{ .forms = &[
     .{ .base = 0xf3ef8000, .args = &[_r_w, .{ .kind = .special(.any), .access = .read }], .requires = _microcontroller },
 ] };
 
+/// A coprocessor's register read into a general one: `mrc p15, 0, r0, c13, c0, 3` reads the
+/// thread pointer (A profile, where the system control coprocessor holds it).
+mrc := _t.Instruction{ .forms = &[
+    .{
+        .base = 0xee100010,
+        .args = &[
+            .{ .kind = .coprocessor, .at = 8, .access = .read },
+            .{ .kind = .imm(.unsigned(3)), .at = 21, .access = .read },
+            .{ .kind = .gpr(.general), .at = 12, .access = .write },
+            .{ .kind = .cr, .at = 16, .access = .read },
+            .{ .kind = .cr, .access = .read },
+            .{ .kind = .imm(.unsigned(3)), .at = 5, .access = .read },
+        ],
+    },
+] };
+
 /// A general register written into a special one, as `mrs` reads them.
 msr := _t.Instruction{ .forms = &[
     .{ .base = 0xf3808800, .args = &[.{ .kind = .special(.is(.apsr)), .access = .write }, _r] },

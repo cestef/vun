@@ -73,7 +73,9 @@ fn every_form_decodes_as_one_instruction_printed_alike() {
                     let code = asm.finish().unwrap();
                     let ours = match code.listing[0] {
                         vun_asm::Line::Inst { inst, .. } => inst,
-                        vun_asm::Line::Label(_) => unreachable!("one instruction"),
+                        vun_asm::Line::Label(_) | vun_asm::Line::Word { .. } => {
+                            unreachable!("one instruction")
+                        }
                     };
                     let mut reader = U8Reader::new(&code.bytes);
                     let theirs = decoder

@@ -70,8 +70,11 @@ The compiler gives such a binding the target's thread-local storage (ELF's `.tda
 `STT_TLS`), and LIR takes its address with `thread_addr`, never `addr`. C declares it `__thread`;
 the native backend reaches it through the TLS descriptor of x86-64 and arm64, whose call gives
 the storage's offset from the thread pointer, and which linkers rewrite into that offset in an
-executable, so executables and shared libraries share one sequence. 32-bit Arm's native backend
-does not reach it yet (it needs `mrc` and literal pools); C does. A runtime starting threads
+executable, so executables and shared libraries share one sequence. 32-bit Arm's native backend,
+whose code reaches what the linker places by its address and so builds executables alone, adds to
+the thread pointer `mrc` reads (`TPIDRURO`) the storage's offset from it, a word the linker writes
+beside the code, which loads it and branches around it. A relocation naming the storage names a
+symbol of it, never its section's, which linkers read as an address. A runtime starting threads
 itself lays out each thread's block and sets the thread pointer (spec 08, section 2).
 
 ## 3. Errors and traps

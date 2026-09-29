@@ -195,7 +195,7 @@ impl<'a> Look<'_, 'a> {
                 asm.check::<Thumb2>()?;
                 Selection::Asm(asm, check.as_ref())
             }
-            InstKind::ThreadAddr(_) => return Err(self.0.lack(Missing::PerThread)),
+            &InstKind::ThreadAddr(data) => Selection::ThreadAddr { data },
             InstKind::Const { .. } | InstKind::SlotAddr(_) | InstKind::Addr(_) => {
                 unreachable!("recomputed where used")
             }

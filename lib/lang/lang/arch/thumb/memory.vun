@@ -58,6 +58,7 @@ ldr := _t.Instruction{ .forms = &[
     .{ .base = 0xf8500800, .args = &[_t_w, _byte_pre], .apart = _written_back },
     .{ .base = 0xf8500800, .args = &[_t_w, _byte_post], .apart = _written_back },
     .{ .base = 0xf8500000, .args = &[_t_w, _index] },
+    .{ .base = 0xf85f0000, .args = &[_t_w, .{ .kind = .target(.literal), .access = .read }] },
 ] };
 
 ldrb := _t.Instruction{ .forms = &[

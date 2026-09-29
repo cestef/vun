@@ -24,7 +24,7 @@ use vun_isa::Unpatched;
 pub use fixup::{Fixup, PC_AHEAD, bytes};
 pub use inst::Inst;
 pub use operand::{List, Mem, Operand, Shift, ShiftKind};
-pub use reg::{Barrier, Cc, Choice, Class, Mask, Reg, Size, Special, Status, V, VName};
+pub use reg::{Barrier, Cc, Choice, Class, Coprocessor, Cr, Mask, Reg, Size, Special, Status, V, VName};
 pub use table::{
     Access, Arg, Branch, Encoding, Feature, Fields, Form, Halves, Imm, Kind, List as Lists, Mode, Need, Op,
     Place, Processor, Regs, Sized, Specials, Then, Width,
@@ -54,6 +54,7 @@ impl Branch {
             Self::Compare => Fixup::Compare,
             Self::Cond => Fixup::Cond,
             Self::Jump | Self::Call => Fixup::Jump,
+            Self::Literal => Fixup::Literal,
         }
     }
 }

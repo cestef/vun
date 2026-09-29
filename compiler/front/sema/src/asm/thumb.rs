@@ -51,7 +51,12 @@ pub(super) const SHAPE: Shape = Shape {
 const BITS: [(Item, u32); 4] = [(size::b8, 8), (size::b16, 16), (size::b32, 32), (size::b64, 64)];
 
 /// The enum of the choices of each kind of `Choice`.
-const CHOICES: [(Item, Item); 2] = [(choice::mask, t::Mask), (choice::barrier, t::Barrier)];
+const CHOICES: [(Item, Item); 4] = [
+    (choice::mask, t::Mask),
+    (choice::barrier, t::Barrier),
+    (choice::coprocessor, t::Coprocessor),
+    (choice::cr, t::Cr),
+];
 
 /// The registers named as their encodings are, each enum with its class.
 const NAMED: [(Item, Item); 3] =

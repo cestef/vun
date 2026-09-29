@@ -90,8 +90,15 @@ Mask := enum { f, i };
 /// The domain a barrier orders: the full system.
 Barrier := enum { sy };
 
+/// A coprocessor, which `mrc` names by its number: the system control one is `p15`.
+Coprocessor := enum { p0, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, p15 };
+
+/// A register of a coprocessor, by its number: `mrc` names one by two of them (`c13, c0`), the
+/// thread pointer the kernel sets among the system control coprocessor's (`p15, 0, c13, c0, 3`).
+Cr := enum { c0, c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13, c14, c15 };
+
 /// The kinds of named choice a position takes, each an enum of its own.
-Choice := enum { mask, barrier };
+Choice := enum { mask, barrier, coprocessor, cr };
 
 /// What a form does with an operand, or with the flags.
 Access := enum {

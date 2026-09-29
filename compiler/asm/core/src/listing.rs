@@ -13,6 +13,8 @@ pub enum Line<T> {
     Inst { at: u64, len: u32, inst: T },
     /// A label bound where the next instruction goes.
     Label(Label),
+    /// A word of data, `len` bytes from `at`, which the linker fills.
+    Word { at: u64, len: u32 },
 }
 
 /// The bytes a line leaves room for before the instruction's text, so that most align; a longer
@@ -37,16 +39,28 @@ impl<T: fmt::Display> fmt::Display for Shown<'_, T> {
         match self.line {
             Line::Label(label) => write!(f, "{label}:"),
             Line::Inst { at, len, inst } => {
-                let from = usize::try_from(*at).expect("code fits memory");
-                write!(f, "  {at:6x}  ")?;
-                let bytes = &self.code[from..from + *len as usize];
-                for (i, b) in bytes.iter().enumerate() {
-                    write!(f, "{}{b:02x}", if i == 0 { "" } else { " " })?;
-                }
-                let pad = (BYTES_COLUMN * 3).saturating_sub(bytes.len() * 3);
-                write!(f, "{:pad$} {inst}", "")
+                self.bytes(f, *at, *len)?;
+                write!(f, " {inst}")
+            }
+            Line::Word { at, len } => {
+                self.bytes(f, *at, *len)?;
+                write!(f, " .word")
             }
         }
+    }
+}
+
+impl<T> Shown<'_, T> {
+    /// Writes the offset `at` and the `len` bytes there, padded to the column of the text.
+    fn bytes(&self, f: &mut fmt::Formatter<'_>, at: u64, len: u32) -> fmt::Result {
+        let from = usize::try_from(at).expect("code fits memory");
+        write!(f, "  {at:6x}  ")?;
+        let bytes = &self.code[from..from + len as usize];
+        for (i, b) in bytes.iter().enumerate() {
+            write!(f, "{}{b:02x}", if i == 0 { "" } else { " " })?;
+        }
+        let pad = (BYTES_COLUMN * 3).saturating_sub(bytes.len() * 3);
+        write!(f, "{:pad$}", "")
     }
 }
 

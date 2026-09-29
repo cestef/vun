@@ -76,7 +76,7 @@ const fn reloc(branch: Branch) -> Option<RelocKind> {
         Branch::Jump => Some(RelocKind::ThumbJump24),
         Branch::Call => Some(RelocKind::ThumbCall),
         Branch::Cond => Some(RelocKind::ThumbJump19),
-        Branch::Narrow | Branch::NarrowCond | Branch::Compare => None,
+        Branch::Narrow | Branch::NarrowCond | Branch::Compare | Branch::Literal => None,
     }
 }
 

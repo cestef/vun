@@ -30,3 +30,8 @@ pub const jump: Item = Item::new(
 pub const call: Item = Item::new(
     &["lang", "arch", "thumb", "operand", "Branch", "call"],
 );
+/// `U` at 23 and twelve bits at 0, counting bytes from the program counter rounded down to a
+/// word: `ldr` of the word at a label.
+pub const literal: Item = Item::new(
+    &["lang", "arch", "thumb", "operand", "Branch", "literal"],
+);

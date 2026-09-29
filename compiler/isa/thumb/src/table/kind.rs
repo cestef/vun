@@ -73,6 +73,8 @@ pub enum Kind {
     Status(Status),
     Mask,
     Barrier,
+    Coprocessor,
+    Cr,
 }
 
 impl Regs {
@@ -203,6 +205,9 @@ impl<S> Field<Operand<S>, Size> for Kind {
             (Self::Status(want), Operand::Status(s)) => (want == *s).then_some(0),
             (Self::Mask, Operand::Mask(m)) => Some(m.field()),
             (Self::Barrier, Operand::Barrier(b)) => Some(b.field()),
+            // Coprocessors and their registers are encoded by their numbers.
+            (Self::Coprocessor, Operand::Coprocessor(p)) => Some(*p as u32),
+            (Self::Cr, Operand::Cr(c)) => Some(*c as u32),
             _ => None,
         }
     }

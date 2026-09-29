@@ -10,8 +10,8 @@ use crate::operand::{List, Mem, Operand};
 use crate::reg::Size;
 use crate::table::{Encoding, Form, Imm, Kind, Op};
 
-/// The most operands an instruction takes.
-const MAX: usize = 4;
+/// The most operands an instruction takes: `mrc`'s six.
+const MAX: usize = 6;
 
 /// An instruction: its operation, its width and its operands.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -24,12 +24,12 @@ pub struct Inst<S> {
 
 impl<S: Copy> Inst<S> {
     /// # Panics
-    /// Panics past four operands, which no instruction takes.
+    /// Panics past six operands, which no instruction takes.
     #[must_use]
     pub fn new(op: Op, size: Size, operands: &[Operand<S>]) -> Self {
         let mut all = [Operand::Imm(0); MAX];
         all[..operands.len()].copy_from_slice(operands);
-        Self { op, size, operands: all, len: u8::try_from(operands.len()).expect("four operands at most") }
+        Self { op, size, operands: all, len: u8::try_from(operands.len()).expect("six operands at most") }
     }
 
     #[must_use]
@@ -122,6 +122,8 @@ impl Kind {
             (_, Operand::Status(s)) => f.write_str(s.name()),
             (_, Operand::Mask(m)) => f.write_str(m.name()),
             (_, Operand::Barrier(b)) => f.write_str(b.name()),
+            (_, Operand::Coprocessor(p)) => f.write_str(p.name()),
+            (_, Operand::Cr(c)) => f.write_str(c.name()),
             (_, Operand::V(_)) => unreachable!("the form takes the operand"),
         }
     }

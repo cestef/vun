@@ -293,8 +293,8 @@ Next, most useful first:
    stack, `futex` join; pthreads on the C library; `corpus/accept/programs/threads.vun`), and
    storage per thread (decision 312: `std.sync.Local(T)`, a type marked `#[thread.local]`;
    `kernel/tls.vun` lays each block out and sets the thread pointer, each thread its own first;
-   `corpus/accept/programs/locals.vun`, `link.rs`'s library counting per thread). Left: native
-   32-bit Arm (`mrc` and literal pools in the Thumb tables and assembler; C covers it), Mach-O
+   `corpus/accept/programs/locals.vun`, `link.rs`'s library counting per thread; native 32-bit
+   Arm loads the offset from a word beside the code and reads the pointer with `mrc`). Left: Mach-O
    (thread-local variables are its own model), and a thread's trace naming where it was spawned
    (`spawn` keeping the spawner's chain in a `Local`); riscv64 numbers; directories, seeking,
    environment.

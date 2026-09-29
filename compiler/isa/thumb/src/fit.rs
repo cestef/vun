@@ -48,6 +48,8 @@ impl Choice {
         match self {
             Self::Mask => crate::Mask::ALL.len(),
             Self::Barrier => crate::Barrier::ALL.len(),
+            Self::Coprocessor => crate::Coprocessor::ALL.len(),
+            Self::Cr => crate::Cr::ALL.len(),
         }
     }
 }
@@ -59,6 +61,8 @@ impl Kind {
         match self {
             Self::Mask => Some(Choice::Mask),
             Self::Barrier => Some(Choice::Barrier),
+            Self::Coprocessor => Some(Choice::Coprocessor),
+            Self::Cr => Some(Choice::Cr),
             _ => None,
         }
     }

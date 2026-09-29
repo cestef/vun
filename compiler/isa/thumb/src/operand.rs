@@ -8,7 +8,7 @@ use vun_isa::Label;
 
 use vun_inline::RegRef;
 
-use crate::reg::{Barrier, Cc, Class, Mask, Reg, Special, Status, V};
+use crate::reg::{Barrier, Cc, Class, Coprocessor, Cr, Mask, Reg, Special, Status, V};
 
 /// How a register operand is shifted, by its encoding (`type`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -143,6 +143,8 @@ pub enum Operand<S> {
     Status(Status),
     Mask(Mask),
     Barrier(Barrier),
+    Coprocessor(Coprocessor),
+    Cr(Cr),
 }
 
 impl<S> From<Reg> for Operand<S> {

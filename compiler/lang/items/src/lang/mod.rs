@@ -52,6 +52,8 @@ pub mod arch_thumb_Barrier;
 pub mod arch_thumb_Choice;
 pub mod arch_thumb_Class;
 pub mod arch_thumb_Cond;
+pub mod arch_thumb_Coprocessor;
+pub mod arch_thumb_Cr;
 pub mod arch_thumb_Encoding;
 pub mod arch_thumb_Family;
 pub mod arch_thumb_Feature;

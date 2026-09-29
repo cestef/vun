@@ -102,8 +102,7 @@ fn each_thread_counts_in_its_own_storage_on_every_runtime() {
     if !cfg!(target_os = "linux") {
         return;
     }
-    // 32-bit Arm's native backend does not reach storage per thread yet.
-    let cross: [&[&str]; 2] = [&["linux", "arm64"], &["wasi", "wasm32"]];
+    let cross: [&[&str]; 3] = [&["linux", "arm64"], &["linux", "arm"], &["wasi", "wasm32"]];
     assert_eq!(status_on("runtime-locals", &corpus("locals.vun"), &cross), Some(36));
 }
 

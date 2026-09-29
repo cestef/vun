@@ -1,7 +1,9 @@
 //! Operands covering each kind's cases: registers low and high, `sp` and `pc`; immediates each
 //! encoding holds and some it does not; memory at every offset's bounds.
 
-use vun_isa_thumb::{Barrier, Cc, Kind, List, Mask, Mem, Operand, Reg, Shift, ShiftKind, Special, Status, V};
+use vun_isa_thumb::{
+    Barrier, Cc, Coprocessor, Cr, Kind, List, Mask, Mem, Operand, Reg, Shift, ShiftKind, Special, Status, V,
+};
 
 use super::Sym;
 
@@ -32,6 +34,8 @@ const IMMS: [i64; 21] = [
 ];
 const OFFSETS: [i64; 12] = [0, 1, 4, 124, 128, 255, 256, 1020, 4095, -4, -255, -1020];
 const CCS: [Cc; 4] = [Cc::Eq, Cc::Ne, Cc::Ge, Cc::Hi];
+const COPROCESSORS: [Coprocessor; 2] = [Coprocessor::P14, Coprocessor::P15];
+const CRS: [Cr; 3] = [Cr::C0, Cr::C7, Cr::C13];
 
 /// The candidates for a position of `kind`.
 pub(super) fn candidates(kind: Kind) -> Vec<Operand<Sym>> {
@@ -57,6 +61,8 @@ pub(super) fn candidates(kind: Kind) -> Vec<Operand<Sym>> {
         Kind::Status(_) => Status::ALL.map(Operand::Status).to_vec(),
         Kind::Mask => Mask::ALL.map(Operand::Mask).to_vec(),
         Kind::Barrier => Barrier::ALL.map(Operand::Barrier).to_vec(),
+        Kind::Coprocessor => COPROCESSORS.map(Operand::Coprocessor).to_vec(),
+        Kind::Cr => CRS.map(Operand::Cr).to_vec(),
         Kind::Target(_) | Kind::Low | Kind::High => Vec::new(),
     }
 }

@@ -43,3 +43,7 @@ pub const mask: Item = Item::new(&["lang", "arch", "thumb", "operand", "Kind", "
 pub const barrier: Item = Item::new(
     &["lang", "arch", "thumb", "operand", "Kind", "barrier"],
 );
+pub const coprocessor: Item = Item::new(
+    &["lang", "arch", "thumb", "operand", "Kind", "coprocessor"],
+);
+pub const cr: Item = Item::new(&["lang", "arch", "thumb", "operand", "Kind", "cr"]);

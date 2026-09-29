@@ -8,3 +8,7 @@
 use crate::Item;
 pub const mask: Item = Item::new(&["lang", "arch", "thumb", "Choice", "mask"]);
 pub const barrier: Item = Item::new(&["lang", "arch", "thumb", "Choice", "barrier"]);
+pub const coprocessor: Item = Item::new(
+    &["lang", "arch", "thumb", "Choice", "coprocessor"],
+);
+pub const cr: Item = Item::new(&["lang", "arch", "thumb", "Choice", "cr"]);

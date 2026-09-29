@@ -2,9 +2,10 @@
 //! addresses fold a slot's and constant offsets where a form reaches them, ordered ones between
 //! barriers.
 
-use vun_asm_thumb::{Cc, Emit, Mem, Op, Operand, Size};
+use vun_asm::RelocKind;
+use vun_asm_thumb::{Cc, Coprocessor, Cr, Emit, Mem, Op, Operand, Reg, Size};
 use vun_codegen::Arch;
-use vun_lir::Value;
+use vun_lir::{Address, DataId, Value};
 
 use super::Sel;
 use crate::Thumb2;
@@ -16,8 +17,40 @@ use vun_native::width::offset_of;
 pub(super) const UNROLLED: u64 = 64;
 /// The bytes a loop's step copies: a word.
 const STEP: u64 = Thumb2::WORD;
+/// The register holding the thread pointer, which the kernel sets and the program only reads
+/// (`TPIDRURO`): the system control coprocessor's `c13, c0`, at `opc1` 0 and `opc2` 3.
+const THREAD_POINTER: (Coprocessor, i64, Cr, Cr, i64) = (Coprocessor::P15, 0, Cr::C13, Cr::C0, 3);
+/// The bytes of the word holding a datum's offset from the thread pointer.
+const OFFSET_BYTES: u32 = 4;
 
 impl Sel<'_, '_> {
+    /// The address of the calling thread's storage of `data`, in `r0`: the thread pointer plus
+    /// the datum's offset from it, a word the linker writes, which the code loads from beside
+    /// itself and branches around. The code of a program built for Thumb reaches what the linker
+    /// places at its address, which only an executable knows, and so the offset.
+    pub(super) fn thread_addr(&mut self, data: DataId) {
+        let (address, pointer) = (Reg::R0, Reg::R1);
+        let (word, past) = (self.asm.label(), self.asm.label());
+        self.asm.emit(Op::Ldr, Size::B32, &[address.into(), word.into()]);
+        self.asm.emit(Op::B, Size::B32, &[past.into()]);
+        self.asm.word(word, OFFSET_BYTES, Address::Data(data), RelocKind::ThreadOffset32, 0);
+        self.asm.bind(past);
+        let (coprocessor, opc1, n, m, opc2) = THREAD_POINTER;
+        self.asm.emit(
+            Op::Mrc,
+            Size::B32,
+            &[
+                Operand::Coprocessor(coprocessor),
+                opc1.into(),
+                pointer.into(),
+                Operand::Cr(n),
+                Operand::Cr(m),
+                opc2.into(),
+            ],
+        );
+        self.asm.emit(Op::Add, Size::B32, &[address.into(), address.into(), pointer.into()]);
+    }
+
     /// Copies `bytes` bytes, through a register or, past `UNROLLED`, in a loop of words.
     pub(super) fn copy(&mut self, to: Value, from: Value, bytes: u64) {
         if bytes <= UNROLLED {

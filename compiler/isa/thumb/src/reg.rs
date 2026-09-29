@@ -2,7 +2,9 @@
 
 use std::fmt;
 
-pub use crate::generated::{Barrier, Cc, Choice, Class, Mask, Reg, Size, Special, Status, V};
+pub use crate::generated::{
+    Barrier, Cc, Choice, Class, Coprocessor, Cr, Mask, Reg, Size, Special, Status, V,
+};
 use crate::generated::{CONDITIONS, NAMES};
 
 impl Reg {

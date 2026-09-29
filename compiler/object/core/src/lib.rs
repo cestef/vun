@@ -143,6 +143,7 @@ pub enum Binding {
     Global,
 }
 
+#[derive(Clone)]
 pub struct Symbol {
     pub name: Vec<u8>,
     /// Where it is defined; `None` for one defined elsewhere.
@@ -213,17 +214,21 @@ impl Object {
     /// Makes every relocation naming a symbol this object defines name its section instead, at
     /// the address the symbol is reached by: the object's own definitions are reached as they are
     /// here, never through another module's, which a shared library needs of every symbol it
-    /// exports.
+    /// exports. Storage per thread is reached by its offset in the thread's block, which linkers
+    /// know of symbols of storage per thread alone, not of sections: a relocation naming one names
+    /// a local symbol of it instead.
     ///
     /// # Panics
     /// Panics on a symbol at an offset past 2^63.
     pub fn bind_locally(&mut self) {
+        self.bind_per_thread();
         let targets: Vec<Option<(SectionId, u64)>> = self
             .symbols
             .iter()
             .map(|(_, s)| {
                 let reached = self.machine.reached(s.kind, s.value);
-                s.section.filter(|_| s.kind != SymbolKind::Section).map(|at| (at, reached))
+                let through = !matches!(s.kind, SymbolKind::Section | SymbolKind::Tls);
+                s.section.filter(|_| through).map(|at| (at, reached))
             })
             .collect();
         let mut sections = self.sections.iter().map(|(id, _)| id).collect::<Vec<_>>();
@@ -237,6 +242,24 @@ impl Object {
                     symbols.iter().find(|(s, _)| *s == at).expect("each defining section has one");
                 r.symbol = *symbol;
                 r.addend += i64::try_from(value).expect("offsets fit 63 bits");
+            }
+        }
+    }
+
+    /// Makes every relocation naming a global symbol of storage per thread this object defines
+    /// name a local one at its place.
+    fn bind_per_thread(&mut self) {
+        let global =
+            |s: &Symbol| s.kind == SymbolKind::Tls && s.section.is_some() && s.binding == Binding::Global;
+        let exported: Vec<SymbolId> =
+            self.symbols.iter().filter(|(_, s)| global(s)).map(|(id, _)| id).collect();
+        for id in exported {
+            let local = Symbol { binding: Binding::Local, ..self.symbols[id].clone() };
+            let local = self.symbols.push(local);
+            for (_, section) in self.sections.iter_mut() {
+                for r in section.relocs.iter_mut().filter(|r| r.symbol == id) {
+                    r.symbol = local;
+                }
             }
         }
     }

@@ -46,6 +46,11 @@ pub const Cond: Item = Item::new(&["lang", "arch", "thumb", "Cond"]);
 pub const Mask: Item = Item::new(&["lang", "arch", "thumb", "Mask"]);
 /// The domain a barrier orders: the full system.
 pub const Barrier: Item = Item::new(&["lang", "arch", "thumb", "Barrier"]);
+/// A coprocessor, which `mrc` names by its number: the system control one is `p15`.
+pub const Coprocessor: Item = Item::new(&["lang", "arch", "thumb", "Coprocessor"]);
+/// A register of a coprocessor, by its number: `mrc` names one by two of them (`c13, c0`), the
+/// thread pointer the kernel sets among the system control coprocessor's (`p15, 0, c13, c0, 3`).
+pub const Cr: Item = Item::new(&["lang", "arch", "thumb", "Cr"]);
 /// The kinds of named choice a position takes, each an enum of its own.
 pub const Choice: Item = Item::new(&["lang", "arch", "thumb", "Choice"]);
 /// What a form does with an operand, or with the flags.

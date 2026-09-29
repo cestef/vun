@@ -33,3 +33,18 @@ fn a_call_and_an_address_are_left_to_the_linker() {
         [(0, RelocKind::ThumbCall, -4), (4, RelocKind::ThumbLow16, 0), (8, RelocKind::ThumbHigh16, 0)]
     );
 }
+
+#[test]
+fn a_literal_is_loaded_from_its_word_aligned_past_the_code() {
+    let mut asm = Asm::<Sym>::new(Processor::every());
+    let word = asm.label();
+    asm.emit(Op::Nop, Size::B32, &[]);
+    asm.emit(Op::Ldr, Size::B32, &[Operand::Reg(Reg::R0), Operand::Label(word)]);
+    asm.word(word, 4, "d", RelocKind::ThreadOffset32, 0);
+    let code = asm.finish().expect("bound");
+    // `ldr.w` at 2 reads 4 bytes past its `pc` rounded down to 4, where the word follows a
+    // halfword of padding.
+    assert_eq!(code.bytes, [0x00, 0xbf, 0xdf, 0xf8, 0x04, 0x00, 0, 0, 0, 0, 0, 0]);
+    let kinds: Vec<(u64, RelocKind)> = code.relocs.iter().map(|r| (r.offset, r.kind)).collect();
+    assert_eq!(kinds, [(8, RelocKind::ThreadOffset32)]);
+}
