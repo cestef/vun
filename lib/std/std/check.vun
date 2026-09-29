@@ -233,8 +233,8 @@ exports := ($state: () -> State, $end: (status: std.os.Status) -> lang.never) ->
     #[link.export(lang.check.symbols.asm_write), abi.c]
     asm_write := (address: usize, bytes: usize, site: u32) {
         match state().shadow.access(address, bytes) {
-            .some(violation) => {
-                std.trace.report(#[abi.c] (address: usize, bytes: usize, site: u32) -> (), asm_write, site, .failed(violation));
+            .some(found) => {
+                std.trace.report(#[abi.c] (address: usize, bytes: usize, site: u32) -> (), asm_write, site, .failed(found));
                 end(std.os.trapped)
             },
             .none => {},

@@ -14,9 +14,9 @@ pub const depth: Item = Item::new(&["std", "trace", "depth"]);
 pub const Record: Item = Item::new(&["std", "trace", "Record"]);
 /// The address of the code of `f`.
 pub const code: Item = Item::new(&["std", "trace", "code"]);
-/// The table's rows of `$Row` at `rows`: `count` of them.
+/// The table's rows of `$Row` at `start`: `count` of them.
 pub const rows: Item = Item::new(&["std", "trace", "rows"]);
-/// The table's text of `text`.
+/// The table's text of `piece`.
 pub const text: Item = Item::new(&["std", "trace", "text"]);
 /// The function whose code holds `address`: the one starting last at or before it.
 pub const function: Item = Item::new(&["std", "trace", "function"]);

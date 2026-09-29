@@ -19,15 +19,15 @@ Record := struct {
 /// The address of the code of `f`.
 code := ($F: type, f: F) -> usize { unsafe std.ptr.to(F, &f).cast(usize).read() };
 
-/// The table's rows of `$Row` at `rows`: `count` of them.
-rows := ($Row: type, rows: usize, count: usize) -> &[Row] {
+/// The table's rows of `$Row` at `start`: `count` of them.
+rows := ($Row: type, start: usize, count: usize) -> &[Row] {
     none: &[Row] = &[];
-    if count == 0 { none } else { unsafe lang.mem.items_at(Row, lang.mem.pointer_at(Row, rows), count) }
+    if count == 0 { none } else { unsafe lang.mem.items_at(Row, lang.mem.pointer_at(Row, start), count) }
 };
 
-/// The table's text of `text`.
-text := (text: lang.trace.Text) -> &[u8] {
-    rows(u8, (table.text + text.at.to(usize)).wrap(usize), text.len.to(usize))
+/// The table's text of `piece`.
+text := (piece: lang.trace.Text) -> &[u8] {
+    rows(u8, (table.text + piece.at.to(usize)).wrap(usize), piece.len.to(usize))
 };
 
 /// The function whose code holds `address`: the one starting last at or before it.

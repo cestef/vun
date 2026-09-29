@@ -50,7 +50,7 @@ build := (b: &mut std.build.Build) {
     .expect("the plan runs");
     let target = ".{ .arch = .arm, .isa = .thumb, .features = .{ .microcontroller, .divide }, .cpu = .cortex_m4f, .os = .bare, .abi = .eabihf, .convention = .aapcs_vfp, \
                   .pointer_bits = 32, .register_bits = 32, .floats = .{ lang.Float(32) }, \
-                  .endian = .little, \
+                  .threads = .one, .endian = .little, \
                   .object_format = .elf, .entry_symbol = .some(\"Reset\"), .backends = .{ .debug = .{ .cranelift, .c }, \
                   .release = .{ .llvm, .c } }, .linker = .lld, .c = .{ .short = .{ .bits = 16, .align = 2 }, \
                   .int = .{ .bits = 32, .align = 4 }, .long = .{ .bits = 32, .align = 4 }, \
@@ -68,7 +68,7 @@ build := (b: &mut std.build.Build) {
             format!(
                 ".program(.{{ .root = \"app.vun\", .target = {target}, \
                  .deps = .{{ .{{ .name = .stm32f4, .dep = .{{ .step = .{{ .index = 0 }} }} }} }}, .memory = .{{}}, .output = .executable, \
-                 .checks = .{{}} }})"
+                 .checks = .{{}}, .trace = .none }})"
             ),
             ".flash(.{ .program = .{ .step = .{ .index = 1 } }, .method = .probe(.{ .chip = \"STM32F407VGTx\" }) })".to_owned(),
             ".test_on(.{ .program = .{ .step = .{ .index = 1 } }, .runner = .qemu(\"lm3s6965\") })".to_owned(),
