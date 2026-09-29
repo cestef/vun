@@ -103,6 +103,8 @@ impl Fixture {
     /// tests of this build share (`SHARED`); `VUN_QUERY_CHECK=1` checks every memo it reuses
     /// against computing it again.
     pub(crate) fn session(&self) -> Session {
+        // Logs, where `VUN_LOG` asks for them, as the command line gives them.
+        vun_trace::Config::from_env().install();
         let mut session = Session::sharing(&Arc::new(Db::new()));
         session.store = self.store();
         session.shared = Some(PathBuf::from(SHARED));

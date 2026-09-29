@@ -62,6 +62,16 @@ impl PartialEq for ParsedFile {
 
 impl Eq for ParsedFile {}
 
+/// A parsed file is what it is equal by: its file and the hash of its text.
+impl std::fmt::Debug for ParsedFile {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ParsedFile")
+            .field("file", &self.file)
+            .field("text", &self.text)
+            .finish_non_exhaustive()
+    }
+}
+
 /// `None` for a file the driver did not read.
 pub struct Parsed;
 

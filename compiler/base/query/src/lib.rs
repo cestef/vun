@@ -48,7 +48,7 @@ pub trait Query: 'static {
     /// never saved, and one not set holds what it computes until it is.
     const INPUT: bool = false;
     type Key: Clone + Eq + std::hash::Hash + fmt::Debug + Send + Sync + 'static;
-    type Value: Clone + PartialEq + std::hash::Hash + Send + Sync + 'static;
+    type Value: Clone + PartialEq + std::hash::Hash + fmt::Debug + Send + Sync + 'static;
 
     /// Computes the value, reading other queries through `cx`. An input's is what a key that
     /// was never set holds.

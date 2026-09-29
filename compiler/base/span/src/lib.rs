@@ -248,6 +248,7 @@ impl SourceFiles {
         let mut added = self.added.write().expect("source files");
         let (path, hash) = (identity.1.clone(), identity.2);
         let file = *added.entry(identity).or_insert_with(|| {
+            vun_trace::tracing::trace!(key = ?named, path, text = %hash, "file");
             let index = self.files.push((named.clone(), SourceFile::new(path, text)));
             FileId { index: u32::try_from(index).expect("fewer than 2^32 files"), key: short }
         });

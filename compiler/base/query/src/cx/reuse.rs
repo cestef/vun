@@ -13,6 +13,7 @@ use crate::Query;
 use crate::memo::Memo;
 use crate::table::{AnyTable, Slot, Table};
 use crate::tally::Event;
+use vun_trace::tracing;
 
 /// Whether memos reused without being computed are trusted, or computed again to check them.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -86,14 +87,16 @@ impl Cx<'_> {
         if standing == Standing::Provisional {
             return;
         }
+        let reused = memo.value(self.db);
         let differs = if Q::interface(&value) != memo.fingerprint {
             Some(Differs::Fingerprint)
-        } else if memo.value(self.db).is_some_and(|reused| *reused != value) {
+        } else if reused.is_some_and(|reused| *reused != value) {
             Some(Differs::Value)
         } else {
             None
         };
         if let Some(differs) = differs {
+            tracing::debug!(query = Q::NAME, key = ?table.key(slot), reused = ?reused, computed = ?value, "memo differs");
             Self::unsound(table, slot, differs);
         }
     }

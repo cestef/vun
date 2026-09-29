@@ -13,4 +13,5 @@ workspace = true
 vun-codec.workspace = true
 vun-hash.workspace = true
 vun-intern.workspace = true
+vun-trace.workspace = true
 boxcar.workspace = true
