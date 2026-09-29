@@ -38,6 +38,8 @@ pub enum InstKind {
     SlotAddr(Slot),
     /// The address of a function, data object or linked symbol.
     Addr(Address),
+    /// The address of the calling thread's storage of a datum of `Storage::Thread`.
+    ThreadAddr(DataId),
     /// Copies `bytes` bytes from `from` to `to`, which do not overlap.
     Copy { to: Value, from: Value, bytes: u64 },
     /// A call; its result, if the signature has one, is the instruction's value.
@@ -234,6 +236,7 @@ impl InstKind {
                 | Self::Offset { .. }
                 | Self::SlotAddr(_)
                 | Self::Addr(_)
+                | Self::ThreadAddr(_)
         )
     }
 
@@ -271,7 +274,8 @@ impl InstKind {
             | Self::Select { .. }
             | Self::Offset { .. }
             | Self::SlotAddr(_)
-            | Self::Addr(_) => false,
+            | Self::Addr(_)
+            | Self::ThreadAddr(_) => false,
         }
     }
 }

@@ -9,11 +9,13 @@ use vun_intern::Symbol;
 mod check;
 mod floats;
 mod name;
+mod threads;
 mod trace;
 
 pub use check::{Check, Checks};
 pub use floats::Floats;
 pub use name::Name;
+pub use threads::Threads;
 pub use trace::Detail;
 
 /// `lang.target.Endian`.
@@ -140,6 +142,8 @@ pub struct TargetSpec {
     /// The width of a general register: the widest integer the processor computes with.
     pub register_bits: u32,
     pub floats: Floats,
+    /// How many threads its programs run.
+    pub threads: Threads,
     pub endian: Endian,
     pub object_format: Symbol,
     /// The linker's entry symbol; `None` for libraries (spec 08, rule 2).

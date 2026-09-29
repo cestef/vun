@@ -44,7 +44,9 @@ impl Checker<'_> {
             let Def::Inst(inst) = self.func.values[value].def else { return None };
             let size = match self.func.insts[inst].kind {
                 InstKind::SlotAddr(slot) => self.func.slots[slot].size,
-                InstKind::Addr(Address::Data(d)) => self.unit.data[d].bytes.len() as u64,
+                InstKind::Addr(Address::Data(d)) | InstKind::ThreadAddr(d) => {
+                    self.unit.data[d].bytes.len() as u64
+                }
                 InstKind::Offset { base, offset } => {
                     at += self.signed(self.func.constant(offset)?.1);
                     value = base;

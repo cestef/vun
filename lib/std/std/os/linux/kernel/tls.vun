@@ -1,0 +1,172 @@
+//! Storage per thread of a program calling the kernel itself (spec 07, section 2). The program's
+//! TLS segment, which the auxiliary vector the kernel starts it with leads to, is the image each
+//! thread's block starts as; a block is laid out as the architecture's ABI says, and the thread
+//! pointer, which code reaches the block from, is set to it for each thread.
+
+/// Where the thread pointer points in a thread's block.
+Variant := enum {
+    /// At a header of `Layout.header` bytes, the storage after it (arm64, Arm).
+    above,
+    /// Past the storage, at a header whose first word holds the pointer itself (x86-64).
+    below,
+};
+
+/// How an architecture's ABI lays out a thread's block.
+Layout := struct {
+    arch: lang.meta.Name,
+    variant: Variant,
+    header: usize,
+};
+
+/// The layouts of the architectures the runtime reaches the kernel from.
+layouts := [
+    Layout{ .arch = .x86_64, .variant = .below, .header = 8 },
+    Layout{ .arch = .arm64, .variant = .above, .header = 16 },
+    Layout{ .arch = .arm, .variant = .above, .header = 8 },
+];
+
+/// The layout of the architecture being built for.
+layout := () -> Layout {
+    $for row in layouts {
+        if row.arch == lang.target.current.arch { return row; }
+    }
+    lang.panic.fail(.message("the runtime lays out no storage per thread for this architecture"))
+};
+
+/// `a_type` of the auxiliary vector's entries: the end, the program headers and their count.
+end_of_vector: usize = 0;
+program_headers: usize = 3;
+program_header_count: usize = 5;
+/// `p_type` of the program header of the TLS segment (`PT_TLS`).
+tls_segment: u32 = 7;
+
+/// A program header of an ELF file of 64-bit addresses.
+#[layout.c]
+Header64 := struct {
+    kind: u32,
+    flags: u32,
+    offset: u64,
+    address: u64,
+    physical: u64,
+    stored: u64,
+    bytes: u64,
+    align: u64,
+};
+
+/// A program header of an ELF file of 32-bit addresses.
+#[layout.c]
+Header32 := struct {
+    kind: u32,
+    offset: u32,
+    address: u32,
+    physical: u32,
+    stored: u32,
+    bytes: u32,
+    flags: u32,
+    align: u32,
+};
+
+/// The program headers of the target's ELF files.
+Header := $if lang.meta.size(usize) == 8 { Header64 } else { Header32 };
+
+/// What each thread's storage starts as: the bytes stored at `at`, then zeros up to `bytes`, the
+/// block aligned to `align`.
+Image := struct {
+    at: usize,
+    stored: usize,
+    bytes: usize,
+    align: usize,
+
+    /// The image of the TLS segment among the program headers the auxiliary vector at `vector`
+    /// leads to; an empty one where the program has none.
+    of := (vector: *usize) -> Image {
+        mut headers: usize = 0;
+        mut count: usize = 0;
+        mut at := vector;
+        for unsafe at.read() != end_of_vector {
+            kind := unsafe at.read();
+            value := unsafe at.offset(1).read();
+            if kind == program_headers { headers = value; }
+            if kind == program_header_count { count = value; }
+            at = unsafe at.offset(2);
+        }
+        for i in 0..count {
+            h := unsafe lang.mem.pointer_at(Header, (headers + i * lang.meta.size(Header)).wrap(usize)).read();
+            if h.kind == tls_segment {
+                return .{
+                    .at = h.address.to(usize),
+                    .stored = h.stored.to(usize),
+                    .bytes = h.bytes.to(usize),
+                    .align = std.cmp.max(usize, h.align.to(usize), 1),
+                };
+            }
+        }
+        .{ .at = 0, .stored = 0, .bytes = 0, .align = 1 }
+    };
+
+    /// The bytes a block takes wherever it is placed, its header included.
+    span := (self: &Image) -> usize {
+        (up(self.bytes, self.align) + up(layout().header, self.align) + self.align).wrap(usize)
+    };
+
+    /// Lays a block out in the `span()` bytes of zeros at `at`, returning the thread pointer
+    /// reaching it.
+    place := (self: &Image, at: usize) -> usize {
+        header := layout().header;
+        (pointer, storage) := match layout().variant {
+            .above => {
+                pointer := up(at, self.align);
+                (pointer, (pointer + up(header, self.align)).wrap(usize))
+            },
+            .below => {
+                storage := up(at, self.align);
+                pointer := (storage + up(self.bytes, self.align)).wrap(usize);
+                unsafe lang.mem.pointer_at(usize, pointer).write(pointer);
+                (pointer, storage)
+            },
+        };
+        unsafe lang.mem.copy(u8, lang.mem.pointer_at(u8, storage), lang.mem.pointer_at(u8, self.at), self.stored);
+        pointer
+    };
+};
+
+/// `n` rounded up to a multiple of `align`.
+up := (n: usize, align: usize) -> usize {
+    past := (n + align - 1).wrap(usize);
+    (past - past % align).wrap(usize)
+};
+
+/// The system calls setting the thread pointer, which x86-64 (`arch_prctl`, with the `code` of
+/// the base of `fs`) and Arm (`set_tls`, one of its private calls) have, arm64 writing its
+/// register itself.
+arch_prctl: usize = 158;
+set_fs: usize = 0x1002;
+set_tls: usize = 0xf_0005;
+
+/// Sets the calling thread's pointer to `pointer`.
+point := (pointer: usize) {
+    $if lang.target.current.arch == .x86_64 {
+        std.os.linux.kernel.call(arch_prctl, [set_fs, pointer, 0, 0, 0, 0]);
+    } else {
+        $if lang.target.current.arch == .arm64 {
+            unsafe lang.arch.arm64.asm { msr tpidr_el0, {in(x0) pointer} };
+        } else {
+            std.os.linux.kernel.call(set_tls, [pointer, 0, 0, 0, 0, 0]);
+        }
+    }
+};
+
+/// The image of the program, which the main thread reads when the program starts, before it
+/// starts any other.
+mut image: Image = .{ .at = 0, .stored = 0, .bytes = 0, .align = 1 };
+
+/// Gives the main thread its block, from the image the auxiliary vector leads to: on `stack`,
+/// the argument count, the arguments, the environment and the vector, each list ending with 0.
+start := (stack: *usize) {
+    count := unsafe stack.read();
+    mut at := unsafe stack.offset((count + 2).to(isize));
+    for unsafe at.read() != 0 { at = unsafe at.offset(1); }
+    found := Image.of(unsafe at.offset(1));
+    unsafe { image = found; }
+    point(found.place(std.os.linux.kernel.map(found.span())));
+};

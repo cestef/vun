@@ -31,6 +31,8 @@ impl Machine {
             (Self::X86_64, RelocKind::Call32) => x86_64::Reloc::Plt32.number(),
             (Self::X86_64, RelocKind::GotPc32) => x86_64::Reloc::GotPcRel.number(),
             (Self::X86_64, RelocKind::Abs32) => x86_64::Reloc::Abs32.number(),
+            (Self::X86_64, RelocKind::TlsDescPc32) => x86_64::Reloc::GotPc32TlsDesc.number(),
+            (Self::X86_64, RelocKind::TlsDescCall) => x86_64::Reloc::TlsDescCall.number(),
             (Self::Aarch64, RelocKind::Abs64) => aarch64::Reloc::Abs64.number(),
             (Self::Aarch64, RelocKind::Abs32) => aarch64::Reloc::Abs32.number(),
             (Self::Aarch64, RelocKind::Pc32) => aarch64::Reloc::Prel32.number(),
@@ -45,6 +47,10 @@ impl Machine {
             (Self::Aarch64, RelocKind::PageOffset64) => aarch64::Reloc::Ldst64AbsLo12Nc.number(),
             (Self::Aarch64, RelocKind::GotPage21) => aarch64::Reloc::AdrGotPage.number(),
             (Self::Aarch64, RelocKind::GotPageOffset64) => aarch64::Reloc::Ld64GotLo12Nc.number(),
+            (Self::Aarch64, RelocKind::TlsDescPage21) => aarch64::Reloc::TlsDescAdrPage21.number(),
+            (Self::Aarch64, RelocKind::TlsDescPageOffset64) => aarch64::Reloc::TlsDescLd64Lo12.number(),
+            (Self::Aarch64, RelocKind::TlsDescPageOffset12) => aarch64::Reloc::TlsDescAddLo12.number(),
+            (Self::Aarch64, RelocKind::TlsDescCall) => aarch64::Reloc::TlsDescCall.number(),
             (Self::Arm(_), RelocKind::Abs32) => arm::Reloc::Abs32.number(),
             (Self::Arm(_), RelocKind::Pc32) => arm::Reloc::Rel32.number(),
             (Self::Arm(_), RelocKind::ThumbCall) => arm::Reloc::ThmCall.number(),
@@ -52,6 +58,7 @@ impl Machine {
             (Self::Arm(_), RelocKind::ThumbJump19) => arm::Reloc::ThmJump19.number(),
             (Self::Arm(_), RelocKind::ThumbLow16) => arm::Reloc::ThmMovwAbsNc.number(),
             (Self::Arm(_), RelocKind::ThumbHigh16) => arm::Reloc::ThmMovtAbs.number(),
+            (Self::Arm(_), RelocKind::ThreadOffset32) => arm::Reloc::TlsLe32.number(),
             _ => return None,
         })
     }
@@ -64,6 +71,7 @@ impl SymbolKind {
             Self::Object => vun_elf::SymbolKind::Object,
             Self::Func => vun_elf::SymbolKind::Func,
             Self::Section => vun_elf::SymbolKind::Section,
+            Self::Tls => vun_elf::SymbolKind::Tls,
         }
     }
 }

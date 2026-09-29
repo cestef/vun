@@ -14,6 +14,8 @@ pub const division: Item = Item::new(&["std", "os", "linux", "kernel", "division
 pub const memory: Item = Item::new(&["std", "os", "linux", "kernel", "memory"]);
 /// The namespace `std.os.linux.kernel.thread`.
 pub const thread: Item = Item::new(&["std", "os", "linux", "kernel", "thread"]);
+/// The namespace `std.os.linux.kernel.tls`.
+pub const tls: Item = Item::new(&["std", "os", "linux", "kernel", "tls"]);
 /// The numbers of the system calls, the architecture's being built for.
 pub const numbers: Item = Item::new(&["std", "os", "linux", "kernel", "numbers"]);
 /// A system call: its number and six arguments, which the architecture's instruction takes in

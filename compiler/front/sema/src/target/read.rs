@@ -8,6 +8,7 @@ use vun_codec::{Decode, Encode};
 use vun_items::Item;
 use vun_items::lang::Option as option;
 use vun_items::lang::target_Convention as convention;
+use vun_items::lang::target_Threads as threads;
 use vun_items::lang::{
     target_Atomics as atomics, target_Attributes as attributes, target_CCompiler as compiler,
     target_FrameSizes as frames,
@@ -16,6 +17,7 @@ use vun_items::lang::{target_Backends as backends, target_Host as host, target_S
 use vun_items::lang::{target_C as c, target_CInt as cint, target_Endian as endian};
 use vun_target::{
     Atomics, Attributes, Backends, CCompiler, CInt, CTypes, Convention, Endian, FrameSizes, Host, TargetSpec,
+    Threads,
 };
 
 use super::members::Members;
@@ -95,6 +97,10 @@ impl<T: Read> Read for Option<T> {
             _ => Err(Unread::Record),
         }
     }
+}
+
+impl Variants for Threads {
+    const VARIANTS: &'static [(Item, Self)] = &[(threads::one, Self::One), (threads::many, Self::Many)];
 }
 
 impl Variants for Endian {
@@ -186,6 +192,7 @@ impl Read for TargetSpec {
             pointer_bits: m.width(spec::pointer_bits)?,
             register_bits: m.width(spec::register_bits)?,
             floats: m.floats(spec::floats)?,
+            threads: m.read(spec::threads)?,
             endian: m.read(spec::endian)?,
             object_format: m.name(spec::object_format)?,
             entry_symbol: m.symbol(spec::entry_symbol)?,

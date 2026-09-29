@@ -39,6 +39,12 @@ impl Look<'_, '_> {
                     reserve(needs, &[Reg::Rax]);
                 }
             }
+            // The call a TLS descriptor names gives its offset in `rax`, keeping every other
+            // register.
+            Selection::ThreadAddr { .. } => {
+                reserve(needs, &[Reg::Rax]);
+                needs.defs.extend(out.map(|v| (v, Out::Fixed(X86::preg(Reg::Rax)))));
+            }
             Selection::Fetch { addr, value, .. } => {
                 self.address(addr, needs);
                 self.read(needs, value, Need::Any);

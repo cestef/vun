@@ -12,7 +12,7 @@ use vun_index::IndexVec;
 use vun_lir::{Address, DataId};
 
 use super::Emitter;
-use crate::ast::{Aggregate, Attribute, Binary, Decl, Expr, Ident, Item, Storage, Ty};
+use crate::ast::{Aggregate, Attribute, Binary, Decl, Duration, Expr, Ident, Item, Storage, Ty};
 use vun_backend::{Lack, Missing};
 use vun_target::Attributes;
 
@@ -45,8 +45,13 @@ impl Emitter<'_> {
             types.extend(aggregates);
             let data = &self.unit.data[id];
             let storage = self.storage(data.linkage);
+            let duration = match data.storage {
+                vun_lir::Storage::Program => Duration::Static,
+                vun_lir::Storage::Thread => Duration::Thread,
+            };
             let object = |storage, init| Item::Object {
                 storage,
+                duration,
                 constant: !data.writable,
                 decl: decl.clone(),
                 attributes: attributes.clone(),
@@ -109,6 +114,9 @@ impl Emitter<'_> {
         let at = data.origin;
         let gnu = self.target.c.compiler.attributes == Attributes::Gnu;
         let mut attributes = Vec::new();
+        if data.storage == vun_lir::Storage::Thread && !gnu {
+            return Err(Missing::PerThread.at(at));
+        }
         if let Some(section) = data.section {
             // The name is written as a string literal, with nothing to escape.
             let plain = section.as_str().bytes().all(|b| b.is_ascii_graphic() && b != b'"' && b != b'\\');

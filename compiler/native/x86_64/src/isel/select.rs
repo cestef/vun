@@ -6,7 +6,9 @@ use vun_asm_x86_64::{Cc, Op, Size};
 use vun_backend::{Lack, Missing};
 use vun_codegen::Cx;
 use vun_codegen::snippet::Snippet;
-use vun_lir::{Access, BinOp, Callee, CastOp, Cond, Inst, InstKind, Order, Reads, RmwOp, Scalar, Value};
+use vun_lir::{
+    Access, BinOp, Callee, CastOp, Cond, DataId, Inst, InstKind, Order, Reads, RmwOp, Scalar, Value,
+};
 
 use crate::snippets::{
     ADD, AND, COMPARE_EXCHANGE, DOUBLE_TO_INT, FADD, FCOMPARE, FDIV, FEQUAL, FETCH_ADD, FETCH_SUB, FMUL,
@@ -29,6 +31,10 @@ pub(super) enum Selection<'f> {
     Call {
         callee: &'f Callee,
         args: &'f [Value],
+    },
+    /// The address of the calling thread's storage of `data`, in `rax`.
+    ThreadAddr {
+        data: DataId,
     },
     /// `op` on memory at `addr` with `value`, atomically, in a loop of compare-exchanges.
     Fetch {
@@ -160,6 +166,7 @@ impl<'a> Look<'_, 'a> {
                 asm.check::<X86>()?;
                 Selection::Asm(asm, check.as_ref())
             }
+            &InstKind::ThreadAddr(data) => Selection::ThreadAddr { data },
             InstKind::Const { .. } | InstKind::SlotAddr(_) | InstKind::Addr(_) => {
                 unreachable!("recomputed where used")
             }

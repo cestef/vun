@@ -32,6 +32,8 @@ impl SectionFlags {
     pub const EXEC: Self = Self(4);
     /// `info` numbers a section: the one a relocation section applies to.
     pub const INFO_LINK: Self = Self(0x40);
+    /// Storage per thread: each thread's copy starts as its bytes.
+    pub const TLS: Self = Self(0x400);
 
     #[must_use]
     pub const fn contains(self, other: Self) -> bool {

@@ -2,6 +2,7 @@
 //! and primitives are declared at.
 
 use vun_hir::db::{Namespace, Outer, Package, PackageId, Scope};
+use vun_hir::tree::{ExprId, Name};
 use vun_intern::Symbol;
 use vun_items::Item;
 use vun_query::{Cx, Query};
@@ -12,6 +13,13 @@ use crate::item::{Declared, Site};
 use crate::ty::Value;
 
 impl Env<'_, '_> {
+    /// What the path `object.name` leads to: the member `name` of the namespace `object` is.
+    pub(super) fn member_site(&self, object: ExprId, name: &Name) -> Result<Site, Unevaluated> {
+        let Value::Namespace(ns) = self.eval(object)? else { return Err(Unevaluated::Unsupported) };
+        let name = self.name(name).ok_or(Unevaluated::Unsupported)?;
+        self.cx.get::<Declared>(&(ns, name)).ok_or(Unevaluated::Absent)
+    }
+
     /// The value of `item`, such as `lang.ops.Eq`, which syntax desugars into
     /// (appendix B): its first name is looked up outside the file, the rest as members.
     ///

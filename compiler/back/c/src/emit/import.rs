@@ -5,7 +5,7 @@ use vun_lir::{Import, ImportKind};
 use vun_target::Name;
 
 use super::Emitter;
-use crate::ast::{Attribute, Decl, Ident, Item, Storage, Ty};
+use crate::ast::{Attribute, Decl, Duration, Ident, Item, Storage, Ty};
 
 /// The object format whose imports name the module they come from.
 const WASM: Name = Name("wasm");
@@ -24,6 +24,7 @@ impl Emitter<'_> {
             }
             ImportKind::Data => Item::Object {
                 storage: Storage::Extern,
+                duration: Duration::Static,
                 constant: false,
                 decl: Decl::new(Ty::BYTE, name),
                 attributes: Vec::new(),

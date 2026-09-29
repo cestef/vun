@@ -93,6 +93,14 @@ Backends := struct {
     release: &[lang.meta.Name],
 };
 
+/// How many threads the programs of a target run.
+Threads := enum {
+    /// One: bare metal, WASI. Storage per thread is the program's.
+    one,
+    /// As many as they start, each with storage of its own.
+    many,
+};
+
 /// A target, as data (spec 13, section 7): the package `targets` declares one per system and CPU
 /// (`targets.linux.x86_64`), so adding a target rebuilds nothing. Architectures, CPUs, systems,
 /// ABIs, object formats, backends and linkers are names, the sets of them open to what the
@@ -123,6 +131,8 @@ Spec := struct {
     /// The float types its processor computes; `lang.float.soft` computes the others
     /// (`lang.lower.soft`).
     floats: &[type],
+    /// How many threads its programs run, which storage per thread follows (spec 07, section 2).
+    threads: Threads = .one,
     endian: Endian,
     object_format: lang.meta.Name,
     /// The symbol a program starts at, when the target has one.

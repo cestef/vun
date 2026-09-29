@@ -7,3 +7,4 @@
 )]
 use crate::Item;
 pub const nzcv: Item = Item::new(&["lang", "arch", "arm64", "SysReg", "nzcv"]);
+pub const tpidr_el0: Item = Item::new(&["lang", "arch", "arm64", "SysReg", "tpidr_el0"]);

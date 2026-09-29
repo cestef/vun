@@ -19,3 +19,7 @@ pub const start: Item = Item::new(
 pub const context: Item = Item::new(
     &["std", "os", "linux", "kernel", "thread", "Record", "context"],
 );
+/// The thread's pointer, which it sets first (spec 07, section 2).
+pub const pointer: Item = Item::new(
+    &["std", "os", "linux", "kernel", "thread", "Record", "pointer"],
+);

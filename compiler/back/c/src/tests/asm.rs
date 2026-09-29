@@ -77,6 +77,7 @@ fn cortex_m4() -> TargetSpec {
         pointer_bits: 32,
         register_bits: 32,
         floats: vun_target::Floats::ALL,
+        threads: vun_target::Threads::One,
         c: CTypes { long: CInt { bits: 32, align: 4 }, pointer_align: 4, ..target().c },
         ..target()
     }

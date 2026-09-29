@@ -110,7 +110,13 @@ and calls `clone` sharing memory, files and signal handlers, the new thread jump
 that runs it and ends it with `exit`; joining waits on the thread's id, which the kernel clears
 when it ends (`CLONE_CHILD_CLEARTID`, then `futex`), and unmaps the stack. The C library's runtime
 calls `pthread_create` and `pthread_join`; WASI's, whose module runs one thread, reports
-`Error.unsupported`. Threads keep no storage of their own (no thread-local storage yet).
+`Error.unsupported`. Each thread has its own storage of the bindings a type marks
+`#[thread.local]` (spec 07, section 2): the C library lays it out; the kernel runtime finds the
+program's TLS segment through the auxiliary vector (`AT_PHDR`), lays each thread's block out as
+a table per architecture says (x86-64's below the thread pointer, whose first word points to
+itself; arm64's and Arm's above a header of 16 or 8 bytes), sets the main thread's pointer when
+it starts (`arch_prctl`, `tpidr_el0`, `set_tls`), and each thread it starts sets its own as the
+first thing it does, the block placed in the thread's mapping.
 
 **Files and errors.** `System.open(path, mode)` gives a `std.os.file.File` (`Mode`: `read`,
 `write` creating or emptying, `append` creating, `update`), whose `stream()` is read

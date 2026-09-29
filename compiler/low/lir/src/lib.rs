@@ -27,7 +27,7 @@ pub use inst::{
 };
 pub use trace::{Field, Fields, Trace, TraceLayout};
 pub use ty::Scalar;
-pub use unit::{Data, Import, ImportKind, Reloc, Site, Unit};
+pub use unit::{Data, Import, ImportKind, Reloc, Site, Storage, Unit};
 pub use verify::Malformed;
 
 #[cfg(any(test, feature = "testing"))]

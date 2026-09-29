@@ -16,6 +16,7 @@ impl Contents {
             Self::Code => SectionFlags::ALLOC | SectionFlags::EXEC,
             Self::ReadOnly | Self::Relocated => SectionFlags::ALLOC,
             Self::Writable => SectionFlags::ALLOC | SectionFlags::WRITE,
+            Self::PerThread => SectionFlags::ALLOC | SectionFlags::WRITE | SectionFlags::TLS,
             Self::StackNote | Self::Debug => SectionFlags::NONE,
         }
     }

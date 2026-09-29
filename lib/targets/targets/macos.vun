@@ -12,6 +12,7 @@ arm64 := lang.target.Spec{
     .pointer_bits = 64,
     .register_bits = 64,
     .floats = &[f32, f64],
+    .threads = .many,
     .endian = .little,
     .object_format = .macho,
     .entry_symbol = .some("_main"),

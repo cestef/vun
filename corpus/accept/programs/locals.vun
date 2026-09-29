@@ -1,0 +1,22 @@
+//! Storage per thread (spec 07, section 2): each thread counts in its own storage of `count`,
+//! the thread 5 past the 1 it starts with, the main thread 30, and neither sees the other's.
+//! A system running one thread counts on it alone: 31, and 6 in place of the other's.
+
+start := std.os.start(main);
+
+count: std.sync.Local(u32) = .init(1);
+
+add := (n: u32) { count.set((count.get() + n).wrap(u32)); };
+
+main := (sys: &mut std.os.System) -> std.os.Exit {
+    mut f := [] () -> u32 {
+        add(5);
+        count.get()
+    };
+    add(30);
+    theirs := match sys.spawn(&mut f) {
+        .ok(t) => t.join(),
+        .err(_) => 6,
+    };
+    if count.get() == 31 and theirs == 6 { .code(36) } else { .code(1) }
+};

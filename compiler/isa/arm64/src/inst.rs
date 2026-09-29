@@ -100,7 +100,9 @@ impl Kind {
             (_, Operand::Label(label)) => write!(f, "{label}"),
             (_, Operand::Sym(target) | Operand::Page(target, Via::Direct)) => write!(f, "{target}"),
             (_, Operand::Page(target, Via::Got)) => write!(f, ":got:{target}"),
-            (_, Operand::Lo12(target)) => write!(f, ":lo12:{target}"),
+            (_, Operand::Page(target, Via::Descriptor)) => write!(f, ":tlsdesc:{target}"),
+            (_, Operand::Lo12(target, Via::Descriptor)) => write!(f, ":tlsdesc_lo12:{target}"),
+            (_, Operand::Lo12(target, _)) => write!(f, ":lo12:{target}"),
             _ => unreachable!("the form takes the operand"),
         }
     }
@@ -144,6 +146,7 @@ impl<S: fmt::Display> Mem<S> {
             }
             Mem::Lo12 { target, via: Via::Direct, .. } => write!(f, "[{base}, :lo12:{target}]"),
             Mem::Lo12 { target, via: Via::Got, .. } => write!(f, "[{base}, :got_lo12:{target}]"),
+            Mem::Lo12 { target, via: Via::Descriptor, .. } => write!(f, "[{base}, :tlsdesc_lo12:{target}]"),
         }
     }
 }

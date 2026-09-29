@@ -170,6 +170,7 @@ impl<'a> Sel<'_, 'a> {
             }
             Selection::Copy { to, from, bytes } => self.copy(to, from, bytes),
             Selection::Asm(asm, check) => asm.emit(check, self.0)?,
+            Selection::ThreadAddr { .. } => return Err(self.lack(Missing::PerThread)),
             Selection::Homed { .. } => self.double(inst)?,
         }
         Ok(())

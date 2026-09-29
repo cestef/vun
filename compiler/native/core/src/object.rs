@@ -3,7 +3,7 @@
 //! the functions' code.
 
 use vun_index::IndexVec;
-use vun_lir::{Address, DataId, FuncId, ImportId, ImportKind, Linkage, Unit};
+use vun_lir::{Address, DataId, FuncId, ImportId, ImportKind, Linkage, Storage, Unit};
 
 use vun_backend::Lines;
 use vun_codegen::Compiled;
@@ -16,11 +16,12 @@ use vun_object::{
 const FUNCTION_ALIGN: u64 = 16;
 
 /// The section each kind of content goes to, by its conventional name.
-const SECTIONS: [(Contents, &[u8]); 5] = [
+const SECTIONS: [(Contents, &[u8]); 6] = [
     (Contents::Code, b".text"),
     (Contents::ReadOnly, b".rodata"),
     (Contents::Relocated, b".data.rel.ro"),
     (Contents::Writable, b".data"),
+    (Contents::PerThread, b".tdata"),
     (Contents::StackNote, b".note.GNU-stack"),
 ];
 
@@ -122,10 +123,15 @@ impl<T> Assembly<'_, T> {
         let mut data = IndexVec::new();
         let mut placed = Vec::new();
         for (id, d) in self.unit.data.iter() {
-            let contents = match (d.writable, d.relocs.is_empty()) {
-                (true, _) => Contents::Writable,
-                (false, true) => Contents::ReadOnly,
-                (false, false) => Contents::Relocated,
+            let contents = match (d.storage, d.writable, d.relocs.is_empty()) {
+                (Storage::Thread, ..) => Contents::PerThread,
+                (Storage::Program, true, _) => Contents::Writable,
+                (Storage::Program, false, true) => Contents::ReadOnly,
+                (Storage::Program, false, false) => Contents::Relocated,
+            };
+            let kind = match d.storage {
+                Storage::Program => SymbolKind::Object,
+                Storage::Thread => SymbolKind::Tls,
             };
             let name = d.section.map_or_else(
                 || SECTIONS.iter().find(|(c, _)| *c == contents).expect("listed").1.to_vec(),
@@ -136,8 +142,7 @@ impl<T> Assembly<'_, T> {
             placed.push((section, value));
             let (name, binding) = Self::named(d.linkage, id.to_string());
             let size = d.bytes.len() as u64;
-            let symbol =
-                Symbol { name, section: Some(section), value, size, kind: SymbolKind::Object, binding };
+            let symbol = Symbol { name, section: Some(section), value, size, kind, binding };
             data.push(object.symbols.push(symbol));
         }
         (data, placed)

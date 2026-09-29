@@ -37,6 +37,8 @@ pub(super) const PROT_ALL: u32 = 7;
 pub(super) const PURE_INSTRUCTIONS: u32 = 0x8000_0000;
 pub(super) const SOME_INSTRUCTIONS: u32 = 0x400;
 pub(super) const DEBUG: u32 = 0x0200_0000;
+/// `S_THREAD_LOCAL_REGULAR`: the initial bytes of storage per thread.
+pub(super) const THREAD_LOCAL_REGULAR: u32 = 0x11;
 /// `N_*`.
 pub(super) const EXTERNAL: u8 = 0x1;
 pub(super) const DEFINED: u8 = 0xe;
@@ -63,6 +65,7 @@ impl Contents {
             Self::ReadOnly => (b"__TEXT", b"__const", 0),
             Self::Relocated => (b"__DATA", b"__const", 0),
             Self::Writable => (b"__DATA", b"__data", 0),
+            Self::PerThread => (b"__DATA", b"__thread_data", THREAD_LOCAL_REGULAR),
             Self::Debug => (b"__DWARF", b"", DEBUG),
             Self::StackNote => return None,
         })

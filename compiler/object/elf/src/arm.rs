@@ -27,6 +27,8 @@ numbered! {
         ThmMovtAbs = 48,
         /// A Thumb `b<c>.w`'s target.
         ThmJump19 = 51,
+        /// The symbol's offset from the thread pointer, in an executable.
+        TlsLe32 = 108,
     }
 }
 

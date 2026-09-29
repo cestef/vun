@@ -34,8 +34,9 @@ pub enum Operand<S> {
     Sym(S),
     /// The page of something the linker places, or of its entry in the global offset table.
     Page(S, Via),
-    /// The low 12 bits of the address of something the linker places.
-    Lo12(S),
+    /// The low 12 bits of the address of something the linker places, or of its TLS
+    /// descriptor.
+    Lo12(S, Via),
     /// The domain and the accesses a barrier orders.
     Barrier(Barrier),
     /// A system register.

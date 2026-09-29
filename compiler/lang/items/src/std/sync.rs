@@ -25,6 +25,11 @@ pub const Order: Item = Item::new(&["std", "sync", "Order"]);
 /// A value accessed atomically. Adding and subtracting wrap within `T`; each returns the value
 /// held before, as `swap` and `compare_swap` do.
 pub const Atomic: Item = Item::new(&["std", "sync", "Atomic"]);
+/// A value each thread has its own of (spec 07, section 2): every top-level binding of a
+/// `Local(T)` has one storage per thread, which no other thread reaches, so no access needs a
+/// section. It is reached by value, as a `Shared(T)` is, through relaxed atomic accesses, which a
+/// handler of a signal or interrupt the thread runs between two of them cannot tear.
+pub const Local: Item = Item::new(&["std", "sync", "Local"]);
 /// A value one holder at a time reaches, through the guard `lock` returns. Waiting spins on an
 /// atomic flag; the system capability is what a hosted runtime will park on.
 pub const Mutex: Item = Item::new(&["std", "sync", "Mutex"]);

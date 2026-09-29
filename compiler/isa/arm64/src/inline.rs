@@ -135,7 +135,7 @@ impl Blocks for Arm64 {
             vun_inline::Operand::Label(line) => place.line(*line),
             vun_inline::Operand::Symbol(s) => match kind {
                 Kind::Page => Operand::Page(*s, place.via(*s)),
-                Kind::Lo12 => Operand::Lo12(*s),
+                Kind::Lo12 => Operand::Lo12(*s, place.via(*s)),
                 _ => Operand::Sym(*s),
             },
             vun_inline::Operand::Bound(_) => Self::register(Self::bound(Some(kind), place)),

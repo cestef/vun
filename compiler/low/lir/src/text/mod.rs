@@ -10,7 +10,7 @@ use vun_origin::OriginId;
 use vun_span::LineCol;
 
 use crate::func::{AbiType, Alias, Conv, Ext, Function, Linkage, Record, Signature};
-use crate::unit::{ImportKind, Unit};
+use crate::unit::{ImportKind, Storage, Unit};
 
 impl fmt::Display for Conv {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -160,7 +160,11 @@ impl fmt::Display for Text<'_> {
         }
         for (id, data) in unit.data.iter() {
             let writable = if data.writable { " writable" } else { "" };
-            write!(f, "data {id}{} align {}{writable} [", data.linkage, data.align)?;
+            let storage = match data.storage {
+                Storage::Program => "",
+                Storage::Thread => " per_thread",
+            };
+            write!(f, "data {id}{} align {}{writable}{storage} [", data.linkage, data.align)?;
             for (i, byte) in data.bytes.iter().enumerate() {
                 write!(f, "{}{byte:02x}", if i > 0 { " " } else { "" })?;
             }

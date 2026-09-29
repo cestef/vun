@@ -94,7 +94,16 @@ impl<S: Copy> Link<S> {
             (Kind::Target(branch), Operand::Sym(target)) => Link::Reloc(*target, reloc(branch)),
             (Kind::Page, Operand::Page(target, Via::Direct)) => Link::Reloc(*target, RelocKind::Page21),
             (Kind::Page, Operand::Page(target, Via::Got)) => Link::Reloc(*target, RelocKind::GotPage21),
-            (Kind::Lo12, Operand::Lo12(target)) => Link::Reloc(*target, RelocKind::PageOffset12),
+            (Kind::Page, Operand::Page(target, Via::Descriptor)) => {
+                Link::Reloc(*target, RelocKind::TlsDescPage21)
+            }
+            (Kind::Lo12, Operand::Lo12(target, Via::Descriptor)) => {
+                Link::Reloc(*target, RelocKind::TlsDescPageOffset12)
+            }
+            (Kind::Lo12, Operand::Lo12(target, _)) => Link::Reloc(*target, RelocKind::PageOffset12),
+            (Kind::Mem(_, _), Operand::Mem(Mem::Lo12 { target, via: Via::Descriptor, .. })) => {
+                Link::Reloc(*target, RelocKind::TlsDescPageOffset64)
+            }
             (Kind::Mem(_, _), Operand::Mem(Mem::Lo12 { target, via: Via::Got, .. })) => {
                 Link::Reloc(*target, RelocKind::GotPageOffset64)
             }

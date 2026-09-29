@@ -52,7 +52,7 @@ fn a_jump_reaches_128_mebibytes() {
 fn addresses_and_calls_are_relocated() {
     let mut asm = Asm::<Sym>::new(Processor::every());
     asm.emit(Op::Adrp, Size::B64, &[Reg::X0.into(), Operand::Page("data", Via::Direct)]);
-    asm.emit(Op::Add, Size::B64, &[Reg::X0.into(), Reg::X0.into(), Operand::Lo12("data")]);
+    asm.emit(Op::Add, Size::B64, &[Reg::X0.into(), Reg::X0.into(), Operand::Lo12("data", Via::Direct)]);
     asm.emit(Op::Adrp, Size::B64, &[Reg::X1.into(), Operand::Page("ext", Via::Got)]);
     let got = Mem::Lo12 { base: Reg::X1, target: "ext", via: Via::Got };
     asm.emit(Op::Ldr, Size::B64, &[Reg::X1.into(), got.into()]);

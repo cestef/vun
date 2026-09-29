@@ -140,6 +140,7 @@ impl fmt::Display for InstKind {
             Self::Offset { base, offset } => write!(f, "offset {base}, {offset}"),
             Self::SlotAddr(slot) => write!(f, "addr {slot}"),
             Self::Addr(address) => write!(f, "addr {address}"),
+            Self::ThreadAddr(data) => write!(f, "thread_addr {data}"),
             Self::Copy { to, from, bytes } => write!(f, "copy {to}, {from}, {bytes}"),
             Self::Call { callee, args } => {
                 match callee {

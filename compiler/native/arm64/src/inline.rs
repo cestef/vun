@@ -4,6 +4,7 @@
 
 use vun_asm::Blocks;
 use vun_asm::Untaken;
+use vun_asm::Via;
 use vun_asm_arm64::{Arm64, Cc, Class, Emit, Mem, Op, Operand, Reg, Size, SysReg, V};
 use vun_codegen::Arch;
 use vun_codegen::Code;
@@ -84,7 +85,11 @@ impl Inline for Arm {
             }
             Mem::Lo12 { base, target, .. } => {
                 code.offset(ADDRESS, base, off(base));
-                code.emit(Op::Add, Size::B64, &[ADDRESS.into(), ADDRESS.into(), Operand::Lo12(target)]);
+                code.emit(
+                    Op::Add,
+                    Size::B64,
+                    &[ADDRESS.into(), ADDRESS.into(), Operand::Lo12(target, Via::Direct)],
+                );
             }
         }
         code.emit(Op::Mrs, Size::B64, &[FLAGS.into(), Operand::Sys(SysReg::Nzcv)]);

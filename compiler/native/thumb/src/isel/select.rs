@@ -96,6 +96,7 @@ impl<'a> Look<'_, 'a> {
     }
 
     /// How `inst` is compiled.
+    #[expect(clippy::too_many_lines, reason = "one arm per kind of instruction")]
     pub(super) fn selection(&self, inst: Inst) -> Result<Selection<'a>, Lack> {
         if let Some(homed) = self.homed(inst)? {
             return Ok(homed);
@@ -194,6 +195,7 @@ impl<'a> Look<'_, 'a> {
                 asm.check::<Thumb2>()?;
                 Selection::Asm(asm, check.as_ref())
             }
+            InstKind::ThreadAddr(_) => return Err(self.0.lack(Missing::PerThread)),
             InstKind::Const { .. } | InstKind::SlotAddr(_) | InstKind::Addr(_) => {
                 unreachable!("recomputed where used")
             }

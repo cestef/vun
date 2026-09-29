@@ -107,7 +107,7 @@ fn samples(kind: Kind, label: Label) -> Vec<Operand<Sym>> {
         Kind::Cond(_) => CCS.iter().map(|&c| Operand::Cond(c)).collect(),
         Kind::Target(_) => vec![Operand::Label(label), Operand::Sym("f")],
         Kind::Page => vec![Operand::Page("f", Via::Direct), Operand::Page("f", Via::Got)],
-        Kind::Lo12 => vec![Operand::Lo12("f")],
+        Kind::Lo12 => vec![Operand::Lo12("f", Via::Direct)],
         Kind::Barrier => Barrier::ALL.map(Operand::Barrier).to_vec(),
         Kind::Sys => SysReg::ALL.map(Operand::Sys).to_vec(),
     }

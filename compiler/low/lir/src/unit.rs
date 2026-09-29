@@ -22,7 +22,18 @@ pub struct Data {
     pub writable: bool,
     /// Link section, when not the default one (`#[link.section]`).
     pub section: Option<Symbol>,
+    pub storage: Storage,
     pub origin: OriginId,
+}
+
+/// Where a datum lives (spec 07, section 2).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Encode, Decode)]
+pub enum Storage {
+    /// Once, for the program.
+    #[default]
+    Program,
+    /// Once for each thread, each starting as the datum's bytes.
+    Thread,
 }
 
 /// The address of `target`, plus `addend` bytes, written at `offset` of a data object.

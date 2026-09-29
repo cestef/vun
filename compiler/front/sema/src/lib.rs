@@ -29,6 +29,7 @@ pub mod primitives;
 mod reflect;
 pub mod site;
 pub mod target;
+pub mod thread;
 pub mod trap;
 pub mod ty;
 pub mod typeck;

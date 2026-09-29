@@ -39,7 +39,7 @@ pub const fp_names: Item = Item::new(&["lang", "arch", "arm64", "fp_names"]);
 /// or inner (`ish`) shareability domain, or the full system (`sy`), each for loads (`ld`),
 /// stores (`st`) or both.
 pub const Barrier: Item = Item::new(&["lang", "arch", "arm64", "Barrier"]);
-/// A system register `mrs` reads and `msr` writes: the condition flags (`nzcv`).
+/// A system register `mrs` reads and `msr` writes: the flags, and the thread pointer.
 pub const SysReg: Item = Item::new(&["lang", "arch", "arm64", "SysReg"]);
 /// The kinds of named choice a position takes, each an enum of its own: a barrier's domain
 /// (`ish`), a system register (`nzcv`).

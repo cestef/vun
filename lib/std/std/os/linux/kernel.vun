@@ -150,6 +150,7 @@ start := ($main: std.os.Main) -> type { struct {
 
     /// The argument count at `stack`, then the arguments' addresses.
     boot := (stack: *usize) -> lang.never {
+        std.os.linux.kernel.tls.start(stack);
         count := unsafe stack.read();
         values := unsafe stack.offset(1).cast(*u8);
         mut sys := unsafe std.os.System.claim(std.os.Args.of(count, values));

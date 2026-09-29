@@ -20,6 +20,8 @@ pub(super) enum Storage {
     /// The storage of the top-level binding it is: its data object, or the datum the linker
     /// provides under its symbol (`name: T = _;`).
     Global(Address),
+    /// The calling thread's storage of the top-level binding it is, one per thread.
+    Thread(vun_lir::DataId),
     /// The frame of the coroutine lowered, at this offset.
     Frame(u64),
 }
@@ -52,6 +54,9 @@ impl FnLower<'_, '_, '_> {
                 {
                     Storage::Global(self.l.linked(global, decl.origin)?)
                 }
+                (_, Role::Static(global)) if self.l.per_thread(global) => {
+                    Storage::Thread(self.l.global(global, ty, true, decl.origin)?)
+                }
                 (_, Role::Static(global)) => {
                     let interior = self.l.types.cx.get::<Kinds>(&ty).interior;
                     Storage::Global(Address::Data(self.l.global(global, ty, interior, decl.origin)?))
@@ -78,6 +83,7 @@ impl FnLower<'_, '_, '_> {
             Storage::None => None,
             Storage::Slot(slot) => Some(self.b.slot_addr(slot, self.at)),
             Storage::Global(address) => Some(self.b.addr(address, self.at)),
+            Storage::Thread(data) => Some(self.b.thread_addr(data, self.at)),
             Storage::Frame(offset) => {
                 let frame = self.frame?;
                 Some(self.at_offset(frame, offset))

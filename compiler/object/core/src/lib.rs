@@ -30,6 +30,19 @@ pub enum RelocKind {
     Call32,
     /// The address of the symbol's entry in the global offset table, relative to the field.
     GotPc32,
+    /// The address of the symbol's TLS descriptor in the global offset table, relative to the
+    /// field, 32 bits: storage per thread reached through a call.
+    TlsDescPc32,
+    /// A call through the symbol's TLS descriptor: marks the instruction, writing no field.
+    TlsDescCall,
+    /// The page of the symbol's TLS descriptor relative to the field's page, 21 bits (`adrp`).
+    TlsDescPage21,
+    /// The address of the symbol's TLS descriptor within its page, as a 64-bit load reads it.
+    TlsDescPageOffset64,
+    /// The same, as an `add` reads it.
+    TlsDescPageOffset12,
+    /// The symbol's offset from the thread pointer, 32 bits, in a word of data.
+    ThreadOffset32,
     /// The 4 KiB page of the symbol's address relative to the field's page, 21 bits (`adrp`).
     Page21,
     /// The symbol's address within its page, 12 bits, as an `add` reads them.
@@ -75,6 +88,8 @@ pub enum Contents {
     /// Data only read once the loader has written the addresses in it.
     Relocated,
     Writable,
+    /// Data each thread has a copy of, starting as these bytes.
+    PerThread,
     /// The mark that the stack need not be executable.
     StackNote,
     /// Information for debuggers, which the program does not load.
@@ -104,6 +119,8 @@ pub enum SymbolKind {
     Object,
     /// A section itself, which relocations into it name.
     Section,
+    /// Data each thread has a copy of, by its offset in the program's storage per thread.
+    Tls,
     /// Defined elsewhere, of a kind not said.
     Unknown,
     /// Where what a section holds changes, for disassemblers and linkers (`Object::map`).

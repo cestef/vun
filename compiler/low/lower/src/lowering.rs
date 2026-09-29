@@ -15,7 +15,7 @@ use vun_sema::eval::Instantiation;
 use vun_sema::item::DeclRef;
 use vun_sema::target::TargetOf;
 use vun_sema::ty::{Ty, Value};
-use vun_target::Checks;
+use vun_target::{Checks, Threads};
 
 use crate::piece::{Bytes, Datum, DatumKind, FuncRef, Refs};
 use crate::repr::Types;
@@ -27,6 +27,8 @@ pub(crate) struct Lowering<'a, 'db> {
     pub(crate) env: Env<'a, 'db>,
     /// The checks of unsafe code the program is built with.
     pub(crate) checks: Checks,
+    /// How many threads the target's programs run, which storage per thread follows.
+    pub(crate) threads: Threads,
     /// Whether the checks apply in the function lowered, which is not one they run in.
     pub(crate) checked: bool,
     /// What the function names, by the positions its ids are.
@@ -49,6 +51,7 @@ impl<'a, 'db> Lowering<'a, 'db> {
             types,
             env,
             checks,
+            threads: target.threads,
             checked,
             refs: Refs::default(),
             functions: Map::default(),
@@ -147,6 +150,12 @@ impl<'a, 'db> Lowering<'a, 'db> {
     fn datum(&mut self, datum: Datum) -> DataId {
         self.refs.data.push(datum);
         DataId::new(self.refs.data.len() - 1)
+    }
+
+    /// Whether the top-level binding `decl` has one storage per thread here: its type says so,
+    /// and the target runs threads.
+    pub(crate) fn per_thread(&self, decl: &DeclRef) -> bool {
+        self.threads == Threads::Many && decl.per_thread(self.types.cx)
     }
 
     /// The value of the `lang` item `item`.

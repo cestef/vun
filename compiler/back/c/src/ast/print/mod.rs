@@ -9,7 +9,7 @@ use std::fmt::{self, Write};
 
 use vun_backend::Emits;
 
-use super::{Aggregate, Attribute, Base, Decl, File, Ident, Item, Names, Own, Proto, Storage, Ty};
+use super::{Aggregate, Attribute, Base, Decl, Duration, File, Ident, Item, Names, Own, Proto, Storage, Ty};
 
 struct Printer<'f, 'a, 'n> {
     f: &'f mut fmt::Formatter<'a>,
@@ -241,8 +241,11 @@ impl Printer<'_, '_, '_> {
                 self.depth = 0;
                 self.f.write_str("}\n")
             }
-            Item::Object { storage, constant, decl, attributes, init } => {
+            Item::Object { storage, duration, constant, decl, attributes, init } => {
                 self.storage(*storage)?;
+                if *duration == Duration::Thread {
+                    self.f.write_str("__thread ")?;
+                }
                 if *constant {
                     self.f.write_str("const ")?;
                 }

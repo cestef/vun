@@ -241,7 +241,10 @@ impl<'a, 'db> Env<'a, 'db> {
                     None => self.outer(name),
                 }
             }
-            None => Err(Unevaluated::Unsupported),
+            None => match &self.parsed.hir.exprs[expr].kind {
+                ExprKind::Member { object, name } => self.member_site(*object, name),
+                _ => Err(Unevaluated::Unsupported),
+            },
         }
     }
 

@@ -9,7 +9,8 @@ use vun_hash::Map;
 use vun_index::Idx;
 use vun_intern::Symbol;
 use vun_lir::{
-    Address, Data, DataId, FuncId, Import, ImportId, ImportKind, Linkage, Site, Trace, TraceLayout, Unit,
+    Address, Data, DataId, FuncId, Import, ImportId, ImportKind, Linkage, Site, Storage, Trace, TraceLayout,
+    Unit,
 };
 use vun_mir::{Concrete, Program};
 use vun_origin::OriginId;
@@ -160,6 +161,10 @@ impl Places for Assembly<'_, '_, '_> {
             return id;
         }
         let writable = matches!(kind, DatumKind::Global { writable: true, .. });
+        let storage = match &kind {
+            DatumKind::Global { decl, .. } if self.l.per_thread(decl) => Storage::Thread,
+            _ => Storage::Program,
+        };
         let (bytes, align) = key.clone();
         let data = Data {
             linkage: Linkage::Internal,
@@ -168,6 +173,7 @@ impl Places for Assembly<'_, '_, '_> {
             align,
             writable,
             section: None,
+            storage,
             origin,
         };
         let id = self.unit.data.push(data);
@@ -212,6 +218,7 @@ impl Assembly<'_, '_, '_> {
             align: layout.table.align,
             writable: false,
             section: None,
+            storage: Storage::Program,
             origin: at,
         });
         let detail = self.l.types.cx.get::<vun_sema::trace::TraceOf>(&());

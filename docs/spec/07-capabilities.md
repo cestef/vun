@@ -45,6 +45,35 @@ nested sections would alias. The section itself is two typed link symbols the ru
 `lang.mem.Cell(T)`, reached through `lang.mem.cell_pointer` and the `lang.mem.atomic_*`
 primitives in `unsafe` code; `Mutex(T)` spins on an `Atomic(bool)` and returns a linear `Guard`.
 
+### Storage per thread
+
+A type marked `#[thread.local]` gives every top-level binding of it **one storage per thread**,
+each starting as the binding's value; the marker speaks only of top-level bindings, so a value of
+the type anywhere else is stored as any other is. `sync.Local(T)` is such a type, which needs no
+synchronization since no two threads reach one storage of it:
+
+```vun
+depth: sync.Local(u32) = .init(0);
+
+enter := () { depth.set(depth.get() + 1); };
+```
+
+A `Local(T)` is reached by value as a `Shared(T)` is (`get`, `set`, `replace`, `update`), never
+lending a borrow, and each access is a relaxed atomic one of `lang.mem`: a signal or interrupt
+handler the thread runs between two accesses cannot tear a value, and none costs more than a plain
+load or store. `T` is a type `Atomic(T)` takes. Where the target runs no threads
+(`lang.target.Spec.threads`: bare metal, WASI), the one storage is the program's. A borrow of a
+per-thread binding reaches the storage of the thread taking it and is scoped, as a `mut`
+binding's is (spec 05, section 4); what the storage holds is known at run time only.
+
+The compiler gives such a binding the target's thread-local storage (ELF's `.tdata`, symbols of
+`STT_TLS`), and LIR takes its address with `thread_addr`, never `addr`. C declares it `__thread`;
+the native backend reaches it through the TLS descriptor of x86-64 and arm64, whose call gives
+the storage's offset from the thread pointer, and which linkers rewrite into that offset in an
+executable, so executables and shared libraries share one sequence. 32-bit Arm's native backend
+does not reach it yet (it needs `mrc` and literal pools); C does. A runtime starting threads
+itself lays out each thread's block and sets the thread pointer (spec 08, section 2).
+
 ## 3. Errors and traps
 
 - **Recoverable errors** are `Result(T, E)` values; `e?` propagates, `e.map_err(f)?` converts.

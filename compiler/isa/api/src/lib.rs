@@ -100,4 +100,7 @@ pub enum Via {
     Direct,
     /// Its entry in the global offset table, for something defined elsewhere.
     Got,
+    /// Its TLS descriptor, for storage per thread: the call the descriptor names gives the
+    /// storage's offset from the thread pointer, which a linker writes itself where it knows it.
+    Descriptor,
 }

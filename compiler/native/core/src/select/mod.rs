@@ -17,7 +17,7 @@ use vun_abi::{Carrier, Convention, Passing};
 use vun_backend::Lack;
 use vun_codegen::snippet::{Emits, Snippet};
 use vun_codegen::{Cx, Needs};
-use vun_lir::{Callee, Cond, Inst, RmwOp, Value};
+use vun_lir::{Callee, Cond, DataId, Inst, RmwOp, Value};
 
 use crate::inline::Inline;
 use needs::Looked;
@@ -54,11 +54,24 @@ pub enum Selection<'f, A: Emits> {
         bytes: u64,
     },
     Asm(&'f vun_lir::Asm, Option<&'f vun_lir::AsmCheck>),
+    /// The address of the calling thread's storage of `data`, as the architecture reaches it
+    /// (`Selects::THREAD`).
+    ThreadAddr {
+        data: DataId,
+    },
     /// An operation reading or giving a value of the float bank, which lives in its home
     /// (`Arch::bank`), as the architecture writes it: its other operands in registers.
     Homed {
         ins: Vec<Value>,
     },
+}
+
+/// The registers of an architecture's sequence reaching the calling thread's storage: the one
+/// the address is given in, and those it overwrites besides.
+#[derive(Clone, Copy, Debug)]
+pub struct Thread<R: 'static> {
+    pub address: R,
+    pub overwrites: &'static [R],
 }
 
 /// A register a value travels in under `A`'s conventions.
@@ -72,6 +85,10 @@ pub trait Selects: Inline + Emits {
     /// Copies up to this many bytes move through a register, larger ones in a loop over three
     /// scratch registers.
     const UNROLLED: u64;
+
+    /// How the architecture reaches the calling thread's storage of a datum (spec 07, section
+    /// 2), where it does.
+    const THREAD: Option<Thread<Self::Reg>> = None;
 
     /// How `inst` is compiled.
     ///

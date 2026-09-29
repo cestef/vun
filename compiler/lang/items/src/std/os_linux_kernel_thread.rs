@@ -20,7 +20,7 @@ pub const mapped_bytes: Item = Item::new(
 );
 /// What `clone` shares with the new thread, and where it reports its id: `CLONE_VM`, `CLONE_FS`,
 /// `CLONE_FILES`, `CLONE_SIGHAND`, `CLONE_THREAD`, `CLONE_SYSVSEM`, `CLONE_PARENT_SETTID` and
-/// `CLONE_CHILD_CLEARTID`.
+/// `CLONE_CHILD_CLEARTID`. The thread sets its own pointer, as the main thread does.
 pub const sharing: Item = Item::new(
     &["std", "os", "linux", "kernel", "thread", "sharing"],
 );
@@ -55,7 +55,8 @@ pub const frame: Item = Item::new(&["std", "os", "linux", "kernel", "thread", "f
 /// frame pointer, which the calling thread keeps on the stack meanwhile; the new thread starts on
 /// a stack of its own and never gives it back.
 pub const clone: Item = Item::new(&["std", "os", "linux", "kernel", "thread", "clone"]);
-/// Where a new thread starts, on its own stack: runs the thread of `record`, then ends it.
+/// Where a new thread starts, on its own stack: sets its pointer, then runs the thread of
+/// `record`, then ends it.
 pub const begin: Item = Item::new(&["std", "os", "linux", "kernel", "thread", "begin"]);
 /// The exports, which the runtime holds: `threads := std.os.linux.kernel.thread.exports`.
 pub const exports: Item = Item::new(

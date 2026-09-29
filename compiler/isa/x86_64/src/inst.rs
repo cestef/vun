@@ -121,8 +121,14 @@ fn write_mem<S: fmt::Display>(f: &mut fmt::Formatter<'_>, mem: &Mem<S>) -> fmt::
     match &mem.base {
         Base::Reg(r) => write!(f, "[{}", r.name(Size::B64))?,
         Base::Rip(target, via) => {
-            write!(f, "[rip + {target}{}", if *via == vun_isa::Via::Got { "@GOTPCREL" } else { "" })?;
+            let how = match via {
+                vun_isa::Via::Direct => "",
+                vun_isa::Via::Got => "@GOTPCREL",
+                vun_isa::Via::Descriptor => "@TLSDESC",
+            };
+            write!(f, "[rip + {target}{how}")?;
         }
+        Base::Thread => f.write_str("fs:[0")?,
     }
     match mem.disp {
         0 => {}

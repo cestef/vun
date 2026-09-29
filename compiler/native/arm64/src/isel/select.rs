@@ -147,6 +147,7 @@ impl<'a> Look<'_, 'a> {
                 asm.check::<Arm>()?;
                 Selection::Asm(asm, check.as_ref())
             }
+            &InstKind::ThreadAddr(data) => Selection::ThreadAddr { data },
             InstKind::Const { .. } | InstKind::SlotAddr(_) | InstKind::Addr(_) => {
                 unreachable!("recomputed where used")
             }

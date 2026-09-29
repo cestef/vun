@@ -253,7 +253,9 @@ per second per stage and fails on regressions.
   table describes calls (`lang.trace.Detail.calls`), a callee is inlined only if no call it
   makes returns into it (a trap's call never does), so every return address lies in the code of
   the function the table names for it (spec 07, section 3). Lowering
-  makes every local a stack slot of its layout, a top-level binding one data object, statements the
+  makes every local a stack slot of its layout, a top-level binding one data object (of
+  `Storage::Thread`, reached with `thread_addr`, where its type marks it `#[thread.local]` and the
+  target runs threads), statements the
   instructions computing into their place; integers in their range's storage, converted where a
   value moves between ranges; enums by their shapes; checks of indices and narrowings as trap
   sites. A primitive no instruction computes is marked `#[lang.lower.by(f)]`: making its caller

@@ -19,7 +19,7 @@ use crate::entity::{Block, FuncId, Inst, Value};
 use crate::func::{Def, Function};
 use crate::inst::{Address, Asm, AsmCheck, Callee, InstKind, Target, Terminator};
 use crate::ty::Scalar;
-use crate::unit::{ImportKind, Unit};
+use crate::unit::{ImportKind, Storage, Unit};
 
 impl Unit {
     /// Checks the whole unit against the invariants of the module.
@@ -91,6 +91,16 @@ impl Unit {
             Address::Import(i) => self.imports.get(i).is_some(),
         };
         exists.then_some(()).ok_or(Malformed { at, reason: Reason::UnknownAddress(address) })
+    }
+
+    /// Checks that `address`, taken as data of `storage` is, is not a datum of another storage.
+    fn stored(&self, at: Entity, address: Address, storage: Storage) -> Result<(), Malformed> {
+        match address {
+            Address::Data(d) if self.data[d].storage != storage => {
+                Err(Malformed { at, reason: Reason::Storage(address) })
+            }
+            _ => Ok(()),
+        }
     }
 }
 

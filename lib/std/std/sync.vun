@@ -113,6 +113,32 @@ Atomic := ($T: type) -> type { struct {
     _at := (self: &Atomic(T)) -> *T { unsafe lang.mem.cell_pointer(T, &self._value) };
 } };
 
+/// A value each thread has its own of (spec 07, section 2): every top-level binding of a
+/// `Local(T)` has one storage per thread, which no other thread reaches, so no access needs a
+/// section. It is reached by value, as a `Shared(T)` is, through relaxed atomic accesses, which a
+/// handler of a signal or interrupt the thread runs between two of them cannot tear.
+Local := ($T: type) -> type { #[thread.local] struct {
+    _value: lang.mem.Cell(T),
+
+    init := (value: T) -> Local(T) { .{ ._value = lang.mem.cell(T, value) } };
+    #[panic.never]
+    get := (self: &Local(T)) -> T { unsafe lang.mem.atomic_load(T, self._at(), .relaxed) };
+    #[panic.never]
+    set := (self: &Local(T), value: T) { unsafe lang.mem.atomic_store(T, self._at(), value, .relaxed) };
+    /// Puts in `value`, giving what was there.
+    #[panic.never]
+    replace := (self: &Local(T), value: T) -> T {
+        old := self.get();
+        self.set(value);
+        old
+    };
+    /// Puts in what `f` makes of the value.
+    update := ($F: lang.ops.Call((T), T), self: &Local(T), f: F) { self.set(f(self.get())); };
+
+    #[panic.never]
+    _at := (self: &Local(T)) -> *T { unsafe lang.mem.cell_pointer(T, &self._value) };
+} };
+
 /// A value one holder at a time reaches, through the guard `lock` returns. Waiting spins on an
 /// atomic flag; the system capability is what a hosted runtime will park on.
 Mutex := ($T: type) -> type { struct {

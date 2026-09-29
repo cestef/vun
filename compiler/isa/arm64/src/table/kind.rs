@@ -268,7 +268,7 @@ impl<S> vun_isa::word::Field<Operand<S>, Size> for Kind {
             (Self::Sys, Operand::Sys(r)) => Some(r.field()),
             (Self::Target(_), Operand::Label(_) | Operand::Sym(_))
             | (Self::Page, Operand::Page(..))
-            | (Self::Lo12, Operand::Lo12(_)) => Some(0),
+            | (Self::Lo12, Operand::Lo12(..)) => Some(0),
             _ => None,
         }
     }

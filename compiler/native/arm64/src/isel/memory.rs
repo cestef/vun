@@ -2,9 +2,10 @@
 //! addresses fold a slot's and constant offsets where a form reaches them, ordered ones `ldar`
 //! and `stlr`, which together are sequentially consistent.
 
-use vun_asm_arm64::{Cc, Emit, Mem, Op, Operand, Size};
+use vun_asm::{RelocKind, Via};
+use vun_asm_arm64::{Cc, Emit, Mem, Op, Operand, Reg, Size, SysReg};
 use vun_codegen::Arch;
-use vun_lir::Value;
+use vun_lir::{Address, DataId, Value};
 
 use super::Sel;
 use crate::Arm;
@@ -18,6 +19,27 @@ const STEP: u64 = 8;
 
 impl Sel<'_, '_> {
     /// Copies `bytes` bytes, through a register or, past `UNROLLED`, in a loop of words.
+    /// The address of the calling thread's storage of `data`, in `x0`: its TLS descriptor's
+    /// call gives its offset from the thread pointer. A linker writes the offset itself where it
+    /// knows it, in an executable, which is why the sequence is the one it recognizes.
+    pub(super) fn thread_addr(&mut self, data: DataId) {
+        let target = Address::Data(data);
+        let (address, call) = (Reg::X0, Reg::X1);
+        self.asm.emit(Op::Adrp, Size::B64, &[address.into(), Operand::Page(target, Via::Descriptor)]);
+        let entry = Mem::Lo12 { base: address, target, via: Via::Descriptor };
+        self.asm.emit(Op::Ldr, Size::B64, &[call.into(), entry.into()]);
+        self.asm.emit(
+            Op::Add,
+            Size::B64,
+            &[address.into(), address.into(), Operand::Lo12(target, Via::Descriptor)],
+        );
+        let at = self.asm.here();
+        self.asm.relocate(at, target, RelocKind::TlsDescCall, 0);
+        self.asm.emit(Op::Blr, Size::B64, &[call.into()]);
+        self.asm.emit(Op::Mrs, Size::B64, &[call.into(), Operand::Sys(SysReg::TpidrEl0)]);
+        self.asm.emit(Op::Add, Size::B64, &[address.into(), call.into(), address.into()]);
+    }
+
     pub(super) fn copy(&mut self, to: Value, from: Value, bytes: u64) {
         if bytes <= UNROLLED {
             let (to, from) = (self.reg(to), self.reg(from));

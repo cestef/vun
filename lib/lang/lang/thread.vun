@@ -1,0 +1,5 @@
+//! Storage per thread (spec 07, section 2).
+
+/// Attribute: every top-level binding of the type has one storage per thread, each starting as
+/// the binding's value; where the target runs one thread, the one storage is the program's.
+local: Attribute(&[Place.types]) = _;

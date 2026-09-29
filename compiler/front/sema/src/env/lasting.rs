@@ -9,8 +9,8 @@ use crate::item::Site;
 
 impl Env<'_, '_> {
     /// Whether what `expr` denotes lives as long as the program: a literal, a tuple, array or
-    /// record made of such, an immutable top-level binding, or a part of one of these reached by
-    /// a field or an index, which is in the same storage.
+    /// record made of such, an immutable top-level binding with one storage for the program, or a
+    /// part of one of these reached by a field or an index, which is in the same storage.
     #[must_use]
     pub fn lasting(&self, expr: ExprId) -> bool {
         let hir = &self.parsed.hir;
@@ -35,8 +35,9 @@ impl Env<'_, '_> {
         self.eval(expr).ok().and_then(|v| v.as_type()).is_some()
     }
 
-    /// Whether the name `expr` leads to a top-level binding that is not `mut`.
+    /// Whether the name `expr` leads to a top-level binding that is not `mut`, and is the
+    /// program's rather than each thread's.
     fn immutable_member(&self, expr: ExprId) -> bool {
-        matches!(self.resolve(expr), Ok(Site::Decl(decl)) if !decl.mutable(self.cx))
+        matches!(self.resolve(expr), Ok(Site::Decl(decl)) if !decl.mutable(self.cx) && !decl.per_thread(self.cx))
     }
 }

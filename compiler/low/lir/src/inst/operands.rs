@@ -11,7 +11,7 @@ use crate::entity::Value;
 macro_rules! inst_operands {
     ($inst:expr) => {
         match $inst {
-            InstKind::Const { .. } | InstKind::SlotAddr(_) | InstKind::Addr(_) => {
+            InstKind::Const { .. } | InstKind::SlotAddr(_) | InstKind::Addr(_) | InstKind::ThreadAddr(_) => {
                 ([None, None, None], None, None)
             }
             InstKind::Binary { a, b, .. } | InstKind::Compare { a, b, .. } => {
@@ -104,6 +104,7 @@ impl InstKind {
     pub fn addresses(&self) -> impl Iterator<Item = Address> {
         let (own, check) = match self {
             Self::Addr(a) => (Some(*a), None),
+            Self::ThreadAddr(d) => (Some(Address::Data(*d)), None),
             Self::Call { callee: Callee::Func(f), .. } => (Some(Address::Func(*f)), None),
             Self::Call { callee: Callee::Import(i), .. } => (Some(Address::Import(*i)), None),
             Self::Asm(_, check) => (None, check.as_ref()),
@@ -133,6 +134,10 @@ impl InstKind {
     pub fn map_addresses(&mut self, mut f: impl FnMut(Address) -> Address) {
         match self {
             Self::Addr(a) => *a = f(*a),
+            Self::ThreadAddr(d) => {
+                let Address::Data(to) = f(Address::Data(*d)) else { panic!("a datum maps to a datum") };
+                *d = to;
+            }
             Self::Call { callee, .. } => {
                 let to = match *callee {
                     Callee::Func(g) => f(Address::Func(g)),

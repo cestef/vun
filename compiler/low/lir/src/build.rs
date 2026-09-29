@@ -4,7 +4,7 @@
 use vun_index::{Idx, IndexVec};
 use vun_origin::OriginId;
 
-use crate::entity::{Block, Slot, Value};
+use crate::entity::{Block, DataId, Slot, Value};
 use crate::func::{BlockData, Def, Function, InstData, Linkage, Signature, SlotData, ValueData};
 use crate::inst::{Access, Address, BinOp, CastOp, Cond, InstKind, Right, Terminator};
 use crate::ty::Scalar;
@@ -161,6 +161,10 @@ impl Builder {
 
     pub fn addr(&mut self, address: Address, origin: OriginId) -> Value {
         self.value(InstKind::Addr(address), Scalar::Ptr, origin)
+    }
+
+    pub fn thread_addr(&mut self, data: DataId, origin: OriginId) -> Value {
+        self.value(InstKind::ThreadAddr(data), Scalar::Ptr, origin)
     }
 
     pub fn copy(&mut self, to: Value, from: Value, bytes: u64, origin: OriginId) {

@@ -36,6 +36,9 @@ pub enum Reason {
     Placement(Inst),
     /// An address or callee naming nothing in the unit.
     UnknownAddress(Address),
+    /// The address of a datum taken otherwise than its storage says: `addr` of a datum of
+    /// storage per thread, or `thread_addr` of one of the program's.
+    Storage(Address),
     /// A jump passing values that are not the target's parameters in number or type.
     Arguments(Block),
     /// Two jumps of one terminator to a block, with different arguments: moves on an edge belong

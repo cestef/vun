@@ -4,9 +4,11 @@
 
 mod ident;
 mod print;
+mod storage;
 mod ty;
 
 pub use ident::{Builtin, Helper, Ident, Names, Own};
+pub use storage::{Duration, Storage};
 pub use ty::{Base, Suffix, Ty};
 
 use vun_backend::{Line, Part};
@@ -219,17 +221,6 @@ impl Stmt {
     }
 }
 
-/// Who sees a file-scope name.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Storage {
-    /// `static`: this file only.
-    Static,
-    /// Declared here, defined elsewhere.
-    Extern,
-    /// Defined here and seen by the linker.
-    Public,
-}
-
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Aggregate {
     Struct,
@@ -280,6 +271,7 @@ pub enum Item {
     Define(Proto, Vec<Stmt>),
     Object {
         storage: Storage,
+        duration: Duration,
         constant: bool,
         decl: Decl,
         attributes: Vec<Attribute>,

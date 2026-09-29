@@ -71,6 +71,7 @@ _on := ($machine: _Machine, $abi: lang.meta.Name, $flags: &[&[u8]], $link_flags:
         .pointer_bits = machine.pointer_bits,
         .register_bits = machine.register_bits,
         .floats = machine.floats,
+        .threads = .many,
         .endian = .little,
         .object_format = .elf,
         .entry_symbol = .some("_start"),

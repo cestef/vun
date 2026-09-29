@@ -1,0 +1,8 @@
+//! A borrow of a binding with one storage per thread reaches the storage of the thread taking
+//! it, so it is scoped, never `&static`; one of the program's is (spec 07, section 2).
+
+count: std.sync.Local(u32) = .init(0);
+total: std.sync.Atomic(u32) = .init(0);
+
+kept := () -> &static std.sync.Local(u32) { &count }; //~ types.mismatch
+shared := () -> &static std.sync.Atomic(u32) { &total };

@@ -290,9 +290,14 @@ Next, most useful first:
    no sysroot); DWARF `DW_TAG_subprogram`s; memory regions into `LinkPlan` and a bare-metal
    runtime (`stm32f4` has an empty vector table and no `init_memory`).
 2. Kernel runtime: threads are done (decision 306: `System.spawn`, `clone` with a guarded
-   stack, `futex` join; pthreads on the C library; `corpus/accept/programs/threads.vun`); TLS
-   (`CLONE_SETTLS`) waits for thread-local storage in the language; riscv64 numbers;
-   directories, seeking, environment.
+   stack, `futex` join; pthreads on the C library; `corpus/accept/programs/threads.vun`), and
+   storage per thread (decision 312: `std.sync.Local(T)`, a type marked `#[thread.local]`;
+   `kernel/tls.vun` lays each block out and sets the thread pointer, each thread its own first;
+   `corpus/accept/programs/locals.vun`, `link.rs`'s library counting per thread). Left: native
+   32-bit Arm (`mrc` and literal pools in the Thumb tables and assembler; C covers it), Mach-O
+   (thread-local variables are its own model), and a thread's trace naming where it was spawned
+   (`spawn` keeping the spawner's chain in a `Local`); riscv64 numbers; directories, seeking,
+   environment.
 2a. Backtraces (decision 309): a trap or failed check writes why it ends, its site's place, each
    function its code is inlined into and the chain of calls, through `std.trace.report` from
    `std.trace.table` (rows `lang.trace` lays out, written in `vun_backend::Traced` at code
@@ -301,8 +306,7 @@ Next, most useful first:
    inlines only callees none of whose calls return. Checked on linux x86_64, arm64 and arm
    through both backends, glibc, and WASI (site only). Left: the call line of each frame (native
    marks each call's origin; C cannot say where a call returns), macOS (compact unwind, PAC).
-   A thread's trace ends at `Thread.run`; naming where it was spawned (the spawner's chain
-   kept at `spawn`) waits for thread-local storage, as `CLONE_SETTLS` does.
+   A thread's trace ends at `Thread.run`; naming where it was spawned is item 2's.
 2b. Speed (decisions 291, 301 and 302). Inspect with `--timings` (with the thread report) and `--memos`,
    `VUN_THREADS=1` for exact counts; the CPU clock varies (a laptop on battery), so compare A/B
    runs made together, never across time. Durability made warm `files.vun` restore 1.7k memos

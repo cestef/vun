@@ -22,6 +22,7 @@ pub mod scope;
 pub mod simd;
 pub mod stack;
 pub mod target;
+pub mod thread;
 pub mod trace;
 pub mod lang;
 mod primitive;

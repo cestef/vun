@@ -60,6 +60,8 @@ pub const stack: Item = Item::new(&["lang", "stack"]);
 pub const syntax: Item = Item::new(&["lang", "syntax"]);
 /// The namespace `lang.target`.
 pub const target: Item = Item::new(&["lang", "target"]);
+/// The namespace `lang.thread`.
+pub const thread: Item = Item::new(&["lang", "thread"]);
 /// The namespace `lang.trace`.
 pub const trace: Item = Item::new(&["lang", "trace"]);
 pub const r#type: Item = Item::new(&["lang", "type"]);

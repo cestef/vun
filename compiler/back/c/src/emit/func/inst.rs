@@ -94,7 +94,9 @@ impl FnEmit<'_, '_> {
                 Expr::binary(Binary::Add, base, offset)
             }
             &InstKind::SlotAddr(slot) => Expr::Name(Ident::slot(slot)).cast(Ty::address()),
+            // An object `__thread` declares is the calling thread's, where C names it.
             &InstKind::Addr(address) => self.e.address(address),
+            &InstKind::ThreadAddr(data) => self.e.address(vun_lir::Address::Data(data)),
             &InstKind::Copy { to, from, bytes } => {
                 self.e.copies.insert(bytes);
                 let ty = Ty::Struct(Ident::Own(Own::Copy(bytes)));

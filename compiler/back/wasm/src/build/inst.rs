@@ -64,6 +64,7 @@ impl Lower<'_> {
             }
             InstKind::SlotAddr(slot) => self.slot_addr(slot),
             InstKind::Addr(address) => self.op(Op::Address(self.cx.symbol(address), 0)),
+            InstKind::ThreadAddr(_) => return Err(Missing::PerThread.at(at)),
             InstKind::Copy { to, from, bytes } => {
                 self.get(to);
                 self.get(from);

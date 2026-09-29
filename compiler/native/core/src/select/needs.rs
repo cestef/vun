@@ -62,6 +62,12 @@ impl<A: Selects> Looked<'_, '_, A> {
                     needs.defs.push((v, if cx.homed(v) { Out::Home } else { Out::Reg }));
                 }
             }
+            Selection::ThreadAddr { .. } => {
+                let Some(thread) = A::THREAD else { return };
+                let overwritten = thread.overwrites.iter().copied().chain([thread.address]);
+                needs.reserved = overwritten.fold(needs.reserved, |set, r| set.with(A::preg(r)));
+                needs.defs.extend(out.map(|v| (v, Out::Fixed(A::preg(thread.address)))));
+            }
             Selection::Copy { to, from, .. } => {
                 needs.temps.extend([Bank::General; 3]);
                 for v in [to, from] {

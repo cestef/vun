@@ -1,8 +1,9 @@
 //! The types instructions and terminators accept and give.
 
 use crate::entity::{Block, Inst, Value};
-use crate::inst::{BinOp, CastOp, Cond, InstKind, Terminator};
+use crate::inst::{Address, BinOp, CastOp, Cond, InstKind, Terminator};
 use crate::ty::Scalar;
+use crate::unit::Storage;
 
 use super::{Checker, Entity, Malformed, Reason};
 
@@ -97,6 +98,12 @@ impl Checker<'_> {
             }
             InstKind::Addr(address) => {
                 self.unit.address(at, *address)?;
+                self.unit.stored(at, *address, Storage::Program)?;
+                gives(Some(Scalar::Ptr))
+            }
+            InstKind::ThreadAddr(data) => {
+                self.unit.address(at, Address::Data(*data))?;
+                self.unit.stored(at, Address::Data(*data), Storage::Thread)?;
                 gives(Some(Scalar::Ptr))
             }
             InstKind::Copy { to, from, .. } => {

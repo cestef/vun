@@ -12,7 +12,7 @@ guard_bytes := 64 << 10;
 mapped_bytes := stack_bytes + guard_bytes;
 /// What `clone` shares with the new thread, and where it reports its id: `CLONE_VM`, `CLONE_FS`,
 /// `CLONE_FILES`, `CLONE_SIGHAND`, `CLONE_THREAD`, `CLONE_SYSVSEM`, `CLONE_PARENT_SETTID` and
-/// `CLONE_CHILD_CLEARTID`.
+/// `CLONE_CHILD_CLEARTID`. The thread sets its own pointer, as the main thread does.
 sharing: usize = 0x35_0f00;
 /// `op` for `futex`: wait while the word holds a value (`FUTEX_WAIT`).
 wait: usize = 0;
@@ -27,6 +27,8 @@ Record := struct {
     mapped: usize,
     start: std.os.thread.Start,
     context: usize,
+    /// The thread's pointer, which it sets first (spec 07, section 2).
+    pointer: usize,
 };
 
 /// Where a new thread starts, given the address of its record.
@@ -113,10 +115,12 @@ clone := (request: Clone) -> isize {
     result.wrap(isize)
 };
 
-/// Where a new thread starts, on its own stack: runs the thread of `record`, then ends it.
+/// Where a new thread starts, on its own stack: sets its pointer, then runs the thread of
+/// `record`, then ends it.
 #[abi.c]
 begin := (record: usize) -> lang.never {
     held := unsafe lang.mem.pointer_at(Record, record).read();
+    std.os.linux.kernel.tls.point(held.pointer);
     held.start(held.context);
     std.os.linux.kernel.call(std.os.linux.kernel.numbers.exit, [0, 0, 0, 0, 0, 0]);
     unsafe lang.hint.unreachable()
@@ -128,13 +132,17 @@ exports := struct {
     spawn := unsafe (start: std.os.thread.Start, context: *u8, bytes: usize) -> Result(usize, std.os.Error) {
         mapped := std.os.linux.kernel.outcome(std.os.linux.kernel.mapping(mapped_bytes))?;
         placed := std.os.thread.Placed.of(Record, (mapped + mapped_bytes).wrap(usize), bytes);
-        stack := (placed.context - frame).wrap(usize);
+        image := unsafe std.os.linux.kernel.tls.image;
+        block := std.os.thread.down((placed.context - image.span()).wrap(usize));
+        pointer := image.place(block);
+        stack := (block - frame).wrap(usize);
         unsafe {
             lang.mem.pointer_at(Record, placed.record).write(Record{
                 .tid = 0,
                 .mapped = mapped,
                 .start = start,
                 .context = placed.context,
+                .pointer = pointer,
             });
             lang.mem.copy(u8, lang.mem.pointer_at(u8, placed.context), context, bytes);
             lang.mem.fill(u8, lang.mem.pointer_at(u8, stack), 0, frame);

@@ -15,7 +15,7 @@ use vun_codec::{Decode, Encode};
 use vun_inline::Needed;
 use vun_intern::Symbol;
 use vun_query::{Cx, Query};
-use vun_target::{Endian, Floats, TargetSpec};
+use vun_target::{Endian, Floats, TargetSpec, Threads};
 
 use crate::Primitive;
 use crate::float::Format;
@@ -52,6 +52,8 @@ pub struct Target {
     pub features: Vec<Symbol>,
     /// The floats its processor computes (`lang.target.Spec.floats`).
     pub floats: Floats,
+    /// How many threads its programs run (`lang.target.Spec.threads`).
+    pub threads: Threads,
     /// The value of its declaration: `lang.target.current`.
     pub declared: Value,
 }
@@ -67,6 +69,7 @@ impl Target {
             isa: target.spec.isa,
             features: target.spec.features.clone(),
             floats: target.spec.floats,
+            threads: target.spec.threads,
             declared: target.value.clone(),
         }
     }

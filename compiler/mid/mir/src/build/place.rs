@@ -43,6 +43,15 @@ impl Builder<'_, '_, '_> {
                 },
                 _ => self.held(expr, origin),
             },
+            // A path to a top-level binding reaches its storage, as its name does: a `mut` one's,
+            // and one with a storage per thread, whose value is its own thread's.
+            ExprKind::Member { .. }
+                if let Ok(Site::Decl(decl)) = self.env().resolve(expr)
+                    && (decl.mutable(self.env.cx) || decl.per_thread(self.env.cx)) =>
+            {
+                let role = if decl.mutable(self.env.cx) { Role::StaticMut(decl) } else { Role::Static(decl) };
+                Ok(Place::of(self.global(role, expr, origin)))
+            }
             ExprKind::Member { object, name } if self.env().eval(expr).is_err() => {
                 if let Some(at) = self.env().position(name) {
                     return Ok(self.through_borrows(*object)?.project(Projection::Position(at)));

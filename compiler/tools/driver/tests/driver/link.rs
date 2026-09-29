@@ -62,34 +62,85 @@ add := (a: i32, b: i32) -> i32 { (a + b).wrap(i32) };
 /// A C program linking the library `calc` and exiting with `calc_add(40, 2)`.
 const USER: &str = "int calc_add(int, int);\nint main(void) { return calc_add(40, 2); }\n";
 
+/// The kinds of library each backend builds, each with the file it is.
+const KINDS: [(Output, &str); 2] = [(Output::Shared, "so"), (Output::Static, "a")];
+
+/// The exit status of the C program `user`, linked against the library `name` built from
+/// `source` as `output` through `backend`, and the threads library.
+fn run_with_library(name: &str, source: &str, user: &str, output: Output, backend: Name) -> Option<i32> {
+    let fixture = Fixture::new(&format!("link-{name}-{}-{backend}", output.name()));
+    let path = fixture.root.write(format!("{name}.vun"), source);
+    let mut session = fixture.session();
+    let loaded = session.load(&path).unwrap();
+    session.codegen = Codegen { output, ..Codegen::through(backend) };
+    let library = session.build(loaded, None).unwrap_or_else(|_| panic!("{backend}: {:#?}", session.diag));
+    let extension = KINDS.iter().find(|(kind, _)| *kind == output).map(|(_, e)| *e);
+    assert_eq!(library.extension().and_then(|e| e.to_str()), extension, "{backend} {output:?}");
+    let dir = library.parent().unwrap();
+    let user = fixture.root.write("user.c", user);
+    let program = fixture.root.join("user");
+    let built = std::process::Command::new("cc")
+        .arg(&user)
+        .arg("-L")
+        .arg(dir)
+        .arg(format!("-l{name}"))
+        .arg("-lpthread")
+        .arg("-o")
+        .arg(&program)
+        .status()
+        .unwrap();
+    assert!(built.success(), "{backend} {output:?}");
+    std::process::Command::new(&program).env("LD_LIBRARY_PATH", dir).status().unwrap().code()
+}
+
 #[test]
 fn a_library_is_linked_by_a_c_program_through_each_backend() {
-    let kinds = [(Output::Shared, "libcalc.so"), (Output::Static, "libcalc.a")];
     for backend in [vun_backend_c::INFO.id, vun_backend_native::INFO.id] {
-        for (output, file) in kinds {
-            let fixture = Fixture::new(&format!("link-{}-{backend}", output.name()));
-            let path = fixture.root.write("calc.vun", LIBRARY);
-            let mut session = fixture.session();
-            let loaded = session.load(&path).unwrap();
-            session.codegen = Codegen { output, ..Codegen::through(backend) };
-            let library =
-                session.build(loaded, None).unwrap_or_else(|_| panic!("{backend}: {:#?}", session.diag));
-            assert_eq!(library.file_name().and_then(|n| n.to_str()), Some(file));
-            let dir = library.parent().unwrap();
-            let user = fixture.root.write("user.c", USER);
-            let program = fixture.root.join("user");
-            let built = std::process::Command::new("cc")
-                .arg(&user)
-                .arg("-L")
-                .arg(dir)
-                .arg("-lcalc")
-                .arg("-o")
-                .arg(&program)
-                .status()
-                .unwrap();
-            assert!(built.success(), "{backend} {output:?}");
-            let ran = std::process::Command::new(&program).env("LD_LIBRARY_PATH", dir).status().unwrap();
-            assert_eq!(ran.code(), Some(42), "{backend} {output:?}");
+        for (output, _) in KINDS {
+            assert_eq!(
+                run_with_library("calc", LIBRARY, USER, output, backend),
+                Some(42),
+                "{backend} {output:?}"
+            );
+        }
+    }
+}
+
+/// A library counting in storage per thread (spec 07, section 2).
+const COUNTED: &str = "\
+count: std.sync.Local(i32) = .init(0);
+
+#[link.export(\"counted_bump\"), abi.c]
+bump := () -> i32 {
+    count.set((count.get() + 1).wrap(i32));
+    count.get()
+};
+";
+
+/// A C program counting once in its main thread and three times in another, exiting with each
+/// thread's last count: 2 and 3, as neither sees the other's.
+const THREADED_USER: &str = "#include <pthread.h>
+int counted_bump(void);
+static void *run(void *arg) { counted_bump(); counted_bump(); return (void *)(long)counted_bump(); }
+int main(void) {
+    counted_bump();
+    pthread_t t;
+    void *theirs;
+    pthread_create(&t, 0, run, 0);
+    pthread_join(t, &theirs);
+    return counted_bump() * 10 + (int)(long)theirs;
+}
+";
+
+#[test]
+fn a_library_keeps_storage_per_thread_through_each_backend() {
+    if !cfg!(all(target_arch = "x86_64", target_os = "linux")) {
+        return;
+    }
+    for backend in [vun_backend_c::INFO.id, vun_backend_native::INFO.id] {
+        for (output, _) in KINDS {
+            let status = run_with_library("counted", COUNTED, THREADED_USER, output, backend);
+            assert_eq!(status, Some(23), "{backend} {output:?}");
         }
     }
 }

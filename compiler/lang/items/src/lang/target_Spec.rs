@@ -31,6 +31,8 @@ pub const register_bits: Item = Item::new(&["lang", "target", "Spec", "register_
 /// The float types its processor computes; `lang.float.soft` computes the others
 /// (`lang.lower.soft`).
 pub const floats: Item = Item::new(&["lang", "target", "Spec", "floats"]);
+/// How many threads its programs run, which storage per thread follows (spec 07, section 2).
+pub const threads: Item = Item::new(&["lang", "target", "Spec", "threads"]);
 pub const endian: Item = Item::new(&["lang", "target", "Spec", "endian"]);
 pub const object_format: Item = Item::new(&["lang", "target", "Spec", "object_format"]);
 /// The symbol a program starts at, when the target has one.

@@ -8,6 +8,8 @@ use vun_isa_x86_64::{Base, Form, Inst, Layout, Mem, Op, Operand, Prefix, Reg, Si
 
 const REX: u8 = 0x40;
 const OPERAND_16: u8 = 0x66;
+/// The prefix selecting the segment `fs` names: the thread's block.
+const FS: u8 = 0x64;
 
 /// Emitting instructions into a function's code.
 pub trait Emit<S: Copy> {
@@ -77,6 +79,10 @@ fn fields<S>(operand: &Operand<S>) -> (u8, bool) {
 }
 
 fn encode<S: Copy>(asm: &mut Asm<S>, form: &Form, size: Size, operands: &[Operand<S>]) {
+    // The thread's block is in the segment `fs` names, which its prefix selects.
+    if operands.iter().any(|o| matches!(o, Operand::Mem(Mem { base: Base::Thread, .. }))) {
+        asm.put(&[FS]);
+    }
     if form.prefix == Prefix::Lock {
         asm.put(&[0xf0]);
     }
@@ -177,9 +183,15 @@ fn modrm<S: Copy>(asm: &mut Asm<S>, field: u8, rm: &Operand<S>, trailing: u32) {
             let kind = match via {
                 Via::Direct => RelocKind::Pc32,
                 Via::Got => RelocKind::GotPc32,
+                Via::Descriptor => RelocKind::TlsDescPc32,
             };
             asm.relocate(asm.here(), *target, kind, i64::from(*disp) - 4 - i64::from(trailing));
             asm.put(&[0; 4]);
+        }
+        // An absolute displacement: no base, no index (a SIB byte of both absent).
+        Operand::Mem(Mem { base: Base::Thread, disp }) => {
+            asm.put(&[field << 3 | 0b100, 0x25]);
+            asm.put(&disp.to_le_bytes());
         }
         _ => unreachable!("the form puts a register or memory here"),
     }

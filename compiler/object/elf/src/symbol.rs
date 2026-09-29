@@ -16,6 +16,8 @@ numbered! {
         Func = 2,
         Section = 3,
         File = 4,
+        /// Storage per thread, by its offset in the thread's block.
+        Tls = 6,
     }
 }
 

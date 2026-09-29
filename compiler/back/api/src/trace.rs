@@ -8,7 +8,7 @@ use vun_items::lang::{
     trace_Function as function, trace_Origin as origin, trace_Site as site, trace_Table as table,
     trace_Text as text,
 };
-use vun_lir::unit::{Data, Reloc, Unit};
+use vun_lir::unit::{Data, Reloc, Storage, Unit};
 use vun_lir::{Address, Conv, DataId, Fields, Linkage, Trace, TraceLayout};
 use vun_origin::OriginId;
 use vun_target::{Detail, Endian};
@@ -204,8 +204,16 @@ impl<'a> Block<'a> {
         align: u64,
         origin: OriginId,
     ) -> Option<DataId> {
-        let data =
-            Data { linkage: Linkage::Internal, bytes, relocs, align, writable: false, section: None, origin };
+        let data = Data {
+            linkage: Linkage::Internal,
+            bytes,
+            relocs,
+            align,
+            writable: false,
+            section: None,
+            storage: Storage::Program,
+            origin,
+        };
         (!data.bytes.is_empty()).then(|| unit.data.push(data))
     }
 }

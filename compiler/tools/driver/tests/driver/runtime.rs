@@ -98,6 +98,16 @@ fn a_file_written_reads_back_and_a_missing_one_is_missing() {
 }
 
 #[test]
+fn each_thread_counts_in_its_own_storage_on_every_runtime() {
+    if !cfg!(target_os = "linux") {
+        return;
+    }
+    // 32-bit Arm's native backend does not reach storage per thread yet.
+    let cross: [&[&str]; 2] = [&["linux", "arm64"], &["wasi", "wasm32"]];
+    assert_eq!(status_on("runtime-locals", &corpus("locals.vun"), &cross), Some(36));
+}
+
+#[test]
 fn threads_run_beside_the_main_one_and_are_joined_on_every_runtime() {
     if !cfg!(target_os = "linux") {
         return;
@@ -199,7 +209,11 @@ fn a_trap_in_a_thread_names_the_calls_up_to_where_the_thread_starts() {
         let lines: Vec<&str> = text.lines().collect();
         let at = format!("  at {file}:3:44");
         assert_eq!(ran.status.code(), Some(101), "{backend}");
-        assert_eq!(lines[..4], ["trap", &at, "  in pick, inlined", "  in main.f, inlined"], "{backend}: {text}");
+        assert_eq!(
+            lines[..4],
+            ["trap", &at, "  in pick, inlined", "  in main.f, inlined"],
+            "{backend}: {text}"
+        );
         assert!(lines.last().is_some_and(|l| l.starts_with("  in Thread.run (")), "{backend}: {text}");
     }
 }

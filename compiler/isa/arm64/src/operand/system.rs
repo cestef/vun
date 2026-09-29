@@ -6,10 +6,12 @@
 pub enum SysReg {
     /// The condition flags.
     Nzcv = 0x5a10,
+    /// The thread pointer, which a thread's storage is reached from.
+    TpidrEl0 = 0x5e82,
 }
 
 impl SysReg {
-    pub const ALL: [Self; 1] = [Self::Nzcv];
+    pub const ALL: [Self; 2] = [Self::Nzcv, Self::TpidrEl0];
 
     /// Its field, from bit 5.
     #[must_use]
@@ -21,6 +23,7 @@ impl SysReg {
     pub const fn name(self) -> &'static str {
         match self {
             Self::Nzcv => "nzcv",
+            Self::TpidrEl0 => "tpidr_el0",
         }
     }
 }

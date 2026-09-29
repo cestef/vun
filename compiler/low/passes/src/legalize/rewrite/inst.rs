@@ -195,6 +195,7 @@ impl Rewrite<'_> {
             InstKind::Offset { base, offset } => InstKind::Offset { base: one(base), offset: one(offset) },
             InstKind::SlotAddr(slot) => InstKind::SlotAddr(*slot),
             InstKind::Addr(address) => InstKind::Addr(*address),
+            InstKind::ThreadAddr(data) => InstKind::ThreadAddr(*data),
             InstKind::Copy { to, from, bytes } => {
                 InstKind::Copy { to: one(to), from: one(from), bytes: *bytes }
             }

@@ -7,7 +7,7 @@
 /// Primitive types, and the attributes the compiler acts on (spec 02, section 5).
 ..lang.{
     type, Int, bool, true, false, never, f16, f32, f64, Option, Result, interface,
-    abi, comptime, impl, kind, layout, link, lint, opt, panic, stack, target, visible,
+    abi, comptime, impl, kind, layout, link, lint, opt, panic, stack, target, thread, visible,
 };
 
 ..lang.meta.{ Code };

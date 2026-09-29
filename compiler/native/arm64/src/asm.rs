@@ -82,7 +82,7 @@ impl AsmExt for Asm<Address> {
             }
             Address::Func(_) | Address::Data(_) => {
                 self.emit(Op::Adrp, Size::B64, &[dst.into(), Opnd::Page(target, Via::Direct)]);
-                self.emit(Op::Add, Size::B64, &[dst.into(), dst.into(), Opnd::Lo12(target)]);
+                self.emit(Op::Add, Size::B64, &[dst.into(), dst.into(), Opnd::Lo12(target, Via::Direct)]);
             }
         }
     }

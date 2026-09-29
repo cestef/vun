@@ -35,6 +35,7 @@ pub(crate) fn target() -> TargetSpec {
         pointer_bits: 64,
         register_bits: 64,
         floats: vun_target::Floats::ALL,
+        threads: vun_target::Threads::One,
         endian: Endian::Little,
         object_format: name("elf"),
         entry_symbol: None,
@@ -147,6 +148,7 @@ fn data_aligned_past_c_or_placed_in_a_section_needs_gnu_attributes() {
         align: 64,
         writable: false,
         section,
+        storage: vun_lir::Storage::Program,
         origin: at,
     };
     unit.data.push(data(None));

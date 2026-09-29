@@ -11,6 +11,9 @@ pub enum Base<S> {
     Reg(Reg),
     /// The instruction's own address: something the linker places.
     Rip(S, Via),
+    /// The calling thread's block, in the segment `fs` names: `disp` is an offset in it, `0`
+    /// holding the thread pointer itself.
+    Thread,
 }
 
 /// A memory operand: `disp` bytes past its base.
@@ -29,6 +32,12 @@ impl<S> Mem<S> {
     #[must_use]
     pub const fn rip(target: S, via: Via) -> Self {
         Self { base: Base::Rip(target, via), disp: 0 }
+    }
+
+    /// `disp` bytes into the calling thread's block.
+    #[must_use]
+    pub const fn thread(disp: i32) -> Self {
+        Self { base: Base::Thread, disp }
     }
 
     /// `bytes` further on, when the displacement still fits.
