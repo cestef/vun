@@ -8,10 +8,10 @@ use vun_diag::DiagCtxt;
 use vun_hir::db::{Package, Parsed};
 use vun_hir::tree::ExprId;
 use vun_origin::Resolve;
-use vun_sema::eval::Instantiation;
-use vun_sema::item::{ExprRef, Site};
 use vun_sema::site::{Declaration, NameSite};
 use vun_sema::typeck::{Known, Typed};
+use vun_sema_ty::call::Instantiation;
+use vun_sema_ty::item::{ExprRef, Site};
 use vun_span::{FileId, Span};
 
 use crate::Session;

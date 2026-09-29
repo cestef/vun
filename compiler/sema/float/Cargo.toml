@@ -1,0 +1,14 @@
+[package]
+name = "vun-sema-float"
+description = "IEEE 754 binary floats at compile time, rounded once per operation."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+vun-codec.workspace = true
+vun-sema-int.workspace = true

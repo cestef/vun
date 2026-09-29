@@ -5,6 +5,7 @@ use vun_codec::{Decode, Encode};
 use vun_lir::{Address, Slot, Value};
 use vun_mir::{Local, Role};
 use vun_sema::kinds::Kinds;
+use vun_sema::link::Linkable;
 
 use super::FnLower;
 use crate::frame::FrameShape;

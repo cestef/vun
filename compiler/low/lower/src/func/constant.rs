@@ -4,13 +4,13 @@
 
 use vun_lir::{Access, Address, Reloc, Scalar, Value};
 use vun_origin::OriginId;
-use vun_sema::Primitive;
-use vun_sema::eval::Instantiation;
-use vun_sema::int::Integer;
+use vun_primitives::Primitive;
+use vun_primitives::mem::Mem;
 use vun_sema::layout::{Parts, Tag};
 use vun_sema::member::Members;
-use vun_sema::primitives::mem::Mem;
-use vun_sema::ty::{Ty, TyKind, Value as Constant};
+use vun_sema_int::Integer;
+use vun_sema_ty::call::Instantiation;
+use vun_sema_ty::{Ty, TyKind, Value as Constant};
 use vun_target::Endian;
 
 use super::FnLower;

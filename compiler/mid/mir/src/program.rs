@@ -4,18 +4,20 @@
 //! with the `$` arguments of its call.
 
 use std::sync::Arc;
-use vun_hash::{Map, Set};
 
 use vun_codec::{Decode, Encode};
+use vun_hash::{Map, Set};
 use vun_hir::db::{FileRef, Parsed};
 use vun_hir::tree::ExprKind;
 use vun_intern::Symbol;
 use vun_query::{Cx, Cycle, Query};
 use vun_sema::decl::DeclValue;
-use vun_sema::eval::Instantiation;
-use vun_sema::item::{DeclRef, ExprRef};
+use vun_sema::eval::Instantiate;
+use vun_sema::link::Exported;
 use vun_sema::member::{MemberValue, Members};
-use vun_sema::ty::{Ty, TyKind, Value};
+use vun_sema_ty::call::Instantiation;
+use vun_sema_ty::item::{DeclRef, ExprRef};
+use vun_sema_ty::{Ty, TyKind, Value};
 
 use crate::{Aggregate, Concrete, Lowered, Operand, Rvalue, Unready};
 

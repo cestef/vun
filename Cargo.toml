@@ -41,7 +41,12 @@ vun-grammar = { path = "compiler/lang/grammar" }
 vun-desugar = { path = "compiler/front/desugar" }
 vun-syntax = { path = "compiler/front/syntax" }
 vun-hir = { path = "compiler/front/hir" }
-vun-sema = { path = "compiler/front/sema" }
+vun-primitives = { path = "compiler/lang/primitives" }
+vun-sema-int = { path = "compiler/sema/int" }
+vun-sema-float = { path = "compiler/sema/float" }
+vun-sema-ty = { path = "compiler/sema/ty" }
+vun-sema = { path = "compiler/sema/core" }
+vun-sema-plan = { path = "compiler/sema/plan" }
 vun-mir = { path = "compiler/mid/mir" }
 vun-mir-passes = { path = "compiler/mid/passes" }
 vun-sanitize = { path = "compiler/mid/sanitize" }

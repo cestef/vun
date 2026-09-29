@@ -4,7 +4,7 @@
 use vun_index::IndexVec;
 use vun_query::Cx;
 use vun_sema::member::Members;
-use vun_sema::ty::{Ty, TyKind, Value};
+use vun_sema_ty::{Ty, TyKind, Value};
 
 use crate::{Local, LocalDecl, Place, Projection};
 

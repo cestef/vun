@@ -47,7 +47,7 @@ lib/lang/lang/syntax/{grammar,desugar}.vun   tokens, nodes, parse tables; append
 lib/lang/lang/errors.vun + errors/           every diagnostic id and its explanation page
 lib/lang, lib/std, lib/targets               `lang` primitives, `std`, one `lang.target.Spec` per target
 corpus/{accept,reject,planned,support}       programs; `//~ id` annotations; waiting for APIs; stand-ins
-compiler/<group>/<crate>                     base < lang < isa, object < front < mid < low < asm < back, link, render < native, pkg < tools
+compiler/<group>/<crate>                     base < lang < isa, object < front < sema < mid < low < asm < back, link, render < native, pkg < tools
 fuzz/                                        cargo-fuzz targets `lex`, `parse` (outside the workspace)
 whitepaper/                                  Typst paper; it quotes real numbers and `vun` output
 README.md                                    for people: pitch, status, how to try; contributor detail stays here
@@ -60,7 +60,7 @@ title page and the README carry a notice on AI use (the design is the user's, mo
 written by agents under their direction); keep it when rewriting either.
 
 Generated, never edited (edit the `.vun` source, run `cargo gen`): `lang/grammar/src/generated/`,
-`front/desugar/src/generated/`, `base/diag/src/errors/`, `front/sema/src/primitives/`,
+`front/desugar/src/generated/`, `base/diag/src/errors/`, `lang/primitives/src/generated/`,
 `lang/items/src/{lang,std,targets}/` (a handle per public declaration: Rust names `lang` and
 `std` only through `vun_items`).
 
@@ -104,11 +104,16 @@ Logging: `VUN_LOG=<filter>` (`info` steps, `debug` units of work, `trace` elemen
   `conventions`). **Objects** (`compiler/object`): `vun-object` (objects as data, written as ELF
   through `vun-elf` or as Mach-O), `vun-elf` (ELF files as data, written and read, each record
   declared once per class), `vun-dwarf`.
-- **Front end** (`compiler/front`): `vun-syntax`, `vun-hir` (the front end as queries), `vun-sema`:
-  `ty/` (types, values, relations, borrows table), `env/` (evaluation, calls read once by
-  `Env::passing`), `typeck/` (the `Typer`, operators through interface impls, narrowing, staged
-  `$for`/`$if`), `layout/` (`Shapes`), `witness/`, `check/`, `target/` (targets read from values),
-  `plan.rs` (`std.build` plans).
+- **Front end** (`compiler/front`): `vun-syntax`, `vun-hir` (the front end as queries).
+- **Sema** (`compiler/sema`): `vun-sema-int` (exact integers, intervals), `vun-sema-float`
+  (compile-time IEEE floats), `vun-sema-ty` (types, values, relations, borrows table, item keys,
+  `call` values: `Func`, `Instance`, `Instantiation`; `trap`: traps and `Unevaluated`),
+  `vun-sema` (the query cycle: `env/` evaluation, calls read once by `Env::passing`; `typeck/` the
+  `Typer`, operators through interface impls, narrowing, staged `$for`/`$if`; `layout/`
+  (`Shapes`), `witness/`, `check/`, `target/` (targets read from values), `asm/`, `apply/`),
+  `vun-sema-plan` (`std.build` plans). The primitives are `vun-primitives` (`compiler/lang`,
+  generated). Methods of `vun-sema` on the lower crates' types are extension traits
+  (`Instantiate`, `Parameters`, `Attributed`, `Apply`, ...).
 - **Middle** (`compiler/mid`): `vun-mir` (places with projections, `build/` per form, `Concrete`
   bodies, `Programs`), `vun-mir-passes` (places, borrows, panics), `vun-interp` (runs MIR at
   compile time, loans for `&mut`).
@@ -332,14 +337,12 @@ Next, most useful first:
 6. `std`: `task.Pool`, `testing.Sim`, `Str` and collections, generic bodies over `$A: Allocator`.
 7. Evaluator: loans inside aggregate arguments, memory per nesting level. Packaging: signed
    caches, planned builds, `vun pkg why`. A comptime-heavy benchmark before perf audits.
-8. Refactors: `vun-sema` split. Its modules `env`, `ty`, `typeck`, `eval`, `decl`, `member`,
-   `callable`, `fuel`, `int`, `float`, `ops`, `trap`, `layout`, `target`, `visible`, `witness` and
-   `asm` form one dependency cycle (about 12k lines); only `item`, the generated `primitives`,
-   and the layer above (`check`, `checks`, `plan`, `persisted`, `kinds`, `link`, `attributes`,
-   `apply`, `reflect`, `site`) stand outside it. A split first breaks edges by owning traits in
-   the lower module (`int` reaches `trap`, `trap` reaches `env`; `typeck` calls `asm`, which
-   could register as a checker; `target` and `layout` read `env`). The generated primitives carry
-   inherent impls from `apply`, `target` and `ty`, which would become extension traits.
+8. Refactors: the rest of the `vun-sema` split. Done (2026-09-29): `int`, `float`, `ty`,
+   primitives and `plan` are crates of their own. `vun-sema` itself is one dependency cycle
+   (`env`, `eval`, `typeck`, `decl`, `member`, `layout`, `target`, `check`, `witness`, `asm`,
+   about 12k lines): evaluation needs typed bodies and typing needs evaluation. Splitting further
+   means owning traits in the lower part, as `Evaluator` does (`typeck` could reach `asm` through
+   a registered checker). Other refactors:
    `render/sarif`; `DiagId` and pass ids are
    strings; regalloc loads spilled operands where the form takes memory; LIR has no undefined
    value (padding copied as zeros); fuzz target `lir.rs` (written, never run).

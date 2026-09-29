@@ -1,4 +1,4 @@
-//! The primitives of `vun-sema`, from `lib/lang`: every declaration of the package's namespace
+//! The primitives of `vun-primitives`, from `lib/lang`: every declaration of the package's namespace
 //! whose value is `_` is provided by the compiler (spec 00, the layering rule), so those
 //! declarations are the table of what the compiler implements.
 //!
@@ -22,7 +22,7 @@ use crate::items;
 use crate::names::{docs, ident, pascal, raw};
 
 pub(crate) const GENERATOR: Generator =
-    Generator { source: "lib/lang", output: "compiler/front/sema/src/primitives", emit };
+    Generator { source: "lib/lang", output: "compiler/lang/primitives/src/generated", emit };
 
 /// The module of the enum over every namespace's primitives.
 const PRIMITIVE_MODULE: &str = "primitive";

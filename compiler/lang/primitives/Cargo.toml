@@ -1,0 +1,15 @@
+[package]
+name = "vun-primitives"
+description = "The primitives of `lang`, the declarations the compiler provides, generated from their sources."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+foldhash.workspace = true
+vun-codec.workspace = true
+vun-items.workspace = true

@@ -6,9 +6,9 @@ use vun_index::{Idx, IndexVec, index};
 use vun_intern::Symbol;
 use vun_origin::OriginId;
 use vun_query::Cx;
-use vun_sema::item::DeclRef;
 use vun_sema::member::Members;
-use vun_sema::ty::{Ty, TyKind};
+use vun_sema_ty::item::DeclRef;
+use vun_sema_ty::{Ty, TyKind};
 
 use crate::place::Place;
 use crate::rvalue::{Aggregate, Operand, Rvalue};

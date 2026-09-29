@@ -8,11 +8,13 @@ use vun_hir::resolve::Res;
 use vun_hir::tree::{ExprId, ExprKind};
 use vun_intern::Symbol;
 use vun_origin::OriginId;
-use vun_sema::env::{Hop, Unevaluated};
-use vun_sema::int::Interval;
-use vun_sema::item::Site;
+use vun_sema::env::Hop;
 use vun_sema::member::Members;
-use vun_sema::ty::{TyKind, Value};
+use vun_sema::thread::PerThread;
+use vun_sema_int::Interval;
+use vun_sema_ty::item::Site;
+use vun_sema_ty::trap::Unevaluated;
+use vun_sema_ty::{TyKind, Value};
 
 use super::{Builder, Unbuilt};
 use crate::place::{Place, Projection};

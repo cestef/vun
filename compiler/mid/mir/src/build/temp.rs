@@ -1,8 +1,9 @@
 //! Temporaries: locals holding what a form computes, typed from what they hold.
 
 use vun_origin::OriginId;
-use vun_sema::eval::Instantiation;
-use vun_sema::ty::{Ty, TyKind, Value};
+use vun_sema::eval::Instantiate;
+use vun_sema_ty::call::Instantiation;
+use vun_sema_ty::{Ty, TyKind, Value};
 
 use super::Builder;
 use crate::place::Place;

@@ -9,7 +9,7 @@ use vun_origin::OriginId;
 use vun_sema::callable::Callable;
 use vun_sema::env::Passed;
 use vun_sema::member::{MemberType, MemberValue};
-use vun_sema::ty::{Ty, TyKind, Value};
+use vun_sema_ty::{Ty, TyKind, Value};
 
 use super::{Builder, Unbuilt};
 use crate::place::Place;

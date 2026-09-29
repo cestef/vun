@@ -3,13 +3,15 @@
 //! or returns, and stores where it stopped back in the frame.
 
 use std::sync::Arc;
-use vun_index::{Idx, IndexVec};
 
+use vun_index::{Idx, IndexVec};
 use vun_mir::{BlockId, Body, Mir, Place};
 use vun_query::Cx;
-use vun_sema::env::Unevaluated;
-use vun_sema::eval::{Instance, Instantiation, Resumed, Suspended};
-use vun_sema::ty::{Ty, Value};
+use vun_sema::eval::Instantiate;
+use vun_sema::fuel::Fueled;
+use vun_sema_ty::call::{Instance, Instantiation, Resumed, Suspended};
+use vun_sema_ty::trap::Unevaluated;
+use vun_sema_ty::{Ty, Value};
 
 use crate::machine::{Exit, Frame};
 

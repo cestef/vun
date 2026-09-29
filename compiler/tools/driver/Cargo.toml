@@ -27,6 +27,8 @@ link-msvc = ["dep:vun-link-msvc"]
 link-external = ["dep:vun-link-external"]
 
 [dependencies]
+vun-sema-plan.workspace = true
+vun-sema-ty.workspace = true
 vun-fetch.workspace = true
 vun-bind.workspace = true
 vun-fs.workspace = true

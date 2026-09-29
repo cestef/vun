@@ -7,7 +7,7 @@ use vun_lir::{Access, Cond, Scalar, Target, Terminator, Value};
 use vun_mir::Operand;
 use vun_sema::layout::Parts;
 use vun_sema::member::Members;
-use vun_sema::ty::{Ty, TyKind};
+use vun_sema_ty::{Ty, TyKind};
 
 use super::FnLower;
 use crate::repr::Repr;

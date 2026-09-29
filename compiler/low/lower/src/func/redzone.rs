@@ -10,8 +10,8 @@ use vun_items::lang::{check, check_Violation as violation};
 use vun_lir::{Address, BinOp, CastOp, InstKind, Slot, Value};
 use vun_mir::{Local, Operand, Projection, Rvalue};
 use vun_sema::checks::ChecksOf;
-use vun_sema::item::Site;
-use vun_sema::ty::Value as Constant;
+use vun_sema_ty::Value as Constant;
+use vun_sema_ty::item::Site;
 use vun_target::Check;
 
 use super::FnLower;

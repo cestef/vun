@@ -5,12 +5,12 @@
 
 use vun_lir::{Access, BinOp, Cond, Scalar, Value};
 use vun_mir::Operand;
-use vun_sema::Primitive;
+use vun_primitives::Primitive;
+use vun_primitives::hint::Hint;
+use vun_primitives::int::Int;
+use vun_primitives::meta::Meta;
 use vun_sema::callable::Callable;
-use vun_sema::primitives::hint::Hint;
-use vun_sema::primitives::int::Int;
-use vun_sema::primitives::meta::Meta;
-use vun_sema::ty::{Ty, Value as Constant};
+use vun_sema_ty::{Ty, Value as Constant};
 
 use super::FnLower;
 use crate::unlowered::{Form, Unlowered};

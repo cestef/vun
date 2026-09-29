@@ -14,10 +14,10 @@ use vun_lir::{Address, DataId, FuncId, ImportId, Site};
 use vun_lir_passes::{InlineCalls, Tidy};
 use vun_origin::{OriginId, OriginTable, Via};
 use vun_query::{Cx, Cycle, Query};
-use vun_sema::item::DeclRef;
 use vun_sema::target::TargetOf;
 use vun_sema::trace::TraceOf;
-use vun_sema::ty::TyKind;
+use vun_sema_ty::TyKind;
+use vun_sema_ty::item::DeclRef;
 use vun_target::Detail;
 
 use crate::piece::{Datum, DatumKind, FuncRef, FunctionLir, Lir, Piece, Refs};

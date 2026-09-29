@@ -7,8 +7,8 @@ use std::path::{Path, PathBuf};
 use vun_diag::{Diagnostic, ErrorGuaranteed, Msg, Severity, errors};
 use vun_link::MemoryRegion;
 use vun_origin::OriginId;
-use vun_sema::plan::{Action, Options};
 use vun_sema::target::Choice;
+use vun_sema_plan::{Action, Options};
 use vun_span::{FileId, SourceMap};
 use vun_trace::tracing;
 

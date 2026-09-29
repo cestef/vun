@@ -4,19 +4,21 @@
 use std::sync::Arc;
 
 use vun_codec::{Decode, Encode};
+use vun_desugar::Borrow;
 use vun_intern::Symbol;
 use vun_lir::{Field, Fields, Scalar};
 use vun_origin::OriginId;
+use vun_primitives::Primitive;
+use vun_primitives::lang::Lang;
+use vun_primitives::mem::Mem;
 use vun_query::Cx;
-use vun_sema::Primitive;
-use vun_sema::float::Format;
-use vun_sema::int::Interval;
 use vun_sema::layout::{Layout, Parts, Shape, Shapes, Tag};
 use vun_sema::member::Members;
-use vun_sema::primitives::lang::Lang;
-use vun_sema::primitives::mem::Mem;
 use vun_sema::target::Target;
-use vun_sema::ty::{Ty, TyKind};
+use vun_sema_float::Format;
+use vun_sema_int::Interval;
+use vun_sema_ty::float::FloatType;
+use vun_sema_ty::{Ty, TyKind};
 use vun_target::Endian;
 
 use crate::unlowered::{Unlowered, Why};
@@ -148,7 +150,7 @@ impl<'a, 'db> Types<'a, 'db> {
         }
         let address = match &*ty {
             TyKind::Primitive(Primitive::Lang(Lang::Fn) | Primitive::Mem(Mem::Ptr), _) => true,
-            TyKind::Primitive(p, _) if p.borrow_mode().is_some() => shape.parts == Parts::Whole,
+            TyKind::Primitive(p, _) if Borrow::of(p.item()).is_some() => shape.parts == Parts::Whole,
             _ => false,
         };
         if address {

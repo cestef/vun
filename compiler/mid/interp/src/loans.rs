@@ -9,10 +9,11 @@
 use vun_desugar::{Access, Borrow};
 use vun_index::Idx;
 use vun_mir::{Local, Operand, Place};
-use vun_sema::env::Unevaluated;
-use vun_sema::eval::{Instance, Metered, MeteredCall};
-use vun_sema::ops::Part;
-use vun_sema::ty::Value;
+use vun_sema::eval::{Metered, MeteredCall};
+use vun_sema_ty::Value;
+use vun_sema_ty::call::Instance;
+use vun_sema_ty::ops::Part;
+use vun_sema_ty::trap::Unevaluated;
 
 use crate::machine::Frame;
 

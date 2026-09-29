@@ -8,7 +8,7 @@ use vun_mir::{Body, Local};
 use vun_query::Cx;
 use vun_sema::kinds::Kinds;
 use vun_sema::member::Members;
-use vun_sema::ty::{Ty, TyKind};
+use vun_sema_ty::{Ty, TyKind};
 
 use super::states::Key;
 

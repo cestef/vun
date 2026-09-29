@@ -6,10 +6,11 @@ use std::sync::Arc;
 use vun_hir::db::PackageId;
 use vun_intern::Symbol;
 use vun_items::Item;
+use vun_primitives::check::Check;
 use vun_query::{Cx, Query};
 use vun_sema::env::ItemSite;
-use vun_sema::item::Site;
-use vun_sema::primitives::check::Check;
+use vun_sema::link::Linkable;
+use vun_sema_ty::item::Site;
 
 /// The operations of `lang.check` as the files of a package see them, each with its link symbol:
 /// its primitives a runtime exports, the ones with a link symbol.

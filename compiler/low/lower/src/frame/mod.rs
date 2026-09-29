@@ -13,7 +13,7 @@ use vun_mir::{BlockId, Concrete, Local};
 use vun_query::{Cx, Cycle, Query};
 use vun_sema::layout::{Framer, Layout};
 use vun_sema::target::TargetOf;
-use vun_sema::ty::{Ty, TyKind};
+use vun_sema_ty::{Ty, TyKind};
 
 use crate::repr::Types;
 use crate::unlowered::{Unlowered, Why};

@@ -3,9 +3,11 @@
 //! arguments; a call of a function implementing a requirement so marked is one too, with the
 //! type the impl is for before them. Within `f` itself, the operation it checks runs unchecked.
 
+use vun_sema::attributes::Attributed;
 use vun_sema::env::Env;
-use vun_sema::eval::Func;
-use vun_sema::ty::Value;
+use vun_sema::witness::Implementing;
+use vun_sema_ty::Value;
+use vun_sema_ty::call::Func;
 use vun_target::Checks;
 
 use crate::{Body, Operand, Rvalue};

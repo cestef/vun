@@ -63,7 +63,7 @@ cargo run -q -p vun-cli -- --help
 ```
 docs/        specification, decision log, research notes
 whitepaper/  the paper
-compiler/    the compiler, a Rust workspace (base < front < mid < low < back, link < tools)
+compiler/    the compiler, a Rust workspace (base < front < sema < mid < low < back, link < tools)
 lib/         Vun sources: lang (primitives), std, targets
 corpus/      test programs
 design/      visual identity

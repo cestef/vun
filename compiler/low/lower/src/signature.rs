@@ -5,10 +5,10 @@
 use vun_desugar::Access;
 use vun_lir::{AbiType, Alias, Conv, Ext, Record, Scalar, Signature};
 use vun_origin::OriginId;
+use vun_primitives::abi::Abi;
 use vun_sema::layout::Parts;
 use vun_sema::member::Members;
-use vun_sema::primitives::abi::Abi;
-use vun_sema::ty::{self, Closure, Ty, TyKind};
+use vun_sema_ty::{Closure, Ty, TyKind};
 
 use crate::lowering::Lowering;
 use crate::repr::{Repr, Types};
@@ -18,7 +18,7 @@ impl Lowering<'_, '_> {
     /// The LIR signature of a function of type `signature`, called under `abi`.
     pub(crate) fn signature_of(
         &self,
-        signature: &ty::Signature,
+        signature: &vun_sema_ty::Signature,
         abi: Option<Abi>,
         at: OriginId,
     ) -> Result<Signature, Unlowered> {

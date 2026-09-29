@@ -1,14 +1,14 @@
 //! Why a program does not lower to LIR, and where.
 
 use std::fmt;
-use vun_sema::Primitive;
 
 use vun_codec::{Decode, Encode};
 use vun_diag::{Diagnostic, Msg, errors};
 use vun_inline::Needed;
 use vun_mir::Unready;
 use vun_origin::OriginId;
-use vun_sema::ty::Ty;
+use vun_primitives::Primitive;
+use vun_sema_ty::Ty;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct Unlowered {

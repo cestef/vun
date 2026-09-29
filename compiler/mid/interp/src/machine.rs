@@ -5,10 +5,14 @@
 use vun_index::{Idx, IndexVec};
 use vun_mir::{Aggregate, BlockId, Body, Local, Operand, Rvalue, TerminatorKind};
 use vun_query::Cx;
-use vun_sema::env::{Env, Unevaluated};
-use vun_sema::eval::{Instance, Instantiation, Metered};
-use vun_sema::trap::Reason;
-use vun_sema::ty::Value;
+use vun_sema::env::Env;
+use vun_sema::eval::Instantiate;
+use vun_sema::eval::Metered;
+use vun_sema::fuel::Fueled;
+use vun_sema_ty::Value;
+use vun_sema_ty::call::{Instance, Instantiation};
+use vun_sema_ty::trap::Reason;
+use vun_sema_ty::trap::Unevaluated;
 
 /// One call's locals.
 pub struct Frame<'b, 'a, 'db> {

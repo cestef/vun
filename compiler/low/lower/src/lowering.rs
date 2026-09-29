@@ -11,10 +11,12 @@ use vun_lir::{Address, DataId, FuncId, ImportId, Site};
 use vun_origin::OriginId;
 use vun_query::Cx;
 use vun_sema::env::Env;
-use vun_sema::eval::Instantiation;
-use vun_sema::item::DeclRef;
+use vun_sema::link::Linkable;
 use vun_sema::target::TargetOf;
-use vun_sema::ty::{Ty, Value};
+use vun_sema::thread::PerThread;
+use vun_sema_ty::call::Instantiation;
+use vun_sema_ty::item::DeclRef;
+use vun_sema_ty::{Ty, Value};
 use vun_target::{Checks, Threads};
 
 use crate::piece::{Bytes, Datum, DatumKind, FuncRef, Refs};

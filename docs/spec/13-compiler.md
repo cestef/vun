@@ -1110,10 +1110,11 @@ in registers a call may overwrite, none saved.
 compiler/
   base/    index  span  intern  origin  diag  query  pass  tool  target  trace  json  codec
            codec-derive  hash  graph  fs  outline  par  suggest  term  bytes  harness
-  lang/    grammar  items                        Rust views generated from lib/lang
+  lang/    grammar  items  primitives            Rust views generated from lib/lang
   isa/     api  inline  x86_64  arm64  thumb     instruction sets, one table each
   object/  core  dwarf                           object files and debug information as data
-  front/   desugar  syntax  hir  sema
+  front/   desugar  syntax  hir
+  sema/    int  float  ty  core  plan            types as values; `core` (`vun-sema`) checks and evaluates
   mid/     mir  passes  interp
   low/     lir  lower  abi  passes
   back/    api  codegen  regalloc  c  wasm  cranelift  qbe  llvm  external
@@ -1141,7 +1142,7 @@ so that no two directories share a name within a group and every crate sits at
 Rules:
 - `vun-driver` is a library; the CLI, the LSP and the test harness are thin shells over it.
 - A crate depends only on crates in its own or earlier groups: `base` < `lang` < `isa`, `object` < `front` <
-  `mid` < `low` < `asm` < `back`, `link`, `render` < `native`, `pkg` < `tools`; the order is
+  `sema` < `mid` < `low` < `asm` < `back`, `link`, `render` < `native`, `pkg` < `tools`; the order is
   declared once in `xtask/src/layers.rs` and checked by `cargo xtask layers`. Where a later stage implements something an earlier one
   needs, the earlier one owns the trait (`vun-sema` defines `Evaluator`, `vun-interp`
   implements it).

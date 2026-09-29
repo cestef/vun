@@ -14,6 +14,7 @@ path = "src/main.rs"
 workspace = true
 
 [dependencies]
+vun-sema-ty.workspace = true
 vun-backend.workspace = true
 vun-bind.workspace = true
 vun-build.workspace = true

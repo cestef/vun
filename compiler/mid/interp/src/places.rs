@@ -5,9 +5,9 @@
 use vun_index::Idx;
 use vun_mir::{Local, Place, Projection, Role};
 use vun_sema::decl::DeclValue;
-use vun_sema::env::Unevaluated;
-use vun_sema::ops::Part;
-use vun_sema::ty::Value;
+use vun_sema_ty::Value;
+use vun_sema_ty::ops::Part;
+use vun_sema_ty::trap::Unevaluated;
 
 use crate::machine::Frame;
 

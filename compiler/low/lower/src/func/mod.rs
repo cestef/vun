@@ -24,19 +24,21 @@ mod trap;
 mod variant;
 mod verdict;
 
+use std::sync::Arc;
+
 pub(crate) use coroutine::Mode;
 use storage::Storage;
-
-use std::sync::Arc;
 use vun_index::{Idx, IndexVec};
 use vun_lir::{Builder, Conv, Function, Linkage, Scalar, Slot, Target, Terminator, Value};
-
 use vun_mir::{BlockId, Body, Local, Operand, Rvalue, Unready};
 use vun_mir_passes::places::{Found, Placed};
 use vun_origin::OriginId;
-use vun_sema::eval::Instantiation;
-use vun_sema::primitives::abi::Abi;
-use vun_sema::ty::Ty;
+use vun_primitives::abi::Abi;
+use vun_sema::attributes::Attributed;
+use vun_sema::callable::Parameters;
+use vun_sema::link::Exported;
+use vun_sema_ty::Ty;
+use vun_sema_ty::call::Instantiation;
 
 use crate::lowering::Lowering;
 use crate::repr::Repr;

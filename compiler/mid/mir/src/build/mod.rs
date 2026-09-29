@@ -23,18 +23,19 @@ mod value;
 
 use std::panic::Location;
 use std::sync::Arc;
-use vun_hash::{Map, Set};
 
 use vun_codec::{Decode, Encode};
+use vun_hash::{Map, Set};
 use vun_hir::tree::{BinderId, Entry, ExprId, ExprKind, PatKind};
 use vun_index::{Idx, IndexVec};
 use vun_intern::Symbol;
 use vun_origin::{OriginId, OriginTable};
 use vun_query::{Cx, Cycle, Query};
-use vun_sema::env::{Env, Unevaluated};
-use vun_sema::eval::{Instantiation, Staging};
-use vun_sema::ty::Ty;
+use vun_sema::env::Env;
 use vun_sema::typeck::{Step, Typed, TypedBody};
+use vun_sema_ty::Ty;
+use vun_sema_ty::call::{Instantiation, Staging};
+use vun_sema_ty::trap::Unevaluated;
 use vun_span::{SourceFiles, SourceMap};
 
 use crate::Lowered;

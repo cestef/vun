@@ -10,6 +10,10 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
+vun-primitives.workspace = true
+vun-sema-float.workspace = true
+vun-sema-int.workspace = true
+vun-sema-ty.workspace = true
 vun-hash.workspace = true
 vun-codec.workspace = true
 vun-trace.workspace = true

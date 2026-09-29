@@ -12,9 +12,9 @@ use vun_lir_passes::Tidy;
 use vun_mir::{Body, Concrete};
 use vun_origin::OriginId;
 use vun_query::{Cx, Query};
-use vun_sema::eval::Instantiation;
-use vun_sema::item::DeclRef;
-use vun_sema::ty::{Nominal, Ty, TyKind};
+use vun_sema_ty::call::Instantiation;
+use vun_sema_ty::item::DeclRef;
+use vun_sema_ty::{Nominal, Ty, TyKind};
 
 use crate::func::{FnLower, Mode};
 use crate::lowering::Lowering;

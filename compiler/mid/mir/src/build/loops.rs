@@ -8,7 +8,7 @@ use vun_hir::tree::{BlockId as HirBlock, ExprId, ForHead};
 use vun_intern::Symbol;
 use vun_origin::OriginId;
 use vun_sema::member::MemberValue;
-use vun_sema::ty::{Ty, Value};
+use vun_sema_ty::{Ty, Value};
 
 use super::defer::{Exit, Pending};
 use super::pattern::Matched;

@@ -6,16 +6,16 @@ use std::io::{self, Write};
 use std::path::Path;
 
 use vun_command::{Args, Outcome};
+use vun_driver::Session;
 use vun_hir::db::Parsed;
 use vun_hir::tree::ExprKind;
 use vun_mir::{Programs, Roots};
 use vun_origin::Resolve;
-use vun_sema::eval::Instantiation;
 use vun_sema::typeck::{Operation, Typed};
+use vun_sema_ty::call::Instantiation;
 use vun_span::SourceMap;
 
 use super::FILE;
-use vun_driver::Session;
 
 /// How much of an expression's source a line shows.
 const SHOWN: usize = 48;

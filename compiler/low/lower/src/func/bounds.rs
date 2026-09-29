@@ -6,9 +6,9 @@
 use vun_grammar::TokenKind;
 use vun_lir::{Access, BinOp, Cond, Scalar, Value};
 use vun_mir::Operand;
+use vun_primitives::bounds::Bounds;
 use vun_sema::layout::{BoundsEnd, Parts};
-use vun_sema::primitives::bounds::Bounds;
-use vun_sema::ty::{Ty, TyKind};
+use vun_sema_ty::{Ty, TyKind};
 
 use super::FnLower;
 use super::place::Reached;

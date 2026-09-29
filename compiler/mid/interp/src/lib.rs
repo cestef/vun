@@ -11,12 +11,13 @@ pub mod machine;
 pub mod memory;
 mod places;
 
+use machine::Frame;
 use vun_mir::Mir;
 use vun_query::Cx;
-use vun_sema::env::Unevaluated;
-use vun_sema::eval::{Evaluator, Instance, Instantiation, Metered};
-
-use machine::Frame;
+use vun_sema::eval::Instantiate;
+use vun_sema::eval::{Evaluator, Metered};
+use vun_sema_ty::call::{Instance, Instantiation};
+use vun_sema_ty::trap::Unevaluated;
 
 /// The evaluator sema calls through, installed by the driver.
 pub struct Interpreter;

@@ -11,8 +11,9 @@ use vun_codec::{Decode, Encode};
 use vun_index::IndexVec;
 use vun_lir::Scalar;
 use vun_mir::{BlockId, Body, Local, Role, TerminatorKind};
-use vun_sema::eval::Instantiation;
+use vun_sema::callable::Parameters;
 use vun_sema::layout::Layout;
+use vun_sema_ty::call::Instantiation;
 
 use super::FrameShape;
 use crate::repr::{Repr, Types};

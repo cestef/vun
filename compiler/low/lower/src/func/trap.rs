@@ -5,8 +5,8 @@
 use vun_diag::Msg;
 use vun_lir::{Address, DataId, InstKind, Target, Terminator, Value};
 use vun_origin::OriginId;
-use vun_sema::item::Site;
-use vun_sema::ty::{Ty, Value as Constant};
+use vun_sema_ty::item::Site;
+use vun_sema_ty::{Ty, Value as Constant};
 
 use super::FnLower;
 use crate::piece::{Bytes, SiteAt};

@@ -1,0 +1,28 @@
+[package]
+name = "vun-sema-ty"
+description = "Types and compile-time values, the calls they hold and why a value may be missing."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+foldhash.workspace = true
+vun-codec.workspace = true
+vun-desugar.workspace = true
+vun-diag.workspace = true
+vun-grammar.workspace = true
+vun-hash.workspace = true
+vun-hir.workspace = true
+vun-intern.workspace = true
+vun-items.workspace = true
+vun-origin.workspace = true
+vun-primitives.workspace = true
+vun-query.workspace = true
+vun-sema-float.workspace = true
+vun-sema-int.workspace = true
+vun-span.workspace = true
+vun-syntax.workspace = true

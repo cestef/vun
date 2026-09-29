@@ -8,9 +8,8 @@ use vun_desugar::Borrow;
 use vun_hir::tree::{Arm, BinderId, Entry, ExprId, Joined, Name, PatId, PatKind};
 use vun_origin::OriginId;
 use vun_sema::member::{Found, Members};
-use vun_sema::ty::{Ty, TyKind};
-
 use vun_sema::typeck::Operation;
+use vun_sema_ty::{Ty, TyKind};
 
 use super::operator::Side;
 use super::{Builder, Unbuilt};

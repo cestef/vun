@@ -4,18 +4,17 @@
 //! does not exist yet.
 
 use vun_diag::{DiagCtxt, DiagId, errors};
-use vun_origin::Resolve;
-use vun_query::Query;
-use vun_span::{FileId, SourceMap};
-use vun_trace::{Activity, Timer, tracing};
-
 use vun_mir::{Programs, Roots};
 use vun_mir_passes::borrows::BorrowChecks;
 use vun_mir_passes::panics::PanicChecks;
 use vun_mir_passes::places::PlaceStates;
+use vun_origin::Resolve;
+use vun_query::Query;
 use vun_sema::check::Checked;
-use vun_sema::eval::Instantiation;
 use vun_sema::typeck::Typed;
+use vun_sema_ty::call::Instantiation;
+use vun_span::{FileId, SourceMap};
+use vun_trace::{Activity, Timer, tracing};
 
 use crate::Session;
 

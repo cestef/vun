@@ -7,7 +7,7 @@ use vun_items::lang::check as operations;
 use vun_lir::{Address, AsmCheck, InstKind, Output, Value};
 use vun_mir::{Asm, Operand, Place};
 use vun_sema::target::TargetOf;
-use vun_sema::ty::Value as Constant;
+use vun_sema_ty::Value as Constant;
 use vun_target::Check;
 
 use super::{FnLower, Storage};

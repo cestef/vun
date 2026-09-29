@@ -23,7 +23,6 @@ pub const targets: Item = Item::new(&["targets"]);
 mod codec;
 
 use ::std::fmt;
-
 use vun_grammar::PATH_SEPARATOR;
 
 /// A declaration, by its binding path: the package, its namespaces, then its name.
@@ -73,3 +72,6 @@ impl fmt::Display for Item {
         f.write_str(&self.path.join(PATH_SEPARATOR))
     }
 }
+
+#[cfg(test)]
+mod tests;

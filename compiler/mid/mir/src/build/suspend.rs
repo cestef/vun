@@ -7,7 +7,7 @@ use vun_desugar::ITERATION;
 use vun_grammar::TokenKind;
 use vun_hir::tree::{ExprId, ExprKind};
 use vun_origin::OriginId;
-use vun_sema::ty::Ty;
+use vun_sema_ty::Ty;
 
 use super::defer::{Exit, Pending};
 use super::{Builder, Unbuilt};

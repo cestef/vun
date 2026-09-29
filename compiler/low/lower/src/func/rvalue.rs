@@ -5,7 +5,7 @@ use vun_lir::{Access, Cond, Scalar, Value};
 use vun_mir::{Aggregate, Operand, Place, Rvalue};
 use vun_sema::layout::Parts;
 use vun_sema::member::Members;
-use vun_sema::ty::{Ty, Value as Constant};
+use vun_sema_ty::{Ty, Value as Constant};
 
 use super::FnLower;
 use crate::unlowered::{Form, Unlowered};

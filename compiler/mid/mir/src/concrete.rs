@@ -8,16 +8,19 @@ use std::sync::Arc;
 use vun_codec::{Decode, Encode};
 use vun_index::IndexVec;
 use vun_origin::OriginId;
+use vun_primitives::Primitive;
+use vun_primitives::lower::Lower;
 use vun_query::{Cx, Cycle, Query};
-use vun_sema::Primitive;
+use vun_sema::attributes::Attributed;
 use vun_sema::callable::Callable;
+use vun_sema::callable::Parameters;
 use vun_sema::checks::ChecksOf;
-use vun_sema::env::{Env, Unevaluated};
-use vun_sema::eval::{Func, Instantiation};
-use vun_sema::primitives::lower::Lower;
+use vun_sema::env::Env;
 use vun_sema::target::TargetOf;
-use vun_sema::ty::Value;
 use vun_sema::typeck::Typed;
+use vun_sema_ty::Value;
+use vun_sema_ty::call::{Func, Instantiation};
+use vun_sema_ty::trap::Unevaluated;
 
 use crate::{Aggregate, Body, Local, Mir, Operand, Rvalue, Unbuilt, Why};
 

@@ -9,10 +9,11 @@ use vun_diag::{DiagCtxt, Diagnostic, Msg, errors};
 use vun_mir::{Body, Mir, Operand, Place, Projection, Rvalue};
 use vun_origin::OriginId;
 use vun_query::{Cx, Cycle, Query};
+use vun_sema::Apply;
 use vun_sema::env::Env;
-use vun_sema::eval::Instantiation;
-use vun_sema::int::{Extended, Integer, Interval};
-use vun_sema::ty::{Marker, TyKind, Value};
+use vun_sema_int::{Extended, Integer, Interval};
+use vun_sema_ty::call::Instantiation;
+use vun_sema_ty::{Marker, TyKind, Value};
 
 /// The `panic.never` reports of an instantiation's body; `None` when it has no MIR yet.
 pub struct PanicChecks;

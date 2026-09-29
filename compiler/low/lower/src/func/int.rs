@@ -5,9 +5,9 @@
 use vun_desugar::Narrowing;
 use vun_lir::{Access, BinOp, Cond, Scalar, Value};
 use vun_mir::Operand;
-use vun_sema::int::{Integer, Interval};
-use vun_sema::primitives::int::Int;
-use vun_sema::ty::Ty;
+use vun_primitives::int::Int;
+use vun_sema_int::{Integer, Interval};
+use vun_sema_ty::Ty;
 
 use super::FnLower;
 use crate::unlowered::{Form, Unlowered};

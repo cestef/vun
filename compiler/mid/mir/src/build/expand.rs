@@ -5,15 +5,17 @@
 use vun_hir::tree::ExprId;
 use vun_index::{Idx, IndexVec};
 use vun_origin::OriginId;
-use vun_sema::env::{Passed, Unevaluated};
-use vun_sema::eval::{Code, Func, Instantiation};
+use vun_sema::callable::Parameters;
+use vun_sema::env::Passed;
+use vun_sema_ty::Value;
+use vun_sema_ty::call::{Code, Func, Instantiation};
+use vun_sema_ty::trap::Unevaluated;
 
 use super::{Builder, Unbuilt};
 use crate::concrete::Lowered;
 use crate::place::Place;
 use crate::remap::Remap;
 use crate::{Aggregate, Body, Local, Mir, Operand, Rvalue, TerminatorKind};
-use vun_sema::ty::Value;
 
 impl Builder<'_, '_, '_> {
     /// `$c` at run time for the code `c`: its value at compile time where it has one, a splice

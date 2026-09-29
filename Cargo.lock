@@ -990,6 +990,7 @@ dependencies = [
  "vun-query",
  "vun-reduce",
  "vun-sema",
+ "vun-sema-ty",
  "vun-span",
  "vun-suggest",
  "vun-target",
@@ -1125,6 +1126,8 @@ dependencies = [
  "vun-render-short",
  "vun-sanitize",
  "vun-sema",
+ "vun-sema-plan",
+ "vun-sema-ty",
  "vun-span",
  "vun-suggest",
  "vun-syntax",
@@ -1327,6 +1330,7 @@ dependencies = [
  "vun-mir",
  "vun-query",
  "vun-sema",
+ "vun-sema-ty",
 ]
 
 [[package]]
@@ -1520,9 +1524,13 @@ dependencies = [
  "vun-mir",
  "vun-mir-passes",
  "vun-origin",
+ "vun-primitives",
  "vun-query",
  "vun-sanitize",
  "vun-sema",
+ "vun-sema-float",
+ "vun-sema-int",
+ "vun-sema-ty",
  "vun-target",
  "vun-trace",
 ]
@@ -1556,8 +1564,11 @@ dependencies = [
  "vun-intern",
  "vun-items",
  "vun-origin",
+ "vun-primitives",
  "vun-query",
  "vun-sema",
+ "vun-sema-int",
+ "vun-sema-ty",
  "vun-span",
  "vun-target",
  "vun-trace",
@@ -1578,6 +1589,8 @@ dependencies = [
  "vun-pass",
  "vun-query",
  "vun-sema",
+ "vun-sema-int",
+ "vun-sema-ty",
 ]
 
 [[package]]
@@ -1702,6 +1715,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "vun-primitives"
+version = "0.0.0"
+dependencies = [
+ "foldhash",
+ "vun-codec",
+ "vun-items",
+]
+
+[[package]]
 name = "vun-query"
 version = "0.0.0"
 dependencies = [
@@ -1800,8 +1822,10 @@ dependencies = [
  "vun-hir",
  "vun-intern",
  "vun-items",
+ "vun-primitives",
  "vun-query",
  "vun-sema",
+ "vun-sema-ty",
 ]
 
 [[package]]
@@ -1825,12 +1849,71 @@ dependencies = [
  "vun-isa-x86_64",
  "vun-items",
  "vun-origin",
+ "vun-primitives",
  "vun-query",
+ "vun-sema-float",
+ "vun-sema-int",
+ "vun-sema-ty",
  "vun-span",
  "vun-suggest",
  "vun-syntax",
  "vun-target",
  "vun-trace",
+]
+
+[[package]]
+name = "vun-sema-float"
+version = "0.0.0"
+dependencies = [
+ "vun-codec",
+ "vun-sema-int",
+]
+
+[[package]]
+name = "vun-sema-int"
+version = "0.0.0"
+dependencies = [
+ "num-bigint",
+ "vun-codec",
+ "vun-desugar",
+ "vun-grammar",
+]
+
+[[package]]
+name = "vun-sema-plan"
+version = "0.0.0"
+dependencies = [
+ "vun-codec",
+ "vun-hir",
+ "vun-intern",
+ "vun-items",
+ "vun-origin",
+ "vun-query",
+ "vun-sema",
+ "vun-sema-ty",
+ "vun-target",
+]
+
+[[package]]
+name = "vun-sema-ty"
+version = "0.0.0"
+dependencies = [
+ "foldhash",
+ "vun-codec",
+ "vun-desugar",
+ "vun-diag",
+ "vun-grammar",
+ "vun-hash",
+ "vun-hir",
+ "vun-intern",
+ "vun-items",
+ "vun-origin",
+ "vun-primitives",
+ "vun-query",
+ "vun-sema-float",
+ "vun-sema-int",
+ "vun-span",
+ "vun-syntax",
 ]
 
 [[package]]

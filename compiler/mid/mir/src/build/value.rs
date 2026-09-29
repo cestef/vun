@@ -2,10 +2,10 @@
 
 use vun_grammar::TokenKind;
 use vun_hir::tree::{ExprId, ExprKind, Lit};
-use vun_sema::env::Unevaluated;
-use vun_sema::int::Integer;
-use vun_sema::ty::Value;
 use vun_sema::typeck::Operation;
+use vun_sema_int::Integer;
+use vun_sema_ty::Value;
+use vun_sema_ty::trap::Unevaluated;
 
 use super::operator::Side;
 use super::{Builder, Unbuilt};

@@ -4,8 +4,8 @@
 
 use vun_lir::{Access, BinOp, CastOp, Cond, InstKind, Order, RmwOp, Scalar, Value};
 use vun_mir::Operand;
-use vun_sema::primitives::mem::Mem;
-use vun_sema::ty::{Ty, Value as Constant};
+use vun_primitives::mem::Mem;
+use vun_sema_ty::{Ty, Value as Constant};
 
 use super::FnLower;
 use crate::unlowered::{Form, Unlowered};
@@ -36,7 +36,7 @@ impl FnLower<'_, '_, '_> {
         let value = match m {
             // A cell holds its value in place.
             Mem::cell => {
-                let vun_sema::ty::TyKind::Primitive(_, args) = &*ty else { return Err(unsupported()) };
+                let vun_sema_ty::TyKind::Primitive(_, args) = &*ty else { return Err(unsupported()) };
                 let inner = args.first().and_then(Constant::as_type).ok_or_else(unsupported)?;
                 return self.write(arg(0)?, dest, inner);
             }

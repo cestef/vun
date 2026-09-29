@@ -24,9 +24,10 @@ use vun_index::{IndexVec, index};
 use vun_mir::{BlockId, Body, Local, Mir, Operand, Place, Projection, Rvalue};
 use vun_origin::OriginId;
 use vun_query::{Cx, Query};
-use vun_sema::eval::Instantiation;
+use vun_sema::env::Extents;
 use vun_sema::kinds::{Kind, Kinds};
-use vun_sema::ty::Value;
+use vun_sema_ty::Value;
+use vun_sema_ty::call::Instantiation;
 
 index! {
     struct LoanId;

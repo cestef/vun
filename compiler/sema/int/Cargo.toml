@@ -1,0 +1,16 @@
+[package]
+name = "vun-sema-int"
+description = "Exact integers and integer ranges, the integers of compile time."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+num-bigint.workspace = true
+vun-codec.workspace = true
+vun-desugar.workspace = true
+vun-grammar.workspace = true

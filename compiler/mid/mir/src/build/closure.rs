@@ -4,7 +4,7 @@
 
 use vun_hir::tree::{BinderId, Entry, ExprId, ExprKind, List};
 use vun_origin::OriginId;
-use vun_sema::ty::TyKind;
+use vun_sema_ty::TyKind;
 
 use super::{Builder, Unbuilt};
 use crate::place::{Place, Projection};

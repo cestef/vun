@@ -7,7 +7,7 @@ use vun_hash::Map;
 use vun_index::Idx;
 use vun_lir::{Address, DataId, Function, InstKind, Site};
 use vun_origin::OriginId;
-use vun_sema::item::DeclRef;
+use vun_sema_ty::item::DeclRef;
 
 use crate::piece::{Datum, FuncRef, Lir};
 use crate::unlowered::{Form, Unlowered};

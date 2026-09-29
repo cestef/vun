@@ -15,6 +15,10 @@ mod transfer;
 use std::collections::{BTreeMap, BTreeSet, HashSet};
 use std::sync::Arc;
 
+use leak::Stop;
+use moved::Moved;
+use parts::Linear;
+use states::{State, States};
 use vun_codec::{Decode, Encode};
 use vun_diag::{ChildKind, DiagCtxt, DiagId, Diagnostic, Msg, errors};
 use vun_index::IndexVec;
@@ -22,14 +26,9 @@ use vun_intern::Symbol;
 use vun_mir::{BlockId, Body, Local, Mir, Operand, Role, Rvalue, TerminatorKind};
 use vun_origin::OriginId;
 use vun_query::{Cx, Query};
-use vun_sema::eval::Instantiation;
 use vun_sema::kinds::Kinds;
-use vun_sema::ty::Value;
-
-use leak::Stop;
-use moved::Moved;
-use parts::Linear;
-use states::{State, States};
+use vun_sema_ty::Value;
+use vun_sema_ty::call::Instantiation;
 
 use crate::flow::Forward;
 

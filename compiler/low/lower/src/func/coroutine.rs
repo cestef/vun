@@ -12,8 +12,10 @@ use vun_index::Idx;
 use vun_items::Item;
 use vun_lir::{Access, Builder, Callee, Function, InstKind, Linkage, Target, Terminator, Value};
 use vun_mir::{Aggregate, BlockId, Body, Operand, Place, TerminatorKind};
-use vun_sema::eval::Instantiation;
-use vun_sema::ty::{Ty, TyKind};
+use vun_sema::callable::Parameters;
+use vun_sema::eval::Instantiate;
+use vun_sema_ty::call::Instantiation;
+use vun_sema_ty::{Ty, TyKind};
 
 use super::FnLower;
 use crate::frame::{FrameShape, FrameState, Frames};

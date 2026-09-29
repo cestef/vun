@@ -14,8 +14,9 @@ use vun_lower::{EachLowered, Unlowered, Why};
 use vun_mir::{Mir, Programs, Roots, Unbuilt, Unready};
 use vun_origin::OriginId;
 use vun_query::Cx;
-use vun_sema::eval::Instantiation;
+use vun_sema::eval::Instantiate;
 use vun_sema::typeck::Typed;
+use vun_sema_ty::call::Instantiation;
 use vun_span::FileId;
 
 use crate::Session;

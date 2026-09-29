@@ -4,7 +4,7 @@
 use vun_driver::Session;
 use vun_harness::{ACCEPT, repo_root};
 use vun_lir::{Conv, Linkage};
-use vun_sema::trap::Failure;
+use vun_sema_ty::trap::Failure;
 
 use crate::common::Fixture;
 
@@ -109,7 +109,7 @@ main := (sys: &mut std.os.System) -> std.os.Exit {
         .filter(|i| i.f.literal.file == root)
         .filter_map(|i| session.db.get::<vun_mir::Concrete>(i).ok())
         .flat_map(|body| body.locals.iter().filter_map(|(_, l)| l.ty).collect::<Vec<_>>())
-        .find(|ty| matches!(&**ty, vun_sema::ty::TyKind::Frame(_)))
+        .find(|ty| matches!(&**ty, vun_sema_ty::TyKind::Frame(_)))
         .expect("main holds a frame");
     let shaped = session.db.get::<vun_lower::Frames>(&frame);
     let shape = shaped.as_ref().as_ref().unwrap();

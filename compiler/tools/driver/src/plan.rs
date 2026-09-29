@@ -6,8 +6,8 @@ use std::path::Path;
 use vun_build::layout::MANIFEST;
 use vun_build::manifest::PACKAGE;
 use vun_diag::{Diagnostic, Msg, errors};
-use vun_sema::env::Unevaluated;
-use vun_sema::plan::{Plan, Planned, Unplanned};
+use vun_sema_plan::{Plan, Planned, Unplanned};
+use vun_sema_ty::trap::Unevaluated;
 use vun_span::{FileId, SourceMap};
 
 use crate::Session;

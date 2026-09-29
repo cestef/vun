@@ -7,7 +7,7 @@ use vun_intern::Symbol;
 use vun_origin::OriginId;
 use vun_sema::env::Env;
 use vun_sema::member::{Found, Members};
-use vun_sema::ty::{Nominal, Ty, TyKind};
+use vun_sema_ty::{Nominal, Ty, TyKind};
 
 use super::{Builder, Unbuilt};
 use crate::{Aggregate, Operand, Rvalue};

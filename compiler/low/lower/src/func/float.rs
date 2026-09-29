@@ -7,9 +7,10 @@
 
 use vun_lir::{Access, BinOp, CastOp, Cond, Scalar, Value};
 use vun_mir::Operand;
-use vun_sema::float::{Binary, Format};
-use vun_sema::primitives::float::Float;
-use vun_sema::ty::Ty;
+use vun_primitives::float::Float;
+use vun_sema_float::{Binary, Format};
+use vun_sema_ty::Ty;
+use vun_sema_ty::float::FloatType;
 
 use super::FnLower;
 use crate::unlowered::{Form, Unlowered};

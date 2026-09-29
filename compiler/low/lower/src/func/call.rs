@@ -6,15 +6,18 @@
 
 use vun_lir::{Address, Callee, Conv, InstKind, Signature, Value};
 use vun_mir::{Concrete, Lowered as _, Operand, Projection};
-use vun_sema::Primitive;
+use vun_primitives::Primitive;
+use vun_primitives::abi::Abi;
+use vun_primitives::check::Check;
+use vun_primitives::panic::Panic;
+use vun_sema::callable::Parameters;
 use vun_sema::decl::DeclType;
-use vun_sema::eval::Instantiation;
 use vun_sema::layout::Parts;
-use vun_sema::primitives::abi::Abi;
-use vun_sema::primitives::check::Check;
-use vun_sema::primitives::panic::Panic;
-use vun_sema::trap::Failure;
-use vun_sema::ty::{Marker, Ty, TyKind, Value as Constant};
+use vun_sema::link::Exported;
+use vun_sema::link::Linkable;
+use vun_sema_ty::call::Instantiation;
+use vun_sema_ty::trap::Failure;
+use vun_sema_ty::{Marker, Ty, TyKind, Value as Constant};
 
 use super::FnLower;
 use crate::repr::Repr;

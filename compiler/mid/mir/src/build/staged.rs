@@ -5,10 +5,10 @@
 use vun_hir::tree::{Entry, ExprId, List, PatKind, Staged, Stmt as HirStmt};
 use vun_origin::OriginId;
 use vun_sema::env::Selected;
-use vun_sema::eval::Staging;
-use vun_sema::item::Node;
-use vun_sema::ty::Value;
 use vun_sema::typeck::Step;
+use vun_sema_ty::Value;
+use vun_sema_ty::call::Staging;
+use vun_sema_ty::item::Node;
 
 use super::{Builder, Unbuilt};
 use crate::Operand;

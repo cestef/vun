@@ -10,6 +10,8 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
+vun-sema-int.workspace = true
+vun-sema-ty.workspace = true
 vun-codec.workspace = true
 vun-mir.workspace = true
 vun-pass.workspace = true

@@ -8,7 +8,7 @@ use vun_lir::{Access, BinOp, CastOp, Cond, Scalar, Value};
 use vun_mir::{Place, Projection};
 use vun_sema::layout::Parts;
 use vun_sema::member::Members;
-use vun_sema::ty::{Ty, TyKind};
+use vun_sema_ty::{Ty, TyKind};
 
 use super::FnLower;
 use crate::unlowered::{Form, Unlowered};

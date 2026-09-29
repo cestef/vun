@@ -14,11 +14,12 @@ use vun_lir::{
 };
 use vun_mir::{Concrete, Program};
 use vun_origin::OriginId;
-use vun_sema::eval::Instantiation;
-use vun_sema::int::Integer;
-use vun_sema::item::DeclRef;
+use vun_sema::link::Linkable;
 use vun_sema::link::Linked;
-use vun_sema::ty::{Ty, TyKind, Value};
+use vun_sema_int::Integer;
+use vun_sema_ty::call::Instantiation;
+use vun_sema_ty::item::DeclRef;
+use vun_sema_ty::{Ty, TyKind, Value};
 
 use crate::lowering::Lowering;
 use crate::piece::{Bytes, Datum, DatumKind, FuncRef, Lir, Piece};

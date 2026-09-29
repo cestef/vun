@@ -8,7 +8,7 @@ use vun_hir::db::FileRef;
 use vun_lir::Unit;
 use vun_mir::{Programs, Roots};
 use vun_query::{Cx, Query};
-use vun_sema::eval::Instantiation;
+use vun_sema_ty::call::Instantiation;
 use vun_trace::Activity;
 
 use crate::assemble::Assembly;

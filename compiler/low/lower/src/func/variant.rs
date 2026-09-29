@@ -5,7 +5,7 @@ use vun_intern::Symbol;
 use vun_lir::{Access, Cond, Scalar, Value};
 use vun_sema::layout::{Parts, Shape, Tag};
 use vun_sema::member::Members;
-use vun_sema::ty::Ty;
+use vun_sema_ty::Ty;
 
 use super::FnLower;
 use crate::unlowered::{Form, Unlowered};

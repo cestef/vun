@@ -5,7 +5,7 @@ use vun_desugar::Form as Syntax;
 use vun_intern::Symbol;
 use vun_lir::{Target, Terminator, Value};
 use vun_sema::member::Members;
-use vun_sema::ty::{Ty, Value as Constant};
+use vun_sema_ty::{Ty, Value as Constant};
 
 use super::FnLower;
 use crate::unlowered::{Form, Unlowered};

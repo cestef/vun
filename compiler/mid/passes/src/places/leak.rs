@@ -3,11 +3,11 @@
 
 use vun_codec::{Decode, Encode};
 use vun_diag::{Msg, errors};
+use vun_mir::Local;
 use vun_origin::OriginId;
 
 use super::Analysis;
 use super::states::States;
-use vun_mir::Local;
 
 impl Analysis<'_> {
     /// Every linear place still `init` where the function stops: nothing is closed implicitly.
