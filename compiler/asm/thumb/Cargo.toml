@@ -20,3 +20,4 @@ vun-isa-thumb.workspace = true
 vun-harness.workspace = true
 vun-elf.workspace = true
 vun-par.workspace = true
+vun-target.workspace = true

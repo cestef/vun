@@ -17,6 +17,7 @@ use vun_diag::{DiagCtxt, Diagnostic, ErrorGuaranteed, Msg, errors};
 use vun_intern::Symbol;
 use vun_lir::FuncId;
 use vun_lir::unit::Unit;
+use vun_lir_passes::legalize::Division;
 use vun_origin::OriginId;
 pub use vun_target::Readiness;
 use vun_target::{Arches, Name, Profile, Support, TargetSpec, Unsupported};
@@ -241,6 +242,13 @@ pub trait Backend {
         out: &mut dyn ArtifactSink,
         diag: &mut DiagCtxt,
     ) -> Result<(), ErrorGuaranteed>;
+
+    /// How it divides integers no wider than its widest on `target`: by an instruction, unless
+    /// it emits the processor's own and the processor has none (`Legalize`).
+    fn division(&self, target: &TargetSpec) -> Division {
+        let _ = target;
+        Division::Computed
+    }
 
     /// The frame size of each function of `unit`, in bytes, from what the tools building its
     /// artifacts reported (`report`); none for a backend that reads no report, such as one

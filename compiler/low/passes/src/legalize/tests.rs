@@ -2,10 +2,10 @@ use vun_intern::Symbol;
 use vun_origin::OriginTable;
 use vun_target::{Convention, Endian, Floats};
 
-use super::{Half, Legalize, Unlegalized};
+use super::{Division, Half, Legalize, Unlegalized};
 use vun_lir::func::{Conv, Linkage};
 use vun_lir::testing::origin;
-use vun_lir::{AbiType, BinOp, Builder, CastOp, Cond, Ext, Scalar, Signature, Terminator, Unit};
+use vun_lir::{AbiType, BinOp, Builder, CastOp, Cond, Ext, InstKind, Scalar, Signature, Terminator, Unit};
 
 /// A 64-bit host's backend computing every scalar but `f16`.
 const HOST: Legalize = Legalize {
@@ -14,6 +14,7 @@ const HOST: Legalize = Legalize {
     half: Half::Computed,
     floats: Floats::ALL,
     convention: Convention::Sysv,
+    division: Division::Computed,
 };
 
 /// A function of two `i128`s under `conv`: `((x + y) * x << y) / y`.
@@ -167,4 +168,43 @@ fn arithmetic_on_a_float_held_as_bits_is_refused() {
     let mut unit = choose(Conv::Vun, true, &origins);
     let refused = single(Convention::AapcsVfp).apply(&mut unit).map_err(|e| e.why);
     assert_eq!(refused, Err(Unlegalized::HeldFloat));
+}
+
+/// A function of two `ty`s: `x / y + x % y`, signed.
+fn divided(ty: Scalar, origins: &OriginTable) -> Unit {
+    let at = origin(origins);
+    let int = AbiType::Int(ty, Ext::Sign);
+    let signature = Signature {
+        conv: Conv::Vun,
+        params: vec![int.clone(), int.clone()],
+        result: Some(int),
+        variadic: None,
+    };
+    let mut b = Builder::new(Linkage::Export(Symbol::intern("f")), signature, at);
+    let [x, y] = [b.params(b.current())[0], b.params(b.current())[1]];
+    let quotient = b.binary(BinOp::SDiv, x, y, at);
+    let remainder = b.binary(BinOp::SRem, x, y, at);
+    let sum = b.binary(BinOp::Add, quotient, remainder, at);
+    b.terminate(Terminator::Return(Some(sum)));
+    let mut unit = Unit { pointer_bits: 32, ..Unit::default() };
+    unit.functions.push(b.finish());
+    unit
+}
+
+#[test]
+fn without_a_division_instruction_every_division_calls_the_helper_of_one_limb() {
+    let restoring = Legalize { widest: Scalar::I32, division: Division::Restoring, ..HOST };
+    for ty in [Scalar::I8, Scalar::I32] {
+        let origins = OriginTable::new();
+        let mut unit = divided(ty, &origins);
+        restoring.apply(&mut unit).unwrap();
+        assert_eq!(unit.verify(&origins), Ok(()));
+        // One helper for both, and no division left.
+        assert_eq!(unit.functions.len(), 2, "{unit}");
+        let f = &unit.functions.iter().next().unwrap().1;
+        let divides =
+            f.insts.iter().any(|(_, i)| matches!(i.kind, InstKind::Binary { op, .. } if op.divides()));
+        assert!(!divides, "{unit}");
+        assert_eq!(f.signature.params[0], AbiType::Int(ty, Ext::Sign));
+    }
 }

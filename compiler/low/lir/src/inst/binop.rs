@@ -40,6 +40,12 @@ impl BinOp {
         }
     }
 
+    /// Whether it is an integer division or its remainder.
+    #[must_use]
+    pub const fn divides(self) -> bool {
+        matches!(self, Self::SDiv | Self::UDiv | Self::SRem | Self::URem)
+    }
+
     /// Whether the operands may be swapped: an integer sum, product or bitwise operation.
     #[must_use]
     pub const fn commutes(self) -> bool {

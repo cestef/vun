@@ -17,3 +17,9 @@ impl Mask {
         NAMES[self as usize]
     }
 }
+impl vun_isa::Enumerated for Mask {
+    const ALL: &'static [Self] = &Self::ALL;
+    fn name(self) -> &'static str {
+        Self::name(self)
+    }
+}

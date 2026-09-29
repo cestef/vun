@@ -15,7 +15,7 @@ use std::fmt::Debug;
 pub use encode::Args;
 
 use crate::values::Place;
-use crate::{Arch, Code};
+use crate::{Arch, Code, Processor};
 
 /// What the snippet encoder needs of an architecture's assembler.
 pub trait Emits: Arch {
@@ -39,7 +39,8 @@ pub trait Emits: Arch {
     fn at(base: Self::Reg) -> Self::Operand;
     /// The size a step of `width` runs at, in an operation of `size`.
     fn size(width: Width<Self::Size>, size: Self::Size) -> Self::Size;
-    fn fits(op: Self::Op, size: Self::Size, operands: &[Self::Operand]) -> bool;
+    /// Whether a form of `op` that `processor` has takes `operands` at `size`.
+    fn fits(processor: Processor<Self>, op: Self::Op, size: Self::Size, operands: &[Self::Operand]) -> bool;
     /// The registers `op` reads or writes without naming them, freed before a snippet using it
     /// starts.
     fn implicit(op: Self::Op) -> &'static [Self::Reg];

@@ -3,7 +3,8 @@
 //! for, and whether it refuses one it lacks something for.
 
 use vun_harness::llvm::{Assembled, Assembler};
-use vun_isa_thumb::{Feature, Need, Size};
+use vun_isa_thumb::{Feature, Processor};
+use vun_target::Floats;
 
 use super::Line;
 
@@ -14,53 +15,38 @@ pub(super) enum Code {
     Refused,
 }
 
-/// A processor, and what it has beyond Thumb.
+/// A processor, as LLVM's assembler and our table see it.
 pub(super) struct Core {
     pub(super) llvm: Assembler,
-    features: &'static [Feature],
-    /// The widths of the floats its floating-point unit computes.
-    floats: &'static [Size],
+    processor: Processor,
 }
 
-pub(super) const CORES: [Core; 5] = [
-    Core {
-        llvm: Assembler { args: &["--triple=thumbv7m-none-eabi", "-mcpu=cortex-m3"] },
-        features: &[Feature::Microcontroller, Feature::Divide],
-        floats: &[],
-    },
-    Core {
-        llvm: Assembler { args: &["--triple=thumbv7em-none-eabihf", "-mattr=+vfp4d16sp"] },
-        features: &[Feature::Microcontroller, Feature::Divide],
-        floats: &[Size::B32],
-    },
-    Core {
-        llvm: Assembler { args: &["--triple=thumbv7em-none-eabihf", "-mcpu=cortex-m7"] },
-        features: &[Feature::Microcontroller, Feature::Divide],
-        floats: &[Size::B32, Size::B64],
-    },
-    Core {
-        llvm: Assembler { args: &["--triple=thumbv7a-none-eabihf", "-mattr=+vfp3d16"] },
-        features: &[Feature::Application],
-        floats: &[Size::B32, Size::B64],
-    },
-    Core {
-        llvm: Assembler { args: &["--triple=thumbv7a-none-eabihf", "-mattr=+vfp3d16,+hwdiv"] },
-        features: &[Feature::Application, Feature::Divide],
-        floats: &[Size::B32, Size::B64],
-    },
-];
-
 impl Core {
-    fn has(&self, need: Need) -> bool {
-        match need {
-            Need::Feature(feature) => self.features.contains(&feature),
-            Need::Float(size) => self.floats.contains(&size),
-        }
+    /// Processors of each profile, with and without a floating-point unit and division.
+    pub(super) fn all() -> [Self; 5] {
+        let (none, single) = (Floats::default(), Floats::default().with(32).expect("a format"));
+        let double = single.with(64).expect("a format");
+        let core = |args, features: &[Feature], floats| Self {
+            llvm: Assembler { args },
+            processor: Processor::new(features.iter().copied(), floats),
+        };
+        let microcontroller = &[Feature::Microcontroller, Feature::Divide];
+        [
+            core(&["--triple=thumbv7m-none-eabi", "-mcpu=cortex-m3"], microcontroller, none),
+            core(&["--triple=thumbv7em-none-eabihf", "-mattr=+vfp4d16sp"], microcontroller, single),
+            core(&["--triple=thumbv7em-none-eabihf", "-mcpu=cortex-m7"], microcontroller, double),
+            core(&["--triple=thumbv7a-none-eabihf", "-mattr=+vfp3d16"], &[Feature::Application], double),
+            core(
+                &["--triple=thumbv7a-none-eabihf", "-mattr=+vfp3d16,+hwdiv"],
+                &[Feature::Application, Feature::Divide],
+                double,
+            ),
+        ]
     }
 
     /// Whether it has everything `line` needs.
     pub(super) fn takes(&self, line: &Line) -> bool {
-        line.needs.iter().all(|&need| self.has(need))
+        self.processor.lacks(line.needs.iter().copied()).is_none()
     }
 
     /// What LLVM's assembler makes of `lines` for it; `None` where the assembler cannot run.

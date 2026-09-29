@@ -1,6 +1,9 @@
-//! The code of one function: bytes appended in order, labels, the references to labels patched
-//! when the function ends, and relocations.
+//! The code of one function for a processor: bytes appended in order, labels, the references to
+//! labels patched when the function ends, relocations, and what the first instruction emitted of
+//! which the processor has no form needed.
 
+use vun_inline::Needed;
+use vun_isa::{Need, Processor, Width};
 use vun_object::RelocKind;
 
 use crate::listing::Line;
@@ -24,6 +27,10 @@ pub struct Buffer<I: Isa, S: Copy> {
     fixups: Vec<(u64, Label, I::Fixup)>,
     /// What was emitted, when a listing is asked for.
     listing: Option<Vec<Line<I::Inst<S>>>>,
+    /// The processor the code runs on, whose forms the assembler takes.
+    processor: Processor<I::Feature>,
+    /// What the first instruction of which the processor has no form needed.
+    lacked: Option<Needed>,
 }
 
 /// A function's finished code.
@@ -34,17 +41,41 @@ pub struct Code<T, S> {
     pub listing: Vec<Line<T>>,
 }
 
-impl<I: Isa, S: Copy> Default for Buffer<I, S> {
-    fn default() -> Self {
-        Self { code: Vec::new(), relocs: Vec::new(), labels: Vec::new(), fixups: Vec::new(), listing: None }
-    }
-}
-
 impl<I: Isa, S: Copy> Buffer<I, S> {
-    /// A buffer that lists what is emitted into it.
+    /// A buffer of code for `processor`.
     #[must_use]
-    pub fn listed() -> Self {
-        Self { listing: Some(Vec::new()), ..Self::default() }
+    pub fn new(processor: Processor<I::Feature>) -> Self {
+        Self {
+            code: Vec::new(),
+            relocs: Vec::new(),
+            labels: Vec::new(),
+            fixups: Vec::new(),
+            listing: None,
+            processor,
+            lacked: None,
+        }
+    }
+
+    /// A buffer of code for `processor` that lists what is emitted into it.
+    #[must_use]
+    pub fn listed(processor: Processor<I::Feature>) -> Self {
+        Self { listing: Some(Vec::new()), ..Self::new(processor) }
+    }
+
+    #[must_use]
+    pub fn processor(&self) -> Processor<I::Feature> {
+        self.processor
+    }
+
+    /// Records that an instruction emitted needs `need`, which the processor lacks in every form
+    /// taking its operands: the instruction is left out, and the code is refused.
+    pub fn lack<Z: Width>(&mut self, need: Need<I::Feature, Z>) {
+        self.lacked.get_or_insert(need.needed());
+    }
+
+    /// What the first instruction emitted of which the processor has no form needed, taken.
+    pub fn lacked(&mut self) -> Option<Needed> {
+        self.lacked.take()
     }
 
     #[must_use]
@@ -108,12 +139,24 @@ impl<I: Isa, S: Copy> Buffer<I, S> {
         self.code[at..at + bytes.len()].copy_from_slice(bytes);
     }
 
-    /// Replaces the instructions at `at`, emitted earlier, by `code`, as long as them and linking
-    /// nothing: their bytes, and their lines where the code is listed.
+    /// Replaces the instructions at `at`, emitted earlier, by those `emit` writes into a buffer of
+    /// its own for the same processor, as long as them, binding and linking nothing: their bytes,
+    /// their lines where the code is listed, and what the processor lacks of them.
     ///
     /// # Panics
-    /// Panics if `code` has relocations, or its bytes are not all in the code.
-    pub fn replace(&mut self, at: u64, code: Code<I::Inst<S>, S>) {
+    /// Panics if they bind a label or link anything, or their bytes are not all in the code.
+    pub fn rewrite(&mut self, at: u64, emit: impl FnOnce(&mut Self)) {
+        let mut written =
+            Self { listing: self.listing.as_ref().map(|_| Vec::new()), ..Self::new(self.processor) };
+        emit(&mut written);
+        if let Some(needed) = written.lacked.take() {
+            self.lacked.get_or_insert(needed);
+        }
+        self.replace(at, written.finish().expect("a rewrite binds no label"));
+    }
+
+    /// Replaces the instructions at `at` by `code`, as long as them and linking nothing.
+    fn replace(&mut self, at: u64, code: Code<I::Inst<S>, S>) {
         assert!(code.relocs.is_empty(), "a replacement links nothing");
         self.overwrite(at, &code.bytes);
         for line in code.listing {

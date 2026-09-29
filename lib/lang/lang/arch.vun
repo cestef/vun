@@ -1,2 +1,7 @@
 //! The instruction sets a block of instructions is written in, each a namespace declaring its
 //! table (spec 07, section 6): `x86_64`, `arm64` and `thumb`.
+
+/// What a form of an instruction set's table, or a width of it, needs of a processor beyond what
+/// every processor of the set has: a feature of the set (`Feature`, `lang.target.Spec.features`),
+/// or a floating-point unit computing floats of a width (`Size`, `lang.target.Spec.floats`).
+Need := ($Feature: type, $Size: type) -> type { enum { feature(Feature), float(Size) } };

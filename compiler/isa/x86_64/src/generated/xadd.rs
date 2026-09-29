@@ -29,5 +29,6 @@ pub(super) const XADD: [table::Form; 1usize] = [
         writes: &[],
         implicit: &[],
         flags: Some(table::Access::Write),
+        requires: None,
     },
 ];

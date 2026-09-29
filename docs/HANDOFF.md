@@ -263,9 +263,15 @@ In flight, not in main:
   (`asm.unavailable`), and `lang.mem.soft` pairs words only where the target has `application`.
   The asm tests check every mark against LLVM's assembler for several processors
   (`vun_harness::llvm`, objects read with `vun-elf`, the new crate of ELF as data, which
-  `vun-object` now writes through and its tests read linked programs with). Open: the native
-  isels emit what the target's features allow without asking them (Thumb's `sdiv`, which every
-  Thumb target has today).
+  `vun-object` now writes through and its tests read linked programs with). Native code is
+  compiled for a processor (decision 310): the code buffer holds `vun_isa::Processor` (built
+  from the target's features and floats), every assembler emits by the first form fitting the
+  operands that the processor has, and a form it lacks becomes `Missing::Unavailable` at the
+  instruction's origin, so no isel restates a need (`Emits::fits` asks the processor too).
+  `lang.arch.Need(Feature, Size)` is declared once for the three tables; x86-64's `Feature` is
+  empty until a form needs one. Where the processor has no division instruction, legalization
+  divides through its restoring helper of one limb (decision 311, `Backend::division`,
+  `Native::divides`); checked on `linux.arm` with `divide` removed.
 - Milestone 3a landed (decision 280): `Rules::{AAPCS, AAPCS_VFP}` (word, stack alignment,
   `returned`, `Floats`, `Split`), backfill in `vun-abi`'s banks, `Loc::Split { parts, rest }` for
   straddling records (handled by the x86-64 and arm64 isel), wide results as `AbiType::Wide`

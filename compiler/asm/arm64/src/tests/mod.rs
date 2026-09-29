@@ -15,8 +15,8 @@ use yaxpeax_arch::{Decoder, U8Reader};
 use yaxpeax_arm::armv8::a64::{InstDecoder, Instruction};
 
 use crate::{
-    Asm, Barrier, Cc, Emit, Extend, Form, Inst, Kind, Mem, Mode, Op, Operand, Reg, Scale, Shift, ShiftKind,
-    Size, SysReg, V,
+    Asm, Barrier, Cc, Emit, Extend, Form, Inst, Kind, Mem, Mode, Op, Operand, Processor, Reg, Scale, Shift,
+    ShiftKind, Size, SysReg, V,
 };
 
 type Sym = &'static str;
@@ -130,7 +130,7 @@ fn combinations(kinds: impl Iterator<Item = Kind>, label: Label) -> Vec<Vec<Oper
 
 /// `op` at `size` over `operands`, a label bound after it: its word and its instruction.
 fn assemble(op: Op, size: Size, operands: &[Operand<Sym>]) -> (u32, Inst<Sym>) {
-    let mut asm = Asm::<Sym>::listed();
+    let mut asm = Asm::<Sym>::listed(Processor::every());
     let label = asm.label();
     asm.emit(op, size, operands);
     asm.bind(label);
@@ -183,7 +183,7 @@ fn linked(form: &Form) -> bool {
 
 #[test]
 fn every_form_decodes_as_one_instruction_printed_alike() {
-    let label = Asm::<Sym>::default().label();
+    let label = Asm::<Sym>::new(Processor::every()).label();
     let mut emitted = Vec::new();
     let mut texts: HashMap<u32, Vec<(Op, String)>> = HashMap::new();
     for &op in Op::ALL {

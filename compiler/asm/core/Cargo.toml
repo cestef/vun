@@ -10,5 +10,6 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
+vun-inline.workspace = true
 vun-isa.workspace = true
 vun-object.workspace = true

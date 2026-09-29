@@ -25,5 +25,6 @@ pub(super) const IDIV: [table::Form; 1usize] = [
         writes: &[reg::Reg::Rax, reg::Reg::Rdx],
         implicit: &[reg::Reg::Rax, reg::Reg::Rdx],
         flags: Some(table::Access::Write),
+        requires: None,
     },
 ];

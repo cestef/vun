@@ -3,6 +3,7 @@
 
 pub use vun_asm::AsmOperand;
 use vun_diag::{Diagnostic, Msg, errors};
+use vun_inline::Needed;
 use vun_intern::Symbol;
 use vun_origin::OriginId;
 use vun_target::Name;
@@ -40,6 +41,9 @@ pub enum Missing {
     Asm,
     /// An operand of inline assembly the backend cannot place.
     AsmOperand(AsmOperand),
+    /// An instruction needing what the target's processor lacks, which is all the backend
+    /// compiles the operation to.
+    Unavailable(Needed),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -80,7 +84,15 @@ impl Missing {
     /// What the backend cannot express, where no one place asks for it.
     #[must_use]
     pub fn diagnostic(self, backend: Name) -> Diagnostic {
+        let backend = Msg::new().text("backend ").code(backend.0);
         let what = match self {
+            Missing::Unavailable(needed) => {
+                let msg = backend.text(" compiles this to an instruction needing ").append(needed.msg());
+                return Diagnostic::error(
+                    errors::BACKEND_LACKS,
+                    msg.text(", which the target's processor lacks"),
+                );
+            }
             Missing::Int128 => Msg::new().text("128-bit integers"),
             Missing::Wider(n) => Msg::new().text("a value of ").num(n).text(" bytes in one register"),
             Missing::Half => Msg::new().code("f16"),
@@ -114,7 +126,7 @@ impl Missing {
                 Msg::new().text("a C record passing ").num(n).text(" bytes of floats in a register")
             }
         };
-        let msg = Msg::new().text("backend ").code(backend.0).text(" cannot express ").append(what);
+        let msg = backend.text(" cannot express ").append(what);
         Diagnostic::error(errors::BACKEND_LACKS, msg)
     }
 }

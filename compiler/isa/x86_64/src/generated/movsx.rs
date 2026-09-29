@@ -27,6 +27,7 @@ pub(super) const MOVSX: [table::Form; 4usize] = [
         writes: &[],
         implicit: &[],
         flags: None,
+        requires: None,
     },
     table::Form {
         slots: &[
@@ -53,6 +54,7 @@ pub(super) const MOVSX: [table::Form; 4usize] = [
         writes: &[],
         implicit: &[],
         flags: None,
+        requires: None,
     },
     table::Form {
         slots: &[
@@ -79,6 +81,7 @@ pub(super) const MOVSX: [table::Form; 4usize] = [
         writes: &[],
         implicit: &[],
         flags: None,
+        requires: None,
     },
     table::Form {
         slots: &[
@@ -105,5 +108,6 @@ pub(super) const MOVSX: [table::Form; 4usize] = [
         writes: &[],
         implicit: &[],
         flags: None,
+        requires: None,
     },
 ];

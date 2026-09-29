@@ -21,10 +21,9 @@ pub type Arg = vun_isa::word::Arg<Kind>;
 pub type Sized = vun_isa::word::Sized<Size, Need>;
 
 /// What a form needs of a processor beyond Armv8.0.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Need {
-    Feature(Feature),
-}
+pub type Need = vun_isa::Need<Feature, Size>;
+/// What a processor has of A64 beyond Armv8.0.
+pub type Processor = vun_isa::Processor<Feature>;
 
 impl Op {
     /// The first form taking `operands` at `size`, and the word it encodes them to.
@@ -37,5 +36,25 @@ impl Op {
     #[must_use]
     pub fn form<S>(self, size: Size, operands: &[Operand<S>]) -> Option<&'static Form> {
         self.select(size, operands).map(|(form, _)| form)
+    }
+
+    /// The first form taking `operands` at `size` that `processor` has, and the word it encodes
+    /// them to; `None` where no form takes them.
+    ///
+    /// # Errors
+    /// What the first taking them needs that `processor` lacks, where it has none of them.
+    pub fn choose<S>(
+        self,
+        processor: Processor,
+        size: Size,
+        operands: &[Operand<S>],
+    ) -> Result<Option<(&'static Form, u32)>, Need> {
+        Form::choose(self.forms(), processor, size, operands)
+    }
+
+    /// Whether `processor` has a form of it at `size`, whatever its operands.
+    #[must_use]
+    pub fn available(self, processor: Processor, size: Size) -> bool {
+        Form::available(self.forms(), processor, size)
     }
 }

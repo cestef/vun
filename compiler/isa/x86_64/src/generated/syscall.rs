@@ -18,5 +18,6 @@ pub(super) const SYSCALL: [table::Form; 1usize] = [
         writes: &[reg::Reg::Rax, reg::Reg::Rcx, reg::Reg::R11],
         implicit: &[reg::Reg::Rax, reg::Reg::Rcx, reg::Reg::R11],
         flags: None,
+        requires: None,
     },
 ];

@@ -24,5 +24,6 @@ pub(super) const NOT: [table::Form; 1usize] = [
         writes: &[],
         implicit: &[],
         flags: None,
+        requires: None,
     },
 ];

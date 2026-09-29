@@ -13,7 +13,7 @@ use vun_backend::{
     Readiness, Request, Widest,
 };
 use vun_diag::{DiagCtxt, ErrorGuaranteed};
-use vun_lir_passes::legalize::Half;
+use vun_lir_passes::legalize::{Division, Half};
 use vun_native::Native;
 use vun_native_arm64::Arm;
 use vun_native_thumb::Thumb2;
@@ -29,6 +29,7 @@ struct Arch {
     /// Whether it follows a target's calling convention.
     follows: fn(&TargetSpec) -> bool,
     object: fn(&Request<'_>, Machine, Format) -> Result<Emitted, Lack>,
+    division: fn(&TargetSpec) -> Division,
 }
 
 /// The object formats the backend writes, by their names among targets', and the machines it
@@ -48,18 +49,21 @@ const ARCHES: [Arch; 3] = [
         machine: X86::machine,
         follows: |t| X86::convention(t).is_some(),
         object: X86::object,
+        division: X86::division,
     },
     Arch {
         name: Name("arm64"),
         machine: Arm::machine,
         follows: |t| Arm::convention(t).is_some(),
         object: Arm::object,
+        division: Arm::division,
     },
     Arch {
         name: Name("arm"),
         machine: Thumb2::machine,
         follows: |t| Thumb2::convention(t).is_some(),
         object: Thumb2::object,
+        division: Thumb2::division,
     },
 ];
 
@@ -98,14 +102,14 @@ impl NativeBackend {
         found.map(|&(_, format, _)| format)
     }
 
-    /// The architecture of `request`'s target.
+    /// The architecture of `target`.
     ///
     /// # Panics
     /// For an architecture [`INFO`] does not list, which no build chooses the backend for.
-    fn arch(request: &Request<'_>) -> &'static Arch {
+    fn arch(target: &TargetSpec) -> &'static Arch {
         ARCHES
             .iter()
-            .find(|a| a.name.is(request.target.arch))
+            .find(|a| a.name.is(target.arch))
             .expect("the backend is chosen only for the architectures it lists")
     }
 
@@ -117,7 +121,7 @@ impl NativeBackend {
     /// # Panics
     /// Panics for an architecture [`INFO`] does not list, which no build chooses the backend for.
     fn emitted(request: &Request<'_>) -> Result<Emitted, Lack> {
-        let arch = Self::arch(request);
+        let arch = Self::arch(request.target);
         let machine = (arch.machine)(request.target);
         let format = Self::format(request, machine).expect("checked before emitting");
         (arch.object)(request, machine, format)
@@ -129,13 +133,17 @@ impl Backend for NativeBackend {
         &INFO
     }
 
+    fn division(&self, target: &TargetSpec) -> Division {
+        (Self::arch(target).division)(target)
+    }
+
     fn emit(
         &self,
         request: &Request<'_>,
         out: &mut dyn ArtifactSink,
         diag: &mut DiagCtxt,
     ) -> Result<(), ErrorGuaranteed> {
-        let arch = Self::arch(request);
+        let arch = Self::arch(request.target);
         if !(arch.follows)(request.target) {
             return Err(diag.error(Missing::Convention.diagnostic(INFO.id)));
         }

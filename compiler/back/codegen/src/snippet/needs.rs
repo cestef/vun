@@ -118,7 +118,9 @@ impl<A: Emits> Cx<'_, A> {
                         }
                     })
                     .collect();
-                operands.is_some_and(|ops| A::fits(step.op, A::size(step.width, args.size), &ops))
+                operands.is_some_and(|ops| {
+                    A::fits(self.asm.processor(), step.op, A::size(step.width, args.size), &ops)
+                })
             })
     }
 }

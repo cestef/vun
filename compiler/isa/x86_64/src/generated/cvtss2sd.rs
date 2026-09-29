@@ -28,5 +28,6 @@ pub(super) const CVTSS2SD: [table::Form; 1usize] = [
         writes: &[],
         implicit: &[],
         flags: None,
+        requires: None,
     },
 ];

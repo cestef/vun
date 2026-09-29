@@ -36,9 +36,7 @@ impl Sel<'_, '_> {
 
     /// Writes the frame's size into the prologue's moves.
     pub(super) fn finish(&mut self, frame: u64) {
-        let mut moves = vun_asm_arm64::Asm::listed();
-        moves.frame_size(SIZE, frame);
         let at = self.state.frame_at;
-        self.asm.replace(at, moves.finish().expect("no labels"));
+        self.asm.rewrite(at, |moves| moves.frame_size(SIZE, frame));
     }
 }

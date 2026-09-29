@@ -22,6 +22,7 @@ pub(super) const CALL: [table::Form; 2usize] = [
         writes: &[],
         implicit: &[],
         flags: None,
+        requires: None,
     },
     table::Form {
         slots: &[
@@ -46,5 +47,6 @@ pub(super) const CALL: [table::Form; 2usize] = [
         writes: &[],
         implicit: &[],
         flags: None,
+        requires: None,
     },
 ];

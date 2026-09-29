@@ -52,8 +52,7 @@ pub const Choice: Item = Item::new(&["lang", "arch", "thumb", "Choice"]);
 pub const Access: Item = Item::new(&["lang", "arch", "thumb", "Access"]);
 /// What a processor has of Thumb beyond what every one has (`lang.target.Spec.features`).
 pub const Feature: Item = Item::new(&["lang", "arch", "thumb", "Feature"]);
-/// What a form, or a width of it, needs of a processor beyond Thumb: a feature, or a
-/// floating-point unit computing floats of a width (`lang.target.Spec.floats`).
+/// What a form, or a width of it, needs of a processor beyond Thumb.
 pub const Need: Item = Item::new(&["lang", "arch", "thumb", "Need"]);
 /// Where control goes after a form.
 pub const Flow: Item = Item::new(&["lang", "arch", "thumb", "Flow"]);

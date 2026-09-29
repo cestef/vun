@@ -27,6 +27,7 @@ pub(super) const UCOMIS: [table::Form; 2usize] = [
         writes: &[],
         implicit: &[],
         flags: Some(table::Access::Write),
+        requires: None,
     },
     table::Form {
         slots: &[
@@ -53,5 +54,6 @@ pub(super) const UCOMIS: [table::Form; 2usize] = [
         writes: &[],
         implicit: &[],
         flags: Some(table::Access::Write),
+        requires: None,
     },
 ];

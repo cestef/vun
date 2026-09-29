@@ -103,6 +103,13 @@ Flow := enum {
 
 Operand := struct { kind: Kind, access: Access };
 
+/// What a processor has of x86-64 beyond its baseline (`lang.target.Spec.features`): nothing the
+/// table's forms need yet.
+Feature := enum {};
+
+/// What a form needs of a processor beyond x86-64's baseline.
+Need := lang.arch.Need(Feature, Size);
+
 /// A prefix before REX: `lock`, `rep`, or the mandatory prefix of an SSE instruction.
 Prefix := enum { none, lock, rep, p66, f2, f3 };
 
@@ -153,6 +160,8 @@ Form := ($B: type) -> type { struct {
     writes: &[Reg] = &[],
     flags: ?Access = .none,
     flow: Flow = .next,
+    /// What a processor needs to have the form, if not every one has it.
+    requires: ?Need = .none,
 } };
 
 /// An instruction, named as its declaration is (`\and` for `and`).

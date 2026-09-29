@@ -79,6 +79,13 @@ impl Crate {
                         NAMES[self as usize]
                     }
                 }
+                impl vun_isa::Enumerated for #rust {
+                    const ALL: &'static [Self] = &Self::ALL;
+
+                    fn name(self) -> &'static str {
+                        Self::name(self)
+                    }
+                }
             };
             modules.push(Module { name: name.to_ascii_lowercase(), access: Access::Glob, items });
         }

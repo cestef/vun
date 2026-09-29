@@ -112,9 +112,8 @@ Feature := enum {
     divide,
 };
 
-/// What a form, or a width of it, needs of a processor beyond Thumb: a feature, or a
-/// floating-point unit computing floats of a width (`lang.target.Spec.floats`).
-Need := enum { feature(Feature), float(Size) };
+/// What a form, or a width of it, needs of a processor beyond Thumb.
+Need := lang.arch.Need(Feature, Size);
 
 /// Where control goes after a form.
 Flow := enum {

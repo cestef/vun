@@ -26,5 +26,6 @@ pub(super) const CVTTSD2SI: [table::Form; 1usize] = [
         writes: &[],
         implicit: &[],
         flags: None,
+        requires: None,
     },
 ];

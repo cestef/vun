@@ -30,5 +30,6 @@ pub(super) const CMPXCHG: [table::Form; 1usize] = [
         writes: &[reg::Reg::Rax],
         implicit: &[reg::Reg::Rax],
         flags: Some(table::Access::Write),
+        requires: None,
     },
 ];

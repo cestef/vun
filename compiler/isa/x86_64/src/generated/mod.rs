@@ -5,6 +5,8 @@ mod cond;
 pub use cond::*;
 mod class;
 pub use class::*;
+mod feature;
+pub use feature::*;
 mod add;
 mod or;
 mod and;

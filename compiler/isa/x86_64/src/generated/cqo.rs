@@ -15,6 +15,7 @@ pub(super) const CQO: [table::Form; 2usize] = [
         writes: &[reg::Reg::Rdx],
         implicit: &[reg::Reg::Rax, reg::Reg::Rdx],
         flags: None,
+        requires: None,
     },
     table::Form {
         slots: &[],
@@ -29,5 +30,6 @@ pub(super) const CQO: [table::Form; 2usize] = [
         writes: &[reg::Reg::Rdx],
         implicit: &[reg::Reg::Rax, reg::Reg::Rdx],
         flags: None,
+        requires: None,
     },
 ];

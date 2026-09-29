@@ -750,6 +750,7 @@ dependencies = [
 name = "vun-asm"
 version = "0.0.0"
 dependencies = [
+ "vun-inline",
  "vun-isa",
  "vun-object",
 ]
@@ -802,6 +803,7 @@ dependencies = [
  "vun-abi",
  "vun-asm",
  "vun-diag",
+ "vun-inline",
  "vun-intern",
  "vun-lir",
  "vun-lir-passes",
@@ -1296,6 +1298,7 @@ name = "vun-inline"
 version = "0.0.0"
 dependencies = [
  "vun-codec",
+ "vun-diag",
  "vun-intern",
  "vun-items",
  "vun-origin",
@@ -1330,7 +1333,9 @@ version = "0.0.0"
 dependencies = [
  "vun-codec",
  "vun-inline",
+ "vun-intern",
  "vun-items",
+ "vun-target",
 ]
 
 [[package]]
@@ -1586,6 +1591,7 @@ dependencies = [
  "vun-inline",
  "vun-intern",
  "vun-lir",
+ "vun-lir-passes",
  "vun-object",
  "vun-origin",
  "vun-par",

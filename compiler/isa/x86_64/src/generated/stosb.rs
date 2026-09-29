@@ -17,5 +17,6 @@ pub(super) const STOSB: [table::Form; 1usize] = [
         writes: &[reg::Reg::Rdi, reg::Reg::Rcx],
         implicit: &[reg::Reg::Rdi, reg::Reg::Rcx, reg::Reg::Rax],
         flags: None,
+        requires: None,
     },
 ];

@@ -13,7 +13,7 @@ use vun_asm::Via;
 use vun_asm::imm::{low64, sign_extend};
 use vun_asm_x86_64::{Asm, Cc, Emit, Mem, Op, Operand, Reg, Size, X86_64};
 use vun_codegen::snippet::{Emits, Width};
-use vun_codegen::{Anchor, Arch, Place, Recompute};
+use vun_codegen::{Anchor, Arch, Place, Processor, Recompute};
 use vun_dwarf::CallFrame;
 use vun_lir::{Address, Cond};
 use vun_object::Machine;
@@ -144,8 +144,8 @@ impl Emits for X86 {
         }
     }
 
-    fn fits(op: Op, size: Size, operands: &[Opnd]) -> bool {
-        op.form(size, operands).is_some()
+    fn fits(processor: Processor<Self>, op: Op, size: Size, operands: &[Opnd]) -> bool {
+        matches!(op.choose(processor, size, operands), Ok(Some(_)))
     }
 
     fn implicit(op: Op) -> &'static [Reg] {
@@ -192,6 +192,10 @@ impl vun_native::Native for X86 {
     };
 
     const CONVENTIONS: &'static [(Convention, Self::Convention)] = vun_asm_x86_64::conventions::CONVENTIONS;
+
+    fn divides(processor: Processor<Self>) -> bool {
+        [Op::Div, Op::Idiv].into_iter().all(|op| op.available(processor, Size::B64))
+    }
 
     fn machine(_: &TargetSpec) -> Machine {
         Machine::X86_64

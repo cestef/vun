@@ -12,7 +12,7 @@ use vun_items::lang::{
     arch_arm64 as a, arch_arm64_Arg as arg, arch_arm64_Choice as choice, arch_arm64_Class as class,
     arch_arm64_Condition as condition, arch_arm64_Family as family, arch_arm64_Flow as flow,
     arch_arm64_Form as form, arch_arm64_Instruction as instruction, arch_arm64_Kind as kind,
-    arch_arm64_Member as member, arch_arm64_Names as names, arch_arm64_Need as need, arch_arm64_Size as size,
+    arch_arm64_Member as member, arch_arm64_Names as names, arch_arm64_Size as size,
     arch_arm64_Sized as sized,
 };
 
@@ -34,7 +34,7 @@ pub(super) const SHAPE: Shape = Shape {
     member_name: member::name,
     form_name: form::name,
     form_flow: form::flow,
-    needs: Some(Needs { form: form::requires, sized: None, feature: need::feature, float: None }),
+    needs: Needs { form: form::requires, sized: None },
     flows: [(flow::next, Flow::Next), (flow::jump, Flow::Jump), (flow::ends, Flow::Ends)],
     size: a::Size,
     cond: a::Cond,

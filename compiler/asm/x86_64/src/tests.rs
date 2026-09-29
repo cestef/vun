@@ -6,7 +6,7 @@
 use yaxpeax_arch::{Decoder, LengthedInstruction, U8Reader};
 use yaxpeax_x86::long_mode::InstDecoder;
 
-use crate::{Asm, Cc, Emit, Kind, Mem, Op, Operand, Reg, Size, Xmm};
+use crate::{Asm, Cc, Emit, Kind, Mem, Op, Operand, Processor, Reg, Size, Xmm};
 
 type Sym = &'static str;
 
@@ -68,7 +68,7 @@ fn every_form_decodes_as_one_instruction_printed_alike() {
                     if op.form(size, &operands) != Some(form) {
                         continue;
                     }
-                    let mut asm = Asm::<Sym>::listed();
+                    let mut asm = Asm::<Sym>::listed(Processor::every());
                     asm.emit(op, size, &operands);
                     let code = asm.finish().unwrap();
                     let ours = match code.listing[0] {
@@ -113,7 +113,7 @@ fn every_form_decodes_as_one_instruction_printed_alike() {
 #[test]
 fn the_shortest_form_is_chosen() {
     let bytes = |op, size, operands: &[Operand<Sym>]| {
-        let mut asm = Asm::<Sym>::default();
+        let mut asm = Asm::<Sym>::new(Processor::every());
         asm.emit(op, size, operands);
         asm.finish().unwrap().bytes
     };
@@ -135,7 +135,7 @@ fn the_shortest_form_is_chosen() {
 
 #[test]
 fn a_rip_relative_operand_counts_from_the_end_of_the_instruction() {
-    let mut asm = Asm::<Sym>::default();
+    let mut asm = Asm::<Sym>::new(Processor::every());
     asm.emit(Op::Cmp, Size::B32, &[Mem::rip("d", vun_asm::Via::Direct).into(), 1000.into()]);
     let code = asm.finish().unwrap();
     // The displacement is followed by four bytes of immediate.

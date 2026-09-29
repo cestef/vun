@@ -29,6 +29,7 @@ pub(super) const SAR: [table::Form; 2usize] = [
         writes: &[],
         implicit: &[],
         flags: Some(table::Access::Write),
+        requires: None,
     },
     table::Form {
         slots: &[
@@ -57,5 +58,6 @@ pub(super) const SAR: [table::Form; 2usize] = [
         writes: &[],
         implicit: &[],
         flags: Some(table::Access::Write),
+        requires: None,
     },
 ];

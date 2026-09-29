@@ -19,7 +19,7 @@ mod tests;
 pub use inst::{Inst, Syntax, Text};
 pub use operand::{Base, Mem, Operand};
 pub use reg::{Cc, Class, Reg, Size, Xmm};
-pub use table::{Access, Form, Kind, Layout, Op, Opcode, Prefix, Sizes, Slot, W};
+pub use table::{Access, Feature, Form, Kind, Layout, Need, Op, Opcode, Prefix, Processor, Sizes, Slot, W};
 
 /// The instruction set.
 #[derive(Clone, Copy, Debug)]
@@ -32,6 +32,7 @@ pub struct Rel32;
 impl vun_isa::Isa for X86_64 {
     type Inst<S: Copy> = Inst<S>;
     type Fixup = Rel32;
+    type Feature = Feature;
 
     fn patch(_: Rel32, code: &mut [u8], at: u64, target: u64) -> Result<(), vun_isa::Unpatched> {
         let distance = i128::from(target) - i128::from(at + 4);

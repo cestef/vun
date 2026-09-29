@@ -23,10 +23,18 @@ const CRATE: Crate = Crate {
         ("Access", "table", "Access"),
         ("Prefix", "table", "Prefix"),
         ("W", "table", "W"),
+        ("Feature", "table", "Feature"),
+        ("Need", "table", "Need"),
     ],
     widths: &["b8", "b16", "b32", "b64"],
-    enums: &[],
-    payloads: &[("Kind", "rn", &["Size"]), ("Kind", "rmn", &["Size"]), ("Kind", "xmn", &["Size"])],
+    enums: &["Feature"],
+    payloads: &[
+        ("Kind", "rn", &["Size"]),
+        ("Kind", "rmn", &["Size"]),
+        ("Kind", "xmn", &["Size"]),
+        ("Need", "feature", &["Feature"]),
+        ("Need", "float", &["Size"]),
+    ],
 };
 
 /// The first byte of a two-byte opcode.
@@ -93,6 +101,7 @@ fn form(c: &Crate, record: &Literal<'_>) -> Option<TokenStream> {
     let (prefix, w) = (c.variant("Prefix", field("prefix")?)?, c.variant("W", field("w")?)?);
     let name = option(field("name")?, |n| n.as_str().map(|s| quote! { #s }))?;
     let flags = option(field("flags")?, |a| c.variant("Access", a))?;
+    let requires = option(field("requires")?, |n| c.value("Need", n))?;
     let implicit = implicit(field("reads")?.as_list()?, field("writes")?.as_list()?);
     let implicit = implicit.iter().map(|r| pascal(r));
     let (reads, writes) = (c.variants("Reg", field("reads")?)?, c.variants("Reg", field("writes")?)?);
@@ -110,6 +119,7 @@ fn form(c: &Crate, record: &Literal<'_>) -> Option<TokenStream> {
             writes: &[#(#writes),*],
             implicit: &[#(reg::Reg::#implicit),*],
             flags: #flags,
+            requires: #requires,
         }
     })
 }

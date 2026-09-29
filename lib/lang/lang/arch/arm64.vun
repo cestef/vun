@@ -264,7 +264,7 @@ Arg := struct {
 Feature := enum { lse };
 
 /// What a form needs of a processor beyond Armv8.0.
-Need := enum { feature(Feature) };
+Need := lang.arch.Need(Feature, Size);
 
 /// A width a form is defined at, the bits it sets in the word, and the suffix it gives the
 /// mnemonic.

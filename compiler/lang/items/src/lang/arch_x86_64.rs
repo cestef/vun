@@ -38,6 +38,11 @@ pub const Access: Item = Item::new(&["lang", "arch", "x86_64", "Access"]);
 /// Where control goes after a form.
 pub const Flow: Item = Item::new(&["lang", "arch", "x86_64", "Flow"]);
 pub const Operand: Item = Item::new(&["lang", "arch", "x86_64", "Operand"]);
+/// What a processor has of x86-64 beyond its baseline (`lang.target.Spec.features`): nothing the
+/// table's forms need yet.
+pub const Feature: Item = Item::new(&["lang", "arch", "x86_64", "Feature"]);
+/// What a form needs of a processor beyond x86-64's baseline.
+pub const Need: Item = Item::new(&["lang", "arch", "x86_64", "Need"]);
 /// A prefix before REX: `lock`, `rep`, or the mandatory prefix of an SSE instruction.
 pub const Prefix: Item = Item::new(&["lang", "arch", "x86_64", "Prefix"]);
 /// How the instruction's width is encoded.

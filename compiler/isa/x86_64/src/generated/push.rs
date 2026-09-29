@@ -21,5 +21,6 @@ pub(super) const PUSH: [table::Form; 1usize] = [
         writes: &[reg::Reg::Rsp],
         implicit: &[reg::Reg::Rsp],
         flags: None,
+        requires: None,
     },
 ];

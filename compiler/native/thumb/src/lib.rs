@@ -16,7 +16,7 @@ mod tests;
 use self::asm::AsmExt;
 use vun_asm_thumb::{Asm, Cc, Emit, Mem, Op, Operand, Reg, Size};
 use vun_codegen::snippet::{Emits, Slot, Step, Width};
-use vun_codegen::{Anchor, Arch, Bank, Place, Recompute};
+use vun_codegen::{Anchor, Arch, Bank, Place, Processor, Recompute};
 use vun_dwarf::CallFrame;
 use vun_lir::{Address, Cond, Scalar};
 use vun_object::{Float, Machine};
@@ -196,9 +196,9 @@ impl Emits for Thumb2 {
         }
     }
 
-    fn fits(op: Instr, size: Size, operands: &[Opnd]) -> bool {
+    fn fits(processor: Processor<Self>, op: Instr, size: Size, operands: &[Opnd]) -> bool {
         let (op, size) = op.at(size);
-        op.form(size, operands).is_some()
+        matches!(op.choose(processor, size, operands), Ok(Some(_)))
     }
 
     fn implicit(_: Instr) -> &'static [Reg] {
@@ -255,6 +255,10 @@ impl vun_native::Native for Thumb2 {
     ///
     /// # Panics
     /// For a target whose convention this does not follow, which emitting checks first.
+    fn divides(processor: Processor<Self>) -> bool {
+        [Op::Udiv, Op::Sdiv].into_iter().all(|op| op.available(processor, Size::B32))
+    }
+
     fn machine(target: &TargetSpec) -> Machine {
         let convention = Self::convention(target).expect("checked before emitting");
         Machine::Arm(if convention.registers.float_args.is_empty() { Float::Soft } else { Float::Hard })

@@ -26,6 +26,7 @@ pub(super) const SUBS: [table::Form; 2usize] = [
         writes: &[],
         implicit: &[],
         flags: None,
+        requires: None,
     },
     table::Form {
         slots: &[
@@ -52,5 +53,6 @@ pub(super) const SUBS: [table::Form; 2usize] = [
         writes: &[],
         implicit: &[],
         flags: None,
+        requires: None,
     },
 ];

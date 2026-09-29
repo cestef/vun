@@ -3,7 +3,7 @@
 use vun_asm::{Isa, RelocKind, Unpatched, Via};
 
 use super::{Sym, decode};
-use crate::{Arm64, Asm, Cc, Emit, Fixup, Mem, Op, Operand, Reg, Size};
+use crate::{Arm64, Asm, Cc, Emit, Fixup, Mem, Op, Operand, Processor, Reg, Size};
 
 fn words(bytes: &[u8]) -> Vec<u32> {
     bytes.chunks(4).map(|w| u32::from_le_bytes(w.try_into().unwrap())).collect()
@@ -11,7 +11,7 @@ fn words(bytes: &[u8]) -> Vec<u32> {
 
 #[test]
 fn branches_to_labels_count_instructions_both_ways() {
-    let mut asm = Asm::<Sym>::default();
+    let mut asm = Asm::<Sym>::new(Processor::every());
     let back = asm.label();
     let ahead = asm.label();
     asm.bind(back);
@@ -27,7 +27,7 @@ fn branches_to_labels_count_instructions_both_ways() {
 #[test]
 fn a_conditional_branch_reaches_a_mebibyte() {
     let reach = |gap: usize| {
-        let mut asm = Asm::<Sym>::default();
+        let mut asm = Asm::<Sym>::new(Processor::every());
         let label = asm.label();
         asm.emit(Op::Bcond, Size::B64, &[Cc::Eq.into(), label.into()]);
         asm.put(&vec![0; gap]);
@@ -50,7 +50,7 @@ fn a_jump_reaches_128_mebibytes() {
 
 #[test]
 fn addresses_and_calls_are_relocated() {
-    let mut asm = Asm::<Sym>::default();
+    let mut asm = Asm::<Sym>::new(Processor::every());
     asm.emit(Op::Adrp, Size::B64, &[Reg::X0.into(), Operand::Page("data", Via::Direct)]);
     asm.emit(Op::Add, Size::B64, &[Reg::X0.into(), Reg::X0.into(), Operand::Lo12("data")]);
     asm.emit(Op::Adrp, Size::B64, &[Reg::X1.into(), Operand::Page("ext", Via::Got)]);

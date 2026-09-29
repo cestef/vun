@@ -116,6 +116,10 @@ impl vun_isa::Width for Size {
     fn of_bytes(bytes: u64) -> Option<Self> {
         Self::of_bytes(bytes)
     }
+
+    fn bits(self) -> u32 {
+        Self::bits(self)
+    }
 }
 
 use crate::generated::CONDITIONS;

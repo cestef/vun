@@ -26,5 +26,6 @@ pub(super) const J: [table::Form; 1usize] = [
         writes: &[],
         implicit: &[],
         flags: Some(table::Access::Read),
+        requires: None,
     },
 ];

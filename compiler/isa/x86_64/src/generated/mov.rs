@@ -28,6 +28,7 @@ pub(super) const MOV: [table::Form; 5usize] = [
         writes: &[],
         implicit: &[],
         flags: None,
+        requires: None,
     },
     table::Form {
         slots: &[
@@ -56,6 +57,7 @@ pub(super) const MOV: [table::Form; 5usize] = [
         writes: &[],
         implicit: &[],
         flags: None,
+        requires: None,
     },
     table::Form {
         slots: &[
@@ -79,6 +81,7 @@ pub(super) const MOV: [table::Form; 5usize] = [
         writes: &[],
         implicit: &[],
         flags: None,
+        requires: None,
     },
     table::Form {
         slots: &[
@@ -107,6 +110,7 @@ pub(super) const MOV: [table::Form; 5usize] = [
         writes: &[],
         implicit: &[],
         flags: None,
+        requires: None,
     },
     table::Form {
         slots: &[
@@ -130,5 +134,6 @@ pub(super) const MOV: [table::Form; 5usize] = [
         writes: &[],
         implicit: &[],
         flags: None,
+        requires: None,
     },
 ];

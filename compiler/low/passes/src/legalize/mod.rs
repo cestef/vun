@@ -8,6 +8,9 @@
 //! returns its wide integers, and Vun's through memory. Division calls a helper function the
 //! pass adds, one per count of limbs. Afterwards no value is wider than the widest width.
 //!
+//! A division or remainder of a narrower integer, for a backend whose processor has no division
+//! instruction, calls the helper of one limb, its operands extended to the widest first.
+//!
 //! An `f16`, for a backend that does not compute it, becomes its bits, an `i16`, and every
 //! operation on it one in `f32` between an exact widening and a rounding back (`float16`).
 //!
@@ -46,6 +49,18 @@ pub struct Legalize {
     pub floats: Floats,
     /// The convention the target's C functions follow.
     pub convention: Convention,
+    pub division: Division,
+}
+
+/// How a backend divides integers no wider than its widest.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Encode, Decode)]
+pub enum Division {
+    /// By an instruction: the target's processor's, or the one a compiler it hands its code to
+    /// chooses.
+    Computed,
+    /// Through the helper wide integers divide by, restoring the quotient one bit at a time: the
+    /// processor has no division instruction.
+    Restoring,
 }
 
 /// How a backend holds `f16`.
@@ -214,6 +229,7 @@ impl Legalize {
         if legalize.widest == Scalar::I128
             && legalize.half == Half::Computed
             && legalize.floats == Floats::ALL
+            && legalize.division == Division::Computed
         {
             return Ok(());
         }

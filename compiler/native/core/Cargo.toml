@@ -22,6 +22,7 @@ vun-index.workspace = true
 vun-inline.workspace = true
 vun-intern.workspace = true
 vun-lir.workspace = true
+vun-lir-passes.workspace = true
 vun-object.workspace = true
 vun-origin.workspace = true
 vun-par.workspace = true

@@ -16,5 +16,6 @@ pub(super) const LEAVE: [table::Form; 1usize] = [
         writes: &[reg::Reg::Rsp, reg::Reg::Rbp],
         implicit: &[reg::Reg::Rbp, reg::Reg::Rsp],
         flags: None,
+        requires: None,
     },
 ];

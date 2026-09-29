@@ -4,11 +4,11 @@ use vun_asm::RelocKind;
 use vun_isa_thumb::{Cc, Op, Operand, Reg, Size};
 
 use super::Sym;
-use crate::{Asm, Emit};
+use crate::{Asm, Emit, Processor};
 
 #[test]
 fn a_branch_to_a_label_is_patched_where_it_is_bound() {
-    let mut asm = Asm::<Sym>::default();
+    let mut asm = Asm::<Sym>::new(Processor::every());
     let (back, ahead) = (asm.label(), asm.label());
     asm.bind(back);
     asm.emit(Op::B, Size::B32, &[Operand::Label(ahead)]);
@@ -21,7 +21,7 @@ fn a_branch_to_a_label_is_patched_where_it_is_bound() {
 
 #[test]
 fn a_call_and_an_address_are_left_to_the_linker() {
-    let mut asm = Asm::<Sym>::default();
+    let mut asm = Asm::<Sym>::new(Processor::every());
     asm.emit(Op::Bl, Size::B32, &[Operand::Sym("f")]);
     asm.emit(Op::Movw, Size::B32, &[Operand::Reg(Reg::R0), Operand::Low("d")]);
     asm.emit(Op::Movt, Size::B32, &[Operand::Reg(Reg::R0), Operand::High("d")]);

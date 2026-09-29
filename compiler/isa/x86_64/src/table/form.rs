@@ -3,6 +3,7 @@
 
 use vun_isa::imm::{fits_signed, fits_unsigned};
 
+use super::Need;
 use crate::operand::Operand;
 use crate::reg::{Reg, Size};
 
@@ -232,12 +233,19 @@ pub struct Form {
     pub implicit: &'static [Reg],
     /// What it does with the flags, if anything.
     pub flags: Option<Access>,
+    /// What a processor needs to have it, if not every one has it.
+    pub requires: Option<Need>,
 }
 
 impl Form {
     /// The kinds of its operands, in order.
     pub fn kinds(&self) -> impl Iterator<Item = Kind> {
         self.slots.iter().map(|s| s.kind)
+    }
+
+    /// What a processor needs to have it: the same at every width.
+    pub fn needs(&self, _: Size) -> impl Iterator<Item = Need> {
+        self.requires.into_iter()
     }
 
     /// Whether this form takes `operands` at `size`.

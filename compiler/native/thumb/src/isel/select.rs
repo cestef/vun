@@ -43,11 +43,10 @@ impl<'a> Look<'_, 'a> {
         }
     }
 
-    /// The size of the bits of the float scalar `scalar`, which is its precision: single, where
-    /// the convention passes floats in the floating-point extension's registers.
+    /// The size of the bits of the float scalar `scalar`, which is its precision: single; the
+    /// instructions computing it are the processor's where it has a floating-point unit.
     fn precision(&self, scalar: Scalar) -> Result<Size, Lack> {
         match scalar {
-            _ if self.0.state.float_args().is_empty() => Err(self.0.lack(Missing::Float)),
             Scalar::F32 => Ok(Size::B32),
             Scalar::F64 => Err(self.0.lack(Missing::Wider(8))),
             _ => Err(self.0.lack(Missing::Half)),

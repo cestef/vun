@@ -8,6 +8,7 @@
 //! architecture's table, in declaration order, which the generated assembler tables keep.
 
 use vun_codec::{Decode, Encode};
+use vun_diag::Msg;
 use vun_intern::Symbol;
 use vun_items::Item;
 use vun_origin::OriginId;
@@ -70,6 +71,20 @@ pub enum Needed {
     Feature(Symbol),
     /// A floating-point unit computing floats of this many bits (`lang.target.Spec.floats`).
     Float(u32),
+}
+
+impl Needed {
+    /// What is needed, as a diagnostic names it: `` `divide` ``, or a floating-point unit
+    /// computing floats of 64 bits.
+    #[must_use]
+    pub fn msg(self) -> Msg {
+        match self {
+            Self::Feature(feature) => Msg::new().code(feature.as_str()),
+            Self::Float(bits) => {
+                Msg::new().text("a floating-point unit computing floats of ").num(bits).text(" bits")
+            }
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]

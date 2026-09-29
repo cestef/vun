@@ -656,7 +656,16 @@ assembler and its instruction compilers and nothing else:
   The encoder emits an instruction by the first form its operands fit, the printer writes the
   same form's text, and callers ask which forms fit before choosing operands. So an instruction's
   encoding and its text cannot disagree, and a test decodes every form with an independent
-  decoder (yaxpeax) and compares both.
+  decoder (yaxpeax) and compares both. A form, or a width of it, may need what not every
+  processor of its instruction set has (`lang.arch.Need`, `vun_isa::Need`: a feature, or a
+  floating-point unit computing floats of a width). A buffer is made for a processor
+  (`vun_isa::Processor`: the target's features, typed by the set's generated `Feature`, and its
+  floats), and every assembler emits by the first form fitting the operands that the processor
+  has; where it has none of them, the buffer records what the first lacks and leaves the
+  instruction out, and the framework refuses the function where that instruction came from
+  (`Missing::Unavailable`, `backend.lacks`). Instruction selection therefore never assumes a
+  feature: the operands a snippet step brings into registers are chosen against the same
+  forms, and whatever an isel emits, snippet or sequence of its own, is checked in one place.
 - **`vun-object`**: relocatable objects as data, written once in the target's format: ELF of
   the class the machine's addresses fix (ELF32 for 32-bit Arm, whose objects carry EABI 5 and the
   convention's float ABI in their flags, relocations with explicit addends, Thumb functions with
@@ -817,7 +826,13 @@ parameter of its own under Vun's. A wide result is one `AbiType::Wide` too, writ
 place as its limbs (returned in consecutive result registers under the C convention, as C returns
 its wide integers, through memory under Vun's; decision 280). Division and remainder call a helper
 function the pass adds per count of limbs (restoring division over limbs, signs put back around
-it). Atomic accesses of wide
+it). A backend dividing by the target's processor's own instructions says how it divides there
+(`Backend::division`, `Division::Computed` by default): the native backend asks the
+architecture's table whether the processor has a form of its division instructions at the width
+of its registers (`Native::divides`), and where it has none (`Division::Restoring`; Armv7-A
+without `divide`) every division and remainder no wider than the widest calls the helper of one
+limb, its operands extended to the widest as the operation reads them and the result truncated
+back, so no program is refused for it. Atomic accesses of wide
 integers are refused (`backend.lacks`); conversions between them and floats never reach the pass,
 running as `lang.float.soft.convert`'s. A float the backend does not hold (`BackendCaps.floats`:
 native code holds those the target's processor computes) is its bits, an integer of its width

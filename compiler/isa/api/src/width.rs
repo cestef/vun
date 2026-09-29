@@ -6,4 +6,5 @@ pub trait Width: Copy {
     const B64: Self;
     /// The size of `bytes`, a power of two up to 8.
     fn of_bytes(bytes: u64) -> Option<Self>;
+    fn bits(self) -> u32;
 }

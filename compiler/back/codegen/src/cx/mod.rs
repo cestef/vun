@@ -22,7 +22,7 @@ use vun_regalloc::{Allocation, Machine, PReg, Remade};
 
 use crate::frame::Frame;
 use crate::values::Assignment;
-use crate::{Arch, Code, Isel};
+use crate::{Arch, Code, Isel, Processor};
 
 use describe::Described;
 
@@ -96,6 +96,7 @@ pub fn compile<A: Isel>(
     unit: &Unit,
     f: &Function,
     convention: A::Convention,
+    processor: Processor<A>,
     listed: bool,
 ) -> Result<Compiled<<A::Isa as Isa>::Inst<Address>>, Lack> {
     // A naked function's code is its blocks as written: no frame is set up, saved or left.
@@ -103,7 +104,7 @@ pub fn compile<A: Isel>(
     let cfg = Cfg::of(f);
     let loops = Loops::of(f, &cfg);
     let order = Order::of(f, &loops);
-    let mut asm = if listed { Code::<A>::listed() } else { Code::<A>::default() };
+    let mut asm = if listed { Code::<A>::listed(processor) } else { Code::<A>::new(processor) };
     let labels = f.blocks.iter().map(|_| asm.label()).collect::<Vec<_>>().into();
     let mut frame = Frame::default();
     let mut slots = IndexVec::new();
@@ -141,6 +142,7 @@ pub fn compile<A: Isel>(
     };
     if !naked {
         A::prologue(&mut cx)?;
+        cx.emitted()?;
     }
     cx.lacking()?;
     cx.plan = Some(Described::plan(&cx));
@@ -154,6 +156,7 @@ pub fn compile<A: Isel>(
     let size = cx.frame.size(A::STACK_ALIGN);
     if !naked {
         A::finish(&mut cx, size);
+        cx.emitted()?;
     }
     let code = cx.asm.finish().expect("every block is bound, and a function's jumps reach across it");
     Ok(Compiled { code, frame: size, marks: cx.marks, unwind: cx.unwind })
@@ -183,6 +186,7 @@ impl<A: Isel> Cx<'_, A> {
         if Some(block) == self.f.entry() {
             self.enter(first);
             A::entry(self)?;
+            self.emitted()?;
             self.leave_point(first);
         }
         let fused = self.fused(block).map(|fused| fused.value);
@@ -203,13 +207,21 @@ impl<A: Isel> Cx<'_, A> {
                 None if fused.is_some() && data.result == fused => {}
                 None => A::inst(self, inst)?,
             }
+            self.emitted()?;
             self.leave_point(self.point);
         }
         self.at = self.f.blocks[block].origin;
         self.marks.push((self.asm.here(), self.at));
         self.enter(last);
         vun_trace::tracing::trace!(term = %self.f.blocks[block].term, at = self.asm.here(), "terminate");
-        A::terminate(self, block)
+        A::terminate(self, block)?;
+        self.emitted()
+    }
+
+    /// What the processor lacks of the instructions emitted since last asked, which the backend
+    /// then lacks where the code comes from.
+    fn emitted(&mut self) -> Result<(), Lack> {
+        self.asm.lacked().map_or(Ok(()), |needed| Err(Missing::Unavailable(needed).at(self.at)))
     }
 
     /// Starts the point `point`: its moves run, and none of its scratch registers is taken.

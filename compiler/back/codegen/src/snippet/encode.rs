@@ -145,11 +145,10 @@ impl<A: Emits> Cx<'_, A> {
                     ops.chosen[at] = A::reg(r);
                 }
             }
-            // Folded operands go to registers, first to last, until a form takes them.
-            while !A::fits(step.op, size, ops.all()) {
-                let Some(at) = ops.folded[..ops.len].iter().position(Option::is_some) else {
-                    panic!("no form takes a snippet step's operands in registers")
-                };
+            // Folded operands go to registers, first to last, until a form the processor has takes
+            // them; with none left, emitting says what the processor lacks.
+            while !A::fits(self.asm.processor(), step.op, size, ops.all()) {
+                let Some(at) = ops.folded[..ops.len].iter().position(Option::is_some) else { break };
                 ops.chosen[at] = match ops.folded[at].take().expect("found folded") {
                     Folded::Value(v) => A::reg(self.reg(v)),
                     Folded::Address(v) => A::at(self.reg(v)),

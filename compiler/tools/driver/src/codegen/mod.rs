@@ -149,6 +149,7 @@ impl Session {
             half: info.caps.half,
             floats: info.caps.floats.on(&target),
             convention: target.convention,
+            division: backend.division(&target),
         })
         .apply(&mut unit)
         {

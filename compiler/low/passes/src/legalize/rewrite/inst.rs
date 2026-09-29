@@ -1,7 +1,7 @@
 //! Instructions: each on a wide integer rewritten into a sequence over limbs, each on a promoted
 //! `f16` into one in `f32`, any other copied over the new values.
 
-use super::super::{Unlegal, Unlegalized};
+use super::super::{Division, Unlegal, Unlegalized};
 use super::{Parts, Rewrite};
 use vun_lir::{Access, BinOp, CastOp, Inst, InstKind, Scalar, Value};
 use vun_origin::OriginId;
@@ -39,6 +39,11 @@ impl Rewrite<'_> {
                     BinOp::Shl | BinOp::LShr | BinOp::AShr => l.shift(*op, &x, y.low()),
                     _ => self.divide(*op, &x, &y, at),
                 })
+            }
+            &InstKind::Binary { op, a, b }
+                if op.divides() && self.legalize.division == Division::Restoring =>
+            {
+                self.divided(op, a, b, at)
             }
             InstKind::Compare { cond, a, b } if self.is_wide(*a) => {
                 let (x, y) = (self.limbs(*a), self.limbs(*b));
@@ -88,6 +93,23 @@ impl Rewrite<'_> {
             self.parts.insert(v, parts);
         }
         Ok(())
+    }
+
+    /// `a op b` for a division or remainder of integers no wider than the widest, through the
+    /// helper of one limb: each operand extended to the widest as the operation reads it, the
+    /// result truncated back.
+    fn divided(&mut self, op: BinOp, dividend: Value, divisor: Value, at: OriginId) -> Parts {
+        let signed = matches!(op, BinOp::SDiv | BinOp::SRem);
+        let (dividend_limb, divisor_limb) = (self.one(dividend), self.one(divisor));
+        let mut limbwise = self.limbwise(at);
+        let extended = [dividend_limb, divisor_limb].map(|v| limbwise.extended(v, signed, 1));
+        let result = self.divide(op, &extended[0], &extended[1], at).low();
+        let ty = self.old.ty(dividend);
+        Parts::One(if ty == self.legalize.widest {
+            result
+        } else {
+            self.b.cast(CastOp::Trunc, result, ty, at)
+        })
     }
 
     /// A conversion from or to a wide integer: an extension or truncation over limbs, or the bits

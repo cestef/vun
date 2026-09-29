@@ -4,6 +4,8 @@
 //! encodes to ([`Field`]); whether an operand fits is whether it encodes, so a form never takes
 //! what it cannot encode, and the encoder, the printer and form selection read one table.
 
+use crate::{Enumerated, Need, Processor, Width};
+
 /// What a form does with an operand, or with the flags.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Access {
@@ -156,6 +158,11 @@ impl<K: Copy, Z: Copy + PartialEq, R, N: Copy> Form<K, Z, R, N> {
         self.sizes.iter().find(|s| s.size == size)
     }
 
+    /// What a processor needs to have it at `size`.
+    pub fn needs(&self, size: Z) -> impl Iterator<Item = N> {
+        self.requires.into_iter().chain(self.at(size).and_then(|sized| sized.requires))
+    }
+
     /// The kinds of its operands, in order.
     pub fn kinds(&self) -> impl Iterator<Item = K> {
         self.args.iter().map(|a| a.kind)
@@ -200,5 +207,32 @@ impl<K: Copy, Z: Copy + PartialEq, R, N: Copy> Form<K, Z, R, N> {
         O: Named,
     {
         forms.iter().find_map(|f| f.encode(size, operands).map(|word| (f, word)))
+    }
+}
+
+impl<K: Copy, Z: Width + PartialEq, R, F: Enumerated> Form<K, Z, R, Need<F, Z>> {
+    /// The first of `forms` taking `operands` at `size` that `processor` has, and the word it
+    /// encodes them to; `None` where no form takes them.
+    ///
+    /// # Errors
+    /// What the first taking them needs that `processor` lacks, where it has none of them.
+    pub fn choose<'f, O>(
+        forms: &'f [Self],
+        processor: Processor<F>,
+        size: Z,
+        operands: &[O],
+    ) -> Result<Option<(&'f Self, u32)>, Need<F, Z>>
+    where
+        K: Field<O, Z>,
+        O: Named,
+    {
+        let taking = forms.iter().filter_map(|f| Some(((f, f.encode(size, operands)?), f.needs(size))));
+        processor.choose(taking)
+    }
+
+    /// Whether `processor` has one of `forms` at `size`, whatever its operands.
+    #[must_use]
+    pub fn available(forms: &[Self], processor: Processor<F>, size: Z) -> bool {
+        forms.iter().any(|f| f.at(size).is_some() && processor.lacks(f.needs(size)).is_none())
     }
 }

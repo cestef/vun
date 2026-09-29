@@ -12,8 +12,8 @@ use vun_isa_thumb::{Cc, Form, Halves, Kind, Need, Op, Operand, Size, Then};
 
 use vun_par::Parallel;
 
-use crate::{Asm, Emit};
-use cores::{CORES, Code};
+use crate::{Asm, Emit, Processor};
+use cores::{Code, Core};
 use operands::candidates;
 
 type Sym = &'static str;
@@ -54,7 +54,7 @@ fn conditional(form: &Form, operands: &[Operand<Sym>]) -> Vec<Line> {
         Then::T => &[cc],
         Then::E => &[cc.not()],
     };
-    let mut nop = Asm::<Sym>::listed();
+    let mut nop = Asm::<Sym>::listed(Processor::every());
     nop.emit(Op::Nop, Size::B32, &[]);
     let bytes = nop.finish().expect("no label").bytes;
     [cc].iter()
@@ -70,9 +70,9 @@ fn lines() -> Vec<Line> {
     for &op in Op::ALL {
         for form in op.forms().iter().filter(|f| !linked(f)) {
             for sized in form.sizes {
-                let needs: Vec<Need> = [form.requires, sized.requires].into_iter().flatten().collect();
+                let needs: Vec<Need> = form.needs(sized.size).collect();
                 for operands in fitting(op, form, sized.size) {
-                    let mut asm = Asm::<Sym>::listed();
+                    let mut asm = Asm::<Sym>::listed(Processor::every());
                     asm.emit_by(op, form, sized.size, &operands).expect("the form takes them");
                     let code = asm.finish().expect("no label");
                     let inst = vun_isa_thumb::Inst::new(op, sized.size, &operands);
@@ -113,9 +113,9 @@ fn differing(taken: &[&Line], code: &[u8]) -> Vec<String> {
 fn every_form_assembles_as_llvm_does_where_a_processor_has_what_it_needs() {
     let lines = lines();
     for line in &lines {
-        assert!(CORES.iter().any(|core| core.takes(line)), "no processor has what {} needs", line.text);
+        assert!(Core::all().iter().any(|core| core.takes(line)), "no processor has what {} needs", line.text);
     }
-    for core in &CORES {
+    for core in &Core::all() {
         let (taken, lacking): (Vec<&Line>, Vec<&Line>) = lines.iter().partition(|line| core.takes(line));
         let code = match core.code(&taken) {
             None => return,

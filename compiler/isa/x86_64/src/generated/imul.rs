@@ -26,6 +26,7 @@ pub(super) const IMUL: [table::Form; 3usize] = [
         writes: &[],
         implicit: &[],
         flags: Some(table::Access::Write),
+        requires: None,
     },
     table::Form {
         slots: &[
@@ -56,6 +57,7 @@ pub(super) const IMUL: [table::Form; 3usize] = [
         writes: &[],
         implicit: &[],
         flags: Some(table::Access::Write),
+        requires: None,
     },
     table::Form {
         slots: &[
@@ -86,5 +88,6 @@ pub(super) const IMUL: [table::Form; 3usize] = [
         writes: &[],
         implicit: &[],
         flags: Some(table::Access::Write),
+        requires: None,
     },
 ];

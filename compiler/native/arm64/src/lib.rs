@@ -14,7 +14,7 @@ mod tests;
 use self::asm::AsmExt;
 use vun_asm_arm64::{Arm64, Asm, Cc, Emit, Mem, Op, Operand, Reg, Size};
 use vun_codegen::snippet::{Emits, Width};
-use vun_codegen::{Anchor, Arch, Place, Recompute};
+use vun_codegen::{Anchor, Arch, Place, Processor, Recompute};
 use vun_dwarf::CallFrame;
 use vun_lir::{Address, Cond};
 use vun_object::Machine;
@@ -160,8 +160,8 @@ impl Emits for Arm {
         }
     }
 
-    fn fits(op: Op, size: Size, operands: &[Opnd]) -> bool {
-        op.form(size, operands).is_some()
+    fn fits(processor: Processor<Self>, op: Op, size: Size, operands: &[Opnd]) -> bool {
+        matches!(op.choose(processor, size, operands), Ok(Some(_)))
     }
 
     fn implicit(_: Op) -> &'static [Reg] {
@@ -206,6 +206,10 @@ impl vun_native::Native for Arm {
     };
 
     const CONVENTIONS: &'static [(Convention, Self::Convention)] = vun_asm_arm64::conventions::CONVENTIONS;
+
+    fn divides(processor: Processor<Self>) -> bool {
+        [Op::Udiv, Op::Sdiv].into_iter().all(|op| op.available(processor, Size::B64))
+    }
 
     fn machine(_: &TargetSpec) -> Machine {
         Machine::Aarch64

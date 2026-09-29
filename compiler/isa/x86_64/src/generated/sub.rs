@@ -29,6 +29,7 @@ pub(super) const SUB: [table::Form; 4usize] = [
         writes: &[],
         implicit: &[],
         flags: Some(table::Access::Write),
+        requires: None,
     },
     table::Form {
         slots: &[
@@ -57,6 +58,7 @@ pub(super) const SUB: [table::Form; 4usize] = [
         writes: &[],
         implicit: &[],
         flags: Some(table::Access::Write),
+        requires: None,
     },
     table::Form {
         slots: &[
@@ -83,6 +85,7 @@ pub(super) const SUB: [table::Form; 4usize] = [
         writes: &[],
         implicit: &[],
         flags: Some(table::Access::Write),
+        requires: None,
     },
     table::Form {
         slots: &[
@@ -111,5 +114,6 @@ pub(super) const SUB: [table::Form; 4usize] = [
         writes: &[],
         implicit: &[],
         flags: Some(table::Access::Write),
+        requires: None,
     },
 ];

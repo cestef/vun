@@ -62,8 +62,8 @@ pub(super) struct Shape {
     /// The field of a form naming its mnemonic, where it is not its instruction's.
     pub(super) form_name: Item,
     pub(super) form_flow: Item,
-    /// How its forms say what a processor needs to have them, where they do.
-    pub(super) needs: Option<Needs>,
+    /// How its forms say what a processor needs to have them.
+    pub(super) needs: Needs,
     pub(super) flows: [(Item, Flow); 3],
     /// The enums of widths, conditions and register classes.
     pub(super) size: Item,

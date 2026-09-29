@@ -7,6 +7,7 @@
 mod blocks;
 mod fit;
 pub mod imm;
+mod need;
 mod width;
 pub mod word;
 
@@ -14,6 +15,7 @@ use std::fmt;
 
 pub use blocks::{AsmOperand, Blocks, Place, Use};
 pub use fit::{ChoiceId, Fit, Fixed, Given, Misfit, Position, Takes, Why, Writeback, positions, width};
+pub use need::{Enumerated, Need, Processor};
 pub use width::Width;
 
 /// A place in a function's code that jumps name.
@@ -67,6 +69,8 @@ pub trait Isa {
     type Inst<S: Copy>: Copy;
     /// How a reference to a label is written into the code: its width and what it counts.
     type Fixup: Copy;
+    /// What a processor may have of the set beyond what every one has.
+    type Feature: Enumerated;
 
     /// Writes into `code` the distance from the reference recorded at `at` to `target`, both
     /// offsets in the code.

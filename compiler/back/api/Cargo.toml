@@ -12,6 +12,7 @@ workspace = true
 [dependencies]
 vun-abi.workspace = true
 vun-asm.workspace = true
+vun-inline.workspace = true
 vun-lir.workspace = true
 vun-lir-passes.workspace = true
 vun-origin.workspace = true

@@ -28,7 +28,7 @@ pub use inst::Inst;
 pub use operand::{Barrier, Extend, Mem, Operand, Scale, Shift, ShiftKind, SysReg};
 pub use reg::{Cc, Class, Reg, Size, V};
 pub use table::{
-    Access, Arg, Branch, Cond, Feature, Form, Imm, Kind, Mode, Need, Op, R31, Shifts, Sized, Width,
+    Access, Arg, Branch, Cond, Feature, Form, Imm, Kind, Mode, Need, Op, Processor, R31, Shifts, Sized, Width,
 };
 
 /// The instruction set.
@@ -69,6 +69,7 @@ impl Fixup {
 impl vun_isa::Isa for Arm64 {
     type Inst<S: Copy> = Inst<S>;
     type Fixup = Fixup;
+    type Feature = Feature;
 
     fn patch(fixup: Fixup, code: &mut [u8], at: u64, target: u64) -> Result<(), Unpatched> {
         let distance = i128::from(target) - i128::from(at);

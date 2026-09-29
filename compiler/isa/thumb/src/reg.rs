@@ -84,6 +84,10 @@ impl vun_isa::Width for Size {
             _ => None,
         }
     }
+
+    fn bits(self) -> u32 {
+        Self::bits(self)
+    }
 }
 
 impl Size {

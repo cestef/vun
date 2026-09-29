@@ -30,6 +30,8 @@ use vun_regalloc::PReg as Planned;
 
 /// A function's code as it is emitted.
 pub type Code<A> = vun_asm::Buffer<<A as Arch>::Isa, Address>;
+/// A processor of `A`'s instruction set, which its code is compiled for.
+pub type Processor<A> = vun_asm::Processor<<<A as Arch>::Isa as vun_asm::Isa>::Feature>;
 
 /// What the framework knows of an architecture: the registers values are held in, and the moves
 /// it makes itself.

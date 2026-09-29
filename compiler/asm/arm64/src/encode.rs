@@ -9,7 +9,8 @@ use crate::Asm;
 
 /// Emitting instructions into a function's code.
 pub trait Emit<S: Copy> {
-    /// Emits `op` at `size` over `operands`, by the first form they fit.
+    /// Emits `op` at `size` over `operands`, by the first form they fit that the processor has;
+    /// where it has none of them, records what it lacks instead ([`vun_asm::Buffer::lack`]).
     ///
     /// # Panics
     /// Panics if no form takes them: callers choose operands a form takes (`Op::form`).
@@ -31,10 +32,13 @@ pub trait Emit<S: Copy> {
 
 impl<S: Copy> Emit<S> for Asm<S> {
     fn emit(&mut self, op: Op, size: Size, operands: &[Operand<S>]) {
-        let Some((form, word)) = op.select(size, operands) else {
-            panic!("no form of `{}` at {size:?} takes these {} operands", op.mnemonic(), operands.len())
-        };
-        put(self, op, form, word, size, operands);
+        match op.choose(self.processor(), size, operands) {
+            Ok(Some((form, word))) => put(self, op, form, word, size, operands),
+            Ok(None) => {
+                panic!("no form of `{}` at {size:?} takes these {} operands", op.mnemonic(), operands.len())
+            }
+            Err(need) => self.lack(need),
+        }
     }
 
     fn emit_by(

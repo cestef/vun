@@ -15,6 +15,7 @@ use vun_items::lang::{
 
 use super::check::Term;
 use super::given::{Addressing, Word};
+use super::need::Needs;
 use super::spell::{At, Mnemonic, Spelled};
 use super::table::{Flow, Shape, Table, variants};
 use crate::env::{Env, Unevaluated};
@@ -31,7 +32,7 @@ pub(super) const SHAPE: Shape = Shape {
     member_name: member::name,
     form_name: form::name,
     form_flow: form::flow,
-    needs: None,
+    needs: Needs { form: form::requires, sized: None },
     flows: [(flow::next, Flow::Next), (flow::jump, Flow::Jump), (flow::ends, Flow::Ends)],
     size: x86::Size,
     cond: x86::Cond,

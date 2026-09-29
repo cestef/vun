@@ -17,5 +17,6 @@ pub(super) const MOVSB: [table::Form; 1usize] = [
         writes: &[reg::Reg::Rsi, reg::Reg::Rdi, reg::Reg::Rcx],
         implicit: &[reg::Reg::Rsi, reg::Reg::Rdi, reg::Reg::Rcx],
         flags: None,
+        requires: None,
     },
 ];

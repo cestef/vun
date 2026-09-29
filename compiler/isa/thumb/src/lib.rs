@@ -27,7 +27,7 @@ pub use operand::{List, Mem, Operand, Shift, ShiftKind};
 pub use reg::{Barrier, Cc, Choice, Class, Mask, Reg, Size, Special, Status, V, VName};
 pub use table::{
     Access, Arg, Branch, Encoding, Feature, Fields, Form, Halves, Imm, Kind, List as Lists, Mode, Need, Op,
-    Place, Regs, Sized, Specials, Then, Width,
+    Place, Processor, Regs, Sized, Specials, Then, Width,
 };
 
 /// The instruction set.
@@ -37,6 +37,7 @@ pub struct Thumb;
 impl vun_isa::Isa for Thumb {
     type Inst<S: Copy> = Inst<S>;
     type Fixup = Fixup;
+    type Feature = Feature;
 
     fn patch(fixup: Fixup, code: &mut [u8], at: u64, target: u64) -> Result<(), Unpatched> {
         fixup.patch(code, at, target)

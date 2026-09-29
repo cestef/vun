@@ -143,13 +143,7 @@ impl Unlowered {
     #[must_use]
     pub fn diagnostic(&self) -> Diagnostic {
         let d = if let Why::Unavailable(needed) = self.why {
-            let msg = match needed {
-                Needed::Feature(feature) => Msg::new().text("the instruction needs ").code(feature.as_str()),
-                Needed::Float(bits) => Msg::new()
-                    .text("the instruction needs a floating-point unit computing floats of ")
-                    .num(bits)
-                    .text(" bits"),
-            };
+            let msg = Msg::new().text("the instruction needs ").append(needed.msg());
             Diagnostic::error(errors::ASM_UNAVAILABLE, msg.text(", which the target's processor lacks"))
         } else {
             let msg = Msg::new().text("the program does not lower to LIR: ").text(self.to_string());

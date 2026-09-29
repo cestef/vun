@@ -37,6 +37,7 @@ const CRATE: Crate = Crate {
         ("Kind", "target", &["Branch"]),
         ("Width", "is", &["Size"]),
         ("Need", "feature", &["Feature"]),
+        ("Need", "float", &["Size"]),
     ],
 };
 

@@ -199,9 +199,10 @@ add3 := (a: u64) -> u64 {
   (`thumb` on 32-bit Arm, whose `arch` is `arm`); sema checks a block against the table it
   names whatever the target, so a library may hold blocks for several behind `$if`, and a backend
   given one of another instruction set, or without the block's (wasm), refuses it
-  (`backend.lacks`). A form may need a feature of its instruction set not every processor has
-  (`requires`, of the table's `Feature`: Thumb's `ldrexd` and `strexd` are Arm's application
-  profile's), which the checked block records; a block compiled for a target of its instruction set whose processor lacks one
+  (`backend.lacks`). A form may need what not every processor of its instruction set has
+  (`requires: ?Need`, each table's `Need` being `lang.arch.Need(Feature, Size)`: a feature of the
+  table's `Feature`, or a floating-point unit computing floats of a width; Thumb's `ldrexd` and
+  `strexd` are Arm's application profile's), which the checked block records; a block compiled for a target of its instruction set whose processor lacks one
   (`lang.target.Spec.features`) is refused where it is lowered (`asm.unavailable`), and code picks
   its instructions by `lang.target.has(.feature)` at compile time.
 

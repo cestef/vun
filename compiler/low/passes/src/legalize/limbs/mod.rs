@@ -134,6 +134,9 @@ impl Limbwise<'_> {
         } else {
             self.b.cast(if signed { CastOp::SExt } else { CastOp::ZExt }, v, self.limb, self.at)
         };
+        if count == 1 {
+            return Limbs(vec![low]);
+        }
         let fill = self.fill(low, signed);
         Limbs(std::iter::once(low).chain(std::iter::repeat_n(fill, count - 1)).collect())
     }

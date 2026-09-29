@@ -17,5 +17,6 @@ pub(super) const POPF: [table::Form; 1usize] = [
         writes: &[reg::Reg::Rsp],
         implicit: &[reg::Reg::Rsp],
         flags: Some(table::Access::Write),
+        requires: None,
     },
 ];
