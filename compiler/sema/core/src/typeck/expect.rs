@@ -69,7 +69,7 @@ impl<'a, 'db> Typer<'_, 'a, 'db> {
         let evaluated = match self.env().ty(expr) {
             // Forms typed by their context, such as `.square(5)` in `Int(0..=area(.square(5)))`,
             // evaluate once the annotation is typed.
-            Err(Unevaluated::Unsupported) => {
+            Err(Unevaluated::Unsupported | Unevaluated::Unbuilt(_)) => {
                 let outer = std::mem::replace(&mut self.stage, Stage::Compile);
                 self.typed(expr);
                 self.stage = outer;

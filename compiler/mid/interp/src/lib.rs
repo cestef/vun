@@ -27,7 +27,10 @@ impl Evaluator for Interpreter {
         let Some(instantiation) = Instantiation::of(cx, call) else {
             return Metered::unrun(Unevaluated::Absent);
         };
-        let Ok(body) = cx.get::<Mir>(&instantiation) else { return Metered::unrun(Unevaluated::Unsupported) };
+        let body = match cx.get::<Mir>(&instantiation) {
+            Ok(body) => body,
+            Err(unbuilt) => return Metered::unrun(Unevaluated::Unbuilt(unbuilt.at)),
+        };
         match Frame::new(cx, &body, call) {
             // A call of a coroutine function gives its frame (spec 06, section 1).
             Ok(frame) if body.suspends() => {

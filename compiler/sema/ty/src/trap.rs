@@ -28,6 +28,9 @@ pub enum Unevaluated {
     Failed,
     /// A form not evaluated yet.
     Unsupported,
+    /// It calls a function whose body does not build, stopping where the builder stopped: a
+    /// name that leads nowhere in it, or a form not built yet.
+    Unbuilt(OriginId),
     /// It depends on the target, which is not chosen yet.
     Untargeted,
 }
@@ -150,6 +153,7 @@ impl Unevaluated {
             Self::Provided => "it reads a declaration provided from outside",
             Self::Trapped(_) | Self::Failed => "a declaration it reads failed to evaluate",
             Self::Unsupported => "it uses a form compile-time evaluation does not run yet",
+            Self::Unbuilt(_) => "it calls a function whose body does not build",
             Self::Untargeted => "it depends on the target, which is not chosen",
         }
     }
@@ -162,7 +166,7 @@ impl Unevaluated {
     pub fn report(&self, origin: OriginId, surely: bool) -> Option<Diagnostic> {
         match self {
             Self::Trapped(trap) => Some(trap.report(origin)),
-            Self::Unsupported if surely => {
+            Self::Unsupported | Self::Unbuilt(_) if surely => {
                 let msg = Msg::new().text("compile-time evaluation does not run this form yet");
                 Some(Diagnostic::error(errors::COMPTIME_UNSUPPORTED, msg).at(origin, None))
             }

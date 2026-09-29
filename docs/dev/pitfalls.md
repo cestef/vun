@@ -70,9 +70,9 @@ Traps that cost a session before. Add one when it costs you time.
 
 ## Compile time
 
-- An exported member whose value does not evaluate is left out of the program with no report:
-  `VUN_LOG=vun_mir=debug` names it (`member not evaluated`). One such value: a test of a pattern
-  (`if x = .some(h)`) in a compile-time function's body.
+- A pattern test is written pattern first, `if .some(h) = x`. Reversed, `h` leads nowhere; in a
+  dependency's compile-time function that surfaces as `comptime.export` at the value exported,
+  labeled where evaluation stopped, with the names errors of that file.
 
 ## Native backend
 

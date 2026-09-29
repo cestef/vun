@@ -66,7 +66,7 @@ impl<'b, 'a, 'db> Frame<'b, 'a, 'db> {
         let Value::Frame(suspended) = self.read(place)? else { return Err(Unevaluated::Unsupported) };
         let cx = self.env.cx;
         let instantiation = Instantiation::of(cx, &suspended.call).ok_or(Unevaluated::Absent)?;
-        let body = cx.get::<Mir>(&instantiation).map_err(|_| Unevaluated::Unsupported)?;
+        let body = cx.get::<Mir>(&instantiation).map_err(|unbuilt| Unevaluated::Unbuilt(unbuilt.at))?;
         Ok((*suspended, body))
     }
 

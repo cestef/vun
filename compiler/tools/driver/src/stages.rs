@@ -4,6 +4,7 @@
 //! does not exist yet.
 
 use vun_diag::{DiagCtxt, DiagId, errors};
+use vun_hir::db::FileNames;
 use vun_mir::{Programs, Roots};
 use vun_mir_passes::borrows::BorrowChecks;
 use vun_mir_passes::panics::PanicChecks;
@@ -13,6 +14,7 @@ use vun_query::Query;
 use vun_sema::check::Checked;
 use vun_sema::typeck::Typed;
 use vun_sema_ty::call::Instantiation;
+use vun_sema_ty::trap::Unevaluated;
 use vun_span::{FileId, SourceMap};
 use vun_trace::{Activity, Timer, tracing};
 
@@ -159,6 +161,19 @@ impl Session {
         for body in program.functions.iter().filter(|i| i.f.literal.file != key) {
             if let Some(typed) = self.db.get::<Typed>(body) {
                 self.diag.absorb(&typed.diag);
+            }
+        }
+        // An exported value with none to place, and the names of the file where evaluating it
+        // stopped, which the program runs at compile time though no body of it is reached.
+        for export in &program.unevaluated {
+            self.diag.error(export.report());
+            if let Unevaluated::Unbuilt(at) = export.why {
+                let file = self.file_ref(self.source_span(at).file);
+                if file != key
+                    && let Some(checked) = self.db.get::<FileNames>(&file)
+                {
+                    self.diag.absorb(&checked.diag);
+                }
             }
         }
         // An error in a generic body, found through the root's calls and in the body itself.

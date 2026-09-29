@@ -134,3 +134,29 @@ wrong := ($x: u8) -> Result(u16, u16) { v := parse(x)?; .ok(v) };
     assert_eq!(ids, [errors::INT_DOES_NOT_FIT, errors::INT_DOES_NOT_FIT, errors::TYPES_MISMATCH]);
     assert_eq!(found[2].1, "expected `Result(u16, u16)`, found `Result(never, Int(0..=255))`");
 }
+
+#[test]
+fn an_exported_value_with_none_is_reported_with_where_evaluating_it_stopped() {
+    let fx = Fixture::new("comptime-export");
+    let table = Fixture::manifest("table", 2, "0.1.0");
+    // `h` leads nowhere: the test is written value first, `if .some(h) = x` reversed.
+    fx.write(
+        "table",
+        &table,
+        "\
+Config := struct { a: ?u8 = .none };
+build := ($c: Config) -> type { struct {
+    #[link.export(\"table\")]
+    table := fill(c);
+} };
+fill := ($c: Config) -> [2]u8 { mut t: [2]u8 = [0; 2]; if c.a = .some(h) { t[0] = h; } t };
+",
+    );
+    let mut app = Fixture::manifest("app", 1, "0.1.0");
+    app.deps.push(Fixture::local("table", "../table"));
+    let dir = fx.write("app", &app, "built := table.build(.{ .a = .some(3) });\n");
+    assert_eq!(
+        fx.check(&Fixture::file(&dir, &app)),
+        [errors::COMPTIME_EXPORT, errors::NAMES_UNRESOLVED, errors::NAMES_UNRESOLVED]
+    );
+}

@@ -56,7 +56,9 @@ impl Env<'_, '_> {
                         receiver = Some(object);
                         let mut types = std::iter::successors(Some(ty), |t| t.borrowed());
                         let found = types.find_map(|t| match self.member(Value::Type(t), *name) {
-                            Err(Unevaluated::Absent | Unevaluated::Unsupported) => None,
+                            Err(Unevaluated::Absent | Unevaluated::Unsupported | Unevaluated::Unbuilt(_)) => {
+                                None
+                            }
                             found => Some(found),
                         });
                         found.ok_or(Unevaluated::Unsupported)??

@@ -175,6 +175,8 @@ main := (p: stm32f4.Peripherals) -> never {
 
 An exported value that is not a function, as the vector table, is data of the program: the
 functions and link symbols it holds are reached from it, and it is placed in its link section.
+One whose value has none at compile time is an error (`comptime.export`), reported at it and,
+when evaluation stopped in a function it calls, where it stopped.
 Where it lies comes from the build: `stm32f4.layout` gives the chip's `memory` and the `sections`
 placed in it, which the program's build passes (spec 12, section 2); the linker defines
 `__<section>_start`, `__<section>_end` and, for a section loaded from another region,

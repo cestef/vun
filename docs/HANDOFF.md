@@ -71,8 +71,6 @@ placements) were the owner's choice.
 
 ## Known gaps in landed work
 
-- A test of a pattern (`if x = .some(h)`) is unsupported in compile-time bodies, and an exported
-  member that does not evaluate is dropped with only a debug log (see `dev/pitfalls.md`).
 - A `$`-generic C import (a pack inferred per call) is typed nowhere yet: such calls stay
   silently untyped (decisions 285, 286).
 - ABI: legalize splits a soft `f64` by `Rules::fits`; `Rules` should be declared in `lang` and

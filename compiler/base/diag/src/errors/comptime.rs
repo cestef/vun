@@ -7,3 +7,4 @@ pub const COMPTIME_EXHAUSTED: DiagId = DiagId::new("lang.errors.comptime.exhaust
 pub const COMPTIME_REPORTED: DiagId = DiagId::new("lang.errors.comptime.reported");
 pub const COMPTIME_UNSUPPORTED: DiagId = DiagId::new("lang.errors.comptime.unsupported");
 pub const COMPTIME_RUNTIME: DiagId = DiagId::new("lang.errors.comptime.runtime");
+pub const COMPTIME_EXPORT: DiagId = DiagId::new("lang.errors.comptime.export");

@@ -6,7 +6,7 @@ use std::sync::Arc;
 
 use vun_hir::db::FileRef;
 use vun_lir::Unit;
-use vun_mir::{Programs, Roots};
+use vun_mir::{Programs, Roots, Unready};
 use vun_query::{Cx, Query};
 use vun_sema_ty::call::Instantiation;
 use vun_trace::Activity;
@@ -43,6 +43,11 @@ impl Lowered {
         let l = Lowering::new(cx, root, true)?;
         if let Some((i, unready)) = program.unready.first() {
             return Err(Unlowered { at: i.f.literal.expr.origin, why: Why::Unready(unready.clone()) });
+        }
+        if let Some(export) = program.unevaluated.first() {
+            let at = export.decl.decl.origin;
+            let unready = Unready::Unevaluated { at, why: export.why.clone() };
+            return Err(Unlowered { at, why: Why::Unready(unready) });
         }
         let at = Lowering::root_of(&l.env);
         let mut assembly = Assembly::new(&l);

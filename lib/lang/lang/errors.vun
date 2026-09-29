@@ -110,6 +110,7 @@ comptime := struct {
     reported := diag.Diag{};
     unsupported := diag.Diag{};
     runtime := diag.Diag{};
+    export := diag.Diag{};
 };
 
 /// Place states (spec 05, section 2).

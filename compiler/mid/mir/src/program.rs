@@ -6,6 +6,7 @@
 use std::sync::Arc;
 
 use vun_codec::{Decode, Encode};
+use vun_diag::{Diagnostic, Msg, errors};
 use vun_hash::{Map, Set};
 use vun_hir::db::{FileRef, Parsed};
 use vun_hir::tree::ExprKind;
@@ -17,8 +18,8 @@ use vun_sema::link::{Exported, Placed};
 use vun_sema::member::{MemberType, MemberValue, Members};
 use vun_sema_ty::call::Instantiation;
 use vun_sema_ty::item::{DeclRef, ExprRef};
+use vun_sema_ty::trap::Unevaluated;
 use vun_sema_ty::{Ty, TyKind, Value};
-use vun_trace::tracing;
 
 use crate::{Aggregate, Concrete, Lowered, Operand, Rvalue, Unready};
 
@@ -34,6 +35,8 @@ pub struct Program {
     pub imports: Vec<DeclRef>,
     /// The functions reached whose bodies are not ready, and why.
     pub unready: Vec<(Instantiation, Unready)>,
+    /// The exported declarations whose values have none at compile time.
+    pub unevaluated: Vec<UnevaluatedExport>,
     /// The variants whose constructors are taken as values, each a function (`Body::constructor`),
     /// by its enum type and name.
     pub constructors: Vec<(Ty, Symbol)>,
@@ -48,6 +51,31 @@ pub struct ExportedDatum {
     pub symbol: Symbol,
     /// Its link section, when not the default one.
     pub section: Option<Symbol>,
+}
+
+/// An exported declaration whose value, or type, has none at compile time, and why.
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
+pub struct UnevaluatedExport {
+    pub decl: DeclRef,
+    pub symbol: Symbol,
+    pub why: Unevaluated,
+}
+
+impl UnevaluatedExport {
+    /// Its report: at the declaration, and where evaluation stopped in a function it calls.
+    #[must_use]
+    pub fn report(&self) -> Diagnostic {
+        let msg = Msg::new()
+            .text("the value exported as ")
+            .code(self.symbol.as_str())
+            .text(" has none at compile time: ")
+            .text(self.why.why());
+        let d = Diagnostic::error(errors::COMPTIME_EXPORT, msg).at(self.decl.decl.origin, None);
+        match self.why {
+            Unevaluated::Unbuilt(at) => d.label(at, Some(Msg::new().text("evaluation stopped here"))),
+            _ => d,
+        }
+    }
 }
 
 /// Where the reach of a program starts.
@@ -77,10 +105,8 @@ impl Query for Programs {
             let hir = &parsed.hir;
             for decl in hir.member_decls(ns) {
                 let decl = DeclRef::new(root.clone(), hir, decl);
-                if let Ok(value) = cx.get::<DeclValue>(&decl) {
-                    let ty = cx.get::<DeclType>(&decl).map(|known| known.ty);
-                    reach.export(&decl, &value, ty.ok());
-                }
+                let ty = cx.get::<DeclType>(&decl).map(|known| known.ty);
+                reach.export(&decl, cx.get::<DeclValue>(&decl), ty);
             }
             if *roots == Roots::Functions {
                 // A closure is reached from the body that makes it, with its captures.
@@ -127,9 +153,14 @@ struct Reach<'a, 'db> {
 
 impl Reach<'_, '_> {
     /// Finds the exports among `value`, the value of `decl` of type `ty`: a function, the value
-    /// itself as data, or, for a struct type, among its members.
-    fn export(&mut self, decl: &DeclRef, value: &Value, ty: Option<Ty>) {
-        match value {
+    /// itself as data, or, for a struct type, among its members. An exported declaration with no
+    /// value is recorded, for lowering to report.
+    fn export(&mut self, decl: &DeclRef, value: Result<Value, Unevaluated>, ty: Result<Ty, Unevaluated>) {
+        let value = match value {
+            Ok(value) => value,
+            Err(why) => return self.unevaluated(decl, why),
+        };
+        match &value {
             Value::Fn(f) => {
                 if let Some(symbol) = f.export(self.cx) {
                     let at = self.function(Instantiation::new(f.clone(), Vec::new()));
@@ -141,23 +172,27 @@ impl Reach<'_, '_> {
                 for member in &members.decls {
                     let value = self.cx.get::<MemberValue>(&(*ty, member.name));
                     let own = self.cx.get::<MemberType>(&(*ty, member.name)).map(|known| known.ty);
-                    match (value, own) {
-                        (Ok(value), own) => self.export(&member.decl, &value, own.ok()),
-                        (Err(why), _) => tracing::debug!(member = %member.name, ?why, "member not evaluated"),
-                    }
+                    self.export(&member.decl, value, own);
                 }
             }
             _ => {
                 let Some(symbol) = decl.export(self.cx) else { return };
-                let Some(ty) = ty else {
-                    tracing::debug!(%symbol, "exported datum of no known type");
-                    return;
+                let ty = match ty {
+                    Ok(ty) => ty,
+                    Err(why) => return self.unevaluated(decl, why),
                 };
-                self.value(value);
+                self.value(&value);
                 let section = decl.section(self.cx);
-                let datum = ExportedDatum { decl: decl.clone(), value: value.clone(), ty, symbol, section };
+                let datum = ExportedDatum { decl: decl.clone(), value, ty, symbol, section };
                 self.program.data.push(datum);
             }
+        }
+    }
+
+    /// Records `decl`, with no value or type at compile time, if it is exported.
+    fn unevaluated(&mut self, decl: &DeclRef, why: Unevaluated) {
+        if let Some(symbol) = decl.export(self.cx) {
+            self.program.unevaluated.push(UnevaluatedExport { decl: decl.clone(), symbol, why });
         }
     }
 

@@ -11,3 +11,4 @@ pub const exhausted: Item = Item::new(&["lang", "errors", "comptime", "exhausted
 pub const reported: Item = Item::new(&["lang", "errors", "comptime", "reported"]);
 pub const unsupported: Item = Item::new(&["lang", "errors", "comptime", "unsupported"]);
 pub const runtime: Item = Item::new(&["lang", "errors", "comptime", "runtime"]);
+pub const export: Item = Item::new(&["lang", "errors", "comptime", "export"]);
