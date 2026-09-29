@@ -66,8 +66,12 @@ That runtime, `std.os.linux.kernel.start`, calls the kernel itself: every reques
 through a block (`syscall`, `svc 0`), the shadow of the checks of unsafe code is mapped with `mmap`,
 and it exports the four functions of C's `string.h` a freestanding C compiler may call (`memcpy`,
 `memmove`, `memset`, `memcmp`), written in assembly so that no C compiler reads them back as calls
-of themselves. The program is static: linked with `-static -nostartfiles -nolibc`, keeping only the
-C compiler's own library (`libgcc`). Linking against a C library instead is another runtime:
+of themselves. On 32-bit Arm it also exports the EABI's hooks for a division by zero
+(`__aeabi_idiv0`, `__aeabi_ldiv0`), which the C compiler's division functions call and a C
+library's defaults answer with `raise`; Vun checks its divisors, so reaching one is a trap. The
+program is static: linked with `-static -nostdlib`, naming only the C compiler's helper library
+(`libgcc`) after its objects (`lang.target.CCompiler.libraries`), with no C library, start files
+or unwinder, which a program without unwinding never calls. Linking against a C library instead is another runtime:
 `std.os.libc.start(main)` exports C `main` and lets crt0 do the rest. What each C library lays out its own way (the function giving
 `errno`, the signal set, the values of `pthread_sigmask`) is a row per system,
 `std.os.libc.System`, which each system's module declares (`std.os.linux.c`); the runtime takes

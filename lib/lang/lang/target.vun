@@ -33,7 +33,8 @@ FrameSizes := enum {
 
 /// The C compiler building a target's C, and driving its link: its command, the flags that give
 /// the C backend's rules (strict C99, memory without type-based aliasing), those its links take
-/// (bare metal brings no C runtime), and what it offers beyond C99.
+/// (bare metal brings no C runtime), the libraries of its own they name, and what it offers
+/// beyond C99.
 CCompiler := struct {
     command: &[u8],
     /// The program bundling objects into a static library, as `ar` does.
@@ -42,6 +43,8 @@ CCompiler := struct {
     /// The flags a release build adds to `flags`.
     optimize: &[&[u8]],
     link_flags: &[&[u8]],
+    /// The libraries its links take after the objects, found where it finds its own (`gcc`).
+    libraries: &[&[u8]],
     atomics: Atomics,
     attributes: Attributes,
     frame_sizes: FrameSizes,

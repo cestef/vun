@@ -241,5 +241,6 @@ start := ($main: std.os.Main) -> type { struct {
     sleep := () { call(numbers.sched_yield, [0, 0, 0, 0, 0, 0]); };
 
     memory := std.os.linux.kernel.memory.exports;
+    division := if lang.target.current.arch == .arm { std.os.linux.kernel.division.exports } else { struct {} };
     threads := std.os.linux.kernel.thread.exports;
 } };

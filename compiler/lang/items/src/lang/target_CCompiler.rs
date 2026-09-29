@@ -13,6 +13,8 @@ pub const flags: Item = Item::new(&["lang", "target", "CCompiler", "flags"]);
 /// The flags a release build adds to `flags`.
 pub const optimize: Item = Item::new(&["lang", "target", "CCompiler", "optimize"]);
 pub const link_flags: Item = Item::new(&["lang", "target", "CCompiler", "link_flags"]);
+/// The libraries its links take after the objects, found where it finds its own (`gcc`).
+pub const libraries: Item = Item::new(&["lang", "target", "CCompiler", "libraries"]);
 pub const atomics: Item = Item::new(&["lang", "target", "CCompiler", "atomics"]);
 pub const attributes: Item = Item::new(&["lang", "target", "CCompiler", "attributes"]);
 pub const frame_sizes: Item = Item::new(&["lang", "target", "CCompiler", "frame_sizes"]);

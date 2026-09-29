@@ -53,10 +53,11 @@ _riscv64: _Machine = .{
 };
 
 /// A Linux target of `machine` following `abi`, built with the system's C compiler, given
-/// `flags` when compiling and linking and `link_flags` when linking.
+/// `flags` when compiling and linking, `link_flags` when linking and, after the objects,
+/// `libraries`.
 #[visible(.within(targets.linux))]
-_on := ($machine: _Machine, $abi: lang.meta.Name, $flags: &[&[u8]], $link_flags: &[&[u8]]) -> lang.target.Spec {
-    $compiler := targets.gnu("cc", "ar", flags, link_flags);
+_on := ($machine: _Machine, $abi: lang.meta.Name, $flags: &[&[u8]], $link_flags: &[&[u8]], $libraries: &[&[u8]]) -> lang.target.Spec {
+    $compiler := targets.gnu("cc", "ar", flags, link_flags, libraries);
     .{
         .arch = machine.arch,
         .isa = machine.isa,
@@ -76,11 +77,12 @@ _on := ($machine: _Machine, $abi: lang.meta.Name, $flags: &[&[u8]], $link_flags:
     }
 };
 
-/// A static target of `machine`, compiled with `flags`: linked without the C library's start
-/// files and library, keeping the C compiler's own (`libgcc`: 128-bit division), its program
-/// started by `std.os.linux.kernel`.
+/// A static target of `machine`, compiled with `flags`, its program started by
+/// `std.os.linux.kernel`: linked with none of the libraries and start files a C compiler adds of
+/// itself, naming only its helper library (`libgcc`: 128-bit division, and all division on
+/// 32-bit Arm) and no C library or unwinder, which a program without unwinding does not need.
 _kernel := ($machine: _Machine, $flags: &[&[u8]]) -> lang.target.Spec {
-    _on(machine, .kernel, flags, &["-static", "-nostartfiles", "-nolibc"])
+    _on(machine, .kernel, flags, &["-static", "-nostdlib"], &["gcc"])
 };
 
 /// 64-bit x86.

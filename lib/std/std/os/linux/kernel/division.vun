@@ -1,0 +1,14 @@
+//! The hooks the Arm EABI's division functions call for a divisor of zero (`__aeabi_idiv0`,
+//! `__aeabi_ldiv0`), which the platform may supply. A C compiler for 32-bit Arm divides through
+//! functions of its own library, and GCC's Linux one answers a zero divisor through the C
+//! library's `raise`; a program without one supplies the hooks itself. Vun checks its divisors,
+//! so reaching a hook is a trap.
+
+/// The exports, which the runtime holds on 32-bit Arm: `division := ...division.exports`.
+exports := struct {
+    #[link.export("__aeabi_idiv0"), abi.c]
+    word := (value: i32) -> lang.never { std.os.linux.kernel.end(std.os.trapped) };
+
+    #[link.export("__aeabi_ldiv0"), abi.c]
+    double := (value: i64) -> lang.never { std.os.linux.kernel.end(std.os.trapped) };
+};

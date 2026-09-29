@@ -99,6 +99,8 @@ pub mod os_linux_kernel;
 pub mod os_linux_kernel_Call;
 pub mod os_linux_kernel_calls;
 pub mod os_linux_kernel_calls_Numbers;
+pub mod os_linux_kernel_division;
+pub mod os_linux_kernel_division_exports;
 pub mod os_linux_kernel_memory;
 pub mod os_linux_kernel_memory_exports;
 pub mod os_linux_kernel_start;

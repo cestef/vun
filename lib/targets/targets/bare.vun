@@ -30,7 +30,7 @@ _on := (
         .entry_symbol = .some("Reset"),
         .backends = targets.through_c,
         .linker = .lld,
-        .c = targets.ilp32(targets.gnu(command, archiver, machine, &["-nostdlib", "-nostartfiles"])),
+        .c = targets.ilp32(targets.gnu(command, archiver, machine, &["-nostdlib", "-nostartfiles"], &[])),
     }
 };
 

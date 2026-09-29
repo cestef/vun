@@ -237,10 +237,7 @@ In flight, not in main:
   that `bare.cortex_m3` names). Native Thumb (decision 293): `vun-native-thumb` (`Thumb2`,
   row `arm` of `ARCHES`), `it` blocks in the table, `.ARM.attributes` and the Thumb bit on local
   relocations in `vun-object`; legalization splits wide integers into limbs (292, `limbs/`).
-  `targets.linux.arm` runs under `qemu-arm` with a toolchain row naming `clang
-  --target=armv7a-linux-gnueabihf -fuse-ld=lld -nostdlib` (this machine has no 32-bit Arm
-  `libgcc`; the row is not in the user's file yet: pass `VUN_TOOLCHAIN=<copy>`, as other sessions
-  read that file). 9 of the 13 driver programs agree with x86-64. Soft floats (decisions 294 to 297):
+  `targets.linux.arm` runs under `qemu-arm` (toolchain row below). 9 of the 13 driver programs agree with x86-64. Soft floats (decisions 294 to 297):
   `Spec.floats` (`TargetSpec.floats`, `vun_target::Floats`) and `#[lower.soft]` rewrite float
   arithmetic, comparisons and conversions the processor lacks, and conversions of integers wider
   than an address, into `lang.float.soft.{arith, compare, convert}`; native code holds a float the
@@ -253,10 +250,11 @@ In flight, not in main:
   (decision 298); `Spec.register_bits` is the widest integer a processor computes (299); on
   linux.arm the FPU computes `f64`, each double living in its home in the register-less float
   bank (300). The backend tests run linux.arm through both backends where the toolchain file has
-  a row for it; this machine's needs `clang --target=armv7a-linux-gnueabihf -fuse-ld=lld
-  -nostdlib` plus compiler-rt's Arm builtins archive (the NDK's
-  `libclang_rt.builtins-arm-android.a`; GCC's Linux `libgcc` needs libc's `raise`) and the
-  runner `qemu-arm`. Open: factoring the isel shared by arm64 and Thumb (`call`, `entry`,
+  a row for it; this machine's is `clang --target=arm-linux-gnueabi -fuse-ld=lld`, which
+  finds the `libgcc` of Fedora's `gcc-arm-linux-gnu`, and the runner `qemu-arm` (GCC itself
+  refuses `r7` in the runtime's blocks: its Thumb frame pointer). Kernel targets link
+  `-static -nostdlib -l gcc`, no unwinder, and the runtime answers the EABI's division-by-zero
+  hooks (decision 307). Open: factoring the isel shared by arm64 and Thumb (`call`, `entry`,
   `term`, `carry`), and the Vun asm checker refusing Armv7-A forms (`Profile::Application`) on an
   M-profile target.
 - Milestone 3a landed (decision 280): `Rules::{AAPCS, AAPCS_VFP}` (word, stack alignment,

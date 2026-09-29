@@ -16,7 +16,8 @@ pub const c_flags: Item = Item::new(&["targets", "c_flags"]);
 pub const c_optimize: Item = Item::new(&["targets", "c_optimize"]);
 /// A GCC or Clang driver, run as `command`, beside the `archiver` of its toolchain: `machine`
 /// selects the target machine (instruction set, floating-point ABI) in every compile and link,
-/// which also picks the libraries built for it, and its links take `link_flags`.
+/// which also picks the libraries built for it, and its links take `link_flags` and, after the
+/// objects, `libraries`.
 pub const gnu: Item = Item::new(&["targets", "gnu"]);
 /// The backends of a target the native backend generates code for: it for debug builds, and C
 /// wherever the others are missing.

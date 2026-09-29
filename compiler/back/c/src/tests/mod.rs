@@ -51,6 +51,7 @@ pub(crate) fn target() -> TargetSpec {
                 flags: Vec::new(),
                 optimize: Vec::new(),
                 link_flags: Vec::new(),
+                libraries: Vec::new(),
                 atomics: Atomics::None,
                 attributes: Attributes::None,
                 frame_sizes: FrameSizes::StackUsage,

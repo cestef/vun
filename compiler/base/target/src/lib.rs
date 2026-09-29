@@ -73,6 +73,8 @@ pub struct CCompiler {
     pub archiver: Symbol,
     pub flags: Vec<Symbol>,
     pub link_flags: Vec<Symbol>,
+    /// The libraries its links take after the objects, found where it finds its own.
+    pub libraries: Vec<Symbol>,
     /// The flags a release build adds to `flags`.
     pub optimize: Vec<Symbol>,
     pub atomics: Atomics,

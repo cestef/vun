@@ -19,7 +19,8 @@ pub const Attributes: Item = Item::new(&["lang", "target", "Attributes"]);
 pub const FrameSizes: Item = Item::new(&["lang", "target", "FrameSizes"]);
 /// The C compiler building a target's C, and driving its link: its command, the flags that give
 /// the C backend's rules (strict C99, memory without type-based aliasing), those its links take
-/// (bare metal brings no C runtime), and what it offers beyond C99.
+/// (bare metal brings no C runtime), the libraries of its own they name, and what it offers
+/// beyond C99.
 pub const CCompiler: Item = Item::new(&["lang", "target", "CCompiler"]);
 /// The C types of a target as its C compiler lays them out: the C backend declares its own
 /// fixed-width types from them, and checks each while compiling (spec 13, section 8.2). A `char`

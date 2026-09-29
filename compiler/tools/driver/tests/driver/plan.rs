@@ -59,7 +59,7 @@ build := (b: &mut std.build.Build) {
                   .flags = .{ \"-std=c99\", \"-ffreestanding\", \"-fno-strict-aliasing\", \"-mcpu=cortex-m4\", \
                   \"-mthumb\", \"-mfloat-abi=hard\", \"-mfpu=fpv4-sp-d16\" }, .optimize = .{ \"-O2\" }, \
                   .link_flags = .{ \"-mcpu=cortex-m4\", \"-mthumb\", \"-mfloat-abi=hard\", \"-mfpu=fpv4-sp-d16\", \
-                  \"-nostdlib\", \"-nostartfiles\" }, .atomics = .gnu, .attributes = .gnu, \
+                  \"-nostdlib\", \"-nostartfiles\" }, .libraries = .{}, .atomics = .gnu, .attributes = .gnu, \
                   .frame_sizes = .stack_usage } } }";
     assert_eq!(
         actions,

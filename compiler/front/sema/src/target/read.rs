@@ -126,6 +126,7 @@ impl Read for CCompiler {
             flags: m.strings(compiler::flags)?,
             optimize: m.strings(compiler::optimize)?,
             link_flags: m.strings(compiler::link_flags)?,
+            libraries: m.strings(compiler::libraries)?,
             atomics: m.read(compiler::atomics)?,
             attributes: m.read(compiler::attributes)?,
             frame_sizes: m.read(compiler::frame_sizes)?,

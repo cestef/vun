@@ -21,14 +21,16 @@ c_optimize: &[&[u8]] = &["-O2"];
 
 /// A GCC or Clang driver, run as `command`, beside the `archiver` of its toolchain: `machine`
 /// selects the target machine (instruction set, floating-point ABI) in every compile and link,
-/// which also picks the libraries built for it, and its links take `link_flags`.
-gnu := ($command: &[u8], $archiver: &[u8], $machine: &[&[u8]], $link_flags: &[&[u8]]) -> lang.target.CCompiler {
+/// which also picks the libraries built for it, and its links take `link_flags` and, after the
+/// objects, `libraries`.
+gnu := ($command: &[u8], $archiver: &[u8], $machine: &[&[u8]], $link_flags: &[&[u8]], $libraries: &[&[u8]]) -> lang.target.CCompiler {
     .{
         .command = command,
         .archiver = archiver,
         .flags = c_flags ++ machine,
         .optimize = c_optimize,
         .link_flags = machine ++ link_flags,
+        .libraries = libraries,
         .atomics = .gnu,
         .attributes = .gnu,
         .frame_sizes = .stack_usage,

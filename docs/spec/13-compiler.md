@@ -622,7 +622,8 @@ c` shows it, and `vun build` and `vun run` compile and link it.
 The C compiler is target data (`lang.target.CCompiler`): its command, the flags the rules above
 need (`-std=c99 -ffreestanding -fno-strict-aliasing`: the output is freestanding C, declaring all
 it uses, so no function name means anything to the compiler), the flags its links take (bare
-metal: `-nostdlib -nostartfiles`), its atomics, and how it reports frame sizes
+metal: `-nostdlib -nostartfiles`), the libraries of its own they name after the objects (`gcc`
+where it links none by itself), its atomics, and how it reports frame sizes
 (`lang.target.FrameSizes`). `vun build` writes the backend's artifacts under
 `.vun/build/<content hash>/` next to the root file, the hash of the artifacts, the C compiler
 and the profile, compiles each source with it through `vun-tool`, in parallel, with
