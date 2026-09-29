@@ -173,9 +173,10 @@ impl Session {
             Invocation { args, inputs: vec![path], outputs: vec![made.clone()], ..Invocation::default() };
         let command = compiler.command.as_str();
         Executable::new(command, command).check(&inv)?;
-        if compiler.frame_sizes == FrameSizes::StackUsage {
-            std::fs::rename(made.with_extension(STACK_USAGE), object.with_extension(STACK_USAGE))
-                .map_err(Failure::Start)?;
+        // A compiler writes no report for a source without a function it lays a frame out for.
+        let report = made.with_extension(STACK_USAGE);
+        if compiler.frame_sizes == FrameSizes::StackUsage && report.exists() {
+            std::fs::rename(report, object.with_extension(STACK_USAGE)).map_err(Failure::Start)?;
         }
         std::fs::rename(&made, &object).map_err(Failure::Start)?;
         Ok(object)
