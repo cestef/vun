@@ -32,8 +32,6 @@ pub enum TypeKind {
     Record,
     Enum,
     Typedef,
-    /// A type written with its tag or qualified name, such as `struct point`: [`Type::named`].
-    Elaborated,
     Array,
     /// `T[]`, as a parameter or a trailing member.
     IncompleteArray,
@@ -49,7 +47,13 @@ pub struct Type<'u> {
 }
 
 impl<'u> Type<'u> {
+    /// The type `raw` is, as the type it names when it is written with its tag, as `struct point`
+    /// is: clang before 22 reports those apart, as elaborated types, and later ones do not.
     pub(crate) fn new(raw: CXType, unit: CXTranslationUnit) -> Self {
+        let mut raw = raw;
+        while raw.kind == CXType_Elaborated {
+            raw = unsafe { clang_Type_getNamedType(raw) };
+        }
         Self { raw, unit, _unit: PhantomData }
     }
 
@@ -73,7 +77,6 @@ impl<'u> Type<'u> {
             CXType_Record => TypeKind::Record,
             CXType_Enum => TypeKind::Enum,
             CXType_Typedef => TypeKind::Typedef,
-            CXType_Elaborated => TypeKind::Elaborated,
             CXType_ConstantArray => TypeKind::Array,
             CXType_IncompleteArray => TypeKind::IncompleteArray,
             CXType_FunctionProto | CXType_FunctionNoProto => TypeKind::Function,
@@ -109,12 +112,6 @@ impl<'u> Type<'u> {
     #[must_use]
     pub fn canonical(&self) -> Self {
         self.wrap(unsafe { clang_getCanonicalType(self.raw) })
-    }
-
-    /// The type an elaborated one names.
-    #[must_use]
-    pub fn named(&self) -> Self {
-        self.wrap(unsafe { clang_Type_getNamedType(self.raw) })
     }
 
     /// The declaration of a record, enum or typedef type.

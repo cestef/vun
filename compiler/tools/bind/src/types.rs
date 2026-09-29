@@ -49,7 +49,6 @@ impl Binder<'_> {
                 let len = ty.array_len().ok_or_else(unsupported)?;
                 Expr::Array(Box::new(Expr::Int(i128::from(len))), Box::new(item))
             }
-            TypeKind::Elaborated => return self.ty(ty.named(), at),
             TypeKind::Record | TypeKind::Enum => {
                 let decl = ty.declaration();
                 let name = self.bound(&decl).ok_or_else(unsupported)?;
@@ -82,15 +81,15 @@ impl Binder<'_> {
         if pointee.canonical().kind() == TypeKind::Function {
             return Ok(items::option(self.function(pointee.canonical())?));
         }
-        let named = if pointee.kind() == TypeKind::Elaborated { pointee.named() } else { pointee };
-        let target = match named.kind() {
+        let target = match pointee.kind() {
             TypeKind::Void => Expr::Unit,
-            TypeKind::Record | TypeKind::Enum | TypeKind::Typedef => match self.bound(&named.declaration()) {
+            TypeKind::Record | TypeKind::Enum | TypeKind::Typedef => match self.bound(&pointee.declaration())
+            {
                 Some(name) => Expr::local(&name),
-                None if named.kind() == TypeKind::Typedef => return self.pointer(named.canonical()),
+                None if pointee.kind() == TypeKind::Typedef => return self.pointer(pointee.canonical()),
                 None => Expr::Unit,
             },
-            _ => self.ty(named, Position::Field)?.unwrap_or(Expr::Unit),
+            _ => self.ty(pointee, Position::Field)?.unwrap_or(Expr::Unit),
         };
         Ok(items::option(items::pointer(target)))
     }

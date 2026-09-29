@@ -40,8 +40,9 @@ fn a_header_reads_as_declarations_with_target_sizes() {
     assert!(mine[2].is_variadic());
     let param = mine[2].params()[0].ty();
     assert_eq!(param.kind(), TypeKind::Pointer);
-    assert_eq!(param.pointee().kind(), TypeKind::Elaborated);
-    assert_eq!(param.pointee().named().declaration().name(), "point");
+    // `struct point` is the record it names, whichever version of clang reads it.
+    assert_eq!(param.pointee().kind(), TypeKind::Record);
+    assert_eq!(param.pointee().declaration().name(), "point");
 }
 
 #[test]

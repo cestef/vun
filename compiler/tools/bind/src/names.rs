@@ -41,7 +41,6 @@ impl<'u> Binder<'u> {
         // A typedef giving a struct its own name, `typedef struct p { ... } p;`, is that struct.
         let renames = |c: &Cursor<'_>| {
             let under = c.underlying();
-            let under = if under.kind() == TypeKind::Elaborated { under.named() } else { under };
             matches!(under.kind(), TypeKind::Record | TypeKind::Enum)
                 && under.declaration().name() == c.name()
         };
@@ -96,7 +95,6 @@ impl<'u> Binder<'u> {
     fn typedef(&mut self, decl: &Cursor<'u>) {
         let name = decl.name();
         let under = decl.underlying();
-        let under = if under.kind() == TypeKind::Elaborated { under.named() } else { under };
         if matches!(under.kind(), TypeKind::Record | TypeKind::Enum)
             && let Some(key) = Self::key(&under.declaration())
         {
