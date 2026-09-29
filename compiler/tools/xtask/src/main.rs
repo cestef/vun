@@ -6,6 +6,7 @@ mod explanations;
 mod hooks;
 mod layers;
 mod lines;
+mod remote;
 mod report;
 mod size;
 mod task;

@@ -46,6 +46,12 @@ pub(crate) const TREE_SITTER: Task = Task::new(
     "generate the tree-sitter parser and compare its trees with the compiler's on every source",
     Work::Run(crate::tree_sitter::check),
 );
+pub(crate) const REMOTE: Task = Task::new(
+    "remote",
+    "mirror the working copy to a host and run the words given there",
+    Work::Run(crate::remote::run),
+)
+.params(&[crate::remote::HOST, WORDS]);
 
 /// The tasks `cargo xtask` offers as commands; the others are reached through them.
 macro_rules! commands {
@@ -55,4 +61,4 @@ macro_rules! commands {
 }
 
 pub(crate) const COMMANDS: &[vun_command::Command<vun_diag::DiagCtxt>] =
-    commands![CHECK, CORPUS, HOOKS, LAYERS, LINES, PUSH, SIZE, TREE_SITTER, TYPESET];
+    commands![CHECK, CORPUS, HOOKS, LAYERS, LINES, PUSH, REMOTE, SIZE, TREE_SITTER, TYPESET];

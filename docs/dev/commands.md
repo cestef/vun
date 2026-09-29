@@ -27,6 +27,23 @@ Changes to `vun-par`'s pool run its Miri tests:
 MIRIFLAGS="-Zmiri-num-cpus=4 -Zmiri-many-seeds=0..8 -Zmiri-ignore-leaks" cargo +nightly miri test -p vun-par --lib
 ```
 
+## Remote machines
+
+```sh
+cargo xtask remote --host am3.wg -- cargo nextest run   # or VUN_REMOTE=am3.wg
+```
+
+`remote` mirrors the working copy (rsync, without `/target` and `/.jj`) to
+`vun-build/<workspace directory>` in the host's home and runs the words there over ssh, output
+shown as it comes; each `jj` workspace has its own mirror and `target/`. A host needs rustup (the
+toolchain file picks the version), `cargo-nextest`, `wasmtime`, `wild`, `clang`, `lld`, `mold` and
+its own `~/.config/vun/toolchain.vun`. The owner's: `am3.wg` (aarch64, 11 cores, the fastest;
+x86-64-only driver tests skip there) and `petal.wg` (x86-64, 8 cores, with `qemu-user`, the arm64
+cross compiler and the `fc44` sysroot). Known host differences: Fedora 44's libclang fails
+`vun-clang`'s `a_header_reads_as_declarations_with_target_sizes` (`Elaborated` for `Record`), and
+on the aarch64 host six driver tests of the native backend and the checks fail, since the machine's
+own target there is `linux.arm64`.
+
 ## Running and inspecting
 
 ```sh
