@@ -1,0 +1,8 @@
+[
+  {
+    "change": "uomnvyrusozy",
+    "file": "corpus/accept/programs/hello.vun",
+    "before": "//! A hosted program: the runtime is a function you call (spec 08).\n\nstart := std.os.start(main);\n\nmain := (sys: &mut std.os.System) -> std.os.Exit {\n    mut out := sys.stdout();\n    std.fmt.print(&mut out, \"hello\\n\", .{});\n    .ok\n};\n",
+    "after": "//! A hosted program: the runtime is a function you call (spec 08).\n\nstart := std.os.start(main);\n\nmain := (sys: &mut std.os.System) -> std.os.Exit {\n    mut out := sys.stdout();\n    std.fmt.print(&mut out, \"hello\\n\");\n    .ok\n};\n"
+  }
+]

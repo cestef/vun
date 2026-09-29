@@ -48,6 +48,7 @@ it); the design rules are in [`spec/00-principles.md`](../spec/00-principles.md)
 |----------|-------|
 | [`HANDOFF.md`](../HANDOFF.md) | current state, open decisions and next steps, nothing durable |
 | [`dev/repository.md`](repository.md) | where things are, generated directories |
+| [`dev/assets.md`](assets.md) | the brand: cards, videos, sound, emoji, stickers, diagrams, stream kit |
 | [`dev/commands.md`](commands.md) | checks, running, inspecting, cross builds, measuring speed |
 | [`dev/crates.md`](crates.md) | the compiler's crates by area |
 | [`dev/pitfalls.md`](pitfalls.md) | traps that cost a session before |

@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <style>
+    .tile { fill: #F0ECE6; }
+    .v { stroke: #D46287; }
+    @media (prefers-color-scheme: dark) {
+      .tile { fill: #24211D; }
+      .v { stroke: #DF7999; }
+    }
+    .look { animation: look 5s ease-in-out infinite; }
+    .blink { transform-box: fill-box; transform-origin: 50% 50%; animation: blink 5s linear infinite; }
+    @keyframes look {
+      0%, 30%, 86%, 100% { transform: translateX(0); }
+      38%, 50% { transform: translateX(-22px) skewX(6deg); }
+      58%, 70% { transform: translateX(22px) skewX(-6deg); }
+    }
+    @keyframes blink {
+      0%, 14%, 20%, 88%, 94%, 100% { transform: scale(1, 1); }
+      17%, 91% { transform: scale(1.08, 0.08); }
+      95.5% { transform: scale(1, 0.9); }
+      97% { transform: scale(1.05, 0.08); }
+    }
+    @media (prefers-reduced-motion: reduce) { .look, .blink { animation: none; } }
+  </style>
+  <rect class="tile" width="200" height="200" rx="48" />
+  <g class="look">
+    <g class="blink">
+      <path class="v" d="M40,40 L90,160 L140,40" transform="translate(100 104) scale(0.62) translate(-90 -100)" fill="none" stroke-width="40" stroke-linecap="round" stroke-linejoin="round" />
+    </g>
+  </g>
+<style>.v { stroke: #DF7999; } .un { stroke: #F9F7F4; }</style>
+</svg>

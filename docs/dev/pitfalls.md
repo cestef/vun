@@ -112,3 +112,16 @@ Traps that cost a session before. Add one when it costs you time.
 - arm64: homes past 256 bytes below `x29` take an index built in `x15` (`FAR`); `x16`/`x17` are
   the framework's carrier and temp, so nothing else may use them across a jump's moves.
 - A LIR value never spans registers (no `Loc::Pair`): wide values are split by legalization.
+
+## Assets and remote runs
+
+- Motion Canvas lays out every `Layout` under a layout, reaching through plain `Node`s: a `Path`
+  (a `Layout`) inside a `Node` inside a layout box is placed by the flexbox, not by its
+  transform. A shape drawn at a place it computes sets `layout={false}` (`Mark`).
+- Motion Canvas `Txt` in a layout collapses spaces, and `textWrap="pre"` breaks nested `Txt`
+  pieces onto lines of their own: terminal text keeps its spaces as no-break spaces.
+- An `Img`'s natural size is known only once loaded: `yield img.toPromise()` before reading it.
+- `cargo xtask remote` passes its words through ssh unquoted: `sh -c "..."` and nextest filter
+  expressions with parentheses lose their quoting. Filter by name (`cargo nextest run -p crate
+  name`). A snapshot blessed on a host is overwritten by the next sync: bless from a command
+  that writes locally, or print the result and copy it back.

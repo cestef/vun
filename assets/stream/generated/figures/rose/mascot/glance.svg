@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="4 50 192 140" width="192" height="140">
+  <style>
+    .body { fill: #F9F7F4; stroke: #F9F7F4; }
+    .face { fill: #DF7999; stroke: #DF7999; }
+    .face { animation: glance 4s ease-in-out infinite; }
+    .eye { transform-box: fill-box; transform-origin: center; animation: blink 4s infinite; }
+    @keyframes glance {
+      0%, 15%, 85%, 100% { transform: translate(0, 0); }
+      25%, 40% { transform: translate(-7px, 0); }
+      55%, 70% { transform: translate(7px, -2px); }
+    }
+    @keyframes blink {
+      0%, 46%, 50%, 100% { transform: scaleY(1); }
+      48% { transform: scaleY(0.1); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      * { animation: none !important; }
+      .mood:first-child { opacity: 1; }
+    }
+  </style>
+  <g class="mascot" stroke-linecap="round" stroke-linejoin="round">
+    <path class="body" d="M50,80 H150 V160 H50 V80 Z" stroke-width="60" />
+    <g class="face" stroke-width="10"><g transform="translate(60,90)"><path class="eye" d="M0,-7 Q0,0 0,7" fill="none" /></g><g transform="translate(140,90)"><path class="eye" d="M0,-7 Q0,0 0,7" fill="none" /></g><path d="M-13,0 Q0,12 13,0 Q0,12 -13,0 Z" transform="translate(100,110)" /></g>
+  </g>
+</svg>

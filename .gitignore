@@ -14,3 +14,5 @@ editors/vscode/package-lock.json
 assets/motion/node_modules
 assets/motion/generated
 assets/motion/output
+# The OBS scene collection `pnpm obs` writes, naming this checkout's files.
+assets/stream/obs

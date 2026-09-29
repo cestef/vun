@@ -1,0 +1,35 @@
+// Written by `pnpm stream` in assets/motion from palette.toml.
+const SCHEMES = {
+  "light": {
+    "background": "#F0ECE6",
+    "text": "#24211D",
+    "muted": "#8A8074",
+    "accent": "#D46287",
+    "ink": "#24211D",
+    "echo": "#E4DED5"
+  },
+  "dark": {
+    "background": "#24211D",
+    "text": "#F0ECE6",
+    "muted": "#8A8074",
+    "accent": "#DF7999",
+    "ink": "#F9F7F4",
+    "echo": "#322D28"
+  },
+  "rose": {
+    "background": "#DF7999",
+    "text": "#24211D",
+    "muted": "#7A3450",
+    "accent": "#F9F7F4",
+    "ink": "#24211D",
+    "echo": "#D66C8E"
+  },
+  "mono": {
+    "background": "#F9F7F4",
+    "text": "#24211D",
+    "muted": "#6D645A",
+    "accent": "#24211D",
+    "ink": "#24211D",
+    "echo": "#EDE8E1"
+  }
+};

@@ -1,0 +1,16 @@
+# Vun's releases, newest first: a card and a clip each (`card.typ`, and the `release` project of
+# `assets/motion`). `highlights` holds three to five short lines.
+
+[[releases]]
+version = "0.1.0"
+date = "unreleased"
+# A placeholder: no release is made yet. The lines are the state of the compiler in
+# docs/HANDOFF.md, September 2026.
+placeholder = true
+highlights = [
+  "C, wasm and native backends: x86-64, arm64, Thumb-2",
+  "ELF and Mach-O objects, gnu, mold and wild linkers",
+  "Static Linux runtimes calling the kernel",
+  "A persisted, parallel query engine",
+  "295 corpus programs agree across backends",
+]

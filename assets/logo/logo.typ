@@ -47,3 +47,5 @@
 
 // The extent of the v with its stroke, from the view box's origin.
 #let mark-box = (left: 20, top: 20, width: 140, height: 160)
+// The extent of the wordmark with its strokes, from the view box's origin.
+#let wordmark-box = (left: 20, top: 20, width: 340, height: 160)

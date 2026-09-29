@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 380 200" width="380" height="200">
+  <style>
+    .v { stroke: #D46287; }
+    .un { stroke: #24211D; }
+    @media (prefers-color-scheme: dark) {
+      .v { stroke: #DF7999; }
+      .un { stroke: #F9F7F4; }
+    }
+    g { transform-box: fill-box; transform-origin: 50% 100%; }
+    .letter { animation: skid 1.2s linear calc((2 - var(--i)) * 0.1s) both; }
+    @keyframes skid {
+      0% { transform: translateX(-440px) skewX(-14deg); animation-timing-function: cubic-bezier(0.3, 0.6, 0.5, 1); }
+      48% { transform: translateX(10px) skewX(24deg) scale(1.04, 0.94); animation-timing-function: ease-in-out; }
+      64% { transform: translateX(0) skewX(-12deg) scale(0.97, 1.04); }
+      78% { transform: translateX(0) skewX(5deg) scale(1.01, 0.99); }
+      90% { transform: translateX(0) skewX(-2deg); }
+      100% { transform: translateX(0) skewX(0) scale(1, 1); }
+    }
+    @media (prefers-reduced-motion: reduce) { .letter { animation: none; } }
+  </style>
+  <g fill="none" stroke-width="40" stroke-linecap="round" stroke-linejoin="round">
+    <g class="letter" style="--i: 0"><path class="v" d="M40,40 L90,160 L140,40" /></g>
+    <g class="letter" style="--i: 1"><path class="un" d="M140,40 V110 A50,50 0 0 0 240,110 V40" /></g>
+    <g class="letter" style="--i: 2"><path class="un" d="M240,40 V160 M240,90 A50,50 0 0 1 340,90 V160" /></g>
+  </g>
+<style>.v { stroke: #24211D; } .un { stroke: #24211D; }</style>
+</svg>

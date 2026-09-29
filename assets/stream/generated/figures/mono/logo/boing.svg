@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 380 200" width="380" height="200">
+  <style>
+    .v { stroke: #D46287; }
+    .un { stroke: #24211D; }
+    @media (prefers-color-scheme: dark) {
+      .v { stroke: #DF7999; }
+      .un { stroke: #F9F7F4; }
+    }
+    g { transform-box: fill-box; transform-origin: 50% 100%; }
+    .letter { animation: toss 2.8s linear infinite; animation-delay: calc((2 - var(--i)) * 0.07s); }
+    .letter:last-child { animation-name: spring; animation-delay: 0s; }
+    @keyframes spring {
+      0%, 60%, 100% { transform: scale(1, 1); }
+      10% { transform: scale(1.14, 0.62); animation-timing-function: cubic-bezier(0.2, 1.6, 0.4, 1); }
+      18% { transform: scale(0.9, 1.22); }
+      26% { transform: scale(1.06, 0.92); }
+      34% { transform: scale(0.98, 1.04); }
+      42% { transform: scale(1, 1); }
+    }
+    @keyframes toss {
+      0%, 14%, 60%, 100% { transform: translateY(0) rotate(0) scale(1, 1); }
+      17% { transform: translateY(0) scale(1.1, 0.88); animation-timing-function: cubic-bezier(0.2, 0.8, 0.4, 1); }
+      28% { transform: translateY(-52px) rotate(-8deg) scale(0.94, 1.08); animation-timing-function: cubic-bezier(0.6, 0, 0.8, 0.4); }
+      39% { transform: translateY(0) rotate(3deg) scale(1.12, 0.86); animation-timing-function: ease-out; }
+      46% { transform: translateY(-6px) rotate(-1deg) scale(0.98, 1.02); }
+      52% { transform: translateY(0) rotate(0) scale(1, 1); }
+    }
+    @media (prefers-reduced-motion: reduce) { .letter { animation: none; } }
+  </style>
+  <g fill="none" stroke-width="40" stroke-linecap="round" stroke-linejoin="round">
+    <g class="letter" style="--i: 0"><path class="v" d="M40,40 L90,160 L140,40" /></g>
+    <g class="letter" style="--i: 1"><path class="un" d="M140,40 V110 A50,50 0 0 0 240,110 V40" /></g>
+    <g class="letter" style="--i: 2"><path class="un" d="M240,40 V160 M240,90 A50,50 0 0 1 340,90 V160" /></g>
+  </g>
+<style>.v { stroke: #24211D; } .un { stroke: #24211D; }</style>
+</svg>

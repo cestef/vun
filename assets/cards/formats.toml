@@ -1,0 +1,21 @@
+# The sizes, in pixels, of the places a card is shown. The social and release cards read it.
+
+[github]
+width = 1280
+height = 640
+
+[graph]
+width = 1200
+height = 630
+
+[banner]
+width = 1500
+height = 500
+
+[square]
+width = 1080
+height = 1080
+
+[portrait]
+width = 1080
+height = 1350

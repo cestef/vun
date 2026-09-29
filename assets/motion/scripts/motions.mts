@@ -3,6 +3,7 @@
 // `src/mascot/svg.ts`; `transform-box: fill-box` makes each turn on its own box.
 
 import {MOODS, type MoodName} from '../src/mascot/moods.ts';
+import {document, extent, mascot} from '../src/mascot/svg.ts';
 
 export interface Motion {
   moods: MoodName[];
@@ -101,3 +102,17 @@ export const REDUCED = `@media (prefers-reduced-motion: reduce) {
       * { animation: none !important; }
       .mood:first-child { opacity: 1; }
     }`;
+
+// Room either side of an animation's frame, a share of the body's width, for it to squash and
+// shake in.
+const SIDES = 0.1;
+
+// The SVG of `motion`, painted by the rules of `style`, framed with its headroom and sides.
+export function animated(motion: Motion, style: string): string {
+  const box = extent();
+  const above = box.height * motion.headroom;
+  const side = box.width * SIDES;
+  const framed = {x: box.x - side, y: box.y - above, width: box.width + 2 * side, height: box.height + above};
+  const drawn = mascot(...motion.moods.map((mood) => MOODS[mood].face));
+  return document(framed, `${style}\n    ${motion.css}\n    ${REDUCED}`, drawn);
+}

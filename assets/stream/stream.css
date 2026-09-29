@@ -1,0 +1,46 @@
+/* What the overlays share: a 1920 by 1080 page, transparent unless it is a scene of its own,
+   set in the brand's face; colors are the variables `overlay.js` sets from the scheme. */
+
+html, body {
+  margin: 0;
+  width: 1920px;
+  height: 1080px;
+  overflow: hidden;
+  background: transparent;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--text);
+}
+
+/* A page that fills the frame: the scheme's surface, its content in the middle. */
+.scene {
+  background: var(--background);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 48px;
+}
+
+.title { font-size: 72px; font-weight: 700; color: var(--ink); }
+.muted { font-size: 32px; color: var(--muted); }
+
+/* A panel over footage: the scheme's surface, rounded. */
+.panel {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 24px 32px;
+  border-radius: 20px;
+  background: var(--background);
+  animation: enter 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.name { font-size: 40px; font-weight: 700; color: var(--ink); }
+.role { font-size: 28px; color: var(--muted); }
+
+@keyframes enter {
+  from { opacity: 0; transform: translateX(-48px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .panel { animation: none; }
+}

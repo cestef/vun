@@ -11,11 +11,10 @@ import {
   easeOutCubic,
   sequence,
   useRandom,
-  useScene,
   waitFor,
 } from '@motion-canvas/core';
 
-import {scheme as named} from '../brand/palette';
+import {useScheme} from '../brand/palette';
 import {Mascot} from '../mascot/Mascot';
 import {MOODS, type MoodName} from '../mascot/moods';
 import {MASCOT} from '../mascot/shape';
@@ -32,7 +31,7 @@ const DROP = 900;
 const ground = (scale: number) => (MASCOT.ground - MASCOT.middle) * scale;
 
 export default makeScene2D(function* (view) {
-  const scheme = named(useScene().variables.get('scheme', 'dark')());
+  const scheme = useScheme();
   view.fill(scheme.background);
   const random = useRandom();
 

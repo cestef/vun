@@ -1,0 +1,45 @@
+<!doctype html>
+<!-- A frame for the webcam, which shows through it, the mascot peeking over its top edge and a
+     name under it. Parameters: name, scheme; the frame's place and size in pixels: x, y, width,
+     height (the bottom right corner, 480 by 360, unless given). -->
+<html>
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="stream.css">
+<style>
+  .frame {
+    position: absolute;
+    box-sizing: border-box;
+    border: 10px solid var(--accent);
+    border-radius: 28px;
+  }
+  .frame img { position: absolute; right: 32px; bottom: 100%; margin-bottom: -18px; }
+  .frame .name { position: absolute; left: 0; top: 100%; margin-top: 12px; font-size: 28px; }
+</style>
+</head>
+<body>
+<div class="frame">
+  <img data-figure="mascot/glance" alt="" width="110">
+  <div class="name" data-param="name"></div>
+</div>
+<script src="generated/schemes.js"></script>
+<script src="overlay.js"></script>
+<script>
+  // The frame's place, from whole numbers of pixels only.
+  const frame = document.querySelector('.frame');
+  const pixels = (key, fallback) => {
+    const value = Number.parseInt(params.get(key) ?? '', 10);
+    return Number.isFinite(value) && value >= 0 ? value : fallback;
+  };
+  const width = pixels('width', 480);
+  const height = pixels('height', 360);
+  const margin = 86;
+  Object.assign(frame.style, {
+    left: `${pixels('x', 1920 - margin - width)}px`,
+    top: `${pixels('y', 1080 - margin - 48 - height)}px`,
+    width: `${width}px`,
+    height: `${height}px`,
+  });
+</script>
+</body>
+</html>

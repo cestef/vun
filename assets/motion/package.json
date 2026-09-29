@@ -5,11 +5,16 @@
     "start": "vite",
     "build": "tsc --noEmit && vite build",
     "mascot": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/mascot.mts",
-    "body": "vite --open /tools/body.html"
+    "body": "vite --open /tools/body.html",
+    "stream": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/stream.mts",
+    "obs": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/obs.mts",
+    "record": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/record.mts"
   },
   "dependencies": {
     "@motion-canvas/2d": "^3.17.2",
     "@motion-canvas/core": "^3.17.2",
+    "@shikijs/core": "^4.4.3",
+    "@shikijs/engine-javascript": "^4.4.3",
     "smol-toml": "^1.4.2"
   },
   "devDependencies": {

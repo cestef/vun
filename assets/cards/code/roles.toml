@@ -1,0 +1,32 @@
+# The highlighting scopes of Vun's grammars, each drawn in a role of `colors.toml` and a font style.
+# `card.typ` and the code scenes of `assets/motion` read it.
+
+[[roles]]
+scopes = ["comment"]
+color = "comment"
+style = "italic"
+
+[[roles]]
+scopes = ["string", "constant.character"]
+color = "string"
+style = ""
+
+[[roles]]
+scopes = ["constant.numeric", "constant.language", "variable.other.member"]
+color = "literal"
+style = ""
+
+[[roles]]
+scopes = ["keyword.control", "keyword.other", "keyword.operator.stage", "keyword.operator.quote"]
+color = "keyword"
+style = ""
+
+[[roles]]
+scopes = ["keyword.operator", "punctuation"]
+color = "punct"
+style = ""
+
+[[roles]]
+scopes = ["entity.name.function", "variable.function"]
+color = "name"
+style = "bold"

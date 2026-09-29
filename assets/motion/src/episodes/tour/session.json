@@ -1,0 +1,119 @@
+{
+  "directory": "corpus/accept/programs",
+  "steps": [
+    {
+      "command": [
+        "vun",
+        "run",
+        "tour.vun"
+      ],
+      "output": [
+        {
+          "pieces": [
+            {
+              "text": "    "
+            },
+            {
+              "style": "good",
+              "text": "Building"
+            },
+            {
+              "text": " "
+            },
+            {
+              "style": "strong",
+              "text": "tour.vun"
+            }
+          ]
+        },
+        {
+          "pieces": [
+            {
+              "text": "    "
+            },
+            {
+              "style": "good",
+              "text": "Finished"
+            },
+            {
+              "text": " "
+            },
+            {
+              "style": "strong",
+              "text": ".vun/build/tour"
+            },
+            {
+              "text": " in "
+            },
+            {
+              "text": "0.11s"
+            }
+          ]
+        },
+        {
+          "pieces": [
+            {
+              "text": "     "
+            },
+            {
+              "style": "good",
+              "text": "Running"
+            },
+            {
+              "text": " "
+            },
+            {
+              "style": "strong",
+              "text": ".vun/build/tour"
+            }
+          ]
+        },
+        {
+          "pieces": [
+            {
+              "text": "mid: 4000000001"
+            }
+          ]
+        },
+        {
+          "pieces": [
+            {
+              "text": "max: 42"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "command": [
+        "vun",
+        "debug",
+        "compare",
+        "tour.vun"
+      ],
+      "output": [
+        {
+          "pieces": [
+            {
+              "text": "c: exit 0, 24 bytes of output"
+            }
+          ]
+        },
+        {
+          "pieces": [
+            {
+              "text": "native: exit 0, 24 bytes of output"
+            }
+          ]
+        },
+        {
+          "pieces": [
+            {
+              "text": "the backends agree"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

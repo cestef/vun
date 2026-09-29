@@ -1,0 +1,11 @@
+# What `pnpm record tour` captures for the tour: a session, its commands run in `directory` of the
+# repository, and changes, a file before and after a change of the repository's history.
+
+[session]
+directory = "corpus/accept/programs"
+commands = [["run", "tour.vun"], ["debug", "compare", "tour.vun"]]
+
+# std.fmt.print took its arguments as a pack.
+[[changes]]
+change = "uomnvyrusozy"
+file = "corpus/accept/programs/hello.vun"

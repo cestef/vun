@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 380 200" width="380" height="200">
+  <style>
+    .v { stroke: #D46287; }
+    .un { stroke: #24211D; }
+    @media (prefers-color-scheme: dark) {
+      .v { stroke: #DF7999; }
+      .un { stroke: #F9F7F4; }
+    }
+    g { transform-box: fill-box; transform-origin: 50% 100%; }
+    .letter { animation: shiver 2.4s linear calc(var(--i) * -0.03s) infinite; }
+    @keyframes shiver {
+      0%, 36%, 100% { transform: translate(0, 0) rotate(0); }
+      3% { transform: translate(-3px, -1px) rotate(-2deg); }
+      6% { transform: translate(3px, 0) rotate(2deg); }
+      9% { transform: translate(-3px, 1px) rotate(-1.5deg); }
+      12% { transform: translate(2px, -1px) rotate(2deg); }
+      15% { transform: translate(-2px, 0) rotate(-1.5deg); }
+      18% { transform: translate(3px, 1px) rotate(1deg); }
+      21% { transform: translate(-2px, -1px) rotate(-1deg); }
+      24% { transform: translate(2px, 0) rotate(1deg); }
+      27% { transform: translate(-1px, 0) rotate(-0.5deg); }
+      30% { transform: translate(1px, 0) rotate(0.5deg); }
+      33% { transform: translate(0, 0) rotate(0); }
+    }
+    @media (prefers-reduced-motion: reduce) { .letter { animation: none; } }
+  </style>
+  <g fill="none" stroke-width="40" stroke-linecap="round" stroke-linejoin="round">
+    <g class="letter" style="--i: 0"><path class="v" d="M40,40 L90,160 L140,40" /></g>
+    <g class="letter" style="--i: 1"><path class="un" d="M140,40 V110 A50,50 0 0 0 240,110 V40" /></g>
+    <g class="letter" style="--i: 2"><path class="un" d="M240,40 V160 M240,90 A50,50 0 0 1 340,90 V160" /></g>
+  </g>
+<style>.v { stroke: #24211D; } .un { stroke: #24211D; }</style>
+</svg>

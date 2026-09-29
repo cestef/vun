@@ -11,16 +11,6 @@
 // The mascot's mood, or none.
 #let mood = sys.inputs.at("mascot", default: none)
 
-// Highlighting scopes of `vun.sublime-syntax`, each drawn in a role of `colors.toml`.
-#let roles = (
-  ("comment", "comment", "italic"),
-  ("string, constant.character", "string", ""),
-  ("constant.numeric, constant.language, variable.other.member", "literal", ""),
-  ("keyword.control, keyword.other, keyword.operator.stage, keyword.operator.quote", "keyword", ""),
-  ("keyword.operator, punctuation", "punct", ""),
-  ("entity.name.function, variable.function", "name", "bold"),
-)
-
 #let entry(key, value) = "<key>" + key + "</key><string>" + value + "</string>"
 #let rule(scope, role, style) = (
   "<dict><key>scope</key><string>" + scope + "</string><key>settings</key><dict>"
@@ -30,7 +20,7 @@
   "<?xml version=\"1.0\" encoding=\"UTF-8\"?><plist version=\"1.0\"><dict>"
     + entry("name", "Vun " + scheme) + "<key>settings</key><array>"
     + "<dict><key>settings</key><dict>" + entry("foreground", colors.text) + "</dict></dict>"
-    + roles.map(r => rule(..r)).join()
+    + toml("roles.toml").roles.map(r => rule(r.scopes.join(", "), r.color, r.style)).join()
     + "</array></dict></plist>"
 )
 

@@ -4,3 +4,5 @@
 moods = ["calm", "glee", "wink", "awe", "sad", "cross", "sleep"]
 # The stills' width over their height.
 aspect = 1.1428571428571428
+# The radii of the stills' corners from the top left, clockwise, per unit of their height.
+corners = [0.21428571428571427, 0.21428571428571427, 0.21428571428571427, 0.21428571428571427]

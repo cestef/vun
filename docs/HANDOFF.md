@@ -18,14 +18,14 @@ static Linux runtimes calling the kernel (threads, storage per thread, files, cl
 backtraces. Programs run through either backend on linux.x86_64, linux.arm64, linux.arm (through
 `qemu`) and wasi.wasm32.
 
-In the working copy, not committed: brand assets. `assets/` nested into `logo/` (SVG wordmark,
-mark, icon, construction, sixteen CSS animations in `motion/`) and `cards/` (Typst code, social and
-icon cards over the schemes of `assets/palette.toml`), and `assets/motion` (Motion Canvas: the
-`sting`, `sting-mascot` and `mascot` videos, see `docs/dev/repository.md`) with the mascot's
-stills and CSS animations in `assets/mascot`, and cards with the mascot under each card's
-`mascot/` plus the `moods` and `lockup` cards; `cargo xtask typeset` expands each card's
-`<variants>` metadata and compiles in parallel. Open: removing PNGs of variants no longer
-declared, as `cargo gen` does.
+Brand kits (342, see [`dev/assets.md`](dev/assets.md)): the clip kit (typed segments played as
+a clip in three sizes or as a talk's slides, captions and a progress bar, sessions recorded with
+`pnpm record` through `--format styled`), the short sting and the sound mark (`pnpm sound`), the
+lower third, emoji and sticker cards, the diagram kit, release cards and scene, the OBS overlays
+and scene collection (`pnpm obs`); `cargo xtask typeset` writes several formats per document and
+every card, and `cargo xtask layers` writes `layers.toml` from `RANKS`. Open: removing outputs of
+variants no longer declared, as `cargo gen` does; code in the tall and square clips is small at 80
+columns; the overlays are not yet tried in OBS itself.
 
 Last landed (340, 341): the parser reads the productions of `nodes.vun` (an automaton per
 production, readings keeping every kind a node may be, one rule for who reads a token, kinds

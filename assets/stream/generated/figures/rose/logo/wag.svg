@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 380 200" width="380" height="200">
+  <style>
+    .v { stroke: #D46287; }
+    .un { stroke: #24211D; }
+    @media (prefers-color-scheme: dark) {
+      .v { stroke: #DF7999; }
+      .un { stroke: #F9F7F4; }
+    }
+    g { transform-box: fill-box; transform-origin: 50% 100%; }
+    .letter:first-child { animation: wag 2.6s ease-in-out infinite; }
+    @keyframes wag {
+      0%, 42%, 100% { transform: rotate(0); }
+      5% { transform: rotate(-16deg); }
+      10% { transform: rotate(14deg); }
+      15% { transform: rotate(-12deg); }
+      20% { transform: rotate(10deg); }
+      26% { transform: rotate(-6deg); }
+      32% { transform: rotate(3deg); }
+      37% { transform: rotate(-1deg); }
+    }
+    @media (prefers-reduced-motion: reduce) { .letter { animation: none; } }
+  </style>
+  <g fill="none" stroke-width="40" stroke-linecap="round" stroke-linejoin="round">
+    <g class="letter" style="--i: 0"><path class="v" d="M40,40 L90,160 L140,40" /></g>
+    <g class="letter" style="--i: 1"><path class="un" d="M140,40 V110 A50,50 0 0 0 240,110 V40" /></g>
+    <g class="letter" style="--i: 2"><path class="un" d="M240,40 V160 M240,90 A50,50 0 0 1 340,90 V160" /></g>
+  </g>
+<style>.v { stroke: #F9F7F4; } .un { stroke: #24211D; }</style>
+</svg>

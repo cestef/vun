@@ -10,14 +10,7 @@
 
 #let palette = toml("../../palette.toml")
 
-// The sizes, in pixels, of the places a card is shown.
-#let formats = (
-  github: (width: 1280, height: 640),
-  graph: (width: 1200, height: 630),
-  banner: (width: 1500, height: 500),
-  square: (width: 1080, height: 1080),
-  portrait: (width: 1080, height: 1350),
-)
+#let formats = toml("../formats.toml")
 
 #let name = sys.inputs.at("scheme", default: "light")
 #let scheme = palette.at(name)
