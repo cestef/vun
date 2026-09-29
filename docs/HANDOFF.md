@@ -7,8 +7,8 @@ Read `CLAUDE.md` and [`dev/workflow.md`](dev/workflow.md) first.
 
 ## State
 
-Everything is committed in the main chain; no `jj` workspace holds work. 517 tests pass; clippy,
-`cargo gen --check` and `lines` are clean; the corpus has 295 passing programs.
+Everything is committed in the main chain; no `jj` workspace holds work. 624 tests pass; clippy,
+`cargo gen --check`, `lines` and `layers` are clean; the corpus has 295 passing programs.
 
 Built: the front end, packages and the store, the persisted parallel query engine, sema, MIR and
 its checks, LIR with legalization, the C and wasm backends, the native backend for x86-64, arm64
@@ -17,7 +17,13 @@ static Linux runtimes calling the kernel (threads, storage per thread, files, cl
 backtraces. Programs run through either backend on linux.x86_64, linux.arm64, linux.arm (through
 `qemu`) and wasi.wasm32.
 
-Last landed: `std.fmt.print` takes its arguments as a pack (315); docs split into `HANDOFF.md`
+Last landed: editor integration, first batch (316 to 318): `#[derive(ToJson, FromJson)]`
+(`vun-json-derive` on `vun-derive-core`, shared with the codec derive) and `#[derive(Variants)]`;
+`vun-uri` (RFC 3986 and 8089, fuzz target `uri`), with manifest `.urls`/`.index`, `vun-fetch`,
+`vun-http` redirects and index paths typed through it; `vun-lsp-protocol` (typed LSP values,
+methods as types) and the server rebuilt on it, adding incremental sync, the outline, folds,
+formatting and semantic tokens (driver side in `vun-driver`'s `editor/`). Before that:
+`std.fmt.print` takes its arguments as a pack (315); docs split into `HANDOFF.md`
 (state only) and `docs/dev/` (conventions, commands, crates, pitfalls); README rewritten with a
 code card (`assets/`), MIT OR Apache-2.0 licensing, `CONTRIBUTING.md`; `design/` removed. Before
 that: the `vun-sema` split into the `sema` group (`int`, `float`, `ty`, `core`, `plan`;
@@ -29,7 +35,8 @@ naming the calls that spawned it (313).
 Proposed, not yet accepted: 249 to 251, 253 to 257, 259, 260, 262, 265, 266, 268, 269, 271, 273
 (integers in patterns), 274 (`$` forms that cannot run where written), 275 (`$if` branch scopes),
 276 (C naked functions), 277 (ELF32), 278 (`layout.offset`), 280 (32-bit AAPCS in `vun-abi`), 281
-(clocks), 283 (query soundness), 284 (files, typed errors, builds checking library bodies). 279
+(clocks), 283 (query soundness), 284 (files, typed errors, builds checking library bodies), 316
+(JSON derives), 317 (`vun-uri`, typed manifest URLs), 318 (typed LSP, its new features). 279
 (static Linux targets) and 282 (`&mut T` where `&T` is) were the owner's choice.
 
 ## Known gaps in landed work
@@ -59,6 +66,17 @@ Proposed, not yet accepted: 249 to 251, 253 to 257, 259, 260, 262, 265, 266, 268
 
 ## Next steps, most useful first
 
+0. Editor integration (the owner's current focus; editors: Zed, Helix, VS Code, Neovim; chosen:
+   the full grammar in `grammar.vun`). In order: (a) productions for every node kind in
+   `grammar.vun` (the CST shapes are what `vun debug cst` prints; punctuation is `Punct` leaves)
+   plus a conformance check of every parsed CST against them over lib, corpus and tests;
+   (b) generate a tree-sitter `grammar.js` and queries (highlights from the token tables, folds,
+   indents, locals, textobjects, Zed outline) from them; asm lines need a newline-aware external
+   scanner or a flattened form; (c) packages `editors/{zed,helix,vscode,nvim}` launching
+   `vun util lsp`; (d) the parser as an engine over the productions, diffed against the current
+   one on every file and by fuzzing, then the hand parser deleted. Then LSP: completion and
+   signature help, references, rename, code actions from diagnostic fixes, inlay hints (types of
+   `:=` bindings, `$` parameters).
 1. Backends: finish Thumb (the remaining driver programs); `macos.arm64` linking (lld, an SDK);
    riscv64 (`qemu-riscv64` is here, no sysroot); DWARF `DW_TAG_subprogram`s; memory regions
    into `LinkPlan` and a bare-metal runtime (`stm32f4` has an empty vector table and no
