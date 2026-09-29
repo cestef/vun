@@ -34,8 +34,9 @@ pub enum Via {
   by its content hash, so a fork of a release is a package of its own; a package on disk, edited
   in place, by the name, identity and version its manifest declares, which its edits keep
   (decision 247). An origin is identified by how it came to
-  exist and its anchor: a declaration by its name inside the declaration around it, anything
-  inside a declaration by its span relative to the declaration's start. `FileId` and `OriginId`
+  exist and its anchor: a declaration by its name inside the declaration around it and how many
+  declared before it there share that name (two locals of one name in sibling blocks are two
+  declarations), anything inside a declaration by its span relative to the declaration's start. `FileId` and `OriginId`
   hash by these identities, computed once, so a hash of anything holding them (query interfaces,
   persisted results) is the same in every process of one toolchain build (a fixed-seed hash,
   as query fingerprints are) and survives edits elsewhere in the file, as

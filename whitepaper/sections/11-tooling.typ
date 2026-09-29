@@ -15,7 +15,7 @@ source locations reported for run-time traps.
 
 Origins have stable identities so that they can be used in persistent caches. A file is keyed by
 its package, version and path within the package; a declaration by its name within the enclosing
-declaration; anything inside a declaration by its span relative to the declaration's start. Hashes
+declaration and its rank among the declarations sharing that name there; anything inside a declaration by its span relative to the declaration's start. Hashes
 of data containing origins are therefore the same in every process and survive edits elsewhere in
 the file.
 

@@ -37,6 +37,7 @@ impl Hir {
             hir: Self::default(),
             declaration: None,
             made: foldhash::HashMap::default(),
+            named: foldhash::HashMap::default(),
         };
         let root = source.cst.root();
         let members = lower.members(source.cst.children(root));
@@ -54,6 +55,8 @@ struct Lower<'a, 'i> {
     declaration: Option<OriginId>,
     /// How many entities have each origin so far: a further one gets its own.
     made: foldhash::HashMap<OriginId, u16>,
+    /// How many declarations of each name each declaration holds so far, the file's under `None`.
+    named: foldhash::HashMap<(Option<OriginId>, Symbol), u16>,
 }
 
 /// Escape that makes a keyword a name: `\unsafe`.
@@ -96,8 +99,10 @@ impl<'a> Lower<'a, '_> {
         let origin = match name {
             Some(name) => {
                 let span = self.source.cst.span(n, self.source.tokens);
-                let origin = self.origins.declaration(span, self.declaration, name);
-                self.own(origin)
+                let named = self.named.entry((self.declaration, name)).or_insert(0);
+                let nth = *named;
+                *named += 1;
+                self.origins.declaration(span, self.declaration, name, nth)
             }
             None => self.origin(n),
         };

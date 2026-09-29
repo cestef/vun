@@ -6,6 +6,11 @@ Traps that cost a session before. Add one when it costs you time.
 
 - Origins are equal by identity: lowering that makes two entities from one piece of syntax gives
   each its own origin (`Lower::own`); `Hir::verify` catches it. `OriginId` has no order.
+- Persisted origins are pooled by identity, so two origins of one identity are read back as one.
+  A declaration's identity counts the declarations of its name before it in the same scope
+  (`Anchor::Declaration::nth`), and `OriginTable::declaration` refuses two of one identity in one
+  text. Without that, two locals `pointer` in sibling `match` arms made a reused `mir` memo differ
+  from its recomputation only under `VUN_QUERY_CHECK=1`.
 - A query key must equal another only when computing either gives the same value: a key equal by
   origin alone kept the index a node had before an edit, so a saved memo was computed at the
   wrong node (decisions 195 and 283). A key carrying anything `compute` reads must compare it,

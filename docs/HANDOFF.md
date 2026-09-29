@@ -7,7 +7,7 @@ Read `CLAUDE.md` and [`dev/workflow.md`](dev/workflow.md) first.
 
 ## State
 
-Everything is committed in the main chain; no `jj` workspace holds work. 635 tests pass; clippy,
+Everything is committed in the main chain; no `jj` workspace holds work. 637 tests pass; clippy,
 `cargo gen --check`, `lines` and `layers` are clean; the corpus has 295 passing programs.
 
 Built: the front end, packages and the store, the persisted parallel query engine, sema, MIR and
@@ -53,15 +53,12 @@ Proposed, not yet accepted: 249 to 251, 253 to 257, 259, 260, 262, 265, 266, 268
 276 (C naked functions), 277 (ELF32), 278 (`layout.offset`), 280 (32-bit AAPCS in `vun-abi`), 281
 (clocks), 283 (query soundness), 284 (files, typed errors, builds checking library bodies), 316
 (JSON derives), 317 (`vun-uri`, typed manifest URLs), 318 (typed LSP, its new features), 319
-(productions), 320 (`vun-data`), 321 (editor grammars and packages). 279
-(static Linux targets) and 282 (`&mut T` where `&T` is) were the owner's choice.
+(productions), 320 (`vun-data`), 321 (editor grammars and packages), 322 (declaration origins
+counted by name). 279 (static Linux targets) and 282 (`&mut T` where `&T` is) were the owner's
+choice.
 
 ## Known gaps in landed work
 
-- **Unsound memo, in main since storage per thread (312 to 314):** `VUN_QUERY_CHECK=1 cargo nextest
-  run -p vun-driver` fails most backend tests: the `mir` memo of a function of
-  `std/os/linux/kernel/tls.vun` computes a different value under an equal fingerprint (even with
-  `target/tmp/memos` cleared). The plain suite passes. Fix at the source before more sema or MIR work.
 - A `$`-generic C import (a pack inferred per call) is typed nowhere yet: such calls stay
   silently untyped (decisions 285, 286).
 - Thumb: 9 of the 13 driver programs agree with x86-64 (last count).

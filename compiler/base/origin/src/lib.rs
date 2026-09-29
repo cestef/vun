@@ -9,7 +9,8 @@
 //! each other.
 //!
 //! An origin is anchored so that it is identified the same way in every process and across edits
-//! elsewhere in its file: a declaration by its name inside the declaration around it, a node inside
+//! elsewhere in its file: a declaration by its name inside the declaration around it and how many
+//! declared before it there share that name, a node inside
 //! a declaration by its span relative to the declaration, and what precedes declarations (tokens,
 //! syntax errors) by its span in the file. [`OriginId`] hashes by that identity, computed once
 //! when the origin is recorded, so hashes of anything holding origins survive both. A result
@@ -55,8 +56,9 @@ impl Hash for OriginId {
 pub enum Anchor {
     /// The file: tokens and syntax, before declarations exist.
     File,
-    /// A declaration, by its name inside the declaration around it, if any.
-    Declaration { within: Option<OriginId>, name: Symbol },
+    /// A declaration, by its name inside the declaration around it, if any, and how many declared
+    /// before it there share that name: two locals of one name in sibling blocks are two.
+    Declaration { within: Option<OriginId>, name: Symbol, nth: u16 },
     /// Inside this declaration, by the span relative to the declaration's start.
     Within(OriginId),
 }
@@ -132,15 +134,21 @@ impl OriginTable {
         self.push(Origin { span, via: Via::Source, parent: None, anchor: Anchor::File })
     }
 
-    /// Records the origin of the declaration `name`, inside the declaration `within` if any.
-    pub fn declaration(&self, span: Span, within: Option<OriginId>, name: Symbol) -> OriginId {
+    /// Records the origin of the `nth` declaration named `name` inside the declaration `within`,
+    /// if any.
+    ///
+    /// # Panics
+    /// When another declaration in the same text has its identity, which reading back would merge.
+    pub fn declaration(&self, span: Span, within: Option<OriginId>, name: Symbol, nth: u16) -> OriginId {
         let id = self.push(Origin {
             span,
             via: Via::Source,
             parent: None,
-            anchor: Anchor::Declaration { within, name },
+            anchor: Anchor::Declaration { within, name, nth },
         });
-        self.declared.pin().insert((id.identity, span.file), id.index);
+        let declared = self.declared.pin();
+        let earlier = declared.get_or_insert((id.identity, span.file), id.index);
+        assert_eq!(self.origins[*earlier as usize].span, span, "two declarations share an identity");
         id
     }
 
@@ -232,7 +240,7 @@ impl OriginTable {
         let mut at = Some(id);
         while let Some(id) = at {
             at = match self.get(id).anchor {
-                Anchor::Declaration { within, name } => {
+                Anchor::Declaration { within, name, .. } => {
                     path.push(name);
                     within
                 }

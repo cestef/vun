@@ -39,7 +39,7 @@ fn identities_survive_shifts_and_new_tables() {
         [(SourceFiles::new(), 10), (SourceFiles::new(), 50)].map(|(files, at)| {
             let f = files.add("pkg@1.0.0/pkg.vun", "");
             let t = OriginTable::new();
-            let decl = t.declaration(Span::new(f, at, at + 10), None, name);
+            let decl = t.declaration(Span::new(f, at, at + 10), None, name, 0);
             let inner = t.inside(decl, Span::new(f, at + 2, at + 4));
             let desugared = t.derive(inner, Span::new(f, at + 2, at + 4), Via::Desugar(DesugarRule(1)));
             (t, [decl, inner, desugared])
@@ -50,9 +50,9 @@ fn identities_survive_shifts_and_new_tables() {
     // Another name, or a node elsewhere in the declaration, is another origin.
     let f = SourceFiles::new().add("pkg@1.0.0/pkg.vun", "");
     let t = OriginTable::new();
-    let other = t.declaration(Span::new(f, 10, 20), None, Symbol::intern("other"));
+    let other = t.declaration(Span::new(f, 10, 20), None, Symbol::intern("other"), 0);
     assert_ne!(Hash::of_value(&other), Hash::of_value(&a[0]));
-    let moved = t.inside(t.declaration(Span::new(f, 10, 20), None, name), Span::new(f, 13, 15));
+    let moved = t.inside(t.declaration(Span::new(f, 10, 20), None, name, 0), Span::new(f, 13, 15));
     assert_ne!(Hash::of_value(&moved), Hash::of_value(&a[1]));
 }
 
@@ -61,7 +61,7 @@ fn nodes_know_the_declaration_they_are_written_in() {
     let f = SourceFiles::new().add("a.vun", "");
     let t = OriginTable::new();
     let name = vun_intern::Symbol::intern("Point");
-    let decl = t.declaration(Span::new(f, 0, 30), None, name);
+    let decl = t.declaration(Span::new(f, 0, 30), None, name, 0);
     let literal = t.inside(decl, Span::new(f, 9, 30));
     let lowered = t.derive(literal, Span::new(f, 9, 30), Via::Lower(PassId(1)));
     assert_eq!([decl, literal, lowered].map(|o| t.declaration_name(o)), [Some(name); 3]);
@@ -75,7 +75,7 @@ fn origins_persist_by_content_and_keep_their_identity() {
 
     let (files, origins) = (SourceFiles::global(), OriginTable::global());
     let f = files.add_as(vun_span::FileRef::loose("pkg/a.vun"), "a.vun", "f := 1;");
-    let decl = origins.declaration(Span::new(f, 0, 7), None, Symbol::intern("f"));
+    let decl = origins.declaration(Span::new(f, 0, 7), None, Symbol::intern("f"), 0);
     let lowered =
         origins.derive(origins.inside(decl, Span::new(f, 5, 6)), Span::new(f, 5, 6), Via::Lower(PassId(2)));
     let mut w = Writer::new();
@@ -117,11 +117,11 @@ fn an_origin_recorded_in_an_earlier_text_is_found_where_it_is_now() {
     let (then, now) = (files.add_as(key.clone(), "a.vun", "then"), files.add_as(key, "a.vun", "now"));
     let t = OriginTable::new();
     let name = Symbol::intern("limit");
-    let before = t.declaration(Span::new(then, 10, 40), None, name);
+    let before = t.declaration(Span::new(then, 10, 40), None, name, 0);
     let body = t.inside(before, Span::new(then, 20, 25));
     let lowered = t.derive(body, Span::new(then, 20, 25), Via::Lower(PassId(1)));
     // The text read again with 30 bytes more above the declaration.
-    let after = t.declaration(Span::new(now, 40, 70), None, name);
+    let after = t.declaration(Span::new(now, 40, 70), None, name, 0);
     assert_eq!(before, after);
     let reading = Reading { origins: &t, then, now };
     assert_eq!(reading.span(before), Span::new(now, 40, 70));
@@ -140,6 +140,42 @@ fn a_file_shown_at_another_path_keeps_the_identities_of_its_origins() {
     let [here, saved] = ["/one/app.vun", "/two/app.vun"].map(|path| files.add_as(key.clone(), path, "text"));
     assert_ne!(here, saved);
     let t = OriginTable::new();
-    let decl = t.declaration(Span::new(here, 10, 20), None, Symbol::intern("main"));
+    let decl = t.declaration(Span::new(here, 10, 20), None, Symbol::intern("main"), 0);
     assert_eq!(t.inside(decl, Span::new(here, 12, 14)), t.inside(decl, Span::new(saved, 12, 14)));
+}
+
+#[test]
+fn declarations_sharing_a_name_are_read_back_as_themselves() {
+    use vun_codec::{Context, Writer};
+
+    let (files, origins) = (SourceFiles::global(), OriginTable::global());
+    let f = files.add_as(
+        vun_span::FileRef::loose("pkg/twice.vun"),
+        "twice.vun",
+        "f := { { p := 1 } { p := 2 } };",
+    );
+    let (name, p) = (Symbol::intern("f"), Symbol::intern("p"));
+    let outer = origins.declaration(Span::new(f, 0, 31), None, name, 0);
+    // One local `p` in each of two sibling blocks, and a node inside each.
+    let inner = [(9, 0), (20, 1)].map(|(at, nth)| {
+        let local = origins.declaration(Span::new(f, at, at + 6), Some(outer), p, nth);
+        origins.inside(local, Span::new(f, at + 5, at + 6))
+    });
+    assert_ne!(inner[0], inner[1]);
+    let mut w = Writer::new();
+    let bytes = w.encode(&inner.to_vec());
+    let read: Vec<OriginId> = Context::new(w.into_pools()).read(&bytes).unwrap();
+    assert_eq!(read, inner, "each keeps its identity");
+    let spans = |o: &[OriginId]| o.iter().map(|&o| origins.source_span(o)).collect::<Vec<_>>();
+    assert_eq!(spans(&read), spans(&inner));
+}
+
+#[test]
+#[should_panic(expected = "two declarations share an identity")]
+fn two_declarations_of_one_identity_in_one_text_are_refused() {
+    let f = SourceFiles::new().add("a.vun", "");
+    let t = OriginTable::new();
+    let name = Symbol::intern("p");
+    let _ = t.declaration(Span::new(f, 0, 5), None, name, 0);
+    let _ = t.declaration(Span::new(f, 10, 15), None, name, 0);
 }
