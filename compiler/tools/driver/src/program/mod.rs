@@ -65,10 +65,7 @@ impl Session {
         let timer = CODE.start();
         let coded = self.code(file, Listed::No).map_err(|uncoded| match uncoded {
             Uncoded::Reported(guar) => guar,
-            Uncoded::Unlowered(unlowered) => {
-                let msg = Msg::new().text("the program does not lower to LIR: ").text(unlowered.to_string());
-                self.diag.error(Diagnostic::error(errors::BACKEND_UNLOWERED, msg).at(unlowered.at, None))
-            }
+            Uncoded::Unlowered(unlowered) => self.diag.error(unlowered.diagnostic()),
         })?;
         drop(timer);
         tracing::info!(backend = coded.backend.0, artifacts = coded.artifacts.len(), "coded");

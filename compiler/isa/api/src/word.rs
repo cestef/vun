@@ -14,11 +14,10 @@ pub enum Access {
     Address,
 }
 
-/// The Arm profiles a form is part of.
+/// What a processor has of the instruction set beyond what every one has, which a form may need.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Profile {
-    Every,
-    /// The application profile alone: Thumb on Armv7-A has instructions Armv7-M lacks.
+pub enum Feature {
+    /// Arm's application profile: Thumb on Armv7-A has instructions Armv7-M lacks.
     Application,
 }
 
@@ -100,7 +99,8 @@ pub struct Form<K: 'static, Z: 'static, R: 'static> {
     /// Pairs of positions whose registers must differ: the manual calls the instruction
     /// unpredictable where they do not.
     pub apart: &'static [[u8; 2]],
-    pub profile: Profile,
+    /// The feature a processor has where it has the form, if not every one has it.
+    pub requires: Option<Feature>,
 }
 
 impl<K: Copy, Z: Copy + PartialEq, R> Form<K, Z, R> {
@@ -115,7 +115,7 @@ impl<K: Copy, Z: Copy + PartialEq, R> Form<K, Z, R> {
             writes: &[],
             flags: None,
             apart: &[],
-            profile: Profile::Every,
+            requires: None,
         }
     }
 
@@ -145,8 +145,8 @@ impl<K: Copy, Z: Copy + PartialEq, R> Form<K, Z, R> {
     }
 
     #[must_use]
-    pub const fn profile(self, profile: Profile) -> Self {
-        Self { profile, ..self }
+    pub const fn requires(self, feature: Feature) -> Self {
+        Self { requires: Some(feature), ..self }
     }
 
     /// Its definition at `size`.

@@ -1,15 +1,17 @@
 //! Assembly blocks: an input binds the value it holds, an output the address and scalar type of
-//! its place, and a symbol the address of the function, link symbol or static it names.
+//! its place, and a symbol the address of the function, link symbol or static it names. A block
+//! of the target's instruction set uses only forms its processor has.
 
 use vun_inline::Rebind;
 use vun_items::lang::check as operations;
 use vun_lir::{Address, AsmCheck, InstKind, Output, Value};
 use vun_mir::{Asm, Operand, Place};
+use vun_sema::target::TargetOf;
 use vun_sema::ty::Value as Constant;
 use vun_target::Check;
 
 use super::{FnLower, Storage};
-use crate::unlowered::{Form, Unlowered};
+use crate::unlowered::{Form, Unlowered, Why};
 
 /// The bindings of a block, lowered in order.
 struct Binder<'f, 'l, 'a, 'db>(&'f mut FnLower<'l, 'a, 'db>);
@@ -55,11 +57,25 @@ impl FnLower<'_, '_, '_> {
     /// The block, over the values and addresses its bindings lower to. One that does not return
     /// ends its block, whose terminator is then unreachable.
     pub(super) fn asm(&mut self, asm: &Asm) -> Result<(), Unlowered> {
+        self.available(asm)?;
         let block = asm.clone().rebind(&mut Binder(self))?;
         let checked =
             if self.checked && self.l.checks.contains(Check::Asm) { Some(self.asm_check()?) } else { None };
         self.b.push(InstKind::Asm(Box::new(block), checked), None, self.at);
         Ok(())
+    }
+
+    /// Refuses a block of the target's instruction set with a form needing a feature the target's
+    /// processor lacks. A block of another is the backend's to refuse.
+    fn available(&self, asm: &Asm) -> Result<(), Unlowered> {
+        let Some(target) = self.l.env.cx.get::<TargetOf>(&()) else { return Ok(()) };
+        let lacked = asm.needs.iter().find(|n| !target.features.contains(&n.feature));
+        match lacked {
+            Some(need) if target.isa == asm.arch.symbol() => {
+                Err(Unlowered { at: need.at, why: Why::Unavailable(need.feature) })
+            }
+            _ => Ok(()),
+        }
     }
 
     /// How the block lowered is checked under the `asm` checks: at a site of its own, through

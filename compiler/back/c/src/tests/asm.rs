@@ -31,7 +31,8 @@ fn lea(origin: OriginId) -> Unit {
         operands: vec![out, address],
         origin,
     };
-    let block = Block { arch: vun_items::lang::arch::x86_64, insts: vec![inst], returns: true };
+    let block =
+        Block { arch: vun_items::lang::arch::x86_64, insts: vec![inst], returns: true, needs: Vec::new() };
     b.push(vun_lir::InstKind::Asm(Box::new(block), None), None, origin);
     let r = b.load(Scalar::I64, addr, vun_lir::Access::Plain, origin);
     b.terminate(Terminator::Return(Some(r)));
@@ -69,6 +70,7 @@ fn cortex_m4() -> TargetSpec {
     TargetSpec {
         arch: name("arm"),
         isa: name("thumb"),
+        features: Vec::new(),
         os: name("bare"),
         abi: name("eabihf"),
         convention: Convention::AapcsVfp,
@@ -99,7 +101,7 @@ fn masked(origin: OriginId) -> Unit {
     let inst = |o, operands| Inst { op: op(o), form: FormId(0), size: Size::B32.id(), operands, origin };
     let insts =
         vec![inst(Op::Mrs, vec![out, primask]), inst(Op::Cpsid, vec![Operand::Choice(Mask::I as u8)])];
-    let block = Block { arch: vun_items::lang::arch::thumb, insts, returns: true };
+    let block = Block { arch: vun_items::lang::arch::thumb, insts, returns: true, needs: Vec::new() };
     b.push(vun_lir::InstKind::Asm(Box::new(block), None), None, origin);
     let r = b.load(Scalar::I32, addr, vun_lir::Access::Plain, origin);
     b.terminate(Terminator::Return(Some(r)));

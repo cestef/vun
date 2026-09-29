@@ -76,9 +76,9 @@ pub(super) fn form(c: &Crate, record: &Literal<'_>) -> Option<TokenStream> {
         let pairs = pairs.collect::<Option<Vec<_>>>()?;
         form = quote! { #form.apart(&[#(#pairs),*]) };
     }
-    if let Some(Literal::Tagged("some", profile)) = field("profile") {
-        let profile = c.variant("Profile", profile.first()?)?;
-        form = quote! { #form.profile(#profile) };
+    if let Some(Literal::Tagged("some", feature)) = field("requires") {
+        let feature = c.variant("Feature", feature.first()?)?;
+        form = quote! { #form.requires(#feature) };
     }
     if let Literal::Tagged("some", flags) = field("flags")? {
         let flags = c.variant("Access", flags.first()?)?;

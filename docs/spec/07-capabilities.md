@@ -196,10 +196,14 @@ add3 := (a: u64) -> u64 {
   (`__attribute__((used))`); a naked function is `__attribute__((naked))` over plain `__asm__`
   alone, which is all GNU C allows it. A block is compiled
   where the target's code is in its instruction set, `lang.arch.<isa>` for the target's `isa`
-  (`thumb` on Arm's M profile, whose `arch` is `arm`); sema checks a block against the table it
+  (`thumb` on 32-bit Arm, whose `arch` is `arm`); sema checks a block against the table it
   names whatever the target, so a library may hold blocks for several behind `$if`, and a backend
   given one of another instruction set, or without the block's (wasm), refuses it
-  (`backend.lacks`).
+  (`backend.lacks`). A form may need a feature of its instruction set not every processor has
+  (`requires`, of the table's `Feature`: Thumb's `ldrexd` and `strexd` are Arm's application
+  profile's), which the checked block records; a block compiled for a target of its instruction set whose processor lacks one
+  (`lang.target.Spec.features`) is refused where it is lowered (`asm.unavailable`), and code picks
+  its instructions by `lang.target.has(.feature)` at compile time.
 
 ## 7. Checked unsafe code
 

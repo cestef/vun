@@ -46,6 +46,9 @@ pub struct Target {
     pub register_bits: u32,
     /// The instruction set its code is written in, which a block of instructions names.
     pub isa: Symbol,
+    /// What its processor has of the instruction set beyond what every processor of it has
+    /// (`lang.target.Spec.features`).
+    pub features: Vec<Symbol>,
     /// The floats its processor computes (`lang.target.Spec.floats`).
     pub floats: Floats,
     /// The value of its declaration: `lang.target.current`.
@@ -61,6 +64,7 @@ impl Target {
             address_bits: target.spec.pointer_bits,
             register_bits: target.spec.register_bits,
             isa: target.spec.isa,
+            features: target.spec.features.clone(),
             floats: target.spec.floats,
             declared: target.value.clone(),
         }

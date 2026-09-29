@@ -161,6 +161,7 @@ impl Read for TargetSpec {
         Ok(Self {
             arch: m.name(spec::arch)?,
             isa: m.name(spec::isa)?,
+            features: m.names(spec::features)?,
             cpu: m.name(spec::cpu)?,
             os: m.name(spec::os)?,
             abi: m.name(spec::abi)?,

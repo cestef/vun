@@ -11,6 +11,7 @@ workspace = true
 
 [dependencies]
 vun-codec.workspace = true
+vun-intern.workspace = true
 vun-items.workspace = true
 vun-origin.workspace = true
 

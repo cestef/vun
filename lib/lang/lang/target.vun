@@ -103,6 +103,10 @@ Spec := struct {
     /// The instruction set its code is written in, which a block of inline assembly names as
     /// `lang.arch.<isa>` (spec 07, section 6): `thumb` for Arm's M profile, the arch otherwise.
     isa: lang.meta.Name,
+    /// What its processor has of the instruction set beyond what every processor of it has, as
+    /// the set's table names it (`lang.arch.thumb.Feature`): a block of instructions compiled for
+    /// the target uses no form needing one it lacks.
+    features: &[lang.meta.Name] = &[],
     /// The processor the code is for, `generic` for any of the architecture.
     cpu: lang.meta.Name,
     /// The system programs run on; `bare` on bare metal.
@@ -145,3 +149,12 @@ usize_max: Int(0..) = _;
 /// systems by its members at compile time (`lang.target.current.os`). A machine's toolchain file
 /// changes only where the tools are, which this value does not say.
 current: Spec = _;
+
+/// Whether the target's processor has `feature` (`Spec.features`).
+has := ($feature: lang.meta.Name) -> bool {
+    mut found := false;
+    for f in current.features {
+        if f.* == feature { found = true; }
+    }
+    found
+};

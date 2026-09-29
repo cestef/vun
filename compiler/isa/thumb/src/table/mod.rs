@@ -11,7 +11,7 @@ mod syntax;
 pub use crate::generated::{Branch, Encoding, Fields, List, Mode, Op, Place, Regs, Then};
 pub use imm::Imm;
 pub use kind::{Kind, Width};
-pub use vun_isa::word::{Access, Profile};
+pub use vun_isa::word::{Access, Feature};
 
 use crate::operand::Operand;
 use crate::reg::{Reg, Size};

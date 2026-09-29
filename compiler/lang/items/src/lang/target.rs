@@ -48,3 +48,5 @@ pub const usize_max: Item = Item::new(&["lang", "target", "usize_max"]);
 /// systems by its members at compile time (`lang.target.current.os`). A machine's toolchain file
 /// changes only where the tools are, which this value does not say.
 pub const current: Item = Item::new(&["lang", "target", "current"]);
+/// Whether the target's processor has `feature` (`Spec.features`).
+pub const has: Item = Item::new(&["lang", "target", "has"]);

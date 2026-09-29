@@ -27,6 +27,7 @@ pub(crate) fn target() -> TargetSpec {
     TargetSpec {
         arch: name("x86_64"),
         isa: name("x86_64"),
+        features: Vec::new(),
         cpu: name("generic"),
         os: name("linux"),
         abi: name("gnu"),

@@ -2,13 +2,14 @@
 //! library; `gnu` holds the targets of programs on the GNU C library (`linux.gnu.x86_64`), which
 //! calling C needs.
 
-/// A machine Linux runs on: its architecture, the instruction set its code is written in, the
-/// width of an address, which gives the C data model (LP64, or ILP32), and the convention of its
-/// C functions.
+/// A machine Linux runs on: its architecture, the instruction set its code is written in and the
+/// features of it the machine has, the width of an address, which gives the C data model (LP64,
+/// or ILP32), and the convention of its C functions.
 #[visible(.within(targets.linux))]
 _Machine := struct {
     arch: lang.meta.Name,
     isa: lang.meta.Name,
+    features: &[lang.meta.Name] = &[],
     pointer_bits: u8,
     register_bits: u8,
     floats: &[type],
@@ -37,6 +38,7 @@ _arm64: _Machine = .{
 _arm: _Machine = .{
     .arch = .arm,
     .isa = .thumb,
+    .features = &[.application],
     .pointer_bits = 32,
     .register_bits = 32,
     .floats = &[f32, f64],
@@ -61,6 +63,7 @@ _on := ($machine: _Machine, $abi: lang.meta.Name, $flags: &[&[u8]], $link_flags:
     .{
         .arch = machine.arch,
         .isa = machine.isa,
+        .features = machine.features,
         .cpu = .generic,
         .os = .linux,
         .abi = abi,

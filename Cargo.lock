@@ -1283,6 +1283,7 @@ name = "vun-inline"
 version = "0.0.0"
 dependencies = [
  "vun-codec",
+ "vun-intern",
  "vun-items",
  "vun-origin",
  "vun-span",
@@ -1818,6 +1819,7 @@ dependencies = [
  "vun-codec",
  "vun-hash",
  "vun-intern",
+ "vun-trace",
 ]
 
 [[package]]

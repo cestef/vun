@@ -8,6 +8,7 @@
 //! architecture's table, in declaration order, which the generated assembler tables keep.
 
 use vun_codec::{Decode, Encode};
+use vun_intern::Symbol;
 use vun_items::Item;
 use vun_origin::OriginId;
 
@@ -50,6 +51,16 @@ pub struct Block<V, P, S> {
     pub arch: Item,
     pub insts: Vec<Inst<V, P, S>>,
     pub returns: bool,
+    /// The features of the instruction set its forms need beyond what every processor has, each
+    /// once (`lang.target.Spec.features`).
+    pub needs: Vec<Need>,
+}
+
+/// A feature of the instruction set a block's form needs, and the first instruction needing it.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encode, Decode)]
+pub struct Need {
+    pub feature: Symbol,
+    pub at: OriginId,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]

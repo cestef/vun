@@ -1,14 +1,14 @@
 //! Atomic accesses of integers wider than an address, for a processor whose atomic instructions
-//! reach one word (`lang.lower.soft`): on Thumb, where Armv7-A has exclusive loads and stores of
-//! two words, loops of them between barriers, as the word's are made, which makes each
-//! sequentially consistent whatever order it asks. No other processor has one written yet, and
-//! reaching one there is an error while compiling.
+//! reach one word (`lang.lower.soft`): on Thumb, where Arm's A profile has exclusive loads and
+//! stores of two words (`lang.arch.thumb.Feature.application`), loops of them between barriers,
+//! as the word's are made, which makes each sequentially consistent whatever order it asks. No
+//! other processor has one written yet, and reaching one there is an error while compiling.
 
 _unsupported := "no atomic access of an integer wider than an address on this target";
 
 /// Whether the target reaches `T` atomically as two words.
 _paired := ($T: type) -> bool {
-    lang.target.current.isa == .thumb and lang.meta.size(T) == 8
+    lang.target.current.isa == .thumb and lang.target.has(.application) and lang.meta.size(T) == 8
 };
 
 /// The words of `x`, low first.

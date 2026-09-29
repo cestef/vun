@@ -77,18 +77,33 @@ impl<'v> Members<'v> {
         }
     }
 
-    /// A `?&[u8]` naming a symbol.
-    pub(crate) fn symbol(&self, member: Item) -> Result<Option<Symbol>, Unread> {
+    /// The value a `?T` holds, if any.
+    pub(crate) fn option(&self, member: Item) -> Result<Option<&'v Value>, Unread> {
         match self.get(member)? {
             Value::Variant { name, .. } if *name == option::none.symbol() => Ok(None),
             Value::Variant { name, payload, .. } if *name == option::some.symbol() => {
                 match payload.as_slice() {
-                    [text] => Self::text(text).map(Some).ok_or(Unread::Member(member)),
+                    [value] => Ok(Some(value)),
                     _ => Err(Unread::Member(member)),
                 }
             }
             _ => Err(Unread::Member(member)),
         }
+    }
+
+    /// A `?&[u8]` naming a symbol.
+    pub(crate) fn symbol(&self, member: Item) -> Result<Option<Symbol>, Unread> {
+        self.option(member)?.map(|text| Self::text(text).ok_or(Unread::Member(member))).transpose()
+    }
+
+    /// The variant a `?E` holds, if any.
+    pub(crate) fn variant(&self, member: Item) -> Result<Option<Symbol>, Unread> {
+        self.option(member)?
+            .map(|value| match value {
+                Value::Variant { name, .. } => Ok(*name),
+                _ => Err(Unread::Member(member)),
+            })
+            .transpose()
     }
 
     /// The items of a `&[T]`, each read.

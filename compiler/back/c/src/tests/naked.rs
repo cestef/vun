@@ -29,7 +29,8 @@ fn calling(origin: OriginId) -> Unit {
         operands: vec![Operand::Symbol(Address::Func(FuncId::new(1)))],
         origin,
     };
-    let block = Block { arch: vun_items::lang::arch::x86_64, insts: vec![inst], returns: true };
+    let block =
+        Block { arch: vun_items::lang::arch::x86_64, insts: vec![inst], returns: true, needs: Vec::new() };
     b.push(vun_lir::InstKind::Asm(Box::new(block), None), None, origin);
     b.terminate(Terminator::Unreachable);
     let mut unit = Unit { pointer_bits: 64, ..Unit::default() };

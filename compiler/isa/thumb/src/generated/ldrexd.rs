@@ -27,5 +27,5 @@ pub(super) const LDREXD: [table::Form; 1usize] = [
             ],
         )
         .apart(&[[0, 1]])
-        .profile(table::Profile::Application),
+        .requires(table::Feature::Application),
 ];

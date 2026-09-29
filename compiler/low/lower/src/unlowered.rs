@@ -4,6 +4,8 @@ use std::fmt;
 use vun_sema::Primitive;
 
 use vun_codec::{Decode, Encode};
+use vun_diag::{Diagnostic, Msg, errors};
+use vun_intern::Symbol;
 use vun_mir::Unready;
 use vun_origin::OriginId;
 use vun_sema::ty::Ty;
@@ -30,6 +32,9 @@ pub enum Why {
     Address(u32),
     /// A coroutine's frame would hold itself (spec 06, section 1).
     Recursive,
+    /// An instruction of a block needs this feature of the instruction set, which the target's
+    /// processor lacks.
+    Unavailable(Symbol),
 }
 
 /// What lowering does not handle yet.
@@ -66,6 +71,9 @@ impl fmt::Display for Unlowered {
             Why::Untargeted => f.write_str("no target is chosen"),
             Why::Address(bits) => write!(f, "addresses of {bits} bits are as wide as no integer of LIR"),
             Why::Recursive => f.write_str("the coroutine's frame would hold itself"),
+            Why::Unavailable(feature) => {
+                write!(f, "the instruction needs `{feature}`, which the target's processor lacks")
+            }
         }
     }
 }
@@ -84,6 +92,7 @@ impl Why {
             Self::Untargeted => "untargeted",
             Self::Address(_) => "address",
             Self::Recursive => "recursive frame",
+            Self::Unavailable(_) => "unavailable instruction",
         }
     }
 }
@@ -124,6 +133,22 @@ impl Unlowered {
     #[must_use]
     pub fn unsupported(at: OriginId, form: Form) -> Self {
         Self { at, why: Why::Unsupported(form) }
+    }
+
+    /// Its report where a program is built.
+    #[must_use]
+    pub fn diagnostic(&self) -> Diagnostic {
+        let d = if let Why::Unavailable(feature) = self.why {
+            let msg = Msg::new()
+                .text("the instruction needs ")
+                .code(feature.as_str())
+                .text(", which the target's processor lacks");
+            Diagnostic::error(errors::ASM_UNAVAILABLE, msg)
+        } else {
+            let msg = Msg::new().text("the program does not lower to LIR: ").text(self.to_string());
+            Diagnostic::error(errors::BACKEND_UNLOWERED, msg)
+        };
+        d.at(self.at, None)
     }
 
     /// This failure, where a primitive is what is not handled, naming it.

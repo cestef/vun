@@ -128,6 +128,8 @@ pub struct TargetSpec {
     pub arch: Symbol,
     /// The instruction set its code is written in, which inline assembly names.
     pub isa: Symbol,
+    /// What its processor has of the instruction set beyond what every processor of it has.
+    pub features: Vec<Symbol>,
     pub cpu: Symbol,
     pub os: Symbol,
     pub abi: Symbol,

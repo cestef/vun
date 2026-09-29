@@ -48,7 +48,8 @@ fn the_verifier_checks_what_an_assembly_block_writes_and_where_it_ends() {
             let operands = vec![Bind::Bound(Bound::Out { place: Place::of(Idx::new(out)), reg: None })];
             let inst = Inst { op: OpId(0), form: FormId(0), size: SizeId(0), operands, origin };
             let arch = vun_items::lang::arch_x86_64::arith.parent().expect("a namespace");
-            block.stmts[0].value = Rvalue::Asm(Box::new(Asm { arch, insts: vec![inst], returns }));
+            block.stmts[0].value =
+                Rvalue::Asm(Box::new(Asm { arch, insts: vec![inst], returns, needs: Vec::new() }));
             block.term.kind = term;
         });
         body.verify(&origins)

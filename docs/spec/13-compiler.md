@@ -466,7 +466,9 @@ pub trait DiagSink {
   are named by system, then CPU: `targets.linux.x86_64`, `targets.bare.cortex_m4f`; the
   architecture, CPU, system and ABI are fields, never parts of a name, and so is `isa`, the
   instruction set its code is written in, which inline assembly names (spec 07, section 6):
-  the architecture's own, but `thumb` for Arm's M profile. A `Spec` also holds the
+  the architecture's own, but `thumb` for 32-bit Arm, and `features`, what its processor has of
+  that set beyond what every one has, as the set's table names it (`application`, Arm's A
+  profile, on `targets.linux.arm`; none on the Cortex-M targets). A `Spec` also holds the
   target's C model (`lang.target.C`: the width and alignment of each C integer type), which the C
   backend declares its types from. Adding a target adds a declaration; the compiler is not
   rebuilt. Compile-time code reads the chosen target as `lang.target.current`, the value of its

@@ -45,7 +45,12 @@ impl<V, P, S> Block<V, P, S> {
                 origin: inst.origin,
             })
         });
-        Ok(Block { arch: self.arch, insts: insts.collect::<Result<_, _>>()?, returns: self.returns })
+        Ok(Block {
+            arch: self.arch,
+            insts: insts.collect::<Result<_, _>>()?,
+            returns: self.returns,
+            needs: self.needs,
+        })
     }
 }
 

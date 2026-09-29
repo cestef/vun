@@ -103,7 +103,8 @@ impl Checker<'_> {
             }
         }
         let returns = self.returns(&insts);
-        fits.then(|| Block { arch: self.arch.namespace(), insts, returns })
+        let needs = self.table.needs(self.arch, &insts);
+        fits.then(|| Block { arch: self.arch.namespace(), insts, returns, needs })
     }
 
     fn inst(

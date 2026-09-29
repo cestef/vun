@@ -26,7 +26,7 @@ const CRATE: Crate = Crate {
         ("Branch", "table", "Branch"),
         ("Then", "table", "Then"),
         ("Status", "reg", "Status"),
-        ("Profile", "table", "Profile"),
+        ("Feature", "table", "Feature"),
     ],
     widths: &[],
     enums: &[

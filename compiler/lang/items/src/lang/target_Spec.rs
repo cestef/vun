@@ -11,6 +11,10 @@ pub const arch: Item = Item::new(&["lang", "target", "Spec", "arch"]);
 /// The instruction set its code is written in, which a block of inline assembly names as
 /// `lang.arch.<isa>` (spec 07, section 6): `thumb` for Arm's M profile, the arch otherwise.
 pub const isa: Item = Item::new(&["lang", "target", "Spec", "isa"]);
+/// What its processor has of the instruction set beyond what every processor of it has, as
+/// the set's table names it (`lang.arch.thumb.Feature`): a block of instructions compiled for
+/// the target uses no form needing one it lacks.
+pub const features: Item = Item::new(&["lang", "target", "Spec", "features"]);
 /// The processor the code is for, `generic` for any of the architecture.
 pub const cpu: Item = Item::new(&["lang", "target", "Spec", "cpu"]);
 /// The system programs run on; `bare` on bare metal.

@@ -33,7 +33,11 @@ fn block(
     let (op, form) = (OpId(u16::try_from(op).expect("few")), FormId(u16::try_from(form).expect("few")));
     let size = SizeId(u8::try_from(size).expect("few"));
     let inst = Inst { op, form, size, operands: [out].into_iter().chain(operands).collect(), origin };
-    b.push(InstKind::Asm(Box::new(Block { arch, insts: vec![inst], returns: true }), None), None, origin);
+    b.push(
+        InstKind::Asm(Box::new(Block { arch, insts: vec![inst], returns: true, needs: Vec::new() }), None),
+        None,
+        origin,
+    );
     let r = b.load(Scalar::I64, addr, Access::Plain, origin);
     b.terminate(Terminator::Return(Some(r)));
 }
@@ -123,7 +127,11 @@ fn store(
     let size = SizeId(u8::try_from(size).expect("few"));
     let operands = if arch == vun_items::lang::arch::x86_64 { vec![at, value] } else { vec![value, at] };
     let inst = Inst { op, form, size, operands, origin };
-    b.push(InstKind::Asm(Box::new(Block { arch, insts: vec![inst], returns: true }), check), None, origin);
+    b.push(
+        InstKind::Asm(Box::new(Block { arch, insts: vec![inst], returns: true, needs: Vec::new() }), check),
+        None,
+        origin,
+    );
     b.terminate(Terminator::Return(Some(n)));
 }
 
@@ -190,7 +198,12 @@ fn a_checked_write_keeps_the_floating_point_registers_its_block_names() {
         let first = Inst { op, form, size, operands: vec![vun_inline::Operand::Reg(xmm0), value()], origin };
         let (op, form) = id(Op::Mov, mov);
         let second = Inst { op, form, size, operands: vec![at, value()], origin };
-        let block = Block { arch: vun_items::lang::arch::x86_64, insts: vec![first, second], returns: true };
+        let block = Block {
+            arch: vun_items::lang::arch::x86_64,
+            insts: vec![first, second],
+            returns: true,
+            needs: Vec::new(),
+        };
         b.push(InstKind::Asm(Box::new(block), Some(checked())), None, origin);
         b.terminate(Terminator::Return(Some(n)));
     });

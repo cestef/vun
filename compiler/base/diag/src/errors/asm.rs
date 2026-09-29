@@ -10,3 +10,4 @@ pub const ASM_IMMEDIATE_TOO_WIDE: DiagId = DiagId::new(
     "lang.errors.asm.immediate_too_wide",
 );
 pub const ASM_REGISTER_CLASS: DiagId = DiagId::new("lang.errors.asm.register_class");
+pub const ASM_UNAVAILABLE: DiagId = DiagId::new("lang.errors.asm.unavailable");

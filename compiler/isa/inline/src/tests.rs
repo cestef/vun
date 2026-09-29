@@ -12,7 +12,7 @@ fn lea() -> Block<u32, u32, u32> {
     let operands = vec![Operand::Bound(Bound::Out { place: 2, reg: None }), Operand::Mem(address)];
     let inst = Inst { op: OpId(7), form: FormId(0), size: SizeId(3), operands, origin };
     let arch = vun_items::lang::arch_x86_64::arith.parent().expect("a namespace");
-    Block { arch, insts: vec![inst], returns: true }
+    Block { arch, insts: vec![inst], returns: true, needs: Vec::new() }
 }
 
 /// Values become strings, places their negation, symbols stay.

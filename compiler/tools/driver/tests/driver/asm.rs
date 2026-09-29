@@ -4,7 +4,10 @@
 
 use vun_driver::Session;
 use vun_harness::{ACCEPT, repo_root};
+use vun_intern::Symbol;
+use vun_lower::Why;
 use vun_sema::asm::{Arch, ArchTable};
+use vun_sema::target::Choice;
 
 #[test]
 fn tables_number_instructions_and_forms_as_the_assemblers_do() {
@@ -101,4 +104,30 @@ fn a_value_read_in_a_register_a_block_writes_is_kept_apart_through_each_backend(
         let ran = std::process::Command::new(&program).output().unwrap();
         assert_eq!(ran.status.code(), Some(7), "{backend}");
     }
+}
+
+/// A block loading two words exclusively, which Thumb has on Arm's application profile alone.
+const PAIRED: &str = "\
+#[link.export(\"paired\")]
+paired := (at: usize) -> u32 {
+    mut (low, high): (u32, u32) = (0, 0);
+    unsafe lang.arch.thumb.asm {
+        ldrexd {out(r2) low}, {out(r3) high}, [{in(r0) at}]
+    };
+    low ^ high
+};
+";
+
+#[test]
+fn a_block_is_refused_for_a_processor_lacking_a_feature_one_of_its_forms_needs() {
+    let lowered = |target: [&str; 2]| {
+        let fixture = crate::common::Fixture::new(&format!("asm-paired-{}", target[1]));
+        let path = fixture.root.write("main.vun", PAIRED);
+        let mut session = fixture.session();
+        session.choice = Choice::Path(target.iter().map(|&n| Symbol::intern(n)).collect());
+        let file = session.load(&path).unwrap();
+        session.lir(file).as_ref().as_ref().err().map(|unlowered| unlowered.why.clone())
+    };
+    assert_eq!(lowered(["bare", "cortex_m4f"]), Some(Why::Unavailable(Symbol::intern("application"))));
+    assert_eq!(lowered(["linux", "arm"]), None);
 }

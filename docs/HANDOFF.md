@@ -254,9 +254,12 @@ In flight, not in main:
   finds the `libgcc` of Fedora's `gcc-arm-linux-gnu`, and the runner `qemu-arm` (GCC itself
   refuses `r7` in the runtime's blocks: its Thumb frame pointer). Kernel targets link
   `-static -nostdlib -l gcc`, no unwinder, and the runtime answers the EABI's division-by-zero
-  hooks (decision 307). Open: factoring the isel shared by arm64 and Thumb (`call`, `entry`,
-  `term`, `carry`), and the Vun asm checker refusing Armv7-A forms (`Profile::Application`) on an
-  M-profile target.
+  hooks (decision 307). Calls, parameters, returns, terminators and carriers are written once in
+  `vun_native::select` (`Carries`, `Frames`, `Terminates`), arm64 and Thumb giving the hooks. A
+  target lists its processor's features (`Spec.features`, decision 308): lowering refuses a block
+  whose form needs one the target lacks (`asm.unavailable`), and `lang.mem.soft` pairs words only
+  where the target has `application`. Open: Armv7-M-only forms (`msr primask`) are not marked,
+  so a block using one is accepted on linux.arm.
 - Milestone 3a landed (decision 280): `Rules::{AAPCS, AAPCS_VFP}` (word, stack alignment,
   `returned`, `Floats`, `Split`), backfill in `vun-abi`'s banks, `Loc::Split { parts, rest }` for
   straddling records (handled by the x86-64 and arm64 isel), wide results as `AbiType::Wide`

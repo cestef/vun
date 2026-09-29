@@ -102,9 +102,9 @@ Access := enum {
     address,
 };
 
-/// The Arm profile a form is part of alone, where not every one is: Thumb on Armv7-A has
-/// instructions Armv7-M lacks (`ldrexd`).
-Profile := enum { application };
+/// What a processor has of Thumb beyond what every one has (`lang.target.Spec.features`): Arm's
+/// application profile has instructions Armv7-M lacks (`ldrexd`).
+Feature := enum { application };
 
 /// Where control goes after a form.
 Flow := enum {
@@ -152,8 +152,8 @@ Form := ($W: type) -> type { struct {
     /// Pairs of operand positions whose registers must differ, a memory operand's by its base:
     /// the manual calls the instruction unpredictable where they do not.
     apart: &[[2]u8] = &[],
-    /// The profile it is part of alone, if not every one.
-    profile: ?Profile = .none,
+    /// The feature a processor has where it has the form, if not every one has it.
+    requires: ?Feature = .none,
 } };
 
 /// An instruction, named as its declaration is unless `mnemonic` says otherwise (`bcond` is
