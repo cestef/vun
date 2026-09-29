@@ -1,6 +1,6 @@
 // A code card for the README: a corpus program, highlighted, on a rounded panel.
 //
-// Compiled by `cargo xtask typeset`, once per `scheme` input.
+// Compiled by `cargo xtask typeset`, once per variant declared at the end.
 
 #let source = "/corpus/accept/programs/tour.vun"
 #let scheme = sys.inputs.at("scheme", default: "light")
@@ -53,3 +53,5 @@
       raw(code, lang: "vun", block: true, syntaxes: "/editors/sublime/vun.sublime-syntax", theme: theme)),
   ),
 )
+
+#metadata(toml("colors.toml").keys().map(s => (path: (s,), inputs: (scheme: s)))) <variants>

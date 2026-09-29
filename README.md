@@ -1,7 +1,7 @@
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="assets/wordmark-dark.svg">
-    <img alt="vun" src="assets/wordmark-light.svg" width="160">
+    <source media="(prefers-color-scheme: dark)" srcset="assets/logo/wordmark/dark.svg">
+    <img alt="vun" src="assets/logo/wordmark/light.svg" width="160">
   </picture>
 </p>
 
@@ -9,8 +9,8 @@
 
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="assets/code-dark.png">
-    <img alt="A Vun program: exact integer arithmetic, written narrowing and a typed template" src="assets/code-light.png" width="720">
+    <source media="(prefers-color-scheme: dark)" srcset="assets/cards/code/dark.png">
+    <img alt="A Vun program: exact integer arithmetic, written narrowing and a typed template" src="assets/cards/code/light.png" width="720">
   </picture>
 </p>
 

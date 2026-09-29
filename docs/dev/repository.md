@@ -10,7 +10,7 @@ fuzz/                                        cargo-fuzz targets (a workspace mem
 whitepaper/                                  Typst paper; it quotes real numbers and `vun` output
 editors/                                     editor grammars, generated from `grammar.vun` by `cargo gen`
 docs/                                        spec, decisions, these notes, research, references
-assets/                                      wordmark, README code card (`code/card.typ`, `code/colors.toml`)
+assets/{logo,cards}, assets/palette.toml     logo SVGs and animations; Typst cards (code, social, icon) and their PNGs
 README.md, CONTRIBUTING.md, LICENSE-*        for people: pitch, how to try, how to contribute; MIT OR Apache-2.0
 ```
 
@@ -31,9 +31,26 @@ longer generated. Generated files are held to the 300-line limit too.
 
 Rust names `lang` and `std` items only through `vun_items`.
 
-## The README code card
+## Assets
 
-`assets/code-{light,dark}.png` render `corpus/accept/programs/tour.vun` (so the corpus keeps it
-compiling) with `editors/sublime/vun.sublime-syntax` (generated from the grammar), in the colors of `assets/code/colors.toml`
-and JetBrains Mono. Regenerate after changing any of them with `cargo xtask typeset`, which also
-compiles the whitepaper; the documents it compiles are the table `typeset::ALL` of `xtask`.
+```
+assets/palette.toml         brand schemes (light, dark, rose, mono) the cards read
+assets/logo/                hand-drawn SVGs: wordmark/, mark/, icon/, construction.svg, motion/
+assets/logo/logo.typ        the logo's geometry for Typst, in the coordinates of wordmark/*.svg
+assets/cards/<card>/        card.typ and its PNGs, one per variant: code/, social/, icon/
+```
+
+`*/adaptive.svg` follow `prefers-color-scheme`; `mono.svg` strokes in `currentColor`; `motion/`
+animates with CSS and stills under `prefers-reduced-motion`. The logo's geometry is written twice,
+in the SVGs and in `logo.typ`: a change to one is made to the other.
+
+`cargo xtask typeset` compiles the table `typeset::ALL` of `xtask` (the whitepaper and the
+cards), in parallel. A card with variants declares them itself as `#metadata(..) <variants>`: an
+array of `(path: (..), inputs: (..))`, each compiled with its `sys.inputs` to
+`<dir>/<path>.png`. Adding a scheme to `palette.toml` or a size to a card adds its outputs; a
+variant removed leaves its old PNG to delete by hand. The cards draw at 72 pixels per inch, so a
+point is a pixel.
+
+The code card renders `corpus/accept/programs/tour.vun` (so the corpus keeps it compiling) with
+`editors/sublime/vun.sublime-syntax` (generated from the grammar), in the colors of
+`assets/cards/code/colors.toml` and JetBrains Mono. Regenerate after changing any of them.

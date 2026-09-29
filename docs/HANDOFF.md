@@ -17,6 +17,12 @@ static Linux runtimes calling the kernel (threads, storage per thread, files, cl
 backtraces. Programs run through either backend on linux.x86_64, linux.arm64, linux.arm (through
 `qemu`) and wasi.wasm32.
 
+In the working copy, not committed: brand assets. `assets/` nested into `logo/` (SVG wordmark,
+mark, icon, construction, six CSS animations in `motion/`) and `cards/` (Typst code, social and
+icon cards over the schemes of `assets/palette.toml`); `cargo xtask typeset` expands each card's
+`<variants>` metadata and compiles in parallel. Open: removing PNGs of variants no longer
+declared, as `cargo gen` does.
+
 Last landed: editor integration, first batch (316 to 318): `#[derive(ToJson, FromJson)]`
 (`vun-json-derive` on `vun-derive-core`, shared with the codec derive) and `#[derive(Variants)]`;
 `vun-uri` (RFC 3986 and 8089, fuzz target `uri`), with manifest `.urls`/`.index`, `vun-fetch`,
