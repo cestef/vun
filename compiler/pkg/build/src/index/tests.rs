@@ -5,11 +5,12 @@ use crate::manifest::{Identity, Version};
 
 #[test]
 fn urls_follow_the_identity() {
-    let index = Index { base: "https://index.example/" };
+    let base = "https://index.example/".parse().unwrap();
+    let index = Index { base: &base };
     let hal = Identity { id: 0xc0ff_ee01, major: 2 };
-    assert_eq!(index.listing(hal), "https://index.example/00000000c0ffee01/2/list");
+    assert_eq!(index.listing(hal).as_str(), "https://index.example/00000000c0ffee01/2/list");
     assert_eq!(
-        index.archive(hal, Version::parse("2.1.4").unwrap()),
+        index.archive(hal, Version::parse("2.1.4").unwrap()).as_str(),
         "https://index.example/00000000c0ffee01/2/2.1.4.tar.zst"
     );
 }

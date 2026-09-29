@@ -8,15 +8,17 @@ use std::sync::mpsc::Receiver;
 
 use vun_command::Outcome;
 use vun_driver::Session;
-use vun_json::Value;
+use vun_json::ToJson;
+use vun_lsp_protocol::base::{PositionEncoding, TextDocumentIdentifier, Uri};
+use vun_lsp_protocol::rpc::{ErrorCode, Id, Message};
 use vun_span::FileId;
 use vun_trace::tracing;
 
-use crate::message::{Code, Failure, Incoming, Outgoing};
+use crate::failure::{Failure, Reason};
+use crate::message::Incoming;
 use crate::methods::{Admitted, Kind, Method};
-use crate::position::{Encoding, Lines};
+use crate::position::Lines;
 use crate::transport::{self, Unframed};
-use crate::uri::Uri;
 
 /// Where the protocol's lifecycle is.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -42,12 +44,12 @@ pub(crate) struct Document {
 pub(crate) struct Server<'s> {
     pub(crate) session: &'s mut Session,
     pub(crate) documents: BTreeMap<Uri, Document>,
-    pub(crate) encoding: Encoding,
+    pub(crate) encoding: PositionEncoding,
     pub(crate) state: State,
     /// The documents changed since their diagnostics were last published.
     pub(crate) changed: BTreeSet<Uri>,
     /// Notifications to send once the messages waiting are handled.
-    pub(crate) outbox: Vec<Outgoing>,
+    pub(crate) outbox: Vec<Message>,
 }
 
 impl<'s> Server<'s> {
@@ -55,7 +57,7 @@ impl<'s> Server<'s> {
         Self {
             session,
             documents: BTreeMap::new(),
-            encoding: Encoding::DEFAULT,
+            encoding: PositionEncoding::DEFAULT,
             state: State::Starting,
             changed: BTreeSet::new(),
             outbox: Vec::new(),
@@ -75,15 +77,13 @@ impl<'s> Server<'s> {
                     Ok(Some(text)) => self.handle(&text),
                     Ok(None) => return Ok(self.closed()),
                     Err(unframed) => {
-                        tracing::warn!(%unframed, "unreadable message");
-                        Some(Outgoing::Response {
-                            id: None,
-                            result: Err(Failure::new(Code::ParseError, "unreadable")),
-                        })
+                        let failure = Failure::new(ErrorCode::ParseError, Reason::Unframed(unframed));
+                        tracing::warn!(%failure, "unreadable message");
+                        Some(Message::response(Id::Null, Err(failure.response())))
                     }
                 };
                 if let Some(reply) = reply {
-                    out.send(&reply.value().to_string())?;
+                    out.send(&reply.to_json().to_string())?;
                 }
                 if let State::Exited(outcome) = self.state {
                     return Ok(outcome);
@@ -91,7 +91,7 @@ impl<'s> Server<'s> {
             }
             self.publish();
             for message in self.outbox.drain(..) {
-                out.send(&message.value().to_string())?;
+                out.send(&message.to_json().to_string())?;
             }
         }
         Ok(self.closed())
@@ -103,17 +103,17 @@ impl<'s> Server<'s> {
     }
 
     /// Handles the message `text`: the response to a request, none for a notification.
-    pub(crate) fn handle(&mut self, text: &str) -> Option<Outgoing> {
+    pub(crate) fn handle(&mut self, text: &str) -> Option<Message> {
         match Incoming::read(text) {
-            Err(failure) => Some(Outgoing::Response { id: None, result: Err(failure) }),
+            Err(failure) => Some(Message::response(Id::Null, Err(failure.response()))),
             Ok(Incoming::Request { id, method, params }) => {
                 let result = match Method::named(&method) {
                     Some(method) if method.kind == Kind::Request => {
                         self.admit(method).and_then(|()| (method.handle)(self, &params))
                     }
-                    _ => Err(Failure::new(Code::MethodNotFound, "the server has no such method")),
+                    _ => Err(Failure::new(ErrorCode::MethodNotFound, Reason::Method)),
                 };
-                Some(Outgoing::Response { id: Some(id), result })
+                Some(Message::response(id, result.map_err(|f| f.response())))
             }
             Ok(Incoming::Notification { method, params }) => {
                 // A notification the server has no row for is one it may ignore.
@@ -131,23 +131,17 @@ impl<'s> Server<'s> {
     fn admit(&self, method: &Method) -> Result<(), Failure> {
         match self.state {
             State::Starting if method.admitted == Admitted::Running => {
-                Err(Failure::new(Code::ServerNotInitialized, "the server is not initialized"))
+                Err(Failure::new(ErrorCode::ServerNotInitialized, Reason::Uninitialized))
             }
             State::ShutDown if method.admitted == Admitted::Running => {
-                Err(Failure::new(Code::InvalidAfterShutdown, "the server is shut down"))
+                Err(Failure::new(ErrorCode::InvalidRequest, Reason::ShutDown))
             }
             _ => Ok(()),
         }
     }
 
-    /// The open document `params` names in its `textDocument`.
-    pub(crate) fn document(&self, params: &Value<'_>) -> Result<(&Uri, &Document), Failure> {
-        let uri = params
-            .pointer("/textDocument/uri")
-            .and_then(Value::as_str)
-            .ok_or(Failure::invalid("textDocument.uri"))?;
-        self.documents
-            .get_key_value(&Uri::new(uri))
-            .ok_or(Failure::new(Code::InvalidParams, "the document is not open"))
+    /// The open document `document` names.
+    pub(crate) fn document(&self, document: &TextDocumentIdentifier) -> Result<&Document, Failure> {
+        self.documents.get(&document.uri).ok_or(Failure::new(ErrorCode::InvalidParams, Reason::Closed))
     }
 }

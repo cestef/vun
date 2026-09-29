@@ -6,9 +6,10 @@ fn follow(from: &str, location: &str) -> Result<String, Unfetched> {
 
 #[test]
 fn only_https_is_requested() {
-    assert!(Secure::parse(&format!("{}forge.example/a.tar.zst", Secure::PREFIX)).is_ok());
+    assert!(Secure::parse("https://forge.example/a.tar.zst").is_ok());
     assert!(matches!(Secure::parse("http://forge.example/a.tar.zst"), Err(Unfetched::Insecure(_))));
-    assert!(matches!(Secure::parse("/a.tar.zst"), Err(Unfetched::Insecure(_))));
+    assert!(matches!(Secure::parse("/a.tar.zst"), Err(Unfetched::Unparsed(_))));
+    assert!(matches!(Secure::parse("https:///a.tar.zst"), Err(Unfetched::Insecure(_))));
 }
 
 #[test]
@@ -19,6 +20,7 @@ fn a_redirect_is_read_against_the_url_it_leaves() {
     assert_eq!(follow(from, "/x").unwrap(), "https://forge.example/x");
     assert_eq!(follow(from, "b.tar.zst").unwrap(), "https://forge.example/pkg/1.0/b.tar.zst");
     assert_eq!(follow(from, "?raw=1").unwrap(), "https://forge.example/pkg/1.0/a.tar.zst?raw=1");
+    assert_eq!(follow(from, "../2.0/./a.tar.zst#x").unwrap(), "https://forge.example/pkg/2.0/a.tar.zst");
 }
 
 #[test]

@@ -14,7 +14,7 @@ use std::{fmt, io};
 
 pub use contents::{Contents, Packed};
 pub use format::{FORMATS, Format};
-pub use mirror::{Locator, Mirror, Scheme, Schemes};
+pub use mirror::{Mirror, Scheme, Schemes};
 pub use tar::Tar;
 pub use zip::Zip;
 pub use zstd::Zstd;

@@ -4,10 +4,8 @@ use std::error::Error;
 use std::fmt;
 
 use ureq::http::StatusCode;
-use ureq::http::uri::{InvalidUri, InvalidUriParts, Uri};
 use vun_fetch::Failure;
-
-use crate::Secure;
+use vun_uri::{Invalid, Known, Uri};
 
 #[derive(Debug)]
 pub enum Unfetched {
@@ -16,7 +14,9 @@ pub enum Unfetched {
     /// A redirect named no target.
     Unlocated,
     /// A URL, requested or redirected to, that does not parse.
-    Unparsed(Box<dyn Error + Send + Sync>),
+    Unparsed(Invalid),
+    /// A redirect whose location is not UTF-8.
+    Garbled,
     /// A URL whose scheme is not `https`, which is never requested.
     Insecure(Uri),
     /// More redirects than are followed.
@@ -29,7 +29,8 @@ impl fmt::Display for Unfetched {
             Self::Refused(status) => write!(f, "the server answered {status}"),
             Self::Unlocated => f.write_str("redirected without a location"),
             Self::Unparsed(_) => f.write_str("not a URL"),
-            Self::Insecure(uri) => write!(f, "`{uri}` is not an `{}` URL", Secure::PREFIX),
+            Self::Garbled => f.write_str("redirected to a location that is not text"),
+            Self::Insecure(uri) => write!(f, "`{uri}` is not an `{}` URL naming a host", Known::HTTPS.name),
             Self::Endless => f.write_str("redirected too many times"),
         }
     }
@@ -38,21 +39,9 @@ impl fmt::Display for Unfetched {
 impl Error for Unfetched {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
-            Self::Unparsed(e) => Some(e.as_ref()),
-            Self::Refused(_) | Self::Unlocated | Self::Insecure(_) | Self::Endless => None,
+            Self::Unparsed(e) => Some(e),
+            Self::Refused(_) | Self::Unlocated | Self::Garbled | Self::Insecure(_) | Self::Endless => None,
         }
-    }
-}
-
-impl From<InvalidUri> for Unfetched {
-    fn from(e: InvalidUri) -> Self {
-        Self::Unparsed(Box::new(e))
-    }
-}
-
-impl From<InvalidUriParts> for Unfetched {
-    fn from(e: InvalidUriParts) -> Self {
-        Self::Unparsed(Box::new(e))
     }
 }
 

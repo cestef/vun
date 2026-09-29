@@ -1,7 +1,9 @@
 use vun_fs::{Mode, Modes, Scratch};
 use vun_hash::Snapshot;
 
-use super::{FORMATS, Failure, Locator, Mirror, Scheme, Schemes, Zip};
+use vun_uri::Uri;
+
+use super::{FORMATS, Failure, Mirror, Scheme, Schemes, Zip};
 use crate::unpack::Refused;
 
 /// A package tree with a nested file, an executable one and a path past the ustar name field.
@@ -23,7 +25,7 @@ fn every_format_packs_reproducibly_and_unpacks_to_the_same_tree() {
         assert_eq!(bytes, again, "{}: identical trees, identical archives", format.suffix());
         let path = dir.write(["demo", format.suffix()].concat(), &bytes);
         let out = dir.join(format.suffix());
-        Mirror::parse(&Scheme::file_url(&path), &Schemes::default()).unwrap().fetch(&out).unwrap();
+        Mirror::of(&Uri::from_file_path(&path).unwrap(), &Schemes::default()).unwrap().fetch(&out).unwrap();
         assert_eq!(Snapshot::of(&out, &include).unwrap(), snapshot, "{}", format.suffix());
         #[cfg(unix)]
         assert_eq!(out.join("configure").mode(), Mode::Executable, "{}", format.suffix());
@@ -34,15 +36,16 @@ fn every_format_packs_reproducibly_and_unpacks_to_the_same_tree() {
 #[test]
 fn unknown_schemes_and_formats_are_named() {
     /// A network scheme as a program installs one; never read here.
-    const NETWORK: &[Scheme] =
-        &[Scheme { prefix: "https://", read: |_, _| Ok(Vec::new()), locator: Locator::Url }];
+    const NETWORK: &[Scheme] = &[Scheme { name: "https", read: |_| Ok(Vec::new()) }];
     let mut schemes = Schemes::default();
-    assert!(matches!(Mirror::parse("https://x/a.tar.gz", &schemes), Err(Failure::Scheme(_))));
+    assert!(matches!(Mirror::of(&"https://x/a.tar.gz".parse().unwrap(), &schemes), Err(Failure::Scheme(_))));
     schemes.install(NETWORK);
-    let Err(unknown) = Mirror::parse("ftp://x/a.tar.gz", &schemes) else { panic!("ftp is no scheme") };
-    assert_eq!(unknown.to_string(), "no supported scheme; supported: file://, https://");
-    assert!(matches!(Mirror::parse("https://x/a.rar", &schemes), Err(Failure::Format)));
-    assert!(Mirror::parse("https://x/a.tar.gz?download=1", &schemes).is_ok());
+    let Err(unknown) = Mirror::of(&"ftp://x/a.tar.gz".parse().unwrap(), &schemes) else {
+        panic!("ftp is no scheme")
+    };
+    assert_eq!(unknown.to_string(), "no supported scheme; supported: file, https");
+    assert!(matches!(Mirror::of(&"https://x/a.rar".parse().unwrap(), &schemes), Err(Failure::Format)));
+    assert!(Mirror::of(&"https://x/a.tar.gz?download=1".parse().unwrap(), &schemes).is_ok());
 }
 
 #[test]
@@ -64,5 +67,5 @@ fn a_zip_holding_a_link_is_refused() {
 fn a_local_path_keeps_what_a_url_would_read_as_a_query() {
     let schemes = Schemes::default();
     let path = std::path::Path::new("/tmp/v#1/a.tar.gz");
-    assert!(Mirror::parse(&Scheme::file_url(path), &schemes).is_ok());
+    assert!(Mirror::of(&Uri::from_file_path(path).unwrap(), &schemes).is_ok());
 }

@@ -194,7 +194,9 @@ build := (b: &mut std.build.Build) {
   archive cannot write outside its tree. Archives are read as `.tar.zst`, `.tar.xz`, `.tar.gz`,
   `.tar` and `.zip`; their single top-level directory, as forges produce, is dropped. A tar archive may name paths through
   ustar, GNU long-name or PAX `path` records; it holds files and directories only, since a
-  package tree has no links, and a link is refused. Schemes (`https`, `file`) and
+  package tree has no links, and a link is refused. Mirrors and indexes are URLs (RFC 3986),
+  checked when the manifest is read; a local mirror is a file URL (RFC 8089), its path escaped
+  (`file:///srv/a%20b.tar.zst`). Schemes (`https`, `file`) and
   formats are tables, so another is one entry, and every format both reads and writes. `vun pkg
   pack` writes the project's `<name>-<version>.tar.zst` and prints its hash; `--out` ending in
   another format's suffix writes that format instead, with the same fixed metadata, so every

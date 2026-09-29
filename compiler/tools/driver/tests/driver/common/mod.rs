@@ -11,7 +11,7 @@ use vun_build::manifest::{
 use vun_build::store::Store;
 use vun_diag::DiagId;
 use vun_driver::Session;
-use vun_fetch::{Format, Scheme};
+use vun_fetch::Format;
 use vun_fs::Scratch;
 use vun_hash::Hash;
 use vun_query::Db;
@@ -55,9 +55,9 @@ impl Fixture {
     }
 
     /// A dependency on the archive at `url` with tree hash `hash`.
-    pub(crate) fn stored(name: &str, version: &str, url: &str, hash: Hash) -> Dep {
+    pub(crate) fn stored(name: &str, version: &str, url: &vun_uri::Uri, hash: Hash) -> Dep {
         let version = Version::parse(version).unwrap();
-        let source = Source::Archive { version, hash, urls: vec![url.to_owned()] };
+        let source = Source::Archive { version, hash, urls: vec![url.clone()] };
         Dep { name: name.into(), source, kind: DepKind::Vun, span: Self::unread() }
     }
 
@@ -87,11 +87,11 @@ impl Fixture {
 
     /// Publishes the package of `manifest` written in `dir` as an archive served from a `file://`
     /// URL, returning the URL and the tree hash.
-    pub(crate) fn publish(&self, dir: &str, manifest: &Manifest) -> (String, Hash) {
+    pub(crate) fn publish(&self, dir: &str, manifest: &Manifest) -> (vun_uri::Uri, Hash) {
         let (bytes, snapshot) =
             Format::PUBLISHED.pack(&self.root.join(dir), &manifest.include, &manifest.release()).unwrap();
         let path = self.root.write(format!("{dir}{}", Format::PUBLISHED.suffix()), bytes);
-        (Scheme::file_url(&path), snapshot.root())
+        (file_url(&path), snapshot.root())
     }
 
     /// The store of this fixture, in place of the user's.
@@ -128,4 +128,9 @@ impl Fixture {
             .map(|d| (d.id.clone(), d.message.to_string()))
             .collect()
     }
+}
+
+/// The URL of the local file `path`.
+pub(crate) fn file_url(path: &Path) -> vun_uri::Uri {
+    vun_uri::Uri::from_file_path(path).expect("an absolute path")
 }

@@ -1,6 +1,16 @@
 //! What an editor asks of the files it holds (spec 13, section 11): what checking one reports,
-//! the expression at a position with its type and the documentation of what it names, and where
-//! a name at a position is declared, each over the queries `vun check` computes.
+//! the expression at a position with its type and the documentation of what it names, where a
+//! name at a position is declared, the file's outline, folds, highlights and formatted text, each
+//! over the queries `vun check` computes.
+
+mod folds;
+mod format;
+mod highlight;
+mod outline;
+
+pub use folds::{Fold, FoldKind};
+pub use highlight::{Class, Highlight, Modifier, Modifiers};
+pub use outline::{Symbol, SymbolKind};
 
 use std::path::PathBuf;
 
@@ -34,6 +44,12 @@ pub enum Target {
 }
 
 impl Session {
+    /// `file` parsed, what that reported left to checking, which reports it once.
+    fn syntax(&mut self, file: FileId) -> std::sync::Arc<vun_hir::db::ParsedFile> {
+        let key = self.file_ref(file);
+        self.db.get::<Parsed>(&key).expect("the file's text is set")
+    }
+
     /// Checks `file` as `vun check` does, and takes out what that reports.
     pub fn reported(&mut self, file: FileId) -> DiagCtxt {
         self.check(file);

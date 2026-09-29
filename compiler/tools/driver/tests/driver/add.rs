@@ -1,13 +1,13 @@
 //! `vun pkg add`: a path and an archive are declared in the manifest, the archive with the hash
 //! it had when first fetched, and the project then resolves through them.
 
-use crate::common::Fixture;
+use crate::common::{Fixture, file_url};
 use vun_build::layout::MANIFEST;
 use vun_build::manifest::{DepKind, Source, Version};
 use vun_diag::errors;
 use vun_driver::Session;
 use vun_driver::packages::{Addition, Unstated};
-use vun_fetch::{Format, Scheme};
+use vun_fetch::Format;
 
 #[test]
 fn added_dependencies_are_declared_and_resolve() {
@@ -24,7 +24,7 @@ fn added_dependencies_are_declared_and_resolve() {
     let add = |session: &mut Session, source: &str| {
         session.add(&dir, &Addition { source, name: None, version: None })
     };
-    let added = add(&mut session, &url).unwrap().unwrap();
+    let added = add(&mut session, url.as_str()).unwrap().unwrap();
     assert!(matches!(added.source, Source::Archive { hash: h, .. } if h == hash));
     let util = util.to_str().unwrap();
     assert!(add(&mut session, util).unwrap().is_some());
@@ -44,13 +44,13 @@ fn foreign_archives_need_a_name_and_a_version() {
     fx.root.write("sdk/x.c", "int x;\n");
     let (bytes, _) = Format::PUBLISHED.pack(&fx.root.join("sdk"), &["x.c".into()], "sdk").unwrap();
     let archive = fx.root.write(format!("sdk{}", Format::PUBLISHED.suffix()), bytes);
-    let url = Scheme::file_url(&archive);
+    let url = file_url(&archive);
     let mut session = fx.session();
-    let unnamed = Addition { source: &url, name: None, version: None };
+    let unnamed = Addition { source: url.as_str(), name: None, version: None };
     assert_eq!(session.add(&dir, &unnamed).unwrap_err(), Unstated::Name);
-    let unversioned = Addition { source: &url, name: Some("sdk"), version: None };
+    let unversioned = Addition { source: url.as_str(), name: Some("sdk"), version: None };
     assert_eq!(session.add(&dir, &unversioned).unwrap_err(), Unstated::Version);
-    let named = Addition { source: &url, name: Some("sdk"), version: Version::parse("2.0.0") };
+    let named = Addition { source: url.as_str(), name: Some("sdk"), version: Version::parse("2.0.0") };
     assert_eq!(session.add(&dir, &named).unwrap().unwrap().kind, DepKind::Foreign);
     assert!(std::fs::read_to_string(dir.join(MANIFEST)).unwrap().contains(".kind = .foreign"));
 }

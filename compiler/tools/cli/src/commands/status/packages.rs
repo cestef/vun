@@ -54,7 +54,7 @@ pub(crate) trait Report {
 impl Report for Fetched {
     fn report(&self, name: Symbol, hash: Hash, shell: &mut Shell<'_>) {
         if let Self::Stored { url } = self {
-            shell.status(&Downloaded { name, hash, url: url.clone() });
+            shell.status(&Downloaded { name, hash, url: url.to_string() });
         }
     }
 }

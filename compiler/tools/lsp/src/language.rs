@@ -4,32 +4,39 @@
 use std::path::Path;
 
 use vun_driver::editor::Target;
-use vun_json::{Object, Value};
+use vun_lsp_protocol::base::{Location, MarkupContent, MarkupKind, Range, TextDocumentPositionParams, Uri};
+use vun_lsp_protocol::language::Hover;
+use vun_lsp_protocol::requests as r;
+use vun_span::FileId;
 
-use crate::message::Failure;
-use crate::position::Lines;
+use crate::failure::Failure;
+use crate::methods::Answers;
 use crate::server::Server;
-use crate::uri::Uri;
 
-/// The fence the type of a hover is shown in, as Markdown.
+/// The fence the type of a hover is shown in, as Markdown, and the language it names.
 const FENCE: &str = "```";
-/// The language Markdown fences name.
 const LANGUAGE: &str = "vun";
 
 impl Server<'_> {
-    /// The document and byte offset `params` name.
-    fn at(&self, params: &Value<'_>) -> Result<(vun_span::FileId, u32), Failure> {
-        let (_, document) = self.document(params)?;
-        let position = params.get("position").ok_or(Failure::invalid("position"))?;
+    /// The file and byte offset `params` name.
+    fn at(&self, params: &TextDocumentPositionParams) -> Result<(FileId, u32), Failure> {
+        let document = self.document(&params.text_document)?;
         let text = self.session.text(document.file);
-        let offset =
-            document.lines.offset(text, position, self.encoding).ok_or(Failure::invalid("position"))?;
-        Ok((document.file, offset))
+        let offset = document.lines.offset(text, params.position, self.encoding);
+        Ok((document.file, offset.unwrap_or(u32::try_from(text.len()).unwrap_or(u32::MAX))))
     }
 
-    pub(crate) fn hover(&mut self, params: &Value<'_>) -> Result<Value<'static>, Failure> {
-        let (file, offset) = self.at(params)?;
-        let Some(hovered) = self.session.hovered(file, offset) else { return Ok(Value::Null) };
+    /// The location of the start of the file at `path`.
+    fn start_of(path: &Path) -> Option<Location> {
+        let path = std::path::absolute(path).ok()?;
+        Some(Location { uri: Uri::from_file_path(&path).ok()?, range: Range::default() })
+    }
+}
+
+impl Answers<r::Hover> for Server<'_> {
+    fn answer(&mut self, params: TextDocumentPositionParams) -> Result<Option<Hover>, Failure> {
+        let (file, offset) = self.at(&params)?;
+        let Some(hovered) = self.session.hovered(file, offset) else { return Ok(None) };
         let mut shown = Vec::new();
         if let Some(known) = hovered.known {
             shown.push(format!("{FENCE}{LANGUAGE}\n{}\n{FENCE}\n{}", known.ty, known.stage.name()));
@@ -38,28 +45,23 @@ impl Server<'_> {
             shown.push(hovered.doc.join("\n"));
         }
         if shown.is_empty() {
-            return Ok(Value::Null);
+            return Ok(None);
         }
+        let document = self.document(&params.text_document)?;
         let text = self.session.text(file);
-        let range = Lines::of(text).range(text, hovered.span.range.lo, hovered.span.range.hi, self.encoding);
-        let contents = Object::new().with("kind", "markdown").with("value", shown.join("\n\n"));
-        Ok(Object::new().with("contents", contents).with("range", range).into())
+        let range = document.lines.range(text, hovered.span.range.lo, hovered.span.range.hi, self.encoding);
+        let contents = MarkupContent { kind: MarkupKind::Markdown, value: shown.join("\n\n") };
+        Ok(Some(Hover { contents, range: Some(range) }))
     }
+}
 
-    pub(crate) fn definition(&mut self, params: &Value<'_>) -> Result<Value<'static>, Failure> {
-        let (file, offset) = self.at(params)?;
+impl Answers<r::Definition> for Server<'_> {
+    fn answer(&mut self, params: TextDocumentPositionParams) -> Result<Option<Location>, Failure> {
+        let (file, offset) = self.at(&params)?;
         Ok(match self.session.declared(file, offset) {
             Some(Target::At(span)) => self.location(span),
             Some(Target::File(path)) => Self::start_of(&path),
-            None => Value::Null,
+            None => None,
         })
-    }
-
-    /// The location of the start of the file at `path`.
-    fn start_of(path: &Path) -> Value<'static> {
-        let start = Object::new().with("line", 0).with("character", 0);
-        let range = Object::new().with("start", start.clone()).with("end", start);
-        let path = std::path::absolute(path).unwrap_or_else(|_| path.to_owned());
-        Object::new().with("uri", Uri::of(&path).as_str().to_owned()).with("range", range).into()
     }
 }

@@ -16,7 +16,12 @@ vun-term = { path = "compiler/base/term" }
 vun-par = { path = "compiler/base/par" }
 vun-codec = { path = "compiler/base/codec" }
 vun-codec-derive = { path = "compiler/base/codec-derive" }
+vun-derive-core = { path = "compiler/base/derive-core" }
+vun-json-derive = { path = "compiler/base/json-derive" }
+vun-lsp-protocol = { path = "compiler/tools/lsp-protocol" }
 vun-json = { path = "compiler/base/json" }
+vun-uri = { path = "compiler/base/uri" }
+vun-variants = { path = "compiler/base/variants" }
 vun-items = { path = "compiler/lang/items" }
 vun-hash = { path = "compiler/base/hash" }
 vun-html = { path = "compiler/base/html" }

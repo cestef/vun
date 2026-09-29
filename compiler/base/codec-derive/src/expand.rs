@@ -1,25 +1,24 @@
 //! The implementations derived: fields in declaration order, after a variant's position.
 
-use proc_macro::{Ident, Span, TokenStream};
+use proc_macro::TokenStream;
+use vun_derive_core::{Body, Item, Tokens};
 
-use crate::item::{Body, Fields, Item, ParamKind};
-use crate::tokens::Tokens;
-
-/// One shape a value can have: the path constructing it, the tag naming it among an enum's
-/// variants, and its fields.
-struct Case<'i> {
-    path: Tokens,
-    tag: Option<u32>,
-    fields: &'i Fields,
+/// The codec's implementations of an item.
+pub(crate) trait Codec {
+    fn encode(&self) -> TokenStream;
+    fn decode(&self) -> TokenStream;
 }
 
-impl Item {
-    pub(crate) fn encode(&self) -> TokenStream {
+impl Codec for Item {
+    fn encode(&self) -> TokenStream {
         let cases = self.cases();
         let arms = cases.iter().fold(Tokens::new(), |arms, case| {
-            let tag = case.tag.map(|tag| Tokens::new().encoding(Tokens::new().op("&").number(tag)));
-            let fields =
-                case.bindings().into_iter().map(|field| Tokens::new().encoding(Tokens::new().tree(field)));
+            let tag = case.index.map(|tag| Tokens::new().encoding(Tokens::new().op("&").number(tag)));
+            let fields = case
+                .fields
+                .all()
+                .iter()
+                .map(|f| Tokens::new().encoding(Tokens::new().tree(f.binding.clone())));
             let body = tag.into_iter().chain(fields).fold(Tokens::new(), Tokens::then);
             arms.then(case.pattern()).op("=>").braces(body)
         });
@@ -28,114 +27,76 @@ impl Item {
         let method = Tokens::new()
             .word("fn")
             .word("encode")
-            .parens(Tokens::new().op("&").word("self").op(",").word("w").op(":").op("&").word("mut").writer())
+            .parens(
+                Tokens::new()
+                    .op("&")
+                    .word("self")
+                    .op(",")
+                    .word("w")
+                    .op(":")
+                    .op("&")
+                    .word("mut")
+                    .codec_type("Writer"),
+            )
             .braces(Tokens::new().word("match").then(scrutinee).word("self").braces(arms));
-        self.implement("Encode", method)
+        self.implement(&Tokens::new().codec("Encode"), method)
     }
 
-    pub(crate) fn decode(&self) -> TokenStream {
+    fn decode(&self) -> TokenStream {
+        let decoded = || std::iter::repeat_with(|| Tokens::new().decoding());
         let body = match &self.body {
-            Body::Struct(_) => Tokens::new().ok(self.cases().remove(0).construct()),
+            Body::Struct(_) => Tokens::new().ok(self.cases()[0].construct(decoded())),
             Body::Enum(_) => {
-                let arms = self.cases().into_iter().fold(Tokens::new(), |arms, case| {
-                    let tag = case.tag.expect("a variant has a tag");
-                    arms.number(tag).op("=>").ok(case.construct()).op(",")
+                let arms = self.cases().iter().fold(Tokens::new(), |arms, case| {
+                    let tag = case.index.expect("a variant has a position");
+                    arms.number(tag).op("=>").ok(case.construct(decoded())).op(",")
                 });
                 let tag = Tokens::new().word("tag");
                 let malformed = Tokens::new().codec("Malformed").op("::").word("Tag");
                 let widened = Tokens::new().path(&["core", "convert", "From", "from"]).parens(tag.clone());
-                let unknown = Tokens::new()
-                    .path(&["core", "result", "Result", "Err"])
-                    .parens(malformed.parens(widened));
+                let unknown = Tokens::new().err(malformed.parens(widened));
                 // The tags are `u32` literals, which type the value read.
                 let read = Tokens::new().decoding();
                 Tokens::new().word("match").then(read).braces(arms.then(tag).op("=>").then(unknown))
             }
         };
-        let result = Tokens::new()
-            .path(&["core", "result", "Result"])
-            .op("<")
-            .word("Self")
-            .op(",")
-            .codec("Malformed")
-            .op(">");
         let method = Tokens::new()
             .word("fn")
             .word("decode")
-            .parens(Tokens::new().word("r").op(":").op("&").word("mut").reader())
+            .parens(Tokens::new().word("r").op(":").op("&").word("mut").codec_type("Reader"))
             .op("->")
-            .then(result)
+            .result(Tokens::new().codec("Malformed"))
             .braces(body);
-        self.implement("Decode", method)
-    }
-
-    /// `impl<P> ::vun_codec::Trait for Name<P> where P: ::vun_codec::Trait { method }`.
-    fn implement(&self, name: &str, method: Tokens) -> TokenStream {
-        let params = &self.generics.params;
-        let declarations = params.iter().map(|p| Tokens::new().all(p.declaration.iter().cloned()));
-        let arguments = params.iter().map(|p| Tokens::new().all(p.name.iter().cloned()));
-        let bounded = params.iter().filter(|p| p.kind == ParamKind::Type);
-        let bounds = bounded.map(|p| Tokens::new().all(p.name.iter().cloned()).op(":").codec(name).op(","));
-        let clause = Tokens::new().all(self.generics.predicates.iter().cloned());
-        let clause = bounds.fold(clause, Tokens::then);
-        let lint = Tokens::new().word("allow").parens(Tokens::new().word("unused_variables"));
-        Tokens::new()
-            .attr(Tokens::new().word("automatically_derived"))
-            .word("impl")
-            .angled(declarations)
-            .codec(name)
-            .word("for")
-            .tree(self.name.clone())
-            .angled(arguments)
-            .then(if clause.is_empty() { clause } else { Tokens::new().word("where").then(clause) })
-            .braces(Tokens::new().attr(lint).then(method))
-            .into()
-    }
-
-    fn cases(&self) -> Vec<Case<'_>> {
-        let own = || Tokens::new().word("Self");
-        match &self.body {
-            Body::Struct(fields) => vec![Case { path: own(), tag: None, fields }],
-            Body::Enum(variants) => (0..)
-                .zip(variants)
-                .map(|(tag, (name, fields))| Case {
-                    path: own().op("::").tree(name.clone()),
-                    tag: Some(tag),
-                    fields,
-                })
-                .collect(),
-        }
+        self.implement(&Tokens::new().codec("Decode"), method)
     }
 }
 
-impl Case<'_> {
-    /// The bindings of its fields, in order: named fields by their names.
-    fn bindings(&self) -> Vec<Ident> {
-        match self.fields {
-            Fields::Named(names) => names.clone(),
-            Fields::Tuple(n) => (0..*n).map(|i| Ident::new(&format!("f{i}"), Span::call_site())).collect(),
-            Fields::Unit => Vec::new(),
-        }
+/// Paths and calls into `vun_codec`.
+trait CodecTokens {
+    /// A path in `vun_codec`.
+    fn codec(self, name: &str) -> Self;
+    /// `::vun_codec::Name<'_>`
+    fn codec_type(self, name: &str) -> Self;
+    /// `::vun_codec::Encode::encode(value, w);`
+    fn encoding(self, value: Self) -> Self;
+    /// `::vun_codec::Decode::decode(r)?`
+    fn decoding(self) -> Self;
+}
+
+impl CodecTokens for Tokens {
+    fn codec(self, name: &str) -> Self {
+        self.path(&["vun_codec", name])
     }
 
-    /// The pattern binding its fields, as `Self::Variant { a, b }`.
-    fn pattern(&self) -> Tokens {
-        let fields = Tokens::new().comma(self.bindings(), Tokens::tree);
-        match self.fields {
-            Fields::Named(_) => self.path.clone().braces(fields),
-            Fields::Tuple(_) => self.path.clone().parens(fields),
-            Fields::Unit => self.path.clone(),
-        }
+    fn codec_type(self, name: &str) -> Self {
+        self.codec(name).op("<").lifetime("_").op(">")
     }
 
-    /// Its value, each field decoded in order.
-    fn construct(self) -> Tokens {
-        match self.fields {
-            Fields::Named(names) => self
-                .path
-                .braces(Tokens::new().comma(names, |t, name| t.tree(name.clone()).op(":").decoding())),
-            Fields::Tuple(n) => self.path.parens(Tokens::new().comma(0..*n, |t, _| t.decoding())),
-            Fields::Unit => self.path,
-        }
+    fn encoding(self, value: Self) -> Self {
+        self.codec("Encode").op("::").word("encode").parens(value.op(",").word("w")).op(";")
+    }
+
+    fn decoding(self) -> Self {
+        self.codec("Decode").op("::").word("decode").parens(Self::new().word("r")).op("?")
     }
 }

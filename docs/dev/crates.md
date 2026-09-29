@@ -9,7 +9,11 @@ Where the code for each part lives. The workspace layout and its layering rules 
   `vun-par` (`par_map` on a process pool, the one `unsafe` module), `vun-fs`, `vun-hash`,
   `vun-trace` (logs, timings), `vun-term` (styled text, tables, status lines, the shell),
   `vun-target` (`TargetSpec`, `Profile`, `Backends`, `Readiness`, `Arches`), `vun-harness`
-  (corpus, snapshots, `//~` annotations, `llvm` checks of assembled code), `vun-html`.
+  (corpus, snapshots, `//~` annotations, `llvm` checks of assembled code), `vun-html`,
+  `vun-json` (JSON values, `ToJson`/`FromJson` derived by `vun-json-derive`), `vun-uri` (RFC
+  3986 references: typed components, resolution, normalization, a builder, file URIs), the
+  derives' shared `vun-derive-core` (items read from tokens, tokens built tree by tree) and
+  `vun-variants` (`#[derive(Variants)]`: an enum's `ALL`).
 - **Rust views of `lib/lang`** (`compiler/lang`, generated): `vun-grammar` (tokens, nodes, parse
   tables), `vun-items` (a handle per public declaration), `vun-primitives`.
 - **Instruction sets** (`compiler/isa`): `vun-isa` (`Isa`, `Blocks`, `Width`, immediates,
@@ -70,7 +74,9 @@ Where the code for each part lives. The workspace layout and its layering rules 
   the session, codegen, builds, stacks, compare, `toolchain.rs`: the chosen target equipped with
   the machine's tools, `Session::command` running through the runner), `vun-cli` (the `vun`
   command tree, a shell over the driver), `vun-command` (declarative CLI, completions, JSON
-  output), `vun-doc`, `vun-lsp`, `vun-generate` (`cargo gen`), `xtask` (`check`, `hooks`,
+  output), `vun-doc`, `vun-lsp` (the server: a table of methods, each a protocol type the server
+  `Answers` or `Hears`), `vun-lsp-protocol` (the protocol's values and methods as types),
+  `vun-generate` (`cargo gen`), `xtask` (`check`, `hooks`,
   `corpus`, `lines`, `layers`, `size`, `typeset`).
 - **Libraries**: `lang` (primitives, operator impls over primitives, float soft routines,
   `lang.mem.soft`) and `std` (`option`, `result`, `cmp`, `mem`, `seq`, `iter`, `sync`, `os`,

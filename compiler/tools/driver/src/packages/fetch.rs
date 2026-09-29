@@ -14,6 +14,7 @@ use vun_fetch::{Failure, Mirror};
 use vun_fs::{Edit, Tree};
 use vun_hash::{Hash, Snapshot};
 use vun_intern::Symbol;
+use vun_uri::{Invalid, Uri};
 
 use super::{Dep, DepSource, PackageKey};
 use crate::Session;
@@ -24,7 +25,7 @@ pub enum Fetched {
     /// Already in the store, matching the snapshot it was verified with.
     Present,
     /// Downloaded from this mirror and verified.
-    Stored { url: String },
+    Stored { url: Uri },
     /// No mirror served it; reported.
     Failed,
 }
@@ -32,6 +33,8 @@ pub enum Fetched {
 /// Why the archive of one mirror was not stored.
 #[derive(Debug)]
 pub(super) enum Rejected {
+    /// Not a URL (RFC 3986).
+    Url(Invalid),
     Mirror(Failure),
     /// The unpacked tree hashes to another package.
     Hash {
@@ -50,6 +53,7 @@ pub(super) enum Rejected {
 impl fmt::Display for Rejected {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::Url(_) => f.write_str("not a URL"),
             Self::Mirror(failure) => failure.fmt(f),
             Self::Hash { found } => write!(f, "its contents hash to `{found}`"),
             Self::Unpacked(_) => f.write_str("cannot read what it unpacked"),
@@ -64,6 +68,7 @@ impl fmt::Display for Rejected {
 impl Error for Rejected {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
+            Self::Url(e) => Some(e),
             Self::Mirror(failure) => failure.source(),
             Self::Hash { .. } | Self::Release { .. } => None,
             Self::Unpacked(e) | Self::Store(e) => Some(e),
@@ -122,7 +127,7 @@ impl Session {
         Snapshot::of(&store.package(hash), &top).is_ok_and(|found| found == recorded)
     }
 
-    fn download(&mut self, dep: &Dep, hash: Hash, version: Version, urls: &[String]) -> Fetched {
+    fn download(&mut self, dep: &Dep, hash: Hash, version: Version, urls: &[Uri]) -> Fetched {
         let store = self.store.clone();
         let name = dep.name.as_str();
         let msg = Msg::new().text("cannot fetch ").code(name).text(" (").code(hash.to_string()).text(")");
@@ -162,10 +167,10 @@ impl Session {
         store: &Store,
         hash: Hash,
         staging: &Path,
-        url: &str,
+        url: &Uri,
         label: Label<'_>,
     ) -> Result<(), Rejected> {
-        let mirror = Mirror::parse(url, &self.schemes).map_err(Rejected::Mirror)?;
+        let mirror = Mirror::of(url, &self.schemes).map_err(Rejected::Mirror)?;
         let unpacked = Self::unpack(staging, &mirror)?;
         let snapshot = Snapshot::of(&unpacked, &self.include(kind, &unpacked)).map_err(Rejected::Unpacked)?;
         if snapshot.root() != hash {
@@ -176,7 +181,7 @@ impl Session {
 
     /// Downloads and unpacks `mirror` into a fresh `staging` entry, returning where the package
     /// is.
-    pub(super) fn unpack(staging: &Path, mirror: &Mirror<'_>) -> Result<PathBuf, Rejected> {
+    pub(super) fn unpack(staging: &Path, mirror: &Mirror) -> Result<PathBuf, Rejected> {
         staging.fresh().map_err(Rejected::Store)?;
         let unpacked = staging.join(Store::PACKAGE);
         mirror.fetch(&unpacked).map_err(Rejected::Mirror)?;

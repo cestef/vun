@@ -15,6 +15,10 @@
 //! assert!(doc["range"]["begin"].is_null());
 //! ```
 
+// The derives name this crate by its path, here too.
+extern crate self as vun_json;
+
+mod convert;
 mod number;
 mod parse;
 mod string;
@@ -23,6 +27,8 @@ mod tests;
 mod value;
 mod write;
 
+pub use convert::{Expected, FromJson, Mismatch, Step, ToJson};
 pub use number::Number;
 pub use parse::{Error, ErrorKind, Parser, parse};
 pub use value::{Object, Value};
+pub use vun_json_derive::{FromJson, ToJson};

@@ -31,9 +31,18 @@ impl Identity {
     }
 }
 
+impl Identity {
+    /// The parts of its text form: the id in hexadecimal, then the major version.
+    #[must_use]
+    pub fn parts(&self) -> [String; 2] {
+        [format!("{:0width$x}", self.id, width = ID_DIGITS), self.major.to_string()]
+    }
+}
+
 impl fmt::Display for Identity {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:0width$x}{SEPARATOR}{}", self.id, self.major, width = ID_DIGITS)
+        let [id, major] = self.parts();
+        write!(f, "{id}{SEPARATOR}{major}")
     }
 }
 

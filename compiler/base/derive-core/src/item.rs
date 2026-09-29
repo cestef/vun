@@ -1,49 +1,83 @@
-//! The shape of the item a derive is on: its name, generics and fields, read from its tokens.
-//! Types are never read, only skipped: the generated code names fields and lets them infer.
+//! The shape of the item a derive is on: its name, generics, fields, variants and attributes, read
+//! from its tokens. Types are never read, only skipped: the generated code names fields and lets
+//! them infer.
 
-use proc_macro::{Delimiter, Group, Ident, Punct, Spacing, TokenStream, TokenTree};
+use proc_macro::{Delimiter, Group, Ident, Punct, Spacing, Span, TokenStream, TokenTree};
 
-pub(crate) struct Item {
-    pub(crate) name: Ident,
-    pub(crate) generics: Generics,
-    pub(crate) body: Body,
+use crate::attr::Attrs;
+use crate::depth::{Depth, Tree};
+use crate::tokens::Tokens;
+
+pub struct Item {
+    pub name: Ident,
+    pub attrs: Attrs,
+    pub generics: Generics,
+    pub body: Body,
 }
 
 #[derive(Default)]
-pub(crate) struct Generics {
-    pub(crate) params: Vec<Param>,
+pub struct Generics {
+    pub params: Vec<Param>,
     /// The predicates of the item's `where` clause, each followed by a comma.
-    pub(crate) predicates: Vec<TokenTree>,
+    pub predicates: Vec<TokenTree>,
 }
 
-pub(crate) struct Param {
-    pub(crate) kind: ParamKind,
+pub struct Param {
+    pub kind: ParamKind,
     /// The declaration without its default, as `T: Clone` or `const N: usize`.
-    pub(crate) declaration: Vec<TokenTree>,
+    pub declaration: Vec<TokenTree>,
     /// The argument naming it, as `T` or `'a`.
-    pub(crate) name: Vec<TokenTree>,
+    pub name: Vec<TokenTree>,
 }
 
 #[derive(PartialEq, Eq)]
-pub(crate) enum ParamKind {
+pub enum ParamKind {
     Lifetime,
     Type,
     Const,
 }
 
-pub(crate) enum Body {
+pub enum Body {
     Struct(Fields),
-    Enum(Vec<(Ident, Fields)>),
+    Enum(Vec<Variant>),
 }
 
-pub(crate) enum Fields {
-    Named(Vec<Ident>),
-    Tuple(usize),
+pub struct Variant {
+    pub name: Ident,
+    pub attrs: Attrs,
+    pub fields: Fields,
+}
+
+pub enum Fields {
+    Named(Vec<Field>),
+    Tuple(Vec<Field>),
     Unit,
 }
 
+/// A field: the name a pattern binds it to (its own, or `f0`, `f1`, ... in a tuple) and its
+/// attributes.
+pub struct Field {
+    pub binding: Ident,
+    pub attrs: Attrs,
+}
+
 /// Why the item cannot be derived for.
-pub(crate) struct Unsupported(pub &'static str);
+#[derive(Debug)]
+pub struct Unsupported(pub &'static str);
+
+impl Unsupported {
+    /// `compile_error!("why")`.
+    #[must_use]
+    pub fn report(self) -> TokenStream {
+        let message = proc_macro::Literal::string(self.0);
+        Tokens::new()
+            .path(&["core", "compile_error"])
+            .op("!")
+            .parens(Tokens::new().tree(message))
+            .op(";")
+            .into()
+    }
+}
 
 /// The keyword introducing the item.
 #[derive(PartialEq, Eq)]
@@ -54,13 +88,15 @@ enum Keyword {
 }
 
 impl Item {
-    pub(crate) fn parse(input: TokenStream) -> Result<Self, Unsupported> {
-        let mut trees = input.into_iter().peekable();
+    /// # Errors
+    /// The item is a union, or not an item.
+    pub fn parse(input: TokenStream) -> Result<Self, Unsupported> {
+        let trees: Vec<TokenTree> = input.into_iter().collect();
         // Attributes and visibility come before the keyword.
-        let keyword = trees
-            .by_ref()
-            .find_map(|tree| Keyword::of(&tree))
-            .ok_or(Unsupported("expected a struct or an enum"))?;
+        let found = trees.iter().enumerate().find_map(|(at, tree)| Some((at, Keyword::of(tree)?)));
+        let (at, keyword) = found.ok_or(Unsupported("expected a struct or an enum"))?;
+        let attrs = Attrs::read(&trees[..at]);
+        let mut trees = trees.into_iter().skip(at + 1).peekable();
         let Some(TokenTree::Ident(name)) = trees.next() else { return Err(Unsupported("expected a name")) };
         let mut generics = Generics::default();
         if trees.next_if(|tree| tree.is('<')).is_some() {
@@ -85,9 +121,9 @@ impl Item {
         let body = match (keyword, fields) {
             (Keyword::Struct, fields) => Body::Struct(fields.map_or(Fields::Unit, Fields::of)),
             (Keyword::Enum, Some(variants)) => Body::variants(variants)?,
-            _ => return Err(Unsupported("unions are not encoded")),
+            _ => return Err(Unsupported("unions cannot be derived for")),
         };
-        Ok(Self { name, generics, body })
+        Ok(Self { name, attrs, generics, body })
     }
 }
 
@@ -140,15 +176,16 @@ impl Body {
         let variants = Depth::split(body.stream().into_iter().collect(), false);
         let variants = variants.iter().map(|variant| {
             // Past its attributes, a variant is its name, then its fields if any.
-            let mut trees = variant.iter().skip_while(|tree| !matches!(tree, TokenTree::Ident(_)));
-            let Some(TokenTree::Ident(name)) = trees.next() else {
+            let at = variant.iter().position(|tree| matches!(tree, TokenTree::Ident(_)));
+            let Some(TokenTree::Ident(name)) = at.map(|at| &variant[at]) else {
                 return Err(Unsupported("expected a variant"));
             };
-            let fields = match trees.next() {
+            let at = at.expect("found a name");
+            let fields = match variant.get(at + 1) {
                 Some(TokenTree::Group(group)) => Fields::of(group),
                 _ => Fields::Unit,
             };
-            Ok((name.clone(), fields))
+            Ok(Variant { name: name.clone(), attrs: Attrs::read(&variant[..at]), fields })
         });
         variants.collect::<Result<_, _>>().map(Self::Enum)
     }
@@ -158,84 +195,37 @@ impl Fields {
     fn of(group: &Group) -> Self {
         let fields = Depth::split(group.stream().into_iter().collect(), true);
         match group.delimiter() {
-            Delimiter::Brace => Self::Named(fields.iter().filter_map(|field| Self::name(field)).collect()),
-            _ => Self::Tuple(fields.len()),
+            Delimiter::Brace => Self::Named(fields.iter().filter_map(|field| Field::named(field)).collect()),
+            _ => {
+                Self::Tuple(fields.iter().enumerate().map(|(i, field)| Field::positional(i, field)).collect())
+            }
         }
     }
 
-    /// The name of a named field: the identifier before its `:`, past attributes and visibility.
-    fn name(field: &[TokenTree]) -> Option<Ident> {
+    /// Its fields, in order.
+    #[must_use]
+    pub fn all(&self) -> &[Field] {
+        match self {
+            Self::Named(fields) | Self::Tuple(fields) => fields,
+            Self::Unit => &[],
+        }
+    }
+}
+
+impl Field {
+    /// A named field: the identifier before its `:`, past attributes and visibility.
+    fn named(field: &[TokenTree]) -> Option<Self> {
         let colon = field.iter().position(|tree| tree.is(':'))?;
         match &field[..colon] {
-            [.., TokenTree::Ident(name)] => Some(name.clone()),
+            [.., TokenTree::Ident(name)] => {
+                Some(Self { binding: name.clone(), attrs: Attrs::read(&field[..colon]) })
+            }
             _ => None,
         }
     }
-}
 
-/// The nesting of angle brackets, which are punctuation rather than groups; the `>` of `->` does
-/// not close one.
-#[derive(Default)]
-struct Depth {
-    level: usize,
-    arrow: bool,
-}
-
-impl Depth {
-    /// The trees up to the `>` closing an angle bracket already opened.
-    fn angled(trees: &mut impl Iterator<Item = TokenTree>) -> Vec<TokenTree> {
-        let mut depth = Self::default();
-        trees.take_while(|tree| depth.step(tree)).collect()
-    }
-
-    /// `trees` split at their commas, those inside angle brackets aside when `angles`; empty
-    /// segments, as after a trailing comma, are dropped.
-    fn split(trees: Vec<TokenTree>, angles: bool) -> Vec<Vec<TokenTree>> {
-        let mut depth = Self::default();
-        let mut segments = vec![Vec::new()];
-        for tree in trees {
-            if angles {
-                depth.step(&tree);
-            }
-            if depth.level == 0 && tree.is(',') {
-                segments.push(Vec::new());
-            } else {
-                segments.last_mut().expect("one segment at least").push(tree);
-            }
-        }
-        segments.retain(|segment| !segment.is_empty());
-        segments
-    }
-
-    /// Steps over `tree`, returning whether it is inside the brackets it started in.
-    fn step(&mut self, tree: &TokenTree) -> bool {
-        let arrow = std::mem::take(&mut self.arrow);
-        let TokenTree::Punct(punct) = tree else { return true };
-        match punct.as_char() {
-            '<' => self.level += 1,
-            '>' if !arrow => match self.level.checked_sub(1) {
-                Some(level) => self.level = level,
-                None => return false,
-            },
-            '-' => self.arrow = punct.spacing() == Spacing::Joint,
-            _ => {}
-        }
-        true
-    }
-}
-
-/// Questions about one token.
-trait Tree {
-    fn is(&self, c: char) -> bool;
-    fn is_word(&self, word: &str) -> bool;
-}
-
-impl Tree for TokenTree {
-    fn is(&self, c: char) -> bool {
-        matches!(self, Self::Punct(p) if p.as_char() == c)
-    }
-
-    fn is_word(&self, word: &str) -> bool {
-        matches!(self, Self::Ident(i) if i.to_string() == word)
+    /// The field at position `i` of a tuple, bound as `f{i}`.
+    fn positional(i: usize, field: &[TokenTree]) -> Self {
+        Self { binding: Ident::new(&format!("f{i}"), Span::call_site()), attrs: Attrs::read(field) }
     }
 }

@@ -1,10 +1,10 @@
 //! `vun pkg fetch` end to end: a package archive served by a `file://` mirror is stored,
 //! verified, used through the prelude, and a stored file changed afterwards is named.
 
-use crate::common::Fixture;
+use crate::common::{Fixture, file_url};
 use vun_diag::errors;
 use vun_driver::packages::Fetched;
-use vun_fetch::{Format, Scheme};
+use vun_fetch::Format;
 
 #[test]
 fn fetched_packages_are_stored_verified_and_checked() {
@@ -43,7 +43,7 @@ fn fetched_packages_are_stored_verified_and_checked() {
 #[test]
 fn failing_mirrors_are_reported_with_their_causes() {
     let fx = Fixture::new("fail");
-    let url = Scheme::file_url(&fx.root.join(format!("absent{}", Format::PUBLISHED.suffix())));
+    let url = file_url(&fx.root.join(format!("absent{}", Format::PUBLISHED.suffix())));
     let mut app = Fixture::manifest("app", 1, "0.1.0");
     app.deps.push(Fixture::stored("hal", "1.0.0", &url, vun_hash::Hash::of(b"none")));
     let dir = fx.write("app", &app, "");

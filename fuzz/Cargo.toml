@@ -32,6 +32,7 @@ vun-render-short.workspace = true
 vun-span.workspace = true
 vun-syntax.workspace = true
 vun-target.workspace = true
+vun-uri.workspace = true
 
 [[bin]]
 name = "lex"
@@ -92,6 +93,13 @@ bench = false
 [[bin]]
 name = "passes"
 path = "fuzz_targets/passes.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "uri"
+path = "fuzz_targets/uri.rs"
 test = false
 doc = false
 bench = false

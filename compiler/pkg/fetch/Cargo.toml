@@ -11,6 +11,7 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
+vun-uri.workspace = true
 vun-fs.workspace = true
 flate2.workspace = true
 zip.workspace = true

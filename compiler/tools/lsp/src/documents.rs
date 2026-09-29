@@ -4,62 +4,91 @@
 use std::fmt::Write;
 
 use vun_diag::{Diagnostic, Severity, errors};
-use vun_json::{Object, Value};
+use vun_lsp_protocol::base::{Location, Uri};
+use vun_lsp_protocol::document::{
+    self as protocol, CodeDescription, ContentChange, DidChangeParams, DidCloseParams, DidOpenParams,
+    PublishDiagnosticsParams, RelatedInformation,
+};
+use vun_lsp_protocol::rpc::{ErrorCode, Message};
+use vun_lsp_protocol::{Notification, notifications as n};
 use vun_origin::Resolve;
-use vun_span::SourceMap;
-use vun_span::Span;
+use vun_span::{SourceMap, Span};
 
-use crate::message::{Code, Failure, Outgoing};
+use crate::failure::{Failure, Reason};
+use crate::methods::Hears;
 use crate::position::Lines;
 use crate::server::{Document, Server};
-use crate::uri::Uri;
 
 /// How diagnostics name where they come from.
 const SOURCE: &str = "vun";
 
-impl Server<'_> {
-    pub(crate) fn opened(&mut self, params: &Value<'_>) -> Result<Value<'static>, Failure> {
-        let item = params.get("textDocument").ok_or(Failure::invalid("textDocument"))?;
-        let uri =
-            Uri::new(item.get("uri").and_then(Value::as_str).ok_or(Failure::invalid("textDocument.uri"))?);
-        let text = item.get("text").and_then(Value::as_str).ok_or(Failure::invalid("textDocument.text"))?;
-        let version =
-            item.get("version").and_then(Value::as_i64).ok_or(Failure::invalid("textDocument.version"))?;
-        self.read(uri, version, text.to_owned())
+impl Hears<n::DidOpen> for Server<'_> {
+    fn hear(&mut self, params: DidOpenParams) -> Result<(), Failure> {
+        let document = params.text_document;
+        self.read(document.uri, document.version, document.text)
     }
+}
 
-    pub(crate) fn changed(&mut self, params: &Value<'_>) -> Result<Value<'static>, Failure> {
-        let (uri, _) = self.document(params)?;
-        let uri = uri.clone();
-        let version = params.pointer("/textDocument/version").and_then(Value::as_i64);
-        let version = version.ok_or(Failure::invalid("textDocument.version"))?;
-        // Every change is the whole text, as the server asks: the last is the document.
-        let changes = params.get("contentChanges").map(Value::items);
-        let text = changes.and_then(|mut c| c.next_back()?.get("text")?.as_str());
-        self.read(uri, version, text.ok_or(Failure::invalid("contentChanges"))?.to_owned())
+impl Hears<n::DidChange> for Server<'_> {
+    fn hear(&mut self, params: DidChangeParams) -> Result<(), Failure> {
+        let identifier = params.text_document;
+        let document = self
+            .documents
+            .get(&identifier.uri)
+            .ok_or(Failure::new(ErrorCode::InvalidParams, Reason::Closed))?;
+        let mut text = self.session.text(document.file).to_owned();
+        for change in &params.content_changes {
+            self.apply(&mut text, change);
+        }
+        self.read(identifier.uri, identifier.version, text)
     }
+}
 
-    pub(crate) fn closed_document(&mut self, params: &Value<'_>) -> Result<Value<'static>, Failure> {
-        let (uri, document) = self.document(params)?;
-        let (uri, path) = (uri.clone(), document.path.clone());
-        self.documents.remove(&uri);
+impl Hears<n::DidClose> for Server<'_> {
+    fn hear(&mut self, params: DidCloseParams) -> Result<(), Failure> {
+        let uri = params.text_document.uri;
+        let document =
+            self.documents.remove(&uri).ok_or(Failure::new(ErrorCode::InvalidParams, Reason::Closed))?;
         self.changed.remove(&uri);
         // The file is the one on disk again, and so are its diagnostics once checked.
-        self.session.load(&path);
-        let params =
-            Object::new().with("uri", uri.as_str().to_owned()).with("diagnostics", Vec::<Value>::new());
-        self.outbox.push(Outgoing::Notification { method: PUBLISH, params: params.into() });
-        Ok(Value::Null)
+        self.session.load(&document.path);
+        self.notify::<n::PublishDiagnostics>(&PublishDiagnosticsParams {
+            uri,
+            version: None,
+            diagnostics: Vec::new(),
+        });
+        Ok(())
+    }
+}
+
+impl Server<'_> {
+    /// Queues the notification `N` of `params`.
+    pub(crate) fn notify<N: Notification>(&mut self, params: &N::Params) {
+        self.outbox.push(Message::notification(N::METHOD, vun_json::ToJson::to_json(params)));
+    }
+
+    /// Applies `change` to `text`: a range replaced, or the whole text.
+    fn apply(&self, text: &mut String, change: &ContentChange) {
+        let Some(range) = change.range else {
+            text.clone_from(&change.text);
+            return;
+        };
+        let lines = Lines::of(text);
+        let end = u32::try_from(text.len()).unwrap_or(u32::MAX);
+        let lo = lines.offset(text, range.start, self.encoding).unwrap_or(end) as usize;
+        let hi = lines.offset(text, range.end, self.encoding).unwrap_or(end) as usize;
+        text.replace_range(lo..hi.max(lo), &change.text);
     }
 
     /// Reads `text` as the version `version` of the document `uri`.
-    fn read(&mut self, uri: Uri, version: i64, text: String) -> Result<Value<'static>, Failure> {
-        let path = uri.path().ok_or(Failure::new(Code::InvalidParams, "the document is not a local file"))?;
+    fn read(&mut self, uri: Uri, version: i64, text: String) -> Result<(), Failure> {
+        let path =
+            uri.to_file_path().map_err(|e| Failure::new(ErrorCode::InvalidParams, Reason::NotLocal(e)))?;
         let lines = Lines::of(&text);
         let file = self.session.open(&path, text);
         self.documents.insert(uri.clone(), Document { path, version, file, lines });
         self.changed.insert(uri);
-        Ok(Value::Null)
+        Ok(())
     }
 
     /// Checks each document changed since it was last, and publishes what that reports in it.
@@ -67,21 +96,18 @@ impl Server<'_> {
         for uri in std::mem::take(&mut self.changed) {
             let Some(document) = self.documents.get(&uri) else { continue };
             let reported = self.session.reported(document.file);
-            let diagnostics: Vec<Value> = reported
+            let diagnostics = reported
                 .sorted(&*self.session)
                 .into_iter()
                 .filter_map(|d| self.diagnostic(d, document))
                 .collect();
-            let params = Object::new()
-                .with("uri", uri.as_str().to_owned())
-                .with("version", document.version)
-                .with("diagnostics", diagnostics);
-            self.outbox.push(Outgoing::Notification { method: PUBLISH, params: params.into() });
+            let params = PublishDiagnosticsParams { uri, version: Some(document.version), diagnostics };
+            self.notify::<n::PublishDiagnostics>(&params);
         }
     }
 
     /// `d` as the protocol shows it in `document`, if it is shown there (spec 10, section 6).
-    fn diagnostic(&self, d: &Diagnostic, document: &Document) -> Option<Value<'static>> {
+    fn diagnostic(&self, d: &Diagnostic, document: &Document) -> Option<protocol::Diagnostic> {
         let span = self.session.source_span(d.primary.as_ref()?.origin);
         if span.file != document.file {
             return None;
@@ -91,53 +117,48 @@ impl Server<'_> {
         for child in &d.children {
             let _ = write!(message, "\n{}: {}", child.kind.name(), child.msg);
         }
-        let related: Vec<Value> = d
+        let related: Vec<RelatedInformation> = d
             .labels
             .iter()
             .filter_map(|l| {
-                Some(self.related(self.session.source_span(l.origin), l.msg.as_ref()?.to_string()))
+                let message = l.msg.as_ref()?.to_string();
+                Some(RelatedInformation {
+                    location: self.location(self.session.source_span(l.origin))?,
+                    message,
+                })
             })
             .collect();
-        let mut object = Object::new()
-            .with("range", document.lines.range(text, span.range.lo, span.range.hi, self.encoding))
-            .with("severity", severity(d.severity))
-            .with("code", d.id.to_string())
-            .with("source", SOURCE)
-            .with("message", message);
-        if let Some((_, page)) = errors::EXPLANATIONS.iter().find(|(id, _)| *id == d.id) {
-            let page = std::path::absolute(self.session.library.join(page)).ok()?;
-            object.push("codeDescription", Object::new().with("href", Uri::of(&page).as_str().to_owned()));
-        }
-        if !related.is_empty() {
-            object.push("relatedInformation", related);
-        }
-        Some(object.into())
-    }
-
-    /// The location of `span` with `message`, as related information.
-    fn related(&self, span: Span, message: String) -> Value<'static> {
-        Object::new().with("location", self.location(span)).with("message", message).into()
+        let page = errors::EXPLANATIONS.iter().find(|(id, _)| *id == d.id);
+        let page = page.and_then(|(_, page)| std::path::absolute(self.session.library.join(page)).ok());
+        Some(protocol::Diagnostic {
+            range: document.lines.range(text, span.range.lo, span.range.hi, self.encoding),
+            severity: Some(severity(d.severity)),
+            code: Some(d.id.to_string()),
+            code_description: page
+                .and_then(|p| Uri::from_file_path(&p).ok())
+                .map(|href| CodeDescription { href }),
+            source: Some(SOURCE.to_owned()),
+            message,
+            related_information: (!related.is_empty()).then_some(related),
+        })
     }
 
     /// The protocol's location of `span`, in whichever file holds it.
-    pub(crate) fn location(&self, span: Span) -> Value<'static> {
+    pub(crate) fn location(&self, span: Span) -> Option<Location> {
         let source = self.session.sources.file(span.file);
         let lines = Lines::of(&source.text);
-        let path = std::path::absolute(&source.path).unwrap_or_else(|_| source.path.clone().into());
+        let path = std::path::absolute(&source.path).ok()?;
         let range = lines.range(&source.text, span.range.lo, span.range.hi, self.encoding);
-        Object::new().with("uri", Uri::of(&path).as_str().to_owned()).with("range", range).into()
+        Some(Location { uri: Uri::from_file_path(&path).ok()?, range })
     }
 }
 
-/// The notification publishing a document's diagnostics.
-const PUBLISH: &str = "textDocument/publishDiagnostics";
-
-/// The protocol's number for `severity`.
-const fn severity(severity: Severity) -> u8 {
+/// The protocol's severity of `severity`.
+const fn severity(severity: Severity) -> protocol::Severity {
     match severity {
-        Severity::Error => 1,
-        Severity::Warning => 2,
-        Severity::Info => 3,
-        Severity::Hint => 4,
+        Severity::Error => protocol::Severity::Error,
+        Severity::Warning => protocol::Severity::Warning,
+        Severity::Info => protocol::Severity::Information,
+        Severity::Hint => protocol::Severity::Hint,
     }
 }

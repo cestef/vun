@@ -12,4 +12,5 @@ workspace = true
 
 [dependencies]
 vun-fetch.workspace = true
+vun-uri.workspace = true
 ureq.workspace = true

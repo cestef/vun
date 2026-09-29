@@ -7,18 +7,17 @@
 
 use vun_fetch::Format;
 use vun_hash::Hash;
+use vun_uri::Uri;
 
 use crate::manifest::{Identity, Version};
 
 /// Names the listing of an identity.
 const LIST: &str = "list";
-/// Separates the parts of an index URL.
-const SEPARATOR: char = '/';
 
 /// An index, by base URL.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Index<'a> {
-    pub base: &'a str,
+    pub base: &'a Uri,
 }
 
 /// The releases an index lists for one identity, in version order.
@@ -30,15 +29,17 @@ pub struct Listing {
 impl Index<'_> {
     /// Where the releases of `identity` are listed.
     #[must_use]
-    pub fn listing(&self, identity: Identity) -> String {
-        format!("{}{SEPARATOR}{identity}{SEPARATOR}{LIST}", self.base.trim_end_matches(SEPARATOR))
+    pub fn listing(&self, identity: Identity) -> Uri {
+        let [id, major] = identity.parts();
+        self.base.with_segments([id.as_str(), &major, LIST])
     }
 
     /// Where the archive of `version` of `identity` is.
     #[must_use]
-    pub fn archive(&self, identity: Identity, version: Version) -> String {
-        let base = self.base.trim_end_matches(SEPARATOR);
-        format!("{base}{SEPARATOR}{identity}{SEPARATOR}{version}{}", Format::PUBLISHED.suffix())
+    pub fn archive(&self, identity: Identity, version: Version) -> Uri {
+        let [id, major] = identity.parts();
+        let archive = format!("{version}{}", Format::PUBLISHED.suffix());
+        self.base.with_segments([id.as_str(), &major, &archive])
     }
 }
 

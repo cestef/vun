@@ -55,7 +55,7 @@ impl Source {
             (None, Some(version)) => {
                 let version = version.version(cx);
                 let hash = fields.require(field::HASH).and_then(|d| d.content_hash(cx));
-                let urls = fields.get(field::URLS).map_or(Some(Vec::new()), |d| d.strings(cx));
+                let urls = fields.get(field::URLS).map_or(Some(Vec::new()), |d| d.uris(cx));
                 match (version, hash, urls) {
                     (Some(version), Some(hash), Some(urls)) => Some(Self::Archive { version, hash, urls }),
                     _ => None,

@@ -1218,17 +1218,35 @@ Server Protocol: JSON-RPC messages framed by `Content-Length` headers. It is a t
 - *Diagnostics.* After a change, the server checks the open files as `vun check` checks each, and
   publishes each file's diagnostics with the version of the document they were computed for,
   mapped as spec 10, section 6 says. A check runs to its end; the changes that arrive meanwhile
-  are applied together before the next, so a burst of typing costs one check.
+  are applied together before the next, so a burst of typing costs one check. Changes arrive as
+  edits of ranges (incremental sync), applied in order to the document's text.
 - *Definition.* At a name, where it is declared: the binder of the file it resolves to, or the
   declaration an outer name, a member or a path reaches, as resolution and sema find them.
 - *Hover.* At an expression, the innermost one holding the position: its type and stage as
   `vun debug types` prints them, and the doc comment of the declaration it names, if any.
+- *Outline.* The declarations of the file, read from the syntax tree alone, so that a file that
+  does not check has one: each binding by what its value is (a function, a struct with its
+  fields, an enum with its variants and the members of its namespace, a constant or a variable).
+- *Folds.* Each pair of delimiters, each run of raw string lines and each run of comments on
+  consecutive lines, when it spans several lines.
+- *Formatting.* The one edit making the document what `vun fmt` would write, from the first byte
+  that differs to the last; none for a file that does not parse.
+- *Semantic tokens.* Every token classed for coloring: comments, literals, keywords and operators
+  by their kind and the grammar's tables; contextual words (borrow modes, flows, `in`, `asm`,
+  mnemonics) by the node they anchor; a name where it is declared by what its binder declares, and
+  where it is used by what it resolves to: a parameter, a local, a member of a struct, a variant,
+  or a declaration classed by the value sema computes for it (a type, a function, a namespace, a
+  constant). Modifiers say a declaration, `mut`, `$` and documentation.
 - *Positions* are counted in the encoding the client and the server agree on at initialization:
-  UTF-8 when the client offers it, else UTF-16, converted through each version's line index.
-- *The protocol is data.* Each method is a row of one table (its name, whether it is a request or
-  a notification, its handler), and the capabilities announced at initialization are derived
-  from the rows. Messages are typed structs read and written through `vun-json`. An unknown
-  method is answered `MethodNotFound`, a malformed message `ParseError` or `InvalidParams`, never
-  with a crash; logs go to standard error through `vun-trace`. The lifecycle is the protocol's:
-  `initialize`, `initialized`, the session, `shutdown`, then `exit`, whose status is 1 without a
-  `shutdown` before it.
+  UTF-8 when the client offers it, else UTF-32, else UTF-16, converted through each version's
+  line index.
+- *The protocol is data.* The protocol's values are typed structs and enums (`vun-lsp-protocol`),
+  read and written through `vun-json`'s derives, and each method is a type naming its parameters
+  and result (`requests::Hover`, `notifications::DidOpen`). The server's methods are rows of one
+  table, each a method's type, when in the lifecycle it is answered and the capability announcing
+  it; a handler is the server's `Answers<R>` or `Hears<N>` for that type, and the capabilities
+  announced at initialization are derived from the rows. An unknown method is answered
+  `MethodNotFound`, a malformed message `ParseError` or `InvalidParams` with where the parameters
+  did not fit, never with a crash; logs go to standard error through `vun-trace`. The lifecycle is
+  the protocol's: `initialize`, `initialized`, the session, `shutdown`, then `exit`, whose status
+  is 1 without a `shutdown` before it.

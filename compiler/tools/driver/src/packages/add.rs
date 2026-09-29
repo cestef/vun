@@ -13,6 +13,7 @@ use vun_fetch::Mirror;
 use vun_fs::Relative;
 use vun_hash::{Hash, Snapshot};
 use vun_span::Span;
+use vun_uri::Uri;
 
 use super::fetch::Rejected;
 use crate::Session;
@@ -54,7 +55,7 @@ enum Place {
     /// A directory, by its path from the project.
     Path(String),
     /// An archive unpacked under staging, by where it was fetched; it is stored once declared.
-    Archive { url: String, staged: Staged },
+    Archive { url: Uri, staged: Staged },
 }
 
 /// An unpacked archive awaiting its move into the store; dropped undeclared, it is removed.
@@ -133,7 +134,10 @@ impl Session {
     /// The archive at `url`, unpacked under staging; an archive without a manifest is foreign.
     /// A URL no scheme reads, such as `http://`, is refused before anything is staged.
     fn archive(&mut self, url: &str) -> Option<Found> {
-        let fetched = Mirror::parse(url, &self.schemes).map_err(Rejected::Mirror).and_then(|mirror| {
+        let uri = Uri::parse(url).map_err(Rejected::Url);
+        let fetched =
+            uri.and_then(|uri| Ok((Mirror::of(&uri, &self.schemes).map_err(Rejected::Mirror)?, uri)));
+        let fetched = fetched.and_then(|(mirror, uri)| {
             // Its contents, and so its hash, are unknown until it is unpacked.
             let staging = self.store.stage(Hash::of(url.as_bytes())).map_err(Rejected::Store)?;
             let unpacked = Self::unpack(&staging, &mirror)?;
@@ -142,7 +146,7 @@ impl Session {
             let kind = if manifest.is_some() { DepKind::Vun } else { DepKind::Foreign };
             let snapshot =
                 Snapshot::of(&unpacked, &self.include(kind, &unpacked)).map_err(Rejected::Unpacked)?;
-            let at = Place::Archive { url: url.to_owned(), staged: Staged { staging, snapshot } };
+            let at = Place::Archive { url: uri, staged: Staged { staging, snapshot } };
             Ok(Found { at, kind, manifest })
         });
         match fetched {

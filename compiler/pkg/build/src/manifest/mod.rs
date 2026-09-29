@@ -19,6 +19,7 @@ pub use identity::Identity;
 use record::{Fields, Record};
 pub use version::Version;
 use vun_hash::Hash;
+use vun_uri::Uri;
 
 use crate::layout::MANIFEST;
 
@@ -40,7 +41,7 @@ pub struct Manifest {
     /// Identities whose packages come from elsewhere, anywhere in the graph; read from the root.
     pub replace: Vec<Replacement>,
     /// Indexes that list newer versions, tried in order; read from the root (spec 12, section 3).
-    pub index: Vec<String>,
+    pub index: Vec<Uri>,
     /// Workspace members, by path.
     pub members: Vec<String>,
     /// Namespaces whose public names every file sees unqualified (spec 01, section 8).
@@ -80,7 +81,7 @@ pub struct Replacement {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Source {
     /// A released version, fetched from any mirror and checked against its hash.
-    Archive { version: Version, hash: Hash, urls: Vec<String> },
+    Archive { version: Version, hash: Hash, urls: Vec<Uri> },
     /// A package next to this one, by path.
     Path(String),
 }
@@ -158,7 +159,7 @@ impl Manifest {
         let include = fields.require(field::INCLUDE).and_then(|d| Self::include(d, cx));
         let deps = fields.get(field::DEPS).map_or(Some(Vec::new()), |d| Dep::list(d, cx));
         let replace = fields.get(field::REPLACE).map_or(Some(Vec::new()), |d| Replacement::list(d, cx));
-        let index = fields.get(field::INDEX).map_or(Some(Vec::new()), |d| d.strings(cx));
+        let index = fields.get(field::INDEX).map_or(Some(Vec::new()), |d| d.uris(cx));
         let members = fields.get(field::MEMBERS).map_or(Some(Vec::new()), |d| d.strings(cx));
         let prelude_decl = fields.get(field::PRELUDE);
         let prelude = prelude_decl.map_or(Some(vec![DEFAULT_PRELUDE.to_owned()]), |d| d.strings(cx));

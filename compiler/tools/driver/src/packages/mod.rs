@@ -30,6 +30,7 @@ use vun_hash::{Hash, Snapshot};
 use vun_intern::Symbol;
 use vun_span::{FileId, PackageId, Span};
 use vun_trace::tracing;
+use vun_uri::Uri;
 
 pub use add::{Addition, Unstated};
 pub use fetch::Fetched;
@@ -98,7 +99,7 @@ pub enum DepSource {
     Dir(PathBuf),
     /// A package in the store, by its tree hash, with its declared version and the mirrors that
     /// serve it.
-    Stored { hash: Hash, version: Version, urls: Vec<String> },
+    Stored { hash: Hash, version: Version, urls: Vec<Uri> },
 }
 
 impl DepSource {

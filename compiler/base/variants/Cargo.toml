@@ -1,0 +1,17 @@
+[package]
+name = "vun-variants"
+description = "#[derive(Variants)]: an enum's unit variants as the constant `ALL`, in declaration order."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lib]
+proc-macro = true
+
+[lints]
+workspace = true
+
+[dependencies]
+vun-derive-core.workspace = true

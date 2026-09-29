@@ -7,6 +7,7 @@ use vun_diag::Edit;
 use vun_syntax::literal::{Decl, Literal, Unwritable};
 
 use vun_span::Span;
+use vun_uri::Uri;
 
 use super::{DEFAULT_PRELUDE, DEP_KINDS, Dep, DepKind, Manifest, PACKAGE, Replacement, Source, field};
 
@@ -33,7 +34,7 @@ impl Manifest {
             fields.push(at(field::REPLACE, Literal::Record(replace)));
         }
         if !self.index.is_empty() {
-            fields.push(at(field::INDEX, Literal::strings(self.index.iter().map(String::as_str))));
+            fields.push(at(field::INDEX, Literal::strings(self.index.iter().map(Uri::as_str))));
         }
         if !self.members.is_empty() {
             fields.push(at(field::MEMBERS, Literal::strings(self.members.iter().map(String::as_str))));
@@ -66,7 +67,7 @@ impl Source {
                     at(field::HASH, text(hash.to_string())),
                 ];
                 if !urls.is_empty() {
-                    fields.push(at(field::URLS, Literal::strings(urls.iter().map(String::as_str))));
+                    fields.push(at(field::URLS, Literal::strings(urls.iter().map(Uri::as_str))));
                 }
                 fields
             }

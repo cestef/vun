@@ -4,45 +4,33 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use vun_fs::{Edit, Tree};
+use vun_uri::{Known, Uri};
 
 use super::{Failure, Format};
 
 /// The suffix of the directory an archive is unpacked in.
 const UNPACKING: &str = ".unpacking";
 
-/// A way of reading URLs that start with `prefix`.
+/// A way of reading the URLs of a scheme.
 pub struct Scheme {
-    pub prefix: &'static str,
-    /// Reads the resource: given the whole URL and what follows the prefix.
-    pub read: fn(&str, &str) -> Result<Vec<u8>, Failure>,
-    pub locator: Locator,
-}
-
-/// What follows a scheme's prefix.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Locator {
-    /// A path on this machine, taken whole.
-    Path,
-    /// A URL's path, which a query (`?`) or a fragment (`#`) may follow.
-    Url,
+    /// The scheme's name, compared without case.
+    pub name: &'static str,
+    /// Reads the resource `uri` names.
+    pub read: fn(&Uri) -> Result<Vec<u8>, Failure>,
 }
 
 impl Scheme {
-    /// Files on this machine, by absolute path.
+    /// Files on this machine, by their file URIs (RFC 8089).
     pub const FILE: Self = Self {
-        prefix: "file://",
-        read: |_, path| fs::read(path).map_err(|e| Failure::Download(Box::new(e))),
-        locator: Locator::Path,
+        name: Known::FILE.name,
+        read: |uri| {
+            let path = uri.to_file_path().map_err(|e| Failure::Download(Box::new(e)))?;
+            fs::read(path).map_err(|e| Failure::Download(Box::new(e)))
+        },
     };
-
-    /// The URL of the local file `path`.
-    #[must_use]
-    pub fn file_url(path: &Path) -> String {
-        format!("{}{}", Self::FILE.prefix, path.display())
-    }
 }
 
-/// The schemes URLs are read through: `file://` always, and those a program installs, such as
+/// The schemes URLs are read through: `file` always, and those a program installs, such as
 /// the network schemes of `vun-http`. Keeping network access out of this crate keeps its TLS
 /// stack off the build path of everything that fetches packages.
 #[derive(Clone)]
@@ -57,45 +45,40 @@ impl Default for Schemes {
 }
 
 impl Schemes {
-    /// Makes `schemes` read the URLs they start.
+    /// Makes `schemes` read the URLs they name.
     pub fn install(&mut self, schemes: &'static [Scheme]) {
         self.list.extend(schemes);
     }
 
-    /// The bytes at `url`, through the scheme that reads it.
+    /// The bytes at `uri`, through the scheme that reads it.
     ///
     /// # Errors
-    /// Returns that no scheme reads the URL, or why reading failed.
-    pub fn get(&self, url: &str) -> Result<Vec<u8>, Failure> {
-        let scheme = self.of(url)?;
-        (scheme.read)(url, &url[scheme.prefix.len()..])
+    /// Returns that no scheme reads it, or why reading failed.
+    pub fn get(&self, uri: &Uri) -> Result<Vec<u8>, Failure> {
+        (self.of(uri)?.read)(uri)
     }
 
-    /// The scheme that reads `url`.
-    fn of(&self, url: &str) -> Result<&'static Scheme, Failure> {
-        let found = self.list.iter().find(|s| url.starts_with(s.prefix)).copied();
-        found.ok_or_else(|| Failure::Scheme(self.list.iter().map(|s| s.prefix).collect()))
+    /// The scheme that reads `uri`.
+    fn of(&self, uri: &Uri) -> Result<&'static Scheme, Failure> {
+        let found = self.list.iter().find(|s| uri.scheme().is(s.name)).copied();
+        found.ok_or_else(|| Failure::Scheme(self.list.iter().map(|s| s.name).collect()))
     }
 }
 
 /// A URL whose scheme and archive format are known.
-pub struct Mirror<'u> {
-    url: &'u str,
+pub struct Mirror {
+    uri: Uri,
     scheme: &'static Scheme,
     format: &'static Format,
 }
 
-impl<'u> Mirror<'u> {
+impl Mirror {
     /// # Errors
-    /// Returns which part of the URL no table knows.
-    pub fn parse(url: &'u str, schemes: &Schemes) -> Result<Self, Failure> {
-        let scheme = schemes.of(url)?;
-        let path = match scheme.locator {
-            Locator::Path => url,
-            Locator::Url => url.split(['?', '#']).next().unwrap_or(url),
-        };
-        let format = Format::of(path).ok_or(Failure::Format)?;
-        Ok(Self { url, scheme, format })
+    /// Returns which part of `uri` no table knows.
+    pub fn of(uri: &Uri, schemes: &Schemes) -> Result<Self, Failure> {
+        let scheme = schemes.of(uri)?;
+        let format = Format::of(uri.path().as_str()).ok_or(Failure::Format)?;
+        Ok(Self { uri: uri.clone(), scheme, format })
     }
 
     /// Where an archive fetched into `dir` is unpacked before it is moved there.
@@ -112,7 +95,7 @@ impl<'u> Mirror<'u> {
     /// # Errors
     /// Returns why reading or unpacking failed.
     pub fn fetch(&self, dir: &Path) -> Result<(), Failure> {
-        let bytes = (self.scheme.read)(self.url, &self.url[self.scheme.prefix.len()..])?;
+        let bytes = (self.scheme.read)(&self.uri)?;
         let raw = Self::unpacking(dir);
         let unpack = Failure::Unpack;
         raw.remove().map_err(unpack)?;

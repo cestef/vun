@@ -15,6 +15,7 @@ use vun_diag::{ChildKind, Diagnostic, Msg, errors};
 use vun_fetch::Failure;
 use vun_hash::Hash;
 use vun_intern::Symbol;
+use vun_uri::Uri;
 
 use super::fetch::Rejected;
 use super::{Dep, DepSource};
@@ -106,7 +107,7 @@ impl Session {
         identity: Identity,
         version: Version,
         hash: Hash,
-        url: &str,
+        url: &Uri,
         label: Label<'_>,
     ) -> Result<(), Rejected> {
         let store = self.store.clone();
@@ -121,14 +122,14 @@ impl Session {
     }
 
     /// The listing at `url`; one that cannot be read is reported.
-    fn listing(&mut self, url: &str) -> Option<Listing> {
+    fn listing(&mut self, url: &Uri) -> Option<Listing> {
         let read = self.schemes.get(url).map_err(Unlisted::Read).and_then(|bytes| {
             String::from_utf8(bytes).ok().and_then(|text| Listing::parse(&text)).ok_or(Unlisted::Malformed)
         });
         match read {
             Ok(listing) => Some(listing),
             Err(why) => {
-                let msg = Msg::new().text("cannot read the index listing ").code(url);
+                let msg = Msg::new().text("cannot read the index listing ").code(url.as_str());
                 let help = Msg::new().text("indexes are declared in the manifest's ").code(".index");
                 let d = Diagnostic::error(errors::PACKAGE_FETCH_FAILED, msg).child(ChildKind::Help, help);
                 self.diag.error(d.caused_by(&why));

@@ -7,7 +7,8 @@ use std::time::{Duration, Instant};
 
 use ureq::Agent;
 use ureq::http::header::LOCATION;
-use vun_fetch::{Failure, Format, Locator, Scheme};
+use vun_fetch::{Failure, Format, Scheme};
+use vun_uri::{Known, Uri};
 
 mod secure;
 mod unfetched;
@@ -16,7 +17,7 @@ pub use secure::Secure;
 pub use unfetched::Unfetched;
 
 /// `https://`, read by [`get`].
-pub const SCHEMES: &[Scheme] = &[Scheme { prefix: Secure::PREFIX, read: get, locator: Locator::Url }];
+pub const SCHEMES: &[Scheme] = &[Scheme { name: Known::HTTPS.name, read: get }];
 
 /// How long a whole download may take, redirects included, against a mirror that stalls.
 const TIMEOUT: Duration = Duration::from_mins(10);
@@ -26,15 +27,15 @@ const MAX_REDIRECTS: usize = 8;
 
 /// The body at `url`, up to [`Format::MAX_ARCHIVE`] bytes, following up to [`MAX_REDIRECTS`]
 /// redirects to `https` URLs; a status other than a success is refused.
-fn get(url: &str, _: &str) -> Result<Vec<u8>, Failure> {
+fn get(url: &Uri) -> Result<Vec<u8>, Failure> {
     let download = |e: ureq::Error| Failure::Download(Box::new(e));
     let agent: Agent =
         Agent::config_builder().https_only(true).max_redirects(0).http_status_as_error(false).build().into();
     let deadline = Instant::now() + TIMEOUT;
-    let mut at = Secure::parse(url)?;
+    let mut at = Secure::of(url)?;
     for _ in 0..=MAX_REDIRECTS {
         let left = deadline.saturating_duration_since(Instant::now());
-        let request = agent.get(at.uri()).config().timeout_global(Some(left)).build();
+        let request = agent.get(at.uri().as_str()).config().timeout_global(Some(left)).build();
         let response = request.call().map_err(download)?;
         let status = response.status();
         if status.is_redirection() {

@@ -6,6 +6,7 @@ use vun_intern::Symbol;
 use vun_span::Version;
 use vun_suggest::{Lookup, closest};
 use vun_syntax::literal::{Decl, Literal};
+use vun_uri::Uri;
 
 /// The fields of a record literal, checked against the names a reader knows.
 pub(crate) struct Fields<'a, 's> {
@@ -82,6 +83,8 @@ pub(crate) trait Record {
     fn int<T: TryFrom<i128>>(&self, cx: &mut DiagCx<'_>) -> Option<T>;
     /// A list of strings: `.{ "a", "b" }` or `[ "a", "b" ]`.
     fn strings(&self, cx: &mut DiagCx<'_>) -> Option<Vec<String>>;
+    /// A list of URLs (RFC 3986).
+    fn uris(&self, cx: &mut DiagCx<'_>) -> Option<Vec<Uri>>;
     /// A list of strings, as symbols.
     fn symbols(&self, cx: &mut DiagCx<'_>) -> Option<Vec<Symbol>>;
     /// A list of paths inside a directory, as snapshots name them: no root, no `..`.
@@ -151,6 +154,17 @@ impl Record for Decl<'_> {
         };
         let texts: Option<Vec<String>> = items.iter().map(|i| i.as_str().map(str::to_owned)).collect();
         texts.or_else(|| self.invalid(Msg::new().text("a list of strings"), cx))
+    }
+
+    fn uris(&self, cx: &mut DiagCx<'_>) -> Option<Vec<Uri>> {
+        let parsed: Result<Vec<Uri>, _> = self.strings(cx)?.into_iter().map(Uri::parse).collect();
+        parsed.map_or_else(
+            |invalid| {
+                let help = Msg::new().text("each is a URL: ").text(invalid.to_string());
+                self.invalid_with(Msg::new().text("a list of URLs"), Some(help), cx)
+            },
+            Some,
+        )
     }
 
     fn symbols(&self, cx: &mut DiagCx<'_>) -> Option<Vec<Symbol>> {

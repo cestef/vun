@@ -24,7 +24,7 @@ static NULL: Value<'static> = Value::Null;
 /// names to the reader, and this one keeps each, with [`Object::get`] answering the last.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct Object<'a> {
-    members: Vec<(Cow<'a, str>, Value<'a>)>,
+    pub(crate) members: Vec<(Cow<'a, str>, Value<'a>)>,
 }
 
 impl<'a> Object<'a> {

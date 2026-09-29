@@ -137,7 +137,7 @@ fn declared_deps_read_back() {
     let archive = Source::Archive {
         version: Version::parse("1.2.0").unwrap(),
         hash,
-        urls: vec!["https://example.org/hal-1.2.0.tar.zst".into()],
+        urls: vec!["https://example.org/hal-1.2.0.tar.zst".parse().unwrap()],
     };
     let wanted = [("util", Source::Path("../util".into()), DepKind::Vun), ("hal", archive, DepKind::Foreign)];
     let mut text =

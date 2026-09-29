@@ -1,18 +1,31 @@
-//! The methods the server answers, one row each: its name, whether it is a request or a
-//! notification, when in the lifecycle it is answered, what handles it, and the capability that
-//! announces it. The capabilities announced at initialization are derived from the rows.
+//! The methods the server answers, one row each: the method's type, when in the lifecycle it is
+//! answered, and the capability announcing it. A row's handler reads the method's parameters, and
+//! writes its result, as the method's type says; the capabilities announced at initialization are
+//! derived from the rows.
 
-use vun_json::{Object, Value};
+use vun_json::{ToJson, Value};
+use vun_lsp_protocol::language::SemanticTokensLegend;
+use vun_lsp_protocol::lifecycle::{
+    SemanticTokensOptions, ServerCapabilities, TextDocumentSyncKind, TextDocumentSyncOptions,
+};
+use vun_lsp_protocol::{Notification, Request, notifications as n, requests as r};
 
-use crate::message::Failure;
-use crate::position::Encoding;
+use crate::failure::Failure;
 use crate::server::Server;
+
+/// Answers the request `R`.
+pub(crate) trait Answers<R: Request> {
+    fn answer(&mut self, params: R::Params) -> Result<R::Result, Failure>;
+}
+
+/// Handles the notification `N`.
+pub(crate) trait Hears<N: Notification> {
+    fn hear(&mut self, params: N::Params) -> Result<(), Failure>;
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum Kind {
-    /// Answered by a response.
     Request,
-    /// Answered by nothing.
     Notification,
 }
 
@@ -28,29 +41,40 @@ pub(crate) enum Admitted {
 /// What the server announces it does.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum Capability {
-    /// Documents opened, changed as a whole, and closed.
+    /// Documents opened, changed by edits, and closed.
     Sync,
     Hover,
     Definition,
+    Symbols,
+    Formatting,
+    Folding,
+    SemanticTokens,
 }
 
-/// The protocol's number for sending each change as the document's whole text.
-const FULL: u8 = 1;
-
 impl Capability {
-    /// The member announcing it among the server's capabilities.
-    fn member(self) -> (&'static str, Value<'static>) {
+    /// Announces it among `capabilities`.
+    fn announce(self, capabilities: &mut ServerCapabilities) {
         match self {
             Self::Sync => {
-                ("textDocumentSync", Object::new().with("openClose", true).with("change", FULL).into())
+                let sync =
+                    TextDocumentSyncOptions { open_close: true, change: TextDocumentSyncKind::Incremental };
+                capabilities.text_document_sync = Some(sync);
             }
-            Self::Hover => ("hoverProvider", true.into()),
-            Self::Definition => ("definitionProvider", true.into()),
+            Self::Hover => capabilities.hover_provider = Some(true),
+            Self::Definition => capabilities.definition_provider = Some(true),
+            Self::Symbols => capabilities.document_symbol_provider = Some(true),
+            Self::Formatting => capabilities.document_formatting_provider = Some(true),
+            Self::Folding => capabilities.folding_range_provider = Some(true),
+            Self::SemanticTokens => {
+                let legend = SemanticTokensLegend::all();
+                capabilities.semantic_tokens_provider =
+                    Some(SemanticTokensOptions { legend, full: true, range: false });
+            }
         }
     }
 }
 
-/// How a method is handled: its result, `null` for a notification.
+/// How a method is handled: its parameters read, its result written, `null` for a notification.
 pub(crate) type Handle = for<'s> fn(&mut Server<'s>, &Value<'_>) -> Result<Value<'static>, Failure>;
 
 pub(crate) struct Method {
@@ -61,33 +85,58 @@ pub(crate) struct Method {
     pub(crate) capability: Option<Capability>,
 }
 
-const fn method(name: &'static str, kind: Kind, admitted: Admitted, handle: Handle) -> Method {
-    Method { name, kind, admitted, handle, capability: None }
+fn answer<R: Request>(server: &mut Server<'_>, params: &Value<'_>) -> Result<Value<'static>, Failure>
+where
+    for<'s> Server<'s>: Answers<R>,
+{
+    let params = params.read::<R::Params>().map_err(Failure::params)?;
+    Answers::<R>::answer(server, params).map(|result| result.to_json())
 }
 
-const fn announced(name: &'static str, kind: Kind, handle: Handle, capability: Capability) -> Method {
-    Method { name, kind, admitted: Admitted::Running, handle, capability: Some(capability) }
+fn hear<N: Notification>(server: &mut Server<'_>, params: &Value<'_>) -> Result<Value<'static>, Failure>
+where
+    for<'s> Server<'s>: Hears<N>,
+{
+    let params = params.read::<N::Params>().map_err(Failure::params)?;
+    Hears::<N>::hear(server, params).map(|()| Value::Null)
 }
 
-// A handler is written as a closure: a method of `Server<'_>` names one lifetime of it, and a
-// handler takes any.
-#[expect(clippy::redundant_closure_for_method_calls, reason = "the method is not general enough")]
+const fn request<R: Request>(admitted: Admitted, capability: Option<Capability>) -> Method
+where
+    for<'s> Server<'s>: Answers<R>,
+{
+    Method { name: R::METHOD, kind: Kind::Request, admitted, handle: answer::<R>, capability }
+}
+
+const fn notification<N: Notification>(admitted: Admitted, capability: Option<Capability>) -> Method
+where
+    for<'s> Server<'s>: Hears<N>,
+{
+    Method { name: N::METHOD, kind: Kind::Notification, admitted, handle: hear::<N>, capability }
+}
+
+/// A method of the running server, announced by `capability`.
+const fn feature<R: Request>(capability: Capability) -> Method
+where
+    for<'s> Server<'s>: Answers<R>,
+{
+    request::<R>(Admitted::Running, Some(capability))
+}
+
 pub(crate) const METHODS: &[Method] = &[
-    method("initialize", Kind::Request, Admitted::Always, |s, p| Ok(s.initialize(p))),
-    method("initialized", Kind::Notification, Admitted::Running, |_, _| Ok(Value::Null)),
-    method("shutdown", Kind::Request, Admitted::Running, |s, _| {
-        s.shutdown();
-        Ok(Value::Null)
-    }),
-    method("exit", Kind::Notification, Admitted::Always, |s, _| {
-        s.exit();
-        Ok(Value::Null)
-    }),
-    announced("textDocument/didOpen", Kind::Notification, |s, p| s.opened(p), Capability::Sync),
-    announced("textDocument/didChange", Kind::Notification, |s, p| s.changed(p), Capability::Sync),
-    announced("textDocument/didClose", Kind::Notification, |s, p| s.closed_document(p), Capability::Sync),
-    announced("textDocument/hover", Kind::Request, |s, p| s.hover(p), Capability::Hover),
-    announced("textDocument/definition", Kind::Request, |s, p| s.definition(p), Capability::Definition),
+    request::<r::Initialize>(Admitted::Always, None),
+    notification::<n::Initialized>(Admitted::Running, None),
+    request::<r::Shutdown>(Admitted::Running, None),
+    notification::<n::Exit>(Admitted::Always, None),
+    notification::<n::DidOpen>(Admitted::Running, Some(Capability::Sync)),
+    notification::<n::DidChange>(Admitted::Running, Some(Capability::Sync)),
+    notification::<n::DidClose>(Admitted::Running, Some(Capability::Sync)),
+    feature::<r::Hover>(Capability::Hover),
+    feature::<r::Definition>(Capability::Definition),
+    feature::<r::DocumentSymbol>(Capability::Symbols),
+    feature::<r::Formatting>(Capability::Formatting),
+    feature::<r::FoldingRange>(Capability::Folding),
+    feature::<r::SemanticTokens>(Capability::SemanticTokens),
 ];
 
 impl Method {
@@ -96,17 +145,12 @@ impl Method {
         METHODS.iter().find(|m| m.name == name)
     }
 
-    /// The server's capabilities: what its rows announce, and the encoding of positions.
-    pub(crate) fn capabilities(encoding: Encoding) -> Value<'static> {
-        let mut object = Object::new().with("positionEncoding", encoding.name());
-        let mut announced: Vec<Capability> = Vec::new();
+    /// What the rows announce.
+    pub(crate) fn capabilities() -> ServerCapabilities {
+        let mut capabilities = ServerCapabilities::default();
         for capability in METHODS.iter().filter_map(|m| m.capability) {
-            if !announced.contains(&capability) {
-                announced.push(capability);
-                let (name, value) = capability.member();
-                object.push(name, value);
-            }
+            capability.announce(&mut capabilities);
         }
-        Value::Object(object)
+        capabilities
     }
 }

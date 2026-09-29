@@ -949,6 +949,7 @@ dependencies = [
  "vun-syntax",
  "vun-target",
  "vun-tool",
+ "vun-uri",
 ]
 
 [[package]]
@@ -1010,6 +1011,9 @@ dependencies = [
 [[package]]
 name = "vun-codec-derive"
 version = "0.0.0"
+dependencies = [
+ "vun-derive-core",
+]
 
 [[package]]
 name = "vun-codegen"
@@ -1039,6 +1043,10 @@ dependencies = [
  "vun-suggest",
  "vun-term",
 ]
+
+[[package]]
+name = "vun-derive-core"
+version = "0.0.0"
 
 [[package]]
 name = "vun-desugar"
@@ -1092,11 +1100,13 @@ dependencies = [
  "vun-diag",
  "vun-doc",
  "vun-fetch",
+ "vun-fmt",
  "vun-fs",
  "vun-grammar",
  "vun-harness",
  "vun-hash",
  "vun-hir",
+ "vun-index",
  "vun-inline",
  "vun-intern",
  "vun-interp",
@@ -1135,6 +1145,8 @@ dependencies = [
  "vun-term",
  "vun-tool",
  "vun-trace",
+ "vun-uri",
+ "vun-variants",
 ]
 
 [[package]]
@@ -1161,6 +1173,7 @@ dependencies = [
  "ruzstd",
  "vun-fs",
  "vun-hash",
+ "vun-uri",
  "zip",
 ]
 
@@ -1204,6 +1217,7 @@ dependencies = [
  "vun-span",
  "vun-syntax",
  "vun-target",
+ "vun-uri",
 ]
 
 [[package]]
@@ -1289,6 +1303,7 @@ version = "0.0.0"
 dependencies = [
  "ureq",
  "vun-fetch",
+ "vun-uri",
 ]
 
 [[package]]
@@ -1383,6 +1398,16 @@ dependencies = [
 [[package]]
 name = "vun-json"
 version = "0.0.0"
+dependencies = [
+ "vun-json-derive",
+]
+
+[[package]]
+name = "vun-json-derive"
+version = "0.0.0"
+dependencies = [
+ "vun-derive-core",
+]
 
 [[package]]
 name = "vun-link"
@@ -1544,9 +1569,20 @@ dependencies = [
  "vun-driver",
  "vun-fs",
  "vun-json",
+ "vun-lsp-protocol",
  "vun-origin",
  "vun-span",
  "vun-trace",
+ "vun-uri",
+]
+
+[[package]]
+name = "vun-lsp-protocol"
+version = "0.0.0"
+dependencies = [
+ "vun-json",
+ "vun-uri",
+ "vun-variants",
 ]
 
 [[package]]
@@ -1979,6 +2015,20 @@ dependencies = [
  "vun-json",
  "vun-par",
  "vun-term",
+]
+
+[[package]]
+name = "vun-uri"
+version = "0.0.0"
+dependencies = [
+ "vun-json",
+]
+
+[[package]]
+name = "vun-variants"
+version = "0.0.0"
+dependencies = [
+ "vun-derive-core",
 ]
 
 [[package]]

@@ -1,12 +1,12 @@
 //! `vun pkg update`: a dependency is raised to the newest release its index lists in its major,
 //! verified against the listed hash, and its manifest entry rewritten.
 
-use crate::common::Fixture;
+use crate::common::{Fixture, file_url};
 use vun_build::index::{Index, Listing};
 use vun_build::layout::MANIFEST;
 use vun_build::manifest::Identity;
 use vun_diag::errors;
-use vun_fetch::{Format, Scheme};
+use vun_fetch::Format;
 use vun_hash::Hash;
 
 const HAL: Identity = Identity { id: 7, major: 1 };
@@ -17,12 +17,12 @@ fn release(fx: &Fixture, index: &str, version: &str, source: &str, listed: Optio
     let hal = Fixture::manifest("hal", HAL.id, version);
     let dir = fx.write(&format!("hal-{version}"), &hal, source);
     let (bytes, snapshot) = Format::PUBLISHED.pack(&dir, &hal.include, &hal.release()).unwrap();
-    let base = Scheme::file_url(&fx.root.join(index));
+    let base = vun_uri::Uri::from_file_path(&fx.root.join(index)).unwrap();
     let archive = Index { base: &base }.archive(HAL, hal.version);
-    fx.root.write(archive.strip_prefix(Scheme::FILE.prefix).unwrap(), bytes);
+    fx.root.write(archive.to_file_path().unwrap(), bytes);
     let listing = Listing { releases: vec![(hal.version, listed.unwrap_or(snapshot.root()))] };
     let list = Index { base: &base }.listing(HAL);
-    fx.root.write(list.strip_prefix(Scheme::FILE.prefix).unwrap(), listing.to_string());
+    fx.root.write(list.to_file_path().unwrap(), listing.to_string());
     snapshot.root()
 }
 
@@ -36,7 +36,7 @@ fn dependencies_are_raised_within_their_major() {
     let mut app = Fixture::manifest("app", 1, "0.1.0");
     app.prelude.push("hal".into());
     app.deps.push(Fixture::stored("hal", "1.0.0", &url, hash));
-    app.index.push(Scheme::file_url(&fx.root.join("index")));
+    app.index.push(file_url(&fx.root.join("index")));
     let dir = fx.write("app", &app, "x := b;\n");
 
     let mut session = fx.session();
@@ -60,7 +60,7 @@ fn a_release_not_matching_its_listing_is_refused() {
     release(&fx, "index", "1.2.0", "a := 1;\n", Some(Hash::of(b"another")));
     let mut app = Fixture::manifest("app", 1, "0.1.0");
     app.deps.push(Fixture::stored("hal", "1.0.0", &url, hash));
-    app.index.push(Scheme::file_url(&fx.root.join("index")));
+    app.index.push(file_url(&fx.root.join("index")));
     let dir = fx.write("app", &app, "");
     let mut session = fx.session();
     let project = session.package_at(&dir).unwrap();
