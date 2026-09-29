@@ -65,6 +65,9 @@ impl Ld<'_> {
     ) -> Result<(), ErrorGuaranteed> {
         let compiler = &target.c.compiler;
         let mut args: Vec<Arg> = compiler.link_flags.iter().map(|&f| Arg::Text(f)).collect();
+        args.extend(
+            compiler.sysroot.iter().flat_map(|root| [gcc::SYSROOT.into(), Arg::Path(root.as_str().into())]),
+        );
         match self {
             Self::Own => {}
             Self::Flag(flag) => args.push(flag.into()),

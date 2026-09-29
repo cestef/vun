@@ -11,12 +11,13 @@ use vun_backend::{Artifact, Emits};
 use vun_command::{Param, PathKind, Values};
 use vun_diag::{Diagnostic, ErrorGuaranteed, Msg, errors};
 use vun_fs::{Edit, Part};
+use vun_intern::Symbol;
 use vun_link::LinkPlan;
 use vun_lir::FuncId;
 use vun_origin::Resolve;
 use vun_par::Parallel;
 use vun_span::{FileId, SourceMap};
-use vun_target::{CCompiler, FrameSizes, Profile, Support, Unsupported};
+use vun_target::{FrameSizes, Profile, Support, TargetSpec, Unsupported};
 use vun_tool::{Arg, Executable, Failure, Invocation, Tool, gcc};
 use vun_trace::{Activity, tracing};
 
@@ -74,7 +75,7 @@ impl Session {
         let builds = root.parent().unwrap_or(Path::new("")).join(vun_fs::WORK).join(BUILDS);
         let compiler = &coded.target.c.compiler;
         let profile = self.codegen.profile;
-        let dir = builds.join(cache::Objects::key(&coded.artifacts, compiler, profile).digest());
+        let dir = builds.join(cache::Objects::key(&coded.artifacts, &coded.target, profile).digest());
         // A directory of this key holds these artifacts already.
         for artifact in coded.artifacts.iter().filter(|a| !dir.join(a.file()).exists()) {
             let path = dir.join(artifact.file());
@@ -83,7 +84,7 @@ impl Session {
         let sources: Vec<&Artifact> = coded.artifacts.iter().filter(|a| a.kind == Emits::Source).collect();
         let results = sources.par_map(|a| {
             tracing::debug!(source = %a.file().display(), compiler = compiler.command.as_str(), "compiling");
-            Self::compile_source(compiler, profile, self.codegen.output, &dir, a.part)
+            Self::compile_source(&coded.target, profile, self.codegen.output, &dir, a.part)
         });
         let mut objects = Vec::new();
         for (artifact, result) in sources.iter().zip(results) {
@@ -135,16 +136,18 @@ impl Session {
         Ok(())
     }
 
-    /// The object `compiler` makes of the source of `part` in `dir`, beside it, with the flags
-    /// of `profile`: made under another name and renamed, so an object there was made whole, and
+    /// The object the C compiler of `target` makes of the source of `part` in `dir`, beside it,
+    /// with the flags of `profile`, told the oldest release of the target's system where it
+    /// records one: made under another name and renamed, so an object there was made whole, and
     /// kept by the next build of the same key.
     fn compile_source(
-        compiler: &CCompiler,
+        target: &TargetSpec,
         profile: Profile,
         output: vun_link::Output,
         dir: &Path,
         part: vun_backend::Part,
     ) -> Result<PathBuf, Failure> {
+        let compiler = &target.c.compiler;
         let path = dir.join(part.file(Emits::Source));
         let object = dir.join(part.file(Emits::Object));
         if object.exists() {
@@ -157,6 +160,11 @@ impl Session {
             Profile::Release => &compiler.optimize,
         };
         let mut args: Vec<Arg> = compiler.flags.iter().chain(optimize).map(|&f| Arg::Text(f)).collect();
+        let released = target.os_version.zip(compiler.version_flag);
+        args.extend(released.map(|(version, flag)| Arg::Text(Symbol::intern(&format!("{flag}{version}")))));
+        args.extend(
+            compiler.sysroot.iter().flat_map(|root| [gcc::SYSROOT.into(), Arg::Path(root.as_str().into())]),
+        );
         if compiler.frame_sizes == FrameSizes::StackUsage {
             args.push(gcc::STACK_USAGE.into());
         }

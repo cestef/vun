@@ -67,7 +67,8 @@ Proposed, not yet accepted: 249 to 251, 253 to 257, 259, 260, 262, 265, 266, 268
 counted by name), 323 (the grammar read by type into one model, `editors.vun`, operand contexts,
 the parser reading the tables), 324 (language server features), 325 (DWARF subprograms), 327
 (exported data), 328 (a constant shifted by a run-time amount has no width), 329 (board
-peripherals, exported aliases, `libgcc` on bare targets). 279 (static Linux targets), 282 (`&mut T` where `&T` is) and 326 (section
+peripherals, exported aliases, `libgcc` on bare targets), 330 (macOS linking from target data,
+`sysroot`, `os_version`). 279 (static Linux targets), 282 (`&mut T` where `&T` is) and 326 (section
 placements) were the owner's choice.
 
 ## Known gaps in landed work
@@ -114,7 +115,8 @@ placements) were the owner's choice.
    for now); `FromLiteral` could replace the hand walks of `Literal` in manifests, the lock file
    and the toolchain file.
 1. Backends: Thumb agrees on every driver program (`linux.arm` through `qemu-arm` on `petal.wg`);
-   `macos.arm64` linking (lld, an SDK the owner provides); riscv64 (`qemu-riscv64` is here, no
+   `macos.arm64` links through both backends (`ld64.lld`, the SDK on `petal.wg` built from Zig's
+   stubs) but runs nowhere here: a Mac, or a runner, would test it; riscv64 (`qemu-riscv64` is here, no
    sysroot); the stm32f4 board beyond the blinky (`bare_metal.vun` runs on qemu's STM32F405:
    gpio outputs, TIM2 waits, `std.task.run`): serial, systick, clocks past the reset oscillator.
 2. Kernel runtime: riscv64 numbers; directories, seeking, environment.

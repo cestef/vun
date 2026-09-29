@@ -1458,6 +1458,7 @@ name = "vun-link-lld"
 version = "0.0.0"
 dependencies = [
  "vun-diag",
+ "vun-intern",
  "vun-link",
  "vun-target",
  "vun-tool",

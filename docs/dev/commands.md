@@ -48,7 +48,7 @@ toolchain file picks the version), `cargo-nextest`, `wasmtime`, `wild`, `clang`,
 its own `~/.config/vun/toolchain.vun`. The owner's: `am3.wg` (aarch64, 11 cores, the fastest;
 x86-64-only driver tests skip there) and `petal.wg` (x86-64, 8 cores, with `qemu-user`, the arm64
 cross compiler and the `fc44` sysroot, `arm-none-eabi-gcc` and `qemu-system-arm`; its toolchain file
-has rows for `linux.arm64`, `linux.arm` and `bare.cortex_m4f`). Known host differences: Fedora 44's libclang fails
+has rows for `linux.arm64`, `linux.arm`, `bare.cortex_m4f` and `macos.arm64`). Known host differences: Fedora 44's libclang fails
 `vun-clang`'s `a_header_reads_as_declarations_with_target_sizes` (`Elaborated` for `Record`), and
 on the aarch64 host six driver tests of the native backend and the checks fail, since the machine's
 own target there is `linux.arm64`.
@@ -100,6 +100,13 @@ On the owner's machine:
 | `linux.arm64` | `aarch64-linux-gnu-gcc`, sysroot `/usr/aarch64-redhat-linux/sys-root/fc43` | `qemu-aarch64 -L <sysroot>/usr` |
 | `linux.arm` | `clang --target=arm-linux-gnueabi -fuse-ld=lld` (finds the `libgcc` of `gcc-arm-linux-gnu`) | `qemu-arm` |
 | `bare.cortex_m4f` | the target's `arm-none-eabi-gcc` (`arm-none-eabi-gcc-cs`) | `qemu-system-arm -M netduinoplus2 -nographic -semihosting-config enable=on,target=native -kernel` |
+| `macos.arm64` | the target's `clang`, sysroot `~/sdk/MacOSX.sdk` (links with `ld64.lld`) | none: programs are linked, not run |
+
+The macOS SDK on `petal.wg` is assembled from Zig's own (`dnf install zig`, MIT licensed), not
+Apple's, which is licensed for Apple hardware only: `SDKSettings.json` (with `Version` and
+`SupportedTargets`, or clang ignores it) and `usr/lib/libSystem.tbd` from
+`/usr/lib/zig/libc/darwin`, and `usr/include` from `/usr/lib/zig/libc/include/any-darwin-any`.
+It links; no machine here runs what it links.
 
 GCC refuses `r7` in the Thumb runtime's blocks (its Thumb frame pointer), hence clang for
 `linux.arm`. Kernel targets link `-static -nostdlib -l gcc`.

@@ -9,6 +9,7 @@ use vun_items::Item;
 use vun_items::lang::Option as option;
 use vun_items::lang::target_Convention as convention;
 use vun_items::lang::target_Threads as threads;
+use vun_items::lang::target_Version as version;
 use vun_items::lang::{
     target_Atomics as atomics, target_Attributes as attributes, target_CCompiler as compiler,
     target_FrameSizes as frames,
@@ -19,7 +20,7 @@ use vun_items::std::build_Output as output;
 use vun_sema_ty::Value;
 use vun_target::{
     Atomics, Attributes, Backends, CCompiler, CInt, CTypes, Convention, Endian, FrameSizes, Host, Output,
-    TargetSpec, Threads,
+    TargetSpec, Threads, Version,
 };
 
 use super::members::Members;
@@ -149,6 +150,13 @@ impl Read for CInt {
     }
 }
 
+impl Read for Version {
+    fn read(value: &Value) -> Result<Self, Unread> {
+        let m = Members::of(value)?;
+        Ok(Self { major: m.int(version::major)?, minor: m.int(version::minor)? })
+    }
+}
+
 impl Read for CCompiler {
     fn read(value: &Value) -> Result<Self, Unread> {
         let m = Members::of(value)?;
@@ -162,6 +170,8 @@ impl Read for CCompiler {
             atomics: m.read(compiler::atomics)?,
             attributes: m.read(compiler::attributes)?,
             frame_sizes: m.read(compiler::frame_sizes)?,
+            version_flag: m.symbol(compiler::version_flag)?,
+            sysroot: m.symbol(compiler::sysroot)?,
         })
     }
 }
@@ -205,6 +215,7 @@ impl Read for TargetSpec {
             endian: m.read(spec::endian)?,
             object_format: m.name(spec::object_format)?,
             entry_symbol: m.symbol(spec::entry_symbol)?,
+            os_version: m.option(spec::os_version)?.map(Version::read).transpose()?,
             backends: m.read(spec::backends)?,
             linker: m.name(spec::linker)?,
             c: m.read(spec::c)?,

@@ -51,7 +51,7 @@ build := (b: &mut std.build.Build) {
     let target = ".{ .arch = .arm, .isa = .thumb, .features = .{ .microcontroller, .divide }, .cpu = .cortex_m4f, .os = .bare, .abi = .eabihf, .convention = .aapcs_vfp, \
                   .pointer_bits = 32, .register_bits = 32, .floats = .{ lang.Float(32) }, \
                   .threads = .one, .endian = .little, \
-                  .object_format = .elf, .entry_symbol = .some(\"Reset\"), .backends = .{ .debug = .{ .cranelift, .c }, \
+                  .object_format = .elf, .entry_symbol = .some(\"Reset\"), .os_version = .none, .backends = .{ .debug = .{ .cranelift, .c }, \
                   .release = .{ .llvm, .c } }, .linker = .gnu, .c = .{ .short = .{ .bits = 16, .align = 2 }, \
                   .int = .{ .bits = 32, .align = 4 }, .long = .{ .bits = 32, .align = 4 }, \
                   .long_long = .{ .bits = 64, .align = 8 }, .pointer_align = 4, \
@@ -60,7 +60,7 @@ build := (b: &mut std.build.Build) {
                   \"-mthumb\", \"-mfloat-abi=hard\", \"-mfpu=fpv4-sp-d16\" }, .optimize = .{ \"-O2\" }, \
                   .link_flags = .{ \"-mcpu=cortex-m4\", \"-mthumb\", \"-mfloat-abi=hard\", \"-mfpu=fpv4-sp-d16\", \
                   \"-nostdlib\", \"-nostartfiles\" }, .libraries = .{ \"gcc\" }, .atomics = .gnu, .attributes = .gnu, \
-                  .frame_sizes = .stack_usage } } }";
+                  .frame_sizes = .stack_usage, .version_flag = .none, .sysroot = .none } } }";
     assert_eq!(
         actions,
         [

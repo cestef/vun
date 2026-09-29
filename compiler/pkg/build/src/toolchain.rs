@@ -9,7 +9,7 @@
 //!             .target = linux.arm64,
 //!             .compiler = "aarch64-linux-gnu-gcc",
 //!             .archiver = "aarch64-linux-gnu-ar",
-//!             .flags = .{ "--sysroot=/usr/aarch64-linux-gnu" },
+//!             .sysroot = "/usr/aarch64-linux-gnu",
 //!             .runner = .{ "qemu-aarch64", "-L", "/usr/aarch64-linux-gnu" },
 //!         },
 //!     },
@@ -43,6 +43,8 @@ pub struct Tools {
     pub archiver: Option<Symbol>,
     /// Flags every run of the C compiler takes, compiling and linking.
     pub flags: Vec<Symbol>,
+    /// The directory of the target system's headers and libraries: a sysroot, an SDK.
+    pub sysroot: Option<Symbol>,
     /// The command a program is run through, its path and arguments after: an emulator. Empty
     /// where programs run as they are.
     pub runner: Vec<Symbol>,
@@ -55,10 +57,11 @@ mod field {
     pub(super) const COMPILER: &str = "compiler";
     pub(super) const ARCHIVER: &str = "archiver";
     pub(super) const FLAGS: &str = "flags";
+    pub(super) const SYSROOT: &str = "sysroot";
     pub(super) const RUNNER: &str = "runner";
 
     pub(super) const TOOLCHAIN: &[&str] = &[TARGETS];
-    pub(super) const TOOLS: &[&str] = &[TARGET, COMPILER, ARCHIVER, FLAGS, RUNNER];
+    pub(super) const TOOLS: &[&str] = &[TARGET, COMPILER, ARCHIVER, FLAGS, SYSROOT, RUNNER];
 }
 
 impl Toolchain {
@@ -111,6 +114,8 @@ impl Tools {
             .get(field::ARCHIVER)
             .map_or(Some(None), |d| d.string(cx).map(|s| Some(Symbol::intern(&s))));
         let flags = fields.get(field::FLAGS).map_or(Some(Vec::new()), |d| d.symbols(cx));
+        let sysroot =
+            fields.get(field::SYSROOT).map_or(Some(None), |d| d.string(cx).map(|s| Some(Symbol::intern(&s))));
         let runner = fields.get(field::RUNNER).map_or(Some(Vec::new()), |d| d.symbols(cx));
         fields.finish(cx);
         Some(Self {
@@ -118,12 +123,14 @@ impl Tools {
             compiler: compiler?,
             archiver: archiver?,
             flags: flags?,
+            sysroot: sysroot?,
             runner: runner?,
             span: decl.span,
         })
     }
 
-    /// Makes `spec` built with these tools: their C compiler, and their flags on each of its runs.
+    /// Makes `spec` built with these tools: their C compiler, their flags on each of its runs, and
+    /// their system root.
     pub fn apply(&self, spec: &mut TargetSpec) {
         let compiler = &mut spec.c.compiler;
         if let Some(command) = self.compiler {
@@ -131,6 +138,9 @@ impl Tools {
         }
         if let Some(archiver) = self.archiver {
             compiler.archiver = archiver;
+        }
+        if let Some(sysroot) = self.sysroot {
+            compiler.sysroot = Some(sysroot);
         }
         compiler.flags.extend(&self.flags);
         compiler.link_flags.extend(&self.flags);

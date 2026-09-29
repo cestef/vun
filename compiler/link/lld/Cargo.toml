@@ -12,6 +12,7 @@ workspace = true
 
 [dependencies]
 vun-diag.workspace = true
+vun-intern.workspace = true
 vun-tool.workspace = true
 vun-trace.workspace = true
 vun-link.workspace = true

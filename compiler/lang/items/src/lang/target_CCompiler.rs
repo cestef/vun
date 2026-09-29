@@ -18,3 +18,12 @@ pub const libraries: Item = Item::new(&["lang", "target", "CCompiler", "librarie
 pub const atomics: Item = Item::new(&["lang", "target", "CCompiler", "atomics"]);
 pub const attributes: Item = Item::new(&["lang", "target", "CCompiler", "attributes"]);
 pub const frame_sizes: Item = Item::new(&["lang", "target", "CCompiler", "frame_sizes"]);
+/// The option telling it the oldest release of the target's system, the release following
+/// it (clang's `-mmacos-version-min=`); none where the target records no release.
+pub const version_flag: Item = Item::new(
+    &["lang", "target", "CCompiler", "version_flag"],
+);
+/// The directory holding the headers and libraries of the target's system that its tools
+/// build against (a sysroot, an SDK): where a machine keeps them, which its toolchain file
+/// names, and none where they are the tools' own.
+pub const sysroot: Item = Item::new(&["lang", "target", "CCompiler", "sysroot"]);

@@ -164,3 +164,30 @@ fn a_shared_library_on_wasi_is_a_module_of_its_exports() {
         .unwrap();
     assert_eq!(String::from_utf8_lossy(&ran.stdout).trim(), "42");
 }
+
+/// What a Mach-O file's header starts with: its magic, 64-bit; its processor, arm64; and its
+/// kind, an executable.
+const MACHO_EXECUTABLE: [u32; 3] = [0xfeed_facf, 0x0100_000c, 2];
+
+#[test]
+fn a_macos_program_links_against_the_sdk_the_toolchain_names_through_each_backend() {
+    for backend in [vun_backend_native::INFO.id, vun_backend_c::INFO.id] {
+        let fixture = Fixture::new(&format!("link-macos-{backend}"));
+        let path = fixture.root.write("main.vun", EXITS);
+        let mut session = fixture.session();
+        session.choice = Choice::Path(["macos", "arm64"].map(Symbol::intern).to_vec());
+        let file = session.load(&path).unwrap();
+        let _ = session.lir(file);
+        // Where the machine keeps no SDK, there is nothing to link against.
+        let sdk = session.target.clone().and_then(Result::ok).and_then(|spec| spec.c.compiler.sysroot);
+        if sdk.is_none() {
+            return;
+        }
+        session.codegen = Codegen::through(backend);
+        let built = session.build(file, None).unwrap_or_else(|_| panic!("{backend}: {:#?}", session.diag));
+        let bytes = std::fs::read(built).unwrap();
+        let header: Vec<u32> =
+            bytes.as_chunks::<4>().0.iter().take(4).map(|w| u32::from_le_bytes(*w)).collect();
+        assert_eq!([header[0], header[1], header[3]], MACHO_EXECUTABLE, "{backend}");
+    }
+}

@@ -1,4 +1,26 @@
-//! macOS.
+//! macOS. A program records the oldest release it runs on, which its C compiler and its linker
+//! are told, and links the system's library, `libSystem`, from the SDK the machine keeps (its
+//! toolchain file's `sysroot`).
+
+/// The oldest macOS on Apple silicon.
+_apple_silicon: lang.target.Version = .{ .major = 11 };
+
+/// Apple's clang, or any clang `machine` names the target to (its triple): its GNU options, the
+/// release told with `-mmacos-version-min=`, and `libSystem` linked after the objects.
+_clang := ($machine: &[&[u8]]) -> lang.target.CCompiler {
+    .{
+        .command = "clang",
+        .archiver = "ar",
+        .flags = targets.c_flags ++ machine,
+        .optimize = targets.c_optimize,
+        .link_flags = machine,
+        .libraries = &["System"],
+        .atomics = .gnu,
+        .attributes = .gnu,
+        .frame_sizes = .stack_usage,
+        .version_flag = .some("-mmacos-version-min="),
+    }
+};
 
 /// Apple silicon (64-bit ARM), Armv8.5 and later.
 arm64 := lang.target.Spec{
@@ -16,7 +38,8 @@ arm64 := lang.target.Spec{
     .endian = .little,
     .object_format = .macho,
     .entry_symbol = .some("_main"),
+    .os_version = .some(_apple_silicon),
     .backends = targets.native_first,
     .linker = .lld,
-    .c = targets.lp64(targets.gnu("clang", "ar", &[], &[], &[])),
+    .c = targets.lp64(_clang(&["--target=arm64-apple-macos"])),
 };

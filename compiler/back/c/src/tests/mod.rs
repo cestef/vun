@@ -39,6 +39,7 @@ pub(crate) fn target() -> TargetSpec {
         endian: Endian::Little,
         object_format: name("elf"),
         entry_symbol: None,
+        os_version: None,
         backends: Backends { debug: vec![name("c")], release: vec![name("c")] },
         linker: name("gnu"),
         c: CTypes {
@@ -57,6 +58,8 @@ pub(crate) fn target() -> TargetSpec {
                 atomics: Atomics::None,
                 attributes: Attributes::None,
                 frame_sizes: FrameSizes::StackUsage,
+                version_flag: None,
+                sysroot: None,
             },
         },
     }

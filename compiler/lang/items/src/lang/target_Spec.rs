@@ -37,6 +37,9 @@ pub const endian: Item = Item::new(&["lang", "target", "Spec", "endian"]);
 pub const object_format: Item = Item::new(&["lang", "target", "Spec", "object_format"]);
 /// The symbol a program starts at, when the target has one.
 pub const entry_symbol: Item = Item::new(&["lang", "target", "Spec", "entry_symbol"]);
+/// The oldest release of its system its programs run on, where its binaries record one (as
+/// Mach-O's do); none where they do not.
+pub const os_version: Item = Item::new(&["lang", "target", "Spec", "os_version"]);
 pub const backends: Item = Item::new(&["lang", "target", "Spec", "backends"]);
 pub const linker: Item = Item::new(&["lang", "target", "Spec", "linker"]);
 pub const c: Item = Item::new(&["lang", "target", "Spec", "c"]);

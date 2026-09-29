@@ -20,5 +20,7 @@ pub const STACK_USAGE: &str = "-fstack-usage";
 pub const LIBRARY: &str = "-l";
 /// Links a shared library rather than an executable.
 pub const SHARED: &str = "-shared";
+/// Builds against the headers and libraries of the directory that follows, the target system's.
+pub const SYSROOT: &str = "--sysroot";
 /// Compiles code that runs wherever it is loaded, as a shared library's must.
 pub const PIC: &str = "-fPIC";

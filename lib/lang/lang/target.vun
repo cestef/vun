@@ -48,6 +48,13 @@ CCompiler := struct {
     atomics: Atomics,
     attributes: Attributes,
     frame_sizes: FrameSizes,
+    /// The option telling it the oldest release of the target's system, the release following
+    /// it (clang's `-mmacos-version-min=`); none where the target records no release.
+    version_flag: ?&[u8] = .none,
+    /// The directory holding the headers and libraries of the target's system that its tools
+    /// build against (a sysroot, an SDK): where a machine keeps them, which its toolchain file
+    /// names, and none where they are the tools' own.
+    sysroot: ?&[u8] = .none,
 };
 
 /// The C types of a target as its C compiler lays them out: the C backend declares its own
@@ -91,6 +98,12 @@ Backends := struct {
     debug: &[lang.meta.Name],
     /// Fast to run: `vun build --release`.
     release: &[lang.meta.Name],
+};
+
+/// A release of a system, as `11.0` is of macOS.
+Version := struct {
+    major: u16,
+    minor: u16 = 0,
 };
 
 /// How many threads the programs of a target run.
@@ -137,6 +150,9 @@ Spec := struct {
     object_format: lang.meta.Name,
     /// The symbol a program starts at, when the target has one.
     entry_symbol: ?&[u8],
+    /// The oldest release of its system its programs run on, where its binaries record one (as
+    /// Mach-O's do); none where they do not.
+    os_version: ?Version = .none,
     backends: Backends,
     linker: lang.meta.Name,
     c: C,

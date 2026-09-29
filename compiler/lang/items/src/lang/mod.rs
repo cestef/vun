@@ -276,6 +276,7 @@ pub mod target_FrameSizes;
 pub mod target_Host;
 pub mod target_Spec;
 pub mod target_Threads;
+pub mod target_Version;
 pub mod thread;
 pub mod trace;
 pub mod trace_Detail;

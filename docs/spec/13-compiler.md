@@ -753,7 +753,12 @@ assembler and its instruction compilers and nothing else:
   bit 0 of their value set, and `$t`/`$d` mapping symbols where code and data change), or
   Mach-O 64-bit for arm64 (`macos.arm64`), whose symbols are C names with a leading
   underscore, whose relocations keep a word's addend in place and an instruction's in an
-  `ARM64_RELOC_ADDEND` before it, and whose debugging sections are `__DWARF` ones; relocation
+  `ARM64_RELOC_ADDEND` before it, and whose debugging sections are `__DWARF` ones, linked by
+  `ld64.lld` (lld's Mach-O flavor), all from the target as data: its `arch`, its `os` and the
+  oldest release it runs on (`lang.target.Spec.os_version`, `-platform_version`), its sysroot
+  (`-syslibroot`) and its C compiler's `libraries` (`System`), into a program `LC_MAIN` enters
+  at `_main`; its C compiler is told the release by the option the target names
+  (`lang.target.CCompiler.version_flag`); relocation
   kinds are the framework's, each format and machine numbers them. A target whose format the
   native backend does not write for its machine is refused (`backend.lacks`). ELF itself is
   `vun-elf`'s: a file as data (its class, kind and machine, sections with their contents,

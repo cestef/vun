@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 use vun_backend::Artifact;
 use vun_hash::Hash;
 use vun_link::LinkPlan;
-use vun_target::{CCompiler, Name, Profile, TargetSpec};
+use vun_target::{Name, Profile, TargetSpec};
 use vun_trace::tracing;
 
 /// Where link stamps are kept, among the builds.
@@ -20,10 +20,10 @@ pub(super) struct Objects;
 impl Objects {
     /// The key of the directory holding `artifacts` and the objects `compiler` makes of them
     /// under `profile`.
-    pub(super) fn key(artifacts: &[Artifact], compiler: &CCompiler, profile: Profile) -> Hash {
+    pub(super) fn key(artifacts: &[Artifact], target: &TargetSpec, profile: Profile) -> Hash {
         let contents: Vec<(PathBuf, &[u8])> =
             artifacts.iter().map(|a| (a.file(), a.bytes.as_slice())).collect();
-        Hash::of_value(&(contents, compiler, profile))
+        Hash::of_value(&(contents, target, profile))
     }
 }
 

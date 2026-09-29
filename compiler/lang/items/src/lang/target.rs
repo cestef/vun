@@ -32,6 +32,8 @@ pub const Convention: Item = Item::new(&["lang", "target", "Convention"]);
 /// The backends a target builds with under each profile, most preferred first: a build takes
 /// the first the toolchain has that generates code for the target (spec 13, section 8).
 pub const Backends: Item = Item::new(&["lang", "target", "Backends"]);
+/// A release of a system, as `11.0` is of macOS.
+pub const Version: Item = Item::new(&["lang", "target", "Version"]);
 /// How many threads the programs of a target run.
 pub const Threads: Item = Item::new(&["lang", "target", "Threads"]);
 /// A target, as data (spec 13, section 7): the package `targets` declares one per system and CPU
