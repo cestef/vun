@@ -8,3 +8,12 @@
 use crate::Item;
 pub const Vector: Item = Item::new(&["lang", "simd", "Vector"]);
 pub const Mask: Item = Item::new(&["lang", "simd", "Mask"]);
+/// The type of the lanes of the vector type `V`.
+pub const Lane: Item = Item::new(&["lang", "simd", "Lane"]);
+/// The lanes of `v`, in order.
+pub const lanes: Item = Item::new(&["lang", "simd", "lanes"]);
+/// The vector whose lanes are `xs`.
+pub const of: Item = Item::new(&["lang", "simd", "of"]);
+/// The first index of each whole run of `width` items among `n`: `0`, `width`, `2 * width`, and
+/// so on, for a `$for` over the vectors of a sequence.
+pub const chunks: Item = Item::new(&["lang", "simd", "chunks"]);

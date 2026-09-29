@@ -11,10 +11,9 @@ use vun_items::Item;
 use vun_origin::OriginId;
 use vun_sema_int::{Interval, Storage};
 use vun_sema_ty::trap::Unevaluated;
-use vun_sema_ty::{Ty, TyKind};
+use vun_sema_ty::{Ty, TyKind, Value};
 
-use super::typed::Found;
-use super::{Known, Stage, TypedBody, Typer};
+use super::{Known, Stage, Typer};
 use crate::env::Env;
 use crate::visible::Visible;
 
@@ -66,27 +65,35 @@ impl<'a, 'db> Typer<'_, 'a, 'db> {
 
     /// The type `expr` denotes, reporting a trap that fires while evaluating it.
     pub(super) fn ty(&mut self, expr: ExprId) -> Option<Ty> {
-        let evaluated = match self.env().ty(expr) {
-            // Forms typed by their context, such as `.square(5)` in `Int(0..=area(.square(5)))`,
-            // evaluate once the annotation is typed.
-            Err(Unevaluated::Unsupported | Unevaluated::Unbuilt(_)) => {
+        self.known_value(expr, None).ok()?.as_type()
+    }
+
+    /// The value at compile time of `expr`, an annotation or a `$` argument, as a value of `ty`
+    /// where given, reporting a trap that fires. A form that evaluates only once typed is typed
+    /// then, at compile time: one typed by its context, such as `.square(5)` in
+    /// `Int(0..=area(.square(5)))`, and a call leaving `$` arguments to inference, such as
+    /// `TypeOf(x)`.
+    pub(super) fn known_value(&mut self, expr: ExprId, ty: Option<Ty>) -> Result<Value, Unevaluated> {
+        let evaluated = match self.evaluating().eval_as(expr, ty) {
+            Err(Unevaluated::Unsupported | Unevaluated::Unbuilt(_))
+                if !self.found.types.contains_key(&expr) =>
+            {
                 let outer = std::mem::replace(&mut self.stage, Stage::Compile);
-                self.typed(expr);
+                self.typed_as(expr, ty);
                 self.stage = outer;
-                self.evaluating().ty(expr)
+                self.evaluating().eval_as(expr, ty)
             }
             evaluated => evaluated,
         };
-        self.reported(expr, evaluated).ok()
+        self.reported(expr, evaluated)
     }
 
-    /// The environment evaluating what is typed so far, with the types found for it: forms
-    /// typed by their context, and methods called on values of no type of their own, such as
-    /// arrays, dispatch by them.
+    /// The environment every evaluation while typing runs in: with what typing found so far,
+    /// shared, not copied. Forms typed by their context, methods called on values of no type of
+    /// their own (arrays) and calls whose `$` arguments were inferred (`TypeOf(x)`) evaluate
+    /// only with it.
     pub(super) fn evaluating(&self) -> Env<'a, 'db> {
-        let found = Found { types: self.found.types.clone(), ..Found::default() };
-        let types = TypedBody { found, ..TypedBody::default() };
-        self.env().clone().typed_by(Some(Arc::new(types)))
+        self.env().clone().typed_by(Some(Arc::clone(&self.found)))
     }
 
     /// What evaluating at compile time for `expr` gave, a trap that fired in it reported at
@@ -96,8 +103,12 @@ impl<'a, 'db> Typer<'_, 'a, 'db> {
         expr: ExprId,
         evaluated: Result<T, Unevaluated>,
     ) -> Result<T, Unevaluated> {
-        if let Err(Unevaluated::Trapped(trap)) = &evaluated {
-            self.diag.error(trap.report(self.hir().exprs[expr].origin));
+        match &evaluated {
+            Err(Unevaluated::Trapped(trap)) => {
+                self.diag.error(trap.report(self.hir().exprs[expr].origin));
+            }
+            Err(why) => vun_trace::tracing::trace!(at = ?self.hir().exprs[expr].origin, ?why, "unevaluated"),
+            Ok(_) => {}
         }
         evaluated
     }

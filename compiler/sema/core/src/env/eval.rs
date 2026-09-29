@@ -57,14 +57,14 @@ impl Env<'_, '_> {
                 let (len, elem) = (self.eval(*len)?, self.ty(*elem)?);
                 self.apply(self.form(Form::Array)?, vec![len, Value::Type(elem)])
             }
-            ExprKind::Array(items) => items
-                .iter()
-                .map(|item| match item {
-                    Entry::One(item) => self.eval_as(*item, self.type_of(expr).and_then(|t| t.items())),
-                    Entry::Staged(_) => Err(Unevaluated::Unsupported),
-                })
-                .collect::<Result<_, _>>()
-                .map(Value::Array),
+            ExprKind::Array(items) => {
+                let item = self.type_of(expr).and_then(|t| t.items());
+                self.items(items)?
+                    .iter()
+                    .map(|(env, e)| env.eval_as(**e, item))
+                    .collect::<Result<_, _>>()
+                    .map(Value::Array)
+            }
             ExprKind::Repeat { value, count } => {
                 let item = self.eval_as(*value, self.type_of(expr).and_then(|t| t.items()))?;
                 Value::repeat(item, &self.eval(*count)?)
@@ -114,16 +114,22 @@ impl Env<'_, '_> {
                 Ok(Value::Closure { f: self.func(*func), captures })
             }
             ExprKind::FnType { params, returns } => Ok(Value::Type(self.signature(params, *returns)?.ty())),
-            ExprKind::Tuple(items) => items
+            ExprKind::Tuple(items) => self
+                .items(items)?
                 .iter()
-                .map(|item| match item {
-                    Entry::One(item) => self.eval(*item),
-                    Entry::Staged(_) => Err(Unevaluated::Unsupported),
-                })
+                .map(|(env, e)| env.eval(**e))
                 .collect::<Result<_, _>>()
                 .map(Value::Tuple),
             _ => Err(Unevaluated::Unsupported),
         }
+    }
+
+    /// The items of a tuple or an array literal, generated ones included, each with the
+    /// environment it is evaluated in.
+    fn items<'e>(&self, items: &'e List<ExprId>) -> Result<Vec<(Self, &'e ExprId)>, Unevaluated> {
+        let mut out = Vec::new();
+        self.list(items, &mut out)?;
+        Ok(out)
     }
 
     /// The value of a block without statements: its tail, or `()`. Statements run only inside

@@ -6,14 +6,14 @@ use std::sync::Arc;
 
 use vun_codec::{Decode, Encode};
 use vun_grammar::TokenKind;
-use vun_hir::tree::{Entry, ExprKind, List, Member, Name, NsId, PatKind, Staged, Variant};
+use vun_hir::tree::{Entry, ExprKind, List, Member, Name, NsId, PatKind, Variant};
 use vun_intern::Symbol;
 use vun_primitives::Primitive;
 use vun_primitives::kind::Kind;
 use vun_primitives::layout::Layout;
 use vun_query::{Cx, Cycle, Query};
 use vun_sema_ty::call::Staging;
-use vun_sema_ty::item::{DeclRef, ExprRef, Node};
+use vun_sema_ty::item::{DeclRef, ExprRef};
 use vun_sema_ty::trap::Unevaluated;
 use vun_sema_ty::{Nominal, Ty, TyKind, Value};
 
@@ -139,29 +139,13 @@ impl MemberTable {
     /// The members `entries` give, generating those of `$for` and `$if` entries with their
     /// bindings (spec 03, section 2); what cannot be generated makes the table incomplete.
     fn entries(&mut self, env: &Env<'_, '_>, entries: &List<Member>, home: &Home) {
-        let hir = &env.parsed.hir;
         for entry in entries {
-            match entry {
-                Entry::One(member) => self.member(env, member, home),
-                Entry::Staged(Staged::If { cond, then, otherwise, .. }) => {
-                    match env.eval(*cond).and_then(|c| env.holds(&c)) {
-                        Ok(holds) => self.entries(env, if holds { then } else { otherwise }, home),
-                        Err(_) => self.complete = false,
-                    }
-                }
-                Entry::Staged(Staged::For { pat, iter, body, .. }) => {
-                    let (Some(items), PatKind::Bind(binder)) =
-                        (env.eval(*iter).ok().and_then(Value::items), &hir.pats[*pat].kind)
-                    else {
-                        self.complete = false;
-                        continue;
-                    };
-                    let binder = Node { id: *binder, origin: hir.binders[*binder].origin };
-                    for value in items {
-                        let step = env.clone().staging(&[Staging { binder, value }]);
-                        self.entries(&step, body, home);
-                    }
-                }
+            let mut members = Vec::new();
+            if env.generated(entry, &mut members).is_err() {
+                self.complete = false;
+            }
+            for (env, member) in members {
+                self.member(&env, member, home);
             }
         }
     }
@@ -267,7 +251,7 @@ impl Query for MemberValue {
         let Found::Decl(decl) = members.find(*name) else { return Err(Unevaluated::Absent) };
         let types = cx.get::<TypedDecl>(&(decl.decl.clone(), instance.clone(), decl.staged.clone()));
         let env = Env::defining(cx, literal, instance.as_ref()).ok_or(Unevaluated::Absent)?;
-        let env = env.staging(&decl.staged).typed_by(types);
+        let env = env.staging(&decl.staged).typed_by(types.map(|t| Arc::clone(&t.found)));
         let value = env.parsed.hir.decls[decl.decl.decl.id].value.ok_or(Unevaluated::Runtime)?;
         match env.parsed.hir.exprs[value].kind {
             // A requirement of the interface made for a type `Self`, its first argument: what the

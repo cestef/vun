@@ -33,7 +33,7 @@ impl Typer<'_, '_, '_> {
         let known = self.typed(object);
         // Only a path names a namespace or a type, so nothing else is evaluated here.
         if matches!(self.hir().exprs[object].kind, ExprKind::Name(_) | ExprKind::Member { .. }) {
-            match self.env().eval(object) {
+            match self.evaluating().eval(object) {
                 // A member missing from a namespace is reported by the check of the file, which
                 // reads every path, typed or not.
                 Ok(Value::Namespace(ns)) => {
@@ -107,7 +107,7 @@ impl Typer<'_, '_, '_> {
                         std::iter::once(decl.decl.decl.origin).chain(also.iter().map(|m| m.decl.decl.origin));
                     self.collision(expr, name, origins.collect());
                 }
-                self.found.methods.insert(expr, (known.ty, name));
+                self.finding().methods.insert(expr, (known.ty, name));
                 self.env().cx.get::<MemberType>(&(known.ty, name)).ok()
             }
             // A member missing from the type and its impls; a variant is reached through its
@@ -119,7 +119,7 @@ impl Typer<'_, '_, '_> {
                     }
                     return None;
                 };
-                self.found.methods.insert(expr, (owner, name));
+                self.finding().methods.insert(expr, (owner, name));
                 self.env().cx.get::<MemberType>(&(owner, name)).ok()
             }
         }

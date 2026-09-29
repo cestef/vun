@@ -54,6 +54,11 @@ Traps that cost a session before. Add one when it costs you time.
 - Checks report only what they know: unknown types and `Unevaluated` values are silence.
 - Typing checks both branches of an `if` against the expected type, even when the condition is
   known: `x: Int(0..=0) = if true { 0 } else { 1 }` is `int.does_not_fit`.
+- The typer evaluates only through `Typer::evaluating()` (what typing found so far, shared) and
+  `Typer::known_value` (annotations and `$` arguments, typed first when evaluating needs it),
+  never through the bare `Typer::env()`: without what typing found, a call whose `$` arguments
+  are inferred (`TypeOf(x)`) or a form typed by its context has no value, and the call stays
+  silently untyped. `VUN_LOG=vun_sema::typeck=trace` shows each evaluation that gave no value.
 - The parser's depth bound counts each link of a chain; past it the rest of the expression is one
   `Error` node, so later stages never recurse deeper than about twice `MAX_NESTING`.
 
@@ -65,6 +70,9 @@ Traps that cost a session before. Add one when it costs you time.
   `lang`'s; integer arithmetic is exact (`x * 2` for `u32` does not fit `u32`); no operator may
   be written inside `lang`'s operator impls; attributes are bare only from the prelude's
   namespaces.
+- A borrow of an array sliced, `y[i..j]` for `y: &mut [N]T`, is already a borrow of the run
+  (`&mut [T]`): `v.store(y[i..j])`, not `&mut y[i..j]`. An integer literal is never a float:
+  `V.splat(0.0)`.
 - A table in `desugar.vun` naming `lang` items is a tuple `.{ }`: its items have types of their
   own, and an array would not type. Borrow modes are lists of `BorrowWord` (`grammar.vun`).
 

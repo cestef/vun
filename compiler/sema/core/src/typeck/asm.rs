@@ -61,7 +61,7 @@ impl Typer<'_, '_, '_> {
         }
         let block = Checker { arch, table: &table, bound: &bound, diag: &mut self.diag }.block(asm)?;
         let known = if block.returns { unit } else { self.never()? };
-        self.found.asm.insert(expr, block);
+        self.finding().asm.insert(expr, block);
         Some(known)
     }
 

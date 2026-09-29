@@ -10,6 +10,9 @@ Origin: type = _;
 /// argument (spec 03, section 4), so `TypeOf(x)` works on run-time expressions too.
 TypeOf := ($T: type, $e: Code(T)) -> type { T };
 origin: ($T: type) -> Origin = _;
+/// The struct `T`'s impl of the interface `I` gives, as the impls seen where it is asked see
+/// them: `witness(lang.ops.Add, u8).Output(u8)` is `Int(0..=510)`.
+witness: ($I: lang.Interface, $T: type) -> type = _;
 embed: ($path: &[u8]) -> &static [_]u8 = _;
 
 /// Whether `a` and `b` are one compile-time value: two types made by the same constructor from

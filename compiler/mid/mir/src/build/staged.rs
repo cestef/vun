@@ -2,6 +2,8 @@
 //! condition takes, among statements or as a value, a `$for` its body once per item, with the binder bound and the step's own
 //! types. A condition or items not known here leave the body unbuilt.
 
+use std::sync::Arc;
+
 use vun_hir::tree::{Entry, ExprId, List, PatKind, Staged, Stmt as HirStmt};
 use vun_origin::OriginId;
 use vun_sema::env::Selected;
@@ -16,10 +18,20 @@ use crate::Operand;
 impl Builder<'_, '_, '_> {
     /// The statements of `list`, generated ones included.
     pub(super) fn stmts(&mut self, list: &List<HirStmt>) -> Result<(), Unbuilt> {
+        self.entries(list, &mut |b, stmt| b.stmt(stmt))
+    }
+
+    /// Runs `each` on every entry of `list`, those `$for` and `$if` generate included, each in
+    /// its step.
+    pub(super) fn entries<T>(
+        &mut self,
+        list: &List<T>,
+        each: &mut dyn FnMut(&mut Self, &T) -> Result<(), Unbuilt>,
+    ) -> Result<(), Unbuilt> {
         for entry in list {
             match entry {
-                Entry::One(stmt) => self.stmt(stmt)?,
-                Entry::Staged(staged) => self.unroll(staged)?,
+                Entry::One(item) => each(self, item)?,
+                Entry::Staged(staged) => self.unroll(staged, each)?,
             }
         }
         Ok(())
@@ -34,12 +46,16 @@ impl Builder<'_, '_, '_> {
         }
     }
 
-    fn unroll(&mut self, staged: &Staged<HirStmt>) -> Result<(), Unbuilt> {
+    fn unroll<T>(
+        &mut self,
+        staged: &Staged<T>,
+        each: &mut dyn FnMut(&mut Self, &T) -> Result<(), Unbuilt>,
+    ) -> Result<(), Unbuilt> {
         let hir = &self.env.parsed.hir;
         match staged {
             Staged::If { cond, then, otherwise, origin } => {
                 let holds = self.env().eval(*cond).and_then(|c| self.env().holds(&c));
-                self.stmts(if holds.map_err(|_| Unbuilt::at(*origin))? { then } else { otherwise })
+                self.entries(if holds.map_err(|_| Unbuilt::at(*origin))? { then } else { otherwise }, each)
             }
             Staged::For { pat, iter, body, origin } => {
                 let unbuilt = move || Unbuilt::at(*origin);
@@ -55,8 +71,8 @@ impl Builder<'_, '_, '_> {
                         binder.iter().map(|&binder| Staging { binder, value: value.clone() }).collect();
                     let env = self.env().clone().staging(&staged);
                     self.path.push(Step { at: *pat, index });
-                    let outer = self.step.replace(env.typed_by(self.typed()));
-                    let built = self.stmts(body);
+                    let outer = self.step.replace(env.typed_by(self.typed().map(|t| Arc::clone(&t.found))));
+                    let built = self.entries(body, each);
                     self.path.pop();
                     self.step = outer;
                     built?;

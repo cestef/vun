@@ -101,7 +101,8 @@ A value leaves a range only through one of four library methods, which are one i
 `std.int.Narrow` for the constructor `Int` over the primitives of `lang.int`:
 
 - `x.to(T)` traps when $x in.not T$;
-- `x.wrap(T)` is the modular reduction into $T$, defined when $T$ has $2^n$ elements;
+- `x.wrap(T)` is the reduction into $T$ modulo its size, $min T + ((x - min T) mod |T|)$, for
+  every finite $T$;
 - `x.sat(T)` clamps to the bounds of $T$;
 - `x.try_to(T)` yields an optional.
 
@@ -163,7 +164,7 @@ computes floats exactly and rounds once.
 
 Vectors are a type rather than a mode. `lang.simd.Vector(N, T)` implements the operator interfaces
 lane by lane under the same range rules as scalars, so the lanes of a sum of two `u8` vectors have
-type $"Int"[0, 510]$. Comparisons return an opaque mask type; shuffles take compile-time index
+type $"Int"[0, 510]$: a lane's result type is the one the lane type's own impl gives. Comparisons return an opaque mask type; shuffles take compile-time index
 arrays; backends without vector support lower vectors to scalar code with identical results.
 A function marked `#[target.require(...)]` may use additional instruction-set features, and
 calling it from a function without them is `unsafe` or goes through a library dispatcher that

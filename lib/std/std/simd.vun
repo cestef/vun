@@ -1,1 +1,87 @@
-//! Portable vector code and run-time feature dispatch (spec 04, section 3).
+//! Portable vector code (spec 04, section 3): the methods and operators of every
+//! `lang.simd.Vector(n, T)`, lane by lane over the array of its lanes. An operator's lanes have
+//! the type the same operator gives their lanes (`u8` lanes sum to `Int(0..=510)` lanes).
+
+Vector := lang.simd.Vector;
+
+/// The order a reduction combines lanes in: each run of `width` lanes as a balanced tree of
+/// pairs, then the runs' results in lane order. A width of 1 combines every lane in order.
+Reduction := struct {
+    width: Int(1..),
+    /// Runs of `width` lanes, each combined as a balanced tree of pairs.
+    pairwise := ($width: Int(1..)) -> Reduction { .{ .width = width } };
+};
+
+#[impl(lang.simd.Vector)]
+VectorMethods := ($n: usize, $T: type) -> type { struct {
+    /// The vector whose every lane is `x`.
+    #[panic.never]
+    splat := (x: T) -> Vector(n, T) { lang.simd.of(n, T, [x; n]) };
+    /// The vector of the first `n` items of `xs`, which must hold as many.
+    load := (xs: &[T]) -> Vector(n, T) { lang.simd.of(n, T, [$for i in 0..n { xs[i] }]) };
+    /// Writes the lanes to the first `n` items of `to`, which must hold as many.
+    store := (v: Vector(n, T), to: &mut [T]) {
+        lanes := lang.simd.lanes(n, T, v);
+        $for i in 0..n { to[i] = lanes[i]; }
+    };
+    /// The vector whose lane `i` is lane `order[i]` of `v`.
+    shuffle := (v: Vector(n, T), $order: [n]usize) -> Vector(n, T) {
+        lanes := lang.simd.lanes(n, T, v);
+        lang.simd.of(n, T, [$for i in 0..n { lanes[order[i]] }])
+    };
+    /// The sum of the lanes, in the order `order` states, which fixes how a float sum rounds.
+    /// The lanes' sum must be of their type, as floats' is.
+    reduce_add := (v: Vector(n, T), $order: Reduction) -> T {
+        lanes := lang.simd.lanes(n, T, v);
+        mut sum := _tree(n, T, &lanes, 0, order.width);
+        $for start in lang.simd.chunks(n, order.width) {
+            $if start > 0 { sum = sum + _tree(n, T, &lanes, start, order.width); }
+        }
+        sum
+    };
+} };
+
+/// The sum of the `len` items of `xs` from `start`, as a balanced tree of pairs.
+_tree := ($n: usize, $T: type, xs: &[n]T, $start: usize, $len: Int(1..)) -> T {
+    $if len == 1 {
+        xs[start]
+    } else {
+        _tree(n, T, xs, start, len / 2) + _tree(n, T, xs, start + len / 2, len - len / 2)
+    }
+};
+
+#[impl(lang.ops.Add(lang.simd.Vector))]
+VectorAdd := ($n: usize, $T: type) -> type { struct {
+    Output := ($R: type) -> type { Vector(n, lang.meta.witness(lang.ops.Add, T).Output(lang.simd.Lane(R))) };
+    add := ($R: type, a: Vector(n, T), b: R) -> Output(R) {
+        (x, y) := (lang.simd.lanes(n, T, a), lang.simd.lanes(n, lang.simd.Lane(R), b));
+        lang.simd.of(n, lang.simd.Lane(Output(R)), [$for i in 0..n { x[i] + y[i] }])
+    };
+} };
+
+#[impl(lang.ops.Sub(lang.simd.Vector))]
+VectorSub := ($n: usize, $T: type) -> type { struct {
+    Output := ($R: type) -> type { Vector(n, lang.meta.witness(lang.ops.Sub, T).Output(lang.simd.Lane(R))) };
+    sub := ($R: type, a: Vector(n, T), b: R) -> Output(R) {
+        (x, y) := (lang.simd.lanes(n, T, a), lang.simd.lanes(n, lang.simd.Lane(R), b));
+        lang.simd.of(n, lang.simd.Lane(Output(R)), [$for i in 0..n { x[i] - y[i] }])
+    };
+} };
+
+#[impl(lang.ops.Mul(lang.simd.Vector))]
+VectorMul := ($n: usize, $T: type) -> type { struct {
+    Output := ($R: type) -> type { Vector(n, lang.meta.witness(lang.ops.Mul, T).Output(lang.simd.Lane(R))) };
+    mul := ($R: type, a: Vector(n, T), b: R) -> Output(R) {
+        (x, y) := (lang.simd.lanes(n, T, a), lang.simd.lanes(n, lang.simd.Lane(R), b));
+        lang.simd.of(n, lang.simd.Lane(Output(R)), [$for i in 0..n { x[i] * y[i] }])
+    };
+} };
+
+#[impl(lang.ops.Div(lang.simd.Vector))]
+VectorDiv := ($n: usize, $T: type) -> type { struct {
+    Output := ($R: type) -> type { Vector(n, lang.meta.witness(lang.ops.Div, T).Output(lang.simd.Lane(R))) };
+    div := ($R: type, a: Vector(n, T), b: R) -> Output(R) {
+        (x, y) := (lang.simd.lanes(n, T, a), lang.simd.lanes(n, lang.simd.Lane(R), b));
+        lang.simd.of(n, lang.simd.Lane(Output(R)), [$for i in 0..n { x[i] / y[i] }])
+    };
+} };

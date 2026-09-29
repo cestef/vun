@@ -117,7 +117,9 @@ impl<'a, 'db> Types<'a, 'db> {
         Self::storing(&hull)
     }
 
-    fn storing(range: &Interval) -> Option<(Scalar, bool)> {
+    /// The integer storing the values of `range`, and whether it is signed.
+    #[must_use]
+    pub fn storing(range: &Interval) -> Option<(Scalar, bool)> {
         let bits = u32::try_from(range.storage()?.bits()).ok()?;
         Some((Scalar::int(bits)?, range.is_signed()))
     }

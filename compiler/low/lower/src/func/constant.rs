@@ -128,7 +128,7 @@ impl Lowering<'_, '_> {
                 }
             }
             Constant::Array(items)
-                if let (Some((_, item)), Parts::Array { stride, .. }) = (ty.as_array(), &shape.parts) =>
+                if let (Some((_, item)), Parts::Array { stride, .. }) = (ty.repeated(), &shape.parts) =>
             {
                 for (i, v) in (0..).zip(items) {
                     self.put(v, item, out, base + i * stride, at)?;

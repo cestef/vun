@@ -14,7 +14,6 @@ use vun_sema_ty::{Ty, TyKind, Value};
 use super::{Known, Stage, Typer};
 use crate::eval::Call;
 use crate::member::{Found, MemberType, MemberValue, Members};
-use crate::witness::Witnesses;
 
 /// A loop being typed: its label, the type expected of its value, and the join of the values it
 /// ends with so far.
@@ -61,7 +60,7 @@ impl Typer<'_, '_, '_> {
                 let iterated = self.typed(*iter).map(|k| k.ty);
                 let driven = iterated.and_then(|ty| self.iteration(ty));
                 if let Some((iteration, _)) = driven {
-                    self.found.iterations.insert(*iter, iteration);
+                    self.finding().iterations.insert(*iter, iteration);
                 } else if let Some(ty) = iterated
                     && self.iterated(ty).is_none()
                 {
@@ -90,7 +89,7 @@ impl Typer<'_, '_, '_> {
         };
         let known = self.looping(Some(label), head, *block, self.expected(expr));
         if let Some(known) = known {
-            self.found.types.insert(body, known);
+            self.finding().types.insert(body, known);
         }
         known
     }
@@ -116,11 +115,7 @@ impl Typer<'_, '_, '_> {
     /// The witness of the interface `item`, such as `lang.ops.Iterate`, for `ty`.
     pub(super) fn witness_of(&self, item: vun_items::Item, ty: Ty) -> Option<Ty> {
         let Ok(Value::Interface(interface)) = self.env().item(item) else { return None };
-        let witnesses = self.env().cx.get::<Witnesses>(&(self.env().file.clone(), ty));
-        witnesses
-            .iter()
-            .find(|w| w.decl.contract.as_ref().is_some_and(|c| c.interface == interface))
-            .map(|w| w.ty)
+        self.env().witness(&interface, ty)
     }
 
     /// How `for p in e` drives `e` of type `ty`, and the type of the items it binds, looking

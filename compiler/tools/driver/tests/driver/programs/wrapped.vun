@@ -1,0 +1,23 @@
+start := std.os.start(main);
+
+digit := (x: Int(-100..=100)) -> Int(0..=9) {
+    match x.try_to(Int(0..=9)) {
+        .some(d) => d,
+        .none => x.wrap(Int(0..=9)),
+    }
+};
+
+main := (sys: &mut std.os.System) -> std.os.Exit {
+    k: u8 = sys.args().len().sat(u8);
+    up := k * 23;
+    down := 7 - k * 20;
+    mut failed: Int(0..=6) = 0;
+    if up.wrap(Int(0..=9)) != 3 { failed +|= 1; }
+    if down.wrap(Int(0..=9)) != 7 { failed +|= 1; }
+    if down.wrap(Int(-3..=3)) != 1 { failed +|= 1; }
+    if up.wrap(Int(100..=104)) != 103 { failed +|= 1; }
+    if digit((k * 5).to(Int(-100..=100))) != 5 { failed +|= 1; }
+    if digit(down.to(Int(-100..=100))) != 7 { failed +|= 1; }
+    // How many checks failed: 0 when all hold.
+    std.os.Exit.of(failed)
+};

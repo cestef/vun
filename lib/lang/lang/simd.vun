@@ -1,4 +1,19 @@
-//! Vector types (spec 04, section 3).
+//! Vector types (spec 04, section 3): `lanes` values of one type, operated on together. A vector
+//! is laid out as the array of its lanes, aligned to its size when that is a power of two;
+//! `lanes` and `of` move between the two, over which `std.simd` gives vectors their operators and
+//! methods.
 
 Vector: ($lanes: usize, $T: type) -> type = _;
 Mask: ($lanes: usize) -> type = _;
+/// The type of the lanes of the vector type `V`.
+Lane: ($V: type) -> type = _;
+/// The lanes of `v`, in order.
+#[panic.never]
+lanes: ($n: usize, $T: type, v: Vector(n, T)) -> [n]T = _;
+/// The vector whose lanes are `xs`.
+#[panic.never]
+of: ($n: usize, $T: type, xs: [n]T) -> Vector(n, T) = _;
+
+/// The first index of each whole run of `width` items among `n`: `0`, `width`, `2 * width`, and
+/// so on, for a `$for` over the vectors of a sequence.
+chunks := ($n: usize, $width: Int(1..)) -> [n / width]usize { [$for k in 0..n / width { k * width }] };

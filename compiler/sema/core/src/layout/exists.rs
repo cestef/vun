@@ -3,6 +3,7 @@
 
 use vun_primitives::Primitive;
 use vun_primitives::mem::Mem;
+use vun_primitives::simd::Simd;
 use vun_query::{Cx, Cycle, Query};
 use vun_sema_ty::{Closure, Ty, TyKind, Value};
 
@@ -21,9 +22,10 @@ impl Query for Exists {
             return cx.get::<Self>(&pointee);
         }
         match &**ty {
-            TyKind::Primitive(Primitive::Mem(Mem::Array | Mem::Slice | Mem::Cell), args) => {
-                args.iter().filter_map(Value::as_type).all(|t| cx.get::<Self>(&t))
-            }
+            TyKind::Primitive(
+                Primitive::Mem(Mem::Array | Mem::Slice | Mem::Cell) | Primitive::Simd(Simd::Vector),
+                args,
+            ) => args.iter().filter_map(Value::as_type).all(|t| cx.get::<Self>(&t)),
             TyKind::Primitive(..) | TyKind::Param(_) => cx.get::<Shapes>(ty).is_some(),
             TyKind::Tuple(items) => Self::all(cx, items),
             TyKind::Record(fields) => Self::all(cx, fields.iter().map(|(_, t)| t)),

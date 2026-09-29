@@ -19,8 +19,10 @@ use crate::env::Env;
 use crate::typeck::closure::Enclosing;
 
 /// What typing finds in a body, or in one `$for` step of it, apart from its locals and reports:
-/// what a step keeps apart from the rest of its body. A typed body holds it and reads as it.
-#[derive(Debug, Default, PartialEq, Eq, Hash, Encode, Decode)]
+/// what a step keeps apart from the rest of its body. A typed body holds it and reads as it; it
+/// is shared, so that evaluating at compile time while a body is typed reads what typing found
+/// so far without copying it.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct Found {
     pub types: BTreeMap<ExprId, Known>,
     /// Member expressions naming a declaration through a value: `p.norm` in `p.norm()`, whose
@@ -51,7 +53,12 @@ pub struct Found {
 
 impl Found {
     /// The typed body of what was found, its locals of the types `binders`.
-    pub(super) fn body(self, binders: BTreeMap<BinderId, Ty>, diag: DiagCtxt, exprs: usize) -> TypedBody {
+    pub(super) fn body(
+        self: Arc<Self>,
+        binders: BTreeMap<BinderId, Ty>,
+        diag: DiagCtxt,
+        exprs: usize,
+    ) -> TypedBody {
         TypedBody { found: self, binders, diag, exprs }
     }
 }
@@ -60,7 +67,7 @@ impl Found {
 /// how many expressions the body holds, nested functions and quotes apart.
 #[derive(Debug, Default, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct TypedBody {
-    pub found: Found,
+    pub found: Arc<Found>,
     /// The type each local of the body holds, steps' included.
     pub binders: BTreeMap<BinderId, Ty>,
     pub diag: DiagCtxt,

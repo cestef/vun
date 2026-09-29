@@ -44,7 +44,8 @@ impl Env<'_, '_> {
     /// them, gathered into the tuple of the last parameter.
     ///
     /// # Errors
-    /// Returns [`Unevaluated::Unsupported`] for an argument written by name.
+    /// Returns [`Unevaluated::Unsupported`] for an argument written by name, and for a call
+    /// leaving out `$` arguments not `inferred`.
     pub fn passing(
         &self,
         callee: Option<&Value>,
@@ -62,6 +63,12 @@ impl Env<'_, '_> {
                 passed.push(Passed::Inferred(value.clone()));
             }
         };
+        // A call leaving `$` arguments out passes its others after them, where typing inferred
+        // them; before typing has, where each goes is not known.
+        let given = usize::from(receiver) + args.len() + inferred.len();
+        if pack.is_none() && given < comptime.len() {
+            return Err(Unevaluated::Unsupported);
+        }
         let mut passed = Vec::new();
         fill(&mut passed);
         if receiver {

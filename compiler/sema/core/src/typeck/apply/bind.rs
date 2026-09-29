@@ -69,7 +69,7 @@ impl Typer<'_, '_, '_> {
     /// The instantiation a call of `f` reaches, each `$` parameter bound to the value of its
     /// written argument among `args`, at `slots`, when known here, or to the value inferred.
     pub(super) fn instantiation(
-        &self,
+        &mut self,
         f: Func,
         slots: &[usize],
         args: &[Argument],
@@ -86,7 +86,7 @@ impl Typer<'_, '_, '_> {
             values[slot] = if quotes.get(slot) == Some(&true) {
                 Some(Value::Code(self.env().code(arg)))
             } else {
-                self.env().eval_as(arg, params.get(slot).copied().flatten()).ok()
+                self.known_value(arg, params.get(slot).copied().flatten()).ok()
             };
         }
         for (slot, value) in inferred.into_iter().flatten() {
@@ -128,7 +128,7 @@ impl Typer<'_, '_, '_> {
     /// with its `$` parameters bound to their arguments' values known here, or to those
     /// inferred.
     pub(super) fn primitive_signature(
-        &self,
+        &mut self,
         p: Primitive,
         receiver: Option<ExprId>,
         slots: &[usize],
@@ -136,10 +136,13 @@ impl Typer<'_, '_, '_> {
         inferred: Option<&[(usize, Value)]>,
     ) -> Result<Signature, Unevaluated> {
         let written = receiver.map(Argument::Expr).into_iter().chain(args.iter().copied());
+        let comptime = Callable::Primitive(p).comptime(self.env()).unwrap_or_default();
         let mut values: Vec<Option<Value>> = vec![None; slots.len() + inferred.map_or(0, <[_]>::len)];
         for (&slot, arg) in slots.iter().zip(written) {
-            if let (Some(v), Argument::Expr(e)) = (values.get_mut(slot), arg) {
-                *v = self.env().eval(e).ok();
+            let (Some(true), Argument::Expr(e)) = (comptime.get(slot), arg) else { continue };
+            let value = self.known_value(e, None).ok();
+            if let Some(v) = values.get_mut(slot) {
+                *v = value;
             }
         }
         for (slot, value) in inferred.into_iter().flatten() {

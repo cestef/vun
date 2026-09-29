@@ -157,7 +157,7 @@ impl Typer<'_, '_, '_> {
         }
         let inferred = applied.inferred.unwrap_or_default();
         let result = applied.known.ty;
-        self.found.operators.insert(at, Operator { method: (owner, function), inferred, result });
+        self.finding().operators.insert(at, Operator { method: (owner, function), inferred, result });
         Some(Known { stage, ..applied.known })
     }
 }

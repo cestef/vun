@@ -12,6 +12,7 @@ use vun_primitives::bounds::Bounds;
 use vun_primitives::lang::Lang;
 use vun_primitives::mem::Mem;
 use vun_primitives::meta::Meta;
+use vun_primitives::simd::Simd;
 use vun_sema_float::Format;
 use vun_sema_int::Integer;
 use vun_sema_ty::float::FloatType;
@@ -83,13 +84,30 @@ impl Apply for Primitive {
                 }
                 _ => Err(Unevaluated::trap(Reason::Argument)),
             },
-            // A cell's value at compile time is what it holds.
-            (Self::Mem(Mem::cell), [_, value]) => Ok(value.clone()),
+            // A cell's value at compile time is what it holds, and a vector is the array of its
+            // lanes.
+            (Self::Mem(Mem::cell), [_, value]) | (Self::Simd(Simd::lanes | Simd::of), [_, _, value]) => {
+                Ok(value.clone())
+            }
             // `lang.interface(f)` wraps `f` so that it can constrain `$` parameters.
             (Self::Lang(Lang::interface), [Value::Fn(f)]) => Ok(Value::Interface(f.clone())),
             // `lang.mem.Array(n, T)`: `[n]T`.
             (Self::Mem(Mem::Array), [Value::Int(len), elem]) => {
                 Ok(Value::Type(TyKind::array(len.clone(), elem.as_type().ok_or(Unevaluated::Unsupported)?)))
+            }
+            // `lang.simd.Vector(n, T)`: `n` lanes of `T`, at least one.
+            (Self::Simd(Simd::Vector), [Value::Int(lanes), elem]) if lanes > &Integer::zero() => {
+                let elem = elem.as_type().ok_or(Unevaluated::Unsupported)?;
+                Ok(Value::Type(
+                    TyKind::Primitive(self, vec![Value::Int(lanes.clone()), Value::Type(elem)]).intern(),
+                ))
+            }
+            (Self::Simd(Simd::Vector), [Value::Int(_), _]) => Err(Unevaluated::trap(Reason::Argument)),
+            (Self::Simd(Simd::Lane), [ty]) => {
+                let ty = ty.as_type().ok_or(Unevaluated::Unsupported)?;
+                ty.lanes()
+                    .map(|(_, lane)| Value::Type(lane))
+                    .ok_or_else(|| Unevaluated::trap(Reason::Argument))
             }
             // Bounds, borrow, pointer, cell, slice and code types have no structure beyond their
             // argument.

@@ -64,7 +64,9 @@ Gpioa := Peripheral($svd.parse(std.meta.embed("stm32f4.svd")).peripheral("GPIOA"
 ```
 
 `$for` and `$if` are allowed in every list context: struct bodies, enum bodies, argument lists,
-array literals, match arms. That is what makes generated declarations read like hand-written ones.
+array literals, match arms. In an array or tuple literal, each step's items are typed and built
+under the step's binding, so `[$for i in 0..n { a[i] + b[i] }]` is an array of `n` sums, and its
+length is known once the `$for`'s items are. That is what makes generated declarations read like hand-written ones.
 
 ## 3. L2: witnesses from values
 
@@ -199,7 +201,13 @@ literal by the declaration it is written in, with its compile-time arguments.
 
 `TypeOf` is ordinary `lang` source, `($T: type, $e: Code(T)) -> type { T }`: its parameter quotes
 the argument, so any expression, run-time ones included, is typed and never evaluated, and `T` is
-inferred from it. `Frame(f)` is the result type of a coroutine function's signature, so it names
+inferred from it. A value that exists at compile time only, such as the type it gives, is known
+then, whatever it is computed from: `lanes(2, TypeOf(c), c)` passes a type as a `$` argument
+though `c` runs. An annotation or a `$` argument that evaluates only once typed, a form typed by
+its context or a call leaving `$` arguments to inference, is typed first, and evaluating it reads
+what typing found (its `$` arguments included). `lang.meta.witness(I, T)` is the struct `T`'s impl
+of the interface `I` gives, as impls are seen where it is asked: `witness(lang.ops.Add,
+u8).Output(u8)` is `Int(0..=510)`. `Frame(f)` is the result type of a coroutine function's signature, so it names
 the frames of a function without writing a call; for a function that does not suspend it traps.
 
 Reflection is read-only. Types are created by writing type literals (with L0 and L1), never by

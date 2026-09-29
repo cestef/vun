@@ -25,7 +25,7 @@ declaration whose value is `_`.
 | `lang.hint` | `cold` |
 | `lang.flow` | `tail` |
 | `lang.float` | `mul_add`, reductions |
-| `lang.simd` | `Vector`, `Mask`, `chunks` |
+| `lang.simd` | `Vector`, `Mask`, `Lane`, `lanes`, `of`, `chunks` |
 | `lang.target` | `require`, the `TargetSpec` shape |
 | `lang.comptime` | `fuel` |
 | `lang.arch` | per architecture (`lang.arch.x86_64`, ...): registers, instruction forms, the `asm { ... }` block, intrinsics |

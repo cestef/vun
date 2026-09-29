@@ -101,7 +101,7 @@ impl Typer<'_, '_, '_> {
 
     /// A value pattern, by its value at compile time.
     fn constant(&self, value: ExprId) -> Pat {
-        self.env().eval(value).map_or(Pat::Opaque, |v| Self::valued(&v))
+        self.evaluating().eval(value).map_or(Pat::Opaque, |v| Self::valued(&v))
     }
 
     fn valued(value: &Value) -> Pat {
@@ -120,7 +120,7 @@ impl Typer<'_, '_, '_> {
 
     /// `lo..hi`, `lo..=hi` or `lo..`, when its bounds are integers at compile time.
     fn bounds(&self, lo: ExprId, hi: Option<ExprId>, inclusive: bool) -> Option<Interval> {
-        let int = |e| match self.env().eval(e) {
+        let int = |e| match self.evaluating().eval(e) {
             Ok(Value::Int(n)) => Some(n),
             _ => None,
         };

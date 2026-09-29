@@ -54,10 +54,10 @@ impl Typer<'_, '_, '_> {
         let written: Vec<Argument> = written.into_iter().map(Argument::Expr).collect();
         let applied = self.apply(call, &target, &written)?;
         if let Some(inferred) = applied.inferred {
-            self.found.inferred.insert(call, inferred);
+            self.finding().inferred.insert(call, inferred);
         }
         if let Some(pack) = applied.pack {
-            self.found.packs.insert(call, pack);
+            self.finding().packs.insert(call, pack);
         }
         Some(applied.known)
     }
@@ -128,7 +128,7 @@ impl Typer<'_, '_, '_> {
     fn called(&self, callee: ExprId) -> Option<Callable> {
         let f = match self.found.methods.get(&callee) {
             Some(method) => self.env().cx.get::<MemberValue>(method),
-            None => self.env().eval(callee),
+            None => self.evaluating().eval(callee),
         };
         Callable::of(f.ok()?)
     }

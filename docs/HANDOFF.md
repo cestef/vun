@@ -7,8 +7,9 @@ Read `CLAUDE.md` and [`dev/workflow.md`](dev/workflow.md) first.
 
 ## State
 
-Everything is committed in the main chain; no `jj` workspace holds work. 650 tests pass; clippy,
-`cargo gen --check`, `lines` and `layers` are clean; the corpus has 295 passing programs.
+Everything is committed in the main chain; no `jj` workspace holds work. 660 tests pass; clippy,
+`cargo gen --check`, `lines` and `layers` are clean; the corpus has 301 passing programs, and LIR
+lowers every function the corpus reaches.
 
 Built: the front end, packages and the store, the persisted parallel query engine, sema, MIR and
 its checks, LIR with legalization, the C and wasm backends, the native backend for x86-64, arm64
@@ -26,7 +27,13 @@ stills and CSS animations in `assets/mascot`, and cards with the mascot under ea
 `<variants>` metadata and compiles in parallel. Open: removing PNGs of variants no longer
 declared, as `cargo gen` does.
 
-Last landed: the parser reads `precedence`, `preferred`, `parts`, `admits` and `holds` (323):
+Last landed (331 to 334): vectors, `lang.simd.Vector(n, T)` laid out as its lanes, with
+`lanes`, `of`, `Lane` and `chunks` in `lang.simd` and `std.simd` giving `splat`, `load`, `store`,
+`shuffle`, `reduce_add(.pairwise(w))` and lane-wise operators typed through
+`lang.meta.witness(I, T)`; they run as their lanes, no backend emits vector instructions yet.
+`$for` in array and tuple literals; `wrap` into any finite range; compile-time evaluation while
+typing reads all that typing found (shared `Arc<Found>`), so `TypeOf(x)` of a run-time `x`
+types as an annotation and a `$` argument. Before that, the parser reads `precedence`, `preferred`, `parts`, `admits` and `holds` (323):
 operands at a `Level`, continuations from the productions, a group's kind as the first preferred
 kind its children spell; every other source parses to the same tree as before. Before that it
 came to read `unterminated`, `transparent` (rows naming their tokens), `labeled_bodies`,
@@ -121,8 +128,10 @@ placements) were the owner's choice.
    gpio outputs, TIM2 waits, `std.task.run`): serial, systick, clocks past the reset oscillator.
 2. Kernel runtime: riscv64 numbers; directories, seeking, environment.
 3. Checks (268): a board and a WASI shadow, use after return; `fixed` kinds.
-4. Corpus gaps (`cargo xtask corpus`): `lang.simd.chunks`; lowering stops in
-   `coroutines/cancel.vun` (a constant) and `integers/narrowing.vun` (a conversion).
+4. Corpus gaps (`cargo xtask corpus`, 7 planned): `std.meta` `embed`, `span` and `attr`,
+   `fmt.valid`/`first_error`, `lint.allow` and `std.lints.naming.case`, `testing.Bench`/`Sim`,
+   `mem.copy`, `std.Dyn`, `target.cpu`. Vectors: comparisons to `Mask(n)`, vector instructions in
+   the backends, `std.simd.dispatch` over `#[target.require]`.
 5. Plans (`vun build build.vun`): `flash`, `test_on`, dependency parameters, lint levels.
 6. `std`: `task.Pool`, `testing.Sim`, `Str` and collections, generic bodies over `$A: Allocator`.
 7. Evaluator: loans inside aggregate arguments, memory per nesting level. Packaging: signed

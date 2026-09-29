@@ -5,16 +5,31 @@
 pub enum Simd {
     Vector,
     Mask,
+    /// The type of the lanes of the vector type `V`.
+    Lane,
+    /// The lanes of `v`, in order.
+    lanes,
+    /// The vector whose lanes are `xs`.
+    of,
 }
 impl Simd {
     pub const NAMESPACE: vun_items::Item = vun_items::lang::simd;
-    pub const ALL: &[Self] = &[Self::Vector, Self::Mask];
+    pub const ALL: &[Self] = &[
+        Self::Vector,
+        Self::Mask,
+        Self::Lane,
+        Self::lanes,
+        Self::of,
+    ];
     /// The declaration's name.
     #[must_use]
     pub const fn name(self) -> &'static str {
         match self {
             Self::Vector => "Vector",
             Self::Mask => "Mask",
+            Self::Lane => "Lane",
+            Self::lanes => "lanes",
+            Self::of => "of",
         }
     }
     /// The declaration.
@@ -23,6 +38,9 @@ impl Simd {
         match self {
             Self::Vector => vun_items::lang::simd::Vector,
             Self::Mask => vun_items::lang::simd::Mask,
+            Self::Lane => vun_items::lang::simd::Lane,
+            Self::lanes => vun_items::lang::simd::lanes,
+            Self::of => vun_items::lang::simd::of,
         }
     }
 }

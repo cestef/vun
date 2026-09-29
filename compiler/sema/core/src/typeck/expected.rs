@@ -18,7 +18,7 @@ impl Typer<'_, '_, '_> {
         let Some(expected) = self.expected(expr).filter(|&t| t != bare.ty) else { return Some(bare) };
         let origin = self.hir().exprs[expr].origin;
         let compile = |ty| Some(Known { ty, stage: Stage::Compile });
-        self.found.contexts.insert(expr, expected);
+        self.finding().contexts.insert(expr, expected);
         match &*expected {
             TyKind::Nominal(_) => match self.env().cx.get::<Members>(&expected)?.find(name) {
                 Found::Variant(v) if v.payload.is_empty() => compile(expected),

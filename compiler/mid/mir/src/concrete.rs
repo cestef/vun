@@ -109,7 +109,10 @@ pub trait Lowered {
 
 impl Lowered for Instantiation {
     fn env<'a, 'db>(&self, cx: &'a Cx<'db>) -> Option<Env<'a, 'db>> {
-        Some(Env::inside(cx, &self.f, self.args.iter().cloned())?.typed_by(cx.get::<Typed>(self)))
+        Some(
+            Env::inside(cx, &self.f, self.args.iter().cloned())?
+                .typed_by(cx.get::<Typed>(self).map(|t| Arc::clone(&t.found))),
+        )
     }
 
     fn called(cx: &Cx<'_>, f: &Func, args: &[Operand]) -> Self {

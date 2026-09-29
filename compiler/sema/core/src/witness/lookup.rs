@@ -9,7 +9,7 @@ use vun_hir::tree::ExprKind;
 use vun_intern::Symbol;
 use vun_items::Item;
 use vun_query::{Cx, Cycle, Query};
-use vun_sema_ty::call::Instance;
+use vun_sema_ty::call::{Func, Instance};
 use vun_sema_ty::item::DeclRef;
 use vun_sema_ty::{Ty, TyKind, Value};
 
@@ -123,6 +123,16 @@ impl Env<'_, '_> {
     #[must_use]
     pub fn method(&self, ty: Ty, name: Symbol) -> Option<Method> {
         self.methods(ty, name).into_iter().next()
+    }
+
+    /// The struct `ty`'s impl of `interface` gives, through the impls this file sees.
+    #[must_use]
+    pub fn witness(&self, interface: &Func, ty: Ty) -> Option<Ty> {
+        let witnesses = self.cx.get::<Witnesses>(&(self.file.clone(), ty));
+        witnesses
+            .iter()
+            .find(|w| w.decl.contract.as_ref().is_some_and(|c| c.interface == *interface))
+            .map(|w| w.ty)
     }
 
     /// The function `function` of the interface `interface` for `ty`: the witness's, or the

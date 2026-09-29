@@ -155,7 +155,7 @@ impl Typer<'_, '_, '_> {
         // A call that folds is known when compiling, and an integer it gives has the type of its
         // value alone, as a literal does (spec 04): `size(T) * 8` is `64` for `f64`.
         if callee.f.as_ref().is_some_and(|f| f.folds(self.env())) {
-            let ty = match self.env().eval(call) {
+            let ty = match self.evaluating().eval(call) {
                 Ok(Value::Int(n)) if signature.result.interval().is_some() => {
                     TyKind::int(&Interval::singleton(n))
                 }
@@ -164,7 +164,10 @@ impl Typer<'_, '_, '_> {
             return Some(Applied { known: Known { ty, stage: Stage::Compile }, inferred, pack: None });
         }
         let pack = pack.map(|p| slots.iter().position(|&s| s == p).unwrap_or(count) - receiver);
-        Some(Applied { known: Known { ty: signature.result, stage: self.stage }, inferred, pack })
+        // A value that exists at compile time only, such as a type, is known then, whatever
+        // the arguments it is computed from: `TypeOf(x)` of a run-time `x`.
+        let stage = if self.env().compile_only_type(signature.result) { Stage::Compile } else { self.stage };
+        Some(Applied { known: Known { ty: signature.result, stage }, inferred, pack })
     }
 
     /// The type of the parameter at `slot` of `signature` an argument is for: for the `item`th

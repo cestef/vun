@@ -12,6 +12,7 @@ use vun_desugar::Extent;
 use vun_primitives::Primitive;
 use vun_primitives::kind::Kind as KindAttr;
 use vun_primitives::mem::Mem;
+use vun_primitives::simd::Simd;
 use vun_query::{Cx, Cycle, Query};
 use vun_sema_ty::{Closure, Nominal, Ty, TyKind, Value};
 
@@ -88,8 +89,11 @@ impl Query for Kinds {
             return Kind { region, ..Kind::COPY_FREE };
         }
         match &**ty {
-            TyKind::Primitive(Primitive::Mem(m @ (Mem::Array | Mem::Slice | Mem::Cell)), args) => Kind {
-                interior: *m == Mem::Cell,
+            TyKind::Primitive(
+                p @ (Primitive::Mem(Mem::Array | Mem::Slice | Mem::Cell) | Primitive::Simd(Simd::Vector)),
+                args,
+            ) => Kind {
+                interior: *p == Primitive::Mem(Mem::Cell),
                 ..Kind::of_parts(args.iter().filter_map(Value::as_type).map(|t| of(&t)))
             },
             // A constrained `$` parameter is unknown until an instantiation binds it, so checks

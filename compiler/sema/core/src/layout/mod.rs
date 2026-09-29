@@ -21,6 +21,7 @@ use vun_desugar::Borrow;
 use vun_primitives::Primitive;
 use vun_primitives::lang::Lang;
 use vun_primitives::mem::Mem;
+use vun_primitives::simd::Simd;
 use vun_query::{Cx, Cycle, Query};
 use vun_sema_float::Format;
 use vun_sema_int::{Integer, Interval};
@@ -112,7 +113,7 @@ impl Shapes {
         }
     }
 
-    /// `layout`, a scalar's, aligned to twice an address at most where it is wider than 8
+    /// `layout`, a scalar's or a vector's, aligned to twice an address at most where it is wider than 8
     /// bytes, as C compilers align their widest scalars: 16 bytes under System V and AAPCS64, 8
     /// under 32-bit AAPCS. Narrower ones are aligned to their size on every target, so their
     /// layout does not wait for one.
@@ -155,6 +156,17 @@ impl Shapes {
                 let niche = if len == 0 { None } else { item.niche };
                 let layout = Layout { size: item.size.checked_mul(len)?, align: item.align, niche };
                 Some(Shape { layout, parts: Parts::Array { stride: item.size, len } })
+            }
+            // A vector: its lanes as an array, aligned to its size when that is a power of two,
+            // capped as the widest scalars are, since vector loads need no more.
+            Primitive::Simd(Simd::Vector) => {
+                let (Some(Value::Int(len)), Some(lane)) = (args.first(), arg(1)) else { return None };
+                let lane = Self::layout(cx, &lane)?;
+                let len = u64::try_from(len.to_i128()?).ok()?;
+                let size = lane.size.checked_mul(len)?;
+                let align = if size.is_power_of_two() { size.max(lane.align) } else { lane.align };
+                let layout = Self::capped(cx, Layout { size, align, niche: lane.niche })?;
+                Some(Shape { layout, parts: Parts::Array { stride: lane.size, len } })
             }
             // Bounds at run time: the low bound, the second bound and how they end
             // (`BoundsEnd`), the bounds in the items' storage, or the word's when they have none.

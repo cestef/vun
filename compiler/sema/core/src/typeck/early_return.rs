@@ -20,7 +20,7 @@ impl Typer<'_, '_, '_> {
         };
         let function = function.symbol();
         let branch = self.env().cx.get::<MemberType>(&(witness, function)).ok()?.ty.signature()?.result;
-        self.found.methods.insert(expr, (witness, function));
+        self.finding().methods.insert(expr, (witness, function));
         let (value, stopped) = (self.payload(branch, go)?, self.payload(branch, stop)?);
         if let Some(result) = self.result
             && !result.accepts(&stopped)

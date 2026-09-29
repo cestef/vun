@@ -4,10 +4,11 @@
 use vun_desugar::Narrowing;
 use vun_lir::{Access, BinOp, Cond, Scalar, Value};
 use vun_mir::Operand;
-use vun_sema_int::{Extended, Integer};
+use vun_sema_int::{Extended, Integer, Interval};
 use vun_sema_ty::Ty;
 
 use super::FnLower;
+use crate::repr::Types;
 use crate::unlowered::{Form, Unlowered};
 
 /// The bounds of a target range that cut a source range: those inside it, which fit the
@@ -42,37 +43,75 @@ impl FnLower<'_, '_, '_> {
                 let x = self.clamp(x, source, signed, &cuts);
                 self.resize(x, source, signed, target)
             }
-            // Modular reduction into a range whose size is a power of two, from its low bound,
-            // in the wider of both storages, whose wrapping keeps the low bits exact.
+            // A value already of the range is its own reduction.
+            Narrowing::Wrap if cuts.lo.is_none() && cuts.hi.is_none() => {
+                self.resize(x, source, signed, target)
+            }
             Narrowing::Wrap => {
+                let own = self.operand_ty(operand).and_then(|t| t.interval()).ok_or_else(unsupported)?;
                 let range = ty.interval().ok_or_else(unsupported)?;
-                let bound = |e: &Extended| e.finite().cloned().ok_or_else(unsupported);
-                let (lo, hi) = (bound(range.lo())?, bound(range.hi())?);
-                // The size less one, a mask of low bits when the size is a power of two, 2^128
-                // included.
-                let span = &hi - &lo;
-                let size = &span + &Integer::from(1);
-                let exponent = u32::try_from(size.magnitude_bits() - 1).map_err(|_| unsupported())?;
-                if size != Integer::power_of_two(exponent) {
-                    return Err(unsupported());
-                }
-                let (lo, span) =
-                    (lo.to_bits().ok_or_else(unsupported)?, span.to_bits().ok_or_else(unsupported)?);
-                let bits = |s: Scalar| s.bits(self.l.types.pointer_bits());
-                let wide = if bits(target) > bits(source) { target } else { source };
-                let x = self.resize(x, source, signed, wide);
-                let (low, mask) = (
-                    self.b.constant(wide, wide.truncate(lo), self.at),
-                    self.b.constant(wide, wide.truncate(span), self.at),
-                );
-                let shifted = self.b.binary(BinOp::Sub, x, low, self.at);
-                let reduced = self.b.binary(BinOp::And, shifted, mask, self.at);
-                let value = self.b.binary(BinOp::Add, reduced, low, self.at);
-                self.resize(value, wide, signed, target)
+                self.wrap(x, (source, signed, &own), &range, target)?
             }
         };
         self.keep(value, dest);
         Ok(())
+    }
+
+    /// `x`, held in `source` with values of `own`, reduced modulo the size of `range` into it,
+    /// held in `target` (spec 04, rule 3).
+    fn wrap(
+        &mut self,
+        x: Value,
+        (source, signed, own): (Scalar, bool, &Interval),
+        range: &Interval,
+        target: Scalar,
+    ) -> Result<Value, Unlowered> {
+        let at = self.at;
+        let unsupported = move || Unlowered::unsupported(at, Form::Conversion);
+        let bound = |e: &Extended| e.finite().cloned().ok_or_else(unsupported);
+        let (lo, hi) = (bound(range.lo())?, bound(range.hi())?);
+        let span = &hi - &lo;
+        let size = &span + &Integer::from(1);
+        let bits = |s: Scalar| s.bits(self.l.types.pointer_bits());
+        let exponent = u32::try_from(size.magnitude_bits() - 1).map_err(|_| unsupported())?;
+        // A size that is a power of two, 2^128 included: in the wider of both storages, whose
+        // wrapping keeps the low bits exact, the offset from the low bound masked.
+        if size == Integer::power_of_two(exponent) {
+            let (lo, span) = (lo.to_bits().ok_or_else(unsupported)?, span.to_bits().ok_or_else(unsupported)?);
+            let wide = if bits(target) > bits(source) { target } else { source };
+            let x = self.resize(x, source, signed, wide);
+            let (low, mask) = (
+                self.b.constant(wide, wide.truncate(lo), self.at),
+                self.b.constant(wide, wide.truncate(span), self.at),
+            );
+            let shifted = self.b.binary(BinOp::Sub, x, low, self.at);
+            let reduced = self.b.binary(BinOp::And, shifted, mask, self.at);
+            let value = self.b.binary(BinOp::Add, reduced, low, self.at);
+            return Ok(self.resize(value, wide, signed, target));
+        }
+        // Any other size: the offset from the low bound, exact in a storage holding its values
+        // and the size, taken modulo the size, a negative remainder moved up by it.
+        let offsets = own.sub(&Interval::singleton(lo.clone()));
+        let reach = Interval::closed(Integer::zero(), size.clone()).ok_or_else(unsupported)?;
+        let (wide, wide_signed) = Types::storing(&offsets.hull(&reach)).ok_or_else(unsupported)?;
+        let (lo, size) = (lo.to_bits().ok_or_else(unsupported)?, size.to_bits().ok_or_else(unsupported)?);
+        let x = self.resize(x, source, signed, wide);
+        let (low, modulus) = (
+            self.b.constant(wide, wide.truncate(lo), self.at),
+            self.b.constant(wide, wide.truncate(size), self.at),
+        );
+        let offset = self.b.binary(BinOp::Sub, x, low, self.at);
+        let rem = if wide_signed { BinOp::SRem } else { BinOp::URem };
+        let mut reduced = self.b.binary(rem, offset, modulus, self.at);
+        if wide_signed {
+            let zero = self.b.constant(wide, 0, self.at);
+            let below = self.b.compare(Cond::SLt, reduced, zero, self.at);
+            let moved = self.b.binary(BinOp::Add, reduced, modulus, self.at);
+            reduced = self.b.select(below, moved, reduced, self.at);
+        }
+        let reduced = self.resize(reduced, wide, false, target);
+        let low = self.b.constant(target, target.truncate(lo), self.at);
+        Ok(self.b.binary(BinOp::Add, reduced, low, self.at))
     }
 
     /// The integer `operand` loaded in its storage, with that storage and whether it is signed,

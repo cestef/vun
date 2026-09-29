@@ -37,7 +37,7 @@ impl Query for DeclValue {
         let value = decl.value.ok_or(Unevaluated::Runtime)?;
         if !matches!(hir.exprs[value].kind, ExprKind::Hole) {
             let types = cx.get::<TypedDecl>(&(key.clone(), None, Vec::new()));
-            return env.typed_by(types).eval(value);
+            return env.typed_by(types.map(|t| Arc::clone(&t.found))).eval(value);
         }
         // Outside `lang`, a declaration provided from outside is a link symbol (spec 08, section 3).
         match Self::primitive(cx, key, hir) {

@@ -58,7 +58,7 @@ impl<'a, 'db> Typer<'_, 'a, 'db> {
                         }
                         walk_list(t, hir, body, entry);
                     });
-                    self.found.steps.insert(Step { at: *pat, index }, Arc::new(typed));
+                    self.finding().steps.insert(Step { at: *pat, index }, Arc::new(typed));
                 }
             }
         }
@@ -76,7 +76,7 @@ impl<'a, 'db> Typer<'_, 'a, 'db> {
         self.stage = outer;
         // Where it surely runs, it runs once the body is typed, with the body's types.
         if self.undecided == 0 {
-            self.found.evaluations.push(expr);
+            self.finding().evaluations.push(expr);
         }
         match known.and_then(|k| k.ty.quoted()) {
             Some(ty) => Some(Known { ty, stage: self.stage }),
@@ -88,7 +88,7 @@ impl<'a, 'db> Typer<'_, 'a, 'db> {
     /// condition not known here, the `if` is typed as a plain one.
     fn selected(&mut self, expr: ExprId, branch: ExprId) -> Option<Known> {
         let expected = self.expected(expr);
-        let selected = self.env().select(branch);
+        let selected = self.evaluating().select(branch);
         match self.reported(branch, selected) {
             Ok(Selected::Block(block)) => self.block_value(block, expected),
             Ok(Selected::Expr(otherwise)) => self.typed_as(otherwise, expected),
@@ -110,7 +110,7 @@ impl<'a, 'db> Typer<'_, 'a, 'db> {
     fn step(&mut self, env: Env<'a, 'db>, f: impl FnOnce(&mut Self)) -> TypedBody {
         let staged = env.staged().to_vec();
         let outer = self.step.replace(env);
-        let found = std::mem::replace(&mut self.found, Found { staged, ..Found::default() });
+        let found = std::mem::replace(&mut self.found, Arc::new(Found { staged, ..Found::default() }));
         // What the step binds is its own: the binders it declares have their types there.
         let locals = self.locals.clone();
         f(self);

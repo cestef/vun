@@ -53,13 +53,11 @@ impl Builder<'_, '_, '_> {
 
     /// A tuple or an array of `items`, in order.
     fn parts(&mut self, items: &List<ExprId>, kind: Aggregate, origin: OriginId) -> Result<Operand, Unbuilt> {
-        let parts = items
-            .iter()
-            .map(|item| match item {
-                Entry::One(item) => self.operand(*item),
-                Entry::Staged(_) => Err(Unbuilt::at(origin)),
-            })
-            .collect::<Result<_, _>>()?;
+        let mut parts = Vec::new();
+        self.entries(items, &mut |b, item| {
+            parts.push(b.operand(*item)?);
+            Ok(())
+        })?;
         Ok(self.temp(Rvalue::Aggregate { kind, parts }, origin))
     }
 

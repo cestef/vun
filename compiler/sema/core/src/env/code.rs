@@ -50,7 +50,7 @@ impl<'a, 'db> Env<'a, 'db> {
                 .enclosing_function(code.expr.expr.id)
                 .map(|f| ExprRef::new(code.expr.file.clone(), hir, f));
             let types = site.and_then(|f| cx.get::<Typed>(&Instantiation::plain(f)));
-            env.typed_by(types)
+            env.typed_by(types.map(|t| Arc::clone(&t.found)))
         };
         Some(env.staging(&code.bound))
     }

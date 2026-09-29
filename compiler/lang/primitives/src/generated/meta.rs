@@ -9,6 +9,9 @@ pub enum Meta {
     Namespace,
     Origin,
     origin,
+    /// The struct `T`'s impl of the interface `I` gives, as the impls seen where it is asked see
+    /// them: `witness(lang.ops.Add, u8).Output(u8)` is `Int(0..=510)`.
+    witness,
     embed,
     /// Whether `a` and `b` are one compile-time value: two types made by the same constructor from
     /// the same arguments, one name.
@@ -58,6 +61,7 @@ impl Meta {
         Self::Namespace,
         Self::Origin,
         Self::origin,
+        Self::witness,
         Self::embed,
         Self::same,
         Self::Any,
@@ -86,6 +90,7 @@ impl Meta {
             Self::Namespace => "Namespace",
             Self::Origin => "Origin",
             Self::origin => "origin",
+            Self::witness => "witness",
             Self::embed => "embed",
             Self::same => "same",
             Self::Any => "Any",
@@ -115,6 +120,7 @@ impl Meta {
             Self::Namespace => vun_items::lang::meta::Namespace,
             Self::Origin => vun_items::lang::meta::Origin,
             Self::origin => vun_items::lang::meta::origin,
+            Self::witness => vun_items::lang::meta::witness,
             Self::embed => vun_items::lang::meta::embed,
             Self::same => vun_items::lang::meta::same,
             Self::Any => vun_items::lang::meta::Any,

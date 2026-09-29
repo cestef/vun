@@ -15,29 +15,24 @@ impl Typer<'_, '_, '_> {
         // Where a type is expected, a tuple of types is a type: `()` is the unit type.
         let types = TyKind::of_types();
         if self.expected(expr) == Some(types) {
-            for item in items {
-                let Entry::One(item) = item else {
-                    self.walk_entry(item, |e| *e);
-                    return None;
-                };
-                let known = self.typed_as(*item, Some(types))?;
-                self.expect(self.hir().exprs[*item].origin, known, types, None);
-            }
-            return Some(Known { ty: types, stage: Stage::Compile });
+            let mut fit = true;
+            let decided = self.each_item(items, &mut |t, item| match t.typed_as(item, Some(types)) {
+                Some(known) => t.expect(t.hir().exprs[item].origin, known, types, None),
+                None => fit = false,
+            });
+            return (decided && fit).then_some(Known { ty: types, stage: Stage::Compile });
         }
+        // The expected tuple's items are matched by position when every item is written.
+        let written = items.iter().all(|i| matches!(i, Entry::One(_)));
         let expected = self.expected(expr).and_then(|t| match &*t {
-            TyKind::Tuple(parts) if parts.len() == items.len() => Some(parts.clone()),
+            TyKind::Tuple(parts) if written && parts.len() == items.len() => Some(parts.clone()),
             _ => None,
         });
         let mut parts = Vec::new();
         let mut stage = Stage::Compile;
-        for (i, item) in items.iter().enumerate() {
-            let Entry::One(item) = item else {
-                self.walk_entry(item, |e| *e);
-                return None;
-            };
-            let part = expected.as_ref().map(|p| p[i]);
-            let known = self.typed_as(*item, part);
+        let decided = self.each_item(items, &mut |t, item| {
+            let part = expected.as_ref().map(|p| p[parts.len()]);
+            let known = t.typed_as(item, part);
             if let Some(known) = known {
                 stage = stage.max(known.stage);
             }
@@ -45,11 +40,14 @@ impl Typer<'_, '_, '_> {
             if let (Some(known), Some(part)) = (known, part)
                 && !part.accepts(&known.ty)
             {
-                self.expect(self.hir().exprs[*item].origin, known, part, None);
+                t.expect(t.hir().exprs[item].origin, known, part, None);
                 parts.push(None);
-                continue;
+                return;
             }
             parts.push(known.map(|k| k.ty));
+        });
+        if !decided {
+            return None;
         }
         let parts = parts.into_iter().collect::<Option<_>>()?;
         Some(Known { ty: TyKind::Tuple(parts).intern(), stage })
@@ -59,28 +57,28 @@ impl Typer<'_, '_, '_> {
     pub(super) fn array(&mut self, expr: ExprId, items: &[Entry<ExprId>]) -> Option<Known> {
         let expected = self.expected(expr).and_then(|t| t.items());
         let mut joined: Option<Option<Known>> = None;
-        for item in items {
-            let Entry::One(item) = item else {
-                self.walk_entry(item, |e| *e);
-                joined = Some(None);
-                continue;
-            };
-            let found = self.typed_as(*item, expected);
+        let mut len = 0_usize;
+        let decided = self.each_item(items, &mut |t, item| {
+            len += 1;
+            let found = t.typed_as(item, expected);
             // An item that does not fit the expected item is reported on its own.
             if let (Some(found), Some(expected)) = (found, expected)
                 && !expected.accepts(&found.ty)
             {
-                self.expect(self.hir().exprs[*item].origin, found, expected, None);
+                t.expect(t.hir().exprs[item].origin, found, expected, None);
                 joined = Some(None);
-                continue;
+                return;
             }
-            joined = Some(match (joined, found) {
+            joined = Some(match (joined.take(), found) {
                 (None, found) => found,
-                (Some(Some(sofar)), Some(found)) => self.join(*item, sofar, found),
+                (Some(Some(sofar)), Some(found)) => t.join(item, sofar, found),
                 _ => None,
             });
+        });
+        if !decided {
+            return None;
         }
-        let len = Integer::from(i128::try_from(items.len()).ok()?);
+        let len = Integer::from(i128::try_from(len).ok()?);
         match joined {
             // `[]` has the expected item type, if any.
             None => Some(Known { ty: TyKind::array(len, expected?), stage: Stage::Compile }),
@@ -91,12 +89,31 @@ impl Typer<'_, '_, '_> {
         }
     }
 
+    /// Runs `each` on every item of `items`, those `$for` and `$if` generate included, each in
+    /// its step (spec 03, section 2); `false` when a `$for` or `$if` not decided here generates
+    /// some, whose number is then not known.
+    fn each_item(&mut self, items: &[Entry<ExprId>], each: &mut dyn FnMut(&mut Self, ExprId)) -> bool {
+        let hir = self.hir();
+        let outer = self.undecided;
+        let mut decided = true;
+        for item in items {
+            match item {
+                Entry::One(item) => each(self, *item),
+                Entry::Staged(staged) => self.unroll(hir, staged, &mut |t, item| {
+                    decided &= t.undecided == outer;
+                    each(t, *item);
+                }),
+            }
+        }
+        decided
+    }
+
     /// `[value; count]`: `count` copies of `value`, `count` known at compile time.
     pub(super) fn repeat(&mut self, expr: ExprId, value: ExprId, count: ExprId) -> Option<Known> {
         let expected = self.expected(expr).and_then(|t| t.as_array().map(|(_, elem)| elem));
         let item = self.typed_as(value, expected);
         self.typed(count);
-        let Ok(Value::Int(len)) = self.env().eval(count) else { return None };
+        let Ok(Value::Int(len)) = self.evaluating().eval(count) else { return None };
         let item = item?;
         Some(Known { ty: TyKind::array(len, item.ty), stage: item.stage })
     }

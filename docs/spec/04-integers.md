@@ -34,7 +34,8 @@ denotes at compile time; bounds are accepted where a `Range` is expected.
    `(1, 2)` is accepted where `(u8, u8)` is expected.
 3. **Narrowing is explicit**, through four `std` methods over `lang` primitives:
    - `x.to(T)`: traps if `x` is out of range;
-   - `x.wrap(T)`: modular reduction, for power-of-two ranges;
+   - `x.wrap(T)`: reduction modulo the size of `T` into its range, for any finite `T`
+     (`(-13).wrap(Int(0..=9))` is `7`); a power-of-two size is a mask, any other a remainder;
    - `x.sat(T)`: clamps to the bounds;
    - `x.try_to(T)`: returns `?T`.
 
@@ -154,13 +155,21 @@ V := lang.simd.Vector(8, f32);
 saxpy := (a: f32, x: &[N]f32, y: &mut [N]f32) {
     $for i in lang.simd.chunks(N, 8) {
         v := V.load(x[i..i + 8]) * V.splat(a) + V.load(y[i..i + 8]);
-        v.store(&mut y[i..i + 8]);
+        v.store(y[i..i + 8]);
     }
 };
 ```
 
-- `Vector(N, T)` implements the `lang.ops` interfaces lane-wise, with the same range rules as
-  scalars (lanes of a `u8` vector sum to `Int(0..=510)` lanes).
+- `Vector(N, T)` is `N` lanes of `T`, laid out as `[N]T` and aligned to its size when that is a
+  power of two (capped as the widest scalars are). `lang.simd.lanes(N, T, v)` gives the lanes as
+  an array and `lang.simd.of(N, T, xs)` the vector of an array; `lang.simd.Lane(V)` is the lane
+  type and `lang.simd.chunks(n, w)` the start of each whole run of `w` among `n`, for a `$for`.
+- `std.simd` gives every vector `splat`, `load` and `store` (the first `N` items of a slice),
+  `shuffle` and `reduce_add(.pairwise(w))`, and implements the `lang.ops` interfaces lane-wise
+  over the lanes, with the same range rules as scalars: a lane of the result has the type the
+  lane type's own operator gives (`lang.meta.witness(lang.ops.Add, T).Output(U)`), so lanes of a
+  `u8` vector sum to `Int(0..=510)` lanes. A reduction states its order: each run of `w` lanes
+  as a balanced tree of pairs, the runs' sums then in lane order.
 - Comparisons return `lang.simd.Mask(N)`, an opaque type, never integers.
 - Shuffles take compile-time index arrays: `v.shuffle([3, 2, 1, 0])`.
 - Backends without vector support lower vectors to scalar loops; the result is identical.

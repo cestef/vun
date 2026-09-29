@@ -23,7 +23,12 @@ impl Typer<'_, '_, '_> {
         }
         if matches!(self.hir().exprs[operand].kind, ExprKind::FnType { .. }) {
             self.typed(operand);
-            return self.env().eval(expr).ok().and_then(|v| v.ty()).map(|ty| Known { ty, stage: self.stage });
+            return self
+                .evaluating()
+                .eval(expr)
+                .ok()
+                .and_then(|v| v.ty())
+                .map(|ty| Known { ty, stage: self.stage });
         }
         self.vouched += 1;
         let known = self.typed_as(operand, self.expected(expr));

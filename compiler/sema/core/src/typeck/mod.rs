@@ -27,8 +27,7 @@ mod operator;
 pub use loops::Iteration;
 pub use operator::{Operation, Operator};
 pub use reported::Reported;
-use typed::Found;
-pub use typed::{Step, Typed, TypedBody};
+pub use typed::{Found, Step, Typed, TypedBody};
 mod pattern;
 mod prefix;
 mod range;
@@ -41,6 +40,8 @@ mod suspend;
 #[cfg(test)]
 mod tests;
 mod typed;
+
+use std::sync::Arc;
 
 use vun_codec::{Decode, Encode};
 use vun_diag::DiagCtxt;
@@ -85,7 +86,7 @@ pub struct Typer<'e, 'a, 'db> {
     /// When the code typed runs: at compile time outside a body, or under `$`.
     stage: Stage,
     /// What typing the body, or the `$for` step typed, finds.
-    found: Found,
+    found: Arc<Found>,
     locals: Map<BinderId, Known>,
     /// The ranges immutable integer bindings are narrowed to where the expression typed is
     /// (spec 04, rule 4).
@@ -120,7 +121,7 @@ impl<'e, 'a, 'db> Typer<'e, 'a, 'db> {
             env,
             step: None,
             stage,
-            found: Found::default(),
+            found: Arc::default(),
             locals: Map::default(),
             narrowed: Map::default(),
             expected: Map::default(),
@@ -140,6 +141,12 @@ impl<'e, 'a, 'db> Typer<'e, 'a, 'db> {
     pub fn finish(self, exprs: usize) -> TypedBody {
         let binders = self.locals.into_iter().map(|(b, k)| (b, k.ty)).collect();
         self.found.body(binders, self.diag, exprs)
+    }
+
+    /// What typing found so far, to add to: shared with an evaluation only while it runs, so
+    /// this copies nothing but then.
+    fn finding(&mut self) -> &mut Found {
+        Arc::make_mut(&mut self.found)
     }
 
     /// The environment typed in: the file's, or a `$for` step's.
@@ -207,7 +214,7 @@ impl Visitor for Typer<'_, '_, '_> {
 
     fn expr(&mut self, hir: &Hir, expr: ExprId) {
         if let Some(known) = self.infer(hir, expr) {
-            self.found.types.insert(expr, known);
+            self.finding().types.insert(expr, known);
         }
     }
 }

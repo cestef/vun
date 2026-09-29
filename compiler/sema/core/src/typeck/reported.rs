@@ -46,7 +46,7 @@ impl TypedBody {
     /// Runs the evaluations of this body typed in `env`, and those of its steps, reporting in
     /// `diag` what stops one ([`vun_sema_ty::trap::Unevaluated::report`]).
     pub fn evaluate(self: &Arc<Self>, env: &Env<'_, '_>, diag: &mut DiagCtxt) {
-        let here = env.clone().staging(&self.staged).typed_by(Some(Arc::clone(self)));
+        let here = env.clone().staging(&self.staged).typed_by(Some(Arc::clone(&self.found)));
         let hir = &here.parsed.hir;
         // A body typing reported errors in has forms its evaluation cannot be told apart from.
         let clean = self.diag.error_count() == 0;

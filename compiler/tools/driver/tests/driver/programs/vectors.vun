@@ -1,0 +1,28 @@
+start := std.os.start(main);
+
+V := lang.simd.Vector(4, f32);
+
+saxpy := ($N: usize, a: f32, x: &[N]f32, y: &mut [N]f32) {
+    $for i in lang.simd.chunks(N, 4) {
+        v := V.load(x[i..i + 4]) * V.splat(a) + V.load(y[i..i + 4]);
+        v.store(y[i..i + 4]);
+    }
+};
+
+main := (sys: &mut std.os.System) -> std.os.Exit {
+    k: u8 = sys.args().len().sat(u8);
+    x: [8]f32 = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0];
+    mut y: [8]f32 = [1.0; 8];
+    saxpy(8, k.nearest(f32), &x, &mut y);
+    mut failed: Int(0..=4) = 0;
+    if y[0] != 2.0 or y[7] != 9.0 { failed +|= 1; }
+    w := V.load(&y[4..8]).shuffle([3, 2, 1, 0]);
+    if lang.simd.lanes(4, f32, w)[0] != 9.0 { failed +|= 1; }
+    if w.reduce_add(.pairwise(4)) != 30.0 { failed +|= 1; }
+    // Lanes widen as their type's operator widens them: `u8` lanes sum to `Int(0..=510)`.
+    b := lang.simd.Vector(2, u8).splat((k * 200).sat(u8));
+    c := b + b;
+    if lang.simd.lanes(2, Int(0..=510), c)[1] != 400 { failed +|= 1; }
+    // How many checks failed: 0 when all hold.
+    std.os.Exit.of(failed)
+};

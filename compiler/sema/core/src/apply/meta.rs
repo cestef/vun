@@ -36,6 +36,11 @@ impl ApplyMeta for Meta {
                 let option = env.primitive_signature(Primitive::Meta(self), &args)?.result;
                 env.part(option, value, variant, index)
             }
+            // A type without an impl of the interface has no witness of it.
+            (Self::witness, [Value::Interface(interface), ty]) => env
+                .witness(interface, ty.as_type().ok_or(Unevaluated::Unsupported)?)
+                .map(Value::Type)
+                .ok_or_else(|| Unevaluated::trap(Reason::Argument)),
             (Self::name_of, [ty]) => {
                 Ok(Value::string(&ty.as_type().ok_or(Unevaluated::Unsupported)?.to_string()))
             }

@@ -13,6 +13,7 @@ mod code;
 mod condition;
 mod eval;
 mod frame;
+mod generated;
 mod lasting;
 mod matching;
 mod named;
@@ -45,7 +46,7 @@ use vun_sema_ty::{Ty, Value};
 use vun_span::{SourceFiles, SourceMap};
 
 use crate::member::{Found, MemberValue, Members};
-use crate::typeck::TypedBody;
+use crate::typeck;
 
 #[derive(Clone)]
 pub struct Env<'a, 'db> {
@@ -59,9 +60,10 @@ pub struct Env<'a, 'db> {
     pub(super) bindings: Map<BinderId, Value>,
     /// The `$for` bindings evaluated under, also among `bindings`.
     staged: Vec<Staging>,
-    /// The types of the expressions evaluated, where typing found them: forms typed by their
-    /// context, such as `.{ }` and `.name`, evaluate only with them.
-    types: Option<Arc<TypedBody>>,
+    /// What typing found in the body evaluated in, so far while it is typed: forms typed by
+    /// their context, such as `.{ }` and `.name`, and calls whose `$` arguments are inferred
+    /// evaluate only with it.
+    types: Option<Arc<typeck::Found>>,
 }
 
 impl<'a, 'db> Env<'a, 'db> {
@@ -158,7 +160,7 @@ impl<'a, 'db> Env<'a, 'db> {
 
     /// This environment, evaluating with the types `types` found.
     #[must_use]
-    pub fn typed_by(mut self, types: Option<Arc<TypedBody>>) -> Self {
+    pub fn typed_by(mut self, types: Option<Arc<typeck::Found>>) -> Self {
         self.types = types;
         self
     }

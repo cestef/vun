@@ -1,5 +1,6 @@
 //! Moving values between places of related types: an integer into a wider or narrower storage
-//! of a range holding it, a borrow of an array into a borrow of a slice, a borrow into one of
+//! of a range holding it, a vector into the array of its lanes and back, a borrow of an array
+//! into a borrow of a slice, a borrow into one of
 //! another mode, a variant into an enum of the same constructor laid out apart
 //! (`Result(never, E)` into `Result(u64, E)`), and arrays and tuples item by item.
 
@@ -70,6 +71,12 @@ impl FnLower<'_, '_, '_> {
             let at = self.at_offset(dest, word.bytes(types.pointer_bits()));
             self.b.store(len, at, Access::Plain, self.at);
             return Ok(());
+        }
+        // A vector as the array of its lanes, and back: laid out alike.
+        if let (Some(a), Some(b)) = (from.repeated(), to.repeated())
+            && a == b
+        {
+            return self.copy_value(src, dest, to);
         }
         // Arrays of one length, item by item.
         if let (Some((n, a)), Some((m, b))) = (from.as_array(), to.as_array())

@@ -202,6 +202,16 @@ fn integers_wider_than_the_backend_run_as_pairs_of_halves() {
 }
 
 #[test]
+fn integers_wrap_into_ranges_of_any_size() {
+    assert_eq!(status("backend-wrapped", &program("wrapped.vun")), Some(0));
+}
+
+#[test]
+fn vectors_compute_lane_by_lane_and_reduce_in_the_order_stated() {
+    assert_eq!(status("backend-vectors", &program("vectors.vun")), Some(0));
+}
+
+#[test]
 fn closures_function_values_defers_and_primitives_lower_and_run() {
     assert_eq!(status("backend-lowered", &program("lowered.vun")), Some(0));
 }

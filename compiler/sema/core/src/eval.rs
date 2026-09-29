@@ -159,7 +159,7 @@ impl Instantiate for Instantiation {
 
     fn running<'a, 'db>(cx: &'a Cx<'db>, call: &Instance) -> Option<Env<'a, 'db>> {
         let types = cx.get::<crate::typeck::Typed>(&Self::of(cx, call)?);
-        Some(Env::within(cx, call)?.typed_by(types))
+        Some(Env::within(cx, call)?.typed_by(types.map(|t| Arc::clone(&t.found))))
     }
 
     fn signature(&self, cx: &Cx<'_>) -> Result<Signature, Unevaluated> {

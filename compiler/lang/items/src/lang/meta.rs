@@ -15,6 +15,9 @@ pub const Origin: Item = Item::new(&["lang", "meta", "Origin"]);
 /// argument (spec 03, section 4), so `TypeOf(x)` works on run-time expressions too.
 pub const TypeOf: Item = Item::new(&["lang", "meta", "TypeOf"]);
 pub const origin: Item = Item::new(&["lang", "meta", "origin"]);
+/// The struct `T`'s impl of the interface `I` gives, as the impls seen where it is asked see
+/// them: `witness(lang.ops.Add, u8).Output(u8)` is `Int(0..=510)`.
+pub const witness: Item = Item::new(&["lang", "meta", "witness"]);
 pub const embed: Item = Item::new(&["lang", "meta", "embed"]);
 /// Whether `a` and `b` are one compile-time value: two types made by the same constructor from
 /// the same arguments, one name.

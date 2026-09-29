@@ -1,7 +1,7 @@
 //! Primitives called at run time: integer arithmetic in the storage of the result's range
 //! (spec 04, rule 1), comparisons of integers through their borrows, narrowings, whether an
-//! integer fits a type, the variant of an enum value, and the memory operations of `lang.mem`
-//! (`memory.rs`).
+//! integer fits a type, the variant of an enum value, a vector as its lanes and back, and the
+//! memory operations of `lang.mem` (`memory.rs`).
 
 use vun_lir::{Access, BinOp, Cond, Scalar, Value};
 use vun_mir::Operand;
@@ -9,6 +9,7 @@ use vun_primitives::Primitive;
 use vun_primitives::hint::Hint;
 use vun_primitives::int::Int;
 use vun_primitives::meta::Meta;
+use vun_primitives::simd::Simd;
 use vun_sema::callable::Callable;
 use vun_sema_ty::{Ty, Value as Constant};
 
@@ -104,6 +105,8 @@ impl FnLower<'_, '_, '_> {
                 self.optional(holds, part, dest, ty)
             }
             Primitive::Mem(m) => self.memory(m, &runtime, dest, ty),
+            // A vector and the array of its lanes are held alike.
+            Primitive::Simd(Simd::lanes | Simd::of) => self.write(arg(0)?, dest, ty),
             // A hint changes nothing the program does; after `unreachable`, the block MIR ends
             // there says so.
             Primitive::Hint(Hint::cold | Hint::unreachable) => Ok(()),
