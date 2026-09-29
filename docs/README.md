@@ -26,7 +26,12 @@ Draft 2 of the design. Each file in `spec/` covers one area and can be read on i
 | [spec/decisions.md](spec/decisions.md) | decision log and open questions |
 | [research/2026-09-survey.md](research/2026-09-survey.md) | the survey behind draft 2, with sources |
 | [archive/draft-1.md](archive/draft-1.md) | previous draft, kept for reference |
-| [HANDOFF.md](HANDOFF.md) | state of the project for the next agent |
+| [dev/workflow.md](dev/workflow.md) | how the project is worked on, where each kind of note goes |
+| [dev/repository.md](dev/repository.md) | repository map, generated directories |
+| [dev/commands.md](dev/commands.md) | checks, running, inspecting, cross builds, measuring speed |
+| [dev/crates.md](dev/crates.md) | the compiler's crates by area |
+| [dev/pitfalls.md](dev/pitfalls.md) | traps that cost a session before |
+| [HANDOFF.md](HANDOFF.md) | current state, open decisions and next steps |
 
 Conventions in these docs: "must" is a rule the compiler enforces; "lean" marks a tentative
 choice listed in `decisions.md`; every code sample is meant to compile under this draft.
