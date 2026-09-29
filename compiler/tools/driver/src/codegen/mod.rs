@@ -6,14 +6,14 @@ mod unchosen;
 
 use std::path::PathBuf;
 
-use vun_backend::{Artifact, Emits, Emitted, Line, Lines, Request};
+use vun_backend::{Artifact, Emits, Emitted, Line, Lines, Request, Traced};
 use vun_command::{Args, Param, Values};
 use vun_diag::{Diagnostic, ErrorGuaranteed, Msg, errors};
 use vun_intern::Symbol;
 use vun_lir::{FuncId, Scalar, Unit};
 use vun_lir_passes::legalize::Legalize;
 use vun_lower::Unlowered;
-use vun_origin::{OriginId, OriginTable, Resolve};
+use vun_origin::{OriginId, OriginTable, Resolve, Via};
 use vun_span::{FileId, SourceFiles, SourceMap};
 use vun_target::{Name, Output, Profile, TargetSpec};
 use vun_trace::Activity;
@@ -62,11 +62,19 @@ struct SourceLines;
 impl Lines for SourceLines {
     fn line(&self, origin: OriginId) -> Option<Line> {
         let at = SourceFiles::global().locate(OriginTable::global().source_span(origin));
-        Some(Line { file: PathBuf::from(at.path), line: at.at.line })
+        Some(Line { file: PathBuf::from(at.path), line: at.at.line, column: at.at.chars })
     }
 
     fn declaration(&self, origin: OriginId) -> Vec<Symbol> {
         OriginTable::global().declaration_path(origin)
+    }
+
+    fn inlined(&self, origin: OriginId) -> Option<(OriginId, OriginId)> {
+        let at = OriginTable::global().get(origin);
+        match (at.via, at.parent) {
+            (Via::Inline { into }, Some(code)) => Some((code, into)),
+            _ => None,
+        }
     }
 }
 
@@ -141,6 +149,7 @@ impl Session {
         // Integers wider than the backend's are split into halves first.
         let legalizing = LEGALIZE.start();
         let mut unit = unit.clone();
+        unit.trace(&SourceLines, target.endian);
         let widest =
             Scalar::int(info.caps.widest.on(&target)).expect("a backend computes with an integer width");
         if let Err(unlegal) = (Legalize {

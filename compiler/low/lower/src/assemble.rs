@@ -8,14 +8,16 @@
 use vun_hash::Map;
 use vun_index::Idx;
 use vun_intern::Symbol;
-use vun_lir::{Address, Data, DataId, FuncId, Import, ImportId, ImportKind, Linkage, Site, Unit};
+use vun_lir::{
+    Address, Data, DataId, FuncId, Import, ImportId, ImportKind, Linkage, Site, Trace, TraceLayout, Unit,
+};
 use vun_mir::{Concrete, Program};
 use vun_origin::OriginId;
 use vun_sema::eval::Instantiation;
 use vun_sema::int::Integer;
 use vun_sema::item::DeclRef;
 use vun_sema::link::Linked;
-use vun_sema::ty::{Ty, TyKind};
+use vun_sema::ty::{Ty, TyKind, Value};
 
 use crate::lowering::Lowering;
 use crate::piece::{Bytes, Datum, DatumKind, FuncRef, Lir, Piece};
@@ -132,6 +134,12 @@ impl Places for Assembly<'_, '_, '_> {
         if let Some(&f) = self.exports.get(&linked.symbol) {
             return Ok(Address::Func(f));
         }
+        // The table's symbol, which `lang.trace` declares: the compiler defines it.
+        let table =
+            self.l.item(vun_items::lang::trace_symbols::table, at)?.text().map(|s| Symbol::intern(&s));
+        if table == Some(linked.symbol) {
+            return self.table(linked.symbol, at).map(Address::Data);
+        }
         self.import(decl, linked, at).map(Address::Import)
     }
 
@@ -180,6 +188,37 @@ impl Places for Assembly<'_, '_, '_> {
 }
 
 impl Assembly<'_, '_, '_> {
+    /// The datum of the program's table (`lang.trace`), exported under `symbol`: made once, its
+    /// bytes written when code is generated, with how `lang.trace` lays out its structs.
+    fn table(&mut self, symbol: Symbol, at: OriginId) -> Result<DataId, Unlowered> {
+        if let Some(trace) = &self.unit.trace {
+            return Ok(trace.table);
+        }
+        let fields = |item| match self.l.item(item, at)? {
+            Value::Type(ty) => self.l.types.fields(ty, at),
+            _ => Err(Unlowered::unsupported(at, Form::Constant)),
+        };
+        let layout = TraceLayout {
+            table: fields(vun_items::lang::trace::Table)?,
+            function: fields(vun_items::lang::trace::Function)?,
+            site: fields(vun_items::lang::trace::Site)?,
+            origin: fields(vun_items::lang::trace::Origin)?,
+            text: fields(vun_items::lang::trace::Text)?,
+        };
+        let table = self.unit.data.push(Data {
+            linkage: Linkage::Export(symbol),
+            bytes: vec![0; usize::try_from(layout.table.size).unwrap_or_default()],
+            relocs: Vec::new(),
+            align: layout.table.align,
+            writable: false,
+            section: None,
+            origin: at,
+        });
+        let detail = self.l.types.cx.get::<vun_sema::trace::TraceOf>(&());
+        self.unit.trace = Some(Trace { table, layout, detail });
+        Ok(table)
+    }
+
     fn import(&mut self, decl: &DeclRef, linked: Linked, at: OriginId) -> Result<ImportId, Unlowered> {
         let Linked { symbol, abi, library } = linked;
         if let Some(&id) = self.imports.get(&symbol) {

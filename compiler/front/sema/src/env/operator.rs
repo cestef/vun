@@ -92,6 +92,16 @@ impl Env<'_, '_> {
         Ok(Operand { value: self.eval(expr)?, ty: self.type_of(expr) })
     }
 
+    /// The value of `left op right`. A form typed by its context on the right has the type of
+    /// the left operand, where typing did not give it one: `a == .b`.
+    pub(super) fn infix(&self, op: TokenKind, left: ExprId, right: ExprId) -> Result<Value, Unevaluated> {
+        let left = self.operand(left)?;
+        let ty = self.type_of(right);
+        let expected = ty.or(left.ty).or_else(|| left.value.ty());
+        let right = Operand { value: self.eval_as(right, expected)?, ty };
+        self.binary(op, left, right)
+    }
+
     /// `ty` widened to hold the values of `other`: their join, or for a sequence, the same
     /// sequence of the items of both; `ty` itself when they have nothing in common.
     fn widened(ty: Ty, other: Ty) -> Ty {

@@ -10,7 +10,7 @@ use vun_items::std::{
 };
 
 use vun_items::lang::check_Kind as check;
-use vun_target::{Check, Output};
+use vun_target::{Check, Detail, Output};
 
 use crate::target::{Declared, Members, Read, Unread, Variants};
 use crate::ty::Value;
@@ -47,6 +47,8 @@ pub struct Options {
     pub output: Output,
     /// What its unsafe code is checked for at run time.
     pub checks: Vec<Check>,
+    /// What its table describes, where it says.
+    pub trace: Option<Detail>,
 }
 
 /// A dependency a program uses, by its name and the step that builds it.
@@ -96,6 +98,7 @@ impl Read for Options {
             memory: m.list(options::memory)?,
             output: m.read(options::output)?,
             checks: m.list(options::checks)?,
+            trace: m.read(options::trace)?,
         })
     }
 }

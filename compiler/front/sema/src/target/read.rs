@@ -6,6 +6,7 @@ use std::fmt;
 
 use vun_codec::{Decode, Encode};
 use vun_items::Item;
+use vun_items::lang::Option as option;
 use vun_items::lang::target_Convention as convention;
 use vun_items::lang::{
     target_Atomics as atomics, target_Attributes as attributes, target_CCompiler as compiler,
@@ -77,6 +78,22 @@ impl<T: Variants> Read for T {
             .find(|(variant, _)| *name == variant.symbol())
             .map(|&(_, v)| v)
             .ok_or(Unread::Record)
+    }
+}
+
+impl<T: Read> Read for Option<T> {
+    /// `.none`, or `.some(value)` with the value read.
+    fn read(value: &Value) -> Result<Self, Unread> {
+        match value {
+            Value::Variant { name, .. } if *name == option::none.symbol() => Ok(None),
+            Value::Variant { name, payload, .. } if *name == option::some.symbol() => {
+                match payload.as_slice() {
+                    [value] => T::read(value).map(Some),
+                    _ => Err(Unread::Record),
+                }
+            }
+            _ => Err(Unread::Record),
+        }
     }
 }
 

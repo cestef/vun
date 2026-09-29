@@ -293,6 +293,16 @@ Next, most useful first:
    stack, `futex` join; pthreads on the C library; `corpus/accept/programs/threads.vun`); TLS
    (`CLONE_SETTLS`) waits for thread-local storage in the language; riscv64 numbers;
    directories, seeking, environment.
+2a. Backtraces (decision 309): a trap or failed check writes why it ends, its site's place, each
+   function its code is inlined into and the chain of calls, through `std.trace.report` from
+   `std.trace.table` (rows `lang.trace` lays out, written in `vun_backend::Traced` at code
+   generation). `--trace off|sites|calls` (`Options.trace`; debug `calls`, release `sites`):
+   `off` 25 KB, `sites` 41 KB, `calls` 73 KB for a small debug program. At `calls` the inliner
+   inlines only callees none of whose calls return. Checked on linux x86_64, arm64 and arm
+   through both backends, glibc, and WASI (site only). Left: the call line of each frame (native
+   marks each call's origin; C cannot say where a call returns), macOS (compact unwind, PAC).
+   A thread's trace ends at `Thread.run`; naming where it was spawned (the spawner's chain
+   kept at `spawn`) waits for thread-local storage, as `CLONE_SETTLS` does.
 2b. Speed (decisions 291, 301 and 302). Inspect with `--timings` (with the thread report) and `--memos`,
    `VUN_THREADS=1` for exact counts; the CPU clock varies (a laptop on battery), so compare A/B
    runs made together, never across time. Durability made warm `files.vun` restore 1.7k memos

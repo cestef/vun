@@ -16,3 +16,5 @@ pub const memory: Item = Item::new(&["std", "build", "Options", "memory"]);
 pub const output: Item = Item::new(&["std", "build", "Options", "output"]);
 /// What its unsafe code is checked for at run time (spec 07, section 7).
 pub const checks: Item = Item::new(&["std", "build", "Options", "checks"]);
+/// What its table of its code describes (spec 07, section 3); none for the session's.
+pub const trace: Item = Item::new(&["std", "build", "Options", "trace"]);

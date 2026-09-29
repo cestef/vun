@@ -84,9 +84,7 @@ impl Env<'_, '_> {
                 let left = self.eval(*left)?;
                 if self.holds(&left)? == (*op == TokenKind::Or) { Ok(left) } else { self.eval(*right) }
             }
-            ExprKind::Infix { op, left, right: Some(right) } => {
-                self.binary(*op, self.operand(*left)?, self.operand(*right)?)
-            }
+            ExprKind::Infix { op, left, right: Some(right) } => self.infix(*op, *left, *right),
             ExprKind::If { cond: Cond::Expr(cond), then, otherwise } => {
                 if self.holds(&self.eval(*cond)?)? {
                     self.block_value(*then)

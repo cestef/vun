@@ -60,3 +60,5 @@ pub const testing: Item = Item::new(&["std", "testing"]);
 pub const text: Item = Item::new(&["std", "text"]);
 /// The namespace `std.time`.
 pub const time: Item = Item::new(&["std", "time"]);
+/// The namespace `std.trace`.
+pub const trace: Item = Item::new(&["std", "trace"]);

@@ -89,6 +89,7 @@ impl Session {
         let mut session = self.child(Choice::Given(Box::new(options.target.clone())));
         session.codegen.output = options.output;
         session.add_checks(self.checks().iter().chain(options.checks.iter().copied()));
+        session.set_trace(options.trace.unwrap_or(self.trace()));
         session.memory = options
             .memory
             .iter()

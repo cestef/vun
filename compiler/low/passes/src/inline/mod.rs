@@ -39,6 +39,10 @@ pub trait InlineCalls {
     /// Whether calls of this function are replaced by its body.
     fn small(&self) -> bool;
 
+    /// Whether a call this function makes returns into it: one in a block going on after it,
+    /// not a call that never returns, as a trap's, before `unreachable`.
+    fn returning_calls(&self) -> bool;
+
     /// Inlines the calls this makes of the small functions among `callees`, by their ids in
     /// this function, returning how many were.
     fn inline_small<'f>(&mut self, callees: impl IntoIterator<Item = (FuncId, &'f Function)>) -> usize;
@@ -47,6 +51,13 @@ pub trait InlineCalls {
 impl InlineCalls for Function {
     fn small(&self) -> bool {
         self.linkage == Linkage::Internal && self.signature.conv == Conv::Vun && self.cost() <= SMALL
+    }
+
+    fn returning_calls(&self) -> bool {
+        self.blocks.iter().any(|(_, block)| {
+            block.term != Terminator::Unreachable
+                && block.insts.iter().any(|&i| matches!(self.insts[i].kind, InstKind::Call { .. }))
+        })
     }
 
     fn inline_small<'f>(&mut self, callees: impl IntoIterator<Item = (FuncId, &'f Function)>) -> usize {

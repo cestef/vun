@@ -181,7 +181,10 @@ start := ($main: std.os.Main) -> type { struct {
     };
 
     #[link.export(lang.panic.symbols.trap)]
-    trap := (t: &lang.panic.Trap) -> lang.never { unsafe proc_exit(std.os.trapped) };
+    trap := (t: &lang.panic.Trap) -> lang.never {
+        std.trace.trapped(t, trap);
+        unsafe proc_exit(std.os.trapped)
+    };
 
     #[link.export(std.os.symbols.write)]
     write := (fd: i32, bytes: &[u8]) -> Result(usize, std.os.Error) {

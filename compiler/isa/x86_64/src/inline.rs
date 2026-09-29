@@ -44,6 +44,10 @@ impl Blocks for X86_64 {
         Op::entry(inst.op, inst.form).1.kinds()
     }
 
+    fn accesses<V, P, S>(inst: &Inst<V, P, S>) -> impl Iterator<Item = Access> {
+        Op::entry(inst.op, inst.form).1.slots.iter().map(|s| s.access)
+    }
+
     fn implicit<V, P, S>(inst: &Inst<V, P, S>) -> impl Iterator<Item = Reg> {
         Op::entry(inst.op, inst.form).1.implicit.iter().copied()
     }

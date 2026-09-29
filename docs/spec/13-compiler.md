@@ -247,7 +247,12 @@ per second per stage and fails on regressions.
   the checks run in, which stay unchecked wherever they are inlined): the callees, inlined
   themselves, are placed in the function's own tables as the unit places a function
   (`placing`), inlined and the function tidied again, so a library function's is shared as its
-  LIR is; a function reached again through its callees inlines none of theirs. Lowering
+  LIR is; a function reached again through its callees inlines none of theirs. A callee's trap
+  sites are placed with origins derived from theirs (`Via::Inline { into }`, the function
+  inlined into), so a trap names each function its code is inlined into; where the program's
+  table describes calls (`lang.trace.Detail.calls`), a callee is inlined only if no call it
+  makes returns into it (a trap's call never does), so every return address lies in the code of
+  the function the table names for it (spec 07, section 3). Lowering
   makes every local a stack slot of its layout, a top-level binding one data object, statements the
   instructions computing into their place; integers in their range's storage, converted where a
   value moves between ranges; enums by their shapes; checks of indices and narrowings as trap
@@ -623,7 +628,8 @@ c` shows it, and `vun build` and `vun run` compile and link it.
 
 The C compiler is target data (`lang.target.CCompiler`): its command, the flags the rules above
 need (`-std=c99 -ffreestanding -fno-strict-aliasing`: the output is freestanding C, declaring all
-it uses, so no function name means anything to the compiler), the flags its links take (bare
+it uses, so no function name means anything to the compiler; `-fno-omit-frame-pointer`, the chain
+a backtrace walks), the flags its links take (bare
 metal: `-nostdlib -nostartfiles`), the libraries of its own they name after the objects (`gcc`
 where it links none by itself), its atomics, and how it reports frame sizes
 (`lang.target.FrameSizes`). `vun build` writes the backend's artifacts under

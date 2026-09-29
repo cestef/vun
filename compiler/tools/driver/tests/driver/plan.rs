@@ -56,7 +56,7 @@ build := (b: &mut std.build.Build) {
                   .int = .{ .bits = 32, .align = 4 }, .long = .{ .bits = 32, .align = 4 }, \
                   .long_long = .{ .bits = 64, .align = 8 }, .pointer_align = 4, \
                   .compiler = .{ .command = \"arm-none-eabi-gcc\", .archiver = \"arm-none-eabi-ar\", \
-                  .flags = .{ \"-std=c99\", \"-ffreestanding\", \"-fno-strict-aliasing\", \"-mcpu=cortex-m4\", \
+                  .flags = .{ \"-std=c99\", \"-ffreestanding\", \"-fno-strict-aliasing\", \"-fno-omit-frame-pointer\", \"-mcpu=cortex-m4\", \
                   \"-mthumb\", \"-mfloat-abi=hard\", \"-mfpu=fpv4-sp-d16\" }, .optimize = .{ \"-O2\" }, \
                   .link_flags = .{ \"-mcpu=cortex-m4\", \"-mthumb\", \"-mfloat-abi=hard\", \"-mfpu=fpv4-sp-d16\", \
                   \"-nostdlib\", \"-nostartfiles\" }, .libraries = .{}, .atomics = .gnu, .attributes = .gnu, \

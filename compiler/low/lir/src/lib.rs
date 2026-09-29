@@ -11,6 +11,7 @@ pub mod fold;
 pub mod func;
 pub mod inst;
 pub mod text;
+pub mod trace;
 pub mod ty;
 pub mod unit;
 mod uses;
@@ -24,6 +25,7 @@ pub use inst::{
     Access, Address, Asm, AsmCheck, BinOp, Callee, CastOp, Cond, InstKind, Order, Output, Right, RmwOp,
     Target, Terminator,
 };
+pub use trace::{Field, Fields, Trace, TraceLayout};
 pub use ty::Scalar;
 pub use unit::{Data, Import, ImportKind, Reloc, Site, Unit};
 pub use verify::Malformed;

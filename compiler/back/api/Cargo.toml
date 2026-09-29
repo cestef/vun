@@ -19,3 +19,5 @@ vun-origin.workspace = true
 vun-target.workspace = true
 vun-diag.workspace = true
 vun-intern.workspace = true
+vun-items.workspace = true
+vun-hash.workspace = true

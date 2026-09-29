@@ -87,6 +87,11 @@ pub enum Via {
         producer: OriginId,
     },
     Lower(PassId),
+    /// A callee's code inlined into the function declared at `into`, which the parent is the
+    /// code of (spec 13, section 3).
+    Inline {
+        into: OriginId,
+    },
     /// A further entity made from the same source as its parent, the `n`-th: the origin of each
     /// entity is its own, however many come from one piece of syntax.
     Again(u16),

@@ -70,6 +70,13 @@ adrp := _a.Instruction{ .forms = &[
     .{ .base = 0x90000000, .sizes = _any, .args = &[_x_d_w, _page_d] },
 ] };
 
+/// Strips the pointer authentication code from the address in `x30`, as a return address is
+/// saved where code is built with return addresses signed; a hint, which does nothing on a
+/// processor without pointer authentication.
+xpaclri := _a.Instruction{ .forms = &[
+    .{ .base = 0xd50320ff, .sizes = _any, .args = &[], .reads = &[.x30], .writes = &[.x30] },
+] };
+
 /// A data memory barrier: accesses the barrier orders complete, as its operand says, before any
 /// after it.
 dmb := _a.Instruction{ .forms = &[

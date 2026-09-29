@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 use vun_codec::{Decode, Encode};
 use vun_intern::Symbol;
-use vun_lir::Scalar;
+use vun_lir::{Field, Fields, Scalar};
 use vun_origin::OriginId;
 use vun_query::Cx;
 use vun_sema::Primitive;
@@ -71,6 +71,27 @@ impl<'a, 'db> Types<'a, 'db> {
         let shape = self.cx.get::<Shapes>(&ty)?;
         let Parts::Sequence(offsets) = &shape.parts else { return None };
         Some((*offsets.get(index)?, field))
+    }
+
+    /// The size and alignment of the struct of type `ty`, and where each of its fields lies.
+    ///
+    /// # Errors
+    /// Returns [`Why::NoLayout`] for a type with no layout at run time or no fields.
+    pub fn fields(self, ty: Ty, at: OriginId) -> Result<Fields, Unlowered> {
+        let unlaid = || Unlowered { at, why: Why::NoLayout(ty) };
+        let members = self.cx.get::<Members>(&ty).ok_or_else(unlaid)?;
+        let shape = self.shape(ty, at)?;
+        let Parts::Sequence(offsets) = &shape.parts else { return Err(unlaid()) };
+        let fields = members
+            .fields
+            .iter()
+            .zip(offsets)
+            .map(|(f, &offset)| {
+                let field = *f.ty.as_ref().map_err(|_| unlaid())?;
+                Ok(Field { name: f.name, offset, bytes: self.shape(field, at)?.layout.size })
+            })
+            .collect::<Result<_, Unlowered>>()?;
+        Ok(Fields { size: shape.layout.size, align: shape.layout.align, fields })
     }
 
     /// The integer storing values of the range type `ty`, and whether it is signed.

@@ -46,7 +46,7 @@ impl Rebind<Operand, Place, Operand> for Binder<'_, '_, '_, '_> {
                 self.0.l.address(value, code, at)?.ok_or_else(|| self.unsupported())
             }
             Operand::Place(place) => match self.0.slots[place.local] {
-                Storage::Global(data) if place.projection.is_empty() => Ok(Address::Data(data)),
+                Storage::Global(address) if place.projection.is_empty() => Ok(address),
                 _ => Err(self.unsupported()),
             },
         }

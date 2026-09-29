@@ -21,6 +21,7 @@ mod udf;
 mod brk;
 mod svc;
 mod adrp;
+mod xpaclri;
 mod dmb;
 mod mrs;
 mod msr;

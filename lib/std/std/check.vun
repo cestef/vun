@@ -225,15 +225,25 @@ exports := ($state: () -> State, $end: (status: std.os.Status) -> lang.never) ->
     evict := (allocator: usize) -> ?lang.check.Held { state().evict(allocator) };
 
     #[link.export(lang.check.symbols.fail)]
-    fail := (f: &lang.check.Failure) -> lang.never { end(std.os.trapped) };
+    fail := (f: &lang.check.Failure) -> lang.never {
+        std.trace.report((f: &lang.check.Failure) -> lang.never, fail, f.site, .failed(f.violation));
+        end(std.os.trapped)
+    };
 
     #[link.export(lang.check.symbols.asm_write), abi.c]
     asm_write := (address: usize, bytes: usize, site: u32) {
-        if state().shadow.access(address, bytes).is_some() {
-            end(std.os.trapped)
+        match state().shadow.access(address, bytes) {
+            .some(violation) => {
+                std.trace.report(#[abi.c] (address: usize, bytes: usize, site: u32) -> (), asm_write, site, .failed(violation));
+                end(std.os.trapped)
+            },
+            .none => {},
         }
     };
 
     #[link.export(lang.check.symbols.asm_stack), abi.c]
-    asm_stack := (site: u32, before: usize, after: usize) -> lang.never { end(std.os.trapped) };
+    asm_stack := (site: u32, before: usize, after: usize) -> lang.never {
+        std.trace.report(#[abi.c] (site: u32, before: usize, after: usize) -> lang.never, asm_stack, site, .failed(.stack_moved));
+        end(std.os.trapped)
+    };
 } };

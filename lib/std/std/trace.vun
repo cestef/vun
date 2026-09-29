@@ -1,0 +1,202 @@
+//! Backtraces (spec 07, section 3): where a trap was written and the calls that led to it, read
+//! from the program's table (`lang.trace`) and the chain of frames every function keeps, a
+//! record of its caller's frame and of where it returns to at its frame pointer. A runtime's
+//! handler of traps writes one before ending the program.
+
+/// The program's table, which the compiler defines.
+#[link.symbol(lang.trace.symbols.table)]
+table: lang.trace.Table = _;
+
+/// The most frames a backtrace names: past them, the chain is taken to be broken.
+depth := 64;
+
+/// The chain's record at `frame`: the caller's frame, then where the call returns to.
+Record := struct {
+    caller: usize,
+    returns: usize,
+};
+
+/// The address of the code of `f`.
+code := ($F: type, f: F) -> usize { unsafe std.ptr.to(F, &f).cast(usize).read() };
+
+/// The table's rows of `$Row` at `rows`: `count` of them.
+rows := ($Row: type, rows: usize, count: usize) -> &[Row] {
+    none: &[Row] = &[];
+    if count == 0 { none } else { unsafe lang.mem.items_at(Row, lang.mem.pointer_at(Row, rows), count) }
+};
+
+/// The table's text of `text`.
+text := (text: lang.trace.Text) -> &[u8] {
+    rows(u8, (table.text + text.at.to(usize)).wrap(usize), text.len.to(usize))
+};
+
+/// The function whose code holds `address`: the one starting last at or before it.
+function := (address: usize) -> ?&lang.trace.Function {
+    mut found: ?&lang.trace.Function = .none;
+    for f in rows(lang.trace.Function, table.functions, table.function_count) {
+        if f.at <= address {
+            found = match found {
+                .some(best) => if best.at < f.at { .some(f) } else { .some(best) },
+                .none => .some(f),
+            };
+        }
+    }
+    found
+};
+
+/// The origin of index `index`.
+origin := (index: u32) -> ?&lang.trace.Origin {
+    origins := rows(lang.trace.Origin, table.origins, table.origin_count);
+    if index.to(usize) < origins.len() { .some(&origins[index.to(usize)]) } else { .none }
+};
+
+/// Writes `o` as `path:line:column`.
+place := (w: &mut std.os.Stream, o: &lang.trace.Origin) {
+    std.fmt.print(w, "{}:{}:{}", .{ text(o.file), o.line, o.column });
+};
+
+/// The return address `saved` as it is saved, without the code authenticating it where code is
+/// built with return addresses signed (arm64's pointer authentication).
+unsigned := (saved: usize) -> usize {
+    mut address := saved;
+    $if lang.target.current.arch == .arm64 {
+        unsafe lang.arch.arm64.asm {
+            mov x30, {in(x0) saved}
+            xpaclri
+            mov {out(x0) address}, x30
+        };
+    }
+    address
+};
+
+/// Where each call on the chain returns to, from the one this function returns to on: at most
+/// `depth` of them, the count in `frames`. The chain starts at this function's own frame, read
+/// here so that it is live whether or not the function is inlined; none is read where frames are
+/// not memory a program reads (WebAssembly).
+calls := (frames: &mut [depth]usize) -> usize {
+    mut at: usize = 0;
+    $if lang.target.current.arch == .x86_64 {
+        unsafe lang.arch.x86_64.asm { mov {out(rax) at}, rbp };
+    } else {
+        $if lang.target.current.arch == .arm64 {
+            unsafe lang.arch.arm64.asm { mov {out(x0) at}, x29 };
+        } else {
+            $if lang.target.current.arch == .arm {
+                unsafe lang.arch.thumb.asm { mov {out(r0) at}, r7 };
+            }
+        }
+    }
+    mut count: usize = 0;
+    for at != 0 and at % lang.meta.size(usize) == 0 and count < depth {
+        record := unsafe lang.mem.pointer_at(Record, at).read();
+        frames[count] = unsigned(record.returns);
+        count += 1;
+        if record.caller <= at { break; }
+        at = record.caller;
+    }
+    count
+};
+
+/// Why a program ends before its time: a trap, or a check of its unsafe code that failed.
+Why := enum {
+    trapped,
+    failed(lang.check.Violation),
+};
+
+/// Writes to the standard error why the program ends and what its table says of the trap at
+/// `site`: where it is written and what it says, then, where the table describes them, the calls that led to it,
+/// past the last call returning into `handler`, of type `H`, the function handling the trap, and
+/// so past this function's own frames wherever it is inlined. A program built without its table
+/// writes nothing.
+report := ($H: type, handler: H, site: u32, why: Why) {
+    $if lang.trace.current != .off {
+        mut w := unsafe std.os.Stream.of(std.os.stderr_fd);
+        written(&mut w, site, why);
+        $if lang.trace.current == .calls { called(&mut w, code(H, handler)); }
+    }
+};
+
+/// Writes why the program ends, where the trap site `site` is written, and what it says.
+written := (w: &mut std.os.Stream, site: u32, why: Why) {
+    sites := rows(lang.trace.Site, table.sites, table.site_count);
+    match why {
+        .trapped => { std.fmt.print(w, "trap", .{}); },
+        .failed(violation) => {
+            std.fmt.print(w, "check failed: {}", .{ std.meta.variant_name(lang.check.Violation, &violation) });
+        },
+    }
+    if site.to(usize) < sites.len() {
+        s := &sites[site.to(usize)];
+        if s.message.len > 0 { std.fmt.print(w, ": {}", .{ text(s.message) }); }
+        match origin(s.origin) {
+            .some(o) => {
+                std.fmt.print(w, "\n  at ", .{});
+                place(w, o);
+            },
+            .none => {},
+        }
+        std.fmt.print(w, "\n", .{});
+        inlined(w, s.origin);
+    } else {
+        std.fmt.print(w, "\n", .{});
+    }
+};
+
+/// Writes each function the code at the origin of index `index` is inlined into, innermost
+/// first, up to the one it is not: that one's frame is on the chain.
+inlined := (w: &mut std.os.Stream, index: u32) {
+    mut at := index;
+    mut going := true;
+    for going {
+        match origin(at) {
+            .some(o) => if o.inlined {
+                std.fmt.print(w, "  in {}, inlined\n", .{ text(o.name) });
+                at = o.into;
+            } else {
+                going = false;
+            },
+            .none => { going = false; },
+        }
+    }
+};
+
+/// Writes the function of each call on the chain past the last returning into the function at
+/// `handler`, up to the first function foreign code calls.
+called := (w: &mut std.os.Stream, handler: usize) {
+    mut frames: [depth]usize = [0; depth];
+    count := calls(&mut frames);
+    mut first: usize = 0;
+    for i in 0..count {
+        match function((frames[i] - 1).wrap(usize)) {
+            .some(f) => if f.at == handler { first = i + 1; },
+            .none => {},
+        }
+    }
+    mut i := first;
+    for i < count {
+        match function((frames[i] - 1).wrap(usize)) {
+            .some(f) => {
+                // Past a function foreign code calls, the frames are not the program's.
+                if f.foreign { i = count; } else { i += 1; }
+                std.fmt.print(w, "  in {}", .{ text(f.name) });
+                match origin(f.origin) {
+                    .some(o) => {
+                        std.fmt.print(w, " (", .{});
+                        place(w, o);
+                        std.fmt.print(w, ")", .{});
+                    },
+                    .none => {},
+                }
+                std.fmt.print(w, "\n", .{});
+            },
+            // Code before the program's is not its own either.
+            .none => { i = count; },
+        }
+    }
+};
+
+/// What handles traps: the function a runtime exports as `lang.panic.trap`.
+Handler := (t: &lang.panic.Trap) -> lang.never;
+
+/// Writes the backtrace of the trap `t` to the standard error, from `handler`, which handles it.
+trapped := (t: &lang.panic.Trap, handler: Handler) { report(Handler, handler, t.site, .trapped) };

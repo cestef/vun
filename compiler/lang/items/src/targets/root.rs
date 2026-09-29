@@ -10,7 +10,8 @@ use crate::Item;
 /// system Rust's `std::env::consts` report), and the target each builds for unless told otherwise.
 pub const hosts: Item = Item::new(&["targets", "hosts"]);
 /// The flags giving the C backend's rules (spec 13, section 8.2): strict C99, freestanding C,
-/// memory without type-based aliasing.
+/// memory without type-based aliasing, and a frame pointer in every function, the chain a
+/// backtrace walks (spec 07, section 3).
 pub const c_flags: Item = Item::new(&["targets", "c_flags"]);
 /// The flags a release build adds for a GCC or Clang driver.
 pub const c_optimize: Item = Item::new(&["targets", "c_optimize"]);

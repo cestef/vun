@@ -17,3 +17,12 @@ CodeQuoted := ($T: type) -> type { struct {
     source := (c: &Code(T)) -> &[u8] { lang.meta.source(T, c) };
     span := (c: &Code(T)) -> lang.meta.Origin { lang.meta.span(T, c) };
 } };
+
+/// The name of the variant of its type `T` that `v` is, as declared.
+variant_name := ($T: type, v: &T) -> &[u8] {
+    at := lang.meta.variant(T, v);
+    $for each in lang.meta.variants(T) {
+        if at == each.index { return each.name; }
+    }
+    ""
+};

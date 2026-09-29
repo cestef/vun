@@ -58,7 +58,7 @@ start := ($main: (&mut System) -> Exit) -> type { struct {
     };
 
     #[link.export(lang.panic.symbols.trap)]
-    trap := (t: &lang.panic.Trap) -> never { report(t); exit(.code(101)) };
+    trap := (t: &lang.panic.Trap) -> never { std.trace.trapped(t, trap); exit(.code(101)) };
 }};
 ```
 
@@ -193,7 +193,10 @@ trap: (t: &Trap) -> never = _;
   declarations naming them (`lang.panic.symbols.trap`, `std.sync.symbols.enter`); a runtime
   exports under the same names.
 
-- Every trap site calls `lang.panic.trap`. The runtime's export satisfies it.
+- Every trap site calls `lang.panic.trap`. The runtime's export satisfies it; a hosted runtime's
+  writes the trap's backtrace to the standard error first (`std.trace`, spec 07, section 3),
+  reading the table of the program's code, whose link symbol it declares
+  (`std.trace.table`) and the compiler defines.
 - A program with no provider fails to link with a diagnostic that names the missing symbol, its
   declared type, and the runtimes that would provide it.
 - The same mechanism provides `std.log` sinks, `std.mem.alloc.global` for programs that opt into a

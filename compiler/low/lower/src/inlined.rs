@@ -12,11 +12,13 @@ use vun_hash::Map;
 use vun_index::Idx;
 use vun_lir::{Address, DataId, FuncId, ImportId, Site};
 use vun_lir_passes::{InlineCalls, Tidy};
-use vun_origin::OriginId;
+use vun_origin::{OriginId, OriginTable, Via};
 use vun_query::{Cx, Cycle, Query};
 use vun_sema::item::DeclRef;
 use vun_sema::target::TargetOf;
+use vun_sema::trace::TraceOf;
 use vun_sema::ty::TyKind;
+use vun_target::Detail;
 
 use crate::piece::{Datum, DatumKind, FuncRef, FunctionLir, Lir, Piece, Refs};
 use crate::placing::{Places, SiteIds};
@@ -76,11 +78,15 @@ impl Inlining {
         let keys: Vec<Self> = callees.iter().map(|(_, callee)| callee.clone()).collect();
         let bodies = cx.get_all::<InlinedLir>(&keys);
         let at = lir.function.origin;
-        let mut merging = Merging::new(&mut lir.refs);
+        let mut merging = Merging::new(&mut lir.refs, at);
+        // Where the table describes calls, a callee is inlined only if no call it makes returns
+        // into it: a return address then lies in the code of the function it names.
+        let leaves = cx.get::<TraceOf>(&()) == Detail::Calls;
         let mut small = Vec::new();
         for ((g, _), body) in callees.iter().zip(&bodies) {
             if let Ok(body) = body.as_ref()
                 && body.function.small()
+                && !(leaves && body.function.returning_calls())
             {
                 small.push((*g, merging.place(body, at)?));
             }
@@ -105,10 +111,12 @@ struct Merging<'r> {
     imports: Map<DeclRef, ImportId>,
     globals: Map<DeclRef, DataId>,
     sites: SiteIds,
+    /// The function the callees are inlined into.
+    into: OriginId,
 }
 
 impl<'r> Merging<'r> {
-    fn new(refs: &'r mut Refs) -> Self {
+    fn new(refs: &'r mut Refs, into: OriginId) -> Self {
         let functions = refs.functions.iter().cloned().zip((0..).map(FuncId::new)).collect();
         let imports = refs.imports.iter().cloned().zip((0..).map(ImportId::new)).collect();
         let globals = (refs.data.iter().zip((0..).map(DataId::new)))
@@ -118,7 +126,7 @@ impl<'r> Merging<'r> {
             })
             .collect();
         let sites = SiteIds::of(&refs.sites);
-        Self { refs, functions, imports, globals, sites }
+        Self { refs, functions, imports, globals, sites, into }
     }
 }
 
@@ -159,7 +167,13 @@ impl Places for Merging<'_> {
         id
     }
 
+    /// The callee's sites, each where it is inlined: into the function at `self.into`.
     fn sites(&mut self, sites: &[Site], at: OriginId) -> Result<Vec<u32>, Unlowered> {
-        sites.iter().map(|site| self.sites.id(&mut self.refs.sites, site, at)).collect()
+        let origins = OriginTable::global();
+        let inlined = |site: &Site| {
+            let span = origins.get(site.at).span;
+            Site { at: origins.derive(site.at, span, Via::Inline { into: self.into }), msg: site.msg.clone() }
+        };
+        sites.iter().map(|site| self.sites.id(&mut self.refs.sites, &inlined(site), at)).collect()
     }
 }

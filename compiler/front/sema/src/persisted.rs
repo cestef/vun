@@ -17,12 +17,14 @@ use crate::link::Links;
 use crate::member::{MemberType, MemberValue, Members};
 use crate::plan::Planned;
 use crate::target::{Chosen, TargetOf};
+use crate::trace::TraceOf;
 use crate::typeck::{Reported, Typed};
 use crate::witness::{Impls, Requirement, Witnesses};
 
 pub const PERSISTED: &[fn(&Db)] = &[
     Db::trace::<TargetOf>,
     Db::trace::<ChecksOf>,
+    Db::trace::<TraceOf>,
     Db::persist::<Chosen>,
     Db::persist::<Checked>,
     Db::persist::<DeclType>,

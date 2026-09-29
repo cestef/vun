@@ -18,6 +18,10 @@ pub enum Op {
     Svc,
     /// The page of an address, which a following `add` or load completes with its low 12 bits.
     Adrp,
+    /// Strips the pointer authentication code from the address in `x30`, as a return address is
+    /// saved where code is built with return addresses signed; a hint, which does nothing on a
+    /// processor without pointer authentication.
+    Xpaclri,
     /// A data memory barrier: accesses the barrier orders complete, as its operand says, before any
     /// after it.
     Dmb,
@@ -200,6 +204,7 @@ impl Op {
         Self::Brk,
         Self::Svc,
         Self::Adrp,
+        Self::Xpaclri,
         Self::Dmb,
         Self::Mrs,
         Self::Msr,

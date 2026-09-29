@@ -22,6 +22,10 @@ pub const brk: Item = Item::new(&["lang", "arch", "arm64", "control", "brk"]);
 pub const svc: Item = Item::new(&["lang", "arch", "arm64", "control", "svc"]);
 /// The page of an address, which a following `add` or load completes with its low 12 bits.
 pub const adrp: Item = Item::new(&["lang", "arch", "arm64", "control", "adrp"]);
+/// Strips the pointer authentication code from the address in `x30`, as a return address is
+/// saved where code is built with return addresses signed; a hint, which does nothing on a
+/// processor without pointer authentication.
+pub const xpaclri: Item = Item::new(&["lang", "arch", "arm64", "control", "xpaclri"]);
 /// A data memory barrier: accesses the barrier orders complete, as its operand says, before any
 /// after it.
 pub const dmb: Item = Item::new(&["lang", "arch", "arm64", "control", "dmb"]);

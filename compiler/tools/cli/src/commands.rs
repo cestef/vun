@@ -10,7 +10,7 @@ use vun_term::Shell;
 
 use status::{Conclude, Report, Started, Step};
 
-use vun_driver::{Session, VERSION, checks, codegen, formats, target};
+use vun_driver::{Session, VERSION, checks, codegen, formats, target, trace};
 
 pub(crate) const PROGRAM: Program<Session> = Program {
     version: VERSION,
@@ -80,7 +80,15 @@ pub(crate) const CHECK_PATH: [&str; 1] = [CHECK.name];
 /// The options of every command that compiles a file.
 pub(crate) const COMPILE: OptionSet = OptionSet {
     title: "Compile options",
-    params: &[target::TARGET, checks::CHECKS, codegen::RELEASE, formats::DIAGNOSTICS, TIMINGS, MEMOS],
+    params: &[
+        target::TARGET,
+        checks::CHECKS,
+        trace::TRACE,
+        codegen::RELEASE,
+        formats::DIAGNOSTICS,
+        TIMINGS,
+        MEMOS,
+    ],
 };
 
 pub(crate) const FILE: Param =
@@ -101,6 +109,7 @@ fn configure(session: &mut Session, args: &Args) -> Result<(), Box<vun_diag::Dia
     formats::configure(session, args)?;
     codegen::configure(session, args);
     checks::configure(session, args)?;
+    trace::configure(session, args);
     target::configure(session, args)
 }
 

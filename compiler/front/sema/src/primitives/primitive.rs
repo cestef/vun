@@ -54,6 +54,8 @@ pub enum Primitive {
     Stack(stack::Stack),
     /// `lang.target`
     Target(target::Target),
+    /// `lang.trace`
+    Trace(trace::Trace),
     /// `lang`
     Lang(lang::Lang),
 }
@@ -84,6 +86,7 @@ impl Primitive {
             .chain(simd::Simd::ALL.iter().map(|&p| Self::Simd(p)))
             .chain(stack::Stack::ALL.iter().map(|&p| Self::Stack(p)))
             .chain(target::Target::ALL.iter().map(|&p| Self::Target(p)))
+            .chain(trace::Trace::ALL.iter().map(|&p| Self::Trace(p)))
             .chain(lang::Lang::ALL.iter().map(|&p| Self::Lang(p)))
     }
     /// The namespace declaring it.
@@ -113,6 +116,7 @@ impl Primitive {
             Self::Simd(_) => simd::Simd::NAMESPACE,
             Self::Stack(_) => stack::Stack::NAMESPACE,
             Self::Target(_) => target::Target::NAMESPACE,
+            Self::Trace(_) => trace::Trace::NAMESPACE,
             Self::Lang(_) => lang::Lang::NAMESPACE,
         }
     }
@@ -143,6 +147,7 @@ impl Primitive {
             Self::Simd(p) => p.item(),
             Self::Stack(p) => p.item(),
             Self::Target(p) => p.item(),
+            Self::Trace(p) => p.item(),
             Self::Lang(p) => p.item(),
         }
     }
@@ -173,6 +178,7 @@ impl Primitive {
             Self::Simd(p) => p.name(),
             Self::Stack(p) => p.name(),
             Self::Target(p) => p.name(),
+            Self::Trace(p) => p.name(),
             Self::Lang(p) => p.name(),
         }
     }

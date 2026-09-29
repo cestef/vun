@@ -53,9 +53,27 @@ primitives in `unsafe` code; `Mutex(T)` spins on an `Atomic(bool)` and returns a
   `std.panic.fail(reason)`, whose compile-time `lang.panic.Reason` (`.message(text)` or
   `.assertion(source, origin)`) makes each distinct reason its own site. There is no unwinding.
 - A trap calls `lang.panic.trap`, a typed link symbol that the program's runtime provides
-  (spec 08). Every trap site passes a 32-bit **site id**; the message table mapping ids to origin
-  chains and text is emitted into a non-loaded section, so traps cost a call and a constant on
-  embedded targets and still report the exact source span on the host (spec 10).
+  (spec 08). Every trap site passes a 32-bit **site id**, so a trap costs a call and a constant.
+- A program whose runtime declares the link symbol `lang.trace.symbols.table` gets the **table
+  of its code**, laid out as `lang.trace` declares it: a row per site id (its origin and, where
+  the reason is known when compiling, its message); at `lang.trace.Detail.calls`, a row per
+  function (where its code starts, its declaration's path and origin, and whether foreign code
+  calls it: the C convention, or naked); and a row per origin (file, line, column, the path of
+  the declaration it is in, and, for code inlined, the row of the function it is inlined into).
+  Lowering makes the table's datum; its rows are written when code is generated, where places
+  in source are known.
+- The detail is a build option (`std.build.Options.trace`, `--trace`), read at compile time as
+  `lang.trace.current`: `off` (no table; a trap writes nothing), `sites`, or `calls`. A debug
+  build defaults to `calls`, a release build to `sites`.
+- Before ending the program, a runtime's handler writes a **backtrace** to the standard error
+  (`std.trace.report`): why it ends (a trap, or a check that failed, naming its
+  `lang.check.Violation`), the site's message and place and each function its code is inlined
+  into, then, at `calls`, the function of each call on the chain of frame records every function keeps (native code always keeps a frame pointer; C is
+  compiled with `-fno-omit-frame-pointer`), past the handler's own frames and up to the first
+  function foreign code calls, whose caller's frames need not be chained. On arm64 the saved
+  return addresses are stripped of pointer authentication. WebAssembly's frames are not memory a
+  program reads: there it names the site alone. A failed check of unsafe code reports the same
+  way (spec 13, section 8.7).
 - **`#[panic.never]`** on a function is checked transitively: its body may contain no undischarged
   trap site, and it may call only `#[panic.never]` functions. A closure called in a
   `#[panic.never]` function without the marker keeps the promise when its own body does: no

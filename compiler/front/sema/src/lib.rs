@@ -23,6 +23,7 @@ pub mod member;
 pub mod ops;
 mod persisted;
 pub mod plan;
+pub mod trace;
 #[rustfmt::skip]
 pub mod primitives;
 mod reflect;

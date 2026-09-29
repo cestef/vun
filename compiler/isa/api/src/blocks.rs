@@ -4,6 +4,7 @@
 
 use vun_inline::{Base, Block, Bound, ClassId, FormId, Inst, Line, Mem, OpId, Operand, RegRef};
 
+use crate::word::Access;
 use crate::{Fit, Fixed, Given, Label, Misfit, Via, Width};
 
 /// Operands of inline assembly a backend may have no encoding or no register for.
@@ -48,6 +49,9 @@ pub trait Blocks {
 
     /// The kinds of the positions of the form `inst` was checked against, in order.
     fn kinds<V, P, S>(inst: &Inst<V, P, S>) -> impl Iterator<Item = Self::Kind>;
+
+    /// What the form of `inst` does with each of its positions, in order.
+    fn accesses<V, P, S>(inst: &Inst<V, P, S>) -> impl Iterator<Item = Access>;
 
     /// The general registers that form reads or writes without naming them.
     fn implicit<V, P, S>(inst: &Inst<V, P, S>) -> impl Iterator<Item = Self::Reg>;
@@ -140,6 +144,26 @@ pub trait Blocks {
                 Operand::List(regs) => regs.as_slice(),
                 _ => &[],
             });
+            let named = named.filter_map(|&r| Self::general(r));
+            Self::implicit(inst).chain(named)
+        })
+    }
+
+    /// The general registers `block` may overwrite: those it names but at a position it only
+    /// reads, the registers of addresses (a form may write an address back), and those its forms
+    /// use unnamed.
+    #[must_use]
+    fn overwritten<V, P, S>(block: &Block<V, P, S>) -> impl Iterator<Item = Self::Reg> {
+        block.insts.iter().flat_map(|inst| {
+            let named =
+                inst.operands.iter().zip(Self::accesses(inst)).flat_map(|(operand, access)| match operand {
+                    Operand::Reg(_) if access == Access::Read => &[],
+                    Operand::Reg(r) | Operand::Mem(Mem { base: Some(Base::Reg(r)), .. }) => {
+                        std::slice::from_ref(r)
+                    }
+                    Operand::List(regs) => regs.as_slice(),
+                    _ => &[],
+                });
             let named = named.filter_map(|&r| Self::general(r));
             Self::implicit(inst).chain(named)
         })

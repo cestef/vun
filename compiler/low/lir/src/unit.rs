@@ -66,6 +66,8 @@ pub struct Unit {
     /// The checks of unsafe code the program is built with (spec 13, section 8.7): a backend
     /// checks the memory its assembly blocks write under `asm`.
     pub checks: vun_target::Checks,
+    /// The table of the program's code, where its runtime reads it (`lang.trace`).
+    pub trace: Option<crate::trace::Trace>,
 }
 
 /// A trap site: where it is written, and what it says when its reason is known when compiling

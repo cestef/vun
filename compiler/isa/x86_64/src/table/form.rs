@@ -148,14 +148,7 @@ impl Prefix {
 }
 
 /// What a form does with an operand, or with the flags.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Access {
-    Read,
-    Write,
-    ReadWrite,
-    /// Nothing but compute its address (`lea`).
-    Address,
-}
+pub use vun_isa::word::Access;
 
 /// An operand position: what it takes, and what the form does with it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

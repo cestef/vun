@@ -2,7 +2,8 @@
 //! the register it names or its position takes, else in the first register the block leaves
 //! free of those a call of the target's C convention overwrites, its arguments' first; the text is the assembler's own listing of each
 //! instruction over those registers, its lines labelled uniquely to the statement by `%=`. The
-//! registers the block names or its forms use unnamed are clobbered, with the flags and memory.
+//! registers the block may overwrite, all it names but those it only reads, are clobbered, with
+//! the flags and memory.
 //! A naked function's blocks are plain `__asm__`, all GNU C allows there, their labels unique to
 //! each instruction of the unit. Symbols are named as the object names them, where that is as C
 //! does (`Linked`), and refused elsewhere. Where the program checks its blocks (spec 13, section
@@ -104,9 +105,9 @@ impl FnEmit<'_, '_> {
             bindings.push(Binding { decl: Decl::new(var, name), reg, class, flow });
         }
         let regs: Vec<RegRef> = held.iter().map(Held::reg).collect();
-        let named: Vec<I::Reg> = I::named(block).collect();
+        let overwritten: Vec<I::Reg> = I::overwritten(block).collect();
         let mut clobbered: Vec<I::Reg> = Vec::new();
-        for r in named {
+        for r in overwritten {
             if !regs.contains(&I::reference(r)) && !clobbered.contains(&r) {
                 clobbered.push(r);
             }

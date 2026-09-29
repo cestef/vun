@@ -1,0 +1,84 @@
+//! What the compiler tells a program of its own code, so that a trap reports where it was written
+//! and the calls that led to it (spec 07, section 3): the program's functions, its trap sites and
+//! the places in source they name. The compiler lays the table out as these declarations do and
+//! gives it the link symbol `symbols.table`, which a runtime declares to read it.
+
+/// How much of its code a program's table describes, and so what a trap reports.
+Detail := enum {
+    /// No table: a trap reports nothing.
+    off,
+    /// The trap sites: where a trap is written, and what it says.
+    sites,
+    /// The sites, and the functions of the calls that led to a trap.
+    calls,
+};
+
+/// Details are equal when they are one detail.
+#[impl(lang.ops.Eq(Detail))]
+DetailEq := struct {
+    eq := (a: &Detail, b: &Detail) -> bool { lang.meta.same(Detail, a.*, b.*) };
+};
+
+/// The detail the program is built with (`std.build.Options.trace`, `--trace`), known when
+/// compiling, as `lang.check.current` is.
+current: Detail = _;
+
+/// Bytes of the table's text: `len` of them at `at` past `Table.text`.
+#[layout.c]
+Text := struct {
+    at: u32,
+    len: u32,
+};
+
+/// A place in source: its file's path, its line and column, counted from 1, and the path of
+/// the declaration it is in; and, where it is code inlined, the index of the row of the code it
+/// is inlined into (the function's declaration, itself maybe inlined further).
+#[layout.c]
+Origin := struct {
+    file: Text,
+    line: u32,
+    column: u32,
+    name: Text,
+    inlined: bool,
+    into: u32,
+};
+
+/// A function of the program: where its code starts, the path of its declaration, the origin of
+/// its declaration by its index in `Table.origins`, and whether code outside the program calls
+/// it (a function of the C convention, or naked), past whose frame the chain of frames is its
+/// caller's, which need not keep one.
+#[layout.c]
+Function := struct {
+    at: usize,
+    name: Text,
+    origin: u32,
+    foreign: bool,
+};
+
+/// A trap site, by its id (`lang.panic.Trap.site`): the index of its origin, and what it says,
+/// empty where its reason is not known when compiling.
+#[layout.c]
+Site := struct {
+    origin: u32,
+    message: Text,
+};
+
+/// The table: the address of the handler of traps as the program is linked, which tells a
+/// reader where the program was loaded, then the address and count of each kind of row, and the
+/// address of their text. A table whose rows are not loaded counts none.
+#[layout.c]
+Table := struct {
+    anchor: usize,
+    functions: usize,
+    function_count: usize,
+    sites: usize,
+    site_count: usize,
+    origins: usize,
+    origin_count: usize,
+    text: usize,
+};
+
+/// The link symbols the compiler defines: the table's, which a runtime declares to read it.
+symbols := struct {
+    table := "vun_trace";
+};

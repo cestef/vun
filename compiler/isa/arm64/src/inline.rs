@@ -47,6 +47,10 @@ impl Blocks for Arm64 {
         Op::entry(inst.op, inst.form).1.args.iter().map(|arg| arg.kind)
     }
 
+    fn accesses<V, P, S>(inst: &Inst<V, P, S>) -> impl Iterator<Item = Access> {
+        Op::entry(inst.op, inst.form).1.args.iter().map(|arg| arg.access)
+    }
+
     fn implicit<V, P, S>(inst: &Inst<V, P, S>) -> impl Iterator<Item = Reg> {
         let form = Op::entry(inst.op, inst.form).1;
         form.reads.iter().chain(form.writes).copied()

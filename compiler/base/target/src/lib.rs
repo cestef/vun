@@ -9,10 +9,12 @@ use vun_intern::Symbol;
 mod check;
 mod floats;
 mod name;
+mod trace;
 
 pub use check::{Check, Checks};
 pub use floats::Floats;
 pub use name::Name;
+pub use trace::Detail;
 
 /// `lang.target.Endian`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encode, Decode)]

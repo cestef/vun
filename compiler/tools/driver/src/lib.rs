@@ -26,6 +26,7 @@ pub mod stages;
 mod steps;
 pub mod target;
 mod toolchain;
+pub mod trace;
 
 pub use coverage::Coverage;
 pub use queries::Persistence;

@@ -16,6 +16,7 @@ use crate::env::{Env, Unevaluated};
 use crate::eval::{Instance, Staging};
 use crate::item::DeclRef;
 use crate::primitives::check::Check;
+use crate::primitives::trace::Trace;
 use crate::target::TargetOf;
 use crate::ty::{TyKind, Value};
 use crate::typeck::{Known, Stage, TypedBody, Typer};
@@ -39,6 +40,7 @@ impl Query for DeclValue {
         // Outside `lang`, a declaration provided from outside is a link symbol (spec 08, section 3).
         match Self::primitive(cx, key, hir) {
             Some(Primitive::Check(Check::current)) => env.current_checks(),
+            Some(Primitive::Trace(Trace::current)) => env.current_trace(),
             Some(primitive) => match primitive.target_constant() {
                 Some(read) => {
                     let target = cx.get::<TargetOf>(&()).ok_or(Unevaluated::Untargeted)?;

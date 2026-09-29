@@ -2,7 +2,7 @@
 //! coroutine's frame.
 
 use vun_codec::{Decode, Encode};
-use vun_lir::{Slot, Value};
+use vun_lir::{Address, Slot, Value};
 use vun_mir::{Local, Role};
 use vun_sema::kinds::Kinds;
 
@@ -17,16 +17,17 @@ pub(super) enum Storage {
     /// Nowhere: its type has size 0.
     None,
     Slot(Slot),
-    /// The data object of the top-level binding it is the storage of.
-    Global(vun_lir::DataId),
+    /// The storage of the top-level binding it is: its data object, or the datum the linker
+    /// provides under its symbol (`name: T = _;`).
+    Global(Address),
     /// The frame of the coroutine lowered, at this offset.
     Frame(u64),
 }
 
 impl FnLower<'_, '_, '_> {
     /// Where each local lives: nowhere when nothing reads or writes it or it has size 0, in the
-    /// frame when `frame` holds it, in its data object when it is a top-level binding, else in a
-    /// stack slot.
+    /// frame when `frame` holds it, in its data object or at its link symbol when it is a
+    /// top-level binding, else in a stack slot.
     pub(super) fn storage(&mut self, params: &[Local], frame: Option<&FrameShape>) -> Result<(), Unlowered> {
         let body = self.body;
         let mut used = body.read();
@@ -46,12 +47,17 @@ impl FnLower<'_, '_, '_> {
             let storage = match (self.l.types.repr(ty, decl.origin)?, &decl.role) {
                 (Repr::Zero, _) => Storage::None,
                 // Immutable storage holding a cell is written through it all the same.
+                (_, Role::Static(global) | Role::StaticMut(global))
+                    if global.linked(self.l.types.cx).is_some() =>
+                {
+                    Storage::Global(self.l.linked(global, decl.origin)?)
+                }
                 (_, Role::Static(global)) => {
                     let interior = self.l.types.cx.get::<Kinds>(&ty).interior;
-                    Storage::Global(self.l.global(global, ty, interior, decl.origin)?)
+                    Storage::Global(Address::Data(self.l.global(global, ty, interior, decl.origin)?))
                 }
                 (_, Role::StaticMut(global)) => {
-                    Storage::Global(self.l.global(global, ty, true, decl.origin)?)
+                    Storage::Global(Address::Data(self.l.global(global, ty, true, decl.origin)?))
                 }
                 (Repr::Scalar(s), _) => {
                     let bytes = s.bytes(self.l.types.pointer_bits());
@@ -71,7 +77,7 @@ impl FnLower<'_, '_, '_> {
         match self.slots[local] {
             Storage::None => None,
             Storage::Slot(slot) => Some(self.b.slot_addr(slot, self.at)),
-            Storage::Global(data) => Some(self.b.addr(vun_lir::Address::Data(data), self.at)),
+            Storage::Global(address) => Some(self.b.addr(address, self.at)),
             Storage::Frame(offset) => {
                 let frame = self.frame?;
                 Some(self.at_offset(frame, offset))

@@ -123,7 +123,10 @@ start := ($main: std.os.Main) -> type { struct {
     };
 
     #[link.export(lang.panic.symbols.trap)]
-    trap := (t: &lang.panic.Trap) -> lang.never { end(std.os.trapped) };
+    trap := (t: &lang.panic.Trap) -> lang.never {
+        std.trace.trapped(t, trap);
+        end(std.os.trapped)
+    };
 
     /// The operations of the checks of unsafe code, for a program built with checks.
     checks := if lang.check.current.len() > 0 { std.check.exports(state, end) } else { struct {} };

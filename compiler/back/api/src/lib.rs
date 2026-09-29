@@ -8,6 +8,9 @@ mod lack;
 pub use lack::{AsmOperand, Lack, Missing};
 
 mod caps;
+mod trace;
+
+pub use trace::Traced;
 
 pub use caps::{BackendCaps, HeldFloats, Widest};
 
@@ -177,6 +180,8 @@ pub struct Line {
     pub file: PathBuf,
     /// Counted from 1.
     pub line: u32,
+    /// Counted from 1, in characters.
+    pub column: u32,
 }
 
 /// Where origins are in source (spec 10, section 1).
@@ -188,6 +193,13 @@ pub trait Lines {
     fn declaration(&self, origin: OriginId) -> Vec<Symbol> {
         let _ = origin;
         Vec::new()
+    }
+
+    /// The code `origin` is a copy of, and the function declared at the second origin it is
+    /// inlined into, where it is inlined code.
+    fn inlined(&self, origin: OriginId) -> Option<(OriginId, OriginId)> {
+        let _ = origin;
+        None
     }
 
     /// The name debuggers show for an internal definition at `origin`: the path of its

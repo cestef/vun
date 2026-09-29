@@ -104,3 +104,102 @@ fn threads_run_beside_the_main_one_and_are_joined_on_every_runtime() {
     }
     assert_eq!(status("runtime-threads", &corpus("threads.vun")), Some(36));
 }
+
+/// A trap three calls deep, each a call of the function itself, which is not inlined.
+const DEEP: &str = "start := std.os.start(main);
+
+dig := (items: &[8]u8, depth: usize, at: usize) -> u8 {
+    if depth == 0 { items[at] } else { dig(items, (depth - 1).wrap(usize), at) }
+};
+
+main := (sys: &mut std.os.System) -> std.os.Exit {
+    items: [8]u8 = [1, 2, 3, 4, 5, 6, 7, 8];
+    if dig(&items, 2, (sys.args().len() + 8).wrap(usize)) > 0 { .ok } else { .code(1) }
+};
+";
+
+#[test]
+fn a_trap_writes_where_it_is_written_and_the_calls_that_led_to_it() {
+    if !cfg!(target_os = "linux") {
+        return;
+    }
+    for backend in BACKENDS {
+        let (fixture, program) = build("runtime-backtrace", DEEP, backend);
+        let file = fixture.root.path().join("main.vun").display().to_string();
+        let ran = std::process::Command::new(&program).output().unwrap();
+        let text = String::from_utf8(ran.stderr).unwrap();
+        let lines: Vec<&str> = text.lines().collect();
+        let dig = format!("  in dig ({file}:3:8)");
+        assert_eq!(ran.status.code(), Some(101), "{backend}");
+        assert_eq!(lines[..4], ["trap", &format!("  at {file}:4:21"), &dig, &dig], "{backend}: {text}");
+        assert!(lines[4..].iter().all(|l| l.starts_with("  in ")), "{backend}: {text}");
+    }
+}
+
+/// A trap in a function inlined into one inlined in turn, as small callees are.
+const INLINED: &str = "start := std.os.start(main);
+
+pick := (items: &[8]u8, at: usize) -> u8 { items[at] };
+
+sum := (items: &[8]u8, n: usize) -> u32 {
+    mut total: u32 = 0;
+    for i in 0..n { total += pick(items, i).to(u32); }
+    total
+};
+
+main := (sys: &mut std.os.System) -> std.os.Exit {
+    items: [8]u8 = [1, 2, 3, 4, 5, 6, 7, 8];
+    if sum(&items, (sys.args().len() + 8).wrap(usize)) > 0 { .ok } else { .code(1) }
+};
+";
+
+#[test]
+fn a_trap_in_inlined_code_names_each_function_it_is_inlined_into() {
+    if !cfg!(target_os = "linux") {
+        return;
+    }
+    for backend in BACKENDS {
+        let (fixture, program) = build("runtime-inlined", INLINED, backend);
+        let file = fixture.root.path().join("main.vun").display().to_string();
+        let ran = std::process::Command::new(&program).output().unwrap();
+        let text = String::from_utf8(ran.stderr).unwrap();
+        let lines: Vec<&str> = text.lines().collect();
+        let at = format!("  at {file}:3:44");
+        let inlined = ["trap", &at, "  in pick, inlined", "  in sum, inlined", "  in main, inlined"];
+        assert_eq!(lines[..5], inlined, "{backend}: {text}");
+    }
+}
+
+/// A trap in a closure a thread runs.
+const THREADED: &str = "start := std.os.start(main);
+
+pick := (items: &[8]u8, at: usize) -> u8 { items[at] };
+
+main := (sys: &mut std.os.System) -> std.os.Exit {
+    items: [8]u8 = [1, 2, 3, 4, 5, 6, 7, 8];
+    n := (sys.args().len() + 8).wrap(usize);
+    mut f := [&items, n] () -> u32 { pick(&items, n).to(u32) };
+    match sys.spawn(&mut f) {
+        .ok(t) => if t.join() > 0 { .ok } else { .code(1) },
+        .err(_) => .code(2),
+    }
+};
+";
+
+#[test]
+fn a_trap_in_a_thread_names_the_calls_up_to_where_the_thread_starts() {
+    if !cfg!(target_os = "linux") {
+        return;
+    }
+    for backend in BACKENDS {
+        let (fixture, program) = build("runtime-threaded", THREADED, backend);
+        let file = fixture.root.path().join("main.vun").display().to_string();
+        let ran = std::process::Command::new(&program).output().unwrap();
+        let text = String::from_utf8(ran.stderr).unwrap();
+        let lines: Vec<&str> = text.lines().collect();
+        let at = format!("  at {file}:3:44");
+        assert_eq!(ran.status.code(), Some(101), "{backend}");
+        assert_eq!(lines[..4], ["trap", &at, "  in pick, inlined", "  in main.f, inlined"], "{backend}: {text}");
+        assert!(lines.last().is_some_and(|l| l.starts_with("  in Thread.run (")), "{backend}: {text}");
+    }
+}

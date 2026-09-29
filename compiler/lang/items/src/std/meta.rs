@@ -10,3 +10,5 @@ use crate::Item;
 /// a parameter of type `Code(T)` itself would receive its argument as code.
 pub const Quoted: Item = Item::new(&["std", "meta", "Quoted"]);
 pub const CodeQuoted: Item = Item::new(&["std", "meta", "CodeQuoted"]);
+/// The name of the variant of its type `T` that `v` is, as declared.
+pub const variant_name: Item = Item::new(&["std", "meta", "variant_name"]);
