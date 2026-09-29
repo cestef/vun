@@ -10,7 +10,19 @@ Config := struct {
 
 /// The device's peripherals, claimed once at reset.
 Peripherals := struct {
-    claim := unsafe () -> Peripherals { .{} };
+    gpioa: stm32f4.gpio.Port,
+    gpiob: stm32f4.gpio.Port,
+    gpioc: stm32f4.gpio.Port,
+    tim2: stm32f4.time.Tim2,
+
+    claim := unsafe () -> Peripherals {
+        .{
+            .gpioa = unsafe stm32f4.gpio.Port.claim(0),
+            .gpiob = unsafe stm32f4.gpio.Port.claim(1),
+            .gpioc = unsafe stm32f4.gpio.Port.claim(2),
+            .tim2 = unsafe stm32f4.time.Tim2.claim(),
+        }
+    };
 };
 
 /// What the core calls on an exception or interrupt, as it calls a C function.

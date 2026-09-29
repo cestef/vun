@@ -12,7 +12,7 @@ use vun_primitives::mem::Mem;
 use vun_sema_float::Format;
 use vun_sema_int::Integer;
 use vun_sema_ty::float::FloatType;
-use vun_sema_ty::{NominalKind, Ty, TyKind};
+use vun_sema_ty::{NominalKind, Ty, TyKind, Value};
 
 use super::Checker;
 use crate::attributes::Attributed;
@@ -84,6 +84,11 @@ impl Checker<'_, '_, '_> {
                 Some(ty.signature()?.has(Primitive::Abi(Abi::c)))
             }
             TyKind::Primitive(Primitive::Mem(Mem::Array), _) => self.c_type(ty.as_array()?.1),
+            // A cell holds its value as the value is held.
+            TyKind::Primitive(Primitive::Mem(Mem::Cell), args) => match args.as_slice() {
+                [Value::Type(held)] => self.c_type(*held),
+                _ => Some(false),
+            },
             TyKind::Nominal(nominal) if nominal.kind == NominalKind::Struct => {
                 Some(nominal.attributes(self.env.cx)?.get(Primitive::Layout(Layout::c)).is_some())
             }

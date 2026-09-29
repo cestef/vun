@@ -161,8 +161,9 @@ impl Reach<'_, '_> {
             Err(why) => return self.unevaluated(decl, why),
         };
         match &value {
+            // Exported by its declaration, or by the one of the function it names.
             Value::Fn(f) => {
-                if let Some(symbol) = f.export(self.cx) {
+                if let Some(symbol) = decl.export(self.cx).or_else(|| f.export(self.cx)) {
                     let at = self.function(Instantiation::new(f.clone(), Vec::new()));
                     self.program.exports.push((at, symbol));
                 }

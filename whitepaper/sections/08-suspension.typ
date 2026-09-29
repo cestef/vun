@@ -64,7 +64,7 @@ resumption.
 
 ```vun
 blink := (led: &mut Led, timer: &Timer) -> Async(never) {
-    for { led.toggle(); yield ..timer.after(.ms(500)); }
+    for { led.toggle(); yield ..timer.after(.millis(500)); }
 };
 
 echo := (s: &mut Serial) -> Async(never) {

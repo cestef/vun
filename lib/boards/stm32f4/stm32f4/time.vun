@@ -1,1 +1,83 @@
-//! Timers and delays.
+//! Timers (RM0090, section 18): TIM2 counting milliseconds, each wait an update of its counter
+//! that its interrupt announces.
+
+/// TIM2's registers.
+#[layout.c]
+Registers := struct {
+    cr1: std.hw.Reg(u32),
+    cr2: std.hw.Reg(u32),
+    smcr: std.hw.Reg(u32),
+    dier: std.hw.Reg(u32),
+    sr: std.hw.Reg(u32),
+    egr: std.hw.Reg(u32),
+    ccmr1: std.hw.Reg(u32),
+    ccmr2: std.hw.Reg(u32),
+    ccer: std.hw.Reg(u32),
+    cnt: std.hw.Reg(u32),
+    psc: std.hw.Reg(u32),
+    arr: std.hw.Reg(u32),
+
+    get := () -> &Registers { unsafe std.hw.at(Registers, address) };
+};
+
+address: usize = 0x4000_0000;
+/// TIM2's enable bit among the APB1 clocks, and its interrupt.
+enable_bit := 0;
+interrupt := 28;
+
+/// `cr1`: the counter runs, and stops at its next update.
+counter_enable: u32 = 1;
+one_pulse: u32 = 1 << 3;
+/// `dier` and `sr`: an update of the counter, when it reaches `arr`.
+update: u32 = 1;
+/// The counter's ticks per second: milliseconds.
+ticks_hz: u32 = 1_000;
+
+/// The interrupt controller's set-enable registers (Armv7-M, section B3.4).
+nvic_iser: usize = 0xE000_E100;
+
+/// TIM2, claimed with the peripherals.
+Tim2 := struct {
+    _held: (),
+
+    claim := unsafe () -> Tim2 { .{ ._held = () } };
+};
+
+/// An update of TIM2's counter: its interrupt fires it.
+elapsed: std.task.Event = std.task.Event.init();
+
+/// TIM2's interrupt handler, which a program names among its interrupts: announces the update.
+on_tim2 := () {
+    Registers.get().sr.write(0);
+    elapsed.fire();
+};
+
+/// Waits of milliseconds, over TIM2.
+Timer := struct {
+    _held: Tim2,
+
+    /// Takes TIM2: its clock on, counting milliseconds, its interrupt enabled.
+    init := (t: Tim2) -> Timer {
+        stm32f4.rcc.enable(.apb1, enable_bit);
+        regs := Registers.get();
+        regs.psc.write((stm32f4.rcc.clock_hz / ticks_hz - 1).to(u32));
+        // The prescaler is loaded at an update: made now, its flag cleared, before the
+        // interrupt is enabled.
+        regs.egr.write(update);
+        regs.sr.write(0);
+        regs.dier.write(update);
+        iser := unsafe std.hw.at(std.hw.Reg(u32), nvic_iser);
+        iser.write((1 << interrupt).wrap(u32));
+        .{ ._held = t }
+    };
+
+    /// Waits for `d`, to the millisecond, at least one.
+    after := (self: &Timer, d: std.time.Duration) -> std.task.Async(()) {
+        ms := d.as_nanos() / std.time.nanos_per_milli;
+        regs := Registers.get();
+        regs.arr.write(if ms > 0 { ms.wrap(u32) } else { 1 });
+        regs.cnt.write(0);
+        regs.cr1.write(counter_enable | one_pulse);
+        yield ..elapsed.wait();
+    };
+};

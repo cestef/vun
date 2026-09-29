@@ -1,6 +1,7 @@
 //! The `$` parameters of a call bound: those it leaves out inferred from its arguments' types,
 //! and each bound to its value in the instantiation the call reaches.
 
+use vun_diag::{ChildKind, Diagnostic, Msg, errors};
 use vun_hir::tree::ExprId;
 use vun_primitives::Primitive;
 use vun_sema_ty::call::{Func, Instantiation};
@@ -11,8 +12,8 @@ use super::{Argument, Callee, Passing};
 use crate::callable::Callable;
 use crate::callable::Parameters;
 use crate::env::Quoting;
-use crate::typeck::Typer;
 use crate::typeck::omitted::{Plan, Unifier};
+use crate::typeck::{Stage, Typer};
 
 impl Typer<'_, '_, '_> {
     /// The values of the `$` parameters `plan` leaves out, from the types of the receiver and the
@@ -98,6 +99,31 @@ impl Typer<'_, '_, '_> {
 }
 
 impl Typer<'_, '_, '_> {
+    /// Reports the call `expr` of `receiver` and `args` whose result's range depends on a value
+    /// known only when it runs, such as a constant shifted by a run-time amount: where an
+    /// operand is computed at run time, the intermediate has no width (spec 04, rule 5).
+    pub(super) fn unbounded(&mut self, expr: ExprId, receiver: Option<ExprId>, args: &[Argument]) {
+        let written = receiver.map(Argument::Expr).into_iter().chain(args.iter().copied());
+        let run = written.into_iter().any(|a| match a {
+            Argument::Expr(e) => self.found.types.get(&e).is_some_and(|k| k.stage == Stage::Run),
+            Argument::Matched(_) => false,
+        });
+        if !run {
+            return;
+        }
+        let msg = Msg::new().text("this intermediate has no width: its range depends on a run-time value");
+        let help = Msg::new()
+            .text("bring a constant operand into a ")
+            .code("uN")
+            .text(" type with ")
+            .code(".to(uN)")
+            .text(", or narrow the other operand");
+        let d = Diagnostic::error(errors::INT_WIDTH_CAP, msg)
+            .at(self.hir().exprs[expr].origin, None)
+            .child(ChildKind::Help, help);
+        self.diag.error(d);
+    }
+
     /// The signature of the primitive `p` for a call passing `receiver` and `args` at `slots`,
     /// with its `$` parameters bound to their arguments' values known here, or to those
     /// inferred.

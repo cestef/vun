@@ -1,1 +1,84 @@
-//! General-purpose I/O pins.
+//! General-purpose I/O ports and their pins (RM0090, section 8).
+
+/// A port's registers.
+#[layout.c]
+Registers := struct {
+    moder: std.hw.Reg(u32),
+    otyper: std.hw.Reg(u32),
+    ospeedr: std.hw.Reg(u32),
+    pupdr: std.hw.Reg(u32),
+    idr: std.hw.Reg(u32),
+    odr: std.hw.Reg(u32),
+    bsrr: std.hw.Reg(u32),
+
+    /// Port `index`'s.
+    of := (index: Index) -> &Registers { unsafe std.hw.at(Registers, first + index * stride) };
+};
+
+/// Where port A's registers lie; each next port's follow a stride further.
+first := 0x4002_0000;
+stride := 0x400;
+
+/// A port, by its letter's place: A to I.
+Index := Int(0..9);
+
+/// The mode of a pin, two bits of `moder` each.
+Mode := enum {
+    input,
+    output,
+    alternate,
+    analog;
+
+    bits := (self: Mode) -> u32 {
+        match self { .input => 0, .output => 1, .alternate => 2, .analog => 3 }
+    };
+};
+
+/// A port, claimed with the peripherals: its index places its registers and its clock's enable
+/// bit.
+Port := struct {
+    _index: Index,
+
+    claim := unsafe (index: Index) -> Port { .{ ._index = index } };
+
+    /// Pin `n` of the port, whose clock it turns on.
+    pin := (self: &Port, n: Int(0..16)) -> Pin {
+        stm32f4.rcc.enable(.ahb1, self._index);
+        Pin.of(self._index, n)
+    };
+};
+
+/// A pin not configured yet.
+Pin := struct {
+    _port: Index,
+    _n: Int(0..16),
+
+    of := (port: Index, n: Int(0..16)) -> Pin { .{ ._port = port, ._n = n } };
+
+    /// The pin driving its level.
+    output := (self: Pin) -> Output {
+        self._mode(.output);
+        Output.of(self._port, (1 << self._n).wrap(u32))
+    };
+
+    _mode := (self: &Pin, mode: Mode) {
+        regs := Registers.of(self._port);
+        shift := self._n * 2;
+        cleared := regs.moder.read() & ~((3 << shift).wrap(u32));
+        regs.moder.write(cleared | (mode.bits() << shift).wrap(u32));
+    };
+};
+
+/// A pin driving its level.
+Output := struct {
+    _port: Index,
+    _bit: u32,
+
+    of := (port: Index, bit: u32) -> Output { .{ ._port = port, ._bit = bit } };
+
+    high := (self: &mut Output) { Registers.of(self._port).bsrr.write(self._bit); };
+    low := (self: &mut Output) { Registers.of(self._port).bsrr.write((self._bit << 16).wrap(u32)); };
+    /// Whether it drives the pin high.
+    is_high := (self: &Output) -> bool { Registers.of(self._port).odr.read() & self._bit != 0 };
+    toggle := (self: &mut Output) { if self.is_high() { self.low(); } else { self.high(); } };
+};

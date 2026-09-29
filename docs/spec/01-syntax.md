@@ -60,7 +60,7 @@ Type syntax mirrors value syntax. Patterns mirror constructors. Each symbol mean
 | `(A) -> R` | function type |
 | `[ ]` | sequences: type `[N]T`, value `[a, b]`, index `a[i]`, captures `[&mut n] (x: u8) { }` |
 | `.{ }` | anonymous struct value `.{ .x = 1 }` |
-| `.name` | `name` looked up in the expected type: `.some(x)`, `.output`, `.ms(500)`, `.{ }`; for a type provided from outside (`T: type = _`), in the namespace declaring it |
+| `.name` | `name` looked up in the expected type: `.some(x)`, `.output`, `.millis(500)`, `.{ }`; for a type provided from outside (`T: type = _`), in the namespace declaring it |
 | `.*` | dereference (postfix) |
 | `&` | borrow: `&x` is a value and `&T` its type; likewise `&mut`, `&out`, `&take`, `&temp` |
 | `?` | optional: `?T` is the type; postfix `e?` propagates an absent or failed value |

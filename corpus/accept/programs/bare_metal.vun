@@ -6,6 +6,13 @@ start := stm32f4.start(.{
     .interrupts = .{ .systick = on_systick, .tim2 = stm32f4.time.on_tim2 },
 });
 
+blink := (led: &mut stm32f4.gpio.Output, timer: &stm32f4.time.Timer) -> std.task.Async(never) {
+    for {
+        led.toggle();
+        yield ..timer.after(.millis(500));
+    }
+};
+
 main := (p: stm32f4.Peripherals) -> never {
     mut led := p.gpioa.pin(5).output();
     mut timer := stm32f4.time.Timer.init(p.tim2);

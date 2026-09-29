@@ -1,5 +1,5 @@
 //! Bare metal: no system; a program brings its own runtime (spec 08), links without the C
-//! runtime through its C compiler's linker, which places its sections in the memory its build
+//! runtime, but with the compiler's helpers (`libgcc`), through its C compiler's linker, which places its sections in the memory its build
 //! declares, and starts at its reset handler.
 
 /// A 32-bit bare-metal target of `arch` and `cpu`, its code in the instruction set `isa`, of
@@ -33,7 +33,9 @@ _on := (
         .entry_symbol = .some("Reset"),
         .backends = targets.through_c,
         .linker = .gnu,
-        .c = targets.ilp32(targets.gnu(command, archiver, machine, &["-nostdlib", "-nostartfiles"], &[])),
+        // Without the C library, but with the compiler's own helpers its code calls, such as
+        // 64-bit division on a 32-bit core.
+        .c = targets.ilp32(targets.gnu(command, archiver, machine, &["-nostdlib", "-nostartfiles"], &["gcc"])),
     }
 };
 

@@ -1,12 +1,13 @@
 //! Values built from parts: struct literals (fields in declaration order, a missing one from its
-//! default), variants, tuples, arrays and repeated items. A form typed by its context takes its type from the
-//! typed body.
+//! default), tuples, arrays and repeated items. A form typed by its context takes its type from the
+//! typed body: `.name` is the member of the type it is looked up in, whose call builds a variant
+//! or calls a function as any call does.
 
 use vun_hir::tree::{Arg, Entry, ExprId, ExprKind, List, Name};
 use vun_intern::Symbol;
 use vun_origin::OriginId;
 use vun_sema::env::Env;
-use vun_sema::member::{Found, Members};
+use vun_sema::member::Members;
 use vun_sema_ty::{Nominal, Ty, TyKind};
 
 use super::{Builder, Unbuilt};
@@ -35,16 +36,10 @@ impl Builder<'_, '_, '_> {
                 };
                 ty.ok_or_else(unbuilt).and_then(|ty| self.record(ty, fields, origin))
             }
-            ExprKind::Call { callee, args } => {
-                let ExprKind::DotName(Name::Plain(name)) = hir.exprs[*callee].kind else { return None };
-                let ty = self.type_of(expr).ok_or_else(unbuilt);
-                ty.and_then(|ty| self.variant(ty, name, args, origin))
-            }
+            // A member of the type it is looked up in: a variant, a constructor or a function,
+            // which a call of it calls.
             ExprKind::DotName(Name::Plain(_)) => {
-                let ty = self.type_of(expr).ok_or_else(unbuilt);
-                ty.and_then(|ty| {
-                    self.env().eval_as(expr, Some(ty)).map(Operand::Const).map_err(|_| unbuilt())
-                })
+                self.env().eval_as(expr, None).map(Operand::Const).map_err(|_| unbuilt())
             }
             _ => return None,
         })
@@ -116,26 +111,5 @@ impl Builder<'_, '_, '_> {
         }
         let names = members.fields.iter().map(|f| f.name).collect();
         Ok(self.temp(Rvalue::Aggregate { kind: Aggregate::Struct { ty, fields: names }, parts }, origin))
-    }
-
-    /// `.name(args)` of the enum type `ty`.
-    fn variant(
-        &mut self,
-        ty: Ty,
-        name: Symbol,
-        args: &List<Arg>,
-        origin: OriginId,
-    ) -> Result<Operand, Unbuilt> {
-        let unbuilt = move || Unbuilt::at(origin);
-        let members = self.env.cx.get::<Members>(&ty).ok_or_else(unbuilt)?;
-        let Found::Variant(_) = members.find(name) else { return Err(unbuilt()) };
-        let parts = args
-            .iter()
-            .map(|arg| match arg {
-                Entry::One(Arg { name: None, value }) => self.operand(*value),
-                _ => Err(unbuilt()),
-            })
-            .collect::<Result<_, _>>()?;
-        Ok(self.temp(Rvalue::Aggregate { kind: Aggregate::Variant { ty, name }, parts }, origin))
     }
 }

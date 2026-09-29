@@ -71,7 +71,7 @@ evens := (limit: u32) -> Iter(u32) {
 blink := (led: &mut Led, timer: &Timer) -> Async(never) {
     for {
         led.toggle();
-        yield ..timer.after(.ms(500));
+        yield ..timer.after(.millis(500));
     }
 };
 

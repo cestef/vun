@@ -62,8 +62,10 @@ denotes at compile time; bounds are accepted where a `Range` is expected.
    a 64-bit target, to 8 on a 32-bit one.
 8. **Bit operations** (`&`, `|`, `^`, `~`, `<<`, `>>`) exist on `uN` types and preserve the type.
    A shift amount whose range exceeds `N-1` is a trap site. The run-time check of a shift amount
-   is made in the amount's own storage, before any resize. An index or bound wider than the word
-   traps when past every word.
+   is made in the amount's own storage, before any resize. A constant, whose type is its exact
+   value, shifts exactly; shifted by an amount known only at run time, the result's range
+   depends on that amount, so it has no width (rule 5): the constant is brought into a `uN` type
+   first (`(1).to(u32) << n`), or the amount narrowed (`n: Int(0..32)`). An index or bound wider than the word traps when past every word.
 9. **Compound assignment is sugar**: `x += y` is `x = (x + y).to(TypeOf(x))`; `x +%= y` uses `.wrap`
    and `x +|= y` uses `.sat`.
 

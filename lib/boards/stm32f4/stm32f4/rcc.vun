@@ -1,0 +1,41 @@
+//! Reset and clock control (RM0090, section 7): the clock of each peripheral, off at reset.
+
+/// The registers, from the first the board uses.
+#[layout.c]
+Registers := struct {
+    cr: std.hw.Reg(u32),
+    pllcfgr: std.hw.Reg(u32),
+    cfgr: std.hw.Reg(u32),
+    cir: std.hw.Reg(u32),
+    ahb1rstr: std.hw.Reg(u32),
+    ahb2rstr: std.hw.Reg(u32),
+    ahb3rstr: std.hw.Reg(u32),
+    _reserved0: u32,
+    apb1rstr: std.hw.Reg(u32),
+    apb2rstr: std.hw.Reg(u32),
+    _reserved1: [2]u32,
+    ahb1enr: std.hw.Reg(u32),
+    ahb2enr: std.hw.Reg(u32),
+    ahb3enr: std.hw.Reg(u32),
+    _reserved2: u32,
+    apb1enr: std.hw.Reg(u32),
+    apb2enr: std.hw.Reg(u32),
+};
+
+address: usize = 0x4002_3800;
+
+/// The core's clock after reset, the internal oscillator, which the buses run at undivided.
+clock_hz: u32 = 16_000_000;
+
+/// A bus whose peripherals' clocks `enable` turns on, by its enable register.
+Bus := enum { ahb1, apb1 };
+
+/// Turns on the clock of the peripheral at `bit` of `bus`'s enable register.
+enable := (bus: Bus, bit: Int(0..32)) {
+    regs := unsafe std.hw.at(Registers, address);
+    reg := match bus {
+        .ahb1 => &regs.ahb1enr,
+        .apb1 => &regs.apb1enr,
+    };
+    reg.write(reg.read() | (1 << bit).wrap(u32));
+};

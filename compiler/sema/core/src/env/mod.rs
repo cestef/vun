@@ -169,6 +169,12 @@ impl<'a, 'db> Env<'a, 'db> {
         self.types.as_ref()?.types.get(&expr).map(|k| k.ty)
     }
 
+    /// The type `.name` at `expr` is looked up in, as typing found it.
+    #[must_use]
+    pub fn context_of(&self, expr: ExprId) -> Option<Ty> {
+        self.types.as_ref()?.contexts.get(&expr).copied()
+    }
+
     /// Where the written arguments the call `expr` gathers into its callee's pack start, as
     /// typing found it.
     #[must_use]

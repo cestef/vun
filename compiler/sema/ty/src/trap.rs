@@ -33,6 +33,9 @@ pub enum Unevaluated {
     Unbuilt(OriginId),
     /// It depends on the target, which is not chosen yet.
     Untargeted,
+    /// An integer range depends on a value known only when it runs: a constant shifted by a
+    /// run-time amount (spec 04, rule 5).
+    Unbounded,
 }
 
 /// Why a trap fired.
@@ -155,6 +158,7 @@ impl Unevaluated {
             Self::Unsupported => "it uses a form compile-time evaluation does not run yet",
             Self::Unbuilt(_) => "it calls a function whose body does not build",
             Self::Untargeted => "it depends on the target, which is not chosen",
+            Self::Unbounded => "its range depends on a value known only at run time",
         }
     }
 

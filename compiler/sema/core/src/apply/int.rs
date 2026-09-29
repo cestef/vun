@@ -91,13 +91,15 @@ impl ApplyInt for Int {
             Self::remainder => Ok(a.rem(b).range),
             Self::bitwise => known(a.bitwise(b).ok_or_else(Self::not_unsigned)),
             Self::shifted_left | Self::shifted_right => {
-                // A shift of a run-time value outside any `uN` type is reported; a compile-time
-                // one by an amount not bounded here has no range known here.
+                // A shift of a value outside any `uN` type is reported. One of a constant has a
+                // range once its amount is known: by an amount of no one value, it depends on
+                // what the amount is when it runs.
                 let shift = self.shift().ok_or(Unevaluated::Unsupported)?;
-                known(
-                    a.shifted(b, shift)
-                        .ok_or_else(|| if a.value().is_some() { unknown } else { Self::not_unsigned() }),
-                )
+                known(a.shifted(b, shift).ok_or_else(|| match (a.value(), b.value()) {
+                    (Some(_), Some(_)) => unknown,
+                    (Some(_), None) => Unevaluated::Unbounded,
+                    (None, _) => Self::not_unsigned(),
+                }))
             }
             _ => Err(unknown),
         }

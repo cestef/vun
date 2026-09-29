@@ -94,6 +94,9 @@ impl<'s> Reader<'_, 's> {
                 Literal::Int(i) => Literal::Int(-i),
                 _ => return None,
             },
+            // Attributes mark what they precede: `#[layout.c] struct { ... }` declares as the
+            // struct does.
+            NodeKind::Attr => self.read(*children.last()?)?,
             // A borrow of a literal is the literal: `&[.a, .b]` lists as `[.a, .b]` does.
             NodeKind::Prefix if self.token(n)? == TokenKind::Amp => self.read(*children.last()?)?,
             NodeKind::Name | NodeKind::Member => Literal::Path(self.path(n)?),

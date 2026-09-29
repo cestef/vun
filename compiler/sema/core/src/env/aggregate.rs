@@ -21,7 +21,7 @@ impl Env<'_, '_> {
     /// # Errors
     /// As [`Env::eval`].
     pub fn eval_as(&self, expr: ExprId, expected: Option<Ty>) -> Result<Value, Unevaluated> {
-        let expected = expected.or_else(|| self.type_of(expr));
+        let expected = expected.or_else(|| self.context_of(expr)).or_else(|| self.type_of(expr));
         match (&self.parsed.hir.exprs[expr].kind, expected) {
             (ExprKind::DotName(Name::Plain(name)), Some(ty)) if Some(ty) != Value::Name(*name).ty() => {
                 self.member(Value::Type(ty), *name)
@@ -41,7 +41,7 @@ impl Env<'_, '_> {
             (ExprKind::Call { callee, args }, Some(ty))
                 if let ExprKind::DotName(Name::Plain(name)) = self.parsed.hir.exprs[*callee].kind =>
             {
-                self.constructed(ty, name, args)
+                self.constructed(self.context_of(*callee).unwrap_or(ty), name, args)
             }
             // Without a type, `.name` is the name itself, and `.{ }` a record or a tuple of what it
             // holds.

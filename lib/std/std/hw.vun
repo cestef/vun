@@ -1,8 +1,9 @@
 //! Hardware access: memory-mapped registers over volatile operations.
 
 /// A memory-mapped register holding a `T`: each read and write reaches the device, exactly as
-/// written, in the order written.
-Reg := ($T: type) -> type { struct {
+/// written, in the order written. It is laid out as the `T` it holds, so a `#[layout.c]` struct of
+/// registers is laid out as the device's.
+Reg := ($T: type) -> type { #[layout.c] struct {
     _value: lang.mem.Cell(T),
 
     /// What the device holds now.
@@ -15,3 +16,7 @@ Reg := ($T: type) -> type { struct {
     #[panic.never]
     _at := (self: &Reg(T)) -> *T { unsafe lang.mem.cell_pointer(T, &self._value) };
 } };
+
+/// The registers of the device at `address`, a `T` laid out as the device lays them out.
+#[panic.never]
+at := unsafe ($T: type, address: usize) -> &T { unsafe { &lang.mem.pointer_at(T, address).* } };

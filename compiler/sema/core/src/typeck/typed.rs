@@ -27,6 +27,8 @@ pub struct Found {
     /// call passes `p` first (spec 01, section 4); each with the struct declaring it, the type's
     /// own or a witness, and its name.
     pub methods: BTreeMap<ExprId, (Ty, Symbol)>,
+    /// The type each `.name` is looked up in, the one its context expects (spec 01, section 2).
+    pub contexts: BTreeMap<ExprId, Ty>,
     /// The function each operator calls (spec 02, section 4).
     pub operators: BTreeMap<Operation, Operator>,
     /// The body of each step of a `$for`, typed with its binder bound (spec 03, section 1).

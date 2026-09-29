@@ -61,7 +61,7 @@ Type syntax mirrors value syntax, and patterns mirror constructors. `(1, true)` 
 a function whose parameter tuple has type `(u32, u32)`. `&x` borrows and `&T` is the type of the
 borrow. `.name` always means the member `name` of the expected type, whether it constructs a
 variant (`.some(x)`), selects an enumeration value (`.output`), calls a constructor function
-(`.ms(500)`) or builds an anonymous structure (`.{ .x = 1 }`). The prefix `..` always spreads and
+(`.millis(500)`) or builds an anonymous structure (`.{ .x = 1 }`). The prefix `..` always spreads and
 the infix `..` always forms a range. @tab-symbols lists the symbols whose meaning is fixed.
 
 #figure(

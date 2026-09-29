@@ -66,7 +66,8 @@ Proposed, not yet accepted: 249 to 251, 253 to 257, 259, 260, 262, 265, 266, 268
 (productions), 320 (`vun-data`), 321 (editor grammars and packages), 322 (declaration origins
 counted by name), 323 (the grammar read by type into one model, `editors.vun`, operand contexts,
 the parser reading the tables), 324 (language server features), 325 (DWARF subprograms), 327
-(exported data). 279 (static Linux targets), 282 (`&mut T` where `&T` is) and 326 (section
+(exported data), 328 (a constant shifted by a run-time amount has no width), 329 (board
+peripherals, exported aliases, `libgcc` on bare targets). 279 (static Linux targets), 282 (`&mut T` where `&T` is) and 326 (section
 placements) were the owner's choice.
 
 ## Known gaps in landed work
@@ -114,8 +115,8 @@ placements) were the owner's choice.
    and the toolchain file.
 1. Backends: Thumb agrees on every driver program (`linux.arm` through `qemu-arm` on `petal.wg`);
    `macos.arm64` linking (lld, an SDK the owner provides); riscv64 (`qemu-riscv64` is here, no
-   sysroot); the stm32f4 board's gpio and time and `std.task.run` for the planned blinky
-   (`corpus` `bare_metal.vun`; a peer session is on it).
+   sysroot); the stm32f4 board beyond the blinky (`bare_metal.vun` runs on qemu's STM32F405:
+   gpio outputs, TIM2 waits, `std.task.run`): serial, systick, clocks past the reset oscillator.
 2. Kernel runtime: riscv64 numbers; directories, seeking, environment.
 3. Checks (268): a board and a WASI shadow, use after return; `fixed` kinds.
 4. Corpus gaps (`cargo xtask corpus`): `lang.simd.chunks`; lowering stops in

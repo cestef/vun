@@ -9,6 +9,7 @@ mod bind;
 
 use vun_diag::Msg;
 use vun_sema_int::Interval;
+use vun_sema_ty::trap::Unevaluated;
 use vun_sema_ty::{Signature, Ty, TyKind, Value};
 
 use super::omitted::Plan;
@@ -111,6 +112,9 @@ impl Typer<'_, '_, '_> {
                 let Some(Callable::Primitive(p)) = callee.f else { return None };
                 let signature =
                     self.primitive_signature(p, callee.receiver, &slots, args, inferred.as_deref());
+                if matches!(signature, Err(Unevaluated::Unbounded)) {
+                    self.unbounded(call, callee.receiver, args);
+                }
                 self.reported(call, signature).ok()
             });
         let mut found = Vec::new();

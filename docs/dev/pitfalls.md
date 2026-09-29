@@ -70,6 +70,14 @@ Traps that cost a session before. Add one when it costs you time.
 
 ## Compile time
 
+- Integer arithmetic is exact, and so are declarations without a type: `first := 0x4002_0000`
+  keeps its value's range, where `first: usize = ...` has all of `usize`'s, and adding to it can
+  pass the width. A shift of a constant by a run-time amount (`1 << n`, `n: u32`) has no width;
+  narrow the amount (`Int(0..32)`) or bring the constant into a `uN` first.
+- A device's registers are a `#[layout.c]` struct of `std.hw.Reg` fields, borrowed at their
+  address with `unsafe std.hw.at(T, address)` wherever used; a token stores what places them
+  (a port's index), not the borrow.
+
 - A pattern test is written pattern first, `if .some(h) = x`. Reversed, `h` leads nowhere; in a
   dependency's compile-time function that surfaces as `comptime.export` at the value exported,
   labeled where evaluation stopped, with the names errors of that file.

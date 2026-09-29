@@ -76,9 +76,6 @@ impl Builder<'_, '_, '_> {
                 let operand = self.operand(*operand)?;
                 Ok(self.temp(Rvalue::Not { operand }, origin))
             }
-            ExprKind::Call { callee, .. } if matches!(hir.exprs[*callee].kind, ExprKind::DotName(_)) => {
-                self.aggregate(expr).unwrap_or(Err(unbuilt()))
-            }
             ExprKind::Call { callee, args } => self.call(expr, *callee, args, origin),
             ExprKind::Struct(_) | ExprKind::Enum { .. } | ExprKind::Fn { .. } => {
                 Ok(self.temp(self.comptime(expr, None), origin))

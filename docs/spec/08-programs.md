@@ -184,6 +184,15 @@ placed in it, which the program's build passes (spec 12, section 2); the linker 
 under a debugger or an emulator with a status (Arm's semihosting): the driver's firmware test runs on qemu's
 STM32F405 board.
 
+`Peripherals` holds a token per peripheral the board gives, made only by its `unsafe` claim:
+`gpioa` to `gpioc` (`stm32f4.gpio.Port`), whose `pin(n).output()` turns the port's clock on and
+gives an `Output` to `toggle`, and `tim2` (`stm32f4.time.Tim2`), which `Timer.init` takes, counting
+milliseconds. `Timer.after(d)` starts the counter for one update and waits, through
+`std.task.Event.wait`, on the event `stm32f4.time.on_tim2`, the handler a program names for the
+interrupt, fires. Registers are `std.hw.Reg` fields of a `#[layout.c]` struct borrowed at the
+device's address (`std.hw.at`). The firmware test runs the program above, stopping after three
+waits.
+
 ### WebAssembly, libraries, modules
 
 ```vun

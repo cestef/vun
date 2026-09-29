@@ -6,7 +6,9 @@
 use vun_build::layout::MANIFEST;
 use vun_harness::repo_root;
 use vun_intern::Symbol;
+use vun_origin::Resolve;
 use vun_sema::target::Choice;
+use vun_span::SourceMap;
 
 use crate::common::Fixture;
 
@@ -40,24 +42,73 @@ main := (p: stm32f4.Peripherals) -> never {
 };
 ";
 
-#[test]
-fn a_board_program_lays_its_memory_out_at_reset_and_runs_on_the_board() {
-    let fixture = Fixture::new("bare-board");
+/// Blinks the board's LED at each wait of its timer, run by `std.task.run` (spec 06, section 4),
+/// and ends after three: 42.
+const BLINKY: &str = "\
+start := stm32f4.start(.{
+    .main = main,
+    .trap = stm32f4.halt,
+    .interrupts = .{ .tim2 = stm32f4.time.on_tim2 },
+});
+
+blink := (led: &mut stm32f4.gpio.Output, timer: &stm32f4.time.Timer) -> std.task.Async(never) {
+    mut waited: u32 = 0;
+    for {
+        led.toggle();
+        yield ..timer.after(std.time.Duration.millis(2));
+        waited +%= 1;
+        if waited == 3 { stm32f4.semihost.exit(42); }
+    }
+};
+
+main := (p: stm32f4.Peripherals) -> never {
+    mut led := p.gpioa.pin(5).output();
+    mut timer := stm32f4.time.Timer.init(p.tim2);
+    mut a := blink(&mut led, &timer);
+    std.task.run(.{ &mut a })
+};
+";
+
+/// The status `firmware` ends with on the board, built by a plan on the board's layout; `None`
+/// where the machine runs no program of the target.
+fn status(name: &str, firmware: &str) -> Option<i32> {
+    let fixture = Fixture::new(name);
     let mut manifest = Fixture::manifest("fw", 3, "0.1.0");
     manifest.deps.push(Fixture::local("stm32f4", &repo_root().join(BOARD).display().to_string()));
     let path = fixture.root.write(MANIFEST, format!("{}\n{BUILD}", manifest.source().unwrap()));
-    let firmware = fixture.root.write("fw.vun", FIRMWARE);
-    // Where the machine runs no program of the target, there is nothing to run it on.
+    let firmware = fixture.root.write("fw.vun", firmware);
     let mut board = fixture.session();
     board.choice = Choice::Path(["bare", "cortex_m4f"].map(Symbol::intern).into());
     let file = board.load(&firmware).unwrap();
     let _ = board.lir(file);
     if board.runner.is_empty() {
-        return;
+        return None;
     }
     let mut session = fixture.session();
     let file = session.load(&path).unwrap();
-    let programs = session.carry_out(file).unwrap_or_else(|_| panic!("{:#?}", session.diag));
+    let programs = session.carry_out(file).unwrap_or_else(|_| {
+        let reports = session.diag.sorted(session.origins);
+        let at = |d: &vun_diag::Diagnostic| {
+            d.primary.as_ref().map(|l| session.sources.locate(session.source_span(l.origin)).to_string())
+        };
+        let notes =
+            |d: &vun_diag::Diagnostic| d.children.iter().map(|c| c.msg.to_string()).collect::<Vec<_>>();
+        panic!("{:#?}", reports.iter().map(|d| (d.message.to_string(), at(d), notes(d))).collect::<Vec<_>>())
+    });
     let [program] = programs.as_slice() else { panic!("one program is built: {programs:?}") };
-    assert_eq!(board.command(program).status().unwrap().code(), Some(42));
+    board.command(program).status().unwrap().code()
+}
+
+#[test]
+fn a_board_program_lays_its_memory_out_at_reset_and_runs_on_the_board() {
+    if let Some(status) = status("bare-board", FIRMWARE) {
+        assert_eq!(status, 42);
+    }
+}
+
+#[test]
+fn a_board_program_waits_on_its_timer_through_the_executor() {
+    if let Some(status) = status("bare-blinky", BLINKY) {
+        assert_eq!(status, 42);
+    }
 }

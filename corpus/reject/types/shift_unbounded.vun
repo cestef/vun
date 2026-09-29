@@ -1,0 +1,10 @@
+//! A run-time intermediate needs a width (spec 04, rule 5): a constant shifted by an amount known
+//! only at run time has none, the amount of a `u32` passing any width. At compile time, a `$`
+//! amount is known and the constant shifts exactly.
+
+bit := (n: u32) -> u32 {
+    (1 << n).wrap(u32) //~ int.width_cap "this intermediate has no width"
+};
+
+fits := (n: u32) -> u32 { (1).to(u32) << n };
+narrowed := (n: Int(0..32)) -> u32 { (1 << n).wrap(u32) };

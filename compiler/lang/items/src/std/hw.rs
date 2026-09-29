@@ -7,5 +7,8 @@
 )]
 use crate::Item;
 /// A memory-mapped register holding a `T`: each read and write reaches the device, exactly as
-/// written, in the order written.
+/// written, in the order written. It is laid out as the `T` it holds, so a `#[layout.c]` struct of
+/// registers is laid out as the device's.
 pub const Reg: Item = Item::new(&["std", "hw", "Reg"]);
+/// The registers of the device at `address`, a `T` laid out as the device lays them out.
+pub const at: Item = Item::new(&["std", "hw", "at"]);
