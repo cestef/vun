@@ -5,8 +5,8 @@ use std::io;
 use std::path::Path;
 
 use vun_command::{Args, Outcome};
+use vun_data::Object;
 use vun_diag::{Diagnostic, Msg, errors};
-use vun_json::Object;
 use vun_query::{Census, Counted};
 use vun_term::{Bytes, Column, Record, Row, Shell, Style, Text};
 

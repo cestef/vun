@@ -7,8 +7,8 @@ mod packages;
 
 use std::time::{Duration, Instant};
 
+use vun_data::Object;
 use vun_diag::Severity;
-use vun_json::Object;
 use vun_term::{Elapsed, Noun, Record, Shell, Status, Style, Text, Verb};
 
 pub(super) use hash::{HashText, Shown};

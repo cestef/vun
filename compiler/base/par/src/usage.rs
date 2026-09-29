@@ -6,7 +6,7 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
 
-use vun_json::Object;
+use vun_data::Object;
 use vun_term::{Column, Record, Status, Style, Table, Text, Verb};
 
 /// The counts, summed over the process.

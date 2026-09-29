@@ -10,11 +10,11 @@ use std::io;
 use std::path::{Path, PathBuf};
 
 use vun_command::{Args, Outcome, Shell};
+use vun_data::Object;
 use vun_diag::{DiagCtxt, DiagId, Diagnostic, Msg};
 use vun_fs::Edit;
 use vun_harness::repo_root;
 use vun_intern::Symbol;
-use vun_json::Object;
 use vun_par::Parallel;
 use vun_term::{Record, Status, Style, Text, Verb};
 use vun_tool::{Arg, Executable, Invocation, Tool};

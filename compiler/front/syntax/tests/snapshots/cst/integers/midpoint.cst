@@ -1,6 +1,6 @@
 File Eof 129..129 ""
-  items: ModuleDoc ModuleDocComment 0..79 "//! Exact arithmetic: the midpoint of two u32 values cannot overflow (spec 04)."
-  items: Binding ColonEq 85..87 ":="
+  members: ModuleDoc ModuleDocComment 0..79 "//! Exact arithmetic: the midpoint of two u32 values cannot overflow (spec 04)."
+  members: Binding ColonEq 85..87 ":="
     pattern: Name Ident 81..84 "mid"
     value: Fn LParen 88..89 "("
       params: Param Colon 90..91 ":"

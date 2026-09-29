@@ -9,8 +9,9 @@ pub(super) const MODULE_DOC: &[NodeTerm] = &[
     NodeTerm::Token(&[TokenKind::ModuleDocComment]),
 ];
 pub(super) const MUT: &[NodeTerm] = &[NodeTerm::Token(&[TokenKind::Mut])];
+pub(super) const QUALIFIER: &[NodeTerm] = &[NodeTerm::Word(&["temp"])];
 pub(super) const MODE: &[NodeTerm] = &[
-    NodeTerm::Word(&["temp", "mut", "out", "take", "static"]),
+    NodeTerm::Word(&["mut", "out", "take", "static"]),
 ];
 pub(super) const NAME: &[NodeTerm] = &[
     NodeTerm::Token(&[TokenKind::Ident, TokenKind::RawIdent]),

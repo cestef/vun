@@ -179,6 +179,9 @@ infix := [
     .{ .assoc = .left, .tokens = &[.star, .slash, .percent], .around = .spaced },
 ];
 
+/// Infix operators whose right operand may be left out: `a..` has no upper bound.
+open_ended := [.dot_dot];
+
 /// Operators written before their operand. `&` may be followed by borrow modes (`&temp mut`);
 /// `..` without an operand is a rest pattern.
 prefix := [.minus, .bang, .tilde, .amp, .star, .question, .dot_dot, .dollar, .\unsafe];
@@ -201,9 +204,10 @@ operands := [
     .error,
 ];
 
-/// Tokens after `[n]` that make it the array type `[n]T` rather than a one-element array.
+/// Tokens after `[n]` that make it the array type `[n]T` rather than a one-element array, which
+/// its element starts with: `[4](u8, u8)` too.
 element_types := [
-    .ident, .raw_ident, .underscore, .l_bracket, .star, .question, .amp, .dollar, .\struct,
+    .l_paren, .ident, .raw_ident, .underscore, .l_bracket, .star, .question, .amp, .dollar, .\struct,
     .\enum, .hash_l_bracket, .\unsafe,
 ];
 

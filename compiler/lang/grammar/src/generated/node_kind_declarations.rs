@@ -72,13 +72,25 @@ pub(super) const NAMESPACE: &[NodeTerm] = &[
         &[
             NodeTerm::Choice(
                 &[
-                    NodeTerm::Field(NodeField::Members),
+                    NodeTerm::Sequence(
+                        &[
+                            NodeTerm::Field(NodeField::Members),
+                            NodeTerm::Token(&[TokenKind::Semi]),
+                        ],
+                    ),
+                    NodeTerm::Sequence(
+                        &[
+                            NodeTerm::Field(NodeField::Members),
+                            NodeTerm::Token(&[TokenKind::Comma]),
+                        ],
+                    ),
+                    NodeTerm::Ending(NodeField::Members, UNTERMINATED),
                     NodeTerm::Token(&[TokenKind::Semi]),
-                    NodeTerm::Token(&[TokenKind::Comma]),
                 ],
             ),
         ],
     ),
+    NodeTerm::Optional(&[NodeTerm::Field(NodeField::Members)]),
 ];
 pub(super) const NAMESPACE_SLOTS: &[NodeSlot] = &[
     NodeSlot::new(NodeField::Members, Count::Many, None),

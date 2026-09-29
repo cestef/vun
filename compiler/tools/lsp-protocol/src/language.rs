@@ -1,20 +1,20 @@
 //! What the server tells of a document: hovers, symbols, semantic tokens, formatting edits and
 //! folding ranges.
 
-use vun_json::{FromJson, ToJson};
+use vun_data::{FromData, ToData};
 use vun_variants::Variants;
 
 use crate::base::{MarkupContent, Range, TextDocumentIdentifier};
 
-#[derive(Clone, Debug, PartialEq, Eq, ToJson, FromJson)]
+#[derive(Clone, Debug, PartialEq, Eq, ToData, FromData)]
 pub struct Hover {
     pub contents: MarkupContent,
     pub range: Option<Range>,
 }
 
 /// A declaration of a document, with those it holds.
-#[derive(Clone, Debug, PartialEq, Eq, ToJson, FromJson)]
-#[json(case = camel)]
+#[derive(Clone, Debug, PartialEq, Eq, ToData, FromData)]
+#[data(case = camel)]
 pub struct DocumentSymbol {
     pub name: String,
     pub detail: Option<String>,
@@ -26,8 +26,8 @@ pub struct DocumentSymbol {
     pub children: Option<Vec<DocumentSymbol>>,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, ToJson, FromJson)]
-#[json(number)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, ToData, FromData)]
+#[data(number)]
 pub enum SymbolKind {
     File = 1,
     Module = 2,
@@ -58,8 +58,8 @@ pub enum SymbolKind {
 }
 
 /// The kinds and modifiers semantic tokens are numbered by, announced at initialization.
-#[derive(Clone, Debug, PartialEq, Eq, ToJson, FromJson)]
-#[json(case = camel)]
+#[derive(Clone, Debug, PartialEq, Eq, ToData, FromData)]
+#[data(case = camel)]
 pub struct SemanticTokensLegend {
     pub token_types: Vec<TokenType>,
     pub token_modifiers: Vec<TokenModifier>,
@@ -76,16 +76,16 @@ impl SemanticTokensLegend {
 /// Semantic tokens, five numbers each: the line from the previous token's, the start from the
 /// previous token's on the same line or from the line's start, the length, the kind and the set
 /// of modifiers.
-#[derive(Clone, Debug, Default, PartialEq, Eq, ToJson, FromJson)]
-#[json(case = camel)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, ToData, FromData)]
+#[data(case = camel)]
 pub struct SemanticTokens {
     pub result_id: Option<String>,
     pub data: Vec<u32>,
 }
 
 /// What a token is, by the protocol's names; its number is its position.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, ToJson, FromJson, Variants)]
-#[json(case = camel)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, ToData, FromData, Variants)]
+#[data(case = camel)]
 pub enum TokenType {
     Namespace,
     Type,
@@ -119,8 +119,8 @@ impl TokenType {
 }
 
 /// What a token is besides its kind; its bit is its position.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, ToJson, FromJson, Variants)]
-#[json(case = camel)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, ToData, FromData, Variants)]
+#[data(case = camel)]
 pub enum TokenModifier {
     Declaration,
     Readonly,
@@ -141,16 +141,16 @@ impl TokenModifier {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, ToJson, FromJson)]
-#[json(case = camel)]
+#[derive(Clone, Debug, PartialEq, Eq, ToData, FromData)]
+#[data(case = camel)]
 pub struct FormattingParams {
     pub text_document: TextDocumentIdentifier,
     /// The client's preferences, which the formatter has none of.
-    pub options: vun_json::Value<'static>,
+    pub options: vun_data::Value<'static>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, ToJson, FromJson)]
-#[json(case = camel)]
+#[derive(Clone, Debug, PartialEq, Eq, ToData, FromData)]
+#[data(case = camel)]
 pub struct FoldingRange {
     pub start_line: u32,
     pub start_character: Option<u32>,
@@ -159,7 +159,7 @@ pub struct FoldingRange {
     pub kind: Option<FoldingRangeKind>,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, ToJson, FromJson)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, ToData, FromData)]
 pub enum FoldingRangeKind {
     Comment,
     Imports,

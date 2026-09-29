@@ -12,3 +12,7 @@ pub enum Assoc {
     /// Chaining is an error: `a < b < c`.
     None,
 }
+impl Assoc {
+    /// Every variant, in the order declared.
+    pub const ALL: &[Self] = &[Self::Left, Self::None];
+}

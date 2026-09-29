@@ -11,13 +11,25 @@ pub(super) const BLOCK: &[NodeTerm] = &[
         &[
             NodeTerm::Choice(
                 &[
-                    NodeTerm::Field(NodeField::Statements),
+                    NodeTerm::Sequence(
+                        &[
+                            NodeTerm::Field(NodeField::Statements),
+                            NodeTerm::Token(&[TokenKind::Semi]),
+                        ],
+                    ),
+                    NodeTerm::Sequence(
+                        &[
+                            NodeTerm::Field(NodeField::Statements),
+                            NodeTerm::Token(&[TokenKind::Comma]),
+                        ],
+                    ),
+                    NodeTerm::Ending(NodeField::Statements, UNTERMINATED),
                     NodeTerm::Token(&[TokenKind::Semi]),
-                    NodeTerm::Token(&[TokenKind::Comma]),
                 ],
             ),
         ],
     ),
+    NodeTerm::Optional(&[NodeTerm::Field(NodeField::Statements)]),
     NodeTerm::Token(&[TokenKind::RBrace]),
 ];
 pub(super) const BLOCK_SLOTS: &[NodeSlot] = &[
@@ -29,12 +41,19 @@ pub(super) const QUOTE: &[NodeTerm] = &[
         &[
             NodeTerm::Choice(
                 &[
-                    NodeTerm::Field(NodeField::Statements),
+                    NodeTerm::Sequence(
+                        &[
+                            NodeTerm::Field(NodeField::Statements),
+                            NodeTerm::Token(&[TokenKind::Semi]),
+                        ],
+                    ),
+                    NodeTerm::Ending(NodeField::Statements, UNTERMINATED),
                     NodeTerm::Token(&[TokenKind::Semi]),
                 ],
             ),
         ],
     ),
+    NodeTerm::Optional(&[NodeTerm::Field(NodeField::Statements)]),
     NodeTerm::Token(&[TokenKind::RBrace]),
 ];
 pub(super) const QUOTE_SLOTS: &[NodeSlot] = &[
@@ -47,13 +66,25 @@ pub(super) const STRUCT: &[NodeTerm] = &[
         &[
             NodeTerm::Choice(
                 &[
-                    NodeTerm::Field(NodeField::Members),
+                    NodeTerm::Sequence(
+                        &[
+                            NodeTerm::Field(NodeField::Members),
+                            NodeTerm::Token(&[TokenKind::Semi]),
+                        ],
+                    ),
+                    NodeTerm::Sequence(
+                        &[
+                            NodeTerm::Field(NodeField::Members),
+                            NodeTerm::Token(&[TokenKind::Comma]),
+                        ],
+                    ),
+                    NodeTerm::Ending(NodeField::Members, UNTERMINATED),
                     NodeTerm::Token(&[TokenKind::Semi]),
-                    NodeTerm::Token(&[TokenKind::Comma]),
                 ],
             ),
         ],
     ),
+    NodeTerm::Optional(&[NodeTerm::Field(NodeField::Members)]),
     NodeTerm::Token(&[TokenKind::RBrace]),
 ];
 pub(super) const STRUCT_SLOTS: &[NodeSlot] = &[
@@ -118,7 +149,7 @@ pub(super) const ARRAY_TYPE: &[NodeTerm] = &[
     NodeTerm::Token(&[TokenKind::LBracket]),
     NodeTerm::Field(NodeField::Length),
     NodeTerm::Token(&[TokenKind::RBracket]),
-    NodeTerm::Field(NodeField::Element),
+    NodeTerm::Starting(NodeField::Element, ELEMENT_TYPES),
 ];
 pub(super) const ARRAY_TYPE_SLOTS: &[NodeSlot] = &[
     NodeSlot::new(NodeField::Length, Count::One, None),
@@ -136,7 +167,7 @@ pub(super) const STRUCT_LIT_SLOTS: &[NodeSlot] = &[
     NodeSlot::new(NodeField::Fields, Count::Many, None),
 ];
 pub(super) const TYPED_LIT: &[NodeTerm] = &[
-    NodeTerm::Field(NodeField::Type),
+    NodeTerm::Of(NodeField::Type, LITERAL_TYPES),
     NodeTerm::Token(&[TokenKind::LBrace]),
     NodeTerm::Separated(
         &NodeTerm::Field(NodeField::Fields),
@@ -159,8 +190,8 @@ pub(super) const FIELD_INIT_SLOTS: &[NodeSlot] = &[
 ];
 pub(super) const MULTILINE_STRING: &[NodeTerm] = &[
     NodeTerm::Token(&[TokenKind::RawStringLine]),
-    NodeTerm::Many(&[NodeTerm::Field(NodeField::Lines)]),
+    NodeTerm::Many(&[NodeTerm::Field(NodeField::RawStringLine)]),
 ];
 pub(super) const MULTILINE_STRING_SLOTS: &[NodeSlot] = &[
-    NodeSlot::new(NodeField::Lines, Count::Many, None),
+    NodeSlot::new(NodeField::RawStringLine, Count::Many, Some(NodeKind::RawStringLine)),
 ];

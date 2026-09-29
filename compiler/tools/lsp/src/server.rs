@@ -7,8 +7,9 @@ use std::path::PathBuf;
 use std::sync::mpsc::Receiver;
 
 use vun_command::Outcome;
+use vun_data::ToData;
+use vun_data::json::Json;
 use vun_driver::Session;
-use vun_json::ToJson;
 use vun_lsp_protocol::base::{PositionEncoding, TextDocumentIdentifier, Uri};
 use vun_lsp_protocol::rpc::{ErrorCode, Id, Message};
 use vun_span::FileId;
@@ -83,7 +84,7 @@ impl<'s> Server<'s> {
                     }
                 };
                 if let Some(reply) = reply {
-                    out.send(&reply.to_json().to_string())?;
+                    out.send(&Json(&reply.to_data()).to_string())?;
                 }
                 if let State::Exited(outcome) = self.state {
                     return Ok(outcome);
@@ -91,7 +92,7 @@ impl<'s> Server<'s> {
             }
             self.publish();
             for message in self.outbox.drain(..) {
-                out.send(&message.to_json().to_string())?;
+                out.send(&Json(&message.to_data()).to_string())?;
             }
         }
         Ok(self.closed())

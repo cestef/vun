@@ -91,7 +91,8 @@ impl Docs {
         let index =
             Written { path: page::INDEX.to_owned(), contents: Index { docs: self, links: &links }.html() };
         let style = Written { path: page::STYLE.to_owned(), contents: STYLE.to_owned() };
-        let json = Written { path: json::FILE.to_owned(), contents: self.json().to_string() };
+        let json =
+            Written { path: json::FILE.to_owned(), contents: vun_data::json::Json(&self.json()).to_string() };
         pages.chain([index, style, json]).collect()
     }
 }

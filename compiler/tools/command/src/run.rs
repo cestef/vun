@@ -3,8 +3,8 @@
 use std::io::{self, Write};
 use std::process::ExitCode;
 
+use vun_data::Object;
 use vun_diag::{Color, DiagCtxt, DiagId, DiagSink, Diagnostic, Msg};
-use vun_json::Object;
 use vun_origin::OriginTable;
 use vun_render_json::JsonRenderer;
 use vun_render_short::ShortRenderer;

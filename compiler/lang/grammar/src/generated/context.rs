@@ -13,3 +13,7 @@ pub enum Context {
     /// After a `.` and before `{`: a block of an architecture's instructions (spec 07, section 6).
     AsmBlock,
 }
+impl Context {
+    /// Every variant, in the order declared.
+    pub const ALL: &[Self] = &[Self::ForPattern, Self::AsmBlock];
+}

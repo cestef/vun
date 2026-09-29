@@ -22,6 +22,7 @@ pub(crate) const GENERATOR: Generator = Generator {
     source: "lib/lang/lang/errors.vun",
     output: "compiler/base/diag/src/errors",
     emit: Emit::Rust(emit),
+    keeps: &[],
 };
 
 /// The module listing every diagnostic and its explanation page.

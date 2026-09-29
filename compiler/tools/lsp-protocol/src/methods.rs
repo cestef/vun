@@ -1,21 +1,21 @@
 //! The protocol's methods as types: each a name, the parameters it takes and, for a request, the
 //! result it answers with. A method is one row of the tables below.
 
-use vun_json::{FromJson, ToJson, Value};
+use vun_data::{FromData, ToData, Value};
 
 use crate::{base, document, language, lifecycle};
 
 /// A method answered by a response.
 pub trait Request {
     const METHOD: &'static str;
-    type Params: FromJson + ToJson;
-    type Result: FromJson + ToJson;
+    type Params: FromData + ToData;
+    type Result: FromData + ToData;
 }
 
 /// A method answered by nothing.
 pub trait Notification {
     const METHOD: &'static str;
-    type Params: FromJson + ToJson;
+    type Params: FromData + ToData;
 }
 
 macro_rules! methods {

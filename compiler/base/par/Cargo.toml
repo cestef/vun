@@ -13,5 +13,5 @@ workspace = true
 [dependencies]
 foldhash.workspace = true
 papaya.workspace = true
-vun-json.workspace = true
+vun-data.workspace = true
 vun-term.workspace = true

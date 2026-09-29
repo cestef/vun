@@ -64,7 +64,7 @@ impl Hears<n::DidClose> for Server<'_> {
 impl Server<'_> {
     /// Queues the notification `N` of `params`.
     pub(crate) fn notify<N: Notification>(&mut self, params: &N::Params) {
-        self.outbox.push(Message::notification(N::METHOD, vun_json::ToJson::to_json(params)));
+        self.outbox.push(Message::notification(N::METHOD, vun_data::ToData::to_data(params)));
     }
 
     /// Applies `change` to `text`: a range replaced, or the whole text.

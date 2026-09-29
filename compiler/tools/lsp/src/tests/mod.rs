@@ -2,9 +2,9 @@ mod features;
 mod session;
 mod wire;
 
+use vun_data::{ToData, Value};
 use vun_driver::Session;
 use vun_fs::Scratch;
-use vun_json::{ToJson, Value};
 use vun_lsp_protocol::base::{
     Position, PositionEncoding, TextDocumentIdentifier, TextDocumentItem, TextDocumentPositionParams, Uri,
 };
@@ -30,13 +30,13 @@ impl<'s, 'd> Client<'s, 'd> {
 
     /// Sends `message` as text, and reads what the server answers.
     fn send(&mut self, message: &Message) -> Option<Message> {
-        let reply = self.server.handle(&message.to_json().to_string())?;
-        Some(reply.to_json().read().expect("the server writes messages"))
+        let reply = self.server.handle(&vun_data::json::Json(&message.to_data()).to_string())?;
+        Some(reply.to_data().read().expect("the server writes messages"))
     }
 
     fn request<R: Request>(&mut self, params: &R::Params) -> Result<R::Result, ResponseError> {
         self.next += 1;
-        let message = Message::request(Id::Number(self.next), R::METHOD, params.to_json());
+        let message = Message::request(Id::Number(self.next), R::METHOD, params.to_data());
         let reply = self.send(&message).expect("a request is answered");
         assert_eq!(reply.id, Some(Id::Number(self.next)));
         // A response without an error succeeds; `null` results read as absent.
@@ -47,7 +47,7 @@ impl<'s, 'd> Client<'s, 'd> {
     }
 
     fn notify<N: Notification>(&mut self, params: &N::Params) {
-        assert!(self.send(&Message::notification(N::METHOD, params.to_json())).is_none());
+        assert!(self.send(&Message::notification(N::METHOD, params.to_data())).is_none());
     }
 
     /// The diagnostics published since the last call, by document.

@@ -5,8 +5,8 @@ use std::borrow::Cow;
 use std::io;
 
 use vun_command::{Args, Outcome, Param};
+use vun_data::Object;
 use vun_diag::{DiagId, errors};
-use vun_json::Object;
 use vun_reduce::Stats;
 use vun_term::{Record, Shell, Status, Style, Text, Verb};
 

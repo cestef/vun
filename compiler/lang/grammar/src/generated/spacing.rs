@@ -13,3 +13,7 @@ pub enum Spacing {
     /// One space: `{ x }`, `a + b`.
     Spaced,
 }
+impl Spacing {
+    /// Every variant, in the order declared.
+    pub const ALL: &[Self] = &[Self::Tight, Self::Spaced];
+}

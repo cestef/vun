@@ -60,7 +60,7 @@ fn formatting_is_one_edit_of_what_changes() {
         client.open(uri, "x :=   1;\n");
         let params = FormattingParams {
             text_document: TextDocumentIdentifier { uri: uri.clone() },
-            options: vun_json::Value::Null,
+            options: vun_data::Value::Null,
         };
         let edits = client.request::<r::Formatting>(&params).unwrap().unwrap();
         assert_eq!(edits.len(), 1);

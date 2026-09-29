@@ -37,7 +37,8 @@ impl std::error::Error for Unwritable {}
 /// The width lines are kept within, and the indentation of each nesting level, until `vun fmt`
 /// owns the layout.
 pub const WIDTH: usize = 100;
-pub(crate) const INDENT: &str = "    ";
+/// One level of indentation, as `vun fmt` writes it (spec 13, section 5).
+pub const INDENT: &str = "    ";
 
 mod layout;
 

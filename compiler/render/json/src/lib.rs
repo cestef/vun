@@ -29,6 +29,6 @@ impl<W: Write> DiagSink for JsonRenderer<W> {
     fn emit(&mut self, d: &Diagnostic, origins: &dyn Resolve, sources: &dyn SourceMap) {
         let value = value::Cx { origins, sources }.diagnostic(d);
         // Best-effort output: a closed stream must not abort compilation.
-        let _ = writeln!(self.out, "{value}");
+        let _ = writeln!(self.out, "{}", vun_data::json::Json(&value));
     }
 }

@@ -7,7 +7,7 @@
 use super::*;
 pub(super) const DOT_NAME: &[NodeTerm] = &[
     NodeTerm::Token(&[TokenKind::Dot]),
-    NodeTerm::Field(NodeField::Property),
+    NodeTerm::Ending(NodeField::Property, MEMBER_NAMES),
 ];
 pub(super) const DOT_NAME_SLOTS: &[NodeSlot] = &[
     NodeSlot::new(NodeField::Property, Count::One, None),
@@ -15,7 +15,7 @@ pub(super) const DOT_NAME_SLOTS: &[NodeSlot] = &[
 pub(super) const MEMBER: &[NodeTerm] = &[
     NodeTerm::Field(NodeField::Object),
     NodeTerm::Token(&[TokenKind::Dot]),
-    NodeTerm::Field(NodeField::Property),
+    NodeTerm::Ending(NodeField::Property, MEMBER_NAMES),
 ];
 pub(super) const MEMBER_SLOTS: &[NodeSlot] = &[
     NodeSlot::new(NodeField::Object, Count::One, None),
@@ -58,11 +58,13 @@ pub(super) const PREFIX: &[NodeTerm] = &[
             TokenKind::Unsafe,
         ],
     ),
-    NodeTerm::Many(&[NodeTerm::Field(NodeField::Mode)]),
+    NodeTerm::Optional(&[NodeTerm::Field(NodeField::Qualifier)]),
+    NodeTerm::Optional(&[NodeTerm::Field(NodeField::Mode)]),
     NodeTerm::Field(NodeField::Operand),
 ];
 pub(super) const PREFIX_SLOTS: &[NodeSlot] = &[
-    NodeSlot::new(NodeField::Mode, Count::Many, Some(NodeKind::Mode)),
+    NodeSlot::new(NodeField::Qualifier, Count::Optional, Some(NodeKind::Qualifier)),
+    NodeSlot::new(NodeField::Mode, Count::Optional, Some(NodeKind::Mode)),
     NodeSlot::new(NodeField::Operand, Count::One, None),
 ];
 pub(super) const POSTFIX: &[NodeTerm] = &[
@@ -74,32 +76,41 @@ pub(super) const POSTFIX_SLOTS: &[NodeSlot] = &[
 ];
 pub(super) const INFIX: &[NodeTerm] = &[
     NodeTerm::Field(NodeField::Left),
-    NodeTerm::Token(
+    NodeTerm::Choice(
         &[
-            TokenKind::Or,
-            TokenKind::And,
-            TokenKind::EqEq,
-            TokenKind::BangEq,
-            TokenKind::Lt,
-            TokenKind::Le,
-            TokenKind::Gt,
-            TokenKind::Ge,
-            TokenKind::DotDot,
-            TokenKind::DotDotEq,
-            TokenKind::Pipe,
-            TokenKind::Caret,
-            TokenKind::Amp,
-            TokenKind::Shl,
-            TokenKind::Shr,
-            TokenKind::PlusPlus,
-            TokenKind::Plus,
-            TokenKind::Minus,
-            TokenKind::Star,
-            TokenKind::Slash,
-            TokenKind::Percent,
+            NodeTerm::Sequence(
+                &[
+                    NodeTerm::Token(
+                        &[
+                            TokenKind::Or,
+                            TokenKind::And,
+                            TokenKind::EqEq,
+                            TokenKind::BangEq,
+                            TokenKind::Lt,
+                            TokenKind::Le,
+                            TokenKind::Gt,
+                            TokenKind::Ge,
+                            TokenKind::DotDot,
+                            TokenKind::DotDotEq,
+                            TokenKind::Pipe,
+                            TokenKind::Caret,
+                            TokenKind::Amp,
+                            TokenKind::Shl,
+                            TokenKind::Shr,
+                            TokenKind::PlusPlus,
+                            TokenKind::Plus,
+                            TokenKind::Minus,
+                            TokenKind::Star,
+                            TokenKind::Slash,
+                            TokenKind::Percent,
+                        ],
+                    ),
+                    NodeTerm::Field(NodeField::Right),
+                ],
+            ),
+            NodeTerm::Token(&[TokenKind::DotDot]),
         ],
     ),
-    NodeTerm::Optional(&[NodeTerm::Field(NodeField::Right)]),
 ];
 pub(super) const INFIX_SLOTS: &[NodeSlot] = &[
     NodeSlot::new(NodeField::Left, Count::One, None),

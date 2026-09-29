@@ -5,9 +5,9 @@ use std::io;
 use std::path::Path;
 
 use vun_command::{Args, Arity, Command, Example, Outcome, Param, PathKind, Values};
+use vun_data::Object;
 use vun_fmt::Layout;
 use vun_fs::Edit;
-use vun_json::Object;
 use vun_term::{Record, Shell, Status, Style, Text, Verb};
 
 use vun_driver::Session;

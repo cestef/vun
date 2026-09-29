@@ -103,7 +103,9 @@ impl Lower<'_, '_> {
                 match self.token(n) {
                     // The words after `&` name a row of the table `borrows`: `temp mut`.
                     Some(TokenKind::Amp) => {
-                        let words = f.get(NodeField::Mode).iter().map(|&m| BorrowWord::spelled(self.text(m)));
+                        let words =
+                            [NodeField::Qualifier, NodeField::Mode].into_iter().flat_map(|w| f.get(w));
+                        let words = words.map(|&m| BorrowWord::spelled(self.text(m)));
                         let mode = words.collect::<Option<Vec<_>>>().and_then(Borrow::written);
                         ExprKind::Borrow { mode, operand }
                     }
@@ -178,7 +180,7 @@ impl Lower<'_, '_> {
 
     fn multiline(&mut self, f: &Fields, n: NodeId) -> Vec<u8> {
         let mut lines = vec![self.raw_line(n)];
-        for &line in f.get(NodeField::Lines) {
+        for &line in f.get(NodeField::RawStringLine) {
             lines.push(self.raw_line(line));
         }
         lines.join(&b'\n')

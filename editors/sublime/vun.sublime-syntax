@@ -58,7 +58,7 @@
         "push": "string"
       },
       {
-        "match": "'(?:\\\\(?:[ntr0\\\\\"']|x(?:[0123456789abcdefABCDEF]){2}|u\\{(?:[0123456789abcdefABCDEF]){1,6}\\})|[^'\\\\\n])'",
+        "match": "'(?:\\\\(?:[ntr0\\\\\"']|x(?:[0123456789abcdefABCDEF]){2}|u\\{(?:[0123456789abcdefABCDEF]){1,6}\\})|[^'\\\\\\n])'",
         "scope": "constant.character.vun"
       }
     ],

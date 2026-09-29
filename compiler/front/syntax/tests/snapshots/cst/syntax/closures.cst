@@ -1,6 +1,6 @@
 File Eof 263..263 ""
-  items: ModuleDoc ModuleDocComment 0..93 "//! Closures list their captures, spelled as the values would be passed (spec 01, section 4)."
-  items: Binding ColonEq 103..105 ":="
+  members: ModuleDoc ModuleDocComment 0..93 "//! Closures list their captures, spelled as the values would be passed (spec 01, section 4)."
+  members: Binding ColonEq 103..105 ":="
     pattern: Name Ident 95..102 "counter"
     value: Fn LParen 106..107 "("
       Punct RParen 107..108 ")"

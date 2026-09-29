@@ -25,6 +25,7 @@ pub(crate) const GENERATOR: Generator = Generator {
     source: "lib/lang",
     output: "compiler/lang/primitives/src/generated",
     emit: Emit::Rust(emit),
+    keeps: &[],
 };
 
 /// The module of the enum over every namespace's primitives.

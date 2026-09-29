@@ -24,3 +24,7 @@ pub enum Relation {
     /// A convention: accepted when both have the same ones.
     Identity,
 }
+impl Relation {
+    /// Every variant, in the order declared.
+    pub const ALL: &[Self] = &[Self::Duty, Self::Guarantee, Self::Bound, Self::Identity];
+}

@@ -1,20 +1,20 @@
 //! JSON-RPC 2.0 as the protocol exchanges it: requests, answered by responses, and notifications,
 //! answered by nothing.
 
-use vun_json::{FromJson, ToJson, Value};
+use vun_data::{FromData, ToData, Value};
 
 /// The version every message names.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, ToJson, FromJson)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, ToData, FromData)]
 pub enum Version {
     #[default]
-    #[json(name = "2.0")]
+    #[data(name = "2.0")]
     V2,
 }
 
 /// A request's id, as its sender chose it; `null` in the response to a message whose id could
 /// not be read.
-#[derive(Clone, Debug, PartialEq, Eq, ToJson, FromJson)]
-#[json(untagged)]
+#[derive(Clone, Debug, PartialEq, Eq, ToData, FromData)]
+#[data(untagged)]
 pub enum Id {
     Number(i64),
     Text(String),
@@ -22,7 +22,7 @@ pub enum Id {
 }
 
 /// Any message, as the wire holds it: which kind it is follows from the members present.
-#[derive(Clone, Debug, PartialEq, Eq, ToJson, FromJson)]
+#[derive(Clone, Debug, PartialEq, Eq, ToData, FromData)]
 pub struct Message {
     pub jsonrpc: Version,
     pub id: Option<Id>,
@@ -57,15 +57,15 @@ impl Message {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, ToJson, FromJson)]
+#[derive(Clone, Debug, PartialEq, Eq, ToData, FromData)]
 pub struct ResponseError {
     pub code: ErrorCode,
     pub message: String,
 }
 
 /// The codes of failures: JSON-RPC's, then the protocol's.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, ToJson, FromJson)]
-#[json(number)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, ToData, FromData)]
+#[data(number)]
 pub enum ErrorCode {
     ParseError = -32700,
     InvalidRequest = -32600,

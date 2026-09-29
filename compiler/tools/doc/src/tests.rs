@@ -83,6 +83,6 @@ fn the_site_has_a_page_per_namespace_an_index_a_stylesheet_and_the_json() {
     let site = docs().site();
     let paths: Vec<&str> = site.iter().map(|w| w.path.as_str()).collect();
     assert_eq!(paths, ["pkg.html", "std.other.html", "index.html", "style.css", "docs.json"]);
-    let json = vun_json::parse(&site[4].contents).unwrap();
+    let json = vun_data::json::parse(&site[4].contents).unwrap();
     assert_eq!(json["namespaces"][0]["items"][0]["members"][1]["name"].as_str(), Some("sum"));
 }

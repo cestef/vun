@@ -30,6 +30,8 @@ pub const separators: Item = Item::new(&["lang", "syntax", "grammar", "separator
 /// Infix operator levels, loosest first (spec 01, section 6), and how the formatter spaces them.
 /// Each level lists its tokens by borrow, so that levels of different sizes share one type.
 pub const infix: Item = Item::new(&["lang", "syntax", "grammar", "infix"]);
+/// Infix operators whose right operand may be left out: `a..` has no upper bound.
+pub const open_ended: Item = Item::new(&["lang", "syntax", "grammar", "open_ended"]);
 /// Operators written before their operand. `&` may be followed by borrow modes (`&temp mut`);
 /// `..` without an operand is a rest pattern.
 pub const prefix: Item = Item::new(&["lang", "syntax", "grammar", "prefix"]);
@@ -39,7 +41,8 @@ pub const postfix: Item = Item::new(&["lang", "syntax", "grammar", "postfix"]);
 pub const assign: Item = Item::new(&["lang", "syntax", "grammar", "assign"]);
 /// Tokens that can start an operand, besides prefix operators.
 pub const operands: Item = Item::new(&["lang", "syntax", "grammar", "operands"]);
-/// Tokens after `[n]` that make it the array type `[n]T` rather than a one-element array.
+/// Tokens after `[n]` that make it the array type `[n]T` rather than a one-element array, which
+/// its element starts with: `[4](u8, u8)` too.
 pub const element_types: Item = Item::new(
     &["lang", "syntax", "grammar", "element_types"],
 );

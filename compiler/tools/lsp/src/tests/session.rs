@@ -1,6 +1,6 @@
+use vun_data::Value;
 use vun_driver::Session;
 use vun_fs::Scratch;
-use vun_json::Value;
 use vun_lsp_protocol::base::{Position, PositionEncoding, Range, VersionedTextDocumentIdentifier};
 use vun_lsp_protocol::document::{ContentChange, DidChangeParams, Severity};
 use vun_lsp_protocol::rpc::ErrorCode;

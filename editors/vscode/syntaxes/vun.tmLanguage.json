@@ -1,0 +1,252 @@
+{
+  "name": "Vun",
+  "scopeName": "source.vun",
+  "fileTypes": [
+    "vun"
+  ],
+  "patterns": [
+    {
+      "include": "#comments"
+    },
+    {
+      "include": "#strings"
+    },
+    {
+      "include": "#literals"
+    },
+    {
+      "include": "#keywords"
+    },
+    {
+      "include": "#names"
+    },
+    {
+      "include": "#punctuation"
+    }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "match": "//!.*$",
+          "name": "comment.line.documentation.vun"
+        },
+        {
+          "match": "///(?!/).*$",
+          "name": "comment.line.documentation.vun"
+        },
+        {
+          "match": "//.*$",
+          "name": "comment.line.double-slash.vun"
+        }
+      ]
+    },
+    "strings": {
+      "patterns": [
+        {
+          "match": "\\\\\\\\.*$",
+          "name": "string.unquoted.raw.vun"
+        },
+        {
+          "begin": "\\\\\"",
+          "beginCaptures": {
+            "0": {
+              "name": "punctuation.definition.string.begin.vun"
+            }
+          },
+          "end": "(?:\"|$)",
+          "patterns": [],
+          "name": "string.quoted.raw.vun"
+        },
+        {
+          "begin": "\"",
+          "beginCaptures": {
+            "0": {
+              "name": "punctuation.definition.string.begin.vun"
+            }
+          },
+          "end": "(?:\"|$)",
+          "patterns": [
+            {
+              "match": "\\\\(?:[ntr0\\\\\"']|x(?:[0123456789abcdefABCDEF]){2}|u\\{(?:[0123456789abcdefABCDEF]){1,6}\\})",
+              "name": "constant.character.escape.vun"
+            },
+            {
+              "match": "\\\\.",
+              "name": "invalid.illegal.escape.vun"
+            }
+          ],
+          "name": "string.quoted.double.vun"
+        },
+        {
+          "match": "'(?:\\\\(?:[ntr0\\\\\"']|x(?:[0123456789abcdefABCDEF]){2}|u\\{(?:[0123456789abcdefABCDEF]){1,6}\\})|[^'\\\\\\n])'",
+          "name": "constant.character.vun"
+        }
+      ]
+    },
+    "string": {
+      "patterns": [
+        {
+          "match": "\\\\(?:[ntr0\\\\\"']|x(?:[0123456789abcdefABCDEF]){2}|u\\{(?:[0123456789abcdefABCDEF]){1,6}\\})",
+          "name": "constant.character.escape.vun"
+        },
+        {
+          "match": "\\\\.",
+          "name": "invalid.illegal.escape.vun"
+        },
+        {
+          "match": "\"",
+          "name": "punctuation.definition.string.end.vun"
+        },
+        {
+          "match": "$",
+          "name": "string.quoted.double.vun"
+        }
+      ]
+    },
+    "raw_string": {
+      "patterns": [
+        {
+          "match": "\"",
+          "name": "punctuation.definition.string.end.vun"
+        },
+        {
+          "match": "$",
+          "name": "string.quoted.double.vun"
+        }
+      ]
+    },
+    "literals": {
+      "patterns": [
+        {
+          "match": "(?<=\\.)\\b[0-9](?:[0123456789_])*\\b",
+          "name": "constant.numeric.integer.vun"
+        },
+        {
+          "match": "\\b(?:0x[0123456789abcdefABCDEF_](?:[0123456789abcdefABCDEF_])*|0o[01234567_](?:[01234567_])*|0b[01_](?:[01_])*)\\b",
+          "name": "constant.numeric.integer.vun"
+        },
+        {
+          "match": "\\b[0-9](?:[0123456789_])*(?:\\.[0-9](?:[0123456789_])*)?(?:[eE](?:[\\+\\-])?[0-9](?:[0123456789_])*)?\\b",
+          "name": "constant.numeric.vun"
+        }
+      ]
+    },
+    "keywords": {
+      "patterns": [
+        {
+          "match": "(?<=\\{|\\{\\s)\\b(?:inout|out|in)\\b",
+          "name": "keyword.other.flow.vun"
+        },
+        {
+          "match": "(?<=&|&temp\\s)\\b(?:static|temp|take|out)\\b",
+          "name": "keyword.other.borrow.vun"
+        },
+        {
+          "match": "\\b(?:in)\\b",
+          "name": "keyword.other.vun"
+        },
+        {
+          "match": "(?<=\\.)\\b(?:asm)\\b(?=\\s*\\{)",
+          "name": "keyword.other.vun"
+        },
+        {
+          "match": "\\b(?:continue|return|struct|unsafe|match|break|yield|defer|else|enum|mut|for|and|if|or)\\b",
+          "name": "keyword.control.vun"
+        }
+      ]
+    },
+    "names": {
+      "patterns": [
+        {
+          "match": "\\\\[A-Za-z_][A-Za-z0-9_]*",
+          "name": "variable.other.escaped.vun"
+        },
+        {
+          "match": "'[A-Za-z_][A-Za-z0-9_]*",
+          "name": "entity.name.label.vun"
+        },
+        {
+          "match": "\\b[A-Z][A-Za-z0-9_]*\\b",
+          "name": "entity.name.type.vun"
+        },
+        {
+          "match": "\\b[A-Za-z_][A-Za-z0-9_]*\\b(?=\\s*:=)",
+          "name": "entity.name.function.vun"
+        },
+        {
+          "match": "(?<!(?:\\)|\\]|\\}|\\w))\\.[A-Za-z_][A-Za-z0-9_]*",
+          "name": "variable.other.member.vun"
+        },
+        {
+          "match": "\\b[A-Za-z_][A-Za-z0-9_]*\\b(?=\\s*\\()",
+          "name": "variable.function.vun"
+        }
+      ]
+    },
+    "punctuation": {
+      "patterns": [
+        {
+          "match": "(?:<<=|>>=|\\+%=|-%=|\\*%=|\\+\\|=|-\\|=|\\*\\|=)",
+          "name": "keyword.operator.assignment.vun"
+        },
+        {
+          "match": "(?:\\.\\.=)",
+          "name": "keyword.operator.vun"
+        },
+        {
+          "match": "(?::=|->|=>)",
+          "name": "keyword.operator.declaration.vun"
+        },
+        {
+          "match": "(?:\\+=|-=|\\*=|/=|%=|&=|\\|=|\\^=)",
+          "name": "keyword.operator.assignment.vun"
+        },
+        {
+          "match": "(?:==|!=|<=|>=|\\.\\*|\\.\\.|\\+\\+|<<|>>)",
+          "name": "keyword.operator.vun"
+        },
+        {
+          "match": "(?:#\\{)",
+          "name": "keyword.operator.quote.vun"
+        },
+        {
+          "match": "(?:#\\[)",
+          "name": "punctuation.definition.annotation.begin.vun"
+        },
+        {
+          "match": "(?:\\.\\{)",
+          "name": "punctuation.section.vun"
+        },
+        {
+          "match": "(?:=)",
+          "name": "keyword.operator.assignment.vun"
+        },
+        {
+          "match": "(?:<|>|\\?|&|\\||\\^|~|!|\\+|-|\\*|/|%)",
+          "name": "keyword.operator.vun"
+        },
+        {
+          "match": "(?:\\$)",
+          "name": "keyword.operator.stage.vun"
+        },
+        {
+          "match": "(?:\\(|\\)|\\[|\\]|\\{|\\})",
+          "name": "punctuation.section.vun"
+        },
+        {
+          "match": "(?::|,|;)",
+          "name": "punctuation.separator.vun"
+        },
+        {
+          "match": "(?:\\.)",
+          "name": "punctuation.other.vun"
+        },
+        {
+          "match": "(?:\\b_\\b)",
+          "name": "constant.language.hole.vun"
+        }
+      ]
+    }
+  }
+}

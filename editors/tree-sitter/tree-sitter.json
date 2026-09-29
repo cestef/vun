@@ -1,0 +1,18 @@
+{
+  "grammars": [
+    {
+      "name": "vun",
+      "scope": "source.vun",
+      "path": ".",
+      "file-types": [
+        "vun"
+      ],
+      "highlights": [
+        "queries/highlights.scm"
+      ]
+    }
+  ],
+  "metadata": {
+    "version": "0.0.0"
+  }
+}

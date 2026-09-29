@@ -3,7 +3,7 @@
 use std::io;
 
 use vun_command::{Args, Command, Outcome};
-use vun_json::Object;
+use vun_data::Object;
 use vun_term::{Column, Record, Row, Shell, Style, Text};
 
 use vun_target::{Arches, Name, Readiness};

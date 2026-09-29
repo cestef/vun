@@ -21,3 +21,14 @@ pub enum Comparison {
     Equal,
     Unequal,
 }
+impl Comparison {
+    /// Every variant, in the order declared.
+    pub const ALL: &[Self] = &[
+        Self::Less,
+        Self::AtMost,
+        Self::Greater,
+        Self::AtLeast,
+        Self::Equal,
+        Self::Unequal,
+    ];
+}

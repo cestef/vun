@@ -10,7 +10,10 @@ Where the code for each part lives. The workspace layout and its layering rules 
   `vun-trace` (logs, timings), `vun-term` (styled text, tables, status lines, the shell),
   `vun-target` (`TargetSpec`, `Profile`, `Backends`, `Readiness`, `Arches`), `vun-harness`
   (corpus, snapshots, `//~` annotations, `llvm` checks of assembled code), `vun-html`,
-  `vun-json` (JSON values, `ToJson`/`FromJson` derived by `vun-json-derive`), `vun-uri` (RFC
+  `vun-data` (structured values apart from any format, `ToData`/`FromData` derived by
+  `vun-data-derive`, written as JSON, TOML or Lua tables, JSON read), `vun-tree-sitter`
+  (tree-sitter grammars and queries as typed values, `grammar.js` and `.scm` written, the trees
+  `tree-sitter parse` prints read back), `vun-uri` (RFC
   3986 references: typed components, resolution, normalization, a builder, file URIs), the
   derives' shared `vun-derive-core` (items read from tokens, tokens built tree by tree) and
   `vun-variants` (`#[derive(Variants)]`: an enum's `ALL`).

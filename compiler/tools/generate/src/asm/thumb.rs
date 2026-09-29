@@ -5,8 +5,12 @@ use super::emit::Crate;
 use super::{ARCH, Table, words};
 use crate::generate::{Emit, Generator, Module, Read, Source};
 
-pub(crate) const THUMB: Generator =
-    Generator { source: ARCH, output: "compiler/isa/thumb/src/generated", emit: Emit::Rust(emit) };
+pub(crate) const THUMB: Generator = Generator {
+    source: ARCH,
+    output: "compiler/isa/thumb/src/generated",
+    emit: Emit::Rust(emit),
+    keeps: &[],
+};
 
 const CRATE: Crate = Crate {
     generator: &THUMB,

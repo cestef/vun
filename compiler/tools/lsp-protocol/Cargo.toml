@@ -1,6 +1,6 @@
 [package]
 name = "vun-lsp-protocol"
-description = "The Language Server Protocol as typed messages over vun-json: its values, and its methods as types."
+description = "The Language Server Protocol as typed messages over vun-data: its values, and its methods as types."
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -11,6 +11,6 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
-vun-json.workspace = true
+vun-data.workspace = true
 vun-uri.workspace = true
 vun-variants.workspace = true

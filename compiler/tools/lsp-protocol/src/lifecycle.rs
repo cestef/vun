@@ -1,12 +1,12 @@
 //! Initialization: what the client offers, and what the server announces it does.
 
-use vun_json::{FromJson, ToJson, Value};
+use vun_data::{FromData, ToData, Value};
 
 use crate::base::PositionEncoding;
 use crate::language::SemanticTokensLegend;
 
-#[derive(Clone, Debug, Default, PartialEq, Eq, ToJson, FromJson)]
-#[json(case = camel)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, ToData, FromData)]
+#[data(case = camel)]
 pub struct InitializeParams {
     pub process_id: Option<i64>,
     pub root_uri: Option<vun_uri::Uri>,
@@ -15,21 +15,21 @@ pub struct InitializeParams {
 }
 
 /// What the client can do, as far as the server reads it.
-#[derive(Clone, Debug, Default, PartialEq, Eq, ToJson, FromJson)]
-#[json(case = camel)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, ToData, FromData)]
+#[data(case = camel)]
 pub struct ClientCapabilities {
     pub general: Option<GeneralCapabilities>,
 }
 
-#[derive(Clone, Debug, Default, PartialEq, Eq, ToJson, FromJson)]
-#[json(case = camel)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, ToData, FromData)]
+#[data(case = camel)]
 pub struct GeneralCapabilities {
     pub position_encodings: Option<Vec<Offered>>,
 }
 
 /// An encoding the client offers: one the protocol names, or another the server skips.
-#[derive(Clone, Debug, PartialEq, Eq, ToJson, FromJson)]
-#[json(untagged)]
+#[derive(Clone, Debug, PartialEq, Eq, ToData, FromData)]
+#[data(untagged)]
 pub enum Offered {
     Known(PositionEncoding),
     Other(String),
@@ -48,22 +48,22 @@ impl InitializeParams {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, ToJson, FromJson)]
-#[json(case = camel)]
+#[derive(Clone, Debug, PartialEq, Eq, ToData, FromData)]
+#[data(case = camel)]
 pub struct InitializeResult {
     pub capabilities: ServerCapabilities,
     pub server_info: Option<ServerInfo>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, ToJson, FromJson)]
+#[derive(Clone, Debug, PartialEq, Eq, ToData, FromData)]
 pub struct ServerInfo {
     pub name: String,
     pub version: Option<String>,
 }
 
 /// What the server does; each capability left out is one it lacks.
-#[derive(Clone, Debug, Default, PartialEq, Eq, ToJson, FromJson)]
-#[json(case = camel)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, ToData, FromData)]
+#[data(case = camel)]
 pub struct ServerCapabilities {
     pub position_encoding: Option<PositionEncoding>,
     pub text_document_sync: Option<TextDocumentSyncOptions>,
@@ -75,16 +75,16 @@ pub struct ServerCapabilities {
     pub semantic_tokens_provider: Option<SemanticTokensOptions>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, ToJson, FromJson)]
-#[json(case = camel)]
+#[derive(Clone, Debug, PartialEq, Eq, ToData, FromData)]
+#[data(case = camel)]
 pub struct TextDocumentSyncOptions {
     pub open_close: bool,
     pub change: TextDocumentSyncKind,
 }
 
 /// How the client sends a document's changes.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, ToJson, FromJson)]
-#[json(number)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, ToData, FromData)]
+#[data(number)]
 pub enum TextDocumentSyncKind {
     None = 0,
     /// Each change is the document's whole text.
@@ -92,8 +92,8 @@ pub enum TextDocumentSyncKind {
     Incremental = 2,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, ToJson, FromJson)]
-#[json(case = camel)]
+#[derive(Clone, Debug, PartialEq, Eq, ToData, FromData)]
+#[data(case = camel)]
 pub struct SemanticTokensOptions {
     pub legend: SemanticTokensLegend,
     pub full: bool,

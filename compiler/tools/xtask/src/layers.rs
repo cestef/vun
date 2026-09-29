@@ -62,7 +62,7 @@ impl Breach {
 
     /// The breaches cargo's `metadata` shows among the crates under `groups`.
     pub(crate) fn within(metadata: &str, groups: &Path) -> Vec<Self> {
-        let Ok(metadata) = vun_json::parse(metadata) else { return Vec::new() };
+        let Ok(metadata) = vun_data::json::parse(metadata) else { return Vec::new() };
         let packages = metadata["packages"].items();
         let mut placed = BTreeMap::new();
         let mut depends = Vec::new();

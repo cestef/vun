@@ -28,3 +28,14 @@ pub enum Form {
     /// The type `[T]`.
     Slice,
 }
+impl Form {
+    /// Every variant, in the order declared.
+    pub const ALL: &[Self] = &[
+        Self::Condition,
+        Self::Truth,
+        Self::Range,
+        Self::Bounds,
+        Self::Array,
+        Self::Slice,
+    ];
+}

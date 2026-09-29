@@ -16,17 +16,29 @@ pub(super) const FILE: &[NodeTerm] = &[
         &[
             NodeTerm::Choice(
                 &[
-                    NodeTerm::Field(NodeField::Items),
+                    NodeTerm::Sequence(
+                        &[
+                            NodeTerm::Field(NodeField::Members),
+                            NodeTerm::Token(&[TokenKind::Semi]),
+                        ],
+                    ),
+                    NodeTerm::Sequence(
+                        &[
+                            NodeTerm::Field(NodeField::Members),
+                            NodeTerm::Token(&[TokenKind::Comma]),
+                        ],
+                    ),
+                    NodeTerm::Ending(NodeField::Members, UNTERMINATED),
                     NodeTerm::Token(&[TokenKind::Semi]),
-                    NodeTerm::Token(&[TokenKind::Comma]),
                 ],
             ),
         ],
     ),
+    NodeTerm::Optional(&[NodeTerm::Field(NodeField::Members)]),
     NodeTerm::Token(&[TokenKind::Eof]),
 ];
 pub(super) const FILE_SLOTS: &[NodeSlot] = &[
-    NodeSlot::new(NodeField::Items, Count::Many, None),
+    NodeSlot::new(NodeField::Members, Count::Many, None),
 ];
 pub(super) const DOC: &[NodeTerm] = &[
     NodeTerm::Token(&[TokenKind::DocComment]),

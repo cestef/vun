@@ -1,8 +1,8 @@
 //! The documentation as JSON, for the language server and indexes: every namespace with its
 //! declarations, as the pages show them.
 
+use vun_data::{Object, Value};
 use vun_grammar::PATH_SEPARATOR;
-use vun_json::{Object, Value};
 
 use crate::Docs;
 use crate::item::Item;

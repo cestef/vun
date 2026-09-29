@@ -8,7 +8,7 @@ use vun_diag::Msg;
 use vun_syntax::literal::{Decl, Literal};
 
 use super::{Enum, GENERATOR, Grammar, SHAPE, Ty, UNRESOLVED};
-use crate::generate::{Module, Read, Source};
+use crate::generate::{Access, Module, Read, Source};
 use crate::items;
 
 use crate::names::{Name, constant, docs, ident, pascal, raw};
@@ -26,9 +26,13 @@ impl<'s> Grammar<'s> {
         uses: &TokenStream,
     ) -> Read<Vec<Module>> {
         let mut modules = Vec::new();
-        for e in self.enums.iter().filter(|e| own.contains(e.name)) {
-            let items = e.emit();
+        for e in self.enums.iter().filter(|e| own.contains(e.name.as_ref())) {
+            let (items, names) = e.emit();
             modules.push(Module::sibling(e.name.snake(), &quote! { #uses #items }));
+            modules.push(Module {
+                access: Access::Impl,
+                ..Module::sibling(format!("{}_names", e.name.snake()), &quote! { #uses #names })
+            });
             modules.extend(self.slots(e, &source.decls)?);
         }
         for d in source.decls.iter().filter(|d| own.contains(d.name)) {
@@ -63,7 +67,14 @@ impl<'s> Grammar<'s> {
                 #(#[doc = #doc])* pub const #name: &[#row] = &[#(#rows),*];
             });
         }
-        let rust_ty = self.rust_type(&ty);
+        // A constant's references are `'static` already.
+        let rust_ty = match &ty {
+            Ty::List(item) => {
+                let item = self.rust_type(item);
+                quote! { &[#item] }
+            }
+            _ => self.rust_type(&ty),
+        };
         let values = items.iter().map(|item| self.value(item, &ty));
         Ok(quote! { #(#[doc = #doc])* pub const #name: &[#rust_ty] = &[#(#values),*]; })
     }
@@ -130,7 +141,7 @@ impl<'s> Grammar<'s> {
                 ))
             }
             _ => {
-                let candidates = found.iter().map(|&i| self.enums[i].name);
+                let candidates = found.iter().map(|&i| self.enums[i].name.as_ref());
                 Err(GENERATOR.error(
                     UNRESOLVED,
                     decl,
@@ -144,7 +155,7 @@ impl<'s> Grammar<'s> {
         match ty {
             Ty::Str => quote! { &'static str },
             Ty::Item => quote! { vun_items::Item },
-            Ty::Enum(i) => ident(self.enums[*i].name).into_token_stream(),
+            Ty::Enum(i) => ident(&self.enums[*i].name).into_token_stream(),
             Ty::List(item) => {
                 let item = self.rust_type(item);
                 quote! { &'static [#item] }
@@ -164,7 +175,7 @@ impl<'s> Grammar<'s> {
             (Ty::Str, Literal::String(text)) => quote! { #text },
             (Ty::Item, Literal::Path(path)) => items::Handles::rust_path(path),
             (Ty::Enum(i), Literal::Name(name)) => {
-                let (e, v) = (ident(self.enums[*i].name), pascal(name));
+                let (e, v) = (ident(&self.enums[*i].name), pascal(name));
                 quote! { #e::#v }
             }
             (Ty::List(item), Literal::List(items)) => {

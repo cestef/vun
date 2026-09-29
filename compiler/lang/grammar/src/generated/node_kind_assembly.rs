@@ -6,7 +6,7 @@
 )]
 use super::*;
 pub(super) const ASM: &[NodeTerm] = &[
-    NodeTerm::Field(NodeField::Target),
+    NodeTerm::Field(NodeField::Arch),
     NodeTerm::Token(&[TokenKind::Dot]),
     NodeTerm::Word(&["asm"]),
     NodeTerm::Token(&[TokenKind::LBrace]),
@@ -19,7 +19,7 @@ pub(super) const ASM: &[NodeTerm] = &[
     NodeTerm::Token(&[TokenKind::RBrace]),
 ];
 pub(super) const ASM_SLOTS: &[NodeSlot] = &[
-    NodeSlot::new(NodeField::Target, Count::One, None),
+    NodeSlot::new(NodeField::Arch, Count::One, None),
     NodeSlot::new(NodeField::Lines, Count::Many, None),
 ];
 pub(super) const LINE: &[NodeTerm] = &[

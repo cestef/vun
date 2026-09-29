@@ -13,7 +13,7 @@ use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, LazyLock, OnceLock};
 use std::time::{Duration, Instant};
 
-use vun_json::{Object, Value};
+use vun_data::{Object, Value};
 use vun_par::Map;
 use vun_term::{Column, Record, Status, Style, Table, Text, Verb};
 

@@ -5,8 +5,10 @@
     reason = "generated modules share one namespace"
 )]
 use super::*;
-/// Tokens after `[n]` that make it the array type `[n]T` rather than a one-element array.
+/// Tokens after `[n]` that make it the array type `[n]T` rather than a one-element array, which
+/// its element starts with: `[4](u8, u8)` too.
 pub const ELEMENT_TYPES: &[TokenKind] = &[
+    TokenKind::LParen,
     TokenKind::Ident,
     TokenKind::RawIdent,
     TokenKind::Underscore,

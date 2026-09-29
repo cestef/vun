@@ -368,25 +368,42 @@ and flow words and every punctuation token come from `grammar.vun`, each punctua
 by the tables it is in (`assign`, `infix`, ...), and the tokens the lexer reads by hand
 (comments, strings, numbers, labels) from the lexer's constants.
 
-**Productions.** Each node kind is declared by its production: the tokens and children it spells,
-in source order, `.binding(.optional(.\mut), .pattern, ":=", .value)`. A term is a token by its
+**Editor grammars.** The same task writes the tree-sitter grammar of `editors/tree-sitter` from
+the productions: a rule per kind; a field holds the kind it is named after, the kinds the tables
+`holds` (only these) or `admits` (these and any operand) give it, or any operand, the kinds
+`parts` lists being none; precedences come from the table `precedence`, whose row `infix` stands
+for the levels of the table `infix`; a restricted field (`.of`, `.ending`, `.starting`) holds
+variants of the kinds reaching an allowed one through their edge field, aliased to the kind; the
+kinds of `line_ends` end at a line break an external scanner finds; where several kinds fit, the
+first of `preferred` wins. The sets of rules tree-sitter must keep apart are an artifact of its
+tables and are found, not written: `cargo xtask tree-sitter` generates the parser until it builds
+(`conflicts.json`), then parses every source and compares each tree with the compiler's. Queries
+(highlights, folds, indents, brackets, the outline, text objects) are built once with typed
+captures from the tables and productions and written in each editor's dialect, with the Helix,
+Neovim, Zed and VS Code packages (`editors/`); what an editor runs as code is written by hand and
+reads the generated data. The grammar and its parser are published apart, as `tree-sitter-vun`.
+
+**Productions.** Each node kind is declared by its production: the tokens and children it spells, in
+source order, `.binding(.optional(.\mut), .pattern, ":=", .value)`. A term is a token by its
 spelling (`":="`, `"if"`, or a name spelled so where it is a word: `"in"`), `.token(...)` for a
 token of the kinds, lists of the token kind or tables of tokens it names (`.token(.infix)`),
-`.word(.Kind)` for a name or keyword spelled as a variant of `Kind`, a child `.field`,
-`.optional(...)`, `.many(...)`, `.separated(term, ",")` (with an optional trailing separator),
-`.choice(...)` or a sequence `[...]`. A leaf spells one token. A node is anchored at its
+`.word(.Kind)` for a name or keyword spelled as a variant of `Kind` or of a list of one, a child
+`.field`, `.optional(...)`, `.many(...)`, `.separated(term, ",")` (with an optional trailing
+separator), `.choice(...)`, a sequence `.seq(...)`, or a child restricted by a table: of a kind it
+lists (`.of(.field, .table)`), of such a kind or a `transparent` kind ending with one (`.ending`),
+or starting with a token it lists (`.starting`). A leaf spells one token. A node is anchored at its
 production's first token; its other tokens are `punct` leaves. The generator derives from the
 productions a field enum and each kind's slots: a field under `many` or `separated` holds many
-nodes, one under `optional` or `choice` one at most, any other exactly one; a field named after a
-node kind holds a node of that kind, any other field any node. `Cst::fields` assigns a node's
-children to its slots (left to right, backtracking, leaving a node to a later slot restricted to
-its kind). Each distinct shape is its own kind, so a kind's fields never depend on its anchor
-token: `x := e` is `binding` and `x: T = e` is `typed_binding`, `.{ }` is `struct_lit` and `T{ }`
-is `typed_lit`. Malformed source is an `error` node, which holds what recovery skipped and fits
-any slot. The CST verifier requires every node to fit its slots and every node recovery did not
-build (an `error`, a node holding one or anchored at an absent token) to spell its production,
-matched as a regular expression by the sets of positions each term may end at. Dumps print each
-child's field.
+nodes, one under `optional` or `choice` one at most, any other exactly one, and one standing in
+several places in a row many; a field named after a node kind holds a node of that kind, any other
+field any node. `Cst::fields` assigns a node's children to its slots (left to right, backtracking,
+leaving a node to a later slot restricted to its kind). Each distinct shape is its own kind, so a
+kind's fields never depend on its anchor token: `x := e` is `binding` and `x: T = e` is
+`typed_binding`, `.{ }` is `struct_lit` and `T{ }` is `typed_lit`. Malformed source is an `error`
+node, which holds what recovery skipped and fits any slot. The CST verifier requires every node to
+fit its slots and every node recovery did not build (an `error`, a node holding one or anchored at
+an absent token) to spell its production, matched as a regular expression by the sets of positions
+each term may end at. Dumps print each child's field.
 
 **The formatter.** `vun fmt` (`vun-fmt`) changes whitespace only: a file's tokens, comments
 included, are the same before and after, and formatting twice changes nothing. It keeps the line
@@ -1251,7 +1268,7 @@ Server Protocol: JSON-RPC messages framed by `Content-Length` headers. It is a t
   UTF-8 when the client offers it, else UTF-32, else UTF-16, converted through each version's
   line index.
 - *The protocol is data.* The protocol's values are typed structs and enums (`vun-lsp-protocol`),
-  read and written through `vun-json`'s derives, and each method is a type naming its parameters
+  read and written through `vun-data`'s derives, and each method is a type naming its parameters
   and result (`requests::Hover`, `notifications::DidOpen`). The server's methods are rows of one
   table, each a method's type, when in the lifecycle it is answered and the capability announcing
   it; a handler is the server's `Answers<R>` or `Hears<N>` for that type, and the capabilities

@@ -17,3 +17,7 @@ pub enum PlaceState {
     Uninit,
     Init,
 }
+impl PlaceState {
+    /// Every variant, in the order declared.
+    pub const ALL: &[Self] = &[Self::Uninit, Self::Init];
+}

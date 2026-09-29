@@ -3,7 +3,7 @@
 //! writes its result, as the method's type says; the capabilities announced at initialization are
 //! derived from the rows.
 
-use vun_json::{ToJson, Value};
+use vun_data::{ToData, Value};
 use vun_lsp_protocol::language::SemanticTokensLegend;
 use vun_lsp_protocol::lifecycle::{
     SemanticTokensOptions, ServerCapabilities, TextDocumentSyncKind, TextDocumentSyncOptions,
@@ -90,7 +90,7 @@ where
     for<'s> Server<'s>: Answers<R>,
 {
     let params = params.read::<R::Params>().map_err(Failure::params)?;
-    Answers::<R>::answer(server, params).map(|result| result.to_json())
+    Answers::<R>::answer(server, params).map(|result| result.to_data())
 }
 
 fn hear<N: Notification>(server: &mut Server<'_>, params: &Value<'_>) -> Result<Value<'static>, Failure>

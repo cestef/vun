@@ -4,8 +4,8 @@ use std::io;
 
 use vun_build::store::Listed;
 use vun_command::{Args, Command, Outcome};
+use vun_data::Object;
 use vun_diag::{Diagnostic, Msg, errors};
-use vun_json::Object;
 use vun_term::{Bytes, Column, Record, Row, Shell, Style, Text};
 
 use super::status::{Collected, HashText, Shown};

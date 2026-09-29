@@ -20,7 +20,8 @@ use vun_span::Span;
 
 use crate::cst::Cst;
 use crate::tokens::Tokens;
-pub(crate) use print::{INDENT, Writer};
+pub use print::INDENT;
+pub(crate) use print::Writer;
 pub use print::{Unwritable, WIDTH};
 use read::Reader;
 pub use read::integer;

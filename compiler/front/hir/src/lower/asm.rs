@@ -9,7 +9,7 @@ use crate::tree::{Asm, AsmEntry, Inst, Operand, OperandKind, Writeback};
 
 impl Lower<'_, '_> {
     pub(super) fn asm(&mut self, f: &Fields, n: NodeId) -> Asm {
-        let arch = self.operand(f, n, NodeField::Target);
+        let arch = self.operand(f, n, NodeField::Arch);
         let entries = f.get(NodeField::Lines).iter().map(|&line| self.asm_entry(line)).collect();
         Asm { arch, entries }
     }

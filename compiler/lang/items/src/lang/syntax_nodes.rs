@@ -14,16 +14,45 @@ pub const Count: Item = Item::new(&["lang", "syntax", "nodes", "Count"]);
 /// A term of a production is a token spelled `"text"` (a punctuation or keyword token, or a name
 /// spelled so where the grammar makes it a word), `.token(.a, ...)` for a token of one of these
 /// kinds, lists of the token kind or tables of tokens, `.word(.Kind)` for a name or keyword spelled
-/// as a variant of `Kind`, a child `.field`, `.optional(...)` and `.many(...)` for terms written
-/// once or not and any number of times, `.separated(term, "sep")` for any number of `term` with
-/// `sep` between them and after the last if written, `.choice(a, ...)` for one of the terms, and
-/// `[...]` for terms in sequence.
+/// as a variant of `Kind` or of a list of one, a child `.field`, `.optional(...)` and `.many(...)`
+/// for terms written once or not and any number of times, `.separated(term, "sep")` for any number
+/// of `term` with `sep` between them and after the last if written, `.choice(a, ...)` for one of
+/// the terms, `.of(.field, .table)` for a child in `field` of a kind `table` lists,
+/// `.ending(.field, .table)` for one of such a kind or of a `transparent` kind ending with one,
+/// `.starting(.field, .tokens)` for one starting with a token a table of tokens lists, and `.seq(...)`
+/// for terms in sequence.
 ///
 /// A node is anchored at the first token of its production; its other tokens are `punct` leaves,
-/// its children fill its fields. A field's count follows from where it stands: `many` in `many`
-/// or `separated`, else `optional` in `optional` or `choice`, else `one`. A field named after a
-/// kind holds a node of that kind, any other field any node. A leaf spells one token and holds
-/// nothing; `punct` holds the token its parent's production names. An `error` stands for skipped
-/// or absent source, and fits any field; an `error`, and a node holding one or anchored at an
-/// absent token, are recovery's shapes: they fit their kind's fields, not its production.
+/// its children fill its fields. A field's count follows from where it stands: `many` in `many` or
+/// `separated`, else `optional` in `optional` or `choice`, else `one`. A field named after a kind
+/// holds a node of that kind, any other field any node. A leaf spells one token and holds nothing;
+/// `punct` holds the token its parent's production names. An `error` stands for skipped or absent
+/// source, and fits any field; an `error`, and a node holding one or anchored at an absent token,
+/// are recovery's shapes: they fit their kind's fields, not its production.
 pub const NodeKind: Item = Item::new(&["lang", "syntax", "nodes", "NodeKind"]);
+/// Kinds that are never operands: they stand only in the fields that name them, hold them or
+/// admit them.
+pub const parts: Item = Item::new(&["lang", "syntax", "nodes", "parts"]);
+/// Fields holding the kinds listed besides any operand: the entries of lists, the forms of heads
+/// and patterns, and the operands of instructions.
+pub const admits: Item = Item::new(&["lang", "syntax", "nodes", "admits"]);
+/// Fields holding only the kinds listed.
+pub const holds: Item = Item::new(&["lang", "syntax", "nodes", "holds"]);
+/// Kinds that may spell the same source, which the parser tells apart by what follows them or
+/// what they hold, each listed before those it is preferred to where several fit: `()` is a tuple,
+/// `() {}` a function. Editor grammars that try each keep the preferred.
+pub const preferred: Item = Item::new(&["lang", "syntax", "nodes", "preferred"]);
+/// Kinds of entries of a list needing no `;` after them: module docs, blocks and the forms ending
+/// with one.
+pub const unterminated: Item = Item::new(&["lang", "syntax", "nodes", "unterminated"]);
+/// What names a member after `.`: a name, an index, or `$` and the value naming it (`.$(f.name)`).
+pub const member_names: Item = Item::new(&["lang", "syntax", "nodes", "member_names"]);
+/// Kinds that end with the kind of their last child, where a production says so (`.ending`):
+/// `$if a {}` and `unsafe {}` are unterminated as an `if` and a block are.
+pub const transparent: Item = Item::new(&["lang", "syntax", "nodes", "transparent"]);
+/// Kinds that end with their line: an instruction's operands stop where it does.
+pub const line_ends: Item = Item::new(&["lang", "syntax", "nodes", "line_ends"]);
+/// How tightly the forms whose productions begin or end with an operand hold it, loosest first, as
+/// the parser nests them (spec 01, section 6); `infix` stands for the levels of the table `infix`.
+/// Editor grammars resolve by it what the parser decides by nesting.
+pub const precedence: Item = Item::new(&["lang", "syntax", "nodes", "precedence"]);

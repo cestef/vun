@@ -10,6 +10,7 @@ pub(crate) enum Program {
     Cargo,
     Jj,
     Typst,
+    TreeSitter,
 }
 
 /// Where cargo says it is when it runs us.
@@ -23,6 +24,7 @@ impl Program {
             Self::Cargo => "cargo",
             Self::Jj => "jj",
             Self::Typst => "typst",
+            Self::TreeSitter => "tree-sitter",
         }
     }
 
@@ -30,7 +32,7 @@ impl Program {
     pub(crate) fn path(self) -> Option<PathBuf> {
         match self {
             Self::Cargo => std::env::var_os(CARGO).map(PathBuf::from),
-            Self::Jj | Self::Typst => None,
+            Self::Jj | Self::Typst | Self::TreeSitter => None,
         }
         .or_else(|| Executable::search(self.name()))
     }

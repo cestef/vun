@@ -1,9 +1,9 @@
 //! The corpus run as `cargo xtask corpus` shows it: a verdict line per program that did not
 //! simply pass, the reasons under it, and a tally.
 
+use vun_data::Object;
 use vun_diag::errors::DECLARED_IN;
 use vun_harness::At;
-use vun_json::Object;
 use vun_term::{Bytes, Record, Status, Style, Text, Verb};
 
 use crate::corpus::Verdict;

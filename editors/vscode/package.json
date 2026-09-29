@@ -1,0 +1,43 @@
+{
+  "name": "vun",
+  "displayName": "Vun",
+  "description": "Vun: syntax, and the language server",
+  "version": "0.0.0",
+  "publisher": "vun",
+  "engines": {
+    "vscode": "^1.82.0"
+  },
+  "main": "./extension.js",
+  "activationEvents": [],
+  "contributes": {
+    "languages": [
+      {
+        "id": "vun",
+        "aliases": [
+          "Vun"
+        ],
+        "extensions": [
+          ".vun"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "vun",
+        "scopeName": "source.vun",
+        "path": "./syntaxes/vun.tmLanguage.json"
+      }
+    ]
+  },
+  "dependencies": {
+    "vscode-languageclient": "^10.1.2"
+  },
+  "server": {
+    "command": "vun",
+    "args": [
+      "util",
+      "lsp"
+    ]
+  }
+}

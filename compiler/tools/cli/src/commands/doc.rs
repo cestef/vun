@@ -6,9 +6,9 @@ use std::io;
 use std::path::PathBuf;
 
 use vun_command::{Args, Arity, Command, Example, Outcome, Param, PathKind, Values};
+use vun_data::Object;
 use vun_doc::Docs;
 use vun_fs::{Edit, Tree, WORK};
-use vun_json::Object;
 use vun_term::{Record, Shell, Status, Style, Text, Verb};
 
 use vun_driver::Session;

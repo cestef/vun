@@ -40,7 +40,7 @@ impl Tokens {
         self.tree(Punct::new('\'', Spacing::Joint)).word(name)
     }
 
-    /// An absolute path, as `::vun_json::ToJson`.
+    /// An absolute path, as `::vun_data::ToData`.
     pub fn path(self, segments: &[&str]) -> Self {
         segments.iter().fold(self, |tokens, segment| tokens.op("::").word(segment))
     }

@@ -12,3 +12,7 @@ pub enum Count {
     Optional,
     Many,
 }
+impl Count {
+    /// Every variant, in the order declared.
+    pub const ALL: &[Self] = &[Self::One, Self::Optional, Self::Many];
+}

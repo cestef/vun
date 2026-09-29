@@ -11,6 +11,7 @@ mod size;
 mod task;
 #[cfg(test)]
 mod tests;
+mod tree_sitter;
 mod typeset;
 
 use std::io;

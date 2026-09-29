@@ -8,6 +8,7 @@ cargo xtask check             # the quick ones: formatting, generated sources, l
 cargo xtask push -- <words>   # check, then `jj git push <words>`
 cargo xtask hooks             # once per clone: the jj aliases `jj check` and `jj push <words>`
 cargo xtask corpus            # verdicts, coverage, what stops MIR most
+cargo xtask tree-sitter       # build the tree-sitter parser (conflicts found), compare its trees with ours
 cargo xtask size              # the distributed binary against its budget (20 MiB)
 VUN_QUERY_CHECK=1 cargo nextest run -p vun-driver   # after query, sema or MIR changes
 VUN_BLESS=1 cargo nextest run -p vun-syntax         # snapshots, only after reading the diff

@@ -1,7 +1,7 @@
 //! Operator expressions and operands.
 
 use vun_diag::{Diagnostic, Msg, errors};
-use vun_grammar::{Assoc, BorrowWord, LITERAL_TYPES, NodeKind, POSTFIX, PREFIX, Prec, TokenKind};
+use vun_grammar::{Assoc, BorrowWord, LITERAL_TYPES, NodeKind, OPEN_ENDED, POSTFIX, PREFIX, Prec, TokenKind};
 
 use super::nesting::Chain;
 use super::{Brace, Item, List, Parser};
@@ -28,7 +28,7 @@ impl Parser<'_, '_, '_> {
             }
             let token = self.bump();
             // `a..` has no upper bound.
-            if self.kind(token) != TokenKind::DotDot || self.starts_expr() {
+            if !OPEN_ENDED.contains(&self.kind(token)) || self.starts_expr() {
                 self.binary(op.prec.tighter(), brace);
             }
             // A chain reported is an error node, whose meaning no later stage guesses.
@@ -51,9 +51,11 @@ impl Parser<'_, '_, '_> {
                 let token = p.bump();
                 // The words of a borrow mode, a qualifier first: `&temp mut`.
                 if k == TokenKind::Amp {
-                    for words in [BorrowWord::QUALIFIERS, BorrowWord::MODES] {
+                    for (words, kind) in
+                        [(BorrowWord::QUALIFIERS, NodeKind::Qualifier), (BorrowWord::MODES, NodeKind::Mode)]
+                    {
                         if p.at_spelled(words.iter().filter_map(|w| w.text())) {
-                            p.leaf(NodeKind::Mode);
+                            p.leaf(kind);
                         }
                     }
                 }

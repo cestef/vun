@@ -21,3 +21,7 @@ pub enum Narrowing {
     /// Clamps to the bounds: `.sat`.
     Sat,
 }
+impl Narrowing {
+    /// Every variant, in the order declared.
+    pub const ALL: &[Self] = &[Self::To, Self::Wrap, Self::Sat];
+}

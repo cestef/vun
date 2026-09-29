@@ -57,7 +57,15 @@ fn token(kind: TokenKind) -> Element<'static> {
 fn productions_match_as_regular_expressions() {
     use Element::Child;
     let (l, r, comma) = (token(TokenKind::LParen), token(TokenKind::RParen), token(TokenKind::Comma));
-    let (callee, arg) = (Child(NodeField::Callee), Child(NodeField::Args));
+    let (callee, arg) = (
+        Child {
+            field: NodeField::Callee,
+            kind: NodeKind::Name,
+            ends: NodeKind::Name,
+            first: TokenKind::Ident,
+        },
+        Child { field: NodeField::Args, kind: NodeKind::Name, ends: NodeKind::Name, first: TokenKind::Ident },
+    );
     // `.call(.callee, "(", .separated(.args, ","), ")")`
     assert!(NodeKind::Call.spelled_by(&[callee, l, r]));
     assert!(NodeKind::Call.spelled_by(&[callee, l, arg, comma, arg, r]));
@@ -67,16 +75,57 @@ fn productions_match_as_regular_expressions() {
     assert!(!NodeKind::Call.spelled_by(&[l, arg, r]));
     // `.in(.pattern, "in", .value)`: a word is a name spelled so.
     let word = |text| Element::Token { kind: TokenKind::Ident, text };
-    let (pattern, value) = (Child(NodeField::Pattern), Child(NodeField::Value));
+    let (pattern, value) = (
+        Child {
+            field: NodeField::Pattern,
+            kind: NodeKind::Name,
+            ends: NodeKind::Name,
+            first: TokenKind::Ident,
+        },
+        Child {
+            field: NodeField::Value,
+            kind: NodeKind::Name,
+            ends: NodeKind::Name,
+            first: TokenKind::Ident,
+        },
+    );
     assert!(NodeKind::In.spelled_by(&[pattern, word("in"), value]));
     assert!(!NodeKind::In.spelled_by(&[pattern, word("on"), value]));
 }
 
 #[test]
 fn long_repetitions_match_without_recursing() {
-    let (statement, semi) = (Element::Child(NodeField::Statements), token(TokenKind::Semi));
+    let (statement, semi) = (
+        Element::Child {
+            field: NodeField::Statements,
+            kind: NodeKind::Name,
+            ends: NodeKind::Name,
+            first: TokenKind::Ident,
+        },
+        token(TokenKind::Semi),
+    );
     let mut elements = vec![token(TokenKind::LBrace)];
     elements.extend([statement, semi].repeat(100_000));
     elements.push(token(TokenKind::RBrace));
     assert!(NodeKind::Block.spelled_by(&elements));
+}
+
+#[test]
+fn entries_end_with_a_semicolon_unless_block_like() {
+    let (open, close, semi) = (token(TokenKind::LBrace), token(TokenKind::RBrace), token(TokenKind::Semi));
+    let value = Element::Child {
+        field: NodeField::Statements,
+        kind: NodeKind::Name,
+        ends: NodeKind::Name,
+        first: TokenKind::Ident,
+    };
+    let branch = Element::Child {
+        field: NodeField::Statements,
+        kind: NodeKind::If,
+        ends: NodeKind::If,
+        first: TokenKind::Ident,
+    };
+    assert!(NodeKind::Block.spelled_by(&[open, value, semi, branch, branch, value, close]));
+    assert!(NodeKind::Block.spelled_by(&[open, close]));
+    assert!(!NodeKind::Block.spelled_by(&[open, value, value, close]));
 }

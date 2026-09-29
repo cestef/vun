@@ -2,7 +2,7 @@ use std::fmt;
 use std::io;
 use std::str::Utf8Error;
 
-use vun_json::Mismatch;
+use vun_data::Mismatch;
 use vun_tool::Failure;
 
 /// Why a document's variants could not be read.
@@ -10,7 +10,7 @@ use vun_tool::Failure;
 pub(super) enum Unread {
     Typst(Failure),
     Encoding(Utf8Error),
-    Json(vun_json::Error),
+    Json(vun_data::json::Error),
     Shape(Mismatch),
 }
 

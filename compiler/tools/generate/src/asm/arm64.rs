@@ -4,8 +4,12 @@ use super::emit::Crate;
 use super::{ARCH, Table, words};
 use crate::generate::{Emit, Generator, Module, Read, Source};
 
-pub(crate) const ARM64: Generator =
-    Generator { source: ARCH, output: "compiler/isa/arm64/src/generated", emit: Emit::Rust(emit) };
+pub(crate) const ARM64: Generator = Generator {
+    source: ARCH,
+    output: "compiler/isa/arm64/src/generated",
+    emit: Emit::Rust(emit),
+    keeps: &[],
+};
 
 const CRATE: Crate = Crate {
     generator: &ARM64,

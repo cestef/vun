@@ -1,6 +1,6 @@
 //! The messages a client sends, told apart by the members they hold.
 
-use vun_json::Value;
+use vun_data::Value;
 use vun_lsp_protocol::rpc::{ErrorCode, Id, Message};
 
 use crate::failure::{Failure, Reason};
@@ -23,7 +23,7 @@ impl Incoming {
     /// The message `text` holds.
     pub(crate) fn read(text: &str) -> Result<Self, Failure> {
         let value =
-            vun_json::parse(text).map_err(|e| Failure::new(ErrorCode::ParseError, Reason::Json(e)))?;
+            vun_data::json::parse(text).map_err(|e| Failure::new(ErrorCode::ParseError, Reason::Json(e)))?;
         let message: Message =
             value.read().map_err(|m| Failure::new(ErrorCode::InvalidRequest, Reason::Message(m)))?;
         let params = message.params.unwrap_or_default();

@@ -19,3 +19,7 @@ pub enum Access {
     /// Nothing: the place is reached only through the borrow.
     Exclusive,
 }
+impl Access {
+    /// Every variant, in the order declared.
+    pub const ALL: &[Self] = &[Self::Shared, Self::Exclusive];
+}

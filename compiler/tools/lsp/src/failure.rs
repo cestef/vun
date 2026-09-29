@@ -3,7 +3,7 @@
 
 use std::fmt;
 
-use vun_json::Mismatch;
+use vun_data::Mismatch;
 use vun_lsp_protocol::rpc::{ErrorCode, ResponseError};
 use vun_uri::NotFile;
 
@@ -20,7 +20,7 @@ pub(crate) enum Reason {
     /// The message could not be read off the stream.
     Unframed(Unframed),
     /// The message is not JSON.
-    Json(vun_json::Error),
+    Json(vun_data::json::Error),
     /// The message is JSON, but not a message the protocol sends.
     Message(Mismatch),
     /// A message that names no method and answers no request.

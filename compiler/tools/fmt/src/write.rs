@@ -5,13 +5,11 @@ use std::fmt;
 
 use vun_grammar::{NodeKind, SEPARATORS, TokenKind};
 use vun_syntax::lexer::TO_LINE_END;
+use vun_syntax::literal::INDENT;
 use vun_syntax::tokens::{TokenId, Tokens};
 
 use crate::Layout;
 use crate::spacing::{Between, Group, Tok};
-
-/// One level of indentation.
-const INDENT: &str = "    ";
 
 /// A group still open, and the indent of the line holding its opener.
 struct Open {

@@ -11,8 +11,9 @@ use crate::{NodeField, NodeKind, NodeTerm, TokenKind};
 pub enum Element<'a> {
     /// A token of the node: its anchor or a `punct` child.
     Token { kind: TokenKind, text: &'a str },
-    /// A child, by the field it fills.
-    Child(NodeField),
+    /// A child, by the field it fills and its kind, with the kind it ends with through
+    /// transparent kinds and the token it starts with.
+    Child { field: NodeField, kind: NodeKind, ends: NodeKind, first: TokenKind },
 }
 
 /// Positions between elements.
@@ -28,14 +29,23 @@ impl NodeKind {
 }
 
 impl Element<'_> {
-    /// Whether this element is what the term `Token`, `Word` or `Field` stands for.
+    /// Whether this element is what the term `Token`, `Word`, `Field` or `Of` stands for.
     fn fits(self, term: NodeTerm) -> bool {
         match (term, self) {
             (NodeTerm::Token(kinds), Self::Token { kind, .. }) => kinds.contains(&kind),
             (NodeTerm::Word(words), Self::Token { kind, text }) => {
                 (kind == TokenKind::Ident || kind.text().is_some()) && words.contains(&text)
             }
-            (NodeTerm::Field(field), Self::Child(child)) => field == child,
+            (NodeTerm::Field(field), Self::Child { field: child, .. }) => field == child,
+            (NodeTerm::Of(field, kinds), Self::Child { field: child, kind, .. }) => {
+                field == child && kinds.contains(&kind)
+            }
+            (NodeTerm::Ending(field, kinds), Self::Child { field: child, kind, ends, .. }) => {
+                field == child && (kinds.contains(&kind) || kinds.contains(&ends))
+            }
+            (NodeTerm::Starting(field, tokens), Self::Child { field: child, first, .. }) => {
+                field == child && tokens.contains(&first)
+            }
             _ => false,
         }
     }
@@ -53,7 +63,12 @@ impl Matcher<'_, '_> {
 
     fn term(&self, term: NodeTerm, starts: Positions) -> Positions {
         match term {
-            NodeTerm::Token(_) | NodeTerm::Word(_) | NodeTerm::Field(_) => starts
+            NodeTerm::Token(_)
+            | NodeTerm::Word(_)
+            | NodeTerm::Field(_)
+            | NodeTerm::Of(..)
+            | NodeTerm::Ending(..)
+            | NodeTerm::Starting(..) => starts
                 .into_iter()
                 .filter(|&p| self.elements.get(p).is_some_and(|e| e.fits(term)))
                 .map(|p| p + 1)

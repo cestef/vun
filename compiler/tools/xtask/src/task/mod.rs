@@ -10,10 +10,10 @@ mod table;
 use std::io;
 
 use vun_command::{Args, Arity, Outcome, Param, Run, Shell};
+use vun_data::Object;
 use vun_diag::{ChildKind, DiagCtxt, DiagId, Diagnostic, Msg};
 use vun_harness::repo_root;
 use vun_intern::Symbol;
-use vun_json::Object;
 use vun_term::{Record, Status, Style, Text, Verb};
 use vun_tool::{Arg, Failure, Invocation, Tool};
 

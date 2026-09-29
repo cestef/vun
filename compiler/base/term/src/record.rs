@@ -3,7 +3,7 @@
 
 use std::io;
 
-use vun_json::{Object, Value};
+use vun_data::{Object, Value};
 
 use crate::{Column, Shell, Table, Text, Verb, Verbosity};
 
@@ -89,7 +89,7 @@ impl Shell<'_> {
         match self.format {
             Format::Human if record.text().width() == 0 => Ok(()),
             Format::Human => self.out.line(&record.text()),
-            Format::Json => self.out.line(&Text::from(record.json().to_string())),
+            Format::Json => self.out.line(&Text::from(vun_data::json::Json(&record.json()).to_string())),
         }
     }
 

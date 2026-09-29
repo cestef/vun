@@ -1,0 +1,14 @@
+[package]
+name = "vun-data"
+description = "Structured data apart from any format: values, typed conversions (#[derive(ToData, FromData)]), and JSON and TOML."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+vun-data-derive.workspace = true

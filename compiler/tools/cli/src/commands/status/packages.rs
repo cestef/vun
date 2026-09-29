@@ -1,9 +1,9 @@
 //! What the package commands and fetching report.
 
 use vun_build::manifest::Version;
+use vun_data::Object;
 use vun_hash::Hash;
 use vun_intern::Symbol;
-use vun_json::Object;
 use vun_term::{Bytes, Noun, Record, Shell, Status, Style, Text, Verb};
 
 use super::{HashText, Shown};

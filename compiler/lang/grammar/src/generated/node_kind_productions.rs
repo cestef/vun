@@ -76,6 +76,7 @@ impl NodeKind {
         match self {
             Self::ModuleDoc => Some(node_kind_leaves::MODULE_DOC),
             Self::Mut => Some(node_kind_leaves::MUT),
+            Self::Qualifier => Some(node_kind_leaves::QUALIFIER),
             Self::Mode => Some(node_kind_leaves::MODE),
             Self::Name => Some(node_kind_leaves::NAME),
             Self::Hole => Some(node_kind_leaves::HOLE),

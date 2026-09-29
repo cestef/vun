@@ -6,7 +6,7 @@
 
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use vun_json::{Object, Value};
+use vun_data::{Object, Value};
 use vun_term::{Column, Record, Status, Style, Table, Text, Verb};
 
 use super::db::Db;

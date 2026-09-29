@@ -19,7 +19,7 @@ fn a_diagnostic_is_one_line_with_resolved_locations_and_typed_parts() {
     JsonRenderer::new(&mut out).emit(&d, &origins, &files);
     let text = String::from_utf8(out).unwrap();
     assert_eq!(text.lines().count(), 1);
-    let v = vun_json::parse(&text).unwrap();
+    let v = vun_data::json::parse(&text).unwrap();
     assert_eq!((v["type"].as_str(), v["schema"].as_u64()), (Some("diagnostic"), Some(SCHEMA)));
     assert_eq!((v["id"].as_str(), v["severity"].as_str()), (Some("int.does_not_fit"), Some("error")));
     let start = &v["primary"]["at"]["start"];

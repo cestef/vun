@@ -66,7 +66,7 @@ impl Measured {
     pub(crate) fn executable(messages: &str) -> Option<PathBuf> {
         messages
             .lines()
-            .filter_map(|line| vun_json::parse(line).ok())
+            .filter_map(|line| vun_data::json::parse(line).ok())
             .filter(|m| m["reason"].as_str() == Some("compiler-artifact"))
             .filter_map(|m| m["executable"].as_str().map(PathBuf::from))
             .next_back()

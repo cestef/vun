@@ -77,11 +77,11 @@ fn escapes_decode_on_request() {
 #[test]
 fn references_are_json_strings() {
     let uri: Uri = "https://example.org/".parse().unwrap();
-    let json = vun_json::ToJson::to_json(&uri);
+    let json = vun_data::ToData::to_data(&uri);
     assert_eq!(json.as_str(), Some("https://example.org/"));
     assert_eq!(json.read::<Uri>().unwrap(), uri);
-    let relative = vun_json::Value::from("a b");
-    assert_eq!(relative.read::<Uri>().unwrap_err().expected, vun_json::Expected::Syntax("a URI"));
+    let relative = vun_data::Value::from("a b");
+    assert_eq!(relative.read::<Uri>().unwrap_err().expected, vun_data::Expected::Syntax("a URI"));
 }
 
 #[test]

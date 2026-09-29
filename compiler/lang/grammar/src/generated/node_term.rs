@@ -5,7 +5,7 @@
     reason = "generated modules share one namespace"
 )]
 use super::*;
-/// A term of the production of a [`NodeKind`] (see `grammar.vun`).
+/// A term of the production of a [`NodeKind`] (see `nodes.vun`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum NodeTerm {
     /// A token of one of these kinds.
@@ -14,6 +14,13 @@ pub enum NodeTerm {
     Word(&'static [&'static str]),
     /// A child in this field.
     Field(NodeField),
+    /// A child in this field, of one of these kinds.
+    Of(NodeField, &'static [NodeKind]),
+    /// A child in this field, of one of these kinds or a transparent kind ending with
+    /// one.
+    Ending(NodeField, &'static [NodeKind]),
+    /// A child in this field starting with a token of one of these kinds.
+    Starting(NodeField, &'static [TokenKind]),
     /// These terms in sequence, or nothing.
     Optional(&'static [NodeTerm]),
     /// These terms in sequence, any number of times.

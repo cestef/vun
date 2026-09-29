@@ -16,10 +16,10 @@ use std::io;
 use std::process::ExitCode;
 
 use vun_command::{Args, Command, Outcome, Param, Program, Shell};
+use vun_data::Object;
 use vun_diag::{ChildKind, DiagCtxt, DiagId, Diagnostic, Msg};
 use vun_fs::Edit;
 use vun_harness::repo_root;
-use vun_json::Object;
 use vun_term::{Record, Status, Style, Text, Verb};
 
 /// How the generator is run, which messages suggest.

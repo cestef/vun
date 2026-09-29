@@ -11,4 +11,4 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
-vun-json.workspace = true
+vun-data.workspace = true

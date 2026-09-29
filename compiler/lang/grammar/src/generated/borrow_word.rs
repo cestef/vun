@@ -17,17 +17,14 @@ pub enum BorrowWord {
     Static,
 }
 impl BorrowWord {
+    /// Every variant, in the order declared.
+    pub const ALL: &[Self] = &[
+        Self::Temp,
+        Self::Mut,
+        Self::Out,
+        Self::Take,
+        Self::Static,
+    ];
     pub const QUALIFIERS: &[Self] = &[Self::Temp];
     pub const MODES: &[Self] = &[Self::Mut, Self::Out, Self::Take, Self::Static];
-    /// The fixed spelling of this kind, if it has one.
-    #[must_use]
-    pub const fn text(self) -> Option<&'static str> {
-        match self {
-            Self::Temp => Some("temp"),
-            Self::Mut => Some("mut"),
-            Self::Out => Some("out"),
-            Self::Take => Some("take"),
-            Self::Static => Some("static"),
-        }
-    }
 }

@@ -45,7 +45,7 @@ impl Session {
     pub fn outline(&mut self, file: FileId) -> Vec<Symbol> {
         let parsed = self.syntax(file);
         let reader = Reader { cst: &parsed.cst, tokens: &parsed.tokens, text: self.text(file) };
-        reader.members(reader.cst.root(), NodeField::Items)
+        reader.members(reader.cst.root(), NodeField::Members)
     }
 }
 

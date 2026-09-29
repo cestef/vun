@@ -3,7 +3,7 @@
 //! `shutdown` before it.
 
 use vun_command::Outcome;
-use vun_json::Value;
+use vun_data::Value;
 use vun_lsp_protocol::base::PositionEncoding;
 use vun_lsp_protocol::lifecycle::{InitializeParams, InitializeResult, ServerInfo};
 use vun_lsp_protocol::{notifications as n, requests as r};

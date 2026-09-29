@@ -10,8 +10,12 @@ use super::{ARCH, Table};
 use crate::generate::{Emit, Generator, Module, Read, Source};
 use crate::names::pascal;
 
-pub(crate) const X86_64: Generator =
-    Generator { source: ARCH, output: "compiler/isa/x86_64/src/generated", emit: Emit::Rust(emit) };
+pub(crate) const X86_64: Generator = Generator {
+    source: ARCH,
+    output: "compiler/isa/x86_64/src/generated",
+    emit: Emit::Rust(emit),
+    keeps: &[],
+};
 
 const CRATE: Crate = Crate {
     generator: &X86_64,

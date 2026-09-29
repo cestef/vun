@@ -6,10 +6,11 @@ use std::io;
 use std::path::Path;
 
 use vun_command::{Args, Outcome, Shell};
+use vun_data::toml::Inline;
+use vun_data::{Object, Value};
 use vun_diag::{DiagCtxt, DiagId, Diagnostic, Msg};
 use vun_harness::repo_root;
 use vun_intern::Symbol;
-use vun_json::{Object, Value};
 use vun_term::{Record, Status, Style, Text, Verb};
 use vun_tool::{Arg, Executable, Failure, Invocation, Tool};
 
@@ -67,8 +68,7 @@ impl Alias<'_> {
     /// Sets it in the configuration of the repository at `root`.
     fn install(&self, root: &Path, jj: &Executable) -> Result<(), Failure> {
         let key = Symbol::intern(&[ALIASES, self.0.name].concat());
-        // A JSON array of strings is a TOML array too.
-        let value = Symbol::intern(&Value::from(self.words()).to_string());
+        let value = Symbol::intern(&Inline(&Value::from(self.words())).to_string());
         let mut args: Vec<Arg> = SET.into_iter().map(Arg::from).collect();
         args.extend([Arg::Text(key), Arg::Text(value)]);
         let inv = Invocation { args, cwd: Some(root.to_owned()), ..Invocation::default() };

@@ -1,0 +1,17 @@
+[package]
+name = "vun-data-derive"
+description = "#[derive(ToData, FromData)] for vun-data, on the compiler's proc_macro API alone."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lib]
+proc-macro = true
+
+[lints]
+workspace = true
+
+[dependencies]
+vun-derive-core.workspace = true

@@ -22,3 +22,7 @@ pub enum Extent {
     /// is free, and is the only extent required where it is written (spec 05, section 4).
     Static,
 }
+impl Extent {
+    /// Every variant, in the order declared.
+    pub const ALL: &[Self] = &[Self::Tied, Self::Temp, Self::Static];
+}

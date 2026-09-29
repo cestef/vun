@@ -14,14 +14,7 @@ pub enum Flow {
     Inout,
 }
 impl Flow {
+    /// Every variant, in the order declared.
+    pub const ALL: &[Self] = &[Self::In, Self::Out, Self::Inout];
     pub const FLOWS: &[Self] = &[Self::In, Self::Out, Self::Inout];
-    /// The fixed spelling of this kind, if it has one.
-    #[must_use]
-    pub const fn text(self) -> Option<&'static str> {
-        match self {
-            Self::In => Some("in"),
-            Self::Out => Some("out"),
-            Self::Inout => Some("inout"),
-        }
-    }
 }

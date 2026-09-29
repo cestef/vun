@@ -1,0 +1,16 @@
+# The Zed extension, compiled to WebAssembly by Zed; a workspace of its own, apart from the
+# compiler's.
+[package]
+name = "zed-vun"
+version = "0.0.0"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+zed_extension_api = "0.7.0"
+
+[workspace]

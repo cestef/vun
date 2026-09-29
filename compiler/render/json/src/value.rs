@@ -1,7 +1,7 @@
 //! A diagnostic as a JSON value.
 
+use vun_data::{Object, Value};
 use vun_diag::{Child, Diagnostic, Edit, Fix, Label, Msg, MsgPart, TraceFrame};
-use vun_json::{Object, Value};
 use vun_origin::{OriginId, Resolve};
 use vun_span::{SourceMap, Span};
 

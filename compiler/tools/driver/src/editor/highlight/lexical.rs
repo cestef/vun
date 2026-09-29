@@ -32,7 +32,12 @@ impl Contextual {
         for n in cst.ids() {
             let word = matches!(
                 cst.kind(n),
-                NodeKind::Mode | NodeKind::Flow | NodeKind::In | NodeKind::Punct | NodeKind::Line
+                NodeKind::Qualifier
+                    | NodeKind::Mode
+                    | NodeKind::Flow
+                    | NodeKind::In
+                    | NodeKind::Punct
+                    | NodeKind::Line
             );
             if let Anchor::Token(t) = cst.anchor(n)
                 && word

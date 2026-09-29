@@ -32,7 +32,7 @@ impl Reader<'_> {
         let root = self.cst.root();
         let module = self.cst.children(root).filter(|&n| self.cst.kind(n) == NodeKind::ModuleDoc);
         let doc = module.filter_map(|n| self.doc_line(n)).collect();
-        let items = self.fields(root, NodeField::Items);
+        let items = self.fields(root, NodeField::Members);
         (doc, self.entries(&items, Within::Namespace))
     }
 

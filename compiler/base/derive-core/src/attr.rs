@@ -1,4 +1,4 @@
-//! Helper attributes, as `#[json(case = camel, untagged)]`: the arguments given under a helper's
+//! Helper attributes, as `#[data(case = camel, untagged)]`: the arguments given under a helper's
 //! name, each a key and an optional value of one token.
 
 use proc_macro::{Delimiter, Group, Ident, TokenTree};

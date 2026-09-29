@@ -21,15 +21,21 @@ use vun_syntax::literal::{Decl, Literal};
 
 use crate::generate::{Emit, Generator, Module, Read, Source};
 
-mod editor;
+mod editors;
 mod enums;
+mod lexical;
+mod pattern;
 mod production;
 mod slots;
+mod sublime;
 mod tables;
+mod tree_sitter;
 
 use crate::names::{Name, docs};
 
-pub(crate) use editor::EDITOR;
+pub(crate) use editors::{HELIX, NVIM, VSCODE, ZED};
+pub(crate) use sublime::SUBLIME;
+pub(crate) use tree_sitter::TREE_SITTER;
 
 /// The directory both files are in.
 const SYNTAX: &str = "lib/lang/lang/syntax";
@@ -38,11 +44,13 @@ pub(crate) const GENERATOR: Generator = Generator {
     source: SYNTAX,
     output: "compiler/lang/grammar/src/generated",
     emit: Emit::Rust(emit_grammar),
+    keeps: &[],
 };
 pub(crate) const DESUGAR: Generator = Generator {
     source: SYNTAX,
     output: "compiler/front/desugar/src/generated",
     emit: Emit::Rust(emit_desugar),
+    keeps: &[],
 };
 
 /// The stem of the file that goes to `vun-desugar`; every other goes to `vun-grammar`.
@@ -99,7 +107,9 @@ fn emit(sources: &[Source<'_>], part: Part, uses: &TokenStream) -> Read<Vec<Modu
 
 /// An enum to generate: a kind, whose variants come from its lists, or a plain enum.
 struct Enum<'s> {
-    name: &'s str,
+    /// Its name; derived enums, as the fields of a kind with productions, are named by the
+    /// generator.
+    name: Cow<'s, str>,
     doc: Vec<String>,
     variants: Vec<Variant<'s>>,
     /// For kinds, each list with the variants it holds, generated as constants.
@@ -113,7 +123,7 @@ struct Variant<'s> {
     /// Its fixed spelling, escaped in the source or not.
     text: Option<Cow<'s, str>>,
     /// For a kind entry written `.name(terms...)`, its production.
-    production: Option<Vec<production::Term<'s>>>,
+    production: Option<Vec<production::Term<'s, production::Written<'s>>>>,
 }
 
 /// One child position of a kind, derived from its production.
@@ -145,7 +155,7 @@ impl<'s> Grammar<'s> {
             match &d.value {
                 Literal::Record(lists) if d.name.is_type_name() => enums.push(Self::kind(d, lists)?),
                 Literal::Enum(variants) => enums.push(Enum {
-                    name: d.name,
+                    name: Cow::Borrowed(d.name),
                     doc: docs(&d.doc),
                     variants: variants
                         .iter()
@@ -156,11 +166,14 @@ impl<'s> Grammar<'s> {
                 _ => {}
             }
         }
+        let fields = enums.iter().map(Enum::fields).collect::<Read<Vec<_>>>()?;
+        enums.extend(fields.into_iter().flatten());
         Ok(Self { enums })
     }
 
     fn kind(d: &Decl<'s>, lists: &[Decl<'s>]) -> Read<Enum<'s>> {
-        let mut kind = Enum { name: d.name, doc: docs(&d.doc), variants: Vec::new(), lists: Vec::new() };
+        let mut kind =
+            Enum { name: Cow::Borrowed(d.name), doc: docs(&d.doc), variants: Vec::new(), lists: Vec::new() };
         for list in lists {
             let entries = list.value.as_list().ok_or_else(|| {
                 let msg =

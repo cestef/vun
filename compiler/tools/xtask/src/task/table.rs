@@ -41,6 +41,12 @@ pub(crate) const HOOKS: Task = Task::new(
     Work::Run(crate::hooks::install_all),
 );
 
+pub(crate) const TREE_SITTER: Task = Task::new(
+    "tree-sitter",
+    "generate the tree-sitter parser and compare its trees with the compiler's on every source",
+    Work::Run(crate::tree_sitter::check),
+);
+
 /// The tasks `cargo xtask` offers as commands; the others are reached through them.
 macro_rules! commands {
     ($($task:path),* $(,)?) => {
@@ -49,4 +55,4 @@ macro_rules! commands {
 }
 
 pub(crate) const COMMANDS: &[vun_command::Command<vun_diag::DiagCtxt>] =
-    commands![CHECK, CORPUS, HOOKS, LAYERS, LINES, PUSH, SIZE, TYPESET];
+    commands![CHECK, CORPUS, HOOKS, LAYERS, LINES, PUSH, SIZE, TREE_SITTER, TYPESET];

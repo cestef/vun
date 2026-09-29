@@ -71,8 +71,8 @@ impl Record for Done {
         Text::from(format!("in {}s", self.0))
     }
 
-    fn fields(&self) -> vun_json::Object<'static> {
-        vun_json::Object::new().with("seconds", self.0)
+    fn fields(&self) -> vun_data::Object<'static> {
+        vun_data::Object::new().with("seconds", self.0)
     }
 }
 
@@ -99,7 +99,7 @@ fn reported(format: Format) -> (String, String) {
 fn statuses_are_lines_for_people_and_json_for_programs() {
     assert_eq!(reported(Format::Human), (String::new(), "    Finished in 1s\n".to_owned()));
     let (out, err) = reported(Format::Json);
-    assert_eq!((vun_json::parse(out.trim()).unwrap(), err), (Done(1).json(), String::new()));
+    assert_eq!((vun_data::json::parse(out.trim()).unwrap(), err), (Done(1).json(), String::new()));
 }
 
 #[test]
