@@ -16,7 +16,7 @@ main := (sys: &mut std.os.System) -> std.os.Exit {
 /// Whether the bytes written come back, and a missing file is `.missing`.
 check := (sys: &mut std.os.System) -> Result(bool, std.os.Error) {
     mut out := sys.open(path, .write)?;
-    std.fmt.print(out.stream(), "{} lines\n", .{ 2 })?;
+    std.fmt.print(out.stream(), "{} lines\n", 2)?;
     out.close()?;
     mut back := sys.open(path, .read)?;
     mut bytes: [16]u8 = [0; 16];

@@ -5,7 +5,7 @@ start := wasi.p1.command(main);
 main := (sys: &mut wasi.p1.System) -> wasi.p1.Exit {
     mut out := sys.stdout();
     for arg in sys.args() {
-        std.fmt.print(&mut out, "{}\n", .{ arg });
+        std.fmt.print(&mut out, "{}\n", arg);
     }
     .ok
 };

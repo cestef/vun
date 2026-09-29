@@ -52,7 +52,7 @@ origin := (index: u32) -> ?&lang.trace.Origin {
 
 /// Writes `o` as `path:line:column`.
 place := (w: &mut std.os.Stream, o: &lang.trace.Origin) {
-    std.fmt.print(w, "{}:{}:{}", .{ text(o.file), o.line, o.column });
+    std.fmt.print(w, "{}:{}:{}", text(o.file), o.line, o.column);
 };
 
 /// The return address `saved` as it is saved, without the code authenticating it where code is
@@ -120,25 +120,25 @@ report := ($H: type, handler: H, site: u32, why: Why) {
 written := (w: &mut std.os.Stream, site: u32, why: Why) {
     sites := rows(lang.trace.Site, table.sites, table.site_count);
     match why {
-        .trapped => { std.fmt.print(w, "trap", .{}); },
+        .trapped => { std.fmt.print(w, "trap"); },
         .failed(violation) => {
-            std.fmt.print(w, "check failed: {}", .{ std.meta.variant_name(lang.check.Violation, &violation) });
+            std.fmt.print(w, "check failed: {}", std.meta.variant_name(lang.check.Violation, &violation));
         },
     }
     if site.to(usize) < sites.len() {
         s := &sites[site.to(usize)];
-        if s.message.len > 0 { std.fmt.print(w, ": {}", .{ text(s.message) }); }
+        if s.message.len > 0 { std.fmt.print(w, ": {}", text(s.message)); }
         match origin(s.origin) {
             .some(o) => {
-                std.fmt.print(w, "\n  at ", .{});
+                std.fmt.print(w, "\n  at ");
                 place(w, o);
             },
             .none => {},
         }
-        std.fmt.print(w, "\n", .{});
+        std.fmt.print(w, "\n");
         inlined(w, s.origin);
     } else {
-        std.fmt.print(w, "\n", .{});
+        std.fmt.print(w, "\n");
     }
 };
 
@@ -150,7 +150,7 @@ inlined := (w: &mut std.os.Stream, index: u32) {
     for going {
         match origin(at) {
             .some(o) => if o.inlined {
-                std.fmt.print(w, "  in {}, inlined\n", .{ text(o.name) });
+                std.fmt.print(w, "  in {}, inlined\n", text(o.name));
                 at = o.into;
             } else {
                 going = false;
@@ -167,7 +167,7 @@ called := (w: &mut std.os.Stream, handler: usize) {
     Chain.of(handler).write(w);
     at := spawner.get();
     if at != 0 {
-        std.fmt.print(w, "  spawned by\n", .{});
+        std.fmt.print(w, "  spawned by\n");
         unsafe lang.mem.pointer_at(Chain, at).read().write(w);
     }
 };
@@ -203,16 +203,16 @@ Chain := struct {
                 .some(f) => {
                     // Past a function foreign code calls, the frames are not the program's.
                     if f.foreign { i = self.count; } else { i += 1; }
-                    std.fmt.print(w, "  in {}", .{ text(f.name) });
+                    std.fmt.print(w, "  in {}", text(f.name));
                     match origin(f.origin) {
                         .some(o) => {
-                            std.fmt.print(w, " (", .{});
+                            std.fmt.print(w, " (");
                             place(w, o);
-                            std.fmt.print(w, ")", .{});
+                            std.fmt.print(w, ")");
                         },
                         .none => {},
                     }
-                    std.fmt.print(w, "\n", .{});
+                    std.fmt.print(w, "\n");
                 },
                 // Code before the program's is not its own either.
                 .none => { i = self.count; },

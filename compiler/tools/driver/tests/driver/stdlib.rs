@@ -40,8 +40,8 @@ P := struct { x: u8 };
 main := (sys: &mut std.os.System) -> std.os.Exit {
     mut out := sys.stdout();
     n: u32 = 42;
-    std.fmt.print(&mut out, \"{} and {} of {}\\n\", .{ n, -7, \"bytes\" });
-    std.fmt.print(&mut out, \"{}\\n\", .{ P{ .x = 1 } });
+    std.fmt.print(&mut out, \"{} and {} of {}\\n\", n, -7, \"bytes\");
+    std.fmt.print(&mut out, \"{}\\n\", P{ .x = 1 });
     .ok
 };
 ",
@@ -64,8 +64,8 @@ digit := () -> u8 { checked(12) };
 fine := () -> u8 { checked(7) };
 main := (sys: &mut std.os.System) -> std.os.Exit {
     mut out := sys.stdout();
-    std.fmt.print(&mut out, \"{} {}\\n\", .{ 1 });
-    std.fmt.print(&mut out, \"{}\\n\", .{ 1 });
+    std.fmt.print(&mut out, \"{} {}\\n\", 1);
+    std.fmt.print(&mut out, \"{}\\n\", 1);
     .ok
 };
 ",
@@ -139,9 +139,9 @@ fn a_hosted_program_reads_its_arguments() {
 start := std.os.start(main);
 main := (sys: &mut std.os.System) -> std.os.Exit {
     mut out := sys.stdout();
-    std.fmt.print(&mut out, \"{} args\\n\", .{ sys.args().len() });
+    std.fmt.print(&mut out, \"{} args\\n\", sys.args().len());
     for arg in sys.args() {
-        std.fmt.print(&mut out, \"{}\\n\", .{ arg });
+        std.fmt.print(&mut out, \"{}\\n\", arg);
         wrong: u8 = arg;
     }
     .ok
@@ -172,12 +172,12 @@ CountWriter := struct {
 };
 counted := ($A: type, args: A) -> usize {
     mut c := Count{ .n = 0 };
-    std.fmt.print(&mut c, \"<{} {}>\", args);
+    std.fmt.print(&mut c, \"<{} {}>\", args.0, args.1);
     c.n
 };
 numbers := () -> usize { xs: [3]u16 = [1, 20, 300]; counted(.{ xs, \"ab\" }) };
 negative := () -> usize { none: [0]u16 = []; counted(.{ -45, none }) };
-nothing := () -> usize { mut c := Count{ .n = 0 }; std.fmt.print(&mut c, \"plain\", .{}); c.n };
+nothing := () -> usize { mut c := Count{ .n = 0 }; std.fmt.print(&mut c, \"plain\"); c.n };
 seventeen: Int(numbers()..=numbers()) = 17;
 eight: Int(negative()..=negative()) = 8;
 five: Int(nothing()..=nothing()) = 5;
@@ -201,7 +201,7 @@ fn the_c_library_row_is_the_chosen_systems() {
 start := std.os.start(main);
 main := (sys: &mut std.os.System) -> std.os.Exit {
     mut out := sys.stdout();
-    std.fmt.print(&mut out, \"{}\\n\", .{ 1 });
+    std.fmt.print(&mut out, \"{}\\n\", 1);
     .ok
 };
 ",

@@ -19,8 +19,7 @@ pub const close: Item = Item::new(&["std", "fmt", "close"]);
 pub const holes: Item = Item::new(&["std", "fmt", "holes"]);
 /// `format` split at each `{}`: one piece per argument, then the text after the last.
 pub const pieces: Item = Item::new(&["std", "fmt", "pieces"]);
-/// Writes `format` to `w`, each `{}` replaced by the next item of `args`, which must have one item
-/// for each `{}`.
+/// Writes `format` to `w`, each `{}` replaced by the next of `args`, one for each `{}`.
 pub const print: Item = Item::new(&["std", "fmt", "print"]);
 /// Room for the decimal digits of the widest integer.
 pub const digits_max: Item = Item::new(&["std", "fmt", "digits_max"]);
