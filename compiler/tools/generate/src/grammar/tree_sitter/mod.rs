@@ -3,7 +3,7 @@
 //! `tree-sitter.json`, and the queries editors read.
 
 use vun_data::ToData;
-use vun_tree_sitter::{Config, Grammar as Syntax, Rule};
+use vun_tree_sitter::{Config, Grammar as Syntax, Release, Rule};
 
 use super::SYNTAX;
 use super::model::{Editors, Model};
@@ -21,7 +21,7 @@ pub(crate) const TREE_SITTER: Generator = Generator {
     source: SYNTAX,
     output: "editors/tree-sitter",
     emit: Emit::Data(emit),
-    keeps: &[PARSER, CONFLICTS],
+    keeps: &[PARSER, CONFLICTS, Release::FILE],
 };
 
 /// Where `tree-sitter generate` writes the parser, beside the grammar.

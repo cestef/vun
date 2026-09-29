@@ -9,7 +9,7 @@ use vun_data::toml::Toml;
 use vun_syntax::lexer::COMMENT;
 use vun_syntax::literal::INDENT;
 
-use super::{GRAMMAR_REPOSITORY, GRAMMAR_REVISION, LANGUAGE, Server};
+use super::{GRAMMAR_REPOSITORY, LANGUAGE, Server, grammar_revision};
 use crate::generate::{Data, Emit, Format, Generator, Read, Source};
 use crate::grammar::SYNTAX;
 use crate::grammar::tree_sitter::{dialects, queries};
@@ -68,7 +68,7 @@ fn emit(sources: &[Source<'_>]) -> Read<Vec<Data>> {
         indent: Indent { tab_width: INDENT.len(), unit: INDENT.to_owned() },
         servers: vec![LANGUAGE.to_owned()],
     };
-    let source = GitSource { git: GRAMMAR_REPOSITORY.to_owned(), rev: GRAMMAR_REVISION.to_owned() };
+    let source = GitSource { git: GRAMMAR_REPOSITORY.to_owned(), rev: grammar_revision()? };
     let languages = Languages {
         language: vec![language],
         servers: BTreeMap::from([(LANGUAGE.to_owned(), Server::of())]),

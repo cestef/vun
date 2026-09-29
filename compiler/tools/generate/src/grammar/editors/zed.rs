@@ -9,7 +9,7 @@ use vun_data::toml::Toml;
 use vun_syntax::lexer::COMMENT;
 use vun_syntax::literal::INDENT;
 
-use super::{GRAMMAR_REPOSITORY, GRAMMAR_REVISION, LANGUAGE, LAUNCH, Pair, REPOSITORY, SERVER, TITLE, pairs};
+use super::{GRAMMAR_REPOSITORY, LANGUAGE, LAUNCH, Pair, REPOSITORY, SERVER, TITLE, grammar_revision, pairs};
 use crate::generate::{Data, Emit, Format, Generator, Read, Source};
 use crate::grammar::SYNTAX;
 use crate::grammar::tree_sitter::{dialects, queries};
@@ -81,7 +81,7 @@ fn emit(sources: &[Source<'_>]) -> Read<Vec<Data>> {
         )]),
         grammars: BTreeMap::from([(
             LANGUAGE.to_owned(),
-            GrammarSource { repository: GRAMMAR_REPOSITORY.to_owned(), rev: GRAMMAR_REVISION.to_owned() },
+            GrammarSource { repository: GRAMMAR_REPOSITORY.to_owned(), rev: grammar_revision()? },
         )]),
     };
     let brackets = pairs(sources)?.into_iter().map(|Pair { open, close }| Bracket {

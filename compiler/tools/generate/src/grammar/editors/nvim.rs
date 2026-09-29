@@ -6,7 +6,7 @@ use vun_build::layout::MANIFEST;
 use vun_data::ToData;
 use vun_data::lua::Lua;
 
-use super::{GRAMMAR_REPOSITORY, GRAMMAR_REVISION, LANGUAGE, Server};
+use super::{GRAMMAR_REPOSITORY, LANGUAGE, Server, grammar_revision};
 use crate::generate::{Data, Emit, Format, Generator, Read, Source};
 use crate::grammar::SYNTAX;
 use crate::grammar::tree_sitter::{dialects, queries};
@@ -28,7 +28,7 @@ struct Config {
 #[derive(ToData)]
 struct Parser {
     url: String,
-    branch: String,
+    revision: String,
     files: Vec<String>,
     requires_generate_from_grammar: bool,
 }
@@ -42,7 +42,7 @@ fn emit(sources: &[Source<'_>]) -> Read<Vec<Data>> {
         extension: vun_span::EXTENSION.to_owned(),
         parser: Parser {
             url: GRAMMAR_REPOSITORY.to_owned(),
-            branch: GRAMMAR_REVISION.to_owned(),
+            revision: grammar_revision()?,
             files: PARSER_FILES.map(str::to_owned).into(),
             requires_generate_from_grammar: false,
         },

@@ -14,11 +14,15 @@ pub(crate) use nvim::NVIM;
 pub(crate) use vscode::VSCODE;
 pub(crate) use zed::ZED;
 
-use vun_data::ToData;
+use vun_data::json::parse;
+use vun_data::{FromData, ToData};
+use vun_diag::{DiagId, Diagnostic, Msg};
+use vun_harness::repo_root;
+use vun_tree_sitter::Release;
 
 use super::lexical::QUOTE;
 use super::model::Model;
-use super::tree_sitter::LANGUAGE;
+use super::tree_sitter::{LANGUAGE, TREE_SITTER};
 use crate::generate::{Read, Source};
 
 /// The language as people read its name.
@@ -28,9 +32,29 @@ const SERVER: &str = "vun";
 const LAUNCH: [&str; 2] = ["util", "lsp"];
 /// Where Vun is developed.
 const REPOSITORY: &str = "https://github.com/cestef/vun";
-/// Where the tree-sitter grammar is published, with its parser, and the revision editors build.
+/// Where the tree-sitter grammar is published, with its parser.
 const GRAMMAR_REPOSITORY: &str = "https://github.com/cestef/tree-sitter-vun";
-const GRAMMAR_REVISION: &str = "main";
+/// What editors build before any release is recorded: the repository's branch.
+const UNRELEASED: &str = "main";
+
+/// The revision of the grammar's repository editors build: the release recorded beside the
+/// grammar when it was published, else the repository's branch.
+fn grammar_revision() -> Read<String> {
+    let path = repo_root().join(TREE_SITTER.output).join(Release::FILE);
+    let unreadable = |msg: Msg| Box::new(Diagnostic::error(UNREAD, msg.code(path.display().to_string())));
+    let text = match std::fs::read_to_string(&path) {
+        Ok(text) => text,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(UNRELEASED.to_owned()),
+        Err(e) => return Err(Box::new(unreadable(Msg::new().text("cannot read ")).caused_by(&e))),
+    };
+    let value =
+        parse(&text).map_err(|e| Box::new(unreadable(Msg::new().text("malformed ")).caused_by(&e)))?;
+    let release = Release::from_data(&value)
+        .map_err(|e| Box::new(unreadable(Msg::new().text("not a release: ")).caused_by(&e)))?;
+    Ok(release.revision)
+}
+
+const UNREAD: DiagId = DiagId::new("generate.editors.release");
 
 /// How the language server is started.
 #[derive(Clone, Debug, ToData)]

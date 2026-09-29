@@ -27,6 +27,14 @@ Changes to `vun-par`'s pool run its Miri tests:
 MIRIFLAGS="-Zmiri-num-cpus=4 -Zmiri-many-seeds=0..8 -Zmiri-ignore-leaks" cargo +nightly miri test -p vun-par --lib
 ```
 
+## Publishing the tree-sitter grammar
+
+`tree-sitter-vun` is a repository of its own, published by hand: copy `grammar.js`,
+`conflicts.json`, `tree-sitter.json`, `src/` (after `cargo xtask tree-sitter`) and `queries/` from
+`editors/tree-sitter` into it and commit there. Then record the commit beside the grammar,
+`editors/tree-sitter/release.json` as `{ "revision": "<commit>" }`, and run `cargo gen`: the Helix,
+Neovim and Zed packages build that revision (the branch `main` while no release is recorded).
+
 ## Remote machines
 
 ```sh
