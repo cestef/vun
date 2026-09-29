@@ -28,7 +28,8 @@ pub(crate) struct Document {
     /// The Typst file, relative to the repository root.
     pub(crate) source: &'static str,
     pub(crate) outputs: Outputs,
-    pub(crate) format: Format,
+    /// Each output is written in each of these, by its extension.
+    pub(crate) formats: &'static [Format],
 }
 
 /// Where a document's files go, relative to the repository root and without their extension.
@@ -46,32 +47,45 @@ pub(crate) enum Format {
     Png {
         ppi: u16,
     },
+    /// Vector, for what is scaled after: the videos of `assets/motion` draw diagrams from it.
+    Svg,
 }
 
 /// The cards are drawn in points at 72 pixels per inch, so a point is a pixel.
-const PIXEL: Format = Format::Png { ppi: 72 };
+const PIXEL: &[Format] = &[Format::Png { ppi: 72 }];
+
+/// The card `assets/cards/<name>/card.typ`, its variants written beside it.
+macro_rules! card {
+    ($name:literal, $formats:expr) => {
+        Document {
+            source: concat!("assets/cards/", $name, "/card.typ"),
+            outputs: Outputs::Variants(concat!("assets/cards/", $name)),
+            formats: $formats,
+        }
+    };
+}
 
 pub(crate) const ALL: &[Document] = &[
     Document {
         source: "whitepaper/main.typ",
         outputs: Outputs::File("whitepaper/main"),
-        format: Format::Pdf,
+        formats: &[Format::Pdf],
     },
+    card!("code", &[Format::Png { ppi: 200 }]),
+    card!("social", PIXEL),
+    card!("icon", PIXEL),
+    card!("lockup", PIXEL),
+    card!("moods", PIXEL),
+    card!("emoji", PIXEL),
+    card!("stickers", PIXEL),
     Document {
-        source: "assets/cards/code/card.typ",
-        outputs: Outputs::Variants("assets/cards/code"),
-        format: Format::Png { ppi: 200 },
+        source: "assets/cards/stickers/sheet.typ",
+        outputs: Outputs::Variants("assets/cards/stickers/sheet"),
+        formats: &[Format::Pdf],
     },
-    Document {
-        source: "assets/cards/social/card.typ",
-        outputs: Outputs::Variants("assets/cards/social"),
-        format: PIXEL,
-    },
-    Document {
-        source: "assets/cards/icon/card.typ",
-        outputs: Outputs::Variants("assets/cards/icon"),
-        format: PIXEL,
-    },
+    card!("release", PIXEL),
+    // Twice the cards' density, for documents that show them at their size on dense screens.
+    card!("diagrams", &[Format::Png { ppi: 144 }, Format::Svg]),
 ];
 
 const FAILED: DiagId = DiagId::new("xtask.typeset.failed");
@@ -134,23 +148,31 @@ pub(crate) fn compile_all(diag: &mut DiagCtxt, _: &Args, shell: &mut Shell<'_>) 
 }
 
 impl Document {
-    /// Its compilations: one, or one per variant it declares.
+    /// Its compilations: one per format, or one per format of each variant it declares.
     fn jobs(&self, root: &Path, typst: &Executable) -> Result<Vec<Job>, Unread> {
-        let file = |path: &Path| path.with_extension(self.format.extension());
-        Ok(match self.outputs {
-            Outputs::File(path) => vec![self.job(file(Path::new(path)), Vec::new())],
+        let outputs: Vec<(PathBuf, Vec<(String, String)>)> = match self.outputs {
+            Outputs::File(path) => vec![(PathBuf::from(path), Vec::new())],
             Outputs::Variants(dir) => Variant::read(root, self.source, typst)?
                 .into_iter()
                 .map(|v| {
-                    let output = v.path.iter().fold(PathBuf::from(dir), |p, part| p.join(part));
-                    self.job(file(&output), v.inputs.into_iter().collect())
+                    (
+                        v.path.iter().fold(PathBuf::from(dir), |p, part| p.join(part)),
+                        v.inputs.into_iter().collect(),
+                    )
                 })
                 .collect(),
-        })
-    }
-
-    const fn job(&self, output: PathBuf, inputs: Vec<(String, String)>) -> Job {
-        Job { source: self.source, format: self.format, output, inputs }
+        };
+        Ok(outputs
+            .into_iter()
+            .flat_map(|(output, inputs)| {
+                self.formats.iter().map(move |&format| Job {
+                    source: self.source,
+                    format,
+                    output: output.with_extension(format.extension()),
+                    inputs: inputs.clone(),
+                })
+            })
+            .collect())
     }
 }
 
@@ -159,6 +181,7 @@ impl Format {
         match self {
             Self::Pdf => "pdf",
             Self::Png { .. } => "png",
+            Self::Svg => "svg",
         }
     }
 }

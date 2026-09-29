@@ -3,7 +3,13 @@
 //! and cargo's metadata says what each crate depends on.
 
 use std::collections::BTreeMap;
+use std::io;
 use std::path::Path;
+
+use vun_data::toml::Toml;
+use vun_data::{Object, ToData};
+use vun_fs::Edit;
+use vun_term::{Record, Status, Style, Text, Verb};
 
 use crate::cargo::{self, CargoFailed};
 
@@ -22,6 +28,60 @@ pub(crate) const RANKS: &[&[&str]] = &[
     &["native", "pkg"],
     &["tools"],
 ];
+
+/// The ranks as data, for what draws them.
+pub(crate) struct Ranks;
+
+impl Ranks {
+    /// Where they are written, relative to the repository root: the layers diagram of
+    /// `assets/diagrams` reads them there. `cargo xtask layers` keeps it current.
+    pub(crate) const TABLE: &str = "assets/diagrams/layers.toml";
+
+    const HEADER: &str = "# The groups of crates under `compiler/` by rank, from `RANKS` in\n\
+        # `compiler/tools/xtask/src/layers.rs`: a group may depend on those of a lower rank, peers on\n\
+        # none of each other. Written by `cargo xtask layers`.\n\n";
+
+    /// The table `TABLE` holds.
+    pub(crate) fn toml() -> String {
+        let ranks = Object::new().with("ranks", RANKS.to_data());
+        [Self::HEADER, &Toml(&ranks).to_string()].concat()
+    }
+
+    /// Writes the table under `root` unless it already holds the ranks; whether it wrote.
+    ///
+    /// # Errors
+    /// Returns an error if the table cannot be written.
+    pub(crate) fn refresh(root: &Path) -> io::Result<bool> {
+        let (path, toml) = (root.join(Self::TABLE), Self::toml());
+        if std::fs::read_to_string(&path).is_ok_and(|held| held == toml) {
+            return Ok(false);
+        }
+        path.put(toml).map(|()| true)
+    }
+}
+
+/// The ranks' table written again.
+pub(crate) struct Refreshed;
+
+impl Record for Refreshed {
+    fn kind(&self) -> &'static str {
+        "refreshed"
+    }
+
+    fn text(&self) -> Text {
+        Text::of(Style::Strong, Ranks::TABLE)
+    }
+
+    fn fields(&self) -> Object<'static> {
+        Object::new().with("path", Ranks::TABLE)
+    }
+}
+
+impl Status for Refreshed {
+    fn verb(&self) -> Verb {
+        Verb::good("Wrote")
+    }
+}
 
 /// The directory holding the groups, relative to the repository root.
 const GROUPS: &str = "compiler";

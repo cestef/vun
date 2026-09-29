@@ -3,7 +3,7 @@ use vun_harness::repo_root;
 use std::path::Path;
 
 use crate::corpus::Corpus;
-use crate::layers::{Breach, Placed};
+use crate::layers::{Breach, Placed, Ranks};
 use crate::lines::{self, Oversized};
 
 #[test]
@@ -31,6 +31,12 @@ fn the_measured_binary_is_the_last_executable_cargo_reports() {
     ]
     .join("\n");
     assert_eq!(crate::size::Measured::executable(&messages), Some("/t/dist/vun".into()));
+}
+
+#[test]
+fn the_layers_diagram_reads_the_ranks() {
+    let held = std::fs::read_to_string(repo_root().join(Ranks::TABLE)).expect("readable table");
+    assert_eq!(held, Ranks::toml(), "run `cargo xtask layers`");
 }
 
 #[test]

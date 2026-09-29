@@ -1,0 +1,5 @@
+# The groups of crates under `compiler/` by rank, from `RANKS` in
+# `compiler/tools/xtask/src/layers.rs`: a group may depend on those of a lower rank, peers on
+# none of each other. Written by `cargo xtask layers`.
+
+ranks = [["base"], ["lang"], ["isa", "object"], ["front"], ["sema"], ["mid"], ["low"], ["asm"], ["back", "link", "render"], ["native", "pkg"], ["tools"]]
